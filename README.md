@@ -1,56 +1,58 @@
 # 🎬 Storyboard BD
 
-**Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
+> 🇫🇷 [Version française](README.fr.md)
 
-> Application de bureau Windows, construite avec Electron + Three.js. Entièrement autonome : un seul fichier `index.html` contient toute l'application.
+**Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
+
+> Standalone Windows desktop app built with Electron + Three.js. The entire application lives in a single `index.html` file.
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-### Structure narrative
-- Organisation **Tomes → Planches → Cases** avec numérotation automatique
-- Duplication de planches, réorganisation par glisser-déposer
-- Résumés et descriptions par Case
-- Bulles de dialogue avec pointe orientable
+### Narrative structure
+- **Volume → Page → Panel** organization with automatic numbering
+- Page duplication, drag-and-drop reordering
+- Per-panel summaries and descriptions
+- Speech bubbles with adjustable tails
 
-### Scènes 3D
-- **Scènes réutilisables** : composez une scène une fois, chargez-la dans n'importe quelle Case
-- Rendu 3D temps réel via **Three.js** (r128)
-- Caméra libre : rotation, translation, zoom — sans restriction de hauteur
-- Vue de dessus intégrée pour le placement des éléments
+### 3D Scenes
+- **Reusable scenes**: compose a scene once, load it into any panel
+- Real-time 3D rendering via **Three.js** (r128)
+- Free camera: rotation, translation, zoom — no height restrictions
+- Integrated top-down view for element placement
 
-### Éléments disponibles
-- 👤 **Personnages** avec poses, émotions, orientation et articulations
-- 🐾 **Animaux** articulés (chien, chat, cheval, lézard…)
-- 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
-- 🚗 **Véhicules** (voitures, motos, camions…)
-- 🌳 **Végétation** (arbres, arbustes, fleurs…)
-- 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
-- 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
-- 🌿 **Zones de terrain** colorées
+### Available elements
+- 👤 **Characters** with poses, emotions, orientation and joint articulation
+- 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
+- 🪑 **Furniture** (tables, chairs, sofas, staircases…)
+- 🚗 **Vehicles** (cars, motorcycles, trucks…)
+- 🌳 **Vegetation** (trees, shrubs, flowers…)
+- 🏠 **Buildings** with rooms, walls, doors and windows
+- 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
+- 🌿 **Terrain zones** with custom colors
 
 ### Interface
-- Menu contextuel riche (clic droit)
-- Panneau droit contextuel (Case, Bulle, Planche) avec sections collapsables
-- État de collapse sauvegardé par entité (indépendant Case par Case)
-- Thème clair / sombre
-- Interface bilingue 🇫🇷 / 🇬🇧
+- Rich right-click context menu
+- Contextual right panel (Panel, Bubble, Page) with collapsible sections
+- Collapse state saved independently per entity
+- Light / dark theme
+- Bilingual UI 🇫🇷 / 🇬🇧
 
-### Projet & sauvegarde
-- Format de projet **JSON** — lisible et versionnable
-- Sauvegarde automatique configurable
-- Export des planches en **PNG** ou **PDF**
-- Undo/Redo illimité
+### Project & saving
+- **JSON** project format — human-readable and versionable
+- Configurable auto-save
+- Export pages as **PNG** or **PDF**
+- Unlimited undo/redo
 
 ---
 
-## 🚀 Installation
+## 🚀 Getting started
 
-### Prérequis
-- [Node.js LTS](https://nodejs.org) (v18 ou supérieur)
+### Prerequisites
+- [Node.js LTS](https://nodejs.org) (v18 or higher)
 
-### Lancer en développement
+### Run in development
 ```bash
 git clone https://github.com/val66/storyboarder-bd.git
 cd storyboarder-bd
@@ -58,52 +60,52 @@ npm install
 npm start
 ```
 
-### Générer l'installeur Windows (.exe)
+### Build the Windows installer (.exe)
 ```bash
 npm run dist
 ```
-L'installeur apparaît dans le dossier `dist/`. Il crée des raccourcis Bureau et Menu Démarrer.
+The installer appears in the `dist/` folder and creates Desktop and Start Menu shortcuts automatically.
 
 ---
 
-## 🗂️ Structure du projet
+## 🗂️ Project structure
 
 ```
 storyboarder-bd/
-├── index.html      # L'application complète (HTML + CSS + JS)
-├── main.js         # Processus principal Electron (fenêtre, fichiers, IPC)
-├── preload.js      # Bridge contextIsolation Electron
-├── package.json    # Config Electron + electron-builder
+├── index.html      # The entire application (HTML + CSS + JS)
+├── main.js         # Electron main process (window, file dialogs, IPC)
+├── preload.js      # Electron contextIsolation bridge
+├── package.json    # Electron + electron-builder config
 └── LICENSE
 ```
 
 ---
 
-## 🛠️ Stack technique
+## 🛠️ Tech stack
 
-| Technologie | Rôle |
+| Technology | Role |
 |---|---|
-| [Electron](https://www.electronjs.org/) | Application de bureau cross-platform |
-| [Three.js r128](https://threejs.org/) | Rendu 3D des scènes |
-| HTML / CSS / JS vanilla | Interface utilisateur complète |
+| [Electron](https://www.electronjs.org/) | Cross-platform desktop app |
+| [Three.js r128](https://threejs.org/) | 3D scene rendering |
+| Vanilla HTML / CSS / JS | Full UI — no framework, no bundler |
 
-Pas de framework front-end. Pas de bundler. Tout tient dans `index.html`.
+Everything fits in `index.html`.
 
 ---
 
-## 📄 Licence
+## 📄 License
 
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**
 
-Vous pouvez librement utiliser, modifier et redistribuer ce projet, **à condition de** :
-- Créditer l'auteur original
-- Ne pas en faire un usage commercial
-- Redistribuer les versions modifiées sous la même licence
+You are free to use, modify and redistribute this project, provided you:
+- Credit the original author
+- Do not use it for commercial purposes
+- Distribute modified versions under the same license
 
-🔗 [Lire la licence complète](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+🔗 [Read the full license](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ---
 
-## 👤 Auteur
+## 👤 Author
 
 **Valentin** — [@val66](https://github.com/val66)
