@@ -93,6 +93,14 @@ Everything fits in `index.html`.
 
 ---
 
+## ☕ Support
+
+If you enjoy this project and want to say thanks, a small donation is always appreciated!
+
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.me/valentinP34)
+
+---
+
 ## 📄 License
 
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**

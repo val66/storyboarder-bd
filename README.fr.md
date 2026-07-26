@@ -93,6 +93,14 @@ Pas de framework front-end. Pas de bundler. Tout tient dans `index.html`.
 
 ---
 
+## ☕ Soutenir le projet
+
+Si ce projet vous est utile et que vous souhaitez me remercier, un petit don est toujours apprécié !
+
+[![Faire un don via PayPal](https://img.shields.io/badge/Faire_un_don-PayPal-0070ba?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.me/valentinP34)
+
+---
+
 ## 📄 Licence
 
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**
