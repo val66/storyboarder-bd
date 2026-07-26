@@ -1,0 +1,27 @@
+# Dépendances Node
+node_modules/
+
+# Build Electron
+dist/
+out/
+
+# Données utilisateur (projets personnels)
+Projets/
+
+# Fichiers de sauvegarde temporaires
+*.backup-*.html
+index.backup*.html
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
