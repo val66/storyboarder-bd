@@ -17,10 +17,14 @@
 - Speech bubbles with adjustable tails
 
 ### 3D Scenes
-- **Reusable scenes**: compose a scene once, load it into any panel
+- **Reusable scenes**: compose a 3D scene once, load it into any panel — characters, furniture, buildings, roads, vegetation, terrain…
 - Real-time 3D rendering via **Three.js** (r128)
-- Free camera: rotation, translation, zoom — no height restrictions
+- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor — no height restrictions; orbit center stays anchored during rotation; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control — like Blender/Maya); pitch clamped to ±85° to avoid scene flip
 - Integrated top-down view for element placement
+- **Real-world scale**: characters at 1.75 m, objects at proportional sizes — consistent across all panels
+- **Automatic camera fit**: loading a scene into a panel zooms the camera out to frame the entire scene; use the scroll wheel (Camera mode) to zoom in on details
+- **Non-destructive**: loading a scene copies its content into the panel — modifying the source scene later has no effect on panels that already loaded it
+- **Automatic migration**: projects saved with an older version are silently upgraded to the current scale model on load — no manual action required
 
 ### Available elements
 - 👤 **Characters** with poses, emotions, orientation and joint articulation

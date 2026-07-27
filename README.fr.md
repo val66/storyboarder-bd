@@ -17,10 +17,14 @@
 - Bulles de dialogue avec pointe orientable
 
 ### Scènes 3D
-- **Scènes réutilisables** : composez une scène une fois, chargez-la dans n'importe quelle Case
+- **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case — Personnages, Mobilier, Bâtiments, Routes, Végétation, Terrain…
 - Rendu 3D temps réel via **Three.js** (r128)
-- Caméra libre : rotation, translation, zoom — sans restriction de hauteur
+- Caméra libre : rotation (glisser), panoramique (clic milieu + glisser ou Ctrl+glisser), zoom vers le curseur — sans restriction de hauteur ; centre d'orbite stable pendant la rotation ; sensibilité proportionnelle à la distance et à l'inclinaison (le lacet ralentit en plongée/contre-plongée — comme Blender/Maya) ; pitch limité à ±85° pour éviter le basculement de la scène
 - Vue de dessus intégrée pour le placement des éléments
+- **Taille réelle** : les Personnages mesurent 1,75 m, les Objets sont aux proportions réelles — cohérent entre toutes les Cases
+- **Recadrage automatique** : au chargement d'une Scène, la caméra recule pour englober l'ensemble du décor ; molette en mode Caméra pour zoomer sur un détail
+- **Non destructif** : charger une Scène copie son contenu dans la Case — modifier la Scène source n'affecte pas les Cases qui l'ont déjà intégrée
+- **Migration automatique** : les projets créés avec une version antérieure sont silencieusement mis à jour au modèle d'échelle actuel au chargement — aucune action requise
 
 ### Éléments disponibles
 - 👤 **Personnages** avec poses, émotions, orientation et articulations
