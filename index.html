@@ -2216,6 +2216,7 @@ document.addEventListener('mousedown', (e) => {
   // Ne pas désélectionner si une modale est ouverte (même logique que le listener Scène ci-dessus,
   // ligne ~1947) : évite d'effacer selectedId avant que le onclick de la modale ne restaure l'état.
   if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+  exitCameraModeOnDeselect(null); // Fix 15 : quitter le mode Caméra à la désélection
   selectedId = null; selectedPieceId = null; selectedBatKey = null;
   drawCurrentPage();
   updateSidePanel();
@@ -4910,7 +4911,7 @@ window.addEventListener('keydown', (e) => {
       else if (e.key === 'ArrowUp'    || e.key === 'w') { wx += panStep * _arrowBasis.up.x; wy += panStep * _arrowBasis.up.y; wz += panStep * _arrowBasis.up.z; }
       else if (e.key === 'ArrowDown'  || e.key === 's') { wx -= panStep * _arrowBasis.up.x; wy -= panStep * _arrowBasis.up.y; wz -= panStep * _arrowBasis.up.z; }
       selPanel.camWxTarget = clamp(wx, -panLimit, panLimit);
-      selPanel.camWyTarget = clamp(wy, -panLimit, panLimit);
+      selPanel.camWyTarget = clamp(wy, Math.max(-panLimit, SOL_Y_DEFAULT_3D - 1), panLimit); // Fix 14c
       selPanel.camWzTarget = clamp(wz, -panLimit, panLimit);
       startCamSmoothing(selPanel);
       return;
@@ -5349,7 +5350,8 @@ canvasWrap.addEventListener('wheel', (e) => {
     const _wy0 = sel.camWyTarget !== undefined ? sel.camWyTarget : (sel.camWy || 0);
     const _wz0 = sel.camWzTarget !== undefined ? sel.camWzTarget : (sel.camWz || 0);
     sel.camWxTarget = clamp(_wx0 + _panDX * _zBasis.right.x + _panDY * _zBasis.up.x, -_panLim, _panLim);
-    sel.camWyTarget = clamp(_wy0 + _panDX * _zBasis.right.y + _panDY * _zBasis.up.y, -_panLim, _panLim);
+    // Fix 14b : ne pas laisser camWy dériver très underground par zoom répété (threshold = SOL_Y_DEFAULT_3D - 1 = -4).
+    sel.camWyTarget = clamp(_wy0 + _panDX * _zBasis.right.y + _panDY * _zBasis.up.y, Math.max(-_panLim, SOL_Y_DEFAULT_3D - 1), _panLim);
     sel.camWzTarget = clamp(_wz0 + _panDX * _zBasis.right.z + _panDY * _zBasis.up.z, -_panLim, _panLim);
     startCamSmoothing(sel);
     return;
@@ -6329,11 +6331,13 @@ canvas.addEventListener('mousedown', (e) => {
   if (hit && isLockedScenePanel(hit)) {
     // Sélectionnable (pour le menu contextuel/le panneau latéral), mais pas déplaçable par glisser :
     // cf. isLockedScenePanel.
+    exitCameraModeOnDeselect(hit.id, page); // Fix 15
     selectedId = hit.id; selectedPieceId = null; selectedBatKey = null;
     drawCurrentPage();
     return;
   }
   if (hit) {
+    exitCameraModeOnDeselect(hit.id, page); // Fix 15
     snapshot();
     selectedId = hit.id; selectedPieceId = null; selectedBatKey = null; dragMode = 'move'; dragStart = { x, y };
     dragOrig = { ...hit, pts: hit.pts ? hit.pts.map(p => ({ ...p })) : undefined };
@@ -6366,6 +6370,7 @@ canvas.addEventListener('mousedown', (e) => {
     drawCurrentPage();
   } else {
     // Espace vide : simple clic = désélection (double-clic pour créer une case).
+    exitCameraModeOnDeselect(null, page); // Fix 15
     selectedId = null; selectedPieceId = null; selectedBatKey = null;
     drawCurrentPage();
   }
@@ -6793,7 +6798,7 @@ window.addEventListener('mousemove', (e) => {
       const _panBasis9 = caseCamBasis3D(_pObj9);
       const _dRight9 = -_dx9 * _pScale, _dUp9 = +_dy9 * _pScale;
       _pObj9.camWx = clamp((dragOrig.camWx || 0) + _dRight9 * _panBasis9.right.x + _dUp9 * _panBasis9.up.x, -_pLim9, _pLim9);
-      _pObj9.camWy = clamp((dragOrig.camWy || 0) + _dRight9 * _panBasis9.right.y + _dUp9 * _panBasis9.up.y, -_pLim9, _pLim9);
+      _pObj9.camWy = clamp((dragOrig.camWy || 0) + _dRight9 * _panBasis9.right.y + _dUp9 * _panBasis9.up.y, Math.max(-_pLim9, SOL_Y_DEFAULT_3D - 1), _pLim9); // Fix 14c
       _pObj9.camWz = clamp((dragOrig.camWz || 0) + _dRight9 * _panBasis9.right.z + _dUp9 * _panBasis9.up.z, -_pLim9, _pLim9);
       _pObj9.camWxTarget = _pObj9.camWx;
       _pObj9.camWyTarget = _pObj9.camWy;
@@ -9610,6 +9615,41 @@ const OBJECT_TYPE_EMOJI = {
 function exitCameraMode(panel){
   panel.cameraMode = false;
   panel.camOrbitTargetId = null;
+}
+// Quitte automatiquement le mode Caméra d'une Case lorsqu'elle est désélectionnée.
+// Appelé juste AVANT chaque affectation de selectedId qui change la Case active.
+// • newId = null       → désélection totale → mode Caméra quitte.
+// • newId = autre Case → la vieille Case est abandonnée → mode Caméra quitte.
+// • newId = élément dans LA MÊME Case → centrage d'orbite sur cet élément → mode Caméra RESTE.
+// Paramètre page optionnel : si absent, on utilise currentPage().
+function exitCameraModeOnDeselect(newId, page) {
+  if (!selectedId) return;
+  const pg = page || currentPage();
+  const prev = pg.objects.find(o => o.id === selectedId);
+  if (!prev) return;
+  // Trouver le panel en mode Caméra lié à la sélection courante.
+  let cameraPanel = null;
+  if (prev.type === 'panel') {
+    if (prev.cameraMode) cameraPanel = prev;
+  } else {
+    // Un Élément peut être sélectionné dans un panel en mode Caméra (centering d'orbite).
+    const owner = homeOwningPanel(prev, pg);
+    if (owner && owner.cameraMode) cameraPanel = owner;
+  }
+  if (!cameraPanel) return;
+  // La nouvelle sélection reste-t-elle dans cette même Case ?
+  if (!newId) {
+    // Désélection totale → quitter.
+    exitCameraMode(cameraPanel); return;
+  }
+  if (newId === cameraPanel.id) return; // Re-sélection de la même Case (ne devrait pas arriver ici)
+  const newObj = pg.objects.find(o => o.id === newId);
+  if (newObj && (newObj.homePanelId === cameraPanel.id || newObj.panelId === cameraPanel.id)) {
+    // Élément appartenant à la même Case → garder le mode Caméra (centrage d'orbite sur l'élément).
+    return;
+  }
+  // Autre Case, élément d'une autre Case ou objet sans Case → quitter le mode Caméra.
+  exitCameraMode(cameraPanel);
 }
 function resetPanelCamera(panel){
   exitCameraMode(panel);
@@ -15920,7 +15960,15 @@ function renderCaseScene3D(panel, page, styleKey, scale = 1){
   const _cgOrbit = getCamOrbitWorld(panel, _cgBasis);
   const _cgCamY  = _cgOrbit.y + _cgBasis.backward.y * (panel.camDist || CASE_CAM_DEFAULT_DIST_3D);
   // Seuil : dès que la caméra descend sous SOL_Y_DEFAULT_3D, on entre en mode contre-plongée.
-  const _camBelowGround = _cgCamY < SOL_Y_DEFAULT_3D;
+  // Fix 14a : si le centre d'orbite est lui-même nettement underground (< SOL_Y_DEFAULT_3D - 4 = -7),
+  // le seuil contre-plongée est traversé à seulement ~5° de rotation (avec camDist ≈ 50) →
+  // Sol/Planchers/tracés clignotent à chaque petit mouvement et l'utilisateur perçoit un
+  // «centre de rotation qui bouge». Ce cas survient quand camWy dérive sous le sol via zoom répété.
+  // Solution : désactiver le masquage contre-plongée quand le centre d'orbite est déjà très profond —
+  // la caméra y est de fait underground pour presque tout angle, le basculement alternatif serait
+  // perturbant plutôt qu'utile. Le mode contre-plongée intentionnel (caméra sous le sol par grand
+  // angle camRotX) continue de fonctionner normalement pour les panneaux avec camWy >= -7.
+  const _camBelowGround = _cgCamY < SOL_Y_DEFAULT_3D && _cgOrbit.y >= SOL_Y_DEFAULT_3D - 4;
 
   // Le Sol (cf. solMesh3D) est présent par défaut dans CHAQUE Case, sans être un Élément de
   // page.objects (il ne peut ni être créé manuellement, ni sélectionné/déplacé) : un simple maillage
@@ -18548,6 +18596,14 @@ function applyProjectData(data){
     if (o.camWxTarget    !== undefined) o.camWx    = o.camWxTarget;
     if (o.camWyTarget    !== undefined) o.camWy    = o.camWyTarget;
     if (o.camWzTarget    !== undefined) o.camWz    = o.camWzTarget;
+    // Fix 14d : corriger le drift underground de camWy au rechargement.
+    // Si camWy < SOL_Y_DEFAULT_3D - 4 (= -7), c'est un drift non-intentionnel par zoom répété :
+    // le seuil contre-plongée serait franchi à ~5° → Sol clignotan à chaque rotation.
+    // Remettre à 0 (centre d'orbite au niveau du sol) corrige sans perturber l'usage normal.
+    if ((o.camWy || 0) < SOL_Y_DEFAULT_3D - 4) {
+      console.log('[CAM-ORBIT] Fix14d camWy drift reset', (o.camWy||0).toFixed(3), '→ 0');
+      o.camWy = 0; if (o.camWyTarget !== undefined) o.camWyTarget = 0;
+    }
     // Fix 13d : réinitialiser l'état du centrage one-shot (sélection d'Élément hors mode Caméra).
     // Ces champs sont inclus dans JSON.stringify (runtime, non-Symbol) : si la sauvegarde intervient
     // alors qu'un Élément était sélectionné (_lastOrbitSelId ≠ null) et que la restauration
