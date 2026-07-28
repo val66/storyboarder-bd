@@ -42,6 +42,10 @@ function toggleModalSection(headerEl){
 // peu importe l'état laissé par une précédente ouverture). Le titre d'une section peut contenir un
 // span imbriqué (cas générique) : on ne compare qu'à son premier noeud texte, pour rester insensible
 // à un éventuel complément.
+
+// ════════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════════
 function resetModalSections(modalBoxEl, openTitles){
   modalBoxEl.querySelectorAll('.modal-section').forEach(sec => {
     const titleEl = sec.querySelector('.modal-section-title');
@@ -59,6 +63,10 @@ let projectName = 'Projet';
 // ou "Charger" (cf. section PROJET) : permet de réécrire silencieusement dans le MÊME fichier (sans
 // redemander à l'utilisateur où enregistrer) pour la sauvegarde automatique et les enregistrements
 // manuels suivants. Reste null tant qu'aucun fichier n'a encore été choisi.
+
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
 let projectFileHandle = null;
 // Chemin (string) vers le fichier .json du Projet en cours côté Electron (voie window.storyboarderAPI,
 // cf. preload.js/main.js) : équivalent de projectFileHandle ci-dessus mais pour la voie IPC native, seule
@@ -394,6 +402,10 @@ function caseDepthToDistance3D(z){
 // État courant de l'outil Build : null = inactif.
 // { panelId, pieceId, pieceLabel, points, wallIds, previewPos, snapped }
 let buildTool = null;
+
+// ════════════════════════════════════════════════════════════
+// 3D COORDINATE HELPERS
+// ════════════════════════════════════════════════════════════
 function clampCaseDepth3D(z){
   return Math.min(z, CASE_DEPTH_MAX_3D);
 }
@@ -468,6 +480,10 @@ function setElementWorldPos3D(o, panel, worldX, worldY){
 // ---------- UNDO ----------
 let undoStack = [];
 // ↳ src/constants.js
+
+// ════════════════════════════════════════════════════════════
+// UNDO / HISTORY
+// ════════════════════════════════════════════════════════════
 function snapshot(){
   undoStack.push(JSON.stringify({ tomes, currentTomeIndex, currentPageIndex, scenes, editingSceneId }));
   if (undoStack.length > MAX_UNDO) undoStack.shift();
@@ -546,6 +562,10 @@ document.getElementById('addSceneBtn').onclick = () => {
 // recalculé dynamiquement, donc rien à faire de ce côté). Limité au glisser-déposer ENTRE Planches
 // d'un même Tome (déplacer une Planche d'un Tome à un autre n'a pas été demandé).
 let draggedPage = null;
+
+// ════════════════════════════════════════════════════════════
+// SIDEBAR — TREE
+// ════════════════════════════════════════════════════════════
 function renderTree(){
   const list = document.getElementById('tomeList');
   list.innerHTML = '';
@@ -804,6 +824,10 @@ async function deleteScene(id){
 // pas stretch" déjà appliquée au rendu 3D) du canevas de la Scène vers le rectangle réel de la Case,
 // et remplace TOTALEMENT les Éléments déjà présents dans cette Case (après confirmation explicite —
 // réponse utilisateur : "Remplacement total mais il faudra prevenir l'utilisateur avant").
+
+// ════════════════════════════════════════════════════════════
+// SCENE LOADING
+// ════════════════════════════════════════════════════════════
 async function loadSceneIntoPanel(scene, panel){
   // currentPage() renvoie un objet "vue" reconstruit à chaque appel (cf. sa définition) : lui
   // réassigner .objects ne fait que changer cette copie temporaire, sans toucher au tableau réel de
@@ -1093,6 +1117,10 @@ function undoLastNoOpSnapshot(){
   const btn = document.getElementById('undoBtn');
   if (btn) btn.disabled = undoStack.length === 0;
 }
+
+// ════════════════════════════════════════════════════════════
+// Z-ORDERING
+// ════════════════════════════════════════════════════════════
 function bringForward(){
   const page = currentPage();
   const group = getStackGroup(selectedId, page);
@@ -1119,6 +1147,10 @@ function sendBackward(){
 }
 
 // ---------- PERSONNAGES ----------
+
+// ════════════════════════════════════════════════════════════
+// CHARACTERS
+// ════════════════════════════════════════════════════════════
 function addPersoToPanel(panel){
   snapshot();
   const page = currentPage();
@@ -1665,6 +1697,10 @@ function uniqueDefaultName(panel, page, baseName){
   while (existingNames.has(baseName + ' ' + n)) n++;
   return baseName + ' ' + n;
 }
+
+// ════════════════════════════════════════════════════════════
+// OBJECTS & WALLS
+// ════════════════════════════════════════════════════════════
 function addObjectToPanel(panel, objType){
   snapshot();
   const page = currentPage();
@@ -2037,6 +2073,10 @@ function tracéBBox(pts){
 }
 
 // Active l'outil de tracé pour un panel donné.
+
+// ════════════════════════════════════════════════════════════
+// TRACER TOOL
+// ════════════════════════════════════════════════════════════
 function startTraceTool(panel, type){
   stopTraceTool(false);
   const def = TRACÉ_DEFAULTS[type] || {};
@@ -2755,6 +2795,10 @@ function getPagePanels() {
 }
 // Retourne les Éléments sélectionnables d'un panel (par homePanelId, triés position), pour Tab.
 // Les Tracés (Routes/Chemins/Zones) utilisent panelId au lieu de homePanelId : inclus aussi.
+
+// ════════════════════════════════════════════════════════════
+// PAGE QUERIES
+// ════════════════════════════════════════════════════════════
 function getPanelElements(panel) {
   return currentPageData().objects
     .filter(o => (o.type !== 'panel' && o.homePanelId === panel.id)
@@ -3177,6 +3221,10 @@ const zoomIndicator = document.getElementById('zoomIndicator');
 let zoomLevel = 1;
 // ↳ src/constants.js
 
+
+// ════════════════════════════════════════════════════════════
+// CANVAS ZOOM
+// ════════════════════════════════════════════════════════════
 function applyZoom(){
   const page = currentPage();
   canvas.style.width = (page.w * zoomLevel) + 'px';
@@ -3591,6 +3639,10 @@ function updateContextualControls(){
 
 let isPanning = false, panMoved = false, panStart = null, panScrollStart = null;
 
+
+// ════════════════════════════════════════════════════════════
+// EVENT HANDLING
+// ════════════════════════════════════════════════════════════
 canvas.addEventListener('mousedown', (e) => {
   // ---- Outil Mesure : clic droit = arrêter
   if (e.button === 2 && measureTool) {
@@ -5011,6 +5063,10 @@ const allContextMenus = [panelContextMenu, addSubmenu, loadSceneSubmenu, itemCon
 let ctxTomeTarget = null, ctxPageTarget = null, ctxSceneTarget = null;
 let pendingCreatePos = null;
 
+
+// ════════════════════════════════════════════════════════════
+// CONTEXT MENUS
+// ════════════════════════════════════════════════════════════
 function hideContextMenu(){
   allContextMenus.forEach(m => m.classList.add('hidden'));
 }
@@ -5591,6 +5647,10 @@ document.getElementById('ctxDuplicatePage').onclick = () => {
 // fermeture pour laisser le temps de traverser en diagonale jusqu'au sous-menu.
 const ctxExportPageTrigger = document.getElementById('ctxExportPageTrigger');
 let exportPageSubmenuCloseTimer = null;
+
+// ════════════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════════════
 function openExportPageSubmenu(){
   clearTimeout(exportPageSubmenuCloseTimer);
   const rect = ctxExportPageTrigger.getBoundingClientRect();
@@ -6016,6 +6076,10 @@ function buildAnimalJointSlidersUI(objType){
 // Mur hôte (Mur en coin) de l'Élément actuellement édité dans la modale, le cas échéant ; permet au
 // sélecteur "Pan du mur en coin" de recalculer le rotY sans avoir à le rechercher à chaque clic.
 let modalTargetHostWall = null;
+
+// ════════════════════════════════════════════════════════════
+// MODALS
+// ════════════════════════════════════════════════════════════
 function openObjectModal(obj, isNew){
   modalTarget = obj;
   modalDirty = false;
@@ -6620,6 +6684,10 @@ function getBatimentBoundingBoxXZ(batPieceIds, page) {
 
 // Recalcule la thin-box 2D d'un mur buildTool après déplacement de sa Pièce (translation X/Z).
 // Duplique la logique de buildToolCreateWallSegment pour rester indépendant du buildTool courant.
+
+// ════════════════════════════════════════════════════════════
+// BUILD TOOL
+// ════════════════════════════════════════════════════════════
 function recomputeBuildWallBox2D(obj, panel) {
   if (obj.wxFloor === undefined || obj.wzFloor === undefined || !obj.realLenFloor) return;
   const ca = Math.cos(obj.rotY || 0), sa = Math.sin(obj.rotY || 0);
@@ -8172,6 +8240,10 @@ function renderSidePlancheCases(page){
   });
 }
 
+
+// ════════════════════════════════════════════════════════════
+// RIGHT PANEL
+// ════════════════════════════════════════════════════════════
 function updateSidePanel(){
   const page = currentPage();
   const selRaw = page.objects.find(o => o.id === selectedId);
@@ -9600,6 +9672,10 @@ function getBodyProportions3D(genre){
 
 // Construit un squelette 3D neutre (aucune pose figée), avec tous les groupes d'articulation
 // nommés et exposés dans rig.joints, pour pouvoir être posé/reposé sans reconstruire la géométrie.
+
+// ════════════════════════════════════════════════════════════
+// 3D — CHARACTER RIGS
+// ════════════════════════════════════════════════════════════
 function buildPersonaRig3D(colorHex, genre, styleKey){
   const P = getBodyProportions3D(genre);
   const mat = makeBodyMaterial3D(colorHex || '#3E5FA8', styleKey);
@@ -9935,6 +10011,10 @@ let solMesh3D = null;
 // Cache des textures canvas (une par type, recréées une seule fois).
 const _solTexCache = {};
 
+
+// ════════════════════════════════════════════════════════════
+// 3D — ENVIRONMENT
+// ════════════════════════════════════════════════════════════
 function buildSolTexture(type) {
   if (_solTexCache[type]) return _solTexCache[type];
   const def = SOL_GROUND_DEFS.find(d => d.id === type) || SOL_GROUND_DEFS[0];
@@ -12182,6 +12262,10 @@ function buildPropRig3D(objType, colorHex, o){
 // Applique une map d'angles { jointId: { x?, y?, z? } } aux pivots du rig animal.
 // Les pivots imbriqués (genou enfant de hanche, etc.) sont supportés : on écrit directement
 // rotation sur le pivot, THREE.js propage la transformation à ses enfants.
+
+// ════════════════════════════════════════════════════════════
+// 3D — ANIMAL RIGS
+// ════════════════════════════════════════════════════════════
 function applyAnimalJointAngles(rigJoints, angleMap){
   if (!rigJoints) return;
   // Réinitialiser tous les pivots à 0 (pose par défaut) avant d'appliquer les angles sauvegardés
@@ -12376,6 +12460,10 @@ function disposeWallRenderRig3D(id){
   wallRenderRigCache3D.delete(id);
 }
 
+
+// ════════════════════════════════════════════════════════════
+// 3D — OBJECT RIGS
+// ════════════════════════════════════════════════════════════
 function getObjectRigEntry3D(o){
   ensurePersonaScene3D();
   const color = o.color || FIXED_COLOR;
@@ -13154,6 +13242,10 @@ function smoothTracéPath3D(pts, subdivisions) {
 // les segments dont le milieu d'arc tombe dans l'intervalle [arcStart, arcEnd] sont découpés
 // verticalement : on omet la bande [yMin, yMax] et on conserve le béton au-dessus et en-dessous
 // (linteau + appui de fenêtre), reproduisant le comportement des Murs simples (#83 Traversant).
+
+// ════════════════════════════════════════════════════════════
+// 3D — TRACÉ GEOMETRY
+// ════════════════════════════════════════════════════════════
 function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) {
   const smoothed = smoothTracéPath3D(worldPts, 4);
   const n = smoothed ? smoothed.length : 0;
@@ -13470,6 +13562,10 @@ function computeCaseSceneSignature3D(panel, page, styleKey){
 // Renvoie { canvas, rw, rh } : "canvas" est un <canvas> 2D DÉDIÉ à cette Case (une copie, donc stable
 // même si personaRenderer3D est ensuite réutilisé pour une autre Case), mis en cache (cf. caseSceneCache3D)
 // tant que sa signature ne change pas.
+
+// ════════════════════════════════════════════════════════════
+// 3D — CAMERA & SCENE
+// ════════════════════════════════════════════════════════════
 function renderCaseScene3D(panel, page, styleKey, scale = 1){
   const sig = computeCaseSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
   const cached = caseSceneCache3D.get(panel.id);
@@ -14238,6 +14334,10 @@ function drawCaseScene3D(c, panel, page, styleKey, scale = 1){
 // right)) — nécessaire pour que le repère 3D (cf. drawCaseAxisGizmo) projette les axes X/Y/Z EXACTEMENT
 // comme le ferait la vraie caméra Three.js, et pivote donc en cohérence avec elle pendant un
 // cliquer-glisser en mode Caméra (cf. dragMode 'caseCamRotate').
+
+// ════════════════════════════════════════════════════════════
+// 3D — CAMERA MATH
+// ════════════════════════════════════════════════════════════
 function caseCamBasis3D(panel){
   const rotX = panel.camRotX || 0, rotY = panel.camRotY || 0;
   const dist = CASE_CAM_REF_DIST_3D;
@@ -15048,6 +15148,10 @@ function closeAllJointSliders(){
   syncingJointGroupOpen = false;
 }
 
+
+// ════════════════════════════════════════════════════════════
+// PERSONA POSE EDITOR
+// ════════════════════════════════════════════════════════════
 function buildJointSlidersUI(){
   const container = document.getElementById('jointSlidersContainer');
   if (!container) return;
@@ -15682,6 +15786,10 @@ function drawCanvasOnly(){
 }
 
 let _drawCurrentPageLastRef = null;
+
+// ════════════════════════════════════════════════════════════
+// 2D CANVAS DRAWING
+// ════════════════════════════════════════════════════════════
 function drawCurrentPage(){
   const page = currentPage();
   // Vider le cache de rendu 3D lors d'un changement de planche pour forcer un re-rendu propre.
@@ -15700,6 +15808,10 @@ function drawCurrentPage(){
   updateSidePanel();
 }
 
+
+// ════════════════════════════════════════════════════════════
+// CANVAS RENDER PIPELINE
+// ════════════════════════════════════════════════════════════
 function renderAll(){
   renderTree();
   renderSceneList();
@@ -16312,6 +16424,10 @@ function startAutosave(){
 // Retourne true si l'enregistrement a réussi, false s'il a été annulé ou a échoué — nécessaire pour
 // que le bouton "Enregistrer et quitter" de quitConfirmModal sache s'il peut quitter ou doit rester
 // ouvert (sur demande utilisateur).
+
+// ════════════════════════════════════════════════════════════
+// PROJECT SAVE / LOAD
+// ════════════════════════════════════════════════════════════
 async function saveProjectFlow(){
   if (hasElectronAPI()) {
     if (projectFilePath) {
@@ -16716,6 +16832,10 @@ window.addEventListener('beforeunload', (e) => {
 
 // ↳ src/i18n.js
 
+
+// ════════════════════════════════════════════════════════════
+// LOCALISATION
+// ════════════════════════════════════════════════════════════
 function applyTextEntry(el, en, fr, lang){ el.textContent = lang === 'en' ? en : fr; }
 function setLeadingText(el, en, fr, lang){
   if (!el) return;
@@ -16858,6 +16978,10 @@ let exportShowCaseDescriptions = true;
 // (langue d'origine de l'application, donc les chaînes "fr" ci-dessous reproduisent le texte français
 // d'origine). Persistée comme le reste des réglages. cf. applyI18n()/I18N_ENTRIES plus bas.
 let appLang = 'en';
+
+// ════════════════════════════════════════════════════════════
+// SETTINGS & THEME
+// ════════════════════════════════════════════════════════════
 function applyTheme(theme){
   document.body.classList.toggle('theme-light', theme === 'light');
 }
