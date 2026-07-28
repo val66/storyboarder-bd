@@ -24,6 +24,10 @@ import {
 import {
   HELP_MANUAL_EN, HELP_MANUAL_FR, BULLE_FONT_PRELOAD_LIST
 } from './help-content.js';
+import {
+  clamp, wrapAngle, clampAngle, getBBox, getElementDepth,
+  getFormat, pxPerMm, getStyle3D, getEmotion, getPosition
+} from './utils.js';
 
 
 
@@ -46,26 +50,7 @@ function resetModalSections(modalBoxEl, openTitles){
   });
 }
 
-// ↳ src/constants.js
-
-// Conversion px → mm propre au format du tome (fb/us utilisent leur vraie taille
-// d'impression ; webtoon/custom n'ayant pas de taille physique déclarée, on retombe
-// sur l'équivalence standard écran 96dpi).
-function pxPerMm(formatKey){
-  const f = FORMATS.find(x => x.key === formatKey);
-  return f ? f.w / f.mmW : 96 / 25.4;
-}
-
-// ↳ src/constants.js
-function getStyle3D(key){ return STYLES_3D.find(s => s.key === key) || STYLES_3D[0]; }
-
-// ↳ src/constants.js
-function getEmotion(key){ return EMOTIONS.find(e => e.key === key) || EMOTIONS[0]; }
-
-// ↳ src/constants.js
-
-// ↳ src/constants.js
-function getPosition(key){ return POSITIONS.find(p => p.key === key) || POSITIONS[0]; }
+// ↳ src/utils.js (pxPerMm, getStyle3D, getEmotion, getPosition)
 
 // Un ensemble de Tomes/Planches/Cases constitue un "Projet" (nom par défaut "Projet"), affiché en
 // haut du menu de gauche (cf. #projectNameHeader) au-dessus de la section des Tomes.
@@ -123,11 +108,7 @@ let dragMode = null, dragStart = null, dragOrig = null, tempBox = null, pendingT
 // Id du dernier Mur créé : les Eléments de Parois s'y aimantent automatiquement à leur création.
 let lastMurId = null;
 
-// ↳ src/constants.js
-// ↳ src/constants.js
-// ↳ src/constants.js
-
-function getFormat(key){ return FORMATS.find(f => f.key === key); }
+// ↳ src/utils.js (getFormat)
 // Quand une Scène est en cours d'édition (cf. editingSceneId/openScene), tout le moteur de rendu et
 // d'édition (qui passe systématiquement par ces deux fonctions) travaille sur la Scène — qui a la même
 // forme qu'un Tome avec une seule Planche — plutôt que sur les Tomes/Planches normaux, sans qu'aucun
@@ -346,7 +327,7 @@ function exitSceneEditing(){
   renderAll();
 }
 
-function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+// ↳ src/utils.js (clamp)
 
 // ---------- Numérotation des Cases au sein d'une Planche ----------
 // Sur demande utilisateur : chaque Case a un numéro séquentiel au sein de sa Planche (1 pour la
@@ -394,21 +375,8 @@ function setCaseNumber(page, panelObj, newNumber){
   others.splice(newNumber - 1, 0, panelObj);
   others.forEach((c, i) => { c.caseNumber = i + 1; });
 }
-// Ramène un angle (en radians) dans l'intervalle ]-π, π] par ajout/retrait de tours complets — utilisé
-// pour les rotations NON bornées de la caméra en Mode Caméra (cf. dragMode 'caseCamRotate') : on garde
-// ainsi des valeurs numériques toujours petites même après de nombreux tours, sans jamais limiter la
-// rotation elle-même (sin/cos étant périodiques, ]-π, π] couvre déjà la totalité du cercle).
-function wrapAngle(a){
-  a = (a + Math.PI) % (2 * Math.PI);
-  if (a < 0) a += 2 * Math.PI;
-  return a - Math.PI;
-}
-// Profondeur réelle 3D d'un Élément dans la scène de sa Case (Phase 2, cf. tâche #78). Lecture
-// centralisée avec repli à 0 pour les Éléments enregistrés avant l'introduction de ce champ (pas de
-// migration formelle nécessaire, cf. convention déjà utilisée pour rotX/rotY/etc.). 0 = plan par
-// défaut (profondeur à la création, où la taille réelle correspond exactement à la taille apparente
-// d'origine sur le canevas).
-function getElementDepth(o){ return (o && o.z) || 0; }
+// ↳ src/utils.js (wrapAngle)
+// ↳ src/utils.js (getElementDepth)
 
 // ↳ src/constants.js
 // ↳ src/constants.js
@@ -3570,11 +3538,7 @@ function applyResize(orig, handle, dx, dy, page){
   return { x, y, w, h };
 }
 
-function getBBox(pts){
-  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-}
+// ↳ src/utils.js (getBBox)
 // Compense le redimensionnement d'une Case (panelCorner/panelEdge) sur les Eléments qu'elle possède
 // (cf. dragOrig.children, capturé au mousedown comme pour dragMode 'move') : la position MONDE d'un
 // Élément se calcule relativement au CENTRE du panel (cf. ensureElementWorldPos3D), donc redimensionner
@@ -15014,7 +14978,7 @@ function pickLimbSegmentAt(px, py){
   return best;
 }
 
-function clampAngle(v){ return Math.max(-Math.PI, Math.min(Math.PI, v)); }
+// ↳ src/utils.js (clampAngle)
 
 // ↳ src/constants.js
 const jointSliderRefs = {}; // id -> { type:'hinge', input, val } | { type:'ball', x:{input,val}, z:{input,val} }
