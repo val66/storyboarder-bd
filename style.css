@@ -1,0 +1,661 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Polices "BD" disponibles pour le texte des Bulles de dialogue (cf. section Texte de l'encart de
+   droite) — une dizaine des polices les plus associées au lettrage de bande dessinée. */
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Permanent+Marker&family=Luckiest+Guy&family=Anton&family=Patrick+Hand&family=Caveat:wght@400;700&family=Fredoka:wght@400;600&family=Bubblegum+Sans&family=Kalam:wght@400;700&display=swap');
+
+:root{
+  --paper:#1B1C1F;
+  --paper-dark:#212226;
+  --ink:#EDEDEF;
+  --ink-soft:#9A9AA2;
+  --sepia:#83838C;
+  --accent:#FF7A45;
+  --accent-soft:rgba(255,122,69,.14);
+  --line:#34353A;
+  --white:#26272B;
+}
+/* Thème "Clair" (cf. modale Configuration → Thème de l'interface, sur demande utilisateur) : redéfinit
+   les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
+   exclusivement avec ces variables) basculent automatiquement sans aucune autre modification de CSS. */
+body.theme-light{
+  --paper:#F2EBDD;
+  --paper-dark:#E7DCC6;
+  --ink:#2B2A28;
+  --ink-soft:#7A766B;
+  --sepia:#8C8678;
+  --accent-soft:rgba(255,122,69,.16);
+  --line:#D9CDB3;
+  --white:#FFFFFF;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink);
+  height:100vh; overflow:hidden;
+}
+header{
+  display:flex; align-items:center; gap:14px; padding:14px 22px;
+  background:var(--paper-dark); color:var(--ink);
+  border-bottom:1px solid var(--line);
+}
+header h1{
+  font-family:'Inter',sans-serif; font-size:16px; font-weight:700; letter-spacing:.02em; margin:0;
+}
+header span{ font-size:12px; color:var(--ink-soft); }
+.help-round-btn{
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:var(--white);
+  color:var(--ink-soft); font-size:16px; font-weight:700; line-height:1; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; padding:0;
+}
+.help-round-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; }
+.help-round-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.help-round-btn:disabled{ opacity:.4; cursor:default; }
+.help-round-btn:disabled:hover{ color:var(--ink-soft); border-color:var(--line); }
+/* Bouton Annuler déplacé dans le header (à gauche du bouton "?", cf. <header> plus bas), désormais au
+   même style rond que le bouton "?" du Manuel d'utilisation (cf. .help-round-btn) plutôt que le
+   .tool-btn générique de la barre latérale. */
+.header-btn{ margin-left:auto; }
+
+.app{ display:flex; height:calc(100vh - 54px); }
+
+/* SIDEBAR */
+.sidebar{
+  width:260px; background:var(--paper-dark); border-right:1px solid var(--line);
+  flex-shrink:0; display:flex; flex-direction:column; min-height:0;
+}
+.sidebar h2{ font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 8px; text-transform:uppercase; letter-spacing:.05em;}
+.sidebar hr{ border:none; border-top:1px solid var(--line); margin:14px 0; }
+/* Contenu défilant du menu de gauche, séparé du pied de page fixe ci-dessous (cf. #lastSavedIndicator,
+   déplacé du menu de droite vers le menu de gauche — sur demande utilisateur) qui doit rester visible
+   en bas quel que soit le contenu/défilement au-dessus. */
+.sidebar-scroll{
+  flex:1 1 auto; overflow-y:auto; min-height:0; padding:14px 12px;
+}
+.sidebar-footer{
+  flex-shrink:0; padding:9px 12px 18px; border-top:1px solid var(--line);
+  font-size:11.5px; color:var(--ink-soft); text-align:center;
+}
+/* Nom du Projet (ensemble Tomes/Planches/Cases en cours, cf. projectName) affiché en haut du menu de
+   gauche, au-dessus de la section des Tomes — sur demande utilisateur ("On doit pouvoir voir le nom
+   du Projet en cours en haut du Menu de gauche, au dessus de la section des Tomes"). */
+#projectNameHeader{
+  font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; color:var(--ink);
+  padding:7px 10px; margin-bottom:14px; border:1px solid var(--line); border-radius:8px;
+  /* Superpose un voile noir semi-transparent à --paper-dark pour obscurcir le fond indépendamment du
+     thème Clair/Sombre (sur demande utilisateur), plutôt qu'une couleur fixe qui ne s'adapterait pas. */
+  background:linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.16)), var(--paper-dark);
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  cursor:pointer; transition:background-color .12s, border-color .12s, color .12s;
+}
+#projectNameHeader:hover{ color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
+#projectNameText{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.project-name-chevron{ flex:none; font-size:16px; font-weight:700; opacity:.65; }
+#projectNameHeader:hover .project-name-chevron{ opacity:1; }
+
+.tool-btn{
+  display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--line);
+  background:var(--white); border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+}
+.tool-btn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.tool-btn:hover:not(.active){ border-color:var(--ink-soft); color:var(--ink); }
+.tool-btn:disabled{ opacity:.5; cursor:default; }
+.side-btn{ width:100%; margin-bottom:6px; }
+
+select, input[type=number]{
+  font-family:'Inter',sans-serif; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12.5px; background:var(--white); color:var(--ink);
+}
+.full-btn{
+  width:100%; margin-top:6px; padding:8px; border:1px solid var(--accent); background:var(--accent); color:#fff;
+  font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
+}
+.full-btn:hover{ filter:brightness(1.08); }
+.full-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; filter:none; }
+.danger-btn{
+  width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--line); background:var(--white); color:var(--ink-soft);
+  border-radius:7px; font-size:12.5px; cursor:pointer;
+}
+.danger-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.project-modal-btn{
+  /* Fond toujours sombre (indépendant du thème Clair/Sombre, cf. modale Configuration) : le texte
+     reste donc en blanc fixe plutôt que var(--ink), qui deviendrait illisible sur fond sombre en thème
+     Clair (où var(--ink) est une encre foncée). */
+  width:100%; margin-top:6px; padding:8px; border:1px solid var(--line); background:#3A3B40; color:#fff;
+  font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
+}
+.project-modal-btn:hover{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* DROPDOWNS */
+.dropdown{ margin-bottom:10px; }
+.dropdown-trigger{
+  width:100%; display:flex; justify-content:space-between; align-items:center;
+  padding:9px 11px; border:1px solid var(--line); background:var(--white); border-radius:8px;
+  cursor:pointer; font-size:11.5px; font-weight:600; color:var(--ink); text-transform:uppercase; letter-spacing:.04em;
+}
+.dropdown-trigger:hover{ border-color:var(--ink-soft); }
+.dropdown-trigger .caret{ font-size:10px; color:var(--sepia); transition:transform .15s; }
+.dropdown-trigger.open .caret{ transform:rotate(180deg); }
+.dropdown-panel{ display:none; padding:8px 0 2px; }
+.dropdown-panel.open{ display:block; }
+#tomeList{ padding-left:10px; border-left:1px solid var(--line); margin-bottom:8px; }
+.dropdown-item{ margin-bottom:6px; }
+
+/* TREE (tomes / pages) */
+.tome-row{
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  background:var(--white); border:1px solid var(--line); border-left:3px solid var(--ink-soft);
+  padding:8px 10px; margin-bottom:5px; border-radius:7px; cursor:pointer; font-size:12.5px;
+}
+.tome-row.active{ border-left-color:var(--accent); font-weight:700; }
+.tome-row .caret{ font-size:10px; color:var(--sepia); }
+.tome-format,
+.tome-pages{
+  margin:0 0 8px 9px; padding:9px 10px; border-radius:8px;
+  background:var(--paper); border:1px solid var(--line);
+}
+.page-row{
+  padding:7px 9px; margin-bottom:4px; font-size:12px; border-radius:6px; cursor:pointer;
+  color:var(--ink); background:var(--white); border:1px solid var(--line);
+}
+.page-row:last-of-type{ margin-bottom:0; }
+.page-row:hover:not(.active){ border-color:var(--ink-soft); }
+.page-row.active{ border-color:var(--accent); color:var(--accent); font-weight:600; background:var(--accent-soft); }
+/* Indicateur de glisser-déposer des Planches (cf. renderTree) : on matérialise l'ESPACE entre deux
+   Planches où la Planche déplacée va s'intercaler (trait au-dessus ou en-dessous), plutôt que
+   surligner toute la Planche survolée — sur demande utilisateur, plus clair sur l'endroit exact
+   où le réordonnancement va avoir lieu. */
+.page-row.drag-over-top{ box-shadow: 0 -3px 0 0 var(--accent); }
+.page-row.drag-over-bottom{ box-shadow: 0 3px 0 0 var(--accent); }
+.add-page-btn{
+  width:100%; margin-bottom:6px; padding:7px 9px; border:1px dashed var(--ink-soft); background:transparent;
+  color:var(--ink-soft); border-radius:6px; font-size:11.5px; cursor:pointer; text-align:left; font-weight:600;
+}
+.add-page-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.tome-format label, .tome-pages > label{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:5px; font-weight:700; }
+.tome-format select{ width:100%; }
+
+#colorSwatches{ display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+
+/* MAIN */
+main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+
+/* RIGHT PANEL (description de la case sélectionnée) */
+.right-panel{
+  width:280px; background:var(--paper-dark); border-left:1px solid var(--line);
+  flex-shrink:0; display:flex; flex-direction:column; min-height:0;
+}
+/* Quand le Manuel d'utilisation est fermé et qu'aucun autre menu ne le remplace (cf. helpPanelDismissed
+   dans updateSidePanel), l'encart de droite ne doit plus se contenter d'être vide : il doit libérer
+   complètement sa largeur réservée pour agrandir la zone d'affichage du canevas. */
+.right-panel.collapsed{
+  width:0; border-left:none; overflow:hidden;
+}
+.right-panel h2{ font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 10px; text-transform:uppercase; letter-spacing:.05em; }
+.right-panel .empty-hint{ font-size:12px; color:var(--sepia); font-style:normal; line-height:1.5; }
+/* Contenu défilant de l'encart de droite (tous les menus Case/Bulle/Caméra/Aide...), désormais séparé
+   du pied de page fixe ci-dessous (cf. #lastSavedIndicator) qui doit rester visible en bas, sur demande
+   utilisateur ("En bas dans le menu de droite je veut voir afficher depuis combien de temps date la
+   dernière sauvegarde"). */
+.right-panel-scroll{
+  flex:1 1 auto; overflow-y:auto; min-height:0; padding:18px 16px;
+  scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+}
+.right-panel-scroll::-webkit-scrollbar{ width:3px; }
+.right-panel-scroll::-webkit-scrollbar-track{ background:transparent; }
+.right-panel-scroll::-webkit-scrollbar-thumb{ background:var(--line); border-radius:99px; }
+.side-section{
+  background:var(--paper); border:1px solid var(--line); border-radius:10px;
+  padding:14px 14px; margin-bottom:14px;
+}
+.side-section:last-child{ margin-bottom:0; }
+.side-section h2{
+  padding-bottom:8px; margin-bottom:12px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:6px;
+}
+.side-section h2::before{
+  content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); flex-shrink:0;
+}
+/* Sections collapsables du menu de droite (cf. initRightPanelCollapse) */
+#rightPanel .side-section > h2{ cursor:pointer; user-select:none; }
+#rightPanel .side-section > h2::after{
+  content:'▾'; margin-left:auto; font-size:10px; color:var(--ink-soft);
+  display:inline-block; line-height:1; flex-shrink:0;
+  transition:transform .18s ease; transform-origin:center;
+}
+#rightPanel .side-section.collapsed > h2::after{ transform:rotate(-90deg); }
+#rightPanel .side-section.collapsed > h2{ padding-bottom:0; margin-bottom:0; border-bottom:none; }
+/* !important nécessaire : certains enfants ont un display inline mis par JS (ex: style="display:flex")
+   qui écrase les règles de classe. !important garantit que le collapse est toujours respecté. */
+#rightPanel .side-section.collapsed > *:not(h2){ display:none !important; }
+/* En-tête générique de chaque menu de l'encart de droite (Case / Bulle / Caméra / Aide) : titre
+   centré en gras, bouton de fermeture en haut à droite (la colonne fantôme de gauche, même largeur
+   que le bouton, garantit que le titre reste visuellement centré et pas juste "poussé" par le bouton). */
+.menu-header{
+  display:grid; grid-template-columns:22px 1fr 22px; align-items:center; margin-bottom:14px; gap:8px;
+}
+.menu-title{
+  grid-column:2; text-align:center; font-size:13px; font-weight:700; color:var(--ink);
+}
+.menu-close-btn{
+  grid-column:3; width:22px; height:22px; border-radius:50%; border:1px solid var(--line); background:var(--white);
+  color:var(--ink-soft); font-size:13px; font-weight:700; line-height:1; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;
+}
+.menu-close-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.side-dims{
+  display:flex; flex-wrap:wrap; gap:6px; margin-bottom:0;
+}
+.dim-chip{
+  font-size:11px; font-weight:500; color:var(--accent);
+  background:var(--accent-soft); border-radius:6px; padding:4px 8px;
+}
+.dim-chip b{ font-weight:700; }
+/* Numéro de la Case/Planche (cf. caseNumber / Planche ${pi+1}), affiché juste à côté du titre de son
+   menu, avec le même style que le reste du titre (gras, même couleur) — sur demande utilisateur. */
+.case-menu-number{ font-weight:700; color:inherit; }
+/* Liste des Cases d'une Planche (cf. sidePlancheCases/renderSidePlancheCases), triée par numéro :
+   chaque ligne se glisse-dépose pour réordonner, ce qui change le numéro des Cases (cf. setCaseNumber)
+   — même principe visuel que le glisser-déposer des Planches (cf. .page-row) — sur demande utilisateur. */
+.side-planche-cases{ display:flex; flex-direction:column; gap:6px; }
+.planche-case-row{
+  display:flex; align-items:flex-start; gap:8px; padding:7px 9px; border-radius:7px;
+  border:1px solid var(--line); background:var(--white); cursor:grab; font-size:12.5px; color:var(--ink);
+}
+.planche-case-row.active{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.planche-case-row .planche-case-num{
+  font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:6px;
+  padding:2px 7px; font-size:11px; flex-shrink:0; min-width:20px; text-align:center; margin-top:1px;
+}
+.planche-case-row.active .planche-case-num{ background:var(--white); }
+.planche-case-row .planche-case-desc{
+  flex:1; min-width:0; color:var(--ink-soft); font-size:11px;
+  white-space:pre-wrap; word-break:break-word; line-height:1.5;
+  max-height:96px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+}
+.planche-case-row .planche-case-desc::-webkit-scrollbar{ width:3px; }
+.planche-case-row .planche-case-desc::-webkit-scrollbar-track{ background:transparent; }
+.planche-case-row .planche-case-desc::-webkit-scrollbar-thumb{ background:var(--line); border-radius:99px; }
+.planche-case-row.drag-over-top{ box-shadow: 0 -3px 0 0 var(--accent); }
+.planche-case-row.drag-over-bottom{ box-shadow: 0 3px 0 0 var(--accent); }
+.side-persos{ display:flex; flex-direction:column; gap:6px; }
+.perso-row{
+  display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:7px;
+  border:1px solid var(--line); background:var(--white); cursor:pointer; font-size:12.5px; color:var(--ink);
+}
+.perso-row.active{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.perso-row .perso-emoji{ font-size:14px; }
+.perso-row .perso-name{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; overflow:hidden; }
+.perso-row .perso-name-main{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.perso-row .perso-link{ font-size:10.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.perso-row.active .perso-link{ color:var(--accent); opacity:.8; }
+.perso-row .perso-scene-badge{ font-size:10.5px; color:var(--ink-soft); opacity:.75; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.perso-row.active .perso-scene-badge{ color:var(--accent); opacity:.85; }
+.perso-row .perso-edit{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px; padding:2px; }
+.perso-row .perso-edit:hover{ color:var(--accent); }
+.side-persos .empty-hint{ font-size:11.5px; }
+/* En-tête de groupe d'une Pièce (cf. renderSidePersos/pieceId) : visuellement distinct d'une ligne
+   d'Élément normale, pour signaler qu'un clic ici sélectionne les 6 Murs ENSEMBLE plutôt qu'un seul. */
+.piece-group-header{
+  display:flex; align-items:center; gap:8px; padding:6px 9px; border-radius:7px;
+  border:1px dashed var(--line); background:var(--paper-dark); cursor:pointer;
+  font-size:11.5px; font-weight:600; color:var(--ink); letter-spacing:.2px;
+}
+.piece-group-header.active{ border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--accent); }
+.piece-group-members{
+  display:flex; flex-direction:column; gap:6px; padding-left:14px; margin-top:-2px;
+  border-left:2px solid var(--line);
+}
+.piece-group-members.collapsed{ display:none; }
+/* Toggle repli (▾/▸) sur l'en-tête de Pièce */
+.piece-toggle{
+  margin-left:auto; font-size:10px; color:var(--ink-soft); padding:0 2px;
+  flex-shrink:0; line-height:1;
+}
+/* En-tête de Bâtiment (wrapper multi-Pièces, cf. renderSidePersos) */
+.batiment-group-header{
+  display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:7px;
+  border:1px solid var(--line); background:var(--paper-dark); cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--ink); letter-spacing:.15px;
+}
+.batiment-toggle{ margin-left:auto; font-size:10px; color:var(--ink-soft); flex-shrink:0; }
+.batiment-group-header.active{ border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--accent); }
+.batiment-group-members{
+  display:flex; flex-direction:column; gap:6px; padding-left:12px;
+  border-left:2px solid var(--line); margin-top:2px;
+}
+.batiment-group-members.collapsed{ display:none; }
+#sideDescInput{
+  width:100%; min-height:220px; resize:vertical; font-family:'Inter',sans-serif; font-size:13px;
+  border:1px solid var(--line); border-radius:8px; padding:9px; background:var(--white); color:var(--ink);
+  box-sizing:border-box;
+}
+#sideDescInput:focus{ outline:none; border-color:var(--accent); }
+.side-bulle-tail{
+  display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
+  margin-bottom:8px; cursor:pointer; user-select:none;
+}
+.side-bulle-tail input{ cursor:pointer; }
+.side-bulle-shape{ margin-left:0; }
+.side-bulle-padding{ margin-left:0; }
+.side-bulle-font{ margin-left:0; margin-bottom:12px; }
+.side-bulle-font select{ font-size:13px; }
+.side-bulle-appearance{ margin-bottom:8px; }
+.side-bulle-appearance .side-bulle-tail{ margin-left:0; }
+/* Sélecteur de couleur (cf. sideBorderColorInput/sidePlancheBgColorInput) — section "Bordure" du menu
+   Case et "Arrière-plan" du menu Planche — sur demande utilisateur. */
+/* Section "Sol" du menu Case/Scène : grille de boutons à swatches de texture — sur demande utilisateur. */
+.sol-ground-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:4px;
+}
+.sol-ground-btn{
+  display:flex; align-items:center; gap:5px; padding:5px 7px;
+  border:1px solid var(--line); border-radius:6px; background:var(--white);
+  cursor:pointer; font-size:11px; color:var(--ink); text-align:left; font-weight:500;
+}
+.sol-ground-btn.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.sol-ground-btn:hover:not(.active){ border-color:var(--ink-soft); }
+.sol-ground-swatch{ width:14px; height:14px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,.15); }
+.side-border-color{ margin-left:0; margin-bottom:0; }
+.side-border-color input[type="color"]{
+  width:100%; height:30px; padding:2px; border-radius:6px; border:1px solid var(--line);
+  background:var(--white); cursor:pointer;
+}
+
+/* CONTEXT MENU (clic droit sur une case) */
+.context-menu{
+  position:fixed; z-index:50; background:var(--white); border:1px solid var(--line);
+  border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.5); padding:4px; min-width:140px;
+}
+.context-menu.hidden{ display:none; }
+.context-menu button{
+  display:block; width:100%; text-align:left; background:none; border:none; padding:8px 10px;
+  font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; border-radius:5px;
+}
+.context-menu button:hover{ background:var(--paper); color:var(--ink); }
+/* Spécificité égale à ".context-menu button" (élément + classe) et placée après dans le fichier :
+   nécessaire pour que ce display:flex l'emporte sur le display:block de la règle générique. */
+button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.submenu-arrow{ font-size:9px; opacity:.6; padding-left:10px; }
+/* Largeur fixe pour l'icône en tête de bouton de menu contextuel : certains émojis (ex. 📤) ont une
+   chasse/marge gauche plus large que d'autres (ex. 🗑) dans le rendu des polices, ce qui désaligne
+   visuellement le texte qui suit. On normalise en figeant la largeur de l'icône. */
+.ctx-icon{ display:inline-block; width:1.2em; text-align:center; margin-right:6px; }
+.help-text{ width:290px; padding:8px 10px; font-size:12px; line-height:1.55; color:var(--ink-soft); }
+.help-text p{ margin:0 0 6px; }
+.help-text p:last-child{ margin-bottom:0; }
+.help-group{
+  margin-bottom:10px; padding:10px 12px; border-radius:8px;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+}
+.help-group:last-child{ margin-bottom:0; }
+.help-group-title{
+  margin:0 0 6px; padding-bottom:4px; border-bottom:1px solid var(--line);
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink);
+  cursor:pointer; list-style:revert; user-select:none;
+}
+.help-group:not([open]) .help-group-title{ margin-bottom:0; padding-bottom:0; border-bottom:none; }
+.help-group-title:hover{ color:var(--accent); }
+#sideHelpSection .help-text{ width:auto; padding:0; }
+
+#sceneTopDownBtn{
+  display:block; width:100%; margin-top:10px;
+  font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink);
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:6px;
+  padding:7px 10px; cursor:pointer; transition:opacity .12s, background .12s, color .12s;
+}
+#sceneTopDownBtn:hover{ opacity:.85; }
+#sceneTopDownBtn.active{ background:var(--accent); border-color:var(--accent); color:var(--white); }
+.canvas-wrap{
+  /* Centré horizontalement ET verticalement (Scène comme Planche normale) : sur signalement
+     utilisateur, le rendu doit rester centré à chaque cran de molette plutôt que de "fuir" vers le
+     coin haut-gauche une fois le contenu plus grand que la zone visible (cf. wheel handler, qui
+     recentre aussi explicitement le scroll après applyZoom). */
+  flex:1; overflow:auto; display:flex; justify-content:safe center; align-items:safe center;
+  padding:28px; background:#161719;
+}
+.canvas-stack{
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.zoom-indicator{
+  font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; color:var(--ink-soft);
+  background:var(--paper-dark); border:1px solid var(--line); border-radius:6px;
+  padding:4px 10px; letter-spacing:.02em; user-select:none;
+}
+/* L'encart de zoom ne doit plus suivre le rendu (qui peut être recentré/défiler avec lui, en Scène
+   comme sur une Planche normale) mais rester fixe, centré en haut de la fenêtre — sur demande
+   utilisateur. Centré verticalement sur la même ligne que les boutons ronds du header (cf.
+   .help-round-btn, hauteur de header = 14px de padding haut/bas + 32px de bouton = 60px, donc centre
+   à 30px du haut). Règle commune aux deux modes (Scène et Planche), plus besoin de la scoper à
+   .canvas-wrap.scene-editing. */
+.zoom-indicator{
+  position:fixed; top:30px; left:50%; transform:translate(-50%, -50%); z-index:30;
+}
+canvas{
+  background:#fff; box-shadow:0 8px 28px rgba(0,0,0,.55); cursor:crosshair;
+}
+
+/* MODAL */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  display:flex; align-items:center; justify-content:center; z-index:1000;
+}
+.modal-overlay.hidden{ display:none; }
+.modal-box{
+  position:relative; background:var(--paper-dark); border:1px solid var(--line); border-radius:10px;
+  width:min(480px, 90vw); max-height:90vh; overflow-y:auto;
+  padding:18px 20px; box-shadow:0 16px 40px rgba(0,0,0,.55);
+}
+/* Mode d'affichage horizontal des modales Personnage/Objet (.modal-box-2col) : par défaut (fenêtre
+   étroite) .modal-columns/.modal-col ne font rien de spécial, les sections restent empilées dans
+   l'ordre du HTML, comme avant. Au-delà d'une largeur de fenêtre suffisante, on élargit la modale et
+   on affiche ses deux .modal-col (groupes fixes définis dans le HTML, ex. "Modèle 3D"/"Aperçu 3D"
+   seul à droite) côte à côte plutôt qu'en une seule longue liste verticale, sur demande utilisateur. */
+@media (min-width:900px){
+  .modal-box.modal-box-2col{ width:min(840px, 92vw); }
+  .modal-box.modal-box-2col .modal-columns{ display:flex; align-items:flex-start; gap:18px; }
+  .modal-box.modal-box-2col .modal-col{ flex:1 1 0; min-width:0; }
+  /* En mode flex, les marges des .modal-col (devenus flex items) ne collapsent plus avec celle de
+     .modal-columns (margin-top:18px) ni entre elles comme en empilement normal (mode vertical) :
+     le margin-top:14px de la 1re .modal-section de chaque colonne s'ajoute donc en plus des 18px,
+     d'où un écart trop grand sous le titre. On neutralise cette marge ici pour retrouver le même
+     total qu'en mode vertical (où elle collapse naturellement avec les 18px). */
+  .modal-box.modal-box-2col .modal-col > .modal-section:first-child{ margin-top:0; }
+}
+/* Bouton de fermeture rond en haut à droite d'une modale (même style que .menu-close-btn utilisé
+   dans l'encart de droite), positionné en absolu pour ne pas perturber la mise en page interne de
+   la modale (cf. Projet → demande utilisateur d'un petit bouton plutôt qu'un gros bouton en bas). */
+.modal-close-btn{
+  position:absolute; top:12px; right:12px; width:22px; height:22px; border-radius:50%;
+  border:1px solid var(--line); background:var(--white); color:var(--ink-soft); font-size:13px;
+  font-weight:700; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  padding:0; flex-shrink:0; z-index:1;
+}
+.modal-close-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.joint-sliders-details{ margin:4px 0 2px; }
+/* Le triangle natif d'un <summary> s'affiche par défaut à GAUCHE : on le supprime (list-style:none +
+   masquage du marqueur webkit) et on le recrée nous-mêmes à DROITE, sur demande utilisateur, dans le
+   même esprit que le chevron des .modal-section (rotation -90deg quand repliée/fermée). */
+.joint-sliders-details summary{
+  cursor:pointer; font-size:10.5px; font-weight:600; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px;
+  list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.joint-sliders-details summary::-webkit-details-marker{ display:none; }
+.joint-sliders-details summary::after{
+  content:'▾'; font-size:15px; line-height:1; color:var(--ink-soft);
+  transition:transform .15s ease; flex-shrink:0; transform:rotate(-90deg);
+}
+.joint-sliders-details[open] summary::after{ transform:rotate(0deg); }
+.joint-slider-row{
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  border-radius:5px; padding:2px 4px; margin-left:-4px; margin-right:-4px;
+  transition:background .12s ease;
+}
+.joint-slider-row .joint-slider-label{
+  width:108px; flex-shrink:0; font-size:11.5px; color:var(--ink-soft);
+}
+.joint-slider-row input[type=range]{ flex:1; width:auto; margin-bottom:0; }
+.joint-slider-row .joint-slider-val{ width:36px; text-align:right; font-size:11px; opacity:.75; flex-shrink:0; }
+/* Surligne la/les ligne(s) du curseur correspondant au point d'articulation sélectionné dans la
+   preview (cf. openJointGroupForHandle/highlightJointRows) — sync réciproque preview <-> sous-section. */
+.joint-slider-row.active{ background:rgba(224,165,60,.18); }
+.joint-slider-row.active .joint-slider-label{ color:var(--ink); font-weight:600; }
+/* Chaque groupe d'articulations (Bras, Jambes, etc.) reprend désormais le même habillage que les
+   sous-sections (.modal-subsection : fond assombri, bordure, coins arrondis) plutôt qu'un simple
+   filet vertical, pour une apparence plus cohérente avec le reste de la modale. */
+.joint-group-details{
+  margin:0 0 8px; background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:6px;
+  padding:6px 10px;
+}
+/* Écart dédié entre le titre "Réglages fins des articulations" et son premier groupe : la marge
+   générale du résumé (.joint-sliders-details summary) a été réduite pour compacter la sous-section
+   dans son ensemble, mais on garde ici un espace plus net spécifiquement sous ce titre. */
+#jointSlidersContainer > .joint-group-details:first-child{ margin-top:8px; }
+.joint-group-details summary{
+  cursor:pointer; font-size:11.5px; font-weight:600; color:var(--ink); margin-bottom:6px;
+  list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.joint-group-details summary::-webkit-details-marker{ display:none; }
+.joint-group-details summary::after{
+  content:'▾'; font-size:10px; line-height:1; color:var(--ink-soft);
+  transition:transform .15s ease; flex-shrink:0; transform:rotate(-90deg);
+}
+.joint-group-details[open] summary::after{ transform:rotate(0deg); }
+.joint-group-details:last-child{ margin-bottom:0; }
+.joint-group-details .joint-slider-row{ margin-left:0; }
+.joint-group-details:not([open]) summary{ margin-bottom:0; }
+.modal-box h3{
+  font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; margin:0; color:var(--ink);
+}
+.modal-box textarea{
+  width:100%; min-height:120px; font-family:'Inter',sans-serif; font-size:13.5px;
+  border:1px solid var(--line); border-radius:7px; padding:8px; resize:vertical;
+  background:var(--white); color:var(--ink);
+}
+.modal-field-label{
+  display:block; font-size:10.5px; font-weight:600; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.04em; margin:0 0 5px;
+}
+.modal-box input[type=text], .modal-box select{
+  width:100%; font-family:'Inter',sans-serif; font-size:13.5px;
+  border:1px solid var(--line); border-radius:7px; padding:8px;
+  background:var(--white); color:var(--ink); margin-bottom:14px;
+}
+/* Le chevron natif d'un <select> (Genre, Émotion, etc.) colle au bord droit sans tenir compte du
+   padding (rendu par le moteur du navigateur, indépendant de la boîte de contenu) : on le remplace
+   par un chevron custom positionné au même retrait (8px) que le padding intérieur gauche du texte. */
+.modal-box select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238a8f98' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat; background-position:right 8px center; background-size:10px 6px;
+  padding-right:28px;
+}
+.modal-actions{
+  display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
+}
+.modal-actions .full-btn, .modal-actions .danger-btn{ width:auto; margin-top:0; }
+/* Modales Personnage/Objet (#descModal/#objectModal) uniquement : Annuler et Enregistrer doivent faire
+   la même taille (jusqu'ici inégale à cause de paddings différents : 8px vs 8px 12px) et avoir plus
+   d'écart entre eux. flex:1 1 0 les force à occuper une largeur égale quel que soit leur padding/texte. */
+#descModal .modal-actions, #objectModal .modal-actions,
+#tracéModal .modal-actions, #terrainModal .modal-actions,
+#pieceModal .modal-actions, #batimentModal .modal-actions{ gap:16px; }
+#descModal .modal-actions .full-btn, #descModal .modal-actions .danger-btn,
+#objectModal .modal-actions .full-btn, #objectModal .modal-actions .danger-btn,
+#tracéModal .modal-actions .full-btn, #tracéModal .modal-actions .danger-btn,
+#terrainModal .modal-actions .full-btn, #terrainModal .modal-actions .danger-btn,
+#pieceModal .modal-actions .full-btn, #pieceModal .modal-actions .danger-btn,
+#batimentModal .modal-actions .full-btn, #batimentModal .modal-actions .danger-btn{ flex:1 1 0; }
+/* État "neutre" du bouton Enregistrer (#descModalSave/#objectModalSave) : tant qu'aucune modification
+   n'a été apportée et que l'Élément n'est pas nouvellement créé, il garde le même style discret que
+   Annuler plutôt que l'orange (.full-btn), réservé au cas où il y a effectivement quelque chose à
+   enregistrer (cf. recomputeModalDirty/updateSaveButtonState). */
+.modal-actions .full-btn.save-btn-neutral{
+  background:var(--white); border-color:var(--line); color:var(--ink-soft); filter:none;
+}
+.modal-actions .full-btn.save-btn-neutral:hover{ color:var(--accent); border-color:var(--accent); }
+/* Sections repliables de la modale Personnage/Objet (sur demande utilisateur : fond assombri pour
+   bien distinguer chaque section, + possibilité de la réduire pour gagner de la place). Le fond
+   utilise un voile noir semi-transparent (plutôt qu'une variable de thème) afin de rester visiblement
+   plus sombre que .modal-box aussi bien en thème clair qu'en thème sombre. */
+.modal-section{
+  background:rgba(0,0,0,.18); border:1px solid var(--line); border-radius:8px;
+  margin:14px 0; padding:4px 14px 12px;
+}
+.modal-box h3 + .modal-section, .modal-box h3 + .modal-columns{ margin-top:18px; }
+/* Espacement sous le titre de TOUTE modale (.modal-box h3), aligné sur celui des modales Personnage/
+   Objet (18px, porté ci-dessus par .modal-section/.modal-columns) — sur demande utilisateur, pour que
+   ce soit cohérent même quand le titre est directement suivi d'un champ/bouton/paragraphe plutôt que
+   d'une .modal-section (ex. Configuration, Projet, Quitter l'application, Renommer, Confirmer). Les
+   marges verticales adjacentes "fusionnent" en CSS (on prend la plus grande des deux), donc cette règle
+   ne change rien là où la marge-haut de l'élément suivant valait déjà 18px ou plus. */
+.modal-box h3{ margin-bottom:18px; }
+/* La marge ci-dessus ne suffit pas seule à garantir un écart identique à celui du haut de la modale
+   (.modal-box{ padding:18px... }) : un padding-top sur l'élément qui suit directement le titre s'AJOUTE
+   à cette marge (contrairement aux marges, les paddings ne fusionnent jamais), créant un écart plus
+   grand sous le titre qu'au-dessus. ATTENTION : mettre ce padding-top à 0 (comme tenté une première
+   fois) est une ERREUR — ce padding maintient le contenu de l'élément (icône/texte d'un bouton, texte
+   d'un champ...) centré dans sa boîte ; le supprimer le fait paraître tronqué/collé en haut (cf. bouton
+   "Renommer le projet" de #projectModal, qui en a fait les frais). La bonne approche est de compenser
+   PAR UNE MARGE NÉGATIVE égale à ce padding-top sur l'élément suivant : les marges (positive du h3 et
+   négative de l'élément) se combinent par SOMME (18 + (-X)), réduisant l'écart de boîte à boîte sans
+   toucher au padding interne — une fois le padding-top (X) traversé, on retombe exactement sur 18px. */
+.modal-box h3 + .project-modal-btn{ margin-top:-8px; } /* padding-top du bouton : 8px */
+.modal-box h3 + input[type="text"]{ margin-top:-7px; } /* padding-top des champs (style inline) : 7px */
+/* Cas particulier des modales Personnage/Objet (#descModal/#objectModal) : leur tout premier élément
+   visible sous le titre n'est pas un enfant DIRECT du h3 mais une .modal-section nichée dans
+   .modal-columns > .modal-col — on vise ici spécifiquement la 1re .modal-section de CHAQUE colonne
+   (les deux se trouvent au même niveau vertical, juste sous le titre). Même principe : -4px compense
+   le padding-top:4px de .modal-section (cf. règle .modal-section ci-dessus), qu'on soit en 1 ou 2
+   colonnes (en 2 colonnes, .modal-col est un flex item : sa marge ne collapse plus avec celle de
+   .modal-columns mais s'applique littéralement, ce qui revient au même résultat ici). */
+.modal-columns .modal-col > .modal-section:first-child{ margin-top:-4px; }
+.modal-section-header{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  cursor:pointer; user-select:none; margin:10px 0; padding:4px 0;
+}
+.modal-section-header .modal-section-title{
+  font-family:'Inter',sans-serif; font-weight:700; font-size:15px; color:var(--ink);
+}
+.modal-section-header .modal-section-caret{
+  font-size:17px; line-height:1; color:var(--ink-soft); transition:transform .15s ease; flex-shrink:0;
+}
+.modal-section.collapsed .modal-section-caret{ transform:rotate(-90deg); }
+.modal-section-body{ overflow:hidden; }
+.modal-section.collapsed .modal-section-body{ display:none; }
+/* Repliée, la section n'a plus de contenu sous l'en-tête : sans ce filet, l'espace réservé au-dessus
+   de l'en-tête (padding du haut de .modal-section + marge du haut de l'en-tête) reste plus grand que
+   l'espace sous l'en-tête une fois le contenu masqué (qui ne récupère QUE le padding bas de
+   .modal-section, sans la marge basse de l'en-tête) — ce qui poussait visuellement le titre vers le
+   bas de la boîte au lieu de le centrer. On uniformise donc les deux côtés à une seule et même valeur
+   en mode replié (en supprimant la marge de l'en-tête, qui n'a alors plus besoin d'aérer un contenu
+   devenu invisible).
+*/
+.modal-section.collapsed{ padding:10px; }
+.modal-section.collapsed .modal-section-header{ margin:0; }
+/* Sous-section imbriquée dans une .modal-section (ex. "Réglages fins des articulations" sous
+   Orientation) : même esprit que .modal-section (fond assombri pour la distinguer) mais plus discret
+   et plus clair qu'elle, pour bien marquer qu'elle est imbriquée DANS la section plutôt qu'au même
+   niveau qu'elle. */
+.modal-subsection{
+  background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:6px;
+  margin-top:14px; padding:4px 10px;
+}
+.persona-rot-row{ display:flex; gap:10px; margin-top:4px; }
+.persona-rot-col{ flex:1; }
+.persona-rot-col input[type=range]{ width:100%; }
+.persona-preview-wrap{
+  position:relative; margin:10px 0 4px; height:276px;
+  background:var(--paper-dark); border:1px solid var(--line); border-radius:8px;
+  /* Centre le canvas (quel que soit son ratio largeur/hauteur propre, cf. personaPreview3D vs
+     objectPreview3D qui n'ont pas les mêmes dimensions) au lieu de le laisser épinglé en haut-gauche :
+     sans ça, un Élément dont la boîte ne couvre pas tout le canvas (cf. frameCameraToBox, qui cadre en
+     conservant le ratio sans déformer) laissait un fond mal centré/réparti dans l'encart. */
+  display:flex; align-items:center; justify-content:center;
+}
+/* Agrandit l'affichage du canvas jusqu'à occuper TOUTE la Box (width/height:100%, pas seulement
+   max-width/max-height qui ne font que plafonner sans jamais agrandir un canvas plus petit que son
+   conteneur — c'était l'erreur précédente, le canvas restait alors cantonné à sa taille fixe d'origine
+   180×260 / 240×161 même dans une Box bien plus grande). object-fit:contain rééchelonne ensuite le
+   contenu RENDU à l'intérieur de cette Box pleine largeur/hauteur en conservant son ratio (donc sans le
+   déformer), avec un éventuel espace résiduel réparti symétriquement de part et d'autre plutôt que
+   concentré d'un seul côté. */
+.persona-preview-wrap canvas{ width:100%; height:100%; object-fit:contain; display:block; }
