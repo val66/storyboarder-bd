@@ -47,8 +47,8 @@
       <div class="dropdown">
         <button class="dropdown-trigger" id="treeTrigger">Tomes <span class="caret">▾</span></button>
         <div class="dropdown-panel open" id="treePanel">
-          <div id="tomeList"></div>
-          <button class="full-btn" id="addTomeBtn">Nouveau tome</button>
+          <div id="volumeList"></div>
+          <button class="full-btn" id="addVolumeBtn">Nouveau tome</button>
         </div>
       </div>
     </div>
@@ -82,26 +82,26 @@
 
   <div class="right-panel" id="rightPanel">
   <div class="right-panel-scroll" id="rightPanelScroll">
-    <div id="plancheMenuHeader" class="menu-header" style="display:none;">
+    <div id="pageMenuHeader" class="menu-header" style="display:none;">
       <span></span>
-      <span class="menu-title">Planche<span id="plancheMenuNumber" class="case-menu-number"></span></span>
-      <button id="plancheMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
+      <span class="menu-title">Planche<span id="pageMenuNumber" class="case-menu-number"></span></span>
+      <button id="pageMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
     </div>
-    <div id="sidePlancheBgSection" class="side-section" style="display:none;">
+    <div id="sidePageBgSection" class="side-section" style="display:none;">
       <h2>Arrière-plan</h2>
       <div id="sidePlancheBgColorWrap" class="tome-format side-border-color">
-        <label for="sidePlancheBgColorInput">Couleur de la Planche</label>
-        <input type="color" id="sidePlancheBgColorInput" value="#ffffff">
+        <label for="sidePageBgColorInput">Couleur de la Planche</label>
+        <input type="color" id="sidePageBgColorInput" value="#ffffff">
       </div>
     </div>
-    <div id="sidePlancheCasesSection" class="side-section" style="display:none;">
+    <div id="sidePagePanelsSection" class="side-section" style="display:none;">
       <h2>Cases</h2>
-      <div id="sidePlancheCases" class="side-planche-cases"></div>
+      <div id="sidePagePanels" class="side-planche-cases"></div>
     </div>
-    <div id="caseMenuHeader" class="menu-header" style="display:none;">
+    <div id="panelMenuHeader" class="menu-header" style="display:none;">
       <span></span>
-      <span class="menu-title"><span id="caseMenuTitle">Case</span><span id="caseMenuNumber" class="case-menu-number"></span></span>
-      <button id="caseMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
+      <span class="menu-title"><span id="panelMenuTitle">Case</span><span id="panelMenuNumber" class="case-menu-number"></span></span>
+      <button id="panelMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
     </div>
     <div id="sideDimsSection" class="side-section" style="display:none;">
       <h2 id="sideDimsTitle">Dimensions</h2>
@@ -129,63 +129,63 @@
         <input type="color" id="sideBorderColorInput" value="#23242a">
       </div>
     </div>
-    <div id="sideSolSection" class="side-section" style="display:none;">
+    <div id="sideGroundSection" class="side-section" style="display:none;">
       <h2>Sol</h2>
-      <div id="sideSolGrid" class="sol-ground-grid"></div>
+      <div id="sideGroundGrid" class="sol-ground-grid"></div>
     </div>
-    <div id="sidePersosSection" class="side-section" style="display:none;">
-      <h2 id="sidePersosTitle">Éléments</h2>
-      <div id="sidePersos" class="side-persos"></div>
+    <div id="sidePersonasSection" class="side-section" style="display:none;">
+      <h2 id="sidePersonasTitle">Éléments</h2>
+      <div id="sidePersonas" class="side-persos"></div>
     </div>
-    <div id="bulleMenuHeader" class="menu-header" style="display:none;">
+    <div id="bubbleMenuHeader" class="menu-header" style="display:none;">
       <span></span>
       <span class="menu-title">Bulle</span>
-      <button id="bulleMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
+      <button id="bubbleMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
     </div>
-    <div id="sideBulleStackSection" class="side-section" style="display:none;">
+    <div id="sideBubbleStackSection" class="side-section" style="display:none;">
       <h2>Niveau d'avancement</h2>
-      <div id="sideBulleStackLevel" class="dim-chip"></div>
+      <div id="sideBubbleStackLevel" class="dim-chip"></div>
     </div>
-    <div id="sideBulleAppearanceSection" class="side-section" style="display:none;">
-      <h2 id="sideBulleAppearanceTitle">Apparence de la Bulle</h2>
-      <div id="sideBulleAppearanceWrap" class="side-bulle-appearance">
-        <div id="sideBulleShapeWrap" class="tome-format side-bulle-shape">
-          <label for="sideBulleShapeSelect">Forme de la bulle</label>
-          <select id="sideBulleShapeSelect">
+    <div id="sideBubbleAppearanceSection" class="side-section" style="display:none;">
+      <h2 id="sideBubbleAppearanceTitle">Apparence de la Bulle</h2>
+      <div id="sideBubbleAppearanceWrap" class="side-bulle-appearance">
+        <div id="sideBubbleShapeWrap" class="tome-format side-bulle-shape">
+          <label for="sideBubbleShapeSelect">Forme de la bulle</label>
+          <select id="sideBubbleShapeSelect">
             <option value="ovale">Ovale</option>
             <option value="rect">Rectangle</option>
           </select>
         </div>
-        <label id="sideBulleTailWrap" class="side-bulle-tail">
-          <input type="checkbox" id="sideBulleTailToggle" checked> Afficher la pointe de la bulle
+        <label id="sideBubbleTailWrap" class="side-bulle-tail">
+          <input type="checkbox" id="sideBubbleTailToggle" checked> Afficher la pointe de la bulle
         </label>
-        <div id="sideBullePaddingWrap" class="tome-format side-bulle-padding">
-          <label for="sideBullePaddingInput">Padding intérieur (<span id="sideBullePaddingValue">20</span>%)</label>
-          <input type="range" id="sideBullePaddingInput" min="0" max="40" step="1" value="20">
+        <div id="sideBubblePaddingWrap" class="tome-format side-bulle-padding">
+          <label for="sideBubblePaddingInput">Padding intérieur (<span id="sideBubblePaddingValue">20</span>%)</label>
+          <input type="range" id="sideBubblePaddingInput" min="0" max="40" step="1" value="20">
         </div>
         <div class="tome-format side-border-color">
-          <label for="sideBulleBgColorInput">Couleur du fond</label>
-          <input type="color" id="sideBulleBgColorInput" value="#ffffff">
+          <label for="sideBubbleBgColorInput">Couleur du fond</label>
+          <input type="color" id="sideBubbleBgColorInput" value="#ffffff">
         </div>
       </div>
     </div>
-    <div id="sideBulleBordureSection" class="side-section" style="display:none;">
+    <div id="sideBubbleBorderSection" class="side-section" style="display:none;">
       <h2>Bordure</h2>
       <label id="sideBulleBorderToggleWrap" class="side-bulle-tail">
-        <input type="checkbox" id="sideBulleBorderToggle" checked> Afficher la bordure
+        <input type="checkbox" id="sideBubbleBorderToggle" checked> Afficher la bordure
       </label>
-      <div id="sideBulleBorderWidthWrap" class="tome-format side-border-color">
-        <label for="sideBulleBorderWidthSelect">Épaisseur de la bordure</label>
-        <select id="sideBulleBorderWidthSelect">
+      <div id="sideBubbleBorderWidthWrap" class="tome-format side-border-color">
+        <label for="sideBubbleBorderWidthSelect">Épaisseur de la bordure</label>
+        <select id="sideBubbleBorderWidthSelect">
           <option value="1">Fine (1px)</option>
           <option value="2.25" selected>Moyenne (2.25px)</option>
           <option value="3.5">Épaisse (3.5px)</option>
           <option value="6">Très épaisse (6px)</option>
         </select>
       </div>
-      <div id="sideBulleBorderColorWrap" class="tome-format side-border-color">
-        <label for="sideBulleBorderColorInput">Couleur de la bordure</label>
-        <input type="color" id="sideBulleBorderColorInput" value="#23242a">
+      <div id="sideBubbleBorderColorWrap" class="tome-format side-border-color">
+        <label for="sideBubbleBorderColorInput">Couleur de la bordure</label>
+        <input type="color" id="sideBubbleBorderColorInput" value="#23242a">
       </div>
     </div>
     <div id="sideCameraSection" style="display:none;">
@@ -246,9 +246,9 @@
     </div>
     <div id="sideDescSection" class="side-section">
       <h2 id="sideDescTitle">Description</h2>
-      <div id="sideBulleFontWrap" class="tome-format side-bulle-font" style="display:none;">
-        <label for="sideBulleFontSelect">Police d'écriture</label>
-        <select id="sideBulleFontSelect">
+      <div id="sideBubbleFontWrap" class="tome-format side-bulle-font" style="display:none;">
+        <label for="sideBubbleFontSelect">Police d'écriture</label>
+        <select id="sideBubbleFontSelect">
           <option value="Bangers" style="font-family:'Bangers','Impact',sans-serif;">Bangers</option>
           <option value="Comic Neue" style="font-family:'Comic Neue','Comic Sans MS',sans-serif;">Comic Neue</option>
           <option value="Permanent Marker" style="font-family:'Permanent Marker','Segoe Print',sans-serif;">Permanent Marker</option>
@@ -261,13 +261,13 @@
           <option value="Kalam" style="font-family:'Kalam','Brush Script MT',sans-serif;">Kalam</option>
         </select>
       </div>
-      <div id="sideBulleTextColorWrap" class="tome-format side-border-color side-bulle-font" style="display:none;">
-        <label for="sideBulleTextColorInput">Couleur du texte</label>
-        <input type="color" id="sideBulleTextColorInput" value="#23242a">
+      <div id="sideBubbleTextColorWrap" class="tome-format side-border-color side-bulle-font" style="display:none;">
+        <label for="sideBubbleTextColorInput">Couleur du texte</label>
+        <input type="color" id="sideBubbleTextColorInput" value="#23242a">
       </div>
-      <div id="sideBulleFontSizeWrap" class="tome-format side-bulle-font" style="display:none;">
-        <label for="sideBulleFontSizeInput">Taille du texte (<span id="sideBulleFontSizeValue">100</span>%)</label>
-        <input type="range" id="sideBulleFontSizeInput" min="10" max="500" step="5" value="100">
+      <div id="sideBubbleFontSizeWrap" class="tome-format side-bulle-font" style="display:none;">
+        <label for="sideBubbleFontSizeInput">Taille du texte (<span id="sideBubbleFontSizeValue">100</span>%)</label>
+        <input type="range" id="sideBubbleFontSizeInput" min="10" max="500" step="5" value="100">
       </div>
       <div id="descEmptyHint" class="empty-hint">Sélectionnez une case pour voir ou modifier sa description.</div>
       <textarea id="sideDescInput" style="display:none;" placeholder="Décrivez ce qui se passe dans cette case..."></textarea>
@@ -387,10 +387,10 @@
      section Ajouter"). Les sous-catégories (Véhicules, Mobiliers, etc.) restent inchangées, simplement
      déplacées dans ce conteneur. -->
 <div class="context-menu hidden" id="addSubmenu">
-  <button id="ctxAddPerso"><span class="ctx-icon">🙂</span> Ajouter un personnage</button>
+  <button id="ctxAddPersona"><span class="ctx-icon">🙂</span> Ajouter un personnage</button>
   <button id="ctxVehiclesTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🚗</span> Véhicules</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxFurnitureTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🪑</span> Mobiliers</span> <span class="submenu-arrow">▶</span></button>
-  <button id="ctxParoisTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🧱</span> Parois</span> <span class="submenu-arrow">▶</span></button>
+  <button id="ctxWallOpeningTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🧱</span> Parois</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxMursTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🧱</span> Murs</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxPlantesTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🌿</span> Plantes</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxBuildingsTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🏠</span> Bâtiments</span> <span class="submenu-arrow">▶</span></button>
@@ -407,8 +407,8 @@
 </div>
 
 <div class="context-menu hidden" id="dblclickChoiceMenu">
-  <button id="ctxCreateCase"><span class="ctx-icon">▭</span> Créer une Case</button>
-  <button id="ctxCreateBulle"><span class="ctx-icon">💬</span> Créer une Bulle de dialogue</button>
+  <button id="ctxCreatePanel"><span class="ctx-icon">▭</span> Créer une Case</button>
+  <button id="ctxCreateBubble"><span class="ctx-icon">💬</span> Créer une Bulle de dialogue</button>
 </div>
 
 <div class="context-menu hidden" id="vehicleSubmenu">
@@ -426,7 +426,7 @@
   <button id="ctxAddLit"><span class="ctx-icon">🛏️</span> Ajouter un lit</button>
 </div>
 
-<div class="context-menu hidden" id="paroisSubmenu">
+<div class="context-menu hidden" id="wallOpeningSubmenu">
   <button id="ctxAddFenetreOuverte"><span class="ctx-icon">🪟</span> Ajouter une fenêtre</button>
   <button id="ctxAddPorteOuverte"><span class="ctx-icon">🚪</span> Ajouter une porte</button>
   <button id="ctxAddEscalier"><span class="ctx-icon">🪜</span> Ajouter un escalier</button>
@@ -447,7 +447,7 @@
 </div>
 
 <div class="context-menu hidden" id="buildingsSubmenu">
-  <button id="ctxAddPiece"><span class="ctx-icon">🧱</span> Ajouter une pièce</button>
+  <button id="ctxAddRoom"><span class="ctx-icon">🧱</span> Ajouter une pièce</button>
   <button id="ctxBuildMode"><span class="ctx-icon">✏️</span> Construire un Bâtiment</button>
 </div>
 
@@ -503,10 +503,10 @@
   <button id="ctxZoneTerrain"><span class="ctx-icon">🌿</span> Zone de Terrain</button>
 </div>
 
-<div class="context-menu hidden" id="tomeContextMenu">
-  <button id="ctxRenameTome"><span class="ctx-icon">✏️</span> Renommer ce tome</button>
-  <button id="ctxExportTome"><span class="ctx-icon">📤</span> Exporter toutes les planches</button>
-  <button id="ctxDeleteTome"><span class="ctx-icon">🗑</span> Supprimer ce tome</button>
+<div class="context-menu hidden" id="volumeContextMenu">
+  <button id="ctxRenameVolume"><span class="ctx-icon">✏️</span> Renommer ce tome</button>
+  <button id="ctxExportVolume"><span class="ctx-icon">📤</span> Exporter toutes les planches</button>
+  <button id="ctxDeleteVolume"><span class="ctx-icon">🗑</span> Supprimer ce tome</button>
 </div>
 
 <div class="context-menu hidden" id="pageContextMenu">
@@ -554,7 +554,7 @@
   </div>
 </div>
 
-<!-- Modale générique de renommage d'un Tome ou d'une Scène (cf. ctxRenameTome/ctxRenameScene) :
+<!-- Modale générique de renommage d'un Tome ou d'une Scène (cf. ctxRenameVolume/ctxRenameScene) :
      window.prompt() n'est pas fiable dans Electron (boîte de dialogue bloquée silencieusement selon
      les versions), et ne permet de toute façon pas de désactiver "Renommer" tant que le nom est
      inchangé ou déjà pris par un autre Tome/une autre Scène — d'où cette modale dédiée, sur le même
@@ -629,10 +629,10 @@
          exportPage() : badges numérotés sur les Cases et/ou section nom+description sous la Planche. -->
     <label class="modal-field-label">Exportation</label>
     <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-      <input type="checkbox" id="exportShowCaseBadgesCheckbox" checked> Afficher le badge numéro sur les Cases
+      <input type="checkbox" id="exportShowPanelBadgesCheckbox" checked> Afficher le badge numéro sur les Cases
     </label>
     <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-      <input type="checkbox" id="exportShowCaseDescriptionsCheckbox" checked> Afficher la description des Cases sous la Planche
+      <input type="checkbox" id="exportShowPanelDescriptionsCheckbox" checked> Afficher la description des Cases sous la Planche
     </label>
     <div class="modal-actions">
       <button class="danger-btn" id="settingsModalClose" type="button">Fermer</button>
@@ -711,8 +711,8 @@
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
           <input type="checkbox" id="personaGroundMagnetCheckbox" checked> Aimanté au Sol (base posée au sol, déplacement vertical bloqué)
         </label>
-        <label id="personaTraverseSolField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-          <input type="checkbox" id="personaTraverseSolCheckbox"> Peut traverser le Sol
+        <label id="personaTraverseGroundField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
+          <input type="checkbox" id="personaTraverseGroundCheckbox"> Peut traverser le Sol
         </label>
       </div>
     </div>
@@ -896,7 +896,7 @@
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">
-        <p id="objectPieceWallPosNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Position gérée par la Pièce — à modifier via la modale de la Pièce.</p>
+        <p id="objectRoomWallPosNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Position gérée par la Pièce — à modifier via la modale de la Pièce.</p>
         <div id="objectPosField">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin:-2px 0 4px;">
             <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">X <input type="number" id="objectPosXInput" step="0.01" style="width:90px;"></label>
@@ -909,8 +909,8 @@
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
             <input type="checkbox" id="objectGroundMagnetCheckbox" checked> Aimanté au Sol (base posée au sol, déplacement vertical bloqué)
           </label>
-          <label id="objectTraverseSolField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-            <input type="checkbox" id="objectTraverseSolCheckbox"> Peut traverser le Sol
+          <label id="objectTraverseGroundField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
+            <input type="checkbox" id="objectTraverseGroundCheckbox"> Peut traverser le Sol
           </label>
         </div>
       </div>
@@ -922,8 +922,8 @@
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">
-        <p id="objectPieceWallOrientNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Orientation gérée par la Pièce — à modifier via la modale de la Pièce.</p>
-        <p id="objectParoisMagnetOrientNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Orientation gouvernée par le Mur hôte — aucune rotation manuelle possible.</p>
+        <p id="objectRoomWallOrientNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Orientation gérée par la Pièce — à modifier via la modale de la Pièce.</p>
+        <p id="objectWallOpeningMagnetOrientNotice" style="display:none; font-size:11px; opacity:.6; margin:0 0 8px; line-height:1.4; font-style:italic;">Orientation gouvernée par le Mur hôte — aucune rotation manuelle possible.</p>
         <label class="modal-field-label">Rotation horizontale</label>
         <input type="range" id="objectRotXInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
         <label class="modal-field-label">Inclinaison</label>
@@ -969,9 +969,9 @@
 
 <!-- Modale Pièce / Bâtiment : ouverte par double-clic sur le nom d'une Pièce dans le panneau latéral.
      Permet de renommer, afficher/cacher le plafond, positionner et (à terme) orienter la Pièce. -->
-<div class="modal-overlay hidden" id="pieceModal">
+<div class="modal-overlay hidden" id="roomModal">
   <div class="modal-box modal-box-2col">
-    <h3 id="pieceModalTitle">🧱 Pièce</h3>
+    <h3 id="roomModalTitle">🧱 Pièce</h3>
 
     <div class="modal-columns">
     <div class="modal-col modal-col-left">
@@ -982,15 +982,15 @@
       </div>
       <div class="modal-section-body">
         <label class="modal-field-label">Nom</label>
-        <input type="text" id="pieceNameInput" placeholder="Ex. Salon">
+        <input type="text" id="roomNameInput" placeholder="Ex. Salon">
         <label class="modal-field-label">Taille réelle</label>
         <div style="display:flex; align-items:center; gap:10px; margin:-2px 0 8px; flex-wrap:wrap;">
           <label style="font-size:12.5px; opacity:.85; display:flex; align-items:center; gap:5px;">
-            Largeur <input type="number" id="pieceWidthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
+            Largeur <input type="number" id="roomWidthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
           </label>
           <span style="opacity:.45;">×</span>
           <label style="font-size:12.5px; opacity:.85; display:flex; align-items:center; gap:5px;">
-            Profondeur <input type="number" id="pieceDepthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
+            Profondeur <input type="number" id="roomDepthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
           </label>
         </div>
       </div>
@@ -1002,7 +1002,7 @@
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">
-        <div id="pieceFloorTypeGrid" class="sol-ground-grid" style="margin-top:2px;"></div>
+        <div id="roomFloorTypeGrid" class="sol-ground-grid" style="margin-top:2px;"></div>
       </div>
     </div>
 
@@ -1013,13 +1013,13 @@
       </div>
       <div class="modal-section-body">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin:-2px 0 4px;">
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">X <input type="number" id="piecePosXInput" step="0.1" style="width:90px;"></label>
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Y <input type="number" id="piecePosYInput" step="0.1" value="0" style="width:90px;"></label>
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Z <input type="number" id="piecePosZInput" step="0.1" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">X <input type="number" id="roomPosXInput" step="0.1" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Y <input type="number" id="roomPosYInput" step="0.1" value="0" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Z <input type="number" id="roomPosZInput" step="0.1" style="width:90px;"></label>
         </div>
         <p style="font-size:11px; opacity:.65; margin:14px 0 8px; line-height:1.4;">X/Z : position du centre de la Pièce. Y : hauteur de flottement (désactivé si aimanté au Sol).</p>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-          <input type="checkbox" id="pieceMagnetSolCheckbox" checked> Aimanté au Sol (déplacement vertical bloqué)
+          <input type="checkbox" id="roomMagnetGroundCheckbox" checked> Aimanté au Sol (déplacement vertical bloqué)
         </label>
       </div>
     </div>
@@ -1031,11 +1031,11 @@
       </div>
       <div class="modal-section-body">
         <label class="modal-field-label">Rotation horizontale</label>
-        <input type="range" id="pieceRotYInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
+        <input type="range" id="roomRotYInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
         <label class="modal-field-label">Inclinaison</label>
-        <input type="range" id="pieceRotXInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
+        <input type="range" id="roomRotXInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
         <label class="modal-field-label">Roulis</label>
-        <input type="range" id="pieceRotZInput" min="-180" max="180" step="1" value="0">
+        <input type="range" id="roomRotZInput" min="-180" max="180" step="1" value="0">
       </div>
     </div>
     </div>
@@ -1048,10 +1048,10 @@
       </div>
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
-          <canvas id="piecePreview3D" width="240" height="161"></canvas>
+          <canvas id="roomPreview3D" width="240" height="161"></canvas>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 4px; cursor:pointer;">
-          <input type="checkbox" id="pieceCeilingVisibleCheckbox" checked> Plafond visible
+          <input type="checkbox" id="roomCeilingVisibleCheckbox" checked> Plafond visible
         </label>
       </div>
     </div>
@@ -1059,15 +1059,15 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="pieceModalCancel">Annuler</button>
-      <button class="full-btn" id="pieceModalSave">Enregistrer</button>
+      <button class="danger-btn" id="roomModalCancel">Annuler</button>
+      <button class="full-btn" id="roomModalSave">Enregistrer</button>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay hidden" id="batimentModal">
+<div class="modal-overlay hidden" id="buildingModal">
   <div class="modal-box modal-box-2col">
-    <h3 id="batimentModalTitle">🏠 Bâtiment</h3>
+    <h3 id="buildingModalTitle">🏠 Bâtiment</h3>
 
     <div class="modal-columns">
     <div class="modal-col modal-col-left">
@@ -1078,15 +1078,15 @@
       </div>
       <div class="modal-section-body">
         <label class="modal-field-label">Nom</label>
-        <input type="text" id="batimentNameInput" placeholder="Ex. Maison">
+        <input type="text" id="buildingNameInput" placeholder="Ex. Maison">
         <label class="modal-field-label">Empreinte totale</label>
         <div style="display:flex; align-items:center; gap:10px; margin:-2px 0 8px; flex-wrap:wrap;">
           <label style="font-size:12.5px; opacity:.85; display:flex; align-items:center; gap:5px;">
-            Largeur <input type="number" id="batimentWidthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
+            Largeur <input type="number" id="buildingWidthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
           </label>
           <span style="opacity:.45;">×</span>
           <label style="font-size:12.5px; opacity:.85; display:flex; align-items:center; gap:5px;">
-            Profondeur <input type="number" id="batimentDepthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
+            Profondeur <input type="number" id="buildingDepthInput" min="0.1" step="0.05" style="width:72px;"> u.m.
           </label>
         </div>
       </div>
@@ -1099,13 +1099,13 @@
       </div>
       <div class="modal-section-body">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin:-2px 0 4px;">
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">X <input type="number" id="batimentPosXInput" step="0.1" style="width:90px;"></label>
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Y <input type="number" id="batimentPosYInput" step="0.1" value="0" style="width:90px;"></label>
-          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Z <input type="number" id="batimentPosZInput" step="0.1" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">X <input type="number" id="buildingPosXInput" step="0.1" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Y <input type="number" id="buildingPosYInput" step="0.1" value="0" style="width:90px;"></label>
+          <label style="font-size:12.5px; opacity:.8; display:flex; align-items:center; gap:6px;">Z <input type="number" id="buildingPosZInput" step="0.1" style="width:90px;"></label>
         </div>
         <p style="font-size:11px; opacity:.65; margin:14px 0 8px; line-height:1.4;">X/Z : position du centre du Bâtiment. Y : hauteur de flottement (désactivé si aimanté au Sol).</p>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-          <input type="checkbox" id="batimentMagnetSolCheckbox" checked> Aimanté au Sol (déplacement vertical bloqué)
+          <input type="checkbox" id="buildingMagnetGroundCheckbox" checked> Aimanté au Sol (déplacement vertical bloqué)
         </label>
       </div>
     </div>
@@ -1117,7 +1117,7 @@
       </div>
       <div class="modal-section-body">
         <label class="modal-field-label">Rotation horizontale</label>
-        <input type="range" id="batimentRotYInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
+        <input type="range" id="buildingRotYInput" min="-180" max="180" step="1" value="0" style="margin-bottom:12px;">
         <label class="modal-field-label">Inclinaison</label>
         <input type="range" min="-180" max="180" step="1" value="0" disabled style="margin-bottom:12px;">
         <label class="modal-field-label">Roulis</label>
@@ -1134,10 +1134,10 @@
       </div>
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
-          <canvas id="batimentPreview3D" width="240" height="161"></canvas>
+          <canvas id="buildingPreview3D" width="240" height="161"></canvas>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 4px; cursor:pointer;">
-          <input type="checkbox" id="batimentCeilingVisibleCheckbox" checked> Plafond visible
+          <input type="checkbox" id="buildingCeilingVisibleCheckbox" checked> Plafond visible
         </label>
       </div>
     </div>
@@ -1145,8 +1145,8 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="batimentModalCancel">Annuler</button>
-      <button class="full-btn" id="batimentModalSave">Enregistrer</button>
+      <button class="danger-btn" id="buildingModalCancel">Annuler</button>
+      <button class="full-btn" id="buildingModalSave">Enregistrer</button>
     </div>
   </div>
 </div>

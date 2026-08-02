@@ -9,15 +9,15 @@
  * Element helpers: getElementDepth
  */
 
-import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS } from './constants.js';
+import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, WALL_PX_PER_UNIT_3D } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
 // ══════════════════════════════════════════════════════════════
 
-// Conversion px → mm propre au format du tome (fb/us utilisent leur vraie taille
-// d'impression ; webtoon/custom n'ayant pas de taille physique déclarée, on retombe
-// sur l'équivalence standard écran 96dpi).
+// px → mm conversion specific to the Volume's format (fb/us use their real print size;
+// webtoon/custom have no declared physical size, so we fall back to the standard
+// 96dpi screen equivalence).
 export function pxPerMm(formatKey){
   const f = FORMATS.find(x => x.key === formatKey);
   return f ? f.w / f.mmW : 96 / 25.4;
@@ -37,10 +37,10 @@ export function getPosition(key){ return POSITIONS.find(p => p.key === key) || P
 
 export function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-// Ramène un angle (en radians) dans l'intervalle ]-π, π] par ajout/retrait de tours complets — utilisé
-// pour les rotations NON bornées de la caméra en Mode Caméra (cf. dragMode 'caseCamRotate') : on garde
-// ainsi des valeurs numériques toujours petites même après de nombreux tours, sans jamais limiter la
-// rotation elle-même (sin/cos étant périodiques, ]-π, π] couvre déjà la totalité du cercle).
+// Brings an angle (in radians) back into the ]-π, π] range by adding/removing full turns — used
+// for the UNBOUNDED camera rotations in Camera Mode (cf. dragMode 'panelCamRotate'): this keeps
+// the numeric values small even after many turns, without ever limiting the rotation itself
+// (since sin/cos are periodic, ]-π, π] already covers the whole circle).
 export function wrapAngle(a){
   a = (a + Math.PI) % (2 * Math.PI);
   if (a < 0) a += 2 * Math.PI;
@@ -59,13 +59,57 @@ export function getBBox(pts){
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
+// Computes the bounding box of an array of {x,y} points (Trace/Road/Path variant of getBBox
+// above): guards against an empty/null array, and enforces a minimum width/height of 1px so a
+// Trace with all its points at the same spot never collapses to a zero-size selection box.
+// Lives here (rather than in events.js, its original home) so that lower-level modules — notably
+// scene3d.js's tracéUpdateScreenPts — can use it too without a circular import back into events.js.
+export function tracéBBox(pts){
+  if (!pts || pts.length === 0) return { x:0, y:0, w:1, h:1 };
+  let mx = Infinity, my = Infinity, Mx = -Infinity, My = -Infinity;
+  pts.forEach(p => {
+    if (p.x < mx) mx = p.x; if (p.x > Mx) Mx = p.x;
+    if (p.y < my) my = p.y; if (p.y > My) My = p.y;
+  });
+  return { x: mx, y: my, w: Math.max(1, Mx - mx), h: Math.max(1, My - my) };
+}
+
 // ══════════════════════════════════════════════════════════════
 // ELEMENT HELPERS
 // ══════════════════════════════════════════════════════════════
 
-// Profondeur réelle 3D d'un Élément dans la scène de sa Case (Phase 2, cf. tâche #78). Lecture
-// centralisée avec repli à 0 pour les Éléments enregistrés avant l'introduction de ce champ (pas de
-// migration formelle nécessaire, cf. convention déjà utilisée pour rotX/rotY/etc.). 0 = plan par
-// défaut (profondeur à la création, où la taille réelle correspond exactement à la taille apparente
-// d'origine sur le canevas).
+// Real 3D depth of an Element in its Panel's scene (Phase 2, cf. task #78). Centralized read
+// with a fallback to 0 for Elements saved before this field was introduced (no formal migration
+// needed, cf. the convention already used for rotX/rotY/etc.). 0 = default plane (depth at
+// creation time, where the real size exactly matches the original apparent size on the canvas).
 export function getElementDepth(o){ return (o && o.z) || 0; }
+
+// Repairs a corrupted baseH/baseW (projects loaded before Fix 22, where loadSceneIntoPanel used to
+// multiply baseH*s while realHeightFloor stayed unscaled). Returns true if a repair took place.
+// Exported from utils.js so it can be used in io.js (migrateElementWxFloor) without a circular
+// dependency on app.js.
+// ── Resize handles ────────────────────────────────────────────
+// Returns the 8 handle positions (page-space) of a bbox object. Exported here
+// (pure function) so draw.js can import it without a dependency on app.js.
+export function getHandles(o){
+  return {
+    tl: [o.x, o.y], tr: [o.x + o.w, o.y], bl: [o.x, o.y + o.h], br: [o.x + o.w, o.y + o.h],
+    t: [o.x + o.w / 2, o.y], b: [o.x + o.w / 2, o.y + o.h],
+    l: [o.x, o.y + o.h / 2], r: [o.x + o.w, o.y + o.h / 2]
+  };
+}
+
+export function repairElementBase3D(o){
+  if (o.realHeightFloor !== undefined && o.realHeightFloor > 0 && o.baseH > 0) {
+    const _ratio = o.realHeightFloor / (o.baseH / WALL_PX_PER_UNIT_3D);
+    if (_ratio > 4.05 || _ratio < 0.095) {
+      const _ar = (o.h > 0) ? (o.w / o.h) : 1;
+      console.log('[FIX22b] repairElementBase3D', o.id?.slice(0,6),
+        'ratio:', _ratio.toFixed(2), 'baseH:', o.baseH.toFixed(2), '→', (o.realHeightFloor * WALL_PX_PER_UNIT_3D).toFixed(2));
+      o.baseH = o.realHeightFloor * WALL_PX_PER_UNIT_3D;
+      o.baseW = o.baseH * _ar;
+      return true;
+    }
+  }
+  return false;
+}

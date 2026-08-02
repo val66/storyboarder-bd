@@ -17,9 +17,9 @@ export const FORMATS = [
   {key:'custom', label:'Format personnalisé', w:480, h:660, scale:3, mmW:480 * 25.4 / 96},
 ];
 
-// Style de rendu 3D des Éléments (personas, objets, plantes...), réglable par Tome au même titre que
-// son Format. Un seul style existe pour l'instant ("Simplifié" = le rendu actuel par primitives
-// Three.js) ; d'autres pourront s'ajouter plus tard sans changer la mécanique de sélection ci-dessous.
+// 3D rendering style of Elements (personas, objects, plants...), settable per Volume just like
+// its Format. Only one style exists for now ("Simplifié" = the current Three.js primitive-based
+// rendering); others can be added later without changing the selection mechanics below.
 export const STYLES_3D = [
   { key: 'simplifie', label: 'Simplifié' },
 ];
@@ -79,56 +79,56 @@ export const FIXED_COLOR = PALETTE[0];
 
 
 // ── 3D camera distances ─────────────────────────────────────────
-// ---------- Scène 3D unique par Case (Phase 2, cf. tâches #77-82) ----------
-// Fondations mathématiques SEULES à ce stade (#79, étape 1/2) : ces fonctions ne sont appelées par
-// aucun chemin de rendu existant pour l'instant — elles n'ont donc aucun effet visuel tant que
-// l'étape 2 (caméra/scène combinée par Case) ne les utilise pas. Objectif : exprimer chaque Élément
-// d'une Case dans les mêmes unités "monde" déjà utilisées par les Murs/Parois (cf.
-// WALL_PX_PER_UNIT_3D = 40 px/unité), pour pouvoir, demain, les placer tous dans UNE scène/caméra
-// partagée par Case avec une vraie profondeur et une occlusion automatique.
+// ---------- Single 3D scene per Panel (Phase 2, cf. tasks #77-82) ----------
+// Math FOUNDATIONS ONLY at this stage (#79, step 1/2): these functions aren't called by any
+// existing rendering path yet — so they have no visual effect until step 2 (combined
+// camera/scene per Panel) uses them. Goal: express every Element of a Panel in the same
+// "world" units already used by Walls/WallOpenings (cf. WALL_PX_PER_UNIT_3D = 40 px/unit),
+// so that tomorrow they can all be placed in ONE scene/camera shared per Panel with real
+// depth and automatic occlusion.
 //
-// Convention retenue :
-// - 1 unité monde = WALL_PX_PER_UNIT_3D px à l'écran à la profondeur de référence (o.z = 0), exactement
-//   comme pour les Murs/Parois déjà en place : un Élément migré depuis l'ancien modèle (taille en px
-//   uniquement) garde donc EXACTEMENT son apparence actuelle tant qu'on ne touche pas à sa profondeur.
-// - o.z = 0 → profondeur de référence (apparence actuelle inchangée). o.z > 0 → rapproche la caméra
-//   (l'Élément paraît plus grand), o.z < 0 → l'éloigne (cf. décision molette : haut = rapproche).
-// - X/Y monde sont calculés une fois, en unités, depuis le centre de l'Élément relatif au centre de
-//   sa Case (panel), avec le même facteur d'échelle — pour que le placement XY soit cohérent avec la
-//   taille au moment où les deux sont combinés dans une scène perspective.
+// Convention adopted:
+// - 1 world unit = WALL_PX_PER_UNIT_3D px on screen at the reference depth (o.z = 0), exactly
+//   like the Walls/WallOpenings already in place: an Element migrated from the old model
+//   (px-only size) therefore keeps EXACTLY its current appearance as long as its depth isn't touched.
+// - o.z = 0 → reference depth (current appearance unchanged). o.z > 0 → moves the camera
+//   closer (the Element looks bigger), o.z < 0 → moves it away (cf. scroll-wheel decision: up = closer).
+// - World X/Y are computed once, in units, from the Element's center relative to the center
+//   of its Panel, with the same scale factor — so the XY placement stays consistent with the
+//   size once both are combined in a perspective scene.
 
-// Distance caméra↔plan de référence (o.z = 0) dans la future scène combinée par Case. Choisie de
-// façon arbitraire mais fixe (cf. CASE_CAM_REF_DIST_3D) : ce qui compte est le RAPPORT entre cette
-// distance et celle obtenue après décalage par o.z, pas sa valeur absolue.
-export const CASE_CAM_REF_DIST_3D = 12;
+// Camera↔reference-plane distance (o.z = 0) in the future combined scene per Panel. Chosen
+// arbitrarily but fixed (cf. PANEL_CAM_REF_DIST_3D): what matters is the RATIO between this
+// distance and the one obtained after offsetting by o.z, not its absolute value.
+export const PANEL_CAM_REF_DIST_3D = 12;
 
-// Distance par défaut de la VRAIE caméra Three.js (cf. frameCaseCameraToPanel3D), distincte de
-// CASE_CAM_REF_DIST_3D ci-dessus (qui, elle, reste la distance de RÉFÉRENCE pour l'encodage de la
-// profondeur/taille apparente — cf. caseDepthToDistance3D/caseApparentPx3D — et ne doit pas changer,
-// sous peine de modifier la signification de toutes les profondeurs déjà enregistrées). Avec un FOV
-// calé directement sur CASE_CAM_REF_DIST_3D (ancienne version), la caméra se retrouvait très près du
-// plan de référence par rapport à la hauteur de la Planche, donnant un champ de vision très large
-// (effet "grand-angle") : un Élément déplacé loin du centre de l'image en venait à paraître se
-// déformer/"tourner sur lui-même" sous l'effet de la perspective — sur signalement utilisateur. On
-// recule donc ici la caméra par défaut (et on rétrécit le FOV en conséquence, cf.
-// frameCaseCameraToPanel3D) pour réduire cette distorsion grand-angle, comme on reculerait un appareil
-// photo et zoomerait pour "dézoomer" un visage déformé en bord de cadre — cela ne change ni la
-// profondeur/taille réelle des Eléments (toujours basée sur CASE_CAM_REF_DIST_3D), ni le fait que la
-// Planche remplisse toujours exactement la Case par défaut (le FOV est recalé sur cette même distance).
-export const CASE_CAM_DEFAULT_DIST_3D = CASE_CAM_REF_DIST_3D * 2.5;
+// Default distance of the REAL Three.js camera (cf. framePanelCamera3D), distinct from
+// PANEL_CAM_REF_DIST_3D above (which remains the REFERENCE distance for encoding
+// depth/apparent size — cf. panelDepthToDistance3D/panelApparentPx3D — and must not change,
+// or it would alter the meaning of every depth already recorded). With a FOV calibrated
+// directly on PANEL_CAM_REF_DIST_3D (old version), the camera ended up very close to the
+// reference plane relative to the Page's height, giving a very wide field of view ("wide-angle"
+// effect): an Element moved far from the center of the image would end up looking
+// distorted/"twisting on itself" under the effect of perspective — per user report. So here
+// we pull the default camera back (and shrink the FOV accordingly, cf. framePanelCamera3D) to
+// reduce this wide-angle distortion, the same way you'd step back with a camera and zoom in
+// to "un-zoom" a face distorted at the edge of the frame — this changes neither the real
+// depth/size of Elements (still based on PANEL_CAM_REF_DIST_3D), nor the fact that the Page
+// always exactly fills the Panel by default (the FOV is recalibrated on this same distance).
+export const PANEL_CAM_DEFAULT_DIST_3D = PANEL_CAM_REF_DIST_3D * 2.5;
 
-// Borne haute de la profondeur o.z : l'Élément peut s'avancer jusqu'à 0.1 unité de la vraie caméra.
-// Pas de borne basse : l'Élément peut reculer indéfiniment (il devient simplement très petit).
-export const CASE_DEPTH_MAX_3D = CASE_CAM_DEFAULT_DIST_3D - 0.1;
+// Upper bound of depth o.z: the Element can move up to 0.1 unit from the real camera.
+// No lower bound: the Element can move back indefinitely (it simply becomes very small).
+export const PANEL_DEPTH_MAX_3D = PANEL_CAM_DEFAULT_DIST_3D - 0.1;
 
 
 // ── Building tool ───────────────────────────────────────────────
-// ---- Outil "Construire un Bâtiment" ----
-export const BUILD_WALL_DEFAULT_HEIGHT = 3.0; // hauteur des murs créés (unités monde)
+// ---- "Build a Building" tool ----
+export const BUILD_WALL_DEFAULT_HEIGHT = 3.0; // height of created walls (world units)
 
-export const BUILD_SNAP_ANGLE_DEG = 12;       // seuil de snapping à 90° (degrés)
+export const BUILD_SNAP_ANGLE_DEG = 12;       // 90° snapping threshold (degrees)
 
-export const BUILD_CLOSE_DIST = 0.4;          // distance de fermeture automatique (unités monde)
+export const BUILD_CLOSE_DIST = 0.4;          // automatic closing distance (world units)
 
 
 // ── Undo stack ──────────────────────────────────────────────────
@@ -136,9 +136,9 @@ export const MAX_UNDO = 50;
 
 
 // ── Object & wall types ─────────────────────────────────────────
-// ---------- OBJETS 3D (voiture, vélo, ...) ----------
-// Réutilise getPersonaScalePercent/applyPersonaSizePercent (génériques : ne dépendent que de
-// o.w/o.h/o.baseW/o.baseH, pas du type) pour le redimensionnement par pourcentage.
+// ---------- 3D OBJECTS (car, bike, ...) ----------
+// Reuses getPersonaScalePercent/applyPersonaSizePercent (generic: only depend on
+// o.w/o.h/o.baseW/o.baseH, not on the type) for percentage-based resizing.
 export const OBJECT_TYPE_LABELS = {
   voiture: 'Voiture', velo: 'Vélo',
   table: 'Table', chaise: 'Chaise', etagere: 'Étagère', armoire: 'Armoire',
@@ -153,40 +153,42 @@ export const OBJECT_TYPE_LABELS = {
   banc_eglise: 'Banc d\'église', autel: 'Autel',
 };
 
-// ---------- Aimantation au Mur ----------
-// Les éléments de "Parois" (fenêtres, portes, escalier, baie vitrée) s'aimantent automatiquement,
-// dès leur création, au dernier Mur créé : ils se placent collés contre lui et le suivent quand il
-// est déplacé (cf. dragOrig.children dans le gestionnaire de la souris).
-export const PAROIS_MAGNET_TYPES = ['fenetre_ouverte', 'porte_ouverte', 'escalier', 'baie_vitree'];
+// ---------- Wall magnetism ----------
+// "WallOpening" elements (windows, doors, staircase, bay window) automatically snap, as soon
+// as they're created, to the last Wall created: they're placed flush against it and follow it
+// when it's moved (cf. dragOrig.children in the mouse handler).
+export const WALL_OPENING_MAGNET_TYPES = ['fenetre_ouverte', 'porte_ouverte', 'escalier', 'baie_vitree'];
 
-// Types de Murs (regroupés dans le sous-menu "Murs") : tout objet de ce groupe peut servir de
-// support d'aimantation pour les Éléments de Parois, au même titre qu'un Mur simple.
+// Wall types (grouped in the "Walls" submenu): any object in this group can serve as a
+// magnet-anchor surface for WallOpening Elements, just like a simple Wall.
 export const WALL_TYPES = ['mur', 'mur_coin'];
 
-// Sous-ensemble de PAROIS_MAGNET_TYPES qui, en plus de s'aimanter au Mur, sont "Traversant(e)s" (cf.
-// propriété affichée en lecture seule dans la modale, et trou réel découpé dans le maillage du Mur
-// hôte par getWallRenderEntry3D) : on peut alors réellement voir à travers le Mur à cet endroit,
-// plutôt que d'avoir seulement le Modèle 3D de l'Élément superposé à un Mur resté plein. L'Escalier
-// est volontairement exclu : il donne accès à travers un Mur mais ne le perce pas.
+// Subset of WALL_OPENING_MAGNET_TYPES which, in addition to snapping to the Wall, are "Passable"
+// (cf. the read-only property shown in the modal, and the real hole cut into the host Wall's
+// mesh by ensureWallRenderEntry3D): you can then actually see through the Wall at that spot,
+// rather than just having the Element's 3D model overlaid on a Wall that stays solid. The
+// Staircase is deliberately excluded: it gives access through a Wall but doesn't pierce it.
 export const TRAVERSANT_TYPES = ['fenetre_ouverte', 'porte_ouverte', 'baie_vitree'];
 
-// Rectangle (en pixels page) dans lequel un Élément de Parois aimanté doit rester : le rectangle
-// RÉELLEMENT RENDU du Mur (ou de son pan pour un Mur en coin), cf. getWallPanRect2D — qui tient compte
-// du raccourci en perspective dès que le Mur a une rotation 3D, contrairement à la simple boîte de
-// données wall.x/y/w/h (toujours utilisée en repli si la projection échoue, p.ex. rig pas encore prêt).
-// On resserre ce rectangle d'une petite marge de sécurité (cf. WALL_PAROIS_MARGIN_FRAC) : le rectangle
-// projeté n'est que la boîte englobante (AABB) du Mur tourné, qui — dès qu'une rotation introduit un
-// cisaillement (le Mur projeté devient un quadrilatère, pas un rectangle aligné aux axes) — dépasse
-// légèrement la silhouette RÉELLEMENT visible, surtout dans ses coins. Sans cette marge, un Élément
-// placé près d'un bord du rectangle (autorisé par l'AABB) peut très légèrement dépasser la silhouette
-// réelle du Mur, et l'écart s'accentue après plusieurs rotations successives.
-export const WALL_PAROIS_MARGIN_FRAC = 0.06;
+// Rectangle (in page pixels) a snapped WallOpening Element must stay within: the ACTUALLY
+// RENDERED rectangle of the Wall (or of its face for a corner Wall), cf. getWallPanRect2D —
+// which accounts for perspective foreshortening as soon as the Wall has a 3D rotation, unlike
+// the plain wall.x/y/w/h data box (always used as a fallback if the projection fails, e.g.
+// the rig isn't ready yet). We shrink this rectangle by a small safety margin (cf.
+// WALL_OPENING_MARGIN_FRAC): the projected rectangle is only the bounding box (AABB) of the
+// rotated Wall, which — as soon as a rotation introduces shear (the projected Wall becomes a
+// quadrilateral, not an axis-aligned rectangle) — slightly exceeds the ACTUALLY visible
+// silhouette, especially at its corners. Without this margin, an Element placed near an edge
+// of the rectangle (allowed by the AABB) can very slightly overshoot the Wall's real
+// silhouette, and the gap grows after several successive rotations.
+export const WALL_OPENING_MARGIN_FRAC = 0.06;
 
-// Ratio largeur/hauteur réel (approx.) de chaque rig 3D des Éléments de Parois et du Mur : ces objets
-// sont en réalité plus hauts que larges (porte, fenêtre, mur...), contrairement aux voitures/vélos/
-// meubles qui sont plutôt "paysage". Sans cette table, leur boîte 2D par défaut était forcée au même
-// ratio paysage que les voitures (cf. plus bas), ce qui étirait horizontalement leur rendu et les
-// faisait paraître désaxés/écrasés au lieu d'être bien droits et parallèles au Mur.
+// Real (approximate) width/height ratio of each 3D rig of WallOpening Elements and the Wall:
+// these objects are actually taller than they are wide (door, window, wall...), unlike
+// cars/bikes/furniture which are rather "landscape". Without this table, their default 2D box
+// was forced to the same landscape ratio as cars (cf. further down), which stretched their
+// rendering horizontally and made them look skewed/squashed instead of straight and parallel
+// to the Wall.
 export const OBJECT_ASPECT_RATIOS = {
   fenetre_ouverte: 1.0 / 1.16,
   porte_ouverte: 1.04 / 2.07,
@@ -209,7 +211,7 @@ export const OBJECT_ASPECT_RATIOS = {
 // Personnage, un Arbre nettement plus grand, etc.) plutôt que d'être chacune une fraction arbitraire de
 // la largeur de la Case (ancien comportement : tout Élément occupait ~20-40% de la largeur de la Case
 // quel que soit son type, ce qui rendait p. ex. une Fleur ou une Voiture aussi grandes qu'un Personnage
-// dans une grande Case, et inversement minuscules dans une petite Case). cf. addPersoToPanel /
+// dans une grande Case, et inversement minuscules dans une petite Case). cf. addPersonaToPanel /
 // addObjectToPanel, qui dérivent désormais o.w/o.h par défaut de cette hauteur réelle plutôt que de
 // panel.w. Valeurs approximatives, à l'échelle humaine (PERSONA_REAL_HEIGHT_M ci-dessous = 1,75 m).
 export const PERSONA_REAL_HEIGHT_M = 1.75;
@@ -228,17 +230,17 @@ export const OBJECT_REAL_HEIGHT_M = {
 
 
 // ── Building alignment ──────────────────────────────────────────
-// Snap d'alignement sur les points déjà posés : si le curseur est proche du même X ou Z qu'un point
-// existant, on y aligne la coordonnée concernée et on retourne les guides visuels à afficher.
-export const BUILD_ALIGN_THRESHOLD = 0.18; // unités monde (~18 cm)
+// Alignment snap on already-placed points: if the cursor is close to the same X or Z as an
+// existing point, we align the relevant coordinate to it and return the visual guides to display.
+export const BUILD_ALIGN_THRESHOLD = 0.18; // world units (~18 cm)
 
 
 // ── Tracer tool (routes, zones) ─────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-// OUTIL DE TRACÉ (Route / Chemin de terre) ET ZONE DE TERRAIN
+// PATH TOOL (Route / Dirt path) AND TERRAIN ZONE
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Couleurs par défaut de chaque type de tracé/zone.
+// Default colors for each path/zone type.
 export const TRACÉ_DEFAULTS = {
   route:    { color: '#888888', width: 10 },
   chemin:   { color: '#9B7240', width: 8  },
@@ -249,7 +251,7 @@ export const TRACÉ_DEFAULTS = {
   barriere: { color: '#A8A8A8', width: 5,  wallHeight: 0.55 },
 };
 
-// Emoji de chaque type pour la sidebar.
+// Emoji for each type, used in the sidebar.
 export const TRACÉ_EMOJI = {
   route: '🛣️', chemin: '🟤', terrain: '🌿',
   muret: '🧱', cloture: '⛓️', haie: '🌳', barriere: '🚧',
@@ -261,23 +263,23 @@ export const ZOOM_MIN = 0.25, ZOOM_MAX = 4;
 
 export const PAGE_RENDER_SCALE_MAX = 4;
 
-// Recalcule zoomLevel pour que la Planche occupe le maximum d'espace disponible dans canvasWrap
-// (moins son padding, cf. .canvas-wrap) tout en conservant son format (ratio page.w/page.h) et en
-// restant centrée (déjà géré par .canvas-wrap : justify-content/align-items "safe center"/"safe
-// flex-start"). Appelée au redimensionnement de la fenêtre et chaque fois que la Planche affichée
-// change (nouvelle planche/tome, changement de format — cf. renderAll), PAS à chaque drawCurrentPage
-// (qui a lieu en continu pendant une interaction, p.ex. un glisser) : un zoom manuel à la molette
-// (cf. wheel sur canvasWrap) reste donc possible et persiste jusqu'au prochain redimensionnement.
+// Recomputes zoomLevel so the Page occupies the maximum available space in canvasWrap (minus
+// its padding, cf. .canvas-wrap) while keeping its format (page.w/page.h ratio) and staying
+// centered (already handled by .canvas-wrap: justify-content/align-items "safe center"/"safe
+// flex-start"). Called on window resize and every time the displayed Page changes (new
+// page/volume, format change — cf. renderAll), NOT on every drawCurrentPage (which happens
+// continuously during an interaction, e.g. a drag): a manual scroll-wheel zoom (cf. wheel on
+// canvasWrap) therefore remains possible and persists until the next resize.
 export const CANVAS_WRAP_PADDING = 28;
 
 export const CURSOR_MAP = { tl: 'nwse-resize', br: 'nwse-resize', tr: 'nesw-resize', bl: 'nesw-resize', t: 'ns-resize', b: 'ns-resize', l: 'ew-resize', r: 'ew-resize' };
 
 
-// ── Floor types (Pièce) ─────────────────────────────────────────
-// IDs des types de sol affichés dans la modale Pièce (sous-ensemble intérieur de SOL_GROUND_DEFS)
-export const PIECE_FLOOR_TYPE_IDS = ['neutre', 'carrelage', 'plancher', 'marbre', 'moquette', 'béton'];
+// ── Floor types (Room) ─────────────────────────────────────────
+// IDs of the floor types shown in the Room modal (indoor subset of GROUND_TYPE_DEFS)
+export const ROOM_FLOOR_TYPE_IDS = ['neutre', 'carrelage', 'plancher', 'marbre', 'moquette', 'béton'];
 
-// Icône par type d'Élément, repris des mêmes emojis que dans le menu contextuel d'ajout.
+// Icon for each Element type, reusing the same emoji as in the "add" context menu.
 export const OBJECT_TYPE_EMOJI = {
   voiture: '🚗', velo: '🚲',
   table: '🍽️', chaise: '🪑', etagere: '📚', armoire: '🚪', canape: '🛋️', bureau: '🗄️', lit: '🛏️',
@@ -292,27 +294,27 @@ export const OBJECT_TYPE_EMOJI = {
 };
 
 
-// ── Speech bubbles (Bulles) ─────────────────────────────────────
-// Angle (radians, paramétrisation de l'ellipse) et longueur par défaut de la pointe d'une Bulle
-// quand elle n'a encore jamais été déplacée par l'utilisateur.
-export const BULLE_TAIL_ANGLE_DEFAULT = 1.85;
+// ── Speech bubbles ─────────────────────────────────────
+// Default angle (radians, ellipse parametrization) and length of a Bubble's tail when it has
+// never been moved by the user yet.
+export const BUBBLE_TAIL_ANGLE_DEFAULT = 1.85;
 
-export const BULLE_TAIL_LEN_DEFAULT = 0.45;
+export const BUBBLE_TAIL_LEN_DEFAULT = 0.45;
 
-// Padding intérieur par défaut (ratio de o.w utilisé pour le retour à la ligne du texte), réglable
-// par l'utilisateur via le curseur de l'encart de droite.
-export const BULLE_PADDING_DEFAULT = 0.2;
+// Default inside padding (ratio of o.w used for text wrapping), adjustable by the user via
+// the right-hand panel's slider.
+export const BUBBLE_PADDING_DEFAULT = 0.2;
 
-// Police de texte par défaut d'une Bulle (parmi la liste "BD" du sélecteur de la section Texte),
-// réglable par l'utilisateur.
-export const BULLE_FONT_DEFAULT = 'Comic Neue';
+// Default text font of a Bubble (from the "comic" list in the Text section's selector),
+// adjustable by the user.
+export const BUBBLE_FONT_DEFAULT = 'Comic Neue';
 
-// Police de repli pour chaque police "BD" : si la police d'origine (chargée via Google Fonts) n'a
-// pas pu être téléchargée (pas d'accès internet), le canevas utilise quand même une police déjà
-// installée sur Windows et visuellement proche, plutôt que de retomber sur la même police générique
-// pour tous les choix. Le jour où les fichiers de police d'origine sont ajoutés en local au projet,
-// ce repli redevient inutile et la vraie police s'affiche automatiquement.
-export const BULLE_FONT_FALLBACK = {
+// Fallback font for each "comic" font: if the original font (loaded via Google Fonts)
+// couldn't be downloaded (no internet access), the canvas still uses a font already installed
+// on Windows and visually close, rather than falling back to the same generic font for every
+// choice. Once the original font files are added locally to the project, this fallback
+// becomes unnecessary and the real font displays automatically.
+export const BUBBLE_FONT_FALLBACK = {
   'Bangers': 'Impact',
   'Comic Neue': 'Comic Sans MS',
   'Permanent Marker': 'Segoe Print',
@@ -327,12 +329,12 @@ export const BULLE_FONT_FALLBACK = {
 
 
 // ── Character poses (3D joint angles) ───────────────────────────
-// ---------- PERSONNAGES EN VRAIE 3D (Three.js) ----------
-// Table des angles articulaires par pose (radians). Convention :
-// - shoulder/hip {x,z} : x = balancement avant/arrière, z = écartement latéral
-// - elbow/knee : flexion (x) du segment enfant par rapport au segment parent
-// - rootY : décalage vertical global (ex. accroupi, assis)
-// - lieFlat : la figure entière est couchée sur le dos (allongé / vaincu)
+// ---------- CHARACTERS IN TRUE 3D (Three.js) ----------
+// Table of joint angles per pose (radians). Convention:
+// - shoulder/hip {x,z}: x = forward/backward swing, z = lateral spread
+// - elbow/knee: flexion (x) of the child segment relative to the parent segment
+// - rootY: global vertical offset (e.g. crouching, sitting)
+// - lieFlat: the whole figure is lying on its back (lying down / defeated)
 export const POSE_3D = {
   debout: {
     torsoRotX: 0, headRotX: 0,
@@ -401,15 +403,15 @@ export const POSE_3D = {
   },
 };
 
-// Poignées d'articulation manipulables à la souris dans l'aperçu 3D de la modale.
-// mode 'hinge' : un seul angle (rotation.x) ; mode 'ball' : deux angles {x,z}.
+// Joint handles manipulable with the mouse in the modal's 3D preview.
+// mode 'hinge': a single angle (rotation.x); mode 'ball': two angles {x,z}.
 export const POSE_HANDLES = [
   { id: 'head', group: 'headGroup', mode: 'hinge2', fieldV: 'headRotX', fieldH: 'headRotY' },
   { id: 'torso', group: 'torsoGroup', mode: 'hinge', field: 'torsoRotX' },
   { id: 'lShoulder', group: 'lShoulder', mode: 'ball', field: 'lShoulder' },
   { id: 'rShoulder', group: 'rShoulder', mode: 'ball', field: 'rShoulder' },
-  // Coude : flexion (haut/bas, rotation.x, comme avant) + rotation gauche/droite (rotation.y)
-  // directement saisissable dans l'aperçu, sur le même principe que la tête/le poignet (hinge2).
+  // Elbow: flexion (up/down, rotation.x, as before) + left/right rotation (rotation.y)
+  // directly grabbable in the preview, on the same principle as the head/wrist (hinge2).
   { id: 'lElbow', group: 'lElbow', mode: 'hinge2', fieldV: 'lElbow', fieldH: 'lElbowRotZ' },
   { id: 'rElbow', group: 'rElbow', mode: 'hinge2', fieldV: 'rElbow', fieldH: 'rElbowRotZ' },
   { id: 'lHip', group: 'lHip', mode: 'ball', field: 'lHip' },
@@ -418,40 +420,40 @@ export const POSE_HANDLES = [
   { id: 'rKnee', group: 'rKnee', mode: 'hinge', field: 'rKnee' },
   { id: 'lWrist', group: 'lHand', mode: 'hinge2', fieldV: 'lWristRotX', fieldH: 'lWristRotY' },
   { id: 'rWrist', group: 'rHand', mode: 'hinge2', fieldV: 'rWristRotX', fieldH: 'rWristRotY' },
-  // 3e axe du poignet (rotation/torsion sur lui-même, rotation.z) — réglable via le curseur fin
-  // (pas de poignée de glissement dédiée dans l'aperçu : elle partagerait le même point d'accroche
-  // que la poignée haut/bas / gauche-droite ci-dessus).
+  // Wrist's 3rd axis (rotation/twist about itself, rotation.z) — adjustable via the fine slider
+  // (no dedicated drag handle in the preview: it would share the same anchor point as the
+  // up/down / left-right handle above).
   { id: 'lWristRoll', group: 'lHand', mode: 'hinge', field: 'lWristRotZ' },
   { id: 'rWristRoll', group: 'rHand', mode: 'hinge', field: 'rWristRotZ' },
 ];
 
 
-// ── 3D ground plane (Sol) ───────────────────────────────────────
-export const SOL_COLOR_DEFAULT_3D = 0x3C8C46; // vert par défaut
+// ── 3D ground plane ───────────────────────────────────
+export const GROUND_COLOR_DEFAULT_3D = 0x3C8C46; // default green
 
-export const SOL_Y_DEFAULT_3D = -3; // en contrebas du centre de la Case, pour que les Éléments semblent posés dessus
+export const GROUND_Y_DEFAULT_3D = -3; // below the Panel's center, so Elements appear to rest on it
 
-// Léger décalage vertical appliqué à la base d'un Élément aimanté au Sol (cf. applyGroundMagnetY), pour
-// que sa géométrie ne soit jamais EXACTEMENT coplanaire avec le maillage du Sol (solMesh3D, à
-// SOL_Y_DEFAULT_3D pile) : deux surfaces parfaitement coplanaires se battent pour le même pixel du
-// depth-buffer ("z-fighting"), et lequel des deux gagne dépend de minuscules variations d'arrondi
-// flottant qui changent avec l'angle de vue — d'où un scintillement/tremblement visible au niveau du
-// contact pied/Sol PENDANT qu'on tourne la Caméra (cf. lissage, startCamSmoothing), qui se stabilise
-// une fois l'angle figé — sur signalement utilisateur. Une valeur de cet ordre reste totalement
-// imperceptible visuellement (l'Élément reste comme "posé" sur le Sol) mais suffit à lever l'ambiguïté
-// de profondeur pour le GPU.
-export const SOL_CONTACT_EPS_3D = 0.01;
+// Small vertical offset applied to the base of an Element snapped to the Ground (cf.
+// applyGroundMagnetY), so its geometry is never EXACTLY coplanar with the Ground mesh
+// (groundMesh3D, at exactly GROUND_Y_DEFAULT_3D): two perfectly coplanar surfaces fight over
+// the same depth-buffer pixel ("z-fighting"), and which one wins depends on tiny
+// floating-point rounding variations that change with the viewing angle — hence a visible
+// flicker/jitter at the foot/Ground contact point WHILE rotating the Camera (cf. smoothing,
+// startCamSmoothing), which stabilizes once the angle is fixed — per user report. A value of
+// this order stays completely imperceptible visually (the Element still looks "resting" on
+// the Ground) but is enough to remove the depth ambiguity for the GPU.
+export const GROUND_CONTACT_EPS_3D = 0.01;
 
-export const SOL_PLANE_SIZE_3D = 12000; // très grand devant la distance de caméra (CASE_CAM_REF_DIST_3D = 12) pour paraître infini
+export const GROUND_PLANE_SIZE_3D = 12000; // very large compared to the camera distance (PANEL_CAM_REF_DIST_3D = 12) so it looks infinite
 
-// ─── Types de Sol ─────────────────────────────────────────────────────────────
-// Chaque type définit : id (clé de données), label (UI), icon (emoji swatch), couleur de l'aperçu UI,
-// et paramètres de rendu Three.js (roughness, metalness, repeat de texture).
-export const SOL_GROUND_DEFS = [
-  // dispScale en unités monde (scène : CASE_CAM_DEFAULT_DIST_3D=30, personnages ~1.75u de haut)
-  // dispBias = -dispScale*0.5 centre le déplacement autour de SOL_Y_DEFAULT_3D (appliqué dans applySolGroundType)
-  // repeat : SOL_PLANE_SIZE_3D=12000u → repeat=9600 donne tuile≈1.25u, repeat=1200 donne tuile≈10u.
-  // Les valeurs précédentes (20-160) donnaient des tuiles de 75-600u, d'où l'aspect flou observé.
+// ─── Ground types ─────────────────────────────────────────────────────────────
+// Each type defines: id (data key), label (UI), icon (emoji swatch), UI preview color,
+// and Three.js rendering parameters (roughness, metalness, texture repeat).
+export const GROUND_TYPE_DEFS = [
+  // dispScale in world units (scene: PANEL_CAM_DEFAULT_DIST_3D=30, characters ~1.75u tall)
+  // dispBias = -dispScale*0.5 centers the displacement around GROUND_Y_DEFAULT_3D (applied in applyGroundType)
+  // repeat: GROUND_PLANE_SIZE_3D=12000u → repeat=9600 gives a tile≈1.25u, repeat=1200 gives a tile≈10u.
+  // The previous values (20-160) gave 75-600u tiles, hence the blurry look that was observed.
   { id: 'neutre',    label: 'Neutre',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1,    dispScale: 0    },
   { id: 'herbe',     label: 'Herbe',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600, dispScale: 2.5  },
   { id: 'gazon',     label: 'Gazon',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200, dispScale: 0.5  },
@@ -472,17 +474,17 @@ export const SOL_GROUND_DEFS = [
 // ── 3D preview canvas sizes ─────────────────────────────────────
 export const PERSONA_3D_W = 200, PERSONA_3D_H = 320;
 
-// Les objets (voiture, vélo, ...) sont bien plus larges que hauts, contrairement aux personnages :
-// un second format de rendu (paysage) leur est dédié pour éviter qu'ils soient étirés/déformés
-// quand le canvas (portrait, pensé pour les personnages) est ensuite redessiné dans leur boîte.
+// Objects (car, bike, ...) are much wider than tall, unlike characters: a second rendering
+// format (landscape) is dedicated to them to avoid them being stretched/distorted when the
+// canvas (portrait, designed for characters) is then redrawn into their box.
 export const OBJECT_3D_W = 260, OBJECT_3D_H = 175;
 
 
 // ── Animal rig types & joint definitions ────────────────────────
-// ─── Système d'articulations animaux ─────────────────────────────────────────
+// ─── Animal joint system ─────────────────────────────────────────
 export const ANIMAL_TYPES = ['oiseau', 'lezard', 'loup', 'griffon', 'singe'];
 
-// Définition des sliders par animal : { group, joints:[{ id, label, axis, min, max }] }
+// Slider definitions per animal: { group, joints:[{ id, label, axis, min, max }] }
 export const ANIMAL_JOINT_DEFS = {
   oiseau: [
     { group: 'Tête',         joints: [{ id:'head',  label:'Tête',   axis:'x', min:-0.8, max:0.8 }] },
@@ -603,25 +605,25 @@ export const ANIMAL_JOINT_DEFS = {
 
 
 // ── 3D wall geometry ────────────────────────────────────────────
-// Unité 3D par pixel de boîte 2D, pour les Murs : convertit la longueur/hauteur (en px, cf. champs de
-// la modale) en dimensions réelles du rig 3D (cf. buildWallRig3D/buildCornerWallRig3D), pour que le
-// Mur soit réellement modélisé plus long/haut, pas seulement encadré différemment. Une première
-// tentative avait paru déformer le rendu, mais la vraie cause était que le rendu/caméra utilisait un
-// format FIXE (cf. ex-useObjectFormat3D) pendant que la boîte 2D de destination changeait de
-// proportions : le drawImage final étirait alors le rendu de façon non uniforme. Depuis que
-// useObjectBoxFormat3D() aligne systématiquement l'aspect du rendu sur celui de la boîte 2D (pour
-// tout objet, Murs et Parois compris), ce drawImage ne fait plus qu'une mise à l'échelle uniforme,
-// donc faire varier la géométrie réelle du Mur en parallèle est désormais sûr.
+// 3D unit per 2D-box pixel, for Walls: converts the length/height (in px, cf. modal fields)
+// into real dimensions of the 3D rig (cf. buildWallRig3D/buildCornerWallRig3D), so the Wall is
+// actually modeled longer/taller, not just framed differently. A first attempt seemed to
+// distort the rendering, but the real cause was that the render/camera used a FIXED format
+// (cf. former useObjectFormat3D) while the destination 2D box changed proportions: the final
+// drawImage then stretched the rendering non-uniformly. Since useObjectBoxFormat3D()
+// systematically aligns the rendering's aspect ratio with the 2D box's (for any object,
+// including Walls and WallOpenings), this drawImage now only does a uniform scale, so varying
+// the Wall's real geometry in parallel is now safe.
 export const WALL_PX_PER_UNIT_3D = 40;
 
-// ---------- Rendu combiné Mur + Parois aimantées (scène 3D partagée, Phase 1) ----------
-// Tailles de conception (largeur/hauteur, en unités 3D du rig) des 4 types d'Éléments de Parois
-// pouvant s'aimanter à un Mur — nécessaires pour les mettre à l'échelle de façon cohérente avec la
-// hauteur du Mur hôte (cf. getWallRenderEntry3D), puisqu'on les insère désormais comme de VRAIS
-// enfants Three.js du maillage du Mur plutôt que de les rendre/cadrer indépendamment (cf. en-tête
-// du fichier sur la limite de l'ancien système : deux rendus indépendants, chacun avec sa propre
-// marge de cadrage, ne pouvaient qu'approcher l'alignement sans jamais l'éliminer). Calculées à
-// partir des dimensions effectivement utilisées par chaque builder (chambranle/cadre compris).
+// ---------- Combined rendering of a Wall + its snapped WallOpenings (shared 3D scene, Phase 1) ----------
+// Design sizes (width/height, in the rig's 3D units) of the 4 WallOpening Element types that
+// can snap to a Wall — needed to scale them consistently with the host Wall's height (cf.
+// ensureWallRenderEntry3D), since they're now inserted as REAL Three.js children of the
+// Wall's mesh rather than being rendered/framed independently (cf. the file header on the old
+// system's limitation: two independent renders, each with its own framing margin, could only
+// approximate alignment without ever eliminating it). Computed from the dimensions actually
+// used by each builder (including frame/casing).
 export const CHILD_DESIGN_SIZE_3D = {
   porte_ouverte: { w: 0.9 + 0.07 * 2, h: 2.0 + 0.07 },
   fenetre_ouverte: { w: 1.0, h: 1.1 },
@@ -631,28 +633,28 @@ export const CHILD_DESIGN_SIZE_3D = {
 
 
 // ── Camera animation smoothing ──────────────────────────────────
-// Lissage des mouvements de la caméra en Mode Caméra (rotation cliquer-glisser, translation aux
-// flèches, zoom à la molette) : les gestionnaires d'entrée ne fixent plus directement camRotX/Y,
-// camPanX/Y, camDist (lues par caseCamBasis3D/frameCaseCameraToPanel3D) mais leurs "cibles"
-// (suffixe Target) ; cette boucle requestAnimationFrame fait converger en douceur les valeurs
-// réelles vers ces cibles (interpolation exponentielle) jusqu'à ce qu'elles soient quasi confondues,
-// ce qui donne un mouvement progressif (léger temps de réponse/inertie) plutôt qu'un suivi 1:1 brut.
+// Smoothing of camera movements in Camera Mode (click-drag rotation, arrow-key translation,
+// scroll-wheel zoom): input handlers no longer set camRotX/Y, camPanX/Y, camDist (read by
+// panelCamBasis3D/framePanelCamera3D) directly, but their "targets" (Target suffix); this
+// requestAnimationFrame loop smoothly converges the real values towards these targets
+// (exponential interpolation) until they're nearly identical, giving a progressive movement
+// (slight response lag/inertia) rather than a raw 1:1 follow.
 export const CAM_SMOOTH_FACTOR = 0.22;
 
-// Lissage plus lent/doux pour les TRANSLATIONS (camPanX/camPanY, flèches directionnelles) que pour la
-// rotation/le zoom : un facteur plus petit parcourt une fraction plus faible de l'écart restant à
-// chaque frame, donc un travelling plus progressif (sur demande utilisateur, la rotation/zoom à
-// CAM_SMOOTH_FACTOR restaient satisfaisants, seules les translations semblaient encore trop abruptes).
+// Slower/softer smoothing for TRANSLATIONS (camPanX/camPanY, directional arrows) than for
+// rotation/zoom: a smaller factor covers a smaller fraction of the remaining gap each frame,
+// giving a more gradual travel (on user request, rotation/zoom at CAM_SMOOTH_FACTOR were
+// satisfactory, only translations still felt too abrupt).
 export const CAM_SMOOTH_FACTOR_PAN = 0.10;
 
 export const CAM_SMOOTH_EPS = 0.0008;
 
 
 // ── Scene rendering ─────────────────────────────────────────────
-// Plafonne la résolution de rendu d'une Case (en px) pour rester performant même sur de grandes
-// Planches : le ratio largeur/hauteur réel (celui de la PLANCHE désormais, cf. frameCaseCameraToPanel3D)
-// est conservé, seule l'échelle de rendu est réduite au besoin.
-export const CASE_SCENE_RENDER_MAX_PX = 1400;
+// Caps a Panel's rendering resolution (in px) to stay performant even on large Pages: the
+// real width/height ratio (now the PAGE's, cf. framePanelCamera3D) is preserved, only the
+// rendering scale is reduced as needed.
+export const PANEL_SCENE_RENDER_MAX_PX = 1400;
 
 
 // ── Modal preview dimensions ────────────────────────────────────
@@ -660,19 +662,19 @@ export const PERSONA_PREVIEW_BASE_W = 180, PERSONA_PREVIEW_BASE_H = 260;
 
 export const OBJECT_PREVIEW_BASE_W = 240, OBJECT_PREVIEW_BASE_H = 161;
 
-export const PIECE_PREVIEW_BASE_W  = 240, PIECE_PREVIEW_BASE_H  = 161;
+export const ROOM_PREVIEW_BASE_W  = 240, ROOM_PREVIEW_BASE_H  = 161;
 
 export const PREVIEW_OBJECT_ID = '__objectEditPreview__';
 
-// Aperçu 3D de la modale d'édition : ne duplique pas le pipeline de rendu, réutilise directement
-// celui de la planche (scène/caméra/renderer partagés, déjà éprouvé) via un objet "persona" temporaire.
+// 3D preview of the edit modal: doesn't duplicate the rendering pipeline, reuses the Page's
+// directly (shared, already-proven scene/camera/renderer) via a temporary "persona" object.
 export const PREVIEW_PERSONA_ID = '__personaEditPreview__';
 
 
 // ── Persona editor — joint segments & labels ────────────────────
-// Décrit, pour chaque articulation, le segment visuel du membre qu'elle commande :
-// soit jusqu'à l'articulation enfant ("toGroup"), soit jusqu'à une extrémité (main/pied/tête)
-// calculée comme un point local décalé depuis l'articulation ("toLocal").
+// Describes, for each joint, the visual limb segment it controls: either up to the child
+// joint ("toGroup"), or up to an extremity (hand/foot/head) computed as a local point offset
+// from the joint ("toLocal").
 export const LIMB_SEGMENTS = [
   { id: 'torso', toGroup: 'headGroup' },
   { id: 'head', toLocal: [0, 0.38, 0] },
@@ -688,7 +690,7 @@ export const LIMB_SEGMENTS = [
   { id: 'rWrist', toLocal: [0, -0.12, 0] },
 ];
 
-// ---------- CURSEURS NUMÉRIQUES PAR ARTICULATION (alternative précise au glissement) ----------
+// ---------- NUMERIC SLIDERS PER JOINT (precise alternative to dragging) ----------
 export const JOINT_LABELS = {
   head: 'Tête', torso: 'Torse',
   lShoulder: 'Épaule gauche', rShoulder: 'Épaule droite',
@@ -699,8 +701,8 @@ export const JOINT_LABELS = {
   lWristRoll: 'Poignet gauche (torsion)', rWristRoll: 'Poignet droit (torsion)',
 };
 
-// Regroupement des articulations par zone du corps, pour replier la liste dans des
-// menus déroulants plutôt que d'afficher tous les curseurs à plat.
+// Grouping of joints by body area, to collapse the list into dropdown
+// menus rather than showing every slider flat.
 export const JOINT_GROUPS = [
   { key: 'tete', label: 'Tête', ids: ['head'] },
   { key: 'torse', label: 'Torse', ids: ['torso'] },

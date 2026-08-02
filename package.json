@@ -25,6 +25,7 @@
       "preload.js",
       "index.html",
       "package.json",
+      "src/**/*",
       "node_modules/three/build/three.min.js"
     ],
     "win": {

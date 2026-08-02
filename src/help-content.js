@@ -140,5 +140,5 @@ export const HELP_MANUAL_FR = [
 // Précharge les polices "BD" du sélecteur de la Bulle dès le démarrage : sans ça, le canevas peut
 // continuer à afficher la police de repli (sans-serif) tant que le navigateur n'a pas effectivement
 // chargé la police choisie, même après avoir changé la valeur du sélecteur.
-export const BULLE_FONT_PRELOAD_LIST = ['Bangers', 'Comic Neue', 'Permanent Marker', 'Luckiest Guy', 'Anton', 'Patrick Hand', 'Caveat', 'Fredoka', 'Bubblegum Sans', 'Kalam'];
+export const BUBBLE_FONT_PRELOAD_LIST = ['Bangers', 'Comic Neue', 'Permanent Marker', 'Luckiest Guy', 'Anton', 'Patrick Hand', 'Caveat', 'Fredoka', 'Bubblegum Sans', 'Kalam'];
 
