@@ -4,7 +4,7 @@
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
-> Application de bureau Windows, construite avec Electron + Three.js. Entièrement autonome : un seul fichier `index.html` contient toute l'application.
+> Application de bureau Windows, construite avec Electron + Three.js.
 
 ---
 
@@ -21,10 +21,6 @@
 - Rendu 3D temps réel via **Three.js** (r128)
 - Caméra libre : rotation (glisser), panoramique (clic milieu + glisser ou Ctrl+glisser), zoom vers le curseur — sans restriction de hauteur ; centre d'orbite stable pendant la rotation ; sensibilité proportionnelle à la distance et à l'inclinaison (le lacet ralentit en plongée/contre-plongée — comme Blender/Maya) ; pitch limité à ±85° pour éviter le basculement de la scène
 - Vue de dessus intégrée pour le placement des éléments
-- **Taille réelle** : les Personnages mesurent 1,75 m, les Objets sont aux proportions réelles — cohérent entre toutes les Cases
-- **Recadrage automatique** : au chargement d'une Scène, la caméra recule pour englober l'ensemble du décor ; molette en mode Caméra pour zoomer sur un détail
-- **Non destructif** : charger une Scène copie son contenu dans la Case — modifier la Scène source n'affecte pas les Cases qui l'ont déjà intégrée
-- **Migration automatique** : les projets créés avec une version antérieure sont silencieusement mis à jour au modèle d'échelle actuel au chargement — aucune action requise
 
 ### Éléments disponibles
 - 👤 **Personnages** avec poses, émotions, orientation et articulations
@@ -35,13 +31,6 @@
 - 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
-
-### Interface
-- Menu contextuel riche (clic droit)
-- Panneau droit contextuel (Case, Bulle, Planche) avec sections collapsables
-- État de collapse sauvegardé par entité (indépendant Case par Case)
-- Thème clair / sombre
-- Interface bilingue 🇫🇷 / 🇬🇧
 
 ### Projet & sauvegarde
 - Format de projet **JSON** — lisible et versionnable
@@ -70,16 +59,40 @@ npm run dist
 ```
 L'installeur apparaît dans le dossier `dist/`. Il crée des raccourcis Bureau et Menu Démarrer.
 
+### Lancer les tests unitaires
+```bash
+npm test
+```
+Exécute la suite de tests unitaires (test runner natif de Node, `tests/*.test.mjs`), qui couvre la
+logique pure de la Caméra 3D de Case et de l'outil Build (construction de Pièces/Bâtiments),
+indépendamment d'Electron.
+
 ---
 
 ## 🗂️ Structure du projet
 
 ```
 storyboarder-bd/
-├── index.html      # L'application complète (HTML + CSS + JS)
-├── main.js         # Processus principal Electron (fenêtre, fichiers, IPC)
-├── preload.js      # Bridge contextIsolation Electron
-├── package.json    # Config Electron + electron-builder
+├── index.html         # Squelette HTML : structure de page, modales, menus contextuels
+├── style.css          # Tous les styles de l'application
+├── main.js            # Processus principal Electron (fenêtre, fichiers, IPC)
+├── preload.js         # Bridge contextIsolation Electron
+├── src/                # Logique applicative (modules ES)
+│   ├── app.js          # Point d'entrée (importe simplement events.js)
+│   ├── state.js        # État partagé + fonctions utilitaires Tome/Planche/Case
+│   ├── constants.js    # Données statiques : formats, styles, poses, valeurs 3D par défaut…
+│   ├── utils.js        # Fonctions utilitaires pures (maths, géométrie, lookups)
+│   ├── i18n.js         # Chaînes de traduction FR/EN + moteur d'i18n
+│   ├── io.js           # Sérialisation du projet, sauvegarde/chargement, migrations
+│   ├── draw.js         # Rendu 2D sur canvas (Cases, Éléments, aperçus)
+│   ├── sidebar.js      # Rendu du panneau droit (Case/Bulle/Planche/Caméra)
+│   ├── modals.js       # Modales (Personnage, Objet, Pièce, Bâtiment…)
+│   ├── scene3d.js      # Caméra 3D + rendu de la scène combinée (Three.js)
+│   ├── rig3d.js        # Construction des rigs 3D (personnages, objets, animaux…)
+│   ├── help-content.js # Contenu du manuel d'utilisation intégré
+│   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
+├── tests/              # Tests unitaires (test runner natif de Node)
+├── package.json        # Config Electron + electron-builder
 └── LICENSE
 ```
 
@@ -93,7 +106,7 @@ storyboarder-bd/
 | [Three.js r128](https://threejs.org/) | Rendu 3D des scènes |
 | HTML / CSS / JS vanilla | Interface utilisateur complète |
 
-Pas de framework front-end. Pas de bundler. Tout tient dans `index.html`.
+Pas de framework front-end. Pas de bundler.
 
 ---
 

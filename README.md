@@ -4,7 +4,7 @@
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
-> Standalone Windows desktop app built with Electron + Three.js. The entire application lives in a single `index.html` file.
+> Standalone Windows desktop app built with Electron + Three.js.
 
 ---
 
@@ -21,10 +21,6 @@
 - Real-time 3D rendering via **Three.js** (r128)
 - Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor — no height restrictions; orbit center stays anchored during rotation; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control — like Blender/Maya); pitch clamped to ±85° to avoid scene flip
 - Integrated top-down view for element placement
-- **Real-world scale**: characters at 1.75 m, objects at proportional sizes — consistent across all panels
-- **Automatic camera fit**: loading a scene into a panel zooms the camera out to frame the entire scene; use the scroll wheel (Camera mode) to zoom in on details
-- **Non-destructive**: loading a scene copies its content into the panel — modifying the source scene later has no effect on panels that already loaded it
-- **Automatic migration**: projects saved with an older version are silently upgraded to the current scale model on load — no manual action required
 
 ### Available elements
 - 👤 **Characters** with poses, emotions, orientation and joint articulation
@@ -35,13 +31,6 @@
 - 🏠 **Buildings** with rooms, walls, doors and windows
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
-
-### Interface
-- Rich right-click context menu
-- Contextual right panel (Panel, Bubble, Page) with collapsible sections
-- Collapse state saved independently per entity
-- Light / dark theme
-- Bilingual UI 🇫🇷 / 🇬🇧
 
 ### Project & saving
 - **JSON** project format — human-readable and versionable
@@ -70,16 +59,39 @@ npm run dist
 ```
 The installer appears in the `dist/` folder and creates Desktop and Start Menu shortcuts automatically.
 
+### Run the unit tests
+```bash
+npm test
+```
+Runs the unit test suite (Node's built-in test runner, `tests/*.test.mjs`) covering the pure logic
+of the 3D Case Camera and the Build tool (room/building construction), independently of Electron.
+
 ---
 
 ## 🗂️ Project structure
 
 ```
 storyboarder-bd/
-├── index.html      # The entire application (HTML + CSS + JS)
-├── main.js         # Electron main process (window, file dialogs, IPC)
-├── preload.js      # Electron contextIsolation bridge
-├── package.json    # Electron + electron-builder config
+├── index.html         # HTML shell: page structure, modals, context menus
+├── style.css          # All application styles
+├── main.js            # Electron main process (window, file dialogs, IPC)
+├── preload.js         # Electron contextIsolation bridge
+├── src/                # Application logic (ES modules)
+│   ├── app.js          # Entry point (just imports events.js)
+│   ├── state.js        # Shared app state + Volume/Page/Panel helpers
+│   ├── constants.js    # Static data: formats, styles, poses, 3D defaults…
+│   ├── utils.js        # Pure utility functions (math, geometry, lookups)
+│   ├── i18n.js         # FR/EN translation strings + engine
+│   ├── io.js           # Project serialization, save/load, migrations
+│   ├── draw.js         # 2D canvas rendering (panels, elements, previews)
+│   ├── sidebar.js      # Right-hand panel rendering (Panel/Bubble/Page/Camera)
+│   ├── modals.js       # Modal dialogs (Character, Object, Room, Building…)
+│   ├── scene3d.js      # 3D camera + combined scene rendering (Three.js)
+│   ├── rig3d.js        # 3D rig construction (characters, objects, animals…)
+│   ├── help-content.js # Built-in user manual content
+│   └── events.js       # Event wiring + remaining business logic (real entry point)
+├── tests/              # Unit tests (Node's built-in test runner)
+├── package.json        # Electron + electron-builder config
 └── LICENSE
 ```
 
@@ -92,8 +104,6 @@ storyboarder-bd/
 | [Electron](https://www.electronjs.org/) | Cross-platform desktop app |
 | [Three.js r128](https://threejs.org/) | 3D scene rendering |
 | Vanilla HTML / CSS / JS | Full UI — no framework, no bundler |
-
-Everything fits in `index.html`.
 
 ---
 
