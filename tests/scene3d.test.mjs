@@ -36,6 +36,13 @@ import {
   tracéPointAtFrac3D,
   tracéWallHostOf3D,
   wallOpeningWorldPosOnTracé3D,
+  tracéOpeningSize3D,
+  tracéWallThickness3D,
+  tracéOpeningRigScale3D,
+  tracéOpeningFlushOffset3D,
+  tracéFrameAtFrac3D,
+  buildOpeningRevealGroup3D,
+  tracéOpeningHole3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -792,16 +799,38 @@ describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur u
   });
 
   test('la hauteur suit wallYFrac × hauteur du muret, depuis le Sol', () => {
-    const bas  = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 0),   pageOf(muretL, porteAt(0.5, 0)));
-    const haut = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1),   pageOf(muretL, porteAt(0.5, 1)));
+    // childHUnits explicitement 0 : la fraction couvre toute la hauteur du muret.
+    const bas  = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 0), pageOf(muretL, porteAt(0.5, 0)), 0);
+    const haut = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(muretL, porteAt(0.5, 1)), 0);
     assertClose(bas.y,  GROUND_Y_DEFAULT_3D,     'yFrac 0 → au Sol');
     assertClose(haut.y, GROUND_Y_DEFAULT_3D + 2, 'yFrac 1 → sommet du muret (wallHeight 2)');
   });
 
   test('hauteur par défaut du type quand le muret n\'en définit pas (muret → 0.5)', () => {
     const sansH = { ...muretL, wallHeight: undefined };
-    const p = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(sansH, porteAt(0.5, 1)));
+    const p = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(sansH, porteAt(0.5, 1)), 0);
     assertClose(p.y, GROUND_Y_DEFAULT_3D + 0.5, 'valeur par défaut TRACÉ_DEFAULTS.muret');
+  });
+
+  // Fix 31 — childHUnits omis : la valeur par défaut est la hauteur RÉELLE de la Parois (o.h),
+  // celle-là même avec laquelle le trou est découpé. Avant, l'omission valait 0, donc la caméra et
+  // le trou n'utilisaient pas la même travée que le rig et se décalaient verticalement.
+  test('childHUnits omis → travée réduite de la hauteur propre de la Parois (o.h)', () => {
+    const porte = { ...porteAt(0.5, 1), h: 40 }; // 40 px / WALL_PX_PER_UNIT_3D = 1 unité
+    const p = wallOpeningWorldPosOnTracé3D(porte, pageOf(muretL, porte));
+    assertClose(p.spanY, 1, 'travée = wallHeight 2 − hauteur 1');
+    assertClose(p.y, GROUND_Y_DEFAULT_3D + 1, 'yFrac 1 → sommet de la Parois affleurant le muret');
+  });
+
+  test('childHUnits omis, sans o.h : retombe sur la taille par défaut (0.5)', () => {
+    const p = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(muretL, porteAt(0.5, 1)));
+    assertClose(p.spanY, 1.5, 'travée = wallHeight 2 − défaut 0.5');
+  });
+
+  test('Parois plus haute que son muret : travée plancher à 0.01, jamais négative', () => {
+    const porte = { ...porteAt(0.5, 1), h: 400 }; // 10 unités contre un muret de 2
+    const p = wallOpeningWorldPosOnTracé3D(porte, pageOf(muretL, porte));
+    assertClose(p.spanY, 0.01, 'plancher');
   });
 
   test('la tangente suit la direction locale du chemin (elle tourne dans le L)', () => {
@@ -833,5 +862,219 @@ describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur u
     assert.equal(wallOpeningWorldPosOnTracé3D(p, pageOf({ ...muretL, world: { pts: [{ x: 1, z: 1 }] } }, p)), null,
       'un seul point : pas de chemin');
     assert.equal(wallOpeningWorldPosOnTracé3D(p, pageOf({ id: 'm1', type: 'objet3d', objType: 'mur' }, p)), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 31 — rendu d'une Parois sur un Tracé mur : taille du trou = taille du rig,
+// pose plaquée sur une face, et tableau (jambages/linteau/appui) autour de l'ouverture.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('tracéOpeningSize3D — taille monde d\'une Parois sur un Tracé (Fix 31)', () => {
+  test('convertit o.w/o.h en unités monde via WALL_PX_PER_UNIT_3D', () => {
+    const s = tracéOpeningSize3D({ w: 80, h: 44 });
+    assertClose(s.w, 80 / WALL_PX_PER_UNIT_3D, 'largeur');
+    assertClose(s.h, 44 / WALL_PX_PER_UNIT_3D, 'hauteur');
+  });
+
+  test('retombe sur 0.5 quand la dimension est absente ou nulle', () => {
+    assert.deepEqual(tracéOpeningSize3D({}), { w: 0.5, h: 0.5 });
+    assert.deepEqual(tracéOpeningSize3D({ w: 0, h: 0 }), { w: 0.5, h: 0.5 });
+  });
+});
+
+describe('tracéWallThickness3D — épaisseur du Tracé mur (Fix 31)', () => {
+  test('suit le ratio du type appliqué à wallHeight', () => {
+    assertClose(tracéWallThickness3D({ tracéType: 'muret', wallHeight: 2 }), 2 * 0.36, 'muret');
+    assertClose(tracéWallThickness3D({ tracéType: 'haie', wallHeight: 2 }), 2 * 0.611, 'haie');
+  });
+
+  test('utilise la hauteur par défaut du type quand wallHeight est absent', () => {
+    assertClose(tracéWallThickness3D({ tracéType: 'muret' }), 0.50 * 0.36, 'défaut muret');
+    assertClose(tracéWallThickness3D({ tracéType: 'barriere' }), 0.55 * (0.55 * 0.529), 'défaut barrière');
+  });
+
+  test('la Barrière prend la partie HAUTE (étroite), pas la base évasée', () => {
+    // Sinon la Parois, plaquée sur une base de 0.545 d'épaisseur, flotterait devant
+    // la partie supérieure, bien plus fine (topH × 0.529).
+    const b = { tracéType: 'barriere', wallHeight: 0.55 };
+    const baseH = 0.55 * 0.45, topH = 0.55 - baseH;
+    assert.ok(tracéWallThickness3D(b) < baseH * 1.212, 'plus fin que la base');
+    assertClose(tracéWallThickness3D(b), topH * 0.529, 'égal à la partie haute', 1e-6);
+  });
+
+  test('hôte absent → 0 (pas de décalage de plaquage)', () => {
+    assert.equal(tracéWallThickness3D(null), 0);
+  });
+});
+
+describe('tracéOpeningRigScale3D — échelle NON uniforme du rig (Fix 31)', () => {
+  test('largeur et hauteur suivent indépendamment la taille demandée', () => {
+    // fenetre_ouverte : design 1.0 × 1.1
+    const sc = tracéOpeningRigScale3D('fenetre_ouverte', 2.0, 0.55);
+    assertClose(sc.sx, 2.0, 'sx = 2.0 / 1.0');
+    assertClose(sc.sy, 0.5, 'sy = 0.55 / 1.1');
+  });
+
+  test('RÉGRESSION : sx ≠ sy — l\'échelle uniforme de placeRigCentered3D ignorait o.w', () => {
+    // C'est la cause du symptôme « la Fenêtre a l\'air enfoncée » : elle était mise à
+    // l\'échelle sur sa seule hauteur, donc jamais aussi large que le trou découpé pour elle.
+    const sc = tracéOpeningRigScale3D('fenetre_ouverte', 2.0, 0.55);
+    assert.ok(Math.abs(sc.sx - sc.sy) > 1e-6, 'les deux axes doivent pouvoir diverger');
+  });
+
+  test('sz suit sy, comme pour une Parois portée par un vrai Mur', () => {
+    const sc = tracéOpeningRigScale3D('porte_ouverte', 1.5, 2.5);
+    assertClose(sc.sz, sc.sy, 'profondeur indexée sur la hauteur');
+  });
+
+  test('type inconnu → design de repli 1 × 1.5, sans division par zéro', () => {
+    const sc = tracéOpeningRigScale3D('type_inexistant', 3, 3);
+    assertClose(sc.sx, 3, 'sx');
+    assertClose(sc.sy, 2, 'sy');
+    assert.ok(Number.isFinite(tracéOpeningRigScale3D('fenetre_ouverte', 1, 1).sx));
+  });
+});
+
+describe('tracéOpeningFlushOffset3D — plaquage sur une face (Fix 31)', () => {
+  test('décale d\'une demi-épaisseur moins une demi-profondeur de rig', () => {
+    assertClose(tracéOpeningFlushOffset3D(0.72, 0.20), 0.26, 'face avant');
+  });
+
+  test('wallSide arrière inverse le côté', () => {
+    assertClose(tracéOpeningFlushOffset3D(0.72, 0.20, 'arriere'), -0.26, 'face arrière');
+    assertClose(tracéOpeningFlushOffset3D(0.72, 0.20, 'avant'), 0.26, 'face avant explicite');
+  });
+
+  test('Parois plus épaisse que le mur → 0, elle reste centrée', () => {
+    assertClose(tracéOpeningFlushOffset3D(0.2, 0.9), 0, 'jamais poussée hors du mur');
+    assertClose(tracéOpeningFlushOffset3D(0.2, 0.9, 'arriere'), 0, 'idem côté arrière');
+  });
+
+  test('épaisseur ou profondeur manquante : pas de NaN', () => {
+    assert.ok(Number.isFinite(tracéOpeningFlushOffset3D(undefined, undefined)));
+    assertClose(tracéOpeningFlushOffset3D(0.4, undefined), 0.2, 'profondeur nulle');
+  });
+});
+
+describe('tracéFrameAtFrac3D — point + tangente unitaire sur un Tracé (Fix 31)', () => {
+  const L = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: -10 }];
+
+  test('la tangente est unitaire et suit la direction locale', () => {
+    const a = tracéFrameAtFrac3D(L, 0.1);
+    assertClose(Math.hypot(a.tx, a.tz), 1, 'norme');
+    assertClose(a.tx, 1, 'première branche : tx', 1e-6);
+    assertClose(a.tz, 0, 'première branche : tz', 1e-6);
+    const b = tracéFrameAtFrac3D(L, 0.9);
+    assertClose(b.tx, 0, 'deuxième branche : tx', 1e-6);
+    assertClose(b.tz, -1, 'deuxième branche : tz', 1e-6);
+  });
+
+  test('le point coïncide avec tracéPointAtFrac3D (une seule marche sur le chemin)', () => {
+    for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+      const p = tracéPointAtFrac3D(L, f), q = tracéFrameAtFrac3D(L, f);
+      assertClose(q.x, p.x, `x @${f}`); assertClose(q.z, p.z, `z @${f}`);
+    }
+  });
+
+  test('frac 1 reste défini : l\'échantillonnage recule avant le bout du chemin', () => {
+    const e = tracéFrameAtFrac3D(L, 1);
+    assert.ok(e && Math.abs(Math.hypot(e.tx, e.tz) - 1) < 1e-6, 'tangente encore utilisable en fin');
+  });
+
+  test('chemin dégénéré (points superposés) → null plutôt qu\'une direction inventée', () => {
+    assert.equal(tracéFrameAtFrac3D([{ x: 3, z: 3 }, { x: 3, z: 3 }], 0.5), null);
+    assert.equal(tracéFrameAtFrac3D([], 0.5), null);
+  });
+});
+
+describe('buildOpeningRevealGroup3D — tableau autour de l\'ouverture (Fix 31)', () => {
+  const at = { x: 4, z: -2, tx: 1, tz: 0 };
+  const hole = { cW: 1, cH: 0.6, yMin: -2.5, yMax: -1.9, at };
+
+  test('jambages + linteau + appui quand l\'ouverture ne touche ni le sol ni le sommet', () => {
+    const g = buildOpeningRevealGroup3D(hole, 0.72, '#606060', -3, -1);
+    assert.equal(g.children.length, 4, '2 jambages + linteau + appui');
+  });
+
+  test('pas de linteau flottant au-dessus de la crête du muret', () => {
+    const g = buildOpeningRevealGroup3D({ ...hole, yMax: -1.0 }, 0.72, '#606060', -3, -1);
+    assert.equal(g.children.length, 3, 'linteau supprimé');
+  });
+
+  test('pas d\'appui enterré quand l\'ouverture part du sol', () => {
+    const g = buildOpeningRevealGroup3D({ ...hole, yMin: -3 }, 0.72, '#606060', -3, -1);
+    assert.equal(g.children.length, 3, 'appui supprimé');
+  });
+
+  test('posé au point du trou et orienté sur la tangente (même convention que le rig)', () => {
+    const g = buildOpeningRevealGroup3D(hole, 0.72, '#606060', -3, -1);
+    assertClose(g.position.x, 4, 'x'); assertClose(g.position.z, -2, 'z');
+    assertClose(g.rotation.y, Math.atan2(-at.tz, at.tx), 'lacet');
+    const tourne = buildOpeningRevealGroup3D({ ...hole, at: { x: 0, z: 0, tx: 0, tz: -1 } }, 0.72, '#606060', -3, -1);
+    assertClose(tourne.rotation.y, Math.atan2(1, 0), 'lacet sur la branche en -z');
+  });
+
+  test('plus profond que le mur : le relief déborde des DEUX faces', () => {
+    const g = buildOpeningRevealGroup3D(hole, 0.72, '#606060', -3, -1);
+    const d = g.children[0].geometry.parameters.depth;
+    assert.ok(d > 0.72, `profondeur ${d} > épaisseur du mur 0.72`);
+  });
+
+  test('descripteur inutilisable → null, jamais un groupe vide dans la scène', () => {
+    assert.equal(buildOpeningRevealGroup3D(null, 0.72, '#606060'), null);
+    assert.equal(buildOpeningRevealGroup3D({ ...hole, at: null }, 0.72, '#606060'), null);
+    assert.equal(buildOpeningRevealGroup3D({ ...hole, cW: 0 }, 0.72, '#606060'), null);
+    assert.equal(buildOpeningRevealGroup3D(hole, 0, '#606060'), null, 'mur sans épaisseur');
+  });
+});
+
+describe('tracéOpeningHole3D — trou découpé dans le Tracé mur (Fix 31)', () => {
+  const droit = [{ x: 0, z: 0 }, { x: 20, z: 0 }];
+  const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 2,
+                  world: { pts: droit } };
+  // 40 px = 1 unité monde ; travée verticale = 2 − 1 = 1.
+  const fenetre = { id: 'f1', type: 'objet3d', objType: 'fenetre_ouverte', magnetWallId: 'm1',
+                    w: 60, h: 40, wallAlongFrac: 0.25, wallYFrac: 0.5 };
+
+  test('le trou est centré sur wallAlongFrac et large de o.w', () => {
+    const h = tracéOpeningHole3D(fenetre, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose((h.arcStart + h.arcEnd) / 2, 5, 'centre = 0.25 × 20');
+    assertClose(h.arcEnd - h.arcStart, 1.5, 'largeur = 60 / 40');
+  });
+
+  test('la bande verticale fait exactement la hauteur de la Parois', () => {
+    const h = tracéOpeningHole3D(fenetre, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose(h.yMax - h.yMin, 1, 'hauteur = 40 / 40');
+  });
+
+  // LE test de non-régression du Fix 31 : c'est cette divergence qui faisait grimper le trou
+  // plus vite que la Fenêtre dès qu'on la montait le long du muret.
+  test('RÉGRESSION : le bas du trou suit la MÊME travée que la pose du rig', () => {
+    for (const yFrac of [0, 0.25, 0.5, 0.75, 1]) {
+      const f = { ...fenetre, wallYFrac: yFrac };
+      const page = { w: 800, h: 600, objects: [muret, f] };
+      const pos = wallOpeningWorldPosOnTracé3D(f, page);
+      const h = tracéOpeningHole3D(f, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+      assertClose(h.yMin, pos.y, `bas du trou = base du rig @yFrac ${yFrac}`, 1e-9);
+    }
+  });
+
+  test('yFrac 1 : le HAUT du trou affleure la crête du muret, il ne la dépasse pas', () => {
+    const h = tracéOpeningHole3D({ ...fenetre, wallYFrac: 1 }, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose(h.yMax, GROUND_Y_DEFAULT_3D + 2, 'sommet affleurant');
+  });
+
+  test('wallAlongFrac est bornée à [0, 1] et vaut 0.5 par défaut', () => {
+    const hors = tracéOpeningHole3D({ ...fenetre, wallAlongFrac: 4 }, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose((hors.arcStart + hors.arcEnd) / 2, 20, 'bornée à la fin du chemin');
+    const sans = tracéOpeningHole3D({ ...fenetre, wallAlongFrac: undefined }, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose((sans.arcStart + sans.arcEnd) / 2, 10, 'milieu par défaut');
+  });
+
+  test('expose le point + la tangente, pour que le tableau colle au trou', () => {
+    const h = tracéOpeningHole3D(fenetre, droit, 20, GROUND_Y_DEFAULT_3D, 2);
+    assertClose(h.at.x, 5, 'x du trou'); assertClose(h.at.z, 0, 'z du trou');
+    assertClose(Math.hypot(h.at.tx, h.at.tz), 1, 'tangente unitaire');
   });
 });

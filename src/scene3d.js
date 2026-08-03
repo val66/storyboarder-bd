@@ -980,6 +980,101 @@ export function tracéPointAtFrac3D(pts, frac) {
   return { x: pts[pts.length-1].x, z: pts[pts.length-1].z };
 }
 
+// Fix 31 — scale to apply to a Wall-Opening rig carried by a Trace wall. Deliberately identical to
+// what ensureWallRenderEntry3D does for an Opening carried by a real Wall — scale from the type's
+// DESIGN size, independently in width and height — instead of the uniform height-driven scale
+// placeRigCentered3D applies. The uniform scale ignored o.w entirely, so a Window was never as wide
+// as the hole cut for it: it sat in an oversized gap, which is what made it look sunk into the wall.
+// sz follows sy (as on a Wall) so the frame keeps a sane depth-to-height ratio.
+export function tracéOpeningRigScale3D(objType, targetW, targetH){
+  const design = CHILD_DESIGN_SIZE_3D[objType] || { w: 1, h: 1.5 };
+  const sx = targetW / Math.max(1e-4, design.w);
+  const sy = targetH / Math.max(1e-4, design.h);
+  return { sx, sy, sz: sy, design };
+}
+
+// Fix 31 — offset along the wall's normal that sits the Opening FLUSH against one face instead of
+// straddling the path's centre line. Positive = towards the wall's front face; `wallSide` flips it,
+// exactly as it already flips the rotation elsewhere. Clamped at 0 so an Opening deeper than the
+// wall stays centred rather than being pushed out the far side.
+export function tracéOpeningFlushOffset3D(wallT, rigDepth, wallSide){
+  const d = Math.max(0, (wallT || 0) / 2 - (rigDepth || 0) / 2);
+  return wallSide === 'arriere' ? -d : d;
+}
+
+// Fix 31 — descriptor of the hole an Opening cuts into a Trace wall: the arc span it occupies along
+// the path, the vertical band it occupies, and the point/tangent where it sits.
+//
+// Extracted from renderPanelScene3D on purpose. The vertical band was computed there against the
+// wall's FULL height while wallOpeningWorldPosOnTracé3D places the rig against a span shortened by
+// the Opening's own height (Fix 30) — so raising a Window made the hole climb faster than the Window
+// itself and the two came apart. Locked inside the render loop, that divergence was untestable;
+// out here the parity between hole and rig can be asserted directly.
+export function tracéOpeningHole3D(child, smoothPts, totalLen, yBase, wallH){
+  const { w: cW, h: cH } = tracéOpeningSize3D(child);
+  const alongFrac = clamp(child.wallAlongFrac != null ? child.wallAlongFrac : 0.5, 0, 1);
+  const arcCenter = alongFrac * totalLen;
+  const bottomY = (child.wallYFrac != null ? child.wallYFrac : 0) * Math.max(0.01, wallH - cH);
+  return {
+    arcStart: arcCenter - cW / 2,
+    arcEnd:   arcCenter + cW / 2,
+    yMin:     yBase + bottomY,
+    yMax:     yBase + bottomY + cH,
+    cW, cH,
+    at: tracéFrameAtFrac3D(smoothPts, alongFrac),
+  };
+}
+
+// Fix 31 — "tableau": the relief framing an Opening cut into a Low Wall (two jambs, a lintel and a
+// sill), which is what makes the Opening read as a real hole pierced through masonry instead of a
+// Window sprite floating in a rectangular gap. It is built from the SAME hole descriptor that cut
+// the wall, so it cannot drift from the hole it frames.
+//
+// `wallBaseY`/`wallTopY` suppress the sill/lintel when the Opening is flush with the ground or with
+// the top of the wall — a lintel hovering above the wall's crest looked far worse than none.
+export function buildOpeningRevealGroup3D(hole, wallT, color, wallBaseY, wallTopY){
+  if (!hole || !hole.at || !(hole.cW > 0) || !(hole.cH > 0) || !(wallT > 0)) return null;
+  const r  = clamp(hole.cH * 0.10, 0.015, 0.06);
+  const dz = wallT + r * 0.6; // slightly proud of BOTH faces, so the relief reads from either side
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color || '#606060').offsetHSL(0, -0.04, 0.14),
+    roughness: 0.9, metalness: 0, side: THREE.DoubleSide,
+  });
+  const group = new THREE.Group();
+  const add = (w, h, x, y) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dz), mat);
+    m.position.set(x, y, 0);
+    group.add(m);
+  };
+  const cy = (hole.yMin + hole.yMax) / 2;
+  add(r, hole.cH, -(hole.cW / 2 + r / 2), cy);
+  add(r, hole.cH,  (hole.cW / 2 + r / 2), cy);
+  if (wallTopY  == null || hole.yMax + r <= wallTopY  + 1e-6) add(hole.cW + 2 * r, r, 0, hole.yMax + r / 2);
+  if (wallBaseY == null || hole.yMin - r >= wallBaseY - 1e-6) add(hole.cW + 2 * r, r, 0, hole.yMin - r / 2);
+  if (group.children.length === 0) return null;
+  // Local +X follows the tangent and local +Z the path normal — the same convention the Opening rig
+  // is oriented with (see the renderer's atan2(-tz, tx)), so the two stay coplanar on a curve.
+  group.position.set(hole.at.x, 0, hole.at.z);
+  group.rotation.y = Math.atan2(-hole.at.tz, hole.at.tx);
+  return group;
+}
+
+// Fix 31 — point AND unit tangent of a Trace path at a fraction of its arc length. The tangent is
+// sampled rather than read off a segment so it stays meaningful at a vertex, where the incoming and
+// outgoing segments disagree. Returns null for a path that has no usable direction at all.
+const TRACÉ_TANGENT_EPS_3D = 0.002;
+export function tracéFrameAtFrac3D(pts, frac){
+  const f0 = Math.min(clamp(frac, 0, 1), 1 - TRACÉ_TANGENT_EPS_3D);
+  const p  = tracéPointAtFrac3D(pts, frac);
+  const a  = tracéPointAtFrac3D(pts, f0);
+  const b  = tracéPointAtFrac3D(pts, f0 + TRACÉ_TANGENT_EPS_3D);
+  if (!p || !a || !b) return null;
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-9)) return null;
+  return { x: p.x, z: p.z, tx: dx / len, tz: dz / len };
+}
+
 // Fix 28 — the Trace-type wall (Low Wall, Fence, Hedge, Barrier) a Wall-Opening is magnetized to,
 // or null. Deliberately NOT WALL_TYPES, which only covers the 'mur'/'mur_coin' Objects: a Trace is
 // a different `type` entirely, and confusing the two is exactly what left the camera centring on
@@ -991,6 +1086,27 @@ export function tracéWallHostOf3D(o, page){
     && ['muret', 'cloture', 'haie', 'barriere'].includes(w.tracéType)) || null;
 }
 
+// Fix 31 — world size of a Wall-Opening carried by a Trace wall. THE single source for both the
+// hole cut into the wall and the rig placed in it: they were computed separately (the hole from
+// o.w/o.h, the rig from a uniform height-based scale), so the opening rarely matched its hole.
+export function tracéOpeningSize3D(o){
+  return {
+    w: o.w ? o.w / WALL_PX_PER_UNIT_3D : 0.5,
+    h: o.h ? o.h / WALL_PX_PER_UNIT_3D : 0.5,
+  };
+}
+
+// Fix 31 — representative thickness of a Trace wall where an Opening sits, used to sit the Opening
+// flush against a face instead of floating on the path's centre line. Mirrors the ratios the
+// renderer builds each type with; for the Jersey Barrier it deliberately takes the NARROW upper
+// part rather than the wide base, so the Opening is never pushed out beyond the wall.
+const TRACÉ_WALL_THICKNESS_RATIO_3D = { muret: 0.36, haie: 0.611, barriere: 0.55 * 0.529, cloture: 0.06 };
+export function tracéWallThickness3D(host){
+  if (!host) return 0;
+  const h = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
+  return h * (TRACÉ_WALL_THICKNESS_RATIO_3D[host.tracéType] ?? 0.36);
+}
+
 // Fix 28 — REAL world position of a Wall-Opening carried by a Trace wall, plus the local tangent of
 // the path at that spot. Returns null when the Element is not on such a wall.
 //
@@ -1000,14 +1116,17 @@ export function tracéWallHostOf3D(o, page){
 // everything else — camera orbit, Scene centring — silently fell back to the meaningless stored
 // coordinates. Extracted here so the render and the camera can no longer disagree.
 //
-// `y` is the Opening's BASE on the wall (the renderer adds half the Element's height to centre its
-// rig, cf. placeRigCentered3D); `tangent` is the path direction used to orient it.
+// `y` is the Opening's BASE on the wall; `tangent` is the path direction used to orient it.
 //
 // Fix 30 — `childHUnits` (the Opening's own height in world units) shrinks the span wallYFrac maps
 // onto, exactly as ensureWallRenderEntry3D does for real Walls: fraction 1 then puts the Opening's
-// TOP flush with the wall's top rather than its BASE, so it never sticks out above the wall. Left at
-// 0 the fraction spans the wall's full height, which is the old behaviour.
-export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits = 0){
+// TOP flush with the wall's top rather than its BASE, so it never sticks out above the wall.
+//
+// Fix 31 — it now DEFAULTS to the Opening's own size rather than to 0. The hole cut into the wall is
+// sized from o.w/o.h, so any caller omitting the argument (the camera paths) was mapping wallYFrac
+// onto a different span than the hole and centring slightly off; and the renderer was passing
+// realHeightFloor, which is not guaranteed to equal o.h/WALL_PX_PER_UNIT_3D either. One source now.
+export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
   const host = tracéWallHostOf3D(o, page);
   if (!host || !host.world || !host.world.pts || host.world.pts.length < 2) return null;
   const pts = smoothTracéPath3D(host.world.pts, 4);
@@ -1028,7 +1147,8 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits = 0){
   // Reachable span: fraction 1 must leave the Opening's top flush with the wall's, not push its base
   // there. Floored just above 0 so an Opening taller than its wall still has a defined position
   // (pinned to the ground) rather than a negative span.
-  const spanY = Math.max(0.01, wallH - Math.max(0, childHUnits));
+  const cH = (childHUnits != null) ? childHUnits : tracéOpeningSize3D(o).h;
+  const spanY = Math.max(0.01, wallH - Math.max(0, cH));
   return {
     x: p.x,
     y: GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * spanY,
@@ -1525,6 +1645,33 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     figureGroup.updateMatrixWorld(true);
     return s;
   }
+  // Fix 31 — dedicated placement for a Wall-Opening carried by a Trace wall. placeRigCentered3D is
+  // NOT usable here for two reasons: its scale is uniform (see tracéOpeningRigScale3D) and its
+  // centring is computed from a bounding box measured AFTER rotation, which makes a non-uniform
+  // scale meaningless. This anchors on the rig's local origin in X/Z — the frame's axis, at local
+  // (0, ·, 0), which is also why the old code had to re-force position.x/z for open leaves — and on
+  // the box centre in Y, then slides the whole thing onto a face of the wall.
+  function placeTracéOpeningRig3D(figureGroup, o, tracéPos, wallT){
+    const target = tracéOpeningSize3D(o);
+    const sc = tracéOpeningRigScale3D(o.objType, target.w, target.h);
+    figureGroup.position.set(0, 0, 0);
+    figureGroup.scale.set(sc.sx, sc.sy, sc.sz);
+    figureGroup.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(figureGroup);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const size = new THREE.Vector3(); box.getSize(size);
+    // The rig is already yawed onto the tangent, so its local Z — and hence size.z — lies along the
+    // path normal: that is the depth to compare against the wall's thickness.
+    const off = tracéOpeningFlushOffset3D(wallT, size.z, o.wallSide);
+    const nx = -tracéPos.tangent.z, nz = tracéPos.tangent.x;
+    const nLen = Math.hypot(nx, nz) || 1;
+    figureGroup.position.set(
+      tracéPos.x + (nx / nLen) * off,
+      tracéPos.y + target.h / 2 - center.y,
+      tracéPos.z + (nz / nLen) * off,
+    );
+    figureGroup.updateMatrixWorld(true);
+  }
   // Box RESTRICTED to only the Wall's meshes (wallMeshA/B), excluding any embedded Wall Opening
   // (window/door/etc.): reuses the same principle as expandBoxByMeshOnly3D, already used in Phase 1
   // (see renderObjectToCanvas3D) for the SAME reason — avoid a Wall Opening that exceeds the Wall's
@@ -1578,7 +1725,9 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     // differently — which is precisely what made the camera centre on the wrong spot.
     // Fix 30: unitsH (the Opening's own height) is passed so wallYFrac spans only the height the
     // Opening can actually occupy — otherwise fraction 1 pushed it clean above the wall.
-    const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page, unitsH) : null;
+    // Fix 31 — no longer passes unitsH (realHeightFloor): the span must be shrunk by the height the
+    // HOLE was cut with, i.e. o.h converted to world units, which is what the default now supplies.
+    const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page) : null;
     if (_tracéPos) {
       // Wall Opening orientation: local tangent of the trace at the current segment.
       // Overrides o.rotY (stored at the 1st segment or at creation) to follow turns.
@@ -1587,7 +1736,8 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
         entry.figureGroup.rotation.set(o.rotX || 0, Math.atan2(-_tdz, _tdx), o.rotZ || 0);
       }
       wx = _tracéPos.x;
-      // placeRigCentered3D targets the bbox CENTRE, hence the half-height on top of the base.
+      // Kept for the callers that read the Element's nominal centre (selection box, depth ordering);
+      // the rig itself is posed by placeTracéOpeningRig3D below, not by placeRigCentered3D.
       wy = _tracéPos.y + unitsH / 2;
       z  = _tracéPos.z + idx * 0.0001;
     } else {
@@ -1612,18 +1762,14 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     // (entry.deboutNaturalH) as a fixed reference, to prevent lying-down (lieFlat)
     // or crouching poses from changing the scale (size.y too small → s too large).
     const _persoNatH = (o.type === 'perso' && entry.deboutNaturalH) ? entry.deboutNaturalH : undefined;
-    placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry) : null, _persoNatH);
-    // Traversant/opening on a trace wall (open door / open window / bay window): the open leaf
-    // extends the bounding box in an XZ direction, offsetting its center relative to the FRAME
-    // (which is at local X=0, Z=0). placeRigCentered3D targets the BBOX CENTER, so it positions the
-    // group at (wx - cx, wy - cy, z - cz) — the frame ends up at (wx - cx, wy, z - cz) instead of
-    // (wx, wy, z). This offset depends on the trace's orientation and can appear as a horizontal
-    // or depth misalignment. Fix: force position.x = wx and position.z = z, which brings
-    // the frame (local (0,.,0)) exactly onto the trace's center for any wall orientation.
-    if (_tracéMurHost && TRAVERSANT_TYPES.includes(o.objType)) {
-      entry.figureGroup.position.x = wx;
-      entry.figureGroup.position.z = z;
-      entry.figureGroup.updateMatrixWorld(true);
+    // Fix 31 — an Opening on a Trace wall gets its own placement: non-uniform scale so it actually
+    // fills the hole cut for it, and a flush mount against a face of the wall. This supersedes the
+    // old post-hoc "force position.x/z back onto the centre line" patch, which only papered over
+    // placeRigCentered3D's bbox centring for open leaves and left the Opening straddling the wall.
+    if (_tracéPos) {
+      placeTracéOpeningRig3D(entry.figureGroup, o, _tracéPos, tracéWallThickness3D(_tracéMurHost));
+    } else {
+      placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry) : null, _persoNatH);
     }
     // Pool: placeRigCentered3D's uniform scale would also enlarge the walls' height,
     // which is not desired — sY is locked to 1 (rig's natural height = constant 0.42 m)
@@ -1807,18 +1953,8 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
             _tmTotal += Math.hypot(_tmSmoothed[_ti].x - _tmSmoothed[_ti-1].x,
                                    _tmSmoothed[_ti].z - _tmSmoothed[_ti-1].z);
           const _yBase0 = GROUND_Y_DEFAULT_3D + 0.005;
-          _tmHoles = _tmTraversants.map(c => {
-            const cW = c.w ? c.w / WALL_PX_PER_UNIT_3D : 0.5;
-            const cH = c.h ? c.h / WALL_PX_PER_UNIT_3D : 0.5;
-            const arcCenter = clamp(c.wallAlongFrac != null ? c.wallAlongFrac : 0.5, 0, 1) * _tmTotal;
-            const bottomY = (c.wallYFrac != null ? c.wallYFrac : 0) * _wallHGlobal;
-            return {
-              arcStart: arcCenter - cW / 2,
-              arcEnd:   arcCenter + cW / 2,
-              yMin:     _yBase0 + bottomY,
-              yMax:     _yBase0 + bottomY + cH,
-            };
-          });
+          _tmHoles = _tmTraversants.map(c =>
+            tracéOpeningHole3D(c, _tmSmoothed, _tmTotal, _yBase0, _wallHGlobal));
         }
       }
       if (o.tracéType === 'terrain') {
@@ -1857,6 +1993,12 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
             color: new THREE.Color(col), roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
           })));
         }
+        // Fix 31 — jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
+        // Only on the Low Wall: a stone reveal makes no sense on a Hedge or a Jersey Barrier.
+        if (_tmHoles) _tmHoles.forEach(h => {
+          const rev = buildOpeningRevealGroup3D(h, wallT, col, GROUND_Y_DEFAULT_3D, GROUND_Y_DEFAULT_3D + wallH);
+          if (rev) group.add(rev);
+        });
         if (group.children.length === 0) return;
 
       } else if (o.tracéType === 'cloture') {

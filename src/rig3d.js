@@ -1629,20 +1629,28 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   ensureSharedPropMats3D();
   const group = new THREE.Group();
   const frameMat = ensurePropMatsByType3D(open ? 'fenetre_ouverte' : 'fenetre_fermee', colorHex);
-  const w = 1.0, h = 1.1, frameThick = 0.06, frameDepth = 0.08;
-  // Outer frame (4 posts forming a hollow rectangle).
-  const topBar = new THREE.Mesh(new THREE.BoxGeometry(w, frameThick, frameDepth), frameMat);
-  topBar.position.set(0, h - frameThick / 2, 0);
-  group.add(topBar);
-  const botBar = new THREE.Mesh(new THREE.BoxGeometry(w, frameThick, frameDepth), frameMat);
-  botBar.position.set(0, frameThick / 2, 0);
-  group.add(botBar);
-  const sideGeo = new THREE.BoxGeometry(frameThick, h, frameDepth);
-  [-1, 1].forEach(sx => {
-    const sidePost = new THREE.Mesh(sideGeo, frameMat);
-    sidePost.position.set(sx * (w / 2 - frameThick / 2), h / 2, 0);
-    group.add(sidePost);
-  });
+  // Fix 31 — the frame was so slim (0.06 thick, 0.08 deep) that against a Low Wall it read as a
+  // flat rectangle painted on the masonry rather than a window sitting in an opening. It is now
+  // noticeably chunkier and built in two steps — frame + proud casing — which is what gives the
+  // silhouette an edge to catch the light on. Everything stays strictly inside w × h: those are the
+  // dimensions the hole is cut from (see tracéOpeningRigScale3D), so overflowing would reintroduce
+  // the very mismatch this fix removes.
+  const w = 1.0, h = 1.1, frameThick = 0.10, frameDepth = 0.16;
+  const addBar = (bw, bh, bd, x, y) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), frameMat);
+    m.position.set(x, y, 0);
+    group.add(m);
+  };
+  // Outer frame (4 bars forming a hollow rectangle).
+  addBar(w, frameThick, frameDepth, 0, h - frameThick / 2);
+  addBar(w, frameThick, frameDepth, 0, frameThick / 2);
+  [-1, 1].forEach(sx => addBar(frameThick, h, frameDepth, sx * (w / 2 - frameThick / 2), h / 2));
+  // Casing: a second, thinner ring standing proud of BOTH faces, so the frame keeps a visible
+  // relief whichever side of the wall the camera is on.
+  const capT = frameThick * 0.55, capD = frameDepth * 1.5;
+  addBar(w, capT, capD, 0, h - capT / 2);
+  addBar(w, capT, capD, 0, capT / 2);
+  [-1, 1].forEach(sx => addBar(capT, h, capD, sx * (w / 2 - capT / 2), h / 2));
   // Glazed sash: rotates on a hinge (pivot group placed on the left or right post) if open.
   const sashW = w - frameThick * 2.2, sashH = h - frameThick * 2.2;
   const sash = new THREE.Mesh(new THREE.BoxGeometry(sashW, sashH, 0.03), GLASS_MAT_3D);
@@ -1654,6 +1662,15 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   sash.position.set(-mirror * sashW / 2, 0, 0);
   sashFrame.position.set(-mirror * sashW / 2, 0, 0.01);
   pivot.add(sash, sashFrame);
+  // Mullion + transom, carried BY THE SASH so they swing with it when the window is open.
+  // At the size a Window is usually rendered these two bars are what actually make it read as a
+  // window rather than a glazed panel.
+  const barD = 0.05;
+  const mullion = new THREE.Mesh(new THREE.BoxGeometry(frameThick * 0.42, sashH, barD), frameMat);
+  const transom = new THREE.Mesh(new THREE.BoxGeometry(sashW, frameThick * 0.42, barD), frameMat);
+  mullion.position.set(-mirror * sashW / 2, 0, 0.015);
+  transom.position.set(-mirror * sashW / 2, 0, 0.015);
+  pivot.add(mullion, transom);
   if (open) pivot.rotation.y = mirror * (angleDeg != null ? angleDeg : 58) * Math.PI / 180;
   group.add(pivot);
   return group;
