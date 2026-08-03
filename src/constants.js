@@ -245,7 +245,10 @@ export const TRACÉ_DEFAULTS = {
   route:    { color: '#888888', width: 10 },
   chemin:   { color: '#9B7240', width: 8  },
   terrain:  { color: '#6B8E23' },
-  muret:    { color: '#606060', width: 5,  wallHeight: 0.50 },
+  // Fix 33 — hauteur par défaut portée de 0.50 à 1.00, et épaisseur ramenée à 0.12 (soit le ratio
+  // 0.12 appliqué dans tracéWallThickness3D) : à 0.50 de haut pour 0.18 d'épaisseur, le Muret
+  // faisait plus d'un tiers de sa hauteur en épaisseur et se lisait comme un gros bloc.
+  muret:    { color: '#606060', width: 5,  wallHeight: 1.00 },
   cloture:  { color: '#7A5230', width: 2,  wallHeight: 0.80 },
   haie:     { color: '#3A7A3A', width: 8,  wallHeight: 0.90 },
   barriere: { color: '#A8A8A8', width: 5,  wallHeight: 0.55 },

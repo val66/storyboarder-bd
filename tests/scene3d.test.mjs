@@ -45,10 +45,13 @@ import {
   tracéOpeningHole3D,
   tracéOpeningWorldCenter3D,
   buildTracéWallGeometry3D,
+  buildMuretGroup3D,
+  tracéWallHeight3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PANEL_DEPTH_MAX_3D, GROUND_Y_DEFAULT_3D, WALL_PX_PER_UNIT_3D,
+  TRACÉ_DEFAULTS,
 } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
@@ -808,10 +811,11 @@ describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur u
     assertClose(haut.y, GROUND_Y_DEFAULT_3D + 2, 'yFrac 1 → sommet du muret (wallHeight 2)');
   });
 
-  test('hauteur par défaut du type quand le muret n\'en définit pas (muret → 0.5)', () => {
+  test('hauteur par défaut du type quand le muret n\'en définit pas', () => {
     const sansH = { ...muretL, wallHeight: undefined };
     const p = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(sansH, porteAt(0.5, 1)), 0);
-    assertClose(p.y, GROUND_Y_DEFAULT_3D + 0.5, 'valeur par défaut TRACÉ_DEFAULTS.muret');
+    assertClose(p.y, GROUND_Y_DEFAULT_3D + TRACÉ_DEFAULTS.muret.wallHeight,
+      'valeur par défaut TRACÉ_DEFAULTS.muret');
   });
 
   // Fix 31 — childHUnits omis : la valeur par défaut est la hauteur RÉELLE de la Parois (o.h),
@@ -887,12 +891,15 @@ describe('tracéOpeningSize3D — taille monde d\'une Parois sur un Tracé (Fix 
 
 describe('tracéWallThickness3D — épaisseur du Tracé mur (Fix 31)', () => {
   test('suit le ratio du type appliqué à wallHeight', () => {
-    assertClose(tracéWallThickness3D({ tracéType: 'muret', wallHeight: 2 }), 2 * 0.36, 'muret');
+    assertClose(tracéWallThickness3D({ tracéType: 'muret', wallHeight: 2 }), 2 * 0.12, 'muret');
     assertClose(tracéWallThickness3D({ tracéType: 'haie', wallHeight: 2 }), 2 * 0.611, 'haie');
   });
 
   test('utilise la hauteur par défaut du type quand wallHeight est absent', () => {
-    assertClose(tracéWallThickness3D({ tracéType: 'muret' }), 0.50 * 0.36, 'défaut muret');
+    // Lit la table plutôt que de recopier le nombre : ce qui est vérifié ici, c'est que le repli
+    // passe bien par TRACÉ_DEFAULTS. La valeur elle-même est verrouillée par le test dédié ci-dessous.
+    assertClose(tracéWallThickness3D({ tracéType: 'muret' }),
+      TRACÉ_DEFAULTS.muret.wallHeight * 0.12, 'défaut muret');
     assertClose(tracéWallThickness3D({ tracéType: 'barriere' }), 0.55 * (0.55 * 0.529), 'défaut barrière');
   });
 
@@ -1440,5 +1447,94 @@ describe('buildTracéWallGeometry3D — arêtes franches du Tracé mur (Fix 32)'
   test('chemin inexploitable → null, pas une géométrie vide', () => {
     assert.equal(buildTracéWallGeometry3D([{ x: 0, z: 0 }], 0.5, 0.18, GROUND_Y_DEFAULT_3D, null), null);
     assert.equal(buildTracéWallGeometry3D([], 0.5, 0.18, GROUND_Y_DEFAULT_3D, null), null);
+  });
+});
+
+// Fix 33 — les deux valeurs choisies avec l'utilisateur, verrouillées explicitement : les tests
+// ci-dessus lisent la table (ils vérifient le CHEMIN de repli), celui-ci vérifie son CONTENU.
+describe('Muret par défaut — hauteur et épaisseur retenues (Fix 33)', () => {
+  test('1.00 de haut pour 0.12 d\'épaisseur', () => {
+    assertClose(TRACÉ_DEFAULTS.muret.wallHeight, 1.00, 'hauteur par défaut');
+    assertClose(tracéWallThickness3D({ tracéType: 'muret' }), 0.12, 'épaisseur par défaut');
+  });
+
+  test('l\'épaisseur reste proportionnelle si on redimensionne le Muret dans la modale', () => {
+    // Une épaisseur fixe donnerait une saucisse sur un Muret rabaissé, et une planche sur un
+    // Muret très haut : c'est la raison d'être du ratio.
+    for (const h of [0.3, 1.0, 2.5]) {
+      assertClose(tracéWallThickness3D({ tracéType: 'muret', wallHeight: h }), h * 0.12, `h=${h}`);
+    }
+  });
+
+  test('les trois autres Tracés mur gardent leurs proportions', () => {
+    assertClose(tracéWallThickness3D({ tracéType: 'haie', wallHeight: 1 }), 0.611, 'haie');
+    assertClose(tracéWallThickness3D({ tracéType: 'barriere', wallHeight: 1 }), 0.55 * 0.529, 'barrière');
+    assertClose(tracéWallThickness3D({ tracéType: 'cloture', wallHeight: 1 }), 0.06, 'clôture');
+  });
+
+  test('un Muret est désormais nettement plus fin qu\'il n\'est haut, comme un Mur', () => {
+    const h = TRACÉ_DEFAULTS.muret.wallHeight;
+    const e = tracéWallThickness3D({ tracéType: 'muret' });
+    assert.ok(e / h < 0.15, `épaisseur ${(e / h * 100).toFixed(0)} % de la hauteur (< 15 %)`);
+  });
+});
+
+// Fix 33 — le Muret est CONSTRUIT avec l'épaisseur contre laquelle les Parois sont plaquées.
+// Ces deux valeurs étaient deux expressions indépendantes ; c'est ce couplage-là qu'on verrouille.
+describe('buildMuretGroup3D — le Muret bâti et les Parois plaquées partagent une épaisseur (Fix 33)', () => {
+  const droit = [{ x: 0, z: 0 }, { x: 8, z: 0 }];
+  const muret = extra => ({ id: 'm1', type: 'tracé', tracéType: 'muret',
+                            world: { pts: droit }, ...extra });
+  // Muret droit le long de X : l'étendue en Z de la géométrie EST son épaisseur.
+  const epaisseurBatie = g => {
+    const mesh = g.children.find(c => c.isMesh);
+    const P = mesh.geometry.getAttribute('position');
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < P.count; i++) { const z = P.getZ(i); if (z < min) min = z; if (z > max) max = z; }
+    return max - min;
+  };
+
+  test('RÉGRESSION : l\'épaisseur bâtie est exactement tracéWallThickness3D', () => {
+    for (const h of [undefined, 0.4, 1.0, 2.2]) {
+      const o = muret({ wallHeight: h });
+      assertClose(epaisseurBatie(buildMuretGroup3D(o, null)), tracéWallThickness3D(o),
+        `wallHeight ${h}`, 1e-6);
+    }
+  });
+
+  test('la hauteur bâtie est exactement tracéWallHeight3D, depuis le Sol', () => {
+    for (const h of [undefined, 0.4, 2.2]) {
+      const o = muret({ wallHeight: h });
+      const mesh = buildMuretGroup3D(o, null).children.find(c => c.isMesh);
+      const P = mesh.geometry.getAttribute('position');
+      let min = Infinity, max = -Infinity;
+      for (let i = 0; i < P.count; i++) { const y = P.getY(i); if (y < min) min = y; if (y > max) max = y; }
+      assertClose(max - min, tracéWallHeight3D(o), `hauteur wallHeight ${h}`, 1e-6);
+      assertClose(min, GROUND_Y_DEFAULT_3D + 0.005, `pied au Sol wallHeight ${h}`, 1e-6);
+    }
+  });
+
+  test('un Muret sans wallHeight prend la valeur de la table, pas un littéral oublié', () => {
+    // Quatre sites du renderer avaient gardé 0.50 en dur : le trou était découpé contre la table
+    // pendant que le mur était bâti contre le littéral.
+    assertClose(tracéWallHeight3D(muret({})), TRACÉ_DEFAULTS.muret.wallHeight, 'repli sur la table');
+    // tolérance Float32 : la géométrie stocke ses positions en simple précision.
+    assertClose(epaisseurBatie(buildMuretGroup3D(muret({}), null)), 0.12, 'épaisseur par défaut', 1e-6);
+  });
+
+  test('le tableau de chaque ouverture est ajouté au groupe', () => {
+    const o = muret({ wallHeight: 1 });
+    const trou = [{ arcStart: 3, arcEnd: 4.5, cW: 1.5, cH: 0.3,
+                    yMin: GROUND_Y_DEFAULT_3D + 0.2, yMax: GROUND_Y_DEFAULT_3D + 0.5,
+                    at: { x: 3.75, z: 0, tx: 1, tz: 0 } }];
+    const sans = buildMuretGroup3D(o, null);
+    const avec = buildMuretGroup3D(o, trou);
+    assert.ok(avec.children.length > sans.children.length, 'le tableau apparaît dans le groupe');
+  });
+
+  test('objet inutilisable → null, jamais un groupe vide dans la scène', () => {
+    assert.equal(buildMuretGroup3D(null, null), null);
+    assert.equal(buildMuretGroup3D({ tracéType: 'muret' }, null), null);
+    assert.equal(buildMuretGroup3D(muret({ world: { pts: [{ x: 1, z: 1 }] } }), null), null);
   });
 });

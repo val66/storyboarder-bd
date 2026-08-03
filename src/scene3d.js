@@ -1059,15 +1059,24 @@ export function tracéOpeningSize3D(o){
   };
 }
 
+// Fix 33 — height of a Trace wall. Was written out at SEVEN sites, four of them with the old
+// literal 0.50 hardcoded — which silently contradicted TRACÉ_DEFAULTS the moment the default
+// changed: the hole was cut against the table's height while the wall was built against the
+// literal. One source now, and the table is the only place the number lives.
+export function tracéWallHeight3D(o){
+  if (!o) return 0;
+  return o.wallHeight != null ? o.wallHeight : (TRACÉ_DEFAULTS[o.tracéType]?.wallHeight ?? 0.5);
+}
+
 // Fix 31 — representative thickness of a Trace wall where an Opening sits, used to sit the Opening
 // flush against a face instead of floating on the path's centre line. Mirrors the ratios the
 // renderer builds each type with; for the Jersey Barrier it deliberately takes the NARROW upper
 // part rather than the wide base, so the Opening is never pushed out beyond the wall.
-const TRACÉ_WALL_THICKNESS_RATIO_3D = { muret: 0.36, haie: 0.611, barriere: 0.55 * 0.529, cloture: 0.06 };
+const TRACÉ_WALL_THICKNESS_RATIO_3D = { muret: 0.12, haie: 0.611, barriere: 0.55 * 0.529, cloture: 0.06 };
 export function tracéWallThickness3D(host){
   if (!host) return 0;
-  const h = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
-  return h * (TRACÉ_WALL_THICKNESS_RATIO_3D[host.tracéType] ?? 0.36);
+  const h = tracéWallHeight3D(host);
+  return h * (TRACÉ_WALL_THICKNESS_RATIO_3D[host.tracéType] ?? 0.12);
 }
 
 // Fix 28 — REAL world position of a Wall-Opening carried by a Trace wall, plus the local tangent of
@@ -1101,7 +1110,7 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
   const f = tracéFrameAtFrac3D(pts, frac);
   const p = f || tracéPointAtFrac3D(pts, frac);
   if (!p) return null;
-  const wallH = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
+  const wallH = tracéWallHeight3D(host);
   // Reachable span: fraction 1 must leave the Opening's top flush with the wall's, not push its base
   // there. Floored just above 0 so an Opening taller than its wall still has a defined position
   // (pinned to the ground) rather than a negative span.
@@ -1128,6 +1137,32 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
 // ════════════════════════════════════════════════════════════
 // 3D — TRACÉ GEOMETRY
 // ════════════════════════════════════════════════════════════
+// Fix 33 — builds the whole Low Wall: the masonry ribbon plus the reveal framing each Opening.
+// Extracted from renderPanelScene3D because the thickness it BUILDS with and the thickness
+// tracéWallThickness3D flush-mounts the Openings against were two independent expressions, free to
+// drift apart — the exact failure mode of Fixes 28/30/31/31b. Locked inside the render loop that
+// divergence was untestable; out here the parity is asserted directly.
+export function buildMuretGroup3D(o, holes){
+  if (!o || !o.world || !o.world.pts) return null;
+  const col   = o.color || '#606060';
+  const wallH = tracéWallHeight3D(o);
+  const wallT = tracéWallThickness3D(o);
+  const group = new THREE.Group();
+  const geo = buildTracéWallGeometry3D(o.world.pts, wallH, wallT, GROUND_Y_DEFAULT_3D, holes);
+  if (geo) {
+    group.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: new THREE.Color(col), roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
+    })));
+  }
+  // Fix 31 — jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
+  // Only on the Low Wall: a stone reveal makes no sense on a Hedge or a Jersey Barrier.
+  if (holes) holes.forEach(h => {
+    const rev = buildOpeningRevealGroup3D(h, wallT, col, GROUND_Y_DEFAULT_3D, GROUND_Y_DEFAULT_3D + wallH);
+    if (rev) group.add(rev);
+  });
+  return group.children.length ? group : null;
+}
+
 export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) {
   const smoothed = smoothTracéPath3D(worldPts, 4);
   const n = smoothed ? smoothed.length : 0;
@@ -1922,7 +1957,7 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
           c.type === 'objet3d' && c.magnetWallId === o.id && TRAVERSANT_TYPES.includes(c.objType));
         if (_tmTraversants.length > 0) {
           // Global wallH for the type (reference total height for wallYFrac)
-          const _wallHGlobal = o.wallHeight ?? (TRACÉ_DEFAULTS[o.tracéType]?.wallHeight ?? 0.5);
+          const _wallHGlobal = tracéWallHeight3D(o);
           const _tmSmoothed = smoothTracéPath3D(w.pts, 4);
           let _tmTotal = 0;
           for (let _ti = 1; _ti < _tmSmoothed.length; _ti++)
@@ -1958,29 +1993,14 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
         group.add(terrMesh);
       } else if (o.tracéType === 'muret') {
         // ── Low Wall: vertical concrete ribbon (configurable height) ───────────────
-        const col = o.color || '#606060';
-        const wallH = o.wallHeight != null ? o.wallHeight : 0.50;
-        // wallT proportional to wallH (design ratio 0.18/0.50=0.36): wallHeight is scaled by s
-        // in loadSceneIntoPanel but wallT was hardcoded → sausage-shaped if s is small. Fix: fixed ratio.
-        const wallT = wallH * 0.36;
-        const wallGeo = buildTracéWallGeometry3D(w.pts, wallH, wallT, GROUND_Y_DEFAULT_3D, _tmHoles);
-        if (wallGeo) {
-          group.add(new THREE.Mesh(wallGeo, new THREE.MeshStandardMaterial({
-            color: new THREE.Color(col), roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
-          })));
-        }
-        // Fix 31 — jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
-        // Only on the Low Wall: a stone reveal makes no sense on a Hedge or a Jersey Barrier.
-        if (_tmHoles) _tmHoles.forEach(h => {
-          const rev = buildOpeningRevealGroup3D(h, wallT, col, GROUND_Y_DEFAULT_3D, GROUND_Y_DEFAULT_3D + wallH);
-          if (rev) group.add(rev);
-        });
-        if (group.children.length === 0) return;
+        const muret = buildMuretGroup3D(o, _tmHoles);
+        if (!muret) return;
+        muret.children.slice().forEach(ch => group.add(ch));
 
       } else if (o.tracéType === 'cloture') {
         // ── Fence: 2 horizontal rails + vertical posts ─────────────────
         const col = o.color || '#7A5230';
-        const wallH = o.wallHeight != null ? o.wallHeight : 0.80;
+        const wallH = tracéWallHeight3D(o);
         const fenceMat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(col), roughness: 0.97, metalness: 0, side: THREE.DoubleSide,
         });
@@ -2022,7 +2042,7 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
         // _tmHoles (computed above) is passed to both passes: buildTracéWallGeometry3D
         // automatically clips yMin/yMax to [y0, y1] of each layer.
         const col = o.color || '#3A7A3A';
-        const wallH = o.wallHeight != null ? o.wallHeight : 0.90;
+        const wallH = tracéWallHeight3D(o);
         // Thicknesses proportional to wallH (design ratios 0.55/0.90≈0.611 and 0.38/0.90≈0.422)
         // to remain correct after loadSceneIntoPanel scaling (wallHeight *= s).
         const hedgeGeo = buildTracéWallGeometry3D(w.pts, wallH, wallH * 0.611, GROUND_Y_DEFAULT_3D, _tmHoles);
@@ -2044,7 +2064,7 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
         // _tmHoles is passed to all three layers; each one only cuts the portion
         // of the hole that overlaps its own Y range (clipped inside buildTracéWallGeometry3D).
         const col = o.color || '#A8A8A8';
-        const wallH = o.wallHeight != null ? o.wallHeight : 0.55;
+        const wallH = tracéWallHeight3D(o);
         const baseH  = wallH * 0.45;   // wide base (~45% of total height)
         const topH   = wallH - baseH;  // narrow upper part
         // Proportional thicknesses (design ratios: top 0.16/0.3025≈0.529, base 0.30/0.2475≈1.212,
