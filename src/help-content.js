@@ -43,6 +43,7 @@ export const HELP_MANUAL_EN = [
   { title: 'Camera', paragraphs: [
     'Right-click a panel → "Camera" (only visible if the panel already contains at least one Element) to switch to Camera mode and show the 3D gizmo.',
     'In Camera mode: click and drag on the panel to orient the view, mouse wheel to move forward/backward, and the settings (sensitivities, rotation, movement) appear in the right-hand menu.',
+    'Rotation pivots around whatever sits at the centre of the panel: the rotation centre re-anchors itself onto the first Element aimed at (or onto the Ground) at the start of every drag, without the image moving. Without this, repeated zooming could leave the centre stranded behind in empty space, making the whole scene appear to slide on the slightest rotation.',
     'Keyboard shortcut C (outside a text field, with a panel selected) to toggle Camera mode. In the Scene editor, the T key switches between perspective and top-down view.',
   ]},
   { title: 'Layers', paragraphs: [
@@ -106,6 +107,7 @@ export const HELP_MANUAL_FR = [
   { title: 'Caméra', paragraphs: [
     'Clic droit sur une case → « Caméra » (visible uniquement si la case contient déjà au moins un Élément) pour passer en mode Caméra et afficher le repère 3D.',
     'En mode Caméra : cliquer-glisser sur la case pour orienter la vue, molette pour avancer/reculer, et les réglages (sensibilités, rotation, déplacement) apparaissent dans le menu de droite.',
+    "La rotation pivote autour de ce que vous avez au centre de la Case : le centre de rotation se replace tout seul sur le premier Élément visé (ou sur le Sol) au début de chaque glisser, sans que l'image ne bouge. Sans cela, après plusieurs zooms le centre pouvait rester en arrière dans le vide et toute la scène semblait déraper à la moindre rotation.",
     "Raccourci C (hors champ texte, Case sélectionnée) pour basculer en mode Caméra. Dans l'éditeur de Scène, la touche T bascule entre la vue perspective et la vue de dessus.",
   ]},
   { title: 'Calques', paragraphs: [

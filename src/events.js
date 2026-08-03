@@ -78,6 +78,7 @@ import {
   disposeAllRigs3D,
   applyGroundMagnetY,
   panelApparentPx3D,
+  panelAutoDepthPivot3D,
   panelCamBasis3D,
   panelDepthToDistance3D,
   panelDragRayOnPlane,
@@ -3314,6 +3315,12 @@ canvas.addEventListener('mousedown', (e) => {
     // During rotation, we no longer touch camWx/Wy/Wz — they naturally stay fixed.
     // Phase 9: capture camDist for sensitivity proportional to distance.
     { const _bRot0 = panelCamBasis3D(sel); getCamOrbitWorld(sel, _bRot0); } // migration if needed
+    // Fix 24 ("Auto Depth"): slide the pivot along the view axis onto whatever is actually being
+    // aimed at, BEFORE the Fix 13c snap and the S.dragOrig capture below — so both freeze the
+    // re-anchored pivot/distance rather than the stale ones. The camera itself does not move (cf.
+    // panelAutoDepthPivot3D), so this is invisible on screen; it only makes the rotation turn
+    // around the subject instead of around a point left stranded in empty space by earlier zooming.
+    panelAutoDepthPivot3D(sel, page);
     // Fix 13c: freeze the orbit center and distance at their CURRENT value (reverse snap).
     // Fix 13b (camWx = camWxTarget, "forward snap") caused a big visual jump at high zoom:
     // camDist converges at 0.22/frame, camWx only at 0.10/frame — when the zoom looks visually

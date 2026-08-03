@@ -19,7 +19,7 @@
 ### 3D Scenes
 - **Reusable scenes**: compose a 3D scene once, load it into any panel — characters, furniture, buildings, roads, vegetation, terrain…
 - Real-time 3D rendering via **Three.js** (r128)
-- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor — no height restrictions; orbit center stays anchored during rotation; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control — like Blender/Maya); pitch clamped to ±85° to avoid scene flip
+- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor — no height restrictions; the orbit centre re-anchors onto whatever is aimed at when a rotation starts, then stays strictly fixed for the whole drag; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control — like Blender/Maya); pitch clamped to ±85° to avoid scene flip
 - Integrated top-down view for element placement
 
 ### Available elements

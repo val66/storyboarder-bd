@@ -2122,6 +2122,81 @@ export function getCamOrbitWorld(panel, basis) {
   panel.camWxTarget = wx; panel.camWyTarget = wy; panel.camWzTarget = wz;
   return { x: wx, y: wy, z: wz };
 }
+
+// Fix 24 ("Auto Depth", Blender-style) — re-anchors the orbit pivot onto whatever the Panel is
+// actually AIMED AT, called once at the start of every rotation drag (cf. S.dragMode
+// 'panelCamRotate').
+//
+// PROBLEM. The pivot (camWx/y/z) is a fixed world point that only the scroll wheel and the keyboard
+// move. Repeated zooming — especially the dolly-through below 3 units (Fix 18b), which pushes the
+// pivot FORWARD along the view axis instead of bringing the camera closer — eventually strands it
+// in empty space, with camDist pinned to its 0.3 minimum. An orbit only keeps motionless whatever
+// sits AT the pivot's distance: with the pivot 30 cm from the camera and every Element several
+// units further away, nothing on screen stays still and the rotation center feels like it drifts —
+// even though it is provably fixed (verified in the logs: cx/cy/cz constant to 4 decimals).
+//
+// FIX. Slide the pivot ALONG the current view axis until it lands on the subject being looked at,
+// and set camDist to that same distance. Because camera position = pivot + backward × camDist, and
+// both terms shift by exactly the same amount along that axis, THE CAMERA DOES NOT MOVE: the
+// rendered image is bit-for-bit identical before and after. Only what the next rotation will turn
+// around changes. Moving the pivot OFF that axis is deliberately never done — that would displace
+// the camera and produce a visible jump.
+//
+// The subject is picked analytically from the Elements' stored world coordinates rather than by
+// raycasting the Three.js scene: personaScene3D is shared between all Panels and its per-rig
+// visibility only reflects the last render (which may well be another Panel), so a raycast there
+// would be unreliable. Retained candidates are those falling inside a cone around the view axis
+// covering the central third of the frame — "what the user has in the middle of the Panel" — and
+// the nearest one in front of the camera wins. Falls back to the Ground plane when no Element
+// qualifies (typical when framing scenery), and leaves the pivot untouched when nothing at all is
+// hit (camera pointing at the sky), which preserves the previous behavior in that case.
+export function panelAutoDepthPivot3D(panel, page){
+  const basis = panelCamBasis3D(panel);
+  const orbit = getCamOrbitWorld(panel, basis);
+  const dist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
+  // Camera position and forward axis, identical to framePanelCamera3D's construction.
+  const camX = orbit.x + basis.backward.x * dist;
+  const camY = orbit.y + basis.backward.y * dist;
+  const camZ = orbit.z + basis.backward.z * dist;
+  const fwd = { x: -basis.backward.x, y: -basis.backward.y, z: -basis.backward.z };
+  // Half-height actually visible at 1 unit of depth: the FOV is calibrated on the Page's height at
+  // the camera's DEFAULT distance (cf. framePanelCamera3D), so this ratio is constant.
+  const halfHAtUnit = ((page.h / WALL_PX_PER_UNIT_3D) / 2) / PANEL_CAM_DEFAULT_DIST_3D;
+  let best = null;
+  panelOwnedElements3D(panel, page).forEach(o => {
+    if (o.hidden3d) return;
+    const ex = isFinite(o.wxFloor) ? o.wxFloor : null;
+    if (ex === null) return;
+    const ez = isFinite(o.wzFloor) ? o.wzFloor : getElementDepth(o);
+    const ey = isFinite(o.wyFloor) ? o.wyFloor : (GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2);
+    const vx = ex - camX, vy = ey - camY, vz = ez - camZ;
+    const along = vx * fwd.x + vy * fwd.y + vz * fwd.z;
+    if (along <= 0) return; // behind the camera
+    // Perpendicular gap to the view axis, compared with the central third of the frame at that depth.
+    const px = vx - fwd.x * along, py = vy - fwd.y * along, pz = vz - fwd.z * along;
+    const perp = Math.hypot(px, py, pz);
+    if (perp > along * halfHAtUnit * 0.33) return;
+    if (best === null || along < best) best = along;
+  });
+  if (best === null && fwd.y < -1e-6) {
+    // No Element in the central cone → fall back to the Ground plane, if the camera looks down at it.
+    const t = (GROUND_Y_DEFAULT_3D - camY) / fwd.y;
+    if (t > 0) best = t;
+  }
+  if (best === null) return false;
+  // Same bounds as the scroll wheel, so Auto Depth can never produce a camDist the wheel itself
+  // would refuse.
+  const newDist = clamp(best, 0.3, PANEL_CAM_DEFAULT_DIST_3D * 200);
+  panel.camWx = camX + fwd.x * newDist;
+  panel.camWy = camY + fwd.y * newDist;
+  panel.camWz = camZ + fwd.z * newDist;
+  panel.camDist = newDist;
+  panel.camWxTarget = panel.camWx;
+  panel.camWyTarget = panel.camWy;
+  panel.camWzTarget = panel.camWz;
+  panel.camDistTarget = newDist;
+  return true;
+}
 // Projects the world point (worldX, GROUND_Y_DEFAULT_3D, worldZ) through the Panel's real Three.js camera
 // (identical to framePanelCamera3D: same pitch/yaw/pan/camDist/camY clamping) and returns the
 // resulting screen Y position (panel coordinates, in px). Null if the point is behind the camera.

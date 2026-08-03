@@ -19,7 +19,7 @@
 ### Scènes 3D
 - **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case — Personnages, Mobilier, Bâtiments, Routes, Végétation, Terrain…
 - Rendu 3D temps réel via **Three.js** (r128)
-- Caméra libre : rotation (glisser), panoramique (clic milieu + glisser ou Ctrl+glisser), zoom vers le curseur — sans restriction de hauteur ; centre d'orbite stable pendant la rotation ; sensibilité proportionnelle à la distance et à l'inclinaison (le lacet ralentit en plongée/contre-plongée — comme Blender/Maya) ; pitch limité à ±85° pour éviter le basculement de la scène
+- Caméra libre : rotation (glisser), panoramique (clic milieu + glisser ou Ctrl+glisser), zoom vers le curseur — sans restriction de hauteur ; le centre d'orbite se replace sur le sujet visé au début d'une rotation, puis reste strictement fixe pendant tout le glisser ; sensibilité proportionnelle à la distance et à l'inclinaison (le lacet ralentit en plongée/contre-plongée — comme Blender/Maya) ; pitch limité à ±85° pour éviter le basculement de la scène
 - Vue de dessus intégrée pour le placement des éléments
 
 ### Éléments disponibles

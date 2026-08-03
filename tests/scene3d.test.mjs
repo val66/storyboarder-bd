@@ -30,6 +30,7 @@ import {
   framePanelCamera3D,
   ensureElementWorldPos3D,
   setElementWorldPos3D,
+  panelAutoDepthPivot3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -414,5 +415,172 @@ describe('framePanelCamera3D — configuration complète de la caméra THREE.js'
 
     assertClose(camera1.fov, camera2.fov, 'fov identique quel que soit camDist (fixe, basé sur la planche)');
     assertClose(camera2.position.z - camera1.position.z, 10, 'la caméra recule de exactement le delta de camDist');
+  });
+});
+
+// ── panelAutoDepthPivot3D (Fix 24) ────────────────────────────────────────────────────────────
+// Fonction de maths pures (aucun appel à ensurePersonaScene3D) → testable ici, contrairement au
+// reste du pipeline de rendu 3D (cf. en-tête de fichier).
+describe('panelAutoDepthPivot3D — réancrage du pivot d\'orbite sur le sujet visé (Fix 24)', () => {
+  // Caméra en (0, 1.15, 10) regardant vers -Z : rotX=0, rotY=0 → backward = (0,0,1),
+  // donc camPos = pivot + (0,0,1)*camDist et l'axe de visée est -Z.
+  function makePanel(camDist) {
+    return { id: 'p1', type: 'panel', x: 0, y: 0, w: 800, h: 600,
+             camRotX: 0, camRotY: 0, camDist, camWx: 0, camWy: 1.15, camWz: 0 };
+  }
+  // Élément pile sur l'axe de visée, 6 unités devant le pivot (donc à camDist+6 de la caméra).
+  function elemOnAxis() {
+    return { id: 'e1', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+             wxFloor: 0, wyFloor: 1.15, wzFloor: -6 };
+  }
+
+  test('LA CAMÉRA NE BOUGE PAS : le pivot ne glisse que le long de l\'axe de visée', () => {
+    const panel = makePanel(0.3);
+    const page = { w: 800, h: 600, objects: [panel, elemOnAxis()] };
+    // Position caméra avant = pivot + backward*camDist
+    const camBefore = { x: panel.camWx, y: panel.camWy, z: panel.camWz + panel.camDist };
+    assert.equal(panelAutoDepthPivot3D(panel, page), true, 'un sujet doit être trouvé');
+    const camAfter = { x: panel.camWx, y: panel.camWy, z: panel.camWz + panel.camDist };
+    assertClose(camAfter.x, camBefore.x, 'caméra X inchangée', 1e-9);
+    assertClose(camAfter.y, camBefore.y, 'caméra Y inchangée', 1e-9);
+    assertClose(camAfter.z, camBefore.z, 'caméra Z inchangée', 1e-9);
+  });
+
+  test('le pivot atterrit sur l\'Élément visé et camDist devient sa distance réelle', () => {
+    const panel = makePanel(0.3);
+    const page = { w: 800, h: 600, objects: [panel, elemOnAxis()] };
+    panelAutoDepthPivot3D(panel, page);
+    assertClose(panel.camWz, -6, 'pivot posé sur l\'Élément (z=-6)', 1e-9);
+    assertClose(panel.camDist, 6.3, 'camDist = distance caméra→Élément (0.3 + 6)', 1e-9);
+    assertClose(panel.camWxTarget, panel.camWx, 'cible X synchronisée (pas d\'animation résiduelle)');
+    assertClose(panel.camDistTarget, panel.camDist, 'cible camDist synchronisée');
+  });
+
+  test('un Élément hors du cône central est ignoré (on ne s\'accroche pas à ce qu\'on ne regarde pas)', () => {
+    const panel = makePanel(0.3);
+    // Même profondeur, mais très décalé latéralement → hors du tiers central du cadre.
+    const far = { id: 'e2', type: 'perso', x: 0, y: 0, w: 40, h: 40,
+                  wxFloor: 500, wyFloor: 1.15, wzFloor: -6 };
+    const page = { w: 800, h: 600, objects: [panel, far] };
+    panelAutoDepthPivot3D(panel, page);
+    // Aucun Élément retenu → repli sur le Sol ; la caméra regarde à l'horizontale (backward.y = 0)
+    // donc pas d'intersection sol non plus → pivot inchangé.
+    assertClose(panel.camWz, 0, 'pivot inchangé quand rien n\'est visé');
+    assertClose(panel.camDist, 0.3, 'camDist inchangé quand rien n\'est visé');
+  });
+
+  test('sans aucun Élément et caméra à l\'horizontale, renvoie false et ne touche à rien', () => {
+    const panel = makePanel(0.3);
+    const page = { w: 800, h: 600, objects: [panel] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), false, 'aucun sujet → false');
+    assertClose(panel.camWz, 0, 'pivot intact');
+    assertClose(panel.camDist, 0.3, 'camDist intact');
+  });
+
+  test('caméra plongeante sans Élément : repli sur le plan du Sol', () => {
+    // rotX = +PI/2 → vue de dessus : backward = (0,1,0), donc l'axe de visée est -Y (vers le sol).
+    const panel = { id: 'p1', type: 'panel', x: 0, y: 0, w: 800, h: 600,
+                    camRotX: Math.PI / 2, camRotY: 0, camDist: 4,
+                    camWx: 0, camWy: GROUND_Y_DEFAULT_3D + 10, camWz: 0 };
+    const page = { w: 800, h: 600, objects: [panel] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), true, 'le Sol doit servir de repli');
+    assertClose(panel.camWy, GROUND_Y_DEFAULT_3D, 'pivot posé sur le Sol', 1e-9);
+    // Caméra était à y = 10 + 4 au-dessus du sol → distance au sol = 14.
+    assertClose(panel.camDist, 14, 'camDist = distance caméra→Sol', 1e-9);
+  });
+
+  // ── Cas limites ───────────────────────────────────────────────────────────────────────────────
+
+  test('l\'invariant « la caméra ne bouge pas » tient aussi pour une caméra quelconque (pitch + lacet)', () => {
+    // Cas le plus discriminant : hors des axes, une erreur de signe dans la base passerait
+    // inaperçue avec rotX=rotY=0 mais décalerait la caméra ici.
+    const panel = { id: 'p1', type: 'panel', x: 0, y: 0, w: 800, h: 600,
+                    camRotX: 0.42, camRotY: -1.13, camDist: 5,
+                    camWx: 3, camWy: 2.4, camWz: -7 };
+    const basis = panelCamBasis3D(panel);
+    const camBefore = {
+      x: panel.camWx + basis.backward.x * panel.camDist,
+      y: panel.camWy + basis.backward.y * panel.camDist,
+      z: panel.camWz + basis.backward.z * panel.camDist,
+    };
+    // Élément posé exactement sur l'axe de visée, 8 unités devant la caméra.
+    const onAxis = { id: 'e1', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                     wxFloor: camBefore.x - basis.backward.x * 8,
+                     wyFloor: camBefore.y - basis.backward.y * 8,
+                     wzFloor: camBefore.z - basis.backward.z * 8 };
+    const page = { w: 800, h: 600, objects: [panel, onAxis] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), true, 'l\'Élément sur l\'axe doit être trouvé');
+    assertClose(panel.camDist, 8, 'camDist = distance réelle caméra→Élément', 1e-9);
+    assertClose(panel.camWx, onAxis.wxFloor, 'pivot posé sur l\'Élément (X)', 1e-9);
+    assertClose(panel.camWy, onAxis.wyFloor, 'pivot posé sur l\'Élément (Y)', 1e-9);
+    assertClose(panel.camWz, onAxis.wzFloor, 'pivot posé sur l\'Élément (Z)', 1e-9);
+    const basisAfter = panelCamBasis3D(panel); // la rotation n'a pas changé → base identique
+    assertClose(panel.camWx + basisAfter.backward.x * panel.camDist, camBefore.x, 'caméra X inchangée', 1e-9);
+    assertClose(panel.camWy + basisAfter.backward.y * panel.camDist, camBefore.y, 'caméra Y inchangée', 1e-9);
+    assertClose(panel.camWz + basisAfter.backward.z * panel.camDist, camBefore.z, 'caméra Z inchangée', 1e-9);
+  });
+
+  test('PAS DE DÉRIVE : deux rotations successives ne déplacent pas le pivot (idempotence)', () => {
+    // Le bug d'origine était une impression de dérive du centre de rotation. Auto Depth étant
+    // rejoué à CHAQUE glisser, il ne doit rien bouger une fois le pivot déjà posé sur le sujet.
+    const panel = makePanel(0.3);
+    const page = { w: 800, h: 600, objects: [panel, elemOnAxis()] };
+    panelAutoDepthPivot3D(panel, page);
+    const after1 = { x: panel.camWx, y: panel.camWy, z: panel.camWz, d: panel.camDist };
+    panelAutoDepthPivot3D(panel, page);
+    assertClose(panel.camWx, after1.x, 'pivot X stable au 2e appel', 1e-9);
+    assertClose(panel.camWy, after1.y, 'pivot Y stable au 2e appel', 1e-9);
+    assertClose(panel.camWz, after1.z, 'pivot Z stable au 2e appel', 1e-9);
+    assertClose(panel.camDist, after1.d, 'camDist stable au 2e appel', 1e-9);
+  });
+
+  test('parmi plusieurs Éléments alignés, c\'est le plus proche devant la caméra qui gagne', () => {
+    const panel = makePanel(0.3);
+    const near = { id: 'near', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                   wxFloor: 0, wyFloor: 1.15, wzFloor: -3 };
+    const far  = { id: 'far',  type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                   wxFloor: 0, wyFloor: 1.15, wzFloor: -6 };
+    // Ordre volontairement « loin d'abord » : le résultat ne doit pas dépendre de l'ordre du tableau.
+    const page = { w: 800, h: 600, objects: [panel, far, near] };
+    panelAutoDepthPivot3D(panel, page);
+    assertClose(panel.camWz, -3, 'pivot posé sur le plus proche', 1e-9);
+    assertClose(panel.camDist, 3.3, 'camDist = distance au plus proche', 1e-9);
+  });
+
+  test('un Élément situé DERRIÈRE la caméra est ignoré', () => {
+    // NOTE (constatée par test de mutation) : ce rejet est assuré DEUX fois dans
+    // panelAutoDepthPivot3D — par le garde-fou `along <= 0`, et incidemment par le filtre du cône
+    // central, dont le seuil (proportionnel à `along`) devient négatif dès que l'Élément est dans
+    // le dos. Supprimer le garde-fou ne fait donc pas tomber ce test : il verrouille le
+    // COMPORTEMENT (rien derrière ne peut devenir pivot), pas cette ligne précise.
+    const panel = makePanel(0.3);
+    // Caméra en z=+0.3 regardant vers -Z ; cet Élément est encore plus loin en +Z, donc dans le dos.
+    const behind = { id: 'b', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                     wxFloor: 0, wyFloor: 1.15, wzFloor: 10 };
+    const page = { w: 800, h: 600, objects: [panel, behind] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), false, 'rien devant → false');
+    assertClose(panel.camDist, 0.3, 'camDist intact');
+  });
+
+  test('camDist reste borné au minimum de la molette (0.3) pour un sujet collé à la caméra', () => {
+    const panel = makePanel(0.3);
+    // Élément à 0.1 unité devant la caméra → sous le plancher autorisé.
+    const glued = { id: 'g', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                    wxFloor: 0, wyFloor: 1.15, wzFloor: 0.2 };
+    const page = { w: 800, h: 600, objects: [panel, glued] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), true, 'sujet trouvé');
+    assertClose(panel.camDist, 0.3, 'camDist clampé au minimum molette', 1e-9);
+    // Le clamp ne doit PAS casser l'invariant : pivot = camPos + axe × camDist par construction.
+    assertClose(panel.camWz + panel.camDist, 0.3, 'caméra toujours au même endroit malgré le clamp', 1e-9);
+  });
+
+  test('les Éléments masqués (hidden3d) ou sans coordonnées monde sont ignorés', () => {
+    const panel = makePanel(0.3);
+    const hidden  = { id: 'h', type: 'perso', x: 380, y: 280, w: 40, h: 40,
+                      hidden3d: true, wxFloor: 0, wyFloor: 1.15, wzFloor: -6 };
+    const noWorld = { id: 'n', type: 'perso', x: 380, y: 280, w: 40, h: 40 }; // wxFloor absent
+    const page = { w: 800, h: 600, objects: [panel, hidden, noWorld] };
+    assert.equal(panelAutoDepthPivot3D(panel, page), false, 'aucun candidat exploitable → false');
+    assertClose(panel.camDist, 0.3, 'camDist intact');
   });
 });
