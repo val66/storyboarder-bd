@@ -336,7 +336,6 @@ export function applyProjectData(data){
     // rotation. Resetting to 0 (orbit center at ground level) fixes it without disrupting
     // normal use.
     if ((o.camWy || 0) < GROUND_Y_DEFAULT_3D - 4) {
-      console.log('[CAM-ORBIT] Fix14d camWy drift reset', (o.camWy||0).toFixed(3), '→ 0');
       o.camWy = 0; if (o.camWyTarget !== undefined) o.camWyTarget = 0;
     }
     // Fix 13d: reset the one-shot centering state (Element selection outside Camera mode).

@@ -671,13 +671,6 @@ export function drawBuildToolOverlay(c, page){
       const s1 = toScreen(seg.x1, seg.z1), s2 = toScreen(seg.x2, seg.z2);
       if (s1 && s2) { c.beginPath(); c.moveTo(s1.x, s1.y); c.lineTo(s2.x, s2.y); c.stroke(); }
     });
-    // TRACE when wallSegs contains only ONE horizontal wall — bug state
-    if (S.buildTool.wallSegs.length === 1) {
-      const s = S.buildTool.wallSegs[0];
-      if (Math.abs(s.z1 - s.z2) < 0.05) {
-        console.trace('[BUG TRACE] wallSegs contains a single horizontal wall — call stack:');
-      }
-    }
   }
   // Segment in progress (last point → mouse) — thin dashed blue line (not in detached mode)
   if (pts.length >= 1 && S.buildTool.previewPos && !S.buildTool.disconnected) {

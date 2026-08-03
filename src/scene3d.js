@@ -241,12 +241,6 @@ export function startCamSmoothing(panel){
       const current = panel[curKey] || 0;
       const diff = isAngle ? wrapAngle(target - current) : (target - current);
       if (Math.abs(diff) > CAM_SMOOTH_EPS) {
-        // Log only for camWx (the most critical) and only when diff is significant
-        if (curKey === 'camWx' && Math.abs(diff) > 0.01) {
-          if (!(panel._dbgWxFrames = (panel._dbgWxFrames || 0) + 1, panel._dbgWxFrames % 6)) {
-            console.log('[CAM-ORBIT] step/camWx-anime', panel.id.slice(0,6), 'camWx:', current.toFixed(3), '→', (current + diff * factor).toFixed(3), 'target:', target.toFixed(3), '| cameraMode:', panel.cameraMode, 'dragMode:', S.dragMode, '_camAnimating:', panel._camAnimating);
-          }
-        }
         panel[curKey] = isAngle ? wrapAngle(current + diff * factor) : current + diff * factor;
         stillMoving = true;
       } else {
@@ -432,16 +426,6 @@ export function framePanelCamera3D(camera, panel, page){
   // Only framePanelCamera3D knows cx/cy/cz in all cases (camOrbitTargetId, selected element,
   // free camPanX/Y orbit); the sphere can thus always point to the right place.
   panel._orbitCx = cx; panel._orbitCy = cy; panel._orbitCz = cz;
-  // Diagnostic log: traces the orbit center on every frame during panelCamRotate
-  if (S.dragMode === 'panelCamRotate' && panel._camAnimating) {
-    if (!(panel._dbgCxFrames = (panel._dbgCxFrames || 0) + 1, panel._dbgCxFrames % 8)) {
-      console.log('[CAM-ORBIT] frameCam/cx-pendant-drag', panel.id.slice(0,6),
-        'cx:', cx.toFixed(4), 'cy:', cy.toFixed(4), 'cz:', cz.toFixed(4),
-        '| camWx:', panel.camWx?.toFixed(4), 'camWy:', (panel.camWy||0).toFixed(4), 'camWz:', (panel.camWz||0).toFixed(4),
-        '| camWxTgt:', panel.camWxTarget?.toFixed(4), 'camWyTgt:', panel.camWyTarget?.toFixed(4), 'camWzTgt:', panel.camWzTarget?.toFixed(4),
-        '| _orbitId:', panel.camOrbitTargetId||'(free)', 'selectedId:', (S.selectedId||'').slice(0,6));
-    }
-  }
   const camY = cy + basis.backward.y * dist;
   // No floor clamp on camY: the camera must be able to go to any height, including ground level
   // or below, to allow ground-level shots (like the Scene Camera, which is free since it uses 2D
@@ -1946,10 +1930,6 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
         const _centZ17 = _ownedElems17.reduce((s, e) => s + e.wzFloor, 0) / _ownedElems17.length;
         const _centY17 = Math.max(GROUND_Y_DEFAULT_3D,
           _ownedElems17.reduce((s, e) => s + (isFinite(e.wyFloor) ? e.wyFloor : GROUND_Y_DEFAULT_3D), 0) / _ownedElems17.length);
-        console.log('[FIX17] pivot corrected → elements centroid', panel.id.slice(0,6),
-          '| camWx:', panel.camWx.toFixed(2), '→', _centX17.toFixed(2),
-          '| dist_min:', _minDist17.toFixed(1), '> threshold:15',
-          '| N elements:', _ownedElems17.length);
         panel.camWx = _centX17; panel.camWy = _centY17; panel.camWz = _centZ17;
         panel.camWxTarget = _centX17; panel.camWyTarget = _centY17; panel.camWzTarget = _centZ17;
         framePanelCamera3D(personaCamera3D, panel, page);

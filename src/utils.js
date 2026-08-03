@@ -104,8 +104,6 @@ export function repairElementBase3D(o){
     const _ratio = o.realHeightFloor / (o.baseH / WALL_PX_PER_UNIT_3D);
     if (_ratio > 4.05 || _ratio < 0.095) {
       const _ar = (o.h > 0) ? (o.w / o.h) : 1;
-      console.log('[FIX22b] repairElementBase3D', o.id?.slice(0,6),
-        'ratio:', _ratio.toFixed(2), 'baseH:', o.baseH.toFixed(2), '→', (o.realHeightFloor * WALL_PX_PER_UNIT_3D).toFixed(2));
       o.baseH = o.realHeightFloor * WALL_PX_PER_UNIT_3D;
       o.baseW = o.baseH * _ar;
       return true;

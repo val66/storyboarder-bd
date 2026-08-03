@@ -1258,16 +1258,11 @@ function applyPersonaSizePercent(o, percent, page){
   const newW = clamp(targetRealW * factor, 4, page.w * 0.95);
   const newH = clamp(targetRealH * factor, 4, page.h * 0.95);
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-  console.log('[FIX22] applyPersonaSizePercent', o.id?.slice(0,6), 'pct:', pct.toFixed(2),
-    'baseRealH:', baseRealH.toFixed(3), 'targetRealH:', targetRealH.toFixed(3),
-    'camDist:', _camDist22.toFixed(1), 'factor:', factor.toFixed(2),
-    'newH:', newH.toFixed(1), 'realHeightFloor_before:', o.realHeightFloor?.toFixed(3));
   o.w = newW; o.h = newH;
   o.x = cx - newW / 2;
   o.y = cy - newH / 2;
   // Sync realHeightFloor: 3D renderer's source of truth (cf. renderPanelScene3D).
   if (o.realHeightFloor !== undefined) o.realHeightFloor = targetRealH;
-  console.log('[FIX22] → realHeightFloor_after:', o.realHeightFloor?.toFixed(3), 'o.h:', o.h.toFixed(1));
 }
 
 // ↳ src/constants.js
@@ -3328,12 +3323,6 @@ canvas.addEventListener('mousedown', (e) => {
     // offset × 1/camDist on screen at the moment of mousedown.
     // By reversing it (camWxTarget = camWx), the animation stops instantly with no jump: the
     // camera orbits around the point actually visible at the click, not an extrapolated point.
-    console.log('[CAM-ORBIT] Fix13c/drag-mousedown', sel.id.slice(0,6),
-      'camWx:', sel.camWx?.toFixed(3), 'Δ:', ((sel.camWxTarget||0)-(sel.camWx||0)).toFixed(3),
-      '| camWy:', (sel.camWy||0).toFixed(3), 'Δy:', ((sel.camWyTarget||0)-(sel.camWy||0)).toFixed(3),
-      '| camWz:', (sel.camWz||0).toFixed(3), 'Δz:', ((sel.camWzTarget||0)-(sel.camWz||0)).toFixed(3),
-      '| camDist:', sel.camDist?.toFixed(3), 'Δd:', ((sel.camDistTarget||0)-(sel.camDist||0)).toFixed(3),
-      '| camOrbitTargetId:', sel.camOrbitTargetId||'(libre)');
     sel.camWxTarget = sel.camWx !== undefined ? sel.camWx : 0;
     sel.camWyTarget = sel.camWy !== undefined ? sel.camWy : 0;
     sel.camWzTarget = sel.camWz !== undefined ? sel.camWz : 0;
@@ -4028,21 +4017,6 @@ window.addEventListener('mousemove', (e) => {
     obj.camWx = S.dragOrig.camWx; obj.camWxTarget = S.dragOrig.camWx;
     obj.camWy = S.dragOrig.camWy; obj.camWyTarget = S.dragOrig.camWy;
     obj.camWz = S.dragOrig.camWz; obj.camWzTarget = S.dragOrig.camWz;
-    // Temporary diagnostic log (every 12 frames) — to be removed once the bug is fixed.
-    if (!(obj._dbgFix16 = (obj._dbgFix16 || 0) + 1, obj._dbgFix16 % 12)) {
-      // Fix 16 extended: also log camPanX/Y (pre-migration values kept in memory) and the wxFloor
-      // of the page's first 4 elements, to check whether the pivot is near real elements or in
-      // empty space (hypothesis: large camPanX/Y from the old project).
-      const _elWx16 = page.objects
-        .filter(o2 => (o2.type === 'perso' || o2.type === 'objet3d') && isFinite(o2.wxFloor))
-        .slice(0, 4).map(e => e.wxFloor.toFixed(1)).join(', ');
-      console.log('[FIX16] mousemove/panelCamRotate', obj.id.slice(0,6),
-        'anchored pivot: wx=', S.dragOrig.camWx?.toFixed(3), 'wy=', S.dragOrig.camWy?.toFixed(3), 'wz=', S.dragOrig.camWz?.toFixed(3),
-        '| camPanX(old):', (obj.camPanX||0).toFixed(3), 'camPanY(old):', (obj.camPanY||0).toFixed(3),
-        '| elements-wxFloor:', _elWx16 || '(none)',
-        '| camOrbitTargetId:', obj.camOrbitTargetId || '(none)',
-        '| S.selectedId===panel.id:', S.selectedId === obj.id);
-    }
     startCamSmoothing(obj);
   } else if (S.dragMode === 'panelCamPan') {
     // Phase 9: mouse-driven camera pan (middle-click or Ctrl+LMB).
@@ -6398,7 +6372,6 @@ camRotYInput.addEventListener('input', () => {
   // freeze the orbit center at its CURRENT value to prevent post-zoom smoothing
   // (camWx → camWxTarget, slow at 0.10/frame) from continuing to drift during rotation.
   const _st = S.sideCameraTarget;
-  if (Math.abs((_st.camWxTarget||0) - (_st.camWx||0)) > 0.001) console.log('[CAM-ORBIT] Fix13c/slider-rotY', _st.id.slice(0,6), 'camWx:', _st.camWx?.toFixed(3), 'camWxTarget(before):', _st.camWxTarget?.toFixed(3));
   if (_st.camWx     !== undefined) _st.camWxTarget     = _st.camWx;
   if (_st.camWy     !== undefined) _st.camWyTarget     = _st.camWy;
   if (_st.camWz     !== undefined) _st.camWzTarget     = _st.camWz;
@@ -6414,7 +6387,6 @@ camRotXInput.addEventListener('input', () => {
   S.sideCameraTarget.camRotXTarget = deg * Math.PI / 180;
   // Fix 13c (slider): same as camRotYInput above.
   const _st = S.sideCameraTarget;
-  if (Math.abs((_st.camWxTarget||0) - (_st.camWx||0)) > 0.001) console.log('[CAM-ORBIT] Fix13c/slider-rotX', _st.id.slice(0,6), 'camWx:', _st.camWx?.toFixed(3), 'camWxTarget(before):', _st.camWxTarget?.toFixed(3));
   if (_st.camWx     !== undefined) _st.camWxTarget     = _st.camWx;
   if (_st.camWy     !== undefined) _st.camWyTarget     = _st.camWy;
   if (_st.camWz     !== undefined) _st.camWzTarget     = _st.camWz;
@@ -6495,7 +6467,6 @@ window.addEventListener('mousemove', (e) => {
   // framePanelCamera3D can rewrite camWxTarget between two animation frames (notably via the
   // deselection branch if _lastOrbitSelId was set). Repeating the snap guarantees that any stray
   // target introduced during the drag is cancelled on the next event.
-  if (Math.abs(((panel.camWxTarget||0) - (panel.camWx||0))) > 0.001) console.log('[CAM-ORBIT] Fix13c/gizmo-cancels-drift', panel.id.slice(0,6), 'camWx:', panel.camWx?.toFixed(3), 'camWxTarget(before):', panel.camWxTarget?.toFixed(3));
   if (panel.camWx   !== undefined) panel.camWxTarget   = panel.camWx;
   if (panel.camWy   !== undefined) panel.camWyTarget   = panel.camWy;
   if (panel.camWz   !== undefined) panel.camWzTarget   = panel.camWz;
