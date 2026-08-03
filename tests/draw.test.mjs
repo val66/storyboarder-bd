@@ -29,6 +29,7 @@ import {
   wrapTextLines,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
+import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -457,5 +458,62 @@ describe('wrapTextLines / wrapText — découpage du texte en lignes selon une l
       { text: 'Bonjour', x: 10, y: 20 },
       { text: 'le monde', x: 10, y: 35 },
     ]);
+  });
+});
+
+// ── Fix 34 : angles pleins, sur de VRAIS Murs produits par l'outil Construire ────────────────
+// Les tests unitaires de buildWallJunctions3D travaillent sur un carré écrit à la main. Ici on
+// passe par buildToolCreateWallSegment/buildToolClose, donc par les vraies coordonnées monde,
+// les vrais rotY et le vrai mur de fermeture — c'est ce chemin-là que l'utilisateur emprunte.
+describe('buildWallJunctions3D — angles d\'une Pièce réellement construite (Fix 34)', () => {
+  function pieceRectangulaire() {
+    const panel = {
+      id: 'panelJ', type: 'panel', x: 0, y: 0, w: 800, h: 600,
+      pts: [{ x: 0, y: 0 }, { x: 800, y: 0 }, { x: 800, y: 600 }, { x: 0, y: 600 }],
+      camRotX: 0, camRotY: 0, camDist: PANEL_CAM_DEFAULT_DIST_3D, camWx: 0, camWy: 0, camWz: 0,
+    };
+    const page = { objects: [panel] };
+    S.buildTool = { panelId: panel.id, pieceId: 'pj', pieceLabel: 'P', points: [{ x: 0, z: 0 }], wallSegs: [], wallIds: [] };
+    for (const [ax, az, bx, bz] of [[0, 0, 6, 0], [6, 0, 6, 4], [6, 4, 0, 4]]) {
+      const id = buildToolCreateWallSegment(panel, page, ax, az, bx, bz);
+      S.buildTool.wallIds.push(id); S.buildTool.points.push({ x: bx, z: bz });
+    }
+    buildToolClose(panel, page);
+    return { panel, page };
+  }
+  const enJonctions = page => {
+    const murs = page.objects.filter(isJunctionWall3D);
+    return buildWallJunctions3D(murs.map(o => ({
+      x: o.wxFloor, z: o.wzFloor, realLen: o.realLenFloor, rotY: o.rotY || 0,
+      height: o.realHeightFloor ?? 3, color: o.color || '#888', roomFloatY: 0,
+    })), w => w.height * 0.06);
+  };
+
+  test('les 4 angles sont détectés, aux 4 sommets du rectangle', () => {
+    const { page } = pieceRectangulaire();
+    assert.equal(page.objects.filter(o => o.objType === 'mur').length, 4, '3 murs + fermeture');
+    const j = enJonctions(page);
+    assert.equal(j.length, 4, `${j.length} angles détectés`);
+    const coins = j.map(p => `${Math.round(p.x)},${Math.round(p.z)}`).sort();
+    assert.deepEqual(coins, ['0,0', '0,4', '6,0', '6,4']);
+  });
+
+  test('RÉGRESSION : un Mur percé d\'une porte garde ses angles', () => {
+    const { page } = pieceRectangulaire();
+    const mur = page.objects.find(o => o.objType === 'mur');
+    // Une Parois aimantée à ce Mur : c'est ce qui l'écartait de la liste des jonctions.
+    page.objects.push({ id: 'porte1', type: 'objet3d', objType: 'porte_ouverte',
+                        magnetWallId: mur.id, w: 30, h: 60, wallAlongFrac: 0.5, wallYFrac: 0 });
+    assert.equal(enJonctions(page).length, 4, 'toujours 4 angles malgré la porte');
+  });
+
+  test('les poteaux ont l\'épaisseur et la hauteur réelles des Murs construits', () => {
+    const { page } = pieceRectangulaire();
+    const mur = page.objects.find(o => o.objType === 'mur');
+    const h = mur.realHeightFloor ?? 3;
+    for (const p of enJonctions(page)) {
+      assertClose(p.height, h, 'hauteur du poteau');
+      assertClose(p.thick, h * 0.06, 'épaisseur du poteau');
+    }
   });
 });

@@ -1137,6 +1137,15 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
 // ════════════════════════════════════════════════════════════
 // 3D — TRACÉ GEOMETRY
 // ════════════════════════════════════════════════════════════
+// Fix 34b — which Walls get a corner post. Deliberately NOT the buildMurWalls predicate used by
+// the colinear merge: that one drops any Wall carrying an Opening, because a Wall pierced by a door
+// or a window must not be merged into a chain (holes are cut per Wall). Reusing it here inherited
+// that exclusion for no reason, and every corner touching a Wall with a door or a window stayed
+// hollow — the half that were still wrong. A corner post only cares about where the Wall ENDS.
+export function isJunctionWall3D(o){
+  return !!o && o.objType === 'mur' && !!o.pieceId && !o.hidden3d;
+}
+
 // Fix 34 — junction points where two NON-COLINEAR build-tool Walls meet, with the post needed to
 // fill the notch there.
 //
@@ -1894,7 +1903,13 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   // hollow too.
   wallJunctionMeshCache3D.forEach(mesh => { mesh.visible = false; });
   {
-    const _jw = buildMurWalls.map(o => ({
+    // Fix 34b — NOT buildMurWalls: that list deliberately drops any Wall carrying an Opening,
+    // because a Wall pierced by a door or a window must not be merged into a colinear chain (the
+    // holes are cut per Wall). Reusing it here inherited that exclusion for no reason, and every
+    // corner touching a Wall with a door or a window stayed hollow — which is exactly the half of
+    // them that were still wrong. A corner post cares only about where the Wall ENDS.
+    const _junctionWalls = elements.filter(isJunctionWall3D);
+    const _jw = _junctionWalls.map(o => ({
       x: (o.wxFloor !== undefined) ? o.wxFloor : ensureElementWorldPos3D(o, panel).x,
       z: (o.wzFloor !== undefined) ? o.wzFloor : (o.z || 0),
       realLen: (o.realLenFloor !== undefined) ? o.realLenFloor : ensureElementUnits3D(o).w,

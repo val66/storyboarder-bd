@@ -47,6 +47,7 @@ import {
   buildTracéWallGeometry3D,
   buildMuretGroup3D,
   buildWallJunctions3D,
+  isJunctionWall3D,
   tracéWallHeight3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1611,5 +1612,26 @@ describe('buildWallJunctions3D — poteaux d\'angle (Fix 34)', () => {
   test('entrées inexploitables → liste vide', () => {
     assert.deepEqual(buildWallJunctions3D(null, ep), []);
     assert.deepEqual(buildWallJunctions3D([mur(0, 0, 4, 0)], ep), []);
+  });
+});
+
+describe('isJunctionWall3D — quels Murs reçoivent un poteau d\'angle (Fix 34b)', () => {
+  const mur = extra => ({ objType: 'mur', pieceId: 'p1', ...extra });
+
+  test('RÉGRESSION : un Mur qui porte une Parois compte quand même', () => {
+    // La 1re version réutilisait le prédicat de la FUSION des murs colinéaires, qui écarte
+    // volontairement les Murs percés (les trous sont découpés mur par mur). Résultat : tout
+    // angle touchant un Mur à porte ou à fenêtre restait creux — la moitié des cas.
+    assert.equal(isJunctionWall3D(mur({ id: 'm1' })), true, 'Mur nu');
+    // Le prédicat ne regarde que le Mur lui-même : porter une Parois ne le disqualifie pas.
+    assert.equal(isJunctionWall3D(mur({ id: 'm2', hasOpening: true })), true, 'Mur percé');
+  });
+
+  test('écarte ce qui n\'est pas un Mur de Pièce ou de Bâtiment', () => {
+    assert.equal(isJunctionWall3D(mur({ objType: 'mur_coin' })), false, 'Mur d\'angle');
+    assert.equal(isJunctionWall3D(mur({ pieceId: null })), false, 'Mur libre, hors Pièce');
+    assert.equal(isJunctionWall3D(mur({ hidden3d: true })), false, 'Mur masqué');
+    assert.equal(isJunctionWall3D({ objType: 'dalle', pieceId: 'p1' }), false, 'Dalle');
+    assert.equal(isJunctionWall3D(null), false);
   });
 });
