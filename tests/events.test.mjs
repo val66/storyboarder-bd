@@ -31,7 +31,9 @@ import {
   wallScreenAxes3D,
   fracDeltaAlongAxis2D,
   tracéScreenAxisAtFrac3D,
+  integrateTracéFrac3D,
 } from '../src/events.js';
+import { smoothTracéPath3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -464,5 +466,90 @@ describe('tracéScreenAxisAtFrac3D — échelle écran locale d\'un Tracé (Fix 
     assert.equal(tracéScreenAxisAtFrac3D(null, 0.5, panel, page), null);
     assert.equal(tracéScreenAxisAtFrac3D([{ x: 0, z: 0 }], 0.5, panel, page), null, 'un seul point');
     assert.equal(tracéScreenAxisAtFrac3D(droitFace, 0.5, null, page), null, 'panel absent');
+  });
+});
+
+// ── integrateTracéFrac3D (Fix 29) ─────────────────────────────────────────────────────────────
+// Bug rapporté : sur un Muret qui BOUCLE sur lui-même, en maintenant le clic pour faire glisser
+// une Parois le long du mur, la direction finissait par s'inverser. Cause : l'axe écran était
+// évalué une seule fois, à la fraction de départ ; la tangente d'une boucle tournant de 360°, la
+// projection sur cet axe périmé changeait de signe après environ un quart de tour.
+describe('integrateTracéFrac3D — suivi d\'un Tracé qui tourne (Fix 29)', () => {
+  const page = { w: 800, h: 600 };
+  const panel = { x: 0, y: 0, w: 800, h: 600,
+                  camRotX: 0.9, camRotY: 0, camDist: 25, camWx: 0, camWy: 1, camWz: 0 };
+  // Boucle ovale fermée, comme le Muret de la capture d'écran.
+  function boucleOvale() {
+    const raw = [];
+    const N = 16;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      raw.push({ x: Math.cos(a) * 8, z: Math.sin(a) * 5 });
+    }
+    raw.push({ ...raw[0] });
+    return smoothTracéPath3D(raw, 4);
+  }
+  // Souris qui SUIT le mur : à chaque pas, on se déplace de `px` pixels le long de la tangente
+  // écran locale — exactement ce que fait l'utilisateur.
+  function pasEnSuivantLeMur(pts, frac, px) {
+    const A = tracéScreenAxisAtFrac3D(pts, frac, panel, page);
+    const n = Math.hypot(A.x, A.y) || 1;
+    return { dx: A.x / n * px, dy: A.y / n * px };
+  }
+
+  test('RÉGRESSION : l\'axe FIGÉ au départ finit par faire reculer la Parois', () => {
+    // Reproduit l'ancien comportement pour documenter le bug corrigé.
+    const pts = boucleOvale();
+    const A0 = tracéScreenAxisAtFrac3D(pts, 0, panel, page);
+    const versLaMoitie = pasEnSuivantLeMur(pts, 0.5, 10);
+    const avanceFigee = fracDeltaAlongAxis2D(versLaMoitie.dx, versLaMoitie.dy, A0);
+    assert.ok(avanceFigee < 0,
+      `avec l'axe de départ, à mi-parcours la Parois RECULE (${(avanceFigee*100).toFixed(2)} %)`);
+  });
+
+  test('l\'axe réévalué à la position courante avance toujours dans le bon sens', () => {
+    const pts = boucleOvale();
+    for (const f of [0, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9]) {
+      const pas = pasEnSuivantLeMur(pts, f, 10);
+      const suivant = integrateTracéFrac3D(pts, f, pas.dx, pas.dy, panel, page);
+      assert.ok(suivant > f, `à frac ${f} la Parois doit avancer (obtenu ${suivant.toFixed(4)})`);
+    }
+  });
+
+  test('un glisser complet en suivant le mur parcourt la boucle sans jamais repartir en arrière', () => {
+    const pts = boucleOvale();
+    let frac = 0, precedent = -1, reculs = 0;
+    for (let i = 0; i < 400; i++) {
+      const pas = pasEnSuivantLeMur(pts, frac, 8);
+      const suivant = integrateTracéFrac3D(pts, frac, pas.dx, pas.dy, panel, page);
+      if (suivant === null) break;
+      if (suivant < precedent) reculs++;
+      precedent = frac; frac = suivant;
+      if (frac >= 1) break;
+    }
+    assert.equal(reculs, 0, 'aucun recul pendant tout le parcours');
+    assert.ok(frac >= 1, `la Parois doit atteindre le bout de la boucle (arrivée à ${frac.toFixed(3)})`);
+  });
+
+  test('inverser le sens de la souris fait bien reculer la Parois', () => {
+    const pts = boucleOvale();
+    const pas = pasEnSuivantLeMur(pts, 0.5, 10);
+    const arriere = integrateTracéFrac3D(pts, 0.5, -pas.dx, -pas.dy, panel, page);
+    assert.ok(arriere < 0.5, 'glisser à contresens doit décrémenter la fraction');
+  });
+
+  test('la fraction reste bornée à [0, 1]', () => {
+    const pts = boucleOvale();
+    const pas = pasEnSuivantLeMur(pts, 0.99, 5000);
+    assert.equal(integrateTracéFrac3D(pts, 0.99, pas.dx, pas.dy, panel, page), 1, 'plafonnée à 1');
+    const pasArr = pasEnSuivantLeMur(pts, 0.01, 5000);
+    assert.equal(integrateTracéFrac3D(pts, 0.01, -pasArr.dx, -pasArr.dy, panel, page), 0, 'plancher à 0');
+  });
+
+  test('axe dégénéré ou entrées invalides → null (la Parois ne bouge pas)', () => {
+    assert.equal(integrateTracéFrac3D(null, 0.5, 10, 10, panel, page), null);
+    assert.equal(integrateTracéFrac3D(boucleOvale(), 0.5, 10, 10, null, page), null, 'panel absent');
+    assert.equal(integrateTracéFrac3D(boucleOvale(), 0.5, 0, 0, panel, page), 0.5,
+      'souris immobile : fraction inchangée');
   });
 });

@@ -1458,6 +1458,23 @@ export function tracéScreenAxisAtFrac3D(smoothPts, frac, panel, page){
   return { x: (sb.x - sa.x) / TRACÉ_DRAG_EPS, y: (sb.y - sa.y) / TRACÉ_DRAG_EPS };
 }
 
+// Fix 29 — advances a Wall-Opening's position along a Trace by ONE step: the axis is re-evaluated at
+// the Element's CURRENT fraction and applied to the movement since the last frame. Returns the new
+// fraction, or null when the axis is degenerate (path seen exactly end-on) and the caller should
+// leave the Element where it is.
+//
+// Stepwise integration is what lets the Element follow a turning path. Mapping the TOTAL mouse
+// offset onto a single axis frozen at mousedown — as this did before — breaks down as soon as the
+// tangent rotates: past a quarter of a closed loop the projection onto that stale axis turns
+// negative and the Element travels backwards while the user is still dragging forwards.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function integrateTracéFrac3D(smoothPts, liveFrac, ddx, ddy, panel, page){
+  const axis = tracéScreenAxisAtFrac3D(smoothPts, liveFrac, panel, page);
+  const d = fracDeltaAlongAxis2D(ddx, ddy, axis);
+  if (d === null) return null;
+  return clamp(liveFrac + d, 0, 1);
+}
+
 // Fix 26 — fraction of an axis covered when the mouse moves by (dx, dy): the movement projected onto
 // the axis, divided by its SQUARED length. Dragging exactly from one end of the axis to the other
 // therefore returns 1, which is what makes the Element follow the cursor 1:1 on screen.
@@ -3902,11 +3919,30 @@ window.addEventListener('mousemove', (e) => {
                 // the corner. Smoothing keeps the transition gradual. It is computed once per drag
                 // (cf. S.dragOrig.hostSmoothPts) rather than on every mouse move.
                 const _wptsDr = S.dragOrig.hostSmoothPts || smoothTracéPath3D(wall.world.pts, 4);
-                const _axisDr = tracéScreenAxisAtFrac3D(_wptsDr, curAlongFrac, _wallOpeningPanel, page);
-                const _dFracDr = fracDeltaAlongAxis2D(dx, dy, _axisDr);
-                obj.wallAlongFrac = (_dFracDr !== null)
-                  ? clamp(curAlongFrac + _dFracDr, 0, 1)
-                  : clamp(curAlongFrac + perspSign * dx / wallW, 0, 1);
+                // Fix 29 — INTEGRATE step by step instead of mapping the total mouse offset onto a
+                // single axis frozen at mousedown.
+                //
+                // A Trace's tangent turns; on a closed loop it sweeps a full 360°. Evaluating the
+                // axis once at the starting fraction meant that, as the user followed the wall with
+                // the mouse, the projection onto that stale axis shrank, hit zero after about a
+                // quarter of the way round, then went NEGATIVE — the Element started travelling
+                // backwards while the user was still dragging forwards (measured on an oval loop:
+                // +0.68 %/10 px at the start, -0.65 %/10 px at the halfway point).
+                //
+                // So the axis is re-evaluated at the Element's CURRENT position and applied to the
+                // movement SINCE THE LAST FRAME. The Element then follows the curve however far it
+                // travels. This does make the result path-dependent (wiggling the mouse and coming
+                // back does not land on exactly the same fraction), which is inherent to following
+                // a curved path and is what any DCC tool does for this kind of constrained drag.
+                const _liveFrac = (obj.wallAlongFrac != null) ? obj.wallAlongFrac : curAlongFrac;
+                const _nextFrac = integrateTracéFrac3D(_wptsDr, _liveFrac,
+                  dx - (S.dragOrig.tracéLastDx || 0), dy - (S.dragOrig.tracéLastDy || 0),
+                  _wallOpeningPanel, page);
+                // A degenerate axis (path seen exactly end-on) simply yields no movement this frame;
+                // the cursor reference is still advanced so recovering does not produce a jump.
+                if (_nextFrac !== null) obj.wallAlongFrac = _nextFrac;
+                S.dragOrig.tracéLastDx = dx;
+                S.dragOrig.tracéLastDy = dy;
               } else {
                 // Fix 26 — THE reported bug. The old formula was dx / wall.w, i.e. the mouse divided
                 // by the width of the 2D THIN BOX. The Element is now mapped onto the Wall's REAL
