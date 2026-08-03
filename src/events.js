@@ -110,6 +110,7 @@ import {
   useObjectBoxFormat3D,
   useObjectFormat3D,
   worldFloorToScreen,
+  worldPointToPageXY3D,
   worldToPageXY,
   panelSceneCache3D,
   slabMeshCache3D,
@@ -1404,6 +1405,48 @@ export function wallChildUnits3D(obj, wall){
   const scaleY = (obj.h ? obj.h / WALL_PX_PER_UNIT_3D : heightUnits * 0.82) / design.h;
   return { lenUnits, heightUnits, childWUnits: design.w * scaleX, childHUnits: design.h * scaleY };
 }
+// Fix 26 — the Wall's two axes AS THEY APPEAR ON SCREEN, in canvas pixels: `along` spans it end to
+// end at ground level, `up` spans the height usable by a Wall-Opening. Obtained by projecting the
+// real world points through the Panel's camera, so both already account for the Wall's orientation,
+// perspective foreshortening and any camera angle.
+// These are what a magnetized Wall-Opening drag must be mapped onto. The previous code divided the
+// mouse delta by wall.w / wall.h, which are the 2D THIN BOX dimensions (cf. recomputeBuildWallBox2D)
+// — the axis-aligned bounds of the Wall's GROUND LINE, not its extent. For a Wall receding into the
+// distance that box collapses to its 5 px floor while the Wall really spans hundreds of pixels, so
+// the drag ran ~44× too fast and the Element jumped from one end to the other (user report).
+// Returns null for a Tracé (which keeps its own path-based branch) or a Wall with no world position.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function wallScreenAxes3D(wall, panel, page, spanY){
+  if (!wall || !panel || wall.type === 'tracé') return null;
+  if (!isFinite(wall.wxFloor) || !isFinite(wall.wzFloor)) return null;
+  const lenUnits = wall.realLenFloor != null ? wall.realLenFloor : Math.max(0.3, wall.w / WALL_PX_PER_UNIT_3D);
+  const ca = Math.cos(wall.rotY || 0), sa = Math.sin(wall.rotY || 0), hl = lenUnits / 2;
+  // Same endpoint convention as recomputeBuildWallBox2D: rotY = atan2(-dz, dx).
+  const e1 = worldPointToPageXY3D(wall.wxFloor - hl * ca, GROUND_Y_DEFAULT_3D, wall.wzFloor + hl * sa, panel, page);
+  const e2 = worldPointToPageXY3D(wall.wxFloor + hl * ca, GROUND_Y_DEFAULT_3D, wall.wzFloor - hl * sa, panel, page);
+  const base = worldPointToPageXY3D(wall.wxFloor, GROUND_Y_DEFAULT_3D, wall.wzFloor, panel, page);
+  const top  = (spanY > 0)
+    ? worldPointToPageXY3D(wall.wxFloor, GROUND_Y_DEFAULT_3D + spanY, wall.wzFloor, panel, page)
+    : null;
+  return {
+    along: (e1 && e2) ? { x: e2.x - e1.x, y: e2.y - e1.y } : null,
+    up:    (base && top) ? { x: top.x - base.x, y: top.y - base.y } : null,
+  };
+}
+
+// Fix 26 — fraction of an axis covered when the mouse moves by (dx, dy): the movement projected onto
+// the axis, divided by its SQUARED length. Dragging exactly from one end of the axis to the other
+// therefore returns 1, which is what makes the Element follow the cursor 1:1 on screen.
+// Null when the axis is missing or degenerate (it projects to a point — e.g. a Wall seen exactly
+// edge-on, or its height in a strict top-down view), leaving the caller free to fall back.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function fracDeltaAlongAxis2D(dx, dy, axis){
+  if (!axis) return null;
+  const a2 = axis.x * axis.x + axis.y * axis.y;
+  if (!(a2 > 1)) return null;
+  return (dx * axis.x + dy * axis.y) / a2;
+}
+
 // Allowed position range for a magnetized Element, on the requested axis ('x' or 'y'): the Element
 // can move freely up to the edges of the Wall/side's projected rectangle, WITHOUT applying the
 // WALL_OPENING_MARGIN_FRAC safety margin (which only serves to avoid AABB-vs-silhouette overflow
@@ -3741,13 +3784,36 @@ window.addEventListener('mousemove', (e) => {
             const rangeY = wallLockedAxisRange(obj, wall, 'y');
             obj.x = clamp(S.dragOrig.x + dx, rangeX[0], rangeX[1]);
             obj.y = clamp(S.dragOrig.y + dy, rangeY[0], rangeY[1]);
+            // Fix 26 — the Wall's REAL dimensions, exactly as ensureWallRenderEntry3D derives them.
+            // Deliberately not wallChildUnits3D, which reads wall.w/h: those are the 2D thin box (cf.
+            // recomputeBuildWallBox2D), not the modelled size, and diverge as soon as realLenFloor
+            // exists.
+            const _wHU   = wall.realHeightFloor != null ? wall.realHeightFloor : Math.max(0.3, wall.h / WALL_PX_PER_UNIT_3D);
+            const _wOpenPanel = obj.homePanelId
+              ? page.objects.find(p => p.type === 'panel' && p.id === obj.homePanelId)
+              : findOwningPanel(wall, page);
+            // Fix 26 — usable only when the Wall really is placed in the world (build-tool Walls and
+            // migrated Elements both store wxFloor/wzFloor); a Tracé keeps its own path-based branch.
+            const _wProjectable = _wOpenPanel && wall.type !== 'tracé' &&
+              isFinite(wall.wxFloor) && isFinite(wall.wzFloor);
+
             // Height on the Wall's face via wallYFrac (0 = floor, 1 = max reachable height).
-            // Vertical dragging spans the whole range independently of the obj.h / wall.h ratio,
-            // unlike the bottomFracYScreen formula which is limited to ~18% of useful range.
-            // Normalization: wall.h px → [0, 1] range (same horizontal wall we see in the thumbnail).
-            const wallH = Math.max(1, wall.h);
+            // Fix 26: map the mouse onto the Wall's ACTUAL vertical extent on screen — obtained by
+            // projecting its base and its top — instead of dividing by wall.h. wall.h is the height
+            // of the 2D THIN BOX, i.e. the screen extent of the Wall's GROUND LINE: for a Wall seen
+            // face-on both ends project to the same height, so wall.h collapsed to its 5 px floor and
+            // barely 5 px of vertical mouse travel swept the Wall from floor to ceiling.
             const curFrac = (S.dragOrig.wallYFrac != null) ? S.dragOrig.wallYFrac : 0;
-            obj.wallYFrac = clamp(curFrac - dy / wallH, 0, 1);
+            // wallYFrac 1 places the Element's BOTTOM at heightUnits - childHUnits (cf.
+            // ensureWallRenderEntry3D), so that reduced span is what one full drag must cover.
+            const { childHUnits: _chU } = wallChildUnits3D(obj, wall);
+            const _axes = _wProjectable
+              ? wallScreenAxes3D(wall, _wOpenPanel, page, Math.max(0.01, _wHU - _chU))
+              : null;
+            const _dFracY = _axes ? fracDeltaAlongAxis2D(dx, dy, _axes.up) : null;
+            obj.wallYFrac = (_dFracY !== null)
+              ? clamp(curFrac + _dFracY, 0, 1)
+              : clamp(curFrac - dy / Math.max(1, wall.h), 0, 1);   // fallback (Tracé, top-down view…)
             // Position along the Wall via wallAlongFrac (0 = left edge, 1 = right edge, 0.5 = center).
             // Symmetric to wallYFrac: spans the whole range independently of the obj.w / wall.w ratio.
             // Only for simple Walls (mur_coin still uses centerFracX via obj.x).
@@ -3757,10 +3823,10 @@ window.addEventListener('mousemove', (e) => {
               // When camRotY ≈ π, "screen right" corresponds to "local left of the Wall" →
               // perspSign = -1 and dragging must decrement wallAlongFrac for the Opening to follow
               // the mouse. Does NOT use wallPanAlongSign (ortho cam, invariant to Panel rotation).
+              // Only still needed by the fallback below: the Fix 26 path derives the sign from the
+              // projection itself.
               let perspSign = 1;
-              const _wallOpeningPanel = obj.homePanelId
-                ? page.objects.find(p => p.type === 'panel' && p.id === obj.homePanelId)
-                : findOwningPanel(wall, page);
+              const _wallOpeningPanel = _wOpenPanel;
               if (_wallOpeningPanel) {
                 const _basis = panelCamBasis3D(_wallOpeningPanel);
                 if (wall.type === 'tracé' && wall.world && wall.world.pts && wall.world.pts.length >= 2) {
@@ -3817,7 +3883,15 @@ window.addEventListener('mousemove', (e) => {
                 const _iscrDr = Math.hypot(_scrXDr, _scrYDr) || 1;
                 obj.wallAlongFrac = clamp(curAlongFrac + (dx * _scrXDr + dy * _scrYDr) / (_iscrDr * wallW), 0, 1);
               } else {
-                obj.wallAlongFrac = clamp(curAlongFrac + perspSign * dx / wallW, 0, 1);
+                // Fix 26 — THE reported bug. The old formula was dx / wall.w, i.e. the mouse divided
+                // by the width of the 2D THIN BOX. The Element is now mapped onto the Wall's REAL
+                // screen segment (cf. wallScreenAxes3D), so it follows the cursor 1:1 whatever the
+                // Wall's orientation. perspSign is only still needed by the fallback: the direction
+                // otherwise falls out of the projection itself.
+                const _dFracA = _axes ? fracDeltaAlongAxis2D(dx, dy, _axes.along) : null;
+                obj.wallAlongFrac = (_dFracA !== null)
+                  ? clamp(curAlongFrac + _dFracA, 0, 1)
+                  : clamp(curAlongFrac + perspSign * dx / wallW, 0, 1);
               }
             }
           }

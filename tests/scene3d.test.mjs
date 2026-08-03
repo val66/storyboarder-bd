@@ -31,6 +31,7 @@ import {
   ensureElementWorldPos3D,
   setElementWorldPos3D,
   panelAutoDepthPivot3D,
+  worldPointToPageXY3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -582,5 +583,64 @@ describe('panelAutoDepthPivot3D — réancrage du pivot d\'orbite sur le sujet v
     const page = { w: 800, h: 600, objects: [panel, hidden, noWorld] };
     assert.equal(panelAutoDepthPivot3D(panel, page), false, 'aucun candidat exploitable → false');
     assertClose(panel.camDist, 0.3, 'camDist intact');
+  });
+});
+
+// ── worldPointToPageXY3D (Fix 26) ─────────────────────────────────────────────────────────────
+describe('worldPointToPageXY3D — projection d\'un point monde quelconque (Fix 26)', () => {
+  const page = { w: 800, h: 600 };
+  const panelFace = () => ({ x: 0, y: 0, w: 800, h: 600,
+                             camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 });
+
+  test('au niveau du Sol, donne exactement le même résultat que worldToPageXY', () => {
+    // Garde-fou de refactorisation : worldFloorToScreen délègue désormais au même cœur.
+    const panel = panelFace();
+    const a = worldToPageXY(2.5, -4, panel, page);
+    const b = worldPointToPageXY3D(2.5, GROUND_Y_DEFAULT_3D, -4, panel, page);
+    assertClose(b.x, a.x, 'x identique', 1e-9);
+    assertClose(b.y, a.y, 'y identique', 1e-9);
+  });
+
+  test('monter en Y dans le monde fait REMONTER le point à l\'écran (y canvas décroît)', () => {
+    const panel = panelFace();
+    const bas  = worldPointToPageXY3D(0, GROUND_Y_DEFAULT_3D,     -4, panel, page);
+    const haut = worldPointToPageXY3D(0, GROUND_Y_DEFAULT_3D + 2, -4, panel, page);
+    assert.ok(haut.y < bas.y, 'le haut du Mur doit se projeter plus haut que sa base');
+    assertClose(haut.x, bas.x, 'pas de dérive horizontale sur un déplacement purement vertical', 1e-9);
+  });
+
+  test('point derrière la caméra : renvoie null', () => {
+    const panel = panelFace();
+    // Caméra en z = camWz + camDist = 12, regardant vers -Z : un point en z = 50 est dans le dos.
+    assert.equal(worldPointToPageXY3D(0, GROUND_Y_DEFAULT_3D, 50, panel, page), null);
+  });
+
+  // LE bug corrigé par le Fix 26, capturé numériquement.
+  test('RÉGRESSION : la largeur de la boîte 2D n\'est PAS une mesure valide de la longueur écran d\'un Mur', () => {
+    const panel = panelFace();
+    const len = 6, hl = len / 2;
+    // Mur fuyant en profondeur : rotY = π/2 → son axe local est l'axe Z.
+    const ca = Math.cos(Math.PI / 2), sa = Math.sin(Math.PI / 2);
+    const e1 = worldPointToPageXY3D(-hl * ca, GROUND_Y_DEFAULT_3D,  hl * sa, panel, page);
+    const e2 = worldPointToPageXY3D( hl * ca, GROUND_Y_DEFAULT_3D, -hl * sa, panel, page);
+    const etendueH = Math.abs(e2.x - e1.x);            // ce que mesurait wall.w (boîte fine)
+    const longueurEcran = Math.hypot(e2.x - e1.x, e2.y - e1.y);  // ce qu'utilise le Fix 26
+    assert.ok(etendueH < 1,
+      `un Mur fuyant se projette quasi verticalement : étendue horizontale ${etendueH.toFixed(2)} px`);
+    assert.ok(longueurEcran > 100,
+      `mais il occupe bien ${longueurEcran.toFixed(0)} px à l'écran`);
+    // C'est ce rapport qui rendait le glisser ingérable : la fraction avançait ~200× trop vite.
+    assert.ok(longueurEcran / Math.max(5, etendueH + 5) > 20,
+      'l\'ancien dénominateur était plus de 20× trop petit dans cette configuration');
+  });
+
+  test('Mur DE FACE : les deux mesures coïncident (le cas courant n\'est pas modifié)', () => {
+    const panel = panelFace();
+    const hl = 3;
+    const e1 = worldPointToPageXY3D(-hl, GROUND_Y_DEFAULT_3D, 0, panel, page);
+    const e2 = worldPointToPageXY3D( hl, GROUND_Y_DEFAULT_3D, 0, panel, page);
+    const etendueH = Math.abs(e2.x - e1.x);
+    const longueurEcran = Math.hypot(e2.x - e1.x, e2.y - e1.y);
+    assertClose(longueurEcran, etendueH, 'segment horizontal : longueur = étendue horizontale', 1e-6);
   });
 });

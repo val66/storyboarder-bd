@@ -147,7 +147,11 @@ export function clampWorldYAboveGround(o, worldY, realH) {
   return Math.max(worldY, GROUND_Y_DEFAULT_3D + realH / 2);
 }
 
-export function worldFloorToScreen(wx, wz, panel, page){
+// Projects an ARBITRARY world point through the Panel's camera. Same maths as worldFloorToScreen,
+// which was restricted to the ground plane — the Y is now a parameter, so callers that need the top
+// of a Wall (cf. the magnetized Wall-Opening drag in events.js) no longer have to re-derive the
+// projection by hand. Returns page-centre-relative coordinates, or null behind the camera.
+function worldPointToScreenCore3D(wx, wy, wz, panel, page){
   const basis = panelCamBasis3D(panel);
   const camDist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
   const _orb = getCamOrbitWorld(panel, basis);
@@ -156,7 +160,7 @@ export function worldFloorToScreen(wx, wz, panel, page){
   if (camY < GROUND_Y_DEFAULT_3D + 0.15) camY = GROUND_Y_DEFAULT_3D + 0.15;
   const camX = panOffX + basis.backward.x * camDist;
   const camZ = panOffZ + basis.backward.z * camDist;
-  const vx = wx - camX, vy = GROUND_Y_DEFAULT_3D - camY, vz = wz - camZ;
+  const vx = wx - camX, vy = wy - camY, vz = wz - camZ;
   const vright = vx * basis.right.x + vy * basis.right.y + vz * basis.right.z;
   const vup    = vx * basis.up.x    + vy * basis.up.y    + vz * basis.up.z;
   const vdepth = -(vx * basis.backward.x + vy * basis.backward.y + vz * basis.backward.z);
@@ -165,6 +169,21 @@ export function worldFloorToScreen(wx, wz, panel, page){
   return {
     x: page.w / 2 + vright * scale / vdepth,
     y: page.h / 2 - vup    * scale / vdepth,
+  };
+}
+
+export function worldFloorToScreen(wx, wz, panel, page){
+  return worldPointToScreenCore3D(wx, GROUND_Y_DEFAULT_3D, wz, panel, page);
+}
+
+// Same as worldToPageXY (canvas coordinates, Panel included) but for an arbitrary world point
+// rather than one on the ground plane.
+export function worldPointToPageXY3D(wx, wy, wz, panel, page) {
+  const ws = worldPointToScreenCore3D(wx, wy, wz, panel, page);
+  if (!ws) return null;
+  return {
+    x: panel.x + panel.w / 2 + (ws.x - page.w / 2),
+    y: panel.y + panel.h / 2 + (ws.y - page.h / 2),
   };
 }
 

@@ -28,6 +28,8 @@ import {
   recomputeBuildWallBox2D,
   storeRoomGeometry,
   getRoomOrBuildingScreenBBox,
+  wallScreenAxes3D,
+  fracDeltaAlongAxis2D,
 } from '../src/events.js';
 import { S } from '../src/state.js';
 
@@ -337,5 +339,78 @@ describe('getRoomOrBuildingScreenBBox — projection écran des 4 coins de la bb
     const panel = makePanel();
     const page = { w: 800, h: 600, objects: [panel, { pieceId: 'p2', objType: 'dalle', polygon: [{ x: 0, z: 0 }, { x: 0, z: 0 }] }] };
     assert.equal(getRoomOrBuildingScreenBBox(['p2'], page, panel), null);
+  });
+});
+
+// ── wallScreenAxes3D / fracDeltaAlongAxis2D (Fix 26) ──────────────────────────────────────────
+// Cœur du correctif de glisser des Parois : la fraction parcourue doit se mesurer sur l'étendue
+// RÉELLE du Mur à l'écran, pas sur sa boîte 2D fine.
+describe('wallScreenAxes3D / fracDeltaAlongAxis2D — mapping souris → Mur (Fix 26)', () => {
+  const page = { w: 800, h: 600 };
+  const panel = () => ({ x: 0, y: 0, w: 800, h: 600,
+                         camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 });
+  // Mur de 6 m centré sur l'origine. rotY = π/2 → il fuit dans la profondeur (axe Z).
+  const murFuyant = () => ({ id: 'w1', type: 'objet3d', objType: 'mur', rotY: Math.PI / 2,
+                             wxFloor: 0, wzFloor: 0, realLenFloor: 6, realHeightFloor: 2.5,
+                             x: 400, y: 300, w: 5, h: 5 });   // boîte fine : 5×5 px
+
+  test('fracDeltaAlongAxis2D : parcourir tout l\'axe rend exactement 1', () => {
+    assertClose(fracDeltaAlongAxis2D(100, 0, { x: 100, y: 0 }), 1, 'axe horizontal');
+    assertClose(fracDeltaAlongAxis2D(0, -60, { x: 0, y: -60 }), 1, 'axe vertical');
+    assertClose(fracDeltaAlongAxis2D(30, 40, { x: 30, y: 40 }), 1, 'axe oblique');
+  });
+
+  test('fracDeltaAlongAxis2D : un mouvement perpendiculaire à l\'axe ne fait rien avancer', () => {
+    assertClose(fracDeltaAlongAxis2D(0, 50, { x: 100, y: 0 }), 0, 'perpendiculaire');
+  });
+
+  test('fracDeltaAlongAxis2D : le sens est porté par l\'axe (plus besoin de perspSign)', () => {
+    assert.ok(fracDeltaAlongAxis2D(10, 0, { x: -100, y: 0 }) < 0,
+      'axe pointant à gauche → glisser à droite doit faire reculer la fraction');
+  });
+
+  test('fracDeltaAlongAxis2D : axe absent ou dégénéré → null (le caller garde son repli)', () => {
+    assert.equal(fracDeltaAlongAxis2D(10, 10, null), null, 'axe absent');
+    assert.equal(fracDeltaAlongAxis2D(10, 10, { x: 0, y: 0 }), null, 'axe nul (Mur vu de bout)');
+    assert.equal(fracDeltaAlongAxis2D(10, 10, { x: 0.5, y: 0.5 }), null, 'axe sous le seuil de 1 px');
+  });
+
+  test('RÉGRESSION : sur un Mur fuyant, l\'axe écran est bien plus long que la boîte 2D', () => {
+    const wall = murFuyant();
+    const axes = wallScreenAxes3D(wall, panel(), page, 2);
+    const lgAxe = Math.hypot(axes.along.x, axes.along.y);
+    assert.ok(lgAxe > 100, `axe écran réel ≈ ${lgAxe.toFixed(0)} px`);
+    assert.ok(lgAxe / Math.max(1, wall.w) > 20,
+      'l\'ancien dénominateur (wall.w = 5 px) était plus de 20× trop petit');
+  });
+
+  test('RÉGRESSION : le glisser devient ainsi des dizaines de fois moins sensible', () => {
+    const wall = murFuyant();
+    const axes = wallScreenAxes3D(wall, panel(), page, 2);
+    const dx = 10;
+    const nouveau = Math.abs(fracDeltaAlongAxis2D(dx, 0, axes.along));
+    const ancien  = Math.abs(dx / Math.max(1, wall.w));   // ancienne formule
+    assert.ok(ancien > 1, 'l\'ancienne formule saturait la fraction dès 10 px de souris');
+    assert.ok(nouveau < 0.2, `la nouvelle avance de ${(nouveau * 100).toFixed(1)} % seulement`);
+  });
+
+  test('l\'axe vertical pointe vers le HAUT de l\'écran (y canvas décroissant)', () => {
+    const axes = wallScreenAxes3D(murFuyant(), panel(), page, 2);
+    assert.ok(axes.up.y < 0, 'monter sur le Mur = remonter à l\'écran');
+    // Donc glisser la souris vers le haut (dy < 0) augmente bien wallYFrac.
+    assert.ok(fracDeltaAlongAxis2D(0, -10, axes.up) > 0, 'souris vers le haut → fraction croissante');
+  });
+
+  test('renvoie null pour un Tracé ou un Mur sans position monde (repli sur l\'ancienne formule)', () => {
+    assert.equal(wallScreenAxes3D({ type: 'tracé', wxFloor: 0, wzFloor: 0 }, panel(), page, 2), null);
+    assert.equal(wallScreenAxes3D({ type: 'objet3d', objType: 'mur' }, panel(), page, 2), null,
+      'wxFloor/wzFloor absents');
+    assert.equal(wallScreenAxes3D(murFuyant(), null, page, 2), null, 'panel absent');
+  });
+
+  test('spanY nul ou négatif : pas d\'axe vertical, mais l\'axe le long du Mur reste fourni', () => {
+    const axes = wallScreenAxes3D(murFuyant(), panel(), page, 0);
+    assert.equal(axes.up, null, 'pas de hauteur exploitable');
+    assert.ok(axes.along, 'l\'axe le long du Mur reste calculé');
   });
 });
