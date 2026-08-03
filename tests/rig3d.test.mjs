@@ -25,6 +25,7 @@ import {
   expandBoxByMeshOnly3D,
   wallChildShapeKey3D,
   disposeGroupGeometries3D,
+  buildWindowRig3D,
 } from '../src/rig3d.js';
 import { S } from '../src/state.js';
 import { POSE_3D } from '../src/constants.js';
@@ -272,5 +273,67 @@ describe('disposeGroupGeometries3D — libération des géométries d\'un rig je
   test('racine absente : no-op (ne plante pas)', () => {
     disposeGroupGeometries3D(null);
     disposeGroupGeometries3D(undefined);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 31d — encombrement du dormant de Fenêtre.
+//
+// Le Fix 31 avait épaissi le dormant pour le rendre plus présent sur un Muret, mais en
+// jouant sur la PROFONDEUR : 0.16 pour le cadre et 0.24 pour le chambranle, contre une
+// épaisseur de Mur de référence de 0.12 (buildWallRig3D : thick = h × 0.06, h = 2.0).
+// La caisse débordait donc de 0.06 par face à l'intérieur de la pièce. La présence vient
+// désormais de l'épaisseur DANS LE PLAN du mur ; la profondeur est calée sur le mur.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
+  const MUR_REF = 0.12;
+  // Profondeur du dormant SEUL : l'ouvrant (le pivot) sort du mur par construction quand
+  // la Fenêtre est ouverte, ce n'est pas lui qui était en cause.
+  const profondeurDormant = g => {
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    g.children.filter(c => c.isMesh).forEach(m => box.expandByObject(m));
+    return box.max.z - box.min.z;
+  };
+
+  test('le dormant ne déborde que très légèrement du Mur, des deux côtés', () => {
+    for (const ouvert of [false, true]) {
+      const d = profondeurDormant(buildWindowRig3D('#3355aa', ouvert, 'gauche', 58));
+      const debord = (d - MUR_REF) / 2;
+      assert.ok(debord >= 0, `affleurant, pas enfoncé (${debord.toFixed(4)})`);
+      // Seuil mesuré, pas posé : la valeur réelle est 0.0100. Les deux régressions plausibles
+      // (chambranle rendu proportionnel au cadre → 0.0147, cadre remis à 0.16 → 0.0200)
+      // doivent tomber au-dessus, d'où 0.012 — 20 % de marge sur le réel, sous la 1re fautive.
+      assert.ok(debord <= 0.012,
+        `débord ≤ 1.2 cm par face — obtenu ${debord.toFixed(4)} (ouvert : ${ouvert})`);
+    }
+  });
+
+  test('RÉGRESSION : le dormant reste plus fin que 1.5 × l\'épaisseur du Mur', () => {
+    // La version fautive atteignait 0.24, soit 2× le mur.
+    const d = profondeurDormant(buildWindowRig3D('#3355aa', false, 'gauche'));
+    assert.ok(d < MUR_REF * 1.25, `profondeur ${d.toFixed(3)} < ${(MUR_REF * 1.25).toFixed(3)}`);
+  });
+
+  test('la présence du dormant vient de son épaisseur dans le plan, pas de sa profondeur', () => {
+    // Le cadre occupe une bande visible de face : au moins 8 % de la largeur de la Fenêtre.
+    const g = buildWindowRig3D('#3355aa', false, 'gauche');
+    const barres = g.children.filter(c => c.isMesh && c.geometry.parameters);
+    const montant = barres
+      .map(m => m.geometry.parameters.width)
+      .filter(w => w < 0.5)          // les montants verticaux, pas les traverses
+      .sort((a, b) => b - a)[0];
+    assert.ok(montant >= 0.08, `montant large de ${montant} (≥ 0.08 de la largeur 1.0)`);
+  });
+
+  test('le dormant tient dans la largeur et la hauteur nominales du type', () => {
+    // Sinon il ne rentrerait plus dans le trou découpé pour lui (cf. CHILD_DESIGN_SIZE_3D).
+    const g = buildWindowRig3D('#3355aa', false, 'gauche');
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    g.children.filter(c => c.isMesh).forEach(m => box.expandByObject(m));
+    assert.ok(box.max.x - box.min.x <= 1.0 + 1e-6, 'largeur ≤ 1.0');
+    assert.ok(box.max.y - box.min.y <= 1.1 + 1e-6, 'hauteur ≤ 1.1');
+    assert.ok(box.min.y >= -1e-6, 'base à y = 0');
   });
 });

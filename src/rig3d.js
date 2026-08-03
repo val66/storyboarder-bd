@@ -1635,7 +1635,15 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   // silhouette an edge to catch the light on. Everything stays strictly inside w × h: those are the
   // dimensions the hole is cut from (see tracéOpeningRigScale3D), so overflowing would reintroduce
   // the very mismatch this fix removes.
-  const w = 1.0, h = 1.1, frameThick = 0.10, frameDepth = 0.16;
+  // Fix 31d — la présence du dormant vient de son épaisseur DANS LE PLAN du mur (frameThick, 0.10
+  // contre 0.06 auparavant, bien visible de face), pas de sa profondeur. Le Fix 31 avait poussé la
+  // profondeur à 0.16 et le chambranle à 0.24, alors qu'un Mur de hauteur standard n'épaissit que
+  // h × 0.06 = 0.12 : la caisse débordait de 0.06 par face dans la pièce. Les deux valeurs sont
+  // désormais calées sur cette épaisseur de référence — le dormant tient à l'intérieur (±0.05 pour
+  // ±0.06 de mur) et seul le chambranle affleure, de 0.01, juste de quoi accrocher une ombre.
+  const WALL_REF_THICK = 0.12; // buildWallRig3D : thick = h * 0.06, pour h = 2.0
+  const w = 1.0, h = 1.1, frameThick = 0.10;
+  const frameDepth = WALL_REF_THICK * 0.83;
   const addBar = (bw, bh, bd, x, y) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), frameMat);
     m.position.set(x, y, 0);
@@ -1647,7 +1655,7 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   [-1, 1].forEach(sx => addBar(frameThick, h, frameDepth, sx * (w / 2 - frameThick / 2), h / 2));
   // Casing: a second, thinner ring standing proud of BOTH faces, so the frame keeps a visible
   // relief whichever side of the wall the camera is on.
-  const capT = frameThick * 0.55, capD = frameDepth * 1.5;
+  const capT = frameThick * 0.55, capD = WALL_REF_THICK + 0.02;
   addBar(w, capT, capD, 0, h - capT / 2);
   addBar(w, capT, capD, 0, capT / 2);
   [-1, 1].forEach(sx => addBar(capT, h, capD, sx * (w / 2 - capT / 2), h / 2));
