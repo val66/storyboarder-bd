@@ -34,6 +34,8 @@ import {
   worldPointToPageXY3D,
   smoothTracéPath3D,
   tracéPointAtFrac3D,
+  tracéWallHostOf3D,
+  wallOpeningWorldPosOnTracé3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -734,5 +736,102 @@ describe('Tracé : échelle écran locale du chemin (Fix 27)', () => {
     // qu'une mesure globale (ancienne bbox) ne pouvait pas capturer.
     assert.ok(Math.abs(a1.x) > Math.abs(a1.y), 'début : dominante horizontale');
     assert.ok(Math.abs(a2.y) > Math.abs(a2.x), 'fin : dominante verticale');
+  });
+});
+
+// ── tracéWallHostOf3D / wallOpeningWorldPosOnTracé3D (Fix 28) ─────────────────────────────────
+// Une Parois posée sur un Tracé mur (muret, clôture, haie, barrière) n'a PAS de position monde
+// propre : elle est placée en parcourant le chemin de son hôte. Ces deux fonctions sont la source
+// unique de cette position, partagée par le rendu ET la caméra — c'est leur divergence qui faisait
+// que la caméra ne se centrait pas au bon endroit.
+describe('tracéWallHostOf3D — hôte Tracé d\'une Parois (Fix 28)', () => {
+  const muret = { id: 'm1', type: 'tracé', tracéType: 'muret',
+                  world: { pts: [{ x: 0, z: 0 }, { x: 10, z: 0 }] } };
+  const porte = { id: 'p1', type: 'objet3d', objType: 'porte_ouverte', magnetWallId: 'm1' };
+  const pageOf = (...objs) => ({ w: 800, h: 600, objects: objs });
+
+  test('trouve un hôte muret / clôture / haie / barrière', () => {
+    for (const t of ['muret', 'cloture', 'haie', 'barriere']) {
+      const h = { ...muret, tracéType: t };
+      assert.equal(tracéWallHostOf3D(porte, pageOf(h, porte)), h, `hôte ${t}`);
+    }
+  });
+
+  test('ne matche PAS un Tracé qui n\'est pas un mur (route, chemin)', () => {
+    for (const t of ['route', 'chemin', 'terrain']) {
+      assert.equal(tracéWallHostOf3D(porte, pageOf({ ...muret, tracéType: t }, porte)), null, t);
+    }
+  });
+
+  test('ne matche PAS un Mur classique : c\'est l\'autre chemin (WALL_TYPES)', () => {
+    const mur = { id: 'm1', type: 'objet3d', objType: 'mur' };
+    assert.equal(tracéWallHostOf3D(porte, pageOf(mur, porte)), null);
+  });
+
+  test('ignore un Élément non aimanté ou d\'un type non-Parois', () => {
+    assert.equal(tracéWallHostOf3D({ ...porte, magnetWallId: null }, pageOf(muret)), null);
+    assert.equal(tracéWallHostOf3D({ ...porte, objType: 'chaise' }, pageOf(muret, porte)), null);
+    assert.equal(tracéWallHostOf3D({ ...porte, type: 'perso' }, pageOf(muret, porte)), null);
+    assert.equal(tracéWallHostOf3D(null, pageOf(muret)), null);
+  });
+});
+
+describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur un Tracé (Fix 28)', () => {
+  // Muret en L : 10 u vers +x puis 10 u vers -z. Longueur totale 20.
+  const muretL = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 2,
+                   world: { pts: [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: -10 }] } };
+  const porteAt = (frac, yFrac) => ({ id: 'p1', type: 'objet3d', objType: 'porte_ouverte',
+                                      magnetWallId: 'm1', wallAlongFrac: frac, wallYFrac: yFrac });
+  const pageOf = (...o) => ({ w: 800, h: 600, objects: o });
+
+  test('la position suit wallAlongFrac le long du chemin', () => {
+    const p0 = wallOpeningWorldPosOnTracé3D(porteAt(0, 0), pageOf(muretL, porteAt(0, 0)));
+    assertClose(p0.x, 0, 'début x'); assertClose(p0.z, 0, 'début z');
+    const p1 = wallOpeningWorldPosOnTracé3D(porteAt(1, 0), pageOf(muretL, porteAt(1, 0)));
+    assertClose(p1.x, 10, 'fin x'); assertClose(p1.z, -10, 'fin z');
+  });
+
+  test('la hauteur suit wallYFrac × hauteur du muret, depuis le Sol', () => {
+    const bas  = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 0),   pageOf(muretL, porteAt(0.5, 0)));
+    const haut = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1),   pageOf(muretL, porteAt(0.5, 1)));
+    assertClose(bas.y,  GROUND_Y_DEFAULT_3D,     'yFrac 0 → au Sol');
+    assertClose(haut.y, GROUND_Y_DEFAULT_3D + 2, 'yFrac 1 → sommet du muret (wallHeight 2)');
+  });
+
+  test('hauteur par défaut du type quand le muret n\'en définit pas (muret → 0.5)', () => {
+    const sansH = { ...muretL, wallHeight: undefined };
+    const p = wallOpeningWorldPosOnTracé3D(porteAt(0.5, 1), pageOf(sansH, porteAt(0.5, 1)));
+    assertClose(p.y, GROUND_Y_DEFAULT_3D + 0.5, 'valeur par défaut TRACÉ_DEFAULTS.muret');
+  });
+
+  test('la tangente suit la direction locale du chemin (elle tourne dans le L)', () => {
+    const debut = wallOpeningWorldPosOnTracé3D(porteAt(0.1, 0), pageOf(muretL, porteAt(0.1, 0)));
+    const fin   = wallOpeningWorldPosOnTracé3D(porteAt(0.9, 0), pageOf(muretL, porteAt(0.9, 0)));
+    assert.ok(Math.abs(debut.tangent.x) > Math.abs(debut.tangent.z), 'début : le long de +x');
+    assert.ok(Math.abs(fin.tangent.z)   > Math.abs(fin.tangent.x),   'fin : le long de -z');
+  });
+
+  test('RÉGRESSION : la position ignore les wxFloor/wzFloor périmés de la Parois', () => {
+    // C'est exactement ce sur quoi la caméra se rabattait, d'où le mauvais centrage.
+    const perimee = { ...porteAt(0.5, 0), wxFloor: -999, wzFloor: 999, wyFloor: 42 };
+    const p = wallOpeningWorldPosOnTracé3D(perimee, pageOf(muretL, perimee));
+    assert.ok(Math.abs(p.x - (-999)) > 100 && Math.abs(p.z - 999) > 100,
+      'la position vient du chemin, pas des coordonnées stockées');
+    assertClose(p.x, 10, 'milieu du L : bout du 1er segment (x)');
+    assertClose(p.z, 0,  'milieu du L : bout du 1er segment (z)');
+  });
+
+  test('wallAlongFrac absent : par défaut au milieu du tracé', () => {
+    const sansFrac = { id: 'p1', type: 'objet3d', objType: 'porte_ouverte', magnetWallId: 'm1' };
+    const p = wallOpeningWorldPosOnTracé3D(sansFrac, pageOf(muretL, sansFrac));
+    assertClose(p.x, 10, 'milieu x'); assertClose(p.z, 0, 'milieu z');
+  });
+
+  test('renvoie null si l\'hôte n\'est pas un Tracé mur, ou n\'a pas de chemin monde', () => {
+    const p = porteAt(0.5, 0);
+    assert.equal(wallOpeningWorldPosOnTracé3D(p, pageOf({ ...muretL, world: null }, p)), null);
+    assert.equal(wallOpeningWorldPosOnTracé3D(p, pageOf({ ...muretL, world: { pts: [{ x: 1, z: 1 }] } }, p)), null,
+      'un seul point : pas de chemin');
+    assert.equal(wallOpeningWorldPosOnTracé3D(p, pageOf({ id: 'm1', type: 'objet3d', objType: 'mur' }, p)), null);
   });
 });

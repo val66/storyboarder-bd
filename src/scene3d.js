@@ -15,8 +15,12 @@ import {
   BUILD_WALL_DEFAULT_HEIGHT, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
   GROUND_CONTACT_EPS_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D,
-  WALL_TYPES,
+  TRACÉ_DEFAULTS, WALL_TYPES,
 } from './constants.js';
+// FIX (pre-existing latent bug, surfaced by the Fix 28 tests): TRACÉ_DEFAULTS above was already
+// referenced when placing a Wall-Opening on a Trace wall whose wallHeight was unset, but was never
+// imported — a guaranteed ReferenceError on that path. Trace creation normally fills wallHeight in
+// from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox } from './utils.js';
 import { S, currentPage } from './state.js';
 import {
@@ -374,11 +378,18 @@ export function framePanelCamera3D(camera, panel, page){
       // 2D box is in top-down-view canvas coordinates (not world), so ensureElementWorldPos3D would
       // give a wrong position and shift the camera to the wrong place.
       let _elWx, _elWy, _elWz;
-      const _orbitHostWall = (_selObjOrbit.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(_selObjOrbit.objType))
+      // Fix 28: an Opening carried by a TRACE wall (Low Wall, Fence…) has no world position of its
+      // own — it is placed by walking the host path (cf. wallOpeningWorldPosOnTracé3D). The
+      // WALL_TYPES lookup below only matches 'mur'/'mur_coin' hosts, so without this the orbit fell
+      // back to the Element's stale wxFloor/wzFloor and centred the camera somewhere else entirely.
+      const _tracéOrbit = wallOpeningWorldPosOnTracé3D(_selObjOrbit, page);
+      const _orbitHostWall = (!_tracéOrbit && _selObjOrbit.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(_selObjOrbit.objType))
         ? page.objects.find(w => w.id === _selObjOrbit.magnetWallId && WALL_TYPES.includes(w.objType))
         : null;
       const _orbitSrc = _orbitHostWall || _selObjOrbit;
-      if (isFinite(_orbitSrc.wxFloor) && isFinite(_orbitSrc.wzFloor)) {
+      if (_tracéOrbit) {
+        _elWx = _tracéOrbit.x; _elWy = _tracéOrbit.y; _elWz = _tracéOrbit.z;
+      } else if (isFinite(_orbitSrc.wxFloor) && isFinite(_orbitSrc.wzFloor)) {
         _elWx = _orbitSrc.wxFloor;
         _elWy = isFinite(_orbitSrc.wyFloor) ? _orbitSrc.wyFloor : (GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2);
         _elWz = _orbitSrc.wzFloor;
@@ -969,6 +980,55 @@ export function tracéPointAtFrac3D(pts, frac) {
   return { x: pts[pts.length-1].x, z: pts[pts.length-1].z };
 }
 
+// Fix 28 — the Trace-type wall (Low Wall, Fence, Hedge, Barrier) a Wall-Opening is magnetized to,
+// or null. Deliberately NOT WALL_TYPES, which only covers the 'mur'/'mur_coin' Objects: a Trace is
+// a different `type` entirely, and confusing the two is exactly what left the camera centring on
+// the wrong spot.
+export function tracéWallHostOf3D(o, page){
+  if (!o || !page || o.type !== 'objet3d' || !o.magnetWallId) return null;
+  if (!WALL_OPENING_MAGNET_TYPES.includes(o.objType)) return null;
+  return page.objects.find(w => w.id === o.magnetWallId && w.type === 'tracé'
+    && ['muret', 'cloture', 'haie', 'barriere'].includes(w.tracéType)) || null;
+}
+
+// Fix 28 — REAL world position of a Wall-Opening carried by a Trace wall, plus the local tangent of
+// the path at that spot. Returns null when the Element is not on such a wall.
+//
+// Such an Opening has NO usable world position of its own: its 2D box lives in top-down canvas
+// coordinates and its wxFloor/wzFloor are stale, so it is placed at render time by walking the host
+// path at wallAlongFrac. That walk used to exist only inside renderPanelScene3D, which is why
+// everything else — camera orbit, Scene centring — silently fell back to the meaningless stored
+// coordinates. Extracted here so the render and the camera can no longer disagree.
+//
+// `y` is the Opening's BASE on the wall (the renderer adds half the Element's height to centre its
+// rig, cf. placeRigCentered3D); `tangent` is the path direction used to orient it.
+export function wallOpeningWorldPosOnTracé3D(o, page){
+  const host = tracéWallHostOf3D(o, page);
+  if (!host || !host.world || !host.world.pts || host.world.pts.length < 2) return null;
+  const pts = smoothTracéPath3D(host.world.pts, 4);
+  const frac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
+  const p = tracéPointAtFrac3D(pts, frac);
+  if (!p) return null;
+  // Tangent of the segment the point falls in — same walk, so render and camera stay consistent.
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+  const target = frac * total;
+  let acc = 0, segI = Math.min(1, pts.length - 1);
+  for (let i = 1; i < pts.length; i++) {
+    const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+    if (acc + seg >= target) { segI = i; break; }
+    acc += seg; segI = i;
+  }
+  const wallH = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
+  return {
+    x: p.x,
+    y: GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * wallH,
+    z: p.z,
+    tangent: { x: pts[segI].x - pts[segI-1].x, z: pts[segI].z - pts[segI-1].z },
+    wallH, host,
+  };
+}
+
 // Builds a THREE.BufferGeometry of a VERTICAL RIBBON for traces that have a height
 // (Low Wall, Hedge, Barrier): front/back faces + top face, horizontal miter joints.
 // worldPts = [{x,z}…], wallH = height in world units, wallT = thickness, yBase = ground Y.
@@ -1504,37 +1564,21 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
           && ['muret','cloture','haie','barriere'].includes(w.tracéType))
       : null;
     let wx, wy, z;
-    if (_tracéMurHost && _tracéMurHost.world && _tracéMurHost.world.pts) {
-      const _wpts = smoothTracéPath3D(_tracéMurHost.world.pts, 4);
-      const _frac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
-      let _total = 0;
-      for (let _i = 1; _i < _wpts.length; _i++)
-        _total += Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-      const _tgt = _frac * _total;
-      let _acc = 0, _pt = _wpts[0], _segI = Math.min(1, _wpts.length - 1);
-      for (let _i = 1; _i < _wpts.length; _i++) {
-        const _seg = Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-        if (_acc + _seg >= _tgt) {
-          const _t = (_tgt - _acc) / (_seg || 1);
-          _pt = { x: _wpts[_i-1].x + _t * (_wpts[_i].x - _wpts[_i-1].x),
-                  z: _wpts[_i-1].z + _t * (_wpts[_i].z - _wpts[_i-1].z) };
-          _segI = _i;
-          break;
-        }
-        _acc += _seg; _pt = _wpts[_i]; _segI = _i;
-      }
+    // Fix 28: the walk along the host path now lives in wallOpeningWorldPosOnTracé3D, shared with
+    // the camera (orbit centre, Scene centring) so the two can no longer place the same Element
+    // differently — which is precisely what made the camera centre on the wrong spot.
+    const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page) : null;
+    if (_tracéPos) {
       // Wall Opening orientation: local tangent of the trace at the current segment.
       // Overrides o.rotY (stored at the 1st segment or at creation) to follow turns.
-      const _tdx = _wpts[_segI].x - _wpts[_segI - 1].x;
-      const _tdz = _wpts[_segI].z - _wpts[_segI - 1].z;
+      const _tdx = _tracéPos.tangent.x, _tdz = _tracéPos.tangent.z;
       if (Math.hypot(_tdx, _tdz) > 1e-6) {
         entry.figureGroup.rotation.set(o.rotX || 0, Math.atan2(-_tdz, _tdx), o.rotZ || 0);
       }
-      const _wallH = _tracéMurHost.wallHeight ?? (TRACÉ_DEFAULTS[_tracéMurHost.tracéType]?.wallHeight ?? 0.5);
-      const _yFrac = o.wallYFrac ?? 0;
-      wx = _pt.x;
-      wy = GROUND_Y_DEFAULT_3D + _yFrac * _wallH + unitsH / 2;
-      z  = _pt.z + idx * 0.0001;
+      wx = _tracéPos.x;
+      // placeRigCentered3D targets the bbox CENTRE, hence the half-height on top of the base.
+      wy = _tracéPos.y + unitsH / 2;
+      z  = _tracéPos.z + idx * 0.0001;
     } else {
       // wxFloor always defined for perso/objet3d (migration + creation + loadSceneIntoPanel).
       // wyFloor only defined for build-tool Rooms; otherwise derived from canvas Y via the
@@ -2265,6 +2309,18 @@ export function centerSceneCameraOnElement(panel, obj){
   // center directly on the host Wall, whose centering already works correctly.
   if (obj.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(obj.objType)) {
     const _page = currentPage();
+    // Fix 28: an Opening carried by a TRACE wall (Low Wall, Fence, Hedge, Barrier) is placed by
+    // walking the host path, so its real position is computable — centre on the Opening ITSELF
+    // rather than on the host. Falling through to the WALL_TYPES lookup below (which never matches
+    // a Trace) left the camera aiming at the Element's stale stored coordinates.
+    const _tracéPos = _page && wallOpeningWorldPosOnTracé3D(obj, _page);
+    if (_tracéPos) {
+      panel.camWxTarget = _tracéPos.x;
+      panel.camWyTarget = _tracéPos.y;
+      panel.camWzTarget = _tracéPos.z;
+      startCamSmoothing(panel);
+      return;
+    }
     const hostWall = _page && _page.objects.find(w => w.id === obj.magnetWallId
       && WALL_TYPES.includes(w.objType));
     if (hostWall) { centerSceneCameraOnElement(panel, hostWall); return; }
