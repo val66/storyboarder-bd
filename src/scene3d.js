@@ -941,6 +941,34 @@ export function smoothTracéPath3D(pts, subdivisions) {
   return out;
 }
 
+// Fix 27 — world point located at the arc-length FRACTION `frac` (0 = start, 1 = end) along a path
+// of {x,z} points, interpolating inside the segment it lands in. Arc length, not point index: a
+// Trace's segments are not evenly spaced, so indexing would make the Element speed up and slow down
+// as it crosses them.
+// Extracted from the magnetized Wall-Opening drag, which walked the segments inline, so that the
+// same walk can be reused to sample two nearby points and measure the path's real on-screen scale
+// (cf. Fix 26 for straight Walls). Exported for unit tests (tests/scene3d.test.mjs).
+export function tracéPointAtFrac3D(pts, frac) {
+  if (!pts || pts.length === 0) return null;
+  if (pts.length === 1) return { x: pts[0].x, z: pts[0].z };
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+  // Fully degenerate path (all points superposed): every fraction maps to the same place.
+  if (!(total > 0)) return { x: pts[0].x, z: pts[0].z };
+  const target = clamp(frac, 0, 1) * total;
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+    if (acc + seg >= target || i === pts.length - 1) {
+      const t = seg > 1e-9 ? (target - acc) / seg : 0;
+      return { x: pts[i-1].x + (pts[i].x - pts[i-1].x) * t,
+               z: pts[i-1].z + (pts[i].z - pts[i-1].z) * t };
+    }
+    acc += seg;
+  }
+  return { x: pts[pts.length-1].x, z: pts[pts.length-1].z };
+}
+
 // Builds a THREE.BufferGeometry of a VERTICAL RIBBON for traces that have a height
 // (Low Wall, Hedge, Barrier): front/back faces + top face, horizontal miter joints.
 // worldPts = [{x,z}…], wallH = height in world units, wallT = thickness, yBase = ground Y.

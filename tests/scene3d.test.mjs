@@ -32,6 +32,8 @@ import {
   setElementWorldPos3D,
   panelAutoDepthPivot3D,
   worldPointToPageXY3D,
+  smoothTracéPath3D,
+  tracéPointAtFrac3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -642,5 +644,95 @@ describe('worldPointToPageXY3D — projection d\'un point monde quelconque (Fix 
     const etendueH = Math.abs(e2.x - e1.x);
     const longueurEcran = Math.hypot(e2.x - e1.x, e2.y - e1.y);
     assertClose(longueurEcran, etendueH, 'segment horizontal : longueur = étendue horizontale', 1e-6);
+  });
+});
+
+// ── tracéPointAtFrac3D (Fix 27) ───────────────────────────────────────────────────────────────
+describe('tracéPointAtFrac3D — point à une fraction d\'abscisse curviligne (Fix 27)', () => {
+  // Chemin en L : 4 unités vers +x, puis 4 vers -z. Longueur totale 8.
+  const L = [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: -4 }];
+
+  test('les bornes rendent les extrémités exactes', () => {
+    assert.deepEqual(tracéPointAtFrac3D(L, 0), { x: 0, z: 0 });
+    assert.deepEqual(tracéPointAtFrac3D(L, 1), { x: 4, z: -4 });
+  });
+
+  test('progression par LONGUEUR d\'arc, pas par index de point', () => {
+    // 0.5 → 4 unités parcourues → pile le coude, et non le milieu du 1er segment.
+    const m = tracéPointAtFrac3D(L, 0.5);
+    assertClose(m.x, 4, 'x au coude'); assertClose(m.z, 0, 'z au coude');
+    // 0.25 → 2 unités → milieu du premier segment.
+    const q = tracéPointAtFrac3D(L, 0.25);
+    assertClose(q.x, 2, 'x au quart'); assertClose(q.z, 0, 'z au quart');
+    // 0.75 → 6 unités → milieu du second segment.
+    const t = tracéPointAtFrac3D(L, 0.75);
+    assertClose(t.x, 4, 'x aux trois quarts'); assertClose(t.z, -2, 'z aux trois quarts');
+  });
+
+  test('segments de longueurs inégales : l\'avancée reste proportionnelle à la distance', () => {
+    // 1 unité puis 9 : la moitié du parcours tombe à 5 unités, donc dans le second segment.
+    const P = [{ x: 0, z: 0 }, { x: 1, z: 0 }, { x: 10, z: 0 }];
+    assertClose(tracéPointAtFrac3D(P, 0.5).x, 5, 'moitié de la LONGUEUR, pas du nombre de segments');
+  });
+
+  test('fraction hors bornes : clampée (pas d\'extrapolation au-delà du tracé)', () => {
+    assert.deepEqual(tracéPointAtFrac3D(L, -3), { x: 0, z: 0 });
+    assert.deepEqual(tracéPointAtFrac3D(L, 42), { x: 4, z: -4 });
+  });
+
+  test('cas dégénérés : liste vide, point unique, points tous superposés', () => {
+    assert.equal(tracéPointAtFrac3D([], 0.5), null);
+    assert.equal(tracéPointAtFrac3D(null, 0.5), null);
+    assert.deepEqual(tracéPointAtFrac3D([{ x: 7, z: 9 }], 0.5), { x: 7, z: 9 });
+    assert.deepEqual(tracéPointAtFrac3D([{ x: 2, z: 2 }, { x: 2, z: 2 }], 0.5), { x: 2, z: 2 },
+      'longueur totale nulle : pas de division par zéro');
+  });
+});
+
+// ── Mapping du glisser sur un Tracé (Fix 27) ──────────────────────────────────────────────────
+describe('Tracé : échelle écran locale du chemin (Fix 27)', () => {
+  const page = { w: 800, h: 600 };
+  const panel = { x: 0, y: 0, w: 800, h: 600,
+                  camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 };
+  const EPS = 0.02;
+  // Reproduit le calcul du mousemove : axe écran pour une unité entière de fraction.
+  function axeLocal(rawPts, frac) {
+    const pts = smoothTracéPath3D(rawPts, 4);
+    const f0 = Math.min(frac, 1 - EPS);
+    const a = tracéPointAtFrac3D(pts, f0), b = tracéPointAtFrac3D(pts, f0 + EPS);
+    const sa = worldPointToPageXY3D(a.x, GROUND_Y_DEFAULT_3D, a.z, panel, page);
+    const sb = worldPointToPageXY3D(b.x, GROUND_Y_DEFAULT_3D, b.z, panel, page);
+    return { x: (sb.x - sa.x) / EPS, y: (sb.y - sa.y) / EPS };
+  }
+  const droitFace   = [{ x: -5, z: 0 }, { x: 5, z: 0 }];
+  const droitFuyant = [{ x: 0, z: 5 }, { x: 0, z: -5 }];
+
+  test('RÉGRESSION : sur un tracé fuyant, la bbox 2D est ridicule face à l\'étendue écran réelle', () => {
+    const A = axeLocal(droitFuyant, 0.5);
+    const lg = Math.hypot(A.x, A.y);
+    // La bbox 2D projetée de ce tracé est large de ~1 px (tous les points ont le même x écran).
+    assert.ok(lg > 300, `échelle écran locale ≈ ${lg.toFixed(0)} px/fraction`);
+    assert.ok(Math.abs(A.x) < 1, 'le tracé se projette quasi verticalement');
+  });
+
+  test('tracé fuyant : l\'axe est vertical, donc c\'est bien dy qui doit piloter le déplacement', () => {
+    const A = axeLocal(droitFuyant, 0.5);
+    assert.ok(Math.abs(A.y) > 100 * Math.abs(A.x) || Math.abs(A.x) < 1e-6,
+      'composante verticale dominante');
+  });
+
+  test('tracé de face : l\'échelle locale retombe sur la longueur écran habituelle', () => {
+    const A = axeLocal(droitFace, 0.5);
+    assertClose(Math.abs(A.y), 0, 'axe horizontal', 1e-6);
+    assert.ok(Math.abs(A.x) > 500, `échelle ≈ ${Math.abs(A.x).toFixed(0)} px — cas courant inchangé`);
+  });
+
+  test('l\'échelle locale suit la courbure : elle varie le long d\'un tracé en L', () => {
+    const enL = [{ x: -5, z: 0 }, { x: 0, z: 0 }, { x: 0, z: -5 }];
+    const a1 = axeLocal(enL, 0.15), a2 = axeLocal(enL, 0.85);
+    // Première moitié quasi horizontale à l'écran, seconde quasi verticale : c'est précisément ce
+    // qu'une mesure globale (ancienne bbox) ne pouvait pas capturer.
+    assert.ok(Math.abs(a1.x) > Math.abs(a1.y), 'début : dominante horizontale');
+    assert.ok(Math.abs(a2.y) > Math.abs(a2.x), 'fin : dominante verticale');
   });
 });

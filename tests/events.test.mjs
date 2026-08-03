@@ -30,6 +30,7 @@ import {
   getRoomOrBuildingScreenBBox,
   wallScreenAxes3D,
   fracDeltaAlongAxis2D,
+  tracéScreenAxisAtFrac3D,
 } from '../src/events.js';
 import { S } from '../src/state.js';
 
@@ -412,5 +413,56 @@ describe('wallScreenAxes3D / fracDeltaAlongAxis2D — mapping souris → Mur (Fi
     const axes = wallScreenAxes3D(murFuyant(), panel(), page, 0);
     assert.equal(axes.up, null, 'pas de hauteur exploitable');
     assert.ok(axes.along, 'l\'axe le long du Mur reste calculé');
+  });
+});
+
+// ── tracéScreenAxisAtFrac3D (Fix 27) ──────────────────────────────────────────────────────────
+describe('tracéScreenAxisAtFrac3D — échelle écran locale d\'un Tracé (Fix 27)', () => {
+  const page = { w: 800, h: 600 };
+  const panel = { x: 0, y: 0, w: 800, h: 600,
+                  camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 };
+  const droitFace   = [{ x: -5, z: 0 }, { x: 5, z: 0 }];
+  const droitFuyant = [{ x: 0, z: 5 }, { x: 0, z: -5 }];
+
+  test('l\'axe est bien à l\'échelle d\'UNE unité de fraction (division par ε)', () => {
+    // Tracé de 10 u vu de face : il occupe ~1000 px, donc l'axe doit valoir ~1000 px, pas ~20
+    // (ce que donnerait l'écart brut entre les deux points échantillonnés sans diviser par ε).
+    const A = tracéScreenAxisAtFrac3D(droitFace, 0.5, panel, page);
+    const lg = Math.hypot(A.x, A.y);
+    assert.ok(lg > 500, `échelle ≈ ${lg.toFixed(0)} px/fraction — sans la division par ε on aurait ~${(lg*0.02).toFixed(0)} px`);
+  });
+
+  test('parcourir cet axe fait avancer la fraction de exactement 1', () => {
+    const A = tracéScreenAxisAtFrac3D(droitFace, 0.5, panel, page);
+    assertClose(fracDeltaAlongAxis2D(A.x, A.y, A), 1, 'traversée complète du tracé');
+  });
+
+  test('RÉGRESSION : sur un tracé fuyant, l\'axe est vertical et bien plus grand que la bbox 2D', () => {
+    const A = tracéScreenAxisAtFrac3D(droitFuyant, 0.5, panel, page);
+    assert.ok(Math.abs(A.x) < 1, 'projection quasi verticale : composante horizontale négligeable');
+    assert.ok(Math.abs(A.y) > 300, `échelle réelle ≈ ${Math.abs(A.y).toFixed(0)} px, contre ~1 px pour la bbox`);
+    // Avec l'ancienne formule, 10 px de souris horizontaux saturaient la fraction ; désormais ils
+    // ne font quasiment rien, ce qui est correct : il faut glisser verticalement.
+    assert.ok(Math.abs(fracDeltaAlongAxis2D(10, 0, A)) < 0.01, 'glisser horizontal ≈ sans effet');
+    assert.ok(Math.abs(fracDeltaAlongAxis2D(0, 10, A)) > 0.02, 'glisser vertical : effet réel');
+  });
+
+  test('l\'échelle suit la courbure : différente au début et à la fin d\'un tracé en L', () => {
+    const enL = [{ x: -5, z: 0 }, { x: 0, z: 0 }, { x: 0, z: -5 }];
+    const a1 = tracéScreenAxisAtFrac3D(enL, 0.15, panel, page);
+    const a2 = tracéScreenAxisAtFrac3D(enL, 0.85, panel, page);
+    assert.ok(Math.abs(a1.x) > Math.abs(a1.y), 'début du L : dominante horizontale');
+    assert.ok(Math.abs(a2.y) > Math.abs(a2.x), 'fin du L : dominante verticale');
+  });
+
+  test('frac = 1 : échantillonne vers l\'arrière, l\'axe reste défini', () => {
+    const A = tracéScreenAxisAtFrac3D(droitFace, 1, panel, page);
+    assert.ok(A && Math.hypot(A.x, A.y) > 100, 'pas d\'axe nul à l\'extrémité du tracé');
+  });
+
+  test('entrées invalides → null (le caller garde son repli)', () => {
+    assert.equal(tracéScreenAxisAtFrac3D(null, 0.5, panel, page), null);
+    assert.equal(tracéScreenAxisAtFrac3D([{ x: 0, z: 0 }], 0.5, panel, page), null, 'un seul point');
+    assert.equal(tracéScreenAxisAtFrac3D(droitFace, 0.5, null, page), null, 'panel absent');
   });
 });

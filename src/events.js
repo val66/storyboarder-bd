@@ -103,6 +103,7 @@ import {
   renderObjectToCanvas3D,
   setElementWorldPos3D,
   smoothTracéPath3D,
+  tracéPointAtFrac3D,
   startCamSmoothing,
   storeElementWorldCoords,
   storeElementWxFloor,
@@ -1432,6 +1433,29 @@ export function wallScreenAxes3D(wall, panel, page, spanY){
     along: (e1 && e2) ? { x: e2.x - e1.x, y: e2.y - e1.y } : null,
     up:    (base && top) ? { x: top.x - base.x, y: top.y - base.y } : null,
   };
+}
+
+// Fix 27 — the Trace equivalent of wallScreenAxes3D, measured LOCALLY: a Trace is curved, so there
+// is no single end-to-end screen segment to map onto. Two points of the path a short fraction apart
+// are projected, and dividing that screen offset by that fraction gives the on-screen travel
+// matching a FULL unit of fraction at this spot — the axis fracDeltaAlongAxis2D expects.
+// `smoothPts` is the SMOOTHED path (cf. smoothTracéPath3D): on a right angle the raw points give a
+// tangent that flips by 90° between two segments, which used to make the Element stick at the
+// corner.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export const TRACÉ_DRAG_EPS = 0.02;   // 2 % of the path: local enough to follow curvature, large
+                                      // enough to stay clear of projection rounding noise.
+export function tracéScreenAxisAtFrac3D(smoothPts, frac, panel, page){
+  if (!smoothPts || smoothPts.length < 2 || !panel) return null;
+  // Sampled backwards at the very end so the pair never collapses to a single point.
+  const f0 = Math.min(clamp(frac, 0, 1), 1 - TRACÉ_DRAG_EPS);
+  const a = tracéPointAtFrac3D(smoothPts, f0);
+  const b = tracéPointAtFrac3D(smoothPts, f0 + TRACÉ_DRAG_EPS);
+  if (!a || !b) return null;
+  const sa = worldPointToPageXY3D(a.x, GROUND_Y_DEFAULT_3D, a.z, panel, page);
+  const sb = worldPointToPageXY3D(b.x, GROUND_Y_DEFAULT_3D, b.z, panel, page);
+  if (!sa || !sb) return null;
+  return { x: (sb.x - sa.x) / TRACÉ_DRAG_EPS, y: (sb.y - sa.y) / TRACÉ_DRAG_EPS };
 }
 
 // Fix 26 — fraction of an axis covered when the mouse moves by (dx, dy): the movement projected onto
@@ -3625,6 +3649,14 @@ canvas.addEventListener('mousedown', (e) => {
       S.dragOrig.children = page.objects
         .filter(o => o.type === 'objet3d' && o.magnetWallId === hit.id)
         .map(o => ({ id: o.id, x: o.x, y: o.y }));
+    } else if (hit.type === 'objet3d' && hit.magnetWallId) {
+      // Fix 27 — a Wall-Opening magnetized to a TRACE: its host's smoothed path is needed on every
+      // mouse move to measure the path's on-screen scale, but the host does not move during the
+      // drag, so the Catmull-Rom smoothing is computed ONCE here instead of on every frame.
+      const _hostW = page.objects.find(o => o.id === hit.magnetWallId);
+      if (_hostW && _hostW.type === 'tracé' && _hostW.world && _hostW.world.pts && _hostW.world.pts.length >= 2) {
+        S.dragOrig.hostSmoothPts = smoothTracéPath3D(_hostW.world.pts, 4);
+      }
     } else if (hit.type === 'tracé' && hit.world) {
       // Capture the world coordinates to translate the Tracé directly in world space during the
       // drag, without going through computeTracéWorld3D (which would read the projected bbox and
@@ -3854,34 +3886,27 @@ window.addEventListener('mousemove', (e) => {
               // low walls where the local direction differs from the global direction.
               // Projection via the camera basis (right/up) automatically handles any camera rotation.
               if (wall.type === 'tracé' && wall.world && wall.world.pts && wall.world.pts.length >= 2 && _wallOpeningPanel) {
-                // Use the SMOOTHED (Catmull-Rom) path instead of the raw pts: at right angles, the
-                // raw pts give a local tangent that turns abruptly by 90° from one segment to the
-                // next, projecting horizontal movement to zero on the perpendicular tangent → the
-                // Opening appears "stuck at the corner". The smoothed path gives gradual
-                // transitions and lets the projection stay non-zero even at the corner.
-                const _wptsDr = smoothTracéPath3D(wall.world.pts, 4);
-                // Total length (in world units) to find the current segment.
-                let _totDr = 0;
-                for (let _i = 1; _i < _wptsDr.length; _i++)
-                  _totDr += Math.hypot(_wptsDr[_i].x - _wptsDr[_i-1].x, _wptsDr[_i].z - _wptsDr[_i-1].z);
-                // Segment local to curAlongFrac.
-                let _accDr = 0, _sIDr = Math.min(1, _wptsDr.length - 1);
-                const _tgtDr = curAlongFrac * _totDr;
-                for (let _i = 1; _i < _wptsDr.length; _i++) {
-                  const _s = Math.hypot(_wptsDr[_i].x - _wptsDr[_i-1].x, _wptsDr[_i].z - _wptsDr[_i-1].z);
-                  if (_accDr + _s >= _tgtDr) { _sIDr = _i; break; }
-                  _accDr += _s;
-                }
-                const _tdxDr = _wptsDr[_sIDr].x - _wptsDr[_sIDr-1].x;
-                const _tdzDr = _wptsDr[_sIDr].z - _wptsDr[_sIDr-1].z;
-                const _tlenDr = Math.hypot(_tdxDr, _tdzDr) || 1;
-                // Screen direction of the local tangent via the real camera basis.
-                // The canvas Y is inverted relative to world Y → we invert the up component.
-                const _basisDr = panelCamBasis3D(_wallOpeningPanel);
-                const _scrXDr = (_tdxDr / _tlenDr) * _basisDr.right.x + (_tdzDr / _tlenDr) * _basisDr.right.z;
-                const _scrYDr = -((_tdxDr / _tlenDr) * _basisDr.up.x + (_tdzDr / _tlenDr) * _basisDr.up.z);
-                const _iscrDr = Math.hypot(_scrXDr, _scrYDr) || 1;
-                obj.wallAlongFrac = clamp(curAlongFrac + (dx * _scrXDr + dy * _scrYDr) / (_iscrDr * wallW), 0, 1);
+                // Fix 27 — same principle as Fix 26 for straight Walls, but measured LOCALLY since a
+                // Trace is curved: there is no single end-to-end screen segment to map onto.
+                // Two nearby points of the path are projected, curAlongFrac and curAlongFrac + ε,
+                // and dividing that screen offset by ε gives the on-screen travel corresponding to a
+                // FULL unit of fraction at this spot — exactly the axis fracDeltaAlongAxis2D expects.
+                //
+                // What it replaces divided by `_iscrDr * wallW`, mixing a dimensionless direction
+                // with the 2D bounding box's width. Measured on a Trace running into the distance,
+                // that box collapses to ~1 px while the path really spans ~370 px on screen: the
+                // drag ran ~370× too fast, worse even than the Wall case.
+                //
+                // The path is SMOOTHED (Catmull-Rom): on a right angle the raw points give a tangent
+                // that flips by 90° between two segments, which used to make the Element stick at
+                // the corner. Smoothing keeps the transition gradual. It is computed once per drag
+                // (cf. S.dragOrig.hostSmoothPts) rather than on every mouse move.
+                const _wptsDr = S.dragOrig.hostSmoothPts || smoothTracéPath3D(wall.world.pts, 4);
+                const _axisDr = tracéScreenAxisAtFrac3D(_wptsDr, curAlongFrac, _wallOpeningPanel, page);
+                const _dFracDr = fracDeltaAlongAxis2D(dx, dy, _axisDr);
+                obj.wallAlongFrac = (_dFracDr !== null)
+                  ? clamp(curAlongFrac + _dFracDr, 0, 1)
+                  : clamp(curAlongFrac + perspSign * dx / wallW, 0, 1);
               } else {
                 // Fix 26 — THE reported bug. The old formula was dx / wall.w, i.e. the mouse divided
                 // by the width of the 2D THIN BOX. The Element is now mapped onto the Wall's REAL
