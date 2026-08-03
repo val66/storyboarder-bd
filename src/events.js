@@ -5280,10 +5280,45 @@ descModalSave.onclick = () => {
     applyPersonaSizePercent(S.modalTarget, personaSizeInput.value, currentPage());
     drawCurrentPage();
   }
+  S.modalIsNew = false;
   closeDescModal();
 };
-descModalCancel.onclick = closeDescModal;
-descModal.addEventListener('mousedown', (e) => { if (e.target === descModal) { e.stopPropagation(); closeDescModal(); } });
+// Fix 35 — an Element added through the Add menu opens its modal straight away (see
+// addPersonaToPanel/addObjectToPanel, both calling open*Modal with isNew=true). Cancelling that
+// FIRST modal means "I don't want this Element after all", so it must be removed rather than left
+// behind: the user had no chance to accept it, and dismissing the dialog they never asked for
+// should not silently commit an Element to the Panel.
+//
+// Deliberately mirrors the Delete-key path (disposal of the three rig caches, reselection of the
+// owning Panel) rather than a bare splice, otherwise the discarded Element's rig stayed in cache.
+export function discardJustAddedElement(obj, pageData){
+  if (!obj || !pageData || !Array.isArray(pageData.objects)) return false;
+  const idx = pageData.objects.findIndex(o => o.id === obj.id);
+  if (idx === -1) return false;
+  // Captured BEFORE removal: reselecting the Panel we were working in is much less disorienting
+  // than ending up with nothing selected (same reasoning as the Delete key).
+  const ownerPanel = (obj.type !== 'panel') ? homeOwningPanel(obj, pageData) : null;
+  pageData.objects.splice(idx, 1);
+  disposePersonaRig3D(obj.id); disposeObjectRig3D(obj.id); disposeWallRenderRig3D(obj.id);
+  S.selectedRoomId = null;
+  S.selectedId = (ownerPanel && pageData.objects.some(o => o.id === ownerPanel.id)) ? ownerPanel.id : null;
+  return true;
+}
+
+// Fix 35 — dismissing a modal: Cancel, Escape and a click on the backdrop are the same intent and
+// must behave identically. Only the FIRST opening of a just-added Element discards it; reopening
+// the same Element later and cancelling leaves it alone (S.modalIsNew is false then).
+// `pageData` is injectable so the decision logic can be tested without a DOM.
+export function dismissModal(closeFn, pageData){
+  const target = S.modalTarget, wasNew = S.modalIsNew;
+  S.modalIsNew = false;
+  closeFn();
+  const page = pageData || currentPageData();
+  if (wasNew && target && discardJustAddedElement(target, page)) { drawCurrentPage(); return true; }
+  return false;
+}
+descModalCancel.onclick = () => dismissModal(closeDescModal);
+descModal.addEventListener('mousedown', (e) => { if (e.target === descModal) { e.stopPropagation(); dismissModal(closeDescModal); } });
 // Delegation: any field changed in the modal (including the joint sliders dynamically added to
 // #jointSlidersContainer) arms the Save button (cf. updateSaveButtonState). Programmatic
 // pre-filling (`.value = ...`) on opening doesn't trigger input/change, so it doesn't arm
@@ -5296,7 +5331,7 @@ window.addEventListener('keydown', (e) => {
       // stopImmediatePropagation prevents other keydown listeners (notably "Escape → Project menu")
       // from firing on the same event, now that the modal is about to be hidden.
       e.stopImmediatePropagation();
-      closeDescModal();
+      dismissModal(closeDescModal);
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !descModalSave.disabled) descModalSave.onclick();
   }
@@ -5551,10 +5586,11 @@ objectModalSave.onclick = () => {
     }
     drawCurrentPage();
   }
+  S.modalIsNew = false;
   closeObjectModal();
 };
-objectModalCancel.onclick = closeObjectModal;
-objectModal.addEventListener('mousedown', (e) => { if (e.target === objectModal) { e.stopPropagation(); closeObjectModal(); } });
+objectModalCancel.onclick = () => dismissModal(closeObjectModal);
+objectModal.addEventListener('mousedown', (e) => { if (e.target === objectModal) { e.stopPropagation(); dismissModal(closeObjectModal); } });
 // Delegation: any field changed in the modal recomputes the Save button's state (cf.
 // recomputeModalDirty/updateSaveButtonState, same logic as for #descModal above).
 objectModal.addEventListener('input', recomputeModalDirty);
@@ -5565,7 +5601,7 @@ window.addEventListener('keydown', (e) => {
       // Same reason as for descModal above: stops propagation to prevent the Project menu from
       // being opened by the "Escape → Project menu" listener registered further below.
       e.stopImmediatePropagation();
-      closeObjectModal();
+      dismissModal(closeObjectModal);
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !objectModalSave.disabled) objectModalSave.onclick();
   }

@@ -28,6 +28,7 @@ export const HELP_MANUAL_EN = [
   { title: 'Characters', paragraphs: [
     'Right-click a panel → "Add" → "Add a character".',
     'Double-click a character to set name, gender, emotion, position, hands and size.',
+    'Right after adding, Cancel (or Escape) in the dialog deletes the Element: it is only kept if you save. Once saved, cancelling merely closes the dialog.',
     '3D orientation adjustable via the handles or the joint sliders.',
     'Position X/Y fields in the dialog to place it precisely within its panel; Position Y is disabled automatically if "Snapped to the ground" is checked.',
     'If ground snapping is disabled, a "Can cross the ground" option appears in the Position section: uncheck it to keep the character above the ground plane.',
@@ -35,6 +36,7 @@ export const HELP_MANUAL_EN = [
   { title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
     'Double-click an object to adjust its rotations and size.',
+    'Right after adding, Cancel (or Escape) in the dialog deletes the Element: it is only kept if you save. Once saved, cancelling merely closes the dialog.',
     'Mouse wheel to resize it directly.',
     'Position X/Y fields in the dialog to place it precisely; disabled if the object is snapped to the ground (Position Y) or to a wall (Position X/Y).',
     'Wall openings snap automatically to neighboring walls.',
@@ -92,6 +94,7 @@ export const HELP_MANUAL_FR = [
   { title: 'Personnages', paragraphs: [
     'Clic droit sur une case → « Ajouter » → « Ajouter un personnage ».',
     'Double-clic sur un personnage pour régler nom, genre, émotion, position, mains et taille.',
+    "Juste après l'ajout, « Annuler » (ou Échap) dans la modale supprime l'Élément : il n'est conservé que si vous validez. Une fois enregistré, annuler ne fait plus que fermer la modale.",
     'Orientation 3D ajustable via les poignées ou les curseurs d\'articulation.',
     'Champs Position X/Y dans la modale pour le placer précisément dans sa Case ; Position Y se désactive automatiquement si « Aimanté au Sol » est cochée.',
     "Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer le personnage au-dessus du Sol.",
@@ -99,6 +102,7 @@ export const HELP_MANUAL_FR = [
   { title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',
     'Double-clic sur un objet pour ajuster ses rotations et sa taille.',
+    "Juste après l'ajout, « Annuler » (ou Échap) dans la modale supprime l'Élément : il n'est conservé que si vous validez. Une fois enregistré, annuler ne fait plus que fermer la modale.",
     'Molette de la souris pour le redimensionner directement.',
     "Champs Position X/Y dans la modale pour le placer précisément ; désactivés si l'objet est aimanté au Sol (Position Y) ou à un Mur (Position X/Y).",
     'Les Parois s\'aimantent automatiquement aux Murs voisins.',

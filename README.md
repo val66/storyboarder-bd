@@ -31,6 +31,7 @@
 - 🏠 **Buildings** with rooms, walls, doors and windows
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
+- ↩️ **Cancelling** the dialog of a just-added Element removes it — nothing is committed until you save
 
 ### Project & saving
 - **JSON** project format — human-readable and versionable

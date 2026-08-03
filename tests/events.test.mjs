@@ -33,6 +33,8 @@ import {
   tracéScreenAxisAtFrac3D,
   integrateTracéFrac3D,
   tracéUpScreenAxis3D,
+  discardJustAddedElement,
+  dismissModal,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -641,5 +643,101 @@ describe('tracéUpScreenAxis3D — axe vertical d\'un Muret (Fix 30)', () => {
     assert.equal(tracéUpScreenAxis3D(porte, page, null, 0), null, 'panel absent');
     assert.equal(tracéUpScreenAxis3D({ ...porte, magnetWallId: null }, page, panel, 0), null,
       'pas d\'hôte Tracé');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 35 — Annuler la PREMIÈRE modale d'un Élément qu'on vient d'ajouter le supprime.
+//
+// Le menu Ajouter crée l'Élément puis ouvre sa modale (isNew=true). Annuler à ce
+// moment-là veut dire « finalement je n'en veux pas » : fermer sans rien faire laissait
+// l'Élément posé dans la Case alors que l'utilisateur n'avait jamais pu l'accepter.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('discardJustAddedElement — retrait de l\'Élément à peine ajouté (Fix 35)', () => {
+  const faire = () => {
+    const panel = { id: 'panel1', type: 'panel', x: 0, y: 0, w: 400, h: 300 };
+    const obj = { id: 'o1', type: 'objet3d', objType: 'voiture', homePanelId: 'panel1',
+                  x: 50, y: 50, w: 40, h: 30 };
+    return { panel, obj, page: { objects: [panel, obj] } };
+  };
+  beforeEach(() => { S.selectedId = null; S.selectedRoomId = null; });
+
+  test('l\'Élément est retiré de la Page', () => {
+    const { obj, page } = faire();
+    assert.equal(discardJustAddedElement(obj, page), true);
+    assert.equal(page.objects.some(o => o.id === 'o1'), false, 'plus présent');
+  });
+
+  test('la Case d\'accueil est resélectionnée, pas « rien »', () => {
+    const { obj, page } = faire();
+    S.selectedId = 'o1';
+    discardJustAddedElement(obj, page);
+    assert.equal(S.selectedId, 'panel1', 'on reste dans la Case où on travaillait');
+    assert.equal(S.selectedRoomId, null);
+  });
+
+  test('les autres Éléments de la Page ne sont pas touchés', () => {
+    const { obj, page } = faire();
+    const autre = { id: 'o2', type: 'objet3d', objType: 'velo', homePanelId: 'panel1' };
+    page.objects.push(autre);
+    discardJustAddedElement(obj, page);
+    assert.equal(page.objects.length, 2, 'la Case et l\'autre Élément restent');
+    assert.ok(page.objects.includes(autre));
+  });
+
+  test('Élément absent, Page absente, entrée nulle : ne fait rien et le signale', () => {
+    const { page } = faire();
+    assert.equal(discardJustAddedElement({ id: 'inconnu' }, page), false, 'id absent');
+    assert.equal(discardJustAddedElement(null, page), false);
+    assert.equal(discardJustAddedElement({ id: 'o1' }, null), false);
+    assert.equal(discardJustAddedElement({ id: 'o1' }, {}), false, 'page sans objects');
+    assert.equal(page.objects.length, 2, 'la Page est intacte');
+  });
+});
+
+describe('dismissModal — Annuler / Échap / clic hors modale (Fix 35)', () => {
+  const faire = () => {
+    const panel = { id: 'panel1', type: 'panel', x: 0, y: 0, w: 400, h: 300 };
+    const obj = { id: 'o1', type: 'objet3d', objType: 'voiture', homePanelId: 'panel1' };
+    return { obj, page: { objects: [panel, obj] } };
+  };
+  beforeEach(() => { S.selectedId = null; S.selectedRoomId = null; S.modalTarget = null; S.modalIsNew = false; });
+
+  test('Élément neuf : la modale se ferme ET l\'Élément est supprimé', () => {
+    const { obj, page } = faire();
+    S.modalTarget = obj; S.modalIsNew = true;
+    let ferme = 0;
+    assert.equal(dismissModal(() => { ferme++; }, page), true, 'suppression signalée');
+    assert.equal(ferme, 1, 'la modale a bien été fermée');
+    assert.equal(page.objects.some(o => o.id === 'o1'), false, 'Élément supprimé');
+  });
+
+  test('Élément existant rouvert : la modale se ferme, l\'Élément reste', () => {
+    const { obj, page } = faire();
+    S.modalTarget = obj; S.modalIsNew = false;
+    let ferme = 0;
+    assert.equal(dismissModal(() => { ferme++; }, page), false);
+    assert.equal(ferme, 1, 'la modale a bien été fermée');
+    assert.equal(page.objects.some(o => o.id === 'o1'), true, 'Élément conservé');
+  });
+
+  test('RÉGRESSION : annuler deux fois de suite ne supprime pas un 2e Élément', () => {
+    // Le drapeau est désarmé dès la 1re fermeture ; sans ça, une modale rouverte puis
+    // annulée aurait hérité du « neuf » de la précédente.
+    const { obj, page } = faire();
+    S.modalTarget = obj; S.modalIsNew = true;
+    dismissModal(() => {}, page);
+    const autre = { id: 'o2', type: 'objet3d', objType: 'velo', homePanelId: 'panel1' };
+    page.objects.push(autre);
+    S.modalTarget = autre;                     // rouverte SANS isNew
+    assert.equal(dismissModal(() => {}, page), false);
+    assert.equal(page.objects.some(o => o.id === 'o2'), true, 'le 2e Élément survit');
+  });
+
+  test('la modale est toujours fermée, même sans cible', () => {
+    S.modalTarget = null; S.modalIsNew = true;
+    let ferme = 0;
+    assert.equal(dismissModal(() => { ferme++; }, { objects: [] }), false);
+    assert.equal(ferme, 1, 'fermeture inconditionnelle');
   });
 });

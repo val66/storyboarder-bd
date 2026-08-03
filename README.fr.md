@@ -31,6 +31,7 @@
 - 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
+- ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime — rien n'est conservé tant que vous n'enregistrez pas
 
 ### Projet & sauvegarde
 - Format de projet **JSON** — lisible et versionnable
