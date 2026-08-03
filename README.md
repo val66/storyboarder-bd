@@ -63,8 +63,19 @@ The installer appears in the `dist/` folder and creates Desktop and Start Menu s
 ```bash
 npm test
 ```
-Runs the unit test suite (Node's built-in test runner, `tests/*.test.mjs`) covering the pure logic
-of the 3D Case Camera and the Build tool (room/building construction), independently of Electron.
+Runs the unit test suite with Node's built-in test runner — no external framework, no browser. One
+`tests/<module>.test.mjs` file per `src/` module, plus a lightweight DOM stub so the modules can be
+imported outside Electron.
+
+It covers the application's pure logic layer: the 3D Panel camera (orbit basis, pivot, world↔screen
+projection, framing), the Build tool (wall tracing, snapping, room/building closing), world
+coordinates and ground magnetism, Wall-Opening positioning on walls, project serialization and its
+migrations, EN/FR translation, 2D drawing helpers (panel shapes, speech bubbles, text wrapping), and
+the sidebar/modal helpers.
+
+Anything requiring real WebGL is deliberately out of scope (building a `THREE.WebGLRenderer` fails
+under Node), as is the event wiring itself — see the header comment in each test file for what is
+excluded and why.
 
 ---
 

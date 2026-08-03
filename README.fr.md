@@ -63,9 +63,19 @@ L'installeur apparaît dans le dossier `dist/`. Il crée des raccourcis Bureau e
 ```bash
 npm test
 ```
-Exécute la suite de tests unitaires (test runner natif de Node, `tests/*.test.mjs`), qui couvre la
-logique pure de la Caméra 3D de Case et de l'outil Build (construction de Pièces/Bâtiments),
-indépendamment d'Electron.
+Exécute la suite de tests unitaires avec le test runner natif de Node — sans framework externe ni
+navigateur. Un fichier `tests/<module>.test.mjs` par module de `src/`, plus un stub DOM léger qui
+permet d'importer les modules hors d'Electron.
+
+Elle couvre toute la logique pure de l'application : la Caméra 3D des Cases (repère d'orbite, pivot,
+projection monde↔écran, cadrage), l'outil Construire (tracé des murs, magnétisme, fermeture des
+Pièces/Bâtiments), les coordonnées monde et l'aimantation au Sol, le placement des Parois sur les
+Murs, la sérialisation du Projet et ses migrations, la traduction FR/EN, les aides au dessin 2D
+(formes de Case, Bulles, découpage du texte) et les helpers du panneau latéral et des modales.
+
+Tout ce qui exige un vrai WebGL est volontairement hors périmètre (construire un
+`THREE.WebGLRenderer` échoue sous Node), de même que le câblage des événements — l'en-tête de chaque
+fichier de test détaille ce qui est exclu et pourquoi.
 
 ---
 
