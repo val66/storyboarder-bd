@@ -1126,3 +1126,253 @@ describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix
     assert.equal(tracéOpeningWorldCenter3D(o, { w: 800, h: 600, objects: [o] }), null);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 31 — INVARIANTS Muret ↔ Parois.
+//
+// Quatre bugs successifs (Fix 28, 30, 31, 31b) ont eu la même cause : deux bouts de
+// code calculant indépendamment le même point, puis divergeant. Les tests unitaires
+// ci-dessus valident chaque fonction isolément ; cette suite-ci verrouille les
+// RELATIONS entre elles, balayées sur toute la plage des deux fractions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('INVARIANTS Muret ↔ Parois — cohérence trou / rig / boîte / caméra (Fix 31)', () => {
+  const FRACS = [0, 0.13, 0.25, 0.5, 0.75, 0.87, 1];
+  const cas = {
+    droit:  [{ x: 0, z: 0 }, { x: 8, z: 0 }],
+    enL:    [{ x: 0, z: 0 }, { x: 6, z: 0 }, { x: 6, z: -6 }],
+    // Boucle ovale : le cas qui avait fait s'inverser la direction du glisser (Fix 29).
+    boucle: Array.from({ length: 13 }, (_, i) => {
+      const a = (i / 12) * Math.PI * 2;
+      return { x: 4 * Math.cos(a), z: 2.5 * Math.sin(a) };
+    }),
+  };
+  const muret = pts => ({ id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 0.5,
+                          world: { pts } });
+  const fen = (a, y) => ({ id: 'f1', type: 'objet3d', objType: 'fenetre_ouverte',
+                           magnetWallId: 'm1', w: 14, h: 12,
+                           wallAlongFrac: a, wallYFrac: y });
+  const ctx = (pts, a, y) => {
+    const o = fen(a, y), w = muret(pts);
+    return { o, w, page: { w: 800, h: 600, objects: [w, o] },
+             smooth: smoothTracéPath3D(pts, 4) };
+  };
+  const longueur = pts => {
+    let t = 0;
+    for (let i = 1; i < pts.length; i++) t += Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+    return t;
+  };
+
+  for (const [nom, pts] of Object.entries(cas)) {
+    describe(`muret « ${nom} »`, () => {
+      test('le trou est découpé exactement là où la Parois est posée (le long du chemin)', () => {
+        for (const a of FRACS) {
+          const { o, page, smooth } = ctx(pts, a, 0.5);
+          const pos = wallOpeningWorldPosOnTracé3D(o, page);
+          const h = tracéOpeningHole3D(o, smooth, longueur(smooth), GROUND_Y_DEFAULT_3D, 0.5);
+          assertClose(h.at.x, pos.x, `x @along ${a}`, 1e-9);
+          assertClose(h.at.z, pos.z, `z @along ${a}`, 1e-9);
+        }
+      });
+
+      test('la Parois remplit son trou : base sur base, sommet sur sommet', () => {
+        for (const y of FRACS) {
+          const { o, page, smooth } = ctx(pts, 0.4, y);
+          const pos = wallOpeningWorldPosOnTracé3D(o, page);
+          const h = tracéOpeningHole3D(o, smooth, longueur(smooth), GROUND_Y_DEFAULT_3D, 0.5);
+          const { h: cH } = tracéOpeningSize3D(o);
+          assertClose(h.yMin, pos.y, `base @yFrac ${y}`, 1e-9);
+          assertClose(h.yMax, pos.y + cH, `sommet @yFrac ${y}`, 1e-9);
+        }
+      });
+
+      test('la boîte de rendu ET la caméra visent le milieu du trou', () => {
+        for (const a of FRACS) for (const y of FRACS) {
+          const { o, page, smooth } = ctx(pts, a, y);
+          const c = tracéOpeningWorldCenter3D(o, page);
+          const h = tracéOpeningHole3D(o, smooth, longueur(smooth), GROUND_Y_DEFAULT_3D, 0.5);
+          assertClose(c.y, (h.yMin + h.yMax) / 2, `milieu @${a}/${y}`, 1e-9);
+          assertClose(c.x, h.at.x, `x @${a}/${y}`, 1e-9);
+          assertClose(c.z, h.at.z, `z @${a}/${y}`, 1e-9);
+        }
+      });
+
+      test('la Parois ne sort JAMAIS du muret, quelles que soient les deux fractions', () => {
+        for (const a of FRACS) for (const y of FRACS) {
+          const { o, page } = ctx(pts, a, y);
+          const pos = wallOpeningWorldPosOnTracé3D(o, page);
+          const { h: cH } = tracéOpeningSize3D(o);
+          assert.ok(pos.y >= GROUND_Y_DEFAULT_3D - 1e-9, `sous le sol @${a}/${y}`);
+          assert.ok(pos.y + cH <= GROUND_Y_DEFAULT_3D + 0.5 + 1e-9, `au-dessus de la crête @${a}/${y}`);
+        }
+      });
+
+      test('le tableau est posé sur le trou et orienté comme la Parois', () => {
+        for (const a of FRACS) {
+          const { o, page, smooth } = ctx(pts, a, 0.5);
+          const h = tracéOpeningHole3D(o, smooth, longueur(smooth), GROUND_Y_DEFAULT_3D, 0.5);
+          const rev = buildOpeningRevealGroup3D(h, 0.18, '#606060',
+            GROUND_Y_DEFAULT_3D, GROUND_Y_DEFAULT_3D + 0.5);
+          const pos = wallOpeningWorldPosOnTracé3D(o, page);
+          assertClose(rev.position.x, pos.x, `x @${a}`, 1e-9);
+          assertClose(rev.position.z, pos.z, `z @${a}`, 1e-9);
+          // Le rig et le tableau échantillonnent DÉSORMAIS la même tangente : l'égalité doit être
+          // exacte, pas approchée. Avec l'ancienne tangente « segment brut » du rig, l'écart
+          // atteignait ~0.83 rad dans un coude et les deux se croisaient visiblement.
+          const yawRig = Math.atan2(-pos.tangent.z, pos.tangent.x);
+          const d = Math.abs(((rev.rotation.y - yawRig + Math.PI) % (2 * Math.PI)) - Math.PI);
+          assert.ok(d < 1e-9, `lacet identique @${a} (écart ${d.toFixed(6)} rad)`);
+        }
+      });
+    });
+  }
+
+  test('agrandir la Parois agrandit le trou d\'autant, et la met à l\'échelle d\'autant', () => {
+    const smooth = smoothTracéPath3D(cas.droit, 4), L = longueur(smooth);
+    const petite = { ...fen(0.5, 0), w: 14, h: 12 };
+    const grande = { ...fen(0.5, 0), w: 28, h: 24 };
+    const hp = tracéOpeningHole3D(petite, smooth, L, GROUND_Y_DEFAULT_3D, 0.5);
+    const hg = tracéOpeningHole3D(grande, smooth, L, GROUND_Y_DEFAULT_3D, 0.5);
+    assertClose((hg.arcEnd - hg.arcStart) / (hp.arcEnd - hp.arcStart), 2, 'trou 2× plus large');
+    const sp = tracéOpeningRigScale3D('fenetre_ouverte', ...Object.values(tracéOpeningSize3D(petite)));
+    const sg = tracéOpeningRigScale3D('fenetre_ouverte', ...Object.values(tracéOpeningSize3D(grande)));
+    assertClose(sg.sx / sp.sx, 2, 'rig 2× plus large');
+    assertClose(sg.sy / sp.sy, 2, 'rig 2× plus haut');
+  });
+
+  test('changer la hauteur du muret redistribue la travée sans faire sortir la Parois', () => {
+    for (const wallH of [0.35, 0.5, 1.2, 3]) {
+      const w = { ...muret(cas.droit), wallHeight: wallH };
+      const o = fen(0.5, 1);
+      const pos = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [w, o] });
+      const { h: cH } = tracéOpeningSize3D(o);
+      assertClose(pos.y + cH, GROUND_Y_DEFAULT_3D + wallH, `sommet affleurant @wallHeight ${wallH}`);
+    }
+  });
+
+  test('les 4 types de Tracé mur portent une Parois ; les autres Tracés la refusent', () => {
+    const o = fen(0.5, 0.5);
+    for (const t of ['muret', 'cloture', 'haie', 'barriere']) {
+      const w = { ...muret(cas.droit), tracéType: t, wallHeight: undefined };
+      const page = { w: 800, h: 600, objects: [w, o] };
+      assert.ok(wallOpeningWorldPosOnTracé3D(o, page), `porté par ${t}`);
+      assert.ok(tracéWallThickness3D(w) > 0, `épaisseur définie pour ${t}`);
+    }
+    for (const t of ['route', 'chemin', 'terrain']) {
+      const w = { ...muret(cas.droit), tracéType: t };
+      assert.equal(wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [w, o] }), null, t);
+      assert.equal(tracéOpeningWorldCenter3D(o, { w: 800, h: 600, objects: [w, o] }), null, t);
+    }
+  });
+
+  test('deux Parois sur le même muret ne partagent aucun état', () => {
+    const w = muret(cas.enL);
+    const a = { ...fen(0.2, 0), id: 'f1' };
+    const b = { ...fen(0.8, 1), id: 'f2', w: 28, h: 16 };
+    const page = { w: 800, h: 600, objects: [w, a, b] };
+    const pa = wallOpeningWorldPosOnTracé3D(a, page), pb = wallOpeningWorldPosOnTracé3D(b, page);
+    assert.ok(Math.hypot(pa.x - pb.x, pa.z - pb.z) > 1, 'positions distinctes le long du chemin');
+    assert.ok(pb.y > pa.y, 'hauteurs distinctes');
+    // Travées différentes, car les deux Parois n'ont pas la même hauteur propre.
+    assert.ok(Math.abs(pa.spanY - pb.spanY) > 1e-6, 'travées propres à chaque Parois');
+  });
+});
+
+describe('tangente d\'une Parois sur un Tracé — cohérence avec la courbe lissée (Fix 31)', () => {
+  const enL = [{ x: 0, z: 0 }, { x: 6, z: 0 }, { x: 6, z: -6 }];
+  const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 0.5,
+                  world: { pts: enL } };
+  const fen = a => ({ id: 'f1', type: 'objet3d', objType: 'fenetre_ouverte', magnetWallId: 'm1',
+                      w: 14, h: 12, wallAlongFrac: a, wallYFrac: 0 });
+
+  test('la tangente est unitaire partout', () => {
+    for (const a of [0, 0.2, 0.5, 0.8, 1]) {
+      const o = fen(a);
+      const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [muret, o] }).tangent;
+      assertClose(Math.hypot(t.x, t.z), 1, `norme @${a}`, 1e-9);
+    }
+  });
+
+  test('elle coïncide avec celle de la courbe lissée, y compris dans le coude', () => {
+    const pts = smoothTracéPath3D(enL, 4);
+    for (const a of [0, 0.1, 0.45, 0.5, 0.55, 0.9, 1]) {
+      const o = fen(a);
+      const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [muret, o] }).tangent;
+      const f = tracéFrameAtFrac3D(pts, a);
+      assertClose(t.x, f.tx, `tx @${a}`, 1e-9);
+      assertClose(t.z, f.tz, `tz @${a}`, 1e-9);
+    }
+  });
+
+  // Mesuré sur ce L (angle réel 90°) : chemin brut → un saut unique de 1.571 rad ; lissé x4 →
+  // réparti sur ~2 pas, plus gros saut 0.825 rad ; lissé x8 → 0.460 rad. Le lissage ADOUCIT le
+  // virage sans l'effacer — le seuil ci-dessous encadre ce comportement mesuré, il n'est pas
+  // arbitraire.
+  test('le lissage répartit le virage au lieu de le faire d\'un bloc', () => {
+    const yaws = [];
+    for (let a = 0.30; a <= 0.70; a += 0.005) {
+      const o = fen(a);
+      const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [muret, o] }).tangent;
+      yaws.push(Math.atan2(-t.z, t.x));
+    }
+    let max = 0, total = 0;
+    for (let i = 1; i < yaws.length; i++) {
+      const d = ((yaws[i] - yaws[i-1] + Math.PI) % (2 * Math.PI)) - Math.PI;
+      max = Math.max(max, Math.abs(d)); total += d;
+    }
+    assert.ok(max < 1.0, `virage réparti, pas d'un bloc (plus gros saut ${max.toFixed(3)} rad)`);
+    assert.ok(Math.abs(Math.abs(total) - Math.PI / 2) < 0.2,
+      `virage total ≈ 90° (obtenu ${(total * 180 / Math.PI).toFixed(1)}°)`);
+  });
+
+  // RÉGRESSION du Fix 29 (« la direction finit par s'inverser »). L'invariant qui compte n'est pas
+  // que la tangente tourne parfaitement — sur une ellipse échantillonnée à 13 points, le lissage
+  // produit 2 micro-contre-sens de 0.045 rad sur 100 pas, mesurés — mais qu'augmenter
+  // wallAlongFrac fasse TOUJOURS avancer la Parois vers l'avant du muret, jamais reculer.
+  test('sur un muret qui boucle, augmenter wallAlongFrac avance toujours vers l\'avant', () => {
+    const ovale = Array.from({ length: 13 }, (_, i) => {
+      const t = (i / 12) * Math.PI * 2;
+      return { x: 4 * Math.cos(t), z: 2.5 * Math.sin(t) };
+    });
+    const boucle = { ...muret, world: { pts: ovale } };
+    const at = a => {
+      const o = fen(a);
+      return wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [boucle, o] });
+    };
+    let reculs = 0;
+    for (let a = 0; a < 0.99; a += 0.01) {
+      const p0 = at(a), p1 = at(a + 0.01);
+      // Produit scalaire du déplacement avec la tangente locale : négatif = la Parois recule.
+      const d = (p1.x - p0.x) * p0.tangent.x + (p1.z - p0.z) * p0.tangent.z;
+      if (d < 0) reculs++;
+    }
+    assert.equal(reculs, 0, `aucun recul le long du muret (${reculs} détectés)`);
+  });
+
+  test('la tangente fait un tour complet le long d\'une boucle fermée', () => {
+    const ovale = Array.from({ length: 13 }, (_, i) => {
+      const t = (i / 12) * Math.PI * 2;
+      return { x: 4 * Math.cos(t), z: 2.5 * Math.sin(t) };
+    });
+    const boucle = { ...muret, world: { pts: ovale } };
+    let prev = null, total = 0;
+    for (let a = 0; a <= 1.0001; a += 0.01) {
+      const o = fen(a);
+      const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [boucle, o] }).tangent;
+      const yaw = Math.atan2(-t.z, t.x);
+      if (prev !== null) total += ((yaw - prev + Math.PI) % (2 * Math.PI)) - Math.PI;
+      prev = yaw;
+    }
+    // Mesuré : -321° sur cette ellipse à 13 points (le lissage n'atteint pas exactement 360°).
+    assert.ok(Math.abs(Math.abs(total) - 2 * Math.PI) < 0.9,
+      `≈ un tour complet (obtenu ${(total * 180 / Math.PI).toFixed(1)}°)`);
+  });
+
+  test('chemin totalement dégénéré : tangente de repli, jamais NaN', () => {
+    const degen = { ...muret, world: { pts: [{ x: 2, z: 2 }, { x: 2, z: 2 }] } };
+    const o = fen(0.5);
+    const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [degen, o] }).tangent;
+    assert.ok(Number.isFinite(t.x) && Number.isFinite(t.z), 'pas de NaN');
+    assert.ok(Math.hypot(t.x, t.z) > 0, 'direction utilisable');
+  });
+});

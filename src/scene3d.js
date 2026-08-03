@@ -382,7 +382,9 @@ export function framePanelCamera3D(camera, panel, page){
       // own — it is placed by walking the host path (cf. wallOpeningWorldPosOnTracé3D). The
       // WALL_TYPES lookup below only matches 'mur'/'mur_coin' hosts, so without this the orbit fell
       // back to the Element's stale wxFloor/wzFloor and centred the camera somewhere else entirely.
-      const _tracéOrbit = wallOpeningWorldPosOnTracé3D(_selObjOrbit, page);
+      // Fix 31 — the CENTRE, not the base: every other branch below feeds _elWy from wyFloor,
+      // which is already an Element centre. Aiming at the base tilted the orbit half an Opening low.
+      const _tracéOrbit = tracéOpeningWorldCenter3D(_selObjOrbit, page);
       const _orbitHostWall = (!_tracéOrbit && _selObjOrbit.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(_selObjOrbit.objType))
         ? page.objects.find(w => w.id === _selObjOrbit.magnetWallId && WALL_TYPES.includes(w.objType))
         : null;
@@ -1092,18 +1094,13 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
   if (!host || !host.world || !host.world.pts || host.world.pts.length < 2) return null;
   const pts = smoothTracéPath3D(host.world.pts, 4);
   const frac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
-  const p = tracéPointAtFrac3D(pts, frac);
+  // Fix 31 — point AND tangent from tracéFrameAtFrac3D. The tangent used to be that of the raw
+  // SEGMENT the point fell in, while the reveal ("tableau") sampled the smoothed curve: at a bend
+  // the two disagreed by up to ~47°, so the Window and the relief framing it visibly crossed. One
+  // sampling now, and the Opening follows the curve the wall is actually built along.
+  const f = tracéFrameAtFrac3D(pts, frac);
+  const p = f || tracéPointAtFrac3D(pts, frac);
   if (!p) return null;
-  // Tangent of the segment the point falls in — same walk, so render and camera stay consistent.
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
-  const target = frac * total;
-  let acc = 0, segI = Math.min(1, pts.length - 1);
-  for (let i = 1; i < pts.length; i++) {
-    const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
-    if (acc + seg >= target) { segI = i; break; }
-    acc += seg; segI = i;
-  }
   const wallH = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
   // Reachable span: fraction 1 must leave the Opening's top flush with the wall's, not push its base
   // there. Floored just above 0 so an Opening taller than its wall still has a defined position
@@ -1114,7 +1111,8 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
     x: p.x,
     y: GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * spanY,
     z: p.z,
-    tangent: { x: pts[segI].x - pts[segI-1].x, z: pts[segI].z - pts[segI-1].z },
+    // Unit tangent; null only for a fully degenerate path, where any direction is arbitrary anyway.
+    tangent: f ? { x: f.tx, z: f.tz } : { x: 1, z: 0 },
     wallH, spanY, host,
   };
 }
@@ -2427,7 +2425,8 @@ export function centerSceneCameraOnElement(panel, obj){
     // walking the host path, so its real position is computable — centre on the Opening ITSELF
     // rather than on the host. Falling through to the WALL_TYPES lookup below (which never matches
     // a Trace) left the camera aiming at the Element's stale stored coordinates.
-    const _tracéPos = _page && wallOpeningWorldPosOnTracé3D(obj, _page);
+    // Fix 31 — centre rather than base, for the same reason as the orbit above.
+    const _tracéPos = _page && tracéOpeningWorldCenter3D(obj, _page);
     if (_tracéPos) {
       panel.camWxTarget = _tracéPos.x;
       panel.camWyTarget = _tracéPos.y;
