@@ -286,7 +286,7 @@ describe('disposeGroupGeometries3D — libération des géométries d\'un rig je
 // désormais de l'épaisseur DANS LE PLAN du mur ; la profondeur est calée sur le mur.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
-  const MUR_REF = 0.12;
+  const MUR_REF = 0.12; // profondeur de reference du dormant, pas l epaisseur d un Mur
   // Profondeur du dormant SEUL : l'ouvrant (le pivot) sort du mur par construction quand
   // la Fenêtre est ouverte, ce n'est pas lui qui était en cause.
   const profondeurDormant = g => {

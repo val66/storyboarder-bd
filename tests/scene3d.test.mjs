@@ -44,6 +44,7 @@ import {
   buildOpeningRevealGroup3D,
   tracéOpeningHole3D,
   tracéOpeningWorldCenter3D,
+  buildTracéWallGeometry3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -1374,5 +1375,70 @@ describe('tangente d\'une Parois sur un Tracé — cohérence avec la courbe lis
     const t = wallOpeningWorldPosOnTracé3D(o, { w: 800, h: 600, objects: [degen, o] }).tangent;
     assert.ok(Number.isFinite(t.x) && Number.isFinite(t.z), 'pas de NaN');
     assert.ok(Math.hypot(t.x, t.z) > 0, 'direction utilisable');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 32 — arêtes du Tracé mur.
+//
+// emitStrip réutilisait les mêmes 8 sommets pour les faces verticales ET les faces
+// horizontales. computeVertexNormals moyennait donc, à chaque coin haut, la normale de la
+// face verticale avec le +Y du dessus : la crête était ombrée comme un congé et le Muret
+// avait l'air d'un tube. Les faces horizontales ont désormais leurs propres sommets.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('buildTracéWallGeometry3D — arêtes franches du Tracé mur (Fix 32)', () => {
+  const droit = [{ x: 0, z: 0 }, { x: 8, z: 0 }];
+  const classe = geo => {
+    const N = geo.getAttribute('normal');
+    let laterale = 0, horizontale = 0, diagonale = 0;
+    for (let i = 0; i < N.count; i++) {
+      const ny = Math.abs(N.getY(i));
+      if (ny < 0.01) laterale++; else if (ny > 0.99) horizontale++; else diagonale++;
+    }
+    return { laterale, horizontale, diagonale, total: N.count };
+  };
+
+  test('RÉGRESSION : aucune normale diagonale — la crête est une arête, pas un congé', () => {
+    const c = classe(buildTracéWallGeometry3D(droit, 0.5, 0.18, GROUND_Y_DEFAULT_3D, null));
+    assert.equal(c.diagonale, 0, `${c.diagonale} sommets à normale diagonale sur ${c.total}`);
+    assert.ok(c.laterale > 0 && c.horizontale > 0, 'les deux familles de faces sont présentes');
+  });
+
+  test('les faces latérales restent strictement verticales', () => {
+    const geo = buildTracéWallGeometry3D(droit, 0.5, 0.18, GROUND_Y_DEFAULT_3D, null);
+    const N = geo.getAttribute('normal');
+    for (let i = 0; i < N.count; i++) {
+      const ny = Math.abs(N.getY(i));
+      assert.ok(ny < 0.01 || ny > 0.99, `normale ni verticale ni horizontale au sommet ${i} (ny=${ny})`);
+    }
+  });
+
+  test('arêtes franches aussi sur un tracé courbe et autour d\'une ouverture', () => {
+    const courbe = Array.from({ length: 9 }, (_, i) => ({ x: i, z: Math.sin(i / 2) * 2 }));
+    const trou = [{ arcStart: 3, arcEnd: 4.5, yMin: GROUND_Y_DEFAULT_3D + 0.1,
+                    yMax: GROUND_Y_DEFAULT_3D + 0.35 }];
+    for (const [nom, geo] of [
+      ['courbe sans trou', buildTracéWallGeometry3D(courbe, 0.5, 0.18, GROUND_Y_DEFAULT_3D, null)],
+      ['courbe avec trou', buildTracéWallGeometry3D(courbe, 0.5, 0.18, GROUND_Y_DEFAULT_3D, trou)],
+      ['droit avec trou',  buildTracéWallGeometry3D(droit,  0.5, 0.18, GROUND_Y_DEFAULT_3D, trou)],
+    ]) {
+      assert.equal(classe(geo).diagonale, 0, nom);
+    }
+  });
+
+  test('l\'appui et le linteau du trou sont eux aussi des faces franches', () => {
+    // Un trou à mi-hauteur produit un appui (dessus de la bande basse) ET un linteau
+    // (dessous de la bande haute) : les deux doivent avoir des normales pures.
+    const trou = [{ arcStart: 3, arcEnd: 4.5, yMin: GROUND_Y_DEFAULT_3D + 0.15,
+                    yMax: GROUND_Y_DEFAULT_3D + 0.35 }];
+    const c = classe(buildTracéWallGeometry3D(droit, 0.5, 0.18, GROUND_Y_DEFAULT_3D, trou));
+    assert.equal(c.diagonale, 0, 'aucune normale moyennée');
+    // 4 sommets par face horizontale : au moins appui + linteau + crêtes.
+    assert.ok(c.horizontale >= 12, `${c.horizontale} sommets horizontaux (appui + linteau + crêtes)`);
+  });
+
+  test('chemin inexploitable → null, pas une géométrie vide', () => {
+    assert.equal(buildTracéWallGeometry3D([{ x: 0, z: 0 }], 0.5, 0.18, GROUND_Y_DEFAULT_3D, null), null);
+    assert.equal(buildTracéWallGeometry3D([], 0.5, 0.18, GROUND_Y_DEFAULT_3D, null), null);
   });
 });

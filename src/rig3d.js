@@ -1637,13 +1637,16 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   // the very mismatch this fix removes.
   // Fix 31d — la présence du dormant vient de son épaisseur DANS LE PLAN du mur (frameThick, 0.10
   // contre 0.06 auparavant, bien visible de face), pas de sa profondeur. Le Fix 31 avait poussé la
-  // profondeur à 0.16 et le chambranle à 0.24, alors qu'un Mur de hauteur standard n'épaissit que
-  // h × 0.06 = 0.12 : la caisse débordait de 0.06 par face dans la pièce. Les deux valeurs sont
-  // désormais calées sur cette épaisseur de référence — le dormant tient à l'intérieur (±0.05 pour
-  // ±0.06 de mur) et seul le chambranle affleure, de 0.01, juste de quoi accrocher une ombre.
-  const WALL_REF_THICK = 0.12; // buildWallRig3D : thick = h * 0.06, pour h = 2.0
+  // profondeur à 0.16 et le chambranle à 0.24, et la caisse débordait dans la pièce.
+  //
+  // ATTENTION : il n'existe PAS de rapport fixe entre cette profondeur et l'épaisseur du Mur
+  // d'accueil. Le noeud enfant est mis à l'échelle par child.h/design.h, puis tout le rig de Mur
+  // par realHeightFloor/heightUnits ; la profondeur finale dépend donc du rapport entre la hauteur
+  // de la Fenêtre et celle du Mur. Ces deux valeurs sont calibrées pour une Fenêtre occupant
+  // ~40 % de la hauteur du Mur, cas le plus courant — au-delà, elle ressortira un peu.
+  const FRAME_DEPTH_REF = 0.10;
   const w = 1.0, h = 1.1, frameThick = 0.10;
-  const frameDepth = WALL_REF_THICK * 0.83;
+  const frameDepth = FRAME_DEPTH_REF;
   const addBar = (bw, bh, bd, x, y) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), frameMat);
     m.position.set(x, y, 0);
@@ -1655,7 +1658,7 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   [-1, 1].forEach(sx => addBar(frameThick, h, frameDepth, sx * (w / 2 - frameThick / 2), h / 2));
   // Casing: a second, thinner ring standing proud of BOTH faces, so the frame keeps a visible
   // relief whichever side of the wall the camera is on.
-  const capT = frameThick * 0.55, capD = WALL_REF_THICK + 0.02;
+  const capT = frameThick * 0.55, capD = FRAME_DEPTH_REF * 1.4;
   addBar(w, capT, capD, 0, h - capT / 2);
   addBar(w, capT, capD, 0, capT / 2);
   [-1, 1].forEach(sx => addBar(capT, h, capD, sx * (w / 2 - capT / 2), h / 2));

@@ -1128,7 +1128,7 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
 // ════════════════════════════════════════════════════════════
 // 3D — TRACÉ GEOMETRY
 // ════════════════════════════════════════════════════════════
-function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) {
+export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) {
   const smoothed = smoothTracéPath3D(worldPts, 4);
   const n = smoothed ? smoothed.length : 0;
   if (n < 2) return null;
@@ -1224,22 +1224,39 @@ function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) {
     if (yb - ya < 1e-6) return;
     const pi = pts[i], ni = norms[i];
     const pj = pts[i+1], nj = norms[i+1];
+    // Fix 32 — the horizontal faces get their OWN vertices, not the side faces'. They used to
+    // share them, so computeVertexNormals averaged the vertical face normal with the +Y of the top
+    // face at every upper corner: the crest was shaded like a fillet and the whole Low Wall read as
+    // a rounded tube instead of the square-topped masonry a Wall is. Duplicating the four corners
+    // per horizontal face keeps each face's normal pure and the crest edge hard.
+    const L = (p, nr, y) => [p.x + nr.nx*hw, y, p.z + nr.nz*hw];
+    const R = (p, nr, y) => [p.x - nr.nx*hw, y, p.z - nr.nz*hw];
     const base = vIdx;
     positions.push(
-      pi.x + ni.nx*hw, ya, pi.z + ni.nz*hw,  // 0: i-left-bottom
-      pi.x - ni.nx*hw, ya, pi.z - ni.nz*hw,  // 1: i-right-bottom
-      pi.x + ni.nx*hw, yb, pi.z + ni.nz*hw,  // 2: i-left-top
-      pi.x - ni.nx*hw, yb, pi.z - ni.nz*hw,  // 3: i-right-top
-      pj.x + nj.nx*hw, ya, pj.z + nj.nz*hw,  // 4: j-left-bottom
-      pj.x - nj.nx*hw, ya, pj.z - nj.nz*hw,  // 5: j-right-bottom
-      pj.x + nj.nx*hw, yb, pj.z + nj.nz*hw,  // 6: j-left-top
-      pj.x - nj.nx*hw, yb, pj.z - nj.nz*hw,  // 7: j-right-top
+      ...L(pi, ni, ya),  // 0: i-left-bottom
+      ...R(pi, ni, ya),  // 1: i-right-bottom
+      ...L(pi, ni, yb),  // 2: i-left-top
+      ...R(pi, ni, yb),  // 3: i-right-top
+      ...L(pj, nj, ya),  // 4: j-left-bottom
+      ...R(pj, nj, ya),  // 5: j-right-bottom
+      ...L(pj, nj, yb),  // 6: j-left-top
+      ...R(pj, nj, yb),  // 7: j-right-top
     );
     vIdx += 8;
     indices.push(base+0, base+2, base+4,  base+4, base+2, base+6);  // front face
     indices.push(base+1, base+5, base+3,  base+5, base+7, base+3);  // back face
-    if (emitTop)    indices.push(base+2, base+3, base+6,  base+6, base+3, base+7); // top
-    if (emitBottom) indices.push(base+0, base+4, base+1,  base+4, base+5, base+1); // bottom (soffit)
+    if (emitTop) {
+      const t = vIdx;
+      positions.push(...L(pi, ni, yb), ...R(pi, ni, yb), ...L(pj, nj, yb), ...R(pj, nj, yb));
+      vIdx += 4;
+      indices.push(t+0, t+1, t+2,  t+2, t+1, t+3);                  // top (crest / sill)
+    }
+    if (emitBottom) {
+      const b = vIdx;
+      positions.push(...L(pi, ni, ya), ...R(pi, ni, ya), ...L(pj, nj, ya), ...R(pj, nj, ya));
+      vIdx += 4;
+      indices.push(b+0, b+2, b+1,  b+2, b+3, b+1);                  // bottom (lintel soffit)
+    }
   }
 
   for (let i = 0; i < m - 1; i++) {
