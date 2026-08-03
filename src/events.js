@@ -104,6 +104,7 @@ import {
   setElementWorldPos3D,
   smoothTracéPath3D,
   tracéPointAtFrac3D,
+  wallOpeningWorldPosOnTracé3D,
   startCamSmoothing,
   storeElementWorldCoords,
   storeElementWxFloor,
@@ -1456,6 +1457,25 @@ export function tracéScreenAxisAtFrac3D(smoothPts, frac, panel, page){
   const sb = worldPointToPageXY3D(b.x, GROUND_Y_DEFAULT_3D, b.z, panel, page);
   if (!sa || !sb) return null;
   return { x: (sb.x - sa.x) / TRACÉ_DRAG_EPS, y: (sb.y - sa.y) / TRACÉ_DRAG_EPS };
+}
+
+// Fix 30 — VERTICAL screen axis of a Trace wall, at the Wall-Opening's current spot along the path:
+// the on-screen travel matching a full sweep of wallYFrac, from the wall's foot to the highest the
+// Opening can sit without poking out above it.
+//
+// Without this the vertical drag fell back to `dy / wall.h`, and for a Trace `wall.h` is the height
+// of the projected 2D BOUNDING BOX of the whole path — hundreds of pixels for a loop like an oval
+// Low Wall. Dragging vertically therefore moved the Opening by a fraction of a percent and felt
+// completely stuck, whereas on a real Wall it works.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function tracéUpScreenAxis3D(o, page, panel, childHUnits){
+  if (!panel) return null;
+  const pos = wallOpeningWorldPosOnTracé3D(o, page, childHUnits);
+  if (!pos) return null;
+  const base = worldPointToPageXY3D(pos.x, GROUND_Y_DEFAULT_3D, pos.z, panel, page);
+  const top  = worldPointToPageXY3D(pos.x, GROUND_Y_DEFAULT_3D + pos.spanY, pos.z, panel, page);
+  if (!base || !top) return null;
+  return { x: top.x - base.x, y: top.y - base.y };
 }
 
 // Fix 29 — advances a Wall-Opening's position along a Trace by ONE step: the axis is re-evaluated at
@@ -3859,10 +3879,27 @@ window.addEventListener('mousemove', (e) => {
             const _axes = _wProjectable
               ? wallScreenAxes3D(wall, _wOpenPanel, page, Math.max(0.01, _wHU - _chU))
               : null;
-            const _dFracY = _axes ? fracDeltaAlongAxis2D(dx, dy, _axes.up) : null;
-            obj.wallYFrac = (_dFracY !== null)
-              ? clamp(curFrac + _dFracY, 0, 1)
-              : clamp(curFrac - dy / Math.max(1, wall.h), 0, 1);   // fallback (Tracé, top-down view…)
+            if (_axes) {
+              // Real Wall: it does not move during the drag, so the total offset can be mapped onto
+              // a single axis.
+              const _dFracY = fracDeltaAlongAxis2D(dx, dy, _axes.up);
+              if (_dFracY !== null) obj.wallYFrac = clamp(curFrac + _dFracY, 0, 1);
+            } else {
+              // Fix 30 — Trace wall: same principle, but the Opening slides ALONG the path while
+              // being dragged, so its vertical axis has to be re-read where it currently sits and
+              // applied to the movement since the last frame (same stepwise integration as Fix 29).
+              // The old fallback divided by wall.h — the projected bounding box of the whole path,
+              // hundreds of pixels wide on a loop — which made vertical dragging feel dead.
+              const _upDr = tracéUpScreenAxis3D(obj, page, _wOpenPanel, _chU);
+              const _dFracYDr = fracDeltaAlongAxis2D(
+                dx - (S.dragOrig.tracéLastDx || 0), dy - (S.dragOrig.tracéLastDy || 0), _upDr);
+              if (_dFracYDr !== null) {
+                obj.wallYFrac = clamp((obj.wallYFrac != null ? obj.wallYFrac : curFrac) + _dFracYDr, 0, 1);
+              } else if (!_upDr) {
+                // Not on a Trace either (top-down view, missing data…): keep the historical formula.
+                obj.wallYFrac = clamp(curFrac - dy / Math.max(1, wall.h), 0, 1);
+              }
+            }
             // Position along the Wall via wallAlongFrac (0 = left edge, 1 = right edge, 0.5 = center).
             // Symmetric to wallYFrac: spans the whole range independently of the obj.w / wall.w ratio.
             // Only for simple Walls (mur_coin still uses centerFracX via obj.x).

@@ -1002,7 +1002,12 @@ export function tracéWallHostOf3D(o, page){
 //
 // `y` is the Opening's BASE on the wall (the renderer adds half the Element's height to centre its
 // rig, cf. placeRigCentered3D); `tangent` is the path direction used to orient it.
-export function wallOpeningWorldPosOnTracé3D(o, page){
+//
+// Fix 30 — `childHUnits` (the Opening's own height in world units) shrinks the span wallYFrac maps
+// onto, exactly as ensureWallRenderEntry3D does for real Walls: fraction 1 then puts the Opening's
+// TOP flush with the wall's top rather than its BASE, so it never sticks out above the wall. Left at
+// 0 the fraction spans the wall's full height, which is the old behaviour.
+export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits = 0){
   const host = tracéWallHostOf3D(o, page);
   if (!host || !host.world || !host.world.pts || host.world.pts.length < 2) return null;
   const pts = smoothTracéPath3D(host.world.pts, 4);
@@ -1020,12 +1025,16 @@ export function wallOpeningWorldPosOnTracé3D(o, page){
     acc += seg; segI = i;
   }
   const wallH = host.wallHeight ?? (TRACÉ_DEFAULTS[host.tracéType]?.wallHeight ?? 0.5);
+  // Reachable span: fraction 1 must leave the Opening's top flush with the wall's, not push its base
+  // there. Floored just above 0 so an Opening taller than its wall still has a defined position
+  // (pinned to the ground) rather than a negative span.
+  const spanY = Math.max(0.01, wallH - Math.max(0, childHUnits));
   return {
     x: p.x,
-    y: GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * wallH,
+    y: GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * spanY,
     z: p.z,
     tangent: { x: pts[segI].x - pts[segI-1].x, z: pts[segI].z - pts[segI-1].z },
-    wallH, host,
+    wallH, spanY, host,
   };
 }
 
@@ -1567,7 +1576,9 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     // Fix 28: the walk along the host path now lives in wallOpeningWorldPosOnTracé3D, shared with
     // the camera (orbit centre, Scene centring) so the two can no longer place the same Element
     // differently — which is precisely what made the camera centre on the wrong spot.
-    const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page) : null;
+    // Fix 30: unitsH (the Opening's own height) is passed so wallYFrac spans only the height the
+    // Opening can actually occupy — otherwise fraction 1 pushed it clean above the wall.
+    const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page, unitsH) : null;
     if (_tracéPos) {
       // Wall Opening orientation: local tangent of the trace at the current segment.
       // Overrides o.rotY (stored at the 1st segment or at creation) to follow turns.

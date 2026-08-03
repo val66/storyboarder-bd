@@ -32,9 +32,11 @@ import {
   fracDeltaAlongAxis2D,
   tracéScreenAxisAtFrac3D,
   integrateTracéFrac3D,
+  tracéUpScreenAxis3D,
 } from '../src/events.js';
-import { smoothTracéPath3D } from '../src/scene3d.js';
+import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
+import { GROUND_Y_DEFAULT_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -551,5 +553,93 @@ describe('integrateTracéFrac3D — suivi d\'un Tracé qui tourne (Fix 29)', () 
     assert.equal(integrateTracéFrac3D(boucleOvale(), 0.5, 10, 10, null, page), null, 'panel absent');
     assert.equal(integrateTracéFrac3D(boucleOvale(), 0.5, 0, 0, panel, page), 0.5,
       'souris immobile : fraction inchangée');
+  });
+});
+
+// ── tracéUpScreenAxis3D (Fix 30) ──────────────────────────────────────────────────────────────
+// Bug rapporté : impossible de déplacer verticalement une Parois posée sur un Muret, alors que ça
+// marche sur un Mur. Le glisser vertical retombait sur `dy / wall.h`, et pour un Tracé wall.h est
+// la hauteur de la boîte englobante 2D du chemin ENTIER — des centaines de pixels sur une boucle.
+describe('tracéUpScreenAxis3D — axe vertical d\'un Muret (Fix 30)', () => {
+  const panel = { x: 0, y: 0, w: 800, h: 600,
+                  camRotX: 0.5, camRotY: 0, camDist: 20, camWx: 0, camWy: 1, camWz: 0 };
+  function scene({ wallHeight = 1.2, alongFrac = 0.3 } = {}) {
+    const raw = [];
+    const N = 16;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      raw.push({ x: Math.cos(a) * 8, z: Math.sin(a) * 5 });
+    }
+    raw.push({ ...raw[0] });
+    const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight, world: { pts: raw } };
+    const porte = { id: 'p1', type: 'objet3d', objType: 'porte_ouverte', magnetWallId: 'm1',
+                    wallAlongFrac: alongFrac, wallYFrac: 0, w: 20, h: 16 };
+    return { page: { w: 800, h: 600, objects: [muret, porte] }, muret, porte, raw };
+  }
+
+  test('RÉGRESSION : wall.h (bbox du muret entier) est sans rapport avec sa hauteur à l\'écran', () => {
+    const { page, porte, raw } = scene();
+    const sp = raw.map(p => worldPointToPageXY3D(p.x, GROUND_Y_DEFAULT_3D, p.z, panel, page)).filter(Boolean);
+    const ys = sp.map(p => p.y);
+    const bboxH = Math.max(...ys) - Math.min(...ys);   // ce que valait wall.h
+    const A = tracéUpScreenAxis3D(porte, page, panel, 0.4);
+    const vraie = Math.hypot(A.x, A.y);
+    assert.ok(bboxH > 200, `la boucle occupe ${bboxH.toFixed(0)} px de haut à l'écran`);
+    assert.ok(vraie < 100, `mais le muret ne fait que ${vraie.toFixed(0)} px de haut`);
+    assert.ok(bboxH / vraie > 5, 'l\'ancien dénominateur était plus de 5× trop grand');
+  });
+
+  test('un glisser vertical raisonnable produit un déplacement utile', () => {
+    const { page, porte } = scene();
+    const A = tracéUpScreenAxis3D(porte, page, panel, 0.4);
+    const avance = Math.abs(fracDeltaAlongAxis2D(0, -10, A));
+    assert.ok(avance > 0.05, `10 px doivent monter d'au moins 5 % (obtenu ${(avance*100).toFixed(1)} %)`);
+  });
+
+  test('l\'axe pointe vers le HAUT de l\'écran : souris vers le haut → fraction croissante', () => {
+    const { page, porte } = scene();
+    const A = tracéUpScreenAxis3D(porte, page, panel, 0.4);
+    assert.ok(A.y < 0, 'monter sur le muret = remonter à l\'écran');
+    assert.ok(fracDeltaAlongAxis2D(0, -10, A) > 0, 'souris vers le haut → wallYFrac augmente');
+  });
+
+  test('un muret plus haut donne un axe plus long (donc un glisser moins sensible)', () => {
+    const bas  = scene({ wallHeight: 0.5 });
+    const haut = scene({ wallHeight: 2.0 });
+    const aBas  = tracéUpScreenAxis3D(bas.porte,  bas.page,  panel, 0);
+    const aHaut = tracéUpScreenAxis3D(haut.porte, haut.page, panel, 0);
+    assert.ok(Math.hypot(aHaut.x, aHaut.y) > Math.hypot(aBas.x, aBas.y),
+      'la hauteur réelle du muret pilote bien l\'échelle');
+  });
+
+  test('l\'axe suit la Parois le long du chemin (il change avec wallAlongFrac)', () => {
+    const a = scene({ alongFrac: 0.1 }), b = scene({ alongFrac: 0.6 });
+    const A = tracéUpScreenAxis3D(a.porte, a.page, panel, 0);
+    const B = tracéUpScreenAxis3D(b.porte, b.page, panel, 0);
+    // Les deux points sont à des profondeurs différentes → échelle perspective différente.
+    assert.ok(Math.abs(Math.hypot(A.x, A.y) - Math.hypot(B.x, B.y)) > 1e-6,
+      'l\'axe est évalué à la position courante, pas une fois pour toutes');
+  });
+
+  test('la Parois ne dépasse pas du muret : fraction 1 aligne son sommet sur celui du muret', () => {
+    const { page, porte } = scene({ wallHeight: 2 });
+    const hautDeLaParois = 0.5;   // childHUnits
+    const enHaut = { ...porte, wallYFrac: 1 };
+    const pos = wallOpeningWorldPosOnTracé3D(enHaut, page, hautDeLaParois);
+    // base + hauteur de la Parois doit retomber sur le sommet du muret.
+    assertClose(pos.y + hautDeLaParois, GROUND_Y_DEFAULT_3D + 2, 'sommet aligné', 1e-9);
+  });
+
+  test('Parois plus haute que le muret : posée au sol, pas de span négatif', () => {
+    const { page, porte } = scene({ wallHeight: 0.5 });
+    const pos = wallOpeningWorldPosOnTracé3D({ ...porte, wallYFrac: 1 }, page, 3);
+    assertClose(pos.y, GROUND_Y_DEFAULT_3D + 0.01, 'span plancher, la Parois reste au sol', 1e-9);
+  });
+
+  test('entrées invalides → null (repli sur la formule historique)', () => {
+    const { page, porte } = scene();
+    assert.equal(tracéUpScreenAxis3D(porte, page, null, 0), null, 'panel absent');
+    assert.equal(tracéUpScreenAxis3D({ ...porte, magnetWallId: null }, page, panel, 0), null,
+      'pas d\'hôte Tracé');
   });
 });
