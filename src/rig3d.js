@@ -11,7 +11,7 @@
 /* global THREE */
 
 import {
-  ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
+  ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC
 } from './constants.js';
 import {
@@ -1866,7 +1866,7 @@ export function buildWallRig3D(colorHex, lenUnits, heightUnits, holes){
   ensureSharedPropMats3D();
   const group = new THREE.Group();
   const mat = ensurePropMatsByType3D('mur', colorHex);
-  const w = lenUnits || 1.8, h = heightUnits || 2.0, thick = h * 0.06;
+  const w = lenUnits || 1.8, h = heightUnits || 2.0, thick = h * BUILD_WALL_THICKNESS_RATIO_3D;
   const wall = new THREE.Mesh(buildWallPanelGeometry3D(w, h, thick, holes), mat);
   wall.position.y = h / 2;
   group.add(wall);
@@ -1892,7 +1892,7 @@ export function buildCornerWallRig3D(colorHex, lenUnits, heightUnits, holesA, ho
   ensureSharedPropMats3D();
   const group = new THREE.Group();
   const mat = ensurePropMatsByType3D('mur_coin', colorHex);
-  const w = lenUnits || 1.4, h = heightUnits || 2.0, thick = h * 0.06;
+  const w = lenUnits || 1.4, h = heightUnits || 2.0, thick = h * BUILD_WALL_THICKNESS_RATIO_3D;
   // First panel: along the X axis, starting from the corner (origin) toward +X.
   const wallA = new THREE.Mesh(buildWallPanelGeometry3D(w, h, thick, holesA), mat);
   wallA.position.set(w / 2 - thick / 2, h / 2, 0);

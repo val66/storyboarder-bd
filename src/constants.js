@@ -125,6 +125,10 @@ export const PANEL_DEPTH_MAX_3D = PANEL_CAM_DEFAULT_DIST_3D - 0.1;
 // ── Building tool ───────────────────────────────────────────────
 // ---- "Build a Building" tool ----
 export const BUILD_WALL_DEFAULT_HEIGHT = 3.0; // height of created walls (world units)
+// Fix 34 — a build-tool Wall's thickness, as a fraction of its own height. Was written out inside
+// buildWallRig3D and buildCornerWallRig3D; the corner posts that fill Room/Building junctions must
+// match it exactly, so it lives here rather than being copied a third time.
+export const BUILD_WALL_THICKNESS_RATIO_3D = 0.06;
 
 export const BUILD_SNAP_ANGLE_DEG = 12;       // 90° snapping threshold (degrees)
 

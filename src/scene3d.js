@@ -12,7 +12,7 @@
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
 import {
-  BUILD_WALL_DEFAULT_HEIGHT, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D,
+  BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
   GROUND_CONTACT_EPS_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D,
   TRACÉ_DEFAULTS, WALL_TYPES,
@@ -1137,6 +1137,54 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
 // ════════════════════════════════════════════════════════════
 // 3D — TRACÉ GEOMETRY
 // ════════════════════════════════════════════════════════════
+// Fix 34 — junction points where two NON-COLINEAR build-tool Walls meet, with the post needed to
+// fill the notch there.
+//
+// Each Wall is rendered as a box that stops exactly at its endpoint. Where two of them meet at a
+// corner, each covers three quarters of the square the two thicknesses span and the outer quadrant
+// is left empty — the hollow visible on every Room and Building corner. Filling it by LENGTHENING
+// the walls was not an option: a Wall's length also drives its selection box and its Openings'
+// placement. A separate post touches none of that.
+//
+// The post is square, of side = the Wall's thickness, and aligned with the FIRST wall of the pair:
+// at a right angle — what the Build tool snaps to — that covers the missing quadrant exactly.
+//
+// `thickOf(wall)` is injected rather than hardcoded: a Wall's thickness is 6 % of its own height
+// (see buildWallRig3D), and the renderer knows heights the caller of a pure function should not
+// have to rediscover.
+export function buildWallJunctions3D(walls, thickOf, eps = 0.02){
+  if (!walls || walls.length < 2) return [];
+  const ends = [];
+  walls.forEach(w => {
+    const len = w.realLen, ca = Math.cos(w.rotY || 0), sa = Math.sin(w.rotY || 0);
+    const dx = ca, dz = -sa;
+    ends.push({ w, x: w.x - len / 2 * dx, z: w.z - len / 2 * dz });
+    ends.push({ w, x: w.x + len / 2 * dx, z: w.z + len / 2 * dz });
+  });
+  const out = [];
+  const seen = new Set();
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      const a = ends[i], b = ends[j];
+      if (a.w === b.w) continue;
+      if (Math.hypot(a.x - b.x, a.z - b.z) > eps) continue;
+      // Colinear pair: no notch to fill, the two boxes already line up end to end.
+      let dA = Math.abs(((a.w.rotY || 0) % Math.PI) - ((b.w.rotY || 0) % Math.PI));
+      if (dA > Math.PI / 2) dA = Math.PI - dA;
+      if (dA < 0.01) continue;
+      // One post per corner, however many Walls meet there.
+      const key = `${Math.round(a.x / eps)},${Math.round(a.z / eps)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const t = Math.max(thickOf(a.w), thickOf(b.w));
+      out.push({ x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, rotY: a.w.rotY || 0, thick: t,
+                 height: Math.max(a.w.height || 0, b.w.height || 0),
+                 color: a.w.color, roomFloatY: a.w.roomFloatY || 0 });
+    }
+  }
+  return out;
+}
+
 // Fix 33 — builds the whole Low Wall: the masonry ribbon plus the reveal framing each Opening.
 // Extracted from renderPanelScene3D because the thickness it BUILDS with and the thickness
 // tracéWallThickness3D flush-mounts the Openings against were two independent expressions, free to
@@ -1442,6 +1490,8 @@ function buildTracéDashGeometry3D(worldPts, dashW, dashL, gapL, yOff) {
 // Key = sorted ids of the walls in the group, value = { figureGroup, fp (length+color fingerprint) }.
 // FIX (pre-existing bug): export added — see equivalent comment on slabMeshCache3D above.
 export const mergedBuildWallRigCache3D = new Map();
+// Fix 34 — one Mesh per Room/Building corner, keyed by position (see buildWallJunctions3D).
+export const wallJunctionMeshCache3D = new Map();
 // Signature of everything that must REALLY trigger a new Three.js render of a Panel: the
 // graphic style, the camera parameters (camDist/camRotX/camRotY/camPanX/camPanY), and for each Element
 // owned, its state EXCEPT its raw canvas position (o.x/o.y) — replaced by its already computed
@@ -1838,6 +1888,45 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     fg.visible = true;
     fg.updateMatrixWorld(true);
   });
+  // ── Fix 34: fill the corners where two Walls meet ────────────────────────────────
+  // Emitted for EVERY build Wall, merged into a chain or not: a Room drawn with four clicks
+  // produces four single-segment sides, each rendered individually, and those corners were
+  // hollow too.
+  wallJunctionMeshCache3D.forEach(mesh => { mesh.visible = false; });
+  {
+    const _jw = buildMurWalls.map(o => ({
+      x: (o.wxFloor !== undefined) ? o.wxFloor : ensureElementWorldPos3D(o, panel).x,
+      z: (o.wzFloor !== undefined) ? o.wzFloor : (o.z || 0),
+      realLen: (o.realLenFloor !== undefined) ? o.realLenFloor : ensureElementUnits3D(o).w,
+      rotY: o.rotY || 0,
+      height: (o.realHeightFloor !== undefined) ? o.realHeightFloor : BUILD_WALL_DEFAULT_HEIGHT,
+      color: o.color || FIXED_COLOR,
+      roomFloatY: o.roomFloatY || 0,
+    }));
+    // A Wall's thickness is 6 % of its own height — the ratio buildWallRig3D builds with, and the
+    // reason the post is sized from the height rather than from a constant of its own.
+    const jonctions = buildWallJunctions3D(_jw, w => w.height * BUILD_WALL_THICKNESS_RATIO_3D);
+    jonctions.forEach(j => {
+      const key = `${j.x.toFixed(3)},${j.z.toFixed(3)}`;
+      const sig = `${j.thick.toFixed(4)}|${j.height.toFixed(4)}|${j.color}|${j.rotY.toFixed(4)}|${j.roomFloatY.toFixed(4)}`;
+      let mesh = wallJunctionMeshCache3D.get(key);
+      if (!mesh || mesh._sig !== sig) {
+        if (mesh) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); }
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(j.thick, j.height, j.thick),
+          new THREE.MeshStandardMaterial({ color: new THREE.Color(j.color), roughness: 0.9, metalness: 0 }),
+        );
+        mesh._sig = sig;
+        personaScene3D.add(mesh);
+        wallJunctionMeshCache3D.set(key, mesh);
+      }
+      mesh.rotation.set(0, j.rotY, 0);
+      mesh.position.set(j.x, GROUND_Y_DEFAULT_3D + j.roomFloatY + j.height / 2, j.z);
+      mesh.visible = true;
+      mesh.updateMatrixWorld(true);
+    });
+  }
+
   // Render the Slabs (polygonal floor/ceiling created by the Build tool).
   // Each slab is a THREE.Mesh with a THREE.ShapeGeometry rotated -PI/2 around X,
   // cached in slabMeshCache3D by the element's id.
@@ -2647,7 +2736,8 @@ export function drawObject3D(c, o, styleKey, page){
 // Called before entirely replacing S.tomes (new Project or loading) so as not
 // to keep orphaned Three.js rigs in memory whose IDs no longer exist.
 // Placed here (scene3d.js) because this function accesses this module's internal caches
-// (panelSceneCache3D, slabMeshCache3D, tracéMeshCache3D, mergedBuildWallRigCache3D)
+// (panelSceneCache3D, slabMeshCache3D, tracéMeshCache3D, mergedBuildWallRigCache3D,
+//  wallJunctionMeshCache3D)
 // as well as rig3d.js's caches and singletons, all already imported above.
 export function disposeAllRigs3D(){
   Array.from(personaRigCache3D.keys()).forEach(disposePersonaRig3D);
@@ -2666,6 +2756,14 @@ export function disposeAllRigs3D(){
     if (personaScene3D) personaScene3D.remove(mesh);
   });
   slabMeshCache3D.clear();
+  // Fix 34 — same treatment as the Slabs: without this, every project change left orphan corner
+  // posts in the scene, holding their buffers.
+  wallJunctionMeshCache3D.forEach(mesh => {
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) mesh.material.dispose();
+    if (personaScene3D) personaScene3D.remove(mesh);
+  });
+  wallJunctionMeshCache3D.clear();
   tracéMeshCache3D.forEach(e => {
     e.group.traverse(ch => { if (ch.isMesh && ch.geometry) { ch.geometry.dispose(); if (ch.material) ch.material.dispose(); } });
     if (personaScene3D) personaScene3D.remove(e.group);

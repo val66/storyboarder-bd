@@ -46,6 +46,7 @@ import {
   tracéOpeningWorldCenter3D,
   buildTracéWallGeometry3D,
   buildMuretGroup3D,
+  buildWallJunctions3D,
   tracéWallHeight3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1536,5 +1537,79 @@ describe('buildMuretGroup3D — le Muret bâti et les Parois plaquées partagent
     assert.equal(buildMuretGroup3D(null, null), null);
     assert.equal(buildMuretGroup3D({ tracéType: 'muret' }, null), null);
     assert.equal(buildMuretGroup3D(muret({ world: { pts: [{ x: 1, z: 1 }] } }), null), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 34 — angles pleins des Pièces et Bâtiments.
+//
+// Chaque Mur est une boîte qui s'arrête pile à son extrémité. À un angle, les deux
+// boîtes couvrent trois quarts du carré balayé par les deux épaisseurs et laissent le
+// quadrant extérieur vide — le creux visible à chaque coin. On y pose un poteau.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('buildWallJunctions3D — poteaux d\'angle (Fix 34)', () => {
+  const RATIO = 0.06;
+  const ep = w => w.height * RATIO;
+  // Pièce carrée de 4×4, murs de 3 de haut. rotY = atan2(-dz, dx).
+  const mur = (x, z, len, rotY) => ({ x, z, realLen: len, rotY, height: 3, color: '#3355aa' });
+  const carre = [
+    mur(0, -2, 4, 0),               // sud, le long de +x
+    mur(2, 0, 4, Math.PI / 2),      // est,  le long de -z
+    mur(0, 2, 4, 0),                // nord
+    mur(-2, 0, 4, Math.PI / 2),     // ouest
+  ];
+
+  test('une Pièce carrée produit exactement 4 poteaux, un par coin', () => {
+    const j = buildWallJunctions3D(carre, ep);
+    assert.equal(j.length, 4, `${j.length} poteaux`);
+    const coins = j.map(p => `${p.x.toFixed(2)},${p.z.toFixed(2)}`).sort();
+    assert.deepEqual(coins, ['-2.00,-2.00', '-2.00,2.00', '2.00,-2.00', '2.00,2.00']);
+  });
+
+  test('le poteau fait exactement l\'épaisseur du Mur, et toute sa hauteur', () => {
+    const j = buildWallJunctions3D(carre, ep)[0];
+    assertClose(j.thick, 3 * RATIO, 'côté du poteau = épaisseur du Mur');
+    assertClose(j.height, 3, 'hauteur pleine');
+  });
+
+  test('RÉGRESSION : deux Murs COLINÉAIRES ne reçoivent pas de poteau', () => {
+    // Bout à bout dans le même axe, les deux boîtes s'alignent déjà : un poteau y serait
+    // une bosse inutile au milieu d'un mur droit.
+    const alignes = [mur(-2, 0, 4, 0), mur(2, 0, 4, 0)];
+    assert.deepEqual(buildWallJunctions3D(alignes, ep), []);
+  });
+
+  test('des Murs qui ne se touchent pas ne produisent rien', () => {
+    const separes = [mur(0, 0, 2, 0), mur(10, 10, 2, Math.PI / 2)];
+    assert.deepEqual(buildWallJunctions3D(separes, ep), []);
+  });
+
+  test('un seul poteau là où trois Murs se rejoignent (une cloison en T)', () => {
+    const T = [mur(0, -2, 4, 0), mur(2, 0, 4, Math.PI / 2), mur(2, -4, 4, Math.PI / 2)];
+    const j = buildWallJunctions3D(T, ep);
+    const enCoin = j.filter(p => Math.abs(p.x - 2) < 0.01 && Math.abs(p.z + 2) < 0.01);
+    assert.equal(enCoin.length, 1, 'pas de poteaux empilés au même endroit');
+  });
+
+  test('le poteau est aligné sur un des deux Murs, pas sur la bissectrice', () => {
+    // À 90° — ce sur quoi l'outil Construire magnétise — un carré aligné sur l'un des deux
+    // couvre exactement le quadrant manquant ; tourné à 45° il ne le couvrirait pas.
+    const j = buildWallJunctions3D(carre, ep);
+    for (const p of j) {
+      const alignes = carre.some(w => Math.abs(((w.rotY - p.rotY) % Math.PI)) < 0.01);
+      assert.ok(alignes, `lacet ${p.rotY} aligné sur un Mur`);
+    }
+  });
+
+  test('l\'épaisseur retenue est la plus grande des deux Murs', () => {
+    const bas = { ...mur(0, -2, 4, 0), height: 2 };
+    const haut = { ...mur(2, 0, 4, Math.PI / 2), height: 5 };
+    const j = buildWallJunctions3D([bas, haut], ep);
+    assertClose(j[0].thick, 5 * RATIO, 'aucun des deux Murs ne dépasse du poteau');
+  });
+
+  test('entrées inexploitables → liste vide', () => {
+    assert.deepEqual(buildWallJunctions3D(null, ep), []);
+    assert.deepEqual(buildWallJunctions3D([mur(0, 0, 4, 0)], ep), []);
   });
 });
