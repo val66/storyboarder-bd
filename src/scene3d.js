@@ -571,31 +571,14 @@ export function projectElementCenterToCanvas3D(o, panel, page){
       posY = _wallBottomY + _doorCenterLocalY;
       posZ = _wall.wzFloor + _along * _dirZ;
     } else if (_wall && _wall.type === 'tracé' && _wall.world && _wall.world.pts) {
-      // Wall trace (low wall/fence/hedge/barrier): same interpolation as renderPanelScene3D,
-      // with Catmull-Rom smoothing to follow the actually displayed geometry.
-      const _wpts = smoothTracéPath3D(_wall.world.pts, 4);
-      const _frac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
-      let _total = 0;
-      for (let _i = 1; _i < _wpts.length; _i++)
-        _total += Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-      const _tgt = _frac * _total;
-      let _acc = 0, _pt = _wpts[0];
-      for (let _i = 1; _i < _wpts.length; _i++) {
-        const _seg = Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-        if (_acc + _seg >= _tgt) {
-          const _t = (_tgt - _acc) / (_seg || 1);
-          _pt = { x: _wpts[_i-1].x + _t * (_wpts[_i].x - _wpts[_i-1].x),
-                  z: _wpts[_i-1].z + _t * (_wpts[_i].z - _wpts[_i-1].z) };
-          break;
-        }
-        _acc += _seg; _pt = _wpts[_i];
-      }
-      const _wallH = _wall.wallHeight ?? (TRACÉ_DEFAULTS[_wall.tracéType]?.wallHeight ?? 0.5);
-      const _yFrac = o.wallYFrac ?? 0;
-      const _wallOpeningH = ensureElementUnits3D(o).h;
-      posX = _pt.x;
-      posY = GROUND_Y_DEFAULT_3D + _yFrac * _wallH + _wallOpeningH / 2;
-      posZ = _pt.z;
+      // Fix 31 — this branch used to carry a THIRD private copy of the walk along the host path,
+      // and its vertical formula had never been updated: it mapped wallYFrac onto the wall's FULL
+      // height (and used ensureElementUnits3D rather than o.h) while the renderer maps it onto the
+      // span shortened by the Opening's own height. Along the path the two walks agreed, which is
+      // why only the VERTICAL drag made the render-box drift away from the Opening. It now defers
+      // to wallOpeningWorldPosOnTracé3D like everything else — one walk, one span, no drift.
+      const _tp = tracéOpeningWorldCenter3D(o, page);
+      if (_tp) { posX = _tp.x; posY = _tp.y; posZ = _tp.z; }
     }
   }
   if (posX === undefined) {
@@ -685,27 +668,12 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
   if (page && o.type === 'objet3d' && o.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(o.objType)) {
     const _tw = page.objects.find(w => w.id === o.magnetWallId && w.type === 'tracé'
         && ['muret','cloture','haie','barriere'].includes(w.tracéType));
-    if (_tw && _tw.world && _tw.world.pts) {
-      const _twpts = smoothTracéPath3D(_tw.world.pts, 4);
-      const _tfrac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
-      let _ttot = 0;
-      for (let _ti = 1; _ti < _twpts.length; _ti++)
-        _ttot += Math.hypot(_twpts[_ti].x - _twpts[_ti-1].x, _twpts[_ti].z - _twpts[_ti-1].z);
-      const _ttgt = _tfrac * _ttot;
-      let _tacc = 0, _tpt = _twpts[0];
-      for (let _ti = 1; _ti < _twpts.length; _ti++) {
-        const _tseg = Math.hypot(_twpts[_ti].x - _twpts[_ti-1].x, _twpts[_ti].z - _twpts[_ti-1].z);
-        if (_tacc + _tseg >= _ttgt) {
-          const _tt = (_ttgt - _tacc) / (_tseg || 1);
-          _tpt = { x: _twpts[_ti-1].x + _tt * (_twpts[_ti].x - _twpts[_ti-1].x),
-                   z: _twpts[_ti-1].z + _tt * (_twpts[_ti].z - _twpts[_ti-1].z) };
-          break;
-        }
-        _tacc += _tseg; _tpt = _twpts[_ti];
-      }
-      const _twH = _tw.wallHeight ?? (TRACÉ_DEFAULTS[_tw.tracéType]?.wallHeight ?? 0.5);
-      const _twx = _tpt.x, _twz = _tpt.z;
-      const _twy = GROUND_Y_DEFAULT_3D + (o.wallYFrac ?? 0) * _twH + realH / 2;
+    // Fix 31 — was a private copy of the walk with the outdated full-height vertical formula
+    // (see projectElementCenterToCanvas3D); it now defers to the single shared placement.
+    const _tp = _tw ? tracéOpeningWorldCenter3D(o, page) : null;
+    if (_tp) {
+      const _twx = _tp.x, _twz = _tp.z;
+      const _twy = _tp.y;
       const _tctr = projectPt(_twx, _twy, _twz);
       if (!_tctr) return null;
       const _pR = projectPt(_twx + basis.right.x * realW / 2, _twy + basis.right.y * realW / 2, _twz + basis.right.z * realW / 2);
@@ -738,30 +706,11 @@ function getTracéMurWallOpeningWorldPos3D(obj, page) {
   const _tw = page.objects.find(w => w.id === obj.magnetWallId && w.type === 'tracé'
       && ['muret','cloture','haie','barriere'].includes(w.tracéType));
   if (!_tw || !_tw.world || !_tw.world.pts || _tw.world.pts.length < 2) return null;
-  const _wpts = smoothTracéPath3D(_tw.world.pts, 4);
-  const _frac = clamp(obj.wallAlongFrac != null ? obj.wallAlongFrac : 0.5, 0, 1);
-  let _tot = 0;
-  for (let _i = 1; _i < _wpts.length; _i++)
-    _tot += Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-  const _tgt = _frac * _tot;
-  let _acc = 0, _pt = _wpts[0];
-  for (let _i = 1; _i < _wpts.length; _i++) {
-    const _seg = Math.hypot(_wpts[_i].x - _wpts[_i-1].x, _wpts[_i].z - _wpts[_i-1].z);
-    if (_acc + _seg >= _tgt) {
-      const _t = (_tgt - _acc) / (_seg || 1);
-      _pt = { x: _wpts[_i-1].x + _t * (_wpts[_i].x - _wpts[_i-1].x),
-              z: _wpts[_i-1].z + _t * (_wpts[_i].z - _wpts[_i-1].z) };
-      break;
-    }
-    _acc += _seg; _pt = _wpts[_i];
-  }
-  const _wallH = _tw.wallHeight ?? (TRACÉ_DEFAULTS[_tw.tracéType]?.wallHeight ?? 0.5);
-  const _realH = ensureElementUnits3D(obj).h;
-  return {
-    wx: _pt.x,
-    wy: GROUND_Y_DEFAULT_3D + (obj.wallYFrac ?? 0) * _wallH + _realH / 2,
-    wz: _pt.z,
-  };
+  // Fix 31 — third and last private copy of the walk, same outdated full-height vertical formula.
+  // Kept as a thin wrapper only because callers here want the Element's CENTRE, not its base.
+  const _tp = tracéOpeningWorldCenter3D(obj, page);
+  if (!_tp) return null;
+  return { wx: _tp.x, wy: _tp.y, wz: _tp.z };
 }
 function isElementVisibleInPanel3D(obj, panel, page){
   if (typeof THREE === 'undefined') return true;
@@ -1000,6 +949,18 @@ export function tracéOpeningRigScale3D(objType, targetW, targetH){
 export function tracéOpeningFlushOffset3D(wallT, rigDepth, wallSide){
   const d = Math.max(0, (wallT || 0) / 2 - (rigDepth || 0) / 2);
   return wallSide === 'arriere' ? -d : d;
+}
+
+// Fix 31 — CENTRE of a Wall-Opening carried by a Trace wall, i.e. what the render-box, the
+// projected half-extents and the visibility test all need (wallOpeningWorldPosOnTracé3D returns the
+// BASE). Each of those three had grown its own copy of the walk along the path AND its own vertical
+// formula, still mapping wallYFrac onto the wall's FULL height; the renderer maps it onto the span
+// shortened by the Opening's own height. Along the path all four agreed, so only the VERTICAL drag
+// revealed it — the render-box drifted upwards by up to one full Opening height at fraction 1.
+export function tracéOpeningWorldCenter3D(o, page){
+  const p = wallOpeningWorldPosOnTracé3D(o, page);
+  if (!p) return null;
+  return { x: p.x, y: p.y + tracéOpeningSize3D(o).h / 2, z: p.z };
 }
 
 // Fix 31 — descriptor of the hole an Opening cuts into a Trace wall: the arc span it occupies along

@@ -43,6 +43,7 @@ import {
   tracéFrameAtFrac3D,
   buildOpeningRevealGroup3D,
   tracéOpeningHole3D,
+  tracéOpeningWorldCenter3D,
 } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import {
@@ -1076,5 +1077,52 @@ describe('tracéOpeningHole3D — trou découpé dans le Tracé mur (Fix 31)', (
     const h = tracéOpeningHole3D(fenetre, droit, 20, GROUND_Y_DEFAULT_3D, 2);
     assertClose(h.at.x, 5, 'x du trou'); assertClose(h.at.z, 0, 'z du trou');
     assertClose(Math.hypot(h.at.tx, h.at.tz), 1, 'tangente unitaire');
+  });
+});
+
+describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix 31)', () => {
+  const droit = [{ x: 0, z: 0 }, { x: 6, z: 0 }];
+  const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 0.5,
+                  world: { pts: droit } };
+  // 12 px = 0.3 u de haut contre un muret de 0.5 → travée verticale de 0.2.
+  const fenetre = y => ({ id: 'f1', type: 'objet3d', objType: 'fenetre_ouverte',
+                          magnetWallId: 'm1', w: 14, h: 12, wallAlongFrac: 0.5, wallYFrac: y });
+
+  test('renvoie le CENTRE, une demi-hauteur au-dessus de la base renvoyée par le Fix 28', () => {
+    const o = fenetre(0), page = { w: 800, h: 600, objects: [muret, o] };
+    const base = wallOpeningWorldPosOnTracé3D(o, page);
+    const c = tracéOpeningWorldCenter3D(o, page);
+    assertClose(c.y - base.y, 0.15, 'demi-hauteur de la Parois');
+    assertClose(c.x, base.x, 'x inchangé'); assertClose(c.z, base.z, 'z inchangé');
+  });
+
+  // LE test de non-régression de la render-box décalée : le centre doit tomber pile au milieu
+  // du trou, sur TOUTE la plage de wallYFrac. L'ancienne formule mappait wallYFrac sur la
+  // hauteur TOTALE du muret et dérivait vers le haut, jusqu'à une hauteur de Fenêtre entière.
+  test('RÉGRESSION : le centre reste au milieu du trou quel que soit wallYFrac', () => {
+    for (const y of [0, 0.25, 0.5, 0.75, 1]) {
+      const o = fenetre(y), page = { w: 800, h: 600, objects: [muret, o] };
+      const c = tracéOpeningWorldCenter3D(o, page);
+      const h = tracéOpeningHole3D(o, droit, 6, GROUND_Y_DEFAULT_3D, 0.5);
+      assertClose(c.y, (h.yMin + h.yMax) / 2, `centre du trou @yFrac ${y}`);
+    }
+  });
+
+  test('la dérive de l\'ancienne formule croît avec wallYFrac (0 en bas, pleine hauteur en haut)', () => {
+    // Vérifie que le bug ÉTAIT bien invisible en déplacement horizontal (yFrac constant à 0)
+    // et maximal en haut du muret — ce qui correspond au symptôme rapporté.
+    const ancienne = y => GROUND_Y_DEFAULT_3D + y * 0.5 + 0.3 / 2;
+    const derive = y => {
+      const o = fenetre(y);
+      return ancienne(y) - tracéOpeningWorldCenter3D(o, { w: 800, h: 600, objects: [muret, o] }).y;
+    };
+    assertClose(derive(0), 0, 'aucune dérive au pied du muret');
+    assertClose(derive(1), 0.3, 'une hauteur de Fenêtre entière au sommet');
+    assert.ok(derive(0.5) > derive(0.25), 'croissante');
+  });
+
+  test('Élément qui n\'est pas sur un Tracé mur → null', () => {
+    const o = fenetre(0);
+    assert.equal(tracéOpeningWorldCenter3D(o, { w: 800, h: 600, objects: [o] }), null);
   });
 });
