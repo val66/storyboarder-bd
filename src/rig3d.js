@@ -3019,6 +3019,30 @@ export function wallOpeningRect(obj, wall){
   return { x: base.x + mx, y: base.y + my, w: Math.max(0, base.w - 2 * mx), h: Math.max(0, base.h - 2 * my) };
 }
 
+// Fix 25 — everything that determines a Wall-Opening child's GEOMETRY (as opposed to merely where
+// it sits on the Wall). Two children sharing this key can share the same built rig, so dragging one
+// along its Wall — which only changes its position — no longer forces a rebuild.
+// Exported for unit tests (tests/rig3d.test.mjs) — unchanged behavior.
+export function wallChildShapeKey3D(child){
+  return [child.objType, child.color || FIXED_COLOR, child.w, child.h,
+    child.doorState || '', child.doorAngle != null ? child.doorAngle : '',
+    child.windowState || '', child.windowAngle != null ? child.windowAngle : ''].join(':');
+}
+
+// Fix 25 — releases the GPU buffers of a discarded rig. Geometries ONLY: materials come from the
+// process-wide caches (ensurePropMatsByType3D / ensureSharedPropMats3D) and are shared with every
+// other rig, so disposing them here would blank out unrelated Elements.
+// Several meshes routinely share one geometry instance (cf. the joint rows in buildWallRig3D), hence
+// the Set guarding against disposing the same buffer twice.
+// Exported for unit tests (tests/rig3d.test.mjs) — unchanged behavior.
+export function disposeGroupGeometries3D(root){
+  if (!root) return;
+  const seen = new Set();
+  root.traverse(o => {
+    if (o.isMesh && o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+  });
+}
+
 export function ensureWallRenderEntry3D(wall, children){
   ensurePersonaScene3D();
   const color = wall.color || FIXED_COLOR;
@@ -3035,7 +3059,10 @@ export function ensureWallRenderEntry3D(wall, children){
   ).join('|')].join('#');
   let entry = wallRenderRigCache3D.get(wall.id);
   if (!entry || entry.fingerprint !== fingerprint) {
-    if (entry) personaScene3D.remove(entry.figureGroup);
+    // Fix 25: the previously built child rigs, reusable as long as their shape key is unchanged.
+    // Dragging a Wall-Opening only alters its POSITION, so this is the common case on the hot path.
+    const prevChildRigs = (entry && entry.childRigs) || new Map();
+    const nextChildRigs = new Map();
     const lenUnits    = wall.realLenFloor    != null ? wall.realLenFloor    : Math.max(0.3, wall.w / WALL_PX_PER_UNIT_3D);
     const heightUnits = wall.realHeightFloor != null ? wall.realHeightFloor : Math.max(0.3, wall.h / WALL_PX_PER_UNIT_3D);
     const thick = heightUnits * 0.06;
@@ -3046,8 +3073,24 @@ export function ensureWallRenderEntry3D(wall, children){
     // of the Traversant Elements (TRAVERSANT_TYPES) it carries. The mesh is thus no longer a
     // solid box systematically covered by the Wall-Opening's 3D Model, but genuinely open.
     const placements = children.map(child => {
-      const built = buildPropRig3D(child.objType, child.color || FIXED_COLOR, child);
-      const node = built.figureGroup;
+      // Fix 25: reuse the existing rig when only the placement changed; rebuild only on a real
+      // shape change (type, colour, size, door/window state or angle).
+      const shapeKey = wallChildShapeKey3D(child);
+      const prev = prevChildRigs.get(child.id);
+      let node;
+      if (prev && prev.shapeKey === shapeKey) {
+        node = prev.node;
+      } else {
+        if (prev) {
+          // Stale rig: detach it before releasing its buffers. Detaching matters even when the Wall
+          // group is about to be rebuilt anyway, because it may instead be REUSED below (wallKey
+          // unchanged) — the orphan would then stay in the scene with a disposed geometry.
+          if (prev.node.parent) prev.node.parent.remove(prev.node);
+          disposeGroupGeometries3D(prev.node);
+        }
+        node = buildPropRig3D(child.objType, child.color || FIXED_COLOR, child).figureGroup;
+      }
+      nextChildRigs.set(child.id, { node, shapeKey });
       // Id of the original Element, kept on the embedded node: lets it be found
       // precisely (see getWallChildProjectedQuad3D) to derive its REAL 3D silhouette as
       // actually rendered (full position/rotation/scale, inherited from the Wall + specific to the node),
@@ -3126,15 +3169,38 @@ export function ensureWallRenderEntry3D(wall, children){
       const holeRect = { along: p.isB ? (lenUnits - p.along) : p.along, w: p.childWUnits, h: p.childHUnits, y: bottomY };
       (p.isB ? holesB : holesA).push(holeRect);
     });
-    const figureGroup = wall.objType === 'mur_coin'
-      ? builder(color, lenUnits, heightUnits, holesA, holesB)
-      : builder(color, lenUnits, heightUnits, holesA);
-    const wallMeshA = wall.objType === 'mur_coin'
-      ? figureGroup.children.find(ch => ch.userData && ch.userData.pan === 'A')
-      : figureGroup.children[0];
-    const wallMeshB = wall.objType === 'mur_coin'
-      ? figureGroup.children.find(ch => ch.userData && ch.userData.pan === 'B')
-      : null;
+    // Fix 25: the Wall's own geometry only depends on its type/colour/dimensions and on the
+    // "Traversant" holes cut into it. Serialized as a key so the whole group can be reused when it
+    // comes out identical — which is the case whenever a NON-Traversant child is dragged, and
+    // whenever the Wall itself is untouched. A Traversant child (door, window, bay window) does move
+    // its hole, so there the group is genuinely rebuilt: the hole must follow the Element.
+    const _holeKey = hs => hs.map(h => [h.along.toFixed(4), h.w.toFixed(4), h.h.toFixed(4), h.y.toFixed(4)].join(',')).join(';');
+    const wallKey = [wall.objType, color, lenUnits.toFixed(4), heightUnits.toFixed(4),
+      _holeKey(holesA), _holeKey(holesB)].join('#');
+    let figureGroup, wallMeshA, wallMeshB;
+    if (entry && entry.wallKey === wallKey && entry.figureGroup) {
+      figureGroup = entry.figureGroup;
+      wallMeshA   = entry.wallMeshA;
+      wallMeshB   = entry.wallMeshB;
+    } else {
+      // Detach the child rigs we are keeping BEFORE releasing the old group, so the traversal below
+      // never disposes a geometry that is about to be reused.
+      prevChildRigs.forEach(({ node }) => { if (node.parent) node.parent.remove(node); });
+      if (entry && entry.figureGroup) {
+        personaScene3D.remove(entry.figureGroup);
+        disposeGroupGeometries3D(entry.figureGroup);
+      }
+      figureGroup = wall.objType === 'mur_coin'
+        ? builder(color, lenUnits, heightUnits, holesA, holesB)
+        : builder(color, lenUnits, heightUnits, holesA);
+      wallMeshA = wall.objType === 'mur_coin'
+        ? figureGroup.children.find(ch => ch.userData && ch.userData.pan === 'A')
+        : figureGroup.children[0];
+      wallMeshB = wall.objType === 'mur_coin'
+        ? figureGroup.children.find(ch => ch.userData && ch.userData.pan === 'B')
+        : null;
+      personaScene3D.add(figureGroup);
+    }
     placements.forEach(p => {
       const isB = p.isB && wallMeshB;
       const parentMesh = isB ? wallMeshB : wallMeshA;
@@ -3152,8 +3218,13 @@ export function ensureWallRenderEntry3D(wall, children){
       }
       parentMesh.add(p.node);
     });
-    entry = { figureGroup, fingerprint, wallMeshA, wallMeshB };
-    personaScene3D.add(figureGroup);
+    // Fix 25: children that vanished from the Wall (deleted, or un-magnetized) keep no rig.
+    prevChildRigs.forEach(({ node }, id) => {
+      if (nextChildRigs.has(id)) return;
+      if (node.parent) node.parent.remove(node);
+      disposeGroupGeometries3D(node);
+    });
+    entry = { figureGroup, fingerprint, wallKey, wallMeshA, wallMeshB, childRigs: nextChildRigs };
     wallRenderRigCache3D.set(wall.id, entry);
   }
   entry.figureGroup.rotation.set(wall.rotX || 0, wall.rotY || 0, wall.rotZ || 0);
@@ -3165,6 +3236,10 @@ export function disposeWallRenderRig3D(id){
   const entry = wallRenderRigCache3D.get(id);
   if (!entry) return;
   if (personaScene3D) personaScene3D.remove(entry.figureGroup);
+  // Fix 25: release the geometries too — the group holds both the Wall's own meshes and the rigs of
+  // the Wall-Openings embedded in it, so dropping the reference alone leaked every one of them.
+  disposeGroupGeometries3D(entry.figureGroup);
+  if (entry.childRigs) entry.childRigs.forEach(({ node }) => disposeGroupGeometries3D(node));
   wallRenderRigCache3D.delete(id);
 }
 

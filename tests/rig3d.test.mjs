@@ -23,6 +23,8 @@ import {
   resolveStyle3D,
   applyStyleCanvasFilter3D,
   expandBoxByMeshOnly3D,
+  wallChildShapeKey3D,
+  disposeGroupGeometries3D,
 } from '../src/rig3d.js';
 import { S } from '../src/state.js';
 import { POSE_3D } from '../src/constants.js';
@@ -182,5 +184,93 @@ describe('expandBoxByMeshOnly3D — boîte englobante d\'un seul mesh (sans ses 
     assertClose(box.max.x, 1, 'boîte inchangée');
     expandBoxByMeshOnly3D(box, {});
     assertClose(box.max.x, 1, 'boîte toujours inchangée (pas de .geometry)');
+  });
+});
+
+// ── wallChildShapeKey3D (Fix 25) ──────────────────────────────────────────────────────────────
+// Cœur du correctif de fluidité : cette clé décide si le rig 3D d'une Parois peut être RÉUTILISÉ
+// d'une frame à l'autre. Elle doit donc ignorer tout ce qui n'est que du placement (sinon on
+// reconstruit la géométrie à chaque pixel de glisser) et réagir à tout ce qui change la forme
+// (sinon on affiche un rig périmé).
+describe('wallChildShapeKey3D — clé de forme d\'une Parois (Fix 25)', () => {
+  const base = () => ({ id: 'c1', objType: 'porte_ouverte', color: '#888', w: 40, h: 90,
+                        doorState: 'gauche', doorAngle: 76,
+                        x: 100, y: 200, wallAlongFrac: 0.25, wallYFrac: 0.1 });
+
+  test('INVARIANTE au placement : glisser la Parois ne change pas la clé', () => {
+    const a = base();
+    const b = { ...base(), x: 731, y: 654, wallAlongFrac: 0.92, wallYFrac: 0.77 };
+    assert.equal(wallChildShapeKey3D(a), wallChildShapeKey3D(b),
+      'x/y/wallAlongFrac/wallYFrac ne doivent PAS entrer dans la clé');
+  });
+
+  test('l\'id n\'entre pas dans la clé (deux Parois identiques partagent la même forme)', () => {
+    assert.equal(wallChildShapeKey3D(base()), wallChildShapeKey3D({ ...base(), id: 'c2' }));
+  });
+
+  for (const [champ, valeur] of [
+    ['objType',     'fenetre_ouverte'],
+    ['color',       '#123456'],
+    ['w',           41],
+    ['h',           91],
+    ['doorState',   'droite'],
+    ['doorAngle',   30],
+    ['windowState', 'droite'],
+    ['windowAngle', 45],
+  ]) {
+    test(`SENSIBLE à un changement de forme : ${champ}`, () => {
+      assert.notEqual(wallChildShapeKey3D(base()), wallChildShapeKey3D({ ...base(), [champ]: valeur }),
+        `${champ} doit invalider la clé, sinon un rig périmé serait réutilisé`);
+    });
+  }
+
+  test('champs absents : pas de plantage, clé stable entre deux appels', () => {
+    const minimal = { objType: 'escalier' };
+    assert.equal(wallChildShapeKey3D(minimal), wallChildShapeKey3D({ objType: 'escalier' }));
+  });
+});
+
+// ── disposeGroupGeometries3D (Fix 25) ─────────────────────────────────────────────────────────
+describe('disposeGroupGeometries3D — libération des géométries d\'un rig jeté (Fix 25)', () => {
+  test('libère les géométries de tout le sous-arbre', () => {
+    const group = new THREE.Group();
+    const g1 = new THREE.BoxGeometry(1, 1, 1), g2 = new THREE.BoxGeometry(2, 2, 2);
+    const m = new THREE.MeshBasicMaterial();
+    const child = new THREE.Mesh(g1, m);
+    const petitEnfant = new THREE.Mesh(g2, m);
+    child.add(petitEnfant);
+    group.add(child);
+    let n1 = 0, n2 = 0;
+    g1.dispose = () => { n1++; }; g2.dispose = () => { n2++; };
+    disposeGroupGeometries3D(group);
+    assert.equal(n1, 1, 'géométrie de l\'enfant libérée');
+    assert.equal(n2, 1, 'géométrie du petit-enfant libérée (traversée récursive)');
+  });
+
+  test('NE libère PAS les matériaux (ils sont partagés entre tous les rigs)', () => {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial();
+    let disposed = 0;
+    mat.dispose = () => { disposed++; };
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
+    disposeGroupGeometries3D(group);
+    assert.equal(disposed, 0, 'libérer un matériau partagé effacerait des Éléments sans rapport');
+  });
+
+  test('une géométrie partagée par plusieurs meshes n\'est libérée qu\'une fois', () => {
+    // Cas réel : buildWallRig3D réutilise une même BoxGeometry pour toutes les rangées de joints.
+    const group = new THREE.Group();
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial();
+    let n = 0;
+    geo.dispose = () => { n++; };
+    for (let i = 0; i < 4; i++) group.add(new THREE.Mesh(geo, mat));
+    disposeGroupGeometries3D(group);
+    assert.equal(n, 1, 'une seule libération malgré 4 meshes partageant la géométrie');
+  });
+
+  test('racine absente : no-op (ne plante pas)', () => {
+    disposeGroupGeometries3D(null);
+    disposeGroupGeometries3D(undefined);
   });
 });
