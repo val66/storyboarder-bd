@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.6**
+**Version 1.0.7**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -115,6 +115,10 @@ npm run setup-hooks      # après un clone : réinstalle les hooks (git ne versi
 npm run bump sync        # régénère les fichiers dérivés depuis package.json
 git push --follow-tags   # ⚠ git push SEUL n'envoie pas les tags
 ```
+
+⚠ **`git commit --amend` réincrémente.** Amender trois fois consomme trois numéros de correctif.
+Git ne donne à un hook `pre-commit` aucun moyen fiable et portable de distinguer un amend d'un
+commit ordinaire. Utilise `git commit --amend --no-verify` quand tu amendes.
 
 ⚠ **Les tags ne partent pas tout seuls.** `git push` n'envoie que les commits : une version marquée
 localement mais absente du dépôt distant ne sert à rien. Utilise `git push --follow-tags` — le hook

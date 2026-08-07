@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.6**
+**Version 1.0.7**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -114,6 +114,10 @@ npm run setup-hooks      # after a clone: reinstalls the hooks (git does not ver
 npm run bump sync        # regenerates the derived files from package.json
 git push --follow-tags   # ⚠ plain git push does NOT send tags
 ```
+
+⚠ **`git commit --amend` bumps again.** Amending three times burns three patch numbers. Git gives a
+`pre-commit` hook no reliable, portable way to tell an amend from a normal commit. Use
+`git commit --amend --no-verify` when amending.
 
 ⚠ **Tags do not travel on their own.** `git push` only sends commits: a release tagged locally but
 missing from the remote is of no use. Use `git push --follow-tags` — the `post-commit` hook prints a

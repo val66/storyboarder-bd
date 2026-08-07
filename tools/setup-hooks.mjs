@@ -26,12 +26,26 @@ const HOOKS_DIR = join(ROOT, '.git', 'hooks');
 // bumping there would either renumber history or collide on every replayed commit.
 //
 // Escape hatch for a work-in-progress commit: git commit --no-verify.
+//
+// KNOWN LIMITATION — `git commit --amend` bumps again, so amending three times burns three patch
+// numbers. Git gives a pre-commit hook no reliable, portable way to tell an amend from a normal
+// commit: the one hook that IS told (prepare-commit-msg, which receives the amended SHA) runs AFTER
+// pre-commit, so it cannot inform it. Rather than a fragile heuristic — inspecting the parent
+// process's command line, which does not survive Windows — the case is documented and the workaround
+// is explicit: `git commit --amend --no-verify`. Amending is a deliberate act; asking for one extra
+// flag costs less than a detection that would silently misfire.
 export const PRE_COMMIT = `#!/bin/sh
 # GÉNÉRÉ par tools/setup-hooks.mjs — modifier le modèle là-bas, pas ici.
 GITDIR=$(git rev-parse --git-dir)
 if [ -e "$GITDIR/MERGE_HEAD" ] || [ -d "$GITDIR/rebase-merge" ] || \\
    [ -d "$GITDIR/rebase-apply" ] || [ -e "$GITDIR/CHERRY_PICK_HEAD" ]; then
   exit 0
+fi
+if ! command -v node > /dev/null 2>&1; then
+  echo "pre-commit : node est introuvable dans le PATH — commit annulé." >&2
+  echo "  La version n'a PAS été incrémentée et les tests n'ont pas tourné." >&2
+  echo "  Contourner : git commit --no-verify" >&2
+  exit 1
 fi
 if ! node --test tests/*.test.mjs > /dev/null 2>&1; then
   echo "pre-commit : la suite de tests échoue — commit annulé." >&2
