@@ -36,7 +36,7 @@ export function hasElectronAPI(){ return !!(window.storyboarderAPI); }
 export function supportsFileSystemAccess(){ return typeof window.showSaveFilePicker === 'function'; }
 
 export function serializeProject(){
-  return JSON.stringify({ projectName: S.projectName, tomes: S.tomes, currentTomeIndex: S.currentTomeIndex, currentPageIndex: S.currentPageIndex, scenes: S.scenes });
+  return JSON.stringify({ projectName: S.projectName, tomes: S.tomes, currentTomeIndex: S.currentTomeIndex, currentPageIndex: S.currentPageIndex, scenes: S.scenes, poses: S.poses });
 }
 
 // Derives the Project name from the file name the user picked in the save dialog
@@ -268,6 +268,29 @@ export function migratePanelWorldCoords(){
 // symptom ("it selects a different Panel", especially after relaunching the app). Recursively
 // walks everything that may contain ids (Volumes/Pages/Elements, Scenes) to cover every
 // prefix (o/t/p/sc/piece...).
+// Fix 47 — remet la bibliothèque de poses d'un fichier chargé dans une forme exploitable.
+//
+// Tolérante par principe : un projet enregistré avant l'existence des poses n'a pas le champ, et un
+// fichier bricolé à la main peut contenir n'importe quoi. Rien de tout cela ne doit empêcher
+// l'ouverture du projet — les Personnages, eux, portent déjà leurs angles et s'affichent
+// correctement même sans bibliothèque du tout.
+//
+// Une entrée sans `id` utilisable est écartée : aucun Personnage ne peut la citer, elle
+// n'encombrerait la liste des poses que pour rien. Les doublons d'id sont CONSERVÉS tels quels —
+// les dédoublonner en silence masquerait un vrai problème ; la recherche prend simplement le
+// premier, comportement couvert par un test.
+export function normalizePoses3D(raw){
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(p => p && typeof p.id === 'string' && p.id && p.joints && typeof p.joints === 'object')
+    .map(p => ({
+      id: p.id,
+      name: (typeof p.name === 'string' && p.name) ? p.name : p.id,
+      skeleton: p.skeleton || 'humain',
+      joints: p.joints,
+    }));
+}
+
 export function resyncIdCounter(data){
   let maxN = 0;
   const visit = (v) => {
@@ -282,6 +305,10 @@ export function resyncIdCounter(data){
   };
   visit(data && data.tomes);
   visit(data && data.scenes);
+  // Fix 47 — les poses portent des ids (« pose1 », « pose2 »…). Sans cette visite, une pose créée
+  // après chargement réutiliserait un id déjà pris, et comme les Personnages citent leur pose PAR ID
+  // (cf. resolvePoseLabel3D), c'est un Personnage qui se retrouverait avec la mauvaise pose.
+  visit(data && data.poses);
   if (maxN > S.idCounter) S.idCounter = maxN;
 }
 
@@ -292,6 +319,7 @@ export function applyProjectData(data){
   S.currentTomeIndex = (data && data.currentTomeIndex) || 0;
   S.currentPageIndex = (data && data.currentPageIndex) || 0;
   S.scenes = (data && data.scenes) || [];
+  S.poses = normalizePoses3D(data && data.poses);
   S.editingSceneId = null;
   resyncIdCounter(data);
   cleanupOrphanedElements();

@@ -33,6 +33,10 @@ export const S = {
   currentPageIndex: 0,
   expandedVolumes:    new Set(),
   scenes:           [],
+  // Fix 47 — bibliothèque de poses du Projet : [{ id, name, skeleton, joints }]. Au niveau projet
+  // pour être « utilisable partout, dans chaque Tome et chaque Page ». Aucun Personnage n'en dépend :
+  // appliquer une pose COPIE ses angles dans joints3d, la bibliothèque n'est qu'un confort d'auteur.
+  poses:            [],
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────

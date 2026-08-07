@@ -14,6 +14,7 @@ import {
   migratePanelWorldCoords,
   resyncIdCounter,
   applyProjectData,
+  normalizePoses3D,
 } from '../src/io.js';
 import { S } from '../src/state.js';
 import { GROUND_Y_DEFAULT_3D, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
@@ -34,10 +35,21 @@ beforeEach(() => {
 
 // ── serializeProject ──────────────────────────────────────────────────────────────────────────
 describe('serializeProject — instantané JSON du Projet courant', () => {
-  test('sérialise exactement les 5 champs attendus depuis S', () => {
-    S.projectName = 'Test'; S.tomes = [{ id: 't1' }]; S.currentTomeIndex = 0; S.currentPageIndex = 0; S.scenes = [];
+  // Le compte de champs est volontairement figé : chacun d'eux devient un élément PERMANENT du
+  // format de fichier (cf. docs/donnees-persistees.md). Ce test tombe à chaque ajout, ce qui est le
+  // but — il force à se demander si le champ mérite vraiment d'être gravé.
+  test('sérialise exactement les 6 champs attendus depuis S', () => {
+    S.projectName = 'Test'; S.tomes = [{ id: 't1' }]; S.currentTomeIndex = 0; S.currentPageIndex = 0;
+    S.scenes = []; S.poses = [];
     const json = JSON.parse(serializeProject());
-    assert.deepEqual(json, { projectName: 'Test', tomes: [{ id: 't1' }], currentTomeIndex: 0, currentPageIndex: 0, scenes: [] });
+    assert.deepEqual(json, { projectName: 'Test', tomes: [{ id: 't1' }], currentTomeIndex: 0,
+                             currentPageIndex: 0, scenes: [], poses: [] });
+  });
+
+  test('la bibliothèque de poses est bien enregistrée avec le Projet', () => {
+    S.projectName = 'P'; S.tomes = []; S.currentTomeIndex = 0; S.currentPageIndex = 0; S.scenes = [];
+    S.poses = [{ id: 'pose1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    assert.deepEqual(JSON.parse(serializeProject()).poses, S.poses);
   });
 });
 
@@ -252,5 +264,91 @@ describe('applyProjectData — chargement complet d\'un ancien Projet (intégrat
     assert.equal(S.projectName, 'Projet');
     assert.deepEqual(S.tomes, []);
     assert.deepEqual(S.scenes, []);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 47 — bibliothèque de poses du Projet. Tolérante par principe : un projet enregistré avant
+// l'existence des poses n'a pas le champ, et un fichier bricolé peut contenir n'importe quoi.
+// Rien de tout cela ne doit empêcher l'ouverture — les Personnages portent déjà leurs angles.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('normalizePoses3D — lecture tolérante de la bibliothèque (Fix 47)', () => {
+  test('une bibliothèque valide traverse intacte', () => {
+    const brut = [{ id: 'pose1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    assert.deepEqual(normalizePoses3D(brut), brut);
+  });
+
+  test('champ absent, null, ou pas un tableau : liste vide, pas d\'erreur', () => {
+    // Le cas de tout projet enregistré avant cette version.
+    for (const brut of [undefined, null, 'poses', 42, {}]) {
+      assert.deepEqual(normalizePoses3D(brut), [], String(brut));
+    }
+  });
+
+  test('valeurs par défaut : un nom manquant retombe sur l\'id, le squelette sur « humain »', () => {
+    const [p] = normalizePoses3D([{ id: 'pose1', joints: {} }]);
+    assert.equal(p.name, 'pose1', 'jamais de nom vide à afficher');
+    assert.equal(p.skeleton, 'humain');
+  });
+
+  test('une entrée sans id utilisable est écartée : aucun Personnage ne peut la citer', () => {
+    const brut = [
+      { id: 'pose1', joints: {} },
+      { name: 'sans id', joints: {} },
+      { id: '', joints: {} },
+      { id: 42, joints: {} },
+      { id: 'pose2' },                 // sans joints : rien à appliquer
+      null,
+    ];
+    assert.deepEqual(normalizePoses3D(brut).map(p => p.id), ['pose1']);
+  });
+
+  test('les doublons d\'id sont CONSERVÉS, pas dédoublonnés en silence', () => {
+    // Les effacer masquerait un vrai problème. La recherche prend le premier ; c'est un
+    // comportement documenté, pas un accident.
+    const brut = [{ id: 'pose1', name: 'A', joints: {} }, { id: 'pose1', name: 'B', joints: {} }];
+    const out = normalizePoses3D(brut);
+    assert.equal(out.length, 2);
+    assert.equal(out.find(p => p.id === 'pose1').name, 'A', 'le premier gagne');
+  });
+
+  test('les champs inconnus sont écartés : le format reste celui qu\'on a figé', () => {
+    const [p] = normalizePoses3D([{ id: 'pose1', joints: {}, couleur: 'rouge' }]);
+    assert.equal(p.couleur, undefined);
+    assert.deepEqual(Object.keys(p).sort(), ['id', 'joints', 'name', 'skeleton']);
+  });
+});
+
+describe('resyncIdCounter — les ids de poses comptent aussi (Fix 47)', () => {
+  test('RÉGRESSION : une pose créée après chargement ne réutilise pas un id pris', () => {
+    // Sans la visite de `poses`, S.idCounter repartait sous le plus grand id existant : newId
+    // rendait « pose7 » alors qu'une pose7 existait déjà. Les Personnages citant leur pose PAR ID,
+    // c'est un Personnage qui se serait retrouvé avec la mauvaise pose.
+    S.idCounter = 0;
+    resyncIdCounter({ tomes: [], scenes: [], poses: [{ id: 'pose7', joints: {} }] });
+    assert.ok(S.idCounter >= 7, `idCounter=${S.idCounter}, attendu ≥ 7`);
+  });
+
+  test('le plus grand id l\'emporte, toutes familles confondues', () => {
+    S.idCounter = 0;
+    resyncIdCounter({ tomes: [{ id: 't3' }], scenes: [{ id: 'sc5' }], poses: [{ id: 'pose12' }] });
+    assert.equal(S.idCounter, 12);
+  });
+
+  test('absence de poses : comportement inchangé', () => {
+    S.idCounter = 0;
+    resyncIdCounter({ tomes: [{ id: 'o4' }] });
+    assert.equal(S.idCounter, 4);
+  });
+});
+
+describe('applyProjectData — la bibliothèque arrive dans S (Fix 47)', () => {
+  test('un projet avec poses les charge ; un projet sans en a une vide', () => {
+    applyProjectData({ projectName: 'P', tomes: [], scenes: [],
+                       poses: [{ id: 'pose1', name: 'maPose', joints: { lElbow: 0.2 } }] });
+    assert.equal(S.poses.length, 1);
+    assert.equal(S.poses[0].name, 'maPose');
+    applyProjectData({ projectName: 'P', tomes: [] });
+    assert.deepEqual(S.poses, [], 'projet antérieur aux poses : liste vide, pas undefined');
   });
 });

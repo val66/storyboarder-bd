@@ -12,7 +12,14 @@ JSON fait partie du **format de fichier**, pas du code : c'est un contrat avec l
 
 Jamais renommés, jamais supprimés. Ajouter est permis ; retirer ou renommer ne l'est pas.
 
-**Niveau projet** — `projectName`, `tomes`, `scenes`, `currentTomeIndex`, `currentPageIndex`.
+**Niveau projet** — `projectName`, `tomes`, `scenes`, `currentTomeIndex`, `currentPageIndex`,
+`poses` (bibliothèque de poses : `[{ id, name, skeleton, joints }]`).
+
+Sur `poses` : aucun Personnage n'en **dépend**. Appliquer une pose copie ses angles dans `joints3d`
+et n'y laisse qu'une référence d'affichage. Supprimer la bibliothèque, ou ouvrir le projet sur une
+machine qui ne l'a pas, ne change l'allure d'aucun Personnage — seule l'étiquette devient
+« inconnue ». C'est délibéré, et `normalizePoses3D` (`io.js`) lit le champ avec la même tolérance :
+absent, nul ou malformé donne une liste vide, jamais une erreur.
 
 **Éléments** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
 `batimentNames`, `batimentRotY`, `wallSide`.
