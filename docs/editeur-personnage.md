@@ -108,9 +108,17 @@ fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait «
 
 **Deux surprises assumées, à surveiller à l'usage :**
 
-1. Rouvrir un projet qui utilise une pose qu'on vient de supprimer la fait **réapparaître**. C'est le
-   prix de l'autonomie des fichiers ; le projet a besoin de cette pose, et la resupprimer est à un
-   clic.
+1. Rouvrir un projet **déjà enregistré avant la suppression** fait **réapparaître** la pose : son
+   fichier en portait une copie, réinjectée à l'ouverture.
+
+   ⚠️ **Précision ajoutée après coup, la première rédaction était trompeuse.** La copie embarquée
+   est RECALCULÉE à chaque enregistrement, depuis la bibliothèque filtrée par l'usage
+   (`posesUsedByProject3D`). Supprimer puis réenregistrer le projet la retire donc aussi du fichier :
+   plus rien ne revient, et le Personnage garde un `position` que personne ne sait plus nommer —
+   « inconnue » définitivement. Vérifié en exécutant les deux scénarios.
+
+   Autrement dit, la réapparition ne concerne QUE les fichiers présents sur le disque au moment de
+   la suppression, et seulement tant qu'ils n'ont pas été réenregistrés.
 2. Une bibliothèque **vidée** n'est pas resemée au démarrage — le semis ne se déclenche que si la clé
    de réglage est ABSENTE. Sans cette distinction, les 15 poses réapparaîtraient à chaque
    redémarrage en annulant la décision de l'utilisateur.

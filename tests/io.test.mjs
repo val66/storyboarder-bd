@@ -557,3 +557,29 @@ describe('Fix 57 — les deux comportements surprenants, épinglés volontaireme
     assert.deepEqual(S.poses.map(p => p.id), ['utilisee'], 'l\'inutilisée reste supprimée');
   });
 });
+
+describe('Fix 58b — supprimer PUIS réenregistrer retire la pose du fichier aussi', () => {
+  test('la copie embarquée est recalculée : elle disparaît avec la pose', () => {
+    // Nuance manquée à la première rédaction de la doc, trouvée en répondant à une question de
+    // l'utilisateur. La copie n'est pas une donnée figée dans le fichier : posesUsedByProject3D la
+    // reconstruit à CHAQUE enregistrement depuis la bibliothèque. Une pose absente de la
+    // bibliothèque ne peut donc plus être embarquée.
+    //
+    // Conséquence pratique : la « réapparition » ne concerne que les fichiers déjà sur le disque au
+    // moment de la suppression, et seulement tant qu'ils n'ont pas été réenregistrés.
+    S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'pose1' },
+    ] }] }];
+    S.scenes = []; S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0;
+
+    S.poses = [];                                       // suppression
+    const fichier = JSON.parse(serializeProject());     // PUIS réenregistrement
+    assert.deepEqual(fichier.poses, [], 'plus de copie de secours dans le fichier');
+
+    applyProjectData(fichier);
+    assert.deepEqual(S.poses, [], 'et donc rien à réinjecter à la réouverture');
+    assert.equal(fichier.tomes[0].pages[0].objects[0].position, 'pose1',
+      'le Personnage cite toujours la pose — son étiquette dira « inconnue »');
+  });
+});
