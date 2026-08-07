@@ -50,6 +50,11 @@ export const S = {
   // Fix 50 — l'éditeur a-t-il été ouvert DEPUIS la modale Personnage ? Si oui, la refermer rend la
   // main à cette modale au lieu de la laisser perdue : c'est elle qui portera « Appliquer ».
   personaEditorFromModal: false,
+  // Fix 52 — poignée d'articulation sélectionnée DANS L'ÉDITEUR. Distincte de S.selectedPoseHandle,
+  // qui appartient à l'aperçu de la modale : la modale reste ouverte (seulement masquée) pendant
+  // l'édition, partager la sélection ferait que fermer l'éditeur laisserait la modale avec une
+  // poignée surlignée que l'utilisateur n'y a jamais choisie.
+  personaEditorHandleId: null,
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────

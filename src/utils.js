@@ -160,6 +160,48 @@ export function writePoseSliderDeg3D(draft, spec, deg){
   return draft;
 }
 
+// Fix 52 — poignée la plus proche d'un point, dans un rayon donné.
+//
+// La carte des positions est un PARAMÈTRE, pas une variable de module. C'est tout l'enjeu : l'aperçu
+// de la modale et le canevas de l'éditeur affichent le même squelette à des résolutions différentes,
+// donc à des coordonnées différentes. Une carte unique partagée ferait que le dernier canevas rendu
+// écraserait les positions de l'autre, et cliquer dans la modale au retour de l'éditeur viserait à
+// côté — sans que rien n'échoue, le clic tomberait simplement sur la mauvaise articulation.
+//
+// Renvoie l'id de la poignée, ou null. Les positions nulles sont ignorées : une articulation hors
+// champ n'a pas de projection utilisable.
+export function pickNearestHandle3D(positions, px, py, radius = 17){
+  if (!positions) return null;
+  let best = null, bestD2 = radius * radius;
+  Object.keys(positions).forEach(id => {
+    const pt = positions[id];
+    if (!pt) return;
+    const dx = pt.x - px, dy = pt.y - py;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; best = id; }
+  });
+  return best;
+}
+
+// Fix 52 — coordonnées d'un clic dans le repère INTERNE d'un canevas.
+//
+// Un canevas a deux tailles : celle de son bitmap (width/height) et celle de sa boîte CSS. Elles ne
+// coïncident presque jamais ici, puisque la résolution de rendu est plafonnée (cf. drawPersonaEditor)
+// alors que la boîte occupe tout l'écran. Confondre les deux fait viser à côté d'autant plus que
+// l'écart est grand — un décalage qui passe inaperçu sur un petit aperçu et devient flagrant en
+// plein écran.
+//
+// Vaut pour un canevas étiré sur sa boîte (object-fit: fill, le comportement par défaut). L'aperçu
+// de la modale, lui, est en object-fit: contain et a besoin d'un calcul de bandes en plus — cf.
+// getPersonaPreviewCanvasCoords.
+export function canvasEventCoords3D(rect, cnvW, cnvH, clientX, clientY){
+  if (!rect || !rect.width || !rect.height) return { px: 0, py: 0 };
+  return {
+    px: (clientX - rect.left) * (cnvW / rect.width),
+    py: (clientY - rect.top) * (cnvH / rect.height),
+  };
+}
+
 // ══════════════════════════════════════════════════════════════
 // MATH HELPERS
 // ══════════════════════════════════════════════════════════════

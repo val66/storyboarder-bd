@@ -29,7 +29,7 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
-import { clamp, getHandles } from './utils.js';
+import { clamp, getHandles, pickNearestHandle3D } from './utils.js';
 import {
   findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
@@ -1641,18 +1641,29 @@ export function projectJointToCanvas(group, camera, canvasW, canvasH){
   return { x: (wp.x * 0.5 + 0.5) * canvasW, y: (1 - (wp.y * 0.5 + 0.5)) * canvasH };
 }
 
-export function drawPersonaPoseHandlesOverlay(){
+// Fix 52 — canevas, carte de positions et poignée active sont désormais des paramètres.
+//
+// L'éditeur de Personnage rend LE MÊME rig (PREVIEW_PERSONA_ID, personaCamera3D) sur un autre canevas,
+// à une autre résolution. Sans ces paramètres, les deux vues se partageraient personaHandleScreenPos
+// et la dernière rendue écraserait les coordonnées de l'autre : au retour dans la modale, les clics
+// auraient visé les positions calculées pour le plein écran. Les valeurs par défaut reproduisent
+// exactement le comportement de la modale, seul appelant historique.
+export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId){
   if (typeof THREE === 'undefined') return;
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return;
-  const cnv = personaPreview3D;
+  const cnv = canvas || personaPreview3D;
+  const positions = positionsOut || personaHandleScreenPos;
+  const selectedId = (activeId !== undefined)
+    ? activeId
+    : (S.selectedPoseHandle && S.selectedPoseHandle.id) || null;
   const hctx = cnv.getContext('2d');
   POSE_HANDLES.forEach(def => {
     const grp = entry.joints[def.group];
     if (!grp) return;
     const pt = projectJointToCanvas(grp, personaCamera3D, cnv.width, cnv.height);
-    personaHandleScreenPos[def.id] = pt;
-    const active = S.selectedPoseHandle && S.selectedPoseHandle.id === def.id;
+    positions[def.id] = pt;
+    const active = selectedId === def.id;
     hctx.beginPath();
     // Enlarged points (per user request) to be easier to grab with the mouse;
     // cf. pickPoseHandleAt below, whose detection radius was increased accordingly.
@@ -1667,19 +1678,13 @@ export function drawPersonaPoseHandlesOverlay(){
   hctx.globalAlpha = 1;
 }
 
-export function pickPoseHandleAt(px, py){
-  let best = null, bestD2 = 17 * 17;
-  POSE_HANDLES.forEach(def => {
-    const pt = personaHandleScreenPos[def.id];
-    if (!pt) return;
-    const dx = pt.x - px, dy = pt.y - py;
-    const d2 = dx * dx + dy * dy;
-    if (d2 < bestD2) { bestD2 = d2; best = def; }
-  });
-  if (best) return best;
+export function pickPoseHandleAt(px, py, canvas, positions){
+  const pos = positions || personaHandleScreenPos;
+  const id = pickNearestHandle3D(pos, px, py);
+  if (id) return POSE_HANDLES.find(d => d.id === id) || null;
   // No precise joint handle hit: try the limb itself (the segment
   // between the joint and its extremity), so the figure can be posed by grabbing the arm/leg.
-  return pickLimbSegmentAt(px, py);
+  return pickLimbSegmentAt(px, py, canvas, pos);
 }
 
 // ↳ src/constants.js
@@ -1702,17 +1707,18 @@ export function distToSegmentSq(px, py, ax, ay, bx, by){
   return ddx * ddx + ddy * ddy;
 }
 
-export function pickLimbSegmentAt(px, py){
+export function pickLimbSegmentAt(px, py, canvas, positions){
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return null;
-  const cnv = personaPreview3D;
+  const cnv = canvas || personaPreview3D;
+  const pos = positions || personaHandleScreenPos;
   let best = null, bestD2 = 11 * 11;
   LIMB_SEGMENTS.forEach(seg => {
     const def = POSE_HANDLES.find(d => d.id === seg.id);
     if (!def) return;
     const grp = entry.joints[def.group];
     if (!grp) return;
-    const p1 = personaHandleScreenPos[seg.id];
+    const p1 = pos[seg.id];
     if (!p1) return;
     const p2 = seg.toGroup
       ? projectJointToCanvas(entry.joints[seg.toGroup], personaCamera3D, cnv.width, cnv.height)

@@ -10,6 +10,7 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
+  pickNearestHandle3D, canvasEventCoords3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -453,5 +454,102 @@ describe('readPoseSliderDeg3D / writePoseSliderDeg3D', () => {
   test('écrire sans brouillon ne crée rien et ne lève pas', () => {
     assert.equal(writePoseSliderDeg3D(null, hinge, 20), null);
     assert.deepEqual(writePoseSliderDeg3D({}, null, 20), {});
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 52 — désignation des poignées d'articulation.
+//
+// La carte de positions est un PARAMÈTRE. C'est le point du refactor : l'aperçu de la modale et le
+// canevas plein écran de l'éditeur montrent le même squelette à des résolutions différentes, donc à
+// des coordonnées différentes. Avec la carte unique d'avant, la dernière vue rendue écrasait les
+// positions de l'autre — et au retour dans la modale, les clics visaient les coordonnées du plein
+// écran, sans que rien n'échoue.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => {
+  const positions = { head: { x: 100, y: 50 }, lElbow: { x: 120, y: 60 }, rKnee: { x: 300, y: 400 } };
+
+  test('clic pile sur une poignée : c\'est elle', () => {
+    assert.equal(pickNearestHandle3D(positions, 100, 50), 'head');
+  });
+
+  test('entre deux poignées TOUTES DEUX à portée : la PLUS PROCHE, pas la première rencontrée', () => {
+    // L'ordre de parcours ne doit rien décider : deux poignées voisines sont fréquentes (coude et
+    // épaule se superposent presque de profil), et « la première trouvée » rendrait la plus éloignée
+    // sélectionnable par accident selon l'orientation du Personnage.
+    //
+    // La condition qui rend ce test probant : les deux candidates doivent être DANS le rayon,
+    // sinon la bonne réponse sortirait par élimination et non par comparaison. Une première version
+    // testait en (118, 59), où la tête est à ≈20.1px — hors du rayon de 17 : la mutation « garder la
+    // première trouvée » passait donc au travers. Vérifié en la faisant échouer.
+    //
+    // En (114, 57) : tête à √(14²+7²) ≈ 15.65px, coude à √(6²+3²) ≈ 6.71px. Les deux à portée, et
+    // c'est la tête qui vient en premier dans la carte.
+    assert.equal(pickNearestHandle3D(positions, 114, 57), 'lElbow');
+    // Symétrique, pour qu'un « toujours la dernière » ne passe pas davantage.
+    assert.equal(pickNearestHandle3D(positions, 106, 53), 'head');
+  });
+
+  test('hors du rayon : rien — le clic doit pouvoir tomber dans le vide', () => {
+    // Sans ce null, un clic n'importe où attraperait la poignée la moins lointaine, et déplacer la
+    // vue deviendrait impossible.
+    assert.equal(pickNearestHandle3D(positions, 200, 200), null);
+    assert.equal(pickNearestHandle3D(positions, 100, 70), null, '20px : au-delà du rayon de 17');
+    assert.equal(pickNearestHandle3D(positions, 100, 66), 'head', '16px : dans le rayon');
+  });
+
+  test('le rayon est réglable', () => {
+    // Distances CALCULÉES depuis `positions`, pas devinées : au point (80, 50) la tête est à 20px et
+    // le coude à √(40²+10²) ≈ 41.2px. Une première version de ce test plaçait le point à (100, 90),
+    // où le coude (≈36.1px) est en fait plus proche que la tête (40px) — le test échouait, et le
+    // code avait raison.
+    assert.equal(pickNearestHandle3D(positions, 80, 50), null, '20px : au-delà du rayon de 17');
+    assert.equal(pickNearestHandle3D(positions, 80, 50, 50), 'head', 'rayon élargi à 50px');
+  });
+
+  test('positions absentes, nulles ou vides : rien, jamais d\'exception', () => {
+    // Une articulation hors champ n'a pas de projection utilisable ; la carte est aussi vide tant que
+    // rien n'a été dessiné.
+    assert.equal(pickNearestHandle3D(null, 0, 0), null);
+    assert.equal(pickNearestHandle3D({}, 0, 0), null);
+    assert.equal(pickNearestHandle3D({ head: null }, 0, 0), null);
+  });
+
+  test('ISOLATION : deux cartes distinctes donnent deux réponses distinctes au même point', () => {
+    // La propriété que le refactor existe pour garantir. Même clic, deux vues, deux résultats —
+    // impossible tant que la carte était une variable de module.
+    const apercu = { head: { x: 100, y: 50 } };
+    const editeur = { head: { x: 900, y: 700 } };
+    assert.equal(pickNearestHandle3D(apercu, 100, 50), 'head');
+    assert.equal(pickNearestHandle3D(editeur, 100, 50), null);
+    assert.equal(pickNearestHandle3D(editeur, 900, 700), 'head');
+  });
+});
+
+describe('canvasEventCoords3D — écran → repère interne du canevas', () => {
+  test('bitmap plus grand que la boîte CSS : les coordonnées sont mises à l\'échelle', () => {
+    // Le cas réel de l'éditeur : la résolution de rendu est plafonnée (PANEL_SCENE_RENDER_MAX_PX)
+    // alors que la boîte occupe tout l'écran. Confondre les deux fait viser d'autant plus à côté que
+    // l'écart est grand — invisible sur un petit aperçu, flagrant en plein écran.
+    const rect = { left: 0, top: 0, width: 800, height: 600 };
+    assert.deepEqual(canvasEventCoords3D(rect, 1600, 1200, 400, 300), { px: 800, py: 600 });
+  });
+
+  test('le décalage de la boîte dans la page est retiré', () => {
+    const rect = { left: 100, top: 40, width: 200, height: 100 };
+    assert.deepEqual(canvasEventCoords3D(rect, 200, 100, 150, 90), { px: 50, py: 50 });
+  });
+
+  test('les deux axes sont mis à l\'échelle indépendamment', () => {
+    // Un seul facteur pour les deux axes marcherait tant que les proportions coïncident, et
+    // dériverait silencieusement dès qu'elles divergent — au redimensionnement de la fenêtre.
+    const rect = { left: 0, top: 0, width: 400, height: 400 };
+    assert.deepEqual(canvasEventCoords3D(rect, 800, 400, 100, 100), { px: 200, py: 100 });
+  });
+
+  test('boîte de taille nulle (élément masqué) : origine, pas une division par zéro', () => {
+    assert.deepEqual(canvasEventCoords3D({ left: 0, top: 0, width: 0, height: 0 }, 10, 10, 5, 5),
+      { px: 0, py: 0 });
+    assert.deepEqual(canvasEventCoords3D(null, 10, 10, 5, 5), { px: 0, py: 0 });
   });
 });

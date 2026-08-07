@@ -37,6 +37,7 @@ import {
   dismissModal,
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
+  togglePersonaEditorHandle,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -978,5 +979,59 @@ describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', (
     setPersonaEditorJointDeg(torso, 80);
     resetPersonaEditorDraft({ objects: [] });
     assert.deepEqual(S.personaEditorDraft, POSE_3D.debout);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 52 — sélection d'une poignée d'articulation dans l'éditeur.
+//
+// S.personaEditorHandleId est DISTINCT de S.selectedPoseHandle, qui appartient à l'aperçu de la
+// modale. La modale n'est pas fermée pendant l'édition, seulement masquée (cf. Fix 50) : partager la
+// sélection ferait réapparaître, à la fermeture, une modale avec une articulation surlignée que
+// l'utilisateur n'y a jamais désignée.
+//
+// Le dessin des poignées n'est pas couvert (WebGL), ni la projection 3D→écran. Ce qui l'est : la
+// règle de bascule, et le fait que les deux sélections restent étanches.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — sélection d\'une poignée (Fix 52)', () => {
+  beforeEach(() => { closePersonaEditor(); S.selectedPoseHandle = null; });
+
+  test('sélectionner, puis recliquer la même poignée la désélectionne', () => {
+    openPersonaEditor(null);
+    assert.equal(togglePersonaEditorHandle('lElbow'), 'lElbow');
+    assert.equal(togglePersonaEditorHandle('lElbow'), null, 'second clic : on relâche');
+  });
+
+  test('cliquer une AUTRE poignée remplace la sélection au lieu de l\'annuler', () => {
+    openPersonaEditor(null);
+    togglePersonaEditorHandle('lElbow');
+    assert.equal(togglePersonaEditorHandle('rKnee'), 'rKnee');
+  });
+
+  test('l\'ouverture ne présélectionne rien', () => {
+    openPersonaEditor(null);
+    togglePersonaEditorHandle('head');
+    closePersonaEditor();
+    openPersonaEditor(null);
+    assert.equal(S.personaEditorHandleId, null,
+      'hériter de la session précédente surlignerait un point non choisi');
+  });
+
+  test('fermer efface la sélection', () => {
+    openPersonaEditor(null);
+    togglePersonaEditorHandle('head');
+    closePersonaEditor();
+    assert.equal(S.personaEditorHandleId, null);
+  });
+
+  test('ÉTANCHÉITÉ : la sélection de l\'éditeur ne touche pas celle de la modale', () => {
+    // La modale reste ouverte derrière l'éditeur ; sa poignée surlignée doit être exactement celle
+    // qu'on y avait laissée au retour.
+    S.selectedPoseHandle = { id: 'torso' };
+    openPersonaEditor(null);
+    togglePersonaEditorHandle('rKnee');
+    assert.equal(S.selectedPoseHandle.id, 'torso', 'la modale n\'a pas bougé');
+    closePersonaEditor();
+    assert.equal(S.selectedPoseHandle.id, 'torso', 'et pas davantage après fermeture');
   });
 });

@@ -36,7 +36,7 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -482,6 +482,9 @@ export function openPersonaEditor(target, fromModal){
   // marge autour pour voir ce qu'on manipule.
   S.personaEditorZoom = 0.8;
   S.personaEditorPan = { x: 0, y: 0 };
+  // Fix 52 — aucune articulation présélectionnée : la sélection décrit ce que l'utilisateur vient de
+  // désigner, hériter de la session précédente surlignerait un point qu'il n'a pas choisi.
+  S.personaEditorHandleId = null;
   return S.personaEditorDraft;
 }
 
@@ -494,6 +497,7 @@ export function closePersonaEditor(){
   S.personaEditorTargetId = null;
   S.personaEditorDraft = null;
   S.personaEditorFromModal = false;
+  S.personaEditorHandleId = null;
   return backToModal;
 }
 
@@ -553,7 +557,15 @@ export function drawPersonaEditor(){
     baseW: base,
     baseH: Math.max(1, Math.round(base * ratio)),
   });
+  // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
+  // passage personaEditorHandlePos. C'est donc ce dessin qui rend le clic possible : sans redessin,
+  // les positions dateraient de la dernière image et cliquer viserait où le Personnage ÉTAIT.
+  drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId);
 }
+
+// Carte PROPRE à l'éditeur (cf. le commentaire de drawPersonaPoseHandlesOverlay) : la modale garde
+// la sienne, et les deux vues ne se marchent plus dessus.
+const personaEditorHandlePos = {};
 
 // Fix 51 — curseurs du panneau droit.
 //
@@ -565,13 +577,15 @@ export function drawPersonaEditor(){
 // comme pour la modale. C'est tout l'intérêt du descripteur — ce panneau et celui de la modale ne
 // peuvent pas diverger, puisqu'ils lisent la même liste.
 const personaEditorSliderRefs = {}; // spec.key -> { spec, input, val, row }
+const personaEditorGroupOf = {};    // jointId -> son <details>
+const personaEditorRowsOf = {};     // jointId -> [lignes de curseurs], pour le surlignage
 
 export function buildPersonaEditorJointSlidersUI(){
   const container = document.getElementById('personaEditorJointsContainer');
   if (!container) return;
   container.innerHTML = '';
-  Object.keys(personaEditorSliderRefs).forEach(k => delete personaEditorSliderRefs[k]);
-  const groupOf = {};
+  [personaEditorSliderRefs, personaEditorGroupOf, personaEditorRowsOf]
+    .forEach(m => Object.keys(m).forEach(k => delete m[k]));
   JOINT_GROUPS.forEach(g => {
     const details = document.createElement('details');
     details.className = 'joint-group-details';
@@ -579,21 +593,67 @@ export function buildPersonaEditorJointSlidersUI(){
     summary.textContent = g.label;
     details.appendChild(summary);
     container.appendChild(details);
-    g.ids.forEach(id => { groupOf[id] = details; });
+    g.ids.forEach(id => { personaEditorGroupOf[id] = details; });
+    // Réciproque du clic sur une poignée : déplier un groupe sélectionne sur le canevas
+    // l'articulation qu'il représente. Sans ça, le lien entre les deux moitiés de l'écran ne
+    // fonctionnerait que dans un sens, et rien n'indiquerait quel point on est en train de régler.
+    //
+    // La garde est un test d'ÉTAT, pas un drapeau. L'événement `toggle` d'un <details> est émis de
+    // façon ASYNCHRONE : un drapeau posé puis retiré dans la foulée (le procédé employé côté modale,
+    // cf. S.syncingJointGroupOpen) est déjà retombé quand l'événement arrive, et ne protège donc de
+    // rien. Concrètement, cliquer le coude gauche dépliait « Bras gauche », dont le toggle différé
+    // resélectionnait aussitôt la première articulation du groupe — l'épaule. Se demander « ce
+    // groupe contient-il déjà la sélection ? » ne dépend, lui, d'aucun ordre d'arrivée.
+    details.addEventListener('toggle', () => {
+      if (!details.open || !S.personaEditorOpen) return;
+      if (g.ids.includes(S.personaEditorHandleId)) return;
+      selectPersonaEditorHandle(g.ids[0]);
+    });
   });
   POSE_HANDLES.forEach(def => {
-    const target = groupOf[def.id] || container;
+    const target = personaEditorGroupOf[def.id] || container;
     const label = JOINT_LABELS[def.id] || def.id;
+    personaEditorRowsOf[def.id] = personaEditorRowsOf[def.id] || [];
     poseSliderSpecs3D(def).forEach(spec => {
       const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
         if (!setPersonaEditorJointDeg(spec, deg)) return;
         drawPersonaEditor();
       });
       personaEditorSliderRefs[spec.key] = { spec, ...ref };
+      personaEditorRowsOf[def.id].push(ref.row);
     });
   });
 }
 buildPersonaEditorJointSlidersUI();
+
+// Fix 52 — cliquer une poignée déjà sélectionnée la désélectionne. Sorti du gestionnaire d'événement
+// pour être testable : c'est une règle d'interface, pas du DOM, et elle décide de ce qui est
+// surligné des deux côtés de l'écran.
+export function togglePersonaEditorHandle(id){
+  S.personaEditorHandleId = (S.personaEditorHandleId === id) ? null : (id || null);
+  return S.personaEditorHandleId;
+}
+
+// Applique la sélection au panneau : déplie le groupe concerné, referme les autres (un seul ouvert à
+// la fois, comme dans la modale) et surligne les lignes correspondantes.
+function syncPersonaEditorPanelToHandle(){
+  const id = S.personaEditorHandleId;
+  Object.values(personaEditorRowsOf).forEach(rows =>
+    rows.forEach(r => r.classList.remove('active')));
+  (personaEditorRowsOf[id] || []).forEach(r => r.classList.add('active'));
+  const details = personaEditorGroupOf[id];
+  new Set(Object.values(personaEditorGroupOf)).forEach(d => {
+    if (d !== details && d.open) d.open = false;
+  });
+  if (details && !details.open) details.open = true;
+}
+
+export function selectPersonaEditorHandle(id){
+  if (!S.personaEditorOpen) return;
+  togglePersonaEditorHandle(id);
+  syncPersonaEditorPanelToHandle();
+  drawPersonaEditor();
+}
 
 // Remet les curseurs en accord avec le brouillon. Appelée à l'ouverture et après « Réinitialiser » :
 // sans elle, le panneau afficherait encore les angles de la session précédente alors que le
@@ -656,11 +716,35 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
       drawPersonaEditor();
     }, { passive: false });
 
+    // Fix 52 — coordonnées du curseur dans le repère interne du canevas, seul repère où les
+    // positions de poignées ont un sens (cf. canvasEventCoords3D).
+    const editorCoords = (e) => canvasEventCoords3D(
+      cnv.getBoundingClientRect(), cnv.width, cnv.height, e.clientX, e.clientY);
+
     let panning = null;
     cnv.addEventListener('mousedown', (e) => {
       if (!S.personaEditorOpen) return;
+      // Une poignée sous le curseur l'emporte sur le déplacement de vue : sans cette priorité, viser
+      // un point d'articulation ferait glisser le Personnage au lieu de le sélectionner, et le point
+      // deviendrait impossible à attraper.
+      const { px, py } = editorCoords(e);
+      const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos);
+      if (def) {
+        selectPersonaEditorHandle(def.id);
+        e.preventDefault();
+        return;
+      }
+      // Clic dans le vide : on désélectionne, puis on déplace. Les deux, car un clic sans glisser
+      // doit pouvoir servir à sortir de la sélection courante.
+      if (S.personaEditorHandleId) selectPersonaEditorHandle(S.personaEditorHandleId);
       panning = { x: e.clientX, y: e.clientY,
                   px: S.personaEditorPan.x, py: S.personaEditorPan.y };
+    });
+    // Curseur « main » sur une poignée, pour signaler qu'elle est cliquable.
+    cnv.addEventListener('mousemove', (e) => {
+      if (!S.personaEditorOpen || panning) return;
+      const { px, py } = editorCoords(e);
+      cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos) ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {
       if (!panning || !S.personaEditorOpen) return;
