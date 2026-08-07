@@ -142,11 +142,20 @@ qui y ajoute `allonge` et `vaincu` (les deux poses couchées, cf. `lieFlat`). Au
 - `poseJointsByKey3D` reçoit la table **en paramètre**, lue à l'appel et jamais capturée au
   chargement du module.
 
-### Phase 4 — Bibliothèque de poses en écriture
+### Phase 4 — Bibliothèque de poses en écriture ✅ *(Fix 55)*
 
-- **4.1** Enregistrer le brouillon comme pose (nom, `id`, `skeleton`).
-- **4.2** Renommer / supprimer, sans jamais casser un Personnage (valeurs déjà copiées chez lui).
-- **4.3** Intégration `io.js` : sauvegarde, chargement, tolérance aux projets sans `poses`.
+- **4.1** Enregistrer le brouillon comme pose (nom, `id`, `skeleton`). ✅
+- **4.2** Renommer / supprimer, sans jamais casser un Personnage (valeurs déjà copiées chez lui). ✅
+- **4.3** Intégration `io.js` ✅ — faite dès la phase 0.3 ; un test de cycle complet
+  (enregistrer → sérialiser → recharger → appliquer) la couvre désormais de bout en bout, ainsi
+  que le réalignement du compteur d'ids par `resyncIdCounter`.
+
+**`positionLabel` — tranché ici**, la note le laissait ouvert. On l'écrira : c'est le dernier nom
+connu d'une pose, et `resolvePoseLabel3D` ne le lit QUE lorsque la pose est introuvable. Une valeur
+périmée n'est donc jamais affichée tant que le nom faisant autorité existe — et quand il a disparu,
+un nom périmé vaut mieux qu'un id opaque. L'écriture elle-même relève de la phase 5, seul moment où
+l'éditeur touche à un Personnage ; le nom se déduit alors de `S.personaEditorPoseKey` et de
+`S.poses`, sans état supplémentaire à maintenir.
 
 ### Phase 5 — Aller-retour avec la modale
 

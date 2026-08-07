@@ -27,7 +27,7 @@ import {
   PERSONA_3D_W, PERSONA_3D_H, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES,
   ANIMAL_JOINT_DEFS, WALL_PX_PER_UNIT_3D, CHILD_DESIGN_SIZE_3D,
   CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, CAM_SMOOTH_EPS,
-  PANEL_SCENE_RENDER_MAX_PX, PERSONA_EDITOR_RENDER_MAX_PX,
+  PANEL_SCENE_RENDER_MAX_PX, PERSONA_EDITOR_RENDER_MAX_PX, PERSONA_SKELETON_3D,
   PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H,
   OBJECT_PREVIEW_BASE_W, OBJECT_PREVIEW_BASE_H, ROOM_PREVIEW_BASE_W,
   ROOM_PREVIEW_BASE_H, PREVIEW_OBJECT_ID, PREVIEW_PERSONA_ID, LIMB_SEGMENTS,
@@ -38,7 +38,8 @@ import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
-  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D
+  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D,
+  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -548,6 +549,47 @@ export function applyPersonaEditorPose(key){
   return true;
 }
 
+// Fix 55 — enregistre le brouillon en cours comme nouvelle pose du projet.
+//
+// L'id vient de newId('pose'), donc du compteur global que resyncIdCounter réaligne au chargement
+// (cf. io.js) : sans ce réalignement, une pose créée après ouverture d'un fichier réutiliserait un id
+// déjà pris — et comme les Personnages citent leur pose PAR ID, l'un d'eux se retrouverait avec la
+// mauvaise. `skeleton` est tagué dès maintenant, alors que seuls les humains ont des poses : le
+// rattraper plus tard sur des fichiers déjà enregistrés serait pénible.
+//
+// La pose devient la référence du brouillon, sans que ses angles changent : on vient justement de
+// l'enregistrer à l'identique.
+export function savePersonaEditorPose(name){
+  if (!S.personaEditorOpen || !S.personaEditorDraft) return null;
+  const pose = makePose3D(newId('pose'),
+    (typeof name === 'string' && name.trim()) ? name : nextDefaultPoseName3D(S.poses),
+    S.personaEditorDraft, PERSONA_SKELETON_3D);
+  S.poses = [...(Array.isArray(S.poses) ? S.poses : []), pose];
+  S.personaEditorPoseKey = pose.id;
+  return pose;
+}
+
+export function renamePersonaEditorPose(id, name){
+  const next = renamePose3D(S.poses, id, name);
+  if (!next) return false;
+  S.poses = next;
+  return true;
+}
+
+// Supprimer une pose ne touche à AUCUN Personnage : ses angles ont été copiés au moment où la pose
+// lui a été appliquée. Au pire son étiquette devient « inconnue », et il garde exactement l'allure
+// qu'il avait. C'est ce qui rend la suppression sans danger, et ce qu'aucune évolution ne doit
+// changer sans y repenser complètement.
+export function deletePersonaEditorPose(id){
+  const next = deletePose3D(S.poses, id);
+  if (!next) return false;
+  S.poses = next;
+  // L'étiquette du brouillon n'est PAS effacée : elle deviendra « (inconnue) » à l'affichage, ce qui
+  // dit la vérité — la pose citée n'existe plus — sans rien détruire ni modifier la pose du
+  // Personnage. Effacer la clé ferait perdre l'information qu'on venait de cette pose-là.
+  return true;
+}
+
 // Étiquette à afficher pour le brouillon en cours, « (modifié) » compris. Réutilise
 // resolvePoseLabel3D en lui présentant le brouillon sous la forme qu'elle attend d'un Élément :
 // une seule règle de nommage des poses dans l'application, pas deux.
@@ -705,7 +747,7 @@ export function buildPersonaEditorPosesUI(){
   if (!container) return;
   container.innerHTML = '';
   Object.keys(personaEditorPoseBtns).forEach(k => delete personaEditorPoseBtns[k]);
-  personaEditorPoseList3D(POSITIONS, S.poses).forEach(entry => {
+  personaEditorPoseList3D(POSITIONS, S.poses, PERSONA_SKELETON_3D).forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = entry.label;
@@ -730,6 +772,14 @@ export function syncPersonaEditorPoseLabel(){
   if (out) out.textContent = info.label;
   Object.keys(personaEditorPoseBtns).forEach(k => {
     personaEditorPoseBtns[k].classList.toggle('active', k === S.personaEditorPoseKey);
+  });
+  // Fix 55 — Renommer/Supprimer ne valent que pour une pose DU PROJET. Les poses intégrées sont
+  // partagées par tous les projets et codées en dur : les proposer à la modification promettrait
+  // quelque chose que l'application ne peut pas tenir.
+  const custom = !!(Array.isArray(S.poses) && S.poses.some(p => p && p.id === S.personaEditorPoseKey));
+  ['personaEditorPoseRenameBtn', 'personaEditorPoseDeleteBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !custom;
   });
 }
 
@@ -783,6 +833,35 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
   const cnv = document.getElementById('personaEditorCanvas');
   const closeBtn = document.getElementById('personaEditorCloseBtn');
   if (closeBtn) closeBtn.onclick = () => hidePersonaEditor();
+  // Fix 55 — écriture dans la bibliothèque. Après chaque opération la liste est RECONSTRUITE : elle
+  // affiche S.poses, et se contenter de mettre à jour l'étiquette laisserait un bouton pour une pose
+  // supprimée, ou aucun pour une pose qu'on vient de créer.
+  const poseNameInput = document.getElementById('personaEditorPoseName');
+  const afterPoseLibraryChange = () => {
+    buildPersonaEditorPosesUI();
+    syncPersonaEditorPoseLabel();
+  };
+  const saveBtn = document.getElementById('personaEditorPoseSaveBtn');
+  if (saveBtn) saveBtn.onclick = () => {
+    const pose = savePersonaEditorPose(poseNameInput && poseNameInput.value);
+    if (!pose) return;
+    if (poseNameInput) poseNameInput.value = '';
+    afterPoseLibraryChange();
+  };
+  const renameBtn = document.getElementById('personaEditorPoseRenameBtn');
+  if (renameBtn) renameBtn.onclick = () => {
+    if (!renamePersonaEditorPose(S.personaEditorPoseKey, poseNameInput && poseNameInput.value)) return;
+    if (poseNameInput) poseNameInput.value = '';
+    afterPoseLibraryChange();
+  };
+  const deleteBtn = document.getElementById('personaEditorPoseDeleteBtn');
+  if (deleteBtn) deleteBtn.onclick = () => {
+    // Pas de confirmation : l'opération est sans conséquence sur les Personnages (leurs angles sont
+    // déjà copiés chez eux) et reste annulable en refermant le projet sans enregistrer.
+    if (!deletePersonaEditorPose(S.personaEditorPoseKey)) return;
+    afterPoseLibraryChange();
+  };
+
   const resetBtn = document.getElementById('personaEditorResetBtn');
   if (resetBtn) resetBtn.onclick = () => {
     if (!resetPersonaEditorDraft()) return;

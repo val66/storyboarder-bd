@@ -13,6 +13,7 @@ import {
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
+  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -761,5 +762,149 @@ describe('poseJointsByKey3D — angles d\'une pose', () => {
     assert.equal(poseJointsByKey3D(null, table, poses), null);
     assert.equal(poseJointsByKey3D('assis', null, null), null);
     assert.equal(poseJointsByKey3D('pose1', table, [{ id: 'pose1' }]), null, 'pose sans angles');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 55 — écritures sur la bibliothèque de poses.
+//
+// Toutes ces fonctions renvoient une NOUVELLE liste plutôt que de modifier celle qu'on leur passe :
+// l'appelant décide d'affecter, et un test compare l'avant et l'après sans cloner d'abord.
+//
+// La propriété que la phase 4 ne doit pas casser : supprimer une pose ne peut déformer aucun
+// Personnage, ses angles ayant été COPIÉS chez lui à l'application (cf. Fix 54). Au pire son
+// étiquette devient « inconnue ».
+// ─────────────────────────────────────────────────────────────────────────────
+describe('makePose3D — enregistrement d\'une pose', () => {
+  test('les angles sont COPIÉS, pas référencés', () => {
+    // Sans copie, continuer à bouger les curseurs après avoir enregistré modifierait la pose
+    // enregistrée en même temps — elle ne figerait donc rien du tout.
+    const draft = { torsoRotX: 0.5 };
+    const pose = makePose3D('pose1', 'Salut', draft, 'humain');
+    draft.torsoRotX = 9;
+    assert.equal(pose.joints.torsoRotX, 0.5, 'la pose a figé l\'état du moment');
+  });
+
+  test('les quatre champs persistés sont présents', () => {
+    // ⚠️ Noms de champs figés par le format de fichier (cf. docs/donnees-persistees.md).
+    const pose = makePose3D('pose1', 'Salut', { torsoRotX: 0 }, 'humain');
+    assert.deepEqual(Object.keys(pose).sort(), ['id', 'joints', 'name', 'skeleton']);
+  });
+
+  test('nom vide ou absent : repli sur l\'id plutôt qu\'un bouton sans libellé', () => {
+    assert.equal(makePose3D('pose1', '   ', {}).name, 'pose1');
+    assert.equal(makePose3D('pose1', null, {}).name, 'pose1');
+  });
+
+  test('le nom est débarrassé de ses espaces de bord', () => {
+    assert.equal(makePose3D('pose1', '  Salut  ', {}).name, 'Salut');
+  });
+
+  test('squelette par défaut : humain — jamais laissé vide', () => {
+    // Une pose sans squelette déclaré empêcherait, le jour où les animaux en auront, de savoir à
+    // quoi elle se rapporte. Le rattraper sur des fichiers déjà enregistrés serait impossible.
+    assert.equal(makePose3D('pose1', 'X', {}).skeleton, 'humain');
+    assert.equal(makePose3D('pose1', 'X', {}, 'chien').skeleton, 'chien');
+  });
+});
+
+describe('renamePose3D', () => {
+  const poses = () => [
+    { id: 'pose1', name: 'Salut', skeleton: 'humain', joints: { a: 1 } },
+    { id: 'pose2', name: 'Assise', skeleton: 'humain', joints: { a: 2 } },
+  ];
+
+  test('renomme la bonne pose et laisse les autres intactes', () => {
+    const next = renamePose3D(poses(), 'pose2', 'Repos');
+    assert.deepEqual(next.map(p => p.name), ['Salut', 'Repos']);
+  });
+
+  test('RÉGRESSION : la liste d\'origine n\'est pas modifiée', () => {
+    const avant = poses();
+    renamePose3D(avant, 'pose1', 'Autre');
+    assert.equal(avant[0].name, 'Salut');
+  });
+
+  test('les angles et l\'id survivent au renommage', () => {
+    // L'appariement se fait par id : renommer doit garder l'étiquette juste chez tous les
+    // Personnages qui citent cette pose, donc surtout pas changer son id.
+    const next = renamePose3D(poses(), 'pose1', 'Autre');
+    assert.equal(next[0].id, 'pose1');
+    assert.deepEqual(next[0].joints, { a: 1 });
+  });
+
+  test('null quand il n\'y a rien à faire', () => {
+    assert.equal(renamePose3D(poses(), 'pose1', 'Salut'), null, 'nom identique');
+    assert.equal(renamePose3D(poses(), 'pose1', '   '), null, 'nom vide');
+    assert.equal(renamePose3D(poses(), 'inexistante', 'X'), null, 'pose absente');
+    assert.equal(renamePose3D(null, 'pose1', 'X'), null, 'pas de bibliothèque');
+  });
+});
+
+describe('deletePose3D', () => {
+  const poses = () => [
+    { id: 'pose1', name: 'A', joints: {} },
+    { id: 'pose2', name: 'B', joints: {} },
+  ];
+
+  test('retire la pose demandée, garde les autres', () => {
+    assert.deepEqual(deletePose3D(poses(), 'pose1').map(p => p.id), ['pose2']);
+  });
+
+  test('la liste d\'origine n\'est pas modifiée', () => {
+    const avant = poses();
+    deletePose3D(avant, 'pose1');
+    assert.equal(avant.length, 2);
+  });
+
+  test('null si la pose n\'existe pas : rien à reconstruire', () => {
+    assert.equal(deletePose3D(poses(), 'inexistante'), null);
+    assert.equal(deletePose3D([], 'pose1'), null);
+    assert.equal(deletePose3D(null, 'pose1'), null);
+  });
+
+  test('supprimer la dernière pose donne une liste vide, pas null', () => {
+    assert.deepEqual(deletePose3D([{ id: 'pose1', joints: {} }], 'pose1'), []);
+  });
+});
+
+describe('nextDefaultPoseName3D — nom proposé par défaut', () => {
+  test('bibliothèque vide : Pose 1', () => {
+    assert.equal(nextDefaultPoseName3D([]), 'Pose 1');
+    assert.equal(nextDefaultPoseName3D(null), 'Pose 1');
+  });
+
+  test('comble le premier trou plutôt que de compter les entrées', () => {
+    // Après plusieurs suppressions, « Pose 12 » dans une liste de trois poses n'aiderait personne.
+    const poses = [{ id: 'a', name: 'Pose 1' }, { id: 'b', name: 'Pose 3' }];
+    assert.equal(nextDefaultPoseName3D(poses), 'Pose 2');
+  });
+
+  test('ignore les poses nommées librement', () => {
+    assert.equal(nextDefaultPoseName3D([{ id: 'a', name: 'Salut militaire' }]), 'Pose 1');
+  });
+});
+
+describe('personaEditorPoseList3D — filtre par squelette (Fix 55)', () => {
+  const poses = [
+    { id: 'p1', name: 'Humaine', skeleton: 'humain', joints: {} },
+    { id: 'p2', name: 'Canine', skeleton: 'chien', joints: {} },
+    { id: 'p3', name: 'Sans squelette', joints: {} },
+  ];
+
+  test('sans squelette demandé : tout est proposé (comportement d\'avant)', () => {
+    assert.equal(personaEditorPoseList3D([], poses).length, 3);
+  });
+
+  test('squelette demandé : les poses d\'un autre squelette sont écartées', () => {
+    const keys = personaEditorPoseList3D([], poses, 'humain').map(e => e.key);
+    assert.ok(!keys.includes('p2'), 'pas de pose de chien sur un humain');
+  });
+
+  test('TOLÉRANCE : une pose sans squelette déclaré reste proposée', () => {
+    // Cohérent avec normalizePoses3D, qui ne rejette jamais sur ce critère. Un fichier ancien ou
+    // bricolé à la main ne doit pas perdre silencieusement ses poses.
+    const keys = personaEditorPoseList3D([], poses, 'humain').map(e => e.key);
+    assert.ok(keys.includes('p3'));
   });
 });

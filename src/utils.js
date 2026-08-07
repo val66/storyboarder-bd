@@ -239,13 +239,62 @@ export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
 //
 // Les poses personnalisées sont identifiées par leur `id` (cf. resolvePoseLabel3D) ; celles sans id
 // exploitable sont écartées, faute de quoi les appliquer serait impossible.
-export function personaEditorPoseList3D(builtins, poses){
+// `skeleton` (facultatif) : ne garder que les poses compatibles. Une pose SANS squelette déclaré est
+// considérée compatible — tolérance envers un fichier bricolé à la main, cohérente avec
+// normalizePoses3D qui ne rejette jamais sur ce critère. Aujourd'hui seuls les humains ont des
+// poses ; le filtre existe pour que le jour où les animaux en auront, aucune pose de chien ne
+// puisse être appliquée à un humain sur d'anciens fichiers.
+export function personaEditorPoseList3D(builtins, poses, skeleton){
   const list = (builtins || []).map(p => ({ key: p.key, label: p.label, builtin: true }));
   (Array.isArray(poses) ? poses : []).forEach(p => {
     if (!p || !p.id) return;
+    if (skeleton && p.skeleton && p.skeleton !== skeleton) return;
     list.push({ key: p.id, label: p.name || p.id, builtin: false });
   });
   return list;
+}
+
+// Fix 55 — écritures sur la bibliothèque. Toutes RENVOIENT UNE NOUVELLE LISTE au lieu de modifier
+// celle qu'on leur passe : l'appelant décide d'affecter ou non, et un test peut comparer l'avant et
+// l'après sans avoir à cloner d'abord.
+//
+// Aucune de ces opérations ne touche à un Personnage, et c'est le point : ses angles ont été COPIÉS
+// à l'application de la pose. Supprimer une pose ne peut donc pas déformer qui que ce soit — au pire
+// une étiquette devient « inconnue ». C'est la propriété que la phase 4 ne doit pas casser.
+export function makePose3D(id, name, joints, skeleton){
+  return {
+    id,
+    name: (typeof name === 'string' && name.trim()) ? name.trim() : id,
+    skeleton: skeleton || 'humain',
+    joints: JSON.parse(JSON.stringify(joints || {})),
+  };
+}
+
+// Renvoie null si le renommage n'a rien à faire (pose absente, nom vide ou identique) : l'appelant
+// évite ainsi de reconstruire une interface pour rien, et le null distingue « refusé » de « fait ».
+export function renamePose3D(poses, id, name){
+  const list = Array.isArray(poses) ? poses : [];
+  const clean = (typeof name === 'string') ? name.trim() : '';
+  if (!id || !clean) return null;
+  const found = list.find(p => p && p.id === id);
+  if (!found || found.name === clean) return null;
+  return list.map(p => (p && p.id === id) ? { ...p, name: clean } : p);
+}
+
+export function deletePose3D(poses, id){
+  const list = Array.isArray(poses) ? poses : [];
+  if (!id || !list.some(p => p && p.id === id)) return null;
+  return list.filter(p => !(p && p.id === id));
+}
+
+// Premier « Pose N » libre. On cherche un trou plutôt que d'incrémenter un compteur : après
+// plusieurs suppressions, « Pose 12 » dans une liste de trois poses n'aiderait personne.
+export function nextDefaultPoseName3D(poses){
+  const taken = new Set((Array.isArray(poses) ? poses : [])
+    .map(p => p && p.name).filter(Boolean));
+  let n = 1;
+  while (taken.has(`Pose ${n}`)) n++;
+  return `Pose ${n}`;
 }
 
 // Angles d'une pose donnée, prêts à être copiés dans un brouillon. Renvoie null si la pose est

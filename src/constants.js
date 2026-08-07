@@ -673,6 +673,15 @@ export const PANEL_SCENE_RENDER_MAX_PX = 1400;
 // lui demanderait de réallouer des tampons démesurés à chaque image.
 export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
 
+// Fix 55 — squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
+// cf. docs/donnees-persistees.md) : ne pas renommer.
+//
+// Seuls les Personnages ont des poses aujourd'hui, donc une seule valeur existe. On la tague quand
+// même dès le premier enregistrement : le jour où les animaux en auront, distinguer après coup les
+// poses déjà enregistrées dans les fichiers des utilisateurs serait impossible — rien ne dirait à
+// quel squelette elles se rapportent.
+export const PERSONA_SKELETON_3D = 'humain';
+
 
 // ── Modal preview dimensions ────────────────────────────────────
 export const PERSONA_PREVIEW_BASE_W = 180, PERSONA_PREVIEW_BASE_H = 260;

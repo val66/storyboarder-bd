@@ -38,9 +38,11 @@ import {
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
+  savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
+import { normalizePoses3D, resyncIdCounter } from '../src/io.js';
 import { GROUND_Y_DEFAULT_3D, POSE_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -1140,5 +1142,135 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
       assert.equal(applyPersonaEditorPose(key), true, key);
       assert.equal(S.personaEditorDraft.lieFlat, true, `${key} : figure couchée`);
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 55 — bibliothèque de poses en écriture.
+//
+// LA propriété à ne pas casser : supprimer une pose ne déforme AUCUN Personnage. Ses angles ont été
+// copiés chez lui à l'application (Fix 54) ; au pire son étiquette devient « inconnue ». C'est ce
+// qui rend la suppression sans danger, et ce que le test de régression ci-dessous surveille.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — bibliothèque en écriture (Fix 55)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  beforeEach(() => { closePersonaEditor(); S.poses = []; });
+
+  test('enregistrer ajoute une pose et la prend comme référence', () => {
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 40);
+    const pose = savePersonaEditorPose('Salut militaire');
+    assert.equal(S.poses.length, 1);
+    assert.equal(pose.name, 'Salut militaire');
+    assert.equal(pose.skeleton, 'humain', 'squelette tagué dès l\'enregistrement');
+    assert.equal(S.personaEditorPoseKey, pose.id);
+    assert.equal(personaEditorPoseLabel().modified, false,
+      'à peine enregistrée, la pose correspond au brouillon');
+  });
+
+  test('RÉGRESSION : la pose enregistrée fige les angles, elle ne suit pas le brouillon', () => {
+    // Sans copie, continuer à bouger les curseurs après l'enregistrement modifierait la pose
+    // enregistrée en même temps : elle ne figerait rien.
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 40);
+    const pose = savePersonaEditorPose('Fig');
+    setPersonaEditorJointDeg(torso, 90);
+    assert.equal(Math.round(pose.joints.torsoRotX * 180 / Math.PI), 40, 'pose figée à 40°');
+    assert.equal(personaEditorPoseLabel().modified, true, 'et le brouillon est signalé modifié');
+  });
+
+  test('deux poses enregistrées ont des ids DIFFÉRENTS', () => {
+    // L'appariement se fait par id : deux poses de même id rendraient l'une d'elles inatteignable,
+    // et un Personnage pourrait se retrouver avec la mauvaise.
+    openPersonaEditor(null);
+    const a = savePersonaEditorPose('A');
+    const b = savePersonaEditorPose('B');
+    assert.notEqual(a.id, b.id);
+  });
+
+  test('sans nom fourni : un nom par défaut, jamais un bouton vide', () => {
+    openPersonaEditor(null);
+    assert.equal(savePersonaEditorPose('').name, 'Pose 1');
+    assert.equal(savePersonaEditorPose(null).name, 'Pose 2');
+  });
+
+  test('éditeur fermé : rien ne s\'enregistre', () => {
+    assert.equal(savePersonaEditorPose('X'), null);
+    assert.equal(S.poses.length, 0);
+  });
+
+  test('renommer garde l\'id, donc l\'étiquette reste juste', () => {
+    openPersonaEditor(null);
+    const pose = savePersonaEditorPose('Avant');
+    assert.equal(renamePersonaEditorPose(pose.id, 'Après'), true);
+    assert.equal(S.poses[0].id, pose.id, 'id inchangé');
+    assert.equal(personaEditorPoseLabel().label, 'Après',
+      'le Personnage qui cite cette pose voit le nouveau nom');
+  });
+
+  test('renommage refusé : nom vide, ou pose inexistante', () => {
+    openPersonaEditor(null);
+    const pose = savePersonaEditorPose('Nom');
+    assert.equal(renamePersonaEditorPose(pose.id, '  '), false);
+    assert.equal(renamePersonaEditorPose('inexistante', 'X'), false);
+    assert.equal(S.poses[0].name, 'Nom', 'inchangé dans les deux cas');
+  });
+
+  test('RÉGRESSION : supprimer une pose ne change AUCUN Personnage', () => {
+    // Le cœur de la conception. Un Personnage porte ses angles ; la bibliothèque est un confort
+    // d'auteur dont aucun projet ne dépend.
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 55);
+    const pose = savePersonaEditorPose('Éphémère');
+    const perso = { id: 'e1', type: 'perso', position: pose.id,
+                    joints3d: JSON.parse(JSON.stringify(pose.joints)) };
+    const anglesAvant = JSON.stringify(perso.joints3d);
+    assert.equal(deletePersonaEditorPose(pose.id), true);
+    assert.equal(S.poses.length, 0);
+    assert.equal(JSON.stringify(perso.joints3d), anglesAvant, 'angles intacts');
+    assert.equal(perso.position, pose.id, 'la référence n\'est pas réécrite non plus');
+  });
+
+  test('après suppression, l\'étiquette du Personnage devient « inconnue » sans rien détruire', () => {
+    // On garde `position` tel quel : rouvrir le projet sur la machine qui possède la bibliothèque
+    // doit permettre au nom de réapparaître tout seul.
+    openPersonaEditor(null);
+    const pose = savePersonaEditorPose('Éphémère');
+    deletePersonaEditorPose(pose.id);
+    const info = personaEditorPoseLabel();
+    assert.equal(info.known, false);
+    assert.match(info.label, /inconnue/);
+    assert.equal(S.personaEditorPoseKey, pose.id, 'la provenance est conservée, pas effacée');
+  });
+
+  test('suppression refusée pour une pose inexistante', () => {
+    assert.equal(deletePersonaEditorPose('inexistante'), false);
+  });
+
+  test('CYCLE COMPLET : enregistrer → sérialiser → recharger → appliquer', () => {
+    // Le test qui compte pour l'utilisateur : une pose créée aujourd'hui doit être applicable après
+    // avoir fermé et rouvert le projet. Il traverse les quatre champs persistés.
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 63);
+    const pose = savePersonaEditorPose('Persistante');
+    const json = JSON.parse(JSON.stringify({ poses: S.poses }));
+    S.poses = normalizePoses3D(json.poses);
+    assert.equal(S.poses.length, 1, 'la pose a survécu à l\'aller-retour');
+    openPersonaEditor(null);
+    assert.equal(applyPersonaEditorPose(pose.id), true);
+    assert.equal(Math.round(S.personaEditorDraft.torsoRotX * 180 / Math.PI), 63);
+  });
+
+  test('RÉGRESSION : après rechargement, une nouvelle pose ne réutilise pas un id existant', () => {
+    // resyncIdCounter (io.js) réaligne le compteur sur les ids du fichier. Sans lui, newId('pose')
+    // repartirait de zéro et la nouvelle pose écraserait la référence d'un Personnage existant.
+    S.idCounter = 0;
+    const charge = { poses: [{ id: 'pose7', name: 'Ancienne', skeleton: 'humain', joints: { a: 1 } }] };
+    S.poses = normalizePoses3D(charge.poses);
+    resyncIdCounter(charge);
+    openPersonaEditor(null);
+    const nouvelle = savePersonaEditorPose('Nouvelle');
+    assert.notEqual(nouvelle.id, 'pose7');
+    assert.equal(S.poses.filter(p => p.id === 'pose7').length, 1, 'l\'ancienne est intacte');
   });
 });

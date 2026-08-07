@@ -56,6 +56,16 @@
       <h2>Pose</h2>
       <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
       <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>
+      <!-- Écriture dans la bibliothèque. Renommer/Supprimer ne concernent que les poses du projet :
+           les poses intégrées ne sont pas modifiables, d'où leur désactivation dynamique. -->
+      <div class="persona-editor-pose-edit">
+        <input id="personaEditorPoseName" type="text" placeholder="Nom de la pose" />
+        <div class="persona-editor-pose-actions">
+          <button id="personaEditorPoseSaveBtn" type="button">Enregistrer</button>
+          <button id="personaEditorPoseRenameBtn" type="button">Renommer</button>
+          <button id="personaEditorPoseDeleteBtn" type="button" class="danger-btn">Supprimer</button>
+        </div>
+      </div>
       <h2>Réglage fin des articulations</h2>
       <div id="personaEditorJointsContainer"></div>
       <button id="personaEditorResetBtn" type="button" class="full-btn">Réinitialiser la pose</button>
