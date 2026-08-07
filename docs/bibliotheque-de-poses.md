@@ -3,7 +3,7 @@
 > **État actuel du fonctionnement**, pas l'historique des décisions. Le raisonnement qui a mené là —
 > avec ses revirements — est dans [editeur-personnage.md](editeur-personnage.md).
 >
-> À jour du Fix 59.
+> À jour du Fix 60.
 
 ## Où vivent les poses
 
