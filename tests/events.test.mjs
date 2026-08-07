@@ -40,7 +40,7 @@ import {
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
-  personaEditorPoseUsage,
+  personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1360,5 +1360,101 @@ describe('Fix 59 — CÂBLAGE : toute suppression passe par une confirmation', (
       'la confirmation ne doit plus être réservée aux poses utilisées');
     assert.match(corps, /used > 0[\s\S]{0,120}\?/,
       'le message reste différencié selon l\'usage, sans conditionner la confirmation');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 60 — « Appliquer » : de l'éditeur vers le BROUILLON de la modale.
+//
+// La règle qui structure toute la phase : jamais dans l'Élément. Écrire dans S.modalTarget donnerait
+// une modale dont « Annuler » n'annule plus — le défaut exact que le Fix 35 a corrigé ailleurs.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  const perso = () => ({ id: 'e1', type: 'perso', position: 'debout', joints3d: { torsoRotX: 0 } });
+  beforeEach(() => {
+    closePersonaEditor(); S.poses = []; S.modalDraftJoints = null; S.modalTarget = null;
+  });
+
+  test('les angles de l\'éditeur arrivent dans le brouillon de la modale', () => {
+    const o = perso();
+    S.modalTarget = o;
+    openPersonaEditor(o, true);
+    setPersonaEditorJointDeg(torso, 47);
+    const res = applyPersonaEditorToModal();
+    assert.ok(res);
+    assert.equal(Math.round(S.modalDraftJoints.torsoRotX * 180 / Math.PI), 47);
+  });
+
+  test('RÉGRESSION : Appliquer ne touche PAS l\'Élément', () => {
+    // Le cœur de la phase. C'est descModalSave, et lui seul, qui recopie le brouillon dans
+    // l'Élément — donc « Annuler » continue d'annuler.
+    const o = perso();
+    S.modalTarget = o;
+    openPersonaEditor(o, true);
+    setPersonaEditorJointDeg(torso, 47);
+    applyPersonaEditorToModal();
+    assert.equal(o.joints3d.torsoRotX, 0, 'les articulations de l\'Élément sont intactes');
+  });
+
+  test('RÉGRESSION : le brouillon est une COPIE du brouillon de l\'éditeur', () => {
+    // Partager l'objet ferait que continuer à bouger les curseurs après Appliquer modifierait la
+    // modale à distance, alors que l'éditeur est censé être refermé.
+    S.modalTarget = perso();
+    openPersonaEditor(S.modalTarget, true);
+    setPersonaEditorJointDeg(torso, 47);
+    applyPersonaEditorToModal();
+    setPersonaEditorJointDeg(torso, 90);
+    assert.equal(Math.round(S.modalDraftJoints.torsoRotX * 180 / Math.PI), 47);
+  });
+
+  test('la pose de référence est remontée avec les angles', () => {
+    S.modalTarget = perso();
+    openPersonaEditor(S.modalTarget, true);
+    applyPersonaEditorPose('assis');
+    assert.equal(applyPersonaEditorToModal().key, 'assis');
+  });
+
+  test('mode autonome : Appliquer ne fait RIEN', () => {
+    // Sans modale derrière, il n'y a rien à alimenter — et c'est aussi la condition d'affichage du
+    // bouton (cf. syncPersonaEditorDom).
+    openPersonaEditor(null, false);
+    setPersonaEditorJointDeg(torso, 47);
+    assert.equal(applyPersonaEditorToModal(), null);
+    assert.equal(S.modalDraftJoints, null, 'aucun brouillon de modale n\'est fabriqué');
+  });
+
+  test('éditeur fermé : Appliquer ne fait rien', () => {
+    assert.equal(applyPersonaEditorToModal(), null);
+  });
+
+  test('quitter sans appliquer n\'a aucun effet (5.3)', () => {
+    S.modalTarget = perso();
+    S.modalDraftJoints = { torsoRotX: 0.1 };
+    openPersonaEditor(S.modalTarget, true);
+    setPersonaEditorJointDeg(torso, 88);
+    closePersonaEditor();
+    assert.deepEqual(S.modalDraftJoints, { torsoRotX: 0.1 }, 'le brouillon de la modale est intact');
+  });
+});
+
+describe('poseKeyStillInLibrary — garde contre le piège du <select> (Fix 60)', () => {
+  beforeEach(() => { S.poses = []; });
+
+  test('pose présente : sa clé est reportable', () => {
+    S.poses = [{ id: 'pose1', name: 'X', joints: {} }];
+    assert.equal(poseKeyStillInLibrary('pose1'), 'pose1');
+  });
+
+  test('RÉGRESSION : pose supprimée depuis l\'éditeur → null', () => {
+    // Le piège du Fix 44 par une autre porte : affecter à un <select> une valeur absente de ses
+    // options le laisse VIDE, et la sauvegarde suivante écrirait une chaîne vide dans `position`,
+    // détruisant le nom. Mieux vaut garder l'ancienne valeur du champ.
+    S.poses = [];
+    assert.equal(poseKeyStillInLibrary('pose1'), null);
+  });
+
+  test('clé absente : null', () => {
+    assert.equal(poseKeyStillInLibrary(null), null);
   });
 });

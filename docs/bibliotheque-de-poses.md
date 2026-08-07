@@ -112,6 +112,29 @@ Ordre, dans `poseJointsByKey3D` et `resolvePoseLabel3D` :
 Introuvable dans les deux : étiquette « inconnue », et `position` **reste intact** dans le fichier.
 Écrire « inconnu » détruirait le nom ; en l'état, le Projet se répare seul s'il retrouve la pose.
 
+## Appliquer depuis l'éditeur
+
+`applyPersonaEditorToModal` (events.js) écrit dans **`S.modalDraftJoints`**, jamais dans
+`S.modalTarget`. C'est `descModalSave` qui recopie le brouillon dans l'Élément, et lui seul décide du
+moment — sans quoi « Annuler » n'annulerait plus (le défaut corrigé par le Fix 35 ailleurs).
+
+Ne fait rien sans `S.personaEditorFromModal` : sans modale derrière, il n'y a rien à alimenter. C'est
+aussi la condition d'affichage du bouton, **masqué** et non grisé en mode autonome.
+
+La clé de pose n'est reportée sur le `<select>` que si la bibliothèque la connaît encore
+(`poseKeyStillInLibrary`) — le piège du Fix 44 par une autre porte : une valeur absente des options
+laisse le `<select>` VIDE, et la sauvegarde suivante écrirait une chaîne vide dans `position`.
+
+## `positionLabel` — dernier nom connu
+
+Écrit par `descModalSave`, et **nulle part ailleurs** : c'est le seul moment où l'on touche
+l'Élément, et ça vaut donc aussi pour une pose choisie directement dans le `<select>`.
+
+`resolvePoseLabel3D` ne le lit **que** si la pose est introuvable. Une valeur périmée n'est donc
+jamais affichée tant que le nom faisant autorité existe — et quand il a disparu, un nom périmé vaut
+mieux qu'un id opaque. `nameOfPose3D` renvoie `null` si la pose est introuvable : y écrire un nom
+inventé rendrait le champ mensonger précisément dans le cas où il sert.
+
 ## Ce qui alimente les deux listes de poses
 
 `S.poses` alimente **deux** interfaces, qui doivent rester d'accord :

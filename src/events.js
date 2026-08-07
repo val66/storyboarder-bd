@@ -40,7 +40,7 @@ import {
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
-  rememberDismissedPose3D
+  rememberDismissedPose3D, nameOfPose3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -190,6 +190,7 @@ import {
   getOpenModalEl, captureModalSnapshot, updateSaveButtonState, recomputeModalDirty,
   rotYToSliderDeg, sliderDegToRotY,
   openPersonaModal, closeDescModal, refreshPersonaPreview, makeJointRangeRow,
+  syncJointSlidersFromDraft,
   setModalPoseOptionsBuilder,
   makeAnimalJointRangeRow, highlightAnimalJointRows, openAnimalJointGroupForHandle,
   closeAllAnimalJointSliders, buildAnimalJointSlidersUI,
@@ -605,6 +606,36 @@ export function deletePersonaEditorPose(id){
   return true;
 }
 
+// Fix 60 — « Appliquer » : transfère le travail de l'éditeur vers le BROUILLON de la modale.
+//
+// ⚠️ Jamais directement dans l'Élément. Écrire dans `S.modalTarget` donnerait une modale dont
+// « Annuler » n'annule plus — exactement le défaut que le Fix 35 a corrigé ailleurs. Le brouillon
+// est ce que `descModalSave` recopie dans l'Élément, et lui seul décide du moment.
+//
+// Ne fait rien en mode autonome : sans modale derrière, il n'y a rien à alimenter. C'est aussi la
+// condition d'affichage du bouton (cf. syncPersonaEditorDom).
+//
+// Renvoie la clé de pose à reporter sur le <select> de la modale, ou null si rien n'a été appliqué.
+export function applyPersonaEditorToModal(){
+  if (!S.personaEditorOpen || !S.personaEditorDraft || !S.personaEditorFromModal) return null;
+  S.modalDraftJoints = cloneJoints(S.personaEditorDraft);
+  return { key: S.personaEditorPoseKey || null };
+}
+
+// La clé n'est reportée sur le <select> que si la bibliothèque la connaît ENCORE.
+//
+// Le piège du Fix 44, par une nouvelle porte : affecter à un <select> une valeur absente de ses
+// options le laisse VIDE, et la sauvegarde suivante écrit alors une chaîne vide dans `position`.
+// Le cas se produit si la pose a été supprimée depuis l'éditeur avant d'appliquer. On garde alors la
+// valeur précédente du champ : les angles appliqués ne correspondent plus à ce nom, ce que
+// resolvePoseLabel3D signalera par « (modifié) » — une étiquette imprécise vaut mieux qu'un nom
+// détruit.
+export function poseKeyStillInLibrary(key){
+  if (!key) return null;
+  const poses = Array.isArray(S.poses) ? S.poses : [];
+  return poses.some(p => p && p.id === key) ? key : null;
+}
+
 // Étiquette à afficher pour le brouillon en cours, « (modifié) » compris. Réutilise
 // resolvePoseLabel3D en lui présentant le brouillon sous la forme qu'elle attend d'un Élément :
 // une seule règle de nommage des poses dans l'application, pas deux.
@@ -818,6 +849,11 @@ function syncPersonaEditorDom(){
   const ov = document.getElementById('personaEditorOverlay');
   if (!ov) return;
   ov.classList.toggle('hidden', !S.personaEditorOpen);
+  // Fix 60 — « Appliquer » n'apparaît que s'il y a une modale à alimenter. Masqué, pas grisé : les
+  // deux modes d'ouverture ont des sémantiques différentes, et un bouton grisé laisserait chercher
+  // la condition à remplir pour l'activer.
+  const applyBtn = document.getElementById('personaEditorApplyBtn');
+  if (applyBtn) applyBtn.style.display = S.personaEditorFromModal ? '' : 'none';
   if (S.personaEditorOpen) {
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
@@ -904,6 +940,24 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
     }
     if (!deletePersonaEditorPose(key)) return;
     afterPoseLibraryChange();
+  };
+
+  // Fix 60 — « Appliquer » : alimente le brouillon de la modale, reporte la pose, puis referme
+  // l'éditeur — ce qui réaffiche la modale (cf. hidePersonaEditor).
+  const applyBtn = document.getElementById('personaEditorApplyBtn');
+  if (applyBtn) applyBtn.onclick = () => {
+    const res = applyPersonaEditorToModal();
+    if (!res) return;
+    const sel = document.getElementById('personaPositionSelect');
+    const key = poseKeyStillInLibrary(res.key);
+    if (sel && key) sel.value = key;
+    hidePersonaEditor();
+    // La modale doit MONTRER ce qu'on vient d'appliquer, et son bouton Enregistrer s'activer :
+    // sans ces deux appels, le travail serait bien dans le brouillon mais invisible, et la modale
+    // se croirait inchangée.
+    refreshPersonaPreview();
+    syncJointSlidersFromDraft();
+    recomputeModalDirty();
   };
 
   const resetBtn = document.getElementById('personaEditorResetBtn');
@@ -5799,6 +5853,16 @@ descModalSave.onclick = () => {
     S.modalTarget.genre = personaGenreSelect.value;
     S.modalTarget.emotion = personaEmotionSelect.value;
     S.modalTarget.position = personaPositionSelect.value;
+    // Fix 60 — `positionLabel` : DERNIER NOM CONNU de la pose, écrit ici et nulle part ailleurs.
+    //
+    // resolvePoseLabel3D ne le lit QUE si la pose est introuvable. Une valeur périmée n'est donc
+    // jamais affichée tant que le nom faisant autorité existe — et quand il a disparu, un nom
+    // périmé vaut mieux qu'un id opaque (« pose1 (inconnue) »). Décision reportée depuis la note de
+    // conception, tranchée en phase 4.
+    //
+    // Écrit à la SAUVEGARDE, pas à l'application d'une pose : c'est le seul moment où l'on touche
+    // l'Élément, et ça vaut donc aussi pour une pose choisie directement dans le <select>.
+    S.modalTarget.positionLabel = nameOfPose3D(personaPositionSelect.value, S.poses, POSITIONS);
     S.modalTarget.handL = personaHandLSelect.value;
     S.modalTarget.handR = personaHandRSelect.value;
     S.modalTarget.joints3d = cloneJoints(S.modalDraftJoints);

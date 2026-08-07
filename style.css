@@ -677,6 +677,8 @@ canvas{
                       padding: 10px 16px; background: var(--paper-dark);
                       border-bottom: 1px solid var(--line); }
 .persona-editor-title { font-weight: 600; letter-spacing: .3px; }
+.persona-editor-bar-actions { display: flex; align-items: center; gap: 8px; }
+.persona-editor-bar-actions .full-btn { margin: 0; width: auto; padding: 6px 14px; }
 /* Canevas à gauche, réglages à droite. */
 .persona-editor-body { flex: 1; min-height: 0; display: flex; }
 /* Le canevas occupe tout l'espace restant ; sa résolution de rendu est calculée à part

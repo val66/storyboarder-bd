@@ -349,6 +349,19 @@ export function nextDefaultPoseName3D(poses){
 // que l'utilisateur a supprimée de sa bibliothèque. Sans ce filet, le Personnage serait « inconnue »
 // alors que l'application connaît parfaitement cette pose. Il n'apparaît jamais dans la LISTE, qui
 // vient de la seule bibliothèque : supprimer une pose la fait bien disparaître de l'interface.
+// Fix 60 — nom actuel d'une pose, pour l'enregistrer comme dernier nom connu (`positionLabel`).
+//
+// Même ordre que partout : la bibliothèque fait autorité, les intégrées servent de filet. Renvoie
+// null si la pose est introuvable — écrire un nom inventé serait pire que ne rien écrire, puisque ce
+// champ ne sert qu'à dire ce qu'ON A VU la dernière fois.
+export function nameOfPose3D(key, poses, builtins){
+  if (!key) return null;
+  const custom = (Array.isArray(poses) ? poses : []).find(p => p && p.id === key);
+  if (custom) return custom.name || null;
+  const builtin = (Array.isArray(builtins) ? builtins : []).find(p => p && p.key === key);
+  return (builtin && builtin.label) || null;
+}
+
 export function poseJointsByKey3D(key, poseTable, poses){
   if (!key) return null;
   const custom = (Array.isArray(poses) ? poses : []).find(p => p && p.id === key);

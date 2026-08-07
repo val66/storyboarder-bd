@@ -15,7 +15,7 @@ import {
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
-  rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D,
+  rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -1115,5 +1115,32 @@ describe('forgetDismissedPoses3D', () => {
     assert.deepEqual(forgetDismissedPoses3D(['assis'], ['debout']), ['assis']);
     assert.deepEqual(forgetDismissedPoses3D(null, ['assis']), []);
     assert.deepEqual(forgetDismissedPoses3D(['assis'], null), ['assis']);
+  });
+});
+
+describe('nameOfPose3D — dernier nom connu, pour positionLabel (Fix 60)', () => {
+  const poses = [{ id: 'pose1', name: 'Salut militaire', joints: {} }];
+
+  test('pose du projet : son nom', () => {
+    assert.equal(nameOfPose3D('pose1', poses, POSITIONS), 'Salut militaire');
+  });
+
+  test('pose intégrée non renommée : son libellé', () => {
+    assert.equal(nameOfPose3D('assis', [], POSITIONS), '🪑 Assis');
+  });
+
+  test('la bibliothèque prime : un renommage est bien capturé', () => {
+    // Sinon positionLabel figerait le nom d'usine, et une pose supprimée s'afficherait sous un nom
+    // que l'utilisateur ne reconnaîtrait pas.
+    const renommee = [{ id: 'assis', name: 'Assise en tailleur', joints: {} }];
+    assert.equal(nameOfPose3D('assis', renommee, POSITIONS), 'Assise en tailleur');
+  });
+
+  test('pose introuvable : null, pas un nom inventé', () => {
+    // Ce champ ne sert qu'à dire ce qu'on a VU. Y écrire une valeur par défaut le rendrait mensonger
+    // précisément dans le cas où il est lu — quand la pose a disparu.
+    assert.equal(nameOfPose3D('inexistante', poses, POSITIONS), null);
+    assert.equal(nameOfPose3D(null, poses, POSITIONS), null);
+    assert.equal(nameOfPose3D('pose1', null, null), null);
   });
 });

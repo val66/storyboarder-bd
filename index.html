@@ -42,7 +42,13 @@
 <div id="personaEditorOverlay" class="persona-editor hidden">
   <div class="persona-editor-bar">
     <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
-    <button id="personaEditorCloseBtn" class="danger-btn" type="button">Fermer</button>
+    <div class="persona-editor-bar-actions">
+      <!-- « Appliquer » n'existe QUE si une modale Personnage attend derrière : sans cible, il n'y
+           aurait rien à appliquer. Masqué plutôt que grisé — les deux modes ont des sémantiques
+           différentes, et un bouton grisé laisse croire qu'il manque une condition à remplir. -->
+      <button id="personaEditorApplyBtn" class="full-btn" type="button">Appliquer au Personnage</button>
+      <button id="personaEditorCloseBtn" class="danger-btn" type="button">Fermer</button>
+    </div>
   </div>
   <div class="persona-editor-body">
     <div class="persona-editor-stage">
