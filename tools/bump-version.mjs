@@ -22,6 +22,17 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PACKAGE_JSON = join(ROOT, 'package.json');
 export const VERSION_JS = join(ROOT, 'src', 'version.js');
+// Les README affichent aussi la version. Sans les inclure ici, ils dériveraient dès le commit
+// suivant — un README qui annonce une version fausse est pire que pas de version du tout.
+export const READMES = [join(ROOT, 'README.md'), join(ROOT, 'README.fr.md')];
+// Ligne réécrite dans les README. Motif volontairement strict et sur sa propre ligne, pour ne
+// pouvoir toucher qu'elle.
+export const README_VERSION_RE = /^\*\*Version \d+\.\d+\.\d+\*\*$/m;
+export function renderReadmeVersion(version){ return `**Version ${version}**`; }
+export function readReadmeVersion(file){
+  const m = /^\*\*Version (\d+\.\d+\.\d+)\*\*$/m.exec(readFileSync(file, 'utf8'));
+  return m ? m[1] : null;
+}
 
 export function parseVersion(str){
   const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(str || '').trim());
@@ -83,6 +94,11 @@ function main(){
   const patched = pkg.replace(RE, `$1${next}$2`);
   writeFileSync(PACKAGE_JSON, patched);
   writeFileSync(VERSION_JS, renderVersionModule(next));
+  for (const readme of READMES) {
+    const txt = readFileSync(readme, 'utf8');
+    if (!README_VERSION_RE.test(txt)) throw new Error(`Ligne de version introuvable dans ${readme}`);
+    writeFileSync(readme, txt.replace(README_VERSION_RE, renderReadmeVersion(next)));
+  }
   console.log(`${current} → ${next} (${level})`);
 }
 

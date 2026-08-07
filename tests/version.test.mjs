@@ -3,14 +3,16 @@
 // Deux fichiers portent la version : package.json (source de vérité, et ce dont electron-builder
 // tamponne l'installeur) et src/version.js (généré, lu par le renderer). Le test de cohérence en
 // fin de fichier est le plus important : c'est exactement le genre de double source qui a dérivé
-// quatre fois dans ce projet (Fix 28/30/31/31b, puis Fix 33).
+// quatre fois dans ce projet (Fix 28/30/31/31b, puis Fix 33). Les deux README affichent aussi la
+// version : sans être inclus, ils dériveraient dès le commit suivant.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
   parseVersion, formatVersion, bumpVersion, renderVersionModule,
-  readPackageVersion, readModuleVersion, PACKAGE_JSON, VERSION_JS,
+  readPackageVersion, readModuleVersion, readReadmeVersion,
+  renderReadmeVersion, README_VERSION_RE, PACKAGE_JSON, VERSION_JS, READMES,
 } from '../tools/bump-version.mjs';
 import { APP_VERSION } from '../src/version.js';
 
@@ -87,6 +89,23 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
 
   test('la version de package.json est une version valide', () => {
     assert.doesNotThrow(() => parseVersion(readPackageVersion()));
+  });
+
+  test('les deux README annoncent la même version que package.json', () => {
+    // Sans ce test, un README annonçant une version fausse passerait inaperçu — et c'est la
+    // première chose que lit quelqu'un qui découvre le projet.
+    for (const readme of READMES) {
+      assert.equal(readReadmeVersion(readme), readPackageVersion(), readme);
+    }
+  });
+
+  test('le motif de version des README est strict : une ligne entière, rien d\'autre', () => {
+    assert.match('**Version 1.2.3**', README_VERSION_RE);
+    for (const bad of ['**Version 1.2**', 'Version 1.2.3', '**version 1.2.3**',
+                       'texte **Version 1.2.3** texte']) {
+      assert.doesNotMatch(bad, README_VERSION_RE, bad);
+    }
+    assert.equal(renderReadmeVersion('4.5.6'), '**Version 4.5.6**');
   });
 
   test('src/version.js est bien marqué comme généré, pour dissuader l\'édition à la main', () => {

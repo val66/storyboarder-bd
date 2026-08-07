@@ -2,6 +2,8 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
+**Version 1.0.1**
+
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
 > Standalone Windows desktop app built with Electron + Three.js.
@@ -82,7 +84,7 @@ excluded and why.
 
 ## 🔖 Versioning
 
-`major.minor.patch`, displayed under the project name and in the manual.
+`major.minor.patch`, displayed next to the application name (top left) and at the top of this file.
 
 | Level | When | How |
 |---|---|---|
@@ -94,7 +96,8 @@ A minor bump resets the patch; a major bump resets both. Minor and major release
 (`v1.1.0`).
 
 `package.json` is the source of truth; `src/version.js` is generated from it so the renderer can
-display the version without an IPC round-trip. `tests/version.test.mjs` forbids the two from drifting.
+display the version without an IPC round-trip, and the version line in both READMEs is rewritten by
+the same script. `tests/version.test.mjs` forbids these four files from drifting apart.
 
 ```bash
 npm run setup-hooks   # after a clone: reinstalls the hook (git does not version .git/hooks)

@@ -2,6 +2,8 @@
 
 > 🇬🇧 [English version](README.md)
 
+**Version 1.0.1**
+
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
 > Application de bureau Windows, construite avec Electron + Three.js.
@@ -82,7 +84,8 @@ fichier de test détaille ce qui est exclu et pourquoi.
 
 ## 🔖 Versionnage
 
-Version au format `major.minor.correctif`, affichée sous le nom du Projet et dans le Manuel.
+Version au format `major.minor.correctif`, affichée à côté du nom de l'application (en haut à
+gauche) et en tête de ce fichier.
 
 | Niveau | Quand | Comment |
 |---|---|---|
@@ -94,7 +97,8 @@ Passer une mineure remet le correctif à 0 ; passer une majeure remet les deux �
 Les mineures et majeures sont marquées par un tag git (`v1.1.0`).
 
 `package.json` fait foi ; `src/version.js` en est généré pour que le renderer affiche la version
-sans passer par un IPC. `tests/version.test.mjs` interdit aux deux de diverger.
+sans passer par un IPC, et la ligne de version des deux README est réécrite par le même script.
+`tests/version.test.mjs` interdit à ces quatre fichiers de diverger.
 
 ```bash
 npm run setup-hooks   # après un clone : réinstalle le hook (git ne versionne pas .git/hooks)
