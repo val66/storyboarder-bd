@@ -460,21 +460,33 @@ function exitSceneEditing(){
 // Le brouillon est TOUJOURS une copie (cloneJoints) : partager l'objet d'articulations de l'Élément
 // ferait que bouger un curseur modifierait le Personnage avant tout « Appliquer », et la modale qui
 // l'a ouvert n'aurait plus rien à annuler — exactement ce que le Fix 35 vient de corriger ailleurs.
-export function openPersonaEditor(target){
+// `fromModal` : l'éditeur est ouvert depuis la modale Personnage, qu'on masque le temps de
+// l'édition. closePersonaEditor le signalera pour qu'elle soit ROUVERTE — sans quoi on perd le
+// contexte de travail et, à terme, le bouton « Appliquer » qu'elle portera.
+export function openPersonaEditor(target, fromModal){
   S.personaEditorOpen = true;
+  S.personaEditorFromModal = !!fromModal;
   S.personaEditorTargetId = (target && target.id) || null;
   S.personaEditorDraft = cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
   // Cadrage remis à neuf à chaque ouverture : hériter du zoom de la session précédente ferait
   // apparaître un Personnage hors champ sans que rien n'explique pourquoi.
-  S.personaEditorZoom = 1;
+  // Fix 50 — 0.8 plutôt que 1 : à l'ouverture le Personnage occupait trop le cadre, il faut de la
+  // marge autour pour voir ce qu'on manipule.
+  S.personaEditorZoom = 0.8;
   S.personaEditorPan = { x: 0, y: 0 };
   return S.personaEditorDraft;
 }
 
+// Renvoie true si la modale Personnage doit être rouverte. La décision vit ici, dans la partie
+// sans DOM, pour être testable : la couche qui manipule l'overlay passe par le rendu WebGL, hors
+// de portée de la suite sous Node (cf. docs/methode-de-test.md).
 export function closePersonaEditor(){
+  const backToModal = !!S.personaEditorFromModal;
   S.personaEditorOpen = false;
   S.personaEditorTargetId = null;
   S.personaEditorDraft = null;
+  S.personaEditorFromModal = false;
+  return backToModal;
 }
 
 export function isPersonaEditorOpen(){ return !!S.personaEditorOpen; }
@@ -528,14 +540,20 @@ function syncPersonaEditorDom(){
   if (S.personaEditorOpen) drawPersonaEditor();
 }
 
-export function showPersonaEditor(target){
-  openPersonaEditor(target);
+export function showPersonaEditor(target, fromModal){
+  openPersonaEditor(target, fromModal);
   syncPersonaEditorDom();
 }
 
 export function hidePersonaEditor(){
-  closePersonaEditor();
+  const backToModal = closePersonaEditor();
   syncPersonaEditorDom();
+  // La modale n'a jamais été fermée, seulement masquée : S.modalTarget et tous ses champs sont
+  // intacts, la réafficher suffit à la retrouver exactement dans l'état qu'on avait laissé.
+  if (backToModal) {
+    const dm = document.getElementById('descModal');
+    if (dm) dm.classList.remove('hidden');
+  }
 }
 
 // Fix 49 — caméra de l'éditeur : molette pour zoomer, glisser pour déplacer. Volontairement plus
@@ -567,7 +585,9 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
       // Déplacement en unités monde : divisé par le zoom pour que le Personnage suive la souris
       // à la même vitesse quel que soit le grossissement — sans quoi le glisser devient inutilisable
       // en zoom fort et mou en zoom faible.
-      const k = 0.006 / Math.max(0.01, S.personaEditorZoom);
+      // Fix 50 — 0.0025 au lieu de 0.006 : le glisser partait beaucoup trop vite. Reste divisé
+      // par le zoom pour que la vitesse ressentie ne dépende pas du grossissement.
+      const k = 0.0025 / Math.max(0.01, S.personaEditorZoom);
       S.personaEditorPan = { x: panning.px - (e.clientX - panning.x) * k,
                              y: panning.py + (e.clientY - panning.y) * k };
       drawPersonaEditor();
@@ -5467,7 +5487,7 @@ const personaEditorOpenBtn = document.getElementById('personaEditorOpenBtn');
 if (personaEditorOpenBtn) personaEditorOpenBtn.onclick = () => {
   if (!S.modalTarget) return;
   descModal.classList.add('hidden');
-  showPersonaEditor(S.modalTarget);
+  showPersonaEditor(S.modalTarget, true);
 };
 descModalCancel.onclick = () => dismissModal(closeDescModal);
 descModal.addEventListener('mousedown', (e) => { if (e.target === descModal) { e.stopPropagation(); dismissModal(closeDescModal); } });

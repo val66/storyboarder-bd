@@ -828,3 +828,57 @@ describe('éditeur de Personnage — ouverture et fermeture (Fix 48)', () => {
     assert.equal(personaEditorTarget({ objects: [perso()] }), null, 'éditeur fermé');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 50 — retour à la modale. Ouvrir l'éditeur depuis la modale Personnage la MASQUE ; la
+// refermer doit la retrouver. Sans ça, on perd le contexte de travail et, à terme, le bouton
+// « Appliquer » que cette modale portera.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
+  const perso = () => ({ id: 'e1', type: 'perso', position: 'assis' });
+  beforeEach(() => { closePersonaEditor(); S.selectedId = null; S.editingSceneId = null; });
+
+  test('ouvert depuis la modale : le drapeau de retour est armé', () => {
+    openPersonaEditor(perso(), true);
+    assert.equal(S.personaEditorFromModal, true);
+  });
+
+  test('ouvert sans modale : pas de retour à armer', () => {
+    openPersonaEditor(perso(), false);
+    assert.equal(S.personaEditorFromModal, false);
+    openPersonaEditor(perso());
+    assert.equal(S.personaEditorFromModal, false, 'argument omis = pas de retour');
+  });
+
+  test('fermer signale le retour à la modale, une seule fois', () => {
+    // Sans ce désarmement, refermer un éditeur ouvert en autonome rouvrirait la modale d'un
+    // Personnage édité bien plus tôt.
+    openPersonaEditor(perso(), true);
+    assert.equal(closePersonaEditor(), true, 'le retour est signalé');
+    assert.equal(closePersonaEditor(), false, 'et une seule fois');
+  });
+
+  test('ouvert en autonome : fermer ne demande aucun retour', () => {
+    openPersonaEditor(null);
+    assert.equal(closePersonaEditor(), false);
+  });
+
+  test('le cadrage repart à neuf à chaque ouverture', () => {
+    openPersonaEditor(perso(), true);
+    S.personaEditorZoom = 4;
+    S.personaEditorPan = { x: 9, y: 9 };
+    closePersonaEditor();
+    openPersonaEditor(perso(), true);
+    assert.equal(S.personaEditorZoom, 0.8, 'zoom d\'ouverture');
+    assert.deepEqual(S.personaEditorPan, { x: 0, y: 0 });
+  });
+
+  test('l\'aller-retour ne touche ni la sélection ni la Scène', () => {
+    S.selectedId = 'panel9';
+    S.editingSceneId = 'sc1';
+    openPersonaEditor(perso(), true);
+    closePersonaEditor();
+    assert.equal(S.selectedId, 'panel9');
+    assert.equal(S.editingSceneId, 'sc1');
+  });
+});

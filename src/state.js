@@ -47,6 +47,9 @@ export const S = {
   // zoomerait là-bas : deux vues sur un même état, le motif qui a coûté cher cinq fois ici.
   personaEditorZoom:     1,
   personaEditorPan:      { x: 0, y: 0 },
+  // Fix 50 — l'éditeur a-t-il été ouvert DEPUIS la modale Personnage ? Si oui, la refermer rend la
+  // main à cette modale au lieu de la laisser perdue : c'est elle qui portera « Appliquer ».
+  personaEditorFromModal: false,
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────
