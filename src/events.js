@@ -882,9 +882,13 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
     if (used > 0) {
       const pose = (S.poses || []).find(p => p && p.id === key);
       const nom = (pose && pose.name) || key;
+      // Fix 58 — le message dit désormais que la suppression porte sur la bibliothèque de
+      // l'APPLICATION, pas sur ce seul Projet. Le comptage, lui, ne peut couvrir que le Projet
+      // ouvert : les autres ne sont pas inspectables. Passer cette limite sous silence laisserait
+      // croire que « 2 Personnages » est le total, alors que c'est un minimum.
       const ok = await confirmAction(tr(
-        `The pose "${nom}" is used by ${used} character(s) in this project. Deleting it changes none of them — their joint angles are stored on each character — but the pose name will be lost and shown as unknown. Delete anyway?`,
-        `La pose « ${nom} » est utilisée par ${used} Personnage(s) de ce Projet. La supprimer n'en modifiera aucun — leurs articulations sont enregistrées sur chaque Personnage — mais son nom sera perdu et affiché comme inconnu. Supprimer quand même ?`));
+        `The pose "${nom}" is used by ${used} character(s) in the project currently open. Deleting it removes the pose from your library, which is shared by ALL your projects — others may use it too, and cannot be counted from here. No character is altered: their joint angles are stored on each of them. Only the pose name is lost, and shown as unknown. Delete anyway?`,
+        `La pose « ${nom} » est utilisée par ${used} Personnage(s) du Projet ouvert. La supprimer la retire de votre bibliothèque, partagée par TOUS vos Projets — d'autres peuvent l'utiliser aussi, sans qu'on puisse les compter d'ici. Aucun Personnage n'est modifié : leurs articulations sont enregistrées sur chacun d'eux. Seul le nom de la pose est perdu, et affiché comme inconnu. Supprimer quand même ?`));
       if (!ok) return;
     }
     if (!deletePersonaEditorPose(key)) return;
