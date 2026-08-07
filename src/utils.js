@@ -11,7 +11,7 @@
  * Element helpers: getElementDepth
  */
 
-import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, WALL_PX_PER_UNIT_3D } from './constants.js';
+import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
@@ -137,6 +137,27 @@ export function poseSliderSpecs3D(def){
     { key: def.id + ':x', jointId: def.id, field: def.field, axis: 'x', suffix: ' (avant/arr.)' },
     { key: def.id + ':z', jointId: def.id, field: def.field, axis: 'z', suffix: ' (écart)' },
   ];
+}
+
+// Fix 62 — la pose TELLE QUE LES CURSEURS L'AFFICHENT, sous forme comparable.
+//
+// Répond à « la pose a-t-elle changé ? » en comparant ce que l'utilisateur VOIT, pas les radians
+// sous-jacents. La granularité vient alors des curseurs par construction, au lieu d'une tolérance
+// choisie à la main.
+//
+// C'est ce qui remplace le demi-degré du Fix 61 : les poses sont stockées en radians et valent
+// rarement un compte rond, si bien qu'un aller-retour par les curseurs laissait jusqu'à 0.459°
+// d'écart et faisait croire à un changement. Le seuil décrivait ce symptôme ; la signature en
+// supprime la cause.
+//
+// Même parti pris que captureModalSnapshot (modals.js), qui répond à la même question pour la modale
+// en comparant les valeurs de ses champs de formulaire — dont ces mêmes curseurs. Les deux portées
+// diffèrent (la modale couvre aussi nom, émotion, taille…), mais la granularité est désormais la
+// même des deux côtés, et par le même raisonnement.
+export function poseSliderSignature3D(joints, handles){
+  return (handles || POSE_HANDLES)
+    .flatMap(def => poseSliderSpecs3D(def).map(spec => readPoseSliderDeg3D(joints, spec)))
+    .join('|');
 }
 
 // Valeur d'un curseur, en DEGRÉS ARRONDIS — c'est la seule unité que l'interface manipule, alors que

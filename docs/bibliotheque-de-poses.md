@@ -3,7 +3,7 @@
 > **État actuel du fonctionnement**, pas l'historique des décisions. Le raisonnement qui a mené là —
 > avec ses revirements — est dans [editeur-personnage.md](editeur-personnage.md).
 >
-> À jour du Fix 60.
+> À jour du Fix 62.
 
 ## Où vivent les poses
 
@@ -134,6 +134,35 @@ l'Élément, et ça vaut donc aussi pour une pose choisie directement dans le `<
 jamais affichée tant que le nom faisant autorité existe — et quand il a disparu, un nom périmé vaut
 mieux qu'un id opaque. `nameOfPose3D` renvoie `null` si la pose est introuvable : y écrire un nom
 inventé rendrait le champ mensonger précisément dans le cas où il sert.
+
+## « Y a-t-il quelque chose à faire ? » — deux boutons, deux portées, une granularité
+
+Deux endroits répondent à une question voisine :
+
+| | Question | Portée | Comment |
+|---|---|---|---|
+| Modale Personnage, bouton **Enregistrer** | y a-t-il quelque chose à sauvegarder ? | tous les champs du formulaire — nom, genre, émotion, taille, rotations, **et les curseurs d'articulations** | `captureModalSnapshot` : chaîne construite depuis les `input/select/textarea` de la modale |
+| Éditeur, boutons **Réinitialiser** / **Appliquer** | y a-t-il quelque chose à appliquer ? | les articulations **et** la pose de référence | `poseSliderSignature3D` + comparaison de `S.personaEditorPoseKey` |
+
+Les portées diffèrent réellement : l'éditeur n'a ni nom ni émotion, et la modale ne connaît pas la
+notion de pose de référence. **Les unifier en un seul mécanisme détacherait l'éditeur de ce qu'il
+écrit réellement** (`joints3d`, `position`, `positionLabel`) pour le lier à des widgets.
+
+Ce qui EST commun, et ce qui a été mis en commun (Fix 62) : la **granularité**. Les deux comparent
+désormais la pose telle que les curseurs l'affichent — degrés entiers. Côté modale par construction
+(elle lit les valeurs des `input`), côté éditeur par `poseSliderSignature3D`, bâtie sur les mêmes
+descripteurs `poseSliderSpecs3D`.
+
+Cela a supprimé un seuil inventé : le Fix 61 comparait les radians avec une tolérance d'un
+demi-degré, mesurée sur le pire écart d'arrondi (0.459°). Le seuil décrivait le symptôme ; comparer
+les valeurs affichées supprime la cause.
+
+⚠️ `recomputeModalDirty` se déclenche sur les événements `input`/`change`. Une écriture
+**programmatique** dans `S.modalDraftJoints` — ce que fait « Appliquer » — n'en émet aucun : il faut
+alors appeler explicitement `syncJointSlidersFromDraft()` puis `recomputeModalDirty()`, sinon la
+modale se croit inchangée.
+
+⚠️ `captureModalSnapshot` / `recomputeModalDirty` n'ont **aucun test** à ce jour.
 
 ## Ce qui alimente les deux listes de poses
 

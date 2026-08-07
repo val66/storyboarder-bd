@@ -38,7 +38,7 @@ import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
-  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, jointsEqual3D,
+  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
 } from './utils.js';
@@ -654,17 +654,18 @@ export function poseKeyStillInLibrary(key){
 // (`joints3d` et `position`/`positionLabel`) ; changer pour une pose aux angles identiques laisse
 // donc bel et bien un travail à valider. Cas rare, mais le bouton doit dire la vérité.
 //
-// La tolérance vaut un DEMI-DEGRÉ, la granularité réelle de l'interface. Les curseurs sont gradués au
-// degré entier alors que les poses sont stockées en radians et valent rarement un compte rond :
-// mesuré, un aller-retour par les curseurs sur POSE_3D.assis (0.2 rad) donne 0.459° d'écart. Comparer
-// au bit près laisserait donc les boutons actifs après un simple va-et-vient qui n'a rien changé à
-// l'œil. Aucun écart plus fin n'est atteignable à la souris, il n'y a donc rien à perdre.
-const PERSONA_EDITOR_ANGLE_EPS = 0.5 * Math.PI / 180;
-
+// Fix 62 — comparaison des SIGNATURES DE CURSEURS, plus des radians avec une tolérance choisie à la
+// main. La granularité vient ainsi de l'interface elle-même : deux poses sont « identiques » si tous
+// les curseurs affichent la même chose, ce qui est exactement ce que l'utilisateur constate.
+//
+// Même raisonnement que captureModalSnapshot pour le bouton Enregistrer de la modale, qui compare
+// les valeurs des champs — dont ces mêmes curseurs. Les portées diffèrent (la modale couvre aussi
+// nom, émotion, taille…), mais plus la granularité.
 export function personaEditorHasChanges(){
   if (!S.personaEditorOpen || !S.personaEditorDraft) return false;
   if (S.personaEditorPoseKey !== S.personaEditorBaselineKey) return true;
-  return !jointsEqual3D(S.personaEditorDraft, S.personaEditorBaseline, PERSONA_EDITOR_ANGLE_EPS);
+  return poseSliderSignature3D(S.personaEditorDraft)
+      !== poseSliderSignature3D(S.personaEditorBaseline);
 }
 
 export function personaEditorPoseLabel(){

@@ -10,7 +10,7 @@ import {
   pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -1142,5 +1142,62 @@ describe('nameOfPose3D — dernier nom connu, pour positionLabel (Fix 60)', () =
     assert.equal(nameOfPose3D('inexistante', poses, POSITIONS), null);
     assert.equal(nameOfPose3D(null, poses, POSITIONS), null);
     assert.equal(nameOfPose3D('pose1', null, null), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 62 — la pose telle que les curseurs l'affichent.
+//
+// Remplace la tolérance d'un demi-degré du Fix 61. Celle-ci décrivait un symptôme — les poses sont
+// stockées en radians, les curseurs gradués au degré, d'où un écart résiduel après un aller-retour.
+// Comparer directement les valeurs AFFICHÉES supprime la cause : la granularité vient de l'interface
+// par construction, il n'y a plus de seuil à choisir ni à justifier.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  const handles = [{ id: 'torso', mode: 'hinge', field: 'torsoRotX' }];
+
+  test('deux poses identiques ont la même signature', () => {
+    assert.equal(poseSliderSignature3D({ torsoRotX: 0.5 }, handles),
+                 poseSliderSignature3D({ torsoRotX: 0.5 }, handles));
+  });
+
+  test('RÉGRESSION : un aller-retour par les curseurs ne change pas la signature', () => {
+    // Le cas qui a motivé le correctif. 0.2 rad ≈ 11.46° : le curseur affiche 11, et réécrire 11
+    // donne 0.19198 rad — 0.459° d'écart, que la comparaison en radians voyait comme un changement.
+    const départ = { torsoRotX: 0.2 };
+    const avant = poseSliderSignature3D(départ, handles);
+    const après = {};
+    writePoseSliderDeg3D(après, torso, readPoseSliderDeg3D(départ, torso));
+    assert.notEqual(après.torsoRotX, départ.torsoRotX, 'les radians DIFFÈRENT bien');
+    assert.equal(poseSliderSignature3D(après, handles), avant, 'mais les curseurs affichent pareil');
+  });
+
+  test('un écart d\'UN degré change la signature', () => {
+    // La granularité ne doit pas avaler le plus petit réglage possible.
+    const a = {}; writePoseSliderDeg3D(a, torso, 20);
+    const b = {}; writePoseSliderDeg3D(b, torso, 21);
+    assert.notEqual(poseSliderSignature3D(a, handles), poseSliderSignature3D(b, handles));
+  });
+
+  test('COUVERTURE : la signature couvre TOUS les curseurs du panneau', () => {
+    // Une articulation absente de la signature deviendrait réglable sans que les boutons
+    // Réinitialiser/Appliquer s'en aperçoivent — un travail perdu en silence.
+    const vide = poseSliderSignature3D({});
+    assert.equal(vide.split('|').length, 23, 'les 23 curseurs (cf. poseSliderSpecs3D)');
+  });
+
+  test('chaque articulation compte : modifier n\'importe laquelle se voit', () => {
+    const base = poseSliderSignature3D({});
+    POSE_HANDLES.forEach(def => {
+      poseSliderSpecs3D(def).forEach(spec => {
+        const j = {}; writePoseSliderDeg3D(j, spec, 30);
+        assert.notEqual(poseSliderSignature3D(j), base, `${spec.key} passe inaperçue`);
+      });
+    });
+  });
+
+  test('pose absente : signature stable, pas d\'exception', () => {
+    assert.equal(poseSliderSignature3D(null), poseSliderSignature3D({}));
   });
 });
