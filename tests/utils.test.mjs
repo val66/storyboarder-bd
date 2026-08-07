@@ -13,7 +13,7 @@ import {
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
-  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D,
+  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -906,5 +906,62 @@ describe('personaEditorPoseList3D — filtre par squelette (Fix 55)', () => {
     // bricolé à la main ne doit pas perdre silencieusement ses poses.
     const keys = personaEditorPoseList3D([], poses, 'humain').map(e => e.key);
     assert.ok(keys.includes('p3'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 56 — combien de Personnages portent une pose donnée.
+//
+// Sert uniquement à décider s'il faut demander confirmation avant suppression. Un comptage FAUX ne
+// fait rien planter : il fait disparaître l'avertissement là où il fallait avertir, ou l'affiche
+// pour rien. D'où l'insistance sur la couverture des racines — Tomes ET Scènes, dont l'oubli est
+// l'erreur la plus probable.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('poseUsageCount3D — Personnages citant une pose', () => {
+  const perso = (position) => ({ id: 'e' + Math.random(), type: 'perso', position });
+  const tomes = () => [{
+    id: 't1', pages: [
+      { id: 'p1', objects: [perso('pose1'), perso('assis'), { type: 'objet3d', position: 'pose1' }] },
+      { id: 'p2', objects: [perso('pose1')] },
+    ],
+  }];
+
+  test('compte les Personnages, à travers plusieurs planches', () => {
+    assert.equal(poseUsageCount3D('pose1', tomes()), 2);
+  });
+
+  test('ne compte QUE les Personnages : un Objet portant le même champ est ignoré', () => {
+    // `position` n'est pas exclusif aux Personnages ; sans le filtre sur le type, l'avertissement
+    // annoncerait des Personnages qui n'existent pas.
+    assert.equal(poseUsageCount3D('pose1', [{ pages: [{ objects: [
+      { type: 'objet3d', position: 'pose1' }, { type: 'bulle', position: 'pose1' },
+    ] }] }]), 0);
+  });
+
+  test('RÉGRESSION : les Scènes sont comptées elles aussi', () => {
+    // Les Scènes ont la même forme imbriquée mais vivent dans une AUTRE racine. Les oublier
+    // donnerait un comptage nul, donc une suppression silencieuse là où il fallait avertir.
+    const scenes = [{ id: 'sc1', pages: [{ objects: [perso('pose1'), perso('pose1')] }] }];
+    assert.equal(poseUsageCount3D('pose1', [], scenes), 2);
+    assert.equal(poseUsageCount3D('pose1', tomes(), scenes), 4, 'les deux racines s\'additionnent');
+  });
+
+  test('pose inutilisée, absente ou projet vide : zéro', () => {
+    assert.equal(poseUsageCount3D('pose9', tomes()), 0);
+    assert.equal(poseUsageCount3D('pose1', []), 0);
+    assert.equal(poseUsageCount3D('pose1', null, undefined), 0);
+    assert.equal(poseUsageCount3D(null, tomes()), 0, 'sans id : rien à chercher');
+  });
+
+  test('une pose intégrée se compte comme les autres', () => {
+    assert.equal(poseUsageCount3D('assis', tomes()), 1);
+  });
+
+  test('un cycle dans les données ne fait pas boucler indéfiniment', () => {
+    // Défensif : rien n'en crée aujourd'hui, mais un parcours récursif générique sur des données
+    // libres doit pouvoir en rencontrer sans bloquer l'application.
+    const a = { type: 'perso', position: 'pose1' };
+    a.self = a;
+    assert.equal(poseUsageCount3D('pose1', [a]), 1);
   });
 });

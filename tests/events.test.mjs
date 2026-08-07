@@ -39,6 +39,7 @@ import {
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
+  personaEditorPoseUsage,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1272,5 +1273,41 @@ describe('éditeur de Personnage — bibliothèque en écriture (Fix 55)', () =>
     const nouvelle = savePersonaEditorPose('Nouvelle');
     assert.notEqual(nouvelle.id, 'pose7');
     assert.equal(S.poses.filter(p => p.id === 'pose7').length, 1, 'l\'ancienne est intacte');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 56 — usage d'une pose dans le Projet, pour la confirmation de suppression.
+//
+// Le gestionnaire de clic lui-même n'est pas testable (confirmAction manipule le DOM), d'où la
+// séparation : personaEditorPoseUsage décide, le bouton se contente de demander. Un comptage faux
+// ne fait rien planter — il fait taire l'avertissement là où il fallait avertir, ce qui est
+// précisément ce qu'on ne verrait pas.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — usage d\'une pose dans le Projet (Fix 56)', () => {
+  const perso = (position) => ({ id: 'e' + Math.random(), type: 'perso', position });
+  beforeEach(() => { S.tomes = []; S.scenes = []; });
+
+  test('compte les Personnages des Tomes', () => {
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [perso('pose1'), perso('debout')] }] }];
+    assert.equal(personaEditorPoseUsage('pose1'), 1);
+  });
+
+  test('RÉGRESSION : compte AUSSI ceux des Scènes', () => {
+    // Les Scènes sont une racine distincte de S.tomes. Les oublier ferait disparaître
+    // l'avertissement pour une pose pourtant utilisée.
+    S.scenes = [{ id: 'sc1', pages: [{ objects: [perso('pose1')] }] }];
+    assert.equal(personaEditorPoseUsage('pose1'), 1);
+  });
+
+  test('pose inutilisée : zéro, donc aucune confirmation à demander', () => {
+    // Demander confirmation à chaque suppression userait l'attention et ferait cliquer
+    // « Confirmer » sans lire, y compris le jour où ça compte.
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [perso('debout')] }] }];
+    assert.equal(personaEditorPoseUsage('pose1'), 0);
+  });
+
+  test('projet vide : zéro', () => {
+    assert.equal(personaEditorPoseUsage('pose1'), 0);
   });
 });

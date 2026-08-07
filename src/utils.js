@@ -281,6 +281,33 @@ export function renamePose3D(poses, id, name){
   return list.map(p => (p && p.id === id) ? { ...p, name: clean } : p);
 }
 
+// Fix 56 — combien de Personnages du projet citent cette pose.
+//
+// Sert uniquement à décider s'il faut demander confirmation avant suppression. Supprimer reste sans
+// danger — les angles sont copiés chez chaque Personnage, rien ne se déforme (cf. Fix 55) — mais
+// perdre le NOM d'une pose portée par vingt Personnages mérite un avertissement : c'est ce nom qui
+// dit à l'auteur pourquoi ils sont dans cette position-là.
+//
+// Parcours récursif générique plutôt qu'un chemin figé `tomes[].pages[].objects[]`. Deux raisons :
+// les Scènes ont la même forme imbriquée mais vivent dans une autre racine, et un oubli de branche
+// donnerait un comptage FAUX — donc une suppression silencieuse là où il fallait avertir. Le couple
+// (type 'perso', position) est une signature assez précise pour qu'un balayage large ne compte rien
+// d'autre. Même parti pris que resyncIdCounter (io.js), qui a survécu aux changements de structure.
+export function poseUsageCount3D(poseId, ...roots){
+  if (!poseId) return 0;
+  let n = 0;
+  const seen = new Set(); // garde-fou contre un cycle éventuel dans les données
+  const visit = (v) => {
+    if (Array.isArray(v)) { v.forEach(visit); return; }
+    if (!v || typeof v !== 'object' || seen.has(v)) return;
+    seen.add(v);
+    if (v.type === 'perso' && v.position === poseId) n++;
+    Object.values(v).forEach(visit);
+  };
+  roots.forEach(visit);
+  return n;
+}
+
 export function deletePose3D(poses, id){
   const list = Array.isArray(poses) ? poses : [];
   if (!id || !list.some(p => p && p.id === id)) return null;

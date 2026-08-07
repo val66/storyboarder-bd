@@ -39,7 +39,7 @@ import {
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D,
-  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D
+  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -580,6 +580,13 @@ export function renamePersonaEditorPose(id, name){
 // lui a été appliquée. Au pire son étiquette devient « inconnue », et il garde exactement l'allure
 // qu'il avait. C'est ce qui rend la suppression sans danger, et ce qu'aucune évolution ne doit
 // changer sans y repenser complètement.
+// Fix 56 — nombre de Personnages du projet portant cette pose. Balaye les Tomes ET les Scènes :
+// une Scène a la même forme imbriquée mais vit dans une autre racine, et l'oublier donnerait un
+// comptage nul là où il fallait avertir.
+export function personaEditorPoseUsage(id){
+  return poseUsageCount3D(id, S.tomes, S.scenes);
+}
+
 export function deletePersonaEditorPose(id){
   const next = deletePose3D(S.poses, id);
   if (!next) return false;
@@ -855,10 +862,25 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
     afterPoseLibraryChange();
   };
   const deleteBtn = document.getElementById('personaEditorPoseDeleteBtn');
-  if (deleteBtn) deleteBtn.onclick = () => {
-    // Pas de confirmation : l'opération est sans conséquence sur les Personnages (leurs angles sont
-    // déjà copiés chez eux) et reste annulable en refermant le projet sans enregistrer.
-    if (!deletePersonaEditorPose(S.personaEditorPoseKey)) return;
+  if (deleteBtn) deleteBtn.onclick = async () => {
+    // Fix 56 — confirmation UNIQUEMENT si la pose est portée par des Personnages. Sur une pose que
+    // personne n'utilise, l'opération est sans conséquence : demander à chaque fois userait
+    // l'attention et ferait cliquer « Confirmer » sans lire, y compris le jour où ça compte.
+    //
+    // Ce qui se perd, ce ne sont PAS les positions — les angles sont copiés chez chaque Personnage,
+    // aucun ne bougera. C'est le NOM, celui qui dit à l'auteur pourquoi ils sont posés ainsi. Le
+    // message le dit explicitement, pour que la décision se prenne sur le bon critère.
+    const key = S.personaEditorPoseKey;
+    const used = personaEditorPoseUsage(key);
+    if (used > 0) {
+      const pose = (S.poses || []).find(p => p && p.id === key);
+      const nom = (pose && pose.name) || key;
+      const ok = await confirmAction(tr(
+        `The pose "${nom}" is used by ${used} character(s) in this project. Deleting it changes none of them — their joint angles are stored on each character — but the pose name will be lost and shown as unknown. Delete anyway?`,
+        `La pose « ${nom} » est utilisée par ${used} Personnage(s) de ce Projet. La supprimer n'en modifiera aucun — leurs articulations sont enregistrées sur chaque Personnage — mais son nom sera perdu et affiché comme inconnu. Supprimer quand même ?`));
+      if (!ok) return;
+    }
+    if (!deletePersonaEditorPose(key)) return;
     afterPoseLibraryChange();
   };
 
