@@ -10,7 +10,10 @@
  */
 import { S, tr, createVolume, addPageToVolume } from './state.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
-import { getElementDepth, repairElementBase3D } from './utils.js';
+import {
+  getElementDepth, repairElementBase3D,
+  seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
+} from './utils.js';
 import { WALL_TYPES, WALL_PX_PER_UNIT_3D, PANEL_CAM_DEFAULT_DIST_3D, GROUND_Y_DEFAULT_3D } from './constants.js';
 
 // ── Callbacks injected by app.js (avoids a circular import) ─────────────────
@@ -35,8 +38,65 @@ const _settingsModal = document.getElementById('settingsModal');
 export function hasElectronAPI(){ return !!(window.storyboarderAPI); }
 export function supportsFileSystemAccess(){ return typeof window.showSaveFilePicker === 'function'; }
 
+// Fix 57 — `poses` n'embarque plus la bibliothèque entière, mais SEULEMENT les poses citées par ce
+// projet. La bibliothèque appartient à l'application (settings.json) ; ce que le fichier porte est
+// une copie de secours, pour qu'il reste lisible sur une autre machine — sans quoi un projet envoyé
+// à quelqu'un afficherait « inconnue » sur chacune de ses poses.
+//
+// ⚠️ Le NOM du champ et sa forme ne changent pas : un fichier écrit avant ce changement reste lu à
+// l'identique, et un fichier écrit après reste lisible par une version antérieure. Seule la portée
+// change (cf. docs/donnees-persistees.md).
 export function serializeProject(){
-  return JSON.stringify({ projectName: S.projectName, tomes: S.tomes, currentTomeIndex: S.currentTomeIndex, currentPageIndex: S.currentPageIndex, scenes: S.scenes, poses: S.poses });
+  return JSON.stringify({
+    projectName: S.projectName, tomes: S.tomes,
+    currentTomeIndex: S.currentTomeIndex, currentPageIndex: S.currentPageIndex,
+    scenes: S.scenes, poses: posesUsedByProject3D(S.poses, S.tomes, S.scenes),
+  });
+}
+
+// ── Bibliothèque de poses au niveau APPLICATION (Fix 57) ──────────────────────────────────────
+//
+// Vit dans settings.json (userData), comme le thème ou la langue. Toutes les lectures de
+// l'application se font sur S.poses, de façon SYNCHRONE ; la persistance, elle, est asynchrone et
+// silencieuse. Sans ce découplage, chaque affichage de la liste des poses attendrait une IPC.
+//
+// Sans window.storyboarderAPI — les tests sous Node, notamment — tout continue de fonctionner en
+// mémoire. Une bibliothèque non persistée vaut mieux qu'une exception au démarrage.
+export const POSE_LIBRARY_SETTING_KEY = 'poseLibrary';
+
+export function setPoseLibrary(poses){
+  S.poses = Array.isArray(poses) ? poses : [];
+  // hasElectronAPI ne garantit que la PRÉSENCE de l'objet, pas celle de chaque méthode. Constaté en
+  // test : un pont partiel faisait lever une TypeError synchrone, qui remontait jusqu'à l'appelant et
+  // annulait l'enregistrement de la pose. Perdre la persistance est acceptable, perdre la pose non.
+  const api = hasElectronAPI() ? window.storyboarderAPI : null;
+  if (api && typeof api.setSetting === 'function') {
+    // Volontairement sans await : rien dans l'interface ne dépend de la fin de l'écriture, et
+    // rendre synchrone chaque modification de pose ferait bégayer les curseurs.
+    try {
+      Promise.resolve(api.setSetting(POSE_LIBRARY_SETTING_KEY, S.poses))
+        .catch(() => { /* disque en lecture seule : la session reste utilisable */ });
+    } catch { /* idem */ }
+  }
+  return S.poses;
+}
+
+// Au démarrage. Premier lancement (clé absente) : on SÈME les poses intégrées, qui deviennent des
+// entrées ordinaires — c'est ce qui rend leur traitement uniforme.
+//
+// ⚠️ Une bibliothèque VIDE n'est pas un premier lancement : c'est un utilisateur qui a tout
+// supprimé. Resemer là ferait réapparaître les 15 poses à chaque redémarrage, en annulant sans
+// cesse sa décision. D'où le test sur l'ABSENCE de la clé, pas sur la longueur.
+export async function loadPoseLibrary(builtins, poseTable, skeleton){
+  let stored = null;
+  if (hasElectronAPI()) {
+    try {
+      const settings = await window.storyboarderAPI.getSettings();
+      stored = settings ? settings[POSE_LIBRARY_SETTING_KEY] : null;
+    } catch { stored = null; }
+  }
+  if (Array.isArray(stored)) { S.poses = normalizePoses3D(stored); return S.poses; }
+  return setPoseLibrary(seedPoseLibrary3D(builtins, poseTable, skeleton));
 }
 
 // Derives the Project name from the file name the user picked in the save dialog
@@ -319,7 +379,14 @@ export function applyProjectData(data){
   S.currentTomeIndex = (data && data.currentTomeIndex) || 0;
   S.currentPageIndex = (data && data.currentPageIndex) || 0;
   S.scenes = (data && data.scenes) || [];
-  S.poses = normalizePoses3D(data && data.poses);
+  // Fix 57 — la bibliothèque de poses appartient désormais à l'APPLICATION, pas au projet. Un
+  // fichier n'en porte qu'une copie des poses qu'il utilise, pour rester lisible ailleurs : on
+  // FUSIONNE au lieu de remplacer. Écraser S.poses ici ferait qu'ouvrir un projet effacerait toute
+  // la bibliothèque personnelle — y compris les poses semées au premier lancement.
+  //
+  // La fusion n'ajoute que les ids inconnus (cf. mergePoseLibrary3D) : un projet ancien ne peut donc
+  // pas annuler un renommage fait depuis.
+  setPoseLibrary(mergePoseLibrary3D(S.poses, normalizePoses3D(data && data.poses)));
   S.editingSceneId = null;
   resyncIdCounter(data);
   cleanupOrphanedElements();

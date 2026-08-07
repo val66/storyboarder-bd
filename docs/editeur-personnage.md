@@ -81,10 +81,39 @@ poses: [ { id, name, skeleton, joints } ]
   `poses` aussi, sans quoi une pose créée après chargement peut réutiliser un id déjà pris — et avec
   l'appariement par id, c'est un Personnage qui se retrouve avec la mauvaise pose.
 
-### Réutilisation entre projets
+### Réutilisation entre projets — ~~hors périmètre~~, **REVU (Fix 57)**
 
-Hors périmètre. C'est un besoin distinct (import/export, ou copie dans les réglages appli) à ne pas
-mélanger au premier jet.
+La note excluait ce besoin. Il est revenu au moment où l'utilisateur a constaté que les poses de base
+avaient leurs boutons Renommer/Supprimer grisés, et a posé la bonne question : *si les poses de base
+valent pour toute l'application, pourquoi les miennes seraient-elles limitées à un Projet ?*
+
+L'argument d'uniformité tient. Sa conclusion — « ainsi on pourrait les supprimer sans souci » — ne
+tenait pas : déplacer la bibliothèque au niveau application rend la suppression **plus** risquée,
+puisqu'elle touche alors des Projets que l'application ne peut pas inspecter pour avertir. Et un
+fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait « inconnue » partout.
+
+**Conception retenue** — les deux à la fois :
+
+- **Bibliothèque au niveau Application** (`settings.json`, clé `poseLibrary`). Partagée par tous les
+  Projets.
+- **Les 15 poses intégrées y sont SEMÉES** au premier lancement, avec la clé intégrée comme `id`
+  (`'assis'`, `'debout'`…). Aucune migration : les fichiers existants citent déjà ces clés. Elles
+  deviennent des entrées ordinaires — renommables et supprimables comme les autres.
+- **`POSE_3D` reste consulté APRÈS la bibliothèque**, comme filet : un fichier citant une pose
+  intégrée que l'utilisateur a supprimée continue de résoudre. Il n'apparaît jamais dans la liste,
+  donc supprimer fait bien disparaître la pose de l'interface.
+- **Chaque fichier embarque les poses qu'il utilise** (`posesUsedByProject3D`), et l'ouverture
+  **fusionne** les ids inconnus. Un fichier reste autonome ; un vieux projet ne peut pas annuler un
+  renommage, la fusion n'écrasant jamais une entrée existante.
+
+**Deux surprises assumées, à surveiller à l'usage :**
+
+1. Rouvrir un projet qui utilise une pose qu'on vient de supprimer la fait **réapparaître**. C'est le
+   prix de l'autonomie des fichiers ; le projet a besoin de cette pose, et la resupprimer est à un
+   clic.
+2. Une bibliothèque **vidée** n'est pas resemée au démarrage — le semis ne se déclenche que si la clé
+   de réglage est ABSENTE. Sans cette distinction, les 15 poses réapparaîtraient à chaque
+   redémarrage en annulant la décision de l'utilisateur.
 
 ### Dérive étiquette / valeurs
 

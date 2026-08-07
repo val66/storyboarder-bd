@@ -15,6 +15,19 @@ Jamais renommés, jamais supprimés. Ajouter est permis ; retirer ou renommer ne
 **Niveau projet** — `projectName`, `tomes`, `scenes`, `currentTomeIndex`, `currentPageIndex`,
 `poses` (bibliothèque de poses : `[{ id, name, skeleton, joints }]`).
 
+⚠️ **La portée de `poses` a changé (Fix 57)** sans que son nom ni sa forme bougent : la
+bibliothèque appartient désormais à l'**Application** (`settings.json`, clé `poseLibrary`). Ce que
+le fichier projet porte n'est plus la bibliothèque entière mais une **copie des poses qu'il
+utilise**, pour rester lisible sur une machine qui ne les a pas. À l'ouverture, ces poses sont
+**fusionnées** dans la bibliothèque (ids inconnus seulement — un vieux projet ne peut donc pas
+annuler un renommage). Un fichier écrit avant ce changement reste lu à l'identique, et un fichier
+écrit après reste lisible par une version antérieure.
+
+Les 15 poses intégrées sont **semées** dans la bibliothèque au premier lancement, avec la clé
+intégrée comme `id` (`'assis'`, `'debout'`…) — c'est ce qui évite toute migration des fichiers
+existants. `POSE_3D` reste consulté **après** la bibliothèque, comme filet pour un fichier citant
+une pose intégrée que l'utilisateur a supprimée.
+
 Sur `poses` : aucun Personnage n'en **dépend**. Appliquer une pose copie ses angles dans `joints3d`
 et n'y laisse qu'une référence d'affichage. Supprimer la bibliothèque, ou ouvrir le projet sur une
 machine qui ne l'a pas, ne change l'allure d'aucun Personnage — seule l'étiquette devient

@@ -230,7 +230,11 @@ function ensurePoseOptionExists(select, obj){
     if (select && select.removeChild) select.removeChild(syntheticPoseOption);
     syntheticPoseOption = null;
   }
-  const unknown = unknownPoseKey3D(obj && obj.position);
+  // Fix 57 — les clés connues viennent de la BIBLIOTHÈQUE, qui alimente désormais ce <select>
+  // (cf. buildPersonaPositionOptions). Se référer à POSITIONS ferait injecter une option
+  // « inconnue » pour toute pose personnalisée, pourtant bien présente dans la liste.
+  const unknown = unknownPoseKey3D(obj && obj.position,
+    (Array.isArray(S.poses) ? S.poses : []).map(p => p && p.id).filter(Boolean));
   if (!unknown || !select) return;
   const opt = document.createElement('option');
   opt.value = unknown;
@@ -249,6 +253,9 @@ export function openPersonaModal(obj, isNew){
   personaNameInput.value = obj.name || '';
   personaGenreSelect.value = obj.genre || 'homme';
   personaEmotionSelect.value = obj.emotion || 'neutre';
+  // Fix 57 — la bibliothèque a pu changer depuis la dernière ouverture (pose enregistrée, renommée
+  // ou supprimée dans l'éditeur) : on reconstruit la liste avant de sélectionner une valeur.
+  if (personaPositionOptionsBuilder) personaPositionOptionsBuilder();
   // Fix 44 — l'option synthétique DOIT être posée avant l'affectation : sinon le navigateur laisse
   // le champ vide et la sauvegarde suivante écrase le nom de la pose par une chaîne vide.
   ensurePoseOptionExists(personaPositionSelect, obj);
@@ -990,6 +997,11 @@ personaPreview3D.addEventListener('wheel', (e) => {
 
 // spec.key (cf. poseSliderSpecs3D) -> { spec, input, val, row }. Un curseur = une entrée, y compris
 // pour les articulations qui en portent deux : c'est le descripteur qui dit lequel pilote quel champ.
+// Injecté par events.js (setModalPoseOptionsBuilder) : modals.js est importé PAR events.js, un
+// import direct dans l'autre sens créerait un cycle. Même procédé que setScene3DCallbacks & co.
+let personaPositionOptionsBuilder = null;
+export function setModalPoseOptionsBuilder(fn){ personaPositionOptionsBuilder = fn; }
+
 export const jointSliderRefs = {};
 
 export function makeJointRangeRow(container, labelText, onInput){

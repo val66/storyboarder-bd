@@ -15,9 +15,13 @@ import {
   resyncIdCounter,
   applyProjectData,
   normalizePoses3D,
+  setPoseLibrary, loadPoseLibrary, POSE_LIBRARY_SETTING_KEY,
 } from '../src/io.js';
+// draw.js complète POSE_3D à l'exécution ('allonge', 'vaincu'). Importé explicitement ici parce que
+// le semis de la bibliothèque en dépend — cf. le test d'ordre d'import plus bas.
+import '../src/draw.js';
 import { S } from '../src/state.js';
-import { GROUND_Y_DEFAULT_3D, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
+import { GROUND_Y_DEFAULT_3D, PANEL_CAM_DEFAULT_DIST_3D, POSITIONS, POSE_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -46,10 +50,31 @@ describe('serializeProject — instantané JSON du Projet courant', () => {
                              currentPageIndex: 0, scenes: [], poses: [] });
   });
 
-  test('la bibliothèque de poses est bien enregistrée avec le Projet', () => {
-    S.projectName = 'P'; S.tomes = []; S.currentTomeIndex = 0; S.currentPageIndex = 0; S.scenes = [];
-    S.poses = [{ id: 'pose1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
-    assert.deepEqual(JSON.parse(serializeProject()).poses, S.poses);
+  test('Fix 57 — le fichier n\'embarque QUE les poses que le Projet utilise', () => {
+    // La bibliothèque appartient désormais à l'Application (settings.json). Ce que le fichier porte
+    // est une copie de secours, pour rester lisible sur une autre machine. Embarquer la
+    // bibliothèque entière gonflerait chaque fichier de poses sans rapport avec lui.
+    const utilisee = { id: 'pose1', name: 'Utilisée', skeleton: 'humain', joints: { lElbow: 0.4 } };
+    const inutilisee = { id: 'pose2', name: 'Inutilisée', skeleton: 'humain', joints: {} };
+    S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0; S.scenes = [];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'pose1' },
+    ] }] }];
+    S.poses = [utilisee, inutilisee];
+    assert.deepEqual(JSON.parse(serializeProject()).poses, [utilisee]);
+  });
+
+  test('RÉGRESSION : un fichier envoyé ailleurs porte les noms de ses poses', () => {
+    // Tout l'intérêt de l'embarquement. Sans lui, ouvrir le projet sur une machine dont la
+    // bibliothèque ne contient pas cette pose afficherait « inconnue ».
+    S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0; S.scenes = [];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'pose1' },
+    ] }] }];
+    S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    const emporte = JSON.parse(serializeProject()).poses;
+    assert.equal(emporte[0].name, 'Salut militaire');
+    assert.deepEqual(emporte[0].joints, { lElbow: 0.4 }, 'les angles voyagent aussi');
   });
 });
 
@@ -342,13 +367,154 @@ describe('resyncIdCounter — les ids de poses comptent aussi (Fix 47)', () => {
   });
 });
 
-describe('applyProjectData — la bibliothèque arrive dans S (Fix 47)', () => {
-  test('un projet avec poses les charge ; un projet sans en a une vide', () => {
+describe('applyProjectData — les poses du fichier FUSIONNENT dans la bibliothèque (Fix 57)', () => {
+  test('les poses inconnues du fichier sont ajoutées à la bibliothèque', () => {
+    S.poses = [];
     applyProjectData({ projectName: 'P', tomes: [], scenes: [],
                        poses: [{ id: 'pose1', name: 'maPose', joints: { lElbow: 0.2 } }] });
     assert.equal(S.poses.length, 1);
     assert.equal(S.poses[0].name, 'maPose');
+  });
+
+  test('RÉGRESSION : ouvrir un projet n\'efface pas la bibliothèque personnelle', () => {
+    // La bibliothèque appartient à l'Application. Remplacer S.poses par le contenu du fichier
+    // ferait qu'ouvrir un projet ancien détruirait tout le travail accumulé, poses semées
+    // comprises — et sans le moindre avertissement.
+    S.poses = [{ id: 'debout', name: '🧍 Debout', skeleton: 'humain', joints: {} }];
     applyProjectData({ projectName: 'P', tomes: [] });
-    assert.deepEqual(S.poses, [], 'projet antérieur aux poses : liste vide, pas undefined');
+    assert.equal(S.poses.length, 1, 'projet sans poses : la bibliothèque est intacte');
+    applyProjectData({ projectName: 'P', tomes: [], scenes: [],
+                       poses: [{ id: 'pose1', name: 'Autre', joints: {} }] });
+    assert.deepEqual(S.poses.map(p => p.id), ['debout', 'pose1'], 'ajout, pas remplacement');
+  });
+
+  test('RÉGRESSION : un projet ancien ne peut pas annuler un renommage', () => {
+    // La fusion n'ajoute que les ids ABSENTS. Écraser avec le nom du fichier ferait qu'ouvrir un
+    // vieux projet réverte silencieusement un renommage fait depuis.
+    S.poses = [{ id: 'pose1', name: 'Nom actuel', skeleton: 'humain', joints: {} }];
+    applyProjectData({ projectName: 'P', tomes: [], scenes: [],
+                       poses: [{ id: 'pose1', name: 'Ancien nom', joints: {} }] });
+    assert.equal(S.poses[0].name, 'Nom actuel');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 57 — bibliothèque de poses au niveau APPLICATION (settings.json).
+//
+// Sans window.storyboarderAPI — le cas de ces tests — tout fonctionne en mémoire. C'est délibéré :
+// une bibliothèque non persistée vaut mieux qu'une exception au démarrage, et ça rend le semis
+// testable sans Electron.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('loadPoseLibrary — semis au premier lancement', () => {
+  beforeEach(() => { S.poses = []; });
+
+  test('ORDRE D\'IMPORT : POSE_3D doit être complet avant le semis', () => {
+    // Constaté en écrivant ce test : sans draw.js, POSE_3D n'a que 13 entrées — 'allonge' et
+    // 'vaincu' y sont ajoutées À L'EXÉCUTION (cf. Fix 54). Semer trop tôt priverait définitivement
+    // l'utilisateur des deux poses couchées, sans le moindre signal.
+    //
+    // L'application est correcte : loadPoseLibrary est appelée depuis events.js, qui importe
+    // draw.js. Cette assertion transforme cette dépendance d'ordre, jusqu'ici implicite, en
+    // quelque chose que la suite surveille.
+    assert.equal(Object.keys(POSE_3D).length, POSITIONS.length,
+      'draw.js doit avoir complété POSE_3D — vérifier la chaîne d\'imports de ce fichier');
+  });
+
+  test('sans réglage enregistré : les poses intégrées sont semées', () => {
+    return loadPoseLibrary(POSITIONS, POSE_3D, 'humain').then(() => {
+      assert.equal(S.poses.length, POSITIONS.length, 'les 15, pas seulement les 13 statiques');
+      assert.ok(S.poses.some(p => p.id === 'assis'), 'appariable avec position:\'assis\'');
+      assert.ok(S.poses.some(p => p.id === 'allonge'), 'les poses couchées aussi');
+      assert.ok(S.poses.every(p => p.skeleton === 'humain'));
+    });
+  });
+
+  test('RÉGRESSION : les poses semées portent la CLÉ intégrée comme id', () => {
+    // C'est ce qui évite toute migration : les fichiers déjà enregistrés citent 'assis', 'debout'…
+    return loadPoseLibrary(POSITIONS, POSE_3D, 'humain').then(() => {
+      POSITIONS.forEach(pos => {
+        assert.ok(S.poses.some(p => p.id === pos.key), `${pos.key} appariable`);
+      });
+    });
+  });
+
+  test('la clé de réglage est figée', () => {
+    // ⚠️ Renommer cette clé ferait resemer la bibliothèque et perdre silencieusement toutes les
+    // poses de l'utilisateur, l'ancienne valeur restant orpheline dans settings.json.
+    assert.equal(POSE_LIBRARY_SETTING_KEY, 'poseLibrary');
+  });
+});
+
+describe('setPoseLibrary — écriture en mémoire, persistance silencieuse', () => {
+  test('S.poses reflète immédiatement la nouvelle liste', () => {
+    // Toutes les lectures de l'application sont SYNCHRONES : attendre l'IPC à chaque affichage de
+    // la liste des poses ferait bégayer l'interface.
+    const poses = [{ id: 'pose1', name: 'X', skeleton: 'humain', joints: {} }];
+    assert.deepEqual(setPoseLibrary(poses), poses);
+    assert.deepEqual(S.poses, poses);
+  });
+
+  test('valeur non-tableau : liste vide plutôt qu\'un état incohérent', () => {
+    setPoseLibrary('pas un tableau');
+    assert.deepEqual(S.poses, []);
+    setPoseLibrary(null);
+    assert.deepEqual(S.poses, []);
+  });
+
+  test('sans Electron : aucune exception, la session reste utilisable', () => {
+    assert.doesNotThrow(() => setPoseLibrary([{ id: 'p', joints: {} }]));
+  });
+});
+
+describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () => {
+  // Un faux storyboarderAPI suffit : loadPoseLibrary ne lit que getSettings, et setSetting est
+  // appelé sans await. Restauré après chaque test pour ne pas contaminer les suivants.
+  const withSettings = async (settings, fn) => {
+    const avant = window.storyboarderAPI;
+    window.storyboarderAPI = { getSettings: async () => settings, setSetting: async () => ({ ok: true }) };
+    try { await fn(); } finally { window.storyboarderAPI = avant; }
+  };
+
+  test('RÉGRESSION : une bibliothèque VIDE n\'est pas resemée', async () => {
+    // Vide ≠ premier lancement. Resemer ferait réapparaître les 15 poses à chaque redémarrage, en
+    // annulant sans cesse la décision de l'utilisateur qui les a supprimées. D'où le test sur
+    // l'ABSENCE de la clé, pas sur la longueur de la liste.
+    S.poses = [{ id: 'x', name: 'X', skeleton: 'humain', joints: {} }];
+    await withSettings({ poseLibrary: [] }, async () => {
+      await loadPoseLibrary(POSITIONS, POSE_3D, 'humain');
+      assert.deepEqual(S.poses, [], 'la bibliothèque reste vide, comme voulu');
+    });
+  });
+
+  test('clé ABSENTE : c\'est un premier lancement, on sème', async () => {
+    S.poses = [];
+    await withSettings({ theme: 'sombre' }, async () => {
+      await loadPoseLibrary(POSITIONS, POSE_3D, 'humain');
+      assert.equal(S.poses.length, POSITIONS.length);
+    });
+  });
+
+  test('bibliothèque enregistrée : elle est reprise telle quelle, pas complétée', async () => {
+    // Compléter avec les poses manquantes reviendrait à resemer par la bande, une entrée à la fois.
+    S.poses = [];
+    await withSettings({ poseLibrary: [{ id: 'pose1', name: 'Seule', skeleton: 'humain', joints: {} }] },
+      async () => {
+        await loadPoseLibrary(POSITIONS, POSE_3D, 'humain');
+        assert.deepEqual(S.poses.map(p => p.id), ['pose1']);
+      });
+  });
+
+  test('réglages illisibles, et pont INCOMPLET : on sème quand même', async () => {
+    // Deux pannes à la fois, et c'est voulu : ce pont n'expose que getSettings, qui échoue. La
+    // première version de setPoseLibrary levait alors une TypeError synchrone sur setSetting
+    // absent — elle remontait jusqu'à l'appelant et annulait l'enregistrement de la pose. Perdre
+    // la persistance est acceptable ; perdre la pose que l'utilisateur vient de créer, non.
+    S.poses = [];
+    const avant = window.storyboarderAPI;
+    window.storyboarderAPI = { getSettings: async () => { throw new Error('disque'); } };
+    try {
+      await loadPoseLibrary(POSITIONS, POSE_3D, 'humain');
+      assert.equal(S.poses.length, POSITIONS.length, 'l\'application reste utilisable');
+    } finally { window.storyboarderAPI = avant; }
   });
 });

@@ -84,11 +84,15 @@ export function jointsEqual3D(a, b, eps = 1e-9){
 // Contrepartie de l'id opaque : quand la pose est introuvable, il n'y a rien d'humainement lisible à
 // afficher. `o.positionLabel` — le dernier nom connu, s'il a été enregistré à l'application de la
 // pose — sert alors de repli. Champ facultatif : son absence n'empêche rien, on retombe sur l'id.
+// Fix 57 — la BIBLIOTHÈQUE est consultée en premier, POSITIONS/POSE_3D ne sont plus qu'un filet.
+// Même inversion que poseJointsByKey3D, et pour la même raison : les poses intégrées y sont semées
+// et deviennent renommables. Chercher d'abord dans POSITIONS ferait gagner le nom figé et annulerait
+// tout renommage de « Assis ».
 export function resolvePoseLabel3D(o, poses){
   const key = (o && o.position) || 'debout';
-  const builtin = POSITIONS.find(p => p.key === key);
-  const custom = !builtin && Array.isArray(poses) ? poses.find(p => p && p.id === key) : null;
-  const known = !!(builtin || custom);
+  const custom = Array.isArray(poses) ? poses.find(p => p && p.id === key) : null;
+  const builtin = !custom ? POSITIONS.find(p => p.key === key) : null;
+  const known = !!(custom || builtin);
   if (!known) {
     const shown = (o && o.positionLabel) || key;
     return { key, known: false, modified: false, label: `${shown} (inconnue)` };
@@ -96,9 +100,9 @@ export function resolvePoseLabel3D(o, poses){
 
   // Articulations de référence de cette pose. Sans joints3d, le Personnage EST la pose : rien à
   // signaler. Avec, on compare — c'est ce qui distingue « Assis » de « Assis (modifié) ».
-  const reference = builtin ? POSE_3D[key] : custom.joints;
+  const reference = custom ? custom.joints : POSE_3D[key];
   const modified = !!(o && o.joints3d) && !!reference && !jointsEqual3D(o.joints3d, reference);
-  const base = builtin ? builtin.label : custom.name;
+  const base = custom ? custom.name : builtin.label;
   return { key, known: true, modified, label: modified ? `${base} (modifié)` : base };
 }
 
@@ -244,14 +248,18 @@ export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
 // normalizePoses3D qui ne rejette jamais sur ce critère. Aujourd'hui seuls les humains ont des
 // poses ; le filtre existe pour que le jour où les animaux en auront, aucune pose de chien ne
 // puisse être appliquée à un humain sur d'anciens fichiers.
-export function personaEditorPoseList3D(builtins, poses, skeleton){
-  const list = (builtins || []).map(p => ({ key: p.key, label: p.label, builtin: true }));
-  (Array.isArray(poses) ? poses : []).forEach(p => {
-    if (!p || !p.id) return;
-    if (skeleton && p.skeleton && p.skeleton !== skeleton) return;
-    list.push({ key: p.id, label: p.name || p.id, builtin: false });
-  });
-  return list;
+// Fix 57 — la liste vient de la SEULE bibliothèque. Plus de paramètre `builtins` : les poses
+// intégrées y sont semées au premier lancement (cf. seedPoseLibrary3D) et n'ont plus de statut
+// particulier. C'est ce qui rend le traitement uniforme — tout ce qui s'affiche ici est renommable
+// et supprimable, sans bouton grisé à expliquer.
+//
+// Conséquence directe : une pose supprimée disparaît vraiment de la liste, même intégrée. Elle reste
+// résoluble via POSE_3D pour les fichiers qui la citent (cf. poseJointsByKey3D), mais n'est plus
+// proposée — ce qui est exactement ce qu'on attend d'une suppression.
+export function personaEditorPoseList3D(poses, skeleton){
+  return (Array.isArray(poses) ? poses : [])
+    .filter(p => p && p.id && !(skeleton && p.skeleton && p.skeleton !== skeleton))
+    .map(p => ({ key: p.id, label: p.name || p.id }));
 }
 
 // Fix 55 — écritures sur la bibliothèque. Toutes RENVOIENT UNE NOUVELLE LISTE au lieu de modifier
@@ -330,12 +338,67 @@ export function nextDefaultPoseName3D(poses){
 //
 // `poseTable` est lue à l'APPEL et non capturée au chargement, toujours pour la raison ci-dessus :
 // deux de ses entrées n'existent qu'une fois draw.js chargé.
+// Fix 57 — LA BIBLIOTHÈQUE FAIT AUTORITÉ, `poseTable` n'est qu'un filet.
+//
+// Inversion de l'ordre par rapport au Fix 54, et c'est le cœur du changement de conception : les
+// poses intégrées sont désormais SEMÉES dans la bibliothèque (cf. seedPoseLibrary3D), où elles
+// deviennent des entrées ordinaires — renommables et supprimables comme les autres. Consulter
+// POSE_3D en premier annulerait tout renommage de « Assis », puisque la table figée gagnerait.
+//
+// POSE_3D reste consulté APRÈS, et sert exactement à un cas : un fichier citant une pose intégrée
+// que l'utilisateur a supprimée de sa bibliothèque. Sans ce filet, le Personnage serait « inconnue »
+// alors que l'application connaît parfaitement cette pose. Il n'apparaît jamais dans la LISTE, qui
+// vient de la seule bibliothèque : supprimer une pose la fait bien disparaître de l'interface.
 export function poseJointsByKey3D(key, poseTable, poses){
   if (!key) return null;
-  const builtin = poseTable && poseTable[key];
-  if (builtin) return builtin;
   const custom = (Array.isArray(poses) ? poses : []).find(p => p && p.id === key);
-  return (custom && custom.joints) || null;
+  if (custom && custom.joints) return custom.joints;
+  return (poseTable && poseTable[key]) || null;
+}
+
+// Fix 57 — convertit les poses intégrées en entrées de bibliothèque, au premier lancement.
+//
+// ⚠️ L'id vaut la CLÉ intégrée ('debout', 'assis'…), pas un newId(). C'est ce qui fait que tous les
+// fichiers déjà enregistrés — qui contiennent `position: 'assis'` — continuent de résoudre sans
+// migration ni cas particulier. Aucune collision possible avec les poses créées ensuite,
+// newId('pose') produisant « pose1 », « pose2 »…
+//
+// Une clé sans angles dans la table est ignorée : elle donnerait une entrée inapplicable. ⚠️ Appeler
+// APRÈS le chargement de draw.js, qui complète POSE_3D avec 'allonge' et 'vaincu' (cf. Fix 54).
+export function seedPoseLibrary3D(builtins, poseTable, skeleton){
+  return (builtins || [])
+    .filter(p => p && p.key && poseTable && poseTable[p.key])
+    .map(p => makePose3D(p.key, p.label, poseTable[p.key], skeleton));
+}
+
+// Fusionne des poses entrantes (celles embarquées dans un fichier projet) dans la bibliothèque.
+//
+// N'ajoute QUE les ids absents : une pose déjà connue garde le nom de la bibliothèque, qui est celui
+// que l'utilisateur a choisi. Écraser avec le nom du fichier ferait qu'ouvrir un vieux projet
+// annulerait silencieusement un renommage.
+//
+// Conséquence assumée : rouvrir un projet qui utilise une pose qu'on vient de supprimer la fait
+// réapparaître. C'est le prix de fichiers qui se décrivent eux-mêmes, et c'est le bon compromis —
+// le projet a besoin de cette pose, et la resupprimer reste à un clic.
+export function mergePoseLibrary3D(library, incoming){
+  const list = Array.isArray(library) ? [...library] : [];
+  const known = new Set(list.map(p => p && p.id).filter(Boolean));
+  (Array.isArray(incoming) ? incoming : []).forEach(p => {
+    if (!p || !p.id || known.has(p.id)) return;
+    known.add(p.id);
+    list.push(p);
+  });
+  return list;
+}
+
+// Poses à EMBARQUER dans un fichier projet : celles que ses Personnages citent réellement.
+//
+// C'est ce qui garde un fichier autonome — envoyé à quelqu'un ou rouvert sur une autre machine, il
+// porte les noms de ses propres poses. Embarquer la bibliothèque entière gonflerait chaque fichier
+// de poses sans rapport avec lui ; n'en embarquer aucune ferait afficher « inconnue » partout.
+export function posesUsedByProject3D(library, ...roots){
+  return (Array.isArray(library) ? library : [])
+    .filter(p => p && p.id && poseUsageCount3D(p.id, ...roots) > 0);
 }
 
 // ══════════════════════════════════════════════════════════════

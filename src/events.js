@@ -143,6 +143,7 @@ import {
   openRenameEntityModal, closeRenameEntityModal, confirmRenameEntity,
   confirmAction, alertAction, settleConfirmAction,
   openQuitConfirmModal, closeQuitConfirmModal,
+  setPoseLibrary, loadPoseLibrary,
 } from './io.js';
 import {
   setDrawCallbacks,
@@ -187,6 +188,7 @@ import {
   getOpenModalEl, captureModalSnapshot, updateSaveButtonState, recomputeModalDirty,
   rotYToSliderDeg, sliderDegToRotY,
   openPersonaModal, closeDescModal, refreshPersonaPreview, makeJointRangeRow,
+  setModalPoseOptionsBuilder,
   makeAnimalJointRangeRow, highlightAnimalJointRows, openAnimalJointGroupForHandle,
   closeAllAnimalJointSliders, buildAnimalJointSlidersUI,
   openObjectModal, closeObjectModal, refreshObjectPreview, drawAnimalJointHandlesOverlay,
@@ -564,7 +566,7 @@ export function savePersonaEditorPose(name){
   const pose = makePose3D(newId('pose'),
     (typeof name === 'string' && name.trim()) ? name : nextDefaultPoseName3D(S.poses),
     S.personaEditorDraft, PERSONA_SKELETON_3D);
-  S.poses = [...(Array.isArray(S.poses) ? S.poses : []), pose];
+  setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), pose]);
   S.personaEditorPoseKey = pose.id;
   return pose;
 }
@@ -572,7 +574,7 @@ export function savePersonaEditorPose(name){
 export function renamePersonaEditorPose(id, name){
   const next = renamePose3D(S.poses, id, name);
   if (!next) return false;
-  S.poses = next;
+  setPoseLibrary(next);
   return true;
 }
 
@@ -590,7 +592,7 @@ export function personaEditorPoseUsage(id){
 export function deletePersonaEditorPose(id){
   const next = deletePose3D(S.poses, id);
   if (!next) return false;
-  S.poses = next;
+  setPoseLibrary(next);
   // L'étiquette du brouillon n'est PAS effacée : elle deviendra « (inconnue) » à l'affichage, ce qui
   // dit la vérité — la pose citée n'existe plus — sans rien détruire ni modifier la pose du
   // Personnage. Effacer la clé ferait perdre l'information qu'on venait de cette pose-là.
@@ -754,7 +756,7 @@ export function buildPersonaEditorPosesUI(){
   if (!container) return;
   container.innerHTML = '';
   Object.keys(personaEditorPoseBtns).forEach(k => delete personaEditorPoseBtns[k]);
-  personaEditorPoseList3D(POSITIONS, S.poses, PERSONA_SKELETON_3D).forEach(entry => {
+  personaEditorPoseList3D(S.poses, PERSONA_SKELETON_3D).forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = entry.label;
@@ -780,13 +782,15 @@ export function syncPersonaEditorPoseLabel(){
   Object.keys(personaEditorPoseBtns).forEach(k => {
     personaEditorPoseBtns[k].classList.toggle('active', k === S.personaEditorPoseKey);
   });
-  // Fix 55 — Renommer/Supprimer ne valent que pour une pose DU PROJET. Les poses intégrées sont
-  // partagées par tous les projets et codées en dur : les proposer à la modification promettrait
-  // quelque chose que l'application ne peut pas tenir.
-  const custom = !!(Array.isArray(S.poses) && S.poses.some(p => p && p.id === S.personaEditorPoseKey));
+  // Fix 57 — plus aucune pose n'a de statut particulier : les intégrées sont semées dans la
+  // bibliothèque et se renomment comme les autres. Reste une seule condition, qui n'a rien d'un
+  // statut : agir sur une pose ABSENTE de la bibliothèque n'a pas de sens. C'est le cas d'un
+  // Personnage citant une pose supprimée — l'étiquette dit « inconnue », il n'y a rien à renommer.
+  const dansLaBibliotheque = !!(Array.isArray(S.poses)
+    && S.poses.some(p => p && p.id === S.personaEditorPoseKey));
   ['personaEditorPoseRenameBtn', 'personaEditorPoseDeleteBtn'].forEach(id => {
     const btn = document.getElementById(id);
-    if (btn) btn.disabled = !custom;
+    if (btn) btn.disabled = !dansLaBibliotheque;
   });
 }
 
@@ -847,6 +851,9 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
   const afterPoseLibraryChange = () => {
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
+    // Fix 57 — le <select> de la modale Personnage lit la même bibliothèque : le laisser en arrière
+    // ferait deux listes de poses qui divergent, celle de l'éditeur et celle de la modale.
+    buildPersonaPositionOptions();
   };
   const saveBtn = document.getElementById('personaEditorPoseSaveBtn');
   if (saveBtn) saveBtn.onclick = () => {
@@ -5717,11 +5724,24 @@ EMOTIONS.forEach(em => {
   opt.value = em.key; opt.textContent = em.label;
   personaEmotionSelect.appendChild(opt);
 });
-POSITIONS.forEach(pos => {
-  const opt = document.createElement('option');
-  opt.value = pos.key; opt.textContent = pos.label;
-  personaPositionSelect.appendChild(opt);
-});
+// Fix 57 — le <select> Position vient de la BIBLIOTHÈQUE, plus de POSITIONS. Sans quoi renommer
+// « Assis » dans l'éditeur laisserait l'ancien nom ici, et les poses personnalisées resteraient
+// inaccessibles depuis la modale — deux listes de poses qui divergent.
+// Reconstruit à chaque ouverture de la modale : la bibliothèque change au fil des enregistrements.
+export function buildPersonaPositionOptions(){
+  const sel = personaPositionSelect;
+  if (!sel) return;
+  sel.innerHTML = '';
+  personaEditorPoseList3D(S.poses, PERSONA_SKELETON_3D).forEach(entry => {
+    const opt = document.createElement('option');
+    opt.value = entry.key; opt.textContent = entry.label;
+    sel.appendChild(opt);
+  });
+}
+buildPersonaPositionOptions();
+// Branché sur l'ouverture de la modale Personnage : modals.js ne peut pas importer events.js
+// (ce serait un cycle), il reçoit donc la fonction. Même procédé que setScene3DCallbacks & co.
+setModalPoseOptionsBuilder(buildPersonaPositionOptions);
 HAND_STATES.forEach(hs => {
   [personaHandLSelect, personaHandRSelect].forEach(sel => {
     const opt = document.createElement('option');
@@ -5746,7 +5766,8 @@ personaEmotionSelect.addEventListener('change', refreshPersonaPreview);
 personaHandLSelect.addEventListener('change', refreshPersonaPreview);
 personaHandRSelect.addEventListener('change', refreshPersonaPreview);
 personaPositionSelect.addEventListener('change', () => {
-  S.modalDraftJoints = cloneJoints(POSE_3D[personaPositionSelect.value] || POSE_3D.debout);
+  S.modalDraftJoints = cloneJoints(
+    poseJointsByKey3D(personaPositionSelect.value, POSE_3D, S.poses) || POSE_3D.debout);
   refreshPersonaPreview();
 });
 [personaRotYInput, personaRotXInput, personaRotZInput].forEach(el => el.addEventListener('input', refreshPersonaPreview));
@@ -7533,6 +7554,11 @@ function renderAppVersion(){
 renderAppVersion();
 
 async function loadAppSettings(){
+  // Fix 57 — la bibliothèque de poses est un réglage d'Application, au même titre que le thème.
+  // Chargée AVANT tout le reste, et hors du garde hasElectronAPI ci-dessous : sans Electron, elle
+  // doit quand même être semée en mémoire, sans quoi la liste des poses serait vide.
+  await loadPoseLibrary(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
+  buildPersonaPositionOptions();
   if (!hasElectronAPI()) { applyI18n(S.appLang); return; }
   try {
     const settings = await window.storyboarderAPI.getSettings();

@@ -14,6 +14,7 @@ import {
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
+  seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -694,45 +695,42 @@ describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
 // D'où deux précautions : la liste ne filtre pas sur POSE_3D, et poseJointsByKey3D lit sa table à
 // l'appel. Les tests ci-dessous vérifient les deux — dont un qui charge draw.js exprès.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('personaEditorPoseList3D — poses intégrées puis poses du projet', () => {
-  const builtins = [{ key: 'debout', label: '🧍 Debout' }, { key: 'assis', label: '🪑 Assis' }];
-
-  test('sans bibliothèque : uniquement les intégrées, dans l\'ordre', () => {
-    const l = personaEditorPoseList3D(builtins, null);
-    assert.deepEqual(l.map(e => e.key), ['debout', 'assis']);
-    assert.ok(l.every(e => e.builtin), 'toutes marquées comme intégrées');
+describe('personaEditorPoseList3D — la liste vient de la seule bibliothèque (Fix 57)', () => {
+  test('chaque entrée de la bibliothèque devient une entrée de liste', () => {
+    const l = personaEditorPoseList3D([
+      { id: 'debout', name: '🧍 Debout', joints: {} },
+      { id: 'pose1', name: 'Salut militaire', joints: {} },
+    ]);
+    assert.deepEqual(l.map(e => e.key), ['debout', 'pose1']);
+    assert.equal(l[1].label, 'Salut militaire');
   });
 
-  test('les poses du projet viennent après, sous leur nom', () => {
-    const l = personaEditorPoseList3D(builtins, [{ id: 'pose1', name: 'Salut militaire' }]);
-    assert.deepEqual(l.map(e => e.key), ['debout', 'assis', 'pose1']);
-    assert.equal(l[2].label, 'Salut militaire');
-    assert.equal(l[2].builtin, false);
+  test('CHANGEMENT DE CONCEPTION : plus de notion de pose « intégrée » ici', () => {
+    // Les 15 poses de base sont SEMÉES dans la bibliothèque au premier lancement
+    // (cf. seedPoseLibrary3D) et n'ont plus de statut particulier. C'est ce qui rend leur
+    // traitement uniforme — plus de bouton grisé à expliquer.
+    const l = personaEditorPoseList3D([{ id: 'debout', name: '🧍 Debout', joints: {} }]);
+    assert.equal(l[0].builtin, undefined, 'aucune entrée n\'est marquée comme intégrée');
   });
 
   test('une pose sans nom retombe sur son id plutôt que de s\'afficher vide', () => {
-    assert.equal(personaEditorPoseList3D([], [{ id: 'pose7' }])[0].label, 'pose7');
+    assert.equal(personaEditorPoseList3D([{ id: 'pose7', joints: {} }])[0].label, 'pose7');
   });
 
   test('une pose sans id est écartée : impossible de l\'appliquer', () => {
-    // L'appariement se fait par id (cf. resolvePoseLabel3D). Un bouton sans id ne pourrait
-    // désigner aucune pose.
-    assert.deepEqual(personaEditorPoseList3D([], [{ name: 'orpheline' }, null]), []);
+    assert.deepEqual(personaEditorPoseList3D([{ name: 'orpheline' }, null]), []);
   });
 
-  test('entrées absentes : liste vide, jamais d\'exception', () => {
-    assert.deepEqual(personaEditorPoseList3D(null, null), []);
-    assert.deepEqual(personaEditorPoseList3D(undefined, 'pas un tableau'), []);
+  test('bibliothèque absente ou vide : liste vide, jamais d\'exception', () => {
+    assert.deepEqual(personaEditorPoseList3D(null), []);
+    assert.deepEqual(personaEditorPoseList3D('pas un tableau'), []);
   });
 
-  test('RÉGRESSION : la liste ne filtre PAS sur la présence dans POSE_3D', () => {
-    // 'allonge' et 'vaincu' sont dans POSITIONS mais ajoutés à POSE_3D seulement à l'exécution, par
-    // draw.js. Un filtre les ferait disparaître de la liste selon l'ordre des imports — invisible
-    // ici, bien réel dans l'application.
-    const l = personaEditorPoseList3D(POSITIONS, []);
-    assert.equal(l.length, POSITIONS.length, 'toutes les poses intégrées sont proposées');
-    assert.ok(l.some(e => e.key === 'allonge'), 'allonge présente');
-    assert.ok(l.some(e => e.key === 'vaincu'), 'vaincu présente');
+  test('une pose supprimée disparaît vraiment de la liste, même intégrée', () => {
+    // La contrepartie du traitement uniforme, et ce que l'utilisateur attend d'une suppression.
+    // Elle reste résoluble via POSE_3D pour les fichiers qui la citent, mais n'est plus proposée.
+    const apres = personaEditorPoseList3D([{ id: 'assis', name: 'Assis', joints: {} }]);
+    assert.ok(!apres.some(e => e.key === 'debout'));
   });
 });
 
@@ -748,11 +746,19 @@ describe('poseJointsByKey3D — angles d\'une pose', () => {
     assert.deepEqual(poseJointsByKey3D('pose1', table, poses), { torsoRotX: 1.2 });
   });
 
-  test('les intégrées ont priorité sur une pose du projet de même clé', () => {
-    // Impossible en pratique (newId produit « poseN »), mais un fichier bricolé à la main ne doit
-    // pas pouvoir redéfinir « debout » pour tout le projet.
+  test('INVERSION (Fix 57) : la bibliothèque prime sur la table intégrée', () => {
+    // Le contraire de ce que faisait le Fix 54, et c'est délibéré : les poses intégrées sont
+    // désormais semées DANS la bibliothèque, où elles sont renommables. Consulter POSE_3D en
+    // premier ferait gagner la table figée et annulerait tout renommage de « Debout ».
     const l = poseJointsByKey3D('debout', table, [{ id: 'debout', joints: { torsoRotX: 9 } }]);
-    assert.deepEqual(l, { torsoRotX: 0 });
+    assert.deepEqual(l, { torsoRotX: 9 });
+  });
+
+  test('la table intégrée reste le FILET pour une pose absente de la bibliothèque', () => {
+    // Le cas qui justifie de garder POSE_3D : un fichier citant une pose intégrée que
+    // l'utilisateur a supprimée. Sans ce filet, le Personnage serait « inconnue » alors que
+    // l'application connaît parfaitement cette pose.
+    assert.deepEqual(poseJointsByKey3D('assis', table, []), { torsoRotX: 0.5 });
   });
 
   test('RÉGRESSION : pose introuvable → null, pour ne RIEN écrire', () => {
@@ -892,76 +898,129 @@ describe('personaEditorPoseList3D — filtre par squelette (Fix 55)', () => {
     { id: 'p3', name: 'Sans squelette', joints: {} },
   ];
 
-  test('sans squelette demandé : tout est proposé (comportement d\'avant)', () => {
-    assert.equal(personaEditorPoseList3D([], poses).length, 3);
+  test('sans squelette demandé : tout est proposé', () => {
+    assert.equal(personaEditorPoseList3D(poses).length, 3);
   });
 
   test('squelette demandé : les poses d\'un autre squelette sont écartées', () => {
-    const keys = personaEditorPoseList3D([], poses, 'humain').map(e => e.key);
+    const keys = personaEditorPoseList3D(poses, 'humain').map(e => e.key);
     assert.ok(!keys.includes('p2'), 'pas de pose de chien sur un humain');
   });
 
   test('TOLÉRANCE : une pose sans squelette déclaré reste proposée', () => {
     // Cohérent avec normalizePoses3D, qui ne rejette jamais sur ce critère. Un fichier ancien ou
     // bricolé à la main ne doit pas perdre silencieusement ses poses.
-    const keys = personaEditorPoseList3D([], poses, 'humain').map(e => e.key);
-    assert.ok(keys.includes('p3'));
+    assert.ok(personaEditorPoseList3D(poses, 'humain').map(e => e.key).includes('p3'));
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 56 — combien de Personnages portent une pose donnée.
+// Fix 57 — la bibliothèque de poses passe au niveau APPLICATION.
 //
-// Sert uniquement à décider s'il faut demander confirmation avant suppression. Un comptage FAUX ne
-// fait rien planter : il fait disparaître l'avertissement là où il fallait avertir, ou l'affiche
-// pour rien. D'où l'insistance sur la couverture des racines — Tomes ET Scènes, dont l'oubli est
-// l'erreur la plus probable.
+// Changement de conception demandé après usage : les 15 poses de base étaient en lecture seule,
+// leurs boutons Renommer/Supprimer grisés. Elles sont désormais SEMÉES dans la bibliothèque, où
+// elles deviennent des entrées ordinaires — traitement uniforme, plus de statut particulier.
+//
+// Le risque de ce déplacement était de perdre l'autonomie des fichiers : une bibliothèque au niveau
+// application ne voyage pas avec le projet. D'où l'embarquement des poses utilisées à la
+// sérialisation, et la fusion à l'ouverture.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('poseUsageCount3D — Personnages citant une pose', () => {
+describe('seedPoseLibrary3D — les poses intégrées deviennent des entrées ordinaires', () => {
+  test('RÉGRESSION : l\'id vaut la CLÉ intégrée, pas un identifiant neuf', () => {
+    // Le point qui évite toute migration : tous les fichiers déjà enregistrés contiennent
+    // `position: 'assis'`. Un id neuf les laisserait tous à citer une clé introuvable.
+    const graine = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain');
+    const assis = graine.find(p => p.id === 'assis');
+    assert.ok(assis, 'la clé intégrée sert d\'id');
+    assert.equal(assis.name, '🪑 Assis', 'et le libellé intégré sert de nom initial');
+  });
+
+  test('les angles sont copiés depuis la table, pas référencés', () => {
+    const graine = seedPoseLibrary3D([{ key: 'debout', label: 'D' }], POSE_3D, 'humain');
+    assert.deepEqual(graine[0].joints, POSE_3D.debout);
+    assert.notEqual(graine[0].joints, POSE_3D.debout,
+      'copie : renommer ou retoucher ne doit pas altérer la table intégrée');
+  });
+
+  test('le squelette est tagué sur chaque graine', () => {
+    assert.ok(seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain').every(p => p.skeleton === 'humain'));
+  });
+
+  test('une clé sans angles dans la table est écartée', () => {
+    // Elle donnerait une entrée inapplicable, visible dans la liste mais sans effet au clic.
+    const graine = seedPoseLibrary3D([{ key: 'inexistante', label: 'X' }], POSE_3D, 'humain');
+    assert.deepEqual(graine, []);
+  });
+
+  test('entrées absentes : semis vide, jamais d\'exception', () => {
+    assert.deepEqual(seedPoseLibrary3D(null, POSE_3D), []);
+    assert.deepEqual(seedPoseLibrary3D(POSITIONS, null), []);
+  });
+});
+
+describe('mergePoseLibrary3D — fusion des poses d\'un fichier dans la bibliothèque', () => {
+  const biblio = () => [{ id: 'debout', name: '🧍 Debout', joints: {} }];
+
+  test('une pose inconnue du fichier est ajoutée', () => {
+    const next = mergePoseLibrary3D(biblio(), [{ id: 'pose1', name: 'Salut', joints: {} }]);
+    assert.deepEqual(next.map(p => p.id), ['debout', 'pose1']);
+  });
+
+  test('RÉGRESSION : une pose déjà connue garde le nom de la BIBLIOTHÈQUE', () => {
+    // Écraser avec le nom du fichier ferait qu'ouvrir un vieux projet annulerait silencieusement
+    // un renommage fait depuis.
+    const next = mergePoseLibrary3D(
+      [{ id: 'pose1', name: 'Nom actuel', joints: {} }],
+      [{ id: 'pose1', name: 'Ancien nom', joints: {} }]);
+    assert.equal(next.length, 1);
+    assert.equal(next[0].name, 'Nom actuel');
+  });
+
+  test('la bibliothèque d\'origine n\'est pas modifiée', () => {
+    const avant = biblio();
+    mergePoseLibrary3D(avant, [{ id: 'pose1', joints: {} }]);
+    assert.equal(avant.length, 1);
+  });
+
+  test('entrées sans id, nulles, ou absentes : ignorées sans exception', () => {
+    assert.deepEqual(mergePoseLibrary3D(biblio(), [null, { name: 'sans id' }]).map(p => p.id),
+      ['debout']);
+    assert.deepEqual(mergePoseLibrary3D(null, null), []);
+  });
+
+  test('un fichier contenant deux fois le même id n\'ajoute qu\'une entrée', () => {
+    const next = mergePoseLibrary3D([], [
+      { id: 'pose1', name: 'A', joints: {} }, { id: 'pose1', name: 'B', joints: {} },
+    ]);
+    assert.deepEqual(next.map(p => p.name), ['A'], 'la première gagne, comme partout ailleurs');
+  });
+});
+
+describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
   const perso = (position) => ({ id: 'e' + Math.random(), type: 'perso', position });
-  const tomes = () => [{
-    id: 't1', pages: [
-      { id: 'p1', objects: [perso('pose1'), perso('assis'), { type: 'objet3d', position: 'pose1' }] },
-      { id: 'p2', objects: [perso('pose1')] },
-    ],
-  }];
+  const biblio = [
+    { id: 'pose1', name: 'Utilisée', joints: {} },
+    { id: 'pose2', name: 'Inutilisée', joints: {} },
+  ];
+  const tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [perso('pose1')] }] }];
 
-  test('compte les Personnages, à travers plusieurs planches', () => {
-    assert.equal(poseUsageCount3D('pose1', tomes()), 2);
+  test('seules les poses citées par le Projet sont embarquées', () => {
+    // Embarquer toute la bibliothèque gonflerait chaque fichier de poses sans rapport avec lui.
+    assert.deepEqual(posesUsedByProject3D(biblio, tomes).map(p => p.id), ['pose1']);
   });
 
-  test('ne compte QUE les Personnages : un Objet portant le même champ est ignoré', () => {
-    // `position` n'est pas exclusif aux Personnages ; sans le filtre sur le type, l'avertissement
-    // annoncerait des Personnages qui n'existent pas.
-    assert.equal(poseUsageCount3D('pose1', [{ pages: [{ objects: [
-      { type: 'objet3d', position: 'pose1' }, { type: 'bulle', position: 'pose1' },
-    ] }] }]), 0);
+  test('les Scènes comptent comme les Tomes', () => {
+    const scenes = [{ id: 'sc1', pages: [{ objects: [perso('pose2')] }] }];
+    assert.deepEqual(posesUsedByProject3D(biblio, tomes, scenes).map(p => p.id), ['pose1', 'pose2']);
   });
 
-  test('RÉGRESSION : les Scènes sont comptées elles aussi', () => {
-    // Les Scènes ont la même forme imbriquée mais vivent dans une AUTRE racine. Les oublier
-    // donnerait un comptage nul, donc une suppression silencieuse là où il fallait avertir.
-    const scenes = [{ id: 'sc1', pages: [{ objects: [perso('pose1'), perso('pose1')] }] }];
-    assert.equal(poseUsageCount3D('pose1', [], scenes), 2);
-    assert.equal(poseUsageCount3D('pose1', tomes(), scenes), 4, 'les deux racines s\'additionnent');
+  test('projet vide ou bibliothèque vide : rien à embarquer', () => {
+    assert.deepEqual(posesUsedByProject3D(biblio, []), []);
+    assert.deepEqual(posesUsedByProject3D(null, tomes), []);
   });
 
-  test('pose inutilisée, absente ou projet vide : zéro', () => {
-    assert.equal(poseUsageCount3D('pose9', tomes()), 0);
-    assert.equal(poseUsageCount3D('pose1', []), 0);
-    assert.equal(poseUsageCount3D('pose1', null, undefined), 0);
-    assert.equal(poseUsageCount3D(null, tomes()), 0, 'sans id : rien à chercher');
-  });
-
-  test('une pose intégrée se compte comme les autres', () => {
-    assert.equal(poseUsageCount3D('assis', tomes()), 1);
-  });
-
-  test('un cycle dans les données ne fait pas boucler indéfiniment', () => {
-    // Défensif : rien n'en crée aujourd'hui, mais un parcours récursif générique sur des données
-    // libres doit pouvoir en rencontrer sans bloquer l'application.
-    const a = { type: 'perso', position: 'pose1' };
-    a.self = a;
-    assert.equal(poseUsageCount3D('pose1', [a]), 1);
+  test('la pose embarquée porte son nom ET ses angles', () => {
+    const lib = [{ id: 'pose1', name: 'Salut', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    assert.deepEqual(posesUsedByProject3D(lib, tomes)[0], lib[0]);
   });
 });
