@@ -445,6 +445,45 @@ function exitSceneEditing(){
 
 // ↳ src/utils.js (clamp)
 
+// ---------- Persona editor (Fix 48) ----------
+//
+// Mode plein écran d'édition d'un Personnage. Deux points d'entrée aux sémantiques différentes :
+//   • depuis la modale d'un Personnage → une CIBLE, et « Appliquer » renvoie à la modale ;
+//   • depuis le menu de gauche → AUCUNE cible, Personnage par défaut, la seule sortie utile étant
+//     « enregistrer comme pose ».
+//
+// Contrairement au mode Scène (S.editingSceneId, qui redirige currentPageData), cet éditeur
+// RECOUVRE ce qui est affiché sans y toucher : ni la Page courante, ni S.editingSceneId, ni la
+// sélection ne sont modifiés. Fermer rend donc la main exactement à ce qui était là, qu'on vienne
+// d'une Page ou d'une Scène — ce qui évite de reconstruire un état de retour, et donc de se tromper.
+//
+// Le brouillon est TOUJOURS une copie (cloneJoints) : partager l'objet d'articulations de l'Élément
+// ferait que bouger un curseur modifierait le Personnage avant tout « Appliquer », et la modale qui
+// l'a ouvert n'aurait plus rien à annuler — exactement ce que le Fix 35 vient de corriger ailleurs.
+export function openPersonaEditor(target){
+  S.personaEditorOpen = true;
+  S.personaEditorTargetId = (target && target.id) || null;
+  S.personaEditorDraft = cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
+  return S.personaEditorDraft;
+}
+
+export function closePersonaEditor(){
+  S.personaEditorOpen = false;
+  S.personaEditorTargetId = null;
+  S.personaEditorDraft = null;
+}
+
+export function isPersonaEditorOpen(){ return !!S.personaEditorOpen; }
+
+// L'Élément édité, ou null en mode autonome. Relu à la demande plutôt que gardé en référence : un
+// Élément supprimé pendant que l'éditeur est ouvert doit donner null, pas un objet fantôme détaché
+// de la Page.
+export function personaEditorTarget(page){
+  if (!S.personaEditorOpen || !S.personaEditorTargetId) return null;
+  const p = page || currentPage();
+  return (p && p.objects.find(o => o.id === S.personaEditorTargetId)) || null;
+}
+
 // ---------- Numbering of Panels within a Page ----------
 // On user request: each Panel has a sequential number within its Page (1 for the first one
 // created, then incremented). This number is independent of the "stacking level" (visual

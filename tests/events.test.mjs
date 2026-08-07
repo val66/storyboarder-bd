@@ -35,10 +35,11 @@ import {
   tracéUpScreenAxis3D,
   discardJustAddedElement,
   dismissModal,
+  openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
-import { GROUND_Y_DEFAULT_3D } from '../src/constants.js';
+import { GROUND_Y_DEFAULT_3D, POSE_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -739,5 +740,91 @@ describe('dismissModal — Annuler / Échap / clic hors modale (Fix 35)', () => 
     let ferme = 0;
     assert.equal(dismissModal(() => { ferme++; }, { objects: [] }), false);
     assert.equal(ferme, 1, 'fermeture inconditionnelle');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 48 — machine à états de l'éditeur de Personnage.
+//
+// Il RECOUVRE ce qui est affiché au lieu de le remplacer : contrairement au mode Scène, ni la Page
+// courante, ni S.editingSceneId, ni la sélection ne bougent. Fermer rend donc la main exactement à
+// ce qui était là, sans avoir à reconstruire un état de retour.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — ouverture et fermeture (Fix 48)', () => {
+  const perso = () => ({ id: 'e1', type: 'perso', position: 'assis' });
+  beforeEach(() => { closePersonaEditor(); S.editingSceneId = null; S.selectedId = null; });
+
+  test('fermé par défaut, ouvert après appel, refermé ensuite', () => {
+    assert.equal(isPersonaEditorOpen(), false);
+    openPersonaEditor(perso());
+    assert.equal(isPersonaEditorOpen(), true);
+    closePersonaEditor();
+    assert.equal(isPersonaEditorOpen(), false);
+  });
+
+  test('avec une cible : le brouillon part des articulations effectives de l\'Élément', () => {
+    const o = perso();
+    const draft = openPersonaEditor(o);
+    assert.deepEqual(draft, POSE_3D.assis, 'part de la pose de l\'Élément');
+    assert.equal(S.personaEditorTargetId, 'e1');
+  });
+
+  // L'invariant central : partager l'objet ferait que bouger un curseur modifierait le Personnage
+  // AVANT tout « Appliquer », et la modale qui a ouvert l'éditeur n'aurait plus rien à annuler.
+  test('RÉGRESSION : le brouillon n\'est jamais l\'objet d\'articulations de l\'Élément', () => {
+    const o = { ...perso(), joints3d: { lElbow: 0.1, lShoulder: { x: 0, z: 0 } } };
+    const draft = openPersonaEditor(o);
+    assert.notEqual(draft, o.joints3d, 'pas la même référence');
+    assert.notEqual(draft.lShoulder, o.joints3d.lShoulder, 'copie profonde, pas de surface');
+    draft.lElbow = 0.9;
+    draft.lShoulder.x = 0.5;
+    assert.equal(o.joints3d.lElbow, 0.1, 'l\'Élément n\'a pas bougé');
+    assert.equal(o.joints3d.lShoulder.x, 0, 'même en profondeur');
+  });
+
+  test('sans cible : Personnage par défaut, aucune cible enregistrée', () => {
+    const draft = openPersonaEditor(null);
+    assert.equal(isPersonaEditorOpen(), true, 'l\'absence de cible est un mode légitime');
+    assert.equal(S.personaEditorTargetId, null);
+    assert.deepEqual(draft, POSE_3D.debout);
+  });
+
+  test('RÉGRESSION : ouvrir ne touche ni la Scène en cours, ni la sélection', () => {
+    // C'est ce qui permet de refermer sans reconstruire l'état de retour.
+    S.editingSceneId = 'sc1';
+    S.selectedId = 'panel9';
+    openPersonaEditor(perso());
+    assert.equal(S.editingSceneId, 'sc1', 'la Scène reste ouverte derrière');
+    assert.equal(S.selectedId, 'panel9', 'la sélection est préservée');
+    closePersonaEditor();
+    assert.equal(S.editingSceneId, 'sc1', 'et après fermeture aussi');
+    assert.equal(S.selectedId, 'panel9');
+  });
+
+  test('fermer efface la cible et le brouillon', () => {
+    openPersonaEditor(perso());
+    closePersonaEditor();
+    assert.equal(S.personaEditorTargetId, null);
+    assert.equal(S.personaEditorDraft, null);
+  });
+
+  test('personaEditorTarget retrouve l\'Élément dans la Page', () => {
+    const o = perso();
+    const page = { objects: [o] };
+    openPersonaEditor(o);
+    assert.equal(personaEditorTarget(page), o);
+  });
+
+  test('cible supprimée pendant l\'édition : null, pas un objet fantôme', () => {
+    const o = perso();
+    openPersonaEditor(o);
+    assert.equal(personaEditorTarget({ objects: [] }), null, 'relu à la demande');
+  });
+
+  test('personaEditorTarget est null en mode autonome et quand l\'éditeur est fermé', () => {
+    openPersonaEditor(null);
+    assert.equal(personaEditorTarget({ objects: [] }), null, 'mode autonome');
+    closePersonaEditor();
+    assert.equal(personaEditorTarget({ objects: [perso()] }), null, 'éditeur fermé');
   });
 });

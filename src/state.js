@@ -37,6 +37,12 @@ export const S = {
   // pour être « utilisable partout, dans chaque Tome et chaque Page ». Aucun Personnage n'en dépend :
   // appliquer une pose COPIE ses angles dans joints3d, la bibliothèque n'est qu'un confort d'auteur.
   poses:            [],
+  // Fix 48 — éditeur de Personnage. RECOUVRE ce qui est à l'écran (Page ou Scène) au lieu de le
+  // remplacer : fermer l'éditeur doit rendre la main exactement à ce qui était là. C'est la
+  // différence avec S.editingSceneId, qui lui redirige currentPageData vers la Scène.
+  personaEditorOpen:     false,   // un targetId nul est légitime (mode autonome), d'où ce drapeau
+  personaEditorTargetId: null,    // Élément édité, ou null : Personnage par défaut sans cible
+  personaEditorDraft:    null,    // brouillon d'articulations — jamais l'objet de l'Élément
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────
