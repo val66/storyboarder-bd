@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.2**
+**Version 1.0.4**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -91,6 +91,10 @@ excluded and why.
 | **major** | On explicit request | `npm run bump major` |
 | **minor** | When a feature is validated after functional testing | `npm run bump minor` |
 | **patch** | Every commit | Automatic (`pre-commit` hook) |
+
+The `pre-commit` hook runs the test suite first, then bumps. In that order: bumping first would
+leave a bumped version with no commit whenever a test fails. For a work-in-progress commit:
+`git commit --no-verify`.
 
 A minor bump resets the patch; a major bump resets both. Minor and major releases are git-tagged
 (`v1.1.0`).

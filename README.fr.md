@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.2**
+**Version 1.0.4**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -92,6 +92,10 @@ gauche) et en tête de ce fichier.
 | **major** | Sur demande explicite | `npm run bump major` |
 | **minor** | À la validation d'une fonctionnalité, après tests fonctionnels | `npm run bump minor` |
 | **correctif** | À chaque commit | Automatique (hook `pre-commit`) |
+
+Le hook `pre-commit` lance d'abord la suite de tests, puis incrémente. Dans cet ordre : incrémenter
+d'abord laisserait une version montée sans commit à chaque test en échec. Pour un commit en cours de
+travail : `git commit --no-verify`.
 
 Passer une mineure remet le correctif à 0 ; passer une majeure remet les deux à 0.
 Les mineures et majeures sont marquées par un tag git (`v1.1.0`).
