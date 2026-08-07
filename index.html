@@ -51,6 +51,11 @@
     <!-- Panneau de réglage fin. Le conteneur est rempli par buildPersonaEditorJointSlidersUI
          (events.js) à partir des mêmes descripteurs que la modale, cf. poseSliderSpecs3D. -->
     <aside class="persona-editor-panel">
+      <!-- Pose de référence du brouillon. Appliquer une pose COPIE ses angles : aucun Personnage ne
+           dépend de la bibliothèque, cf. docs/editeur-personnage.md. -->
+      <h2>Pose</h2>
+      <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
+      <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>
       <h2>Réglage fin des articulations</h2>
       <div id="personaEditorJointsContainer"></div>
       <button id="personaEditorResetBtn" type="button" class="full-btn">Réinitialiser la pose</button>

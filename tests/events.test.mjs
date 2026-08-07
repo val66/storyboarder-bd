@@ -37,7 +37,7 @@ import {
   dismissModal,
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
-  togglePersonaEditorHandle,
+  togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1033,5 +1033,112 @@ describe('éditeur de Personnage — sélection d\'une poignée (Fix 52)', () =>
     assert.equal(S.selectedPoseHandle.id, 'torso', 'la modale n\'a pas bougé');
     closePersonaEditor();
     assert.equal(S.selectedPoseHandle.id, 'torso', 'et pas davantage après fermeture');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 54 — application d'une pose depuis l'éditeur.
+//
+// LA décision de toute la fonctionnalité : appliquer une pose COPIE ses angles dans le brouillon.
+// Aucun Personnage ne dépend de la bibliothèque — supprimer une pose, ou ouvrir le projet sur une
+// machine qui ne l'a pas, ne change l'allure de personne (cf. docs/donnees-persistees.md).
+//
+// `position` reste une ÉTIQUETTE : bouger un curseur après avoir appliqué « Assis » ne l'efface
+// pas, c'est resolvePoseLabel3D qui en déduit « Assis (modifié) » en comparant les valeurs. On
+// garde ainsi la provenance, qui est une information utile.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  beforeEach(() => { closePersonaEditor(); S.poses = []; });
+
+  test('appliquer une pose intégrée copie ses angles dans le brouillon', () => {
+    openPersonaEditor(null);
+    assert.equal(applyPersonaEditorPose('assis'), true);
+    assert.deepEqual(S.personaEditorDraft, POSE_3D.assis);
+    assert.equal(S.personaEditorPoseKey, 'assis');
+  });
+
+  test('RÉGRESSION : c\'est une COPIE, pas une référence à POSE_3D', () => {
+    // Sans copie, bouger un curseur après avoir appliqué « Assis » modifierait la pose intégrée
+    // pour toute l'application, définitivement et pour tous les Personnages.
+    openPersonaEditor(null);
+    applyPersonaEditorPose('assis');
+    setPersonaEditorJointDeg(torso, 77);
+    assert.notEqual(Math.round((POSE_3D.assis.torsoRotX || 0) * 180 / Math.PI), 77,
+      'la pose intégrée est intacte');
+  });
+
+  test('appliquer une pose du projet la trouve par son id', () => {
+    S.poses = [{ id: 'pose1', name: 'Salut', skeleton: 'humain', joints: { torsoRotX: 1.1 } }];
+    openPersonaEditor(null);
+    assert.equal(applyPersonaEditorPose('pose1'), true);
+    assertClose(S.personaEditorDraft.torsoRotX, 1.1, 'angles de la pose du projet');
+  });
+
+  test('RÉGRESSION : une pose introuvable ne touche à RIEN', () => {
+    // Écrire une pose de repli écraserait le travail en cours par quelque chose que l'utilisateur
+    // n'a pas demandé — le pire comportement possible ici.
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 42);
+    const avant = JSON.stringify(S.personaEditorDraft);
+    assert.equal(applyPersonaEditorPose('nexiste_pas'), false);
+    assert.equal(JSON.stringify(S.personaEditorDraft), avant, 'brouillon intact');
+    assert.equal(S.personaEditorPoseKey, 'debout', 'et l\'étiquette n\'a pas bougé non plus');
+  });
+
+  test('éditeur fermé : aucune pose ne s\'applique', () => {
+    assert.equal(applyPersonaEditorPose('assis'), false);
+  });
+
+  test('l\'ouverture reprend la pose déclarée par l\'Élément', () => {
+    openPersonaEditor({ id: 'e1', type: 'perso', position: 'combat' });
+    assert.equal(S.personaEditorPoseKey, 'combat');
+  });
+
+  test('COHÉRENCE : sans cible, l\'étiquette et les angles désignent la même pose', () => {
+    // personaEditorInitialJoints copie POSE_3D.debout ; l'étiquette doit dire « debout ». Deux
+    // valeurs par défaut posées à deux endroits finiraient par diverger.
+    openPersonaEditor(null);
+    assert.equal(S.personaEditorPoseKey, 'debout');
+    assert.deepEqual(S.personaEditorDraft, POSE_3D.debout);
+  });
+
+  test('l\'étiquette suit la pose appliquée, et signale une retouche', () => {
+    openPersonaEditor(null);
+    applyPersonaEditorPose('assis');
+    assert.equal(personaEditorPoseLabel().modified, false, 'juste appliquée : conforme');
+    setPersonaEditorJointDeg(torso, 88);
+    const info = personaEditorPoseLabel();
+    assert.equal(info.modified, true, 'retouchée');
+    assert.match(info.label, /modifié/, 'et l\'utilisateur en est informé');
+    assert.equal(S.personaEditorPoseKey, 'assis', 'la provenance est conservée, pas effacée');
+  });
+
+  test('réinitialiser ramène AUSSI l\'étiquette à la pose d\'ouverture', () => {
+    // Sinon le panneau afficherait le nom de la dernière pose appliquée alors que les angles sont
+    // revenus à ceux de l'Élément — deux affichages qui se contredisent.
+    const o = { id: 'e1', type: 'perso', position: 'combat', joints3d: { torsoRotX: 0.3 } };
+    openPersonaEditor(o);
+    applyPersonaEditorPose('assis');
+    resetPersonaEditorDraft({ objects: [o] });
+    assert.equal(S.personaEditorPoseKey, 'combat');
+  });
+
+  test('fermer efface l\'étiquette', () => {
+    openPersonaEditor(null);
+    applyPersonaEditorPose('assis');
+    closePersonaEditor();
+    assert.equal(S.personaEditorPoseKey, null);
+  });
+
+  test('les deux poses allongées, ajoutées à POSE_3D par draw.js, sont applicables', () => {
+    // draw.js est chargé par la chaîne d'imports de ce fichier de test (events.js en dépend). Sans
+    // lui, POSE_3D n'aurait que 13 entrées et ces deux poses seraient introuvables — le genre
+    // d'écart entre les tests et l'application qui passe inaperçu longtemps.
+    openPersonaEditor(null);
+    for (const key of ['allonge', 'vaincu']) {
+      assert.equal(applyPersonaEditorPose(key), true, key);
+      assert.equal(S.personaEditorDraft.lieFlat, true, `${key} : figure couchée`);
+    }
   });
 });

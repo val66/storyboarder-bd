@@ -55,6 +55,12 @@ export const S = {
   // l'édition, partager la sélection ferait que fermer l'éditeur laisserait la modale avec une
   // poignée surlignée que l'utilisateur n'y a jamais choisie.
   personaEditorHandleId: null,
+  // Fix 54 — pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
+  // projet ('pose1'). Une étiquette, jamais une dépendance : les angles vivent dans le brouillon et
+  // font foi (cf. docs/editeur-personnage.md). Bouger un curseur après avoir appliqué une pose ne
+  // l'efface pas — c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
+  // ce qui préserve la provenance.
+  personaEditorPoseKey: null,
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────

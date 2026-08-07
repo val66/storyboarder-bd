@@ -12,6 +12,7 @@ import {
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
+  personaEditorPoseList3D, poseJointsByKey3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -677,5 +678,88 @@ describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
     assert.match(bloc, /clientWidth[\s\S]{0,80}clientHeight/,
       'à partir des DEUX dimensions de la boîte — l\'ancien calcul n\'en prenait qu\'une');
     assert.match(bloc, /renderSize:/, 'et transmise à drawPersonaPreview');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 54 — section « Pose » de l'éditeur.
+//
+// La décision structurante : appliquer une pose COPIE ses angles dans le brouillon. Aucun
+// Personnage ne dépend de la bibliothèque — supprimer une pose, ou ouvrir le projet sur une machine
+// qui ne l'a pas, ne change l'allure de personne, seule l'étiquette devient « inconnue ».
+//
+// Le piège de cette phase est ailleurs : POSE_3D est COMPLÉTÉ À L'EXÉCUTION par draw.js, qui y
+// ajoute 'allonge' et 'vaincu'. Au chargement de constants.js seul, ces deux poses n'existent pas.
+// D'où deux précautions : la liste ne filtre pas sur POSE_3D, et poseJointsByKey3D lit sa table à
+// l'appel. Les tests ci-dessous vérifient les deux — dont un qui charge draw.js exprès.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('personaEditorPoseList3D — poses intégrées puis poses du projet', () => {
+  const builtins = [{ key: 'debout', label: '🧍 Debout' }, { key: 'assis', label: '🪑 Assis' }];
+
+  test('sans bibliothèque : uniquement les intégrées, dans l\'ordre', () => {
+    const l = personaEditorPoseList3D(builtins, null);
+    assert.deepEqual(l.map(e => e.key), ['debout', 'assis']);
+    assert.ok(l.every(e => e.builtin), 'toutes marquées comme intégrées');
+  });
+
+  test('les poses du projet viennent après, sous leur nom', () => {
+    const l = personaEditorPoseList3D(builtins, [{ id: 'pose1', name: 'Salut militaire' }]);
+    assert.deepEqual(l.map(e => e.key), ['debout', 'assis', 'pose1']);
+    assert.equal(l[2].label, 'Salut militaire');
+    assert.equal(l[2].builtin, false);
+  });
+
+  test('une pose sans nom retombe sur son id plutôt que de s\'afficher vide', () => {
+    assert.equal(personaEditorPoseList3D([], [{ id: 'pose7' }])[0].label, 'pose7');
+  });
+
+  test('une pose sans id est écartée : impossible de l\'appliquer', () => {
+    // L'appariement se fait par id (cf. resolvePoseLabel3D). Un bouton sans id ne pourrait
+    // désigner aucune pose.
+    assert.deepEqual(personaEditorPoseList3D([], [{ name: 'orpheline' }, null]), []);
+  });
+
+  test('entrées absentes : liste vide, jamais d\'exception', () => {
+    assert.deepEqual(personaEditorPoseList3D(null, null), []);
+    assert.deepEqual(personaEditorPoseList3D(undefined, 'pas un tableau'), []);
+  });
+
+  test('RÉGRESSION : la liste ne filtre PAS sur la présence dans POSE_3D', () => {
+    // 'allonge' et 'vaincu' sont dans POSITIONS mais ajoutés à POSE_3D seulement à l'exécution, par
+    // draw.js. Un filtre les ferait disparaître de la liste selon l'ordre des imports — invisible
+    // ici, bien réel dans l'application.
+    const l = personaEditorPoseList3D(POSITIONS, []);
+    assert.equal(l.length, POSITIONS.length, 'toutes les poses intégrées sont proposées');
+    assert.ok(l.some(e => e.key === 'allonge'), 'allonge présente');
+    assert.ok(l.some(e => e.key === 'vaincu'), 'vaincu présente');
+  });
+});
+
+describe('poseJointsByKey3D — angles d\'une pose', () => {
+  const table = { debout: { torsoRotX: 0 }, assis: { torsoRotX: 0.5 } };
+  const poses = [{ id: 'pose1', name: 'X', joints: { torsoRotX: 1.2 } }];
+
+  test('pose intégrée : ses angles', () => {
+    assert.deepEqual(poseJointsByKey3D('assis', table, poses), { torsoRotX: 0.5 });
+  });
+
+  test('pose du projet : ses angles, trouvés par id', () => {
+    assert.deepEqual(poseJointsByKey3D('pose1', table, poses), { torsoRotX: 1.2 });
+  });
+
+  test('les intégrées ont priorité sur une pose du projet de même clé', () => {
+    // Impossible en pratique (newId produit « poseN »), mais un fichier bricolé à la main ne doit
+    // pas pouvoir redéfinir « debout » pour tout le projet.
+    const l = poseJointsByKey3D('debout', table, [{ id: 'debout', joints: { torsoRotX: 9 } }]);
+    assert.deepEqual(l, { torsoRotX: 0 });
+  });
+
+  test('RÉGRESSION : pose introuvable → null, pour ne RIEN écrire', () => {
+    // Renvoyer une pose de repli écraserait le travail en cours par quelque chose que
+    // l'utilisateur n'a pas demandé. C'est le seul comportement acceptable ici.
+    assert.equal(poseJointsByKey3D('inexistante', table, poses), null);
+    assert.equal(poseJointsByKey3D(null, table, poses), null);
+    assert.equal(poseJointsByKey3D('assis', null, null), null);
+    assert.equal(poseJointsByKey3D('pose1', table, [{ id: 'pose1' }]), null, 'pose sans angles');
   });
 });

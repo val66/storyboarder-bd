@@ -229,6 +229,39 @@ export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
   return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
 }
 
+// Fix 54 — liste des poses proposées par l'éditeur : les intégrées, puis celles du projet.
+//
+// ⚠️ La liste ne filtre PAS sur la présence d'une entrée dans POSE_3D, et c'est délibéré : POSE_3D
+// est COMPLÉTÉ À L'EXÉCUTION par draw.js, qui y ajoute 'allonge' et 'vaincu' (les deux poses
+// allongées, cf. lieFlat). Au chargement de constants.js seul, elles n'existent pas encore. Un
+// filtre les ferait disparaître de la liste selon l'ordre d'import — et disparaître dans les tests,
+// qui n'importent pas toujours draw.js, sans qu'on le voie dans l'application.
+//
+// Les poses personnalisées sont identifiées par leur `id` (cf. resolvePoseLabel3D) ; celles sans id
+// exploitable sont écartées, faute de quoi les appliquer serait impossible.
+export function personaEditorPoseList3D(builtins, poses){
+  const list = (builtins || []).map(p => ({ key: p.key, label: p.label, builtin: true }));
+  (Array.isArray(poses) ? poses : []).forEach(p => {
+    if (!p || !p.id) return;
+    list.push({ key: p.id, label: p.name || p.id, builtin: false });
+  });
+  return list;
+}
+
+// Angles d'une pose donnée, prêts à être copiés dans un brouillon. Renvoie null si la pose est
+// introuvable — l'appelant ne doit alors RIEN écrire, plutôt que d'écraser le brouillon par une
+// pose de repli que l'utilisateur n'a pas demandée.
+//
+// `poseTable` est lue à l'APPEL et non capturée au chargement, toujours pour la raison ci-dessus :
+// deux de ses entrées n'existent qu'une fois draw.js chargé.
+export function poseJointsByKey3D(key, poseTable, poses){
+  if (!key) return null;
+  const builtin = poseTable && poseTable[key];
+  if (builtin) return builtin;
+  const custom = (Array.isArray(poses) ? poses : []).find(p => p && p.id === key);
+  return (custom && custom.joints) || null;
+}
+
 // ══════════════════════════════════════════════════════════════
 // MATH HELPERS
 // ══════════════════════════════════════════════════════════════

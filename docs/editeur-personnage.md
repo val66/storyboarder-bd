@@ -122,10 +122,25 @@ la bibliothèque en place.
 - **2.2** Poignées cliquables sur le canevas.
 - **2.3** Tout opère sur un brouillon `S.editorDraftJoints`, jamais sur l'objet.
 
-### Phase 3 — Poses et émotions en lecture
+### Phase 3 — Poses en lecture
 
-- **3.1** Section « poses existantes » : appliquer = copier les valeurs dans le brouillon.
-- **3.2** Section « émotions » : sélection uniquement, sans entrer dans les poses enregistrées.
+- **3.1** Section « poses existantes » : appliquer = copier les valeurs dans le brouillon. ✅ *(Fix 54)*
+- **3.2** ~~Section « émotions »~~ — **écartée** au moment de l'implémenter. La note prévoyait une
+  sélection d'émotion dans l'éditeur ; l'arbitrage initial (« juste se préoccuper des articulations
+  est suffisant, on verra plus tard pour les émotions et les mains ») a été reconduit. En prime, une
+  émotion modifiable ici aurait posé une question de plus en phase 5 : « Appliquer » doit-il
+  l'écrire dans le Personnage au même titre que les articulations ? À rouvrir si le besoin se
+  confirme à l'usage.
+
+⚠️ **Piège rencontré à l'implémentation.** `POSE_3D` est **complété à l'exécution** par `draw.js`,
+qui y ajoute `allonge` et `vaincu` (les deux poses couchées, cf. `lieFlat`). Au chargement de
+`constants.js` seul, elles n'existent pas. Conséquences tenues dans le code :
+
+- la liste des poses ne filtre **jamais** sur la présence d'une entrée dans `POSE_3D` — un filtre les
+  ferait disparaître selon l'ordre des imports, et disparaître dans les tests sans qu'on le voie
+  dans l'application ;
+- `poseJointsByKey3D` reçoit la table **en paramètre**, lue à l'appel et jamais capturée au
+  chargement du module.
 
 ### Phase 4 — Bibliothèque de poses en écriture
 

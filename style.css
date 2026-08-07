@@ -692,3 +692,22 @@ canvas{
 .persona-editor-panel h2 { font-size: 11px; font-weight: 600; color: var(--ink-soft);
                            margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; }
 .persona-editor-panel .full-btn { margin-top: 12px; }
+.persona-editor-panel h2 + * { margin-top: 0; }
+.persona-editor-panel h2:not(:first-child) { margin-top: 18px; }
+/* Étiquette calculée (« Assis », « Assis (modifié) », « pose1 (inconnue) ») — jamais persistée,
+   cf. resolvePoseLabel3D. */
+.persona-editor-pose-current {
+  font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 8px;
+  padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
+  background: linear-gradient(rgba(0,0,0,.14), rgba(0,0,0,.14)), var(--paper-dark);
+}
+.persona-editor-poses { display: flex; flex-wrap: wrap; gap: 4px; }
+.persona-editor-poses button {
+  flex: 0 0 auto; font-size: 11.5px; padding: 4px 8px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--white); color: var(--ink);
+}
+.persona-editor-poses button:hover { border-color: var(--ink-soft); }
+.persona-editor-poses button.active {
+  background: rgba(224,165,60,.22); border-color: rgba(224,165,60,.6); font-weight: 600;
+}
