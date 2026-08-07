@@ -22,8 +22,9 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PACKAGE_JSON = join(ROOT, 'package.json');
 export const VERSION_JS = join(ROOT, 'src', 'version.js');
-// Les README affichent aussi la version. Sans les inclure ici, ils dériveraient dès le commit
-// suivant — un README qui annonce une version fausse est pire que pas de version du tout.
+// Les README affichent la version en tête (la seule chose qui y reste : la politique de version est
+// dans docs/versionnage.md, c'est de la doc de contributeur). Sans les inclure ici, ils dériveraient
+// dès le commit suivant — un README qui annonce une version fausse est pire que pas de version.
 export const READMES = [join(ROOT, 'README.md'), join(ROOT, 'README.fr.md')];
 // Ligne réécrite dans les README. Motif volontairement strict et sur sa propre ligne, pour ne
 // pouvoir toucher qu'elle.

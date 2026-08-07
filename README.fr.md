@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.7**
+**Version 1.0.8**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -82,48 +82,6 @@ fichier de test détaille ce qui est exclu et pourquoi.
 
 ---
 
-## 🔖 Versionnage
-
-Version au format `major.minor.correctif`, affichée à côté du nom de l'application (en haut à
-gauche) et en tête de ce fichier.
-
-| Niveau | Quand | Comment |
-|---|---|---|
-| **major** | Sur demande explicite | `npm run bump major` |
-| **minor** | À la validation d'une fonctionnalité, après tests fonctionnels | `npm run bump minor` |
-| **correctif** | À chaque commit | Automatique (hook `pre-commit`) |
-
-Le hook `pre-commit` lance d'abord la suite de tests, puis incrémente. Dans cet ordre : incrémenter
-d'abord laisserait une version montée sans commit à chaque test en échec. Pour un commit en cours de
-travail : `git commit --no-verify`.
-
-Passer une mineure remet le correctif à 0 ; passer une majeure remet les deux à 0.
-
-Les mineures et majeures sont taguées automatiquement (`v1.1.0`) par un hook `post-commit` — après
-coup, car au moment du `pre-commit` le commit qui portera la version n'existe pas encore. Pas de tag
-sur les correctifs : ils noieraient les versions qui comptent.
-
-Un `npm run bump minor` suivi d'un commit conserve bien la 1.1.0 : le hook n'incrémente pas si la
-version a déjà été changée à la main. Un seul incrément par commit.
-
-`package.json` fait foi ; `src/version.js` en est généré pour que le renderer affiche la version
-sans passer par un IPC, et la ligne de version des deux README est réécrite par le même script.
-`tests/version.test.mjs` interdit à ces quatre fichiers de diverger.
-
-```bash
-npm run setup-hooks      # après un clone : réinstalle les hooks (git ne versionne pas .git/hooks)
-npm run bump sync        # régénère les fichiers dérivés depuis package.json
-git push --follow-tags   # ⚠ git push SEUL n'envoie pas les tags
-```
-
-⚠ **`git commit --amend` réincrémente.** Amender trois fois consomme trois numéros de correctif.
-Git ne donne à un hook `pre-commit` aucun moyen fiable et portable de distinguer un amend d'un
-commit ordinaire. Utilise `git commit --amend --no-verify` quand tu amendes.
-
-⚠ **Les tags ne partent pas tout seuls.** `git push` n'envoie que les commits : une version marquée
-localement mais absente du dépôt distant ne sert à rien. Utilise `git push --follow-tags` — le hook
-`post-commit` le rappelle à l'écran chaque fois qu'il vient de poser un tag.
-
 ## 🗂️ Structure du projet
 
 ```
@@ -147,6 +105,8 @@ storyboarder-bd/
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
 ├── tests/              # Tests unitaires (test runner natif de Node)
+├── tools/              # Outillage de dépôt (incrément de version, installation des hooks git)
+├── docs/               # Notes internes — voir docs/versionnage.md pour la politique de version
 ├── package.json        # Config Electron + electron-builder
 └── LICENSE
 ```

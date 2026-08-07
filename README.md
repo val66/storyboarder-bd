@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.7**
+**Version 1.0.8**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -82,47 +82,6 @@ excluded and why.
 
 ---
 
-## 🔖 Versioning
-
-`major.minor.patch`, displayed next to the application name (top left) and at the top of this file.
-
-| Level | When | How |
-|---|---|---|
-| **major** | On explicit request | `npm run bump major` |
-| **minor** | When a feature is validated after functional testing | `npm run bump minor` |
-| **patch** | Every commit | Automatic (`pre-commit` hook) |
-
-The `pre-commit` hook runs the test suite first, then bumps. In that order: bumping first would
-leave a bumped version with no commit whenever a test fails. For a work-in-progress commit:
-`git commit --no-verify`.
-
-A minor bump resets the patch; a major bump resets both.
-
-Minor and major releases are tagged automatically (`v1.1.0`) by a `post-commit` hook — afterwards,
-because at `pre-commit` time the commit that will carry the version does not exist yet. Patches are
-not tagged: they would bury the releases that matter.
-
-`npm run bump minor` followed by a commit does keep 1.1.0: the hook does not bump when the version
-was already changed by hand. One bump per commit.
-
-`package.json` is the source of truth; `src/version.js` is generated from it so the renderer can
-display the version without an IPC round-trip, and the version line in both READMEs is rewritten by
-the same script. `tests/version.test.mjs` forbids these four files from drifting apart.
-
-```bash
-npm run setup-hooks      # after a clone: reinstalls the hooks (git does not version .git/hooks)
-npm run bump sync        # regenerates the derived files from package.json
-git push --follow-tags   # ⚠ plain git push does NOT send tags
-```
-
-⚠ **`git commit --amend` bumps again.** Amending three times burns three patch numbers. Git gives a
-`pre-commit` hook no reliable, portable way to tell an amend from a normal commit. Use
-`git commit --amend --no-verify` when amending.
-
-⚠ **Tags do not travel on their own.** `git push` only sends commits: a release tagged locally but
-missing from the remote is of no use. Use `git push --follow-tags` — the `post-commit` hook prints a
-reminder every time it has just created a tag.
-
 ## 🗂️ Project structure
 
 ```
@@ -146,6 +105,8 @@ storyboarder-bd/
 │   ├── help-content.js # Built-in user manual content
 │   └── events.js       # Event wiring + remaining business logic (real entry point)
 ├── tests/              # Unit tests (Node's built-in test runner)
+├── tools/              # Repo tooling (version bump, git hooks installation)
+├── docs/               # Internal notes — see docs/versionnage.md for the version policy
 ├── package.json        # Electron + electron-builder config
 └── LICENSE
 ```
