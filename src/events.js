@@ -39,7 +39,8 @@ import {
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D,
-  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D
+  makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
+  rememberDismissedPose3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -143,7 +144,8 @@ import {
   openRenameEntityModal, closeRenameEntityModal, confirmRenameEntity,
   confirmAction, alertAction, settleConfirmAction,
   openQuitConfirmModal, closeQuitConfirmModal,
-  setPoseLibrary, loadPoseLibrary,
+  setPoseLibrary, loadPoseLibrary, setDismissedPoses, loadDismissedPoses,
+  restoreBuiltinPoses, missingBuiltinPoseCount,
 } from './io.js';
 import {
   setDrawCallbacks,
@@ -593,6 +595,10 @@ export function deletePersonaEditorPose(id){
   const next = deletePose3D(S.poses, id);
   if (!next) return false;
   setPoseLibrary(next);
+  // Fix 59 — la suppression est MÉMORISÉE : sans ça, ouvrir un projet enregistré avant elle la
+  // défaisait en silence, et pour tous les projets. Une action confirmée ne doit pas pouvoir être
+  // annulée par un geste sans rapport.
+  setDismissedPoses(rememberDismissedPose3D(S.dismissedPoses, id));
   // L'étiquette du brouillon n'est PAS effacée : elle deviendra « (inconnue) » à l'affichage, ce qui
   // dit la vérité — la pose citée n'existe plus — sans rien détruire ni modifier la pose du
   // Personnage. Effacer la clé ferait perdre l'information qu'on venait de cette pose-là.
@@ -870,25 +876,30 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
   };
   const deleteBtn = document.getElementById('personaEditorPoseDeleteBtn');
   if (deleteBtn) deleteBtn.onclick = async () => {
-    // Fix 56 — confirmation UNIQUEMENT si la pose est portée par des Personnages. Sur une pose que
-    // personne n'utilise, l'opération est sans conséquence : demander à chaque fois userait
-    // l'attention et ferait cliquer « Confirmer » sans lire, y compris le jour où ça compte.
+    // Fix 59 — RÉVISION du Fix 56, qui ne demandait confirmation que si la pose était utilisée.
+    // Cette règle se défendait tant que la suppression était de fait réversible : un projet rouvert
+    // réinjectait la pose. Elle est désormais MÉMORISÉE et définitive — supprimer une pose
+    // inutilisée d'un seul clic, sans filet, n'est plus acceptable. Le cas typique : on clique une
+    // pose intégrée pour la regarder, puis « Supprimer » en croyant viser la sienne.
     //
-    // Ce qui se perd, ce ne sont PAS les positions — les angles sont copiés chez chaque Personnage,
-    // aucun ne bougera. C'est le NOM, celui qui dit à l'auteur pourquoi ils sont posés ainsi. Le
-    // message le dit explicitement, pour que la décision se prenne sur le bon critère.
+    // Le message reste différencié plutôt qu'uniforme : mentionner des Personnages là où il n'y en a
+    // aucun serait du bruit, et c'est ce bruit qui finit par faire cliquer sans lire.
     const key = S.personaEditorPoseKey;
     const used = personaEditorPoseUsage(key);
-    if (used > 0) {
+    {
       const pose = (S.poses || []).find(p => p && p.id === key);
       const nom = (pose && pose.name) || key;
       // Fix 58 — le message dit désormais que la suppression porte sur la bibliothèque de
       // l'APPLICATION, pas sur ce seul Projet. Le comptage, lui, ne peut couvrir que le Projet
       // ouvert : les autres ne sont pas inspectables. Passer cette limite sous silence laisserait
       // croire que « 2 Personnages » est le total, alors que c'est un minimum.
-      const ok = await confirmAction(tr(
-        `The pose "${nom}" is used by ${used} character(s) in the project currently open. Deleting it removes the pose from your library, which is shared by ALL your projects — others may use it too, and cannot be counted from here. No character is altered: their joint angles are stored on each of them. Only the pose name is lost, and shown as unknown. Delete anyway?`,
-        `La pose « ${nom} » est utilisée par ${used} Personnage(s) du Projet ouvert. La supprimer la retire de votre bibliothèque, partagée par TOUS vos Projets — d'autres peuvent l'utiliser aussi, sans qu'on puisse les compter d'ici. Aucun Personnage n'est modifié : leurs articulations sont enregistrées sur chacun d'eux. Seul le nom de la pose est perdu, et affiché comme inconnu. Supprimer quand même ?`));
+      const ok = await confirmAction(used > 0
+        ? tr(
+          `The pose "${nom}" is used by ${used} character(s) in the project currently open. Deleting it removes the pose from your library, which is shared by ALL your projects — others may use it too, and cannot be counted from here. No character is altered: their joint angles are stored on each of them. Only the pose name is lost, and shown as unknown. This cannot be undone. Delete anyway?`,
+          `La pose « ${nom} » est utilisée par ${used} Personnage(s) du Projet ouvert. La supprimer la retire de votre bibliothèque, partagée par TOUS vos Projets — d'autres peuvent l'utiliser aussi, sans qu'on puisse les compter d'ici. Aucun Personnage n'est modifié : leurs articulations sont enregistrées sur chacun d'eux. Seul le nom de la pose est perdu, et affiché comme inconnu. Cette action est irréversible. Supprimer quand même ?`)
+        : tr(
+          `Delete the pose "${nom}" from your library? It is shared by all your projects, and this cannot be undone — except for built-in poses, which the Settings dialog can restore.`,
+          `Supprimer la pose « ${nom} » de votre bibliothèque ? Elle est partagée par tous vos Projets, et l'action est irréversible — sauf pour les poses de base, que la modale Configuration permet de restaurer.`));
       if (!ok) return;
     }
     if (!deletePersonaEditorPose(key)) return;
@@ -7472,8 +7483,41 @@ function openSettingsModal(){
   exportShowPanelBadgesCheckbox.checked = S.exportShowPanelBadges;
   exportShowPanelDescriptionsCheckbox.checked = S.exportShowPanelDescriptions;
   refreshProjectsDirDisplay();
+  refreshRestoreBuiltinPosesBtn();
   settingsModal.classList.remove('hidden');
 }
+
+// Fix 59 — état du bouton « Restaurer les poses de base ». Désactivé quand il n'en manque aucune :
+// le bouton enseigne ainsi son utilité rien qu'en existant, au lieu de laisser cliquer dans le vide.
+function refreshRestoreBuiltinPosesBtn(){
+  const btn = document.getElementById('restoreBuiltinPosesBtn');
+  const hint = document.getElementById('restoreBuiltinPosesHint');
+  if (!btn) return;
+  const n = missingBuiltinPoseCount(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
+  btn.disabled = (n === 0);
+  btn.textContent = n > 0
+    ? tr(`↺ Restore built-in poses (${n} missing)`, `↺ Restaurer les poses de base (${n} manquantes)`)
+    : tr('↺ Restore built-in poses', '↺ Restaurer les poses de base');
+  if (hint) {
+    hint.textContent = n > 0
+      ? tr('Only the missing ones are added back. Your own poses and any renamed built-in are left untouched.',
+           'Seules les manquantes sont réajoutées. Vos propres poses et les poses de base que vous avez renommées ne sont pas touchées.')
+      : tr('All built-in poses are present.', 'Toutes les poses de base sont présentes.');
+  }
+}
+
+{
+  const btn = document.getElementById('restoreBuiltinPosesBtn');
+  if (btn) btn.onclick = () => {
+    if (!restoreBuiltinPoses(POSITIONS, POSE_3D, PERSONA_SKELETON_3D)) return;
+    refreshRestoreBuiltinPosesBtn();
+    // Les deux listes qui affichent la bibliothèque doivent suivre, sans quoi les poses restaurées
+    // n'apparaîtraient qu'au prochain redémarrage.
+    buildPersonaPositionOptions();
+    if (isPersonaEditorOpen()) { buildPersonaEditorPosesUI(); syncPersonaEditorPoseLabel(); }
+  };
+}
+
 function closeSettingsModal(){ settingsModal.classList.add('hidden'); }
 document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
 document.getElementById('settingsModalCornerClose').onclick = closeSettingsModal;
@@ -7562,6 +7606,7 @@ async function loadAppSettings(){
   // Chargée AVANT tout le reste, et hors du garde hasElectronAPI ci-dessous : sans Electron, elle
   // doit quand même être semée en mémoire, sans quoi la liste des poses serait vide.
   await loadPoseLibrary(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
+  await loadDismissedPoses();
   buildPersonaPositionOptions();
   if (!hasElectronAPI()) { applyI18n(S.appLang); return; }
   try {

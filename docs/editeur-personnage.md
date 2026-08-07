@@ -106,7 +106,25 @@ fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait «
   **fusionne** les ids inconnus. Un fichier reste autonome ; un vieux projet ne peut pas annuler un
   renommage, la fusion n'écrasant jamais une entrée existante.
 
-**Deux surprises assumées, à surveiller à l'usage :**
+**⚠️ Les deux « surprises » ci-dessous ont été CORRIGÉES depuis (Fix 59).** Elles sont conservées
+ici parce qu'elles expliquent pourquoi le code a la forme qu'il a. Désormais : toute suppression est
+mémorisée (`S.dismissedPoses`, clé `poseLibraryDismissed`) et la fusion ne réintroduit jamais un id
+écarté. La surprise 1 ne se produit donc plus.
+
+Conséquence en chaîne : la suppression étant devenue définitive, la règle du Fix 56 — ne confirmer
+que si la pose est utilisée — n'était plus tenable. Un clic unique irréversible sur une pose
+inutilisée, alors qu'on venait de cliquer une pose intégrée pour la regarder, était trop facile.
+**Toute suppression demande maintenant confirmation**, avec un message différencié plutôt
+qu'uniforme : mentionner des Personnages là où il n'y en a aucun serait du bruit, et c'est le bruit
+qui finit par faire cliquer sans lire.
+
+En contrepartie de la surprise 2, un bouton **« Restaurer les poses de base »** (modale
+Configuration) réajoute les poses intégrées manquantes et lève leur mémorisation. Comblement de
+trous, pas remise à zéro : une pose de base renommée est présente, donc jamais écrasée. Les poses
+personnelles supprimées, elles, restent perdues — les conserver contredirait ce qu'annonce la
+confirmation.
+
+**État d'origine, pour mémoire :**
 
 1. Rouvrir un projet **déjà enregistré avant la suppression** fait **réapparaître** la pose : son
    fichier en portait une copie, réinjectée à l'ouverture.

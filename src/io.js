@@ -13,6 +13,7 @@ import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthT
 import {
   getElementDepth, repairElementBase3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
+  rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D,
 } from './utils.js';
 import { WALL_TYPES, WALL_PX_PER_UNIT_3D, PANEL_CAM_DEFAULT_DIST_3D, GROUND_Y_DEFAULT_3D } from './constants.js';
 
@@ -63,6 +64,23 @@ export function serializeProject(){
 // Sans window.storyboarderAPI — les tests sous Node, notamment — tout continue de fonctionner en
 // mémoire. Une bibliothèque non persistée vaut mieux qu'une exception au démarrage.
 export const POSE_LIBRARY_SETTING_KEY = 'poseLibrary';
+// Fix 59 — ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier toutes les suppressions, et les poses
+// écartées réapparaîtraient au premier projet ouvert.
+export const POSE_DISMISSED_SETTING_KEY = 'poseLibraryDismissed';
+
+// Mémorise les ids supprimés. Même découplage que setPoseLibrary : écriture mémoire synchrone,
+// persistance asynchrone et silencieuse.
+export function setDismissedPoses(ids){
+  S.dismissedPoses = Array.isArray(ids) ? ids : [];
+  const api = hasElectronAPI() ? window.storyboarderAPI : null;
+  if (api && typeof api.setSetting === 'function') {
+    try {
+      Promise.resolve(api.setSetting(POSE_DISMISSED_SETTING_KEY, S.dismissedPoses))
+        .catch(() => { /* la session reste utilisable */ });
+    } catch { /* idem */ }
+  }
+  return S.dismissedPoses;
+}
 
 export function setPoseLibrary(poses){
   S.poses = Array.isArray(poses) ? poses : [];
@@ -97,6 +115,39 @@ export async function loadPoseLibrary(builtins, poseTable, skeleton){
   }
   if (Array.isArray(stored)) { S.poses = normalizePoses3D(stored); return S.poses; }
   return setPoseLibrary(seedPoseLibrary3D(builtins, poseTable, skeleton));
+}
+
+// Fix 59 — charge la liste des suppressions mémorisées. Séparée de loadPoseLibrary : elle n'a pas
+// de semis, une liste absente signifie simplement « rien de supprimé ».
+export async function loadDismissedPoses(){
+  if (!hasElectronAPI()) { S.dismissedPoses = []; return S.dismissedPoses; }
+  try {
+    const settings = await window.storyboarderAPI.getSettings();
+    const stored = settings ? settings[POSE_DISMISSED_SETTING_KEY] : null;
+    S.dismissedPoses = Array.isArray(stored) ? stored.filter(id => typeof id === 'string' && id) : [];
+  } catch { S.dismissedPoses = []; }
+  return S.dismissedPoses;
+}
+
+// Fix 59 — « Restaurer les poses de base » (modale Configuration).
+//
+// Comblement de trous, PAS remise à zéro d'usine : seules les poses intégrées ABSENTES sont
+// réajoutées. Une pose de base renommée est présente, donc jamais écrasée — cliquer ne peut pas
+// faire perdre un renommage. Les poses personnelles ne sont pas touchées non plus.
+//
+// Lève aussi leur mémorisation de suppression, sans quoi elles seraient réécartées au premier projet
+// ouvert : restaurées à l'écran, puis disparues sans explication.
+export function restoreBuiltinPoses(builtins, poseTable, skeleton){
+  const manquantes = missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton);
+  if (!manquantes.length) return 0;
+  setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), ...manquantes]);
+  setDismissedPoses(forgetDismissedPoses3D(S.dismissedPoses, manquantes.map(p => p.id)));
+  return manquantes.length;
+}
+
+// Combien de poses intégrées manquent — pour l'étiquette du bouton, qui se désactive à zéro.
+export function missingBuiltinPoseCount(builtins, poseTable, skeleton){
+  return missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton).length;
 }
 
 // Derives the Project name from the file name the user picked in the save dialog
@@ -386,7 +437,7 @@ export function applyProjectData(data){
   //
   // La fusion n'ajoute que les ids inconnus (cf. mergePoseLibrary3D) : un projet ancien ne peut donc
   // pas annuler un renommage fait depuis.
-  setPoseLibrary(mergePoseLibrary3D(S.poses, normalizePoses3D(data && data.poses)));
+  setPoseLibrary(mergePoseLibrary3D(S.poses, normalizePoses3D(data && data.poses), S.dismissedPoses));
   S.editingSceneId = null;
   resyncIdCounter(data);
   cleanupOrphanedElements();

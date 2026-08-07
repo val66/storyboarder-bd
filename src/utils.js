@@ -380,15 +380,52 @@ export function seedPoseLibrary3D(builtins, poseTable, skeleton){
 // Conséquence assumée : rouvrir un projet qui utilise une pose qu'on vient de supprimer la fait
 // réapparaître. C'est le prix de fichiers qui se décrivent eux-mêmes, et c'est le bon compromis —
 // le projet a besoin de cette pose, et la resupprimer reste à un clic.
-export function mergePoseLibrary3D(library, incoming){
+// Fix 59 — `dismissed` : ids que l'utilisateur a explicitement supprimés. Ils ne sont JAMAIS
+// réintroduits par la fusion.
+//
+// Sans cette liste, supprimer une pose était défait par un geste sans rapport : ouvrir un projet
+// enregistré avant la suppression la réinjectait, silencieusement et pour tous les projets. Une
+// action confirmée ne doit pas pouvoir être annulée par accident.
+//
+// La mémorisation ne conserve QUE l'id — pas les angles, pas le nom. « Supprimé » veut dire
+// supprimé ; garder le contenu pour pouvoir le ressusciter contredirait ce qu'on annonce à
+// l'utilisateur. Les poses intégrées font exception, mais parce que l'application les connaît en
+// dur, pas parce qu'on en aurait gardé une copie cachée (cf. le bouton Restaurer).
+export function mergePoseLibrary3D(library, incoming, dismissed){
   const list = Array.isArray(library) ? [...library] : [];
   const known = new Set(list.map(p => p && p.id).filter(Boolean));
+  const écartés = new Set(Array.isArray(dismissed) ? dismissed : []);
   (Array.isArray(incoming) ? incoming : []).forEach(p => {
-    if (!p || !p.id || known.has(p.id)) return;
+    if (!p || !p.id || known.has(p.id) || écartés.has(p.id)) return;
     known.add(p.id);
     list.push(p);
   });
   return list;
+}
+
+// Ajoute un id à la liste des suppressions mémorisées, sans doublon.
+export function rememberDismissedPose3D(dismissed, id){
+  const list = Array.isArray(dismissed) ? dismissed : [];
+  if (!id || list.includes(id)) return list;
+  return [...list, id];
+}
+
+// Fix 59 — poses intégrées ABSENTES de la bibliothèque, seule chose que « Restaurer » réajoute.
+//
+// « Absente » et non « différente » : une pose intégrée que l'utilisateur a RENOMMÉE est présente,
+// donc pas concernée. Restaurer ne peut ainsi jamais lui faire perdre un renommage — c'est un
+// comblement de trous, pas une remise à zéro d'usine.
+export function missingBuiltinPoses3D(builtins, poseTable, library, skeleton){
+  const présents = new Set((Array.isArray(library) ? library : [])
+    .map(p => p && p.id).filter(Boolean));
+  return seedPoseLibrary3D(builtins, poseTable, skeleton).filter(p => !présents.has(p.id));
+}
+
+// Retire des ids de la liste des suppressions mémorisées. Sans quoi une pose restaurée serait
+// réécartée à la première fusion — restaurée à l'écran, puis disparue au prochain projet ouvert.
+export function forgetDismissedPoses3D(dismissed, ids){
+  const àOublier = new Set(Array.isArray(ids) ? ids : []);
+  return (Array.isArray(dismissed) ? dismissed : []).filter(id => !àOublier.has(id));
 }
 
 // Poses à EMBARQUER dans un fichier projet : celles que ses Personnages citent réellement.

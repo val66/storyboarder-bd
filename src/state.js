@@ -37,6 +37,10 @@ export const S = {
   // pour être « utilisable partout, dans chaque Tome et chaque Page ». Aucun Personnage n'en dépend :
   // appliquer une pose COPIE ses angles dans joints3d, la bibliothèque n'est qu'un confort d'auteur.
   poses:            [],
+  // Fix 59 — ids de poses explicitement SUPPRIMÉES par l'utilisateur. La fusion à l'ouverture d'un
+  // projet ne les réintroduit jamais : une action confirmée ne doit pas pouvoir être défaite par un
+  // geste sans rapport. Ne contient que des ids — jamais les angles ni le nom.
+  dismissedPoses:   [],
   // Fix 48 — éditeur de Personnage. RECOUVRE ce qui est à l'écran (Page ou Scène) au lieu de le
   // remplacer : fermer l'éditeur doit rendre la main exactement à ce qui était là. C'est la
   // différence avec S.editingSceneId, qui lui redirige currentPageData vers la Scène.

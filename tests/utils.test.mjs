@@ -15,6 +15,7 @@ import {
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
+  rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -1022,5 +1023,97 @@ describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
   test('la pose embarquée porte son nom ET ses angles', () => {
     const lib = [{ id: 'pose1', name: 'Salut', skeleton: 'humain', joints: { lElbow: 0.4 } }];
     assert.deepEqual(posesUsedByProject3D(lib, tomes)[0], lib[0]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 59 — une suppression tient, et reste rattrapable pour les poses de base.
+//
+// Le Fix 57 avait laissé une incohérence : supprimer était confirmé, mais défait par un geste sans
+// rapport (ouvrir un vieux projet réinjectait la pose, pour tous les projets). La mémorisation
+// ci-dessous ferme ça. Sa contrepartie — une suppression devenue définitive — a rendu inacceptable
+// le clic unique sans confirmation du Fix 56, révisé au passage.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mergePoseLibrary3D — les suppressions mémorisées sont respectées', () => {
+  test('RÉGRESSION : une pose supprimée n\'est PAS réintroduite par un projet', () => {
+    // Le cœur du correctif. Sans la liste, ouvrir un projet enregistré avant la suppression
+    // annulait celle-ci en silence.
+    const next = mergePoseLibrary3D([], [{ id: 'pose1', name: 'Salut', joints: {} }], ['pose1']);
+    assert.deepEqual(next, []);
+  });
+
+  test('une pose JAMAIS supprimée arrive toujours normalement', () => {
+    // La mémorisation ne doit pas bloquer l'apport utile : les poses d'un projet reçu d'un tiers.
+    const next = mergePoseLibrary3D([], [
+      { id: 'pose1', name: 'Écartée', joints: {} },
+      { id: 'pose2', name: 'Bienvenue', joints: {} },
+    ], ['pose1']);
+    assert.deepEqual(next.map(p => p.id), ['pose2']);
+  });
+
+  test('liste de suppressions absente : comportement d\'avant', () => {
+    const next = mergePoseLibrary3D([], [{ id: 'pose1', joints: {} }]);
+    assert.deepEqual(next.map(p => p.id), ['pose1']);
+  });
+});
+
+describe('rememberDismissedPose3D', () => {
+  test('ajoute l\'id, sans doublon', () => {
+    assert.deepEqual(rememberDismissedPose3D([], 'pose1'), ['pose1']);
+    assert.deepEqual(rememberDismissedPose3D(['pose1'], 'pose1'), ['pose1']);
+    assert.deepEqual(rememberDismissedPose3D(['pose1'], 'pose2'), ['pose1', 'pose2']);
+  });
+
+  test('id absent, ou liste absente : pas d\'exception', () => {
+    assert.deepEqual(rememberDismissedPose3D(['pose1'], null), ['pose1']);
+    assert.deepEqual(rememberDismissedPose3D(null, 'pose1'), ['pose1']);
+  });
+});
+
+describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
+  test('seules les poses intégrées ABSENTES sont proposées', () => {
+    const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain').filter(p => p.id !== 'vol');
+    const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain');
+    assert.deepEqual(manquantes.map(p => p.id), ['vol']);
+  });
+
+  test('RÉGRESSION : une pose de base RENOMMÉE n\'est pas « manquante »', () => {
+    // Elle est présente, seul son nom diffère. La compter comme manquante ferait qu'un clic sur
+    // Restaurer écrase le renommage — exactement ce que ce bouton ne doit jamais faire.
+    const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain')
+      .map(p => p.id === 'assis' ? { ...p, name: 'Mon nom à moi' } : p);
+    const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain');
+    assert.deepEqual(manquantes, [], 'aucune manquante');
+  });
+
+  test('bibliothèque vidée : tout le semis est proposé', () => {
+    // Comparé au SEMIS, pas à POSITIONS.length. Ce fichier ne charge pas draw.js — POSE_3D n'y a
+    // donc que 13 entrées au lieu de 15, 'allonge' et 'vaincu' étant ajoutées à l'exécution
+    // (cf. Fix 54). C'est la TROISIÈME fois que ce piège me fait écrire une assertion fausse ; la
+    // formuler ainsi la rend juste quel que soit l'ordre des imports, ce qui est de toute façon la
+    // vraie propriété : « restaurer » réajoute exactement ce que le semis aurait produit.
+    const semis = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain');
+    assert.equal(missingBuiltinPoses3D(POSITIONS, POSE_3D, [], 'humain').length, semis.length);
+    assert.ok(semis.length > 0, 'et le semis n\'est pas vide, sinon le test ne prouverait rien');
+  });
+
+  test('les poses personnelles n\'influent pas sur le calcul', () => {
+    const biblio = [...seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain'),
+                    { id: 'pose1', name: 'À moi', joints: {} }];
+    assert.deepEqual(missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain'), []);
+  });
+});
+
+describe('forgetDismissedPoses3D', () => {
+  test('retire les ids restaurés de la mémorisation', () => {
+    // Sans cet oubli, une pose restaurée serait réécartée à la première fusion : présente à
+    // l'écran, puis disparue au prochain projet ouvert, sans explication.
+    assert.deepEqual(forgetDismissedPoses3D(['assis', 'vol', 'pose1'], ['assis', 'vol']), ['pose1']);
+  });
+
+  test('ids non mémorisés, ou listes absentes : sans effet', () => {
+    assert.deepEqual(forgetDismissedPoses3D(['assis'], ['debout']), ['assis']);
+    assert.deepEqual(forgetDismissedPoses3D(null, ['assis']), []);
+    assert.deepEqual(forgetDismissedPoses3D(['assis'], null), ['assis']);
   });
 });

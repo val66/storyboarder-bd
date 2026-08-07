@@ -16,6 +16,8 @@ import {
   applyProjectData,
   normalizePoses3D,
   setPoseLibrary, loadPoseLibrary, POSE_LIBRARY_SETTING_KEY,
+  setDismissedPoses, loadDismissedPoses, POSE_DISMISSED_SETTING_KEY,
+  restoreBuiltinPoses, missingBuiltinPoseCount,
 } from '../src/io.js';
 // draw.js complète POSE_3D à l'exécution ('allonge', 'vaincu'). Importé explicitement ici parce que
 // le semis de la bibliothèque en dépend — cf. le test d'ordre d'import plus bas.
@@ -581,5 +583,112 @@ describe('Fix 58b — supprimer PUIS réenregistrer retire la pose du fichier au
     assert.deepEqual(S.poses, [], 'et donc rien à réinjecter à la réouverture');
     assert.equal(fichier.tomes[0].pages[0].objects[0].position, 'pose1',
       'le Personnage cite toujours la pose — son étiquette dira « inconnue »');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 59 — suppressions mémorisées et restauration des poses de base.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 59 — une suppression n\'est plus défaite par l\'ouverture d\'un projet', () => {
+  test('RÉGRESSION : le scénario complet, de bout en bout', () => {
+    // Le comportement corrigé, dans l'ordre où il se produit pour l'utilisateur.
+    S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    S.dismissedPoses = [];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'pose1' },
+    ] }] }];
+    S.scenes = []; S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0;
+    const fichierAvant = JSON.parse(serializeProject());
+
+    setPoseLibrary([]);                              // l'utilisateur supprime…
+    setDismissedPoses(['pose1']);                    // …et la décision est mémorisée
+    applyProjectData(fichierAvant);                  // puis il rouvre l'ancien projet
+    assert.deepEqual(S.poses, [], 'la pose ne revient plus');
+  });
+
+  test('la mémorisation ne bloque QUE les poses écartées', () => {
+    S.poses = []; S.dismissedPoses = ['pose1'];
+    applyProjectData({ projectName: 'P', tomes: [], scenes: [], poses: [
+      { id: 'pose1', name: 'Écartée', joints: {} },
+      { id: 'pose2', name: 'Bienvenue', joints: {} },
+    ] });
+    assert.deepEqual(S.poses.map(p => p.id), ['pose2']);
+  });
+
+  test('la clé de réglage est figée', () => {
+    // ⚠️ La renommer ferait oublier toutes les suppressions : les poses écartées réapparaîtraient
+    // au premier projet ouvert.
+    assert.equal(POSE_DISMISSED_SETTING_KEY, 'poseLibraryDismissed');
+  });
+
+  test('setDismissedPoses : valeur non-tableau → liste vide', () => {
+    setDismissedPoses('pas un tableau');
+    assert.deepEqual(S.dismissedPoses, []);
+  });
+
+  test('loadDismissedPoses : liste absente = rien de supprimé', async () => {
+    const avant = window.storyboarderAPI;
+    window.storyboarderAPI = { getSettings: async () => ({ theme: 'sombre' }), setSetting: async () => ({ ok: true }) };
+    try {
+      await loadDismissedPoses();
+      assert.deepEqual(S.dismissedPoses, []);
+    } finally { window.storyboarderAPI = avant; }
+  });
+
+  test('loadDismissedPoses : les entrées non exploitables sont écartées', async () => {
+    const avant = window.storyboarderAPI;
+    window.storyboarderAPI = {
+      getSettings: async () => ({ poseLibraryDismissed: ['pose1', null, 42, '', 'pose2'] }),
+      setSetting: async () => ({ ok: true }),
+    };
+    try {
+      await loadDismissedPoses();
+      assert.deepEqual(S.dismissedPoses, ['pose1', 'pose2']);
+    } finally { window.storyboarderAPI = avant; }
+  });
+});
+
+describe('Fix 59 — restaurer les poses de base', () => {
+  beforeEach(() => { S.dismissedPoses = []; });
+
+  test('réajoute les manquantes et lève leur mémorisation', () => {
+    S.poses = [];
+    S.dismissedPoses = ['assis', 'debout'];
+    const n = restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
+    assert.equal(n, POSITIONS.length);
+    assert.ok(S.poses.some(p => p.id === 'assis'));
+    assert.deepEqual(S.dismissedPoses, [],
+      'sans cet oubli, elles seraient réécartées au premier projet ouvert');
+  });
+
+  test('RÉGRESSION : une pose de base renommée garde SON nom', () => {
+    // Restaurer comble des trous, ce n'est pas une remise à zéro d'usine.
+    S.poses = [{ id: 'assis', name: 'Mon nom à moi', skeleton: 'humain', joints: {} }];
+    restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
+    assert.equal(S.poses.find(p => p.id === 'assis').name, 'Mon nom à moi');
+  });
+
+  test('RÉGRESSION : les poses personnelles ne sont pas touchées', () => {
+    S.poses = [{ id: 'pose1', name: 'À moi', skeleton: 'humain', joints: { lElbow: 0.9 } }];
+    restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
+    const mienne = S.poses.find(p => p.id === 'pose1');
+    assert.equal(mienne.name, 'À moi');
+    assert.deepEqual(mienne.joints, { lElbow: 0.9 });
+  });
+
+  test('rien à restaurer : renvoie 0 et ne touche à rien', () => {
+    S.poses = [];
+    restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
+    const avant = JSON.stringify(S.poses);
+    assert.equal(restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain'), 0);
+    assert.equal(JSON.stringify(S.poses), avant, 'pas de doublons');
+  });
+
+  test('missingBuiltinPoseCount pilote l\'étiquette et l\'activation du bouton', () => {
+    S.poses = [];
+    const total = missingBuiltinPoseCount(POSITIONS, POSE_3D, 'humain');
+    assert.ok(total > 0);
+    restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
+    assert.equal(missingBuiltinPoseCount(POSITIONS, POSE_3D, 'humain'), 0, 'bouton désactivé');
   });
 });

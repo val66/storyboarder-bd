@@ -11,6 +11,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   buildApplyAngleSnap,
@@ -1309,5 +1310,55 @@ describe('éditeur de Personnage — usage d\'une pose dans le Projet (Fix 56)',
 
   test('projet vide : zéro', () => {
     assert.equal(personaEditorPoseUsage('pose1'), 0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 59 — supprimer mémorise, et toute suppression est confirmée.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — la suppression est mémorisée (Fix 59)', () => {
+  beforeEach(() => { closePersonaEditor(); S.poses = []; S.dismissedPoses = []; });
+
+  test('RÉGRESSION : supprimer enregistre l\'id dans les suppressions', () => {
+    // Constaté par mutation : sans cette assertion, retirer l'appel à setDismissedPoses passait
+    // inaperçu — et la pose serait revenue au premier vieux projet ouvert.
+    openPersonaEditor(null);
+    const pose = savePersonaEditorPose('Éphémère');
+    deletePersonaEditorPose(pose.id);
+    assert.deepEqual(S.dismissedPoses, [pose.id]);
+  });
+
+  test('une suppression refusée (pose inexistante) ne mémorise rien', () => {
+    openPersonaEditor(null);
+    assert.equal(deletePersonaEditorPose('inexistante'), false);
+    assert.deepEqual(S.dismissedPoses, []);
+  });
+
+  test('plusieurs suppressions s\'accumulent sans doublon', () => {
+    openPersonaEditor(null);
+    const a = savePersonaEditorPose('A');
+    const b = savePersonaEditorPose('B');
+    deletePersonaEditorPose(a.id);
+    deletePersonaEditorPose(b.id);
+    deletePersonaEditorPose(a.id); // déjà supprimée : refusée, et rien de dupliqué
+    assert.deepEqual(S.dismissedPoses, [a.id, b.id]);
+  });
+});
+
+describe('Fix 59 — CÂBLAGE : toute suppression passe par une confirmation', () => {
+  // Le gestionnaire de clic n'est pas testable (confirmAction manipule le DOM). Constaté par
+  // mutation : réintroduire le `if (used > 0)` du Fix 56 — donc un clic unique irréversible sur une
+  // pose inutilisée — traverse la suite sans faire échouer un test. Inspection de source, comme pour
+  // l'atomicité de bump-version.mjs et le câblage du Fix 53.
+  test('la confirmation n\'est PAS conditionnée à l\'usage de la pose', () => {
+    const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const i = src.indexOf('deleteBtn.onclick');
+    assert.ok(i > 0, 'gestionnaire introuvable — a-t-il été renommé ?');
+    const corps = src.slice(i, src.indexOf('const resetBtn', i));
+    assert.ok(corps.includes('confirmAction'), 'une confirmation est bien demandée');
+    assert.doesNotMatch(corps, /if\s*\(\s*used\s*>\s*0\s*\)\s*\{[\s\S]*confirmAction/,
+      'la confirmation ne doit plus être réservée aux poses utilisées');
+    assert.match(corps, /used > 0[\s\S]{0,120}\?/,
+      'le message reste différencié selon l\'usage, sans conditionner la confirmation');
   });
 });

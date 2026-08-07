@@ -673,6 +673,12 @@
     <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
       <input type="checkbox" id="exportShowPanelDescriptionsCheckbox" checked> Afficher la description des Cases sous la Planche
     </label>
+    <!-- Bibliothèque de poses : réglage de l'Application (cf. settings.json, clé poseLibrary), d'où
+         sa place ici. Le bouton ne réajoute que les poses de base MANQUANTES — il ne touche ni aux
+         poses personnelles, ni à une pose de base renommée (présente, donc pas manquante). -->
+    <label class="modal-field-label" style="margin-top:14px;">Bibliothèque de poses</label>
+    <button class="project-modal-btn" id="restoreBuiltinPosesBtn" type="button" style="margin-top:0; width:100%;">↺ Restaurer les poses de base</button>
+    <p id="restoreBuiltinPosesHint" style="font-size:11.5px; color:var(--ink-soft); margin:6px 0 0;"></p>
     <div class="modal-actions">
       <button class="danger-btn" id="settingsModalClose" type="button">Fermer</button>
     </div>
