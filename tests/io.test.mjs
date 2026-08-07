@@ -518,3 +518,42 @@ describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () 
     } finally { window.storyboarderAPI = avant; }
   });
 });
+
+describe('Fix 57 — les deux comportements surprenants, épinglés volontairement', () => {
+  // Vérifiés en exécutant le scénario, pas déduits. Ils sont documentés dans
+  // docs/editeur-personnage.md comme assumés : ces tests existent pour que quiconque les prendrait
+  // pour des bugs trouve l'intention écrite avant de « corriger ».
+  test('supprimer une pose, puis rouvrir un projet qui l\'utilise, la fait RÉAPPARAÎTRE', () => {
+    // C'est le prix de l'autonomie des fichiers : le projet embarque les poses dont il a besoin, et
+    // l'ouverture les réintègre. Le projet a réellement besoin de celle-ci — sans quoi son
+    // Personnage s'afficherait « inconnue ». La resupprimer reste à un clic.
+    S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'pose1' },
+    ] }] }];
+    S.scenes = []; S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0;
+    const fichier = JSON.parse(serializeProject());
+
+    S.poses = [];                       // l'utilisateur supprime la pose
+    applyProjectData(fichier);          // puis rouvre le projet
+    assert.deepEqual(S.poses.map(p => p.name), ['Salut militaire']);
+  });
+
+  test('une pose supprimée NON utilisée par le projet ne revient pas', () => {
+    // La contrepartie qui rend le comportement précédent acceptable : seules les poses dont le
+    // fichier a besoin réapparaissent. Sans quoi la suppression ne servirait jamais à rien.
+    S.poses = [
+      { id: 'utilisee', name: 'U', skeleton: 'humain', joints: {} },
+      { id: 'inutilisee', name: 'I', skeleton: 'humain', joints: {} },
+    ];
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
+      { id: 'e1', type: 'perso', position: 'utilisee' },
+    ] }] }];
+    S.scenes = []; S.projectName = 'P'; S.currentTomeIndex = 0; S.currentPageIndex = 0;
+    const fichier = JSON.parse(serializeProject());
+
+    S.poses = [];
+    applyProjectData(fichier);
+    assert.deepEqual(S.poses.map(p => p.id), ['utilisee'], 'l\'inutilisée reste supprimée');
+  });
+});
