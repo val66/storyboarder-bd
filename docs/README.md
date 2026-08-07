@@ -20,6 +20,7 @@ régression difficile à retrouver.
 | [reperes-3d.md](reperes-3d.md) | Constantes du monde, coordonnées canvas vs monde, orientation, échelles des rigs. |
 | [architecture.md](architecture.md) | Règles de modules, imports circulaires, état partagé, nomenclature. |
 | [methode-de-test.md](methode-de-test.md) | Test par mutation, extraction pour rendre testable, ce qui est hors de portée. |
+| [bibliotheque-de-poses.md](bibliotheque-de-poses.md) | Poses : où elles vivent, enregistrer, supprimer, restaurer, fusion à l'ouverture. |
 
 ## Procédures
 
