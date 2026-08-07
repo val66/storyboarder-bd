@@ -280,17 +280,42 @@ describe('resolvePoseLabel3D — étiquette affichée d\'une pose (Fix 45)', () 
     assert.equal(r.modified, false, 'rien à comparer : pas de référence');
   });
 
-  test('une pose de la bibliothèque du projet est reconnue', () => {
-    const biblio = [{ id: 'p1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
-    const r = resolvePoseLabel3D({ position: 'maPose' }, biblio);
+  test('une pose de la bibliothèque est appariée par ID, et affiche son nom courant', () => {
+    const biblio = [{ id: 'pose1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    const r = resolvePoseLabel3D({ position: 'pose1' }, biblio);
     assert.equal(r.known, true);
     assert.equal(r.label, 'maPose');
   });
 
+  test('RÉGRESSION : renommer une pose ne casse rien, l\'étiquette suit', () => {
+    // C'est la raison d'être de l'appariement par id. Apparier par nom aurait fait afficher
+    // « inconnue » à tous les Personnages citant la pose dès son premier renommage.
+    const o = { position: 'pose1' };
+    const avant = [{ id: 'pose1', name: 'maPose', joints: {} }];
+    const apres = [{ id: 'pose1', name: 'accoudé au comptoir', joints: {} }];
+    assert.equal(resolvePoseLabel3D(o, avant).label, 'maPose');
+    assert.equal(resolvePoseLabel3D(o, apres).label, 'accoudé au comptoir', 'suit le renommage');
+  });
+
+  test('le nom d\'une pose n\'est PAS un identifiant : seul l\'id apparie', () => {
+    const biblio = [{ id: 'pose1', name: 'maPose', joints: {} }];
+    assert.equal(resolvePoseLabel3D({ position: 'maPose' }, biblio).known, false,
+      'citer le nom ne suffit pas — les fichiers portent des ids');
+  });
+
   test('une pose de la bibliothèque, retouchée, est signalée aussi', () => {
-    const biblio = [{ id: 'p1', name: 'maPose', joints: { lElbow: 0.4 } }];
-    const o = { position: 'maPose', joints3d: { lElbow: 0.7 } };
+    const biblio = [{ id: 'pose1', name: 'maPose', joints: { lElbow: 0.4 } }];
+    const o = { position: 'pose1', joints3d: { lElbow: 0.7 } };
     assert.equal(resolvePoseLabel3D(o, biblio).label, 'maPose (modifié)');
+  });
+
+  test('pose introuvable : le dernier nom connu prime sur l\'id opaque', () => {
+    // Un id ne dit rien à un humain. positionLabel, facultatif, rend le cas lisible.
+    const sansLabel = resolvePoseLabel3D({ position: 'pose7' }, []);
+    assert.equal(sansLabel.label, 'pose7 (inconnue)', 'repli sur l\'id');
+    const avecLabel = resolvePoseLabel3D({ position: 'pose7', positionLabel: 'maPose' }, []);
+    assert.equal(avecLabel.label, 'maPose (inconnue)');
+    assert.equal(avecLabel.key, 'pose7', 'la clé reste l\'id : c\'est elle qui répare le projet');
   });
 
   test('bibliothèque absente ou vide : les poses intégrées marchent quand même', () => {

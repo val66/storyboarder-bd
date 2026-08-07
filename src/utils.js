@@ -74,16 +74,24 @@ export function jointsEqual3D(a, b, eps = 1e-9){
 // la machine qui possède la bibliothèque de poses ne le reconnaîtrait plus : le projet doit pouvoir
 // se réparer tout seul dès qu'il retrouve sa bibliothèque.
 //
-// `poses` est la bibliothèque du projet, [{ id, name, skeleton, joints }]. L'appariement se fait par
-// NOM, pas par id : c'est ce que `position` contient, et cela garde le fichier lisible. Conséquence
-// assumée — renommer une pose fait afficher « inconnue » aux Personnages qui la citaient, sans que
-// leur allure change d'un pixel, puisque leurs angles sont déjà copiés chez eux.
+// `poses` est la bibliothèque du projet, [{ id, name, skeleton, joints }]. L'appariement d'une pose
+// personnalisée se fait par ID, pas par nom : renommer une pose garde donc l'étiquette juste chez
+// tous les Personnages qui la citent. Les poses intégrées, elles, restent appariées par leur clé
+// ('assis', 'debout'…) — c'est ce que contiennent les fichiers existants, et ça ne changera pas.
+// Aucune collision possible entre les deux : newId('pose') produit « pose1 », « pose2 »…
+//
+// Contrepartie de l'id opaque : quand la pose est introuvable, il n'y a rien d'humainement lisible à
+// afficher. `o.positionLabel` — le dernier nom connu, s'il a été enregistré à l'application de la
+// pose — sert alors de repli. Champ facultatif : son absence n'empêche rien, on retombe sur l'id.
 export function resolvePoseLabel3D(o, poses){
   const key = (o && o.position) || 'debout';
   const builtin = POSITIONS.find(p => p.key === key);
-  const custom = !builtin && Array.isArray(poses) ? poses.find(p => p && p.name === key) : null;
+  const custom = !builtin && Array.isArray(poses) ? poses.find(p => p && p.id === key) : null;
   const known = !!(builtin || custom);
-  if (!known) return { key, known: false, modified: false, label: `${key} (inconnue)` };
+  if (!known) {
+    const shown = (o && o.positionLabel) || key;
+    return { key, known: false, modified: false, label: `${shown} (inconnue)` };
+  }
 
   // Articulations de référence de cette pose. Sans joints3d, le Personnage EST la pose : rien à
   // signaler. Avec, on compare — c'est ce qui distingue « Assis » de « Assis (modifié) ».

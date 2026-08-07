@@ -33,8 +33,17 @@ n'y laisse jamais une simple référence.
 Conséquence : supprimer une pose, ouvrir le projet sur une autre machine ou l'envoyer à quelqu'un
 ne casse aucun Personnage. La bibliothèque est un confort d'auteur dont aucun projet ne dépend.
 
-`position` reste stocké, mais uniquement comme **étiquette** : « Assis », ou le nom de la pose
-personnalisée. Si la pose est introuvable, on affiche « inconnu ».
+`position` reste stocké, mais uniquement comme **référence d'affichage** : la clé d'une pose
+intégrée (« assis »), ou l'**id** d'une pose personnalisée (« pose1 »). Si elle est introuvable, on
+affiche « inconnue ».
+
+**Appariement par id, pas par nom** (décidé après coup, contre la première version de cette note) :
+renommer une pose garde ainsi l'étiquette juste chez tous les Personnages qui la citent. Aucune
+collision possible avec les poses intégrées, `newId('pose')` produisant « pose1 », « pose2 »…
+
+Contrepartie : un id ne dit rien à un humain. Quand la pose est introuvable, on retombe sur
+`positionLabel` — le dernier nom connu, s'il a été enregistré. Champ **facultatif** : le résolveur le
+lit s'il est là, rien ne casse s'il manque. Décider s'il faut l'écrire relève de la phase 4.
 
 ### Deux pièges identifiés, à traiter explicitement
 
@@ -68,6 +77,9 @@ poses: [ { id, name, skeleton, joints } ]
   enregistrée allongée fonctionne sans cas particulier. Vérifié (`rig3d.js:367`).
 - ⚠️ Ces noms de champs deviennent **permanents** dès la première version livrée
   (contrainte de compatibilité des projets).
+- ⚠️ `resyncIdCounter` (`io.js`) ne visite aujourd'hui que `tomes` et `scenes`. Il **doit** visiter
+  `poses` aussi, sans quoi une pose créée après chargement peut réutiliser un id déjà pris — et avec
+  l'appariement par id, c'est un Personnage qui se retrouve avec la mauvaise pose.
 
 ### Réutilisation entre projets
 
