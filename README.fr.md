@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.4**
+**Version 1.0.5**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -98,7 +98,13 @@ d'abord laisserait une version montée sans commit à chaque test en échec. Pou
 travail : `git commit --no-verify`.
 
 Passer une mineure remet le correctif à 0 ; passer une majeure remet les deux à 0.
-Les mineures et majeures sont marquées par un tag git (`v1.1.0`).
+
+Les mineures et majeures sont taguées automatiquement (`v1.1.0`) par un hook `post-commit` — après
+coup, car au moment du `pre-commit` le commit qui portera la version n'existe pas encore. Pas de tag
+sur les correctifs : ils noieraient les versions qui comptent.
+
+Un `npm run bump minor` suivi d'un commit conserve bien la 1.1.0 : le hook n'incrémente pas si la
+version a déjà été changée à la main. Un seul incrément par commit.
 
 `package.json` fait foi ; `src/version.js` en est généré pour que le renderer affiche la version
 sans passer par un IPC, et la ligne de version des deux README est réécrite par le même script.

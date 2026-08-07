@@ -39,11 +39,40 @@ if ! node --test tests/*.test.mjs > /dev/null 2>&1; then
   echo "  Forcer   : git commit --no-verify" >&2
   exit 1
 fi
-node tools/bump-version.mjs patch || exit 1
+VERSION_DE() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -1; }
+HEAD_V=$(git show HEAD:package.json 2>/dev/null | VERSION_DE)
+WORK_V=$(VERSION_DE < package.json)
+if node tools/bump-version.mjs should-auto-bump "$HEAD_V" "$WORK_V"; then
+  node tools/bump-version.mjs patch || exit 1
+else
+  echo "pre-commit : version déjà passée à $WORK_V à la main — pas d'incrément automatique."
+fi
 git add package.json src/version.js README.md README.fr.md
 `;
 
-export const HOOKS = { 'pre-commit': PRE_COMMIT };
+// Pose le tag APRÈS coup : au moment du pre-commit, le commit qui portera la version n'existe pas
+// encore, un tag y pointerait donc sur le commit précédent — celui qui NE contient PAS le passage
+// de version. En post-commit, HEAD est le bon commit.
+//
+// Ne peut rien faire échouer : le commit est déjà créé. Tout chemin d'erreur sort en 0.
+export const POST_COMMIT = `#!/bin/sh
+# GÉNÉRÉ par tools/setup-hooks.mjs — modifier le modèle là-bas, pas ici.
+VERSION_DE() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -1; }
+PREV=$(git show HEAD~1:package.json 2>/dev/null | VERSION_DE)
+CUR=$(git show HEAD:package.json 2>/dev/null | VERSION_DE)
+[ -z "$PREV" ] && exit 0
+[ -z "$CUR" ] && exit 0
+TAG=$(node tools/bump-version.mjs tag-for "$PREV" "$CUR" 2>/dev/null)
+[ -z "$TAG" ] && exit 0
+if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+  echo "post-commit : le tag $TAG existe déjà, laissé en l'état." >&2
+  exit 0
+fi
+git tag -a "$TAG" -m "$TAG" && echo "post-commit : tag $TAG posé sur $(git rev-parse --short HEAD)"
+exit 0
+`;
+
+export const HOOKS = { 'pre-commit': PRE_COMMIT, 'post-commit': POST_COMMIT };
 
 function main(){
   if (!existsSync(HOOKS_DIR)) mkdirSync(HOOKS_DIR, { recursive: true });

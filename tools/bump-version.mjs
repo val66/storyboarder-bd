@@ -56,6 +56,26 @@ export function bumpVersion(current, level){
   throw new Error(`Niveau inconnu : « ${level} » (attendu patch, minor, major ou sync)`);
 }
 
+// Fix 40 — faut-il incrémenter automatiquement au commit ?
+//
+// NON si la version de l'arbre de travail diffère déjà de celle du dernier commit : c'est qu'elle
+// a été passée à la main (`npm run bump minor|major`) et pas encore commitée. Incrémenter par-dessus
+// ferait de 1.1.0 un 1.1.1, et la mineure que tu viens de valider n'existerait dans AUCUN commit —
+// elle serait juste sautée. Un seul incrément par commit, quel qu'en soit l'auteur.
+export function shouldAutoBump(headVersion, workingVersion){
+  if (!headVersion) return true; // dépôt sans commit : rien à comparer
+  return headVersion === workingVersion;
+}
+
+// Fix 40 — nom du tag à poser, ou null. Seules les mineures et majeures sont marquées : un tag par
+// correctif noierait les versions qui comptent sous des centaines d'autres.
+export function tagForBump(prev, next){
+  if (!prev || !next) return null;
+  const a = parseVersion(prev), b = parseVersion(next);
+  if (a.major === b.major && a.minor === b.minor) return null;
+  return `v${formatVersion(b)}`;
+}
+
 export function renderVersionModule(version){
   return `// GÉNÉRÉ par tools/bump-version.mjs — ne pas modifier à la main.
 // Reflète le champ "version" de package.json. Existe pour que le renderer puisse afficher la
@@ -76,6 +96,17 @@ export function readModuleVersion(file = VERSION_JS){
 }
 
 function main(){
+  // Sous-commandes interrogées par les hooks git. Elles n'écrivent rien : elles répondent à une
+  // question et sortent, pour que la DÉCISION reste ici, testée, plutôt que dans un script shell.
+  if (process.argv[2] === 'tag-for') {
+    const tag = tagForBump(process.argv[3], process.argv[4]);
+    if (tag) console.log(tag);
+    return;
+  }
+  if (process.argv[2] === 'should-auto-bump') {
+    process.exitCode = shouldAutoBump(process.argv[3], process.argv[4]) ? 0 : 1;
+    return;
+  }
   const level = process.argv[2] || 'patch';
   const dryRun = process.argv.includes('--dry-run');
   const current = readPackageVersion();

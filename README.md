@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.4**
+**Version 1.0.5**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -96,8 +96,14 @@ The `pre-commit` hook runs the test suite first, then bumps. In that order: bump
 leave a bumped version with no commit whenever a test fails. For a work-in-progress commit:
 `git commit --no-verify`.
 
-A minor bump resets the patch; a major bump resets both. Minor and major releases are git-tagged
-(`v1.1.0`).
+A minor bump resets the patch; a major bump resets both.
+
+Minor and major releases are tagged automatically (`v1.1.0`) by a `post-commit` hook — afterwards,
+because at `pre-commit` time the commit that will carry the version does not exist yet. Patches are
+not tagged: they would bury the releases that matter.
+
+`npm run bump minor` followed by a commit does keep 1.1.0: the hook does not bump when the version
+was already changed by hand. One bump per commit.
 
 `package.json` is the source of truth; `src/version.js` is generated from it so the renderer can
 display the version without an IPC round-trip, and the version line in both READMEs is rewritten by

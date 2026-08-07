@@ -13,6 +13,7 @@ import {
   parseVersion, formatVersion, bumpVersion, renderVersionModule,
   readPackageVersion, readModuleVersion, readReadmeVersion,
   renderReadmeVersion, README_VERSION_RE, PACKAGE_JSON, VERSION_JS, READMES,
+  shouldAutoBump, tagForBump,
 } from '../tools/bump-version.mjs';
 import { APP_VERSION } from '../src/version.js';
 
@@ -126,5 +127,46 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
   test('src/version.js est bien marqué comme généré, pour dissuader l\'édition à la main', () => {
     assert.match(readFileSync(VERSION_JS, 'utf8'), /ne pas modifier à la main/);
     assert.ok(PACKAGE_JSON.endsWith('package.json'));
+  });
+});
+
+describe('shouldAutoBump — un seul incrément par commit (Fix 40)', () => {
+  test('version inchangée depuis le dernier commit → le hook incrémente', () => {
+    assert.equal(shouldAutoBump('1.0.4', '1.0.4'), true);
+  });
+
+  // LE cas qui motive cette fonction : sans elle, `npm run bump minor` suivi d'un commit donnait
+  // 1.1.0 → 1.1.1, et la mineure que l'utilisateur venait de valider n'existait dans AUCUN commit.
+  test('RÉGRESSION : une mineure posée à la main n\'est pas écrasée par un correctif', () => {
+    assert.equal(shouldAutoBump('1.0.4', '1.1.0'), false, 'mineure');
+    assert.equal(shouldAutoBump('1.0.4', '2.0.0'), false, 'majeure');
+  });
+
+  test('dépôt sans commit précédent : rien à comparer, on incrémente', () => {
+    assert.equal(shouldAutoBump(null, '1.0.0'), true);
+    assert.equal(shouldAutoBump('', '1.0.0'), true);
+  });
+});
+
+describe('tagForBump — marquer les mineures et majeures seulement (Fix 40)', () => {
+  test('une mineure et une majeure sont taguées', () => {
+    assert.equal(tagForBump('1.0.7', '1.1.0'), 'v1.1.0');
+    assert.equal(tagForBump('1.4.2', '2.0.0'), 'v2.0.0');
+  });
+
+  test('un correctif n\'est PAS tagué', () => {
+    // Un tag par correctif noierait les versions qui comptent sous des centaines d'autres.
+    assert.equal(tagForBump('1.0.4', '1.0.5'), null);
+    assert.equal(tagForBump('1.0.4', '1.0.4'), null, 'version inchangée');
+  });
+
+  test('le tag porte la version d\'ARRIVÉE, préfixée de v', () => {
+    assert.equal(tagForBump('0.9.9', '1.0.0'), 'v1.0.0');
+  });
+
+  test('entrées manquantes ou illisibles : pas de tag inventé', () => {
+    assert.equal(tagForBump(null, '1.1.0'), null);
+    assert.equal(tagForBump('1.0.0', null), null);
+    assert.throws(() => tagForBump('abc', '1.1.0'), /Version illisible/);
   });
 });
