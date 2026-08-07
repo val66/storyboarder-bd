@@ -26,7 +26,7 @@ import {
   POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
-import { clamp, getElementDepth, repairElementBase3D } from './utils.js';
+import { clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D } from './utils.js';
 import {
   applyGroundMagnetY, ensureElementUnits3D, ensureElementWorldPos3D,
   findOwningPanel, groundMagnetEligible, setElementWorldPos3D,
@@ -213,6 +213,31 @@ export function sliderDegToRotY(deg){
   return d * Math.PI / 180;
 }
 
+// Fix 44 — the modal's Position <select> only lists the built-in poses. Assigning it a value that
+// is absent from that list leaves it EMPTY (standard DOM behaviour), and descModalSave then writes
+// that empty string back over obj.position: the pose name is destroyed, silently, on the first save.
+//
+// A single synthetic option is therefore injected for an unknown key, and removed as soon as the
+// modal reopens on a known one. Kept in a module variable rather than looked up in the DOM: the
+// option is ours, we know where it is, and no selector can go stale.
+let syntheticPoseOption = null;
+function ensurePoseOptionExists(select, obj){
+  if (syntheticPoseOption) {
+    // Guarded: under the test DOM stub there is no real parent chain.
+    if (select && select.removeChild) select.removeChild(syntheticPoseOption);
+    syntheticPoseOption = null;
+  }
+  const unknown = unknownPoseKey3D(obj && obj.position);
+  if (!unknown || !select) return;
+  const opt = document.createElement('option');
+  opt.value = unknown;
+  // Le nom EXACT est conservé comme valeur : c'est lui qui sera réécrit à la sauvegarde, et il doit
+  // survivre intact pour que le projet se répare si sa bibliothèque de poses revient un jour.
+  opt.textContent = `${unknown} (inconnue)`;
+  select.appendChild(opt);
+  syntheticPoseOption = opt;
+}
+
 export function openPersonaModal(obj, isNew){
   S.modalTarget = obj;
   S.modalDirty = false;
@@ -221,6 +246,9 @@ export function openPersonaModal(obj, isNew){
   personaNameInput.value = obj.name || '';
   personaGenreSelect.value = obj.genre || 'homme';
   personaEmotionSelect.value = obj.emotion || 'neutre';
+  // Fix 44 — l'option synthétique DOIT être posée avant l'affectation : sinon le navigateur laisse
+  // le champ vide et la sauvegarde suivante écrase le nom de la pose par une chaîne vide.
+  ensurePoseOptionExists(personaPositionSelect, obj);
   personaPositionSelect.value = obj.position || 'debout';
   personaHandLSelect.value = obj.handL || 'ouverte';
   personaHandRSelect.value = obj.handR || 'ouverte';

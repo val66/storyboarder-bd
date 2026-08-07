@@ -7,8 +7,9 @@ import assert from 'node:assert/strict';
 import {
   wrapAngle, clamp, clampAngle, getBBox,
   pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
-  getElementDepth, getHandles, repairElementBase3D,
+  getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
 } from '../src/utils.js';
+import { POSITIONS } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -163,5 +164,42 @@ describe('repairElementBase3D — répare un baseH/baseW corrompu (projets pré-
   test('realHeightFloor ou baseH absent : ne plante pas, renvoie false', () => {
     assert.equal(repairElementBase3D({ id: 'z', baseH: 100 }), false);
     assert.equal(repairElementBase3D({ id: 'w', realHeightFloor: 1.75 }), false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 44 — détection d'une pose inconnue, préalable à l'option synthétique de la modale.
+//
+// Sans elle : affecter au <select> une valeur absente de ses options le laisse VIDE (comportement
+// standard du DOM), et la sauvegarde suivante écrit cette chaîne vide par-dessus obj.position. Le
+// nom de la pose est détruit, sans la moindre erreur nulle part.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('unknownPoseKey3D — repérer une pose absente des poses intégrées (Fix 44)', () => {
+  test('une pose intégrée est considérée comme connue', () => {
+    for (const key of POSITIONS.map(p => p.key)) {
+      assert.equal(unknownPoseKey3D(key), null, key);
+    }
+  });
+
+  test('RÉGRESSION : une pose absente est signalée, avec son nom EXACT', () => {
+    // Le nom doit ressortir intact : c'est lui qui sera réécrit à la sauvegarde, et le projet doit
+    // pouvoir se réparer si sa bibliothèque de poses revient.
+    assert.equal(unknownPoseKey3D('maPose'), 'maPose');
+    assert.equal(unknownPoseKey3D('accoudé au comptoir'), 'accoudé au comptoir');
+    assert.equal(unknownPoseKey3D('Debout'), 'Debout', 'la casse compte : ce n\'est pas « debout »');
+  });
+
+  test('absence de pose : rien à signaler (l\'appelant retombera sur « debout »)', () => {
+    assert.equal(unknownPoseKey3D(null), null);
+    assert.equal(unknownPoseKey3D(undefined), null);
+    assert.equal(unknownPoseKey3D(''), null);
+  });
+
+  test('la liste des poses connues est injectable, pour la future bibliothèque', () => {
+    // Quand les poses personnalisées existeront, elles s'ajouteront aux intégrées : la fonction
+    // doit accepter la liste élargie sans être réécrite.
+    assert.equal(unknownPoseKey3D('maPose', ['debout', 'maPose']), null, 'pose connue de la biblio');
+    assert.equal(unknownPoseKey3D('debout', ['maPose']), 'debout', 'liste restreinte respectée');
+    assert.equal(unknownPoseKey3D('x', []), 'x', 'liste vide : tout est inconnu');
   });
 });

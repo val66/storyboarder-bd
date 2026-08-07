@@ -31,6 +31,23 @@ export function getEmotion(key){ return EMOTIONS.find(e => e.key === key) || EMO
 
 export function getPosition(key){ return POSITIONS.find(p => p.key === key) || POSITIONS[0]; }
 
+// Fix 44 — the pose key of an Element when that key is NOT one of the built-ins; null otherwise.
+//
+// getPosition just above deliberately falls back to POSITIONS[0] so callers always get something to
+// display. That silence is harmless for a label, but dangerous for the modal's <select>: assigning a
+// value that is absent from the option list leaves the select EMPTY — standard DOM behaviour — and
+// the next save writes that empty string back over obj.position. The pose name is destroyed, without
+// a single error anywhere.
+//
+// The modal therefore has to be able to ASK whether a key is unknown, so it can inject a synthetic
+// option rather than let the browser silently drop the value. Already reachable today with a file
+// carrying a hand-edited or future pose name; it becomes routine once custom poses exist.
+export function unknownPoseKey3D(position, knownKeys){
+  if (!position) return null;
+  const known = knownKeys || POSITIONS.map(p => p.key);
+  return known.includes(position) ? null : position;
+}
+
 // ══════════════════════════════════════════════════════════════
 // MATH HELPERS
 // ══════════════════════════════════════════════════════════════
