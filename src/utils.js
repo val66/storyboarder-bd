@@ -4,12 +4,13 @@
  * No side effects, no global state — safe to import from any module.
  *
  * Data lookups:    getFormat, pxPerMm, getStyle3D, getEmotion, getPosition
+ * Poses:           unknownPoseKey3D, jointsEqual3D, resolvePoseLabel3D
  * Math helpers:    clamp, wrapAngle, clampAngle
  * Geometry:        getBBox
  * Element helpers: getElementDepth
  */
 
-import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, WALL_PX_PER_UNIT_3D } from './constants.js';
+import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, WALL_PX_PER_UNIT_3D } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
@@ -46,6 +47,50 @@ export function unknownPoseKey3D(position, knownKeys){
   if (!position) return null;
   const known = knownKeys || POSITIONS.map(p => p.key);
   return known.includes(position) ? null : position;
+}
+
+// Fix 45 — égalité de deux jeux d'articulations. Les valeurs sont des nombres, des booléens
+// (lieFlat) ou des objets imbriqués {x, z} ; la comparaison est donc récursive. Une tolérance est
+// nécessaire : un angle passe par degrés → radians au retour de la modale, et un aller-retour peut
+// décaler le dernier bit. Comparer par JSON.stringify serait plus court mais dépendrait de l'ordre
+// des clés, qui n'est garanti nulle part.
+export function jointsEqual3D(a, b, eps = 1e-9){
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= eps;
+  if (typeof a !== 'object' || typeof b !== 'object') return a === b;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every(k => Object.prototype.hasOwnProperty.call(b, k) && jointsEqual3D(a[k], b[k], eps));
+}
+
+// Fix 45 — étiquette de pose d'un Personnage, CALCULÉE À L'AFFICHAGE et jamais persistée.
+//
+// `o.position` est une étiquette, pas une dépendance : les valeurs d'articulations vivent dans
+// `o.joints3d` et font foi (cf. getEffectiveJoints). Cette fonction se contente de décider comment
+// nommer ce que l'utilisateur voit.
+//
+// Elle n'écrit RIEN. Écrire « inconnu » dans le fichier détruirait le nom, et rouvrir le projet sur
+// la machine qui possède la bibliothèque de poses ne le reconnaîtrait plus : le projet doit pouvoir
+// se réparer tout seul dès qu'il retrouve sa bibliothèque.
+//
+// `poses` est la bibliothèque du projet, [{ id, name, skeleton, joints }]. L'appariement se fait par
+// NOM, pas par id : c'est ce que `position` contient, et cela garde le fichier lisible. Conséquence
+// assumée — renommer une pose fait afficher « inconnue » aux Personnages qui la citaient, sans que
+// leur allure change d'un pixel, puisque leurs angles sont déjà copiés chez eux.
+export function resolvePoseLabel3D(o, poses){
+  const key = (o && o.position) || 'debout';
+  const builtin = POSITIONS.find(p => p.key === key);
+  const custom = !builtin && Array.isArray(poses) ? poses.find(p => p && p.name === key) : null;
+  const known = !!(builtin || custom);
+  if (!known) return { key, known: false, modified: false, label: `${key} (inconnue)` };
+
+  // Articulations de référence de cette pose. Sans joints3d, le Personnage EST la pose : rien à
+  // signaler. Avec, on compare — c'est ce qui distingue « Assis » de « Assis (modifié) ».
+  const reference = builtin ? POSE_3D[key] : custom.joints;
+  const modified = !!(o && o.joints3d) && !!reference && !jointsEqual3D(o.joints3d, reference);
+  const base = builtin ? builtin.label : custom.name;
+  return { key, known: true, modified, label: modified ? `${base} (modifié)` : base };
 }
 
 // ══════════════════════════════════════════════════════════════

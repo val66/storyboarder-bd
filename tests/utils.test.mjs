@@ -8,8 +8,9 @@ import {
   wrapAngle, clamp, clampAngle, getBBox,
   pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
+  jointsEqual3D, resolvePoseLabel3D,
 } from '../src/utils.js';
-import { POSITIONS } from '../src/constants.js';
+import { POSITIONS, POSE_3D } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -201,5 +202,108 @@ describe('unknownPoseKey3D — repérer une pose absente des poses intégrées (
     assert.equal(unknownPoseKey3D('maPose', ['debout', 'maPose']), null, 'pose connue de la biblio');
     assert.equal(unknownPoseKey3D('debout', ['maPose']), 'debout', 'liste restreinte respectée');
     assert.equal(unknownPoseKey3D('x', []), 'x', 'liste vide : tout est inconnu');
+  });
+});
+
+describe('jointsEqual3D — comparaison de deux jeux d\'articulations (Fix 45)', () => {
+  test('identiques, y compris avec objets imbriqués', () => {
+    const a = { torsoRotX: 0.1, lShoulder: { x: 0.05, z: -0.05 }, lElbow: 0 };
+    assert.equal(jointsEqual3D(a, JSON.parse(JSON.stringify(a))), true);
+  });
+
+  test('une seule articulation qui diffère suffit', () => {
+    const a = { lElbow: 0.1, lShoulder: { x: 0, z: 0 } };
+    assert.equal(jointsEqual3D(a, { ...a, lElbow: 0.2 }), false, 'nombre à la racine');
+    assert.equal(jointsEqual3D(a, { ...a, lShoulder: { x: 0, z: 0.3 } }), false, 'valeur imbriquée');
+  });
+
+  test('tolérance : un aller-retour degrés → radians ne compte pas comme une modification', () => {
+    // Un angle saisi en degrés puis reconverti peut décaler le dernier bit ; sans tolérance,
+    // rouvrir une modale sans rien toucher afficherait « (modifié) ».
+    const a = { lElbow: 0.5 };
+    assert.equal(jointsEqual3D(a, { lElbow: 0.5 + 1e-12 }), true, 'sous la tolérance');
+    assert.equal(jointsEqual3D(a, { lElbow: 0.5 + 1e-6 }), false, 'au-dessus');
+  });
+
+  test('un jeu de clés différent n\'est jamais égal', () => {
+    assert.equal(jointsEqual3D({ a: 1 }, { a: 1, b: 2 }), false, 'clé en plus');
+    assert.equal(jointsEqual3D({ a: 1, b: 2 }, { a: 1 }), false, 'clé en moins');
+    assert.equal(jointsEqual3D({ a: 1 }, { b: 1 }), false, 'clé renommée');
+  });
+
+  test('booléens et valeurs nulles', () => {
+    assert.equal(jointsEqual3D({ lieFlat: true }, { lieFlat: true }), true);
+    assert.equal(jointsEqual3D({ lieFlat: true }, { lieFlat: false }), false);
+    assert.equal(jointsEqual3D(null, null), true);
+    assert.equal(jointsEqual3D(null, { a: 1 }), false);
+    assert.equal(jointsEqual3D({ a: 1 }, null), false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 45 — l'étiquette de pose se CALCULE à l'affichage. Rien n'est jamais réécrit dans le
+// fichier : « inconnu » persisté détruirait le nom, et le projet ne pourrait plus se réparer
+// en retrouvant sa bibliothèque de poses.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('resolvePoseLabel3D — étiquette affichée d\'une pose (Fix 45)', () => {
+  test('pose intégrée : son libellé, sans mention', () => {
+    const r = resolvePoseLabel3D({ position: 'assis' }, []);
+    assert.equal(r.known, true);
+    assert.equal(r.modified, false);
+    assert.equal(r.label, POSITIONS.find(p => p.key === 'assis').label);
+  });
+
+  test('sans position : retombe sur « debout »', () => {
+    assert.equal(resolvePoseLabel3D({}, []).key, 'debout');
+    assert.equal(resolvePoseLabel3D(null, []).key, 'debout');
+  });
+
+  test('des articulations identiques à la pose ne comptent pas comme une modification', () => {
+    const o = { position: 'assis', joints3d: JSON.parse(JSON.stringify(POSE_3D.assis)) };
+    assert.equal(resolvePoseLabel3D(o, []).modified, false);
+  });
+
+  test('une articulation retouchée donne « (modifié) », sans perdre la provenance', () => {
+    // Effacer l'étiquette perdrait l'information « c'était un Assis » ; on la garde.
+    const o = { position: 'assis', joints3d: { ...POSE_3D.assis, lElbow: 0.9 } };
+    const r = resolvePoseLabel3D(o, []);
+    assert.equal(r.modified, true);
+    assert.match(r.label, /\(modifié\)$/);
+    assert.ok(r.label.startsWith(POSITIONS.find(p => p.key === 'assis').label), 'provenance conservée');
+  });
+
+  test('RÉGRESSION : une pose introuvable est signalée SANS que son nom soit altéré', () => {
+    const r = resolvePoseLabel3D({ position: 'accoudé au comptoir' }, []);
+    assert.equal(r.known, false);
+    assert.equal(r.key, 'accoudé au comptoir', 'le nom exact ressort intact');
+    assert.equal(r.label, 'accoudé au comptoir (inconnue)');
+    assert.equal(r.modified, false, 'rien à comparer : pas de référence');
+  });
+
+  test('une pose de la bibliothèque du projet est reconnue', () => {
+    const biblio = [{ id: 'p1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
+    const r = resolvePoseLabel3D({ position: 'maPose' }, biblio);
+    assert.equal(r.known, true);
+    assert.equal(r.label, 'maPose');
+  });
+
+  test('une pose de la bibliothèque, retouchée, est signalée aussi', () => {
+    const biblio = [{ id: 'p1', name: 'maPose', joints: { lElbow: 0.4 } }];
+    const o = { position: 'maPose', joints3d: { lElbow: 0.7 } };
+    assert.equal(resolvePoseLabel3D(o, biblio).label, 'maPose (modifié)');
+  });
+
+  test('bibliothèque absente ou vide : les poses intégrées marchent quand même', () => {
+    for (const biblio of [undefined, null, []]) {
+      assert.equal(resolvePoseLabel3D({ position: 'debout' }, biblio).known, true, String(biblio));
+    }
+  });
+
+  test('la fonction ne modifie jamais l\'Élément qu\'on lui passe', () => {
+    // C'est tout l'intérêt : « inconnu » est un affichage, pas une donnée.
+    const o = { position: 'maPose', joints3d: { lElbow: 0.1 } };
+    const avant = JSON.stringify(o);
+    resolvePoseLabel3D(o, []);
+    assert.equal(JSON.stringify(o), avant);
   });
 });
