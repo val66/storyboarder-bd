@@ -1303,9 +1303,16 @@ export function disposePersonaRig3D(id){
 // Used by the modals' 3D Preview (see drawPersonaPreview) to render sharply on HiDPI/Retina screens
 // — per user report, these previews were blurry because rendered at a fixed resolution (200×320) then
 // upscaled by CSS (width/height:100% of the .persona-preview-wrap canvas) to fill the whole Box.
-export function useFigureFormat3D(resScale = 1){
+// Fix 53 — sizeOverride : taille EXACTE du rendu hors écran, proportions comprises.
+//
+// Sans elle, le format était toujours celui de l'aperçu portrait de la modale, et le canevas plein
+// écran de l'éditeur recevait ce bitmap étiré (cf. figureRenderSize3D). Le camera.aspect suit la
+// taille demandée, et frameCameraToBox tient déjà compte de l'aspect pour cadrer : rien d'autre à
+// ajuster pour passer en paysage.
+export function useFigureFormat3D(resScale = 1, sizeOverride = null){
   ensurePersonaScene3D();
-  const w = Math.round(PERSONA_3D_W * resScale), h = Math.round(PERSONA_3D_H * resScale);
+  const w = sizeOverride ? Math.max(1, Math.round(sizeOverride.w)) : Math.round(PERSONA_3D_W * resScale);
+  const h = sizeOverride ? Math.max(1, Math.round(sizeOverride.h)) : Math.round(PERSONA_3D_H * resScale);
   if (personaRenderer3D.domElement.width !== w || personaRenderer3D.domElement.height !== h) {
     personaRenderer3D.setSize(w, h);
   }
@@ -1315,8 +1322,8 @@ export function useFigureFormat3D(resScale = 1){
   }
 }
 
-export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1){
-  useFigureFormat3D(resScale);
+export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, sizeOverride = null){
+  useFigureFormat3D(resScale, sizeOverride);
   const style = resolveStyle3D(styleKey);
   const entry = ensurePersonaRigEntry3D(o, style);
   showOnlyFigure3D('persona', o.id);

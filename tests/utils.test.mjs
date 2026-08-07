@@ -3,6 +3,7 @@
 // du dom-stub ici.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   wrapAngle, clamp, clampAngle, getBBox,
@@ -10,7 +11,7 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
-  pickNearestHandle3D, canvasEventCoords3D,
+  pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -551,5 +552,130 @@ describe('canvasEventCoords3D — écran → repère interne du canevas', () => 
     assert.deepEqual(canvasEventCoords3D({ left: 0, top: 0, width: 0, height: 0 }, 10, 10, 5, 5),
       { px: 0, py: 0 });
     assert.deepEqual(canvasEventCoords3D(null, 10, 10, 5, 5), { px: 0, py: 0 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 53 — taille du rendu hors écran d'une figure.
+//
+// Le Personnage apparaissait flou ET élargi dans l'éditeur plein écran. Une seule cause aux deux
+// symptômes : le rendu se faisait toujours au format portrait de l'aperçu de la modale (200×320),
+// puis était étiré sur un canevas paysage. Mesuré sur une boîte 1620×1036 : bitmap source 313×500,
+// soit ×2.5 de déformation horizontale et ×5.2 d'agrandissement en largeur.
+//
+// La propriété qui compte ici est donc la CONSERVATION DES PROPORTIONS, y compris quand le plafond
+// s'applique — un plafond qui écrêterait un seul côté réintroduirait exactement la déformation qu'on
+// vient de supprimer.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('figureRenderSize3D — rendu aux proportions de la boîte', () => {
+  const ratio = (s) => s.w / s.h;
+
+  test('sous le plafond : la taille de la boîte est reprise telle quelle', () => {
+    assert.deepEqual(figureRenderSize3D(800, 600, 2048), { w: 800, h: 600 });
+  });
+
+  test('RÉGRESSION : les proportions survivent au plafonnement', () => {
+    // Le cœur du correctif. Un plafond appliqué à un seul côté rendrait le Personnage aussi déformé
+    // qu'avant, mais dans l'autre sens.
+    const boite = 3000 / 1000;
+    const s = figureRenderSize3D(3000, 1000, 2048);
+    assertClose(ratio(s), boite, 'proportions conservées', 1e-2);
+    assert.equal(s.w, 2048, 'c\'est le plus grand côté qui touche le plafond');
+  });
+
+  test('le plafond s\'applique au plus GRAND côté, portrait comme paysage', () => {
+    assert.equal(figureRenderSize3D(3000, 1000, 2048).w, 2048, 'paysage : la largeur');
+    assert.equal(figureRenderSize3D(1000, 3000, 2048).h, 2048, 'portrait : la hauteur');
+  });
+
+  test('la densité d\'écran multiplie la résolution sans toucher aux proportions', () => {
+    const s = figureRenderSize3D(800, 600, 4096, 2);
+    assert.deepEqual(s, { w: 1600, h: 1200 });
+    assertClose(ratio(s), 800 / 600, 'proportions inchangées', 1e-9);
+  });
+
+  test('la densité reste soumise au plafond', () => {
+    // Sans cela, un écran dense en plein écran demanderait au renderer partagé des tampons
+    // démesurés à chaque image.
+    const s = figureRenderSize3D(1620, 1036, 2048, 3);
+    assert.equal(s.w, 2048);
+    assertClose(ratio(s), 1620 / 1036, 'et toujours aux bonnes proportions', 1e-2);
+  });
+
+  test('CAS RÉEL mesuré : boîte 1620×1036 sur écran standard → 1:1, aucun agrandissement', () => {
+    // La configuration qui a motivé le correctif. L'ancien calcul y produisait 313×500.
+    assert.deepEqual(figureRenderSize3D(1620, 1036, 2048, 1), { w: 1620, h: 1036 });
+  });
+
+  test('dimensions nulles ou absentes : au moins 1px, jamais 0 ni NaN', () => {
+    // Un canevas non encore mesuré (overlay masqué) passe ici ; une taille 0 ferait échouer
+    // setSize côté renderer.
+    const s = figureRenderSize3D(0, 0, 2048);
+    assert.ok(s.w >= 1 && s.h >= 1, `${s.w}×${s.h}`);
+    assert.ok(Number.isFinite(figureRenderSize3D(undefined, undefined, 2048).w));
+  });
+
+  test('densité < 1 ne réduit pas la résolution', () => {
+    // Un dpr inférieur à 1 existe (zoom arrière du navigateur) ; il ne doit pas dégrader le rendu.
+    assert.deepEqual(figureRenderSize3D(800, 600, 2048, 0.5), { w: 800, h: 600 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 53 — CÂBLAGE, vérifié par inspection de source.
+//
+// figureRenderSize3D est testée ci-dessus, mais son résultat ne sert à rien s'il n'atteint pas le
+// renderer. Or tout ce chemin — useFigureFormat3D → ensurePersonaScene3D → THREE.WebGLRenderer — est
+// hors de portée sous Node (cf. docs/methode-de-test.md). Constaté : la mutation « ignorer
+// sizeOverride et revenir au format portrait figé », qui reproduit exactement le bug d'origine,
+// traverse la suite sans faire échouer un seul test.
+//
+// L'inspection de source est le seul filet possible ici. Le dépôt s'en sert déjà pour l'atomicité de
+// bump-version.mjs (cf. tests/version.test.mjs). Elle ne prouve pas que le rendu est juste ; elle
+// empêche que le paramètre soit silencieusement débranché.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
+  const lire = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+
+  // Corps d'une fonction, borné sur la déclaration SUIVANTE et non sur une longueur fixe. Une
+  // première version découpait 2000 caractères : la ligne à vérifier commençait au caractère 1990 et
+  // se retrouvait tronquée. Le test échouait — mais l'inverse aurait été pire, un extrait trop court
+  // qui ne contient pas ce qu'on cherche ne prouve rien tout en restant vert le jour où l'assertion
+  // devient une simple absence.
+  const corpsDe = (src, nom) => {
+    const debut = src.indexOf(`function ${nom}`);
+    assert.ok(debut >= 0, `${nom} introuvable — la fonction a-t-elle été renommée ?`);
+    const suite = src.indexOf('\nexport function ', debut + 10);
+    return src.slice(debut, suite > 0 ? suite : src.length);
+  };
+
+  test('useFigureFormat3D honore sizeOverride pour les DEUX dimensions', () => {
+    const src = lire('../src/rig3d.js');
+    const corps = corpsDe(src, 'useFigureFormat3D');
+    assert.match(corps, /sizeOverride\s*\?[^\n]*sizeOverride\.w/, 'largeur');
+    assert.match(corps, /sizeOverride\s*\?[^\n]*sizeOverride\.h/, 'hauteur');
+  });
+
+  test('renderPersonaToCanvas3D transmet sizeOverride à useFigureFormat3D', () => {
+    const src = lire('../src/rig3d.js');
+    assert.match(corpsDe(src, 'renderPersonaToCanvas3D'),
+      /useFigureFormat3D\(resScale,\s*sizeOverride\)/);
+  });
+
+  test('drawPersonaPreview transmet spec.renderSize jusqu\'au rendu', () => {
+    const src = lire('../src/draw.js');
+    const bloc = corpsDe(src, 'drawPersonaPreview');
+    assert.match(bloc, /spec\.renderSize/, 'la taille demandée est lue');
+    assert.match(bloc, /renderPersonaToCanvas3D\([^)]*\{\s*w:\s*rw,\s*h:\s*rh\s*\}/,
+      'et passée au rendu, pas seulement au canevas de destination');
+  });
+
+  test('l\'éditeur demande une taille aux proportions de sa boîte', () => {
+    const src = lire('../src/events.js');
+    const bloc = corpsDe(src, 'drawPersonaEditor');
+    assert.match(bloc, /figureRenderSize3D\(/, 'la taille est calculée, pas devinée');
+    assert.match(bloc, /clientWidth[\s\S]{0,80}clientHeight/,
+      'à partir des DEUX dimensions de la boîte — l\'ancien calcul n\'en prenait qu\'une');
+    assert.match(bloc, /renderSize:/, 'et transmise à drawPersonaPreview');
   });
 });

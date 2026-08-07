@@ -27,7 +27,8 @@ import {
   PERSONA_3D_W, PERSONA_3D_H, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES,
   ANIMAL_JOINT_DEFS, WALL_PX_PER_UNIT_3D, CHILD_DESIGN_SIZE_3D,
   CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, CAM_SMOOTH_EPS,
-  PANEL_SCENE_RENDER_MAX_PX, PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H,
+  PANEL_SCENE_RENDER_MAX_PX, PERSONA_EDITOR_RENDER_MAX_PX,
+  PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H,
   OBJECT_PREVIEW_BASE_W, OBJECT_PREVIEW_BASE_H, ROOM_PREVIEW_BASE_W,
   ROOM_PREVIEW_BASE_H, PREVIEW_OBJECT_ID, PREVIEW_PERSONA_ID, LIMB_SEGMENTS,
   JOINT_LABELS, JOINT_GROUPS, PERSONA_PREVIEW_PAN_SENS
@@ -36,7 +37,8 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  figureRenderSize3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -539,9 +541,13 @@ export function drawPersonaEditor(){
   const cnv = document.getElementById('personaEditorCanvas');
   if (!cnv || !S.personaEditorOpen) return;
   const target = personaEditorTarget();
-  const base = Math.min(PANEL_SCENE_RENDER_MAX_PX,
-    Math.max(1, cnv.clientWidth || 900), Math.max(1, cnv.clientHeight || 700));
-  const ratio = (cnv.clientHeight || 700) / Math.max(1, cnv.clientWidth || 900);
+  // Fix 53 — rendu AUX PROPORTIONS de la boîte. L'ancien calcul prenait le plus PETIT côté comme
+  // largeur de rendu et gardait le format portrait de la modale : sur une boîte 1620×1036, cela
+  // donnait un bitmap de 313×500 étiré jusqu'à 1620 de large — ×2.5 de déformation horizontale et
+  // ×5.2 d'agrandissement. Mesuré avant correction, pas estimé.
+  const size = figureRenderSize3D(
+    cnv.clientWidth || 900, cnv.clientHeight || 700,
+    PERSONA_EDITOR_RENDER_MAX_PX, window.devicePixelRatio || 1);
   drawPersonaPreview(cnv, {
     joints: S.personaEditorDraft,
     color: target && target.color,
@@ -554,8 +560,7 @@ export function drawPersonaEditor(){
     rotZ: (target && target.rotZ) || 0,
     zoom: S.personaEditorZoom,
     pan: S.personaEditorPan,
-    baseW: base,
-    baseH: Math.max(1, Math.round(base * ratio)),
+    renderSize: size,
   });
   // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
   // passage personaEditorHandlePos. C'est donc ce dessin qui rend le clic possible : sans redessin,

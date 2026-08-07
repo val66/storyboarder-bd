@@ -663,6 +663,16 @@ export const CAM_SMOOTH_EPS = 0.0008;
 // rendering scale is reduced as needed.
 export const PANEL_SCENE_RENDER_MAX_PX = 1400;
 
+// Fix 53 — plafond propre à l'éditeur de Personnage, qui occupe TOUT l'écran là où une Case n'occupe
+// qu'une vignette. Reprendre les 1400 ci-dessus laissait un agrandissement visible (mesuré : ×1.16
+// sur une boîte 1620 de large, ×1.61 sur 2260).
+//
+// 2048 : rendu exactement 1:1 en 1920×1080, ×1.10 en 2560×1440 — et un tampon qui reste sous les
+// 10.2 Mo dans le pire cas mesuré (écran dense). Le plafond ne peut pas simplement disparaître : le
+// renderer hors écran est partagé, et suivre un canevas plein écran sur un écran 4K à forte densité
+// lui demanderait de réallouer des tampons démesurés à chaque image.
+export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
+
 
 // ── Modal preview dimensions ────────────────────────────────────
 export const PERSONA_PREVIEW_BASE_W = 180, PERSONA_PREVIEW_BASE_H = 260;

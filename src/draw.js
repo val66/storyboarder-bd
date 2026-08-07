@@ -1611,9 +1611,24 @@ export function drawPersonaPreview(targetCanvas, spec){
   // que lui — deux vues sur le même état, le motif qui a coûté cher cinq fois dans ce dépôt.
   const zoom = (spec.zoom != null) ? spec.zoom : S.personaPreviewZoom;
   const pan = spec.pan || personaPreviewPan;
-  const scale = syncPreviewCanvasRes(targetCanvas,
-    spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
-  const cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale);
+  // Fix 53 — spec.renderSize : le rendu hors écran est fait à CETTE taille, et le canevas de
+  // destination prend la même. Le drawImage ci-dessous devient alors du 1:1 — ni étirement (donc
+  // plus de Personnage élargi) ni agrandissement (donc plus de flou). C'est le chemin de l'éditeur
+  // plein écran ; l'aperçu de la modale garde le sien, où un format fixe suivi d'un ajustement
+  // proportionnel est le bon compromis pour une petite vignette.
+  let cnv;
+  if (spec.renderSize) {
+    const rw = Math.max(1, Math.round(spec.renderSize.w));
+    const rh = Math.max(1, Math.round(spec.renderSize.h));
+    if (targetCanvas.width !== rw || targetCanvas.height !== rh) {
+      targetCanvas.width = rw; targetCanvas.height = rh;
+    }
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh });
+  } else {
+    const scale = syncPreviewCanvasRes(targetCanvas,
+      spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale);
+  }
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   applyStyleCanvasFilter3D(pctx, style);

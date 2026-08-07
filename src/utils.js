@@ -202,6 +202,33 @@ export function canvasEventCoords3D(rect, cnvW, cnvH, clientX, clientY){
   };
 }
 
+// Fix 53 — taille du rendu hors écran d'une figure, aux PROPORTIONS de la boîte qui l'affiche.
+//
+// Le rendu de Personnage se faisait toujours au format portrait de l'aperçu de la modale
+// (PERSONA_3D_W × PERSONA_3D_H, 200×320), puis était étiré sur le canevas de destination. Tant que
+// ce canevas était lui aussi portrait, l'étirement restait invisible. En plein écran, il ne l'est
+// plus : mesuré sur une boîte 1620×1036, le bitmap source faisait 313×500, soit une DÉFORMATION
+// horizontale de ×2.5 et un agrandissement de ×5.2 en largeur — d'où un Personnage à la fois flou
+// et élargi.
+//
+// Rendre aux proportions de la boîte supprime les deux d'un coup : plus d'étirement, et une
+// résolution qui suit la place réellement occupée.
+//
+// Le plafond reste nécessaire : le renderer hors écran est partagé, et suivre aveuglément un
+// canevas plein écran sur un écran dense lui demanderait des tampons démesurés à chaque image. Il
+// s'applique au plus grand côté, pour ne jamais altérer les proportions — c'est tout l'objet de la
+// fonction.
+export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
+  let w = Math.max(1, boxW || 1) * Math.max(1, dpr || 1);
+  let h = Math.max(1, boxH || 1) * Math.max(1, dpr || 1);
+  const largest = Math.max(w, h);
+  if (maxPx > 0 && largest > maxPx) {
+    const k = maxPx / largest;
+    w *= k; h *= k;
+  }
+  return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
+}
+
 // ══════════════════════════════════════════════════════════════
 // MATH HELPERS
 // ══════════════════════════════════════════════════════════════
