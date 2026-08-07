@@ -39,6 +39,7 @@ import {
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
+import { APP_VERSION } from './version.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -6996,6 +6997,21 @@ document.getElementById('projectsDirReset').onclick = async () => {
 };
 // Loads persisted settings before starting the Project (cf. initStartupProject below), so that
 // startAutosave()/applyTheme() use the right values right away instead of the hardcoded defaults.
+// Fix 36 — version de l'application, affichée sous le nom du Projet et dans le titre du Manuel.
+// Lue depuis src/version.js (généré par tools/bump-version.mjs) et non depuis package.json : ce
+// dernier n'est pas atteignable depuis le renderer sans un IPC, donc sans toucher main.js ou
+// preload.js, interdits pour une fonctionnalité applicative.
+function renderAppVersion(){
+  ['appVersionText', 'helpVersionText'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = 'v' + APP_VERSION;
+  });
+}
+// Appelé une fois au chargement du module, PAS depuis startDefaultProject : celui-ci n'est qu'une
+// des deux branches de démarrage (l'autre rouvre le dernier Projet), et la version n'y serait
+// affichée que si aucun Projet précédent n'existait. Elle ne change jamais en cours de session.
+renderAppVersion();
+
 async function loadAppSettings(){
   if (!hasElectronAPI()) { applyI18n(S.appLang); return; }
   try {

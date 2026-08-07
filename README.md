@@ -80,6 +80,27 @@ excluded and why.
 
 ---
 
+## 🔖 Versioning
+
+`major.minor.patch`, displayed under the project name and in the manual.
+
+| Level | When | How |
+|---|---|---|
+| **major** | On explicit request | `npm run bump major` |
+| **minor** | When a feature is validated after functional testing | `npm run bump minor` |
+| **patch** | Every commit | Automatic (`pre-commit` hook) |
+
+A minor bump resets the patch; a major bump resets both. Minor and major releases are git-tagged
+(`v1.1.0`).
+
+`package.json` is the source of truth; `src/version.js` is generated from it so the renderer can
+display the version without an IPC round-trip. `tests/version.test.mjs` forbids the two from drifting.
+
+```bash
+npm run setup-hooks   # after a clone: reinstalls the hook (git does not version .git/hooks)
+npm run bump sync     # regenerates src/version.js from package.json
+```
+
 ## 🗂️ Project structure
 
 ```

@@ -41,6 +41,9 @@
     <!-- Nom du Projet (ensemble de Tomes/Planches/Cases en cours, cf. projectName) : affiché au-dessus
          de la section des Tomes — sur demande utilisateur. -->
     <div id="projectNameHeader"><span id="projectNameText">Projet</span><span class="project-name-chevron">›</span></div>
+    <!-- Version de l'application (cf. src/version.js, généré par tools/bump-version.mjs) : affichée
+         sous le nom du Projet, pour pouvoir l'indiquer facilement en cas de souci. -->
+    <div id="appVersionText" class="app-version"></div>
     <!-- Tomes + bouton "+ Nouveau tome" regroupés dans une même Section visuelle (cf. .side-section,
          déjà utilisé pour les sections du menu de droite), plutôt qu'un simple menu déroulant isolé. -->
     <div class="side-section">
@@ -273,7 +276,7 @@
       <textarea id="sideDescInput" style="display:none;" placeholder="Décrivez ce qui se passe dans cette case..."></textarea>
     </div>
     <div id="helpMenuHeader" class="menu-header" style="display:none;">
-      <span></span>
+      <span id="helpVersionText" class="app-version"></span>
       <span class="menu-title">Manuel d'utilisation</span>
       <button id="helpMenuCloseBtn" class="menu-close-btn" type="button" title="Fermer">&times;</button>
     </div>

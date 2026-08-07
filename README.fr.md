@@ -80,6 +80,27 @@ fichier de test détaille ce qui est exclu et pourquoi.
 
 ---
 
+## 🔖 Versionnage
+
+Version au format `major.minor.correctif`, affichée sous le nom du Projet et dans le Manuel.
+
+| Niveau | Quand | Comment |
+|---|---|---|
+| **major** | Sur demande explicite | `npm run bump major` |
+| **minor** | À la validation d'une fonctionnalité, après tests fonctionnels | `npm run bump minor` |
+| **correctif** | À chaque commit | Automatique (hook `pre-commit`) |
+
+Passer une mineure remet le correctif à 0 ; passer une majeure remet les deux à 0.
+Les mineures et majeures sont marquées par un tag git (`v1.1.0`).
+
+`package.json` fait foi ; `src/version.js` en est généré pour que le renderer affiche la version
+sans passer par un IPC. `tests/version.test.mjs` interdit aux deux de diverger.
+
+```bash
+npm run setup-hooks   # après un clone : réinstalle le hook (git ne versionne pas .git/hooks)
+npm run bump sync     # régénère src/version.js depuis package.json
+```
+
 ## 🗂️ Structure du projet
 
 ```
