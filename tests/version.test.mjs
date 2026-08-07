@@ -108,6 +108,21 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
     assert.equal(renderReadmeVersion('4.5.6'), '**Version 4.5.6**');
   });
 
+  test('RÉGRESSION : rien n\'est écrit si un seul des fichiers est invalide', () => {
+    // La 1re version écrivait package.json PUIS vérifiait les README : une ligne de version
+    // manquante laissait package.json déjà incrémenté et les README en arrière — précisément
+    // l'incohérence que ce script existe pour empêcher. Les vérifications précèdent désormais
+    // toutes les écritures. Constaté en testant le cas d'échec, pas deviné.
+    const src = readFileSync(new URL('../tools/bump-version.mjs', import.meta.url), 'utf8');
+    const corps = src.slice(src.indexOf('function main('));
+    const premiereEcriture = corps.indexOf('writeFileSync');
+    const derniereVerif = Math.max(corps.lastIndexOf('throw new Error(`Ligne de version'),
+                                   corps.lastIndexOf("throw new Error('Champ"));
+    assert.ok(derniereVerif > 0 && premiereEcriture > 0, 'repères trouvés dans main()');
+    assert.ok(derniereVerif < premiereEcriture,
+      'une vérification survient après une écriture — l\'opération n\'est plus atomique');
+  });
+
   test('src/version.js est bien marqué comme généré, pour dissuader l\'édition à la main', () => {
     assert.match(readFileSync(VERSION_JS, 'utf8'), /ne pas modifier à la main/);
     assert.ok(PACKAGE_JSON.endsWith('package.json'));

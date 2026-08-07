@@ -84,20 +84,28 @@ function main(){
     console.log(`${current} → ${next} (${level}, simulation)`);
     return;
   }
-  // Rewritten with a targeted substitution rather than JSON.stringify: that would reformat the
-  // whole file (indentation, key order) and drown the version change in noise at every commit.
+  // TOUT vérifier avant d'écrire QUOI QUE CE SOIT. La 1re version écrivait package.json puis
+  // vérifiait les README : une ligne de version absente d'un README laissait package.json déjà
+  // incrémenté et les README en arrière — soit exactement l'incohérence que ce script existe pour
+  // empêcher. Constaté en testant le cas d'échec, pas deviné.
+  //
+  // Substitution ciblée plutôt que JSON.stringify : ce dernier reformaterait tout le fichier
+  // (indentation, ordre des clés) et noierait le changement de version dans le bruit à chaque commit.
+  const PKG_RE = /("version"\s*:\s*")[^"]+(")/;
   const pkg = readFileSync(PACKAGE_JSON, 'utf8');
-  const RE = /("version"\s*:\s*")[^"]+(")/;
   // Teste la CORRESPONDANCE, pas l'égalité des chaînes : en mode sync la version est inchangée,
   // donc la substitution est un non-événement et comparer avant/après criait au faux positif.
-  if (!RE.test(pkg)) throw new Error('Champ "version" introuvable dans package.json');
-  const patched = pkg.replace(RE, `$1${next}$2`);
-  writeFileSync(PACKAGE_JSON, patched);
+  if (!PKG_RE.test(pkg)) throw new Error('Champ "version" introuvable dans package.json');
+  const readmes = READMES.map(file => {
+    const txt = readFileSync(file, 'utf8');
+    if (!README_VERSION_RE.test(txt)) throw new Error(`Ligne de version introuvable dans ${file}`);
+    return { file, txt };
+  });
+  // À partir d'ici, plus aucune vérification ne peut échouer : les écritures s'enchaînent.
+  writeFileSync(PACKAGE_JSON, pkg.replace(PKG_RE, `$1${next}$2`));
   writeFileSync(VERSION_JS, renderVersionModule(next));
-  for (const readme of READMES) {
-    const txt = readFileSync(readme, 'utf8');
-    if (!README_VERSION_RE.test(txt)) throw new Error(`Ligne de version introuvable dans ${readme}`);
-    writeFileSync(readme, txt.replace(README_VERSION_RE, renderReadmeVersion(next)));
+  for (const { file, txt } of readmes) {
+    writeFileSync(file, txt.replace(README_VERSION_RE, renderReadmeVersion(next)));
   }
   console.log(`${current} → ${next} (${level})`);
 }
