@@ -42,13 +42,6 @@
 <div id="personaEditorOverlay" class="persona-editor hidden">
   <div class="persona-editor-bar">
     <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
-    <div class="persona-editor-bar-actions">
-      <!-- « Appliquer » n'existe QUE si une modale Personnage attend derrière : sans cible, il n'y
-           aurait rien à appliquer. Masqué plutôt que grisé — les deux modes ont des sémantiques
-           différentes, et un bouton grisé laisse croire qu'il manque une condition à remplir. -->
-      <button id="personaEditorApplyBtn" class="full-btn" type="button">Appliquer au Personnage</button>
-      <button id="personaEditorCloseBtn" class="danger-btn" type="button">Fermer</button>
-    </div>
   </div>
   <div class="persona-editor-body">
     <div class="persona-editor-stage">
@@ -74,7 +67,13 @@
       </div>
       <h2>Réglage fin des articulations</h2>
       <div id="personaEditorJointsContainer"></div>
+      <!-- Les trois actions de sortie, dans l'ordre où elles se posent : défaire, valider, quitter.
+           Réinitialiser et Appliquer sont actifs UNIQUEMENT si la pose a changé depuis l'ouverture
+           (cf. personaEditorHasChanges) — sans changement, ils n'auraient rien à faire, et .full-btn
+           les grise alors de lui-même. Fermer reste toujours disponible. -->
       <button id="personaEditorResetBtn" type="button" class="full-btn">Réinitialiser la pose</button>
+      <button id="personaEditorApplyBtn" type="button" class="full-btn">Appliquer au Personnage</button>
+      <button id="personaEditorCloseBtn" type="button" class="danger-btn" style="margin-top:6px;">Fermer</button>
     </aside>
   </div>
 </div>
@@ -793,8 +792,12 @@
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
           <canvas id="personaPreview3D" width="180" height="260"></canvas>
-          <!-- Ouvre l'éditeur de Personnage plein écran sur CE Personnage (cf. showPersonaEditor). -->
-          <button id="personaEditorOpenBtn" type="button" class="full-btn" style="margin-top:8px;">Éditeur de Personnage…</button>
+          <!-- Ouvre l'éditeur de Personnage plein écran sur CE Personnage (cf. showPersonaEditor).
+               Bouton-icône posé dans le coin de l'aperçu plutôt qu'une pleine largeur sous lui : il
+               agit SUR cet aperçu, le placer dessus le dit sans qu'un libellé ait à l'expliquer.
+               `title` porte le nom complet au survol. -->
+          <button id="personaEditorOpenBtn" type="button" class="preview-corner-btn"
+                  title="Éditeur de Personnage" aria-label="Éditeur de Personnage">✏️</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="personaHidden3dCheckbox"> Invisible dans la scène 3D

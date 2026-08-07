@@ -660,6 +660,18 @@ canvas{
    concentré d'un seul côté. */
 .persona-preview-wrap canvas{ width:100%; height:100%; object-fit:contain; display:block; }
 
+/* Bouton-icône posé dans un coin d'un aperçu 3D (cf. #personaEditorOpenBtn). Discret au repos pour
+   ne pas encombrer l'aperçu, franc au survol : c'est une action, pas une décoration. */
+.preview-corner-btn{
+  position:absolute; right:6px; bottom:6px; z-index:2;
+  width:30px; height:30px; padding:0; line-height:1; font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:7px;
+  background:var(--white); color:var(--ink); opacity:.75;
+  transition:opacity .12s ease, border-color .12s ease;
+}
+.preview-corner-btn:hover{ opacity:1; border-color:var(--accent); }
+
 /* Version de l'application, affichée à côté de son nom dans l'en-tête (cf. src/version.js).
    Volontairement discrète : c'est une information de dépannage, pas un élément d'interface. */
 .app-version { font-size: 11px; opacity: .45; letter-spacing: .3px; align-self: center; margin-left: 8px; }
@@ -677,8 +689,6 @@ canvas{
                       padding: 10px 16px; background: var(--paper-dark);
                       border-bottom: 1px solid var(--line); }
 .persona-editor-title { font-weight: 600; letter-spacing: .3px; }
-.persona-editor-bar-actions { display: flex; align-items: center; gap: 8px; }
-.persona-editor-bar-actions .full-btn { margin: 0; width: auto; padding: 6px 14px; }
 /* Canevas à gauche, réglages à droite. */
 .persona-editor-body { flex: 1; min-height: 0; display: flex; }
 /* Le canevas occupe tout l'espace restant ; sa résolution de rendu est calculée à part
@@ -693,7 +703,10 @@ canvas{
                         background: var(--paper-dark); border-left: 1px solid var(--line); }
 .persona-editor-panel h2 { font-size: 11px; font-weight: 600; color: var(--ink-soft);
                            margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; }
-.persona-editor-panel .full-btn { margin-top: 12px; }
+/* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
+   suivantes se collent à elle : elles forment un groupe. */
+.persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
+.persona-editor-panel .danger-btn { width: 100%; }
 .persona-editor-panel h2 + * { margin-top: 0; }
 .persona-editor-panel h2:not(:first-child) { margin-top: 18px; }
 /* Étiquette calculée (« Assis », « Assis (modifié) », « pose1 (inconnue) ») — jamais persistée,

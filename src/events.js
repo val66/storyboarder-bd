@@ -38,7 +38,7 @@ import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
-  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D,
+  figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, jointsEqual3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
 } from './utils.js';
@@ -496,6 +496,10 @@ export function openPersonaEditor(target, fromModal){
   // Fix 54 — on repart de la pose que le Personnage DIT porter. 'debout' sans cible : c'est aussi la
   // pose dont personaEditorInitialJoints copie les angles, les deux doivent concorder.
   S.personaEditorPoseKey = (target && target.position) || 'debout';
+  // Fix 61 — repère figé de l'état d'ouverture. Réinitialiser et Appliquer ne s'activent que s'il y
+  // a un écart avec lui.
+  S.personaEditorBaseline = cloneJoints(S.personaEditorDraft);
+  S.personaEditorBaselineKey = S.personaEditorPoseKey;
   return S.personaEditorDraft;
 }
 
@@ -510,6 +514,8 @@ export function closePersonaEditor(){
   S.personaEditorFromModal = false;
   S.personaEditorHandleId = null;
   S.personaEditorPoseKey = null;
+  S.personaEditorBaseline = null;
+  S.personaEditorBaselineKey = null;
   return backToModal;
 }
 
@@ -528,11 +534,14 @@ export function personaEditorTarget(page){
 // l'Élément : réinitialiser reste une action annulable tant qu'on n'a rien appliqué.
 export function resetPersonaEditorDraft(page){
   if (!S.personaEditorOpen) return null;
+  // Fix 61 — repart du REPÈRE figé à l'ouverture, plus d'une relecture de l'Élément. Les deux
+  // donnaient le même résultat, mais « réinitialiser » et « y a-t-il un changement ? » doivent se
+  // référer au MÊME point — sinon le bouton pourrait rester actif juste après avoir été cliqué.
   const target = personaEditorTarget(page);
-  S.personaEditorDraft = personaEditorInitialJoints(target);
+  S.personaEditorDraft = cloneJoints(S.personaEditorBaseline || personaEditorInitialJoints(target));
   // L'étiquette revient elle aussi à l'état d'ouverture : la laisser sur la dernière pose appliquée
   // afficherait un nom que les angles ne portent plus.
-  S.personaEditorPoseKey = (target && target.position) || 'debout';
+  S.personaEditorPoseKey = S.personaEditorBaselineKey || (target && target.position) || 'debout';
   return S.personaEditorDraft;
 }
 
@@ -639,6 +648,25 @@ export function poseKeyStillInLibrary(key){
 // Étiquette à afficher pour le brouillon en cours, « (modifié) » compris. Réutilise
 // resolvePoseLabel3D en lui présentant le brouillon sous la forme qu'elle attend d'un Élément :
 // une seule règle de nommage des poses dans l'application, pas deux.
+// Fix 61 — y a-t-il quelque chose à réinitialiser ou à appliquer ?
+//
+// Deux critères, pas un : les angles ET la pose de référence. « Appliquer » écrit les deux
+// (`joints3d` et `position`/`positionLabel`) ; changer pour une pose aux angles identiques laisse
+// donc bel et bien un travail à valider. Cas rare, mais le bouton doit dire la vérité.
+//
+// La tolérance vaut un DEMI-DEGRÉ, la granularité réelle de l'interface. Les curseurs sont gradués au
+// degré entier alors que les poses sont stockées en radians et valent rarement un compte rond :
+// mesuré, un aller-retour par les curseurs sur POSE_3D.assis (0.2 rad) donne 0.459° d'écart. Comparer
+// au bit près laisserait donc les boutons actifs après un simple va-et-vient qui n'a rien changé à
+// l'œil. Aucun écart plus fin n'est atteignable à la souris, il n'y a donc rien à perdre.
+const PERSONA_EDITOR_ANGLE_EPS = 0.5 * Math.PI / 180;
+
+export function personaEditorHasChanges(){
+  if (!S.personaEditorOpen || !S.personaEditorDraft) return false;
+  if (S.personaEditorPoseKey !== S.personaEditorBaselineKey) return true;
+  return !jointsEqual3D(S.personaEditorDraft, S.personaEditorBaseline, PERSONA_EDITOR_ANGLE_EPS);
+}
+
 export function personaEditorPoseLabel(){
   return resolvePoseLabel3D(
     { position: S.personaEditorPoseKey, joints3d: S.personaEditorDraft }, S.poses);
@@ -744,6 +772,7 @@ export function buildPersonaEditorJointSlidersUI(){
     poseSliderSpecs3D(def).forEach(spec => {
       const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
         if (!setPersonaEditorJointDeg(spec, deg)) return;
+        syncPersonaEditorActionButtons();
         drawPersonaEditor();
       });
       personaEditorSliderRefs[spec.key] = { spec, ...ref };
@@ -799,6 +828,7 @@ export function buildPersonaEditorPosesUI(){
     btn.textContent = entry.label;
     btn.onclick = () => {
       if (!applyPersonaEditorPose(entry.key)) return;
+      syncPersonaEditorActionButtons();
       // Les curseurs affichent le brouillon : sans cette resynchronisation, ils resteraient sur les
       // angles de la pose précédente alors que le Personnage, lui, aurait déjà changé.
       syncPersonaEditorSliders();
@@ -812,6 +842,18 @@ export function buildPersonaEditorPosesUI(){
 
 // Étiquette + mise en évidence de la pose courante. La comparaison qui produit « (modifié) » se fait
 // dans resolvePoseLabel3D ; ici on ne fait que l'afficher.
+// Fix 61 — Réinitialiser et Appliquer ne sont actifs que s'il y a quelque chose à faire. `.full-btn`
+// se charge du gris : son état :disabled est déjà défini. Appliquer reste en plus masqué en mode
+// autonome (cf. syncPersonaEditorDom) — deux conditions distinctes, la seconde n'est pas un degré
+// de la première.
+export function syncPersonaEditorActionButtons(){
+  const actif = personaEditorHasChanges();
+  ['personaEditorResetBtn', 'personaEditorApplyBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !actif;
+  });
+}
+
 export function syncPersonaEditorPoseLabel(){
   const out = document.getElementById('personaEditorPoseLabel');
   const info = personaEditorPoseLabel();
@@ -858,6 +900,7 @@ function syncPersonaEditorDom(){
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
     syncPersonaEditorSliders();
+    syncPersonaEditorActionButtons();
     drawPersonaEditor();
   }
 }
@@ -965,6 +1008,7 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
     if (!resetPersonaEditorDraft()) return;
     syncPersonaEditorSliders();
     syncPersonaEditorPoseLabel();
+    syncPersonaEditorActionButtons();
     drawPersonaEditor();
   };
   if (cnv) {

@@ -41,11 +41,13 @@ import {
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
+  personaEditorHasChanges,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import { normalizePoses3D, resyncIdCounter } from '../src/io.js';
 import { GROUND_Y_DEFAULT_3D, POSE_3D } from '../src/constants.js';
+import { readPoseSliderDeg3D } from '../src/utils.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -1456,5 +1458,106 @@ describe('poseKeyStillInLibrary — garde contre le piège du <select> (Fix 60)'
 
   test('clé absente : null', () => {
     assert.equal(poseKeyStillInLibrary(null), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 61 — « y a-t-il quelque chose à faire ? », qui pilote Réinitialiser et Appliquer.
+//
+// Le repère est FIGÉ à l'ouverture plutôt que relu depuis l'Élément : « depuis l'ouverture » doit
+// vouloir dire exactement ça. Réinitialiser repart du même repère, sans quoi le bouton pourrait
+// rester actif juste après avoir été cliqué.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — détection des changements (Fix 61)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  const perso = () => ({ id: 'e1', type: 'perso', position: 'debout', joints3d: { torsoRotX: 0.2 } });
+  beforeEach(() => { closePersonaEditor(); S.poses = []; });
+
+  test('à l\'ouverture : rien à faire', () => {
+    openPersonaEditor(perso());
+    assert.equal(personaEditorHasChanges(), false);
+  });
+
+  test('bouger un curseur : il y a quelque chose à faire', () => {
+    openPersonaEditor(perso());
+    setPersonaEditorJointDeg(torso, 40);
+    assert.equal(personaEditorHasChanges(), true);
+  });
+
+  test('COHÉRENCE : réinitialiser ramène à « rien à faire »', () => {
+    // Le repère de la réinitialisation et celui de la détection doivent être le MÊME point. S'ils
+    // divergeaient, le bouton resterait actif juste après avoir été cliqué.
+    const o = perso();
+    openPersonaEditor(o);
+    setPersonaEditorJointDeg(torso, 40);
+    resetPersonaEditorDraft({ objects: [o] });
+    assert.equal(personaEditorHasChanges(), false);
+  });
+
+  test('revenir à la main sur la valeur d\'origine : plus rien à faire', () => {
+    // La détection compare des VALEURS, pas un drapeau « quelque chose a été touché ». Un drapeau
+    // laisserait les boutons actifs alors qu'appliquer n'écrirait rien.
+    //
+    // ⚠️ Ce test a d'abord ÉCHOUÉ, et c'était le code qui avait tort. Les curseurs sont gradués au
+    // degré entier alors que les poses sont stockées en radians : mesuré, l'aller-retour sur
+    // 0.2 rad donne 0.459° d'écart. La comparaison se fait donc à un demi-degré près — la
+    // granularité réelle de l'interface, en dessous de laquelle rien n'est atteignable à la souris.
+    openPersonaEditor(perso());               // torsoRotX = 0.2 rad ≈ 11.46°
+    const départ = readPoseSliderDeg3D(S.personaEditorDraft, torso);
+    setPersonaEditorJointDeg(torso, 40);
+    setPersonaEditorJointDeg(torso, départ);
+    assert.equal(personaEditorHasChanges(), false);
+  });
+
+  test('un écart d\'UN degré compte, lui', () => {
+    // La tolérance doit couvrir l'arrondi, pas avaler un vrai réglage : le plus petit mouvement
+    // possible d'un curseur vaut 1°, soit le double de la tolérance.
+    openPersonaEditor(perso());
+    const départ = readPoseSliderDeg3D(S.personaEditorDraft, torso);
+    setPersonaEditorJointDeg(torso, départ + 1);
+    assert.equal(personaEditorHasChanges(), true);
+  });
+
+  test('changer de pose compte, même à angles identiques', () => {
+    // Appliquer écrit AUSSI `position` et `positionLabel` : il y a bien un travail à valider.
+    S.poses = [{ id: 'jumelle', name: 'Jumelle', skeleton: 'humain', joints: { torsoRotX: 0.2 } }];
+    openPersonaEditor(perso());
+    applyPersonaEditorPose('jumelle');
+    assert.equal(personaEditorHasChanges(), true, 'la pose de référence a changé');
+  });
+
+  test('éditeur fermé : rien à faire', () => {
+    assert.equal(personaEditorHasChanges(), false);
+  });
+
+  test('RÉGRESSION : réinitialiser tient même si l\'Élément a disparu entre-temps', () => {
+    // Le repère figé sert ici pour de bon. Un Élément peut être supprimé pendant que l'éditeur est
+    // ouvert (l'éditeur RECOUVRE la Page, il ne la verrouille pas) : relire la pose depuis lui
+    // retomberait alors sur « debout » et perdrait la référence de travail, alors que le repère,
+    // lui, décrit toujours ce qu'on avait à l'ouverture.
+    const o = { id: 'e1', type: 'perso', position: 'combat', joints3d: { torsoRotX: 0.7 } };
+    openPersonaEditor(o);
+    setPersonaEditorJointDeg(torso, 40);
+    resetPersonaEditorDraft({ objects: [] });   // l'Élément n'est plus dans la Page
+    assertClose(S.personaEditorDraft.torsoRotX, 0.7, 'la pose d\'ouverture est restaurée');
+    assert.equal(S.personaEditorPoseKey, 'combat', 'et son étiquette aussi');
+    assert.equal(personaEditorHasChanges(), false);
+  });
+
+  test('fermer efface le repère', () => {
+    // Hygiène d'état : un repère survivant à la fermeture n'a aucun effet visible aujourd'hui
+    // (personaEditorHasChanges commence par tester personaEditorOpen), mais laisse traîner les
+    // angles d'un Personnage dans S bien après qu'on ait quitté son édition.
+    openPersonaEditor({ id: 'e1', type: 'perso', position: 'combat', joints3d: { torsoRotX: 0.7 } });
+    closePersonaEditor();
+    assert.equal(S.personaEditorBaseline, null);
+    assert.equal(S.personaEditorBaselineKey, null);
+  });
+
+  test('mode autonome : le repère est la pose debout', () => {
+    openPersonaEditor(null);
+    assert.equal(personaEditorHasChanges(), false);
+    setPersonaEditorJointDeg(torso, 40);
+    assert.equal(personaEditorHasChanges(), true);
   });
 });

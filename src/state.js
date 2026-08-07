@@ -65,6 +65,11 @@ export const S = {
   // l'efface pas — c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
   // ce qui préserve la provenance.
   personaEditorPoseKey: null,
+  // Fix 61 — état du brouillon À L'OUVERTURE. Sert à répondre « y a-t-il quelque chose à faire ? »,
+  // qui pilote l'activation de Réinitialiser et Appliquer. Figé une fois pour toutes plutôt que
+  // recalculé depuis l'Élément : « depuis l'ouverture » doit vouloir dire exactement ça.
+  personaEditorBaseline:    null,
+  personaEditorBaselineKey: null,
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────
