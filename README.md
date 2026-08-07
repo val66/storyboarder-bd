@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.8**
+**Version 1.0.9**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -106,7 +106,7 @@ storyboarder-bd/
 │   └── events.js       # Event wiring + remaining business logic (real entry point)
 ├── tests/              # Unit tests (Node's built-in test runner)
 ├── tools/              # Repo tooling (version bump, git hooks installation)
-├── docs/               # Internal notes — see docs/versionnage.md for the version policy
+├── docs/               # Internal contributor notes — start with docs/README.md
 ├── package.json        # Electron + electron-builder config
 └── LICENSE
 ```

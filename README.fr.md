@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.8**
+**Version 1.0.9**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -106,7 +106,7 @@ storyboarder-bd/
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
 ├── tests/              # Tests unitaires (test runner natif de Node)
 ├── tools/              # Outillage de dépôt (incrément de version, installation des hooks git)
-├── docs/               # Notes internes — voir docs/versionnage.md pour la politique de version
+├── docs/               # Notes internes de contributeur — commencer par docs/README.md
 ├── package.json        # Config Electron + electron-builder
 └── LICENSE
 ```
