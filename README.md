@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.5**
+**Version 1.0.6**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -110,9 +110,14 @@ display the version without an IPC round-trip, and the version line in both READ
 the same script. `tests/version.test.mjs` forbids these four files from drifting apart.
 
 ```bash
-npm run setup-hooks   # after a clone: reinstalls the hook (git does not version .git/hooks)
-npm run bump sync     # regenerates src/version.js from package.json
+npm run setup-hooks      # after a clone: reinstalls the hooks (git does not version .git/hooks)
+npm run bump sync        # regenerates the derived files from package.json
+git push --follow-tags   # ⚠ plain git push does NOT send tags
 ```
+
+⚠ **Tags do not travel on their own.** `git push` only sends commits: a release tagged locally but
+missing from the remote is of no use. Use `git push --follow-tags` — the `post-commit` hook prints a
+reminder every time it has just created a tag.
 
 ## 🗂️ Project structure
 

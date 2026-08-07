@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.0.5**
+**Version 1.0.6**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -111,9 +111,14 @@ sans passer par un IPC, et la ligne de version des deux README est réécrite pa
 `tests/version.test.mjs` interdit à ces quatre fichiers de diverger.
 
 ```bash
-npm run setup-hooks   # après un clone : réinstalle le hook (git ne versionne pas .git/hooks)
-npm run bump sync     # régénère src/version.js depuis package.json
+npm run setup-hooks      # après un clone : réinstalle les hooks (git ne versionne pas .git/hooks)
+npm run bump sync        # régénère les fichiers dérivés depuis package.json
+git push --follow-tags   # ⚠ git push SEUL n'envoie pas les tags
 ```
+
+⚠ **Les tags ne partent pas tout seuls.** `git push` n'envoie que les commits : une version marquée
+localement mais absente du dépôt distant ne sert à rien. Utilise `git push --follow-tags` — le hook
+`post-commit` le rappelle à l'écran chaque fois qu'il vient de poser un tag.
 
 ## 🗂️ Structure du projet
 

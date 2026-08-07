@@ -55,6 +55,11 @@ git add package.json src/version.js README.md README.fr.md
 // de version. En post-commit, HEAD est le bon commit.
 //
 // Ne peut rien faire échouer : le commit est déjà créé. Tout chemin d'erreur sort en 0.
+//
+// Rappelle `--follow-tags` au moment où le tag est posé : `git push` seul n'envoie PAS les tags, et
+// une version marquée localement mais absente du dépôt distant ne sert à rien. Le rappel est émis
+// par le hook, pas laissé à la vigilance de qui que ce soit — c'est le seul endroit qui sache, à
+// coup sûr et au bon moment, qu'un tag vient d'être créé.
 export const POST_COMMIT = `#!/bin/sh
 # GÉNÉRÉ par tools/setup-hooks.mjs — modifier le modèle là-bas, pas ici.
 VERSION_DE() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -1; }
@@ -68,7 +73,15 @@ if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
   echo "post-commit : le tag $TAG existe déjà, laissé en l'état." >&2
   exit 0
 fi
-git tag -a "$TAG" -m "$TAG" && echo "post-commit : tag $TAG posé sur $(git rev-parse --short HEAD)"
+if git tag -a "$TAG" -m "$TAG"; then
+  echo ""
+  echo "  ┌──────────────────────────────────────────────────────────────┐"
+  echo "  │  Tag $TAG posé sur $(git rev-parse --short HEAD)"
+  echo "  │  git push seul N'ENVOIE PAS les tags."
+  echo "  │  Utilise :  git push --follow-tags"
+  echo "  └──────────────────────────────────────────────────────────────┘"
+  echo ""
+fi
 exit 0
 `;
 
