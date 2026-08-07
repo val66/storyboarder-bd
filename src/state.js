@@ -43,6 +43,10 @@ export const S = {
   personaEditorOpen:     false,   // un targetId nul est légitime (mode autonome), d'où ce drapeau
   personaEditorTargetId: null,    // Élément édité, ou null : Personnage par défaut sans cible
   personaEditorDraft:    null,    // brouillon d'articulations — jamais l'objet de l'Élément
+  // Caméra PROPRE à l'éditeur. Partager celle de l'aperçu de la modale ferait que zoomer ici
+  // zoomerait là-bas : deux vues sur un même état, le motif qui a coûté cher cinq fois ici.
+  personaEditorZoom:     1,
+  personaEditorPan:      { x: 0, y: 0 },
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────

@@ -37,6 +37,18 @@
   <button class="help-round-btn" id="helpBtn" title="Manuel d'utilisation">?</button>
 </header>
 
+<!-- Éditeur de Personnage (cf. openPersonaEditor, events.js). Recouvre l'application sans la
+     démonter : la Page ou la Scène dessous reste intacte, fermer rend la main à ce qui était là. -->
+<div id="personaEditorOverlay" class="persona-editor hidden">
+  <div class="persona-editor-bar">
+    <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
+    <button id="personaEditorCloseBtn" class="danger-btn" type="button">Fermer</button>
+  </div>
+  <div class="persona-editor-stage">
+    <canvas id="personaEditorCanvas"></canvas>
+  </div>
+</div>
+
 <div class="app">
 
   <div class="sidebar">
@@ -745,6 +757,8 @@
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
           <canvas id="personaPreview3D" width="180" height="260"></canvas>
+          <!-- Ouvre l'éditeur de Personnage plein écran sur CE Personnage (cf. showPersonaEditor). -->
+          <button id="personaEditorOpenBtn" type="button" class="full-btn" style="margin-top:8px;">Éditeur de Personnage…</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="personaHidden3dCheckbox"> Invisible dans la scène 3D

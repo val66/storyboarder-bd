@@ -464,6 +464,10 @@ export function openPersonaEditor(target){
   S.personaEditorOpen = true;
   S.personaEditorTargetId = (target && target.id) || null;
   S.personaEditorDraft = cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
+  // Cadrage remis à neuf à chaque ouverture : hériter du zoom de la session précédente ferait
+  // apparaître un Personnage hors champ sans que rien n'explique pourquoi.
+  S.personaEditorZoom = 1;
+  S.personaEditorPan = { x: 0, y: 0 };
   return S.personaEditorDraft;
 }
 
@@ -482,6 +486,105 @@ export function personaEditorTarget(page){
   if (!S.personaEditorOpen || !S.personaEditorTargetId) return null;
   const p = page || currentPage();
   return (p && p.objects.find(o => o.id === S.personaEditorTargetId)) || null;
+}
+
+// Fix 49 — rendu du canevas de l'éditeur. Réutilise drawPersonaPreview, donc exactement le même
+// chemin que l'aperçu de la modale : un seul code de rendu de Personnage, pas deux vues qui
+// finiraient par diverger. Seuls le canevas, sa résolution et la caméra changent.
+//
+// La résolution de rendu est plafonnée à PANEL_SCENE_RENDER_MAX_PX : le canevas occupe tout l'écran,
+// et suivre aveuglément sa taille CSS multipliée par le devicePixelRatio demanderait au renderer
+// partagé des tampons démesurés à chaque image.
+export function drawPersonaEditor(){
+  const cnv = document.getElementById('personaEditorCanvas');
+  if (!cnv || !S.personaEditorOpen) return;
+  const target = personaEditorTarget();
+  const base = Math.min(PANEL_SCENE_RENDER_MAX_PX,
+    Math.max(1, cnv.clientWidth || 900), Math.max(1, cnv.clientHeight || 700));
+  const ratio = (cnv.clientHeight || 700) / Math.max(1, cnv.clientWidth || 900);
+  drawPersonaPreview(cnv, {
+    joints: S.personaEditorDraft,
+    color: target && target.color,
+    genre: target && target.genre,
+    emotion: (target && target.emotion) || 'neutre',
+    handL: target && target.handL,
+    handR: target && target.handR,
+    rotY: (target && target.rotY) || 0,
+    rotX: (target && target.rotX) || 0,
+    rotZ: (target && target.rotZ) || 0,
+    zoom: S.personaEditorZoom,
+    pan: S.personaEditorPan,
+    baseW: base,
+    baseH: Math.max(1, Math.round(base * ratio)),
+  });
+}
+
+// Affiche ou masque l'overlay, puis redessine. Séparé de openPersonaEditor pour que la machine à
+// états reste testable sans DOM (cf. tests/events.test.mjs).
+function syncPersonaEditorDom(){
+  const ov = document.getElementById('personaEditorOverlay');
+  if (!ov) return;
+  ov.classList.toggle('hidden', !S.personaEditorOpen);
+  if (S.personaEditorOpen) drawPersonaEditor();
+}
+
+export function showPersonaEditor(target){
+  openPersonaEditor(target);
+  syncPersonaEditorDom();
+}
+
+export function hidePersonaEditor(){
+  closePersonaEditor();
+  syncPersonaEditorDom();
+}
+
+// Fix 49 — caméra de l'éditeur : molette pour zoomer, glisser pour déplacer. Volontairement plus
+// pauvre que celle d'une Case (pas d'orbite) : on regarde un Personnage isolé, pas une scène.
+// L'orbite se fera par les rotations propres du Personnage, en phase 2.
+const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
+{
+  const cnv = document.getElementById('personaEditorCanvas');
+  const closeBtn = document.getElementById('personaEditorCloseBtn');
+  if (closeBtn) closeBtn.onclick = () => hidePersonaEditor();
+  if (cnv) {
+    cnv.addEventListener('wheel', (e) => {
+      if (!S.personaEditorOpen) return;
+      e.preventDefault();
+      const k = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      S.personaEditorZoom = clamp(S.personaEditorZoom * k,
+        PERSONA_EDITOR_ZOOM_MIN, PERSONA_EDITOR_ZOOM_MAX);
+      drawPersonaEditor();
+    }, { passive: false });
+
+    let panning = null;
+    cnv.addEventListener('mousedown', (e) => {
+      if (!S.personaEditorOpen) return;
+      panning = { x: e.clientX, y: e.clientY,
+                  px: S.personaEditorPan.x, py: S.personaEditorPan.y };
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!panning || !S.personaEditorOpen) return;
+      // Déplacement en unités monde : divisé par le zoom pour que le Personnage suive la souris
+      // à la même vitesse quel que soit le grossissement — sans quoi le glisser devient inutilisable
+      // en zoom fort et mou en zoom faible.
+      const k = 0.006 / Math.max(0.01, S.personaEditorZoom);
+      S.personaEditorPan = { x: panning.px - (e.clientX - panning.x) * k,
+                             y: panning.py + (e.clientY - panning.y) * k };
+      drawPersonaEditor();
+    });
+    window.addEventListener('mouseup', () => { panning = null; });
+  }
+  // Échap ferme l'éditeur, comme partout ailleurs dans l'application. stopImmediatePropagation
+  // empêche l'écouteur « Échap → menu Projet » de se déclencher sur le même événement.
+  window.addEventListener('keydown', (e) => {
+    if (S.personaEditorOpen && e.key === 'Escape') {
+      e.stopImmediatePropagation();
+      hidePersonaEditor();
+    }
+  });
+  // Le canevas occupe tout l'écran : sa résolution de rendu dépend de sa taille CSS, il faut donc
+  // le redessiner quand la fenêtre change de taille.
+  window.addEventListener('resize', () => { if (S.personaEditorOpen) drawPersonaEditor(); });
 }
 
 // ---------- Numbering of Panels within a Page ----------
@@ -5357,6 +5460,15 @@ export function dismissModal(closeFn, pageData){
   if (wasNew && target && discardJustAddedElement(target, page)) { drawCurrentPage(); return true; }
   return false;
 }
+// Fix 49 — ouverture de l'éditeur depuis la modale. La modale est masquée le temps de l'édition
+// (elle sera rouverte en phase 5) ; S.modalTarget est conservé, c'est lui qui identifie le
+// Personnage à retrouver.
+const personaEditorOpenBtn = document.getElementById('personaEditorOpenBtn');
+if (personaEditorOpenBtn) personaEditorOpenBtn.onclick = () => {
+  if (!S.modalTarget) return;
+  descModal.classList.add('hidden');
+  showPersonaEditor(S.modalTarget);
+};
 descModalCancel.onclick = () => dismissModal(closeDescModal);
 descModal.addEventListener('mousedown', (e) => { if (e.target === descModal) { e.stopPropagation(); dismissModal(closeDescModal); } });
 // Delegation: any field changed in the modal (including the joint sliders dynamically added to

@@ -1605,8 +1605,15 @@ export function drawPersonaPreview(targetCanvas, spec){
   // (#86) cf. equivalent comment in drawObjectPreview: simulates Real Size (%) via a
   // camera zoom factor rather than scaling the rig (which would break the centered framing).
   const sizeFactor = clamp(Number(spec.sizePercent) || 100, 10, 400) / 100;
-  const scale = syncPreviewCanvasRes(targetCanvas, PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H);
-  const cnv = renderPersonaToCanvas3D(tempObj, S.personaPreviewZoom * sizeFactor, personaPreviewPan, style, scale);
+  // Fix 49 — zoom et déplacement injectables. Ils étaient lus directement dans S.personaPreviewZoom
+  // et personaPreviewPan, partagés par tout le monde : l'éditeur de Personnage, qui réutilise cette
+  // fonction sur un bien plus grand canevas, aurait alors zoomé l'aperçu de la modale en même temps
+  // que lui — deux vues sur le même état, le motif qui a coûté cher cinq fois dans ce dépôt.
+  const zoom = (spec.zoom != null) ? spec.zoom : S.personaPreviewZoom;
+  const pan = spec.pan || personaPreviewPan;
+  const scale = syncPreviewCanvasRes(targetCanvas,
+    spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
+  const cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale);
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   applyStyleCanvasFilter3D(pctx, style);
