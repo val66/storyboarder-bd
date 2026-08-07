@@ -5,6 +5,7 @@
  *
  * Data lookups:    getFormat, pxPerMm, getStyle3D, getEmotion, getPosition
  * Poses:           unknownPoseKey3D, jointsEqual3D, resolvePoseLabel3D
+ * Pose sliders:    poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D
  * Math helpers:    clamp, wrapAngle, clampAngle
  * Geometry:        getBBox
  * Element helpers: getElementDepth
@@ -99,6 +100,64 @@ export function resolvePoseLabel3D(o, poses){
   const modified = !!(o && o.joints3d) && !!reference && !jointsEqual3D(o.joints3d, reference);
   const base = builtin ? builtin.label : custom.name;
   return { key, known: true, modified, label: modified ? `${base} (modifié)` : base };
+}
+
+// Fix 51 — descripteurs des curseurs d'une articulation.
+//
+// POSE_HANDLES décrit des ARTICULATIONS ; l'interface, elle, affiche des CURSEURS, et les deux ne se
+// correspondent pas un pour un : une charnière simple donne un curseur, une charnière double ou une
+// rotule en donnent deux. Traduire l'un vers l'autre demandait jusqu'ici un aiguillage sur `mode`,
+// et cet aiguillage existait DEUX FOIS dans modals.js — une fois pour construire les curseurs, une
+// fois pour les resynchroniser depuis le brouillon. Ajouter le panneau de l'éditeur en aurait fait
+// une troisième copie.
+//
+// C'est exactement la forme du bug qui s'est reproduit cinq fois dans ce dépôt (Fix 28/30/31/31b/33,
+// puis la cohérence de version) : deux endroits calculent la même chose et finissent par diverger.
+// Un seul descripteur, et n'importe quel panneau — modale, éditeur, un futur autre — se contente de
+// le parcourir.
+//
+// Les suffixes de libellé vivent ici plutôt que dans l'interface, pour la même raison : deux
+// panneaux qui nomment différemment le même axe seraient déroutants, et rien ne le rattraperait.
+export function poseSliderSpecs3D(def){
+  if (!def) return [];
+  if (def.mode === 'hinge') {
+    return [{ key: def.id, jointId: def.id, field: def.field, axis: null, suffix: '' }];
+  }
+  if (def.mode === 'hinge2') {
+    return [
+      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: ' (haut/bas)' },
+      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: ' (gauche/droite)' },
+    ];
+  }
+  return [
+    { key: def.id + ':x', jointId: def.id, field: def.field, axis: 'x', suffix: ' (avant/arr.)' },
+    { key: def.id + ':z', jointId: def.id, field: def.field, axis: 'z', suffix: ' (écart)' },
+  ];
+}
+
+// Valeur d'un curseur, en DEGRÉS ARRONDIS — c'est la seule unité que l'interface manipule, alors que
+// le brouillon est en radians. Arrondir ici et non à l'affichage garantit que lire puis réécrire un
+// curseur qu'on n'a pas touché ne dérive pas : sans l'arrondi commun, chaque aller-retour ajouterait
+// une fraction de degré.
+export function readPoseSliderDeg3D(draft, spec){
+  if (!draft || !spec) return 0;
+  const raw = draft[spec.field];
+  const rad = spec.axis ? ((raw && raw[spec.axis]) || 0) : (raw || 0);
+  return Math.round(rad * 180 / Math.PI);
+}
+
+// Écrit un angle dans le brouillon. Pour une rotule, l'autre axe est RECOPIÉ : remplacer l'objet
+// {x, z} sans le lire écraserait l'axe voisin à zéro, et bouger l'écart d'une épaule remettrait à
+// plat son avant/arrière. Mute le brouillon et le renvoie, pour pouvoir enchaîner en test.
+export function writePoseSliderDeg3D(draft, spec, deg){
+  if (!draft || !spec) return draft;
+  const rad = deg * Math.PI / 180;
+  if (!spec.axis) { draft[spec.field] = rad; return draft; }
+  const current = draft[spec.field];
+  const base = (current && typeof current === 'object') ? current : null;
+  draft[spec.field] = { x: (base && base.x) || 0, z: (base && base.z) || 0 };
+  draft[spec.field][spec.axis] = rad;
+  return draft;
 }
 
 // ══════════════════════════════════════════════════════════════

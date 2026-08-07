@@ -36,6 +36,7 @@ import {
   discardJustAddedElement,
   dismissModal,
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
+  personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -880,5 +881,102 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
     closePersonaEditor();
     assert.equal(S.selectedId, 'panel9');
     assert.equal(S.editingSceneId, 'sc1');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 51 — brouillon d'articulations du panneau de réglage fin.
+//
+// La règle qui structure toute la phase : les curseurs écrivent dans S.personaEditorDraft et NULLE
+// PART ailleurs. C'est ce qui rend l'édition annulable, et c'est exactement le manquement que le
+// Fix 35 a dû corriger ailleurs (une modale qui modifiait son objet avant validation n'avait plus
+// rien à annuler). D'où les assertions insistantes ci-dessous sur l'intégrité de l'Élément cible.
+//
+// Le rendu du canevas n'est pas couvert : il passe par WebGL, injoignable sous Node (cf.
+// docs/methode-de-test.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
+// gestionnaire de curseur, qui redessine.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  const shoulderX = { key: 'lShoulder:x', field: 'lShoulder', axis: 'x', suffix: '' };
+  const shoulderZ = { key: 'lShoulder:z', field: 'lShoulder', axis: 'z', suffix: '' };
+  const perso = (joints) => ({ id: 'e1', type: 'perso', position: 'assis', joints3d: joints });
+  beforeEach(() => { closePersonaEditor(); });
+
+  test('un curseur écrit dans le brouillon', () => {
+    openPersonaEditor(perso());
+    setPersonaEditorJointDeg(torso, 30);
+    assert.equal(Math.round(S.personaEditorDraft.torsoRotX * 180 / Math.PI), 30);
+  });
+
+  test('RÉGRESSION : bouger un curseur ne touche PAS l\'Élément', () => {
+    // Le cœur de la phase. Sans cela, « Annuler » n'aurait plus rien à annuler.
+    const o = perso({ torsoRotX: 0 });
+    openPersonaEditor(o);
+    setPersonaEditorJointDeg(torso, 75);
+    assert.equal(o.joints3d.torsoRotX, 0, 'les articulations de l\'Élément sont intactes');
+  });
+
+  test('éditeur fermé : un curseur n\'écrit nulle part', () => {
+    // Les gestionnaires de curseurs sont installés une fois pour toutes au chargement : rien ne les
+    // débranche à la fermeture. C'est donc ici que la garde doit tenir.
+    openPersonaEditor(perso());
+    closePersonaEditor();
+    assert.equal(setPersonaEditorJointDeg(torso, 30), null);
+    assert.equal(S.personaEditorDraft, null);
+  });
+
+  test('les deux axes d\'une rotule coexistent dans le brouillon', () => {
+    openPersonaEditor(perso());
+    setPersonaEditorJointDeg(shoulderX, 20);
+    setPersonaEditorJointDeg(shoulderZ, -40);
+    assert.equal(Math.round(S.personaEditorDraft.lShoulder.x * 180 / Math.PI), 20);
+    assert.equal(Math.round(S.personaEditorDraft.lShoulder.z * 180 / Math.PI), -40);
+  });
+
+  test('personaEditorInitialJoints : sans cible, la pose debout — et une COPIE', () => {
+    const j = personaEditorInitialJoints(null);
+    assert.deepEqual(j, POSE_3D.debout);
+    assert.notEqual(j, POSE_3D.debout, 'copie : modifier le brouillon ne doit pas altérer la pose de référence');
+  });
+
+  test('COHÉRENCE : l\'ouverture part exactement de personaEditorInitialJoints', () => {
+    // Deux façons de calculer « la pose de départ » finiraient par diverger, et réinitialiser ne
+    // ramènerait plus là où l'ouverture avait mis les choses. C'est la classe de bug la plus
+    // fréquente de ce dépôt (Fix 28/30/31/31b/33).
+    const o = perso({ torsoRotX: 0.5 });
+    const draft = openPersonaEditor(o);
+    assert.deepEqual(draft, personaEditorInitialJoints(o));
+  });
+
+  test('réinitialiser ramène le brouillon à la pose d\'ouverture', () => {
+    const o = perso({ torsoRotX: 0.5 });
+    const page = { objects: [o] };
+    openPersonaEditor(o);
+    setPersonaEditorJointDeg(torso, 80);
+    assert.notEqual(Math.round(S.personaEditorDraft.torsoRotX * 100), 50);
+    resetPersonaEditorDraft(page);
+    assertClose(S.personaEditorDraft.torsoRotX, 0.5, 'retour à la valeur de l\'Élément');
+  });
+
+  test('réinitialiser ne réutilise pas l\'objet de l\'Élément', () => {
+    // Réinitialiser puis bouger un curseur écrirait dans l'Élément si le brouillon était partagé —
+    // le bug annulé par le Fix 35, réintroduit par une porte dérobée.
+    const o = perso({ torsoRotX: 0.5 });
+    openPersonaEditor(o);
+    resetPersonaEditorDraft({ objects: [o] });
+    setPersonaEditorJointDeg(torso, 80);
+    assertClose(o.joints3d.torsoRotX, 0.5, 'l\'Élément n\'a pas bougé');
+  });
+
+  test('éditeur fermé : réinitialiser ne fait rien', () => {
+    assert.equal(resetPersonaEditorDraft({ objects: [] }), null);
+  });
+
+  test('mode autonome : réinitialiser ramène à la pose debout', () => {
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 80);
+    resetPersonaEditorDraft({ objects: [] });
+    assert.deepEqual(S.personaEditorDraft, POSE_3D.debout);
   });
 });

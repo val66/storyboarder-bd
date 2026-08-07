@@ -35,7 +35,8 @@ import {
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
-  getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles
+  getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D
 } from './utils.js';
 import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
   isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
@@ -182,7 +183,7 @@ import {
   getPersonaScalePercent, updatePersonaSizeDisplay, updateObjectSizeDisplay,
   getOpenModalEl, captureModalSnapshot, updateSaveButtonState, recomputeModalDirty,
   rotYToSliderDeg, sliderDegToRotY,
-  openPersonaModal, closeDescModal, refreshPersonaPreview,
+  openPersonaModal, closeDescModal, refreshPersonaPreview, makeJointRangeRow,
   makeAnimalJointRangeRow, highlightAnimalJointRows, openAnimalJointGroupForHandle,
   closeAllAnimalJointSliders, buildAnimalJointSlidersUI,
   openObjectModal, closeObjectModal, refreshObjectPreview, drawAnimalJointHandlesOverlay,
@@ -463,11 +464,18 @@ function exitSceneEditing(){
 // `fromModal` : l'éditeur est ouvert depuis la modale Personnage, qu'on masque le temps de
 // l'édition. closePersonaEditor le signalera pour qu'elle soit ROUVERTE — sans quoi on perd le
 // contexte de travail et, à terme, le bouton « Appliquer » qu'elle portera.
+// Pose de DÉPART de l'éditeur, définie une seule fois : l'ouverture et le bouton « Réinitialiser »
+// doivent donner exactement le même résultat, sans quoi réinitialiser ne ramènerait pas là où on
+// croyait revenir. Toujours une copie — cf. le commentaire ci-dessus sur le brouillon.
+export function personaEditorInitialJoints(target){
+  return cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
+}
+
 export function openPersonaEditor(target, fromModal){
   S.personaEditorOpen = true;
   S.personaEditorFromModal = !!fromModal;
   S.personaEditorTargetId = (target && target.id) || null;
-  S.personaEditorDraft = cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
+  S.personaEditorDraft = personaEditorInitialJoints(target);
   // Cadrage remis à neuf à chaque ouverture : hériter du zoom de la session précédente ferait
   // apparaître un Personnage hors champ sans que rien n'explique pourquoi.
   // Fix 50 — 0.8 plutôt que 1 : à l'ouverture le Personnage occupait trop le cadre, il faut de la
@@ -498,6 +506,22 @@ export function personaEditorTarget(page){
   if (!S.personaEditorOpen || !S.personaEditorTargetId) return null;
   const p = page || currentPage();
   return (p && p.objects.find(o => o.id === S.personaEditorTargetId)) || null;
+}
+
+// Remet le brouillon dans l'état où l'ouverture l'avait mis. Écrit dans le brouillon, jamais dans
+// l'Élément : réinitialiser reste une action annulable tant qu'on n'a rien appliqué.
+export function resetPersonaEditorDraft(page){
+  if (!S.personaEditorOpen) return null;
+  S.personaEditorDraft = personaEditorInitialJoints(personaEditorTarget(page));
+  return S.personaEditorDraft;
+}
+
+// Fix 51 — écrit un angle du panneau dans le brouillon. Sépare l'écriture du DOM pour la même raison
+// que closePersonaEditor : le redessin passe par WebGL, injoignable en test, alors que « bouger ce
+// curseur écrit bien ce champ-là et ne touche à rien d'autre » est exactement ce qu'il faut vérifier.
+export function setPersonaEditorJointDeg(spec, deg){
+  if (!S.personaEditorOpen || !S.personaEditorDraft) return null;
+  return writePoseSliderDeg3D(S.personaEditorDraft, spec, deg);
 }
 
 // Fix 49 — rendu du canevas de l'éditeur. Réutilise drawPersonaPreview, donc exactement le même
@@ -531,13 +555,65 @@ export function drawPersonaEditor(){
   });
 }
 
+// Fix 51 — curseurs du panneau droit.
+//
+// Construits UNE FOIS au chargement, comme ceux de la modale : reconstruire tout le panneau à chaque
+// ouverture recréerait des dizaines d'éléments et perdrait au passage les groupes que l'utilisateur
+// avait dépliés. À l'ouverture on ne fait que resynchroniser les valeurs.
+//
+// Aucune branche par type d'articulation ici : poseSliderSpecs3D dit quels curseurs existent, exactement
+// comme pour la modale. C'est tout l'intérêt du descripteur — ce panneau et celui de la modale ne
+// peuvent pas diverger, puisqu'ils lisent la même liste.
+const personaEditorSliderRefs = {}; // spec.key -> { spec, input, val, row }
+
+export function buildPersonaEditorJointSlidersUI(){
+  const container = document.getElementById('personaEditorJointsContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  Object.keys(personaEditorSliderRefs).forEach(k => delete personaEditorSliderRefs[k]);
+  const groupOf = {};
+  JOINT_GROUPS.forEach(g => {
+    const details = document.createElement('details');
+    details.className = 'joint-group-details';
+    const summary = document.createElement('summary');
+    summary.textContent = g.label;
+    details.appendChild(summary);
+    container.appendChild(details);
+    g.ids.forEach(id => { groupOf[id] = details; });
+  });
+  POSE_HANDLES.forEach(def => {
+    const target = groupOf[def.id] || container;
+    const label = JOINT_LABELS[def.id] || def.id;
+    poseSliderSpecs3D(def).forEach(spec => {
+      const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
+        if (!setPersonaEditorJointDeg(spec, deg)) return;
+        drawPersonaEditor();
+      });
+      personaEditorSliderRefs[spec.key] = { spec, ...ref };
+    });
+  });
+}
+buildPersonaEditorJointSlidersUI();
+
+// Remet les curseurs en accord avec le brouillon. Appelée à l'ouverture et après « Réinitialiser » :
+// sans elle, le panneau afficherait encore les angles de la session précédente alors que le
+// Personnage, lui, aurait déjà changé — deux affichages de la même valeur qui se contredisent.
+export function syncPersonaEditorSliders(){
+  if (!S.personaEditorDraft) return;
+  Object.values(personaEditorSliderRefs).forEach(ref => {
+    const deg = readPoseSliderDeg3D(S.personaEditorDraft, ref.spec);
+    ref.input.value = deg;
+    ref.val.textContent = deg + '°';
+  });
+}
+
 // Affiche ou masque l'overlay, puis redessine. Séparé de openPersonaEditor pour que la machine à
 // états reste testable sans DOM (cf. tests/events.test.mjs).
 function syncPersonaEditorDom(){
   const ov = document.getElementById('personaEditorOverlay');
   if (!ov) return;
   ov.classList.toggle('hidden', !S.personaEditorOpen);
-  if (S.personaEditorOpen) drawPersonaEditor();
+  if (S.personaEditorOpen) { syncPersonaEditorSliders(); drawPersonaEditor(); }
 }
 
 export function showPersonaEditor(target, fromModal){
@@ -564,6 +640,12 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
   const cnv = document.getElementById('personaEditorCanvas');
   const closeBtn = document.getElementById('personaEditorCloseBtn');
   if (closeBtn) closeBtn.onclick = () => hidePersonaEditor();
+  const resetBtn = document.getElementById('personaEditorResetBtn');
+  if (resetBtn) resetBtn.onclick = () => {
+    if (!resetPersonaEditorDraft()) return;
+    syncPersonaEditorSliders();
+    drawPersonaEditor();
+  };
   if (cnv) {
     cnv.addEventListener('wheel', (e) => {
       if (!S.personaEditorOpen) return;

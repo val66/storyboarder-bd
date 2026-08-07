@@ -26,7 +26,10 @@ import {
   POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
-import { clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D } from './utils.js';
+import {
+  clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
+} from './utils.js';
 import {
   applyGroundMagnetY, ensureElementUnits3D, ensureElementWorldPos3D,
   findOwningPanel, groundMagnetEligible, setElementWorldPos3D,
@@ -985,7 +988,9 @@ personaPreview3D.addEventListener('wheel', (e) => {
   refreshPersonaPreview();
 }, { passive: false });
 
-export const jointSliderRefs = {}; // id -> { type:'hinge', input, val } | { type:'ball', x:{input,val}, z:{input,val} }
+// spec.key (cf. poseSliderSpecs3D) -> { spec, input, val, row }. Un curseur = une entrée, y compris
+// pour les articulations qui en portent deux : c'est le descripteur qui dit lequel pilote quel champ.
+export const jointSliderRefs = {};
 
 export function makeJointRangeRow(container, labelText, onInput){
   const row = document.createElement('div');
@@ -1080,47 +1085,23 @@ export function buildJointSlidersUI(){
       refreshPersonaPreview();
     });
   });
+  // Fix 51 — un seul chemin, quel que soit le type d'articulation : poseSliderSpecs3D dit quels
+  // curseurs existent et quel champ chacun pilote, writePoseSliderDeg3D sait les écrire. Les trois
+  // branches qui vivaient ici répétaient cette connaissance, et syncJointSlidersFromDraft plus bas
+  // la répétait une deuxième fois.
   POSE_HANDLES.forEach(def => {
     const target = jointGroupDetailsById[def.id] || container;
     const label = JOINT_LABELS[def.id] || def.id;
     (jointRowsById[def.id] = jointRowsById[def.id] || []);
-    if (def.mode === 'hinge') {
-      const ref = makeJointRangeRow(target, label, (deg) => {
+    poseSliderSpecs3D(def).forEach(spec => {
+      const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
         if (!S.modalDraftJoints) return;
-        S.modalDraftJoints[def.field] = deg * Math.PI / 180;
+        writePoseSliderDeg3D(S.modalDraftJoints, spec, deg);
         refreshPersonaPreview();
       });
-      jointSliderRefs[def.id] = { type: 'hinge', ...ref };
+      jointSliderRefs[spec.key] = { spec, ...ref };
       jointRowsById[def.id].push(ref.row);
-    } else if (def.mode === 'hinge2') {
-      const vRef = makeJointRangeRow(target, label + ' (haut/bas)', (deg) => {
-        if (!S.modalDraftJoints) return;
-        S.modalDraftJoints[def.fieldV] = deg * Math.PI / 180;
-        refreshPersonaPreview();
-      });
-      const hRef = makeJointRangeRow(target, label + ' (gauche/droite)', (deg) => {
-        if (!S.modalDraftJoints) return;
-        S.modalDraftJoints[def.fieldH] = deg * Math.PI / 180;
-        refreshPersonaPreview();
-      });
-      jointSliderRefs[def.id] = { type: 'hinge2', v: vRef, h: hRef };
-      jointRowsById[def.id].push(vRef.row, hRef.row);
-    } else {
-      const xRef = makeJointRangeRow(target, label + ' (avant/arr.)', (deg) => {
-        if (!S.modalDraftJoints) return;
-        const current = S.modalDraftJoints[def.field] || { x: 0, z: 0 };
-        S.modalDraftJoints[def.field] = { x: deg * Math.PI / 180, z: current.z || 0 };
-        refreshPersonaPreview();
-      });
-      const zRef = makeJointRangeRow(target, label + ' (écart)', (deg) => {
-        if (!S.modalDraftJoints) return;
-        const current = S.modalDraftJoints[def.field] || { x: 0, z: 0 };
-        S.modalDraftJoints[def.field] = { x: current.x || 0, z: deg * Math.PI / 180 };
-        refreshPersonaPreview();
-      });
-      jointSliderRefs[def.id] = { type: 'ball', x: xRef, z: zRef };
-      jointRowsById[def.id].push(xRef.row, zRef.row);
-    }
+    });
   });
 }
 buildJointSlidersUI();
@@ -1128,25 +1109,11 @@ buildJointSlidersUI();
 // Keeps the numeric sliders synced with the current pose (including mouse-drag changes).
 export function syncJointSlidersFromDraft(){
   if (!S.modalDraftJoints) return;
-  POSE_HANDLES.forEach(def => {
-    const ref = jointSliderRefs[def.id];
-    if (!ref) return;
-    if (ref.type === 'hinge') {
-      const current = S.modalDraftJoints[def.field];
-      const deg = Math.round((current || 0) * 180 / Math.PI);
-      ref.input.value = deg; ref.val.textContent = deg + '°';
-    } else if (ref.type === 'hinge2') {
-      const degV = Math.round((S.modalDraftJoints[def.fieldV] || 0) * 180 / Math.PI);
-      const degH = Math.round((S.modalDraftJoints[def.fieldH] || 0) * 180 / Math.PI);
-      ref.v.input.value = degV; ref.v.val.textContent = degV + '°';
-      ref.h.input.value = degH; ref.h.val.textContent = degH + '°';
-    } else {
-      const current = S.modalDraftJoints[def.field];
-      const degX = Math.round(((current && current.x) || 0) * 180 / Math.PI);
-      const degZ = Math.round(((current && current.z) || 0) * 180 / Math.PI);
-      ref.x.input.value = degX; ref.x.val.textContent = degX + '°';
-      ref.z.input.value = degZ; ref.z.val.textContent = degZ + '°';
-    }
+  Object.values(jointSliderRefs).forEach(ref => {
+    if (!ref || !ref.spec) return;
+    const deg = readPoseSliderDeg3D(S.modalDraftJoints, ref.spec);
+    ref.input.value = deg;
+    ref.val.textContent = deg + '°';
   });
 }
 

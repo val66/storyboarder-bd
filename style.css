@@ -667,15 +667,28 @@ canvas{
 /* ── Éditeur de Personnage (cf. events.js, openPersonaEditor) ────────────────────────────────
    Recouvre l'application entière. z-index sous les modales : ouvrir l'éditeur depuis la modale
    d'un Personnage doit pouvoir refermer celle-ci proprement, pas la laisser piégée dessous. */
-.persona-editor { position: fixed; inset: 0; z-index: 900; background: #f4f4f6;
-                  display: flex; flex-direction: column; }
+/* Fix 51 — couleurs prises dans les variables de thème et non écrites en dur : l'application se
+   décline en clair et en sombre (cf. :root et le jeu de variables posé sur <body>), et un overlay
+   plein écran figé en clair devenait illisible dans l'autre thème. */
+.persona-editor { position: fixed; inset: 0; z-index: 900; background: var(--paper);
+                  color: var(--ink); display: flex; flex-direction: column; }
 .persona-editor.hidden { display: none; }
 .persona-editor-bar { display: flex; align-items: center; justify-content: space-between;
-                      padding: 10px 16px; background: #fff; border-bottom: 1px solid #dcdce2; }
+                      padding: 10px 16px; background: var(--paper-dark);
+                      border-bottom: 1px solid var(--line); }
 .persona-editor-title { font-weight: 600; letter-spacing: .3px; }
+/* Canevas à gauche, réglages à droite. */
+.persona-editor-body { flex: 1; min-height: 0; display: flex; }
 /* Le canevas occupe tout l'espace restant ; sa résolution de rendu est calculée à part
    (cf. drawPersonaEditor) et plafonnée, elle ne suit pas aveuglément la taille CSS. */
-.persona-editor-stage { flex: 1; min-height: 0; display: flex; }
+.persona-editor-stage { flex: 1; min-width: 0; min-height: 0; display: flex; }
 .persona-editor-stage canvas { flex: 1; min-width: 0; min-height: 0; display: block;
                                cursor: grab; }
 .persona-editor-stage canvas:active { cursor: grabbing; }
+/* Largeur fixe : la liste de curseurs a une largeur lisible propre (108px de libellé + le curseur),
+   la laisser s'étirer avec la fenêtre n'apporterait rien et volerait de la place au Personnage. */
+.persona-editor-panel { width: 300px; flex-shrink: 0; overflow-y: auto; padding: 12px 14px 18px;
+                        background: var(--paper-dark); border-left: 1px solid var(--line); }
+.persona-editor-panel h2 { font-size: 11px; font-weight: 600; color: var(--ink-soft);
+                           margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; }
+.persona-editor-panel .full-btn { margin-top: 12px; }

@@ -44,8 +44,17 @@
     <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
     <button id="personaEditorCloseBtn" class="danger-btn" type="button">Fermer</button>
   </div>
-  <div class="persona-editor-stage">
-    <canvas id="personaEditorCanvas"></canvas>
+  <div class="persona-editor-body">
+    <div class="persona-editor-stage">
+      <canvas id="personaEditorCanvas"></canvas>
+    </div>
+    <!-- Panneau de réglage fin. Le conteneur est rempli par buildPersonaEditorJointSlidersUI
+         (events.js) à partir des mêmes descripteurs que la modale, cf. poseSliderSpecs3D. -->
+    <aside class="persona-editor-panel">
+      <h2>Réglage fin des articulations</h2>
+      <div id="personaEditorJointsContainer"></div>
+      <button id="personaEditorResetBtn" type="button" class="full-btn">Réinitialiser la pose</button>
+    </aside>
   </div>
 </div>
 

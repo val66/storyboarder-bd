@@ -9,8 +9,9 @@ import {
   pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
 } from '../src/utils.js';
-import { POSITIONS, POSE_3D } from '../src/constants.js';
+import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -330,5 +331,127 @@ describe('resolvePoseLabel3D — étiquette affichée d\'une pose (Fix 45)', () 
     const avant = JSON.stringify(o);
     resolvePoseLabel3D(o, []);
     assert.equal(JSON.stringify(o), avant);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 51 — descripteurs de curseurs (poseSliderSpecs3D / read / write)
+//
+// Ces trois fonctions ont été extraites de modals.js, où l'aiguillage sur le type d'articulation
+// existait en DEUX exemplaires (construction des curseurs, puis resynchronisation depuis le
+// brouillon). Le panneau de l'éditeur en aurait fait un troisième. Aucun test ne couvrait ces deux
+// exemplaires : le refactor était donc à l'aveugle, d'où l'insistance ci-dessous sur les propriétés
+// que les deux copies devaient respecter — et sur la COUVERTURE, qui est la seule chose capable
+// d'attraper une articulation oubliée.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
+  test('une charnière simple donne un curseur, sans suffixe de libellé', () => {
+    const specs = poseSliderSpecs3D({ id: 'torso', mode: 'hinge', field: 'torsoRotX' });
+    assert.equal(specs.length, 1);
+    assert.equal(specs[0].field, 'torsoRotX');
+    assert.equal(specs[0].axis, null, 'une charnière écrit un nombre, pas un axe d\'objet');
+    assert.equal(specs[0].suffix, '', 'rien à désambiguïser quand il n\'y a qu\'un curseur');
+  });
+
+  test('une charnière double donne deux curseurs, sur DEUX champs distincts', () => {
+    const specs = poseSliderSpecs3D({ id: 'head', mode: 'hinge2', fieldV: 'headRotX', fieldH: 'headRotY' });
+    assert.equal(specs.length, 2);
+    assert.deepEqual(specs.map(s => s.field), ['headRotX', 'headRotY']);
+    assert.ok(specs.every(s => s.axis === null));
+  });
+
+  test('une rotule donne deux curseurs sur LE MÊME champ, distingués par l\'axe', () => {
+    // C'est la seule des trois formes où deux curseurs se partagent un champ : ils écrivent chacun
+    // une clé d'un objet {x, z}. D'où la précaution de writePoseSliderDeg3D plus bas.
+    const specs = poseSliderSpecs3D({ id: 'lShoulder', mode: 'ball', field: 'lShoulder' });
+    assert.equal(specs.length, 2);
+    assert.deepEqual(specs.map(s => s.field), ['lShoulder', 'lShoulder']);
+    assert.deepEqual(specs.map(s => s.axis), ['x', 'z']);
+  });
+
+  test('une articulation absente ne fait pas planter l\'appelant', () => {
+    assert.deepEqual(poseSliderSpecs3D(null), []);
+    assert.deepEqual(poseSliderSpecs3D(undefined), []);
+  });
+
+  test('COUVERTURE : chaque champ déclaré dans POSE_HANDLES est piloté par un curseur', () => {
+    // Le vrai garde-fou. Ajouter une articulation à POSE_HANDLES sans que poseSliderSpecs3D sache
+    // la traduire donnerait une articulation réglable nulle part — silencieusement, puisque rien
+    // n'échoue quand un curseur manque.
+    const pilotes = new Set();
+    POSE_HANDLES.forEach(def => poseSliderSpecs3D(def).forEach(s => pilotes.add(s.field)));
+    POSE_HANDLES.forEach(def => {
+      [def.field, def.fieldV, def.fieldH].filter(Boolean).forEach(f => {
+        assert.ok(pilotes.has(f), `${def.id} : le champ ${f} n'est piloté par aucun curseur`);
+      });
+    });
+  });
+
+  test('COUVERTURE : les clés de curseurs sont toutes distinctes', () => {
+    // Les références de curseurs sont stockées dans un objet indexé par cette clé (jointSliderRefs,
+    // personaEditorSliderRefs) : deux clés identiques et un curseur en écrase silencieusement un
+    // autre, qui cesse alors de se resynchroniser.
+    const keys = POSE_HANDLES.flatMap(def => poseSliderSpecs3D(def).map(s => s.key));
+    assert.equal(new Set(keys).size, keys.length, 'collision de clé entre deux curseurs');
+    assert.equal(keys.length, 23, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
+  });
+});
+
+describe('readPoseSliderDeg3D / writePoseSliderDeg3D', () => {
+  const hinge = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  const ballX = { key: 'lShoulder:x', field: 'lShoulder', axis: 'x', suffix: '' };
+  const ballZ = { key: 'lShoulder:z', field: 'lShoulder', axis: 'z', suffix: '' };
+
+  test('écrire puis relire redonne le même nombre de degrés', () => {
+    const draft = {};
+    writePoseSliderDeg3D(draft, hinge, 45);
+    assert.equal(readPoseSliderDeg3D(draft, hinge), 45);
+    assertClose(draft.torsoRotX, Math.PI / 4, 'stocké en radians, pas en degrés');
+  });
+
+  test('un champ absent se lit 0 plutôt que NaN ou undefined', () => {
+    // Un brouillon ne contient QUE les articulations non neutres : la plupart des champs sont
+    // absents à l'ouverture. Un NaN ici remonterait jusqu'à la valeur du <input type=range>, que le
+    // navigateur remplacerait par sa valeur médiane — un Personnage se tordrait tout seul.
+    assert.equal(readPoseSliderDeg3D({}, hinge), 0);
+    assert.equal(readPoseSliderDeg3D({}, ballX), 0);
+    assert.equal(readPoseSliderDeg3D({ lShoulder: {} }, ballZ), 0);
+    assert.equal(readPoseSliderDeg3D(null, hinge), 0);
+    assert.equal(readPoseSliderDeg3D({}, null), 0);
+  });
+
+  test('RÉGRESSION : écrire un axe d\'une rotule PRÉSERVE l\'autre', () => {
+    // Le piège de la rotule : ses deux curseurs partagent un champ objet. Remplacer {x, z} sans
+    // relire l'axe voisin remettrait celui-ci à zéro — bouger l'écart d'une épaule remettrait à
+    // plat son avant/arrière, sous les doigts de l'utilisateur.
+    const draft = {};
+    writePoseSliderDeg3D(draft, ballX, 30);
+    writePoseSliderDeg3D(draft, ballZ, -60);
+    assert.equal(readPoseSliderDeg3D(draft, ballX), 30, 'l\'axe x a survécu à l\'écriture de z');
+    assert.equal(readPoseSliderDeg3D(draft, ballZ), -60);
+  });
+
+  test('une rotule dont le champ contient autre chose qu\'un objet est réécrite proprement', () => {
+    // Cas d'un fichier ancien ou bricolé à la main : un nombre là où on attend {x, z}. Mieux vaut
+    // repartir de zéro que propager un NaN dans le rig.
+    const draft = { lShoulder: 1.23 };
+    writePoseSliderDeg3D(draft, ballX, 10);
+    assert.equal(readPoseSliderDeg3D(draft, ballX), 10);
+    assert.equal(readPoseSliderDeg3D(draft, ballZ), 0);
+  });
+
+  test('la lecture arrondit au degré, pour que relire-réécrire ne dérive pas', () => {
+    // Les curseurs sont au pas de 1°. Sans arrondi commun à la lecture, chaque resynchronisation
+    // réinjecterait une fraction de degré et la pose glisserait à chaque aller-retour.
+    const draft = { torsoRotX: 0.7853981633974483 }; // 45.000000…°
+    assert.equal(readPoseSliderDeg3D(draft, hinge), 45);
+    const avant = draft.torsoRotX;
+    writePoseSliderDeg3D(draft, hinge, readPoseSliderDeg3D(draft, hinge));
+    assertClose(draft.torsoRotX, avant, 'aller-retour neutre', 1e-12);
+  });
+
+  test('écrire sans brouillon ne crée rien et ne lève pas', () => {
+    assert.equal(writePoseSliderDeg3D(null, hinge, 20), null);
+    assert.deepEqual(writePoseSliderDeg3D({}, null, 20), {});
   });
 });
