@@ -287,12 +287,32 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   test('la documentation de l\'Éditeur de Personnage atteint bien l\'écran', () => {
     // Elle était écrite depuis longtemps et n'était affichée nulle part, faute de <p> pour la
     // recevoir. C'est ce cas précis qui a motivé le passage à un rendu depuis les données.
-    const fr = HELP_MANUAL_FR.find(g => g.id === 'personnages');
-    const en = HELP_MANUAL_EN.find(g => g.id === 'personnages');
-    assert.ok(fr.paragraphs.length >= 15, `seulement ${fr.paragraphs.length} paragraphes`);
+    const fr = HELP_MANUAL_FR.find(g => g.id === 'editeur');
+    const en = HELP_MANUAL_EN.find(g => g.id === 'editeur');
+    assert.ok(fr && en, 'l\'éditeur doit avoir sa propre section');
     assert.ok(fr.paragraphs.some(p => /orbite|ORBITE/.test(p)), 'l\'orbite au clic droit');
-    assert.ok(fr.paragraphs.some(p => /Appliquer/.test(p)), 'le mode autonome sans « Appliquer »');
+    assert.ok(fr.paragraphs.some(p => /CLIQUABLE/.test(p)), 'la zone de prise teintée');
+    assert.ok(fr.paragraphs.some(p => /molette/.test(p)), 'la molette pour changer de champ');
     assert.ok(en.paragraphs.some(p => /orbit/i.test(p)), 'idem en anglais');
+  });
+
+  test('RÉGRESSION : l\'éditeur et le Personnage restent deux sections distinctes', () => {
+    // La section Personnages avait absorbé toute la documentation de l'éditeur et en devenait
+    // illisible. Elle ne doit décrire que le Personnage lui-même : sa création, sa modale, son
+    // placement dans la Case. Sans ce test, le prochain paragraphe sur l'éditeur y retournerait
+    // naturellement — c'est là qu'il avait atterri la première fois.
+    [['FR', HELP_MANUAL_FR], ['EN', HELP_MANUAL_EN]].forEach(([langue, table]) => {
+      const perso = table.find(g => g.id === 'personnages');
+      const editeur = table.find(g => g.id === 'editeur');
+      assert.ok(perso.paragraphs.length <= 8,
+        `${langue} : la section Personnages a ${perso.paragraphs.length} paragraphes, elle redevient un fourre-tout`);
+      perso.paragraphs.forEach((p, i) => {
+        assert.ok(!/dans l'éditeur|in the editor/i.test(p),
+          `${langue} : le paragraphe ${i} de « Personnages » parle de l'éditeur`);
+      });
+      assert.ok(editeur.paragraphs.length >= 10,
+        `${langue} : la section éditeur ne compte que ${editeur.paragraphs.length} paragraphes`);
+    });
   });
 });
 
