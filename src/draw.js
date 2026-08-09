@@ -29,6 +29,7 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
+import { mesurer, compter } from './perf-probe.js';
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS } from './utils.js';
 import {
@@ -2416,10 +2417,19 @@ export function drawCurrentPage(){
     panelSceneCache3D.clear();
     S.drawCurrentPageLastRef = _pageDataRef;
   }
-  _canvas.width = Math.round(page.w * S.pageRenderScale); _canvas.height = Math.round(page.h * S.pageRenderScale);
-  _applyZoom();
-  drawContent(_ctx, page, S.pageRenderScale, true);
-  _updateSidePanel();
+  // DIAGNOSTIC TEMPORAIRE (sonde perf) — les quatre phases séparément. L'audit soupçonnait la
+  // réallocation du canevas et la reconstruction du panneau latéral d'être aussi coûteuses que le
+  // dessin lui-même ; c'est précisément ce qu'on vient vérifier plutôt que de le supposer.
+  compter('drawCurrentPage');
+  mesurer('drawCurrentPage TOTAL', () => {
+    mesurer('  1. canevas (width=)', () => {
+      _canvas.width = Math.round(page.w * S.pageRenderScale);
+      _canvas.height = Math.round(page.h * S.pageRenderScale);
+    });
+    mesurer('  2. applyZoom', () => _applyZoom());
+    mesurer('  3. drawContent', () => drawContent(_ctx, page, S.pageRenderScale, true));
+    mesurer('  4. updateSidePanel', () => _updateSidePanel());
+  });
 }
 
 
@@ -2445,7 +2455,10 @@ const _planificateurDessin = makeFrameScheduler(
   (id) => globalThis.cancelAnimationFrame(id),
   () => drawCurrentPage());
 
-export function scheduleDrawCurrentPage(){ _planificateurDessin.demander(); }
+export function scheduleDrawCurrentPage(){
+  compter('demandes de dessin coalescées');   // DIAGNOSTIC TEMPORAIRE
+  _planificateurDessin.demander();
+}
 
 // À appeler quand la suite du code doit voir un canevas à jour immédiatement — typiquement au
 // relâchement de la souris, qui clôt un geste et enchaîne souvent sur une lecture d'état.

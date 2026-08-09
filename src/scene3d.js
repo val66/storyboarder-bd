@@ -11,6 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
+import { mesurer, compter } from './perf-probe.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
@@ -1560,9 +1561,17 @@ function computePanelSceneSignature3D(panel, page, styleKey){
 // 3D — CAMERA & SCENE
 // ════════════════════════════════════════════════════════════
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
-  const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
+  // DIAGNOSTIC TEMPORAIRE (sonde perf). La signature est calculée à CHAQUE appel, succès de cache
+  // compris : c'est le coût incompressible du chemin, celui que la coalescence évite en amont.
+  const sig = mesurer('signature de Case', () =>
+    computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale);
   const cached = panelSceneCache3D.get(panel.id);
-  if (cached && cached.sig === sig) return cached;
+  if (cached && cached.sig === sig) { compter('Case : cache TOUCHÉ'); return cached; }
+  compter('Case : cache MANQUÉ (rendu WebGL)');
+  return mesurer('rendu WebGL d\'une Case', () => renderPanelSceneUncached3D(panel, page, styleKey, scale, sig));
+}
+
+function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
   const style = resolveStyle3D(styleKey);
   applyStyle3DLighting(style);
