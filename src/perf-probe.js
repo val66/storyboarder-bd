@@ -133,10 +133,24 @@ if (typeof window !== 'undefined') {
     rapport() { console.log(contexteTexte() + '\n\n' + rapportTexte()); },
     contexte() { console.log(contexteTexte()); },
     reset: reinitialiserPerf,
+    // Le rapport en TEXTE BRUT, sans effet de bord. À utiliser avec la fonction `copy()` des
+    // outils de développement, qui n'a pas la contrainte de focus de l'API presse-papier :
+    //     copy(perf.texte())
+    texte() { return contexteTexte() + '\n\n' + rapportTexte(); },
     copier() {
       const texte = contexteTexte() + '\n\n' + rapportTexte();
-      if (navigator.clipboard) navigator.clipboard.writeText(texte);
       console.log(texte);
+      // navigator.clipboard.writeText REFUSE d'écrire si le document n'a pas le focus — et quand
+      // on tape dans la console, c'est la fenêtre des outils de développement qui l'a. La promesse
+      // rejetée remontait alors en « Uncaught (in promise) » juste après un rapport pourtant bien
+      // affiché, ce qui donnait l'impression que la commande avait échoué. On rattrape, et on
+      // indique la voie qui marche depuis la console.
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(texte).catch(() => {
+          console.log('[perf] presse-papier refusé (la console a le focus, pas le document). '
+            + 'Utiliser : copy(perf.texte())');
+        });
+      }
       return texte;
     },
   };
