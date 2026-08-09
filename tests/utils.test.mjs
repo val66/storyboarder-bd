@@ -19,6 +19,7 @@ import {
   poseJointLeverAxis3D, projectVectorToScreen3D, modelAxisVector3D,
   poseDragHintSegment3D, POSE_DRAG_HINT_LEN,
   POSE_HANDLE_PICK_RADIUS, POSE_HANDLE_PICK_RADIUS_SOLO,
+  posePickRadii3D, POSE_LIMB_PICK_RADIUS, POSE_LIMB_PICK_RADIUS_SOLO,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   modelAxisTowardViewer3D, circularSweepSign3D,
   appDirFromHref3D,
@@ -1937,5 +1938,32 @@ describe('Fix 87 — rayon de saisie d\'une poignée', () => {
     const positions = { coude: { x: 100, y: 100 } };
     assert.equal(pickNearestHandle3D(positions, 100 + POSE_HANDLE_PICK_RADIUS_SOLO + 5, 100,
       POSE_HANDLE_PICK_RADIUS_SOLO), null);
+  });
+});
+
+describe('posePickRadii3D — une seule source pour le clic ET pour le dessin', () => {
+  test('les deux rayons s\'élargissent quand l\'articulation est seule', () => {
+    const normal = posePickRadii3D(false);
+    const solo = posePickRadii3D(true);
+    assert.ok(solo.handle > normal.handle, 'disque autour du point');
+    assert.ok(solo.limb > normal.limb, 'bande le long du membre');
+  });
+
+  test('RÉGRESSION : la fonction rend les DEUX rayons, pas seulement celui du point', () => {
+    // Fix 88 — la zone de prise est dessinée à partir de ces valeurs. Si la bande du membre
+    // disparaissait du descripteur, le tracé montrerait une zone plus petite que la zone réellement
+    // cliquable : l'utilisateur croirait devoir viser le point alors que le membre suffit.
+    for (const solo of [false, true]) {
+      const r = posePickRadii3D(solo);
+      assert.ok(Number.isFinite(r.handle) && r.handle > 0, `handle manquant (solo=${solo})`);
+      assert.ok(Number.isFinite(r.limb) && r.limb > 0, `limb manquant (solo=${solo})`);
+    }
+  });
+
+  test('RÉGRESSION : les rayons restent FINIS', () => {
+    // Le clic dans le vide doit continuer de désélectionner, sinon on ne peut plus changer
+    // d'articulation depuis le canevas.
+    const solo = posePickRadii3D(true);
+    assert.ok(solo.handle < 200 && solo.limb < 200, 'une zone qui couvrirait tout le canevas');
   });
 });

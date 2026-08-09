@@ -580,6 +580,23 @@ export function cyclePoseSpecIndex3D(index, count, delta){
 // commencer un geste — le clic dans le vide reste possible, simplement plus loin.
 export const POSE_HANDLE_PICK_RADIUS = 17;
 export const POSE_HANDLE_PICK_RADIUS_SOLO = 48;
+// Demi-largeur de la bande cliquable le long du membre — l'autre moitié de la zone de prise
+// (cf. pickLimbSegmentAt) : on attrape une articulation par son point, mais aussi en saisissant le
+// membre qu'elle entraîne.
+export const POSE_LIMB_PICK_RADIUS = 11;
+export const POSE_LIMB_PICK_RADIUS_SOLO = 24;
+
+// Fix 88 — les deux rayons de prise, décidés en UN endroit.
+//
+// Ce n'est pas de la coquetterie : depuis le Fix 88, cette zone est aussi DESSINÉE sur le modèle.
+// Deux sources de vérité — l'une pour le clic, l'autre pour le tracé — finiraient par diverger, et
+// le dessin promettrait alors une prise là où le clic ne mord pas. C'est exactement le genre
+// d'écart qui a coûté cher plusieurs fois dans ce dépôt.
+export function posePickRadii3D(solo){
+  return solo
+    ? { handle: POSE_HANDLE_PICK_RADIUS_SOLO, limb: POSE_LIMB_PICK_RADIUS_SOLO }
+    : { handle: POSE_HANDLE_PICK_RADIUS, limb: POSE_LIMB_PICK_RADIUS };
+}
 
 export function pickNearestHandle3D(positions, px, py, radius = POSE_HANDLE_PICK_RADIUS){
   if (!positions) return null;

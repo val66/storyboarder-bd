@@ -599,3 +599,57 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 88 — la zone de prise est DESSINÉE telle qu'elle est TESTÉE.
+//
+// L'enjeu n'est pas le tracé (hors de portée : le contexte 2D du stub est un no-op) mais le fait
+// que le dessin et le test de clic lisent les mêmes valeurs et la même géométrie. Un dessin qui
+// promettrait une prise là où le clic ne mord pas serait pire que pas de dessin du tout.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
+  const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
+  const corpsDe = (nom) => {
+    const i = src.indexOf(`export function ${nom}(`);
+    assert.ok(i > 0, `${nom} introuvable`);
+    return src.slice(i, src.indexOf('\n}', i));
+  };
+
+  test('RÉGRESSION : clic et dessin partagent la MÊME source de rayons', () => {
+    assert.match(corpsDe('pickPoseHandleAt'), /posePickRadii3D/);
+    const overlay = corpsDe('drawPersonaPoseHandlesOverlay');
+    assert.match(overlay, /posePickRadii3D\(true\)/,
+      'le dessin doit lire les rayons, pas les redéclarer');
+  });
+
+  test('RÉGRESSION : le repli sur le membre reçoit AUSSI le rayon élargi', () => {
+    // Sans le passer, la bande du membre resterait étroite alors qu'elle est dessinée large : le
+    // tracé promettrait une prise sur toute la largeur, et le clic ne mordrait qu'au centre. C'est
+    // exactement le mensonge que ce Fix cherche à rendre impossible — et il a échappé au premier
+    // jet des mutations, faute d'un test sur cet argument précis.
+    assert.match(corpsDe('pickPoseHandleAt'), /pickLimbSegmentAt\([^)]*r\.limb\)/,
+      'le rayon du membre doit être transmis au repli');
+  });
+
+  test('RÉGRESSION : clic et dessin partagent le MÊME segment de membre', () => {
+    // Deux calculs séparés du segment auraient fini par diverger — c'est la famille de bugs la
+    // plus fréquente de ce dépôt.
+    assert.match(corpsDe('pickLimbSegmentAt'), /personaLimbSegmentScreen3D/);
+    assert.match(corpsDe('drawPersonaPoseHandlesOverlay'), /personaLimbSegmentScreen3D/);
+  });
+
+  test('RÉGRESSION : la zone est tracée AVANT les poignées', () => {
+    // C'est un fond : dessinée après, elle voilerait la poignée et le repère de glisser, les deux
+    // choses qu'il faut justement voir.
+    const overlay = corpsDe('drawPersonaPoseHandlesOverlay');
+    assert.ok(overlay.indexOf('drawPersonaPickZone(') < overlay.indexOf('POSE_HANDLES.forEach'),
+      'la zone doit précéder la boucle des poignées');
+    assert.ok(overlay.indexOf('drawPersonaPickZone(') < overlay.indexOf('drawPersonaDragHint('),
+      'et précéder le repère de glisser');
+  });
+
+  test('la zone n\'est dessinée QUE lorsqu\'une articulation est isolée', () => {
+    // Sans sélection, toutes les poignées sont prenables : dessiner une zone n'aurait aucun sens.
+    assert.match(corpsDe('drawPersonaPoseHandlesOverlay'), /if \(solo && positions\[selectedId\]\)/);
+  });
+});

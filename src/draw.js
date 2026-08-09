@@ -29,8 +29,8 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
-import { clamp, getHandles, pickNearestHandle3D,
-         poseDragHintSegment3D, POSE_DRAG_HINT_LEN } from './utils.js';
+import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D,
+         poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS } from './utils.js';
 import {
   findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
@@ -1624,13 +1624,11 @@ export function drawPersonaPreview(targetCanvas, spec){
     if (targetCanvas.width !== rw || targetCanvas.height !== rh) {
       targetCanvas.width = rw; targetCanvas.height = rh;
     }
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh },
-      spec.orbit, spec.highlightGroup);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh }, spec.orbit);
   } else {
     const scale = syncPreviewCanvasRes(targetCanvas,
       spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale, null,
-      spec.orbit, spec.highlightGroup);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale, null, spec.orbit);
   }
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
@@ -1666,6 +1664,40 @@ export function projectJointToCanvas(group, camera, canvasW, canvasH){
 // et la dernière rendue écraserait les coordonnées de l'autre : au retour dans la modale, les clics
 // auraient visé les positions calculées pour le plein écran. Les valeurs par défaut reproduisent
 // exactement le comportement de la modale, seul appelant historique.
+// Fix 88 — la ZONE DE PRISE de l'articulation sélectionnée, dessinée telle qu'elle est réellement
+// testée : le disque autour du point, et la bande le long du membre. Cliquer à l'intérieur garde la
+// sélection ; cliquer dehors la lâche. C'est donc la frontière du « je peux repartir d'ici » —
+// autrement dit ce que l'utilisateur a demandé à voir, et non ce que l'articulation entraîne.
+//
+// Les rayons viennent de posePickRadii3D, la même source que le test de clic (cf. pickPoseHandleAt).
+// Deux jeux de valeurs auraient dessiné une promesse que le clic n'aurait pas tenue.
+export function drawPersonaPickZone(hctx, pos, segment, radii){
+  if (!hctx || !pos || !radii) return false;
+  hctx.save();
+  hctx.fillStyle = '#E0A53C';
+  hctx.strokeStyle = '#E0A53C';
+  hctx.globalAlpha = 0.16;
+  // La bande d'abord : le disque doit rester lisible par-dessus, c'est lui le point d'ancrage.
+  if (segment) {
+    hctx.lineWidth = radii.limb * 2;
+    hctx.lineCap = 'round';
+    hctx.beginPath();
+    hctx.moveTo(segment.p1.x, segment.p1.y);
+    hctx.lineTo(segment.p2.x, segment.p2.y);
+    hctx.stroke();
+  }
+  hctx.beginPath();
+  hctx.arc(pos.x, pos.y, radii.handle, 0, Math.PI * 2);
+  hctx.fill();
+  // Un liséré net sur le disque : sans lui, un aplat à 16 % laisse la frontière indécise, or c'est
+  // précisément la frontière qui porte l'information — dedans on garde, dehors on lâche.
+  hctx.globalAlpha = 0.5;
+  hctx.lineWidth = 1;
+  hctx.stroke();
+  hctx.restore();
+  return true;
+}
+
 // Fix 85 — repère de glisser dessiné sur la poignée sélectionnée. `hint` vaut soit
 // { mode: 'droit', x, y } — la direction utile — soit { mode: 'circulaire' }, et null quand aucune
 // articulation n'est choisie. Purement indicatif : il ne change rien au geste, il le rend lisible.
@@ -1722,6 +1754,13 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     : (S.selectedPoseHandle && S.selectedPoseHandle.id) || null;
   const hctx = cnv.getContext('2d');
   const solo = !!soloActive && !!selectedId;
+  // La zone de prise se dessine AVANT les poignées et le repère : c'est un fond, il ne doit rien
+  // recouvrir. Et avant la boucle, donc à partir des positions de l'image PRÉCÉDENTE — sans effet
+  // visible, la figure n'ayant pas bougé entre deux tracés du même rendu.
+  if (solo && positions[selectedId]) {
+    drawPersonaPickZone(hctx, positions[selectedId],
+      personaLimbSegmentScreen3D(selectedId, cnv, positions), posePickRadii3D(true));
+  }
   POSE_HANDLES.forEach(def => {
     const grp = entry.joints[def.group];
     if (!grp) return;
@@ -1750,13 +1789,14 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   if (dragHint && positions[selectedId]) drawPersonaDragHint(hctx, positions[selectedId], dragHint);
 }
 
-export function pickPoseHandleAt(px, py, canvas, positions, radius){
+export function pickPoseHandleAt(px, py, canvas, positions, radii){
   const pos = positions || personaHandleScreenPos;
-  const id = pickNearestHandle3D(pos, px, py, radius);
+  const r = radii || posePickRadii3D(false);
+  const id = pickNearestHandle3D(pos, px, py, r.handle);
   if (id) return POSE_HANDLES.find(d => d.id === id) || null;
   // No precise joint handle hit: try the limb itself (the segment
   // between the joint and its extremity), so the figure can be posed by grabbing the arm/leg.
-  return pickLimbSegmentAt(px, py, canvas, pos);
+  return pickLimbSegmentAt(px, py, canvas, pos, r.limb);
 }
 
 // ↳ src/constants.js
@@ -1779,24 +1819,35 @@ export function distToSegmentSq(px, py, ax, ay, bx, by){
   return ddx * ddx + ddy * ddy;
 }
 
-export function pickLimbSegmentAt(px, py, canvas, positions){
+// Fix 88 — le segment ÉCRAN du membre entraîné par une articulation, ou null. Extrait pour être
+// partagé entre la sélection et le dessin de la zone de prise : le tracé doit montrer exactement ce
+// que le clic accepte, et deux calculs séparés du même segment auraient fini par se contredire.
+export function personaLimbSegmentScreen3D(handleId, canvas, positions){
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return null;
+  const seg = LIMB_SEGMENTS.find(l => l.id === handleId);
+  if (!seg) return null;
+  const def = POSE_HANDLES.find(d => d.id === seg.id);
+  if (!def) return null;
+  const grp = entry.joints[def.group];
+  if (!grp) return null;
   const cnv = canvas || personaPreview3D;
+  const p1 = (positions || personaHandleScreenPos)[seg.id];
+  if (!p1) return null;
+  const p2 = seg.toGroup
+    ? projectJointToCanvas(entry.joints[seg.toGroup], personaCamera3D, cnv.width, cnv.height)
+    : projectLocalOffsetToCanvas(grp, seg.toLocal, personaCamera3D, cnv.width, cnv.height);
+  return { def, p1, p2 };
+}
+
+export function pickLimbSegmentAt(px, py, canvas, positions, radius = POSE_LIMB_PICK_RADIUS){
   const pos = positions || personaHandleScreenPos;
-  let best = null, bestD2 = 11 * 11;
+  let best = null, bestD2 = radius * radius;
   LIMB_SEGMENTS.forEach(seg => {
-    const def = POSE_HANDLES.find(d => d.id === seg.id);
-    if (!def) return;
-    const grp = entry.joints[def.group];
-    if (!grp) return;
-    const p1 = pos[seg.id];
-    if (!p1) return;
-    const p2 = seg.toGroup
-      ? projectJointToCanvas(entry.joints[seg.toGroup], personaCamera3D, cnv.width, cnv.height)
-      : projectLocalOffsetToCanvas(grp, seg.toLocal, personaCamera3D, cnv.width, cnv.height);
-    const d2 = distToSegmentSq(px, py, p1.x, p1.y, p2.x, p2.y);
-    if (d2 < bestD2) { bestD2 = d2; best = def; }
+    const s = personaLimbSegmentScreen3D(seg.id, canvas, pos);
+    if (!s) return;
+    const d2 = distToSegmentSq(px, py, s.p1.x, s.p1.y, s.p2.x, s.p2.y);
+    if (d2 < bestD2) { bestD2 = d2; best = s.def; }
   });
   return best;
 }

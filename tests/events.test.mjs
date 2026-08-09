@@ -2294,11 +2294,11 @@ describe('éditeur de Personnage — repère de glisser (Fix 85)', () => {
 // paramètre transmis — c'est-à-dire précisément ce qu'une mutation « on repasse au réglage fixe »
 // efface sans que rien d'autre ne s'en aperçoive.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — rayon de saisie et teinte (Fix 87)', () => {
+describe('éditeur de Personnage — rayon de saisie (Fix 87/88)', () => {
   const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
 
   test('RÉGRESSION : le rayon de saisie dépend de la SÉLECTION', () => {
-    assert.match(src, /S\.personaEditorHandleId\s*\n?\s*\?\s*POSE_HANDLE_PICK_RADIUS_SOLO\s*:\s*POSE_HANDLE_PICK_RADIUS/,
+    assert.match(src, /posePickRadii3D\(!!S\.personaEditorHandleId\)/,
       'sans cette bascule, le rayon reste étroit et un départ de geste un peu à côté désélectionne');
   });
 
@@ -2310,10 +2310,4 @@ describe('éditeur de Personnage — rayon de saisie et teinte (Fix 87)', () => 
     dansEditeur.forEach(a => assert.match(a, /rayonSaisie\(\)/, a));
   });
 
-  test('RÉGRESSION : le rendu de l\'éditeur transmet le GROUPE à teindre', () => {
-    // Le groupe et non l'id de poignée : plusieurs poignées partagent un même groupe (les deux
-    // champs d'un poignet), et c'est le groupe qui décrit ce que la rotation entraîne.
-    assert.match(src, /highlightGroup:\s*\(POSE_HANDLES\.find\(d => d\.id === S\.personaEditorHandleId\) \|\| \{\}\)\.group/,
-      'sans cela, aucune partie du modèle ne serait teintée');
-  });
 });
