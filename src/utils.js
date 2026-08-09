@@ -195,40 +195,98 @@ export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
 export const POSE_DRAG_DEG_MIN = -180;
 export const POSE_DRAG_DEG_MAX = 180;
 
-// Fix 74 — la composante de souris qui pilote un champ, SELON SON RANG dans l'articulation.
+// ─── Fix 75 (ESSAI) — le geste de glisser SUIT L'ORIENTATION du modèle ───────────────────────
 //
-// Le premier champ suit le vertical, les suivants l'horizontal. Ce n'est pas arbitraire :
-// poseSliderSpecs3D range ses descripteurs dans cet ordre et le dit dans ses libellés
-// (« (haut/bas) » puis « (gauche/droite) »). Chaque champ répond donc au geste qui porte son nom.
+// Le problème, en une phrase : le geste vit en repère ÉCRAN, les champs d'articulation vivent en
+// repère MODÈLE. Tant que la figure est vue de face les deux coïncident ; dès qu'on orbite, la
+// direction dans laquelle le membre part visuellement n'est plus celle qu'on attend de la souris.
 //
-// Ce qui remplace les deux axes cumulés du Fix 72, et pas seulement par goût : `dx + dy` s'ANNULE
-// dès que les deux composantes s'opposent. Un geste courbe qui repasse par dx = -dy figeait l'angle
-// alors que la souris bougeait encore — c'est très probablement la moitié du « ça se bloque
-// parfois » signalé, l'autre moitié étant le bornage traité au Fix 73.
-export function poseSpecDragDelta3D(specIndex, dx, dy){
-  return (Math.trunc(specIndex || 0) === 0) ? (dy || 0) : (dx || 0);
+// Chaque champ fait tourner l'articulation autour d'un axe, comme une porte sur ses gonds. On
+// projette cet axe à l'écran et on prend la composante de souris PERPENDICULAIRE à sa projection :
+// c'est la direction dans laquelle une rotation autour de cet axe déplace la matière.
+//
+// APPROXIMATION ASSUMÉE : l'axe est pris dans le repère du MODÈLE, pas dans celui de l'articulation.
+// Pour un coude dont l'épaule est déjà tournée, la direction obtenue n'est donc pas exacte. Le
+// repère réel vit dans la scène WebGL, hors de portée d'un calcul pur — et donc hors de portée des
+// tests. Compromis délibéré : approché mais vérifiable, plutôt qu'exact et intestable.
+
+// Axe de rotation d'un champ, dans le repère du modèle. Déduit du descripteur, pas d'une table
+// parallèle : une table de plus finirait par diverger de ce que rig3d applique réellement
+// (cf. applyPoseToRig — `lElbow` et `lKnee` pilotent rotation.x, d'où le défaut à 'x').
+export function poseSpecRotationAxis3D(spec){
+  if (!spec) return 'x';
+  if (spec.axis) return spec.axis;
+  const champ = spec.field || '';
+  if (/RotY$/.test(champ)) return 'y';
+  if (/RotZ$/.test(champ)) return 'z';
+  return 'x';
+}
+
+// Projection à l'écran d'un axe du modèle, sous la caméra en orbite de l'éditeur.
+//
+// Base de la caméra (cf. orbitCameraPosition3D, qui la place) : droite = (cosY, 0, -sinY),
+// haut = (-sinY·sinX, cosX, -cosY·sinX). L'ordonnée écran croît vers le BAS, d'où le signe.
+export function projectModelAxisToScreen3D(axis, orbit){
+  const rotX = (orbit && orbit.rotX) || 0;
+  const rotY = (orbit && orbit.rotY) || 0;
+  const cy = Math.cos(rotY), sy = Math.sin(rotY);
+  const cx = Math.cos(rotX), sx = Math.sin(rotX);
+  const v = axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+  return {
+    x: v[0] * cy + v[2] * (-sy),
+    y: -(v[0] * (-sy * sx) + v[1] * cx + v[2] * (-cy * sx)),
+  };
+}
+
+// En deçà de cette longueur de projection, l'axe pointe vers l'œil : sa perpendiculaire à l'écran
+// n'a plus de direction stable et se met à tourner sur elle-même au moindre mouvement de caméra.
+// 0.35 ≈ 20° d'écart à l'axe de visée. Seuil CHOISI, donc à revoir à l'usage — pas mesuré.
+export const POSE_AXIS_VISIBLE_MIN = 0.35;
+
+// Le geste est-il exploitable en ligne droite pour cet axe, sous cette orbite ?
+export function poseDragIsStraight3D(axis, orbit, seuil = POSE_AXIS_VISIBLE_MIN){
+  const a = projectModelAxisToScreen3D(axis, orbit);
+  return Math.hypot(a.x, a.y) >= seuil;
+}
+
+// Glisser DROIT : composante de la souris perpendiculaire à l'axe projeté, en degrés.
+export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const a = projectModelAxisToScreen3D(axis, orbit);
+  const n = Math.hypot(a.x, a.y);
+  if (!n) return 0;
+  // Perpendiculaire unitaire à (a.x, a.y). De face (orbite nulle), l'axe X se projette en (1, 0) et
+  // sa perpendiculaire vaut (0, 1) : le glisser vertical, exactement comme avant le Fix 75.
+  return ((dx || 0) * (-a.y / n) + (dy || 0) * (a.x / n)) * degPerPx;
+}
+
+// Glisser CIRCULAIRE : angle balayé autour du point d'articulation, en degrés. Employé quand l'axe
+// pointe vers l'œil — cas où la rotation est vue de face, et où tourner AUTOUR du point est le seul
+// geste qui garde un sens. Positif dans le sens horaire à l'écran (l'ordonnée croît vers le bas).
+export function circularDragDegrees3D(pivot, depart, courant){
+  if (!pivot || !depart || !courant) return 0;
+  const a0 = Math.atan2(depart.y - pivot.y, depart.x - pivot.x);
+  const a1 = Math.atan2(courant.y - pivot.y, courant.x - pivot.x);
+  return wrapAngle(a1 - a0) * 180 / Math.PI;
 }
 
 // Un pas de glisser : nouvel angle du champ piloté, et origine à conserver pour le pas suivant.
 //
-// dPx est un déplacement en pixels DÉJÀ projeté sur le bon axe (cf. poseSpecDragDelta3D) : cette
-// fonction ne connaît qu'une grandeur scalaire, ce qui la rend indépendante du choix d'axes.
+// deltaDeg est une variation en DEGRÉS déjà calculée par l'un des deux gestes ci-dessus. Cette
+// fonction ne sait donc rien des axes ni de la caméra — ce qui lui a évité de changer les trois
+// fois où la convention de geste a changé.
 //
 // startDeg est l'angle capturé au DÉBUT du glisser, pas relu à chaque image : cumuler des deltas
 // image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au même angle selon la
 // vitesse du geste.
 //
-// Fix 73 — RÉ-ANCRAGE aux bornes, et c'est là que se jouait le « ça finit par se bloquer ».
-// L'angle était borné, la course de souris ne l'était pas : dépasser 180° de 300 px de glisser
-// stockait ces 300 px, et il fallait les reparcourir en sens inverse avant que quoi que ce soit
-// bouge — l'articulation paraissait figée, sans que rien ne l'annonce. Au contact d'une borne,
-// l'origine se recale donc pour que le retour réponde au premier pixel. Le geste reste absolu
-// PARTOUT AILLEURS : le recalage n'a lieu que quand la valeur brute sort de la plage, et il est
-// idempotent (le refaire au même endroit ne déplace rien). Contrepartie assumée : après avoir
-// écrasé une borne, revenir au pixel de départ ne rend plus l'angle de départ — le geste repart de
-// l'endroit où on a quitté la butée, comme pour tout défilement borné.
-export function dragJointStep3D(startDeg, dPx, degPerPx = POSE_DRAG_DEG_PER_PX){
-  const delta = (dPx || 0) * degPerPx;
+// Fix 73 — RÉ-ANCRAGE aux bornes. L'angle était borné, la course de souris ne l'était pas :
+// dépasser 180° stockait le surplus, qu'il fallait reparcourir en sens inverse avant que quoi que
+// ce soit bouge — l'articulation paraissait figée. Au contact d'une borne, l'origine se recale donc
+// pour que le retour réponde au premier pixel. Le geste reste absolu PARTOUT AILLEURS : le recalage
+// n'a lieu que quand la valeur brute sort de la plage, et il est idempotent. Contrepartie assumée :
+// après avoir écrasé une borne, revenir au point de départ ne rend plus l'angle de départ.
+export function dragJointStep3D(startDeg, deltaDeg){
+  const delta = deltaDeg || 0;
   const brut = (startDeg || 0) + delta;
   const deg = clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
   const debordé = brut < POSE_DRAG_DEG_MIN || brut > POSE_DRAG_DEG_MAX;
@@ -286,6 +344,20 @@ export function canvasEventCoords3D(rect, cnvW, cnvH, clientX, clientY){
   return {
     px: (clientX - rect.left) * (cnvW / rect.width),
     py: (clientY - rect.top) * (cnvH / rect.height),
+  };
+}
+
+// Réciproque de canvasEventCoords3D : d'un point du canevas vers le repère de la fenêtre.
+//
+// Fix 75 — indispensable au geste circulaire. Le canevas est étiré en `object-fit: fill`, donc avec
+// des facteurs d'échelle X et Y INDÉPENDANTS : un angle mesuré dans son repère interne ne vaut pas
+// l'angle vu à l'écran. Tout le calcul du geste se fait donc en repère fenêtre, et c'est la poignée
+// qu'on y ramène — pas le curseur qu'on emmène dans le canevas.
+export function canvasPointToClient3D(rect, cnvW, cnvH, px, py){
+  if (!rect || !cnvW || !cnvH) return { x: 0, y: 0 };
+  return {
+    x: rect.left + (px || 0) * (rect.width / cnvW),
+    y: rect.top + (py || 0) * (rect.height / cnvH),
   };
 }
 

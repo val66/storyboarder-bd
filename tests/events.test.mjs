@@ -1761,7 +1761,10 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     setPersonaEditorJointDeg(horiz, 33);
     focusPersonaEditorHandle('head');
     const session = beginPersonaEditorJointDrag('head');
-    // Fix 74 — le premier champ suit le VERTICAL seul : dx est ignoré, ce que le second cas vérifie.
+    // La tête tourne autour de X pour son premier champ : de face, l'axe est horizontal à l'écran,
+    // donc le geste est VERTICAL et dx est ignoré. Inchangé depuis le Fix 74 — c'est justement ce
+    // que le Fix 75 devait préserver dans la vue de face.
+    assert.equal(session.droit, true);
     applyPersonaEditorJointDrag(session, 999, 50);
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), 25, '50 px verticaux à 0.5°/px');
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, horiz), 33, 'champ voisin intact');
@@ -1776,9 +1779,16 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     const x0 = readPoseSliderDeg3D(S.personaEditorDraft, x);
     const z0 = readPoseSliderDeg3D(S.personaEditorDraft, z);
     cyclePersonaEditorSpec(1);                       // on passe sur l'écart
-    // Second champ ⇒ il suit l'HORIZONTAL : c'est dx qui compte, dy est ignoré.
-    applyPersonaEditorJointDrag(beginPersonaEditorJointDrag('lShoulder'), 20, 999);
-    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, z), z0 + 10);
+    // Fix 75 — l'écart tourne autour de Z, qui pointe vers l'œil dans la vue de face d'ouverture :
+    // la session bascule donc en mode CIRCULAIRE, et c'est un balayage qu'il faut lui fournir.
+    const session = beginPersonaEditorJointDrag('lShoulder');
+    assert.equal(session.droit, false, 'de face, l\'écart d\'épaule se règle en tournant');
+    applyPersonaEditorJointDrag(session, 0, 0, {
+      pivot: { x: 100, y: 100 },
+      depart: { x: 200, y: 100 },
+      courant: { x: 100, y: 200 },              // quart de tour horaire = +90°
+    });
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, z), z0 + 90);
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, x), x0, 'axe voisin intact');
   });
 
@@ -1838,6 +1848,43 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     assert.equal(applyPersonaEditorJointDrag(session, 0, 2000), 180, 'borne haute atteinte');
     assert.ok(applyPersonaEditorJointDrag(session, 0, 1996) < 180,
       '4 px de retour doivent déjà faire redescendre l\'angle');
+  });
+
+  test('RÉGRESSION : la session GÈLE l\'orbite et le mode à l\'appui', () => {
+    // On peut orbiter au clic DROIT pendant un glisser gauche. Si la session relisait la caméra à
+    // chaque image, la direction du geste changerait sous la main, et le mode pourrait basculer de
+    // droit à circulaire en plein mouvement — l'articulation ferait un bond.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('head');
+    const session = beginPersonaEditorJointDrag('head');
+    const orbiteFigee = { ...session.orbit };
+    const modeFige = session.droit;
+    setPersonaEditorOrbit(0.7, 2);
+    assert.deepEqual(session.orbit, orbiteFigee, 'l\'orbite de la session ne suit pas la caméra');
+    assert.equal(session.droit, modeFige, 'le mode non plus');
+  });
+
+  test('le mode suit l\'orientation AU MOMENT de l\'appui', () => {
+    // Cœur du Fix 75 : l'écart d'épaule tourne autour de Z. De face, Z pointe vers l'œil — mode
+    // circulaire. De profil, Z est en travers de l'écran — mode droit.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lShoulder');
+    cyclePersonaEditorSpec(1);                              // l'écart
+    assert.equal(beginPersonaEditorJointDrag('lShoulder').droit, false, 'de face');
+    setPersonaEditorOrbit(0, Math.PI / 2);
+    assert.equal(beginPersonaEditorJointDrag('lShoulder').droit, true, 'de profil');
+  });
+
+  test('mode circulaire sans balayage fourni : l\'angle ne bouge pas', () => {
+    // Le gestionnaire renvoie null quand la poignée n'a pas de projection connue. Mieux vaut une
+    // articulation immobile qu'une qui tourne autour d'un pivot inventé.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lShoulder');
+    cyclePersonaEditorSpec(1);
+    const [, z] = specsDe('lShoulder');
+    const avant = readPoseSliderDeg3D(S.personaEditorDraft, z);
+    applyPersonaEditorJointDrag(beginPersonaEditorJointDrag('lShoulder'), 50, 50, null);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, z), avant);
   });
 
   test('la session refuse d\'écrire si l\'éditeur s\'est refermé entre-temps', () => {

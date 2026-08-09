@@ -11,7 +11,9 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
-  dragJointStep3D, poseSpecDragDelta3D, cyclePoseSpecIndex3D,
+  dragJointStep3D, cyclePoseSpecIndex3D, canvasPointToClient3D,
+  poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
+  straightDragDegrees3D, circularDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
@@ -1261,41 +1263,187 @@ describe('orbitCameraPosition3D', () => {
 // Fonctionnalité explicitement expérimentale : elle peut être retirée. Ces tests décrivent donc les
 // PROPRIÉTÉS du geste (absolu, borné, arrondi comme les curseurs), pas des valeurs à préserver.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('poseSpecDragDelta3D — chaque champ suit le geste qui porte son nom', () => {
-  test('le premier champ suit le vertical, les suivants l\'horizontal', () => {
-    assert.equal(poseSpecDragDelta3D(0, 40, 20), 20, 'rang 0 → dy');
-    assert.equal(poseSpecDragDelta3D(1, 40, 20), 40, 'rang 1 → dx');
+const DEG = Math.PI / 180;
+
+describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner', () => {
+  test('il est déduit du descripteur, et couvre TOUS les champs réels', () => {
+    // Balayage exhaustif plutôt que quelques cas choisis : c'est une correspondance avec ce que
+    // rig3d applique, et un champ oublié donnerait un glisser silencieusement de travers.
+    const attendu = {
+      headRotX: 'x', headRotY: 'y', torsoRotX: 'x',
+      lElbow: 'x', rElbow: 'x', lElbowRotZ: 'z', rElbowRotZ: 'z',
+      lKnee: 'x', rKnee: 'x',
+      lWristRotX: 'x', rWristRotX: 'x', lWristRotY: 'y', rWristRotY: 'y',
+      lWristRotZ: 'z', rWristRotZ: 'z',
+    };
+    POSE_HANDLES.forEach(def => poseSliderSpecs3D(def).forEach(spec => {
+      const axe = poseSpecRotationAxis3D(spec);
+      if (spec.axis) {
+        assert.equal(axe, spec.axis, `${spec.key} : une rotule porte son axe`);
+        return;
+      }
+      assert.ok(spec.field in attendu, `champ non couvert par ce test : ${spec.field}`);
+      assert.equal(axe, attendu[spec.field], spec.field);
+    }));
   });
 
-  test('RÉGRESSION : deux composantes opposées ne s\'ANNULENT plus', () => {
-    // Le défaut du Fix 72, corrigé ici : `dx + dy` valait zéro dès que les deux s'opposaient, si
-    // bien qu'un geste courbe repassant par dx = -dy figeait l'angle alors que la souris bougeait
-    // encore. C'est très probablement la moitié du « ça se bloque parfois » signalé.
-    assert.notEqual(poseSpecDragDelta3D(0, -60, 60), 0);
-    assert.notEqual(poseSpecDragDelta3D(1, -60, 60), 0);
-  });
-
-  test('entrées manquantes : traitées comme zéro, jamais NaN', () => {
-    assert.equal(poseSpecDragDelta3D(null, null, null), 0);
+  test('entrées manquantes : axe x par défaut, jamais undefined', () => {
+    assert.equal(poseSpecRotationAxis3D(null), 'x');
+    assert.equal(poseSpecRotationAxis3D({}), 'x');
   });
 });
 
-describe('dragJointStep3D — un champ, un axe', () => {
-  const deg = (...a) => dragJointStep3D(...a).deg;
+describe('projectModelAxisToScreen3D — un axe du modèle vu à l\'écran', () => {
+  const long = (axe, orbit) => {
+    const a = projectModelAxisToScreen3D(axe, orbit);
+    return Math.hypot(a.x, a.y);
+  };
 
-  test('le déplacement se convertit en degrés', () => {
-    assert.equal(deg(0, 20, 0.5), 10);
-    assert.equal(deg(0, -20, 0.5), -10);
+  test('de face, X est horizontal et Y vertical', () => {
+    const x = projectModelAxisToScreen3D('x', { rotX: 0, rotY: 0 });
+    assertClose(x.x, 1, 'X → droite'); assertClose(x.y, 0, 'X → pas de vertical');
+    const y = projectModelAxisToScreen3D('y', { rotX: 0, rotY: 0 });
+    assertClose(y.x, 0, 'Y → pas d\'horizontal');
+    assertClose(y.y, -1, 'Y pointe vers le HAUT, donc ordonnée écran négative');
   });
 
+  test('RÉGRESSION : de face, Z pointe vers l\'œil et n\'a plus de projection', () => {
+    // C'est le cas dégénéré qui justifie tout le mode circulaire : une rotation autour de Z vue de
+    // face n'a aucune direction de glisser privilégiée.
+    assertClose(long('z', { rotX: 0, rotY: 0 }), 0, 'Z de face');
+    assert.equal(poseDragIsStraight3D('z', { rotX: 0, rotY: 0 }), false);
+  });
+
+  test('RÉGRESSION : à 90° d\'orbite, X et Z ÉCHANGENT leurs rôles', () => {
+    // La raison d'être du Fix 75. De face c'est l'écart (Z) qui est aveugle, de profil c'est la
+    // flexion (X) — une correspondance figée ne peut donc pas convenir aux deux vues.
+    const profil = { rotX: 0, rotY: 90 * DEG };
+    assertClose(long('x', profil), 0, 'X de profil');
+    assertClose(long('z', profil), 1, 'Z de profil');
+    assert.equal(poseDragIsStraight3D('x', profil), false);
+    assert.equal(poseDragIsStraight3D('z', profil), true);
+  });
+
+  test('Y reste toujours pleinement visible : l\'orbite tourne AUTOUR de lui', () => {
+    for (const deg of [0, 45, 90, 180, 270]) {
+      assertClose(long('y', { rotX: 0, rotY: deg * DEG }), 1, `orbite ${deg}°`, 1e-9);
+    }
+  });
+
+  test('le seuil de bascule est bien entre les deux régimes', () => {
+    assert.ok(POSE_AXIS_VISIBLE_MIN > 0 && POSE_AXIS_VISIBLE_MIN < 1,
+      'un seuil hors ]0,1[ rendrait un des deux modes inatteignable');
+  });
+});
+
+describe('straightDragDegrees3D — le glisser droit suit l\'orientation', () => {
+  const face = { rotX: 0, rotY: 0 };
+
+  test('RÉGRESSION : de face, le comportement d\'avant le Fix 75 est conservé', () => {
+    // Le premier champ d'une articulation tourne autour de X : de face, il doit toujours répondre au
+    // glisser VERTICAL, comme depuis le Fix 74. Une correction d'orientation qui change la vue de
+    // face aurait cassé le geste que l'utilisateur connaît déjà.
+    assert.equal(straightDragDegrees3D('x', face, 0, 20, 0.5), 10, 'vertical pilote X');
+    assert.equal(straightDragDegrees3D('x', face, 999, 0, 0.5), 0, 'horizontal ne fait rien');
+    assert.equal(straightDragDegrees3D('y', face, 20, 0, 0.5), 10, 'horizontal pilote Y');
+    assert.equal(straightDragDegrees3D('y', face, 0, 999, 0.5), 0, 'vertical ne fait rien');
+  });
+
+  test('à 90° d\'orbite, l\'axe Z se pilote au vertical', () => {
+    // Il est devenu l'axe horizontal à l'écran : sa perpendiculaire est donc verticale.
+    const profil = { rotX: 0, rotY: 90 * DEG };
+    assertClose(straightDragDegrees3D('z', profil, 0, 20, 0.5), -10, 'vertical pilote Z de profil');
+    assertClose(straightDragDegrees3D('z', profil, 999, 0, 0.5), 0, 'horizontal ne fait rien');
+  });
+
+  test('RÉGRESSION : une orbite HORIZONTALE seule ne fait pas tourner le geste', () => {
+    // Contre-intuitif, et je l'ai d'abord cru faux : tourner autour de la figure ne change PAS la
+    // direction de glisser d'un axe X ou Z, seulement sa longueur projetée. L'axe X reste
+    // horizontal à l'écran quel que soit le lacet — il se raccourcit, sans jamais s'incliner. Ce
+    // que le lacet change vraiment, c'est le RÉGIME : au-delà du seuil, on bascule en circulaire.
+    for (const deg of [15, 30, 45, 60]) {
+      const vue = { rotX: 0, rotY: deg * DEG };
+      assert.equal(straightDragDegrees3D('x', vue, 999, 0, 1), 0,
+        `lacet ${deg}° : l'horizontal ne doit toujours rien faire sur X`);
+      assert.ok(straightDragDegrees3D('x', vue, 0, 100, 1) !== 0, 'le vertical, si');
+    }
+  });
+
+  test('une orbite VERTICALE, elle, incline le geste — les deux composantes comptent', () => {
+    // C'est la plongée qui fait pivoter la projection de l'axe, donc sa perpendiculaire.
+    const plongee = { rotX: 30 * DEG, rotY: 45 * DEG };
+    const seulX = straightDragDegrees3D('x', plongee, 100, 0, 1);
+    const seulY = straightDragDegrees3D('x', plongee, 0, 100, 1);
+    assert.ok(Math.abs(seulX) > 1 && Math.abs(seulY) > 1,
+      `aucune composante ne doit être morte en vue plongeante (${seulX}, ${seulY})`);
+  });
+
+  test('axe sans projection : renvoie 0 plutôt que NaN', () => {
+    assert.equal(straightDragDegrees3D('z', face, 50, 50, 1), 0);
+  });
+});
+
+describe('circularDragDegrees3D — balayage autour du point d\'articulation', () => {
+  const pivot = { x: 100, y: 100 };
+
+  test('un quart de tour horaire vaut +90°', () => {
+    // L'ordonnée écran croît vers le BAS : partir de la droite et descendre, c'est tourner dans le
+    // sens horaire tel qu'on le VOIT.
+    assertClose(circularDragDegrees3D(pivot, { x: 200, y: 100 }, { x: 100, y: 200 }), 90, 'horaire');
+    assertClose(circularDragDegrees3D(pivot, { x: 200, y: 100 }, { x: 100, y: 0 }), -90, 'antihoraire');
+  });
+
+  test('RÉGRESSION : le balayage ne dépend PAS de la distance au pivot', () => {
+    // Sinon le même geste donnerait un angle différent selon qu'on saisit près ou loin du point,
+    // et la sensibilité changerait avec le zoom sans que rien ne l'annonce.
+    const proche = circularDragDegrees3D(pivot, { x: 110, y: 100 }, { x: 100, y: 110 });
+    const loin = circularDragDegrees3D(pivot, { x: 400, y: 100 }, { x: 100, y: 400 });
+    assertClose(proche, loin, 'même angle attendu');
+  });
+
+  test('RÉGRESSION : le passage par ±180° ne fait pas sauter la valeur', () => {
+    // Sans repli dans ]-π, π], franchir la demi-tour ferait bondir l'angle de 360° d'un coup — un
+    // saut brutal de l'articulation en plein geste.
+    const d = circularDragDegrees3D(pivot, { x: 0, y: 99 }, { x: 0, y: 101 });
+    assert.ok(Math.abs(d) < 10, `saut de ${d}° au passage du demi-tour`);
+  });
+
+  test('entrées manquantes : 0, jamais NaN', () => {
+    assert.equal(circularDragDegrees3D(null, null, null), 0);
+    assert.equal(circularDragDegrees3D(pivot, { x: 1, y: 1 }, null), 0);
+  });
+});
+
+describe('canvasPointToClient3D — réciproque de canvasEventCoords3D', () => {
+  const rect = { left: 30, top: 12, width: 400, height: 250 };
+
+  test('RÉGRESSION : aller-retour exact, même avec des échelles X et Y différentes', () => {
+    // Le canevas est étiré en `object-fit: fill` : les deux facteurs diffèrent, et c'est justement
+    // pour ça que le geste circulaire doit se mesurer en repère fenêtre.
+    const clientX = 210, clientY = 140;
+    const { px, py } = canvasEventCoords3D(rect, 1600, 500, clientX, clientY);
+    const retour = canvasPointToClient3D(rect, 1600, 500, px, py);
+    assertClose(retour.x, clientX, 'x');
+    assertClose(retour.y, clientY, 'y');
+  });
+
+  test('entrées manquantes : origine, jamais NaN', () => {
+    assert.deepEqual(canvasPointToClient3D(null, 0, 0, 5, 5), { x: 0, y: 0 });
+  });
+});
+
+describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', () => {
+  const deg = (...a) => dragJointStep3D(...a).deg;
+
   test('le résultat part de l\'angle de DÉPART, pas de zéro', () => {
-    assert.equal(deg(30, 20, 0.5), 40);
+    assert.equal(deg(30, 10), 40);
+    assert.equal(deg(30, -10), 20);
   });
 
   test('RÉGRESSION : le geste est ABSOLU — deux fois le même delta ne cumule pas', () => {
     // Le piège serait de relire l'angle courant à chaque image et d'y ajouter le delta : la même
     // course de souris n'aboutirait alors pas au même angle selon la fluidité de l'affichage.
-    assert.equal(deg(0, 20, 0.5), deg(0, 20, 0.5));
+    assert.equal(deg(0, 10), deg(0, 10));
   });
 
   test('RÉGRESSION : hors bornes, l\'origine est INCHANGÉE — même quand l\'arrondi mord', () => {
@@ -1304,28 +1452,25 @@ describe('dragJointStep3D — un champ, un axe', () => {
     //
     // Le delta doit tomber À CÔTÉ d'un degré entier, sinon `deg - delta` retombe sur l'origine par
     // hasard et le test ne distingue plus « recalé » de « inchangé ». C'est exactement ainsi qu'une
-    // première version a laissé passer la mutation « ré-ancrer TOUJOURS » : elle utilisait un
-    // déplacement valant 20° pile.
-    assert.equal(dragJointStep3D(0, 3, 0.5).startDeg, 0, '1.5° : arrondi à 2, origine intacte');
-    assert.equal(dragJointStep3D(17, 40, 0.5).startDeg, 17, 'et sur un delta entier aussi');
+    // première version a laissé passer la mutation « ré-ancrer TOUJOURS ».
+    assert.equal(dragJointStep3D(0, 1.5).startDeg, 0, 'arrondi à 2, origine intacte');
+    assert.equal(dragJointStep3D(17, 20).startDeg, 17, 'et sur un delta entier aussi');
   });
 
   test('RÉGRESSION : l\'angle ne dépend que du delta TOTAL, pas du nombre d\'images', () => {
     // La propriété que « absolu » veut dire. Une origine recalée à chaque image ferait dépendre le
     // résultat de la fluidité de l'affichage : le même geste donnerait un angle différent selon la
     // machine, et personne ne saurait pourquoi.
-    const k = POSE_DRAG_DEG_PER_PX;
     let origine = 0;
-    for (let px = 1; px <= 37; px++) origine = dragJointStep3D(origine, px, k).startDeg;
-    assert.equal(dragJointStep3D(origine, 37, k).deg, dragJointStep3D(0, 37, k).deg,
-      '37 images de glisser ≠ un saut direct de 37 px');
+    for (let i = 1; i <= 37; i++) origine = dragJointStep3D(origine, i * 0.5).startDeg;
+    assert.equal(dragJointStep3D(origine, 18.5).deg, dragJointStep3D(0, 18.5).deg);
   });
 
   test('RÉGRESSION : revenir au point de départ rend l\'angle initial À L\'IDENTIQUE', () => {
     // Vrai TANT QU'AUCUNE BORNE n'a été touchée — le ré-ancrage décale volontairement le repère
     // au-delà. C'est ce qui permet à « Réinitialiser » de rester éteint après un aller-retour : la
     // signature de pose compare des degrés arrondis, un écart d'un degré l'allumerait.
-    dragJointStep3D(17, 60);
+    dragJointStep3D(17, 30);
     assert.equal(deg(17, 0), 17);
   });
 
@@ -1337,39 +1482,34 @@ describe('dragJointStep3D — un champ, un axe', () => {
   });
 
   test('RÉGRESSION : après un dépassement, le RETOUR répond au premier pixel', () => {
-    // Le défaut signalé : « à force de bouger une articulation, cela finit par la bloquer ». L'angle
-    // était borné, la course de souris ne l'était pas — dépasser la borne de 600 px stockait ces
-    // 600 px, qu'il fallait reparcourir avant que rien ne bouge.
-    const k = 0.5;
+    // Le défaut signalé au Fix 73 : « à force de bouger une articulation, cela finit par la
+    // bloquer ». L'angle était borné, la course de souris ne l'était pas — le surplus était stocké
+    // et devait être reparcouru avant que rien ne bouge.
     let origine = 0;
-    const pousser = (px) => {
-      const pas = dragJointStep3D(origine, px, k);
+    const pousser = (d) => {
+      const pas = dragJointStep3D(origine, d);
       origine = pas.startDeg;                 // ce que fait la session à chaque image
       return pas.deg;
     };
-    assert.equal(pousser(1000), POSE_DRAG_DEG_MAX, 'on écrase la borne haute');
-    assert.ok(pousser(998) < POSE_DRAG_DEG_MAX,
-      '2 px de retour doivent déjà faire redescendre l\'angle');
+    assert.equal(pousser(500), POSE_DRAG_DEG_MAX, 'on écrase la borne haute');
+    assert.ok(pousser(499) < POSE_DRAG_DEG_MAX, '1° de retour doit déjà faire redescendre l\'angle');
   });
 
   test('le ré-ancrage est IDEMPOTENT : rester collé à la borne ne dérive pas', () => {
     // Sinon chaque image passée en butée décalerait un peu l'origine, et lâcher la souris laisserait
     // l'angle ailleurs qu'à la borne.
-    const k = 0.5;
-    let origine = 0;
-    let deg = 0;
+    let origine = 0, d = 0;
     for (let i = 0; i < 20; i++) {
-      const pas = dragJointStep3D(origine, 1000, k);
+      const pas = dragJointStep3D(origine, 500);
       origine = pas.startDeg;
-      deg = pas.deg;
+      d = pas.deg;
     }
-    assert.equal(deg, POSE_DRAG_DEG_MAX);
-    assert.equal(dragJointStep3D(origine, 1000, k).startDeg, origine, 'origine stabilisée');
+    assert.equal(d, POSE_DRAG_DEG_MAX);
+    assert.equal(dragJointStep3D(origine, 500).startDeg, origine, 'origine stabilisée');
   });
 
   test('RÉGRESSION : les angles sont des ENTIERS, comme le pas des curseurs', () => {
-    // 3 px × 0.5 = 1.5°, qui n'est pas un pas de curseur valide.
-    const d = deg(0, 3, POSE_DRAG_DEG_PER_PX);
+    const d = deg(0, 1.5);
     assert.equal(d, Math.round(d), `${d} n'est pas un entier`);
   });
 

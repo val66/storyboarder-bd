@@ -37,7 +37,9 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, dragJointStep3D, poseSpecDragDelta3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
+  poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D, circularDragDegrees3D,
+  canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
@@ -736,17 +738,32 @@ export function beginPersonaEditorJointDrag(id){
   const specIndex = S.personaEditorSpecIndex;
   const spec = personaEditorSpecsOf(id)[specIndex];
   if (!spec) return null;
-  // specIndex est FIGÉ dans la session : c'est lui qui dit quel axe de souris pilote le champ, et
-  // la molette peut le changer pendant que le bouton est enfoncé. Le relire à chaque image ferait
-  // basculer le geste d'un axe à l'autre en plein mouvement.
-  return { id, spec, specIndex, startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec) };
+  // Tout ce qui décide de la FORME du geste est figé ici, à l'appui :
+  //   — specIndex, parce que la molette peut changer de champ bouton enfoncé ;
+  //   — l'orbite, parce qu'on peut orbiter au clic droit pendant un glisser gauche ;
+  //   — le mode droit/circulaire, pour qu'il ne bascule jamais en plein mouvement.
+  // Les relire à chaque image ferait changer la signification du geste sous la main.
+  const axis = poseSpecRotationAxis3D(spec);
+  const orbit = { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
+  return {
+    id, spec, specIndex, axis, orbit,
+    droit: poseDragIsStraight3D(axis, orbit),
+    startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
+  };
 }
 
 // Applique un déplacement en pixels à la session. Renvoie le degré écrit, ou null si la session
 // n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
-export function applyPersonaEditorJointDrag(session, dx, dy){
+// `geste` porte ce dont le mode CIRCULAIRE a besoin et que le mode droit ignore : la poignée et le
+// point d'appui, tous deux en repère fenêtre (cf. canvasPointToClient3D). Optionnel — sans lui, le
+// mode circulaire ne peut rien balayer et renvoie 0, ce qui est le comportement juste : mieux vaut
+// une articulation qui ne bouge pas qu'une qui part sur un pivot inventé.
+export function applyPersonaEditorJointDrag(session, dx, dy, geste){
   if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
-  const pas = dragJointStep3D(session.startDeg, poseSpecDragDelta3D(session.specIndex, dx, dy));
+  const deltaDeg = session.droit
+    ? straightDragDegrees3D(session.axis, session.orbit, dx, dy)
+    : circularDragDegrees3D(geste && geste.pivot, geste && geste.depart, geste && geste.courant);
+  const pas = dragJointStep3D(session.startDeg, deltaDeg);
   // Fix 73 — la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
   // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
   session.startDeg = pas.startDeg;
@@ -1169,6 +1186,21 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     const editorCoords = (e) => canvasEventCoords3D(
       cnv.getBoundingClientRect(), cnv.width, cnv.height, e.clientX, e.clientY);
 
+    // Fix 75 — de quoi mesurer un balayage autour de la poignée, TOUT en repère fenêtre : le canevas
+    // est étiré avec des facteurs X et Y indépendants, un angle pris dans son repère interne ne
+    // serait pas celui qu'on voit. Renvoie null si la poignée n'a pas de projection connue — la
+    // rotation ne bouge alors pas, ce qui vaut mieux qu'un pivot inventé.
+    const gesteCirculaire = (drag, e) => {
+      const pos = personaEditorHandlePos[drag.id];
+      if (!pos) return null;
+      const rect = cnv.getBoundingClientRect();
+      return {
+        pivot: canvasPointToClient3D(rect, cnv.width, cnv.height, pos.x, pos.y),
+        depart: { x: drag.x, y: drag.y },
+        courant: { x: e.clientX, y: e.clientY },
+      };
+    };
+
     // Fix 65 — le glisser ne DÉPLACE plus la vue, il l'ORBITE, et seulement au clic droit.
     //
     // Le déplacement latéral a été retiré : une figure seule est déjà cadrée au centre, la déplacer
@@ -1225,7 +1257,9 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       // passer — c'est le seul état digne de foi ici.
       if ((jointDrag || orbiting) && e.buttons === 0) { jointDrag = null; orbiting = null; return; }
       if (jointDrag && S.personaEditorOpen) {
-        if (!applyPersonaEditorJointDrag(jointDrag, e.clientX - jointDrag.x, e.clientY - jointDrag.y)) {
+        const dx = e.clientX - jointDrag.x;
+        const dy = e.clientY - jointDrag.y;
+        if (!applyPersonaEditorJointDrag(jointDrag, dx, dy, gesteCirculaire(jointDrag, e))) {
           jointDrag = null;
           return;
         }
