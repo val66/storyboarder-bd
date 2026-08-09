@@ -796,9 +796,19 @@ export function drawPersonaEditor(){
     emotion: (target && target.emotion) || 'neutre',
     handL: target && target.handL,
     handR: target && target.handR,
-    rotY: (target && target.rotY) || 0,
-    rotX: (target && target.rotX) || 0,
-    rotZ: (target && target.rotZ) || 0,
+    // Fix 76 — l'éditeur montre TOUJOURS le Personnage de face, quelle que soit son orientation
+    // dans la Scène ou la Case. Deux raisons, la seconde décisive :
+    //   — on vient y régler des articulations, pas mettre en scène ; hériter d'un Personnage vu de
+    //     dos obligeait à orbiter avant de pouvoir travailler ;
+    //   — le calcul de direction du glisser (projectModelAxisToScreen3D) prend les axes dans le
+    //     repère du MODÈLE. Tant que le modèle portait sa propre rotation, ces axes ne coïncidaient
+    //     plus avec ceux du monde et la direction obtenue était fausse — d'autant plus fausse que le
+    //     Personnage était tourné. Le remettre de face rend l'hypothèse EXACTE au lieu d'approchée.
+    // L'orientation de l'Élément n'est pas modifiée pour autant : l'éditeur n'écrit que des
+    // articulations (cf. applyPersonaEditorToModal), il ne fait ici que ne pas l'appliquer.
+    rotY: 0,
+    rotX: 0,
+    rotZ: 0,
     zoom: S.personaEditorZoom,
     pan: S.personaEditorPan,
     orbit: { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY },
@@ -1188,18 +1198,24 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
 
     // Fix 75 — de quoi mesurer un balayage autour de la poignée, TOUT en repère fenêtre : le canevas
     // est étiré avec des facteurs X et Y indépendants, un angle pris dans son repère interne ne
-    // serait pas celui qu'on voit. Renvoie null si la poignée n'a pas de projection connue — la
-    // rotation ne bouge alors pas, ce qui vaut mieux qu'un pivot inventé.
-    const gesteCirculaire = (drag, e) => {
-      const pos = personaEditorHandlePos[drag.id];
+    // serait pas celui qu'on voit.
+    //
+    // Fix 76 — le pivot est LU UNE FOIS, à l'appui, et figé dans la session. Le relire à chaque
+    // image était une boucle de rétroaction en bonne et due forme : personaEditorHandlePos est
+    // réécrite par CHAQUE drawPersonaEditor, donc la poignée se déplaçait sous l'effet de la
+    // rotation qu'on venait d'appliquer, l'angle mesuré changeait sans que la souris bouge, ce qui
+    // appliquait une nouvelle rotation… Résultat à l'écran : un Personnage qui part en vibration.
+    // C'est le « glitch » signalé.
+    const pivotFige = (id) => {
+      const pos = personaEditorHandlePos[id];
       if (!pos) return null;
-      const rect = cnv.getBoundingClientRect();
-      return {
-        pivot: canvasPointToClient3D(rect, cnv.width, cnv.height, pos.x, pos.y),
-        depart: { x: drag.x, y: drag.y },
-        courant: { x: e.clientX, y: e.clientY },
-      };
+      return canvasPointToClient3D(cnv.getBoundingClientRect(), cnv.width, cnv.height, pos.x, pos.y);
     };
+    const gesteCirculaire = (drag, e) => (drag.pivot ? {
+      pivot: drag.pivot,
+      depart: { x: drag.x, y: drag.y },
+      courant: { x: e.clientX, y: e.clientY },
+    } : null);
 
     // Fix 65 — le glisser ne DÉPLACE plus la vue, il l'ORBITE, et seulement au clic droit.
     //
@@ -1232,7 +1248,8 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
         // ouvre donc une session qui ne servira à rien, ce qui ne coûte rien et ne change aucun
         // angle — dx et dy valent zéro tant qu'on ne glisse pas.
         const session = beginPersonaEditorJointDrag(def.id);
-        if (session) jointDrag = { ...session, x: e.clientX, y: e.clientY };
+        // Le pivot rejoint tout ce que la session gèle à l'appui : orbite, mode, champ actif.
+        if (session) jointDrag = { ...session, x: e.clientX, y: e.clientY, pivot: pivotFige(def.id) };
         e.preventDefault();
         return;
       }

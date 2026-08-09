@@ -1910,3 +1910,53 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     S.personaEditorOpen = true;   // on rend l'état cohérent pour le beforeEach suivant
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 76 (ESSAI) — les deux causes du glisser erratique.
+//
+// Testé par INSPECTION de la source : drawPersonaEditor exige WebGL et le stub DOM ne distribue
+// aucun événement. Ce qu'on épingle est donc la FORME du code, faute de pouvoir l'exécuter — mais
+// ce sont deux formes précises, chacune correspondant à un défaut observé à l'écran.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const corpsDe = (nom) => {
+    const i = src.indexOf(`export function ${nom}(`);
+    if (i < 0) throw new Error(`fonction introuvable : ${nom}`);
+    const fin = src.indexOf('\n}', i);
+    return src.slice(i, fin);
+  };
+
+  test('RÉGRESSION : l\'éditeur rend le Personnage SANS sa rotation propre', () => {
+    // Deux effets d'une même ligne : il apparaît toujours de face, et les axes du modèle coïncident
+    // avec ceux du monde — ce que suppose projectModelAxisToScreen3D. Réintroduire target.rotY
+    // rendrait le glisser faux pour tout Personnage tourné dans sa Scène.
+    const corps = corpsDe('drawPersonaEditor');
+    for (const axe of ['rotY', 'rotX', 'rotZ']) {
+      assert.match(corps, new RegExp(`${axe}:\\s*0,`), `${axe} doit être forcé à 0`);
+    }
+    assert.ok(!/rot[XYZ]:\s*\(target/.test(corps),
+      'le rendu de l\'éditeur ne doit plus lire l\'orientation de l\'Élément');
+  });
+
+  test('RÉGRESSION : le pivot du geste circulaire n\'est PAS relu pendant le glisser', () => {
+    // personaEditorHandlePos est réécrite par chaque drawPersonaEditor. La relire à chaque image
+    // faisait bouger le pivot sous l'effet de la rotation qu'on venait d'appliquer : l'angle mesuré
+    // changeait sans que la souris bouge, ce qui appliquait une rotation de plus. Boucle fermée,
+    // Personnage en vibration.
+    const i = src.indexOf('const gesteCirculaire =');
+    assert.ok(i > 0, 'gesteCirculaire introuvable');
+    const corps = src.slice(i, src.indexOf('};', i));
+    assert.ok(!corps.includes('personaEditorHandlePos'),
+      'le pivot doit venir de la session figée, pas de la carte redessinée à chaque image');
+    assert.match(corps, /drag\.pivot/, 'il doit lire le pivot gelé dans la session');
+  });
+
+  test('RÉGRESSION : le pivot est gelé au même endroit que le reste du geste', () => {
+    // Orbite, mode, champ actif et pivot : tout ce qui décide de la forme du geste est capturé à
+    // l'appui. Un seul de ces quatre relu en cours de route suffit à rendre le glisser incohérent.
+    const i = src.indexOf('const session = beginPersonaEditorJointDrag(def.id);');
+    assert.ok(i > 0, 'ouverture de session introuvable');
+    assert.match(src.slice(i, i + 400), /pivot:\s*pivotFige\(def\.id\)/);
+  });
+});

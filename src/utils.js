@@ -209,6 +209,12 @@ export const POSE_DRAG_DEG_MAX = 180;
 // Pour un coude dont l'épaule est déjà tournée, la direction obtenue n'est donc pas exacte. Le
 // repère réel vit dans la scène WebGL, hors de portée d'un calcul pur — et donc hors de portée des
 // tests. Compromis délibéré : approché mais vérifiable, plutôt qu'exact et intestable.
+//
+// Fix 76 — cette approximation ne porte plus QUE sur les articulations filles. L'éditeur affiche
+// désormais le Personnage sans sa rotation propre (cf. drawPersonaEditor), si bien que les axes du
+// modèle coïncident exactement avec ceux du monde. Auparavant, un Personnage tourné dans sa Scène
+// faussait la direction de TOUTES ses articulations, racine comprise — c'est ce qui rendait le
+// glisser inutilisable dès qu'on avait affaire à un Personnage de dos ou de profil.
 
 // Axe de rotation d'un champ, dans le repère du modèle. Déduit du descripteur, pas d'une table
 // parallèle : une table de plus finirait par diverger de ce que rig3d applique réellement
