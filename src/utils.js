@@ -265,14 +265,41 @@ export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_
   return ((dx || 0) * (-a.y / n) + (dy || 0) * (a.x / n)) * degPerPx;
 }
 
-// Glisser CIRCULAIRE : angle balayé autour du point d'articulation, en degrés. Employé quand l'axe
-// pointe vers l'œil — cas où la rotation est vue de face, et où tourner AUTOUR du point est le seul
-// geste qui garde un sens. Positif dans le sens horaire à l'écran (l'ordonnée croît vers le bas).
-export function circularDragDegrees3D(pivot, depart, courant){
-  if (!pivot || !depart || !courant) return 0;
-  const a0 = Math.atan2(depart.y - pivot.y, depart.x - pivot.x);
-  const a1 = Math.atan2(courant.y - pivot.y, courant.x - pivot.x);
-  return wrapAngle(a1 - a0) * 180 / Math.PI;
+// ─── Glisser CIRCULAIRE, employé quand l'axe pointe vers l'œil ───────────────────────────────
+//
+// Fix 79 — le balayage se CUMULE d'une image à l'autre au lieu d'être mesuré d'un bloc depuis le
+// point d'appui, et ce n'est pas un raffinement : mesurer `wrapAngle(courant - départ)` borne le
+// résultat à ±180°, si bien qu'un balayage de 181° se lisait -179°. Passé le demi-tour, le geste
+// s'inversait donc franchement — c'est le défaut signalé. Mesuré : 200° réels donnaient -160°.
+//
+// Cumuler est ici SANS RISQUE de dérive, contrairement au glisser droit : l'accumulation se fait en
+// degrés flottants et n'est arrondie qu'une fois, tout à la fin, par dragJointStep3D. Un aller de
+// 300° suivi d'un retour de 300° revient exactement à zéro.
+
+// En deçà de ce rayon, la position du curseur ne définit plus d'angle utilisable : à un pixel du
+// pivot, deux images voisines peuvent être séparées de 127° (mesuré). Traverser le point
+// d'articulation faisait donc sauter la rotation — l'autre moitié du défaut signalé.
+export const POSE_SWEEP_MIN_RADIUS = 18;
+
+// Angle du curseur autour du pivot, en radians. null quand le curseur est trop près pour que cet
+// angle veuille dire quelque chose : l'appelant garde alors son angle précédent, plutôt que
+// d'encaisser un saut.
+export function pointerSweepAngle3D(pivot, point, minRadius = POSE_SWEEP_MIN_RADIUS){
+  if (!pivot || !point) return null;
+  const dx = (point.x || 0) - (pivot.x || 0);
+  const dy = (point.y || 0) - (pivot.y || 0);
+  if (Math.hypot(dx, dy) < minRadius) return null;
+  return Math.atan2(dy, dx);
+}
+
+// Ajoute au balayage total l'incrément le plus COURT depuis l'angle précédent. C'est ce choix du
+// plus court chemin qui déroule le tour : tant que deux images consécutives sont séparées de moins
+// d'un demi-tour — toujours vrai à la main — la somme suit le geste réel sans jamais se replier.
+// Positif dans le sens horaire à l'écran, dont l'ordonnée croît vers le bas.
+export function accumulateSweepDegrees3D(sweptDeg, previousAngle, currentAngle){
+  const acquis = sweptDeg || 0;
+  if (typeof previousAngle !== 'number' || typeof currentAngle !== 'number') return acquis;
+  return acquis + wrapAngle(currentAngle - previousAngle) * 180 / Math.PI;
 }
 
 // Un pas de glisser : nouvel angle du champ piloté, et origine à conserver pour le pas suivant.

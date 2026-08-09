@@ -1964,6 +1964,98 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Fix 79 (ESSAI) — le balayage circulaire se déroule au lieu de s'inverser.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
+  const specsDe = id => poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === id));
+  const pivot = { x: 100, y: 100 };
+  const surCercle = (deg, r = 100) => ({
+    x: pivot.x + r * Math.cos(deg * Math.PI / 180),
+    y: pivot.y + r * Math.sin(deg * Math.PI / 180),
+  });
+  // Rejoue un geste image par image, comme le fait le gestionnaire de souris.
+  const glisser = (session, degres) => {
+    let dernier = 0;
+    for (const d of degres.slice(1)) {
+      dernier = applyPersonaEditorJointDrag(session, 0, 0, {
+        pivot, depart: surCercle(degres[0]), courant: surCercle(d),
+      });
+    }
+    return dernier;
+  };
+
+  beforeEach(() => { closePersonaEditor(); });
+
+  const sessionEcart = () => {
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lShoulder');
+    cyclePersonaEditorSpec(1);                 // l'écart tourne autour de Z : mode circulaire de face
+    const session = beginPersonaEditorJointDrag('lShoulder');
+    assert.equal(session.droit, false, 'ce test n\'a de sens qu\'en mode circulaire');
+    return session;
+  };
+
+  test('RÉGRESSION : un balayage de plus d\'un demi-tour ne s\'inverse pas', () => {
+    // Le défaut signalé. Mesuré d'un bloc depuis l'appui, 200° se lisaient -160° : le sens de
+    // rotation s'inversait franchement dès qu'on faisait un grand mouvement.
+    const session = sessionEcart();
+    const depart = session.startDeg;
+    const deg = glisser(session, [0, 90, 170, 200]);
+    assert.ok(deg > depart, `l'angle doit avoir AUGMENTÉ (départ ${depart}, obtenu ${deg})`);
+  });
+
+  test('RÉGRESSION : aller puis retour rend l\'angle de départ', () => {
+    // « De grands mouvements dans un sens puis dans l'autre » — la formulation exacte du défaut.
+    //
+    // Le balayage reste SOUS la borne des 180° : au-delà, le ré-ancrage du Fix 73 décale
+    // volontairement le repère et l'aller-retour ne revient plus au point de départ (cf. le test
+    // suivant, qui épingle ce comportement pour qu'il ne repasse pas pour un défaut). Ma première
+    // version de ce test balayait 250° et échouait pour cette raison, pas à cause du balayage.
+    const session = sessionEcart();
+    const depart = session.startDeg;
+    glisser(session, [0, 60, 120, 150]);
+    const deg = glisser(session, [0, 150, 120, 60, 0]);
+    assert.equal(deg, depart, 'retour au point de départ');
+  });
+
+  test('au-delà de la borne, le repère se décale — et c\'est voulu', () => {
+    // Comportement de tout défilement borné : on pousse contre la butée, le surplus est absorbé, et
+    // le geste repart ensuite de l'endroit où on a quitté la butée. C'est ce qui évite l'effet
+    // « articulation bloquée » du Fix 73. Épinglé ici pour qu'il soit reconnu comme un choix.
+    const session = sessionEcart();
+    const depart = session.startDeg;
+    glisser(session, [0, 90, 180, 250]);
+    assert.equal(session.startDeg !== depart, true, 'l\'origine a été recalée à la butée');
+  });
+
+  test('le cumul avance image par image, sans dépendre du nombre d\'images', () => {
+    const grossier = sessionEcart();
+    const fin = sessionEcart();
+    const a = glisser(grossier, [0, 60, 120]);
+    const b = glisser(fin, [0, 15, 30, 45, 60, 75, 90, 105, 120]);
+    assert.equal(a, b, 'même geste, même angle, quelle que soit la fluidité');
+  });
+
+  test('RÉGRESSION : traverser le point d\'articulation ne fait pas sauter la rotation', () => {
+    // À un pixel du pivot, deux images voisines peuvent être séparées de 127°. La session doit
+    // ignorer ces images plutôt qu'encaisser le saut.
+    const session = sessionEcart();
+    const avant = applyPersonaEditorJointDrag(session, 0, 0, {
+      pivot, depart: surCercle(0), courant: surCercle(30),
+    });
+    const pendant = applyPersonaEditorJointDrag(session, 0, 0, {
+      pivot, depart: surCercle(0), courant: { x: 101, y: 100 },   // collé au pivot
+    });
+    assert.equal(pendant, avant, 'une image trop proche du pivot ne change rien');
+  });
+
+  test('un geste sans balayage fourni laisse l\'angle en place', () => {
+    const session = sessionEcart();
+    assert.equal(applyPersonaEditorJointDrag(session, 50, 50, null), session.startDeg);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Fix 77 (DIAGNOSTIC) — journal du glisser, et la garde qui tuait la session à 0°.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — journal de glisser (Fix 77/78)', () => {

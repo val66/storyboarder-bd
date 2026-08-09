@@ -14,7 +14,8 @@ import {
   dragJointStep3D, cyclePoseSpecIndex3D, canvasPointToClient3D,
   angleBetweenScreenVectors3D, describePoseDragStep3D,
   poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
-  straightDragDegrees3D, circularDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
+  straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
+  pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
@@ -1384,34 +1385,71 @@ describe('straightDragDegrees3D — le glisser droit suit l\'orientation', () =>
   });
 });
 
-describe('circularDragDegrees3D — balayage autour du point d\'articulation', () => {
+describe('balayage circulaire — pointerSweepAngle3D + accumulateSweepDegrees3D', () => {
   const pivot = { x: 100, y: 100 };
+  const surCercle = (deg, r = 100) => ({
+    x: pivot.x + r * Math.cos(deg * DEG),
+    y: pivot.y + r * Math.sin(deg * DEG),
+  });
+  // Ce que fait la session : on avance image par image le long du geste.
+  const balayer = (degres) => {
+    let swept = 0;
+    let precedent = pointerSweepAngle3D(pivot, surCercle(degres[0]));
+    for (const d of degres.slice(1)) {
+      const a = pointerSweepAngle3D(pivot, surCercle(d));
+      swept = accumulateSweepDegrees3D(swept, precedent, a);
+      if (a !== null) precedent = a;
+    }
+    return swept;
+  };
 
   test('un quart de tour horaire vaut +90°', () => {
     // L'ordonnée écran croît vers le BAS : partir de la droite et descendre, c'est tourner dans le
     // sens horaire tel qu'on le VOIT.
-    assertClose(circularDragDegrees3D(pivot, { x: 200, y: 100 }, { x: 100, y: 200 }), 90, 'horaire');
-    assertClose(circularDragDegrees3D(pivot, { x: 200, y: 100 }, { x: 100, y: 0 }), -90, 'antihoraire');
+    assertClose(balayer([0, 45, 90]), 90, 'horaire');
+    assertClose(balayer([0, -45, -90]), -90, 'antihoraire');
   });
 
-  test('RÉGRESSION : le balayage ne dépend PAS de la distance au pivot', () => {
-    // Sinon le même geste donnerait un angle différent selon qu'on saisit près ou loin du point,
-    // et la sensibilité changerait avec le zoom sans que rien ne l'annonce.
-    const proche = circularDragDegrees3D(pivot, { x: 110, y: 100 }, { x: 100, y: 110 });
-    const loin = circularDragDegrees3D(pivot, { x: 400, y: 100 }, { x: 100, y: 400 });
+  test('RÉGRESSION : passé le demi-tour, le geste ne S\'INVERSE plus', () => {
+    // Le défaut signalé. Mesurer d'un bloc `wrapAngle(courant - départ)` borne à ±180° : un
+    // balayage de 200° se lisait -160°, soit une inversion franche du sens de rotation dès qu'on
+    // faisait un grand mouvement. Le cumul déroule le tour.
+    assertClose(balayer([0, 90, 170, 200]), 200, '200° restent 200°');
+    assertClose(balayer([0, 90, 180, 270, 350]), 350, 'presque un tour complet');
+    assertClose(balayer([0, 120, 240, 360, 480]), 480, 'plus d\'un tour');
+  });
+
+  test('RÉGRESSION : aller puis retour revient EXACTEMENT au point de départ', () => {
+    // C'est ce que décrivait l'utilisateur : de grands mouvements dans un sens puis dans l'autre.
+    const aller = [0, 90, 180, 270];
+    const retour = [270, 180, 90, 0];
+    assertClose(balayer([...aller, ...retour]), 0, 'aller-retour neutre');
+  });
+
+  test('RÉGRESSION : le curseur trop PRÈS du pivot ne fait pas sauter la rotation', () => {
+    // À un pixel du centre, deux images voisines peuvent être séparées de 127° (mesuré). Traverser
+    // le point d'articulation projetait donc la rotation d'un bond.
+    assert.equal(pointerSweepAngle3D(pivot, { x: 105, y: 100 }), null, 'sous le rayon minimal');
+    assert.ok(pointerSweepAngle3D(pivot, { x: 100 + POSE_SWEEP_MIN_RADIUS + 1, y: 100 }) !== null);
+    // Une image inexploitable laisse le cumul INCHANGÉ, elle ne le remet pas à zéro.
+    assert.equal(accumulateSweepDegrees3D(42, null, 1.2), 42);
+    assert.equal(accumulateSweepDegrees3D(42, 1.2, null), 42);
+  });
+
+  test('le balayage ne dépend PAS de la distance au pivot', () => {
+    // Sinon le même geste donnerait un angle différent selon qu'on saisit près ou loin du point, et
+    // la sensibilité changerait avec le zoom sans que rien ne l'annonce.
+    const proche = accumulateSweepDegrees3D(0,
+      pointerSweepAngle3D(pivot, { x: 130, y: 100 }), pointerSweepAngle3D(pivot, { x: 100, y: 130 }));
+    const loin = accumulateSweepDegrees3D(0,
+      pointerSweepAngle3D(pivot, { x: 500, y: 100 }), pointerSweepAngle3D(pivot, { x: 100, y: 500 }));
     assertClose(proche, loin, 'même angle attendu');
   });
 
-  test('RÉGRESSION : le passage par ±180° ne fait pas sauter la valeur', () => {
-    // Sans repli dans ]-π, π], franchir la demi-tour ferait bondir l'angle de 360° d'un coup — un
-    // saut brutal de l'articulation en plein geste.
-    const d = circularDragDegrees3D(pivot, { x: 0, y: 99 }, { x: 0, y: 101 });
-    assert.ok(Math.abs(d) < 10, `saut de ${d}° au passage du demi-tour`);
-  });
-
-  test('entrées manquantes : 0, jamais NaN', () => {
-    assert.equal(circularDragDegrees3D(null, null, null), 0);
-    assert.equal(circularDragDegrees3D(pivot, { x: 1, y: 1 }, null), 0);
+  test('entrées manquantes : pas d\'angle, cumul préservé', () => {
+    assert.equal(pointerSweepAngle3D(null, { x: 1, y: 1 }), null);
+    assert.equal(pointerSweepAngle3D(pivot, null), null);
+    assert.equal(accumulateSweepDegrees3D(null, null, null), 0);
   });
 });
 

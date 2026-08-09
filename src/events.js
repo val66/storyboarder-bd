@@ -38,8 +38,8 @@ import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
-  poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D, circularDragDegrees3D,
-  projectModelAxisToScreen3D, describePoseDragStep3D,
+  poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
+  pointerSweepAngle3D, accumulateSweepDegrees3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -828,11 +828,38 @@ export function beginPersonaEditorJointDrag(id){
     id, spec, specIndex, axis, orbit,
     droit: poseDragIsStraight3D(axis, orbit),
     startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
+    // Fix 79 — état du balayage circulaire. `swept` cumule le tour DÉROULÉ, `sweepAngle` retient
+    // l'angle de l'image précédente. null tant qu'on n'a pas eu une position exploitable : le
+    // curseur peut très bien démarrer collé au point d'articulation.
+    swept: 0,
+    sweepAngle: null,
   };
 }
 
 // Applique un déplacement en pixels à la session. Renvoie le degré écrit, ou null si la session
 // n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
+// Fix 79 — avance le balayage circulaire d'une image et renvoie le tour total, en degrés.
+//
+// MUTE la session : c'est le seul endroit du glisser où l'état s'accumule, et c'est nécessaire —
+// dérouler un tour demande de savoir d'où l'on vient. L'accumulation reste exacte parce qu'elle
+// travaille en flottant ; l'arrondi au degré n'intervient qu'une fois, dans dragJointStep3D.
+//
+// Une image dont l'angle n'est pas exploitable (curseur trop près du pivot) ne fait RIEN avancer :
+// ni le cumul, ni l'angle de référence. Le geste reprend donc là où il en était dès que le curseur
+// s'éloigne, au lieu d'encaisser le saut qu'aurait produit un angle mesuré à un pixel du centre.
+export function advancePersonaEditorSweep(session, geste){
+  if (!session || !geste) return session ? (session.swept || 0) : 0;
+  if (session.sweepAngle === null) {
+    session.sweepAngle = pointerSweepAngle3D(geste.pivot, geste.depart);
+  }
+  const courant = pointerSweepAngle3D(geste.pivot, geste.courant);
+  if (courant !== null && session.sweepAngle !== null) {
+    session.swept = accumulateSweepDegrees3D(session.swept, session.sweepAngle, courant);
+    session.sweepAngle = courant;
+  }
+  return session.swept || 0;
+}
+
 // `geste` porte ce dont le mode CIRCULAIRE a besoin et que le mode droit ignore : la poignée et le
 // point d'appui, tous deux en repère fenêtre (cf. canvasPointToClient3D). Optionnel — sans lui, le
 // mode circulaire ne peut rien balayer et renvoie 0, ce qui est le comportement juste : mieux vaut
@@ -841,7 +868,7 @@ export function applyPersonaEditorJointDrag(session, dx, dy, geste){
   if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
   const deltaDeg = session.droit
     ? straightDragDegrees3D(session.axis, session.orbit, dx, dy)
-    : circularDragDegrees3D(geste && geste.pivot, geste && geste.depart, geste && geste.courant);
+    : advancePersonaEditorSweep(session, geste);
   const pas = dragJointStep3D(session.startDeg, deltaDeg);
   // Fix 73 — la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
   // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
