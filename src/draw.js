@@ -1624,11 +1624,13 @@ export function drawPersonaPreview(targetCanvas, spec){
     if (targetCanvas.width !== rw || targetCanvas.height !== rh) {
       targetCanvas.width = rw; targetCanvas.height = rh;
     }
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh }, spec.orbit);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh },
+      spec.orbit, spec.highlightGroup);
   } else {
     const scale = syncPreviewCanvasRes(targetCanvas,
       spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale, null, spec.orbit);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale, null,
+      spec.orbit, spec.highlightGroup);
   }
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
@@ -1748,9 +1750,9 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   if (dragHint && positions[selectedId]) drawPersonaDragHint(hctx, positions[selectedId], dragHint);
 }
 
-export function pickPoseHandleAt(px, py, canvas, positions){
+export function pickPoseHandleAt(px, py, canvas, positions, radius){
   const pos = positions || personaHandleScreenPos;
-  const id = pickNearestHandle3D(pos, px, py);
+  const id = pickNearestHandle3D(pos, px, py, radius);
   if (id) return POSE_HANDLES.find(d => d.id === id) || null;
   // No precise joint handle hit: try the limb itself (the segment
   // between the joint and its extremity), so the figure can be posed by grabbing the arm/leg.

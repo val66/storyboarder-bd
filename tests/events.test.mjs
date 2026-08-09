@@ -2285,3 +2285,35 @@ describe('éditeur de Personnage — repère de glisser (Fix 85)', () => {
     assert.notDeepEqual(deFace, deProfil);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 87 — câblage du rayon élargi et de la teinte.
+//
+// Par inspection de source : les deux vivent dans le câblage des événements et dans un appel de
+// rendu, hors de portée du stub DOM. Ce qu'on épingle est le lien entre l'état de sélection et le
+// paramètre transmis — c'est-à-dire précisément ce qu'une mutation « on repasse au réglage fixe »
+// efface sans que rien d'autre ne s'en aperçoive.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — rayon de saisie et teinte (Fix 87)', () => {
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : le rayon de saisie dépend de la SÉLECTION', () => {
+    assert.match(src, /S\.personaEditorHandleId\s*\n?\s*\?\s*POSE_HANDLE_PICK_RADIUS_SOLO\s*:\s*POSE_HANDLE_PICK_RADIUS/,
+      'sans cette bascule, le rayon reste étroit et un départ de geste un peu à côté désélectionne');
+  });
+
+  test('RÉGRESSION : le MÊME rayon sert au clic et au curseur « main »', () => {
+    // Deux valeurs distinctes promettraient une prise là où le clic ne mordrait pas, ou l'inverse.
+    const appels = src.match(/pickPoseHandleAt\([^)]*\)/g) || [];
+    const dansEditeur = appels.filter(a => a.includes('personaEditorHandlePos'));
+    assert.equal(dansEditeur.length, 2, 'le clic et le survol, pas un de plus');
+    dansEditeur.forEach(a => assert.match(a, /rayonSaisie\(\)/, a));
+  });
+
+  test('RÉGRESSION : le rendu de l\'éditeur transmet le GROUPE à teindre', () => {
+    // Le groupe et non l'id de poignée : plusieurs poignées partagent un même groupe (les deux
+    // champs d'un poignet), et c'est le groupe qui décrit ce que la rotation entraîne.
+    assert.match(src, /highlightGroup:\s*\(POSE_HANDLES\.find\(d => d\.id === S\.personaEditorHandleId\) \|\| \{\}\)\.group/,
+      'sans cela, aucune partie du modèle ne serait teintée');
+  });
+});

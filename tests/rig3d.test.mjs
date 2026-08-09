@@ -27,6 +27,7 @@ import {
   wallChildShapeKey3D,
   disposeGroupGeometries3D,
   buildWindowRig3D,
+  highlightPersonaJointSubtree3D,
 } from '../src/rig3d.js';
 import { S } from '../src/state.js';
 import { POSE_3D } from '../src/constants.js';
@@ -431,5 +432,82 @@ describe('frameCameraToBox — orbite (Fix 65)', () => {
     const a = cam(); frameCameraToBox(a, boite(), 1, null, { rotX: 0.3, rotY: 1 });
     const b = cam(); frameCameraToBox(b, boite(), 2, null, { rotX: 0.3, rotY: 1 });
     assert.ok(b.position.length() < a.position.length(), 'zoomer rapproche');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 87 — teinte du membre entraîné par l'articulation sélectionnée.
+//
+// Testable ici SANS WebGL : highlightPersonaJointSubtree3D ne fait que parcourir des Object3D et
+// permuter des matériaux — THREE.Group, THREE.Mesh et THREE.MeshStandardMaterial se construisent
+// très bien sous Node (c'est THREE.WebGLRenderer qui ne le peut pas).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('highlightPersonaJointSubtree3D — teinter ce que l\'articulation entraîne', () => {
+  const faireRig = () => {
+    const peau = new THREE.MeshStandardMaterial({ color: '#3E5FA8' });
+    const contour = new THREE.MeshStandardMaterial({ color: '#000000' });
+    const figureGroup = new THREE.Group();
+    const torse = new THREE.Mesh(new THREE.BoxGeometry(), peau);
+    const brasGroupe = new THREE.Group();
+    const bras = new THREE.Mesh(new THREE.BoxGeometry(), peau);
+    const brasContour = new THREE.Mesh(new THREE.BoxGeometry(), contour);
+    const main = new THREE.Mesh(new THREE.BoxGeometry(), peau);
+    brasGroupe.add(bras, brasContour, main);
+    figureGroup.add(torse, brasGroupe);
+    return { entry: { figureGroup, joints: { lShoulder: brasGroupe } },
+             peau, contour, torse, bras, brasContour, main };
+  };
+
+  test('seul le SOUS-ARBRE de l\'articulation est teinté', () => {
+    const r = faireRig();
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    assert.notEqual(r.bras.material, r.peau, 'le bras est teinté');
+    assert.notEqual(r.main.material, r.peau, 'la main aussi : elle suit l\'épaule');
+    assert.equal(r.torse.material, r.peau, 'le torse, lui, ne bouge pas avec l\'épaule');
+  });
+
+  test('RÉGRESSION : le matériau PARTAGÉ n\'est pas modifié', () => {
+    // Toutes les mailles de peau partagent un seul matériau : le teinter colorerait la figure
+    // entière, y compris les Personnages rendus ailleurs dans la scène partagée.
+    const r = faireRig();
+    const couleurAvant = r.peau.emissive ? r.peau.emissive.getHex() : null;
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    assert.equal(r.peau.emissive.getHex(), couleurAvant, 'le matériau d\'origine est intact');
+  });
+
+  test('RÉGRESSION : chaque maille retrouve SON matériau, pas celui du voisin', () => {
+    // Le contour n'utilise pas le matériau de peau. Restaurer un matériau de référence unique
+    // repeindrait les contours en couleur de peau — un défaut visible et durable.
+    const r = faireRig();
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    highlightPersonaJointSubtree3D(r.entry, null);
+    assert.equal(r.bras.material, r.peau);
+    assert.equal(r.brasContour.material, r.contour, 'le contour garde le sien');
+  });
+
+  test('RÉGRESSION : un appel sans articulation EFFACE la teinte', () => {
+    // C'est ce qui empêche une teinte de fuir vers l'aperçu de la modale ou une planche exportée :
+    // la scène 3D est partagée entre tous les rendus de Personnage.
+    const r = faireRig();
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    highlightPersonaJointSubtree3D(r.entry, null);
+    assert.equal(r.main.material, r.peau);
+  });
+
+  test('les clones teintés sont RÉUTILISÉS d\'un appel à l\'autre', () => {
+    // Sans cache, on fabriquerait un matériau par maille et par image.
+    const r = faireRig();
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    const premier = r.bras.material;
+    highlightPersonaJointSubtree3D(r.entry, null);
+    highlightPersonaJointSubtree3D(r.entry, 'lShoulder');
+    assert.equal(r.bras.material, premier);
+  });
+
+  test('entrées manquantes : ne lève pas', () => {
+    assert.equal(highlightPersonaJointSubtree3D(null, 'lShoulder'), null);
+    assert.equal(highlightPersonaJointSubtree3D({}, 'lShoulder'), null);
+    const r = faireRig();
+    assert.equal(highlightPersonaJointSubtree3D(r.entry, 'articulation_inconnue'), null);
   });
 });

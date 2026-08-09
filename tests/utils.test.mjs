@@ -18,6 +18,7 @@ import {
   poseTangentToScreen3D, straightDragDirection3D, POSE_TANGENT_VISIBLE_MIN,
   poseJointLeverAxis3D, projectVectorToScreen3D, modelAxisVector3D,
   poseDragHintSegment3D, POSE_DRAG_HINT_LEN,
+  POSE_HANDLE_PICK_RADIUS, POSE_HANDLE_PICK_RADIUS_SOLO,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   modelAxisTowardViewer3D, circularSweepSign3D,
   appDirFromHref3D,
@@ -1911,5 +1912,30 @@ describe('pickNearestHandle3D — une position nulle est ignorée', () => {
 
   test('une carte entièrement nulle ne renvoie rien, et ne lève pas', () => {
     assert.equal(pickNearestHandle3D({ a: null, b: null }, 0, 0), null);
+  });
+});
+
+describe('Fix 87 — rayon de saisie d\'une poignée', () => {
+  test('RÉGRESSION : le rayon « seul » est franchement plus large que le rayon normal', () => {
+    // Toute la raison d'être de la seconde valeur : une fois une articulation seule à l'écran,
+    // aucune voisine ne peut être attrapée par erreur, et un rayon large évite de désélectionner
+    // en repartant d'un cheveu à côté au début d'un geste.
+    assert.ok(POSE_HANDLE_PICK_RADIUS_SOLO > POSE_HANDLE_PICK_RADIUS * 2,
+      `${POSE_HANDLE_PICK_RADIUS_SOLO} contre ${POSE_HANDLE_PICK_RADIUS} : écart trop faible pour changer quoi que ce soit`);
+  });
+
+  test('le rayon élargi attrape effectivement un clic que le rayon normal manque', () => {
+    const positions = { coude: { x: 100, y: 100 } };
+    const dist = (POSE_HANDLE_PICK_RADIUS + POSE_HANDLE_PICK_RADIUS_SOLO) / 2;
+    assert.equal(pickNearestHandle3D(positions, 100 + dist, 100, POSE_HANDLE_PICK_RADIUS), null);
+    assert.equal(pickNearestHandle3D(positions, 100 + dist, 100, POSE_HANDLE_PICK_RADIUS_SOLO), 'coude');
+  });
+
+  test('RÉGRESSION : même élargi, le rayon reste FINI', () => {
+    // Sans quoi le clic dans le vide ne désélectionnerait plus jamais, et il n'y aurait plus aucun
+    // moyen de changer d'articulation depuis le canevas.
+    const positions = { coude: { x: 100, y: 100 } };
+    assert.equal(pickNearestHandle3D(positions, 100 + POSE_HANDLE_PICK_RADIUS_SOLO + 5, 100,
+      POSE_HANDLE_PICK_RADIUS_SOLO), null);
   });
 });

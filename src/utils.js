@@ -573,7 +573,15 @@ export function cyclePoseSpecIndex3D(index, count, delta){
 //
 // Renvoie l'id de la poignée, ou null. Les positions nulles sont ignorées : une articulation hors
 // champ n'a pas de projection utilisable.
-export function pickNearestHandle3D(positions, px, py, radius = 17){
+// Fix 87 — rayon de saisie d'une poignée. Deux valeurs, parce que la situation n'est pas la même :
+// tant que toutes les poignées sont affichées, un grand rayon ferait attraper la voisine ; une fois
+// une articulation seule à l'écran (cf. Fix 86), il n'y a plus d'ambiguïté possible et le rayon peut
+// être large. C'est ce qui évite de désélectionner en repartant d'un cheveu à côté au moment de
+// commencer un geste — le clic dans le vide reste possible, simplement plus loin.
+export const POSE_HANDLE_PICK_RADIUS = 17;
+export const POSE_HANDLE_PICK_RADIUS_SOLO = 48;
+
+export function pickNearestHandle3D(positions, px, py, radius = POSE_HANDLE_PICK_RADIUS){
   if (!positions) return null;
   let best = null, bestD2 = radius * radius;
   Object.keys(positions).forEach(id => {

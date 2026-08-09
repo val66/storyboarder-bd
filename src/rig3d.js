@@ -1332,11 +1332,63 @@ export function useFigureFormat3D(resScale = 1, sizeOverride = null){
   }
 }
 
-export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, sizeOverride = null, orbit = null){
+// ─── Fix 87 — teinter la partie du modèle qu'une articulation entraîne ──────────────────────
+//
+// Tous les Personnages partagent UN matériau de peau par rig (cf. makeBodyMaterial3D) : le teinter
+// colorerait la figure entière. On donne donc au sous-arbre entraîné un clone teinté, en mémorisant
+// d'abord le matériau d'origine de CHAQUE maille — et non un matériau de référence unique, car les
+// contours et les accessoires n'utilisent pas le même (cf. addBodyMeshWithOutline3D, accentMat).
+//
+// Les clones sont mis en cache par matériau d'origine : sans cela on en fabriquerait un par maille
+// et par image, et la carte graphique s'en apercevrait vite.
+const PERSONA_HIGHLIGHT_MATS_3D = new WeakMap();
+const PERSONA_HIGHLIGHT_COLOR_3D = '#E0A53C';   // le même orange que la poignée et son repère
+
+function highlightMaterial3D(base){
+  if (!base) return base;
+  const connu = PERSONA_HIGHLIGHT_MATS_3D.get(base);
+  if (connu) return connu;
+  const clone = base.clone();
+  // `emissive` plutôt que `color` : la teinte s'ajoute à l'éclairage au lieu de le remplacer, donc
+  // le modelé du volume reste lisible. Discret, comme demandé — on signale, on ne repeint pas.
+  if (clone.emissive) {
+    clone.emissive = new THREE.Color(PERSONA_HIGHLIGHT_COLOR_3D);
+    clone.emissiveIntensity = 0.45;
+  } else if (clone.color) {
+    clone.color = new THREE.Color(PERSONA_HIGHLIGHT_COLOR_3D);
+  }
+  PERSONA_HIGHLIGHT_MATS_3D.set(base, clone);
+  return clone;
+}
+
+// Applique la teinte au sous-arbre d'une articulation, et la RETIRE partout ailleurs. Le retrait
+// systématique n'est pas une précaution de style : personaScene3D est partagée entre l'éditeur,
+// l'aperçu de la modale et le rendu des Cases (cf. showOnlyFigure3D). Une teinte posée sans être
+// reprise se retrouverait dans une planche exportée.
+export function highlightPersonaJointSubtree3D(entry, groupName){
+  if (!entry || !entry.figureGroup) return null;
+  entry.figureGroup.traverse(n => {
+    if (!n.isMesh) return;
+    if (!n.userData.baseMat3D) n.userData.baseMat3D = n.material;
+    n.material = n.userData.baseMat3D;
+  });
+  const grp = groupName && entry.joints && entry.joints[groupName];
+  if (!grp) return null;
+  grp.traverse(n => {
+    if (!n.isMesh) return;
+    n.material = highlightMaterial3D(n.userData.baseMat3D || n.material);
+  });
+  return grp;
+}
+
+export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, sizeOverride = null, orbit = null, highlightGroup = null){
   useFigureFormat3D(resScale, sizeOverride);
   const style = resolveStyle3D(styleKey);
   const entry = ensurePersonaRigEntry3D(o, style);
   showOnlyFigure3D('persona', o.id);
+  // Toujours appelé, même sans articulation choisie : c'est CET appel qui efface une teinte
+  // précédente, et donc ce qui garantit qu'elle ne fuit pas vers un autre rendu.
+  highlightPersonaJointSubtree3D(entry, highlightGroup);
   entry.figureGroup.rotation.y = o.rotY || 0;
   entry.figureGroup.rotation.x = o.rotX || 0;
   entry.figureGroup.rotation.z = o.rotZ || 0;

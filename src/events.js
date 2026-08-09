@@ -38,7 +38,8 @@ import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
-  poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
+  poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,
+  POSE_HANDLE_PICK_RADIUS, POSE_HANDLE_PICK_RADIUS_SOLO,   projectModelAxisToScreen3D, describePoseDragStep3D,
   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
   modelAxisTowardViewer3D, summarizeDragCase3D, appDirFromHref3D,
   straightDragDirection3D, poseTangentToScreen3D,
@@ -1025,6 +1026,10 @@ export function drawPersonaEditor(){
     zoom: S.personaEditorZoom,
     pan: S.personaEditorPan,
     orbit: { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY },
+    // Fix 87 — le sous-arbre à teindre, ou null. On passe le nom du GROUPE et non l'id de la
+    // poignée : plusieurs poignées partagent un même groupe (les deux champs d'un poignet, par
+    // exemple), et c'est le groupe qui décrit ce que la rotation entraîne réellement.
+    highlightGroup: (POSE_HANDLES.find(d => d.id === S.personaEditorHandleId) || {}).group || null,
     renderSize: size,
   });
   // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
@@ -1412,6 +1417,12 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       drawPersonaEditor();
     }, { passive: false });
 
+    // Fix 87 — rayon de saisie élargi dès qu'une articulation est seule à l'écran. Le même rayon
+    // sert au clic ET au curseur « main » : deux valeurs distinctes feraient promettre une prise
+    // là où le clic ne mordrait pas, ou l'inverse.
+    const rayonSaisie = () => (S.personaEditorHandleId
+      ? POSE_HANDLE_PICK_RADIUS_SOLO : POSE_HANDLE_PICK_RADIUS);
+
     // Fix 52 — coordonnées du curseur dans le repère interne du canevas, seul repère où les
     // positions de poignées ont un sens (cf. canvasEventCoords3D).
     const editorCoords = (e) => canvasEventCoords3D(
@@ -1460,7 +1471,7 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       }
       if (e.button !== 0) return;
       const { px, py } = editorCoords(e);
-      const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos);
+      const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos, rayonSaisie());
       if (def) {
         focusPersonaEditorHandle(def.id);
         drawPersonaEditor();
@@ -1484,7 +1495,8 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       if (!S.personaEditorOpen || orbiting) return;
       if (jointDrag) { cnv.style.cursor = 'grabbing'; return; }
       const { px, py } = editorCoords(e);
-      cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos) ? 'pointer' : 'grab';
+      cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos, rayonSaisie())
+        ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {
       // Fix 71 (ESSAI) — sur window et non sur le canevas : sortir du cadre en cours de geste ne
