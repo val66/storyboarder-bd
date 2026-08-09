@@ -668,6 +668,22 @@ export function personaEditorHasChanges(){
       !== poseSliderSignature3D(S.personaEditorBaseline);
 }
 
+// Fix 64 — titre de l'éditeur, qui NOMME LE MODE actif.
+//
+// Les deux entrées ont des sémantiques différentes : depuis une modale on retouche UN Personnage et
+// « Appliquer » existe ; depuis le menu de gauche on compose une pose pour la bibliothèque, sans
+// cible, et le bouton est absent. Un titre identique dans les deux cas laisserait chercher pourquoi
+// « Appliquer » a disparu.
+//
+// Pur et testable : le titre est une chaîne, pas un effet de bord.
+export function personaEditorTitle3D(target, lang){
+  const fr = (lang !== 'en');
+  if (!target) return fr ? 'Éditeur de Personnage — pose libre' : 'Character editor — free pose';
+  const nom = (target.name || '').trim();
+  const base = fr ? 'Éditeur de Personnage' : 'Character editor';
+  return nom ? `${base} — ${nom}` : base;
+}
+
 export function personaEditorPoseLabel(){
   return resolvePoseLabel3D(
     { position: S.personaEditorPoseKey, joints3d: S.personaEditorDraft }, S.poses);
@@ -897,6 +913,10 @@ function syncPersonaEditorDom(){
   // la condition à remplir pour l'activer.
   const applyBtn = document.getElementById('personaEditorApplyBtn');
   if (applyBtn) applyBtn.style.display = S.personaEditorFromModal ? '' : 'none';
+  // Fix 64 — le titre dit lequel des deux modes est actif, faute de quoi l'absence d'« Appliquer »
+  // resterait inexpliquée. Écrit ici plutôt que dans la table i18n : il dépend de la cible.
+  const titleEl = document.getElementById('personaEditorTitle');
+  if (titleEl) titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang);
   if (S.personaEditorOpen) {
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
@@ -1198,6 +1218,15 @@ function setupDropdown(triggerId, panelId){
 }
 setupDropdown('treeTrigger', 'treePanel');
 setupDropdown('sceneTrigger', 'scenePanel');
+setupDropdown('personaTrigger', 'personaPanel');
+
+// Fix 64 — entrée AUTONOME de l'éditeur : aucune cible, Personnage par défaut. Sert à composer des
+// poses pour la bibliothèque sans passer par un Personnage d'une Case. `fromModal` à false : il n'y
+// a rien derrière à alimenter, et « Appliquer » est donc absent (cf. syncPersonaEditorDom).
+{
+  const btn = document.getElementById('openPoseEditorBtn');
+  if (btn) btn.onclick = () => showPersonaEditor(null, false);
+}
 
 // ---------- SCENES (work in progress, on user request) ----------
 // Each Scene is listed here; clicking on it switches to the dedicated editor (openScene).

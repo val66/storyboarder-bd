@@ -41,7 +41,7 @@ import {
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
-  personaEditorHasChanges,
+  personaEditorHasChanges, personaEditorTitle3D,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1559,5 +1559,66 @@ describe('éditeur de Personnage — détection des changements (Fix 61)', () =>
     assert.equal(personaEditorHasChanges(), false);
     setPersonaEditorJointDeg(torso, 40);
     assert.equal(personaEditorHasChanges(), true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 64 — entrée AUTONOME de l'éditeur (phase 6).
+//
+// Deux entrées, deux sémantiques : depuis une modale on retouche UN Personnage et « Appliquer »
+// existe ; depuis le menu de gauche on compose une pose pour la bibliothèque, sans cible, et le
+// bouton est ABSENT — masqué, pas grisé. Le titre nomme le mode, sans quoi cette disparition
+// resterait inexpliquée.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — titre selon le mode (Fix 64)', () => {
+  test('sans cible : le titre annonce le mode pose libre', () => {
+    assert.match(personaEditorTitle3D(null), /pose libre/);
+    assert.match(personaEditorTitle3D(null, 'en'), /free pose/);
+  });
+
+  test('avec une cible nommée : le titre porte son nom', () => {
+    assert.match(personaEditorTitle3D({ name: 'Aldo' }), /Aldo/);
+    assert.match(personaEditorTitle3D({ name: 'Aldo' }, 'en'), /Aldo/);
+  });
+
+  test('cible sans nom : titre nu, pas de tiret orphelin', () => {
+    // Un « Éditeur de Personnage — » suivi de rien ferait croire à un libellé tronqué.
+    assert.equal(personaEditorTitle3D({ name: '' }), 'Éditeur de Personnage');
+    assert.equal(personaEditorTitle3D({ name: '   ' }), 'Éditeur de Personnage');
+    assert.equal(personaEditorTitle3D({}), 'Éditeur de Personnage');
+  });
+
+  test('les deux modes se distinguent bien', () => {
+    // C'est le seul point qui compte vraiment : lire le titre doit suffire à savoir si
+    // « Appliquer » a une raison d'exister.
+    assert.notEqual(personaEditorTitle3D(null), personaEditorTitle3D({ name: 'Aldo' }));
+  });
+});
+
+describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  beforeEach(() => { closePersonaEditor(); S.poses = []; S.dismissedPoses = []; });
+
+  test('ouvert sans cible : éditable, mais rien à appliquer', () => {
+    openPersonaEditor(null, false);
+    assert.equal(isPersonaEditorOpen(), true);
+    assert.equal(personaEditorTarget({ objects: [] }), null);
+    setPersonaEditorJointDeg(torso, 35);
+    assert.equal(personaEditorHasChanges(), true, 'la pose se compose normalement');
+    assert.equal(applyPersonaEditorToModal(), null, 'mais il n\'y a rien à alimenter');
+  });
+
+  test('la sortie utile du mode autonome : enregistrer la pose', () => {
+    // Sans cible, c'est la seule action qui produit quelque chose de durable.
+    openPersonaEditor(null, false);
+    setPersonaEditorJointDeg(torso, 35);
+    const pose = savePersonaEditorPose('Pose composée');
+    assert.equal(S.poses.length, 1);
+    assert.equal(Math.round(pose.joints.torsoRotX * 180 / Math.PI), 35);
+  });
+
+  test('fermer depuis le mode autonome ne rouvre aucune modale', () => {
+    openPersonaEditor(null, false);
+    assert.equal(closePersonaEditor(), false);
   });
 });

@@ -224,7 +224,7 @@ l'éditeur touche à un Personnage ; le nom se déduit alors de `S.personaEditor
   exactement ce que le Fix 35 vient de corriger.
 - **5.3** Quitter l'éditeur sans appliquer → aucun effet.
 
-### Phase 6 — Entrée autonome
+### Phase 6 — Entrée autonome ✅ *(Fix 64)*
 
 - **6.1** Section Personnage du menu de gauche, Personnage par défaut. Pas de cible → bouton
   « Appliquer » **absent**, pas seulement grisé : les deux modes ont des sémantiques différentes et

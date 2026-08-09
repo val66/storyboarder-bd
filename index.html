@@ -108,6 +108,18 @@
         </div>
       </div>
     </div>
+    <!-- Personnages : ouvre l'éditeur SANS cible, sur un Personnage par défaut. Sert à composer et
+         enregistrer des poses pour la bibliothèque, indépendamment de tout Personnage d'une Case —
+         d'où l'absence du bouton « Appliquer » dans ce mode (cf. syncPersonaEditorDom). -->
+    <div class="side-section">
+      <div class="dropdown">
+        <button class="dropdown-trigger" id="personaTrigger">Personnages <span class="caret">▾</span></button>
+        <div class="dropdown-panel open" id="personaPanel">
+          <p class="side-hint" id="personaPanelHint">Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.</p>
+          <button class="full-btn" id="openPoseEditorBtn">Éditeur de Personnage</button>
+        </div>
+      </div>
+    </div>
   </div>
   <!-- Pied de page fixe du menu de gauche (toujours visible, même si le contenu défile) : affiche depuis
        combien de temps date la dernière sauvegarde (cf. updateLastSavedIndicator) — déplacé ici depuis

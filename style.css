@@ -660,6 +660,10 @@ canvas{
    concentré d'un seul côté. */
 .persona-preview-wrap canvas{ width:100%; height:100%; object-fit:contain; display:block; }
 
+/* Phrase d'explication sous un titre de section du menu de gauche. Discrète : elle dit à quoi sert
+   la section, elle ne doit pas rivaliser avec le bouton qui la suit. */
+.side-hint{ font-size:11.5px; color:var(--ink-soft); margin:0 0 8px; line-height:1.4; }
+
 /* Bouton-icône posé dans un coin d'un aperçu 3D (cf. #personaEditorOpenBtn). Discret au repos pour
    ne pas encombrer l'aperçu, franc au survol : c'est une action, pas une décoration. */
 .preview-corner-btn{
