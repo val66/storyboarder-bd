@@ -563,6 +563,12 @@
     <button class="project-modal-btn" id="projectModalNew" type="button">📄 Nouveau projet</button>
     <button class="project-modal-btn" id="projectModalLoad" type="button">📂 Charger un projet existant</button>
     <button class="project-modal-btn" id="projectModalSave" type="button">💾 Enregistrer le projet</button>
+    <!-- Retour des opérations de fichier : « Enregistré à 14:32 », « Échec de l'enregistrement du
+         Projet »… setProjectModalStatus (io.js) l'alimente depuis quatorze endroits. L'élément
+         MANQUAIT : la fonction cherchait un id absent du document, sa garde `if (el)` absorbait
+         l'absence, et tous ces messages — y compris les échecs d'enregistrement — n'arrivaient
+         nulle part. Trouvé par le contrôle croisé de tests/dom-ids.test.mjs. -->
+    <p class="project-modal-status" id="projectModalStatus" role="status" aria-live="polite"></p>
     <div class="modal-actions">
       <button class="danger-btn" id="projectModalClose" type="button" style="width:100%;">🚪 Fermer l'application</button>
     </div>

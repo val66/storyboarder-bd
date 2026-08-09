@@ -507,6 +507,12 @@ export function applyProjectData(data){
   S.projectDirty = false;
 }
 
+// Heure au format HH:MM. Extraite parce qu'elle était écrite deux fois à l'identique, et que la
+// version bilingue l'aurait fait écrire quatre fois.
+function heure(d){
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
 export function setProjectModalStatus(text){
   const el = document.getElementById('projectModalStatus');
   if (el) el.textContent = text || '';
@@ -545,11 +551,11 @@ export async function writeProjectToHandle(handle){
     S.projectDirty = false;
     markProjectSaved();
     const now = new Date();
-    setProjectModalStatus(`Enregistré à ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    setProjectModalStatus(tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`));
     return true;
   } catch (err) {
     console.warn('Échec de l\'enregistrement du Projet :', err);
-    setProjectModalStatus('Échec de l\'enregistrement du Projet.');
+    setProjectModalStatus(tr('Could not save the project.', 'Échec de l\'enregistrement du Projet.'));
     return false;
   }
 }
@@ -564,11 +570,11 @@ export async function writeProjectToPath(filePath){
     S.projectDirty = false;
     markProjectSaved();
     const now = new Date();
-    setProjectModalStatus(`Enregistré à ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    setProjectModalStatus(tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`));
     return true;
   } catch (err) {
     console.warn('Échec de l\'enregistrement du Projet :', err);
-    setProjectModalStatus('Échec de l\'enregistrement du Projet.');
+    setProjectModalStatus(tr('Could not save the project.', 'Échec de l\'enregistrement du Projet.'));
     return false;
   }
 }
@@ -585,7 +591,7 @@ export function downloadProjectAsFile(){
   URL.revokeObjectURL(url);
   S.projectDirty = false;
   markProjectSaved();
-  setProjectModalStatus('Projet téléchargé (.json).');
+  setProjectModalStatus(tr('Project downloaded (.json).', 'Projet téléchargé (.json).'));
 }
 
 export function stopAutosave(){
@@ -626,14 +632,14 @@ export async function saveProjectFlow(){
         S.projectFilePath = res.filePath;
         applyProjectNameFromFileName(res.filePath);
         const ok = await writeProjectToPath(S.projectFilePath);
-        setProjectModalStatus('Projet enregistré.');
+        setProjectModalStatus(tr('Project saved.', 'Projet enregistré.'));
         startAutosave();
         closeProjectModal();
         return ok;
       }
       return false;
     } catch (err) {
-      setProjectModalStatus('Échec de l\'enregistrement du Projet.');
+      setProjectModalStatus(tr('Could not save the project.', 'Échec de l\'enregistrement du Projet.'));
       return false;
     }
   }
@@ -659,7 +665,7 @@ export async function saveProjectFlow(){
     closeProjectModal();
     return ok;
   } catch (err) {
-    if (err && err.name !== 'AbortError') setProjectModalStatus('Échec de l\'enregistrement du Projet.');
+    if (err && err.name !== 'AbortError') setProjectModalStatus(tr('Could not save the project.', 'Échec de l\'enregistrement du Projet.'));
     return false;
   }
 }
@@ -690,15 +696,16 @@ export async function loadExistingProjectFlow(){
       S.projectFilePath = res.filePath;
       S.projectFileHandle = null;
       startAutosave();
-      setProjectModalStatus(`Projet « ${S.projectName} » chargé.`);
+      setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
       closeProjectModal();
     } catch (err) {
-      setProjectModalStatus('Impossible de charger ce fichier de Projet.');
+      setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
     }
     return;
   }
   if (!supportsFileSystemAccess()) {
-    setProjectModalStatus('Le chargement nécessite un navigateur compatible (accès au système de fichiers).');
+    setProjectModalStatus(tr('Loading requires a compatible browser (file-system access).',
+      'Le chargement nécessite un navigateur compatible (accès au système de fichiers).'));
     return;
   }
   if (S.projectDirty && !await confirmAction(tr('The current project has unsaved changes. Continue without saving?', 'Le Projet actuel contient des modifications non enregistrées. Continuer sans les enregistrer ?'))) return;
@@ -714,9 +721,9 @@ export async function loadExistingProjectFlow(){
     applyProjectData(data);
     S.projectFileHandle = handle;
     startAutosave();
-    setProjectModalStatus(`Projet « ${S.projectName} » chargé.`);
+    setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
   } catch (err) {
-    if (err && err.name !== 'AbortError') setProjectModalStatus('Impossible de charger ce fichier de Projet.');
+    if (err && err.name !== 'AbortError') setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
   }
 }
 

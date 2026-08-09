@@ -6612,7 +6612,6 @@ canvas.addEventListener('dblclick', (e) => {
 const roomModal         = document.getElementById('roomModal');
 const roomModalTitle    = document.getElementById('roomModalTitle');
 const roomNameInput     = document.getElementById('roomNameInput');
-const roomSizeDisplay   = document.getElementById('roomSizeDisplay');
 const roomCeilingVisibleCheckbox = document.getElementById('roomCeilingVisibleCheckbox');
 const roomMagnetGroundCheckbox      = document.getElementById('roomMagnetGroundCheckbox');
 const roomPosXInput     = document.getElementById('roomPosXInput');

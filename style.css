@@ -123,6 +123,13 @@ select, input[type=number]{
 }
 .project-modal-btn:hover{ background:var(--accent); border-color:var(--accent); color:#fff; }
 
+/* Retour des opérations de fichier dans la modale Projet. Vide par défaut : il n'occupe de la
+   place que lorsqu'il a quelque chose à dire (`:empty` → display:none), sinon un blanc
+   inexpliqué s'installerait entre les boutons et « Fermer l'application ». */
+.project-modal-status { margin: 10px 0 0; font-size: 12px; color: var(--sepia);
+                        text-align: center; min-height: 1em; }
+.project-modal-status:empty { display: none; }
+
 /* DROPDOWNS */
 .dropdown{ margin-bottom:10px; }
 .dropdown-trigger{
