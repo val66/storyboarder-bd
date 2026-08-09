@@ -299,6 +299,53 @@ export function dragJointStep3D(startDeg, deltaDeg){
   return { deg, startDeg: debordé ? deg - delta : (startDeg || 0) };
 }
 
+// ─── Fix 77 (DIAGNOSTIC) — mesurer l'écart entre le geste et son effet ───────────────────────
+//
+// Ces deux fonctions ne servent qu'à instrumenter le glisser d'articulation. Elles ne participent
+// à aucun calcul de pose : les retirer ne change rien à ce que fait l'éditeur.
+
+// Angle signé entre deux vecteurs écran, en degrés dans ]-180, 180]. null si l'un des deux est trop
+// court pour avoir une direction — sous quelques pixels, l'orientation d'un déplacement de souris
+// n'est que du bruit, et un angle calculé dessus ferait croire à un problème qui n'existe pas.
+export function angleBetweenScreenVectors3D(a, b, minLen = 2){
+  if (!a || !b) return null;
+  const na = Math.hypot(a.x || 0, a.y || 0);
+  const nb = Math.hypot(b.x || 0, b.y || 0);
+  if (na < minLen || nb < minLen) return null;
+  return wrapAngle(Math.atan2(b.y || 0, b.x || 0) - Math.atan2(a.y || 0, a.x || 0)) * 180 / Math.PI;
+}
+
+// Relevé d'UNE image de glisser, sous forme de valeurs comparables. C'est `ecart` qui porte le
+// diagnostic : l'angle entre la direction de la souris et celle dans laquelle la poignée s'est
+// RÉELLEMENT déplacée à l'écran. Proche de 0°, le geste et son effet vont dans le même sens ;
+// proche de ±90°, on pousse perpendiculairement à ce qui bouge ; proche de 180°, c'est inversé.
+export function describePoseDragStep3D(entree){
+  const e = entree || {};
+  const souris = { x: e.dx || 0, y: e.dy || 0 };
+  const poignee = { x: e.handleDx || 0, y: e.handleDy || 0 };
+  const axe = e.axisScreen || { x: 0, y: 0 };
+  const rad2deg = (r) => Math.round(((r || 0) * 180 / Math.PI) * 10) / 10;
+  return {
+    champ: e.specKey || '?',
+    axe: e.axis || '?',
+    mode: e.droit ? 'droit' : 'circulaire',
+    orbiteY: rad2deg(e.rotY),
+    orbiteX: rad2deg(e.rotX),
+    axeEcranX: Math.round((axe.x || 0) * 100) / 100,
+    axeEcranY: Math.round((axe.y || 0) * 100) / 100,
+    axeVisible: Math.round(Math.hypot(axe.x || 0, axe.y || 0) * 100) / 100,
+    sourisDx: Math.round(souris.x),
+    sourisDy: Math.round(souris.y),
+    poigneeDx: Math.round(poignee.x * 10) / 10,
+    poigneeDy: Math.round(poignee.y * 10) / 10,
+    angleDeg: Math.round((e.deg || 0) * 10) / 10,
+    ecart: (() => {
+      const a = angleBetweenScreenVectors3D(souris, poignee);
+      return a === null ? null : Math.round(a);
+    })(),
+  };
+}
+
 // Fix 72 — champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.
 //
 // Renvoie toujours un index valide : c'est un index de tableau, et un appelant qui recevrait -1 ou

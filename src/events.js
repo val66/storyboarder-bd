@@ -39,6 +39,7 @@ import {
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D, circularDragDegrees3D,
+  projectModelAxisToScreen3D, describePoseDragStep3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -733,6 +734,79 @@ export function setPersonaEditorJointDeg(spec, deg){
 // La session mémorise les angles de DÉPART. Cumuler les deltas d'une image à l'autre ferait dériver
 // l'arrondi au degré, et la même course de souris n'aboutirait pas au même angle selon la fluidité
 // de l'affichage.
+// ─── Fix 77 (DIAGNOSTIC) — journal du glisser d'articulation ─────────────────────────────────
+//
+// TEMPORAIRE, le temps de comprendre pourquoi le geste reste difficile à manier. N'influence aucun
+// calcul : il ne fait que RELIRE des valeurs déjà décidées ailleurs. À retirer avec l'essai.
+//
+// Actif par défaut PARCE QUE c'est ce qu'on cherche à observer, et qu'un journal qu'il faut penser
+// à allumer avant de reproduire un défaut fugace n'est allumé qu'après coup. Il n'écrit qu'au
+// relâchement du bouton, donc jamais pendant que la souris bouge.
+let personaDragDebug = true;
+let personaDragJournal = [];
+
+export function setPersonaDragDebug(actif){ personaDragDebug = !!actif; return personaDragDebug; }
+export function personaDragDebugActif(){ return personaDragDebug; }
+export function personaDragJournalEntries(){ return personaDragJournal.slice(); }
+export function resetPersonaDragJournal(){ personaDragJournal = []; }
+
+// Poignée de console, pour pouvoir couper le journal ou récupérer le dernier relevé sans passer par
+// les outils de développement : `poseDrag.off()`, `poseDrag.copier()`.
+if (typeof window !== 'undefined') {
+  window.poseDrag = {
+    on: () => setPersonaDragDebug(true),
+    off: () => setPersonaDragDebug(false),
+    releves: () => personaDragJournalEntries(),
+    copier: () => {
+      const texte = JSON.stringify(personaDragJournalEntries(), null, 2);
+      if (navigator.clipboard) navigator.clipboard.writeText(texte);
+      return texte;
+    },
+  };
+}
+
+// Enregistre une image. `handleAvant`/`handleApres` sont les positions ÉCRAN de la poignée relevées
+// de part et d'autre du redessin : leur différence est le déplacement RÉEL de l'articulation, la
+// seule mesure qui puisse contredire ce que le calcul croit faire.
+export function logPersonaDragStep(session, dx, dy, deg, handleAvant, handleApres){
+  if (!personaDragDebug || !session) return null;
+  const releve = describePoseDragStep3D({
+    specKey: session.spec && session.spec.key,
+    axis: session.axis,
+    droit: session.droit,
+    rotX: session.orbit && session.orbit.rotX,
+    rotY: session.orbit && session.orbit.rotY,
+    axisScreen: projectModelAxisToScreen3D(session.axis, session.orbit),
+    dx, dy, deg,
+    handleDx: handleApres && handleAvant ? handleApres.x - handleAvant.x : 0,
+    handleDy: handleApres && handleAvant ? handleApres.y - handleAvant.y : 0,
+  });
+  personaDragJournal.push(releve);
+  return releve;
+}
+
+// Résumé d'un geste complet, imprimé au relâchement. L'écart MÉDIAN est la valeur à lire : la
+// moyenne serait tirée par les images où la poignée bouge de deux pixels et où l'angle n'est que
+// du bruit.
+export function summarizePersonaDragJournal(entries){
+  const liste = entries || [];
+  const ecarts = liste.map(e => e.ecart).filter(v => typeof v === 'number').sort((a, b) => a - b);
+  const median = ecarts.length ? ecarts[Math.floor(ecarts.length / 2)] : null;
+  const dernier = liste[liste.length - 1] || {};
+  return {
+    images: liste.length,
+    champ: dernier.champ, axe: dernier.axe, mode: dernier.mode,
+    orbiteY: dernier.orbiteY, orbiteX: dernier.orbiteX,
+    axeVisible: dernier.axeVisible,
+    angleFinal: dernier.angleDeg,
+    ecartMedian: median,
+    verdict: median === null ? 'trop peu de mouvement pour conclure'
+      : Math.abs(median) < 35 ? 'la poignée suit la souris'
+      : Math.abs(median) > 145 ? 'la poignée part À L\'OPPOSÉ de la souris'
+      : 'la poignée part DE TRAVERS par rapport à la souris',
+  };
+}
+
 export function beginPersonaEditorJointDrag(id){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !id) return null;
   const specIndex = S.personaEditorSpecIndex;
@@ -1276,13 +1350,21 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       if (jointDrag && S.personaEditorOpen) {
         const dx = e.clientX - jointDrag.x;
         const dy = e.clientY - jointDrag.y;
-        if (!applyPersonaEditorJointDrag(jointDrag, dx, dy, gesteCirculaire(jointDrag, e))) {
+        // Fix 77 — position de la poignée AVANT le redessin. Lecture seule, à des fins de journal
+        // uniquement : c'est justement en s'en servant pour PILOTER le geste qu'on avait créé la
+        // boucle de rétroaction du Fix 76. Ne pas rebrancher ceci sur autre chose qu'un log.
+        const avant = personaDragDebugActif() ? pivotFige(jointDrag.id) : null;
+        const deg = applyPersonaEditorJointDrag(jointDrag, dx, dy, gesteCirculaire(jointDrag, e));
+        if (deg === null) {
           jointDrag = null;
           return;
         }
         syncPersonaEditorSliders();
         syncPersonaEditorActionButtons();
         drawPersonaEditor();
+        // APRÈS le redessin : la carte des poignées vient d'être réécrite, la différence avec
+        // `avant` est donc le déplacement réel de l'articulation à l'écran pour cette image.
+        if (avant) logPersonaDragStep(jointDrag, dx, dy, deg, avant, pivotFige(jointDrag.id));
         return;
       }
       if (!orbiting || !S.personaEditorOpen) return;
@@ -1294,7 +1376,21 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
                             orbiting.rotY + (e.clientX - orbiting.x) * k);
       drawPersonaEditor();
     });
-    window.addEventListener('mouseup', () => { orbiting = null; jointDrag = null; });
+    window.addEventListener('mouseup', () => {
+      // Fix 77 — le résumé s'imprime à la FIN du geste, jamais pendant : écrire dans la console à
+      // chaque image ralentirait précisément ce qu'on cherche à mesurer.
+      if (jointDrag && personaDragDebugActif()) {
+        const releves = personaDragJournalEntries();
+        if (releves.length) {
+          const resume = summarizePersonaDragJournal(releves);
+          console.log('[glisser articulation]', resume.verdict, resume);
+          if (console.table) console.table(releves);
+        }
+      }
+      resetPersonaDragJournal();
+      orbiting = null;
+      jointDrag = null;
+    });
   }
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application.
   //

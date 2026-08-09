@@ -12,6 +12,7 @@ import {
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
   dragJointStep3D, cyclePoseSpecIndex3D, canvasPointToClient3D,
+  angleBetweenScreenVectors3D, describePoseDragStep3D,
   poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
   straightDragDegrees3D, circularDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
@@ -1545,5 +1546,75 @@ describe('cyclePoseSpecIndex3D — passer d\'un champ à l\'autre à la molette'
   test('aucun champ : index 0, jamais NaN', () => {
     assert.equal(cyclePoseSpecIndex3D(3, 0, 1), 0);
     assert.equal(cyclePoseSpecIndex3D(0, null, 1), 0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 77 (DIAGNOSTIC) — instrumentation du glisser d'articulation.
+//
+// Ces fonctions ne participent à aucun calcul de pose. Elles sont testées quand même parce qu'un
+// instrument de mesure faux est pire que pas d'instrument : il oriente le diagnostic vers une
+// fausse piste, et on cherche là où il n'y a rien.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('angleBetweenScreenVectors3D — écart entre deux directions écran', () => {
+  test('même direction : 0°, directions opposées : 180°', () => {
+    assert.equal(angleBetweenScreenVectors3D({ x: 10, y: 0 }, { x: 50, y: 0 }), 0);
+    assert.equal(Math.abs(angleBetweenScreenVectors3D({ x: 10, y: 0 }, { x: -50, y: 0 })), 180);
+  });
+
+  test('perpendiculaires : ±90°', () => {
+    assert.equal(angleBetweenScreenVectors3D({ x: 10, y: 0 }, { x: 0, y: 10 }), 90);
+    assert.equal(angleBetweenScreenVectors3D({ x: 10, y: 0 }, { x: 0, y: -10 }), -90);
+  });
+
+  test('RÉGRESSION : un vecteur trop court ne produit PAS d\'angle', () => {
+    // Sous quelques pixels, la direction d'un déplacement n'est que du bruit d'arrondi. Un angle
+    // calculé dessus ferait apparaître un « écart » de 180° là où la poignée n'a simplement pas
+    // bougé — et enverrait le diagnostic dans le décor.
+    assert.equal(angleBetweenScreenVectors3D({ x: 100, y: 0 }, { x: 0.4, y: 0 }), null);
+    assert.equal(angleBetweenScreenVectors3D({ x: 0, y: 0 }, { x: 100, y: 0 }), null);
+  });
+
+  test('entrées manquantes : null, jamais NaN', () => {
+    assert.equal(angleBetweenScreenVectors3D(null, { x: 10, y: 10 }), null);
+  });
+});
+
+describe('describePoseDragStep3D — relevé d\'une image de glisser', () => {
+  const base = {
+    specKey: 'head:v', axis: 'x', droit: true, rotX: 0, rotY: Math.PI / 2,
+    axisScreen: { x: 0, y: 1 }, dx: 3, dy: 40, deg: 20,
+  };
+
+  test('les angles sont convertis en degrés lisibles', () => {
+    assert.equal(describePoseDragStep3D(base).orbiteY, 90);
+    assert.equal(describePoseDragStep3D({ ...base, rotX: Math.PI / 4 }).orbiteX, 45);
+  });
+
+  test('RÉGRESSION : l\'écart compare la souris au déplacement RÉEL de la poignée', () => {
+    // C'est la seule mesure capable de contredire le calcul : peu importe ce que le code croit
+    // appliquer, si la poignée part ailleurs que la souris, l'écart le dit.
+    const memeSens = describePoseDragStep3D({ ...base, dx: 0, dy: 40, handleDx: 0, handleDy: 30 });
+    assert.equal(memeSens.ecart, 0);
+    const inverse = describePoseDragStep3D({ ...base, dx: 0, dy: 40, handleDx: 0, handleDy: -30 });
+    assert.equal(Math.abs(inverse.ecart), 180);
+    const travers = describePoseDragStep3D({ ...base, dx: 0, dy: 40, handleDx: 30, handleDy: 0 });
+    assert.equal(Math.abs(travers.ecart), 90);
+  });
+
+  test('poignée immobile : pas d\'écart inventé', () => {
+    assert.equal(describePoseDragStep3D({ ...base, handleDx: 0, handleDy: 0 }).ecart, null);
+  });
+
+  test('le mode est nommé, pas laissé en booléen', () => {
+    assert.equal(describePoseDragStep3D({ ...base, droit: true }).mode, 'droit');
+    assert.equal(describePoseDragStep3D({ ...base, droit: false }).mode, 'circulaire');
+  });
+
+  test('entrées vides : un relevé complet, jamais NaN', () => {
+    const r = describePoseDragStep3D(null);
+    Object.entries(r).forEach(([k, v]) => {
+      assert.ok(typeof v !== 'number' || Number.isFinite(v), `${k} = ${v}`);
+    });
   });
 });

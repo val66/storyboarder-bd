@@ -45,6 +45,8 @@ import {
   setPersonaEditorOrbit, resetPersonaEditorCamera,
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
+  setPersonaDragDebug, resetPersonaDragJournal, personaDragJournalEntries,
+  logPersonaDragStep, summarizePersonaDragJournal,
   PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
@@ -1958,5 +1960,61 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
     const i = src.indexOf('const session = beginPersonaEditorJointDrag(def.id);');
     assert.ok(i > 0, 'ouverture de session introuvable');
     assert.match(src.slice(i, i + 400), /pivot:\s*pivotFige\(def\.id\)/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 77 (DIAGNOSTIC) — journal du glisser, et la garde qui tuait la session à 0°.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — journal de glisser (Fix 77)', () => {
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  beforeEach(() => { closePersonaEditor(); resetPersonaDragJournal(); setPersonaDragDebug(true); });
+
+  test('RÉGRESSION : un angle de 0° ne ferme PAS la session de glisser', () => {
+    // Le gestionnaire testait `if (!apply(...))`. Or 0° est un cas ordinaire — toute articulation
+    // au repos, et tout passage par le zéro en cours de geste. La session était donc fermée en
+    // pleine manipulation, sans rien pour l'expliquer.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lKnee');
+    const session = beginPersonaEditorJointDrag('lKnee');
+    assert.equal(applyPersonaEditorJointDrag(session, 0, 0), 0, 'un glisser nul rend bien 0');
+    assert.match(src, /if \(deg === null\) \{/,
+      'la garde doit comparer à null, pas tester la véracité — 0 est une valeur légitime');
+  });
+
+  test('le journal ne retient rien quand le diagnostic est coupé', () => {
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lKnee');
+    setPersonaDragDebug(false);
+    logPersonaDragStep(beginPersonaEditorJointDrag('lKnee'), 0, 40, 20, { x: 0, y: 0 }, { x: 0, y: 5 });
+    assert.deepEqual(personaDragJournalEntries(), []);
+  });
+
+  test('un relevé retient le déplacement de la souris ET celui de la poignée', () => {
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lKnee');
+    const session = beginPersonaEditorJointDrag('lKnee');
+    logPersonaDragStep(session, 0, 40, 20, { x: 100, y: 100 }, { x: 100, y: 130 });
+    const [releve] = personaDragJournalEntries();
+    assert.equal(releve.sourisDy, 40);
+    assert.equal(releve.poigneeDy, 30);
+    assert.equal(releve.ecart, 0, 'même sens : la poignée suit la souris');
+  });
+
+  test('RÉGRESSION : le verdict lit la MÉDIANE, pas la moyenne', () => {
+    // Une poignée quasi immobile produit des écarts aberrants sur quelques images. La moyenne s'en
+    // trouverait tirée et annoncerait un défaut là où il n'y en a pas.
+    const releves = [
+      { ecart: 0 }, { ecart: 2 }, { ecart: -3 }, { ecart: 1 }, { ecart: 178 },
+    ];
+    const resume = summarizePersonaDragJournal(releves);
+    assert.equal(resume.ecartMedian, 1);
+    assert.match(resume.verdict, /suit la souris/);
+  });
+
+  test('le verdict nomme les trois situations', () => {
+    assert.match(summarizePersonaDragJournal([{ ecart: 175 }]).verdict, /OPPOSÉ/);
+    assert.match(summarizePersonaDragJournal([{ ecart: 88 }]).verdict, /TRAVERS/);
+    assert.match(summarizePersonaDragJournal([]).verdict, /trop peu de mouvement/);
   });
 });
