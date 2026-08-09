@@ -1769,6 +1769,20 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
       return;
     }
     const pt = projectJointToCanvas(grp, camera, cnvW, cnvH);
+    // Fix 92 — l'EXTRÉMITÉ du membre est projetée ici, dans la même image et avec la même caméra
+    // que la poignée, puis rangée AVEC elle. Auparavant seul le départ du segment était mémorisé et
+    // le bout était recalculé au moment du clic : personaLibSegment le reprojetait à la volée avec
+    // personaCamera3D — une caméra PARTAGÉE avec le rendu des Cases et de l'aperçu de la modale.
+    // Il suffisait donc qu'une autre figure soit rendue entre le tracé et le clic pour que la bande
+    // testée parte ailleurs que la bande peinte. Mesuré : 144 px d'écart au bout, pour une bande de
+    // 24 px de demi-largeur — les deux ne se recouvrent plus que près de l'articulation, ce qui
+    // explique que le disque continuait de mordre alors que le membre, lui, ne répondait plus.
+    const seg = LIMB_SEGMENTS.find(l => l.id === def.id);
+    if (seg) {
+      const cible = seg.toGroup ? entry.joints[seg.toGroup] : null;
+      if (seg.toGroup && cible) pt.tip = projectJointToCanvas(cible, camera, cnvW, cnvH);
+      else if (!seg.toGroup) pt.tip = projectLocalOffsetToCanvas(grp, seg.toLocal, camera, cnvW, cnvH);
+    }
     positions[def.id] = pt;
     points.push({ def, pt, active });
   });
@@ -1807,7 +1821,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     selectedId, solo, positions);
   if (solo && positions[selectedId]) {
     drawPersonaPickZone(hctx, positions[selectedId],
-      personaLimbSegmentScreen3D(selectedId, cnv, positions), posePickRadii3D(true));
+      personaLimbSegmentScreen3D(selectedId, positions), posePickRadii3D(true));
   }
   points.forEach(({ pt, active }) => {
     hctx.beginPath();
@@ -1826,14 +1840,17 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   if (dragHint && positions[selectedId]) drawPersonaDragHint(hctx, positions[selectedId], dragHint);
 }
 
-export function pickPoseHandleAt(px, py, canvas, positions, radii){
+// Fix 92 — plus de paramètre `canvas` : il n'était transmis que pour reprojeter le bout du membre
+// au moment du clic, ce que personaLimbSegmentScreen3D ne fait plus. Tout ce dont la sélection a
+// besoin est dans la carte de positions, écrite par la dernière image dessinée.
+export function pickPoseHandleAt(px, py, positions, radii){
   const pos = positions || personaHandleScreenPos;
   const r = radii || posePickRadii3D(false);
   const id = pickNearestHandle3D(pos, px, py, r.handle);
   if (id) return POSE_HANDLES.find(d => d.id === id) || null;
   // No precise joint handle hit: try the limb itself (the segment
   // between the joint and its extremity), so the figure can be posed by grabbing the arm/leg.
-  return pickLimbSegmentAt(px, py, canvas, pos, r.limb);
+  return pickLimbSegmentAt(px, py, pos, r.limb);
 }
 
 // ↳ src/constants.js
@@ -1859,29 +1876,32 @@ export function distToSegmentSq(px, py, ax, ay, bx, by){
 // Fix 88 — le segment ÉCRAN du membre entraîné par une articulation, ou null. Extrait pour être
 // partagé entre la sélection et le dessin de la zone de prise : le tracé doit montrer exactement ce
 // que le clic accepte, et deux calculs séparés du même segment auraient fini par se contredire.
-export function personaLimbSegmentScreen3D(handleId, canvas, positions){
-  const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
-  if (!entry) return null;
+//
+// Fix 92 — le segment est désormais entièrement LU dans la carte de positions, sans aucune
+// reprojection. Le paramètre `canvas` a disparu, et ce n'est pas un détail de nettoyage : il ne
+// servait qu'à reprojeter le bout du membre au moment du clic, avec personaCamera3D — la caméra
+// PARTAGÉE par l'aperçu de la modale, l'éditeur et le rendu des Cases. Le retirer rend la
+// reprojection tardive structurellement impossible, plutôt que simplement déconseillée.
+//
+// Conséquence assumée : un segment dont le bout n'a pas été projeté à la dernière image n'existe
+// pas. C'est la bonne réponse — on ne peut pas accepter un clic sur une bande qu'on n'a pas
+// dessinée. Même raison que le `null` des poignées masquées : ne rien enregistrer, c'est rendre
+// inerte, sans second mécanisme à tenir en accord avec le premier.
+export function personaLimbSegmentScreen3D(handleId, positions){
   const seg = LIMB_SEGMENTS.find(l => l.id === handleId);
   if (!seg) return null;
   const def = POSE_HANDLES.find(d => d.id === seg.id);
   if (!def) return null;
-  const grp = entry.joints[def.group];
-  if (!grp) return null;
-  const cnv = canvas || personaPreview3D;
   const p1 = (positions || personaHandleScreenPos)[seg.id];
-  if (!p1) return null;
-  const p2 = seg.toGroup
-    ? projectJointToCanvas(entry.joints[seg.toGroup], personaCamera3D, cnv.width, cnv.height)
-    : projectLocalOffsetToCanvas(grp, seg.toLocal, personaCamera3D, cnv.width, cnv.height);
-  return { def, p1, p2 };
+  if (!p1 || !p1.tip) return null;
+  return { def, p1, p2: p1.tip };
 }
 
-export function pickLimbSegmentAt(px, py, canvas, positions, radius = POSE_LIMB_PICK_RADIUS){
+export function pickLimbSegmentAt(px, py, positions, radius = POSE_LIMB_PICK_RADIUS){
   const pos = positions || personaHandleScreenPos;
   let best = null, bestD2 = radius * radius;
   LIMB_SEGMENTS.forEach(seg => {
-    const s = personaLimbSegmentScreen3D(seg.id, canvas, pos);
+    const s = personaLimbSegmentScreen3D(seg.id, pos);
     if (!s) return;
     const d2 = distToSegmentSq(px, py, s.p1.x, s.p1.y, s.p2.x, s.p2.y);
     if (d2 < bestD2) { bestD2 = d2; best = s.def; }

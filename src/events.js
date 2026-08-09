@@ -1307,7 +1307,7 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       }
       if (e.button !== 0) return;
       const { px, py } = editorCoords(e);
-      const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos, rayonSaisie());
+      const def = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie());
       if (def) {
         focusPersonaEditorHandle(def.id);
         drawPersonaEditor();
@@ -1331,7 +1331,7 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       if (!S.personaEditorOpen || orbiting) return;
       if (jointDrag) { cnv.style.cursor = 'grabbing'; return; }
       const { px, py } = editorCoords(e);
-      cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos, rayonSaisie())
+      cnv.style.cursor = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie())
         ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {

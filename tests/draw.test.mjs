@@ -30,11 +30,24 @@ import {
   wrapTextLines,
   projectJointToCanvas,
   projectPoseHandlePositions3D,
+  personaLimbSegmentScreen3D,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
+
+// Fix 92 — les extracteurs de source RETIRENT les commentaires avant de chercher.
+//
+// Découvert en mutant : remplacer l'appel à personaLimbSegmentScreen3D par `null` dans l'overlay
+// n'a fait échouer AUCUN test, parce qu'un commentaire voisin citait le nom de la fonction. Le
+// test croyait vérifier un appel, il vérifiait une phrase. C'est le pire état pour un test : vert,
+// et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
+export function sourceSansCommentaires(texte) {
+  return texte
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -569,7 +582,7 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
   const corps = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
     assert.ok(i > 0, `${nom} introuvable`);
-    return src.slice(i, src.indexOf('\n}', i));
+    return sourceSansCommentaires(src.slice(i, src.indexOf('\n}', i)));
   };
   const overlay = corps('drawPersonaPoseHandlesOverlay');
   // Fix 91 — le masquage a suivi la passe de positions, qui a été extraite du dessin. C'est bien là
@@ -621,7 +634,7 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
   const corpsDe = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
     assert.ok(i > 0, `${nom} introuvable`);
-    return src.slice(i, src.indexOf('\n}', i));
+    return sourceSansCommentaires(src.slice(i, src.indexOf('\n}', i)));
   };
 
   test('RÉGRESSION : clic et dessin partagent la MÊME source de rayons', () => {
@@ -680,7 +693,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const overlay = (() => {
     const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
-    return src.slice(i, src.indexOf('\n}', i));
+    return sourceSansCommentaires(src.slice(i, src.indexOf('\n}', i)));
   })();
 
   // Caméra construite à la main : personaCamera3D naît avec le renderer WebGL, hors de portée sous
@@ -734,8 +747,9 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
     assert.ok(points.length >= POSE_HANDLES.length - 2, 'toutes les poignées visibles sont rendues');
     points.forEach(({ def, pt }) => {
       const attendu = projectJointToCanvas(entry.joints[def.group], cam, 800, 600);
-      assert.deepEqual(positions[def.id], pt, `${def.id} : la carte et la liste divergent`);
-      assert.deepEqual(pt, attendu, `${def.id} : la projection n'est pas celle attendue`);
+      assert.equal(positions[def.id], pt, `${def.id} : la carte et la liste divergent`);
+      // `tip` (Fix 92) s'ajoute à la position : on compare le point lui-même.
+      assert.deepEqual({ x: pt.x, y: pt.y }, attendu, `${def.id} : projection inattendue`);
     });
   });
 
@@ -747,13 +761,13 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
     const def = POSE_HANDLES[0];
     const positions = {};
     projectPoseHandlePositions3D(entry, cam, 800, 600, null, false, positions);
-    const avant = { ...positions[def.id] };
+    const avant = { x: positions[def.id].x, y: positions[def.id].y };
     entry.joints[def.group].position.set(0.9, 0.6, 0);
     entry.joints[def.group].updateMatrixWorld(true);
     projectPoseHandlePositions3D(entry, cam, 800, 600, null, false, positions);
-    assert.notDeepEqual(positions[def.id], avant, 'la carte doit suivre le mouvement');
-    assert.deepEqual(positions[def.id],
-      projectJointToCanvas(entry.joints[def.group], cam, 800, 600));
+    const apres = { x: positions[def.id].x, y: positions[def.id].y };
+    assert.notDeepEqual(apres, avant, 'la carte doit suivre le mouvement');
+    assert.deepEqual(apres, projectJointToCanvas(entry.joints[def.group], cam, 800, 600));
   });
 
   test('en mode isolé, seule la poignée choisie garde une position', () => {
@@ -767,5 +781,104 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
       if (d.id === choisi) assert.ok(positions[d.id], 'la poignée choisie garde sa position');
       else assert.equal(positions[d.id], null, `${d.id} doit être inerte`);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 92 — la bande du membre ne se recalcule plus au moment du clic.
+//
+// Signalé à l'usage : ouvert depuis le menu de gauche la zone teintée est juste, ouvert depuis la
+// modale d'un Personnage « la zone semble plus petite bien qu'elle soit affichée identique ». Le
+// Personnage était pourtant rendu à la même taille, dans la même pose ; et c'est la BANDE le long
+// du membre qui ratait, pas le disque autour du point.
+//
+// Cette asymétrie disque/bande désignait le coupable. Le disque ne lit que p1, mémorisé dans la
+// carte de positions au dernier dessin. La bande, elle, lisait p1 dans la carte mais REPROJETAIT
+// son autre extrémité au moment du clic, avec personaCamera3D — une caméra partagée par l'aperçu
+// de la modale, l'éditeur et le rendu des Cases. Qu'une autre figure soit rendue entre le tracé et
+// le clic, et la bande testée partait ailleurs que la bande peinte, en restant ancrée au bon
+// endroit côté articulation. Mesuré sur la figure debout : 144 px d'écart au bout, pour une bande
+// de 24 px de demi-largeur.
+//
+// Le segment est désormais entièrement lu dans la carte, et le paramètre `canvas` a disparu des
+// trois fonctions de sélection : sans lui, reprojeter tardivement n'est plus seulement déconseillé,
+// c'est impossible.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 92 — le segment du membre est mémorisé, jamais reprojeté', () => {
+  const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
+  const corps = (nom) => {
+    const i = src.indexOf(`export function ${nom}(`);
+    assert.ok(i > 0, `${nom} introuvable`);
+    return sourceSansCommentaires(src.slice(i, src.indexOf('\n}', i)));
+  };
+  const camera = (z = 5) => {
+    const c = new THREE.PerspectiveCamera(50, 4 / 3, 0.1, 100);
+    c.position.set(0, 0, z);
+    c.lookAt(0, 0, 0);
+    c.updateMatrixWorld(true);
+    return c;
+  };
+  // Un rig factice dont les groupes portent les noms attendus par POSE_HANDLES.
+  const rig = () => {
+    const joints = {};
+    POSE_HANDLES.forEach(def => {
+      if (joints[def.group]) return;
+      const g = new THREE.Group();
+      g.position.set(0.1, 0.2, 0);
+      g.updateMatrixWorld(true);
+      joints[def.group] = g;
+    });
+    return { joints };
+  };
+
+  test('la passe de positions range AUSSI le bout du membre', () => {
+    const positions = {};
+    projectPoseHandlePositions3D(rig(), camera(), 800, 600, null, false, positions);
+    // lShoulder pointe vers lElbow (toGroup), lKnee vers un décalage local (toLocal) : les deux
+    // formes de LIMB_SEGMENTS doivent être couvertes, sans quoi une moitié des membres resterait
+    // muette au clic.
+    assert.ok(positions.lShoulder.tip, 'segment vers une autre articulation (toGroup)');
+    assert.ok(positions.lKnee.tip, 'segment vers un décalage local (toLocal)');
+  });
+
+  test('RÉGRESSION : changer la caméra APRÈS le dessin ne déplace pas la bande', () => {
+    // Le cœur du défaut. Avant correction, p2 était reprojeté ici et le segment se disloquait.
+    const entry = rig();
+    const positions = {};
+    projectPoseHandlePositions3D(entry, camera(5), 800, 600, 'lShoulder', true, positions);
+    const avant = personaLimbSegmentScreen3D('lShoulder', positions);
+    assert.ok(avant, 'segment présent après le dessin');
+
+    // Une autre figure est rendue entre-temps : la caméra PARTAGÉE est recadrée ailleurs.
+    // Le segment, lui, ne doit pas bouger d'un pixel — il décrit l'image qu'on a peinte.
+    camera(1.5);
+    const apres = personaLimbSegmentScreen3D('lShoulder', positions);
+    assert.deepEqual(apres.p1, avant.p1, 'le départ ne bouge pas');
+    assert.deepEqual(apres.p2, avant.p2, 'le bout ne doit pas bouger non plus');
+  });
+
+  test('RÉGRESSION : plus aucune projection dans les fonctions de sélection', () => {
+    // La garde structurelle : sans projection ni caméra dans ces corps, la divergence est
+    // impossible à réintroduire par inadvertance.
+    ['personaLimbSegmentScreen3D', 'pickLimbSegmentAt', 'pickPoseHandleAt'].forEach(nom => {
+      const c = corps(nom);
+      assert.ok(!/project[A-Za-z]*ToCanvas\(/.test(c), `${nom} ne doit plus projeter`);
+      assert.ok(!/personaCamera3D/.test(c), `${nom} ne doit plus lire la caméra partagée`);
+    });
+  });
+
+  test('RÉGRESSION : le paramètre `canvas` a bien disparu des trois signatures', () => {
+    // Il n'existait que pour permettre la reprojection tardive. Le laisser en place inviterait à
+    // la refaire ; les tests ci-dessus ne verraient rien tant que personne ne s'en sert.
+    assert.match(src, /export function personaLimbSegmentScreen3D\(handleId, positions\)/);
+    assert.match(src, /export function pickLimbSegmentAt\(px, py, positions, radius/);
+    assert.match(src, /export function pickPoseHandleAt\(px, py, positions, radii\)/);
+  });
+
+  test('un bout non mémorisé rend le membre inerte, pas approximatif', () => {
+    // Même règle que les poignées masquées : on n'accepte pas un clic sur une bande qu'on n'a pas
+    // dessinée. Mieux vaut un membre qui ne répond pas qu'un membre qui répond ailleurs.
+    assert.equal(personaLimbSegmentScreen3D('lShoulder', { lShoulder: { x: 10, y: 10 } }), null);
+    assert.equal(personaLimbSegmentScreen3D('lShoulder', {}), null);
   });
 });
