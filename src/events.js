@@ -739,10 +739,15 @@ export function setPersonaEditorJointDeg(spec, deg){
 // TEMPORAIRE, le temps de comprendre pourquoi le geste reste difficile à manier. N'influence aucun
 // calcul : il ne fait que RELIRE des valeurs déjà décidées ailleurs. À retirer avec l'essai.
 //
-// Actif par défaut PARCE QUE c'est ce qu'on cherche à observer, et qu'un journal qu'il faut penser
-// à allumer avant de reproduire un défaut fugace n'est allumé qu'après coup. Il n'écrit qu'au
-// relâchement du bouton, donc jamais pendant que la souris bouge.
-let personaDragDebug = true;
+// Fix 78 — ÉTEINT par défaut depuis que le défaut qu'il servait à traquer est identifié (la garde
+// `if (!apply(...))` qui fermait la session dès qu'un angle valait 0°, cf. Fix 77). Il était allumé
+// d'office le temps de l'observation, ce qui se justifiait alors : un journal qu'il faut penser à
+// activer avant de reproduire un défaut fugace n'est activé qu'après coup. Ce n'est plus le cas, et
+// une console qui déverse un tableau à chaque glisser deviendrait un bruit de fond.
+//
+// Le mécanisme reste en place : le glisser est encore un ESSAI, et la prochaine question sur son
+// comportement se réglera par une mesure, pas par une hypothèse. `poseDrag.on()` le rallume.
+let personaDragDebug = false;
 let personaDragJournal = [];
 
 export function setPersonaDragDebug(actif){ personaDragDebug = !!actif; return personaDragDebug; }

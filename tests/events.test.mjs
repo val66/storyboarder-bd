@@ -1966,7 +1966,7 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Fix 77 (DIAGNOSTIC) — journal du glisser, et la garde qui tuait la session à 0°.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — journal de glisser (Fix 77)', () => {
+describe('éditeur de Personnage — journal de glisser (Fix 77/78)', () => {
   const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
   beforeEach(() => { closePersonaEditor(); resetPersonaDragJournal(); setPersonaDragDebug(true); });
 
@@ -1980,6 +1980,15 @@ describe('éditeur de Personnage — journal de glisser (Fix 77)', () => {
     assert.equal(applyPersonaEditorJointDrag(session, 0, 0), 0, 'un glisser nul rend bien 0');
     assert.match(src, /if \(deg === null\) \{/,
       'la garde doit comparer à null, pas tester la véracité — 0 est une valeur légitime');
+  });
+
+  test('RÉGRESSION : le diagnostic est ÉTEINT par défaut', () => {
+    // Fix 78 — il a été allumé d'office le temps de traquer la garde qui fermait la session à 0°.
+    // Le laisser ainsi ferait déverser un tableau dans la console à chaque glisser, pour personne.
+    // Ce test lit la source plutôt que l'état courant : les tests d'à côté allument le journal, et
+    // l'état à l'exécution ne dit donc rien de la valeur par défaut.
+    assert.match(src, /let personaDragDebug = false;/,
+      'le journal de diagnostic doit être éteint tant qu\'on ne le demande pas');
   });
 
   test('le journal ne retient rien quand le diagnostic est coupé', () => {
