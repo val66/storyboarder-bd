@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.1.2**
+**Version 1.1.3**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -25,8 +25,7 @@
 - Integrated top-down view for element placement
 
 ### Available elements
-- 👤 **Characters** with poses, emotions, orientation and joint articulation
-- 🎭 **Character editor** in full screen, opened from a character or standalone (left menu): pose library shared across projects (save, rename, delete — built-in poses included, restorable from Settings), clickable joint points that can also be dragged to pose them (selecting one hides the others and tints the area that stays clickable; an orange guide shows the expected gesture; wheel to switch between a joint’s fields), one slider per joint, right-drag to orbit around the figure, wheel zoom, pose reset
+- 👤 **Characters** with poses, emotions, orientation and joint articulation (see **Character editor** below)
 - 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)
@@ -35,6 +34,22 @@
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
 - ↩️ **Cancelling** the dialog of a just-added Element removes it — nothing is committed until you save
+
+### Character editor
+
+A full-screen workspace for posing a character, opened from the pencil button on a character's 3D
+preview — or standalone from the left menu, to build a pose with no target in mind.
+
+- **Pose by dragging**: hold the left button on a joint point and drag it. The other points hide so
+  you cannot grab a neighbour mid-gesture, the grabbable area is tinted, and an orange guide shows
+  the expected gesture — an arrow to drag along, a ring to turn around the point
+- **One field at a time**, the one highlighted in the right-hand panel; the wheel switches between a
+  joint's fields (a shoulder has several). A slider per field remains available for exact values
+- **Right-drag to orbit** around the figure, wheel to zoom. The character is always shown facing
+  front, whatever its orientation in the scene
+- **Pose library shared across every project**: apply a pose as a starting point, save the current
+  one under a name, rename or delete any of them — built-in poses included, restorable from Settings
+- **Nothing is committed** until you apply the pose and save the character's dialog
 
 ### Project & saving
 - **JSON** project format — human-readable and versionable

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.1.2**
+**Version 1.1.3**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -25,8 +25,7 @@
 - Vue de dessus intégrée pour le placement des éléments
 
 ### Éléments disponibles
-- 👤 **Personnages** avec poses, émotions, orientation et articulations
-- 🎭 **Éditeur de Personnage** plein écran, ouvrable depuis un Personnage ou seul (menu de gauche) : bibliothèque de poses partagée entre Projets (enregistrer, renommer, supprimer — poses de base comprises, restaurables depuis Configuration), points d'articulation cliquables et glissables pour poser la figure (en sélectionner un masque les autres et teinte la zone qui reste cliquable ; un repère orange indique le geste attendu ; molette pour passer d'un champ à l'autre), un curseur par articulation, clic droit pour orbiter autour de la figure, zoom à la molette, réinitialisation de la pose
+- 👤 **Personnages** avec poses, émotions, orientation et articulations (voir **Éditeur de Personnage** plus bas)
 - 🐾 **Animaux** articulés (chien, chat, cheval, lézard…)
 - 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
 - 🚗 **Véhicules** (voitures, motos, camions…)
@@ -35,6 +34,26 @@
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
 - ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime — rien n'est conservé tant que vous n'enregistrez pas
+
+### Éditeur de Personnage
+
+Un espace plein écran pour poser un Personnage, ouvert par le bouton crayon de son aperçu 3D — ou
+seul depuis le menu de gauche, pour composer une pose sans cible.
+
+- **Poser au glisser** : maintenez le clic gauche sur un point d'articulation et déplacez-le. Les
+  autres points s'effacent pour éviter d'attraper le voisin en plein geste, la zone de prise se
+  teinte, et un repère orange indique le geste attendu — une flèche à suivre, ou un anneau pour
+  tourner autour du point
+- **Un seul champ à la fois**, celui que surligne le panneau de droite ; la molette passe d'un champ
+  à l'autre (une épaule en a plusieurs). Un curseur par champ reste disponible pour les valeurs
+  exactes
+- **Clic droit pour orbiter** autour de la figure, molette pour zoomer. Le Personnage est toujours
+  présenté de face, quelle que soit son orientation dans la Scène
+- **Bibliothèque de poses partagée par tous vos Projets** : appliquer une pose comme point de
+  départ, enregistrer la pose en cours sous un nom, renommer ou supprimer n'importe laquelle —
+  poses de base comprises, restaurables depuis Configuration
+- **Rien n'est écrit** tant que vous n'avez pas appliqué la pose puis enregistré la modale du
+  Personnage
 
 ### Projet & sauvegarde
 - Format de projet **JSON** — lisible et versionnable
