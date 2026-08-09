@@ -170,6 +170,7 @@ import {
   drawStickFigureEpeeLevee, drawStickFigureVaincu, drawStickFigureMeditation,
   drawStickFigureRecul, drawSelection,
   wrapText, wrapTextLines, drawCanvasOnly, drawCurrentPage, renderAll,
+  scheduleDrawCurrentPage, flushDrawCurrentPage,
   buildSinglePageImagePdf, downloadCanvasAsPdf, exportPage, exportVolume,
 } from './draw.js';
 import {
@@ -3561,7 +3562,7 @@ canvasWrap.addEventListener('wheel', (e) => {
   if (S.traceTool && (S.traceTool.type === 'route' || S.traceTool.type === 'chemin')) {
     const step = e.deltaY < 0 ? 1 : -1;
     S.traceTool.width = clamp((S.traceTool.width || 8) + step, 2, 60);
-    drawCurrentPage();
+    scheduleDrawCurrentPage();
     return;
   }
   const page = currentPage();
@@ -3686,7 +3687,7 @@ canvasWrap.addEventListener('wheel', (e) => {
         if (sel.type === 'perso') { updatePersonaSizeDisplay(sel); if (personaDepthInput) personaDepthInput.value = Math.round(sel.z * 100) / 100; }
         else { updateObjectSizeDisplay(sel); if (objectDepthInput) objectDepthInput.value = Math.round(sel.z * 100) / 100; }
       }
-      drawCurrentPage();
+      scheduleDrawCurrentPage();
       return;
     }
 
@@ -3707,7 +3708,7 @@ canvasWrap.addEventListener('wheel', (e) => {
       if (sel.type === 'perso') { updatePersonaSizeDisplay(sel); if (personaDepthInput) personaDepthInput.value = Math.round(sel.z * 100) / 100; }
       else { updateObjectSizeDisplay(sel); if (objectDepthInput) objectDepthInput.value = Math.round(sel.z * 100) / 100; }
     }
-    drawCurrentPage();
+    scheduleDrawCurrentPage();
     return;
   }
   if (sel && sel.type === 'bulle') {
@@ -3719,7 +3720,7 @@ canvasWrap.addEventListener('wheel', (e) => {
     sel.w = newW; sel.h = newH;
     sel.x = cx - newW / 2;
     sel.y = cy - newH / 2;
-    drawCurrentPage();
+    scheduleDrawCurrentPage();
     return;
   }
   if (sel && sel.type === 'objet3d' && selWallMagnet) {
@@ -5168,7 +5169,7 @@ window.addEventListener('mousemove', (e) => {
       _pObj9.camWxTarget = _pObj9.camWx;
       _pObj9.camWyTarget = _pObj9.camWy;
       _pObj9.camWzTarget = _pObj9.camWz;
-      drawCurrentPage();
+      scheduleDrawCurrentPage();
     }
   } else if (S.dragMode === 'moveRoom') {
     // Moving an entire Room (walls + slabs) via ground-plane raycasting.
@@ -5232,7 +5233,7 @@ window.addEventListener('mousemove', (e) => {
       }
     }
   }
-  drawCurrentPage();
+  scheduleDrawCurrentPage();
 });
 
 window.addEventListener('mouseup', () => {
@@ -5266,7 +5267,11 @@ window.addEventListener('mouseup', () => {
     if (_prPanel) panelSceneCache3D.delete(_prPanel.id);
   }
   S.dragMode = null; S.tempBox = null; S.snapGuide = null;
-  drawCurrentPage();
+  // Fin du geste. Un dessin peut être encore PRÉVU par la coalescence du mousemove : le vider le
+  // fait exécuter tout de suite et annule le passage programmé, qui ferait double emploi. Sans
+  // ça, on dessinerait deux fois — et surtout, la suite du code lirait un canevas en retard d'une
+  // image. `vider` renvoie false s'il n'y avait rien en attente : on dessine alors normalement.
+  if (!flushDrawCurrentPage()) drawCurrentPage();
 });
 
 // ↳ src/constants.js
@@ -5279,7 +5284,7 @@ canvas.addEventListener('mousemove', (e) => {
     if (panel) {
       const worldPt = panelPixelToGroundXZ3D(x, y, panel, page);
       S.measureTool.live = { x: worldPt.x, z: worldPt.z };
-      drawCurrentPage();
+      scheduleDrawCurrentPage();
     }
     return;
   }
@@ -5287,10 +5292,10 @@ canvas.addEventListener('mousemove', (e) => {
   if (S.traceTool) {
     const { x, y } = getCoords(e);
     if (S.traceTool.type === 'terrain') {
-      if (S.traceTool.drawing) { S.traceTool.endX = x; S.traceTool.endY = y; drawCurrentPage(); }
+      if (S.traceTool.drawing) { S.traceTool.endX = x; S.traceTool.endY = y; scheduleDrawCurrentPage(); }
     } else {
       S.traceTool.preview = { x, y };
-      drawCurrentPage();
+      scheduleDrawCurrentPage();
     }
     return;
   }
@@ -5335,7 +5340,7 @@ canvas.addEventListener('mousemove', (e) => {
           S.buildTool.snapped = false;
           S.buildTool.activeGuideX = []; S.buildTool.activeGuideZ = [];
           canvas.style.cursor = foundPos ? 'pointer' : 'crosshair';
-          drawCurrentPage();
+          scheduleDrawCurrentPage();
           return;
         }
 
@@ -5378,7 +5383,7 @@ canvas.addEventListener('mousemove', (e) => {
           }
           S.buildTool.snapped = closing;
         }
-        drawCurrentPage();
+        scheduleDrawCurrentPage();
       }
     }
     return;
@@ -5479,7 +5484,7 @@ document.getElementById('helpBtn').onclick = (e) => {
     S.selectedId = null;
     S.helpPanelDismissed = false;
   }
-  drawCurrentPage();
+  scheduleDrawCurrentPage();
 };
 
 canvas.addEventListener('contextmenu', (e) => {

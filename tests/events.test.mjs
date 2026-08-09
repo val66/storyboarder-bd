@@ -2146,3 +2146,76 @@ describe('éditeur de Personnage — rayon de saisie (Fix 87/88)', () => {
   });
 
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coalescence du redessin — le câblage, pas la mécanique.
+//
+// La mécanique de makeFrameScheduler est vérifiée dans tests/utils.test.mjs avec une fausse
+// horloge. Ce qu'on garde ICI, c'est que les chemins RÉPÉTITIFS s'en servent : un `mousemove` qui
+// redessine directement annule tout le bénéfice, et rien ne le signalerait — l'application
+// resterait correcte, juste plus lente. C'est la définition d'une régression invisible.
+//
+// Mesuré au moment de la bascule : 8 appels sous `mousemove`, 4 sous `wheel`.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Redessin coalescé — les chemins répétitifs passent par l\'ordonnanceur', () => {
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const lignes = src.split('\n');
+
+  // Chaque appel est rattaché à l'écouteur ouvert le plus proche au-dessus de lui — la même
+  // attribution que celle qui a servi à mesurer, pour que le test parle de la même chose.
+  function appelsParEvenement() {
+    const ecouteurs = [];
+    lignes.forEach((l, i) => {
+      const m = /addEventListener\('(\w+)'/.exec(l);
+      if (m) ecouteurs.push({ i, kind: m[1] });
+    });
+    const par = {};
+    lignes.forEach((l, i) => {
+      const direct = l.includes('drawCurrentPage()') && !l.includes('scheduleDrawCurrentPage()')
+        && !l.includes('flushDrawCurrentPage()');
+      const coalesce = l.includes('scheduleDrawCurrentPage()');
+      if (!direct && !coalesce) return;
+      const ouverts = ecouteurs.filter(e => e.i < i);
+      const kind = ouverts.length ? ouverts[ouverts.length - 1].kind : '(hors écouteur)';
+      par[kind] = par[kind] || { direct: [], coalesce: [] };
+      par[kind][direct ? 'direct' : 'coalesce'].push(i + 1);
+    });
+    return par;
+  }
+
+  test('RÉGRESSION : aucun redessin DIRECT sous mousemove ou wheel', () => {
+    // Le test qui empêche le retour en arrière. Un seul appel direct rétabli et la souris rapide
+    // redessine à nouveau une quinzaine de fois par image.
+    const par = appelsParEvenement();
+    ['mousemove', 'wheel'].forEach(kind => {
+      const d = (par[kind] || {}).direct || [];
+      assert.deepEqual(d, [], `${kind} : redessin direct aux lignes ${d.join(', ')}`);
+    });
+  });
+
+  test('les chemins chauds appellent bien la version coalescée', () => {
+    // Le pendant du test précédent : sans lui, supprimer purement les appels le satisferait aussi.
+    const par = appelsParEvenement();
+    assert.ok(((par.mousemove || {}).coalesce || []).length >= 8, 'mousemove');
+    assert.ok(((par.wheel || {}).coalesce || []).length >= 4, 'wheel');
+  });
+
+  test('RÉGRESSION : la fin de geste vide la file au lieu de dessiner en double', () => {
+    // Au relâchement, un passage peut être encore programmé. Le vider l'exécute tout de suite ET
+    // annule le passage prévu ; dessiner sans vider ferait deux rendus, et surtout laisserait le
+    // code qui suit lire un canevas en retard d'une image.
+    assert.match(src, /if \(!flushDrawCurrentPage\(\)\) drawCurrentPage\(\);/);
+  });
+
+  test('les autres appelants restent SYNCHRONES', () => {
+    // Choix assumé : basculer les 110 sites demanderait de vérifier un par un que rien ne lit le
+    // canevas juste après. Seuls les chemins répétitifs sont concernés — ce test constate que la
+    // portée est restée limitée, au lieu de s'étendre par imitation.
+    const par = appelsParEvenement();
+    Object.entries(par).forEach(([kind, v]) => {
+      if (kind === 'mousemove' || kind === 'wheel') return;
+      assert.deepEqual(v.coalesce, [],
+        `${kind} : coalescé alors qu'il n'est pas un chemin répétitif (lignes ${v.coalesce.join(', ')})`);
+    });
+  });
+});

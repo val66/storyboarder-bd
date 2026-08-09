@@ -885,3 +885,30 @@ export function repairElementBase3D(o){
   }
   return false;
 }
+
+// ---------- Coalescence d'une action répétée sur une image d'affichage ----------
+//
+// Un `mousemove` peut arriver bien plus souvent que l'écran ne se rafraîchit : une souris à
+// 1000 Hz en émet une quinzaine entre deux images de 60 Hz. Redessiner à chaque événement fait
+// donc quatorze quinzièmes de travail dont personne ne verra jamais le résultat.
+//
+// L'ordonnanceur ne retient QUE la demande : l'action lit l'état au moment où elle s'exécute, donc
+// elle voit toujours la position la plus récente. Il n'y a rien à mémoriser, et donc rien qui
+// puisse devenir périmé — c'est ce qui rend cette coalescence sûre alors qu'une file d'attente ne
+// le serait pas.
+//
+// `planifier` et `annuler` sont des PARAMÈTRES : requestAnimationFrame n'existe pas sous Node, et
+// surtout, un ordonnanceur qu'on ne peut pas piloter à la main est un ordonnanceur qu'on ne peut
+// pas tester. Les tests lui donnent une fausse horloge et vérifient le comptage exact.
+export function makeFrameScheduler(planifier, annuler, action){
+  let id = null;
+  const executer = () => { id = null; action(); };
+  return {
+    // Demande un passage. Les demandes surnuméraires d'une même image sont absorbées.
+    demander(){ if (id === null) id = planifier(executer); },
+    // Force l'exécution immédiate et annule le passage prévu. À utiliser quand la suite du code
+    // doit lire un état à jour tout de suite — un relâchement de souris, par exemple.
+    vider(){ if (id === null) return false; annuler(id); id = null; action(); return true; },
+    enAttente(){ return id !== null; },
+  };
+}

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  makeFrameScheduler,
   wrapAngle, clamp, clampAngle, getBBox,
   pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
@@ -1743,5 +1744,102 @@ describe('posePickRadii3D — une seule source pour le clic ET pour le dessin', 
     // d'articulation depuis le canevas.
     const solo = posePickRadii3D(true);
     assert.ok(solo.handle < 200 && solo.limb < 200, 'une zone qui couvrirait tout le canevas');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// makeFrameScheduler — coalescence d'un redessin sur une image d'affichage.
+//
+// Mesure qui a motivé son écriture : drawCurrentPage est appelé depuis 110 endroits, dont 8 dans
+// des `mousemove` et 4 dans des `wheel`. Une souris à 1000 Hz émet une quinzaine d'événements
+// entre deux images de 60 Hz — autant de redessins dont personne ne voit jamais le résultat.
+//
+// L'ordonnanceur reçoit son horloge en paramètre. Ce n'est pas une commodité de test : c'est ce
+// qui rend le comptage OBSERVABLE. Un `requestAnimationFrame` écrit en dur aurait donné une
+// fonction dont on ne peut affirmer que « ça a l'air plus fluide ».
+// ─────────────────────────────────────────────────────────────────────────────
+describe('makeFrameScheduler — au plus une exécution par image', () => {
+  // Fausse horloge : `passerUneImage` joue les rappels en attente, comme le ferait l'écran.
+  function horloge() {
+    let suivant = 1;
+    const prevus = new Map();
+    return {
+      planifier: (cb) => { prevus.set(suivant, cb); return suivant++; },
+      annuler: (id) => prevus.delete(id),
+      passerUneImage() {
+        const aJouer = [...prevus.entries()];
+        prevus.clear();
+        aJouer.forEach(([, cb]) => cb());
+      },
+      enAttente: () => prevus.size,
+    };
+  }
+
+  test('RÉGRESSION : quinze demandes dans la même image ne font qu\'UN passage', () => {
+    // Le cœur du sujet. Sans la garde, on obtiendrait quinze exécutions.
+    const h = horloge();
+    let appels = 0;
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => appels++);
+    for (let i = 0; i < 15; i++) o.demander();
+    assert.equal(appels, 0, 'rien ne doit s\'exécuter avant l\'image');
+    assert.equal(h.enAttente(), 1, 'une seule image réservée pour quinze demandes');
+    h.passerUneImage();
+    assert.equal(appels, 1);
+  });
+
+  test('l\'action voit l\'état LE PLUS RÉCENT, pas celui de la première demande', () => {
+    // C'est ce qui rend la coalescence sûre : rien n'est mémorisé, l'action relit l'état au
+    // moment où elle s'exécute. Une file d'attente d'événements, elle, rejouerait le passé.
+    const h = horloge();
+    let position = 0, vu = null;
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => { vu = position; });
+    position = 10; o.demander();
+    position = 42; o.demander();
+    h.passerUneImage();
+    assert.equal(vu, 42);
+  });
+
+  test('une nouvelle demande après l\'image reprogramme bien un passage', () => {
+    // Vérifie que l'identifiant est remis à null : sans ça, le premier redessin serait aussi le
+    // dernier, et l'affichage se figerait après une image.
+    const h = horloge();
+    let appels = 0;
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => appels++);
+    o.demander(); h.passerUneImage();
+    o.demander(); h.passerUneImage();
+    assert.equal(appels, 2);
+  });
+
+  test('vider() exécute tout de suite et annule le passage prévu', () => {
+    // Le cas du relâchement de souris : la suite du code doit lire un canevas à jour, et le
+    // passage encore programmé ferait double emploi.
+    const h = horloge();
+    let appels = 0;
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => appels++);
+    o.demander();
+    assert.equal(o.vider(), true, 'signale qu\'il y avait quelque chose en attente');
+    assert.equal(appels, 1, 'exécuté immédiatement');
+    assert.equal(h.enAttente(), 0, 'le passage prévu est annulé');
+    h.passerUneImage();
+    assert.equal(appels, 1, 'et ne se rejoue pas');
+  });
+
+  test('vider() sans rien en attente ne fait rien et le dit', () => {
+    // L'appelant s'en sert pour décider s'il doit dessiner lui-même.
+    const h = horloge();
+    let appels = 0;
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => appels++);
+    assert.equal(o.vider(), false);
+    assert.equal(appels, 0);
+  });
+
+  test('enAttente() reflète l\'état, avant comme après l\'image', () => {
+    const h = horloge();
+    const o = makeFrameScheduler(h.planifier, h.annuler, () => {});
+    assert.equal(o.enAttente(), false);
+    o.demander();
+    assert.equal(o.enAttente(), true);
+    h.passerUneImage();
+    assert.equal(o.enAttente(), false);
   });
 });

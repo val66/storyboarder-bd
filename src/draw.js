@@ -29,7 +29,7 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
-import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D,
+import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS } from './utils.js';
 import {
   findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
@@ -2419,6 +2419,35 @@ export function drawCurrentPage(){
 }
 
 
+
+// Dessin COALESCÉ : au plus un par image d'affichage.
+//
+// Mesuré avant d'agir : `drawCurrentPage()` est appelé depuis 110 endroits, dont 8 dans des
+// gestionnaires `mousemove` et 4 dans des `wheel` — c'est-à-dire des événements qui arrivent plus
+// vite que l'écran ne se rafraîchit. Aucun `throttle` n'existait dans le dépôt.
+//
+// Ce que la coalescence évite RÉELLEMENT, cache 3D déduit : le rendu WebGL, lui, est déjà protégé
+// par la signature de panelSceneCache3D. Restent, à chaque appel, le calcul de cette signature
+// (un JSON.stringify de tous les Éléments de toutes les Cases), la réallocation du canevas
+// (`_canvas.width = …`, qui l'efface et le réalloue), le redessin 2D complet, et la reconstruction
+// du panneau latéral. Quatre coûts qui s'exécutaient une quinzaine de fois par image sur une
+// souris rapide.
+//
+// `drawCurrentPage` reste SYNCHRONE et inchangée pour tous les autres appelants : basculer les
+// 110 sites d'un coup demanderait de vérifier, pour chacun, que rien ne lit le canevas juste
+// après. Seuls les chemins répétitifs passent par ici.
+const _planificateurDessin = makeFrameScheduler(
+  (cb) => globalThis.requestAnimationFrame(cb),
+  (id) => globalThis.cancelAnimationFrame(id),
+  () => drawCurrentPage());
+
+export function scheduleDrawCurrentPage(){ _planificateurDessin.demander(); }
+
+// À appeler quand la suite du code doit voir un canevas à jour immédiatement — typiquement au
+// relâchement de la souris, qui clôt un geste et enchaîne souvent sur une lecture d'état.
+export function flushDrawCurrentPage(){ return _planificateurDessin.vider(); }
+
+export function drawPending(){ return _planificateurDessin.enAttente(); }
 
 // ════════════════════════════════════════════════════════════
 // CANVAS RENDER PIPELINE
