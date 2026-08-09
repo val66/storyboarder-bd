@@ -721,26 +721,6 @@ canvas{
 /* Le canevas occupe tout l'espace restant ; sa résolution de rendu est calculée à part
    (cf. drawPersonaEditor) et plafonnée, elle ne suit pas aveuglément la taille CSS. */
 .persona-editor-stage { flex: 1; min-width: 0; min-height: 0; display: flex; position: relative; }
-/* Fix 82 (DIAGNOSTIC, TEMPORAIRE) — barre de jugement, posée AU-DESSUS du canevas plutôt qu'à côté :
-   elle doit être sous les yeux au moment où le geste vient d'être fait, pas dans un panneau qu'il
-   faudrait aller chercher. `pointer-events` reste actif seulement sur la barre, pour ne pas voler
-   au canevas la surface où l'on glisse. À retirer avec l'essai du glisser. */
-.persona-drag-verdict {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px; z-index: 5;
-  padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--paper-dark); color: var(--ink); font-size: 12.5px;
-  box-shadow: 0 4px 14px rgba(0,0,0,.35);
-}
-.persona-drag-verdict.hidden { display: none; }
-.persona-drag-verdict button {
-  font-size: 12px; padding: 5px 10px; cursor: pointer; margin: 0;
-  border: 1px solid var(--line); border-radius: 6px;
-  background: var(--white); color: var(--ink);
-}
-.persona-drag-verdict button:hover { border-color: var(--accent); color: var(--accent); }
-.persona-drag-verdict-copy { opacity: .8; }
-.persona-drag-verdict-count { color: var(--ink-soft); font-size: 11.5px; }
 .persona-editor-stage canvas { flex: 1; min-width: 0; min-height: 0; display: block;
                                cursor: grab; }
 .persona-editor-stage canvas:active { cursor: grabbing; }

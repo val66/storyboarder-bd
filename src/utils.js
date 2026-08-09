@@ -420,74 +420,6 @@ export function dragJointStep3D(startDeg, deltaDeg){
   return { deg, startDeg: debordé ? deg - delta : (startDeg || 0) };
 }
 
-// ─── Fix 77 (DIAGNOSTIC) — mesurer l'écart entre le geste et son effet ───────────────────────
-//
-// Ces deux fonctions ne servent qu'à instrumenter le glisser d'articulation. Elles ne participent
-// à aucun calcul de pose : les retirer ne change rien à ce que fait l'éditeur.
-
-// Angle signé entre deux vecteurs écran, en degrés dans ]-180, 180]. null si l'un des deux est trop
-// court pour avoir une direction — sous quelques pixels, l'orientation d'un déplacement de souris
-// n'est que du bruit, et un angle calculé dessus ferait croire à un problème qui n'existe pas.
-export function angleBetweenScreenVectors3D(a, b, minLen = 2){
-  if (!a || !b) return null;
-  const na = Math.hypot(a.x || 0, a.y || 0);
-  const nb = Math.hypot(b.x || 0, b.y || 0);
-  if (na < minLen || nb < minLen) return null;
-  return wrapAngle(Math.atan2(b.y || 0, b.x || 0) - Math.atan2(a.y || 0, a.x || 0)) * 180 / Math.PI;
-}
-
-// Relevé d'UNE image de glisser, sous forme de valeurs comparables. C'est `ecart` qui porte le
-// diagnostic : l'angle entre la direction de la souris et celle dans laquelle la poignée s'est
-// RÉELLEMENT déplacée à l'écran. Proche de 0°, le geste et son effet vont dans le même sens ;
-// proche de ±90°, on pousse perpendiculairement à ce qui bouge ; proche de 180°, c'est inversé.
-export function describePoseDragStep3D(entree){
-  const e = entree || {};
-  const souris = { x: e.dx || 0, y: e.dy || 0 };
-  const poignee = { x: e.handleDx || 0, y: e.handleDy || 0 };
-  const axe = e.axisScreen || { x: 0, y: 0 };
-  const rad2deg = (r) => Math.round(((r || 0) * 180 / Math.PI) * 10) / 10;
-  return {
-    champ: e.specKey || '?',
-    axe: e.axis || '?',
-    mode: e.droit ? 'droit' : 'circulaire',
-    orbiteY: rad2deg(e.rotY),
-    orbiteX: rad2deg(e.rotX),
-    axeEcranX: Math.round((axe.x || 0) * 100) / 100,
-    axeEcranY: Math.round((axe.y || 0) * 100) / 100,
-    axeVisible: Math.round(Math.hypot(axe.x || 0, axe.y || 0) * 100) / 100,
-    sourisDx: Math.round(souris.x),
-    sourisDy: Math.round(souris.y),
-    poigneeDx: Math.round(poignee.x * 10) / 10,
-    poigneeDy: Math.round(poignee.y * 10) / 10,
-    angleDeg: Math.round((e.deg || 0) * 10) / 10,
-    ecart: (() => {
-      const a = angleBetweenScreenVectors3D(souris, poignee);
-      return a === null ? null : Math.round(a);
-    })(),
-  };
-}
-
-// Fix 83 (DIAGNOSTIC) — dossier de l'application, déduit de l'URL de la page.
-//
-// L'application est chargée en `file://` (cf. preload.js), donc l'adresse de index.html donne le
-// dossier où elle vit — le dépôt lui-même en développement. C'est le seul endroit dont le renderer
-// puisse connaître le chemin sans nouveau pont vers le process principal, que je m'interdis
-// d'ouvrir pour un outil temporaire.
-//
-// Sépare le dossier du fichier, décode les échappements de l'URL, et retire le « / » initial d'un
-// chemin Windows (« /C:/... » n'est pas un chemin valide pour fs).
-export function appDirFromHref3D(href){
-  if (!href || typeof href !== 'string') return null;
-  const sansAncre = href.split('#')[0].split('?')[0];
-  const i = sansAncre.lastIndexOf('/');
-  if (i < 0) return null;
-  let dossier = sansAncre.slice(0, i);
-  dossier = dossier.replace(/^file:\/\//, '');
-  try { dossier = decodeURIComponent(dossier); } catch { /* on garde tel quel */ }
-  if (/^\/[A-Za-z]:/.test(dossier)) dossier = dossier.slice(1);
-  return dossier || null;
-}
-
 // ─── Fix 85 — géométrie du repère de glisser affiché sur la poignée ─────────────────────────
 //
 // Diagnostic d'une seconde campagne : le rendement du geste s'effondre exactement quand la souris
@@ -512,42 +444,6 @@ export function poseDragHintSegment3D(pos, dir, longueur = POSE_DRAG_HINT_LEN){
   return {
     x1: (pos.x || 0) - ux * longueur, y1: (pos.y || 0) - uy * longueur,
     x2: (pos.x || 0) + ux * longueur, y2: (pos.y || 0) + uy * longueur,
-  };
-}
-
-// Fix 82 (DIAGNOSTIC) — fiche d'un geste complet, à faire juger par l'utilisateur.
-//
-// Une ligne par glisser, avec TOUT ce qui détermine le sens appliqué : l'axe, le mode, l'orbite, la
-// projection de l'axe et sa profondeur, le signe retenu. L'utilisateur n'ajoute qu'une chose — bon
-// sens ou inversé — et c'est le croisement des deux qui permet de déduire la règle manquante.
-// Décrire un sens de rotation à l'écrit est ambigu ; le faire juger sur pièce ne l'est pas.
-export function summarizeDragCase3D(entree){
-  const e = entree || {};
-  const axisScreen = e.axisScreen || { x: 0, y: 0 };
-  const arrondi = (v, n = 2) => Math.round((v || 0) * Math.pow(10, n)) / Math.pow(10, n);
-  const rad2deg = (r) => Math.round((r || 0) * 180 / Math.PI);
-  return {
-    champ: e.specKey || '?',
-    axe: e.axis || '?',
-    mode: e.droit ? 'droit' : 'circulaire',
-    orbiteY: rad2deg(e.rotY),
-    orbiteX: rad2deg(e.rotX),
-    projection: arrondi(Math.hypot(axisScreen.x, axisScreen.y)),
-    projX: arrondi(axisScreen.x),
-    projY: arrondi(axisScreen.y),
-    versLoeil: arrondi(e.versLoeil),
-    signe: e.signe === undefined ? null : e.signe,
-    // Fix 84 — quel modèle a donné la direction, et à quel point sa tangente était visible. Sans
-    // ces deux colonnes, une campagne suivante dirait qu'un geste est faux sans dire lequel des
-    // deux modèles l'a produit — c'est-à-dire sans rien apprendre.
-    source: e.source || null,
-    tangente: arrondi(e.tangente),
-    sourisDx: Math.round(e.dx || 0),
-    sourisDy: Math.round(e.dy || 0),
-    poigneeDx: arrondi(e.handleDx, 1),
-    poigneeDy: arrondi(e.handleDy, 1),
-    angleDelta: arrondi(e.angleDelta, 1),
-    verdict: null,
   };
 }
 

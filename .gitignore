@@ -25,8 +25,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
-# Fix 83 (TEMPORAIRE) — journal de diagnostic du glisser d'articulation, écrit par l'application à
-# côté de index.html. Données de session, pas de source : elles n'ont pas à entrer dans l'historique.
-# Cette ligne part avec l'essai du glisser.
-diagnostic-glisser-articulations.json

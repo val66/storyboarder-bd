@@ -39,10 +39,8 @@ import {
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,
-  posePickRadii3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
-  pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
-  modelAxisTowardViewer3D, summarizeDragCase3D, appDirFromHref3D,
-  straightDragDirection3D, poseTangentToScreen3D,
+  posePickRadii3D,   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
+  modelAxisTowardViewer3D, straightDragDirection3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -152,7 +150,6 @@ import {
   openQuitConfirmModal, closeQuitConfirmModal,
   setPoseLibrary, loadPoseLibrary, setDismissedPoses, loadDismissedPoses,
   restoreBuiltinPoses, missingBuiltinPoseCount,
-  writeDragDiagnosticFile,
 } from './io.js';
 import {
   setDrawCallbacks,
@@ -764,156 +761,6 @@ export function personaEditorDragHint(){
   return dir ? { mode: 'droit', x: dir.x, y: dir.y } : null;
 }
 
-// ─── Fix 77 (DIAGNOSTIC) — journal du glisser d'articulation ─────────────────────────────────
-//
-// TEMPORAIRE, le temps de comprendre pourquoi le geste reste difficile à manier. N'influence aucun
-// calcul : il ne fait que RELIRE des valeurs déjà décidées ailleurs. À retirer avec l'essai.
-//
-// Fix 82 — RALLUMÉ, le temps de faire juger les sens de rotation. Le journal alimente maintenant un
-// recueil de CAS : un geste, toutes les grandeurs qui ont décidé de son sens, et le verdict de
-// l'utilisateur (bon sens / inversé) donné en deux clics dans l'éditeur.
-//
-// C'est le seul moyen honnête de trancher : décrire un sens de rotation à l'écrit est ambigu, et
-// j'ai déjà corrigé trois fois un signe sur la foi d'une description. Croiser une dizaine de cas
-// jugés donnera la règle, au lieu d'une hypothèse de plus.
-let personaDragDebug = true;
-let personaDragJournal = [];
-
-export function setPersonaDragDebug(actif){ personaDragDebug = !!actif; return personaDragDebug; }
-export function personaDragDebugActif(){ return personaDragDebug; }
-export function personaDragJournalEntries(){ return personaDragJournal.slice(); }
-export function resetPersonaDragJournal(){ personaDragJournal = []; }
-
-// ─── Fix 82 — recueil des cas jugés ──────────────────────────────────────────────────────────
-let personaDragCases = [];
-
-export function personaDragCaseList(){ return personaDragCases.slice(); }
-export function resetPersonaDragCases(){ personaDragCases = []; }
-
-// Clôt un geste : range ses grandeurs déterminantes, en attente du verdict de l'utilisateur.
-export function recordPersonaDragCase(session, entries){
-  if (!personaDragDebug || !session) return null;
-  const releves = entries || [];
-  if (!releves.length) return null;
-  const dernier = releves[releves.length - 1];
-  const somme = (champ) => releves.reduce((t, e) => t + (e[champ] || 0), 0);
-  const cas = summarizeDragCase3D({
-    specKey: session.spec && session.spec.key,
-    axis: session.axis,
-    droit: session.droit,
-    rotX: session.orbit && session.orbit.rotX,
-    rotY: session.orbit && session.orbit.rotY,
-    axisScreen: projectModelAxisToScreen3D(session.axis, session.orbit),
-    versLoeil: modelAxisTowardViewer3D(session.axis, session.orbit),
-    signe: session.droit ? null : session.sweepSign,
-    source: session.droit
-      ? (straightDragDirection3D(session.axis, session.orbit) || {}).source
-      : 'balayage',
-    tangente: (() => {
-      const t = poseTangentToScreen3D(session.axis, session.orbit);
-      return Math.hypot(t.x, t.y);
-    })(),
-    dx: dernier.sourisDx,
-    dy: dernier.sourisDy,
-    // Déplacement CUMULÉ de la poignée : image par image, il dit où le membre est réellement parti.
-    handleDx: somme('poigneeDx'),
-    handleDy: somme('poigneeDy'),
-    angleDelta: (dernier.angleDeg || 0) - (session.degInitial || 0),
-  });
-  personaDragCases.push(cas);
-  return cas;
-}
-
-// Fix 83 — dépose le recueil sur disque, à côté de l'application, pour que je puisse le lire sans
-// copier-coller. Écrit à CHAQUE verdict et pas seulement à la demande : une campagne de mesures qui
-// se perd parce qu'on a fermé la fenêtre avant d'exporter, c'est la campagne à refaire.
-export function personaDragLogDir(){ return appDirFromHref3D(location && location.href); }
-
-export function savePersonaDragCases(){
-  const dossier = personaDragLogDir();
-  if (!dossier) return Promise.resolve(null);
-  return Promise.resolve(writeDragDiagnosticFile(dossier, {
-    genere: new Date().toISOString(),
-    gestes: personaDragCaseList(),
-  })).catch(() => null);
-}
-
-// Verdict de l'utilisateur sur le DERNIER geste. Ne touche qu'à celui-là : juger après coup un
-// geste qu'on ne se rappelle plus fausserait le recueil plus sûrement qu'il ne l'enrichirait.
-export function labelLastPersonaDragCase(verdict){
-  const dernier = personaDragCases[personaDragCases.length - 1];
-  if (!dernier) return null;
-  dernier.verdict = verdict;
-  return dernier;
-}
-
-// Rapport lisible, à me transmettre tel quel.
-export function personaDragCaseReport(cases){
-  const liste = (cases || personaDragCases).filter(c => c.verdict);
-  if (!liste.length) return 'Aucun geste jugé.';
-  const colonnes = ['axe', 'mode', 'orbiteY', 'orbiteX', 'projection', 'versLoeil', 'signe',
-                    'sourisDx', 'sourisDy', 'poigneeDx', 'poigneeDy', 'angleDelta', 'verdict'];
-  const lignes = liste.map(c => colonnes.map(k => String(c[k])).join('\t'));
-  return [colonnes.join('\t'), ...lignes].join('\n');
-}
-
-// Poignée de console, pour pouvoir couper le journal ou récupérer le dernier relevé sans passer par
-// les outils de développement : `poseDrag.off()`, `poseDrag.copier()`.
-if (typeof window !== 'undefined') {
-  window.poseDrag = {
-    on: () => setPersonaDragDebug(true),
-    off: () => setPersonaDragDebug(false),
-    releves: () => personaDragJournalEntries(),
-    copier: () => {
-      const texte = JSON.stringify(personaDragJournalEntries(), null, 2);
-      if (navigator.clipboard) navigator.clipboard.writeText(texte);
-      return texte;
-    },
-  };
-}
-
-// Enregistre une image. `handleAvant`/`handleApres` sont les positions ÉCRAN de la poignée relevées
-// de part et d'autre du redessin : leur différence est le déplacement RÉEL de l'articulation, la
-// seule mesure qui puisse contredire ce que le calcul croit faire.
-export function logPersonaDragStep(session, dx, dy, deg, handleAvant, handleApres){
-  if (!personaDragDebug || !session) return null;
-  const releve = describePoseDragStep3D({
-    specKey: session.spec && session.spec.key,
-    axis: session.axis,
-    droit: session.droit,
-    rotX: session.orbit && session.orbit.rotX,
-    rotY: session.orbit && session.orbit.rotY,
-    axisScreen: projectModelAxisToScreen3D(session.axis, session.orbit),
-    dx, dy, deg,
-    handleDx: handleApres && handleAvant ? handleApres.x - handleAvant.x : 0,
-    handleDy: handleApres && handleAvant ? handleApres.y - handleAvant.y : 0,
-  });
-  personaDragJournal.push(releve);
-  return releve;
-}
-
-// Résumé d'un geste complet, imprimé au relâchement. L'écart MÉDIAN est la valeur à lire : la
-// moyenne serait tirée par les images où la poignée bouge de deux pixels et où l'angle n'est que
-// du bruit.
-export function summarizePersonaDragJournal(entries){
-  const liste = entries || [];
-  const ecarts = liste.map(e => e.ecart).filter(v => typeof v === 'number').sort((a, b) => a - b);
-  const median = ecarts.length ? ecarts[Math.floor(ecarts.length / 2)] : null;
-  const dernier = liste[liste.length - 1] || {};
-  return {
-    images: liste.length,
-    champ: dernier.champ, axe: dernier.axe, mode: dernier.mode,
-    orbiteY: dernier.orbiteY, orbiteX: dernier.orbiteX,
-    axeVisible: dernier.axeVisible,
-    angleFinal: dernier.angleDeg,
-    ecartMedian: median,
-    verdict: median === null ? 'trop peu de mouvement pour conclure'
-      : Math.abs(median) < 35 ? 'la poignée suit la souris'
-      : Math.abs(median) > 145 ? 'la poignée part À L\'OPPOSÉ de la souris'
-      : 'la poignée part DE TRAVERS par rapport à la souris',
-  };
-}
-
 export function beginPersonaEditorJointDrag(id){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !id) return null;
   const specIndex = S.personaEditorSpecIndex;
@@ -933,9 +780,6 @@ export function beginPersonaEditorJointDrag(id){
     // geste. Une même rotation paraît horaire d'un côté du modèle et antihoraire de l'autre.
     sweepSign: circularSweepSign3D(axis, orbit),
     startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
-    // Angle d'origine CONSERVÉ à part : startDeg est recalé aux bornes (Fix 73), il ne peut donc
-    // plus servir à mesurer ce que le geste a fait au total.
-    degInitial: readPoseSliderDeg3D(S.personaEditorDraft, spec),
     // Fix 79 — état du balayage circulaire. `swept` cumule le tour DÉROULÉ, `sweepAngle` retient
     // l'angle de l'image précédente. null tant qu'on n'a pas eu une position exploitable : le
     // curseur peut très bien démarrer collé au point d'articulation.
@@ -1263,10 +1107,7 @@ function syncPersonaEditorDom(){
   const ov = document.getElementById('personaEditorOverlay');
   if (!ov) return;
   ov.classList.toggle('hidden', !S.personaEditorOpen);
-  // Fix 82 — la barre de jugement ne survit pas à la fermeture : elle porte sur un geste qu'on
-  // n'a plus sous les yeux. Le recueil, lui, est conservé jusqu'à la copie du rapport.
-  const bar = document.getElementById('personaDragVerdictBar');
-  if (bar && !S.personaEditorOpen) bar.classList.add('hidden');
+
   // Fix 60 — « Appliquer » n'apparaît que s'il y a une modale à alimenter. Masqué, pas grisé : les
   // deux modes d'ouverture ont des sémantiques différentes, et un bouton grisé laisserait chercher
   // la condition à remplir pour l'activer.
@@ -1504,10 +1345,6 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       if (jointDrag && S.personaEditorOpen) {
         const dx = e.clientX - jointDrag.x;
         const dy = e.clientY - jointDrag.y;
-        // Fix 77 — position de la poignée AVANT le redessin. Lecture seule, à des fins de journal
-        // uniquement : c'est justement en s'en servant pour PILOTER le geste qu'on avait créé la
-        // boucle de rétroaction du Fix 76. Ne pas rebrancher ceci sur autre chose qu'un log.
-        const avant = personaDragDebugActif() ? pivotFige(jointDrag.id) : null;
         const deg = applyPersonaEditorJointDrag(jointDrag, dx, dy, gesteCirculaire(jointDrag, e));
         if (deg === null) {
           jointDrag = null;
@@ -1516,9 +1353,6 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
         syncPersonaEditorSliders();
         syncPersonaEditorActionButtons();
         drawPersonaEditor();
-        // APRÈS le redessin : la carte des poignées vient d'être réécrite, la différence avec
-        // `avant` est donc le déplacement réel de l'articulation à l'écran pour cette image.
-        if (avant) logPersonaDragStep(jointDrag, dx, dy, deg, avant, pivotFige(jointDrag.id));
         return;
       }
       if (!orbiting || !S.personaEditorOpen) return;
@@ -1530,64 +1364,8 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
                             orbiting.rotY + (e.clientX - orbiting.x) * k);
       drawPersonaEditor();
     });
-    window.addEventListener('mouseup', () => {
-      // Fix 77 — le résumé s'imprime à la FIN du geste, jamais pendant : écrire dans la console à
-      // chaque image ralentirait précisément ce qu'on cherche à mesurer.
-      if (jointDrag && personaDragDebugActif()) {
-        const releves = personaDragJournalEntries();
-        if (releves.length) {
-          const resume = summarizePersonaDragJournal(releves);
-          console.log('[glisser articulation]', resume.verdict, resume);
-          // Fix 82 — le geste rejoint le recueil, et la barre demande son verdict.
-          if (recordPersonaDragCase(jointDrag, releves)) showPersonaDragVerdictBar(true);
-        }
-      }
-      resetPersonaDragJournal();
-      orbiting = null;
-      jointDrag = null;
-    });
+    window.addEventListener('mouseup', () => { orbiting = null; jointDrag = null; });
   }
-  // ─── Fix 82 (DIAGNOSTIC, TEMPORAIRE) — barre de jugement des sens de rotation ───────────────
-  //
-  // Elle ne s'affiche qu'après un glisser, et disparaît dès qu'on a répondu : laissée en
-  // permanence, elle encombrerait la vue sans rien demander la plupart du temps.
-  function showPersonaDragVerdictBar(visible){
-    const bar = document.getElementById('personaDragVerdictBar');
-    if (!bar) return;
-    bar.classList.toggle('hidden', !visible || !personaDragDebugActif());
-    const compte = document.getElementById('personaDragVerdictCount');
-    if (compte) {
-      const juges = personaDragCaseList().filter(c => c.verdict).length;
-      compte.textContent = juges ? `${juges} geste${juges > 1 ? 's' : ''} jugé${juges > 1 ? 's' : ''}` : '';
-    }
-  }
-
-  {
-    const juger = (verdict) => {
-      labelLastPersonaDragCase(verdict);
-      showPersonaDragVerdictBar(false);
-      const compte = personaDragCaseList().filter(c => c.verdict).length;
-      savePersonaDragCases().then(chemin => {
-        console.log(`[glisser articulation] jugé « ${verdict} » — ${compte} au total`,
-          chemin ? `→ ${chemin}` : '(fichier non écrit : pont Electron absent)');
-      });
-    };
-    const ok = document.getElementById('personaDragVerdictOk');
-    if (ok) ok.onclick = () => juger('bon');
-    const ko = document.getElementById('personaDragVerdictKo');
-    if (ko) ko.onclick = () => juger('inversé');
-    const copie = document.getElementById('personaDragVerdictCopy');
-    if (copie) copie.onclick = () => {
-      const rapport = personaDragCaseReport();
-      console.log(rapport);
-      savePersonaDragCases().then(chemin => {
-        const etiquette = document.getElementById('personaDragVerdictLabel');
-        if (etiquette) etiquette.textContent = chemin ? `Enregistré : ${chemin}` : 'Enregistrement impossible';
-        console.log(chemin ? `[diagnostic] journal écrit dans ${chemin}` : '[diagnostic] pont Electron absent');
-      });
-    };
-  }
-
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application.
   //
   // stopImmediatePropagation n'arrête QUE les écouteurs enregistrés APRÈS celui-ci sur window —
