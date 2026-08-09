@@ -48,6 +48,8 @@ import {
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
   setPersonaDragDebug, resetPersonaDragJournal, personaDragJournalEntries,
   logPersonaDragStep, summarizePersonaDragJournal,
+  recordPersonaDragCase, labelLastPersonaDragCase, personaDragCaseList,
+  personaDragCaseReport, resetPersonaDragCases,
   PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
@@ -2118,13 +2120,14 @@ describe('éditeur de Personnage — journal de glisser (Fix 77/78)', () => {
       'la garde doit comparer à null, pas tester la véracité — 0 est une valeur légitime');
   });
 
-  test('RÉGRESSION : le diagnostic est ÉTEINT par défaut', () => {
-    // Fix 78 — il a été allumé d'office le temps de traquer la garde qui fermait la session à 0°.
-    // Le laisser ainsi ferait déverser un tableau dans la console à chaque glisser, pour personne.
-    // Ce test lit la source plutôt que l'état courant : les tests d'à côté allument le journal, et
-    // l'état à l'exécution ne dit donc rien de la valeur par défaut.
-    assert.match(src, /let personaDragDebug = false;/,
-      'le journal de diagnostic doit être éteint tant qu\'on ne le demande pas');
+  test('le diagnostic est RALLUMÉ, et c\'est temporaire', () => {
+    // Fix 82 — rallumé pour faire juger les sens de rotation dans l'éditeur. Ce test ne défend
+    // donc plus « éteint par défaut » (Fix 78) mais le fait que ce soit un choix EXPLICITE et
+    // documenté comme temporaire : si le marqueur disparaît sans que l'état change, c'est qu'on a
+    // oublié de refermer la parenthèse.
+    assert.match(src, /let personaDragDebug = true;/);
+    assert.match(src, /Fix 82 — RALLUMÉ, le temps de faire juger les sens de rotation/,
+      'l\'état allumé doit rester rattaché à la raison qui le justifie');
   });
 
   test('le journal ne retient rien quand le diagnostic est coupé', () => {
@@ -2161,5 +2164,82 @@ describe('éditeur de Personnage — journal de glisser (Fix 77/78)', () => {
     assert.match(summarizePersonaDragJournal([{ ecart: 175 }]).verdict, /OPPOSÉ/);
     assert.match(summarizePersonaDragJournal([{ ecart: 88 }]).verdict, /TRAVERS/);
     assert.match(summarizePersonaDragJournal([]).verdict, /trop peu de mouvement/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 82 (DIAGNOSTIC) — recueil des gestes jugés.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — recueil des sens de rotation (Fix 82)', () => {
+  const specsDe = id => poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === id));
+  beforeEach(() => { closePersonaEditor(); resetPersonaDragCases(); setPersonaDragDebug(true); });
+
+  const gesteEnregistre = () => {
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lKnee');
+    const session = beginPersonaEditorJointDrag('lKnee');
+    applyPersonaEditorJointDrag(session, 0, 40);
+    const releves = [
+      { sourisDx: 0, sourisDy: 40, poigneeDx: 1, poigneeDy: 12, angleDeg: -20 },
+    ];
+    return recordPersonaDragCase(session, releves);
+  };
+
+  test('un geste enregistré porte TOUT ce qui a décidé de son sens', () => {
+    // C'est la raison d'être du recueil : le verdict de l'utilisateur ne vaut que croisé avec les
+    // grandeurs qui ont produit le mouvement. Un champ manquant, et le cas devient inexploitable.
+    const cas = gesteEnregistre();
+    for (const champ of ['axe', 'mode', 'orbiteY', 'orbiteX', 'projection', 'versLoeil',
+                         'sourisDx', 'sourisDy', 'poigneeDx', 'poigneeDy', 'angleDelta']) {
+      assert.notEqual(cas[champ], undefined, `champ manquant : ${champ}`);
+    }
+    assert.equal(cas.verdict, null, 'non jugé tant que l\'utilisateur n\'a pas répondu');
+  });
+
+  test('RÉGRESSION : angleDelta mesure le geste ENTIER, malgré le ré-ancrage', () => {
+    // startDeg est recalé aux bornes (Fix 73) : s'en servir pour mesurer ce que le geste a fait
+    // donnerait un écart faux dès qu'on a touché une butée. D'où degInitial, gardé à part.
+    openPersonaEditor(null);
+    const spec = specsDe('lKnee')[0];
+    setPersonaEditorJointDeg(spec, 42);                    // angle CHOISI, pas relu du brouillon
+    focusPersonaEditorHandle('lKnee');
+    const session = beginPersonaEditorJointDrag('lKnee');
+    // Comparer degInitial à lui-même ne prouverait rien : une première version de ce test faisait
+    // exactement ça, et laissait passer la mutation « degInitial = 0 ».
+    assert.equal(session.degInitial, 42, 'degInitial part de l\'angle réel de l\'articulation');
+    applyPersonaEditorJointDrag(session, 0, 5000);         // on écrase la borne
+    assert.notEqual(session.startDeg, 42, 'l\'origine, elle, a été recalée');
+    assert.equal(session.degInitial, 42, 'degInitial ne bouge pas');
+  });
+
+  test('le verdict ne s\'applique qu\'au DERNIER geste', () => {
+    // Juger après coup un geste qu'on ne se rappelle plus fausserait le recueil plus sûrement
+    // qu'il ne l'enrichirait.
+    gesteEnregistre();
+    gesteEnregistre();
+    labelLastPersonaDragCase('inversé');
+    const cas = personaDragCaseList();
+    assert.equal(cas[0].verdict, null);
+    assert.equal(cas[1].verdict, 'inversé');
+  });
+
+  test('le rapport ne retient que les gestes JUGÉS', () => {
+    gesteEnregistre();
+    labelLastPersonaDragCase('bon');
+    gesteEnregistre();                                     // celui-ci reste sans verdict
+    const rapport = personaDragCaseReport(personaDragCaseList());
+    assert.equal(rapport.split('\n').length, 2, 'un en-tête + une seule ligne');
+    assert.match(rapport, /verdict/, 'en-tête présent');
+    assert.match(rapport, /\bbon\b/);
+  });
+
+  test('rapport vide : un message, pas un tableau creux', () => {
+    assert.match(personaDragCaseReport([]), /Aucun geste jugé/);
+  });
+
+  test('rien n\'est recueilli quand le diagnostic est coupé', () => {
+    setPersonaDragDebug(false);
+    assert.equal(gesteEnregistre(), null);
+    assert.deepEqual(personaDragCaseList(), []);
   });
 });

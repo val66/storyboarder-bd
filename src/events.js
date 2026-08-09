@@ -40,6 +40,7 @@ import {
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
+  modelAxisTowardViewer3D, summarizeDragCase3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -752,21 +753,72 @@ export function setPersonaEditorJointDeg(spec, deg){
 // TEMPORAIRE, le temps de comprendre pourquoi le geste reste difficile à manier. N'influence aucun
 // calcul : il ne fait que RELIRE des valeurs déjà décidées ailleurs. À retirer avec l'essai.
 //
-// Fix 78 — ÉTEINT par défaut depuis que le défaut qu'il servait à traquer est identifié (la garde
-// `if (!apply(...))` qui fermait la session dès qu'un angle valait 0°, cf. Fix 77). Il était allumé
-// d'office le temps de l'observation, ce qui se justifiait alors : un journal qu'il faut penser à
-// activer avant de reproduire un défaut fugace n'est activé qu'après coup. Ce n'est plus le cas, et
-// une console qui déverse un tableau à chaque glisser deviendrait un bruit de fond.
+// Fix 82 — RALLUMÉ, le temps de faire juger les sens de rotation. Le journal alimente maintenant un
+// recueil de CAS : un geste, toutes les grandeurs qui ont décidé de son sens, et le verdict de
+// l'utilisateur (bon sens / inversé) donné en deux clics dans l'éditeur.
 //
-// Le mécanisme reste en place : le glisser est encore un ESSAI, et la prochaine question sur son
-// comportement se réglera par une mesure, pas par une hypothèse. `poseDrag.on()` le rallume.
-let personaDragDebug = false;
+// C'est le seul moyen honnête de trancher : décrire un sens de rotation à l'écrit est ambigu, et
+// j'ai déjà corrigé trois fois un signe sur la foi d'une description. Croiser une dizaine de cas
+// jugés donnera la règle, au lieu d'une hypothèse de plus.
+let personaDragDebug = true;
 let personaDragJournal = [];
 
 export function setPersonaDragDebug(actif){ personaDragDebug = !!actif; return personaDragDebug; }
 export function personaDragDebugActif(){ return personaDragDebug; }
 export function personaDragJournalEntries(){ return personaDragJournal.slice(); }
 export function resetPersonaDragJournal(){ personaDragJournal = []; }
+
+// ─── Fix 82 — recueil des cas jugés ──────────────────────────────────────────────────────────
+let personaDragCases = [];
+
+export function personaDragCaseList(){ return personaDragCases.slice(); }
+export function resetPersonaDragCases(){ personaDragCases = []; }
+
+// Clôt un geste : range ses grandeurs déterminantes, en attente du verdict de l'utilisateur.
+export function recordPersonaDragCase(session, entries){
+  if (!personaDragDebug || !session) return null;
+  const releves = entries || [];
+  if (!releves.length) return null;
+  const dernier = releves[releves.length - 1];
+  const somme = (champ) => releves.reduce((t, e) => t + (e[champ] || 0), 0);
+  const cas = summarizeDragCase3D({
+    specKey: session.spec && session.spec.key,
+    axis: session.axis,
+    droit: session.droit,
+    rotX: session.orbit && session.orbit.rotX,
+    rotY: session.orbit && session.orbit.rotY,
+    axisScreen: projectModelAxisToScreen3D(session.axis, session.orbit),
+    versLoeil: modelAxisTowardViewer3D(session.axis, session.orbit),
+    signe: session.droit ? null : session.sweepSign,
+    dx: dernier.sourisDx,
+    dy: dernier.sourisDy,
+    // Déplacement CUMULÉ de la poignée : image par image, il dit où le membre est réellement parti.
+    handleDx: somme('poigneeDx'),
+    handleDy: somme('poigneeDy'),
+    angleDelta: (dernier.angleDeg || 0) - (session.degInitial || 0),
+  });
+  personaDragCases.push(cas);
+  return cas;
+}
+
+// Verdict de l'utilisateur sur le DERNIER geste. Ne touche qu'à celui-là : juger après coup un
+// geste qu'on ne se rappelle plus fausserait le recueil plus sûrement qu'il ne l'enrichirait.
+export function labelLastPersonaDragCase(verdict){
+  const dernier = personaDragCases[personaDragCases.length - 1];
+  if (!dernier) return null;
+  dernier.verdict = verdict;
+  return dernier;
+}
+
+// Rapport lisible, à me transmettre tel quel.
+export function personaDragCaseReport(cases){
+  const liste = (cases || personaDragCases).filter(c => c.verdict);
+  if (!liste.length) return 'Aucun geste jugé.';
+  const colonnes = ['axe', 'mode', 'orbiteY', 'orbiteX', 'projection', 'versLoeil', 'signe',
+                    'sourisDx', 'sourisDy', 'poigneeDx', 'poigneeDy', 'angleDelta', 'verdict'];
+  const lignes = liste.map(c => colonnes.map(k => String(c[k])).join('\t'));
+  return [colonnes.join('\t'), ...lignes].join('\n');
+}
 
 // Poignée de console, pour pouvoir couper le journal ou récupérer le dernier relevé sans passer par
 // les outils de développement : `poseDrag.off()`, `poseDrag.copier()`.
@@ -844,6 +896,9 @@ export function beginPersonaEditorJointDrag(id){
     // geste. Une même rotation paraît horaire d'un côté du modèle et antihoraire de l'autre.
     sweepSign: circularSweepSign3D(axis, orbit),
     startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
+    // Angle d'origine CONSERVÉ à part : startDeg est recalé aux bornes (Fix 73), il ne peut donc
+    // plus servir à mesurer ce que le geste a fait au total.
+    degInitial: readPoseSliderDeg3D(S.personaEditorDraft, spec),
     // Fix 79 — état du balayage circulaire. `swept` cumule le tour DÉROULÉ, `sweepAngle` retient
     // l'angle de l'image précédente. null tant qu'on n'a pas eu une position exploitable : le
     // curseur peut très bien démarrer collé au point d'articulation.
@@ -1167,6 +1222,10 @@ function syncPersonaEditorDom(){
   const ov = document.getElementById('personaEditorOverlay');
   if (!ov) return;
   ov.classList.toggle('hidden', !S.personaEditorOpen);
+  // Fix 82 — la barre de jugement ne survit pas à la fermeture : elle porte sur un geste qu'on
+  // n'a plus sous les yeux. Le recueil, lui, est conservé jusqu'à la copie du rapport.
+  const bar = document.getElementById('personaDragVerdictBar');
+  if (bar && !S.personaEditorOpen) bar.classList.add('hidden');
   // Fix 60 — « Appliquer » n'apparaît que s'il y a une modale à alimenter. Masqué, pas grisé : les
   // deux modes d'ouverture ont des sémantiques différentes, et un bouton grisé laisserait chercher
   // la condition à remplir pour l'activer.
@@ -1432,7 +1491,8 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
         if (releves.length) {
           const resume = summarizePersonaDragJournal(releves);
           console.log('[glisser articulation]', resume.verdict, resume);
-          if (console.table) console.table(releves);
+          // Fix 82 — le geste rejoint le recueil, et la barre demande son verdict.
+          if (recordPersonaDragCase(jointDrag, releves)) showPersonaDragVerdictBar(true);
         }
       }
       resetPersonaDragJournal();
@@ -1440,6 +1500,40 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       jointDrag = null;
     });
   }
+  // ─── Fix 82 (DIAGNOSTIC, TEMPORAIRE) — barre de jugement des sens de rotation ───────────────
+  //
+  // Elle ne s'affiche qu'après un glisser, et disparaît dès qu'on a répondu : laissée en
+  // permanence, elle encombrerait la vue sans rien demander la plupart du temps.
+  function showPersonaDragVerdictBar(visible){
+    const bar = document.getElementById('personaDragVerdictBar');
+    if (!bar) return;
+    bar.classList.toggle('hidden', !visible || !personaDragDebugActif());
+    const compte = document.getElementById('personaDragVerdictCount');
+    if (compte) {
+      const juges = personaDragCaseList().filter(c => c.verdict).length;
+      compte.textContent = juges ? `${juges} geste${juges > 1 ? 's' : ''} jugé${juges > 1 ? 's' : ''}` : '';
+    }
+  }
+
+  {
+    const juger = (verdict) => {
+      labelLastPersonaDragCase(verdict);
+      showPersonaDragVerdictBar(false);
+      const compte = personaDragCaseList().filter(c => c.verdict).length;
+      console.log(`[glisser articulation] jugé « ${verdict} » — ${compte} au total`);
+    };
+    const ok = document.getElementById('personaDragVerdictOk');
+    if (ok) ok.onclick = () => juger('bon');
+    const ko = document.getElementById('personaDragVerdictKo');
+    if (ko) ko.onclick = () => juger('inversé');
+    const copie = document.getElementById('personaDragVerdictCopy');
+    if (copie) copie.onclick = () => {
+      const rapport = personaDragCaseReport();
+      if (navigator.clipboard) navigator.clipboard.writeText(rapport);
+      console.log(rapport);
+    };
+  }
+
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application.
   //
   // stopImmediatePropagation n'arrête QUE les écouteurs enregistrés APRÈS celui-ci sur window —

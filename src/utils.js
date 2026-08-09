@@ -401,6 +401,37 @@ export function describePoseDragStep3D(entree){
   };
 }
 
+// Fix 82 (DIAGNOSTIC) — fiche d'un geste complet, à faire juger par l'utilisateur.
+//
+// Une ligne par glisser, avec TOUT ce qui détermine le sens appliqué : l'axe, le mode, l'orbite, la
+// projection de l'axe et sa profondeur, le signe retenu. L'utilisateur n'ajoute qu'une chose — bon
+// sens ou inversé — et c'est le croisement des deux qui permet de déduire la règle manquante.
+// Décrire un sens de rotation à l'écrit est ambigu ; le faire juger sur pièce ne l'est pas.
+export function summarizeDragCase3D(entree){
+  const e = entree || {};
+  const axisScreen = e.axisScreen || { x: 0, y: 0 };
+  const arrondi = (v, n = 2) => Math.round((v || 0) * Math.pow(10, n)) / Math.pow(10, n);
+  const rad2deg = (r) => Math.round((r || 0) * 180 / Math.PI);
+  return {
+    champ: e.specKey || '?',
+    axe: e.axis || '?',
+    mode: e.droit ? 'droit' : 'circulaire',
+    orbiteY: rad2deg(e.rotY),
+    orbiteX: rad2deg(e.rotX),
+    projection: arrondi(Math.hypot(axisScreen.x, axisScreen.y)),
+    projX: arrondi(axisScreen.x),
+    projY: arrondi(axisScreen.y),
+    versLoeil: arrondi(e.versLoeil),
+    signe: e.signe === undefined ? null : e.signe,
+    sourisDx: Math.round(e.dx || 0),
+    sourisDy: Math.round(e.dy || 0),
+    poigneeDx: arrondi(e.handleDx, 1),
+    poigneeDy: arrondi(e.handleDy, 1),
+    angleDelta: arrondi(e.angleDelta, 1),
+    verdict: null,
+  };
+}
+
 // Fix 72 — champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.
 //
 // Renvoie toujours un index valide : c'est un index de tableau, et un appelant qui recevrait -1 ou
