@@ -40,7 +40,7 @@ import {
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
-  modelAxisTowardViewer3D, summarizeDragCase3D,
+  modelAxisTowardViewer3D, summarizeDragCase3D, appDirFromHref3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -150,6 +150,7 @@ import {
   openQuitConfirmModal, closeQuitConfirmModal,
   setPoseLibrary, loadPoseLibrary, setDismissedPoses, loadDismissedPoses,
   restoreBuiltinPoses, missingBuiltinPoseCount,
+  writeDragDiagnosticFile,
 } from './io.js';
 import {
   setDrawCallbacks,
@@ -799,6 +800,20 @@ export function recordPersonaDragCase(session, entries){
   });
   personaDragCases.push(cas);
   return cas;
+}
+
+// Fix 83 — dépose le recueil sur disque, à côté de l'application, pour que je puisse le lire sans
+// copier-coller. Écrit à CHAQUE verdict et pas seulement à la demande : une campagne de mesures qui
+// se perd parce qu'on a fermé la fenêtre avant d'exporter, c'est la campagne à refaire.
+export function personaDragLogDir(){ return appDirFromHref3D(location && location.href); }
+
+export function savePersonaDragCases(){
+  const dossier = personaDragLogDir();
+  if (!dossier) return Promise.resolve(null);
+  return Promise.resolve(writeDragDiagnosticFile(dossier, {
+    genere: new Date().toISOString(),
+    gestes: personaDragCaseList(),
+  })).catch(() => null);
 }
 
 // Verdict de l'utilisateur sur le DERNIER geste. Ne touche qu'à celui-là : juger après coup un
@@ -1520,7 +1535,10 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       labelLastPersonaDragCase(verdict);
       showPersonaDragVerdictBar(false);
       const compte = personaDragCaseList().filter(c => c.verdict).length;
-      console.log(`[glisser articulation] jugé « ${verdict} » — ${compte} au total`);
+      savePersonaDragCases().then(chemin => {
+        console.log(`[glisser articulation] jugé « ${verdict} » — ${compte} au total`,
+          chemin ? `→ ${chemin}` : '(fichier non écrit : pont Electron absent)');
+      });
     };
     const ok = document.getElementById('personaDragVerdictOk');
     if (ok) ok.onclick = () => juger('bon');
@@ -1529,8 +1547,12 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     const copie = document.getElementById('personaDragVerdictCopy');
     if (copie) copie.onclick = () => {
       const rapport = personaDragCaseReport();
-      if (navigator.clipboard) navigator.clipboard.writeText(rapport);
       console.log(rapport);
+      savePersonaDragCases().then(chemin => {
+        const etiquette = document.getElementById('personaDragVerdictLabel');
+        if (etiquette) etiquette.textContent = chemin ? `Enregistré : ${chemin}` : 'Enregistrement impossible';
+        console.log(chemin ? `[diagnostic] journal écrit dans ${chemin}` : '[diagnostic] pont Electron absent');
+      });
     };
   }
 

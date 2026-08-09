@@ -17,6 +17,7 @@ import {
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   modelAxisTowardViewer3D, circularSweepSign3D,
+  appDirFromHref3D,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
@@ -1707,5 +1708,36 @@ describe('modelAxisTowardViewer3D / circularSweepSign3D', () => {
 
   test('entrées manquantes : un signe, jamais NaN', () => {
     assert.ok([1, -1].includes(circularSweepSign3D(null, null)));
+  });
+});
+
+describe('appDirFromHref3D — retrouver le dossier de l\'application', () => {
+  test('sépare le dossier du fichier', () => {
+    assert.equal(appDirFromHref3D('file:///home/val/storyboarder/index.html'),
+      '/home/val/storyboarder');
+  });
+
+  test('RÉGRESSION : un chemin Windows perd son « / » initial', () => {
+    // `/C:/WebProjects/...` n'est pas un chemin valide pour fs : le fichier serait écrit ailleurs,
+    // ou pas du tout, et le diagnostic partirait sans qu'on sache où.
+    assert.equal(appDirFromHref3D('file:///C:/WebProjects/Storyboarder/index.html'),
+      'C:/WebProjects/Storyboarder');
+  });
+
+  test('RÉGRESSION : les échappements d\'URL sont décodés', () => {
+    // Un dossier contenant une espace arrive en %20 : écrit tel quel, il créerait un dossier au nom
+    // littéral « Mes%20Projets ».
+    assert.equal(appDirFromHref3D('file:///C:/Mes%20Projets/Storyboarder/index.html'),
+      'C:/Mes Projets/Storyboarder');
+  });
+
+  test('ancre et paramètres sont ignorés', () => {
+    assert.equal(appDirFromHref3D('file:///a/b/index.html#x?y=1'), '/a/b');
+  });
+
+  test('entrées inutilisables : null, jamais un chemin inventé', () => {
+    assert.equal(appDirFromHref3D(null), null);
+    assert.equal(appDirFromHref3D('index.html'), null);
+    assert.equal(appDirFromHref3D(''), null);
   });
 });

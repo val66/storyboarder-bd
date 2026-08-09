@@ -19,6 +19,7 @@ import {
   setPoseLibrary, loadPoseLibrary, POSE_LIBRARY_SETTING_KEY,
   setDismissedPoses, loadDismissedPoses, POSE_DISMISSED_SETTING_KEY,
   restoreBuiltinPoses, missingBuiltinPoseCount,
+  writeDragDiagnosticFile, DRAG_LOG_FILENAME,
 } from '../src/io.js';
 // draw.js complète POSE_3D à l'exécution ('allonge', 'vaincu'). Importé explicitement ici parce que
 // le semis de la bibliothèque en dépend — cf. le test d'ordre d'import plus bas.
@@ -742,5 +743,66 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
     assert.ok(i > 0, 'écouteur clavier de l\'éditeur introuvable');
     assert.ok(!/openProjectModal/.test(ev.slice(i, ev.indexOf('});', i))),
       'l\'éditeur ne doit pas non plus tenter de refermer le menu Projet après coup');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 83 (DIAGNOSTIC) — journal de glisser écrit sur disque.
+//
+// Le point sensible n'est pas l'écriture : c'est l'EFFET DE BORD de `project:write`, qui côté
+// main.js enregistre le chemin comme « dernier Projet ouvert ». Sans précaution, l'application
+// tenterait de charger le journal au démarrage suivant.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 83 — le journal de diagnostic ne vole pas la place du dernier Projet', () => {
+  const pontFactice = (reglagesInitiaux) => {
+    const reglages = { ...reglagesInitiaux };
+    const ecrits = [];
+    return {
+      ecrits,
+      reglages,
+      api: {
+        getSettings: async () => ({ ...reglages }),
+        setSetting: async (k, v) => { reglages[k] = v; return { ok: true }; },
+        writeProjectFile: async (chemin, json) => {
+          ecrits.push({ chemin, json });
+          reglages.lastFilePath = chemin;      // ce que fait main.js, et qu'il faut neutraliser
+          return { ok: true };
+        },
+      },
+    };
+  };
+
+  test('RÉGRESSION : lastFilePath est restauré après l\'écriture', () => {
+    const pont = pontFactice({ lastFilePath: 'C:/Projets/MonProjet.json' });
+    global.window = { storyboarderAPI: pont.api };
+    return writeDragDiagnosticFile('C:/App', { gestes: [] }).then(chemin => {
+      assert.equal(chemin, `C:/App/${DRAG_LOG_FILENAME}`);
+      assert.equal(pont.ecrits.length, 1, 'le journal a bien été écrit');
+      assert.equal(pont.reglages.lastFilePath, 'C:/Projets/MonProjet.json',
+        'le dernier Projet ouvert doit être rendu tel qu\'il était');
+    });
+  });
+
+  test('aucun Projet précédent : on restaure l\'absence, pas le journal', () => {
+    const pont = pontFactice({});
+    global.window = { storyboarderAPI: pont.api };
+    return writeDragDiagnosticFile('C:/App', { gestes: [] }).then(() => {
+      assert.equal(pont.reglages.lastFilePath, null,
+        'sinon le journal deviendrait le Projet à rouvrir');
+    });
+  });
+
+  test('sans pont Electron, l\'appel ne lève pas', () => {
+    global.window = {};
+    return writeDragDiagnosticFile('C:/App', {}).then(r => assert.equal(r, null));
+  });
+
+  test('sans dossier, rien n\'est écrit', () => {
+    const pont = pontFactice({});
+    global.window = { storyboarderAPI: pont.api };
+    return writeDragDiagnosticFile(null, {}).then(r => {
+      assert.equal(r, null);
+      assert.equal(pont.ecrits.length, 0);
+    });
   });
 });

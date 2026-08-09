@@ -70,6 +70,47 @@ export const POSE_DISMISSED_SETTING_KEY = 'poseLibraryDismissed';
 
 // Mémorise les ids supprimés. Même découplage que setPoseLibrary : écriture mémoire synchrone,
 // persistance asynchrone et silencieuse.
+// ─── Fix 83 (DIAGNOSTIC, TEMPORAIRE) — journal de glisser écrit sur DISQUE ───────────────────
+//
+// À retirer avec l'essai du glisser d'articulation.
+//
+// Passe par `writeProjectFile`, le seul pont capable d'écrire à un chemin choisi. Ouvrir un
+// nouveau canal IPC pour un outil temporaire reviendrait à modifier preload.js et main.js — les
+// fichiers de processus Electron, qu'on ne touche pas pour une fonctionnalité applicative.
+//
+// EFFET DE BORD À NEUTRALISER : côté main.js, `project:write` appelle setLastProjectPath. Sans
+// précaution, l'application considérerait le journal comme le dernier Projet ouvert et tenterait
+// de le charger au démarrage suivant. On relit donc `lastFilePath` AVANT d'écrire et on le
+// restaure juste après, puis on vérifie que la restauration a pris — un diagnostic qui casserait
+// l'ouverture du prochain projet ne vaudrait pas la peine d'exister.
+export const DRAG_LOG_FILENAME = 'diagnostic-glisser-articulations.json';
+
+export async function writeDragDiagnosticFile(dossier, contenu){
+  const api = hasElectronAPI() ? window.storyboarderAPI : null;
+  if (!api || typeof api.writeProjectFile !== 'function' || !dossier) return null;
+  const chemin = `${dossier}/${DRAG_LOG_FILENAME}`;
+  let avant = null;
+  try {
+    if (typeof api.getSettings === 'function') {
+      const reglages = await api.getSettings();
+      avant = (reglages && reglages.lastFilePath) || null;
+    }
+    const res = await api.writeProjectFile(chemin, JSON.stringify(contenu, null, 2));
+    if (!res || res.ok === false) return null;
+    if (typeof api.setSetting === 'function') {
+      await api.setSetting('lastFilePath', avant);
+      const apres = await api.getSettings();
+      if (apres && apres.lastFilePath !== avant) {
+        console.warn('[diagnostic] le dernier Projet ouvert n\'a pas pu être restauré :', avant);
+      }
+    }
+    return chemin;
+  } catch (err) {
+    console.warn('[diagnostic] écriture du journal impossible :', err);
+    return null;
+  }
+}
+
 export function setDismissedPoses(ids){
   S.dismissedPoses = Array.isArray(ids) ? ids : [];
   const api = hasElectronAPI() ? window.storyboarderAPI : null;

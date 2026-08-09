@@ -401,6 +401,27 @@ export function describePoseDragStep3D(entree){
   };
 }
 
+// Fix 83 (DIAGNOSTIC) — dossier de l'application, déduit de l'URL de la page.
+//
+// L'application est chargée en `file://` (cf. preload.js), donc l'adresse de index.html donne le
+// dossier où elle vit — le dépôt lui-même en développement. C'est le seul endroit dont le renderer
+// puisse connaître le chemin sans nouveau pont vers le process principal, que je m'interdis
+// d'ouvrir pour un outil temporaire.
+//
+// Sépare le dossier du fichier, décode les échappements de l'URL, et retire le « / » initial d'un
+// chemin Windows (« /C:/... » n'est pas un chemin valide pour fs).
+export function appDirFromHref3D(href){
+  if (!href || typeof href !== 'string') return null;
+  const sansAncre = href.split('#')[0].split('?')[0];
+  const i = sansAncre.lastIndexOf('/');
+  if (i < 0) return null;
+  let dossier = sansAncre.slice(0, i);
+  dossier = dossier.replace(/^file:\/\//, '');
+  try { dossier = decodeURIComponent(dossier); } catch { /* on garde tel quel */ }
+  if (/^\/[A-Za-z]:/.test(dossier)) dossier = dossier.slice(1);
+  return dossier || null;
+}
+
 // Fix 82 (DIAGNOSTIC) — fiche d'un geste complet, à faire juger par l'utilisateur.
 //
 // Une ligne par glisser, avec TOUT ce qui détermine le sens appliqué : l'axe, le mode, l'orbite, la
