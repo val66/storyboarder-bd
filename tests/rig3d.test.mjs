@@ -12,6 +12,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   frameCameraToBox,
@@ -335,5 +336,44 @@ describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
     assert.ok(box.max.x - box.min.x <= 1.0 + 1e-6, 'largeur ≤ 1.0');
     assert.ok(box.max.y - box.min.y <= 1.1 + 1e-6, 'hauteur ≤ 1.1');
     assert.ok(box.min.y >= -1e-6, 'base à y = 0');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 63 — CÂBLAGE de showOnlyFigure3D, vérifié par inspection de source.
+//
+// personaScene3D est construite par ensurePersonaScene3D, qui instancie un THREE.WebGLRenderer :
+// hors de portée sous Node (cf. l'en-tête de ce fichier). Constaté par mutation — retirer le
+// balayage, donc laisser reparaître les tracés dans l'aperçu, traverse la suite sans échec.
+//
+// Le bug d'origine venait précisément d'une ÉNUMÉRATION incomplète : la fonction ne connaissait que
+// les trois caches de rigs, alors que le rendu des Cases ajoute aussi tracés, dalles, murs fusionnés
+// et jonctions à la MÊME scène. Ces assertions surveillent que le balayage reste générique.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 63 — l\'aperçu d\'un Élément seul n\'affiche que lui', () => {
+  const source = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+  const corps = (() => {
+    const i = source.indexOf('export function showOnlyFigure3D');
+    assert.ok(i > 0, 'showOnlyFigure3D introuvable — renommée ?');
+    return source.slice(i, source.indexOf('\nexport ', i + 10));
+  })();
+
+  test('tout le contenu de la scène partagée est masqué, pas seulement les caches connus', () => {
+    assert.match(corps, /personaScene3D\.children[\s\S]{0,120}visible\s*=\s*false/,
+      'un balayage générique de la scène est attendu');
+  });
+
+  test('les lumières sont épargnées', () => {
+    // Les masquer donnerait un aperçu entièrement noir — panne spectaculaire, mais qu'aucun test
+    // sous Node ne peut voir.
+    assert.match(corps, /isLight/, 'le balayage doit exclure les lumières');
+  });
+
+  test('le rig ciblé est rendu visible APRÈS le masquage', () => {
+    // L'ordre compte : masquer après aurait éteint jusqu'à l'Élément qu'on veut montrer.
+    const iBalayage = corps.indexOf('personaScene3D.children');
+    const iRigs = corps.indexOf('personaRigCache3D.forEach');
+    assert.ok(iBalayage >= 0 && iRigs >= 0, 'repères trouvés');
+    assert.ok(iBalayage < iRigs, 'le balayage précède la remise en visibilité du rig ciblé');
   });
 });

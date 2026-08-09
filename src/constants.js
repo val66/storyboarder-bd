@@ -673,6 +673,12 @@ export const PANEL_SCENE_RENDER_MAX_PX = 1400;
 // lui demanderait de réallouer des tampons démesurés à chaque image.
 export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
 
+// Fix 63 — plafond de l'aperçu 3D des modales, qui rend désormais aux proportions de son cadre
+// (quelques centaines de pixels) et non plus à un format portrait figé. 900 couvre largement un
+// cadre d'aperçu même sur écran dense, sans demander au renderer partagé les tampons d'un plein
+// écran (cf. PERSONA_EDITOR_RENDER_MAX_PX, qui a ce besoin-là).
+export const PERSONA_PREVIEW_MAX_PX = 900;
+
 // Fix 55 — squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
 // cf. docs/donnees-persistees.md) : ne pas renommer.
 //

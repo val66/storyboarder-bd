@@ -24,11 +24,12 @@ import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
 import {
   clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D,
+  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
 } from './utils.js';
 import {
   applyGroundMagnetY, ensureElementUnits3D, ensureElementWorldPos3D,
@@ -328,7 +329,21 @@ export function closeDescModal(){
 
 export function refreshPersonaPreview(){
   if (!S.modalTarget || descModal.classList.contains('hidden')) return;
+  // Fix 63 — rendu AUX PROPORTIONS du cadre, comme l'éditeur depuis le Fix 53.
+  //
+  // L'aperçu rendait au format portrait figé 180×260, que `object-fit: contain` centrait ensuite
+  // dans un cadre bien plus large : d'où deux bandes mortes à gauche et à droite, et un Personnage
+  // inutilement petit. Le cadre est désormais rempli, et `figureRenderSize3D` garantit qu'aucune
+  // déformation n'apparaît au passage.
+  //
+  // Le plafond reste celui de l'aperçu (PERSONA_PREVIEW_MAX_PX) : ce cadre fait quelques centaines
+  // de pixels, pas tout un écran.
+  const box = personaPreview3D.getBoundingClientRect();
+  const renderSize = (box.width && box.height)
+    ? figureRenderSize3D(box.width, box.height, PERSONA_PREVIEW_MAX_PX, window.devicePixelRatio || 1)
+    : null;   // cadre non encore mesurable (modale masquée) : on garde l'ancien chemin
   drawPersonaPreview(personaPreview3D, {
+    renderSize,
     joints: S.modalDraftJoints,
     emotion: personaEmotionSelect.value,
     color: S.modalTarget.color,

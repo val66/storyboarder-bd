@@ -2954,6 +2954,21 @@ export const objectRigCache3D = new Map(); // object id -> { figureGroup, objTyp
 // Caches a figure kind ('persona' or 'objet3d') and a given id, hiding all other
 // figures from both caches: necessary because both pipelines share the same 3D scene.
 export function showOnlyFigure3D(kind, id){
+  // Fix 63 — on masque D'ABORD tout ce que la scène partagée contient, quoi que ce soit.
+  //
+  // Cette fonction n'énumérait que les trois caches de rigs. Or personaScene3D est PARTAGÉE avec le
+  // rendu des Cases, qui y ajoute aussi les tracés, les dalles, les murs fusionnés, les jonctions et
+  // le repère d'orbite (cf. scene3d.js). Rien ne les éteignait : les Chemins et Murs du décor
+  // apparaissaient donc en arrière-plan de l'aperçu d'un Personnage, et dans l'éditeur.
+  //
+  // Balayage générique plutôt qu'une liste de caches à tenir à jour : la liste aurait été une
+  // quatrième occasion de diverger, et c'est justement d'un oubli d'énumération que venait le bug.
+  // Tout nouveau type de maillage ajouté à la scène sera masqué sans qu'on ait à y penser.
+  //
+  // Les lumières sont épargnées — les masquer laisserait un aperçu noir.
+  personaScene3D.children.forEach(child => {
+    if (!child.isLight) child.visible = false;
+  });
   personaRigCache3D.forEach((e, eid) => { e.figureGroup.visible = (kind === 'persona' && eid === id); });
   objectRigCache3D.forEach((e, eid) => { e.figureGroup.visible = (kind === 'objet3d' && eid === id); });
   wallRenderRigCache3D.forEach((e, eid) => { e.figureGroup.visible = (kind === 'wall' && eid === id); });

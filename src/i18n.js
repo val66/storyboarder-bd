@@ -37,6 +37,14 @@ export const I18N_TEXT = [
   ['#undoBtn', null, null, 'title', 'Undo (Ctrl+Z)', "Annuler (Ctrl+Z)"],
   ['#headerSaveBtn', null, null, 'title', 'Save project (Ctrl+S)', "Sauvegarder le projet (Ctrl+S)"],
   ['#settingsBtn', null, null, 'title', 'Settings', 'Configuration'],
+  // Fix 63 — ce bouton porte une ICÔNE : son libellé traduit va sur `title`, pas sur le texte.
+  // Écrire dans textContent remplaçait l'icône par la phrase, qui débordait du bouton de 30px.
+  //
+  // ⚠️ Il vit ici et non dans I18N_MODALS avec les autres boutons de la modale Personnage : cette
+  // table-là ne déstructure que trois éléments et ignore la forme à attribut. L'y laisser rendait
+  // l'entrée silencieusement inopérante — l'icône était bien préservée, mais l'infobulle restait
+  // figée en français. Constaté par un test, pas à l'œil.
+  ['#personaEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
   ['#helpBtn', null, null, 'title', 'User manual', "Manuel d'utilisation"],
   // Sidebar
   ['#addVolumeBtn', 'New volume', 'Nouveau tome'],
@@ -148,6 +156,9 @@ export const I18N_LEADING = [
 ];
 
 // Generic modals + Settings + User manual.
+// ⚠️ Cette table ne gère PAS la forme à attribut (cf. applyI18n : elle ne déstructure que
+// [sel, en, fr]). Une entrée `[sel, null, null, 'title', …]` y serait silencieusement ignorée.
+// Pour traduire un attribut, utiliser I18N_TEXT.
 export const I18N_MODALS = [
   ['#projectModalRename', '✏️ Rename project', "✏️ Renommer le projet"],
   ['#projectModalNew', '📄 New project', "📄 Nouveau projet"],
@@ -181,7 +192,6 @@ export const I18N_MODALS = [
   ['#quitConfirmDiscard', '🚪 Quit without saving', '🚪 Quitter sans enregistrer'],
   ['#quitConfirmCancel', 'Cancel', 'Annuler'],
   ['#descModalCancel', 'Cancel', 'Annuler'],
-  ['#personaEditorOpenBtn', 'Character editor…', 'Éditeur de Personnage…'],
   ['#personaEditorTitle', 'Character editor', 'Éditeur de Personnage'],
   ['#personaEditorCloseBtn', 'Close', 'Fermer'],
   ['#descModalSave', 'Save', 'Enregistrer'],

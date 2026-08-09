@@ -13,7 +13,7 @@ import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel } from '../src/i18n.js';
+import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel, I18N_TEXT } from '../src/i18n.js';
 import { S } from '../src/state.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
@@ -114,5 +114,45 @@ describe('noDescriptionLabel — texte de remplacement pour une Case sans descri
     assert.equal(noDescriptionLabel(), '(no description)');
     S.appLang = 'fr';
     assert.equal(noDescriptionLabel(), '(sans description)');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 63 — un bouton-ICÔNE ne doit pas avoir d'entrée TEXTE dans I18N_TEXT.
+//
+// Bug constaté : le bouton d'ouverture de l'éditeur est passé d'un libellé à une icône ✏️, mais son
+// entrée I18N_TEXT écrivait toujours dans `textContent`. applyI18n remplaçait donc l'icône par la
+// phrase « Éditeur de Personnage », qui débordait du bouton de 30px.
+//
+// La table est une donnée exportée : la vérifier ne demande aucun DOM, contrairement à applyI18n
+// lui-même (cf. l'en-tête de ce fichier).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('I18N_TEXT — forme des entrées', () => {
+  test('RÉGRESSION : le bouton-icône de l\'éditeur est traduit via `title`, pas via son texte', () => {
+    const entry = I18N_TEXT.find(e => e[0] === '#personaEditorOpenBtn');
+    assert.ok(entry, 'entrée absente — le bouton n\'aurait plus d\'infobulle traduite');
+    const [, en, fr, attr, attrEn, attrFr] = entry;
+    assert.equal(attr, 'title', 'le libellé va sur l\'infobulle');
+    assert.equal(en, null, 'et surtout PAS sur le texte, qui porte l\'icône');
+    assert.equal(fr, null);
+    assert.ok(attrEn && attrFr, 'les deux langues sont fournies');
+  });
+
+  test('toute entrée à attribut fournit ses deux traductions', () => {
+    // Une entrée mal formée n'échoue nulle part : applyI18n écrirait `undefined` dans l'attribut,
+    // et l'infobulle afficherait littéralement « undefined ».
+    I18N_TEXT.forEach(([sel, , , attr, attrEn, attrFr]) => {
+      if (!attr) return;
+      assert.ok(typeof attrEn === 'string' && attrEn, `${sel} : traduction EN manquante`);
+      assert.ok(typeof attrFr === 'string' && attrFr, `${sel} : traduction FR manquante`);
+    });
+  });
+
+  test('toute entrée sans attribut fournit ses deux textes', () => {
+    I18N_TEXT.forEach(([sel, en, fr, attr]) => {
+      if (attr || en === null) return;
+      assert.ok(typeof en === 'string', `${sel} : texte EN manquant`);
+      assert.ok(typeof fr === 'string', `${sel} : texte FR manquant`);
+    });
   });
 });
