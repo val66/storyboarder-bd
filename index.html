@@ -53,10 +53,15 @@
       <!-- Fix 68 — deux BLOCS distincts plutôt que deux titres dans un même flux. Ils ne répondent
            pas à la même question : « quelle pose ? » se choisit d'un geste et se range, « quel
            angle ? » se retouche longuement. Les fondre faisait lire la liste des poses comme une
-           entrée en matière du réglage fin, alors que chacun se suffit. -->
+           entrée en matière du réglage fin, alors que chacun se suffit.
+           Fix 70 — la classe est `side-section`, celle des sections de l'encart de droite, et non
+           une copie privée : les deux panneaux avaient le MÊME fond var(--paper-dark), mais des
+           cartes plus petites ici en laissaient voir davantage, ce qui donnait l'impression d'un
+           panneau plus sombre. Une seule définition de « carte de panneau latéral », donc plus rien
+           à faire diverger. -->
       <!-- Pose de référence du brouillon. Appliquer une pose COPIE ses angles : aucun Personnage ne
            dépend de la bibliothèque, cf. docs/editeur-personnage.md. -->
-      <section class="persona-editor-section" id="personaEditorPoseSection">
+      <section class="side-section" id="personaEditorPoseSection">
         <h2 id="personaEditorPoseHeading">Pose</h2>
         <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
         <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>
@@ -71,7 +76,7 @@
           </div>
         </div>
       </section>
-      <section class="persona-editor-section" id="personaEditorJointsSection">
+      <section class="side-section" id="personaEditorJointsSection">
         <h2 id="personaEditorJointsHeading">Réglage fin des articulations</h2>
         <div id="personaEditorJointsContainer"></div>
       </section>

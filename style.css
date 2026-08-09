@@ -188,7 +188,12 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .right-panel.collapsed{
   width:0; border-left:none; overflow:hidden;
 }
-.right-panel h2{ font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 10px; text-transform:uppercase; letter-spacing:.05em; }
+/* Fix 70 — l'éditeur de Personnage partage ce titre. Sa règle jumelle, plus bas, répétait ces
+   sept déclarations à l'identique ; elle gagnait en plus les égalités de spécificité du seul
+   fait d'être écrite après, et écrasait donc la marge que .side-section h2 pose juste en
+   dessous. Un seul endroit, plus de fantôme. */
+.right-panel h2,
+.persona-editor-panel h2{ font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 10px; text-transform:uppercase; letter-spacing:.05em; }
 .right-panel .empty-hint{ font-size:12px; color:var(--sepia); font-style:normal; line-height:1.5; }
 /* Contenu défilant de l'encart de droite (tous les menus Case/Bulle/Caméra/Aide...), désormais séparé
    du pied de page fixe ci-dessous (cf. #lastSavedIndicator) qui doit rester visible en bas, sur demande
@@ -703,28 +708,21 @@ canvas{
 .persona-editor-stage canvas:active { cursor: grabbing; }
 /* Largeur fixe : la liste de curseurs a une largeur lisible propre (108px de libellé + le curseur),
    la laisser s'étirer avec la fenêtre n'apporterait rien et volerait de la place au Personnage. */
-.persona-editor-panel { width: 300px; flex-shrink: 0; overflow-y: auto; padding: 12px 14px 18px;
+.persona-editor-panel { width: 300px; flex-shrink: 0; overflow-y: auto; padding: 18px 16px;
                         background: var(--paper-dark); border-left: 1px solid var(--line); }
-.persona-editor-panel h2 { font-size: 11px; font-weight: 600; color: var(--ink-soft);
-                           margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; }
 /* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
    suivantes se collent à elle : elles forment un groupe. */
 .persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
 .persona-editor-panel .danger-btn { width: 100%; }
-.persona-editor-panel h2 + * { margin-top: 0; }
 /* Fix 68 — « Pose » et « Réglage fin » sont deux blocs encadrés, pas deux titres dans un flux
    continu. Le cadre est ce qui dit qu'ils sont indépendants : sans lui, la liste des poses se
-   lisait comme le préambule des curseurs. Fond var(--paper) sur un panneau en var(--paper-dark),
-   donc le bloc RESSORT dans les deux thèmes sans qu'aucune couleur soit écrite en dur. */
-.persona-editor-section {
-  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
-  padding: 10px 11px; margin-bottom: 12px;
-}
-.persona-editor-section:last-of-type { margin-bottom: 0; }
-/* Le titre appartient au bloc : il en marque le haut au lieu de flotter au-dessus. Annule le
-   margin-top que le flux continu imposait aux titres suivants — dans un bloc il est toujours
-   premier, et l'écart est désormais porté par la marge du bloc lui-même. */
-.persona-editor-section h2 { margin-top: 0; }
+   lisait comme le préambule des curseurs.
+   Fix 70 — ces blocs portent `.side-section`, la classe des sections de l'encart de droite, au lieu
+   d'une classe privée qui en recopiait les valeurs de travers (padding 10px contre 14px, rayon 8
+   contre 10). Les deux panneaux ont toujours eu le même fond var(--paper-dark) : c'est la surface
+   de fond LAISSÉE VISIBLE par des cartes plus petites qui faisait paraître celui-ci plus sombre.
+   Aucune règle propre à ajouter ici — s'il en fallait une, c'est que la ressemblance serait déjà
+   en train de se défaire. */
 /* Étiquette calculée (« Assis », « Assis (modifié) », « pose1 (inconnue) ») — jamais persistée,
    cf. resolvePoseLabel3D. */
 .persona-editor-pose-current {
