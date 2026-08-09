@@ -1824,6 +1824,20 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     assert.equal(personaEditorActiveSpec().key, horiz.key);
   });
 
+  test('RÉGRESSION : pousser une articulation à fond ne la BLOQUE pas', () => {
+    // Le défaut signalé. La session porte l'origine du geste ; sans ré-ancrage, écraser la borne
+    // pendant 600 px stockait ces 600 px, et il fallait les reparcourir en sens inverse avant que
+    // l'angle ne bouge — l'articulation semblait figée. Testé ICI en plus de la fonction pure,
+    // parce que c'est la MUTATION de la session qui rend le ré-ancrage effectif : oublier de
+    // réécrire session.startDeg laisserait la fonction pure correcte et le geste toujours bloqué.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lKnee');
+    const session = beginPersonaEditorJointDrag('lKnee');
+    assert.equal(applyPersonaEditorJointDrag(session, 0, 2000), 180, 'borne haute atteinte');
+    assert.ok(applyPersonaEditorJointDrag(session, 0, 1996) < 180,
+      '4 px de retour doivent déjà faire redescendre l\'angle');
+  });
+
   test('la session refuse d\'écrire si l\'éditeur s\'est refermé entre-temps', () => {
     openPersonaEditor(null);
     focusPersonaEditorHandle('lKnee');

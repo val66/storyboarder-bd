@@ -11,7 +11,7 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
-  dragJointDegree3D, cyclePoseSpecIndex3D,
+  dragJointStep3D, cyclePoseSpecIndex3D,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
@@ -1261,53 +1261,110 @@ describe('orbitCameraPosition3D', () => {
 // Fonctionnalité explicitement expérimentale : elle peut être retirée. Ces tests décrivent donc les
 // PROPRIÉTÉS du geste (absolu, borné, arrondi comme les curseurs), pas des valeurs à préserver.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('dragJointDegree3D — un champ, les deux axes cumulés', () => {
+describe('dragJointStep3D — un champ, les deux axes cumulés', () => {
+  const deg = (...a) => dragJointStep3D(...a).deg;
+
   test('les deux axes s\'additionnent', () => {
-    assert.equal(dragJointDegree3D(0, 40, 20, 0.5), 30);
-    assert.equal(dragJointDegree3D(0, 0, 20, 0.5), 10, 'vertical seul');
-    assert.equal(dragJointDegree3D(0, 40, 0, 0.5), 20, 'horizontal seul');
+    assert.equal(deg(0, 40, 20, 0.5), 30);
+    assert.equal(deg(0, 0, 20, 0.5), 10, 'vertical seul');
+    assert.equal(deg(0, 40, 0, 0.5), 20, 'horizontal seul');
   });
 
   test('RÉGRESSION : aucune direction n\'est morte', () => {
     // C'est le choix fait au Fix 72 : le champ actif suit n'importe quel mouvement. Un axe inerte
     // donnerait un geste qui ne répond pas, sans que rien ne l'explique à l'écran.
     for (const [dx, dy] of [[10, 0], [0, 10], [7, 7], [-10, 0], [0, -10]]) {
-      assert.notEqual(dragJointDegree3D(0, dx, dy, 1), 0, `(${dx}, ${dy}) ne fait rien`);
+      assert.notEqual(deg(0, dx, dy, 1), 0, `(${dx}, ${dy}) ne fait rien`);
     }
   });
 
   test('le résultat part de l\'angle de DÉPART, pas de zéro', () => {
-    assert.equal(dragJointDegree3D(30, 0, 20, 0.5), 40);
+    assert.equal(deg(30, 0, 20, 0.5), 40);
   });
 
   test('RÉGRESSION : le geste est ABSOLU — deux fois le même delta ne cumule pas', () => {
     // Le piège serait de relire l'angle courant à chaque image et d'y ajouter le delta : la même
     // course de souris n'aboutirait alors pas au même angle selon la fluidité de l'affichage.
-    assert.equal(dragJointDegree3D(0, 0, 20, 0.5), dragJointDegree3D(0, 0, 20, 0.5));
+    assert.equal(deg(0, 0, 20, 0.5), deg(0, 0, 20, 0.5));
+  });
+
+  test('RÉGRESSION : hors bornes, l\'origine est INCHANGÉE — même quand l\'arrondi mord', () => {
+    // Le ré-ancrage ne doit avoir lieu qu'aux bornes : ailleurs, déplacer l'origine reviendrait à
+    // cumuler, et l'arrondi dériverait d'une image à l'autre.
+    //
+    // Le delta doit tomber À CÔTÉ d'un degré entier, sinon `deg - delta` retombe sur l'origine par
+    // hasard et le test ne distingue plus « recalé » de « inchangé ». C'est exactement ainsi qu'une
+    // première version a laissé passer la mutation « ré-ancrer TOUJOURS » : elle utilisait
+    // (120, -80) à 0.5, soit 20° pile.
+    assert.equal(dragJointStep3D(0, 0, 3, 0.5).startDeg, 0, '1.5° : arrondi à 2, origine intacte');
+    assert.equal(dragJointStep3D(17, 120, -80, 0.5).startDeg, 17, 'et sur un delta entier aussi');
+  });
+
+  test('RÉGRESSION : l\'angle ne dépend que du delta TOTAL, pas du nombre d\'images', () => {
+    // La propriété que « absolu » veut dire. Une origine recalée à chaque image ferait dépendre le
+    // résultat de la fluidité de l'affichage : le même geste donnerait un angle différent selon la
+    // machine, et personne ne saurait pourquoi.
+    const k = POSE_DRAG_DEG_PER_PX;
+    let origine = 0;
+    for (let px = 1; px <= 37; px++) origine = dragJointStep3D(origine, 0, px, k).startDeg;
+    const parImages = dragJointStep3D(origine, 0, 37, k).deg;
+    const dUnCoup = dragJointStep3D(0, 0, 37, k).deg;
+    assert.equal(parImages, dUnCoup, '37 images de glisser ≠ un saut direct de 37 px');
   });
 
   test('RÉGRESSION : revenir au point de départ rend l\'angle initial À L\'IDENTIQUE', () => {
     // C'est ce qui permet à « Réinitialiser » de rester éteint après un aller-retour : la
     // signature de pose compare des degrés arrondis, un écart d'un degré l'allumerait.
-    dragJointDegree3D(17, 120, -80);
-    assert.equal(dragJointDegree3D(17, 0, 0), 17);
+    dragJointStep3D(17, 120, -80);
+    assert.equal(deg(17, 0, 0), 17);
   });
 
   test('RÉGRESSION : les angles sont bornés comme les curseurs', () => {
-    assert.equal(dragJointDegree3D(0, 99999, 99999), POSE_DRAG_DEG_MAX);
-    assert.equal(dragJointDegree3D(0, -99999, -99999), POSE_DRAG_DEG_MIN);
+    assert.equal(deg(0, 99999, 99999), POSE_DRAG_DEG_MAX);
+    assert.equal(deg(0, -99999, -99999), POSE_DRAG_DEG_MIN);
     assert.equal(POSE_DRAG_DEG_MAX, 180, 'même plage que makeJointRangeRow');
     assert.equal(POSE_DRAG_DEG_MIN, -180);
   });
 
+  test('RÉGRESSION : après un dépassement, le RETOUR répond au premier pixel', () => {
+    // Le défaut signalé : « à force de bouger une articulation, cela finit par la bloquer ». L'angle
+    // était borné, la course de souris ne l'était pas — dépasser la borne de 600 px stockait ces
+    // 600 px, qu'il fallait reparcourir avant que rien ne bouge.
+    const k = 0.5;
+    let origine = 0;
+    const pousser = (px) => {
+      const pas = dragJointStep3D(origine, 0, px, k);
+      origine = pas.startDeg;                 // ce que fait la session à chaque image
+      return pas.deg;
+    };
+    assert.equal(pousser(1000), POSE_DRAG_DEG_MAX, 'on écrase la borne haute');
+    assert.ok(pousser(998) < POSE_DRAG_DEG_MAX,
+      '2 px de retour doivent déjà faire redescendre l\'angle');
+  });
+
+  test('le ré-ancrage est IDEMPOTENT : rester collé à la borne ne dérive pas', () => {
+    // Sinon chaque image passée en butée décalerait un peu l'origine, et lâcher la souris laisserait
+    // l'angle ailleurs qu'à la borne.
+    const k = 0.5;
+    let origine = 0;
+    let deg = 0;
+    for (let i = 0; i < 20; i++) {
+      const pas = dragJointStep3D(origine, 0, 1000, k);
+      origine = pas.startDeg;
+      deg = pas.deg;
+    }
+    assert.equal(deg, POSE_DRAG_DEG_MAX);
+    assert.equal(dragJointStep3D(origine, 0, 1000, k).startDeg, origine, 'origine stabilisée');
+  });
+
   test('RÉGRESSION : les angles sont des ENTIERS, comme le pas des curseurs', () => {
     // 3 px × 0.5 = 1.5°, qui n'est pas un pas de curseur valide.
-    const deg = dragJointDegree3D(0, 0, 3, POSE_DRAG_DEG_PER_PX);
-    assert.equal(deg, Math.round(deg), `${deg} n'est pas un entier`);
+    const d = deg(0, 0, 3, POSE_DRAG_DEG_PER_PX);
+    assert.equal(d, Math.round(d), `${d} n'est pas un entier`);
   });
 
   test('entrées manquantes : traitées comme zéro, jamais NaN', () => {
-    assert.equal(dragJointDegree3D(null, null, null), 0);
+    assert.deepEqual(dragJointStep3D(null, null, null), { deg: 0, startDeg: 0 });
   });
 });
 

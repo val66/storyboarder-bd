@@ -131,3 +131,31 @@ describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de 
     assert.equal(inset(driven), inset(base), 'inset gauche différent : la ligne se décale');
   });
 });
+
+describe('Fix 73 — une ligne de curseur tient dans son cadre', () => {
+  const ligne = declarations('.joint-slider-row');
+  const curseur = declarations('.joint-slider-row input[type=range]');
+  const libelle = declarations('.joint-slider-row .joint-slider-label');
+  const valeur = declarations('.joint-slider-row .joint-slider-val');
+
+  test('RÉGRESSION : l\'enfant flexible déclare min-width:0', () => {
+    // LA règle qui empêche le débordement, et elle n'a rien d'évident : un enfant de conteneur flex
+    // a `min-width:auto` par défaut, donc il refuse de rétrécir sous sa largeur INTRINSÈQUE — celle
+    // d'un input[type=range] vaut ~129px. Avec un libellé et une valeur non rétrécissables à côté,
+    // la somme dépassait la largeur du panneau et le curseur sortait du cadre, sans qu'aucune
+    // largeur excessive ne soit déclarée nulle part.
+    assert.match(ligne, /display:\s*flex/, 'ce test ne vaut que pour une ligne flex');
+    assert.match(curseur, /flex:\s*1/, 'c\'est bien lui l\'enfant flexible');
+    assert.match(curseur, /min-width:\s*0/,
+      'sans min-width:0, le curseur refuse de rétrécir et déborde du panneau');
+  });
+
+  test('RÉGRESSION : les enfants NON rétrécissables gardent une largeur bornée', () => {
+    // Le corollaire : si le libellé ou la valeur devenaient extensibles ou perdaient leur largeur,
+    // min-width:0 sur le curseur ne suffirait plus à garantir que la ligne tient.
+    for (const [nom, regle] of [['libellé', libelle], ['valeur', valeur]]) {
+      assert.match(regle, /flex-shrink:\s*0/, `${nom} : censé ne pas rétrécir`);
+      assert.match(regle, /width:\s*\d+px/, `${nom} : largeur fixe attendue`);
+    }
+  });
+});

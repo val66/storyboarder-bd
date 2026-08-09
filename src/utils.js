@@ -195,7 +195,7 @@ export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
 export const POSE_DRAG_DEG_MIN = -180;
 export const POSE_DRAG_DEG_MAX = 180;
 
-// Nouvel angle d'UN champ, à partir de son angle de départ et du déplacement de la souris.
+// Un pas de glisser : nouvel angle du champ piloté, et origine à conserver pour le pas suivant.
 //
 // Fix 72 — un seul champ à la fois (celui que la molette a mis en avant), et il suit les DEUX axes
 // cumulés : n'importe quelle direction le fait varier, il n'y a pas de geste mort. La contrepartie,
@@ -205,9 +205,20 @@ export const POSE_DRAG_DEG_MAX = 180;
 // startDeg est l'angle capturé au DÉBUT du glisser, pas relu à chaque image : cumuler des deltas
 // image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au même angle selon la
 // vitesse du geste.
-export function dragJointDegree3D(startDeg, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
-  const brut = (startDeg || 0) + ((dx || 0) + (dy || 0)) * degPerPx;
-  return clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
+//
+// Fix 73 — RÉ-ANCRAGE aux bornes, et c'est là que se jouait le « ça finit par se bloquer ».
+// L'angle était borné, la course de souris ne l'était pas : dépasser 180° de 300 px de glisser
+// stockait ces 300 px, et il fallait les reparcourir en sens inverse avant que quoi que ce soit
+// bouge — l'articulation paraissait figée, sans que rien ne l'annonce. Au contact d'une borne,
+// l'origine se recale donc pour que le retour réponde au premier pixel. Le geste reste absolu
+// PARTOUT AILLEURS : le recalage n'a lieu que quand la valeur brute sort de la plage, et il est
+// idempotent (le refaire au même endroit ne déplace rien).
+export function dragJointStep3D(startDeg, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const delta = ((dx || 0) + (dy || 0)) * degPerPx;
+  const brut = (startDeg || 0) + delta;
+  const deg = clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
+  const debordé = brut < POSE_DRAG_DEG_MIN || brut > POSE_DRAG_DEG_MAX;
+  return { deg, startDeg: debordé ? deg - delta : (startDeg || 0) };
 }
 
 // Fix 72 — champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.

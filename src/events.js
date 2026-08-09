@@ -37,7 +37,7 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, dragJointDegree3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
@@ -742,9 +742,12 @@ export function beginPersonaEditorJointDrag(id){
 // n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
 export function applyPersonaEditorJointDrag(session, dx, dy){
   if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
-  const deg = dragJointDegree3D(session.startDeg, dx, dy);
-  writePoseSliderDeg3D(S.personaEditorDraft, session.spec, deg);
-  return deg;
+  const pas = dragJointStep3D(session.startDeg, dx, dy);
+  // Fix 73 — la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
+  // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
+  session.startDeg = pas.startDeg;
+  writePoseSliderDeg3D(S.personaEditorDraft, session.spec, pas.deg);
+  return pas.deg;
 }
 
 // Fix 49 — rendu du canevas de l'éditeur. Réutilise drawPersonaPreview, donc exactement le même
@@ -1212,6 +1215,11 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     window.addEventListener('mousemove', (e) => {
       // Fix 71 (ESSAI) — sur window et non sur le canevas : sortir du cadre en cours de geste ne
       // doit pas figer l'articulation à mi-course, comme pour l'orbite juste en dessous.
+      // Fix 73 — un mouseup perdu (relâché hors de la fenêtre, changement d'application, menu
+      // système) laissait la session ouverte : la poignée suivait alors la souris SANS bouton
+      // enfoncé. `e.buttons` dit ce qui est réellement pressé maintenant, pas ce qu'on a cru voir
+      // passer — c'est le seul état digne de foi ici.
+      if ((jointDrag || orbiting) && e.buttons === 0) { jointDrag = null; orbiting = null; return; }
       if (jointDrag && S.personaEditorOpen) {
         if (!applyPersonaEditorJointDrag(jointDrag, e.clientX - jointDrag.x, e.clientY - jointDrag.y)) {
           jointDrag = null;
