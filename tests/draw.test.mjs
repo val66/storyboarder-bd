@@ -17,7 +17,6 @@ import {
   buildToolCreateWallSegment,
   buildTryExtendWall,
   buildToolClose,
-  uniqueDefaultName,
   getRoomBoundingBoxXZ,
   getBuildingBoundingBoxXZ,
   getPanelPoints,

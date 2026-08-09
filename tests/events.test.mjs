@@ -46,7 +46,6 @@ import {
   PERSONA_EDITOR_FRONT_ROT_Y,
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
-  personaEditorDragHint,
   PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
@@ -1987,7 +1986,6 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
 // Fix 79 (ESSAI) — le balayage circulaire se déroule au lieu de s'inverser.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
-  const specsDe = id => poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === id));
   const pivot = { x: 100, y: 100 };
   const surCercle = (deg, r = 100) => ({
     x: pivot.x + r * Math.cos(deg * Math.PI / 180),

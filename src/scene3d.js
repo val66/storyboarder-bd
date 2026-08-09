@@ -41,7 +41,6 @@ import {
   ensureWallRenderEntry3D,
   resolveStyle3D,
   showOnlyFigure3D,
-  useFigureFormat3D,
   useObjectFormat3D,
   useObjectBoxFormat3D,
   objectRigCache3D,
@@ -1236,7 +1235,7 @@ export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) 
 
   // ─── Normalization and merging of holes ─────────────────────────────────
   // Each hole: { s, e } (arc), { yMin, yMax } (world Y, clamped to [y0, y1]).
-  let mergedHoles = [];
+  const mergedHoles = [];
   if (holes && holes.length > 0) {
     const sorted = holes
       .map(h => ({
@@ -2520,30 +2519,6 @@ export function panelAutoDepthPivot3D(panel, page){
   panel.camWzTarget = panel.camWz;
   panel.camDistTarget = newDist;
   return true;
-}
-// Projects the world point (worldX, GROUND_Y_DEFAULT_3D, worldZ) through the Panel's real Three.js camera
-// (identical to framePanelCamera3D: same pitch/yaw/pan/camDist/camY clamping) and returns the
-// resulting screen Y position (panel coordinates, in px). Null if the point is behind the camera.
-// Used by applyGroundMagnetY so that a magnetized Element's feet EXACTLY match
-// the ground rendered by Three.js, regardless of the Camera's depth or orientation — the
-// simplified formula factor = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist) diverges from the Three.js render
-// as soon as o.z moves away from 0, giving the impression that the Element "floats" above the Ground.
-function panelProjectGroundYToScreen(worldX, worldZ, panel){
-  const basis = panelCamBasis3D(panel);
-  const camDist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
-  // Orbit position in world space (Fix 13: stable across rotation)
-  const _cOrb = getCamOrbitWorld(panel, basis);
-  const panOffX = _cOrb.x, panOffY = _cOrb.y, panOffZ = _cOrb.z;
-  let camY = panOffY + basis.backward.y * camDist;
-  if (camY < GROUND_Y_DEFAULT_3D + 0.15) camY = GROUND_Y_DEFAULT_3D + 0.15; // same clamping
-  const camPosX = panOffX + basis.backward.x * camDist;
-  const camPosZ = panOffZ + basis.backward.z * camDist;
-  // Camera → ground point vector (worldX, GROUND_Y_DEFAULT_3D, worldZ)
-  const vx = worldX - camPosX, vy = GROUND_Y_DEFAULT_3D - camY, vz = worldZ - camPosZ;
-  const vup    =  vx * basis.up.x    + vy * basis.up.y    + vz * basis.up.z;
-  const vdepth = -(vx * basis.backward.x + vy * basis.backward.y + vz * basis.backward.z);
-  if (vdepth <= 0) return null;
-  return (panel.y + panel.h / 2) - vup * PANEL_CAM_DEFAULT_DIST_3D * WALL_PX_PER_UNIT_3D / vdepth;
 }
 // Centers the Panel's Camera on an Element it owns, keeping the CURRENT orientation and
 // zoom (see panelCamBasis3D/framePanelCamera3D): only the translation (camPanX/Y,

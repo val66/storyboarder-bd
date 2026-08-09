@@ -8,7 +8,6 @@
  * Dependencies: constants.js, utils.js (no dependency on app.js)
  * THREE is available as a global (loaded via <script> in index.html).
  */
-/* global THREE */
 
 import {
   ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
@@ -17,7 +16,7 @@ import {
 import {
   clamp, orbitCameraPosition3D
 } from './utils.js';
-import { S } from './state.js';
+import { currentVolume } from './state.js';
 
 export function getEffectiveJoints(o){
   return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
@@ -919,7 +918,10 @@ let personaAmbientLight3D = null, personaKeyLight3D = null, personaFillLight3D =
 // styleKey explicitly provided, traced back from page.style3d.
 export function resolveStyle3D(styleKey){
   if (styleKey) return styleKey;
-  const t = (typeof currentVolume === 'function') ? currentVolume() : null;
+  // La garde `typeof` d'origine masquait une importation manquante : `currentVolume` n'étant pas
+  // dans la portée, elle valait toujours `null` et le style du Volume n'était JAMAIS appliqué.
+  // Un défaut fonctionnel muet, que seule l'analyse statique pouvait montrer.
+  const t = currentVolume();
   return (t && t.style3d) || STYLES_3D[0].key;
 }
 // Slight 2D boost (contrast/saturation) to complement the 3D lighting, to accentuate the
@@ -2343,7 +2345,7 @@ export function buildLoupRig3D(colorHex){
   ];
   let tailParent = group;
   // First position in the group's space
-  let tFirstY = sY + 0.08, tFirstZ = -0.35;
+  const tFirstY = sY + 0.08, tFirstZ = -0.35;
   tailSegs3.forEach(({ id, rx, r, rBot, h }, i) => {
     const pivot = new THREE.Group();
     if (i === 0) {

@@ -13,7 +13,7 @@ import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthT
 import {
   getElementDepth, repairElementBase3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
-  rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D,
+  missingBuiltinPoses3D, forgetDismissedPoses3D,
 } from './utils.js';
 import { WALL_TYPES, WALL_PX_PER_UNIT_3D, PANEL_CAM_DEFAULT_DIST_3D, GROUND_Y_DEFAULT_3D } from './constants.js';
 

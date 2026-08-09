@@ -32,8 +32,8 @@ import {
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
 } from './utils.js';
 import {
-  applyGroundMagnetY, ensureElementUnits3D, ensureElementWorldPos3D,
-  findOwningPanel, groundMagnetEligible, setElementWorldPos3D,
+  ensureElementUnits3D, ensureElementWorldPos3D,
+  findOwningPanel, groundMagnetEligible, 
 } from './scene3d.js';
 import { cloneJoints, getEffectiveJoints, objectRigCache3D, personaCamera3D } from './rig3d.js';
 import {
@@ -70,7 +70,6 @@ const objectLinkedValue = document.getElementById('objectLinkedValue');
 const objectMagnetWallField = document.getElementById('objectMagnetWallField');
 const objectMagnetWallSelect = document.getElementById('objectMagnetWallSelect');
 const objectModal = document.getElementById('objectModal');
-const objectModalCancel = document.getElementById('objectModalCancel');
 const objectModalSave = document.getElementById('objectModalSave');
 const objectModalTitle = document.getElementById('objectModalTitle');
 const objectNameInput = document.getElementById('objectNameInput');
@@ -355,7 +354,7 @@ export function refreshPersonaPreview(){
     rotZ: Number(personaRotZInput.value) * Math.PI / 180,
     sizePercent: Number(personaSizeInput.value),
   });
-  drawPersonaPoseHandlesOverlay();
+  drawPersonaPoseHandlesOverlay(personaPreview3D);
   syncJointSlidersFromDraft();
 }
 

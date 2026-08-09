@@ -113,7 +113,7 @@ describe('currentVolume / currentPageData / currentPage — accesseurs de la Pla
   });
 
   test('en édition de Scène (S.editingSceneId défini) : bascule sur S.scenes et sa page unique (pages[0])', () => {
-    const t = createVolume('fb');
+    createVolume('fb');
     S.scenes = [{ id: 'sceneA', w: 10, h: 20, pages: [{ objects: ['sceneObj'] }] }];
     S.editingSceneId = 'sceneA';
     assert.equal(currentVolume(), S.scenes[0]);

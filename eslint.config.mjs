@@ -1,4 +1,8 @@
-// eslint.config.js — configuration « flat » (ESLint 9+).
+// eslint.config.mjs — configuration « flat » (ESLint 9+).
+//
+// Extension .mjs et non .js : le fichier est un module ES, alors que package.json ne déclare pas
+// `"type": "module"` — et ne peut pas le faire, main.js et preload.js étant du CommonJS. Sans
+// le .mjs, Node reparse le fichier à chaque exécution en le signalant.
 //
 // ⚠️ CETTE CONFIGURATION N'A JAMAIS ÉTÉ EXÉCUTÉE au moment où elle est écrite : le registre npm
 // était inaccessible depuis l'environnement où elle a été rédigée (403), donc ESLint n'a pas pu y
@@ -33,6 +37,12 @@ export default [
         setInterval: 'readonly', clearInterval: 'readonly',
         Image: 'readonly', FileReader: 'readonly', Blob: 'readonly', URL: 'readonly',
         performance: 'readonly', alert: 'readonly', devicePixelRatio: 'readonly',
+        localStorage: 'readonly', atob: 'readonly', btoa: 'readonly',
+        TextEncoder: 'readonly', TextDecoder: 'readonly',
+        // THREE est chargé par une balise <script> et n'est donc importé nulle part. Déclaré ICI
+        // et non par un commentaire `/* global THREE */` dans chaque fichier : une seule source,
+        // valable pour les trois modules qui s'en servent. Le commentaire qui existait dans
+        // rig3d.js faisait doublon et déclenchait no-redeclare.
         THREE: 'readonly',
       },
     },
@@ -80,9 +90,13 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'commonjs',
       globals: { require: 'readonly', module: 'writable', __dirname: 'readonly',
-                 process: 'readonly', console: 'readonly' },
+                 process: 'readonly', console: 'readonly', URL: 'readonly',
+                 setTimeout: 'readonly', Buffer: 'readonly' },
     },
-    rules: { 'no-unused-vars': ['error', { args: 'none' }], 'no-undef': 'error' },
+    rules: {
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+      'no-undef': 'error',
+    },
   },
   {
     // Tests et outillage : modules Node.
@@ -90,10 +104,21 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: { console: 'readonly', process: 'readonly', globalThis: 'readonly',
-                 setTimeout: 'readonly', clearTimeout: 'readonly', THREE: 'readonly' },
+      globals: {
+        console: 'readonly', process: 'readonly', globalThis: 'readonly',
+        setTimeout: 'readonly', clearTimeout: 'readonly',
+        // `URL` est une globale de Node depuis la v10 : les tests s'en servent partout pour
+        // résoudre un chemin relatif au fichier (new URL('../src/x.js', import.meta.url)).
+        URL: 'readonly', TextEncoder: 'readonly',
+        // Le dom-stub installe un faux DOM sur globalThis avant que les tests n'importent les
+        // modules : `window`, `document` et THREE sont donc légitimes dans un fichier de test.
+        window: 'readonly', document: 'readonly', THREE: 'readonly',
+      },
     },
-    rules: { 'no-unused-vars': ['error', { args: 'none' }], 'no-undef': 'error' },
+    rules: {
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+      'no-undef': 'error',
+    },
   },
   {
     ignores: ['node_modules/**', 'dist/**', 'src/version.js'],

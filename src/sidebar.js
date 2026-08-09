@@ -17,7 +17,7 @@ import {
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
   WALL_TYPES,
 } from './constants.js';
-import { clamp, getEmotion, pxPerMm, getFormat } from './utils.js';
+import { clamp, getEmotion, pxPerMm } from './utils.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
@@ -926,7 +926,6 @@ export function refreshCameraSliders(panel){
     }
   }
   // Rebuild the select's options only if they changed (avoids unnecessary flicker)
-  const currentVal = camOrbitTargetSelect.value;
   camOrbitTargetSelect.innerHTML = '';
   for (const opt of options) {
     const el = document.createElement('option');

@@ -13,112 +13,78 @@
  */
 
 import {
-  FORMATS, STYLES_3D, EMOTIONS, HAND_STATES, POSITIONS, PALETTE, FIXED_SHAPE,
-  FIXED_COLOR, PANEL_CAM_REF_DIST_3D, PANEL_CAM_DEFAULT_DIST_3D, PANEL_DEPTH_MAX_3D,
+  FORMATS, STYLES_3D, EMOTIONS, HAND_STATES, POSITIONS, FIXED_SHAPE,
+  FIXED_COLOR, PANEL_CAM_REF_DIST_3D, PANEL_CAM_DEFAULT_DIST_3D, 
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_SNAP_ANGLE_DEG, BUILD_CLOSE_DIST, MAX_UNDO,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, WALL_TYPES, TRAVERSANT_TYPES,
   WALL_OPENING_MARGIN_FRAC, OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M,
-  OBJECT_REAL_HEIGHT_M, BUILD_ALIGN_THRESHOLD, TRACÉ_DEFAULTS, TRACÉ_EMOJI,
+  OBJECT_REAL_HEIGHT_M, BUILD_ALIGN_THRESHOLD, TRACÉ_DEFAULTS, 
   ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
-  ROOM_FLOOR_TYPE_IDS, OBJECT_TYPE_EMOJI, BUBBLE_TAIL_ANGLE_DEFAULT,
+  BUBBLE_TAIL_ANGLE_DEFAULT,
   BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
-  BUBBLE_FONT_FALLBACK, POSE_3D, POSE_HANDLES, GROUND_COLOR_DEFAULT_3D,
-  GROUND_Y_DEFAULT_3D, GROUND_CONTACT_EPS_3D, GROUND_PLANE_SIZE_3D, GROUND_TYPE_DEFS,
-  PERSONA_3D_W, PERSONA_3D_H, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES,
-  ANIMAL_JOINT_DEFS, WALL_PX_PER_UNIT_3D, CHILD_DESIGN_SIZE_3D,
-  CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, CAM_SMOOTH_EPS,
-  PANEL_SCENE_RENDER_MAX_PX, PERSONA_EDITOR_RENDER_MAX_PX, PERSONA_SKELETON_3D,
-  PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H,
-  OBJECT_PREVIEW_BASE_W, OBJECT_PREVIEW_BASE_H, ROOM_PREVIEW_BASE_W,
-  ROOM_PREVIEW_BASE_H, PREVIEW_OBJECT_ID, PREVIEW_PERSONA_ID, LIMB_SEGMENTS,
-  JOINT_LABELS, JOINT_GROUPS, PERSONA_PREVIEW_PAN_SENS
+  POSE_3D, POSE_HANDLES, 
+  GROUND_Y_DEFAULT_3D, 
+  OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES,
+  WALL_PX_PER_UNIT_3D, CHILD_DESIGN_SIZE_3D,
+  PERSONA_EDITOR_RENDER_MAX_PX, PERSONA_SKELETON_3D,
+  JOINT_LABELS, JOINT_GROUPS
 } from './constants.js';
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
-  clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
-  getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
+  clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
+  getFormat, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,
   posePickRadii3D,   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
-  modelAxisTowardViewer3D, straightDragDirection3D,
+  straightDragDirection3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
 } from './utils.js';
-import { S, currentVolume, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
-  isLockedScenePanel, panelsInPage, renumberPanels, ensurePanelNumbers } from './state.js';
+import { S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr,
+  isLockedScenePanel, panelsInPage, renumberPanels } from './state.js';
 import { APP_VERSION } from './version.js';
 import {
-  applyGroundType,
-  applyStyle3DLighting,
-  applyStyleCanvasFilter3D,
-  buildGroundTexture,
-  buildWallRig3D,
   cloneJoints,
   disposeObjectRig3D,
   disposePersonaRig3D,
   disposeWallRenderRig3D,
-  drawPersona3D,
   ensurePersonaScene3D,
-  expandBoxByMeshOnly3D,
-  frameCameraToFigure,
   frameOrthoCameraToBox,
   getEffectiveJoints,
   ensureObjectRigEntry3D,
-  ensurePersonaRigEntry3D,
-  ensureWallRenderEntry3D,
   getWallPanRect2D,
-  wallPanAlongSign,
   wallOpeningRect,
-  objectRigCache3D,
-  personaCamera3D,
   personaCameraOrtho3D,
-  personaRenderer3D,
-  personaRigCache3D,
   personaScene3D,
-  renderPersonaToCanvas3D,
-  resolveStyle3D,
-  showOnlyFigure3D,
-  groundMesh3D,
   wallRenderRigCache3D,
 } from './rig3d.js';
 import {
   setScene3DCallbacks,
   disposeAllRigs3D,
-  applyGroundMagnetY,
-  panelApparentPx3D,
   panelAutoDepthPivot3D,
   panelCamBasis3D,
   panelDepthToDistance3D,
   panelDragRayOnPlane,
-  centerSceneCameraOnElement,
-  centerSceneCameraOnRoom,
   clampPanelDepth3D,
   clampWorldYAboveGround,
   computeTracéWorld3D,
-  drawAxisGizmoAt,
-  drawPanelScene3D,
-  drawObject3D,
   ensureElementUnits3D,
   ensureElementWorldPos3D,
   ensureNewElementVisibleInPanel3D,
   findOwningPanel,
-  framePanelCamera3D,
   getCamOrbitWorld,
   getElementProjectedHalfExtents3D,
   groundMagnetEligible,
   panelPixelToGroundXZ3D,
   projectElementCenterToCanvas3D,
-  renderObjectToCanvas3D,
   setElementWorldPos3D,
   smoothTracéPath3D,
   tracéPointAtFrac3D,
   wallOpeningWorldPosOnTracé3D,
   startCamSmoothing,
   storeElementWorldCoords,
-  storeElementWxFloor,
-  tracéUpdateScreenPts,
   useObjectBoxFormat3D,
   useObjectFormat3D,
   worldFloorToScreen,
@@ -130,24 +96,14 @@ import {
   mergedBuildWallRigCache3D,
   getRoomScreenBBoxFrom2DProjections,
   getBuildingJunctionCorners,
-  getWallChildProjectedQuad3D,
 } from './scene3d.js';
 import {
   setIOCallbacks,
-  hasElectronAPI, supportsFileSystemAccess,
-  serializeProject, applyProjectNameFromFileName,
-  cleanupOrphanedElements, migrateMissingHomePanelId, migrateSceneTopDownDefault,
-  migrateElementWxFloor, migratePanelWorldCoords, resyncIdCounter,
+  hasElectronAPI, 
   applyProjectData,
-  setProjectModalStatus, markProjectSaved, updateLastSavedIndicator,
-  writeProjectToHandle, writeProjectToPath, downloadProjectAsFile,
-  stopAutosave, startAutosave,
-  saveProjectFlow, createNewProjectFlow, loadExistingProjectFlow,
-  openProjectModal, closeProjectModal,
-  openRenameProjectModal, closeRenameProjectModal, confirmRenameProject,
-  openRenameEntityModal, closeRenameEntityModal, confirmRenameEntity,
-  confirmAction, alertAction, settleConfirmAction,
-  openQuitConfirmModal, closeQuitConfirmModal,
+  startAutosave,
+  openRenameEntityModal, 
+  confirmAction, alertAction, 
   setPoseLibrary, loadPoseLibrary, setDismissedPoses, loadDismissedPoses,
   restoreBuiltinPoses, missingBuiltinPoseCount,
 } from './io.js';
@@ -155,56 +111,44 @@ import {
   setDrawCallbacks,
   uniqueDefaultName, addRoomWallElement, stopBuildMode,
   buildToolCreateWallSegment, buildToolClose,
-  getPanelPoints, drawTracé, drawTraceToolPreview, drawMeasureToolPreview,
-  drawBuildToolOverlay, drawPanelNumberBadge, drawContent, drawObject,
-  bubbleTailVisible, bubbleShapeOf, bubbleEdgePoint, getBubbleTailTip, drawBubble, drawFace,
-  syncPreviewCanvasRes,
+  getPanelPoints, 
+  bubbleTailVisible, getBubbleTailTip, 
   getRoomBoundingBoxXZ, getBuildingBoundingBoxXZ,
-  drawRoomPreview, drawBuildingPreview, drawObjectPreview, drawPersonaPreview,
-  personaHandleScreenPos, projectJointToCanvas, drawPersonaPoseHandlesOverlay,
-  pickPoseHandleAt, projectLocalOffsetToCanvas, distToSegmentSq, pickLimbSegmentAt,
-  drawStickFigure, drawStickFigureStanding, drawStickFigureSitting,
-  drawStickFigureLying, drawStickFigureCombat, drawStickFigureCourse,
-  drawStickFigureSaut, drawStickFigureVol, drawStickFigureAccroupi,
-  drawStickFigureGenoux, drawStickFigureSort, drawStickFigureArc,
-  drawStickFigureEpeeLevee, drawStickFigureVaincu, drawStickFigureMeditation,
-  drawStickFigureRecul, drawSelection,
-  wrapText, wrapTextLines, drawCanvasOnly, drawCurrentPage, renderAll,
+  drawPersonaPreview,
+  drawPersonaPoseHandlesOverlay,
+  pickPoseHandleAt, 
+  drawCurrentPage, renderAll,
   scheduleDrawCurrentPage, flushDrawCurrentPage,
-  buildSinglePageImagePdf, downloadCanvasAsPdf, exportPage, exportVolume,
+  exportPage, exportVolume,
 } from './draw.js';
 import {
   setI18nCallbacks,
-  applyTextEntry, setLeadingText, setTrailingText,
-  applyI18n, applyI18nModalSectionTitles, applyI18nHelpManual,
-  refreshDynamicI18nTexts,
-  stackRankLabel, noDescriptionLabel,
+  applyI18n, 
 } from './i18n.js';
 import {
   setSidebarCallbacks,
-  sideGroupCollapsed,
-  isSceneTopDownView, setPanelNumber, getLinkedElementName, edgeLengths,
+  isSceneTopDownView, 
   homeOwningPanel, exitCameraMode, elementsInPanel, getRoomConnectedComponents,
-  renderSideElementRow, renderSidePersonas, renderTracéSideRow, renderSidePagePanels,
   updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
   refreshSceneTopDownBtn, closeRightPanelMenu,
 } from './sidebar.js';
 import {
-  toggleModalSection, resetModalSections,
-  getPersonaScalePercent, updatePersonaSizeDisplay, updateObjectSizeDisplay,
-  getOpenModalEl, captureModalSnapshot, updateSaveButtonState, recomputeModalDirty,
-  rotYToSliderDeg, sliderDegToRotY,
+  toggleModalSection, 
+  updatePersonaSizeDisplay, updateObjectSizeDisplay,
+  recomputeModalDirty,
+  sliderDegToRotY,
   openPersonaModal, closeDescModal, refreshPersonaPreview, makeJointRangeRow,
   syncJointSlidersFromDraft,
   setModalPoseOptionsBuilder,
-  makeAnimalJointRangeRow, highlightAnimalJointRows, openAnimalJointGroupForHandle,
+  openAnimalJointGroupForHandle,
   closeAllAnimalJointSliders, buildAnimalJointSlidersUI,
-  openObjectModal, closeObjectModal, refreshObjectPreview, drawAnimalJointHandlesOverlay,
-  pickAnimalHandleAt, getObjectPreviewCanvasCoords, populateMagnetWallOptions,
-  updateWallFaceFieldForSelectedWall, buildRoomFloorTypeGrid,
+  openObjectModal, closeObjectModal, refreshObjectPreview, 
+  pickAnimalHandleAt, getObjectPreviewCanvasCoords, 
+  updateWallFaceFieldForSelectedWall, 
   openRoomModal, closeRoomModal, openBuildingModal, closeBuildingModal,
-  openTracéModal, buildTerrainTypeGrid, openTerrainModal,
+  openTracéModal, openTerrainModal,
   refreshRoomPreview, refreshBuildingPreview,
+  animalHandleScreenPos,
 } from './modals.js';
 
 
@@ -442,20 +386,6 @@ document.addEventListener('mousedown', (e) => {
   updateSidePanel();
 });
 
-// Exits the Scene editor to return to normal editing of the last displayed Volume/Page.
-function exitSceneEditing(){
-  if (!S.editingSceneId) return;
-  disableSceneCameraMode();
-  // Stop the measurement tool if it was active in this Scene.
-  if (S.measureTool) {
-    S.measureTool = null;
-    const sec = document.getElementById('sideMesureSection');
-    if (sec) sec.style.display = 'none';
-  }
-  S.editingSceneId = null;
-  S.selectedId = null; S.selectedRoomId = null; S.dragMode = null; S.snapGuide = null;
-  renderAll();
-}
 
 // ↳ src/utils.js (clamp)
 
@@ -2101,7 +2031,7 @@ export function getStackGroup(id, page){
 export function moveStackGroup(group, page, dir, blockedIds){
   const objs = page.objects;
   const groupIds = new Set(group.map(o => o.id));
-  let indices = group.map(o => objs.indexOf(o)).filter(i => i > -1);
+  const indices = group.map(o => objs.indexOf(o)).filter(i => i > -1);
   indices.sort((a, b) => dir > 0 ? b - a : a - b);
   let moved = false;
   indices.forEach(idx => {
@@ -2555,7 +2485,11 @@ export function positionWallOpeningOnWall(obj, wall, face){
       let total = 0;
       for (let i = 1; i < pts.length; i++)
         total += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
-      let target = total / 2, acc = 0, mid = pts[Math.floor(pts.length / 2)];
+      // `target` ne change pas ; `acc` et `mid`, si. Déclaration séparée plutôt qu'un `let`
+      // collectif : ESLint ne peut pas corriger automatiquement une déclaration mixte, et c'est
+      // le seul avertissement qui restait après --fix.
+      const target = total / 2;
+      let acc = 0, mid = pts[Math.floor(pts.length / 2)];
       for (let i = 1; i < pts.length; i++) {
         const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
         if (acc + seg >= target) {
@@ -2646,8 +2580,8 @@ function addObjectToPanel(panel, objType){
   // at real size → no mismatch with newly added ones.
   const h = clamp(realH * WALL_PX_PER_UNIT_3D, 2, page.h * 0.95);
   const w = WALL_TYPES.includes(objType) ? clamp(panel.w * 0.4, 30, 120) : clamp(h * aspect, 2, page.w * 0.95);
-  let x = clamp(panel.x + panel.w / 2 - w / 2, 0, page.w - w);
-  let y = clamp(panel.y + panel.h / 2 - h / 2, 0, page.h - h);
+  const x = clamp(panel.x + panel.w / 2 - w / 2, 0, page.w - w);
+  const y = clamp(panel.y + panel.h / 2 - h / 2, 0, page.h - h);
   // z: real depth in the Panel's 3D scene (Phase 2 — cf. task #78), cf. the equivalent comment in
   // addPersonaToPanel. For an Opening magnetized to a Wall (cf. below), z stays at 0: its depth is
   // entirely fixed by the Wall, not by free movement via the scroll wheel.
@@ -3019,15 +2953,6 @@ function getPagePanels() {
 // Returns a panel's selectable Elements (by homePanelId, sorted by position), for Tab.
 // Tracés (Roads/Paths/Zones) use panelId instead of homePanelId: also included.
 
-// ════════════════════════════════════════════════════════════
-// PAGE QUERIES
-// ════════════════════════════════════════════════════════════
-function getPanelElements(panel) {
-  return currentPageData().objects
-    .filter(o => (o.type !== 'panel' && o.homePanelId === panel.id)
-              || (o.type === 'tracé' && o.panelId === panel.id))
-    .sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
-}
 // Returns a panel's Tab selection cycle, in the sidebar's order:
 //   Buildings → isolated Rooms → free Elements (persona/object) → Tracés.
 // Each item is { kind:'building', buildingKey } | { kind:'room', pieceId } |
@@ -3420,7 +3345,7 @@ window.addEventListener('keydown', (e) => {
     const pageData = currentPageData();
     const members = pageData.objects.filter(o => o.pieceId === S.selectedRoomId);
     const ownerPanel = members.length ? homeOwningPanel(members[0], currentPage()) : null;
-    let toRemove = new Set(members.map(m => m.id));
+    const toRemove = new Set(members.map(m => m.id));
     // Same as deleting an isolated Wall: its magnetized Openings no longer make sense without it.
     members.forEach(wall => {
       pageData.objects.filter(o => o.type === 'objet3d' && o.magnetWallId === wall.id)
@@ -3447,7 +3372,7 @@ window.addEventListener('keydown', (e) => {
     // delete the Panel itself, there's nothing obvious to reselect (cf. below, unchanged behavior
     // in that case).
     const ownerPanel = (deleted && deleted.type !== 'panel') ? homeOwningPanel(deleted, currentPage()) : null;
-    let toRemove = new Set([S.selectedId]);
+    const toRemove = new Set([S.selectedId]);
     if (deleted && deleted.type === 'panel') {
       personasInPanel(deleted, currentPage()).forEach(p => toRemove.add(p.id));
       pageData.objects.filter(o => o.type === 'objet3d' && findOwningPanel(o, currentPage()) === deleted)
@@ -3715,8 +3640,8 @@ canvasWrap.addEventListener('wheel', (e) => {
     if (!sel.baseW || !sel.baseH) { sel.baseW = sel.w; sel.baseH = sel.h; }
     const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
     const cx = sel.x + sel.w / 2, cy = sel.y + sel.h / 2;
-    let newW = clamp(sel.w * factor, 12, page.w * 0.95);
-    let newH = clamp(sel.h * factor, 12, page.h * 0.95);
+    const newW = clamp(sel.w * factor, 12, page.w * 0.95);
+    const newH = clamp(sel.h * factor, 12, page.h * 0.95);
     sel.w = newW; sel.h = newH;
     sel.x = cx - newW / 2;
     sel.y = cy - newH / 2;
@@ -3760,25 +3685,7 @@ function getCoords(e){
   };
 }
 
-function hitTest(page, x, y){
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o;
-  }
-  return null;
-}
 
-// Like hitTest, but only keeps Panels: no direct canvas interaction (single click, double-click,
-// right-click) should touch an Element (perso/objet3d) anymore — everything now goes through the
-// "Elements" list in the Panel's right-hand menu (cf. renderSidePersonas).
-function hitTestPanelOnly(page, x, y){
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (o.type !== 'panel') continue;
-    if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o;
-  }
-  return null;
-}
 
 // Like hitTestPanelOnly, but also keeps dialogue Bubbles: a Bubble is manipulated freely like a
 // Panel (direct click-selection/movement), so the space it occupies must be treated as "occupied"
@@ -3855,7 +3762,7 @@ function applyResize(orig, handle, dx, dy, page){
     x = nx; w = nw;
   }
   if (handle.includes('r')) {
-    let nw = w + dx;
+    const nw = w + dx;
     w = Math.max(24, nw);
   }
   if (handle[0] === 't') {
@@ -3864,7 +3771,7 @@ function applyResize(orig, handle, dx, dy, page){
     y = ny; h = nh;
   }
   if (handle === 'b' || handle === 'bl' || handle === 'br') {
-    let nh = h + dy;
+    const nh = h + dy;
     h = Math.max(24, nh);
   }
   if (orig.type !== 'perso' && orig.type !== 'objet3d') {
@@ -4482,13 +4389,11 @@ canvas.addEventListener('mousedown', (e) => {
           const co = junctionsBat[ci];
           if (Math.abs(x - co.sx) <= 6 && Math.abs(y - co.sy) <= 6) {
             snapshot();
-            // Fixed corner = the junction farthest (in screen space) from the clicked corner
-            let farthest = null, maxDist = -Infinity;
-            junctionsBat.forEach((j, ji) => {
-              if (ji === ci) return;
-              const d = Math.hypot(j.sx - co.sx, j.sy - co.sy);
-              if (d > maxDist) { maxDist = d; farthest = j; }
-            });
+            // INTENTION INACHEVÉE, retirée. Cette boucle cherchait « le coin le plus éloigné à
+            // l'écran du coin cliqué » pour en faire le point fixe du glisser — et jetait le
+            // résultat : `farthest` n'était lu nulle part. Elle ne faisait donc que consommer du
+            // temps à chaque saisie d'un sommet de Bâtiment. Signalée par ESLint (no-unused-vars).
+            // Si ce point fixe redevient nécessaire, le calcul est dans l'historique git.
             const geom = storeRoomGeometry(buildingRoomIds, page);
             S.dragMode = 'buildingVertexDrag'; S.dragStart = { x, y };
             S.dragOrig = {
@@ -4524,7 +4429,6 @@ canvas.addEventListener('mousedown', (e) => {
       const roomFloatY = firstWall ? (firstWall.roomFloatY || 0) : 0;
       const planeY = GROUND_Y_DEFAULT_3D + roomFloatY;
       // Compute the world point on the ground plane under the cursor (drag anchor)
-      const basis0 = panelCamBasis3D(ownerPanel);
       const planeStart = panelDragRayOnPlane(ownerPanel, page2, x, y,
         { x: 0, y: planeY, z: 0 }, { x: 0, y: 1, z: 0 });
       S.dragOrig = {
@@ -5003,8 +4907,8 @@ window.addEventListener('mousemove', (e) => {
     const obj = page.objects.find(o => o.id === S.selectedId);
     const dx = x - S.dragStart.x, dy = y - S.dragStart.y;
     const i = S.dragHandle;
-    let nx = clamp(S.dragOrig.pts[i].x + dx, 0, page.w);
-    let ny = clamp(S.dragOrig.pts[i].y + dy, 0, page.h);
+    const nx = clamp(S.dragOrig.pts[i].x + dx, 0, page.w);
+    const ny = clamp(S.dragOrig.pts[i].y + dy, 0, page.h);
     const snapThreshold = 8;
     const snap = snapCornerToRightAngle(i, S.dragOrig.pts, nx, ny, snapThreshold);
     obj.pts[i] = { x: snap.x, y: snap.y };
@@ -5378,7 +5282,10 @@ canvas.addEventListener('mousemove', (e) => {
             S.buildTool.activeGuideX = aligned.guideX;
             S.buildTool.activeGuideZ = aligned.guideZ;
           } else {
-            S.buildTool.previewPos = { ...buildTool.points[0] };
+            // `buildTool` nu : seul rescapé de la migration vers `S` sur 99 occurrences. Cette
+            // ligne levait un ReferenceError dès qu'on approchait du point de départ sans le
+            // survoler — l'outil Construire s'arrêtait net. Trouvé par ESLint (no-undef).
+            S.buildTool.previewPos = { ...S.buildTool.points[0] };
             S.buildTool.activeGuideX = []; S.buildTool.activeGuideZ = [];
           }
           S.buildTool.snapped = closing;
@@ -6069,7 +5976,6 @@ window.addEventListener('scroll', hideContextMenu, true);
 
 // ---------- PERSONA MODAL (name + emotion) ----------
 const descModal = document.getElementById('descModal');
-const descModalTitle = document.getElementById('descModalTitle');
 const personaNameInput = document.getElementById('personaNameInput');
 const personaGenreSelect = document.getElementById('personaGenreSelect');
 const personaEmotionSelect = document.getElementById('personaEmotionSelect');
@@ -6079,7 +5985,6 @@ const personaHandRSelect = document.getElementById('personaHandRSelect');
 const personaRotYInput = document.getElementById('personaRotYInput');
 const personaRotXInput = document.getElementById('personaRotXInput');
 const personaRotZInput = document.getElementById('personaRotZInput');
-const personaPreview3D = document.getElementById('personaPreview3D');
 const personaSizeInput = document.getElementById('personaSizeInput');
 const personaDepthInput = document.getElementById('personaDepthInput');
 const personaPosXInput = document.getElementById('personaPosXInput');
@@ -6105,17 +6010,12 @@ const objectRotXInput = document.getElementById('objectRotXInput');
 const objectRotYInput = document.getElementById('objectRotYInput');
 const objectRotZInput = document.getElementById('objectRotZInput');
 const objectDepthInput = document.getElementById('objectDepthInput');
-const objectDepthLabel = document.getElementById('objectDepthLabel');
 const objectPosXInput = document.getElementById('objectPosXInput');
 const objectPosYInput = document.getElementById('objectPosYInput');
-const objectPosLabel = document.getElementById('objectPosLabel');
-const objectSizeField = document.getElementById('objectSizeField');
 const objectSizeInput = document.getElementById('objectSizeInput');
 const objectSizeValue = document.getElementById('objectSizeValue');
-const objectWallSizeField = document.getElementById('objectWallSizeField');
 const objectWallLengthInput = document.getElementById('objectWallLengthInput');
 const objectWallHeightInput = document.getElementById('objectWallHeightInput');
-const objectWallFaceField = document.getElementById('objectWallFaceField');
 const objectWallFaceSelect = document.getElementById('objectWallFaceSelect');
 const objectMagnetWallField = document.getElementById('objectMagnetWallField');
 const objectMagnetWallSelect = document.getElementById('objectMagnetWallSelect');
@@ -6131,8 +6031,6 @@ const objectTraversantField = document.getElementById('objectTraversantField');
 const objectGroundMagnetField = document.getElementById('objectGroundMagnetField');
 const objectGroundMagnetCheckbox = document.getElementById('objectGroundMagnetCheckbox');
 const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox');
-const objectLinkedField = document.getElementById('objectLinkedField');
-const objectLinkedValue = document.getElementById('objectLinkedValue');
 // [STATE→S] let S.modalTarget = null;
 // [STATE→S] let S.modalDraftJoints = null;
 // [STATE→S] let S.modalDraftAnimalJoints = null; // { jointId: { x?, y?, z? } } while editing an animal
@@ -6394,6 +6292,8 @@ objectTypeSelect.addEventListener('change', () => {
   // Changing type to/from an animal: rebuild the joint sliders
   S.modalDraftAnimalJoints = {};
   S.selectedAnimalHandle = null;
+  // Importé de modals.js : il n'était pas dans la liste d'imports, donc changer le TYPE d'un
+  // Objet dans sa modale levait un ReferenceError. Trouvé par ESLint (no-undef).
   Object.keys(animalHandleScreenPos).forEach(id => delete animalHandleScreenPos[id]);
   buildAnimalJointSlidersUI(objectTypeSelect.value);
   refreshObjectPreview();
@@ -6615,7 +6515,6 @@ canvas.addEventListener('dblclick', (e) => {
 
 // ---------- ROOM / BUILDING MODAL ----------
 const roomModal         = document.getElementById('roomModal');
-const roomModalTitle    = document.getElementById('roomModalTitle');
 const roomNameInput     = document.getElementById('roomNameInput');
 const roomCeilingVisibleCheckbox = document.getElementById('roomCeilingVisibleCheckbox');
 const roomMagnetGroundCheckbox      = document.getElementById('roomMagnetGroundCheckbox');
@@ -6623,8 +6522,6 @@ const roomPosXInput     = document.getElementById('roomPosXInput');
 const roomPosYInput     = document.getElementById('roomPosYInput');
 const roomPosZInput     = document.getElementById('roomPosZInput');
 const roomRotYInput     = document.getElementById('roomRotYInput');
-const roomRotXInput     = document.getElementById('roomRotXInput');
-const roomRotZInput     = document.getElementById('roomRotZInput');
 const roomModalCancel   = document.getElementById('roomModalCancel');
 const roomModalSave     = document.getElementById('roomModalSave');
 
@@ -7212,58 +7109,23 @@ document.getElementById('ctxCreateBubble').onclick = () => {
 };
 
 // ---------- DESCRIPTION PANEL (right-hand side) ----------
-const sideDescTitle = document.getElementById('sideDescTitle');
-const sideBubbleFontWrap = document.getElementById('sideBubbleFontWrap');
 const sideBubbleFontSelect = document.getElementById('sideBubbleFontSelect');
-const sideBubbleFontSizeWrap = document.getElementById('sideBubbleFontSizeWrap');
 const sideBubbleFontSizeInput = document.getElementById('sideBubbleFontSizeInput');
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
-const descEmptyHint = document.getElementById('descEmptyHint');
 const sideDescInput = document.getElementById('sideDescInput');
-const sideDimsSection = document.getElementById('sideDimsSection');
-const sideDims = document.getElementById('sideDims');
-const sideDimsTitle = document.getElementById('sideDimsTitle');
-const sideStackSection = document.getElementById('sideStackSection');
-const sideStackLevel = document.getElementById('sideStackLevel');
-const sideGroundSection = document.getElementById('sideGroundSection');
-const sideGroundGrid = document.getElementById('sideGroundGrid');
-const sidePersonasSection = document.getElementById('sidePersonasSection');
-const sidePersonas = document.getElementById('sidePersonas');
-const sidePersonasTitle = document.getElementById('sidePersonasTitle');
-const sideBubbleAppearanceSection = document.getElementById('sideBubbleAppearanceSection');
-const sideBubbleAppearanceTitle = document.getElementById('sideBubbleAppearanceTitle');
-const sideBubbleAppearanceWrap = document.getElementById('sideBubbleAppearanceWrap');
-const sideBubbleTailWrap = document.getElementById('sideBubbleTailWrap');
 const sideBubbleTailToggle = document.getElementById('sideBubbleTailToggle');
-const sideBubbleShapeWrap = document.getElementById('sideBubbleShapeWrap');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
-const sideBubblePaddingWrap = document.getElementById('sideBubblePaddingWrap');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
-const sideBubbleStackSection = document.getElementById('sideBubbleStackSection');
-const sideBubbleStackLevel = document.getElementById('sideBubbleStackLevel');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
-const sideDescSection = document.getElementById('sideDescSection');
-const sideHelpSection = document.getElementById('sideHelpSection');
-const pageMenuHeader = document.getElementById('pageMenuHeader');
-const pageMenuNumber = document.getElementById('pageMenuNumber');
 const pageMenuCloseBtn = document.getElementById('pageMenuCloseBtn');
-const sidePagePanelsSection = document.getElementById('sidePagePanelsSection');
-const sidePagePanels = document.getElementById('sidePagePanels');
-const sidePageBgSection = document.getElementById('sidePageBgSection');
 const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
-const sideBorderSection = document.getElementById('sideBorderSection');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
 const sideBorderColorWrap = document.getElementById('sideBorderColorWrap');
 const sideBorderColorInput = document.getElementById('sideBorderColorInput');
 const sideBorderWidthWrap = document.getElementById('sideBorderWidthWrap');
 const sideBorderWidthSelect = document.getElementById('sideBorderWidthSelect');
-const panelMenuHeader = document.getElementById('panelMenuHeader');
-const panelMenuTitle = document.getElementById('panelMenuTitle');
-const panelMenuNumber = document.getElementById('panelMenuNumber');
 const panelMenuCloseBtn = document.getElementById('panelMenuCloseBtn');
-const bubbleMenuHeader = document.getElementById('bubbleMenuHeader');
 const bubbleMenuCloseBtn = document.getElementById('bubbleMenuCloseBtn');
-const helpMenuHeader = document.getElementById('helpMenuHeader');
 const rightPanel = document.getElementById('rightPanel');
 const helpMenuCloseBtn = document.getElementById('helpMenuCloseBtn');
 const sideCameraSection = document.getElementById('sideCameraSection');
@@ -7721,7 +7583,6 @@ sideBorderColorInput.addEventListener('input', () => {
 sideBorderColorInput.addEventListener('change', () => { S.sideBorderColorSnapshotTaken = false; });
 
 // "Border" section of the Bubble menu
-const sideBubbleBorderSection   = document.getElementById('sideBubbleBorderSection');
 const sideBubbleBorderToggle     = document.getElementById('sideBubbleBorderToggle');
 const sideBubbleBorderWidthWrap  = document.getElementById('sideBubbleBorderWidthWrap');
 const sideBubbleBorderWidthSelect= document.getElementById('sideBubbleBorderWidthSelect');

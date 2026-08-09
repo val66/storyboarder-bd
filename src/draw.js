@@ -1019,7 +1019,6 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
   // dashed frames per wall (original behavior) + 4 corner handles on the XZ bbox
   // for resizing (no extra quadrilateral — a single visual selector).
   if (withSelection && S.selectedRoomId) {
-    const selPanelForRoom = page.objects.find(p => p.type === 'panel' && p.id === S.selectedId);
     const members = page.objects.filter(o => o.pieceId === S.selectedRoomId || o.altPieceId === S.selectedRoomId);
     if (members.length) {
       c.save();
@@ -1391,8 +1390,6 @@ export function drawRoomPreview(targetCanvas, pieceId, page, showCeiling, liveRo
     const dx = wx - _px, dz = wz - _pz;
     return { x: _px + dx * _ca - dz * _sa, z: _pz + dx * _sa + dz * _ca };
   };
-  const sx = wx => wx * scaleXZ + ox;
-  const sz = wz => wz * scaleXZ + oz;
   const sxr = (wx, wz) => { const r = liveXZ(wx, wz); return r.x * scaleXZ + ox; };
   const szr = (wx, wz) => { const r = liveXZ(wx, wz); return r.z * scaleXZ + oz; };
 
@@ -1793,7 +1790,14 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   if (typeof THREE === 'undefined') return;
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return;
-  const cnv = canvas || personaPreview3D;
+  // Le canevas est OBLIGATOIRE. Le repli était `canvas || personaPreview3D`, une variable que
+  // draw.js n'importe nulle part : elle ne se résolvait que par la « nommage global » du
+  // navigateur, qui expose tout élément portant un id sur `window`. Ça marchait par accident, et
+  // seulement dans un navigateur. L'importer créerait un cycle (modals.js dépend déjà de draw.js) ;
+  // c'est donc l'appelant qui passe son canevas — même remède qu'au Fix 92, où le paramètre a été
+  // retiré plutôt que rendu implicite. Trouvé par ESLint (no-undef).
+  if (!canvas) return;
+  const cnv = canvas;
   const positions = positionsOut || personaHandleScreenPos;
   const selectedId = (activeId !== undefined)
     ? activeId

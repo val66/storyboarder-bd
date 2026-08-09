@@ -25,15 +25,15 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
   test('la configuration existe et se charge', async () => {
     // Le peu que je puisse vérifier sans ESLint : que le fichier est du JavaScript valide et qu'il
     // a la forme attendue d'une configuration « flat » (un tableau de blocs).
-    const chemin = join(RACINE, 'eslint.config.js');
-    assert.ok(existsSync(chemin), 'eslint.config.js manquant');
+    const chemin = join(RACINE, 'eslint.config.mjs');
+    assert.ok(existsSync(chemin), 'eslint.config.mjs manquant');
     const conf = (await import('file://' + chemin)).default;
     assert.ok(Array.isArray(conf), 'une configuration flat est un TABLEAU de blocs');
     assert.ok(conf.length >= 2, 'au moins un bloc de règles et un bloc d\'exclusions');
   });
 
   test('chaque bloc cible des fichiers ou déclare des exclusions', async () => {
-    const conf = (await import('file://' + join(RACINE, 'eslint.config.js'))).default;
+    const conf = (await import('file://' + join(RACINE, 'eslint.config.mjs'))).default;
     conf.forEach((bloc, i) => {
       assert.ok(bloc.files || bloc.ignores,
         `bloc ${i} : ni "files" ni "ignores" — il s'appliquerait partout sans le dire`);
@@ -44,7 +44,7 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
     // src/ est un renderer navigateur, main.js/preload.js du Node CommonJS, tests/ et tools/ des
     // modules Node. Les confondre reviendrait à autoriser `require` dans le renderer et `window`
     // dans le processus principal — la frontière que pose la règle n°1 d'architecture.md.
-    const conf = (await import('file://' + join(RACINE, 'eslint.config.js'))).default;
+    const conf = (await import('file://' + join(RACINE, 'eslint.config.mjs'))).default;
     const cibles = conf.flatMap(b => b.files || []).join(' ');
     ['src/', 'main.js', 'tests/'].forEach(c =>
       assert.ok(cibles.includes(c), `aucun bloc ne cible ${c}`));
@@ -96,7 +96,7 @@ describe('Analyse statique — le partage des rôles avec les tests', () => {
     // fichier. Elle passait donc même en désactivant la règle pour src/, puisque les blocs
     // main.js et tests/ la citent aussi. Constaté en mutant : le test était vert pour une
     // mauvaise raison. On interroge maintenant la configuration CHARGÉE, bloc par bloc.
-    const conf = (await import('file://' + join(RACINE, 'eslint.config.js'))).default;
+    const conf = (await import('file://' + join(RACINE, 'eslint.config.mjs'))).default;
     const blocSrc = conf.find(b => (b.files || []).some(f => f.startsWith('src/')));
     assert.ok(blocSrc, 'aucun bloc ne cible src/');
     ['no-unused-vars', 'no-undef', 'no-dupe-keys', 'no-unreachable'].forEach(r => {
@@ -111,7 +111,7 @@ describe('Analyse statique — le partage des rôles avec les tests', () => {
     // ESLint ne saura jamais qu'un getElementById doit viser un id réel d'index.html, ni qu'un
     // document de docs/ doit exister dans les deux langues. Ce partage est délibéré, et écrit dans
     // la configuration pour que personne ne tente de l'y déplacer.
-    const conf = readFileSync(join(RACINE, 'eslint.config.js'), 'utf8');
+    const conf = readFileSync(join(RACINE, 'eslint.config.mjs'), 'utf8');
     assert.match(conf, /restent des tests/i);
     ['dom-ids.test.mjs', 'html.test.mjs', 'docs.test.mjs'].forEach(f =>
       assert.ok(existsSync(join(RACINE, 'tests', f)), `${f} manquant`));
