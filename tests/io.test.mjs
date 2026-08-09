@@ -3,6 +3,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   serializeProject,
@@ -690,5 +691,56 @@ describe('Fix 59 — restaurer les poses de base', () => {
     assert.ok(total > 0);
     restoreBuiltinPoses(POSITIONS, POSE_3D, 'humain');
     assert.equal(missingBuiltinPoseCount(POSITIONS, POSE_3D, 'humain'), 0, 'bouton désactivé');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 67 — Échap dans l'éditeur de Personnage ne doit pas ouvrir le menu Projet.
+//
+// Testé par INSPECTION de la source : le stub DOM ne distribue aucun événement (addEventListener
+// y est un no-op), on ne peut donc pas déclencher un vrai appui sur Échap. Ce qu'on vérifie ici est
+// exactement ce qui était faux — l'ORDRE des gardes dans l'écouteur, pas leur effet.
+//
+// Le piège de fond : l'écouteur d'io.js est enregistré AVANT celui de l'éditeur (events.js importe
+// io.js), donc le stopImmediatePropagation de l'éditeur arrive trop tard. Tout ce qui RECOUVRE
+// l'application doit se déclarer dans la liste de gardes d'io.js — une énumération incomplète, la
+// deuxième famille de bugs récurrente de ce dépôt.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est ouvert', () => {
+  const src = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
+  const debut = src.indexOf("window.addEventListener('keydown', (e) => {\n  if (e.key !== 'Escape') return;");
+  const corps = src.slice(debut, src.indexOf('openProjectModal();', debut));
+
+  test('l\'écouteur « Échap → menu Projet » existe toujours', () => {
+    assert.ok(debut > 0, 'écouteur introuvable — le test ne vérifie plus rien');
+  });
+
+  test('RÉGRESSION : il renonce si l\'éditeur de Personnage est ouvert', () => {
+    assert.match(corps, /if \(S\.personaEditorOpen\) return;/,
+      'sans ce garde, quitter l\'éditeur par Échap ouvre le menu Projet derrière lui');
+  });
+
+  test('RÉGRESSION : le garde précède TOUT appel à openProjectModal', () => {
+    // Le placer après une garde qui ouvre ou ferme quelque chose ne servirait à rien : ce sont les
+    // effets de bord des lignes précédentes qu'on veut éviter, pas seulement l'ouverture finale.
+    // Chercher `S.personaEditorOpen` nu trouverait d'abord le COMMENTAIRE au-dessus du garde, qui
+    // lui reste en place quand on déplace la ligne : c'est exactement ainsi qu'une mutation a
+    // échappé à la première version de ce test.
+    const iGarde = corps.indexOf('if (S.personaEditorOpen) return;');
+    const iPremierEffet = corps.search(/(close|open)[A-Z]\w*\(/);
+    assert.ok(iGarde > 0, 'garde absent');
+    assert.ok(iPremierEffet === -1 || iGarde < iPremierEffet,
+      'le garde de l\'éditeur doit être évalué avant toute autre action');
+  });
+
+  test('RÉGRESSION : l\'éditeur ne compte PAS sur stopImmediatePropagation pour ça', () => {
+    // io.js est importé avant events.js : son écouteur s'exécute en premier, et rien de ce que fait
+    // l'éditeur ensuite ne peut le rattraper. Si un jour quelqu'un retire le garde d'io.js en
+    // pensant que l'éditeur se protège seul, ce test le lui dit.
+    const ev = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const i = ev.indexOf("if (!S.personaEditorOpen) return;\n    if (e.key === 'Escape')");
+    assert.ok(i > 0, 'écouteur clavier de l\'éditeur introuvable');
+    assert.ok(!/openProjectModal/.test(ev.slice(i, ev.indexOf('});', i))),
+      'l\'éditeur ne doit pas non plus tenter de refermer le menu Projet après coup');
   });
 });

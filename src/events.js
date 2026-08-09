@@ -1125,8 +1125,12 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     });
     window.addEventListener('mouseup', () => { orbiting = null; });
   }
-  // Échap ferme l'éditeur, comme partout ailleurs dans l'application. stopImmediatePropagation
-  // empêche l'écouteur « Échap → menu Projet » de se déclencher sur le même événement.
+  // Échap ferme l'éditeur, comme partout ailleurs dans l'application.
+  //
+  // stopImmediatePropagation n'arrête QUE les écouteurs enregistrés APRÈS celui-ci sur window —
+  // c'est-à-dire ceux d'events.js plus bas (outil de mesure, tracé, construction). Il ne peut rien
+  // contre celui d'io.js, chargé avant : le Fix 67 a corrigé là-bas le fait qu'Échap ouvrait le
+  // menu Projet derrière l'éditeur. Ne pas croire ce garde-fou plus large qu'il n'est.
   //
   // Fix 66 — l'éditeur n'a PLUS de raccourci Caméra. Le clic droit suffit à orienter la figure, et
   // toute lettre captée ici serait une lettre volée aux raccourcis de la Case restée derrière.

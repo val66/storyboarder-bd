@@ -171,6 +171,15 @@ la bibliothèque en place.
 
 - **1.1** Mode `S.editingPersonaId`, calqué sur `S.editingSceneId` : prise en main du rendu, sortie,
   garde-fous sur les clics hors zones légitimes.
+
+  ⚠️ **Piège de l'ordre d'enregistrement (Fix 67).** L'éditeur RECOUVRE l'application au lieu de la
+  remplacer : tout ce qui écoute le clavier au niveau `window` continue de tourner derrière lui.
+  `stopImmediatePropagation` n'arrête que les écouteurs enregistrés **après** le sien sur la même
+  cible — or `io.js` est importé avant `events.js`, donc son « Échap → menu Projet » s'exécute en
+  premier, quoi que fasse l'éditeur ensuite. Résultat : quitter l'éditeur par Échap ouvrait le menu
+  Projet derrière lui. La correction est du côté d'`io.js`, dans sa liste de gardes — laquelle est
+  une **énumération** que chaque nouvel overlay doit penser à compléter, la deuxième famille de bugs
+  récurrente de ce dépôt.
 - **1.2** Canevas d'édition alimenté par le renderer partagé (render → `drawImage`), résolution
   plafonnée.
 - **1.3** Caméra de l'éditeur (orbite, zoom) en réutilisant la logique existante. ✅ *(Fix 65/66)*

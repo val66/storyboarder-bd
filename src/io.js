@@ -765,8 +765,17 @@ window.addEventListener('keydown', (e) => {
 // closeObjectModal/closeRenameProjectModal just above/below): we don't want to steal the
 // event from it in that case. If the Project modal is already open, Escape closes it —
 // consistent with the other modals' behavior (Escape always closes the frontmost modal).
+//
+// Fix 67 — this listener is the FIRST one registered on window for Escape (io.js is imported
+// before events.js), so a later listener calling stopImmediatePropagation cannot hold it back:
+// by the time that listener runs, the Project modal has already opened. Anything that covers the
+// application therefore has to declare itself HERE, in the guard list below — that is what the
+// character editor was missing, and why leaving it opened the Project modal behind itself.
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  // The character editor COVERS the application (cf. S.personaEditorOpen — it does not replace
+  // what is on screen, it hides it), so no modal class can speak for it: only this flag can.
+  if (S.personaEditorOpen) return;
   // FIX (pre-existing bug): descModal/objectModal/settingsModal were referenced here without
   // the _ prefix (cf. _descModal/_objectModal/_settingsModal declared above) — an immediate
   // ReferenceError, which broke the Escape key in the ENTIRE application from the very first
