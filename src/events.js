@@ -1030,8 +1030,11 @@ export function drawPersonaEditor(){
   // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
   // passage personaEditorHandlePos. C'est donc ce dessin qui rend le clic possible : sans redessin,
   // les positions dateraient de la dernière image et cliquer viserait où le Personnage ÉTAIT.
+  // Fix 86 — `true` : dans l'éditeur, une articulation sélectionnée masque les autres. L'aperçu de
+  // la modale, lui, les garde toutes (il n'appelle pas avec ce drapeau) : on y choisit une
+  // articulation, on ne l'y manipule pas au glisser.
   drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
-    personaEditorDragHint());
+    personaEditorDragHint(), true);
 }
 
 // Carte PROPRE à l'éditeur (cf. le commentaire de drawPersonaPoseHandlesOverlay) : la modale garde

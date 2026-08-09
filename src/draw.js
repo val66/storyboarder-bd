@@ -1701,7 +1701,15 @@ export function drawPersonaDragHint(hctx, pos, hint){
   return true;
 }
 
-export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint){
+// `soloActive` — Fix 86 : une fois une articulation choisie, elle reste SEULE à l'écran et seule
+// sensible au clic. Les voisines n'y gagnaient rien et coûtaient des sélections involontaires en
+// plein glisser, l'épaule et le coude n'étant séparés que de quelques pixels sur certaines vues.
+//
+// L'effacement et l'inertie viennent de la MÊME ligne : `positions` est la carte que consultent
+// pickNearestHandle3D et pickLimbSegmentAt, qui ignorent l'une comme l'autre une position nulle. Ne
+// pas enregistrer une poignée la rend donc invisible ET inerte, sans second mécanisme à tenir en
+// accord avec le premier.
+export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive){
   if (typeof THREE === 'undefined') return;
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return;
@@ -1711,12 +1719,19 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     ? activeId
     : (S.selectedPoseHandle && S.selectedPoseHandle.id) || null;
   const hctx = cnv.getContext('2d');
+  const solo = !!soloActive && !!selectedId;
   POSE_HANDLES.forEach(def => {
     const grp = entry.joints[def.group];
     if (!grp) return;
+    const active = selectedId === def.id;
+    if (solo && !active) {
+      // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
+      // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
+      positions[def.id] = null;
+      return;
+    }
     const pt = projectJointToCanvas(grp, personaCamera3D, cnv.width, cnv.height);
     positions[def.id] = pt;
-    const active = selectedId === def.id;
     hctx.beginPath();
     // Enlarged points (per user request) to be easier to grab with the mouse;
     // cf. pickPoseHandleAt below, whose detection radius was increased accordingly.

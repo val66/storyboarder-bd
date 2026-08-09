@@ -1892,3 +1892,24 @@ describe('poseDragHintSegment3D — le repère dessiné sur la poignée', () => 
     assert.equal(s.x2 - pos.x, POSE_DRAG_HINT_LEN);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 86 — une position nulle rend une poignée INERTE.
+//
+// C'est le mécanisme sur lequel repose le masquage des poignées non sélectionnées : ne pas
+// enregistrer une position suffit à la rendre invisible ET impossible à cliquer. Le comportement
+// des deux sélecteurs face à un `null` cesse donc d'être un détail d'implémentation — il devient
+// la garantie qu'aucun clic parasite ne passera.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('pickNearestHandle3D — une position nulle est ignorée', () => {
+  test('RÉGRESSION : une poignée à position nulle n\'est jamais choisie', () => {
+    // Même en visant exactement là où elle se trouvait à l'image précédente.
+    const positions = { epaule: null, coude: { x: 300, y: 300 } };
+    assert.equal(pickNearestHandle3D(positions, 100, 100), null);
+    assert.equal(pickNearestHandle3D(positions, 300, 300), 'coude', 'les autres restent choisies');
+  });
+
+  test('une carte entièrement nulle ne renvoie rien, et ne lève pas', () => {
+    assert.equal(pickNearestHandle3D({ a: null, b: null }, 0, 0), null);
+  });
+});

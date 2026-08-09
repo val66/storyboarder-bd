@@ -553,3 +553,49 @@ describe('Fix 85 — câblage du repère de glisser', () => {
       'sans cet argument, l\'overlay n\'aurait jamais rien à dessiner');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 86 — une articulation sélectionnée masque les autres, dans l'ÉDITEUR seulement.
+//
+// Par inspection de source : dessiner exige WebGL. Ce qu'on épingle, c'est l'endroit exact où le
+// masquage opère — la carte de positions — parce que c'est de là que vient l'inertie au clic.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 86 — masquage des poignées non sélectionnées', () => {
+  const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
+  const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const overlay = (() => {
+    const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
+    return src.slice(i, src.indexOf('\n}', i));
+  })();
+
+  test('RÉGRESSION : la poignée masquée voit sa position mise à NULL', () => {
+    // Et non simplement « non dessinée » : c'est la carte de positions que consultent
+    // pickNearestHandle3D et pickLimbSegmentAt. Se contenter de sauter le tracé laisserait une
+    // poignée invisible mais toujours cliquable — le pire des deux mondes.
+    assert.match(overlay, /positions\[def\.id\] = null;/,
+      'sans cette ligne, la poignée reste sensible au clic');
+  });
+
+  test('RÉGRESSION : `null` et non `delete`, pour ne pas garder une position périmée', () => {
+    // La carte survit d'une image à l'autre. Supprimer la clé y laisserait la valeur précédente
+    // si un autre chemin la réécrivait, et la poignée redeviendrait cliquable là où elle ÉTAIT.
+    assert.ok(!/delete positions\[def\.id\]/.test(overlay));
+  });
+
+  test('le masquage exige une sélection ET le drapeau', () => {
+    // Sans sélection, tout doit rester visible : c'est ainsi qu'on choisit une articulation.
+    assert.match(overlay, /const solo = !!soloActive && !!selectedId;/);
+  });
+
+  test('RÉGRESSION : seul l\'ÉDITEUR demande ce masquage', () => {
+    // L'aperçu de la modale garde toutes ses poignées : on y choisit une articulation, on ne l'y
+    // manipule pas au glisser. Un masquage global y rendrait la sélection impossible à changer.
+    const appelsEditeur = evt.match(/drawPersonaPoseHandlesOverlay\([^;]*\);/gs) || [];
+    assert.equal(appelsEditeur.length, 1, 'un seul appel côté éditeur');
+    assert.match(appelsEditeur[0], /,\s*true\s*\)/, 'et il passe le drapeau');
+    const mod = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+    (mod.match(/drawPersonaPoseHandlesOverlay\([^;]*\);/gs) || []).forEach(appel => {
+      assert.ok(!/,\s*true\s*\)/.test(appel), `la modale ne doit pas masquer : ${appel}`);
+    });
+  });
+});
