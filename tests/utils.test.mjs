@@ -16,6 +16,7 @@ import {
   poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
+  modelAxisTowardViewer3D, circularSweepSign3D,
   POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
@@ -1654,5 +1655,57 @@ describe('describePoseDragStep3D — relevé d\'une image de glisser', () => {
     Object.entries(r).forEach(([k, v]) => {
       assert.ok(typeof v !== 'number' || Number.isFinite(v), `${k} = ${v}`);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 81 (ESSAI) — le sens du balayage circulaire dépend du côté d'où l'on regarde.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('modelAxisTowardViewer3D / circularSweepSign3D', () => {
+  const DEG2 = Math.PI / 180;
+  const vue = (deg, plongee = 0) => ({ rotX: plongee * DEG2, rotY: deg * DEG2 });
+
+  test('RÉGRESSION : l\'axe de flexion change de côté entre les deux profils', () => {
+    // Cœur du défaut signalé : « Personnage de côté, mouvement avant/arrière inversé ». Une même
+    // rotation paraît horaire vue d'un profil et antihoraire vue de l'autre. Le balayage appliquait
+    // toujours « horaire = positif », il était donc juste d'un côté et faux de l'autre.
+    assert.ok(modelAxisTowardViewer3D('x', vue(90)) < 0, 'un profil : l\'axe vient vers l\'œil');
+    assert.ok(modelAxisTowardViewer3D('x', vue(270)) > 0, 'l\'autre : il s\'en éloigne');
+    assert.equal(circularSweepSign3D('x', vue(90)), -1);
+    assert.equal(circularSweepSign3D('x', vue(270)), 1);
+  });
+
+  test('RÉGRESSION : le signe est FRANC partout où le mode circulaire s\'applique', () => {
+    // La garantie qui rend cette convention utilisable : pour un axe unitaire,
+    // |projection|² + (a·f)² = 1. Le mode circulaire, choisi quand la projection est courte,
+    // est donc exactement le régime où a·f est proche de ±1 — jamais près de zéro, jamais ambigu.
+    for (const axe of ['x', 'y', 'z']) {
+      for (let deg = 0; deg < 360; deg += 5) {
+        for (const plongee of [-60, -20, 0, 20, 60]) {
+          const orbite = vue(deg, plongee);
+          if (poseDragIsStraight3D(axe, orbite)) continue;
+          const versLoeil = Math.abs(modelAxisTowardViewer3D(axe, orbite));
+          assert.ok(versLoeil > 0.9,
+            `axe ${axe}, azimut ${deg}°, plongée ${plongee}° : a·f = ${versLoeil.toFixed(2)}`);
+        }
+      }
+    }
+  });
+
+  test('projection et profondeur forment bien un vecteur unitaire', () => {
+    // Vérifie la cohérence des deux fonctions entre elles : elles décrivent le même axe, l'une dans
+    // le plan de l'écran, l'autre en profondeur. Si l'une dérivait, la garantie ci-dessus tomberait.
+    for (const axe of ['x', 'y', 'z']) {
+      for (const [deg, plongee] of [[0, 0], [37, 0], [90, 45], [200, -30], [310, 70]]) {
+        const orbite = vue(deg, plongee);
+        const p = projectModelAxisToScreen3D(axe, orbite);
+        const f = modelAxisTowardViewer3D(axe, orbite);
+        assertClose(p.x * p.x + p.y * p.y + f * f, 1, `axe ${axe} à ${deg}°/${plongee}°`, 1e-9);
+      }
+    }
+  });
+
+  test('entrées manquantes : un signe, jamais NaN', () => {
+    assert.ok([1, -1].includes(circularSweepSign3D(null, null)));
   });
 });

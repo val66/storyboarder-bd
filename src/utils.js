@@ -244,6 +244,34 @@ export function projectModelAxisToScreen3D(axis, orbit){
   };
 }
 
+// Fix 81 — de quel CÔTÉ l'axe pointe : produit scalaire avec la direction de visée. Négatif quand
+// l'axe vient vers l'œil, positif quand il s'en éloigne.
+//
+// C'est ce qui donne son SENS au geste circulaire, et il manquait. Pour une rotation de +θ autour
+// de `a`, un point situé à droite du pivot se déplace vers le bas de l'écran d'une quantité
+// proportionnelle à a·f (démonstration : le produit vectoriel des vecteurs droite et haut de la
+// caméra vaut -f, cf. projectModelAxisToScreen3D). Une même rotation paraît donc HORAIRE d'un côté
+// et ANTIHORAIRE de l'autre — d'où un glisser circulaire juste de face et inversé de profil.
+//
+// Le signe est toujours franc là où on s'en sert : pour un axe unitaire, |projection|² + (a·f)² = 1,
+// donc le mode circulaire (|projection| < 0.35) implique |a·f| > 0.93. Le mode droit et le mode
+// circulaire occupent ainsi chacun le régime où leur convention de signe a un sens.
+export function modelAxisTowardViewer3D(axis, orbit){
+  const rotX = (orbit && orbit.rotX) || 0;
+  const rotY = (orbit && orbit.rotY) || 0;
+  const cy = Math.cos(rotY), sy = Math.sin(rotY);
+  const cx = Math.cos(rotX), sx = Math.sin(rotX);
+  const v = axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+  // Direction de visée, de la caméra vers le centre (cf. orbitCameraPosition3D, qui la place).
+  return v[0] * -(sy * cx) + v[1] * -sx + v[2] * -(cy * cx);
+}
+
+// Sens à donner au balayage circulaire pour cet axe, sous cette orbite : +1 quand une rotation
+// positive paraît horaire à l'écran, -1 quand elle paraît antihoraire.
+export function circularSweepSign3D(axis, orbit){
+  return modelAxisTowardViewer3D(axis, orbit) < 0 ? -1 : 1;
+}
+
 // En deçà de cette longueur de projection, l'axe pointe vers l'œil : sa perpendiculaire à l'écran
 // n'a plus de direction stable et se met à tourner sur elle-même au moindre mouvement de caméra.
 // 0.35 ≈ 20° d'écart à l'axe de visée. Seuil CHOISI, donc à revoir à l'usage — pas mesuré.

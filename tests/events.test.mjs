@@ -2070,6 +2070,29 @@ describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
     assert.equal(pendant, avant, 'une image trop proche du pivot ne change rien');
   });
 
+  test('RÉGRESSION : le même balayage donne des sens OPPOSÉS depuis les deux profils', () => {
+    // Le défaut signalé : « Personnage de côté, mouvement avant/arrière inversé ». La session fige
+    // le sens à l'appui, d'après le côté depuis lequel on regarde l'axe.
+    const mesurer = (azimut) => {
+      openPersonaEditor(null);
+      setPersonaEditorOrbit(0, azimut);
+      focusPersonaEditorHandle('lShoulder');          // avant/arr. = axe X, circulaire de profil
+      const session = beginPersonaEditorJointDrag('lShoulder');
+      assert.equal(session.droit, false, `de profil (${azimut}), le mode doit être circulaire`);
+      const depart = session.startDeg;
+      const deg = applyPersonaEditorJointDrag(session, 0, 0, {
+        pivot, depart: surCercle(0), courant: surCercle(60),
+      });
+      closePersonaEditor();
+      return deg - depart;
+    };
+    const gauche = mesurer(Math.PI / 2);
+    const droite = mesurer(-Math.PI / 2);
+    assert.equal(Math.sign(gauche), -Math.sign(droite),
+      `un profil doit répondre à l'inverse de l'autre (${gauche} et ${droite})`);
+    assert.equal(Math.abs(gauche), Math.abs(droite), 'même amplitude des deux côtés');
+  });
+
   test('un geste sans balayage fourni laisse l\'angle en place', () => {
     const session = sessionEcart();
     assert.equal(applyPersonaEditorJointDrag(session, 50, 50, null), session.startDeg);

@@ -39,7 +39,7 @@ import {
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
   poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D,
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
-  pointerSweepAngle3D, accumulateSweepDegrees3D,
+  pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -840,6 +840,9 @@ export function beginPersonaEditorJointDrag(id){
   return {
     id, spec, specIndex, axis, orbit,
     droit: poseDragIsStraight3D(axis, orbit),
+    // Fix 81 — sens du balayage circulaire, figé à l'appui comme tout ce qui décide de la forme du
+    // geste. Une même rotation paraît horaire d'un côté du modèle et antihoraire de l'autre.
+    sweepSign: circularSweepSign3D(axis, orbit),
     startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
     // Fix 79 — état du balayage circulaire. `swept` cumule le tour DÉROULÉ, `sweepAngle` retient
     // l'angle de l'image précédente. null tant qu'on n'a pas eu une position exploitable : le
@@ -870,7 +873,7 @@ export function advancePersonaEditorSweep(session, geste){
     session.swept = accumulateSweepDegrees3D(session.swept, session.sweepAngle, courant);
     session.sweepAngle = courant;
   }
-  return session.swept || 0;
+  return (session.swept || 0) * (session.sweepSign || 1);
 }
 
 // `geste` porte ce dont le mode CIRCULAIRE a besoin et que le mode droit ignore : la poignée et le
