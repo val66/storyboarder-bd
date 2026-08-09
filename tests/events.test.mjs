@@ -42,6 +42,8 @@ import {
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
   personaEditorHasChanges, personaEditorTitle3D,
+  setPersonaEditorOrbit, resetPersonaEditorCamera, togglePersonaEditorCamera,
+  PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -1620,5 +1622,56 @@ describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
   test('fermer depuis le mode autonome ne rouvre aucune modale', () => {
     openPersonaEditor(null, false);
     assert.equal(closePersonaEditor(), false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 65 — caméra de l'éditeur : orbite, plus de déplacement.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — orbite de la caméra (Fix 65)', () => {
+  beforeEach(() => { closePersonaEditor(); });
+
+  test('RÉGRESSION : la rotation verticale est bornée à ±85°', () => {
+    // Même contrainte que la caméra d'une Case. À 90° pile, la direction de visée devient parallèle
+    // au vecteur « haut » de la caméra et l'image bascule brutalement.
+    assertClose(setPersonaEditorOrbit(Math.PI, 0).rotX, PERSONA_EDITOR_ROT_X_MAX, 'haut');
+    assertClose(setPersonaEditorOrbit(-Math.PI, 0).rotX, -PERSONA_EDITOR_ROT_X_MAX, 'bas');
+    assert.ok(PERSONA_EDITOR_ROT_X_MAX < Math.PI / 2, 'strictement sous 90°');
+  });
+
+  test('la rotation horizontale n\'est PAS bornée, elle est ramenée dans ]-π, π]', () => {
+    // On doit pouvoir faire des tours complets sans que la valeur parte à l'infini, ni que le
+    // curseur (-180..180) se retrouve hors de sa plage.
+    const r = setPersonaEditorOrbit(0, 3 * Math.PI);
+    assert.ok(r.rotY >= -Math.PI && r.rotY <= Math.PI, `${r.rotY} hors plage`);
+    assertClose(Math.abs(r.rotY), Math.PI, 'trois demi-tours = un demi-tour', 1e-9);
+  });
+
+  test('recadrer remet l\'orbite ET le zoom à leur valeur d\'ouverture', () => {
+    // Le zoom en fait partie : sinon on cherche pourquoi la figure reste minuscule après avoir
+    // cliqué « Recadrer ».
+    openPersonaEditor(null);
+    const zoomOuverture = S.personaEditorZoom;
+    setPersonaEditorOrbit(0.7, 2);
+    S.personaEditorZoom = 4;
+    resetPersonaEditorCamera();
+    assert.equal(S.personaEditorCamRotX, 0);
+    assert.equal(S.personaEditorCamRotY, 0);
+    assert.equal(S.personaEditorZoom, zoomOuverture, 'même valeur qu\'à l\'ouverture');
+  });
+
+  test('l\'orbite repart de face à chaque ouverture', () => {
+    openPersonaEditor(null);
+    setPersonaEditorOrbit(0.7, 2);
+    closePersonaEditor();
+    openPersonaEditor(null);
+    assert.equal(S.personaEditorCamRotX, 0);
+    assert.equal(S.personaEditorCamRotY, 0);
+  });
+
+  test('la touche C bascule la section Caméra', () => {
+    openPersonaEditor(null);
+    assert.equal(togglePersonaEditorCamera(), true);
+    assert.equal(togglePersonaEditorCamera(), false);
   });
 });

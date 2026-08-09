@@ -15,7 +15,7 @@ import {
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC
 } from './constants.js';
 import {
-  clamp
+  clamp, orbitCameraPosition3D
 } from './utils.js';
 import { S } from './state.js';
 
@@ -829,10 +829,10 @@ export const personaRigCache3D = new Map(); // persona id -> { figureGroup, face
 // units — used for the "grip" drag of the persona preview in the modal (see personaPreviewPan).
 // The camera never rolls/yaws here (only the figure rotates), so offsetting world X/Y really does
 // shift the on-screen view, without rotating it or changing the zoom.
-export function frameCameraToFigure(camera, figureGroup, zoom, pan){
+export function frameCameraToFigure(camera, figureGroup, zoom, pan, orbit){
   figureGroup.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(figureGroup);
-  frameCameraToBox(camera, box, zoom, pan);
+  frameCameraToBox(camera, box, zoom, pan, orbit);
 }
 
 // Variant of frameCameraToFigure() that frames the camera on an already-computed (world) bounding box,
@@ -858,7 +858,13 @@ export function expandBoxByMeshOnly3D(box, mesh){
   box.union(meshBox);
 }
 
-export function frameCameraToBox(camera, box, zoom, pan){
+// Fix 65 — `orbit` ({ rotX, rotY }, facultatif) fait tourner la caméra AUTOUR de la boîte, sans
+// toucher au sujet. C'est ce que fait déjà le mode Caméra d'une Case ; l'éditeur de Personnage en a
+// besoin depuis qu'on lui a retiré le déplacement de vue.
+//
+// Absent ou nul → position sur +Z, identique à ce qu'elle était avant : les aperçus des modales
+// Objet/Mur, qui n'orbitent pas, gardent leur cadrage exact.
+export function frameCameraToBox(camera, box, zoom, pan, orbit){
   if (box.isEmpty()) return;
   const size = new THREE.Vector3(); box.getSize(size);
   const center = new THREE.Vector3(); box.getCenter(center);
@@ -869,8 +875,12 @@ export function frameCameraToBox(camera, box, zoom, pan){
   const distForWidth = (size.x / 2 * margin) / Math.tan(hFovHalf);
   const dist = Math.max(distForHeight, distForWidth, 0.8) / (zoom || 1);
   const panX = (pan && pan.x) || 0, panY = (pan && pan.y) || 0;
-  camera.position.set(center.x + panX, center.y + panY, center.z + dist + size.z / 2);
-  camera.lookAt(center.x + panX, center.y + panY, center.z);
+  // Le point visé, autour duquel la caméra tourne.
+  const cx = center.x + panX, cy = center.y + panY, cz = center.z;
+  const p = orbitCameraPosition3D({ x: cx, y: cy, z: cz }, dist + size.z / 2,
+    (orbit && orbit.rotX) || 0, (orbit && orbit.rotY) || 0);
+  camera.position.set(p.x, p.y, p.z);
+  camera.lookAt(cx, cy, cz);
   camera.updateProjectionMatrix();
 }
 
@@ -1322,7 +1332,7 @@ export function useFigureFormat3D(resScale = 1, sizeOverride = null){
   }
 }
 
-export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, sizeOverride = null){
+export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, sizeOverride = null, orbit = null){
   useFigureFormat3D(resScale, sizeOverride);
   const style = resolveStyle3D(styleKey);
   const entry = ensurePersonaRigEntry3D(o, style);
@@ -1331,7 +1341,7 @@ export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, si
   entry.figureGroup.rotation.x = o.rotX || 0;
   entry.figureGroup.rotation.z = o.rotZ || 0;
   applyStyle3DLighting(style);
-  frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom, pan);
+  frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom, pan, orbit);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   return personaRenderer3D.domElement;
 }

@@ -377,3 +377,59 @@ describe('Fix 63 — l\'aperçu d\'un Élément seul n\'affiche que lui', () => 
     assert.ok(iBalayage < iRigs, 'le balayage précède la remise en visibilité du rig ciblé');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 65 — paramètre `orbit` de frameCameraToBox.
+//
+// L'éditeur de Personnage a perdu le déplacement de vue et gagné l'orbite : il fallait donc que la
+// caméra des aperçus sache tourner autour de son sujet, ce qu'elle ne faisait pas.
+//
+// Constaté par mutation : sans ces tests, ignorer complètement le paramètre passait inaperçu — les
+// autres assertions n'orbitent pas et restaient donc vertes.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('frameCameraToBox — orbite (Fix 65)', () => {
+  const boite = () => new THREE.Box3(new THREE.Vector3(-1, -2, -0.5), new THREE.Vector3(1, 2, 0.5));
+  const cam = () => new THREE.PerspectiveCamera(90, 1, 0.1, 1000);
+
+  test('RÉGRESSION : sans orbite, le cadrage est INCHANGÉ', () => {
+    // La garantie que l'ajout n'a bougé aucun aperçu existant (Objet, Mur, modale Personnage).
+    const a = cam(); frameCameraToBox(a, boite(), 1, null);
+    const b = cam(); frameCameraToBox(b, boite(), 1, null, { rotX: 0, rotY: 0 });
+    assertClose(a.position.x, b.position.x, 'x');
+    assertClose(a.position.y, b.position.y, 'y');
+    assertClose(a.position.z, b.position.z, 'z');
+  });
+
+  test('un quart de tour horizontal place la caméra sur +X, à la même distance', () => {
+    const droit = cam(); frameCameraToBox(droit, boite(), 1, null);
+    const d = droit.position.length();   // centre à l'origine : la norme EST la distance
+    const c = cam(); frameCameraToBox(c, boite(), 1, null, { rotX: 0, rotY: Math.PI / 2 });
+    assertClose(c.position.x, d, 'passée sur +X');
+    assertClose(c.position.z, 0, 'quitté +Z');
+    assertClose(c.position.length(), d, 'distance conservée');
+  });
+
+  test('la rotation verticale élève la caméra sans l\'éloigner', () => {
+    const droit = cam(); frameCameraToBox(droit, boite(), 1, null);
+    const d = droit.position.length();
+    const c = cam(); frameCameraToBox(c, boite(), 1, null, { rotX: 0.6, rotY: 0 });
+    assert.ok(c.position.y > 0, 'la caméra est montée');
+    assertClose(c.position.length(), d, 'distance conservée');
+  });
+
+  test('la caméra REGARDE toujours le centre, quel que soit l\'angle', () => {
+    // Ce qui distingue une orbite d'un simple déplacement : le sujet reste au milieu de l'image.
+    const c = cam();
+    frameCameraToBox(c, boite(), 1, null, { rotX: -0.4, rotY: 2.1 });
+    c.updateMatrixWorld();
+    const versCentre = new THREE.Vector3(0, 0, 0).sub(c.position).normalize();
+    const visee = new THREE.Vector3(0, 0, -1).applyQuaternion(c.quaternion).normalize();
+    assertClose(versCentre.dot(visee), 1, 'la visée pointe le centre', 1e-6);
+  });
+
+  test('le zoom change la distance, l\'orbite ne la change pas', () => {
+    const a = cam(); frameCameraToBox(a, boite(), 1, null, { rotX: 0.3, rotY: 1 });
+    const b = cam(); frameCameraToBox(b, boite(), 2, null, { rotX: 0.3, rotY: 1 });
+    assert.ok(b.position.length() < a.position.length(), 'zoomer rapproche');
+  });
+});

@@ -1623,11 +1623,11 @@ export function drawPersonaPreview(targetCanvas, spec){
     if (targetCanvas.width !== rw || targetCanvas.height !== rh) {
       targetCanvas.width = rw; targetCanvas.height = rh;
     }
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh });
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, 1, { w: rw, h: rh }, spec.orbit);
   } else {
     const scale = syncPreviewCanvasRes(targetCanvas,
       spec.baseW || PERSONA_PREVIEW_BASE_W, spec.baseH || PERSONA_PREVIEW_BASE_H);
-    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale);
+    cnv = renderPersonaToCanvas3D(tempObj, zoom * sizeFactor, pan, style, scale, null, spec.orbit);
   }
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);

@@ -472,6 +472,26 @@ export function posesUsedByProject3D(library, ...roots){
     .filter(p => p && p.id && poseUsageCount3D(p.id, ...roots) > 0);
 }
 
+// Fix 65 — position d'une caméra en orbite autour d'un point.
+//
+// `rotY` fait tourner autour de l'axe vertical, `rotX` monte ou descend. Angle nul = la caméra reste
+// sur +Z, exactement là où elle était avant l'introduction de l'orbite : les aperçus qui n'orbitent
+// pas gardent donc leur cadrage au pixel près.
+//
+// ⚠️ `rotX` doit rester dans ]-90°, 90°[ — même contrainte que la caméra d'une Case, qui la borne à
+// ±85°. À 90° pile, la direction de visée devient parallèle au vecteur « haut » de la caméra et
+// l'orientation bascule brutalement.
+export function orbitCameraPosition3D(center, dist, rotX, rotY){
+  const c = center || { x: 0, y: 0, z: 0 };
+  const d = dist || 0;
+  const cx = Math.cos(rotX || 0);
+  return {
+    x: (c.x || 0) + d * Math.sin(rotY || 0) * cx,
+    y: (c.y || 0) + d * Math.sin(rotX || 0),
+    z: (c.z || 0) + d * Math.cos(rotY || 0) * cx,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════
 // MATH HELPERS
 // ══════════════════════════════════════════════════════════════

@@ -488,8 +488,12 @@ export function openPersonaEditor(target, fromModal){
   // apparaître un Personnage hors champ sans que rien n'explique pourquoi.
   // Fix 50 — 0.8 plutôt que 1 : à l'ouverture le Personnage occupait trop le cadre, il faut de la
   // marge autour pour voir ce qu'on manipule.
-  S.personaEditorZoom = 0.8;
+  S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
   S.personaEditorPan = { x: 0, y: 0 };
+  // Fix 65 — l'orbite repart de face à chaque ouverture, pour la même raison que le zoom : hériter
+  // de l'angle d'une session précédente ferait apparaître un Personnage vu de dos, sans explication.
+  S.personaEditorCamRotX = 0;
+  S.personaEditorCamRotY = 0;
   // Fix 52 — aucune articulation présélectionnée : la sélection décrit ce que l'utilisateur vient de
   // désigner, hériter de la session précédente surlignerait un point qu'il n'a pas choisi.
   S.personaEditorHandleId = null;
@@ -676,6 +680,31 @@ export function personaEditorHasChanges(){
 // « Appliquer » a disparu.
 //
 // Pur et testable : le titre est une chaîne, pas un effet de bord.
+// Fix 65 — orbite de la caméra de l'éditeur.
+//
+// rotX est BORNÉ à ±85°, exactement comme la caméra d'une Case : à 90° pile, la direction de visée
+// devient parallèle au vecteur « haut » de la caméra et l'image bascule brutalement.
+//
+// rotY, lui, n'est pas borné mais RAMENÉ dans ]-π, π] : on doit pouvoir faire des tours complets
+// sans que la valeur parte à l'infini, ni que le curseur (-180..180) se retrouve hors de sa plage.
+export const PERSONA_EDITOR_ROT_X_MAX = 85 * Math.PI / 180;
+export const PERSONA_EDITOR_ORBIT_RAD_PER_PX = 0.008;
+
+export function setPersonaEditorOrbit(rotX, rotY){
+  S.personaEditorCamRotX = clamp(rotX || 0, -PERSONA_EDITOR_ROT_X_MAX, PERSONA_EDITOR_ROT_X_MAX);
+  S.personaEditorCamRotY = wrapAngle(rotY || 0);
+  return { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
+}
+
+// Remet la caméra dans son cadrage d'ouverture. Le zoom en fait partie : « recadrer » doit tout
+// ramener, sinon on se retrouve à chercher pourquoi la figure reste minuscule après avoir cliqué.
+export function resetPersonaEditorCamera(){
+  S.personaEditorCamRotX = 0;
+  S.personaEditorCamRotY = 0;
+  S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
+  S.personaEditorPan = { x: 0, y: 0 };
+}
+
 export function personaEditorTitle3D(target, lang){
   const fr = (lang !== 'en');
   if (!target) return fr ? 'Éditeur de Personnage — pose libre' : 'Character editor — free pose';
@@ -727,6 +756,7 @@ export function drawPersonaEditor(){
     rotZ: (target && target.rotZ) || 0,
     zoom: S.personaEditorZoom,
     pan: S.personaEditorPan,
+    orbit: { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY },
     renderSize: size,
   });
   // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
@@ -863,6 +893,31 @@ export function buildPersonaEditorPosesUI(){
 // se charge du gris : son état :disabled est déjà défini. Appliquer reste en plus masqué en mode
 // autonome (cf. syncPersonaEditorDom) — deux conditions distinctes, la seconde n'est pas un degré
 // de la première.
+// Fix 65 — remet les trois curseurs Caméra en accord avec l'état. Appelée à l'ouverture et après
+// chaque orbite à la souris : sans ça, les curseurs afficheraient encore l'angle d'avant le glisser.
+export function syncPersonaEditorCamControls(){
+  const set = (id, valId, val, suffix) => {
+    const input = document.getElementById(id);
+    const out = document.getElementById(valId);
+    if (input) input.value = val;
+    if (out) out.textContent = val + suffix;
+  };
+  set('personaEditorCamRotY', 'personaEditorCamRotYValue',
+      Math.round(S.personaEditorCamRotY * 180 / Math.PI), '°');
+  set('personaEditorCamRotX', 'personaEditorCamRotXValue',
+      Math.round(S.personaEditorCamRotX * 180 / Math.PI), '°');
+  set('personaEditorCamSens', 'personaEditorCamSensValue',
+      Math.round(S.personaEditorCamSens * 100), '%');
+  const det = document.getElementById('personaEditorCamDetails');
+  if (det) det.open = !!S.personaEditorCamOpen;
+}
+
+// La touche C déplie ou replie la section, en écho au raccourci qui bascule le mode Caméra d'une Case.
+export function togglePersonaEditorCamera(){
+  S.personaEditorCamOpen = !S.personaEditorCamOpen;
+  return S.personaEditorCamOpen;
+}
+
 export function syncPersonaEditorActionButtons(){
   const actif = personaEditorHasChanges();
   ['personaEditorResetBtn', 'personaEditorApplyBtn'].forEach(id => {
@@ -922,6 +977,7 @@ function syncPersonaEditorDom(){
     syncPersonaEditorPoseLabel();
     syncPersonaEditorSliders();
     syncPersonaEditorActionButtons();
+    syncPersonaEditorCamControls();
     drawPersonaEditor();
   }
 }
@@ -946,6 +1002,10 @@ export function hidePersonaEditor(){
 // pauvre que celle d'une Case (pas d'orbite) : on regarde un Personnage isolé, pas une scène.
 // L'orbite se fera par les rotations propres du Personnage, en phase 2.
 const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
+// Fix 50 — 0.8 plutôt que 1 : à l'ouverture le Personnage occupait trop le cadre. Nommé depuis le
+// Fix 65 pour que « Recadrer » et l'ouverture partent de la MÊME valeur — deux littéraux auraient
+// fini par diverger.
+const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
 {
   const cnv = document.getElementById('personaEditorCanvas');
   const closeBtn = document.getElementById('personaEditorCloseBtn');
@@ -1047,12 +1107,24 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
     const editorCoords = (e) => canvasEventCoords3D(
       cnv.getBoundingClientRect(), cnv.width, cnv.height, e.clientX, e.clientY);
 
-    let panning = null;
+    // Fix 65 — le glisser ne DÉPLACE plus la vue, il l'ORBITE, et seulement au clic droit.
+    //
+    // Le déplacement latéral a été retiré : une figure seule est déjà cadrée au centre, la déplacer
+    // ne fait que la perdre de vue. Ce qui manquait vraiment, c'était de pouvoir en faire le tour.
+    //
+    // Bouton DROIT plutôt que gauche : le gauche reste entièrement dédié aux poignées
+    // d'articulation, qui couvrent la figure. Les faire cohabiter obligerait à distinguer un clic
+    // d'un glisser sur la même cible — source d'articulations bougées par accident.
+    let orbiting = null;
     cnv.addEventListener('mousedown', (e) => {
       if (!S.personaEditorOpen) return;
-      // Une poignée sous le curseur l'emporte sur le déplacement de vue : sans cette priorité, viser
-      // un point d'articulation ferait glisser le Personnage au lieu de le sélectionner, et le point
-      // deviendrait impossible à attraper.
+      if (e.button === 2) {
+        orbiting = { x: e.clientX, y: e.clientY,
+                     rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
+        e.preventDefault();
+        return;
+      }
+      if (e.button !== 0) return;
       const { px, py } = editorCoords(e);
       const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos);
       if (def) {
@@ -1060,38 +1132,78 @@ const PERSONA_EDITOR_ZOOM_MIN = 0.25, PERSONA_EDITOR_ZOOM_MAX = 6;
         e.preventDefault();
         return;
       }
-      // Clic dans le vide : on désélectionne, puis on déplace. Les deux, car un clic sans glisser
-      // doit pouvoir servir à sortir de la sélection courante.
+      // Clic gauche dans le vide : désélectionne la poignée courante, et rien d'autre.
       if (S.personaEditorHandleId) selectPersonaEditorHandle(S.personaEditorHandleId);
-      panning = { x: e.clientX, y: e.clientY,
-                  px: S.personaEditorPan.x, py: S.personaEditorPan.y };
     });
+    // Le menu contextuel du navigateur volerait le glisser droit dès le relâchement.
+    cnv.addEventListener('contextmenu', (e) => { if (S.personaEditorOpen) e.preventDefault(); });
     // Curseur « main » sur une poignée, pour signaler qu'elle est cliquable.
     cnv.addEventListener('mousemove', (e) => {
-      if (!S.personaEditorOpen || panning) return;
+      if (!S.personaEditorOpen || orbiting) return;
       const { px, py } = editorCoords(e);
       cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos) ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {
-      if (!panning || !S.personaEditorOpen) return;
-      // Déplacement en unités monde : divisé par le zoom pour que le Personnage suive la souris
-      // à la même vitesse quel que soit le grossissement — sans quoi le glisser devient inutilisable
-      // en zoom fort et mou en zoom faible.
-      // Fix 50 — 0.0025 au lieu de 0.006 : le glisser partait beaucoup trop vite. Reste divisé
-      // par le zoom pour que la vitesse ressentie ne dépende pas du grossissement.
-      const k = 0.0025 / Math.max(0.01, S.personaEditorZoom);
-      S.personaEditorPan = { x: panning.px - (e.clientX - panning.x) * k,
-                             y: panning.py + (e.clientY - panning.y) * k };
+      if (!orbiting || !S.personaEditorOpen) return;
+      // La sensibilité NE dépend pas du zoom, contrairement à l'ancien déplacement : une rotation
+      // est un angle, pas une distance — la même traversée d'écran doit faire le même tour, qu'on
+      // soit près ou loin du Personnage.
+      const k = PERSONA_EDITOR_ORBIT_RAD_PER_PX * S.personaEditorCamSens;
+      setPersonaEditorOrbit(orbiting.rotX - (e.clientY - orbiting.y) * k,
+                            orbiting.rotY + (e.clientX - orbiting.x) * k);
+      syncPersonaEditorCamControls();
       drawPersonaEditor();
     });
-    window.addEventListener('mouseup', () => { panning = null; });
+    window.addEventListener('mouseup', () => { orbiting = null; });
   }
+  // Curseurs de la section Caméra.
+  const bindCam = (id, apply) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      apply(Number(el.value));
+      syncPersonaEditorCamControls();
+      drawPersonaEditor();
+    });
+  };
+  bindCam('personaEditorCamRotY', (deg) =>
+    setPersonaEditorOrbit(S.personaEditorCamRotX, deg * Math.PI / 180));
+  bindCam('personaEditorCamRotX', (deg) =>
+    setPersonaEditorOrbit(deg * Math.PI / 180, S.personaEditorCamRotY));
+  bindCam('personaEditorCamSens', (pct) => { S.personaEditorCamSens = pct / 100; });
+  const camResetBtn = document.getElementById('personaEditorCamResetBtn');
+  if (camResetBtn) camResetBtn.onclick = () => {
+    resetPersonaEditorCamera();
+    syncPersonaEditorCamControls();
+    drawPersonaEditor();
+  };
+  // La section suit l'utilisateur s'il la déplie à la main, sinon la touche C et le repli manuel se
+  // contrediraient au prochain appui.
+  const camDetails = document.getElementById('personaEditorCamDetails');
+  if (camDetails) camDetails.addEventListener('toggle', () => {
+    if (S.personaEditorOpen) S.personaEditorCamOpen = camDetails.open;
+  });
+
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application. stopImmediatePropagation
   // empêche l'écouteur « Échap → menu Projet » de se déclencher sur le même événement.
+  //
+  // Fix 65 — C déplie la section Caméra, en écho au raccourci qui bascule le mode Caméra d'une
+  // Case. stopImmediatePropagation est indispensable : sans lui, ce même appui activerait AUSSI le
+  // mode Caméra de la Case sélectionnée derrière l'éditeur — invisible sur le moment, bien réel au
+  // retour.
   window.addEventListener('keydown', (e) => {
-    if (S.personaEditorOpen && e.key === 'Escape') {
+    if (!S.personaEditorOpen) return;
+    if (e.key === 'Escape') {
       e.stopImmediatePropagation();
       hidePersonaEditor();
+      return;
+    }
+    const tag = (e.target && e.target.tagName) || '';
+    if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey
+        && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      e.stopImmediatePropagation();
+      togglePersonaEditorCamera();
+      syncPersonaEditorCamControls();
     }
   });
   // Le canevas occupe tout l'écran : sa résolution de rendu dépend de sa taille CSS, il faut donc

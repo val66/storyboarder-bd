@@ -11,7 +11,7 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
-  pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D,
+  pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
@@ -1199,5 +1199,56 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
 
   test('pose absente : signature stable, pas d\'exception', () => {
     assert.equal(poseSliderSignature3D(null), poseSliderSignature3D({}));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 65 — position d'une caméra en orbite.
+//
+// L'éditeur ne DÉPLACE plus la vue, il l'ORBITE : une figure seule est déjà centrée, la déplacer ne
+// fait que la perdre de vue. Ce qui manquait, c'était d'en faire le tour.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('orbitCameraPosition3D', () => {
+  const C = { x: 0, y: 0, z: 0 };
+
+  test('RÉGRESSION : angles nuls → la caméra reste sur +Z', () => {
+    // La propriété qui garantit que les aperçus Objet/Mur, qui n'orbitent pas, gardent leur cadrage
+    // au pixel près. Sans elle, ajouter l'orbite aurait déplacé toutes les vues de l'application.
+    const p = orbitCameraPosition3D(C, 10, 0, 0);
+    assertClose(p.x, 0, 'x'); assertClose(p.y, 0, 'y'); assertClose(p.z, 10, 'z');
+  });
+
+  test('un quart de tour horizontal amène la caméra sur +X', () => {
+    const p = orbitCameraPosition3D(C, 10, 0, Math.PI / 2);
+    assertClose(p.x, 10, 'x', 1e-9); assertClose(p.z, 0, 'z', 1e-9);
+    assertClose(p.y, 0, 'y', 1e-9);
+  });
+
+  test('un quart de tour vertical amène la caméra à la verticale', () => {
+    const p = orbitCameraPosition3D(C, 10, Math.PI / 2, 0);
+    assertClose(p.y, 10, 'y', 1e-9);
+    assertClose(p.x, 0, 'x', 1e-9); assertClose(p.z, 0, 'z', 1e-9);
+  });
+
+  test('la distance au centre est CONSERVÉE quels que soient les angles', () => {
+    // C'est ce qui distingue une orbite d'un déplacement : le sujet ne doit ni grossir ni rétrécir
+    // quand on en fait le tour.
+    for (const rx of [-1.4, -0.5, 0, 0.5, 1.4]) {
+      for (const ry of [-3, -1, 0, 1, 3]) {
+        const p = orbitCameraPosition3D(C, 7, rx, ry);
+        assertClose(Math.hypot(p.x, p.y, p.z), 7, `rx=${rx} ry=${ry}`, 1e-9);
+      }
+    }
+  });
+
+  test('le centre décale la position sans changer la distance', () => {
+    const c = { x: 3, y: -2, z: 5 };
+    const p = orbitCameraPosition3D(c, 4, 0.3, 1.1);
+    assertClose(Math.hypot(p.x - c.x, p.y - c.y, p.z - c.z), 4, 'distance au centre', 1e-9);
+  });
+
+  test('entrées absentes : origine, pas de NaN', () => {
+    const p = orbitCameraPosition3D(null, 0, undefined, undefined);
+    assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
   });
 });

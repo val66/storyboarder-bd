@@ -70,6 +70,13 @@ export const S = {
   // recalculé depuis l'Élément : « depuis l'ouverture » doit vouloir dire exactement ça.
   personaEditorBaseline:    null,
   personaEditorBaselineKey: null,
+  // Fix 65 — caméra de l'éditeur : ORBITE autour du Personnage, comme le mode Caméra d'une Case.
+  // Le déplacement latéral a été retiré (une figure seule est déjà centrée : le déplacer ne fait que
+  // la perdre de vue), d'où l'absence de pan ici. rotX est borné à ±85° comme pour une Case.
+  personaEditorCamRotY: 0,
+  personaEditorCamRotX: 0,
+  personaEditorCamSens: 1,      // sensibilité du glisser, réglable comme pour une Case
+  personaEditorCamOpen: false,  // section « Caméra » dépliée (touche C)
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────
