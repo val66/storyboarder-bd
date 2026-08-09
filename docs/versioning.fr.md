@@ -37,7 +37,10 @@ git commit
    │
    ├─ node absent du PATH ?  →  commit annulé, message explicite
    │
-   ├─ suite de tests (~3 s)
+   ├─ ESLint (sauté, avec un message, s'il n'est pas installé)
+   │     └─ erreurs  →  commit annulé, AUCUN fichier modifié
+   │
+   ├─ suite de tests (~4 s)
    │     └─ échec  →  commit annulé, AUCUN fichier modifié
    │
    ├─ incrément du correctif  →  les 4 fichiers ensemble
@@ -66,6 +69,7 @@ version. D'où un hook `post-commit`.
 ## Commandes
 
 ```bash
+npm i -D eslint          # active l'étape de lint du hook (facultatif, mais recommandé)
 npm run setup-hooks      # après un clone : réinstalle les hooks (git ne versionne pas .git/hooks)
 npm run bump sync        # régénère les fichiers dérivés depuis package.json
 npm run bump minor       # ou major — jamais correctif, le hook s'en charge

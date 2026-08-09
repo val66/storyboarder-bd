@@ -77,6 +77,41 @@ It is the only kind of test that catches the class of bug that has cost the most
 validates an isolated function; it never sees two correct functions that are not talking about the
 same thing.
 
+## Static analysis — and what it deliberately does not cover
+
+```bash
+npm i -D eslint     # once
+npm run lint
+```
+
+ESLint handles the **grammatical** layer: a variable declared and never read, a variable used
+without being declared, a duplicate key in an object literal, unreachable code. The `pre-commit`
+hook runs it before the tests — it costs a fraction of a second where the suite costs four, and a
+lint error often explains the test failure that would follow.
+
+It is **tolerant of ESLint being absent**: a fresh clone with no `npm install`, or an offline
+machine, must still be able to commit. The hook says it is skipping rather than blocking. The
+tests, by contrast, do block.
+
+Everything **specific to this project** stays in `tests/`, and that split is deliberate:
+
+| Check | Where | Why not ESLint |
+|---|---|---|
+| A `getElementById` targets a real id in index.html | `tests/dom-ids.test.mjs` | It would have to read the HTML |
+| Tag nesting in index.html | `tests/html.test.mjs` | Same |
+| CSS rules that interact | `tests/style.test.mjs` | It would have to read the CSS |
+| `docs/` parity between the two languages | `tests/docs.test.mjs` | It would have to read Markdown |
+| Persisted field names, never renamed | `tests/io.test.mjs` | Domain rule, not grammar |
+| Hot paths go through the coalescing scheduler | `tests/events.test.mjs` | Project convention |
+
+Roughly: ESLint knows JavaScript, the tests know *this* application. Trying to express one in the
+other gives a fragile rule on one side, and a rewritten compiler on the other.
+
+Rules were chosen conservatively, each because it targets a defect actually seen here —
+`no-unused-vars` would have found `roomSizeDisplay`, declared and never used, without anyone
+looking for it. A configuration copied from elsewhere produces noise on 22 000 existing lines, and
+noise is what gets a tool switched off.
+
 ## Bypassing the hook
 
 `git commit --no-verify` skips the tests — for a work-in-progress commit only. See

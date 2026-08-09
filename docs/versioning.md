@@ -37,7 +37,10 @@ git commit
    │
    ├─ node missing from PATH?  →  commit aborted, explicit message
    │
-   ├─ test suite (~3 s)
+   ├─ ESLint (skipped, with a message, if not installed)
+   │     └─ errors  →  commit aborted, NO file modified
+   │
+   ├─ test suite (~4 s)
    │     └─ failure  →  commit aborted, NO file modified
    │
    ├─ patch bump  →  all 4 files together
@@ -66,6 +69,7 @@ Hence a `post-commit` hook.
 ## Commands
 
 ```bash
+npm i -D eslint          # enables the lint step of the hook (optional, but recommended)
 npm run setup-hooks      # after a clone: reinstalls the hooks (git does not version .git/hooks)
 npm run bump sync        # regenerates the derived files from package.json
 npm run bump minor       # or major — never patch, the hook handles that

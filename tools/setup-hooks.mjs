@@ -11,8 +11,13 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HOOKS_DIR = join(ROOT, '.git', 'hooks');
 
-// Runs the test suite, then bumps the patch and stages the files it touched so they land in the
-// very commit being created rather than dangling as a follow-up change.
+// Lints, runs the test suite, then bumps the patch and stages the files it touched so they land
+// in the very commit being created rather than dangling as a follow-up change.
+//
+// The lint step is TOLERANT of ESLint being absent: it is a development convenience, and a fresh
+// clone with no `npm install` must still be able to commit. It says it skipped, rather than
+// blocking. Project-specific checks — DOM ids, HTML structure, docs parity — are not ESLint's job
+// and live in tests/ instead.
 //
 // ORDER MATTERS: the tests run BEFORE the bump. Bumping first would leave the working tree with an
 // incremented version and no commit whenever a test fails — the same non-atomicity that had to be
@@ -46,6 +51,24 @@ if ! command -v node > /dev/null 2>&1; then
   echo "  La version n'a PAS été incrémentée et les tests n'ont pas tourné." >&2
   echo "  Contourner : git commit --no-verify" >&2
   exit 1
+fi
+# Analyse statique, AVANT les tests : elle coûte une fraction de seconde là où la suite en prend
+# quatre, et une erreur de lint explique souvent l'échec de test qui suivrait.
+#
+# TOLÉRANTE À L'ABSENCE D'ESLINT. Il est déclaré en dépendance de développement, mais un clone frais
+# sans \`npm install\`, ou un poste hors ligne, ne doit pas se retrouver incapable de commiter à
+# cause d'un outil de confort. On saute l'analyse en le disant, plutôt que de bloquer.
+ESLINT="node_modules/eslint/bin/eslint.js"
+if [ -f "$ESLINT" ]; then
+  if ! node "$ESLINT" . ; then
+    echo "pre-commit : ESLint signale des erreurs — commit annulé." >&2
+    echo "  Détail   : npm run lint" >&2
+    echo "  Corriger : npm run lint -- --fix (pour ce qui est corrigeable automatiquement)" >&2
+    echo "  Forcer   : git commit --no-verify" >&2
+    exit 1
+  fi
+else
+  echo "pre-commit : ESLint absent, analyse ignorée — npm i -D eslint pour l'activer."
 fi
 if ! node --test tests/*.test.mjs > /dev/null 2>&1; then
   echo "pre-commit : la suite de tests échoue — commit annulé." >&2

@@ -79,6 +79,41 @@ C'est le seul type de test qui attrape la classe de bug qui a le plus coûté ic
 valide une fonction isolée ; il ne voit jamais deux fonctions correctes qui ne parlent pas de la même
 chose.
 
+## Analyse statique — et ce qu'elle ne couvre volontairement pas
+
+```bash
+npm i -D eslint     # une fois
+npm run lint
+```
+
+ESLint prend en charge la couche **grammaticale** : variable déclarée et jamais lue, variable
+utilisée sans être déclarée, clé dupliquée dans un objet littéral, code inatteignable. Le hook
+`pre-commit` le lance avant les tests — il coûte une fraction de seconde là où la suite en prend
+quatre, et une erreur de lint explique souvent l'échec de test qui suivrait.
+
+Il est **tolérant à l'absence d'ESLint** : un clone frais sans `npm install`, ou un poste hors
+ligne, doit pouvoir commiter. Le hook dit qu'il saute plutôt que de bloquer. Les tests, eux,
+bloquent.
+
+Tout ce qui est **spécifique à ce projet** reste dans `tests/`, et ce partage est délibéré :
+
+| Contrôle | Où | Pourquoi pas ESLint |
+|---|---|---|
+| Un `getElementById` vise un id réel d'index.html | `tests/dom-ids.test.mjs` | Il faudrait lire le HTML |
+| Imbrication des balises d'index.html | `tests/html.test.mjs` | Idem |
+| Règles CSS qui interagissent | `tests/style.test.mjs` | Il faudrait lire le CSS |
+| Parité `docs/` entre les deux langues | `tests/docs.test.mjs` | Il faudrait lire du Markdown |
+| Noms de champs persistés, jamais renommés | `tests/io.test.mjs` | Règle métier, pas grammaire |
+| Les chemins chauds passent par l'ordonnanceur | `tests/events.test.mjs` | Convention du projet |
+
+En résumé : ESLint connaît JavaScript, les tests connaissent *cette* application. Vouloir exprimer
+l'un dans l'autre donne une règle fragile d'un côté, et un compilateur réécrit de l'autre.
+
+Les règles ont été choisies avec prudence, chacune parce qu'elle vise un défaut réellement constaté
+ici — `no-unused-vars` aurait trouvé `roomSizeDisplay`, déclaré et jamais utilisé, sans qu'on le
+cherche. Une configuration copiée d'ailleurs produit du bruit sur 22 000 lignes existantes, et
+c'est le bruit qui fait désactiver un outil.
+
 ## Contourner le hook
 
 `git commit --no-verify` saute les tests — pour un commit en cours de travail uniquement. Voir
