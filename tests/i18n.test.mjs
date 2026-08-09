@@ -284,16 +284,41 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
     });
   });
 
-  test('la documentation de l\'Éditeur de Personnage atteint bien l\'écran', () => {
-    // Elle était écrite depuis longtemps et n'était affichée nulle part, faute de <p> pour la
-    // recevoir. C'est ce cas précis qui a motivé le passage à un rendu depuis les données.
+  test('la section Éditeur décrit bien les GESTES disponibles', () => {
+    // Cette documentation était écrite depuis longtemps et n'était affichée nulle part, faute de
+    // <p> pour la recevoir. On vérifie donc qu'elle est là — mais par les ACTIONS qu'elle couvre,
+    // jamais par sa longueur. La version précédente de ce test exigeait « au moins 10
+    // paragraphes » : elle transformait la verbosité en exigence, et il a fallu la casser pour
+    // pouvoir raccourcir la section. Un test ne doit pas défendre le défaut qu'on veut corriger.
     const fr = HELP_MANUAL_FR.find(g => g.id === 'editeur');
     const en = HELP_MANUAL_EN.find(g => g.id === 'editeur');
     assert.ok(fr && en, 'l\'éditeur doit avoir sa propre section');
-    assert.ok(fr.paragraphs.some(p => /orbite|ORBITE/.test(p)), 'l\'orbite au clic droit');
-    assert.ok(fr.paragraphs.some(p => /CLIQUABLE/.test(p)), 'la zone de prise teintée');
-    assert.ok(fr.paragraphs.some(p => /molette/.test(p)), 'la molette pour changer de champ');
-    assert.ok(en.paragraphs.some(p => /orbit/i.test(p)), 'idem en anglais');
+    const couvre = (table, motifs) => motifs.forEach(([re, quoi]) =>
+      assert.ok(table.paragraphs.some(p => re.test(p)), `geste non documenté : ${quoi}`));
+    couvre(fr, [[/clic DROIT/i, 'orbiter'], [/glissez/i, 'glisser une articulation'],
+                [/molette/i, 'la molette'], [/Enregistrer/, 'enregistrer une pose'],
+                [/Appliquer/, 'appliquer au Personnage']]);
+    couvre(en, [[/RIGHT mouse/i, 'orbiter'], [/drag/i, 'glisser une articulation'],
+                [/wheel/i, 'la molette'], [/Save/, 'enregistrer une pose'],
+                [/Apply/, 'appliquer au Personnage']]);
+  });
+
+  test('le manuel reste un MANUEL : paragraphes et sections bornés', () => {
+    // « Cela doit expliquer les actions possibles, pas la logique interne » — la section Éditeur
+    // avait dérivé vers 4707 caractères d'explications de fonctionnement.
+    //
+    // Les deux seuils sont MESURÉS sur le contenu réel après réécriture (paragraphe le plus long
+    // 361, section la plus longue 1723), arrondis avec un peu de marge. Ils ne prétendent pas dire
+    // ce qu'est un bon paragraphe : ils signalent le retour de la dérive.
+    const MAX_PARAGRAPHE = 400;
+    const MAX_SECTION = 2000;
+    [...HELP_MANUAL_FR, ...HELP_MANUAL_EN].forEach(g => {
+      const total = g.paragraphs.reduce((n, p) => n + p.length, 0);
+      assert.ok(total <= MAX_SECTION,
+        `« ${g.id} » : ${total} caractères — la section redevient une documentation`);
+      g.paragraphs.forEach((p, i) => assert.ok(p.length <= MAX_PARAGRAPHE,
+        `« ${g.id} » paragraphe ${i} : ${p.length} caractères, à scinder ou à élaguer`));
+    });
   });
 
   test('RÉGRESSION : l\'éditeur et le Personnage restent deux sections distinctes', () => {
@@ -310,7 +335,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
         assert.ok(!/dans l'éditeur|in the editor/i.test(p),
           `${langue} : le paragraphe ${i} de « Personnages » parle de l'éditeur`);
       });
-      assert.ok(editeur.paragraphs.length >= 10,
+      assert.ok(editeur.paragraphs.length >= 4,
         `${langue} : la section éditeur ne compte que ${editeur.paragraphs.length} paragraphes`);
     });
   });
