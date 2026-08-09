@@ -13,7 +13,9 @@ import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel, I18N_TEXT } from '../src/i18n.js';
+import { readFileSync } from 'node:fs';
+import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel,
+         I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL } from '../src/i18n.js';
 import { S } from '../src/state.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
@@ -155,4 +157,44 @@ describe('I18N_TEXT — forme des entrées', () => {
       assert.ok(typeof fr === 'string', `${sel} : texte FR manquant`);
     });
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 68 — les sélecteurs des tables i18n désignent-ils quelque chose ?
+//
+// Une entrée dont le sélecteur ne correspond à rien est SILENCIEUSE : la traduction ne s'applique
+// pas, aucune erreur n'est levée, et le libellé reste dans la langue où il a été écrit dans
+// index.html — donc invisible tant qu'on travaille en français. C'est déjà arrivé ici sous une
+// autre forme (une entrée placée dans I18N_MODALS, table qui ignore la forme attributaire).
+//
+// Portée honnête : on ne vérifie QUE l'`#id` de tête de chaque sélecteur, faute de moteur CSS sous
+// Node (pas de registre npm accessible ici). Un sélecteur comme `#foo .bar-inexistante` passe donc
+// ce test. Il attrape la faute la plus fréquente — l'id mal orthographié ou renommé d'un côté
+// seulement — pas toutes.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const idsPresents = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]));
+
+  const tables = {
+    I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL,
+  };
+
+  test('index.html a bien été lu (sinon le test ne vérifie rien)', () => {
+    assert.ok(idsPresents.size > 100, `${idsPresents.size} ids trouvés — lecture suspecte`);
+  });
+
+  for (const [nom, table] of Object.entries(tables)) {
+    test(`${nom} — aucun sélecteur ne pointe vers un id absent`, () => {
+      const orphelins = table
+        .map(entree => entree[0])
+        .filter(sel => typeof sel === 'string')
+        .filter(sel => {
+          const m = /^#([\w-]+)/.exec(sel);
+          return m && !idsPresents.has(m[1]);
+        });
+      assert.deepEqual(orphelins, [],
+        `sélecteurs sans cible dans index.html : ${orphelins.join(', ')}`);
+    });
+  }
 });

@@ -50,23 +50,31 @@
     <!-- Panneau de réglage fin. Le conteneur est rempli par buildPersonaEditorJointSlidersUI
          (events.js) à partir des mêmes descripteurs que la modale, cf. poseSliderSpecs3D. -->
     <aside class="persona-editor-panel">
+      <!-- Fix 68 — deux BLOCS distincts plutôt que deux titres dans un même flux. Ils ne répondent
+           pas à la même question : « quelle pose ? » se choisit d'un geste et se range, « quel
+           angle ? » se retouche longuement. Les fondre faisait lire la liste des poses comme une
+           entrée en matière du réglage fin, alors que chacun se suffit. -->
       <!-- Pose de référence du brouillon. Appliquer une pose COPIE ses angles : aucun Personnage ne
            dépend de la bibliothèque, cf. docs/editeur-personnage.md. -->
-      <h2>Pose</h2>
-      <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
-      <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>
-      <!-- Écriture dans la bibliothèque. Renommer/Supprimer ne concernent que les poses du projet :
-           les poses intégrées ne sont pas modifiables, d'où leur désactivation dynamique. -->
-      <div class="persona-editor-pose-edit">
-        <input id="personaEditorPoseName" type="text" placeholder="Nom de la pose" />
-        <div class="persona-editor-pose-actions">
-          <button id="personaEditorPoseSaveBtn" type="button">Enregistrer</button>
-          <button id="personaEditorPoseRenameBtn" type="button">Renommer</button>
-          <button id="personaEditorPoseDeleteBtn" type="button" class="danger-btn">Supprimer</button>
+      <section class="persona-editor-section" id="personaEditorPoseSection">
+        <h2 id="personaEditorPoseHeading">Pose</h2>
+        <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
+        <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>
+        <!-- Écriture dans la bibliothèque. Toute pose de la liste est renommable et supprimable,
+             poses de base comprises (cf. Fix 58) — la bibliothèque est applicative, pas projet. -->
+        <div class="persona-editor-pose-edit">
+          <input id="personaEditorPoseName" type="text" placeholder="Nom de la pose" />
+          <div class="persona-editor-pose-actions">
+            <button id="personaEditorPoseSaveBtn" type="button">Enregistrer</button>
+            <button id="personaEditorPoseRenameBtn" type="button">Renommer</button>
+            <button id="personaEditorPoseDeleteBtn" type="button" class="danger-btn">Supprimer</button>
+          </div>
         </div>
-      </div>
-      <h2>Réglage fin des articulations</h2>
-      <div id="personaEditorJointsContainer"></div>
+      </section>
+      <section class="persona-editor-section" id="personaEditorJointsSection">
+        <h2 id="personaEditorJointsHeading">Réglage fin des articulations</h2>
+        <div id="personaEditorJointsContainer"></div>
+      </section>
       <!-- Les trois actions de sortie, dans l'ordre où elles se posent : défaire, valider, quitter.
            Réinitialiser et Appliquer sont actifs UNIQUEMENT si la pose a changé depuis l'ouverture
            (cf. personaEditorHasChanges) — sans changement, ils n'auraient rien à faire, et .full-btn

@@ -712,7 +712,19 @@ canvas{
 .persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
 .persona-editor-panel .danger-btn { width: 100%; }
 .persona-editor-panel h2 + * { margin-top: 0; }
-.persona-editor-panel h2:not(:first-child) { margin-top: 18px; }
+/* Fix 68 — « Pose » et « Réglage fin » sont deux blocs encadrés, pas deux titres dans un flux
+   continu. Le cadre est ce qui dit qu'ils sont indépendants : sans lui, la liste des poses se
+   lisait comme le préambule des curseurs. Fond var(--paper) sur un panneau en var(--paper-dark),
+   donc le bloc RESSORT dans les deux thèmes sans qu'aucune couleur soit écrite en dur. */
+.persona-editor-section {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 11px; margin-bottom: 12px;
+}
+.persona-editor-section:last-of-type { margin-bottom: 0; }
+/* Le titre appartient au bloc : il en marque le haut au lieu de flotter au-dessus. Annule le
+   margin-top que le flux continu imposait aux titres suivants — dans un bloc il est toujours
+   premier, et l'écart est désormais porté par la marge du bloc lui-même. */
+.persona-editor-section h2 { margin-top: 0; }
 /* Étiquette calculée (« Assis », « Assis (modifié) », « pose1 (inconnue) ») — jamais persistée,
    cf. resolvePoseLabel3D. */
 .persona-editor-pose-current {
