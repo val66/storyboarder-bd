@@ -232,16 +232,27 @@ export function poseSpecRotationAxis3D(spec){
 //
 // Base de la caméra (cf. orbitCameraPosition3D, qui la place) : droite = (cosY, 0, -sinY),
 // haut = (-sinY·sinX, cosX, -cosY·sinX). L'ordonnée écran croît vers le BAS, d'où le signe.
-export function projectModelAxisToScreen3D(axis, orbit){
+export function modelAxisVector3D(axis){
+  return axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+}
+
+// Projection écran d'un vecteur du monde. Extrait de projectModelAxisToScreen3D au Fix 84, qui n'en
+// est plus qu'un cas particulier : la direction du geste a désormais besoin de projeter autre chose
+// que des axes, et deux copies de cette base auraient fini par diverger.
+export function projectVectorToScreen3D(v, orbit){
   const rotX = (orbit && orbit.rotX) || 0;
   const rotY = (orbit && orbit.rotY) || 0;
   const cy = Math.cos(rotY), sy = Math.sin(rotY);
   const cx = Math.cos(rotX), sx = Math.sin(rotX);
-  const v = axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+  const w = v || [0, 0, 0];
   return {
-    x: v[0] * cy + v[2] * (-sy),
-    y: -(v[0] * (-sy * sx) + v[1] * cx + v[2] * (-cy * sx)),
+    x: (w[0] || 0) * cy + (w[2] || 0) * (-sy),
+    y: -((w[0] || 0) * (-sy * sx) + (w[1] || 0) * cx + (w[2] || 0) * (-cy * sx)),
   };
+}
+
+export function projectModelAxisToScreen3D(axis, orbit){
+  return projectVectorToScreen3D(modelAxisVector3D(axis), orbit);
 }
 
 // Fix 81 — de quel CÔTÉ l'axe pointe : produit scalaire avec la direction de visée. Négatif quand
@@ -283,14 +294,69 @@ export function poseDragIsStraight3D(axis, orbit, seuil = POSE_AXIS_VISIBLE_MIN)
   return Math.hypot(a.x, a.y) >= seuil;
 }
 
-// Glisser DROIT : composante de la souris perpendiculaire à l'axe projeté, en degrés.
-export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+// ─── Fix 84 — direction du glisser droit : la TANGENTE d'abord, l'axe en repli ───────────────
+//
+// Conclusion d'une campagne de 14 gestes jugés par l'utilisateur (« bon sens » / « inversé »), et
+// non d'un raisonnement de plus. Le fait décisif : deux gestes sur la MÊME articulation, sous la
+// MÊME orbite, ont reçu des verdicts opposés — ils ne différaient que par la direction du geste.
+// Aucune règle de la forme « le signe dépend de l'axe et de l'orientation » ne peut produire cela,
+// ce qui a écarté d'un coup les quatre tentatives précédentes.
+//
+// Ce que l'utilisateur juge, c'est l'endroit où le membre PART À L'ÉCRAN, pas l'axe autour duquel
+// il tourne. On calcule donc la tangente : le déplacement d'un point du membre sous une rotation
+// positive, soit `axe × levier`. Le levier est le membre lui-même, pris pendant (−Y) pour une
+// flexion ou un écart, et vers l'avant (−Z) pour un pivot — puisqu'un pivot autour de la verticale
+// ne déplace rien de ce qui est sur son axe.
+//
+// REPLI NÉCESSAIRE : vue de face, la tangente d'une flexion pointe vers la caméra et devient
+// invisible ; le geste n'a alors plus de direction lisible et on retombe sur la perpendiculaire à
+// l'axe, qui, elle, y fonctionne. Les deux modèles échouent exactement là où l'autre réussit
+// (mesuré : 8/14 pour l'axe seul, 9/14 pour la tangente seule, 13/14 pour le mixte).
+//
+// Le seuil n'est contraint par les données qu'à l'intervalle ]0.58, 0.91[ : deux cas voisins,
+// à 0.56 et 0.58, réclament des modèles opposés. Aucun seuil ne peut les départager, et c'est
+// pourquoi 13/14 est le maximum atteignable ici — le résidu est du bruit de jugement, pas une
+// règle qui manquerait. 0.75 est pris au milieu de cet intervalle.
+export const POSE_TANGENT_VISIBLE_MIN = 0.75;
+
+// Le membre que l'articulation entraîne, dans le repère du modèle.
+export function poseJointLeverAxis3D(axis){
+  return axis === 'y' ? [0, 0, -1] : [0, -1, 0];
+}
+
+// Direction à l'écran dans laquelle le membre part sous une rotation POSITIVE : axe × levier.
+export function poseTangentToScreen3D(axis, orbit){
+  const a = modelAxisVector3D(axis);
+  const r = poseJointLeverAxis3D(axis);
+  return projectVectorToScreen3D([
+    a[1] * r[2] - a[2] * r[1],
+    a[2] * r[0] - a[0] * r[2],
+    a[0] * r[1] - a[1] * r[0],
+  ], orbit);
+}
+
+// Direction unitaire du glisser droit, et le modèle qui l'a fournie. `source` n'est pas décoratif :
+// c'est ce qui permet à une campagne de mesure suivante de dire LEQUEL des deux s'est trompé.
+export function straightDragDirection3D(axis, orbit, seuil = POSE_TANGENT_VISIBLE_MIN){
+  const t = poseTangentToScreen3D(axis, orbit);
+  const nt = Math.hypot(t.x, t.y);
+  // Le plancher absolu s'ajoute au seuil, et il n'est pas décoratif : vue de face, la tangente de
+  // la flexion vaut 1.2e-16 et non zéro — sin(π) n'est pas exactement nul en virgule flottante.
+  // Normaliser ce résidu produirait un vecteur unitaire fait de pur bruit numérique, pointant dans
+  // une direction arbitraire. Le seuil courant (0.75) le rejette de toute façon ; ce plancher
+  // protège les seuils bas, et le jour où l'on voudra en essayer un.
+  if (nt > 1e-9 && nt >= seuil) return { x: t.x / nt, y: t.y / nt, source: 'tangente' };
   const a = projectModelAxisToScreen3D(axis, orbit);
-  const n = Math.hypot(a.x, a.y);
-  if (!n) return 0;
-  // Perpendiculaire unitaire à (a.x, a.y). De face (orbite nulle), l'axe X se projette en (1, 0) et
-  // sa perpendiculaire vaut (0, 1) : le glisser vertical, exactement comme avant le Fix 75.
-  return ((dx || 0) * (-a.y / n) + (dy || 0) * (a.x / n)) * degPerPx;
+  const na = Math.hypot(a.x, a.y);
+  if (!na) return null;
+  return { x: -a.y / na, y: a.x / na, source: 'perpendiculaire' };
+}
+
+// Glisser DROIT : composante de la souris le long de cette direction, en degrés.
+export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const d = straightDragDirection3D(axis, orbit);
+  if (!d) return 0;
+  return ((dx || 0) * d.x + (dy || 0) * d.y) * degPerPx;
 }
 
 // ─── Glisser CIRCULAIRE, employé quand l'axe pointe vers l'œil ───────────────────────────────
@@ -444,6 +510,11 @@ export function summarizeDragCase3D(entree){
     projY: arrondi(axisScreen.y),
     versLoeil: arrondi(e.versLoeil),
     signe: e.signe === undefined ? null : e.signe,
+    // Fix 84 — quel modèle a donné la direction, et à quel point sa tangente était visible. Sans
+    // ces deux colonnes, une campagne suivante dirait qu'un geste est faux sans dire lequel des
+    // deux modèles l'a produit — c'est-à-dire sans rien apprendre.
+    source: e.source || null,
+    tangente: arrondi(e.tangente),
     sourisDx: Math.round(e.dx || 0),
     sourisDy: Math.round(e.dy || 0),
     poigneeDx: arrondi(e.handleDx, 1),

@@ -15,6 +15,8 @@ import {
   angleBetweenScreenVectors3D, describePoseDragStep3D,
   poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
+  poseTangentToScreen3D, straightDragDirection3D, POSE_TANGENT_VISIBLE_MIN,
+  poseJointLeverAxis3D, projectVectorToScreen3D, modelAxisVector3D,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   modelAxisTowardViewer3D, circularSweepSign3D,
   appDirFromHref3D,
@@ -1340,50 +1342,152 @@ describe('projectModelAxisToScreen3D — un axe du modèle vu à l\'écran', () 
   });
 });
 
-describe('straightDragDegrees3D — le glisser droit suit l\'orientation', () => {
-  const face = { rotX: 0, rotY: 0 };
+describe('straightDragDegrees3D — la direction du glisser suit la vue (Fix 84)', () => {
+  // De FACE vaut azimut π depuis le Fix 80 : le rig place le visage en Z négatif. Les versions
+  // précédentes de ces tests appelaient « face » un azimut nul, qui est en réalité le DOS — et
+  // continuaient de passer, puisqu'elles ne comparaient qu'à elles-mêmes.
+  const face = { rotX: 0, rotY: Math.PI };
+  const profil = { rotX: 0, rotY: Math.PI / 2 };
+  // 120° et non 135° : à 135° la tangente vaut 0.71, sous le seuil de 0.75. Le modèle bascule
+  // donc plus tard qu'on ne l'imagine, et les données ne disent rien de cette zone — aucun geste
+  // jugé ne s'y trouvait.
+  const troisQuarts = { rotX: 0, rotY: Math.PI * (120 / 180) };
 
-  test('RÉGRESSION : de face, le comportement d\'avant le Fix 75 est conservé', () => {
-    // Le premier champ d'une articulation tourne autour de X : de face, il doit toujours répondre au
-    // glisser VERTICAL, comme depuis le Fix 74. Une correction d'orientation qui change la vue de
-    // face aurait cassé le geste que l'utilisateur connaît déjà.
-    assert.equal(straightDragDegrees3D('x', face, 0, 20, 0.5), 10, 'vertical pilote X');
+  test('RÉGRESSION : de face, le geste connu est conservé', () => {
+    // La vue de face est la vue par défaut : quel que soit le modèle retenu ailleurs, c'est ici
+    // qu'il ne faut rien casser. Une flexion se règle au vertical, un pivot à l'horizontale.
+    assert.equal(straightDragDegrees3D('x', face, 0, 20, 0.5), -10, 'vertical pilote la flexion');
     assert.equal(straightDragDegrees3D('x', face, 999, 0, 0.5), 0, 'horizontal ne fait rien');
-    assert.equal(straightDragDegrees3D('y', face, 20, 0, 0.5), 10, 'horizontal pilote Y');
+    assert.equal(straightDragDegrees3D('y', face, 20, 0, 0.5), 10, 'horizontal pilote le pivot');
     assert.equal(straightDragDegrees3D('y', face, 0, 999, 0.5), 0, 'vertical ne fait rien');
   });
 
-  test('à 90° d\'orbite, l\'axe Z se pilote au vertical', () => {
-    // Il est devenu l'axe horizontal à l'écran : sa perpendiculaire est donc verticale.
-    const profil = { rotX: 0, rotY: 90 * DEG };
-    assertClose(straightDragDegrees3D('z', profil, 0, 20, 0.5), -10, 'vertical pilote Z de profil');
-    assertClose(straightDragDegrees3D('z', profil, 999, 0, 0.5), 0, 'horizontal ne fait rien');
+  test('RÉGRESSION : un PIVOT a son propre levier, sinon sa tangente est nulle partout', () => {
+    // Une rotation autour de la verticale ne déplace rien de ce qui se trouve SUR cet axe : prendre
+    // le membre pendant (−Y) comme levier donnerait `Y × (−Y) = 0`, une tangente identiquement
+    // nulle, et le pivot retomberait éternellement sur la perpendiculaire. Son levier est donc la
+    // direction du regard (−Z) — ce qu'un pivot déplace effectivement, à commencer par le visage.
+    //
+    // Aucun des 14 gestes jugés ne portait sur un pivot : sans ce test, la mutation « un seul
+    // levier pour tous les axes » passait inaperçue.
+    assert.deepEqual(poseJointLeverAxis3D('y'), [0, 0, -1]);
+    assert.deepEqual(poseJointLeverAxis3D('x'), [0, -1, 0]);
+    assert.deepEqual(poseJointLeverAxis3D('z'), [0, -1, 0]);
+    const t = poseTangentToScreen3D('y', face);
+    assert.ok(Math.hypot(t.x, t.y) > 0.9, 'de face, un pivot déplace visiblement le visage');
+    assert.equal(straightDragDirection3D('y', face).source, 'tangente');
   });
 
-  test('RÉGRESSION : une orbite HORIZONTALE seule ne fait pas tourner le geste', () => {
-    // Contre-intuitif, et je l'ai d'abord cru faux : tourner autour de la figure ne change PAS la
-    // direction de glisser d'un axe X ou Z, seulement sa longueur projetée. L'axe X reste
-    // horizontal à l'écran quel que soit le lacet — il se raccourcit, sans jamais s'incliner. Ce
-    // que le lacet change vraiment, c'est le RÉGIME : au-delà du seuil, on bascule en circulaire.
-    for (const deg of [15, 30, 45, 60]) {
-      const vue = { rotX: 0, rotY: deg * DEG };
-      assert.equal(straightDragDegrees3D('x', vue, 999, 0, 1), 0,
-        `lacet ${deg}° : l'horizontal ne doit toujours rien faire sur X`);
-      assert.ok(straightDragDegrees3D('x', vue, 0, 100, 1) !== 0, 'le vertical, si');
-    }
+  test('RÉGRESSION : de face, la flexion passe par la PERPENDICULAIRE, faute de tangente', () => {
+    // Vue de face, un membre qui se plie part vers la caméra : sa tangente est écrasée par la
+    // perspective et n'indique plus de direction. C'est tout l'objet du repli.
+    const t = poseTangentToScreen3D('x', face);
+    assert.ok(Math.hypot(t.x, t.y) < POSE_TANGENT_VISIBLE_MIN, 'tangente effectivement invisible');
+    assert.equal(straightDragDirection3D('x', face).source, 'perpendiculaire');
   });
 
-  test('une orbite VERTICALE, elle, incline le geste — les deux composantes comptent', () => {
-    // C'est la plongée qui fait pivoter la projection de l'axe, donc sa perpendiculaire.
-    const plongee = { rotX: 30 * DEG, rotY: 45 * DEG };
-    const seulX = straightDragDegrees3D('x', plongee, 100, 0, 1);
-    const seulY = straightDragDegrees3D('x', plongee, 0, 100, 1);
-    assert.ok(Math.abs(seulX) > 1 && Math.abs(seulY) > 1,
-      `aucune composante ne doit être morte en vue plongeante (${seulX}, ${seulY})`);
+  test('RÉGRESSION : de trois quarts et de profil, la flexion passe par la TANGENTE', () => {
+    // C'est là que la perpendiculaire se trompait : elle réclamait un geste vertical alors que le
+    // membre part horizontalement à l'écran. Les 14 gestes jugés l'ont montré.
+    assert.equal(straightDragDirection3D('x', troisQuarts).source, 'tangente');
+    assert.equal(straightDragDirection3D('x', profil).source, 'tangente');
   });
 
-  test('axe sans projection : renvoie 0 plutôt que NaN', () => {
-    assert.equal(straightDragDegrees3D('z', face, 50, 50, 1), 0);
+  test('RÉGRESSION : une orbite horizontale fait bien TOURNER la direction du geste', () => {
+    // L'inverse de ce que la version précédente de ce test affirmait — et c'était exact pour le
+    // modèle d'alors, qui suivait l'axe : la projection d'un axe horizontal reste horizontale quel
+    // que soit le lacet, seule sa longueur change. La tangente, elle, pivote réellement avec la vue.
+    const deFace = straightDragDirection3D('x', face);
+    const deProfil = straightDragDirection3D('x', profil);
+    const ecart = Math.abs(deFace.x * deProfil.x + deFace.y * deProfil.y);
+    assert.ok(ecart < 0.5,
+      `les deux directions devraient être franchement différentes (produit scalaire ${ecart})`);
+  });
+
+  test('RÉGRESSION : un axe sans projection écran garde une direction utilisable', () => {
+    // L'écart d'épaule, vu de face : son axe pointe vers l'œil et ne se projette pas, mais le bras
+    // s'écarte bel et bien horizontalement à l'écran. C'est la complémentarité des deux modèles.
+    const a = projectModelAxisToScreen3D('z', face);
+    assert.ok(Math.hypot(a.x, a.y) < 0.01, 'axe effectivement sans projection');
+    const d = straightDragDirection3D('z', face);
+    assert.equal(d.source, 'tangente');
+    assert.notEqual(straightDragDegrees3D('z', face, 20, 0, 0.5), 0, 'le geste reste exploitable');
+  });
+
+  test('RÉGRESSION : un seuil nul ne fait pas normaliser une tangente nulle', () => {
+    // `nt >= 0` est vrai même pour une tangente nulle : sans garde supplémentaire, la
+    // normalisation donnerait NaN et le geste cesserait de rien bouger, sans erreur pour le dire.
+    const d = straightDragDirection3D('x', face, 0);
+    assert.ok(Number.isFinite(d.x) && Number.isFinite(d.y), `direction non finie : ${JSON.stringify(d)}`);
+    assert.equal(d.source, 'perpendiculaire', 'faute de tangente, on retombe sur l\'axe');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 84 — le modèle confronté aux VERDICTS RÉELS.
+//
+// Ce test rejoue les 14 gestes que l'utilisateur a jugés « bon sens » ou « inversé » dans
+// l'éditeur, et vérifie que le modèle retenu prédit le sens qu'il attendait. C'est le seul test de
+// ce dépôt dont l'oracle vienne d'un humain plutôt que du code — et c'est précisément ce qui lui
+// donne sa valeur : quatre corrections successives raisonnées à froid s'étaient trompées.
+//
+// Le jeu de données est FIGÉ ici plutôt que lu depuis le fichier de diagnostic : celui-ci est
+// ignoré par git, réécrit à chaque campagne, et absent d'une nouvelle installation. Un test qui
+// disparaît selon la machine ne protège rien.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 84 — le modèle mixte contre les 14 gestes jugés', () => {
+  // champ, axe, mode, orbiteY, orbiteX, sourisDx, sourisDy, angleDelta, verdict
+  const CAMPAGNE = [
+    ['rShoulder:x', 'x', 'droit',      180,  0,  -26,  168,  -84, 'bon'],
+    ['rShoulder:x', 'x', 'droit',      102, 32, -239, -244,  155, 'inversé'],
+    ['rShoulder:z', 'z', 'droit',      102, 32,  744,   52,   15, 'inversé'],
+    ['rShoulder:z', 'z', 'circulaire',-176, 11, -230,    4,   37, 'bon'],
+    ['rElbow:v',    'x', 'droit',     -176, 11,  -32,  112,  -56, 'bon'],
+    ['rElbow:v',    'x', 'droit',       64, 21,    9,  244,   95, 'inversé'],
+    ['rElbow:v',    'x', 'circulaire', 108,  6,   98, -137,    7, 'bon'],
+    ['rKnee',       'x', 'circulaire', 108,  6,  163,   29,   66, 'bon'],
+    ['rKnee',       'x', 'droit',     -168, 14,   74,  -64,   34, 'bon'],
+    ['rHip:x',      'x', 'droit',     -168, 14,   66,  -79,   41, 'bon'],
+    ['lHip:x',      'x', 'droit',      109, 11,  271, -371,   93, 'bon'],
+    ['lHip:x',      'x', 'droit',     -170, 34,   -7,  279, -139, 'bon'],
+    ['lHip:x',      'x', 'droit',     -102, 19,   89,  303,  -45, 'bon'],
+    ['lHip:x',      'x', 'droit',     -102, 19,  424,    4,  177, 'inversé'],
+  ];
+  const DEG3 = Math.PI / 180;
+
+  const predire = (axe, mode, oY, oX, dx, dy, angleDelta) => {
+    if (mode === 'circulaire') return angleDelta > 0 ? 1 : -1;   // corrigé au Fix 81, reconduit ici
+    const dir = straightDragDirection3D(axe, { rotX: oX * DEG3, rotY: oY * DEG3 });
+    return (dx * dir.x + dy * dir.y) > 0 ? 1 : -1;
+  };
+
+  test('RÉGRESSION : 13 des 14 verdicts sont expliqués', () => {
+    const rates = CAMPAGNE.filter(([champ, axe, mode, oY, oX, dx, dy, angleDelta, verdict]) => {
+      const applique = angleDelta > 0 ? 1 : -1;
+      const voulu = verdict === 'bon' ? applique : -applique;
+      return predire(axe, mode, oY, oX, dx, dy, angleDelta) !== voulu;
+    });
+    assert.equal(CAMPAGNE.length - rates.length, 13,
+      `ratés : ${rates.map(r => `${r[0]} @${r[3]}°`).join(', ')}`);
+  });
+
+  test('le résidu est CELUI qu\'on a accepté, pas un autre', () => {
+    // 14 sur 14 est hors d'atteinte : deux cas voisins, à 0.56 et 0.58 de tangente visible,
+    // réclament des modèles opposés — aucun seuil ne peut les départager. Nommer le résidu évite
+    // qu'un changement futur en substitue un autre sans qu'on s'en aperçoive, le compte restant 13.
+    const rates = CAMPAGNE.filter(([champ, axe, mode, oY, oX, dx, dy, angleDelta, verdict]) => {
+      const applique = angleDelta > 0 ? 1 : -1;
+      const voulu = verdict === 'bon' ? applique : -applique;
+      return predire(axe, mode, oY, oX, dx, dy, angleDelta) !== voulu;
+    });
+    assert.deepEqual(rates.map(r => `${r[0]} @${r[3]}°`), ['rShoulder:z @102°']);
+  });
+
+  test('le mode circulaire, lui, est expliqué à 100 %', () => {
+    // Trois cas sur trois : le Fix 81 a réglé cette moitié du problème, et le Fix 84 n'y touche pas.
+    const circulaires = CAMPAGNE.filter(c => c[2] === 'circulaire');
+    assert.equal(circulaires.length, 3, 'la campagne en contenait bien trois');
+    assert.ok(circulaires.every(c => c[8] === 'bon'));
   });
 });
 

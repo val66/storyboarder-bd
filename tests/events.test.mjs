@@ -2190,6 +2190,7 @@ describe('éditeur de Personnage — recueil des sens de rotation (Fix 82)', () 
     // grandeurs qui ont produit le mouvement. Un champ manquant, et le cas devient inexploitable.
     const cas = gesteEnregistre();
     for (const champ of ['axe', 'mode', 'orbiteY', 'orbiteX', 'projection', 'versLoeil',
+                         'source', 'tangente',
                          'sourisDx', 'sourisDy', 'poigneeDx', 'poigneeDy', 'angleDelta']) {
       assert.notEqual(cas[champ], undefined, `champ manquant : ${champ}`);
     }

@@ -41,6 +41,7 @@ import {
   poseSpecRotationAxis3D, poseDragIsStraight3D, straightDragDegrees3D,   projectModelAxisToScreen3D, describePoseDragStep3D,
   pointerSweepAngle3D, accumulateSweepDegrees3D, circularSweepSign3D,
   modelAxisTowardViewer3D, summarizeDragCase3D, appDirFromHref3D,
+  straightDragDirection3D, poseTangentToScreen3D,
   canvasPointToClient3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -791,6 +792,13 @@ export function recordPersonaDragCase(session, entries){
     axisScreen: projectModelAxisToScreen3D(session.axis, session.orbit),
     versLoeil: modelAxisTowardViewer3D(session.axis, session.orbit),
     signe: session.droit ? null : session.sweepSign,
+    source: session.droit
+      ? (straightDragDirection3D(session.axis, session.orbit) || {}).source
+      : 'balayage',
+    tangente: (() => {
+      const t = poseTangentToScreen3D(session.axis, session.orbit);
+      return Math.hypot(t.x, t.y);
+    })(),
     dx: dernier.sourisDx,
     dy: dernier.sourisDy,
     // Déplacement CUMULÉ de la poignée : image par image, il dit où le membre est réellement parti.
