@@ -739,7 +739,10 @@ canvas{
   background: var(--white); color: var(--ink);
 }
 .persona-editor-poses button:hover { border-color: var(--ink-soft); }
-.persona-editor-pose-edit { margin-top: 8px; }
+/* Fix 69 — l'écart avec la liste des poses au-dessus. 8px ne suffisaient pas : les pastilles de
+   poses et le champ de nom se touchaient presque, alors qu'on passe de « je choisis » à « je
+   nomme » — deux gestes différents, l'espace doit le dire. */
+.persona-editor-pose-edit { margin-top: 16px; }
 .persona-editor-pose-edit input {
   width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 7px; margin-bottom: 5px;
   border: 1px solid var(--line); border-radius: 5px; background: var(--white); color: var(--ink);
@@ -748,6 +751,13 @@ canvas{
 .persona-editor-pose-actions button {
   flex: 1; font-size: 11.5px; padding: 4px 6px; cursor: pointer;
   border: 1px solid var(--line); border-radius: 5px; background: var(--white); color: var(--ink);
+  /* Fix 69 — `margin: 0` est ce qui rend les trois boutons de MÊME hauteur, et ce n'est pas
+     cosmétique. Supprimer porte la classe .danger-btn, qui déclare `margin-bottom: 6px`. Dans une
+     ligne flex, `align-items` vaut `stretch` par défaut : chaque bouton est étiré à la hauteur de
+     la ligne MARGES COMPRISES, donc ces 6px étaient pris sur sa boîte — Supprimer paraissait plus
+     court que ses voisins sans qu'aucune règle de hauteur ne soit en cause. Toucher à la hauteur
+     ici n'y aurait rien changé. */
+  margin: 0;
 }
 .persona-editor-pose-actions button:disabled {
   opacity: .45; cursor: default; color: var(--ink-soft);
