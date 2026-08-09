@@ -159,3 +159,50 @@ describe('Fix 73 — une ligne de curseur tient dans son cadre', () => {
     }
   });
 });
+
+describe('Fix 74 — le curseur d\'articulation garde une largeur utilisable', () => {
+  // Le seul calcul de largeur possible sans moteur de rendu : additionner ce qui est DÉCLARÉ. Il ne
+  // prouve pas que l'affichage est correct, il empêche qu'un futur ajustement de rembourrage ou de
+  // libellé ramène le curseur à la taille dérisoire signalée ici.
+  //
+  // `mesure` LÈVE quand la déclaration est absente. C'est délibéré, et c'est la troisième fois que
+  // ce fichier me le rappelle : une première version, sur-échappée, renvoyait null partout et
+  // calculait tranquillement `null - 32 - 28` → le test échouait sur une valeur inventée (-76px) qui
+  // ne décrivait rien. Un extracteur qui renvoie null en silence ne mesure pas, il devine.
+  function mesure(regle, prop, nom) {
+    const m = new RegExp(prop + ':\\s*(-?\\d+)px').exec(regle);
+    if (!m) throw new Error(`déclaration introuvable : ${prop} dans ${nom}`);
+    return +m[1];
+  }
+  // Rembourrage HORIZONTAL, qu'il soit écrit en raccourci (`padding: 18px 16px`) ou seul.
+  function padX(regle, nom) {
+    const court = /padding:\s*-?\d+px\s+(-?\d+)px/.exec(regle);
+    if (court) return +court[1];
+    return mesure(regle, 'padding-left', nom);
+  }
+
+  test('RÉGRESSION : il reste au moins 120px au curseur', () => {
+    // 120px parce que c'est ce dont il disposait AVANT que le Fix 70 ne rétrécisse la place : seuil
+    // mesuré sur l'état antérieur, pas choisi au jugé.
+    const panneau = declarations('.persona-editor-panel');
+    const carte = declarations('.side-section');
+    const ligne = declarations('.joint-slider-row');
+    const libelle = declarations('.joint-slider-row .joint-slider-label');
+    const valeur = declarations('.joint-slider-row .joint-slider-val');
+
+    const debord = -mesure(ligne, 'margin-left', 'ligne');   // marge négative : elle REGAGNE de la place
+    const dispo = mesure(panneau, 'width', 'panneau')
+      - 2 * padX(panneau, 'panneau')
+      - 2 * padX(carte, 'carte')
+      - 2 * padX(ligne, 'ligne')
+      + 2 * debord;
+    const reste = dispo
+      - mesure(libelle, 'width', 'libellé')
+      - mesure(valeur, 'width', 'valeur')
+      - 2 * mesure(ligne, 'gap', 'ligne');
+
+    assert.ok(debord > 0, 'la marge de la ligne est censée être négative');
+    assert.ok(reste >= 120,
+      `curseur réduit à ${reste}px — élargir le panneau, raccourcir le libellé, ou revoir ce seuil`);
+  });
+});

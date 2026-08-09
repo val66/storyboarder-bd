@@ -1761,8 +1761,9 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     setPersonaEditorJointDeg(horiz, 33);
     focusPersonaEditorHandle('head');
     const session = beginPersonaEditorJointDrag('head');
-    applyPersonaEditorJointDrag(session, 25, 25);
-    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), 25, '50 px cumulés à 0.5°/px');
+    // Fix 74 — le premier champ suit le VERTICAL seul : dx est ignoré, ce que le second cas vérifie.
+    applyPersonaEditorJointDrag(session, 999, 50);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), 25, '50 px verticaux à 0.5°/px');
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, horiz), 33, 'champ voisin intact');
   });
 
@@ -1775,7 +1776,8 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     const x0 = readPoseSliderDeg3D(S.personaEditorDraft, x);
     const z0 = readPoseSliderDeg3D(S.personaEditorDraft, z);
     cyclePersonaEditorSpec(1);                       // on passe sur l'écart
-    applyPersonaEditorJointDrag(beginPersonaEditorJointDrag('lShoulder'), 0, 20);
+    // Second champ ⇒ il suit l'HORIZONTAL : c'est dx qui compte, dy est ignoré.
+    applyPersonaEditorJointDrag(beginPersonaEditorJointDrag('lShoulder'), 20, 999);
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, z), z0 + 10);
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, x), x0, 'axe voisin intact');
   });

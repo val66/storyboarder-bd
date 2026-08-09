@@ -195,12 +195,24 @@ export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
 export const POSE_DRAG_DEG_MIN = -180;
 export const POSE_DRAG_DEG_MAX = 180;
 
+// Fix 74 — la composante de souris qui pilote un champ, SELON SON RANG dans l'articulation.
+//
+// Le premier champ suit le vertical, les suivants l'horizontal. Ce n'est pas arbitraire :
+// poseSliderSpecs3D range ses descripteurs dans cet ordre et le dit dans ses libellés
+// (« (haut/bas) » puis « (gauche/droite) »). Chaque champ répond donc au geste qui porte son nom.
+//
+// Ce qui remplace les deux axes cumulés du Fix 72, et pas seulement par goût : `dx + dy` s'ANNULE
+// dès que les deux composantes s'opposent. Un geste courbe qui repasse par dx = -dy figeait l'angle
+// alors que la souris bougeait encore — c'est très probablement la moitié du « ça se bloque
+// parfois » signalé, l'autre moitié étant le bornage traité au Fix 73.
+export function poseSpecDragDelta3D(specIndex, dx, dy){
+  return (Math.trunc(specIndex || 0) === 0) ? (dy || 0) : (dx || 0);
+}
+
 // Un pas de glisser : nouvel angle du champ piloté, et origine à conserver pour le pas suivant.
 //
-// Fix 72 — un seul champ à la fois (celui que la molette a mis en avant), et il suit les DEUX axes
-// cumulés : n'importe quelle direction le fait varier, il n'y a pas de geste mort. La contrepartie,
-// assumée, est qu'une diagonale additionne les deux composantes et varie donc deux fois plus vite
-// qu'un mouvement droit de même longueur apparente.
+// dPx est un déplacement en pixels DÉJÀ projeté sur le bon axe (cf. poseSpecDragDelta3D) : cette
+// fonction ne connaît qu'une grandeur scalaire, ce qui la rend indépendante du choix d'axes.
 //
 // startDeg est l'angle capturé au DÉBUT du glisser, pas relu à chaque image : cumuler des deltas
 // image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au même angle selon la
@@ -212,9 +224,11 @@ export const POSE_DRAG_DEG_MAX = 180;
 // bouge — l'articulation paraissait figée, sans que rien ne l'annonce. Au contact d'une borne,
 // l'origine se recale donc pour que le retour réponde au premier pixel. Le geste reste absolu
 // PARTOUT AILLEURS : le recalage n'a lieu que quand la valeur brute sort de la plage, et il est
-// idempotent (le refaire au même endroit ne déplace rien).
-export function dragJointStep3D(startDeg, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
-  const delta = ((dx || 0) + (dy || 0)) * degPerPx;
+// idempotent (le refaire au même endroit ne déplace rien). Contrepartie assumée : après avoir
+// écrasé une borne, revenir au pixel de départ ne rend plus l'angle de départ — le geste repart de
+// l'endroit où on a quitté la butée, comme pour tout défilement borné.
+export function dragJointStep3D(startDeg, dPx, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const delta = (dPx || 0) * degPerPx;
   const brut = (startDeg || 0) + delta;
   const deg = clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
   const debordé = brut < POSE_DRAG_DEG_MIN || brut > POSE_DRAG_DEG_MAX;

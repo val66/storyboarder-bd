@@ -37,7 +37,7 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, dragJointStep3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  poseSliderSpecs3D, dragJointStep3D, poseSpecDragDelta3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
@@ -733,16 +733,20 @@ export function setPersonaEditorJointDeg(spec, deg){
 // de l'affichage.
 export function beginPersonaEditorJointDrag(id){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !id) return null;
-  const spec = personaEditorSpecsOf(id)[S.personaEditorSpecIndex];
+  const specIndex = S.personaEditorSpecIndex;
+  const spec = personaEditorSpecsOf(id)[specIndex];
   if (!spec) return null;
-  return { id, spec, startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec) };
+  // specIndex est FIGÉ dans la session : c'est lui qui dit quel axe de souris pilote le champ, et
+  // la molette peut le changer pendant que le bouton est enfoncé. Le relire à chaque image ferait
+  // basculer le geste d'un axe à l'autre en plein mouvement.
+  return { id, spec, specIndex, startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec) };
 }
 
 // Applique un déplacement en pixels à la session. Renvoie le degré écrit, ou null si la session
 // n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
 export function applyPersonaEditorJointDrag(session, dx, dy){
   if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
-  const pas = dragJointStep3D(session.startDeg, dx, dy);
+  const pas = dragJointStep3D(session.startDeg, poseSpecDragDelta3D(session.specIndex, dx, dy));
   // Fix 73 — la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
   // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
   session.startDeg = pas.startDeg;

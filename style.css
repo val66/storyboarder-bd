@@ -726,7 +726,12 @@ canvas{
 .persona-editor-stage canvas:active { cursor: grabbing; }
 /* Largeur fixe : la liste de curseurs a une largeur lisible propre (108px de libellé + le curseur),
    la laisser s'étirer avec la fenêtre n'apporterait rien et volerait de la place au Personnage. */
-.persona-editor-panel { width: 300px; flex-shrink: 0; overflow-y: auto; padding: 18px 16px;
+/* Fix 74 — 350 et non 300. Le curseur d'articulation ne disposait plus que de 88px une fois
+   retranchés le libellé (108), la valeur (36), les écarts et les deux rembourrages (panneau puis
+   carte) : il paraissait rabougri parce qu'il l'était. À 350 il en retrouve 138, soit plus que les
+   120 d'avant le Fix 70. Calculé depuis les largeurs réelles, pas ajusté à l'œil. Le canevas perd
+   50px sur un plein écran, ce qui ne se voit pas. */
+.persona-editor-panel { width: 350px; flex-shrink: 0; overflow-y: auto; padding: 18px 16px;
                         background: var(--paper-dark); border-left: 1px solid var(--line); }
 /* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
    suivantes se collent à elle : elles forment un groupe. */
