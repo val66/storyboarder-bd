@@ -29,7 +29,8 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
-import { clamp, getHandles, pickNearestHandle3D } from './utils.js';
+import { clamp, getHandles, pickNearestHandle3D,
+         poseDragHintSegment3D, POSE_DRAG_HINT_LEN } from './utils.js';
 import {
   findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
@@ -1663,7 +1664,44 @@ export function projectJointToCanvas(group, camera, canvasW, canvasH){
 // et la dernière rendue écraserait les coordonnées de l'autre : au retour dans la modale, les clics
 // auraient visé les positions calculées pour le plein écran. Les valeurs par défaut reproduisent
 // exactement le comportement de la modale, seul appelant historique.
-export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId){
+// Fix 85 — repère de glisser dessiné sur la poignée sélectionnée. `hint` vaut soit
+// { mode: 'droit', x, y } — la direction utile — soit { mode: 'circulaire' }, et null quand aucune
+// articulation n'est choisie. Purement indicatif : il ne change rien au geste, il le rend lisible.
+export function drawPersonaDragHint(hctx, pos, hint){
+  if (!hctx || !pos || !hint) return false;
+  hctx.save();
+  hctx.strokeStyle = '#E0A53C';
+  hctx.lineWidth = 2.5;
+  hctx.globalAlpha = 0.85;
+  if (hint.mode === 'circulaire') {
+    // Tourner AUTOUR du point : un anneau, ouvert pour qu'on y lise un mouvement et non une cible.
+    hctx.beginPath();
+    hctx.arc(pos.x, pos.y, POSE_DRAG_HINT_LEN, 0.45, Math.PI * 2 - 0.45);
+    hctx.stroke();
+  } else {
+    const seg = poseDragHintSegment3D(pos, hint);
+    if (seg) {
+      hctx.beginPath();
+      hctx.moveTo(seg.x1, seg.y1);
+      hctx.lineTo(seg.x2, seg.y2);
+      hctx.stroke();
+      // Pointes aux DEUX bouts : les deux sens sont utiles, l'un ouvre l'angle et l'autre le ferme.
+      const ang = Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1);
+      [[seg.x2, seg.y2, ang], [seg.x1, seg.y1, ang + Math.PI]].forEach(([x, y, a]) => {
+        hctx.beginPath();
+        hctx.moveTo(x, y);
+        hctx.lineTo(x - 8 * Math.cos(a - 0.4), y - 8 * Math.sin(a - 0.4));
+        hctx.moveTo(x, y);
+        hctx.lineTo(x - 8 * Math.cos(a + 0.4), y - 8 * Math.sin(a + 0.4));
+        hctx.stroke();
+      });
+    }
+  }
+  hctx.restore();
+  return true;
+}
+
+export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint){
   if (typeof THREE === 'undefined') return;
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return;
@@ -1691,6 +1729,8 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId){
     hctx.stroke();
   });
   hctx.globalAlpha = 1;
+  // Après les poignées, pour que le repère passe au-dessus et reste lisible.
+  if (dragHint && positions[selectedId]) drawPersonaDragHint(hctx, positions[selectedId], dragHint);
 }
 
 export function pickPoseHandleAt(px, py, canvas, positions){

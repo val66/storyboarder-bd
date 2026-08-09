@@ -750,6 +750,19 @@ export function setPersonaEditorJointDeg(spec, deg){
 // La session mémorise les angles de DÉPART. Cumuler les deltas d'une image à l'autre ferait dériver
 // l'arrondi au degré, et la même course de souris n'aboutirait pas au même angle selon la fluidité
 // de l'affichage.
+// Fix 85 — repère de glisser à afficher sur la poignée sélectionnée, ou null. Calculé ici parce que
+// seul l'éditeur connaît à la fois l'articulation choisie, son champ actif et l'orbite ; draw.js ne
+// fait que le dessiner.
+export function personaEditorDragHint(){
+  const spec = personaEditorActiveSpec();
+  if (!spec) return null;
+  const axis = poseSpecRotationAxis3D(spec);
+  const orbit = { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
+  if (!poseDragIsStraight3D(axis, orbit)) return { mode: 'circulaire' };
+  const dir = straightDragDirection3D(axis, orbit);
+  return dir ? { mode: 'droit', x: dir.x, y: dir.y } : null;
+}
+
 // ─── Fix 77 (DIAGNOSTIC) — journal du glisser d'articulation ─────────────────────────────────
 //
 // TEMPORAIRE, le temps de comprendre pourquoi le geste reste difficile à manier. N'influence aucun
@@ -1017,7 +1030,8 @@ export function drawPersonaEditor(){
   // Fix 52 — les poignées se dessinent APRÈS le rendu 3D, sur le même canevas 2D, et remplissent au
   // passage personaEditorHandlePos. C'est donc ce dessin qui rend le clic possible : sans redessin,
   // les positions dateraient de la dernière image et cliquer viserait où le Personnage ÉTAIT.
-  drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId);
+  drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
+    personaEditorDragHint());
 }
 
 // Carte PROPRE à l'éditeur (cf. le commentaire de drawPersonaPoseHandlesOverlay) : la modale garde

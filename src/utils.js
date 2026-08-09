@@ -488,6 +488,33 @@ export function appDirFromHref3D(href){
   return dossier || null;
 }
 
+// ─── Fix 85 — géométrie du repère de glisser affiché sur la poignée ─────────────────────────
+//
+// Diagnostic d'une seconde campagne : le rendement du geste s'effondre exactement quand la souris
+// s'écarte de la direction utile. Mesuré sur 13 gestes — écart de 0 à 14° : 48 à 50°/100px, soit
+// le maximum théorique ; écart de 70 à 90° : 0,3 à 17°/100px. Et les gestes les plus longs sont
+// précisément les moins rendus (647, 900, 968 px), signe qu'on pousse de plus en plus fort en
+// voyant que rien ne bouge — puis qu'on dérive par hasard sur la bonne direction, et « d'un coup
+// ça se débloque ».
+//
+// Le comportement n'est donc pas en cause : c'est sa LISIBILITÉ. La direction utile est une droite
+// unique, orthogonale à une direction totalement morte, et rien à l'écran ne dit laquelle. On la
+// dessine.
+export const POSE_DRAG_HINT_LEN = 34;   // demi-longueur du repère, en pixels de canevas
+
+// Les deux extrémités du repère rectiligne, centré sur la poignée. Double flèche et non simple :
+// les deux sens fonctionnent, l'un augmentant l'angle et l'autre le diminuant.
+export function poseDragHintSegment3D(pos, dir, longueur = POSE_DRAG_HINT_LEN){
+  if (!pos || !dir) return null;
+  const n = Math.hypot(dir.x || 0, dir.y || 0);
+  if (!n) return null;
+  const ux = (dir.x || 0) / n, uy = (dir.y || 0) / n;
+  return {
+    x1: (pos.x || 0) - ux * longueur, y1: (pos.y || 0) - uy * longueur,
+    x2: (pos.x || 0) + ux * longueur, y2: (pos.y || 0) + uy * longueur,
+  };
+}
+
 // Fix 82 (DIAGNOSTIC) — fiche d'un geste complet, à faire juger par l'utilisateur.
 //
 // Une ligne par glisser, avec TOUT ce qui détermine le sens appliqué : l'axe, le mode, l'orbite, la

@@ -17,6 +17,7 @@ import {
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   poseTangentToScreen3D, straightDragDirection3D, POSE_TANGENT_VISIBLE_MIN,
   poseJointLeverAxis3D, projectVectorToScreen3D, modelAxisVector3D,
+  poseDragHintSegment3D, POSE_DRAG_HINT_LEN,
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
   modelAxisTowardViewer3D, circularSweepSign3D,
   appDirFromHref3D,
@@ -1843,5 +1844,51 @@ describe('appDirFromHref3D — retrouver le dossier de l\'application', () => {
     assert.equal(appDirFromHref3D(null), null);
     assert.equal(appDirFromHref3D('index.html'), null);
     assert.equal(appDirFromHref3D(''), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 85 — repère de glisser affiché sur la poignée.
+//
+// Réponse à un défaut de LISIBILITÉ, pas de comportement : mesuré sur 13 gestes, le rendement
+// s'effondre exactement quand la souris s'écarte de la direction utile (0-14° d'écart → 48 à
+// 50°/100px, le maximum ; 70-90° → 0,3 à 17). Les gestes les plus longs sont les moins rendus,
+// signe qu'on pousse de plus en plus fort faute de savoir où aller.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('poseDragHintSegment3D — le repère dessiné sur la poignée', () => {
+  const pos = { x: 200, y: 150 };
+
+  test('le segment est CENTRÉ sur la poignée, et symétrique', () => {
+    // Double flèche et non simple : les deux sens sont utiles, l'un ouvre l'angle et l'autre le
+    // ferme. Un repère unidirectionnel laisserait croire qu'un seul sens fonctionne.
+    const s = poseDragHintSegment3D(pos, { x: 1, y: 0 }, 30);
+    assert.deepEqual(s, { x1: 170, y1: 150, x2: 230, y2: 150 });
+    assert.equal((s.x1 + s.x2) / 2, pos.x, 'centré en x');
+    assert.equal((s.y1 + s.y2) / 2, pos.y, 'centré en y');
+  });
+
+  test('RÉGRESSION : une direction non unitaire donne la MÊME longueur', () => {
+    // La direction vient de straightDragDirection3D, déjà normalisée — mais s'y fier sans le
+    // vérifier ferait dépendre la taille du repère d'un détail de calcul en amont.
+    const court = poseDragHintSegment3D(pos, { x: 0.1, y: 0 }, 30);
+    const long = poseDragHintSegment3D(pos, { x: 50, y: 0 }, 30);
+    assert.deepEqual(court, long);
+  });
+
+  test('la direction oblique est respectée', () => {
+    const s = poseDragHintSegment3D(pos, { x: 1, y: 1 }, Math.SQRT2);
+    assertClose(s.x2 - pos.x, 1, 'composante x');
+    assertClose(s.y2 - pos.y, 1, 'composante y');
+  });
+
+  test('entrées inutilisables : null, jamais un segment dégénéré', () => {
+    assert.equal(poseDragHintSegment3D(null, { x: 1, y: 0 }), null);
+    assert.equal(poseDragHintSegment3D(pos, null), null);
+    assert.equal(poseDragHintSegment3D(pos, { x: 0, y: 0 }), null, 'direction nulle');
+  });
+
+  test('la longueur par défaut est celle de la constante partagée', () => {
+    const s = poseDragHintSegment3D(pos, { x: 1, y: 0 });
+    assert.equal(s.x2 - pos.x, POSE_DRAG_HINT_LEN);
   });
 });

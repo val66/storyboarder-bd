@@ -9,6 +9,7 @@ import './helpers/dom-stub.mjs';
 import '../src/events.js';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   detectBuildFaces,
@@ -515,5 +516,40 @@ describe('buildWallJunctions3D — angles d\'une Pièce réellement construite (
       assertClose(p.height, h, 'hauteur du poteau');
       assertClose(p.thick, h * 0.06, 'épaisseur du poteau');
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 85 — le repère de glisser est effectivement DESSINÉ.
+//
+// Par inspection de source : le contexte 2D du stub est un Proxy qui accepte tout appel en no-op
+// (cf. tests/helpers/dom-stub.mjs), donc aucune assertion sur le tracé n'est possible. Ce qu'on
+// vérifie est le CÂBLAGE — que la fonction de dessin soit appelée, et qu'on lui passe le repère —
+// c'est-à-dire précisément ce qu'une mutation « on ne dessine plus rien » casse.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 85 — câblage du repère de glisser', () => {
+  const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
+  const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+
+  test('l\'overlay des poignées dessine le repère qu\'on lui passe', () => {
+    const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
+    assert.ok(i > 0, 'overlay introuvable');
+    const corps = src.slice(i, src.indexOf('\n}', i));
+    assert.match(corps, /drawPersonaDragHint\(/, 'le repère doit être tracé');
+    assert.match(corps, /dragHint/, 'et provenir du paramètre, pas d\'un recalcul local');
+  });
+
+  test('RÉGRESSION : le repère est tracé APRÈS les poignées', () => {
+    // Dessiné avant, il passerait sous les pastilles et deviendrait illisible au centre, là
+    // précisément où il doit indiquer une direction.
+    const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
+    const corps = src.slice(i, src.indexOf('\n}', i));
+    assert.ok(corps.indexOf('POSE_HANDLES.forEach') < corps.indexOf('drawPersonaDragHint('),
+      'l\'appel doit venir après la boucle qui dessine les poignées');
+  });
+
+  test('l\'éditeur alimente bien ce paramètre', () => {
+    assert.match(evt, /drawPersonaPoseHandlesOverlay\([^)]*personaEditorDragHint\(\)/s,
+      'sans cet argument, l\'overlay n\'aurait jamais rien à dessiner');
   });
 });

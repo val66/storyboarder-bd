@@ -46,6 +46,7 @@ import {
   PERSONA_EDITOR_FRONT_ROT_Y,
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
+  personaEditorDragHint,
   setPersonaDragDebug, resetPersonaDragJournal, personaDragJournalEntries,
   logPersonaDragStep, summarizePersonaDragJournal,
   recordPersonaDragCase, labelLastPersonaDragCase, personaDragCaseList,
@@ -2242,5 +2243,45 @@ describe('éditeur de Personnage — recueil des sens de rotation (Fix 82)', () 
     setPersonaDragDebug(false);
     assert.equal(gesteEnregistre(), null);
     assert.deepEqual(personaDragCaseList(), []);
+  });
+});
+
+describe('éditeur de Personnage — repère de glisser (Fix 85)', () => {
+  beforeEach(() => { closePersonaEditor(); });
+
+  test('aucun repère sans articulation sélectionnée', () => {
+    openPersonaEditor(null);
+    assert.equal(personaEditorDragHint(), null);
+  });
+
+  test('le repère annonce le mode réellement employé', () => {
+    // Il doit dire la vérité sur le geste attendu : une flèche là où le glisser est droit, un
+    // anneau là où il est circulaire. Un repère qui montrerait l'autre serait pire que rien.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lShoulder');
+    cyclePersonaEditorSpec(1);                       // l'écart : circulaire de face
+    assert.equal(personaEditorDragHint().mode, 'circulaire');
+    focusPersonaEditorHandle('head');                // la flexion : droite de face
+    assert.equal(personaEditorDragHint().mode, 'droit');
+  });
+
+  test('RÉGRESSION : le repère droit porte une direction UNITAIRE', () => {
+    // draw.js la renormalise, mais un repère dont la longueur dépendrait de l'orientation
+    // signalerait au passage une intensité qui n'existe pas.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('head');
+    const h = personaEditorDragHint();
+    assertClose(Math.hypot(h.x, h.y), 1, 'direction normalisée');
+  });
+
+  test('le repère SUIT l\'orbite, comme le geste qu\'il annonce', () => {
+    // S'il restait figé pendant qu'on tourne autour du Personnage, il désignerait une direction
+    // qui n'est plus la bonne — exactement le défaut qu'il est censé lever.
+    openPersonaEditor(null);
+    focusPersonaEditorHandle('lShoulder');
+    const deFace = personaEditorDragHint();
+    setPersonaEditorOrbit(0, Math.PI / 2);
+    const deProfil = personaEditorDragHint();
+    assert.notDeepEqual(deFace, deProfil);
   });
 });
