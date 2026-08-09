@@ -43,6 +43,7 @@ import {
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
   personaEditorHasChanges, personaEditorTitle3D,
   setPersonaEditorOrbit, resetPersonaEditorCamera,
+  PERSONA_EDITOR_FRONT_ROT_Y,
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
   setPersonaDragDebug, resetPersonaDragJournal, personaDragJournalEntries,
@@ -1660,7 +1661,7 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
     S.personaEditorZoom = 4;
     resetPersonaEditorCamera();
     assert.equal(S.personaEditorCamRotX, 0);
-    assert.equal(S.personaEditorCamRotY, 0);
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y, 'de face, pas de dos');
     assert.equal(S.personaEditorZoom, zoomOuverture, 'même valeur qu\'à l\'ouverture');
   });
 
@@ -1670,7 +1671,23 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
     closePersonaEditor();
     openPersonaEditor(null);
     assert.equal(S.personaEditorCamRotX, 0);
-    assert.equal(S.personaEditorCamRotY, 0);
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+  });
+
+  test('RÉGRESSION : « de face » veut dire du CÔTÉ DU VISAGE, pas azimut nul', () => {
+    // Le piège corrigé au Fix 80 : un azimut nul semble être « la vue par défaut », mais il place
+    // la caméra en Z POSITIF (cf. orbitCameraPosition3D) alors que le rig place le visage en Z
+    // NÉGATIF — l'éditeur s'ouvrait donc dans le dos du Personnage.
+    //
+    // Le test CALCULE de quel côté est le visage en lisant rig3d.js, au lieu d'attendre une valeur
+    // écrite en dur : si un jour le rig retournait la figure, c'est ici qu'on l'apprendrait.
+    const rig = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+    const m = /faceMesh\.position\.set\(0,\s*headR,\s*(-?)headR/.exec(rig);
+    assert.ok(m, 'position du visage introuvable dans rig3d.js');
+    const visageEnZNegatif = m[1] === '-';
+    const camZ = Math.cos(PERSONA_EDITOR_FRONT_ROT_Y);
+    assert.equal(camZ < 0, visageEnZNegatif,
+      'la caméra d\'ouverture doit être du même côté que le visage');
   });
 
   // Fix 66 — la section Caméra et le raccourci C ont été retirés : le clic droit suffit. Ce test
@@ -1738,7 +1755,11 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     focusPersonaEditorHandle('lKnee');
     const session = beginPersonaEditorJointDrag('lKnee');
     applyPersonaEditorJointDrag(session, 0, 40);
-    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, specsDe('lKnee')[0]), 20);
+    // Fix 80 — signe NÉGATIF depuis que la caméra s'ouvre devant le visage et non derrière. Ce
+    // n'est pas un détail de test : vérifié par le calcul, un headRotX positif fait LEVER la tête
+    // (le visage, en Z négatif, monte quand on tourne autour de +X). Glisser vers le bas doit donc
+    // donner un angle négatif — ce qui n'était pas le cas vu de dos.
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, specsDe('lKnee')[0]), -20);
   });
 
   test('RÉGRESSION : glisser allume Réinitialiser, revenir l\'éteint', () => {
@@ -1768,7 +1789,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     // que le Fix 75 devait préserver dans la vue de face.
     assert.equal(session.droit, true);
     applyPersonaEditorJointDrag(session, 999, 50);
-    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), 25, '50 px verticaux à 0.5°/px');
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), -25, '50 px verticaux à 0.5°/px');
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, horiz), 33, 'champ voisin intact');
   });
 
@@ -1847,9 +1868,9 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     openPersonaEditor(null);
     focusPersonaEditorHandle('lKnee');
     const session = beginPersonaEditorJointDrag('lKnee');
-    assert.equal(applyPersonaEditorJointDrag(session, 0, 2000), 180, 'borne haute atteinte');
-    assert.ok(applyPersonaEditorJointDrag(session, 0, 1996) < 180,
-      '4 px de retour doivent déjà faire redescendre l\'angle');
+    assert.equal(applyPersonaEditorJointDrag(session, 0, 2000), -180, 'borne basse atteinte');
+    assert.ok(applyPersonaEditorJointDrag(session, 0, 1996) > -180,
+      '4 px de retour doivent déjà faire remonter l\'angle');
   });
 
   test('RÉGRESSION : la session GÈLE l\'orbite et le mode à l\'appui', () => {

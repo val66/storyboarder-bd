@@ -694,12 +694,25 @@ export function setPersonaEditorOrbit(rotX, rotY){
   return { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
 }
 
+// Fix 80 — azimut d'ouverture : la caméra se place DEVANT le visage, pas derrière.
+//
+// Le Personnage n'est pas tourné dans l'éditeur (cf. drawPersonaEditor, Fix 76) ; c'était donc la
+// caméra qui était du mauvais côté. Le rig place le visage en Z NÉGATIF (rig3d.js : `faceMesh`
+// positionné en `-headR * 0.99` puis retourné d'un demi-tour), alors qu'un azimut nul met la
+// caméra en Z positif (cf. orbitCameraPosition3D) — soit exactement dans le dos de la figure.
+//
+// Corrigé du côté CAMÉRA et non du côté modèle, ce qui n'est pas indifférent : faire pivoter le
+// Personnage de 180° remettrait ses axes de travers vis-à-vis du monde, et le calcul de direction
+// du glisser (projectModelAxisToScreen3D) redeviendrait faux — c'est précisément ce que le Fix 76
+// avait supprimé.
+export const PERSONA_EDITOR_FRONT_ROT_Y = Math.PI;
+
 // Cadrage d'ouverture de l'éditeur, zoom compris. Seul openPersonaEditor l'appelle depuis le
 // Fix 66 (retrait de la section Caméra) ; la fonction reste séparée parce qu'elle NOMME ce
 // cadrage, et qu'un « recadrer » explicite est le premier bouton qu'on voudra rebrancher dessus.
 export function resetPersonaEditorCamera(){
   S.personaEditorCamRotX = 0;
-  S.personaEditorCamRotY = 0;
+  S.personaEditorCamRotY = PERSONA_EDITOR_FRONT_ROT_Y;
   S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
   S.personaEditorPan = { x: 0, y: 0 };
 }
