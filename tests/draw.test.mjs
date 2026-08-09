@@ -28,10 +28,13 @@ import {
   distToSegmentSq,
   wrapText,
   wrapTextLines,
+  projectJointToCanvas,
+  projectPoseHandlePositions3D,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
-import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
+import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
+         POSE_HANDLES } from '../src/constants.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -563,23 +566,29 @@ describe('Fix 85 — câblage du repère de glisser', () => {
 describe('Fix 86 — masquage des poignées non sélectionnées', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
-  const overlay = (() => {
-    const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
+  const corps = (nom) => {
+    const i = src.indexOf(`export function ${nom}(`);
+    assert.ok(i > 0, `${nom} introuvable`);
     return src.slice(i, src.indexOf('\n}', i));
-  })();
+  };
+  const overlay = corps('drawPersonaPoseHandlesOverlay');
+  // Fix 91 — le masquage a suivi la passe de positions, qui a été extraite du dessin. C'est bien là
+  // qu'il doit vivre : masquer, ici, veut dire « ne pas enregistrer de position », pas « ne pas
+  // peindre » — les deux effets viennent de la même ligne, et c'est tout l'intérêt.
+  const passe = corps('projectPoseHandlePositions3D');
 
   test('RÉGRESSION : la poignée masquée voit sa position mise à NULL', () => {
     // Et non simplement « non dessinée » : c'est la carte de positions que consultent
     // pickNearestHandle3D et pickLimbSegmentAt. Se contenter de sauter le tracé laisserait une
     // poignée invisible mais toujours cliquable — le pire des deux mondes.
-    assert.match(overlay, /positions\[def\.id\] = null;/,
+    assert.match(passe, /positions\[def\.id\] = null;/,
       'sans cette ligne, la poignée reste sensible au clic');
   });
 
   test('RÉGRESSION : `null` et non `delete`, pour ne pas garder une position périmée', () => {
     // La carte survit d'une image à l'autre. Supprimer la clé y laisserait la valeur précédente
     // si un autre chemin la réécrivait, et la poignée redeviendrait cliquable là où elle ÉTAIT.
-    assert.ok(!/delete positions\[def\.id\]/.test(overlay));
+    assert.ok(!/delete positions\[def\.id\]/.test(passe));
   });
 
   test('le masquage exige une sélection ET le drapeau', () => {
@@ -642,8 +651,8 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
     // C'est un fond : dessinée après, elle voilerait la poignée et le repère de glisser, les deux
     // choses qu'il faut justement voir.
     const overlay = corpsDe('drawPersonaPoseHandlesOverlay');
-    assert.ok(overlay.indexOf('drawPersonaPickZone(') < overlay.indexOf('POSE_HANDLES.forEach'),
-      'la zone doit précéder la boucle des poignées');
+    assert.ok(overlay.indexOf('drawPersonaPickZone(') < overlay.indexOf('points.forEach'),
+      'la zone doit précéder le tracé des poignées');
     assert.ok(overlay.indexOf('drawPersonaPickZone(') < overlay.indexOf('drawPersonaDragHint('),
       'et précéder le repère de glisser');
   });
@@ -651,5 +660,112 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
   test('la zone n\'est dessinée QUE lorsqu\'une articulation est isolée', () => {
     // Sans sélection, toutes les poignées sont prenables : dessiner une zone n'aurait aucun sens.
     assert.match(corpsDe('drawPersonaPoseHandlesOverlay'), /if \(solo && positions\[selectedId\]\)/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 91 — la teinte montre où l'articulation EST, pas où elle était.
+//
+// Signalé à l'usage : « la zone teintée supposée être la partie cliquable n'est pas bonne dans
+// certains cas ; un clic dans cette zone désélectionne l'articulation ». Le fond de prise était
+// peint AVANT que les positions de l'image courante ne soient calculées — il montrait donc l'état
+// de l'image précédente, alors que le clic, lui, est testé contre la carte fraîche. Tant que la
+// figure ne bouge pas, les deux coïncident ; pendant un glisser, elles s'écartent d'autant plus
+// que le geste est rapide. D'où « dans certains cas ».
+//
+// La même famille que les bugs les plus coûteux de ce dépôt : une grandeur calculée deux fois,
+// ici à deux INSTANTS, qui finissent par ne plus dire la même chose.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fix 91 — la zone de prise lit les positions de l\'image courante', () => {
+  const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
+  const overlay = (() => {
+    const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
+    return src.slice(i, src.indexOf('\n}', i));
+  })();
+
+  // Caméra construite à la main : personaCamera3D naît avec le renderer WebGL, hors de portée sous
+  // Node — mais THREE.PerspectiveCamera, lui, se construit sans écran. C'est tout l'intérêt
+  // d'avoir sorti la caméra en PARAMÈTRE de la passe de positions.
+  const camera = () => {
+    const c = new THREE.PerspectiveCamera(50, 4 / 3, 0.1, 100);
+    c.position.set(0, 0, 5);
+    c.lookAt(0, 0, 0);
+    c.updateMatrixWorld(true);
+    return c;
+  };
+  // Un rig factice : un Group par groupe d'articulation cité par POSE_HANDLES, tous à l'origine.
+  const rig = () => {
+    const joints = {};
+    POSE_HANDLES.forEach(def => {
+      if (joints[def.group]) return;
+      const g = new THREE.Group();
+      g.updateMatrixWorld(true);
+      joints[def.group] = g;
+    });
+    return { joints };
+  };
+
+  test('RÉGRESSION : les positions sont calculées AVANT que la zone ne soit tracée', () => {
+    // Le défaut tenait entièrement dans cet ordre. Inverser les deux lignes reproduit le bug à
+    // l'identique, et aucun autre test ne s'en apercevrait : le contexte 2D du stub est un no-op,
+    // le tracé lui-même est donc invérifiable. L'ordre, lui, se lit.
+    const passe = overlay.indexOf('projectPoseHandlePositions3D(');
+    const zone = overlay.indexOf('drawPersonaPickZone(');
+    assert.ok(passe > 0, 'la passe de positions doit être appelée par l\'overlay');
+    assert.ok(zone > 0, 'la zone de prise doit être tracée par l\'overlay');
+    assert.ok(passe < zone,
+      'la teinte montrerait la position de l\'image précédente, pas celle du clic');
+  });
+
+  test('RÉGRESSION : plus aucune projection de poignée hors de la passe', () => {
+    // Une seconde projection dans le corps du dessin recréerait immédiatement deux vérités
+    // concurrentes — le défaut qu'on vient de supprimer, par une autre porte.
+    assert.ok(!/projectJointToCanvas\(/.test(overlay),
+      'la projection appartient à projectPoseHandlePositions3D, et à elle seule');
+  });
+
+  test('la carte remplie coïncide exactement avec la projection directe', () => {
+    const cam = camera();
+    const entry = rig();
+    entry.joints[POSE_HANDLES[0].group].position.set(0.4, 0.2, 0);
+    entry.joints[POSE_HANDLES[0].group].updateMatrixWorld(true);
+    const positions = {};
+    const points = projectPoseHandlePositions3D(entry, cam, 800, 600, null, false, positions);
+    assert.ok(points.length >= POSE_HANDLES.length - 2, 'toutes les poignées visibles sont rendues');
+    points.forEach(({ def, pt }) => {
+      const attendu = projectJointToCanvas(entry.joints[def.group], cam, 800, 600);
+      assert.deepEqual(positions[def.id], pt, `${def.id} : la carte et la liste divergent`);
+      assert.deepEqual(pt, attendu, `${def.id} : la projection n'est pas celle attendue`);
+    });
+  });
+
+  test('RÉGRESSION : bouger l\'articulation déplace la position DÈS l\'appel suivant', () => {
+    // C'est la propriété qui manquait : entre deux images, l'articulation a bougé — c'est même la
+    // raison du redessin. Une carte mise à jour après coup laissait la teinte en retard.
+    const cam = camera();
+    const entry = rig();
+    const def = POSE_HANDLES[0];
+    const positions = {};
+    projectPoseHandlePositions3D(entry, cam, 800, 600, null, false, positions);
+    const avant = { ...positions[def.id] };
+    entry.joints[def.group].position.set(0.9, 0.6, 0);
+    entry.joints[def.group].updateMatrixWorld(true);
+    projectPoseHandlePositions3D(entry, cam, 800, 600, null, false, positions);
+    assert.notDeepEqual(positions[def.id], avant, 'la carte doit suivre le mouvement');
+    assert.deepEqual(positions[def.id],
+      projectJointToCanvas(entry.joints[def.group], cam, 800, 600));
+  });
+
+  test('en mode isolé, seule la poignée choisie garde une position', () => {
+    const cam = camera();
+    const entry = rig();
+    const choisi = POSE_HANDLES[2].id;
+    const positions = {};
+    const points = projectPoseHandlePositions3D(entry, cam, 800, 600, choisi, true, positions);
+    assert.deepEqual(points.map(p => p.def.id), [choisi], 'une seule poignée dessinée');
+    POSE_HANDLES.forEach(d => {
+      if (d.id === choisi) assert.ok(positions[d.id], 'la poignée choisie garde sa position');
+      else assert.equal(positions[d.id], null, `${d.id} doit être inerte`);
+    });
   });
 });

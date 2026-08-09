@@ -1743,6 +1743,38 @@ export function drawPersonaDragHint(hctx, pos, hint){
 // pickNearestHandle3D et pickLimbSegmentAt, qui ignorent l'une comme l'autre une position nulle. Ne
 // pas enregistrer une poignée la rend donc invisible ET inerte, sans second mécanisme à tenir en
 // accord avec le premier.
+// Fix 91 — passe de POSITIONS des poignées, séparée de leur dessin.
+//
+// Elle porte à elle seule la règle « où sont les articulations à l'écran, et lesquelles sont
+// saisissables » : la carte qu'elle remplit est celle que consultent pickNearestHandle3D et
+// pickLimbSegmentAt, et c'est d'elle que le fond teinté tire désormais sa géométrie. Un seul
+// calcul par image, donc plus rien à tenir en accord.
+//
+// La caméra et les dimensions sont des PARAMÈTRES, pas des lectures de module : c'est ce qui rend
+// la fonction vérifiable sous Node, où personaCamera3D n'existe pas (il naît avec le renderer
+// WebGL, cf. ensurePersonaScene3D) mais où THREE.PerspectiveCamera, lui, se construit très bien.
+//
+// Renvoie la liste des poignées à dessiner, dans l'ordre de POSE_HANDLES.
+export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selectedId, solo, positionsOut){
+  const positions = positionsOut || {};
+  const points = [];
+  POSE_HANDLES.forEach(def => {
+    const grp = entry && entry.joints && entry.joints[def.group];
+    if (!grp) return;
+    const active = selectedId === def.id;
+    if (solo && !active) {
+      // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
+      // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
+      positions[def.id] = null;
+      return;
+    }
+    const pt = projectJointToCanvas(grp, camera, cnvW, cnvH);
+    positions[def.id] = pt;
+    points.push({ def, pt, active });
+  });
+  return points;
+}
+
 export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive){
   if (typeof THREE === 'undefined') return;
   const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
@@ -1754,25 +1786,30 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     : (S.selectedPoseHandle && S.selectedPoseHandle.id) || null;
   const hctx = cnv.getContext('2d');
   const solo = !!soloActive && !!selectedId;
-  // La zone de prise se dessine AVANT les poignées et le repère : c'est un fond, il ne doit rien
-  // recouvrir. Et avant la boucle, donc à partir des positions de l'image PRÉCÉDENTE — sans effet
-  // visible, la figure n'ayant pas bougé entre deux tracés du même rendu.
+  // Fix 91 — les POSITIONS d'abord, le dessin ensuite. Deux passes, pour une raison précise.
+  //
+  // La zone de prise est un FOND : elle doit se peindre avant les poignées, sinon elle les
+  // recouvre. Elle était donc tracée avant la boucle — c'est-à-dire à partir des positions de
+  // l'image PRÉCÉDENTE, ce que le commentaire d'alors justifiait par « la figure n'a pas bougé
+  // entre deux tracés du même rendu ». C'est faux : entre deux images on redessine JUSTEMENT
+  // parce que quelque chose a bougé. Pendant un glisser, la teinte restait donc là où le membre
+  // était à l'image d'avant, alors que le clic, lui, est testé contre les positions FRAÎCHES.
+  // D'où des clics tombant dans la zone colorée et désélectionnant quand même l'articulation.
+  //
+  // Le décalage vaut aussi pour le segment du membre : personaLimbSegmentScreen3D lit son point
+  // de départ dans `positions` et calcule son autre extrémité à neuf — une extrémité en retard,
+  // l'autre à jour, la bande partait donc de travers.
+  //
+  // C'est le défaut récurrent de ce dépôt : la MÊME grandeur calculée à deux moments, qui
+  // divergent. La séparation en deux passes le supprime à la racine — il n'y a plus qu'un seul
+  // calcul de position par image, et tout le monde en lit le résultat.
+  const points = projectPoseHandlePositions3D(entry, personaCamera3D, cnv.width, cnv.height,
+    selectedId, solo, positions);
   if (solo && positions[selectedId]) {
     drawPersonaPickZone(hctx, positions[selectedId],
       personaLimbSegmentScreen3D(selectedId, cnv, positions), posePickRadii3D(true));
   }
-  POSE_HANDLES.forEach(def => {
-    const grp = entry.joints[def.group];
-    if (!grp) return;
-    const active = selectedId === def.id;
-    if (solo && !active) {
-      // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
-      // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
-      positions[def.id] = null;
-      return;
-    }
-    const pt = projectJointToCanvas(grp, personaCamera3D, cnv.width, cnv.height);
-    positions[def.id] = pt;
+  points.forEach(({ pt, active }) => {
     hctx.beginPath();
     // Enlarged points (per user request) to be easier to grab with the mouse;
     // cf. pickPoseHandleAt below, whose detection radius was increased accordingly.
