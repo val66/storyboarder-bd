@@ -98,3 +98,36 @@ describe('Fix 70 — le panneau de l\'éditeur ne diverge pas de l\'encart de dr
       'la classe privée est revenue — cf. le test précédent');
   });
 });
+
+describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de l\'articulation', () => {
+  const active = declarations('.joint-slider-row.active');
+  const driven = declarationsOuNull('.joint-slider-row.active.driven');
+
+  test('la règle du champ piloté existe', () => {
+    assert.ok(driven, '.joint-slider-row.active.driven introuvable — plus aucun repère visuel');
+  });
+
+  test('RÉGRESSION : elle ne se contente pas de répéter celle du groupe', () => {
+    // Deux questions distinctes : `.active` dit quelle ARTICULATION est choisie, `.driven` dit quel
+    // CHAMP la souris va bouger. Des déclarations identiques les rendraient indiscernables à
+    // l'écran — le défaut signalé — sans qu'aucun test ne s'en aperçoive.
+    const fond = r => (/background:\s*([^;]+)/.exec(r) || [])[1];
+    assert.ok(fond(driven), 'le champ piloté doit déclarer un fond');
+    assert.notEqual(fond(driven).trim(), (fond(active) || '').trim(),
+      'même fond que le reste du groupe : rien ne distingue le champ piloté');
+  });
+
+  test('RÉGRESSION : le liséré ne décale pas le contenu de la ligne', () => {
+    // La ligne de base a 4px de padding à gauche. Un liséré de 3px ajouté sans réduire d'autant le
+    // padding ferait sauter la ligne latéralement au moment où elle devient pilotée — un mouvement
+    // parasite juste sous l'œil, pendant qu'on règle un angle.
+    const base = declarations('.joint-slider-row');
+    const inset = r => {
+      const p = /padding:\s*[^;]*?\s(\d+)px/.exec(r);        // padding: 2px 4px → 4
+      const pl = /padding-left:\s*(\d+)px/.exec(r);
+      const bl = /border-left:\s*(\d+)px/.exec(r);
+      return (pl ? +pl[1] : (p ? +p[1] : 0)) + (bl ? +bl[1] : 0);
+    };
+    assert.equal(inset(driven), inset(base), 'inset gauche différent : la ligne se décale');
+  });
+});

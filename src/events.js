@@ -37,7 +37,7 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, dragJointDegrees3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  poseSliderSpecs3D, dragJointDegree3D, cyclePoseSpecIndex3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
@@ -733,24 +733,18 @@ export function setPersonaEditorJointDeg(spec, deg){
 // de l'affichage.
 export function beginPersonaEditorJointDrag(id){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !id) return null;
-  const def = POSE_HANDLES.find(d => d.id === id);
-  if (!def) return null;
-  const specs = poseSliderSpecs3D(def);
-  if (!specs.length) return null;
-  return {
-    id,
-    specs,
-    startDegs: specs.map(spec => readPoseSliderDeg3D(S.personaEditorDraft, spec)),
-  };
+  const spec = personaEditorSpecsOf(id)[S.personaEditorSpecIndex];
+  if (!spec) return null;
+  return { id, spec, startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec) };
 }
 
-// Applique un déplacement en pixels à la session. Renvoie les angles écrits, ou null si la session
+// Applique un déplacement en pixels à la session. Renvoie le degré écrit, ou null si la session
 // n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
 export function applyPersonaEditorJointDrag(session, dx, dy){
   if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
-  const cibles = dragJointDegrees3D(session.specs, session.startDegs, dx, dy);
-  cibles.forEach(({ spec, deg }) => writePoseSliderDeg3D(S.personaEditorDraft, spec, deg));
-  return cibles;
+  const deg = dragJointDegree3D(session.startDeg, dx, dy);
+  writePoseSliderDeg3D(S.personaEditorDraft, session.spec, deg);
+  return deg;
 }
 
 // Fix 49 — rendu du canevas de l'éditeur. Réutilise drawPersonaPreview, donc exactement le même
@@ -861,6 +855,9 @@ buildPersonaEditorJointSlidersUI();
 // surligné des deux côtés de l'écran.
 export function togglePersonaEditorHandle(id){
   S.personaEditorHandleId = (S.personaEditorHandleId === id) ? null : (id || null);
+  // Fix 72 — changer d'articulation repart de son PREMIER champ. Garder l'index précédent ferait
+  // atterrir sur le second champ d'une articulation qui en a deux, ou hors liste pour un genou.
+  S.personaEditorSpecIndex = 0;
   return S.personaEditorHandleId;
 }
 
@@ -869,8 +866,15 @@ export function togglePersonaEditorHandle(id){
 function syncPersonaEditorPanelToHandle(){
   const id = S.personaEditorHandleId;
   Object.values(personaEditorRowsOf).forEach(rows =>
-    rows.forEach(r => r.classList.remove('active')));
-  (personaEditorRowsOf[id] || []).forEach(r => r.classList.add('active'));
+    rows.forEach(r => { r.classList.remove('active'); r.classList.remove('driven'); }));
+  const rows = personaEditorRowsOf[id] || [];
+  rows.forEach(r => r.classList.add('active'));
+  // Fix 72 — deuxième niveau de surlignage : `active` dit « cette articulation est choisie »,
+  // `driven` dit « c'est CE champ que le glisser va bouger ». Sans la seconde marque, une
+  // articulation à deux champs n'indiquait nulle part lequel des deux répondait à la souris.
+  rows.forEach(r => r.classList.remove('driven'));
+  const pilote = rows[S.personaEditorSpecIndex];
+  if (pilote) pilote.classList.add('driven');
   const details = personaEditorGroupOf[id];
   new Set(Object.values(personaEditorGroupOf)).forEach(d => {
     if (d !== details && d.open) d.open = false;
@@ -883,6 +887,48 @@ export function selectPersonaEditorHandle(id){
   togglePersonaEditorHandle(id);
   syncPersonaEditorPanelToHandle();
   drawPersonaEditor();
+}
+
+// Fix 72 — sélectionne SANS jamais désélectionner. C'est ce qu'il faut au clic-glisser : passer par
+// selectPersonaEditorHandle, qui bascule, faisait qu'attraper une seconde fois la poignée déjà
+// choisie la désélectionnait — le panneau droit perdait son surlignage au moment précis où on
+// regardait la valeur bouger. Le clic dans le vide reste le geste qui désélectionne.
+// Ne DESSINE pas : elle décide, le gestionnaire de souris redessine. C'est ce qui la rend testable
+// sous Node, où drawPersonaEditor échoue faute de WebGL — même partage que partout ailleurs ici.
+export function focusPersonaEditorHandle(id){
+  if (!S.personaEditorOpen || !id) return null;
+  if (S.personaEditorHandleId !== id) {
+    S.personaEditorHandleId = id;
+    S.personaEditorSpecIndex = 0;
+  }
+  syncPersonaEditorPanelToHandle();
+  return S.personaEditorHandleId;
+}
+
+// Descripteurs de curseurs d'une articulation, par son id. Passe par POSE_HANDLES plutôt que de
+// mémoriser la liste : c'est poseSliderSpecs3D qui fait autorité sur « quels champs existent ».
+export function personaEditorSpecsOf(id){
+  const def = POSE_HANDLES.find(d => d.id === id);
+  return def ? poseSliderSpecs3D(def) : [];
+}
+
+// Le champ actuellement piloté par le glisser, ou null.
+export function personaEditorActiveSpec(){
+  if (!S.personaEditorOpen || !S.personaEditorHandleId) return null;
+  return personaEditorSpecsOf(S.personaEditorHandleId)[S.personaEditorSpecIndex] || null;
+}
+
+// Fix 72 — molette : champ suivant/précédent DANS l'articulation sélectionnée. Renvoie le nouvel
+// index, ou null si le geste ne s'applique pas — aucune sélection, ou une articulation à champ
+// unique, qui n'a rien à faire défiler. Ce null est ce que l'appelant lit pour décider s'il rend la
+// molette au zoom.
+export function cyclePersonaEditorSpec(delta){
+  if (!S.personaEditorOpen || !S.personaEditorHandleId) return null;
+  const n = personaEditorSpecsOf(S.personaEditorHandleId).length;
+  if (n < 2) return null;
+  S.personaEditorSpecIndex = cyclePoseSpecIndex3D(S.personaEditorSpecIndex, n, delta);
+  syncPersonaEditorPanelToHandle();
+  return S.personaEditorSpecIndex;
 }
 
 // Fix 54 — section « Pose ». RECONSTRUITE à chaque ouverture, contrairement aux curseurs
@@ -1097,6 +1143,14 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     cnv.addEventListener('wheel', (e) => {
       if (!S.personaEditorOpen) return;
       e.preventDefault();
+      // Fix 72 — une articulation sélectionnée CONFISQUE la molette, même quand elle n'a qu'un
+      // champ à proposer : le geste doit vouloir dire la même chose dans les deux cas, sans quoi il
+      // faudrait se souvenir du nombre de champs de chaque articulation pour savoir si la vue va
+      // bouger. Cliquer dans le vide désélectionne et rend la molette au zoom.
+      if (S.personaEditorHandleId) {
+        if (cyclePersonaEditorSpec(e.deltaY < 0 ? -1 : 1) !== null) drawPersonaEditor();
+        return;
+      }
       const k = e.deltaY < 0 ? 1.12 : 1 / 1.12;
       S.personaEditorZoom = clamp(S.personaEditorZoom * k,
         PERSONA_EDITOR_ZOOM_MIN, PERSONA_EDITOR_ZOOM_MAX);
@@ -1132,7 +1186,8 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       const { px, py } = editorCoords(e);
       const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos);
       if (def) {
-        selectPersonaEditorHandle(def.id);
+        focusPersonaEditorHandle(def.id);
+        drawPersonaEditor();
         // Fix 71 (ESSAI) — la session s'ouvre au clic sur la poignée, pas au premier mouvement :
         // il faut avoir capturé les angles de départ AVANT que la souris ne bouge. Un simple clic
         // ouvre donc une session qui ne servira à rien, ce qui ne coûte rien et ne change aucun

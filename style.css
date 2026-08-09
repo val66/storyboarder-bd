@@ -503,6 +503,16 @@ canvas{
    preview (cf. openJointGroupForHandle/highlightJointRows) — sync réciproque preview <-> sous-section. */
 .joint-slider-row.active{ background:rgba(224,165,60,.18); }
 .joint-slider-row.active .joint-slider-label{ color:var(--ink); font-weight:600; }
+/* Fix 72 — deux niveaux de surlignage, deux questions différentes : `.active` répond « quelle
+   articulation est choisie ? », `.driven` répond « quel champ le glisser va-t-il bouger ? ». Une
+   articulation à deux champs les montrait tous deux à l'identique, sans dire lequel répondait à la
+   souris. Le fond plus dense et le liséré à gauche se lisent d'un coup d'œil sans introduire une
+   troisième couleur : c'est le MÊME orange, plus affirmé. */
+.joint-slider-row.active.driven{
+  background:rgba(224,165,60,.34); border-left:3px solid var(--accent);
+  /* 1 + 3 de liséré = les 4px de padding de base : la ligne ne se décale pas en devenant pilotée. */
+  padding-left:1px;
+}
 /* Chaque groupe d'articulations (Bras, Jambes, etc.) reprend désormais le même habillage que les
    sous-sections (.modal-subsection : fond assombri, bordure, coins arrondis) plutôt qu'un simple
    filet vertical, pour une apparence plus cohérente avec le reste de la modale. */

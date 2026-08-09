@@ -59,6 +59,12 @@ export const S = {
   // l'édition, partager la sélection ferait que fermer l'éditeur laisserait la modale avec une
   // poignée surlignée que l'utilisateur n'y a jamais choisie.
   personaEditorHandleId: null,
+  // Fix 72 — INDEX du champ piloté au sein de l'articulation sélectionnée (une charnière double ou
+  // une rotule en ont deux). Le glisser n'en bouge qu'un à la fois ; la molette passe de l'un à
+  // l'autre. Un index et non une clé de descripteur : les descripteurs sont recalculés à la volée
+  // par poseSliderSpecs3D, une clé mémorisée pourrait désigner un champ que l'articulation
+  // sélectionnée n'a pas.
+  personaEditorSpecIndex: 0,
   // Fix 54 — pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
   // projet ('pose1'). Une étiquette, jamais une dépendance : les angles vivent dans le brouillon et
   // font foi (cf. docs/editeur-personnage.md). Bouger un curseur après avoir appliqué une pose ne

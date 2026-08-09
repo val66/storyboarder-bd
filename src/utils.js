@@ -185,7 +185,7 @@ export function writePoseSliderDeg3D(draft, spec, deg){
   return draft;
 }
 
-// Fix 71 (ESSAI) — glisser une poignée pour régler son articulation.
+// Fix 71/72 (ESSAI) — glisser une poignée pour régler son articulation.
 //
 // Bornes et arrondi : ceux des curseurs (-180..180, pas de 1°). Ce n'est pas un choix esthétique —
 // c'est la MÊME valeur qui doit sortir du glisser et du curseur, sinon la signature de pose
@@ -195,31 +195,31 @@ export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
 export const POSE_DRAG_DEG_MIN = -180;
 export const POSE_DRAG_DEG_MAX = 180;
 
-// Répartit un déplacement de souris sur les curseurs d'une articulation.
+// Nouvel angle d'UN champ, à partir de son angle de départ et du déplacement de la souris.
 //
-// Le VERTICAL pilote le premier curseur, l'HORIZONTAL le second — et ce n'est pas arbitraire :
-// poseSliderSpecs3D range déjà ses descripteurs dans cet ordre, et le dit dans ses propres
-// libellés (« (haut/bas) » puis « (gauche/droite) » pour une charnière double ; « (avant/arr.) »
-// puis « (écart) » pour une rotule). Le geste reprend donc l'axe que l'interface annonce déjà.
+// Fix 72 — un seul champ à la fois (celui que la molette a mis en avant), et il suit les DEUX axes
+// cumulés : n'importe quelle direction le fait varier, il n'y a pas de geste mort. La contrepartie,
+// assumée, est qu'une diagonale additionne les deux composantes et varie donc deux fois plus vite
+// qu'un mouvement droit de même longueur apparente.
 //
-// Une charnière simple n'a qu'un curseur : elle ne suit que le vertical, et un glisser horizontal
-// ne fait rien. C'est volontaire — inventer une seconde grandeur pour occuper l'axe libre
-// donnerait à un genou un degré de liberté que le squelette n'a pas.
+// startDeg est l'angle capturé au DÉBUT du glisser, pas relu à chaque image : cumuler des deltas
+// image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au même angle selon la
+// vitesse du geste.
+export function dragJointDegree3D(startDeg, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const brut = (startDeg || 0) + ((dx || 0) + (dy || 0)) * degPerPx;
+  return clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
+}
+
+// Fix 72 — champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.
 //
-// startDegs est un TABLEAU d'angles capturés au début du glisser, pas relu à chaque image :
-// cumuler des deltas image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au
-// même angle selon la vitesse du geste.
-export function dragJointDegrees3D(specs, startDegs, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
-  const liste = specs || [];
-  const deltas = [dy || 0, dx || 0];
-  return liste.map((spec, i) => {
-    const depart = (startDegs && startDegs[i]) || 0;
-    const brut = depart + deltas[i] * degPerPx;
-    return {
-      spec,
-      deg: clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX),
-    };
-  });
+// Renvoie toujours un index valide : c'est un index de tableau, et un appelant qui recevrait -1 ou
+// `count` lirait un descripteur inexistant. Le modulo est écrit en deux temps parce que celui de
+// JavaScript garde le signe du dividende — `-1 % 2` vaut -1, pas 1.
+export function cyclePoseSpecIndex3D(index, count, delta){
+  if (!count || count < 1) return 0;
+  const n = Math.trunc(count);
+  const i = Math.trunc(index || 0) + Math.trunc(delta || 0);
+  return ((i % n) + n) % n;
 }
 
 // Fix 52 — poignée la plus proche d'un point, dans un rayon donné.
