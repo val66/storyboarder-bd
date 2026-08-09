@@ -43,7 +43,7 @@ beforeEach(() => {
 // ── serializeProject ──────────────────────────────────────────────────────────────────────────
 describe('serializeProject — instantané JSON du Projet courant', () => {
   // Le compte de champs est volontairement figé : chacun d'eux devient un élément PERMANENT du
-  // format de fichier (cf. docs/donnees-persistees.md). Ce test tombe à chaque ajout, ce qui est le
+  // format de fichier (cf. docs/persisted-data.md). Ce test tombe à chaque ajout, ce qui est le
   // but — il force à se demander si le champ mérite vraiment d'être gravé.
   test('sérialise exactement les 6 champs attendus depuis S', () => {
     S.projectName = 'Test'; S.tomes = [{ id: 't1' }]; S.currentTomeIndex = 0; S.currentPageIndex = 0;
@@ -524,7 +524,7 @@ describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () 
 
 describe('Fix 57 — les deux comportements surprenants, épinglés volontairement', () => {
   // Vérifiés en exécutant le scénario, pas déduits. Ils sont documentés dans
-  // docs/editeur-personnage.md comme assumés : ces tests existent pour que quiconque les prendrait
+  // docs/character-editor.md comme assumés : ces tests existent pour que quiconque les prendrait
   // pour des bugs trouve l'intention écrite avant de « corriger ».
   test('supprimer une pose, puis rouvrir un projet qui l\'utilise, la fait RÉAPPARAÎTRE', () => {
     // C'est le prix de l'autonomie des fichiers : le projet embarque les poses dont il a besoin, et

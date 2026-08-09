@@ -906,7 +906,7 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
 // rien à annuler). D'où les assertions insistantes ci-dessous sur l'intégrité de l'Élément cible.
 //
 // Le rendu du canevas n'est pas couvert : il passe par WebGL, injoignable sous Node (cf.
-// docs/methode-de-test.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
+// docs/testing-method.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
 // gestionnaire de curseur, qui redessine.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', () => {
@@ -1053,7 +1053,7 @@ describe('éditeur de Personnage — sélection d\'une poignée (Fix 52)', () =>
 //
 // LA décision de toute la fonctionnalité : appliquer une pose COPIE ses angles dans le brouillon.
 // Aucun Personnage ne dépend de la bibliothèque — supprimer une pose, ou ouvrir le projet sur une
-// machine qui ne l'a pas, ne change l'allure de personne (cf. docs/donnees-persistees.md).
+// machine qui ne l'a pas, ne change l'allure de personne (cf. docs/persisted-data.md).
 //
 // `position` reste une ÉTIQUETTE : bouger un curseur après avoir appliqué « Assis » ne l'efface
 // pas, c'est resolvePoseLabel3D qui en déduit « Assis (modifié) » en comparant les valeurs. On

@@ -1,6 +1,6 @@
 # Méthode de test
 
-> Le dépôt compte plus de 440 tests, exécutés à chaque commit par le hook `pre-commit`. Ce document
+> Le dépôt compte plus de 840 tests, exécutés à chaque commit par le hook `pre-commit`. Ce document
 > explique **comment** on les écrit, parce que la façon de faire compte davantage que le nombre.
 
 ## L'outillage
@@ -28,7 +28,7 @@ Une mutation qui s'échappe signale presque toujours la même chose : la logique
 endroit non observable — un écouteur d'événement, une boucle de rendu. La réponse n'est pas d'écrire
 un test plus malin, c'est d'**extraire la logique en fonction pure exportée**.
 
-La plupart des fonctions de `docs/rendu-3d-sources-uniques.md` sont nées ainsi. Deux exemples :
+La plupart des fonctions de `docs/3d-rendering-single-sources.fr.md` sont nées ainsi. Deux exemples :
 
 - Les formules de glissement vivaient dans le `mousemove` : impossible à muter utilement.
   → `wallScreenAxes3D`, `fracDeltaAlongAxis2D`, `integrateTracéFrac3D`.
@@ -82,4 +82,4 @@ chose.
 ## Contourner le hook
 
 `git commit --no-verify` saute les tests — pour un commit en cours de travail uniquement. Voir
-`docs/versionnage.md`.
+`docs/versioning.fr.md`.

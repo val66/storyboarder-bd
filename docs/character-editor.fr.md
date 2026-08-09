@@ -1,11 +1,12 @@
 # Éditeur de Personnage — note de conception
 
 > Document de travail, rédigé avant implémentation. Les commentaires de code restent en anglais
-> (cf. tâches #209–219) ; cette note est en français, c'est la langue des décisions prises.
+> (cf. tâches #209–219) ; cette note a été rédigée en français, la langue des décisions prises, et
+> est tenue d'accord avec sa version anglaise.
 >
 > ⚠️ **Cette note retrace un RAISONNEMENT, avec ses revirements** — plusieurs décisions y sont
 > marquées « REVU » ou « CORRIGÉ depuis ». Pour savoir comment le système fonctionne **aujourd'hui**,
-> lire [bibliotheque-de-poses.md](bibliotheque-de-poses.md), qui n'a pas d'archéologie.
+> lire [pose-library.fr.md](pose-library.fr.md), qui n'a pas d'archéologie.
 
 ## Intention
 

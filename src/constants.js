@@ -680,7 +680,7 @@ export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
 export const PERSONA_PREVIEW_MAX_PX = 900;
 
 // Fix 55 — squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
-// cf. docs/donnees-persistees.md) : ne pas renommer.
+// cf. docs/persisted-data.md) : ne pas renommer.
 //
 // Seuls les Personnages ont des poses aujourd'hui, donc une seule valeur existe. On la tague quand
 // même dès le premier enregistrement : le jour où les animaux en auront, distinguer après coup les

@@ -1,0 +1,92 @@
+# Application versioning
+
+> Contributor document. It used to live in the READMEs, where it did not belong: this is internal
+> machinery, not user information. Only the `**Version x.y.z**` line stays at the top of the
+> READMEs, rewritten automatically.
+
+Format `major.minor.patch`, displayed next to the application name (top left).
+
+## The three levels
+
+| Level | When | How |
+|---|---|---|
+| **major** | On explicit request | `npm run bump major` |
+| **minor** | When a feature is accepted, after functional testing | `npm run bump minor` |
+| **patch** | On every commit | Automatic (`pre-commit` hook) |
+
+Bumping a minor resets the patch to 0; bumping a major resets both to 0.
+
+## The four files that carry the version
+
+`package.json` is authoritative — it is also what electron-builder stamps the installer with. The
+other three are derived from it by `tools/bump-version.mjs`:
+
+- **`src/version.js`** — generated, imported by the renderer for display. It exists because reading
+  `package.json` from the renderer would require an IPC channel, hence touching
+  `main.js`/`preload.js`, which is forbidden for an application feature.
+- **`README.md`** and **`README.fr.md`** — the `**Version x.y.z**` line.
+
+`tests/version.test.mjs` forbids these four files from diverging.
+
+## What happens on every commit
+
+```
+git commit
+   │
+   ├─ merge / rebase / cherry-pick?  →  nothing is touched
+   │
+   ├─ node missing from PATH?  →  commit aborted, explicit message
+   │
+   ├─ test suite (~3 s)
+   │     └─ failure  →  commit aborted, NO file modified
+   │
+   ├─ patch bump  →  all 4 files together
+   │     ├─ version already changed by hand  →  no second bump
+   │     └─ one file invalid  →  no write at all
+   │
+   ├─ the 4 files join the commit in progress
+   │
+   └─ post-commit: minor or major?  →  tag `vX.Y.Z` + `--follow-tags` reminder
+```
+
+## Two orderings that are not incidental
+
+**Tests before the bump.** Bumping first would leave, on every failing test, a raised version in the
+working tree with no corresponding commit.
+
+**Inside the script, all checks before all writes.** The first version wrote `package.json` then
+checked the READMEs: a version line missing from one README left `package.json` already bumped and
+the READMEs behind — precisely the inconsistency this script exists to prevent. Found by exercising
+the failure case, not deduced.
+
+**The tag afterwards.** At `pre-commit` time, the commit that will carry the version does not exist
+yet; a tag would point at the previous commit, the one that does not contain the version change.
+Hence a `post-commit` hook.
+
+## Commands
+
+```bash
+npm run setup-hooks      # after a clone: reinstalls the hooks (git does not version .git/hooks)
+npm run bump sync        # regenerates the derived files from package.json
+npm run bump minor       # or major — never patch, the hook handles that
+git push --follow-tags   # ⚠ git push ALONE does not send tags
+```
+
+## Two known limitations
+
+**`git commit --amend` bumps again.** Amending three times consumes three patch numbers. Git gives a
+`pre-commit` hook no reliable, portable way to tell an amend from an ordinary commit: the only hook
+that knows, `prepare-commit-msg`, runs *after* `pre-commit` and therefore cannot inform it. That
+leaves inspecting the parent process command line, which does not survive Windows. A detection that
+would be silently wrong would cost more than a flag to type: **`git commit --amend --no-verify`**
+when you amend.
+
+**Tags do not leave on their own.** `git push` sends only commits: a version tagged locally but
+absent from the remote is useless. The `post-commit` hook prints a `git push --follow-tags` reminder
+every time it has just placed a tag — it is the only place that knows, for certain and at the right
+moment, that a tag was just created.
+
+## Escape hatches
+
+`git commit --no-verify` skips the tests and the bump — for a work-in-progress commit. The
+`post-commit` hook keeps running: a tag will still be placed if the version changed.

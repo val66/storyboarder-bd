@@ -1,40 +1,46 @@
-# Notes internes
+# Internal notes
 
-Documentation de contributeur. Ce qui s'adresse à l'utilisateur est dans le
-[README](../README.fr.md) et dans le manuel intégré (`src/help-content.js`).
+*[Version française](README.fr.md)*
 
-## À lire avant de toucher au code
+Contributor documentation. What is addressed to the user is in the [README](../README.md) and in
+the built-in manual (`src/help-content.js`).
 
-| Document | Ce qu'il évite |
+## Read before touching the code
+
+| Document | What it prevents |
 |---|---|
-| [**donnees-persistees.md**](donnees-persistees.md) | Rendre illisibles tous les fichiers projet existants, sans que rien ne le signale. |
-| [**rendu-3d-sources-uniques.md**](rendu-3d-sources-uniques.md) | Réintroduire la duplication qui a produit cinq bugs successifs dans le rendu 3D. |
+| [**persisted-data.md**](persisted-data.md) | Making every existing project file unreadable, with nothing to signal it. |
+| [**3d-rendering-single-sources.md**](3d-rendering-single-sources.md) | Reintroducing the duplication that produced five successive bugs in the 3D rendering. |
 
-Ces deux-là ne sont pas des recommandations de style : une infraction coûte des données ou une
-régression difficile à retrouver.
+These two are not style recommendations: a breach costs data, or a regression that is hard to track
+down.
 
-## Pour comprendre le code
+## To understand the code
 
-| Document | Sujet |
+| Document | Subject |
 |---|---|
-| [reperes-3d.md](reperes-3d.md) | Constantes du monde, coordonnées canvas vs monde, orientation, échelles des rigs. |
-| [architecture.md](architecture.md) | Règles de modules, imports circulaires, état partagé, nomenclature. |
-| [methode-de-test.md](methode-de-test.md) | Test par mutation, extraction pour rendre testable, ce qui est hors de portée. |
-| [bibliotheque-de-poses.md](bibliotheque-de-poses.md) | Poses : où elles vivent, enregistrer, supprimer, restaurer, fusion à l'ouverture. |
+| [3d-reference-frames.md](3d-reference-frames.md) | World constants, canvas vs world coordinates, orientation, rig scales. |
+| [architecture.md](architecture.md) | Module rules, circular imports, shared state, naming. |
+| [testing-method.md](testing-method.md) | Mutation testing, extracting to make things testable, what is out of reach. |
+| [pose-library.md](pose-library.md) | Poses: where they live, saving, deleting, restoring, merging on open. |
 
-## Procédures
+## Procedures
 
-| Document | Sujet |
+| Document | Subject |
 |---|---|
-| [versionnage.md](versionnage.md) | Politique `major.minor.correctif`, hooks git, tags. |
+| [versioning.md](versioning.md) | `major.minor.patch` policy, git hooks, tags. |
 
-## Conception en cours
+## Design in progress
 
-| Document | Sujet |
+| Document | Subject |
 |---|---|
-| [editeur-personnage.md](editeur-personnage.md) | Éditeur de Personnage : décisions arrêtées et découpage (tâches #229 à #237). |
+| [character-editor.md](character-editor.md) | Character editor: settled decisions and breakdown (tasks #229 to #237). |
 
 ---
 
-Ces notes sont en français : c'est la langue dans laquelle les décisions ont été prises. Le code et
-ses commentaires sont en anglais — voir [architecture.md](architecture.md#langue).
+Every document exists in two languages: `name.md` in English, `name.fr.md` in French, mirroring
+`README.md` / `README.fr.md` at the root. The French version is the one the decisions were
+originally written in; both are kept in step, and `tests/docs.test.mjs` refuses a document without
+its counterpart.
+
+The code and its comments are in English — see [architecture.md](architecture.md#language).

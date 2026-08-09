@@ -46,7 +46,7 @@ export function supportsFileSystemAccess(){ return typeof window.showSaveFilePic
 //
 // ⚠️ Le NOM du champ et sa forme ne changent pas : un fichier écrit avant ce changement reste lu à
 // l'identique, et un fichier écrit après reste lisible par une version antérieure. Seule la portée
-// change (cf. docs/donnees-persistees.md).
+// change (cf. docs/persisted-data.md).
 export function serializeProject(){
   return JSON.stringify({
     projectName: S.projectName, tomes: S.tomes,

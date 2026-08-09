@@ -641,7 +641,7 @@ describe('figureRenderSize3D — rendu aux proportions de la boîte', () => {
 //
 // figureRenderSize3D est testée ci-dessus, mais son résultat ne sert à rien s'il n'atteint pas le
 // renderer. Or tout ce chemin — useFigureFormat3D → ensurePersonaScene3D → THREE.WebGLRenderer — est
-// hors de portée sous Node (cf. docs/methode-de-test.md). Constaté : la mutation « ignorer
+// hors de portée sous Node (cf. docs/testing-method.md). Constaté : la mutation « ignorer
 // sizeOverride et revenir au format portrait figé », qui reproduit exactement le bug d'origine,
 // traverse la suite sans faire échouer un seul test.
 //
@@ -804,7 +804,7 @@ describe('makePose3D — enregistrement d\'une pose', () => {
   });
 
   test('les quatre champs persistés sont présents', () => {
-    // ⚠️ Noms de champs figés par le format de fichier (cf. docs/donnees-persistees.md).
+    // ⚠️ Noms de champs figés par le format de fichier (cf. docs/persisted-data.md).
     const pose = makePose3D('pose1', 'Salut', { torsoRotX: 0 }, 'humain');
     assert.deepEqual(Object.keys(pose).sort(), ['id', 'joints', 'name', 'skeleton']);
   });
