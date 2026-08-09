@@ -37,7 +37,7 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, clampAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   getFormat, pxPerMm, getStyle3D, getEmotion, getPosition, getHandles,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
+  poseSliderSpecs3D, dragJointDegrees3D, readPoseSliderDeg3D, writePoseSliderDeg3D, canvasEventCoords3D,
   figureRenderSize3D, personaEditorPoseList3D, poseJointsByKey3D, resolvePoseLabel3D, poseSliderSignature3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
   rememberDismissedPose3D, nameOfPose3D
@@ -722,6 +722,37 @@ export function setPersonaEditorJointDeg(spec, deg){
   return writePoseSliderDeg3D(S.personaEditorDraft, spec, deg);
 }
 
+// Fix 71 (ESSAI) — glisser une poignée pour régler son articulation.
+//
+// Découpé en deux fonctions PURES d'intention (début / application) plutôt qu'écrit dans le
+// gestionnaire de souris : c'est la seule façon de tester la chose ici, le stub DOM ne distribuant
+// aucun événement. Le gestionnaire, lui, ne fait plus que traduire des pixels.
+//
+// La session mémorise les angles de DÉPART. Cumuler les deltas d'une image à l'autre ferait dériver
+// l'arrondi au degré, et la même course de souris n'aboutirait pas au même angle selon la fluidité
+// de l'affichage.
+export function beginPersonaEditorJointDrag(id){
+  if (!S.personaEditorOpen || !S.personaEditorDraft || !id) return null;
+  const def = POSE_HANDLES.find(d => d.id === id);
+  if (!def) return null;
+  const specs = poseSliderSpecs3D(def);
+  if (!specs.length) return null;
+  return {
+    id,
+    specs,
+    startDegs: specs.map(spec => readPoseSliderDeg3D(S.personaEditorDraft, spec)),
+  };
+}
+
+// Applique un déplacement en pixels à la session. Renvoie les angles écrits, ou null si la session
+// n'a plus lieu d'être (éditeur refermé entre-temps, brouillon disparu).
+export function applyPersonaEditorJointDrag(session, dx, dy){
+  if (!session || !S.personaEditorOpen || !S.personaEditorDraft) return null;
+  const cibles = dragJointDegrees3D(session.specs, session.startDegs, dx, dy);
+  cibles.forEach(({ spec, deg }) => writePoseSliderDeg3D(S.personaEditorDraft, spec, deg));
+  return cibles;
+}
+
 // Fix 49 — rendu du canevas de l'éditeur. Réutilise drawPersonaPreview, donc exactement le même
 // chemin que l'aperçu de la modale : un seul code de rendu de Personnage, pas deux vues qui
 // finiraient par diverger. Seuls le canevas, sa résolution et la caméra changent.
@@ -1086,6 +1117,9 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     // d'articulation, qui couvrent la figure. Les faire cohabiter obligerait à distinguer un clic
     // d'un glisser sur la même cible — source d'articulations bougées par accident.
     let orbiting = null;
+  // Fix 71 (ESSAI) — session de glisser d'articulation. Exclusive de `orbiting` par construction :
+  // l'une naît du bouton droit, l'autre du gauche sur une poignée.
+  let jointDrag = null;
     cnv.addEventListener('mousedown', (e) => {
       if (!S.personaEditorOpen) return;
       if (e.button === 2) {
@@ -1099,6 +1133,12 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       const def = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos);
       if (def) {
         selectPersonaEditorHandle(def.id);
+        // Fix 71 (ESSAI) — la session s'ouvre au clic sur la poignée, pas au premier mouvement :
+        // il faut avoir capturé les angles de départ AVANT que la souris ne bouge. Un simple clic
+        // ouvre donc une session qui ne servira à rien, ce qui ne coûte rien et ne change aucun
+        // angle — dx et dy valent zéro tant qu'on ne glisse pas.
+        const session = beginPersonaEditorJointDrag(def.id);
+        if (session) jointDrag = { ...session, x: e.clientX, y: e.clientY };
         e.preventDefault();
         return;
       }
@@ -1110,10 +1150,23 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
     // Curseur « main » sur une poignée, pour signaler qu'elle est cliquable.
     cnv.addEventListener('mousemove', (e) => {
       if (!S.personaEditorOpen || orbiting) return;
+      if (jointDrag) { cnv.style.cursor = 'grabbing'; return; }
       const { px, py } = editorCoords(e);
       cnv.style.cursor = pickPoseHandleAt(px, py, cnv, personaEditorHandlePos) ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {
+      // Fix 71 (ESSAI) — sur window et non sur le canevas : sortir du cadre en cours de geste ne
+      // doit pas figer l'articulation à mi-course, comme pour l'orbite juste en dessous.
+      if (jointDrag && S.personaEditorOpen) {
+        if (!applyPersonaEditorJointDrag(jointDrag, e.clientX - jointDrag.x, e.clientY - jointDrag.y)) {
+          jointDrag = null;
+          return;
+        }
+        syncPersonaEditorSliders();
+        syncPersonaEditorActionButtons();
+        drawPersonaEditor();
+        return;
+      }
       if (!orbiting || !S.personaEditorOpen) return;
       // La sensibilité NE dépend pas du zoom, contrairement à l'ancien déplacement : une rotation
       // est un angle, pas une distance — la même traversée d'écran doit faire le même tour, qu'on
@@ -1123,7 +1176,7 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
                             orbiting.rotY + (e.clientX - orbiting.x) * k);
       drawPersonaEditor();
     });
-    window.addEventListener('mouseup', () => { orbiting = null; });
+    window.addEventListener('mouseup', () => { orbiting = null; jointDrag = null; });
   }
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application.
   //

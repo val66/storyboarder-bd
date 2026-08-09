@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.0.41**
+**Version 1.0.42**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -26,7 +26,7 @@
 
 ### Available elements
 - 👤 **Characters** with poses, emotions, orientation and joint articulation
-- 🎭 **Character editor** in full screen, opened from a character or standalone (left menu): pose library shared across projects (save, rename, delete — built-in poses included, restorable from Settings), clickable joint points, one slider per joint, right-drag to orbit around the figure, wheel zoom, pose reset
+- 🎭 **Character editor** in full screen, opened from a character or standalone (left menu): pose library shared across projects (save, rename, delete — built-in poses included, restorable from Settings), clickable joint points that can also be dragged to pose them, one slider per joint, right-drag to orbit around the figure, wheel zoom, pose reset
 - 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)

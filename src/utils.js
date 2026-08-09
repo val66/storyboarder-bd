@@ -185,6 +185,43 @@ export function writePoseSliderDeg3D(draft, spec, deg){
   return draft;
 }
 
+// Fix 71 (ESSAI) — glisser une poignée pour régler son articulation.
+//
+// Bornes et arrondi : ceux des curseurs (-180..180, pas de 1°). Ce n'est pas un choix esthétique —
+// c'est la MÊME valeur qui doit sortir du glisser et du curseur, sinon la signature de pose
+// (poseSliderSignature3D, qui compare des degrés arrondis) verrait changer une pose que personne
+// n'a touchée, et « Réinitialiser » s'allumerait tout seul.
+export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
+export const POSE_DRAG_DEG_MIN = -180;
+export const POSE_DRAG_DEG_MAX = 180;
+
+// Répartit un déplacement de souris sur les curseurs d'une articulation.
+//
+// Le VERTICAL pilote le premier curseur, l'HORIZONTAL le second — et ce n'est pas arbitraire :
+// poseSliderSpecs3D range déjà ses descripteurs dans cet ordre, et le dit dans ses propres
+// libellés (« (haut/bas) » puis « (gauche/droite) » pour une charnière double ; « (avant/arr.) »
+// puis « (écart) » pour une rotule). Le geste reprend donc l'axe que l'interface annonce déjà.
+//
+// Une charnière simple n'a qu'un curseur : elle ne suit que le vertical, et un glisser horizontal
+// ne fait rien. C'est volontaire — inventer une seconde grandeur pour occuper l'axe libre
+// donnerait à un genou un degré de liberté que le squelette n'a pas.
+//
+// startDegs est un TABLEAU d'angles capturés au début du glisser, pas relu à chaque image :
+// cumuler des deltas image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au
+// même angle selon la vitesse du geste.
+export function dragJointDegrees3D(specs, startDegs, dx, dy, degPerPx = POSE_DRAG_DEG_PER_PX){
+  const liste = specs || [];
+  const deltas = [dy || 0, dx || 0];
+  return liste.map((spec, i) => {
+    const depart = (startDegs && startDegs[i]) || 0;
+    const brut = depart + deltas[i] * degPerPx;
+    return {
+      spec,
+      deg: clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX),
+    };
+  });
+}
+
 // Fix 52 — poignée la plus proche d'un point, dans un rayon donné.
 //
 // La carte des positions est un PARAMÈTRE, pas une variable de module. C'est tout l'enjeu : l'aperçu

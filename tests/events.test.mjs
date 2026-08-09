@@ -43,13 +43,14 @@ import {
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
   personaEditorHasChanges, personaEditorTitle3D,
   setPersonaEditorOrbit, resetPersonaEditorCamera,
+  beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import { normalizePoses3D, resyncIdCounter } from '../src/io.js';
-import { GROUND_Y_DEFAULT_3D, POSE_3D } from '../src/constants.js';
-import { readPoseSliderDeg3D } from '../src/utils.js';
+import { GROUND_Y_DEFAULT_3D, POSE_3D, POSE_HANDLES } from '../src/constants.js';
+import { readPoseSliderDeg3D, poseSliderSpecs3D } from '../src/utils.js';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -1686,5 +1687,117 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
     // que plus personne n'écrit — et que le prochain lecteur croirait vivant.
     const src = readFileSync(new URL('../src/state.js', import.meta.url), 'utf8');
     assert.ok(!/personaEditorCam(Sens|Open)/.test(src), 'état de caméra devenu inatteignable');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 71 (ESSAI) — glisser une poignée dans l'éditeur.
+//
+// Ce que le stub DOM ne permet PAS de vérifier : que le gestionnaire de souris appelle bien ces
+// deux fonctions (aucun événement n'est distribué). Ce qui est couvert ici, c'est la machine à
+// états du glisser — ouverture, application, refus — qui est justement ce qui a été extrait du
+// gestionnaire pour être testable.
+//
+// Fonctionnalité explicitement expérimentale : si elle est retirée, ce bloc part avec.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('éditeur de Personnage — glisser d\'articulation (Fix 71, ESSAI)', () => {
+  beforeEach(() => { closePersonaEditor(); });
+
+  test('aucune session hors de l\'éditeur', () => {
+    // Deux cas, pour la même raison que le test « vérifiés SÉPARÉMENT » plus bas : après une
+    // fermeture propre le brouillon est nul de toute façon, si bien qu'un seul des deux gardes
+    // suffirait à faire passer la première assertion.
+    assert.equal(beginPersonaEditorJointDrag('lKnee'), null, 'éditeur jamais ouvert');
+    openPersonaEditor(null);
+    S.personaEditorOpen = false;
+    assert.equal(beginPersonaEditorJointDrag('lKnee'), null, 'drapeau baissé, brouillon intact');
+    S.personaEditorOpen = true;
+  });
+
+  test('aucune session pour une articulation inconnue', () => {
+    openPersonaEditor(null);
+    assert.equal(beginPersonaEditorJointDrag('coude_imaginaire'), null);
+    assert.equal(beginPersonaEditorJointDrag(null), null);
+  });
+
+  test('la session capture les angles de DÉPART du brouillon', () => {
+    openPersonaEditor(null);
+    const spec = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'lKnee'))[0];
+    setPersonaEditorJointDeg(spec, 25);
+    const session = beginPersonaEditorJointDrag('lKnee');
+    assert.deepEqual(session.startDegs, [25]);
+    assert.equal(session.id, 'lKnee');
+  });
+
+  test('glisser écrit dans le brouillon', () => {
+    openPersonaEditor(null);
+    const spec = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'lKnee'))[0];
+    const session = beginPersonaEditorJointDrag('lKnee');
+    applyPersonaEditorJointDrag(session, 0, 40);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, spec), 20, '40 px à 0.5°/px');
+  });
+
+  test('RÉGRESSION : glisser allume Réinitialiser, revenir l\'éteint', () => {
+    // La dirty-detection est partagée avec les curseurs (poseSliderSignature3D) : si le glisser
+    // écrivait des radians non arrondis, un aller-retour laisserait le bouton allumé sans que la
+    // pose ait bougé — exactement le symptôme que le Fix 62 avait supprimé côté curseurs.
+    openPersonaEditor(null);
+    assert.equal(personaEditorHasChanges(), false, 'rien à faire à l\'ouverture');
+    const session = beginPersonaEditorJointDrag('head');
+    applyPersonaEditorJointDrag(session, 60, -30);
+    assert.equal(personaEditorHasChanges(), true);
+    applyPersonaEditorJointDrag(session, 0, 0);
+    assert.equal(personaEditorHasChanges(), false, 'retour au point de départ = aucun changement');
+  });
+
+  test('RÉGRESSION : une charnière double ne bouge que l\'axe glissé', () => {
+    // dy seul ne doit pas toucher au curseur gauche/droite : sinon saisir une tête pour l'incliner
+    // la ferait aussi pivoter, sans que rien ne l'annonce.
+    openPersonaEditor(null);
+    const [vert, horiz] = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'head'));
+    setPersonaEditorJointDeg(horiz, 33);
+    const session = beginPersonaEditorJointDrag('head');
+    applyPersonaEditorJointDrag(session, 0, 50);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, vert), 25);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, horiz), 33, 'axe voisin intact');
+  });
+
+  test('RÉGRESSION : une rotule garde ses deux axes cohérents', () => {
+    // writePoseSliderDeg3D recopie l'axe voisin ; l'écrire deux fois de suite ne doit pas remettre
+    // le premier à plat (cf. Fix 51).
+    openPersonaEditor(null);
+    const [x, z] = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'lShoulder'));
+    const session = beginPersonaEditorJointDrag('lShoulder');
+    // Attendu calculé DEPUIS le départ capturé, pas depuis zéro : la pose d'ouverture (« debout »)
+    // donne déjà un angle non nul à l'épaule — écrit en dur, ce test affirmait 10 là où la valeur
+    // est 13, et échouait pour la seule raison que je n'avais pas vérifié l'état initial.
+    const [x0, z0] = session.startDegs;
+    applyPersonaEditorJointDrag(session, 40, 20);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, x), x0 + 10);
+    assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, z), z0 + 20);
+    assert.notEqual(x0, 0, 'sinon ce test ne distingue plus « depuis le départ » de « depuis 0 »');
+  });
+
+  test('la session refuse d\'écrire si l\'éditeur s\'est refermé entre-temps', () => {
+    openPersonaEditor(null);
+    const session = beginPersonaEditorJointDrag('lKnee');
+    closePersonaEditor();
+    assert.equal(applyPersonaEditorJointDrag(session, 0, 40), null);
+  });
+
+  test('RÉGRESSION : « ouvert » et « brouillon présent » sont vérifiés SÉPARÉMENT', () => {
+    // closePersonaEditor vide le brouillon EN PLUS de baisser le drapeau : le test ci-dessus passe
+    // donc même si l'un des deux gardes disparaît — il ne distinguait rien, et une mutation lui a
+    // échappé. Ici on baisse le drapeau À LA MAIN, brouillon intact, ce qui est la seule façon
+    // d'exiger vraiment les deux. Manipuler S directement est assumé : c'est un état futur (un
+    // chemin qui fermerait sans nettoyer) qu'on refuse par avance, pas un état atteignable
+    // aujourd'hui.
+    openPersonaEditor(null);
+    const session = beginPersonaEditorJointDrag('lKnee');
+    const brouillon = S.personaEditorDraft;
+    S.personaEditorOpen = false;
+    assert.equal(applyPersonaEditorJointDrag(session, 0, 40), null);
+    assert.equal(S.personaEditorDraft, brouillon, 'et rien n\'a été écrit au passage');
+    S.personaEditorOpen = true;   // on rend l'état cohérent pour le beforeEach suivant
   });
 });

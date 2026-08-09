@@ -11,6 +11,7 @@ import {
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
+  dragJointDegrees3D, POSE_DRAG_DEG_PER_PX, POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX,
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, poseUsageCount3D,
@@ -1250,5 +1251,96 @@ describe('orbitCameraPosition3D', () => {
   test('entrées absentes : origine, pas de NaN', () => {
     const p = orbitCameraPosition3D(null, 0, undefined, undefined);
     assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 71 (ESSAI) — glisser une poignée pour régler son articulation.
+//
+// Fonctionnalité explicitement expérimentale : elle peut être retirée. Ces tests décrivent donc les
+// PROPRIÉTÉS du geste (absolu, borné, arrondi comme les curseurs), pas des valeurs à préserver.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('dragJointDegrees3D — répartition du geste sur les curseurs', () => {
+  const hinge = POSE_HANDLES.find(d => d.id === 'lKnee');       // 1 curseur
+  const hinge2 = POSE_HANDLES.find(d => d.id === 'head');       // 2 : haut/bas puis gauche/droite
+  const ball = POSE_HANDLES.find(d => d.id === 'lShoulder');    // 2 : avant/arr. puis écart
+
+  test('les trois modes sont bien ceux qu\'on croit tester', () => {
+    // Sans ça, un renommage dans POSE_HANDLES ferait tester trois fois la même chose en silence.
+    assert.equal(hinge.mode, 'hinge');
+    assert.equal(hinge2.mode, 'hinge2');
+    assert.equal(ball.mode, 'ball');
+  });
+
+  test('le vertical pilote le premier curseur, l\'horizontal le second', () => {
+    const specs = poseSliderSpecs3D(hinge2);
+    const r = dragJointDegrees3D(specs, [0, 0], 40, 20, 0.5);
+    assert.equal(r.length, 2);
+    assert.equal(r[0].deg, 10, 'dy=20 à 0.5°/px → 10° sur le curseur haut/bas');
+    assert.equal(r[1].deg, 20, 'dx=40 à 0.5°/px → 20° sur le curseur gauche/droite');
+  });
+
+  test('une rotule suit le même ordre : avant/arrière puis écart', () => {
+    const specs = poseSliderSpecs3D(ball);
+    const r = dragJointDegrees3D(specs, [0, 0], 10, -30, 1);
+    assert.equal(r[0].spec.axis, 'x');
+    assert.equal(r[0].deg, -30);
+    assert.equal(r[1].spec.axis, 'z');
+    assert.equal(r[1].deg, 10);
+  });
+
+  test('une charnière simple ignore l\'horizontal', () => {
+    // Elle n'a qu'un degré de liberté : inventer une grandeur pour occuper l'axe libre donnerait à
+    // un genou une articulation que le squelette n'a pas.
+    const specs = poseSliderSpecs3D(hinge);
+    const r = dragJointDegrees3D(specs, [0], 500, 0, 0.5);
+    assert.equal(r.length, 1);
+    assert.equal(r[0].deg, 0, 'un glisser purement horizontal ne bouge pas un genou');
+  });
+
+  test('le résultat part des angles de DÉPART, pas de zéro', () => {
+    const specs = poseSliderSpecs3D(hinge);
+    assert.equal(dragJointDegrees3D(specs, [30], 0, 20, 0.5)[0].deg, 40);
+  });
+
+  test('RÉGRESSION : le geste est ABSOLU — deux fois le même delta ne cumule pas', () => {
+    // Le piège serait de relire l'angle courant à chaque image et d'y ajouter le delta : la même
+    // course de souris n'aboutirait alors pas au même angle selon la fluidité de l'affichage.
+    const specs = poseSliderSpecs3D(hinge);
+    const a = dragJointDegrees3D(specs, [0], 0, 20, 0.5)[0].deg;
+    const b = dragJointDegrees3D(specs, [0], 0, 20, 0.5)[0].deg;
+    assert.equal(a, b);
+  });
+
+  test('RÉGRESSION : revenir au point de départ rend l\'angle initial À L\'IDENTIQUE', () => {
+    // C'est ce qui permet à « Réinitialiser » de rester éteint après un aller-retour : la
+    // signature de pose compare des degrés arrondis, un écart d'un degré l'allumerait.
+    const specs = poseSliderSpecs3D(hinge2);
+    const depart = [17, -43];
+    dragJointDegrees3D(specs, depart, 120, -80);
+    const retour = dragJointDegrees3D(specs, depart, 0, 0);
+    assert.deepEqual(retour.map(r => r.deg), depart);
+  });
+
+  test('RÉGRESSION : les angles sont bornés comme les curseurs', () => {
+    const specs = poseSliderSpecs3D(hinge2);
+    const haut = dragJointDegrees3D(specs, [0, 0], 99999, 99999);
+    const bas = dragJointDegrees3D(specs, [0, 0], -99999, -99999);
+    assert.deepEqual(haut.map(r => r.deg), [POSE_DRAG_DEG_MAX, POSE_DRAG_DEG_MAX]);
+    assert.deepEqual(bas.map(r => r.deg), [POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MIN]);
+    assert.equal(POSE_DRAG_DEG_MAX, 180, 'même plage que makeJointRangeRow');
+    assert.equal(POSE_DRAG_DEG_MIN, -180);
+  });
+
+  test('RÉGRESSION : les angles sont des ENTIERS, comme le pas des curseurs', () => {
+    const specs = poseSliderSpecs3D(hinge);
+    // 3 px × 0.5 = 1.5°, qui n'est pas un pas de curseur valide.
+    const deg = dragJointDegrees3D(specs, [0], 0, 3, POSE_DRAG_DEG_PER_PX)[0].deg;
+    assert.equal(deg, Math.round(deg), `${deg} n'est pas un entier`);
+  });
+
+  test('entrées vides : aucun curseur, aucun angle', () => {
+    assert.deepEqual(dragJointDegrees3D([], [], 10, 10), []);
+    assert.deepEqual(dragJointDegrees3D(null, null, 10, 10), []);
   });
 });
