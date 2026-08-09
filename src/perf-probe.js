@@ -32,7 +32,12 @@
 import { S, currentPage } from './state.js';
 
 let actif = false;
-const mesures = new Map();   // nom -> tableau de durées (ms)
+const mesures = new Map();   // nom -> tableau de durées ÉCHANTILLONNÉES (ms)
+// Total et compte EXACTS, tenus à part de l'échantillon. Défaut constaté à la première campagne :
+// « signature de Case » a été appelée 8 568 fois, mais le tableau plafonne à 2 000 — la colonne
+// « total » ne portait donc que sur le quart des appels et sous-estimait le poste d'un facteur 4.
+// Les quantiles ont besoin d'un échantillon borné ; la somme, elle, n'a aucune raison de l'être.
+const exacts = new Map(); // nom -> { n, total }
 const compteurs = new Map(); // nom -> entier
 
 // Plafond de rétention : une campagne longue ne doit pas finir par peser sur la mémoire de ce
@@ -41,6 +46,10 @@ const compteurs = new Map(); // nom -> entier
 const MAX_ECHANTILLONS = 2000;
 
 function ajouter(nom, ms) {
+  let e = exacts.get(nom);
+  if (!e) { e = { n: 0, total: 0 }; exacts.set(nom, e); }
+  e.n++; e.total += ms;
+
   let t = mesures.get(nom);
   if (!t) { t = []; mesures.set(nom, t); }
   if (t.length < MAX_ECHANTILLONS) t.push(ms);
@@ -63,14 +72,15 @@ export function compter(nom, n = 1) {
 
 export function perfActif() { return actif; }
 
-function stats(t) {
+function stats(nom, t) {
   const tri = [...t].sort((a, b) => a - b);
-  const somme = tri.reduce((s, v) => s + v, 0);
   const q = (p) => tri[Math.min(tri.length - 1, Math.floor(tri.length * p))];
+  const e = exacts.get(nom) || { n: tri.length, total: tri.reduce((s, v) => s + v, 0) };
   return {
-    n: tri.length,
-    total: somme,
-    moyenne: somme / tri.length,
+    n: e.n,                       // compte EXACT, pas la taille de l'échantillon
+    total: e.total,               // somme EXACTE
+    moyenne: e.total / e.n,
+    echantillon: tri.length,      // ce sur quoi portent les quantiles
     mediane: q(0.5),
     p95: q(0.95),
     max: tri[tri.length - 1],
@@ -93,13 +103,16 @@ export function rapportTexte() {
         + '  3. perf.rapport()';
   }
   lignes.push(`=== chemin de dessin — durées (ms) ===   [collecte ${actif ? 'ACTIVE' : 'ARRÊTÉE'}]`);
-  lignes.push('étiquette                          n      total   médiane   moyenne      p95      max');
+  lignes.push('étiquette                          n      total   médiane   moyenne      p95      max   éch.');
   [...mesures.entries()]
-    .map(([nom, t]) => [nom, stats(t)])
+    .map(([nom, t]) => [nom, stats(nom, t)])
     .sort((a, b) => b[1].total - a[1].total)
     .forEach(([nom, s]) => {
       const c = (v) => v.toFixed(2).padStart(8);
-      lignes.push(`${nom.padEnd(32)}${String(s.n).padStart(5)}${c(s.total)}${c(s.mediane)}${c(s.moyenne)}${c(s.p95)}${c(s.max)}`);
+      // « éch. » n'apparaît que s'il diffère de n : le lecteur doit savoir quand les quantiles
+      // portent sur un sous-ensemble, sans être encombré quand ce n'est pas le cas.
+      const ech = s.echantillon < s.n ? String(s.echantillon).padStart(7) : '';
+      lignes.push(`${nom.padEnd(32)}${String(s.n).padStart(5)}${c(s.total)}${c(s.mediane)}${c(s.moyenne)}${c(s.p95)}${c(s.max)}${ech}`);
     });
   if (compteurs.size) {
     lignes.push('');
@@ -110,7 +123,7 @@ export function rapportTexte() {
   return lignes.join('\n');
 }
 
-export function reinitialiserPerf() { mesures.clear(); compteurs.clear(); }
+export function reinitialiserPerf() { mesures.clear(); compteurs.clear(); exacts.clear(); }
 
 /**
  * Composition de la Planche affichée. Des durées sans la charge qui les produit ne veulent rien
