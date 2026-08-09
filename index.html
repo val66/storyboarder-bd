@@ -348,85 +348,40 @@
     </div>
     <div id="sideHelpSection" class="side-section" style="display:none;">
       <div class="help-text">
-        <details class="help-group">
+        <!-- Manuel d'utilisation : la CHARPENTE seule vit ici. Titres et paragraphes viennent de
+             src/help-content.js, injectés par applyI18nHelpManual au démarrage puis à chaque
+             changement de langue. `data-help` est la clé d'appariement : auparavant c'était le RANG
+             du groupe qui faisait foi, si bien qu'ajouter « Scènes » ici sans ajouter son entrée
+             là-bas a décalé d'un cran le titre ET le contenu de tous les groupes suivants. -->
+        <details class="help-group" data-help="cases">
           <summary class="help-group-title">Cases</summary>
-          <p>Clic droit sur un espace vide de la planche, puis « Créer une Case ».</p>
-          <p>Sélectionnez une case pour voir/modifier sa description et la liste de ses Éléments à droite.</p>
-          <p>Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).</p>
-          <p>Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.</p>
-          <p>Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="bulles">
           <summary class="help-group-title">Bulles de dialogue</summary>
-          <p>Clic droit sur un espace vide de la planche, puis « Créer une Bulle de dialogue ».</p>
-          <p>Forme Ovale ou Rectangle, au choix.</p>
-          <p>Pointe déplaçable, ou masquable si besoin.</p>
-          <p>Padding intérieur et police d'écriture réglables dans « Apparence de la Bulle » et « Texte » à droite.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="personnages">
           <summary class="help-group-title">Personnages</summary>
-          <p>Clic droit sur une case → « Ajouter » → « Ajouter un personnage ».</p>
-          <p>Double-clic sur un personnage pour régler nom, genre, émotion, position, mains et taille.</p>
-          <p>Orientation 3D ajustable via les poignées ou les curseurs d'articulation.</p>
-          <p>Champs Position X/Y dans la modale pour le placer précisément dans sa Case ; Position Y se désactive automatiquement si « Aimanté au Sol » est cochée.</p>
-          <p>Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer le personnage au-dessus du Sol.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="objets">
           <summary class="help-group-title">Objets &amp; décor</summary>
-          <p>Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.</p>
-          <p>Double-clic sur un objet pour ajuster ses rotations et sa taille.</p>
-          <p>Molette de la souris pour le redimensionner directement.</p>
-          <p>Champs Position X/Y dans la modale pour le placer précisément ; désactivés si l'objet est aimanté au Sol (Position Y) ou à un Mur (Position X/Y).</p>
-          <p>Les Parois s'aimantent automatiquement aux Murs voisins.</p>
-          <p>Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer l'objet au-dessus du Sol.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="camera">
           <summary class="help-group-title">Caméra</summary>
-          <p>Clic droit sur une case → « Caméra » (visible uniquement si la case contient déjà au moins un Élément) pour passer en mode Caméra et afficher le repère 3D.</p>
-          <p>En mode Caméra : cliquer-glisser sur la case pour orienter la vue. <strong>Clic milieu + glisser</strong> (ou <strong>Ctrl + glisser</strong>) pour faire un panoramique — la scène suit la souris comme dans Blender. La molette zoome vers le point sous le curseur. La sensibilité de rotation s'adapte à la distance (lente en gros plan, rapide en vue d'ensemble) et à l'inclinaison (le lacet ralentit progressivement en plongée/contre-plongée pour rester maniable — comme Blender/Maya). Le pitch est limité à ±85° pour éviter le basculement de la scène. Le centre de rotation reste ancré au même point du monde pendant toute la rotation.</p>
-          <p>Les flèches directionnelles ou W/A/S/D permettent de translater la caméra latéralement et verticalement (uniquement en mode Caméra, hors champ texte).</p>
-          <p>Sélectionner un Élément centre automatiquement la caméra sur lui (centrage unique) ; elle reste ensuite libre. En mode Caméra, l'Élément sélectionné devient le centre de rotation permanent.</p>
-          <p>Raccourci C (hors champ texte, Case sélectionnée) pour basculer en mode Caméra. Dans l'éditeur de Scène, la touche T bascule entre la vue perspective et la vue de dessus.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="calques">
           <summary class="help-group-title">Calques</summary>
-          <p>Molette de la souris sur un personnage ou un objet sélectionné pour régler sa profondeur (rapproche/éloigne, sa vraie taille ne change pas).</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="scenes">
           <summary class="help-group-title">Scènes</summary>
-          <p>Les Scènes permettent de composer un décor 3D réutilisable (Murs, Mobilier, Personnages, Routes, Bâtiments…) et de le charger dans n'importe quelle Case d'une Planche.</p>
-          <p>Créez ou ouvrez une Scène via le menu « Scènes » en haut. L'éditeur de Scène affiche un canevas plein cadre ; ses Éléments se placent, s'orientent et se redimensionnent comme dans une Case normale.</p>
-          <p>Pour charger une Scène dans une Case : clic droit sur la Case → « Charger une Scène » → choisissez la Scène. Le contenu est copié dans la Case à sa taille réelle (Personnages à 1,75 m, etc.) ; la caméra est automatiquement reculée pour englober l'ensemble.</p>
-          <p>Après chargement, molette de la souris en mode Caméra pour zoomer sur un détail. Les Personnages et Objets ajoutés ensuite s'intègrent à la même échelle que le reste de la Scène.</p>
-          <p>Modifier la Scène source après chargement n'affecte pas les Cases qui l'ont déjà intégrée (la copie est indépendante).</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="projet">
           <summary class="help-group-title">Projet</summary>
-          <p>Un Projet regroupe tous les Tomes, Planches et Cases. Son nom s'affiche en haut du menu de gauche (« Projet » par défaut) ; cliquez dessus pour ouvrir la modale Projet.</p>
-          <p>« Nouveau projet » repart d'un Tome vierge et propose de choisir un fichier .json où l'enregistrer.</p>
-          <p>« Charger un projet existant » ouvre un fichier .json précédemment enregistré.</p>
-          <p>« Enregistrer le projet » écrit l'état actuel dans le fichier .json choisi (ou propose de le télécharger si aucun fichier n'a encore été choisi, ou si le navigateur ne permet pas d'y réécrire directement).</p>
-          <p>Une fois un fichier .json choisi, le Projet est sauvegardé automatiquement chaque minute s'il a été modifié.</p>
-          <p>Si des modifications n'ont pas été enregistrées, une confirmation s'affiche à la fermeture de l'application (le texte de cette boîte de dialogue est imposé par le navigateur).</p>
-          <p>Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboard BD (lancée via son raccourci ou son exécutable) ; ils ne fonctionnent pas si index.html est ouvert directement dans un navigateur classique.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="tomes">
           <summary class="help-group-title">Tomes &amp; planches</summary>
-          <p>« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.</p>
-          <p>Clic droit sur un tome ou une planche pour l'exporter en PNG ou le supprimer.</p>
         </details>
-        <details class="help-group">
+        <details class="help-group" data-help="raccourcis">
           <summary class="help-group-title">Raccourcis clavier</summary>
-          <p>[ / ] : naviguer entre les Cases et les Bulles de la Planche (dans l'ordre de lecture) ; quand une Bulle est atteinte, le focus est mis automatiquement sur son champ texte.</p>
-          <p>Tab / Maj+Tab : naviguer entre les Éléments d'une Case (suivant/précédent).</p>
-          <p>Entrée : ouvrir la modale de l'Élément ou de la Case sélectionnée.</p>
-          <p>Échap : remonter au niveau supérieur (sélectionne la Case parente si un Élément est actif) ; ferme la modale si elle est ouverte.</p>
-          <p>C : activer/désactiver le mode Caméra sur la Case sélectionnée.</p>
-          <p>T : basculer entre vue perspective et vue de dessus (éditeur de Scène uniquement).</p>
-          <p>↑ ↓ ← → ou W A S D (en mode Caméra) : translater la caméra latéralement et verticalement.</p>
-          <p>Suppr : supprimer l'Élément sélectionné.</p>
-          <p>Ctrl+Z / Ctrl+Y : annuler / rétablir.</p>
-          <p>Ctrl+S : enregistrer le projet.</p>
         </details>
       </div>
     </div>

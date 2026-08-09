@@ -323,16 +323,36 @@ export function applyI18nModalSectionTitles(lang){
   document.querySelectorAll('#objectModal .modal-section-title').forEach((el, i) => { if (objectTitles[i]) el.textContent = objectTitles[i]; });
 }
 
+// Le manuel est apparié par CLÉ (data-help sur le <details>), et ses paragraphes sont RENDUS
+// depuis les tables — deux changements qui corrigent le même défaut, par ses deux bouts.
+//
+// L'appariement se faisait par rang d'apparition. Le groupe « Scènes » a été ajouté au HTML sans
+// entrée correspondante dans les tables, et tout ce qui suivait s'est décalé : la section Scènes
+// s'intitulait « Projet » et affichait le texte du Projet, Projet montrait celui des Tomes, les
+// Tomes celui des Raccourcis, et les Raccourcis n'étaient plus traduits. Dans les deux langues, en
+// silence. Un rang manquant ne laisse pas de trou : il prend la place du suivant.
+//
+// Les paragraphes, eux, étaient appariés un à un avec des <p> écrits en dur. Les deux listes ont
+// divergé dans les deux sens : dix paragraphes sur les Personnages — dont toute la documentation de
+// l'éditeur — n'avaient pas de <p> pour les recevoir et n'atteignaient jamais l'écran, tandis que
+// des <p> sans entrée gardaient leur français en dur jusqu'en anglais. Les générer supprime la
+// seconde liste, donc la possibilité même de l'écart.
 export function applyI18nHelpManual(lang){
   const data = lang === 'en' ? HELP_MANUAL_EN : HELP_MANUAL_FR;
   const groups = document.querySelectorAll('#sideHelpSection .help-group');
-  groups.forEach((group, i) => {
-    const d = data[i];
+  groups.forEach((group) => {
+    const d = data.find(g => g.id === group.dataset.help);
+    // Pas d'entrée : on laisse le groupe tel quel plutôt que de lui donner le contenu d'un autre.
+    // Visiblement vide vaut mieux qu'à tort rempli — et tests/i18n.test.mjs refuse ce cas.
     if (!d) return;
     const summary = group.querySelector('.help-group-title');
     if (summary) summary.textContent = d.title;
-    const ps = group.querySelectorAll('p');
-    ps.forEach((p, j) => { if (d.paragraphs[j] !== undefined) p.textContent = d.paragraphs[j]; });
+    group.querySelectorAll('p').forEach(p => p.remove());
+    d.paragraphs.forEach(texte => {
+      const p = document.createElement('p');
+      p.textContent = texte;
+      group.appendChild(p);
+    });
   });
   const helpMenuTitle = document.querySelector('#helpMenuHeader .menu-title');
   if (helpMenuTitle) helpMenuTitle.textContent = lang === 'en' ? 'User manual' : "Manuel d'utilisation";

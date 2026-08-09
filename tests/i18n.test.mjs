@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel,
          I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL } from '../src/i18n.js';
+import { HELP_MANUAL_EN, HELP_MANUAL_FR } from '../src/help-content.js';
 import { S } from '../src/state.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
@@ -197,4 +198,134 @@ describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
         `sélecteurs sans cible dans index.html : ${orphelins.join(', ')}`);
     });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manuel d'utilisation — appariement HTML ↔ tables de contenu.
+//
+// Défaut constaté, et resté invisible longtemps : l'appariement se faisait par RANG d'apparition
+// du <details>. Le groupe « Scènes » a été ajouté à index.html sans entrée correspondante dans
+// help-content.js, et tout ce qui suivait a glissé d'un cran — la section Scènes s'intitulait
+// « Projet » et affichait le texte du Projet, Projet montrait celui des Tomes, les Tomes celui des
+// Raccourcis, et les Raccourcis n'étaient plus traduits du tout. En français comme en anglais.
+// Un rang manquant ne laisse pas de trou : il prend la place du suivant.
+//
+// Second versant du même défaut : les paragraphes étaient appariés un à un avec des <p> écrits en
+// dur. Les deux listes ont divergé DANS LES DEUX SENS — dix paragraphes sur les Personnages (toute
+// la documentation de l'éditeur) n'avaient aucun <p> pour les accueillir et n'atteignaient jamais
+// l'écran, pendant que des <p> sans entrée gardaient leur français jusqu'en anglais.
+//
+// Ces tests ferment les deux : clé obligatoire des deux côtés, et plus un seul <p> en dur.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverger', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const bloc = (() => {
+    const i = html.indexOf('<div class="help-text">');
+    assert.ok(i > 0, 'bloc d\'aide introuvable dans index.html');
+    return html.slice(i, html.indexOf('</div>', html.lastIndexOf('</details>')));
+  })();
+  const clesHtml = [...bloc.matchAll(/<details class="help-group" data-help="([^"]+)"/g)].map(m => m[1]);
+  const nbGroupes = (bloc.match(/<details class="help-group"/g) || []).length;
+
+  test('RÉGRESSION : chaque groupe du HTML porte une clé data-help', () => {
+    // Sans clé, applyI18nHelpManual ne retrouve pas son entrée et laisse le groupe muet. C'est
+    // volontairement plus visible que l'ancien comportement, qui lui donnait le contenu du voisin.
+    assert.equal(clesHtml.length, nbGroupes,
+      `${nbGroupes - clesHtml.length} groupe(s) sans data-help`);
+    assert.equal(new Set(clesHtml).size, clesHtml.length, 'deux groupes partagent la même clé');
+  });
+
+  test('RÉGRESSION : aucun paragraphe écrit en dur dans le HTML', () => {
+    // C'est ce qui garantit qu'il n'existe plus qu'UNE liste de paragraphes. Un <p> réintroduit ici
+    // serait invisible (le rendu les efface) ou, pire, survivrait non traduit.
+    assert.equal((bloc.match(/<p>/g) || []).length, 0,
+      'les paragraphes viennent de help-content.js, pas du HTML');
+  });
+
+  test('RÉGRESSION : chaque groupe du HTML a une entrée dans les DEUX langues', () => {
+    // Le test qui aurait attrapé « Scènes » le jour où il a été ajouté.
+    clesHtml.forEach(cle => {
+      assert.ok(HELP_MANUAL_FR.some(g => g.id === cle), `aucune entrée FR pour « ${cle} »`);
+      assert.ok(HELP_MANUAL_EN.some(g => g.id === cle), `aucune entrée EN pour « ${cle} »`);
+    });
+  });
+
+  test('RÉGRESSION : aucune entrée orpheline dans les tables', () => {
+    // L'inverse compte autant : une entrée sans groupe est du contenu écrit qui n'atteint personne.
+    const dansHtml = new Set(clesHtml);
+    [['FR', HELP_MANUAL_FR], ['EN', HELP_MANUAL_EN]].forEach(([langue, table]) => {
+      table.forEach(g => assert.ok(dansHtml.has(g.id),
+        `entrée ${langue} « ${g.id} » sans groupe correspondant dans index.html`));
+    });
+  });
+
+  test('FR et EN décrivent les mêmes groupes, dans le même ordre', () => {
+    assert.deepEqual(HELP_MANUAL_FR.map(g => g.id), HELP_MANUAL_EN.map(g => g.id));
+    assert.deepEqual(HELP_MANUAL_FR.map(g => g.id), clesHtml,
+      'l\'ordre des tables suit celui du HTML — par lisibilité, pas par nécessité');
+  });
+
+  test('RÉGRESSION : FR et EN ont le MÊME nombre de paragraphes par groupe', () => {
+    // Une traduction plus courte que l'original, c'est du contenu perdu pour la moitié des
+    // utilisateurs — et rien dans l'interface ne le signale.
+    HELP_MANUAL_FR.forEach((fr, i) => {
+      const en = HELP_MANUAL_EN[i];
+      assert.equal(en.paragraphs.length, fr.paragraphs.length,
+        `« ${fr.id} » : ${fr.paragraphs.length} paragraphe(s) en FR, ${en.paragraphs.length} en EN`);
+    });
+  });
+
+  test('aucun titre ni paragraphe vide', () => {
+    [...HELP_MANUAL_FR, ...HELP_MANUAL_EN].forEach(g => {
+      assert.ok(g.title && g.title.trim(), `titre vide pour « ${g.id} »`);
+      assert.ok(g.paragraphs.length, `« ${g.id} » n'a aucun paragraphe`);
+      g.paragraphs.forEach((p, j) => assert.ok(p && p.trim(),
+        `« ${g.id} » paragraphe ${j} vide`));
+    });
+  });
+
+  test('la documentation de l\'Éditeur de Personnage atteint bien l\'écran', () => {
+    // Elle était écrite depuis longtemps et n'était affichée nulle part, faute de <p> pour la
+    // recevoir. C'est ce cas précis qui a motivé le passage à un rendu depuis les données.
+    const fr = HELP_MANUAL_FR.find(g => g.id === 'personnages');
+    const en = HELP_MANUAL_EN.find(g => g.id === 'personnages');
+    assert.ok(fr.paragraphs.length >= 15, `seulement ${fr.paragraphs.length} paragraphes`);
+    assert.ok(fr.paragraphs.some(p => /orbite|ORBITE/.test(p)), 'l\'orbite au clic droit');
+    assert.ok(fr.paragraphs.some(p => /Appliquer/.test(p)), 'le mode autonome sans « Appliquer »');
+    assert.ok(en.paragraphs.some(p => /orbit/i.test(p)), 'idem en anglais');
+  });
+});
+
+describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () => {
+  // Les tests précédents vérifient que HTML et tables concordent. Ils ne verraient PAS un retour à
+  // l'appariement par rang : tant que l'ordre coïncide, le résultat est le même — jusqu'au jour où
+  // un groupe est ajouté d'un seul côté, c'est-à-dire exactement le jour où l'on a besoin du
+  // garde-fou. C'est donc le mécanisme qu'il faut figer, pas seulement son résultat actuel.
+  //
+  // Les commentaires sont retirés avant de chercher : lors du Fix 92, un test de ce genre s'est
+  // révélé satisfait par une phrase citant le nom de la fonction plutôt que par du code.
+  const src = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+  const corps = (() => {
+    const i = src.indexOf('export function applyI18nHelpManual(');
+    assert.ok(i > 0, 'applyI18nHelpManual introuvable');
+    return src.slice(i, src.indexOf('\n}', i))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  })();
+
+  test('RÉGRESSION : appariement par CLÉ, jamais par rang', () => {
+    assert.match(corps, /dataset\.help/, 'la clé data-help doit servir à retrouver l\'entrée');
+    assert.ok(!/data\[\s*i\s*\]/.test(corps), 'un accès indexé aux tables réintroduit le décalage');
+  });
+
+  test('RÉGRESSION : les paragraphes sont ENGENDRÉS, pas appariés à des <p> existants', () => {
+    assert.match(corps, /createElement\('p'\)/, 'les <p> doivent être créés depuis les données');
+    assert.match(corps, /paragraphs\.forEach/, 'on parcourt les données, pas le DOM');
+    assert.ok(!/querySelectorAll\('p'\)\.forEach\(\s*\(p,\s*j\)/.test(corps),
+      'parcourir les <p> du DOM laisse retomber les paragraphes surnuméraires');
+  });
+
+  test('un groupe sans entrée est laissé intact, jamais rempli avec autre chose', () => {
+    assert.match(corps, /if \(!d\) return;/, 'sortie franche quand la clé est inconnue');
+  });
 });

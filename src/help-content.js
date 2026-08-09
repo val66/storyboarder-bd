@@ -7,25 +7,42 @@
  * Consumed by: src/app.js
  */
 
-// Manuel d'utilisation (#sideHelpSection) : 8 groupes, chacun avec un titre (<summary>) et plusieurs
-// paragraphes — traduit intégralement sur demande utilisateur ("Tout traduire, y compris le Manuel
-// d'utilisation"). On cible chaque <details> par son rang d'apparition (ordre stable, jamais réordonné
-// dynamiquement) plutôt que par id, pour ne pas avoir à modifier le HTML existant.
+// Manuel d'utilisation (#sideHelpSection) : un groupe par <details>, chacun avec un titre
+// (<summary>) et ses paragraphes — traduit intégralement sur demande utilisateur ("Tout traduire,
+// y compris le Manuel d'utilisation").
+//
+// Chaque entrée porte un `id`, qui doit correspondre à l'attribut data-help du <details>.
+//
+// L'appariement se faisait auparavant par RANG d'apparition, « ordre stable, jamais réordonné ».
+// L'ordre l'est bien resté ; c'est la LISTE qui a bougé. Le groupe « Scènes » a été ajouté au HTML
+// sans entrée ici, et tout ce qui suivait s'est décalé d'un cran : la section Scènes s'intitulait
+// « Projet » et affichait le texte du Projet, Projet affichait celui des Tomes, les Tomes celui des
+// Raccourcis, et les Raccourcis n'étaient plus traduits du tout. En français comme en anglais, et
+// sans que rien ne le signale — un rang manquant ne manque pas, il vole celui du voisin.
+//
+// Avec une clé, une entrée absente est absente : elle ne peut plus emprunter le contenu d'une
+// autre. C'est aussi ce que vérifie tests/i18n.test.mjs, qui refuse tout groupe HTML sans entrée
+// correspondante dans les deux langues.
+//
+// Les paragraphes sont RENDUS à partir de ces tables (cf. applyI18nHelpManual) : le HTML n'en
+// contient plus aucun. Deux listes de paragraphes à tenir en accord, c'était la seconde moitié du
+// même défaut — dix paragraphes sur les Personnages étaient écrits ici et n'atteignaient jamais
+// l'écran, faute de <p> pour les recevoir.
 export const HELP_MANUAL_EN = [
-  { title: 'Panels', paragraphs: [
+  { id: 'cases', title: 'Panels', paragraphs: [
     'Right-click an empty area of the page, then "Create a panel".',
     'Select a panel to view/edit its description and the list of its Elements on the right.',
     'Drag a corner to give it an oblique shape, or a side to move it while keeping it straight (automatic right-angle snapping).',
     'Right-click a panel → "Bring forward"/"Send backward" to change its stacking order relative to the other panels on the page: when panels overlap, the one in front is drawn on top of the others. Its rank is shown in the "Stacking order" section on the right when several panels are present.',
     'Clicking outside the page canvas (in an empty area with no panel or bubble) deselects the active panel.',
   ]},
-  { title: 'Speech bubbles', paragraphs: [
+  { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble".',
     'Oval or rectangle shape, your choice.',
     'The tail can be moved, or hidden if not needed.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
   ]},
-  { title: 'Characters', paragraphs: [
+  { id: 'personnages', title: 'Characters', paragraphs: [
     'Right-click a panel → "Add" → "Add a character".',
     'Double-click a character to set name, gender, emotion, position, hands and size.',
     'Right after adding, Cancel (or Escape) in the dialog deletes the Element: it is only kept if you save. Once saved, cancelling merely closes the dialog.',
@@ -34,7 +51,10 @@ export const HELP_MANUAL_EN = [
     'In the editor the view ORBITS around the character: hold the RIGHT mouse button to turn around it, scroll wheel to zoom. The view cannot be moved sideways — a lone figure is already centred, and the framing starts afresh every time the editor opens. The character is always shown FACING FRONT there, whatever its orientation in the scene or panel: you come here to set joints, not to stage a shot. The orientation of the element itself is left untouched.',
     'The small pencil button in the corner of the 3D preview opens a full-screen view: scroll wheel to zoom, and a right-hand panel split into two boxed sections — "Pose", to pick and manage a pose, and "Fine joint adjustment", with one slider per joint. "Reset pose" returns to the pose the editor opened with; nothing is written to the character until you save the dialog, which reopens on close.',
     '"Reset pose" and "Apply to character" light up only once the pose differs from what it was when the editor opened — greyed out, they would have nothing to do. "Apply to character" sends the edited pose back to the dialog and reopens it — nothing is written to the character until you save there, so Cancel still cancels. Closing the editor without applying leaves everything untouched. The button is absent when the editor was not opened from a character.',
-    'In the editor, click a joint point on the figure to select it: the matching slider group expands and is highlighted. The other points then disappear and stop being clickable — that is what prevents grabbing a neighbour mid-drag. The part of the model that joint drives is tinted slightly, so you can see what you are about to move, and the grab area of the point widens: you can start again slightly off without deselecting. Clicking empty space deselects and brings them all back; expanding a group in the right-hand panel also switches straight to another joint. Expanding a group works the other way round and selects its joint on the figure. Keep the left button held on a joint point and drag to adjust it directly. Only ONE field moves at a time: the one highlighted more strongly in the right-hand panel. An orange guide on the joint point shows the expected gesture — a double arrow gives the direction to follow, a ring means turn around the point instead. The guide FOLLOWS the orientation of the model: turn the figure and it adapts. Dragging across the direction it shows barely moves anything, which is expected. When the joint has several (a head, a shoulder), the scroll wheel switches from one to the next. A selected joint therefore takes the wheel over from the zoom — click empty space to deselect it and get the zoom back.',
+    "In the editor, click a joint point on the figure to select it: the matching slider group expands and is highlighted. The other points then disappear and stop being clickable — that is what prevents grabbing a neighbour mid-drag. Clicking empty space deselects and brings them all back; expanding a group in the right-hand panel conversely selects its joint on the figure.",
+    "The orange tinted area shows what stays CLICKABLE without losing the selection — the disc around the point, and the band along the limb the joint drives. It is not what will move, it is where you can take hold again: starting slightly off therefore does not deselect.",
+    "Keep the left button held on a joint point and drag to adjust it directly. Only ONE field moves at a time: the one highlighted more strongly in the right-hand panel. An orange guide on the point shows the expected gesture — a double arrow gives the direction to follow, a ring means turn around the point instead. The guide FOLLOWS the orientation of the model: turn the figure and it adapts. Dragging across the direction it shows barely moves anything, which is expected.",
+    "When the joint has several fields (a head, a shoulder), the scroll wheel switches from one to the next. A selected joint therefore takes the wheel over from the zoom — click empty space to deselect it and get the zoom back.",
     'Save the current pose to the library from the "Pose" section: type a name, then Save. Rename and Delete apply to any pose in the list, built-in ones included. Deleting a pose changes no character — their angles were copied when the pose was applied — only the displayed label becomes unknown. If the pose is used somewhere in the project, a confirmation states how many characters carry it before deleting.',
     'Deleting a pose is remembered: reopening an older project no longer brings it back. Every deletion asks for confirmation, since it cannot be undone — except for built-in poses, which the Settings dialog can restore. Restoring only adds back the missing ones: your own poses, and any built-in you renamed, are left untouched.',
     'The pose library belongs to the application, not to one project: it is shared by all your projects, and the 15 built-in poses are ordinary entries you can rename or delete like any other. Each project file still embeds a copy of the poses it uses, so a project opened elsewhere keeps its pose names.',
@@ -42,7 +62,7 @@ export const HELP_MANUAL_EN = [
     'Position X/Y fields in the dialog to place it precisely within its panel; Position Y is disabled automatically if "Snapped to the ground" is checked.',
     'If ground snapping is disabled, a "Can cross the ground" option appears in the Position section: uncheck it to keep the character above the ground plane.',
   ]},
-  { title: 'Objects & scenery', paragraphs: [
+  { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
     'Double-click an object to adjust its rotations and size.',
     'Right after adding, Cancel (or Escape) in the dialog deletes the Element: it is only kept if you save. Once saved, cancelling merely closes the dialog.',
@@ -51,16 +71,25 @@ export const HELP_MANUAL_EN = [
     'Wall openings snap automatically to neighboring walls.',
     'If ground snapping is disabled, a "Can cross the ground" option appears in the Position section: uncheck it to keep the object above the ground plane.',
   ]},
-  { title: 'Camera', paragraphs: [
+  { id: 'camera', title: 'Camera', paragraphs: [
     'Right-click a panel → "Camera" (only visible if the panel already contains at least one Element) to switch to Camera mode and show the 3D gizmo.',
     'In Camera mode: click and drag on the panel to orient the view, mouse wheel to move forward/backward, and the settings (sensitivities, rotation, movement) appear in the right-hand menu.',
     'Rotation pivots around whatever sits at the centre of the panel: the rotation centre re-anchors itself onto the first Element aimed at (or onto the Ground) at the start of every drag, without the image moving. Without this, repeated zooming could leave the centre stranded behind in empty space, making the whole scene appear to slide on the slightest rotation.',
+    'The arrow keys, or W/A/S/D, pan the camera sideways and vertically (Camera mode only, outside a text field).',
+    'Selecting an Element centres the camera on it once; the camera is free again afterwards. In Camera mode, the selected Element becomes the permanent centre of rotation.',
     'Keyboard shortcut C (outside a text field, with a panel selected) to toggle Camera mode. In the Scene editor, the T key switches between perspective and top-down view.',
   ]},
-  { title: 'Layers', paragraphs: [
+  { id: 'calques', title: 'Layers', paragraphs: [
     'Mouse wheel over a selected character or object to adjust its depth (closer/farther, its actual size does not change).',
   ]},
-  { title: 'Project', paragraphs: [
+  { id: 'scenes', title: 'Scenes', paragraphs: [
+    'Scenes let you compose a reusable 3D set (Walls, Furniture, Characters, Roads, Buildings…) and load it into any Panel of a page.',
+    'Create or open a Scene from the "Scenes" menu at the top. The Scene editor shows a full-frame canvas; its Elements are placed, oriented and resized exactly as in a normal panel.',
+    'To load a Scene into a panel: right-click the panel → "Load a scene" → pick the Scene. The content is copied into the panel at its real size (Characters at 1.75 m, and so on); the camera is automatically pulled back to frame the whole set.',
+    'After loading, use the mouse wheel in Camera mode to zoom in on a detail. Characters and Objects added afterwards match the same scale as the rest of the Scene.',
+    'Editing the source Scene after loading does not affect the panels that already embedded it: the copy is independent.',
+  ]},
+  { id: 'projet', title: 'Project', paragraphs: [
     'A Project groups together all Volumes, Pages and Panels. Its name is shown at the top of the left-hand menu ("Project" by default); click it to open the Project dialog.',
     '"New project" starts from a blank Volume and offers to choose a .json file to save it to.',
     '"Load an existing project" opens a previously saved .json file.',
@@ -69,17 +98,18 @@ export const HELP_MANUAL_EN = [
     "If there are unsaved changes, a confirmation is shown when closing the application (the dialog's text is imposed by the browser).",
     'Loading, saving and autosaving require the Storyboard BD application (launched via its shortcut or executable); they do not work if index.html is opened directly in a regular browser.',
   ]},
-  { title: 'Volumes & pages', paragraphs: [
+  { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
     'Right-click a volume or a page to export it as PNG or delete it.',
   ]},
-  { title: 'Keyboard shortcuts', paragraphs: [
+  { id: 'raccourcis', title: 'Keyboard shortcuts', paragraphs: [
     '[ / ]: navigate between panels and speech bubbles on the page (by reading order); when a bubble is reached, its text field is automatically focused.',
     'Tab / Shift+Tab: navigate between Elements within a panel (next/previous).',
     'Enter: open the dialog for the selected Element or panel.',
     'Escape: go up one level (selects the parent panel if an Element is active); closes the dialog if one is open.',
     'C: toggle Camera mode on the selected panel.',
     'T: toggle between perspective and top-down view (Scene editor only).',
+    '↑ ↓ ← → or W A S D (in Camera mode): pan the camera sideways and vertically.',
     'Delete: delete the selected Element.',
     'Ctrl+Z / Ctrl+Y: undo / redo.',
     'Ctrl+S: save the project.',
@@ -87,20 +117,20 @@ export const HELP_MANUAL_EN = [
 ];
 
 export const HELP_MANUAL_FR = [
-  { title: 'Cases', paragraphs: [
+  { id: 'cases', title: 'Cases', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une Case ».',
     'Sélectionnez une case pour voir/modifier sa description et la liste de ses Éléments à droite.',
     "Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).",
     "Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.",
     "Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.",
   ]},
-  { title: 'Bulles de dialogue', paragraphs: [
+  { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une Bulle de dialogue ».',
     'Forme Ovale ou Rectangle, au choix.',
     'Pointe déplaçable, ou masquable si besoin.',
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la Bulle » et « Texte » à droite.',
   ]},
-  { title: 'Personnages', paragraphs: [
+  { id: 'personnages', title: 'Personnages', paragraphs: [
     'Clic droit sur une case → « Ajouter » → « Ajouter un personnage ».',
     'Double-clic sur un personnage pour régler nom, genre, émotion, position, mains et taille.',
     "Juste après l'ajout, « Annuler » (ou Échap) dans la modale supprime l'Élément : il n'est conservé que si vous validez. Une fois enregistré, annuler ne fait plus que fermer la modale.",
@@ -109,7 +139,10 @@ export const HELP_MANUAL_FR = [
     "Dans l'éditeur, la vue ORBITE autour du Personnage : maintenez le clic DROIT pour en faire le tour, molette pour zoomer. La vue ne se déplace pas latéralement — une figure seule est déjà centrée, et le cadrage repart de zéro à chaque ouverture de l'éditeur. Le Personnage y est toujours montré DE FACE, quelle que soit son orientation dans la Scène ou la Case : on vient y régler des articulations, pas mettre en scène. L'orientation de l'Élément, elle, n'est pas modifiée.",
     "Le petit bouton crayon dans le coin de l'aperçu 3D ouvre une vue plein écran : molette pour zoomer, et un panneau de droite scindé en deux blocs encadrés — « Pose », pour choisir et gérer une pose, et « Réglage fin des articulations », avec un curseur par articulation. « Réinitialiser la pose » revient à la pose d'ouverture ; rien n'est écrit dans le Personnage tant que vous n'avez pas enregistré la modale, qui réapparaît à la fermeture.",
     "« Réinitialiser la pose » et « Appliquer au Personnage » ne s'allument que si la pose diffère de celle d'ouverture — grisés, ils n'auraient rien à faire. « Appliquer au Personnage » renvoie la pose éditée vers la modale et la rouvre — rien n'est écrit dans le Personnage tant que vous n'y avez pas enregistré, donc Annuler annule toujours. Fermer l'éditeur sans appliquer ne change rien. Le bouton est absent si l'éditeur n'a pas été ouvert depuis un Personnage.",
-    "Dans l'éditeur, cliquez un point d'articulation sur la figure pour le sélectionner : le groupe de curseurs correspondant se déplie et se surligne. Les autres points disparaissent alors, et cessent d'être cliquables — c'est ce qui évite d'attraper le voisin en plein glisser. La partie du modèle que cette articulation entraîne se teinte légèrement, pour qu'on voie ce qu'on s'apprête à bouger, et la zone de saisie du point s'élargit : on peut repartir un peu à côté sans désélectionner. Cliquer dans le vide désélectionne et les fait tous revenir ; déplier un groupe dans le panneau de droite permet aussi de passer directement à une autre articulation. Déplier un groupe fait l'inverse et sélectionne son articulation sur la figure. Maintenez le clic gauche sur un point d'articulation et glissez pour la régler directement. Un SEUL champ bouge à la fois : celui que le panneau de droite surligne plus fortement. Un repère orange sur le point d'articulation indique le geste attendu — une double flèche donne la direction à suivre, un anneau signifie qu'il faut tourner autour du point. Ce repère SUIT l'orientation du modèle : faites pivoter la figure, il s'adapte. Glisser en travers de la direction indiquée ne fait presque rien bouger, c'est normal. Quand l'articulation en a plusieurs (une tête, une épaule), la molette passe de l'un à l'autre. Une articulation sélectionnée confisque donc la molette au zoom — cliquez dans le vide pour la désélectionner et retrouver le zoom.",
+    "Dans l'éditeur, cliquez un point d'articulation sur la figure pour le sélectionner : le groupe de curseurs correspondant se déplie et se surligne. Les autres points disparaissent alors et cessent d'être cliquables — c'est ce qui évite d'attraper le voisin en plein glisser. Cliquer dans le vide désélectionne et les fait tous revenir ; déplier un groupe dans le panneau de droite sélectionne à l'inverse son articulation sur la figure.",
+    "La zone teintée en orange montre ce qui reste CLIQUABLE sans perdre la sélection — le disque autour du point, et la bande le long du membre que l'articulation commande. Ce n'est pas ce qui va bouger, c'est où vous pouvez reprendre la prise : repartir un peu à côté ne désélectionne donc pas.",
+    "Maintenez le clic gauche sur un point d'articulation et glissez pour la régler directement. Un SEUL champ bouge à la fois : celui que le panneau de droite surligne plus fortement. Un repère orange sur le point indique le geste attendu — une double flèche donne la direction à suivre, un anneau signifie qu'il faut tourner autour du point. Ce repère SUIT l'orientation du modèle : faites pivoter la figure, il s'adapte. Glisser en travers de la direction indiquée ne fait presque rien bouger, c'est normal.",
+    "Quand l'articulation possède plusieurs champs (une tête, une épaule), la molette passe de l'un à l'autre. Une articulation sélectionnée confisque donc la molette au zoom — cliquez dans le vide pour la désélectionner et retrouver le zoom.",
     "Enregistrez la pose en cours dans la bibliothèque depuis la section « Pose » : saisissez un nom, puis Enregistrer. Renommer et Supprimer s'appliquent à n'importe quelle pose de la liste, poses de base comprises. Supprimer une pose ne change aucun Personnage — leurs angles ont été copiés au moment où la pose leur a été appliquée — seule l'étiquette affichée devient « inconnue ». Si la pose est utilisée quelque part dans le Projet, une confirmation indique combien de Personnages la portent avant de supprimer.",
     "La suppression d'une pose est mémorisée : rouvrir un Projet plus ancien ne la fait plus revenir. Toute suppression demande confirmation, puisqu'elle est irréversible — sauf pour les poses de base, que la modale Configuration permet de restaurer. Restaurer ne réajoute que les manquantes : vos propres poses, et les poses de base que vous avez renommées, ne sont pas touchées.",
     "La bibliothèque de poses appartient à l'Application, pas à un Projet : elle est partagée par tous vos Projets, et les 15 poses de base y sont des entrées ordinaires, renommables et supprimables comme les autres. Chaque fichier de Projet embarque tout de même une copie des poses qu'il utilise, pour qu'un Projet ouvert ailleurs garde le nom de ses poses.",
@@ -117,7 +150,7 @@ export const HELP_MANUAL_FR = [
     'Champs Position X/Y dans la modale pour le placer précisément dans sa Case ; Position Y se désactive automatiquement si « Aimanté au Sol » est cochée.',
     "Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer le personnage au-dessus du Sol.",
   ]},
-  { title: 'Objets & décor', paragraphs: [
+  { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',
     'Double-clic sur un objet pour ajuster ses rotations et sa taille.',
     "Juste après l'ajout, « Annuler » (ou Échap) dans la modale supprime l'Élément : il n'est conservé que si vous validez. Une fois enregistré, annuler ne fait plus que fermer la modale.",
@@ -126,16 +159,25 @@ export const HELP_MANUAL_FR = [
     'Les Parois s\'aimantent automatiquement aux Murs voisins.',
     "Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer l'objet au-dessus du Sol.",
   ]},
-  { title: 'Caméra', paragraphs: [
+  { id: 'camera', title: 'Caméra', paragraphs: [
     'Clic droit sur une case → « Caméra » (visible uniquement si la case contient déjà au moins un Élément) pour passer en mode Caméra et afficher le repère 3D.',
     'En mode Caméra : cliquer-glisser sur la case pour orienter la vue, molette pour avancer/reculer, et les réglages (sensibilités, rotation, déplacement) apparaissent dans le menu de droite.',
     "La rotation pivote autour de ce que vous avez au centre de la Case : le centre de rotation se replace tout seul sur le premier Élément visé (ou sur le Sol) au début de chaque glisser, sans que l'image ne bouge. Sans cela, après plusieurs zooms le centre pouvait rester en arrière dans le vide et toute la scène semblait déraper à la moindre rotation.",
+    'Les flèches directionnelles ou W/A/S/D permettent de translater la caméra latéralement et verticalement (uniquement en mode Caméra, hors champ texte).',
+    "Sélectionner un Élément centre automatiquement la caméra sur lui (centrage unique) ; elle reste ensuite libre. En mode Caméra, l'Élément sélectionné devient le centre de rotation permanent.",
     "Raccourci C (hors champ texte, Case sélectionnée) pour basculer en mode Caméra. Dans l'éditeur de Scène, la touche T bascule entre la vue perspective et la vue de dessus.",
   ]},
-  { title: 'Calques', paragraphs: [
+  { id: 'calques', title: 'Calques', paragraphs: [
     'Molette de la souris sur un personnage ou un objet sélectionné pour régler sa profondeur (rapproche/éloigne, sa vraie taille ne change pas).',
   ]},
-  { title: 'Projet', paragraphs: [
+  { id: 'scenes', title: 'Scènes', paragraphs: [
+    'Les Scènes permettent de composer un décor 3D réutilisable (Murs, Mobilier, Personnages, Routes, Bâtiments…) et de le charger dans n\'importe quelle Case d\'une Planche.',
+    'Créez ou ouvrez une Scène via le menu « Scènes » en haut. L\'éditeur de Scène affiche un canevas plein cadre ; ses Éléments se placent, s\'orientent et se redimensionnent comme dans une Case normale.',
+    'Pour charger une Scène dans une Case : clic droit sur la Case → « Charger une Scène » → choisissez la Scène. Le contenu est copié dans la Case à sa taille réelle (Personnages à 1,75 m, etc.) ; la caméra est automatiquement reculée pour englober l\'ensemble.',
+    'Après chargement, molette de la souris en mode Caméra pour zoomer sur un détail. Les Personnages et Objets ajoutés ensuite s\'intègrent à la même échelle que le reste de la Scène.',
+    'Modifier la Scène source après chargement n\'affecte pas les Cases qui l\'ont déjà intégrée (la copie est indépendante).',
+  ]},
+  { id: 'projet', title: 'Projet', paragraphs: [
     'Un Projet regroupe tous les Tomes, Planches et Cases. Son nom s\'affiche en haut du menu de gauche (« Projet » par défaut) ; cliquez dessus pour ouvrir la modale Projet.',
     '« Nouveau projet » repart d\'un Tome vierge et propose de choisir un fichier .json où l\'enregistrer.',
     '« Charger un projet existant » ouvre un fichier .json précédemment enregistré.',
@@ -144,17 +186,18 @@ export const HELP_MANUAL_FR = [
     "Si des modifications n'ont pas été enregistrées, une confirmation s'affiche à la fermeture de l'application (le texte de cette boîte de dialogue est imposé par le navigateur).",
     "Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboard BD (lancée via son raccourci ou son exécutable) ; ils ne fonctionnent pas si index.html est ouvert directement dans un navigateur classique.",
   ]},
-  { title: 'Tomes & planches', paragraphs: [
+  { id: 'tomes', title: 'Tomes & planches', paragraphs: [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',
     "Clic droit sur un tome ou une planche pour l'exporter en PNG ou le supprimer.",
   ]},
-  { title: 'Raccourcis clavier', paragraphs: [
+  { id: 'raccourcis', title: 'Raccourcis clavier', paragraphs: [
     "[ / ] : naviguer entre les Cases et les Bulles de la Planche (dans l'ordre de lecture) ; quand une Bulle est atteinte, le focus est mis automatiquement sur son champ texte.",
     'Tab / Maj+Tab : naviguer entre les Éléments d\'une Case (suivant/précédent).',
     "Entrée : ouvrir la modale de l'Élément ou de la Case sélectionnée.",
     "Échap : remonter au niveau supérieur (sélectionne la Case parente si un Élément est actif) ; ferme la modale si elle est ouverte.",
     'C : activer/désactiver le mode Caméra sur la Case sélectionnée.',
     "T : basculer entre vue perspective et vue de dessus (éditeur de Scène uniquement).",
+    '↑ ↓ ← → ou W A S D (en mode Caméra) : translater la caméra latéralement et verticalement.',
     'Suppr : supprimer l\'Élément sélectionné.',
     'Ctrl+Z / Ctrl+Y : annuler / rétablir.',
     'Ctrl+S : enregistrer le projet.',
