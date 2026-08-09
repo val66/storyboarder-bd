@@ -484,16 +484,11 @@ export function openPersonaEditor(target, fromModal){
   S.personaEditorFromModal = !!fromModal;
   S.personaEditorTargetId = (target && target.id) || null;
   S.personaEditorDraft = personaEditorInitialJoints(target);
-  // Cadrage remis à neuf à chaque ouverture : hériter du zoom de la session précédente ferait
-  // apparaître un Personnage hors champ sans que rien n'explique pourquoi.
-  // Fix 50 — 0.8 plutôt que 1 : à l'ouverture le Personnage occupait trop le cadre, il faut de la
-  // marge autour pour voir ce qu'on manipule.
-  S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
-  S.personaEditorPan = { x: 0, y: 0 };
-  // Fix 65 — l'orbite repart de face à chaque ouverture, pour la même raison que le zoom : hériter
-  // de l'angle d'une session précédente ferait apparaître un Personnage vu de dos, sans explication.
-  S.personaEditorCamRotX = 0;
-  S.personaEditorCamRotY = 0;
+  // Cadrage remis à neuf à chaque ouverture : hériter du zoom ou de l'angle de la session
+  // précédente ferait apparaître un Personnage hors champ, ou vu de dos, sans que rien ne
+  // l'explique. Fix 66 — passe par resetPersonaEditorCamera plutôt que de réécrire les mêmes
+  // affectations : « le cadrage d'ouverture » doit être défini à UN seul endroit.
+  resetPersonaEditorCamera();
   // Fix 52 — aucune articulation présélectionnée : la sélection décrit ce que l'utilisateur vient de
   // désigner, hériter de la session précédente surlignerait un point qu'il n'a pas choisi.
   S.personaEditorHandleId = null;
@@ -696,8 +691,9 @@ export function setPersonaEditorOrbit(rotX, rotY){
   return { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY };
 }
 
-// Remet la caméra dans son cadrage d'ouverture. Le zoom en fait partie : « recadrer » doit tout
-// ramener, sinon on se retrouve à chercher pourquoi la figure reste minuscule après avoir cliqué.
+// Cadrage d'ouverture de l'éditeur, zoom compris. Seul openPersonaEditor l'appelle depuis le
+// Fix 66 (retrait de la section Caméra) ; la fonction reste séparée parce qu'elle NOMME ce
+// cadrage, et qu'un « recadrer » explicite est le premier bouton qu'on voudra rebrancher dessus.
 export function resetPersonaEditorCamera(){
   S.personaEditorCamRotX = 0;
   S.personaEditorCamRotY = 0;
@@ -893,31 +889,6 @@ export function buildPersonaEditorPosesUI(){
 // se charge du gris : son état :disabled est déjà défini. Appliquer reste en plus masqué en mode
 // autonome (cf. syncPersonaEditorDom) — deux conditions distinctes, la seconde n'est pas un degré
 // de la première.
-// Fix 65 — remet les trois curseurs Caméra en accord avec l'état. Appelée à l'ouverture et après
-// chaque orbite à la souris : sans ça, les curseurs afficheraient encore l'angle d'avant le glisser.
-export function syncPersonaEditorCamControls(){
-  const set = (id, valId, val, suffix) => {
-    const input = document.getElementById(id);
-    const out = document.getElementById(valId);
-    if (input) input.value = val;
-    if (out) out.textContent = val + suffix;
-  };
-  set('personaEditorCamRotY', 'personaEditorCamRotYValue',
-      Math.round(S.personaEditorCamRotY * 180 / Math.PI), '°');
-  set('personaEditorCamRotX', 'personaEditorCamRotXValue',
-      Math.round(S.personaEditorCamRotX * 180 / Math.PI), '°');
-  set('personaEditorCamSens', 'personaEditorCamSensValue',
-      Math.round(S.personaEditorCamSens * 100), '%');
-  const det = document.getElementById('personaEditorCamDetails');
-  if (det) det.open = !!S.personaEditorCamOpen;
-}
-
-// La touche C déplie ou replie la section, en écho au raccourci qui bascule le mode Caméra d'une Case.
-export function togglePersonaEditorCamera(){
-  S.personaEditorCamOpen = !S.personaEditorCamOpen;
-  return S.personaEditorCamOpen;
-}
-
 export function syncPersonaEditorActionButtons(){
   const actif = personaEditorHasChanges();
   ['personaEditorResetBtn', 'personaEditorApplyBtn'].forEach(id => {
@@ -977,7 +948,6 @@ function syncPersonaEditorDom(){
     syncPersonaEditorPoseLabel();
     syncPersonaEditorSliders();
     syncPersonaEditorActionButtons();
-    syncPersonaEditorCamControls();
     drawPersonaEditor();
   }
 }
@@ -1148,62 +1118,23 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
       // La sensibilité NE dépend pas du zoom, contrairement à l'ancien déplacement : une rotation
       // est un angle, pas une distance — la même traversée d'écran doit faire le même tour, qu'on
       // soit près ou loin du Personnage.
-      const k = PERSONA_EDITOR_ORBIT_RAD_PER_PX * S.personaEditorCamSens;
+      const k = PERSONA_EDITOR_ORBIT_RAD_PER_PX;
       setPersonaEditorOrbit(orbiting.rotX - (e.clientY - orbiting.y) * k,
                             orbiting.rotY + (e.clientX - orbiting.x) * k);
-      syncPersonaEditorCamControls();
       drawPersonaEditor();
     });
     window.addEventListener('mouseup', () => { orbiting = null; });
   }
-  // Curseurs de la section Caméra.
-  const bindCam = (id, apply) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      apply(Number(el.value));
-      syncPersonaEditorCamControls();
-      drawPersonaEditor();
-    });
-  };
-  bindCam('personaEditorCamRotY', (deg) =>
-    setPersonaEditorOrbit(S.personaEditorCamRotX, deg * Math.PI / 180));
-  bindCam('personaEditorCamRotX', (deg) =>
-    setPersonaEditorOrbit(deg * Math.PI / 180, S.personaEditorCamRotY));
-  bindCam('personaEditorCamSens', (pct) => { S.personaEditorCamSens = pct / 100; });
-  const camResetBtn = document.getElementById('personaEditorCamResetBtn');
-  if (camResetBtn) camResetBtn.onclick = () => {
-    resetPersonaEditorCamera();
-    syncPersonaEditorCamControls();
-    drawPersonaEditor();
-  };
-  // La section suit l'utilisateur s'il la déplie à la main, sinon la touche C et le repli manuel se
-  // contrediraient au prochain appui.
-  const camDetails = document.getElementById('personaEditorCamDetails');
-  if (camDetails) camDetails.addEventListener('toggle', () => {
-    if (S.personaEditorOpen) S.personaEditorCamOpen = camDetails.open;
-  });
-
   // Échap ferme l'éditeur, comme partout ailleurs dans l'application. stopImmediatePropagation
   // empêche l'écouteur « Échap → menu Projet » de se déclencher sur le même événement.
   //
-  // Fix 65 — C déplie la section Caméra, en écho au raccourci qui bascule le mode Caméra d'une
-  // Case. stopImmediatePropagation est indispensable : sans lui, ce même appui activerait AUSSI le
-  // mode Caméra de la Case sélectionnée derrière l'éditeur — invisible sur le moment, bien réel au
-  // retour.
+  // Fix 66 — l'éditeur n'a PLUS de raccourci Caméra. Le clic droit suffit à orienter la figure, et
+  // toute lettre captée ici serait une lettre volée aux raccourcis de la Case restée derrière.
   window.addEventListener('keydown', (e) => {
     if (!S.personaEditorOpen) return;
     if (e.key === 'Escape') {
       e.stopImmediatePropagation();
       hidePersonaEditor();
-      return;
-    }
-    const tag = (e.target && e.target.tagName) || '';
-    if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey
-        && tag !== 'INPUT' && tag !== 'TEXTAREA') {
-      e.stopImmediatePropagation();
-      togglePersonaEditorCamera();
-      syncPersonaEditorCamControls();
     }
   });
   // Le canevas occupe tout l'écran : sa résolution de rendu dépend de sa taille CSS, il faut donc

@@ -173,7 +173,18 @@ la bibliothèque en place.
   garde-fous sur les clics hors zones légitimes.
 - **1.2** Canevas d'édition alimenté par le renderer partagé (render → `drawImage`), résolution
   plafonnée.
-- **1.3** Caméra de l'éditeur (orbite, zoom) en réutilisant la logique existante.
+- **1.3** Caméra de l'éditeur (orbite, zoom) en réutilisant la logique existante. ✅ *(Fix 65/66)*
+
+  État final : **clic droit maintenu** pour orbiter, **molette** pour zoomer, et rien d'autre. Pas
+  de déplacement latéral — une figure seule est déjà centrée, la déplacer ne fait que la perdre de
+  vue. Le Fix 65 avait ajouté une section « Caméra » dépliable par la touche `C`, avec rotations
+  numériques, sensibilité du glisser et bouton « Recadrer » ; le Fix 66 l'a **retirée** à la
+  demande — le clic droit suffit, et trois curseurs pour ce qu'un glisser fait mieux ne payaient pas
+  leur place à l'écran. La leçon retenue : un raccourci clavier dans un mode qui en RECOUVRE un
+  autre (l'éditeur laisse la Case vivante derrière lui) coûte un `stopImmediatePropagation` et une
+  vigilance permanente ; ne pas en ouvrir un sans en avoir besoin. `resetPersonaEditorCamera` a
+  survécu au retrait : c'est désormais `openPersonaEditor` qui l'appelle, ce qui donne au « cadrage
+  d'ouverture » **une seule** définition au lieu de deux jeux d'affectations parallèles.
 
 ### Phase 2 — Panneau droit : articulations
 

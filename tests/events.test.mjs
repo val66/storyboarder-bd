@@ -42,7 +42,7 @@ import {
   savePersonaEditorPose, renamePersonaEditorPose, deletePersonaEditorPose,
   personaEditorPoseUsage, applyPersonaEditorToModal, poseKeyStillInLibrary,
   personaEditorHasChanges, personaEditorTitle3D,
-  setPersonaEditorOrbit, resetPersonaEditorCamera, togglePersonaEditorCamera,
+  setPersonaEditorOrbit, resetPersonaEditorCamera,
   PERSONA_EDITOR_ROT_X_MAX,
 } from '../src/events.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
@@ -1626,9 +1626,9 @@ describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 65 — caméra de l'éditeur : orbite, plus de déplacement.
+// Fix 65/66 — caméra de l'éditeur : orbite au clic droit, sans déplacement ni raccourci.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — orbite de la caméra (Fix 65)', () => {
+describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
   beforeEach(() => { closePersonaEditor(); });
 
   test('RÉGRESSION : la rotation verticale est bornée à ±85°', () => {
@@ -1647,9 +1647,9 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65)', () => {
     assertClose(Math.abs(r.rotY), Math.PI, 'trois demi-tours = un demi-tour', 1e-9);
   });
 
-  test('recadrer remet l\'orbite ET le zoom à leur valeur d\'ouverture', () => {
-    // Le zoom en fait partie : sinon on cherche pourquoi la figure reste minuscule après avoir
-    // cliqué « Recadrer ».
+  test('le cadrage d\'ouverture remet l\'orbite ET le zoom', () => {
+    // Le zoom en fait partie : sinon on chercherait pourquoi la figure reste minuscule après
+    // avoir rouvert l'éditeur.
     openPersonaEditor(null);
     const zoomOuverture = S.personaEditorZoom;
     setPersonaEditorOrbit(0.7, 2);
@@ -1669,9 +1669,22 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65)', () => {
     assert.equal(S.personaEditorCamRotY, 0);
   });
 
-  test('la touche C bascule la section Caméra', () => {
-    openPersonaEditor(null);
-    assert.equal(togglePersonaEditorCamera(), true);
-    assert.equal(togglePersonaEditorCamera(), false);
+  // Fix 66 — la section Caméra et le raccourci C ont été retirés : le clic droit suffit. Ce test
+  // garde la porte fermée, sinon rien n'empêcherait de réintroduire une touche qui vole son
+  // raccourci à la Case restée derrière l'éditeur.
+  test('RÉGRESSION : aucun raccourci clavier hors Échap dans l\'éditeur', () => {
+    const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const i = src.indexOf("if (!S.personaEditorOpen) return;\n    if (e.key === 'Escape')");
+    assert.ok(i > 0, 'écouteur clavier de l\'éditeur introuvable');
+    const bloc = src.slice(i, src.indexOf('});', i));
+    const touches = [...bloc.matchAll(/e\.key === '([^']+)'/g)].map(m => m[1]);
+    assert.deepEqual(touches, ['Escape'], `touches captées : ${touches.join(', ')}`);
+  });
+
+  test('RÉGRESSION : la sensibilité de l\'orbite est une constante, pas un état réglable', () => {
+    // Elle n'était réglable que par le curseur retiré au Fix 66. La laisser dans S serait un état
+    // que plus personne n'écrit — et que le prochain lecteur croirait vivant.
+    const src = readFileSync(new URL('../src/state.js', import.meta.url), 'utf8');
+    assert.ok(!/personaEditorCam(Sens|Open)/.test(src), 'état de caméra devenu inatteignable');
   });
 });

@@ -52,28 +52,6 @@
     <aside class="persona-editor-panel">
       <!-- Pose de référence du brouillon. Appliquer une pose COPIE ses angles : aucun Personnage ne
            dépend de la bibliothèque, cf. docs/editeur-personnage.md. -->
-      <!-- Caméra : ORBITE autour du Personnage. Dépliable par la touche C, comme le mode Caméra
-           d'une Case. Ne reprend que ce qui a du sens pour une figure seule — ni cible d'orbite,
-           ni vue de dessus, ni profondeur. -->
-      <details id="personaEditorCamDetails" class="joint-group-details">
-        <summary>Caméra</summary>
-        <div class="joint-slider-row">
-          <span class="joint-slider-label">Rotation horizontale</span>
-          <input type="range" id="personaEditorCamRotY" min="-180" max="180" step="1" value="0">
-          <span class="joint-slider-val" id="personaEditorCamRotYValue">0°</span>
-        </div>
-        <div class="joint-slider-row">
-          <span class="joint-slider-label">Rotation verticale</span>
-          <input type="range" id="personaEditorCamRotX" min="-85" max="85" step="1" value="0">
-          <span class="joint-slider-val" id="personaEditorCamRotXValue">0°</span>
-        </div>
-        <div class="joint-slider-row">
-          <span class="joint-slider-label">Sensibilité</span>
-          <input type="range" id="personaEditorCamSens" min="20" max="300" step="5" value="100">
-          <span class="joint-slider-val" id="personaEditorCamSensValue">100%</span>
-        </div>
-        <button id="personaEditorCamResetBtn" type="button" class="danger-btn" style="margin:6px 0 0;">↺ Recadrer</button>
-      </details>
       <h2>Pose</h2>
       <div class="persona-editor-pose-current" id="personaEditorPoseLabel">—</div>
       <div id="personaEditorPosesContainer" class="persona-editor-poses"></div>

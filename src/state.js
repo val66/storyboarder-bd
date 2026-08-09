@@ -75,8 +75,6 @@ export const S = {
   // la perdre de vue), d'où l'absence de pan ici. rotX est borné à ±85° comme pour une Case.
   personaEditorCamRotY: 0,
   personaEditorCamRotX: 0,
-  personaEditorCamSens: 1,      // sensibilité du glisser, réglable comme pour une Case
-  personaEditorCamOpen: false,  // section « Caméra » dépliée (touche C)
   editingSceneId:   null,
 
   // ── Selection ────────────────────────────────────────────────────────
