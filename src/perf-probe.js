@@ -79,7 +79,20 @@ function stats(t) {
 
 export function rapportTexte() {
   const lignes = [];
-  lignes.push('=== chemin de dessin — durées (ms) ===');
+  // Un tableau vide ressemble à « mesuré, rien à signaler » alors qu'il veut dire « jamais
+  // démarré ». C'est exactement le silence trompeur reproché ailleurs à la garde `if (el)` de
+  // setProjectModalStatus : l'absence doit se DIRE, sinon elle passe pour un résultat.
+  if (!mesures.size && !compteurs.size) {
+    return actif
+      ? '=== AUCUNE MESURE ===\nLa collecte est active, mais rien n\'a encore été dessiné.\n'
+        + 'Manipulez l\'application (glisser, tourner la caméra, zoomer) puis rappelez perf.rapport().'
+      : '=== COLLECTE INACTIVE ===\nperf.on() n\'a pas été appelé, ou l\'application a redémarré\n'
+        + 'depuis (ce qui remet la sonde à zéro).\n\n'
+        + '  1. perf.on()\n'
+        + '  2. manipuler l\'application quelques secondes\n'
+        + '  3. perf.rapport()';
+  }
+  lignes.push(`=== chemin de dessin — durées (ms) ===   [collecte ${actif ? 'ACTIVE' : 'ARRÊTÉE'}]`);
   lignes.push('étiquette                          n      total   médiane   moyenne      p95      max');
   [...mesures.entries()]
     .map(([nom, t]) => [nom, stats(t)])
