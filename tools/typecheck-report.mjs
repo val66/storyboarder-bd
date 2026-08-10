@@ -70,4 +70,43 @@ console.log(`${lignes.length} diagnostic(s) au total, sur ${parFichier.size} fic
 tableau('par code d\'erreur', parCode, 20);
 tableau('par fichier', parFichier, 20);
 tableau('patrons de message les plus fréquents', parMessage, 10);
+
+// ── Le tri qui décide de tout : bruit de plateforme, ou signal applicatif ? ───────────────────
+//
+// TS2339 (« Property '…' does not exist on type '…' ») domine, et il recouvre DEUX choses très
+// différentes qu'il faut séparer avant toute décision :
+//
+//   BRUIT. `getElementById` renvoie un HTMLElement générique ; lire `.value` ou `.checked` dessus
+//   est correct à l'exécution mais invérifiable statiquement — le vérificateur ignore que c'est un
+//   <input>. Le code n'a rien de faux, c'est la connaissance du type qui manque.
+//
+//   SIGNAL. Une propriété de NOS objets lue là où elle n'existe pas : faute de frappe, ou hypothèse
+//   fausse sur la forme d'une donnée. C'est ce qu'on cherche.
+//
+// Les distinguer par le nom de la propriété est imparfait mais suffisant pour décider — et c'est
+// mesuré plutôt que supposé.
+const PROPS_DOM = new Set([
+  'value', 'checked', 'selectedIndex', 'options', 'disabled', 'files', 'src', 'href', 'width',
+  'height', 'naturalWidth', 'naturalHeight', 'selectionStart', 'selectionEnd', 'step', 'min',
+  'max', 'placeholder', 'rows', 'cols', 'open', 'content', 'getContext', 'toDataURL', 'play',
+  'pause', 'select', 'submit', 'reset', 'form', 'type', 'name', 'labels', 'validity',
+]);
+const parNature = { 'bruit de plateforme (propriété DOM)': 0, 'signal applicatif (à regarder)': 0 };
+const propsApplicatives = new Map();
+lignes.forEach(l => {
+  const m = l.match(/error TS2339: Property '([^']+)' does not exist on type '([^']+)'/);
+  if (!m) return;
+  const [, prop, surType] = m;
+  const estDom = PROPS_DOM.has(prop) || /HTMLElement|Element|EventTarget|Node/.test(surType);
+  if (estDom) parNature['bruit de plateforme (propriété DOM)']++;
+  else {
+    parNature['signal applicatif (à regarder)']++;
+    const cle = `${prop}  (sur ${surType.slice(0, 40)})`;
+    propsApplicatives.set(cle, (propsApplicatives.get(cle) || 0) + 1);
+  }
+});
+console.log('\n=== TS2339 : bruit ou signal ? ===');
+Object.entries(parNature).forEach(([k, v]) => console.log(String(v).padStart(6), ' ', k));
+tableau('propriétés APPLICATIVES introuvables (le signal)', propsApplicatives, 30);
+
 console.log('\nÀ décider : quels codes valent la peine d\'être corrigés, et lesquels ignorer.');
