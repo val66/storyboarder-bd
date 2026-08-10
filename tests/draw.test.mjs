@@ -544,7 +544,7 @@ describe('buildWallJunctions3D — angles d\'une Pièce réellement construite (
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Fix 85 — câblage du repère de glisser', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
-  const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const evt = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
   test('l\'overlay des poignées dessine le repère qu\'on lui passe', () => {
     const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
@@ -577,7 +577,7 @@ describe('Fix 85 — câblage du repère de glisser', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Fix 86 — masquage des poignées non sélectionnées', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
-  const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const evt = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   const corps = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
     assert.ok(i > 0, `${nom} introuvable`);

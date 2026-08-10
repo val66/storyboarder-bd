@@ -36,6 +36,8 @@ import {
   tracéUpScreenAxis3D,
   discardJustAddedElement,
   dismissModal,
+} from '../src/events.js';
+import {
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
   togglePersonaEditorHandle, applyPersonaEditorPose, personaEditorPoseLabel,
@@ -47,7 +49,7 @@ import {
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
   PERSONA_EDITOR_ROT_X_MAX,
-} from '../src/events.js';
+} from '../src/persona-editor.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import { normalizePoses3D, resyncIdCounter } from '../src/io.js';
@@ -1358,7 +1360,7 @@ describe('Fix 59 — CÂBLAGE : toute suppression passe par une confirmation', (
   // pose inutilisée — traverse la suite sans faire échouer un test. Inspection de source, comme pour
   // l'atomicité de bump-version.mjs et le câblage du Fix 53.
   test('la confirmation n\'est PAS conditionnée à l\'usage de la pose', () => {
-    const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
     const i = src.indexOf('deleteBtn.onclick');
     assert.ok(i > 0, 'gestionnaire introuvable — a-t-il été renommé ?');
     const corps = src.slice(i, src.indexOf('const resetBtn', i));
@@ -1692,7 +1694,7 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
   // garde la porte fermée, sinon rien n'empêcherait de réintroduire une touche qui vole son
   // raccourci à la Case restée derrière l'éditeur.
   test('RÉGRESSION : aucun raccourci clavier hors Échap dans l\'éditeur', () => {
-    const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
     const i = src.indexOf("if (!S.personaEditorOpen) return;\n    if (e.key === 'Escape')");
     assert.ok(i > 0, 'écouteur clavier de l\'éditeur introuvable');
     const bloc = src.slice(i, src.indexOf('});', i));
@@ -1940,7 +1942,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
 // ce sont deux formes précises, chacune correspondant à un défaut observé à l'écran.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
-  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   const corpsDe = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
     if (i < 0) throw new Error(`fonction introuvable : ${nom}`);
@@ -2103,7 +2105,7 @@ describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
 // était bien réel, et ce test reste la seule chose qui empêche la garde de redevenir laxiste.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — la garde de fin de glisser (Fix 77)', () => {
-  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   beforeEach(() => { closePersonaEditor(); });
 
   test('RÉGRESSION : un angle de 0° ne ferme PAS la session', () => {
@@ -2128,7 +2130,7 @@ describe('éditeur de Personnage — la garde de fin de glisser (Fix 77)', () =>
 // s'en aperçoive.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage — rayon de saisie (Fix 87/88)', () => {
-  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
   test('RÉGRESSION : le rayon de saisie dépend de la SÉLECTION', () => {
     assert.match(src, /posePickRadii3D\(!!S\.personaEditorHandleId\)/,
@@ -2215,5 +2217,54 @@ describe('Redessin coalescé — les chemins répétitifs passent par l\'ordonna
       assert.deepEqual(v.coalesce, [],
         `${kind} : coalescé alors qu'il n'est pas un chemin répétitif (lignes ${v.coalesce.join(', ')})`);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La couture laissée par l'extraction de persona-editor.js.
+//
+// Deux appels, deux lignes, et l'éditeur entier en dépend : sans wirePersonaEditor() aucun bouton
+// ne répond, sans setPersonaEditorCallbacks() la liste de poses de la modale Personnage diverge de
+// celle de l'éditeur. Ni l'un ni l'autre ne lève quoi que ce soit s'il disparaît — c'est la même
+// panne muette que les dix paragraphes d'aide qui n'atteignaient pas l'écran, et que la garde
+// `if (el)` de setProjectModalStatus qui avalait les échecs d'enregistrement.
+//
+// Par inspection de source : le câblage manipule le DOM, hors de portée du stub.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Extraction de persona-editor.js — la couture tient', () => {
+  const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const edit = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : events.js appelle wirePersonaEditor()', () => {
+    assert.match(evt, /^wirePersonaEditor\(\);$/m,
+      'sans cet appel, aucun écouteur de l\'éditeur n\'est posé et rien ne le signale');
+  });
+
+  test('RÉGRESSION : events.js injecte buildPersonaPositionOptions', () => {
+    assert.match(evt, /setPersonaEditorCallbacks\(\{\s*buildPersonaPositionOptions\s*\}\)/,
+      'sans injection, la modale Personnage garde une liste de poses périmée');
+  });
+
+  test('l\'appel de câblage précède les écouteurs qui lisent l\'éditeur', () => {
+    // wirePersonaEditor remplace un bloc anonyme qui s'exécutait à CET endroit du fichier. Le
+    // remonter en tête changerait l'ordre d'évaluation sans que rien ne le dise.
+    const pos = evt.indexOf('wirePersonaEditor();');
+    assert.ok(pos > 0 && pos < evt.indexOf('// ---------- Numbering of Panels within a Page'),
+      'l\'appel a quitté la position qu\'occupait le bloc d\'origine');
+  });
+
+  test('RÉGRESSION : persona-editor.js n\'importe RIEN d\'events.js', () => {
+    // La seule dépendance remontante a été remplacée par une injection. La réintroduire créerait un
+    // cycle d'imports — ce que setDrawCallbacks / setIOCallbacks / setSidebarCallbacks existent
+    // précisément pour éviter (cf. docs/architecture.md).
+    assert.doesNotMatch(edit, /from '\.\/events\.js'/,
+      'import remontant vers events.js : cycle réintroduit');
+  });
+
+  test('l\'éditeur n\'est plus dans events.js', () => {
+    // Garde-fou du découpage lui-même : si quelqu'un recolle du code d'éditeur ici, le fichier
+    // recommence à grossir par le chemin exact qui l'avait amené à 8 000 lignes.
+    assert.doesNotMatch(evt, /^export function \w*[Pp]ersonaEditor/m,
+      'du code d\'éditeur est revenu dans events.js');
   });
 });

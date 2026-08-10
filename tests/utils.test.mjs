@@ -685,7 +685,7 @@ describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
   });
 
   test('l\'éditeur demande une taille aux proportions de sa boîte', () => {
-    const src = lire('../src/events.js');
+    const src = lire('../src/persona-editor.js');
     const bloc = corpsDe(src, 'drawPersonaEditor');
     assert.match(bloc, /figureRenderSize3D\(/, 'la taille est calculée, pas devinée');
     assert.match(bloc, /clientWidth[\s\S]{0,80}clientHeight/,

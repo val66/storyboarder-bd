@@ -737,7 +737,7 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
     // io.js est importé avant events.js : son écouteur s'exécute en premier, et rien de ce que fait
     // l'éditeur ensuite ne peut le rattraper. Si un jour quelqu'un retire le garde d'io.js en
     // pensant que l'éditeur se protège seul, ce test le lui dit.
-    const ev = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const ev = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
     const i = ev.indexOf("if (!S.personaEditorOpen) return;\n    if (e.key === 'Escape')");
     assert.ok(i > 0, 'écouteur clavier de l\'éditeur introuvable');
     assert.ok(!/openProjectModal/.test(ev.slice(i, ev.indexOf('});', i))),

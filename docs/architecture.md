@@ -27,7 +27,13 @@ setScene3DCallbacks({ drawCurrentPage, refreshCameraSliders, renderSideCameraGiz
 setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, … });
 setI18nCallbacks(onUpdateSidePanel, onRenderTree);
 setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
+setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 ```
+
+The last one is the smallest possible case, and worth reading as the template: extracting
+`persona-editor.js` out of `events.js` left **one** upward dependency — refreshing the Character
+modal's pose list after the library changes. One function. Importing it would have closed the cycle
+for the sake of a single call; injecting it costs four lines and keeps the graph acyclic.
 
 **Textbook case.** `tracéBBox` was defined in `events.js` and called from `scene3d.js`. An import
 would have looped; without an import, the call raised a `ReferenceError` on the first render of a

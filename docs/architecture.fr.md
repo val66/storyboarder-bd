@@ -28,7 +28,13 @@ setScene3DCallbacks({ drawCurrentPage, refreshCameraSliders, renderSideCameraGiz
 setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, … });
 setI18nCallbacks(onUpdateSidePanel, onRenderTree);
 setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
+setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 ```
+
+Le dernier est le cas le plus petit possible, et il vaut comme modèle : extraire `persona-editor.js`
+d'`events.js` n'a laissé **qu'une** dépendance remontante — rafraîchir la liste de poses de la modale
+Personnage après un changement de bibliothèque. Une fonction. L'importer aurait fermé le cycle pour
+un seul appel ; l'injecter coûte quatre lignes et garde le graphe acyclique.
 
 **Cas d'école.** `tracéBBox` était défini dans `events.js` et appelé depuis `scene3d.js`. Un import
 aurait bouclé ; sans import, l'appel levait `ReferenceError` au premier rendu d'une Page contenant un
