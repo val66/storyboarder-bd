@@ -118,8 +118,21 @@ READMEs promise. Three descriptions of one constraint — exactly the kind that 
 ## What a published tag says about itself
 
 Pushing a tag with `git push --follow-tags` makes GitHub display `v1.2.0` and nothing else. The
-`release.yml` workflow fills that page: on any `v*` tag it builds a note from the commit **subjects**
-since the previous tag, plus a compare link, and publishes it as a Release.
+`release.yml` workflow fills that page. On any `v*` tag it publishes, in order of preference:
+
+1. the `CHANGELOG.md` section headed exactly `## <tag>`, which separates **what changes for you**
+   from **under the hood** — a distinction no tool can make on our behalf, since this repository
+   follows no commit-prefix convention. On v1.2.0, six commits out of thirty-three concerned the
+   user;
+2. failing that, the list of commit **subjects** since the previous tag. An honest fallback: it says
+   nothing false, it only says everything flat.
+
+When a written section exists, the subject list moves into a collapsed `<details>` block beneath it,
+so traceability survives readability. Both forms carry a compare link.
+
+A heading must read exactly `## vX.Y.Z`, and a test enforces it. No "Unreleased" section is picked up
+by default: unless renamed, it would republish the previous version's text verbatim, and a false note
+is worse than a generated one.
 
 Only minor and major versions get there, because only they are tagged (see above). Thirty releases
 for thirty patch commits would inform nobody.
@@ -128,10 +141,10 @@ The formatting lives in `tools/release-notes.mjs`, not in the YAML, for one reas
 runs on the server when a tag is pushed — the worst moment to discover it produces an empty note,
 since the tag is already public. As a pure function it is tested on every commit.
 
-Two things it deliberately does **not** do. It does not publish the commit *bodies*: they run twenty
-lines each here, and thirty in a row would drown what you came to read. And it does not group
-changes by category — this repository follows no prefix convention, so any grouping would be guessed,
-therefore wrong about a third of the time.
+What it never publishes: the commit *bodies*. They run twenty lines each here, and thirty in a row
+would drown what you came to read. And it never groups changes on its own — a machine reading these
+subjects cannot tell a user-visible fix from an internal tidy-up, so the sorting is done by hand, in
+`CHANGELOG.md`, or not at all.
 
 The trap, guarded by a test: `fetch-depth: 0` on the checkout. Without it the runner fetches a single
 commit, `git describe` sees no earlier tag, and every release announces itself as the first one.

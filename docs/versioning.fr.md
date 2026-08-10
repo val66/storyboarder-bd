@@ -120,8 +120,21 @@ genre qui dérive.
 ## Ce qu'un tag publié dit de lui-même
 
 Pousser un tag avec `git push --follow-tags` fait afficher « v1.2.0 » par GitHub, et rien d'autre.
-Le workflow `release.yml` remplit cette page : sur tout tag `v*`, il construit une note à partir des
-**sujets** de commit depuis le tag précédent, plus un lien de comparaison, et la publie en Release.
+Le workflow `release.yml` remplit cette page. Sur tout tag `v*`, il publie, par ordre de préférence :
+
+1. la section de `CHANGELOG.md` titrée exactement `## <tag>`, qui sépare **ce qui change pour vous**
+   de **sous le capot** — une distinction qu'aucun outil ne peut faire à notre place, faute de
+   convention de préfixe dans les commits. Sur la v1.2.0, six commits sur trente-trois concernaient
+   l'utilisateur ;
+2. à défaut, la liste des **sujets** de commit depuis le tag précédent. Repli honnête : il ne dit
+   rien de faux, il dit seulement tout à plat.
+
+Quand une section rédigée existe, la liste des sujets part dans un bloc `<details>` replié sous elle :
+la traçabilité survit à la lisibilité. Les deux formes portent un lien de comparaison.
+
+Un titre doit valoir exactement `## vX.Y.Z`, et un test l'exige. Aucune section « À paraître » n'est
+reprise par défaut : faute d'être renommée, elle republierait mot pour mot le texte de la version
+précédente, et une note fausse est pire qu'une note générée.
 
 Seules les versions mineures et majeures y arrivent, puisque seules elles sont taguées (cf.
 plus haut). Trente releases pour trente correctifs n'informeraient personne.
@@ -130,10 +143,10 @@ La mise en forme vit dans `tools/release-notes.mjs`, pas dans le YAML, pour une 
 ne s'exécute que sur le serveur au push d'un tag — le pire moment pour découvrir qu'il produit une
 note vide, puisque le tag est déjà public. En fonction pure, elle est éprouvée à chaque commit.
 
-Deux choses qu'il ne fait délibérément **pas**. Il ne publie pas les CORPS de messages : ils font
-vingt lignes chacun ici, et trente d'affilée noieraient ce qu'on venait lire. Et il ne regroupe pas
-les changements par catégorie — le dépôt ne suit aucune convention de préfixe, donc tout classement
-serait deviné, donc faux une fois sur trois.
+Ce qu'il ne publie jamais : les CORPS de messages. Ils font vingt lignes chacun ici, et trente
+d'affilée noieraient ce qu'on venait lire. Et il ne regroupe jamais les changements de lui-même — une
+machine qui lit ces sujets ne distingue pas un correctif visible d'un rangement interne, donc le tri
+se fait à la main, dans `CHANGELOG.md`, ou pas du tout.
 
 Le piège, gardé par un test : `fetch-depth: 0` sur le checkout. Sans lui, le runner ne récupère
 qu'un commit, `git describe` ne voit aucun tag antérieur, et chaque release s'annonce comme la

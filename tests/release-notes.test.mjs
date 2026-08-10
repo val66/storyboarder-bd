@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { buildReleaseNotes, normaliseRepoUrl } from '../tools/release-notes.mjs';
+import { buildReleaseNotes, normaliseRepoUrl, extractChangelogSection } from '../tools/release-notes.mjs';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKFLOW_BRUT = readFileSync(join(RACINE, '.github/workflows/release.yml'), 'utf8');
@@ -174,3 +174,98 @@ describe('Le workflow lui-même', () => {
  * `propres.slice(0, MAX)` ne change rien — `slice` au-delà de la longueur rend le tableau entier.
  * C'est la même fonction écrite autrement, pas un trou de couverture.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGELOG.md — la section rédigée passe devant la liste des commits
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHANGELOG = readFileSync(join(RACINE, 'CHANGELOG.md'), 'utf8');
+
+describe('extractChangelogSection — trouver la bonne section, ou aucune', () => {
+  const CL = ['# Journal', '', '## v1.2.0', 'Contenu douze.', '', '## v1.1.0', 'Contenu onze.'].join('\n');
+
+  test('rend la section demandée, et elle seule', () => {
+    assert.equal(extractChangelogSection(CL, 'v1.2.0'), 'Contenu douze.');
+    assert.equal(extractChangelogSection(CL, 'v1.1.0'), 'Contenu onze.');
+  });
+
+  test('RÉGRESSION : une version absente ne renvoie pas la section voisine', () => {
+    // Le défaut le plus coûteux possible ici : publier pour v1.3.0 le texte de v1.2.0. Personne ne
+    // le vérifierait, et la note serait crédible tout en étant fausse.
+    assert.equal(extractChangelogSection(CL, 'v1.3.0'), null);
+  });
+
+  test('« v1.2 » ne doit pas attraper « v1.2.0 »', () => {
+    // Un préfixe n'est pas une correspondance. Sans l'ancrage de fin, tout tag court happerait la
+    // première version qui commence pareil.
+    assert.equal(extractChangelogSection(CL, 'v1.2'), null);
+  });
+
+  test('les points du tag ne sont pas des jokers', () => {
+    // `v1.2.0` en expression régulière brute matcherait `v1x2x0`. Peu probable, mais c'est
+    // exactement le genre d'inattention qui rend un test inutile ailleurs.
+    assert.equal(extractChangelogSection(['## v1x2x0', 'Piège.'].join('\n'), 'v1.2.0'), null);
+  });
+
+  test('un titre suivi d\'un libellé reste reconnu', () => {
+    assert.equal(extractChangelogSection('## v1.2.0 — version de fiabilité\nTexte.', 'v1.2.0'), 'Texte.');
+  });
+
+  test('une section vide vaut pas de section', () => {
+    // Sinon la release publierait un titre et rien dessous, en écrasant le repli généré.
+    assert.equal(extractChangelogSection('## v1.2.0\n\n## v1.1.0\nAutre.', 'v1.2.0'), null);
+  });
+
+  test('pas de changelog du tout : on ne lève pas', () => {
+    assert.equal(extractChangelogSection('', 'v1.2.0'), null);
+    assert.equal(extractChangelogSection(CL, ''), null);
+  });
+});
+
+describe('Note de version — avec une section rédigée', () => {
+  const CL = '## v1.2.0\n**Résumé.** Une version de fiabilité.\n\n### Ce qui change pour vous\n- Un truc.';
+
+  test('la section rédigée passe DEVANT, la liste des commits est repliée', () => {
+    const texte = note({ changelog: CL, subjects: ['Interne 1', 'Interne 2'] });
+    const posRésumé = texte.indexOf('Une version de fiabilité');
+    const posDétails = texte.indexOf('<details>');
+    assert.ok(posRésumé !== -1, 'le texte rédigé n\'a pas été repris');
+    assert.ok(posDétails > posRésumé, 'la liste des commits passe avant le résumé');
+    assert.match(texte, /<summary>Les 2 commits de cette version<\/summary>/);
+    assert.match(texte, /- Interne 1/, 'le détail technique reste accessible');
+    assert.match(texte, /<\/details>/, 'le bloc dépliable n\'est pas refermé');
+  });
+
+  test('sans section rédigée, on retombe sur l\'ancien format', () => {
+    // Le repli doit rester intact : c'est lui qui garantit qu'une release publie toujours QUELQUE
+    // CHOSE, même si personne n'a rien écrit.
+    const texte = note({ changelog: '## v9.9.9\nAutre version.' });
+    assert.doesNotMatch(texte, /<details>/, 'un bloc dépliable sans résumé pour l\'introduire');
+    assert.match(texte, /\*\*2 changement\(s\) depuis v1\.1\.0\.\*\*/);
+  });
+
+  test('le lien de comparaison survit à la présence d\'un résumé', () => {
+    assert.match(note({ changelog: CL }), /compare\/v1\.1\.0\.\.\.v1\.2\.0/);
+  });
+});
+
+describe('Le CHANGELOG.md réel', () => {
+  test('tous ses titres de version valent exactement « ## vX.Y.Z »', () => {
+    // Une section « À paraître » serait republiée telle quelle à la version suivante si personne ne
+    // la renommait — une note fausse, là où le repli généré aurait été honnête. La contrainte est
+    // donc vérifiée sur le fichier, pas seulement documentée dans son en-tête.
+    const titres = CHANGELOG.split('\n').filter(l => l.startsWith('## '));
+    assert.ok(titres.length > 0, 'aucune section de version dans CHANGELOG.md');
+    titres.forEach(t => assert.match(t, /^## v\d+\.\d+\.\d+(\s|$)/,
+      `titre non exploitable par l'outil : « ${t} »`));
+  });
+
+  test('la section de la prochaine version mineure est prête et distingue les deux publics', () => {
+    const section = extractChangelogSection(CHANGELOG, 'v1.2.0');
+    assert.ok(section, 'section v1.2.0 absente ou vide');
+    assert.match(section, /### Ce qui change pour vous/);
+    assert.match(section, /### Sous le capot/);
+    assert.ok(section.indexOf('Ce qui change pour vous') < section.indexOf('Sous le capot'),
+      'le travail interne est présenté avant ce que voit l\'utilisateur');
+  });
+});
