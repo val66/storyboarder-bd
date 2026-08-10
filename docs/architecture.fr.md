@@ -29,10 +29,12 @@ setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, … });
 setI18nCallbacks(onUpdateSidePanel, onRenderTree);
 setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
+setModalsCallbacks({ snapshot });
+setProjectTreeCallbacks({ createScene, openScene, openVolumeContextMenu, … });
 ```
 
-Le dernier est le cas le plus petit possible, et il vaut comme modèle : extraire `persona-editor.js`
-d'`events.js` n'a laissé **qu'une** dépendance remontante — rafraîchir la liste de poses de la modale
+`setPersonaEditorCallbacks` est le cas le plus petit possible, et il vaut comme modèle : extraire
+`persona-editor.js` d'`events.js` n'a laissé **qu'une** dépendance remontante — rafraîchir la liste de poses de la modale
 Personnage après un changement de bibliothèque. Une fonction. L'importer aurait fermé le cycle pour
 un seul appel ; l'injecter coûte quatre lignes et garde le graphe acyclique.
 

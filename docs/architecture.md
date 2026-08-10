@@ -28,10 +28,12 @@ setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, … });
 setI18nCallbacks(onUpdateSidePanel, onRenderTree);
 setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
+setModalsCallbacks({ snapshot });
+setProjectTreeCallbacks({ createScene, openScene, openVolumeContextMenu, … });
 ```
 
-The last one is the smallest possible case, and worth reading as the template: extracting
-`persona-editor.js` out of `events.js` left **one** upward dependency — refreshing the Character
+`setPersonaEditorCallbacks` is the smallest possible case, and worth reading as the template:
+extracting `persona-editor.js` out of `events.js` left **one** upward dependency — refreshing the Character
 modal's pose list after the library changes. One function. Importing it would have closed the cycle
 for the sake of a single call; injecting it costs four lines and keeps the graph acyclic.
 
