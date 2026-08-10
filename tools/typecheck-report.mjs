@@ -109,4 +109,19 @@ console.log('\n=== TS2339 : bruit ou signal ? ===');
 Object.entries(parNature).forEach(([k, v]) => console.log(String(v).padStart(6), ' ', k));
 tableau('propriétés APPLICATIVES introuvables (le signal)', propsApplicatives, 30);
 
+// ── Mode détail ──────────────────────────────────────────────────────────────────────────────
+// `npm run typecheck:report -- --details` imprime les diagnostics VERBATIM, en excluant le bruit
+// déjà qualifié. Sur ce dépôt, TS2339 et TS2740 sont à 97 % du bruit de plateforme (mesuré) : les
+// afficher noierait les soixante lignes qui méritent d'être lues une par une.
+if (process.argv.includes('--details')) {
+  const BRUIT = new Set(['TS2339', 'TS2740']);
+  const interessants = lignes.filter(l => {
+    const m = l.match(/error (TS\d+):/);
+    return m && !BRUIT.has(m[1]);
+  });
+  console.log(`\n=== ${interessants.length} diagnostic(s) hors bruit qualifié ===`);
+  interessants.forEach(l => console.log('  ' + l.replace(/\\/g, '/').replace(/^.*\/src\//, 'src/')));
+  console.log('\n(TS2339 et TS2740 exclus : 97 % de bruit de plateforme, mesuré.)');
+}
+
 console.log('\nÀ décider : quels codes valent la peine d\'être corrigés, et lesquels ignorer.');

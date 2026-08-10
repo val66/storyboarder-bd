@@ -47,9 +47,25 @@ interface StoryboarderAPI {
 
 interface Window {
   storyboarderAPI?: StoryboarderAPI;
+  // Exposée volontairement : index.html porte des `onclick="toggleModalSection(this)"` en ligne, qui
+  // ne peuvent atteindre qu'une globale. events.js l'y installe explicitement, avec un commentaire.
+  // Ce n'est pas une fuite, c'est une liaison HTML → JS assumée.
+  toggleModalSection?: (headerEl: HTMLElement) => void;
   // Poignée de diagnostic posée à la main depuis la console, quand il y en a une. Déclarée
   // optionnelle : rien dans l'application ne doit en dépendre.
   perf?: Record<string, (...args: unknown[]) => unknown>;
-  showOpenFilePicker?: (options?: unknown) => Promise<unknown[]>;
-  showSaveFilePicker?: (options?: unknown) => Promise<unknown>;
+  // API File System Access — le chemin navigateur, alternatif au pont Electron. Le typage minimal
+  // ci-dessous décrit CE QU'ON EN UTILISE, pas l'API complète : sans lui, le vérificateur rendait
+  // `unknown` et signalait `getFile` et `requestPermission` comme inexistants. C'étaient deux faux
+  // positifs venant de ma propre déclaration — pas du code.
+  showOpenFilePicker?: (options?: unknown) => Promise<FileSystemFileHandleMinimal[]>;
+  showSaveFilePicker?: (options?: unknown) => Promise<FileSystemFileHandleMinimal>;
+}
+
+/** Ce que l'application utilise réellement d'un handle File System Access. */
+interface FileSystemFileHandleMinimal {
+  name: string;
+  getFile(): Promise<{ text(): Promise<string> }>;
+  createWritable(): Promise<{ write(contenu: string): Promise<void>; close(): Promise<void> }>;
+  requestPermission?(options?: { mode?: string }): Promise<string>;
 }
