@@ -43,6 +43,14 @@ A mutation that "escapes" when it ought to bite deserves a check of *where* it w
 **Verify that the substitution happened.** A test insertion that does not match the pattern does
 nothing, silently — an unchanged test count is the only clue.
 
+**A layered fix needs one test per layer.** `loadSceneIntoPanel` was writing NaN world coordinates
+into saved Elements. The repair had two parts: the cause (the Scene's Page was handed to the ground
+projection without its dimensions) and the net (a non-finite projection now reports `clamped`).
+Reintroducing *either half alone* left the suite green — the other half still caught it. Two real
+defects, zero red. Nothing was broken, but neither line was held by anything, and a later reader
+could have deleted one as useless. The fix is not a cleverer assertion: it is one test aimed at each
+layer. Two protections and no test is two protections and no guarantee.
+
 ## Thresholds are measured, not posited
 
 An invented threshold produces either a test that does not bite, or a test that breaks for nothing.

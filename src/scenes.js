@@ -149,6 +149,11 @@ export async function loadSceneIntoPanel(scene, panel){
   // where worldBboxCx = (bboxCx_2d - scenePanelCx) / WALL_PX_PER_UNIT_3D.
   const bboxCx2d = srcX0 + srcW / 2;
   const worldBboxCx = hasContent ? (bboxCx2d - scenePanelCx) / WALL_PX_PER_UNIT_3D : 0;
+  // A Scene's Page carries only { id, objects }: its dimensions live on the SCENE (cf. createScene,
+  // and the shape test in tests/scenes.test.mjs). panelPixelToGroundXZ3D reads page.w/page.h to
+  // calibrate its field of view — handed the raw Page, it computed on `undefined` and returned NaN
+  // for every ground projection below. We therefore give it the same shape currentPage() produces.
+  const scenePageView = { ...scene.pages[0], w: scene.w, h: scene.h };
   sceneObjs.forEach(src => {
     const copy = JSON.parse(JSON.stringify(src));
     copy.id = idMap.get(src.id);
@@ -198,7 +203,7 @@ export async function loadSceneIntoPanel(scene, panel){
       // If the projection fails (near-horizontal ray, element close to the horizon → clamped), we
       // do NOT set wxFloor/wzFloor: the renderer and camera centering will then use the 2D
       // position (ensureElementWorldPos3D), more reliable than aberrant coordinates.
-      const _sgp = panelPixelToGroundXZ3D(src.x + src.w / 2, src.y + src.h, scenePanel, scene.pages[0]);
+      const _sgp = panelPixelToGroundXZ3D(src.x + src.w / 2, src.y + src.h, scenePanel, scenePageView);
       if (!_sgp.clamped) {
         copy.wxFloor = _sgp.x - worldBboxCx;   // Phase 2: X shift, no scale
         copy.wzFloor = _sgp.z;                  // Phase 2: Z unchanged
@@ -307,7 +312,11 @@ export async function loadSceneIntoPanel(scene, panel){
     // wzFloor = copy.z (current depth) — consistent with getElementDepth() and with how the
     // renderer reads depth as a fallback. Prevents a future "use wzFloor as source of truth"
     // change from finding undefined for these elements.
-    if ((copy.type === 'perso' || copy.type === 'objet3d') && copy.wzFloor === undefined) {
+    // `!Number.isFinite` rather than `=== undefined`: the point of this guard is that no copied
+    // Element leaves without a usable depth, and NaN is not usable. The narrow test let through
+    // exactly the case that produced NaN upstream — a guard that only catches the failure it was
+    // written for is a guard that will be bypassed by the next one.
+    if ((copy.type === 'perso' || copy.type === 'objet3d') && !Number.isFinite(copy.wzFloor)) {
       copy.wzFloor = typeof copy.z === 'number' ? copy.z : 0;
     }
     pageData.objects.push(copy);

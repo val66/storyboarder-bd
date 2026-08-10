@@ -810,7 +810,15 @@ export function panelPixelToGroundXZ3D(px, py, panel, page) {
   // The ray direction uses ref=PANEL_CAM_DEFAULT_DIST_3D (fixed), so t doesn't depend on camDist.
   // 50,000 margin: covers very grazing views regardless of camera distance (Phase 2/3).
   if (Math.abs(t) > 50000) return { x: camX, z: camZ, clamped: true };
-  return { x: camX + t * rayX, z: camZ + t * rayZ, clamped: false };
+  const wx = camX + t * rayX, wz = camZ + t * rayZ;
+  // Last guard, and the only one that catches a MALFORMED input rather than an awkward geometry.
+  // If `page` lacks w/h, halfW/halfH are NaN and so is the whole ray — but NaN fails every
+  // comparison above, including `Math.abs(t) > 50000`, so the two guards let it through and the
+  // function returned NaN coordinates announced as `clamped: false`, i.e. as trustworthy.
+  // loadSceneIntoPanel then wrote them into the Elements, and a NaN world coordinate is a
+  // permanently invisible Element in the saved file. Found by tests/load-scene.test.mjs.
+  if (!Number.isFinite(wx) || !Number.isFinite(wz)) return { x: camX, z: camZ, clamped: true };
+  return { x: wx, z: wz, clamped: false };
 }
 
 // Computes and stores a Trace's world XZ coordinates (obj.world) from its current 2D pixel

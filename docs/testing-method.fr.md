@@ -44,6 +44,16 @@ elle a été appliquée.
 **Vérifier que la substitution a eu lieu.** Une insertion de test qui ne correspond pas au motif ne
 fait rien, en silence — le compte de tests inchangé est le seul indice.
 
+**Une correction en profondeur demande un test par couche.** `loadSceneIntoPanel` écrivait des
+coordonnées monde NaN dans les Éléments enregistrés. La réparation avait deux étages : la cause (la
+Planche de la Scène était donnée à la projection au Sol sans ses dimensions) et le filet (une
+projection non finie se déclare désormais `clamped`). Réintroduire *l'une ou l'autre moitié seule*
+laissait la suite au vert — l'autre moitié rattrapait. Deux défauts réels, zéro rouge. Rien n'était
+cassé, mais aucune des deux lignes n'était retenue par quoi que ce soit, et un lecteur ultérieur
+aurait pu en supprimer une comme inutile. La réponse n'est pas une assertion plus fine : c'est un
+test visant chaque étage. Deux protections et aucun test, cela fait deux protections et aucune
+garantie.
+
 ## Les seuils se mesurent, ils ne se posent pas
 
 Un seuil inventé produit soit un test qui ne mord pas, soit un test qui casse pour rien. Deux fois
