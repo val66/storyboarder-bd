@@ -671,6 +671,11 @@ export async function saveProjectFlow(){
         S.projectFilePath = res.filePath;
         applyProjectNameFromFileName(res.filePath);
         const ok = await writeProjectToPath(S.projectFilePath);
+        // Message conditionnel. Il était inconditionnel : un disque plein ou un fichier en lecture
+        // seule affichait « Projet enregistré. » par-dessus le message d'échec que
+        // writeProjectToPath venait de poser. L'utilisateur était informé du contraire de ce qui
+        // s'était passé — et refermait la modale, satisfait.
+        if (!ok) return false;                      // le message d'échec est déjà posé
         setProjectModalStatus(tr('Project saved.', 'Projet enregistré.'));
         startAutosave();
         closeProjectModal();
@@ -988,6 +993,7 @@ const confirmActionOk = document.getElementById('confirmActionOk');
 const confirmActionCancel = document.getElementById('confirmActionCancel');
 // [STATE→S] let S.confirmActionResolve = null;
 export function confirmAction(message, title){
+  preemptConfirmAction();
   confirmActionCancel.style.display = '';
   confirmActionOk.textContent = 'Confirmer';
   confirmActionTitle.textContent = title || 'Confirmer';
@@ -1000,6 +1006,7 @@ export function confirmAction(message, title){
 // "Information" variant (a single OK button) — replaces window.alert(), which causes exactly
 // the same keyboard-focus-desync issue we're trying to avoid with confirm()/prompt().
 export function alertAction(message, title){
+  preemptConfirmAction();
   confirmActionCancel.style.display = 'none';
   confirmActionOk.textContent = 'OK';
   confirmActionTitle.textContent = title || 'Information';
@@ -1008,6 +1015,20 @@ export function alertAction(message, title){
   setTimeout(() => confirmActionOk.focus(), 0);
   return new Promise((resolve) => { S.confirmActionResolve = resolve; });
 }
+// Une confirmation déjà en attente est RÉGLÉE (à « non ») avant d'en ouvrir une autre.
+//
+// Sans cela, S.confirmActionResolve était simplement écrasé et la première promesse ne se résolvait
+// jamais : le `await confirmAction(...)` qui la portait ne rendait pas la main, et toute la suite de
+// l'opération — charger un projet, en créer un — était abandonnée en silence. Rien ne levait, rien
+// ne s'affichait ; l'application avait juste l'air de ne pas avoir entendu.
+//
+// Régler à « non » plutôt qu'à « oui » : une confirmation qu'on n'a pas vue ne vaut pas accord.
+function preemptConfirmAction(){
+  const enAttente = S.confirmActionResolve;
+  S.confirmActionResolve = null;
+  if (enAttente) enAttente(false);
+}
+
 export function settleConfirmAction(result){
   confirmActionModal.classList.add('hidden');
   const resolve = S.confirmActionResolve;
