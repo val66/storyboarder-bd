@@ -360,39 +360,52 @@ export function buildHandShape3D(handGroup, stateKey, bodyMat){
 }
 
 // Applies a set of joint angles (POSE_3D table or custom joints3d) to the already-built skeleton.
+// Reads an angle from a pose. Returns 0 for anything that is not a finite number.
+//
+// The previous guard was `j.lElbow || 0`, which catches undefined, null and 0 — but NOT a string
+// or a NaN: `'texte' || 0` is `'texte'`. THREE then writes NaN through the whole world matrix and
+// the Character DISAPPEARS from the render, with no error anywhere. That is the most expensive
+// failure mode this file can produce: one looks at the camera, at the style, at the cache, and the
+// defect is a single value in a pose.
+//
+// A pose can carry anything: settings.json is hand-editable, and a project file may have been
+// written by a future version. normalizePoses3D (io.js) already reads the library with this
+// tolerance; the rig now matches it.
+function angle3D(v){ return Number.isFinite(v) ? v : 0; }
+
 export function applyJointAngles(rig, joints){
   const j = joints || POSE_3D.debout;
   const J = rig.joints;
   J.root.rotation.z = j.lieFlat ? Math.PI / 2 : 0;
-  J.torsoGroup.rotation.x = j.torsoRotX || 0;
-  J.torsoGroup.position.y = j.rootY || 0;
-  J.headGroup.rotation.x = j.headRotX || 0;
-  J.headGroup.rotation.y = j.headRotY || 0;
-  J.hipGroup.position.y = j.rootY || 0;
-  J.lShoulder.rotation.x = (j.lShoulder && j.lShoulder.x) || 0;
-  J.lShoulder.rotation.z = (j.lShoulder && j.lShoulder.z) || 0;
-  J.rShoulder.rotation.x = (j.rShoulder && j.rShoulder.x) || 0;
-  J.rShoulder.rotation.z = (j.rShoulder && j.rShoulder.z) || 0;
+  J.torsoGroup.rotation.x = angle3D(j.torsoRotX);
+  J.torsoGroup.position.y = angle3D(j.rootY);
+  J.headGroup.rotation.x = angle3D(j.headRotX);
+  J.headGroup.rotation.y = angle3D(j.headRotY);
+  J.hipGroup.position.y = angle3D(j.rootY);
+  J.lShoulder.rotation.x = angle3D(j.lShoulder && j.lShoulder.x);
+  J.lShoulder.rotation.z = angle3D(j.lShoulder && j.lShoulder.z);
+  J.rShoulder.rotation.x = angle3D(j.rShoulder && j.rShoulder.x);
+  J.rShoulder.rotation.z = angle3D(j.rShoulder && j.rShoulder.z);
   // x = flexion (up/down, as before); z = left/right pivot, on the axis perpendicular to the
   // flexion (the same "spread" axis as for the shoulder/hip) — rotation.y was tried first
   // but corresponds to the arm's own axis (a simple in-place twist, nearly invisible) rather than
   // a true lateral pivot of the forearm.
-  J.lElbow.rotation.x = j.lElbow || 0;
-  J.lElbow.rotation.z = j.lElbowRotZ || 0;
-  J.rElbow.rotation.x = j.rElbow || 0;
-  J.rElbow.rotation.z = j.rElbowRotZ || 0;
-  J.lHip.rotation.x = (j.lHip && j.lHip.x) || 0;
-  J.lHip.rotation.z = (j.lHip && j.lHip.z) || 0;
-  J.rHip.rotation.x = (j.rHip && j.rHip.x) || 0;
-  J.rHip.rotation.z = (j.rHip && j.rHip.z) || 0;
-  J.lKnee.rotation.x = j.lKnee || 0;
-  J.rKnee.rotation.x = j.rKnee || 0;
-  J.lHand.rotation.x = j.lWristRotX || 0;
-  J.lHand.rotation.y = j.lWristRotY || 0;
-  J.lHand.rotation.z = j.lWristRotZ || 0;
-  J.rHand.rotation.x = j.rWristRotX || 0;
-  J.rHand.rotation.y = j.rWristRotY || 0;
-  J.rHand.rotation.z = j.rWristRotZ || 0;
+  J.lElbow.rotation.x = angle3D(j.lElbow);
+  J.lElbow.rotation.z = angle3D(j.lElbowRotZ);
+  J.rElbow.rotation.x = angle3D(j.rElbow);
+  J.rElbow.rotation.z = angle3D(j.rElbowRotZ);
+  J.lHip.rotation.x = angle3D(j.lHip && j.lHip.x);
+  J.lHip.rotation.z = angle3D(j.lHip && j.lHip.z);
+  J.rHip.rotation.x = angle3D(j.rHip && j.rHip.x);
+  J.rHip.rotation.z = angle3D(j.rHip && j.rHip.z);
+  J.lKnee.rotation.x = angle3D(j.lKnee);
+  J.rKnee.rotation.x = angle3D(j.rKnee);
+  J.lHand.rotation.x = angle3D(j.lWristRotX);
+  J.lHand.rotation.y = angle3D(j.lWristRotY);
+  J.lHand.rotation.z = angle3D(j.lWristRotZ);
+  J.rHand.rotation.x = angle3D(j.rWristRotX);
+  J.rHand.rotation.y = angle3D(j.rWristRotY);
+  J.rHand.rotation.z = angle3D(j.rWristRotZ);
 }
 
 // ↳ src/constants.js
