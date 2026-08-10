@@ -29,7 +29,6 @@ import {
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
-import { mesurer, compter } from './perf-probe.js';
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS } from './utils.js';
 import {
@@ -2417,46 +2416,38 @@ export function drawCurrentPage(){
     panelSceneCache3D.clear();
     S.drawCurrentPageLastRef = _pageDataRef;
   }
-  // DIAGNOSTIC TEMPORAIRE (sonde perf) — les quatre phases séparément. L'audit soupçonnait la
-  // réallocation du canevas et la reconstruction du panneau latéral d'être aussi coûteuses que le
-  // dessin lui-même ; c'est précisément ce qu'on vient vérifier plutôt que de le supposer.
-  compter('drawCurrentPage');
-  mesurer('drawCurrentPage TOTAL', () => {
-    mesurer('  1. canevas (width=)', () => {
-      _canvas.width = Math.round(page.w * S.pageRenderScale);
-      _canvas.height = Math.round(page.h * S.pageRenderScale);
-    });
-    mesurer('  2. applyZoom', () => _applyZoom());
-    mesurer('  3. drawContent', () => drawContent(_ctx, page, S.pageRenderScale, true));
-    mesurer('  4. updateSidePanel', () => _updateSidePanel());
-  });
+  // Cost of these four phases, measured over 1071 frames: canvas 0.6%, drawContent the bulk,
+  // side panel 7.6%. See docs/rendering-performance.md — the audit suspected the canvas
+  // reallocation of being as expensive as the drawing itself; it is not.
+  _canvas.width = Math.round(page.w * S.pageRenderScale);
+  _canvas.height = Math.round(page.h * S.pageRenderScale);
+  _applyZoom();
+  drawContent(_ctx, page, S.pageRenderScale, true);
+  _updateSidePanel();
 }
 
 
 
-// Dessin COALESCÉ : au plus un par image d'affichage.
+// COALESCED drawing: at most one per display frame.
 //
-// Mesuré avant d'agir : `drawCurrentPage()` est appelé depuis 110 endroits, dont 8 dans des
-// gestionnaires `mousemove` et 4 dans des `wheel` — c'est-à-dire des événements qui arrivent plus
-// vite que l'écran ne se rafraîchit. Aucun `throttle` n'existait dans le dépôt.
+// `drawCurrentPage()` is called from 110 places, 8 of them in `mousemove` handlers and 4 in
+// `wheel` — events that arrive faster than the screen refreshes. No throttle existed in the repo.
 //
-// Ce que la coalescence évite RÉELLEMENT, cache 3D déduit : le rendu WebGL, lui, est déjà protégé
-// par la signature de panelSceneCache3D. Restent, à chaque appel, le calcul de cette signature
-// (un JSON.stringify de tous les Éléments de toutes les Cases), la réallocation du canevas
-// (`_canvas.width = …`, qui l'efface et le réalloue), le redessin 2D complet, et la reconstruction
-// du panneau latéral. Quatre coûts qui s'exécutaient une quinzaine de fois par image sur une
-// souris rapide.
+// HOW MUCH THIS ACTUALLY SAVES: unknown, and measured to be nothing so far. Over the campaign of
+// docs/rendering-performance.md, 1018 scheduled requests produced 1018 frames — not a single one
+// was absorbed, on that mouse and that page. The scheduler is kept because it costs nothing when
+// it never fires and it bounds the worst case, NOT because a saving was observed. Anyone tempted
+// to cite it as an optimisation should re-measure first.
 //
-// `drawCurrentPage` reste SYNCHRONE et inchangée pour tous les autres appelants : basculer les
-// 110 sites d'un coup demanderait de vérifier, pour chacun, que rien ne lit le canevas juste
-// après. Seuls les chemins répétitifs passent par ici.
+// `drawCurrentPage` stays SYNCHRONOUS and unchanged for every other caller: switching all 110
+// sites at once would require checking, for each, that nothing reads the canvas immediately
+// after. Only the repetitive paths go through here.
 const _planificateurDessin = makeFrameScheduler(
   (cb) => globalThis.requestAnimationFrame(cb),
   (id) => globalThis.cancelAnimationFrame(id),
   () => drawCurrentPage());
 
 export function scheduleDrawCurrentPage(){
-  compter('demandes de dessin coalescées');   // DIAGNOSTIC TEMPORAIRE
   _planificateurDessin.demander();
 }
 

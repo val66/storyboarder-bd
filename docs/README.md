@@ -23,6 +23,7 @@ down.
 | [architecture.md](architecture.md) | Module rules, circular imports, shared state, naming. |
 | [testing-method.md](testing-method.md) | Mutation testing, extracting to make things testable, what is out of reach. |
 | [pose-library.md](pose-library.md) | Poses: where they live, saving, deleting, restoring, merging on open. |
+| [rendering-performance.md](rendering-performance.md) | Measured cost of the drawing path, what the audit got wrong, how to re-measure. |
 
 ## Procedures
 

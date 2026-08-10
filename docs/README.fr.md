@@ -23,6 +23,7 @@ régression difficile à retrouver.
 | [architecture.fr.md](architecture.fr.md) | Règles de modules, imports circulaires, état partagé, nomenclature. |
 | [testing-method.fr.md](testing-method.fr.md) | Test par mutation, extraction pour rendre testable, ce qui est hors de portée. |
 | [pose-library.fr.md](pose-library.fr.md) | Poses : où elles vivent, enregistrer, supprimer, restaurer, fusion à l'ouverture. |
+| [rendering-performance.fr.md](rendering-performance.fr.md) | Coût mesuré du chemin de dessin, ce que l'audit avait faux, comment refaire la mesure. |
 
 ## Procédures
 
