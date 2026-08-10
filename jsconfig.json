@@ -1,0 +1,40 @@
+{
+  "//": [
+    "Vérification de types sur du JavaScript pur — aucune compilation, aucun fichier .ts.",
+    "TypeScript sert ici de LINTER SÉMANTIQUE : il lit le JSDoc et infère le reste.",
+    "",
+    "POURQUOI, alors qu'il y a déjà ESLint et 988 tests. Les trois n'attrapent pas la même chose :",
+    "  — ESLint voit une variable non utilisée, un identifiant inexistant, une clé en double.",
+    "    Il ne sait rien des VALEURS qui circulent.",
+    "  — Les tests voient ce qu'ils appellent. 41 % des exports ne sont cités nulle part.",
+    "  — checkJs voit les FRONTIÈRES : une fonction appelée avec un argument du mauvais type, un",
+    "    retour qui peut être undefined et qu'on déréférence, une propriété absente d'un objet.",
+    "",
+    "Le défaut du rig de Personnage corrigé aujourd'hui est exactement de cette famille : une",
+    "chaîne là où un nombre était attendu, `'texte' || 0` qui vaut `'texte'`, et un NaN propagé",
+    "dans toute la matrice monde. Ni ESLint ni aucun test ne pouvait le voir avant qu'on l'écrive.",
+    "",
+    "CALIBRATION. Les options sont volontairement PERMISSIVES au départ. La leçon d'ESLint tient",
+    "ici aussi : une configuration copiée d'ailleurs produit des centaines de diagnostics sur",
+    "22 000 lignes existantes, et le bruit fait désactiver l'outil. On mesure, puis on resserre."
+  ],
+
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+
+    "strict": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+
+    "lib": ["ES2022", "DOM"],
+    "types": []
+  },
+
+  "include": ["src/**/*.js"],
+  "exclude": ["node_modules", "dist", "tests", "tools", "main.js", "preload.js"]
+}

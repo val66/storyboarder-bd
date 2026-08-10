@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.1.21",
+  "version": "1.1.22",
   "description": "Storyboard BD — Découpage de planches BD",
   "main": "main.js",
   "author": "Valentin",
@@ -12,7 +12,9 @@
     "test": "node --test tests/*.test.mjs",
     "lint": "eslint .",
     "bump": "node tools/bump-version.mjs",
-    "setup-hooks": "node tools/setup-hooks.mjs"
+    "setup-hooks": "node tools/setup-hooks.mjs",
+    "typecheck": "tsc -p jsconfig.json --noEmit",
+    "typecheck:report": "node tools/typecheck-report.mjs"
   },
   "dependencies": {
     "three": "0.128.0"
