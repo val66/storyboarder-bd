@@ -30,6 +30,7 @@ setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 setModalsCallbacks({ snapshot });
 setProjectTreeCallbacks({ createScene, openScene, openVolumeContextMenu, … });
+setScenesCallbacks({ snapshot });
 ```
 
 `setPersonaEditorCallbacks` is the smallest possible case, and worth reading as the template:

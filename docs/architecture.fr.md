@@ -31,6 +31,7 @@ setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onCloseSettings);
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 setModalsCallbacks({ snapshot });
 setProjectTreeCallbacks({ createScene, openScene, openVolumeContextMenu, … });
+setScenesCallbacks({ snapshot });
 ```
 
 `setPersonaEditorCallbacks` est le cas le plus petit possible, et il vaut comme modèle : extraire
