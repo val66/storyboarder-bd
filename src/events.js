@@ -19,6 +19,10 @@ import {
   hitPanelCorner, hitPanelEdge, snapCornerToRightAngle,
 } from './hit-test.js';
 import {
+  setCanvasToolsCallbacks, screenToWorldFloor, buildApplyAngleSnap, buildApplyAlignSnap,
+  startBuildMode, startTraceTool, stopTraceTool, startMeasureTool, stopMeasureTool,
+} from './canvas-tools.js';
+import {
   setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 } from './project-tree.js';
@@ -26,8 +30,7 @@ import {
   EMOTIONS, HAND_STATES, POSITIONS, FIXED_SHAPE, FIXED_COLOR, PANEL_CAM_REF_DIST_3D,
   PANEL_CAM_DEFAULT_DIST_3D, BUILD_WALL_DEFAULT_HEIGHT, BUILD_SNAP_ANGLE_DEG, BUILD_CLOSE_DIST, MAX_UNDO,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, WALL_TYPES, TRAVERSANT_TYPES, WALL_OPENING_MARGIN_FRAC,
-  OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M, OBJECT_REAL_HEIGHT_M, BUILD_ALIGN_THRESHOLD,
-  TRACÉ_DEFAULTS, ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
+  OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M, OBJECT_REAL_HEIGHT_M, ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
   BUBBLE_TAIL_ANGLE_DEFAULT, BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
   POSE_3D, GROUND_Y_DEFAULT_3D, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES, WALL_PX_PER_UNIT_3D,
   CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D,
@@ -269,6 +272,7 @@ document.addEventListener('mousedown', (e) => {
 // keeps the original ordering.
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 setScenesCallbacks({ snapshot });
+setCanvasToolsCallbacks({ snapshot });
 setProjectTreeCallbacks({
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
@@ -1105,31 +1109,6 @@ function addRoomToPanel(panel){
 // "BUILD A BUILDING" TOOL — drawing walls in top-down view
 // ============================================================
 
-// Projects a page point (pageX, pageY) onto the ground plane (y = GROUND_Y_DEFAULT_3D) via the
-// Panel's Three.js camera, using the same projection convention as framePanelCamera3D.
-function screenToWorldFloor(pageX, pageY, panel, page){
-  const basis = panelCamBasis3D(panel);
-  const camDist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
-  const _orb = getCamOrbitWorld(panel, basis);
-  const panOffX = _orb.x, panOffY = _orb.y, panOffZ = _orb.z;
-  let camY = panOffY + basis.backward.y * camDist;
-  if (camY < GROUND_Y_DEFAULT_3D + 0.15) camY = GROUND_Y_DEFAULT_3D + 0.15;
-  const camX = panOffX + basis.backward.x * camDist;
-  const camZ = panOffZ + basis.backward.z * camDist;
-  // Scale: pixels per world unit at the reference distance (cf. framePanelCamera3D)
-  const scale = PANEL_CAM_DEFAULT_DIST_3D * WALL_PX_PER_UNIT_3D;
-  // NDC → camera components (right/up) ratio per unit of depth
-  const ratioRight = (pageX - page.w / 2) / scale;
-  const ratioUp    = -(pageY - page.h / 2) / scale;
-  // Ray direction in world coordinates (unnormalized, depth=1 along -backward)
-  const dirX = ratioRight * basis.right.x + ratioUp * basis.up.x - basis.backward.x;
-  const dirY = ratioRight * basis.right.y + ratioUp * basis.up.y - basis.backward.y;
-  const dirZ = ratioRight * basis.right.z + ratioUp * basis.up.z - basis.backward.z;
-  if (Math.abs(dirY) < 1e-6) return null;
-  const t = (GROUND_Y_DEFAULT_3D - camY) / dirY;
-  if (t <= 0) return null;
-  return { x: camX + t * dirX, z: camZ + t * dirZ };
-}
 
 // Projects a world point (wx, GROUND_Y_DEFAULT_3D, wz) into page coordinates (px).
 
@@ -1137,106 +1116,8 @@ function screenToWorldFloor(pageX, pageY, panel, page){
 // Inverse of panelPixelToGroundXZ3D: world XZ → page pixel on the Panel.
 // Returns null if the point is behind the camera.
 
-// 90° snapping: adjusts (rawX, rawZ) to align the current segment with 0°/90°/180°/270° or
-// multiples of 90° relative to the previous segment, if the gap is < BUILD_SNAP_ANGLE_DEG.
-// Exported (Step C, unit tests): a pure function aside from reading S.buildTool.points — purely
-// additive export, changes nothing for existing callers (all in this file).
-export function buildApplyAngleSnap(rawX, rawZ){
-  if (!S.buildTool || S.buildTool.points.length < 1) return { x: rawX, z: rawZ };
-  const last = S.buildTool.points[S.buildTool.points.length - 1];
-  const dx = rawX - last.x, dz = rawZ - last.z;
-  const len = Math.hypot(dx, dz);
-  if (len < 1e-6) return { x: rawX, z: rawZ };
-  const angle = Math.atan2(dz, dx);
-  // Angular references: world axes + axes relative to the previous segment
-  const refs = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
-  if (S.buildTool.points.length >= 2) {
-    const prev = S.buildTool.points[S.buildTool.points.length - 2];
-    const prevAngle = Math.atan2(last.z - prev.z, last.x - prev.x);
-    refs.push(prevAngle, prevAngle + Math.PI / 2, prevAngle + Math.PI, prevAngle - Math.PI / 2);
-  }
-  const snapRad = BUILD_SNAP_ANGLE_DEG * Math.PI / 180;
-  let bestDiff = Infinity, bestAngle = angle;
-  for (const ref of refs) {
-    let diff = angle - ref;
-    while (diff >  Math.PI) diff -= 2 * Math.PI;
-    while (diff < -Math.PI) diff += 2 * Math.PI;
-    if (Math.abs(diff) < snapRad && Math.abs(diff) < Math.abs(bestDiff)) {
-      bestDiff = diff; bestAngle = ref;
-    }
-  }
-  // Project the click onto the snapped axis (dot product), do NOT use the total length.
-  // With len, a click "far downward" (large dz) gives snapped.x = last.x + len ≫ rawX for a
-  // horizontal snap → a much too long horizontal wall. The projection t = dx·cos + dz·sin gives the
-  // true distance along the intended axis, independent of the perpendicular components.
-  const t = dx * Math.cos(bestAngle) + dz * Math.sin(bestAngle);
-  return { x: last.x + Math.cos(bestAngle) * t, z: last.z + Math.sin(bestAngle) * t };
-}
 
-// ↳ src/constants.js
-// Exported (Step C, unit tests): cf. the equivalent comment on buildApplyAngleSnap above.
-export function buildApplyAlignSnap(ax, az){
-  if (!S.buildTool || S.buildTool.points.length === 0) return { x: ax, z: az, guideX: [], guideZ: [] };
-  // If the cursor is nearly exactly on the last placed point (≤ 0.005 u ≈ 5 mm), no guide: the
-  // cursor hasn't moved since the click yet, any alignment would be trivial (we're AT the starting
-  // point of the next segment), and the displayed guide would visually coincide with the horizontal
-  // wall just drawn, making it look like a full-width wall.
-  const lastPt = S.buildTool.points[S.buildTool.points.length - 1];
-  const distFromLast = Math.hypot(ax - lastPt.x, az - lastPt.z);
-  // If the cursor is nearly exactly on the last placed point, neither snap nor guide.
-  if (distFromLast < 0.005) return { x: ax, z: az, guideX: [], guideZ: [] };
-  // Suppress guides (but keep the snap) while the cursor is in the alignment zone around the last
-  // placed point (< BUILD_ALIGN_THRESHOLD ≈ 18 cm).
-  // Without this, the first mousemove after a click immediately regenerates a Z guide coinciding
-  // with the recent horizontal wall, making it look like a full-width wall (blue line too long).
-  // Guides resume as soon as the cursor leaves this zone — so they remain usable for intentional
-  // alignment.
-  const suppressGuides = distFromLast < BUILD_ALIGN_THRESHOLD;
-  let x = ax, z = az;
-  const guideX = [], guideZ = [];
-  for (const pt of S.buildTool.points) {
-    if (Math.abs(ax - pt.x) < BUILD_ALIGN_THRESHOLD) {
-      x = pt.x;
-      if (!suppressGuides && !guideX.includes(pt.x)) guideX.push(pt.x);
-    }
-    if (Math.abs(az - pt.z) < BUILD_ALIGN_THRESHOLD) {
-      z = pt.z;
-      if (!suppressGuides && !guideZ.includes(pt.z)) guideZ.push(pt.z);
-    }
-  }
-  return { x, z, guideX, guideZ };
-}
 
-// Activates the Build tool on the given panel.
-function startBuildMode(panel, page){
-  const existingRoomLabels = new Set(
-    page.objects.filter(o => o.type === 'objet3d' && o.pieceId && findOwningPanel(o, page) === panel).map(o => o.pieceLabel)
-  );
-  let pieceLabel = 'Pièce';
-  if (existingRoomLabels.has(pieceLabel)) {
-    let n = 2;
-    while (existingRoomLabels.has('Pièce ' + n)) n++;
-    pieceLabel = 'Pièce ' + n;
-  }
-  S.buildTool = {
-    panelId: panel.id,
-    pieceId: newId('piece'),
-    pieceLabel,
-    points: [],      // [{x, z}] in world units
-    wallIds: [],     // ids of walls already created (undoable via Escape)
-    previewPos: null,   // cursor's current world position
-    snapped: false,     // true = the cursor is on the first point (closing imminent)
-    activeGuideX: [],   // world X coords of active vertical alignment guides
-    activeGuideZ: [],   // world Z coords of active horizontal alignment guides
-    snapPointIdx: null,      // index of the hovered existing point (vertex snap), or null
-    wallSegs: [],            // [{id, x1, z1, x2, z2}] endpoints of each created wall (for extension)
-    lastWasVertexSnap: false,// true if the last placed point was a snapped vertex
-    snapWallSegsCount: 0,    // length of wallSegs before creating the arrival wall to the vertex
-    snapArrivalWallId: null, // id of the arrival wall created on the last vertex snap (or null)
-    disconnected: false,    // true = "detached" mode (right-click): next click picks a new starting point
-  };
-  canvas.style.cursor = 'crosshair';
-}
 
 // [DRAW→draw.js] stopBuildMode → imported from draw.js (cf. import above, FIX for the Build tool).
 
@@ -1259,86 +1140,9 @@ export { tracéBBox };
 
 // Activates the tracé tool for a given panel.
 
-// ════════════════════════════════════════════════════════════
-// TRACER TOOL
-// ════════════════════════════════════════════════════════════
-function startTraceTool(panel, type){
-  stopTraceTool(false);
-  const def = TRACÉ_DEFAULTS[type] || {};
-  if (type === 'terrain') {
-    S.traceTool = { type, panelId: panel.id, startX:0, startY:0, endX:0, endY:0, drawing: false, terrainType: 'herbe' };
-  } else {
-    S.traceTool = { type, panelId: panel.id, pts: [], preview: null, color: def.color, width: def.width };
-  }
-  canvas.style.cursor = 'crosshair';
-}
 
-// Cancels or finalizes the tracé tool.
-function stopTraceTool(save){
-  if (!S.traceTool) return;
-  if (save) {
-    const page = currentPage();
-    const panel = page.objects.find(o => o.id === S.traceTool.panelId);
-    if (panel) {
-      snapshot();
-      if (S.traceTool.type === 'terrain') {
-        const rx = Math.min(S.traceTool.startX, S.traceTool.endX);
-        const ry = Math.min(S.traceTool.startY, S.traceTool.endY);
-        const rw = Math.abs(S.traceTool.endX - S.traceTool.startX);
-        const rh = Math.abs(S.traceTool.endY - S.traceTool.startY);
-        if (rw > 4 && rh > 4) {
-          const obj = { id: newId(), type: 'tracé', tracéType: 'terrain',
-            name: 'Terrain', panelId: panel.id, x: rx, y: ry, w: rw, h: rh,
-            terrainType: 'herbe', label: '' };
-          page.objects.push(obj);
-          computeTracéWorld3D(obj, panel, page); // store the world XZ coords
-          S.selectedId = obj.id;
-        }
-      } else {
-        if (S.traceTool.pts.length >= 2) {
-          const bb = tracéBBox(S.traceTool.pts);
-          const obj = { id: newId(), type: 'tracé',
-            tracéType: S.traceTool.type,
-            name: ({ route: 'Route', chemin: 'Chemin de terre', muret: 'Muret',
-                      cloture: 'Clôture', haie: 'Haie végétale', barriere: 'Barrière de route',
-                    })[S.traceTool.type] || 'Tracé',
-            panelId: panel.id, pts: S.traceTool.pts.slice(),
-            color: S.traceTool.color, width: S.traceTool.width,
-            x: bb.x, y: bb.y, w: bb.w, h: bb.h };
-          page.objects.push(obj);
-          computeTracéWorld3D(obj, panel, page); // store the world XZ coords
-          S.selectedId = obj.id;
-        }
-      }
-    }
-  }
-  S.traceTool = null;
-  canvas.style.cursor = '';
-  drawCurrentPage();
-}
 
-// ─── Distance measurement tool (top-down view) ────────────────────────────
-// Activates the Measure tool on the given panel.
-function startMeasureTool(panel) {
-  S.measureTool = { panelId: panel.id, start: null, end: null, live: null };
-  canvas.style.cursor = 'crosshair';
-  const sec = document.getElementById('sideMesureSection');
-  if (sec) sec.style.display = '';
-  const res = document.getElementById('sideMesureResult');
-  if (res) res.style.display = 'none';
-  const st = document.getElementById('sideMesureStatus');
-  if (st) st.textContent = 'Cliquez un 1er point sur le sol.';
-  drawCurrentPage();
-}
 
-// Deactivates the Measure tool (called by the Finish button, Escape, or right-click).
-function stopMeasureTool() {
-  S.measureTool = null;
-  canvas.style.cursor = '';
-  const sec = document.getElementById('sideMesureSection');
-  if (sec) sec.style.display = 'none';
-  drawCurrentPage();
-}
 
 // ════════════════════════════════════════════════════════════
 // TRACÉ / DRAWING TOOLS → src/draw.js

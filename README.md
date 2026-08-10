@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.1.31**
+**Version 1.1.32**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -120,6 +120,8 @@ storyboarder-bd/
 │   ├── i18n.js         # FR/EN translation strings + engine
 │   ├── io.js           # Project serialization, save/load, migrations
 │   ├── draw.js         # 2D canvas rendering (panels, elements, previews)
+│   ├── hit-test.js     # What a click grabs, and what a drag does to it (pure geometry)
+│   ├── canvas-tools.js # The three tools that take over the canvas: Build, Tracé, Measure
 │   ├── project-tree.js # Left menu: Volume → Page tree, list of Scenes
 │   ├── scenes.js       # Scenes: creation, opening, loading into a Panel
 │   ├── sidebar.js      # Right-hand panel rendering (Panel/Bubble/Page/Camera)

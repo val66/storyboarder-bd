@@ -13,9 +13,10 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+// Les deux magnétismes de l'outil Construire ont suivi cet outil dans src/canvas-tools.js. Les
+// tests, eux, restent ici : ils portent sur la géométrie du tracé, pas sur le fichier qui l'héberge.
+import { buildApplyAngleSnap, buildApplyAlignSnap } from '../src/canvas-tools.js';
 import {
-  buildApplyAngleSnap,
-  buildApplyAlignSnap,
   getStackGroup,
   moveStackGroup,
   tracéBBox,

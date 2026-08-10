@@ -92,8 +92,21 @@ function makeFakeElement() {
   return el;
 }
 
+// Les éléments sont MÉMORISÉS PAR ID. Sans cela, `getElementById('board')` rendait un objet neuf à
+// chaque appel : poser `canvas.style.cursor` puis le relire depuis un autre appel donnait toujours
+// `undefined`, et tout test qui l'observait était vrai quoi qu'il arrive — la même famille de piège
+// que le `textContent` non conservé. Les mémoriser rend ces effets observables.
+//
+// Volontairement PAS de vidage entre les tests : ces éléments tiennent lieu de page HTML, qui ne se
+// recharge pas non plus entre deux gestes de l'utilisateur. Un test qui dépend d'un attribut DOM
+// doit le poser lui-même.
+const _elementsParId = new Map();
+
 globalThis.document = {
-  getElementById(){ return makeFakeElement(); },
+  getElementById(id){
+    if (!_elementsParId.has(id)) _elementsParId.set(id, makeFakeElement());
+    return _elementsParId.get(id);
+  },
   createElement(){ return makeFakeElement(); },
   // Nœud texte factice minimal (nodeType 3, comme un vrai Text) — nécessaire pour i18n.js
   // (setLeadingText/setTrailingText appellent document.createTextNode au chargement/à l'usage).

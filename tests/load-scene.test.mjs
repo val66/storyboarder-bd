@@ -21,12 +21,14 @@
  * Chaque test de ce fichier a été vérifié par mutation — cf. le journal en fin de fichier.
  */
 import './helpers/dom-stub.mjs';
+// Le rendu est neutralisé par ce stub partagé — lire son en-tête : il dit ce que cela retire.
+import './helpers/render-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { S, newId } from '../src/state.js';
 import { loadSceneIntoPanel, setScenesCallbacks } from '../src/scenes.js';
-import { setDrawCallbacks, getPanelPoints } from '../src/draw.js';
+import { getPanelPoints } from '../src/draw.js';
 import { panelPixelToGroundXZ3D } from '../src/scene3d.js';
 import { settleConfirmAction } from '../src/io.js';
 import { PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
@@ -38,37 +40,6 @@ import { PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
 let snapshots = 0;
 setScenesCallbacks({ snapshot: () => { snapshots++; } });
 
-// `loadSceneIntoPanel` se termine par `renderAll()`, qui appelle quatre fonctions INJECTÉES dans
-// draw.js — et c'est events.js qui les injecte au démarrage de l'application. Sans elles, l'appel
-// lève `_renderTree is not a function` : constaté au premier lancement de ce fichier.
-//
-// On les neutralise ici plutôt que d'importer events.js, qui rendrait un projet vide au chargement
-// du module et écraserait le montage de chaque test. La conséquence est assumée et délimite ce
-// fichier : on observe les DONNÉES produites par le chargement, jamais le dessin. Le rendu réel
-// demande un canvas et un WebGL que Node n'a pas (cf. l'en-tête de helpers/dom-stub.mjs).
-// Et `renderAll()` finit par dessiner la Page. Dès qu'une Case possède un Personnage ou un Objet,
-// le dessin passe par le rendu 3D, qui construit un THREE.WebGLRenderer — impossible sous Node
-// (« document.createElementNS is not a function », constaté au second lancement ; c'est le mur que
-// l'en-tête de helpers/dom-stub.mjs annonce).
-//
-// On remplace donc la SEULE classe qui pose problème, en gardant tout le reste de THREE réel :
-// rig3d.js lit `THREE` comme une globale à chaque appel, jamais à l'import, donc une copie du
-// namespace suffit. Le rendu 3D s'exécute alors jusqu'au bout et ne produit rien — ce qui est
-// exactement ce qu'on veut : ce fichier teste des données, pas des pixels.
-const fauxRendererWebGL = class {
-  constructor(){ this.domElement = document.createElement('canvas'); this.shadowMap = {}; }
-  setSize(){} setClearColor(){} setPixelRatio(){} render(){} clear(){} dispose(){}
-  getContext(){ return null; }
-};
-globalThis.THREE = { ...globalThis.THREE, WebGLRenderer: fauxRendererWebGL };
-
-const rienDeVisuel = () => {};
-setDrawCallbacks({
-  canvas: document.createElement('canvas'), ctx: document.createElement('canvas').getContext('2d'),
-  applyZoom: rienDeVisuel, updateSidePanel: rienDeVisuel, renderTree: rienDeVisuel,
-  renderSceneList: rienDeVisuel, updateContextualControls: rienDeVisuel,
-  fitZoomToWrap: rienDeVisuel,
-});
 
 // La Case cible, posée dans la Planche courante. Volontairement NI à l'origine NI carrée : une
 // erreur de décalage ou d'axe inversé reste invisible sur une Case en (0,0) de côté égal.
