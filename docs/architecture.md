@@ -106,3 +106,32 @@ Update together, in the same commit:
 - `src/i18n.js` if a label is added
 
 This is not required for internal work: refactoring, tests, comment translation.
+
+## Rule #5 — type checking is a linter, not a promise
+
+`jsconfig.json` runs TypeScript over `src/**/*.js` in `checkJs` mode. No compilation, no `.ts`
+files, no build step. `npm run typecheck`, and `npm run typecheck:report` for a classified summary.
+TypeScript is **optional**: a fresh clone without it still runs, tests and commits.
+
+**What the campaign actually found: no bugs.** Of 402 diagnostics on 22 000 lines, 341 are the known
+cost of untyped DOM access (`getElementById` returns `HTMLElement`; reading `.value` on it is correct
+at runtime and unverifiable statically), ~45 are TypeScript failing to infer tuples from
+heterogeneous array literals (`[[-1, 'wingL'], [1, 'wingR']].forEach(([sx, id]) => sx * 0.09)`), and
+the rest were **false positives produced by our own declaration file** — twelve of them, against zero
+real defects in the code.
+
+That result is information, not a failure. It says the module boundaries are in better shape than
+assumed, and it caps what this tool is worth here. Hence: the checker is **not** wired into the
+pre-commit hook. Doing so would require either annotating four hundred sites or freezing a baseline,
+for a measured yield of zero.
+
+**What was kept, because it earns its place:** `types/globals.d.ts` declares the Electron bridge —
+the application's only door to the disk — and `tests/electron-bridge.test.mjs` refuses any drift
+between that declaration and `preload.js`. That is a real second description of a real contract, and
+descriptions that drift are this repository's number-one bug class.
+
+Two traps recorded on the spot, both already known here:
+- an index signature (`[key: string]: unknown`) on a boundary interface **authorises everything and
+  verifies nothing** — it produced nine bogus "not callable" diagnostics by masking the real methods;
+- a test reading source must strip comments first. The index-signature guard failed on the *comment*
+  explaining why there is no index signature — the same trap as Fix 88.

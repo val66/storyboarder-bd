@@ -36,13 +36,28 @@ declare const THREE: any;
  * succès », corrigé aujourd'hui, vivait précisément dans la lecture de ce `ok`.
  */
 interface StoryboarderAPI {
-  writeProjectFile(filePath: string, contenu: string): Promise<{ ok: boolean; error?: string }>;
-  saveProjectAs(contenu: string, nomSuggere: string):
+  // Recopié de preload.js, qui est la source de vérité. tests/electron-bridge.test.mjs vérifie que
+  // les deux listes ne divergent pas — sans quoi une méthode ajoutée au pont resterait invisible
+  // ici, et une méthode retirée continuerait d'être « déclarée » alors qu'elle n'existe plus.
+  //
+  // AUCUNE signature d'index. La première version en portait une (`[autre: string]: unknown`), et
+  // elle rendait `unknown` TOUTE méthode non listée — donc non appelable. Neuf diagnostics
+  // « This expression is not callable » en sont sortis, tous faux, tous produits par cette
+  // déclaration et non par le code. Une signature d'index sur une interface de frontière ne
+  // documente rien : elle autorise tout et ne vérifie rien.
+  saveProjectAs(json: string, suggestedName: string):
     Promise<{ canceled: boolean; filePath?: string }>;
+  writeProjectFile(filePath: string, json: string): Promise<{ ok: boolean; error?: string }>;
   openProjectDialog(): Promise<{ canceled: boolean; filePath?: string; data?: string }>;
-  getSettings?(): Promise<Record<string, unknown>>;
-  setSetting?(cle: string, valeur: unknown): Promise<unknown>;
-  [autre: string]: unknown;
+  renameProjectFile(filePath: string, newName: string):
+    Promise<{ ok: boolean; error?: string; filePath?: string }>;
+  getLastProject(): Promise<{ filePath?: string; data?: string } | null>;
+  getSettings(): Promise<Record<string, unknown>>;
+  setSetting(key: string, value: unknown): Promise<unknown>;
+  getProjectsDir(): Promise<string>;
+  chooseProjectsDir(): Promise<{ canceled: boolean; dir?: string }>;
+  onRequestQuitConfirmation(callback: () => void): void;
+  confirmQuit(): void;
 }
 
 interface Window {

@@ -107,3 +107,34 @@ Mettre à jour ensemble, dans le même commit :
 - `src/i18n.js` si un libellé est ajouté
 
 Ce n'est pas requis pour du travail interne : refactorisation, tests, traduction de commentaires.
+
+## Règle n°5 — la vérification de types est un linter, pas une promesse
+
+`jsconfig.json` fait passer TypeScript sur `src/**/*.js` en mode `checkJs`. Aucune compilation,
+aucun fichier `.ts`, aucune étape de build. `npm run typecheck`, et `npm run typecheck:report` pour
+un résumé classé. TypeScript est **optionnel** : un clone frais sans lui démarre, teste et commite.
+
+**Ce que la campagne a réellement trouvé : aucun bug.** Sur 402 diagnostics pour 22 000 lignes, 341
+sont le coût connu de l'accès au DOM non typé (`getElementById` rend `HTMLElement` ; y lire `.value`
+est correct à l'exécution et invérifiable statiquement), ~45 sont TypeScript qui n'infère pas de
+tuple depuis un littéral de tableau hétérogène (`[[-1, 'wingL'], [1, 'wingR']].forEach(([sx, id]) =>
+sx * 0.09)`), et le reste étaient des **faux positifs produits par notre propre fichier de
+déclarations** — douze, contre zéro défaut réel dans le code.
+
+Ce résultat est une information, pas un échec. Il dit que les frontières entre modules se portent
+mieux que supposé, et il plafonne ce que cet outil vaut ici. D'où : le vérificateur n'est **pas**
+branché au hook pre-commit. L'y brancher demanderait d'annoter quatre cents endroits ou de figer une
+ligne de base, pour un rendement mesuré nul.
+
+**Ce qui a été gardé, parce qu'il le mérite :** `types/globals.d.ts` déclare le pont Electron — la
+seule porte de l'application vers le disque — et `tests/electron-bridge.test.mjs` refuse toute
+divergence entre cette déclaration et `preload.js`. C'est une vraie seconde description d'un vrai
+contrat, et les descriptions qui divergent sont la classe de bug numéro un de ce dépôt.
+
+Deux pièges consignés sur place, tous deux déjà connus ici :
+- une signature d'index (`[clé: string]: unknown`) sur une interface de frontière **autorise tout et
+  ne vérifie rien** — elle a produit neuf diagnostics « non appelable » entièrement faux, en masquant
+  les méthodes réelles ;
+- un test qui lit du source doit d'abord écarter les commentaires. Le garde anti-signature-d'index
+  échouait sur le *commentaire* expliquant pourquoi il n'y a plus de signature d'index — le piège du
+  Fix 88, à l'identique.

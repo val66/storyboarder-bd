@@ -124,4 +124,9 @@ if (process.argv.includes('--details')) {
   console.log('\n(TS2339 et TS2740 exclus : 97 % de bruit de plateforme, mesuré.)');
 }
 
-console.log('\nÀ décider : quels codes valent la peine d\'être corrigés, et lesquels ignorer.');
+// Verdict de la campagne d'août 2026, consigné ici pour que la prochaine personne à lancer cet
+// outil ne refasse pas le tri. Sur 402 diagnostics : ZÉRO défaut réel. 341 = accès DOM non typé,
+// ~45 = tuples non inférés depuis des littéraux de tableau hétérogènes, 12 = faux positifs de notre
+// propre fichier de déclarations. Détail et décision : docs/architecture.md, règle n°5.
+console.log('\nRepère : la campagne d\'août 2026 n\'a trouvé AUCUN défaut réel ici.');
+console.log('Voir docs/architecture.md (règle n°5) avant de conclure quoi que ce soit d\'un chiffre.');
