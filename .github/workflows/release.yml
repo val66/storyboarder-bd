@@ -1,0 +1,55 @@
+# Publication d'une release GitHub, au push d'un tag de version.
+#
+# POURQUOI. `git push --follow-tags` envoie le tag, et GitHub l'affiche — sans un mot sur ce qu'il
+# contient. Quelqu'un qui arrive sur la page des releases voit « v1.2.0 » et rien d'autre. Ce
+# workflow y met la liste des changements, construite à partir des messages de commit.
+#
+# CE QUI DÉCLENCHE. Les tags `v*` uniquement. Le hook post-commit n'en pose que pour les versions
+# MINEURES et MAJEURES (cf. docs/versioning.md) : les correctifs, eux, n'en produisent pas — trente
+# releases pour trente commits n'informeraient personne.
+#
+# CE QU'IL NE FAIT PAS : construire l'installeur. Cela demande Windows et plusieurs minutes, pour
+# une chaîne qui ne change presque jamais (cf. ci.yml, même raisonnement). La release décrit le
+# contenu, elle ne le distribue pas encore.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Le jeton par défaut est en lecture seule. Créer une release demande l'écriture sur `contents` —
+# et rien de plus : on n'accorde pas ce qu'on n'utilise pas.
+permissions:
+  contents: write
+
+jobs:
+  publier:
+    name: Publier la release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `fetch-depth: 0` est INDISPENSABLE ici. Par défaut, actions/checkout ne récupère qu'un
+          # seul commit : `git describe` ne verrait alors aucun tag antérieur, et la note publiée
+          # annoncerait une première version à chaque fois. C'est le piège classique de ce workflow.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Construire la note de version
+        run: node tools/release-notes.mjs "${{ github.ref_name }}" > NOTE.md
+
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # `gh` est préinstallé sur les runners GitHub. `--verify-tag` refuse de publier si le tag
+        # n'existe pas côté serveur : sans lui, une erreur de nom créerait un tag fantôme.
+        run: gh release create "${{ github.ref_name }}"
+             --title "${{ github.ref_name }}"
+             --notes-file NOTE.md
+             --verify-tag

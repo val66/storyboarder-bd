@@ -117,6 +117,28 @@ utilise `npm ci`, et que les versions de Node testées concordent avec `engines`
 **et** avec ce que promettent les README. Trois descriptions d'une même contrainte — exactement le
 genre qui dérive.
 
+## Ce qu'un tag publié dit de lui-même
+
+Pousser un tag avec `git push --follow-tags` fait afficher « v1.2.0 » par GitHub, et rien d'autre.
+Le workflow `release.yml` remplit cette page : sur tout tag `v*`, il construit une note à partir des
+**sujets** de commit depuis le tag précédent, plus un lien de comparaison, et la publie en Release.
+
+Seules les versions mineures et majeures y arrivent, puisque seules elles sont taguées (cf.
+plus haut). Trente releases pour trente correctifs n'informeraient personne.
+
+La mise en forme vit dans `tools/release-notes.mjs`, pas dans le YAML, pour une raison : un workflow
+ne s'exécute que sur le serveur au push d'un tag — le pire moment pour découvrir qu'il produit une
+note vide, puisque le tag est déjà public. En fonction pure, elle est éprouvée à chaque commit.
+
+Deux choses qu'il ne fait délibérément **pas**. Il ne publie pas les CORPS de messages : ils font
+vingt lignes chacun ici, et trente d'affilée noieraient ce qu'on venait lire. Et il ne regroupe pas
+les changements par catégorie — le dépôt ne suit aucune convention de préfixe, donc tout classement
+serait deviné, donc faux une fois sur trois.
+
+Le piège, gardé par un test : `fetch-depth: 0` sur le checkout. Sans lui, le runner ne récupère
+qu'un commit, `git describe` ne voit aucun tag antérieur, et chaque release s'annonce comme la
+première. Rien n'échoue — la note est simplement fausse, à chaque fois.
+
 ## L'installeur embarque une liste blanche, pas le dossier
 
 `build.files`, dans `package.json`, est **exclusive** : ce qui n'y figure pas n'atteint pas

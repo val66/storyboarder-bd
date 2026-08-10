@@ -115,6 +115,28 @@ Deliberately absent: type checking (402 diagnostics, zero real defects — see a
 and that the Node versions it tests agree with `engines` in `package.json` **and** with what the
 READMEs promise. Three descriptions of one constraint — exactly the kind that drifts.
 
+## What a published tag says about itself
+
+Pushing a tag with `git push --follow-tags` makes GitHub display `v1.2.0` and nothing else. The
+`release.yml` workflow fills that page: on any `v*` tag it builds a note from the commit **subjects**
+since the previous tag, plus a compare link, and publishes it as a Release.
+
+Only minor and major versions get there, because only they are tagged (see above). Thirty releases
+for thirty patch commits would inform nobody.
+
+The formatting lives in `tools/release-notes.mjs`, not in the YAML, for one reason: a workflow only
+runs on the server when a tag is pushed — the worst moment to discover it produces an empty note,
+since the tag is already public. As a pure function it is tested on every commit.
+
+Two things it deliberately does **not** do. It does not publish the commit *bodies*: they run twenty
+lines each here, and thirty in a row would drown what you came to read. And it does not group
+changes by category — this repository follows no prefix convention, so any grouping would be guessed,
+therefore wrong about a third of the time.
+
+The trap, guarded by a test: `fetch-depth: 0` on the checkout. Without it the runner fetches a single
+commit, `git describe` sees no earlier tag, and every release announces itself as the first one.
+Nothing fails — the note is simply false, every time.
+
 ## The installer packs a whitelist, not the folder
 
 `build.files` in `package.json` is **exclusive**: what is not listed does not reach the installed
