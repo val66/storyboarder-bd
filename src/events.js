@@ -15,6 +15,10 @@ import {
   setScenesCallbacks, createScene, openScene, disableSceneCameraMode, loadSceneIntoPanel,
 } from './scenes.js';
 import {
+  hitTestPanelOrBubble, hitTestForDrag, hitHandle, applyResize, compensatePanelChildrenResize,
+  hitPanelCorner, hitPanelEdge, snapCornerToRightAngle,
+} from './hit-test.js';
+import {
   setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 } from './project-tree.js';
@@ -34,7 +38,7 @@ import {
 } from './persona-editor.js';
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
-  clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D, getHandles,
+  clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D,
 } from './utils.js';
 import {
@@ -2086,151 +2090,6 @@ function getCoords(e){
   };
 }
 
-
-
-// Like hitTestPanelOnly, but also keeps dialogue Bubbles: a Bubble is manipulated freely like a
-// Panel (direct click-selection/movement), so the space it occupies must be treated as "occupied"
-// by the same canvas interactions (double-click, hover).
-function hitTestPanelOrBubble(page, x, y){
-  // Bubbles are always rendered ON TOP of Panels (cf. drawContent) — so a click should likewise
-  // favor a Bubble even if it comes before a Panel in page.objects: we test all Bubbles first (in
-  // their relative order among themselves), and only then Panels — on user request.
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (o.type !== 'bulle') continue;
-    if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o;
-  }
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (o.type !== 'panel') continue;
-    if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o;
-  }
-  return null;
-}
-
-// Like hitTestPanelOnly, but also allows an already-selected Element (perso/objet3d, via the
-// "Elements" list in the right-hand menu) to be hit — solely to enable dragging it from the
-// canvas. A non-selected Element is completely ignored here, EXCEPT for Opening Elements
-// (WALL_OPENING_MAGNET_TYPES with magnetWallId): these can be selected directly by clicking within
-// their 2D box, without first going through the "Elements" list in the right-hand menu — on user
-// request ("I can't move the Staircase"), to make moving them more intuitive (click = select +
-// start dragging, like a normal click).
-function hitTestForDrag(page, x, y){
-  // Bubbles are always rendered ON TOP of Panels (cf. drawContent/hitTestPanelOrBubble): we
-  // therefore test all Bubbles first, regardless of their position in page.objects (so regardless
-  // of their "stacking level", which ONLY concerns Bubble-vs-Bubble order, never
-  // Bubble-vs-Panel). We then return Panels and Elements in the array's reverse order.
-  // Tracés/Zones are never clicked directly: selection only via the sidebar (same logic as
-  // magnetized Openings). An already-selected Tracé can be dragged.
-  // NOTE: this line is added in the loop below via the specific `continue`.
-  // Bubble-vs-Panel) — on user request, so a click always selects the Bubble visible on top, even
-  // when a Panel comes after it in page.objects.
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (o.type !== 'bulle') continue;
-    if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o;
-  }
-  for (let i = page.objects.length - 1; i >= 0; i--) {
-    const o = page.objects[i];
-    if (o.type === 'bulle') continue;
-    if (!(x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h)) continue;
-    if ((o.type === 'perso' || o.type === 'objet3d') && o.id !== S.selectedId) continue;
-    // Tracés (roads/zones) are only selectable through the sidebar; once selected
-    // (id === S.selectedId), they can be dragged from the canvas.
-    if (o.type === 'tracé' && o.id !== S.selectedId) continue;
-    return o;
-  }
-  return null;
-}
-
-// [UTILS→utils.js] getHandles → imported from utils.js
-
-function hitHandle(o, x, y){
-  const handles = getHandles(o);
-  const R = 10;
-  for (const name in handles) {
-    const [hx, hy] = handles[name];
-    if (Math.abs(x - hx) <= R && Math.abs(y - hy) <= R) return name;
-  }
-  return null;
-}
-
-function applyResize(orig, handle, dx, dy, page){
-  let { x, y, w, h } = orig;
-  if (handle.includes('l')) {
-    let nx = x + dx, nw = w - dx;
-    if (nw < 24) { nx = x + w - 24; nw = 24; }
-    x = nx; w = nw;
-  }
-  if (handle.includes('r')) {
-    const nw = w + dx;
-    w = Math.max(24, nw);
-  }
-  if (handle[0] === 't') {
-    let ny = y + dy, nh = h - dy;
-    if (nh < 24) { ny = y + h - 24; nh = 24; }
-    y = ny; h = nh;
-  }
-  if (handle === 'b' || handle === 'bl' || handle === 'br') {
-    const nh = h + dy;
-    h = Math.max(24, nh);
-  }
-  if (orig.type !== 'perso' && orig.type !== 'objet3d') {
-    // Personas and objects can extend past the page once enlarged; panels stay bounded.
-    x = Math.max(0, x); y = Math.max(0, y);
-    if (x + w > page.w) w = page.w - x;
-    if (y + h > page.h) h = page.h - y;
-  }
-  return { x, y, w, h };
-}
-
-// ↳ src/utils.js (getBBox)
-// Compensates for resizing a Panel (panelCorner/panelEdge) on the Elements it owns (cf.
-// S.dragOrig.children, captured on mousedown like for S.dragMode 'move'): an Element's WORLD
-// position is computed relative to the panel's CENTER (cf. ensureElementWorldPos3D), so resizing
-// the Panel without doing anything else moves that center under Elements whose canvas o.x/o.y
-// stayed fixed — making them appear to move as if the camera had moved. We therefore shift their
-// o.x/o.y by the same delta as the panel's center (before -> after), so their world position stays
-// unchanged.
-function compensatePanelChildrenResize(dragOrig, bb, page){
-  if (!dragOrig.children || !dragOrig.children.length) return;
-  const oldBB = getBBox(dragOrig.pts);
-  const dCx = (bb.x + bb.w / 2) - (oldBB.x + oldBB.w / 2);
-  const dCy = (bb.y + bb.h / 2) - (oldBB.y + oldBB.h / 2);
-  dragOrig.children.forEach(co => {
-    const child = page.objects.find(o => o.id === co.id);
-    if (child) { child.x = co.x + dCx; child.y = co.y + dCy; }
-  });
-}
-
-function hitPanelCorner(o, x, y){
-  const R = 10;
-  for (let i = 0; i < o.pts.length; i++) {
-    if (Math.hypot(x - o.pts[i].x, y - o.pts[i].y) <= R) return i;
-  }
-  return null;
-}
-
-function hitPanelEdge(o, x, y){
-  const R = 10;
-  for (let i = 0; i < o.pts.length; i++) {
-    const p1 = o.pts[i], p2 = o.pts[(i + 1) % o.pts.length];
-    const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
-    if (Math.hypot(x - mx, y - my) <= R) return i;
-  }
-  return null;
-}
-
-function snapCornerToRightAngle(i, pts, nx, ny, threshold){
-  const n = pts.length;
-  const prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n];
-  let sx = nx, sy = ny, snappedX = false, snappedY = false;
-  if (Math.abs(nx - prev.x) <= threshold) { sx = prev.x; snappedX = true; }
-  else if (Math.abs(nx - next.x) <= threshold) { sx = next.x; snappedX = true; }
-  if (Math.abs(ny - prev.y) <= threshold) { sy = prev.y; snappedY = true; }
-  else if (Math.abs(ny - next.y) <= threshold) { sy = next.y; snappedY = true; }
-  return { x: sx, y: sy, snappedX, snappedY };
-}
 
 function updateContextualControls(){
   // Panel shape and persona color are fixed; nothing to sync.
@@ -4929,9 +4788,6 @@ canvas.addEventListener('dblclick', (e) => {
 // ↳ src/constants.js
 
 
-
-
-
 document.getElementById('ctxCreatePanel').onclick = () => {
   hideContextMenu();
   if (!S.pendingCreatePos) return;
@@ -5167,7 +5023,6 @@ document.getElementById('tracéModal').addEventListener('click', function(e){
 
 // [STATE→S] let S.terrainModalTarget = null;
 // [STATE→S] let S.terrainModalType = 'herbe'; // ground type selected in the modal's grid
-
 
 
 document.getElementById('terrainModalCancel').addEventListener('click', () => {
