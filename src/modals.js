@@ -23,6 +23,7 @@ import { S, currentPage } from './state.js';
 import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
+  PANEL_CAM_DEFAULT_DIST_3D,
   POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
@@ -33,9 +34,14 @@ import {
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
-  findOwningPanel, groundMagnetEligible, 
+  findOwningPanel, groundMagnetEligible,
+  getCamOrbitWorld, mergedBuildWallRigCache3D, panelCamBasis3D, panelSceneCache3D, slabMeshCache3D,
+  worldToPageXY,
 } from './scene3d.js';
-import { cloneJoints, getEffectiveJoints, objectRigCache3D, personaCamera3D } from './rig3d.js';
+import {
+  cloneJoints, getEffectiveJoints, objectRigCache3D, personaCamera3D, personaScene3D,
+  wallRenderRigCache3D,
+} from './rig3d.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
   drawPersonaPreview, drawRoomPreview, getBuildingBoundingBoxXZ, getRoomBoundingBoxXZ,
@@ -46,6 +52,13 @@ import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
 // No callback to inject: none of the functions moved here call snapshot() or any modal not yet
 // extracted (openTracéModal/openTerrainModal are already in this module). wallOpeningRotationForWall
 // and wallChildFraction stay in app.js (used only by its .onclick/.addEventListener handlers).
+
+
+// The only upward dependency left by repatriating the Room/Building handlers: snapshot(), the undo
+// stack, which lives in events.js. Injected rather than imported — events.js already imports this
+// module, so the import would close a cycle (cf. docs/architecture.md rule #2).
+let _snapshot = () => {};
+export function setModalsCallbacks({ snapshot }) { _snapshot = snapshot; }
 
 // ── DOM references (Persona / Object / Room / Building modals) ────────────────────────────────
 const buildingModal       = document.getElementById('buildingModal');
@@ -1220,3 +1233,541 @@ window.addEventListener('mouseup', () => {
   }
 });
 
+
+// ── Room / Building modal handlers ────────────────────────────────────────────────────────────
+// Repatriated from events.js. The openers (openRoomModal, closeRoomModal, refreshRoomPreview…)
+// already lived here; only the save/cancel handlers had stayed behind, and with them a SECOND set
+// of getElementById calls for the same sixteen elements. Two modules reaching for the same DOM
+// nodes is how an id rename breaks one half and not the other — the failure mode that
+// tests/dom-ids.test.mjs exists for.
+const roomModalCancel     = document.getElementById('roomModalCancel');
+const roomModalSave       = document.getElementById('roomModalSave');
+const buildingModalCancel = document.getElementById('buildingModalCancel');
+const buildingModalSave   = document.getElementById('buildingModalSave');
+
+roomMagnetGroundCheckbox.addEventListener('change', () => {
+  roomPosYInput.disabled = roomMagnetGroundCheckbox.checked;
+});
+roomCeilingVisibleCheckbox.addEventListener('change', refreshRoomPreview);
+roomRotYInput.addEventListener('input', refreshRoomPreview);
+
+roomModalSave.onclick = () => {
+  if (!S.roomModalTargetId) { closeRoomModal(); return; }
+  const page    = S.roomModalPage;
+  const panel   = S.roomModalPanel;
+  const pieceId = S.roomModalTargetId;
+  _snapshot();
+  const members = page.objects.filter(o => o.pieceId === pieceId);
+  // 1. Rename the Room
+  const newLabel = roomNameInput.value.trim() || (members[0]?.pieceLabel || 'Pièce');
+  members.forEach(m => { m.pieceLabel = newLabel; });
+  // 2. Ceiling visibility
+  const ceilingObj = page.objects.find(o =>
+    o.pieceId === pieceId && o.objType === 'dalle'
+    && o.worldY != null && o.worldY > GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2);
+  if (ceilingObj) {
+    ceilingObj.ceilingHidden = !roomCeilingVisibleCheckbox.checked;
+    // Invalidate the cached mesh to force re-creation with the correct hidden/visible state.
+    const oldMesh = slabMeshCache3D.get(ceilingObj.id);
+    if (oldMesh) {
+      oldMesh.geometry.dispose(); oldMesh.material.dispose();
+      personaScene3D.remove(oldMesh); slabMeshCache3D.delete(ceilingObj.id);
+    }
+  }
+  // 3. X/Z translation
+  const bb = getRoomBoundingBoxXZ(pieceId, page);
+  if (bb) {
+    const newCx = Number(roomPosXInput.value) || 0;
+    const newCz = Number(roomPosZInput.value) || 0;
+    const dx = newCx - bb.cx, dz = newCz - bb.cz;
+    if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
+      // Walls: update the world coords and recompute the 2D thin-box.
+      // IMPORTANT: before removing an entry from wallRenderRigCache3D, remove its figureGroup from
+      // the scene — otherwise renderPanelScene3D can no longer tell it "visible = false" (it's no
+      // longer in the Map) and the ghost wall stays displayed at its old position.
+      members.filter(o => WALL_TYPES.includes(o.objType)).forEach(w => {
+        const wEntry = wallRenderRigCache3D.get(w.id);
+        if (wEntry && personaScene3D) personaScene3D.remove(wEntry.figureGroup);
+        wallRenderRigCache3D.delete(w.id);
+        if (w.wxFloor !== undefined) w.wxFloor += dx;
+        if (w.wzFloor !== undefined) w.wzFloor += dz;
+        recomputeBuildWallBox2D(w, panel);
+      });
+      // Slabs: move the polygon's vertices
+      members.filter(o => o.objType === 'dalle').forEach(d => {
+        if (d.polygon) d.polygon = d.polygon.map(pt => ({ x: pt.x + dx, z: pt.z + dz }));
+        const oldMesh = slabMeshCache3D.get(d.id);
+        if (oldMesh) {
+          oldMesh.geometry.dispose(); oldMesh.material.dispose();
+          personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id);
+        }
+      });
+      // Same issue for merged walls: remove from the scene before clearing the Map.
+      if (personaScene3D) {
+        mergedBuildWallRigCache3D.forEach(entry => personaScene3D.remove(entry.figureGroup));
+      }
+      mergedBuildWallRigCache3D.clear();
+    }
+  }
+  // 3b. Width×Depth resizing (after translation so the bbox is up to date)
+  if (!S.roomModalInBuilding) {
+    const roomWidthInput = document.getElementById('roomWidthInput');
+    const roomDepthInput = document.getElementById('roomDepthInput');
+    const targetW = Number(roomWidthInput.value);
+    const targetD = Number(roomDepthInput.value);
+    const bbResize = getRoomBoundingBoxXZ(pieceId, page);
+    if (bbResize && bbResize.w > 0.01 && bbResize.d > 0.01 && targetW > 0.1 && targetD > 0.1) {
+      const sx = targetW / bbResize.w, sz = targetD / bbResize.d;
+      if (Math.abs(sx - 1) > 0.001 || Math.abs(sz - 1) > 0.001) {
+        const orig = storeRoomGeometry([pieceId], page);
+        // Pivot = center of the current bbox (after any translation)
+        applyRoomScaleFixed([pieceId], page, panel, sx, sz,
+          bbResize.cx, bbResize.cz, orig.walls, orig.dalles);
+      }
+    }
+  }
+  // 4. Magnetized to Ground + Y float (roomFloatY) + 3D visibility
+  const magnetGround = roomMagnetGroundCheckbox.checked;
+  const floatY    = magnetGround ? 0 : (Number(roomPosYInput.value) || 0);
+  members.forEach(m => { m.roomMagnetGround = magnetGround; m.roomFloatY = floatY; });
+  // 5. Horizontal rotation (rotY) — pivot = bounding box center after any translation
+  const prevRotY  = members[0]?.roomRotY || 0;
+  const newRotY   = Number(roomRotYInput.value) * Math.PI / 180;
+  const deltaRotY = newRotY - prevRotY;
+  if (Math.abs(deltaRotY) > 0.0001) {
+    const bbRot = getRoomBoundingBoxXZ(pieceId, page);
+    if (bbRot) {
+      const cos_a = Math.cos(deltaRotY), sin_a = Math.sin(deltaRotY);
+      const px = bbRot.cx, pz = bbRot.cz;
+      const rotXZ = (wx, wz) => {
+        const ox = wx - px, oz = wz - pz;
+        return { x: px + ox * cos_a - oz * sin_a, z: pz + ox * sin_a + oz * cos_a };
+      };
+      // Walls: rotate the center + new rotY.
+      // If realLenFloor is available: robust approach via real endpoints (avoids any sign
+      // ambiguity on rotY). Otherwise: algebraic fallback with the correct sign.
+      members.filter(o => WALL_TYPES.includes(o.objType) && isFinite(o.wxFloor) && isFinite(o.wzFloor)).forEach(w => {
+        const wEntry = wallRenderRigCache3D.get(w.id);
+        if (wEntry && personaScene3D) personaScene3D.remove(wEntry.figureGroup);
+        wallRenderRigCache3D.delete(w.id);
+        if (w.realLenFloor > 0) {
+          // Convention: dir = (cos rotY, -sin rotY) in (X,Z)
+          const ca_w = Math.cos(w.rotY || 0), sa_w = Math.sin(w.rotY || 0);
+          const half = w.realLenFloor / 2;
+          const x1 = w.wxFloor - half * ca_w, z1 = w.wzFloor + half * sa_w;
+          const x2 = w.wxFloor + half * ca_w, z2 = w.wzFloor - half * sa_w;
+          const r1 = rotXZ(x1, z1), r2 = rotXZ(x2, z2);
+          w.wxFloor = (r1.x + r2.x) / 2;
+          w.wzFloor = (r1.z + r2.z) / 2;
+          const ndx = r2.x - r1.x, ndz = r2.z - r1.z;
+          if (Math.hypot(ndx, ndz) > 0.0001) w.rotY = Math.atan2(-ndz, ndx);
+        } else {
+          const r = rotXZ(w.wxFloor, w.wzFloor);
+          w.wxFloor = r.x; w.wzFloor = r.z;
+          w.rotY = (w.rotY || 0) - deltaRotY;
+        }
+        recomputeBuildWallBox2D(w, panel);
+      });
+      // Slabs: rotate each polygon vertex
+      members.filter(o => o.objType === 'dalle' && o.polygon).forEach(d => {
+        d.polygon = d.polygon.map(pt => { const r = rotXZ(pt.x, pt.z); return { x: r.x, z: r.z }; });
+        const oldMesh = slabMeshCache3D.get(d.id);
+        if (oldMesh) { oldMesh.geometry.dispose(); oldMesh.material.dispose(); personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id); }
+      });
+      // Elements (perso / objet3d): rotate position + own orientation
+      // Exclude walls (already handled by the previous loop via the endpoint-based approach) to
+      // avoid a double rotation: the wall loop rotates by 1×deltaRotY, this loop would add a 2nd pass.
+      members.filter(o => (o.type === 'perso' || o.type === 'objet3d') && !WALL_TYPES.includes(o.objType) && isFinite(o.wxFloor) && isFinite(o.wzFloor)).forEach(el => {
+        const r = rotXZ(el.wxFloor, el.wzFloor);
+        el.wxFloor = r.x; el.wzFloor = r.z;
+        if (isFinite(el.rotY)) el.rotY = (el.rotY || 0) - deltaRotY;
+      });
+      // Invalidate merged walls
+      if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+      mergedBuildWallRigCache3D.clear();
+    }
+  }
+  members.forEach(m => { m.roomRotY = newRotY; });
+  // 6. Interior floor type
+  const activeFloorBtn = document.querySelector('#roomFloorTypeGrid .sol-ground-btn.active');
+  const newFloorType = activeFloorBtn ? activeFloorBtn.dataset.floorType : 'neutre';
+  members.forEach(m => { m.pieceFloorType = newFloorType; });
+  // Invalidate the floor slabs to force re-creation with the new texture
+  members.filter(o => o.objType === 'dalle').forEach(d => {
+    const oldMesh = slabMeshCache3D.get(d.id);
+    if (oldMesh) { oldMesh.geometry.dispose(); oldMesh.material.dispose(); personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id); }
+  });
+  // Invalidate the Panel's 3D bitmap to force a full re-render
+  panelSceneCache3D.delete(panel.id);
+  drawCurrentPage();
+  closeRoomModal();
+};
+
+roomModalCancel.onclick = closeRoomModal;
+roomModal.addEventListener('mousedown', (e) => { if (e.target === roomModal) { e.stopPropagation(); closeRoomModal(); } });
+window.addEventListener('keydown', (e) => {
+  if (!roomModal.classList.contains('hidden')) {
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); closeRoomModal(); }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) roomModalSave.onclick();
+  }
+});
+
+// ── Building Modal ──────────────────────────────────────────────────────────────────────────────
+
+// [STATE→S] let S.buildingModalTargetKey  = null; // buildingKey currently being edited
+// [STATE→S] let S.buildingModalRoomIds   = null; // roomIds of the Building
+// [STATE→S] let S.buildingModalPanelRef   = null;
+// [STATE→S] let S.buildingModalPageRef    = null;
+
+
+
+buildingModalSave.onclick = () => {
+  if (!S.buildingModalTargetKey) { closeBuildingModal(); return; }
+  const page     = S.buildingModalPageRef;
+  const panel    = S.buildingModalPanelRef;
+  const buildingKey   = S.buildingModalTargetKey;
+  const roomIds = S.buildingModalRoomIds;
+  _snapshot();
+  const buildingMagnetGroundCheckbox = document.getElementById('buildingMagnetGroundCheckbox');
+  const buildingPosYInput         = document.getElementById('buildingPosYInput');
+  // 1. Rename
+  if (!panel.batimentNames) panel.batimentNames = {};
+  panel.batimentNames[buildingKey] = buildingNameInput.value.trim() || 'Bâtiment';
+  // 2. Ceiling visibility — apply to each Room of the Building
+  const ceilingVisible = document.getElementById('buildingCeilingVisibleCheckbox').checked;
+  roomIds.forEach(pid => {
+    const ceilingObj = page.objects.find(o =>
+      o.pieceId === pid && o.objType === 'dalle'
+      && o.worldY != null && o.worldY > GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2);
+    if (ceilingObj) {
+      ceilingObj.ceilingHidden = !ceilingVisible;
+      const oldMesh = slabMeshCache3D.get(ceilingObj.id);
+      if (oldMesh) {
+        oldMesh.geometry.dispose(); oldMesh.material.dispose();
+        personaScene3D.remove(oldMesh); slabMeshCache3D.delete(ceilingObj.id);
+      }
+    }
+  });
+  // 3. X/Z translation
+  const bb = getBuildingBoundingBoxXZ(roomIds, page);
+  if (bb) {
+    const newCx = Number(buildingPosXInput.value) || 0;
+    const newCz = Number(buildingPosZInput.value) || 0;
+    const dx = newCx - bb.cx, dz = newCz - bb.cz;
+    if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
+      page.objects.filter(o => roomIds.includes(o.pieceId) && WALL_TYPES.includes(o.objType)).forEach(w => {
+        const entry = wallRenderRigCache3D.get(w.id);
+        if (entry && personaScene3D) personaScene3D.remove(entry.figureGroup);
+        wallRenderRigCache3D.delete(w.id);
+        if (w.wxFloor !== undefined) w.wxFloor += dx;
+        if (w.wzFloor !== undefined) w.wzFloor += dz;
+        recomputeBuildWallBox2D(w, panel);
+      });
+      page.objects.filter(o => roomIds.includes(o.pieceId) && o.objType === 'dalle').forEach(d => {
+        if (d.polygon) d.polygon = d.polygon.map(pt => ({ x: pt.x + dx, z: pt.z + dz }));
+        const oldMesh = slabMeshCache3D.get(d.id);
+        if (oldMesh) { oldMesh.geometry.dispose(); oldMesh.material.dispose();
+                       personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id); }
+      });
+      if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+      mergedBuildWallRigCache3D.clear();
+    }
+  }
+  // 3b. Width×Depth resizing (after translation)
+  {
+    const buildingWidthInput = document.getElementById('buildingWidthInput');
+    const buildingDepthInput = document.getElementById('buildingDepthInput');
+    const targetW = Number(buildingWidthInput.value);
+    const targetD = Number(buildingDepthInput.value);
+    const bbResize = getBuildingBoundingBoxXZ(roomIds, page);
+    if (bbResize && bbResize.w > 0.01 && bbResize.d > 0.01 && targetW > 0.1 && targetD > 0.1) {
+      const sx = targetW / bbResize.w, sz = targetD / bbResize.d;
+      if (Math.abs(sx - 1) > 0.001 || Math.abs(sz - 1) > 0.001) {
+        const orig = storeRoomGeometry(roomIds, page);
+        applyRoomScaleFixed(roomIds, page, panel, sx, sz,
+          bbResize.cx, bbResize.cz, orig.walls, orig.dalles);
+      }
+    }
+  }
+  // 4. Magnetized to Ground + Y float — apply to all members of all Rooms
+  const magnetGround = buildingMagnetGroundCheckbox.checked;
+  const floatY    = magnetGround ? 0 : (Number(buildingPosYInput.value) || 0);
+  page.objects.filter(o => roomIds.includes(o.pieceId)).forEach(m => {
+    m.roomMagnetGround = magnetGround;
+    m.roomFloatY    = floatY;
+  });
+  // Invalidate wall caches: mergedBuildWallRigCache3D stores roomFloatY at the moment the group
+  // is built — without invalidation, walls would stay at their old Y position.
+  page.objects.filter(o => roomIds.includes(o.pieceId) && WALL_TYPES.includes(o.objType)).forEach(w => {
+    const wEntry = wallRenderRigCache3D.get(w.id);
+    if (wEntry && personaScene3D) personaScene3D.remove(wEntry.figureGroup);
+    wallRenderRigCache3D.delete(w.id);
+  });
+  if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+  mergedBuildWallRigCache3D.clear();
+  // 5. Horizontal rotation (delta = new − stored)
+  if (!panel.batimentRotY) panel.batimentRotY = {};
+  const prevRotY  = panel.batimentRotY[buildingKey] || 0;
+  const newRotY   = Number(buildingRotYInput.value) * Math.PI / 180;
+  const deltaRotY = newRotY - prevRotY;
+  if (Math.abs(deltaRotY) > 0.0001) {
+    const bbRot = getBuildingBoundingBoxXZ(roomIds, page);
+    if (bbRot) {
+      const cos_a = Math.cos(deltaRotY), sin_a = Math.sin(deltaRotY);
+      const px = bbRot.cx, pz = bbRot.cz;
+      const rotXZ = (wx, wz) => {
+        const ox = wx - px, oz = wz - pz;
+        return { x: px + ox * cos_a - oz * sin_a, z: pz + ox * sin_a + oz * cos_a };
+      };
+      page.objects.filter(o => roomIds.includes(o.pieceId) && WALL_TYPES.includes(o.objType)
+                               && isFinite(o.wxFloor) && isFinite(o.wzFloor)).forEach(w => {
+        if (w.realLenFloor) {
+          const half = w.realLenFloor / 2;
+          const ca = Math.cos(w.rotY || 0), sa = Math.sin(w.rotY || 0);
+          const e1 = rotXZ(w.wxFloor - half * ca, w.wzFloor + half * sa);
+          const e2 = rotXZ(w.wxFloor + half * ca, w.wzFloor - half * sa);
+          w.wxFloor = (e1.x + e2.x) / 2; w.wzFloor = (e1.z + e2.z) / 2;
+          w.rotY = Math.atan2(-(e2.z - e1.z), e2.x - e1.x);
+        } else {
+          const r = rotXZ(w.wxFloor, w.wzFloor);
+          w.wxFloor = r.x; w.wzFloor = r.z;
+          w.rotY = (w.rotY || 0) + deltaRotY;
+        }
+        const wEntry = wallRenderRigCache3D.get(w.id);
+        if (wEntry && personaScene3D) personaScene3D.remove(wEntry.figureGroup);
+        wallRenderRigCache3D.delete(w.id);
+        recomputeBuildWallBox2D(w, panel);
+      });
+      page.objects.filter(o => roomIds.includes(o.pieceId) && o.objType === 'dalle').forEach(d => {
+        if (d.polygon) d.polygon = d.polygon.map(pt => rotXZ(pt.x, pt.z));
+        const oldMesh = slabMeshCache3D.get(d.id);
+        if (oldMesh) { oldMesh.geometry.dispose(); oldMesh.material.dispose();
+                       personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id); }
+      });
+      roomIds.forEach(pid => {
+        page.objects.filter(o => o.pieceId === pid).forEach(m => { m.roomRotY = (m.roomRotY || 0) + deltaRotY; });
+      });
+      if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+      mergedBuildWallRigCache3D.clear();
+    }
+  }
+  panel.batimentRotY[buildingKey] = newRotY;
+  panelSceneCache3D.delete(panel.id);
+  drawCurrentPage();
+  closeBuildingModal();
+};
+
+buildingModalCancel.onclick = closeBuildingModal;
+buildingRotYInput.addEventListener('input', refreshBuildingPreview);
+document.getElementById('buildingCeilingVisibleCheckbox').addEventListener('change', refreshBuildingPreview);
+document.getElementById('buildingMagnetGroundCheckbox').addEventListener('change', () => {
+  document.getElementById('buildingPosYInput').disabled =
+    document.getElementById('buildingMagnetGroundCheckbox').checked;
+});
+buildingModal.addEventListener('mousedown', (e) => { if (e.target === buildingModal) { e.stopPropagation(); closeBuildingModal(); } });
+window.addEventListener('keydown', (e) => {
+  if (!buildingModal.classList.contains('hidden')) {
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); closeBuildingModal(); }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) buildingModalSave.onclick();
+  }
+});
+
+// ── Room / Building geometry ──────────────────────────────────────────────────────────────────
+// Repatriated from events.js, where it sat under a banner that read « BUILD TOOL ». It is not the
+// Build tool — that lives in draw.js (buildToolClose, buildTryExtendWall, detectBuildFaces). What
+// this is: the geometry the Room and Building modals need in order to move, scale and re-anchor a
+// Room once the dialog is saved. It belongs next to those handlers, which are just below.
+// Recomputes a S.buildTool wall's 2D thin-box after its Room is moved (X/Z translation).
+// Duplicates buildToolCreateWallSegment's logic to remain independent of the current S.buildTool.
+
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function recomputeBuildWallBox2D(obj, panel) {
+  if (obj.wxFloor === undefined || obj.wzFloor === undefined || !obj.realLenFloor) return;
+  const ca = Math.cos(obj.rotY || 0), sa = Math.sin(obj.rotY || 0);
+  const half = obj.realLenFloor / 2;
+  // rotY = atan2(-dz, dx) → endpoints: (wx ± half*cos(rotY), wz ∓ half*sin(rotY))
+  const x1 = obj.wxFloor - half * ca, z1 = obj.wzFloor + half * sa;
+  const x2 = obj.wxFloor + half * ca, z2 = obj.wzFloor - half * sa;
+  const _panelCx = panel.x + panel.w / 2;
+  const _panelCy = panel.y + panel.h / 2;
+  const _basis   = panelCamBasis3D(panel);
+  const _camDist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
+  const _worb = getCamOrbitWorld(panel, _basis);
+  const _pox = _worb.x, _poy = _worb.y, _poz = _worb.z;
+  let _camY = _poy + _basis.backward.y * _camDist;
+  if (_camY < GROUND_Y_DEFAULT_3D + 0.15) _camY = GROUND_Y_DEFAULT_3D + 0.15;
+  const _camX = _pox + _basis.backward.x * _camDist;
+  const _camZ = _poz + _basis.backward.z * _camDist;
+  const _scale = PANEL_CAM_DEFAULT_DIST_3D * WALL_PX_PER_UNIT_3D;
+  const _project = (wx, wz) => {
+    const vx = wx - _camX, vy = GROUND_Y_DEFAULT_3D - _camY, vz = wz - _camZ;
+    const vr = vx * _basis.right.x + vy * _basis.right.y + vz * _basis.right.z;
+    const vu = vx * _basis.up.x    + vy * _basis.up.y    + vz * _basis.up.z;
+    const vd = -(vx * _basis.backward.x + vy * _basis.backward.y + vz * _basis.backward.z);
+    if (vd <= 0) return null;
+    return { x: _panelCx + vr * _scale / vd, y: _panelCy - vu * _scale / vd };
+  };
+  const sp1 = _project(x1, z1), sp2 = _project(x2, z2);
+  if (sp1 && sp2) {
+    const T = 5; // WALL_2D_THIN_PX (thin-line pixel width)
+    obj.x = Math.min(sp1.x, sp2.x) - T / 2;
+    obj.y = Math.min(sp1.y, sp2.y) - T / 2;
+    obj.w = Math.max(T, Math.abs(sp2.x - sp1.x) + T);
+    obj.h = Math.max(T, Math.abs(sp2.y - sp1.y) + T);
+    obj.baseW = obj.w; obj.baseH = obj.h;
+  }
+}
+
+// ── Resizing one or more Rooms ─────────────────────────────
+// Stores the CURRENT positions/polygons of a list of roomIds' walls and slabs,
+// so they can be re-read every frame during a resize drag.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function storeRoomGeometry(roomIds, page) {
+  const walls = [], dalles = [];
+  page.objects.forEach(o => {
+    if (!roomIds.includes(o.pieceId)) return;
+    if (WALL_TYPES.includes(o.objType)) {
+      walls.push({
+        id: o.id,
+        wxFloor: o.wxFloor, wzFloor: o.wzFloor,
+        rotY: o.rotY || 0,
+        realLenFloor: o.realLenFloor || 0,
+        realHeightFloor: o.realHeightFloor,
+      });
+    } else if (o.objType === 'dalle' && o.polygon) {
+      dalles.push({ id: o.id, polygon: o.polygon.map(p => ({ x: p.x, z: p.z })) });
+    }
+  });
+  return { walls, dalles };
+}
+
+// Applies a (sx,sz) scale around a fixed corner (fixedWX,fixedWZ) using the ORIGINAL
+// positions (origWalls / origSlabs, obtained via storeRoomGeometry).
+// Updates the objects' world properties in page, recomputes the 2D thin-boxes,
+// and invalidates the affected 3D render caches.
+export function applyRoomScaleFixed(roomIds, page, panel, sx, sz, fixedWX, fixedWZ, origWalls, origSlabs) {
+  const MIN_SCALE = 0.05;
+  if (Math.abs(sx) < MIN_SCALE || Math.abs(sz) < MIN_SCALE) return;
+
+  // 1. Walls
+  origWalls.forEach(ow => {
+    const w = page.objects.find(o => o.id === ow.id);
+    if (!w) return;
+    // New center = fixed + (origCenter - fixed) * scale
+    w.wxFloor = fixedWX + (ow.wxFloor - fixedWX) * sx;
+    w.wzFloor = fixedWZ + (ow.wzFloor - fixedWZ) * sz;
+    if (ow.realLenFloor > 0) {
+      // Original wall direction (rotY = atan2(-dz,dx) → dir=(cos,0,-sin))
+      const ca = Math.cos(ow.rotY), sa = Math.sin(ow.rotY);
+      // Scaled direction
+      const ndx = ca * sx, ndz = -sa * sz;
+      const newLen = ow.realLenFloor * Math.hypot(ndx, ndz);
+      w.realLenFloor = Math.max(0.1, newLen);
+      if (Math.hypot(ndx, ndz) > 0.0001) w.rotY = Math.atan2(-ndz, ndx);
+    }
+    // Invalidate this wall's render cache
+    const entry = wallRenderRigCache3D.get(w.id);
+    if (entry && personaScene3D) personaScene3D.remove(entry.figureGroup);
+    wallRenderRigCache3D.delete(w.id);
+    recomputeBuildWallBox2D(w, panel);
+  });
+  // 2. Slabs
+  origSlabs.forEach(od => {
+    const d = page.objects.find(o => o.id === od.id);
+    if (!d) return;
+    d.polygon = od.polygon.map(pt => ({
+      x: fixedWX + (pt.x - fixedWX) * sx,
+      z: fixedWZ + (pt.z - fixedWZ) * sz,
+    }));
+    const oldMesh = slabMeshCache3D.get(d.id);
+    if (oldMesh) { oldMesh.geometry.dispose(); oldMesh.material.dispose(); personaScene3D.remove(oldMesh); slabMeshCache3D.delete(d.id); }
+  });
+  // 3. Invalidate merged walls
+  if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+  mergedBuildWallRigCache3D.clear();
+}
+
+// Computes the 2D screen bbox from the walls' actual projections (same path as
+// the dashed frames). Returns 4 corners [{sx,sy}] in TL/TR/BR/BL order, or null.
+// [SCENE3D→scene3d.js] getRoomScreenBBoxFrom2DProjections → imported from scene3d.js (already in the import above)
+
+// Collects all wall junctions of a Building (each wall's unique endpoints),
+// deduplicates them by proximity (tol in world units), and projects them to screen via the same
+// Three.js camera as the actual render — each junction produces a handle square.
+// Returns [{wx, wz, sx, sy}, ...] or null.
+// [SCENE3D→scene3d.js] getBuildingJunctionCorners → imported from scene3d.js (already in the import above)
+
+// Moves a wall junction from (jx,jz) to (newJx,newJz) while PRESERVING angles.
+// Each connected wall projects the displacement onto its own axis (rotY unchanged);
+// length is clamped to MIN_LEN to prevent going past the opposite corner.
+// Returns the final actual position of the junction (after projection+clamp).
+export function moveJunctionToWorld(jx, jz, newJx, newJz, buildingRoomIds, page, panel, tol = 0.12) {
+  const connected = [];
+  page.objects.forEach(o => {
+    if (!WALL_TYPES.includes(o.objType)) return;
+    if (!buildingRoomIds.includes(o.pieceId) && !buildingRoomIds.includes(o.altPieceId)) return;
+    const ca = Math.cos(o.rotY || 0), sa = Math.sin(o.rotY || 0);
+    const half = (o.realLenFloor || 0) / 2;
+    const p1 = { x: o.wxFloor - half * ca, z: o.wzFloor + half * sa };
+    const p2 = { x: o.wxFloor + half * ca, z: o.wzFloor - half * sa };
+    if (Math.hypot(p1.x - jx, p1.z - jz) < tol) {
+      connected.push({ wall: o, fixedEnd: p2 });
+    } else if (Math.hypot(p2.x - jx, p2.z - jz) < tol) {
+      connected.push({ wall: o, fixedEnd: p1 });
+    }
+  });
+  const affectedRoomIds = new Set();
+  connected.forEach(({ wall, fixedEnd }) => {
+    const dx = fixedEnd.x - newJx, dz = fixedEnd.z - newJz;
+    const newLen = Math.hypot(dx, dz);
+    if (newLen < 0.01) return;
+    wall.wxFloor      = (newJx + fixedEnd.x) / 2;
+    wall.wzFloor      = (newJz + fixedEnd.z) / 2;
+    wall.realLenFloor = newLen;
+    wall.rotY         = Math.atan2(-dz, dx);
+    const entry = wallRenderRigCache3D.get(wall.id);
+    if (entry && personaScene3D) personaScene3D.remove(entry.figureGroup);
+    wallRenderRigCache3D.delete(wall.id);
+    recomputeBuildWallBox2D(wall, panel);
+    if (wall.pieceId)    affectedRoomIds.add(wall.pieceId);
+    if (wall.altPieceId) affectedRoomIds.add(wall.altPieceId);
+  });
+  affectedRoomIds.forEach(pieceId => {
+    page.objects.forEach(o => {
+      if (o.pieceId !== pieceId || o.objType !== 'dalle' || !o.polygon) return;
+      let changed = false;
+      o.polygon = o.polygon.map(pt => {
+        if (Math.hypot(pt.x - jx, pt.z - jz) < tol) { changed = true; return { x: newJx, z: newJz }; }
+        return pt;
+      });
+      if (changed) {
+        const mesh = slabMeshCache3D.get(o.id);
+        if (mesh && personaScene3D) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); slabMeshCache3D.delete(o.id); }
+      }
+    });
+  });
+  if (personaScene3D) mergedBuildWallRigCache3D.forEach(e => personaScene3D.remove(e.figureGroup));
+  mergedBuildWallRigCache3D.clear();
+}
+
+// Projects the 4 corners of a set of Rooms' XZ bbox to screen.
+// Returns [{wx,wz,sx,sy}, ...] (4 entries) or null if the bbox is invalid.
+// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+export function getRoomOrBuildingScreenBBox(roomIds, page, panel) {
+  const bb = roomIds.length === 1
+    ? getRoomBoundingBoxXZ(roomIds[0], page)
+    : getBuildingBoundingBoxXZ(roomIds, page);
+  if (!bb || bb.w < 0.01 || bb.d < 0.01) return null;
+  const corners = [
+    { wx: bb.minX, wz: bb.minZ },
+    { wx: bb.maxX, wz: bb.minZ },
+    { wx: bb.maxX, wz: bb.maxZ },
+    { wx: bb.minX, wz: bb.maxZ },
+  ];
+  const screenCorners = corners.map(c => {
+    const sc = worldToPageXY(c.wx, c.wz, panel, page);
+    return sc ? { wx: c.wx, wz: c.wz, sx: sc.x, sy: sc.y } : null;
+  });
+  if (screenCorners.some(c => c === null)) return null;
+  return { corners: screenCorners, bb };
+}

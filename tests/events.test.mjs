@@ -26,9 +26,6 @@ import {
   applyWallChildFraction,
   wallOpeningRotationForWall,
   positionWallOpeningOnWall,
-  recomputeBuildWallBox2D,
-  storeRoomGeometry,
-  getRoomOrBuildingScreenBBox,
   wallScreenAxes3D,
   fracDeltaAlongAxis2D,
   tracéScreenAxisAtFrac3D,
@@ -37,6 +34,8 @@ import {
   discardJustAddedElement,
   dismissModal,
 } from '../src/events.js';
+// Rapatriées dans modals.js avec les gestionnaires des modales Pièce/Bâtiment.
+import { recomputeBuildWallBox2D, storeRoomGeometry, getRoomOrBuildingScreenBBox } from '../src/modals.js';
 import {
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,

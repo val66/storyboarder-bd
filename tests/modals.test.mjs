@@ -11,6 +11,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos } from '../src/modals.js';
 
@@ -91,5 +92,58 @@ describe('pickAnimalHandleAt — détecte la poignée d\'articulation animale la
 
   test('aucune poignée enregistrée : null', () => {
     assert.equal(pickAnimalHandleAt(0, 0), null);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rapatriement des gestionnaires des modales Pièce/Bâtiment.
+//
+// Ils vivaient dans events.js, sous une bannière « BUILD TOOL » qui décrivait autre chose — l'outil
+// Construire, lui, est dans draw.js depuis une extraction précédente. Le prix de cette dérive était
+// concret : SEIZE getElementById en double, events.js et modals.js allant chercher les mêmes nœuds.
+// C'est exactement ce qu'attrape tests/dom-ids.test.mjs pour l'absence d'un id ; pour un id présent
+// mais cherché deux fois, rien ne signale que le renommage n'a corrigé qu'une moitié.
+//
+// Par inspection de source : le câblage manipule le DOM, hors de portée du stub.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Rapatriement des modales Pièce/Bâtiment — la couture tient', () => {
+  const lireSrc = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const evt = lireSrc('../src/events.js');
+  const mod = lireSrc('../src/modals.js');
+
+  test('RÉGRESSION : events.js injecte snapshot dans modals.js', () => {
+    // Sans injection, enregistrer une modale Pièce ou Bâtiment ne pose plus de point d'annulation.
+    // Rien ne lève : l'undo saute simplement une étape, et on ne s'en aperçoit qu'en l'utilisant.
+    assert.match(evt, /setModalsCallbacks\(\{\s*snapshot\s*\}\)/,
+      'l\'appel d\'injection a disparu d\'events.js');
+    assert.match(mod, /export function setModalsCallbacks/,
+      'modals.js n\'expose plus de point d\'injection');
+  });
+
+  test('RÉGRESSION : modals.js n\'importe RIEN d\'events.js', () => {
+    assert.doesNotMatch(mod, /from '\.\/events\.js'/,
+      'import remontant vers events.js : cycle réintroduit');
+  });
+
+  test('RÉGRESSION : un seul module cherche les nœuds des modales Pièce/Bâtiment', () => {
+    // Le vrai gain du rapatriement, et le seul qui se vérifie sans exécuter l'interface.
+    const ids = [
+      'roomModal', 'roomModalSave', 'roomModalCancel', 'roomNameInput', 'roomPosXInput',
+      'roomPosYInput', 'roomPosZInput', 'roomRotYInput', 'roomCeilingVisibleCheckbox',
+      'roomMagnetGroundCheckbox', 'buildingModal', 'buildingModalSave', 'buildingModalCancel',
+      'buildingNameInput', 'buildingPosXInput', 'buildingPosZInput', 'buildingRotYInput',
+    ];
+    const enTrop = ids.filter(id => evt.includes(`getElementById('${id}')`));
+    assert.deepEqual(enTrop, [],
+      'events.js va rechercher des nœuds que modals.js déclare déjà');
+    ids.forEach(id => assert.ok(mod.includes(`getElementById('${id}')`),
+      `modals.js ne déclare plus ${id}`));
+  });
+
+  test('la géométrie Pièce/Bâtiment a suivi ses gestionnaires', () => {
+    // Les quatre fonctions que les gestionnaires appellent pour déplacer, redimensionner et
+    // ré-ancrer une Pièce. Les laisser derrière aurait fait de modals.js un importateur d'events.js.
+    ['recomputeBuildWallBox2D', 'storeRoomGeometry', 'applyRoomScaleFixed', 'moveJunctionToWorld']
+      .forEach(n => assert.match(mod, new RegExp(`export function ${n}\\b`), `${n} manquant`));
   });
 });
