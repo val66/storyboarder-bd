@@ -82,6 +82,25 @@ Les `_` en tête d'identifiant ont été retirés là où ils ne signifiaient ri
 variables locales d'une portée dense (`_tracéPos`, `_tmHoles`) où ils marquent un temporaire de
 calcul — pas une quelconque privauté.
 
+### Deux pièges conservés volontairement
+
+Ces deux-là ne sont pas des incohérences à corriger. Ils se lisent une fois et se retiennent : c'est
+pourquoi ils sont écrits ici plutôt que renommés.
+
+**`trace` (l'outil) vs `tracé` (l'objet).** `S.traceTool`, `startTraceTool`, `stopTraceTool`
+désignent l'outil interactif de dessin à la souris — utilisé pour les Routes/Chemins *et* pour les
+zones de Terrain. `tracéBBox`, `TRACÉ_DEFAULTS`, `drawTracé`, `computeTracéWorld3D`, `type: 'tracé'`
+désignent l'objet persistant qui en résulte (route, chemin, muret, clôture, haie, barrière — *pas* la
+zone de Terrain, qui est `type: 'terrain'`). Les deux mots ne diffèrent que par un accent : une
+recherche plein-texte sur `trace` rate tous les `tracé`, et réciproquement. Chercher les deux.
+Renommer l'un ou l'autre est exclu : `'tracé'` est une valeur discriminante persistée.
+
+**`render` à trois sens.** Rendu WebGL vers une texture ou un canvas (`renderPanelScene3D`,
+`renderPersonaToCanvas3D`) ; construction du DOM (`renderSideElementRow`, `renderTree`,
+`renderSceneList`) ; et `renderAll()`, qui orchestre les deux. C'est l'usage courant du web — React
+appelle aussi « render » la construction du DOM — donc les noms restent. Ne pas supposer pour autant
+qu'un `render*` de `sidebar.js` ou `project-tree.js` touche à Three.js.
+
 ### Langue
 
 **Commentaires et identifiants : anglais.** Les onze modules de `src/` ont été traduits (#209-219).

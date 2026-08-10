@@ -81,6 +81,25 @@ Leading `_` were removed from identifiers where they meant nothing. They remain 
 in a dense scope (`_tracéPos`, `_tmHoles`) where they mark a computation temporary — not any kind of
 privacy.
 
+### Two traps that survive on purpose
+
+These two are not inconsistencies to fix. They are read once and remembered, which is why they are
+written down rather than renamed.
+
+**`trace` (the tool) vs `tracé` (the object).** `S.traceTool`, `startTraceTool`, `stopTraceTool` are
+the interactive mouse-drawing tool — used for Roads/Paths *and* for Terrain zones. `tracéBBox`,
+`TRACÉ_DEFAULTS`, `drawTracé`, `computeTracéWorld3D`, `type: 'tracé'` are the persisted object that
+comes out of it (road, path, low wall, fence, hedge, barrier — *not* the Terrain zone, which is
+`type: 'terrain'`). The two words differ by one accent, so a full-text search for `trace` misses
+every `tracé` and vice versa. Search for both. Renaming either one is not an option: `'tracé'` is a
+persisted discriminator value.
+
+**`render` in three senses.** WebGL to a texture or canvas (`renderPanelScene3D`,
+`renderPersonaToCanvas3D`); DOM construction (`renderSideElementRow`, `renderTree`,
+`renderSceneList`); and `renderAll()`, which orchestrates both. This matches common web usage — React
+calls DOM construction "render" too — so the names stay. Just do not assume a `render*` from
+`sidebar.js` or `project-tree.js` touches Three.js.
+
 ### Language
 
 **Comments and identifiers: English.** The eleven modules of `src/` were translated (#209-219).
