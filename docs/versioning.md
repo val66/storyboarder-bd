@@ -115,6 +115,22 @@ Deliberately absent: type checking (402 diagnostics, zero real defects — see a
 and that the Node versions it tests agree with `engines` in `package.json` **and** with what the
 READMEs promise. Three descriptions of one constraint — exactly the kind that drifts.
 
+## The installer packs a whitelist, not the folder
+
+`build.files` in `package.json` is **exclusive**: what is not listed does not reach the installed
+application. Nothing warns you. Development keeps working — it reads the repository folder — so the
+gap only exists in the `.exe`, and the user who hits it can only describe it as "it's broken".
+
+This is not hypothetical. `style.css` was created on 2026-07-28, when `index.html` was split into
+shell + stylesheet + `src/`. `build.files` was never updated. The repository's only build predates
+that split by two days, so nothing revealed it: `npm run dist` would have produced an application in
+raw HTML, 795 lines of styling absent, for two weeks.
+
+**Adding a file the application loads at runtime means adding it here too.**
+`tests/packaging.test.mjs` now enforces the general rule — every local asset referenced by
+`index.html` must be covered by a pattern, every pattern must still point at something that exists —
+rather than the single file that was missing.
+
 ## Escape hatches
 
 `git commit --no-verify` skips the tests and the bump — for a work-in-progress commit. The

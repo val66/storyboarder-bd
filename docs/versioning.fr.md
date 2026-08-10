@@ -117,6 +117,23 @@ utilise `npm ci`, et que les versions de Node testées concordent avec `engines`
 **et** avec ce que promettent les README. Trois descriptions d'une même contrainte — exactement le
 genre qui dérive.
 
+## L'installeur embarque une liste blanche, pas le dossier
+
+`build.files`, dans `package.json`, est **exclusive** : ce qui n'y figure pas n'atteint pas
+l'application installée. Rien ne le signale. Le développement continue de fonctionner — il lit le
+dossier du dépôt — donc le manque n'existe que dans le `.exe`, et l'utilisateur qui le rencontre ne
+peut le décrire autrement que « c'est cassé ».
+
+Ce n'est pas une hypothèse. `style.css` est né le 28/07/2026, quand `index.html` a été scindé en
+coquille + feuille de style + `src/`. `build.files` n'a jamais suivi. Le seul build du dépôt précède
+cette scission de deux jours : rien ne l'a révélé. Pendant deux semaines, `npm run dist` aurait
+produit une application en HTML brut, 795 lignes de style absentes.
+
+**Ajouter un fichier que l'application charge à l'exécution, c'est aussi l'ajouter ici.**
+`tests/packaging.test.mjs` garde désormais la règle générale — tout asset local référencé par
+`index.html` doit être couvert par un motif, et tout motif doit encore viser quelque chose qui
+existe — plutôt que le seul fichier qui manquait.
+
 ## Échappatoires
 
 `git commit --no-verify` saute les tests et l'incrément — pour un commit en cours de travail. Le hook
