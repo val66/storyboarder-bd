@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.1.27**
+**Version 1.1.28**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -77,6 +77,12 @@ npm start
 npm run dist
 ```
 The installer appears in the `dist/` folder and creates Desktop and Start Menu shortcuts automatically.
+
+### Contributing
+
+Setup, the three rules that will get a change rejected, and what is expected of a test:
+**[CONTRIBUTING.md](CONTRIBUTING.md)**. One step matters more than the rest — `npm run setup-hooks`,
+which git cannot carry over on clone.
 
 ### Run the unit tests
 ```bash

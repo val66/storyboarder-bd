@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.1.27",
+  "version": "1.1.28",
   "engines": {
     "node": ">=20"
   },
@@ -17,7 +17,8 @@
     "bump": "node tools/bump-version.mjs",
     "setup-hooks": "node tools/setup-hooks.mjs",
     "typecheck": "tsc -p jsconfig.json --noEmit",
-    "typecheck:report": "node tools/typecheck-report.mjs"
+    "typecheck:report": "node tools/typecheck-report.mjs",
+    "postinstall": "node tools/check-hooks.mjs"
   },
   "dependencies": {
     "three": "0.128.0"

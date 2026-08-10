@@ -11,6 +11,16 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HOOKS_DIR = join(ROOT, '.git', 'hooks');
 
+// Refuser plutôt que de créer un .git/hooks fantôme. Constaté en préparant CONTRIBUTING : lancé
+// hors d'un dépôt git — une archive téléchargée, un dossier copié — le script créait joyeusement
+// `.git/hooks/` (mkdir récursif) et annonçait deux hooks installés que git ne lirait jamais. Un
+// succès annoncé pour un travail sans effet : exactement ce qu'on a corrigé ailleurs aujourd'hui.
+if (!existsSync(join(ROOT, '.git'))) {
+  console.log('Pas de dépôt git ici — aucun hook à installer.');
+  console.log('C\'est normal pour une archive téléchargée ; les hooks ne servent qu\'au développement.');
+  process.exit(0);
+}
+
 // Lints, runs the test suite, then bumps the patch and stages the files it touched so they land
 // in the very commit being created rather than dangling as a follow-up change.
 //

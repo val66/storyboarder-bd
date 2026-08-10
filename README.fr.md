@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.1.27**
+**Version 1.1.28**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -81,6 +81,12 @@ npm start
 npm run dist
 ```
 L'installeur apparaît dans le dossier `dist/`. Il crée des raccourcis Bureau et Menu Démarrer.
+
+### Contribuer
+
+Mise en route, les trois règles qui font refuser une modification, et ce qu'on attend d'un test :
+**[CONTRIBUTING.fr.md](CONTRIBUTING.fr.md)**. Une étape compte plus que les autres —
+`npm run setup-hooks`, que git ne peut pas transmettre au clonage.
 
 ### Lancer les tests unitaires
 ```bash
