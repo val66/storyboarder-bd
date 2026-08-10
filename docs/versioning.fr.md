@@ -90,6 +90,33 @@ localement mais absente du dépôt distant ne sert à rien. Le hook `post-commit
 `git push --follow-tags` à l'écran chaque fois qu'il vient de poser un tag — c'est le seul endroit
 qui sache, à coup sûr et au bon moment, qu'un tag vient d'être créé.
 
+## Intégration continue
+
+`.github/workflows/ci.yml` lance lint + tests sur une machine Linux neuve, à chaque push et chaque
+pull request, sur les deux lignes LTS de Node maintenues.
+
+**Ce n'est pas un doublon du hook.** Le hook `pre-commit` s'exécute sur *votre* machine, avec vos
+paquets installés, sous Windows. La CI couvre exactement ce qui lui échappe :
+
+- **un contributeur externe** — les hooks git ne sont pas versionnés (`npm run setup-hooks` les
+  installe) : un clone frais n'en a aucun. C'est la raison principale, et elle est sociale plus que
+  technique : la CI dit à quelqu'un que sa contribution passe sans qu'il ait à le demander ;
+- **un autre système** — le développement se fait sous Windows, la CI tourne sous Linux. Toute
+  hypothèse de chemin qui ne tient que d'un côté devient visible ;
+- **`npm ci` plutôt que `npm install`** — il installe exactement `package-lock.json` et échoue si
+  celui-ci diverge de `package.json`. C'est le seul contrôle qui attrape une dépendance utilisée mais
+  non déclarée : le cas « ça marche chez moi » parce que le paquet traîne dans `node_modules` ;
+- **`git commit --no-verify`**, que ce document recommande lui-même pour un amend.
+
+Volontairement absents : la vérification de types (402 diagnostics, zéro défaut réel — cf.
+architecture.fr.md règle n°5) et la construction de l'installeur (demande Windows et plusieurs
+minutes, pour une chaîne qui ne change presque jamais).
+
+`tests/ci-setup.test.mjs` garde le câblage : que la CI lance **les deux** vérifications, qu'elle
+utilise `npm ci`, et que les versions de Node testées concordent avec `engines` de `package.json`
+**et** avec ce que promettent les README. Trois descriptions d'une même contrainte — exactement le
+genre qui dérive.
+
 ## Échappatoires
 
 `git commit --no-verify` saute les tests et l'incrément — pour un commit en cours de travail. Le hook

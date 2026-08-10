@@ -90,6 +90,31 @@ absent from the remote is useless. The `post-commit` hook prints a `git push --f
 every time it has just placed a tag — it is the only place that knows, for certain and at the right
 moment, that a tag was just created.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs lint + tests on a fresh Linux machine at every push and pull
+request, on the two maintained Node LTS lines.
+
+**It is not a duplicate of the hook.** The `pre-commit` hook runs on *your* machine, with your
+installed packages, on Windows. CI covers exactly what escapes it:
+
+- **an external contributor** — git hooks are not versioned (`npm run setup-hooks` installs them),
+  so a fresh clone has none. This is the main reason, and it is social more than technical: CI tells
+  someone their contribution passes without them having to ask;
+- **another operating system** — development happens on Windows, CI runs on Linux. Any path
+  assumption that only holds on one side becomes visible;
+- **`npm ci` instead of `npm install`** — it installs exactly `package-lock.json` and fails if that
+  diverges from `package.json`. It is the only check that catches a dependency used but not
+  declared: the "works on my machine" case where the package happens to sit in `node_modules`;
+- **`git commit --no-verify`**, which this very document recommends for an amend.
+
+Deliberately absent: type checking (402 diagnostics, zero real defects — see architecture.md rule
+#5) and the installer build (needs Windows, several minutes, for a chain that rarely changes).
+
+`tests/ci-setup.test.mjs` guards the wiring: that CI runs **both** checks, that it uses `npm ci`,
+and that the Node versions it tests agree with `engines` in `package.json` **and** with what the
+READMEs promise. Three descriptions of one constraint — exactly the kind that drifts.
+
 ## Escape hatches
 
 `git commit --no-verify` skips the tests and the bump — for a work-in-progress commit. The

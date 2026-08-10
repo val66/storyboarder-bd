@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.1.26**
+**Version 1.1.27**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -66,7 +66,7 @@ seul depuis le menu de gauche, pour composer une pose sans cible.
 ## 🚀 Installation
 
 ### Prérequis
-- [Node.js LTS](https://nodejs.org) (v18 ou supérieur)
+- [Node.js LTS](https://nodejs.org) (v20 ou supérieur — v18 est en fin de vie depuis avril 2025)
 
 ### Lancer en développement
 ```bash
