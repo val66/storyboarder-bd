@@ -1,0 +1,55 @@
+// Déclarations ambiantes — lues UNIQUEMENT par la vérification de types (jsconfig.json).
+// Ce fichier n'est jamais chargé à l'exécution et ne fait partie d'aucun bundle : il n'y en a pas.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// POURQUOI CE FICHIER EXISTE
+//
+// La première mesure a donné 1070 diagnostics, dont 652 d'un seul code — TS2304, « Cannot find
+// name ». Ce n'étaient pas 652 défauts : c'était UN fait de configuration, répété 652 fois.
+// `THREE` est chargé par une balise <script> dans index.html, pas importé. Le vérificateur ne
+// pouvait pas le savoir.
+//
+// C'est exactement le motif redouté en installant l'outil : du bruit de configuration qui noie le
+// signal et finit par faire éteindre l'outil. On le retire ici, en une déclaration, plutôt qu'en
+// touchant 458 lignes de code qui n'ont rien de faux.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// three r128 ne publie PAS ses types (aucun champ `types` dans son package.json, aucun .d.ts dans
+// le paquet). `any` est donc la seule description honnête disponible sans ajouter @types/three.
+//
+// CE QU'ON PERD, assumé : aucune vérification à l'intérieur du monde THREE — un `mesh.positionn`
+// mal orthographié passera. CE QU'ON GARDE : tout le reste, c'est-à-dire les frontières entre nos
+// propres modules, qui sont le sujet.
+//
+// À REVOIR si l'on passe à une version de three qui embarque ses types : la déclaration ci-dessous
+// devient alors `const THREE: typeof import('three')` et le vérificateur couvre aussi le 3D.
+declare const THREE: any;
+
+/**
+ * Pont Electron exposé par preload.js (contextIsolation). C'est LA frontière du renderer avec le
+ * disque : tout ce qui sort de l'application passe par là.
+ *
+ * La typer sert deux choses. D'abord, un appel avec le mauvais nombre d'arguments devient visible —
+ * c'est le genre de faute qu'aucun test du renderer n'attrape, puisqu'ils simulent ce pont. Ensuite,
+ * la forme des RÉPONSES est documentée à l'endroit où on la lit : `{ ok, error }` pour une écriture,
+ * `{ canceled, filePath, data }` pour une boîte de dialogue. Le défaut « un échec annoncé comme un
+ * succès », corrigé aujourd'hui, vivait précisément dans la lecture de ce `ok`.
+ */
+interface StoryboarderAPI {
+  writeProjectFile(filePath: string, contenu: string): Promise<{ ok: boolean; error?: string }>;
+  saveProjectAs(contenu: string, nomSuggere: string):
+    Promise<{ canceled: boolean; filePath?: string }>;
+  openProjectDialog(): Promise<{ canceled: boolean; filePath?: string; data?: string }>;
+  getSettings?(): Promise<Record<string, unknown>>;
+  setSetting?(cle: string, valeur: unknown): Promise<unknown>;
+  [autre: string]: unknown;
+}
+
+interface Window {
+  storyboarderAPI?: StoryboarderAPI;
+  // Poignée de diagnostic posée à la main depuis la console, quand il y en a une. Déclarée
+  // optionnelle : rien dans l'application ne doit en dépendre.
+  perf?: Record<string, (...args: unknown[]) => unknown>;
+  showOpenFilePicker?: (options?: unknown) => Promise<unknown[]>;
+  showSaveFilePicker?: (options?: unknown) => Promise<unknown>;
+}

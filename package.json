@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.1.22",
+  "version": "1.1.23",
   "description": "Storyboard BD — Découpage de planches BD",
   "main": "main.js",
   "author": "Valentin",
@@ -22,7 +22,8 @@
   "devDependencies": {
     "electron": "^42.5.0",
     "electron-builder": "^26.15.3",
-    "eslint": "^9.39.5"
+    "eslint": "^9.39.5",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.valentin.storyboardbd",

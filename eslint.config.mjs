@@ -123,6 +123,8 @@ export default [
     },
   },
   {
-    ignores: ['node_modules/**', 'dist/**', 'src/version.js'],
+    // types/ ne contient que des déclarations ambiantes lues par la vérification de types
+    // (jsconfig.json). Ce n'est pas du JavaScript exécutable : ESLint n'a rien à y dire.
+    ignores: ['node_modules/**', 'dist/**', 'src/version.js', 'types/**'],
   },
 ];

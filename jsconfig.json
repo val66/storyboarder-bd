@@ -35,6 +35,6 @@
     "types": []
   },
 
-  "include": ["src/**/*.js"],
+  "include": ["src/**/*.js", "types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "tests", "tools", "main.js", "preload.js"]
 }
