@@ -205,6 +205,95 @@ ipcMain.handle('settings:chooseProjectsDir', async (event) => {
   return { canceled: false, filePath: filePaths[0] };
 });
 
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// MODÈLES 3D IMPORTÉS (.glb)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+//
+// EXCEPTION ASSUMÉE à la règle n°1 d'architecture.md (« main.js ne se touche jamais pour une
+// fonctionnalité applicative »), documentée là-bas. La règle interdit d'y mettre de la LOGIQUE
+// applicative ; sa propre description range l'« accès disque » dans les attributions de ce fichier.
+// Écrire un .glb — du binaire — est de l'accès disque, et aucun canal existant ne sait le faire :
+// project:write écrit une chaîne. Le remède habituel de la règle (« pousser l'information en
+// fichier généré ») ne s'applique pas : ces octets arrivent à l'exécution, choisis par
+// l'utilisateur.
+//
+// La répartition tient en une phrase : ICI on fait des entrées-sorties et on se défend ; c'est
+// src/model-store.js qui DÉCIDE (nom retenu, collisions, messages).
+//
+// Les modèles vivent dans le dossier de Projets choisi par l'utilisateur, pas dans les données
+// d'application : ce qu'il fait pour synchroniser ou sauvegarder ses Projets couvre alors ses
+// modèles. Les mettre ailleurs les ferait disparaître au premier changement de machine, sans que
+// personne comprenne pourquoi.
+function getModelsDir() {
+  return path.join(getProjectsDir(), 'Modeles');
+}
+
+function ensureModelsDir() {
+  try { fs.mkdirSync(getModelsDir(), { recursive: true }); } catch (err) { /* ignore */ }
+}
+
+// Le renderer propose un nom ; ce process REFUSE tout ce qui n'est pas déjà un nom de fichier nu.
+// Ce n'est PAS un doublon de l'assainissement de src/model-store.js — les deux font des métiers
+// différents : là-bas on NETTOIE ce que l'utilisateur a fourni, ici on n'accepte que du déjà propre.
+// Sans cette garde, un nom comme « ../../../Bureau/quelque-chose » écrirait hors du dossier des
+// modèles. Un process principal ne fait jamais confiance à son renderer, même quand c'est le nôtre.
+function nomDeModeleAcceptable(name) {
+  if (typeof name !== 'string' || !name) return false;
+  if (name !== path.basename(name)) return false;      // aucun séparateur de chemin
+  if (name.startsWith('.')) return false;              // ni « .. », ni fichier caché
+  return /\.glb$/i.test(name);
+}
+
+// Choisit un .glb et rend son contenu SANS l'écrire : c'est le renderer qui décide ensuite du nom
+// retenu (cf. resolveModelName) puis rappelle models:write. Deux allers-retours plutôt qu'un, pour
+// que la décision reste dans src/ où elle est testable.
+ipcMain.handle('models:pick', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    defaultPath: getModelsDir(),
+    filters: [{ name: 'Modèles 3D glTF', extensions: ['glb', 'gltf'] }],
+    properties: ['openFile'],
+  });
+  if (canceled || !filePaths || !filePaths.length) return { canceled: true };
+  try {
+    const data = await fs.promises.readFile(filePaths[0]);
+    return { canceled: false, name: path.basename(filePaths[0]), data: new Uint8Array(data) };
+  } catch (err) {
+    return { canceled: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('models:write', async (event, name, data) => {
+  if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
+  try {
+    ensureModelsDir();
+    await fs.promises.writeFile(path.join(getModelsDir(), name), Buffer.from(data));
+    return { ok: true, name };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('models:read', async (event, name) => {
+  if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
+  try {
+    const data = await fs.promises.readFile(path.join(getModelsDir(), name));
+    return { ok: true, data: new Uint8Array(data) };
+  } catch (err) {
+    // Cas nominal, pas une panne : le fichier a été déplacé ou supprimé hors de l'application.
+    // Le renderer en fait un Élément de remplacement — il ne supprime SURTOUT pas l'Élément.
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('models:list', async () => {
+  try {
+    return fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable);
+  } catch (err) {
+    return [];   // dossier pas encore créé : aucun modèle, ce n'est pas une erreur
+  }
+});
+
 // Le renderer a tranché (Enregistrer et quitter / Quitter sans enregistrer, cf. quitConfirmModal) :
 // on autorise la fermeture réelle, qui redéclenche l'événement 'close' ci-dessus, cette fois laissé
 // passer puisque isQuitting est désormais true.

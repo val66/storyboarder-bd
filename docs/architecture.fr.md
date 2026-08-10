@@ -15,6 +15,26 @@ réponse est le plus souvent de la faire descendre sous forme de fichier génér
 
 `src/app.js` est un talon d'une ligne qui importe `events.js` — le vrai point d'entrée.
 
+### L'unique exception, et ce qui en fait une
+
+Les modèles 3D importés (`models:pick`, `models:write`, `models:read`, `models:list`) sont les seuls
+canaux ouverts pour une fonctionnalité. Le raisonnement, pour que personne n'y voie un précédent
+gratuit :
+
+- La règle interdit de mettre de la **logique** applicative dans `main.js`. Sa propre description
+  range l'**accès disque** dans les attributions de ce fichier, et écrire un `.glb` est exactement
+  cela — aucun canal existant ne sait le faire, `project:write` écrivant une *chaîne*.
+- Le remède habituel de la règle — « faire descendre l'information en fichier généré » — ne
+  s'applique pas ici. Ces octets arrivent à l'exécution, choisis par l'utilisateur ; rien ne peut les
+  produire à la construction.
+- La répartition est vérifiée, pas seulement voulue : `main.js` fait des entrées-sorties et **se
+  défend** (`nomDeModeleAcceptable` refuse tout nom qui n'est pas un nom de fichier nu), tandis que
+  `src/model-store.js` **décide** — nom retenu, collisions, messages. La décision reste testable, et
+  `tests/model-store.test.mjs` garde les deux moitiés.
+
+Tout ce qui peut se décider dans `src/` reste dans `src/`. Une exception dont on se sert deux fois
+n'en est plus une.
+
 ## Règle n°2 — les imports circulaires se cassent par injection de callbacks
 
 Les modules ont des besoins croisés : `scene3d.js` doit redessiner la page, `draw.js` doit mettre à

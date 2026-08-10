@@ -15,6 +15,24 @@ as a generated file, not to open a channel.
 
 `src/app.js` is a one-line stub that imports `events.js` — the real entry point.
 
+### The one exception, and what makes it one
+
+Imported 3D models (`models:pick`, `models:write`, `models:read`, `models:list`) are the only
+channels opened for a feature. The reasoning, so nobody treats it as a free precedent:
+
+- The rule forbids putting application **logic** in `main.js`. Its own description lists **disk
+  access** among that file's duties, and writing a `.glb` is exactly that — no existing channel can,
+  since `project:write` writes a *string*.
+- The rule's usual remedy — "push it down as a generated file" — does not apply here. These bytes
+  arrive at runtime, chosen by the user; nothing can generate them at build time.
+- The split is enforced, not merely intended: `main.js` does I/O and **defends itself**
+  (`nomDeModeleAcceptable` refuses any name that is not a bare filename), while `src/model-store.js`
+  **decides** — chosen name, collisions, messages. The decision stays testable;
+  `tests/model-store.test.mjs` guards both halves.
+
+Anything that can be decided in `src/` still belongs in `src/`. An exception that gets used twice
+stops being one.
+
 ## Rule #2 — circular imports are broken by callback injection
 
 Modules have crossed needs: `scene3d.js` must redraw the page, `draw.js` must update the side
