@@ -36,5 +36,11 @@
   },
 
   "include": ["src/**/*.js", "types/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "tests", "tools", "main.js", "preload.js"]
+
+  // `src/vendor/` est du code TIERS, copié de three et volontairement non réécrit (cf. l'en-tête de
+  // GLTFLoader.js). L'inclure diluerait le repère mesuré de la campagne d'août 2026 — 402
+  // diagnostics, zéro défaut réel — avec quatre mille lignes qu'on ne corrigera jamais, puisque la
+  // règle n°5 dit déjà de ne pas faire le ménage dans ces diagnostics. Un repère qu'on ne peut plus
+  // comparer ne sert à rien.
+  "exclude": ["node_modules", "dist", "tests", "tools", "main.js", "preload.js", "src/vendor"]
 }
