@@ -100,3 +100,29 @@ Il faut une **migration**, pas un renommage. Le dépôt en contient déjà :
 
 C'est plus coûteux qu'un rechercher-remplacer. C'est précisément pourquoi la règle par défaut est de
 ne pas renommer.
+
+## 5. Un fichier illisible ne doit pas détruire celui qui est lisible
+
+`applyProjectData` valide la forme des données chargées **avant d'écrire quoi que ce soit** dans `S`
+(`validateProjectShape`). Ce n'est pas de la politesse défensive, c'est la différence entre perdre
+un fichier et en perdre deux.
+
+Auparavant, la fonction assignait `S.tomes` puis atteignait plus loin le code qui levait.
+L'exception laissait un projet à moitié chargé en mémoire pendant que `S.projectFilePath` désignait
+encore le fichier **précédent** — à un Ctrl+S de l'écraser avec l'épave.
+
+**Elle refuse plutôt qu'elle ne répare.** Ramener un `tomes` malformé à `[]` ouvrirait un projet
+vide en silence, et la sauvegarde automatique suivante écrirait ce vide par-dessus le vrai fichier.
+Refuser bruyamment conserve les deux fichiers.
+
+Ce qui est refusé : une valeur présente et du mauvais type là où le chargement itère (`tomes`,
+`scenes`, `pages`, `objects`). Ce qui est toléré : absent, `null`, ou seulement absurde (un
+`currentTomeIndex` hors bornes, un nom de projet nul). La frontière est l'*ambiguïté*, pas la
+propreté.
+
+Même mode de défaillance, corrigé en même temps : un chargement refusé laissait la **sauvegarde
+automatique éteinte** pour le reste de la session — `stopAutosave()` s'exécute avant la lecture,
+`startAutosave()` seulement en cas de succès. En silence, et sur le projet précédent, resté ouvert.
+
+`tests/persisted-format.test.mjs` garde tout cela, y compris ce qu'`assert.throws` seul ne peut pas
+voir : que le refus a lieu *avant* la première écriture.

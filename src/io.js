@@ -423,7 +423,46 @@ export function resyncIdCounter(data){
   if (maxN > S.idCounter) S.idCounter = maxN;
 }
 
+/**
+ * Checks a loaded project's shape BEFORE anything is written to S. Throws on a file that is
+ * present but structurally unusable; returns silently for absent/empty data (a new Project).
+ *
+ * WHY IT THROWS INSTEAD OF REPAIRING. Coercing a malformed `tomes` to `[]` would open an empty
+ * Project silently — and the next autosave would then overwrite the real file with that emptiness.
+ * A file we cannot read must leave the current Project untouched, so the user still has both.
+ * Refusing loudly is the safe answer here; repairing quietly is the destructive one.
+ *
+ * WHY IT RUNS FIRST. applyProjectData used to assign S.tomes and only then reach the code that
+ * throws. The exception left a half-loaded Project in memory while S.projectFilePath still pointed
+ * at the PREVIOUS file — one Ctrl+S away from destroying it. Same ordering rule as
+ * tools/bump-version.mjs: all checks before all writes (cf. docs/versioning.md).
+ */
+export function validateProjectShape(data){
+  if (data === null || data === undefined) return;      // nouveau Projet
+  if (typeof data !== 'object' || Array.isArray(data)) throw new Error('project: not an object');
+  const tableauOuAbsent = (v, quoi) => {
+    if (v !== undefined && v !== null && !Array.isArray(v)) throw new Error(`project: ${quoi} is not an array`);
+  };
+  tableauOuAbsent(data.tomes, 'tomes');
+  tableauOuAbsent(data.scenes, 'scenes');
+  [...(data.tomes || []), ...(data.scenes || [])].forEach((vol, i) => {
+    if (!vol || typeof vol !== 'object') throw new Error(`project: volume ${i} is not an object`);
+    tableauOuAbsent(vol.pages, `volume ${i}.pages`);
+    (vol.pages || []).forEach((page, j) => {
+      if (!page || typeof page !== 'object') throw new Error(`project: page ${i}.${j} is not an object`);
+      tableauOuAbsent(page.objects, `page ${i}.${j}.objects`);
+    });
+  });
+}
+
 export function applyProjectData(data){
+  validateProjectShape(data);
+  // Une Planche sans `objects` est une Planche vide, pas un fichier abîmé : on complète plutôt que
+  // de refuser. La distinction est faite par validateProjectShape ci-dessus, qui n'a rejeté que
+  // les valeurs PRÉSENTES et du mauvais type.
+  [...((data && data.tomes) || []), ...((data && data.scenes) || [])].forEach(vol => {
+    (vol.pages || []).forEach(page => { if (!page.objects) page.objects = []; });
+  });
   disposeAllRigs3D();
   S.projectName = (data && data.projectName) || 'Projet';
   S.tomes = (data && data.tomes) || [];
@@ -699,6 +738,10 @@ export async function loadExistingProjectFlow(){
       setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
       closeProjectModal();
     } catch (err) {
+      // stopAutosave() a été appelé AVANT la lecture. Sans ce redémarrage, un fichier refusé
+      // laissait la sauvegarde automatique éteinte pour le reste de la session — en silence, sur
+      // le Projet précédent resté ouvert. Le message d'erreur ne parlait que du fichier refusé.
+      startAutosave();
       setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
     }
     return;
@@ -723,6 +766,7 @@ export async function loadExistingProjectFlow(){
     startAutosave();
     setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
   } catch (err) {
+    startAutosave();   // idem : ne pas laisser la sauvegarde automatique éteinte (cf. plus haut)
     if (err && err.name !== 'AbortError') setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
   }
 }

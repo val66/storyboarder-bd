@@ -98,3 +98,28 @@ the new one on load. The scheme:
    software whose files live at people's homes.
 
 This costs more than a search-and-replace. That is precisely why the default rule is not to rename.
+
+## 5. A file that cannot be read must not destroy the one that can
+
+`applyProjectData` validates the shape of the loaded data **before writing anything** to `S`
+(`validateProjectShape`). This is not defensive politeness, it is the difference between losing one
+file and losing two.
+
+It used to assign `S.tomes` and only then reach the code that threw. The exception left a
+half-loaded project in memory while `S.projectFilePath` still pointed at the **previous** file — one
+Ctrl+S away from overwriting it with the wreckage.
+
+**It refuses rather than repairs.** Coercing a malformed `tomes` to `[]` would open an empty project
+silently, and the next autosave would write that emptiness over the real file. Refusing loudly keeps
+both files.
+
+What is refused: a value that is present and of the wrong type where the loader iterates (`tomes`,
+`scenes`, `pages`, `objects`). What is tolerated: absent, `null`, or merely absurd (an out-of-range
+`currentTomeIndex`, a null project name). The line is drawn at *ambiguity*, not at tidiness.
+
+Related, same failure mode: a refused load used to leave **autosave switched off** for the rest of
+the session — `stopAutosave()` runs before the read, `startAutosave()` only ran on success. Silent,
+and on the previous project, which was still open.
+
+`tests/persisted-format.test.mjs` guards all of this, including the part `assert.throws` alone
+cannot see: that the refusal happens *before* the first write.

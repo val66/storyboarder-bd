@@ -109,7 +109,9 @@ export default [
         setTimeout: 'readonly', clearTimeout: 'readonly',
         // `URL` est une globale de Node depuis la v10 : les tests s'en servent partout pour
         // résoudre un chemin relatif au fichier (new URL('../src/x.js', import.meta.url)).
-        URL: 'readonly', TextEncoder: 'readonly',
+        // `structuredClone` l'est depuis la v17 : les tests de format s'en servent pour repartir
+        // d'un projet de référence intact à chaque cas.
+        URL: 'readonly', TextEncoder: 'readonly', structuredClone: 'readonly',
         // Le dom-stub installe un faux DOM sur globalThis avant que les tests n'importent les
         // modules : `window`, `document` et THREE sont donc légitimes dans un fichier de test.
         window: 'readonly', document: 'readonly', THREE: 'readonly',
