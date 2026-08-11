@@ -52,7 +52,7 @@ const DOC = readFileSync(join(RACINE, 'docs', 'persisted-data.md'), 'utf8');
 const CHAMPS = {
   'niveau Projet': ['projectName', 'tomes', 'scenes', 'currentTomeIndex', 'currentPageIndex', 'poses'],
   'Éléments': ['pieceId', 'pieceLabel', 'altPieceId', 'pieceFloorType', 'objType', 'caseNumber',
-    'batimentNames', 'batimentRotY', 'wallSide'],
+    'batimentNames', 'batimentRotY', 'wallSide', 'modelFile'],
   'coordonnées monde': ['wxFloor', 'wyFloor', 'wzFloor', 'realHeightFloor', 'realLenFloor'],
   'ouvertures sur support': ['wallYFrac', 'wallAlongFrac', 'magnetWallId', 'wallHeight'],
   'caméra de Case': ['camWx', 'camWy', 'camWz', 'camDist', 'camRotX', 'camRotY'],
@@ -63,7 +63,7 @@ const CHAMPS = {
 // enregistrés. Les « corriger » les casserait.
 const VALEURS = {
   type: ['perso', 'objet3d', 'panel', 'tracé', 'terrain', 'bulle'],
-  objType: ['mur', 'mur_coin', 'dalle'],
+  objType: ['mur', 'mur_coin', 'dalle', 'modele'],
   'tracéType': ['muret', 'cloture', 'haie', 'barriere', 'route', 'chemin', 'terrain'],
   wallSide: ['avant', 'arriere'],
   'état porte/fenêtre': ['gauche', 'droite', 'fermee'],
@@ -102,7 +102,7 @@ describe('Format de fichier — le vocabulaire est figé', () => {
     // possible, déjà constaté deux fois dans ce dépôt.
     assert.ok(SOURCES.length > 100000, `sources trop courtes : ${SOURCES.length} caractères`);
     assert.ok(DOC.length > 2000, 'docs/persisted-data.md semble vide');
-    assert.equal(Object.values(CHAMPS).flat().length, 30);
+    assert.equal(Object.values(CHAMPS).flat().length, 31);
   });
 });
 
@@ -134,6 +134,14 @@ function projetComplet() {
     id: 'e4', type: 'tracé', tracéType: 'muret', panelId: 'c1', color: '#888',
     world: [{ x: 0, z: 0 }, { x: 2, z: 2 }], pts: [{ x: 0, y: 0 }],
   };
+  // Modèle importé : c'est le seul porteur de `modelFile`, donc le seul à pouvoir montrer que ce
+  // champ survit à l'aller-retour. Sans lui, le champ figurerait dans la liste du vocabulaire sans
+  // qu'aucun test ne le voie jamais écrit puis relu.
+  const modele = {
+    id: 'e7', type: 'objet3d', objType: 'modele', modelFile: 'salon.glb',
+    x: 30, y: 30, w: 40, h: 40, homePanelId: 'c1',
+    wxFloor: 2, wyFloor: 0, wzFloor: 1, realHeightFloor: 1.2, magnetGround: true,
+  };
   const bulle = { id: 'e5', type: 'bulle', x: 1, y: 2, w: 50, h: 30, text: 'Bonjour' };
   const terrain = { id: 'e6', type: 'terrain', x: 0, y: 0, w: 20, h: 20, terrainType: 'herbe' };
   const panel = {
@@ -149,7 +157,7 @@ function projetComplet() {
     currentPageIndex: 0,
     tomes: [{
       id: 't1', name: 'Tome 1', format: 'A4', w: 210, h: 297, scale: 3,
-      pages: [{ id: 'p_1', objects: [panel, persona, mur, porte, tracé, bulle, terrain] }],
+      pages: [{ id: 'p_1', objects: [panel, persona, mur, porte, tracé, bulle, terrain, modele] }],
     }],
     scenes: [],
     poses: [{ id: 'debout', name: 'Debout', skeleton: 'humain', joints: { brasG: 0 } }],
@@ -212,7 +220,7 @@ describe('Format de fichier — l\'aller-retour ne perd rien', () => {
     // Éléments de ce projet en ont une : aucun ne doit être emporté.
     applyProjectData(structuredClone(projetComplet()));
     const ids = S.tomes[0].pages[0].objects.map(o => o.id).sort();
-    assert.deepEqual(ids, ['c1', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6']);
+    assert.deepEqual(ids, ['c1', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7']);
   });
 });
 

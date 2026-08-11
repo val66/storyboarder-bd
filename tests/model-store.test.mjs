@@ -302,3 +302,101 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
  * premier changement de machine, quand les Projets synchronisés arriveraient sans leurs modèles.
  * C'est exactement le genre de défaut qu'un essai à la main ne trouve jamais.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. La forme persistée d'un modèle importé (étape 3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { MODEL_OBJ_TYPE, isImportedModel, createModelElement } from '../src/model-store.js';
+
+const CASE_TEST = { id: 'c1', type: 'panel', x: 100, y: 50, w: 400, h: 300 };
+const PAGE_TEST = { w: 1240, h: 1754 };
+
+describe('La forme persistée — un modèle importé est un objet3d comme les autres', () => {
+  test('RÉGRESSION : le discriminant est bien celui que le format a figé', () => {
+    // `type: 'objet3d'` ET `objType: 'modele'`. Ce couple est ce qui fait hériter le modèle de tout
+    // l'existant — placement, aimantation au Sol, coordonnées monde, panneau latéral. Choisir un
+    // `type` nouveau aurait obligé à recâbler chacun de ces chemins.
+    const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'chaise.glb' });
+    assert.equal(el.type, 'objet3d');
+    assert.equal(el.objType, 'modele');
+    assert.equal(MODEL_OBJ_TYPE, 'modele', 'la constante doit valoir la chaîne persistée');
+  });
+
+  test('l\'Élément porte le fichier, et un NOM de fichier seulement', () => {
+    // Jamais un chemin absolu : il casserait au premier changement de machine (cf.
+    // docs/persisted-data.md).
+    const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'salon.glb' });
+    assert.equal(el.modelFile, 'salon.glb');
+    assert.doesNotMatch(el.modelFile, /[\\/]/, 'un séparateur de chemin s\'est glissé dans modelFile');
+  });
+
+  test('il a tout ce qu\'un objet3d ordinaire doit avoir', () => {
+    // La liste vient d'addObjectToPanel. Un champ manquant ne lève pas : il produit un Élément qui
+    // se déplace mal, ne s'aimante pas, ou disparaît du rendu 3D — trois symptômes sans rapport
+    // apparent avec l'import.
+    const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb' });
+    ['id', 'x', 'y', 'w', 'h', 'baseW', 'baseH', 'z', 'rotX', 'rotY', 'rotZ',
+      'realHeightFloor', 'magnetGround', 'homePanelId', 'name'].forEach(champ =>
+      assert.ok(el[champ] !== undefined, `champ manquant : ${champ}`));
+    assert.equal(el.homePanelId, 'c1');
+    assert.equal(el.magnetGround, true, 'un modèle posé au sol doit s\'y aimanter');
+  });
+
+  test('la hauteur déclarée devient la source de vérité 3D', () => {
+    const el = createModelElement({
+      panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb', realHeightM: 2.4 });
+    assert.equal(el.realHeightFloor, 2.4);
+    assert.ok(el.h > 0 && el.h <= PAGE_TEST.h * 0.95, 'la taille 2D en découle et reste dans la Page');
+  });
+
+  test('une hauteur absurde retombe sur la valeur par défaut', () => {
+    // Zéro ou NaN produirait un Élément de hauteur nulle — invisible, et impossible à rattraper au
+    // clic puisqu'il n'aurait aucune surface.
+    [0, -3, NaN, undefined, 'grand'].forEach(v => {
+      const el = createModelElement({
+        panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb', realHeightM: v });
+      assert.ok(el.realHeightFloor > 0, `hauteur non positive pour ${JSON.stringify(v)}`);
+      assert.ok(el.h >= 2, 'un Élément sans surface serait inatteignable au clic');
+    });
+  });
+
+  test('deux modèles créés d\'affilée ne partagent pas leur identifiant', () => {
+    const a = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb' });
+    const b = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb' });
+    assert.notEqual(a.id, b.id);
+  });
+
+  test('isImportedModel exige les DEUX conditions', () => {
+    // Un `objType: 'modele'` porté par un `type: 'perso'` n'existe pas ; mais tester une seule des
+    // deux conditions rendrait la fonction vraie sur des Éléments qu'elle ne doit pas reconnaître.
+    assert.equal(isImportedModel({ type: 'objet3d', objType: 'modele' }), true);
+    assert.equal(isImportedModel({ type: 'objet3d', objType: 'chaise' }), false);
+    assert.equal(isImportedModel({ type: 'perso', objType: 'modele' }), false);
+    [null, undefined, {}, 'modele'].forEach(v =>
+      assert.equal(isImportedModel(v), false, `entrée : ${JSON.stringify(v)}`));
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — étape 3, huit fautes de plus (les dix de l'étape 2 restent valables).
+ *
+ *   T1  le discriminant renommé « model3d »                                      ROUGE (5)
+ *   T2  le champ `modelFile` retiré de l'Élément                                 ROUGE
+ *   T3  isImportedModel ne teste plus que `objType`, sans le `type`              ROUGE
+ *   T4  `magnetGround` retiré                                                    ROUGE
+ *   T5  `realHeightFloor` retiré                                                 ROUGE (4)
+ *   T6  une hauteur nulle ou NaN acceptée telle quelle                           ROUGE
+ *   T7  identifiants d'Éléments rendus constants                                 ROUGE
+ *   T8  le libellé de « modele » retiré de OBJECT_TYPE_LABELS                    ROUGE (après ajout)
+ *
+ * T8 A ÉCHAPPÉ D'ABORD, et le trou n'était pas le mien. Retirer un libellé ne faisait tomber aucun
+ * test — pour AUCUN des trente-cinq types, pas seulement pour le nouveau. Trois tables parallèles
+ * (hauteurs, libellés, émojis) et rien qui exigeait qu'elles s'accordent : c'est la deuxième classe
+ * de bug récurrente du dépôt. Le contrôle ajouté dans rig-geometry.test.mjs couvre désormais les
+ * trente-cinq.
+ *
+ * MUTANT ÉQUIVALENT ÉCARTÉ : `modelFile` → `modelFile || null` ne change rien quand un nom est
+ * fourni, et aucun appelant n'en fournit d'autre. Servi de témoin : il confirme que le harnais
+ * distingue une mutation inerte d'une vraie.
+ */

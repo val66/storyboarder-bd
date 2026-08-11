@@ -34,7 +34,7 @@ deliberate, and `normalizePoses3D` (`io.js`) reads the field with the same toler
 or malformed yields an empty list, never an error.
 
 **Elements** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
-`batimentNames`, `batimentRotY`, `wallSide`.
+`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`.
 
 **World coordinates** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 
@@ -52,7 +52,7 @@ The strings used to recognise the nature of an object are as frozen as the field
 
 ```
 type      : 'perso' | 'objet3d' | 'panel' | 'tracé' | 'terrain' | 'bulle'
-objType   : 'mur' | 'mur_coin' | 'dalle' | 'fenetre_ouverte' | 'porte_ouverte' | …
+objType   : 'mur' | 'mur_coin' | 'dalle' | 'fenetre_ouverte' | 'porte_ouverte' | 'modele' | …
 tracéType : 'muret' | 'cloture' | 'haie' | 'barriere' | 'route' | 'chemin' | 'terrain'
 wallSide  : 'avant' | 'arriere'
 door/window state : 'gauche' | 'droite' | 'fermee'
@@ -60,6 +60,21 @@ door/window state : 'gauche' | 'droite' | 'fermee'
 
 Note `'tracé'` with its accent, `'cloture'` and `'barriere'` without theirs, `'fermee'` without an
 accent: these irregularities are in the saved files. "Fixing" them would break them.
+
+### `modelFile` — a name, and the file it points at
+
+An imported 3D model is an ordinary `objet3d` carrying `objType: 'modele'` and one extra field,
+`modelFile`: the **name of a file** inside `<projects folder>/Modeles`, never an absolute path. An
+absolute path would break the moment the user changed machine or account.
+
+Two consequences that are part of the format, not of the implementation:
+
+- **Nothing guarantees the file is there.** It lives outside the project, and the user may move or
+  delete it. A missing model shows as a placeholder box; the Element **is never removed**. See § 5 —
+  a transient failure (unmounted drive, antivirus lock) would otherwise destroy a placement, and
+  auto-save would write the loss out seconds later.
+- **The models follow the projects.** They sit inside the folder the user chose for projects, so
+  whatever they do to sync or back those up covers the models too.
 
 ## 3. DOM ids
 

@@ -35,7 +35,7 @@ machine qui ne l'a pas, ne change l'allure d'aucun Personnage — seule l'étiqu
 absent, nul ou malformé donne une liste vide, jamais une erreur.
 
 **Éléments** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
-`batimentNames`, `batimentRotY`, `wallSide`.
+`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`.
 
 **Coordonnées monde** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 
@@ -53,7 +53,7 @@ Les chaînes qui servent à reconnaître la nature d'un objet sont aussi figées
 
 ```
 type      : 'perso' | 'objet3d' | 'panel' | 'tracé' | 'terrain' | 'bulle'
-objType   : 'mur' | 'mur_coin' | 'dalle' | 'fenetre_ouverte' | 'porte_ouverte' | …
+objType   : 'mur' | 'mur_coin' | 'dalle' | 'fenetre_ouverte' | 'porte_ouverte' | 'modele' | …
 tracéType : 'muret' | 'cloture' | 'haie' | 'barriere' | 'route' | 'chemin' | 'terrain'
 wallSide  : 'avant' | 'arriere'
 état porte/fenêtre : 'gauche' | 'droite' | 'fermee'
@@ -61,6 +61,22 @@ wallSide  : 'avant' | 'arriere'
 
 Noter `'tracé'` avec son accent, `'cloture'` et `'barriere'` sans les leurs, `'fermee'` sans accent :
 ces irrégularités sont dans les fichiers enregistrés. Les « corriger » les casserait.
+
+### `modelFile` — un nom, et le fichier qu'il désigne
+
+Un modèle 3D importé est un `objet3d` ordinaire portant `objType: 'modele'` et un champ de plus,
+`modelFile` : le **nom d'un fichier** dans `<dossier de Projets>/Modeles`, jamais un chemin absolu.
+Un chemin absolu casserait dès que l'utilisateur change de machine ou de compte.
+
+Deux conséquences qui font partie du format, pas de l'implémentation :
+
+- **Rien ne garantit que le fichier soit là.** Il vit hors du Projet, et l'utilisateur peut le
+  déplacer ou le supprimer. Un modèle introuvable s'affiche en boîte de remplacement ; l'Élément
+  **n'est jamais supprimé**. Cf. § 5 — une panne passagère (disque non monté, antivirus qui
+  verrouille) détruirait sinon un placement, et la sauvegarde automatique graverait la perte
+  quelques secondes plus tard.
+- **Les modèles suivent les Projets.** Ils sont rangés dans le dossier que l'utilisateur a choisi
+  pour ses Projets : ce qu'il fait pour les synchroniser ou les sauvegarder les couvre aussi.
 
 ## 3. Les ids DOM
 

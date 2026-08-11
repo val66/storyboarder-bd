@@ -18,8 +18,64 @@
  * dès que le fichier revient. Cf. docs/persisted-data.md § 5.
  */
 
+import { OBJECT_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D } from './constants.js';
+import { newId } from './state.js';
+import { clamp } from './utils.js';
+
 /** Extension acceptée. `.gltf` est lisible aussi, mais il traîne ses textures en fichiers séparés. */
 const EXTENSION = '.glb';
+
+/**
+ * Le discriminant persisté d'un modèle importé.
+ *
+ * PAS de nouveau `type` : un modèle importé est un `type: 'objet3d'` comme les autres, avec un
+ * `objType` nouveau. C'est le choix qui coûte le moins et rapporte le plus — il hérite d'un coup du
+ * placement, de l'aimantation au Sol, des coordonnées monde, de la ligne de panneau latéral, du
+ * glisser, du redimensionnement. Trente-huit constructeurs de rigs se distinguent déjà par `objType` ;
+ * celui-ci en est un trente-neuvième, qui lit un fichier au lieu de bâtir des boîtes.
+ *
+ * Un SEUL objType pour tous les modèles importés : ce qui les distingue est le fichier qu'ils
+ * portent, pas leur type. Ajouter une valeur de discriminant est permis ; en renommer une casserait
+ * tous les Projets déjà enregistrés (cf. docs/persisted-data.md).
+ */
+export const MODEL_OBJ_TYPE = 'modele';
+
+/** Cet Élément est-il un modèle importé ? Les deux conditions comptent : `type` ET `objType`. */
+export function isImportedModel(o){
+  return !!o && o.type === 'objet3d' && o.objType === MODEL_OBJ_TYPE;
+}
+
+/**
+ * Construit l'Élément persisté d'un modèle importé. Fonction PURE : elle ne touche ni `S`, ni la
+ * Page — c'est l'appelant qui range le résultat où il veut (une Case, ou le canevas d'une Scène).
+ *
+ * `modelFile` est le seul champ vraiment nouveau du format. Tout le reste — x, y, w, h, baseW/baseH,
+ * z, rotations, realHeightFloor, magnetGround — est la forme d'un objet3d ordinaire, délibérément
+ * recopiée d'addObjectToPanel pour qu'un modèle importé se comporte comme une chaise.
+ *
+ * La hauteur : `realHeightM` est la source de vérité du rendu 3D, qui normalise le modèle dessus
+ * (cf. scene3d.js). Une valeur fausse se corrige donc dans la modale sans rien casser — c'est ce qui
+ * nous dispense d'aller lire les dimensions du fichier ici, où elles ne sont pas encore disponibles.
+ */
+export function createModelElement({ panel, page, modelFile, name, realHeightM } = {}){
+  const realH = Number.isFinite(realHeightM) && realHeightM > 0
+    ? realHeightM
+    : OBJECT_REAL_HEIGHT_M[MODEL_OBJ_TYPE];
+  const h = clamp(realH * WALL_PX_PER_UNIT_3D, 2, page.h * 0.95);
+  const w = clamp(h, 2, page.w * 0.95);          // 1:1 tant qu'on n'a pas lu le fichier
+  return {
+    id: newId(), type: 'objet3d', objType: MODEL_OBJ_TYPE,
+    modelFile,
+    x: clamp(panel.x + panel.w / 2 - w / 2, 0, page.w - w),
+    y: clamp(panel.y + panel.h / 2 - h / 2, 0, page.h - h),
+    w, h, baseW: w, baseH: h, z: 0,
+    name: name || 'Modèle',
+    rotX: 0, rotY: 0, rotZ: 0,
+    realHeightFloor: realH,
+    magnetGround: true,
+    homePanelId: panel.id,
+  };
+}
 
 /**
  * Rend un nom de fichier sûr et lisible à partir de ce que l'utilisateur a fourni.

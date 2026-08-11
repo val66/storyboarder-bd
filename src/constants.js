@@ -155,6 +155,11 @@ export const OBJECT_TYPE_LABELS = {
   lampadaire: 'Lampadaire', panneau_signalisation: 'Panneau de signalisation',
   tombe: 'Tombe', pierre_tombale: 'Pierre tombale', caveau: 'Caveau',
   banc_eglise: 'Banc d\'église', autel: 'Autel',
+
+  // Modèle 3D importé (.glb). Un seul objType pour tous les modèles importés : ce qui les distingue
+  // est le fichier qu'ils portent (`modelFile`), pas leur type. Absent des menus d'ajout, qui sont
+  // figés dans index.html — on y arrive par « Importer un modèle », pas par la liste des Objets.
+  modele: 'Modèle importé',
 };
 
 // ---------- Wall magnetism ----------
@@ -206,6 +211,8 @@ export const OBJECT_ASPECT_RATIOS = {
   lampadaire: 0.6 / 1.0, panneau_signalisation: 0.5 / 1.0,
   tombe: 4.0 / 1.0, pierre_tombale: 0.7 / 1.0, caveau: 1.0 / 1.0,
   banc_eglise: 2.5 / 1.0, autel: 1.8 / 1.0,
+  // 1:1 : on ne connaît pas les proportions avant d'avoir lu le fichier (étape 4).
+  modele: 1.0 / 1.0,
 };
 
 // Hauteur RÉELLE approximative (en unités monde "mètres", même convention que WALL_PX_PER_UNIT_3D —
@@ -230,6 +237,10 @@ export const OBJECT_REAL_HEIGHT_M = {
   lampadaire: 4.3, panneau_signalisation: 2.6,
   tombe: 0.15, pierre_tombale: 0.68, caveau: 1.8,
   banc_eglise: 0.96, autel: 1.15,
+  // Hauteur par défaut d'un modèle importé, en attendant celle que l'utilisateur déclarera. Un
+  // mètre est neutre : ni un bibelot, ni un bâtiment. Le rendu 3D normalise de toute façon le
+  // modèle sur `realHeightFloor`, donc une valeur fausse se corrige sans rien casser.
+  modele: 1,
 };
 
 
@@ -298,6 +309,7 @@ export const OBJECT_TYPE_EMOJI = {
   lampadaire: '💡', panneau_signalisation: '🚦',
   tombe: '⬛', pierre_tombale: '🪦', caveau: '🏛️',
   banc_eglise: '🪑', autel: '✝️',
+  modele: '📦',
 };
 
 

@@ -31,7 +31,9 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import * as R from '../src/rig3d.js';
-import { OBJECT_REAL_HEIGHT_M, ANIMAL_TYPES } from '../src/constants.js';
+import {
+  OBJECT_REAL_HEIGHT_M, ANIMAL_TYPES, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
+} from '../src/constants.js';
 
 // Le constructeur de chaque type d'Objet. Cette table est elle-même l'objet d'un test : une entrée
 // manquante des deux côtés passerait inaperçue, et c'est la deuxième classe de bug récurrente de ce
@@ -79,6 +81,20 @@ describe('Rigs 3D — aucune boîte englobante dégénérée', () => {
 });
 
 describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
+  test('RÉGRESSION : chaque type déclaré a AUSSI un libellé et une émoji', () => {
+    // Trou trouvé par mutation en ajoutant « modele » : retirer son libellé ne faisait tomber aucun
+    // test. La conséquence est cosmétique — le repli `|| 'Objet'` prend la main, et le panneau
+    // latéral comme le titre de modale affichent « Objet » — mais c'est la deuxième classe de bug
+    // récurrente du dépôt : trois tables parallèles, et rien qui exige qu'elles s'accordent.
+    //
+    // Ce contrôle couvre les trente-cinq types, pas seulement le dernier ajouté.
+    const types = Object.keys(OBJECT_REAL_HEIGHT_M);
+    assert.deepEqual(types.filter(t => !OBJECT_TYPE_LABELS[t]), [],
+      'type(s) sans libellé : ils s\'afficheraient « Objet »');
+    assert.deepEqual(types.filter(t => !OBJECT_TYPE_EMOJI[t]), [],
+      'type(s) sans émoji dans le panneau latéral');
+  });
+
   test('RÉGRESSION : chaque type déclaré dans OBJECT_REAL_HEIGHT_M a un constructeur', () => {
     // L'énumération incomplète est la deuxième classe de bug récurrente du dépôt (la garde Échap
     // d'io.js, l'appariement positionnel du manuel). Ici, un type déclaré sans constructeur donne
@@ -87,7 +103,12 @@ describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
     // Les Murs sont exclus : ils ne sont pas construits par un rig fixe mais par
     // buildWallRig3D(couleur, longueur, hauteur, ouvertures), dont la géométrie dépend de
     // l'instance. Même chose pour les Parois, dont la taille vient de CHILD_DESIGN_SIZE_3D.
-    const aPart = ['mur', 'mur_coin', 'fenetre_ouverte', 'porte_ouverte', 'baie_vitree', 'autel'];
+    // « modele » rejoint cette liste pour EXACTEMENT la même raison que les Murs : sa géométrie ne
+    // vient pas d'un constructeur fixe mais de l'instance — ici du fichier .glb qu'elle porte. Ce
+    // n'est pas une dérogation de complaisance ; un constructeur codé en dur pour un modèle importé
+    // n'aurait aucun sens.
+    const aPart = ['mur', 'mur_coin', 'fenetre_ouverte', 'porte_ouverte', 'baie_vitree', 'autel',
+      'modele'];
     const sansConstructeur = Object.keys(OBJECT_REAL_HEIGHT_M)
       .filter(t => !aPart.includes(t) && !CONSTRUCTEURS[t]);
     assert.deepEqual(sansConstructeur, [],
