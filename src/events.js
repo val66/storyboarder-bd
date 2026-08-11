@@ -22,6 +22,7 @@ import {
   setCanvasToolsCallbacks, screenToWorldFloor, buildApplyAngleSnap, buildApplyAlignSnap,
   startBuildMode, startTraceTool, stopTraceTool, startMeasureTool, stopMeasureTool,
 } from './canvas-tools.js';
+import { setModelCacheCallbacks } from './model-cache.js';
 import {
   setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
@@ -273,6 +274,9 @@ document.addEventListener('mousedown', (e) => {
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 setScenesCallbacks({ snapshot });
 setCanvasToolsCallbacks({ snapshot });
+// Un modèle importé qui finit d'être décodé doit apparaître sans que l'utilisateur touche à
+// quoi que ce soit. C'est ce rappel qui remplace la boîte de remplacement par le modèle.
+setModelCacheCallbacks({ onChange: () => renderAll() });
 setProjectTreeCallbacks({
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,

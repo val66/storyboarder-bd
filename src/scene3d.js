@@ -23,6 +23,11 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox } from './utils.js';
 import { S, currentPage } from './state.js';
+// Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
+// inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
+// changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
+// carte graphique, invisibles et cumulatives).
+import { clearModelCache, collectModelFiles, modelCacheSignature } from './model-cache.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -1526,6 +1531,11 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     }
     return JSON.stringify(clone);
   });
+  // État du cache des modèles importés. INDISPENSABLE, et pas évident : un Élément ne change pas
+  // quand son modèle finit d'être décodé. Sans cette part, la Case resterait en cache avec sa boîte
+  // de remplacement, et le modèle chargé n'apparaîtrait qu'au prochain déplacement — « comme par
+  // magie », sans rapport visible avec l'import.
+  const modelPart = modelCacheSignature(collectModelFiles(elements));
   const camPart = JSON.stringify({
     style: (styleKey && styleKey.key) || styleKey,
     camDist: panel.camDist, camRotX: panel.camRotX, camRotY: panel.camRotY,
@@ -1552,7 +1562,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id)
       .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world }))
   );
-  return camPart + '||' + parts.join('|') + '||t:' + tracéPart;
+  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart;
 }
 // Builds/replaces each rig (persona, objet3d, combined Wall+Wall-Openings) owned by this panel at its true
 // 3D position (see ensureElementWorldPos3D/ensureElementUnits3D), hides the rest of the
@@ -2746,6 +2756,9 @@ export function drawObject3D(c, o, styleKey, page){
 //  wallJunctionMeshCache3D)
 // as well as rig3d.js's caches and singletons, all already imported above.
 export function disposeAllRigs3D(){
+  // Les modèles importés d'abord : leurs géométries sont PARTAGÉES par tous les clones posés dans
+  // les Cases, donc elles ne se libèrent qu'ici, à la source, et une seule fois.
+  clearModelCache();
   Array.from(personaRigCache3D.keys()).forEach(disposePersonaRig3D);
   Array.from(objectRigCache3D.keys()).forEach(disposeObjectRig3D);
   Array.from(wallRenderRigCache3D.keys()).forEach(disposeWallRenderRig3D);

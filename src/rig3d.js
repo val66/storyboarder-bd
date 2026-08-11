@@ -17,6 +17,9 @@ import {
   clamp, orbitCameraPosition3D
 } from './utils.js';
 import { currentVolume } from './state.js';
+// Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
+// lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
+import { getLoadedModel, modelState } from './model-cache.js';
 
 export function getEffectiveJoints(o){
   return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
@@ -2907,7 +2910,44 @@ export function buildAutelRig3D(colorHex){
   return group;
 }
 
+/**
+ * Rig d'un modèle importé : le contenu du `.glb`, ou une boîte de remplacement.
+ *
+ * LECTURE SYNCHRONE du cache, et c'est tout l'intérêt du montage. Le décodage a eu lieu avant, à
+ * l'ouverture du Projet (cf. model-cache.js) ; ici on ne fait que retrouver ce qui est prêt. Rien
+ * n'attend, rien ne lève, et le chemin de dessin reste ce qu'il était.
+ *
+ * Le clone PARTAGE géométries et matériaux avec l'original — c'est voulu : dix chaises du même
+ * fichier ne pèsent qu'une fois sur la carte graphique. La contrepartie est que la libération se
+ * fait sur l'original, une seule fois (cf. clearModelCache).
+ *
+ * La taille n'est pas ajustée ici : placeRigCentered3D normalise tout rig sur `realHeightFloor`,
+ * quelle que soit l'échelle à laquelle le modèle a été exporté. C'est ce qui rattrape un fichier
+ * fait en centimètres.
+ */
+function buildImportedModelRig3D(colorHex, o){
+  const nom = o && o.modelFile;
+  const chargé = nom ? getLoadedModel(nom) : null;
+  if (chargé) {
+    const g = new THREE.Group();
+    g.add(chargé.scene.clone(true));
+    return g;
+  }
+  // Boîte de remplacement. Deux situations très différentes la produisent — modèle pas encore
+  // décodé, ou fichier introuvable — et elles se distinguent à la couleur : neutre pendant le
+  // chargement, orangée quand le fichier manque. L'utilisateur voit la différence sans lire un
+  // message, et l'Élément reste manipulable dans les deux cas.
+  const manquant = !nom || modelState(nom) === 'introuvable';
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({
+    color: manquant ? 0xC08040 : 0x9AA0A6, transparent: true, opacity: 0.55,
+  });
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
+  return g;
+}
+
 const PROP_RIG_BUILDERS_3D = {
+  modele: buildImportedModelRig3D,
   voiture: buildCarRig3D, velo: buildBikeRig3D, table: buildTableRig3D, chaise: buildChairRig3D,
   etagere: buildShelfRig3D, armoire: buildWardrobeRig3D, canape: buildSofaRig3D,
   bureau: buildDeskRig3D, lit: buildBedRig3D,
@@ -2943,6 +2983,15 @@ export function buildPropRig3D(objType, colorHex, o){
     const windowState = (o && o.windowState) || 'gauche';
     const windowAngle = (o && o.windowAngle != null) ? o.windowAngle : 58;
     return { figureGroup: builder(colorHex, windowState, windowAngle), windowState, windowAngle };
+  }
+  // Un modèle importé dépend de son FICHIER et de l'état du cache : les deux entrent dans l'entrée
+  // de cache pour qu'ensureObjectRigEntry3D reconstruise quand le décodage aboutit.
+  if (objType === 'modele') {
+    return {
+      figureGroup: builder(colorHex, o),
+      modelFile: (o && o.modelFile) || null,
+      modelState: (o && o.modelFile) ? modelState(o.modelFile) : 'absent',
+    };
   }
   if (ANIMAL_TYPES.includes(objType)) {
     const built = builder(colorHex); // { figureGroup, joints }
@@ -3338,7 +3387,14 @@ export function ensureObjectRigEntry3D(o){
     entry.windowState !== (o.windowState || 'gauche') ||
     entry.windowAngle !== ((o.windowAngle != null) ? o.windowAngle : 58)
   );
-  if (!entry || entry.objType !== objType || entry.color !== color || dimsChanged || doorStateChanged || windowStateChanged) {
+  // Un modèle importé se reconstruit quand son fichier change, ET quand son état de chargement
+  // change : c'est ce second cas qui remplace la boîte de remplacement par le modèle décodé. Sans
+  // lui, le rig resterait celui construit avant l'arrivée du fichier, définitivement.
+  const modelChanged = entry && objType === 'modele' && (
+    entry.modelFile !== ((o && o.modelFile) || null) ||
+    entry.modelState !== ((o && o.modelFile) ? modelState(o.modelFile) : 'absent')
+  );
+  if (!entry || entry.objType !== objType || entry.color !== color || dimsChanged || doorStateChanged || windowStateChanged || modelChanged) {
     if (entry) personaScene3D.remove(entry.figureGroup);
     const built = buildPropRig3D(objType, color, o);
     personaScene3D.add(built.figureGroup);

@@ -1,0 +1,166 @@
+/**
+ * @file model-cache.js
+ * Les modèles importés, décodés une fois et gardés prêts — parce que le rendu ne sait pas attendre.
+ *
+ * LE PROBLÈME QUE CE FICHIER RÉSOUT. `GLTFLoader` est asynchrone ; tout le chemin de dessin est
+ * synchrone. `renderPanelSceneUncached3D` construit les rigs en ligne, dans une boucle, sans jamais
+ * rendre la main : on ne peut donc pas y attendre le décodage d'un fichier. Toute tentative de
+ * glisser un `await` là-dedans reviendrait à réécrire le moteur de rendu.
+ *
+ * LA SORTIE. On décale le décodage AVANT le dessin. Les modèles d'un Projet sont chargés à son
+ * ouverture, rangés ici, et le constructeur de rig ne fait plus qu'une LECTURE SYNCHRONE de ce
+ * cache. Un modèle pas encore là donne une boîte de remplacement, et son arrivée déclenche un
+ * redessin — c'est le rôle du callback `onChange`.
+ *
+ * TROIS ÉTATS, ET ILS COMPTENT TOUS LES TROIS :
+ *   'absent'      jamais demandé
+ *   'chargement'  décodage en cours — surtout ne pas le relancer, ce qui décoderait N fois
+ *   'prêt'        utilisable
+ *   'introuvable' le fichier n'est pas là, ou ne se décode pas
+ *
+ * « introuvable » n'est PAS une erreur passagère qu'on réessaie en boucle : sans cet état, chaque
+ * image relancerait une lecture disque vouée à échouer. Et il ne vaut JAMAIS suppression de
+ * l'Élément — cf. docs/persisted-data.md § 5.
+ *
+ * CE QUI N'EST PAS ICI : le dessin de la boîte de remplacement (rig3d.js) et la décision de
+ * redessiner (scene3d.js). Ce module ne connaît que des octets et des scènes Three.
+ */
+
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { readModel } from './model-store.js';
+
+// nom de fichier → 'chargement' | 'introuvable' | { scene, hauteurM }
+const _cache = new Map();
+
+// Prévenir quand un modèle arrive : c'est ce qui transforme une boîte de remplacement en modèle
+// sans que l'utilisateur ait à cliquer. Injecté plutôt qu'importé (cf. architecture, règle n°2).
+let _onChange = () => {};
+export function setModelCacheCallbacks({ onChange }){ _onChange = onChange || (() => {}); }
+
+/**
+ * Les noms de fichiers distincts référencés par une liste d'Éléments. Fonction PURE.
+ *
+ * Distincts : dix chaises du même modèle ne doivent décoder qu'une fois. C'est aussi ce qui rend le
+ * partage de géométrie possible plus loin — les instances sont des clones qui se partagent leurs
+ * tampons.
+ */
+export function collectModelFiles(objects){
+  const noms = new Set();
+  (objects || []).forEach(o => {
+    if (o && o.type === 'objet3d' && o.objType === 'modele' && typeof o.modelFile === 'string' && o.modelFile) {
+      noms.add(o.modelFile);
+    }
+  });
+  return [...noms];
+}
+
+/** L'état d'un modèle. Synchrone, sans effet de bord — appelable depuis le chemin de dessin. */
+export function modelState(nom){
+  const e = _cache.get(nom);
+  if (e === undefined) return 'absent';
+  if (e === 'chargement' || e === 'introuvable') return e;
+  return 'prêt';
+}
+
+/** La scène décodée, ou null. Synchrone : c'est le point d'entrée du constructeur de rig. */
+export function getLoadedModel(nom){
+  const e = _cache.get(nom);
+  return (e && e !== 'chargement' && e !== 'introuvable') ? e : null;
+}
+
+/**
+ * Signature de l'état du cache pour les noms donnés.
+ *
+ * INDISPENSABLE au rendu, et pas évident : la signature de Case est calculée à partir des Éléments,
+ * or un Élément ne change pas quand son modèle finit d'arriver. Sans cette part, la Case resterait
+ * en cache avec sa boîte de remplacement, et le modèle chargé ne s'afficherait jamais — jusqu'au
+ * prochain déplacement, qui la ferait apparaître comme par magie.
+ */
+export function modelCacheSignature(noms){
+  return (noms || []).map(n => `${n}:${modelState(n)}`).join('|');
+}
+
+/** Décode un `.glb` en scène Three. Enveloppe la callback de GLTFLoader dans une promesse. */
+function parseGlb(octets){
+  return new Promise((resolve, reject) => {
+    const loader = new GLTFLoader();
+    // Le second argument est le chemin de RÉSOLUTION des ressources externes. Il est vide à dessein :
+    // un .glb porte ses textures à l'intérieur, et un .gltf qui pointerait vers des fichiers voisins
+    // n'a de toute façon pas été copié avec eux (cf. model-store.js, extension imposée).
+    try {
+      loader.parse(octets.buffer ? octets.buffer.slice(octets.byteOffset, octets.byteOffset + octets.byteLength) : octets,
+        '', (gltf) => resolve(gltf), (err) => reject(err));
+    } catch (err) {
+      reject(err);   // parse peut lever de façon synchrone sur un fichier tronqué
+    }
+  });
+}
+
+/**
+ * Charge les modèles manquants. Idempotent : un nom déjà chargé ou en cours est ignoré.
+ *
+ * N'échoue jamais. Un fichier absent ou illisible passe à « introuvable » et la fonction continue —
+ * un Projet dont un modèle manque doit s'ouvrir entièrement, pas s'arrêter au premier trou.
+ */
+export async function preloadModels(noms){
+  const àFaire = (noms || []).filter(n => modelState(n) === 'absent');
+  if (!àFaire.length) return;
+  àFaire.forEach(n => _cache.set(n, 'chargement'));
+  _onChange();
+  await Promise.all(àFaire.map(async (nom) => {
+    try {
+      const octets = await readModel(nom);
+      if (!octets || !octets.length) { _cache.set(nom, 'introuvable'); return; }
+      const gltf = await parseGlb(octets);
+      const scene = gltf && gltf.scene;
+      if (!scene) { _cache.set(nom, 'introuvable'); return; }
+      // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici —
+      // placeRigCentered3D (scene3d.js) normalise déjà tout rig sur `realHeightFloor`. On la garde
+      // parce qu'elle est le seul moyen de proposer une hauteur de départ sensée dans la modale.
+      const boite = new THREE.Box3().setFromObject(scene);
+      const taille = new THREE.Vector3(); boite.getSize(taille);
+      _cache.set(nom, { scene, hauteurM: taille.y > 0 ? taille.y : 1 });
+    } catch {
+      _cache.set(nom, 'introuvable');
+    }
+  }));
+  _onChange();
+}
+
+/** Charge ce dont une liste d'Éléments a besoin. Le point d'entrée depuis le chargement de Projet. */
+export async function preloadModelsFor(objects){
+  await preloadModels(collectModelFiles(objects));
+}
+
+/**
+ * Vide le cache et libère la mémoire GPU.
+ *
+ * Appelé au changement de Projet. Sans cela, les géométries et textures des modèles du Projet
+ * précédent resteraient sur la carte graphique — invisibles, et cumulatives à chaque ouverture. Les
+ * instances posées dans les Cases sont des CLONES qui partagent ces tampons : on libère donc
+ * l'original, une seule fois, et non chaque clone.
+ */
+export function clearModelCache(){
+  _cache.forEach(e => {
+    if (!e || e === 'chargement' || e === 'introuvable') return;
+    // Cette fonction est appelée au CHANGEMENT DE PROJET. Si elle lève, c'est le changement de
+    // Projet qui échoue — une panne bien plus grave que la fuite mémoire qu'elle évite. D'où cette
+    // garde : on libère ce qui est libérable, on ne s'arrête jamais dessus.
+    if (!e.scene || typeof e.scene.traverse !== 'function') return;
+    e.scene.traverse(n => {
+      if (!n.isMesh) return;
+      if (n.geometry) n.geometry.dispose();
+      const mats = Array.isArray(n.material) ? n.material : (n.material ? [n.material] : []);
+      mats.forEach(m => {
+        // Les textures sont portées par le matériau et ne se libèrent pas avec lui.
+        ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap']
+          .forEach(k => { if (m[k] && m[k].dispose) m[k].dispose(); });
+        m.dispose();
+      });
+    });
+  });
+  _cache.clear();
+}
+
+/** Pour les tests : injecter un état sans passer par le disque. */
+export function _setModelCacheEntry(nom, valeur){ _cache.set(nom, valeur); }

@@ -9,6 +9,7 @@
  *   - _closeSettingsModal : closes the Settings modal (defined in the Settings section)
  */
 import { S, tr, createVolume, addPageToVolume } from './state.js';
+import { preloadModelsFor } from './model-cache.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
 import {
   getElementDepth, repairElementBase3D,
@@ -543,6 +544,14 @@ export function applyProjectData(data){
   const undoBtnEl = document.getElementById('undoBtn');
   if (undoBtnEl) undoBtnEl.disabled = true;
   if (_renderAll) _renderAll();
+  // Décodage des modèles importés, LANCÉ SANS ÊTRE ATTENDU. C'est le cœur du montage de l'étape 4 :
+  // le chemin de dessin est synchrone et ne peut pas patienter, donc les modèles arrivent après, et
+  // leur arrivée redéclenche un rendu (cf. setModelCacheCallbacks). Le Projet s'ouvre entièrement
+  // même si un fichier manque — chaque modèle absent devient une boîte de remplacement, et aucun
+  // Élément n'est supprimé (cf. docs/persisted-data.md § 5).
+  const _tousLesObjets = [...S.tomes, ...S.scenes]
+    .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
+  preloadModelsFor(_tousLesObjets);
   S.projectDirty = false;
 }
 
