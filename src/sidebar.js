@@ -12,6 +12,8 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
+import { isImportedModel } from './model-store.js';
+import { modelState } from './model-cache.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -198,6 +200,20 @@ export function renderSideElementRow(p, panel, page){
   nameMainSpan.className = 'perso-name-main';
   nameMainSpan.textContent = p.name || (p.type === 'perso' ? 'Personnage' : 'Objet');
   nameSpan.appendChild(nameMainSpan);
+  // Modèle importé : dire son état sur la ligne. Un modèle qui n'arrive pas doit se voir ICI, à
+  // côté de son nom — la boîte de remplacement dans la Case dit qu'il manque quelque chose, elle ne
+  // dit pas quoi. L'Élément reste sélectionnable et déplaçable dans tous les cas.
+  if (isImportedModel(p)) {
+    const état = modelState(p.modelFile);
+    if (état !== 'prêt') {
+      const note = document.createElement('span');
+      note.className = 'perso-name-sub' + (état === 'introuvable' ? ' perso-name-sub-warn' : '');
+      note.textContent = état === 'introuvable'
+        ? tr(' ⚠ file not found', ' ⚠ fichier introuvable')
+        : tr(' loading…', ' chargement…');
+      nameSpan.appendChild(note);
+    }
+  }
   // Makes visible the link to another Element (today: a WallOpening magnetized to a present Wall),
   // until now only perceptible through behavior (the WallOpening follows the Wall) — cf.
   // getLinkedElementName.

@@ -247,3 +247,63 @@ describe('importSceneFromModel', () => {
  * garder que la première laisserait passer une version qui écrase une Case au hasard quand on crée
  * un décor depuis le menu de gauche. Une garantie ne se démontre que par sa paire.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Le câblage — ce que les tests unitaires ne voient pas
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
+const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
+const EVENTS = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+const MODALS = readFileSync(join(RACINE, 'src/modals.js'), 'utf8');
+const SIDEBAR = readFileSync(join(RACINE, 'src/sidebar.js'), 'utf8');
+
+describe('Le câblage de l\'import', () => {
+  test('les trois points d\'entrée existent dans index.html', () => {
+    ['ctxImportTrigger', 'ctxImportModel', 'ctxImportScene', 'ctxImportModelOnly', 'importSceneBtn']
+      .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `point d'entrée absent : ${id}`));
+  });
+
+  test('RÉGRESSION : les deux entrées d\'import s\'EXCLUENT', () => {
+    // Dans une Case, le sous-menu Modèle/Scène ; sur un canevas de Scène, l'entrée directe. Les
+    // afficher ensemble proposerait « comme Scène » à l'intérieur d'une Scène — une imbrication qui
+    // n'a pas de sens et que rien n'implémente.
+    const bloc = EVENTS.slice(EVENTS.indexOf('ctxImportTrigger\').style.display'));
+    assert.match(bloc.slice(0, 300), /!isSceneCanvas/, 'le sous-menu s\'affiche aussi dans une Scène');
+    assert.match(bloc.slice(0, 300), /ctxImportModelOnly'\)\.style\.display\s*=\s*\(_surCase && isSceneCanvas\)/,
+      'l\'entrée directe ne se limite pas au canevas de Scène');
+  });
+
+  test('RÉGRESSION : la Case visée est lue AVANT de masquer le menu', () => {
+    // hideContextMenu efface S.ctxTarget, et l'import est asynchrone : lire la cible après aurait
+    // donné null au retour du sélecteur de fichiers, donc un import qui ne crée rien, en silence.
+    const bloc = EVENTS.slice(EVENTS.indexOf("document.getElementById('ctxImportModel').onclick"));
+    const corps = bloc.slice(0, bloc.indexOf('};'));
+    assert.ok(corps.indexOf('_cibleDuMenu()') < corps.indexOf('hideContextMenu()'),
+      'la cible est lue après hideContextMenu : elle sera perdue');
+  });
+
+  test('le bouton du menu de gauche n\'envoie AUCUNE Case', () => {
+    // C'est ce qui distingue « créer un décor » de « charger un décor ici ». Un panel passé par
+    // erreur écraserait le contenu d'une Case au hasard.
+    assert.match(EVENTS, /importSceneBtn'\)\.onclick = \(\) => \{ importSceneFromModel\(null, null\); \}/);
+  });
+
+  test('la modale montre le fichier et masque le sélecteur de Type', () => {
+    // On ne transforme pas une chaise en modèle importé : il n'y aurait aucun fichier à lui donner.
+    assert.match(HTML, /id="objectModelFileField"/);
+    assert.match(MODALS, /objectModelFileField/);
+    assert.match(MODALS, /objectTypeSelect\.style\.display = _estModele \? 'none'/,
+      'le sélecteur de Type reste proposé sur un modèle importé');
+  });
+
+  test('le panneau latéral dit l\'état d\'un modèle qui manque', () => {
+    assert.match(SIDEBAR, /isImportedModel\(p\)/);
+    assert.match(SIDEBAR, /file not found|fichier introuvable/,
+      'un modèle introuvable ne se distingue pas dans la liste');
+  });
+});

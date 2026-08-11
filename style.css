@@ -793,3 +793,18 @@ canvas{
 .persona-editor-poses button.active {
   background: rgba(224,165,60,.22); border-color: rgba(224,165,60,.6); font-weight: 600;
 }
+
+/* ── Modèles 3D importés ──────────────────────────────────────────────────────────────────────
+   Deux mentions discrètes sur la ligne d'un Élément : « chargement… » et « fichier introuvable ».
+   La seconde est colorée, pas seulement écrite — un modèle manquant doit se repérer en balayant la
+   liste du regard, sans lire chaque ligne. */
+.perso-name-sub { opacity: .6; font-size: 11px; margin-left: 4px; }
+.perso-name-sub-warn { opacity: 1; color: #C08040; }
+
+/* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
+   d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */
+.modal-readonly-value {
+  padding: 6px 8px; border-radius: 4px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  font-size: 12px; opacity: .85; word-break: break-all;
+}

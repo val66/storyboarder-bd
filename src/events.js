@@ -24,6 +24,9 @@ import {
 } from './canvas-tools.js';
 import { setModelCacheCallbacks } from './model-cache.js';
 import {
+  setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
+} from './model-import.js';
+import {
   setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 } from './project-tree.js';
@@ -277,6 +280,9 @@ setCanvasToolsCallbacks({ snapshot });
 // Un modèle importé qui finit d'être décodé doit apparaître sans que l'utilisateur touche à
 // quoi que ce soit. C'est ce rappel qui remplace la boîte de remplacement par le modèle.
 setModelCacheCallbacks({ onChange: () => renderAll() });
+// L'import pose un point d'annulation et parle à l'utilisateur : les deux lui sont injectés,
+// plutôt qu'importés, pour qu'il ne dépende ni de la pile d'annulation ni des modales.
+setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction });
 setProjectTreeCallbacks({
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
@@ -3518,6 +3524,12 @@ canvas.addEventListener('contextmenu', (e) => {
   // "Load a Scene" into, and no other Panel to Bring Forward/Send Backward relative to) — per user
   // request, its context menu is limited to Add and Camera.
   const isSceneCanvas = isLockedScenePanel(hit);
+  // Import : dans une Case, le sous-menu propose Modèle ou Scène ; sur le canevas d'une Scène, seul
+  // « Modèle » a un sens — une Scène ne s'imbrique pas dans une Scène. Les deux entrées s'excluent,
+  // et elles ne concernent qu'une Case ou un canevas, jamais un Élément.
+  const _surCase = hit && hit.type === 'panel';
+  document.getElementById('ctxImportTrigger').style.display   = (_surCase && !isSceneCanvas) ? '' : 'none';
+  document.getElementById('ctxImportModelOnly').style.display = (_surCase && isSceneCanvas) ? '' : 'none';
   ctxLoadSceneTrigger.style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxBringForward').style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxSendBackward').style.display = isSceneCanvas ? 'none' : '';
@@ -3787,6 +3799,54 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
+// ─── Import submenu (3D models) ───
+// Même mécanique d'ouverture au survol que les autres sous-menus. Ce qui change est ce que chaque
+// entrée CRÉE, et cela vit dans src/model-import.js — ici on ne fait que router le clic.
+const ctxImportTrigger = document.getElementById('ctxImportTrigger');
+const importSubmenu = document.getElementById('importSubmenu');
+let _importSubmenuCloseTimer = null;
+function openImportSubmenu(){
+  clearTimeout(_importSubmenuCloseTimer);
+  const rect = ctxImportTrigger.getBoundingClientRect();
+  importSubmenu.style.left = `${rect.right + 2}px`;
+  importSubmenu.style.top  = `${rect.top}px`;
+  importSubmenu.classList.remove('hidden');
+  clampFloatingMenu(importSubmenu);
+}
+function scheduleCloseImportSubmenu(){
+  clearTimeout(_importSubmenuCloseTimer);
+  _importSubmenuCloseTimer = setTimeout(() => importSubmenu.classList.add('hidden'), 250);
+}
+ctxImportTrigger.addEventListener('mouseenter', openImportSubmenu);
+ctxImportTrigger.addEventListener('mouseleave', scheduleCloseImportSubmenu);
+importSubmenu.addEventListener('mouseenter', () => clearTimeout(_importSubmenuCloseTimer));
+importSubmenu.addEventListener('mouseleave', scheduleCloseImportSubmenu);
+
+// La Case visée est LUE AVANT de masquer le menu : hideContextMenu efface S.ctxTarget, et l'import
+// est asynchrone — sans cette capture, la cible aurait disparu au retour du sélecteur de fichiers.
+function _cibleDuMenu(){
+  const page = currentPage();
+  const panel = S.ctxTarget && S.ctxTarget.type === 'panel' ? S.ctxTarget : null;
+  return { panel, page };
+}
+document.getElementById('ctxImportModel').onclick = () => {
+  const { panel, page } = _cibleDuMenu();
+  hideContextMenu(); importSubmenu.classList.add('hidden');
+  if (panel) importModelIntoPanel(panel, page);
+};
+document.getElementById('ctxImportScene').onclick = () => {
+  const { panel, page } = _cibleDuMenu();
+  hideContextMenu(); importSubmenu.classList.add('hidden');
+  if (panel) importSceneFromModel(panel, page);
+};
+document.getElementById('ctxImportModelOnly').onclick = () => {
+  const { panel, page } = _cibleDuMenu();
+  hideContextMenu();
+  if (panel) importModelIntoPanel(panel, page);
+};
+// Menu de gauche : un décor sans Case cible — on crée la Scène, on ne charge rien.
+document.getElementById('importSceneBtn').onclick = () => { importSceneFromModel(null, null); };
+
 // ─── "Trace" and "Zone" submenus (only visible in top-down view) ───
 const ctxTracerTrigger = document.getElementById('ctxTracerTrigger');
 const ctxZoneTrigger   = document.getElementById('ctxZoneTrigger');

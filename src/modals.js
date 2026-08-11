@@ -19,7 +19,9 @@
  * the Persona modal, hence this module.
  */
 
-import { S, currentPage } from './state.js';
+import { S, currentPage, tr } from './state.js';
+import { isImportedModel } from './model-store.js';
+import { modelState } from './model-cache.js';
 import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
@@ -484,6 +486,26 @@ export function openObjectModal(obj, isNew){
   objectModalTitle.textContent = OBJECT_TYPE_LABELS[obj.objType] || 'Objet';
   objectNameInput.value = obj.name || '';
   objectTypeSelect.value = obj.objType || 'voiture';
+  // Modèle importé : on montre le fichier d'où il vient, et son état — chargé, en cours, ou
+  // introuvable. En lecture seule : `modelFile` est un identifiant persisté, pas une étiquette.
+  // Le sélecteur de Type est masqué, parce qu'on ne transforme pas une chaise en modèle importé
+  // (il n'y aurait aucun fichier à lui donner), ni l'inverse sans perdre le lien au fichier.
+  const _estModele = isImportedModel(obj);
+  const _champFichier = document.getElementById('objectModelFileField');
+  if (_champFichier) {
+    _champFichier.style.display = _estModele ? '' : 'none';
+    if (_estModele) {
+      const état = modelState(obj.modelFile);
+      const suffixe = état === 'prêt' ? ' ✓'
+        : état === 'introuvable' ? tr(' ⚠ file not found', ' ⚠ fichier introuvable')
+          : tr(' — loading…', ' — chargement…');
+      const val = document.getElementById('objectModelFileValue');
+      if (val) val.textContent = (obj.modelFile || '—') + suffixe;
+    }
+  }
+  if (objectTypeSelect && objectTypeSelect.parentElement) {
+    objectTypeSelect.style.display = _estModele ? 'none' : '';
+  }
   objectRotXInput.value = Math.round((obj.rotX || 0) * 180 / Math.PI);
   objectRotYInput.value = Math.round((obj.rotY || 0) * 180 / Math.PI);
   objectRotZInput.value = Math.round((obj.rotZ || 0) * 180 / Math.PI);
