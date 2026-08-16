@@ -28,6 +28,9 @@
 
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { readModel } from './model-store.js';
+// cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh) — la
+// hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
+import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 
 // nom de fichier → 'chargement' | 'introuvable' | { scene, hauteurM }
 const _cache = new Map();
@@ -35,7 +38,13 @@ const _cache = new Map();
 // Prévenir quand un modèle arrive : c'est ce qui transforme une boîte de remplacement en modèle
 // sans que l'utilisateur ait à cliquer. Injecté plutôt qu'importé (cf. architecture, règle n°2).
 let _onChange = () => {};
-export function setModelCacheCallbacks({ onChange }){ _onChange = onChange || (() => {}); }
+// Le filtrage anisotrope max de la carte graphique : dépend du WebGLRenderer, qui vit dans
+// rig3d.js. Injecté pour la même raison — cf. applyAnisotropy ci-dessous.
+let _getMaxAnisotropy = () => 1;
+export function setModelCacheCallbacks({ onChange, getMaxAnisotropy }){
+  _onChange = onChange || (() => {});
+  _getMaxAnisotropy = getMaxAnisotropy || (() => 1);
+}
 
 /**
  * Les noms de fichiers distincts référencés par une liste d'Éléments. Fonction PURE.
@@ -97,6 +106,34 @@ function parseGlb(octets){
 }
 
 /**
+ * Filtrage anisotrope sur les textures d'un modèle décodé.
+ *
+ * POURQUOI. GLTFLoader ne règle jamais l'anisotropie (elle reste à 1, la valeur par défaut de
+ * Three.js) : chaque texture n'est alors adoucie que par ses mipmaps, une moyenne isotrope qui
+ * ignore l'angle et la distance de vue. Sur un motif à fort contraste — tissu à carreaux, sangles,
+ * hachures d'un vêtement, exactement le genre de détail d'un personnage articulé importé — regardé
+ * de loin (Scène dézoomée), cette moyenne grossière scintille : c'est un moiré de minification, pas
+ * un souci de décodage ni de la boîte englobante skin-aware (cf. skinned-box-3d.js, un bug
+ * différent). Rapproché, un mipmap plus fin suffit déjà et le défaut disparaît de lui-même — c'est
+ * exactement la description du retour utilisateur (glitch au dézoom, propre en gros plan).
+ *
+ * Appliqué une fois, au décodage : les clones posés dans les Cases PARTAGENT ce matériau (cf.
+ * buildImportedModelRig3D, rig3d.js), donc ses textures — inutile de le refaire par instance.
+ */
+function applyAnisotropy(scene){
+  const niveau = _getMaxAnisotropy();
+  if (!(niveau > 1)) return;   // 1 = valeur par défaut : rien à régler, évite un aller-retour GPU inutile
+  scene.traverse(n => {
+    if (!n.isMesh || !n.material) return;
+    const mats = Array.isArray(n.material) ? n.material : [n.material];
+    mats.forEach(m => {
+      ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap']
+        .forEach(k => { if (m[k]) m[k].anisotropy = niveau; });
+    });
+  });
+}
+
+/**
  * Charge les modèles manquants. Idempotent : un nom déjà chargé ou en cours est ignoré.
  *
  * N'échoue jamais. Un fichier absent ou illisible passe à « introuvable » et la fonction continue —
@@ -117,8 +154,12 @@ export async function preloadModels(noms){
       // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici —
       // placeRigCentered3D (scene3d.js) normalise déjà tout rig sur `realHeightFloor`. On la garde
       // parce qu'elle est le seul moyen de proposer une hauteur de départ sensée dans la modale.
-      const boite = new THREE.Box3().setFromObject(scene);
+      // box3FromObjectSkinAware3D (pas Box3().setFromObject) : un modèle articulé (SkinnedMesh) a une
+      // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée — cf.
+      // src/skinned-box-3d.js.
+      const boite = box3FromObjectSkinAware3D(scene);
       const taille = new THREE.Vector3(); boite.getSize(taille);
+      applyAnisotropy(scene);
       _cache.set(nom, { scene, hauteurM: taille.y > 0 ? taille.y : 1 });
     } catch {
       _cache.set(nom, 'introuvable');
@@ -164,3 +205,6 @@ export function clearModelCache(){
 
 /** Pour les tests : injecter un état sans passer par le disque. */
 export function _setModelCacheEntry(nom, valeur){ _cache.set(nom, valeur); }
+
+/** Pour les tests : appliquer l'anisotropie sans passer par un décodage GLTF complet. */
+export function _applyAnisotropyForTests(scene){ applyAnisotropy(scene); }

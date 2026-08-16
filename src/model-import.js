@@ -23,17 +23,23 @@ import { importModel } from './model-store.js';
 import { preloadModels, getLoadedModel, modelState } from './model-cache.js';
 import { createModelElement } from './model-store.js';
 import { createScene, loadSceneIntoPanel } from './scenes.js';
-import { S, currentPageData, tr } from './state.js';
+import { S, currentPageData, tr, isLockedScenePanel } from './state.js';
+import { OBJECT_REAL_HEIGHT_M, MODEL_HEIGHT_WARN_MAX_M, PANEL_CAM_DEFAULT_DIST_3D } from './constants.js';
 
 // Le point d'annulation, injecté (cf. docs/architecture.md règle n°2). Un import est une
 // modification du Projet comme une autre : il doit pouvoir s'annuler.
 let _snapshot = () => {};
 let _renderAll = () => {};
 let _alerter = () => {};
-export function setModelImportCallbacks({ snapshot, renderAll, alerter }){
+// Sans confirmateur branché (ex. tests), on NE redimensionne PAS silencieusement : c'est le choix
+// sûr, celui qui laisse le comportement actuel (hauteur du fichier, telle quelle) inchangé pour
+// quiconque n'a pas câblé l'avertissement.
+let _confirmer = async () => false;
+export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer }){
   _snapshot = snapshot || (() => {});
   _renderAll = renderAll || (() => {});
   _alerter = alerter || (() => {});
+  _confirmer = confirmer || (async () => false);
 }
 
 /**
@@ -54,6 +60,14 @@ export function nomLisible(nomFichier){
  * hauteurM }. `hauteurM` peut être absente si le décodage a échoué — l'appelant crée alors quand
  * même l'Élément, qui s'affichera en boîte de remplacement. Un fichier illisible ne doit pas faire
  * perdre le geste d'import.
+ *
+ * Si la hauteur mesurée dépasse MODEL_HEIGHT_WARN_MAX_M (cf. constants.js), on le signale et on
+ * propose un redimensionnement immédiat à la taille neutre (OBJECT_REAL_HEIGHT_M.modele) — sans
+ * quoi l'Élément naîtrait hors de toute proportion utilisable (caméra quasi dans le maillage,
+ * sélection impossible, cf. retours utilisateur), et le curseur de taille de la modale (10-400%)
+ * ne peut pas rattraper une erreur d'échelle de cet ordre. Un refus garde la hauteur du fichier,
+ * inchangée — la RÉGRESSION testée plus bas (« la hauteur vient du fichier ») reste vraie par
+ * défaut ; ce n'est qu'un choix explicite de l'utilisateur qui la remplace.
  */
 export async function choisirEtPreparerModele(){
   const rangé = await importModel();
@@ -62,12 +76,25 @@ export async function choisirEtPreparerModele(){
 
   await preloadModels([rangé.name]);
   const chargé = getLoadedModel(rangé.name);
+  // La hauteur naturelle du fichier, en mètres — la vraie taille, puisque glTF impose l'unité.
+  let hauteurM = chargé ? chargé.hauteurM : undefined;
+  let redimensionné = false;
+  if (Number.isFinite(hauteurM) && hauteurM > MODEL_HEIGHT_WARN_MAX_M) {
+    const redimensionner = await _confirmer(tr(
+      `This model is ${hauteurM.toFixed(1)} m tall once decoded — most likely a scale issue in the file, not an intentionally giant object. Resize it now to a standard height (${OBJECT_REAL_HEIGHT_M.modele} m)? You can fine-tune it afterward from its modal.`,
+      `Ce modèle mesure ${hauteurM.toFixed(1)} m une fois décodé — presque sûrement un souci d'échelle dans le fichier, pas un objet volontairement gigantesque. Le redimensionner maintenant à une taille standard (${OBJECT_REAL_HEIGHT_M.modele} m) ? Vous pourrez l'ajuster ensuite depuis sa fiche.`,
+    ), tr('Unusual model size', 'Taille de modèle inhabituelle'));
+    if (redimensionner) { hauteurM = OBJECT_REAL_HEIGHT_M.modele; redimensionné = true; }
+  }
   return {
     ok: true,
     modelFile: rangé.name,
     nom: nomLisible(rangé.name),
-    // La hauteur naturelle du fichier, en mètres — la vraie taille, puisque glTF impose l'unité.
-    hauteurM: chargé ? chargé.hauteurM : undefined,
+    hauteurM,
+    // Redescendu jusqu'à importModelIntoPanel : un redimensionnement accepté rend caduc le
+    // cadrage caméra éventuellement laissé par un test précédent sur ce même modèle démesuré
+    // (cf. plus bas).
+    redimensionné,
     introuvable: modelState(rangé.name) === 'introuvable',
   };
 }
@@ -85,6 +112,17 @@ export async function importModelIntoPanel(panel, page){
   currentPageData().objects.push(el);
   S.selectedId = el.id;
   S.projectDirty = true;
+  // Le canevas d'une Scène n'a pas de cadrage automatique à l'import direct d'un Modèle (contraire
+  // à « Charger un Décor », cf. loadSceneIntoPanel) : si un zoom/déplacement de caméra traîne d'un
+  // essai précédent sur ce même fichier démesuré, l'Élément — maintenant correctement dimensionné —
+  // resterait hors champ, et la correction de taille passerait pour sans effet. On ne touche qu'au
+  // zoom/déplacement, jamais à l'orientation (camRotX/Y) : la vue de dessus par défaut d'une Scène,
+  // ou une orientation déjà choisie par l'utilisateur, n'a pas à être perdue pour ça.
+  if (prêt.redimensionné && isLockedScenePanel(panel)) {
+    panel.camDist = PANEL_CAM_DEFAULT_DIST_3D; panel.camDistTarget = PANEL_CAM_DEFAULT_DIST_3D;
+    panel.camPanX = 0; panel.camPanXTarget = 0;
+    panel.camPanY = 0; panel.camPanYTarget = 0;
+  }
   _renderAll();
   if (prêt.introuvable) {
     // Le fichier a été rangé mais ne se décode pas : le dire tout de suite, plutôt que de laisser

@@ -28,6 +28,10 @@ import { S, currentPage } from './state.js';
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
 // carte graphique, invisibles et cumulatives).
 import { clearModelCache, collectModelFiles, modelCacheSignature } from './model-cache.js';
+// cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
+// squelette, pas seulement de la géométrie brute — sinon l'échelle réelle et la boîte de sélection
+// 2D divergent de ce que le GPU affiche réellement.
+import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -40,6 +44,7 @@ import {
   ensurePersonaScene3D,
   expandBoxByMeshOnly3D,
   frameCameraToFigure,
+  frameCameraToBox,
   frameOrthoCameraToBox,
   ensureObjectRigEntry3D,
   ensurePersonaRigEntry3D,
@@ -1861,10 +1866,16 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // fills the hole cut for it, and a flush mount against a face of the wall. This supersedes the
     // old post-hoc "force position.x/z back onto the centre line" patch, which only papered over
     // placeRigCentered3D's bbox centring for open leaves and left the Opening straddling the wall.
+    // Un modèle importé articulé (SkinnedMesh) a une géométrie brute qui ne représente pas sa pose
+    // réellement affichée : boxFn doit donc tenir compte du squelette (cf. skinned-box-3d.js),
+    // sinon l'échelle appliquée ici (déduite de cette boîte) diverge de ce que le GPU dessine —
+    // symptôme observé : boîte de sélection décalée vers le bas, modèle à la mauvaise échelle.
+    const _boxFn3D = WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry)
+      : (o.objType === 'modele' ? (fg) => box3FromObjectSkinAware3D(fg) : null);
     if (_tracéPos) {
       placeTracéOpeningRig3D(entry.figureGroup, o, _tracéPos, tracéWallThickness3D(_tracéMurHost));
     } else {
-      placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry) : null, _persoNatH);
+      placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, _boxFn3D, _persoNatH);
     }
     // Pool: placeRigCentered3D's uniform scale would also enlarge the walls' height,
     // which is not desired — sY is locked to 1 (rig's natural height = constant 0.42 m)
@@ -2732,7 +2743,17 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
     personaRenderer3D.render(personaScene3D, personaCameraOrtho3D);
     return personaRenderer3D.domElement;
   }
-  frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
+  // Un modèle importé articulé (SkinnedMesh) a une géométrie brute qui ne représente pas sa pose
+  // réellement affichée : frameCameraToFigure (Box3.setFromObject standard) cadrait alors sur une
+  // boîte sans rapport avec ce qui s'affiche vraiment — symptôme observé : aperçu de la modale
+  // cadré sur les pieds seuls, tout le reste hors champ (presque blanc). cf. skinned-box-3d.js.
+  if (o.objType === 'modele') {
+    entry.figureGroup.updateMatrixWorld(true);
+    const boîte = box3FromObjectSkinAware3D(entry.figureGroup);
+    frameCameraToBox(personaCamera3D, boîte, zoom);
+  } else {
+    frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
+  }
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   return personaRenderer3D.domElement;
 }

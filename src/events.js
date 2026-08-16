@@ -26,6 +26,7 @@ import { setModelCacheCallbacks } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
 } from './model-import.js';
+import { isImportedModel } from './model-store.js';
 import {
   setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
@@ -56,7 +57,7 @@ import { APP_VERSION } from './version.js';
 import {
   cloneJoints, disposeObjectRig3D, disposePersonaRig3D, disposeWallRenderRig3D, ensurePersonaScene3D,
   frameOrthoCameraToBox, ensureObjectRigEntry3D, getWallPanRect2D, wallOpeningRect, personaCameraOrtho3D,
-  personaScene3D,
+  personaScene3D, getMaxAnisotropy3D,
 } from './rig3d.js';
 import {
   setScene3DCallbacks, panelAutoDepthPivot3D, panelCamBasis3D, panelDepthToDistance3D,
@@ -279,10 +280,15 @@ setScenesCallbacks({ snapshot });
 setCanvasToolsCallbacks({ snapshot });
 // Un modèle importé qui finit d'être décodé doit apparaître sans que l'utilisateur touche à
 // quoi que ce soit. C'est ce rappel qui remplace la boîte de remplacement par le modèle.
-setModelCacheCallbacks({ onChange: () => renderAll() });
+// `getMaxAnisotropy` : le filtrage anisotrope des textures dépend du WebGLRenderer (rig3d.js),
+// dont model-cache.js ne doit rien savoir — cf. son en-tête, applyAnisotropy.
+setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAnisotropy3D });
 // L'import pose un point d'annulation et parle à l'utilisateur : les deux lui sont injectés,
 // plutôt qu'importés, pour qu'il ne dépende ni de la pile d'annulation ni des modales.
-setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction });
+// `confirmer` : la question « redimensionner ce modèle manifestement trop grand ? » (cf.
+// model-import.js, MODEL_HEIGHT_WARN_MAX_M) — même modale de confirmation que le reste de
+// l'application.
+setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction, confirmer: confirmAction });
 setProjectTreeCallbacks({
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
@@ -3495,6 +3501,10 @@ canvas.addEventListener('contextmenu', (e) => {
     return;
   }
   S.selectedId = hit.id; S.selectedRoomId = null;
+  // La Case (ou le canevas de Scène) visée par ce clic droit, pour l'import de modèle/scène plus bas
+  // (cf. _cibleDuMenu) — sans cette ligne, S.ctxTarget n'était jamais écrit et l'import ne faisait
+  // jamais rien.
+  S.ctxTarget = hit;
   drawCurrentPage();
   hideContextMenu();
   if (hit.type === 'bulle') {
@@ -4487,7 +4497,11 @@ objectModalSave.onclick = () => {
   if (S.modalTarget) {
     snapshot();
     S.modalTarget.name = objectNameInput.value;
-    S.modalTarget.objType = objectTypeSelect.value;
+    // Un modèle importé n'a pas d'entrée dans objectTypeSelect (cf. modals.js, sélecteur masqué) :
+    // lui assigner objType = objectTypeSelect.value écraserait 'modele' par la valeur par défaut du
+    // <select> (« voiture »), perdant le lien avec modelFile et faisant tourner l'Élément en voiture
+    // dès le premier Enregistrer — y compris juste pour changer sa taille ou son nom.
+    if (!isImportedModel(S.modalTarget)) S.modalTarget.objType = objectTypeSelect.value;
     // Ground Magnetism: only saves the checkbox for an eligible Element (cf. groundMagnetEligible
     // — excludes Walls/Wall Openings, for which the field is hidden and thus meaningless).
     if (groundMagnetEligible(S.modalTarget)) {

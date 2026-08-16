@@ -20,6 +20,9 @@ import { currentVolume } from './state.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, modelState } from './model-cache.js';
+// cf. son en-tête : Object3D.clone() casse le lien SkinnedMesh↔Skeleton, faussant l'échelle
+// appliquée par placeRigCentered3D pour tout modèle importé articulé.
+import { cloneSkinned } from './vendor/SkeletonUtils.js';
 
 export function getEffectiveJoints(o){
   return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
@@ -1039,7 +1042,20 @@ export function ensurePersonaScene3D(){
   personaFillLight3D = new THREE.DirectionalLight(0x4ab2e0, 0);
   personaFillLight3D.position.set(-1.6, 0.4, 0.8);
   personaScene3D.add(personaFillLight3D);
-  personaRenderer3D = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+  // logarithmicDepthBuffer : le plan far s'étire avec panel.camDist (cf. framePanelCamera3D,
+  // scene3d.js — far = dist + 80, environ) alors que le plan near reste épinglé à 0.01. Au
+  // dézoom, ce ratio near/far explose ; un depth-buffer WebGL classique concentre presque toute
+  // sa précision près du plan near, si bien que deux surfaces proches (vêtement sur un corps,
+  // sangle sur un fourreau — le cas d'un modèle importé articulé) qui ne scintillaient pas de
+  // près se mettent à scintiller (z-fighting) une fois éloignées de la caméra — exactement le
+  // symptôme rapporté (« bug » au dézoom, propre en gros plan ; cf. retour utilisateur, distinct
+  // du moiré de minification déjà traité par applyAnisotropy dans model-cache.js). Le tampon
+  // logarithmique répartit la précision de façon beaucoup plus uniforme sur toute la plage — le
+  // remède standard Three.js pour un grand ratio far/near, sans toucher au calcul near/far
+  // lui-même ni à aucun matériau.
+  personaRenderer3D = new THREE.WebGLRenderer({
+    alpha: true, antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: true,
+  });
   personaRenderer3D.setSize(PERSONA_3D_W, PERSONA_3D_H);
   personaRenderer3D.setClearColor(0x000000, 0);
   // Default ground (see the groundMesh3D declaration above): a single shared mesh, hidden by
@@ -1052,6 +1068,20 @@ export function ensurePersonaScene3D(){
   groundMesh3D.position.set(0, GROUND_Y_DEFAULT_3D, 0);
   groundMesh3D.visible = false;
   personaScene3D.add(groundMesh3D);
+}
+
+/**
+ * Le degré de filtrage anisotrope que la carte graphique peut offrir.
+ *
+ * Injecté dans model-cache.js (cf. architecture, règle n°2) : ce module y règle l'anisotropie des
+ * textures d'un modèle importé au moment de son décodage, mais n'a et ne doit avoir aucune
+ * connaissance du WebGLRenderer — qui vit ici. `ensurePersonaScene3D()` est idempotent : cet appel
+ * ne fait rien si le renderer existe déjà, et le crée sinon (la capacité ne peut être lue qu'une
+ * fois un contexte WebGL ouvert).
+ */
+export function getMaxAnisotropy3D(){
+  ensurePersonaScene3D();
+  return personaRenderer3D.capabilities.getMaxAnisotropy();
 }
 
 // FIX (pre-existing bug, regression from extraction #158): these two functions lived in scene3d.js
@@ -2924,13 +2954,19 @@ export function buildAutelRig3D(colorHex){
  * La taille n'est pas ajustée ici : placeRigCentered3D normalise tout rig sur `realHeightFloor`,
  * quelle que soit l'échelle à laquelle le modèle a été exporté. C'est ce qui rattrape un fichier
  * fait en centimètres.
+ *
+ * `cloneSkinned` (pas `.clone(true)`) : un modèle articulé (personnage, squelette) a un
+ * `SkinnedMesh` dont `.clone(true)` casse le lien vers son `Skeleton` — le clone garde des `bones`
+ * pointant vers l'ORIGINAL. La boîte englobante que `placeRigCentered3D` mesure pour calculer
+ * l'échelle devient alors incohérente avec ce que le GPU affiche réellement : le rig ignore
+ * `realHeightFloor`, quelle que soit la valeur demandée. Cf. src/vendor/SkeletonUtils.js.
  */
 function buildImportedModelRig3D(colorHex, o){
   const nom = o && o.modelFile;
   const chargé = nom ? getLoadedModel(nom) : null;
   if (chargé) {
     const g = new THREE.Group();
-    g.add(chargé.scene.clone(true));
+    g.add(cloneSkinned(chargé.scene));
     return g;
   }
   // Boîte de remplacement. Deux situations très différentes la produisent — modèle pas encore
@@ -3394,11 +3430,21 @@ export function ensureObjectRigEntry3D(o){
     entry.modelFile !== ((o && o.modelFile) || null) ||
     entry.modelState !== ((o && o.modelFile) ? modelState(o.modelFile) : 'absent')
   );
-  if (!entry || entry.objType !== objType || entry.color !== color || dimsChanged || doorStateChanged || windowStateChanged || modelChanged) {
+  // Un modèle importé articulé (SkinnedMesh) se reconstruit AUSSI quand la hauteur cible change,
+  // et pas seulement à la création. En théorie, placeRigCentered3D (qui remet figureGroup.scale à
+  // (1,1,1) puis réapplique le facteur voulu à CHAQUE rendu) devrait suffire sans reclonage — c'est
+  // ce qui se passe pour tout rig rigide (chaise, voiture…). Mais pour un modèle importé posé une
+  // fois (import) puis redimensionné ensuite depuis sa modale, seule la Case orange (2D) suivait le
+  // nouveau pourcentage ; le rendu 3D restait figé à sa taille de création — cf. retours
+  // utilisateur. Un reclonage (cloneSkinned) à chaque changement de hauteur cible est le remède sûr,
+  // au prix d'un coût négligeable (un redimensionnement est un geste rare, pas un événement par
+  // image).
+  const heightChanged = entry && objType === 'modele' && entry.realHeightFloor !== (o && o.realHeightFloor);
+  if (!entry || entry.objType !== objType || entry.color !== color || dimsChanged || doorStateChanged || windowStateChanged || modelChanged || heightChanged) {
     if (entry) personaScene3D.remove(entry.figureGroup);
     const built = buildPropRig3D(objType, color, o);
     personaScene3D.add(built.figureGroup);
-    entry = Object.assign(built, { objType, color });
+    entry = Object.assign(built, { objType, color, realHeightFloor: o && o.realHeightFloor });
     objectRigCache3D.set(o.id, entry);
   }
   // Apply animal joint angles (always, to reflect pose changes)

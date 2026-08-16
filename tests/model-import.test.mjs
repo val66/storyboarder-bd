@@ -31,6 +31,7 @@ import { clearModelCache, _setModelCacheEntry } from '../src/model-cache.js';
 import { setScenesCallbacks } from '../src/scenes.js';
 import { getPanelPoints } from '../src/draw.js';
 import { S } from '../src/state.js';
+import { OBJECT_REAL_HEIGHT_M, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
 
 let snapshots = 0;
 let alertes = [];
@@ -55,13 +56,15 @@ function pontQuiChoisit(nom, octets = new Uint8Array([1, 2, 3])){
 }
 
 let cible;
+let confirmations;
 beforeEach(() => {
-  snapshots = 0; alertes = [];
+  snapshots = 0; alertes = []; confirmations = [];
   clearModelCache(); setModelBridge(null);
   setModelImportCallbacks({
     snapshot: () => { snapshots++; },
     renderAll: () => {},
     alerter: (m) => alertes.push(m),
+    confirmer: async (m) => { confirmations.push(m); return false; },
   });
   cible = caseCible();
   S.editingSceneId = null; S.currentTomeIndex = 0; S.currentPageIndex = 0;
@@ -118,6 +121,62 @@ describe('choisirEtPreparerModele', () => {
     assert.equal(r.ok, true, 'le fichier a bien été rangé');
     assert.equal(r.introuvable, true);
     assert.equal(r.hauteurM, undefined, 'aucune hauteur ne peut être inventée');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2b. L'avertissement de taille — un fichier mesuré démesuré
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('choisirEtPreparerModele — hauteur mesurée > MODEL_HEIGHT_WARN_MAX_M', () => {
+  test('sous le seuil, aucune confirmation n\'est demandée', async () => {
+    pontQuiChoisit('table.glb');
+    _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 9.9 });
+    const r = await choisirEtPreparerModele();
+    assert.equal(confirmations.length, 0, 'une confirmation a été demandée sous le seuil');
+    assert.equal(r.hauteurM, 9.9);
+  });
+
+  test('au-dessus du seuil, une confirmation est demandée', async () => {
+    pontQuiChoisit('geant.glb');
+    _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+    await choisirEtPreparerModele();
+    assert.equal(confirmations.length, 1, 'aucune confirmation demandée pour un modèle démesuré');
+    assert.match(confirmations[0], /175/, 'le message ne dit pas la hauteur mesurée');
+  });
+
+  test('RÉGRESSION : un refus garde la hauteur du fichier, inchangée', async () => {
+    // Le comportement par défaut (pas de confirmateur câblé, ou utilisateur qui refuse) doit rester
+    // celui déjà testé plus haut : la hauteur vient du fichier, jamais d'une valeur inventée.
+    setModelImportCallbacks({
+      snapshot: () => { snapshots++; }, renderAll: () => {}, alerter: (m) => alertes.push(m),
+      confirmer: async () => false,
+    });
+    pontQuiChoisit('geant.glb');
+    _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+    const r = await choisirEtPreparerModele();
+    assert.equal(r.hauteurM, 175, 'un refus a quand même changé la hauteur');
+  });
+
+  test('une acceptation redimensionne à la hauteur neutre (OBJECT_REAL_HEIGHT_M.modele)', async () => {
+    setModelImportCallbacks({
+      snapshot: () => { snapshots++; }, renderAll: () => {}, alerter: (m) => alertes.push(m),
+      confirmer: async () => true,
+    });
+    pontQuiChoisit('geant.glb');
+    _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+    const r = await choisirEtPreparerModele();
+    assert.equal(r.hauteurM, OBJECT_REAL_HEIGHT_M.modele, 'l\'acceptation n\'a pas redimensionné');
+    assert.equal(r.redimensionné, true);
+  });
+
+  test('sans confirmateur câblé (ex. un appelant qui oublie), on ne redimensionne pas en silence', async () => {
+    // Pas de setModelImportCallbacks ici : le défaut du module doit rester sûr.
+    setModelImportCallbacks({});
+    pontQuiChoisit('geant.glb');
+    _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+    const r = await choisirEtPreparerModele();
+    assert.equal(r.hauteurM, 175, 'un défaut non câblé a redimensionné sans demander');
   });
 });
 
@@ -181,6 +240,51 @@ describe('importModelIntoPanel', () => {
     assert.equal(modelesDeLaPage().length, 0);
     assert.match(alertes[0], /disque plein/);
     assert.equal(snapshots, 0);
+  });
+
+  describe('recadrage caméra après un redimensionnement accepté', () => {
+    test('un modèle démesuré, redimensionné, dans le canevas d\'une Scène : la caméra se réinitialise', async () => {
+      setModelImportCallbacks({
+        snapshot: () => { snapshots++; }, renderAll: () => {}, alerter: (m) => alertes.push(m),
+        confirmer: async () => true,
+      });
+      // simule le canevas d'une Scène en édition (cf. isLockedScenePanel) : S.editingSceneId doit
+      // pointer vers une Scène qui existe réellement, sinon currentVolume() le remet à null.
+      S.scenes = [{ id: 'sc1', w: 480, h: 360, pages: [{ id: 'ps1', objects: [cible] }] }];
+      S.editingSceneId = 'sc1';
+      cible.camDist = 999; cible.camDistTarget = 999;
+      cible.camPanX = 50; cible.camPanXTarget = 50;
+      cible.camPanY = -30; cible.camPanYTarget = -30;
+      pontQuiChoisit('geant.glb');
+      _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+      await importModelIntoPanel(cible, { w: 480, h: 360 });
+      assert.equal(cible.camDist, PANEL_CAM_DEFAULT_DIST_3D, 'le zoom laissé par un essai précédent masque le modèle recorrigé');
+      assert.equal(cible.camPanX, 0);
+      assert.equal(cible.camPanY, 0);
+    });
+
+    test('une taille normale ne touche pas à la caméra', async () => {
+      S.scenes = [{ id: 'sc1', w: 480, h: 360, pages: [{ id: 'ps1', objects: [cible] }] }];
+      S.editingSceneId = 'sc1';
+      cible.camDist = 999; cible.camDistTarget = 999;
+      pontQuiChoisit('table.glb');
+      _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
+      await importModelIntoPanel(cible, { w: 480, h: 360 });
+      assert.equal(cible.camDist, 999, 'la caméra a été touchée sans raison');
+    });
+
+    test('hors édition de Scène (Case normale), même redimensionné, la caméra n\'est pas touchée', async () => {
+      setModelImportCallbacks({
+        snapshot: () => { snapshots++; }, renderAll: () => {}, alerter: (m) => alertes.push(m),
+        confirmer: async () => true,
+      });
+      S.editingSceneId = null;
+      cible.camDist = 999;
+      pontQuiChoisit('geant.glb');
+      _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
+      await importModelIntoPanel(cible, { w: 1240, h: 1754 });
+      assert.equal(cible.camDist, 999, 'une Case normale n\'a pas de canevas de Scène à recadrer');
+    });
   });
 });
 

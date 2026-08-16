@@ -1553,6 +1553,9 @@ export function drawObjectPreview(targetCanvas, spec){
   const tempObj = {
     id: PREVIEW_OBJECT_ID,
     objType: spec.objType || 'voiture',
+    // Modèle importé : buildImportedModelRig3D lit modelFile pour retrouver le fichier décodé dans
+    // le cache (cf. model-cache.js) — sans lui, l'aperçu tombe sur sa boîte de remplacement.
+    modelFile: spec.modelFile,
     color: spec.color || FIXED_COLOR,
     rotX: spec.rotX || 0,
     rotY: spec.rotY || 0,

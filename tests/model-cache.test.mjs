@@ -26,6 +26,7 @@ import { dirname, join } from 'node:path';
 import {
   collectModelFiles, modelState, getLoadedModel, modelCacheSignature,
   preloadModels, clearModelCache, setModelCacheCallbacks, _setModelCacheEntry,
+  _applyAnisotropyForTests,
 } from '../src/model-cache.js';
 import { setModelBridge } from '../src/model-store.js';
 
@@ -198,6 +199,54 @@ describe('clearModelCache — la mémoire de la carte graphique', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 4bis. L'anisotropie — le moiré au dézoom sur un modèle importé
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('applyAnisotropy — le scintillement des textures au dézoom', () => {
+  // RETOUR UTILISATEUR : « quand je dezoom la Scène, les Modèles importés ont leur textures qui
+  // bug un peu [...] quand je les regarde de près [...] je n'ai pas le soucis. » — signature exacte
+  // d'un moiré de minification (cf. l'en-tête d'applyAnisotropy, model-cache.js) : GLTFLoader ne
+  // règle jamais l'anisotropie d'une texture, qui reste à 1 (son défaut Three.js).
+  const texture = () => ({});
+  const mailleAvecTextures = () => ({
+    isMesh: true,
+    material: { map: texture(), normalMap: texture(), roughnessMap: null },
+  });
+
+  test('les textures reçoivent le niveau d\'anisotropie fourni par le renderer', () => {
+    setModelCacheCallbacks({ getMaxAnisotropy: () => 8 });
+    const maille = mailleAvecTextures();
+    _applyAnisotropyForTests({ traverse: (f) => f(maille) });
+    assert.equal(maille.material.map.anisotropy, 8);
+    assert.equal(maille.material.normalMap.anisotropy, 8);
+  });
+
+  test('un matériau en tableau (modèle multi-matériaux) est traité aussi', () => {
+    setModelCacheCallbacks({ getMaxAnisotropy: () => 16 });
+    const maille = { isMesh: true, material: [{ map: texture() }, { map: texture() }] };
+    _applyAnisotropyForTests({ traverse: (f) => f(maille) });
+    assert.equal(maille.material[0].map.anisotropy, 16);
+    assert.equal(maille.material[1].map.anisotropy, 16);
+  });
+
+  test('RÉGRESSION : sans callback injecté (niveau 1 par défaut), rien n\'est touché', () => {
+    // Pas de renderer câblé (ex. environnement de test) : le défaut Three.js (1) ne doit rien
+    // écrire — sinon un aller-retour GPU inutile à chaque modèle décodé, pour rien.
+    setModelCacheCallbacks({});
+    const maille = mailleAvecTextures();
+    _applyAnisotropyForTests({ traverse: (f) => f(maille) });
+    assert.equal(maille.material.map.anisotropy, undefined);
+  });
+
+  test('un maillage sans matériau, ou une texture absente, ne fait pas lever', () => {
+    setModelCacheCallbacks({ getMaxAnisotropy: () => 8 });
+    assert.doesNotThrow(() => _applyAnisotropyForTests({
+      traverse: (f) => { f({ isMesh: true, material: null }); f({ isMesh: false }); },
+    }));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 5. Le câblage — ce que les tests unitaires ne peuvent pas voir
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -237,6 +286,21 @@ describe('Le câblage du décalage', () => {
     assert.match(RIG3D, /entry\.modelState !==/, 'seul le nom de fichier est comparé');
   });
 
+  test('RÉGRESSION : le rig d\'un modèle importé se reconstruit quand la hauteur cible change', () => {
+    // placeRigCentered3D remet figureGroup.scale à 1 puis réapplique le facteur voulu à CHAQUE
+    // rendu — en théorie, ça suffirait sans reclonage. Mais pour un modèle importé ARTICULÉ
+    // (SkinnedMesh), redimensionner depuis la modale APRÈS l'import laissait le rendu 3D figé à sa
+    // taille de création (seule la Case 2D suivait) — cf. retours utilisateur. Le remède sûr : un
+    // reclonage (cloneSkinned) à chaque changement de realHeightFloor, exactement le chemin déjà
+    // vérifié correct à l'import (cf. tests/vendor-skeleton-utils.test.mjs).
+    assert.match(RIG3D, /heightChanged/, 'l\'invalidation par hauteur cible a disparu');
+    assert.match(RIG3D, /entry\.realHeightFloor !==/, 'la comparaison ne porte plus sur realHeightFloor');
+    const début = RIG3D.indexOf('export function ensureObjectRigEntry3D');
+    const corps = RIG3D.slice(début, RIG3D.indexOf('\nexport function', début + 1));
+    assert.ok(début > 0, 'ensureObjectRigEntry3D a disparu');
+    assert.match(corps, /\|\|\s*heightChanged\)/, 'heightChanged n\'entre pas dans la condition de reconstruction');
+  });
+
   test('le chargement de Projet lance le préchargement, sans l\'attendre', () => {
     assert.match(IO, /preloadModelsFor\(/, 'les modèles du Projet ne sont jamais demandés');
     assert.doesNotMatch(IO, /await preloadModelsFor/,
@@ -246,6 +310,17 @@ describe('Le câblage du décalage', () => {
   test('l\'arrivée d\'un modèle déclenche un redessin', () => {
     assert.match(EVENTS, /setModelCacheCallbacks\(\{\s*onChange/,
       'sans ce rappel, le modèle décodé attendrait le prochain geste de l\'utilisateur');
+  });
+
+  test('RÉGRESSION : l\'anisotropie du renderer est câblée jusqu\'au cache de modèles', () => {
+    // Sans ce fil, applyAnisotropy() ne voit jamais que sa valeur par défaut (1) : le moiré au
+    // dézoom reviendrait silencieusement, sans qu'aucun test ci-dessus ne le détecte — ces tests
+    // vérifient applyAnisotropy en isolation, pas qu'elle reçoit la vraie capacité du GPU.
+    assert.match(EVENTS, /getMaxAnisotropy:\s*getMaxAnisotropy3D/,
+      'setModelCacheCallbacks n\'injecte plus getMaxAnisotropy — le module retombe sur son défaut (1)');
+    const MODEL_CACHE = lire('src/model-cache.js');
+    assert.match(MODEL_CACHE, /applyAnisotropy\(scene\)/,
+      'preloadModels n\'appelle plus applyAnisotropy sur le modèle décodé');
   });
 });
 

@@ -89,6 +89,9 @@ export const S = {
   selectedRoomId:   null,
   selectedBuildingKey: null,   // buildingKey = sorted roomIds joined by ',' (batch key)
   idCounter:        0,
+  // Case (ou canevas de Scène) visée par le clic droit courant — lue par l'import de modèle/scène
+  // du menu contextuel (cf. events.js, _cibleDuMenu).
+  ctxTarget:        null,
 
   // ── Drag & interaction ───────────────────────────────────────────────
   dragMode:    null,

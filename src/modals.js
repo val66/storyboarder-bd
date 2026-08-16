@@ -499,8 +499,15 @@ export function openObjectModal(obj, isNew){
       const suffixe = état === 'prêt' ? ' ✓'
         : état === 'introuvable' ? tr(' ⚠ file not found', ' ⚠ fichier introuvable')
           : tr(' — loading…', ' — chargement…');
+      // Hauteur réelle en clair (mètres) : l'aperçu 3D de cette modale peut se cadrer très mal sur
+      // un modèle importé (bras écartés, accessoire qui dépasse — cf. retours utilisateur), donc ne
+      // sert pas toujours à juger si la taille est raisonnable. Ce nombre, lui, est fiable dans tous
+      // les cas : c'est exactement `realHeightFloor`, la valeur qui pilote le rendu dans la Scène.
+      const hauteurTxt = Number.isFinite(obj.realHeightFloor)
+        ? ` — ${Math.round(obj.realHeightFloor * 100) / 100} m`
+        : '';
       const val = document.getElementById('objectModelFileValue');
-      if (val) val.textContent = (obj.modelFile || '—') + suffixe;
+      if (val) val.textContent = (obj.modelFile || '—') + hauteurTxt + suffixe;
     }
   }
   if (objectTypeSelect && objectTypeSelect.parentElement) {
@@ -656,8 +663,14 @@ export function closeObjectModal(){
 
 export function refreshObjectPreview(){
   if (!S.modalTarget || objectModal.classList.contains('hidden')) return;
+  // Un modèle importé n'a pas d'entrée dans objectTypeSelect (masqué, cf. openObjectModal) : lire
+  // sa .value donnerait le premier <option> du <select> (« voiture »), pas 'modele' — l'aperçu
+  // montrerait alors une voiture à la place du fichier importé. On lit le vrai objType de
+  // l'Élément, et on transmet modelFile pour que buildImportedModelRig3D retrouve le bon modèle.
+  const _estModele = isImportedModel(S.modalTarget);
   drawObjectPreview(objectPreview3D, {
-    objType: objectTypeSelect.value,
+    objType: _estModele ? 'modele' : objectTypeSelect.value,
+    modelFile: _estModele ? S.modalTarget.modelFile : undefined,
     color: S.modalTarget.color,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,
     rotY: Number(objectRotYInput.value) * Math.PI / 180,

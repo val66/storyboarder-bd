@@ -433,3 +433,31 @@ describe('frameCameraToBox — orbite (Fix 65)', () => {
     assert.ok(b.position.length() < a.position.length(), 'zoomer rapproche');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CÂBLAGE — depth-buffer logarithmique, vérifié par inspection de source.
+//
+// RETOUR UTILISATEUR : « quand je dezoom la Scène, les Modèles importés ont leur textures qui
+// bug un peu [...] quand je les regarde de près [...] je n'ai pas le soucis. » Un premier
+// correctif (applyAnisotropy, cf. model-cache.test.mjs) traitait le moiré de minification, mais le
+// symptôme a persisté : la cause est en réalité un z-fighting. framePanelCamera3D (scene3d.js) pousse
+// le plan far avec panel.camDist (far = dist + 80, environ) alors que le plan near reste épinglé à
+// 0.01 (cf. scene3d.js) — le ratio far/near explose au dézoom, et un depth-buffer WebGL classique
+// concentre presque toute sa précision près du plan near : deux surfaces proches (vêtement/corps,
+// sangle/fourreau d'un modèle importé articulé) scintillent une fois éloignées de la caméra.
+//
+// ensurePersonaScene3D() (qui construit le WebGLRenderer) échoue sous Node — cf. l'en-tête de ce
+// fichier — d'où la vérification par inspection de source plutôt que par instanciation réelle.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CÂBLAGE — logarithmicDepthBuffer (z-fighting au dézoom)', () => {
+  const source = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : le renderer partagé est construit avec un depth-buffer logarithmique', () => {
+    const i = source.indexOf('personaRenderer3D = new THREE.WebGLRenderer(');
+    assert.ok(i > 0, 'construction du WebGLRenderer introuvable — renommée ?');
+    const appel = source.slice(i, source.indexOf(');', i));
+    assert.match(appel, /logarithmicDepthBuffer\s*:\s*true/,
+      'sans cette option, le ratio far/near (cf. framePanelCamera3D) fait scintiller les surfaces ' +
+      'proches (z-fighting) dès que la Scène est dézoomée');
+  });
+});

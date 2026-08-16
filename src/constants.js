@@ -243,6 +243,14 @@ export const OBJECT_REAL_HEIGHT_M = {
   modele: 1,
 };
 
+// Au-delà de cette hauteur mesurée dans le fichier, on avertit à l'import (cf. model-import.js) :
+// c'est presque toujours un souci d'échelle côté export (racine mise à l'échelle, unité cm prise
+// pour des mètres) plutôt qu'un modèle réellement gigantesque — les plus grands types intégrés
+// (arbre, lampadaire) plafonnent déjà autour de 4-4,5 m. Le curseur de taille de la modale (10 à
+// 400 %) ne peut pas rattraper une erreur de cet ordre : à 10 % d'un modèle mesuré 100x trop
+// grand, il reste 10x trop grand.
+export const MODEL_HEIGHT_WARN_MAX_M = 10;
+
 
 // ── Building alignment ──────────────────────────────────────────
 // Alignment snap on already-placed points: if the cursor is close to the same X or Z as an
