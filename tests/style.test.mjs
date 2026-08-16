@@ -245,3 +245,32 @@ describe('Ascenseurs — un seul style, pour toute l\'application', () => {
     assert.doesNotMatch(bloc.slice(0, 300), /background:\s*#/, 'couleur en dur dans le curseur');
   });
 });
+
+describe('Boutons de modale — même hauteur, quelle que soit la modale', () => {
+  const CSS_B = css;
+
+  test('RÉGRESSION : les marges sont remises à ZÉRO, pas seulement celle du haut', () => {
+    // Signalé à l'usage sur la modale de correspondance : Enregistrer paraissait plus haut
+    // qu'Annuler. C'est EXACTEMENT le Fix 69, qui avait été réglé pour les boutons de l'éditeur de
+    // Personnage et laissé tel quel ici — la moitié d'énumération habituelle de ce dépôt.
+    //
+    // `.danger-btn` déclare `margin-bottom: 6px`. Dans une ligne flex, `align-items` vaut `stretch`
+    // par défaut : chaque bouton est étiré à la hauteur de la ligne MARGES COMPRISES. Ces 6px
+    // étaient donc pris sur la boîte d'Annuler, sans qu'aucune règle de hauteur ne soit en cause —
+    // et toucher aux hauteurs n'y aurait rien changé.
+    const i = CSS_B.indexOf('.modal-actions .full-btn, .modal-actions .danger-btn{');
+    assert.ok(i > 0, 'la règle des boutons de modale a disparu');
+    const regle = CSS_B.slice(i, CSS_B.indexOf('}', i));
+    assert.match(regle, /margin:\s*0/, 'seule une marge est neutralisée : les hauteurs divergeront');
+    assert.doesNotMatch(regle, /margin-top:\s*0/, 'margin-top seul laisse margin-bottom en place');
+  });
+
+  test('RÉGRESSION : un champ de la modale squelette n\'hérite pas de la marge des formulaires', () => {
+    // `.modal-box select` porte 14px de marge basse, faite pour des champs EMPILÉS. Dans une ligne
+    // flex cette marge fait partie de la boîte : le champ paraissait collé en haut de son encadré
+    // alors que `align-items: center` centrait bien — il centrait la boîte, marge comprise.
+    const i = CSS_B.indexOf('.skeleton-map-row select');
+    assert.ok(i > 0);
+    assert.match(CSS_B.slice(i, CSS_B.indexOf('}', i)), /margin-bottom:\s*0/);
+  });
+});

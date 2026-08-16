@@ -484,6 +484,14 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
     assert.match(corps, /_skelEcran\.valide = false/);
   });
 
+  test('RÉGRESSION : l\'ordre des boutons est Annuler, Réinitialiser, Enregistrer', () => {
+    // Ordre demandé : les deux sorties neutres d'abord, l'action affirmative en dernier. Une
+    // énumération dans du HTML, donc invisible pour tout le reste — d'où ce test.
+    const bloc = HTML2.slice(HTML2.indexOf('id="skeletonMapModal"'));
+    const ordre = [...bloc.slice(0, 1400).matchAll(/id="(skeletonMap(?:Cancel|Reset|Save))"/g)].map(m => m[1]);
+    assert.deepEqual(ordre, ['skeletonMapCancel', 'skeletonMapReset', 'skeletonMapSave']);
+  });
+
   test('le bouton s\'appelle « Réinitialiser »', () => {
     // « Tout remettre en automatique » était trop long (retour utilisateur).
     assert.match(HTML2, /id="skeletonMapReset"[^>]*>Réinitialiser</);

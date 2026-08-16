@@ -615,7 +615,13 @@ canvas{
 .modal-actions{
   display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
 }
-.modal-actions .full-btn, .modal-actions .danger-btn{ width:auto; margin-top:0; }
+/* `margin: 0`, et non `margin-top: 0`. C'est EXACTEMENT le Fix 69, qui avait été réglé pour les
+   boutons de l'éditeur de Personnage et laissé tel quel ici — la moitié d'énumération habituelle.
+   `.danger-btn` déclare `margin-bottom: 6px` ; dans une ligne flex, `align-items` vaut `stretch` par
+   défaut, donc chaque bouton est étiré à la hauteur de la ligne MARGES COMPRISES. Ces 6px étaient
+   pris sur la boîte d'Annuler, qui paraissait donc plus court qu'Enregistrer, sans qu'aucune règle
+   de hauteur ne soit en cause. Corrigé pour TOUTES les modales, pas seulement celle du squelette. */
+.modal-actions .full-btn, .modal-actions .danger-btn{ width:auto; margin:0; }
 /* Modales Personnage/Objet (#descModal/#objectModal) uniquement : Annuler et Enregistrer doivent faire
    la même taille (jusqu'ici inégale à cause de paddings différents : 8px vs 8px 12px) et avoir plus
    d'écart entre eux. flex:1 1 0 les force à occuper une largeur égale quel que soit leur padding/texte. */
@@ -902,7 +908,11 @@ canvas{
   border: 1px solid var(--line); border-radius: var(--radius, 6px);
 }
 .skeleton-map-row .skeleton-map-slot { font-size: 12.5px; width: 92px; flex-shrink: 0; color: var(--ink-soft); }
-.skeleton-map-row select { flex: 1; min-width: 0; font-size: 12.5px; }
+/* `margin-bottom: 0` n'est pas cosmétique : `.modal-box select` porte 14px de marge basse, faite
+   pour des champs EMPILÉS. Dans une ligne flex, cette marge fait partie de la boîte : le champ
+   paraissait collé en haut de son encadré alors que `align-items: center` centrait bien — il
+   centrait la boîte, marge comprise. Signalé à l'usage. */
+.skeleton-map-row select { flex: 1; min-width: 0; font-size: 12.5px; margin-bottom: 0; }
 /* L'étiquette d'origine, et c'est la pièce maîtresse de cet écran. Une proposition « structure »
    signifie : le vocabulaire du fichier ne confirmait pas, j'ai suivi la forme du squelette. C'est
    exactement là que l'utilisateur doit regarder — d'où une teinte, pas seulement un mot. */
