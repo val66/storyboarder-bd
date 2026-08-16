@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.2.14**
+**Version 1.2.15**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -34,6 +34,25 @@
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
 - ↩️ **Cancelling** the dialog of a just-added Element removes it — nothing is committed until you save
+
+### Imported 3D models
+
+- 📦 **glTF import** (`.glb` / `.gltf`): your models from Blender, Maya or anywhere else. The format
+  guarantees the unit — the metre — so a model arrives at its real size, with no scale to redo.
+- Three ways in: right-click a panel → **Import** → *Model* (a single object) or *Scene* (a reusable
+  set, created **and** loaded); right-click inside a Scene → *Import a model*; left-hand menu →
+  *Import a set…*, which creates the Scene without loading it.
+- Files are copied into a `Modeles` folder next to your projects. Moved, renamed or deleted outside
+  the application, a file can no longer be read: its Elements become placeholder boxes, and the
+  library says so.
+- **Models section** in the left-hand menu: the files on disk, grouped by how the open project uses
+  them — by Scenes, in Panels, or unused. Left-click to reach where a model is used; right-click to
+  delete it from disk.
+- The file name cannot be renamed: it identifies the model across **every** project, including those
+  that are not open. Rename the Element instead.
+
+> **Not covered yet:** a file holding several objects is imported as a single Element, and imported
+> skeletons cannot be posed from the pose library.
 
 ### Character editor
 
@@ -128,6 +147,13 @@ storyboarder-bd/
 │   ├── modals.js       # Modal dialogs (Character, Object, Room, Building…)
 │   ├── scene3d.js      # 3D camera + combined scene rendering (Three.js)
 │   ├── rig3d.js        # 3D rig construction (characters, objects, animals…)
+│   ├── model-store.js  # Storage of imported .glb files (Modeles/ folder, safe file names)
+│   ├── model-cache.js  # Asynchronous model decoding + cache (the drawing path never waits)
+│   ├── model-import.js # The three import gestures, and what each one creates
+│   ├── model-library.js # Model library: grouping by usage, deletion message
+│   ├── model-usages.js # "Where is this model used?" — pure location + navigation
+│   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
+│   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
 │   ├── persona-editor.js # Character editor: full-screen posing mode
 │   ├── help-content.js # Built-in user manual content
 │   └── events.js       # Event wiring + remaining business logic (real entry point)

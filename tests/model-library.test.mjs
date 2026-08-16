@@ -403,3 +403,85 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
  * faudrait un moteur de rendu. Ce qui est gardé ici, c'est que le JS produit des lignes séparées et
  * coupables ; que le navigateur les empile relève de l'essai à l'œil.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le clic GAUCHE : mener aux usages, ou ne rien promettre
+//
+// La décision elle-même est testée dans model-usages.test.mjs (resolveModelClick). Ce qui se garde
+// ICI, c'est que la LIGNE affichée soit d'accord avec elle : une ligne qui invite au clic doit
+// mener quelque part, et une ligne qui ne mène nulle part ne doit pas y inviter.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { setProjectTreeCallbacks: _setTreeCb } = await import('../src/project-tree.js');
+
+describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
+  let demandes;
+  const rendreAvecClic = async (fichiers, projet) => {
+    demandes = [];
+    _setTreeCb({ openModelUsages: (nom) => demandes.push(nom), openModelContextMenu: () => {} });
+    return rendre(fichiers, projet);
+  };
+
+  test('RÉGRESSION : chaque ligne demande SES usages, pas ceux d\'une autre', async () => {
+    // Trois fichiers, et on interroge le DEUXIÈME. Avec un seul fichier, n'importe quelle
+    // expression rendant « le fichier » passait — y compris `fichiers[0]`, qui aurait fait pointer
+    // toutes les lignes vers la première. Les lignes sont construites en boucle : c'est exactement
+    // l'endroit où une fermeture mal fermée fait tout désigner la même chose.
+    const lignes = await rendreAvecClic(['a.glb', 'b.glb', 'c.glb'], {
+      scenes: [volume('Salon', el('a.glb'), el('b.glb'), el('c.glb'))],
+    });
+    assert.equal(lignes.length, 3);
+    lignes.forEach(l => assert.equal(typeof l.onclick, 'function', 'une ligne ne réagit pas au clic'));
+    lignes[1].onclick();
+    assert.deepEqual(demandes, ['b.glb'], 'le clic a demandé les usages d\'un autre fichier');
+  });
+
+  test('RÉGRESSION : un modèle inutilisé ne réagit pas, ET le montre avant le clic', () => {
+    // Décision utilisateur : plutôt qu'une fenêtre disant « rien », la ligne est inerte — mais
+    // l'inertie doit se LIRE. Un clic sans effet, sur une ligne qui ressemble à toutes les autres,
+    // passe pour une panne.
+    return rendreAvecClic(['orphelin.glb'], {}).then(([ligne]) => {
+      assert.equal(ligne.onclick, undefined, 'une ligne inerte réagit quand même au clic');
+      assert.match(String(ligne.className), /model-row-inert/,
+        'rien ne distingue une ligne inerte d\'une ligne cliquable');
+    });
+  });
+
+  test('RÉGRESSION : la classe inerte existe VRAIMENT dans style.css, et retire le curseur', () => {
+    // Même piège que pour les classes coupantes : une classe posée par le JS et absente du CSS
+    // laisse la ligne cliquable en apparence. `.tome-row` pose `cursor:pointer` pour tout le monde.
+    const i = CSS.indexOf('.model-row-inert');
+    assert.ok(i > 0, 'classe absente de style.css : .model-row-inert');
+    assert.match(CSS.slice(i, i + 120), /cursor:\s*default/,
+      'la ligne inerte garde le curseur main : elle promet un clic qui ne fera rien');
+  });
+
+  test('la modale des usages existe et n\'a qu\'une sortie neutre', () => {
+    ['modelUsagesModal', 'modelUsagesList', 'modelUsagesClose']
+      .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
+    // Aucun bouton de validation : chaque ligne EST l'action. Un « Confirmer » laisserait croire
+    // qu'il faut sélectionner puis valider, alors qu'un seul clic suffit.
+    const bloc = HTML.slice(HTML.indexOf('id="modelUsagesModal"'));
+    const modale = bloc.slice(0, bloc.indexOf('id="confirmActionModal"'));
+    assert.doesNotMatch(modale, /full-btn/, 'un bouton de validation brouille le geste');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — le clic gauche.
+ *
+ *   T1 la ligne inutilisée reçoit quand même un onclick                          ROUGE
+ *   T2 la classe .model-row-inert n'est plus posée                               ROUGE
+ *   T3 `cursor: default` retiré du CSS                                           ROUGE
+ *   T4 le clic demande les usages d'un AUTRE fichier                             ROUGE
+ *
+ * T4 A ÉCHAPPÉ D'ABORD, et pour la raison la plus banale : mon montage n'avait qu'UN seul fichier.
+ * Remplacer `nom` par `fichiers[0]` ne changeait donc rien — les deux désignaient la même chose. Or
+ * c'est précisément la faute que ce test doit attraper : les lignes sont construites en boucle, et
+ * c'est l'endroit classique où toutes finissent par désigner la même. Montage porté à TROIS
+ * fichiers, en interrogeant celui du MILIEU ; la mutation devient rouge.
+ *
+ * C'est la deuxième fois qu'un montage trop régulier laisse passer une mutation dans ce dépôt (cf.
+ * hit-test.test.mjs, où aucune Bulle ne se chevauchait). La leçon se répète : un montage où toutes
+ * les valeurs coïncident ne teste pas qu'on a choisi la bonne.
+ */

@@ -16,6 +16,7 @@ import { FORMATS } from './constants.js';
 import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
 import { listModels } from './model-store.js';
 import { groupModelsByUsage } from './model-library.js';
+import { resolveModelClick } from './model-usages.js';
 import { getFormat } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal } from './io.js';
 import { renderAll } from './draw.js';
@@ -369,12 +370,25 @@ export async function renderModelList(){
    * Le texte complet reste accessible en `title` — c'est ce qui rend la coupe acceptable : on perd
    * l'affichage, pas l'information.
    *
+   * Le CLIC GAUCHE mène aux usages : directement s'il n'y en a qu'un, par une modale de choix s'il
+   * y en a plusieurs. Un modèle inutilisé rend une ligne INERTE — et cela se voit avant le clic
+   * (curseur, survol), pas seulement après. Un clic sans effet passe pour une panne ; une ligne qui
+   * n'invite pas au clic ne promet rien.
+   *
+   * La décision n'est pas prise ici : `resolveModelClick` est pure et testable, ce que ce rendu
+   * n'est pas. Elle est appelée UNE fois — son résultat sert à la fois à l'apparence et à l'action,
+   * qui ne peuvent donc pas se contredire.
+   *
    * @param {string} nom       le nom de fichier
    * @param {string[]} endroits  un libellé par endroit ; une Scène par entrée, jamais concaténées
    */
   const ligne = (nom, endroits = []) => {
     const row = document.createElement('div');
-    row.className = 'tome-row model-row';
+    const clic = resolveModelClick(nom, { tomes: S.tomes, scenes: S.scenes });
+    row.className = 'tome-row model-row' + (clic.action === 'rien' ? ' model-row-inert' : '');
+    if (clic.action !== 'rien') {
+      row.onclick = () => _cb.openModelUsages(nom);
+    }
     const n = document.createElement('div');
     n.className = 'model-row-name';
     n.textContent = nom;

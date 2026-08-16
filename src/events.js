@@ -23,6 +23,9 @@ import {
   startBuildMode, startTraceTool, stopTraceTool, startMeasureTool, stopMeasureTool,
 } from './canvas-tools.js';
 import { countModelUsages, messageSuppressionModele } from './model-library.js';
+import {
+  setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, targetFor,
+} from './model-usages.js';
 import { setModelCacheCallbacks, clearModelCache } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
@@ -291,10 +294,14 @@ setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAn
 // l'application.
 setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction, confirmer: confirmAction });
 setProjectTreeCallbacks({
-  openModelContextMenu,
+  openModelContextMenu, openModelUsages,
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
 });
+// `disableSceneCameraMode` n'est pas facultatif ici : se rendre dans une Case depuis l'éditeur de
+// Scène quitte cet éditeur, et le faire sans cet appel laisse le mode Caméra actif en arrière-plan
+// (cf. scenes.js — la contrainte y est écrite, elle ne se devine pas).
+setModelUsagesCallbacks({ openScene, disableSceneCameraMode, renderAll });
 wirePersonaEditor();
 
 
@@ -3912,6 +3919,52 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   renderAll();
   renderModelList();
 };
+
+// ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───
+// Le câblage seulement : la décision (rien / y aller / choisir) est prise par `resolveModelClick`
+// dans model-usages.js, où elle se teste. Ici on ne fait que la suivre.
+const modelUsagesModal = document.getElementById('modelUsagesModal');
+const modelUsagesList  = document.getElementById('modelUsagesList');
+
+function openModelUsages(fichier){
+  const clic = resolveModelClick(fichier, { tomes: S.tomes, scenes: S.scenes });
+  if (clic.action === 'rien') return;
+  if (clic.action === 'aller') { goToModelUsage(clic.cible); return; }
+
+  document.getElementById('modelUsagesSubtitle').textContent =
+    tr(`"${fichier}" — ${clic.count} Element(s)`, `« ${fichier} » — ${clic.count} Élément(s)`);
+  modelUsagesList.innerHTML = '';
+  clic.groupes.forEach(groupe => {
+    const titre = document.createElement('div');
+    titre.className = 'model-usage-place';
+    titre.textContent = usageLabel(groupe, tr);
+    titre.title = titre.textContent;
+    modelUsagesList.appendChild(titre);
+    groupe.elements.forEach((el, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'model-usage-target';
+      // Le rang n'apparaît QUE s'il y a plusieurs exemplaires dans le même contenant : c'est le
+      // seul cas où deux lignes porteraient sinon le même texte, et donc le seul où l'utilisateur
+      // aurait à choisir sans rien pour départager.
+      const rang = groupe.elements.length > 1 ? ` (${i + 1}/${groupe.elements.length})` : '';
+      b.textContent = (el.name || tr('Model', 'Modèle')) + rang;
+      b.title = b.textContent;
+      b.onclick = () => {
+        modelUsagesModal.classList.add('hidden');
+        goToModelUsage(targetFor(groupe, el));
+      };
+      modelUsagesList.appendChild(b);
+    });
+  });
+  modelUsagesModal.classList.remove('hidden');
+}
+document.getElementById('modelUsagesClose').onclick = () => modelUsagesModal.classList.add('hidden');
+// Clic sur le voile : même sortie neutre que « Fermer ». Sans cela, la seule échappatoire serait un
+// bouton unique en bas d'une liste qui peut défiler.
+modelUsagesModal.addEventListener('click', (e) => {
+  if (e.target === modelUsagesModal) modelUsagesModal.classList.add('hidden');
+});
 
 // ─── "Trace" and "Zone" submenus (only visible in top-down view) ───
 const ctxTracerTrigger = document.getElementById('ctxTracerTrigger');

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.2.14**
+**Version 1.2.15**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -34,6 +34,25 @@
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
 - ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime — rien n'est conservé tant que vous n'enregistrez pas
+
+### Modèles 3D importés
+
+- 📦 **Import glTF** (`.glb` / `.gltf`) : vos modèles Blender, Maya ou autres. Ce format garantit
+  l'unité — le mètre — donc un modèle arrive à sa taille réelle, sans réglage d'échelle à refaire.
+- Trois portes d'entrée : clic droit sur une Case → **Importer** → *Modèle* (un objet) ou *Scène*
+  (un décor réutilisable, créé **et** chargé) ; clic droit dans une Scène → *Importer un Modèle* ;
+  menu de gauche → *Importer un décor…*, qui crée la Scène sans la charger.
+- Les fichiers sont recopiés dans un dossier `Modeles`, à côté de vos projets. Déplacé, renommé ou
+  supprimé hors de l'application, un fichier n'est plus lisible : ses Éléments deviennent des boîtes
+  de remplacement, et la bibliothèque le signale.
+- **Section Modèles** du menu de gauche : les fichiers du disque, groupés selon l'usage qu'en fait
+  le Projet ouvert — par des Scènes, dans des Cases, ou non utilisés. Clic gauche pour aller là où
+  un modèle sert ; clic droit pour le supprimer du disque.
+- Le nom de fichier n'est pas renommable : il identifie le modèle dans **tous** les Projets, y
+  compris ceux qui ne sont pas ouverts. C'est l'Élément qui se renomme.
+
+> **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
+> Élément, et les squelettes importés ne sont pas articulables depuis la bibliothèque de poses.
 
 ### Éditeur de Personnage
 
@@ -132,6 +151,13 @@ storyboarder-bd/
 │   ├── modals.js       # Modales (Personnage, Objet, Pièce, Bâtiment…)
 │   ├── scene3d.js      # Caméra 3D + rendu de la scène combinée (Three.js)
 │   ├── rig3d.js        # Construction des rigs 3D (personnages, objets, animaux…)
+│   ├── model-store.js  # Rangement des .glb importés (dossier Modeles/, noms de fichiers sûrs)
+│   ├── model-cache.js  # Décodage asynchrone des modèles + cache (le chemin de dessin n'attend pas)
+│   ├── model-import.js # Les trois gestes d'import, et ce qu'ils créent
+│   ├── model-library.js # Bibliothèque de modèles : groupement par usage, message de suppression
+│   ├── model-usages.js # « Où est utilisé ce modèle ? » — localisation pure + navigation
+│   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
+│   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
 │   ├── persona-editor.js # Éditeur de Personnage : mode plein écran de pose
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)

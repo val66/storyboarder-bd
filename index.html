@@ -390,6 +390,9 @@
         <details class="help-group" data-help="scenes">
           <summary class="help-group-title">Scènes</summary>
         </details>
+        <details class="help-group" data-help="modeles">
+          <summary class="help-group-title">Modèles 3D importés</summary>
+        </details>
         <details class="help-group" data-help="projet">
           <summary class="help-group-title">Projet</summary>
         </details>
@@ -632,6 +635,23 @@
     <div class="modal-actions">
       <button class="danger-btn" id="renameEntityCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameEntityConfirm" type="button">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- « Où est utilisé ce modèle ? » — ouverte par un clic gauche sur une ligne de la section Modèles,
+     et SEULEMENT quand il y a un choix à faire : un usage unique y mène directement, sans passer
+     par ici (cf. events.js). La liste est hiérarchique — un en-tête par contenant (Scène ou Case),
+     un Élément cliquable dessous — parce qu'un même fichier peut être posé plusieurs fois dans la
+     même Case : à plat, ces lignes seraient indiscernables. Aucun bouton de validation : chaque
+     ligne EST l'action, et « Fermer » est la seule sortie neutre. -->
+<div class="modal-overlay hidden" id="modelUsagesModal">
+  <div class="modal-box">
+    <h3 id="modelUsagesTitle">Où est utilisé ce modèle ?</h3>
+    <p id="modelUsagesSubtitle" style="margin:0 0 12px; font-size:12.5px; color:var(--sepia);"></p>
+    <div id="modelUsagesList" class="model-usages-list"></div>
+    <div class="modal-actions">
+      <button class="danger-btn" id="modelUsagesClose" type="button">Fermer</button>
     </div>
   </div>
 </div>

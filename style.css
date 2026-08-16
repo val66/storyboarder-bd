@@ -836,6 +836,35 @@ canvas{
 }
 .model-row-name { font-weight: 600; }
 .model-row-where { margin-left: 0; margin-top: 2px; }
+/* Un modèle utilisé mène à ses usages ; un modèle inutilisé ne mène nulle part. La différence se
+   lit AVANT le clic — curseur et survol — plutôt qu'après, par un clic qui ne fait rien et qu'on
+   prend pour une panne. `.tome-row` pose `cursor:pointer` pour tout le monde : c'est ici qu'on le
+   retire, pas là-bas, où il sert aux Tomes et aux Scènes. */
+.model-row:not(.model-row-inert):hover { border-color: var(--accent); }
+.model-row-inert { cursor: default; }
+
+/* Liste « Où est utilisé ce modèle ? ». Hauteur bornée puis défilante : un fichier de décor peut
+   servir dans trente Cases, et une modale plus haute que la fenêtre mettrait son bouton Fermer
+   hors d'atteinte — la seule sortie neutre deviendrait inaccessible. */
+.model-usages-list { max-height: 46vh; overflow-y: auto; margin-bottom: 14px; }
+/* En-tête de contenant (une Scène, une Case). Même rôle que .side-group-title dans le menu de
+   gauche : un repère de lecture, pas une action — d'où l'absence de curseur et de survol. */
+.model-usage-place {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  opacity: .55; margin: 10px 0 4px;
+}
+.model-usages-list > .model-usage-place:first-child { margin-top: 0; }
+/* Un Élément : c'est LUI l'action. Il est donc seul à porter le curseur et le survol — sans quoi
+   l'en-tête paraîtrait cliquable et ne répondrait pas. */
+.model-usage-target {
+  display: block; width: 100%; text-align: left;
+  padding: 7px 9px; margin-bottom: 4px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--white); color: var(--ink);
+  font-family: 'Inter', sans-serif; font-size: 12.5px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.model-usage-target:hover { border-color: var(--accent); }
 
 /* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
    d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */
