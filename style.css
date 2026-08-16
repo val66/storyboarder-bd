@@ -808,3 +808,10 @@ canvas{
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
   font-size: 12px; opacity: .85; word-break: break-all;
 }
+
+/* Titre de groupe dans une liste du menu de gauche (bibliothèque de modèles : « Utilisés par des
+   Scènes », « Non utilisés »…). Discret : ce sont des repères de lecture, pas des sections. */
+.side-group-title {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  opacity: .5; margin: 8px 0 2px 2px;
+}

@@ -56,15 +56,17 @@ let _applyZoom = null;
 let _updateSidePanel = null;
 let _renderTree = null;
 let _renderSceneList = null;
+let _renderModelList = () => {};
 let _updateContextualControls = null;
 let _fitZoomToWrap = null;
 
-export function setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, updateContextualControls, fitZoomToWrap }) {
+export function setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, updateContextualControls, fitZoomToWrap }) {
   _canvas = canvas; _ctx = ctx;
   _applyZoom = applyZoom;
   _updateSidePanel = updateSidePanel;
   _renderTree = renderTree;
   _renderSceneList = renderSceneList;
+  _renderModelList = renderModelList || (() => {});
   _updateContextualControls = updateContextualControls;
   _fitZoomToWrap = fitZoomToWrap;
 }
@@ -2466,6 +2468,10 @@ export function drawPending(){ return _planificateurDessin.enAttente(); }
 export function renderAll(){
   _renderTree();
   _renderSceneList();
+  // La bibliothèque de modèles suit le même cycle que la liste des Scènes : ce sont deux listes
+  // du menu de gauche, et celle des modèles est DÉDUITE du Projet (usages) — elle doit donc se
+  // recalculer quand le Projet change, pas seulement à l'ouverture.
+  _renderModelList();
   _updateContextualControls();
   _fitZoomToWrap();
   drawCurrentPage();

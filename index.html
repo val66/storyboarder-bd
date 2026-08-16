@@ -122,6 +122,18 @@
         </div>
       </div>
     </div>
+    <!-- Bibliothèque de modèles 3D importés (.glb du dossier Modeles). Elle montre le DISQUE, pas
+         le Projet : les Scènes et les Éléments ont déjà leurs propres listes. Groupée par usage
+         DÉDUIT du Projet ouvert (cf. src/model-library.js) — « Non utilisés » est la réponse à la
+         seule question qu'on se pose en venant ici : puis-je supprimer sans rien casser ? -->
+    <div class="side-section">
+      <div class="dropdown">
+        <button class="dropdown-trigger" id="modelTrigger">Modèles <span class="caret">▾</span></button>
+        <div class="dropdown-panel" id="modelPanel">
+          <div id="modelList"></div>
+        </div>
+      </div>
+    </div>
     <!-- Personnages : ouvre l'éditeur SANS cible, sur un Personnage par défaut. Sert à composer et
          enregistrer des poses pour la bibliothèque, indépendamment de tout Personnage d'une Case —
          d'où l'absence du bouton « Appliquer » dans ce mode (cf. syncPersonaEditorDom). -->
@@ -416,6 +428,13 @@
 
 <!-- Sous-menu « Importer » : le GESTE dit l'intention. « Modèle » pose un Élément dans la Case ;
      « Scène » crée une Scène réutilisable ET la charge ici, puisque c'est ici qu'on a cliqué. -->
+<!-- Clic droit sur un modèle de la bibliothèque. PAS de renommage : `modelFile` est un
+     identifiant persisté, le renommer casserait les Éléments des autres Projets, qu'on ne peut
+     pas réparer (cf. docs/persisted-data.md). On renomme l'Élément, pas le fichier. -->
+<div class="context-menu hidden" id="modelContextMenu">
+  <button id="ctxDeleteModel"><span class="ctx-icon">🗑</span> Supprimer du disque</button>
+</div>
+
 <div class="context-menu hidden" id="importSubmenu">
   <button id="ctxImportModel"><span class="ctx-icon">📦</span> comme Modèle</button>
   <button id="ctxImportScene"><span class="ctx-icon">🎬</span> comme Scène</button>

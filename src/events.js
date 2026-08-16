@@ -22,13 +22,14 @@ import {
   setCanvasToolsCallbacks, screenToWorldFloor, buildApplyAngleSnap, buildApplyAlignSnap,
   startBuildMode, startTraceTool, stopTraceTool, startMeasureTool, stopMeasureTool,
 } from './canvas-tools.js';
-import { setModelCacheCallbacks } from './model-cache.js';
+import { countModelUsages, messageSuppressionModele } from './model-library.js';
+import { setModelCacheCallbacks, clearModelCache } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
 } from './model-import.js';
 import { isImportedModel } from './model-store.js';
 import {
-  setProjectTreeCallbacks, renderTree, renderSceneList, deleteVolume, deletePage, duplicatePage,
+  setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 } from './project-tree.js';
 import {
@@ -290,6 +291,7 @@ setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAn
 // l'application.
 setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction, confirmer: confirmAction });
 setProjectTreeCallbacks({
+  openModelContextMenu,
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
 });
@@ -3857,6 +3859,42 @@ document.getElementById('ctxImportModelOnly').onclick = () => {
 // Menu de gauche : un décor sans Case cible — on crée la Scène, on ne charge rien.
 document.getElementById('importSceneBtn').onclick = () => { importSceneFromModel(null, null); };
 
+// ─── Bibliothèque de modèles : clic droit sur une ligne ───
+// Une seule action, la suppression. PAS de renommage de fichier : `modelFile` est un identifiant
+// persisté, et le renommer casserait les Éléments des AUTRES Projets, qu'on ne peut pas réparer
+// d'ici. Ce qui se renomme, c'est l'Élément (son champ `name`, déjà éditable dans sa modale).
+const modelContextMenu = document.getElementById('modelContextMenu');
+let _modelCtxFichier = null;
+function openModelContextMenu(e, nomFichier){
+  _modelCtxFichier = nomFichier;
+  hideContextMenu();
+  modelContextMenu.style.left = `${e.clientX}px`;
+  modelContextMenu.style.top  = `${e.clientY}px`;
+  modelContextMenu.classList.remove('hidden');
+  clampFloatingMenu(modelContextMenu);
+}
+document.getElementById('ctxDeleteModel').onclick = async () => {
+  const fichier = _modelCtxFichier;
+  modelContextMenu.classList.add('hidden');
+  if (!fichier) return;
+  // Le décompte porte sur le Projet OUVERT : c'est tout ce qu'on peut savoir, et le message le dit.
+  const usages = countModelUsages(fichier, { tomes: S.tomes, scenes: S.scenes });
+  const ok = await confirmAction(messageSuppressionModele(fichier, usages, tr));
+  if (!ok) return;
+  const r = await window.storyboarderAPI.deleteModelFile(fichier);
+  if (!r || !r.ok) {
+    alertAction(tr(`Could not delete "${fichier}": ${(r && r.error) || 'unknown error'}`,
+      `Impossible de supprimer « ${fichier} » : ${(r && r.error) || 'erreur inconnue'}`));
+    return;
+  }
+  // Le cache garde encore le modèle décodé : le vider force sa relecture, donc l'état
+  // « introuvable », donc les boîtes de remplacement. Sans cela, un modèle supprimé continuerait de
+  // s'afficher jusqu'au prochain changement de Projet — un mensonge à l'écran.
+  clearModelCache();
+  renderAll();
+  renderModelList();
+};
+
 // ─── "Trace" and "Zone" submenus (only visible in top-down view) ───
 const ctxTracerTrigger = document.getElementById('ctxTracerTrigger');
 const ctxZoneTrigger   = document.getElementById('ctxZoneTrigger');
@@ -5420,7 +5458,7 @@ setIOCallbacks(renderAll, applyRenameVolume, applyRenameScene, closeSettingsModa
 // updateSidePanel and renderTree are defined well before this point.
 setI18nCallbacks(updateSidePanel, renderTree);
 // Wire up draw.js callbacks (canvas, ctx, render helpers — avoids circular imports draw→app)
-setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, updateContextualControls, fitZoomToWrap });
+setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, updateContextualControls, fitZoomToWrap });
 // Wire up sidebar.js callbacks (snapshot + modal openers — avoids circular imports
 // sidebar→app; these modals will themselves be extracted into src/modals.js at Step B.13).
 setSidebarCallbacks({ snapshot, openPersonaModal, openObjectModal, openRoomModal, openBuildingModal, openTerrainModal, openTracéModal, restoreSectionCollapseStates });

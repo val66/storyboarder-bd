@@ -161,3 +161,94 @@ describe('messageSuppressionModele — dire les trois choses', () => {
  * ANGLAISE, alors que le test lit la française. Elle s'annonçait « échappée » sans rien prouver.
  * Une mutation sur du texte bilingue doit viser la langue que le test observe.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le câblage de la section Modèles
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
+const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
+const EVENTS = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+const TREE = readFileSync(join(RACINE, 'src/project-tree.js'), 'utf8');
+const DRAW = readFileSync(join(RACINE, 'src/draw.js'), 'utf8');
+const MAIN = readFileSync(join(RACINE, 'main.js'), 'utf8');
+
+describe('Section Modèles — le câblage', () => {
+  test('la section et son menu contextuel existent', () => {
+    ['modelTrigger', 'modelPanel', 'modelList', 'modelContextMenu', 'ctxDeleteModel']
+      .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
+  });
+
+  test('RÉGRESSION : le menu contextuel n\'offre AUCUN renommage', () => {
+    // Décision tranchée : `modelFile` est un identifiant persisté. Le renommer casserait les
+    // Éléments des autres Projets, qu'on ne peut pas réparer d'ici. On renomme l'Élément.
+    const bloc = HTML.slice(HTML.indexOf('id="modelContextMenu"'));
+    const menu = bloc.slice(0, bloc.indexOf('</div>'));
+    assert.doesNotMatch(menu, /[Rr]enommer|[Rr]ename/,
+      'un renommage de fichier est proposé : il casserait les autres Projets');
+  });
+
+  test('RÉGRESSION : la suppression demande confirmation AVANT de supprimer', () => {
+    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
+    const corps = bloc.slice(0, bloc.indexOf('\n};'));
+    assert.ok(corps.indexOf('confirmAction') < corps.indexOf('deleteModelFile'),
+      'le fichier est supprimé avant que l\'utilisateur ait répondu');
+    assert.match(corps, /messageSuppressionModele/, 'le message chiffré n\'est pas utilisé');
+    assert.match(corps, /countModelUsages/, 'le décompte des usages n\'est pas fait');
+  });
+
+  test('RÉGRESSION : après suppression, le cache est vidé', () => {
+    // Sans cela, un modèle supprimé du disque continuerait de s'afficher jusqu'au prochain
+    // changement de Projet — un mensonge à l'écran, et le contraire de ce que l'utilisateur vient
+    // de demander.
+    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
+    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /clearModelCache\(\)/,
+      'le modèle supprimé resterait affiché');
+  });
+
+  test('un échec de suppression est rapporté, pas avalé', () => {
+    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
+    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /alertAction/);
+  });
+
+  test('la liste se recalcule à chaque rendu, comme celle des Scènes', () => {
+    // Le groupement est DÉDUIT du Projet : il doit suivre les changements du Projet, pas seulement
+    // l'ouverture.
+    assert.match(DRAW, /_renderModelList\(\);/, 'renderAll ne rafraîchit pas la bibliothèque');
+    assert.match(TREE, /export async function renderModelList/);
+  });
+
+  test('main.js garde la suppression comme il garde l\'écriture', () => {
+    const bloc = MAIN.slice(MAIN.indexOf("'models:delete'"));
+    assert.match(bloc.slice(0, 400), /nomDeModeleAcceptable\(name\)/,
+      'la suppression ne passe pas par la garde de nom');
+  });
+
+  test('un fichier déjà absent n\'est pas une erreur', () => {
+    // Le résultat voulu est atteint. Rapporter un échec ferait afficher un message d'erreur pour
+    // une suppression qui a, de fait, réussi.
+    const bloc = MAIN.slice(MAIN.indexOf("'models:delete'"));
+    assert.match(bloc.slice(0, 600), /ENOENT.*return \{ ok: true \}/s);
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — le câblage, quatre fautes de plus (les six du noyau restent valables).
+ *
+ *   Y1 le fichier supprimé AVANT que l'utilisateur ait répondu                  ROUGE
+ *   Y2 le cache non vidé après suppression                                      ROUGE
+ *   Y3 la liste jamais rafraîchie par renderAll                                 ROUGE
+ *   Y4 un fichier déjà absent rapporté comme un échec                           ROUGE
+ *
+ * Y1 EST LA PLUS IMPORTANTE, et elle ne se serait jamais vue à l'usage : en déplaçant l'appel de
+ * confirmation APRÈS la suppression, l'application demande poliment « êtes-vous sûr ? » à propos
+ * d'un fichier qu'elle vient d'effacer. Répondre « non » ne le ramène pas. Le test compare les
+ * positions des deux appels, faute de pouvoir observer un disque.
+ *
+ * Y2 est du même genre : sans vidage du cache, un modèle supprimé continuerait de s'afficher — la
+ * suppression aurait l'air de n'avoir rien fait, jusqu'au prochain changement de Projet.
+ */

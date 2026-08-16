@@ -14,6 +14,8 @@
 
 import { FORMATS } from './constants.js';
 import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
+import { listModels } from './model-store.js';
+import { groupModelsByUsage } from './model-library.js';
 import { getFormat } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal } from './io.js';
 import { renderAll } from './draw.js';
@@ -331,4 +333,69 @@ export async function deleteScene(id){
   S.scenes = S.scenes.filter(sc => sc.id !== id);
   if (S.editingSceneId === id) S.editingSceneId = null;
   renderAll();
+}
+/**
+ * La bibliothèque de modèles 3D importés, dans le menu de gauche.
+ *
+ * Elle montre le DISQUE, pas le Projet — les Scènes et les Éléments ont déjà leurs propres listes.
+ * Le groupement par usage est DÉDUIT à chaque affichage (cf. model-library.js) : rien n'est
+ * mémorisé, donc rien ne peut diverger de la réalité.
+ *
+ * Asynchrone parce que la liste des fichiers vient du disque. L'appelant n'attend pas : la liste se
+ * remplit quand elle arrive, comme le reste de ce qui touche aux modèles.
+ */
+export async function renderModelList(){
+  const list = document.getElementById('modelList');
+  if (!list) return;
+  const fichiers = await listModels();
+  const g = groupModelsByUsage(fichiers, { tomes: S.tomes, scenes: S.scenes });
+  list.innerHTML = '';
+
+  const total = g.parScenes.length + g.dansCases.length + g.nonUtilises.length;
+  if (!total) {
+    list.innerHTML = '<div class="empty-hint">Aucun modèle importé.</div>';
+    return;
+  }
+
+  const ligne = (nom, détail) => {
+    const row = document.createElement('div');
+    row.className = 'tome-row';
+    const n = document.createElement('span');
+    n.textContent = nom;
+    row.appendChild(n);
+    if (détail) {
+      const d = document.createElement('span');
+      d.className = 'perso-name-sub';
+      d.textContent = détail;
+      row.appendChild(d);
+    }
+    // Un modèle introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
+    // une boîte orangée est apparue dans une Case.
+    if (!fichiers.includes(nom)) {
+      const d = document.createElement('span');
+      d.className = 'perso-name-sub perso-name-sub-warn';
+      d.textContent = tr(' ⚠ file not found', ' ⚠ fichier introuvable');
+      row.appendChild(d);
+    }
+    row.oncontextmenu = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      _cb.openModelContextMenu(e, nom);
+    };
+    return row;
+  };
+
+  const groupe = (titre, lignes) => {
+    if (!lignes.length) return;
+    const t = document.createElement('div');
+    t.className = 'side-group-title';
+    t.textContent = titre;
+    list.appendChild(t);
+    lignes.forEach(l => list.appendChild(l));
+  };
+
+  groupe(tr('Used by Scenes', 'Utilisés par des Scènes'),
+    g.parScenes.map(e => ligne(e.nom, ` ${e.scenes.join(', ')}`)));
+  groupe(tr('Used in Panels', 'Utilisés dans des Cases'),
+    g.dansCases.map(e => ligne(e.nom, tr(` ${e.count} Element(s)`, ` ${e.count} Élément(s)`))));
+  groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, '')));
 }
