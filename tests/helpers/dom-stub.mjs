@@ -53,15 +53,26 @@ function makeFakeCanvasContext2D() {
 }
 
 function makeFakeElement() {
+  // Les enfants sont RÉELLEMENT conservés. Un `appendChild` qui rend l'enfant sans le ranger nulle
+  // part rendait indémontrable tout ce qui construit une liste : « une Scène par ligne » ne pouvait
+  // s'affirmer que par lecture du source, c'est-à-dire pas du tout (le test aurait été satisfait par
+  // le commentaire qui l'explique). Même famille de piège que la mémorisation par id plus bas.
+  //
+  // Ce n'est PAS un DOM : pas de parentNode tenu à jour, pas d'analyse du HTML posé en `innerHTML`.
+  // Poser `innerHTML` vide seulement la liste d'enfants — ce qui suffit, car c'est ainsi que le code
+  // de rendu remet une liste à zéro avant de la reconstruire.
+  const enfants = [];
   const el = {
     style: {},
     classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
     dataset: {},
-    children: [],
-    childNodes: [],
+    children: enfants,
+    childNodes: enfants,
     value: '',
     checked: false,
-    innerHTML: '',
+    _innerHTML: '',
+    get innerHTML(){ return this._innerHTML; },
+    set innerHTML(v){ this._innerHTML = String(v); enfants.length = 0; },
     textContent: '',
     width: 0,
     height: 0,
@@ -69,9 +80,17 @@ function makeFakeElement() {
     clientHeight: 0,
     addEventListener(){},
     removeEventListener(){},
-    appendChild(child){ return child; },
-    removeChild(child){ return child; },
-    insertBefore(child){ return child; },
+    appendChild(child){ enfants.push(child); return child; },
+    removeChild(child){
+      const i = enfants.indexOf(child);
+      if (i >= 0) enfants.splice(i, 1);
+      return child;
+    },
+    insertBefore(child, avant){
+      const i = enfants.indexOf(avant);
+      enfants.splice(i >= 0 ? i : enfants.length, 0, child);
+      return child;
+    },
     setAttribute(){},
     getAttribute(){ return null; },
     removeAttribute(){},

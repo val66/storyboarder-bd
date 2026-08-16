@@ -801,6 +801,27 @@ canvas{
 .perso-name-sub { opacity: .6; font-size: 11px; margin-left: 4px; }
 .perso-name-sub-warn { opacity: 1; color: #C08040; }
 
+/* Une ligne de la bibliothèque de modèles : le nom de fichier, puis un endroit PAR LIGNE.
+   `.tome-row` est en flex horizontal avec `justify-content: space-between` ; ici on empile, sinon
+   le nom et les endroits se partagent une largeur de panneau déjà étroite et se coupent tous les
+   deux au milieu. Empilés, chaque texte a toute la largeur. */
+.model-row {
+  display: block;
+  /* Sans ceci, le contenu d'une boîte flex ne rétrécit pas en dessous de sa largeur naturelle : le
+     texte pousserait la ligne au lieu d'être coupé, et déborderait du panneau. */
+  min-width: 0;
+  overflow: hidden;
+}
+/* Une seule ligne, coupée aux points de suspension. Le texte entier reste en `title` (cf.
+   project-tree.js) : on perd l'affichage, pas l'information. */
+.model-row-name,
+.model-row-where {
+  display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.model-row-name { font-weight: 600; }
+.model-row-where { margin-left: 0; margin-top: 2px; }
+
 /* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
    d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */
 .modal-readonly-value {

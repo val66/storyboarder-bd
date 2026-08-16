@@ -357,24 +357,42 @@ export async function renderModelList(){
     return;
   }
 
-  const ligne = (nom, détail) => {
+  /**
+   * Une ligne de la bibliothèque : le nom de fichier, puis UN endroit PAR LIGNE.
+   *
+   * La disposition est verticale, et ce n'est pas cosmétique. En flex horizontal (le défaut de
+   * `.tome-row`), le nom et les endroits se partagent la largeur : deux noms longs se coupaient
+   * tous les deux au milieu, et le panneau étant étroit, on ne pouvait plus lire ni l'un ni
+   * l'autre. Empilés, chaque texte dispose de toute la largeur ; ce qui dépasse est coupé par
+   * `.model-row-*` (une seule ligne, points de suspension) plutôt que de déborder du panneau.
+   *
+   * Le texte complet reste accessible en `title` — c'est ce qui rend la coupe acceptable : on perd
+   * l'affichage, pas l'information.
+   *
+   * @param {string} nom       le nom de fichier
+   * @param {string[]} endroits  un libellé par endroit ; une Scène par entrée, jamais concaténées
+   */
+  const ligne = (nom, endroits = []) => {
     const row = document.createElement('div');
-    row.className = 'tome-row';
-    const n = document.createElement('span');
+    row.className = 'tome-row model-row';
+    const n = document.createElement('div');
+    n.className = 'model-row-name';
     n.textContent = nom;
+    n.title = nom;
     row.appendChild(n);
-    if (détail) {
-      const d = document.createElement('span');
-      d.className = 'perso-name-sub';
-      d.textContent = détail;
+    endroits.filter(Boolean).forEach(endroit => {
+      const d = document.createElement('div');
+      d.className = 'perso-name-sub model-row-where';
+      d.textContent = endroit;
+      d.title = endroit;
       row.appendChild(d);
-    }
+    });
     // Un modèle introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
     // une boîte orangée est apparue dans une Case.
     if (!fichiers.includes(nom)) {
-      const d = document.createElement('span');
-      d.className = 'perso-name-sub perso-name-sub-warn';
-      d.textContent = tr(' ⚠ file not found', ' ⚠ fichier introuvable');
+      const d = document.createElement('div');
+      d.className = 'perso-name-sub perso-name-sub-warn model-row-where';
+      d.textContent = tr('⚠ file not found', '⚠ fichier introuvable');
       row.appendChild(d);
     }
     row.oncontextmenu = (e) => {
@@ -393,9 +411,12 @@ export async function renderModelList(){
     lignes.forEach(l => list.appendChild(l));
   };
 
+  // Une Scène par ligne, jamais concaténées : c'est la seule forme où l'on peut lire le nom d'une
+  // Scène jusqu'au bout. Joints par « , », la coupe tombait au milieu du premier nom et les
+  // suivants disparaissaient sans qu'aucun signe ne dise qu'il y en avait.
   groupe(tr('Used by Scenes', 'Utilisés par des Scènes'),
-    g.parScenes.map(e => ligne(e.nom, ` ${e.scenes.join(', ')}`)));
+    g.parScenes.map(e => ligne(e.nom, e.scenes)));
   groupe(tr('Used in Panels', 'Utilisés dans des Cases'),
-    g.dansCases.map(e => ligne(e.nom, tr(` ${e.count} Element(s)`, ` ${e.count} Élément(s)`))));
-  groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, '')));
+    g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} Élément(s)`)])));
+  groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
 }

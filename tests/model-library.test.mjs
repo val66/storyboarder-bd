@@ -252,3 +252,105 @@ describe('Section Modèles — le câblage', () => {
  * Y2 est du même genre : sans vidage du cache, un modèle supprimé continuerait de s'afficher — la
  * suppression aurait l'air de n'avoir rien fait, jusqu'au prochain changement de Projet.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La FORME des lignes affichées
+//
+// Signalé à l'usage : dans un panneau étroit, le nom de fichier et les endroits se partageaient une
+// ligne (flex, `justify-content: space-between`) et se coupaient tous les deux au milieu — on ne
+// pouvait lire ni le nom du fichier, ni celui de la Scène, et le texte débordait de la section.
+//
+// Ce qui suit observe le DOM réellement construit. Les assertions par lecture du source ne valent
+// rien ici : elles seraient satisfaites par le commentaire qui les explique (c'est arrivé trois
+// fois dans ce dépôt). Le stub DOM conserve désormais les enfants pour rendre cela possible.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { renderModelList } = await import('../src/project-tree.js');
+const { setModelBridge } = await import('../src/model-store.js');
+const { S } = await import('../src/state.js');
+
+const CSS = readFileSync(join(RACINE, 'style.css'), 'utf8');
+
+/** Rend la liste pour un disque et un Projet donnés, et rend les lignes construites. */
+async function rendre(fichiers, projet){
+  setModelBridge({ listModelFiles: async () => fichiers });
+  S.tomes = projet.tomes || [];
+  S.scenes = projet.scenes || [];
+  await renderModelList();
+  const list = document.getElementById('modelList');
+  return list.children.filter(n => String(n.className || '').includes('model-row'));
+}
+
+describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par ligne', () => {
+  test('RÉGRESSION : deux Scènes font DEUX lignes, pas une liste concaténée', async () => {
+    // Joints par « , », la coupe tombait au milieu du premier nom et les suivants disparaissaient
+    // sans qu'aucun signe ne dise qu'il y en avait — l'utilisateur croyait à un seul usage.
+    const [ligne] = await rendre(['salon.glb'], {
+      scenes: [volume('Salon principal', el('salon.glb')), volume('Cuisine', el('salon.glb'))],
+    });
+    const textes = ligne.children.map(c => c.textContent);
+    assert.equal(textes[0], 'salon.glb', 'le nom de fichier n\'est pas la première ligne');
+    assert.deepEqual(textes.slice(1), ['Salon principal', 'Cuisine'],
+      'les Scènes ne sont pas sur des lignes distinctes');
+  });
+
+  test('chaque ligne de texte est coupable, et porte son texte entier en `title`', async () => {
+    // La coupe n'est acceptable QUE parce que le texte complet reste atteignable au survol. Une
+    // ligne coupée sans `title` perdrait l'information, pas seulement son affichage.
+    const [ligne] = await rendre(['un_nom_de_fichier_vraiment_tres_long.glb'], {
+      scenes: [volume('Une Scène au nom lui aussi interminable',
+        el('un_nom_de_fichier_vraiment_tres_long.glb'))],
+    });
+    assert.ok(ligne.children.length >= 2);
+    ligne.children.forEach(c => {
+      assert.match(String(c.className), /model-row-name|model-row-where/,
+        `texte sans classe coupante : « ${c.textContent} »`);
+      assert.equal(c.title, c.textContent, 'le texte entier n\'est pas accessible au survol');
+    });
+  });
+
+  test('RÉGRESSION : les classes annoncées par le rendu existent VRAIMENT dans style.css', async () => {
+    // Deux fois déjà, un élément déclaré n'avait rien en face (le panneau sans setupDropdown, le
+    // panneau sans `open`). Une classe posée par le JS et absente du CSS est le même défaut : la
+    // ligne s'affiche, ne coupe rien, et déborde.
+    ['model-row', 'model-row-name', 'model-row-where'].forEach(c =>
+      assert.match(CSS, new RegExp(`\\.${c}[\\s,{]`), `classe absente de style.css : .${c}`));
+    const bloc = CSS.slice(CSS.indexOf('.model-row-name'));
+    assert.match(bloc.slice(0, 300), /text-overflow:\s*ellipsis/,
+      'les lignes ne sont pas coupées aux points de suspension');
+    assert.match(bloc.slice(0, 300), /white-space:\s*nowrap/,
+      'sans `nowrap`, le texte passe à la ligne au lieu d\'être coupé');
+    assert.match(CSS.slice(CSS.indexOf('.model-row {'), CSS.indexOf('.model-row {') + 400),
+      /overflow:\s*hidden/, 'la ligne ne contient pas son propre débordement');
+  });
+
+  test('un modèle sans usage n\'affiche que son nom', async () => {
+    const [ligne] = await rendre(['orphelin.glb'], {});
+    assert.deepEqual(ligne.children.map(c => c.textContent), ['orphelin.glb']);
+  });
+
+  test('un modèle introuvable garde son avertissement, sur sa propre ligne', async () => {
+    // Il vient APRÈS les endroits : d'abord ce que le fichier sert, ensuite pourquoi c'est cassé.
+    const [ligne] = await rendre([], { tomes: [volume('Tome 1', el('disparu.glb'))] });
+    const dernier = ligne.children[ligne.children.length - 1];
+    assert.match(dernier.textContent, /introuvable|not found/);
+    assert.match(String(dernier.className), /perso-name-sub-warn/, 'l\'avertissement n\'est pas coloré');
+    assert.match(String(dernier.className), /model-row-where/, 'l\'avertissement n\'est pas coupé');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — la forme des lignes.
+ *
+ *   Z1 les Scènes rejointes par « , » sur une seule ligne                        ROUGE
+ *   Z2 `title` retiré des lignes                                                 ROUGE
+ *   Z3 `text-overflow: ellipsis` retiré du CSS                                   ROUGE
+ *   Z4 l'avertissement « introuvable » placé avant les endroits                  ROUGE
+ *   Z5 la classe `model-row-where` retirée des endroits                          ROUGE
+ *   Z6 `.model-row { display: block }` retiré                                    ÉCHAPPÉE — assumé
+ *
+ * Z6 EST ASSUMÉE, et mérite d'être dite plutôt que maquillée : on peut vérifier que les classes
+ * existent et qu'elles coupent, pas que la disposition obtenue à l'écran est bien verticale — il
+ * faudrait un moteur de rendu. Ce qui est gardé ici, c'est que le JS produit des lignes séparées et
+ * coupables ; que le navigateur les empile relève de l'essai à l'œil.
+ */
