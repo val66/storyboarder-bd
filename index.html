@@ -435,6 +435,10 @@
      identifiant persisté, le renommer casserait les Éléments des autres Projets, qu'on ne peut
      pas réparer (cf. docs/persisted-data.md). On renomme l'Élément, pas le fichier. -->
 <div class="context-menu hidden" id="modelContextMenu">
+  <!-- La correspondance vise le FICHIER, pas un Élément : ce menu est donc son point d'entrée
+       naturel, et le seul qui reste atteignable pour un .glb importé comme Scène — lequel n'a aucun
+       Élément dans une Case d'où on pourrait l'ouvrir. -->
+  <button id="ctxSkeletonMap"><span class="ctx-icon">🦴</span> Correspondance du squelette…</button>
   <button id="ctxDeleteModel"><span class="ctx-icon">🗑</span> Supprimer du disque</button>
 </div>
 
@@ -635,6 +639,27 @@
     <div class="modal-actions">
       <button class="danger-btn" id="renameEntityCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameEntityConfirm" type="button">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- « Correspondance du squelette » — quel os du fichier importé joue quel rôle.
+     S'ouvre TOUTE SEULE au premier import d'un fichier qui porte un squelette, même quand la
+     reconnaissance est complète : c'est le seul moment où l'on pense à ce modèle, et un écran qui
+     ne se montre jamais quand tout va bien est un écran dont on ignore l'existence le jour où ça va
+     mal (cf. doitOuvrirCorrespondance). Réouvrable par le clic droit de la section Modèles.
+     Chaque ligne porte l'ORIGINE de sa proposition — nom, structure, manuel — parce qu'une
+     correspondance par nom ne se contente pas d'échouer : elle se trompe (cf. skeleton-map.js). -->
+<div class="modal-overlay hidden" id="skeletonMapModal">
+  <div class="modal-box modal-box-large">
+    <h3 id="skeletonMapTitle">Correspondance du squelette</h3>
+    <p id="skeletonMapSubtitle" style="margin:0 0 10px; font-size:12.5px; color: var(--sepia);"></p>
+    <div class="skeleton-map-legend" id="skeletonMapLegend"></div>
+    <div id="skeletonMapList" class="skeleton-map-list"></div>
+    <div class="modal-actions">
+      <button class="danger-btn" id="skeletonMapReset" type="button">Tout remettre en automatique</button>
+      <button class="danger-btn" id="skeletonMapCancel" type="button">Annuler</button>
+      <button class="full-btn" id="skeletonMapSave" type="button">Enregistrer</button>
     </div>
   </div>
 </div>

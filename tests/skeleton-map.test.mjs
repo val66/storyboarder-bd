@@ -376,3 +376,93 @@ describe('RÉGRESSION — un rig SANS clavicule (cas prévu par la spécificatio
  * « Left leg » est la cuisse. Le mot est irrémédiablement ambigu entre deux conventions répandues,
  * et aucune table d'alias ne peut le trancher. La ligne signalée n'est pas un défaut à corriger.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ce que l'écran de correspondance affiche
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { SLOT_GROUPS, slotLabel, bonesFromObject3D } from '../src/skeleton-map.js';
+
+describe('SLOT_GROUPS — les 18 emplacements, groupés pour être lus', () => {
+  test('RÉGRESSION : les groupes couvrent TOUS les emplacements, sans doublon', () => {
+    // Deux énumérations du même ensemble — SLOTS pour la reconnaissance, SLOT_GROUPS pour
+    // l'affichage. C'est la première famille de défaut de ce dépôt : un emplacement ajouté à l'une
+    // et pas à l'autre disparaîtrait de l'écran sans que rien ne le signale.
+    const affiches = SLOT_GROUPS.flatMap(g => g.slots);
+    assert.deepEqual(affiches.slice().sort(), SLOTS.slice().sort());
+    assert.equal(new Set(affiches).size, affiches.length, 'un emplacement apparaît deux fois');
+  });
+
+  test('chaque groupe a un titre bilingue', () => {
+    SLOT_GROUPS.forEach(g => {
+      assert.equal(g.titre.length, 2, `titre incomplet : ${g.slots[0]}`);
+      g.titre.forEach(t => assert.ok(t && t.length, 'titre vide'));
+    });
+  });
+
+  test('l\'ordre est anatomique : le tronc d\'abord, puis les membres', () => {
+    assert.deepEqual(SLOT_GROUPS[0].slots, ['bassin', 'poitrine', 'cou', 'tete']);
+  });
+});
+
+describe('slotLabel — nommer un rôle sans répéter son côté', () => {
+  const FR = (en, fr) => fr;
+
+  test('le côté n\'apparaît pas dans le libellé : le groupe le porte', () => {
+    assert.equal(slotLabel('bras_g', FR), 'Bras');
+    assert.equal(slotLabel('bras_d', FR), 'Bras');
+    assert.equal(slotLabel('cuisse_g', FR), 'Cuisse');
+  });
+
+  test('les deux langues existent', () => {
+    assert.equal(slotLabel('tete', (en) => en), 'Head');
+    assert.equal(slotLabel('tete', FR), 'Tête');
+  });
+
+  test('RÉGRESSION : chaque emplacement a un libellé, aucun ne retombe sur sa clé', () => {
+    // Un emplacement sans libellé afficherait « avantbras_g » à l'utilisateur. Le repli existe pour
+    // ne pas lever, pas pour être vu.
+    SLOTS.forEach(s => {
+      const l = slotLabel(s, FR);
+      assert.notEqual(l, s, `« ${s} » n'a pas de libellé`);
+      assert.doesNotMatch(l, /_[gd]$/, `« ${s} » : le côté fuit dans le libellé`);
+    });
+  });
+
+  test('une clé inconnue ne lève pas', () => {
+    assert.equal(slotLabel('inventé', FR), 'inventé');
+    assert.equal(slotLabel(null, FR), '');
+  });
+});
+
+describe('bonesFromObject3D — extraire les os d\'une scène décodée', () => {
+  // Objets factices : la fonction ne lit que `isBone`, `uuid`, `name`, `children`. C'est ce qui la
+  // rend testable sans Three ni WebGL — et c'est aussi ce qui permet à toute la reconnaissance
+  // d'être éprouvée contre cinq rigs réels sans décoder un seul octet.
+  const os = (uuid, name, children = []) => ({ isBone: true, uuid, name, children });
+  const maillage = (children = []) => ({ isMesh: true, uuid: 'm', name: 'mesh', children });
+
+  test('les os sont trouvés même sous des nœuds qui n\'en sont pas', () => {
+    const racine = { uuid: 'r', name: 'racine', children: [maillage([os('a', 'Hips', [os('b', 'Spine')])])] };
+    const r = bonesFromObject3D(racine);
+    assert.deepEqual(r.map(o => o.name), ['Hips', 'Spine']);
+  });
+
+  test('seuls les enfants OS sont recensés comme enfants', () => {
+    // Un maillage accroché à un os ne doit pas devenir une branche du squelette : la reconnaissance
+    // compterait alors des « chaînes » qui n'existent pas.
+    const r = bonesFromObject3D(os('a', 'Hips', [maillage(), os('b', 'Spine')]));
+    assert.deepEqual(r.find(o => o.id === 'a').children, ['b']);
+  });
+
+  test('un os partagé par deux peaux n\'est compté qu\'une fois', () => {
+    const partage = os('x', 'Hips');
+    const r = bonesFromObject3D({ uuid: 'r', children: [partage, { uuid: 'g', children: [partage] }] });
+    assert.equal(r.filter(o => o.id === 'x').length, 1);
+  });
+
+  test('une scène sans os rend une liste vide, sans lever', () => {
+    [null, undefined, { children: [] }, maillage()].forEach(x =>
+      assert.deepEqual(bonesFromObject3D(x), []));
+  });
+});

@@ -54,6 +54,60 @@ export const SLOTS = [
   'cuisse_d', 'jambe_d', 'pied_d',
 ];
 
+/**
+ * Les emplacements groupés pour l'affichage, avec leur libellé.
+ *
+ * Dix-huit lignes d'affilée sont illisibles ; groupées par membre, elles se parcourent. L'ordre est
+ * anatomique — du tronc vers les extrémités, gauche avant droite — et non celui de SLOTS, qui suit
+ * l'ordre de reconnaissance. Deux ordres pour deux métiers, et c'est délibéré : mélanger les deux
+ * obligerait à réordonner la reconnaissance pour changer l'affichage.
+ */
+export const SLOT_GROUPS = [
+  { titre: ['Torso', 'Tronc'], slots: ['bassin', 'poitrine', 'cou', 'tete'] },
+  { titre: ['Left arm', 'Bras gauche'], slots: ['clavicule_g', 'bras_g', 'avantbras_g', 'main_g'] },
+  { titre: ['Right arm', 'Bras droit'], slots: ['clavicule_d', 'bras_d', 'avantbras_d', 'main_d'] },
+  { titre: ['Left leg', 'Jambe gauche'], slots: ['cuisse_g', 'jambe_g', 'pied_g'] },
+  { titre: ['Right leg', 'Jambe droite'], slots: ['cuisse_d', 'jambe_d', 'pied_d'] },
+];
+
+/** Libellé d'un emplacement, sans son côté — le groupe le porte déjà. */
+const LIBELLES = {
+  bassin: ['Hips', 'Bassin'], poitrine: ['Chest', 'Poitrine'], cou: ['Neck', 'Cou'], tete: ['Head', 'Tête'],
+  clavicule: ['Collarbone', 'Clavicule'], bras: ['Upper arm', 'Bras'],
+  avantbras: ['Forearm', 'Avant-bras'], main: ['Hand', 'Main'],
+  cuisse: ['Thigh', 'Cuisse'], jambe: ['Shin', 'Genou'], pied: ['Foot', 'Pied'],
+};
+
+/** @param {string} slot @param {(en:string,fr:string)=>string} traduire */
+export function slotLabel(slot, traduire){
+  const t = traduire || ((en) => en);
+  const base = String(slot || '').replace(/_[gd]$/, '');
+  const paire = LIBELLES[base];
+  return paire ? t(paire[0], paire[1]) : String(slot || '');
+}
+
+/**
+ * Extrait la liste d'os NEUTRE d'une scène Three décodée.
+ *
+ * Ne lit que des propriétés génériques — `isBone`, `uuid`, `name`, `children` — pour que la
+ * reconnaissance reste testable contre des squelettes de fixture, sans Three ni WebGL. C'est ce qui
+ * permet à tests/skeleton-map.test.mjs d'éprouver cinq rigs réels sans décoder un seul octet.
+ */
+export function bonesFromObject3D(racine){
+  const os = [];
+  const vus = new Set();
+  const marcher = (n) => {
+    if (!n) return;
+    if (n.isBone && !vus.has(n.uuid)) {
+      vus.add(n.uuid);
+      os.push({ id: n.uuid, name: n.name || '', children: (n.children || []).filter(c => c && c.isBone).map(c => c.uuid) });
+    }
+    (n.children || []).forEach(marcher);
+  };
+  marcher(racine);
+  return os;
+}
+
 /** Alias de noms, par emplacement. Utilisés seulement pour CONFIRMER ce que la structure propose. */
 const ALIAS = {
   bassin:      ['hips', 'pelvis', 'bassin'],

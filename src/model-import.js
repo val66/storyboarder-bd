@@ -35,11 +35,16 @@ let _alerter = () => {};
 // sûr, celui qui laisse le comportement actuel (hauteur du fichier, telle quelle) inchangé pour
 // quiconque n'a pas câblé l'avertissement.
 let _confirmer = async () => false;
-export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer }){
+// Appelé APRÈS chaque import réussi, avec le nom du fichier. C'est le crochet par lequel l'écran de
+// correspondance du squelette se propose (cf. proposerCorrespondance dans events.js) : ce module
+// n'a pas à savoir qu'un tel écran existe, il annonce seulement qu'un fichier vient d'entrer.
+let _apresImport = () => {};
+export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer, apresImport }){
   _snapshot = snapshot || (() => {});
   _renderAll = renderAll || (() => {});
   _alerter = alerter || (() => {});
   _confirmer = confirmer || (async () => false);
+  _apresImport = apresImport || (() => {});
 }
 
 /**
@@ -130,6 +135,9 @@ export async function importModelIntoPanel(panel, page){
     _alerter(tr(`"${prêt.modelFile}" could not be read as a 3D model.`,
       `« ${prêt.modelFile} » n'a pas pu être lu comme modèle 3D.`));
   }
+  // Un fichier vient d'entrer : on l'annonce. Ce module ignore ce qui en sera fait — c'est
+  // l'appelant qui décide s'il y a lieu de proposer une correspondance de squelette.
+  _apresImport(prêt.modelFile);
   return el;
 }
 
@@ -166,5 +174,8 @@ export async function importSceneFromModel(panel, page){
     _alerter(tr(`"${prêt.modelFile}" could not be read as a 3D model.`,
       `« ${prêt.modelFile} » n'a pas pu être lu comme modèle 3D.`));
   }
+  // Un décor importé porte aussi un squelette quand c'est un personnage : le crochet vaut pour les
+  // TROIS gestes d'import, pas seulement celui qui pose un Élément.
+  _apresImport(prêt.modelFile);
   return scène;
 }

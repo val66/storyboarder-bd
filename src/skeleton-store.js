@@ -142,6 +142,26 @@ export async function enregistrerCorrespondance(fichier, carte){
   }
 }
 
+/**
+ * L'écran de correspondance doit-il s'ouvrir tout seul après un import ? Fonction PURE.
+ *
+ * TROIS CAS, ET UN SEUL OUVRE.
+ *
+ *   — pas d'os : une chaise, un bâtiment, un décor. C'est probablement la majorité des imports, et
+ *     l'écran n'aurait littéralement aucune ligne à afficher ;
+ *   — une correspondance déjà enregistrée : l'utilisateur a décidé. La redemander à chaque réimport
+ *     reviendrait à ne pas avoir enregistré ;
+ *   — un squelette, jamais vu : on ouvre. MÊME si la reconnaissance est complète et sans
+ *     avertissement — choix de l'utilisateur, contre mon avis initial. Sa raison est meilleure que
+ *     la mienne : c'est le seul moment où l'on pense à ce modèle, et un écran qui ne s'ouvre jamais
+ *     quand tout va bien est un écran dont on ignore l'existence le jour où ça va mal.
+ */
+export function doitOuvrirCorrespondance({ osDuFichier, dejaEnregistree } = {}){
+  if (!Array.isArray(osDuFichier) || osDuFichier.length === 0) return false;
+  if (dejaEnregistree) return false;
+  return true;
+}
+
 /** Oublie la correspondance d'un fichier — appelé quand le `.glb` est supprimé du disque. */
 export async function oublierCorrespondance(fichier){
   return enregistrerCorrespondance(fichier, {});

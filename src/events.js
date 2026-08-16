@@ -27,7 +27,14 @@ import {
   setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, usageElementLabels,
   targetFor,
 } from './model-usages.js';
-import { setModelCacheCallbacks, clearModelCache } from './model-cache.js';
+import {
+  inferSkeletonMap, resumeCorrespondance, bonesFromObject3D, slotLabel, SLOT_GROUPS,
+} from './skeleton-map.js';
+import {
+  lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, fusionner,
+  doitOuvrirCorrespondance,
+} from './skeleton-store.js';
+import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
 } from './model-import.js';
@@ -293,7 +300,12 @@ setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAn
 // `confirmer` : la question « redimensionner ce modèle manifestement trop grand ? » (cf.
 // model-import.js, MODEL_HEIGHT_WARN_MAX_M) — même modale de confirmation que le reste de
 // l'application.
-setModelImportCallbacks({ snapshot, renderAll, alerter: alertAction, confirmer: confirmAction });
+setModelImportCallbacks({
+  snapshot, renderAll, alerter: alertAction, confirmer: confirmAction,
+  // Déclaré ici mais défini bien plus bas : la fonction est hissée, et c'est ce qui permet de
+  // garder tout le câblage d'injection groupé en haut du fichier.
+  apresImport: (nomFichier) => proposerCorrespondance(nomFichier),
+});
 setProjectTreeCallbacks({
   openModelContextMenu, openModelUsages,
   createScene, openScene, disableSceneCameraMode,
@@ -3899,6 +3911,11 @@ function openModelContextMenu(e, nomFichier){
   modelContextMenu.classList.remove('hidden');
   clampFloatingMenu(modelContextMenu);
 }
+document.getElementById('ctxSkeletonMap').onclick = () => {
+  const fichier = _modelCtxFichier;
+  hideContextMenu();
+  if (fichier) openSkeletonMapModal(fichier);
+};
 document.getElementById('ctxDeleteModel').onclick = async () => {
   const fichier = _modelCtxFichier;
   modelContextMenu.classList.add('hidden');
@@ -3917,9 +3934,156 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   // « introuvable », donc les boîtes de remplacement. Sans cela, un modèle supprimé continuerait de
   // s'afficher jusqu'au prochain changement de Projet — un mensonge à l'écran.
   clearModelCache();
+  // La correspondance du fichier n'a plus d'objet : la garder laisserait une entrée orpheline dans
+  // un fichier partagé par tous les Projets, et elle ressusciterait au réimport d'un homonyme —
+  // avec les os de l'ANCIEN squelette.
+  await oublierCorrespondance(fichier);
   renderAll();
   renderModelList();
 };
+
+// ─── L'écran de correspondance du squelette ───
+// Le câblage seulement. La reconnaissance (skeleton-map.js), le rangement (skeleton-store.js) et la
+// décision d'ouvrir (doitOuvrirCorrespondance) sont ailleurs, purs, et testés.
+const skeletonMapModal = document.getElementById('skeletonMapModal');
+const skeletonMapList  = document.getElementById('skeletonMapList');
+// { fichier, os, carte } — l'état de l'écran ouvert. `carte` est un BROUILLON : rien n'est écrit
+// tant que l'utilisateur n'a pas enregistré, comme partout ailleurs dans cette application.
+let _skelEcran = null;
+
+/** Les os d'un modèle décodé, sous la forme neutre attendue par la reconnaissance. */
+function osDuModele(nomFichier){
+  const charge = getLoadedModel(nomFichier);
+  return (charge && charge.scene) ? bonesFromObject3D(charge.scene) : [];
+}
+
+/**
+ * Ouvre l'écran pour un fichier. `auto` seulement : ignore la correspondance enregistrée et
+ * repropose la reconnaissance — utilisé par « Tout remettre en automatique ».
+ */
+async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false } = {}){
+  const os = osDuModele(nomFichier);
+  if (!os.length) {
+    alertAction(tr(`"${nomFichier}" has no skeleton: there is nothing to map.`,
+      `« ${nomFichier} » n'a pas de squelette : il n'y a rien à faire correspondre.`));
+    return;
+  }
+  const tout = await lireCorrespondances();
+  const enregistree = ignorerEnregistree ? null : tout.entrees[nomFichier];
+  _skelEcran = { fichier: nomFichier, os, carte: fusionner(inferSkeletonMap(os), enregistree, os) };
+  renderSkeletonMapModal();
+  skeletonMapModal.classList.remove('hidden');
+}
+
+function renderSkeletonMapModal(){
+  if (!_skelEcran) return;
+  const { fichier, os, carte } = _skelEcran;
+  const r = resumeCorrespondance(carte);
+  document.getElementById('skeletonMapTitle').textContent =
+    tr('Skeleton mapping', 'Correspondance du squelette');
+  document.getElementById('skeletonMapSubtitle').textContent = tr(
+    `"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
+    `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`);
+
+  const legende = document.getElementById('skeletonMapLegend');
+  legende.innerHTML = '';
+  [['nom', tr('the file\'s wording confirms it', 'le vocabulaire du fichier confirme')],
+    ['structure', tr('deduced from the skeleton\'s shape', 'déduit de la forme du squelette')],
+    ['manuel', tr('your choice, saved', 'votre choix, enregistré')]].forEach(([cle, texte]) => {
+    const s = document.createElement('span');
+    s.innerHTML = `<span class="skeleton-map-origin origine-${cle}">${cle}</span> `;
+    s.appendChild(document.createTextNode(texte));
+    legende.appendChild(s);
+  });
+
+  skeletonMapList.innerHTML = '';
+  SLOT_GROUPS.forEach(groupe => {
+    const t = document.createElement('div');
+    t.className = 'skeleton-map-group';
+    t.textContent = tr(groupe.titre[0], groupe.titre[1]);
+    skeletonMapList.appendChild(t);
+    groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
+  });
+}
+
+/** Une ligne : le rôle, une liste déroulante de TOUS les os du fichier, et l'origine. */
+function ligneCorrespondance(slot, valeur, os){
+  const row = document.createElement('div');
+  const origine = valeur ? valeur.origine : 'vide';
+  row.className = 'skeleton-map-row' + (origine === 'structure' ? ' a-verifier' : '');
+
+  const lib = document.createElement('span');
+  lib.className = 'skeleton-map-slot';
+  lib.textContent = slotLabel(slot, tr);
+  row.appendChild(lib);
+
+  const sel = document.createElement('select');
+  const aucun = document.createElement('option');
+  aucun.value = '';
+  aucun.textContent = tr('— none —', '— aucun —');
+  sel.appendChild(aucun);
+  os.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = String(o.id);
+    opt.textContent = o.name || String(o.id);
+    if (valeur && String(valeur.bone) === String(o.id)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (!valeur) aucun.selected = true;
+  sel.onchange = () => {
+    // Tout changement devient une décision HUMAINE, donc enregistrable — y compris remettre un
+    // emplacement à « aucun », qui est une information et pas une absence de choix.
+    const choisi = os.find(o => String(o.id) === sel.value);
+    _skelEcran.carte[slot] = choisi
+      ? { bone: choisi.id, name: choisi.name, origine: 'manuel' }
+      : null;
+    renderSkeletonMapModal();
+  };
+  row.appendChild(sel);
+
+  const badge = document.createElement('span');
+  badge.className = `skeleton-map-origin origine-${origine}`;
+  badge.textContent = origine === 'vide' ? tr('none', 'aucun') : origine;
+  row.appendChild(badge);
+  return row;
+}
+
+document.getElementById('skeletonMapCancel').onclick = () => {
+  skeletonMapModal.classList.add('hidden'); _skelEcran = null;
+};
+skeletonMapModal.addEventListener('click', (e) => {
+  if (e.target === skeletonMapModal) { skeletonMapModal.classList.add('hidden'); _skelEcran = null; }
+});
+document.getElementById('skeletonMapReset').onclick = () => {
+  // Efface les décisions et repropose la reconnaissance. Sans ce bouton, une correction faite par
+  // erreur serait définitive — et comme le fichier est partagé par tous les Projets, elle suivrait
+  // l'utilisateur partout.
+  if (_skelEcran) openSkeletonMapModal(_skelEcran.fichier, { ignorerEnregistree: true });
+};
+document.getElementById('skeletonMapSave').onclick = async () => {
+  if (!_skelEcran) return;
+  const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte);
+  skeletonMapModal.classList.add('hidden');
+  _skelEcran = null;
+  // Un échec d'écriture est DIT. La faute la plus coûteuse de ce dépôt reste « un succès annoncé
+  // pour un travail sans effet ».
+  if (!r.ok) {
+    alertAction(tr(`Could not save the mapping: ${r.error}`,
+      `Impossible d'enregistrer la correspondance : ${r.error}`));
+  }
+};
+
+/**
+ * Après un import : ouvrir l'écran si — et seulement si — il a quelque chose à montrer.
+ * La décision est dans skeleton-store.js, pure et testée ; ici on la suit.
+ */
+async function proposerCorrespondance(nomFichier){
+  if (!nomFichier) return;
+  const os = osDuModele(nomFichier);
+  const tout = await lireCorrespondances();
+  if (!doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: !!tout.entrees[nomFichier] })) return;
+  openSkeletonMapModal(nomFichier);
+}
 
 // ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───
 // Le câblage seulement : la décision (rien / y aller / choisir) est prise par `resolveModelClick`

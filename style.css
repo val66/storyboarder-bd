@@ -866,6 +866,36 @@ canvas{
 }
 .model-usage-target:hover { border-color: var(--accent); }
 
+/* ── Correspondance du squelette ─────────────────────────────────────────────────────────────
+   Dix-huit lignes, groupées par membre. Hauteur bornée puis défilante, pour la même raison que la
+   liste des usages : les boutons du bas doivent rester atteignables. */
+.modal-box-large { max-width: 640px; width: 92vw; }
+.skeleton-map-list { max-height: 52vh; overflow-y: auto; margin-bottom: 12px; }
+.skeleton-map-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px;
+                       color: var(--sepia); margin-bottom: 10px; }
+.skeleton-map-group {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  opacity: .55; margin: 10px 0 4px 2px;
+}
+.skeleton-map-list > .skeleton-map-group:first-child { margin-top: 0; }
+.skeleton-map-row {
+  display: flex; align-items: center; gap: 10px; padding: 5px 8px; margin-bottom: 4px;
+  border: 1px solid var(--line); border-radius: var(--radius, 6px);
+}
+.skeleton-map-row .skeleton-map-slot { font-size: 12.5px; width: 92px; flex-shrink: 0; color: var(--ink-soft); }
+.skeleton-map-row select { flex: 1; min-width: 0; font-size: 12.5px; }
+/* L'étiquette d'origine, et c'est la pièce maîtresse de cet écran. Une proposition « structure »
+   signifie : le vocabulaire du fichier ne confirmait pas, j'ai suivi la forme du squelette. C'est
+   exactement là que l'utilisateur doit regarder — d'où une teinte, pas seulement un mot. */
+.skeleton-map-origin {
+  font-size: 10.5px; padding: 1px 6px; border-radius: var(--radius, 6px); flex-shrink: 0;
+}
+.skeleton-map-origin.origine-nom       { background: rgba(90,160,110,.18); color: #4a8a5e; }
+.skeleton-map-origin.origine-structure { background: rgba(224,165,60,.22); color: #a06a10; }
+.skeleton-map-origin.origine-manuel    { background: rgba(90,130,200,.18); color: #4a6ea8; }
+.skeleton-map-origin.origine-vide      { background: rgba(128,128,128,.15); color: var(--ink-soft); }
+.skeleton-map-row.a-verifier { border-color: rgba(224,165,60,.6); background: rgba(224,165,60,.07); }
+
 /* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
    d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */
 .modal-readonly-value {

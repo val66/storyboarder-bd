@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import {
   normaliserFichier, entreePourFichier, fusionner, setSkeletonBridge,
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, SKELETON_MAP_FORMAT,
+  doitOuvrirCorrespondance,
 } from '../src/skeleton-store.js';
 import { SLOTS } from '../src/skeleton-map.js';
 
@@ -289,5 +290,79 @@ describe('Câblage des correspondances vers le processus principal', () => {
     const bloc = MAIN.slice(MAIN.indexOf("ipcMain.handle('skeletons:read'"));
     assert.match(bloc.slice(0, 600), /catch/);
     assert.match(bloc.slice(0, 600), /ok: false/);
+  });
+});
+
+describe('doitOuvrirCorrespondance — n\'ouvrir que quand il y a quelque chose à montrer', () => {
+  const os = [{ id: 1, name: 'Hips' }];
+
+  test('RÉGRESSION : un modèle SANS squelette n\'ouvre jamais l\'écran', () => {
+    // Une chaise, un bâtiment, un décor — probablement la majorité des imports. L'écran n'aurait
+    // littéralement aucune ligne à afficher.
+    assert.equal(doitOuvrirCorrespondance({ osDuFichier: [], dejaEnregistree: false }), false);
+    assert.equal(doitOuvrirCorrespondance({ osDuFichier: null, dejaEnregistree: false }), false);
+    assert.equal(doitOuvrirCorrespondance({}), false);
+  });
+
+  test('RÉGRESSION : une correspondance déjà enregistrée n\'est pas redemandée', () => {
+    // L'utilisateur a décidé. La redemander à chaque réimport reviendrait à ne pas avoir enregistré.
+    assert.equal(doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: true }), false);
+  });
+
+  test('un squelette jamais vu ouvre l\'écran, MÊME si tout est reconnu', () => {
+    // Décision de l'utilisateur, contre mon avis initial : un écran qui ne se montre jamais quand
+    // tout va bien est un écran dont on ignore l'existence le jour où ça va mal.
+    assert.equal(doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: false }), true);
+  });
+});
+
+describe('Câblage de l\'écran de correspondance', () => {
+  const EVENTS = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+  const HTML = _lire(_joindre(_RACINE, 'index.html'), 'utf8');
+  const IMPORT = _lire(_joindre(_RACINE, 'src/model-import.js'), 'utf8');
+
+  test('la modale et ses commandes existent', () => {
+    ['skeletonMapModal', 'skeletonMapList', 'skeletonMapSave', 'skeletonMapCancel', 'skeletonMapReset']
+      .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
+  });
+
+  test('RÉGRESSION : l\'entrée du clic droit vise le FICHIER, pas un Élément', () => {
+    // Le seul point d'entrée atteignable pour un .glb importé comme Scène, qui n'a aucun Élément
+    // dans une Case d'où on pourrait ouvrir l'écran.
+    assert.match(HTML, /id="ctxSkeletonMap"/);
+    const bloc = EVENTS.slice(EVENTS.indexOf("ctxSkeletonMap').onclick"));
+    assert.match(bloc.slice(0, 300), /_modelCtxFichier/);
+  });
+
+  test('RÉGRESSION : les DEUX fonctions d\'import annoncent le fichier entré', () => {
+    // Trois points d'entrée dans l'interface, mais DEUX fonctions : « Modèle » et « Scène depuis
+    // une Case » d'un côté, « Importer un décor… » du menu de gauche partageant la seconde. Ma
+    // première version de ce test comptait trois appels et échouait — l'erreur était dans le test,
+    // pas dans le code. Compter des occurrences était de toute façon fragile : on vérifie
+    // maintenant que CHAQUE fonction exportée porte le crochet.
+    ['importModelIntoPanel', 'importSceneFromModel'].forEach(fn => {
+      const debut = IMPORT.indexOf(`export async function ${fn}`);
+      assert.ok(debut > 0, `fonction introuvable : ${fn}`);
+      const corps = IMPORT.slice(debut, IMPORT.indexOf('\n}', debut));
+      assert.match(corps, /_apresImport\(/, `${fn} n'annonce pas le fichier importé`);
+    });
+  });
+
+  test('RÉGRESSION : supprimer un modèle oublie sa correspondance', () => {
+    // Sans cela, une entrée orpheline resterait dans un fichier partagé par tous les Projets, et
+    // ressusciterait au réimport d'un homonyme — avec les os de l'ANCIEN squelette.
+    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
+    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /oublierCorrespondance\(/);
+  });
+
+  test('un échec d\'enregistrement est rapporté', () => {
+    const bloc = EVENTS.slice(EVENTS.indexOf("skeletonMapSave').onclick"));
+    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /alertAction/);
+  });
+
+  test('les classes d\'origine existent dans style.css', () => {
+    const CSS = _lire(_joindre(_RACINE, 'style.css'), 'utf8');
+    ['origine-nom', 'origine-structure', 'origine-manuel', 'origine-vide']
+      .forEach(c => assert.match(CSS, new RegExp(`\\.${c}`), `classe absente : .${c}`));
   });
 });
