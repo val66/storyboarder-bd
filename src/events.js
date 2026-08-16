@@ -35,6 +35,7 @@ import {
   doitOuvrirCorrespondance,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
+import { enregistrerFermeture } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
@@ -4719,12 +4720,9 @@ descModal.addEventListener('input', recomputeModalDirty);
 descModal.addEventListener('change', recomputeModalDirty);
 window.addEventListener('keydown', (e) => {
   if (!descModal.classList.contains('hidden')) {
-    if (e.key === 'Escape') {
-      // stopImmediatePropagation prevents other keydown listeners (notably "Escape → Project menu")
-      // from firing on the same event, now that the modal is about to be hidden.
-      e.stopImmediatePropagation();
-      dismissModal(closeDescModal);
-    }
+    // Échap n'est plus traité ici. Cet écouteur s'exécute APRÈS celui d'io.js, qui a déjà tranché :
+    // le `stopImmediatePropagation` qu'on y appelait ne retenait rien. La fermeture est déclarée
+    // une seule fois, plus bas (enregistrerFermeture). Cf. src/modal-stack.js.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !descModalSave.disabled) descModalSave.onclick();
   }
 });
@@ -5002,12 +5000,7 @@ objectModal.addEventListener('input', recomputeModalDirty);
 objectModal.addEventListener('change', recomputeModalDirty);
 window.addEventListener('keydown', (e) => {
   if (!objectModal.classList.contains('hidden')) {
-    if (e.key === 'Escape') {
-      // Same reason as for descModal above: stops propagation to prevent the Project menu from
-      // being opened by the "Escape → Project menu" listener registered further below.
-      e.stopImmediatePropagation();
-      dismissModal(closeObjectModal);
-    }
+    // Échap : cf. la note sur descModal plus haut — un seul arbitre, dans io.js.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !objectModalSave.disabled) objectModalSave.onclick();
   }
 });
@@ -5996,3 +5989,20 @@ function restoreSectionCollapseStates() {
     });
   });
 })();
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Échap : les fermetures des modales de CE fichier
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// L'ÉCRAN DE CORRESPONDANCE EST LE CAS QUI INTERDIT UNE FERMETURE GÉNÉRIQUE. Il rend une PROMESSE,
+// que l'import attend pour savoir s'il doit se poursuivre ou s'annuler. Le masquer par un simple
+// `classList.add('hidden')` laisserait cette promesse en suspens pour toujours : l'import
+// resterait figé, sans message, sans modèle, et sans rien à quoi se raccrocher. `fermerSkeletonMap`
+// est le seul chemin de sortie, et il résout — ici avec `false`, comme le bouton Annuler.
+enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
+enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));
+// Pour ces deux-là, Échap doit faire ce que fait « Annuler » — et « Annuler » sur un Élément qu'on
+// vient d'ajouter le SUPPRIME (cf. dismissModal). Un masquage générique le laisserait derrière.
+enregistrerFermeture('descModal', () => dismissModal(closeDescModal));
+enregistrerFermeture('objectModal', () => dismissModal(closeObjectModal));

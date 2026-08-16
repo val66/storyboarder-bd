@@ -17,6 +17,10 @@ import {
   missingBuiltinPoses3D, forgetDismissedPoses3D,
 } from './utils.js';
 import { WALL_TYPES, WALL_PX_PER_UNIT_3D, PANEL_CAM_DEFAULT_DIST_3D, GROUND_Y_DEFAULT_3D } from './constants.js';
+// Qui est devant, et comment le fermer. La décision d'Échap est pure et testée là-bas.
+import {
+  actionEchap, pileOuverte, fermerModaleDuDessus, enregistrerFermeture, surveillerModales,
+} from './modal-stack.js';
 
 // ── Callbacks injected by app.js (avoids a circular import) ─────────────────
 let _renderAll = null;
@@ -33,9 +37,11 @@ export function setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onClo
 
 // ── DOM references used by several functions in this module ─────────────
 // (each modal's own const variables are declared locally in their section below)
-const _descModal     = document.getElementById('descModal');
-const _objectModal   = document.getElementById('objectModal');
-const _settingsModal = document.getElementById('settingsModal');
+//
+// _descModal / _objectModal / _settingsModal ont disparu avec la liste de gardes d'Échap : ils n'y
+// servaient qu'à demander « celle-ci est-elle ouverte ? », question désormais posée au DOM une
+// seule fois (cf. src/modal-stack.js). Les retirer plutôt que les garder « au cas où » — du code
+// mort dans un fichier de 1100 lignes finit par se faire relire comme s'il comptait.
 
 export function hasElectronAPI(){ return !!(window.storyboarderAPI); }
 export function supportsFileSystemAccess(){ return typeof window.showSaveFilePicker === 'function'; }
@@ -825,34 +831,27 @@ window.addEventListener('keydown', (e) => {
     saveProjectFlow();
   }
 });
-// Escape opens the Project modal — on user request — unless another, more specific modal is
-// already in front (each already handles its own closing via Escape, cf. closeDescModal/
-// closeObjectModal/closeRenameProjectModal just above/below): we don't want to steal the
-// event from it in that case. If the Project modal is already open, Escape closes it —
-// consistent with the other modals' behavior (Escape always closes the frontmost modal).
+// Échap ferme la modale du DESSUS ; s'il n'y en a aucune, il ouvre le menu Projet (à la demande de
+// l'utilisateur). Cet écouteur est le PREMIER enregistré sur window pour Échap (io.js est importé
+// avant events.js) : c'est donc lui, et lui seul, qui tranche. Un `stopImmediatePropagation` posé
+// par un écouteur plus tardif ne peut rien retenir — au moment où il s'exécute, la décision est
+// déjà prise.
 //
-// Fix 67 — this listener is the FIRST one registered on window for Escape (io.js is imported
-// before events.js), so a later listener calling stopImmediatePropagation cannot hold it back:
-// by the time that listener runs, the Project modal has already opened. Anything that covers the
-// application therefore has to declare itself HERE, in the guard list below — that is what the
-// character editor was missing, and why leaving it opened the Project modal behind itself.
+// CE CODE ÉNUMÉRAIT HUIT MODALES, une par ligne, pour savoir s'il devait se taire. L'application en
+// compte quatorze : les six absentes voyaient Échap ouvrir le menu Projet DERRIÈRE elles au lieu de
+// les fermer — signalé à l'usage sur l'écran de correspondance du squelette. Le commentaire d'alors
+// disait pourtant déjà que tout ce qui recouvre l'application « doit se déclarer ICI », et
+// rappelait que l'éditeur de Personnage l'avait oublié : la liste avait donc déjà échoué une fois.
+//
+// Elle est remplacée par une question posée au DOM (cf. src/modal-stack.js), et la décision
+// elle-même est une fonction pure et testée. Plus rien à tenir à jour ici.
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  // The character editor COVERS the application (cf. S.personaEditorOpen — it does not replace
-  // what is on screen, it hides it), so no modal class can speak for it: only this flag can.
-  if (S.personaEditorOpen) return;
-  // FIX (pre-existing bug): descModal/objectModal/settingsModal were referenced here without
-  // the _ prefix (cf. _descModal/_objectModal/_settingsModal declared above) — an immediate
-  // ReferenceError, which broke the Escape key in the ENTIRE application from the very first
-  // press.
-  if (!_descModal.classList.contains('hidden')) return;
-  if (!_objectModal.classList.contains('hidden')) return;
-  if (!renameProjectModal.classList.contains('hidden')) return;
-  if (!renameEntityModal.classList.contains('hidden')) return;
-  if (!confirmActionModal.classList.contains('hidden')) return;
-  if (!quitConfirmModal.classList.contains('hidden')) { closeQuitConfirmModal(); return; }
-  if (!_settingsModal.classList.contains('hidden')) { if (_closeSettingsModal) _closeSettingsModal(); return; }
-  if (!projectModal.classList.contains('hidden')) { closeProjectModal(); return; }
+  // L'éditeur de Personnage RECOUVRE l'application sans être une modale (il ne remplace pas ce qui
+  // est à l'écran, il le masque) : aucune classe ne peut parler pour lui, seul ce drapeau le peut.
+  const quoi = actionEchap({ pile: pileOuverte(), editeurOuvert: S.personaEditorOpen });
+  if (quoi.action === 'rien') return;
+  if (quoi.action === 'fermer') { e.preventDefault(); fermerModaleDuDessus(); return; }
   openProjectModal();
 });
 
@@ -1103,6 +1102,26 @@ window.addEventListener('beforeunload', (e) => {
   e.preventDefault();
   e.returnValue = '';
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Échap : les fermetures des modales de CE fichier, et la mise sous surveillance
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Chaque fermeture doit produire le même effet qu'un clic sur « Annuler » — c'est la règle du dépôt
+// (« Annuler, Échap et un clic sur le fond sont une seule intention »). Pour une demande de
+// confirmation, cela veut dire répondre NON, et non pas seulement masquer : quelqu'un attend la
+// réponse.
+enregistrerFermeture('projectModal', closeProjectModal);
+enregistrerFermeture('renameProjectModal', closeRenameProjectModal);
+enregistrerFermeture('renameEntityModal', closeRenameEntityModal);
+enregistrerFermeture('confirmActionModal', () => settleConfirmAction(false));
+enregistrerFermeture('quitConfirmModal', closeQuitConfirmModal);
+enregistrerFermeture('settingsModal', () => { if (_closeSettingsModal) _closeSettingsModal(); });
+
+// La surveillance couvre TOUTES les `.modal-overlay` du document, y compris celles dont la
+// fermeture est déclarée ailleurs (modals.js, events.js) : ce qu'on observe ici, c'est
+// l'ouverture, pas la fermeture. Posé en fin de io.js, donc après que le document est prêt.
+surveillerModales();
 // ↳ src/i18n.js
 // ↳ src/i18n.js
 // ════════════════════════════════════════════════════════════

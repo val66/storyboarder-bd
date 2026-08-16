@@ -53,6 +53,7 @@ import {
   personaPreviewPan, pickPoseHandleAt, projectJointToCanvas,
 } from './draw.js';
 import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
+import { enregistrerFermeture } from './modal-stack.js';
 
 // No callback to inject: none of the functions moved here call snapshot() or any modal not yet
 // extracted (openTracéModal/openTerrainModal are already in this module). wallOpeningRotationForWall
@@ -1504,7 +1505,9 @@ roomModalCancel.onclick = closeRoomModal;
 roomModal.addEventListener('mousedown', (e) => { if (e.target === roomModal) { e.stopPropagation(); closeRoomModal(); } });
 window.addEventListener('keydown', (e) => {
   if (!roomModal.classList.contains('hidden')) {
-    if (e.key === 'Escape') { e.stopImmediatePropagation(); closeRoomModal(); }
+    // Échap n'est PLUS traité ici : cet écouteur est enregistré après celui d'io.js, qui avait
+    // déjà tranché — `stopImmediatePropagation` n'y changeait rien. La fermeture est déclarée en
+    // bas de ce fichier (cf. enregistrerFermeture), et io.js l'appelle. Ctrl+Entrée reste local.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) roomModalSave.onclick();
   }
 });
@@ -1664,7 +1667,7 @@ document.getElementById('buildingMagnetGroundCheckbox').addEventListener('change
 buildingModal.addEventListener('mousedown', (e) => { if (e.target === buildingModal) { e.stopPropagation(); closeBuildingModal(); } });
 window.addEventListener('keydown', (e) => {
   if (!buildingModal.classList.contains('hidden')) {
-    if (e.key === 'Escape') { e.stopImmediatePropagation(); closeBuildingModal(); }
+    // Échap : cf. la note sur roomModal plus haut — un seul arbitre, dans io.js.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) buildingModalSave.onclick();
   }
 });
@@ -1868,3 +1871,24 @@ export function getRoomOrBuildingScreenBBox(roomIds, page, panel) {
   if (screenCorners.some(c => c === null)) return null;
   return { corners: screenCorners, bb };
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Échap : les fermetures des modales de CE fichier
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Pièce et Bâtiment avaient déjà leur écouteur Échap, avec `stopImmediatePropagation`. Il ne
+// retenait RIEN : io.js est importé en premier, donc son écouteur s'exécutait avant, et le menu
+// Projet était déjà ouvert quand celui-ci reprenait la main. Les deux modales se fermaient bien —
+// en laissant le menu Projet derrière. Ces écouteurs ont été retirés au profit d'une déclaration
+// unique ; cf. src/modal-stack.js pour pourquoi il ne peut y avoir qu'un seul arbitre.
+enregistrerFermeture('roomModal', closeRoomModal);
+enregistrerFermeture('buildingModal', closeBuildingModal);
+enregistrerFermeture('tracéModal', () => {
+  document.getElementById('tracéModal').classList.add('hidden');
+  S.tracéModalTarget = null;
+});
+enregistrerFermeture('terrainModal', () => {
+  document.getElementById('terrainModal').classList.add('hidden');
+  S.terrainModalTarget = null;
+});

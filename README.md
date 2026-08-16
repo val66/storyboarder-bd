@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.12**
+**Version 1.3.13**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -150,6 +150,7 @@ storyboarder-bd/
 │   ├── scenes.js       # Scenes: creation, opening, loading into a Panel
 │   ├── sidebar.js      # Right-hand panel rendering (Panel/Bubble/Page/Camera)
 │   ├── modals.js       # Modal dialogs (Character, Object, Room, Building…)
+│   ├── modal-stack.js  # Which dialog is in front, and what Escape closes
 │   ├── scene3d.js      # 3D camera + combined scene rendering (Three.js)
 │   ├── rig3d.js        # 3D rig construction (characters, objects, animals…)
 │   ├── model-store.js  # Storage of imported .glb files (Modeles/ folder, safe file names)

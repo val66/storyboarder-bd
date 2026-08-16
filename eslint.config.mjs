@@ -39,6 +39,7 @@ export default [
         performance: 'readonly', alert: 'readonly', devicePixelRatio: 'readonly',
         localStorage: 'readonly', atob: 'readonly', btoa: 'readonly',
         TextEncoder: 'readonly', TextDecoder: 'readonly',
+        MutationObserver: 'readonly',
         // THREE est chargé par une balise <script> et n'est donc importé nulle part. Déclaré ICI
         // et non par un commentaire `/* global THREE */` dans chaque fichier : une seule source,
         // valable pour les trois modules qui s'en servent. Le commentaire qui existait dans

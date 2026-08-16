@@ -702,9 +702,17 @@ describe('Fix 59 — restaurer les poses de base', () => {
 // exactement ce qui était faux — l'ORDRE des gardes dans l'écouteur, pas leur effet.
 //
 // Le piège de fond : l'écouteur d'io.js est enregistré AVANT celui de l'éditeur (events.js importe
-// io.js), donc le stopImmediatePropagation de l'éditeur arrive trop tard. Tout ce qui RECOUVRE
-// l'application doit se déclarer dans la liste de gardes d'io.js — une énumération incomplète, la
-// deuxième famille de bugs récurrente de ce dépôt.
+// io.js), donc le stopImmediatePropagation de l'éditeur arrive trop tard. C'est donc io.js, et lui
+// seul, qui doit savoir que l'éditeur recouvre l'application.
+//
+// LA LISTE DE GARDES QUI VIVAIT ICI A DISPARU : elle citait huit modales sur quatorze, et les six
+// absentes voyaient Échap ouvrir le menu Projet derrière elles (signalé à l'usage sur l'écran de
+// correspondance du squelette). La décision est maintenant une fonction pure — `actionEchap`, cf.
+// tests/modal-stack.test.mjs, où elle se teste sur son comportement et non sur sa forme.
+//
+// CE QUI RESTE VÉRIFIÉ ICI est le point que la fonction pure ne peut PAS attraper : que l'éditeur
+// de Personnage soit bien passé à `actionEchap`, et AVANT toute autre action. L'éditeur n'est pas
+// une modale — aucune classe ne parle pour lui, seul ce drapeau le peut.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est ouvert', () => {
   const src = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
@@ -716,8 +724,12 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
   });
 
   test('RÉGRESSION : il renonce si l\'éditeur de Personnage est ouvert', () => {
-    assert.match(corps, /if \(S\.personaEditorOpen\) return;/,
-      'sans ce garde, quitter l\'éditeur par Échap ouvre le menu Projet derrière lui');
+    // L'état de l'éditeur doit être TRANSMIS à la décision. S'il ne l'était pas, quitter l'éditeur
+    // par Échap ouvrirait le menu Projet derrière lui — le défaut d'origine du Fix 67.
+    assert.match(corps, /editeurOuvert:\s*S\.personaEditorOpen/,
+      'l\'état de l\'éditeur n\'est plus transmis à la décision Échap');
+    assert.match(corps, /quoi\.action === 'rien'\) return;/,
+      'la réponse « ne rien faire » n\'est plus respectée : le menu Projet s\'ouvrirait quand même');
   });
 
   test('RÉGRESSION : le garde précède TOUT appel à openProjectModal', () => {
@@ -726,7 +738,7 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
     // Chercher `S.personaEditorOpen` nu trouverait d'abord le COMMENTAIRE au-dessus du garde, qui
     // lui reste en place quand on déplace la ligne : c'est exactement ainsi qu'une mutation a
     // échappé à la première version de ce test.
-    const iGarde = corps.indexOf('if (S.personaEditorOpen) return;');
+    const iGarde = corps.indexOf('editeurOuvert: S.personaEditorOpen');
     const iPremierEffet = corps.search(/(close|open)[A-Z]\w*\(/);
     assert.ok(iGarde > 0, 'garde absent');
     assert.ok(iPremierEffet === -1 || iGarde < iPremierEffet,
