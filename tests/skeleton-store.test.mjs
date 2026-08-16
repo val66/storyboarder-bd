@@ -506,3 +506,50 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
     assert.match(corps, /validée/);
   });
 });
+
+describe('La légende dit l\'état, pas le devenir', () => {
+  // LES COMMENTAIRES SONT RETIRÉS AVANT TOUTE COMPARAISON, et ce n'est pas une précaution
+  // théorique : ma première version de ce test a échoué sur son propre remède. Le commentaire que
+  // je venais d'écrire CITE l'ancienne formule — « manuel disait votre choix, enregistré » — et le
+  // `doesNotMatch` la retrouvait là. Quatrième occurrence dans ce dépôt d'un test satisfait (ou ici
+  // mis en échec) par la prose qui l'entoure.
+  const sansCommentaires = (txt) => txt
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const EV3 = sansCommentaires(_lire(_joindre(_RACINE, 'src/events.js'), 'utf8'));
+  const CSS3 = _lire(_joindre(_RACINE, 'style.css'), 'utf8');
+  const debut = EV3.indexOf("getElementById('skeletonMapLegend')");
+  const bloc = EV3.slice(debut, debut + 1600);
+
+  test('RÉGRESSION : « manuel » ne prétend plus être ENREGISTRÉ', () => {
+    // Signalé à l'usage, et c'était faux : changer une liste déroulante passe la ligne en « manuel »
+    // IMMÉDIATEMENT, alors que rien n'est écrit avant Enregistrer. Une légende décrit un état, pas
+    // un devenir — annoncer un enregistrement qui n'a pas eu lieu est la même famille de faute que
+    // « un succès annoncé pour un travail sans effet ».
+    assert.doesNotMatch(bloc, /votre choix, enregistré/);
+    assert.doesNotMatch(bloc, /your choice, saved/);
+    assert.match(bloc, /vous avez choisi cet os/);
+  });
+
+  test('les trois libellés décrivent ce que l\'étiquette signifie au moment où on la lit', () => {
+    // L'apostrophe est ÉCHAPPÉE dans la source (`l\\'os`) : chercher `l'os` ne trouve rien. Piège
+    // banal quand on teste du texte français par lecture de source, et deuxième échec de ce test
+    // avant qu'il ne serve à quelque chose.
+    [/le nom de l\\?'os le confirme/, /déduit de la forme du squelette/, /vous avez choisi cet os/]
+      .forEach(m => assert.match(bloc, m, `libellé absent : ${m}`));
+  });
+
+  test('RÉGRESSION : la distinction perdue est dite ailleurs, pas supprimée', () => {
+    // Le mot « enregistré » portait une VRAIE information : seules les lignes « manuel » sont
+    // conservées dans le fichier, les autres sont recalculées. La retirer sans la redire aurait
+    // rendu incompréhensible pourquoi la reconnaissance peut changer d'un jour à l'autre.
+    assert.match(bloc, /Seuls vos choix sont conservés/);
+    assert.match(bloc, /recalculées à chaque ouverture/);
+    assert.match(CSS3, /\.skeleton-map-legend-note/, 'la note n\'a pas de style propre');
+  });
+
+  test('la note occupe sa propre ligne, pour ne pas passer pour une quatrième catégorie', () => {
+    const i = CSS3.indexOf('.skeleton-map-legend-note');
+    assert.match(CSS3.slice(i, CSS3.indexOf('}', i)), /flex-basis:\s*100%/);
+  });
+});

@@ -898,6 +898,9 @@ canvas{
 .skeleton-map-list { max-height: 52vh; overflow-y: auto; margin-bottom: 12px; }
 .skeleton-map-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px;
                        color: var(--sepia); margin-bottom: 10px; }
+/* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
+   fichier, et la mêler aux trois légendes la ferait passer pour une quatrième catégorie. */
+.skeleton-map-legend-note { flex-basis: 100%; font-style: italic; opacity: .8; }
 .skeleton-map-group {
   font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
   opacity: .55; margin: 10px 0 4px 2px;

@@ -4016,14 +4016,27 @@ function renderSkeletonMapModal(){
 
   const legende = document.getElementById('skeletonMapLegend');
   legende.innerHTML = '';
-  [['nom', tr('the file\'s wording confirms it', 'le vocabulaire du fichier confirme')],
+  // Chaque libellé dit ce que l'étiquette signifie MAINTENANT, à l'instant où on la lit.
+  //
+  // « manuel » disait « votre choix, enregistré ». Signalé à l'usage, et c'était faux : changer une
+  // liste déroulante passe la ligne en « manuel » IMMÉDIATEMENT, alors que rien n'est écrit avant
+  // Enregistrer. Le mot essayait de porter une vraie distinction — seules ces lignes-là sont
+  // conservées dans le fichier — mais une légende décrit un état, pas un devenir. La distinction
+  // est donc dite à part, sous la légende, où elle est vraie tout le temps.
+  [['nom', tr('the bone name confirms it', 'le nom de l\'os le confirme')],
     ['structure', tr('deduced from the skeleton\'s shape', 'déduit de la forme du squelette')],
-    ['manuel', tr('your choice, saved', 'votre choix, enregistré')]].forEach(([cle, texte]) => {
+    ['manuel', tr('you picked this bone', 'vous avez choisi cet os')]].forEach(([cle, texte]) => {
     const s = document.createElement('span');
     s.innerHTML = `<span class="skeleton-map-origin origine-${cle}">${cle}</span> `;
     s.appendChild(document.createTextNode(texte));
     legende.appendChild(s);
   });
+  const note = document.createElement('span');
+  note.className = 'skeleton-map-legend-note';
+  note.textContent = tr(
+    'Only your own choices are kept in the file; the other rows are recomputed each time.',
+    'Seuls vos choix sont conservés dans le fichier ; les autres lignes sont recalculées à chaque ouverture.');
+  legende.appendChild(note);
 
   skeletonMapList.innerHTML = '';
   skeletonMapList.className = 'skeleton-map-list' + (valide ? ' validee' : '');
