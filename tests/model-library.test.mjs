@@ -324,6 +324,36 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
       /overflow:\s*hidden/, 'la ligne ne contient pas son propre débordement');
   });
 
+  test('RÉGRESSION : le premier titre de groupe est à la MÊME distance du bouton que le bouton du haut de la carte', () => {
+    // Signalé à l'œil : la liste commençait plus bas que le bouton ne commence lui-même, et la
+    // section paraissait décentrée. L'égalité tient à TROIS valeurs dans TROIS règles distinctes —
+    // exactement la forme de désaccord silencieux qui a déjà mordu ici. On l'épingle donc par le
+    // calcul plutôt que par un chiffre recopié.
+    const valeur = (regle, prop) => {
+      const bloc = CSS.slice(CSS.indexOf(regle));
+      const m = bloc.slice(0, 400).match(new RegExp(`${prop}\\s*:\\s*([^;]+);`));
+      assert.ok(m, `${prop} introuvable dans ${regle}`);
+      return m[1].trim();
+    };
+    const px = (v) => parseFloat(v);
+    const carte = px(valeur('.side-section{', 'padding').split(/\s+/)[0]);
+    const panneau = px(valeur('.dropdown-panel{', 'padding').split(/\s+/)[0]);
+    const titre = px(valeur('.side-group-title:first-child', 'margin-top'));
+    assert.equal(panneau + titre, carte,
+      `le premier titre est à ${panneau + titre}px du bouton, qui est lui à ${carte}px du haut de la carte`);
+  });
+
+  test('un titre de groupe est plus près de SES lignes que du groupe précédent', () => {
+    // Sinon le titre flotte entre deux blocs et n'annonce plus rien : c'est l'écart, et lui seul,
+    // qui dit à quel groupe appartient une ligne.
+    const bloc = CSS.slice(CSS.indexOf('.side-group-title {'));
+    const m = bloc.slice(0, 300).match(/margin:\s*([\d.]+)px\s+[^\s]+\s+([\d.]+)px/);
+    assert.ok(m, 'la marge du titre de groupe n\'est plus lisible');
+    const [haut, bas] = [parseFloat(m[1]), parseFloat(m[2])];
+    assert.ok(bas > 2, `l'écart sous le titre (${bas}px) est trop serré pour se lire`);
+    assert.ok(haut > bas, `le titre est aussi loin de ses lignes (${bas}px) que du groupe précédent (${haut}px)`);
+  });
+
   test('un modèle sans usage n\'affiche que son nom', async () => {
     const [ligne] = await rendre(['orphelin.glb'], {});
     assert.deepEqual(ligne.children.map(c => c.textContent), ['orphelin.glb']);

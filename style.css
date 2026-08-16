@@ -831,8 +831,18 @@ canvas{
 }
 
 /* Titre de groupe dans une liste du menu de gauche (bibliothèque de modèles : « Utilisés par des
-   Scènes », « Non utilisés »…). Discret : ce sont des repères de lecture, pas des sections. */
+   Scènes », « Non utilisés »…). Discret : ce sont des repères de lecture, pas des sections.
+
+   `margin-bottom` sépare le titre de SES lignes ; `margin-top`, plus grand, le sépare du groupe
+   PRÉCÉDENT. C'est cet écart qui dit à quel groupe appartient une ligne : les deux égaux, un titre
+   flotterait entre deux blocs sans qu'on sache lequel il annonce. */
 .side-group-title {
   font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-  opacity: .5; margin: 8px 0 2px 2px;
+  opacity: .5; margin: 10px 0 5px 2px;
 }
+/* Le PREMIER titre n'a pas de groupe au-dessus de lui — seulement le bouton de la section. Son
+   écart doit donc valoir celui qui sépare ce même bouton du haut de la carte, sinon la section
+   paraît décentrée vers le bas. Ces 6px complètent les 8px de `.dropdown-panel` pour retomber
+   exactement sur les 14px de `.side-section` ; un test épingle cette somme (cf.
+   tests/model-library.test.mjs), car trois valeurs dans trois règles se désaccordent en silence. */
+.side-group-title:first-child { margin-top: 6px; }
