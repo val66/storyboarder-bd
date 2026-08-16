@@ -132,6 +132,12 @@ select, input[type=number]{
 
 /* DROPDOWNS */
 .dropdown{ margin-bottom:10px; }
+/* Un menu déroulant seul dans sa carte n'a rien à séparer de ce qui le suit : sa marge basse ne
+   fait que repousser le bas de la carte. Sans cette règle, le dernier élément d'une liste se
+   retrouvait à 31px du bord alors que le bouton du haut n'est qu'à 14px — la carte paraissait
+   lestée. Les 14px de `.side-section` doivent rester seuls à décider de cet écart, en bas comme en
+   haut ; un test épingle l'égalité (cf. tests/model-library.test.mjs). */
+.dropdown:last-child{ margin-bottom:0; }
 .dropdown-trigger{
   width:100%; display:flex; justify-content:space-between; align-items:center;
   padding:9px 11px; border:1px solid var(--line); background:var(--white); border-radius:8px;
@@ -140,8 +146,17 @@ select, input[type=number]{
 .dropdown-trigger:hover{ border-color:var(--ink-soft); }
 .dropdown-trigger .caret{ font-size:10px; color:var(--sepia); transition:transform .15s; }
 .dropdown-trigger.open .caret{ transform:rotate(180deg); }
-.dropdown-panel{ display:none; padding:8px 0 2px; }
+/* Rembourrage bas nul, pour la même raison : sous le dernier élément, il n'y a plus rien à
+   séparer. Le haut, lui, sépare bien du bouton — d'où la dissymétrie, volontaire. */
+.dropdown-panel{ display:none; padding:8px 0 0; }
 .dropdown-panel.open{ display:block; }
+/* Idem pour la dernière ligne d'une liste : sa marge basse sert à l'écarter de la SUIVANTE, et
+   n'a plus d'objet quand il n'y en a pas.
+   Le `:last-child` intermédiaire n'est PAS décoratif : dans le panneau des Scènes, la liste est
+   suivie de deux boutons, et c'est justement cette marge qui l'en sépare. La neutraliser là
+   collerait « Nouvelle scène » à la dernière Scène. Elle ne tombe donc que sur une liste qui
+   termine réellement son panneau. */
+.dropdown-panel > *:last-child > *:last-child{ margin-bottom:0; }
 #tomeList{ padding-left:10px; border-left:1px solid var(--line); margin-bottom:8px; }
 .dropdown-item{ margin-bottom:6px; }
 

@@ -343,6 +343,25 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
       `le premier titre est à ${panneau + titre}px du bouton, qui est lui à ${carte}px du haut de la carte`);
   });
 
+  test('RÉGRESSION : le bas de la carte respire autant que le haut', () => {
+    // Le dernier élément se retrouvait à 31px du bord alors que le bouton du haut n'est qu'à 14px :
+    // trois marges basses empilées (la ligne, le panneau, le menu déroulant) qui ne séparent de
+    // RIEN, puisqu'il n'y a plus rien après. Seuls les 14px de `.side-section` doivent décider.
+    const bas = (regle, prop) => {
+      const bloc = CSS.slice(CSS.indexOf(regle));
+      const m = bloc.slice(0, 400).match(new RegExp(`${prop}\\s*:\\s*([^;]+);`));
+      assert.ok(m, `${prop} introuvable dans ${regle}`);
+      const parts = m[1].trim().split(/\s+/);
+      // raccourci `padding` : 1 valeur → partout, 2 → haut/bas, 3+ → la 3e est le bas.
+      return parseFloat(parts.length >= 3 ? parts[2] : parts[parts.length === 2 ? 0 : 0]);
+    };
+    const restant = bas('.dropdown:last-child{', 'margin-bottom')
+      + bas('.dropdown-panel{ display:none;', 'padding')
+      + bas('.dropdown-panel > *:last-child > *:last-child{', 'margin-bottom');
+    assert.equal(restant, 0,
+      `${restant}px de marge s'ajoutent sous le dernier élément et déséquilibrent la carte`);
+  });
+
   test('un titre de groupe est plus près de SES lignes que du groupe précédent', () => {
     // Sinon le titre flotte entre deux blocs et n'annonce plus rien : c'est l'écart, et lui seul,
     // qui dit à quel groupe appartient une ligne.
