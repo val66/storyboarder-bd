@@ -286,6 +286,23 @@ ipcMain.handle('models:read', async (event, name) => {
   }
 });
 
+// Suppression d'un modèle du disque. Le renderer a DÉJÀ confirmé auprès de l'utilisateur, avec le
+// décompte de ce que ça casse (cf. model-library.js) : ici on exécute, on ne redemande pas. La garde
+// de nom s'applique comme pour l'écriture — un process principal ne fait pas confiance à son
+// renderer, et une suppression est la pire opération sur laquelle se tromper de chemin.
+ipcMain.handle('models:delete', async (event, name) => {
+  if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
+  try {
+    await fs.promises.unlink(path.join(getModelsDir(), name));
+    return { ok: true };
+  } catch (err) {
+    // Déjà supprimé à la main hors de l'application : le résultat voulu est atteint, ce n'est pas
+    // un échec. Le renderer rafraîchira sa liste et le fichier n'y sera plus.
+    if (err && err.code === 'ENOENT') return { ok: true };
+    return { ok: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('models:list', async () => {
   try {
     return fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable);

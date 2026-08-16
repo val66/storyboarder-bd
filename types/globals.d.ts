@@ -67,6 +67,7 @@ interface StoryboarderAPI {
     Promise<{ ok: boolean; name?: string; error?: string }>;
   readModelFile(name: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }>;
   listModelFiles(): Promise<string[]>;
+  deleteModelFile(name: string): Promise<{ ok: boolean; error?: string }>;
 }
 
 interface Window {

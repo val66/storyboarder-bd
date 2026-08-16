@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   writeModelFile: (name, data) => ipcRenderer.invoke('models:write', name, data),
   readModelFile: (name) => ipcRenderer.invoke('models:read', name),
   listModelFiles: () => ipcRenderer.invoke('models:list'),
+  deleteModelFile: (name) => ipcRenderer.invoke('models:delete', name),
   // Flux de confirmation avant de quitter (cf. main.js, événement 'close' intercepté + quitConfirmModal
   // dans index.html) — sur demande utilisateur : propose Enregistrer et quitter / Quitter sans
   // enregistrer / Annuler plutôt que d'empêcher la fermeture en attendant une sauvegarde.
