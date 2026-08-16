@@ -3983,6 +3983,9 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
   return new Promise((resoudre) => {
     _skelEcran = {
       fichier: nomFichier, os, pendantImport,
+      // `valide` calme l'affichage sans rien changer au contenu : une correspondance déjà validée
+      // n'a plus de ligne « à vérifier », l'utilisateur les a vues (cf. renderSkeletonMapModal).
+      valide: !!(enregistree && enregistree.valide),
       carte: fusionner(inferSkeletonMap(os), enregistree, os),
       resoudre,
     };
@@ -3993,13 +3996,17 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
 
 function renderSkeletonMapModal(){
   if (!_skelEcran) return;
-  const { fichier, os, carte } = _skelEcran;
+  const { fichier, os, carte, valide } = _skelEcran;
   const r = resumeCorrespondance(carte);
   document.getElementById('skeletonMapTitle').textContent =
     tr('Skeleton mapping', 'Correspondance du squelette');
-  document.getElementById('skeletonMapSubtitle').textContent = tr(
-    `"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
-    `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`);
+  // Validée, on ne compte plus ce qu'il « reste à vérifier » : il ne reste rien, c'est fait. Le
+  // décompte n'a de sens que tant que la décision n'a pas été prise.
+  document.getElementById('skeletonMapSubtitle').textContent = valide
+    ? tr(`"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} mapped · ✓ confirmed`,
+      `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} associés · ✓ correspondance validée`)
+    : tr(`"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
+      `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`);
 
   // Pendant un import, « Annuler » annule TOUT l'import (choix de l'utilisateur) : le bouton doit le
   // dire. Un bouton nommé « Annuler » qui fait disparaître un modèle serait un piège.
@@ -4019,6 +4026,7 @@ function renderSkeletonMapModal(){
   });
 
   skeletonMapList.innerHTML = '';
+  skeletonMapList.className = 'skeleton-map-list' + (valide ? ' validee' : '');
   SLOT_GROUPS.forEach(groupe => {
     const t = document.createElement('div');
     t.className = 'skeleton-map-group';
@@ -4059,6 +4067,10 @@ function ligneCorrespondance(slot, valeur, os){
     _skelEcran.carte[slot] = choisi
       ? { bone: choisi.id, name: choisi.name, origine: 'manuel' }
       : null;
+    // Toucher à un emplacement DÉVALIDE l'écran : la correspondance affichée n'est plus celle qui
+    // avait été confirmée. Garder l'apparence « validée » pendant qu'on la modifie laisserait
+    // croire que le changement est déjà acquis — alors que rien n'est écrit avant Enregistrer.
+    _skelEcran.valide = false;
     renderSkeletonMapModal();
   };
   row.appendChild(sel);
@@ -4087,6 +4099,9 @@ document.getElementById('skeletonMapReset').onclick = async () => {
   if (!_skelEcran) return;
   await oublierCorrespondance(_skelEcran.fichier);
   _skelEcran.carte = fusionner(inferSkeletonMap(_skelEcran.os), null, _skelEcran.os);
+  // Repasse en NON validé : c'est tout l'objet du bouton — retrouver l'écran tel qu'il se présente
+  // la première fois, lignes signalées comprises.
+  _skelEcran.valide = false;
   renderSkeletonMapModal();
 };
 document.getElementById('skeletonMapSave').onclick = async () => {

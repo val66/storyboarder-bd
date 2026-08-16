@@ -914,6 +914,15 @@ canvas{
 .skeleton-map-origin.origine-manuel    { background: rgba(90,130,200,.18); color: #4a6ea8; }
 .skeleton-map-origin.origine-vide      { background: rgba(128,128,128,.15); color: var(--ink-soft); }
 .skeleton-map-row.a-verifier { border-color: rgba(224,165,60,.6); background: rgba(224,165,60,.07); }
+/* Correspondance VALIDÉE : les étiquettes restent — elles disent d'où vient chaque os, et c'est
+   l'information qui fait l'intérêt de cet écran — mais elles cessent d'alerter. Une ligne orangée
+   après validation ment sur son état : l'utilisateur a vu, et tranché. Signalé à l'usage.
+   La provenance n'est PAS remplacée par « validé » : ce serait perdre la trace de la seule ligne
+   sur laquelle il a fallu réfléchir, noyée parmi dix-sept évidences. */
+.skeleton-map-list.validee .skeleton-map-row.a-verifier { border-color: var(--line); background: transparent; }
+.skeleton-map-list.validee .skeleton-map-origin.origine-structure {
+  background: rgba(128,128,128,.15); color: var(--ink-soft); border-color: transparent;
+}
 
 /* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
    d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */

@@ -436,3 +436,65 @@ describe('Câblage de l\'écran de correspondance', () => {
       .forEach(c => assert.match(CSS, new RegExp(`\\.${c}`), `classe absente : .${c}`));
   });
 });
+
+describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenance', () => {
+  const EV2 = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+  const CSS2 = _lire(_joindre(_RACINE, 'style.css'), 'utf8');
+  const HTML2 = _lire(_joindre(_RACINE, 'index.html'), 'utf8');
+
+  test('RÉGRESSION : l\'écran sait si la correspondance a été validée', () => {
+    // Signalé à l'usage : après validation, les lignes « structure » restaient orangées et
+    // donnaient l'impression qu'il restait à vérifier. L'état vient de l'entrée relue.
+    const debut = EV2.indexOf('async function openSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /valide: !!\(enregistree && enregistree\.valide\)/);
+  });
+
+  test('RÉGRESSION : les étiquettes de provenance NE sont PAS remplacées par « validé »', () => {
+    // C'était l'argument décisif contre l'autre option : sur worker_j, les deux cuisses sont en
+    // « structure » parce que le fichier les nomme « Left leg » — un mot qui, chez Mixamo, désigne
+    // le tibia. Tout marquer « validé » effacerait la trace de la seule ligne sur laquelle il a
+    // fallu réfléchir, noyée parmi dix-sept évidences.
+    const debut = EV2.indexOf('function ligneCorrespondance');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /origine-\$\{origine\}/, 'la classe ne porte plus la provenance');
+    assert.doesNotMatch(corps, /origine-valide/, 'la provenance a été remplacée par un état');
+  });
+
+  test('c\'est le CSS qui calme les lignes, via une classe sur la liste', () => {
+    assert.match(EV2, /skeleton-map-list' \+ \(valide \? ' validee' : ''\)/);
+    assert.match(CSS2, /\.skeleton-map-list\.validee \.skeleton-map-row\.a-verifier/);
+    assert.match(CSS2, /\.skeleton-map-list\.validee \.skeleton-map-origin\.origine-structure/);
+  });
+
+  test('RÉGRESSION : « Réinitialiser » fait repasser l\'écran en NON validé', () => {
+    // Sans cela, le bouton effacerait bien les décisions mais l'écran resterait d'apparence
+    // confirmée — les lignes que l'utilisateur vient justement de vouloir revoir resteraient
+    // muettes. C'est tout l'objet du bouton.
+    const debut = EV2.indexOf("skeletonMapReset').onclick");
+    const corps = EV2.slice(debut, EV2.indexOf('\n};', debut));
+    assert.match(corps, /_skelEcran\.valide = false/);
+  });
+
+  test('RÉGRESSION : modifier un emplacement DÉvalide l\'écran', () => {
+    // Rien n'est écrit avant Enregistrer. Garder l'apparence « validée » pendant qu'on modifie
+    // laisserait croire que le changement est déjà acquis.
+    const debut = EV2.indexOf('sel.onchange');
+    const corps = EV2.slice(debut, EV2.indexOf('\n  };', debut));
+    assert.match(corps, /_skelEcran\.valide = false/);
+  });
+
+  test('le bouton s\'appelle « Réinitialiser »', () => {
+    // « Tout remettre en automatique » était trop long (retour utilisateur).
+    assert.match(HTML2, /id="skeletonMapReset"[^>]*>Réinitialiser</);
+  });
+
+  test('validé, le sous-titre ne compte plus ce qu\'il « reste à vérifier »', () => {
+    // Il ne reste rien : c'est fait. Le décompte n'a de sens que tant que la décision n'est pas
+    // prise — l'afficher après coup reproduit l'alerte qu'on vient de retirer.
+    const debut = EV2.indexOf('skeletonMapSubtitle');
+    const corps = EV2.slice(debut, debut + 700);
+    assert.match(corps, /valide\s*\?/, 'le sous-titre ne distingue pas les deux états');
+    assert.match(corps, /validée/);
+  });
+});
