@@ -311,6 +311,46 @@ ipcMain.handle('models:list', async () => {
   }
 });
 
+// ─── Correspondances de squelette ───
+// Un seul fichier, à CÔTÉ du dossier Modeles et non dedans : ce dossier ne contient que des `.glb`,
+// et models:list y refuse déjà tout le reste. Le mettre à l'intérieur obligerait à percer cette
+// garde pour un cas particulier.
+//
+// Ces deux canaux relèvent de la même exception que `models:*` (cf. docs/architecture.md, règle
+// n°1) : l'accès disque est le métier déclaré du processus principal, et la logique — reconnaître,
+// fusionner, décider quoi enregistrer — reste dans src/, où elle se teste.
+function getSkeletonMapsPath() {
+  return path.join(getProjectsDir(), 'correspondances-squelettes.json');
+}
+
+ipcMain.handle('skeletons:read', async () => {
+  try {
+    const txt = await fs.promises.readFile(getSkeletonMapsPath(), 'utf-8');
+    return { ok: true, data: JSON.parse(txt) };
+  } catch (err) {
+    // Absent au premier usage, ou illisible : dans les deux cas le renderer repart d'une
+    // correspondance vide et la reconnaissance automatique reprend la main. Une correspondance
+    // perdue se refait ; un Projet qui refuse de s'ouvrir, non.
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('skeletons:write', async (event, contenu) => {
+  try {
+    ensureProjectsDir();
+    // Écriture par fichier temporaire puis renommage : une coupure en pleine écriture laisserait
+    // sinon un JSON tronqué, donc illisible, donc TOUTES les correspondances perdues d'un coup —
+    // et pas seulement celle qu'on était en train d'enregistrer.
+    const cible = getSkeletonMapsPath();
+    const temporaire = cible + '.tmp';
+    await fs.promises.writeFile(temporaire, JSON.stringify(contenu, null, 2), 'utf-8');
+    await fs.promises.rename(temporaire, cible);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 // Le renderer a tranché (Enregistrer et quitter / Quitter sans enregistrer, cf. quitConfirmModal) :
 // on autorise la fermeture réelle, qui redéclenche l'événement 'close' ci-dessus, cette fois laissé
 // passer puisque isQuitting est désormais true.

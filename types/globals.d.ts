@@ -68,6 +68,11 @@ interface StoryboarderAPI {
   readModelFile(name: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }>;
   listModelFiles(): Promise<string[]>;
   deleteModelFile(name: string): Promise<{ ok: boolean; error?: string }>;
+  // Correspondances de squelette : un seul fichier partagé par tous les Projets, à côté du dossier
+  // Modeles. `ok: false` couvre l'absence au premier usage comme le fichier illisible — les deux
+  // se traitent pareil côté renderer, on repart d'une correspondance vide.
+  readSkeletonMaps(): Promise<{ ok: boolean; data?: unknown; error?: string }>;
+  writeSkeletonMaps(contenu: unknown): Promise<{ ok: boolean; error?: string }>;
 }
 
 interface Window {
