@@ -118,16 +118,57 @@ export function fusionner(auto, enregistree, osDuFichier){
 // Disque
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Dernier état relu du disque, gardé en mémoire.
+ *
+ * POURQUOI UN CACHE, ALORS QUE LA LECTURE EST DÉJÀ RAPIDE. Ce n'est pas une optimisation, c'est une
+ * question de FORME : construire le rig 3D d'un modèle importé se fait à l'intérieur d'un rendu, un
+ * chemin strictement synchrone (cf. l'en-tête de model-cache.js — « le chemin de dessin n'attend
+ * jamais »). Une lecture disque y est impossible, et la rendre asynchrone contaminerait tout
+ * `buildPropRig3D`.
+ *
+ * Le cache est rempli au démarrage puis tenu à jour à chaque enregistrement. S'il est vide — au
+ * tout premier rendu, avant que le préchargement n'aboutisse — la reconnaissance automatique fait
+ * le travail seule : c'est le comportement de l'étape A, correct sur les six fichiers mesurés. Une
+ * correction manuelle apparaît donc au pire au rendu suivant, jamais « jamais ».
+ */
+let _enMemoire = { version: SKELETON_MAP_FORMAT, entrees: {} };
+
+/**
+ * La correspondance enregistrée d'un fichier, SANS toucher au disque. Rend `null` si aucune.
+ *
+ * C'est l'accès dont dispose le constructeur de rig. Il ne rend que ce que l'utilisateur a
+ * réellement enregistré : la fusion avec la reconnaissance automatique reste l'affaire de
+ * `fusionner`, ici comme ailleurs.
+ */
+export function correspondanceEnregistreeSync(fichier){
+  return (_enMemoire.entrees || {})[fichier] || null;
+}
+
 /** Relit le fichier des correspondances. Rend toujours une forme valide, jamais d'exception. */
 export async function lireCorrespondances(){
   const p = pont();
   if (!p || !p.readSkeletonMaps) return normaliserFichier(null);
   try {
     const r = await p.readSkeletonMaps();
-    return normaliserFichier(r && r.ok ? r.data : null);
+    const tout = normaliserFichier(r && r.ok ? r.data : null);
+    _enMemoire = tout;
+    return tout;
   } catch {
+    // Le cache N'EST PAS vidé sur échec, et c'est délibéré : une lecture qui rate ne prouve pas que
+    // les correspondances ont disparu, seulement qu'on n'a pas pu les relire. Les oublier ferait
+    // perdre à l'utilisateur, le temps d'un incident disque, un travail de correction qui est
+    // toujours sur le disque.
     return normaliserFichier(null);
   }
+}
+
+/**
+ * Vide le cache résident. Réservé aux tests — un état qui survit d'un test à l'autre est un test
+ * qui passe pour une mauvaise raison, et ce dépôt s'y est déjà laissé prendre.
+ */
+export function _viderCacheCorrespondances(){
+  _enMemoire = { version: SKELETON_MAP_FORMAT, entrees: {} };
 }
 
 /**
@@ -143,10 +184,21 @@ export async function enregistrerCorrespondance(fichier, carte, { valide = true 
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
   const entree = entreePourFichier(carte, { valide });
-  if (entree) tout.entrees[fichier] = entree;
-  else delete tout.entrees[fichier];   // ni décision, ni validation : rien à garder
+  // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
+  // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
+  // écrirait donc dans le cache — avant l'écriture disque, et sans moyen de revenir en arrière si
+  // elle échoue. Le garde-fou « ne mettre à jour qu'en cas de succès » plus bas était strictement
+  // inopérant tant que cette copie manquait : c'est une mutation de test échappée qui l'a montré,
+  // puis le test lui-même qui a mis au jour le partage de référence.
+  const suivant = { version: tout.version, entrees: { ...tout.entrees } };
+  if (entree) suivant.entrees[fichier] = entree;
+  else delete suivant.entrees[fichier];   // ni décision, ni validation : rien à garder
   try {
-    const r = await p.writeSkeletonMaps(tout);
+    const r = await p.writeSkeletonMaps(suivant);
+    // Le cache résident ne suit QUE les écritures réussies. Le mettre à jour avant, ou malgré un
+    // échec, ferait afficher au rig une correspondance que le disque ne porte pas — et l'écart ne
+    // se verrait qu'au redémarrage suivant, longtemps après la cause.
+    if (r && r.ok) _enMemoire = suivant;
     return (r && r.ok) ? { ok: true } : { ok: false, error: (r && r.error) || 'écriture refusée' };
   } catch (err) {
     return { ok: false, error: String(err) };

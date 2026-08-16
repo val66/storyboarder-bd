@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 import {
   normaliserFichier, entreePourFichier, fusionner, setSkeletonBridge,
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, SKELETON_MAP_FORMAT,
-  doitOuvrirCorrespondance,
+  doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
 } from '../src/skeleton-store.js';
 import { SLOTS } from '../src/skeleton-map.js';
 
@@ -171,6 +171,70 @@ beforeEach(() => {
   setSkeletonBridge({
     readSkeletonMaps: async () => pontRepond,
     writeSkeletonMaps: async (c) => { ecrit.push(JSON.parse(JSON.stringify(c))); return { ok: true }; },
+  });
+});
+
+describe('Le cache résident — la correspondance sans attendre le disque', () => {
+  // POURQUOI CE CACHE EXISTE. Construire le rig 3D d'un modèle importé se fait DANS un rendu, un
+  // chemin strictement synchrone : on ne peut pas y attendre une lecture disque. Le rig lit donc
+  // `correspondanceEnregistreeSync`, alimentée par les lectures et les écritures réussies.
+  //
+  // CE BLOC A ÉTÉ ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : mettre à jour le cache SANS vérifier que
+  // l'écriture a réussi ne faisait échouer aucun test. À l'usage, cela ferait afficher au rig une
+  // correspondance que le disque ne porte pas — et l'écart ne se verrait qu'au redémarrage
+  // suivant, très loin de sa cause.
+  beforeEach(() => { _viderCacheCorrespondances(); });
+
+  test('avant toute lecture, le cache est vide — la reconnaissance automatique fait le travail', () => {
+    assert.equal(correspondanceEnregistreeSync('a.glb'), null);
+  });
+
+  test('une lecture réussie remplit le cache', async () => {
+    pontRepond = { ok: true, data: { version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } } };
+    await lireCorrespondances();
+    assert.deepEqual(correspondanceEnregistreeSync('a.glb'), { os: { bassin: 'Hips' }, valide: true });
+    assert.equal(correspondanceEnregistreeSync('inconnu.glb'), null);
+  });
+
+  test('une lecture qui ÉCHOUE ne vide pas ce qu\'on savait déjà', async () => {
+    // Une lecture ratée ne prouve pas que les correspondances ont disparu, seulement qu'on n'a pas
+    // pu les relire. Les oublier ferait perdre, le temps d'un incident disque, un travail de
+    // correction qui est toujours là.
+    pontRepond = { ok: true, data: { version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } } };
+    await lireCorrespondances();
+    setSkeletonBridge({ readSkeletonMaps: async () => { throw new Error('disque absent'); } });
+    await lireCorrespondances();
+    assert.deepEqual(correspondanceEnregistreeSync('a.glb'), { os: { bassin: 'Hips' }, valide: true });
+  });
+
+  test('un enregistrement réussi est visible immédiatement, sans relire le disque', async () => {
+    const carte = { bassin: { bone: 5, name: 'mixamorig:Hips', origine: 'manuel' } };
+    await enregistrerCorrespondance('b.glb', carte, { valide: true });
+    assert.deepEqual(correspondanceEnregistreeSync('b.glb'),
+      { os: { bassin: 'mixamorig:Hips' }, valide: true });
+  });
+
+  test('RÉGRESSION : une écriture REFUSÉE ne met pas le cache à jour', async () => {
+    setSkeletonBridge({
+      readSkeletonMaps: async () => ({ ok: true, data: { version: 1, entrees: {} } }),
+      writeSkeletonMaps: async () => ({ ok: false, error: 'disque plein' }),
+    });
+    const carte = { bassin: { bone: 5, name: 'mixamorig:Hips', origine: 'manuel' } };
+    const r = await enregistrerCorrespondance('c.glb', carte, { valide: true });
+    assert.equal(r.ok, false);
+    assert.equal(correspondanceEnregistreeSync('c.glb'), null,
+      'le cache annonce une correspondance que le disque ne porte pas');
+  });
+
+  test('RÉGRESSION : une écriture qui LÈVE ne met pas le cache à jour', async () => {
+    setSkeletonBridge({
+      readSkeletonMaps: async () => ({ ok: true, data: { version: 1, entrees: {} } }),
+      writeSkeletonMaps: async () => { throw new Error('disque arraché'); },
+    });
+    const carte = { bassin: { bone: 5, name: 'mixamorig:Hips', origine: 'manuel' } };
+    const r = await enregistrerCorrespondance('d.glb', carte, { valide: true });
+    assert.equal(r.ok, false);
+    assert.equal(correspondanceEnregistreeSync('d.glb'), null);
   });
 });
 

@@ -1567,6 +1567,9 @@ export function drawObjectPreview(targetCanvas, spec){
     windowState: spec.windowState,
     windowAngle: spec.windowAngle,
     animalJoints3d: spec.animalJoints3d || null,
+    // Pose du squelette importé : lue par ensureObjectRigEntry3D exactement comme animalJoints3d.
+    // Sans elle, l'aperçu de la modale resterait au repos pendant qu'on déplace les curseurs.
+    skeletonPose3d: spec.skeletonPose3d || null,
   };
   const style = resolveStyle3D();
   // (#86) Real Size (%) doesn't affect the rig's own geometry (the preview stays framed on its

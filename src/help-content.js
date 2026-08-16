@@ -96,6 +96,7 @@ export const HELP_MANUAL_EN = [
     'Left-click a model to reach where it is used: straight there if there is only one place, otherwise a dialog lists them by Scene or Panel. A model used nowhere is inert.',
     'Right-click a model → "Delete from disk". The file name itself cannot be renamed — it identifies the model in every project. Rename the Element instead, in its dialog.',
     'Above 10 m tall, the application offers to resize the model on import: it is nearly always a scale problem in the file.',
+    'A model with a skeleton gains a "Joint fine-tuning" section: three sliders per recognised joint. Which bone each one drives comes from "Skeleton mapping…", at the bottom of that section; correcting it rebuilds the sliders. Axes are the bone\'s own, so which one bends an elbow depends on the file. The pose library does not apply to imported skeletons yet.',
   ]},
   { id: 'projet', title: 'Project', paragraphs: [
     'A Project groups together all Volumes, Pages and Panels. Its name is shown at the top of the left-hand menu ("Project" by default); click it to open the Project dialog.',
@@ -192,6 +193,7 @@ export const HELP_MANUAL_FR = [
     'Clic gauche sur un modèle pour aller là où il est utilisé : directement s\'il n\'y a qu\'un endroit, sinon une fenêtre les liste par Scène ou par Case. Un modèle utilisé nulle part est inerte.',
     'Clic droit sur un modèle → « Supprimer du disque ». Le nom de fichier, lui, ne se renomme pas : il identifie le modèle dans tous les Projets. Renommez plutôt l\'Élément, depuis sa fiche.',
     'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import : c\'est presque toujours un souci d\'échelle dans le fichier.',
+    'Un modèle porteur d\'un squelette gagne une section « Réglage fin des articulations » : trois curseurs par articulation reconnue. L\'os piloté vient de « Correspondance du squelette… », en bas de cette section ; le corriger reconstruit les curseurs. Les axes sont ceux de l\'os : lequel plie un coude dépend du fichier. La bibliothèque de poses ne s\'applique pas encore aux squelettes importés.',
   ]},
   { id: 'projet', title: 'Projet', paragraphs: [
     'Un Projet regroupe tous les Tomes, Planches et Cases. Son nom s\'affiche en haut du menu de gauche (« Projet » par défaut) ; cliquez dessus pour ouvrir la modale Projet.',

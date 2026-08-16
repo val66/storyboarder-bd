@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.11**
+**Version 1.3.12**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -51,8 +51,13 @@
 - The file name cannot be renamed: it identifies the model across **every** project, including those
   that are not open. Rename the Element instead.
 
-> **Not covered yet:** a file holding several objects is imported as a single Element, and imported
-> skeletons cannot be posed from the pose library.
+- **Posing an imported skeleton**: a model carrying bones gains a *Joint fine-tuning* section in its
+  dialog — three sliders per recognised joint. Which bone each one drives comes from the mapping
+  screen, reachable from the same section. Sliders exist only for joints that were actually mapped.
+
+> **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
+> turn each bone around its own axes (which one bends an elbow depends on the file), and the pose
+> library does not apply to imported skeletons yet.
 
 ### Character editor
 
@@ -152,6 +157,9 @@ storyboarder-bd/
 │   ├── model-import.js # The three import gestures, and what each one creates
 │   ├── model-library.js # Model library: grouping by usage, deletion message
 │   ├── model-usages.js # "Where is this model used?" — pure location + navigation
+│   ├── skeleton-map.js # Recognising an imported skeleton: which bone plays which role
+│   ├── skeleton-store.js # Skeleton mappings, stored next to the Modeles folder
+│   ├── skeleton-pose.js # Turning a mapped bone: composing with its rest orientation
 │   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
 │   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
 │   ├── persona-editor.js # Character editor: full-screen posing mode

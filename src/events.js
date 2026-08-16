@@ -34,6 +34,7 @@ import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, fusionner,
   doitOuvrirCorrespondance,
 } from './skeleton-store.js';
+import { normaliserPose } from './skeleton-pose.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
@@ -50,7 +51,7 @@ import {
   OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M, OBJECT_REAL_HEIGHT_M, ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
   BUBBLE_TAIL_ANGLE_DEFAULT, BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
   POSE_3D, GROUND_Y_DEFAULT_3D, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES, WALL_PX_PER_UNIT_3D,
-  CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D,
+  CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID,
 } from './constants.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
@@ -100,6 +101,7 @@ import {
   toggleModalSection, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview, setModalPoseOptionsBuilder,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
+  buildSkeletonJointSlidersUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
@@ -4149,6 +4151,33 @@ async function proposerCorrespondance(nomFichier){
   return await openSkeletonMapModal(nomFichier, { pendantImport: true }) !== false;
 }
 
+/**
+ * « Correspondance du squelette… », depuis la fiche d'un Modèle importé.
+ *
+ * POURQUOI CE BOUTON EST ICI ET PAS DANS LA SECTION MODÈLES. On ne s'aperçoit qu'un bras tourne au
+ * mauvais endroit qu'en REGARDANT un Élément et en tirant un curseur ; c'est à cet instant, et pas
+ * en parcourant une liste de fichiers, qu'on veut corriger la correspondance.
+ *
+ * LES CURSEURS SONT RECONSTRUITS AU RETOUR, et c'est le point délicat. Corriger la correspondance
+ * change QUELS emplacements ont un os : un « Coude gauche » peut apparaître, un autre disparaître.
+ * Laisser les anciens curseurs en place afficherait des lignes qui ne pilotent plus rien — le
+ * mensonge que toute cette étape s'applique à éviter.
+ *
+ * LE RIG EST JETÉ, LUI AUSSI. `skeletonBones` a été récolté à la construction, avec les os d'AVANT
+ * la correction ; sans reconstruction, les curseurs corrigés continueraient de tourner les anciens
+ * os. Le rig étant reconstruit à partir du cache de modèles déjà décodé, cela ne relit aucun fichier.
+ */
+document.getElementById('objectSkeletonMapBtn').onclick = async () => {
+  const cible = S.modalTarget;
+  if (!cible || !isImportedModel(cible)) return;
+  await openSkeletonMapModal(cible.modelFile, { ignorerEnregistree: true });
+  if (S.modalTarget !== cible) return;   // la modale a été fermée entre-temps
+  disposeObjectRig3D(cible.id);
+  disposeObjectRig3D(PREVIEW_OBJECT_ID);
+  buildSkeletonJointSlidersUI(cible);
+  refreshObjectPreview();
+};
+
 // ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───
 // Le câblage seulement : la décision (rien / y aller / choisir) est prise par `resolveModelClick`
 // dans model-usages.js, où elle se teste. Ici on ne fait que la suivre.
@@ -4876,6 +4905,13 @@ objectModalSave.onclick = () => {
       S.modalTarget.animalJoints3d = (S.modalDraftAnimalJoints && Object.keys(S.modalDraftAnimalJoints).length > 0)
         ? JSON.parse(JSON.stringify(S.modalDraftAnimalJoints))
         : null;
+    }
+    // Squelette importé : même règle, et `null` quand la pose est vide plutôt qu'un objet vide.
+    // La normalisation jette les angles nuls (cf. skeleton-pose.js), donc ramener tous les curseurs
+    // à zéro efface réellement le champ au lieu de laisser l'Élément marqué comme posé à jamais.
+    if (isImportedModel(S.modalTarget)) {
+      const pose = normaliserPose(S.modalDraftSkeletonPose);
+      S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
     }
     // Walls have dedicated length/height fields (rather than the generic percentage, which resizes
     // them together while keeping the ratio) — cf. resizeWallTo.

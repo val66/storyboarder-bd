@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.11**
+**Version 1.3.12**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -51,8 +51,14 @@
 - Le nom de fichier n'est pas renommable : il identifie le modèle dans **tous** les Projets, y
   compris ceux qui ne sont pas ouverts. C'est l'Élément qui se renomme.
 
+- **Articuler un squelette importé** : un modèle porteur d'os gagne une section *Réglage fin des
+  articulations* dans sa fiche — trois curseurs par articulation reconnue. L'os piloté par chacun
+  vient de l'écran de correspondance, rappelable depuis cette même section. Il n'y a de curseur que
+  pour les articulations effectivement reconnues.
+
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
-> Élément, et les squelettes importés ne sont pas articulables depuis la bibliothèque de poses.
+> Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend
+> du fichier), et la bibliothèque de poses ne s'applique pas encore aux squelettes importés.
 
 ### Éditeur de Personnage
 
@@ -156,6 +162,9 @@ storyboarder-bd/
 │   ├── model-import.js # Les trois gestes d'import, et ce qu'ils créent
 │   ├── model-library.js # Bibliothèque de modèles : groupement par usage, message de suppression
 │   ├── model-usages.js # « Où est utilisé ce modèle ? » — localisation pure + navigation
+│   ├── skeleton-map.js # Reconnaître un squelette importé : quel os joue quel rôle
+│   ├── skeleton-store.js # Correspondances de squelette, rangées à côté du dossier Modeles
+│   ├── skeleton-pose.js # Tourner un os mappé : composition avec sa rotation de repos
 │   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
 │   ├── persona-editor.js # Éditeur de Personnage : mode plein écran de pose

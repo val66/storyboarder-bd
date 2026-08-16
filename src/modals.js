@@ -41,9 +41,12 @@ import {
   worldToPageXY,
 } from './scene3d.js';
 import {
-  cloneJoints, getEffectiveJoints, objectRigCache3D, personaCamera3D, personaScene3D,
-  wallRenderRigCache3D,
+  cloneJoints, correspondancePourModele, getEffectiveJoints, objectRigCache3D, personaCamera3D,
+  personaScene3D, wallRenderRigCache3D,
 } from './rig3d.js';
+import {
+  POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, groupesPosables, lireAngleDeg,
+} from './skeleton-pose.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
   drawPersonaPreview, drawRoomPreview, getBuildingBoundingBoxXZ, getRoomBoundingBoxXZ,
@@ -477,6 +480,57 @@ export function buildAnimalJointSlidersUI(objType){
   });
 }
 
+/**
+ * Les curseurs d'un Modèle importé articulé — trois axes par emplacement reconnu.
+ *
+ * TROIS DIFFÉRENCES AVEC LES ANIMAUX JUSTE AU-DESSUS, toutes imposées par le fait que le squelette
+ * vient d'un fichier inconnu et non de notre code :
+ *
+ *   — les lignes ne sont pas une liste écrite d'avance mais ce que la CORRESPONDANCE de ce
+ *     fichier-ci contient. Un emplacement sans os n'a pas de curseur (cf. skeleton-pose.js) ;
+ *   — trois axes systématiquement, sans descripteur par articulation : nous ne savons pas quel axe
+ *     est « plier le coude » dans un rig quelconque, et le prétendre produirait une énumération
+ *     fausse pour la moitié des fichiers ;
+ *   — la section entière disparaît s'il n'y a aucun os. Une chaise importée n'a pas
+ *     d'articulations, et c'est le cas le plus fréquent.
+ */
+export function buildSkeletonJointSlidersUI(obj){
+  const subsection = document.getElementById('objectSkeletonJointsSubsection');
+  const container  = document.getElementById('objectSkeletonSlidersContainer');
+  if (!subsection || !container) return;
+  container.innerHTML = '';
+  if (!isImportedModel(obj)) { subsection.style.display = 'none'; return; }
+
+  const carte = correspondancePourModele(obj.modelFile);
+  const groupes = groupesPosables(carte, tr);
+  if (!groupes.length) { subsection.style.display = 'none'; return; }
+  subsection.style.display = '';
+
+  const resume = document.getElementById('objectSkeletonSlidersSummary');
+  if (resume) resume.textContent = tr('Joint fine-tuning', 'Réglage fin des articulations');
+
+  groupes.forEach(groupe => {
+    const details = document.createElement('details');
+    details.className = 'joint-group-details';
+    const summary = document.createElement('summary');
+    summary.textContent = groupe.titre;
+    details.appendChild(summary);
+    container.appendChild(details);
+
+    groupe.slots.forEach(({ slot, label }) => {
+      POSE_AXES.forEach(axe => {
+        const initDeg = lireAngleDeg(S.modalDraftSkeletonPose, slot, axe);
+        makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
+          -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
+            if (!S.modalDraftSkeletonPose) S.modalDraftSkeletonPose = {};
+            ecrireAngleDeg(S.modalDraftSkeletonPose, slot, axe, deg);
+            refreshObjectPreview();
+          });
+      });
+    });
+  });
+}
+
 export function openObjectModal(obj, isNew){
   S.modalTarget = obj;
   S.modalDirty = false;
@@ -641,6 +695,11 @@ export function openObjectModal(obj, isNew){
   S.selectedAnimalHandle = null;
   Object.keys(animalHandleScreenPos).forEach(id => delete animalHandleScreenPos[id]);
   buildAnimalJointSlidersUI(obj.objType);
+  // Même principe pour un squelette importé : on travaille sur une COPIE, et l'Élément n'est touché
+  // qu'à l'enregistrement. C'est la règle de toutes les modales de ce dépôt — annuler doit vraiment
+  // annuler, y compris après vingt curseurs déplacés.
+  S.modalDraftSkeletonPose = obj.skeletonPose3d ? JSON.parse(JSON.stringify(obj.skeletonPose3d)) : {};
+  buildSkeletonJointSlidersUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Aperçu 3D']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
@@ -680,6 +739,9 @@ export function refreshObjectPreview(){
     windowState: objectTypeSelect.value === 'fenetre_ouverte' ? objectWindowStateSelect.value : undefined,
     windowAngle: objectTypeSelect.value === 'fenetre_ouverte' ? Number(objectWindowAngleInput.value) : undefined,
     animalJoints3d: ANIMAL_TYPES.includes(objectTypeSelect.value) ? S.modalDraftAnimalJoints : null,
+    // La pose du brouillon, pas celle de l'Élément : c'est ce qui fait bouger l'aperçu pendant
+    // qu'on tire un curseur, avant tout enregistrement.
+    skeletonPose3d: _estModele ? S.modalDraftSkeletonPose : null,
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
   if (ANIMAL_TYPES.includes(objectTypeSelect.value)) drawAnimalJointHandlesOverlay();

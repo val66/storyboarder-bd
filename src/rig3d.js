@@ -23,6 +23,11 @@ import { getLoadedModel, modelState } from './model-cache.js';
 // cf. son en-tête : Object3D.clone() casse le lien SkinnedMesh↔Skeleton, faussant l'échelle
 // appliquée par placeRigCentered3D pour tout modèle importé articulé.
 import { cloneSkinned } from './vendor/SkeletonUtils.js';
+// Reconnaissance et rangement des squelettes importés. La lecture est SYNCHRONE
+// (correspondanceEnregistreeSync) : construire un rig se fait dans un rendu, qui n'attend pas.
+import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
+import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
+import { orientationFinale } from './skeleton-pose.js';
 
 export function getEffectiveJoints(o){
   return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
@@ -2966,8 +2971,9 @@ function buildImportedModelRig3D(colorHex, o){
   const chargé = nom ? getLoadedModel(nom) : null;
   if (chargé) {
     const g = new THREE.Group();
-    g.add(cloneSkinned(chargé.scene));
-    return g;
+    const clone = cloneSkinned(chargé.scene);
+    g.add(clone);
+    return { figureGroup: g, skeletonBones: recolterOsMappes(clone, nom) };
   }
   // Boîte de remplacement. Deux situations très différentes la produisent — modèle pas encore
   // décodé, ou fichier introuvable — et elles se distinguent à la couleur : neutre pendant le
@@ -2979,7 +2985,90 @@ function buildImportedModelRig3D(colorHex, o){
     color: manquant ? 0xC08040 : 0x9AA0A6, transparent: true, opacity: 0.55,
   });
   g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
-  return g;
+  // Une boîte de remplacement n'a pas d'os : `skeletonBones` vide, et non pas absent. La fiche lit
+  // cette carte pour savoir quels curseurs afficher — une boîte n'en montre aucun, ce qui est
+  // exact, plutôt que les curseurs du modèle attendu qui ne piloteraient rien.
+  return { figureGroup: g, skeletonBones: {} };
+}
+
+/**
+ * Retrouver, DANS LE CLONE, l'os de chaque emplacement — et mémoriser sa rotation de repos.
+ *
+ * SUR LE CLONE, PAS SUR L'ORIGINAL. Le cache de modèles garde une scène décodée que tous les
+ * Éléments partagent ; tourner un os de CETTE scène-là poserait d'un coup tous les exemplaires du
+ * fichier, dans toutes les Cases. Chaque Élément pose donc les os de son propre clone.
+ *
+ * LE REPOS EST CAPTURÉ ICI, UNE FOIS, AVANT QUE QUOI QUE CE SOIT NE SOIT APPLIQUÉ. C'est la seule
+ * fenêtre où il est certainement intact : dès la première pose, la rotation courante de l'os n'est
+ * plus le repos, et le relire donnerait un repos qui dérive à chaque curseur touché — les angles
+ * s'accumuleraient au lieu de se remplacer. Cf. src/skeleton-pose.js pour la mesure qui impose de
+ * composer avec ce repos plutôt que de l'écraser.
+ *
+ * La correspondance combine la reconnaissance automatique et ce que l'utilisateur a corrigé, par
+ * `fusionner` — exactement comme l'écran de correspondance. Deux chemins qui calculeraient la même
+ * correspondance de deux façons finiraient par diverger, et c'est un des travers récurrents de ce
+ * dépôt.
+ */
+function recolterOsMappes(clone, nomFichier){
+  const sortie = {};
+  if (!clone) return sortie;
+  const carte = correspondancePourModele(nomFichier);
+  // RÉSOLUTION PAR NOM, pas par identifiant. La correspondance est calculée sur la scène décodée du
+  // cache ; les os manipulés sont ceux du CLONE, qui porte d'autres `uuid`. Le nom est le seul lien
+  // commun — c'est déjà la raison pour laquelle le fichier de correspondances mémorise des noms et
+  // non des indices (cf. l'en-tête de skeleton-store.js).
+  const parNom = new Map();
+  clone.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
+  SLOTS.forEach(slot => {
+    const e = carte[slot];
+    const os = e && e.name ? parNom.get(e.name) : null;
+    if (!os) return;
+    const q = os.quaternion;
+    sortie[slot] = { os, name: e.name, repos: [q.x, q.y, q.z, q.w] };
+  });
+  return sortie;
+}
+
+/**
+ * La correspondance effective d'un fichier importé : reconnaissance automatique, corrigée par ce que
+ * l'utilisateur a enregistré. Rend une carte vide si le modèle n'est pas encore décodé.
+ *
+ * UN SEUL ENDROIT CALCULE CETTE CARTE, et c'est exprès. Le rig en a besoin pour savoir quel os
+ * tourner ; la fiche en a besoin pour savoir quels curseurs afficher. Les laisser la recalculer
+ * chacun de leur côté, à partir des mêmes ingrédients, est très exactement la panne qui revient le
+ * plus souvent dans ce dépôt — deux calculs d'une même valeur qui finissent par diverger. Ici la
+ * divergence serait invisible et cruelle : un curseur intitulé « Coude gauche » piloterait un autre
+ * os que celui que l'écran de correspondance montre.
+ */
+export function correspondancePourModele(nomFichier){
+  const vide = {};
+  const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
+  if (!chargé || !chargé.scene) return vide;
+  const osNeutres = bonesFromObject3D(chargé.scene);
+  if (!osNeutres.length) return vide;
+  return fusionner(inferSkeletonMap(osNeutres), correspondanceEnregistreeSync(nomFichier), osNeutres);
+}
+
+/**
+ * Applique une pose à un squelette importé.
+ *
+ * AUCUNE REMISE À ZÉRO, contrairement à `applyAnimalJointAngles` juste au-dessus — la différence
+ * est le cœur de l'étape. Un pivot d'Animal naît à (0,0,0) ; un os importé naît à son repos, et
+ * 106 des 108 os mappés des six fichiers réels ont un repos NON identitaire. Remettre à zéro
+ * effondrerait le personnage.
+ *
+ * Chaque os est réécrit à CHAQUE appel, y compris ceux que la pose ne mentionne pas : c'est ce qui
+ * fait revenir au repos un os dont on vient de ramener le curseur à zéro. Repartir du repos mémorisé
+ * plutôt que de la rotation courante rend l'opération idempotente — la rejouer dix fois donne le
+ * même corps que la jouer une fois.
+ */
+export function applySkeletonPose(osMappes, pose){
+  if (!osMappes) return;
+  for (const [slot, entree] of Object.entries(osMappes)){
+    if (!entree || !entree.os) continue;
+    const q = orientationFinale(entree.repos, (pose || {})[slot]);
+    entree.os.quaternion.set(q[0], q[1], q[2], q[3]);
+  }
 }
 
 const PROP_RIG_BUILDERS_3D = {
@@ -3023,8 +3112,10 @@ export function buildPropRig3D(objType, colorHex, o){
   // Un modèle importé dépend de son FICHIER et de l'état du cache : les deux entrent dans l'entrée
   // de cache pour qu'ensureObjectRigEntry3D reconstruise quand le décodage aboutit.
   if (objType === 'modele') {
+    const built = builder(colorHex, o); // { figureGroup, skeletonBones }
     return {
-      figureGroup: builder(colorHex, o),
+      figureGroup: built.figureGroup,
+      skeletonBones: built.skeletonBones,
       modelFile: (o && o.modelFile) || null,
       modelState: (o && o.modelFile) ? modelState(o.modelFile) : 'absent',
     };
@@ -3450,6 +3541,12 @@ export function ensureObjectRigEntry3D(o){
   // Apply animal joint angles (always, to reflect pose changes)
   if (entry.animalJoints) {
     applyAnimalJointAngles(entry.animalJoints, o.animalJoints3d || {});
+  }
+  // Idem pour un squelette importé — à chaque appel, pour que le curseur se voie sans reconstruire
+  // le rig. Le reclonage reste réservé aux changements de fichier, d'état ou de hauteur : poser un
+  // os ne justifie pas de re-décoder un modèle de plusieurs mégaoctets.
+  if (entry.skeletonBones) {
+    applySkeletonPose(entry.skeletonBones, o.skeletonPose3d || {});
   }
   entry.figureGroup.rotation.set(o.rotX || 0, o.rotY || 0, o.rotZ || 0);
   entry.figureGroup.updateMatrixWorld(true);
