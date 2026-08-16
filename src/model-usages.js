@@ -119,6 +119,37 @@ export function usageLabel(groupe, traduire){
 }
 
 /**
+ * Les étiquettes des Éléments d'un groupe. Fonction PURE.
+ *
+ * LE RANG NE S'AJOUTE QUE S'IL DÉPARTAGE. Un rang systématique — « (1/2) », « (2/2) » — est du bruit
+ * dès que les Éléments portent des noms différents : le nom suffit alors à les distinguer, et le
+ * rang ne fait que compter quelque chose qu'on ne demandait pas. Pire, il survit au renommage :
+ * l'utilisateur baptise l'un des deux exemplaires, le doublon disparaît, et l'étiquette continue
+ * d'annoncer un choix qui n'existe plus.
+ *
+ * Le rang est donc calculé PAR NOM, pas par groupe : seuls les Éléments dont le nom est partagé en
+ * reçoivent un, et la numérotation porte sur ce sous-ensemble. Trois Éléments nommés « A », « A »
+ * et « B » donnent « A (1/2) », « A (2/2) » et « B » — car c'est bien parmi les deux « A » qu'il
+ * faut choisir, pas parmi les trois.
+ *
+ * Le repli (« Modèle ») entre dans le compte : deux Éléments sans nom se ressemblent tout autant.
+ */
+export function usageElementLabels(groupe, traduire){
+  const t = traduire || ((en) => en);
+  const defaut = t('Model', 'Modèle');
+  const noms = (((groupe && groupe.elements) || [])).map(e => (e && e.name) || defaut);
+  const total = new Map();
+  noms.forEach(n => total.set(n, (total.get(n) || 0) + 1));
+  const vus = new Map();
+  return noms.map(n => {
+    if (total.get(n) < 2) return n;
+    const rang = (vus.get(n) || 0) + 1;
+    vus.set(n, rang);
+    return `${n} (${rang}/${total.get(n)})`;
+  });
+}
+
+/**
  * Le nombre total d'Éléments visés par une liste de groupes.
  *
  * Sert à décider du geste : un seul endroit, on y va tout de suite ; plusieurs, on demande lequel.

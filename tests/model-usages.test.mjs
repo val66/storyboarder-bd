@@ -26,8 +26,8 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  modelUsageLocations, usageLabel, countUsageTargets, firstUsageTarget, targetFor,
-  resolveModelClick, goToModelUsage, setModelUsagesCallbacks,
+  modelUsageLocations, usageLabel, usageElementLabels, countUsageTargets, firstUsageTarget,
+  targetFor, resolveModelClick, goToModelUsage, setModelUsagesCallbacks,
 } from '../src/model-usages.js';
 import { S } from '../src/state.js';
 
@@ -123,6 +123,48 @@ describe('usageLabel — dire où, sans inventer', () => {
 
   test('un Tome sans nom retombe sur son rang', () => {
     assert.match(usageLabel({ kind: 'panel', tomeName: '', tomeIndex: 2, pageNumber: 1 }, FR), /^Tome 3 /);
+  });
+});
+
+describe('usageElementLabels — le rang ne s\'ajoute que s\'il départage', () => {
+  const g = (...noms) => ({ elements: noms.map(name => ({ id: 'x', name })) });
+
+  test('des noms tous différents ne reçoivent AUCUN rang', () => {
+    assert.deepEqual(usageElementLabels(g('Chaise', 'Table'), FR), ['Chaise', 'Table']);
+  });
+
+  test('un seul Élément ne reçoit aucun rang', () => {
+    assert.deepEqual(usageElementLabels(g('Chaise'), FR), ['Chaise']);
+  });
+
+  test('RÉGRESSION : renommer un exemplaire fait disparaître les DEUX rangs', () => {
+    // Signalé à l'usage. Un rang posé dès qu'un groupe contient plusieurs Éléments survivait au
+    // renommage : l'utilisateur baptise l'un des deux, le doublon n'existe plus, et l'étiquette
+    // continue d'annoncer un choix à faire.
+    assert.deepEqual(usageElementLabels(g('hulk', 'hulk'), FR), ['hulk (1/2)', 'hulk (2/2)']);
+    assert.deepEqual(usageElementLabels(g('hulk', 'hulk2'), FR), ['hulk', 'hulk2']);
+  });
+
+  test('RÉGRESSION : le rang porte sur les HOMONYMES, pas sur le groupe entier', () => {
+    // « A, A, B » : c'est parmi les deux A qu'il faut choisir, pas parmi les trois. Numéroter sur
+    // le groupe donnerait « A (1/3) », « A (2/3) » — un dénominateur qui compte un Élément que le
+    // nom distingue déjà.
+    assert.deepEqual(usageElementLabels(g('A', 'A', 'B'), FR), ['A (1/2)', 'A (2/2)', 'B']);
+  });
+
+  test('deux paires d\'homonymes se numérotent séparément', () => {
+    assert.deepEqual(usageElementLabels(g('A', 'B', 'A', 'B'), FR),
+      ['A (1/2)', 'B (1/2)', 'A (2/2)', 'B (2/2)']);
+  });
+
+  test('les Éléments sans nom se ressemblent aussi : le repli entre dans le compte', () => {
+    assert.deepEqual(usageElementLabels(g('', ''), FR), ['Modèle (1/2)', 'Modèle (2/2)']);
+    assert.deepEqual(usageElementLabels(g('', 'Chaise'), FR), ['Modèle', 'Chaise']);
+  });
+
+  test('entrées absurdes : on ne lève pas', () => {
+    [null, undefined, {}, { elements: null }].forEach(x =>
+      assert.deepEqual(usageElementLabels(x, FR), []));
   });
 });
 

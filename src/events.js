@@ -24,7 +24,8 @@ import {
 } from './canvas-tools.js';
 import { countModelUsages, messageSuppressionModele } from './model-library.js';
 import {
-  setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, targetFor,
+  setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, usageElementLabels,
+  targetFor,
 } from './model-usages.js';
 import { setModelCacheCallbacks, clearModelCache } from './model-cache.js';
 import {
@@ -3940,15 +3941,14 @@ function openModelUsages(fichier){
     titre.textContent = usageLabel(groupe, tr);
     titre.title = titre.textContent;
     modelUsagesList.appendChild(titre);
+    // Les étiquettes sont calculées d'un bloc, et pas ligne à ligne : savoir si un rang est utile
+    // demande de connaître TOUS les noms du groupe. C'est aussi ce qui la rend pure et testable.
+    const etiquettes = usageElementLabels(groupe, tr);
     groupe.elements.forEach((el, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'model-usage-target';
-      // Le rang n'apparaît QUE s'il y a plusieurs exemplaires dans le même contenant : c'est le
-      // seul cas où deux lignes porteraient sinon le même texte, et donc le seul où l'utilisateur
-      // aurait à choisir sans rien pour départager.
-      const rang = groupe.elements.length > 1 ? ` (${i + 1}/${groupe.elements.length})` : '';
-      b.textContent = (el.name || tr('Model', 'Modèle')) + rang;
+      b.textContent = etiquettes[i];
       b.title = b.textContent;
       b.onclick = () => {
         modelUsagesModal.classList.add('hidden');
