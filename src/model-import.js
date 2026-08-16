@@ -35,16 +35,33 @@ let _alerter = () => {};
 // sûr, celui qui laisse le comportement actuel (hauteur du fichier, telle quelle) inchangé pour
 // quiconque n'a pas câblé l'avertissement.
 let _confirmer = async () => false;
-// Appelé APRÈS chaque import réussi, avec le nom du fichier. C'est le crochet par lequel l'écran de
-// correspondance du squelette se propose (cf. proposerCorrespondance dans events.js) : ce module
-// n'a pas à savoir qu'un tel écran existe, il annonce seulement qu'un fichier vient d'entrer.
-let _apresImport = () => {};
-export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer, apresImport }){
+/**
+ * Appelé une fois le fichier RANGÉ et DÉCODÉ, mais AVANT de créer quoi que ce soit dans le Projet.
+ * Rend une promesse : `false` annule l'import.
+ *
+ * C'est par ce crochet que l'écran de correspondance du squelette se propose (cf.
+ * proposerCorrespondance dans events.js). Ce module n'a pas à savoir qu'un tel écran existe — il
+ * annonce qu'un fichier est prêt et demande l'autorisation de continuer.
+ *
+ * POURQUOI AVANT, ET NON APRÈS. Signalé à l'usage : l'Élément apparaissait dans la Case pendant que
+ * la modale était encore ouverte, ce qui donnait l'impression que la décision arrivait trop tard.
+ * L'application a déjà une convention sur ce point — « Annuler la modale d'un Élément qu'on vient
+ * d'ajouter le supprime » — et cet ordre-ci la respecte.
+ *
+ * Le fichier `.glb`, lui, est copié quoi qu'il arrive : il faut bien le lire pour connaître son
+ * squelette. Un import annulé laisse donc le fichier dans la bibliothèque, où il apparaîtra comme
+ * « non utilisé ». Le supprimer serait dangereux — le nom retenu peut être celui d'un fichier
+ * DÉJÀ présent et utilisé ailleurs (cf. resolveModelName).
+ *
+ * Par défaut, sans crochet branché, l'import continue : le comportement d'origine.
+ */
+let _confirmerImport = async () => true;
+export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer, confirmerImport }){
   _snapshot = snapshot || (() => {});
   _renderAll = renderAll || (() => {});
   _alerter = alerter || (() => {});
   _confirmer = confirmer || (async () => false);
-  _apresImport = apresImport || (() => {});
+  _confirmerImport = confirmerImport || (async () => true);
 }
 
 /**
@@ -109,6 +126,9 @@ export async function importModelIntoPanel(panel, page){
   const prêt = await choisirEtPreparerModele();
   if (prêt.canceled) return null;
   if (!prêt.ok) { _alerter(tr(`Import failed: ${prêt.error}`, `Import impossible : ${prêt.error}`)); return null; }
+  // Avant de toucher au Projet. Un refus ici n'annule QUE la création de l'Élément — rien n'a encore
+  // été modifié, donc il n'y a rien à défaire.
+  if (!await _confirmerImport(prêt.modelFile)) return null;
 
   _snapshot();
   const el = createModelElement({
@@ -135,9 +155,6 @@ export async function importModelIntoPanel(panel, page){
     _alerter(tr(`"${prêt.modelFile}" could not be read as a 3D model.`,
       `« ${prêt.modelFile} » n'a pas pu être lu comme modèle 3D.`));
   }
-  // Un fichier vient d'entrer : on l'annonce. Ce module ignore ce qui en sera fait — c'est
-  // l'appelant qui décide s'il y a lieu de proposer une correspondance de squelette.
-  _apresImport(prêt.modelFile);
   return el;
 }
 
@@ -152,6 +169,8 @@ export async function importSceneFromModel(panel, page){
   const prêt = await choisirEtPreparerModele();
   if (prêt.canceled) return null;
   if (!prêt.ok) { _alerter(tr(`Import failed: ${prêt.error}`, `Import impossible : ${prêt.error}`)); return null; }
+  // Même point de contrôle que pour un Modèle : la Scène n'est pas créée si l'on renonce.
+  if (!await _confirmerImport(prêt.modelFile)) return null;
 
   _snapshot();
   const scène = createScene();
@@ -174,8 +193,5 @@ export async function importSceneFromModel(panel, page){
     _alerter(tr(`"${prêt.modelFile}" could not be read as a 3D model.`,
       `« ${prêt.modelFile} » n'a pas pu être lu comme modèle 3D.`));
   }
-  // Un décor importé porte aussi un squelette quand c'est un personnage : le crochet vaut pour les
-  // TROIS gestes d'import, pas seulement celui qui pose un Élément.
-  _apresImport(prêt.modelFile);
   return scène;
 }

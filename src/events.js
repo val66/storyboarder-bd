@@ -304,7 +304,7 @@ setModelImportCallbacks({
   snapshot, renderAll, alerter: alertAction, confirmer: confirmAction,
   // Déclaré ici mais défini bien plus bas : la fonction est hissée, et c'est ce qui permet de
   // garder tout le câblage d'injection groupé en haut du fichier.
-  apresImport: (nomFichier) => proposerCorrespondance(nomFichier),
+  confirmerImport: (nomFichier) => proposerCorrespondance(nomFichier),
 });
 setProjectTreeCallbacks({
   openModelContextMenu, openModelUsages,
@@ -3947,9 +3947,19 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
 // décision d'ouvrir (doitOuvrirCorrespondance) sont ailleurs, purs, et testés.
 const skeletonMapModal = document.getElementById('skeletonMapModal');
 const skeletonMapList  = document.getElementById('skeletonMapList');
-// { fichier, os, carte } — l'état de l'écran ouvert. `carte` est un BROUILLON : rien n'est écrit
-// tant que l'utilisateur n'a pas enregistré, comme partout ailleurs dans cette application.
+// { fichier, os, carte, resoudre } — l'état de l'écran ouvert. `carte` est un BROUILLON : rien n'est
+// écrit tant que l'utilisateur n'a pas enregistré, comme partout ailleurs dans cette application.
+// `resoudre` rend l'écran ATTENDABLE : ouvert pendant un import, il doit pouvoir répondre « oui » ou
+// « non » à l'appelant, qui ne créera l'Élément qu'ensuite (cf. _confirmerImport, model-import.js).
 let _skelEcran = null;
+
+/** Ferme l'écran et répond à qui l'attendait. Un seul chemin de sortie, pour ne pas oublier de cas. */
+function fermerSkeletonMap(valide){
+  const resoudre = _skelEcran && _skelEcran.resoudre;
+  skeletonMapModal.classList.add('hidden');
+  _skelEcran = null;
+  if (resoudre) resoudre(valide);
+}
 
 /** Les os d'un modèle décodé, sous la forme neutre attendue par la reconnaissance. */
 function osDuModele(nomFichier){
@@ -3961,18 +3971,24 @@ function osDuModele(nomFichier){
  * Ouvre l'écran pour un fichier. `auto` seulement : ignore la correspondance enregistrée et
  * repropose la reconnaissance — utilisé par « Tout remettre en automatique ».
  */
-async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false } = {}){
+async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pendantImport = false } = {}){
   const os = osDuModele(nomFichier);
   if (!os.length) {
     alertAction(tr(`"${nomFichier}" has no skeleton: there is nothing to map.`,
       `« ${nomFichier} » n'a pas de squelette : il n'y a rien à faire correspondre.`));
-    return;
+    return false;
   }
   const tout = await lireCorrespondances();
   const enregistree = ignorerEnregistree ? null : tout.entrees[nomFichier];
-  _skelEcran = { fichier: nomFichier, os, carte: fusionner(inferSkeletonMap(os), enregistree, os) };
-  renderSkeletonMapModal();
-  skeletonMapModal.classList.remove('hidden');
+  return new Promise((resoudre) => {
+    _skelEcran = {
+      fichier: nomFichier, os, pendantImport,
+      carte: fusionner(inferSkeletonMap(os), enregistree, os),
+      resoudre,
+    };
+    renderSkeletonMapModal();
+    skeletonMapModal.classList.remove('hidden');
+  });
 }
 
 function renderSkeletonMapModal(){
@@ -3984,6 +4000,12 @@ function renderSkeletonMapModal(){
   document.getElementById('skeletonMapSubtitle').textContent = tr(
     `"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
     `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`);
+
+  // Pendant un import, « Annuler » annule TOUT l'import (choix de l'utilisateur) : le bouton doit le
+  // dire. Un bouton nommé « Annuler » qui fait disparaître un modèle serait un piège.
+  document.getElementById('skeletonMapCancel').textContent = _skelEcran.pendantImport
+    ? tr('Cancel the import', 'Annuler l\'import')
+    : tr('Cancel', 'Annuler');
 
   const legende = document.getElementById('skeletonMapLegend');
   legende.innerHTML = '';
@@ -4048,27 +4070,31 @@ function ligneCorrespondance(slot, valeur, os){
   return row;
 }
 
-document.getElementById('skeletonMapCancel').onclick = () => {
-  skeletonMapModal.classList.add('hidden'); _skelEcran = null;
-};
+document.getElementById('skeletonMapCancel').onclick = () => fermerSkeletonMap(false);
+// Le clic sur le voile vaut Annuler — même sortie, donc même conséquence pendant un import.
 skeletonMapModal.addEventListener('click', (e) => {
-  if (e.target === skeletonMapModal) { skeletonMapModal.classList.add('hidden'); _skelEcran = null; }
+  if (e.target === skeletonMapModal) fermerSkeletonMap(false);
 });
 document.getElementById('skeletonMapReset').onclick = async () => {
   // Efface les décisions ET la validation, puis repropose la reconnaissance. Sans ce bouton, une
   // correction faite par erreur serait définitive — et comme le fichier est partagé par tous les
   // Projets, elle suivrait l'utilisateur partout. `oublierCorrespondance` retire aussi la
   // validation : c'est ce qui permet à l'écran de se reproposer tout seul au prochain import.
+  //
+  // On REMET À JOUR l'écran ouvert, on ne le rouvre pas. Rouvrir créerait une seconde promesse et
+  // abandonnerait la première : pendant un import, l'appelant attendrait alors indéfiniment une
+  // réponse que plus personne ne donnerait — un blocage silencieux, sans message ni erreur.
   if (!_skelEcran) return;
-  const fichier = _skelEcran.fichier;
-  await oublierCorrespondance(fichier);
-  openSkeletonMapModal(fichier, { ignorerEnregistree: true });
+  await oublierCorrespondance(_skelEcran.fichier);
+  _skelEcran.carte = fusionner(inferSkeletonMap(_skelEcran.os), null, _skelEcran.os);
+  renderSkeletonMapModal();
 };
 document.getElementById('skeletonMapSave').onclick = async () => {
   if (!_skelEcran) return;
   const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte);
-  skeletonMapModal.classList.add('hidden');
-  _skelEcran = null;
+  // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
+  // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
+  fermerSkeletonMap(true);
   // Un échec d'écriture est DIT. La faute la plus coûteuse de ce dépôt reste « un succès annoncé
   // pour un travail sans effet ».
   if (!r.ok) {
@@ -4078,15 +4104,21 @@ document.getElementById('skeletonMapSave').onclick = async () => {
 };
 
 /**
- * Après un import : ouvrir l'écran si — et seulement si — il a quelque chose à montrer.
- * La décision est dans skeleton-store.js, pure et testée ; ici on la suit.
+ * Pendant un import : ouvrir l'écran si — et seulement si — il a quelque chose à montrer, puis
+ * ATTENDRE la réponse. Rend `false` si l'utilisateur a annulé, ce qui annule tout l'import.
+ *
+ * La décision d'ouvrir est dans skeleton-store.js, pure et testée ; ici on la suit. Quand l'écran
+ * n'a pas lieu d'être — pas de squelette, ou correspondance déjà validée — on rend `true` sans rien
+ * afficher : l'import doit se poursuivre exactement comme avant.
  */
 async function proposerCorrespondance(nomFichier){
-  if (!nomFichier) return;
+  if (!nomFichier) return true;
   const os = osDuModele(nomFichier);
   const tout = await lireCorrespondances();
-  if (!doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: !!tout.entrees[nomFichier] })) return;
-  openSkeletonMapModal(nomFichier);
+  if (!doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: !!tout.entrees[nomFichier] })) return true;
+  // `await` indispensable : sans lui on comparerait une PROMESSE à false, ce qui est toujours vrai,
+  // et l'import se poursuivrait quoi que l'utilisateur réponde.
+  return await openSkeletonMapModal(nomFichier, { pendantImport: true }) !== false;
 }
 
 // ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───

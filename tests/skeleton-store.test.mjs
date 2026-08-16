@@ -354,7 +354,7 @@ describe('Câblage de l\'écran de correspondance', () => {
     assert.match(bloc.slice(0, 300), /_modelCtxFichier/);
   });
 
-  test('RÉGRESSION : les DEUX fonctions d\'import annoncent le fichier entré', () => {
+  test('RÉGRESSION : les DEUX fonctions d\'import demandent l\'autorisation AVANT de créer', () => {
     // Trois points d'entrée dans l'interface, mais DEUX fonctions : « Modèle » et « Scène depuis
     // une Case » d'un côté, « Importer un décor… » du menu de gauche partageant la seconde. Ma
     // première version de ce test comptait trois appels et échouait — l'erreur était dans le test,
@@ -364,8 +364,58 @@ describe('Câblage de l\'écran de correspondance', () => {
       const debut = IMPORT.indexOf(`export async function ${fn}`);
       assert.ok(debut > 0, `fonction introuvable : ${fn}`);
       const corps = IMPORT.slice(debut, IMPORT.indexOf('\n}', debut));
-      assert.match(corps, /_apresImport\(/, `${fn} n'annonce pas le fichier importé`);
+      assert.match(corps, /await _confirmerImport\(/, `${fn} ne demande pas l'autorisation`);
+      // ET AVANT toute modification du Projet. Signalé à l'usage : l'Élément apparaissait dans la
+      // Case pendant que la modale était encore ouverte. `snapshot` est le premier geste qui touche
+      // au Projet — le point de contrôle doit le précéder, sinon il n'y aurait plus rien à annuler.
+      assert.ok(corps.indexOf('_confirmerImport(') < corps.indexOf('_snapshot()'),
+        `${fn} modifie le Projet AVANT de demander`);
     });
+  });
+
+  test('RÉGRESSION : un refus interrompt l\'import, il ne se contente pas de ne rien enregistrer', () => {
+    // Choix de l'utilisateur : « Annuler » pendant un import annule l'import entier, pas seulement
+    // la correspondance. Sans le `return`, la modale serait purement décorative.
+    ['importModelIntoPanel', 'importSceneFromModel'].forEach(fn => {
+      const debut = IMPORT.indexOf(`export async function ${fn}`);
+      const corps = IMPORT.slice(debut, IMPORT.indexOf('\n}', debut));
+      assert.match(corps, /if \(!await _confirmerImport\([^)]*\)\) return null;/,
+        `${fn} ignore le refus`);
+    });
+  });
+
+  test('RÉGRESSION : sans crochet branché, l\'import continue', () => {
+    // Le défaut par défaut doit être le comportement d'origine. Un `false` implicite bloquerait
+    // TOUS les imports dès qu'un appelant oublie de câbler le crochet — y compris les tests.
+    assert.match(IMPORT, /let _confirmerImport = async \(\) => true;/);
+    assert.match(IMPORT, /_confirmerImport = confirmerImport \|\| \(async \(\) => true\);/);
+  });
+
+  test('RÉGRESSION : l\'attente de la réponse est bien AWAITÉE', () => {
+    // Sans `await`, on compare une PROMESSE à false — toujours vrai — et l'import se poursuit quoi
+    // que l'utilisateur réponde. Défaut que j'ai écrit puis corrigé dans le même commit.
+    const EV = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+    const debut = EV.indexOf('async function proposerCorrespondance');
+    const corps = EV.slice(debut, EV.indexOf('\n}', debut));
+    assert.match(corps, /return await openSkeletonMapModal\(/,
+      'la promesse de la modale n\'est pas attendue');
+  });
+
+  test('RÉGRESSION : « Tout remettre en automatique » ne rouvre PAS l\'écran', () => {
+    // Rouvrir créerait une seconde promesse et abandonnerait la première : pendant un import,
+    // l'appelant attendrait indéfiniment une réponse que plus personne ne donnerait. Un blocage
+    // silencieux, sans message ni erreur — la pire forme de panne dans ce dépôt.
+    const EV = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+    const debut = EV.indexOf("skeletonMapReset').onclick");
+    const corps = EV.slice(debut, EV.indexOf('\n};', debut));
+    assert.doesNotMatch(corps, /openSkeletonMapModal\(/, 'le bouton rouvre l\'écran');
+    assert.match(corps, /renderSkeletonMapModal\(\)/, 'l\'écran ouvert n\'est pas rafraîchi');
+  });
+
+  test('le bouton Annuler dit qu\'il annule l\'IMPORT quand c\'en est un', () => {
+    // Un bouton nommé « Annuler » qui fait disparaître un modèle serait un piège.
+    const EV = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+    assert.match(EV, /Annuler l\\'import/);
   });
 
   test('RÉGRESSION : supprimer un modèle oublie sa correspondance', () => {
