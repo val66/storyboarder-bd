@@ -118,11 +118,13 @@ function indexer(os){
  * Filtre anti-bruit : le rig Unreal accroche des dizaines d'auxiliaires (`FX_`, `_vol_`, `_twist_`)
  * à chaque articulation ; ils sont courts, les membres sont longs.
  *
- * HONNÊTEMENT : aucun test ne le justifie aujourd'hui. Le ramener à 0 ne change le résultat sur
- * aucun des deux squelettes mesurés — l'exigence de paire latérale suffit seule. Il est conservé
- * parce qu'il ne coûte rien et qu'il écarte un cas plausible sur un fichier qu'on n'a pas vu : deux
- * accessoires symétriques accrochés au même os, formant une fausse paire gauche/droite. Si un
- * troisième squelette ne le justifie toujours pas, il doit sauter.
+ * SA VALEUR EST MAINTENANT MESURÉE, après l'avoir été à tort. Sur les deux premiers squelettes il
+ * ne servait à rien, et je l'avais conservé sans justification. Le rig Unreal l'exige : ramené à 1,
+ * la poitrine est trouvée quatre vertèbres trop bas et le cou devient `spine_04`. Les auxiliaires
+ * courts de ce rig sont exactement ce que ce seuil écarte.
+ *
+ * Il ne s'applique PAS à la recherche du cou (cf. plus bas) : un cou minimal fait deux os, et le
+ * filtre le jetait.
  */
 function branches(id, ctx, minProfondeur = 2){
   return ((ctx.parId.get(id) || {}).children || [])
@@ -248,7 +250,12 @@ export function inferSkeletonMap(os){
   // qui porte, en plus des bras et du cou, des chaînes décoratives. L'absence de côté distingue le
   // cou d'un membre bien mieux que sa taille, et c'est encore le nom utilisé pour ce qu'il sait
   // faire : dire un côté, ou dire qu'il n'y en a pas.
-  const reste = substantielles(poitrine).filter(c => !bras.includes(c));
+  // Le cou est cherché SANS le filtre de profondeur, contrairement aux membres. Un cou minimal fait
+  // deux os — « Neck » puis « Head » — et la spécification VRM ne demande rien de plus. Le filtre,
+  // calibré pour écarter les auxiliaires courts des rigs bruités, jetait donc le cou des rigs
+  // sobres : mesuré sur un squelette VRM minimal, cou et tête restaient vides. Chercher un couple
+  // gauche/droite exige de trier le bruit ; trouver le seul enfant sans côté, non.
+  const reste = branches(poitrine, ctx, 0).filter(c => !bras.includes(c));
   const cou = reste.filter(c => coteDuNom(ctx.parId.get(c).name) === null)
     .sort((a, b) => {
       const nomA = normaliserNom(ctx.parId.get(a).name), nomB = normaliserNom(ctx.parId.get(b).name);
@@ -274,15 +281,48 @@ export function inferSkeletonMap(os){
     poser('tete', tete);
   }
 
+  // ── Les bras se lisent PAR LA FIN, contrairement aux jambes. La spécification VRM (humanoïde,
+  // § « détails ») l'énonce : « les os non obligatoires peuvent être sautés — le parent du bras
+  // peut être la poitrine plutôt qu'une clavicule ». Un rig sans clavicule existe donc légalement,
+  // et descendre depuis la branche en supposant clavicule → bras → avant-bras → main décalerait
+  // TOUT d'un cran, sans qu'aucune règle ne s'en aperçoive.
+  //
+  // Aucun de mes six squelettes n'est dans ce cas : ils ont tous une clavicule. C'est la
+  // documentation qui a révélé le trou, pas les fichiers — et c'est précisément le genre de défaut
+  // qui n'apparaît que chez l'utilisateur, sur le premier fichier qui sort de l'échantillon.
+  //
+  // J'AI D'ABORD VOULU LIRE LA CHAÎNE PAR LA FIN, en reconnaissant la main à l'embranchement des
+  // doigts. Mesuré : ça casse sur le rig Unreal, où la clavicule porte trois os `FX_` et passe donc
+  // elle-même pour une main. Sur ce rig, l'embranchement ne distingue rien.
+  //
+  // On descend donc depuis la racine de branche, comme pour les jambes, mais on décide D'ABORD si
+  // cette racine est une clavicule. C'est le seul endroit où le nom sert à autre chose qu'un côté,
+  // et c'est assumé : l'os en question est OPTIONNEL, donc aucune règle de structure ne peut
+  // trancher son absence. Si le nom ne dit rien, on suppose une clavicule — le cas des six
+  // squelettes mesurés — et la ligne part en 'structure', donc signalée à l'utilisateur.
   bras.forEach((racineBras, i) => {
     const c = coteDuNom(ctx.parId.get(racineBras).name) || (i === 0 ? 'g' : 'd');
-    const haut = suivant(racineBras, ctx);
-    const avant = haut === null ? null : suivant(haut, ctx);
-    const main = avant === null ? null : suivant(avant, ctx);
-    poser(`clavicule_${c}`, racineBras);
-    poser(`bras_${c}`, haut);
-    poser(`avantbras_${c}`, avant);
-    poser(`main_${c}`, main);
+    const nomRacine = normaliserNom(ctx.parId.get(racineBras).name);
+    const estBrasDirect = /upperarm|upper_arm|oberarm/.test(nomRacine) && !/clavicle|shoulder|collar/.test(nomRacine);
+
+    const chaine = [racineBras];
+    let cur = racineBras, pasBras = 0;
+    while (pasBras++ < 4) {
+      const s = suivant(cur, ctx);
+      if (s === null) break;
+      cur = s; chaine.push(cur);
+    }
+    if (estBrasDirect) {
+      // Pas de clavicule : la racine EST le bras. L'emplacement reste vide, ce qui est la vérité.
+      poser(`bras_${c}`, chaine[0]);
+      poser(`avantbras_${c}`, chaine[1] !== undefined ? chaine[1] : null);
+      poser(`main_${c}`, chaine[2] !== undefined ? chaine[2] : null);
+    } else {
+      poser(`clavicule_${c}`, chaine[0]);
+      poser(`bras_${c}`, chaine[1] !== undefined ? chaine[1] : null);
+      poser(`avantbras_${c}`, chaine[2] !== undefined ? chaine[2] : null);
+      poser(`main_${c}`, chaine[3] !== undefined ? chaine[3] : null);
+    }
   });
 
   return carte;

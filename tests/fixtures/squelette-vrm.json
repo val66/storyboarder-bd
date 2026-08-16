@@ -1,0 +1,1034 @@
+{
+ "origine": "VRoid/VRM, nommage J_Bip_ (norme humanoïde VRM)",
+ "animations": 0,
+ "os": [
+  {
+   "i": 0,
+   "name": "J_Sec_L_Bust2_end_0117",
+   "children": []
+  },
+  {
+   "i": 1,
+   "name": "J_Sec_L_Bust2_08",
+   "children": [
+    0
+   ]
+  },
+  {
+   "i": 2,
+   "name": "J_Sec_L_Bust1_07",
+   "children": [
+    1
+   ]
+  },
+  {
+   "i": 3,
+   "name": "J_Sec_R_Bust2_end_0118",
+   "children": []
+  },
+  {
+   "i": 4,
+   "name": "J_Sec_R_Bust2_010",
+   "children": [
+    3
+   ]
+  },
+  {
+   "i": 5,
+   "name": "J_Sec_R_Bust1_09",
+   "children": [
+    4
+   ]
+  },
+  {
+   "i": 6,
+   "name": "Bone_end_end_0119",
+   "children": []
+  },
+  {
+   "i": 7,
+   "name": "Bone_end_015",
+   "children": [
+    6
+   ]
+  },
+  {
+   "i": 8,
+   "name": "Hair_Front_M_014",
+   "children": [
+    7
+   ]
+  },
+  {
+   "i": 9,
+   "name": "Bone.002_end_end_0120",
+   "children": []
+  },
+  {
+   "i": 10,
+   "name": "Bone.002_end_017",
+   "children": [
+    9
+   ]
+  },
+  {
+   "i": 11,
+   "name": "Hair_Front_L_016",
+   "children": [
+    10
+   ]
+  },
+  {
+   "i": 12,
+   "name": "Bone.001_end_end_0121",
+   "children": []
+  },
+  {
+   "i": 13,
+   "name": "Bone.001_end_019",
+   "children": [
+    12
+   ]
+  },
+  {
+   "i": 14,
+   "name": "Hair_Front_R_018",
+   "children": [
+    13
+   ]
+  },
+  {
+   "i": 15,
+   "name": "Hair_Side_L_04_end_end_0122",
+   "children": []
+  },
+  {
+   "i": 16,
+   "name": "Hair_Side_L_04_end_025",
+   "children": [
+    15
+   ]
+  },
+  {
+   "i": 17,
+   "name": "Hair_Side_L_04_024",
+   "children": [
+    16
+   ]
+  },
+  {
+   "i": 18,
+   "name": "Hair_Side_L_03_023",
+   "children": [
+    17
+   ]
+  },
+  {
+   "i": 19,
+   "name": "Hair_Side_L_02_022",
+   "children": [
+    18
+   ]
+  },
+  {
+   "i": 20,
+   "name": "Hair_Side_L_01_021",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 21,
+   "name": "Hair_Side_L_00_020",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 22,
+   "name": "Hair_Side_R_04_end_end_0123",
+   "children": []
+  },
+  {
+   "i": 23,
+   "name": "Hair_Side_R_04_end_031",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 24,
+   "name": "Hair_Side_R_04_030",
+   "children": [
+    23
+   ]
+  },
+  {
+   "i": 25,
+   "name": "Hair_Side_R_03_029",
+   "children": [
+    24
+   ]
+  },
+  {
+   "i": 26,
+   "name": "Hair_Side_R_02_028",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 27,
+   "name": "Hair_Side_R_01_027",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 28,
+   "name": "Hair_Side_R_00_026",
+   "children": [
+    27
+   ]
+  },
+  {
+   "i": 29,
+   "name": "Front_Hair_013",
+   "children": [
+    8,
+    11,
+    14,
+    21,
+    28
+   ]
+  },
+  {
+   "i": 30,
+   "name": "Tail_L_07_end_end_0124",
+   "children": []
+  },
+  {
+   "i": 31,
+   "name": "Tail_L_07_end_039",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 32,
+   "name": "Tail_L_07_038",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 33,
+   "name": "Tail_L_06_037",
+   "children": [
+    32
+   ]
+  },
+  {
+   "i": 34,
+   "name": "Tail_L_05_036",
+   "children": [
+    33
+   ]
+  },
+  {
+   "i": 35,
+   "name": "Tail_L_04_035",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 36,
+   "name": "Tail_L_03_034",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 37,
+   "name": "Tail_L_02_033",
+   "children": [
+    36
+   ]
+  },
+  {
+   "i": 38,
+   "name": "Tail_L_01_032",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 39,
+   "name": "Tail_R_07_end_end_0125",
+   "children": []
+  },
+  {
+   "i": 40,
+   "name": "Tail_R_07_end_047",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 41,
+   "name": "Tail_R_07_046",
+   "children": [
+    40
+   ]
+  },
+  {
+   "i": 42,
+   "name": "Tail_R_06_045",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 43,
+   "name": "Tail_R_05_044",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 44,
+   "name": "Tail_R_04_043",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 45,
+   "name": "Tail_R_03_042",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 46,
+   "name": "Tail_R_02_041",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 47,
+   "name": "Tail_R_01_040",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 48,
+   "name": "J_Adj_L_FaceEye_end_0126",
+   "children": []
+  },
+  {
+   "i": 49,
+   "name": "J_Adj_L_FaceEye_048",
+   "children": [
+    48
+   ]
+  },
+  {
+   "i": 50,
+   "name": "J_Adj_R_FaceEye_end_0127",
+   "children": []
+  },
+  {
+   "i": 51,
+   "name": "J_Adj_R_FaceEye_049",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 52,
+   "name": "J_Bip_C_Head_012",
+   "children": [
+    29,
+    38,
+    47,
+    49,
+    51
+   ]
+  },
+  {
+   "i": 53,
+   "name": "J_Bip_C_Neck_011",
+   "children": [
+    52
+   ]
+  },
+  {
+   "i": 54,
+   "name": "J_Bip_L_Index3_end_0128",
+   "children": []
+  },
+  {
+   "i": 55,
+   "name": "J_Bip_L_Index3_056",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 56,
+   "name": "J_Bip_L_Index2_055",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 57,
+   "name": "J_Bip_L_Index1_054",
+   "children": [
+    56
+   ]
+  },
+  {
+   "i": 58,
+   "name": "J_Bip_L_Little3_end_0129",
+   "children": []
+  },
+  {
+   "i": 59,
+   "name": "J_Bip_L_Little3_059",
+   "children": [
+    58
+   ]
+  },
+  {
+   "i": 60,
+   "name": "J_Bip_L_Little2_058",
+   "children": [
+    59
+   ]
+  },
+  {
+   "i": 61,
+   "name": "J_Bip_L_Little1_057",
+   "children": [
+    60
+   ]
+  },
+  {
+   "i": 62,
+   "name": "J_Bip_L_Middle3_end_0130",
+   "children": []
+  },
+  {
+   "i": 63,
+   "name": "J_Bip_L_Middle3_062",
+   "children": [
+    62
+   ]
+  },
+  {
+   "i": 64,
+   "name": "J_Bip_L_Middle2_061",
+   "children": [
+    63
+   ]
+  },
+  {
+   "i": 65,
+   "name": "J_Bip_L_Middle1_060",
+   "children": [
+    64
+   ]
+  },
+  {
+   "i": 66,
+   "name": "J_Bip_L_Ring3_end_0131",
+   "children": []
+  },
+  {
+   "i": 67,
+   "name": "J_Bip_L_Ring3_065",
+   "children": [
+    66
+   ]
+  },
+  {
+   "i": 68,
+   "name": "J_Bip_L_Ring2_064",
+   "children": [
+    67
+   ]
+  },
+  {
+   "i": 69,
+   "name": "J_Bip_L_Ring1_063",
+   "children": [
+    68
+   ]
+  },
+  {
+   "i": 70,
+   "name": "J_Bip_L_Thumb3_end_0132",
+   "children": []
+  },
+  {
+   "i": 71,
+   "name": "J_Bip_L_Thumb3_068",
+   "children": [
+    70
+   ]
+  },
+  {
+   "i": 72,
+   "name": "J_Bip_L_Thumb2_067",
+   "children": [
+    71
+   ]
+  },
+  {
+   "i": 73,
+   "name": "J_Bip_L_Thumb1_066",
+   "children": [
+    72
+   ]
+  },
+  {
+   "i": 74,
+   "name": "J_Bip_L_Hand_053",
+   "children": [
+    57,
+    61,
+    65,
+    69,
+    73
+   ]
+  },
+  {
+   "i": 75,
+   "name": "J_Bip_L_LowerArm_052",
+   "children": [
+    74
+   ]
+  },
+  {
+   "i": 76,
+   "name": "J_Bip_L_UpperArm_051",
+   "children": [
+    75
+   ]
+  },
+  {
+   "i": 77,
+   "name": "J_Bip_L_Shoulder_050",
+   "children": [
+    76
+   ]
+  },
+  {
+   "i": 78,
+   "name": "J_Bip_R_Index3_end_0133",
+   "children": []
+  },
+  {
+   "i": 79,
+   "name": "J_Bip_R_Index3_075",
+   "children": [
+    78
+   ]
+  },
+  {
+   "i": 80,
+   "name": "J_Bip_R_Index2_074",
+   "children": [
+    79
+   ]
+  },
+  {
+   "i": 81,
+   "name": "J_Bip_R_Index1_073",
+   "children": [
+    80
+   ]
+  },
+  {
+   "i": 82,
+   "name": "J_Bip_R_Little3_end_0134",
+   "children": []
+  },
+  {
+   "i": 83,
+   "name": "J_Bip_R_Little3_078",
+   "children": [
+    82
+   ]
+  },
+  {
+   "i": 84,
+   "name": "J_Bip_R_Little2_077",
+   "children": [
+    83
+   ]
+  },
+  {
+   "i": 85,
+   "name": "J_Bip_R_Little1_076",
+   "children": [
+    84
+   ]
+  },
+  {
+   "i": 86,
+   "name": "J_Bip_R_Middle3_end_0135",
+   "children": []
+  },
+  {
+   "i": 87,
+   "name": "J_Bip_R_Middle3_081",
+   "children": [
+    86
+   ]
+  },
+  {
+   "i": 88,
+   "name": "J_Bip_R_Middle2_080",
+   "children": [
+    87
+   ]
+  },
+  {
+   "i": 89,
+   "name": "J_Bip_R_Middle1_079",
+   "children": [
+    88
+   ]
+  },
+  {
+   "i": 90,
+   "name": "J_Bip_R_Ring3_end_0136",
+   "children": []
+  },
+  {
+   "i": 91,
+   "name": "J_Bip_R_Ring3_084",
+   "children": [
+    90
+   ]
+  },
+  {
+   "i": 92,
+   "name": "J_Bip_R_Ring2_083",
+   "children": [
+    91
+   ]
+  },
+  {
+   "i": 93,
+   "name": "J_Bip_R_Ring1_082",
+   "children": [
+    92
+   ]
+  },
+  {
+   "i": 94,
+   "name": "J_Bip_R_Thumb3_end_0137",
+   "children": []
+  },
+  {
+   "i": 95,
+   "name": "J_Bip_R_Thumb3_087",
+   "children": [
+    94
+   ]
+  },
+  {
+   "i": 96,
+   "name": "J_Bip_R_Thumb2_086",
+   "children": [
+    95
+   ]
+  },
+  {
+   "i": 97,
+   "name": "J_Bip_R_Thumb1_085",
+   "children": [
+    96
+   ]
+  },
+  {
+   "i": 98,
+   "name": "J_Bip_R_Hand_072",
+   "children": [
+    81,
+    85,
+    89,
+    93,
+    97
+   ]
+  },
+  {
+   "i": 99,
+   "name": "J_Bip_R_LowerArm_071",
+   "children": [
+    98
+   ]
+  },
+  {
+   "i": 100,
+   "name": "J_Bip_R_UpperArm_070",
+   "children": [
+    99
+   ]
+  },
+  {
+   "i": 101,
+   "name": "J_Bip_R_Shoulder_069",
+   "children": [
+    100
+   ]
+  },
+  {
+   "i": 102,
+   "name": "J_Bip_C_UpperChest_06",
+   "children": [
+    2,
+    5,
+    53,
+    77,
+    101
+   ]
+  },
+  {
+   "i": 103,
+   "name": "J_Bip_C_Chest_05",
+   "children": [
+    102
+   ]
+  },
+  {
+   "i": 104,
+   "name": "Bag_01_end_0138",
+   "children": []
+  },
+  {
+   "i": 105,
+   "name": "Bag_01_089",
+   "children": [
+    104
+   ]
+  },
+  {
+   "i": 106,
+   "name": "Bag_00_088",
+   "children": [
+    105
+   ]
+  },
+  {
+   "i": 107,
+   "name": "J_Bip_C_Spine_04",
+   "children": [
+    103,
+    106
+   ]
+  },
+  {
+   "i": 108,
+   "name": "J_Bip_L_ToeBase_end_0139",
+   "children": []
+  },
+  {
+   "i": 109,
+   "name": "J_Bip_L_ToeBase_093",
+   "children": [
+    108
+   ]
+  },
+  {
+   "i": 110,
+   "name": "J_Bip_L_Foot_092",
+   "children": [
+    109
+   ]
+  },
+  {
+   "i": 111,
+   "name": "J_Bip_L_LowerLeg_091",
+   "children": [
+    110
+   ]
+  },
+  {
+   "i": 112,
+   "name": "J_Bip_L_UpperLeg_090",
+   "children": [
+    111
+   ]
+  },
+  {
+   "i": 113,
+   "name": "J_Bip_R_ToeBase_end_0140",
+   "children": []
+  },
+  {
+   "i": 114,
+   "name": "J_Bip_R_ToeBase_097",
+   "children": [
+    113
+   ]
+  },
+  {
+   "i": 115,
+   "name": "J_Bip_R_Foot_096",
+   "children": [
+    114
+   ]
+  },
+  {
+   "i": 116,
+   "name": "J_Bip_R_LowerLeg_095",
+   "children": [
+    115
+   ]
+  },
+  {
+   "i": 117,
+   "name": "J_Bip_R_UpperLeg_094",
+   "children": [
+    116
+   ]
+  },
+  {
+   "i": 118,
+   "name": "Skrit_L1_01_end_0141",
+   "children": []
+  },
+  {
+   "i": 119,
+   "name": "Skrit_L1_01_00",
+   "children": [
+    118
+   ]
+  },
+  {
+   "i": 120,
+   "name": "Skrit_L1_00_098",
+   "children": [
+    119
+   ]
+  },
+  {
+   "i": 121,
+   "name": "Skrit_L2_01_end_0142",
+   "children": []
+  },
+  {
+   "i": 122,
+   "name": "Skrit_L2_01_099",
+   "children": [
+    121
+   ]
+  },
+  {
+   "i": 123,
+   "name": "Skrit_L2_00_01",
+   "children": [
+    122
+   ]
+  },
+  {
+   "i": 124,
+   "name": "Skrit_L3_01_end_0143",
+   "children": []
+  },
+  {
+   "i": 125,
+   "name": "Skrit_L3_01_0101",
+   "children": [
+    124
+   ]
+  },
+  {
+   "i": 126,
+   "name": "Skrit_L3_00_0100",
+   "children": [
+    125
+   ]
+  },
+  {
+   "i": 127,
+   "name": "Skrit_L4_01_end_0144",
+   "children": []
+  },
+  {
+   "i": 128,
+   "name": "Skrit_L4_01_0103",
+   "children": [
+    127
+   ]
+  },
+  {
+   "i": 129,
+   "name": "Skrit_L4_00_0102",
+   "children": [
+    128
+   ]
+  },
+  {
+   "i": 130,
+   "name": "Skrit_R1_01_end_0145",
+   "children": []
+  },
+  {
+   "i": 131,
+   "name": "Skrit_R1_01_0105",
+   "children": [
+    130
+   ]
+  },
+  {
+   "i": 132,
+   "name": "Skrit_R1_00_0104",
+   "children": [
+    131
+   ]
+  },
+  {
+   "i": 133,
+   "name": "Skrit_R2_01_end_0146",
+   "children": []
+  },
+  {
+   "i": 134,
+   "name": "Skrit_R2_01_0107",
+   "children": [
+    133
+   ]
+  },
+  {
+   "i": 135,
+   "name": "Skrit_R2_00_0106",
+   "children": [
+    134
+   ]
+  },
+  {
+   "i": 136,
+   "name": "Skrit_R3_01_end_0147",
+   "children": []
+  },
+  {
+   "i": 137,
+   "name": "Skrit_R3_01_0109",
+   "children": [
+    136
+   ]
+  },
+  {
+   "i": 138,
+   "name": "Skrit_R3_00_0108",
+   "children": [
+    137
+   ]
+  },
+  {
+   "i": 139,
+   "name": "Skrit_R4_01_end_0148",
+   "children": []
+  },
+  {
+   "i": 140,
+   "name": "Skrit_R4_01_0111",
+   "children": [
+    139
+   ]
+  },
+  {
+   "i": 141,
+   "name": "Skrit_R4_00_0110",
+   "children": [
+    140
+   ]
+  },
+  {
+   "i": 142,
+   "name": "Skrit_F_01_end_0149",
+   "children": []
+  },
+  {
+   "i": 143,
+   "name": "Skrit_F_01_0113",
+   "children": [
+    142
+   ]
+  },
+  {
+   "i": 144,
+   "name": "Skrit_F_00_0112",
+   "children": [
+    143
+   ]
+  },
+  {
+   "i": 145,
+   "name": "Skrit_B_01_end_0150",
+   "children": []
+  },
+  {
+   "i": 146,
+   "name": "Skrit_B_01_0115",
+   "children": [
+    145
+   ]
+  },
+  {
+   "i": 147,
+   "name": "Skrit_B_01.001_end_0151",
+   "children": []
+  },
+  {
+   "i": 148,
+   "name": "Skrit_B_01.001_0116",
+   "children": [
+    147
+   ]
+  },
+  {
+   "i": 149,
+   "name": "Skrit_B_00_0114",
+   "children": [
+    146,
+    148
+   ]
+  },
+  {
+   "i": 150,
+   "name": "J_Bip_C_Hips_03",
+   "children": [
+    107,
+    112,
+    117,
+    120,
+    123,
+    126,
+    129,
+    132,
+    135,
+    138,
+    141,
+    144,
+    149
+   ]
+  },
+  {
+   "i": 151,
+   "name": "Root_02",
+   "children": [
+    150
+   ]
+  }
+ ]
+}

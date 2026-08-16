@@ -1,19 +1,24 @@
 /**
  * tests/skeleton-map.test.mjs — reconnaître un squelette importé.
  *
- * CE FICHIER EST ÉPROUVÉ CONTRE DEUX SQUELETTES RÉELS, pas contre des montages. `tests/fixtures/`
- * contient les os et la hiérarchie de deux `.glb` de l'utilisateur — noms et arborescence
- * seulement, 110 Ko au lieu de 22 Mo. Un montage inventé aurait respecté les conventions que je
- * connais ; ces deux-là n'en respectent qu'une seule, et pas la même.
+ * CE FICHIER EST ÉPROUVÉ CONTRE CINQ SQUELETTES RÉELS, pas contre des montages. `tests/fixtures/`
+ * contient les os et la hiérarchie de cinq `.glb` fournis par l'utilisateur — noms et arborescence
+ * seulement, 140 Ko au lieu de 35 Mo. Un montage inventé aurait respecté les conventions que je
+ * connais ; ces cinq-là en respectent quatre différentes.
  *
  *   — squelette-unreal (1126 os) : pelvis, spine_01…05, clavicle_l, upperarm_l, thigh_l, calf_l.
- *     Porte en plus des centaines d'auxiliaires (`FX_`, `_twist_`, `_vol_`) et deux hiérarchies
- *     `ik_*` parallèles au vrai squelette ;
- *   — squelette-maison (109 os) : Hips, Chest, Left_shoulder, Left_arm, Left_elbow, Left_wrist,
- *     Left_leg, Left_knee, Left_ankle. Nomme les os d'après l'ARTICULATION au-dessus d'eux :
- *     « Left_leg » est la CUISSE, « Left_elbow » est l'AVANT-BRAS.
+ *     Porte des centaines d'auxiliaires (`FX_`, `_twist_`, `_vol_`) et deux hiérarchies `ik_*`
+ *     parallèles au vrai squelette ;
+ *   — squelette-maison (109 os) et squelette-vroid-alt (101 os) : Hips, Chest, Left shoulder,
+ *     Left arm, Left elbow, Left wrist, Left leg, Left knee, Left ankle. Nomment les os d'après
+ *     l'ARTICULATION au-dessus d'eux : « Left leg » est la CUISSE, « Left elbow » l'AVANT-BRAS ;
+ *   — squelette-mixamo (65 os) : mixamorig:LeftUpLeg / LeftLeg / LeftForeArm. Converti depuis un
+ *     .fbx via Blender — le seul chemin possible, Mixamo n'exportant pas de glTF. Porte 2 clips ;
+ *   — squelette-vrm (152 os) : J_Bip_L_UpperArm, J_Bip_L_LowerLeg. Norme humanoïde VRM, la seule
+ *     qui nomme par SEGMENT. Porte aussi des chaînes secondaires `J_Sec_` (jupe, poitrine souple)
+ *     longues et partant du bassin, comme des jambes.
  *
- * LES DEUX DÉFAUTS QUE CES FIXTURES ONT TROUVÉS, et qu'aucun montage n'aurait révélés :
+ * LES DÉFAUTS QUE CES FIXTURES ONT TROUVÉS, et qu'aucun montage n'aurait révélés :
  *
  *   1. les chaînes IK du rig Unreal partent de la racine, en parallèle du vrai squelette. Une règle
  *      « le premier os à trois branches est le bassin » désignait la RACINE, puis rangeait les
@@ -22,7 +27,7 @@
  *   2. « le cou est la moins fournie des branches de la poitrine » désignait un accessoire de torse
  *      sur le rig maison. Corrigé par l'ABSENCE DE CÔTÉ : un cou n'a pas de côté, un bras si.
  *
- * CE QU'ON N'AFFIRME PAS : que la reconnaissance marche sur tout squelette humanoïde. Deux fichiers
+ * CE QU'ON N'AFFIRME PAS : que la reconnaissance marche sur tout squelette humanoïde. Cinq fichiers
  * ne font pas une preuve. Ce qui est garanti, c'est qu'elle marche sur ceux-là, et que toute
  * proposition non corroborée par le nom est SIGNALÉE — c'est cette signalisation, pas le taux de
  * réussite, qui rend l'automatisme acceptable.
@@ -41,6 +46,9 @@ const charger = (nom) => {
 };
 const UNREAL = charger('squelette-unreal');
 const MAISON = charger('squelette-maison');
+const MIXAMO = charger('squelette-mixamo');
+const VRM    = charger('squelette-vrm');
+const VROID  = charger('squelette-vroid-alt');
 
 describe('coteDuNom — le nom est fiable pour le CÔTÉ, et pour lui seul', () => {
   test('les trois conventions se reconnaissent', () => {
@@ -194,6 +202,128 @@ describe('resumeCorrespondance — le chiffre affiché à l\'utilisateur', () =>
   });
 });
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Les trois conventions ajoutées, et le mot qui piège
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('inferSkeletonMap — les cinq conventions réunies', () => {
+  const TOUS = [
+    ['Unreal', UNREAL], ['maison', MAISON], ['Mixamo', MIXAMO], ['VRM', VRM], ['VRoid alt.', VROID],
+  ];
+
+  test('les 18 emplacements sont trouvés sur les CINQ', () => {
+    TOUS.forEach(([nom, os]) => {
+      const r = resumeCorrespondance(inferSkeletonMap(os));
+      assert.equal(r.remplis, 18, `${nom} : ${r.remplis}/18`);
+    });
+  });
+
+  test('aucun côté n\'est jamais interverti, sur aucune convention', () => {
+    // La seule faute vraiment coûteuse : elle ne se voit qu'une fois une pose asymétrique appliquée.
+    const gauche = /left|_l$|_l_| l$|:l|l_/i, droite = /right|_r$|_r_| r$|:r|r_/i;
+    TOUS.forEach(([nom, os]) => {
+      const c = inferSkeletonMap(os);
+      ['bras', 'avantbras', 'main', 'cuisse', 'jambe', 'pied'].forEach(base => {
+        assert.match(c[`${base}_g`].name, gauche, `${nom} : ${base}_g`);
+        assert.match(c[`${base}_d`].name, droite, `${nom} : ${base}_d`);
+      });
+    });
+  });
+});
+
+describe('RÉGRESSION — « leg » désigne DEUX os différents selon la convention', () => {
+  // LA TROUVAILLE DE L'ÉCHANTILLON ÉLARGI, et la meilleure justification de ce module.
+  //
+  //   Mixamo   : LeftUpLeg = cuisse, LeftLeg = TIBIA
+  //   VRoid    : Left leg  = CUISSE, Left knee = tibia
+  //
+  // Le même mot, deux os différents, dans deux conventions répandues. Aucune table d'alias ne peut
+  // trancher : ajouter « leg » aux alias du tibia validerait Mixamo ET casserait VRoid.
+
+  test('chez Mixamo, LeftLeg est le TIBIA', () => {
+    const c = inferSkeletonMap(MIXAMO);
+    assert.equal(c.cuisse_g.name, 'mixamorig:LeftUpLeg');
+    assert.equal(c.jambe_g.name, 'mixamorig:LeftLeg');
+  });
+
+  test('chez VRoid, « Left leg » est la CUISSE', () => {
+    const c = inferSkeletonMap(VROID);
+    assert.equal(c.cuisse_g.name, 'Left leg_085');
+    assert.equal(c.jambe_g.name, 'Left knee_090');
+  });
+
+  test('les DEUX sont signalées, parce que le nom ne confirme ni l\'une ni l\'autre', () => {
+    // La ligne signalée n'est pas un défaut à corriger : c'est le mot ambigu qui se déclare. La
+    // faire disparaître en enrichissant les alias reviendrait à valider l'une des deux lectures.
+    assert.equal(inferSkeletonMap(MIXAMO).jambe_g.origine, 'structure');
+    assert.equal(inferSkeletonMap(VROID).cuisse_g.origine, 'structure');
+  });
+});
+
+describe('inferSkeletonMap — le rig VRM, seule convention entièrement corroborée', () => {
+  const carte = inferSkeletonMap(VRM);
+
+  test('zéro ligne à vérifier', () => {
+    // La norme humanoïde VRM nomme ses os d'après le SEGMENT (UpperArm, LowerLeg) : le vocabulaire
+    // et la structure disent la même chose. C'est le seul de mes cinq échantillons dans ce cas.
+    assert.equal(resumeCorrespondance(carte).aVerifier, 0);
+  });
+
+  test('la chaîne complète est reconnue', () => {
+    assert.equal(carte.poitrine.name, 'J_Bip_C_UpperChest_06');
+    assert.equal(carte.clavicule_g.name, 'J_Bip_L_Shoulder_050');
+    assert.equal(carte.cuisse_d.name, 'J_Bip_R_UpperLeg_094');
+  });
+
+  test('les os secondaires (J_Sec_ : jupe, poitrine souple) ne prennent aucune place', () => {
+    // Ces chaînes sont nombreuses, longues, et partent du bassin comme les jambes.
+    SLOTS.forEach(s => assert.doesNotMatch(String(carte[s] && carte[s].name), /J_Sec_/,
+      `un os secondaire a été retenu pour « ${s} »`));
+  });
+});
+
+describe('RÉGRESSION — un rig SANS clavicule (cas prévu par la spécification VRM)', () => {
+  // « Les os non obligatoires peuvent être sautés : le parent du bras peut être la poitrine plutôt
+  // qu'une clavicule » — spécification humanoïde VRM. AUCUN de mes cinq fichiers n'est dans ce cas.
+  // C'est la DOCUMENTATION qui a révélé le trou, pas l'échantillon : descendre en supposant
+  // clavicule → bras → avant-bras → main décalait tout d'un cran, en silence.
+  const os = [
+    { id: 0, name: 'Hips', children: [1, 10, 20] },
+    { id: 1, name: 'Spine', children: [2] },
+    { id: 2, name: 'Chest', children: [3, 30, 40] },
+    { id: 3, name: 'Neck', children: [4] }, { id: 4, name: 'Head', children: [] },
+    { id: 30, name: 'LeftUpperArm', children: [31] }, { id: 31, name: 'LeftLowerArm', children: [32] },
+    { id: 32, name: 'LeftHand', children: [33] }, { id: 33, name: 'f1', children: [] },
+    { id: 40, name: 'RightUpperArm', children: [41] }, { id: 41, name: 'RightLowerArm', children: [42] },
+    { id: 42, name: 'RightHand', children: [43] }, { id: 43, name: 'g1', children: [] },
+    { id: 10, name: 'LeftUpperLeg', children: [11] }, { id: 11, name: 'LeftLowerLeg', children: [12] },
+    { id: 12, name: 'LeftFoot', children: [] },
+    { id: 20, name: 'RightUpperLeg', children: [21] }, { id: 21, name: 'RightLowerLeg', children: [22] },
+    { id: 22, name: 'RightFoot', children: [] },
+  ];
+  const carte = inferSkeletonMap(os);
+
+  test('le bras reste le bras — rien n\'est décalé', () => {
+    assert.equal(carte.bras_g.name, 'LeftUpperArm');
+    assert.equal(carte.avantbras_g.name, 'LeftLowerArm');
+    assert.equal(carte.main_g.name, 'LeftHand');
+  });
+
+  test('l\'emplacement clavicule reste VIDE, ce qui est la vérité', () => {
+    assert.equal(carte.clavicule_g, null);
+    assert.equal(carte.clavicule_d, null);
+    assert.equal(resumeCorrespondance(carte).remplis, 16);
+  });
+
+  test('RÉGRESSION : un cou de deux os est quand même trouvé', () => {
+    // Le filtre de profondeur, calibré pour les rigs bruités, jetait le cou des rigs sobres :
+    // « Neck → Head » ne fait qu'un cran. La recherche du cou s'en passe désormais.
+    assert.equal(carte.cou.name, 'Neck');
+    assert.equal(carte.tete.name, 'Head');
+  });
+});
+
 /**
  * JOURNAL DE MUTATION.
  *
@@ -221,6 +351,28 @@ describe('resumeCorrespondance — le chiffre affiché à l\'utilisateur', () =>
  * est vide de toute façon. La garde reste — elle protège le cas où la boucle sort par épuisement —
  * mais aucun test ne peut la distinguer, et prétendre le contraire serait faux.
  *
- * M7 EST ASSUMÉE : le filtre de profondeur ne se justifie sur aucun des deux squelettes mesurés.
- * Conservé, avec cette mesure écrite dans le module. Un troisième squelette tranchera.
+ * M7 ÉTAIT ASSUMÉE, ELLE NE L'EST PLUS. J'avais conservé le filtre de profondeur sans justification,
+ * en notant qu'un troisième squelette trancherait. Il a tranché : cf. N2 ci-dessous.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * SECONDE CAMPAGNE — après l'élargissement à cinq conventions et la lecture de la spécification.
+ *
+ *   N1 clavicule toujours supposée présente                            ROUGE
+ *   N2 filtre de profondeur ramené à 1                                 ROUGE (6 tests)
+ *   N3 le cou repasse par le filtre de profondeur                      ROUGE
+ *   N4 alias « leg » ajouté au tibia                                   ROUGE
+ *
+ * N2 RÈGLE LA QUESTION LAISSÉE OUVERTE. Le rig Unreal exige ce filtre : ramené à 1, la poitrine est
+ * trouvée quatre vertèbres trop bas et le cou devient `spine_04`. Ce que deux squelettes ne
+ * justifiaient pas, un cinquième l'impose. La note « à supprimer si rien ne le justifie » a fait son
+ * travail : elle a tenu la question ouverte jusqu'à ce qu'une mesure y réponde.
+ *
+ * N3 EST L'AUTRE MOITIÉ DE LA MÊME LEÇON : ce filtre est nécessaire pour trouver une paire de
+ * membres au milieu du bruit, et NUISIBLE pour trouver un cou de deux os. Un seuil unique appliqué
+ * partout se trompait forcément quelque part.
+ *
+ * N4 EST LA PLUS INSTRUCTIVE. Ajouter « leg » aux alias du tibia fait disparaître les deux lignes
+ * signalées de Mixamo — ça a tout l'air d'une amélioration. Un seul test tombe : celui de VRoid, où
+ * « Left leg » est la cuisse. Le mot est irrémédiablement ambigu entre deux conventions répandues,
+ * et aucune table d'alias ne peut le trancher. La ligne signalée n'est pas un défaut à corriger.
  */

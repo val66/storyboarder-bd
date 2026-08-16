@@ -1,0 +1,447 @@
+{
+ "origine": "Mixamo, converti .fbx→.glb via Blender — porte 2 animations",
+ "animations": 2,
+ "os": [
+  {
+   "i": 64,
+   "name": "mixamorig:Hips",
+   "children": [
+    4,
+    9,
+    63
+   ]
+  },
+  {
+   "i": 4,
+   "name": "mixamorig:LeftUpLeg",
+   "children": [
+    3
+   ]
+  },
+  {
+   "i": 3,
+   "name": "mixamorig:LeftLeg",
+   "children": [
+    2
+   ]
+  },
+  {
+   "i": 2,
+   "name": "mixamorig:LeftFoot",
+   "children": [
+    1
+   ]
+  },
+  {
+   "i": 1,
+   "name": "mixamorig:LeftToeBase",
+   "children": [
+    0
+   ]
+  },
+  {
+   "i": 0,
+   "name": "mixamorig:LeftToe_End",
+   "children": []
+  },
+  {
+   "i": 9,
+   "name": "mixamorig:RightUpLeg",
+   "children": [
+    8
+   ]
+  },
+  {
+   "i": 8,
+   "name": "mixamorig:RightLeg",
+   "children": [
+    7
+   ]
+  },
+  {
+   "i": 7,
+   "name": "mixamorig:RightFoot",
+   "children": [
+    6
+   ]
+  },
+  {
+   "i": 6,
+   "name": "mixamorig:RightToeBase",
+   "children": [
+    5
+   ]
+  },
+  {
+   "i": 5,
+   "name": "mixamorig:RightToe_End",
+   "children": []
+  },
+  {
+   "i": 63,
+   "name": "mixamorig:Spine",
+   "children": [
+    62
+   ]
+  },
+  {
+   "i": 62,
+   "name": "mixamorig:Spine1",
+   "children": [
+    61
+   ]
+  },
+  {
+   "i": 61,
+   "name": "mixamorig:Spine2",
+   "children": [
+    33,
+    36,
+    60
+   ]
+  },
+  {
+   "i": 33,
+   "name": "mixamorig:LeftShoulder",
+   "children": [
+    32
+   ]
+  },
+  {
+   "i": 32,
+   "name": "mixamorig:LeftArm",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "mixamorig:LeftForeArm",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 30,
+   "name": "mixamorig:LeftHand",
+   "children": [
+    13,
+    17,
+    21,
+    25,
+    29
+   ]
+  },
+  {
+   "i": 13,
+   "name": "mixamorig:LeftHandIndex1",
+   "children": [
+    12
+   ]
+  },
+  {
+   "i": 12,
+   "name": "mixamorig:LeftHandIndex2",
+   "children": [
+    11
+   ]
+  },
+  {
+   "i": 11,
+   "name": "mixamorig:LeftHandIndex3",
+   "children": [
+    10
+   ]
+  },
+  {
+   "i": 10,
+   "name": "mixamorig:LeftHandIndex4",
+   "children": []
+  },
+  {
+   "i": 17,
+   "name": "mixamorig:LeftHandMiddle1",
+   "children": [
+    16
+   ]
+  },
+  {
+   "i": 16,
+   "name": "mixamorig:LeftHandMiddle2",
+   "children": [
+    15
+   ]
+  },
+  {
+   "i": 15,
+   "name": "mixamorig:LeftHandMiddle3",
+   "children": [
+    14
+   ]
+  },
+  {
+   "i": 14,
+   "name": "mixamorig:LeftHandMiddle4",
+   "children": []
+  },
+  {
+   "i": 21,
+   "name": "mixamorig:LeftHandPinky1",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "mixamorig:LeftHandPinky2",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 19,
+   "name": "mixamorig:LeftHandPinky3",
+   "children": [
+    18
+   ]
+  },
+  {
+   "i": 18,
+   "name": "mixamorig:LeftHandPinky4",
+   "children": []
+  },
+  {
+   "i": 25,
+   "name": "mixamorig:LeftHandRing1",
+   "children": [
+    24
+   ]
+  },
+  {
+   "i": 24,
+   "name": "mixamorig:LeftHandRing2",
+   "children": [
+    23
+   ]
+  },
+  {
+   "i": 23,
+   "name": "mixamorig:LeftHandRing3",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 22,
+   "name": "mixamorig:LeftHandRing4",
+   "children": []
+  },
+  {
+   "i": 29,
+   "name": "mixamorig:LeftHandThumb1",
+   "children": [
+    28
+   ]
+  },
+  {
+   "i": 28,
+   "name": "mixamorig:LeftHandThumb2",
+   "children": [
+    27
+   ]
+  },
+  {
+   "i": 27,
+   "name": "mixamorig:LeftHandThumb3",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "mixamorig:LeftHandThumb4",
+   "children": []
+  },
+  {
+   "i": 36,
+   "name": "mixamorig:Neck",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "mixamorig:Head",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "mixamorig:HeadTop_End",
+   "children": []
+  },
+  {
+   "i": 60,
+   "name": "mixamorig:RightShoulder",
+   "children": [
+    59
+   ]
+  },
+  {
+   "i": 59,
+   "name": "mixamorig:RightArm",
+   "children": [
+    58
+   ]
+  },
+  {
+   "i": 58,
+   "name": "mixamorig:RightForeArm",
+   "children": [
+    57
+   ]
+  },
+  {
+   "i": 57,
+   "name": "mixamorig:RightHand",
+   "children": [
+    40,
+    44,
+    48,
+    52,
+    56
+   ]
+  },
+  {
+   "i": 40,
+   "name": "mixamorig:RightHandIndex1",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 39,
+   "name": "mixamorig:RightHandIndex2",
+   "children": [
+    38
+   ]
+  },
+  {
+   "i": 38,
+   "name": "mixamorig:RightHandIndex3",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "mixamorig:RightHandIndex4",
+   "children": []
+  },
+  {
+   "i": 44,
+   "name": "mixamorig:RightHandMiddle1",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 43,
+   "name": "mixamorig:RightHandMiddle2",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "mixamorig:RightHandMiddle3",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "mixamorig:RightHandMiddle4",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "mixamorig:RightHandPinky1",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "mixamorig:RightHandPinky2",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "mixamorig:RightHandPinky3",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "mixamorig:RightHandPinky4",
+   "children": []
+  },
+  {
+   "i": 52,
+   "name": "mixamorig:RightHandRing1",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "mixamorig:RightHandRing2",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "mixamorig:RightHandRing3",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "mixamorig:RightHandRing4",
+   "children": []
+  },
+  {
+   "i": 56,
+   "name": "mixamorig:RightHandThumb1",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 55,
+   "name": "mixamorig:RightHandThumb2",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "mixamorig:RightHandThumb3",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "mixamorig:RightHandThumb4",
+   "children": []
+  }
+ ]
+}
