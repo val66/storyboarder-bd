@@ -206,3 +206,42 @@ describe('Fix 74 — le curseur d\'articulation garde une largeur utilisable', (
       `curseur réduit à ${reste}px — élargir le panneau, raccourcir le libellé, ou revoir ce seuil`);
   });
 });
+
+describe('Ascenseurs — un seul style, pour toute l\'application', () => {
+  const CSS_ASC = css;
+
+  test('RÉGRESSION : le style est GLOBAL, pas recopié par conteneur', () => {
+    // Signalé à l'usage : le menu de gauche et les modales héritaient de l'ascenseur natif, tandis
+    // que l'encart de droite avait le bon. Le style y était déjà recopié à DEUX endroits — une
+    // troisième copie n'aurait fait que repousser le problème d'un cran.
+    //
+    // Une règle globale plutôt qu'une classe à poser : une classe est une énumération tenue à la
+    // main, et on sait ce que ça donne ici — le prochain conteneur défilant l'oublierait.
+    assert.match(CSS_ASC, /\*::-webkit-scrollbar\s*\{/, 'aucune règle globale d\'ascenseur');
+    assert.match(CSS_ASC, /\*\{\s*scrollbar-width:thin/, 'scrollbar-width n\'est pas global');
+  });
+
+  test('RÉGRESSION : aucun conteneur ne redéclare son propre ascenseur', () => {
+    // Deux copies existaient (.right-panel-scroll, .planche-case-desc). Les laisser en place
+    // aurait fait diverger le style global et ses exceptions, sans que rien ne le signale.
+    const cibles = [...CSS_ASC.matchAll(/([.#][\w-]+[^\n{]*)::-webkit-scrollbar/g)].map(m => m[1].trim());
+    assert.deepEqual(cibles, [], `ascenseur redéclaré pour : ${cibles.join(', ')}`);
+  });
+
+  test('RÉGRESSION : la couleur du curseur a son propre jeton, défini dans les DEUX thèmes', () => {
+    // Sur fond sombre, la couleur d'une bordure (`--line`) est trop discrète pour un objet qu'on
+    // doit pouvoir attraper. Un jeton dédié permet de régler les deux thèmes séparément sans
+    // toucher aux bordures — et surtout, de ne pas les oublier l'un ou l'autre.
+    assert.match(CSS_ASC, /--scroll-thumb\s*:/, 'jeton absent');
+    const clair = CSS_ASC.slice(CSS_ASC.indexOf('body.theme-light{'));
+    assert.match(clair.slice(0, 500), /--scroll-thumb\s*:/, 'le thème clair ne le redéfinit pas');
+    assert.match(clair.slice(0, 500), /--scroll-thumb-hover\s*:/, 'survol non défini en thème clair');
+  });
+
+  test('le curseur n\'utilise aucune couleur en dur', () => {
+    // Une valeur littérale ne basculerait pas avec le thème — le défaut que ce jeton existe pour
+    // empêcher.
+    const bloc = CSS_ASC.slice(CSS_ASC.indexOf('*::-webkit-scrollbar-thumb{'));
+    assert.doesNotMatch(bloc.slice(0, 300), /background:\s*#/, 'couleur en dur dans le curseur');
+  });
+});

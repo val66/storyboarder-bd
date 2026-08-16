@@ -13,6 +13,11 @@
   --accent-soft:rgba(255,122,69,.14);
   --line:#34353A;
   --white:#26272B;
+  /* Ascenseurs. Un jeton dédié plutôt que `--line` : sur fond sombre, la couleur d'une bordure est
+     trop discrète pour un objet qu'on doit pouvoir attraper. Les deux thèmes se règlent donc
+     séparément, sans toucher aux bordures. */
+  --scroll-thumb:#4A4B52;
+  --scroll-thumb-hover:#63646D;
 }
 /* Thème "Clair" (cf. modale Configuration → Thème de l'interface, sur demande utilisateur) : redéfinit
    les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
@@ -26,8 +31,29 @@ body.theme-light{
   --accent-soft:rgba(255,122,69,.16);
   --line:#D9CDB3;
   --white:#FFFFFF;
+  --scroll-thumb:#C4B695;
+  --scroll-thumb-hover:#A89870;
 }
 *{box-sizing:border-box;}
+
+/* ── Ascenseurs, PARTOUT ──────────────────────────────────────────────────────────────────────
+   Le style de l'encart de droite, généralisé. Il était jusqu'ici recopié à deux endroits
+   (.right-panel-scroll, .planche-case-desc) et absent partout ailleurs : le menu de gauche et les
+   modales héritaient de l'ascenseur natif, franchement étranger au reste. Une troisième copie
+   n'aurait fait que repousser le problème d'un cran.
+   Une règle globale plutôt qu'une classe à poser : une classe est une énumération tenue à la main,
+   et on sait ce que ça donne ici — le prochain conteneur défilant l'aurait oubliée. */
+*{ scrollbar-width:thin; scrollbar-color:var(--scroll-thumb) transparent; }
+*::-webkit-scrollbar{ width:8px; height:8px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+/* La bordure transparente + `background-clip` donnent l'épaisseur visible de 4px du curseur tout en
+   gardant une zone de préhension de 8px : fin à l'œil, attrapable à la souris. */
+*::-webkit-scrollbar-thumb{
+  background:var(--scroll-thumb); border-radius:99px;
+  border:2px solid transparent; background-clip:content-box;
+}
+*::-webkit-scrollbar-thumb:hover{ background:var(--scroll-thumb-hover); background-clip:content-box; }
+*::-webkit-scrollbar-corner{ background:transparent; }
 body{
   margin:0; font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink);
   height:100vh; overflow:hidden;
@@ -221,13 +247,9 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
    du pied de page fixe ci-dessous (cf. #lastSavedIndicator) qui doit rester visible en bas, sur demande
    utilisateur ("En bas dans le menu de droite je veut voir afficher depuis combien de temps date la
    dernière sauvegarde"). */
-.right-panel-scroll{
-  flex:1 1 auto; overflow-y:auto; min-height:0; padding:18px 16px;
-  scrollbar-width:thin; scrollbar-color:var(--line) transparent;
-}
-.right-panel-scroll::-webkit-scrollbar{ width:3px; }
-.right-panel-scroll::-webkit-scrollbar-track{ background:transparent; }
-.right-panel-scroll::-webkit-scrollbar-thumb{ background:var(--line); border-radius:99px; }
+/* L'ascenseur vient de la règle globale (cf. haut du fichier) : c'est ce panneau qui servait de
+   référence, il n'a donc plus rien de particulier à déclarer. */
+.right-panel-scroll{ flex:1 1 auto; overflow-y:auto; min-height:0; padding:18px 16px; }
 .side-section{
   background:var(--paper); border:1px solid var(--line); border-radius:10px;
   padding:14px 14px; margin-bottom:14px;
@@ -295,11 +317,8 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .planche-case-row .planche-case-desc{
   flex:1; min-width:0; color:var(--ink-soft); font-size:11px;
   white-space:pre-wrap; word-break:break-word; line-height:1.5;
-  max-height:96px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+  max-height:96px; overflow-y:auto;
 }
-.planche-case-row .planche-case-desc::-webkit-scrollbar{ width:3px; }
-.planche-case-row .planche-case-desc::-webkit-scrollbar-track{ background:transparent; }
-.planche-case-row .planche-case-desc::-webkit-scrollbar-thumb{ background:var(--line); border-radius:99px; }
 .planche-case-row.drag-over-top{ box-shadow: 0 -3px 0 0 var(--accent); }
 .planche-case-row.drag-over-bottom{ box-shadow: 0 3px 0 0 var(--accent); }
 .side-persos{ display:flex; flex-direction:column; gap:6px; }

@@ -35,8 +35,8 @@ const OS = [
 
 describe('normaliserFichier — relire sans jamais faire échouer une ouverture', () => {
   test('un contenu valide traverse intact', () => {
-    const r = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' } } } });
-    assert.deepEqual(r.entrees['a.glb'], { os: { bassin: 'Hips' } });
+    const r = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } });
+    assert.deepEqual(r.entrees['a.glb'], { os: { bassin: 'Hips' }, valide: true });
   });
 
   test('n\'importe quelle absurdité rend une forme vide, sans lever', () => {
@@ -62,11 +62,17 @@ describe('normaliserFichier — relire sans jamais faire échouer une ouverture'
     assert.deepEqual(Object.keys(r.entrees['a.glb'].os).sort(), ['bassin', 'tete']);
   });
 
-  test('une entrée sans aucun os n\'est pas conservée', () => {
-    // Une coquille vide ferait croire à une correspondance enregistrée là où il n'y a rien, et
-    // empêcherait de reproposer la reconnaissance automatique.
-    const r = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: {} }, 'b.glb': { os: { tete: 'H' } } } });
-    assert.deepEqual(Object.keys(r.entrees), ['b.glb']);
+  test('RÉGRESSION : une entrée VALIDÉE sans aucun os est conservée', () => {
+    // Signalé à l'usage. J'écrivais qu'une entrée sans os « n'apprend rien » — c'était faux : elle
+    // apprend que l'utilisateur a VU cet écran et l'a tranché. Sans elle, valider sans rien
+    // corriger — le cas le plus fréquent — n'écrivait rien, et la modale se rouvrait à chaque
+    // import. Ce qui revient exactement à ne pas avoir enregistré.
+    const r = normaliserFichier({ version: 1, entrees: {
+      'valide.glb': { os: {}, valide: true },
+      'rien.glb': { os: {} },
+      'corrige.glb': { os: { tete: 'H' } },
+    } });
+    assert.deepEqual(Object.keys(r.entrees).sort(), ['corrige.glb', 'valide.glb']);
   });
 
   test('un nom d\'os qui n\'est pas une chaîne est écarté', () => {
@@ -78,12 +84,14 @@ describe('normaliserFichier — relire sans jamais faire échouer une ouverture'
 describe('entreePourFichier — n\'enregistrer que ce que l\'utilisateur a décidé', () => {
   test('RÉGRESSION : les propositions automatiques ne sont PAS enregistrées', () => {
     // Les figer condamnerait toute amélioration future de la reconnaissance : elle ne s'appliquerait
-    // plus jamais, puisqu'elle trouverait une correspondance « enregistrée » partout.
+    // plus jamais, puisqu'elle trouverait une correspondance « enregistrée » partout. La validation
+    // est une information SÉPARÉE, qui n'entraîne aucune recopie des propositions.
     const carte = {
       bassin: { bone: 5, name: 'Hips', origine: 'nom' },
       tete: { bone: 6, name: 'Head', origine: 'structure' },
     };
     assert.equal(entreePourFichier(carte), null);
+    assert.deepEqual(entreePourFichier(carte, { valide: true }), { os: {}, valide: true });
   });
 
   test('seules les entrées « manuel » sont retenues', () => {
@@ -91,7 +99,7 @@ describe('entreePourFichier — n\'enregistrer que ce que l\'utilisateur a déci
       bassin: { bone: 5, name: 'Hips', origine: 'nom' },
       cuisse_g: { bone: 3, name: 'mixamorig:LeftUpLeg', origine: 'manuel' },
     };
-    assert.deepEqual(entreePourFichier(carte), { os: { cuisse_g: 'mixamorig:LeftUpLeg' } });
+    assert.deepEqual(entreePourFichier(carte), { os: { cuisse_g: 'mixamorig:LeftUpLeg' }, valide: false });
   });
 
   test('RÉGRESSION : c\'est le NOM de l\'os qui est enregistré, jamais son indice', () => {
@@ -186,16 +194,27 @@ describe('lireCorrespondances / enregistrerCorrespondance', () => {
     assert.deepEqual(Object.keys(ecrit[0].entrees).sort(), ['a.glb', 'autre.glb']);
   });
 
-  test('enregistrer une carte sans décision humaine EFFACE l\'entrée', async () => {
-    // L'utilisateur a remis tous les emplacements sur la proposition automatique : il n'y a plus
-    // rien à figer. Garder une coquille empêcherait la reconnaissance de reprendre la main.
-    pontRepond = { ok: true, data: { version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' } } } } };
+  test('RÉGRESSION : valider sans rien corriger écrit quand même une entrée', async () => {
+    // LE défaut signalé à l'usage. Sans cela, la modale se rouvrait à chaque import d'un fichier
+    // dont la reconnaissance était juste — c'est-à-dire la plupart.
+    pontRepond = { ok: true, data: { version: 1, entrees: {} } };
     await enregistrerCorrespondance('a.glb', { bassin: { bone: 5, name: 'Hips', origine: 'nom' } });
+    assert.deepEqual(ecrit[0].entrees['a.glb'], { os: {}, valide: true });
+  });
+
+  test('« Tout remettre en automatique » efface l\'entrée, validation comprise', async () => {
+    // L'utilisateur renonce à ses corrections ET à sa validation : la modale doit pouvoir se
+    // reproposer. C'est la seule façon de revenir en arrière complètement.
+    pontRepond = { ok: true, data: { version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } } };
+    await enregistrerCorrespondance('a.glb', {}, { valide: false });
     assert.deepEqual(ecrit[0].entrees, {});
   });
 
-  test('oublierCorrespondance retire l\'entrée du fichier', async () => {
-    pontRepond = { ok: true, data: { version: 1, entrees: { 'a.glb': { os: { bassin: 'H' } }, 'b.glb': { os: { tete: 'T' } } } } };
+  test('RÉGRESSION : oublierCorrespondance n\'écrit pas une coquille VALIDÉE', async () => {
+    // Un `.glb` supprimé du disque. Sans `valide: false`, on réécrirait une entrée validée pour un
+    // fichier qui n'existe plus — et un homonyme réimporté plus tard n'ouvrirait jamais l'écran.
+    pontRepond = { ok: true, data: { version: 1, entrees: {
+      'a.glb': { os: { bassin: 'H' }, valide: true }, 'b.glb': { os: { tete: 'T' }, valide: true } } } };
     await oublierCorrespondance('a.glb');
     assert.deepEqual(Object.keys(ecrit[0].entrees), ['b.glb']);
   });
@@ -304,8 +323,9 @@ describe('doitOuvrirCorrespondance — n\'ouvrir que quand il y a quelque chose 
     assert.equal(doitOuvrirCorrespondance({}), false);
   });
 
-  test('RÉGRESSION : une correspondance déjà enregistrée n\'est pas redemandée', () => {
-    // L'utilisateur a décidé. La redemander à chaque réimport reviendrait à ne pas avoir enregistré.
+  test('RÉGRESSION : une correspondance déjà VALIDÉE n\'est pas redemandée', () => {
+    // Même s'il reste des lignes « structure » : l'utilisateur les a vues, signalées, et a tranché.
+    // Les lui remontrer à chaque import reviendrait à ne pas avoir enregistré (signalé à l'usage).
     assert.equal(doitOuvrirCorrespondance({ osDuFichier: os, dejaEnregistree: true }), false);
   });
 

@@ -4054,11 +4054,15 @@ document.getElementById('skeletonMapCancel').onclick = () => {
 skeletonMapModal.addEventListener('click', (e) => {
   if (e.target === skeletonMapModal) { skeletonMapModal.classList.add('hidden'); _skelEcran = null; }
 });
-document.getElementById('skeletonMapReset').onclick = () => {
-  // Efface les décisions et repropose la reconnaissance. Sans ce bouton, une correction faite par
-  // erreur serait définitive — et comme le fichier est partagé par tous les Projets, elle suivrait
-  // l'utilisateur partout.
-  if (_skelEcran) openSkeletonMapModal(_skelEcran.fichier, { ignorerEnregistree: true });
+document.getElementById('skeletonMapReset').onclick = async () => {
+  // Efface les décisions ET la validation, puis repropose la reconnaissance. Sans ce bouton, une
+  // correction faite par erreur serait définitive — et comme le fichier est partagé par tous les
+  // Projets, elle suivrait l'utilisateur partout. `oublierCorrespondance` retire aussi la
+  // validation : c'est ce qui permet à l'écran de se reproposer tout seul au prochain import.
+  if (!_skelEcran) return;
+  const fichier = _skelEcran.fichier;
+  await oublierCorrespondance(fichier);
+  openSkeletonMapModal(fichier, { ignorerEnregistree: true });
 };
 document.getElementById('skeletonMapSave').onclick = async () => {
   if (!_skelEcran) return;

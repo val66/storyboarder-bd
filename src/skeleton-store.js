@@ -53,9 +53,10 @@ export function normaliserFichier(brut){
       const nom = (entree.os || {})[slot];
       if (typeof nom === 'string' && nom) os[slot] = nom;
     });
-    // Une entrée sans aucun os n'apprend rien : la garder ferait croire à une correspondance
-    // enregistrée là où il n'y a rien, et empêcherait de reproposer la reconnaissance.
-    if (Object.keys(os).length) entrees[fichier] = { os };
+    // `valide` dit que l'utilisateur A VU cet écran et l'a validé — indépendamment de savoir s'il a
+    // corrigé quelque chose. Une entrée peut donc être vide d'os et malgré tout signifiante.
+    const valide = entree.valide === true;
+    if (Object.keys(os).length || valide) entrees[fichier] = { os, valide };
   });
   return { version: SKELETON_MAP_FORMAT, entrees };
 }
@@ -63,18 +64,28 @@ export function normaliserFichier(brut){
 /**
  * Ce qu'on écrit sur le disque pour un fichier donné. Fonction PURE.
  *
- * N'enregistre QUE les emplacements que l'utilisateur a effectivement posés ou confirmés. Recopier
- * aussi les propositions automatiques figerait la reconnaissance d'aujourd'hui : une version
- * ultérieure qui saurait mieux faire ne pourrait plus s'appliquer, puisqu'elle trouverait une
- * correspondance « enregistrée » partout. On ne fige que les décisions humaines.
+ * DEUX INFORMATIONS DISTINCTES, et les avoir confondues était un défaut signalé à l'usage.
+ *
+ *   — `os` : les emplacements que l'utilisateur a effectivement posés. On ne recopie PAS les
+ *     propositions automatiques : les figer condamnerait toute amélioration future de la
+ *     reconnaissance, qui trouverait une correspondance « enregistrée » partout ;
+ *   — `valide` : l'utilisateur a VU cet écran et l'a validé. C'est ce qui empêche de le rouvrir
+ *     tout seul au prochain import.
+ *
+ * Ma première version ne gardait que `os`, et n'écrivait donc RIEN quand l'utilisateur validait
+ * sans rien corriger — le cas le plus fréquent, puisque la reconnaissance est souvent juste. La
+ * modale se rouvrait alors à chaque import, ce qui revenait à n'avoir jamais enregistré. Le
+ * commentaire que j'avais écrit à l'époque — « une entrée sans os n'apprend rien » — était faux :
+ * elle apprend que l'utilisateur a tranché.
  */
-export function entreePourFichier(carte){
+export function entreePourFichier(carte, { valide = false } = {}){
   const os = {};
   SLOTS.forEach(slot => {
     const v = (carte || {})[slot];
     if (v && v.bone !== undefined && v.origine === 'manuel' && v.name) os[slot] = v.name;
   });
-  return Object.keys(os).length ? { os } : null;
+  if (!Object.keys(os).length && !valide) return null;
+  return { os, valide };
 }
 
 /**
@@ -126,14 +137,14 @@ export async function lireCorrespondances(){
  * le moment où l'on a chargé les correspondances et celui où l'on enregistre, une autre fenêtre de
  * l'application a pu en ajouter une. Réécrire ce qu'on avait en mémoire l'effacerait.
  */
-export async function enregistrerCorrespondance(fichier, carte){
+export async function enregistrerCorrespondance(fichier, carte, { valide = true } = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
-  const entree = entreePourFichier(carte);
+  const entree = entreePourFichier(carte, { valide });
   if (entree) tout.entrees[fichier] = entree;
-  else delete tout.entrees[fichier];   // plus aucune décision humaine : on ne garde pas une coquille
+  else delete tout.entrees[fichier];   // ni décision, ni validation : rien à garder
   try {
     const r = await p.writeSkeletonMaps(tout);
     return (r && r.ok) ? { ok: true } : { ok: false, error: (r && r.error) || 'écriture refusée' };
@@ -149,8 +160,9 @@ export async function enregistrerCorrespondance(fichier, carte){
  *
  *   — pas d'os : une chaise, un bâtiment, un décor. C'est probablement la majorité des imports, et
  *     l'écran n'aurait littéralement aucune ligne à afficher ;
- *   — une correspondance déjà enregistrée : l'utilisateur a décidé. La redemander à chaque réimport
- *     reviendrait à ne pas avoir enregistré ;
+ *   — une correspondance déjà VALIDÉE : l'utilisateur a vu cet écran et l'a enregistré. Peu importe
+ *     qu'il reste des lignes « structure » — il les a vues, signalées, et a tranché. Les lui
+ *     remontrer à chaque import reviendrait à ne pas avoir enregistré (signalé à l'usage) ;
  *   — un squelette, jamais vu : on ouvre. MÊME si la reconnaissance est complète et sans
  *     avertissement — choix de l'utilisateur, contre mon avis initial. Sa raison est meilleure que
  *     la mienne : c'est le seul moment où l'on pense à ce modèle, et un écran qui ne s'ouvre jamais
@@ -162,7 +174,12 @@ export function doitOuvrirCorrespondance({ osDuFichier, dejaEnregistree } = {}){
   return true;
 }
 
-/** Oublie la correspondance d'un fichier — appelé quand le `.glb` est supprimé du disque. */
+/**
+ * Oublie la correspondance d'un fichier — appelé quand le `.glb` est supprimé du disque.
+ *
+ * `valide: false` est essentiel : sans lui, on réécrirait une coquille validée pour un fichier qui
+ * n'existe plus, et un homonyme réimporté plus tard n'ouvrirait jamais l'écran.
+ */
 export async function oublierCorrespondance(fichier){
-  return enregistrerCorrespondance(fichier, {});
+  return enregistrerCorrespondance(fichier, {}, { valide: false });
 }
