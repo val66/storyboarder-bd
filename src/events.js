@@ -418,6 +418,7 @@ function setupDropdown(triggerId, panelId){
 setupDropdown('treeTrigger', 'treePanel');
 setupDropdown('sceneTrigger', 'scenePanel');
 setupDropdown('personaTrigger', 'personaPanel');
+setupDropdown('modelTrigger', 'modelPanel');
 
 // Fix 64 — entrée AUTONOME de l'éditeur : aucune cible, Personnage par défaut. Sert à composer des
 // poses pour la bibliothèque sans passer par un Personnage d'une Case. `fromModal` à false : il n'y

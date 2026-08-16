@@ -116,3 +116,35 @@ describe('index.html ↔ src/ — les liaisons vivantes ne sont pas cassées', (
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Les menus déroulants du panneau de gauche
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Menus déroulants — un panneau déclaré est un panneau ouvrable', () => {
+  test('RÉGRESSION : chaque .dropdown-panel a son setupDropdown', () => {
+    // Trouvé en vrai, à l'usage, sur la section Modèles : le panneau existait dans index.html et
+    // n'avait aucun gestionnaire — le titre ne réagissait pas au clic, et la section restait
+    // fermée. Rien ne levait. Les tests d'ids ne pouvaient pas le voir : les ids ÉTAIENT là.
+    //
+    // `setupDropdown` est appelé une fois par menu, à la main. C'est exactement le genre
+    // d'énumération que l'on complète à moitié — la deuxième classe de bug récurrente du dépôt.
+    const panneaux = [...html.matchAll(/class="dropdown-panel[^"]*"\s+id="([^"]+)"/g)].map(m => m[1]);
+    assert.ok(panneaux.length >= 3, `trop peu de panneaux trouvés : ${panneaux.length}`);
+    const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+    const sansCablage = panneaux.filter(id => !new RegExp(`setupDropdown\\([^)]*'${id}'`).test(EVENTS_TXT));
+    assert.deepEqual(sansCablage, [],
+      `panneau(x) sans setupDropdown : ${sansCablage.join(', ')} — le titre ne réagira pas au clic`);
+  });
+
+  test('… et chaque setupDropdown vise un panneau et un titre qui existent', () => {
+    // Le sens inverse : un câblage vers un id disparu échouerait au chargement du module, donc
+    // interromprait events.js en entier — la panne la plus brutale de ce dépôt (cf. § 3 de
+    // docs/persisted-data.md).
+    const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+    [...EVENTS_TXT.matchAll(/setupDropdown\('([^']+)',\s*'([^']+)'\)/g)].forEach(([, trigger, panel]) => {
+      assert.match(html, new RegExp(`id="${trigger}"`), `titre introuvable : ${trigger}`);
+      assert.match(html, new RegExp(`id="${panel}"`), `panneau introuvable : ${panel}`);
+    });
+  });
+});
