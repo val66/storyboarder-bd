@@ -3431,7 +3431,24 @@ const tracerSubmenu    = document.getElementById('tracerSubmenu');
 const zoneSubmenu      = document.getElementById('zoneSubmenu');
 const cheminsTracéSubmenu = document.getElementById('cheminsTracéSubmenu');
 const mursTracéSubmenu    = document.getElementById('mursTracéSubmenu');
-const allContextMenus = [panelContextMenu, addSubmenu, loadSceneSubmenu, itemContextMenu, vehicleSubmenu, furnitureSubmenu, wallOpeningSubmenu, mursSubmenu, plantesSubmenu, buildingsSubmenu, animauxSubmenu, jardinSubmenu, villeSubmenu, cimetiereSubmenu, egliseSubmenu, volumeContextMenu, pageContextMenu, sceneContextMenu, dblclickChoiceMenu, exportPageSubmenu, tracerSubmenu, zoneSubmenu, cheminsTracéSubmenu, mursTracéSubmenu];
+/**
+ * Tous les menus flottants, DÉDUITS DU DOM — surtout pas énumérés à la main.
+ *
+ * Cette liste sert à deux choses qui doivent rester d'accord : les fermer tous (hideContextMenu) et
+ * reconnaître un clic tombé DANS l'un d'eux (pour ne pas le fermer aussitôt ouvert). Un menu absent
+ * de la liste s'ouvre normalement mais ne se referme jamais au clic extérieur — il reste posé à
+ * l'écran, par-dessus tout le reste.
+ *
+ * Elle a été énumérée à la main pendant vingt-six menus, et il en manquait deux : `modelContextMenu`
+ * (signalé à l'usage : « supprimer du disque » restait affiché) et `importSubmenu` (masqué à la main
+ * en deux endroits, ce qui était l'aveu du trou plutôt que sa réparation). Le sélecteur les prend
+ * désormais tous, y compris ceux qui n'existent pas encore.
+ *
+ * Les modules sont différés (`<script type="module">`) : le DOM est complet quand cette ligne
+ * s'exécute. Un test épingle l'accord entre cette classe et celle portée par les menus dans
+ * index.html — s'ils divergeaient, la liste serait VIDE et plus aucun menu ne se fermerait.
+ */
+const allContextMenus = [...document.querySelectorAll('.context-menu')];
 // [STATE→S] let S.ctxVolumeTarget = null, S.ctxPageTarget = null, S.ctxSceneTarget = null;
 // [STATE→S] let S.pendingCreatePos = null;
 

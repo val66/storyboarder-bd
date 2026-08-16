@@ -148,3 +148,47 @@ describe('Menus déroulants — un panneau déclaré est un panneau ouvrable', (
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Les menus flottants (clic droit)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Menus contextuels — un menu qui s\'ouvre doit pouvoir se refermer', () => {
+  const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+
+  test('RÉGRESSION : la liste des menus est DÉDUITE du DOM, pas énumérée à la main', () => {
+    // Trouvé en vrai, à l'usage : « supprimer du disque » restait affiché après un clic ailleurs.
+    // `allContextMenus` sert à deux choses qui doivent rester d'accord — fermer tous les menus, et
+    // reconnaître un clic tombé DANS l'un d'eux. Énumérée à la main sur vingt-six menus, il en
+    // manquait deux. Troisième occurrence de cette famille (le manuel désaligné, les ids DOM
+    // oubliés, les panneaux sans setupDropdown) : la seule réparation durable est de supprimer
+    // l'énumération, pas de la compléter une fois de plus.
+    const m = EVENTS_TXT.match(/const allContextMenus = ([^;]+);/);
+    assert.ok(m, 'allContextMenus a disparu');
+    assert.match(m[1], /document\.querySelectorAll\(/,
+      'allContextMenus est redevenue une liste écrite à la main : elle sera incomplète');
+  });
+
+  test('RÉGRESSION : le sélecteur vise la classe que portent RÉELLEMENT les menus', () => {
+    // Le revers de la déduction, et il est pire que le mal : si la classe change dans index.html
+    // sans changer ici, la liste devient VIDE en silence et plus AUCUN menu ne se ferme.
+    const m = EVENTS_TXT.match(/const allContextMenus = \[\.\.\.document\.querySelectorAll\('\.([^']+)'\)\]/);
+    assert.ok(m, 'le sélecteur des menus flottants n\'est plus lisible');
+    const classe = m[1];
+    const menus = [...html.matchAll(new RegExp(`class="[^"]*\\b${classe}\\b[^"]*"\\s+id="([^"]+)"`, 'g'))];
+    assert.ok(menus.length >= 20,
+      `seulement ${menus.length} élément(s) portent .${classe} dans index.html — le sélecteur ne vise rien`);
+  });
+
+  test('RÉGRESSION : les deux menus qui manquaient sont bien des .context-menu', () => {
+    // Nommément, parce que ce sont eux qui ont été signalés : le menu de la bibliothèque de
+    // modèles, et le sous-menu d'import (masqué à la main en deux endroits, ce qui était l'aveu
+    // du trou plutôt que sa réparation).
+    ['modelContextMenu', 'importSubmenu'].forEach(id => {
+      const m = html.match(new RegExp(`class="([^"]*)"\\s+id="${id}"`));
+      assert.ok(m, `menu introuvable dans index.html : ${id}`);
+      assert.match(m[1], /\bcontext-menu\b/,
+        `${id} ne porte pas .context-menu : il ne se fermera pas au clic extérieur`);
+    });
+  });
+});
