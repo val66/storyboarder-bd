@@ -112,6 +112,10 @@ export default [
         // `structuredClone` l'est depuis la v17 : les tests de format s'en servent pour repartir
         // d'un projet de référence intact à chaque cas.
         URL: 'readonly', TextEncoder: 'readonly', structuredClone: 'readonly',
+        // `Buffer` : globale de Node, utilisée là où l'on manipule des octets bruts — la fabrique
+        // du .glb d'essai (tools/make-test-glb.mjs) et le test qui le décode. Volontairement PAS
+        // ajoutée aux blocs src/ : un module du renderer qui s'en servirait ne fonctionnerait pas.
+        Buffer: 'readonly',
         // Le dom-stub installe un faux DOM sur globalThis avant que les tests n'importent les
         // modules : `window`, `document` et THREE sont donc légitimes dans un fichier de test.
         window: 'readonly', document: 'readonly', THREE: 'readonly',
