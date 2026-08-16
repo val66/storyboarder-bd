@@ -13,6 +13,76 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.3.0
+
+**Vos propres modèles 3D.** Cette version ouvre l'application aux fichiers venus d'ailleurs :
+Blender, Maya, ou n'importe quel logiciel sachant exporter du glTF. Jusqu'ici, le décor se composait
+uniquement à partir des Éléments intégrés.
+
+Le choix du format n'est pas anodin. **glTF est le seul à garantir l'unité — le mètre.** Un modèle
+importé arrive donc à sa taille réelle, à côté d'un Personnage de 1,75 m, sans réglage d'échelle à
+refaire à chaque fois. Les formats propriétaires (FBX et consorts) laissent chaque logiciel décider
+de son unité, et cette confusion se paie à l'usage.
+
+### Ce qui change pour vous
+
+**Importer.** Trois portes d'entrée, et c'est le geste qui dit l'intention plutôt qu'une question
+posée après coup :
+
+- clic droit sur une Case → **Importer** → *Modèle* pose un objet unique ; *Scène* crée un décor
+  réutilisable à partir du fichier **et** le charge dans la Case ;
+- clic droit dans une Scène → *Importer un Modèle* — une Scène ne s'imbrique pas dans une Scène ;
+- menu de gauche → *Importer un décor…*, qui crée la Scène sans la charger nulle part.
+
+**La section Modèles**, dans le menu de gauche. Elle montre le disque, pas le Projet — les Scènes et
+les Éléments ont déjà leurs listes. Les fichiers y sont groupés selon l'usage qu'en fait le Projet
+ouvert : par des Scènes, dans des Cases, ou **non utilisés**. Ce dernier groupe répond à la seule
+question qu'on se pose en venant ici : puis-je supprimer sans rien casser ? Les autres Projets, eux,
+ne peuvent pas être vérifiés d'ici, et l'application le dit plutôt que de laisser croire à une
+garantie qu'elle n'a pas.
+
+**Retrouver un modèle.** Un clic gauche mène là où il sert : directement s'il n'y a qu'un endroit,
+sinon une fenêtre les liste par Scène et par Case, avec l'Élément à sélectionner. Un modèle utilisé
+nulle part est inerte — et cela se voit avant le clic, pas après.
+
+**Quand un fichier disparaît.** Déplacé, renommé ou supprimé hors de l'application, il n'est plus
+lisible. Les Éléments qui s'en servaient deviennent des **boîtes de remplacement** et la
+bibliothèque le signale « fichier introuvable ». Le Projet s'ouvre entièrement : on ne s'arrête pas
+au premier trou.
+
+**Deux garde-fous nés de l'usage.** Un modèle dont la hauteur mesurée dépasse 10 m relève presque
+toujours d'un souci d'échelle à l'export, pas d'un objet volontairement gigantesque : l'application
+propose de le redimensionner tout de suite. Et le nom de fichier **ne se renomme pas** — il
+identifie le modèle dans tous les Projets, y compris ceux qui ne sont pas ouverts. Ce qui se
+renomme, c'est l'Élément.
+
+**Trois défauts trouvés en essayant de vrais fichiers**, tous invisibles sur un objet simple : la
+boîte de sélection d'un personnage articulé ignorait sa pose et gardait celle du repos ; un second
+exemplaire du même fichier perdait la liaison à son squelette ; les modèles démesurés rendaient la
+caméra inutilisable.
+
+**Affichage du menu de gauche**, corrigé sur retours : liste des modèles empilée et tronquée
+proprement plutôt que débordante, écarts haut et bas des sections rendus symétriques, et menus
+contextuels qui se referment enfin tous au clic extérieur — deux d'entre eux ne le faisaient pas.
+
+### Sous le capot
+
+- **Sept modules** pour l'import, plutôt qu'un bloc : rangement des fichiers, cache de décodage,
+  gestes d'import, bibliothèque, usages, boîte englobante tenant compte du skinning, et les deux
+  copies adaptées de three (`GLTFLoader`, `SkeletonUtils`) — sans bundler, comme le reste.
+- **L'unique exception à la règle n°1** (aucune logique applicative dans `main.js`) est désormais
+  documentée : les canaux `models:*`, parce que l'accès disque est le métier déclaré du processus
+  principal et que les octets n'arrivent qu'à l'exécution.
+- **1096 → 1295 tests.** Dont le premier qui décode réellement un `.glb` : jusqu'ici toute la chaîne
+  était éprouvée maillon par maillon, mais aucun test ne transformait des octets en modèle. Le
+  fichier d'essai est **généré par script**, dimensions écrites en clair — un binaire déposé aurait
+  fait affirmer une taille que personne n'aurait pu vérifier.
+- **Le stub DOM conserve les enfants** et mémorise les éléments par identifiant. Sans cela,
+  plusieurs assertions sur le DOM étaient vraies quoi qu'il arrive.
+- **La liste des menus contextuels est déduite du DOM**, plus énumérée à la main. Troisième
+  occurrence de cette famille de défaut ; compléter l'énumération une fois de plus n'aurait réparé
+  que le cas signalé.
+
 ## v1.2.0
 
 **Une version de fiabilité.** L'Éditeur de Personnage était la nouveauté de la v1.1.0 ; celle-ci ne
