@@ -1,0 +1,710 @@
+{
+ "origine": "convention maison, os nommés d apres l articulation",
+ "os": [
+  {
+   "i": 6,
+   "name": "_rootJoint",
+   "children": [
+    7
+   ]
+  },
+  {
+   "i": 7,
+   "name": "Hips_01",
+   "children": [
+    8,
+    19,
+    30,
+    114,
+    115
+   ]
+  },
+  {
+   "i": 8,
+   "name": "Left_leg_02",
+   "children": [
+    9,
+    15,
+    16,
+    17,
+    18
+   ]
+  },
+  {
+   "i": 9,
+   "name": "Left_knee_03",
+   "children": [
+    10,
+    13,
+    14
+   ]
+  },
+  {
+   "i": 10,
+   "name": "Left_ankle_04",
+   "children": [
+    11,
+    12
+   ]
+  },
+  {
+   "i": 11,
+   "name": "Left_ankle_04_0",
+   "children": []
+  },
+  {
+   "i": 12,
+   "name": "Left_ankle_04_1",
+   "children": []
+  },
+  {
+   "i": 13,
+   "name": "Left_knee_03_0",
+   "children": []
+  },
+  {
+   "i": 14,
+   "name": "Left_knee_03_1",
+   "children": []
+  },
+  {
+   "i": 15,
+   "name": "Left_Knee_Armor_06",
+   "children": []
+  },
+  {
+   "i": 16,
+   "name": "Left_leg_02_0",
+   "children": []
+  },
+  {
+   "i": 17,
+   "name": "Left_leg_02_1",
+   "children": []
+  },
+  {
+   "i": 18,
+   "name": "Left_leg_02_2",
+   "children": []
+  },
+  {
+   "i": 19,
+   "name": "Right_leg_05",
+   "children": [
+    20,
+    26,
+    27,
+    28,
+    29
+   ]
+  },
+  {
+   "i": 20,
+   "name": "Right_knee_07",
+   "children": [
+    21,
+    24,
+    25
+   ]
+  },
+  {
+   "i": 21,
+   "name": "Right_ankle_08",
+   "children": [
+    22,
+    23
+   ]
+  },
+  {
+   "i": 22,
+   "name": "Right_ankle_08_0",
+   "children": []
+  },
+  {
+   "i": 23,
+   "name": "Right_ankle_08_1",
+   "children": []
+  },
+  {
+   "i": 24,
+   "name": "Right_knee_07_0",
+   "children": []
+  },
+  {
+   "i": 25,
+   "name": "Right_knee_07_1",
+   "children": []
+  },
+  {
+   "i": 26,
+   "name": "Right_Knee_Armor_09",
+   "children": []
+  },
+  {
+   "i": 27,
+   "name": "Right_leg_05_0",
+   "children": []
+  },
+  {
+   "i": 28,
+   "name": "Right_leg_05_1",
+   "children": []
+  },
+  {
+   "i": 29,
+   "name": "Right_leg_05_2",
+   "children": []
+  },
+  {
+   "i": 30,
+   "name": "Spine_010",
+   "children": [
+    31,
+    36,
+    110,
+    112,
+    113
+   ]
+  },
+  {
+   "i": 31,
+   "name": "bow_parent_011",
+   "children": [
+    32,
+    33,
+    34,
+    35
+   ]
+  },
+  {
+   "i": 32,
+   "name": "jig_bow_back_btm_l_012",
+   "children": []
+  },
+  {
+   "i": 33,
+   "name": "jig_bow_back_btm_r_014",
+   "children": []
+  },
+  {
+   "i": 34,
+   "name": "jig_bow_back_top_l_013",
+   "children": []
+  },
+  {
+   "i": 35,
+   "name": "jig_bow_back_top_r_016",
+   "children": []
+  },
+  {
+   "i": 36,
+   "name": "Chest_015",
+   "children": [
+    37,
+    38,
+    60,
+    84,
+    105
+   ]
+  },
+  {
+   "i": 37,
+   "name": "jig_bow_front_018",
+   "children": []
+  },
+  {
+   "i": 38,
+   "name": "Left_shoulder_017",
+   "children": [
+    39,
+    59
+   ]
+  },
+  {
+   "i": 39,
+   "name": "Left_arm_019",
+   "children": [
+    40,
+    55,
+    56,
+    57,
+    58
+   ]
+  },
+  {
+   "i": 40,
+   "name": "Left_elbow_020",
+   "children": [
+    41,
+    54
+   ]
+  },
+  {
+   "i": 41,
+   "name": "Left_wrist_021",
+   "children": [
+    42,
+    45,
+    48,
+    51
+   ]
+  },
+  {
+   "i": 42,
+   "name": "Index_finger0_L_022",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 43,
+   "name": "Index_finger1_L_024",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 44,
+   "name": "Index_finger2_L_023",
+   "children": []
+  },
+  {
+   "i": 45,
+   "name": "Little_finger0_L_025",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "Little_finger1_L_026",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "Little_finger2_L_027",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "Middle_finger0_L_028",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "Middle_finger1_L_029",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "Middle_finger2_L_030",
+   "children": []
+  },
+  {
+   "i": 51,
+   "name": "Thumb0_L_031",
+   "children": [
+    52
+   ]
+  },
+  {
+   "i": 52,
+   "name": "Thumb1_L_032",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "Thumb2_L_034",
+   "children": []
+  },
+  {
+   "i": 54,
+   "name": "Left_elbow_020_0",
+   "children": []
+  },
+  {
+   "i": 55,
+   "name": "Left_elbow_pad_033",
+   "children": []
+  },
+  {
+   "i": 56,
+   "name": "Left_arm_019_0",
+   "children": []
+  },
+  {
+   "i": 57,
+   "name": "Left_arm_019_1",
+   "children": []
+  },
+  {
+   "i": 58,
+   "name": "Left_arm_019_2",
+   "children": []
+  },
+  {
+   "i": 59,
+   "name": "Shoulder_pad_1_035",
+   "children": []
+  },
+  {
+   "i": 60,
+   "name": "Neck_036",
+   "children": [
+    61
+   ]
+  },
+  {
+   "i": 61,
+   "name": "Head_038",
+   "children": [
+    62,
+    63,
+    64,
+    65,
+    66,
+    68,
+    71,
+    75,
+    78,
+    83
+   ]
+  },
+  {
+   "i": 62,
+   "name": "EyesDefault_037",
+   "children": []
+  },
+  {
+   "i": 63,
+   "name": "EyesMurder_039",
+   "children": []
+  },
+  {
+   "i": 64,
+   "name": "EyesScared_040",
+   "children": []
+  },
+  {
+   "i": 65,
+   "name": "EyesWide_041",
+   "children": []
+  },
+  {
+   "i": 66,
+   "name": "FrontBang_042",
+   "children": [
+    67
+   ]
+  },
+  {
+   "i": 67,
+   "name": "FrontBang_end_043",
+   "children": []
+  },
+  {
+   "i": 68,
+   "name": "LeftBang_044",
+   "children": [
+    69
+   ]
+  },
+  {
+   "i": 69,
+   "name": "LeftBang_001_00",
+   "children": [
+    70
+   ]
+  },
+  {
+   "i": 70,
+   "name": "LeftBang_001_end_045",
+   "children": []
+  },
+  {
+   "i": 71,
+   "name": "LeftPigtail_046",
+   "children": [
+    72
+   ]
+  },
+  {
+   "i": 72,
+   "name": "LeftPigtail_001_047",
+   "children": [
+    73
+   ]
+  },
+  {
+   "i": 73,
+   "name": "LeftPigtail_002_048",
+   "children": [
+    74
+   ]
+  },
+  {
+   "i": 74,
+   "name": "LeftPigtail_002_end_049",
+   "children": []
+  },
+  {
+   "i": 75,
+   "name": "RightBang_050",
+   "children": [
+    76
+   ]
+  },
+  {
+   "i": 76,
+   "name": "RightBang_001_051",
+   "children": [
+    77
+   ]
+  },
+  {
+   "i": 77,
+   "name": "RightBang_001_end_052",
+   "children": []
+  },
+  {
+   "i": 78,
+   "name": "RightPigtail_053",
+   "children": [
+    79
+   ]
+  },
+  {
+   "i": 79,
+   "name": "RightPigtail_001_054",
+   "children": [
+    80
+   ]
+  },
+  {
+   "i": 80,
+   "name": "RightPigtail_002_055",
+   "children": [
+    81
+   ]
+  },
+  {
+   "i": 81,
+   "name": "RightPigtail_002_end_056",
+   "children": []
+  },
+  {
+   "i": 83,
+   "name": "Head_038_0",
+   "children": []
+  },
+  {
+   "i": 84,
+   "name": "Right_shoulder_057",
+   "children": [
+    85
+   ]
+  },
+  {
+   "i": 85,
+   "name": "Right_arm_058",
+   "children": [
+    86,
+    102,
+    103,
+    104
+   ]
+  },
+  {
+   "i": 86,
+   "name": "Right_elbow_060",
+   "children": [
+    87,
+    101
+   ]
+  },
+  {
+   "i": 87,
+   "name": "Right_wrist_059",
+   "children": [
+    88,
+    91,
+    94,
+    97,
+    98
+   ]
+  },
+  {
+   "i": 88,
+   "name": "Index_finger0_R_061",
+   "children": [
+    89
+   ]
+  },
+  {
+   "i": 89,
+   "name": "Index_finger1_R_062",
+   "children": [
+    90
+   ]
+  },
+  {
+   "i": 90,
+   "name": "Index_finger2_R_063",
+   "children": []
+  },
+  {
+   "i": 91,
+   "name": "Little_finger0_R_064",
+   "children": [
+    92
+   ]
+  },
+  {
+   "i": 92,
+   "name": "Little_finger1_R_066",
+   "children": [
+    93
+   ]
+  },
+  {
+   "i": 93,
+   "name": "Little_finger2_R_065",
+   "children": []
+  },
+  {
+   "i": 94,
+   "name": "Middle_finger0_R_067",
+   "children": [
+    95
+   ]
+  },
+  {
+   "i": 95,
+   "name": "Middle_finger1_R_068",
+   "children": [
+    96
+   ]
+  },
+  {
+   "i": 96,
+   "name": "Middle_finger2_R_069",
+   "children": []
+  },
+  {
+   "i": 97,
+   "name": "Sword_070",
+   "children": []
+  },
+  {
+   "i": 98,
+   "name": "Thumb0_R_071",
+   "children": [
+    99
+   ]
+  },
+  {
+   "i": 99,
+   "name": "Thumb1_R_072",
+   "children": [
+    100
+   ]
+  },
+  {
+   "i": 100,
+   "name": "Thumb2_R_073",
+   "children": []
+  },
+  {
+   "i": 101,
+   "name": "Right_elbow_060_0",
+   "children": []
+  },
+  {
+   "i": 102,
+   "name": "Right_elbow_pad_074",
+   "children": []
+  },
+  {
+   "i": 103,
+   "name": "Right_arm_058_0",
+   "children": []
+  },
+  {
+   "i": 104,
+   "name": "Right_arm_058_1",
+   "children": []
+  },
+  {
+   "i": 105,
+   "name": "TittyRoot_075",
+   "children": [
+    106,
+    108
+   ]
+  },
+  {
+   "i": 106,
+   "name": "Left_titty0_076",
+   "children": [
+    107
+   ]
+  },
+  {
+   "i": 107,
+   "name": "Left_titty0_end_078",
+   "children": []
+  },
+  {
+   "i": 108,
+   "name": "Right_titty0_077",
+   "children": [
+    109
+   ]
+  },
+  {
+   "i": 109,
+   "name": "Right_titty0_end_079",
+   "children": []
+  },
+  {
+   "i": 110,
+   "name": "Sheath_080",
+   "children": [
+    111
+   ]
+  },
+  {
+   "i": 111,
+   "name": "Sheath_080_0",
+   "children": []
+  },
+  {
+   "i": 112,
+   "name": "Spine_010_0",
+   "children": []
+  },
+  {
+   "i": 113,
+   "name": "Spine_010_1",
+   "children": []
+  },
+  {
+   "i": 114,
+   "name": "Hips_01_0",
+   "children": []
+  },
+  {
+   "i": 115,
+   "name": "Hips_01_1",
+   "children": []
+  }
+ ]
+}
