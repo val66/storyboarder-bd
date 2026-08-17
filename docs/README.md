@@ -11,6 +11,7 @@ the built-in manual (`src/help-content.js`).
 |---|---|
 | [**persisted-data.md**](persisted-data.md) | Making every existing project file unreadable, with nothing to signal it. |
 | [**3d-rendering-single-sources.md**](3d-rendering-single-sources.md) | Reintroducing the duplication that produced five successive bugs in the 3D rendering. |
+| [**imported-skeletons.md**](imported-skeletons.md) | Assuming a bone convention that real files do not follow. |
 
 These two are not style recommendations: a breach costs data, or a regression that is hard to track
 down.

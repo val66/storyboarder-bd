@@ -40,9 +40,15 @@
  * CE QUE CE FICHIER NE PRÉTEND PAS FAIRE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Les axes de repos DIFFÈRENT D'UN OS À L'AUTRE À L'INTÉRIEUR D'UN MÊME FICHIER — mesuré sur
- * anime_girl1, dont les membres pointent selon +Y et la colonne selon −Z. « Lever le bras » n'est
- * donc pas le même axe partout, et aucune correction générale n'est tentée ici.
+ * Les axes de repos DIFFÈRENT D'UN FICHIER À L'AUTRE, et parfois d'un os à l'autre : cinq des six
+ * fichiers mesurés alignent leurs os sur +Y, le rig Unreal sur ±X selon le côté et le membre
+ * (cf. docs/imported-skeletons.md). « Lever le bras » n'est donc pas le même axe partout, et
+ * aucune correction générale n'est tentée ICI.
+ *
+ * ⚠️ UNE VERSION ANTÉRIEURE DE CE COMMENTAIRE AFFIRMAIT que sur anime_girl1 « les membres pointent
+ * selon +Y et la colonne selon −Z ». C'était faux : la colonne pointe elle aussi vers +Y. Cette
+ * phrase confondait la ROTATION de repos d'un os avec sa DIRECTION vers son enfant, et elle a été
+ * recopiée de commentaire en commentaire avant d'être vérifiée.
  *
  * Ce que l'étape D promet est plus modeste et entièrement tenu : X, Y et Z tournent l'os dans SON
  * repère. L'utilisateur voit immédiatement lequel fait ce qu'il veut. Traduire un vocabulaire de

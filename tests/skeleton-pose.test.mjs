@@ -22,10 +22,10 @@
  * pas, et dont on suppose volontiers que c'est LUI qui est mal fait. D'où des tests qui épinglent
  * l'algèbre elle-même, y compris contre Three.
  *
- * CE QU'ON N'AFFIRME PAS : que tourner l'axe X lève le bras. C'est faux, et c'est assumé — les
- * axes de repos diffèrent d'un os à l'autre À L'INTÉRIEUR d'un même fichier (mesuré sur
- * anime_girl1 : membres selon +Y, colonne selon −Z). Traduire un vocabulaire de pose partagé vers
- * le bon axe de chaque os est le travail de l'étape E.
+ * CE QU'ON N'AFFIRME PAS : que tourner l'axe X lève le bras. C'est faux, et c'est assumé — cinq
+ * des six fichiers mesurés alignent leurs os sur +Y, le rig Unreal sur ±X selon le côté et le
+ * membre (cf. docs/imported-skeletons.md). Traduire un vocabulaire de pose partagé vers le bon
+ * axe de chaque os est le travail de l'étape E.
  */
 // Le stub DOM/THREE : rig3d.js utilise `THREE` comme global (chargé par <script> dans index.html),
 // et importer le module sans lui échoue dès GLTFLoader. Même préambule que tests/rig3d.test.mjs.

@@ -11,6 +11,7 @@ Documentation de contributeur. Ce qui s'adresse à l'utilisateur est dans le
 |---|---|
 | [**persisted-data.fr.md**](persisted-data.fr.md) | Rendre illisibles tous les fichiers projet existants, sans que rien ne le signale. |
 | [**3d-rendering-single-sources.fr.md**](3d-rendering-single-sources.fr.md) | Réintroduire la duplication qui a produit cinq bugs successifs dans le rendu 3D. |
+| [**imported-skeletons.fr.md**](imported-skeletons.fr.md) | Supposer une convention d'os que les fichiers réels ne respectent pas. |
 
 Ces deux-là ne sont pas des recommandations de style : une infraction coûte des données ou une
 régression difficile à retrouver.
