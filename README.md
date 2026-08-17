@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.28**
+**Version 1.3.29**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -81,8 +81,10 @@ A full-screen workspace for posing a character, opened from the pencil button on
 character's, or an imported model's when it carries joints — or standalone from the left menu, to
 build a pose with no target in mind. Applied to an imported model, the pose is translated into that
 file's bones, exactly as choosing one from the dialog does — and it is that model that the editor
-shows, with its joint points on its own bones. Opened from the left menu, the editor always shows
-the built-in character.
+shows, with its joint points on its own bones. A *Model* section in the right-hand panel switches
+the figure you pose on — the built-in character, or any imported file whose skeleton is recognised;
+Apply then carries that choice to the Element's dialog. Opened from the left menu, the editor always
+starts on the built-in character.
 
 - **Pose by dragging**: hold the left button on a joint point and drag it. The other points hide so
   you cannot grab a neighbour mid-gesture, the grabbable area is tinted, and an orange guide shows

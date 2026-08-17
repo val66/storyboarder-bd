@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.28**
+**Version 1.3.29**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -85,8 +85,10 @@ Un espace plein écran pour poser un Personnage, ouvert par le bouton crayon d'u
 d'un Personnage, ou celui d'un Modèle importé porteur d'articulations — ou seul depuis le menu de
 gauche, pour composer une pose sans cible. Appliquée à un Modèle importé, la pose est traduite dans
 les os de son fichier, exactement comme lorsqu'on la choisit depuis sa fiche — et c'est ce Modèle
-que l'éditeur affiche, avec ses points d'articulation sur ses propres os. Ouvert depuis le menu de
-gauche, l'éditeur montre toujours le Personnage intégré.
+que l'éditeur affiche, avec ses points d'articulation sur ses propres os. Une section *Modèle* dans
+le panneau droit change la figure sur laquelle on pose — le Personnage intégré, ou tout fichier
+importé dont le squelette est reconnu ; « Appliquer » emporte alors ce choix vers la fiche de
+l'Élément. Ouvert depuis le menu de gauche, l'éditeur part toujours du Personnage intégré.
 
 - **Poser au glisser** : maintenez le clic gauche sur un point d'articulation et déplacez-le. Les
   autres points s'effacent pour éviter d'attraper le voisin en plein geste, la zone de prise se

@@ -26,8 +26,8 @@ import {
   writePoseSliderDeg3D,
 } from './utils.js';
 import {
-  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, getEffectiveJoints,
-  objectRigCache3D, poseOsPourModeleImporte, resolveStyle3D,
+  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, figuresPosables,
+  getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, resolveStyle3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { renderModelForEditor3D } from './scene3d.js';
@@ -247,10 +247,16 @@ export function applyPersonaEditorToModal(){
   // ni les mêmes axes. Elle est donc traduite ici (cf. src/pose-bridge.js) et rangée dans le
   // brouillon des OS, celui-là même que remplissent les curseurs de la fiche.
   if (isImportedModel(cible)) {
-    const pose = poseOsPourModeleImporte(cible.modelFile, S.personaEditorDraft);
+    // LA FIGURE CHOISIE PART AVEC LA POSE. Sans cela, poser sur un autre modèle puis appliquer
+    // rendrait des angles calculés pour une figure que l'Élément ne portera jamais — muet et faux.
+    // La pose est donc traduite pour la figure RETENUE, et c'est elle que la fiche enregistrera.
+    const figure = S.personaEditorModelFile || cible.modelFile;
+    S.modalDraftModelFile = figure;
+    const pose = poseOsPourModeleImporte(figure, S.personaEditorDraft);
     // `null` = ce modèle ne peut pas recevoir de pose. On ne touche à rien et on ne referme pas :
     // écraser ses réglages par un objet vide serait pire que de ne rien faire.
     if (!pose) return null;
+    S.modalDraftJoints = cloneJoints(S.personaEditorDraft);
     S.modalDraftSkeletonPose = pose;
     return { key: S.personaEditorPoseKey || null, modeleImporte: true };
   }
@@ -468,6 +474,52 @@ export function applyPersonaEditorJointDrag(session, dx, dy, geste){
  * qu'on ne sait pas lire, et montrer une figure que les curseurs ne pilotent pas serait un
  * mensonge — la même règle que pour le champ Position de la fiche.
  */
+/**
+ * La section « Modèle » du panneau droit : sur quelle figure on pose.
+ *
+ * QUAND ELLE APPARAÎT. Devant un modèle importé, et en mode autonome — deux cas où le choix ne peut
+ * rien faire perdre. Devant un PERSONNAGE elle reste masquée : il ne sait pas encore porter un
+ * fichier importé, et un choix effacé à l'enregistrement serait pire que pas de choix.
+ *
+ * Le Personnage intégré est toujours proposé : c'est le repli, et il faut pouvoir y revenir.
+ */
+export function buildPersonaEditorModelUI(){
+  const section = document.getElementById('personaEditorModelSection');
+  const sel = document.getElementById('personaEditorModelSelect');
+  if (!section || !sel) return;
+  const cible = personaEditorTarget();
+  const figures = figuresPosables();
+  const utile = S.personaEditorOpen && figures.length > 0 && (!cible || isImportedModel(cible));
+  section.style.display = utile ? '' : 'none';
+  if (!utile) return;
+
+  const titre = document.getElementById('personaEditorModelHeading');
+  if (titre) titre.textContent = tr('Model', 'Modèle');
+  sel.innerHTML = '';
+  [{ v: '', t: tr('Character (built-in)', 'Personnage (intégré)') },
+    ...figures.map(nom => ({ v: nom, t: nom }))].forEach(({ v, t }) => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+  sel.value = S.personaEditorModelFile || '';
+
+  sel.onchange = () => { choisirFigureDeLEditeur(sel.value); drawPersonaEditor(); };
+}
+
+/**
+ * Retient la figure choisie. Séparé du redessin pour la MÊME raison que closePersonaEditor : le
+ * dessin passe par WebGL, injoignable sous Node, alors que « quelle figure regarde-t-on » est une
+ * décision qui doit rester vérifiable.
+ *
+ * Une chaîne vide n'est pas un nom de fichier : c'est le Personnage intégré. On rend `null`, que le
+ * reste du code teste par présence et non par longueur.
+ */
+export function choisirFigureDeLEditeur(fichier){
+  S.personaEditorModelFile = fichier || null;
+  return S.personaEditorModelFile;
+}
+
 export function figureImporteeDeLEditeur(){
   const fichier = S.personaEditorModelFile;
   if (!fichier) return null;
@@ -811,6 +863,7 @@ function syncPersonaEditorDom(){
   const titleEl = document.getElementById('personaEditorTitle');
   if (titleEl) titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang);
   if (S.personaEditorOpen) {
+    buildPersonaEditorModelUI();
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
     syncPersonaEditorSliders();

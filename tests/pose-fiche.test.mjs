@@ -34,6 +34,7 @@ import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
+  buildPersonaEditorModelUI, choisirFigureDeLEditeur,
 } from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
@@ -295,8 +296,12 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
 
     const res = applyPersonaEditorToModal();
     assert.ok(res && res.modeleImporte, 'la cible est un modèle importé, et le résultat doit le dire');
-    assert.equal(S.modalDraftJoints, null,
-      'le brouillon du Personnage ne doit pas être touché : ce n\'en est pas un');
+    // ⚠️ Cette assertion disait autrefois « le brouillon du Personnage ne doit pas être touché ».
+    // Elle n'a plus lieu d'être : `modalDraftJoints` ne désigne plus la fiche du Personnage mais LA
+    // POSE DE CORPS en cours d'édition, quelle que soit la fiche ouverte — et un modèle importé la
+    // retient désormais, parce que c'est elle qui survit à un changement de figure.
+    assert.ok(S.modalDraftJoints && S.modalDraftJoints.headRotY,
+      'l\'intention doit voyager avec le résultat');
     assert.ok(S.modalDraftSkeletonPose.tete, 'la tête du modèle doit avoir tourné');
     // LA POSE REMPLACE. On ne peut pas exiger l'ABSENCE de `bras_g` : la pose de départ de
     // l'éditeur oriente déjà les bras, donc l'emplacement est légitimement réécrit. Ce qui doit
@@ -487,6 +492,69 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     const ancien = avant.bras_d;
     assert.ok(Math.hypot(t.x - ancien.x, t.y - ancien.y, t.z - ancien.z) > 1e-3,
       'axe inchangé : le recalcul a été fait sur l\'ANCIENNE figure');
+  });
+
+  test('la section « Modèle » de l\'éditeur : présente selon la cible', () => {
+    const section = document.getElementById('personaEditorModelSection');
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+
+    openPersonaEditor(o, 'objectModal');
+    buildPersonaEditorModelUI();
+    assert.equal(section.style.display, '', 'devant un modèle importé, on peut changer de figure');
+    closePersonaEditor();
+
+    // Mode autonome : rien à perdre, on regarde ce qu'on veut.
+    openPersonaEditor(null);
+    buildPersonaEditorModelUI();
+    assert.equal(section.style.display, '');
+    closePersonaEditor();
+
+    // Devant un PERSONNAGE : masquée tant qu'il ne sait pas porter un fichier importé. Un choix
+    // effacé à l'enregistrement vaudrait moins que pas de choix du tout.
+    const perso = { id: 'p9', type: 'perso', position: 'debout' };
+    S.tomes = [{ pages: [{ objects: [perso] }] }];
+    openPersonaEditor(perso, 'descModal');
+    buildPersonaEditorModelUI();
+    assert.equal(section.style.display, 'none');
+    closePersonaEditor();
+  });
+
+  test('« Appliquer » emporte la figure choisie, et la pose traduite POUR elle', () => {
+    // Sans cela, poser sur une autre figure puis appliquer rendrait des angles calculés pour un
+    // corps que l'Élément ne portera jamais — muet, et faux.
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    S.modalDraftModelFile = null;
+
+    openPersonaEditor(o, 'objectModal');
+    buildPersonaEditorModelUI();
+    choisirFigureDeLEditeur(AUTRE);
+    assert.equal(S.personaEditorModelFile, AUTRE);
+    setPersonaEditorJointDeg(
+      { key: 'rShoulder:z', field: 'rShoulder', axis: 'z', suffix: '' }, -69);
+
+    applyPersonaEditorToModal();
+    assert.equal(S.modalDraftModelFile, AUTRE, 'la fiche doit enregistrer la figure retenue');
+    const attendu = poseOsPourModeleImporte(AUTRE, S.personaEditorDraft);
+    assert.deepEqual(S.modalDraftSkeletonPose, attendu,
+      'les angles doivent être ceux de la figure retenue, pas de celle d\'origine');
+    closePersonaEditor();
+  });
+
+  test('revenir au Personnage intégré est toujours possible', () => {
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    buildPersonaEditorModelUI();
+    const sel = document.getElementById('personaEditorModelSelect');
+    assert.ok(sel.children.some(o2 => o2.value === ''), 'le repli doit être offert');
+    assert.equal(choisirFigureDeLEditeur(''), null,
+      'la chaîne vide n\'est pas un nom de fichier : c\'est le Personnage intégré');
+    closePersonaEditor();
   });
 
   test('une seule figure disponible : pas de champ, rien à choisir', () => {
