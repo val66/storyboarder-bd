@@ -70,6 +70,31 @@ export const POSE_AXES = ['x', 'y', 'z'];
 export const POSE_LIMITE_DEG = 180;
 
 /**
+ * Les emplacements RECONNUS mais NON pilotables par un curseur.
+ *
+ * LE BASSIN EST LA RACINE DU SQUELETTE, et le tourner fait pivoter le personnage ENTIER. Mesuré sur
+ * les fichiers réels : il entraîne 108 os sur 109 dans worker_j, et la totalité dans capoera et
+ * female_pose. Son curseur faisait donc exactement ce que fait déjà l'Orientation de l'Élément —
+ * deux commandes pour un seul effet, sans que rien ne le dise. Signalé à l'usage, sous la forme
+ * « les trois premiers curseurs sont les mêmes que ceux de l'orientation » : c'était exact.
+ *
+ * J'AVAIS VU CE PROBLÈME EN CONSTRUISANT CETTE ÉTAPE et je l'ai écarté, en me disant qu'exclure le
+ * bassin serait un choix inventé. C'était le mauvais arbitrage : l'argument était mesurable, et il
+ * ne demandait qu'à être mesuré.
+ *
+ * IL RESTE DANS LA CORRESPONDANCE, et ce n'est pas une inconséquence : la reconnaissance
+ * structurelle PART du bassin pour trouver les jambes et la colonne (cf. skeleton-map.js). Le
+ * retirer de là casserait tout le reste. Une correspondance décrit le FICHIER ; ce qu'on choisit de
+ * piloter est une autre question.
+ */
+export const SLOTS_NON_POSABLES = ['bassin'];
+
+/** Un emplacement mérite-t-il un curseur ? */
+export function estPosable(slot){
+  return !SLOTS_NON_POSABLES.includes(slot);
+}
+
+/**
  * Normalise une pose relue d'un Projet. Fonction PURE, et défensive par principe.
  *
  * Un Projet peut avoir été écrit par une version antérieure, édité à la main, ou porter une pose
@@ -84,6 +109,11 @@ export function normaliserPose(brut){
   const sortie = {};
   if (!brut || typeof brut !== 'object') return sortie;
   SLOTS.forEach(slot => {
+    // Un emplacement devenu non pilotable est JETÉ à la relecture. Un Projet enregistré par une
+    // version où le bassin avait des curseurs porterait sinon une rotation que plus personne ne
+    // peut voir ni annuler — le personnage resterait de travers, sans commande pour le redresser.
+    // C'est une valeur qu'on cesse de lire, pas un champ renommé : la forme persistée ne bouge pas.
+    if (!estPosable(slot)) return;
     const angles = brut[slot];
     if (!angles || typeof angles !== 'object') return;
     const garde = {};
@@ -116,7 +146,7 @@ export function lireAngleDeg(pose, slot, axe){
  * l'Élément marqué comme posé à jamais.
  */
 export function ecrireAngleDeg(pose, slot, axe, deg){
-  if (!pose || !SLOTS.includes(slot) || !POSE_AXES.includes(axe)) return pose;
+  if (!pose || !SLOTS.includes(slot) || !estPosable(slot) || !POSE_AXES.includes(axe)) return pose;
   const rad = Number(deg) * Math.PI / 180;
   if (!Number.isFinite(rad) || Math.round(Number(deg)) === 0) {
     if (pose[slot]) {
@@ -146,7 +176,7 @@ export function groupesPosables(carte, traduire){
   return SLOT_GROUPS
     .map(g => ({
       titre: t(g.titre[0], g.titre[1]),
-      slots: g.slots.filter(slot => (carte || {})[slot] && (carte || {})[slot].bone)
+      slots: g.slots.filter(slot => estPosable(slot) && (carte || {})[slot] && (carte || {})[slot].bone)
         .map(slot => ({ slot, label: slotLabel(slot, t) })),
     }))
     .filter(g => g.slots.length > 0);
@@ -154,7 +184,7 @@ export function groupesPosables(carte, traduire){
 
 /** Combien d'emplacements sont pilotables — le chiffre que la fiche annonce avant de dérouler. */
 export function nombrePosable(carte){
-  return SLOTS.filter(slot => (carte || {})[slot] && (carte || {})[slot].bone).length;
+  return SLOTS.filter(slot => estPosable(slot) && (carte || {})[slot] && (carte || {})[slot].bone).length;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

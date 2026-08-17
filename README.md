@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.13**
+**Version 1.3.14**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -52,8 +52,9 @@
   that are not open. Rename the Element instead.
 
 - **Posing an imported skeleton**: a model carrying bones gains a *Joint fine-tuning* section in its
-  dialog — three sliders per recognised joint. Which bone each one drives comes from the mapping
-  screen, reachable from the same section. Sliders exist only for joints that were actually mapped.
+  dialog — three sliders per recognised joint. The hips get none: being the skeleton's root, turning
+  them rotates the whole figure, which the Element's Orientation already does. Which bone each
+  slider drives comes from the mapping screen, reachable from the same section.
 
 > **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
 > turn each bone around its own axes (which one bends an elbow depends on the file), and the pose

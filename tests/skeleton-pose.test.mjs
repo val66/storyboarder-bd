@@ -39,7 +39,9 @@ import { fileURLToPath } from 'node:url';
 import {
   POSE_AXES, POSE_LIMITE_DEG, normaliserPose, estPosee, lireAngleDeg, ecrireAngleDeg,
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
+  estPosable,
 } from '../src/skeleton-pose.js';
+import { SLOTS } from '../src/skeleton-map.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -125,8 +127,41 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
   test('seuls les emplacements AYANT un os donnent une ligne', () => {
     const groupes = groupesPosables(CARTE, tr);
     const tous = groupes.flatMap(g => g.slots.map(s => s.slot));
-    assert.deepEqual(tous.sort(), ['avantbras_g', 'bassin', 'bras_g', 'poitrine']);
+    assert.deepEqual(tous.sort(), ['avantbras_g', 'bras_g', 'poitrine']);
     assert.ok(!tous.includes('cou'), 'un emplacement sans os a produit un curseur');
+  });
+
+  test('RÉGRESSION : le BASSIN n\'a pas de curseur, bien qu\'il soit reconnu', () => {
+    // Signalé à l'usage : « les trois premiers curseurs sont les mêmes que ceux de l'orientation ».
+    // C'était exact. Le bassin est la RACINE du squelette — mesuré : il entraîne 108 os sur 109
+    // dans worker_j, la totalité dans capoera — donc le tourner fait pivoter tout le personnage,
+    // exactement comme l'Orientation de l'Élément. Deux commandes pour un seul effet.
+    const tous = groupesPosables(CARTE, tr).flatMap(g => g.slots.map(s => s.slot));
+    assert.ok(!tous.includes('bassin'), 'le bassin a de nouveau des curseurs');
+    assert.ok(CARTE.bassin && CARTE.bassin.bone,
+      'le témoin est faux : la carte doit CONTENIR un bassin pour que le test prouve quelque chose');
+    assert.equal(estPosable('bassin'), false);
+    assert.equal(estPosable('poitrine'), true);
+  });
+
+  test('le bassin reste dans la CORRESPONDANCE — la reconnaissance en dépend', () => {
+    // Ne pas confondre « on ne le pilote pas » et « on ne le reconnaît pas » : la descente
+    // structurelle PART du bassin pour trouver les jambes et la colonne (cf. skeleton-map.js).
+    assert.ok(SLOTS.includes('bassin'), 'le bassin a disparu des emplacements reconnus');
+  });
+
+  test('RÉGRESSION : une pose de bassin héritée est JETÉE à la relecture', () => {
+    // Un Projet enregistré entre-temps porterait une rotation de bassin que plus aucun curseur ne
+    // peut annuler : le personnage resterait de travers sans commande pour le redresser.
+    assert.deepEqual(normaliserPose({ bassin: { y: 1.2 }, poitrine: { x: 0.3 } }),
+      { poitrine: { x: 0.3 } });
+    assert.equal(estPosee({ bassin: { y: 1.2 } }), false);
+  });
+
+  test('écrire sur le bassin ne fait rien', () => {
+    const pose = {};
+    ecrireAngleDeg(pose, 'bassin', 'y', 45);
+    assert.deepEqual(pose, {});
   });
 
   test('un groupe entièrement vide disparaît, titre compris', () => {
@@ -140,7 +175,7 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
   test('une entrée sans `bone` ne compte pas', () => {
     // fusionner() peut rendre `{ name, bone: undefined }` si le nom enregistré ne correspond plus à
     // aucun os du fichier — modèle réexporté, os renommé. La ligne ne doit pas apparaître.
-    const carte = { bassin: { name: 'Hips' }, poitrine: { bone: 'b2', name: 'Chest' } };
+    const carte = { cou: { name: 'Neck' }, poitrine: { bone: 'b2', name: 'Chest' } };
     assert.equal(nombrePosable(carte), 1);
   });
 

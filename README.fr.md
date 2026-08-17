@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.13**
+**Version 1.3.14**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -52,9 +52,10 @@
   compris ceux qui ne sont pas ouverts. C'est l'Élément qui se renomme.
 
 - **Articuler un squelette importé** : un modèle porteur d'os gagne une section *Réglage fin des
-  articulations* dans sa fiche — trois curseurs par articulation reconnue. L'os piloté par chacun
-  vient de l'écran de correspondance, rappelable depuis cette même section. Il n'y a de curseur que
-  pour les articulations effectivement reconnues.
+  articulations* dans sa fiche — trois curseurs par articulation reconnue. Le bassin n'en a pas :
+  racine du squelette, le tourner ferait pivoter tout le personnage, ce que fait déjà l'Orientation
+  de l'Élément. L'os piloté par chaque curseur vient de l'écran de correspondance, rappelable depuis
+  cette même section.
 
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
 > Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend
