@@ -40,6 +40,22 @@ export function expandBoxSkinAware3D(box, object) {
     const géométrie = object.geometry;
     const attrs = géométrie.attributes;
     if (object.isSkinnedMesh && attrs && attrs.position && attrs.skinIndex && attrs.skinWeight) {
+      // ⚠️ LES MATRICES D'OS D'ABORD. `boneTransform` ne calcule rien : il LIT
+      // `skeleton.boneMatrices`, que seul un rendu met à jour. Or cette boîte est mesurée au
+      // DÉCODAGE (cf. model-cache.js), sur une scène qui n'a jamais été rendue — on obtenait donc la
+      // pose de LIAISON et non la pose réelle. `updateWorldMatrix(true, false)` juste au-dessus n'y
+      // change rien : il remonte vers les parents, alors que les os sont ailleurs dans la hiérarchie.
+      //
+      // MESURÉ, pas supposé. Sur worker_j.glb la boîte des os fait 34,7 × 39,6 × 8,4 tandis que
+      // celle-ci rendait 6,4 × 9,4 × 17,1 — deux objets différents, l'un debout selon Y, l'autre
+      // couché selon Z. Comme cette boîte sert À LA FOIS à mesurer la taille réelle et à cadrer la
+      // caméra, le personnage était mesuré à 9,43 m et la caméra visait un volume où il n'était pas :
+      // seules ses poignées d'articulation, projetées depuis les vrais os, restaient visibles.
+      // Sur hulk les deux boîtes concordaient déjà, ce qui explique qu'il s'affichait correctement.
+      if (object.skeleton) {
+        object.skeleton.bones.forEach(os => os && os.updateWorldMatrix(true, false));
+        object.skeleton.update();
+      }
       const v = new THREE.Vector3();
       for (let i = 0; i < attrs.position.count; i++) {
         object.boneTransform(i, v);
