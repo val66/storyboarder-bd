@@ -153,22 +153,34 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   addBodyMeshWithOutline3D(torsoGroup, chestMesh, styleKey);
 
   // Neck (short cylinder) between the torso and the head, to avoid the head looking directly grafted on.
+  //
+  // LE COU EST DÉSORMAIS UNE ARTICULATION, et non plus un simple maillage posé sur le torse. Il
+  // manquait au Personnage alors que les modèles importés l'ont : incliner la tête y entraînait
+  // forcément le cou d'un bloc, sans possibilité de le fléchir séparément du buste.
+  //
+  // `neckGroup` est inséré ENTRE le torse et la tête, à la hauteur où le maillage du cou commençait
+  // déjà ; la tête, qui était fille du torse, devient fille du cou. À rotation nulle, la chaîne
+  // torse → cou → tête compose exactement la même transformation qu'avant (translation de
+  // torsoLen puis de neckLen) : le rig est identique tant que personne ne touche au cou.
   const neckLen = 0.06;
+  const neckGroup = new THREE.Group();
+  neckGroup.position.y = torsoLen;
+  torsoGroup.add(neckGroup);
   const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(P.shoulderR * 0.42, P.shoulderR * 0.46, neckLen, 8), mat);
-  neckMesh.position.y = torsoLen + neckLen / 2;
-  addBodyMeshWithOutline3D(torsoGroup, neckMesh, styleKey);
+  neckMesh.position.y = neckLen / 2;
+  addBodyMeshWithOutline3D(neckGroup, neckMesh, styleKey);
   // Digital comics: a rigid collar at the base of the neck (accent ring), to break up the plain
   // neck/torso joint and read as clothing rather than a bare silhouette.
   if (styleKey === 'comics_numerique') {
     const collar = new THREE.Mesh(new THREE.TorusGeometry(P.shoulderR * 0.5, 0.016, 8, 14), accentMat);
-    collar.position.y = torsoLen + 0.015;
+    collar.position.y = 0.015;
     collar.rotation.x = Math.PI / 2;
-    addBodyMeshWithOutline3D(torsoGroup, collar, styleKey, 0.18);
+    addBodyMeshWithOutline3D(neckGroup, collar, styleKey, 0.18);
   }
 
   const headGroup = new THREE.Group();
-  headGroup.position.y = torsoLen + neckLen;
-  torsoGroup.add(headGroup);
+  headGroup.position.y = neckLen;
+  neckGroup.add(headGroup);
   const headR = P.headR;
   const headMesh = new THREE.Mesh(new THREE.SphereGeometry(headR, 20, 20), mat);
   headMesh.position.y = headR;
@@ -200,15 +212,34 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   headGroup.add(faceMesh);
 
   const shoulderY = torsoLen * 0.94;
-  const lArm = addLimb3D(torsoGroup, shoulderY, -P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
-  const rArm = addLimb3D(torsoGroup, shoulderY, P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
+  // LES BRAS PENDENT D'UNE CLAVICULE, plus directement du torse.
+  //
+  // C'est la troisième articulation qui manquait au Personnage face aux modèles importés. Une
+  // clavicule fait monter, descendre et avancer l'ÉPAULE elle-même — hausser les épaules, se
+  // ramasser, tendre le bras plus loin que ne le permet l'articulation de l'épaule seule.
+  //
+  // Le pivot est placé au creux du cou (x = 0) et non au point d'attache du bras : c'est là que la
+  // clavicule tourne réellement, et c'est ce qui fait décrire à l'épaule un arc plutôt qu'une
+  // rotation sur place. Le bras est ensuite accroché à sa distance habituelle DE CE PIVOT, si bien
+  // qu'à rotation nulle il se retrouve exactement où il était.
+  const lClavicle = new THREE.Group();
+  lClavicle.position.y = shoulderY;
+  torsoGroup.add(lClavicle);
+  const rClavicle = new THREE.Group();
+  rClavicle.position.y = shoulderY;
+  torsoGroup.add(rClavicle);
+  const lArm = addLimb3D(lClavicle, 0, -P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
+  const rArm = addLimb3D(rClavicle, 0, P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
   // Digital comics: shoulder pads (accent hemispheres placed at the arms' attachment point),
   // a more "armored"/angular silhouette typical of modern comics characters.
+  //
+  // Portées par la CLAVICULE et non plus par le torse : sans quoi hausser une épaule laisserait sa
+  // protection derrière, flottant à l'ancienne place.
   if (styleKey === 'comics_numerique') {
-    [[-P.shoulderX, lArm], [P.shoulderX, rArm]].forEach(([sideX, arm]) => {
+    [[-P.shoulderX, lClavicle], [P.shoulderX, rClavicle]].forEach(([sideX, clavicule]) => {
       const pad = new THREE.Mesh(new THREE.SphereGeometry(P.armR * 1.35, 10, 8), accentMat);
-      pad.position.set(sideX, shoulderY + 0.02, 0);
-      addBodyMeshWithOutline3D(torsoGroup, pad, styleKey, 0.06);
+      pad.position.set(sideX, 0.02, 0);
+      addBodyMeshWithOutline3D(clavicule, pad, styleKey, 0.06);
     });
   }
 
@@ -222,11 +253,16 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   return {
     figureGroup, faceMesh, mat,
     joints: {
-      root, torsoGroup, headGroup, hipGroup,
+      root, torsoGroup, neckGroup, headGroup, hipGroup,
+      lClavicle, rClavicle,
       lShoulder: lArm.shoulder, lElbow: lArm.elbow, lHand: lArm.tip,
       rShoulder: rArm.shoulder, rElbow: rArm.elbow, rHand: rArm.tip,
       lHip: lLeg.shoulder, lKnee: lLeg.elbow,
       rHip: rLeg.shoulder, rKnee: rLeg.elbow,
+      // Les chevilles existaient DÉJÀ : addLimb3D crée un `tip` au bout de chaque membre, et c'est
+      // lui qui porte la main. Côté jambe il n'était simplement jamais exposé — le pied ne coûtait
+      // donc aucune géométrie, seulement d'être nommé.
+      lFoot: lLeg.tip, rFoot: rLeg.tip,
     },
   };
 }
@@ -417,6 +453,20 @@ export function applyJointAngles(rig, joints){
   J.rHand.rotation.x = angle3D(j.rWristRotX);
   J.rHand.rotation.y = angle3D(j.rWristRotY);
   J.rHand.rotation.z = angle3D(j.rWristRotZ);
+  // Cou, clavicules et chevilles — les trois articulations que le Personnage n'avait pas et que les
+  // modèles importés ont. `angle3D` rend 0 pour tout champ absent : une pose enregistrée avant leur
+  // existence les laisse donc au repos, et le Personnage est rendu exactement comme avant. C'est ce
+  // qui permet d'ajouter des articulations sans migrer une seule pose ni un seul Projet.
+  J.neckGroup.rotation.x = angle3D(j.neckRotX);
+  J.neckGroup.rotation.y = angle3D(j.neckRotY);
+  J.lClavicle.rotation.x = angle3D(j.lClavicleRotX);
+  J.lClavicle.rotation.z = angle3D(j.lClavicleRotZ);
+  J.rClavicle.rotation.x = angle3D(j.rClavicleRotX);
+  J.rClavicle.rotation.z = angle3D(j.rClavicleRotZ);
+  J.lFoot.rotation.x = angle3D(j.lFootRotX);
+  J.lFoot.rotation.z = angle3D(j.lFootRotZ);
+  J.rFoot.rotation.x = angle3D(j.rFootRotX);
+  J.rFoot.rotation.z = angle3D(j.rFootRotZ);
 }
 
 // ↳ src/constants.js

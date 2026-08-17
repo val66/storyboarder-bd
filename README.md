@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.17**
+**Version 1.3.18**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -25,7 +25,9 @@
 - Integrated top-down view for element placement
 
 ### Available elements
-- 👤 **Characters** with poses, emotions, orientation and joint articulation (see **Character editor** below)
+- 👤 **Characters** with poses, emotions, orientation and joint articulation — neck, head, torso,
+  collarbones, shoulders, elbows, wrists, hips, knees and ankles, the same body an imported skeleton
+  offers (see **Character editor** below)
 - 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)

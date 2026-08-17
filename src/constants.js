@@ -452,6 +452,20 @@ export const POSE_HANDLES = [
   // up/down / left-right handle above).
   { id: 'lWristRoll', group: 'lHand', mode: 'hinge', field: 'lWristRotZ' },
   { id: 'rWristRoll', group: 'rHand', mode: 'hinge', field: 'rWristRotZ' },
+  // ── Cou, clavicules, chevilles ────────────────────────────────────────────────────────────
+  // Les trois articulations que le Personnage n'avait pas alors que les modèles importés les ont
+  // (cf. SLOTS dans src/skeleton-map.js). Ajoutées pour que les deux parlent le même corps.
+  //
+  // NOMMAGE DES CHAMPS PERSISTÉS — suffixe d'axe explicite (`neckRotX`), comme la tête et les
+  // poignets, et non un objet `{ x, z }` comme l'épaule et la hanche. Les deux conventions
+  // coexistent déjà ; celle-ci est la plus récente et la plus lisible dans un fichier de Projet, où
+  // `lClavicleRotZ: 0.2` se comprend seul. ⚠️ Ces noms partent dans les Projets enregistrés : ils ne
+  // se renomment plus (cf. docs/persisted-data.md).
+  { id: 'neck', group: 'neckGroup', mode: 'hinge2', fieldV: 'neckRotX', fieldH: 'neckRotY' },
+  { id: 'lClavicle', group: 'lClavicle', mode: 'hinge2', fieldV: 'lClavicleRotX', fieldH: 'lClavicleRotZ' },
+  { id: 'rClavicle', group: 'rClavicle', mode: 'hinge2', fieldV: 'rClavicleRotX', fieldH: 'rClavicleRotZ' },
+  { id: 'lFoot', group: 'lFoot', mode: 'hinge2', fieldV: 'lFootRotX', fieldH: 'lFootRotZ' },
+  { id: 'rFoot', group: 'rFoot', mode: 'hinge2', fieldV: 'rFootRotX', fieldH: 'rFootRotZ' },
 ];
 
 
@@ -740,6 +754,13 @@ export const LIMB_SEGMENTS = [
   { id: 'rKnee', toLocal: [0, -0.36, 0] },
   { id: 'lWrist', toLocal: [0, -0.12, 0] },
   { id: 'rWrist', toLocal: [0, -0.12, 0] },
+  // Le cou va jusqu'à la tête ; la clavicule jusqu'à l'épaule qu'elle porte ; la cheville dessine
+  // le pied, court et vers l'avant plutôt que vers le bas — c'est le seul segment horizontal.
+  { id: 'neck', toGroup: 'headGroup' },
+  { id: 'lClavicle', toGroup: 'lShoulder' },
+  { id: 'rClavicle', toGroup: 'rShoulder' },
+  { id: 'lFoot', toLocal: [0, -0.02, 0.13] },
+  { id: 'rFoot', toLocal: [0, -0.02, 0.13] },
 ];
 
 // ---------- NUMERIC SLIDERS PER JOINT (precise alternative to dragging) ----------
@@ -751,17 +772,23 @@ export const JOINT_LABELS = {
   lKnee: 'Genou gauche', rKnee: 'Genou droit',
   lWrist: 'Poignet gauche', rWrist: 'Poignet droit',
   lWristRoll: 'Poignet gauche (torsion)', rWristRoll: 'Poignet droit (torsion)',
+  neck: 'Cou',
+  lClavicle: 'Clavicule gauche', rClavicle: 'Clavicule droite',
+  lFoot: 'Pied gauche', rFoot: 'Pied droit',
 };
 
 // Grouping of joints by body area, to collapse the list into dropdown
 // menus rather than showing every slider flat.
+// L'ORDRE EST ANATOMIQUE, du tronc vers l'extrémité — c'est aussi celui des modèles importés
+// (cf. SLOT_GROUPS dans src/skeleton-map.js), pour que les deux écrans se lisent pareil : la
+// clavicule avant l'épaule, la cheville après le genou, le cou sous la tête.
 export const JOINT_GROUPS = [
-  { key: 'tete', label: 'Tête', ids: ['head'] },
+  { key: 'tete', label: 'Tête', ids: ['neck', 'head'] },
   { key: 'torse', label: 'Torse', ids: ['torso'] },
-  { key: 'brasG', label: 'Bras gauche', ids: ['lShoulder', 'lElbow', 'lWrist', 'lWristRoll'] },
-  { key: 'brasD', label: 'Bras droit', ids: ['rShoulder', 'rElbow', 'rWrist', 'rWristRoll'] },
-  { key: 'jambeG', label: 'Jambe gauche', ids: ['lHip', 'lKnee'] },
-  { key: 'jambeD', label: 'Jambe droite', ids: ['rHip', 'rKnee'] },
+  { key: 'brasG', label: 'Bras gauche', ids: ['lClavicle', 'lShoulder', 'lElbow', 'lWrist', 'lWristRoll'] },
+  { key: 'brasD', label: 'Bras droit', ids: ['rClavicle', 'rShoulder', 'rElbow', 'rWrist', 'rWristRoll'] },
+  { key: 'jambeG', label: 'Jambe gauche', ids: ['lHip', 'lKnee', 'lFoot'] },
+  { key: 'jambeD', label: 'Jambe droite', ids: ['rHip', 'rKnee', 'rFoot'] },
 ];
 
 export const PERSONA_PREVIEW_PAN_SENS = 0.0055;

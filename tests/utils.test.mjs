@@ -409,7 +409,10 @@ describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
     // autre, qui cesse alors de se resynchroniser.
     const keys = POSE_HANDLES.flatMap(def => poseSliderSpecs3D(def).map(s => s.key));
     assert.equal(new Set(keys).size, keys.length, 'collision de clé entre deux curseurs');
-    assert.equal(keys.length, 23, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
+    // 23 → 33 à l'ajout du cou, des clavicules et des chevilles (Rig A) : 2 + 4 + 4 nouveaux
+    // curseurs. Ce nombre est MESURÉ à chaque évolution du rig, jamais deviné ; c'est lui qui a
+    // signalé l'ajout, ce qui est exactement son rôle.
+    assert.equal(keys.length, 33, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
   });
 });
 
@@ -1194,7 +1197,7 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
     // Une articulation absente de la signature deviendrait réglable sans que les boutons
     // Réinitialiser/Appliquer s'en aperçoivent — un travail perdu en silence.
     const vide = poseSliderSignature3D({});
-    assert.equal(vide.split('|').length, 23, 'les 23 curseurs (cf. poseSliderSpecs3D)');
+    assert.equal(vide.split('|').length, 33, 'les 33 curseurs (cf. poseSliderSpecs3D)');
   });
 
   test('chaque articulation compte : modifier n\'importe laquelle se voit', () => {
@@ -1281,6 +1284,12 @@ describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner'
       lKnee: 'x', rKnee: 'x',
       lWristRotX: 'x', rWristRotX: 'x', lWristRotY: 'y', rWristRotY: 'y',
       lWristRotZ: 'z', rWristRotZ: 'z',
+      // Rig A — cou, clavicules, chevilles. Leur axe se déduit du même suffixe que les autres
+      // (RotY → y, RotZ → z, sinon x) : c'est justement ce que ce balayage vérifie, plutôt que de
+      // faire confiance à la convention.
+      neckRotX: 'x', neckRotY: 'y',
+      lClavicleRotX: 'x', rClavicleRotX: 'x', lClavicleRotZ: 'z', rClavicleRotZ: 'z',
+      lFootRotX: 'x', rFootRotX: 'x', lFootRotZ: 'z', rFootRotZ: 'z',
     };
     POSE_HANDLES.forEach(def => poseSliderSpecs3D(def).forEach(spec => {
       const axe = poseSpecRotationAxis3D(spec);

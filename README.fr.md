@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.17**
+**Version 1.3.18**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -25,7 +25,9 @@
 - Vue de dessus intégrée pour le placement des éléments
 
 ### Éléments disponibles
-- 👤 **Personnages** avec poses, émotions, orientation et articulations (voir **Éditeur de Personnage** plus bas)
+- 👤 **Personnages** avec poses, émotions, orientation et articulations — cou, tête, torse,
+  clavicules, épaules, coudes, poignets, hanches, genoux et chevilles, le même corps qu'un squelette
+  importé (voir **Éditeur de Personnage** plus bas)
 - 🐾 **Animaux** articulés (chien, chat, cheval, lézard…)
 - 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
 - 🚗 **Véhicules** (voitures, motos, camions…)
