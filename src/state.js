@@ -153,6 +153,9 @@ export const S = {
   // { slot: { x?, y?, z? } } en radians, pendant l'édition d'un Modèle importé articulé. Brouillon :
   // l'Élément ne reçoit sa pose qu'à l'enregistrement de la modale (cf. src/skeleton-pose.js).
   modalDraftSkeletonPose:     null,
+  // La FIGURE choisie dans la fiche, avant enregistrement. Comme tous les brouillons de modale :
+  // « Annuler » doit vraiment annuler, y compris un changement de figure.
+  modalDraftModelFile:        null,
   // Quelle FIGURE l'Éditeur de Personnage affiche : `null` = le Personnage intégré, sinon le nom de
   // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
   // l'Élément qu'« Appliquer » alimente. Jamais persisté — un choix de vue, pas une propriété.

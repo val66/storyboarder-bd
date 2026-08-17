@@ -25,11 +25,12 @@ import * as THREE from 'three';
 
 import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
-import { correspondancePourModele, poseOsPourModeleImporte } from '../src/rig3d.js';
+import { correspondancePourModele, figuresPosables, poseOsPourModeleImporte } from '../src/rig3d.js';
 import {
-  buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose, skeletonJointRowsById,
+  buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
+  skeletonJointRowsById,
 } from '../src/modals.js';
-import { groupesPosables } from '../src/skeleton-pose.js';
+import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
@@ -417,6 +418,116 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
     openPersonaEditor({ id: 'z1', type: 'perso' }, 'descModal');
     assert.equal(personaEditorTarget(), null);
     closePersonaEditor();
+  });
+});
+
+describe('Le champ « Modèle » : changer de figure sans perdre la pose', () => {
+  const AUTRE = 'essai-autre.glb';
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+
+  beforeEach(() => {
+    // Une SECONDE figure reconnue, sinon il n'y a aucun choix à offrir.
+    //
+    // ⚠️ ELLE DOIT DIFFÉRER PAR SES ROTATIONS DE REPOS, pas par sa taille. Première version : le
+    // même squelette agrandi — une mutation qui recalculait depuis l'ANCIENNE figure passait alors
+    // au vert, parce que l'échelle ne change ni le repère du corps ni les axes des os, donc les
+    // angles sortaient identiques. Ce qui distingue vraiment deux fichiers, c'est le repos de leurs
+    // os : 106 sur 108 sont déjà tournés dans les fichiers réels (cf. docs/imported-skeletons.md).
+    //
+    // ⚠️ ET PAS AUTOUR DE L'AXE DU GESTE. Deuxième version : une rotation de repos autour de Z, pour
+    // un geste d'épaule qui tourne justement autour de Z — or tourner autour de Z ne déplace pas
+    // l'axe Z, donc les angles ressortaient encore identiques et la mutation restait verte. C'est
+    // X qui discrimine ici.
+    const autre = corrigerNomsCuisses(squeletteMixamo());
+    autre.traverse(n => { if (/Arm$/.test(n.name || '')) n.rotation.x = Math.PI / 2; });
+    _setModelCacheEntry(AUTRE, { scene: autre });
+    S.modalDraftModelFile = null;
+  });
+
+  test('les figures proposées sont celles dont le squelette est reconnu', () => {
+    const figures = figuresPosables();
+    assert.ok(figures.includes(FICHIER) && figures.includes(AUTRE));
+    _setModelCacheEntry('vide.glb', { scene: new THREE.Group() });
+    assert.ok(!figuresPosables().includes('vide.glb'),
+      'un fichier sans squelette reconnu ne doit pas être proposé : rien ne pourrait le poser');
+  });
+
+  test('le champ n\'apparaît que s\'il y a un choix à faire', () => {
+    const champ = document.getElementById('objectFigureField');
+    buildFigureFieldUI(modele());
+    assert.equal(champ.style.display, '');
+    buildFigureFieldUI({ type: 'objet3d', objType: 'chaise' });
+    assert.equal(champ.style.display, 'none', 'une chaise ne porte aucune figure');
+  });
+
+  test('changer de figure RECALCULE les angles depuis la pose du corps', () => {
+    // La décision de conception, épinglée : l'intention survit, le résultat est refait. Sans le
+    // recalcul, les angles de l'ancienne figure resteraient appliqués à la nouvelle — mêmes
+    // nombres, autres os, posture fausse et rien pour le signaler.
+    const obj = modele();
+    S.modalDraftJoints = { rShoulder: { x: 0, z: -1.2 }, headRotY: 0.3 };
+    S.modalDraftSkeletonPose = poseOsPourModeleImporte(FICHIER, S.modalDraftJoints);
+    const avant = S.modalDraftSkeletonPose;
+
+    buildFigureFieldUI(obj);
+    const sel = document.getElementById('objectFigureSelect');
+    sel.value = AUTRE;
+    sel.onchange();
+
+    assert.equal(S.modalDraftModelFile, AUTRE);
+    assert.notEqual(S.modalDraftSkeletonPose, avant, 'les angles doivent être refaits, pas gardés');
+    const t = S.modalDraftSkeletonPose.bras_d;
+    assert.ok(t, 'la pose doit avoir survécu au changement');
+    // L'AMPLITUDE est conservée — c'est le même geste — mais l'AXE change, parce qu'il est
+    // maintenant exprimé dans les os de la nouvelle figure. Les deux assertions comptent : la
+    // première dit que le geste a survécu, la seconde qu'il a bien été retraduit.
+    assert.ok(Math.abs(Math.hypot(t.x, t.y, t.z) - 1.2) < 1e-6, 'le geste doit valoir 1,2 rad');
+    const ancien = avant.bras_d;
+    assert.ok(Math.hypot(t.x - ancien.x, t.y - ancien.y, t.z - ancien.z) > 1e-3,
+      'axe inchangé : le recalcul a été fait sur l\'ANCIENNE figure');
+  });
+
+  test('une seule figure disponible : pas de champ, rien à choisir', () => {
+    clearModelCache();
+    _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
+    const champ = document.getElementById('objectFigureField');
+    buildFigureFieldUI(modele());
+    assert.equal(champ.style.display, 'none',
+      'une liste à un seul élément n\'apporte rien et ne doit pas s\'afficher');
+  });
+
+  test('RÉGRESSION : le sens est unique, corps → os et jamais l\'inverse', () => {
+    // Une retouche faite aux curseurs d'os ne doit PAS remonter dans la pose du corps. Si elle le
+    // faisait, les deux champs finiraient par se contredire — et changer de figure propagerait une
+    // intention que l'utilisateur n'a jamais formulée.
+    //
+    // ⚠️ ÉCHAPPÉE ASSUMÉE. On écrit ici DIRECTEMENT dans le brouillon des os, comme le fait le
+    // rappel d'un curseur. Déclencher le vrai curseur demanderait que le stub DOM retienne et
+    // rejoue les écouteurs, ce qu'il ne fait pas : une mutation ajoutant une écriture de
+    // `modalDraftJoints` DANS ce rappel passerait donc au vert. La règle est épinglée, la ligne de
+    // câblage ne l'est pas — consigné plutôt que masqué par un test de forme.
+    S.modalDraftJoints = { headRotY: 0.3 };
+    const intention = JSON.stringify(S.modalDraftJoints);
+    const obj = modele();
+    buildSkeletonPoseFieldUI(obj);
+    buildSkeletonJointSlidersUI(obj);
+    ecrireAngleDeg(S.modalDraftSkeletonPose, 'bras_d', 'x', 55);
+    assert.equal(JSON.stringify(S.modalDraftJoints), intention,
+      'les curseurs d\'os ont réécrit la pose du corps');
+  });
+
+  test('choisir une pose écrit l\'intention ET le résultat', () => {
+    const obj = modele();
+    S.modalDraftJoints = {};
+    S.modalDraftSkeletonPose = {};
+    buildSkeletonPoseFieldUI(obj);
+    const sel = document.getElementById('objectPositionSelect');
+    sel.value = 'p_salue';
+    sel.onchange();
+    assert.equal(S.modalDraftJoints.headRotY, 0.3, 'l\'intention doit être retenue');
+    assert.ok(S.modalDraftSkeletonPose.tete, 'le résultat aussi');
   });
 });
 

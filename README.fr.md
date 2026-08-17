@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.27**
+**Version 1.3.28**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -67,6 +67,12 @@
   l'avant du corps sur le squelette lui-même plutôt que de supposer une convention, les six fichiers
   d'essai en utilisant cinq différentes. Appliquer une pose **remplace** les réglages manuels, comme
   pour un Personnage, et les angles obtenus s'affichent dans les curseurs, toujours retouchables.
+
+- **Changer de figure** : un champ *Modèle* permet à un Élément importé articulé de porter un autre
+  fichier importé. L'Élément garde sa pose de corps ; les angles des os sont recalculés pour la
+  nouvelle figure, si bien que les réglages fins faits aux curseurs sont perdus — ces angles sont
+  exprimés dans les axes de l'ancienne figure et ne veulent rien dire sur un autre squelette. Rien
+  n'est acquis tant que la fiche n'est pas enregistrée.
 
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
 > Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend

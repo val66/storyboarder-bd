@@ -26,8 +26,8 @@ import {
   writePoseSliderDeg3D,
 } from './utils.js';
 import {
-  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, objectRigCache3D,
-  poseOsPourModeleImporte, resolveStyle3D,
+  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, getEffectiveJoints,
+  objectRigCache3D, poseOsPourModeleImporte, resolveStyle3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { renderModelForEditor3D } from './scene3d.js';
@@ -70,21 +70,11 @@ export function setPersonaEditorCallbacks({ buildPersonaPositionOptions }) {
 // doivent donner exactement le même résultat, sans quoi réinitialiser ne ramènerait pas là où on
 // croyait revenir. Toujours une copie — cf. le commentaire ci-dessus sur le brouillon.
 export function personaEditorInitialJoints(target){
-  if (!target) return cloneJoints(POSE_3D.debout);
-  // Un Personnage porte ses angles dans `joints3d`, écrit à chaque enregistrement : c'est lui qui
-  // fait foi, exactement comme au rendu (cf. getEffectiveJoints).
-  if (target.joints3d) return cloneJoints(target.joints3d);
-  // UN MODÈLE IMPORTÉ N'EN A PAS, ET N'EN AURA PAS. Ce qui le déforme, ce sont ses OS
-  // (`skeletonPose3d`) ; `position` ne retient que la pose choisie. Sans cette résolution, ouvrir
-  // l'éditeur sur un modèle assis le montrerait debout — le repli de getEffectiveJoints ne connaît
-  // que les poses INTÉGRÉES, pas la bibliothèque. On passe donc par le résolveur commun, dont le
-  // repli est le même que le sien, plus la bibliothèque : aucun chemin en moins, un de plus.
-  //
   // ⚠️ CE QUE CELA NE FAIT PAS, ET C'EST ASSUMÉ : les réglages fins faits aux curseurs d'os ne
-  // remontent pas ici. L'éditeur travaille sur une POSE de corps, les curseurs sur des OS, et rien
+  // remontent pas ici. L'éditeur travaille sur une POSE DE CORPS, les curseurs sur des OS, et rien
   // ne sait retraduire les seconds en la première. Cohérent avec la règle retenue — appliquer une
   // pose REMPLACE les réglages manuels.
-  return cloneJoints(poseJointsByKey3D(target.position, POSE_3D, S.poses) || POSE_3D.debout);
+  return cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
 }
 
 export function openPersonaEditor(target, fromModal){

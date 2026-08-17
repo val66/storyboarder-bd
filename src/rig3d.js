@@ -14,12 +14,12 @@ import {
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC
 } from './constants.js';
 import {
-  clamp, orbitCameraPosition3D
+  clamp, orbitCameraPosition3D, poseJointsByKey3D
 } from './utils.js';
-import { currentVolume } from './state.js';
+import { S, currentVolume } from './state.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
-import { getLoadedModel, modelState } from './model-cache.js';
+import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
 // cf. son en-tête : Object3D.clone() casse le lien SkinnedMesh↔Skeleton, faussant l'échelle
 // appliquée par placeRigCentered3D pour tout modèle importé articulé.
 import { cloneSkinned } from './vendor/SkeletonUtils.js';
@@ -31,8 +31,24 @@ import { orientationFinale } from './skeleton-pose.js';
 import { repereDuCorps } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
+/**
+ * LA pose de corps d'un Élément — l'unique résolveur de l'application.
+ *
+ * Ordre : les angles portés par l'Élément d'abord, la bibliothèque ensuite, « debout » en dernier
+ * recours. Un Personnage écrit ses angles à chaque enregistrement, donc les deux replis ne le
+ * concernent presque jamais ; un MODÈLE IMPORTÉ, lui, ne retient longtemps que le nom de sa pose,
+ * et sans la bibliothèque il paraîtrait debout alors qu'il est assis.
+ *
+ * ⚠️ IL N'Y EN A QU'UN, ET C'EST DÉLIBÉRÉ. J'avais ajouté un second résolveur dans l'éditeur pour
+ * consulter la bibliothèque — deux réponses possibles à « quelle est la pose de cet Élément »,
+ * exactement le défaut qui revient le plus souvent dans ce dépôt. Le repli de la bibliothèque est
+ * remonté ici, où tout le monde le voit.
+ */
 export function getEffectiveJoints(o){
-  return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
+  if (!o) return POSE_3D.debout;
+  return o.joints3d
+    || poseJointsByKey3D(o.position, POSE_3D, S.poses)
+    || POSE_3D.debout;
 }
 export function cloneJoints(j){
   return JSON.parse(JSON.stringify(j || POSE_3D.debout));
@@ -3196,6 +3212,18 @@ export function reposMondeParEmplacement(osMappes){
     if (e && e.reposMonde) sortie[slot] = e.reposMonde;
   }
   return sortie;
+}
+
+/**
+ * Les fichiers qu'un Élément peut PORTER comme figure : ceux dont le squelette est reconnu.
+ *
+ * Un modèle sans squelette reconnu n'est pas proposé — on ne peut pas poser ce qu'on ne sait pas
+ * lire, et une figure que les curseurs ne pilotent pas serait un mensonge. C'est la MÊME condition
+ * que le champ Position et que le crayon de l'aperçu : trois contrôles, une seule règle.
+ */
+export function figuresPosables(){
+  return loadedModelNames().filter(nom => Object.values(correspondancePourModele(nom))
+    .some(e => e && e.bone));
 }
 
 /**

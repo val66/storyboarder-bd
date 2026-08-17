@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.27**
+**Version 1.3.28**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -65,6 +65,11 @@
   than assuming a convention, because the six test files use five different ones. Applying a pose
   **replaces** the manual slider settings, as for a Character, and the resulting angles show up in
   the sliders, still adjustable.
+
+- **Changing figure**: a *Model* field lets an articulated imported Element wear another imported
+  file. The Element keeps its body pose; the bone angles are recomputed for the new figure, so
+  fine-tuning done on the sliders is lost — those angles are expressed in the old figure's own axes
+  and mean nothing on another skeleton. Nothing is committed until the dialog is saved.
 
 > **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
 > turn each bone around its own axes (which one bends an elbow depends on the file); and a straight

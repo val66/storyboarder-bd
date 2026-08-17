@@ -4952,6 +4952,14 @@ objectModalSave.onclick = () => {
     // La normalisation jette les angles nuls (cf. skeleton-pose.js), donc ramener tous les curseurs
     // à zéro efface réellement le champ au lieu de laisser l'Élément marqué comme posé à jamais.
     if (isImportedModel(S.modalTarget)) {
+      // LA FIGURE, avant la pose : c'est elle qui donne son sens aux angles d'os écrits juste après.
+      // `realHeightFloor` est volontairement laissé tel quel — la taille réelle est une propriété de
+      // l'Élément dans la Scène, choisie par l'utilisateur, pas une conséquence du fichier.
+      if (S.modalDraftModelFile) S.modalTarget.modelFile = S.modalDraftModelFile;
+      // L'INTENTION. C'est elle qui permettra de recalculer les angles d'os si la figure change plus
+      // tard — sans elle, changer de Modèle ne pourrait que remettre à zéro. Le sens reste unique :
+      // rien ne réécrit `joints3d` depuis les curseurs d'os (cf. buildFigureFieldUI).
+      S.modalTarget.joints3d = cloneJoints(S.modalDraftJoints);
       const pose = normaliserPose(S.modalDraftSkeletonPose);
       S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
       // `position` sur un modèle importé : LA MÉMOIRE D'UN CHOIX, pas la source de vérité.

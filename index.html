@@ -913,6 +913,14 @@
              régler au même endroit. Choisir une pose REMPLACE les réglages fins de la section
              Aperçu 3D — c'est le comportement du Personnage, conservé volontairement.
              Une chaise importée n'a pas d'articulations : le champ reste masqué. -->
+        <!-- La FIGURE que porte cet Élément. « Type » (chaise, voiture…) ne s'applique qu'aux
+             objets intégrés et reste masqué ici : on ne transforme pas un fichier importé en
+             voiture. « Modèle » prend sa place, et suit la même condition que Position et que le
+             crayon de l'aperçu — présent dès qu'un corps peut être posé. -->
+        <div id="objectFigureField" style="display:none">
+          <label class="modal-field-label" id="objectFigureLabel">Modèle</label>
+          <select id="objectFigureSelect"></select>
+        </div>
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
           <select id="objectPositionSelect"></select>

@@ -204,6 +204,21 @@ export function clearModelCache(){
 }
 
 /** Pour les tests : injecter un état sans passer par le disque. */
+/**
+ * Les fichiers actuellement DÉCODÉS, dans l'ordre alphabétique.
+ *
+ * Ce n'est pas la liste du dossier `Modeles` — celle-là s'obtient par `listModels()`, qui passe par
+ * le disque et donc par une promesse. Ici on répond tout de suite, et on ne cite que des modèles
+ * dont la géométrie est en mémoire : c'est ce qu'il faut pour proposer une FIGURE, puisqu'il faut
+ * avoir lu le squelette pour savoir s'il est reconnu.
+ *
+ * ⚠️ Conséquence assumée : un fichier posé dans le dossier mais qu'aucun Élément du Projet n'utilise
+ * n'est pas encore décodé, donc pas proposé. Il le devient dès qu'un Élément s'en sert.
+ */
+export function loadedModelNames(){
+  return [..._cache.keys()].filter(nom => _cache.get(nom) && _cache.get(nom).scene).sort();
+}
+
 export function _setModelCacheEntry(nom, valeur){ _cache.set(nom, valeur); }
 
 /** Pour les tests : appliquer l'anisotropie sans passer par un décodage GLTF complet. */

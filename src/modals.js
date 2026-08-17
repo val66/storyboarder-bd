@@ -42,8 +42,8 @@ import {
   worldToPageXY,
 } from './scene3d.js';
 import {
-  cloneJoints, correspondancePourModele, getEffectiveJoints, objectRigCache3D, personaCamera3D,
-  personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
+  cloneJoints, correspondancePourModele, figuresPosables, getEffectiveJoints, objectRigCache3D,
+  personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, groupesPosables, lireAngleDeg,
@@ -595,6 +595,59 @@ export function buildSkeletonJointSlidersUI(obj){
 }
 
 /**
+ * Le sélecteur de FIGURE — quel fichier cet Élément porte.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * DEUX CHAMPS, UN SENS UNIQUE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Depuis cette étape, un Élément posable retient DEUX choses :
+ *
+ *   • `joints3d` — l'INTENTION : la pose du corps, ce que produisent l'éditeur et la bibliothèque ;
+ *   • `skeletonPose3d` — le RÉSULTAT : les angles appliqués aux os de la figure courante.
+ *
+ * ⚠️ LE SENS EST UNIQUE : corps → os, JAMAIS l'inverse. Les curseurs d'os écrivent le résultat et
+ * n'y touchent pas ; rien ne sait retraduire des angles d'os en pose de corps, et prétendre le
+ * contraire ferait diverger les deux — le défaut le plus fréquent de ce dépôt.
+ *
+ * D'où le comportement, décidé explicitement : CHANGER DE FIGURE RECALCULE le résultat depuis
+ * l'intention. La pose est conservée, les retouches faites aux curseurs sont perdues — elles sont
+ * exprimées dans les axes des os de l'ANCIENNE figure et ne veulent rien dire sur la nouvelle.
+ */
+export function buildFigureFieldUI(obj){
+  const champ = document.getElementById('objectFigureField');
+  const sel = document.getElementById('objectFigureSelect');
+  if (!champ || !sel) return;
+  const figures = figuresPosables();
+  // Une seule figure disponible — la sienne — ne laisse aucun choix à faire : le champ n'apporte
+  // rien et disparaît, plutôt que d'afficher une liste à un élément.
+  const utile = isImportedModel(obj) && figures.length > 1;
+  champ.style.display = utile ? '' : 'none';
+  if (!utile) return;
+
+  const etiquette = document.getElementById('objectFigureLabel');
+  if (etiquette) etiquette.textContent = tr('Model', 'Modèle');
+  sel.innerHTML = '';
+  figures.forEach(nom => {
+    const opt = document.createElement('option');
+    opt.value = nom; opt.textContent = nom;
+    sel.appendChild(opt);
+  });
+  sel.value = S.modalDraftModelFile || obj.modelFile || figures[0];
+
+  sel.onchange = () => {
+    S.modalDraftModelFile = sel.value;
+    // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null` — figure
+    // illisible — laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
+    S.modalDraftSkeletonPose = poseOsPourModeleImporte(sel.value, S.modalDraftJoints) || {};
+    // La correspondance change avec le fichier : les curseurs affichés doivent être ceux des os de
+    // la NOUVELLE figure, pas ceux d'avant.
+    buildSkeletonJointSlidersUI(Object.assign({}, obj, { modelFile: sel.value }));
+    refreshObjectPreview();
+  };
+}
+
+/**
  * Le sélecteur de pose de la fiche d'un modèle importé.
  *
  * MÊME BIBLIOTHÈQUE, MÊME PLACE QUE POUR UN PERSONNAGE. Deux corps qui se posent de la même façon
@@ -630,6 +683,7 @@ export function buildSkeletonPoseFieldUI(obj){
 
   const etiquette = document.getElementById('objectPoseLabel');
   if (etiquette) etiquette.textContent = tr('Pose', 'Position');
+  buildFigureFieldUI(obj);
   // La MÊME fonction que pour un Personnage : même bibliothèque, même option de repli pour une pose
   // disparue, même valeur d'ouverture. Deux remplissages séparés auraient divergé.
   remplirSelecteurDePose(sel, obj);
@@ -637,11 +691,14 @@ export function buildSkeletonPoseFieldUI(obj){
   sel.onchange = () => {
     const joints = poseJointsByKey3D(sel.value, POSE_3D, S.poses);
     if (!joints) return;
-    const pose = poseOsPourModeleImporte(obj.modelFile, joints);
+    const figure = S.modalDraftModelFile || obj.modelFile;
+    const pose = poseOsPourModeleImporte(figure, joints);
     // `null` = ce modèle ne peut pas recevoir de pose (fichier pas encore décodé, ou repère du corps
     // non dérivable). On ne touche alors à RIEN : mieux vaut un choix sans effet qu'un modèle
     // remis à zéro sans explication.
     if (!pose) return;
+    // L'INTENTION d'abord — c'est elle qui survivra à un changement de figure —, le résultat ensuite.
+    S.modalDraftJoints = cloneJoints(joints);
     S.modalDraftSkeletonPose = pose;
     buildSkeletonJointSlidersUI(obj);
     refreshObjectPreview();
@@ -816,6 +873,11 @@ export function openObjectModal(obj, isNew){
   // qu'à l'enregistrement. C'est la règle de toutes les modales de ce dépôt — annuler doit vraiment
   // annuler, y compris après vingt curseurs déplacés.
   S.modalDraftSkeletonPose = obj.skeletonPose3d ? JSON.parse(JSON.stringify(obj.skeletonPose3d)) : {};
+  // L'INTENTION et la FIGURE, en brouillon comme le reste : « Annuler » doit vraiment annuler.
+  // `modalDraftJoints` est partagé avec la fiche du Personnage — une seule modale est ouverte à la
+  // fois, et c'est bien la même chose qu'il désigne : la pose de corps en cours d'édition.
+  S.modalDraftJoints = cloneJoints(getEffectiveJoints(obj));
+  S.modalDraftModelFile = isImportedModel(obj) ? obj.modelFile : null;
   buildSkeletonJointSlidersUI(obj);
   buildSkeletonPoseFieldUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Aperçu 3D']);
@@ -847,7 +909,9 @@ export function refreshObjectPreview(){
   const _estModele = isImportedModel(S.modalTarget);
   drawObjectPreview(objectPreview3D, {
     objType: _estModele ? 'modele' : objectTypeSelect.value,
-    modelFile: _estModele ? S.modalTarget.modelFile : undefined,
+    // La figure du BROUILLON : changer de Modèle doit se voir avant d'enregistrer. ⚠️ Aucun test ne
+    // couvre cette ligne — l'aperçu passe par WebGL, injoignable sous Node (cf. docs/testing-method.md).
+    modelFile: _estModele ? (S.modalDraftModelFile || S.modalTarget.modelFile) : undefined,
     color: S.modalTarget.color,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,
     rotY: Number(objectRotYInput.value) * Math.PI / 180,
