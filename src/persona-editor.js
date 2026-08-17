@@ -12,8 +12,8 @@
  */
 
 import {
-  JOINT_GROUPS, JOINT_LABELS, PERSONA_EDITOR_RENDER_MAX_PX, PERSONA_SKELETON_3D,
-  POSE_3D, POSE_HANDLES,
+  JOINT_GROUPS, JOINT_LABELS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
+  PERSONA_SKELETON_3D, POSE_3D, POSE_HANDLES,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -25,7 +25,13 @@ import {
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
   writePoseSliderDeg3D,
 } from './utils.js';
-import { cloneJoints, poseOsPourModeleImporte } from './rig3d.js';
+import {
+  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, objectRigCache3D,
+  poseOsPourModeleImporte, resolveStyle3D,
+} from './rig3d.js';
+import { jointsDepuisOsMappes } from './pose-bridge.js';
+import { renderModelForEditor3D } from './scene3d.js';
+import { groupesPosables } from './skeleton-pose.js';
 import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
 import {
@@ -91,6 +97,12 @@ export function openPersonaEditor(target, fromModal){
   // continuent de dire vrai sans être réécrites.
   S.personaEditorFromModal = fromModal || null;
   S.personaEditorTargetId = (target && target.id) || null;
+  // LA FIGURE AFFICHÉE SUIT LA CIBLE, ET SEULEMENT À L'OUVERTURE. Venir de la fiche d'un modèle
+  // importé montre CE modèle ; venir du menu de gauche montre le Personnage intégré, toujours —
+  // sans cible, il n'y a aucune raison de choisir un fichier plutôt qu'un autre. Rien n'est hérité
+  // de la session précédente, pour la même raison que le cadrage juste en dessous : retrouver la
+  // figure de quelqu'un d'autre en ouvrant l'éditeur ne s'expliquerait pas.
+  S.personaEditorModelFile = isImportedModel(target) ? target.modelFile : null;
   S.personaEditorDraft = personaEditorInitialJoints(target);
   // Cadrage remis à neuf à chaque ouverture : hériter du zoom ou de l'angle de la session
   // précédente ferait apparaître un Personnage hors champ, ou vu de dos, sans que rien ne
@@ -119,6 +131,7 @@ export function closePersonaEditor(){
   S.personaEditorTargetId = null;
   S.personaEditorDraft = null;
   S.personaEditorFromModal = null;
+  S.personaEditorModelFile = null;
   S.personaEditorHandleId = null;
   S.personaEditorPoseKey = null;
   S.personaEditorBaseline = null;
@@ -457,6 +470,43 @@ export function applyPersonaEditorJointDrag(session, dx, dy, geste){
 // La résolution de rendu est plafonnée à PANEL_SCENE_RENDER_MAX_PX : le canevas occupe tout l'écran,
 // et suivre aveuglément sa taille CSS multipliée par le devicePixelRatio demanderait au renderer
 // partagé des tampons démesurés à chaque image.
+/**
+ * Le fichier du modèle importé à AFFICHER, ou `null` pour le Personnage intégré. Fonction PURE
+ * vis-à-vis de Three : elle ne lit qu'un état et une correspondance.
+ *
+ * Un modèle dont le squelette n'est pas reconnu n'est jamais affiché : on ne peut pas poser ce
+ * qu'on ne sait pas lire, et montrer une figure que les curseurs ne pilotent pas serait un
+ * mensonge — la même règle que pour le champ Position de la fiche.
+ */
+export function figureImporteeDeLEditeur(){
+  const fichier = S.personaEditorModelFile;
+  if (!fichier) return null;
+  return groupesPosables(correspondancePourModele(fichier), tr).length ? fichier : null;
+}
+
+// Rend le modèle importé dans le canevas de l'éditeur, à la pose du brouillon.
+//
+// L'identifiant du rig est PROPRE À L'ÉDITEUR : partager celui de l'aperçu de la fiche ferait que
+// les deux vues se disputeraient le même cache, et l'une afficherait la pose de l'autre. Le motif a
+// déjà coûté cher plusieurs fois dans ce dépôt (zoom, poignées, caméra).
+function dessinerModeleDansEditeur(cnv, fichier, size){
+  const tempObj = {
+    id: PERSONA_EDITOR_MODEL_ID,
+    type: 'objet3d', objType: 'modele', modelFile: fichier,
+    skeletonPose3d: poseOsPourModeleImporte(fichier, S.personaEditorDraft) || null,
+    rotX: 0, rotY: 0, rotZ: 0,
+  };
+  const style = resolveStyle3D();
+  const rw = Math.max(1, Math.round(size.w)), rh = Math.max(1, Math.round(size.h));
+  if (cnv.width !== rw || cnv.height !== rh) { cnv.width = rw; cnv.height = rh; }
+  const rendu = renderModelForEditor3D(tempObj, S.personaEditorZoom, S.personaEditorPan, style,
+    { w: rw, h: rh }, { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY });
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+  applyStyleCanvasFilter3D(ctx, style);
+  ctx.drawImage(rendu, 0, 0, rendu.width, rendu.height, 0, 0, cnv.width, cnv.height);
+}
+
 export function drawPersonaEditor(){
   const cnv = document.getElementById('personaEditorCanvas');
   if (!cnv || !S.personaEditorOpen) return;
@@ -468,6 +518,30 @@ export function drawPersonaEditor(){
   const size = figureRenderSize3D(
     cnv.clientWidth || 900, cnv.clientHeight || 700,
     PERSONA_EDITOR_RENDER_MAX_PX, window.devicePixelRatio || 1);
+
+  // ── La figure affichée : le Personnage intégré, ou un modèle importé ──────────────────────────
+  //
+  // C'EST UN MANNEQUIN, PAS LA CIBLE. Changer de figure ne change pas ce qu'on édite : on compose
+  // toujours une pose de corps, et « Appliquer » la porte à l'Élément d'où l'on vient. Afficher le
+  // vrai modèle sert à voir ce qu'on fait — poser un personnage trapu en regardant une silhouette
+  // élancée fait juger de travers.
+  //
+  // La pose est TRADUITE pour l'affichage, par la même fonction que partout ailleurs : le modèle ne
+  // sait pas lire les champs du Personnage. Un second chemin de traduction, propre à l'aperçu,
+  // aurait fini par montrer autre chose que ce qu'« Appliquer » écrit.
+  const modele = figureImporteeDeLEditeur();
+  if (modele) {
+    dessinerModeleDansEditeur(cnv, modele, size);
+    // Les poignées se posent sur les OS du modèle, pas sur la silhouette intégrée. Même appel, même
+    // carte de positions, même geste de clic derrière : seule la figure qu'on projette change.
+    const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+    if (entree && entree.skeletonBones) {
+      drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
+        personaEditorDragHint(), true, jointsDepuisOsMappes(entree.skeletonBones));
+    }
+    return;
+  }
+
   drawPersonaPreview(cnv, {
     joints: S.personaEditorDraft,
     color: target && target.color,

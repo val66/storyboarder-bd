@@ -611,9 +611,17 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
   test('RÉGRESSION : seul l\'ÉDITEUR demande ce masquage', () => {
     // L'aperçu de la modale garde toutes ses poignées : on y choisit une articulation, on ne l'y
     // manipule pas au glisser. Un masquage global y rendrait la sélection impossible à changer.
+    // ⚠️ On regarde l'ARGUMENT `solo`, pas la fin de l'appel. La version d'avant exigeait que
+    // l'appel se termine par « , true) » — vrai tant qu'il n'y avait qu'un appel et pas d'argument
+    // après. L'éditeur en a désormais deux (le Personnage intégré, et un modèle importé, qui passe
+    // en plus la figure sur laquelle poser les poignées), et le drapeau n'est plus le dernier. La
+    // forme avait changé, l'intention non : c'est elle qu'on vérifie.
     const appelsEditeur = evt.match(/drawPersonaPoseHandlesOverlay\([^;]*\);/gs) || [];
-    assert.equal(appelsEditeur.length, 1, 'un seul appel côté éditeur');
-    assert.match(appelsEditeur[0], /,\s*true\s*\)/, 'et il passe le drapeau');
+    assert.ok(appelsEditeur.length >= 1, 'l\'éditeur doit dessiner des poignées');
+    appelsEditeur.forEach(appel => {
+      assert.match(appel, /personaEditorDragHint\(\),\s*true/,
+        `l'éditeur doit masquer les autres poignées pendant un glisser : ${appel}`);
+    });
     const mod = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
     (mod.match(/drawPersonaPoseHandlesOverlay\([^;]*\);/gs) || []).forEach(appel => {
       assert.ok(!/,\s*true\s*\)/.test(appel), `la modale ne doit pas masquer : ${appel}`);

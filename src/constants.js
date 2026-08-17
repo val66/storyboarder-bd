@@ -747,6 +747,11 @@ export const PREVIEW_OBJECT_ID = '__objectEditPreview__';
 // directly (shared, already-proven scene/camera/renderer) via a temporary "persona" object.
 export const PREVIEW_PERSONA_ID = '__personaEditPreview__';
 
+// Le rig du modèle importé affiché DANS l'Éditeur de Personnage. Distinct de PREVIEW_OBJECT_ID à
+// dessein : l'éditeur et l'aperçu de la fiche montrent le même fichier à des poses différentes, et
+// partager une entrée de cache ferait que l'un afficherait la pose de l'autre.
+export const PERSONA_EDITOR_MODEL_ID = '__personaEditorModel__';
+
 
 // ── Persona editor — joint segments & labels ────────────────────
 // Describes, for each joint, the visual limb segment it controls: either up to the child

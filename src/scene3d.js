@@ -51,6 +51,7 @@ import {
   ensureWallRenderEntry3D,
   resolveStyle3D,
   showOnlyFigure3D,
+  useFigureFormat3D,
   useObjectFormat3D,
   useObjectBoxFormat3D,
   objectRigCache3D,
@@ -2754,6 +2755,30 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   } else {
     frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
   }
+  personaRenderer3D.render(personaScene3D, personaCamera3D);
+  return personaRenderer3D.domElement;
+}
+
+/**
+ * Rendre un MODÈLE IMPORTÉ dans le canevas de l'Éditeur de Personnage.
+ *
+ * Pourquoi une fonction de plus plutôt qu'un paramètre de `renderObjectToCanvas3D` : l'éditeur a
+ * besoin de trois choses que l'aperçu d'une fiche n'a pas — une taille de rendu imposée (le canevas
+ * plein écran, cf. Fix 53), un déplacement, et une orbite. Les ajouter à la fonction générique
+ * aurait allongé une signature déjà à cinq paramètres pour un seul appelant.
+ *
+ * CE QUI EST PARTAGÉ EST PARTAGÉ : le cadrage passe par la même boîte consciente du skinning que
+ * l'aperçu (cf. skinned-box-3d.js). Un modèle articulé a une géométrie brute qui ne représente pas
+ * sa pose affichée ; sans cela, l'éditeur cadrerait sur les pieds seuls — le défaut exact déjà
+ * mesuré sur la fiche.
+ */
+export function renderModelForEditor3D(o, zoom, pan, styleKey, sizeOverride, orbit){
+  useFigureFormat3D(1, sizeOverride);
+  const entry = ensureObjectRigEntry3D(o);
+  showOnlyFigure3D('objet3d', o.id);
+  applyStyle3DLighting(resolveStyle3D(styleKey));
+  entry.figureGroup.updateMatrixWorld(true);
+  frameCameraToBox(personaCamera3D, box3FromObjectSkinAware3D(entry.figureGroup), zoom, pan, orbit);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   return personaRenderer3D.domElement;
 }

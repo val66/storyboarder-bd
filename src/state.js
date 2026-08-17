@@ -153,6 +153,10 @@ export const S = {
   // { slot: { x?, y?, z? } } en radians, pendant l'édition d'un Modèle importé articulé. Brouillon :
   // l'Élément ne reçoit sa pose qu'à l'enregistrement de la modale (cf. src/skeleton-pose.js).
   modalDraftSkeletonPose:     null,
+  // Quelle FIGURE l'Éditeur de Personnage affiche : `null` = le Personnage intégré, sinon le nom de
+  // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
+  // l'Élément qu'« Appliquer » alimente. Jamais persisté — un choix de vue, pas une propriété.
+  personaEditorModelFile:     null,
   selectedSkeletonHandle:      null,  // { id: slot } ou null — poignée choisie sur l'aperçu
   modalDirty:                 false,
   modalIsNew:                 false,

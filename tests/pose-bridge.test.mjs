@@ -17,7 +17,10 @@ import assert from 'node:assert/strict';
 import { POSE_HANDLES } from '../src/constants.js';
 import { SLOTS } from '../src/skeleton-map.js';
 import { SLOTS_NON_POSABLES, quaternionDepuisEuler } from '../src/skeleton-pose.js';
-import { EMPLACEMENT_PAR_ARTICULATION, curseursOrdonnesParAxe, poseOsDepuisPosePersonnage } from '../src/pose-bridge.js';
+import {
+  EMPLACEMENT_PAR_ARTICULATION, curseursOrdonnesParAxe, jointsDepuisOsMappes,
+  poseOsDepuisPosePersonnage,
+} from '../src/pose-bridge.js';
 
 const REPERE_IDENTITE = { droite: [1, 0, 0], haut: [0, 1, 0], avant: [0, 0, 1] };
 // Un corps dont la verticale est +Z — ce n'est pas une hypothèse d'école : `hulk_-_sm_bnd.glb` et
@@ -71,6 +74,30 @@ test('gauche va à gauche, droite va à droite', () => {
     const coteEmplacement = /_g$/.test(slot) ? 'g' : /_d$/.test(slot) ? 'd' : null;
     assert.equal(coteArticulation, coteEmplacement, `${id} → ${slot} : les côtés ne concordent pas`);
   });
+});
+
+test('la carte des poignées se dérive des os mappés, sans table nouvelle', () => {
+  // Le dessin des points d'articulation lit `entry.joints[def.group]`, où `def.group` nomme un
+  // groupe du rig intégré. Pour poser ces points sur un modèle importé il faut la même forme,
+  // remplie d'os — et le seul lien manquant était articulation → emplacement, que la table
+  // ci-dessus tient déjà. Une seconde correspondance groupe → emplacement aurait été l'énumération
+  // parallèle de trop.
+  const osMappes = Object.fromEntries(
+    Object.values(EMPLACEMENT_PAR_ARTICULATION).map(slot => [slot, { os: { nom: slot } }]));
+  const { joints, osImportes } = jointsDepuisOsMappes(osMappes);
+  assert.equal(osImportes, true, 'le dessin doit savoir qu\'il s\'agit d\'os, pas du rig intégré');
+  POSE_HANDLES.forEach(def => {
+    assert.ok(joints[def.group], `aucune articulation pour la poignée « ${def.id} »`);
+    assert.equal(joints[def.group].nom, EMPLACEMENT_PAR_ARTICULATION[def.id]);
+  });
+});
+
+test('un os absent du fichier ne laisse pas de poignée fantôme', () => {
+  // Une entrée présente mais vide ferait projeter un point sur `undefined` : le disque
+  // apparaîtrait au centre du canevas, attrapable, et ne piloterait rien.
+  const { joints } = jointsDepuisOsMappes({ tete: { os: {} }, bras_g: {} });
+  assert.deepEqual(Object.keys(joints), ['headGroup']);
+  assert.deepEqual(Object.keys(jointsDepuisOsMappes(null).joints), []);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

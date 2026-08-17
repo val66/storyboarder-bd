@@ -63,6 +63,31 @@ export const EMPLACEMENT_PAR_ARTICULATION = {
 };
 
 /**
+ * La carte que le dessin des poignées attend — `{ nomDeGroupe: os }` —, construite depuis les os
+ * mappés d'un modèle importé. Fonction PURE : elle ne fait que déplacer des références.
+ *
+ * POURQUOI ELLE N'EST PAS UNE TABLE DE PLUS. `projectPoseHandlePositions3D` lit
+ * `entry.joints[def.group]`, où `def.group` nomme un groupe du rig intégré. Pour poser les poignées
+ * sur un modèle importé, il faut la même forme, remplie d'os. Tout ce qu'il manquait était le lien
+ * articulation → emplacement — celui-là même que la table ci-dessus tient déjà. Écrire une seconde
+ * correspondance `groupe → emplacement` aurait créé exactement le genre d'énumération parallèle que
+ * ce fichier existe pour éviter.
+ *
+ * `osImportes` accompagne la carte : il dit au dessin que les décalages LOCAUX de LIMB_SEGMENTS
+ * (`toLocal`, sept entrées sur dix-huit) sont exprimés en unités du rig intégré et n'ont aucun sens
+ * ici — un os importé est en mètres, avec ses propres axes.
+ */
+export function jointsDepuisOsMappes(osMappes){
+  const joints = {};
+  POSE_HANDLES.forEach(def => {
+    const emplacement = EMPLACEMENT_PAR_ARTICULATION[def.id];
+    const entree = emplacement ? (osMappes || {})[emplacement] : null;
+    if (entree && entree.os) joints[def.group] = entree.os;
+  });
+  return { joints, osImportes: true };
+}
+
+/**
  * Les curseurs d'une articulation, rangés par axe X puis Y puis Z. Fonction PURE.
  *
  * L'ORDRE N'EST PAS DÉCORATIF. Trois rotations ne commutent pas : les composer dans un autre ordre

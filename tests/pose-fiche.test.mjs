@@ -32,7 +32,7 @@ import {
 import { groupesPosables } from '../src/skeleton-pose.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
-  setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor,
+  setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
 } from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
@@ -362,6 +362,52 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
     assert.equal(applyPersonaEditorToModal(), null);
     assert.equal(S.modalDraftSkeletonPose, avant);
     closePersonaEditor();
+  });
+
+  test('la figure affichée est CELLE du modèle dont on vient', () => {
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(S.personaEditorModelFile, FICHIER);
+    assert.equal(figureImporteeDeLEditeur(), FICHIER);
+    closePersonaEditor();
+  });
+
+  test('depuis le menu de gauche, TOUJOURS le Personnage intégré', () => {
+    // Aucune cible, donc aucune raison de choisir un fichier plutôt qu'un autre — et surtout aucun
+    // héritage de la session précédente : retrouver la figure de quelqu'un d'autre en ouvrant
+    // l'éditeur ne s'expliquerait pas.
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(S.personaEditorModelFile, FICHIER);
+    closePersonaEditor();
+
+    openPersonaEditor(null);
+    assert.equal(S.personaEditorModelFile, null, 'le modèle d\'avant ne doit pas survivre');
+    assert.equal(figureImporteeDeLEditeur(), null);
+    closePersonaEditor();
+  });
+
+  test('un Personnage montre le Personnage, pas un modèle', () => {
+    const perso = { id: 'p1', type: 'perso', position: 'debout' };
+    S.tomes = [{ pages: [{ objects: [perso] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(perso, 'descModal');
+    assert.equal(S.personaEditorModelFile, null);
+    closePersonaEditor();
+  });
+
+  test('un modèle dont le squelette n\'est pas reconnu n\'est jamais affiché', () => {
+    // On ne peut pas poser ce qu'on ne sait pas lire : montrer une figure que les curseurs ne
+    // pilotent pas serait un mensonge. Même règle que pour le champ Position de la fiche.
+    S.personaEditorOpen = true;
+    S.personaEditorModelFile = 'inexistant.glb';
+    assert.equal(figureImporteeDeLEditeur(), null);
+    S.personaEditorModelFile = null;
+    S.personaEditorOpen = false;
   });
 
   test('demander sa cible à l\'éditeur ne lève pas sans Projet', () => {

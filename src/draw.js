@@ -1786,7 +1786,13 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
     if (seg) {
       const cible = seg.toGroup ? entry.joints[seg.toGroup] : null;
       if (seg.toGroup && cible) pt.tip = projectJointToCanvas(cible, camera, cnvW, cnvH);
-      else if (!seg.toGroup) pt.tip = projectLocalOffsetToCanvas(grp, seg.toLocal, camera, cnvW, cnvH);
+      // `toLocal` est un décalage EN UNITÉS DU RIG INTÉGRÉ (sept segments sur dix-huit). Sur un os
+      // importé — en mètres, avec ses propres axes — il désignerait un point sans rapport, et la
+      // bande de prise partirait de travers. Ces segments-là n'ont alors simplement pas d'extrémité :
+      // la poignée reste attrapable par son disque, ce qui est exact plutôt qu'approximatif.
+      else if (!seg.toGroup && !entry.osImportes) {
+        pt.tip = projectLocalOffsetToCanvas(grp, seg.toLocal, camera, cnvW, cnvH);
+      }
     }
     positions[def.id] = pt;
     points.push({ def, pt, active });
@@ -1794,9 +1800,14 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
   return points;
 }
 
-export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive){
+export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive, entryOverride){
   if (typeof THREE === 'undefined') return;
-  const entry = personaRigCache3D.get(PREVIEW_PERSONA_ID);
+  // `entryOverride` : la figure sur laquelle poser les poignées, quand ce n'est pas le rig intégré.
+  // L'Éditeur de Personnage peut afficher un MODÈLE IMPORTÉ ; ses articulations sont alors des os,
+  // et lire le cache du rig intégré poserait les points sur une silhouette qui n'est pas à l'écran.
+  // Un paramètre plutôt qu'une lecture d'état : cette fonction ne doit pas avoir à savoir QUI
+  // l'appelle (cf. Fix 92, où le repli implicite sur un canevas global était le même défaut).
+  const entry = entryOverride || personaRigCache3D.get(PREVIEW_PERSONA_ID);
   if (!entry) return;
   // Le canevas est OBLIGATOIRE. Le repli était `canvas || personaPreview3D`, une variable que
   // draw.js n'importe nulle part : elle ne se résolvait que par la « nommage global » du
