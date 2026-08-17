@@ -500,6 +500,10 @@ export function buildSkeletonJointSlidersUI(obj){
   const container  = document.getElementById('objectSkeletonSlidersContainer');
   if (!subsection || !container) return;
   container.innerHTML = '';
+  Object.keys(skeletonJointGroupDetailsById).forEach(k => delete skeletonJointGroupDetailsById[k]);
+  Object.keys(skeletonJointRowsById).forEach(k => delete skeletonJointRowsById[k]);
+  Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
+  S.selectedSkeletonHandle = null;
   if (!isImportedModel(obj)) { subsection.style.display = 'none'; return; }
 
   const carte = correspondancePourModele(obj.modelFile);
@@ -509,6 +513,10 @@ export function buildSkeletonJointSlidersUI(obj){
 
   const resume = document.getElementById('objectSkeletonSlidersSummary');
   if (resume) resume.textContent = tr('Joint fine-tuning', 'Réglage fin des articulations');
+  // Le libellé du bouton est posé ICI, et non en dur dans index.html : l'application est bilingue,
+  // et tout le reste de cet écran passe déjà par tr().
+  const btn = document.getElementById('objectSkeletonMapBtn');
+  if (btn) btn.textContent = tr('Mapping table', 'Tableau de correspondance');
 
   groupes.forEach(groupe => {
     const details = document.createElement('details');
@@ -518,15 +526,29 @@ export function buildSkeletonJointSlidersUI(obj){
     details.appendChild(summary);
     container.appendChild(details);
 
+    groupe.slots.forEach(({ slot }) => { skeletonJointGroupDetailsById[slot] = details; });
+
+    // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
+    // le dialogue aille dans les deux sens — exactement comme pour les Animaux et le Personnage.
+    details.addEventListener('toggle', () => {
+      if (S.syncingSkeletonJointGroupOpen || !details.open) return;
+      const premier = groupe.slots[0].slot;
+      S.selectedSkeletonHandle = { id: premier };
+      highlightSkeletonJointRows(premier);
+      refreshObjectPreview();
+    });
+
     groupe.slots.forEach(({ slot, label }) => {
+      skeletonJointRowsById[slot] = skeletonJointRowsById[slot] || [];
       POSE_AXES.forEach(axe => {
         const initDeg = lireAngleDeg(S.modalDraftSkeletonPose, slot, axe);
-        makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
+        const ref = makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
           -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
             if (!S.modalDraftSkeletonPose) S.modalDraftSkeletonPose = {};
             ecrireAngleDeg(S.modalDraftSkeletonPose, slot, axe, deg);
             refreshObjectPreview();
           });
+        skeletonJointRowsById[slot].push(ref.row);
       });
     });
   });
@@ -746,6 +768,7 @@ export function refreshObjectPreview(){
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
   if (ANIMAL_TYPES.includes(objectTypeSelect.value)) drawAnimalJointHandlesOverlay();
+  if (_estModele) drawSkeletonJointHandlesOverlay();
 }
 
 // [STATE→S] let S.objectPreviewZoom = 1;
@@ -774,29 +797,116 @@ export function drawAnimalJointHandlesOverlay(){
     if (!pivot) return;
     const pt = projectJointToCanvas(pivot, personaCamera3D, cnv.width, cnv.height);
     animalHandleScreenPos[id] = pt;
-    const active = S.selectedAnimalHandle && S.selectedAnimalHandle.id === id;
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
-    ctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
-    ctx.globalAlpha = 0.92;
-    ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#fff';
-    ctx.stroke();
+    dessinerPoignee(ctx, pt, !!(S.selectedAnimalHandle && S.selectedAnimalHandle.id === id));
   });
   ctx.globalAlpha = 1;
 }
 
-export function pickAnimalHandleAt(px, py){
-  let best = null, bestD2 = 17 * 17;
-  Object.keys(animalHandleScreenPos).forEach(id => {
-    const pt = animalHandleScreenPos[id];
+// ---------- Poignées d'articulation d'un Modèle importé ----------
+//
+// MÊME GESTE QUE POUR LES ANIMAUX ET LES PERSONNAGES, et c'est tout l'objet : cliquer un point de
+// l'aperçu déplie le groupe de curseurs correspondant, et le groupe déplié surligne son point. Rien
+// de neuf à apprendre selon le type d'Élément.
+//
+// LA DIFFÉRENCE EST LA SOURCE DES POINTS. Un Animal a des pivots que nous avons construits ; un
+// modèle importé n'a que les os que la correspondance a reconnus. Les poignées sont donc exactement
+// les emplacements PILOTABLES — pas un de plus, pas un de moins. Un point qu'on peut attraper mais
+// qui ne mène à aucun curseur serait le même mensonge qu'un curseur ne pilotant aucun os.
+export const skeletonHandleScreenPos = {};
+
+export function drawSkeletonJointHandlesOverlay(){
+  if (typeof THREE === 'undefined') return;
+  const entry = objectRigCache3D.get(PREVIEW_OBJECT_ID);
+  if (!entry || !entry.skeletonBones) return;
+  const cnv = objectPreview3D;
+  const ctx = cnv.getContext('2d');
+  Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
+  Object.keys(skeletonJointGroupDetailsById).forEach(slot => {
+    const os = (entry.skeletonBones[slot] || {}).os;
+    if (!os) return;
+    const pt = projectJointToCanvas(os, personaCamera3D, cnv.width, cnv.height);
+    skeletonHandleScreenPos[slot] = pt;
+    dessinerPoignee(ctx, pt, !!(S.selectedSkeletonHandle && S.selectedSkeletonHandle.id === slot));
+  });
+  ctx.globalAlpha = 1;
+}
+
+export function pickSkeletonHandleAt(px, py){
+  return pickHandleAt(skeletonHandleScreenPos, px, py);
+}
+
+export const skeletonJointGroupDetailsById = {};
+export const skeletonJointRowsById = {};
+
+export function highlightSkeletonJointRows(slot){
+  document.querySelectorAll('#objectSkeletonSlidersContainer .joint-slider-row.active').forEach(row => {
+    row.classList.remove('active');
+  });
+  (skeletonJointRowsById[slot] || []).forEach(row => row.classList.add('active'));
+}
+
+export function openSkeletonJointGroupForHandle(slot){
+  highlightSkeletonJointRows(slot);
+  const details = skeletonJointGroupDetailsById[slot];
+  const outer = document.getElementById('objectSkeletonSlidersDetails');
+  S.syncingSkeletonJointGroupOpen = true;
+  if (outer && !outer.open) outer.open = true;
+  new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => {
+    if (d !== details && d.open) d.open = false;
+  });
+  if (details && !details.open) details.open = true;
+  S.syncingSkeletonJointGroupOpen = false;
+}
+
+export function closeAllSkeletonJointSliders(){
+  highlightSkeletonJointRows(null);
+  const outer = document.getElementById('objectSkeletonSlidersDetails');
+  S.syncingSkeletonJointGroupOpen = true;
+  new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => { d.open = false; });
+  if (outer) outer.open = false;
+  S.syncingSkeletonJointGroupOpen = false;
+}
+
+/**
+ * Rayon de prise d'une poignée d'articulation, en pixels du canevas.
+ *
+ * Une seule valeur pour tous les aperçus : Animaux et squelettes importés dessinent la même
+ * pastille, elle doit donc s'attraper pareil. Deux constantes auraient dérivé.
+ */
+const RAYON_PRISE_POIGNEE = 17;
+
+/**
+ * La poignée la plus proche d'un clic, dans une carte `id -> {x, y}`. Rend `null` au-delà du rayon.
+ *
+ * Partagée par les Animaux et les Modèles importés. La version précédente était écrite deux fois —
+ * une occasion de plus, dans ce dépôt, de voir deux copies du même calcul diverger.
+ */
+export function pickHandleAt(positions, px, py){
+  let best = null, bestD2 = RAYON_PRISE_POIGNEE * RAYON_PRISE_POIGNEE;
+  Object.keys(positions || {}).forEach(id => {
+    const pt = positions[id];
     if (!pt) return;
     const dx = pt.x - px, dy = pt.y - py;
     const d2 = dx * dx + dy * dy;
     if (d2 < bestD2) { bestD2 = d2; best = id; }
   });
   return best ? { id: best } : null;
+}
+
+/** Dessine une pastille d'articulation. Même apparence partout : c'est le même geste pour l'usager. */
+function dessinerPoignee(ctx, pt, active){
+  ctx.beginPath();
+  ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
+  ctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
+  ctx.globalAlpha = 0.92;
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
+}
+
+export function pickAnimalHandleAt(px, py){
+  return pickHandleAt(animalHandleScreenPos, px, py);
 }
 
 export function getObjectPreviewCanvasCoords(e){

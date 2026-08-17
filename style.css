@@ -901,6 +901,14 @@ canvas{
 /* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
    fichier, et la mêler aux trois légendes la ferait passer pour une quatrième catégorie. */
 .skeleton-map-legend-note { flex-basis: 100%; font-style: italic; opacity: .8; }
+/* Le bouton « Correspondance… » ferme la sous-section des articulations : son écart AU-DESSUS doit
+   égaler celui qui le sépare du bas de l'encart, sinon il paraît collé au dernier groupe.
+   SOUS lui  : 6 (margin-bottom de .danger-btn) + 2 (bas de .joint-sliders-details) + 4 (padding de
+               .modal-subsection) = 12 px.
+   AU-DESSUS : le dernier .joint-group-details en apporte déjà 8 → il en manque 4.
+   Les quatre nombres sont écrits ici exprès : si l'un d'eux change ailleurs, ce calcul devient faux
+   et c'est ce commentaire qui permettra de s'en apercevoir. */
+.skeleton-map-open-btn { margin-top: 4px; }
 .skeleton-map-group {
   font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
   opacity: .55; margin: 10px 0 4px 2px;

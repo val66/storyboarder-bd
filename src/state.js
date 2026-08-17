@@ -154,6 +154,8 @@ export const S = {
   // { slot: { x?, y?, z? } } en radians, pendant l'édition d'un Modèle importé articulé. Brouillon :
   // l'Élément ne reçoit sa pose qu'à l'enregistrement de la modale (cf. src/skeleton-pose.js).
   modalDraftSkeletonPose:     null,
+  selectedSkeletonHandle:      null,  // { id: slot } ou null — poignée choisie sur l'aperçu
+  syncingSkeletonJointGroupOpen: false,
   modalDirty:                 false,
   modalIsNew:                 false,
   modalSnapshot:              '',

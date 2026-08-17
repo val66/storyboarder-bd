@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.14**
+**Version 1.3.15**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -55,7 +55,8 @@
   articulations* dans sa fiche — trois curseurs par articulation reconnue. Le bassin n'en a pas :
   racine du squelette, le tourner ferait pivoter tout le personnage, ce que fait déjà l'Orientation
   de l'Élément. L'os piloté par chaque curseur vient de l'écran de correspondance, rappelable depuis
-  cette même section.
+  cette même section. Cliquer un point d'articulation sur l'aperçu déplie ses curseurs — le même
+  geste que pour les Personnages.
 
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
 > Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend

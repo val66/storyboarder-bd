@@ -104,6 +104,7 @@ import {
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
   buildSkeletonJointSlidersUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
+  pickSkeletonHandleAt, openSkeletonJointGroupForHandle, closeAllSkeletonJointSliders,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
   recomputeBuildWallBox2D, storeRoomGeometry,
@@ -4754,6 +4755,41 @@ window.addEventListener('keydown', (e) => {
 // Finds the animal joint point closest to (px, py) in canvas pixels.
 
 // Converts screen coordinates to canvas pixels (handles object-fit:contain letterboxing).
+
+// Clic sur l'aperçu d'un Modèle importé : sélectionne/désélectionne un point d'articulation.
+//
+// Déclaré AVANT celui des Animaux, et il rend la main tout de suite si l'Élément n'est pas un
+// modèle importé : les deux ne peuvent pas se disputer un clic, puisqu'un Élément est soit l'un
+// soit l'autre (cf. openObjectModal, qui masque le sélecteur de Type pour un modèle importé).
+objectPreview3D.addEventListener('mousedown', (e) => {
+  if (!isImportedModel(S.modalTarget)) return;
+  const { px, py } = getObjectPreviewCanvasCoords(e);
+  const def = pickSkeletonHandleAt(px, py);
+  if (!def) {
+    S.selectedSkeletonHandle = null;
+    closeAllSkeletonJointSliders();
+    refreshObjectPreview();
+    e.preventDefault();
+    return;
+  }
+  // Recliquer le point déjà choisi le désélectionne — même bascule que pour les Personnages.
+  if (S.selectedSkeletonHandle && S.selectedSkeletonHandle.id === def.id) {
+    S.selectedSkeletonHandle = null;
+    closeAllSkeletonJointSliders();
+  } else {
+    S.selectedSkeletonHandle = def;
+    openSkeletonJointGroupForHandle(def.id);
+  }
+  refreshObjectPreview();
+  e.preventDefault();
+});
+
+// Curseur « pointer » au survol d'un point d'articulation d'un Modèle importé.
+objectPreview3D.addEventListener('mousemove', (e) => {
+  if (!isImportedModel(S.modalTarget)) return;
+  const { px, py } = getObjectPreviewCanvasCoords(e);
+  objectPreview3D.style.cursor = pickSkeletonHandleAt(px, py) ? 'pointer' : 'default';
+});
 
 // Click on the object preview: selects/deselects an animal joint point.
 objectPreview3D.addEventListener('mousedown', (e) => {
