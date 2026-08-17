@@ -100,7 +100,7 @@ import {
 } from './sidebar.js';
 import {
   toggleModalSection, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
-  sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview, setModalPoseOptionsBuilder,
+  sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
   buildSkeletonJointSlidersUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
@@ -4580,9 +4580,6 @@ export function buildPersonaPositionOptions(){
   });
 }
 buildPersonaPositionOptions();
-// Branché sur l'ouverture de la modale Personnage : modals.js ne peut pas importer events.js
-// (ce serait un cycle), il reçoit donc la fonction. Même procédé que setScene3DCallbacks & co.
-setModalPoseOptionsBuilder(buildPersonaPositionOptions);
 HAND_STATES.forEach(hs => {
   [personaHandLSelect, personaHandRSelect].forEach(sel => {
     const opt = document.createElement('option');
@@ -4947,6 +4944,23 @@ objectModalSave.onclick = () => {
     if (isImportedModel(S.modalTarget)) {
       const pose = normaliserPose(S.modalDraftSkeletonPose);
       S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
+      // `position` sur un modèle importé : LA MÉMOIRE D'UN CHOIX, pas la source de vérité.
+      //
+      // Ce qui est rendu à l'écran, ce sont les os — `skeletonPose3d`, et lui seul. Ce champ ne sert
+      // qu'à rouvrir la fiche sur la pose qu'on avait prise, et à en afficher le nom. Il porte le
+      // même nom que chez le Personnage à dessein : c'est le même rôle, et deux noms pour un même
+      // rôle finiraient par recevoir deux traitements. Le champ est simplement AJOUTÉ à un modèle
+      // importé — aucun champ existant n'est renommé (cf. docs/persisted-data.md).
+      //
+      // Il peut mentir après un réglage manuel des curseurs, exactement comme chez le Personnage :
+      // resolvePoseLabel3D signale alors « (modifié) ». Une étiquette imprécise vaut mieux qu'une
+      // information perdue.
+      const selPose = document.getElementById('objectPositionSelect');
+      const champPose = document.getElementById('objectPoseField');
+      if (selPose && champPose && champPose.style.display !== 'none' && selPose.value) {
+        S.modalTarget.position = selPose.value;
+        S.modalTarget.positionLabel = nameOfPose3D(selPose.value, S.poses, POSITIONS);
+      }
     }
     // Walls have dedicated length/height fields (rather than the generic percentage, which resizes
     // them together while keeping the ratio) — cf. resizeWallTo.

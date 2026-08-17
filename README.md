@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.23**
+**Version 1.3.25**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -59,10 +59,16 @@
   them rotates the whole figure, which the Element's Orientation already does. Which bone each
   slider drives comes from the mapping screen, reachable from the same section. Clicking a joint
   point on the preview unfolds its sliders — the same gesture as for Characters.
+- **The pose library applies to it too**: a *Pose* field appears in *Main characteristics*, fed by
+  the same library as a Character. The pose is translated into that file's own bone axes — the
+  application measures the body's up, right and forward directions from the skeleton itself rather
+  than assuming a convention, because the six test files use five different ones. Applying a pose
+  **replaces** the manual slider settings, as for a Character, and the resulting angles show up in
+  the sliders, still adjustable.
 
 > **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
-> turn each bone around its own axes (which one bends an elbow depends on the file), and the pose
-> library does not apply to imported skeletons yet.
+> turn each bone around its own axes (which one bends an elbow depends on the file); and a straight
+> limb at rest defines no bending plane, so nothing says which way such an elbow "should" fold.
 
 ### Character editor
 

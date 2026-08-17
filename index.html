@@ -908,6 +908,15 @@
           <label class="modal-field-label">Fichier</label>
           <div id="objectModelFileValue" class="modal-readonly-value"></div>
         </div>
+        <!-- Modèle importé PORTEUR D'ARTICULATIONS seulement. Même place et même bibliothèque que
+             la Position d'un Personnage : les deux se posent de la même façon, ils doivent se
+             régler au même endroit. Choisir une pose REMPLACE les réglages fins de la section
+             Aperçu 3D — c'est le comportement du Personnage, conservé volontairement.
+             Une chaise importée n'a pas d'articulations : le champ reste masqué. -->
+        <div id="objectPoseField" style="display:none">
+          <label class="modal-field-label" id="objectPoseLabel">Position</label>
+          <select id="objectPositionSelect"></select>
+        </div>
         <label class="modal-field-label">Type</label>
         <select id="objectTypeSelect">
           <option value="voiture">🚗 Voiture</option>

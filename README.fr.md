@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.23**
+**Version 1.3.25**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -61,10 +61,17 @@
   de l'Élément. L'os piloté par chaque curseur vient de l'écran de correspondance, rappelable depuis
   cette même section. Cliquer un point d'articulation sur l'aperçu déplie ses curseurs — le même
   geste que pour les Personnages.
+- **La bibliothèque de poses s'y applique aussi** : un champ *Position* apparaît dans
+  *Caractéristiques principales*, alimenté par la même bibliothèque que pour un Personnage. La pose
+  est traduite dans les axes des os de ce fichier-là — l'application mesure le haut, la droite et
+  l'avant du corps sur le squelette lui-même plutôt que de supposer une convention, les six fichiers
+  d'essai en utilisant cinq différentes. Appliquer une pose **remplace** les réglages manuels, comme
+  pour un Personnage, et les angles obtenus s'affichent dans les curseurs, toujours retouchables.
 
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
 > Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend
-> du fichier), et la bibliothèque de poses ne s'applique pas encore aux squelettes importés.
+> du fichier) ; et un membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de
+> quel côté un tel coude « devrait » plier.
 
 ### Éditeur de Personnage
 

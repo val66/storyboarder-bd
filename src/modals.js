@@ -26,13 +26,14 @@ import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
-  POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
 import {
   clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
+  personaEditorPoseList3D, poseJointsByKey3D,
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
@@ -42,7 +43,7 @@ import {
 } from './scene3d.js';
 import {
   cloneJoints, correspondancePourModele, getEffectiveJoints, objectRigCache3D, personaCamera3D,
-  personaScene3D, wallRenderRigCache3D,
+  personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, groupesPosables, lireAngleDeg,
@@ -242,11 +243,16 @@ export function sliderDegToRotY(deg){
 // A single synthetic option is therefore injected for an unknown key, and removed as soon as the
 // modal reopens on a known one. Kept in a module variable rather than looked up in the DOM: the
 // option is ours, we know where it is, and no selector can go stale.
+// ⚠️ LE <select> D'ORIGINE EST MÉMORISÉ AVEC L'OPTION. Depuis que DEUX fiches portent un sélecteur
+// de pose — le Personnage et le modèle importé articulé —, retirer l'option du <select> qu'on est en
+// train de remplir retirerait un enfant qui n'y est pas : l'option resterait dans l'autre liste, et
+// une pose « inconnue » finirait par s'y accumuler. Le couple dit d'où elle vient.
 let syntheticPoseOption = null;
 function ensurePoseOptionExists(select, obj){
   if (syntheticPoseOption) {
+    const { select: origine, option } = syntheticPoseOption;
     // Guarded: under the test DOM stub there is no real parent chain.
-    if (select && select.removeChild) select.removeChild(syntheticPoseOption);
+    if (origine && origine.removeChild) origine.removeChild(option);
     syntheticPoseOption = null;
   }
   // Fix 57 — les clés connues viennent de la BIBLIOTHÈQUE, qui alimente désormais ce <select>
@@ -261,7 +267,28 @@ function ensurePoseOptionExists(select, obj){
   // survivre intact pour que le projet se répare si sa bibliothèque de poses revient un jour.
   opt.textContent = `${unknown} (inconnue)`;
   select.appendChild(opt);
-  syntheticPoseOption = opt;
+  syntheticPoseOption = { select, option: opt };
+}
+
+/**
+ * Remplir un <select> de poses depuis la bibliothèque, et l'ouvrir sur celle de l'Élément.
+ *
+ * Extrait de `buildPersonaPositionOptions` + les deux lignes qui suivaient dans `openPersonaModal`,
+ * parce qu'un SECOND écran en a maintenant besoin. Recopier ces trois gestes aurait donné deux
+ * listes de poses qui divergent au premier renommage — la panne exacte que le Fix 57 a corrigée, et
+ * qu'on aurait réintroduite par une autre porte.
+ */
+export function remplirSelecteurDePose(select, obj){
+  if (!select) return;
+  select.innerHTML = '';
+  // Reconstruit à chaque ouverture : la bibliothèque change au fil des enregistrements.
+  personaEditorPoseList3D(S.poses, PERSONA_SKELETON_3D).forEach(entry => {
+    const opt = document.createElement('option');
+    opt.value = entry.key; opt.textContent = entry.label;
+    select.appendChild(opt);
+  });
+  ensurePoseOptionExists(select, obj);
+  select.value = (obj && obj.position) || 'debout';
 }
 
 export function openPersonaModal(obj, isNew){
@@ -273,12 +300,14 @@ export function openPersonaModal(obj, isNew){
   personaGenreSelect.value = obj.genre || 'homme';
   personaEmotionSelect.value = obj.emotion || 'neutre';
   // Fix 57 — la bibliothèque a pu changer depuis la dernière ouverture (pose enregistrée, renommée
-  // ou supprimée dans l'éditeur) : on reconstruit la liste avant de sélectionner une valeur.
-  if (personaPositionOptionsBuilder) personaPositionOptionsBuilder();
+  // ou supprimée dans l'éditeur) : la liste est reconstruite avant de sélectionner une valeur.
   // Fix 44 — l'option synthétique DOIT être posée avant l'affectation : sinon le navigateur laisse
   // le champ vide et la sauvegarde suivante écrase le nom de la pose par une chaîne vide.
-  ensurePoseOptionExists(personaPositionSelect, obj);
-  personaPositionSelect.value = obj.position || 'debout';
+  // Les deux sont dans remplirSelecteurDePose, partagée avec la fiche d'un modèle importé articulé.
+  // L'appel à `personaPositionOptionsBuilder` qui se trouvait ici faisait exactement le premier
+  // travail une seconde fois ; le builder reste injecté pour l'éditeur, qui rafraîchit la liste
+  // pendant que la modale est masquée.
+  remplirSelecteurDePose(personaPositionSelect, obj);
   personaHandLSelect.value = obj.handL || 'ouverte';
   personaHandRSelect.value = obj.handR || 'ouverte';
   personaRotYInput.value = rotYToSliderDeg(obj.rotY);
@@ -565,6 +594,54 @@ export function buildSkeletonJointSlidersUI(obj){
   });
 }
 
+/**
+ * Le sélecteur de pose de la fiche d'un modèle importé.
+ *
+ * MÊME BIBLIOTHÈQUE, MÊME PLACE QUE POUR UN PERSONNAGE. Deux corps qui se posent de la même façon
+ * doivent se régler au même endroit ; une liste de poses réservée aux modèles importés aurait
+ * divergé de l'autre au premier renommage.
+ *
+ * CE QUE CHOISIR UNE POSE FAIT : elle est traduite dans le vocabulaire des os de CE fichier
+ * (cf. src/pose-bridge.js), puis elle ÉCRASE le brouillon des réglages fins. C'est le comportement
+ * du Personnage, conservé volontairement — et il se lit dans le code : `S.modalDraftSkeletonPose`
+ * est remplacé, pas fusionné.
+ *
+ * LES CURSEURS SONT RECONSTRUITS DERRIÈRE. Sans cela, la pose s'appliquerait à l'aperçu pendant que
+ * les curseurs continueraient d'afficher les anciens angles — deux vérités à l'écran, dont une
+ * fausse. C'est la panne exacte qu'a produite l'étape D5 en oubliant la reconstruction.
+ *
+ * Le champ reste MASQUÉ si le modèle n'a aucune articulation reconnue : une chaise importée n'a rien
+ * à poser, et un sélecteur sans effet est un mensonge.
+ */
+export function buildSkeletonPoseFieldUI(obj){
+  const champ = document.getElementById('objectPoseField');
+  const sel = document.getElementById('objectPositionSelect');
+  if (!champ || !sel) return;
+  const posable = isImportedModel(obj)
+    && groupesPosables(correspondancePourModele(obj.modelFile), tr).length > 0;
+  champ.style.display = posable ? '' : 'none';
+  if (!posable) return;
+
+  const etiquette = document.getElementById('objectPoseLabel');
+  if (etiquette) etiquette.textContent = tr('Pose', 'Position');
+  // La MÊME fonction que pour un Personnage : même bibliothèque, même option de repli pour une pose
+  // disparue, même valeur d'ouverture. Deux remplissages séparés auraient divergé.
+  remplirSelecteurDePose(sel, obj);
+
+  sel.onchange = () => {
+    const joints = poseJointsByKey3D(sel.value, POSE_3D, S.poses);
+    if (!joints) return;
+    const pose = poseOsPourModeleImporte(obj.modelFile, joints);
+    // `null` = ce modèle ne peut pas recevoir de pose (fichier pas encore décodé, ou repère du corps
+    // non dérivable). On ne touche alors à RIEN : mieux vaut un choix sans effet qu'un modèle
+    // remis à zéro sans explication.
+    if (!pose) return;
+    S.modalDraftSkeletonPose = pose;
+    buildSkeletonJointSlidersUI(obj);
+    refreshObjectPreview();
+  };
+}
+
 export function openObjectModal(obj, isNew){
   S.modalTarget = obj;
   S.modalDirty = false;
@@ -734,6 +811,7 @@ export function openObjectModal(obj, isNew){
   // annuler, y compris après vingt curseurs déplacés.
   S.modalDraftSkeletonPose = obj.skeletonPose3d ? JSON.parse(JSON.stringify(obj.skeletonPose3d)) : {};
   buildSkeletonJointSlidersUI(obj);
+  buildSkeletonPoseFieldUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Aperçu 3D']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
@@ -1273,11 +1351,6 @@ personaPreview3D.addEventListener('wheel', (e) => {
 
 // spec.key (cf. poseSliderSpecs3D) -> { spec, input, val, row }. Un curseur = une entrée, y compris
 // pour les articulations qui en portent deux : c'est le descripteur qui dit lequel pilote quel champ.
-// Injecté par events.js (setModalPoseOptionsBuilder) : modals.js est importé PAR events.js, un
-// import direct dans l'autre sens créerait un cycle. Même procédé que setScene3DCallbacks & co.
-let personaPositionOptionsBuilder = null;
-export function setModalPoseOptionsBuilder(fn){ personaPositionOptionsBuilder = fn; }
-
 export const jointSliderRefs = {};
 
 export function makeJointRangeRow(container, labelText, onInput){
