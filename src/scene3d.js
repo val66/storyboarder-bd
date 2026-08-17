@@ -31,7 +31,7 @@ import { clearModelCache, collectModelFiles, modelCacheSignature } from './model
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute — sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
-import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+import { box3FromObjectSkinAware3D, sondeRigPlace3D } from './skinned-box-3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -2750,6 +2750,7 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   // cadré sur les pieds seuls, tout le reste hors champ (presque blanc). cf. skinned-box-3d.js.
   if (o.objType === 'modele') {
     entry.figureGroup.updateMatrixWorld(true);
+    sondeRigPlace3D(o.modelFile, entry.figureGroup);   // SONDE TEMPORAIRE — à retirer
     const boîte = box3FromObjectSkinAware3D(entry.figureGroup);
     frameCameraToBox(personaCamera3D, boîte, zoom);
   } else {

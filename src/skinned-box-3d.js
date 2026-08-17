@@ -66,3 +66,63 @@ export function box3FromObjectSkinAware3D(object) {
   expandBoxSkinAware3D(box, object);
   return box;
 }
+
+// ⚠️ SONDE TEMPORAIRE v2 — À RETIRER avec la v1 de model-cache.js.
+//
+// La v1 mesurait au DÉCODAGE, donc avant toute mise à l'échelle : elle ne pouvait pas voir l'effet
+// du redimensionnement. Celle-ci mesure APRÈS placement, au moment du rendu, et sépare ce que la v1
+// mélangeait :
+//   — la boîte skinnée de CHAQUE maillage prise isolément (la v1 n'en donnait que la somme, et pour
+//     les maillages individuels elle affichait une boîte de pose de LIAISON, donc trompeuse) ;
+//   — la position monde de trois os repères, pour dire où est vraiment le corps ;
+//   — l'échelle réellement appliquée au groupe.
+// Si un maillage a une boîte qui ne suit pas l'échelle des autres, c'est lui qui se détache — le
+// katana qui bouge au redimensionnement, signalé à l'usage.
+const _sondeVues = new Set();
+export function sondeRigPlace3D(nom, racine) {
+  if (!nom || !racine || _sondeVues.has(nom)) return;
+  _sondeVues.add(nom);
+  try {
+    racine.updateMatrixWorld(true);
+    const ech = new THREE.Vector3();
+    racine.getWorldScale(ech);
+    const maillages = [];
+    racine.traverse(n => {
+      if (!n.isMesh) return;
+      const b = new THREE.Box3();
+      expandBoxSkinAware3D(b, n);
+      const t = new THREE.Vector3(); b.getSize(t);
+      const c = new THREE.Vector3(); b.getCenter(c);
+      const se = new THREE.Vector3(); n.getWorldScale(se);
+      maillages.push({
+        nom: n.name || '(sans nom)',
+        articulé: !!n.isSkinnedMesh,
+        tailleSkinnee: [t.x, t.y, t.z].map(v => +v.toFixed(3)),
+        centreSkinne: [c.x, c.y, c.z].map(v => +v.toFixed(3)),
+        echellePropre: [se.x, se.y, se.z].map(v => +v.toFixed(4)),
+      });
+    });
+    const os = {};
+    racine.traverse(n => {
+      if (!n.isBone) return;
+      const bas = (n.name || '').toLowerCase();
+      const cle = /hip|pelvis|bassin|root/.test(bas) ? 'bassin'
+        : /head|tete|tête/.test(bas) ? 'tete'
+          : /hand|main|wrist/.test(bas) ? 'main' : null;
+      if (cle && !os[cle]) {
+        const p = new THREE.Vector3(); n.getWorldPosition(p);
+        os[cle] = { nom: n.name, pos: [p.x, p.y, p.z].map(v => +v.toFixed(3)) };
+      }
+    });
+    /* eslint-disable no-console */
+    console.log('[SONDE2 après placement]', nom, {
+      echelleDuGroupe: [ech.x, ech.y, ech.z].map(v => +v.toFixed(4)),
+      osReperes: os,
+      maillages,
+    });
+    /* eslint-enable no-console */
+  } catch (e) {
+    /* eslint-disable-next-line no-console */
+    console.log('[SONDE2] échec sur', nom, e && e.message);
+  }
+}
