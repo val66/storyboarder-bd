@@ -160,12 +160,74 @@ export async function preloadModels(noms){
       const boite = box3FromObjectSkinAware3D(scene);
       const taille = new THREE.Vector3(); boite.getSize(taille);
       applyAnisotropy(scene);
+      sondeContenuModele(nom, scene, taille);
       _cache.set(nom, { scene, hauteurM: taille.y > 0 ? taille.y : 1 });
     } catch {
       _cache.set(nom, 'introuvable');
     }
   }));
   _onChange();
+}
+
+/**
+ * ⚠️ SONDE TEMPORAIRE — À RETIRER. Diagnostic de « worker_j n'affiche que ses points d'articulation ».
+ *
+ * Trois hypothèses ont déjà été réfutées par l'usage : l'axe vertical (hulk est Z-up comme worker_j
+ * et s'affiche), l'échelle (une hauteur aberrante s'annule au cadrage), et un décor géant (dézoomer
+ * ne révèle rien). Ce qu'on ne sait toujours pas, c'est ce que le fichier CONTIENT — d'où cette
+ * sonde plutôt qu'une quatrième hypothèse.
+ *
+ * Ce qu'elle regarde, et pourquoi :
+ *   — combien de maillages, et lesquels sont articulés : le katana qui bouge au redimensionnement
+ *     dit qu'il y en a plus d'un, et un maillage NON articulé ne suit pas les os ;
+ *   — le lien maillage → squelette : `cloneSkinned` doit le refaire pointer vers les os du CLONE.
+ *     S'il reste sur l'original, la peau ne suit plus rien — c'est le suspect principal, et il
+ *     produirait exactement le symptôme observé : des os aux bonnes places, aucune peau ;
+ *   — les boîtes séparées : celle de chaque maillage, et celle des os. Si elles ne se recouvrent
+ *     pas, le cadrage vise un endroit où il n'y a rien à voir.
+ */
+function sondeContenuModele(nom, scene, taille){
+  try {
+    const lignes = [];
+    let osTotal = 0;
+    const boiteOs = new THREE.Box3();
+    scene.traverse(n => {
+      if (n.isBone) { osTotal++; boiteOs.expandByPoint(n.getWorldPosition(new THREE.Vector3())); }
+    });
+    scene.traverse(n => {
+      if (!n.isMesh) return;
+      const b = new THREE.Box3().setFromObject(n);
+      const t = new THREE.Vector3(); b.getSize(t);
+      const c = new THREE.Vector3(); b.getCenter(c);
+      const sq = n.skeleton;
+      lignes.push({
+        nom: n.name || '(sans nom)',
+        articulé: !!n.isSkinnedMesh,
+        os: sq ? sq.bones.length : 0,
+        // Le premier os du squelette appartient-il ENCORE à cette scène ? Si non, le maillage est
+        // piloté par des os d'ailleurs — le cas que cloneSkinned existe pour éviter.
+        squeletteDansLaScene: sq && sq.bones[0] ? !!sq.bones[0].parent : null,
+        visible: n.visible,
+        materiau: n.material && (n.material.type + (n.material.transparent ? ' (transparent)' : '')),
+        taille: [t.x, t.y, t.z].map(v => +v.toFixed(3)),
+        centre: [c.x, c.y, c.z].map(v => +v.toFixed(3)),
+      });
+    });
+    const tOs = new THREE.Vector3(); boiteOs.getSize(tOs);
+    const cOs = new THREE.Vector3(); boiteOs.getCenter(cOs);
+    /* eslint-disable no-console */
+    console.log('[SONDE]', nom, {
+      hauteurRetenue: +taille.y.toFixed(3),
+      boiteTotale: [taille.x, taille.y, taille.z].map(v => +v.toFixed(3)),
+      osTotal,
+      boiteDesOs: { taille: [tOs.x, tOs.y, tOs.z].map(v => +v.toFixed(3)), centre: [cOs.x, cOs.y, cOs.z].map(v => +v.toFixed(3)) },
+      maillages: lignes,
+    });
+    /* eslint-enable no-console */
+  } catch (e) {
+    /* eslint-disable-next-line no-console */
+    console.log('[SONDE] échec sur', nom, e && e.message);
+  }
 }
 
 /** Charge ce dont une liste d'Éléments a besoin. Le point d'entrée depuis le chargement de Projet. */
