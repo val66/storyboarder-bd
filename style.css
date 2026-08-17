@@ -916,7 +916,14 @@ canvas{
  *                de .modal-subsection (4) ............................................ 10 px */
 #objectSkeletonSlidersContainer > .joint-group-details:last-child { margin-bottom: 0; }
 #objectSkeletonSlidersContainer { padding-bottom: 10px; }
-#objectSkeletonSlidersDetails { padding-bottom: 4px; }
+/* REPLIÉE, la sous-section doit respirer autant en bas qu'en haut — signalé à l'usage. Au-dessus du
+   titre : 4 (padding haut de .modal-subsection) + 4 (marge haute de .joint-sliders-details) = 8 px.
+   En dessous : ce padding + 2 (marge basse du <details>) + 4 (padding bas de la sous-section).
+   D'où 2 px repliée (2+2+4 = 8, l'écart du haut) et 4 px dépliée (4+2+4 = 10, comme au-dessus du
+   bouton). Scopé à cette sous-section : .joint-sliders-details est partagée avec le Personnage et
+   les Animaux, qui n'ont pas de bouton et dont l'espacement convient déjà. */
+#objectSkeletonSlidersDetails { padding-bottom: 2px; }
+#objectSkeletonSlidersDetails[open] { padding-bottom: 4px; }
 .skeleton-map-open-btn { margin: 0; }
 .skeleton-map-group {
   font-size: 10px; text-transform: uppercase; letter-spacing: .06em;

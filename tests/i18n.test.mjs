@@ -374,3 +374,110 @@ describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () =>
     assert.match(corps, /if \(!d\) return;/, 'sortie franche quand la clé est inconnue');
   });
 });
+
+
+describe('Un seul nom pour « Réglages des articulations »', () => {
+  // QUATRE LIBELLÉS AVAIENT DIVERGÉ SANS QUE RIEN NE LE VOIE : le panneau de l'éditeur disait
+  // « Réglage fin des articulations » au singulier, les deux sous-sections de la modale
+  // « Réglages fins des articulations » au pluriel, et celle des modèles importés — que j'ai
+  // écrite — encore le singulier. Côté anglais, « Fine joint adjustment » et « Joint fine-tuning »
+  // coexistaient pour la même chose.
+  //
+  // C'est la même famille que le titre de modale désaccordé de son bouton : plusieurs endroits
+  // nomment une seule chose, aucun ne fait autorité, et la dérive ne se voit qu'à l'usage.
+  const LIBELLE_FR = 'Réglages des articulations';
+  const LIBELLE_EN = 'Joint settings';
+  const lire = (rel) => readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
+  const HTML   = lire('index.html');
+  const I18N   = lire('src/i18n.js');
+  const MODALS = lire('src/modals.js');
+
+  test('les quatre emplacements de index.html portent le MÊME libellé', () => {
+    // Trois <summary> (Personnage, Animaux, Modèle importé) et le titre du panneau de l'éditeur.
+    const trouves = [...HTML.matchAll(/<(?:summary|h2)[^>]*>([^<]*[Rr]églage[^<]*)</g)].map(m => m[1].trim());
+    assert.ok(trouves.length >= 4, `attendu au moins 4 emplacements, trouvé ${trouves.length}`);
+    trouves.forEach(t => assert.equal(t, LIBELLE_FR, `libellé divergent dans index.html : « ${t} »`));
+  });
+
+  test('la table i18n et le libellé posé par tr() disent la même chose', () => {
+    assert.match(I18N, new RegExp(`'#personaEditorJointsHeading', '${LIBELLE_EN}', '${LIBELLE_FR}'`),
+      'l\'entrée i18n du panneau de l\'éditeur a divergé');
+    assert.match(MODALS, new RegExp(`tr\\('${LIBELLE_EN}', '${LIBELLE_FR}'\\)`),
+      'le libellé posé pour les modèles importés a divergé');
+  });
+
+  test('RÉGRESSION : aucune trace des anciennes formulations', () => {
+    // Ce sont elles qui avaient divergé ; si l'une réapparaît, c'est qu'un endroit a été oublié.
+    // COMMENTAIRES RETIRÉS AVANT DE CHERCHER — cinquième fois dans ce dépôt qu'un test est mis en
+    // échec par la prose qui l'entoure. Ce qu'on vérifie ici est ce que l'UTILISATEUR lit ; un
+    // commentaire de code qui cite l'ancien nom pour raconter son histoire est légitime.
+    const sansCommentaires = (txt) => txt
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '')
+      .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    const tout = [HTML, I18N, MODALS, lire('src/help-content.js')].map(sansCommentaires).join('\n');
+    ['Réglage fin des articulations', 'Réglages fins des articulations',
+      'Fine joint adjustment', 'Joint fine-tuning'].forEach(vieux => {
+      assert.ok(!tout.includes(vieux), `l'ancienne formulation « ${vieux} » subsiste`);
+    });
+  });
+});
+
+
+describe('L\'écart autour de la sous-section des articulations', () => {
+  // DEUX FOIS DE SUITE J'AI ÉCRIT UN CALCUL D'ESPACEMENT EN COMMENTAIRE, et deux fois il était faux
+  // ou inopérant : la première version reposait sur une margin-top absorbée par le collapsing, la
+  // seconde donnait un écart correct déplié mais trop grand replié. Dans les deux cas c'est
+  // l'utilisateur qui l'a vu, pas le commentaire.
+  //
+  // Ce test RELIT les quatre nombres dans style.css et refait l'addition. Il ne prétend pas
+  // remplacer l'œil — le collapsing des marges, lui, ne se déduit pas d'une somme — mais si
+  // quelqu'un change le padding de .modal-subsection ou la marge de .joint-sliders-details
+  // ailleurs, l'égalité promise tombe et le test le dit, au lieu de laisser un commentaire mentir.
+  const CSS = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const nombre = (motif, nom) => {
+    const m = CSS.match(motif);
+    assert.ok(m, `valeur introuvable dans style.css : ${nom}`);
+    return Number(m[1]);
+  };
+
+  test('replié, l\'écart du bas égale celui du haut', () => {
+    const padSection   = nombre(/\.modal-subsection\{[^}]*padding:\s*(\d+)px/, '.modal-subsection padding');
+    const margeHaut    = nombre(/\.joint-sliders-details\{\s*margin:\s*(\d+)px/, '.joint-sliders-details margin-top');
+    const margeBas     = nombre(/\.joint-sliders-details\{\s*margin:\s*\d+px \d+ (\d+)px/, '.joint-sliders-details margin-bottom');
+    const padReplie    = nombre(/#objectSkeletonSlidersDetails \{ padding-bottom: (\d+)px; \}/, 'padding replié');
+
+    const haut = padSection + margeHaut;
+    const bas  = padReplie + margeBas + padSection;
+    assert.equal(bas, haut,
+      `replié : ${bas} px sous le titre contre ${haut} px au-dessus — cf. la note dans style.css`);
+  });
+
+  test('déplié, le bouton a le même écart au-dessus qu\'en dessous', () => {
+    const padSection = nombre(/\.modal-subsection\{[^}]*padding:\s*(\d+)px/, '.modal-subsection padding');
+    const margeBas   = nombre(/\.joint-sliders-details\{\s*margin:\s*\d+px \d+ (\d+)px/, '.joint-sliders-details margin-bottom');
+    const padConteneur = nombre(/#objectSkeletonSlidersContainer \{ padding-bottom: (\d+)px; \}/, 'padding du conteneur');
+    const padDeplie    = nombre(/#objectSkeletonSlidersDetails\[open\] \{ padding-bottom: (\d+)px; \}/, 'padding déplié');
+
+    const auDessus = padConteneur;   // la marge du dernier groupe est annulée, cf. la règle voisine
+    const enDessous = padDeplie + margeBas + padSection;
+    assert.equal(enDessous, auDessus,
+      `bouton : ${auDessus} px au-dessus contre ${enDessous} px en dessous`);
+  });
+
+  test('RÉGRESSION : replié et déplié n\'ont PAS le même padding', () => {
+    // Le défaut signalé : une seule valeur pour les deux états donnait un bas trop grand une fois
+    // la sous-section refermée, puisque le bouton — qui justifiait l'écart — n'est plus visible.
+    const replie = nombre(/#objectSkeletonSlidersDetails \{ padding-bottom: (\d+)px; \}/, 'padding replié');
+    const deplie = nombre(/#objectSkeletonSlidersDetails\[open\] \{ padding-bottom: (\d+)px; \}/, 'padding déplié');
+    assert.notEqual(replie, deplie,
+      'un seul padding pour les deux états : replié, l\'écart du bas redevient trop grand');
+  });
+
+  test('RÉGRESSION : la marge du dernier groupe est bien annulée', () => {
+    // Sans cela elle se collapse hors du conteneur et l\'écart au-dessus du bouton redevient
+    // indéterminé — c\'est exactement ce qui rendait ma première version inopérante.
+    assert.match(CSS, /#objectSkeletonSlidersContainer > \.joint-group-details:last-child \{ margin-bottom: 0; \}/);
+    assert.match(CSS, /\.skeleton-map-open-btn \{ margin: 0; \}/,
+      'le bouton a retrouvé une marge : elle se collapserait avec le padding du conteneur');
+  });
+});

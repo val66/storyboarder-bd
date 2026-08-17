@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.16**
+**Version 1.3.17**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -51,7 +51,7 @@
 - Le nom de fichier n'est pas renommable : il identifie le modèle dans **tous** les Projets, y
   compris ceux qui ne sont pas ouverts. C'est l'Élément qui se renomme.
 
-- **Articuler un squelette importé** : un modèle porteur d'os gagne une section *Réglage fin des
+- **Articuler un squelette importé** : un modèle porteur d'os gagne une section *Réglages des
   articulations* dans sa fiche — trois curseurs par articulation reconnue. Le bassin n'en a pas :
   racine du squelette, le tourner ferait pivoter tout le personnage, ce que fait déjà l'Orientation
   de l'Élément. L'os piloté par chaque curseur vient de l'écran de correspondance, rappelable depuis

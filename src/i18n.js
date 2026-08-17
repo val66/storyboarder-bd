@@ -198,9 +198,9 @@ export const I18N_MODALS = [
   ['#descModalCancel', 'Cancel', 'Annuler'],
   ['#personaEditorCloseBtn', 'Close', 'Fermer'],
   // Fix 68 — les deux en-têtes de section de l'éditeur. Ils n'étaient traduits nulle part :
-  // en anglais, le panneau affichait « Réglage fin des articulations » en toutes lettres.
+  // en anglais, le panneau affichait « Réglages des articulations » en toutes lettres.
   ['#personaEditorPoseHeading', 'Pose', 'Pose'],
-  ['#personaEditorJointsHeading', 'Fine joint adjustment', 'Réglage fin des articulations'],
+  ['#personaEditorJointsHeading', 'Joint settings', 'Réglages des articulations'],
   ['#descModalSave', 'Save', 'Enregistrer'],
   ['#objectModalCancel', 'Cancel', 'Annuler'],
   ['#objectModalSave', 'Save', 'Enregistrer'],

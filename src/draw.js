@@ -1651,7 +1651,7 @@ export function drawPersonaPreview(targetCanvas, spec){
 export const personaPreviewPan = { x: 0, y: 0 };
 
 // ---------- JOINT HANDLES (selectable, but no longer draggable with the mouse: per
-// user request, only the "Joint fine-tuning" sliders now change the pose;
+// user request, only the "Joint settings" sliders now change the pose;
 // clicking a point/limb in the preview now only selects/highlights it). ----------
 // [STATE→S] let S.selectedPoseHandle = null; // def of the currently selected joint handle (highlight), or null
 

@@ -513,7 +513,7 @@ export function buildSkeletonJointSlidersUI(obj){
   subsection.style.display = '';
 
   const resume = document.getElementById('objectSkeletonSlidersSummary');
-  if (resume) resume.textContent = tr('Joint fine-tuning', 'Réglage fin des articulations');
+  if (resume) resume.textContent = tr('Joint settings', 'Réglages des articulations');
   // Le libellé du bouton est posé ICI, et non en dur dans index.html : l'application est bilingue,
   // et tout le reste de cet écran passe déjà par tr().
   const btn = document.getElementById('objectSkeletonMapBtn');
@@ -1321,7 +1321,7 @@ export function highlightJointRows(id){
 }
 
 // Opens the "Fine-tuning" sub-section that contains the joint handle clicked in the preview
-// (and the "Joint fine-tuning" section itself if collapsed), highlights the corresponding
+// (and the "Joint settings" section itself if collapsed), highlights the corresponding
 // row(s), and closes any other sub-section left open (only one group open at a time).
 export function openJointGroupForHandle(id){
   highlightJointRows(id);
@@ -1334,7 +1334,7 @@ export function openJointGroupForHandle(id){
   if (details && !details.open) details.open = true;
 }
 
-// Fully closes "Joint fine-tuning" (section + all its sub-sections) and removes the
+// Fully closes "Joint settings" (section + all its sub-sections) and removes the
 // highlighting, when no joint handle is selected in the preview anymore.
 export function closeAllJointSliders(){
   highlightJointRows(null);
@@ -1444,7 +1444,7 @@ personaPreview3D.addEventListener('mousedown', (e) => {
     return;
   }
   // Selects/highlights the clicked point or limb, without changing its pose: only the
-  // "Joint fine-tuning" sliders (cf. buildJointSlidersUI) can now change it. Also,
+  // "Joint settings" sliders (cf. buildJointSlidersUI) can now change it. Also,
   // per user request: this click auto-expands the sub-section that contains this point.
   // Clicking the already-selected point again deselects it (closes everything) instead of reselecting it.
   if (S.selectedPoseHandle && S.selectedPoseHandle.id === def.id) {
