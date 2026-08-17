@@ -62,9 +62,26 @@ function makeFakeElement() {
   // Poser `innerHTML` vide seulement la liste d'enfants — ce qui suffit, car c'est ainsi que le code
   // de rendu remet une liste à zéro avant de la reconstruire.
   const enfants = [];
+  // Les classes sont RÉELLEMENT tenues. Un `classList` en no-op rendait indémontrable tout ce qui
+  // masque ou révèle un élément : « fermer l'éditeur rouvre LA BONNE fiche » ne pouvait s'affirmer
+  // que par lecture du source. Une mutation qui rouvrait toujours la modale du Personnage passait
+  // la suite au vert. Même famille de piège que les enfants et le `textContent` ci-dessous.
+  //
+  // ⚠️ `contains` rendait `false` en dur, ce qui n'est PAS neutre : un code qui demande « suis-je
+  // déjà masqué ? » recevait toujours non. Il dit maintenant la vérité.
+  const classes = new Set();
   const el = {
     style: {},
-    classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
+    classList: {
+      add(...c){ c.forEach(x => classes.add(x)); },
+      remove(...c){ c.forEach(x => classes.delete(x)); },
+      toggle(c, force){
+        const veut = (force === undefined) ? !classes.has(c) : !!force;
+        if (veut) classes.add(c); else classes.delete(c);
+        return veut;
+      },
+      contains(c){ return classes.has(c); },
+    },
     dataset: {},
     children: enfants,
     childNodes: enfants,

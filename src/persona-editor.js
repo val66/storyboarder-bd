@@ -25,9 +25,13 @@ import {
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
   writePoseSliderDeg3D,
 } from './utils.js';
-import { cloneJoints, getEffectiveJoints } from './rig3d.js';
+import { cloneJoints, poseOsPourModeleImporte } from './rig3d.js';
+import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
-import { makeJointRangeRow, recomputeModalDirty, refreshPersonaPreview, syncJointSlidersFromDraft } from './modals.js';
+import {
+  buildSkeletonJointSlidersUI, makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
+  refreshPersonaPreview, syncJointSlidersFromDraft,
+} from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
 
 // The ONLY thing this module needs from events.js, and therefore the only thing that would make a
@@ -60,12 +64,32 @@ export function setPersonaEditorCallbacks({ buildPersonaPositionOptions }) {
 // doivent donner exactement le même résultat, sans quoi réinitialiser ne ramènerait pas là où on
 // croyait revenir. Toujours une copie — cf. le commentaire ci-dessus sur le brouillon.
 export function personaEditorInitialJoints(target){
-  return cloneJoints(target ? getEffectiveJoints(target) : POSE_3D.debout);
+  if (!target) return cloneJoints(POSE_3D.debout);
+  // Un Personnage porte ses angles dans `joints3d`, écrit à chaque enregistrement : c'est lui qui
+  // fait foi, exactement comme au rendu (cf. getEffectiveJoints).
+  if (target.joints3d) return cloneJoints(target.joints3d);
+  // UN MODÈLE IMPORTÉ N'EN A PAS, ET N'EN AURA PAS. Ce qui le déforme, ce sont ses OS
+  // (`skeletonPose3d`) ; `position` ne retient que la pose choisie. Sans cette résolution, ouvrir
+  // l'éditeur sur un modèle assis le montrerait debout — le repli de getEffectiveJoints ne connaît
+  // que les poses INTÉGRÉES, pas la bibliothèque. On passe donc par le résolveur commun, dont le
+  // repli est le même que le sien, plus la bibliothèque : aucun chemin en moins, un de plus.
+  //
+  // ⚠️ CE QUE CELA NE FAIT PAS, ET C'EST ASSUMÉ : les réglages fins faits aux curseurs d'os ne
+  // remontent pas ici. L'éditeur travaille sur une POSE de corps, les curseurs sur des OS, et rien
+  // ne sait retraduire les seconds en la première. Cohérent avec la règle retenue — appliquer une
+  // pose REMPLACE les réglages manuels.
+  return cloneJoints(poseJointsByKey3D(target.position, POSE_3D, S.poses) || POSE_3D.debout);
 }
 
 export function openPersonaEditor(target, fromModal){
   S.personaEditorOpen = true;
-  S.personaEditorFromModal = !!fromModal;
+  // `fromModal` porte désormais l'IDENTIFIANT de la modale à rouvrir ('descModal' pour un
+  // Personnage, 'objectModal' pour un modèle importé), ou une valeur fausse en mode autonome.
+  // C'était un booléen, et la réouverture était écrite en dur sur descModal : le second point
+  // d'entrée aurait donc renvoyé sur la fiche du Personnage. La valeur reste TRUTHY dans les deux
+  // cas nommés, si bien que les conditions existantes (« y a-t-il une modale à alimenter ? »)
+  // continuent de dire vrai sans être réécrites.
+  S.personaEditorFromModal = fromModal || null;
   S.personaEditorTargetId = (target && target.id) || null;
   S.personaEditorDraft = personaEditorInitialJoints(target);
   // Cadrage remis à neuf à chaque ouverture : hériter du zoom ou de l'angle de la session
@@ -90,11 +114,11 @@ export function openPersonaEditor(target, fromModal){
 // sans DOM, pour être testable : la couche qui manipule l'overlay passe par le rendu WebGL, hors
 // de portée de la suite sous Node (cf. docs/testing-method.md).
 export function closePersonaEditor(){
-  const backToModal = !!S.personaEditorFromModal;
+  const backToModal = S.personaEditorFromModal || null;
   S.personaEditorOpen = false;
   S.personaEditorTargetId = null;
   S.personaEditorDraft = null;
-  S.personaEditorFromModal = false;
+  S.personaEditorFromModal = null;
   S.personaEditorHandleId = null;
   S.personaEditorPoseKey = null;
   S.personaEditorBaseline = null;
@@ -109,7 +133,11 @@ export function isPersonaEditorOpen(){ return !!S.personaEditorOpen; }
 // de la Page.
 export function personaEditorTarget(page){
   if (!S.personaEditorOpen || !S.personaEditorTargetId) return null;
-  const p = page || currentPage();
+  // `currentPage()` LÈVE quand aucun Projet n'est chargé — elle déréférence S.tomes sans garde.
+  // Demander sa cible à l'éditeur est une question inoffensive, qui ne doit jamais faire échouer
+  // l'appelant : sans Projet, il n'y a simplement pas de cible. Rendu nécessaire quand une seconde
+  // fiche s'est mise à interroger la cible pour savoir COMMENT appliquer la pose.
+  const p = page || (Array.isArray(S.tomes) && S.tomes.length ? currentPage() : null);
   return (p && p.objects.find(o => o.id === S.personaEditorTargetId)) || null;
 }
 
@@ -210,8 +238,21 @@ export function deletePersonaEditorPose(id){
 // Renvoie la clé de pose à reporter sur le <select> de la modale, ou null si rien n'a été appliqué.
 export function applyPersonaEditorToModal(){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !S.personaEditorFromModal) return null;
+  const cible = personaEditorTarget();
+  // DEUX BROUILLONS, PARCE QUE DEUX CORPS. L'éditeur produit toujours la même chose — une pose du
+  // Personnage —, mais un modèle importé ne sait pas la lire : ses os ne portent ni les mêmes noms
+  // ni les mêmes axes. Elle est donc traduite ici (cf. src/pose-bridge.js) et rangée dans le
+  // brouillon des OS, celui-là même que remplissent les curseurs de la fiche.
+  if (isImportedModel(cible)) {
+    const pose = poseOsPourModeleImporte(cible.modelFile, S.personaEditorDraft);
+    // `null` = ce modèle ne peut pas recevoir de pose. On ne touche à rien et on ne referme pas :
+    // écraser ses réglages par un objet vide serait pire que de ne rien faire.
+    if (!pose) return null;
+    S.modalDraftSkeletonPose = pose;
+    return { key: S.personaEditorPoseKey || null, modeleImporte: true };
+  }
   S.modalDraftJoints = cloneJoints(S.personaEditorDraft);
-  return { key: S.personaEditorPoseKey || null };
+  return { key: S.personaEditorPoseKey || null, modeleImporte: false };
 }
 
 // La clé n'est reportée sur le <select> que si la bibliothèque la connaît ENCORE.
@@ -692,7 +733,15 @@ function syncPersonaEditorDom(){
   // deux modes d'ouverture ont des sémantiques différentes, et un bouton grisé laisserait chercher
   // la condition à remplir pour l'activer.
   const applyBtn = document.getElementById('personaEditorApplyBtn');
-  if (applyBtn) applyBtn.style.display = S.personaEditorFromModal ? '' : 'none';
+  if (applyBtn) {
+    applyBtn.style.display = S.personaEditorFromModal ? '' : 'none';
+    // Le libellé nomme la CIBLE. « Appliquer au Personnage » devant un modèle importé ferait
+    // chercher quel Personnage on est en train de modifier. Posé ici, comme le titre juste
+    // au-dessous et pour la même raison : il dépend de la cible, pas seulement de la langue.
+    applyBtn.textContent = isImportedModel(personaEditorTarget())
+      ? tr('Apply to model', 'Appliquer au Modèle')
+      : tr('Apply to character', 'Appliquer au Personnage');
+  }
   // Fix 64 — le titre dit lequel des deux modes est actif, faute de quoi l'absence d'« Appliquer »
   // resterait inexpliquée. Écrit ici plutôt que dans la table i18n : il dépend de la cible.
   const titleEl = document.getElementById('personaEditorTitle');
@@ -716,8 +765,11 @@ export function hidePersonaEditor(){
   syncPersonaEditorDom();
   // La modale n'a jamais été fermée, seulement masquée : S.modalTarget et tous ses champs sont
   // intacts, la réafficher suffit à la retrouver exactement dans l'état qu'on avait laissé.
+  // `backToModal` est l'IDENTIFIANT de la modale masquée à l'ouverture, plus un booléen : deux
+  // fiches peuvent ouvrir l'éditeur, et rouvrir toujours celle du Personnage renverrait l'auteur
+  // d'un modèle importé sur un écran qui n'est pas le sien.
   if (backToModal) {
-    const dm = document.getElementById('descModal');
+    const dm = document.getElementById(backToModal);
     if (dm) dm.classList.remove('hidden');
   }
 }
@@ -798,17 +850,26 @@ export function wirePersonaEditor(){
   // l'éditeur — ce qui réaffiche la modale (cf. hidePersonaEditor).
   const applyBtn = document.getElementById('personaEditorApplyBtn');
   if (applyBtn) applyBtn.onclick = () => {
+    const cible = personaEditorTarget();
     const res = applyPersonaEditorToModal();
     if (!res) return;
-    const sel = document.getElementById('personaPositionSelect');
+    // Le <select> à reporter est celui de la fiche d'où l'on vient — deux fiches en portent un.
+    const sel = document.getElementById(
+      res.modeleImporte ? 'objectPositionSelect' : 'personaPositionSelect');
     const key = poseKeyStillInLibrary(res.key);
     if (sel && key) sel.value = key;
     hidePersonaEditor();
     // La modale doit MONTRER ce qu'on vient d'appliquer, et son bouton Enregistrer s'activer :
     // sans ces deux appels, le travail serait bien dans le brouillon mais invisible, et la modale
-    // se croirait inchangée.
-    refreshPersonaPreview();
-    syncJointSlidersFromDraft();
+    // se croirait inchangée. Les deux fiches ont leur propre aperçu et leurs propres curseurs, et
+    // rafraîchir ceux du Personnage depuis un modèle importé ne montrerait rien.
+    if (res.modeleImporte) {
+      buildSkeletonJointSlidersUI(cible);
+      refreshObjectPreview();
+    } else {
+      refreshPersonaPreview();
+      syncJointSlidersFromDraft();
+    }
     recomputeModalDirty();
   };
 

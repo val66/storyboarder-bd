@@ -30,6 +30,10 @@ import {
   buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose, skeletonJointRowsById,
 } from '../src/modals.js';
 import { groupesPosables } from '../src/skeleton-pose.js';
+import {
+  openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
+  setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor,
+} from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
 const FICHIER = 'essai-mixamo.glb';
@@ -246,6 +250,127 @@ describe('Le sélecteur de pose de la fiche', () => {
     sel.value = 'pose_disparue';
     sel.onchange();
     assert.equal(S.modalDraftSkeletonPose, avant, 'mieux vaut un choix sans effet qu\'un modèle remis à zéro');
+  });
+});
+
+describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle importé', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+
+  test('le crayon suit exactement la même condition que le champ Position', () => {
+    // Deux conditions séparées auraient divergé : un crayon devant un modèle sans articulations
+    // ouvrirait un éditeur dont « Appliquer » ne pourrait rien appliquer.
+    const crayon = document.getElementById('objectEditorOpenBtn');
+    buildSkeletonPoseFieldUI({ type: 'objet3d', objType: 'chaise' });
+    assert.equal(crayon.style.display, 'none');
+    buildSkeletonPoseFieldUI(modele());
+    assert.equal(crayon.style.display, '');
+  });
+
+  test('l\'éditeur s\'ouvre sur la pose que le modèle DIT porter', () => {
+    // Un modèle importé n'a pas de `joints3d` : ce qui le déforme, ce sont ses os. Sans résolution
+    // par la bibliothèque, l'éditeur montrerait « debout » devant un modèle manifestement assis.
+    const o = Object.assign(modele(), { position: 'p_salue' });
+    const depart = personaEditorInitialJoints(o);
+    assert.equal(depart.headRotY, 0.3, 'les angles de « Salue » doivent être repris');
+    assert.equal(depart.rShoulder.z, -1.2);
+  });
+
+  test('une pose de la bibliothèque inconnue ramène au repos, sans échouer', () => {
+    const depart = personaEditorInitialJoints(Object.assign(modele(), { position: 'p_effacee' }));
+    assert.ok(depart, 'jamais null : l\'éditeur doit toujours pouvoir s\'ouvrir');
+  });
+
+  test('« Appliquer » écrit des OS, pas des articulations de Personnage', () => {
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    S.modalDraftJoints = null;
+    const manuel = { bras_g: { x: 0.9, y: 0, z: 0 } };
+    S.modalDraftSkeletonPose = manuel;
+    openPersonaEditor(o, 'objectModal');
+    setPersonaEditorJointDeg({ key: 'head:h', field: 'headRotY', axis: null, suffix: '' }, 40);
+
+    const res = applyPersonaEditorToModal();
+    assert.ok(res && res.modeleImporte, 'la cible est un modèle importé, et le résultat doit le dire');
+    assert.equal(S.modalDraftJoints, null,
+      'le brouillon du Personnage ne doit pas être touché : ce n\'en est pas un');
+    assert.ok(S.modalDraftSkeletonPose.tete, 'la tête du modèle doit avoir tourné');
+    // LA POSE REMPLACE. On ne peut pas exiger l'ABSENCE de `bras_g` : la pose de départ de
+    // l'éditeur oriente déjà les bras, donc l'emplacement est légitimement réécrit. Ce qui doit
+    // être vrai, c'est que le brouillon est un OBJET NEUF et que l'angle réglé à la main a disparu
+    // — une fusion aurait gardé les 0,9 rad.
+    assert.notEqual(S.modalDraftSkeletonPose, manuel, 'le brouillon doit être remplacé, pas modifié');
+    assert.notEqual(S.modalDraftSkeletonPose.bras_g && S.modalDraftSkeletonPose.bras_g.x, 0.9,
+      'le réglage manuel antérieur a survécu : la pose a fusionné au lieu de remplacer');
+    closePersonaEditor();
+  });
+
+  test('fermer renvoie sur la fiche du MODÈLE', () => {
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(closePersonaEditor(), 'objectModal');
+  });
+
+  test('et c\'est bien CETTE fiche qui réapparaît à l\'écran', () => {
+    // Le test précédent vérifie la DÉCISION ; celui-ci vérifie qu'elle est suivie. La réouverture
+    // était écrite en dur sur descModal : la décision pouvait être juste et le geste faux.
+    const fichePerso = document.getElementById('descModal');
+    const ficheModele = document.getElementById('objectModal');
+    fichePerso.classList.add('hidden');
+    ficheModele.classList.add('hidden');
+
+    const o = modele();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    hidePersonaEditor();
+
+    assert.equal(ficheModele.classList.contains('hidden'), false, 'la fiche du Modèle doit revenir');
+    assert.equal(fichePerso.classList.contains('hidden'), true,
+      'celle du Personnage doit rester masquée : on ne venait pas d\'elle');
+  });
+
+  test('un modèle sans repère de corps : « Appliquer » ne détruit rien', () => {
+    // Même règle qu'au sélecteur : « impossible » n'est pas « remettre à zéro ». Ici en plus,
+    // rendre null empêche la fermeture de l'éditeur — le travail n'est pas perdu en silence.
+    const sansBras = new THREE.Group();
+    const os = (nom, x, y, z) => {
+      const b = new THREE.Bone(); b.name = 'mixamorig:' + nom; b.position.set(x, y, z); return b;
+    };
+    const hips = os('Hips', 0, 0.95, 0), spine = os('Spine', 0, 0.12, 0);
+    const spine1 = os('Spine1', 0, 0.14, 0), neck = os('Neck', 0, 0.16, 0), head = os('Head', 0, 0.10, 0);
+    hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
+    [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
+      const cuisse = os(cote + 'UpLeg', signe * 0.09, -0.05, 0);
+      const jambe = os(cote + 'Leg', 0, -0.42, 0);
+      hips.add(cuisse); cuisse.add(jambe); jambe.add(os(cote + 'Foot', 0, -0.40, 0));
+    });
+    sansBras.add(hips);
+    _setModelCacheEntry('sb2.glb', { scene: sansBras });
+
+    const o = Object.assign(modele(), { modelFile: 'sb2.glb' });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    const avant = { jambe_g: { x: 0.5, y: 0, z: 0 } };
+    S.modalDraftSkeletonPose = avant;
+    openPersonaEditor(o, 'objectModal');
+    setPersonaEditorJointDeg({ key: 'head:h', field: 'headRotY', axis: null, suffix: '' }, 40);
+    assert.equal(applyPersonaEditorToModal(), null);
+    assert.equal(S.modalDraftSkeletonPose, avant);
+    closePersonaEditor();
+  });
+
+  test('demander sa cible à l\'éditeur ne lève pas sans Projet', () => {
+    // `currentPage()` déréférence S.tomes sans garde. Depuis qu'« Appliquer » interroge la cible
+    // pour savoir COMMENT appliquer, une question inoffensive faisait échouer tout l'appel.
+    S.tomes = [];
+    openPersonaEditor({ id: 'z1', type: 'perso' }, 'descModal');
+    assert.equal(personaEditorTarget(), null);
+    closePersonaEditor();
   });
 });
 

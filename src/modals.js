@@ -620,6 +620,12 @@ export function buildSkeletonPoseFieldUI(obj){
   const posable = isImportedModel(obj)
     && groupesPosables(correspondancePourModele(obj.modelFile), tr).length > 0;
   champ.style.display = posable ? '' : 'none';
+  // Le crayon de l'aperçu suit la MÊME condition, et depuis le même endroit : les deux ouvrent la
+  // bibliothèque de poses sur ce modèle, l'un par une liste, l'autre par l'éditeur. Deux conditions
+  // séparées auraient fini par diverger — un crayon devant un modèle sans articulations ouvrirait
+  // un éditeur dont « Appliquer » ne pourrait rien appliquer.
+  const crayon = document.getElementById('objectEditorOpenBtn');
+  if (crayon) crayon.style.display = posable ? '' : 'none';
   if (!posable) return;
 
   const etiquette = document.getElementById('objectPoseLabel');

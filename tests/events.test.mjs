@@ -853,37 +853,47 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
   const perso = () => ({ id: 'e1', type: 'perso', position: 'assis' });
   beforeEach(() => { closePersonaEditor(); S.selectedId = null; S.editingSceneId = null; });
 
-  test('ouvert depuis la modale : le drapeau de retour est armé', () => {
-    openPersonaEditor(perso(), true);
-    assert.equal(S.personaEditorFromModal, true);
+  test('ouvert depuis une fiche : LAQUELLE est mémorisé, pas un simple oui', () => {
+    // C'était un booléen, et la réouverture était écrite en dur sur descModal. Depuis qu'un modèle
+    // importé articulé peut lui aussi ouvrir l'éditeur, il faut savoir OÙ revenir : rouvrir la
+    // fiche du Personnage après avoir posé un modèle renverrait sur un écran qui n'est pas le sien.
+    openPersonaEditor(perso(), 'descModal');
+    assert.equal(S.personaEditorFromModal, 'descModal');
+    openPersonaEditor(perso(), 'objectModal');
+    assert.equal(S.personaEditorFromModal, 'objectModal');
   });
 
-  test('ouvert sans modale : pas de retour à armer', () => {
-    openPersonaEditor(perso(), false);
-    assert.equal(S.personaEditorFromModal, false);
+  test('ouvert sans fiche : aucun retour à armer', () => {
+    openPersonaEditor(perso(), null);
+    assert.equal(S.personaEditorFromModal, null);
     openPersonaEditor(perso());
-    assert.equal(S.personaEditorFromModal, false, 'argument omis = pas de retour');
+    assert.equal(S.personaEditorFromModal, null, 'argument omis = pas de retour');
   });
 
-  test('fermer signale le retour à la modale, une seule fois', () => {
+  test('fermer signale la fiche à rouvrir, une seule fois', () => {
     // Sans ce désarmement, refermer un éditeur ouvert en autonome rouvrirait la modale d'un
     // Personnage édité bien plus tôt.
-    openPersonaEditor(perso(), true);
-    assert.equal(closePersonaEditor(), true, 'le retour est signalé');
-    assert.equal(closePersonaEditor(), false, 'et une seule fois');
+    openPersonaEditor(perso(), 'descModal');
+    assert.equal(closePersonaEditor(), 'descModal', 'le retour est signalé, et nommé');
+    assert.equal(closePersonaEditor(), null, 'et une seule fois');
+  });
+
+  test('un modèle importé renvoie vers SA fiche, pas celle du Personnage', () => {
+    openPersonaEditor({ id: 'm1', type: 'objet3d', objType: 'modele', modelFile: 'x.glb' }, 'objectModal');
+    assert.equal(closePersonaEditor(), 'objectModal');
   });
 
   test('ouvert en autonome : fermer ne demande aucun retour', () => {
     openPersonaEditor(null);
-    assert.equal(closePersonaEditor(), false);
+    assert.equal(closePersonaEditor(), null);
   });
 
   test('le cadrage repart à neuf à chaque ouverture', () => {
-    openPersonaEditor(perso(), true);
+    openPersonaEditor(perso(), 'descModal');
     S.personaEditorZoom = 4;
     S.personaEditorPan = { x: 9, y: 9 };
     closePersonaEditor();
-    openPersonaEditor(perso(), true);
+    openPersonaEditor(perso(), 'descModal');
     assert.equal(S.personaEditorZoom, 0.8, 'zoom d\'ouverture');
     assert.deepEqual(S.personaEditorPan, { x: 0, y: 0 });
   });
@@ -891,7 +901,7 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
   test('l\'aller-retour ne touche ni la sélection ni la Scène', () => {
     S.selectedId = 'panel9';
     S.editingSceneId = 'sc1';
-    openPersonaEditor(perso(), true);
+    openPersonaEditor(perso(), 'descModal');
     closePersonaEditor();
     assert.equal(S.selectedId, 'panel9');
     assert.equal(S.editingSceneId, 'sc1');
@@ -1388,7 +1398,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
   test('les angles de l\'éditeur arrivent dans le brouillon de la modale', () => {
     const o = perso();
     S.modalTarget = o;
-    openPersonaEditor(o, true);
+    openPersonaEditor(o, 'descModal');
     setPersonaEditorJointDeg(torso, 47);
     const res = applyPersonaEditorToModal();
     assert.ok(res);
@@ -1400,7 +1410,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
     // l'Élément — donc « Annuler » continue d'annuler.
     const o = perso();
     S.modalTarget = o;
-    openPersonaEditor(o, true);
+    openPersonaEditor(o, 'descModal');
     setPersonaEditorJointDeg(torso, 47);
     applyPersonaEditorToModal();
     assert.equal(o.joints3d.torsoRotX, 0, 'les articulations de l\'Élément sont intactes');
@@ -1410,7 +1420,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
     // Partager l'objet ferait que continuer à bouger les curseurs après Appliquer modifierait la
     // modale à distance, alors que l'éditeur est censé être refermé.
     S.modalTarget = perso();
-    openPersonaEditor(S.modalTarget, true);
+    openPersonaEditor(S.modalTarget, 'descModal');
     setPersonaEditorJointDeg(torso, 47);
     applyPersonaEditorToModal();
     setPersonaEditorJointDeg(torso, 90);
@@ -1419,7 +1429,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
 
   test('la pose de référence est remontée avec les angles', () => {
     S.modalTarget = perso();
-    openPersonaEditor(S.modalTarget, true);
+    openPersonaEditor(S.modalTarget, 'descModal');
     applyPersonaEditorPose('assis');
     assert.equal(applyPersonaEditorToModal().key, 'assis');
   });
@@ -1440,7 +1450,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
   test('quitter sans appliquer n\'a aucun effet (5.3)', () => {
     S.modalTarget = perso();
     S.modalDraftJoints = { torsoRotX: 0.1 };
-    openPersonaEditor(S.modalTarget, true);
+    openPersonaEditor(S.modalTarget, 'descModal');
     setPersonaEditorJointDeg(torso, 88);
     closePersonaEditor();
     assert.deepEqual(S.modalDraftJoints, { torsoRotX: 0.1 }, 'le brouillon de la modale est intact');
@@ -1625,8 +1635,8 @@ describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
   });
 
   test('fermer depuis le mode autonome ne rouvre aucune modale', () => {
-    openPersonaEditor(null, false);
-    assert.equal(closePersonaEditor(), false);
+    openPersonaEditor(null, null);
+    assert.equal(closePersonaEditor(), null);
   });
 });
 

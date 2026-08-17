@@ -100,7 +100,7 @@ export const HELP_MANUAL_EN = [
     'Above 10 m tall, the application offers to resize the model on import: it is nearly always a scale problem in the file.',
     'A model with a skeleton gains a "Joint settings" section: three sliders per recognised joint — except the hips, which are the skeleton\'s root: turning them rotates the whole figure, which Orientation already does.',
     'Click a joint point on the preview to unfold its sliders, and the other way round. Which bone each slider drives comes from "Mapping table", below; axes are the bone\'s own, so which one bends an elbow depends on the file.',
-    'The pose library applies here too, from "Pose" in "Main characteristics". A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable.',
+    'The pose library applies here too, from "Pose" in "Main characteristics", or from the pencil on the preview, which opens the Character editor. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable.',
   ]},
   { id: 'projet', title: 'Project', paragraphs: [
     'A Project groups together all Volumes, Pages and Panels. Its name is shown at the top of the left-hand menu ("Project" by default); click it to open the Project dialog.',
@@ -198,10 +198,10 @@ export const HELP_MANUAL_FR = [
     'La section « Modèles » liste les fichiers du disque, groupés selon l\'usage qu\'en fait le Projet ouvert : par des Scènes, dans des Cases, ou non utilisés. Les autres Projets ne sont pas vérifiés.',
     'Clic gauche sur un modèle pour aller là où il est utilisé : directement s\'il n\'y a qu\'un endroit, sinon une fenêtre les liste par Scène ou par Case.',
     'Clic droit sur un modèle → « Supprimer du disque ». Le nom de fichier ne se renomme pas : il identifie le modèle dans tous les Projets. Renommez plutôt l\'Élément.',
-    'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import : c\'est presque toujours un souci d\'échelle dans le fichier.',
+    'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import.',
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par articulation reconnue. Le bassin n\'en a pas — pour tourner la figure entière, servez-vous de l\'Orientation.',
-    'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. L\'os piloté vient de « Tableau de correspondance », plus bas ; les axes sont les siens, donc lequel plie un coude dépend du fichier.',
-    'La bibliothèque de poses s\'y applique aussi, depuis « Position » dans « Caractéristiques principales ». Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables.',
+    'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. L\'os piloté vient de « Tableau de correspondance », plus bas ; les axes sont les siens.',
+    'La bibliothèque de poses s\'y applique aussi, depuis « Position » dans « Caractéristiques principales », ou par le crayon de l\'aperçu, qui ouvre l\'Éditeur de Personnage. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables.',
   ]},
   { id: 'projet', title: 'Projet', paragraphs: [
     'Un Projet regroupe tous les Tomes, Planches et Cases. Son nom s\'affiche en haut du menu de gauche (« Projet » par défaut) ; cliquez dessus pour ouvrir la modale Projet.',

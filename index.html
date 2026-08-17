@@ -1081,6 +1081,12 @@
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
           <canvas id="objectPreview3D" width="240" height="161"></canvas>
+          <!-- Ouvre l'Éditeur de Personnage sur CE modèle importé, quand il porte des
+               articulations reconnues. Même bouton, même coin, même geste que pour un Personnage
+               (cf. personaEditorOpenBtn) : deux corps qui se posent pareil doivent s'éditer pareil.
+               Masqué pour tout le reste — une chaise n'a rien à poser. -->
+          <button id="objectEditorOpenBtn" type="button" class="preview-corner-btn"
+                  style="display:none" title="Éditeur de Personnage" aria-label="Éditeur de Personnage">✏️</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="objectHidden3dCheckbox"> Invisible dans la scène 3D
