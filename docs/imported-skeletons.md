@@ -104,3 +104,15 @@ in the bone's LOCAL frame, via the inverse of its world rest rotation.
 so nothing says which way an elbow "should" bend. The body frame sidesteps the problem for the main
 axes, but not for the bending direction of a joint the file gives no hint about. This point is not
 solved and must not be presented as if it were.
+
+---
+
+## 6. What was built on these figures
+
+`src/skeleton-retarget.js` translates a gesture from one body to another through the frame measured
+above, never through the bones' raw axes.
+
+**The built-in rig is not a special case there**: its frame is measured by the same function as an
+imported file's. No sign is hand-written — deliberately, since every hand-written sign is a place
+where one can be wrong with nothing to signal it. A test even refuses to let the module mention the
+built-in rig by name.

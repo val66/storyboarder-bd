@@ -106,3 +106,15 @@ corps) dans le repère LOCAL de l'os, via l'inverse de sa rotation de repos en m
 de flexion, donc rien ne dit de quel côté un coude « devrait » plier. Le repère du corps contourne
 le problème pour les axes principaux, mais pas pour le sens de flexion d'une articulation dont le
 fichier ne donne aucun indice. Ce point n'est pas résolu et ne doit pas être présenté comme tel.
+
+---
+
+## 6. Ce qui a été construit sur ces chiffres
+
+`src/skeleton-retarget.js` traduit un geste d'un corps à l'autre en passant par le repère mesuré
+ci-dessus, jamais par les axes bruts des os.
+
+**Le rig intégré n'y est pas un cas particulier** : son repère est mesuré par la même fonction que
+celui d'un fichier importé. Aucun signe n'est donc écrit à la main — et c'est délibéré, chaque
+signe écrit à la main étant un endroit où l'on peut se tromper sans que rien ne le signale. Un test
+refuse d'ailleurs que le module mentionne le rig intégré par son nom.

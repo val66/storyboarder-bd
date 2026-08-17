@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.21**
+**Version 1.3.22**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -166,6 +166,7 @@ storyboarder-bd/
 │   ├── skeleton-map.js # Recognising an imported skeleton: which bone plays which role
 │   ├── skeleton-store.js # Skeleton mappings, stored next to the Modeles folder
 │   ├── skeleton-pose.js # Turning a mapped bone: composing with its rest orientation
+│   ├── skeleton-retarget.js # The same gesture from one body to another (pure change of basis)
 │   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
 │   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
 │   ├── persona-editor.js # Character editor: full-screen posing mode
