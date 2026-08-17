@@ -247,6 +247,35 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   root.add(hipGroup);
   const lLeg = addLimb3D(hipGroup, 0, -P.hipX, 0.38, 0.36, P.legR, mat, styleKey);
   const rLeg = addLimb3D(hipGroup, 0, P.hipX, 0.38, 0.36, P.legR, mat, styleKey);
+  // UN PIED AU BOUT DE CHAQUE JAMBE.
+  //
+  // La cheville est devenue une articulation à l'étape Rig A, mais la jambe s'arrêtait net : on
+  // pouvait la faire tourner sans rien voir bouger. Une articulation qu'on ne voit pas agir ne vaut
+  // pas mieux qu'un curseur qui ne pilote rien — signalé à l'usage.
+  //
+  // Le pied est enfant du groupe de la CHEVILLE : il suit donc la rotation, ce qui est tout l'objet.
+  // Il pointe vers −Z, l'AVANT du Personnage (c'est de ce côté qu'est posé le visage, cf. faceMesh),
+  // et déborde un peu vers l'arrière pour le talon.
+  [lLeg.tip, rLeg.tip].forEach(cheville => {
+    const longueur = P.legR * 2.2, hauteur = P.legR * 0.62, largeur = P.legR * 1.5;
+    const pied = new THREE.Mesh(new THREE.BoxGeometry(largeur, hauteur, longueur), mat);
+    // Reculé d'un talon : le pivot de la cheville tombe ainsi au-dessus du tiers arrière du pied,
+    // comme une vraie cheville — sans quoi le pied tournerait autour de son propre milieu et le
+    // talon traverserait le sol dès qu'on lève la pointe.
+    pied.position.set(0, -hauteur / 2, -longueur / 2 + P.legR * 0.55);
+    addBodyMeshWithOutline3D(cheville, pied, styleKey);
+    // Comics numérique : une pointe arrondie, pour éviter la chaussure parfaitement
+    // parallélépipédique et rester dans le même vocabulaire que les capsules d'articulation.
+    if (styleKey === 'comics_numerique') {
+      // Rayon EXACTEMENT la demi-épaisseur du pied, centré à sa mi-hauteur : la pointe arrondit le
+      // bout sans dépasser ni au-dessus de la cheville, ni sous la semelle. Une première version au
+      // rayon plus large débordait de 1 cm au-dessus de la cheville — le pied n'était plus tout à
+      // fait suspendu sous elle, ce qu'un test a refusé.
+      const bout = new THREE.Mesh(new THREE.SphereGeometry(hauteur * 0.5, 10, 8), mat);
+      bout.position.set(0, -hauteur / 2, pied.position.z - longueur / 2);
+      addBodyMeshWithOutline3D(cheville, bout, styleKey, 0.05);
+    }
+  });
 
   const figureGroup = new THREE.Group();
   figureGroup.add(root);

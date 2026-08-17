@@ -312,3 +312,105 @@ describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', (
     });
   });
 });
+
+
+describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien', () => {
+  // Rig A avait donné une CHEVILLE au Personnage, mais la jambe s'arrêtait net : on pouvait la
+  // tourner sans que rien ne bouge à l'écran. Signalé à l'usage, et c'est la même famille qu'un
+  // curseur ne pilotant aucun os — la commande existe, l'effet est invisible.
+  const V = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
+  const boite = (o) => { o.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o); };
+
+  test('chaque cheville porte bien une géométrie', () => {
+    const rig = rigNeuf();
+    [['lFoot', rig.joints.lFoot], ['rFoot', rig.joints.rFoot]].forEach(([nom, g]) => {
+      assert.ok(g.children.length > 0, `${nom} n'a aucun maillage : la cheville tourne dans le vide`);
+    });
+  });
+
+  test('RÉGRESSION : le pied pointe vers l\'AVANT, du même côté que le visage', () => {
+    // LE DÉFAUT QUE CE TEST A ATTRAPÉ. L'avant du Personnage est −Z (c'est là qu'est posé le
+    // visage), et mon premier repère de pied — dans LIMB_SEGMENTS — pointait vers +Z, donc vers
+    // l'arrière. Rien ne l'aurait signalé : un pied à l'envers se voit, mais seulement si on
+    // regarde le bon Personnage sous le bon angle.
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const cheville = V(rig.joints.lFoot);
+    const b = boite(rig.joints.lFoot);
+    const devant = cheville.z - b.min.z;   // ce qui dépasse vers −Z
+    const derriere = b.max.z - cheville.z; // ce qui dépasse vers +Z (le talon)
+    assert.ok(devant > derriere,
+      `le pied dépasse de ${derriere.toFixed(3)} en arrière contre ${devant.toFixed(3)} en avant : il est à l'envers`);
+    // Le visage fait autorité sur ce qu'est l'avant : on le lui demande plutôt que d'écrire −Z ici,
+    // pour que le test reste juste si l'orientation du corps changeait un jour.
+    assert.ok(rig.faceMesh.position.z < 0, 'témoin : le visage doit être du côté −Z');
+  });
+
+  test('le pivot est au talon, pas au milieu du pied', () => {
+    // Sinon lever la pointe ferait plonger le talon dans le sol, au lieu de faire pivoter le pied
+    // sur son talon comme un vrai pas.
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const cheville = V(rig.joints.lFoot);
+    const b = boite(rig.joints.lFoot);
+    const devant = cheville.z - b.min.z, derriere = b.max.z - cheville.z;
+    // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : « derriere > 0 » était satisfait par le seul CONTOUR du
+    // style comics, qui dépasse de quelques millimètres. Supprimer tout le talon passait donc
+    // inaperçu. Le talon doit être une fraction réelle du pied, pas une épaisseur de trait.
+    const longueurTotale = b.max.z - b.min.z;
+    assert.ok(derriere > longueurTotale * 0.1,
+      `talon ${derriere.toFixed(4)} pour un pied de ${longueurTotale.toFixed(4)} : il n'y a plus de talon`);
+    // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : « une fois et demie plus long devant » laissait passer un
+    // pivot placé au MILIEU du pied, parce que la pointe arrondie du style comics dépasse en avant
+    // et gonflait la mesure. Le talon doit rester une petite fraction du pied, pas sa moitié.
+    assert.ok(derriere < devant * 0.5,
+      `talon ${derriere.toFixed(3)} contre ${devant.toFixed(3)} devant : le pivot est trop au centre`);
+  });
+
+  test('tourner la cheville emporte le pied, et lui seul', () => {
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const pointeAvant = boite(rig.joints.lFoot).min.z;
+    const genouAvant = V(rig.joints.lKnee);
+    const autrePiedAvant = boite(rig.joints.rFoot).min.z;
+    applyJointAngles(rig, { ...POSE_3D.debout, lFootRotX: -0.5 });
+    assert.notEqual(boite(rig.joints.lFoot).min.z, pointeAvant, 'la pointe du pied n\'a pas bougé');
+    assert.ok(V(rig.joints.lKnee).distanceTo(genouAvant) < 1e-9, 'le genou a suivi le pied');
+    assert.equal(boite(rig.joints.rFoot).min.z, autrePiedAvant, 'l\'autre pied a bougé');
+  });
+
+  test('les deux pieds sont symétriques', () => {
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const g = boite(rig.joints.lFoot), d = boite(rig.joints.rFoot);
+    assert.ok(Math.abs(g.min.y - d.min.y) < 1e-9, 'les semelles ne sont pas à la même hauteur');
+    assert.ok(Math.abs(g.min.z - d.min.z) < 1e-9, 'les pointes ne vont pas aussi loin');
+  });
+
+  test('la semelle devient le point le plus bas de la figure', () => {
+    // Conséquence assumée et MESURÉE : la boîte englobante grandit d'environ 4 %, donc à hauteur
+    // normalisée le corps se réduit d'autant. C'est plus juste — la taille d'une personne se mesure
+    // jusqu'aux semelles, pas jusqu'aux chevilles — mais ce n'est pas neutre pour les Projets déjà
+    // dessinés, d'où ce test qui rend le fait explicite plutôt que caché.
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const tout = boite(rig.figureGroup);
+    const pied = boite(rig.joints.lFoot);
+    assert.ok(Math.abs(tout.min.y - pied.min.y) < 1e-9,
+      'le bas de la figure n\'est plus la semelle : quelque chose descend plus bas');
+    // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : un seuil de 3 cm laissait passer un pied CENTRÉ sur la
+    // cheville, la pointe arrondie descendant assez pour le franchir.
+    //
+    // La première correction — « rien du pied ne remonte au-dessus de la cheville » — était trop
+    // stricte : le CONTOUR du style comics est une copie légèrement agrandie du maillage, il
+    // dépasse donc par construction. L'invariant juste n'est pas « rien au-dessus » mais
+    // « l'essentiel en dessous » : le pied PEND sous la cheville, il ne l'entoure pas.
+    const dessous = V(rig.joints.lFoot).y - pied.min.y;
+    const dessus = pied.max.y - V(rig.joints.lFoot).y;
+    assert.ok(dessous > dessus * 3,
+      `pied : ${dessous.toFixed(4)} sous la cheville contre ${dessus.toFixed(4)} au-dessus —`
+      + ' il devrait pendre sous elle, pas l\'entourer');
+    assert.ok(V(rig.joints.lFoot).y - tout.min.y > 0.03,
+      'le pied ne descend presque pas sous la cheville : il ne se verra pas');
+  });
+});

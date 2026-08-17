@@ -759,8 +759,11 @@ export const LIMB_SEGMENTS = [
   { id: 'neck', toGroup: 'headGroup' },
   { id: 'lClavicle', toGroup: 'lShoulder' },
   { id: 'rClavicle', toGroup: 'rShoulder' },
-  { id: 'lFoot', toLocal: [0, -0.02, 0.13] },
-  { id: 'rFoot', toLocal: [0, -0.02, 0.13] },
+  // ⚠️ −Z, pas +Z : l'AVANT du Personnage est −Z (c'est de ce côté qu'est posé le visage, cf.
+  // faceMesh dans rig3d.js). La première version pointait vers l'arrière — le repère du pied dans
+  // l'éditeur partait donc à contresens, sans que rien ne le signale.
+  { id: 'lFoot', toLocal: [0, -0.02, -0.13] },
+  { id: 'rFoot', toLocal: [0, -0.02, -0.13] },
 ];
 
 // ---------- NUMERIC SLIDERS PER JOINT (precise alternative to dragging) ----------
