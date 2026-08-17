@@ -184,10 +184,18 @@ export function poseSliderSignature3D(joints, handles){
 // curseur qu'on n'a pas touché ne dérive pas : sans l'arrondi commun, chaque aller-retour ajouterait
 // une fraction de degré.
 export function readPoseSliderDeg3D(draft, spec){
+  return Math.round(readPoseSliderRad3D(draft, spec) * 180 / Math.PI);
+}
+
+// Valeur d'un curseur en RADIANS, sans arrondi — l'unité dans laquelle la pose est réellement
+// stockée. Extraite de la précédente, qui n'en est plus que la conversion : le retargeting vers un
+// squelette importé (cf. src/pose-bridge.js) compose des rotations, et arrondir au degré AVANT de
+// composer ferait dériver la chaîne. Deux lectures séparées du même champ auraient fini par ne plus
+// lire la même chose — c'est le défaut qui revient le plus souvent dans ce dépôt.
+export function readPoseSliderRad3D(draft, spec){
   if (!draft || !spec) return 0;
   const raw = draft[spec.field];
-  const rad = spec.axis ? ((raw && raw[spec.axis]) || 0) : (raw || 0);
-  return Math.round(rad * 180 / Math.PI);
+  return spec.axis ? ((raw && raw[spec.axis]) || 0) : (raw || 0);
 }
 
 // Écrit un angle dans le brouillon. Pour une rotule, l'autre axe est RECOPIÉ : remplacer l'objet

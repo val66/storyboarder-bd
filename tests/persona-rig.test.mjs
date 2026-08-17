@@ -25,7 +25,13 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
-import { buildPersonaRig3D, applyJointAngles } from '../src/rig3d.js';
+import {
+  buildPersonaRig3D, applyJointAngles,
+  repereDuPersonnage, repereDuModeleImporte, reposMondeParEmplacement,
+} from '../src/rig3d.js';
+import { poseOsDepuisPosePersonnage } from '../src/pose-bridge.js';
+import { repereDuCorps } from '../src/skeleton-retarget.js';
+import { SLOTS } from '../src/skeleton-map.js';
 import { POSE_HANDLES, POSE_3D, JOINT_GROUPS, JOINT_LABELS } from '../src/constants.js';
 import { poseSliderSpecs3D } from '../src/utils.js';
 
@@ -526,5 +532,103 @@ describe('Rig B — le troisième axe de la tête, les deuxième et troisième d
       const champs = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'lWrist')).map(s => s.field);
       assert.deepEqual(champs, ['lWristRotX', 'lWristRotY', 'lWristRotZ']);
     });
+  });
+});
+
+describe('Le repère du corps du Personnage — mesuré, jamais écrit à la main', () => {
+  test('c\'est une base orthonormée directe', () => {
+    const r = repereDuPersonnage();
+    assert.ok(r, 'le Personnage doit toujours avoir un repère : sa géométrie est connue');
+    const norme = v => Math.hypot(v[0], v[1], v[2]);
+    const scal = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    [r.droite, r.haut, r.avant].forEach(v => assert.ok(Math.abs(norme(v) - 1) < 1e-9));
+    assert.ok(Math.abs(scal(r.droite, r.haut)) < 1e-9, 'droite et haut doivent être perpendiculaires');
+    assert.ok(Math.abs(scal(r.haut, r.avant)) < 1e-9, 'haut et avant doivent être perpendiculaires');
+  });
+
+  test('le haut du Personnage va bien du bassin vers la tête', () => {
+    // MESURÉ, pas supposé : c'est la seule affirmation de ce fichier qui décrit le corps intégré,
+    // et elle est vérifiée sur le rig réellement construit. Si la géométrie changeait — comme elle
+    // vient de le faire avec les clavicules et les pieds —, ce test le dirait.
+    const r = repereDuPersonnage();
+    assert.ok(r.haut[1] > 0.99, `le haut mesuré est ${JSON.stringify(r.haut)} — la tête n'est plus au-dessus du bassin`);
+  });
+
+  test('c\'est le repère AU REPOS, pas celui de la pose du moment', () => {
+    // Un Personnage assis ou penché a la tête ailleurs : mesurer le repère sur lui ferait dépendre
+    // la traduction d'une pose de la pose déjà appliquée — une dérive qui ne se voit qu'après
+    // plusieurs allers-retours. On recalcule donc ici, à la main, ce que doit être le repère de
+    // REPOS, et on exige que ce soit exactement celui que rend la fonction. Comparer à un autre
+    // appel ne prouverait rien : le résultat est mémorisé.
+    const rig = rigNeuf();
+    applyJointAngles(rig, {});
+    rig.figureGroup.updateMatrixWorld(true);
+    const p = new THREE.Vector3();
+    const pos = (g) => { g.getWorldPosition(p); return [p.x, p.y, p.z]; };
+    const J = rig.joints;
+    const attendu = repereDuCorps({
+      bassin: pos(J.hipGroup), tete: pos(J.headGroup),
+      clavicule_g: pos(J.lClavicle), clavicule_d: pos(J.rClavicle),
+      bras_g: pos(J.lShoulder), bras_d: pos(J.rShoulder),
+    });
+    assert.deepEqual(repereDuPersonnage(), attendu);
+
+    // Et une pose appliquée ensuite ne le change pas.
+    applyJointAngles(rig, POSE_3D.assis || { torsoRotX: 1.2, lHip: { x: -1.4, z: 0 } });
+    rig.figureGroup.updateMatrixWorld(true);
+    assert.deepEqual(repereDuPersonnage(), attendu);
+  });
+
+  test('avec ce repère des deux côtés, une pose traverse inchangée', () => {
+    // LE PONT ENTRE LES DEUX MODULES. Le repère mesuré sur le vrai rig est-il utilisable tel quel
+    // par la traduction ? Si les deux corps sont le même, la réponse doit être « rien ne bouge ».
+    const r = repereDuPersonnage();
+    const repos = Object.fromEntries(SLOTS.map(s => [s, [0, 0, 0, 1]]));
+    const sortie = poseOsDepuisPosePersonnage({
+      joints: { headRotX: 0.25, rElbow: -0.6 },
+      repereSource: r, repereCible: r, reposMondeParEmplacement: repos,
+    });
+    assert.ok(Math.abs(sortie.tete.x - 0.25) < 1e-9, `tête : ${sortie.tete.x}`);
+    assert.ok(Math.abs(sortie.avantbras_d.x + 0.6) < 1e-9, `coude droit : ${sortie.avantbras_d.x}`);
+  });
+});
+
+describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
+  const osFictif = (slot, position, reposMonde) => [slot, {
+    os: {}, name: slot, repos: [0, 0, 0, 1], positionMonde: position, reposMonde,
+  }];
+
+  test('les quatre os suffisent, et sont les seuls requis', () => {
+    const m = Object.fromEntries([
+      osFictif('bassin', [0, 0, 0], [0, 0, 0, 1]),
+      osFictif('tete', [0, 1.6, 0], [0, 0, 0, 1]),
+      osFictif('clavicule_g', [-0.2, 1.3, 0], [0, 0, 0, 1]),
+      osFictif('clavicule_d', [0.2, 1.3, 0], [0, 0, 0, 1]),
+    ]);
+    const r = repereDuModeleImporte(m);
+    assert.ok(r, 'bassin + tête + deux clavicules : c\'est tout ce qu\'il faut');
+    assert.ok(r.haut[1] > 0.99, 'le haut suit la colonne');
+    assert.ok(r.droite[0] < -0.99, 'la droite du corps va de la clavicule droite vers la gauche');
+  });
+
+  test('sans les quatre os, aucun repère — et donc aucune pose appliquée au hasard', () => {
+    const m = Object.fromEntries([
+      osFictif('bassin', [0, 0, 0], [0, 0, 0, 1]),
+      osFictif('tete', [0, 1.6, 0], [0, 0, 0, 1]),
+      osFictif('clavicule_g', [-0.2, 1.3, 0], [0, 0, 0, 1]),
+    ]);
+    assert.equal(repereDuModeleImporte(m), null);
+    assert.equal(repereDuModeleImporte({}), null);
+    assert.equal(repereDuModeleImporte(null), null);
+  });
+
+  test('reposMondeParEmplacement ne garde que les os qui en ont un', () => {
+    const m = Object.fromEntries([
+      osFictif('tete', [0, 1.6, 0], [0, 0.1, 0, 0.995]),
+      ['bras_g', { os: {}, name: 'x', repos: [0, 0, 0, 1] }],   // mesuré par une version d'avant
+    ]);
+    const sortie = reposMondeParEmplacement(m);
+    assert.deepEqual(Object.keys(sortie), ['tete']);
+    assert.deepEqual(sortie.tete, [0, 0.1, 0, 0.995]);
   });
 });

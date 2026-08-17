@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.22**
+**Version 1.3.23**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -173,6 +173,7 @@ storyboarder-bd/
 │   ├── skeleton-store.js # Correspondances de squelette, rangées à côté du dossier Modeles
 │   ├── skeleton-pose.js # Tourner un os mappé : composition avec sa rotation de repos
 │   ├── skeleton-retarget.js # Le même geste d'un corps à l'autre (changement de repère pur)
+│   ├── pose-bridge.js  # Une pose du Personnage traduite en angles d'os importés
 │   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
 │   ├── persona-editor.js # Éditeur de Personnage : mode plein écran de pose

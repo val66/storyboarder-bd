@@ -116,3 +116,36 @@ above, never through the bones' raw axes.
 imported file's. No sign is hand-written — deliberately, since every hand-written sign is a place
 where one can be wrong with nothing to signal it. A test even refuses to let the module mention the
 built-in rig by name.
+
+### 6.1 A measurement that changed the code: coincident collarbones
+
+The body frame was first derived from **four** bones — hips, head and the two collarbones. Applied
+to the application's own built-in Character, it returned nothing at all.
+
+Reason, measured on the rig actually built:
+
+| Joint | World position at rest |
+|---|---|
+| `hipGroup` | `(0, 0, 0)` |
+| `headGroup` | `(0, 0.660, 0)` |
+| `lClavicle` | `(0, 0.564, 0)` |
+| `rClavicle` | `(0, 0.564, 0)` |
+
+Both collarbones **pivot at the sternum** — anatomically right, since a collarbone turns at the
+breastbone and only carries the shoulder at its far end. Their difference is the zero vector, and no
+lateral direction can come out of it.
+
+`repereDuCorps` therefore falls back to the **upper arms**, which are laterally separated on every
+humanoid. Both pairs point the same anatomical way — from the body's right towards its left — so the
+frame obtained is the same whichever one served. Any imported file built like this benefits from the
+same fallback.
+
+### 6.2 From a Character pose to bone angles
+
+`src/pose-bridge.js` is the only place where the two pose vocabularies meet: the Character's
+*fields* (`lElbow`, `lClavicleRotZ`) and the mapping's *slots* (`avantbras_g`, `clavicule_g`).
+
+Applying a library pose **replaces** manual slider settings — the Character's behaviour, kept
+identical on purpose. The result is written back as three angles per slot, i.e. exactly
+`skeletonPose3d`: the applied pose then shows up in the sliders, stays adjustable, and adds no
+persisted field, hence no migration.

@@ -85,13 +85,23 @@ export function normaliser(v){
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Le repère d'un corps, mesuré sur quatre points. Fonction PURE.
+ * Le repère d'un corps, mesuré sur ses os. Fonction PURE.
  *
- * @param points {{ bassin, tete, clavicule_g, clavicule_d }} positions MONDE, tableaux [x, y, z]
+ * @param points {{ bassin, tete, clavicule_g, clavicule_d, bras_g?, bras_d? }} positions MONDE
  * @returns {{ droite, haut, avant }} base orthonormée, ou `null` si les points ne suffisent pas
  *
- * LES QUATRE OS SONT CEUX QUE LA CORRESPONDANCE TROUVE LE PLUS SÛREMENT : le bassin et la tête sont
- * aux extrémités de la colonne, les clavicules sont la seule paire franchement latérale du tronc.
+ * LES OS CHOISIS SONT CEUX QUE LA CORRESPONDANCE TROUVE LE PLUS SÛREMENT : le bassin et la tête sont
+ * aux extrémités de la colonne, les clavicules sont la paire la plus franchement latérale du tronc.
+ *
+ * DEUX PAIRES LATÉRALES, ET LA SECONDE N'EST PAS DE LA PRUDENCE DÉCORATIVE. Sur beaucoup de rigs,
+ * une clavicule PIVOTE AU STERNUM et ne porte l'épaule qu'à son extrémité : les deux clavicules sont
+ * alors au même point, et leur différence ne définit aucune direction. C'est exactement le cas du
+ * Personnage intégré de cette application — les deux pivots sont sur la colonne, à 0,564 m, et
+ * l'écartement vit dans le bras. Mesuré, pas supposé : la première version de ce fichier n'avait que
+ * les clavicules, et elle ne rendait tout simplement pas de repère pour le Personnage. On retombe
+ * donc sur les BRAS, qui sont latéralement séparés sur tout humanoïde. Les deux paires pointent dans
+ * le même sens anatomique — de la droite du corps vers sa gauche —, donc le repère obtenu est le
+ * même quelle que soit celle qui a servi.
  *
  * ORTHONORMALISATION PLUTÔT QUE CONFIANCE. La ligne d'épaules n'est pas exactement perpendiculaire
  * à la colonne : mesuré à 0,011 sur cinq fichiers, mais à 0,105 — six degrés — sur anime_girl1, qui
@@ -101,9 +111,10 @@ export function normaliser(v){
  */
 export function repereDuCorps(points){
   const p = points || {};
-  if (!p.bassin || !p.tete || !p.clavicule_g || !p.clavicule_d) return null;
+  if (!p.bassin || !p.tete) return null;
   const haut = normaliser(soustraire(p.tete, p.bassin));
-  const droiteBrute = normaliser(soustraire(p.clavicule_g, p.clavicule_d));
+  const lateral = (a, b) => (a && b ? normaliser(soustraire(a, b)) : null);
+  const droiteBrute = lateral(p.clavicule_g, p.clavicule_d) || lateral(p.bras_g, p.bras_d);
   if (!haut || !droiteBrute) return null;
   // avant = haut ∧ droite : perpendiculaire aux deux par construction, quel que soit leur écart.
   const avant = normaliser(produitVectoriel(haut, droiteBrute));

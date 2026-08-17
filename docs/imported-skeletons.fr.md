@@ -118,3 +118,37 @@ ci-dessus, jamais par les axes bruts des os.
 celui d'un fichier importé. Aucun signe n'est donc écrit à la main — et c'est délibéré, chaque
 signe écrit à la main étant un endroit où l'on peut se tromper sans que rien ne le signale. Un test
 refuse d'ailleurs que le module mentionne le rig intégré par son nom.
+
+### 6.1 Une mesure qui a changé le code : les clavicules confondues
+
+Le repère du corps était d'abord dérivé de **quatre** os — bassin, tête et les deux clavicules.
+Appliqué au Personnage intégré de l'application, il ne rendait rien du tout.
+
+Raison, mesurée sur le rig réellement construit :
+
+| Articulation | Position monde au repos |
+|---|---|
+| `hipGroup` | `(0, 0, 0)` |
+| `headGroup` | `(0, 0,660, 0)` |
+| `lClavicle` | `(0, 0,564, 0)` |
+| `rClavicle` | `(0, 0,564, 0)` |
+
+Les deux clavicules **pivotent au sternum** — ce qui est anatomiquement juste, une clavicule tournant
+au niveau du sternum et ne portant l'épaule qu'à son extrémité. Leur différence est le vecteur nul,
+et aucune direction latérale n'en sort.
+
+`repereDuCorps` retombe donc sur les **bras**, latéralement séparés sur tout humanoïde. Les deux
+paires pointent dans le même sens anatomique — de la droite du corps vers sa gauche —, donc le repère
+obtenu est le même quelle que soit celle qui a servi. Tout fichier importé bâti de la même façon
+profite du même repli.
+
+### 6.2 D'une pose du Personnage aux angles des os
+
+`src/pose-bridge.js` est le seul endroit où les deux vocabulaires de pose se rencontrent : les
+*champs* du Personnage (`lElbow`, `lClavicleRotZ`) et les *emplacements* de la correspondance
+(`avantbras_g`, `clavicule_g`).
+
+Appliquer une pose de la bibliothèque **remplace** les réglages manuels — le comportement du
+Personnage, conservé à l'identique volontairement. Le résultat est réécrit en trois angles par
+emplacement, c'est-à-dire exactement `skeletonPose3d` : la pose appliquée apparaît donc dans les
+curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migration.

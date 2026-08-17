@@ -28,6 +28,8 @@ import { cloneSkinned } from './vendor/SkeletonUtils.js';
 import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
 import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
 import { orientationFinale } from './skeleton-pose.js';
+import { repereDuCorps } from './skeleton-retarget.js';
+import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
 export function getEffectiveJoints(o){
   return o.joints3d || POSE_3D[o.position || 'debout'] || POSE_3D.debout;
@@ -294,6 +296,43 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
       lFoot: lLeg.tip, rFoot: rLeg.tip,
     },
   };
+}
+
+// Mémorisé après le premier calcul : la géométrie du Personnage est figée dans le code, donc son
+// repère de repos ne change jamais en cours d'exécution. Un rig jetable par pose appliquée serait du
+// gâchis pur. ⚠️ Cette mémorisation est une OPTIMISATION PURE : la retirer ne change aucun résultat,
+// et aucun test ne la couvre — échappée assumée, consignée plutôt que masquée par un test de forme.
+let _repereDuPersonnage = null;
+
+/**
+ * Le repère du corps du PERSONNAGE INTÉGRÉ — l'origine des poses de la bibliothèque.
+ *
+ * MESURÉ, PAS ÉCRIT. On construit un Personnage, on le met au repos (toutes les articulations à
+ * zéro), et on lit la position monde des quatre mêmes os que pour un fichier importé. Le Personnage
+ * n'est donc pas la référence dont les autres s'écarteraient : c'est un corps parmi deux, passé à la
+ * même fonction. Si sa géométrie changeait demain — comme elle vient de le faire, avec les
+ * clavicules —, ce repère suivrait tout seul.
+ *
+ * AU REPOS, ET NON DANS LA POSE COURANTE. Le repère doit dire où sont le haut et la droite du corps
+ * indépendamment de ce qu'il est en train de faire ; le mesurer sur un Personnage assis ferait
+ * dépendre la traduction de la pose qu'on traduit.
+ */
+export function repereDuPersonnage(){
+  if (_repereDuPersonnage) return _repereDuPersonnage;
+  const rig = buildPersonaRig3D(0x808080, 'homme', 'realiste');
+  applyJointAngles(rig, {});
+  const p = new THREE.Vector3();
+  const pos = (groupe) => { groupe.getWorldPosition(p); return [p.x, p.y, p.z]; };
+  const J = rig.joints;
+  // Les clavicules du Personnage pivotent au sternum : elles sont TOUTES LES DEUX sur la colonne, et
+  // leur différence est nulle. C'est le repli sur les bras qui donne ici la latéralité — le même
+  // repli que pour un fichier importé bâti de la même façon (cf. repereDuCorps).
+  _repereDuPersonnage = repereDuCorps({
+    bassin: pos(J.hipGroup), tete: pos(J.headGroup),
+    clavicule_g: pos(J.lClavicle), clavicule_d: pos(J.rClavicle),
+    bras_g: pos(J.lShoulder), bras_d: pos(J.rShoulder),
+  });
+  return _repereDuPersonnage;
 }
 
 // ---------- HANDS: bare-hand poses and held objects ----------
@@ -3105,14 +3144,84 @@ function recolterOsMappes(clone, nomFichier){
   // non des indices (cf. l'en-tête de skeleton-store.js).
   const parNom = new Map();
   clone.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
+  // MESURE EN MONDE, prise ICI et une seule fois. L'objet reçu est encore au repos : aucune pose ne
+  // lui a été appliquée, c'est le seul instant où `getWorldQuaternion` répond la ROTATION DE REPOS
+  // et non l'état courant. Prise plus tard, la même ligne renverrait la pose déjà posée, et chaque
+  // application de pose se composerait sur la précédente — une dérive invisible, qui ne se voit
+  // qu'après plusieurs allers-retours.
+  //
+  // À quoi elles servent : la rotation de repos en monde ramène un axe du CORPS dans le repère de
+  // l'os (cf. axeMondeVersLocal), et les positions donnent le repère du corps lui-même
+  // (cf. repereDuCorps). Les deux inconnues de l'application d'une pose, cf. docs/imported-skeletons.md.
+  //
+  // AUCUN `updateWorldMatrix` EXPLICITE, et c'est vérifié plutôt que supposé : `getWorldPosition` et
+  // `getWorldQuaternion` appellent eux-mêmes `updateWorldMatrix(true, false)` sur le nœud lu. Une
+  // première version en posait un ici ; la campagne de mutation l'a retiré sans qu'aucun test ne
+  // bronche, ce qui a mené à la vérification — la ligne ne faisait rien.
+  const qm = new THREE.Quaternion(), pm = new THREE.Vector3();
   SLOTS.forEach(slot => {
     const e = carte[slot];
     const os = e && e.name ? parNom.get(e.name) : null;
     if (!os) return;
     const q = os.quaternion;
-    sortie[slot] = { os, name: e.name, repos: [q.x, q.y, q.z, q.w] };
+    os.getWorldQuaternion(qm);
+    os.getWorldPosition(pm);
+    sortie[slot] = {
+      os, name: e.name, repos: [q.x, q.y, q.z, q.w],
+      reposMonde: [qm.x, qm.y, qm.z, qm.w], positionMonde: [pm.x, pm.y, pm.z],
+    };
   });
   return sortie;
+}
+
+/**
+ * Le repère du corps d'un squelette importé, mesuré sur ses os mappés. Rend `null` si les quatre os
+ * nécessaires ne sont pas tous reconnus — un corps dont on ignore le haut ou la droite ne peut pas
+ * recevoir de geste, et le dire vaut mieux que d'inventer une orientation.
+ */
+export function repereDuModeleImporte(osMappes){
+  const m = osMappes || {};
+  const pos = (slot) => (m[slot] && m[slot].positionMonde) || null;
+  return repereDuCorps({
+    bassin: pos('bassin'), tete: pos('tete'),
+    clavicule_g: pos('clavicule_g'), clavicule_d: pos('clavicule_d'),
+    bras_g: pos('bras_g'), bras_d: pos('bras_d'),
+  });
+}
+
+/** Les rotations de repos en monde, rangées par emplacement — l'entrée de poseOsDepuisPosePersonnage. */
+export function reposMondeParEmplacement(osMappes){
+  const sortie = {};
+  for (const [slot, e] of Object.entries(osMappes || {})){
+    if (e && e.reposMonde) sortie[slot] = e.reposMonde;
+  }
+  return sortie;
+}
+
+/**
+ * Une pose de la bibliothèque, traduite pour un fichier importé donné. Rend `skeletonPose3d`.
+ *
+ * MESURÉ SUR LA SCÈNE DÉCODÉE, PAS SUR UN CLONE POSÉ. Le cache garde le modèle tel qu'il est sorti
+ * du fichier ; les clones seuls reçoivent des poses. C'est donc là — et seulement là — qu'on lit un
+ * repos qui est vraiment un repos.
+ *
+ * DEUX ÉCHECS DIFFÉRENTS, DEUX VALEURS DIFFÉRENTES. `null` veut dire « ce modèle ne peut pas
+ * recevoir de pose » — fichier pas encore décodé, ou bassin/tête/clavicules pas tous reconnus, donc
+ * pas de repère de corps dérivable. Un objet VIDE veut dire « la pose s'applique, mais elle ne
+ * bouge rien ». L'interface a besoin de distinguer les deux : le premier grise le sélecteur, le
+ * second est un résultat légitime.
+ */
+export function poseOsPourModeleImporte(nomFichier, joints){
+  const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
+  if (!chargé || !chargé.scene) return null;
+  const osMappes = recolterOsMappes(chargé.scene, nomFichier);
+  const repereCible = repereDuModeleImporte(osMappes);
+  const repereSource = repereDuPersonnage();
+  if (!repereCible || !repereSource) return null;
+  return poseOsDepuisPosePersonnage({
+    joints, repereSource, repereCible,
+    reposMondeParEmplacement: reposMondeParEmplacement(osMappes),
+  });
 }
 
 /**

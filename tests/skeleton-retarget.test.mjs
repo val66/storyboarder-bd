@@ -104,6 +104,38 @@ describe('repereDuCorps — mesurer l\'orientation d\'un corps', () => {
       bassin: [0, 1, 0], tete: [0, 1, 0], clavicule_g: [1, 1, 0], clavicule_d: [-1, 1, 0],
     }), null);
   });
+
+  test('clavicules confondues : les bras prennent le relais', () => {
+    // CE N'EST PAS UN CAS D'ÉCOLE. Le Personnage intégré de cette application est exactement dans
+    // cette situation : ses deux clavicules pivotent au sternum, donc au MÊME point, et
+    // l'écartement latéral ne commence qu'au bras. Sans ce repli, il n'aurait aucun repère — et la
+    // bibliothèque de poses ne pourrait s'appliquer à aucun modèle importé.
+    const r = repereDuCorps({
+      bassin: [0, 0, 0], tete: [0, 1.6, 0],
+      clavicule_g: [0, 1.3, 0], clavicule_d: [0, 1.3, 0],
+      bras_g: [0.25, 1.3, 0], bras_d: [-0.25, 1.3, 0],
+    });
+    assert.ok(r, 'les bras doivent suffire quand les clavicules ne disent rien');
+    assert.ok(Math.abs(r.droite[0] - 1) < 1e-9, `droite mesurée ${JSON.stringify(r.droite)}`);
+  });
+
+  test('les clavicules restent prioritaires quand elles sont exploitables', () => {
+    // Les deux paires doivent donner le MÊME repère : si l'ordre de préférence changeait quelque
+    // chose au résultat, c'est que l'une des deux serait orientée à l'envers.
+    const commun = { bassin: [0, 0, 0], tete: [0, 1.6, 0] };
+    const parClavicules = repereDuCorps({
+      ...commun, clavicule_g: [0.2, 1.3, 0], clavicule_d: [-0.2, 1.3, 0],
+      bras_g: [-9, 1.3, 0], bras_d: [9, 1.3, 0],   // volontairement à l'envers : ne doit pas servir
+    });
+    const parBras = repereDuCorps({ ...commun, bras_g: [0.25, 1.3, 0], bras_d: [-0.25, 1.3, 0] });
+    assert.deepEqual(parClavicules, parBras);
+  });
+
+  test('sans aucune paire latérale, toujours null', () => {
+    assert.equal(repereDuCorps({
+      bassin: [0, 0, 0], tete: [0, 1.6, 0], bras_g: [0.2, 1.3, 0],
+    }), null, 'un seul bras ne donne pas de direction');
+  });
 });
 
 describe('coordonnées ↔ vecteur — l\'aller-retour ne perd rien', () => {

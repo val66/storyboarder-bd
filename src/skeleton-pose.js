@@ -217,6 +217,37 @@ export function quaternionDepuisEuler(x, y, z){
   ];
 }
 
+/**
+ * L'INVERSE de la précédente : les trois angles d'Euler XYZ d'un quaternion. Fonction PURE.
+ *
+ * Nécessaire parce que la forme PERSISTÉE d'une pose d'os importé est un triplet d'angles
+ * (cf. l'en-tête de ce fichier), alors qu'un geste retargeté arrive sous forme de quaternion :
+ * appliquer une pose de la bibliothèque à un squelette importé, c'est composer des rotations autour
+ * d'axes quelconques, puis les redire dans le vocabulaire que les curseurs savent afficher et
+ * l'enregistrement sait écrire. Sans ce retour, une pose appliquée serait invisible dans les
+ * curseurs et impossible à retoucher.
+ *
+ * VERROUILLAGE DU PÔLE. Quand la rotation approche ±90° sur Y, X et Z tournent autour du même axe et
+ * ne se distinguent plus. On met alors Z à zéro et on met tout dans X : le quaternion reconstruit
+ * est le bon, seule la RÉPARTITION entre les deux curseurs est arbitraire. Renvoyer NaN ou lever
+ * serait pire — l'os serait juste perdu.
+ */
+export function eulerDepuisQuaternion(q){
+  const [x, y, z, w] = Array.isArray(q) && q.length === 4 ? q : [0, 0, 0, 1];
+  const x2 = x + x, y2 = y + y, z2 = z + z;
+  const xx = x * x2, xy = x * y2, xz = x * z2;
+  const yy = y * y2, yz = y * z2, zz = z * z2;
+  const wx = w * x2, wy = w * y2, wz = w * z2;
+  const m11 = 1 - (yy + zz), m12 = xy - wz, m13 = xz + wy;
+  const m22 = 1 - (xx + zz), m23 = yz - wx;
+  const m32 = yz + wx, m33 = 1 - (xx + yy);
+  const ey = Math.asin(Math.max(-1, Math.min(1, m13)));
+  if (Math.abs(m13) < 0.9999999) {
+    return [Math.atan2(-m23, m33), ey, Math.atan2(-m12, m11)];
+  }
+  return [Math.atan2(m32, m22), ey, 0];
+}
+
 /** Produit de deux quaternions [x, y, z, w] — `a` puis `b`, dans le repère de `a`. */
 export function multiplierQuaternions(a, b){
   const [ax, ay, az, aw] = a;

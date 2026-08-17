@@ -39,7 +39,7 @@ import { fileURLToPath } from 'node:url';
 import {
   POSE_AXES, POSE_LIMITE_DEG, normaliserPose, estPosee, lireAngleDeg, ecrireAngleDeg,
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
-  estPosable,
+  estPosable, eulerDepuisQuaternion,
 } from '../src/skeleton-pose.js';
 import { SLOTS } from '../src/skeleton-map.js';
 import { applySkeletonPose } from '../src/rig3d.js';
@@ -275,6 +275,57 @@ describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
         Math.abs(attendu.z - obtenu[2]), Math.abs(attendu.w - obtenu[3]));
     }
     assert.ok(pire < 1e-12, `écart maximal ${pire} — la composition a divergé de Three`);
+  });
+
+  test('eulerDepuisQuaternion défait exactement quaternionDepuisEuler', () => {
+    // L'ALLER ET LE RETOUR VIVENT DANS LE MÊME FICHIER POUR CETTE RAISON. Une pose de la
+    // bibliothèque appliquée à un squelette importé fait l'aller (composer des rotations) puis le
+    // retour (les redire en angles pour les curseurs). Si les deux divergeaient d'une convention —
+    // ordre XYZ contre ZYX, signe d'un terme —, la pose s'afficherait de travers dans les curseurs
+    // tout en s'appliquant correctement à l'écran, ou l'inverse. Rien ne lèverait.
+    //
+    // Les angles restent dans le domaine PRINCIPAL d'Euler XYZ (|y| < π/2) : au-delà, deux triplets
+    // différents décrivent la même rotation et comparer les angles n'a plus de sens. C'est le
+    // quaternion qui fait foi, et le test suivant s'en charge.
+    let pire = 0;
+    for (let i = 0; i < 300; i++){
+      const angles = [
+        Math.random() * 2 - 1,
+        Math.random() * 2.8 - 1.4,   // |y| < 1,4 rad ≈ 80°, à l'écart du pôle
+        Math.random() * 2 - 1,
+      ];
+      const relu = eulerDepuisQuaternion(quaternionDepuisEuler(...angles));
+      pire = Math.max(pire, ...angles.map((a, k) => Math.abs(a - relu[k])));
+    }
+    assert.ok(pire < 1e-9, `écart maximal ${pire} rad — l'aller et le retour ne parlent plus la même convention`);
+  });
+
+  test('même au pôle, le quaternion relu est le bon', () => {
+    // Verrouillage de cardan : X et Z tournent autour du même axe et leur partage est arbitraire.
+    // Ce qui doit rester vrai, c'est que RECONSTRUIRE depuis les angles relus redonne la même
+    // rotation — sinon l'os partirait de travers exactement dans le cas le plus visible.
+    [[0.7, Math.PI / 2, 0.3], [-0.4, -Math.PI / 2, 1.1]].forEach(angles => {
+      const q = quaternionDepuisEuler(...angles);
+      const r = quaternionDepuisEuler(...eulerDepuisQuaternion(q));
+      // Un quaternion et son opposé décrivent la même rotation : on compare donc au signe près.
+      const ecart = Math.min(
+        Math.max(...q.map((v, k) => Math.abs(v - r[k]))),
+        Math.max(...q.map((v, k) => Math.abs(v + r[k]))));
+      assert.ok(ecart < 1e-7, `au pôle, la rotation reconstruite diffère de ${ecart}`);
+    });
+  });
+
+  test('eulerDepuisQuaternion rend EXACTEMENT ce que Three rendrait', () => {
+    let pire = 0;
+    for (let i = 0; i < 300; i++){
+      const q = new THREE.Quaternion(
+        Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      const attendu = new THREE.Euler().setFromQuaternion(q, 'XYZ');
+      const obtenu = eulerDepuisQuaternion([q.x, q.y, q.z, q.w]);
+      pire = Math.max(pire,
+        Math.abs(attendu.x - obtenu[0]), Math.abs(attendu.y - obtenu[1]), Math.abs(attendu.z - obtenu[2]));
+    }
+    assert.ok(pire < 1e-9, `écart maximal ${pire} — la lecture a divergé de Three`);
   });
 });
 
