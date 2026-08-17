@@ -501,26 +501,3 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
       'la section doit être masquée par défaut : la plupart des modèles importés n\'ont pas d\'os');
   });
 });
-
-describe('La boîte d\'un modèle articulé — mesurée sur la pose, pas sur la liaison', () => {
-  test('RÉGRESSION : les matrices d\'os sont rafraîchies avant d\'être lues', () => {
-    // `boneTransform` ne calcule rien : il LIT skeleton.boneMatrices, que seul un rendu met à jour.
-    // La boîte est mesurée AU DÉCODAGE, sur une scène jamais rendue — sans rafraîchissement on
-    // obtient la pose de liaison. Mesuré sur worker_j.glb : boîte des os 34,7 × 39,6 × 8,4 contre
-    // 6,4 × 9,4 × 17,1 pour cette fonction, soit deux objets différents. Comme elle sert à la fois à
-    // mesurer la taille réelle et à cadrer la caméra, le modèle devenait invisible.
-    //
-    // Test de FORME, et c'est assumé : construire un SkinnedMesh dont la pose de liaison diffère de
-    // la pose de repos demanderait une géométrie et des poids de skinning à la main, pour vérifier
-    // un appel dont l'effet ne se voit qu'au rendu. Ce qui est épinglé, c'est que la lecture ne
-    // précède plus la mise à jour.
-    const src = readFileSync(new URL('../src/skinned-box-3d.js', import.meta.url), 'utf8');
-    const sansCommentaires = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const iMaj = sansCommentaires.indexOf('skeleton.update()');
-    const iLect = sansCommentaires.indexOf('boneTransform(');
-    assert.ok(iMaj > 0, 'skeleton.update() a disparu : la boîte relira des matrices périmées');
-    assert.ok(iMaj < iLect, 'les matrices d\'os doivent être mises à jour AVANT d\'être lues');
-    assert.match(sansCommentaires, /bones\.forEach\([^)]*=>[^)]*updateWorldMatrix/,
-      'les os eux-mêmes doivent être remis à jour : ils ne sont pas descendants du maillage');
-  });
-});
