@@ -150,12 +150,10 @@ export const S = {
   modalDraftJoints:           null,
   modalDraftAnimalJoints:     null,   // { jointId: { x?, y?, z? } } while editing an animal
   selectedAnimalHandle:       null,   // { id: jointId } or null
-  syncingAnimalJointGroupOpen: false,
   // { slot: { x?, y?, z? } } en radians, pendant l'édition d'un Modèle importé articulé. Brouillon :
   // l'Élément ne reçoit sa pose qu'à l'enregistrement de la modale (cf. src/skeleton-pose.js).
   modalDraftSkeletonPose:     null,
   selectedSkeletonHandle:      null,  // { id: slot } ou null — poignée choisie sur l'aperçu
-  syncingSkeletonJointGroupOpen: false,
   modalDirty:                 false,
   modalIsNew:                 false,
   modalSnapshot:              '',
@@ -212,7 +210,6 @@ export const S = {
   objectPreviewZoom:    1,
   personaPreviewZoom:   1,
   selectedPoseHandle:   null,
-  syncingJointGroupOpen: false,
   draggingPreviewPan:   null,
 
   // ── Application ──────────────────────────────────────────────────────

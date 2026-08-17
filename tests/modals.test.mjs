@@ -14,7 +14,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
-  pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos } from '../src/modals.js';
+  pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos,
+  selectionALOuvertureDuGroupe } from '../src/modals.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -221,7 +222,11 @@ describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement'
     const debut = MODALS.indexOf('export function buildSkeletonJointSlidersUI');
     const corps = MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
     assert.match(corps, /addEventListener\('toggle'/, 'déplier un groupe ne sélectionne plus rien');
-    assert.match(corps, /S\.selectedSkeletonHandle = \{ id: premier \}/);
+    // La décision elle-même est déléguée à selectionALOuvertureDuGroupe, testée plus bas sur son
+    // COMPORTEMENT : ici on vérifie seulement que le gestionnaire la consulte au lieu de trancher.
+    assert.match(corps, /selectionALOuvertureDuGroupe\(/,
+      'le gestionnaire décide de nouveau tout seul : le défaut du drapeau peut revenir');
+    assert.match(corps, /S\.selectedSkeletonHandle = \{ id: aPrendre \}/);
     assert.match(MODALS, /export function openSkeletonJointGroupForHandle/,
       'cliquer un point ne déplie plus son groupe');
   });
@@ -232,5 +237,93 @@ describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement'
     const corps = MODALS.slice(debut, debut + 700);
     assert.match(corps, /delete skeletonHandleScreenPos\[k\]/,
       'les positions du modèle précédent survivent');
+  });
+});
+
+
+describe('Déplier un groupe ne vole pas la sélection — le défaut des trois écrans', () => {
+  // SIGNALÉ À L'USAGE sur les modèles importés : « quand je passe d'une sous-section à une autre,
+  // ça sélectionne le premier groupe de la sous-section plutôt que le bon ».
+  //
+  // LA CAUSE. L'événement `toggle` d'un <details> est émis de façon ASYNCHRONE (mis en file
+  // d'attente, contrairement à la plupart des événements). Les trois écrans se protégeaient de la
+  // boucle « clic → ouverture → resélection » par un drapeau posé puis retiré dans la foulée : il
+  // était toujours retombé quand le gestionnaire s'exécutait. Cliquer le coude dépliait « Bras
+  // gauche », dont le toggle différé resélectionnait l'épaule.
+  //
+  // Le remède existait DÉJÀ dans persona-editor.js, avec un commentaire désignant nommément la
+  // version de la modale comme le contre-exemple. Il n'y avait jamais été reporté — et je l'ai
+  // recopié cassé une troisième fois en écrivant l'écran des modèles importés. La décision est
+  // maintenant une fonction unique, testée ici, que les trois écrans appellent.
+
+  test('la sélection est PRISE quand elle n\'appartient pas au groupe qu\'on déplie', () => {
+    assert.equal(selectionALOuvertureDuGroupe(['lShoulder', 'lElbow', 'lWrist'], 'rKnee'), 'lShoulder');
+  });
+
+  test('RÉGRESSION : la sélection est LAISSÉE si elle est déjà dans ce groupe', () => {
+    // Le cœur du défaut : sans ce cas, cliquer « Coude gauche » se solderait par « Épaule gauche ».
+    assert.equal(selectionALOuvertureDuGroupe(['lShoulder', 'lElbow', 'lWrist'], 'lElbow'), null);
+    assert.equal(selectionALOuvertureDuGroupe(['lShoulder', 'lElbow', 'lWrist'], 'lShoulder'), null,
+      'même le premier du groupe doit être laissé en place, sans réécriture inutile');
+  });
+
+  test('sans sélection courante, on prend le premier du groupe', () => {
+    // Déplier un groupe à la main, sans avoir cliqué sur l'aperçu, doit désigner un point.
+    assert.equal(selectionALOuvertureDuGroupe(['cou', 'tete'], null), 'cou');
+    assert.equal(selectionALOuvertureDuGroupe(['cou', 'tete'], undefined), 'cou');
+  });
+
+  test('un groupe vide ne sélectionne rien, et ne lève pas', () => {
+    assert.equal(selectionALOuvertureDuGroupe([], 'lElbow'), null);
+    assert.equal(selectionALOuvertureDuGroupe(null, 'lElbow'), null);
+  });
+
+  test('RÉGRESSION : plus aucun drapeau de synchronisation dans les trois écrans', () => {
+    // Un drapeau synchrone ne peut pas protéger d'un événement asynchrone. S'il réapparaît, c'est
+    // que quelqu'un a réintroduit le motif — et le défaut avec.
+    // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : la première version ne cherchait qu'une AFFECTATION
+    // (`= true`). Une réintroduction qui se contente de LIRE le drapeau — `if (S.syncing…) return;`
+    // — passait donc au travers, alors que c'est exactement le motif qu'on veut interdire.
+    const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.doesNotMatch(src, /S\.syncing\w*JointGroupOpen/,
+      'un drapeau de synchronisation est revenu : il ne protège de rien, cf. l\'en-tête ci-dessus');
+  });
+
+  test('les TROIS écrans passent par la même décision', () => {
+    // Corriger un seul des trois, c'était l'état d'avant : une correction connue et non reportée.
+    const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 4,
+      'attendu : la définition + un appel par écran (Personnage, Animaux, Modèle importé)');
+  });
+});
+
+
+describe('Un seul nom pour l\'écran de correspondance', () => {
+  // Demandé à l'usage : le titre de la modale et le bouton qui l'ouvre doivent porter le MÊME
+  // libellé. Deux noms pour une seule chose obligent l'utilisateur à faire le rapprochement.
+  // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : rien ne liait les deux, on pouvait donc en renommer un seul.
+  const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+
+  const libelles = (src, ancre) => {
+    const i = src.indexOf(ancre);
+    assert.ok(i > 0, `ancre introuvable : ${ancre}`);
+    const m = src.slice(i, i + 300).match(/tr\('([^']*)',\s*'([^']*)'\)/);
+    assert.ok(m, `aucun appel à tr() après ${ancre}`);
+    return { en: m[1], fr: m[2] };
+  };
+
+  test('le titre de la modale et le bouton disent la même chose, dans les deux langues', () => {
+    const titre  = libelles(EVENTS, "getElementById('skeletonMapTitle')");
+    const bouton = libelles(MODALS, "getElementById('objectSkeletonMapBtn')");
+    assert.deepEqual(titre, bouton,
+      'le titre de l\'écran et le bouton qui l\'ouvre portent des libellés différents');
+  });
+
+  test('et ce libellé est bien celui choisi', () => {
+    // Sans ce second test, renommer les DEUX à l'identique passerait — or le nom a été choisi.
+    assert.deepEqual(libelles(MODALS, "getElementById('objectSkeletonMapBtn')"),
+      { en: 'Mapping table', fr: 'Tableau de correspondance' });
   });
 });

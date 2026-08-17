@@ -408,22 +408,18 @@ export function openAnimalJointGroupForHandle(id){
   highlightAnimalJointRows(id);
   const details = animalJointGroupDetailsById[id];
   const outer   = document.getElementById('objectAnimalSlidersDetails');
-  S.syncingAnimalJointGroupOpen = true;
   if (outer && !outer.open) outer.open = true;
   new Set(Object.values(animalJointGroupDetailsById)).forEach(d => {
     if (d !== details && d.open) d.open = false;
   });
   if (details && !details.open) details.open = true;
-  S.syncingAnimalJointGroupOpen = false;
 }
 
 export function closeAllAnimalJointSliders(){
   highlightAnimalJointRows(null);
   const outer = document.getElementById('objectAnimalSlidersDetails');
-  S.syncingAnimalJointGroupOpen = true;
   new Set(Object.values(animalJointGroupDetailsById)).forEach(d => { d.open = false; });
   if (outer) outer.open = false;
-  S.syncingAnimalJointGroupOpen = false;
 }
 
 export function buildAnimalJointSlidersUI(objType){
@@ -453,10 +449,15 @@ export function buildAnimalJointSlidersUI(objType){
 
     // Expanding a group → selects its first joint in the preview
     details.addEventListener('toggle', () => {
-      if (S.syncingAnimalJointGroupOpen || !details.open) return;
-      const firstId = groupDef.joints[0].id;
-      S.selectedAnimalHandle = { id: firstId };
-      highlightAnimalJointRows(firstId);
+      if (!details.open) return;
+      // Même défaut que pour les squelettes importés — cf. la note détaillée plus bas dans
+      // buildSkeletonJointSlidersUI. Corrigé ici aussi : le motif était identique, donc la panne
+      // aussi, même si personne ne l'avait encore signalée sur les Animaux.
+      const choisi = S.selectedAnimalHandle && S.selectedAnimalHandle.id;
+      const aPrendre = selectionALOuvertureDuGroupe(groupDef.joints.map(j => j.id), choisi);
+      if (aPrendre === null) { highlightAnimalJointRows(choisi); return; }
+      S.selectedAnimalHandle = { id: aPrendre };
+      highlightAnimalJointRows(aPrendre);
       refreshObjectPreview();
     });
 
@@ -531,10 +532,20 @@ export function buildSkeletonJointSlidersUI(obj){
     // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
     // le dialogue aille dans les deux sens — exactement comme pour les Animaux et le Personnage.
     details.addEventListener('toggle', () => {
-      if (S.syncingSkeletonJointGroupOpen || !details.open) return;
-      const premier = groupe.slots[0].slot;
-      S.selectedSkeletonHandle = { id: premier };
-      highlightSkeletonJointRows(premier);
+      if (!details.open) return;
+    // LA GARDE EST UN TEST D'ÉTAT, PAS UN DRAPEAU. L'événement `toggle` d'un <details> est émis de
+    // façon ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà retombé quand le
+    // gestionnaire s'exécute, et ne protège de rien. Concrètement, cliquer un point sur l'aperçu
+    // dépliait son groupe, dont le toggle différé resélectionnait aussitôt la PREMIÈRE articulation
+    // du groupe — signalé à l'usage : « ça sélectionne le premier groupe de la sous-section plutôt
+    // que le bon ». Se demander « ce groupe contient-il déjà la sélection ? » ne dépend d'aucun
+    // ordre d'arrivée. Le remède était déjà écrit dans persona-editor.js ; il n'avait pas été
+    // reporté ici, et je l'ai recopié cassé une troisième fois.
+      const choisi = S.selectedSkeletonHandle && S.selectedSkeletonHandle.id;
+      const aPrendre = selectionALOuvertureDuGroupe(groupe.slots.map(s => s.slot), choisi);
+      if (aPrendre === null) { highlightSkeletonJointRows(choisi); return; }
+      S.selectedSkeletonHandle = { id: aPrendre };
+      highlightSkeletonJointRows(aPrendre);
       refreshObjectPreview();
     });
 
@@ -849,22 +860,18 @@ export function openSkeletonJointGroupForHandle(slot){
   highlightSkeletonJointRows(slot);
   const details = skeletonJointGroupDetailsById[slot];
   const outer = document.getElementById('objectSkeletonSlidersDetails');
-  S.syncingSkeletonJointGroupOpen = true;
   if (outer && !outer.open) outer.open = true;
   new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => {
     if (d !== details && d.open) d.open = false;
   });
   if (details && !details.open) details.open = true;
-  S.syncingSkeletonJointGroupOpen = false;
 }
 
 export function closeAllSkeletonJointSliders(){
   highlightSkeletonJointRows(null);
   const outer = document.getElementById('objectSkeletonSlidersDetails');
-  S.syncingSkeletonJointGroupOpen = true;
   new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => { d.open = false; });
   if (outer) outer.open = false;
-  S.syncingSkeletonJointGroupOpen = false;
 }
 
 /**
@@ -903,6 +910,40 @@ function dessinerPoignee(ctx, pt, active){
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#fff';
   ctx.stroke();
+}
+
+/**
+ * Déplier un groupe d'articulations : que faut-il sélectionner ? Fonction PURE.
+ *
+ * Rend l'identifiant à sélectionner, ou `null` s'il ne faut RIEN changer parce que la sélection
+ * courante appartient déjà à ce groupe.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI CETTE DÉCISION EST UNE FONCTION, ET NON UN DRAPEAU
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'événement `toggle` d'un <details> est émis de façon ASYNCHRONE — la spécification HTML le fait
+ * mettre en file d'attente, contrairement à la plupart des événements. Les trois écrans à
+ * articulations de cette application (Personnage, Animaux, Modèle importé) se protégeaient de la
+ * boucle « clic → ouverture → resélection » par un drapeau posé puis retiré dans la foulée. Ce
+ * drapeau était TOUJOURS retombé quand le gestionnaire s'exécutait : il ne protégeait de rien.
+ *
+ * À l'usage : cliquer le coude gauche dépliait « Bras gauche », dont le toggle différé
+ * resélectionnait aussitôt la première articulation du groupe — l'épaule. Signalé sur les modèles
+ * importés (« ça sélectionne le premier groupe de la sous-section plutôt que le bon »), le défaut
+ * était identique sur les Animaux et dans la modale Personnage.
+ *
+ * LE PLUS INSTRUCTIF : le remède était DÉJÀ ÉCRIT dans persona-editor.js, avec un commentaire qui
+ * désignait nommément la version de la modale comme l'exemple de ce qu'il ne faut pas faire. Il n'y
+ * avait pas été reporté, et je l'ai recopié cassé une troisième fois en écrivant l'écran des
+ * modèles importés. Une correction connue mais laissée à un seul endroit n'est pas une correction :
+ * c'est un piège qui attend le prochain qui copiera le voisin. D'où cette fonction unique, que les
+ * trois écrans appellent.
+ */
+export function selectionALOuvertureDuGroupe(idsDuGroupe, idChoisi){
+  const ids = Array.isArray(idsDuGroupe) ? idsDuGroupe : [];
+  if (!ids.length) return null;
+  return ids.includes(idChoisi) ? null : ids[0];
 }
 
 export function pickAnimalHandleAt(px, py){
@@ -1268,7 +1309,9 @@ export function makeJointRangeRow(container, labelText, onInput){
 // simple hinge, 2 for a ball/hinge2 joint), so they can be highlighted along with the joint handle.
 export const jointGroupDetailsById = {};
 export const jointRowsById = {};
-// [STATE→S] let S.syncingJointGroupOpen = false; // avoids the toggle <-> selection feedback loop below
+// Le drapeau S.syncingJointGroupOpen a été RETIRÉ : il prétendait éviter la boucle toggle ↔
+// sélection, mais l'événement `toggle` d'un <details> arrive de façon asynchrone et le trouvait
+// toujours retombé. La garde est désormais un test d'état, dans le gestionnaire lui-même.
 
 export function highlightJointRows(id){
   document.querySelectorAll('#jointSlidersContainer .joint-slider-row.active').forEach(row => {
@@ -1284,13 +1327,11 @@ export function openJointGroupForHandle(id){
   highlightJointRows(id);
   const details = jointGroupDetailsById[id];
   const outer = document.getElementById('jointSlidersDetails');
-  S.syncingJointGroupOpen = true;
   if (outer && !outer.open) outer.open = true;
   new Set(Object.values(jointGroupDetailsById)).forEach(d => {
     if (d !== details && d.open) d.open = false;
   });
   if (details && !details.open) details.open = true;
-  S.syncingJointGroupOpen = false;
 }
 
 // Fully closes "Joint fine-tuning" (section + all its sub-sections) and removes the
@@ -1298,10 +1339,8 @@ export function openJointGroupForHandle(id){
 export function closeAllJointSliders(){
   highlightJointRows(null);
   const outer = document.getElementById('jointSlidersDetails');
-  S.syncingJointGroupOpen = true;
   new Set(Object.values(jointGroupDetailsById)).forEach(d => { d.open = false; });
   if (outer) outer.open = false;
-  S.syncingJointGroupOpen = false;
 }
 
 
@@ -1325,10 +1364,15 @@ export function buildJointSlidersUI(){
     // Reciprocal: expanding this sub-section selects in the preview the joint handle it
     // represents (the first one of its group, per user request — "the right point").
     details.addEventListener('toggle', () => {
-      if (S.syncingJointGroupOpen || !details.open) return;
-      const firstId = g.ids[0];
-      S.selectedPoseHandle = POSE_HANDLES.find(d => d.id === firstId) || null;
-      highlightJointRows(firstId);
+      if (!details.open) return;
+      // Le commentaire de persona-editor.js désignait NOMMÉMENT ce code comme l'exemple du procédé
+      // qui ne protège de rien (« le procédé employé côté modale »). Il avait été corrigé là-bas et
+      // laissé cassé ici. C'est réparé : test d'état, pas drapeau.
+      const choisi = S.selectedPoseHandle && S.selectedPoseHandle.id;
+      const aPrendre = selectionALOuvertureDuGroupe(g.ids, choisi);
+      if (aPrendre === null) { highlightJointRows(choisi); return; }
+      S.selectedPoseHandle = POSE_HANDLES.find(d => d.id === aPrendre) || null;
+      highlightJointRows(aPrendre);
       refreshPersonaPreview();
     });
   });

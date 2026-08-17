@@ -4002,8 +4002,10 @@ function renderSkeletonMapModal(){
   if (!_skelEcran) return;
   const { fichier, os, carte, valide } = _skelEcran;
   const r = resumeCorrespondance(carte);
+  // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonJointSlidersUI) : deux noms
+  // pour une seule chose obligent l'utilisateur à faire le rapprochement lui-même.
   document.getElementById('skeletonMapTitle').textContent =
-    tr('Skeleton mapping', 'Correspondance du squelette');
+    tr('Mapping table', 'Tableau de correspondance');
   // Validée, on ne compte plus ce qu'il « reste à vérifier » : il ne reste rien, c'est fait. Le
   // décompte n'a de sens que tant que la décision n'a pas été prise.
   document.getElementById('skeletonMapSubtitle').textContent = valide
@@ -4542,7 +4544,6 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 // [STATE→S] let S.modalDraftAnimalJoints = null; // { jointId: { x?, y?, z? } } while editing an animal
 // Animal joint-point system on objectPreview3D (identical to the persona system)
 // [STATE→S] let S.selectedAnimalHandle = null;        // { id: jointId } or null
-// [STATE→S] let S.syncingAnimalJointGroupOpen = false;
 // (per user request) The Save button of the Persona/Object modals should only turn orange
 // (.full-btn) if there's actually something to save: either the Element was just created
 // (S.modalIsNew, cf. openPersonaModal/openObjectModal called with isNew=true right after
