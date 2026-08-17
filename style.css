@@ -963,7 +963,13 @@ canvas{
 
 /* Valeur en lecture seule d'une modale (le fichier d'un modèle importé). Volontairement distincte
    d'un <input> désactivé : ce n'est pas un champ qu'on aurait grisé, c'est une information. */
+/* ⚠️ LA MARGE BASSE N'EST PAS DÉCORATIVE. Dans une fiche, l'écart AU-DESSUS d'un libellé vient de
+   la marge BASSE du champ qui précède : `.modal-field-label` n'a que `margin: 0 0 5px`. Cette
+   valeur en lecture seule n'en portait aucune, si bien que le libellé suivant — « Modèle », depuis
+   qu'il existe — venait se coller au cadre du Fichier. Les 14 px sont ceux de `.modal-box select`
+   et `input[type=text]`, mesurés et non choisis : le champ se comporte comme les autres. */
 .modal-readonly-value {
+  margin-bottom: 14px;
   padding: 6px 8px; border-radius: 4px;
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
   font-size: 12px; opacity: .85; word-break: break-all;

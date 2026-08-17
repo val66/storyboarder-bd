@@ -740,6 +740,11 @@ export function openObjectModal(obj, isNew){
   }
   if (objectTypeSelect && objectTypeSelect.parentElement) {
     objectTypeSelect.style.display = _estModele ? 'none' : '';
+    // ET SON LIBELLÉ AVEC. Seul le <select> était masqué : devant un modèle importé, « TYPE »
+    // restait affiché au-dessus de rien. Défaut d'origine, resté invisible tant qu'aucun champ ne
+    // le suivait ; l'arrivée de « Modèle » juste au-dessus l'a rendu manifeste.
+    const _etiquetteType = document.getElementById('objectTypeLabel');
+    if (_etiquetteType) _etiquetteType.style.display = _estModele ? 'none' : '';
   }
   objectRotXInput.value = Math.round((obj.rotX || 0) * 180 / Math.PI);
   objectRotYInput.value = Math.round((obj.rotY || 0) * 180 / Math.PI);

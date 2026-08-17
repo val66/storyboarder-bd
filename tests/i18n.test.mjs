@@ -303,6 +303,23 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
                 [/Apply/, 'appliquer au Personnage']]);
   });
 
+  test('RÉGRESSION : dans une fiche, l\'écart au-dessus d\'un libellé vient du champ précédent', () => {
+    // `.modal-field-label` n'a pas de marge HAUTE : l'espace au-dessus de « Modèle », « Position »
+    // ou « Type » est la marge BASSE du champ qui les précède. Une valeur en lecture seule sans
+    // marge basse colle donc le libellé suivant au champ d'avant — c'est ce qui est arrivé quand
+    // « Modèle » est apparu sous « Fichier ». Les deux valeurs doivent rester égales.
+    const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+    const bas = (sel) => {
+      const bloc = css.split(sel)[1];
+      const m = bloc && bloc.slice(0, 400).match(/margin-bottom\s*:\s*(\d+)px/);
+      return m ? Number(m[1]) : null;
+    };
+    const champ = bas('.modal-box input[type=text], .modal-box select{');
+    const lecture = bas('.modal-readonly-value {');
+    assert.equal(lecture, champ,
+      `une valeur en lecture seule laisse ${lecture}px sous elle, un champ ${champ}px — le libellé suivant ne sera pas aligné`);
+  });
+
   test('le manuel reste un MANUEL : paragraphes et sections bornés', () => {
     // « Cela doit expliquer les actions possibles, pas la logique interne » — la section Éditeur
     // avait dérivé vers 4707 caractères d'explications de fonctionnement.
