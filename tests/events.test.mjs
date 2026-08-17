@@ -1845,7 +1845,11 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     focusPersonaEditorHandle('lKnee');
     assert.equal(cyclePersonaEditorSpec(1), null, 'un seul champ : rien à faire défiler');
     focusPersonaEditorHandle('head');
-    assert.equal(cyclePersonaEditorSpec(1), 1);
+    // Le NOMBRE de champs se lit sur le descripteur : la tête en a gagné un troisième (inclinaison
+    // latérale) à l'étape Rig B, et un test qui écrivait « 2 » en dur aurait figé cette valeur.
+    const n = specsDe('head').length;
+    assert.ok(n >= 2, 'témoin : il faut plusieurs champs pour que la molette serve');
+    for (let i = 1; i < n; i++) assert.equal(cyclePersonaEditorSpec(1), i);
     assert.equal(cyclePersonaEditorSpec(1), 0, 'et ça boucle');
   });
 

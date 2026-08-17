@@ -133,6 +133,25 @@ export function poseSliderSpecs3D(def){
       { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: ' (gauche/droite)' },
     ];
   }
+  // TROIS AXES POUR UNE SEULE POIGNÉE.
+  //
+  // Le troisième axe existait déjà pour les poignets, mais sous la forme d'une SECONDE entrée dans
+  // POSE_HANDLES (`lWristRoll`), qui désignait le même groupe que la première. Conséquence : deux
+  // poignées superposées au même pixel sur l'aperçu, dont une seule attrapable — alors qu'un
+  // commentaire affirmait qu'il n'y en avait pas de dédiée. Le code et le commentaire disaient deux
+  // choses différentes, et c'est le commentaire qui avait raison sur l'intention.
+  //
+  // `hinge3` dit la même chose en une entrée : une articulation, une poignée, trois curseurs. Le
+  // SENS du troisième axe change d'une articulation à l'autre — torsion pour un poignet, inclinaison
+  // latérale pour une tête ou un buste — d'où un suffixe porté par le descripteur plutôt que figé
+  // ici. Les CHAMPS persistés, eux, ne bougent pas : lWristRotZ reste lWristRotZ.
+  if (def.mode === 'hinge3') {
+    return [
+      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: ' (haut/bas)' },
+      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: ' (gauche/droite)' },
+      { key: def.id + ':r', jointId: def.id, field: def.fieldR, axis: null, suffix: def.suffixR || ' (torsion)' },
+    ];
+  }
   return [
     { key: def.id + ':x', jointId: def.id, field: def.field, axis: 'x', suffix: ' (avant/arr.)' },
     { key: def.id + ':z', jointId: def.id, field: def.field, axis: 'z', suffix: ' (écart)' },

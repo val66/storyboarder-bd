@@ -410,9 +410,10 @@ describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
     const keys = POSE_HANDLES.flatMap(def => poseSliderSpecs3D(def).map(s => s.key));
     assert.equal(new Set(keys).size, keys.length, 'collision de clé entre deux curseurs');
     // 23 → 33 à l'ajout du cou, des clavicules et des chevilles (Rig A) : 2 + 4 + 4 nouveaux
-    // curseurs. Ce nombre est MESURÉ à chaque évolution du rig, jamais deviné ; c'est lui qui a
-    // signalé l'ajout, ce qui est exactement son rôle.
-    assert.equal(keys.length, 33, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
+    // curseurs. Puis 33 → 36 (Rig B) : la tête gagne son 3ᵉ axe, le torse ses 2ᵉ et 3ᵉ, et les deux
+    // entrées `WristRoll` disparaissent au profit d'un `hinge3` par poignet — à nombre de curseurs
+    // constant de ce côté. Ce nombre est MESURÉ à chaque évolution du rig, jamais deviné.
+    assert.equal(keys.length, 36, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
   });
 });
 
@@ -1197,7 +1198,7 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
     // Une articulation absente de la signature deviendrait réglable sans que les boutons
     // Réinitialiser/Appliquer s'en aperçoivent — un travail perdu en silence.
     const vide = poseSliderSignature3D({});
-    assert.equal(vide.split('|').length, 33, 'les 33 curseurs (cf. poseSliderSpecs3D)');
+    assert.equal(vide.split('|').length, 36, 'les 36 curseurs (cf. poseSliderSpecs3D)');
   });
 
   test('chaque articulation compte : modifier n\'importe laquelle se voit', () => {
@@ -1288,6 +1289,8 @@ describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner'
       // (RotY → y, RotZ → z, sinon x) : c'est justement ce que ce balayage vérifie, plutôt que de
       // faire confiance à la convention.
       neckRotX: 'x', neckRotY: 'y',
+      // Rig B — 3ᵉ axe de la tête, 2ᵉ et 3ᵉ du torse.
+      headRotZ: 'z', torsoRotY: 'y', torsoRotZ: 'z',
       lClavicleRotX: 'x', rClavicleRotX: 'x', lClavicleRotZ: 'z', rClavicleRotZ: 'z',
       lFootRotX: 'x', rFootRotX: 'x', lFootRotZ: 'z', rFootRotZ: 'z',
     };

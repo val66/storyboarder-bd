@@ -27,6 +27,7 @@ import * as THREE from 'three';
 
 import { buildPersonaRig3D, applyJointAngles } from '../src/rig3d.js';
 import { POSE_HANDLES, POSE_3D, JOINT_GROUPS, JOINT_LABELS } from '../src/constants.js';
+import { poseSliderSpecs3D } from '../src/utils.js';
 
 const rigNeuf = () => buildPersonaRig3D('#8844aa', 'homme', 'comics_numerique');
 
@@ -412,5 +413,118 @@ describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien
       + ' il devrait pendre sous elle, pas l\'entourer');
     assert.ok(V(rig.joints.lFoot).y - tout.min.y > 0.03,
       'le pied ne descend presque pas sous la cheville : il ne se verra pas');
+  });
+});
+
+
+describe('Rig B — le troisième axe de la tête, les deuxième et troisième du torse', () => {
+  // CE QUI MANQUAIT. La tête pouvait hocher (x) et tourner (y), mais pas PENCHER vers l'épaule. Le
+  // torse n'avait qu'un seul axe — se pencher en avant — donc un personnage ne pouvait ni se
+  // tourner ni s'incliner sans faire pivoter l'Élément entier. Ce sont les gestes qui portent
+  // l'essentiel de l'expression d'une silhouette en storyboard.
+  const V = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
+
+  test('les trois axes de la tête et du torse sont pilotables', () => {
+    const rig = rigNeuf();
+    applyJointAngles(rig, { ...POSE_3D.debout,
+      headRotX: 0.1, headRotY: 0.2, headRotZ: 0.3,
+      torsoRotX: 0.15, torsoRotY: 0.25, torsoRotZ: 0.35 });
+    assert.equal(rig.joints.headGroup.rotation.z, 0.3, 'la tête ne penche pas');
+    assert.equal(rig.joints.torsoGroup.rotation.y, 0.25, 'le buste ne tourne pas');
+    assert.equal(rig.joints.torsoGroup.rotation.z, 0.35, 'le buste ne s\'incline pas');
+  });
+
+  test('RÉGRESSION : chacun des trois axes déplace vraiment quelque chose', () => {
+    // Un champ appliqué au mauvais objet — ou deux fois le même — ne lèverait aucune erreur. On
+    // vérifie donc que chaque axe, PRIS SEUL, bouge la figure.
+    //
+    // ⚠️ LE TÉMOIN NE PEUT PAS ÊTRE LE GROUPE QU'ON TOURNE : un groupe qui pivote sur lui-même ne
+    // déplace pas son origine. Ma première version prenait headGroup comme témoin de headRotZ et
+    // échouait pour cette raison — pas parce que le code était faux. Il faut regarder un ENFANT
+    // (le visage pour la tête) ou un descendant (la tête pour le buste).
+    const base = { ...POSE_3D.debout };
+    const surLeVisage = (rig) => { const v = new THREE.Vector3(); rig.faceMesh.getWorldPosition(v); return v; };
+    // Deuxième correction du même ordre : `torsoRotY` tourne autour de l'axe VERTICAL, et la tête
+    // est posée sur cet axe — elle ne bouge donc pas d'un millimètre. Il faut un témoin ÉCARTÉ de
+    // l'axe, d'où la main. Choisir un témoin, c'est déjà connaître la géométrie.
+    [['headRotZ', surLeVisage],
+      ['torsoRotY', (r) => V(r.joints.lHand)],
+      ['torsoRotZ', (r) => V(r.joints.headGroup)]]
+      .forEach(([champ, ou]) => {
+        const rig = rigNeuf();
+        applyJointAngles(rig, base);
+        const avant = ou(rig);
+        applyJointAngles(rig, { ...base, [champ]: 0.5 });
+        assert.ok(ou(rig).distanceTo(avant) > 1e-3,
+          `${champ} ne déplace rien : il n'est pas appliqué, ou pas au bon groupe`);
+      });
+  });
+
+  test('incliner le buste emporte la tête ET les bras', () => {
+    // Le torse est au-dessus de tout : c'est ce qui distingue son inclinaison de celle de la tête.
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const tete = V(rig.joints.headGroup), main = V(rig.joints.lHand);
+    applyJointAngles(rig, { ...POSE_3D.debout, torsoRotZ: 0.4 });
+    assert.ok(V(rig.joints.headGroup).distanceTo(tete) > 1e-3, 'la tête n\'a pas suivi le buste');
+    assert.ok(V(rig.joints.lHand).distanceTo(main) > 1e-3, 'le bras n\'a pas suivi le buste');
+  });
+
+  test('pencher la tête ne bouge NI le buste NI les bras', () => {
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const main = V(rig.joints.lHand), clav = V(rig.joints.lClavicle);
+    applyJointAngles(rig, { ...POSE_3D.debout, headRotZ: 0.5 });
+    assert.ok(V(rig.joints.lHand).distanceTo(main) < 1e-9, 'la tête a emporté le bras');
+    assert.ok(V(rig.joints.lClavicle).distanceTo(clav) < 1e-9, 'la tête a emporté la clavicule');
+  });
+
+  test('une pose d\'avant laisse les nouveaux axes à zéro', () => {
+    // Même garantie qu'à l'étape Rig A : aucune des 13 poses de base ne les renseigne, `angle3D`
+    // rend 0, et un Projet enregistré avant est rendu à l'identique.
+    const rig = rigNeuf();
+    Object.keys(POSE_3D).forEach(cle => {
+      applyJointAngles(rig, POSE_3D[cle]);
+      assert.equal(rig.joints.headGroup.rotation.z, 0, `« ${cle} » penche la tête`);
+      assert.equal(rig.joints.torsoGroup.rotation.y, 0, `« ${cle} » tourne le buste`);
+      assert.equal(rig.joints.torsoGroup.rotation.z, 0, `« ${cle} » incline le buste`);
+    });
+  });
+
+  describe('hinge3 — une articulation, une poignée, trois curseurs', () => {
+    test('RÉGRESSION : plus aucune poignée en double sur le même groupe', () => {
+      // LE DÉFAUT QUE CE MODE SUPPRIME. Le 3ᵉ axe des poignets était une SECONDE entrée
+      // (`lWristRoll`) désignant le groupe `lHand`, déjà pris par `lWrist` : l'aperçu dessinait donc
+      // deux poignées au même pixel, dont une seule attrapable — alors qu'un commentaire affirmait
+      // qu'il n'y en avait pas de dédiée. Le code contredisait son propre commentaire.
+      const groupes = POSE_HANDLES.map(d => d.group);
+      assert.equal(new Set(groupes).size, groupes.length,
+        'deux poignées partagent un groupe : elles se superposeront sur l\'aperçu');
+    });
+
+    test('tête, torse et poignets ont bien trois curseurs chacun', () => {
+      ['head', 'torso', 'lWrist', 'rWrist'].forEach(id => {
+        const def = POSE_HANDLES.find(d => d.id === id);
+        assert.equal(def.mode, 'hinge3', `${id} devrait avoir trois axes`);
+        assert.equal(poseSliderSpecs3D(def).length, 3, `${id} : trois curseurs attendus`);
+      });
+    });
+
+    test('le troisième axe porte le nom de ce qu\'il FAIT, pas un nom générique', () => {
+      // « torsion » pour un poignet, « inclinaison » pour une tête ou un buste : le même axe
+      // mathématique ne décrit pas le même geste, et un suffixe figé aurait menti pour deux
+      // articulations sur quatre.
+      const suffixe = (id) => poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === id))[2].suffix;
+      assert.match(suffixe('head'), /inclinaison/);
+      assert.match(suffixe('torso'), /inclinaison/);
+      assert.match(suffixe('lWrist'), /torsion/);
+    });
+
+    test('les champs PERSISTÉS des poignets n\'ont pas bougé', () => {
+      // Le regroupement est un changement d'interface, pas de format : un Projet enregistré avant
+      // porte lWristRotZ, et c'est toujours ce champ que le curseur écrit.
+      const champs = poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === 'lWrist')).map(s => s.field);
+      assert.deepEqual(champs, ['lWristRotX', 'lWristRotY', 'lWristRotZ']);
+    });
   });
 });

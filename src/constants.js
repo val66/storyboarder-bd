@@ -433,8 +433,17 @@ export const POSE_3D = {
 // Joint handles manipulable with the mouse in the modal's 3D preview.
 // mode 'hinge': a single angle (rotation.x); mode 'ball': two angles {x,z}.
 export const POSE_HANDLES = [
-  { id: 'head', group: 'headGroup', mode: 'hinge2', fieldV: 'headRotX', fieldH: 'headRotY' },
-  { id: 'torso', group: 'torsoGroup', mode: 'hinge', field: 'torsoRotX' },
+  // Tête et torse ont TROIS axes chacun. Le troisième est celui qui manquait le plus au
+  // storyboard : pencher la tête vers l'épaule, et incliner le buste sur le côté — deux gestes qui
+  // portent presque toute l'expression d'une silhouette, et qu'aucun curseur n'atteignait.
+  //
+  // Le torse gagne aussi son DEUXIÈME axe au passage : il n'en avait qu'un (se pencher en avant),
+  // sans possibilité de se tourner. Un personnage ne pouvait donc pas regarder de côté autrement
+  // qu'en pivotant l'Élément entier.
+  { id: 'head', group: 'headGroup', mode: 'hinge3',
+    fieldV: 'headRotX', fieldH: 'headRotY', fieldR: 'headRotZ', suffixR: ' (inclinaison)' },
+  { id: 'torso', group: 'torsoGroup', mode: 'hinge3',
+    fieldV: 'torsoRotX', fieldH: 'torsoRotY', fieldR: 'torsoRotZ', suffixR: ' (inclinaison)' },
   { id: 'lShoulder', group: 'lShoulder', mode: 'ball', field: 'lShoulder' },
   { id: 'rShoulder', group: 'rShoulder', mode: 'ball', field: 'rShoulder' },
   // Elbow: flexion (up/down, rotation.x, as before) + left/right rotation (rotation.y)
@@ -445,13 +454,15 @@ export const POSE_HANDLES = [
   { id: 'rHip', group: 'rHip', mode: 'ball', field: 'rHip' },
   { id: 'lKnee', group: 'lKnee', mode: 'hinge', field: 'lKnee' },
   { id: 'rKnee', group: 'rKnee', mode: 'hinge', field: 'rKnee' },
-  { id: 'lWrist', group: 'lHand', mode: 'hinge2', fieldV: 'lWristRotX', fieldH: 'lWristRotY' },
-  { id: 'rWrist', group: 'rHand', mode: 'hinge2', fieldV: 'rWristRotX', fieldH: 'rWristRotY' },
-  // Wrist's 3rd axis (rotation/twist about itself, rotation.z) — adjustable via the fine slider
-  // (no dedicated drag handle in the preview: it would share the same anchor point as the
-  // up/down / left-right handle above).
-  { id: 'lWristRoll', group: 'lHand', mode: 'hinge', field: 'lWristRotZ' },
-  { id: 'rWristRoll', group: 'rHand', mode: 'hinge', field: 'rWristRotZ' },
+  // Les poignets passent eux aussi à `hinge3`. Leur troisième axe existait déjà, mais comme une
+  // SECONDE entrée (`lWristRoll`) pointant sur le même groupe : l'aperçu dessinait donc deux
+  // poignées au même pixel, dont une seule attrapable — alors que le commentaire d'alors affirmait
+  // qu'il n'y en avait pas de dédiée. Une entrée, une poignée, trois curseurs : le code dit
+  // maintenant ce que le commentaire promettait. Le champ persisté lWristRotZ ne change pas.
+  { id: 'lWrist', group: 'lHand', mode: 'hinge3',
+    fieldV: 'lWristRotX', fieldH: 'lWristRotY', fieldR: 'lWristRotZ' },
+  { id: 'rWrist', group: 'rHand', mode: 'hinge3',
+    fieldV: 'rWristRotX', fieldH: 'rWristRotY', fieldR: 'rWristRotZ' },
   // ── Cou, clavicules, chevilles ────────────────────────────────────────────────────────────
   // Les trois articulations que le Personnage n'avait pas alors que les modèles importés les ont
   // (cf. SLOTS dans src/skeleton-map.js). Ajoutées pour que les deux parlent le même corps.
@@ -774,7 +785,6 @@ export const JOINT_LABELS = {
   lHip: 'Hanche gauche', rHip: 'Hanche droite',
   lKnee: 'Genou gauche', rKnee: 'Genou droit',
   lWrist: 'Poignet gauche', rWrist: 'Poignet droit',
-  lWristRoll: 'Poignet gauche (torsion)', rWristRoll: 'Poignet droit (torsion)',
   neck: 'Cou',
   lClavicle: 'Clavicule gauche', rClavicle: 'Clavicule droite',
   lFoot: 'Pied gauche', rFoot: 'Pied droit',
@@ -788,8 +798,8 @@ export const JOINT_LABELS = {
 export const JOINT_GROUPS = [
   { key: 'tete', label: 'Tête', ids: ['neck', 'head'] },
   { key: 'torse', label: 'Torse', ids: ['torso'] },
-  { key: 'brasG', label: 'Bras gauche', ids: ['lClavicle', 'lShoulder', 'lElbow', 'lWrist', 'lWristRoll'] },
-  { key: 'brasD', label: 'Bras droit', ids: ['rClavicle', 'rShoulder', 'rElbow', 'rWrist', 'rWristRoll'] },
+  { key: 'brasG', label: 'Bras gauche', ids: ['lClavicle', 'lShoulder', 'lElbow', 'lWrist'] },
+  { key: 'brasD', label: 'Bras droit', ids: ['rClavicle', 'rShoulder', 'rElbow', 'rWrist'] },
   { key: 'jambeG', label: 'Jambe gauche', ids: ['lHip', 'lKnee', 'lFoot'] },
   { key: 'jambeD', label: 'Jambe droite', ids: ['rHip', 'rKnee', 'rFoot'] },
 ];

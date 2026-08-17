@@ -454,9 +454,16 @@ export function applyJointAngles(rig, joints){
   const J = rig.joints;
   J.root.rotation.z = j.lieFlat ? Math.PI / 2 : 0;
   J.torsoGroup.rotation.x = angle3D(j.torsoRotX);
+  // Deuxième et troisième axes du buste : se TOURNER (y) et s'INCLINER sur le côté (z). Le torse
+  // n'avait que la flexion avant/arrière, d'où un personnage qui ne pouvait regarder de côté qu'en
+  // pivotant l'Élément entier.
+  J.torsoGroup.rotation.y = angle3D(j.torsoRotY);
+  J.torsoGroup.rotation.z = angle3D(j.torsoRotZ);
   J.torsoGroup.position.y = angle3D(j.rootY);
   J.headGroup.rotation.x = angle3D(j.headRotX);
   J.headGroup.rotation.y = angle3D(j.headRotY);
+  // Pencher la tête vers l'épaule — le geste qui manquait le plus à une silhouette.
+  J.headGroup.rotation.z = angle3D(j.headRotZ);
   J.hipGroup.position.y = angle3D(j.rootY);
   J.lShoulder.rotation.x = angle3D(j.lShoulder && j.lShoulder.x);
   J.lShoulder.rotation.z = angle3D(j.lShoulder && j.lShoulder.z);
