@@ -31,8 +31,6 @@
  * pas chaque image).
  */
 
-/* eslint-disable */
-
 /**
  * Étend `box` (THREE.Box3) par `object` et ses descendants, en tenant compte du skinning.
  *

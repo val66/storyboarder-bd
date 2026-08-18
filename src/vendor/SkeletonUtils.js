@@ -29,8 +29,6 @@
  * Pas de déstructuration de `THREE` nécessaire ici.
  */
 
-/* eslint-disable */
-
 function parallelTraverse( a, b, callback ) {
 
 	callback( a, b );

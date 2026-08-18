@@ -60,8 +60,6 @@
  * diverger — c'est le défaut le plus fréquent de ce dépôt.
  */
 
-/* eslint-disable */
-
 import { expandBoxSkinAware3D } from './skinned-box-3d.js';
 
 /**
