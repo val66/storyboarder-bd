@@ -29,12 +29,16 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { construireGlb, DIMENSIONS_M, CHEMIN_FIXTURE } from '../tools/make-test-glb.mjs';
+import {
+  construireGlb, DIMENSIONS_M, CHEMIN_FIXTURE,
+  construireGlbSquelette, CHEMIN_FIXTURE_SQUELETTE, MAILLAGES_SQUELETTE,
+} from '../tools/make-test-glb.mjs';
 import { setModelBridge } from '../src/model-store.js';
 import { preloadModels, getLoadedModel, modelState, clearModelCache } from '../src/model-cache.js';
 import { MODEL_HEIGHT_WARN_MAX_M, OBJECT_REAL_HEIGHT_M } from '../src/constants.js';
 
 const OCTETS = readFileSync(CHEMIN_FIXTURE);
+const OCTETS_SQUELETTE = readFileSync(CHEMIN_FIXTURE_SQUELETTE);
 
 /** Pont simulé rendant de VRAIS octets — c'est tout ce qui reste de simulé ici. */
 function pontAvec(fichiers){
@@ -144,6 +148,59 @@ describe('Le seuil d\'alerte de taille, confronté à un vrai décodage', () => 
     const plusGrand = Math.max(...Object.values(OBJECT_REAL_HEIGHT_M).filter(Number.isFinite));
     assert.ok(MODEL_HEIGHT_WARN_MAX_M > plusGrand * 1.5,
       `seuil ${MODEL_HEIGHT_WARN_MAX_M} m contre ${plusGrand} m pour le plus grand type intégré`);
+  });
+});
+
+describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids en chemin', () => {
+  // Le second témoin porte un os et deux maillages : l'un pesé sur l'os, l'autre écrit dans le
+  // fichier avec des poids TOUS NULS. Il ferme le trou annoncé en tête de ce fichier — « ce pavé
+  // n'a ni texture, ni squelette » — et il a servi à trancher une question qu'on ne pouvait pas
+  // poser autrement.
+  test('le fichier articulé se décode, avec son squelette et ses deux maillages', async () => {
+    pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
+    await preloadModels(['rig.glb']);
+    assert.equal(modelState('rig.glb'), 'prêt', 'le .glb articulé n\'a pas été décodé');
+    const { scene } = getLoadedModel('rig.glb');
+    let skinnés = 0, os = 0;
+    scene.traverse(nœud => { if (nœud.isSkinnedMesh) skinnés++; if (nœud.isBone) os++; });
+    assert.equal(skinnés, 2, 'les maillages articulés n\'ont pas été reconstruits');
+    assert.ok(os >= 1, 'le squelette n\'a pas été reconstruit');
+  });
+
+  test('MESURE : des poids nuls dans le fichier ressortent à (1, 0, 0, 0) après décodage', async () => {
+    // ═════════════════════════════════════════════════════════════════════════════════════════
+    // LE FAIT LE PLUS UTILE DE CE FICHIER, et il est contre-intuitif.
+    //
+    // GLTFLoader appelle `SkinnedMesh.normalizeSkinWeights()` sur tout maillage articulé dont les
+    // poids ne sont pas déjà normalisés (cf. src/vendor/GLTFLoader.js, « normalizeSkinWeights »).
+    // Or Three, face à un vecteur de poids de longueur NULLE, ne peut pas le normaliser : il pose
+    // (1, 0, 0, 0) « pour faire quelque chose de raisonnable ».
+    //
+    // CONSÉQUENCE : après décodage, un maillage sans aucun poids est INDISCERNABLE d'un maillage
+    // rigidement attaché au premier os. Toute détection écrite sur `geometry.attributes.skinWeight`
+    // est donc AVEUGLE à ce défaut — elle ne peut pas se déclencher, jamais. Une tentative d'avertir
+    // à l'import a été écrite puis retirée sur la foi de cette mesure.
+    //
+    // Ce test épingle le comportement du décodeur, pas une intention de ce dépôt : si une mise à
+    // jour de GLTFLoader cessait de normaliser, il deviendrait rouge — et la détection redeviendrait
+    // possible.
+    // ═════════════════════════════════════════════════════════════════════════════════════════
+    pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
+    await preloadModels(['rig.glb']);
+    const { scene } = getLoadedModel('rig.glb');
+    let orphelin = null;
+    scene.traverse(nœud => { if (nœud.name === MAILLAGES_SQUELETTE.orphelin) orphelin = nœud; });
+    assert.ok(orphelin, `le maillage « ${MAILLAGES_SQUELETTE.orphelin} » a disparu du décodage`);
+    const poids = orphelin.geometry.attributes.skinWeight;
+    assert.equal(poids.getX(0), 1, 'les poids nuls ne sont plus rattrapés par le décodeur');
+    assert.equal(poids.getY(0), 0);
+  });
+
+  test('la fixture articulée est bien celle que le générateur produit AUJOURD\'HUI', () => {
+    // Même garde que pour le pavé : une fixture versionnée se désynchronise en silence de l'outil
+    // qui l'a écrite.
+    assert.deepEqual(new Uint8Array(construireGlbSquelette()), new Uint8Array(OCTETS_SQUELETTE),
+      'tests/fixtures/squelette-fourreau.glb est périmée — relancer node tools/make-test-glb.mjs');
   });
 });
 

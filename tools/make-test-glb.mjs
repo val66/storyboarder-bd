@@ -80,6 +80,11 @@ export function construireGlb(dims = DIMENSIONS_M){
     buffers: [{ byteLength: bin.length }],
   };
 
+  return emballerGlb(json, bin);
+}
+
+/** Assemble le conteneur GLB autour d'un JSON et d'un binaire déjà constitués. */
+function emballerGlb(json, bin){
   // Chunk JSON complété d'ESPACES, chunk BIN de zéros : c'est ce que la spécification impose comme
   // remplissage, et un décodeur strict rejette le reste.
   const brutJson = Buffer.from(JSON.stringify(json), 'utf8');
@@ -101,10 +106,93 @@ export function construireGlb(dims = DIMENSIONS_M){
   return Buffer.concat([entete, enteteJson, chunkJson, enteteBin, bin]);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Le second témoin : un modèle ARTICULÉ dont un maillage n'est piloté par aucun os.
+//
+// POURQUOI IL EXISTE. Le pavé ci-dessus n'a pas de squelette — l'en-tête de tests/glb-decoding.test.mjs
+// le dit lui-même comme une limite connue. Aucun test ne pouvait donc répondre à des questions qui
+// ne se posent QUE sur un modèle articulé décodé pour de vrai.
+//
+// LA PREMIÈRE À LAQUELLE IL A RÉPONDU : que devient, après décodage, un maillage écrit dans le
+// fichier avec des poids tous nuls ? Réponse mesurée : GLTFLoader le normalise en (1, 0, 0, 0), ce
+// qui le rend indiscernable d'un maillage rigidement attaché au premier os (cf. le test « MESURE »
+// dans tests/glb-decoding.test.mjs). Une piste entière de diagnostic est tombée sur cette mesure.
+//
+// CE QU'IL CONTIENT : un os, deux maillages liés au même squelette, l'un pesé sur l'os, l'autre
+// portant des poids TOUS NULS. Rien d'autre — ni matériau, ni texture, ni animation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Les noms écrits dans le fichier, et le seul endroit où ils le sont. */
+export const MAILLAGES_SQUELETTE = { pesé: 'Corps', orphelin: 'Fourreau' };
+
+export function construireGlbSquelette(){
+  const pts = sommets(DIMENSIONS_M);
+  const positions = new Float32Array(pts.flat());
+  const indices = new Uint16Array(FACES);
+  const n = pts.length;
+  // Tous les sommets désignent l'os 0 ; seule la table de POIDS distingue les deux maillages.
+  const jointures = new Uint16Array(n * 4);
+  const poidsPleins = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) poidsPleins[i * 4] = 1;
+  const poidsNuls = new Float32Array(n * 4);
+  const bindInverse = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+  // Les vues sont posées à la suite, chacune alignée sur 4 octets (cf. `aligner`).
+  const morceaux = [positions, indices, jointures, poidsPleins, poidsNuls, bindInverse];
+  const vues = [];
+  let curseur = 0;
+  morceaux.forEach((m) => {
+    curseur = aligner(curseur);
+    vues.push({ buffer: 0, byteOffset: curseur, byteLength: m.byteLength });
+    curseur += m.byteLength;
+  });
+  const bin = Buffer.alloc(aligner(curseur));
+  morceaux.forEach((m, i) => Buffer.from(m.buffer, m.byteOffset, m.byteLength).copy(bin, vues[i].byteOffset));
+
+  const mins = [0, 1, 2].map(i => Math.min(...pts.map(p => p[i])));
+  const maxs = [0, 1, 2].map(i => Math.max(...pts.map(p => p[i])));
+  const primitive = (poids) => ({
+    attributes: { POSITION: 0, JOINTS_0: 2, WEIGHTS_0: poids }, indices: 1,
+  });
+
+  const json = {
+    asset: { version: '2.0', generator: 'storyboarder-bd tools/make-test-glb.mjs' },
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [
+      { name: 'Racine', children: [1, 2, 3] },
+      { name: 'Os' },
+      { name: MAILLAGES_SQUELETTE.pesé, mesh: 0, skin: 0 },
+      { name: MAILLAGES_SQUELETTE.orphelin, mesh: 1, skin: 0 },
+    ],
+    meshes: [
+      { name: MAILLAGES_SQUELETTE.pesé, primitives: [primitive(3)] },
+      { name: MAILLAGES_SQUELETTE.orphelin, primitives: [primitive(4)] },
+    ],
+    skins: [{ joints: [1], inverseBindMatrices: 5 }],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: n, type: 'VEC3', min: mins, max: maxs },
+      { bufferView: 1, componentType: 5123, count: indices.length, type: 'SCALAR' },
+      { bufferView: 2, componentType: 5123, count: n, type: 'VEC4' },
+      { bufferView: 3, componentType: 5126, count: n, type: 'VEC4' },
+      { bufferView: 4, componentType: 5126, count: n, type: 'VEC4' },
+      { bufferView: 5, componentType: 5126, count: 1, type: 'MAT4' },
+    ],
+    bufferViews: vues,
+    buffers: [{ byteLength: bin.length }],
+  };
+
+  return emballerGlb(json, bin);
+}
+
 export const CHEMIN_FIXTURE = join(RACINE, 'tests/fixtures/pave-1m75.glb');
+export const CHEMIN_FIXTURE_SQUELETTE = join(RACINE, 'tests/fixtures/squelette-fourreau.glb');
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   mkdirSync(dirname(CHEMIN_FIXTURE), { recursive: true });
   writeFileSync(CHEMIN_FIXTURE, construireGlb());
   console.log(`écrit : ${CHEMIN_FIXTURE} (${DIMENSIONS_M.x} × ${DIMENSIONS_M.y} × ${DIMENSIONS_M.z} m)`);
+  writeFileSync(CHEMIN_FIXTURE_SQUELETTE, construireGlbSquelette());
+  console.log(`écrit : ${CHEMIN_FIXTURE_SQUELETTE} (« ${MAILLAGES_SQUELETTE.pesé} » pesé, `
+    + `« ${MAILLAGES_SQUELETTE.orphelin} » sans poids)`);
 }
