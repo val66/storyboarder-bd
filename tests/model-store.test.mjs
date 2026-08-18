@@ -400,3 +400,49 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
  * fourni, et aucun appelant n'en fournit d'autre. Servi de témoin : il confirme que le harnais
  * distingue une mutation inerte d'une vraie.
  */
+
+describe('L\'empreinte 2D d\'un modèle importé suit sa silhouette', () => {
+  // Elle était FORCÉE CARRÉE (`w = h`), sur ce commentaire : « 1:1 tant qu'on n'a pas lu le
+  // fichier ». Le commentaire était périmé — le fichier EST décodé à cet instant, c'est de lui que
+  // vient `realHeightM`, et sa largeur se mesure au même endroit (ratioLargeurModele3D). Un
+  // Personnage reçoit depuis toujours `w = h / 1.6`.
+  //
+  // Mesuré sur les fichiers réels : worker_j 0,86, anime_girl1 0,49, Personnage intégré 0,63. Une
+  // boîte carrée était donc jusqu'à deux fois trop large — d'où une sélection qui déborde très au
+  // delà de ce qu'on voit.
+  const creer = (extra) => createModelElement(
+    Object.assign({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb', realHeightM: 1.75 }, extra));
+
+  test('le rapport mesuré donne la largeur', () => {
+    const el = creer({ ratioLargeur: 0.5 });
+    assert.ok(Math.abs(el.w / el.h - 0.5) < 1e-6, `rapport obtenu ${el.w / el.h}`);
+  });
+
+  test('RÉGRESSION : sans rapport connu, l\'empreinte est carrée — et c\'est voulu', () => {
+    // Sans fichier lisible, l'Élément s'affiche en boîte de remplacement, qui est un CUBE.
+    const el = creer({});
+    assert.equal(el.w, el.h, 'la boîte de remplacement est un cube : son empreinte est carrée');
+  });
+
+  test('un rapport absurde ne produit pas une empreinte absurde', () => {
+    [0, -1, NaN, Infinity, 'large', null].forEach(v => {
+      const el = creer({ ratioLargeur: v });
+      assert.equal(el.w, el.h, `rapport ${String(v)} : on retombe sur le carré`);
+    });
+  });
+
+  test('baseW/baseH sont figés sur la MÊME empreinte', () => {
+    // Ils servent de référence au pourcentage de taille de la fiche : les laisser diverger de w/h
+    // ferait afficher un pourcentage faux dès l'ouverture.
+    const el = creer({ ratioLargeur: 0.4 });
+    assert.equal(el.baseW, el.w);
+    assert.equal(el.baseH, el.h);
+  });
+
+  test('l\'empreinte reste dans la Planche, même très large', () => {
+    // Le clamp existait déjà ; il doit continuer de jouer maintenant que la largeur peut dépasser
+    // la hauteur (un modèle couché, ou bras très écartés).
+    const el = creer({ ratioLargeur: 50 });
+    assert.ok(el.w <= PAGE_TEST.w * 0.95, `largeur ${el.w} hors de la Planche`);
+  });
+});

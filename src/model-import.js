@@ -172,6 +172,9 @@ export async function choisirEtPreparerModele(){
     modelFile: rangé.name,
     nom: nomLisible(rangé.name),
     hauteurM,
+    // Le rapport largeur/hauteur de la silhouette, relevé au décodage : il donne son empreinte 2D à
+    // l'Élément, au lieu du carré arbitraire d'avant (cf. createModelElement).
+    ratioLargeur: chargé ? chargé.ratioLargeur : undefined,
     // Redescendu jusqu'à importModelIntoPanel : un redimensionnement accepté rend caduc le
     // cadrage caméra éventuellement laissé par un test précédent sur ce même modèle démesuré
     // (cf. plus bas).
@@ -192,6 +195,7 @@ export async function importModelIntoPanel(panel, page){
   _snapshot();
   const el = createModelElement({
     panel, page, modelFile: prêt.modelFile, name: prêt.nom, realHeightM: prêt.hauteurM,
+    ratioLargeur: prêt.ratioLargeur,
   });
   currentPageData().objects.push(el);
   S.selectedId = el.id;

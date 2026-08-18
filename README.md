@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.45**
+**Version 1.3.46**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -70,6 +70,10 @@
   file. The Element keeps its body pose; the bone angles are recomputed for the new figure, so
   fine-tuning done on the sliders is lost — those angles are expressed in the old figure's own axes
   and mean nothing on another skeleton. Nothing is committed until the dialog is saved.
+
+- **A model's 2D footprint follows its silhouette**: the selection box on the Page is sized from the
+  width/height ratio measured on the decoded file, not forced square. Measured: `worker_j` 0.86
+  (arms out), `anime_girl1` 0.49, a built-in Character 0.63 — a square box was up to twice too wide.
 
 - **First Element frames the Panel**: an empty Panel has no framing to preserve, so the first 3D
   Element dropped into it sets the camera distance in proportion to its own height — a 1.1 m model

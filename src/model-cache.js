@@ -169,6 +169,9 @@ export async function preloadModels(noms){
         // Relevé UNE fois, au décodage. L'import le lit pour avertir, rig3d.js pour masquer — et le
         // recalculer de part et d'autre garantirait qu'un jour les deux réponses divergent.
         egares: maillagesHorsCorps3D(scene),
+        // Le rapport largeur/hauteur de la silhouette : c'est lui qui donne son empreinte 2D à
+        // l'Élément créé, plutôt qu'un carré arbitraire (cf. ratioLargeurModele3D).
+        ratioLargeur: ratioLargeurModele3D(scene),
       });
     } catch {
       _cache.set(nom, 'introuvable');
@@ -249,6 +252,48 @@ export function hauteurNaturelleModele3D(scene){
     return mesure > 0 ? mesure : parDefaut();
   } catch {
     return parDefaut();
+  }
+}
+
+/**
+ * Le rapport LARGEUR / HAUTEUR de la silhouette dessinée. Vaut 1 si on ne peut pas le mesurer.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI IL EXISTE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'empreinte 2D d'un modèle importé — sa boîte de sélection sur la Planche — était FORCÉE CARRÉE,
+ * sur ce commentaire : « 1:1 tant qu'on n'a pas lu le fichier ». Le commentaire était périmé : à cet
+ * instant le fichier EST décodé, c'est de lui que vient la hauteur. Un Personnage, lui, reçoit
+ * depuis toujours `w = h / 1.6`, c'est-à-dire une silhouette debout.
+ *
+ * Mesuré sur les fichiers réels : `worker_j` 0,86 (bras écartés), `anime_girl1` 0,49, un Personnage
+ * intégré 0,63. Une boîte carrée était donc jusqu'à deux fois trop large.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LA BOÎTE DU MAILLAGE, ET NON LES OS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Contrairement à la HAUTEUR — mesurée sur les os, le long de la verticale dérivée du corps (cf.
+ * hauteurNaturelleModele3D) —, la largeur qui nous intéresse ici est celle de ce qui est DESSINÉ :
+ * une jupe, une cape ou une arme tenue à bout de bras occupent l'image alors qu'aucun os ne les
+ * borne. Et c'est bien une empreinte à l'écran qu'on cherche à décrire.
+ *
+ * C'EST AUSSI LA MÊME BOÎTE QUE LE RENDU. `placeRigCentered3D` déduit l'échelle du rig de `size.y`
+ * de cette boîte-là : en prendre le rapport x/y garantit que l'empreinte 2D reste fidèle à ce que
+ * la Case affiche, même sur un fichier dont la verticale ne serait pas Y — les deux se tromperaient
+ * alors ENSEMBLE, et l'empreinte continuerait d'encadrer le modèle.
+ *
+ * Fonction PURE : elle ne fait que lire une scène décodée.
+ */
+export function ratioLargeurModele3D(scene){
+  try {
+    const t = new THREE.Vector3();
+    box3FromObjectSkinAware3D(scene).getSize(t);
+    const r = t.x / t.y;
+    return (Number.isFinite(r) && r > 0) ? r : 1;
+  } catch {
+    return 1;
   }
 }
 

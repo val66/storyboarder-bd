@@ -57,12 +57,21 @@ export function isImportedModel(o){
  * (cf. scene3d.js). Une valeur fausse se corrige donc dans la modale sans rien casser — c'est ce qui
  * nous dispense d'aller lire les dimensions du fichier ici, où elles ne sont pas encore disponibles.
  */
-export function createModelElement({ panel, page, modelFile, name, realHeightM } = {}){
+export function createModelElement({ panel, page, modelFile, name, realHeightM, ratioLargeur } = {}){
   const realH = Number.isFinite(realHeightM) && realHeightM > 0
     ? realHeightM
     : OBJECT_REAL_HEIGHT_M[MODEL_OBJ_TYPE];
   const h = clamp(realH * WALL_PX_PER_UNIT_3D, 2, page.h * 0.95);
-  const w = clamp(h, 2, page.w * 0.95);          // 1:1 tant qu'on n'a pas lu le fichier
+  // L'EMPREINTE 2D SUIT LA SILHOUETTE, elle n'est plus carrée. Elle l'était sur ce commentaire —
+  // « 1:1 tant qu'on n'a pas lu le fichier » — devenu faux : le fichier EST décodé à cet instant,
+  // c'est de lui que vient `realHeightM`, et sa largeur se mesure au même endroit (cf.
+  // ratioLargeurModele3D dans model-cache.js). Mesuré : worker_j 0,86, anime_girl1 0,49, un
+  // Personnage intégré 0,63 — une boîte carrée était donc jusqu'à deux fois trop large.
+  //
+  // 1 PAR DÉFAUT, ET CE N'EST PAS UN REPLI PARESSEUX : sans fichier lisible, l'Élément s'affiche en
+  // boîte de remplacement, qui est un CUBE. Carré est alors la bonne réponse.
+  const ratio = (Number.isFinite(ratioLargeur) && ratioLargeur > 0) ? ratioLargeur : 1;
+  const w = clamp(h * ratio, 2, page.w * 0.95);
   return {
     id: newId(), type: 'objet3d', objType: MODEL_OBJ_TYPE,
     modelFile,

@@ -28,7 +28,7 @@ import * as THREE from 'three';
 
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
 import { boiteDesOsMappes3D, frameCameraToBox } from '../src/rig3d.js';
-import { hauteurNaturelleModele3D } from '../src/model-cache.js';
+import { hauteurNaturelleModele3D, ratioLargeurModele3D } from '../src/model-cache.js';
 import { boiteDeCadrageModele3D } from '../src/scene3d.js';
 
 const ECHELLE = 0.1297;   // celle mesurée sur worker_j.glb
@@ -257,5 +257,41 @@ describe('La taille naturelle d\'un modèle : le CORPS, pas la boîte du fichier
     chaise.add(m);
     chaise.updateMatrixWorld(true);
     assert.ok(Math.abs(hauteurNaturelleModele3D(chaise) - 0.9) < 1e-6);
+  });
+});
+
+describe('ratioLargeurModele3D — l\'empreinte 2D suit la silhouette', () => {
+  // L'empreinte 2D d'un modèle importé était FORCÉE CARRÉE, sur un commentaire devenu faux
+  // (« 1:1 tant qu'on n'a pas lu le fichier » — il EST lu). Un Personnage reçoit w = h / 1.6.
+  // Mesuré sur les fichiers réels : worker_j 0,86, anime_girl1 0,49, Personnage 0,63.
+  const pave = (lx, ly) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(lx, ly, 1), new THREE.MeshBasicMaterial());
+    const g = new THREE.Group();
+    g.add(m);
+    g.updateMatrixWorld(true);
+    return g;
+  };
+
+  test('une silhouette debout donne un rapport inférieur à 1', () => {
+    assert.ok(Math.abs(ratioLargeurModele3D(pave(1, 2)) - 0.5) < 1e-6);
+  });
+
+  test('bras écartés : le rapport s\'approche de 1, et peut le dépasser', () => {
+    // worker_j est en T-pose : sa boîte fait 8,14 de large pour 9,43 de haut. Rien n'interdit de
+    // dépasser 1 — un modèle couché le ferait.
+    assert.ok(Math.abs(ratioLargeurModele3D(pave(3, 1)) - 3) < 1e-6);
+  });
+
+  test('une scène illisible ou plate rend 1, jamais NaN ni l\'infini', () => {
+    // 1 n'est pas un repli paresseux : sans fichier lisible, l'Élément s'affiche en boîte de
+    // remplacement, qui est un CUBE. Carré est alors la bonne réponse.
+    assert.equal(ratioLargeurModele3D(null), 1);
+    assert.equal(ratioLargeurModele3D(new THREE.Group()), 1, 'une scène vide n\'a pas de silhouette');
+    assert.equal(ratioLargeurModele3D(pave(1, 0)), 1, 'une hauteur nulle diviserait par zéro');
+  });
+
+  test('le rapport ne dépend PAS de la taille absolue du modèle', () => {
+    // C'est ce qui permet de l'appliquer à une hauteur déjà décidée ailleurs (realHeightFloor).
+    assert.ok(Math.abs(ratioLargeurModele3D(pave(1, 2)) - ratioLargeurModele3D(pave(50, 100))) < 1e-6);
   });
 });

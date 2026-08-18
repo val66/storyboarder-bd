@@ -30,7 +30,7 @@ import { setModelBridge } from '../src/model-store.js';
 import { clearModelCache, _setModelCacheEntry } from '../src/model-cache.js';
 import { setScenesCallbacks } from '../src/scenes.js';
 import { getPanelPoints } from '../src/draw.js';
-import { S } from '../src/state.js';
+import { S, currentPage } from '../src/state.js';
 import { OBJECT_REAL_HEIGHT_M, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
 
 let snapshots = 0;
@@ -568,5 +568,37 @@ describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
     pontQuiChoisit('table.glb');
     _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
     await assert.doesNotReject(() => importModelIntoPanel(cible, S.tomes[0].pages[0]));
+  });
+});
+
+describe('L\'empreinte 2D mesurée traverse toute la chaîne d\'import', () => {
+  // `currentPage()` et NON `S.tomes[0].pages[0]` : une page ne porte que ses objets, ses dimensions
+  // viennent du Tome, et c'est `currentPage()` qui réunit les deux — exactement ce que l'application
+  // passe. Le montage naïf donne `page.h === undefined`, donc une empreinte NaN que seule une
+  // assertion sur w/h révèle. Les tests plus haut ne la voyaient pas : ils ne lisent pas ces champs.
+  // Le CHEMIN, pas la mesure : le rapport est relevé au décodage (model-cache), lu par la
+  // préparation, puis passé à la création de l'Élément. Une campagne de mutation a montré que
+  // couper ce fil ne faisait rougir aucun test — la mesure restait juste, et sans effet.
+
+  test('choisirEtPreparerModele rend le rapport du cache', async () => {
+    pontQuiChoisit('svelte.glb');
+    _setModelCacheEntry('svelte.glb', { scene: { traverse(){} }, hauteurM: 1.7, ratioLargeur: 0.4 });
+    const r = await choisirEtPreparerModele();
+    assert.equal(r.ratioLargeur, 0.4);
+  });
+
+  test('et l\'Élément créé en porte l\'empreinte', async () => {
+    pontQuiChoisit('svelte.glb');
+    _setModelCacheEntry('svelte.glb', { scene: { traverse(){} }, hauteurM: 1.7, ratioLargeur: 0.4 });
+    const el = await importModelIntoPanel(cible, currentPage());
+    assert.ok(Math.abs(el.w / el.h - 0.4) < 1e-6,
+      `empreinte ${el.w / el.h} : le rapport mesuré n'a pas atteint l'Élément`);
+  });
+
+  test('un fichier illisible donne une empreinte carrée, comme sa boîte de remplacement', async () => {
+    pontQuiChoisit('casse.glb');
+    _setModelCacheEntry('casse.glb', 'introuvable');
+    const el = await importModelIntoPanel(cible, currentPage());
+    assert.equal(el.w, el.h);
   });
 });

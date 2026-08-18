@@ -73,6 +73,18 @@ describe('Décodage d\'un vrai .glb — de l\'octet à la hauteur', () => {
       assert.ok(Math.abs(hauteurM - autre) > 1e-3, `${hauteurM} m : un autre axe que Y a été lu`));
   });
 
+  test('RÉGRESSION : le rapport largeur/hauteur arrive jusqu\'au CACHE', async () => {
+    // Le pavé témoin fait 0,6 de large pour 1,75 de haut : son rapport vaut 0,343. C'est lui qui
+    // donne son empreinte 2D à l'Élément créé (cf. createModelElement) — sans ce relevé, l'empreinte
+    // redeviendrait carrée en silence, la mesure étant juste mais jamais rangée.
+    pontAvec({ 'pave.glb': OCTETS });
+    await preloadModels(['pave.glb']);
+    const { ratioLargeur } = getLoadedModel('pave.glb');
+    const attendu = DIMENSIONS_M.x / DIMENSIONS_M.y;
+    assert.ok(Math.abs(ratioLargeur - attendu) < 1e-4,
+      `rapport relu ${ratioLargeur}, écrit ${attendu} — la mesure n'arrive pas au cache`);
+  });
+
   test('la scène décodée est bien une scène Three parcourable', async () => {
     pontAvec({ 'pave.glb': OCTETS });
     await preloadModels(['pave.glb']);
