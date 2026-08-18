@@ -274,3 +274,50 @@ describe('Boutons de modale — même hauteur, quelle que soit la modale', () =>
     assert.match(CSS_B.slice(i, CSS_B.indexOf('}', i)), /margin-bottom:\s*0/);
   });
 });
+
+describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE', () => {
+  // LE PIÈGE, ET IL A DÉJÀ MORDU DEUX FOIS. `.modal-field-label` n'a qu'une marge basse de 5 px :
+  // ce qui sépare deux champs, c'est la marge BASSE du champ précédent. Un champ qui n'en porte
+  // pas se colle donc au libellé suivant — sans qu'aucune règle ne soit fausse prise seule.
+  //
+  //   1re fois : `.modal-readonly-value` (Fichier), contre lequel « Modèle » venait buter ;
+  //   2e fois  : `input[type=number]` (Hauteur), contre lequel « Taille réelle » vient buter —
+  //              signalé à l'usage, la règle générique `select, input[type=number]` donnant
+  //              bordure, padding et police, mais aucune marge.
+  //
+  // Ce test ne recopie pas une valeur : il vérifie que les champs pleine largeur d'une modale
+  // s'accordent TOUS sur la même, quelle qu'elle soit.
+  const marge = (corps) => {
+    const m = /margin-bottom\s*:\s*([\d.]+)px/.exec(corps);
+    return m ? Number(m[1]) : null;
+  };
+
+  test('tout champ pleine largeur d\'une modale porte une marge basse', () => {
+    ['.modal-field-number', '.modal-readonly-value'].forEach(sel => {
+      assert.ok(marge(declarations(sel)) > 0,
+        `${sel} sans marge basse : le libellé suivant viendra s'y coller`);
+    });
+  });
+
+  test('et ils portent TOUS LA MÊME, celle des champs texte', () => {
+    // La référence, mesurée et non choisie : `.modal-box input[type=text], .modal-box select`.
+    const reference = marge(declarations('.modal-box input[type=text], .modal-box select'));
+    assert.ok(reference > 0, 'la règle de référence ne porte plus de marge basse');
+    ['.modal-field-number', '.modal-readonly-value'].forEach(sel => {
+      assert.equal(marge(declarations(sel)), reference,
+        `${sel} s'écarte de l'espacement des autres champs (${reference} px)`);
+    });
+  });
+
+  test('la classe du champ Hauteur est bien celle que porte le HTML', () => {
+    // Une classe CSS que personne n'applique est une décoration ; un attribut class qui ne
+    // correspond à aucune règle est un champ sans style. Les deux se lisent bien séparément.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    ['personaHeightInput', 'objectHeightInput'].forEach(id => {
+      const m = new RegExp(`<input[^>]*id="${id}"[^>]*>`).exec(html);
+      assert.ok(m, `${id} introuvable`);
+      assert.match(m[0], /class="[^"]*\bmodal-field-number\b/,
+        `${id} n'a pas la classe qui lui donne sa marge`);
+    });
+  });
+});

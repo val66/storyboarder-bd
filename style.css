@@ -968,6 +968,23 @@ canvas{
    valeur en lecture seule n'en portait aucune, si bien que le libellé suivant — « Modèle », depuis
    qu'il existe — venait se coller au cadre du Fichier. Les 14 px sont ceux de `.modal-box select`
    et `input[type=text]`, mesurés et non choisis : le champ se comporte comme les autres. */
+/* Un champ numérique PLEINE LARGEUR dans une modale — « Hauteur (m) ».
+   POURQUOI UNE CLASSE, ET PAS `.modal-box input[type=number]`. Les autres champs numériques des
+   modales (X / Y / Z, longueur et hauteur d'un Mur) sont EN LIGNE dans un libellé flex, à largeur
+   fixe : leur donner une marge basse décalerait des dispositions qui vont bien. La règle générique
+   `select, input[type=number]` leur donne déjà bordure, padding et police ; il ne manquait que
+   l'espacement, et il ne manquait qu'ICI.
+
+   ⚠️ LES 14 px NE SONT PAS CHOISIS. Dans ces modales, l'écart entre deux champs vient de la marge
+   BASSE du champ qui précède — `.modal-field-label` n'a que `margin: 0 0 5px`. C'est la valeur que
+   portent déjà `.modal-box input[type=text]` et `.modal-box select` ; s'en écarter ferait un champ
+   qui ne s'aligne sur rien. Signalé à l'usage : « Taille réelle » venait se coller au champ
+   Hauteur, exactement comme « Modèle » se collait autrefois au cadre du Fichier (cf. ci-dessous). */
+.modal-field-number {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
 .modal-readonly-value {
   margin-bottom: 14px;
   padding: 6px 8px; border-radius: 4px;
