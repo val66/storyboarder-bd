@@ -26,6 +26,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
+import { boiteDesOsMappes3D } from '../src/rig3d.js';
+import { boiteDeCadrageModele3D } from '../src/scene3d.js';
 
 const ECHELLE = 0.1297;   // celle mesurée sur worker_j.glb
 const HAUTEUR_OS = 33;    // la tête y est à y = 33,006
@@ -78,26 +80,67 @@ describe('box3FromObjectSkinAware3D face à un fichier à deux échelles', () =>
       `boîte ${t.y} contre os ${tOs.y} — le montage du test est déjà faux`);
   });
 
-  test('LE DÉFAUT, ÉPINGLÉ : maillage et os ne vivent PAS à la même échelle', () => {
-    // worker_j.glb. Le maillage porte 0,1297, les os rien : la boîte du maillage et la boîte des os
-    // diffèrent d'exactement ce facteur.
-    //
-    // ⚠️ CE TEST N'AFFIRME PAS QUI A RAISON, et c'est délibéré. Le maillage est probablement dessiné
-    // à sa propre échelle — la boîte serait alors correcte. Ce qui est CERTAIN, c'est que notre code
-    // MÉLANGE les deux : la caméra se cadre sur la boîte du maillage, les points d'articulation sont
-    // projetés depuis les positions des OS. Sur un fichier à échelle unique les deux coïncident et
-    // rien ne se voit ; ici ils divergent d'un facteur 7,7, et l'un des deux est forcément hors du
-    // cadre. C'est ce mélange qui est le défaut, pas l'une ou l'autre des deux mesures.
-    //
-    // Ce test fige donc l'ÉCART tant qu'il existe. Le jour où le code cessera de mélanger les deux
-    // repères, il faudra le réécrire — et ce sera le bon moment pour décider lequel fait foi.
+  test('LA CORRECTION : le cadrage suit les OS malgré la double échelle', () => {
+    // worker_j.glb. La boîte du maillage et celle des os diffèrent ici d'un facteur 0,1297 — le
+    // garde-fou en fin de test le vérifie. Ce qui compte, c'est que le CADRAGE ne s'appuie plus sur
+    // la première : `boiteDesOsMappes3D` rend la boîte des os, donc celle du corps réellement pointé
+    // par les poignées d'articulation. Une seule origine pour les deux, donc plus de divergence.
     const racine = figureArticulee(ECHELLE);
-    const t = new THREE.Vector3(); box3FromObjectSkinAware3D(racine).getSize(t);
+    const osMappes = {};
+    let i = 0;
+    racine.traverse(n => { if (n.isBone) osMappes['os' + (i++)] = { os: n }; });
+
+    const boite = boiteDesOsMappes3D(osMappes);
+    assert.ok(boite, 'deux os suffisent à définir une boîte');
+    const t = new THREE.Vector3(); boite.getSize(t);
     const tOs = new THREE.Vector3(); boiteDesOs(racine).getSize(tOs);
-    const rapport = t.y / tOs.y;
-    assert.ok(Math.abs(rapport - ECHELLE) < 1e-3,
-      `rapport ${rapport.toFixed(4)} au lieu de ${ECHELLE} — le mécanisme mesuré a changé`);
-    assert.ok(Math.abs(t.y - tOs.y) > 1,
-      'les deux repères coïncident : le témoin de divergence ne prouve plus rien');
+    assert.ok(Math.abs(t.y - tOs.y) < 1e-6,
+      `cadrage ${t.y.toFixed(3)} contre os ${tOs.y.toFixed(3)} : le cadrage ne suit pas le corps`);
+
+    // Et le garde-fou : sans lui, l'assertion précédente serait vraie même si les deux boîtes
+    // coïncidaient déjà — le test ne prouverait alors rien sur le cas à double échelle.
+    const tMaillage = new THREE.Vector3();
+    box3FromObjectSkinAware3D(racine).getSize(tMaillage);
+    assert.ok(Math.abs(tMaillage.y - tOs.y) > 1,
+      'les deux repères coïncident : ce fichier ne reproduit plus la double échelle');
+  });
+
+  test('moins de deux os : aucune boîte, l\'appelant se replie sur le maillage', () => {
+    // Une chaise importée, ou un squelette non reconnu. Une boîte réduite à un point ne cadre rien ;
+    // rendre `null` laisse l'appelant choisir l'autre chemin plutôt que de cadrer sur du vide.
+    assert.equal(boiteDesOsMappes3D({}), null);
+    assert.equal(boiteDesOsMappes3D(null), null);
+    assert.equal(boiteDesOsMappes3D({ tete: { os: new THREE.Bone() } }), null, 'un seul os ne suffit pas');
+    assert.equal(boiteDesOsMappes3D({ tete: {}, bras_g: {} }), null, 'des entrées sans os ne comptent pas');
+  });
+
+});
+
+describe('boiteDeCadrageModele3D — LA décision, écrite une fois pour les trois cadrages', () => {
+  test('squelette reconnu : on cadre sur les OS', () => {
+    // C'est ici que la correction vit. Le test précédent vérifie que la boîte des os décrit le
+    // corps ; celui-ci vérifie que le cadrage la CHOISIT — sans quoi on pourrait revenir à la boîte
+    // du maillage sans que rien ne bronche.
+    const racine = figureArticulee(ECHELLE);
+    const skeletonBones = {};
+    let i = 0;
+    racine.traverse(n => { if (n.isBone) skeletonBones['os' + (i++)] = { os: n }; });
+
+    const t = new THREE.Vector3();
+    boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones }).getSize(t);
+    const tOs = new THREE.Vector3(); boiteDesOs(racine).getSize(tOs);
+    assert.ok(Math.abs(t.y - tOs.y) < 1e-6,
+      `le cadrage rend ${t.y.toFixed(3)}, les os ${tOs.y.toFixed(3)} — il est reparti sur le maillage`);
+  });
+
+  test('aucun squelette reconnu : repli sur le maillage', () => {
+    // Une chaise importée. Les deux chemins ne se recouvrent jamais : un modèle a un squelette
+    // reconnu, ou il n'en a pas.
+    const racine = figureArticulee(ECHELLE);
+    const t = new THREE.Vector3();
+    boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones: {} }).getSize(t);
+    const tMaillage = new THREE.Vector3();
+    box3FromObjectSkinAware3D(racine).getSize(tMaillage);
+    assert.ok(Math.abs(t.y - tMaillage.y) < 1e-9, 'le repli doit rendre la boîte du maillage');
   });
 });

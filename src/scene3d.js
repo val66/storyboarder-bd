@@ -31,7 +31,8 @@ import { clearModelCache, collectModelFiles, modelCacheSignature } from './model
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute — sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
-import { box3FromObjectSkinAware3D, sondeRigPlace3D } from './skinned-box-3d.js';
+import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+import { boiteDesOsMappes3D } from './rig3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -1872,6 +1873,13 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // sinon l'échelle appliquée ici (déduite de cette boîte) diverge de ce que le GPU dessine —
     // symptôme observé : boîte de sélection décalée vers le bas, modèle à la mauvaise échelle.
     const _boxFn3D = WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry)
+      // ⚠️ LA BOÎTE DU MAILLAGE ICI, ET C'EST DÉLIBÉRÉ. Ce n'est pas un cadrage de caméra mais le
+      // PLACEMENT : `placeRigCentered3D` en déduit l'échelle appliquée au rig. Y basculer sur la
+      // boîte des os changerait la taille de TOUS les modèles déjà posés dans les Projets existants
+      // — mesuré sur hulk : ses os font 2,79 de haut contre 2,37 pour son maillage, soit +18 %.
+      // Le bug corrigé (cf. boiteDesOsMappes3D) porte sur ce qu'on REGARDE, pas sur la taille
+      // réelle d'un Élément dans sa Scène. Ce sont deux questions distinctes, et la seconde est
+      // suivie à part : la hauteur mesurée à l'import est fausse pour les fichiers Z-up.
       : (o.objType === 'modele' ? (fg) => box3FromObjectSkinAware3D(fg) : null);
     if (_tracéPos) {
       placeTracéOpeningRig3D(entry.figureGroup, o, _tracéPos, tracéWallThickness3D(_tracéMurHost));
@@ -2711,6 +2719,21 @@ function drawAxisArrowHead3D(c, x, y, angle, color){
 // already importing them from scene3d.js (events.js).
 export { useObjectFormat3D, useObjectBoxFormat3D };
 
+/**
+ * La boîte sur laquelle cadrer un modèle importé : celle de ses OS quand son squelette est reconnu,
+ * celle de son maillage sinon.
+ *
+ * ÉCRITE UNE FOIS, UTILISÉE AUX TROIS ENDROITS QUI CADRENT — la fiche, l'Éditeur, la Case. Trois
+ * copies de cette décision auraient fini par diverger, et c'est précisément une divergence de ce
+ * genre qui a produit le bug qu'elle corrige (cf. boiteDesOsMappes3D).
+ *
+ * Les deux chemins ne se recouvrent jamais : un modèle a un squelette reconnu, ou il n'en a pas.
+ */
+export function boiteDeCadrageModele3D(entry){
+  return boiteDesOsMappes3D(entry && entry.skeletonBones)
+    || box3FromObjectSkinAware3D(entry.figureGroup);
+}
+
 export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   if (o.w && o.h) useObjectBoxFormat3D(o, resScale);
   else useObjectFormat3D(resScale);
@@ -2750,8 +2773,7 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   // cadré sur les pieds seuls, tout le reste hors champ (presque blanc). cf. skinned-box-3d.js.
   if (o.objType === 'modele') {
     entry.figureGroup.updateMatrixWorld(true);
-    sondeRigPlace3D(o.modelFile, entry.figureGroup);   // SONDE TEMPORAIRE — à retirer
-    const boîte = box3FromObjectSkinAware3D(entry.figureGroup);
+    const boîte = boiteDeCadrageModele3D(entry);
     frameCameraToBox(personaCamera3D, boîte, zoom);
   } else {
     frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
@@ -2779,7 +2801,7 @@ export function renderModelForEditor3D(o, zoom, pan, styleKey, sizeOverride, orb
   showOnlyFigure3D('objet3d', o.id);
   applyStyle3DLighting(resolveStyle3D(styleKey));
   entry.figureGroup.updateMatrixWorld(true);
-  frameCameraToBox(personaCamera3D, box3FromObjectSkinAware3D(entry.figureGroup), zoom, pan, orbit);
+  frameCameraToBox(personaCamera3D, boiteDeCadrageModele3D(entry), zoom, pan, orbit);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   return personaRenderer3D.domElement;
 }

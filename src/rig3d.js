@@ -3205,6 +3205,49 @@ export function repereDuModeleImporte(osMappes){
   });
 }
 
+/**
+ * La boîte du CORPS d'un modèle importé : celle de ses os mappés, telle qu'elle est À CET INSTANT.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI PAS LA BOÎTE DU MAILLAGE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Mesuré sur les six fichiers réels : `worker_j.glb` porte DEUX ÉCHELLES — ses douze maillages sont
+ * à 0,1297, ses cent-neuf os à 1. `hulk_-_sm_bnd.glb`, qui s'affiche correctement, est à 1 partout.
+ * C'est la seule différence structurelle entre les deux.
+ *
+ * Or le code cadrait la caméra sur la boîte du MAILLAGE tout en projetant les points d'articulation
+ * depuis les OS. Sur un fichier à échelle unique les deux coïncident et rien ne se voit ; sur
+ * worker_j ils divergent d'un facteur 7,7 et l'un des deux est nécessairement hors du cadre —
+ * symptôme signalé : « on ne voit que ses points d'articulation ».
+ *
+ * LE DÉFAUT ÉTAIT LE MÉLANGE, pas l'une ou l'autre des deux mesures. Cadrer sur les os supprime la
+ * divergence PAR CONSTRUCTION : une seule origine pour le cadrage et pour les poignées.
+ *
+ * DEUXIÈME RAISON, indépendante de ce bug : les os mappés SONT le corps. Un fichier peut contenir
+ * autre chose — worker_j porte un katana dont la boîte est centrée à z ≈ −111, très loin. Cadrer
+ * sur le maillage englobe cet accessoire et rapetisse le personnage ; cadrer sur les os le suit,
+ * quoi que l'auteur ait mis autour.
+ *
+ * AUCUNE MARGE INVENTÉE ICI. La boîte des os est un nuage de POINTS : elle n'a pas l'épaisseur de la
+ * chair. `frameCameraToBox` applique déjà sa propre marge (1,22), mesurée en son temps ; on s'appuie
+ * dessus plutôt que d'ajouter un second facteur qu'il faudrait justifier. Si le cadrage se révèle
+ * trop serré à l'usage, la marge se mesurera alors — elle ne se choisira pas.
+ *
+ * Rend `null` s'il y a moins de deux os : une boîte réduite à un point ne cadre rien, et l'appelant
+ * doit alors se replier sur la boîte du maillage (chaise importée, squelette non reconnu).
+ */
+export function boiteDesOsMappes3D(osMappes){
+  const entrees = Object.values(osMappes || {}).filter(e => e && e.os);
+  if (entrees.length < 2) return null;
+  // Pas de garde « boîte vide » : deux points, même confondus, donnent une boîte dégénérée que
+  // Three ne considère PAS vide (isEmpty ⇔ max < min). La branche serait inatteignable.
+  const boite = new THREE.Box3();
+  const p = new THREE.Vector3();
+  entrees.forEach(e => { e.os.getWorldPosition(p); boite.expandByPoint(p); });
+  return boite;
+}
+
 /** Les rotations de repos en monde, rangées par emplacement — l'entrée de poseOsDepuisPosePersonnage. */
 export function reposMondeParEmplacement(osMappes){
   const sortie = {};
