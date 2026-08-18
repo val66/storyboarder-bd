@@ -327,3 +327,30 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
       { en: 'Mapping table', fr: 'Tableau de correspondance' });
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — la fiche d'un Élément 3D : « Modèle » fusionné, « Hauteur » maîtresse
+ * (tâches #343 et #344).
+ *
+ *   H1 optionsDeFigure3D n'ajoute plus la figure courante absente        ROUGE
+ *   H2 elle l'ajoute même quand elle est déjà là (doublon)               ROUGE
+ *   H3 pourcentageDepuisHauteur3D arrondit dans le CALCUL                ROUGE
+ *   H4 les bornes en mètres sont ressaisies à la main (0,2× au lieu de 0,1×)  ROUGE
+ *   H5 une base nulle est acceptée (division par zéro → NaN)             ROUGE
+ *   H6 hauteurBase3D se rabat sur `o.h` quand `baseH` manque             ÉCHAPPÉE → puis ROUGE
+ *
+ * H6 EST CELLE QUI A APPRIS QUELQUE CHOSE. Se rabattre sur la taille COURANTE quand la taille de
+ * référence manque a l'air clément ; l'effet est qu'un Élément déjà agrandi se déclare à 100 %, et
+ * que le redimensionnement suivant repart de là. Il grossit à chaque passage, sans que rien ne
+ * l'explique. Les cas de test d'origine ({}, {baseH: 0}) n'avaient pas de `h` : ils ne pouvaient
+ * pas voir la différence. Un cas discriminant a été ajouté ({ baseH: 0, h: 200 }).
+ *
+ * L'initialisation existe bien, mais elle est faite UNE FOIS et explicitement, par
+ * applyElementRealHeight. Un lecteur qui la referait en douce serait une seconde vérité sur ce
+ * qu'est la taille de référence.
+ *
+ * NON MESURÉ ICI, et il faut le dire : le crantage à 5 % d'un `input[type=range]` est un
+ * comportement du navigateur, que la suite ne peut pas observer (le binaire Electron du dépôt est
+ * celui de Windows). C'est précisément pourquoi l'enregistrement applique la HAUTEUR : la question
+ * ne se pose plus, que le navigateur crante ou non.
+ */

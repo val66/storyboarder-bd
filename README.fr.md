@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.52**
+**Version 1.3.53**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -124,6 +124,8 @@ l'Élément. Ouvert depuis le menu de gauche, l'éditeur part toujours du Person
   poses de base comprises, restaurables depuis Configuration
 - **Rien n'est écrit** tant que vous n'avez pas appliqué la pose puis enregistré la modale du
   Personnage
+- **Taille au centimètre** : la fiche d'un Élément 3D affiche sa hauteur réelle en mètres à côté du
+  curseur de taille ; les deux se suivent, et c'est la hauteur qui est enregistrée
 
 ### Projet & sauvegarde
 - Format de projet **JSON** — lisible et versionnable

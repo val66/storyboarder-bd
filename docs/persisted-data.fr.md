@@ -39,6 +39,11 @@ absent, nul ou malformé donne une liste vide, jamais une erreur.
 
 **Coordonnées monde** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 
+⚠️ `realHeightFloor` est la taille **enregistrée**. Le pourcentage qu'affiche le curseur « Taille
+réelle » n'est stocké nulle part : il est recalculé à l'ouverture de chaque fiche
+(`getPersonaScalePercent`). La fiche propose les deux, et c'est la HAUTEUR qu'elle applique — le
+curseur avance par crans de 5 %, ce qui corrigerait une hauteur saisie au centimètre.
+
 **Parois sur un support** — `wallYFrac`, `wallAlongFrac`, `magnetWallId`, `wallHeight`.
 
 **Caméra d'une Case** — `camWx`, `camWy`, `camWz`, `camDist`, `camRotX`, `camRotY`.

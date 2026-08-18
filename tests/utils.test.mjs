@@ -26,6 +26,7 @@ import {
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, 
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
+  hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -1869,5 +1870,110 @@ describe('makeFrameScheduler — au plus une exécution par image', () => {
     assert.equal(o.enAttente(), true);
     h.passerUneImage();
     assert.equal(o.enAttente(), false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hauteur réelle ↔ pourcentage (tâche #344)
+//
+// CE QUI SE JOUE ICI. La fiche d'un Élément affiche désormais les DEUX : un curseur en pourcentage
+// et une hauteur en mètres. Deux vues d'une seule donnée — et deux vues d'une seule donnée, dans ce
+// dépôt, c'est l'endroit où elles se mettent à diverger. Ces tests épinglent le seul fait qui
+// l'empêche : les deux conversions sont réciproques, et les bornes des deux sont la même borne.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('hauteur réelle ↔ pourcentage', () => {
+  const BASE = 1.75; // un modèle d'1,75 m à 100 %
+
+  test('aller-retour : une hauteur redonne exactement elle-même', () => {
+    [0.5, 1, 1.75, 2.5, 4, 6.9].forEach(h => {
+      const pct = pourcentageDepuisHauteur3D(h, BASE);
+      assert.ok(Math.abs(hauteurDepuisPourcentage3D(pct, BASE) - h) < 1e-9,
+        `${h} m ne revient pas sur lui-même`);
+    });
+  });
+
+  test('aller-retour : un pourcentage redonne exactement lui-même', () => {
+    [10, 50, 100, 103, 250, 400].forEach(pct => {
+      const h = hauteurDepuisPourcentage3D(pct, BASE);
+      assert.ok(Math.abs(pourcentageDepuisHauteur3D(h, BASE) - pct) < 1e-9,
+        `${pct} % ne revient pas sur lui-même`);
+    });
+  });
+
+  test('103 % SURVIT à l\'aller-retour — le pourcentage n\'est pas cranté ici', () => {
+    // Le curseur HTML avance par pas de 5. Si ce crantage descendait dans le calcul, une hauteur
+    // saisie au centimètre serait corrigée sous les doigts de l'utilisateur. Le pas appartient au
+    // widget, pas à la donnée.
+    const h = hauteurDepuisPourcentage3D(103, BASE);
+    assert.equal(pourcentageDepuisHauteur3D(h, BASE), 103);
+    assert.notEqual(h, hauteurDepuisPourcentage3D(105, BASE));
+  });
+
+  test('les deux fonctions bornent au MÊME endroit', () => {
+    // Une borne écrite deux fois est une borne qui finira par différer. Ici les bornes en mètres
+    // sont dérivées de celles en pourcentage ; ce test le vérifie des deux côtés.
+    assert.equal(hauteurDepuisPourcentage3D(5, BASE), hauteurDepuisPourcentage3D(10, BASE));
+    assert.equal(hauteurDepuisPourcentage3D(900, BASE), hauteurDepuisPourcentage3D(400, BASE));
+    const b = bornesHauteur3D(BASE);
+    assert.equal(pourcentageDepuisHauteur3D(b.min / 2, BASE), 10);
+    assert.equal(pourcentageDepuisHauteur3D(b.max * 2, BASE), 400);
+    assert.equal(b.min, BASE * 0.1);
+    assert.equal(b.max, BASE * 4);
+  });
+
+  test('une base inexploitable rend null, jamais NaN', () => {
+    // NaN se propagerait dans o.w/o.h puis dans la matrice monde : l'Élément DISPARAÎT du rendu,
+    // sans erreur nulle part. C'est le mode de panne le plus cher de ce dépôt.
+    [0, -1, undefined, null, NaN, 'x'].forEach(mauvais => {
+      assert.equal(hauteurDepuisPourcentage3D(100, mauvais), null, `base ${mauvais}`);
+      assert.equal(pourcentageDepuisHauteur3D(1.75, mauvais), null, `base ${mauvais}`);
+      assert.equal(bornesHauteur3D(mauvais), null, `base ${mauvais}`);
+    });
+    assert.equal(hauteurDepuisPourcentage3D('abc', BASE), null);
+    assert.equal(pourcentageDepuisHauteur3D('abc', BASE), null);
+  });
+
+  test('hauteurBase3D lit baseH en mètres, et refuse une base absente', () => {
+    assert.equal(hauteurBase3D({ baseH: 70 }), 1.75);
+    [{ baseH: 0 }, { baseH: -5 }, {}, null].forEach(o => assert.equal(hauteurBase3D(o), null));
+  });
+
+  test('hauteurBase3D ne se rabat JAMAIS sur la taille courante', () => {
+    // Trouvé par mutation (H6). `baseH` est la taille à 100 % ; `h` est la taille ACTUELLE. Se
+    // rabattre sur `h` quand `baseH` manque paraît clément et fait exactement le contraire : le
+    // pourcentage vaudrait toujours 100 %, et chaque redimensionnement repartirait de la taille
+    // déjà agrandie — l'Élément grossirait à chaque passage, sans que rien ne l'explique.
+    //
+    // L'initialisation de `baseH` existe, mais elle est FAITE UNE FOIS, explicitement, par
+    // applyElementRealHeight (`if (!o.baseW || !o.baseH) { … o.baseH = o.h; }`). Un lecteur ne doit
+    // pas la refaire en douce : ce serait une seconde vérité sur ce qu'est la taille de référence.
+    assert.equal(hauteurBase3D({ baseH: 0, h: 200 }), null);
+    assert.equal(hauteurBase3D({ h: 200 }), null);
+  });
+});
+
+describe('optionsDeFigure3D — le champ « Modèle » nomme toujours le bon fichier', () => {
+  test('la figure courante ABSENTE des posables est ajoutée, en tête', () => {
+    // LE cas qui compte : un fichier introuvable n'est pas dans loadedModelNames(), donc pas dans
+    // les options. Sans ce repli, `select.value = 'perdu.glb'` échoue en silence et la fiche
+    // affiche le nom d'un AUTRE modèle — celui qui se trouve en première position.
+    assert.deepEqual(optionsDeFigure3D(['a.glb', 'b.glb'], 'perdu.glb'),
+      ['perdu.glb', 'a.glb', 'b.glb']);
+  });
+
+  test('une figure déjà présente n\'est pas dupliquée, et l\'ordre ne bouge pas', () => {
+    assert.deepEqual(optionsDeFigure3D(['a.glb', 'b.glb'], 'b.glb'), ['a.glb', 'b.glb']);
+  });
+
+  test('sans figure courante, la liste passe telle quelle', () => {
+    assert.deepEqual(optionsDeFigure3D(['a.glb'], ''), ['a.glb']);
+    assert.deepEqual(optionsDeFigure3D(['a.glb'], null), ['a.glb']);
+  });
+
+  test('entrées vides ou absentes : jamais d\'option sans nom', () => {
+    // Une <option> vide serait sélectionnable et nommerait le vide.
+    assert.deepEqual(optionsDeFigure3D(['a.glb', '', null, 42], 'a.glb'), ['a.glb']);
+    assert.deepEqual(optionsDeFigure3D(null, 'seul.glb'), ['seul.glb']);
+    assert.deepEqual(optionsDeFigure3D(null, null), []);
   });
 });

@@ -916,13 +916,6 @@
       <div class="modal-section-body">
         <label class="modal-field-label">Nom</label>
         <input type="text" id="objectNameInput" placeholder="Ex. nom de l'objet">
-        <!-- Modèle importé seulement : le fichier dont il vient, et son état. En lecture seule —
-             `modelFile` est un identifiant persisté, pas une étiquette (cf. docs/persisted-data.md).
-             Pour renommer, on renomme l'Élément ci-dessus. -->
-        <div id="objectModelFileField" style="display:none">
-          <label class="modal-field-label">Fichier</label>
-          <div id="objectModelFileValue" class="modal-readonly-value"></div>
-        </div>
         <!-- Modèle importé PORTEUR D'ARTICULATIONS seulement. Même place et même bibliothèque que
              la Position d'un Personnage : les deux se posent de la même façon, ils doivent se
              régler au même endroit. Choisir une pose REMPLACE les réglages fins de la section
@@ -935,6 +928,10 @@
         <div id="objectFigureField" style="display:none">
           <label class="modal-field-label" id="objectFigureLabel">Modèle</label>
           <select id="objectFigureSelect"></select>
+          <!-- L'état du fichier — et SEULEMENT quand il n'est pas prêt. Un « ✓ » permanent serait
+               une décoration ; un message qui n'apparaît que si le fichier manque ou charge encore
+               se lit comme ce qu'il est : quelque chose à savoir. -->
+          <div id="objectFigureHint" class="modal-field-hint" style="display:none"></div>
         </div>
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
@@ -1047,6 +1044,16 @@
           <div style="display:flex; align-items:center; gap:8px; margin:-2px 0 4px;">
             <input type="range" id="objectSizeInput" min="10" max="400" step="5" style="flex:1;">
             <span id="objectSizeValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">100%</span>
+          </div>
+          <!-- La hauteur réelle, en mètres. Ce n'est PAS un doublon du curseur : c'est la valeur
+               enregistrée dans le Projet (`realHeightFloor`), dont le pourcentage n'est qu'une vue
+               recalculée. Les deux se suivent, mais l'enregistrement applique celle-ci — le curseur
+               avance par crans de 5 %, ce qui corrigerait une hauteur saisie au centimètre.
+               ⚠️ Le libellé doit rester le frère PRÉCÉDENT de l'input : c'est ainsi que l'i18n le
+               retrouve (cf. src/i18n.js, previousElementSibling). -->
+          <div id="objectHeightField" style="display:none">
+            <label class="modal-field-label" id="objectHeightLabel">Hauteur (m)</label>
+            <input type="number" id="objectHeightInput" step="0.01" style="width:100%;">
           </div>
         </div>
         <div id="objectTraversantField" style="display:none;">

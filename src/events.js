@@ -62,6 +62,8 @@ import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D,
+
+  hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
 } from './utils.js';
 import {
   S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr, isLockedScenePanel,
@@ -109,6 +111,8 @@ import {
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
   recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
+
+  arrondiCm3D,
 } from './modals.js';
 setModalsCallbacks({ snapshot });
 // Collapses/expands a section of the Persona/Object modal (cf. .modal-section, per user
@@ -620,13 +624,40 @@ function addPersonaToPanel(panel){
 // original width/height ratio (baseW/baseH). The apparent size (o.w/o.h) is recomputed for the
 // object's CURRENT depth, so the stored real size matches the requested percentage regardless of
 // depth (cf. option B decision).
-function applyPersonaSizePercent(o, percent, page){
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * REDIMENSIONNER — LA HAUTEUR RÉELLE EST LA PRIMITIVE, LE POURCENTAGE EST UN APPELANT
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `realHeightFloor` est ce qui est ENREGISTRÉ dans le Projet et ce qui pilote le rendu 3D. Le
+ * pourcentage, lui, n'est stocké nulle part : `getPersonaScalePercent` le recalcule à chaque
+ * ouverture de fiche. Écrire deux redimensionnements — un par hauteur, un par pourcentage —
+ * aurait donné deux chemins vers la même donnée, donc deux occasions de diverger. C'est le défaut
+ * qui revient le plus souvent dans ce dépôt ; il n'y a donc qu'un seul calcul, et il est ici.
+ *
+ * CE QUE ÇA RÈGLE AU PASSAGE. Le curseur de la fiche avance par pas de 5 %, alors que le
+ * pourcentage affiché est arrondi à l'unité : un Élément réellement à 103 % s'y présente sur un
+ * cran voisin. Tant que l'enregistrement appliquait la valeur DU CURSEUR, ouvrir une fiche puis
+ * cliquer Enregistrer pouvait donc redimensionner l'Élément de quelques pour cent sans que
+ * personne ne l'ait demandé. La fiche applique désormais la HAUTEUR, que le crantage du widget
+ * n'atteint pas.
+ *
+ * LA LARGEUR SUIT LE MÊME RAPPORT que la hauteur : le redimensionnement reste homothétique, comme
+ * avant. Seuls les Murs y échappent (cf. resizeWallTo, longueur et hauteur indépendantes).
+ */
+function applyElementRealHeight(o, heightM, page){
   if (!o.baseW || !o.baseH) { o.baseW = o.w; o.baseH = o.h; }
   // Fix 22b: repair a corrupted baseH (projects loaded before Fix 22) before any size operation.
   repairElementBase3D(o);
-  const pct = clamp(Number(percent) || 100, 10, 400) / 100;
   const baseRealW = o.baseW / WALL_PX_PER_UNIT_3D;
-  const baseRealH = o.baseH / WALL_PX_PER_UNIT_3D;
+  const baseRealH = hauteurBase3D(o);
+  // Base inexploitable : ne rien faire plutôt que propager un NaN. Un NaN traverse o.w/o.h puis la
+  // matrice monde, et l'Élément DISPARAÎT du rendu sans qu'aucune erreur ne soit levée.
+  if (baseRealH === null) return;
+  // Les bornes sont celles du pourcentage, TRADUITES — jamais ressaisies en mètres (cf. utils.js).
+  const pctBorne = pourcentageDepuisHauteur3D(heightM, baseRealH);
+  if (pctBorne === null) return;
+  const pct = pctBorne / 100;
   const targetRealW = baseRealW * pct, targetRealH = baseRealH * pct;
   // Fix 22: use panel.camDist (not the constant 30) for the pixel factor.
   // After loadSceneIntoPanel Phase 2, camDist = 30/s ≠ 30: without this fix the pixel factor would
@@ -643,6 +674,20 @@ function applyPersonaSizePercent(o, percent, page){
   o.y = cy - newH / 2;
   // Sync realHeightFloor: 3D renderer's source of truth (cf. renderPanelScene3D).
   if (o.realHeightFloor !== undefined) o.realHeightFloor = targetRealH;
+}
+
+/**
+ * Redimensionner par POURCENTAGE — une vue sur `applyElementRealHeight`, pas un second calcul.
+ * Conservée parce que le glisser-redimensionner et les Scènes raisonnent en proportion.
+ */
+function applyPersonaSizePercent(o, percent, page){
+  if (!o.baseW || !o.baseH) { o.baseW = o.w; o.baseH = o.h; }
+  repairElementBase3D(o);
+  const baseRealH = hauteurBase3D(o);
+  if (baseRealH === null) return;
+  const h = hauteurDepuisPourcentage3D(Number(percent) || 100, baseRealH);
+  if (h === null) return;
+  applyElementRealHeight(o, h, page);
 }
 
 // ↳ src/constants.js
@@ -4560,6 +4605,8 @@ const objectDepthInput = document.getElementById('objectDepthInput');
 const objectPosXInput = document.getElementById('objectPosXInput');
 const objectPosYInput = document.getElementById('objectPosYInput');
 const objectSizeInput = document.getElementById('objectSizeInput');
+const objectHeightInput = document.getElementById('objectHeightInput');
+const objectHeightField = document.getElementById('objectHeightField');
 const objectSizeValue = document.getElementById('objectSizeValue');
 const objectWallLengthInput = document.getElementById('objectWallLengthInput');
 const objectWallHeightInput = document.getElementById('objectWallHeightInput');
@@ -4896,10 +4943,49 @@ objectWindowAngleInput.addEventListener('input', refreshObjectPreview);
 [objectRotXInput, objectRotYInput, objectRotZInput].forEach(el => el.addEventListener('input', refreshObjectPreview));
 // Same as personaSizeInput: the size slider doesn't affect the 3D preview, only its displayed
 // percentage must follow the drag live.
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE CURSEUR ET LA HAUTEUR SE SUIVENT — ET C'EST LA HAUTEUR QU'ON ENREGISTRE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Deux champs pour une seule donnée, donc deux occasions de diverger. Ce qui les empêche :
+ *
+ *   • CHACUN NE MET À JOUR QUE L'AUTRE, jamais lui-même. Se réécrire ferait sauter le curseur au
+ *     cran voisin pendant qu'on tape dans la hauteur, et déplacerait le curseur sous la souris ;
+ *   • la conversion est celle de utils.js, appelée des deux côtés — pas deux formules symétriques
+ *     écrites à la main, qui finiraient par ne plus l'être ;
+ *   • l'ENREGISTREMENT lit la hauteur (cf. la sauvegarde de la modale). Le pas de 5 % du curseur ne
+ *     peut donc pas altérer une taille que personne n'a voulu changer.
+ */
+function baseReelleDeLaCible3D(){
+  return S.modalTarget ? hauteurBase3D(S.modalTarget) : null;
+}
+
 objectSizeInput.addEventListener('input', () => {
   objectSizeValue.textContent = objectSizeInput.value + '%';
+  const base = baseReelleDeLaCible3D();
+  if (base !== null && objectHeightInput) {
+    const h = hauteurDepuisPourcentage3D(objectSizeInput.value, base);
+    if (h !== null) objectHeightInput.value = arrondiCm3D(h);
+  }
   refreshObjectPreview();
 });
+
+if (objectHeightInput) {
+  objectHeightInput.addEventListener('input', () => {
+    const base = baseReelleDeLaCible3D();
+    if (base === null) return;
+    const pct = pourcentageDepuisHauteur3D(objectHeightInput.value, base);
+    // Champ vidé, ou en cours de frappe (« 1. ») : on ne touche à rien. Forcer une valeur ici
+    // effacerait ce que l'utilisateur est en train d'écrire.
+    if (pct === null) return;
+    // ⚠️ On n'arrondit PAS `objectHeightInput.value` au passage : la valeur saisie doit rester telle
+    // quelle sous les doigts. Le curseur, lui, ne sait afficher qu'un entier.
+    objectSizeInput.value = Math.round(pct);
+    objectSizeValue.textContent = Math.round(pct) + '%';
+    refreshObjectPreview();
+  });
+}
 // (#85) Fills the "Linked wall" selector with all Walls (simple or corner) present in the same
 // Panel as the edited Element, and preselects the one it's currently magnetized to — or the first
 // available Wall if the Element wasn't linked to any yet (case of a Wall Opening created before a
@@ -5054,7 +5140,17 @@ objectModalSave.onclick = () => {
     if (WALL_TYPES.includes(S.modalTarget.objType)) {
       resizeWallTo(S.modalTarget, objectWallLengthInput.value, objectWallHeightInput.value, currentPage());
     } else {
-      applyPersonaSizePercent(S.modalTarget, objectSizeInput.value, currentPage());
+      // LA HAUTEUR FAIT FOI quand son champ est là. Appliquer la valeur du curseur redimensionnerait
+      // l'Élément au cran voisin — un Élément réellement à 103 % ressortirait à 105 % pour avoir
+      // seulement été ouvert puis enregistré. Repli sur le pourcentage si l'Élément n'a pas de base
+      // exploitable, seul cas où le champ Hauteur est absent.
+      const _hSaisie = (objectHeightField && objectHeightField.style.display !== 'none')
+        ? Number(objectHeightInput.value) : NaN;
+      if (Number.isFinite(_hSaisie) && hauteurBase3D(S.modalTarget) !== null) {
+        applyElementRealHeight(S.modalTarget, _hSaisie, currentPage());
+      } else {
+        applyPersonaSizePercent(S.modalTarget, objectSizeInput.value, currentPage());
+      }
     }
     // (#85) If the Element is a Wall Opening, (re)apply the magnetism to the Wall currently
     // selected in objectMagnetWallSelect — whether it's still the same Wall (just a Face change for

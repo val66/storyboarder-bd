@@ -900,6 +900,84 @@ export function getHandles(o){
   };
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * HAUTEUR RÉELLE ↔ POURCENTAGE — une seule conversion, écrite une seule fois
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * LAQUELLE DES DEUX EST LA VRAIE ? La hauteur. `realHeightFloor` est ce qui est ENREGISTRÉ dans le
+ * Projet et ce qui pilote le rendu 3D ; le pourcentage n'est stocké nulle part — il est RECALCULÉ à
+ * chaque ouverture de fiche par `getPersonaScalePercent`. Le curseur est donc une vue sur la
+ * hauteur, et non l'inverse.
+ *
+ * POURQUOI ÇA COMPTE, ET PAS SEULEMENT SUR LE PLAN DES PRINCIPES. Le curseur avance par pas de 5 %.
+ * Sur un modèle de 1,75 m, un cran vaut ~9 cm. Tant que la fiche n'enregistrait QUE le pourcentage,
+ * cette granularité était invisible ; une hauteur saisie au centimètre, elle, se ferait corriger
+ * sous les doigts. D'où le sens retenu : la fiche enregistre la HAUTEUR, et le pourcentage n'est
+ * qu'un affichage arrondi.
+ *
+ * LES BORNES SONT DÉFINIES SUR LE POURCENTAGE (10 % à 400 %) et traduites ici. Écrire des bornes en
+ * mètres à côté aurait donné deux vérités pour une seule limite — le défaut qui revient le plus
+ * souvent dans ce dépôt. Elles sont donc DÉRIVÉES, jamais ressaisies.
+ */
+/**
+ * Les options du champ « Modèle » : les figures posables, plus CELLE DE L'ÉLÉMENT si elle n'y est
+ * pas. Fonction pure.
+ *
+ * POURQUOI LE REPLI EST NÉCESSAIRE, et pas de la prudence décorative. Les options viennent de
+ * `figuresPosables()`, qui filtre `loadedModelNames()` : un fichier INTROUVABLE, ou pas encore
+ * décodé, ou sans os reconnu, n'y figure pas. Or `select.value = <valeur absente des options>` ne
+ * lève rien — la valeur devient vide et le champ affiche autre chose. La fiche nommait donc un
+ * fichier qui n'est pas celui de l'Élément, en silence. Ajouter l'entrée courante garantit que le
+ * champ dit toujours ce que l'Élément porte réellement.
+ *
+ * L'ORDRE EST CELUI DES FIGURES, l'entrée de repli passant en tête : elle est déjà sélectionnée,
+ * et une liste qui commence par ce qu'on regarde se lit mieux qu'une liste où il faut le chercher.
+ */
+export function optionsDeFigure3D(figures, courant){
+  const liste = (Array.isArray(figures) ? figures : []).filter(n => typeof n === 'string' && n);
+  if (typeof courant !== 'string' || !courant) return liste;
+  return liste.includes(courant) ? liste : [courant, ...liste];
+}
+
+export const ELEMENT_SIZE_PCT_MIN = 10;
+export const ELEMENT_SIZE_PCT_MAX = 400;
+
+/** Hauteur réelle (m) correspondant à un pourcentage. `baseRealH` = hauteur à 100 %. */
+export function hauteurDepuisPourcentage3D(pct, baseRealH){
+  const b = Number(baseRealH);
+  if (!Number.isFinite(b) || b <= 0) return null;
+  const p = Number(pct);
+  if (!Number.isFinite(p)) return null;
+  return b * (Math.min(Math.max(p, ELEMENT_SIZE_PCT_MIN), ELEMENT_SIZE_PCT_MAX) / 100);
+}
+
+/**
+ * Pourcentage correspondant à une hauteur réelle (m). NON ARRONDI — l'arrondi appartient à
+ * l'affichage, pas au calcul : arrondir ici ferait perdre au passage les centimètres saisis.
+ */
+export function pourcentageDepuisHauteur3D(hauteurM, baseRealH){
+  const b = Number(baseRealH);
+  if (!Number.isFinite(b) || b <= 0) return null;
+  const h = Number(hauteurM);
+  if (!Number.isFinite(h)) return null;
+  return Math.min(Math.max((h / b) * 100, ELEMENT_SIZE_PCT_MIN), ELEMENT_SIZE_PCT_MAX);
+}
+
+/** Les bornes en mètres, DÉRIVÉES des bornes en pourcentage. Jamais ressaisies ailleurs. */
+export function bornesHauteur3D(baseRealH){
+  const min = hauteurDepuisPourcentage3D(ELEMENT_SIZE_PCT_MIN, baseRealH);
+  const max = hauteurDepuisPourcentage3D(ELEMENT_SIZE_PCT_MAX, baseRealH);
+  return (min === null || max === null) ? null : { min, max };
+}
+
+/** La hauteur à 100 % d'un Élément, en mètres. `null` si sa base n'est pas exploitable. */
+export function hauteurBase3D(o){
+  const bh = o && Number(o.baseH);
+  if (!Number.isFinite(bh) || bh <= 0) return null;
+  return bh / WALL_PX_PER_UNIT_3D;
+}
+
 export function repairElementBase3D(o){
   if (o.realHeightFloor !== undefined && o.realHeightFloor > 0 && o.baseH > 0) {
     const _ratio = o.realHeightFloor / (o.baseH / WALL_PX_PER_UNIT_3D);

@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.52**
+**Version 1.3.53**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -114,6 +114,8 @@ starts on the built-in character.
 - **Pose library shared across every project**: apply a pose as a starting point, save the current
   one under a name, rename or delete any of them — built-in poses included, restorable from Settings
 - **Nothing is committed** until you apply the pose and save the character's dialog
+- **Size to the centimetre**: a 3D Element's card shows its real height in metres next to the size
+  slider; the two follow each other, and it is the height that gets saved
 
 ### Project & saving
 - **JSON** project format — human-readable and versionable

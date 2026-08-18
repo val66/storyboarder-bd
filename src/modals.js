@@ -34,6 +34,8 @@ import {
   clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
+
+  optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D,
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
@@ -103,6 +105,8 @@ const objectRotZInput = document.getElementById('objectRotZInput');
 const objectSizeField = document.getElementById('objectSizeField');
 const objectSizeInput = document.getElementById('objectSizeInput');
 const objectSizeValue = document.getElementById('objectSizeValue');
+const objectHeightField = document.getElementById('objectHeightField');
+const objectHeightInput = document.getElementById('objectHeightInput');
 const objectTraversantField = document.getElementById('objectTraversantField');
 const objectTypeSelect = document.getElementById('objectTypeSelect');
 const objectWallFaceField = document.getElementById('objectWallFaceField');
@@ -176,9 +180,39 @@ export function updatePersonaSizeDisplay(o){
   personaSizeValue.textContent = personaSizeInput.value + '%';
 }
 
+/**
+ * Les DEUX vues de la taille, remises d'accord depuis la donnée.
+ *
+ * ⚠️ ELLES SONT REMPLIES DEPUIS L'ÉLÉMENT, PAS L'UNE DEPUIS L'AUTRE. Dériver la hauteur du curseur
+ * ferait passer la valeur par son crantage à 5 % : un Élément à 1,83 m s'afficherait à 1,84 m à
+ * chaque ouverture de fiche, et finirait par y être vraiment.
+ */
 export function updateObjectSizeDisplay(o){
   objectSizeInput.value = getPersonaScalePercent(o);
   objectSizeValue.textContent = objectSizeInput.value + '%';
+  updateObjectHeightField(o);
+}
+
+/** Le champ « Hauteur » : présent seulement si la base de l'Élément permet d'en calculer une. */
+export function updateObjectHeightField(o){
+  if (!objectHeightField || !objectHeightInput) return;
+  const baseRealH = hauteurBase3D(o);
+  const bornes = bornesHauteur3D(baseRealH);
+  // Pas de base exploitable : pas de hauteur à montrer. Un champ vide inviterait à le remplir, et
+  // ce qu'on y saisirait ne pourrait être appliqué nulle part.
+  if (!bornes) { objectHeightField.style.display = 'none'; return; }
+  objectHeightField.style.display = '';
+  objectHeightInput.min = arrondiCm3D(bornes.min);
+  objectHeightInput.max = arrondiCm3D(bornes.max);
+  const h = Number.isFinite(o && o.realHeightFloor) && o.realHeightFloor > 0
+    ? o.realHeightFloor
+    : hauteurDepuisPourcentage3D(getPersonaScalePercent(o), baseRealH);
+  objectHeightInput.value = arrondiCm3D(h);
+}
+
+/** Au centimètre — la précision du champ, et la seule qu'on affiche. */
+export function arrondiCm3D(m){
+  return Number.isFinite(Number(m)) ? Math.round(Number(m) * 100) / 100 : '';
 }
 
 export const animalJointGroupDetailsById = {}; // jointId -> its group's <details>
@@ -618,22 +652,41 @@ export function buildFigureFieldUI(obj){
   const champ = document.getElementById('objectFigureField');
   const sel = document.getElementById('objectFigureSelect');
   if (!champ || !sel) return;
-  const figures = figuresPosables();
-  // Une seule figure disponible — la sienne — ne laisse aucun choix à faire : le champ n'apporte
-  // rien et disparaît, plutôt que d'afficher une liste à un élément.
-  const utile = isImportedModel(obj) && figures.length > 1;
+  // ⚠️ PRÉSENT POUR TOUT MODÈLE IMPORTÉ, y compris quand il n'y a rien à choisir. Il l'était
+  // autrefois seulement à partir de deux figures posables, un champ « Fichier » distinct portant le
+  // nom le reste du temps. Deux champs pour une même chose, dont un seulement parfois : la fiche
+  // d'une chaise importée n'affichait alors AUCUN nom de fichier. Un seul champ, toujours là.
+  const utile = isImportedModel(obj);
   champ.style.display = utile ? '' : 'none';
   if (!utile) return;
 
   const etiquette = document.getElementById('objectFigureLabel');
   if (etiquette) etiquette.textContent = tr('Model', 'Modèle');
+  const courant = S.modalDraftModelFile || obj.modelFile || '';
+  const noms = optionsDeFigure3D(figuresPosables(), courant);
   sel.innerHTML = '';
-  figures.forEach(nom => {
+  noms.forEach(nom => {
     const opt = document.createElement('option');
     opt.value = nom; opt.textContent = nom;
     sel.appendChild(opt);
   });
-  sel.value = S.modalDraftModelFile || obj.modelFile || figures[0];
+  sel.value = courant || noms[0] || '';
+  // Rien à choisir : on montre, on n'invite pas. Un menu déroulant à une entrée promet un choix
+  // qui n'existe pas.
+  sel.disabled = noms.length <= 1;
+
+  // L'ÉTAT, ET SEULEMENT S'IL N'EST PAS « PRÊT ». C'est la seule information que portait l'ancien
+  // champ « Fichier » et que le sélecteur ne dit pas de lui-même — un fichier introuvable n'est pas
+  // dans `loadedModelNames()`, donc son absence serait muette sans ce message.
+  const indice = document.getElementById('objectFigureHint');
+  if (indice) {
+    const état = courant ? modelState(courant) : 'absent';
+    const texte = état === 'introuvable' ? tr('⚠ File not found', '⚠ Fichier introuvable')
+      : état === 'prêt' ? ''
+        : tr('Loading…', 'Chargement…');
+    indice.textContent = texte;
+    indice.style.display = texte ? '' : 'none';
+  }
 
   sel.onchange = () => {
     S.modalDraftModelFile = sel.value;
@@ -771,30 +824,11 @@ export function openObjectModal(obj, isNew){
   objectModalTitle.textContent = OBJECT_TYPE_LABELS[obj.objType] || 'Objet';
   objectNameInput.value = obj.name || '';
   objectTypeSelect.value = obj.objType || 'voiture';
-  // Modèle importé : on montre le fichier d'où il vient, et son état — chargé, en cours, ou
-  // introuvable. En lecture seule : `modelFile` est un identifiant persisté, pas une étiquette.
-  // Le sélecteur de Type est masqué, parce qu'on ne transforme pas une chaise en modèle importé
-  // (il n'y aurait aucun fichier à lui donner), ni l'inverse sans perdre le lien au fichier.
+  // Le sélecteur de Type est masqué pour un modèle importé : on ne transforme pas une chaise en
+  // modèle importé (il n'y aurait aucun fichier à lui donner), ni l'inverse sans perdre le lien au
+  // fichier. Le nom du fichier, son état et sa hauteur vivent désormais ailleurs — respectivement
+  // dans le champ « Modèle » (cf. buildFigureFieldUI) et le champ « Hauteur ».
   const _estModele = isImportedModel(obj);
-  const _champFichier = document.getElementById('objectModelFileField');
-  if (_champFichier) {
-    _champFichier.style.display = _estModele ? '' : 'none';
-    if (_estModele) {
-      const état = modelState(obj.modelFile);
-      const suffixe = état === 'prêt' ? ' ✓'
-        : état === 'introuvable' ? tr(' ⚠ file not found', ' ⚠ fichier introuvable')
-          : tr(' — loading…', ' — chargement…');
-      // Hauteur réelle en clair (mètres) : l'aperçu 3D de cette modale peut se cadrer très mal sur
-      // un modèle importé (bras écartés, accessoire qui dépasse — cf. retours utilisateur), donc ne
-      // sert pas toujours à juger si la taille est raisonnable. Ce nombre, lui, est fiable dans tous
-      // les cas : c'est exactement `realHeightFloor`, la valeur qui pilote le rendu dans la Scène.
-      const hauteurTxt = Number.isFinite(obj.realHeightFloor)
-        ? ` — ${Math.round(obj.realHeightFloor * 100) / 100} m`
-        : '';
-      const val = document.getElementById('objectModelFileValue');
-      if (val) val.textContent = (obj.modelFile || '—') + hauteurTxt + suffixe;
-    }
-  }
   if (objectTypeSelect && objectTypeSelect.parentElement) {
     objectTypeSelect.style.display = _estModele ? 'none' : '';
     // ET SON LIBELLÉ AVEC. Seul le <select> était masqué : devant un modèle importé, « TYPE »

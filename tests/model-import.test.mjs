@@ -494,12 +494,21 @@ describe('Le câblage de l\'import', () => {
     assert.match(EVENTS, /importSceneBtn'\)\.onclick = \(\) => \{ importSceneFromModel\(null, null\); \}/);
   });
 
-  test('la modale montre le fichier et masque le sélecteur de Type', () => {
+  test('la modale masque le sélecteur de Type sur un modèle importé', () => {
     // On ne transforme pas une chaise en modèle importé : il n'y aurait aucun fichier à lui donner.
-    assert.match(HTML, /id="objectModelFileField"/);
-    assert.match(MODALS, /objectModelFileField/);
     assert.match(MODALS, /objectTypeSelect\.style\.display = _estModele \? 'none'/,
       'le sélecteur de Type reste proposé sur un modèle importé');
+  });
+
+  test('RÉGRESSION : UN SEUL champ nomme le fichier, plus deux', () => {
+    // « Fichier » (lecture seule) et « Modèle » (sélecteur) disaient la même chose, mais pas dans
+    // les mêmes cas : le second n'apparaissait qu'à partir de deux figures posables. Fusionnés dans
+    // « Modèle », toujours présent. Ce test garde la disparition — un champ mort qu'on réintroduit
+    // par copier-coller est le genre de retour en arrière que personne ne remarque.
+    assert.doesNotMatch(HTML, /objectModelFileField|objectModelFileValue/);
+    assert.doesNotMatch(MODALS, /objectModelFileField|objectModelFileValue/);
+    assert.match(HTML, /id="objectFigureField"/);
+    assert.match(HTML, /id="objectFigureHint"/, 'l\'état du fichier a besoin d\'un support');
   });
 
   test('le panneau latéral dit l\'état d\'un modèle qui manque', () => {

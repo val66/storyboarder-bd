@@ -559,13 +559,31 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     closePersonaEditor();
   });
 
-  test('une seule figure disponible : pas de champ, rien à choisir', () => {
+  test('une seule figure disponible : le champ RESTE, mais n\'invite pas', () => {
+    // CHANGÉ EN #343, et le changement est le sujet du test. Le champ disparaissait quand il n'y
+    // avait rien à choisir, un champ « Fichier » distinct portant le nom le reste du temps. Les deux
+    // ont fusionné : « Modèle » est désormais le seul endroit où lire le fichier d'un Élément, donc
+    // il doit être là même sans choix — désactivé, pour ne pas promettre un choix inexistant.
     clearModelCache();
     _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
     const champ = document.getElementById('objectFigureField');
+    const sel = document.getElementById('objectFigureSelect');
     buildFigureFieldUI(modele());
-    assert.equal(champ.style.display, 'none',
-      'une liste à un seul élément n\'apporte rien et ne doit pas s\'afficher');
+    assert.notEqual(champ.style.display, 'none', 'le fichier ne se lit plus nulle part ailleurs');
+    assert.equal(sel.disabled, true, 'un menu à une entrée promet un choix qui n\'existe pas');
+    assert.equal(sel.value, FICHIER, 'et il nomme bien le fichier de cet Élément');
+  });
+
+  test('RÉGRESSION : un fichier ABSENT des figures posables est quand même nommé', () => {
+    // Le défaut trouvé en #343. Les options viennent de figuresPosables(), qui filtre les modèles
+    // CHARGÉS : un fichier introuvable n'y est pas. `select.value = <absent>` ne lève rien — la
+    // valeur devient vide et la fiche nomme un AUTRE modèle. Sans bruit, et sur la seule ligne qui
+    // dit à l'utilisateur ce que son Élément porte.
+    clearModelCache();
+    _setModelCacheEntry('autre.glb', { scene: corrigerNomsCuisses(squeletteMixamo()) });
+    const sel = document.getElementById('objectFigureSelect');
+    buildFigureFieldUI(Object.assign(modele(), { modelFile: 'disparu.glb' }));
+    assert.equal(sel.value, 'disparu.glb', 'la fiche nomme un fichier qui n\'est pas le sien');
   });
 
   test('RÉGRESSION : le sens est unique, corps → os et jamais l\'inverse', () => {

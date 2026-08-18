@@ -38,6 +38,11 @@ or malformed yields an empty list, never an error.
 
 **World coordinates** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 
+⚠️ `realHeightFloor` is the **stored** size. The percentage shown by the "Actual size" slider is
+stored nowhere: it is recomputed every time a card opens (`getPersonaScalePercent`). The card offers
+both, and applies the HEIGHT — the slider moves in 5% steps, which would round off a height typed to
+the centimetre.
+
 **Openings on a support** — `wallYFrac`, `wallAlongFrac`, `magnetWallId`, `wallHeight`.
 
 **A Panel's camera** — `camWx`, `camWy`, `camWz`, `camDist`, `camRotX`, `camRotY`.
