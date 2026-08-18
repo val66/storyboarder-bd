@@ -246,3 +246,51 @@ Ces maillages sont **masqués**, jamais supprimés : la géométrie reste dans l
 le disque n'est pas touché, et la case « Afficher les morceaux détachés » de la fiche les rend. Le
 champ persisté `afficherMaillagesEgares` n'est écrit que lorsqu'il vaut `true` — son absence
 signifie « masqués », qui est le défaut.
+
+
+## 7. Ce qui est vérifié, et ce qui ne peut l'être que manuellement
+
+### 7.1 L'audit (tâche #310)
+
+Onze modules composent ce chantier. Deux mesures ont été faites plutôt que supposées :
+
+- **surface publique couverte** : sur l'ensemble de leurs exports, un seul n'est jamais nommé dans
+  les tests — `loadedModelNames`, exercé indirectement par `figuresPosables` (rig3d.js). Un
+  deuxième, `produitVectoriel`, n'était exporté que par inadvertance : il ne servait qu'à son
+  propre fichier, et l'export a été retiré. Une surface publique que rien n'appelle est une surface
+  que rien ne vérifie ;
+- **campagnes de mutation** : chaque module en porte désormais le journal, dans son fichier de test.
+  Les trois modules du cœur — `skeleton-pose`, `skeleton-retarget`, `pose-bridge` — n'en avaient
+  aucun ; douze mutations y ont été jouées, onze rouges. La douzième était une garde REDONDANTE,
+  corrigée dans le code et non dans les tests.
+
+### 7.2 Ce que les tests ne peuvent pas dire
+
+Aucun test de ce dépôt ne décode un vrai `.glb` de modélisateur. Le témoin versionné n'a ni texture,
+ni matériau, ni extension, et les six fichiers d'essai pèsent 22 Mo qui appartiennent à
+l'utilisateur. Surtout, **GLTFLoader ne décode pas ces fichiers sous Node** : leurs textures
+réclament un environnement navigateur.
+
+C'est une limite structurelle, pas un manque de zèle — et elle explique que TOUS les défauts sérieux
+de ce chantier aient été trouvés à l'usage, jamais par la suite de tests :
+
+| trouvé à l'usage | cause réelle |
+|---|---|
+| worker_j n'affiche que ses articulations | trois causes chaînées (repères mixtes, élimination par le tronc de vue, plans de coupe) |
+| taille aberrante à l'import | la mesure, pas le seuil |
+| un accessoire flotte au-dessus du personnage | géométrie de liaison incohérente dans le fichier |
+| un modèle atterrit hors de sa Case | un geste de création oublié sur le troisième chemin |
+| boîte de sélection trop large | rapport mesuré dans le repère du fichier, pas du corps |
+| aperçu rogné en haut | cadrage sur les os seuls, marge insuffisante |
+
+### 7.3 L'essai manuel, et ce qu'il doit couvrir
+
+Sur chacun des six fichiers, en partant d'une Case VIDE :
+
+1. importer le modèle — il doit apparaître centré, à une taille comparable à celle d'un Personnage ;
+2. ouvrir sa fiche — l'aperçu doit le montrer en entier, cheveux et accessoires compris ;
+3. lui appliquer une pose de la bibliothèque, puis retoucher un curseur — les deux doivent se voir ;
+4. changer sa taille, le déplacer, le faire tourner ;
+5. enregistrer, fermer, rouvrir le Projet — tout doit être exactement dans le même état.
+
+Le point 5 est le plus important : c'est le seul qui exerce la forme persistée de bout en bout.

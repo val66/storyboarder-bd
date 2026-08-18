@@ -239,3 +239,49 @@ Those meshes are **hidden**, never removed: the geometry stays in the clone, the
 untouched, and the "Show detached parts" checkbox in the model's card brings them back. The
 persisted field `afficherMaillagesEgares` is only written when `true` — its absence means "hidden",
 which is the default.
+
+
+## 7. What is verified, and what only a manual pass can tell
+
+### 7.1 The audit (task #310)
+
+Eleven modules make up this piece of work. Two things were measured rather than assumed:
+
+- **public surface covered**: across all their exports, exactly one is never named in the tests —
+  `loadedModelNames`, exercised indirectly through `figuresPosables` (rig3d.js). A second,
+  `produitVectoriel`, was exported by accident: it only served its own file, and the export was
+  removed. A public surface nothing calls is a surface nothing verifies;
+- **mutation campaigns**: every module now carries its journal, inside its test file. The three core
+  modules — `skeleton-pose`, `skeleton-retarget`, `pose-bridge` — had none; twelve mutations were
+  run against them, eleven red. The twelfth was a REDUNDANT guard, fixed in the code rather than
+  covered by one more test.
+
+### 7.2 What the tests cannot say
+
+No test in this repository decodes a real modeller's `.glb`. The versioned witness has no texture,
+no material, no extension, and the six test files are 22 MB that belong to the user. Above all,
+**GLTFLoader does not decode those files under Node**: their textures need a browser environment.
+
+That is a structural limit, not a lack of diligence — and it explains why EVERY serious defect in
+this work was found in use, never by the test suite:
+
+| found in use | actual cause |
+|---|---|
+| worker_j shows only its joints | three chained causes (mixed frames, frustum culling, clipping planes) |
+| absurd size on import | the measurement, not the threshold |
+| a prop floats above the character | inconsistent bind geometry in the file |
+| a model lands outside its Panel | a creation gesture missed on the third path |
+| selection box far too wide | ratio measured in the file's frame, not the body's |
+| preview clipped at the top | framing on bones alone, insufficient margin |
+
+### 7.3 The manual pass, and what it must cover
+
+For each of the six files, starting from an EMPTY Panel:
+
+1. import the model — it should appear centred, at a size comparable to a Character's;
+2. open its card — the preview should show all of it, hair and props included;
+3. apply a pose from the library, then tweak one slider — both must show;
+4. change its size, move it, rotate it;
+5. save, close, reopen the project — everything must be exactly as it was.
+
+Step 5 matters most: it is the only one that exercises the persisted form end to end.

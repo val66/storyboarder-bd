@@ -225,3 +225,17 @@ test('les angles ne sont pas arrondis au degré en chemin', () => {
   });
   presque(sortie.tete.x, petit, 'l\'angle traverse intact');
 });
+
+/**
+ * JOURNAL DE MUTATION — le pont entre les deux vocabulaires de pose (tâche #310).
+ *
+ *   W9  les curseurs ne sont plus ordonnés par axe                              ROUGE
+ *   W10 une rotation nulle compose quand même                                   ROUGE
+ *   W11 un os sans repos connu est posé quand même                              ROUGE
+ *   W12 l'ordre du produit de quaternions est inversé                           ROUGE
+ *
+ * W9 et W12 gardent la même propriété par deux portes : la composition de rotations n'est PAS
+ * commutative. L'ordre des curseurs (x, puis y, puis z) et l'ordre du produit décrivent ensemble
+ * un geste unique ; intervertir l'un ou l'autre donne un corps posé différemment, sans qu'aucune
+ * erreur ne soit levée nulle part.
+ */

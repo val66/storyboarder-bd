@@ -501,3 +501,18 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
       'la section doit être masquée par défaut : la plupart des modèles importés n\'ont pas d\'os');
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — la composition, cœur du chantier « squelettes importés » (tâche #310).
+ *
+ *   W1 le bassin redevient posable                                              ROUGE
+ *   W2 normaliserPose garde les emplacements non posables                       ROUGE
+ *   W3 Euler→quaternion : convention ZYX au lieu de XYZ                         ROUGE
+ *   W4 quaternion→Euler : signe de Y inversé                                    ROUGE
+ *   W5 nombrePosable compte aussi les emplacements sans os                      ROUGE
+ *
+ * W3 mérite un mot : la convention XYZ n'est pas un détail d'implémentation. C'est celle que
+ * `THREE.Euler` applique aux `rotation` du rig intégré ; deux conventions dans la même application
+ * donneraient deux gestes différents pour un même curseur selon le type d'Élément. Le test qui
+ * l'attrape compare une composition faite ici à ce que Three produit pour les mêmes angles.
+ */

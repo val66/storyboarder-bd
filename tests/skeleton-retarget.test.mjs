@@ -289,3 +289,16 @@ describe('Le rig intégré n\'est pas un cas particulier', () => {
       'il doit y avoir UNE seule façon de mesurer un repère de corps');
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — le changement de repère (tâche #310).
+ *
+ *   W6 deltaPourOs ignore le repère cible (l'axe source est pris tel quel)      ROUGE
+ *   W7 deltaPourOs ignore le repos de l'os                                      ROUGE
+ *   W8 la garde « axe inconvertible » est retirée                               ÉCHAPPÉE
+ *
+ * W8 A ÉTÉ CORRIGÉE DANS LE CODE, pas dans les tests : la garde était REDONDANTE.
+ * `axeMondeVersLocal` commence par `normaliser`, qui rend `null` sur une entrée nulle, et la garde
+ * suivante faisait déjà le travail. Deux gardes pour un seul cas, c'était une de trop — et son seul
+ * effet était de rendre l'autre inatteignable par les tests.
+ */

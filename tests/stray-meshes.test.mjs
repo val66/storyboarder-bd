@@ -168,3 +168,22 @@ describe('boitesDesMaillages3D', () => {
     assert.deepEqual(maillagesHorsCorps3D(s), []);
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — la détection et le masquage des morceaux détachés.
+ *
+ *   N1 critère inversé : signale ceux qui TOUCHENT                              ROUGE
+ *   N2 la garde du maillage unique est retirée                                  ROUGE
+ *   N3 le maillage testé se compare à lui-même                                  ROUGE
+ *   N4 les boîtes vides sont gardées                                            ROUGE
+ *   N5 updateMatrixWorld retiré de boitesDesMaillages3D                         ÉCHAPPÉE
+ *   N6 le nom de repli « (sans nom) » est retiré                                ROUGE
+ *   N7 os et groupes comptés comme maillages                                    ROUGE
+ *   N8 le relevé n'est jamais rangé dans le cache                               ROUGE
+ *   P8 la recherche par nom ignore la casse                                     ROUGE
+ *   P9 maillagesParNom3D rend TOUT                                              ROUGE
+ *   P10 visibilité inversée                                                     ROUGE
+ *
+ * N5 A ÉTÉ CORRIGÉE DANS LE CODE : l'appel était redondant, `expandBoxSkinAware3D` remonte déjà
+ * toute la chaîne des parents. Le garder aurait été une seconde source de vérité pour la même chose.
+ */

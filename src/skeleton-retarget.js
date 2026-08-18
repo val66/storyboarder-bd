@@ -60,7 +60,9 @@
 const soustraire = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const produitScalaire = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-export function produitVectoriel(a, b){
+// Non exporté, comme ses deux voisins : il ne sert qu'ici, et l'exporter donnait une surface
+// publique que rien n'appelait — donc que rien ne vérifiait. Repéré par l'audit de la tâche #310.
+function produitVectoriel(a, b){
   return [
     a[1] * b[2] - a[2] * b[1],
     a[2] * b[0] - a[0] * b[2],
@@ -215,7 +217,11 @@ export function quaternionAxeAngle(axe, radians){
  */
 export function deltaPourOs({ axeSource, radians, repereSource, repereCible, reposMondeOs }){
   const axeCible = axeEquivalent(axeSource, repereSource, repereCible);
-  if (!axeCible) return [0, 0, 0, 1];
+  // Pas de garde sur `axeCible` : elle serait REDONDANTE. `axeMondeVersLocal` commence par
+  // `normaliser`, qui rend `null` sur une entrée nulle, et la garde ci-dessous fait alors le même
+  // travail. La campagne de mutation l'a établi — la retirer ne faisait échouer aucun test, sur
+  // aucun des deux chemins. Deux gardes pour un seul cas, c'est une de trop : la seconde est celle
+  // qui couvre les DEUX raisons de renoncer (axe inconvertible, ou os sans repos exploitable).
   const axeLocal = axeMondeVersLocal(axeCible, reposMondeOs);
   if (!axeLocal) return [0, 0, 0, 1];
   return quaternionAxeAngle(axeLocal, radians);
