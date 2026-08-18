@@ -123,22 +123,37 @@ function emballerGlb(json, bin){
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Les noms écrits dans le fichier, et le seul endroit où ils le sont. */
-export const MAILLAGES_SQUELETTE = { pesé: 'Corps', orphelin: 'Fourreau' };
+export const MAILLAGES_SQUELETTE = { pesé: 'Corps', orphelin: 'Fourreau', égaré: 'FourreauEgare' };
+
+// À quelle hauteur, en unités du fichier, l'os égaré emporte son maillage. Le témoin mesure 1,75 :
+// ce chiffre le place très au-delà, comme le fourreau de worker_j (y 91→131 pour un personnage qui
+// tient dans 0→41,8). Sa seule exigence est de ne recouper AUCUN autre maillage.
+const HAUTEUR_OS_EGARE = 100;
 
 export function construireGlbSquelette(){
   const pts = sommets(DIMENSIONS_M);
   const positions = new Float32Array(pts.flat());
   const indices = new Uint16Array(FACES);
   const n = pts.length;
-  // Tous les sommets désignent l'os 0 ; seule la table de POIDS distingue les deux maillages.
+  // Les deux premiers maillages désignent l'os 0 ; seule la table de POIDS les distingue.
   const jointures = new Uint16Array(n * 4);
   const poidsPleins = new Float32Array(n * 4);
   for (let i = 0; i < n; i++) poidsPleins[i * 4] = 1;
   const poidsNuls = new Float32Array(n * 4);
-  const bindInverse = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  // Le troisième désigne l'os 1, celui qui est perché. Mêmes poids pleins : ce maillage est
+  // PARFAITEMENT lié — c'est tout l'intérêt, il montre qu'un maillage égaré n'a rien d'un maillage
+  // mal pesé, et que les deux défauts sont indépendants.
+  const jointuresEgare = new Uint16Array(n * 4);
+  for (let i = 0; i < n; i++) jointuresEgare[i * 4] = 1;
+  // Les DEUX matrices de liaison inverse valent l'identité, y compris celle de l'os perché — et
+  // c'est là qu'est le défaut reproduit. Pour l'os 1, `positionMonde × liaisonInverse` vaut donc sa
+  // translation entière : le maillage part à y = 100 alors que sa géométrie décrit un pavé de
+  // 1,75 m posé au sol. Exactement l'incohérence mesurée sur `Sheath_1_Outfit_0` de worker_j.
+  const I4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const bindInverse = new Float32Array([...I4, ...I4]);
 
   // Les vues sont posées à la suite, chacune alignée sur 4 octets (cf. `aligner`).
-  const morceaux = [positions, indices, jointures, poidsPleins, poidsNuls, bindInverse];
+  const morceaux = [positions, indices, jointures, poidsPleins, poidsNuls, bindInverse, jointuresEgare];
   const vues = [];
   let curseur = 0;
   morceaux.forEach((m) => {
@@ -151,8 +166,8 @@ export function construireGlbSquelette(){
 
   const mins = [0, 1, 2].map(i => Math.min(...pts.map(p => p[i])));
   const maxs = [0, 1, 2].map(i => Math.max(...pts.map(p => p[i])));
-  const primitive = (poids) => ({
-    attributes: { POSITION: 0, JOINTS_0: 2, WEIGHTS_0: poids }, indices: 1,
+  const primitive = (poids, jointures2 = 2) => ({
+    attributes: { POSITION: 0, JOINTS_0: jointures2, WEIGHTS_0: poids }, indices: 1,
   });
 
   const json = {
@@ -160,23 +175,27 @@ export function construireGlbSquelette(){
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes: [
-      { name: 'Racine', children: [1, 2, 3] },
-      { name: 'Os' },
+      { name: 'Racine', children: [1, 3, 4, 5] },
+      { name: 'Os', children: [2] },
+      { name: 'OsPerche', translation: [0, HAUTEUR_OS_EGARE, 0] },
       { name: MAILLAGES_SQUELETTE.pesé, mesh: 0, skin: 0 },
       { name: MAILLAGES_SQUELETTE.orphelin, mesh: 1, skin: 0 },
+      { name: MAILLAGES_SQUELETTE.égaré, mesh: 2, skin: 0 },
     ],
     meshes: [
       { name: MAILLAGES_SQUELETTE.pesé, primitives: [primitive(3)] },
       { name: MAILLAGES_SQUELETTE.orphelin, primitives: [primitive(4)] },
+      { name: MAILLAGES_SQUELETTE.égaré, primitives: [primitive(3, 6)] },
     ],
-    skins: [{ joints: [1], inverseBindMatrices: 5 }],
+    skins: [{ joints: [1, 2], inverseBindMatrices: 5 }],
     accessors: [
       { bufferView: 0, componentType: 5126, count: n, type: 'VEC3', min: mins, max: maxs },
       { bufferView: 1, componentType: 5123, count: indices.length, type: 'SCALAR' },
       { bufferView: 2, componentType: 5123, count: n, type: 'VEC4' },
       { bufferView: 3, componentType: 5126, count: n, type: 'VEC4' },
       { bufferView: 4, componentType: 5126, count: n, type: 'VEC4' },
-      { bufferView: 5, componentType: 5126, count: 1, type: 'MAT4' },
+      { bufferView: 5, componentType: 5126, count: 2, type: 'MAT4' },
+      { bufferView: 6, componentType: 5123, count: n, type: 'VEC4' },
     ],
     bufferViews: vues,
     buffers: [{ byteLength: bin.length }],
@@ -194,5 +213,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`écrit : ${CHEMIN_FIXTURE} (${DIMENSIONS_M.x} × ${DIMENSIONS_M.y} × ${DIMENSIONS_M.z} m)`);
   writeFileSync(CHEMIN_FIXTURE_SQUELETTE, construireGlbSquelette());
   console.log(`écrit : ${CHEMIN_FIXTURE_SQUELETTE} (« ${MAILLAGES_SQUELETTE.pesé} » pesé, `
-    + `« ${MAILLAGES_SQUELETTE.orphelin} » sans poids)`);
+    + `« ${MAILLAGES_SQUELETTE.orphelin} » sans poids, `
+    + `« ${MAILLAGES_SQUELETTE.égaré} » à y = ${HAUTEUR_OS_EGARE})`);
 }

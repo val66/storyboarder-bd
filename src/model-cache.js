@@ -35,6 +35,7 @@ import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 // fichiers réels dans docs/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
 import { bonesFromObject3D, inferSkeletonMap } from './skeleton-map.js';
 import { repereDuCorps } from './skeleton-retarget.js';
+import { maillagesHorsCorps3D } from './stray-meshes-3d.js';
 
 // nom de fichier → 'chargement' | 'introuvable' | { scene, hauteurM }
 const _cache = new Map();
@@ -162,7 +163,13 @@ export async function preloadModels(noms){
       // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée — cf.
       // src/skinned-box-3d.js.
       applyAnisotropy(scene);
-      _cache.set(nom, { scene, hauteurM: hauteurNaturelleModele3D(scene) });
+      _cache.set(nom, {
+        scene,
+        hauteurM: hauteurNaturelleModele3D(scene),
+        // Relevé UNE fois, au décodage. L'import le lit pour avertir, rig3d.js pour masquer — et le
+        // recalculer de part et d'autre garantirait qu'un jour les deux réponses divergent.
+        egares: maillagesHorsCorps3D(scene),
+      });
     } catch {
       _cache.set(nom, 'introuvable');
     }

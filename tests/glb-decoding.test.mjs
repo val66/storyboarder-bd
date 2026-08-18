@@ -156,15 +156,15 @@ describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids 
   // fichier avec des poids TOUS NULS. Il ferme le trou annoncé en tête de ce fichier — « ce pavé
   // n'a ni texture, ni squelette » — et il a servi à trancher une question qu'on ne pouvait pas
   // poser autrement.
-  test('le fichier articulé se décode, avec son squelette et ses deux maillages', async () => {
+  test('le fichier articulé se décode, avec son squelette et ses trois maillages', async () => {
     pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
     await preloadModels(['rig.glb']);
     assert.equal(modelState('rig.glb'), 'prêt', 'le .glb articulé n\'a pas été décodé');
     const { scene } = getLoadedModel('rig.glb');
     let skinnés = 0, os = 0;
     scene.traverse(nœud => { if (nœud.isSkinnedMesh) skinnés++; if (nœud.isBone) os++; });
-    assert.equal(skinnés, 2, 'les maillages articulés n\'ont pas été reconstruits');
-    assert.ok(os >= 1, 'le squelette n\'a pas été reconstruit');
+    assert.equal(skinnés, 3, 'les maillages articulés n\'ont pas été reconstruits');
+    assert.ok(os >= 2, 'les deux os du témoin n\'ont pas été reconstruits');
   });
 
   test('MESURE : des poids nuls dans le fichier ressortent à (1, 0, 0, 0) après décodage', async () => {
@@ -194,6 +194,35 @@ describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids 
     const poids = orphelin.geometry.attributes.skinWeight;
     assert.equal(poids.getX(0), 1, 'les poids nuls ne sont plus rattrapés par le décodeur');
     assert.equal(poids.getY(0), 0);
+  });
+
+  test('l\'entrée de cache PORTE la liste des maillages égarés', async () => {
+    // Le témoin place « FourreauEgare » à y = 100 alors que le reste tient dans 0→1,75. C'est la
+    // reproduction minimale du fourreau de worker_j (y 91→131 pour un personnage de 33 unités).
+    //
+    // Ce test garde le CHEMIN, pas le critère (celui-là est dans tests/stray-meshes.test.mjs) :
+    // décoder de vrais octets, relever, ranger dans le cache. Sans lui, une détection parfaitement
+    // juste pourrait n'être appelée par personne — le défaut « annoncé fait, sans effet ».
+    pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
+    await preloadModels(['rig.glb']);
+    assert.deepEqual(getLoadedModel('rig.glb').egares, [MAILLAGES_SQUELETTE.égaré]);
+  });
+
+  test('un modèle sain rend une liste VIDE, pas une absence', async () => {
+    pontAvec({ 'pave.glb': OCTETS });
+    await preloadModels(['pave.glb']);
+    assert.deepEqual(getLoadedModel('pave.glb').egares, []);
+  });
+
+  test('le maillage égaré est bien celui que la MESURE désigne, pas un autre', async () => {
+    // Le témoin du témoin : « Corps » et « Fourreau » se superposent exactement, et ni l'un ni
+    // l'autre ne doit être signalé. Sans cette assertion, une détection qui nommerait tout le monde
+    // passerait le test précédent.
+    pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
+    await preloadModels(['rig.glb']);
+    const { egares } = getLoadedModel('rig.glb');
+    assert.ok(!egares.includes(MAILLAGES_SQUELETTE.pesé));
+    assert.ok(!egares.includes(MAILLAGES_SQUELETTE.orphelin));
   });
 
   test('la fixture articulée est bien celle que le générateur produit AUJOURD\'HUI', () => {
