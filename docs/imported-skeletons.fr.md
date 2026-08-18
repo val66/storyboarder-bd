@@ -169,3 +169,47 @@ Appliquer une pose de la bibliothèque **remplace** les réglages manuels — le
 Personnage, conservé à l'identique volontairement. Le résultat est réécrit en trois angles par
 emplacement, c'est-à-dire exactement `skeletonPose3d` : la pose appliquée apparaît donc dans les
 curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migration.
+
+### 6.4 Un maillage que le fichier place hors du corps
+
+Signalé à l'usage sur `worker_j.glb` : un gros objet noir flotte très au-dessus du personnage dans
+la Case, et paraît « se décrocher » quand on redimensionne l'Élément.
+
+**Ce qui a été mesuré**, directement dans le glTF, avant d'écrire une ligne de code :
+
+| | boîte en monde, sur Y |
+|---|---|
+| corps, cheveux, chapeau, épées, armure | −0,3 → 41,8 |
+| `Sheath_1_Outfit_0` (le fourreau) | **91,4 → 131,4** |
+
+Le personnage mesure 33 unités : le fourreau flotte à trois fois sa hauteur.
+
+**Deux hypothèses ont été réfutées avant celle-ci**, et les écrire évite de les reprendre :
+
+1. *« aucun os ne le pilote »* — faux. Il est pesé à 100 % sur `Sheath_080`, enfant régulier de
+   `Spine_010`. Et cette piste était de toute façon sans issue : GLTFLoader appelle
+   `normalizeSkinWeights()`, qui remplace un vecteur de poids nul par `(1, 0, 0, 0)`. Après
+   décodage, un maillage sans poids est indiscernable d'un maillage attaché au premier os — une
+   détection lisant `skinWeight` ne peut jamais se déclencher (test « MESURE » dans
+   `tests/glb-decoding.test.mjs`).
+2. *« c'est le redimensionnement »* — faux, le symptôme est là sans redimensionner. Rien ne se
+   décroche : le fourreau a toujours été là-haut. L'illusion vient d'un effet de **levier** — la
+   mise à l'échelle est uniforme autour d'un centre calculé sur les os, donc un point trois fois
+   plus loin se déplace trois fois plus à l'écran.
+
+**Le critère retenu n'a pas de seuil** : un maillage est égaré s'il ne recoupe la boîte d'aucun
+autre. Pas de distance maximale, pas de multiple de la hauteur du corps — « ne touche rien » est une
+propriété du fichier, pas un réglage. Vérifié par lecture directe des six fichiers réels :
+
+| fichier | maillages | égarés |
+|---|---|---|
+| `anime_girl1` | 20 | aucun |
+| `anime_girl2` | 15 | aucun |
+| `hulk_-_sm_bnd` | 12 | aucun |
+| `worker_j` | 12 | `Sheath_1_Outfit_0` |
+| `capoera`, `female_pose` | 1 | hors critère |
+
+Ces maillages sont **masqués**, jamais supprimés : la géométrie reste dans le clone, le fichier sur
+le disque n'est pas touché, et la case « Afficher les morceaux détachés » de la fiche les rend. Le
+champ persisté `afficherMaillagesEgares` n'est écrit que lorsqu'il vaut `true` — son absence
+signifie « masqués », qui est le défaut.

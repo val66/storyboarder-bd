@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.39**
+**Version 1.3.40**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -70,6 +70,13 @@
   file. The Element keeps its body pose; the bone angles are recomputed for the new figure, so
   fine-tuning done on the sliders is lost — those angles are expressed in the old figure's own axes
   and mean nothing on another skeleton. Nothing is committed until the dialog is saved.
+
+- **Detached parts**: some files place a mesh far away from the body, touching no other part of the
+  model — measured on one of the test files: a katana sheath sitting at three times the character's
+  height, correctly bound to its bone but with a bind geometry that projects it out of the body. Such
+  meshes are hidden, named in a message on import, and *Show detached parts* in the model's card
+  brings them back. The criterion has no threshold — a mesh is stray when it touches nothing — and
+  the file on disk is never modified.
 
 > **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
 > turn each bone around its own axes (which one bends an elbow depends on the file); and a straight
@@ -186,6 +193,7 @@ storyboarder-bd/
 │   ├── skeleton-retarget.js # The same gesture from one body to another (pure change of basis)
 │   ├── pose-bridge.js  # A Character pose translated into imported-bone angles
 │   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
+│   ├── stray-meshes-3d.js # Meshes a file places away from the body, and which get hidden
 │   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
 │   ├── persona-editor.js # Character editor: full-screen posing mode
 │   ├── help-content.js # Built-in user manual content

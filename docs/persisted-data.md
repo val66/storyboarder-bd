@@ -34,7 +34,7 @@ deliberate, and `normalizePoses3D` (`io.js`) reads the field with the same toler
 or malformed yields an empty list, never an error.
 
 **Elements** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
-`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`.
+`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`, `afficherMaillagesEgares`.
 
 **World coordinates** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 

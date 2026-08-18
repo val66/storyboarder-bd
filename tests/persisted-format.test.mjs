@@ -52,7 +52,7 @@ const DOC = readFileSync(join(RACINE, 'docs', 'persisted-data.md'), 'utf8');
 const CHAMPS = {
   'niveau Projet': ['projectName', 'tomes', 'scenes', 'currentTomeIndex', 'currentPageIndex', 'poses'],
   'Éléments': ['pieceId', 'pieceLabel', 'altPieceId', 'pieceFloorType', 'objType', 'caseNumber',
-    'batimentNames', 'batimentRotY', 'wallSide', 'modelFile'],
+    'batimentNames', 'batimentRotY', 'wallSide', 'modelFile', 'afficherMaillagesEgares'],
   'coordonnées monde': ['wxFloor', 'wyFloor', 'wzFloor', 'realHeightFloor', 'realLenFloor'],
   'ouvertures sur support': ['wallYFrac', 'wallAlongFrac', 'magnetWallId', 'wallHeight'],
   'caméra de Case': ['camWx', 'camWy', 'camWz', 'camDist', 'camRotX', 'camRotY'],
@@ -102,7 +102,7 @@ describe('Format de fichier — le vocabulaire est figé', () => {
     // possible, déjà constaté deux fois dans ce dépôt.
     assert.ok(SOURCES.length > 100000, `sources trop courtes : ${SOURCES.length} caractères`);
     assert.ok(DOC.length > 2000, 'docs/persisted-data.md semble vide');
-    assert.equal(Object.values(CHAMPS).flat().length, 31);
+    assert.equal(Object.values(CHAMPS).flat().length, 32);
   });
 });
 
@@ -141,6 +141,9 @@ function projetComplet() {
     id: 'e7', type: 'objet3d', objType: 'modele', modelFile: 'salon.glb',
     x: 30, y: 30, w: 40, h: 40, homePanelId: 'c1',
     wxFloor: 2, wyFloor: 0, wzFloor: 1, realHeightFloor: 1.2, magnetGround: true,
+    // Le choix d'afficher les morceaux que le FICHIER place hors du corps (cf.
+    // src/stray-meshes-3d.js). Absent = masqués, qui est le défaut ; seul `true` est écrit.
+    afficherMaillagesEgares: true,
   };
   const bulle = { id: 'e5', type: 'bulle', x: 1, y: 2, w: 50, h: 30, text: 'Bonjour' };
   const terrain = { id: 'e6', type: 'terrain', x: 0, y: 0, w: 20, h: 20, terrainType: 'herbe' };
@@ -209,6 +212,7 @@ describe('Format de fichier — l\'aller-retour ne perd rien', () => {
     assert.equal(el('e2').wallSide, 'avant');
     assert.equal(el('e3').wallAlongFrac, 0.6);
     assert.equal(el('e3').doorState, 'gauche');
+    assert.equal(el('e7').afficherMaillagesEgares, true, 'le choix d\'affichage des morceaux détachés');
     assert.equal(el('e4').tracéType, 'muret');
     assert.deepEqual(el('c1').batimentNames, { p1: 'Maison' });
     assert.equal(el('c1').caseNumber, 1);

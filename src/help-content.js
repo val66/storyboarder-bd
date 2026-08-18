@@ -98,10 +98,14 @@ export const HELP_MANUAL_EN = [
     'Left-click a model to reach where it is used: straight there if there is only one place, otherwise a dialog lists them by Scene or Panel.',
     'Right-click a model → "Delete from disk". The file name cannot be renamed — it identifies the model in every project. Rename the Element instead.',
     'Above 10 m tall, the application offers to resize the model on import: it is nearly always a scale problem in the file.',
+  ]},
+  { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton gains a "Joint settings" section: three sliders per recognised joint — except the hips, which are the skeleton\'s root: turning them rotates the whole figure, which Orientation already does.',
     'Click a joint point on the preview to unfold its sliders, and the other way round. Which bone each slider drives comes from "Mapping table", below; axes are the bone\'s own, so which one bends an elbow depends on the file.',
     'The pose library applies here too, from "Pose" in "Main characteristics", or from the pencil on the preview, which opens the Character editor. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable.',
     'The "Model" field makes this Element wear another imported file: the pose is kept and recomputed, the slider tweaks are lost.',
+    'Some files place a mesh far away from the body, touching no other part — a prop that would float across your Panel. Those are hidden on import, and named in the message that tells you so.',
+    '"Show detached parts", in the model\'s card, brings them back. Your file is never modified: the fix belongs in the 3D software it came from.',
   ]},
   { id: 'projet', title: 'Project', paragraphs: [
     'A Project groups together all Volumes, Pages and Panels. Its name is shown at the top of the left-hand menu ("Project" by default); click it to open the Project dialog.',
@@ -200,10 +204,14 @@ export const HELP_MANUAL_FR = [
     'Clic gauche sur un modèle pour aller là où il est utilisé : directement s\'il n\'y a qu\'un endroit, sinon une fenêtre les liste par Scène ou par Case.',
     'Clic droit sur un modèle → « Supprimer du disque ». Le nom de fichier ne se renomme pas : il identifie le modèle dans tous les Projets. Renommez plutôt l\'Élément.',
     'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import.',
+  ]},
+  { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par articulation reconnue. Le bassin n\'en a pas — pour tourner la figure entière, servez-vous de l\'Orientation.',
     'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. L\'os piloté vient de « Tableau de correspondance », plus bas ; les axes sont les siens.',
     'La bibliothèque de poses s\'y applique aussi, depuis « Position » dans « Caractéristiques principales », ou par le crayon de l\'aperçu, qui ouvre l\'Éditeur de Personnage. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables.',
     'Le champ « Modèle » fait porter un autre fichier à cet Élément : la pose est conservée et recalculée, les retouches des curseurs sont perdues.',
+    'Certains fichiers placent un maillage loin du corps, sans contact avec le reste — un accessoire qui flotterait au travers de votre Case. Ceux-là sont masqués à l\'import, et nommés dans le message qui vous en avertit.',
+    '« Afficher les morceaux détachés », dans la fiche du modèle, les rend. Votre fichier n\'est jamais modifié : la correction se fait dans le logiciel 3D d\'origine.',
   ]},
   { id: 'projet', title: 'Projet', paragraphs: [
     'Un Projet regroupe tous les Tomes, Planches et Cases. Son nom s\'affiche en haut du menu de gauche (« Projet » par défaut) ; cliquez dessus pour ouvrir la modale Projet.',

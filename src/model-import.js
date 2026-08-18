@@ -75,6 +75,33 @@ export function nomLisible(nomFichier){
   return String(nomFichier || '').replace(/\.(glb|gltf)$/i, '').trim() || 'Modèle';
 }
 
+// Combien de noms on cite avant d'abréger. Au-delà, la liste cesse d'informer et devient un mur de
+// texte ; trois suffisent à reconnaître de quoi il s'agit.
+const MAX_MAILLAGES_CITÉS = 3;
+
+/**
+ * Le texte de l'avertissement « morceaux détachés », ou `null` s'il n'y a rien à dire.
+ *
+ * SÉPARÉ DE LA CHAÎNE D'IMPORT à dessein : la détection est dans src/stray-meshes-3d.js, l'affichage
+ * dans l'interface, et cette fonction — la seule qui décide QUOI dire et QUAND se taire — se teste
+ * sans pont Electron, sans décodage et sans DOM.
+ *
+ * CE QU'ON DIT. Qu'ils existent, lesquels, qu'ils sont masqués, et où les revoir. Un masquage
+ * silencieux serait indéfendable : on retirerait un morceau du modèle de quelqu'un sans le dire.
+ * On dit aussi que le fichier n'est pas modifié — c'est la première inquiétude légitime.
+ */
+export function messageMaillagesEgares(noms){
+  const liste = (noms || []).filter(Boolean);
+  if (!liste.length) return null;
+  const cités = liste.slice(0, MAX_MAILLAGES_CITÉS).join(', ');
+  const reste = liste.length - MAX_MAILLAGES_CITÉS;
+  const suite = reste > 0 ? tr(` and ${reste} more`, ` et ${reste} autre${reste > 1 ? 's' : ''}`) : '';
+  return tr(
+    `This file places ${liste.length} mesh(es) far away from the body, touching no other part of the model: ${cités}${suite}. They are hidden so they don't float across your Panel. Your file is not modified — tick "Show detached parts" in the model's card to see them again.`,
+    `Ce fichier place ${liste.length} maillage(s) loin du corps, sans contact avec le reste du modèle : ${cités}${suite}. Ils sont masqués pour ne pas flotter au travers de votre Case. Votre fichier n'est pas modifié — cochez « Afficher les morceaux détachés » dans la fiche du modèle pour les revoir.`,
+  );
+}
+
 /**
  * Choisit un fichier, le range, le décode, et rend de quoi créer un Élément.
  *
@@ -90,6 +117,10 @@ export function nomLisible(nomFichier){
  * ne peut pas rattraper une erreur d'échelle de cet ordre. Un refus garde la hauteur du fichier,
  * inchangée — la RÉGRESSION testée plus bas (« la hauteur vient du fichier ») reste vraie par
  * défaut ; ce n'est qu'un choix explicite de l'utilisateur qui la remplace.
+ *
+ * On signale enfin les MORCEAUX DÉTACHÉS que le fichier place hors du corps (cf.
+ * messageMaillagesEgares) : ils sont masqués à l'affichage, le fichier n'est pas touché, et la fiche
+ * du modèle permet de revenir dessus.
  */
 export async function choisirEtPreparerModele(){
   const rangé = await importModel();
@@ -107,6 +138,13 @@ export async function choisirEtPreparerModele(){
       `Ce modèle mesure ${hauteurM.toFixed(1)} m une fois décodé — presque sûrement un souci d'échelle dans le fichier, pas un objet volontairement gigantesque. Le redimensionner maintenant à une taille standard (${OBJECT_REAL_HEIGHT_M.modele} m) ? Vous pourrez l'ajuster ensuite depuis sa fiche.`,
     ), tr('Unusual model size', 'Taille de modèle inhabituelle'));
     if (redimensionner) { hauteurM = OBJECT_REAL_HEIGHT_M.modele; redimensionné = true; }
+  }
+  const avertissement = messageMaillagesEgares(chargé && chargé.egares);
+  // ATTENDU, alors que les autres appels à _alerter ne le sont pas : l'écran de correspondance du
+  // squelette s'ouvre juste après (cf. _confirmerImport), et deux boîtes qui se disputent la même
+  // modale font disparaître la première sans qu'elle ait été lue (cf. preemptConfirmAction, io.js).
+  if (avertissement) {
+    await _alerter(avertissement, tr('Detached parts hidden', 'Morceaux détachés masqués'));
   }
   return {
     ok: true,

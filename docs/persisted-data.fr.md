@@ -35,7 +35,7 @@ machine qui ne l'a pas, ne change l'allure d'aucun Personnage — seule l'étiqu
 absent, nul ou malformé donne une liste vide, jamais une erreur.
 
 **Éléments** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
-`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`.
+`batimentNames`, `batimentRotY`, `wallSide`, `modelFile`, `afficherMaillagesEgares`.
 
 **Coordonnées monde** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 

@@ -93,6 +93,40 @@ export function boitesDesMaillages3D(racine){
 }
 
 /**
+ * Retrouver, DANS UN CLONE, les maillages désignés par leurs noms.
+ *
+ * POURQUOI PAR LE NOM. La détection tourne une fois, au décodage, sur la scène du cache ; le
+ * masquage s'applique sur un clone construit bien plus tard. Le nom est le seul lien stable entre
+ * les deux — `cloneSkinned` le conserve, contrairement aux `uuid`, qui sont refaits à chaque clone.
+ *
+ * DEUX MAILLAGES DE MÊME NOM seraient masqués ensemble. C'est assumé : un fichier qui nomme deux
+ * fois la même chose ne permet pas de les distinguer, et le cas ne s'est présenté sur aucun des six
+ * fichiers réels du dépôt.
+ */
+export function maillagesParNom3D(racine, noms){
+  const cherchés = new Set(noms || []);
+  const trouvés = [];
+  if (!racine || !racine.traverse || !cherchés.size) return trouvés;
+  racine.traverse(n => {
+    if (n && n.isMesh && cherchés.has(n.name || '(sans nom)')) trouvés.push(n);
+  });
+  return trouvés;
+}
+
+/**
+ * Montrer ou masquer les maillages égarés d'un rig.
+ *
+ * MASQUÉ PAR DÉFAUT, ET JAMAIS SUPPRIMÉ : la géométrie reste dans le clone, le fichier de
+ * l'utilisateur n'est pas touché, et décocher la case de la fiche suffit à tout revoir.
+ *
+ * Une ligne, mais EXPORTÉE et testée : une campagne de mutation a montré qu'inverser la condition
+ * ne faisait rougir aucun test tant qu'elle vivait au milieu de rig3d.js, hors de portée des tests.
+ */
+export function appliquerVisibiliteEgares3D(maillages, afficher){
+  (maillages || []).forEach(m => { if (m) m.visible = !!afficher; });
+}
+
+/**
  * Les noms des maillages égarés — ceux qui ne touchent aucun autre. Tableau vide si le modèle est
  * sain, s'il n'a qu'un maillage, ou si la scène est absente.
  *

@@ -21,7 +21,7 @@
 
 import { S, currentPage, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
-import { modelState } from './model-cache.js';
+import { modelState, getLoadedModel } from './model-cache.js';
 import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
   OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
@@ -705,6 +705,63 @@ export function buildSkeletonPoseFieldUI(obj){
   };
 }
 
+/**
+ * La case « Afficher les morceaux détachés » de la fiche d'un modèle importé.
+ *
+ * QUAND ELLE APPARAÎT : seulement si le fichier place effectivement un ou plusieurs maillages hors
+ * du corps (cf. src/stray-meshes-3d.js pour la mesure et le critère). Une case toujours présente
+ * ferait croire à un réglage disponible pour tous les modèles, alors qu'elle ne concerne qu'un
+ * fichier mal fabriqué — c'est la même règle que pour le sélecteur de pose juste au-dessus.
+ *
+ * ELLE NOMME CE QUI EST MASQUÉ. Masquer un morceau du modèle de quelqu'un sans dire lequel serait
+ * indéfendable ; l'utilisateur doit pouvoir reconnaître la pièce et, s'il le veut, la corriger dans
+ * son logiciel 3D — ou simplement cocher pour la revoir.
+ *
+ * L'EFFET EST IMMÉDIAT DANS L'APERÇU, mais reste un BROUILLON : « Annuler » annule, comme partout
+ * ailleurs dans ce dépôt.
+ */
+export function buildStrayMeshFieldUI(obj){
+  const champ = document.getElementById('objectStrayMeshField');
+  const check = document.getElementById('objectStrayMeshCheck');
+  const hint = document.getElementById('objectStrayMeshHint');
+  if (!champ || !check) return;
+  const chargé = isImportedModel(obj) ? getLoadedModel(obj.modelFile) : null;
+  const egares = (chargé && chargé.egares) || [];
+  champ.style.display = egares.length ? '' : 'none';
+  if (!egares.length) return;
+
+  const etiquette = document.getElementById('objectStrayMeshLabel');
+  if (etiquette) etiquette.textContent = tr('Show detached parts', 'Afficher les morceaux détachés');
+  if (hint) {
+    hint.textContent = tr(
+      `The file places ${egares.length} mesh(es) far away from the body: ${egares.join(', ')}. Hidden by default; the file itself is never modified.`,
+      `Le fichier place ${egares.length} maillage(s) loin du corps : ${egares.join(', ')}. Masqués par défaut ; le fichier n'est jamais modifié.`,
+    );
+  }
+  check.checked = !!S.modalDraftAfficherEgares;
+  check.onchange = () => {
+    S.modalDraftAfficherEgares = check.checked;
+    refreshObjectPreview();
+  };
+}
+
+/**
+ * Écrire dans l'Élément le choix d'affichage des morceaux détachés, à l'enregistrement de la fiche.
+ *
+ * SEUL `true` EST ÉCRIT ; `false` efface le champ. L'absence signifie « masqués », qui est le
+ * comportement par défaut : on évite ainsi d'alourdir tous les Projets d'un booléen faux, et un
+ * fichier de Projet ne grossit que de ce que l'utilisateur a réellement choisi.
+ *
+ * UNE FONCTION POUR TROIS LIGNES, et c'est délibéré : une campagne de mutation a montré que, tant
+ * qu'elles vivaient au milieu du gestionnaire `onclick` d'events.js, les neutraliser ne faisait
+ * rougir aucun test. Ce qui n'est atteignable par aucun test n'est pas vérifié.
+ */
+export function ecrireChoixEgares(cible, afficher){
+  if (!cible) return;
+  if (afficher) cible.afficherMaillagesEgares = true;
+  else delete cible.afficherMaillagesEgares;
+}
+
 export function openObjectModal(obj, isNew){
   S.modalTarget = obj;
   S.modalDirty = false;
@@ -883,8 +940,12 @@ export function openObjectModal(obj, isNew){
   // fois, et c'est bien la même chose qu'il désigne : la pose de corps en cours d'édition.
   S.modalDraftJoints = cloneJoints(getEffectiveJoints(obj));
   S.modalDraftModelFile = isImportedModel(obj) ? obj.modelFile : null;
+  // Brouillon comme tout le reste : la case agit sur l'aperçu, l'Élément n'est touché qu'à
+  // l'enregistrement.
+  S.modalDraftAfficherEgares = !!obj.afficherMaillagesEgares;
   buildSkeletonJointSlidersUI(obj);
   buildSkeletonPoseFieldUI(obj);
+  buildStrayMeshFieldUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Aperçu 3D']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
@@ -929,6 +990,8 @@ export function refreshObjectPreview(){
     // La pose du brouillon, pas celle de l'Élément : c'est ce qui fait bouger l'aperçu pendant
     // qu'on tire un curseur, avant tout enregistrement.
     skeletonPose3d: _estModele ? S.modalDraftSkeletonPose : null,
+    // Idem : la case du brouillon, pas celle de l'Élément — cocher doit se voir immédiatement.
+    afficherMaillagesEgares: _estModele ? !!S.modalDraftAfficherEgares : undefined,
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
   if (ANIMAL_TYPES.includes(objectTypeSelect.value)) drawAnimalJointHandlesOverlay();

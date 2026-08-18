@@ -107,7 +107,7 @@ import {
   pickSkeletonHandleAt, openSkeletonJointGroupForHandle, closeAllSkeletonJointSliders,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
-  recomputeBuildWallBox2D, storeRoomGeometry,
+  recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
 } from './modals.js';
 setModalsCallbacks({ snapshot });
 // Collapses/expands a section of the Persona/Object modal (cf. .modal-section, per user
@@ -4962,6 +4962,12 @@ objectModalSave.onclick = () => {
       S.modalTarget.joints3d = cloneJoints(S.modalDraftJoints);
       const pose = normaliserPose(S.modalDraftSkeletonPose);
       S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
+      // Le choix d'AFFICHAGE des maillages que le fichier place hors du corps (cf.
+      // src/stray-meshes-3d.js). Champ simplement AJOUTÉ à un modèle importé — aucun champ existant
+      // n'est renommé (cf. docs/persisted-data.md). Écrit seulement quand il vaut `true` : l'absence
+      // du champ signifie « masqués », ce qui est le comportement par défaut, et évite d'alourdir
+      // tous les Projets d'un booléen faux.
+      ecrireChoixEgares(S.modalTarget, S.modalDraftAfficherEgares);
       // `position` sur un modèle importé : LA MÉMOIRE D'UN CHOIX, pas la source de vérité.
       //
       // Ce qui est rendu à l'écran, ce sont les os — `skeletonPose3d`, et lui seul. Ce champ ne sert

@@ -24,7 +24,7 @@ import assert from 'node:assert/strict';
 
 import {
   nomLisible, choisirEtPreparerModele, importModelIntoPanel, importSceneFromModel,
-  setModelImportCallbacks,
+  setModelImportCallbacks, messageMaillagesEgares,
 } from '../src/model-import.js';
 import { setModelBridge } from '../src/model-store.js';
 import { clearModelCache, _setModelCacheEntry } from '../src/model-cache.js';
@@ -177,6 +177,98 @@ describe('choisirEtPreparerModele — hauteur mesurée > MODEL_HEIGHT_WARN_MAX_M
     _setModelCacheEntry('geant.glb', { scene: { traverse(){} }, hauteurM: 175 });
     const r = await choisirEtPreparerModele();
     assert.equal(r.hauteurM, 175, 'un défaut non câblé a redimensionné sans demander');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2 ter. Les morceaux que le fichier place hors du corps
+//
+// Mesuré sur worker_j.glb : le fourreau du katana occupe y 91→131 quand le personnage entier tient
+// dans y −0,3→41,8. Le CRITÈRE est testé dans tests/stray-meshes.test.mjs ; ce qui se joue ici est
+// la DÉCISION D'EN PARLER — et surtout celle de se taire.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('messageMaillagesEgares', () => {
+  test('se tait quand rien n\'est égaré', () => {
+    assert.equal(messageMaillagesEgares([]), null);
+    assert.equal(messageMaillagesEgares(undefined), null);
+    assert.equal(messageMaillagesEgares(null), null);
+  });
+
+  test('nomme le maillage et dit qu\'il est masqué', () => {
+    const m = messageMaillagesEgares(['Sheath_1_Outfit_0']);
+    assert.ok(m.includes('Sheath_1_Outfit_0'), `le nom du maillage manque : ${m}`);
+    assert.ok(/hidden|masqu/i.test(m), `le message ne dit pas qu'ils sont masqués : ${m}`);
+  });
+
+  test('promet que le FICHIER n\'est pas modifié, et dit où revenir dessus — DANS LES DEUX LANGUES', () => {
+    // Les deux inquiétudes légitimes de quelqu'un à qui on annonce qu'on lui cache un morceau de
+    // son modèle. Sans ces deux phrases, l'avertissement inquiète plus qu'il n'informe.
+    //
+    // CHAQUE LANGUE EST VÉRIFIÉE SÉPARÉMENT, et c'est le fond du test : une première version
+    // écrite en alternance (`/not modified|pas modifié/`) était satisfaite par la branche anglaise
+    // seule. La campagne de mutation l'a montré — vider la phrase française ne la faisait pas
+    // rougir. Deux textes, deux assertions.
+    const langue = S.appLang;
+    try {
+      S.appLang = 'en';
+      const en = messageMaillagesEgares(['fourreau']);
+      assert.match(en, /not modified/, `EN : rien ne rassure sur le fichier — ${en}`);
+      assert.match(en, /Show detached parts/, `EN : on ne dit pas comment les revoir — ${en}`);
+      S.appLang = 'fr';
+      const fr = messageMaillagesEgares(['fourreau']);
+      assert.match(fr, /pas modifié/, `FR : rien ne rassure sur le fichier — ${fr}`);
+      assert.match(fr, /Afficher les morceaux détachés/, `FR : on ne dit pas comment les revoir — ${fr}`);
+    } finally { S.appLang = langue; }
+  });
+
+  test('abrège au-delà de trois noms, sans mentir sur le total', () => {
+    // Noms qu'aucune phrase de l'avertissement ne peut contenir par accident.
+    const m = messageMaillagesEgares(['Zx1', 'Zx2', 'Zx3', 'Zx4', 'Zx5']);
+    assert.ok(m.includes('Zx1, Zx2, Zx3'), `les trois premiers manquent : ${m}`);
+    assert.ok(!m.includes('Zx4'), `la liste n'a pas été abrégée : ${m}`);
+    assert.ok(m.includes('5'), `le total réel manque : ${m}`);
+  });
+
+  test('un seul nom en trop se dit au singulier — EN FRANÇAIS', () => {
+    // La langue est forcée, et c'est le fond du test : l'anglais dit « 1 more » comme « 2 more »,
+    // donc un pluriel systématique y passerait inaperçu.
+    const langue = S.appLang;
+    try {
+      S.appLang = 'fr';
+      assert.ok(/1 autre[^s]/.test(messageMaillagesEgares(['a', 'b', 'c', 'd'])),
+        'un seul nom en trop est annoncé au pluriel');
+      assert.ok(/2 autres/.test(messageMaillagesEgares(['a', 'b', 'c', 'd', 'e'])),
+        'deux noms en trop sont annoncés au singulier');
+    } finally { S.appLang = langue; }
+  });
+});
+
+describe('choisirEtPreparerModele — avertissement sur les morceaux détachés', () => {
+  test('prévient, et n\'empêche pas l\'import', async () => {
+    pontQuiChoisit('worker.glb');
+    _setModelCacheEntry('worker.glb', {
+      scene: { traverse(){} }, hauteurM: 1.8, egares: ['Sheath_1_Outfit_0'],
+    });
+    const r = await choisirEtPreparerModele();
+    assert.equal(r.ok, true, 'un morceau détaché ne doit pas faire échouer l\'import');
+    assert.equal(r.hauteurM, 1.8, 'la hauteur ne doit pas bouger');
+    assert.equal(alertes.length, 1, `avertissements : ${JSON.stringify(alertes)}`);
+    assert.ok(String(alertes[0]).includes('Sheath_1_Outfit_0'));
+  });
+
+  test('ne dit rien quand le fichier est sain', async () => {
+    pontQuiChoisit('table.glb');
+    _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74, egares: [] });
+    await choisirEtPreparerModele();
+    assert.deepEqual(alertes, []);
+  });
+
+  test('ne dit rien quand le décodage a échoué (rien à mesurer)', async () => {
+    pontQuiChoisit('casse.glb');
+    _setModelCacheEntry('casse.glb', 'introuvable');
+    await choisirEtPreparerModele();
+    assert.deepEqual(alertes, [], 'un fichier illisible a déclenché un avertissement de maillages');
   });
 });
 

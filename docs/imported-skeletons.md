@@ -166,3 +166,46 @@ Applying a library pose **replaces** manual slider settings — the Character's 
 identical on purpose. The result is written back as three angles per slot, i.e. exactly
 `skeletonPose3d`: the applied pose then shows up in the sliders, stays adjustable, and adds no
 persisted field, hence no migration.
+
+### 6.4 A mesh the file places outside the body
+
+Reported in use on `worker_j.glb`: a large black object floats far above the character in the Panel,
+and appears to "come loose" when the Element is resized.
+
+**What was measured**, straight from the glTF, before writing a line of code:
+
+| | world box, on Y |
+|---|---|
+| body, hair, hat, swords, armour | −0.3 → 41.8 |
+| `Sheath_1_Outfit_0` (the sheath) | **91.4 → 131.4** |
+
+The character is 33 units tall: the sheath floats at three times its height.
+
+**Two hypotheses were refuted before this one**, and writing them down avoids revisiting them:
+
+1. *"no bone drives it"* — false. It is 100 % weighted to `Sheath_080`, a regular child of
+   `Spine_010`. And that lead was a dead end anyway: GLTFLoader calls `normalizeSkinWeights()`,
+   which replaces a zero weight vector with `(1, 0, 0, 0)`. After decoding, an unweighted mesh is
+   indistinguishable from one bound to the first bone — a detection reading `skinWeight` can never
+   fire (the "MESURE" test in `tests/glb-decoding.test.mjs`).
+2. *"it's the resize"* — false, the symptom shows without resizing. Nothing comes loose: the sheath
+   was always up there. The illusion comes from a **lever** effect — scaling is uniform about a
+   centre computed on the bones, so a point three times further away moves three times as much
+   on screen.
+
+**The criterion has no threshold**: a mesh is stray when it intersects no other mesh's box. No
+maximum distance, no multiple of the body height — "touches nothing" is a property of the file, not
+a setting. Verified by reading all six real files directly:
+
+| file | meshes | stray |
+|---|---|---|
+| `anime_girl1` | 20 | none |
+| `anime_girl2` | 15 | none |
+| `hulk_-_sm_bnd` | 12 | none |
+| `worker_j` | 12 | `Sheath_1_Outfit_0` |
+| `capoera`, `female_pose` | 1 | criterion does not apply |
+
+Those meshes are **hidden**, never removed: the geometry stays in the clone, the file on disk is
+untouched, and the "Show detached parts" checkbox in the model's card brings them back. The
+persisted field `afficherMaillagesEgares` is only written when `true` — its absence means "hidden",
+which is the default.

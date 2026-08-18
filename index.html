@@ -402,6 +402,12 @@
         <details class="help-group" data-help="modeles">
           <summary class="help-group-title">Modèles 3D importés</summary>
         </details>
+        <!-- Scindée de la précédente : un modèle ARTICULÉ a sa propre poignée de gestes (curseurs
+             d'articulations, poses, morceaux détachés) qui n'a rien à voir avec l'import lui-même.
+             La section unique atteignait le plafond du garde-fou de longueur (cf. tests/i18n). -->
+        <details class="help-group" data-help="modeles_articules">
+          <summary class="help-group-title">Modèles articulés</summary>
+        </details>
         <details class="help-group" data-help="projet">
           <summary class="help-group-title">Projet</summary>
         </details>
@@ -933,6 +939,17 @@
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
           <select id="objectPositionSelect"></select>
+        </div>
+        <!-- Modèle importé dont le FICHIER place un ou plusieurs maillages hors du corps (mesuré :
+             cf. src/stray-meshes-3d.js). Ils sont masqués par défaut ; cette case les rend. Le champ
+             n'apparaît que s'il y a effectivement quelque chose à montrer — une case toujours
+             présente et sans effet ferait croire à un réglage. -->
+        <div id="objectStrayMeshField" style="display:none">
+          <label class="modal-checkbox-line">
+            <input type="checkbox" id="objectStrayMeshCheck">
+            <span id="objectStrayMeshLabel">Afficher les morceaux détachés</span>
+          </label>
+          <div id="objectStrayMeshHint" class="modal-field-hint"></div>
         </div>
         <label class="modal-field-label" id="objectTypeLabel">Type</label>
         <select id="objectTypeSelect">

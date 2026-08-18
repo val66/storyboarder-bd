@@ -28,7 +28,7 @@ import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import { correspondancePourModele, figuresPosables, poseOsPourModeleImporte } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
-  skeletonJointRowsById,
+  skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
 import {
@@ -635,5 +635,87 @@ describe('remplirSelecteurDePose — une seule liste de poses dans l\'applicatio
     remplirSelecteurDePose(modeleSel, { position: 'p_debout' });
     assert.equal(persoSel.children.length, 2, 'l\'option de repli est restée dans l\'autre liste');
     assert.equal(modeleSel.children.length, 2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La case « Afficher les morceaux détachés »
+//
+// Le fichier de worker_j place le fourreau du katana à trois fois la hauteur du personnage
+// (cf. src/stray-meshes-3d.js). On le masque, et on doit pouvoir revenir dessus.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('La case « Afficher les morceaux détachés »', () => {
+  const champ = () => document.getElementById('objectStrayMeshField');
+  const check = () => document.getElementById('objectStrayMeshCheck');
+
+  test('elle n\'apparaît QUE si le fichier a effectivement des morceaux égarés', () => {
+    // Une case toujours présente ferait croire à un réglage disponible pour tous les modèles, alors
+    // qu'elle ne concerne qu'un fichier mal fabriqué.
+    _setModelCacheEntry('sain.glb', { scene: { traverse(){} }, hauteurM: 1.7, egares: [] });
+    buildStrayMeshFieldUI({ type: 'objet3d', objType: 'modele', modelFile: 'sain.glb' });
+    assert.equal(champ().style.display, 'none', 'un modèle sain n\'a rien à montrer');
+
+    buildStrayMeshFieldUI({ type: 'objet3d', objType: 'chaise' });
+    assert.equal(champ().style.display, 'none', 'une chaise intégrée non plus');
+
+    _setModelCacheEntry('casse.glb', { scene: { traverse(){} }, hauteurM: 1.7, egares: ['fourreau'] });
+    buildStrayMeshFieldUI({ type: 'objet3d', objType: 'modele', modelFile: 'casse.glb' });
+    assert.equal(champ().style.display, '', 'un modèle aux morceaux égarés, si');
+  });
+
+  test('elle NOMME ce qui est masqué', () => {
+    // Masquer un morceau du modèle de quelqu'un sans dire lequel serait indéfendable.
+    _setModelCacheEntry('casse.glb', {
+      scene: { traverse(){} }, hauteurM: 1.7, egares: ['Sheath_1_Outfit_0'],
+    });
+    buildStrayMeshFieldUI({ type: 'objet3d', objType: 'modele', modelFile: 'casse.glb' });
+    const aide = document.getElementById('objectStrayMeshHint').textContent;
+    assert.ok(aide.includes('Sheath_1_Outfit_0'), `le nom du maillage manque : ${aide}`);
+  });
+
+  test('elle s\'ouvre sur l\'état de l\'Élément, pas sur un défaut', () => {
+    // Rouvrir la fiche d'un Élément dont on avait coché la case doit la retrouver cochée.
+    _setModelCacheEntry('casse.glb', { scene: { traverse(){} }, hauteurM: 1.7, egares: ['fourreau'] });
+    const obj = { type: 'objet3d', objType: 'modele', modelFile: 'casse.glb', afficherMaillagesEgares: true };
+    S.modalDraftAfficherEgares = !!obj.afficherMaillagesEgares;
+    buildStrayMeshFieldUI(obj);
+    assert.equal(check().checked, true, 'la case ne reflète pas l\'Élément');
+
+    S.modalDraftAfficherEgares = false;
+    buildStrayMeshFieldUI({ type: 'objet3d', objType: 'modele', modelFile: 'casse.glb' });
+    assert.equal(check().checked, false, 'masqué est le défaut');
+  });
+
+  test('cocher écrit le BROUILLON, pas l\'Élément', () => {
+    // La règle de toutes les modales de ce dépôt : « Annuler » doit vraiment annuler.
+    _setModelCacheEntry('casse.glb', { scene: { traverse(){} }, hauteurM: 1.7, egares: ['fourreau'] });
+    const obj = { type: 'objet3d', objType: 'modele', modelFile: 'casse.glb' };
+    S.modalDraftAfficherEgares = false;
+    buildStrayMeshFieldUI(obj);
+    check().checked = true;
+    check().onchange();
+    assert.equal(S.modalDraftAfficherEgares, true, 'le brouillon n\'a pas suivi la case');
+    assert.equal(obj.afficherMaillagesEgares, undefined, 'l\'Élément a été touché avant enregistrement');
+  });
+});
+
+describe('ecrireChoixEgares — ce que l\'enregistrement pose dans l\'Élément', () => {
+  test('coché écrit `true`', () => {
+    const o = { objType: 'modele' };
+    ecrireChoixEgares(o, true);
+    assert.equal(o.afficherMaillagesEgares, true);
+  });
+
+  test('décoché EFFACE le champ, il ne le met pas à `false`', () => {
+    // L'absence signifie « masqués », qui est le défaut. Écrire `false` alourdirait tous les
+    // Projets d'une information qui ne dit rien de plus que le silence.
+    const o = { objType: 'modele', afficherMaillagesEgares: true };
+    ecrireChoixEgares(o, false);
+    assert.ok(!('afficherMaillagesEgares' in o), 'le champ aurait dû disparaître');
+  });
+
+  test('une cible absente ne lève pas', () => {
+    assert.doesNotThrow(() => ecrireChoixEgares(null, true));
   });
 });

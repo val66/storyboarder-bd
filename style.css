@@ -975,6 +975,23 @@ canvas{
   font-size: 12px; opacity: .85; word-break: break-all;
 }
 
+/* Une case à cocher et son libellé, sur une seule ligne cliquable (le <label> englobe les deux, donc
+   le texte coche aussi). Même marge basse de 14 px que `.modal-box select` et `.modal-readonly-value`
+   — cf. le commentaire ci-dessus : dans une fiche, l'écart au-dessus d'un libellé vient de la marge
+   basse du champ qui le précède. */
+.modal-checkbox-line {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 6px; cursor: pointer; font-size: 13px;
+}
+.modal-checkbox-line input[type=checkbox] { margin: 0; cursor: pointer; }
+
+/* Phrase d'explication sous un champ. Discrète : elle éclaire une case dont l'effet n'est pas
+   devinable, elle ne doit pas peser autant que le réglage lui-même. */
+.modal-field-hint {
+  margin-bottom: 14px;
+  font-size: 11px; opacity: .7; line-height: 1.4;
+}
+
 /* Titre de groupe dans une liste du menu de gauche (bibliothèque de modèles : « Utilisés par des
    Scènes », « Non utilisés »…). Discret : ce sont des repères de lecture, pas des sections.
 

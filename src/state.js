@@ -156,6 +156,9 @@ export const S = {
   // La FIGURE choisie dans la fiche, avant enregistrement. Comme tous les brouillons de modale :
   // « Annuler » doit vraiment annuler, y compris un changement de figure.
   modalDraftModelFile:        null,
+  // La case « Afficher les morceaux détachés », en brouillon. Concerne les maillages que le FICHIER
+  // place hors du corps (cf. src/stray-meshes-3d.js) ; masqués par défaut, d'où `false`.
+  modalDraftAfficherEgares:   false,
   // Quelle FIGURE l'Éditeur de Personnage affiche : `null` = le Personnage intégré, sinon le nom de
   // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
   // l'Élément qu'« Appliquer » alimente. Jamais persisté — un choix de vue, pas une propriété.

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.39**
+**Version 1.3.40**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -73,6 +73,13 @@
   nouvelle figure, si bien que les réglages fins faits aux curseurs sont perdus — ces angles sont
   exprimés dans les axes de l'ancienne figure et ne veulent rien dire sur un autre squelette. Rien
   n'est acquis tant que la fiche n'est pas enregistrée.
+
+- **Morceaux détachés** : certains fichiers placent un maillage loin du corps, sans contact avec
+  aucune autre partie du modèle — mesuré sur l'un des fichiers d'essai : un fourreau de katana à
+  trois fois la hauteur du personnage, correctement lié à son os mais dont la géométrie de liaison le
+  projette hors du corps. Ces maillages sont masqués, nommés dans un message à l'import, et
+  *Afficher les morceaux détachés*, dans la fiche du modèle, les rend. Le critère n'a pas de seuil —
+  un maillage est égaré quand il ne touche rien — et le fichier sur le disque n'est jamais modifié.
 
 > **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
 > Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend
@@ -194,6 +201,7 @@ storyboarder-bd/
 │   ├── skeleton-retarget.js # Le même geste d'un corps à l'autre (changement de repère pur)
 │   ├── pose-bridge.js  # Une pose du Personnage traduite en angles d'os importés
 │   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
+│   ├── stray-meshes-3d.js # Les maillages qu'un fichier place hors du corps, et qu'on masque
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
 │   ├── persona-editor.js # Éditeur de Personnage : mode plein écran de pose
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré

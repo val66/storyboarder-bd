@@ -26,6 +26,7 @@ import { cloneSkinned } from './vendor/SkeletonUtils.js';
 // Reconnaissance et rangement des squelettes importés. La lecture est SYNCHRONE
 // (correspondanceEnregistreeSync) : construire un rig se fait dans un rendu, qui n'attend pas.
 import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
+import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3d.js';
 import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
 import { orientationFinale } from './skeleton-pose.js';
 import { repereDuCorps } from './skeleton-retarget.js';
@@ -3152,7 +3153,15 @@ function buildImportedModelRig3D(colorHex, o){
     // l'élimination : leur géométrie brute décrit bien ce qui est dessiné.
     clone.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
     g.add(clone);
-    return { figureGroup: g, skeletonBones: recolterOsMappes(clone, nom) };
+    return {
+      figureGroup: g,
+      skeletonBones: recolterOsMappes(clone, nom),
+      // Les maillages égarés du fichier, retrouvés dans CE clone. La liste des noms vient du cache,
+      // relevée une seule fois au décodage (cf. src/stray-meshes-3d.js) : on ne redétecte rien ici.
+      // Leur visibilité est décidée à chaque appel dans ensureObjectRigEntry3D, pas ici — la case de
+      // la fiche doit se voir sans reconstruire le rig.
+      maillagesEgares: maillagesParNom3D(clone, chargé.egares),
+    };
   }
   // Boîte de remplacement. Deux situations très différentes la produisent — modèle pas encore
   // décodé, ou fichier introuvable — et elles se distinguent à la couleur : neutre pendant le
@@ -3851,6 +3860,16 @@ export function ensureObjectRigEntry3D(o){
   // os ne justifie pas de re-décoder un modèle de plusieurs mégaoctets.
   if (entry.skeletonBones) {
     applySkeletonPose(entry.skeletonBones, o.skeletonPose3d || {});
+  }
+  // Les maillages que le fichier place hors du corps sont MASQUÉS par défaut, et la case de la
+  // fiche les rend. Appliqué à chaque appel, comme la pose : cocher la case doit se voir tout de
+  // suite, sans re-décoder un modèle de plusieurs mégaoctets.
+  //
+  // MASQUÉ PAR DÉFAUT, ET NON SUPPRIMÉ. La géométrie reste dans le clone, le champ persisté ne
+  // retient qu'un choix d'affichage, et le fichier de l'utilisateur n'est jamais touché : décocher
+  // suffit à tout revoir. Cf. src/stray-meshes-3d.js pour la mesure qui motive ce masquage.
+  if (entry.maillagesEgares) {
+    appliquerVisibiliteEgares3D(entry.maillagesEgares, o && o.afficherMaillagesEgares);
   }
   entry.figureGroup.rotation.set(o.rotX || 0, o.rotY || 0, o.rotZ || 0);
   entry.figureGroup.updateMatrixWorld(true);

@@ -18,7 +18,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
-import { maillagesHorsCorps3D, boitesDesMaillages3D } from '../src/stray-meshes-3d.js';
+import {
+  maillagesHorsCorps3D, boitesDesMaillages3D, maillagesParNom3D, appliquerVisibiliteEgares3D,
+} from '../src/stray-meshes-3d.js';
 
 /** Un maillage rigide de 1 × 1 × 1 centré sur `centre`. */
 function cube(nom, centre){
@@ -94,6 +96,57 @@ describe('maillagesHorsCorps3D — le critère sans seuil', () => {
     s.add(branche);
     s.updateMatrixWorld(true);
     assert.deepEqual(maillagesHorsCorps3D(s), ['fourreau']);
+  });
+});
+
+describe('maillagesParNom3D — retrouver les égarés dans un clone', () => {
+  test('rend exactement les maillages nommés, et rien d\'autre', () => {
+    const s = scene(cube('torse', [0, 1, 0]), cube('fourreau', [0, 100, 0]), cube('lance', [0, 5, 0]));
+    assert.deepEqual(maillagesParNom3D(s, ['fourreau']).map(m => m.name), ['fourreau']);
+    assert.deepEqual(maillagesParNom3D(s, ['fourreau', 'lance']).map(m => m.name).sort(),
+      ['fourreau', 'lance']);
+  });
+
+  test('la casse compte : les noms viennent du fichier, on ne les interprète pas', () => {
+    // Deux maillages qui ne diffèrent que par la casse existent dans des fichiers réels. Rapprocher
+    // « Fourreau » et « fourreau » masquerait le mauvais.
+    const s = scene(cube('Fourreau', [0, 1, 0]), cube('fourreau', [0, 100, 0]));
+    assert.deepEqual(maillagesParNom3D(s, ['fourreau']).map(m => m.name), ['fourreau']);
+  });
+
+  test('une liste vide ou absente ne désigne rien', () => {
+    const s = scene(cube('torse', [0, 1, 0]), cube('fourreau', [0, 100, 0]));
+    assert.deepEqual(maillagesParNom3D(s, []), []);
+    assert.deepEqual(maillagesParNom3D(s, null), []);
+    assert.deepEqual(maillagesParNom3D(null, ['fourreau']), []);
+  });
+
+  test('un maillage sans nom se retrouve par son nom de repli', () => {
+    // Le même repli que dans boitesDesMaillages3D — sinon la détection nommerait « (sans nom) » et
+    // le masquage ne retrouverait jamais personne.
+    const s = scene(cube('torse', [0, 1, 0]), cube('', [0, 100, 0]));
+    assert.equal(maillagesParNom3D(s, ['(sans nom)']).length, 1);
+  });
+});
+
+describe('appliquerVisibiliteEgares3D', () => {
+  test('masque par défaut, montre quand on le demande', () => {
+    const a = cube('a', [0, 0, 0]), b = cube('b', [0, 0, 0]);
+    appliquerVisibiliteEgares3D([a, b], false);
+    assert.equal(a.visible, false); assert.equal(b.visible, false);
+    appliquerVisibiliteEgares3D([a, b], true);
+    assert.equal(a.visible, true); assert.equal(b.visible, true);
+  });
+
+  test('`undefined` vaut masqué — c\'est l\'état d\'un Élément qui n\'a jamais coché la case', () => {
+    const a = cube('a', [0, 0, 0]);
+    appliquerVisibiliteEgares3D([a], undefined);
+    assert.equal(a.visible, false);
+  });
+
+  test('une liste absente ne lève pas', () => {
+    assert.doesNotThrow(() => appliquerVisibiliteEgares3D(null, true));
+    assert.doesNotThrow(() => appliquerVisibiliteEgares3D([null], true));
   });
 });
 
