@@ -23,7 +23,7 @@ utilise**, pour rester lisible sur une machine qui ne les a pas. À l'ouverture,
 annuler un renommage). Un fichier écrit avant ce changement reste lu à l'identique, et un fichier
 écrit après reste lisible par une version antérieure.
 
-Les 15 poses intégrées sont **semées** dans la bibliothèque au premier lancement, avec la clé
+Les 6 poses proposées sont **semées** dans la bibliothèque au premier lancement, avec la clé
 intégrée comme `id` (`'assis'`, `'debout'`…) — c'est ce qui évite toute migration des fichiers
 existants. `POSE_3D` reste consulté **après** la bibliothèque, comme filet pour un fichier citant
 une pose intégrée que l'utilisateur a supprimée.

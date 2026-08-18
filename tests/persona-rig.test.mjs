@@ -132,6 +132,127 @@ describe('Rig de Personnage — une pose est une description, pas un delta', () 
   });
 });
 
+/**
+ * Une pose qui règle TOUS les champs exposés par les poignées, construite depuis POSE_HANDLES.
+ *
+ * ⚠️ SURTOUT PAS UNE LISTE ÉCRITE À LA MAIN. Les énumérations tenues à la main qui doublent une
+ * table sont le défaut le plus fréquent de ce dépôt : elles sont justes le jour où on les écrit.
+ * Une articulation ajoutée à POSE_HANDLES demain entre ici toute seule.
+ *
+ * Les angles n'ont pas besoin d'être anatomiquement crédibles — seulement non nuls et distincts,
+ * pour qu'un champ oublié se voie.
+ */
+function poseTousChampsRegles(){
+  const pose = {};
+  let n = 0;
+  const suivant = () => (0.11 + (n++ % 7) * 0.09);
+  POSE_HANDLES.forEach(h => {
+    if (h.field && h.mode === 'ball') pose[h.field] = { x: suivant(), z: suivant() };
+    else if (h.field) pose[h.field] = suivant();
+    ['fieldV', 'fieldH', 'fieldR'].forEach(k => { if (h[k]) pose[h[k]] = suivant(); });
+  });
+  return pose;
+}
+
+describe('Rig de Personnage — un champ ABSENT d\'une pose vaut le repos', () => {
+  /**
+   * CE QUE CE BLOC PROTÈGE, ET POURQUOI IL A FALLU L'ÉCRIRE (tâche #313).
+   *
+   * MESURE : sur les 36 champs qu'exposent les poignées, les poses intégrées n'en écrivent que 14.
+   * Les 22 autres — cou, clavicules, chevilles, poignets, rotation Z des coudes, deuxième et
+   * troisième axes de la tête et du torse — ne sont nommés par AUCUNE pose de base.
+   *
+   * `applyJointAngles` les écrit quand même, tous, via `angle3D` : un champ absent devient 0, donc
+   * le repos. C'est ce qui a permis d'ajouter cinq articulations sans migrer une seule pose ni un
+   * seul Projet. Mais RIEN NE L'ÉPINGLAIT : rendre une seule de ces écritures conditionnelle
+   * (`if (j.lFootRotX !== undefined)`) ferait traîner les pieds, les poignets ou les clavicules
+   * d'une pose à la suivante — un Personnage qui garde un morceau de sa pose précédente, sans
+   * erreur nulle part.
+   *
+   * POURQUOI LES TESTS DE RÉVERSIBILITÉ CI-DESSUS NE SUFFISENT PAS. Ils comparent des poses
+   * intégrées entre elles ; comme les 22 champs sont absents des DEUX côtés, ils restent verts
+   * quoi qu'il arrive sur ces axes. C'est le cas d'école du test satisfait pour la mauvaise raison :
+   * une propriété vérifiée sur un domaine où elle est triviale. D'où la pose de contrôle ci-dessous,
+   * qui règle les 36 champs — le seul témoin capable de distinguer « remis au repos » de
+   * « jamais touché ».
+   */
+  test('RÉGRESSION : une pose de base efface une pose entièrement réglée', () => {
+    const neuf = rigNeuf();
+    applyJointAngles(neuf, POSE_3D.debout);
+    const reference = empreinte(neuf);
+
+    const rig = rigNeuf();
+    applyJointAngles(rig, poseTousChampsRegles());
+    applyJointAngles(rig, POSE_3D.debout);
+    assert.equal(empreinte(rig), reference,
+      'un champ absent de « debout » a gardé la valeur de la pose précédente');
+  });
+
+  test('la pose de contrôle règle bien les 36 champs, et change la géométrie', () => {
+    // Le garde-fou du test précédent : si poseTousChampsRegles() rendait un objet vide, ou si les
+    // champs qu'elle nomme n'étaient pas lus, la régression ci-dessus serait verte pour rien.
+    const pose = poseTousChampsRegles();
+    const compte = Object.keys(pose).reduce(
+      (n, k) => n + (pose[k] && typeof pose[k] === 'object' ? Object.keys(pose[k]).length : 1), 0);
+    assert.equal(compte, 36, `${compte} champs réglés au lieu de 36`);
+
+    const rig = rigNeuf();
+    applyJointAngles(rig, POSE_3D.debout);
+    const debout = empreinte(rig);
+    applyJointAngles(rig, pose);
+    assert.notEqual(empreinte(rig), debout, 'la pose de contrôle ne déforme rien');
+  });
+
+  test('chacun des 36 champs, PRIS SÉPARÉMENT, déforme le rig', () => {
+    // LE TEST QUI EMPÊCHE LE PRÉCÉDENT DE PASSER POUR RIEN, et il a été écrit parce qu'une mutation
+    // l'a exigé : retirer purement et simplement `J.lClavicle.rotation.z = angle3D(...)` laissait
+    // toute la suite VERTE. Logique — un axe jamais écrit reste au repos, donc « absent vaut le
+    // repos » demeure vrai. Sauf que le curseur Clavicule de l'interface ne fait alors plus rien.
+    //
+    // « Un champ exposé qui ne déforme rien » est la panne la plus chère de ce fichier : le curseur
+    // bouge, le chiffre change, la valeur part dans le Projet enregistré, et le corps ne bronche
+    // pas. On cherche alors dans le dessin, la caméra, le cache — jamais dans la ligne manquante.
+    const neuf = rigNeuf();
+    const repos = empreinte(neuf);
+    const complet = poseTousChampsRegles();
+    const inertes = [];
+    Object.keys(complet).forEach(champ => {
+      const axes = (complet[champ] && typeof complet[champ] === 'object')
+        ? Object.keys(complet[champ]) : [null];
+      axes.forEach(axe => {
+        const rig = rigNeuf();
+        applyJointAngles(rig, axe ? { [champ]: { [axe]: 0.37 } } : { [champ]: 0.37 });
+        if (empreinte(rig) === repos) inertes.push(axe ? `${champ}.${axe}` : champ);
+      });
+    });
+    assert.deepEqual(inertes, [], `champ(s) exposé(s) mais sans effet : ${inertes.join(', ')}`);
+  });
+
+  test('chacun des 22 champs muets, PRIS SÉPARÉMENT, est bien remis au repos', () => {
+    // Le test global passerait encore si UN SEUL champ était bien effacé et les autres non : une
+    // empreinte qui diffère, c'est une empreinte qui diffère. Ici chaque champ est mis en cause
+    // seul, ce qui nomme le coupable au lieu de signaler qu'il y en a un.
+    const neuf = rigNeuf();
+    applyJointAngles(neuf, POSE_3D.debout);
+    const reference = empreinte(neuf);
+
+    const complet = poseTousChampsRegles();
+    const fautifs = [];
+    Object.keys(complet).forEach(champ => {
+      const axes = (complet[champ] && typeof complet[champ] === 'object')
+        ? Object.keys(complet[champ]) : [null];
+      axes.forEach(axe => {
+        const rig = rigNeuf();
+        const seul = axe ? { [champ]: { [axe]: 0.37 } } : { [champ]: 0.37 };
+        applyJointAngles(rig, seul);
+        applyJointAngles(rig, POSE_3D.debout);
+        if (empreinte(rig) !== reference) fautifs.push(axe ? `${champ}.${axe}` : champ);
+      });
+    });
+    assert.deepEqual(fautifs, [], `champ(s) non remis au repos : ${fautifs.join(', ')}`);
+  });
+});
+
 describe('Rig de Personnage — aucune pose ne produit de géométrie invalide', () => {
   test('toutes les poses intégrées donnent des matrices finies', () => {
     // Un NaN dans une matrice monde ne lève pas : le maillage disparaît simplement du rendu. Le
@@ -632,3 +753,30 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
     assert.deepEqual(sortie.tete, [0, 0.1, 0, 0.995]);
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — « un champ absent vaut le repos » (tâche #313).
+ *
+ *   X1 `if (j.lFootRotX !== undefined)` devant l'écriture de la cheville      ROUGE
+ *   X2 l'écriture de lClavicleRotZ purement RETIRÉE                          ÉCHAPPÉE → puis ROUGE
+ *   X3 angle3D réécrit de façon équivalente (undefined traité à part)        ÉQUIVALENTE, verte
+ *   X4 `if (j.rWristRotY)` devant l'écriture du poignet                      ROUGE
+ *   X5 l'écriture de neckRotY retirée                                        ROUGE
+ *   X6 l'écriture de torsoRotZ retirée                                       ROUGE
+ *   X7 le coude DROIT lit le champ du gauche                                 ROUGE
+ *   X8 la cheville droite écrit son axe Z sur X                              ROUGE
+ *
+ * X2 EST LA MUTATION QUI A APPRIS QUELQUE CHOSE, et elle mérite d'être racontée. Retirer complètement
+ * l'écriture d'un axe laissait TOUTE la suite verte — y compris les trois tests écrits juste au-dessus
+ * pour cette tâche. C'est logique après coup : un axe jamais écrit reste au repos, donc « absent vaut
+ * le repos » demeure trivialement vrai. La propriété était bien vérifiée ; elle ne suffisait pas.
+ *
+ * Le symptôme réel, lui, est coûteux : le curseur Clavicule bouge, la valeur part dans le Projet
+ * enregistré, et le corps ne bronche pas. D'où le test « chacun des 36 champs déforme le rig », qui
+ * couvre l'autre moitié de la phrase. Les deux ensemble disent : tout champ exposé agit, et tout champ
+ * absent est effacé. Séparément, chacun se laisse satisfaire pour la mauvaise raison.
+ *
+ * X3 est consignée comme ÉQUIVALENTE et non comme échappée : `v === undefined ? 0 : (isFinite(v) ? v
+ * : 0)` calcule exactement `isFinite(v) ? v : 0`. Aucun test ne pouvait la distinguer, et c'est
+ * correct.
+ */

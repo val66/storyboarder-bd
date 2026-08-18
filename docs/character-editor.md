@@ -99,7 +99,7 @@ itself: sent to someone, it would display "unknown" everywhere.
 **Chosen design** — both at once:
 
 - **Library at Application level** (`settings.json`, key `poseLibrary`). Shared by all Projects.
-- **The 15 built-in poses are SEEDED into it** on first launch, with the built-in key as `id`
+- **The poses of `POSITIONS` are SEEDED into it** on first launch, with the built-in key as `id`
   (`'assis'`, `'debout'`…). No migration: existing files already cite those keys. They become
   ordinary entries — renamable and deletable like the others.
 - **`POSE_3D` is still consulted AFTER the library**, as a safety net: a file citing a built-in pose
@@ -139,7 +139,7 @@ would contradict what the confirmation announces.
    In other words, the reappearance concerns ONLY the files present on disk at the moment of the
    deletion, and only for as long as they have not been re-saved.
 2. An **emptied** library is not re-seeded at startup — seeding only triggers if the settings key is
-   ABSENT. Without that distinction, the 15 poses would come back on every restart, undoing the
+   ABSENT. Without that distinction, the seeded poses would come back on every restart, undoing the
    user's decision.
 
 ### Label / values drift

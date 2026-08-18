@@ -101,7 +101,7 @@ fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait «
 
 - **Bibliothèque au niveau Application** (`settings.json`, clé `poseLibrary`). Partagée par tous les
   Projets.
-- **Les 15 poses intégrées y sont SEMÉES** au premier lancement, avec la clé intégrée comme `id`
+- **Les poses de `POSITIONS` y sont SEMÉES** au premier lancement, avec la clé intégrée comme `id`
   (`'assis'`, `'debout'`…). Aucune migration : les fichiers existants citent déjà ces clés. Elles
   deviennent des entrées ordinaires — renommables et supprimables comme les autres.
 - **`POSE_3D` reste consulté APRÈS la bibliothèque**, comme filet : un fichier citant une pose
@@ -143,7 +143,7 @@ confirmation.
    Autrement dit, la réapparition ne concerne QUE les fichiers présents sur le disque au moment de
    la suppression, et seulement tant qu'ils n'ont pas été réenregistrés.
 2. Une bibliothèque **vidée** n'est pas resemée au démarrage — le semis ne se déclenche que si la clé
-   de réglage est ABSENTE. Sans cette distinction, les 15 poses réapparaîtraient à chaque
+   de réglage est ABSENTE. Sans cette distinction, les poses semées réapparaîtraient à chaque
    redémarrage en annulant la décision de l'utilisateur.
 
 ### Dérive étiquette / valeurs

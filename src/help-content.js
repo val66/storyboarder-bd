@@ -59,6 +59,7 @@ export const HELP_MANUAL_EN = [
     'Hold the left button on a point and drag to adjust the joint. The orange guide shows the expected gesture: a double arrow to drag along its direction, a ring to turn around the point.',
     'Only one field moves at a time, the one highlighted most strongly in the right-hand panel. The scroll wheel switches from one field to the next while a joint is selected; deselect to get the zoom back. The "Joint settings" section offers one slider per field.',
     '"Pose" section: click a pose to apply it as a starting point, or type a name then Save to add the current one. Rename and Delete apply to any pose; the Settings dialog restores deleted built-in poses. The library is shared by all your projects.',
+    'A project made with an older version may use a pose that is no longer offered — it still displays correctly: the application keeps those angles as a fallback, even though the pose is no longer proposed for new characters.',
     '"Reset pose" returns to the pose the editor opened with. "Apply to character" sends the pose back to the dialog: nothing is written into the character until you save there. Closing the editor without applying changes nothing.',
   ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
@@ -167,6 +168,7 @@ export const HELP_MANUAL_FR = [
     "Maintenez le clic gauche sur un point et glissez pour régler l'articulation. Le repère orange indique le geste attendu : une double flèche pour glisser dans sa direction, un anneau pour tourner autour du point.",
     "Un seul champ bouge à la fois, celui que le panneau de droite surligne le plus. La molette passe d'un champ à l'autre tant qu'une articulation est sélectionnée ; désélectionnez pour retrouver le zoom. La section « Réglages des articulations » offre un curseur par champ.",
     "Section « Pose » : cliquez une pose pour l'appliquer comme point de départ, ou saisissez un nom puis Enregistrer pour y ajouter la pose en cours. Renommer et Supprimer s'appliquent à n'importe quelle pose ; la modale Configuration restaure les poses de base supprimées. La bibliothèque est partagée par tous vos Projets.",
+    "Un Projet fait avec une version antérieure peut utiliser une pose qui n'est plus proposée — elle s'affiche toujours correctement : l'application conserve ces angles en dernier recours, même si la pose n'est plus offerte aux nouveaux Personnages.",
     "« Réinitialiser la pose » revient à la pose d'ouverture. « Appliquer au Personnage » renvoie la pose vers la modale : rien n'est écrit dans le Personnage tant que vous n'y avez pas enregistré. Fermer l'éditeur sans appliquer ne change rien.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [

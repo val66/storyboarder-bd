@@ -12,7 +12,7 @@ the only one the user sees and modifies, and it is shared by all their Projects.
 `S.poses`, read everywhere **synchronously**; persistence is asynchronous and silent
 (`setPoseLibrary`, io.js).
 
-On first launch, the 15 poses of `POSITIONS` are **seeded** into it (`seedPoseLibrary3D`) with the
+On first launch, the 6 poses of `POSITIONS` are **seeded** into it (`seedPoseLibrary3D`) with the
 built-in key as `id` — `'assis'`, `'debout'`… That is what makes already-saved files, which contain
 `position: 'assis'`, resolve without any migration. They become ordinary entries, with no special
 status.
@@ -175,3 +175,33 @@ unchanged.
   creating a cycle.
 
 Every write into the library must refresh both, otherwise they diverge.
+
+## Offered poses vs compatibility poses
+
+`POSITIONS` and `POSE_3D` no longer hold the same thing, and **the gap is deliberate**.
+
+- `POSITIONS` — the **offered** poses. It drives the pose picker and the library seeding. Six
+  entries: standing, sitting, lying, running, crouching, kneeling.
+- `POSE_3D` — the **angles**. It holds nine more: combat, jump, flight, spellcasting, archery, raised
+  sword, defeated, meditation, recoil. Those nine are no longer offered or seeded.
+
+### Why the angles are not removed along with the entries
+
+A Character created and never opened in its card keeps `joints3d: null`: its pose is **resolved at
+render time**, through `position` → library → `POSE_3D`. Measured with a probe:
+
+| what is removed | what an existing project renders |
+|---|---|
+| the `POSITIONS` entry alone | **identically** — `POSE_3D` still answers |
+| the entry **and** the angles | the archer **stands up** (rElbow 1.4 → 0.1) |
+
+`POSE_3D` is therefore the last resort, and it does not get emptied. The 2D `POSE_RENDERERS` table
+(draw.js) follows the same rule, for the same reason.
+
+### What this means for an already-seeded library
+
+Removing an entry from `POSITIONS` **does not remove it** from an existing `settings.json`: the
+on-disk copy is authoritative (see the "Seeding" section). An already-seeded library therefore keeps
+the removed poses, which is consistent — they have become ordinary entries, which the user deletes
+themselves if they wish, one at a time and remembered (`dismissedPoses`). "Restore built-in poses"
+will not bring them back: it only knows `POSITIONS`.

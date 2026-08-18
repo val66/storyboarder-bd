@@ -419,13 +419,20 @@ describe('loadPoseLibrary — semis au premier lancement', () => {
     // L'application est correcte : loadPoseLibrary est appelée depuis events.js, qui importe
     // draw.js. Cette assertion transforme cette dépendance d'ordre, jusqu'ici implicite, en
     // quelque chose que la suite surveille.
-    assert.equal(Object.keys(POSE_3D).length, POSITIONS.length,
+    // ⚠️ UNE INCLUSION, PLUS UNE ÉGALITÉ. POSE_3D contient désormais neuf poses de plus que POSITIONS
+    // n'en propose : elles ont été retirées du sélecteur mais gardées comme dernier recours pour les
+    // Projets qui les citent (cf. l'en-tête de POSITIONS). L'égalité était le bon test tant que les
+    // deux listes coïncidaient ; ce qui compte vraiment, et que celle-ci ne disait qu'indirectement,
+    // c'est que RIEN DE PROPOSÉ NE SOIT SANS ANGLES. « allonge » vient de draw.js : si la chaîne
+    // d'imports se rompait, cette assertion le dirait toujours.
+    const sansAngles = POSITIONS.filter(p => !POSE_3D[p.key]).map(p => p.key);
+    assert.deepEqual(sansAngles, [],
       'draw.js doit avoir complété POSE_3D — vérifier la chaîne d\'imports de ce fichier');
   });
 
   test('sans réglage enregistré : les poses intégrées sont semées', () => {
     return loadPoseLibrary(POSITIONS, POSE_3D, 'humain').then(() => {
-      assert.equal(S.poses.length, POSITIONS.length, 'les 15, pas seulement les 13 statiques');
+      assert.equal(S.poses.length, POSITIONS.length, 'autant que de poses proposées');
       assert.ok(S.poses.some(p => p.id === 'assis'), 'appariable avec position:\'assis\'');
       assert.ok(S.poses.some(p => p.id === 'allonge'), 'les poses couchées aussi');
       assert.ok(S.poses.every(p => p.skeleton === 'humain'));

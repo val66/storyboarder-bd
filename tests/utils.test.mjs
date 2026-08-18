@@ -1086,9 +1086,27 @@ describe('rememberDismissedPose3D', () => {
 
 describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
   test('seules les poses intégrées ABSENTES sont proposées', () => {
-    const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain').filter(p => p.id !== 'vol');
+    const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain').filter(p => p.id !== 'course');
     const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain');
-    assert.deepEqual(manquantes.map(p => p.id), ['vol']);
+    assert.deepEqual(manquantes.map(p => p.id), ['course']);
+  });
+
+  test('RÉGRESSION : une pose retirée de POSITIONS n\'est jamais « restaurée »', () => {
+    // Neuf poses ont été retirées de POSITIONS mais gardées dans POSE_3D comme dernier recours de
+    // résolution (cf. l'en-tête de POSITIONS). Si « Restaurer » se fondait sur POSE_3D plutôt que sur
+    // POSITIONS, un clic les ferait toutes revenir dans la bibliothèque — l'utilisateur qui les a
+    // fait retirer les verrait réapparaître, sans comprendre pourquoi.
+    // ⚠️ Ce fichier n'importe pas draw.js, donc POSE_3D n'a ici ni 'allonge' ni 'vaincu' (ajoutées à
+    // l'exécution). On ne compte donc PAS les poses de compatibilité : on vérifie l'appartenance,
+    // qui est vraie quelle que soit la chaîne d'imports. Le décompte est épinglé par io.test.mjs,
+    // qui charge la chaîne complète.
+    const retirees = Object.keys(POSE_3D).filter(k => !POSITIONS.some(p => p.key === k));
+    assert.ok(retirees.includes('combat') && retirees.includes('arc'),
+      `poses de compatibilité introuvables : ${retirees.join(', ')}`);
+    const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, [], 'humain');
+    assert.deepEqual(manquantes.filter(p => retirees.includes(p.id)), []);
+    // Le garde-fou : sans lui, un missingBuiltinPoses3D qui ne rend RIEN passerait le test.
+    assert.ok(manquantes.some(p => p.id === 'debout'), 'les poses proposées, elles, sont réajoutées');
   });
 
   test('RÉGRESSION : une pose de base RENOMMÉE n\'est pas « manquante »', () => {

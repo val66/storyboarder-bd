@@ -51,22 +51,29 @@ export const HAND_STATES = [
   { key: 'smartphone', label: 'Tient un smartphone' },
 ];
 
+// Les poses PROPOSÉES. Cette liste pilote deux choses, et deux seulement : le sélecteur de pose, et
+// le semis de la bibliothèque au premier lancement (seedPoseLibrary3D).
+//
+// ⚠️ ELLE EST PLUS COURTE QUE POSE_3D, ET C'EST VOULU. Neuf poses ont été retirées d'ici sur demande
+// (combat, saut, vol, incantation, tir à l'arc, épée levée, vaincu, méditation, recul) mais leurs
+// angles restent dans POSE_3D. La raison est mesurée, pas supposée :
+//
+//   un Personnage créé puis jamais ouvert dans sa fiche garde `joints3d: null` (events.js) ; sa pose
+//   est RÉSOLUE à l'affichage par `position` → bibliothèque → POSE_3D. Retirer les angles de POSE_3D
+//   ferait donc retomber sur « debout » tout Personnage citant une pose retirée dont l'utilisateur a
+//   aussi supprimé l'entrée de bibliothèque. Sonde : un archer passe de rElbow 1,4 à 0,1 — il se
+//   redresse, sans message, dans un Projet qu'on croyait seulement rouvrir.
+//
+// POSE_3D est donc le dernier recours, et il ne se vide pas. Ajouter une clé ici la propose ;
+// l'enlever cesse de la proposer sans rien casser. Le test de docs/pose-library.md épingle le sens
+// de l'inclusion : POSITIONS ⊆ POSE_3D, jamais l'égalité.
 export const POSITIONS = [
   {key:'debout', label:'🧍 Debout'},
   {key:'assis', label:'🪑 Assis'},
   {key:'allonge', label:'🛌 Allongé'},
-  {key:'combat', label:'⚔️ Garde de combat'},
   {key:'course', label:'🏃 Course'},
-  {key:'saut', label:'🤸 Saut'},
-  {key:'vol', label:'🦸 Vol'},
   {key:'accroupi', label:'🥷 Accroupi / furtif'},
   {key:'genoux', label:'🛡️ À genoux'},
-  {key:'sort', label:'✨ Incantation'},
-  {key:'arc', label:"🏹 Tir à l'arc"},
-  {key:'epee_levee', label:'🗡️ Épée levée'},
-  {key:'vaincu', label:'💫 À terre, vaincu'},
-  {key:'meditation', label:'🧘 Méditation'},
-  {key:'recul', label:'😱 Recul effrayé'},
 ];
 
 
@@ -362,6 +369,11 @@ export const BUBBLE_FONT_FALLBACK = {
 // - elbow/knee: flexion (x) of the child segment relative to the parent segment
 // - rootY: global vertical offset (e.g. crouching, sitting)
 // - lieFlat: the whole figure is lying on its back (lying down / defeated)
+//
+// ⚠️ CETTE TABLE CONTIENT PLUS DE POSES QUE POSITIONS N'EN PROPOSE. Les clés absentes de POSITIONS
+// (combat, saut, vol, sort, arc, epee_levee, vaincu, meditation, recul) ne sont plus offertes ni
+// semées : elles ne subsistent que comme DERNIER RECOURS de résolution, pour les Projets déjà
+// enregistrés qui les citent. Ne pas les supprimer — cf. l'en-tête de POSITIONS pour la mesure.
 export const POSE_3D = {
   debout: {
     torsoRotX: 0, headRotX: 0,

@@ -22,7 +22,7 @@ machine that does not have them. On opening, those poses are **merged** into the
 ids only — an old project therefore cannot undo a rename). A file written before that change is
 still read identically, and a file written after stays readable by an earlier version.
 
-The 15 built-in poses are **seeded** into the library on first launch, with the built-in key as
+The 6 offered poses are **seeded** into the library on first launch, with the built-in key as
 `id` (`'assis'`, `'debout'`…) — that is what avoids any migration of existing files. `POSE_3D` is
 still consulted **after** the library, as a safety net for a file citing a built-in pose the user
 has deleted.

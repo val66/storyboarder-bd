@@ -12,7 +12,7 @@
 Projets. En mémoire : `S.poses`, lu partout de façon **synchrone** ; la persistance est asynchrone et
 silencieuse (`setPoseLibrary`, io.js).
 
-Au premier lancement, les 15 poses de `POSITIONS` y sont **semées** (`seedPoseLibrary3D`) avec la clé
+Au premier lancement, les 6 poses de `POSITIONS` y sont **semées** (`seedPoseLibrary3D`) avec la clé
 intégrée comme `id` — `'assis'`, `'debout'`… C'est ce qui fait que les fichiers déjà enregistrés,
 qui contiennent `position: 'assis'`, résolvent sans migration. Elles deviennent des entrées
 ordinaires, sans statut particulier.
@@ -174,3 +174,33 @@ modale se croit inchangée.
   events.js sans créer un cycle.
 
 Toute écriture dans la bibliothèque doit rafraîchir les deux, faute de quoi elles divergent.
+
+## Poses proposées et poses de compatibilité
+
+`POSITIONS` et `POSE_3D` ne contiennent plus la même chose, et **l'écart est délibéré**.
+
+- `POSITIONS` — les poses **proposées**. Elle pilote le sélecteur de pose et le semis de la
+  bibliothèque. Six entrées : debout, assis, allongé, course, accroupi, à genoux.
+- `POSE_3D` — les **angles**. Elle en contient neuf de plus : combat, saut, vol, incantation, tir à
+  l'arc, épée levée, vaincu, méditation, recul. Ces neuf ne sont plus offertes ni semées.
+
+### Pourquoi les angles ne sont pas supprimés avec les entrées
+
+Un Personnage créé puis jamais ouvert dans sa fiche garde `joints3d: null` : sa pose est **résolue à
+l'affichage**, par `position` → bibliothèque → `POSE_3D`. Mesuré à la sonde :
+
+| ce qu'on retire | ce qu'un Projet existant affiche |
+|---|---|
+| l'entrée de `POSITIONS` seule | **à l'identique** — `POSE_3D` répond encore |
+| l'entrée **et** les angles | l'archer **se redresse** (rElbow 1,4 → 0,1) |
+
+`POSE_3D` est donc le dernier recours, et il ne se vide pas. La table 2D `POSE_RENDERERS` (draw.js)
+suit la même règle, pour la même raison.
+
+### Ce que cela implique pour une bibliothèque déjà semée
+
+Retirer une entrée de `POSITIONS` **ne la retire pas** d'un `settings.json` existant : la copie sur
+disque fait autorité (cf. §« Semis »). Une bibliothèque déjà semée garde donc les poses retirées, et
+c'est cohérent — ce sont devenues des entrées ordinaires, que l'utilisateur supprime lui-même s'il le
+souhaite, une par une et de façon mémorisée (`dismissedPoses`). « Restaurer les poses de base » ne les
+ramènera pas : il ne connaît que `POSITIONS`.
