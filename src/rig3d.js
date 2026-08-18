@@ -3425,13 +3425,26 @@ export function buildPropRig3D(objType, colorHex, o){
   // Un modèle importé dépend de son FICHIER et de l'état du cache : les deux entrent dans l'entrée
   // de cache pour qu'ensureObjectRigEntry3D reconstruise quand le décodage aboutit.
   if (objType === 'modele') {
-    const built = builder(colorHex, o); // { figureGroup, skeletonBones }
-    return {
-      figureGroup: built.figureGroup,
-      skeletonBones: built.skeletonBones,
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // TOUT CE QUE LE CONSTRUCTEUR REND EST CONSERVÉ, et ce n'est pas un détail de style.
+    //
+    // Ces quatre champs étaient recopiés UN À UN. Le jour où buildImportedModelRig3D s'est mis à
+    // rendre `maillagesEgares` — la liste des maillages à masquer —, l'énumération ne l'a pas
+    // suivi : le champ mourait ici, en silence. La détection était juste, le masquage écrit et
+    // testé, et rien ne se passait à l'écran. Trouvé par sonde, après deux hypothèses fausses.
+    //
+    // C'est la deuxième famille de défauts récurrents de ce dépôt : une énumération tenue à la
+    // main qui cesse d'être complète. On l'enlève plutôt que d'y ajouter une ligne — sinon le
+    // prochain champ retombera exactement dans le même trou.
+    //
+    // Les deux champs ajoutés ici n'appartiennent pas au rig mais à l'ENTRÉE DE CACHE : ils
+    // disent de quoi ce rig a été construit, et c'est ce qui permet à ensureObjectRigEntry3D de
+    // le reconstruire quand le fichier ou l'état du décodage change.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    return Object.assign({}, builder(colorHex, o), {
       modelFile: (o && o.modelFile) || null,
       modelState: (o && o.modelFile) ? modelState(o.modelFile) : 'absent',
-    };
+    });
   }
   if (ANIMAL_TYPES.includes(objType)) {
     const built = builder(colorHex); // { figureGroup, joints }

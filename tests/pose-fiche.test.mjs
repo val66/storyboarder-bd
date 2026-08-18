@@ -25,7 +25,9 @@ import * as THREE from 'three';
 
 import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
-import { correspondancePourModele, figuresPosables, poseOsPourModeleImporte } from '../src/rig3d.js';
+import {
+  correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
+} from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
@@ -717,5 +719,70 @@ describe('ecrireChoixEgares — ce que l\'enregistrement pose dans l\'Élément'
 
   test('une cible absente ne lève pas', () => {
     assert.doesNotThrow(() => ecrireChoixEgares(null, true));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// buildPropRig3D — le passage du constructeur à l'entrée de cache
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
+  // LE DÉFAUT QUE CE BLOC AURAIT ATTRAPÉ, et qui a coûté deux versions livrées pour rien.
+  //
+  // La branche « modele » de buildPropRig3D recopiait ses champs UN À UN : figureGroup,
+  // skeletonBones, modelFile, modelState. Quand buildImportedModelRig3D s'est mis à rendre
+  // `maillagesEgares` — la liste des maillages à masquer —, l'énumération ne l'a pas suivi. Le
+  // champ mourait là, en silence : détection juste, masquage écrit ET testé, aucun effet à l'écran.
+  //
+  // Le test est écrit sur la PROPRIÉTÉ — tout ce que le constructeur rend arrive — et non sur le
+  // champ du jour. Un test qui n'aurait cité que `maillagesEgares` serait retombé dans le même
+  // piège au champ suivant.
+  const FIGURE = 'passe-plat.glb';
+
+  function sceneMinimale(){
+    const g = new THREE.Group();
+    const os = new THREE.Bone();
+    os.name = 'mixamorig:Hips';
+    g.add(os);
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+    g.updateMatrixWorld(true);
+    return g;
+  }
+
+  test('RÉGRESSION : chaque clé du constructeur survit au passage', () => {
+    _setModelCacheEntry(FIGURE, { scene: sceneMinimale(), hauteurM: 1.7, egares: [] });
+    const o = { id: 'x1', type: 'objet3d', objType: 'modele', modelFile: FIGURE };
+    const construit = buildPropRig3D('modele', '#888', o);
+    ['figureGroup', 'skeletonBones', 'maillagesEgares'].forEach(cle =>
+      assert.ok(cle in construit, `« ${cle} » a été perdu entre le constructeur et l'entrée de cache`));
+  });
+
+  test('et il ajoute ce dont le CACHE a besoin pour reconstruire', () => {
+    // `modelFile` et `modelState` n'appartiennent pas au rig : ils disent de quoi il a été
+    // construit, et c'est ce qui déclenche sa reconstruction quand le décodage aboutit.
+    _setModelCacheEntry(FIGURE, { scene: sceneMinimale(), hauteurM: 1.7, egares: [] });
+    const construit = buildPropRig3D('modele', '#888',
+      { id: 'x2', type: 'objet3d', objType: 'modele', modelFile: FIGURE });
+    assert.equal(construit.modelFile, FIGURE);
+    assert.equal(construit.modelState, 'prêt');
+  });
+
+  test('les maillages égarés arrivent RÉSOLUS, pas seulement nommés', () => {
+    // Le bout de chaîne : le cache donne des noms, le rig doit rendre les objets du clone — sans
+    // quoi il n'y a rien à masquer.
+    const scene = sceneMinimale();
+    const perdu = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    perdu.name = 'fourreau';
+    perdu.position.set(0, 100, 0);
+    scene.add(perdu);
+    scene.updateMatrixWorld(true);
+    _setModelCacheEntry(FIGURE, { scene, hauteurM: 1.7, egares: ['fourreau'] });
+
+    const construit = buildPropRig3D('modele', '#888',
+      { id: 'x3', type: 'objet3d', objType: 'modele', modelFile: FIGURE });
+    assert.equal(construit.maillagesEgares.length, 1, 'le maillage égaré n\'a pas été retrouvé dans le clone');
+    assert.equal(construit.maillagesEgares[0].name, 'fourreau');
+    assert.notEqual(construit.maillagesEgares[0], perdu,
+      'ce doit être le maillage DU CLONE, pas celui de la scène partagée du cache');
   });
 });
