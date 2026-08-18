@@ -209,6 +209,14 @@ propriété du fichier, pas un réglage. Vérifié par lecture directe des six f
 | `worker_j` | 12 | `Sheath_1_Outfit_0` |
 | `capoera`, `female_pose` | 1 | hors critère |
 
+Ce masquage vaut aussi pour les BOÎTES : `expandBoxSkinAware3D` ignore un maillage dont la
+visibilité propre est `false`. Ce n'est pas cosmétique — `placeRigCentered3D` déduit de cette boîte
+l'échelle et le centre du rig posé dans une Case. Sur `worker_j` décodé, le fourreau la faisait
+passer de z −18,5..6,1 à z −28,4..52,4 : un facteur 4,6 sur l'échelle, et un modèle qui atterrissait
+à côté de sa Case. La visibilité du GROUPE n'est volontairement pas consultée — masquer un Élément
+entier (« Invisible dans la scène 3D ») ne doit pas vider sa boîte, sous peine de le faire
+réapparaître n'importe où.
+
 Ces maillages sont **masqués**, jamais supprimés : la géométrie reste dans le clone, le fichier sur
 le disque n'est pas touché, et la case « Afficher les morceaux détachés » de la fiche les rend. Le
 champ persisté `afficherMaillagesEgares` n'est écrit que lorsqu'il vaut `true` — son absence

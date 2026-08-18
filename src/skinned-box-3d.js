@@ -33,9 +33,36 @@
 
 /* eslint-disable */
 
-/** Étend `box` (THREE.Box3) par `object` et ses descendants, en tenant compte du skinning. */
+/**
+ * Étend `box` (THREE.Box3) par `object` et ses descendants, en tenant compte du skinning.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UN MAILLAGE MASQUÉ NE COMPTE PAS. C'est la boîte de ce qui est DESSINÉ.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : un modèle importé posé dans une Case atterrit partiellement, voire
+ * complètement, en dehors d'elle — alors qu'un Personnage n'a jamais ce défaut.
+ *
+ * LA MESURE, sur `worker_j.glb` décodé, dont un maillage est masqué parce que le fichier le place
+ * hors du corps (cf. src/stray-meshes-3d.js) :
+ *
+ *   avec le fourreau     z de −28,4 à 52,4
+ *   sans lui             z de −18,5 à 6,1
+ *
+ * Or `placeRigCentered3D` (scene3d.js) DÉDUIT DE CETTE BOÎTE l'échelle et le centre du rig. Un
+ * facteur 4,6 sur l'étendue, c'est un modèle réduit d'autant et recentré sur un point qui n'est
+ * pas lui. Un Personnage n'a pas de maillage égaré : sa boîte a toujours été honnête, d'où
+ * l'asymétrie observée.
+ *
+ * LA VISIBILITÉ PROPRE DU MAILLAGE, ET ELLE SEULE. On ne remonte pas la chaîne des parents, et un
+ * groupe invisible n'interrompt pas le parcours — c'est délibéré : masquer un Élément entier
+ * (`hidden3d`) pose `figureGroup.visible = false` sur le GROUPE, et si cela vidait la boîte, son
+ * placement deviendrait absurde au moment de le réafficher. Ici seul compte ce qu'un maillage dit
+ * de lui-même, ce qui est exactement ce que règle le masquage des maillages égarés.
+ */
 export function expandBoxSkinAware3D(box, object) {
   object.updateWorldMatrix(true, false);
+  if (object.isMesh && object.visible === false) return;
   if (object.isMesh && object.geometry) {
     const géométrie = object.geometry;
     const attrs = géométrie.attributes;

@@ -205,6 +205,13 @@ a setting. Verified by reading all six real files directly:
 | `worker_j` | 12 | `Sheath_1_Outfit_0` |
 | `capoera`, `female_pose` | 1 | criterion does not apply |
 
+The hiding applies to BOXES too: `expandBoxSkinAware3D` ignores a mesh whose own visibility is
+`false`. This is not cosmetic — `placeRigCentered3D` derives from that box both the scale and the
+centre of the rig placed in a Panel. On decoded `worker_j`, the sheath took it from z −18.5..6.1 to
+z −28.4..52.4: a factor of 4.6 on the scale, and a model landing next to its Panel. The GROUP's
+visibility is deliberately not consulted — hiding a whole Element ("Invisible in the 3D scene")
+must not empty its box, or it would reappear anywhere.
+
 Those meshes are **hidden**, never removed: the geometry stays in the clone, the file on disk is
 untouched, and the "Show detached parts" checkbox in the model's card brings them back. The
 persisted field `afficherMaillagesEgares` is only written when `true` — its absence means "hidden",

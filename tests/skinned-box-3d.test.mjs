@@ -96,3 +96,79 @@ describe('box3FromObjectSkinAware3D — suit la pose, pas la géométrie de bind
     assert.ok(box.isEmpty());
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La boîte de ce qui est DESSINÉ
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('un maillage masqué ne compte pas dans la boîte', () => {
+  // LE DÉFAUT GARDÉ ICI. Un modèle importé posé dans une Case atterrissait partiellement, voire
+  // complètement, en dehors d'elle — alors qu'un Personnage n'avait jamais ce défaut.
+  //
+  // `placeRigCentered3D` déduit de cette boîte l'échelle ET le centre du rig. Sur worker_j.glb,
+  // dont un maillage est masqué parce que le fichier le place hors du corps, la boîte passait de
+  // z −18,5..6,1 à z −28,4..52,4 : un facteur 4,6 sur l'échelle, et un centre qui n'est pas le
+  // modèle. Un Personnage n'a pas de maillage égaré, d'où l'asymétrie.
+
+  const cube = (nom, centre, visible = true) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    m.name = nom;
+    m.position.set(centre[0], centre[1], centre[2]);
+    m.visible = visible;
+    return m;
+  };
+  const groupe = (...enfants) => {
+    const g = new THREE.Group();
+    enfants.forEach(e => g.add(e));
+    g.updateMatrixWorld(true);
+    return g;
+  };
+
+  test('la boîte se referme sur les maillages visibles', () => {
+    const g = groupe(cube('corps', [0, 0, 0]), cube('fourreau', [0, 100, 0], false));
+    const b = box3FromObjectSkinAware3D(g);
+    assert.ok(Math.abs(b.max.y - 0.5) < 1e-6, `la boîte monte à ${b.max.y} : le maillage masqué compte encore`);
+    assert.ok(Math.abs(b.min.y + 0.5) < 1e-6);
+  });
+
+  test('le témoin : visible, le même maillage étend bien la boîte', () => {
+    // Sans lui, une boîte qui ignorerait TOUT passerait le test précédent.
+    const g = groupe(cube('corps', [0, 0, 0]), cube('fourreau', [0, 100, 0], true));
+    assert.ok(box3FromObjectSkinAware3D(g).max.y > 99);
+  });
+
+  test('RÉGRESSION : un GROUPE invisible n\'annule pas la boîte de ses maillages', () => {
+    // « Invisible dans la scène 3D » (hidden3d) pose visible = false sur le GROUPE de l'Élément.
+    // Si cela vidait la boîte, son placement deviendrait absurde — et le réafficher le ferait
+    // réapparaître n'importe où. Seule la visibilité PROPRE d'un maillage est consultée.
+    const g = groupe(cube('corps', [0, 0, 0]), cube('tete', [0, 2, 0]));
+    g.visible = false;
+    const b = box3FromObjectSkinAware3D(g);
+    assert.ok(Math.abs(b.max.y - 2.5) < 1e-6, `boîte ${b.max.y} : un groupe masqué a vidé la boîte`);
+  });
+
+  test('un maillage masqué PARMI d\'autres ne décale pas non plus le centre', () => {
+    // C'est le centre, autant que la taille, qui envoyait le modèle hors de la Case.
+    const g = groupe(cube('a', [-1, 0, 0]), cube('b', [1, 0, 0]), cube('egare', [500, 0, 0], false));
+    const centre = new THREE.Vector3();
+    box3FromObjectSkinAware3D(g).getCenter(centre);
+    assert.ok(Math.abs(centre.x) < 1e-6, `centre en x = ${centre.x}`);
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — le filtre de visibilité.
+ *
+ *   Q1 le filtre retiré (un maillage masqué compte à nouveau)                    ROUGE
+ *   Q2 le filtre appliqué à TOUT nœud, groupes compris                           ROUGE
+ *   Q3 condition inversée (seuls les maillages masqués comptent)                 ROUGE
+ *   Q4 `!object.visible` au lieu de `object.visible === false`                   ÉCHAPPÉE
+ *
+ * Q4 EST UNE MUTATION ÉQUIVALENTE, et c'est la seule raison pour laquelle elle échappe : Three
+ * initialise `visible` à `true` dans le constructeur d'Object3D, si bien qu'elle ne vaut jamais
+ * `undefined` sur un objet réel. Les deux écritures sont donc strictement interchangeables ici.
+ *
+ * On garde `=== false` — « seul un masquage EXPLICITE compte » — et on n'écrit pas de test pour
+ * la distinguer : il faudrait fabriquer un faux maillage sans `visible`, c'est-à-dire un état que
+ * la bibliothèque ne produit pas. Un test qui défend une fiction ne garde rien.
+ */
