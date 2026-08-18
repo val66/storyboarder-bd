@@ -3113,6 +3113,29 @@ function buildImportedModelRig3D(colorHex, o){
   if (chargé) {
     const g = new THREE.Group();
     const clone = cloneSkinned(chargé.scene);
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // PAS D'ÉLIMINATION PAR LE TRONC DE VUE SUR UN MODÈLE IMPORTÉ.
+    //
+    // Three décide de dessiner ou non chaque maillage en testant sa SPHÈRE ENGLOBANTE, qu'il
+    // calcule sur `geometry` — c'est-à-dire sur la POSE DE LIAISON. Pour un maillage articulé, cette
+    // géométrie ne décrit pas ce qui est affiché : le GPU la déforme dans le shader, un calcul que
+    // la CPU ne voit jamais. C'est la même racine que la boîte englobante (cf. skinned-box-3d.js),
+    // et l'écart est mesuré — sur worker_j.glb, la boîte du maillage et celle des os diffèrent d'un
+    // facteur 7,7, parce que le fichier porte deux échelles.
+    //
+    // Conséquence observée : en dézoomant ou en tournant le modèle, ses morceaux disparaissent UN À
+    // UN — les cheveux, puis la tête, puis la jupe — chacun quand sa sphère fausse quitte le champ,
+    // alors qu'il est encore parfaitement visible à l'écran.
+    //
+    // POURQUOI DÉSACTIVER PLUTÔT QUE CORRIGER LA SPHÈRE : la corriger demanderait de la recalculer à
+    // CHAQUE image, puisqu'elle change avec la pose — c'est-à-dire de refaire sur le CPU le travail
+    // que le GPU fait déjà, à chaque image et pour chaque sommet. Le coût de ne pas éliminer est
+    // sans commune mesure : quelques appels de dessin de plus pour des Éléments qui sont, presque
+    // toujours, à l'écran — on ne pose pas un personnage qu'on ne regarde pas.
+    //
+    // Limité aux modèles IMPORTÉS. Tout le reste (mobilier, murs, Personnage intégré) garde
+    // l'élimination : leur géométrie brute décrit bien ce qui est dessiné.
+    clone.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
     g.add(clone);
     return { figureGroup: g, skeletonBones: recolterOsMappes(clone, nom) };
   }

@@ -22,6 +22,7 @@
  */
 import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
@@ -142,5 +143,25 @@ describe('boiteDeCadrageModele3D — LA décision, écrite une fois pour les tro
     const tMaillage = new THREE.Vector3();
     box3FromObjectSkinAware3D(racine).getSize(tMaillage);
     assert.ok(Math.abs(t.y - tMaillage.y) < 1e-9, 'le repli doit rendre la boîte du maillage');
+  });
+});
+
+describe('Un modèle importé n\'est pas éliminé par le tronc de vue', () => {
+  test('RÉGRESSION : ses maillages portent frustumCulled = false', () => {
+    // Three teste la SPHÈRE ENGLOBANTE calculée sur la géométrie de LIAISON, qui pour un maillage
+    // articulé ne décrit pas ce qui est affiché — même racine que la boîte englobante, et écart
+    // mesuré à 7,7 sur worker_j.glb. Symptôme : en dézoomant, les morceaux disparaissent un à un.
+    //
+    // Test de FORME sur le source, et c'est assumé : l'élimination se décide dans le rendu WebGL,
+    // hors de portée sous Node. Ce qui est épinglé, c'est que la désactivation vise les maillages
+    // d'un modèle IMPORTÉ — la restreindre est aussi important que la faire, le reste du décor
+    // ayant tout intérêt à rester éliminé.
+    const src = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+    const sansCommentaires = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const bloc = sansCommentaires.slice(sansCommentaires.indexOf('function buildImportedModelRig3D'));
+    assert.match(bloc.slice(0, 800), /isMesh\s*\)\s*n\.frustumCulled\s*=\s*false/,
+      'les maillages d\'un modèle importé doivent échapper à l\'élimination');
+    assert.equal((sansCommentaires.match(/frustumCulled/g) || []).length, 1,
+      'la désactivation doit rester limitée aux modèles importés');
   });
 });
