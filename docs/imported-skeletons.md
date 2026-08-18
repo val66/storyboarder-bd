@@ -167,7 +167,30 @@ identical on purpose. The result is written back as three angles per slot, i.e. 
 `skeletonPose3d`: the applied pose then shows up in the sliders, stays adjustable, and adds no
 persisted field, hence no migration.
 
-### 6.4 A mesh the file places outside the body
+### 6.4 Framing: what is painted AND every handle
+
+The card's and the editor's framing used the **bones alone** for a dozen versions, for a good
+reason: `worker_j`'s mesh box was polluted by its katana sheath. That reason is gone — the mesh is
+detected and hidden (§ 6.5 below), and the box ignores it.
+
+But the bones alone were not enough, and that was measurable. Framing leaves a 22 % margin; here is
+how far the mesh exceeds the bones on the real files:
+
+| file | max overshoot | cropped? |
+|---|---|---|
+| `hulk_-_sm_bnd` | 13 % | no — the only one of the three under the margin |
+| `anime_girl1` | 24 % (top) | hair just clipped |
+| `worker_j` | 28 % (top) | top of the skull cut off |
+
+The frame is now the **union** of both boxes, and that union is not a compromise: it is the sum of
+two distinct requirements. The visible mesh, because a model whose hair leaves the frame is badly
+framed. The mapped bones, because joint handles are drawn at their positions, and a handle out of
+frame cannot be clicked.
+
+The Element's **size** still comes from the bones alone (§ 6.2). Framing and sizing are two separate
+questions — confusing them is what produced the defects of tasks #333 and #334.
+
+### 6.5 A mesh the file places outside the body
 
 Reported in use on `worker_j.glb`: a large black object floats far above the character in the Panel,
 and appears to "come loose" when the Element is resized.

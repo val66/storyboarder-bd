@@ -170,7 +170,32 @@ Personnage, conservé à l'identique volontairement. Le résultat est réécrit 
 emplacement, c'est-à-dire exactement `skeletonPose3d` : la pose appliquée apparaît donc dans les
 curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migration.
 
-### 6.4 Un maillage que le fichier place hors du corps
+### 6.4 Le cadrage : ce qui est peint ET chaque poignée
+
+Le cadrage de la fiche et de l'éditeur s'est fait sur les **os seuls** pendant une dizaine de
+versions, pour une bonne raison : la boîte du maillage de `worker_j` était polluée par le fourreau
+de son katana. Cette raison a disparu — ce maillage est détecté et masqué (§ 6.4 ci-dessous), et la
+boîte l'ignore.
+
+Or les os seuls ne suffisaient pas, et c'était mesurable. Le cadrage laisse 22 % de marge ; voici de
+combien le maillage dépasse les os sur les fichiers réels :
+
+| fichier | dépassement max | rogné ? |
+|---|---|---|
+| `hulk_-_sm_bnd` | 13 % | non — seul des trois sous la marge |
+| `anime_girl1` | 24 % (en haut) | cheveux tout juste coupés |
+| `worker_j` | 28 % (en haut) | sommet du crâne coupé |
+
+Le cadre est désormais l'**union** des deux boîtes, et cette union n'est pas un compromis : elle est
+la somme de deux exigences distinctes. Le maillage visible, parce qu'un modèle dont les cheveux
+sortent du cadre est mal cadré. Les os mappés, parce que les poignées d'articulation sont dessinées
+à leur position, et qu'une poignée hors champ ne se clique pas.
+
+La **taille** de l'Élément, elle, continue de se mesurer sur les os seuls (§ 6.2). Cadrer et
+dimensionner sont deux questions distinctes — c'est leur confusion qui avait produit les défauts
+des tâches #333 et #334.
+
+### 6.5 Un maillage que le fichier place hors du corps
 
 Signalé à l'usage sur `worker_j.glb` : un gros objet noir flotte très au-dessus du personnage dans
 la Case, et paraît « se décrocher » quand on redimensionne l'Élément.

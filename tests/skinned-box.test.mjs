@@ -118,11 +118,19 @@ describe('box3FromObjectSkinAware3D face à un fichier à deux échelles', () =>
 
 });
 
-describe('boiteDeCadrageModele3D — LA décision, écrite une fois pour les trois cadrages', () => {
-  test('squelette reconnu : on cadre sur les OS', () => {
-    // C'est ici que la correction vit. Le test précédent vérifie que la boîte des os décrit le
-    // corps ; celui-ci vérifie que le cadrage la CHOISIT — sans quoi on pourrait revenir à la boîte
-    // du maillage sans que rien ne bronche.
+describe('boiteDeCadrageModele3D — le cadre contient ce qui est peint ET chaque poignée', () => {
+  // DEUX EXIGENCES, et l'union des deux boîtes est exactement leur somme :
+  //   — le maillage visible, sans quoi les cheveux d'un modèle sortent du cadre ;
+  //   — les os mappés, sans quoi une poignée d'articulation se retrouve hors champ, donc
+  //     impossible à cliquer.
+  //
+  // MESURÉ sur les fichiers réels, en dépassement du maillage au-delà des os, face aux 22 % de
+  // marge du cadrage : hulk 13 % (sous la marge, jamais rogné), anime_girl1 24 %, worker_j 28 %.
+  // Les deux derniers étaient donc coupés en haut, et hulk semblait sain pour cette seule raison.
+
+  test('les OS sont dans le cadre, même quand le maillage est bien plus petit', () => {
+    // worker_j : ses maillages portent une échelle que ses os n'ont pas. Le maillage ne borne donc
+    // pas les poignées — le cadre doit quand même toutes les contenir.
     const racine = figureArticulee(ECHELLE);
     const skeletonBones = {};
     let i = 0;
@@ -131,19 +139,53 @@ describe('boiteDeCadrageModele3D — LA décision, écrite une fois pour les tro
     const t = new THREE.Vector3();
     boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones }).getSize(t);
     const tOs = new THREE.Vector3(); boiteDesOs(racine).getSize(tOs);
-    assert.ok(Math.abs(t.y - tOs.y) < 1e-6,
-      `le cadrage rend ${t.y.toFixed(3)}, les os ${tOs.y.toFixed(3)} — il est reparti sur le maillage`);
+    assert.ok(t.y >= tOs.y - 1e-6,
+      `le cadre rend ${t.y.toFixed(3)} pour des os de ${tOs.y.toFixed(3)} : une poignée serait hors champ`);
   });
 
-  test('aucun squelette reconnu : repli sur le maillage', () => {
-    // Une chaise importée. Les deux chemins ne se recouvrent jamais : un modèle a un squelette
-    // reconnu, ou il n'en a pas.
+  test('RÉGRESSION : le MAILLAGE aussi, quand il dépasse les os', () => {
+    // Le cas des cheveux et du chapeau : aucun os ne les borne, et cadrer sur les seuls os les
+    // coupait. C'est le défaut qui a valu à worker_j un crâne tronqué pendant dix versions.
+    const racine = figureArticulee(1);
+    const skeletonBones = {};
+    let i = 0;
+    racine.traverse(n => { if (n.isBone) skeletonBones['os' + (i++)] = { os: n }; });
+    const cheveux = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    cheveux.position.y = HAUTEUR_OS + 5;          // franchement au-dessus du plus haut os
+    racine.add(cheveux);
+    racine.updateMatrixWorld(true);
+
+    const boite = boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones });
+    assert.ok(boite.max.y >= HAUTEUR_OS + 5.5 - 1e-6,
+      `le cadre s'arrête à ${boite.max.y.toFixed(2)} : les cheveux en sortent`);
+  });
+
+  test('un maillage MASQUÉ ne dilate pas le cadre', () => {
+    // Le fourreau de worker_j : masqué (cf. stray-meshes-3d.js), il ne doit plus cadrer sur du vide.
+    // C'est ce qui permet de revenir au maillage sans réintroduire le défaut de la tâche #333.
+    const racine = figureArticulee(1);
+    const skeletonBones = {};
+    let i = 0;
+    racine.traverse(n => { if (n.isBone) skeletonBones['os' + (i++)] = { os: n }; });
+    const egare = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    egare.position.y = HAUTEUR_OS * 3;
+    egare.visible = false;
+    racine.add(egare);
+    racine.updateMatrixWorld(true);
+
+    const boite = boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones });
+    assert.ok(boite.max.y < HAUTEUR_OS * 2,
+      `le cadre monte à ${boite.max.y.toFixed(2)} : il suit un maillage masqué`);
+  });
+
+  test('aucun squelette reconnu : le maillage seul', () => {
+    // Une chaise importée. L'union avec une boîte absente est sans effet — pas de branche en plus.
     const racine = figureArticulee(ECHELLE);
     const t = new THREE.Vector3();
     boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones: {} }).getSize(t);
     const tMaillage = new THREE.Vector3();
     box3FromObjectSkinAware3D(racine).getSize(tMaillage);
-    assert.ok(Math.abs(t.y - tMaillage.y) < 1e-9, 'le repli doit rendre la boîte du maillage');
+    assert.ok(Math.abs(t.y - tMaillage.y) < 1e-9, 'sans os, le cadre est celui du maillage');
   });
 });
 

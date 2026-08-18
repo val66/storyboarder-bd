@@ -2774,9 +2774,53 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  *
  * Les deux chemins ne se recouvrent jamais : un modèle a un squelette reconnu, ou il n'en a pas.
  */
+/**
+ * LA boîte de cadrage d'un modèle importé — celle de la fiche comme celle de l'éditeur.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QU'ELLE DOIT CONTENIR : CE QUI EST PEINT, ET CHAQUE POIGNÉE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Deux exigences, et l'union des deux boîtes est exactement leur somme :
+ *
+ *   — le MAILLAGE VISIBLE, parce qu'un modèle dont les cheveux sortent du cadre est un modèle mal
+ *     cadré, quoi qu'en disent ses os ;
+ *   — les OS MAPPÉS, parce que les poignées d'articulation sont dessinées à leur position : une
+ *     poignée hors champ ne se clique pas.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI ON EST REVENU AU MAILLAGE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Le cadrage s'est fait sur les OS SEULS pendant une dizaine de versions, et pour une bonne raison :
+ * la boîte du maillage de `worker_j` était polluée par le fourreau de son katana, que le fichier
+ * place à trois fois la hauteur du personnage — elle cadrait donc sur un objet flottant plutôt que
+ * sur le corps.
+ *
+ * CETTE RAISON A DISPARU : ce maillage est détecté et masqué (cf. src/stray-meshes-3d.js), et
+ * `expandBoxSkinAware3D` ignore les maillages masqués. La boîte du maillage décrit à nouveau ce qui
+ * est réellement dessiné.
+ *
+ * Or les os seuls ne suffisaient pas, et c'était mesurable. Le cadrage laisse 22 % de marge
+ * (cf. frameCameraToBox) ; voici de combien le maillage dépasse les os, sur les fichiers réels :
+ *
+ *   hulk_-_sm_bnd    13 % au plus        sous la marge  → jamais rogné
+ *   anime_girl1      24 % en haut        au-dessus      → cheveux tout juste coupés
+ *   worker_j         28 % en haut        au-dessus      → sommet du crâne coupé
+ *
+ * `hulk` était le seul des trois à passer, ce qui explique qu'il ait longtemps semblé sain.
+ *
+ * CE QUE CETTE FONCTION NE DÉCIDE PAS : la TAILLE réelle de l'Élément, qui se mesure sur les os
+ * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes — c'est
+ * précisément leur confusion qui avait produit les défauts des tâches #333 et #334.
+ */
 export function boiteDeCadrageModele3D(entry){
-  return boiteDesOsMappes3D(entry && entry.skeletonBones)
-    || box3FromObjectSkinAware3D(entry.figureGroup);
+  const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
+  const os = boiteDesOsMappes3D(entry && entry.skeletonBones);
+  // `union` avec une boîte VIDE est sans effet — les deux cas dégénérés (modèle sans os reconnus,
+  // ou sans maillage visible) se replient donc l'un sur l'autre sans branche supplémentaire.
+  if (os) boite.union(os);
+  return boite;
 }
 
 export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
