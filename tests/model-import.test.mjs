@@ -35,8 +35,9 @@ import { OBJECT_REAL_HEIGHT_M, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constant
 
 let snapshots = 0;
 let alertes = [];
-// Les appels à « rendre visible dans sa Case » — le geste final que les trois chemins de création
-// d'Élément doivent partager (cf. le bloc de tests dédié plus bas).
+// Les appels au GESTE FINAL de création — figer les coordonnées monde, puis s'assurer que
+// l'Élément est dans le champ. Les trois chemins de création doivent le partager (cf. le bloc de
+// tests dédié plus bas).
 let visibilites = [];
 setScenesCallbacks({ snapshot: () => {} });
 
@@ -68,7 +69,7 @@ beforeEach(() => {
     renderAll: () => {},
     alerter: (m) => alertes.push(m),
     confirmer: async (m) => { confirmations.push(m); return false; },
-    rendreVisible: (el, panel, page) => visibilites.push({ el, panel, page }),
+    finaliserCreation: (el, panel, page) => visibilites.push({ el, panel, page }),
   });
   cible = caseCible();
   S.editingSceneId = null; S.currentTomeIndex = 0; S.currentPageIndex = 0;
@@ -518,21 +519,29 @@ describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
   // tombait bien centré. D'où l'impression d'un défaut dépendant de l'ORDRE DES GESTES — ce qui a
   // fait chercher longtemps du côté du placement, où tout était juste.
   //
-  // La cause : `addPersonaToPanel` et `addObjectToPanel` finissent tous deux par
-  // `ensureNewElementVisibleInPanel3D` (aimantation au sol + recentrage de la caméra si l'Élément
-  // est hors champ). L'import, troisième chemin de création, ne le faisait pas. Une Case vide n'a
-  // donc jamais vu sa caméra recadrée ; dès qu'un Personnage y était passé, elle l'avait été pour
-  // lui, et le modèle en profitait.
+  // La cause : `addPersonaToPanel` et `addObjectToPanel` finissent tous deux par le même geste —
+  // figer les coordonnées monde, puis recentrer la caméra si l'Élément est hors champ. L'import,
+  // troisième chemin de création, n'en faisait AUCUNE des deux moitiés. Une Case vide n'avait donc
+  // jamais vu sa caméra recadrée ; dès qu'un Personnage y était passé, elle l'avait été pour lui,
+  // et le modèle en profitait.
   //
-  // Trois chemins pour un même geste : c'est l'énumération tenue à la main, encore. Le test porte
-  // sur le CHEMIN D'IMPORT, seul testable ici sans DOM 3D ; les deux autres sont dans events.js.
+  // LE SECOND SYMPTÔME, signalé après la première correction : un modèle bien centré à l'import
+  // mais « un peu loin ». C'était l'autre moitié — les coordonnées monde non figées. La conversion
+  // « position sur la page → position dans le monde » dépend de la CAMÉRA ; sans coordonnées
+  // figées, elle est refaite à chaque rendu, avec la caméra qu'on vient justement de déplacer.
+  // Deux symptômes, une seule omission, réparée en deux fois faute d'avoir nommé le geste.
+  //
+  // Trois chemins pour un même geste : c'est l'énumération tenue à la main, encore. Le geste porte
+  // maintenant un NOM (`finaliserCreationDansCase3D`, events.js) et les trois chemins l'appellent —
+  // un geste nommé se transmet, une paire de lignes recopiées se perd. Le test porte sur le CHEMIN
+  // D'IMPORT, seul testable ici sans DOM 3D ; les deux autres sont dans events.js.
 
-  test('RÉGRESSION : importer un modèle dans une Case appelle le geste de mise en vue', async () => {
+  test('RÉGRESSION : importer un modèle dans une Case appelle le geste final de création', async () => {
     pontQuiChoisit('table.glb');
     _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
     const el = await importModelIntoPanel(cible, S.tomes[0].pages[0]);
     assert.ok(el, 'l\'Élément doit être créé');
-    assert.equal(visibilites.length, 1, 'le geste de mise en vue n\'a pas été appelé');
+    assert.equal(visibilites.length, 1, 'le geste final de création n\'a pas été appelé');
   });
 
   test('et il porte l\'Élément, sa Case et sa Planche — pas autre chose', async () => {

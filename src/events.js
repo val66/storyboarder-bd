@@ -306,7 +306,7 @@ setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAn
 // l'application.
 setModelImportCallbacks({
   snapshot, renderAll, alerter: alertAction, confirmer: confirmAction,
-  rendreVisible: ensureNewElementVisibleInPanel3D,
+  finaliserCreation: finaliserCreationDansCase3D,
   // Déclaré ici mais défini bien plus bas : la fonction est hissée, et c'est ce qui permet de
   // garder tout le câblage d'injection groupé en haut du fichier.
   confirmerImport: (nomFichier) => proposerCorrespondance(nomFichier),
@@ -537,6 +537,34 @@ function sendBackward(){
 // ════════════════════════════════════════════════════════════
 // CHARACTERS
 // ════════════════════════════════════════════════════════════
+/**
+ * LE GESTE FINAL DE TOUTE CRÉATION D'ÉLÉMENT DANS UNE CASE, nommé une fois pour les trois chemins.
+ *
+ * Il en fait deux choses, et l'ORDRE compte :
+ *   1. figer les coordonnées monde de l'Élément (`storeElementWorldCoords`) ;
+ *   2. s'assurer qu'il est dans le champ, quitte à y ramener le centre de caméra
+ *      (`ensureNewElementVisibleInPanel3D`).
+ *
+ * POURQUOI DANS CET ORDRE. La conversion « position sur la page → position dans le monde » dépend
+ * de la CAMÉRA de la Case. Si on recadre d'abord, la même position 2D ne donne plus le même point
+ * du monde, et un Élément dont les coordonnées ne sont pas figées se met à dériver d'un rendu à
+ * l'autre. Figer d'abord, recadrer ensuite : la position est décidée une fois, puis regardée.
+ *
+ * POURQUOI CETTE FONCTION EXISTE. Ces deux gestes étaient recopiés à la main dans chaque chemin de
+ * création. Le troisième — l'import d'un modèle — n'en avait AUCUN des deux : d'où un modèle qui
+ * naissait hors champ dans une Case vide (corrigé en v1.3.43 en ajoutant le second), puis qui
+ * dérivait « un peu loin » faute du premier. Deux symptômes, une seule omission, réparée deux fois.
+ * Un geste nommé se transmet ; une paire de lignes recopiées se perd.
+ */
+function finaliserCreationDansCase3D(obj, panel, page){
+  // Un Mur, ou une Paroi aimantée à un Mur, tient sa position de son SUPPORT et non de la Case :
+  // lui figer des coordonnées monde ici le décrocherait (cf. positionWallOpeningOnWall).
+  if (!WALL_OPENING_MAGNET_TYPES.includes(obj.objType) && !WALL_TYPES.includes(obj.objType)) {
+    storeElementWorldCoords(obj, panel);
+  }
+  ensureNewElementVisibleInPanel3D(obj, panel, page);
+}
+
 function addPersonaToPanel(panel){
   snapshot();
   const page = currentPage();
@@ -555,9 +583,8 @@ function addPersonaToPanel(panel){
   // realHeightFloor: source of truth for the 3D renderer (always real size — Phase 3).
   obj.realHeightFloor = PERSONA_REAL_HEIGHT_M;
   page.objects.push(obj);
-  storeElementWorldCoords(obj, panel);
   S.selectedId = obj.id; S.selectedRoomId = null;
-  ensureNewElementVisibleInPanel3D(obj, panel, page);
+  finaliserCreationDansCase3D(obj, panel, page);
   drawCurrentPage();
   openPersonaModal(obj, true);
 }
@@ -1095,11 +1122,8 @@ function addObjectToPanel(panel, objType){
     }
   }
   page.objects.push(obj);
-  if (!WALL_OPENING_MAGNET_TYPES.includes(objType) && !WALL_TYPES.includes(objType)) {
-    storeElementWorldCoords(obj, panel);
-  }
   S.selectedId = obj.id; S.selectedRoomId = null;
-  ensureNewElementVisibleInPanel3D(obj, panel, page);
+  finaliserCreationDansCase3D(obj, panel, page);
   drawCurrentPage();
   openObjectModal(obj, true);
 }
