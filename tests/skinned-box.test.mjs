@@ -295,3 +295,96 @@ describe('ratioLargeurModele3D — l\'empreinte 2D suit la silhouette', () => {
     assert.ok(Math.abs(ratioLargeurModele3D(pave(1, 2)) - ratioLargeurModele3D(pave(50, 100))) < 1e-6);
   });
 });
+
+describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
+  // LE DÉFAUT GARDÉ ICI, signalé à l'usage sur `hulk` : une boîte de sélection PLUS LARGE QUE HAUTE
+  // pour un personnage debout. La première version prenait le rapport x/y de la boîte, en supposant
+  // que la verticale du fichier est Y. Deux des six fichiers mesurés ont +Z. La boîte de hulk fait
+  // 1,0 × 0,8 × 2,5 : `t.y` est son ÉPAISSEUR, et le rapport sortait à 1,25 au lieu de 0,4.
+  //
+  // La justification écrite alors — « la mesure et le rendu se tromperaient ensemble » — était
+  // FAUSSE : cette fonction voit la scène telle qu'elle sort du fichier, le rendu la voit REMISE
+  // DEBOUT. Ils ne mesurent pas au même moment.
+
+  /** Un humanoïde Mixamo debout sur +Y, le même que celui de tests/pose-fiche.test.mjs. */
+  function squeletteMixamo(){
+    const os = (nom, x, y, z) => {
+      const b = new THREE.Bone();
+      b.name = 'mixamorig:' + nom;
+      b.position.set(x, y, z);
+      return b;
+    };
+    const hips = os('Hips', 0, 0.95, 0);
+    const spine = os('Spine', 0, 0.12, 0);
+    const spine1 = os('Spine1', 0, 0.14, 0);
+    const neck = os('Neck', 0, 0.16, 0);
+    const head = os('Head', 0, 0.10, 0);
+    hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
+    [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
+      const clav = os(cote + 'Shoulder', signe * 0.04, 0.12, 0);
+      const bras = os(cote + 'Arm', signe * 0.15, 0, 0);
+      const avant = os(cote + 'ForeArm', signe * 0.28, 0, 0);
+      const main = os(cote + 'Hand', signe * 0.25, 0, 0);
+      spine1.add(clav); clav.add(bras); bras.add(avant); avant.add(main);
+      const cuisse = os('Up' + cote + 'Leg', signe * 0.09, -0.05, 0);
+      const jambe = os(cote + 'Leg', 0, -0.42, 0);
+      const pied = os(cote + 'Foot', 0, -0.40, 0);
+      hips.add(cuisse); cuisse.add(jambe); jambe.add(pied);
+    });
+    return hips;
+  }
+
+  /**
+   * Le même corps, plus un maillage de `largeur` × `hauteur`, le tout COUCHÉ : le groupe est tourné
+   * de −90° autour de X, si bien que la verticale du corps devient +Z en coordonnées monde. C'est
+   * la situation de `hulk`, obtenue sans inventer une hiérarchie d'os que la reconnaissance
+   * pourrait ne pas admettre — celle-ci est déjà éprouvée ailleurs.
+   */
+  function corpsCouche(largeur, hauteur){
+    const interne = new THREE.Group();
+    interne.add(squeletteMixamo());
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(largeur, hauteur, largeur * 0.4), new THREE.MeshBasicMaterial());
+    m.position.y = hauteur / 2;
+    interne.add(m);
+    const racine = new THREE.Group();
+    racine.rotation.x = -Math.PI / 2;
+    racine.add(interne);
+    racine.updateMatrixWorld(true);
+    return racine;
+  }
+
+  test('le garde-fou : ce montage a BIEN sa verticale sur +Z', () => {
+    // Sans lui, un repère mal dérivé rendrait le test suivant vert pour la mauvaise raison.
+    const t = new THREE.Vector3();
+    box3FromObjectSkinAware3D(corpsCouche(0.7, 1.75)).getSize(t);
+    assert.ok(t.z > t.x && t.z > t.y, `boîte ${t.x.toFixed(2)} × ${t.y.toFixed(2)} × ${t.z.toFixed(2)} : la hauteur n'est pas sur Z`);
+    assert.ok(t.x / t.y > 2, `le rapport x/y naïf vaut ${(t.x / t.y).toFixed(2)} — il doit être franchement faux`);
+  });
+
+  test('RÉGRESSION : le rapport est mesuré dans le repère DU CORPS, pas dans celui du fichier', () => {
+    // 0,7 de large pour 1,75 de haut : le rapport doit valoir 0,4.
+    const r = ratioLargeurModele3D(corpsCouche(0.7, 1.75));
+    assert.ok(Math.abs(r - 0.4) < 1e-2, `rapport ${r} : la verticale du fichier a été supposée Y`);
+  });
+
+  test('le même corps DEBOUT donne le même rapport', () => {
+    // La propriété qui compte : le rapport décrit le corps, pas l'orientation du fichier.
+    const debout = new THREE.Group();
+    debout.add(squeletteMixamo());
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.75, 0.28), new THREE.MeshBasicMaterial());
+    m.position.y = 1.75 / 2;
+    debout.add(m);
+    debout.updateMatrixWorld(true);
+    assert.ok(Math.abs(ratioLargeurModele3D(debout) - 0.4) < 1e-2);
+  });
+
+  test('sans squelette reconnu, on retombe sur la convention du fichier', () => {
+    // Un objet sans corps n'a pas de verticale à dériver : x/y est tout ce qu'on a.
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshBasicMaterial());
+    const g = new THREE.Group();
+    g.add(m);
+    g.updateMatrixWorld(true);
+    assert.ok(Math.abs(ratioLargeurModele3D(g) - 0.5) < 1e-6);
+  });
+});

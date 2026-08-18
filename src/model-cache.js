@@ -210,6 +210,55 @@ export async function preloadModels(noms){
  * C'est la même règle que le cadrage (cf. boiteDeCadrageModele3D) : les os font foi quand ils sont
  * là, la boîte du maillage sinon. Deux chemins qui ne se recouvrent jamais.
  */
+/**
+ * Le repère du corps d'une scène décodée — haut, droite, avant — ou `null` si on ne peut pas le
+ * dériver, avec la position de chaque os mappé.
+ *
+ * EXTRAIT POUR ÊTRE PARTAGÉ, et c'est le fond de l'affaire. La hauteur et la largeur d'un modèle
+ * doivent se mesurer DANS LE MÊME REPÈRE : deux dérivations séparées finissent par diverger, et
+ * c'est précisément ce qui vient d'arriver — la largeur avait d'abord été prise comme l'étendue en
+ * X divisée par l'étendue en Y de la boîte, ce qui suppose que la verticale du fichier est Y. Deux
+ * des six fichiers mesurés ont +Z pour verticale : sur `hulk`, `t.y` est son ÉPAISSEUR, et le
+ * rapport sortait à 1,25 au lieu de 0,4 — une boîte de sélection plus large que haute pour un
+ * personnage debout.
+ *
+ * Rend `{ repere, positions }` : le repère, et une fonction slot → position monde (ou `null`).
+ */
+function repereEtOsDuModele3D(scene){
+  const carte = inferSkeletonMap(bonesFromObject3D(scene));
+  const parNom = new Map();
+  scene.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
+  const p = new THREE.Vector3();
+  const position = (slot) => {
+    const e = carte[slot];
+    const b = e && e.name ? parNom.get(e.name) : null;
+    if (!b) return null;
+    b.getWorldPosition(p);
+    return [p.x, p.y, p.z];
+  };
+  const repere = repereDuCorps({
+    bassin: position('bassin'), tete: position('tete'),
+    clavicule_g: position('clavicule_g'), clavicule_d: position('clavicule_d'),
+    bras_g: position('bras_g'), bras_d: position('bras_d'),
+  });
+  return repere ? { repere, carte, position } : null;
+}
+
+/** L'étendue d'une boîte le long d'un axe quelconque, via ses huit coins. */
+function etendueSelonAxe3D(boite, axe){
+  let min = Infinity, max = -Infinity;
+  for (const x of [boite.min.x, boite.max.x]) {
+    for (const y of [boite.min.y, boite.max.y]) {
+      for (const z of [boite.min.z, boite.max.z]) {
+        const d = x * axe[0] + y * axe[1] + z * axe[2];
+        if (d < min) min = d;
+        if (d > max) max = d;
+      }
+    }
+  }
+  return max - min;
+}
+
 export function hauteurNaturelleModele3D(scene){
   const parDefaut = () => {
     const t = new THREE.Vector3();
@@ -220,23 +269,9 @@ export function hauteurNaturelleModele3D(scene){
     // Pas de garde « assez d'os ? » : elle serait REDONDANTE. Un fichier sans squelette donne une
     // correspondance vide, donc aucune position, donc aucun repère — et le repli plus bas s'en
     // charge. Elle était là, et son seul effet était de rendre ce repli inatteignable par les tests.
-    const carte = inferSkeletonMap(bonesFromObject3D(scene));
-    const parNom = new Map();
-    scene.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
-    const p = new THREE.Vector3();
-    const position = (slot) => {
-      const e = carte[slot];
-      const b = e && e.name ? parNom.get(e.name) : null;
-      if (!b) return null;
-      b.getWorldPosition(p);
-      return [p.x, p.y, p.z];
-    };
-    const repere = repereDuCorps({
-      bassin: position('bassin'), tete: position('tete'),
-      clavicule_g: position('clavicule_g'), clavicule_d: position('clavicule_d'),
-      bras_g: position('bras_g'), bras_d: position('bras_d'),
-    });
-    if (!repere) return parDefaut();
+    const corps = repereEtOsDuModele3D(scene);
+    if (!corps) return parDefaut();
+    const { repere, carte, position } = corps;
     // L'étendue des os le long de la verticale DU CORPS. Les pieds ne sont pas toujours l'os le plus
     // bas ni la tête le plus haut selon la pose du fichier : on prend le min et le max, pas la
     // distance bassin-tête, qui ne compterait ni les jambes ni le crâne.
@@ -279,18 +314,36 @@ export function hauteurNaturelleModele3D(scene){
  * une jupe, une cape ou une arme tenue à bout de bras occupent l'image alors qu'aucun os ne les
  * borne. Et c'est bien une empreinte à l'écran qu'on cherche à décrire.
  *
- * C'EST AUSSI LA MÊME BOÎTE QUE LE RENDU. `placeRigCentered3D` déduit l'échelle du rig de `size.y`
- * de cette boîte-là : en prendre le rapport x/y garantit que l'empreinte 2D reste fidèle à ce que
- * la Case affiche, même sur un fichier dont la verticale ne serait pas Y — les deux se tromperaient
- * alors ENSEMBLE, et l'empreinte continuerait d'encadrer le modèle.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * DANS LE REPÈRE DU CORPS, ET NON DANS CELUI DU FICHIER
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La première version prenait le rapport x/y de la boîte, en écrivant que si la verticale du
+ * fichier n'était pas Y, la mesure et le rendu « se tromperaient ensemble ». C'ÉTAIT FAUX, et
+ * signalé à l'usage sur `hulk` : une boîte de sélection plus large que haute pour un personnage
+ * debout. Les deux ne mesurent pas au même moment — cette fonction voit la scène telle qu'elle sort
+ * du fichier, le rendu la voit REMISE DEBOUT.
+ *
+ * Or `hulk` a +Z pour verticale (deux des six fichiers mesurés l'ont) : sa boîte fait 1,0 × 0,8 × 2,5,
+ * donc `t.y` est son ÉPAISSEUR et le rapport sortait à 1,25 au lieu de 0,4.
+ *
+ * On projette donc la boîte sur les axes DU CORPS — les mêmes que ceux de la hauteur, dérivés du
+ * squelette par `repereEtOsDuModele3D`. Une seule dérivation partagée : deux repères séparés
+ * finiraient par diverger, ce qui est exactement ce qui vient d'arriver.
+ *
+ * Sans squelette reconnu, on retombe sur x/y — pour un objet sans corps, il n'y a pas de verticale
+ * à dériver, et la convention du fichier est tout ce qu'on a.
  *
  * Fonction PURE : elle ne fait que lire une scène décodée.
  */
 export function ratioLargeurModele3D(scene){
   try {
-    const t = new THREE.Vector3();
-    box3FromObjectSkinAware3D(scene).getSize(t);
-    const r = t.x / t.y;
+    const boite = box3FromObjectSkinAware3D(scene);
+    if (boite.isEmpty()) return 1;
+    const corps = repereEtOsDuModele3D(scene);
+    const large = corps ? etendueSelonAxe3D(boite, corps.repere.droite) : (boite.max.x - boite.min.x);
+    const haut = corps ? etendueSelonAxe3D(boite, corps.repere.haut) : (boite.max.y - boite.min.y);
+    const r = large / haut;
     return (Number.isFinite(r) && r > 0) ? r : 1;
   } catch {
     return 1;
