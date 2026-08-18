@@ -140,7 +140,24 @@ humanoid. Both pairs point the same anatomical way — from the body's right tow
 frame obtained is the same whichever one served. Any imported file built like this benefits from the
 same fallback.
 
-### 6.2 From a Character pose to bone angles
+### 6.2 A model's size is measured on its body
+
+Two files out of six reported an absurd size on import — `hulk_-_sm_bnd.glb` at **0.845 m**,
+`worker_j.glb` at **9.433 m** — without triggering any warning.
+
+The measurement took the **Y** extent of the bounding box, and was wrong twice:
+
+| | what was measured | why it is wrong |
+|---|---|---|
+| `hulk` | 0.845 m | measured at decode, **before** the up-axis conversion: that is its depth; its height is 2.374 m |
+| `worker_j` | 9.433 m | the box wraps the **whole file**, katana included |
+
+Size is now measured on the **mapped bones**, projected onto the body's own vertical — the one
+`repereDuCorps` derives from the skeleton itself. No axis is assumed, and a prop standing next to the
+character no longer counts. Falls back to the mesh box when no skeleton is recognised: the same rule
+as framing, two paths that never overlap.
+
+### 6.3 From a Character pose to bone angles
 
 `src/pose-bridge.js` is the only place where the two pose vocabularies meet: the Character's
 *fields* (`lElbow`, `lClavicleRotZ`) and the mapping's *slots* (`avantbras_g`, `clavicule_g`).

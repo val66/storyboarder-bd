@@ -28,6 +28,7 @@ import * as THREE from 'three';
 
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
 import { boiteDesOsMappes3D, frameCameraToBox } from '../src/rig3d.js';
+import { hauteurNaturelleModele3D } from '../src/model-cache.js';
 import { boiteDeCadrageModele3D } from '../src/scene3d.js';
 
 const ECHELLE = 0.1297;   // celle mesurée sur worker_j.glb
@@ -191,5 +192,70 @@ describe('Les plans de coupe de la caméra suivent la boîte cadrée', () => {
     const cam = cameraFactice();
     frameCameraToBox(cam, new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 2, 0.5)), 1);
     assert.ok(cam.far < 100, `far ${cam.far.toFixed(1)} : inutilement large pour une figure de 2 unités`);
+  });
+});
+
+describe('La taille naturelle d\'un modèle : le CORPS, pas la boîte du fichier', () => {
+  // Un humanoïde reconnaissable, monté selon une verticale AU CHOIX. C'est le cœur du test : la
+  // mesure ne doit dépendre d'aucun axe supposé.
+  function humanoide({ vertical = 'y', accessoire = false } = {}) {
+    const os = (nom, le, lat) => {
+      const b = new THREE.Bone();
+      b.name = 'mixamorig:' + nom;
+      // `le` = le long du corps, `lat` = latéral. On place selon la verticale demandée.
+      if (vertical === 'y') b.position.set(lat, le, 0);
+      else b.position.set(lat, 0, le);
+      return b;
+    };
+    const hips = os('Hips', 0, 0), spine = os('Spine', 0.4, 0), spine1 = os('Spine1', 0.3, 0);
+    const neck = os('Neck', 0.3, 0), head = os('Head', 0.3, 0);
+    hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
+    [['Left', 1], ['Right', -1]].forEach(([c, s]) => {
+      const clav = os(c + 'Shoulder', 0.2, s * 0.1), bras = os(c + 'Arm', 0, s * 0.2);
+      const avant = os(c + 'ForeArm', 0, s * 0.3), main = os(c + 'Hand', 0, s * 0.25);
+      spine1.add(clav); clav.add(bras); bras.add(avant); avant.add(main);
+      const cuisse = os(c + 'UpLeg', -0.1, s * 0.1), jambe = os(c + 'Leg', -0.45, 0);
+      hips.add(cuisse); cuisse.add(jambe); jambe.add(os(c + 'Foot', -0.45, 0));
+    });
+    scene = new THREE.Group();
+    scene.add(hips);
+    if (accessoire) {
+      // Un katana : loin du corps, et bien plus grand que lui.
+      const lame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 8, 0.1), new THREE.MeshBasicMaterial());
+      lame.position.set(0, 0, -40);
+      scene.add(lame);
+    }
+    scene.updateMatrixWorld(true);
+    return scene;
+  }
+  let scene;
+
+  test('la verticale est DÉRIVÉE : +Y et +Z donnent la même taille', () => {
+    // Deux des six fichiers mesurés ont +Z pour verticale. L'ancienne mesure prenait l'extension en
+    // Y de la boîte, avant remise debout de la scène : hulk sortait à 0,845 m — son épaisseur.
+    const enY = hauteurNaturelleModele3D(humanoide({ vertical: 'y' }));
+    const enZ = hauteurNaturelleModele3D(humanoide({ vertical: 'z' }));
+    assert.ok(Math.abs(enY - enZ) < 1e-6,
+      `+Y donne ${enY.toFixed(3)} et +Z ${enZ.toFixed(3)} : la verticale est encore supposée`);
+    assert.ok(enY > 1.5 && enY < 2.5, `taille ${enY.toFixed(3)} : ce corps mesure environ 2 unités`);
+  });
+
+  test('un accessoire posé à côté ne compte pas dans la taille', () => {
+    // worker_j.glb sortait à 9,433 m à cause de son katana, dont la boîte est centrée très loin.
+    // Ce n'est pas le corps : la taille se mesure sur les os.
+    const sans = hauteurNaturelleModele3D(humanoide());
+    const avec = hauteurNaturelleModele3D(humanoide({ accessoire: true }));
+    assert.ok(Math.abs(sans - avec) < 1e-6,
+      `${sans.toFixed(3)} sans accessoire, ${avec.toFixed(3)} avec : la boîte du fichier compte encore`);
+  });
+
+  test('sans squelette reconnu : repli sur la boîte, comme avant', () => {
+    // Une chaise importée. Les deux chemins ne se recouvrent jamais.
+    const chaise = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.5), new THREE.MeshBasicMaterial());
+    m.position.y = 0.45;
+    chaise.add(m);
+    chaise.updateMatrixWorld(true);
+    assert.ok(Math.abs(hauteurNaturelleModele3D(chaise) - 0.9) < 1e-6);
   });
 });

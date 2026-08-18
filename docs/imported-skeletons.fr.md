@@ -142,7 +142,24 @@ paires pointent dans le même sens anatomique — de la droite du corps vers sa 
 obtenu est le même quelle que soit celle qui a servi. Tout fichier importé bâti de la même façon
 profite du même repli.
 
-### 6.2 D'une pose du Personnage aux angles des os
+### 6.2 La taille d'un modèle se mesure sur son corps
+
+Deux fichiers sur six sortaient une taille absurde à l'import — `hulk_-_sm_bnd.glb` à **0,845 m**,
+`worker_j.glb` à **9,433 m** — sans qu'aucun avertissement ne se déclenche.
+
+La mesure prenait l'extension en **Y** de la boîte englobante, et se trompait deux fois :
+
+| | ce qui était mesuré | pourquoi c'est faux |
+|---|---|---|
+| `hulk` | 0,845 m | mesure au décodage, **avant** la remise debout : c'est son épaisseur, sa taille est 2,374 m |
+| `worker_j` | 9,433 m | la boîte englobe **tout le fichier**, katana compris |
+
+La taille se mesure désormais sur les **os mappés**, projetés sur la verticale du corps — celle que
+`repereDuCorps` dérive du squelette lui-même. Aucun axe n'est supposé, et un accessoire posé à côté
+ne compte plus. Repli sur la boîte du maillage quand aucun squelette n'est reconnu : la même règle
+que le cadrage, deux chemins qui ne se recouvrent jamais.
+
+### 6.3 D'une pose du Personnage aux angles des os
 
 `src/pose-bridge.js` est le seul endroit où les deux vocabulaires de pose se rencontrent : les
 *champs* du Personnage (`lElbow`, `lClavicleRotZ`) et les *emplacements* de la correspondance

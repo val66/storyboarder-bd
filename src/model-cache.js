@@ -31,6 +31,10 @@ import { readModel } from './model-store.js';
 // cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh) — la
 // hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+// La verticale d'un corps se DÉRIVE de son squelette, elle ne se suppose pas — cf. la mesure des six
+// fichiers réels dans docs/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
+import { bonesFromObject3D, inferSkeletonMap } from './skeleton-map.js';
+import { repereDuCorps } from './skeleton-retarget.js';
 
 // nom de fichier → 'chargement' | 'introuvable' | { scene, hauteurM }
 const _cache = new Map();
@@ -157,15 +161,88 @@ export async function preloadModels(noms){
       // box3FromObjectSkinAware3D (pas Box3().setFromObject) : un modèle articulé (SkinnedMesh) a une
       // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée — cf.
       // src/skinned-box-3d.js.
-      const boite = box3FromObjectSkinAware3D(scene);
-      const taille = new THREE.Vector3(); boite.getSize(taille);
       applyAnisotropy(scene);
-      _cache.set(nom, { scene, hauteurM: taille.y > 0 ? taille.y : 1 });
+      _cache.set(nom, { scene, hauteurM: hauteurNaturelleModele3D(scene) });
     } catch {
       _cache.set(nom, 'introuvable');
     }
   }));
   _onChange();
+}
+
+/**
+ * La TAILLE d'un modèle importé, en mètres — celle qu'on propose dans sa fiche.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI PAS SIMPLEMENT LA HAUTEUR DE SA BOÎTE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * C'est ce qui était fait — l'extension en Y de la boîte englobante — et c'est faux DEUX FOIS :
+ *
+ *   — L'AXE. La mesure a lieu au DÉCODAGE, avant que la scène ne soit remise debout. Un fichier
+ *     dont la verticale est +Z (deux des six mesurés) voit donc mesurer sa PROFONDEUR. Mesuré :
+ *     `hulk_-_sm_bnd.glb` sortait à 0,845 m — c'est son épaisseur ; sa taille est 2,374 m.
+ *   — CE QUE LA BOÎTE CONTIENT. Elle englobe tout le fichier, personnage ET accessoires.
+ *     `worker_j.glb` porte un katana dont la boîte est centrée très loin : il sortait à 9,433 m.
+ *
+ * Les deux erreurs ont la même conséquence : le garde-fou de l'import (MODEL_HEIGHT_WARN_MAX_M) ne
+ * s'est déclenché sur aucun des deux, l'un passant 57 cm sous le seuil et l'autre étant trop petit
+ * pour qu'un seuil haut le voie.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QU'ON MESURE À LA PLACE : LE CORPS, LE LONG DE SA PROPRE VERTICALE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Quand le squelette est reconnu, la verticale du corps se DÉRIVE de lui — bassin vers tête,
+ * cf. src/skeleton-retarget.js — et la taille est l'étendue des os mappés PROJETÉE sur cet axe.
+ * Aucun axe n'est supposé, et un accessoire posé à côté ne compte plus : ce n'est pas le corps.
+ *
+ * C'est la même règle que le cadrage (cf. boiteDeCadrageModele3D) : les os font foi quand ils sont
+ * là, la boîte du maillage sinon. Deux chemins qui ne se recouvrent jamais.
+ */
+export function hauteurNaturelleModele3D(scene){
+  const parDefaut = () => {
+    const t = new THREE.Vector3();
+    box3FromObjectSkinAware3D(scene).getSize(t);
+    return t.y > 0 ? t.y : 1;
+  };
+  try {
+    // Pas de garde « assez d'os ? » : elle serait REDONDANTE. Un fichier sans squelette donne une
+    // correspondance vide, donc aucune position, donc aucun repère — et le repli plus bas s'en
+    // charge. Elle était là, et son seul effet était de rendre ce repli inatteignable par les tests.
+    const carte = inferSkeletonMap(bonesFromObject3D(scene));
+    const parNom = new Map();
+    scene.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
+    const p = new THREE.Vector3();
+    const position = (slot) => {
+      const e = carte[slot];
+      const b = e && e.name ? parNom.get(e.name) : null;
+      if (!b) return null;
+      b.getWorldPosition(p);
+      return [p.x, p.y, p.z];
+    };
+    const repere = repereDuCorps({
+      bassin: position('bassin'), tete: position('tete'),
+      clavicule_g: position('clavicule_g'), clavicule_d: position('clavicule_d'),
+      bras_g: position('bras_g'), bras_d: position('bras_d'),
+    });
+    if (!repere) return parDefaut();
+    // L'étendue des os le long de la verticale DU CORPS. Les pieds ne sont pas toujours l'os le plus
+    // bas ni la tête le plus haut selon la pose du fichier : on prend le min et le max, pas la
+    // distance bassin-tête, qui ne compterait ni les jambes ni le crâne.
+    let bas = Infinity, haut = -Infinity;
+    Object.keys(carte).forEach(slot => {
+      const q = position(slot);
+      if (!q) return;
+      const h = q[0] * repere.haut[0] + q[1] * repere.haut[1] + q[2] * repere.haut[2];
+      if (h < bas) bas = h;
+      if (h > haut) haut = h;
+    });
+    const mesure = haut - bas;
+    return mesure > 0 ? mesure : parDefaut();
+  } catch {
+    return parDefaut();
+  }
 }
 
 /** Charge ce dont une liste d'Éléments a besoin. Le point d'entrée depuis le chargement de Projet. */
