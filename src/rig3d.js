@@ -1045,6 +1045,21 @@ export function frameCameraToBox(camera, box, zoom, pan, orbit){
     (orbit && orbit.rotX) || 0, (orbit && orbit.rotY) || 0);
   camera.position.set(p.x, p.y, p.z);
   camera.lookAt(cx, cy, cz);
+  // LES PLANS DE COUPE SUIVENT LA BOÎTE, ils ne sont plus figés à la construction de la caméra.
+  //
+  // Ils valaient 0,05 et 2000 une fois pour toutes — des valeurs taillées pour le Personnage
+  // intégré, haut d'environ deux unités. Un modèle importé n'a aucune raison de tenir dans cet
+  // intervalle : mesuré, les os de worker_j.glb s'étendent sur près de quarante unités, et
+  // l'éditeur ne les normalise pas. Dézoomer éloigne la caméra proportionnellement, et ce qui passe
+  // derrière le plan lointain est TRANCHÉ — d'où des morceaux coupés net plutôt que disparus, ce
+  // qui les distingue d'une élimination par le tronc de vue.
+  //
+  // La formule est celle de frameOrthoCameraToBox, quelques lignes plus haut : on la reprend plutôt
+  // que d'en inventer une seconde. La diagonale de la boîte est ajoutée parce qu'un objet peut
+  // s'étendre loin DERRIÈRE le point visé — le katana de worker_j, par exemple.
+  const diagonale = size.length();
+  camera.near = Math.max(0.01, dist / 1000);
+  camera.far = dist + diagonale * 2 + 10;
   camera.updateProjectionMatrix();
 }
 

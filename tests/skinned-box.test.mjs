@@ -27,7 +27,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
-import { boiteDesOsMappes3D } from '../src/rig3d.js';
+import { boiteDesOsMappes3D, frameCameraToBox } from '../src/rig3d.js';
 import { boiteDeCadrageModele3D } from '../src/scene3d.js';
 
 const ECHELLE = 0.1297;   // celle mesurée sur worker_j.glb
@@ -163,5 +163,33 @@ describe('Un modèle importé n\'est pas éliminé par le tronc de vue', () => {
       'les maillages d\'un modèle importé doivent échapper à l\'élimination');
     assert.equal((sansCommentaires.match(/frustumCulled/g) || []).length, 1,
       'la désactivation doit rester limitée aux modèles importés');
+  });
+});
+
+describe('Les plans de coupe de la caméra suivent la boîte cadrée', () => {
+  const cameraFactice = () => ({
+    fov: 36, aspect: 1.4, near: 0.05, far: 2000,
+    position: { set(){} }, lookAt(){}, updateProjectionMatrix(){},
+  });
+
+  test('RÉGRESSION : un objet lointain n\'est plus tranché par le plan far', () => {
+    // Les plans valaient 0,05 et 2000 une fois pour toutes — taillés pour le Personnage intégré,
+    // haut d'environ deux unités. Les os de worker_j.glb s'étendent sur près de quarante, et
+    // l'éditeur ne les normalise pas : dézoomer éloignait la caméra jusqu'à faire passer des
+    // morceaux derrière le plan lointain, qui les TRANCHAIT net.
+    const cam = cameraFactice();
+    const grande = new THREE.Box3(new THREE.Vector3(-17, 0, -17), new THREE.Vector3(17, 40, 17));
+    frameCameraToBox(cam, grande, 0.25);   // zoom minimal de l'éditeur : la caméra recule d'autant
+    const rayon = grande.getSize(new THREE.Vector3()).length();
+    assert.ok(cam.far > rayon, `far ${cam.far.toFixed(1)} ne couvre même pas la diagonale ${rayon.toFixed(1)}`);
+    assert.ok(cam.near > 0, 'un plan proche nul ruinerait la précision de profondeur');
+    assert.ok(cam.near < cam.far / 100, 'l\'écart proche/lointain doit rester exploitable');
+  });
+
+  test('une petite figure garde des plans serrés', () => {
+    // Le pendant : élargir sans mesure ferait perdre en précision de profondeur sur le cas courant.
+    const cam = cameraFactice();
+    frameCameraToBox(cam, new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 2, 0.5)), 1);
+    assert.ok(cam.far < 100, `far ${cam.far.toFixed(1)} : inutilement large pour une figure de 2 unités`);
   });
 });
