@@ -31,6 +31,20 @@ import { OBJECT_REAL_HEIGHT_M, MODEL_HEIGHT_WARN_MAX_M, PANEL_CAM_DEFAULT_DIST_3
 let _snapshot = () => {};
 let _renderAll = () => {};
 let _alerter = () => {};
+/**
+ * Rendre VISIBLE dans sa Case l'Élément qu'on vient de créer — aimantation au sol comprise.
+ *
+ * POURQUOI CE CROCHET EXISTE. Signalé à l'usage : un modèle importé dans une Case VIDE apparaît en
+ * dehors d'elle, alors que le même import dans une Case contenant déjà un Personnage tombe bien
+ * centré. La différence est là et nulle part ailleurs : `addPersonaToPanel` et `addObjectToPanel`
+ * terminent tous deux par `ensureNewElementVisibleInPanel3D`, l'import ne le faisait pas. Une Case
+ * vide n'a donc jamais vu sa caméra recadrée ; dès qu'un Personnage y est passé, elle l'a été pour
+ * lui, et le modèle en profite — d'où l'impression que le défaut dépend de l'ordre des gestes.
+ *
+ * Injecté plutôt qu'importé (cf. docs/architecture.md règle n°2) : ce module enchaîne des gestes,
+ * il n'a pas à connaître la caméra d'une Case.
+ */
+let _rendreVisible = () => {};
 // Sans confirmateur branché (ex. tests), on NE redimensionne PAS silencieusement : c'est le choix
 // sûr, celui qui laisse le comportement actuel (hauteur du fichier, telle quelle) inchangé pour
 // quiconque n'a pas câblé l'avertissement.
@@ -56,10 +70,11 @@ let _confirmer = async () => false;
  * Par défaut, sans crochet branché, l'import continue : le comportement d'origine.
  */
 let _confirmerImport = async () => true;
-export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer, confirmerImport }){
+export function setModelImportCallbacks({ snapshot, renderAll, alerter, confirmer, confirmerImport, rendreVisible }){
   _snapshot = snapshot || (() => {});
   _renderAll = renderAll || (() => {});
   _alerter = alerter || (() => {});
+  _rendreVisible = rendreVisible || (() => {});
   _confirmer = confirmer || (async () => false);
   _confirmerImport = confirmerImport || (async () => true);
 }
@@ -175,6 +190,9 @@ export async function importModelIntoPanel(panel, page){
   currentPageData().objects.push(el);
   S.selectedId = el.id;
   S.projectDirty = true;
+  // LE MÊME GESTE FINAL QUE LES DEUX AUTRES CHEMINS DE CRÉATION. Sans lui, une Case vide garde sa
+  // caméra par défaut et l'Élément naît hors champ (cf. _rendreVisible plus haut pour la mesure).
+  _rendreVisible(el, panel, page);
   // Le canevas d'une Scène n'a pas de cadrage automatique à l'import direct d'un Modèle (contraire
   // à « Charger un Décor », cf. loadSceneIntoPanel) : si un zoom/déplacement de caméra traîne d'un
   // essai précédent sur ce même fichier démesuré, l'Élément — maintenant correctement dimensionné —

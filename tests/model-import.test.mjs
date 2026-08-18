@@ -35,6 +35,9 @@ import { OBJECT_REAL_HEIGHT_M, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constant
 
 let snapshots = 0;
 let alertes = [];
+// Les appels à « rendre visible dans sa Case » — le geste final que les trois chemins de création
+// d'Élément doivent partager (cf. le bloc de tests dédié plus bas).
+let visibilites = [];
 setScenesCallbacks({ snapshot: () => {} });
 
 function caseCible(){
@@ -58,13 +61,14 @@ function pontQuiChoisit(nom, octets = new Uint8Array([1, 2, 3])){
 let cible;
 let confirmations;
 beforeEach(() => {
-  snapshots = 0; alertes = []; confirmations = [];
+  snapshots = 0; alertes = []; confirmations = []; visibilites = [];
   clearModelCache(); setModelBridge(null);
   setModelImportCallbacks({
     snapshot: () => { snapshots++; },
     renderAll: () => {},
     alerter: (m) => alertes.push(m),
     confirmer: async (m) => { confirmations.push(m); return false; },
+    rendreVisible: (el, panel, page) => visibilites.push({ el, panel, page }),
   });
   cible = caseCible();
   S.editingSceneId = null; S.currentTomeIndex = 0; S.currentPageIndex = 0;
@@ -501,5 +505,59 @@ describe('Le câblage de l\'import', () => {
     assert.match(SIDEBAR, /isImportedModel\(p\)/);
     assert.match(SIDEBAR, /file not found|fichier introuvable/,
       'un modèle introuvable ne se distingue pas dans la liste');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le geste final : rendre visible dans sa Case
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
+  // LE DÉFAUT GARDÉ ICI, et la façon dont il s'est manifesté. Un modèle importé dans une Case VIDE
+  // apparaissait en dehors d'elle ; le même import dans une Case contenant déjà un Personnage
+  // tombait bien centré. D'où l'impression d'un défaut dépendant de l'ORDRE DES GESTES — ce qui a
+  // fait chercher longtemps du côté du placement, où tout était juste.
+  //
+  // La cause : `addPersonaToPanel` et `addObjectToPanel` finissent tous deux par
+  // `ensureNewElementVisibleInPanel3D` (aimantation au sol + recentrage de la caméra si l'Élément
+  // est hors champ). L'import, troisième chemin de création, ne le faisait pas. Une Case vide n'a
+  // donc jamais vu sa caméra recadrée ; dès qu'un Personnage y était passé, elle l'avait été pour
+  // lui, et le modèle en profitait.
+  //
+  // Trois chemins pour un même geste : c'est l'énumération tenue à la main, encore. Le test porte
+  // sur le CHEMIN D'IMPORT, seul testable ici sans DOM 3D ; les deux autres sont dans events.js.
+
+  test('RÉGRESSION : importer un modèle dans une Case appelle le geste de mise en vue', async () => {
+    pontQuiChoisit('table.glb');
+    _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
+    const el = await importModelIntoPanel(cible, S.tomes[0].pages[0]);
+    assert.ok(el, 'l\'Élément doit être créé');
+    assert.equal(visibilites.length, 1, 'le geste de mise en vue n\'a pas été appelé');
+  });
+
+  test('et il porte l\'Élément, sa Case et sa Planche — pas autre chose', async () => {
+    // Sans ces trois arguments, la fonction ne peut ni aimanter au sol ni recentrer : un appel
+    // « présent mais mal nourri » passerait le test précédent sans rien faire de plus qu'avant.
+    pontQuiChoisit('table.glb');
+    _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
+    const page = S.tomes[0].pages[0];
+    const el = await importModelIntoPanel(cible, page);
+    assert.equal(visibilites[0].el, el, 'l\'Élément passé n\'est pas celui qui vient d\'être créé');
+    assert.equal(visibilites[0].panel, cible);
+    assert.equal(visibilites[0].page, page);
+  });
+
+  test('un import annulé ne demande aucune mise en vue', async () => {
+    setModelBridge({ pickModelFile: async () => ({ canceled: true }) });
+    await importModelIntoPanel(cible, S.tomes[0].pages[0]);
+    assert.deepEqual(visibilites, [], 'une annulation a déclenché un recentrage de caméra');
+  });
+
+  test('un défaut non câblé ne fait pas échouer l\'import', async () => {
+    // Le module doit rester utilisable sans ce crochet — c'est la règle de tous les autres.
+    setModelImportCallbacks({});
+    pontQuiChoisit('table.glb');
+    _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
+    await assert.doesNotReject(() => importModelIntoPanel(cible, S.tomes[0].pages[0]));
   });
 });

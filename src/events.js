@@ -306,6 +306,7 @@ setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAn
 // l'application.
 setModelImportCallbacks({
   snapshot, renderAll, alerter: alertAction, confirmer: confirmAction,
+  rendreVisible: ensureNewElementVisibleInPanel3D,
   // Déclaré ici mais défini bien plus bas : la fonction est hissée, et c'est ce qui permet de
   // garder tout le câblage d'injection groupé en haut du fichier.
   confirmerImport: (nomFichier) => proposerCorrespondance(nomFichier),
