@@ -108,3 +108,73 @@ describe('index.html — charpente de l\'éditeur de Personnage', () => {
     assert.deepEqual(pose, joints, 'sections imbriquées l\'une dans l\'autre, ou séparées');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ORDRE DES CHAMPS — quand il porte une intention, il se garde
+//
+// Un ordre demandé par l'utilisateur ne laisse aucune trace dans le code : il vit dans la
+// succession de deux blocs HTML, que le premier remaniement peut inverser sans que rien ne le
+// signale. Ces tests ne vérifient pas une apparence — ils épinglent une décision, avec sa raison.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('index.html — l\'ordre voulu des champs', () => {
+  const avant = (a, b, ou) => {
+    const ia = html.indexOf(a), ib = html.indexOf(b);
+    assert.notEqual(ia, -1, `${a} introuvable`);
+    assert.notEqual(ib, -1, `${b} introuvable`);
+    assert.ok(ia < ib, `${a} doit précéder ${b} (${ou})`);
+  };
+
+  test('la Hauteur précède le curseur de Taille réelle, dans les DEUX fiches', () => {
+    // Ordre demandé, et c'est aussi celui des données : `realHeightFloor` est la valeur enregistrée,
+    // le pourcentage n'en est qu'une vue recalculée à l'ouverture. Lire la grandeur exacte d'abord,
+    // l'approximation ensuite.
+    avant('id="personaHeightField"', 'id="personaSizeInput"', 'fiche Personnage');
+    avant('id="objectHeightField"', 'id="objectSizeInput"', 'fiche Objet / Modèle');
+  });
+
+  test('dans l\'éditeur, la section Modèle vient avant Pose et Articulations', () => {
+    // L'ordre dit le geste : on choisit le CORPS, puis la pose qu'on lui donne, puis le réglage fin.
+    // Changer de figure recalcule la pose et efface les retouches — le geste le plus englobant se
+    // pose donc en premier.
+    avant('id="personaEditorModelSection"', 'id="personaEditorPoseSection"', 'panneau de l\'éditeur');
+    avant('id="personaEditorPoseSection"', 'id="personaEditorJointsSection"', 'panneau de l\'éditeur');
+  });
+
+  test('chaque champ Hauteur garde son libellé pour frère PRÉCÉDENT', () => {
+    // L'i18n retrouve le libellé d'un champ par `input.previousElementSibling` (cf. src/i18n.js).
+    // Glisser un élément entre les deux ne casse rien de visible : le libellé cesse simplement
+    // d'être traduit, et seulement en anglais.
+    [['personaHeightLabel', 'personaHeightInput'], ['objectHeightLabel', 'objectHeightInput']]
+      .forEach(([lab, inp]) => {
+        const iLab = html.indexOf(`id="${lab}"`);
+        const iInp = html.indexOf(`id="${inp}"`);
+        assert.ok(iLab !== -1 && iInp !== -1 && iLab < iInp, `${lab} doit précéder ${inp}`);
+        // Ce qui SÉPARE la fermeture du libellé de l'ouverture de l'input : uniquement des blancs.
+        const finLabel = html.indexOf('</label>', iLab) + '</label>'.length;
+        const debutInput = html.lastIndexOf('<input', iInp);
+        assert.equal(html.slice(finLabel, debutInput).trim(), '',
+          `un élément s'est glissé entre ${lab} et ${inp}`);
+      });
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — l'ordre des champs et le câblage des deux fiches.
+ *
+ *   O1 la Hauteur repassée APRÈS le curseur (fiche Objet)              ROUGE
+ *   O2 la section Modèle remise entre Pose et Articulations            ROUGE
+ *   O3 un <span> glissé entre le libellé Hauteur et son input          ROUGE
+ *   O4 la fiche Personnage ne remplit plus son champ Hauteur           ÉCHAPPÉE → puis ROUGE
+ *   O5 la fiche Objet ne remplit plus le sien                          ROUGE
+ *   O6 la hauteur affichée dérivée du CURSEUR au lieu de l'Élément     ROUGE
+ *
+ * O4 EST LA LEÇON. Un ordre de champs se garde par un test de structure — c'est ce que fait ce
+ * fichier. Mais le CÂBLAGE, lui, ne se voit pas dans le HTML : le champ Personnage était en place,
+ * bien positionné, et restait vide. Rien ne le disait, parce qu'aucun test n'appelait
+ * updatePersonaSizeDisplay en regardant ce qu'elle écrit. Les tests correspondants vivent dans
+ * modals.test.mjs, là où est la fonction.
+ *
+ * O6 mérite un mot aussi : dériver la hauteur du curseur donnerait 1,84 m pour un Élément à 1,83 m
+ * (le cran de 5 % le plus proche). L'écart est petit, il se répète à chaque ouverture suivie d'un
+ * enregistrement, et il va toujours dans le même sens.
+ */

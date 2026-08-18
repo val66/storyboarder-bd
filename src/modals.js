@@ -106,6 +106,8 @@ const objectSizeField = document.getElementById('objectSizeField');
 const objectSizeInput = document.getElementById('objectSizeInput');
 const objectSizeValue = document.getElementById('objectSizeValue');
 const objectHeightField = document.getElementById('objectHeightField');
+const personaHeightField = document.getElementById('personaHeightField');
+const personaHeightInput = document.getElementById('personaHeightInput');
 const objectHeightInput = document.getElementById('objectHeightInput');
 const objectTraversantField = document.getElementById('objectTraversantField');
 const objectTypeSelect = document.getElementById('objectTypeSelect');
@@ -178,6 +180,7 @@ export function getPersonaScalePercent(o){
 export function updatePersonaSizeDisplay(o){
   personaSizeInput.value = getPersonaScalePercent(o);
   personaSizeValue.textContent = personaSizeInput.value + '%';
+  remplirChampHauteur3D(o, personaHeightField, personaHeightInput, getPersonaScalePercent);
 }
 
 /**
@@ -193,21 +196,33 @@ export function updateObjectSizeDisplay(o){
   updateObjectHeightField(o);
 }
 
-/** Le champ « Hauteur » : présent seulement si la base de l'Élément permet d'en calculer une. */
-export function updateObjectHeightField(o){
-  if (!objectHeightField || !objectHeightInput) return;
+/**
+ * Le champ « Hauteur » d'une fiche : présent seulement si la base de l'Élément permet d'en calculer
+ * une.
+ *
+ * ⚠️ UNE SEULE FONCTION POUR LES DEUX FICHES (Personnage et Objet/Modèle). Les deux champs sont le
+ * même champ posé à deux endroits ; en écrire deux versions aurait donné deux comportements aux
+ * bornes, aux arrondis et au cas « pas de base exploitable » — et l'écart ne se serait vu que sur
+ * l'une des deux fiches, donc tard.
+ */
+export function remplirChampHauteur3D(o, champ, input, pourcentage){
+  if (!champ || !input) return;
   const baseRealH = hauteurBase3D(o);
   const bornes = bornesHauteur3D(baseRealH);
   // Pas de base exploitable : pas de hauteur à montrer. Un champ vide inviterait à le remplir, et
   // ce qu'on y saisirait ne pourrait être appliqué nulle part.
-  if (!bornes) { objectHeightField.style.display = 'none'; return; }
-  objectHeightField.style.display = '';
-  objectHeightInput.min = arrondiCm3D(bornes.min);
-  objectHeightInput.max = arrondiCm3D(bornes.max);
+  if (!bornes) { champ.style.display = 'none'; return; }
+  champ.style.display = '';
+  input.min = arrondiCm3D(bornes.min);
+  input.max = arrondiCm3D(bornes.max);
   const h = Number.isFinite(o && o.realHeightFloor) && o.realHeightFloor > 0
     ? o.realHeightFloor
-    : hauteurDepuisPourcentage3D(getPersonaScalePercent(o), baseRealH);
-  objectHeightInput.value = arrondiCm3D(h);
+    : hauteurDepuisPourcentage3D(pourcentage(o), baseRealH);
+  input.value = arrondiCm3D(h);
+}
+
+export function updateObjectHeightField(o){
+  remplirChampHauteur3D(o, objectHeightField, objectHeightInput, getPersonaScalePercent);
 }
 
 /** Au centimètre — la précision du champ, et la seule qu'on affiche. */

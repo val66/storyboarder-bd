@@ -15,7 +15,8 @@ import { readFileSync } from 'node:fs';
 
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
   pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos,
-  selectionALOuvertureDuGroupe } from '../src/modals.js';
+  selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
+  remplirChampHauteur3D } from '../src/modals.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -354,3 +355,57 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
  * celui de Windows). C'est précisément pourquoi l'enregistrement applique la HAUTEUR : la question
  * ne se pose plus, que le navigateur crante ou non.
  */
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le champ « Hauteur » des deux fiches
+//
+// CE QUI SE JOUE ICI. Le champ existe à DEUX endroits — fiche Personnage et fiche Objet/Modèle —
+// et c'est la même fonction qui les remplit. Le risque n'est donc pas dans le calcul (couvert dans
+// utils.test.mjs) mais dans le CÂBLAGE : une des deux fiches qui oublie d'appeler. Une mutation l'a
+// montré — retirer l'appel côté Personnage ne faisait échouer aucun test.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('le champ Hauteur est rempli par les DEUX fiches', () => {
+  // baseH = 70 px ⇒ 1,75 m à 100 % (WALL_PX_PER_UNIT_3D = 40).
+  const elem = (h) => ({ baseW: 30, baseH: 70, w: 30, h: 70, realHeightFloor: h });
+
+  test('la fiche Personnage remplit son champ Hauteur', () => {
+    const input = document.getElementById('personaHeightInput');
+    const champ = document.getElementById('personaHeightField');
+    input.value = '';
+    updatePersonaSizeDisplay(elem(1.83));
+    assert.equal(Number(input.value), 1.83, 'la fiche Personnage n\'écrit pas sa hauteur');
+    assert.notEqual(champ.style.display, 'none');
+  });
+
+  test('la fiche Objet / Modèle remplit le sien', () => {
+    const input = document.getElementById('objectHeightInput');
+    input.value = '';
+    updateObjectSizeDisplay(elem(2.4));
+    assert.equal(Number(input.value), 2.4, 'la fiche Objet n\'écrit pas sa hauteur');
+  });
+
+  test('1,83 m N\'EST PAS ramené au cran du curseur', () => {
+    // 1,83 m sur une base de 1,75 m vaut 104,57 %. Le curseur ne connaît que les multiples de 5 :
+    // si la hauteur affichée en dérivait, elle vaudrait 1,84 m (105 %) — et l'Élément finirait par
+    // y être vraiment, à force d'ouvertures et d'enregistrements. Elle est lue sur l'Élément.
+    const input = document.getElementById('personaHeightInput');
+    updatePersonaSizeDisplay(elem(1.83));
+    assert.equal(Number(input.value), 1.83);
+    assert.notEqual(Number(input.value), 1.84);
+  });
+
+  test('sans base exploitable, le champ disparaît au lieu d\'inviter à le remplir', () => {
+    const champ = document.getElementById('objectHeightField');
+    champ.style.display = '';
+    updateObjectSizeDisplay({ baseW: 0, baseH: 0, w: 0, h: 0 });
+    assert.equal(champ.style.display, 'none');
+  });
+
+  test('les bornes du champ sont celles du pourcentage, traduites', () => {
+    const champ = { style: {} }, input = { style: {} };
+    remplirChampHauteur3D(elem(1.75), champ, input, () => 100);
+    assert.equal(Number(input.min), 0.18, '10 % de 1,75 m, au centimètre');
+    assert.equal(Number(input.max), 7, '400 % de 1,75 m');
+  });
+});

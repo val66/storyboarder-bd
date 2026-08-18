@@ -4578,6 +4578,8 @@ const personaRotYInput = document.getElementById('personaRotYInput');
 const personaRotXInput = document.getElementById('personaRotXInput');
 const personaRotZInput = document.getElementById('personaRotZInput');
 const personaSizeInput = document.getElementById('personaSizeInput');
+const personaHeightInput = document.getElementById('personaHeightInput');
+const personaHeightField = document.getElementById('personaHeightField');
 const personaDepthInput = document.getElementById('personaDepthInput');
 const personaPosXInput = document.getElementById('personaPosXInput');
 const personaPosYInput = document.getElementById('personaPosYInput');
@@ -4699,8 +4701,27 @@ personaPositionSelect.addEventListener('change', () => {
 // drawPersonaPreview), but the percentage displayed next to it must follow the drag live.
 personaSizeInput.addEventListener('input', () => {
   personaSizeValue.textContent = personaSizeInput.value + '%';
+  const base = S.modalTarget ? hauteurBase3D(S.modalTarget) : null;
+  if (base !== null && personaHeightInput) {
+    const h = hauteurDepuisPourcentage3D(personaSizeInput.value, base);
+    if (h !== null) personaHeightInput.value = arrondiCm3D(h);
+  }
   refreshPersonaPreview();
 });
+
+// Le pendant du curseur — mêmes règles que dans la fiche d'un Objet : chacun ne met à jour que
+// l'autre, et c'est la hauteur qu'on enregistre.
+if (personaHeightInput) {
+  personaHeightInput.addEventListener('input', () => {
+    const base = S.modalTarget ? hauteurBase3D(S.modalTarget) : null;
+    if (base === null) return;
+    const pct = pourcentageDepuisHauteur3D(personaHeightInput.value, base);
+    if (pct === null) return;
+    personaSizeInput.value = Math.round(pct);
+    personaSizeValue.textContent = Math.round(pct) + '%';
+    refreshPersonaPreview();
+  });
+}
 descModalSave.onclick = () => {
   if (S.modalTarget) {
     snapshot();
@@ -4746,7 +4767,14 @@ descModalSave.onclick = () => {
       worldY = clampWorldYAboveGround(S.modalTarget, worldY, S.modalTarget.h / _factorP);
       setElementWorldPos3D(S.modalTarget, panel, Number(personaPosXInput.value) || 0, worldY);
     }
-    applyPersonaSizePercent(S.modalTarget, personaSizeInput.value, currentPage());
+    // La hauteur fait foi quand son champ est là (cf. applyElementRealHeight).
+    const _hPerso = (personaHeightField && personaHeightField.style.display !== 'none')
+      ? Number(personaHeightInput.value) : NaN;
+    if (Number.isFinite(_hPerso) && hauteurBase3D(S.modalTarget) !== null) {
+      applyElementRealHeight(S.modalTarget, _hPerso, currentPage());
+    } else {
+      applyPersonaSizePercent(S.modalTarget, personaSizeInput.value, currentPage());
+    }
     drawCurrentPage();
   }
   S.modalIsNew = false;

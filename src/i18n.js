@@ -238,6 +238,7 @@ export const I18N_PREV_LABEL = [
   ['objectWindowAngleInput', 'Opening angle', "Angle d'ouverture"],
   ['objectSizeInput', 'Actual size', 'Taille réelle'],
   ['objectHeightInput', 'Height (m)', 'Hauteur (m)'],
+  ['personaHeightInput', 'Height (m)', 'Hauteur (m)'],
   ['objectLinkedValue', 'Linked to', 'Lié à'],
 ];
 

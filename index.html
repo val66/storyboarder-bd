@@ -59,6 +59,18 @@
            cartes plus petites ici en laissaient voir davantage, ce qui donnait l'impression d'un
            panneau plus sombre. Une seule définition de « carte de panneau latéral », donc plus rien
            à faire diverger. -->
+      <!-- LA FIGURE EN PREMIER — sur demande, et l'ordre dit quelque chose : c'est le CORPS qu'on
+           choisit d'abord, puis la pose qu'on lui donne, puis le réglage fin. Changer de figure
+           recalcule la pose et efface les retouches (cf. buildFigureFieldUI) ; le geste le plus
+           englobant est donc aussi celui qu'on pose en premier.
+           C'est un mannequin — poser en regardant le vrai corps évite de juger de travers —, et non
+           ce qu'on édite : « Appliquer » vise toujours l'Élément d'où l'on vient.
+           Masquée devant un Personnage tant qu'il ne sait pas porter un fichier importé (E4d) : un
+           choix qui serait perdu à l'enregistrement vaut moins que pas de choix du tout. -->
+      <section class="side-section" id="personaEditorModelSection" style="display:none">
+        <h2 id="personaEditorModelHeading">Modèle</h2>
+        <select id="personaEditorModelSelect"></select>
+      </section>
       <!-- Pose de référence du brouillon. Appliquer une pose COPIE ses angles : aucun Personnage ne
            dépend de la bibliothèque, cf. docs/editeur-personnage.md. -->
       <section class="side-section" id="personaEditorPoseSection">
@@ -75,15 +87,6 @@
             <button id="personaEditorPoseDeleteBtn" type="button" class="danger-btn">Supprimer</button>
           </div>
         </div>
-      </section>
-      <!-- La FIGURE sur laquelle on pose : le Personnage intégré, ou un modèle importé articulé.
-           C'est un mannequin — poser en regardant le vrai corps évite de juger de travers —, et non
-           ce qu'on édite : « Appliquer » vise toujours l'Élément d'où l'on vient.
-           Masquée devant un Personnage tant qu'il ne sait pas porter un fichier importé (E4d) : un
-           choix qui serait perdu à l'enregistrement vaut moins que pas de choix du tout. -->
-      <section class="side-section" id="personaEditorModelSection" style="display:none">
-        <h2 id="personaEditorModelHeading">Modèle</h2>
-        <select id="personaEditorModelSelect"></select>
       </section>
       <section class="side-section" id="personaEditorJointsSection">
         <h2 id="personaEditorJointsHeading">Réglages des articulations</h2>
@@ -819,6 +822,13 @@
             <select id="personaHandRSelect"></select>
           </div>
         </div>
+        <!-- Le même couple que dans la fiche d'un Objet, et pour la même raison : un Personnage a
+             une hauteur réelle (1,75 m par défaut) qui EST la valeur enregistrée. La saisir en
+             mètres évite de passer par un pourcentage dont le pas de 5 % vaut ~9 cm. -->
+        <div id="personaHeightField" style="display:none">
+          <label class="modal-field-label" id="personaHeightLabel">Hauteur (m)</label>
+          <input type="number" id="personaHeightInput" step="0.01" style="width:100%;">
+        </div>
         <label class="modal-field-label">Taille réelle</label>
         <div style="display:flex; align-items:center; gap:8px; margin:-2px 0 4px;">
           <input type="range" id="personaSizeInput" min="10" max="400" step="5" style="flex:1;">
@@ -1040,20 +1050,21 @@
           </div>
         </div>
         <div id="objectSizeField">
-          <label class="modal-field-label">Taille réelle</label>
-          <div style="display:flex; align-items:center; gap:8px; margin:-2px 0 4px;">
-            <input type="range" id="objectSizeInput" min="10" max="400" step="5" style="flex:1;">
-            <span id="objectSizeValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">100%</span>
-          </div>
-          <!-- La hauteur réelle, en mètres. Ce n'est PAS un doublon du curseur : c'est la valeur
-               enregistrée dans le Projet (`realHeightFloor`), dont le pourcentage n'est qu'une vue
-               recalculée. Les deux se suivent, mais l'enregistrement applique celle-ci — le curseur
-               avance par crans de 5 %, ce qui corrigerait une hauteur saisie au centimètre.
+          <!-- LA HAUTEUR D'ABORD, LE CURSEUR ENSUITE. Ordre demandé, et c'est aussi celui des
+               données : `realHeightFloor` est la valeur enregistrée, le pourcentage n'en est qu'une
+               vue recalculée à l'ouverture. Les deux se suivent, mais l'enregistrement applique la
+               hauteur — le curseur avance par crans de 5 %, ce qui corrigerait une hauteur saisie
+               au centimètre.
                ⚠️ Le libellé doit rester le frère PRÉCÉDENT de l'input : c'est ainsi que l'i18n le
                retrouve (cf. src/i18n.js, previousElementSibling). -->
           <div id="objectHeightField" style="display:none">
             <label class="modal-field-label" id="objectHeightLabel">Hauteur (m)</label>
             <input type="number" id="objectHeightInput" step="0.01" style="width:100%;">
+          </div>
+          <label class="modal-field-label">Taille réelle</label>
+          <div style="display:flex; align-items:center; gap:8px; margin:-2px 0 4px;">
+            <input type="range" id="objectSizeInput" min="10" max="400" step="5" style="flex:1;">
+            <span id="objectSizeValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">100%</span>
           </div>
         </div>
         <div id="objectTraversantField" style="display:none;">
