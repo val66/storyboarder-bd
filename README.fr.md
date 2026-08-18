@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.47**
+**Version 1.3.48**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -75,11 +75,11 @@
   n'est acquis tant que la fiche n'est pas enregistrée.
 
 - **L'empreinte 2D d'un modèle suit sa silhouette** : la boîte de sélection sur la Planche est
-  dimensionnée sur le rapport largeur/hauteur mesuré dans le fichier décodé, et non forcée carrée.
-  Le rapport est pris dans le repère DU CORPS, dérivé du squelette — deux des six fichiers d'essai
-  se tiennent debout sur +Z, et lire x/y donnerait à `hulk` une boîte plus large que haute. Mesuré :
-  `worker_j` 0,86 (bras écartés), `anime_girl1` 0,49, un Personnage intégré 0,63 — une boîte carrée
-  était jusqu'à deux fois trop large.
+  dimensionnée sur l'envergure de ses OS MAPPÉS, mesurée dans le repère du corps — le même parcours
+  unique qui donne sa hauteur. Pas la boîte du maillage : au décodage, les matrices de skinning ne
+  sont pas encore calculées, et cette boîte décrit donc encore la géométrie de liaison, dans le
+  repère du fichier. Ce que ça coûte est dit franchement — une jupe ou une cape n'est bornée par
+  aucun os, l'empreinte les ignore.
 
 - **Le premier Élément cadre la Case** : une Case vide n'a pas de cadrage à préserver, donc le
   premier Élément 3D qu'on y pose règle la distance de caméra en proportion de sa propre hauteur —

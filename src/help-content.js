@@ -99,7 +99,7 @@ export const HELP_MANUAL_EN = [
     'Right-click a model → "Delete from disk". The file name cannot be renamed — it identifies the model in every project. Rename the Element instead.',
     'Above 10 m tall, the application offers to resize the model on import: it is nearly always a scale problem in the file.',
     'The first 3D Element placed in an EMPTY Panel sets its camera distance from its own height, so a small model fills the frame like a Character would. A Panel that already holds something is never re-framed.',
-    'Its selection box on the Page follows the model\'s own silhouette, measured in the file — a slim figure gets a slim box, not a square one.',
+    'Its selection box on the Page follows the span of the model\'s own skeleton — a slim figure gets a slim box, not a square one.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton gains a "Joint settings" section: three sliders per recognised joint — except the hips, which are the skeleton\'s root: turning them rotates the whole figure, which Orientation already does.',
@@ -207,7 +207,7 @@ export const HELP_MANUAL_FR = [
     'Clic droit sur un modèle → « Supprimer du disque ». Le nom de fichier ne se renomme pas : il identifie le modèle dans tous les Projets. Renommez plutôt l\'Élément.',
     'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import.',
     'Le premier Élément 3D posé dans une Case VIDE règle sa distance de caméra sur sa propre hauteur : un petit modèle occupe l\'image comme le ferait un Personnage. Une Case qui contient déjà quelque chose n\'est jamais recadrée.',
-    'Sa boîte de sélection sur la Planche suit la silhouette du modèle, mesurée dans le fichier — une figure élancée reçoit une boîte élancée, pas un carré.',
+    'Sa boîte de sélection sur la Planche suit l\'envergure du squelette du modèle — une figure élancée reçoit une boîte élancée, pas un carré.',
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par articulation reconnue. Le bassin n\'en a pas — pour tourner la figure entière, servez-vous de l\'Orientation.',

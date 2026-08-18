@@ -244,19 +244,56 @@ function repereEtOsDuModele3D(scene){
   return repere ? { repere, carte, position } : null;
 }
 
-/** L'étendue d'une boîte le long d'un axe quelconque, via ses huit coins. */
-function etendueSelonAxe3D(boite, axe){
-  let min = Infinity, max = -Infinity;
-  for (const x of [boite.min.x, boite.max.x]) {
-    for (const y of [boite.min.y, boite.max.y]) {
-      for (const z of [boite.min.z, boite.max.z]) {
-        const d = x * axe[0] + y * axe[1] + z * axe[2];
-        if (d < min) min = d;
-        if (d > max) max = d;
-      }
-    }
-  }
-  return max - min;
+/**
+ * La HAUTEUR et la LARGEUR du corps, mesurées EN UN SEUL PASSAGE sur les os mappés, le long des
+ * deux axes du repère dérivé. `null` si le corps n'est pas dérivable.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LES DEUX ENSEMBLE, ET POURQUOI SUR LES OS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La largeur a d'abord été mesurée sur la BOÎTE DU MAILLAGE, projetée sur les axes du corps. C'était
+ * faux, et deux versions livrées n'ont pas suffi à le voir. Ce que la sonde a fini par établir, sur
+ * `hulk` :
+ *
+ *   verticale dérivée des os     (0, 1, 0,08)     — donc +Y
+ *   boîte du maillage            1,78 × 0,84 × 2,37 — donc la plus longue dimension est Z
+ *
+ * Les deux ne sont pas dans le même repère, DANS LA MÊME FONCTION. La raison est mécanique :
+ * `box3FromObjectSkinAware3D` passe par `SkinnedMesh.boneTransform()`, qui lit
+ * `skeleton.boneMatrices` — or ces matrices ne sont calculées qu'au RENDU. Au décodage, elles ne le
+ * sont pas encore : la boîte reflète donc la géométrie de LIAISON, dans le repère du fichier, quand
+ * les os, eux, sont déjà dans celui de la scène décodée.
+ *
+ * La largeur se mesure donc désormais exactement comme la hauteur : sur les OS MAPPÉS, dans le
+ * repère du corps, en un seul parcours. Un seul repère, une seule source, aucune divergence possible.
+ *
+ * DEUXIÈME BÉNÉFICE, mesuré lui aussi : les os mappés EXCLUENT les accessoires égarés. La boîte du
+ * maillage de `worker_j` sortait à 17,08 de profondeur au décodage — le fourreau du katana, que le
+ * masquage ne peut pas encore avoir écarté puisqu'il s'applique au clone, pas à la scène du cache.
+ *
+ * CE QU'ON PERD, et il faut le dire : une jupe, une cape ou une arme tenue à bout de bras ne sont
+ * bornées par aucun os. L'empreinte les ignore donc. C'est le prix d'une mesure cohérente, et c'est
+ * le bon prix — deux tentatives de garder la silhouette ont produit deux empreintes fausses.
+ */
+function etendueDuCorps3D(scene){
+  const corps = repereEtOsDuModele3D(scene);
+  if (!corps) return null;
+  const { repere, carte, position } = corps;
+  const projeter = (q, axe) => q[0] * axe[0] + q[1] * axe[1] + q[2] * axe[2];
+  let basH = Infinity, hautH = -Infinity, basL = Infinity, hautL = -Infinity;
+  Object.keys(carte).forEach(slot => {
+    const q = position(slot);
+    if (!q) return;
+    const h = projeter(q, repere.haut);
+    if (h < basH) basH = h;
+    if (h > hautH) hautH = h;
+    const l = projeter(q, repere.droite);
+    if (l < basL) basL = l;
+    if (l > hautL) hautL = l;
+  });
+  const hauteur = hautH - basH;
+  return hauteur > 0 ? { hauteur, largeur: hautL - basL } : null;
 }
 
 export function hauteurNaturelleModele3D(scene){
@@ -269,22 +306,12 @@ export function hauteurNaturelleModele3D(scene){
     // Pas de garde « assez d'os ? » : elle serait REDONDANTE. Un fichier sans squelette donne une
     // correspondance vide, donc aucune position, donc aucun repère — et le repli plus bas s'en
     // charge. Elle était là, et son seul effet était de rendre ce repli inatteignable par les tests.
-    const corps = repereEtOsDuModele3D(scene);
-    if (!corps) return parDefaut();
-    const { repere, carte, position } = corps;
+    //
     // L'étendue des os le long de la verticale DU CORPS. Les pieds ne sont pas toujours l'os le plus
     // bas ni la tête le plus haut selon la pose du fichier : on prend le min et le max, pas la
     // distance bassin-tête, qui ne compterait ni les jambes ni le crâne.
-    let bas = Infinity, haut = -Infinity;
-    Object.keys(carte).forEach(slot => {
-      const q = position(slot);
-      if (!q) return;
-      const h = q[0] * repere.haut[0] + q[1] * repere.haut[1] + q[2] * repere.haut[2];
-      if (h < bas) bas = h;
-      if (h > haut) haut = h;
-    });
-    const mesure = haut - bas;
-    return mesure > 0 ? mesure : parDefaut();
+    const mesure = etendueDuCorps3D(scene);
+    return mesure ? mesure.hauteur : parDefaut();
   } catch {
     return parDefaut();
   }
@@ -338,12 +365,17 @@ export function hauteurNaturelleModele3D(scene){
  */
 export function ratioLargeurModele3D(scene){
   try {
-    const boite = box3FromObjectSkinAware3D(scene);
-    if (boite.isEmpty()) return 1;
-    const corps = repereEtOsDuModele3D(scene);
-    const large = corps ? etendueSelonAxe3D(boite, corps.repere.droite) : (boite.max.x - boite.min.x);
-    const haut = corps ? etendueSelonAxe3D(boite, corps.repere.haut) : (boite.max.y - boite.min.y);
-    const r = large / haut;
+    const mesure = etendueDuCorps3D(scene);
+    let r;
+    if (mesure) {
+      r = mesure.largeur / mesure.hauteur;
+    } else {
+      // Aucun corps dérivable — un meuble, un véhicule. Il n'y a pas de verticale à déduire : la
+      // convention du fichier est tout ce qu'on a, et la boîte du maillage la porte.
+      const t = new THREE.Vector3();
+      box3FromObjectSkinAware3D(scene).getSize(t);
+      r = t.x / t.y;
+    }
     return (Number.isFinite(r) && r > 0) ? r : 1;
   } catch {
     return 1;

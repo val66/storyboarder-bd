@@ -306,7 +306,18 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
   // FAUSSE : cette fonction voit la scène telle qu'elle sort du fichier, le rendu la voit REMISE
   // DEBOUT. Ils ne mesurent pas au même moment.
 
-  /** Un humanoïde Mixamo debout sur +Y, le même que celui de tests/pose-fiche.test.mjs. */
+  /**
+   * Un humanoïde Mixamo debout sur +Y, aux dimensions CHOISIES RONDES pour que le rapport attendu
+   * se lise directement :
+   *
+   *   pieds à y = 0, tête à y = 2,0        → hauteur 2,0
+   *   mains à x = ±0,5                     → envergure 1,0
+   *   rapport attendu                      → 0,5
+   *
+   * Le nommage suit Mixamo, la convention la plus répandue des cinq mesurées : c'est ce qui rend le
+   * squelette RECONNAISSABLE par inferSkeletonMap. Une hiérarchie inventée ne l'était pas, et la
+   * fonction tombait alors dans son repli — le test mesurait le comportement d'avant sans le dire.
+   */
   function squeletteMixamo(){
     const os = (nom, x, y, z) => {
       const b = new THREE.Bone();
@@ -314,25 +325,28 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
       b.position.set(x, y, z);
       return b;
     };
-    const hips = os('Hips', 0, 0.95, 0);
-    const spine = os('Spine', 0, 0.12, 0);
-    const spine1 = os('Spine1', 0, 0.14, 0);
-    const neck = os('Neck', 0, 0.16, 0);
-    const head = os('Head', 0, 0.10, 0);
+    const hips = os('Hips', 0, 1.00, 0);
+    const spine = os('Spine', 0, 0.25, 0);
+    const spine1 = os('Spine1', 0, 0.25, 0);
+    const neck = os('Neck', 0, 0.30, 0);
+    const head = os('Head', 0, 0.20, 0);          // → y = 2,00
     hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
     [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
-      const clav = os(cote + 'Shoulder', signe * 0.04, 0.12, 0);
+      const clav = os(cote + 'Shoulder', signe * 0.05, 0.10, 0);
       const bras = os(cote + 'Arm', signe * 0.15, 0, 0);
-      const avant = os(cote + 'ForeArm', signe * 0.28, 0, 0);
-      const main = os(cote + 'Hand', signe * 0.25, 0, 0);
+      const avant = os(cote + 'ForeArm', signe * 0.15, 0, 0);
+      const main = os(cote + 'Hand', signe * 0.15, 0, 0);   // → x = ±0,50
       spine1.add(clav); clav.add(bras); bras.add(avant); avant.add(main);
-      const cuisse = os('Up' + cote + 'Leg', signe * 0.09, -0.05, 0);
-      const jambe = os(cote + 'Leg', 0, -0.42, 0);
-      const pied = os(cote + 'Foot', 0, -0.40, 0);
+      const cuisse = os('Up' + cote + 'Leg', signe * 0.10, -0.05, 0);
+      const jambe = os(cote + 'Leg', 0, -0.50, 0);
+      const pied = os(cote + 'Foot', 0, -0.45, 0);          // → y = 0,00
       hips.add(cuisse); cuisse.add(jambe); jambe.add(pied);
     });
     return hips;
   }
+
+  // Ce que le squelette ci-dessus impose : 1,0 d'envergure pour 2,0 de haut.
+  const RAPPORT_ATTENDU = 0.5;
 
   /**
    * Le même corps, plus un maillage de `largeur` × `hauteur`, le tout COUCHÉ : le groupe est tourné
@@ -354,29 +368,48 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
     return racine;
   }
 
-  test('le garde-fou : ce montage a BIEN sa verticale sur +Z', () => {
-    // Sans lui, un repère mal dérivé rendrait le test suivant vert pour la mauvaise raison.
-    const t = new THREE.Vector3();
-    box3FromObjectSkinAware3D(corpsCouche(0.7, 1.75)).getSize(t);
-    assert.ok(t.z > t.x && t.z > t.y, `boîte ${t.x.toFixed(2)} × ${t.y.toFixed(2)} × ${t.z.toFixed(2)} : la hauteur n'est pas sur Z`);
-    assert.ok(t.x / t.y > 2, `le rapport x/y naïf vaut ${(t.x / t.y).toFixed(2)} — il doit être franchement faux`);
+  /** Le même corps, debout : la référence à laquelle le corps couché doit être identique. */
+  function corpsDebout(largeur, hauteur){
+    const g = new THREE.Group();
+    g.add(squeletteMixamo());
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(largeur, hauteur, largeur * 0.4), new THREE.MeshBasicMaterial());
+    m.position.y = hauteur / 2;
+    g.add(m);
+    g.updateMatrixWorld(true);
+    return g;
+  }
+
+  test('le garde-fou : coucher le corps CHANGE bien la boîte du maillage', () => {
+    // Sans lui, le test suivant serait vert même si les deux montages étaient identiques — il ne
+    // prouverait alors rien sur l'orientation.
+    const tc = new THREE.Vector3(); box3FromObjectSkinAware3D(corpsCouche(0.7, 1.75)).getSize(tc);
+    const td = new THREE.Vector3(); box3FromObjectSkinAware3D(corpsDebout(0.7, 1.75)).getSize(td);
+    assert.ok(tc.z > tc.y, `couché : boîte ${tc.x.toFixed(2)} × ${tc.y.toFixed(2)} × ${tc.z.toFixed(2)}`);
+    assert.ok(td.y > td.z, `debout : boîte ${td.x.toFixed(2)} × ${td.y.toFixed(2)} × ${td.z.toFixed(2)}`);
+    assert.ok(Math.abs(tc.x / tc.y - td.x / td.y) > 1,
+      'les rapports x/y naïfs des deux montages doivent différer franchement');
   });
 
-  test('RÉGRESSION : le rapport est mesuré dans le repère DU CORPS, pas dans celui du fichier', () => {
-    // 0,7 de large pour 1,75 de haut : le rapport doit valoir 0,4.
-    const r = ratioLargeurModele3D(corpsCouche(0.7, 1.75));
-    assert.ok(Math.abs(r - 0.4) < 1e-2, `rapport ${r} : la verticale du fichier a été supposée Y`);
+  test('RÉGRESSION : le rapport VAUT l\'envergure sur la hauteur, debout comme couché', () => {
+    // LA propriété, et elle est épinglée par sa VALEUR — pas seulement par une invariance. Une
+    // première version ne vérifiait que « couché == debout » : une campagne de mutation a montré
+    // qu'un rapport constant, un rapport inversé et deux projections croisées la satisfaisaient
+    // tous. Une invariance seule ne dit rien de ce qui est mesuré.
+    const debout = ratioLargeurModele3D(corpsDebout(0.7, 1.75));
+    const couche = ratioLargeurModele3D(corpsCouche(0.7, 1.75));
+    assert.ok(Math.abs(debout - RAPPORT_ATTENDU) < 1e-6,
+      `debout : ${debout.toFixed(3)} au lieu de ${RAPPORT_ATTENDU}`);
+    assert.ok(Math.abs(couche - RAPPORT_ATTENDU) < 1e-6,
+      `couché : ${couche.toFixed(3)} — le repère du fichier a été supposé être celui du corps`);
   });
 
-  test('le même corps DEBOUT donne le même rapport', () => {
-    // La propriété qui compte : le rapport décrit le corps, pas l'orientation du fichier.
-    const debout = new THREE.Group();
-    debout.add(squeletteMixamo());
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.75, 0.28), new THREE.MeshBasicMaterial());
-    m.position.y = 1.75 / 2;
-    debout.add(m);
-    debout.updateMatrixWorld(true);
-    assert.ok(Math.abs(ratioLargeurModele3D(debout) - 0.4) < 1e-2);
+  test('et il ne dépend pas non plus du MAILLAGE, seulement des os', () => {
+    // Conséquence assumée du choix : la mesure porte sur les os, pas sur la silhouette dessinée.
+    // Deux maillages très différents autour du même squelette donnent donc le même rapport — ce qui
+    // est le prix d'une mesure cohérente, et ce que le module documente.
+    assert.ok(Math.abs(ratioLargeurModele3D(corpsDebout(0.7, 1.75))
+      - ratioLargeurModele3D(corpsDebout(3.0, 1.75))) < 1e-6);
   });
 
   test('sans squelette reconnu, on retombe sur la convention du fichier', () => {
