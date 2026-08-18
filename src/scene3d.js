@@ -12,7 +12,7 @@
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
 import {
-  BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D,
+  BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
   GROUND_CONTACT_EPS_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D,
   TRACÉ_DEFAULTS, WALL_TYPES,
@@ -241,6 +241,51 @@ export function findOwningPanel(perso, page){
 // ════════════════════════════════════════════════════════════
 // 3D CAMERA, SCENE RENDERING, TRACE GEOMETRY
 // ════════════════════════════════════════════════════════════
+/**
+ * La distance de caméra à donner à une Case qui reçoit son PREMIER Élément 3D.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI ELLE DÉPEND DE LA HAUTEUR DE L'ÉLÉMENT
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : « pour un Personnage de taille standard c'est nickel car sa hauteur est fixe,
+ * mais des modèles de taille différente paraissent plus éloignés lorsqu'ils sont plus petits ».
+ *
+ * C'est exact, et c'est arithmétique. `PANEL_CAM_DEFAULT_DIST_3D` est FIXE, et
+ * `ensureNewElementVisibleInPanel3D` ne fait que TRANSLATER le centre d'orbite — elle ne touche
+ * jamais la distance. Un modèle de 1,11 m à la distance d'un Personnage de 1,75 m occupe donc 63 %
+ * de la hauteur qu'occuperait celui-ci. Il n'est pas mal placé : rien ne compense sa taille.
+ *
+ * LA RÈGLE N'A RIEN D'UN SEUIL. C'est la proportion — et une seule — qui fait qu'un Élément de
+ * n'importe quelle hauteur occupe l'image comme le ferait le Personnage de référence. Les deux
+ * termes existaient déjà : la distance par défaut, et `PERSONA_REAL_HEIGHT_M`.
+ *
+ * BORNES REPRISES DE LA MOLETTE, pas inventées ici : ce sont celles qu'applique déjà le zoom d'une
+ * Case (cf. events.js). Un modèle minuscule ne doit pas mettre la caméra dans le maillage, ni un
+ * modèle démesuré la renvoyer à l'infini.
+ *
+ * Fonction PURE : elle ne lit et ne modifie aucun état.
+ */
+export function distanceCameraPourPremierElement3D(hauteurM){
+  if (!Number.isFinite(hauteurM) || hauteurM <= 0) return PANEL_CAM_DEFAULT_DIST_3D;
+  return clamp(PANEL_CAM_DEFAULT_DIST_3D * (hauteurM / PERSONA_REAL_HEIGHT_M),
+    0.3, PANEL_CAM_DEFAULT_DIST_3D * 200);
+}
+
+/**
+ * Cet Élément est-il le PREMIER Élément 3D de sa Case ?
+ *
+ * Appelée APRÈS que l'Élément a rejoint la page — d'où l'exclusion explicite de lui-même. C'est
+ * cette question, et elle seule, qui autorise à recadrer : une Case vide n'a pas de composition à
+ * préserver, une Case déjà peuplée en a une, et la déplacer sous les yeux de quelqu'un qui vient
+ * seulement d'ajouter un Élément serait une surprise désagréable. C'est la règle que ce fichier
+ * s'est déjà donnée pour la rotation (cf. ensureNewElementVisibleInPanel3D) ; on l'étend au zoom.
+ */
+export function estPremierElement3DdeLaCase(obj, panel, page){
+  if (!obj || !panel || !page) return false;
+  return panelOwnedElements3D(panel, page).every(o => o === obj || o.id === obj.id);
+}
+
 function panelOwnedElements3D(panel, page){
   return page.objects.filter(o => {
     if (o.type !== 'perso' && o.type !== 'objet3d') return false;

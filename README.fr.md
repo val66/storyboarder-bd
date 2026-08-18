@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.44**
+**Version 1.3.45**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -73,6 +73,12 @@
   nouvelle figure, si bien que les réglages fins faits aux curseurs sont perdus — ces angles sont
   exprimés dans les axes de l'ancienne figure et ne veulent rien dire sur un autre squelette. Rien
   n'est acquis tant que la fiche n'est pas enregistrée.
+
+- **Le premier Élément cadre la Case** : une Case vide n'a pas de cadrage à préserver, donc le
+  premier Élément 3D qu'on y pose règle la distance de caméra en proportion de sa propre hauteur —
+  un modèle d'1,1 m occupe alors l'image exactement comme le ferait un Personnage d'1,75 m. Une Case
+  qui contient déjà quelque chose n'est jamais recadrée : elle porte une composition, et la déplacer
+  sous vos yeux serait une surprise.
 
 - **Morceaux détachés** : certains fichiers placent un maillage loin du corps, sans contact avec
   aucune autre partie du modèle — mesuré sur l'un des fichiers d'essai : un fourreau de katana à

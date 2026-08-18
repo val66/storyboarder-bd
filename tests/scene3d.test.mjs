@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 
 import {
   panelDepthToDistance3D,
+  distanceCameraPourPremierElement3D,
+  estPremierElement3DdeLaCase,
   clampPanelDepth3D,
   panelApparentPx3D,
   ensureElementUnits3D,
@@ -53,6 +55,7 @@ import {
 import { S } from '../src/state.js';
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PANEL_DEPTH_MAX_3D, GROUND_Y_DEFAULT_3D, WALL_PX_PER_UNIT_3D,
+  PERSONA_REAL_HEIGHT_M,
   TRACÉ_DEFAULTS,
 } from '../src/constants.js';
 
@@ -1633,5 +1636,63 @@ describe('isJunctionWall3D — quels Murs reçoivent un poteau d\'angle (Fix 34b
     assert.equal(isJunctionWall3D(mur({ hidden3d: true })), false, 'Mur masqué');
     assert.equal(isJunctionWall3D({ objType: 'dalle', pieceId: 'p1' }), false, 'Dalle');
     assert.equal(isJunctionWall3D(null), false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La distance de caméra d'une Case qui reçoit son premier Élément
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('distanceCameraPourPremierElement3D — compenser la taille de l\'Élément', () => {
+  // Signalé à l'usage : « pour un Personnage de taille standard c'est nickel car sa hauteur est
+  // fixe, mais des modèles de taille différente paraissent plus éloignés lorsqu'ils sont plus
+  // petits ». C'est arithmétique : la distance par défaut est fixe et calibrée sur 1,75 m.
+
+  test('un Élément de la taille de référence garde la distance par défaut', () => {
+    assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M), PANEL_CAM_DEFAULT_DIST_3D);
+  });
+
+  test('deux fois plus grand, deux fois plus loin — et réciproquement', () => {
+    // C'est LA propriété : la taille apparente ne dépend plus de la hauteur du modèle.
+    assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M * 2), PANEL_CAM_DEFAULT_DIST_3D * 2);
+    assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M / 2), PANEL_CAM_DEFAULT_DIST_3D / 2);
+  });
+
+  test('une hauteur inconnue ou absurde retombe sur le défaut', () => {
+    // Un fichier illisible n'a pas de hauteur : mieux vaut la distance d'avant qu'une caméra
+    // envoyée à zéro ou à l'infini.
+    [undefined, null, NaN, 0, -1, Infinity].forEach(v =>
+      assert.equal(distanceCameraPourPremierElement3D(v), PANEL_CAM_DEFAULT_DIST_3D,
+        `hauteur ${String(v)}`));
+  });
+
+  test('les bornes sont celles de la molette, pas des valeurs inventées ici', () => {
+    assert.equal(distanceCameraPourPremierElement3D(1e-9), 0.3);
+    assert.equal(distanceCameraPourPremierElement3D(1e9), PANEL_CAM_DEFAULT_DIST_3D * 200);
+  });
+});
+
+describe('estPremierElement3DdeLaCase — qui a le droit de recadrer', () => {
+  // Une Case déjà peuplée porte une composition. La recadrer sous les yeux de quelqu'un qui vient
+  // seulement d'ajouter un Élément serait une surprise — c'est la règle que le rendu s'est déjà
+  // donnée pour la rotation, étendue ici au zoom.
+  const panel = { id: 'c1', type: 'panel', x: 0, y: 0, w: 400, h: 300, shape: 'rect' };
+  const el = (id, x, y) => ({ id, type: 'objet3d', objType: 'modele', x, y, w: 40, h: 40, homePanelId: 'c1' });
+
+  test('seul dans sa Case : oui', () => {
+    const a = el('a', 180, 130);
+    assert.equal(estPremierElement3DdeLaCase(a, panel, { objects: [panel, a] }), true);
+  });
+
+  test('un autre Élément 3D déjà là : non', () => {
+    const a = el('a', 180, 130), b = el('b', 100, 100);
+    assert.equal(estPremierElement3DdeLaCase(a, panel, { objects: [panel, b, a] }), false);
+  });
+
+  test('les arguments manquants ne donnent jamais le droit de recadrer', () => {
+    const a = el('a', 180, 130);
+    assert.equal(estPremierElement3DdeLaCase(null, panel, { objects: [] }), false);
+    assert.equal(estPremierElement3DdeLaCase(a, null, { objects: [] }), false);
+    assert.equal(estPremierElement3DdeLaCase(a, panel, null), false);
   });
 });

@@ -80,6 +80,7 @@ import {
   getCamOrbitWorld, getElementProjectedHalfExtents3D, groundMagnetEligible, panelPixelToGroundXZ3D,
   projectElementCenterToCanvas3D, setElementWorldPos3D, smoothTracéPath3D, tracéPointAtFrac3D,
   wallOpeningWorldPosOnTracé3D, startCamSmoothing, storeElementWorldCoords, useObjectBoxFormat3D,
+  distanceCameraPourPremierElement3D, estPremierElement3DdeLaCase,
   useObjectFormat3D, worldFloorToScreen, worldPointToPageXY3D, panelSceneCache3D, tracéMeshCache3D,
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners,
 } from './scene3d.js';
@@ -561,6 +562,19 @@ function finaliserCreationDansCase3D(obj, panel, page){
   // lui figer des coordonnées monde ici le décrocherait (cf. positionWallOpeningOnWall).
   if (!WALL_OPENING_MAGNET_TYPES.includes(obj.objType) && !WALL_TYPES.includes(obj.objType)) {
     storeElementWorldCoords(obj, panel);
+  }
+  // LE ZOOM, mais SEULEMENT pour le tout premier Élément 3D de la Case. Signalé à l'usage : un
+  // Personnage tombe toujours bien parce que sa hauteur est fixe (1,75 m) et que la distance de
+  // caméra par défaut est calibrée sur elle ; un modèle importé plus petit paraît plus éloigné,
+  // simplement parce que rien ne compense sa taille (cf. distanceCameraPourPremierElement3D).
+  //
+  // Une Case déjà peuplée n'est JAMAIS recadrée : elle porte une composition, et la déplacer sous
+  // les yeux de quelqu'un qui vient seulement d'ajouter un Élément serait une surprise. C'est la
+  // règle que le rendu s'est déjà donnée pour la rotation ; elle vaut aussi pour le zoom.
+  if (estPremierElement3DdeLaCase(obj, panel, page)) {
+    const d = distanceCameraPourPremierElement3D(obj.realHeightFloor);
+    panel.camDist = d;
+    panel.camDistTarget = d;
   }
   ensureNewElementVisibleInPanel3D(obj, panel, page);
 }
