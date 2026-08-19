@@ -871,6 +871,43 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
     closePersonaEditor();
   });
 
+  test('RÉGRESSION : CHANGER DE FIGURE en cours de séance reprend l\'azimut', () => {
+    // Signalé à l'usage APRÈS le correctif de l'ouverture. Entrer sur le Personnage (de face), puis
+    // choisir un modèle importé dans le panneau de droite : le modèle apparaissait de dos, parce que
+    // le demi-tour du Personnage restait en place alors que la figure avait changé de convention.
+    //
+    // La règle juste n'est donc pas « à l'ouverture » mais « quand la figure change ». Ce test est
+    // le second des deux moments ; le premier est celui juste au-dessus.
+    openPersonaEditor(null, null);
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y, 'on entre sur le Personnage');
+
+    choisirFigureDeLEditeur(FICHIER);
+    assert.equal(S.personaEditorCamRotY, orbiteDouvertureEditeur3D(FICHIER),
+      'le modèle importé reste vu sous l\'azimut du Personnage');
+    assert.notEqual(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+
+    // Et le retour au Personnage remet le sien : la règle vaut dans les DEUX sens, sinon on aurait
+    // corrigé un aller sans corriger le retour.
+    choisirFigureDeLEditeur('');
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+    closePersonaEditor();
+  });
+
+  test('changer de figure ne touche QU\'À l\'azimut', () => {
+    // rotX, zoom et déplacement ne dépendent pas de la figure. Les reprendre annulerait un cadrage
+    // que l'utilisateur vient de composer, sans qu'il l'ait demandé — et ce test est la seule chose
+    // qui empêche « remettre le cadrage à neuf » de paraître une simplification acceptable.
+    openPersonaEditor(null, null);
+    setPersonaEditorOrbit(0.4, 2.0);
+    S.personaEditorZoom = 3.5;
+    S.personaEditorPan = { x: 7, y: -2 };
+    choisirFigureDeLEditeur(FICHIER);
+    assert.equal(S.personaEditorCamRotX, 0.4, 'l\'élévation est conservée');
+    assert.equal(S.personaEditorZoom, 3.5, 'le zoom est conservé');
+    assert.deepEqual(S.personaEditorPan, { x: 7, y: -2 }, 'le déplacement est conservé');
+    closePersonaEditor();
+  });
+
   test('l\'azimut est MÉMORISÉ : orbiter garde la main', () => {
     // Il ne se recalcule qu\'à l\'ouverture. Le refaire à chaque image reprendrait la vue à
     // l\'utilisateur dès qu\'il tourne autour du modèle.
@@ -900,4 +937,17 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
  * R7 méritait une garde explicite : si `repereDuCorpsPourFichier3D` rendait toujours `null`, le test
  * « l'azimut présente bien le DEVANT » comparerait deux replis à 0 et resterait vert. D'où
  * l'`assert.ok(repere)` qui le précède — sans lui, la propriété serait vérifiée sur un domaine vide.
+ *
+ * SECONDE PASSE — le sélecteur de figure du panneau droit :
+ *
+ *   S1 le sélecteur ne reprend plus l'azimut (le défaut signalé)         ROUGE
+ *   S2 le sélecteur remet TOUT le cadrage à neuf                         ROUGE
+ *   S3 le sélecteur applique le demi-tour à tout le monde                ROUGE
+ *
+ * CE QUE CETTE SECONDE PASSE APPREND, et qui vaut mieux que les trois mutations : ma première
+ * correction avait la bonne formule au mauvais endroit. J'avais écrit « l'azimut est calculé à
+ * l'OUVERTURE », alors que la règle juste est « quand la FIGURE CHANGE ». L'ouverture n'en est
+ * qu'un des deux moments ; le sélecteur du panneau droit est l'autre, et il était resté muet.
+ *
+ * Une règle formulée sur le MOMENT plutôt que sur la CAUSE laisse toujours un moment dehors.
  */

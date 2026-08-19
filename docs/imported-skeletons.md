@@ -304,6 +304,15 @@ the camera on the front side, itself derived from the file's body frame
 (`repereDuCorpsPourFichier3D`). Hard-coding `0` would have covered the six test files — and left the
 first differently-exported file facing away.
 
+⚠️ **The rule is about the CAUSE, not the moment.** The azimuth is recomputed **when the figure
+changes**, which happens in two places: opening the editor, and the "Model" selector in its right
+panel. The first version only handled opening — entering on the Character then picking an imported
+model still showed its back. A rule phrased about the moment rather than the cause always leaves one
+moment out.
+
+Only the azimuth is recomputed: elevation, zoom and pan do not depend on the figure, and resetting
+them would discard framing the user has just composed.
+
 ⚠️ **Two traps are recorded there**, both observed rather than assumed:
 
 - `repereDuCorps().avant` points at the **visual back**. It is a geometric derivation

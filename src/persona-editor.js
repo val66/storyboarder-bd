@@ -560,9 +560,29 @@ export function buildPersonaEditorModelUI(){
  *
  * Une chaîne vide n'est pas un nom de fichier : c'est le Personnage intégré. On rend `null`, que le
  * reste du code teste par présence et non par longueur.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'AZIMUT SUIT LA FIGURE — ici aussi, et pas seulement à l'ouverture
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage, après le correctif de l'ouverture : entrer dans l'Éditeur sur le Personnage
+ * (de face), puis choisir un modèle importé dans le panneau de droite — et le modèle apparaît de
+ * dos. La cause est la même que le défaut d'origine, à un endroit de plus : le demi-tour du
+ * Personnage restait en place alors que la figure, elle, avait changé de convention.
+ *
+ * LA RÈGLE JUSTE N'EST DONC PAS « à l'ouverture » MAIS « QUAND LA FIGURE CHANGE ». Il y a
+ * exactement deux moments où cela arrive, et les voici tous les deux : `openPersonaEditor` (via
+ * resetPersonaEditorCamera) et ce sélecteur. Les deux appellent le MÊME calcul — un seul endroit
+ * décide de quel côté on regarde un corps.
+ *
+ * ⚠️ SEUL L'AZIMUT EST REPRIS. `rotX` (l'élévation), le zoom et le déplacement ne dépendent pas de
+ * la figure : les reprendre annulerait un cadrage que l'utilisateur vient de composer, sans qu'il
+ * l'ait demandé. Changer de figure remplace déjà les retouches des curseurs (cf. buildFigureFieldUI)
+ * — c'est assez d'effets pour un seul geste.
  */
 export function choisirFigureDeLEditeur(fichier){
   S.personaEditorModelFile = fichier || null;
+  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile);
   return S.personaEditorModelFile;
 }
 

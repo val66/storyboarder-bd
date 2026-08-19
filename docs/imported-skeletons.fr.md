@@ -313,6 +313,15 @@ place la caméra du côté du devant, lui-même dérivé du repère de corps du 
 (`repereDuCorpsPourFichier3D`). Coder `0` en dur aurait suffi pour les six fichiers d'essai — et
 laissé de dos le premier fichier exporté autrement.
 
+⚠️ **La règle porte sur la CAUSE, pas sur le moment.** L'azimut se reprend **quand la figure
+change**, ce qui arrive à deux endroits : l'ouverture de l'Éditeur, et le sélecteur « Modèle » de son
+panneau droit. La première version ne traitait que l'ouverture — entrer sur le Personnage puis
+choisir un modèle importé le montrait encore de dos. Une règle formulée sur le moment plutôt que sur
+la cause laisse toujours un moment dehors.
+
+Seul l'azimut est repris : l'élévation, le zoom et le déplacement ne dépendent pas de la figure, et
+les remettre à neuf annulerait un cadrage que l'utilisateur vient de composer.
+
 ⚠️ **Deux pièges y sont consignés**, tous deux constatés et non supposés :
 
 - `repereDuCorps().avant` pointe vers l'**arrière visuel**. C'est une dérivée géométrique
