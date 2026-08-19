@@ -24,10 +24,13 @@ import {
   poseSpecRotationAxis3D, poseUsageCount3D, readPoseSliderDeg3D, rememberDismissedPose3D,
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
   writePoseSliderDeg3D,
+
+  orbiteDeFace3D,
 } from './utils.js';
 import {
   applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, figuresPosables,
-  getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, resolveStyle3D,
+  getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
+  resolveStyle3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { renderModelForEditor3D } from './scene3d.js';
@@ -338,12 +341,55 @@ export function setPersonaEditorOrbit(rotX, rotY){
 // avait supprimé.
 export const PERSONA_EDITOR_FRONT_ROT_Y = Math.PI;
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'AZIMUT D'OUVERTURE DÉPEND DE LA FIGURE — il ne peut pas être une constante
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * SIGNALÉ À L'USAGE : le Personnage s'ouvre de face, TOUS les modèles importés de dos.
+ *
+ * LA CAUSE, et c'est une seule ligne qui produit les deux moitiés du symptôme. Les deux figures ont
+ * des conventions de « devant » OPPOSÉES :
+ *
+ *   — le Personnage intégré a son visage en Z NÉGATIF (cf. PERSONA_EDITOR_FRONT_ROT_Y ci-dessus, et
+ *     `rotY: Math.PI` à sa création dans une Case, events.js) ;
+ *   — un modèle importé apparaît de face dans une Case à `rotY: 0` (model-store.js) : son devant est
+ *     donc vers Z POSITIF.
+ *
+ * Le demi-tour fixe de la caméra est exactement ce qu'il faut au premier — et exactement ce qui
+ * retourne le second. Aucune constante ne peut convenir aux deux.
+ *
+ * CE QU'ON MESURE PLUTÔT QUE DE LE CHOISIR : le devant du fichier, via son repère de corps. Coder
+ * `0` en dur pour les modèles importés marcherait sur les six fichiers d'essai — et laisserait de
+ * dos le premier fichier exporté autrement. Deux des six ne sont déjà pas Y-up.
+ *
+ * ⚠️ LA CORRECTION RESTE CÔTÉ CAMÉRA. Faire pivoter la figure de 180° remettrait ses axes de travers
+ * vis-à-vis du monde, et `projectModelAxisToScreen3D` (direction du glisser d'une poignée)
+ * redeviendrait faux — c'est précisément ce que le Fix 76 avait supprimé.
+ *
+ * REPLI À 0 quand le repère n'est pas mesurable (fichier pas encore décodé, ou os du tronc non
+ * reconnus) : c'est l'azimut sous lequel un modèle importé se présente de face dans une Case, donc
+ * le meilleur pari en l'absence de mesure. Le cas est rare — on n'arrive ici depuis la fiche d'un
+ * modèle qu'après l'avoir vu dans son aperçu, donc décodé.
+ */
+export function orbiteDouvertureEditeur3D(nomFichier, repereDuFichier){
+  // Pas de fichier : c'est le Personnage intégré, dont le devant est connu par construction. On ne
+  // le mesure pas — son rig n'a pas à être construit pour qu'on sache de quel côté il regarde.
+  if (!nomFichier) return PERSONA_EDITOR_FRONT_ROT_Y;
+  const repere = (repereDuFichier !== undefined) ? repereDuFichier
+    : repereDuCorpsPourFichier3D(nomFichier);
+  const mesure = repere ? orbiteDeFace3D(repere.avant) : null;
+  return (mesure === null) ? 0 : mesure;
+}
+
 // Cadrage d'ouverture de l'éditeur, zoom compris. Seul openPersonaEditor l'appelle depuis le
 // Fix 66 (retrait de la section Caméra) ; la fonction reste séparée parce qu'elle NOMME ce
 // cadrage, et qu'un « recadrer » explicite est le premier bouton qu'on voudra rebrancher dessus.
 export function resetPersonaEditorCamera(){
   S.personaEditorCamRotX = 0;
-  S.personaEditorCamRotY = PERSONA_EDITOR_FRONT_ROT_Y;
+  // ⚠️ CALCULÉ ICI, ET NULLE PART AILLEURS. L'azimut est ensuite MÉMORISÉ : l'utilisateur peut
+  // orbiter, et le recalculer à chaque image lui reprendrait la main aussitôt.
+  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile);
   S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
   S.personaEditorPan = { x: 0, y: 0 };
 }

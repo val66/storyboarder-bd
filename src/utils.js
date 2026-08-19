@@ -821,6 +821,55 @@ export function posesUsedByProject3D(library, ...roots){
 // ⚠️ `rotX` doit rester dans ]-90°, 90°[ — même contrainte que la caméra d'une Case, qui la borne à
 // ±85°. À 90° pile, la direction de visée devient parallèle au vecteur « haut » de la caméra et
 // l'orientation bascule brutalement.
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'ORBITE QUI PRÉSENTE UN CORPS DE FACE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * LE DÉFAUT QUE ÇA RÉPARE. L'Éditeur ouvre sa caméra sur un demi-tour fixe. C'est ce qu'il faut pour
+ * le Personnage intégré, dont le devant est vers −Z (cf. events.js, `rotY: Math.PI` à la création) ;
+ * c'est exactement ce qui retourne tous les modèles importés, dont le devant est déjà vers +Z — ils
+ * apparaissent de face dans une Case à `rotY: 0`. Deux conventions opposées, une seule constante :
+ * l'une des deux figures est forcément à l'envers.
+ *
+ * LA GÉOMÉTRIE, LUE ET NON SUPPOSÉE. `orbitCameraPosition3D` place la caméra en
+ * `centre + d·(sin rotY, ·, cos rotY)`. Elle voit donc la face du corps tournée vers la direction
+ * `(sin rotY, ·, cos rotY)`. Pour présenter le devant, il suffit que cette direction soit celle du
+ * devant : `rotY = atan2(devant.x, devant.z)`.
+ *
+ * ⚠️ `repereDuCorps().avant` POINTE VERS L'ARRIÈRE VISUEL. C'est une dérivée géométrique
+ * (`avant = haut ∧ droite`), pas une lecture de la géométrie affichée, et son sens dépend des
+ * conventions de nommage de la chaîne. MESURÉ sur le Personnage intégré, dont on sait par
+ * construction que le devant est vers −Z : `repereDuCorps` en rend `avant = (0, 0, +1)`. D'où le
+ * signe inversé ci-dessous. La vérification qui compte est dans les tests : cette formule doit
+ * redonner exactement `PERSONA_EDITOR_FRONT_ROT_Y` sur le Personnage.
+ *
+ * ⚠️ DEUX PIÈGES DE VIRGULE FLOTTANTE, ET C'EST POURQUOI ON N'ÉCRIT PAS `atan2(-x, -z)`.
+ *
+ *   1. `-0` n'est pas `0` pour `atan2` : `atan2(-0, -1)` rend −π là où `atan2(0, -1)` rend +π. Nier
+ *      un vecteur dont une composante est nulle suffit donc à changer le résultat. On ajoute π à
+ *      l'angle du vecteur au lieu de nier le vecteur — même demi-tour, aucun zéro signé produit.
+ *   2. `wrapAngle` (utils.js) ramène dans [−π, π) et NON dans ]−π, π] comme l'annonce le
+ *      commentaire qui l'accompagne ailleurs : il envoie π sur −π. S'en servir ici renverrait −π
+ *      pour le Personnage, qui ne se compare plus à `PERSONA_EDITOR_FRONT_ROT_Y`. Constaté par le
+ *      test, pas deviné. La normalisation est donc faite ici, dans ]−π, π], où π est le
+ *      représentant — et `wrapAngle` n'est pas corrigé : d'autres appelants en dépendent tel quel.
+ *
+ * @param avantDuCorps le vecteur `avant` de `repereDuCorps` (⚠️ dirigé vers l'arrière visuel)
+ * @returns l'angle d'orbite, ou `null` si le corps n'a pas d'orientation horizontale exploitable
+ */
+export function orbiteDeFace3D(avantDuCorps){
+  if (!Array.isArray(avantDuCorps) || avantDuCorps.length !== 3) return null;
+  const x = Number(avantDuCorps[0]), z = Number(avantDuCorps[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  // Axe fore-aft VERTICAL : un corps couché dans son propre fichier n'a pas de « de face »
+  // horizontal. Rendre 0 ici inventerait une orientation ; `null` laisse l'appelant décider.
+  if (Math.hypot(x, z) < 1e-9) return null;
+  // atan2 ∈ ]−π, π], donc la somme ∈ ]0, 2π] ; un seul repli suffit à revenir dans ]−π, π].
+  const a = Math.atan2(x, z) + Math.PI;
+  return a > Math.PI ? a - 2 * Math.PI : a;
+}
+
 export function orbitCameraPosition3D(center, dist, rotX, rotY){
   const c = center || { x: 0, y: 0, z: 0 };
   const d = dist || 0;

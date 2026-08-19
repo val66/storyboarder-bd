@@ -294,3 +294,34 @@ Sur chacun des six fichiers, en partant d'une Case VIDE :
 5. enregistrer, fermer, rouvrir le Projet — tout doit être exactement dans le même état.
 
 Le point 5 est le plus important : c'est le seul qui exerce la forme persistée de bout en bout.
+
+### 7.4 Deux conventions de « devant », et ce qu'elles imposent
+
+Le Personnage intégré et un modèle importé ne regardent pas du même côté, et l'écart n'est écrit
+nulle part dans les fichiers :
+
+| | devant | conséquence |
+|---|---|---|
+| Personnage intégré | −Z | `rotY: Math.PI` à sa création dans une Case (events.js) |
+| Modèle importé | +Z (les six fichiers d'essai) | `rotY: 0` à sa création (model-store.js) |
+
+L'Éditeur de Personnage ouvrait sa caméra sur un demi-tour **fixe**. C'est ce qu'il faut au premier,
+et c'est exactement ce qui retourne le second : tous les modèles importés s'ouvraient de dos.
+
+**La règle est désormais mesurée** (`orbiteDeFace3D`, utils.js) : l'azimut d'ouverture est celui qui
+place la caméra du côté du devant, lui-même dérivé du repère de corps du fichier
+(`repereDuCorpsPourFichier3D`). Coder `0` en dur aurait suffi pour les six fichiers d'essai — et
+laissé de dos le premier fichier exporté autrement.
+
+⚠️ **Deux pièges y sont consignés**, tous deux constatés et non supposés :
+
+- `repereDuCorps().avant` pointe vers l'**arrière visuel**. C'est une dérivée géométrique
+  (`avant = haut ∧ droite`), pas une lecture de ce qui est dessiné. Mesuré sur le Personnage, dont
+  le devant est connu par construction ;
+- `wrapAngle` ramène dans **[−π, π)** et non dans ]−π, π] comme l'annonce le commentaire qui
+  l'accompagne : il envoie π sur −π. S'en servir pour normaliser cet azimut renverrait −π pour le
+  Personnage, qui ne se compare plus à la constante existante.
+
+⚠️ **La correction reste côté caméra.** Faire pivoter la figure de 180° remettrait ses axes de
+travers vis-à-vis du monde, et le calcul de direction du glisser d'une poignée
+(`projectModelAxisToScreen3D`) redeviendrait faux — c'est ce que le Fix 76 avait supprimé.

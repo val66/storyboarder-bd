@@ -3329,6 +3329,20 @@ export function figuresPosables(){
  * bouge rien ». L'interface a besoin de distinguer les deux : le premier grise le sélecteur, le
  * second est un résultat légitime.
  */
+/**
+ * Le repère du corps d'un fichier importé, mesuré sur la scène DÉCODÉE du cache.
+ *
+ * Extrait de `poseOsPourModeleImporte`, qui commençait par exactement ces trois lignes : deux
+ * chemins vers le même repère auraient fini par ne plus rendre le même. `null` couvre indistinctement
+ * « pas encore décodé », « fichier introuvable » et « os du tronc non reconnus » — l'appelant n'a
+ * rien à faire de la nuance, il n'a de toute façon pas de repère.
+ */
+export function repereDuCorpsPourFichier3D(nomFichier){
+  const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
+  if (!chargé || !chargé.scene) return null;
+  return repereDuModeleImporte(recolterOsMappes(chargé.scene, nomFichier));
+}
+
 export function poseOsPourModeleImporte(nomFichier, joints){
   const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
   if (!chargé || !chargé.scene) return null;

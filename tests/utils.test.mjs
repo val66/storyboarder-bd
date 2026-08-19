@@ -27,6 +27,7 @@ import {
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
   hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
+  orbiteDeFace3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -1975,5 +1976,71 @@ describe('optionsDeFigure3D — le champ « Modèle » nomme toujours le bon fic
     assert.deepEqual(optionsDeFigure3D(['a.glb', '', null, 42], 'a.glb'), ['a.glb']);
     assert.deepEqual(optionsDeFigure3D(null, 'seul.glb'), ['seul.glb']);
     assert.deepEqual(optionsDeFigure3D(null, null), []);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// orbiteDeFace3D — présenter un corps de face, quelle que soit sa convention (tâche #346)
+//
+// CE QUI SE JOUE ICI. L'Éditeur ouvrait sa caméra sur un demi-tour FIXE. Juste pour le Personnage
+// intégré (devant vers −Z), faux pour tout modèle importé (devant vers +Z). Deux conventions
+// opposées, une seule constante. Cette fonction remplace la constante par une mesure.
+//
+// LE TEST QUI COMPTE est le premier : la formule doit redonner EXACTEMENT la constante existante
+// sur le Personnage. Sans lui, on remplacerait une valeur juste par une valeur plausible.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('orbiteDeFace3D', () => {
+  // Mesuré sur le rig du Personnage intégré (sonde, cf. l'en-tête de la fonction) :
+  // repereDuCorps en rend (0,0,+1) alors que son devant VISUEL est −Z.
+  const AVANT_DU_PERSONNAGE = [0, 0, 1];
+
+  test('RÉGRESSION : sur le Personnage, la formule redonne le demi-tour existant', () => {
+    // PERSONA_EDITOR_FRONT_ROT_Y vaut Math.PI depuis le Fix 76. Si cette égalité tombe, la nouvelle
+    // règle n'est pas une généralisation de l'ancienne : c'est un autre cadrage.
+    assert.equal(orbiteDeFace3D(AVANT_DU_PERSONNAGE), Math.PI);
+  });
+
+  test('le piège du zéro négatif ne passe pas', () => {
+    // `atan2(-0, -1)` rend −π, `atan2(0, -1)` rend +π. Même caméra, valeurs différentes — et l'une
+    // des deux ne se compare pas à la constante. wrapAngle tranche ; ce test le vérifie des deux
+    // côtés, parce que le signe de zéro dépend de la façon dont l'appelant a construit le vecteur.
+    assert.equal(orbiteDeFace3D([0, 0, 1]), Math.PI);
+    assert.equal(orbiteDeFace3D([-0, 0, 1]), Math.PI);
+    assert.ok(Object.is(orbiteDeFace3D([0, 0, 1]), Math.PI), 'valeur exacte, pas −π');
+  });
+
+  test('un corps de convention INVERSE ne demande aucun demi-tour', () => {
+    // C'est le cas des six fichiers importés : ils apparaissent de face dans une Case à rotY = 0.
+    assert.equal(orbiteDeFace3D([0, 0, -1]), 0);
+  });
+
+  test('un corps tourné d\'un quart de tour est présenté de face lui aussi', () => {
+    // Ce que la constante ne pouvait pas faire. Un fichier exporté de travers doit s'ouvrir de face
+    // comme les autres — c'est tout l'intérêt de mesurer plutôt que de choisir.
+    assertClose(orbiteDeFace3D([1, 0, 0]), -Math.PI / 2, 'devant vers −X');
+    assertClose(orbiteDeFace3D([-1, 0, 0]), Math.PI / 2, 'devant vers +X');
+  });
+
+  test('la composante VERTICALE est ignorée', () => {
+    // L'orbite d'ouverture ne règle que l'azimut ; rotX reste à 0. Un corps légèrement penché en
+    // avant doit donner le même azimut qu'un corps droit.
+    assertClose(orbiteDeFace3D([0, 5, 1]), Math.PI, 'un torse penché ne change pas l\'azimut');
+    assertClose(orbiteDeFace3D([0, -5, -1]), 0, 'ni penché en arrière');
+  });
+
+  test('un axe fore-aft VERTICAL rend null, jamais un angle inventé', () => {
+    // Un corps couché dans son propre fichier n'a pas de « de face » horizontal. Rendre 0 ferait
+    // passer une absence de réponse pour une réponse — et l'appelant ne pourrait plus choisir son
+    // repli.
+    assert.equal(orbiteDeFace3D([0, 1, 0]), null);
+    assert.equal(orbiteDeFace3D([0, -1, 0]), null);
+    assert.equal(orbiteDeFace3D([0, 0, 0]), null);
+  });
+
+  test('une entrée inexploitable rend null, jamais NaN', () => {
+    // Un NaN d'angle placerait la caméra en NaN : la vue devient NOIRE, sans erreur nulle part.
+    [null, undefined, [], [1, 2], 'x', [NaN, 0, 1], [0, 0, 'a']].forEach(mauvais => {
+      assert.equal(orbiteDeFace3D(mauvais), null, `entrée ${JSON.stringify(mauvais)}`);
+    });
   });
 });

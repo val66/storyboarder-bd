@@ -285,3 +285,34 @@ For each of the six files, starting from an EMPTY Panel:
 5. save, close, reopen the project — everything must be exactly as it was.
 
 Step 5 matters most: it is the only one that exercises the persisted form end to end.
+
+### 7.4 Two "front" conventions, and what they force
+
+The built-in Character and an imported model do not face the same way, and the difference is written
+nowhere in the files:
+
+| | front | consequence |
+|---|---|---|
+| Built-in Character | −Z | `rotY: Math.PI` when created in a Panel (events.js) |
+| Imported model | +Z (the six test files) | `rotY: 0` when created (model-store.js) |
+
+The Character editor opened its camera on a **fixed** half-turn. That is what the first one needs,
+and exactly what turns the second one around: every imported model opened showing its back.
+
+**The rule is now measured** (`orbiteDeFace3D`, utils.js): the opening azimuth is the one that puts
+the camera on the front side, itself derived from the file's body frame
+(`repereDuCorpsPourFichier3D`). Hard-coding `0` would have covered the six test files — and left the
+first differently-exported file facing away.
+
+⚠️ **Two traps are recorded there**, both observed rather than assumed:
+
+- `repereDuCorps().avant` points at the **visual back**. It is a geometric derivation
+  (`avant = haut ∧ droite`), not a reading of what is drawn. Measured on the Character, whose front
+  is known by construction;
+- `wrapAngle` maps into **[−π, π)**, not ]−π, π] as the comment accompanying it claims: it sends π to
+  −π. Using it to normalise this azimuth would return −π for the Character, which no longer compares
+  equal to the existing constant.
+
+⚠️ **The fix stays on the camera side.** Rotating the figure by 180° would put its axes at odds with
+the world, and the handle-drag direction computation (`projectModelAxisToScreen3D`) would become
+wrong again — which is what Fix 76 removed.

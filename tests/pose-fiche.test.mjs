@@ -27,16 +27,19 @@ import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
+  repereDuCorpsPourFichier3D,
 } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
+import { orbiteDeFace3D } from '../src/utils.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
-  buildPersonaEditorModelUI, choisirFigureDeLEditeur,
+  buildPersonaEditorModelUI, choisirFigureDeLEditeur, orbiteDouvertureEditeur3D,
+  PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit,
 } from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
@@ -804,3 +807,97 @@ describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
       'ce doit être le maillage DU CLONE, pas celui de la scène partagée du cache');
   });
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'azimut d'ouverture de l'Éditeur (tâche #346)
+//
+// SIGNALÉ À L'USAGE : le Personnage s'ouvre de face, TOUS les modèles importés de dos. Une seule
+// constante servait les deux, alors que leurs conventions de « devant » sont opposées.
+//
+// CE QUE CES TESTS GARDENT, et que la fonction pure d'utils.js ne peut pas garder seule : que la
+// MESURE ARRIVE JUSQU'À LA CAMÉRA. Une formule juste dont personne n'appelle le résultat laisse le
+// symptôme intact — c'est exactement l'échappée qui a coûté une reprise sur la fiche Personnage.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
+  beforeEach(() => {
+    clearModelCache();
+    _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
+  });
+
+  test('sans fichier — le Personnage intégré — c\'est le demi-tour d\'origine', () => {
+    // Son devant est connu par construction (visage en Z négatif) : on ne le mesure pas, et le
+    // comportement ne change pas d\'un iota par rapport au Fix 80.
+    assert.equal(orbiteDouvertureEditeur3D(null), PERSONA_EDITOR_FRONT_ROT_Y);
+    assert.equal(orbiteDouvertureEditeur3D(''), PERSONA_EDITOR_FRONT_ROT_Y);
+  });
+
+  test('RÉGRESSION : un modèle importé n\'hérite PAS du demi-tour du Personnage', () => {
+    // LE test de la tâche. Le témoin est monté face à +Z, comme les six fichiers réels — qui
+    // apparaissent de face dans une Case à rotY = 0.
+    const azimut = orbiteDouvertureEditeur3D(FICHIER);
+    assert.notEqual(azimut, PERSONA_EDITOR_FRONT_ROT_Y,
+      'le modèle importé reçoit encore le demi-tour qui le met de dos');
+  });
+
+  test('l\'azimut rendu présente bien le DEVANT du témoin', () => {
+    // Discriminant : le test précédent serait vert pour n\'importe quelle valeur ≠ π. Ici on vérifie
+    // que l\'azimut est celui qui place la caméra du côté du devant, calculé depuis le repère
+    // réellement mesuré sur la scène décodée.
+    const repere = repereDuCorpsPourFichier3D(FICHIER);
+    assert.ok(repere, 'le témoin doit avoir un repère de corps exploitable');
+    const attendu = orbiteDeFace3D(repere.avant);
+    assert.ok(attendu !== null, 'et une orientation horizontale');
+    assert.equal(orbiteDouvertureEditeur3D(FICHIER), attendu);
+  });
+
+  test('un repère INEXPLOITABLE se replie sur 0, pas sur le demi-tour', () => {
+    // Fichier pas encore décodé, ou os du tronc non reconnus. 0 est l\'azimut sous lequel un modèle
+    // importé se présente de face dans une Case : le meilleur pari sans mesure. Le demi-tour, lui,
+    // serait le pire — c\'est le défaut qu\'on corrige.
+    assert.equal(orbiteDouvertureEditeur3D('jamais-decode.glb'), 0);
+    assert.equal(orbiteDouvertureEditeur3D(FICHIER, null), 0);
+  });
+
+  test('RÉGRESSION : ouvrir l\'Éditeur ÉCRIT cet azimut dans la caméra', () => {
+    // Le maillon qui manquait. Sans lui, la mesure pourrait être juste et n\'atteindre personne.
+    openPersonaEditor(null, null);
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y, 'Personnage intégré');
+    closePersonaEditor();
+
+    openPersonaEditor({ type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm9' }, null);
+    assert.equal(S.personaEditorCamRotY, orbiteDouvertureEditeur3D(FICHIER), 'modèle importé');
+    assert.notEqual(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+    closePersonaEditor();
+  });
+
+  test('l\'azimut est MÉMORISÉ : orbiter garde la main', () => {
+    // Il ne se recalcule qu\'à l\'ouverture. Le refaire à chaque image reprendrait la vue à
+    // l\'utilisateur dès qu\'il tourne autour du modèle.
+    openPersonaEditor({ type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm9' }, null);
+    setPersonaEditorOrbit(0, 1.234);
+    assert.equal(S.personaEditorCamRotY, 1.234);
+    closePersonaEditor();
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — l'azimut d'ouverture de l'Éditeur (tâche #346).
+ *
+ *   R1 resetPersonaEditorCamera revient à la constante                  ROUGE
+ *   R2 tout le monde reçoit le demi-tour du Personnage                  ROUGE
+ *   R3 le repli d'un repère absent devient le demi-tour                 ROUGE
+ *   R4 le « + π » retiré de orbiteDeFace3D                              ROUGE
+ *   R5 la normalisation dans ]−π, π] retirée                            ROUGE
+ *   R6 la garde « axe fore-aft vertical » retirée                       ROUGE
+ *   R7 repereDuCorpsPourFichier3D ne mesure plus rien                   ROUGE
+ *
+ * R1 EST CELLE QUI COMPTE et elle explique pourquoi ces tests ne vivent pas seulement dans
+ * utils.test.mjs : une formule juste dont personne n'appelle le résultat laisse le symptôme entier.
+ * C'est exactement l'échappée qui avait coûté une reprise sur le champ Hauteur de la fiche
+ * Personnage — le champ était en place, bien positionné, et restait vide.
+ *
+ * R7 méritait une garde explicite : si `repereDuCorpsPourFichier3D` rendait toujours `null`, le test
+ * « l'azimut présente bien le DEVANT » comparerait deux replis à 0 et resterait vert. D'où
+ * l'`assert.ok(repere)` qui le précède — sans lui, la propriété serait vérifiée sur un domaine vide.
+ */

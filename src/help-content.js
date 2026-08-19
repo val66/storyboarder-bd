@@ -54,7 +54,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'editeur', title: 'Character editor', paragraphs: [
     'Open the editor with the pencil button in the corner of a character’s 3D preview, or from the "Characters" section of the left menu to compose a pose with no target — in that case there is no "Apply" button.',
-    'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The character is always shown facing front; its orientation in the scene or panel is left untouched.',
+    'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models included; its orientation in the scene or panel is left untouched.',
     'Click a joint point to select it: the other points disappear, and the orange tinted area shows where you can click without losing the selection. Click empty space to deselect. Expanding a slider group on the right also selects its joint.',
     'Hold the left button on a point and drag to adjust the joint. The orange guide shows the expected gesture: a double arrow to drag along its direction, a ring to turn around the point.',
     'Only one field moves at a time, the one highlighted most strongly in the right-hand panel. The scroll wheel switches from one field to the next while a joint is selected; deselect to get the zoom back. The "Joint settings" section offers one slider per field.',
@@ -164,7 +164,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [
     "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Personnages » du menu de gauche pour composer une pose sans cible — dans ce second cas, « Appliquer » est absent.",
-    "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. Le Personnage est toujours présenté de face ; son orientation dans la Scène ou la Case n'est pas modifiée.",
+    "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles importés compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
     "Cliquez un point d'articulation pour le sélectionner : les autres points disparaissent, et la zone teintée en orange montre où vous pouvez cliquer sans perdre la sélection. Cliquer dans le vide désélectionne. Déplier un groupe de curseurs à droite sélectionne aussi son articulation.",
     "Maintenez le clic gauche sur un point et glissez pour régler l'articulation. Le repère orange indique le geste attendu : une double flèche pour glisser dans sa direction, un anneau pour tourner autour du point.",
     "Un seul champ bouge à la fois, celui que le panneau de droite surligne le plus. La molette passe d'un champ à l'autre tant qu'une articulation est sélectionnée ; désélectionnez pour retrouver le zoom. La section « Réglages des articulations » offre un curseur par champ.",

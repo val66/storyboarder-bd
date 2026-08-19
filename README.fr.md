@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.55**
+**Version 1.3.56**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -118,7 +118,7 @@ l'Élément. Ouvert depuis le menu de gauche, l'éditeur part toujours du Person
   à l'autre (une épaule en a plusieurs). Un curseur par champ reste disponible pour les valeurs
   exactes
 - **Clic droit pour orbiter** autour de la figure, molette pour zoomer. Le Personnage est toujours
-  présenté de face, quelle que soit son orientation dans la Scène
+  présenté de face — un modèle importé aussi, son devant étant mesuré sur son squelette
 - **Bibliothèque de poses partagée par tous vos Projets** : appliquer une pose comme point de
   départ, enregistrer la pose en cours sous un nom, renommer ou supprimer n'importe laquelle —
   poses de base comprises, restaurables depuis Configuration
