@@ -32,7 +32,7 @@ import { clearModelCache, collectModelFiles, modelCacheSignature } from './model
 // squelette, pas seulement de la géométrie brute — sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
-import { boiteDesOsMappes3D } from './rig3d.js';
+import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting,
@@ -1650,11 +1650,21 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
  * Personnage s'en protège depuis toujours par `entry.deboutNaturalH` ; les modèles importés
  * n'avaient pas d'équivalent, et « allongé » les faisait donc grandir d'un facteur ~5.
  *
- * ⚠️ ON NEUTRALISE LA BASCULE, ET RIEN D'AUTRE. La hauteur rendue ici est celle de la boîte que le
- * placement utiliserait si le modèle n'était pas couché — sa POSE, elle, est laissée telle quelle.
- * C'est ce qui garantit qu'un modèle DEBOUT est placé exactement comme avant : la bascule étant
- * alors l'identité, la valeur rendue est mot pour mot `size.y`, et le facteur ne bouge pas d'un
- * millième. Un Projet existant ne peut donc pas changer de taille.
+ * ⚠️ ON NEUTRALISE LA BASCULE **ET LA POSE** — la même règle que le Personnage. La taille d'un
+ * Élément décrit sa STATURE, pas son encombrement à l'instant : un modèle accroupi est plus bas,
+ * et sans cela son facteur d'échelle enflait d'autant. Le Personnage s'en protège depuis toujours
+ * (`deboutNaturalH`, mesuré une fois dans la pose « debout ») ; les modèles importés ne l'étaient
+ * que de la bascule « allongé », ce qui laissait l'incohérence sur toutes les autres poses.
+ *
+ * ⚠️ CE QUE CE CHANGEMENT A COÛTÉ, ET IL FALLAIT LE DIRE AVANT DE LE FAIRE : un modèle importé déjà
+ * posé autrement que debout dans un Projet existant CHANGE de taille à la réouverture. C'est le prix
+ * assumé de la cohérence — arbitré avec l'utilisateur, pas glissé dans un correctif.
+ *
+ * LA POSE EST NEUTRALISÉE SUR PLACE, PAS RELUE AILLEURS. Mesurer la scène du cache serait plus
+ * simple et serait FAUX : `boneTransform` lit `skeleton.boneMatrices`, qui ne sont calculées qu'AU
+ * RENDU. Sur une scène jamais rendue, la boîte sensible au skinning décrit donc la géométrie de
+ * liaison dans le repère du FICHIER — l'erreur qui a produit trois correctifs faux (cf. §7.5 de
+ * docs/imported-skeletons). On reste donc sur le rig affiché, et on y remet les os au repos.
  *
  * ⚠️ MÊME BOÎTE QUE LE PLACEMENT. `boxFn` est celle que `placeRigCentered3D` va utiliser, pas une
  * seconde mesure : deux façons de mesurer la même chose auraient fini par ne plus s'accorder — le
@@ -1669,11 +1679,19 @@ export function hauteurDeboutModele3D(entry, boxFn){
   if (!g || !pg) return undefined;
   const q = pg.quaternion.clone();
   const sc = g.scale.clone(), po = g.position.clone();
+  // Les orientations d'os sont SAUVEGARDÉES, pas recalculées : restaurer en réappliquant la pose
+  // supposerait de la connaître ici, et ferait de cette fonction un second endroit qui sait comment
+  // une pose se compose avec le repos. Une copie de quaternions ne peut pas se tromper.
+  const os = Object.values((entry && entry.skeletonBones) || {})
+    .filter(e => e && e.os)
+    .map(e => ({ noeud: e.os, q: e.os.quaternion.clone() }));
+  applySkeletonPose(entry.skeletonBones, {});
   pg.quaternion.set(0, 0, 0, 1);
   g.scale.set(1, 1, 1); g.position.set(0, 0, 0);
   g.updateMatrixWorld(true);
   const box = boxFn ? boxFn(g) : new THREE.Box3().setFromObject(g);
   const size = new THREE.Vector3(); box.getSize(size);
+  os.forEach(({ noeud, q: repos }) => noeud.quaternion.copy(repos));
   pg.quaternion.copy(q);
   g.scale.copy(sc); g.position.copy(po);
   g.updateMatrixWorld(true);

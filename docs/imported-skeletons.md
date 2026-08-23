@@ -368,19 +368,22 @@ same — its pose changes without the rig being rebuilt.
 `hauteurDeboutModele3D` (scene3d.js) therefore measures **at every placement**, neutralising the tilt
 for the duration of the measurement — and nothing else.
 
-⚠️ **The pose is left alone.** Only the lying tilt is neutralised, not the bone angles. That is what
-guarantees a STANDING model is measured exactly as before: the tilt being identity, the returned
-value is `size.y` word for word, and the factor does not move by a thousandth. No existing project
-can change size. A test pins this with a strict equality.
+⚠️ **Both the tilt AND the pose are neutralised** — the same rule as the Character. An Element's size
+describes its **stature**, not its footprint at that instant: a crouching model is lower, and without
+this its scale factor swelled accordingly.
+
+It was not always so: the first version neutralised only the lying tilt, which left the inconsistency
+on every other pose. Extending it **changes the size** of imported models already posed other than
+standing in existing projects — arbitrated with the user, not slipped into a fix.
+
+⚠️ **The pose is neutralised in place, not read elsewhere.** Measuring the cached scene would be
+simpler and would be wrong: `boneTransform` reads `skeleton.boneMatrices`, which are only computed
+**at render time**. On a scene never rendered, the skin-aware box therefore describes the bind
+geometry in the **file's** own frame — the mistake that produced three wrong fixes.
 
 ⚠️ **Same box as the placement**, passed as a parameter — not a second measurement. And the rig's
 scale is reset to 1 before measuring: the measurement happens BEFORE `placeRigCentered3D`, so the rig
 still carries the previous frame's scale.
-
-**Left open, not fixed**: an imported model's size currently depends on its pose (a sitting model is
-enlarged, its box being lower). The Character keeps its standing height whatever its pose. Unifying
-this would change the size of models already placed in existing projects — a decision, not something
-to slip into a fix.
 
 ### 7.6 Three temporary-Element factories, three chances to drop a field
 

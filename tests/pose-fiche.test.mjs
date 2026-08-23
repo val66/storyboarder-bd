@@ -37,6 +37,7 @@ import {
 import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
 import { orbiteDeFace3D } from '../src/utils.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
+import { applySkeletonPose } from '../src/rig3d.js';
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
@@ -1087,10 +1088,18 @@ describe('un modèle couché n\'est pas agrandi', () => {
     const corps = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.3), new THREE.MeshBasicMaterial());
     corps.name = 'Corps';
     corps.position.set(0, 0.9, 0);
-    scene.add(corps);
+    // ⚠️ ACCROCHÉ À UN OS, et c'est ce qui rend les tests de pose DISCRIMINANTS. Posé sur la scène,
+    // ce volume ne bougerait pas quand on tourne un os : « la hauteur de référence ignore la pose »
+    // serait alors vrai sans rien prouver — la boîte n'aurait de toute façon pas changé.
+    let hote = null;
+    scene.traverse(n => { if (n.isBone && n.name === 'mixamorig:Spine1') hote = n; });
+    (hote || scene).add(corps);
     scene.updateMatrixWorld(true);
     return scene;
   }
+
+  /** Une pose qui PLIE le corps : le torse basculé d'un quart de tour abaisse la silhouette. */
+  const POSE_PLIEE = () => ({ poitrine: { x: Math.PI / 2, y: 0, z: 0 } });
 
   beforeEach(() => {
     clearModelCache();
@@ -1116,6 +1125,32 @@ describe('un modèle couché n\'est pas agrandi', () => {
       `le témoin doit vraiment s'aplatir en se couchant (${coucheeMesuree} vs ${debout})`);
     assert.ok(Math.abs(hauteurDeboutModele3D(entry, BOITE) - debout) < 1e-9,
       'la hauteur de référence suit la bascule au lieu de l\'ignorer');
+  });
+
+  test('RÉGRESSION : une POSE ne change pas la hauteur de référence', () => {
+    // Le point arbitré avec l'utilisateur. La taille d'un Élément décrit sa STATURE, pas son
+    // encombrement à l'instant : un modèle accroupi est plus bas, et sans cela son facteur d'échelle
+    // enflait d'autant. Le Personnage suit cette règle depuis toujours ; les modèles importés
+    // n'étaient protégés que de la bascule « allongé ».
+    const entry = buildPropRig3D('modele', '#888', elem());
+    const reference = hauteurDeboutModele3D(entry, BOITE);
+    applySkeletonPose(entry.skeletonBones, POSE_PLIEE());
+    const pliee = hauteurDeLaBoite(entry.figureGroup);
+    assert.ok(pliee < reference * 0.95,
+      `le témoin doit vraiment s'abaisser en se pliant (${pliee} vs ${reference})`);
+    assert.ok(Math.abs(hauteurDeboutModele3D(entry, BOITE) - reference) < 1e-9,
+      'la hauteur de référence suit la pose au lieu de l\'ignorer');
+  });
+
+  test('la mesure RESTAURE aussi la POSE des os', () => {
+    // Elle remet les os au repos le temps de mesurer. Ne pas les rendre laisserait le modèle
+    // brutalement redressé — une pose effacée par un simple placement.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    applySkeletonPose(entry.skeletonBones, POSE_PLIEE());
+    const avant = hauteurDeLaBoite(entry.figureGroup);
+    hauteurDeboutModele3D(entry, BOITE);
+    assert.ok(Math.abs(hauteurDeLaBoite(entry.figureGroup) - avant) < 1e-9,
+      'la pose a été perdue par la mesure');
   });
 
   test('la mesure RESTAURE l\'état : elle mesure, elle ne place pas', () => {
@@ -1222,3 +1257,21 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
     assert.match(temp, /position:\s*S\.personaEditorPoseKey/);
   });
 });
+
+/**
+ * JOURNAL DE MUTATION — la taille décrit la STATURE, pas l'encombrement du moment.
+ *
+ *   W1 la pose n'est plus neutralisée (le comportement d'avant)      ROUGE
+ *   W2 la pose n'est pas restaurée après la mesure                   ROUGE
+ *   W3 la bascule n'est plus neutralisée                             ROUGE
+ *
+ * CE QUE LE TÉMOIN A EXIGÉ, et qui vaut d'être noté : le volume du squelette d'essai a dû être
+ * ACCROCHÉ À UN OS. Posé sur la scène, il ne bougeait pas quand on tournait un os — et « la hauteur
+ * de référence ignore la pose » aurait été vrai sans rien prouver, la boîte n'ayant de toute façon
+ * pas changé. Une propriété vérifiée sur un domaine où elle est triviale reste une propriété non
+ * vérifiée.
+ *
+ * Le format de pose a mordu au passage : `orientationFinale` attend des angles `{x, y, z}`, pas un
+ * quaternion. Un quaternion passé là est lu comme trois angles absents, donc comme le repos — le
+ * test était vert et ne posait rien. Constaté par la sonde, pas par la relecture.
+ */

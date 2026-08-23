@@ -377,19 +377,23 @@ faire pareil — sa pose change sans que le rig soit reconstruit.
 `hauteurDeboutModele3D` (scene3d.js) mesure donc **à chaque placement**, en neutralisant la bascule
 le temps de la mesure — et rien d'autre.
 
-⚠️ **La pose est laissée telle quelle.** On ne neutralise que le couchage, pas les angles d'os. C'est
-ce qui garantit qu'un modèle DEBOUT est mesuré exactement comme avant : la bascule étant l'identité,
-la valeur rendue est mot pour mot `size.y`, et le facteur ne bouge pas d'un millième. Aucun Projet
-existant ne peut changer de taille. Un test l'épingle par une égalité stricte.
+⚠️ **La bascule ET la pose sont neutralisées** — la même règle que le Personnage. La taille d'un
+Élément décrit sa **stature**, pas son encombrement à l'instant : un modèle accroupi est plus bas, et
+sans cela son facteur d'échelle enflait d'autant.
+
+Ce n'a pas toujours été le cas : la première version ne neutralisait que le couchage, ce qui laissait
+l'incohérence sur toutes les autres poses. L'étendre **change la taille** des modèles importés déjà
+posés autrement que debout dans les Projets existants — arbitré avec l'utilisateur, pas glissé dans
+un correctif.
+
+⚠️ **La pose est neutralisée sur place, pas relue ailleurs.** Mesurer la scène du cache serait plus
+simple et serait faux : `boneTransform` lit `skeleton.boneMatrices`, qui ne sont calculées qu'**au
+rendu**. Sur une scène jamais rendue, la boîte sensible au skinning décrit donc la géométrie de
+liaison dans le repère du **fichier** — l'erreur qui a produit trois correctifs faux.
 
 ⚠️ **Même boîte que le placement**, passée en paramètre — pas une seconde mesure. Et l'échelle du rig
 est remise à 1 avant de mesurer : la mesure a lieu AVANT `placeRigCentered3D`, donc le rig porte
 encore l'échelle de l'image précédente.
-
-**Reste ouvert, non corrigé** : la taille d'un modèle importé dépend aujourd'hui de sa pose (un
-modèle assis est agrandi, sa boîte étant plus basse). Le Personnage, lui, garde sa hauteur debout
-quelle que soit sa pose. Uniformiser changerait la taille des modèles déjà posés dans les Projets
-existants — à décider, pas à glisser dans un correctif.
 
 ### 7.6 Trois fabricants d'Élément temporaire, trois occasions de perdre un champ
 
