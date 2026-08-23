@@ -192,6 +192,9 @@ export function elementsInPanel(panel, page){
 
 export const sideGroupCollapsed = {};
 
+// Un seul avertissement par session pour une projection impossible (cf. renderSidePersonas).
+let horsChampAlerteDonnee = false;
+
 export function renderSideElementRow(p, panel, page){
   const row = document.createElement('div');
   row.className = 'perso-row' + (p.id === S.selectedId ? ' active' : '');
@@ -528,8 +531,36 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   const freeElements = list.filter(p => !p.pieceId);
   // UNE SEULE passe : deux `filter` appelleraient la décision deux fois par Élément, donc
   // projetteraient chacun deux fois. Deux calculs de la même chose, c'est déjà un de trop.
+  //
+  // ⚠️ ET LA DÉCISION NE PEUT PAS INTERROMPRE LA LISTE. Elle traverse la projection, donc la caméra,
+  // donc du code qui a ses propres cas particuliers (Parois aimantées, Murs d'outil, Tracés…). Une
+  // exception ici arrêterait `renderSidePersonas` en plein milieu : les Éléments déjà ajoutés
+  // resteraient, les suivants ne viendraient jamais, et la section se retrouverait vide sans que
+  // rien ne l'explique — signalé à l'usage sur la première version.
+  //
+  // LE GARDE EST ICI, PAS DANS LE PRÉDICAT. Le mettre dans `elementHorsChamp3D` ne protégerait que
+  // le prédicat par défaut : cette liste doit tenir quel qu'il soit. C'est aussi ce qui le rend
+  // vérifiable, puisque les tests injectent le leur.
+  //
+  // EN CAS D'ÉCHEC, L'ÉLÉMENT EST DÉCLARÉ VISIBLE — le doute profite à la liste principale : montrer
+  // un Élément de trop se voit et se comprend, en cacher un ne se voit pas du tout. ⚠️ ET ON LE DIT,
+  // UNE FOIS : un `catch` muet transformerait un défaut en comportement, et la fonctionnalité se
+  // désactiverait toute seule sans que personne ne l'apprenne. Une seule fois, parce que cette
+  // liste se reconstruit à chaque rendu.
   const dansLeCadre = [], horsChamp = [];
-  freeElements.forEach(p => (horsChampFn(p, panel, page) ? horsChamp : dansLeCadre).push(p));
+  freeElements.forEach(p => {
+    let hors = false;
+    try {
+      hors = horsChampFn(p, panel, page);
+    } catch (e) {
+      if (!horsChampAlerteDonnee) {
+        horsChampAlerteDonnee = true;
+        console.warn('[hors champ] décision impossible pour un Élément — il reste dans la liste '
+          + 'principale. Type :', p && p.type, p && p.objType, '— cause :', e);
+      }
+    }
+    (hors ? horsChamp : dansLeCadre).push(p);
+  });
   const separateur = () => {
     const sep = document.createElement('div');
     sep.style.cssText = 'border-top:1px solid var(--line); margin:4px 2px; opacity:.35;';
@@ -538,19 +569,6 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   if (dansLeCadre.length > 0) {
     if (renderedRoomIds.size > 0) sidePersonas.appendChild(separateur());
     dansLeCadre.forEach(p => sidePersonas.appendChild(renderSideElementRow(p, panel, page)));
-  }
-  if (horsChamp.length > 0) {
-    if (renderedRoomIds.size > 0 || dansLeCadre.length > 0) sidePersonas.appendChild(separateur());
-    const titre = document.createElement('div');
-    titre.className = 'side-hors-champ-titre';
-    // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien
-    // d'Éléments ont quitté le cadre — c'est la première question qu'on se pose en le lisant.
-    titre.textContent = tr(`Off-frame (${horsChamp.length})`, `Hors champ (${horsChamp.length})`);
-    sidePersonas.appendChild(titre);
-    const bloc = document.createElement('div');
-    bloc.className = 'side-hors-champ';
-    horsChamp.forEach(p => bloc.appendChild(renderSideElementRow(p, panel, page)));
-    sidePersonas.appendChild(bloc);
   }
 
   // Tracés (Roads, Dirt paths, Terrain Zones) associated with this panel.
@@ -562,6 +580,25 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
       sidePersonas.appendChild(sep);
     }
     panelTracés.forEach(t => sidePersonas.appendChild(renderTracéSideRow(t, panel, page)));
+  }
+
+  // ⚠️ TOUT EN BAS, APRÈS LES TRACÉS — demandé après un premier essai où ce bloc s'intercalait
+  // entre les Éléments libres et les Tracés. Ce qui ne se voit pas doit venir après TOUT ce qui se
+  // voit, sans quoi la sous-section coupe la liste en deux au lieu de la conclure.
+  if (horsChamp.length > 0) {
+    if (renderedRoomIds.size > 0 || dansLeCadre.length > 0 || panelTracés.length > 0) {
+      sidePersonas.appendChild(separateur());
+    }
+    const titre = document.createElement('div');
+    titre.className = 'side-hors-champ-titre';
+    // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien
+    // d'Éléments ont quitté le cadre — c'est la première question qu'on se pose en le lisant.
+    titre.textContent = tr(`Off-frame (${horsChamp.length})`, `Hors champ (${horsChamp.length})`);
+    sidePersonas.appendChild(titre);
+    const bloc = document.createElement('div');
+    bloc.className = 'side-hors-champ';
+    horsChamp.forEach(p => bloc.appendChild(renderSideElementRow(p, panel, page)));
+    sidePersonas.appendChild(bloc);
   }
 }
 

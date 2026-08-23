@@ -309,6 +309,49 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
     assert.match(titre.textContent, /\(3\)/);
   });
 
+  test('RÉGRESSION : le bloc « hors champ » est TOUT EN BAS, après les Tracés', () => {
+    // Demandé après un premier essai où il s'intercalait entre les Éléments libres et les Tracés :
+    // ce qui ne se voit pas doit venir après TOUT ce qui se voit, sans quoi la sous-section coupe
+    // la liste en deux au lieu de la conclure.
+    page.objects.push({ id: 't1', type: 'tracé', panelId: 'p1', kind: 'route', world: { pts: [] } });
+    renderSidePersonas(panel, page, (p) => p.id === 'a');
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    const iTitre = classes.findIndex(c => c.includes('side-hors-champ-titre'));
+    const iDernierTracé = classes.map((c, i) => ({ c, i }))
+      .filter(({ c }) => c.includes('tracé') || c.includes('trace')).map(({ i }) => i).pop();
+    assert.ok(iTitre >= 0, `titre introuvable — classes : ${classes.join(', ')}`);
+    if (iDernierTracé !== undefined) {
+      assert.ok(iTitre > iDernierTracé,
+        `le bloc « hors champ » doit suivre les Tracés — classes : ${classes.join(', ')}`);
+    }
+    // Et il reste le DERNIER enfant du conteneur, quoi qu'il y ait avant.
+    const derniere = classes[classes.length - 1] || '';
+    assert.ok(derniere.includes('side-hors-champ'),
+      `le bloc doit conclure la liste — dernier : « ${derniere} »`);
+  });
+
+  test('RÉGRESSION : une décision qui ÉCHOUE ne vide pas la liste', () => {
+    // Signalé à l'usage : certaines Cases n'affichaient plus rien. Une exception pendant la
+    // partition interrompt toute la construction — les Éléments déjà ajoutés restent, les suivants
+    // ne viennent jamais. Ici on force l'échec sur un Élément du MILIEU pour que la différence
+    // entre « tout est là » et « la liste s'arrête » soit visible.
+    renderSidePersonas(panel, page, (p) => {
+      if (p.id === 'b') throw new Error('projection impossible');
+      return false;
+    });
+    const t = textes(conteneur());
+    ['Alice', 'Bob', 'Chloé'].forEach(n =>
+      assert.ok(t.includes(n), `${n} manque : la liste s'est arrêtée en chemin`));
+
+    // ⚠️ ET IL RESTE DANS LA LISTE PRINCIPALE. Une mutation l'a exigé : reléguer l'Élément en échec
+    // vers « hors champ » gardait le test précédent vert — il y est toujours listé. Or le principe
+    // annoncé est que le DOUTE PROFITE À LA LISTE PRINCIPALE : on ne range pas parmi les invisibles
+    // un Élément dont on n'a justement pas pu établir la visibilité.
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    assert.ok(!classes.some(c => c.includes('side-hors-champ')),
+      `un échec de décision a relégué l'Élément — classes : ${classes.join(', ')}`);
+  });
+
   test('le défaut n\'est pas « tout le monde est visible »', () => {
     // Garde-fou : un prédicat par défaut renvoyant toujours false rendrait les tests ci-dessus
     // verts tout en désactivant la fonctionnalité dans l'application. On vérifie donc que le
@@ -336,4 +379,19 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
  *
  * X2 est celui qui compte le plus dans l'usage : se tromper de critère montre un Élément de trop,
  * ce qui se voit et se comprend ; en perdre un ne se voit pas du tout.
+ */
+
+/**
+ * JOURNAL DE MUTATION — seconde passe, après deux retours d'usage (tâche #347).
+ *
+ *   Y1 le garde retiré : une exception vide la liste                   ROUGE
+ *   Y2 un échec de décision RELÈGUE au lieu de garder                  ÉCHAPPÉE → puis ROUGE
+ *   Y3 le bloc « hors champ » remonte avant les Tracés                 ROUGE
+ *
+ * Y2 EST INSTRUCTIVE PARCE QU'ELLE NE CASSAIT RIEN DE VISIBLE. Reléguer l'Élément dont la décision
+ * a échoué le laisse dans la liste — dans l'autre bloc. Le test « personne ne disparaît » restait
+ * donc vert, alors que le principe annoncé était violé : le doute doit profiter à la liste
+ * PRINCIPALE, puisque c'est précisément la visibilité qu'on n'a pas su établir.
+ *
+ * Une propriété énoncée dans un commentaire et non épinglée par un test n'est qu'une intention.
  */
