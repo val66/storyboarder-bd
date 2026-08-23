@@ -325,3 +325,42 @@ them would discard framing the user has just composed.
 ⚠️ **The fix stays on the camera side.** Rotating the figure by 180° would put its axes at odds with
 the world, and the handle-drag direction computation (`projectModelAxisToScreen3D`) would become
 wrong again — which is what Fix 76 removed.
+
+### 7.5 "Lying down" — a whole-body gesture, not a joint
+
+`POSE_3D.allonge` is `debout` plus a `lieFlat` flag. The built-in Character consumes it by rotating
+its ROOT group (`J.root.rotation.z = π/2`). The bridge to imported bones translates angles **bone by
+bone**: a flag that turns the whole body is not a bone angle, so it was dropped — the model stayed
+standing.
+
+**The gesture, measured** on the built-in rig (body frame before/after applying the pose):
+
+|  | right | up | forward |
+|---|---|---|---|
+| standing | (−1, 0, 0) | (0, 1, 0) | (0, 0, 1) |
+| lying | (0, −1, 0) | (−1, 0, 0) | (0, 0, 1) |
+
+that is, in the body frame: **right → −up, up → right, forward unchanged**. A quarter turn about the
+*forward* axis — expressible in any body, just as the joint angles already are.
+
+⚠️ **`rotation.z = π/2` is not copied**: hulk stands along +Z, that quarter turn would lay it down
+crooked.
+
+⚠️ **A matrix, not an axis-angle.** The SIGN of the angle would depend on the frame's handedness, and
+`repereDuCorps` guarantees none — measured, the Character's is **left-handed** (determinant −1).
+Building the rotation from the correspondence requires no bet. It stays proper (determinant +1)
+either way: the signed permutation is the same on both sides.
+
+⚠️ **The frame is read from the CACHED scene, never from the displayed clone.** The clone already
+carries the tilt when active: re-reading its frame would compose the rotation a second time on every
+call, and the model would keep turning frame after frame.
+
+**A pose group** (`poseGroup`) sits between `figureGroup` — which carries the Element's orientation —
+and the clone. Writing both in the same place would make one overwrite the other.
+
+#### What is still missing: SCALE
+
+`placeRigCentered3D` derives the factor from the box height (`s = targetHeight / size.y`). Lying
+down, a body is low and wide: the factor blows up. The Character is protected by
+`entry.deboutNaturalH`, passed as `naturalHOverride` **for it only**; imported models have no
+equivalent yet. Deliberate split — see the orientation right before fixing the size.

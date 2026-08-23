@@ -29,7 +29,7 @@ import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
 import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3d.js';
 import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
 import { orientationFinale } from './skeleton-pose.js';
-import { repereDuCorps } from './skeleton-retarget.js';
+import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
 /**
@@ -3152,9 +3152,16 @@ function buildImportedModelRig3D(colorHex, o){
     // Limité aux modèles IMPORTÉS. Tout le reste (mobilier, murs, Personnage intégré) garde
     // l'élimination : leur géométrie brute décrit bien ce qui est dessiné.
     clone.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
-    g.add(clone);
+    // ⚠️ UN NIVEAU DE PLUS ENTRE LE GROUPE ET LE CLONE, et il n'est pas décoratif. `figureGroup`
+    // porte l'orientation de l'ÉLÉMENT (`rotX/rotY/rotZ`, écrits en fin de ensureObjectRigEntry3D) ;
+    // y écrire aussi la bascule « allongé » ferait que l'une écraserait l'autre. Le Personnage a
+    // exactement ce niveau intermédiaire — c'est `J.root`, celui que `lieFlat` fait tourner.
+    const poseGroup = new THREE.Group();
+    poseGroup.add(clone);
+    g.add(poseGroup);
     return {
       figureGroup: g,
+      poseGroup,
       skeletonBones: recolterOsMappes(clone, nom),
       // Les maillages égarés du fichier, retrouvés dans CE clone. La liste des noms vient du cache,
       // relevée une seule fois au décodage (cf. src/stray-meshes-3d.js) : on ne redétecte rien ici.
@@ -3329,6 +3336,29 @@ export function figuresPosables(){
  * bouge rien ». L'interface a besoin de distinguer les deux : le premier grise le sélecteur, le
  * second est un résultat légitime.
  */
+/**
+ * Couche — ou redresse — un modèle importé, en tournant son groupe de pose.
+ *
+ * ⚠️ LE REPÈRE EST MESURÉ SUR LA SCÈNE DU CACHE, PAS SUR LE CLONE AFFICHÉ. Le clone porte déjà la
+ * bascule quand elle est active : y relire le repère rendrait un corps DÉJÀ couché, et la rotation
+ * se composerait une seconde fois à chaque appel — le modèle tournerait sur lui-même image après
+ * image. La scène du cache, elle, n'est jamais posée ni tournée : c'est la seule référence stable.
+ *
+ * ÉCRIT À CHAQUE APPEL, dans les deux sens. Ne poser le quaternion que lorsqu'on couche laisserait
+ * un modèle couché pour toujours : revenir à « debout » ne le redresserait pas.
+ */
+export function appliquerAllonge3D(groupe, nomFichier, couche){
+  if (!groupe) return;
+  const R = couche ? rotationAllongee3D(repereDuCorpsPourFichier3D(nomFichier)) : null;
+  if (!R) { groupe.quaternion.set(0, 0, 0, 1); return; }
+  const m = new THREE.Matrix4().set(
+    R[0], R[1], R[2], 0,
+    R[3], R[4], R[5], 0,
+    R[6], R[7], R[8], 0,
+    0, 0, 0, 1);
+  groupe.quaternion.setFromRotationMatrix(m);
+}
+
 /**
  * Le repère du corps d'un fichier importé, mesuré sur la scène DÉCODÉE du cache.
  *
@@ -3887,6 +3917,13 @@ export function ensureObjectRigEntry3D(o){
   // os ne justifie pas de re-décoder un modèle de plusieurs mégaoctets.
   if (entry.skeletonBones) {
     applySkeletonPose(entry.skeletonBones, o.skeletonPose3d || {});
+  }
+  // « Allongé » est un geste du CORPS ENTIER, pas une articulation : le pont vers les os ne le
+  // transporte pas (cf. rotationAllongee3D). On le lit donc sur l'INTENTION — la pose de corps que
+  // l'Élément porte —, comme le Personnage intégré le lit sur la sienne. Aucun champ persisté
+  // nouveau : `lieFlat` voyage déjà dans `joints3d` ou dans la pose de la bibliothèque.
+  if (entry.poseGroup) {
+    appliquerAllonge3D(entry.poseGroup, o && o.modelFile, !!(getEffectiveJoints(o) || {}).lieFlat);
   }
   // Les maillages que le fichier place hors du corps sont MASQUÉS par défaut, et la case de la
   // fiche les rend. Appliqué à chaque appel, comme la pose : cocher la case doit se voir tout de

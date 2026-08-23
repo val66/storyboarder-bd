@@ -21,13 +21,14 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
-  repereDuCorpsPourFichier3D,
+  repereDuCorpsPourFichier3D, appliquerAllonge3D,
 } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
@@ -951,3 +952,104 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
  *
  * Une règle formulée sur le MOMENT plutôt que sur la CAUSE laisse toujours un moment dehors.
  */
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// « Allongé » sur un modèle importé (tâche #345, parties 1 et 2)
+//
+// CE QUI SE JOUE ICI. « Allongé » n'est pas une pose d'articulations : c'est un drapeau `lieFlat`
+// que seul le rig intégré consommait, en tournant son groupe racine. Le pont vers les os n'a aucune
+// raison de le transporter — un geste du corps entier n'est pas un angle d'os — et le modèle restait
+// debout. Ces tests couvrent le CÂBLAGE ; la rotation elle-même est vérifiée dans
+// skeleton-retarget.test.mjs, sur la correspondance mesurée.
+//
+// ⚠️ CE QUI N'EST PAS ENCORE FAIT, et qui se verra à l'écran : l'ÉCHELLE. `placeRigCentered3D`
+// déduit le facteur de la hauteur de la boîte ; couché, un corps est bas et large, donc agrandi.
+// Le Personnage s'en protège par `deboutNaturalH`, que les modèles importés n'ont pas encore.
+// Découpage assumé avec l'utilisateur : voir l'orientation correcte AVANT de corriger la taille.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('« Allongé » couche AUSSI un modèle importé', () => {
+  // ⚠️ ON N'APPELLE PAS ensureObjectRigEntry3D ICI : elle ajoute le rig à la scène 3D, ce qui
+  // construit un WebGLRenderer — injoignable sous Node (cf. docs/testing-method.md). On exerce donc
+  // les deux moitiés séparément : le constructeur (joignable) pour le groupe de pose, et la
+  // fonction qui écrit la bascule. Le fait que la seconde soit bien APPELÉE par la première est
+  // épinglé par une lecture de source, plus bas — c'est le seul moyen honnête de le dire ici.
+  const elem = (joints) => ({
+    id: 'couche1', type: 'objet3d', objType: 'modele', modelFile: FICHIER,
+    joints3d: joints, realHeightFloor: 1.8,
+  });
+  const hautDuCorps = (groupe) => {
+    // La direction « haut du corps » telle qu'elle est RÉELLEMENT rendue : le repère de repos,
+    // auquel on applique la rotation du groupe de pose.
+    const repere = repereDuCorpsPourFichier3D(FICHIER);
+    const v = new THREE.Vector3(repere.haut[0], repere.haut[1], repere.haut[2]);
+    return v.applyQuaternion(groupe.quaternion);
+  };
+  const groupeNeuf = () => buildPropRig3D('modele', '#888', elem(null)).poseGroup;
+
+  beforeEach(() => {
+    clearModelCache();
+    _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
+  });
+
+  test('le rig d\'un modèle importé porte un groupe de POSE, distinct du groupe de figure', () => {
+    // `figureGroup` porte l'orientation de l'Élément. Écrire la bascule au même endroit ferait que
+    // l'une écraserait l'autre — tourner un modèle couché le redresserait.
+    const construit = buildPropRig3D('modele', '#888', elem(null));
+    assert.ok(construit.poseGroup, 'le groupe de pose manque');
+    assert.notEqual(construit.poseGroup, construit.figureGroup, 'ce doit être deux groupes');
+  });
+
+  test('RÉGRESSION : la bascule couche le modèle', () => {
+    const g = groupeNeuf();
+    appliquerAllonge3D(g, FICHIER, true);
+    assert.ok(Math.abs(hautDuCorps(g).y) < 1e-6,
+      'le haut du corps est resté vertical : le modèle est encore debout');
+  });
+
+  test('sans le drapeau, le modèle reste DEBOUT — rien ne bouge pour les Projets existants', () => {
+    const g = groupeNeuf();
+    appliquerAllonge3D(g, FICHIER, false);
+    assert.ok(Math.abs(hautDuCorps(g).y - 1) < 1e-6, 'le modèle a été couché sans raison');
+  });
+
+  test('RÉGRESSION : se redresser marche aussi', () => {
+    // Écrire le quaternion seulement quand on couche laisserait le modèle couché pour toujours :
+    // revenir à « debout » ne le redresserait pas. C'est le même groupe, donc le même rig en cache.
+    const g = groupeNeuf();
+    appliquerAllonge3D(g, FICHIER, true);
+    appliquerAllonge3D(g, FICHIER, false);
+    assert.ok(Math.abs(hautDuCorps(g).y - 1) < 1e-6, 'le modèle est resté couché');
+  });
+
+  test('RÉGRESSION : appliquer deux fois ne COMPOSE pas la rotation', () => {
+    // Le piège du repère mesuré sur le corps AFFICHÉ : il est déjà couché, et relire son repère
+    // ferait tourner le modèle un peu plus à chaque image. Le repère vient donc de la scène du
+    // cache, qui n'est jamais posée ni tournée.
+    const g = groupeNeuf();
+    appliquerAllonge3D(g, FICHIER, true);
+    const premier = hautDuCorps(g).clone();
+    appliquerAllonge3D(g, FICHIER, true);
+    assert.ok(premier.distanceTo(hautDuCorps(g)) < 1e-9,
+      'la bascule s\'accumule d\'un appel à l\'autre');
+  });
+
+  test('un fichier sans repère exploitable ne lève pas, et laisse le modèle droit', () => {
+    const g = groupeNeuf();
+    appliquerAllonge3D(g, 'jamais-decode.glb', true);
+    assert.ok(Math.abs(hautDuCorps(g).y - 1) < 1e-6);
+    assert.doesNotThrow(() => appliquerAllonge3D(null, FICHIER, true));
+  });
+
+  test('RÉGRESSION : le rig LIT le drapeau sur l\'intention, à chaque appel', () => {
+    // Lecture de source, faute de pouvoir traverser ensureObjectRigEntry3D sous Node. Ce qui est
+    // gardé : que la bascule soit appliquée depuis getEffectiveJoints — donc depuis la pose que
+    // l'Élément DIT porter, joints3d ou pose de la bibliothèque — et non depuis un champ persisté
+    // nouveau, qu'il aurait fallu migrer.
+    const RIG = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+    const appel = /appliquerAllonge3D\(entry\.poseGroup[\s\S]{0,120}?\);/.exec(RIG);
+    assert.ok(appel, 'le rig n\'applique plus la bascule au groupe de pose');
+    assert.match(appel[0], /getEffectiveJoints\(o\)/, 'la bascule ne vient plus de l\'intention');
+    assert.match(appel[0], /lieFlat/);
+  });
+});

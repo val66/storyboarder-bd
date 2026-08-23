@@ -226,3 +226,66 @@ export function deltaPourOs({ axeSource, radians, repereSource, repereCible, rep
   if (!axeLocal) return [0, 0, 0, 1];
   return quaternionAxeAngle(axeLocal, radians);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// « Allongé » : un geste du CORPS ENTIER, pas une articulation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * La rotation qui couche un corps, exprimée dans SON repère à lui. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI CETTE FONCTION EXISTE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * « Allongé » n'est pas une pose d'articulations : c'est « debout » plus un drapeau `lieFlat`, que
+ * le Personnage intégré consomme en tournant son groupe RACINE (`J.root.rotation.z = π/2`). Le pont
+ * vers les os importés traduit des angles os par os ; un drapeau qui fait tourner le corps entier
+ * n'est pas un angle d'os, et il tombait. Un modèle importé restait donc debout.
+ *
+ * ⚠️ ON NE RECOPIE PAS `rotation.z = π/2`. Cet axe n'a de sens que pour le rig intégré. Deux des six
+ * fichiers d'essai ne sont pas Y-up — hulk est debout selon +Z : le même quart de tour le
+ * coucherait de travers. Comme partout dans ce fichier, le geste se dit dans le repère du CORPS,
+ * et chaque corps le traduit dans le sien.
+ *
+ * LA CORRESPONDANCE, MESURÉE ET NON SUPPOSÉE. Sonde sur le rig intégré, repère du corps construit
+ * avant puis après application de POSE_3D.allonge :
+ *
+ *   DEBOUT   droite (−1, 0, 0)   haut (0, 1, 0)   avant (0, 0, 1)
+ *   ALLONGÉ  droite (0, −1, 0)   haut (−1, 0, 0)  avant (0, 0, 1)
+ *
+ * soit, dans le repère du corps :  droite → −haut,  haut → droite,  avant inchangé.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI UNE MATRICE ET PAS UN AXE-ANGLE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * C'est bien un quart de tour autour de l'axe `avant`, et l'écrire ainsi serait plus court. Mais le
+ * SIGNE de cet angle dépend de l'orientation du trièdre, et `repereDuCorps` n'en garantit aucune :
+ * mesuré sur le Personnage, (droite, haut, avant) est GAUCHER (déterminant −1). Choisir le signe
+ * reviendrait à parier ; construire la rotation depuis la correspondance ne demande aucun pari.
+ *
+ * ET LA ROTATION RESTE PROPRE quelle que soit cette orientation : passer de (d, h, a) à (−h, d, a)
+ * est la même permutation signée des deux côtés, de déterminant +1. Le déterminant du repère se
+ * simplifie donc, et `R` ne peut pas être une réflexion — ce qui retournerait le modèle comme un
+ * gant, sans qu'aucune erreur ne soit levée.
+ *
+ * @param repere {{ droite, haut, avant }} le repère du corps, en coordonnées MONDE
+ * @returns la matrice 3×3 (9 nombres, par lignes), ou `null` si le repère est inexploitable
+ */
+export function rotationAllongee3D(repere){
+  const r = repere || {};
+  const d = normaliser(r.droite), h = normaliser(r.haut), a = normaliser(r.avant);
+  if (!d || !h || !a) return null;
+  // R = T · Sᵀ, avec S = [d h a] et T = [−h d a] en COLONNES. S étant orthonormée, Sᵀ est son
+  // inverse — c'est vrai que le trièdre soit droitier ou gaucher, seule l'orthonormalité compte.
+  const T = [[-h[0], d[0], a[0]], [-h[1], d[1], a[1]], [-h[2], d[2], a[2]]];
+  const S = [d, h, a]; // Sᵀ a pour LIGNES les colonnes de S, donc d, h, a
+  const R = [];
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      R.push(T[i][0] * S[0][j] + T[i][1] * S[1][j] + T[i][2] * S[2][j]);
+    }
+  }
+  return R;
+}

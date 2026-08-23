@@ -22,6 +22,8 @@ import { readFileSync } from 'node:fs';
 import {
   normaliser, repereDuCorps, coordonneesDansRepere, vecteurDepuisRepere,
   axeEquivalent, axeMondeVersLocal, quaternionAxeAngle, deltaPourOs,
+
+  rotationAllongee3D,
 } from '../src/skeleton-retarget.js';
 
 const proche = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol;
@@ -301,4 +303,99 @@ describe('Le rig intégré n\'est pas un cas particulier', () => {
  * `axeMondeVersLocal` commence par `normaliser`, qui rend `null` sur une entrée nulle, et la garde
  * suivante faisait déjà le travail. Deux gardes pour un seul cas, c'était une de trop — et son seul
  * effet était de rendre l'autre inatteignable par les tests.
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// rotationAllongee3D — coucher un corps, quel que soit son axe vertical (tâche #345)
+//
+// CE QUI SE JOUE ICI. « Allongé » tournait le groupe racine du Personnage intégré d'un quart de tour
+// autour de Z. Un modèle importé n'a aucune raison d'être debout selon Y — hulk l'est selon +Z — et
+// le même quart de tour le coucherait de travers. Le geste se dit donc dans le repère du CORPS.
+//
+// LES TESTS SONT ÉCRITS SUR LA CORRESPONDANCE, pas sur les 9 nombres : ce qui doit rester vrai,
+// c'est « la droite du corps passe sous lui, sa tête part sur le côté, son regard ne bouge pas ».
+// Vérifier la matrice terme à terme n'interdirait que de la changer.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('rotationAllongee3D', () => {
+  const applique = (R, v) => [
+    R[0] * v[0] + R[1] * v[1] + R[2] * v[2],
+    R[3] * v[0] + R[4] * v[1] + R[5] * v[2],
+    R[6] * v[0] + R[7] * v[1] + R[8] * v[2],
+  ];
+  const proche = (a, b, msg) => a.forEach((_, i) =>
+    assert.ok(Math.abs(a[i] - b[i]) < 1e-9, `${msg} — attendu [${b}], obtenu [${a}]`));
+  const oppose = v => v.map(x => -x);
+  const det = R => R[0] * (R[4] * R[8] - R[5] * R[7])
+    - R[1] * (R[3] * R[8] - R[5] * R[6])
+    + R[2] * (R[3] * R[7] - R[4] * R[6]);
+
+  // Le repère du Personnage intégré, mesuré (cf. l'en-tête de la fonction). Il est GAUCHER.
+  const PERSONNAGE = { droite: [-1, 0, 0], haut: [0, 1, 0], avant: [0, 0, 1] };
+  // Un modèle debout selon +Z, comme hulk : le cas que le quart de tour en dur couchait de travers.
+  const Z_UP = { droite: [1, 0, 0], haut: [0, 0, 1], avant: [0, -1, 0] };
+
+  [['Personnage intégré (Y-up, trièdre gaucher)', PERSONNAGE],
+    ['modèle Z-up', Z_UP]].forEach(([nom, repere]) => {
+    test(`${nom} : la correspondance mesurée est respectée`, () => {
+      const R = rotationAllongee3D(repere);
+      assert.ok(R, 'repère exploitable');
+      proche(applique(R, repere.droite), oppose(repere.haut), `${nom} : droite → −haut`);
+      proche(applique(R, repere.haut), repere.droite, `${nom} : haut → droite`);
+      proche(applique(R, repere.avant), repere.avant, `${nom} : avant inchangé`);
+    });
+
+    test(`${nom} : c'est une ROTATION, pas une réflexion`, () => {
+      // Un déterminant −1 retournerait le modèle comme un gant — main gauche devenue droite — sans
+      // qu'aucune erreur ne soit levée. Le trièdre du Personnage étant gaucher, la question n'est
+      // pas théorique : c'est le seul test qui interdit que son orientation contamine le résultat.
+      assert.ok(Math.abs(det(rotationAllongee3D(repere)) - 1) < 1e-9);
+    });
+  });
+
+  test('le corps est bien COUCHÉ : son haut devient horizontal', () => {
+    // Le test qui dit le RÉSULTAT plutôt que la mécanique. Sans lui, une matrice identité passerait
+    // les deux premiers si on avait écrit la correspondance de travers.
+    [PERSONNAGE, Z_UP].forEach(repere => {
+      const hautApres = applique(rotationAllongee3D(repere), repere.haut);
+      // « Horizontal » se mesure dans le MONDE : la composante verticale (Y monde) doit s'annuler,
+      // puisque les deux corps se tiennent debout dans un monde dont le haut est +Y.
+      assert.ok(Math.abs(hautApres[1]) < 1e-9,
+        `le haut du corps reste vertical (Y = ${hautApres[1]})`);
+    });
+  });
+
+  test('un quart de tour, pas un demi : appliquer DEUX fois retourne le corps', () => {
+    // Discriminant contre une matrice qui coucherait de 180°. Deux quarts de tour mettent la tête
+    // en bas : le haut devient l'opposé du haut.
+    const R = rotationAllongee3D(PERSONNAGE);
+    proche(applique(R, applique(R, PERSONNAGE.haut)), oppose(PERSONNAGE.haut), 'tête en bas');
+  });
+
+  test('un repère inexploitable rend null, jamais une matrice bancale', () => {
+    // Une matrice contenant un NaN traverse la matrice monde : le modèle DISPARAÎT du rendu, sans
+    // erreur nulle part. C'est le mode de panne le plus cher de ce dépôt.
+    [null, undefined, {}, { droite: [0, 0, 0], haut: [0, 1, 0], avant: [0, 0, 1] },
+      { droite: [1, 0, 0], haut: null, avant: [0, 0, 1] },
+      { droite: [1, 0, 0], haut: [0, 1, 0], avant: [NaN, 0, 1] }].forEach(mauvais => {
+      assert.equal(rotationAllongee3D(mauvais), null, JSON.stringify(mauvais));
+    });
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — coucher un corps importé (tâche #345, parties 1 et 2).
+ *
+ *   T1 le rig n'applique plus la bascule                                ROUGE
+ *   T2 le drapeau lu sur joints3d au lieu de l'intention                ROUGE
+ *   T3 le redressement n'écrit rien (couché pour toujours)              ROUGE
+ *   T4 le groupe de pose EST le groupe de figure                        ROUGE
+ *   T5 droite → +haut : la rotation devient une RÉFLEXION               ROUGE
+ *   T6 demi-tour au lieu d'un quart                                     ROUGE
+ *   T7 S au lieu de Sᵀ dans le produit                                  ROUGE
+ *
+ * T5 mérite un mot : une réflexion retourne le modèle comme un gant — sa main gauche devient droite
+ * — sans qu'aucune erreur ne soit levée, et sur un corps couché personne ne le remarque tout de
+ * suite. C'est le test sur le DÉTERMINANT qui l'attrape, et il n'existe que parce que le trièdre du
+ * Personnage s'est révélé gaucher à la mesure : sans cette surprise, on n'aurait pas pensé à
+ * vérifier qu'une orientation de repère ne contamine pas le résultat.
  */

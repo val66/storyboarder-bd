@@ -334,3 +334,43 @@ les remettre à neuf annulerait un cadrage que l'utilisateur vient de composer.
 ⚠️ **La correction reste côté caméra.** Faire pivoter la figure de 180° remettrait ses axes de
 travers vis-à-vis du monde, et le calcul de direction du glisser d'une poignée
 (`projectModelAxisToScreen3D`) redeviendrait faux — c'est ce que le Fix 76 avait supprimé.
+
+### 7.5 « Allongé » — un geste du corps entier, pas une articulation
+
+`POSE_3D.allonge` est `debout` plus un drapeau `lieFlat`. Le Personnage intégré le consomme en
+tournant son groupe RACINE (`J.root.rotation.z = π/2`). Le pont vers les os importés traduit des
+angles **os par os** : un drapeau qui fait tourner le corps entier n'est pas un angle d'os, et il
+tombait — le modèle restait debout.
+
+**Le geste, mesuré** sur le rig intégré (repère du corps avant/après application de la pose) :
+
+|  | droite | haut | avant |
+|---|---|---|---|
+| debout | (−1, 0, 0) | (0, 1, 0) | (0, 0, 1) |
+| allongé | (0, −1, 0) | (−1, 0, 0) | (0, 0, 1) |
+
+soit, dans le repère du corps : **droite → −haut, haut → droite, avant inchangé**. Un quart de tour
+autour de l'axe *avant*, donc — exprimable dans n'importe quel corps, comme les angles le sont déjà.
+
+⚠️ **On ne recopie pas `rotation.z = π/2`** : hulk est debout selon +Z, ce quart de tour le
+coucherait de travers.
+
+⚠️ **Une matrice, pas un axe-angle.** Le SIGNE de l'angle dépendrait de l'orientation du trièdre, et
+`repereDuCorps` n'en garantit aucune — mesuré, celui du Personnage est **gaucher** (déterminant −1).
+Construire la rotation depuis la correspondance ne demande aucun pari. Elle reste propre
+(déterminant +1) dans les deux cas : la permutation signée est la même des deux côtés.
+
+⚠️ **Le repère est lu sur la scène du CACHE, jamais sur le clone affiché.** Le clone porte déjà la
+bascule quand elle est active : y relire le repère composerait la rotation une seconde fois à chaque
+appel, et le modèle tournerait sur lui-même image après image.
+
+**Un groupe de pose** (`poseGroup`) s'intercale entre `figureGroup` — qui porte l'orientation de
+l'Élément — et le clone. Les écrire au même endroit ferait que l'une écraserait l'autre.
+
+#### Ce qui reste à faire : l'ÉCHELLE
+
+`placeRigCentered3D` déduit le facteur de la hauteur de la boîte (`s = hauteurCible / size.y`).
+Couché, un corps est bas et large : le facteur s'emballe. Le Personnage s'en protège par
+`entry.deboutNaturalH`, passé en `naturalHOverride` **uniquement pour lui** ; les modèles importés
+n'ont pas encore d'équivalent. Découpage assumé — voir l'orientation correcte avant de corriger la
+taille.
