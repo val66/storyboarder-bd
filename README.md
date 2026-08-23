@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.10**
+**Version 1.4.11**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -43,8 +43,8 @@
 
 - 📦 **glTF import** (`.glb` / `.gltf`): your models from Blender, Maya or anywhere else, at their
   real size
-- **As an Object or as a Scene**: a model dropped into a panel, or a reusable set — from a panel's
-  or a Scene's right-click menu, or from the left-hand menu
+- **Right-click → Import a model**: the same entry in a panel and in a Scene. To make a reusable
+  set out of a file, import it into a Scene
 - 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them
   — by Scenes, in panels, or unused. One click takes you to where a model is used
 - 🦴 **Articulated models**: a file carrying bones poses like a character — sliders per joint,

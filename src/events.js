@@ -38,7 +38,7 @@ import { normaliserPose } from './skeleton-pose.js';
 import { enregistrerFermeture } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
-  setModelImportCallbacks, importModelIntoPanel, importSceneFromModel,
+  setModelImportCallbacks, importModelIntoPanel,
 } from './model-import.js';
 import { isImportedModel } from './model-store.js';
 import {
@@ -3550,9 +3550,10 @@ const mursTracéSubmenu    = document.getElementById('mursTracéSubmenu');
  * l'écran, par-dessus tout le reste.
  *
  * Elle a été énumérée à la main pendant vingt-six menus, et il en manquait deux : `modelContextMenu`
- * (signalé à l'usage : « supprimer du disque » restait affiché) et `importSubmenu` (masqué à la main
- * en deux endroits, ce qui était l'aveu du trou plutôt que sa réparation). Le sélecteur les prend
- * désormais tous, y compris ceux qui n'existent pas encore.
+ * (signalé à l'usage : « supprimer du disque » restait affiché) et le sous-menu d'import, masqué à
+ * la main en deux endroits — ce qui était l'aveu du trou plutôt que sa réparation ; il a depuis
+ * disparu avec l'option « comme Scène ». Le sélecteur les prend désormais tous, y compris ceux qui
+ * n'existent pas encore.
  *
  * Les modules sont différés (`<script type="module">`) : le DOM est complet quand cette ligne
  * s'exécute. Un test épingle l'accord entre cette classe et celle portée par les menus dans
@@ -3662,12 +3663,12 @@ canvas.addEventListener('contextmenu', (e) => {
   // "Load a Scene" into, and no other Panel to Bring Forward/Send Backward relative to) — per user
   // request, its context menu is limited to Add and Camera.
   const isSceneCanvas = isLockedScenePanel(hit);
-  // Import : dans une Case, le sous-menu propose Modèle ou Scène ; sur le canevas d'une Scène, seul
-  // « Modèle » a un sens — une Scène ne s'imbrique pas dans une Scène. Les deux entrées s'excluent,
-  // et elles ne concernent qu'une Case ou un canevas, jamais un Élément.
+  // Import : la MÊME entrée dans une Case et sur le canevas d'une Scène. Elles étaient deux, un
+  // sous-menu « Modèle / Scène » d'un côté et une entrée directe de l'autre, et s'excluaient selon
+  // le contexte. L'import direct en Scène a été retiré : reste un seul geste, qui ne concerne
+  // qu'une Case ou un canevas, jamais un Élément.
   const _surCase = hit && hit.type === 'panel';
-  document.getElementById('ctxImportTrigger').style.display   = (_surCase && !isSceneCanvas) ? '' : 'none';
-  document.getElementById('ctxImportModelOnly').style.display = (_surCase && isSceneCanvas) ? '' : 'none';
+  document.getElementById('ctxImportModel').style.display = _surCase ? '' : 'none';
   ctxLoadSceneTrigger.style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxBringForward').style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxSendBackward').style.display = isSceneCanvas ? 'none' : '';
@@ -3937,28 +3938,12 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// ─── Import submenu (3D models) ───
-// Même mécanique d'ouverture au survol que les autres sous-menus. Ce qui change est ce que chaque
-// entrée CRÉE, et cela vit dans src/model-import.js — ici on ne fait que router le clic.
-const ctxImportTrigger = document.getElementById('ctxImportTrigger');
-const importSubmenu = document.getElementById('importSubmenu');
-let _importSubmenuCloseTimer = null;
-function openImportSubmenu(){
-  clearTimeout(_importSubmenuCloseTimer);
-  const rect = ctxImportTrigger.getBoundingClientRect();
-  importSubmenu.style.left = `${rect.right + 2}px`;
-  importSubmenu.style.top  = `${rect.top}px`;
-  importSubmenu.classList.remove('hidden');
-  clampFloatingMenu(importSubmenu);
-}
-function scheduleCloseImportSubmenu(){
-  clearTimeout(_importSubmenuCloseTimer);
-  _importSubmenuCloseTimer = setTimeout(() => importSubmenu.classList.add('hidden'), 250);
-}
-ctxImportTrigger.addEventListener('mouseenter', openImportSubmenu);
-ctxImportTrigger.addEventListener('mouseleave', scheduleCloseImportSubmenu);
-importSubmenu.addEventListener('mouseenter', () => clearTimeout(_importSubmenuCloseTimer));
-importSubmenu.addEventListener('mouseleave', scheduleCloseImportSubmenu);
+// ─── Import d'un modèle 3D ───
+// Ce qui est CRÉÉ vit dans src/model-import.js ; ici on ne fait que router le clic.
+//
+// Il y avait un sous-menu au survol (« comme Modèle » / « comme Scène ») et, en parallèle, une
+// entrée directe pour le canevas d'une Scène. L'import direct en Scène retiré, il ne reste qu'un
+// geste : plus de sous-menu, plus de minuterie de fermeture, plus deux chemins à tenir d'accord.
 
 // La Case visée est LUE AVANT de masquer le menu : hideContextMenu efface S.ctxTarget, et l'import
 // est asynchrone — sans cette capture, la cible aurait disparu au retour du sélecteur de fichiers.
@@ -3969,21 +3954,9 @@ function _cibleDuMenu(){
 }
 document.getElementById('ctxImportModel').onclick = () => {
   const { panel, page } = _cibleDuMenu();
-  hideContextMenu(); importSubmenu.classList.add('hidden');
-  if (panel) importModelIntoPanel(panel, page);
-};
-document.getElementById('ctxImportScene').onclick = () => {
-  const { panel, page } = _cibleDuMenu();
-  hideContextMenu(); importSubmenu.classList.add('hidden');
-  if (panel) importSceneFromModel(panel, page);
-};
-document.getElementById('ctxImportModelOnly').onclick = () => {
-  const { panel, page } = _cibleDuMenu();
   hideContextMenu();
   if (panel) importModelIntoPanel(panel, page);
 };
-// Menu de gauche : un décor sans Case cible — on crée la Scène, on ne charge rien.
-document.getElementById('importSceneBtn').onclick = () => { importSceneFromModel(null, null); };
 
 // ─── Bibliothèque de modèles : clic droit sur une ligne ───
 // Une seule action, la suppression. PAS de renommage de fichier : `modelFile` est un identifiant

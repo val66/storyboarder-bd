@@ -134,7 +134,6 @@
         <div class="dropdown-panel open" id="scenePanel">
           <div id="sceneList"></div>
           <button class="full-btn" id="addSceneBtn">Nouvelle scène</button>
-          <button class="full-btn" id="importSceneBtn">Importer un décor…</button>
         </div>
       </div>
     </div>
@@ -433,11 +432,12 @@
 <div class="context-menu hidden" id="panelContextMenu">
   <button id="ctxAddTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">➕</span> Ajouter</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxLoadSceneTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🎬</span> Charger une Scène</span> <span class="submenu-arrow">▶</span></button>
-  <!-- Import d'un modèle 3D (.glb). Dans une Case, un sous-menu propose Modèle ou Scène ; dans
-       une Scène, seul « Modèle » a un sens — une Scène ne s'imbrique pas dans une Scène. Les deux
-       entrées s'excluent, cf. le gestionnaire contextmenu. -->
-  <button id="ctxImportTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">📦</span> Importer</span> <span class="submenu-arrow">▶</span></button>
-  <button id="ctxImportModelOnly" style="display:none"><span class="ctx-icon">📦</span> Importer un Modèle</button>
+  <!-- Import d'un modèle 3D (.glb). UNE SEULE ENTRÉE, la même dans une Case et dans une Scène.
+       Un sous-menu proposait auparavant « comme Modèle » / « comme Scène » ; l'import direct en
+       Scène a été retiré sur demande utilisateur — il faisait choisir entre deux choses au moment
+       d'ouvrir un fichier, alors que « Nouvelle scène » puis cette même entrée y mènent, et par un
+       geste qu'on relit. -->
+  <button id="ctxImportModel"><span class="ctx-icon">📦</span> Importer un Modèle</button>
   <button id="ctxTracerTrigger" class="context-menu-submenu-trigger" style="display:none"><span><span class="ctx-icon">🛣️</span> Tracer</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxZoneTrigger" class="context-menu-submenu-trigger" style="display:none"><span><span class="ctx-icon">🌿</span> Zone</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxMesure" style="display:none"><span class="ctx-icon">📏</span> Mesure</button>
@@ -451,8 +451,6 @@
      openLoadSceneSubmenu), chacune chargeable dans la Case ciblée par le clic droit. -->
 <div class="context-menu hidden" id="loadSceneSubmenu"></div>
 
-<!-- Sous-menu « Importer » : le GESTE dit l'intention. « Modèle » pose un Élément dans la Case ;
-     « Scène » crée une Scène réutilisable ET la charge ici, puisque c'est ici qu'on a cliqué. -->
 <!-- Clic droit sur un modèle de la bibliothèque. PAS de renommage : `modelFile` est un
      identifiant persisté, le renommer casserait les Éléments des autres Projets, qu'on ne peut
      pas réparer (cf. docs/persisted-data.md). On renomme l'Élément, pas le fichier. -->
@@ -464,10 +462,6 @@
   <button id="ctxDeleteModel"><span class="ctx-icon">🗑</span> Supprimer du disque</button>
 </div>
 
-<div class="context-menu hidden" id="importSubmenu">
-  <button id="ctxImportModel"><span class="ctx-icon">📦</span> comme Modèle</button>
-  <button id="ctxImportScene"><span class="ctx-icon">🎬</span> comme Scène</button>
-</div>
 
 <!-- Sous-menu "Ajouter" : regroupe toutes les options d'ajout d'Élément (personnage + toutes les
      sous-catégories d'objets), qui occupaient auparavant directement le menu Case — sur demande

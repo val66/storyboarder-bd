@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.10**
+**Version 1.4.11**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -43,8 +43,8 @@
 ### Modèles 3D importés
 
 - 📦 **Import glTF** (`.glb` / `.gltf`) : vos modèles Blender, Maya ou autres, à leur taille réelle
-- **Comme Objet ou comme Scène** : un modèle posé dans une Case, ou un décor réutilisable — par le
-  clic droit d'une Case, d'une Scène, ou par le menu de gauche
+- **Clic droit → Importer un Modèle** : la même entrée dans une Case et dans une Scène. Pour faire
+  d'un fichier un décor réutilisable, importez-le dans une Scène
 - 🗂️ **Section Modèles** du menu de gauche : vos fichiers groupés selon l'usage qu'en fait le Projet
   ouvert — par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
 - 🦴 **Modèles articulés** : un fichier porteur d'os se pose comme un Personnage — curseurs par

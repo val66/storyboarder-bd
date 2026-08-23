@@ -22,7 +22,6 @@
 import { importModel } from './model-store.js';
 import { preloadModels, getLoadedModel, modelState } from './model-cache.js';
 import { createModelElement } from './model-store.js';
-import { createScene, loadSceneIntoPanel } from './scenes.js';
 import { S, currentPageData, tr, isLockedScenePanel } from './state.js';
 import { OBJECT_REAL_HEIGHT_M, MODEL_HEIGHT_WARN_MAX_M, PANEL_CAM_DEFAULT_DIST_3D } from './constants.js';
 
@@ -224,40 +223,3 @@ export async function importModelIntoPanel(panel, page){
   return el;
 }
 
-/**
- * Crée une Scène à partir d'un fichier, et — si une Case est donnée — l'y charge.
- *
- * `panel` absent : appel depuis le menu de gauche, on crée seulement la Scène. `panel` présent :
- * appel depuis le clic droit d'une Case, donc on charge aussi — l'utilisateur a cliqué LÀ, il
- * attend de voir le décor là.
- */
-export async function importSceneFromModel(panel, page){
-  const prêt = await choisirEtPreparerModele();
-  if (prêt.canceled) return null;
-  if (!prêt.ok) { _alerter(tr(`Import failed: ${prêt.error}`, `Import impossible : ${prêt.error}`)); return null; }
-  // Même point de contrôle que pour un Modèle : la Scène n'est pas créée si l'on renonce.
-  if (!await _confirmerImport(prêt.modelFile)) return null;
-
-  _snapshot();
-  const scène = createScene();
-  scène.name = prêt.nom;
-  const canevas = scène.pages[0].objects.find(o => o.type === 'panel');
-  const el = createModelElement({
-    panel: canevas, page: { w: scène.w, h: scène.h },
-    modelFile: prêt.modelFile, name: prêt.nom, realHeightM: prêt.hauteurM,
-  });
-  scène.pages[0].objects.push(el);
-  S.projectDirty = true;
-
-  // Chargée dans la Case d'où vient le clic. loadSceneIntoPanel s'occupe du cadrage de la caméra et
-  // du remplacement du contenu — même comportement que n'importe quel chargement de Scène, ce qui
-  // évite d'inventer un second chemin pour un cas particulier.
-  if (panel && page) await loadSceneIntoPanel(scène, panel);
-  else _renderAll();
-
-  if (prêt.introuvable) {
-    _alerter(tr(`"${prêt.modelFile}" could not be read as a 3D model.`,
-      `« ${prêt.modelFile} » n'a pas pu être lu comme modèle 3D.`));
-  }
-  return scène;
-}

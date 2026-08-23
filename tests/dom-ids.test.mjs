@@ -180,11 +180,12 @@ describe('Menus contextuels — un menu qui s\'ouvre doit pouvoir se refermer', 
       `seulement ${menus.length} élément(s) portent .${classe} dans index.html — le sélecteur ne vise rien`);
   });
 
-  test('RÉGRESSION : les deux menus qui manquaient sont bien des .context-menu', () => {
-    // Nommément, parce que ce sont eux qui ont été signalés : le menu de la bibliothèque de
-    // modèles, et le sous-menu d'import (masqué à la main en deux endroits, ce qui était l'aveu
-    // du trou plutôt que sa réparation).
-    ['modelContextMenu', 'importSubmenu'].forEach(id => {
+  test('RÉGRESSION : le menu signalé est bien un .context-menu', () => {
+    // Nommément, parce qu'il a été signalé : le menu de la bibliothèque de modèles. Le sous-menu
+    // d'import figurait ici pour la même raison — il a depuis été supprimé avec l'option « comme
+    // Scène », et le retirer d'ici plutôt que de garder un identifiant mort est ce qui garde ce
+    // test capable d'échouer.
+    ['modelContextMenu'].forEach(id => {
       const m = html.match(new RegExp(`class="([^"]*)"\\s+id="${id}"`));
       assert.ok(m, `menu introuvable dans index.html : ${id}`);
       assert.match(m[1], /\bcontext-menu\b/,

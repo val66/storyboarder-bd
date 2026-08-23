@@ -418,13 +418,11 @@ describe('Câblage de l\'écran de correspondance', () => {
     assert.match(bloc.slice(0, 300), /_modelCtxFichier/);
   });
 
-  test('RÉGRESSION : les DEUX fonctions d\'import demandent l\'autorisation AVANT de créer', () => {
-    // Trois points d'entrée dans l'interface, mais DEUX fonctions : « Modèle » et « Scène depuis
-    // une Case » d'un côté, « Importer un décor… » du menu de gauche partageant la seconde. Ma
-    // première version de ce test comptait trois appels et échouait — l'erreur était dans le test,
-    // pas dans le code. Compter des occurrences était de toute façon fragile : on vérifie
-    // maintenant que CHAQUE fonction exportée porte le crochet.
-    ['importModelIntoPanel', 'importSceneFromModel'].forEach(fn => {
+  test('RÉGRESSION : l\'import demande l\'autorisation AVANT de créer', () => {
+    // Il y avait DEUX fonctions — « comme Modèle » et « comme Scène » — et ma première version de
+    // ce test comptait les appels, ce qui était fragile. Elle vérifie maintenant que CHAQUE
+    // fonction exportée porte le crochet, ce qui reste vrai depuis qu'il n'en reste qu'une.
+    ['importModelIntoPanel'].forEach(fn => {
       const debut = IMPORT.indexOf(`export async function ${fn}`);
       assert.ok(debut > 0, `fonction introuvable : ${fn}`);
       const corps = IMPORT.slice(debut, IMPORT.indexOf('\n}', debut));
@@ -440,7 +438,7 @@ describe('Câblage de l\'écran de correspondance', () => {
   test('RÉGRESSION : un refus interrompt l\'import, il ne se contente pas de ne rien enregistrer', () => {
     // Choix de l'utilisateur : « Annuler » pendant un import annule l'import entier, pas seulement
     // la correspondance. Sans le `return`, la modale serait purement décorative.
-    ['importModelIntoPanel', 'importSceneFromModel'].forEach(fn => {
+    ['importModelIntoPanel'].forEach(fn => {
       const debut = IMPORT.indexOf(`export async function ${fn}`);
       const corps = IMPORT.slice(debut, IMPORT.indexOf('\n}', debut));
       assert.match(corps, /if \(!await _confirmerImport\([^)]*\)\) return null;/,

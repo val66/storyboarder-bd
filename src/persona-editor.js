@@ -171,12 +171,10 @@ export const CIBLES_NAV_EDITEUR_3D = Object.freeze({
   //   sceneList .............. ouvrir une Scène (openScene)
   //   addVolumeBtn ........... créer un Tome, qui devient le Tome courant
   //   addSceneBtn ............ créer une Scène et l'ouvrir
-  //   importSceneBtn ......... importer un décor et l'ouvrir
   //   openPoseEditorBtn ...... rouvrir l'éditeur, sans cible cette fois
   //   helpBtn ................ affiche le Manuel dans le PANNEAU DROIT, que l'éditeur recouvre :
   //                            sans quitter l'éditeur, le bouton aurait l'air cassé.
-  ids: Object.freeze(['sceneList', 'addVolumeBtn', 'addSceneBtn', 'importSceneBtn',
-    'openPoseEditorBtn', 'helpBtn']),
+  ids: Object.freeze(['sceneList', 'addVolumeBtn', 'addSceneBtn', 'openPoseEditorBtn', 'helpBtn']),
   // Par classe :
   //   page-row ............... les Planches d'un Tome déplié, seule partie navigante de #volumeList
   //                            (la ligne du Tome, elle, ne fait que déplier).

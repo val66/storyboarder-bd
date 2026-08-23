@@ -95,9 +95,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'modeles', title: 'Imported 3D models', paragraphs: [
     'Import models made in Blender, Maya or elsewhere, in glTF format (.glb or .gltf). The format guarantees the unit — the metre — so a model arrives at its real size.',
-    'Right-click a panel → "Import" → "Model" places a single object; "Scene" creates a reusable Scene and loads it.',
-    'Right-click inside a Scene → "Import a model": only a Model — a Scene cannot nest inside a Scene.',
-    'Left-hand menu → "Import a set…": creates the Scene without loading it.',
+    'Right-click a panel or a Scene → "Import a model" places the model where you clicked. To make a reusable set out of a file: create a Scene, then import the model into it.',
     'Files are copied into a "Modeles" folder next to your projects. One moved or deleted outside the application can no longer be read: its Elements become placeholder boxes, and the library marks it "file not found".',
     'The "Models" section lists the files on disk, grouped by how the open project uses them: by Scenes, in Panels, or unused. Other projects are not checked.',
     'Left-click a model to reach where it is used: straight there if there is only one place, otherwise a dialog lists them by Scene or Panel.',
@@ -206,9 +204,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'modeles', title: 'Modèles 3D importés', paragraphs: [
     'Importez des modèles faits dans Blender, Maya ou ailleurs, au format glTF (.glb ou .gltf). Ce format garantit l\'unité — le mètre : un modèle arrive à sa taille réelle.',
-    'Clic droit sur une Case → « Importer » → « Modèle » y pose un objet ; « Scène » crée une Scène réutilisable et la charge.',
-    'Clic droit dans une Scène → « Importer un Modèle » : une Scène ne s\'imbrique pas dans une Scène.',
-    'Menu de gauche → « Importer un décor… » : crée la Scène sans la charger.',
+    'Clic droit sur une Case ou dans une Scène → « Importer un Modèle » pose le modèle là où vous avez cliqué. Pour faire d\'un fichier un décor réutilisable : créez une Scène, puis importez-y le modèle.',
     'Les fichiers sont recopiés dans un dossier « Modeles », à côté de vos projets. Déplacé ou supprimé hors de l\'application, un fichier n\'est plus lisible : ses Éléments deviennent des boîtes « fichier introuvable ».',
     'La section « Modèles » liste les fichiers du disque, groupés selon leur usage dans le Projet ouvert : par des Scènes, dans des Cases, ou non utilisés.',
     'Clic gauche sur un modèle pour aller là où il est utilisé : directement s\'il n\'y a qu\'un endroit, sinon une fenêtre les liste par Scène ou par Case.',
