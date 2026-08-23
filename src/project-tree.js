@@ -84,6 +84,25 @@ document.getElementById('addSceneBtn').onclick = () => {
 // ════════════════════════════════════════════════════════════
 // SIDEBAR — TREE
 // ════════════════════════════════════════════════════════════
+/**
+ * Aller à une Planche : la rendre courante et l'afficher.
+ *
+ * Extraite du clic sur une ligne du menu parce qu'un SECOND appelant est arrivé, le raccourci
+ * Ctrl+[ / Ctrl+]. Recopier ces six affectations là-bas aurait fait deux définitions de « changer de
+ * Planche » — et la première à être oubliée aurait été `editingSceneId`, qui laisse l'application
+ * afficher une Scène tout en croyant être sur une Planche.
+ *
+ * `pageSelected` ouvre le menu « Planche » à droite (liste des Cases), sur demande utilisateur :
+ * choisir une Planche, c'est aussi la sélectionner.
+ */
+export function allerALaPlanche(ti, pi){
+  disableSceneCameraMode();
+  S.currentTomeIndex = ti; S.currentPageIndex = pi; S.editingSceneId = null;
+  S.selectedId = null; S.selectedRoomId = null;
+  S.pageSelected = true;
+  renderAll();
+}
+
 export function renderTree(){
   const list = document.getElementById('volumeList');
   list.innerHTML = '';
@@ -163,13 +182,7 @@ export function renderTree(){
         pdiv.textContent = `${tr('Page', 'Planche')} ${pi + 1}`;
         pdiv.onclick = (e) => {
           e.stopPropagation();
-          disableSceneCameraMode();
-          S.currentTomeIndex = ti; S.currentPageIndex = pi; S.editingSceneId = null;
-          S.selectedId = null; S.selectedRoomId = null;
-          // Clicking a Page in the left-hand menu "selects" it: opens its "Page" menu (list of
-          // Panels) in the right-hand panel — on user request.
-          S.pageSelected = true;
-          renderAll();
+          allerALaPlanche(ti, pi);
         };
         pdiv.oncontextmenu = (e) => {
           e.preventDefault(); e.stopPropagation();

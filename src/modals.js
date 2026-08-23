@@ -47,6 +47,7 @@ import {
 import {
   cloneJoints, correspondancePourModele, figuresPosables, getEffectiveJoints, objectRigCache3D,
   personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
+  modeleImportePosable3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, groupesPosables, lireAngleDeg,
@@ -739,8 +740,9 @@ export function buildSkeletonPoseFieldUI(obj){
   const champ = document.getElementById('objectPoseField');
   const sel = document.getElementById('objectPositionSelect');
   if (!champ || !sel) return;
-  const posable = isImportedModel(obj)
-    && groupesPosables(correspondancePourModele(obj.modelFile), tr).length > 0;
+  // La condition vit dans rig3d.js : le raccourci clavier « E » l'interroge aussi, et une troisième
+  // copie aurait fini par diverger — c'est ce que le commentaire ci-dessous redoutait déjà.
+  const posable = modeleImportePosable3D(obj);
   champ.style.display = posable ? '' : 'none';
   // Le crayon de l'aperçu suit la MÊME condition, et depuis le même endroit : les deux ouvrent la
   // bibliothèque de poses sur ce modèle, l'un par une liste, l'autre par l'éditeur. Deux conditions

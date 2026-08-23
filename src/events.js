@@ -35,7 +35,7 @@ import {
   doitOuvrirCorrespondance,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
-import { enregistrerFermeture } from './modal-stack.js';
+import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel,
@@ -44,6 +44,8 @@ import { isImportedModel } from './model-store.js';
 import {
   setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
+
+  allerALaPlanche,
 } from './project-tree.js';
 import {
   EMOTIONS, HAND_STATES, POSITIONS, FIXED_SHAPE, FIXED_COLOR, PANEL_CAM_REF_DIST_3D,
@@ -64,6 +66,8 @@ import {
   personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D,
 
   hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
+
+  pageVoisine3D,
 } from './utils.js';
 import {
   S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr, isLockedScenePanel,
@@ -74,6 +78,8 @@ import {
   cloneJoints, disposeObjectRig3D, disposePersonaRig3D, disposeWallRenderRig3D, ensurePersonaScene3D,
   frameOrthoCameraToBox, ensureObjectRigEntry3D, getWallPanRect2D, wallOpeningRect, personaCameraOrtho3D,
   personaScene3D, getMaxAnisotropy3D,
+
+  modeleImportePosable3D,
 } from './rig3d.js';
 import {
   setScene3DCallbacks, panelAutoDepthPivot3D, panelCamBasis3D, panelDepthToDistance3D,
@@ -1457,6 +1463,69 @@ window.addEventListener('keydown', (e) => {
       return;
     }
   }
+  // ── E : ouvrir l'Éditeur de Personnage ────────────────────────────────────────────────────
+  //
+  // CONTEXTUEL, et sans rien inventer : sur une figure posable, il ouvre l'éditeur SUR ELLE, comme
+  // le crayon de sa fiche ; sinon en autonome, comme le bouton du menu de gauche. Les deux points
+  // d'entrée existaient, le raccourci ne fait que les atteindre au clavier.
+  //
+  // `fromModal` vaut null : on ne vient d'aucune fiche, il n'y en a donc aucune à rouvrir en
+  // sortant. Passer 'descModal' par mimétisme ferait apparaître une fiche que personne n'a ouverte.
+  //
+  // ⚠️ LA GARDE SUR LA PILE DE MODALES est ce qui manque aux raccourcis C/F/T, écrits avant elle :
+  // sans elle, « E » ouvrirait l'éditeur DERRIÈRE une fiche restée à l'écran. Je ne l'ai pas
+  // ajoutée aux trois autres dans le même geste — ce serait changer leur comportement en douce,
+  // sous couvert d'ajouter un raccourci.
+  if (e.key === 'e' && !e.ctrlKey && !e.metaKey && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA'
+      && !S.personaEditorOpen && pileOuverte().length === 0) {
+    e.preventDefault();
+    const pageE = currentPageData();
+    const selE = pageE.objects.find(o => o.id === S.selectedId);
+    // Un Personnage est toujours posable ; pour un modèle importé, la question se pose, et la
+    // réponse vit dans rig3d.js — la même que pour le crayon de sa fiche.
+    const cible = (selE && (selE.type === 'perso' || modeleImportePosable3D(selE))) ? selE : null;
+    showPersonaEditor(cible, null);
+    return;
+  }
+
+  // ── Ctrl+[ / Ctrl+] : Planche précédente / suivante ───────────────────────────────────────
+  //
+  // En écho à [ / ] qui circule DANS une Planche : la même paire, un cran au-dessus. Les deux
+  // cohabitent parce que l'autre gestionnaire exige `!e.ctrlKey`.
+  //
+  // Sans ce raccourci, changer de Planche demandait la souris ET de déplier le Tome dans le menu
+  // de gauche.
+  if ((e.key === '[' || e.key === ']') && (e.ctrlKey || e.metaKey) && !e.altKey
+      && tag !== 'INPUT' && tag !== 'TEXTAREA' && !S.personaEditorOpen && !S.editingSceneId) {
+    e.preventDefault();
+    const tomeCourant = S.tomes[S.currentTomeIndex];
+    const cible = pageVoisine3D(tomeCourant ? tomeCourant.pages.length : 0,
+      S.currentPageIndex, e.key === ']' ? 1 : -1);
+    // null = on est au bout du Tome. Ne rien faire, plutôt que reboucler.
+    if (cible !== null) allerALaPlanche(S.currentTomeIndex, cible);
+    return;
+  }
+
+  // ── F1 : le Manuel d'utilisation ──────────────────────────────────────────────────────────
+  //
+  // AFFICHE, ne bascule pas : contrairement au bouton « ? », une touche n'a pas d'état visible à
+  // inverser, et « F1 » veut dire « montre-moi l'aide », jamais « cache-la ».
+  if (e.key === 'F1' && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+    e.preventDefault();
+    if (isPersonaEditorOpen()) {
+      // L'éditeur recouvre le panneau droit. On passe par le bouton lui-même pour emprunter
+      // l'interception qui sait quitter l'éditeur proprement (confirmation, fiche abandonnée) —
+      // plutôt que de réécrire ici une seconde version de cette sortie.
+      document.getElementById('helpBtn').click();
+      return;
+    }
+    afficherManuelLateral();
+    // Redessin SYNCHRONE : la coalescence est réservée aux chemins répétitifs (souris, molette),
+    // et un test épingle cette portée pour qu'elle ne s'étende pas par imitation.
+    drawCurrentPage();
+    return;
+  }
+
   // F shortcut: centers the Panel's 3D view on the selected Element (outside Camera mode).
   // Fix 21: replaces the automatic centering on selection, removed to avoid unwanted camera
   // movements. First press → remembers the current position and animates toward the Element.

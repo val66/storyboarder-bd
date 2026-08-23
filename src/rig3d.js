@@ -16,10 +16,11 @@ import {
 import {
   clamp, orbitCameraPosition3D, poseJointsByKey3D
 } from './utils.js';
-import { S, currentVolume } from './state.js';
+import { S, currentVolume, tr } from './state.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
+import { isImportedModel } from './model-store.js';
 // cf. son en-tête : Object3D.clone() casse le lien SkinnedMesh↔Skeleton, faussant l'échelle
 // appliquée par placeRigCentered3D pour tout modèle importé articulé.
 import { cloneSkinned } from './vendor/SkeletonUtils.js';
@@ -28,7 +29,7 @@ import { cloneSkinned } from './vendor/SkeletonUtils.js';
 import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
 import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3d.js';
 import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
-import { orientationFinale } from './skeleton-pose.js';
+import { orientationFinale, groupesPosables } from './skeleton-pose.js';
 import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
@@ -3397,6 +3398,24 @@ export function poseOsPourModeleImporte(nomFichier, joints){
  * divergence serait invisible et cruelle : un curseur intitulé « Coude gauche » piloterait un autre
  * os que celui que l'écran de correspondance montre.
  */
+/**
+ * Ce modèle importé a-t-il de quoi être posé ?
+ *
+ * ⚠️ UNE SEULE DÉFINITION, ET C'EST LE POINT. La condition vivait dans `buildSkeletonPoseFieldUI`
+ * (modals.js), qui l'utilisait pour deux choses à la fois : afficher le sélecteur de pose et
+ * afficher le crayon qui ouvre l'Éditeur. Son commentaire disait déjà pourquoi elles ne devaient
+ * pas être écrites séparément — « un crayon devant un modèle sans articulations ouvrirait un
+ * éditeur dont Appliquer ne pourrait rien appliquer ». Le raccourci clavier est un TROISIÈME
+ * appelant : le recopier une fois de plus aurait fait exactement ce que ce commentaire redoutait.
+ *
+ * Un Personnage intégré n'a pas à passer par ici : il est toujours posable. Cette fonction ne
+ * répond que du cas incertain, celui du fichier importé.
+ */
+export function modeleImportePosable3D(o){
+  return isImportedModel(o)
+    && groupesPosables(correspondancePourModele(o.modelFile), tr).length > 0;
+}
+
 export function correspondancePourModele(nomFichier){
   const vide = {};
   const chargé = nomFichier ? getLoadedModel(nomFichier) : null;

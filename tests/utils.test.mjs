@@ -28,6 +28,7 @@ import {
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
   hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
   orbiteDeFace3D, estHorsChamp3D,
+  pageVoisine3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -2125,5 +2126,45 @@ describe('estHorsChamp3D', () => {
     // la comparaison la rendrait fausse dans les deux sens, au hasard.
     assert.equal(estHorsChamp3D(pt(200, 125), { halfW: NaN, halfH: NaN }, CADRE), false);
     assert.equal(estHorsChamp3D(pt(20, 125), { halfW: -40, halfH: -30 }, CADRE), true);
+  });
+});
+
+
+// ── pageVoisine3D ─────────────────────────────────────────────────────────────────────────────
+describe('pageVoisine3D — la Planche voisine, ou rien', () => {
+  test('avance et recule d\'un cran', () => {
+    assert.equal(pageVoisine3D(5, 2, 1), 3);
+    assert.equal(pageVoisine3D(5, 2, -1), 1);
+  });
+
+  test('LE POINT QUI COMPTE : aux extrémités, elle rend null — elle ne reboucle PAS', () => {
+    // Passer de la dernière Planche à la première d'un seul raccourci ressemblerait à un défaut :
+    // dans un Tome de quarante Planches, on se retrouverait au début sans avoir rien demandé.
+    assert.equal(pageVoisine3D(5, 4, 1), null, 'depuis la dernière, il n\'y a pas de suivante');
+    assert.equal(pageVoisine3D(5, 0, -1), null, 'depuis la première, pas de précédente');
+  });
+
+  test('un Tome d\'une seule Planche ne bouge dans aucun sens', () => {
+    assert.equal(pageVoisine3D(1, 0, 1), null);
+    assert.equal(pageVoisine3D(1, 0, -1), null);
+  });
+
+  test('un Tome vide ou une entrée absurde rendent null, sans lever', () => {
+    // Appelée depuis un gestionnaire de touche : elle ne doit jamais faire échouer la frappe.
+    [[0, 0, 1], [-3, 0, 1], [null, 0, 1], ['5', 0, 1], [undefined, 0, 1]].forEach(args =>
+      assert.equal(pageVoisine3D(...args), null, `entrée ${JSON.stringify(args)}`));
+  });
+
+  test('un index de départ non entier est traité comme 0', () => {
+    // S.currentPageIndex est toujours un entier ; c'est une garde, pas un comportement attendu.
+    assert.equal(pageVoisine3D(5, undefined, 1), 1);
+    assert.equal(pageVoisine3D(5, undefined, -1), null);
+  });
+
+  test('tout sens négatif recule, tout sens positif ou nul avance', () => {
+    // L'appelant passe +1/-1, mais la fonction ne doit pas dépendre de cette convention exacte.
+    assert.equal(pageVoisine3D(5, 2, -42), 1);
+    assert.equal(pageVoisine3D(5, 2, 42), 3);
+    assert.equal(pageVoisine3D(5, 2, 0), 3);
   });
 });

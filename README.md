@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.12**
+**Version 1.4.13**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -62,9 +62,9 @@
 ### Character editor
 
 A workspace for posing a figure (a character, or an articulated imported model), opened from the
-pencil on a 3D preview, or standalone from the left menu to build a pose with no target in mind. It
-takes over the central area only: the left menu stays available, and clicking a Page or a Scene
-leaves the editor.
+pencil on a 3D preview, by the **E** key, or standalone from the left menu to build a pose with no
+target in mind. It takes over the central area only: the left menu stays available, and clicking a
+Page or a Scene leaves the editor.
 
 - **Pose by dragging**: grab a joint point and move it; an orange guide shows the expected gesture,
   arrow or ring

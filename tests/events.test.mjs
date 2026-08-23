@@ -51,6 +51,7 @@ import {
   PERSONA_EDITOR_ROT_X_MAX,
   clicQuitteLEditeur3D, quitterEditeurSansRetour, CIBLES_NAV_EDITEUR_3D,
 } from '../src/persona-editor.js';
+import { allerALaPlanche } from '../src/project-tree.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
 import { normalizePoses3D, resyncIdCounter } from '../src/io.js';
@@ -2479,5 +2480,125 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
     const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
     assert.match(fn.slice(0, 800), /cible\.click\(\)/,
       'sans rejeu, cliquer une Planche fermerait l\'éditeur sans y aller');
+  });
+});
+
+// ── Les trois raccourcis ajoutés ──────────────────────────────────────────────────────────────
+describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
+  // LECTURE DU SOURCE, faute de mieux : le dom-stub n'exécute aucun écouteur, aucune frappe ne peut
+  // être jouée ici. Ce qui est figé, ce sont les décisions qui rendraient le raccourci faux plutôt
+  // qu'absent — une cible mal choisie, un bouclage, une modale par-dessus laquelle on ouvre.
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const bloc = (marqueur) => {
+    const i = src.indexOf(marqueur);
+    assert.ok(i > 0, `bloc introuvable : ${marqueur}`);
+    return src.slice(i, i + 900);
+  };
+
+  test('E : la cible suit la sélection, et « posable » n\'est pas redéfini sur place', () => {
+    // La condition « ce modèle importé a-t-il des articulations ? » vit dans rig3d.js et sert déjà
+    // au crayon de la fiche. La recopier ici en aurait fait une troisième version.
+    const b = bloc("e.key === 'e'");
+    assert.match(b, /modeleImportePosable3D\(selE\)/, 'la condition doit être empruntée, pas réécrite');
+    assert.match(b, /selE\.type === 'perso'/, 'un Personnage est toujours posable');
+    assert.match(b, /showPersonaEditor\(cible, null\)/,
+      'aucune fiche à rouvrir : on ne vient d\'aucune');
+  });
+
+  test('RÉGRESSION : E n\'ouvre rien par-dessus une modale', () => {
+    // Sans cette garde, la touche ouvrirait l'éditeur DERRIÈRE une fiche restée à l'écran.
+    const b = bloc("e.key === 'e'");
+    assert.match(b, /pileOuverte\(\)\.length === 0/);
+    assert.match(b, /!S\.personaEditorOpen/, 'ni par-dessus l\'éditeur déjà ouvert');
+  });
+
+  test('Ctrl+[ / Ctrl+] passent par allerALaPlanche, pas par leurs propres affectations', () => {
+    // Six affectations recopiées ici auraient fait deux définitions de « changer de Planche », et
+    // la première oubliée aurait été `editingSceneId`.
+    const b = bloc("e.key === '[' || e.key === ']') && (e.ctrlKey");
+    assert.match(b, /allerALaPlanche\(S\.currentTomeIndex, cible\)/);
+    assert.ok(!/S\.currentPageIndex\s*=/.test(b), 'l\'index ne doit pas être posé ici');
+  });
+
+  test('LE POINT QUI COMPTE : au bout du Tome, on ne fait RIEN', () => {
+    const b = bloc("e.key === '[' || e.key === ']') && (e.ctrlKey");
+    assert.match(b, /if \(cible !== null\)/,
+      'sans ce test, `null` serait passé comme un index et la Planche deviendrait introuvable');
+    assert.match(b, /!S\.editingSceneId/, 'les Planches n\'existent pas en mode Scène');
+  });
+
+  test('RÉGRESSION : la paire simple [ / ] reste distincte de la paire avec Ctrl', () => {
+    // Les deux gestionnaires coexistent parce que l'ancien exige explicitement !e.ctrlKey. Si cette
+    // garde tombait, une seule frappe déclencherait les deux navigations.
+    const b = bloc("(e.key === '[' || e.key === ']') && !e.ctrlKey");
+    assert.match(b, /!e\.ctrlKey && !e\.metaKey/);
+  });
+
+  test('F1 AFFICHE le Manuel, il ne le bascule pas', () => {
+    const b = bloc("e.key === 'F1'");
+    assert.match(b, /afficherManuelLateral\(\)/);
+    assert.ok(!/masquerManuelLateral/.test(b), 'une touche n\'a pas d\'état visible à inverser');
+  });
+
+  test('F1 depuis l\'Éditeur emprunte la sortie déjà écrite', () => {
+    // L'éditeur recouvre le panneau droit : afficher le Manuel derrière ne se verrait pas. Passer
+    // par le bouton réutilise l'interception qui sait quitter l'éditeur (confirmation, fiche
+    // abandonnée) au lieu d'en écrire une seconde version.
+    const b = bloc("e.key === 'F1'");
+    assert.match(b, /isPersonaEditorOpen\(\)/);
+    assert.match(b, /getElementById\('helpBtn'\)\.click\(\)/);
+  });
+
+  test('RÉGRESSION : aucune lettre ne se déclenche dans un champ de saisie', () => {
+    ["e.key === 'e'", "e.key === 'F1'", "e.key === '[' || e.key === ']') && (e.ctrlKey"].forEach(m => {
+      assert.match(bloc(m), /tag !== 'INPUT' && tag !== 'TEXTAREA'/, `garde absente : ${m}`);
+    });
+  });
+});
+
+
+// ── allerALaPlanche ───────────────────────────────────────────────────────────────────────────
+describe('allerALaPlanche — un seul endroit sait changer de Planche', () => {
+  // Extraite du clic sur une ligne du menu quand le raccourci Ctrl+[ / Ctrl+] est arrivé. Elle est
+  // vérifiée par son EFFET, pas par lecture du source : elle ne touche que S.
+  beforeEach(() => {
+    // Un Projet minimal mais RÉEL : allerALaPlanche redessine, et le rendu lit les dimensions.
+    S.tomes = [{
+      id: 't1', name: 'Tome 1', format: 'fb', w: 550, h: 725, scale: 4,
+      pages: [{ id: 'p1', objects: [] }, { id: 'p2', objects: [] }, { id: 'p3', objects: [] }],
+    }];
+    // Une VRAIE Scène : `currentVolume()` efface un `editingSceneId` qui ne désigne rien, si bien
+    // qu'avec une liste vide le test passait quoi que fasse allerALaPlanche. Une mutation l'a
+    // montré — le décor du test rendait l'assertion creuse, pas le code correct.
+    S.scenes = [{
+      id: 'sc1', name: 'Scène', format: 'fb', w: 550, h: 725, scale: 4,
+      pages: [{ id: 'sp1', objects: [] }],
+    }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0;
+  });
+
+  test('LE POINT QUI COMPTE : elle sort du mode Scène', () => {
+    // Sans cette remise à zéro, l'application afficherait la Scène tout en se croyant sur une
+    // Planche — currentPageData() redirige sur la Scène tant que `editingSceneId` est posé.
+    S.editingSceneId = 'sc1';
+    allerALaPlanche(0, 1);
+    assert.equal(S.editingSceneId, null, 'on reste dans la Scène en croyant en être sorti');
+  });
+
+  test('elle pose le Tome ET la Planche', () => {
+    allerALaPlanche(0, 2);
+    assert.equal(S.currentTomeIndex, 0);
+    assert.equal(S.currentPageIndex, 2);
+  });
+
+  test('elle vide la sélection et sélectionne la Planche', () => {
+    // Garder l'Élément sélectionné d'une AUTRE Planche remplirait le panneau droit d'une fiche qui
+    // ne correspond à rien de visible.
+    S.selectedId = 'e1'; S.selectedRoomId = 'r1'; S.pageSelected = false;
+    allerALaPlanche(0, 0);
+    assert.equal(S.selectedId, null);
+    assert.equal(S.selectedRoomId, null);
+    assert.equal(S.pageSelected, true, 'choisir une Planche, c\'est aussi la sélectionner');
   });
 });

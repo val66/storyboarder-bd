@@ -1115,3 +1115,22 @@ export function makeFrameScheduler(planifier, annuler, action){
     enAttente(){ return id !== null; },
   };
 }
+
+
+/**
+ * Index de la Planche voisine, ou null s'il n'y en a pas. Fonction PURE.
+ *
+ * ⚠️ PAS DE BOUCLAGE, ET C'EST UN CHOIX. Passer de la dernière Planche à la première d'un seul
+ * raccourci ressemblerait à un défaut plus qu'à un service : dans un Tome de quarante Planches, on
+ * se retrouverait au début sans avoir rien demandé. `null` veut dire « ne rien faire », et l'écran
+ * qui ne bouge pas dit alors la vérité — on est au bout.
+ *
+ * ⚠️ ON NE CHANGE PAS DE TOME non plus. Le raccourci circule DANS le Tome courant ; enjamber sa
+ * frontière ferait franchir une limite qui structure le Projet, sans que rien ne l'annonce.
+ */
+export function pageVoisine3D(nbPages, pi, sens){
+  if (!Number.isInteger(nbPages) || nbPages <= 0) return null;
+  const depart = Number.isInteger(pi) ? pi : 0;
+  const i = depart + (sens < 0 ? -1 : 1);
+  return (i < 0 || i >= nbPages) ? null : i;
+}
