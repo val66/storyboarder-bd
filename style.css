@@ -452,6 +452,8 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
   cursor:pointer; font-family:inherit;
 }
 .help-group:last-child{ margin-bottom:0; }
+/* Le survol est le SEUL signal que ces pavés sont actionnables. Un chevron ›, essayé d'abord, se
+   lisait comme une promesse de dépliement — précisément ce qu'on venait de retirer. */
 .help-group:hover{ background:rgba(255,255,255,.09); border-color:var(--accent); }
 .help-group-title{
   flex:1 1 auto; margin:0;
@@ -459,9 +461,6 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
   user-select:none;
 }
 .help-group:hover .help-group-title{ color:var(--accent); }
-/* Le chevron dit que le clic MÈNE quelque part. Sans lui, ces pavés se lisent comme des en-têtes
-   inertes : rien ne les distingue des titres de section du même panneau. */
-.help-group-chevron{ flex:0 0 auto; font-size:14px; line-height:1; color:var(--ink-soft); }
 #sideHelpSection .help-text{ width:auto; padding:0; }
 
 /* La modale du manuel : une largeur de lecture, pas la largeur par défaut d'une modale de saisie.

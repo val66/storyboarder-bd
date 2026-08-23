@@ -3,4 +3,4 @@
 // version sans passer par un IPC (lire package.json depuis le renderer imposerait de toucher
 // main.js/preload.js, interdit pour une fonctionnalité applicative).
 // tests/version.test.mjs vérifie que les deux ne peuvent pas diverger.
-export const APP_VERSION = '1.4.5';
+export const APP_VERSION = '1.4.6';
