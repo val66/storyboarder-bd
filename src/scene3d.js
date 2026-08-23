@@ -648,9 +648,21 @@ export function projectElementCenterToCanvas3D(o, panel, page){
     posY = o.wyFloor !== undefined ? o.wyFloor : _ep.y;
     posZ = o.wzFloor !== undefined ? o.wzFloor : getElementDepth(o);
   }
+  // ⚠️ DEVANT OU DERRIÈRE LA CAMÉRA ? `project()` divise par `w` ; derrière, `w` est NÉGATIF et le
+  // point ressort en MIROIR — à des coordonnées parfaitement finies, qui peuvent retomber dans le
+  // cadre. Un Élément passé derrière la caméra était donc déclaré visible, ce qui se voyait dans la
+  // liste latérale : « beaucoup d'Éléments qui devraient être hors champ et qui ne le sont pas ».
+  //
+  // ON AJOUTE UN CHAMP, ON N'EN CHANGE AUCUN. Rendre `null` ici aurait été plus franc, mais cette
+  // fonction sert aussi à dessiner les boîtes de sélection (draw.js, events.js) : leurs appelants
+  // lisent `.x`/`.y` sans se demander si le point existe. Un champ SUPPLÉMENTAIRE les laisse
+  // exactement dans l'état où ils étaient, et donne à qui en a besoin l'information qui manquait.
+  const camPt = new THREE.Vector3(posX, posY, posZ).applyMatrix4(personaCamera3D.matrixWorldInverse);
+  const devant = camPt.z < -personaCamera3D.near;
   const v = new THREE.Vector3(posX, posY, posZ).project(personaCamera3D);
   const panelCx = panel.x + panel.w / 2, panelCy = panel.y + panel.h / 2;
   return {
+    devant,
     x: panelCx + v.x * (page.w / 2),
     // NDC.y grows upward, the canvas downward: sign inverted (same convention as everywhere else
     // in this file for the world/screen conversion, cf. ensureElementWorldPos3D).
@@ -768,6 +780,14 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
   const pLeft = projectPt(wx - basis.right.x * realW / 2, wy - basis.right.y * realW / 2, z - basis.right.z * realW / 2);
   const pUp = projectPt(wx + basis.up.x * realH / 2, wy + basis.up.y * realH / 2, z + basis.up.z * realH / 2);
   const pDown = projectPt(wx - basis.up.x * realH / 2, wy - basis.up.y * realH / 2, z - basis.up.z * realH / 2);
+  // ⚠️ GARDE MANQUANTE, ET C'EST UN DÉFAUT PRÉEXISTANT. `projectPt` rend `null` dès qu'un point
+  // passe DERRIÈRE le plan proche de la caméra — les branches Mur et Tracé ci-dessus le testent,
+  // celle-ci l'avait oublié. Lire `pRight.x` sur un `null` lève alors une TypeError, et la seule
+  // raison pour laquelle personne ne l'avait vu est que cette fonction n'était appelée QUE pour
+  // dessiner la boîte de sélection d'un Élément déjà à l'écran, donc jamais derrière la caméra.
+  // La liste latérale, elle, l'appelle pour TOUS les Éléments d'une Case — y compris ceux passés
+  // derrière : elle a fait remonter le défaut, elle ne l'a pas créé.
+  if (!pRight || !pLeft || !pUp || !pDown) return null;
   return {
     halfW: Math.hypot(pRight.x - pLeft.x, pRight.y - pLeft.y) / 2,
     halfH: Math.hypot(pUp.x - pDown.x, pUp.y - pDown.y) / 2,

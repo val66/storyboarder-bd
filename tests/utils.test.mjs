@@ -2087,6 +2087,24 @@ describe('estHorsChamp3D', () => {
     assert.equal(estHorsChamp3D(pt(200, 41), { halfW: 10, halfH: 10 }, CADRE), false);
   });
 
+  test('RÉGRESSION : DERRIÈRE LA CAMÉRA, même au milieu du cadre, c\'est hors champ', () => {
+    // Signalé à l'usage : beaucoup d'Éléments restaient dans la liste principale alors qu'ils
+    // avaient quitté l'image. La projection divise par `w` ; derrière la caméra, `w` est négatif et
+    // le point ressort EN MIROIR — à des coordonnées finies, qui retombent parfois pile au centre.
+    // Sans ce test, la correction se résumerait à une ligne que rien n'exige.
+    assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: false }, null, CADRE), true);
+    assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: false },
+      { halfW: 500, halfH: 500 }, CADRE), true, 'une grande boîte ne le rattrape pas');
+  });
+
+  test('`devant: true` ou absent laisse la décision aux rectangles', () => {
+    // Un appelant qui ne renseigne pas ce champ garde exactement le comportement précédent — sans
+    // quoi ajouter l'information aurait changé le sens de tous les appels existants.
+    assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: true }, null, CADRE), false);
+    assert.equal(estHorsChamp3D({ x: 200, y: 125 }, null, CADRE), false);
+    assert.equal(estHorsChamp3D({ x: 20, y: 125, devant: true }, null, CADRE), true);
+  });
+
   test('un centre non projetable est hors champ', () => {
     // `null` veut dire « derrière la caméra, ou hors du tronc de vue » : rien à montrer.
     assert.equal(estHorsChamp3D(null, { halfW: 999, halfH: 999 }, CADRE), true);

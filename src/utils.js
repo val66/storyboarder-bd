@@ -891,6 +891,14 @@ export function estHorsChamp3D(centre, demi, cadre){
   // trop, parce que l'utilisateur ne peut pas deviner ce qui manque.
   if (![cx, cy, cw, ch].every(Number.isFinite) || cw <= 0 || ch <= 0) return false;
   if (!centre) return true;
+  // ⚠️ DERRIÈRE LA CAMÉRA = HORS CHAMP, quelles que soient les coordonnées rendues. La projection
+  // divise par `w` ; derrière, `w` est négatif et le point ressort EN MIROIR, à des coordonnées
+  // parfaitement finies qui peuvent retomber dans le cadre. Sans ce test, un Élément passé derrière
+  // la caméra était déclaré visible — c'est la sous-détection signalée à l'usage.
+  //
+  // `undefined` ne déclenche rien : un appelant qui ne renseigne pas ce champ garde le comportement
+  // précédent, et ce sont les tests qui construisent des centres sans lui.
+  if (centre.devant === false) return true;
   const px = Number(centre.x), py = Number(centre.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return true;
   const hw = Math.abs(Number(demi && demi.halfW)) || 0;

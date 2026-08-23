@@ -11,6 +11,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   panelDepthToDistance3D,
@@ -1696,3 +1697,63 @@ describe('estPremierElement3DdeLaCase — qui a le droit de recadrer', () => {
     assert.equal(estPremierElement3DdeLaCase(a, panel, null), false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Projeter un Élément qui n'est plus devant la caméra
+//
+// DEUX DÉFAUTS, DONT UN PRÉEXISTANT, tous deux révélés par la liste latérale « hors champ » —
+// révélés, pas créés : elle est la première à projeter TOUS les Éléments d'une Case, y compris
+// ceux passés derrière la caméra. Les boîtes de sélection, elles, ne se dessinent que pour un
+// Élément déjà à l'écran.
+//
+// Ces deux gardes vivent dans du code qui demande WebGL, injoignable sous Node. La lecture de
+// source est le seul moyen honnête de dire qu'elles sont là — et il vaut mieux que rien, comme
+// l'a montré la mutation qui retirait la première sans faire échouer un seul test.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('scene3d — projections derrière la caméra', () => {
+  const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : les quatre points d\'étendue sont gardés avant d\'être lus', () => {
+    // `projectPt` rend `null` dès qu'un point passe derrière le plan proche. Les branches Mur et
+    // Tracé le testaient ; la branche générale l'avait oublié, et lisait `pRight.x` sur un `null`.
+    // La TypeError interrompait alors la construction de la liste : des Cases entières se
+    // retrouvaient sans aucun Élément.
+    const i = SCENE.indexOf('const pRight = projectPt(');
+    assert.ok(i > 0, 'la branche générale de getElementProjectedHalfExtents3D est introuvable');
+    const suite = SCENE.slice(i, i + 1400);
+    const garde = suite.indexOf('!pRight || !pLeft || !pUp || !pDown');
+    const lecture = suite.indexOf('pRight.x - pLeft.x');
+    assert.ok(garde > 0, 'la garde des quatre points a disparu');
+    assert.ok(garde < lecture, 'la garde doit précéder la lecture des points');
+  });
+
+  test('RÉGRESSION : le centre projeté dit s\'il est DEVANT la caméra', () => {
+    // `project()` divise par `w` ; derrière, `w` est négatif et le point ressort en miroir, à des
+    // coordonnées finies qui peuvent retomber dans le cadre. Sans cette information, un Élément
+    // passé derrière était déclaré visible — la sous-détection signalée à l'usage.
+    const i = SCENE.indexOf('export function projectElementCenterToCanvas3D');
+    const bloc = SCENE.slice(i, SCENE.indexOf('\nexport function ', i + 10));
+    assert.match(bloc, /matrixWorldInverse/, 'la position en repère CAMÉRA n\'est plus calculée');
+    assert.match(bloc, /devant\s*=\s*camPt\.z\s*<\s*-\s*personaCamera3D\.near/,
+      'le test « devant la caméra » a changé de forme — vérifier qu\'il dit toujours la même chose');
+    assert.match(bloc, /return \{\s*\n?\s*devant,/, 'le champ `devant` n\'est plus rendu');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — les projections derrière la caméra.
+ *
+ *   Z1 le test « derrière la caméra » retiré d'estHorsChamp3D       ROUGE
+ *   Z2 « devant » absent vaut derrière (change tous les appels)     ROUGE
+ *   Z3 la garde des quatre points retirée                           ÉCHAPPÉE → puis ROUGE
+ *   Z4 « devant » toujours vrai                                     ROUGE
+ *   Z5 le champ `devant` n'est plus rendu                           ROUGE
+ *
+ * Z2 MÉRITE D'ÊTRE LU. Écrire `if (!centre.devant)` au lieu de `if (centre.devant === false)` a
+ * l'air équivalent, et ne l'est pas : un appelant qui ne renseigne pas le champ verrait alors tous
+ * ses Éléments déclarés hors champ. Cinq tests tombent — c'est la mesure de ce que coûte la
+ * nuance entre « absent » et « faux » quand on ajoute un champ à une valeur déjà partagée.
+ *
+ * Z3 était l'ancien : la garde ne se traverse pas sous Node, faute de caméra. La mutation l'a
+ * montré en ne faisant échouer AUCUN test — d'où la lecture de source, qui vaut mieux que rien.
+ */
