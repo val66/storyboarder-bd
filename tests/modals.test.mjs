@@ -494,3 +494,50 @@ describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau
     assert.ok(voile().classList.contains('hidden'), 'la modale fermée doit le rester');
   });
 });
+
+// ── L'ouverture des sections d'une fiche ──────────────────────────────────────────────────────
+describe('resetModalSections — par clé, jamais par titre affiché', () => {
+  // DÉFAUT VIVANT AVANT CORRECTION : la comparaison portait sur le TEXTE des titres, et ce texte est
+  // traduit. En anglais, « Main characteristics » ne figurait dans aucune liste écrite en français :
+  // plus une seule section ne correspondait, et toutes s'ouvraient repliées. Invisible en français,
+  // systématique en anglais — exactement le genre de défaut que personne ne signale.
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+  const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : la décision ne lit plus aucun textContent', () => {
+    const i = src.indexOf('export function resetModalSections');
+    const corps = src.slice(i, src.indexOf('\n}', i));
+    assert.match(corps, /sec\.dataset\.section/, 'la clé stable doit servir de critère');
+    assert.ok(!/textContent/.test(corps), 'un texte traduit ne peut pas servir de clé');
+  });
+
+  test('chaque section des deux fiches porte une clé', () => {
+    ['descModal', 'objectModal'].forEach(id => {
+      const deb = html.indexOf(`id="${id}"`);
+      const fin = html.indexOf('<div class="modal-overlay', deb + 10);
+      const seg = html.slice(deb, fin > 0 ? fin : undefined);
+      const sections = (seg.match(/class="modal-section"/g) || []).length;
+      const avecCle = (seg.match(/class="modal-section" data-section="/g) || []).length;
+      assert.equal(avecCle, sections, `${id} : ${sections - avecCle} section(s) sans data-section`);
+    });
+  });
+
+  test('LE POINT QUI COMPTE : les clés demandées existent dans le HTML', () => {
+    // Une clé mal orthographiée serait SILENCIEUSE : la section resterait simplement repliée, ce
+    // qui est précisément le symptôme qu'on vient de corriger.
+    const clesHtml = new Set([...html.matchAll(/data-section="([^"]+)"/g)].map(m => m[1]));
+    const demandees = [...src.matchAll(/resetModalSections\([^,]+, \[([^\]]+)\]/g)]
+      .flatMap(m => m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '')));
+    assert.ok(demandees.length >= 4, `seulement ${demandees.length} clé(s) relevée(s)`);
+    demandees.forEach(c => assert.ok(clesHtml.has(c), `clé demandée mais absente du HTML : « ${c} »`));
+  });
+
+  test('RÉGRESSION : les titres traduits s\'apparient aussi par clé', () => {
+    // Ils s'appariaient par RANG. Le même mécanisme avait déjà décalé tout le Manuel d'un cran.
+    const i = i18n.indexOf('export function applyI18nModalSectionTitles');
+    const corps = i18n.slice(i, i18n.indexOf('\n}', i));
+    assert.match(corps, /sec\.dataset\.section/);
+    assert.ok(!/forEach\(\(el, i\)/.test(corps), 'plus d\'appariement par rang');
+  });
+});

@@ -156,11 +156,15 @@ export function toggleModalSection(headerEl){
   headerEl.parentElement.classList.toggle('collapsed');
 }
 
-export function resetModalSections(modalBoxEl, openTitles){
+export function resetModalSections(modalBoxEl, clesOuvertes){
+  // ⚠️ PAR CLÉ (`data-section`), PLUS PAR TITRE. La comparaison portait sur le texte affiché — et ce
+  // texte est TRADUIT (cf. applyI18nModalSectionTitles). En anglais, « Main characteristics » ne
+  // figurait dans aucune liste écrite en français : plus une seule section ne correspondait, et
+  // TOUTES s'ouvraient repliées. Muet en français, systématique en anglais.
+  //
+  // Même famille que l'appariement du Manuel par rang : une clé stable plutôt qu'un texte qui bouge.
   modalBoxEl.querySelectorAll('.modal-section').forEach(sec => {
-    const titleEl = sec.querySelector('.modal-section-title');
-    const title = (titleEl && titleEl.childNodes[0] && titleEl.childNodes[0].textContent || '').trim();
-    sec.classList.toggle('collapsed', !openTitles.includes(title));
+    sec.classList.toggle('collapsed', !clesOuvertes.includes(sec.dataset.section));
   });
 }
 
@@ -398,7 +402,7 @@ export function openPersonaModal(obj, isNew){
   personaPosYInput.value = Math.round((obj.wyFloor !== undefined ? obj.wyFloor : wp.y) * 100) / 100;
   personaPosYInput.disabled = personaGroundMagnetCheckbox.checked;
   updatePersonaSizeDisplay(obj);
-  resetModalSections(descModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Modèle 3D']);
+  resetModalSections(descModal.querySelector('.modal-box'), ['principal', 'modele']);
   // Starts with no joint handle selected/highlighted, and every "Fine-tuning" sub-section
   // collapsed (cf. the two-way preview <-> sub-section sync), rather than keeping the state
   // left by a previous opening (potentially on a different Persona).
@@ -998,7 +1002,7 @@ export function openObjectModal(obj, isNew){
   buildSkeletonJointSlidersUI(obj);
   buildSkeletonPoseFieldUI(obj);
   buildStrayMeshFieldUI(obj);
-  resetModalSections(objectModal.querySelector('.modal-box'), ['Caractéristiques principales', 'Aperçu 3D']);
+  resetModalSections(objectModal.querySelector('.modal-box'), ['principal', 'apercu']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
   refreshObjectPreview();

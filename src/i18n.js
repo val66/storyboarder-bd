@@ -441,14 +441,22 @@ export function applyI18n(lang){
 // order of appearance in each modal rather than by a dedicated id (they don't have one,
 // except for #objectPosLabel which is updated dynamically elsewhere anyway).
 export function applyI18nModalSectionTitles(lang){
-  const descTitles = lang === 'en'
-    ? ['Main characteristics', 'Position', 'Orientation', '3D model']
-    : ['Caractéristiques principales', 'Position', 'Orientation', 'Modèle 3D'];
-  document.querySelectorAll('#descModal .modal-section-title').forEach((el, i) => { if (descTitles[i]) el.textContent = descTitles[i]; });
-  const objectTitles = lang === 'en'
-    ? ['Main characteristics', 'Position', 'Orientation', '3D preview']
-    : ['Caractéristiques principales', 'Position', 'Orientation', 'Aperçu 3D'];
-  document.querySelectorAll('#objectModal .modal-section-title').forEach((el, i) => { if (objectTitles[i]) el.textContent = objectTitles[i]; });
+  // Titres appariés par CLÉ (`data-section`), plus par rang. Le rang avait déjà décalé tout le
+  // Manuel d'un cran le jour où une section y a été ajoutée d'un seul côté ; ici, la même clé sert
+  // en plus à `resetModalSections`, qui décide quelles sections s'ouvrent — deux mécanismes qui ne
+  // peuvent plus se contredire.
+  const titres = {
+    principal:   ['Main characteristics', 'Caractéristiques principales'],
+    position:    ['Position', 'Position'],
+    orientation: ['Orientation', 'Orientation'],
+    modele:      ['3D model', 'Modèle 3D'],
+    apercu:      ['3D preview', 'Aperçu 3D'],
+  };
+  document.querySelectorAll('#descModal .modal-section, #objectModal .modal-section').forEach(sec => {
+    const paire = titres[sec.dataset.section];
+    const el = paire && sec.querySelector('.modal-section-title');
+    if (el) el.textContent = lang === 'en' ? paire[0] : paire[1];
+  });
 }
 
 // Le manuel est apparié par CLÉ (data-help sur le <details>), et ses paragraphes sont RENDUS
