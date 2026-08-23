@@ -191,7 +191,10 @@ describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
         .map(entree => entree[0])
         .filter(sel => typeof sel === 'string')
         .filter(sel => {
-          const m = /^#([\w-]+)/.exec(sel);
+          // `\w` exclut les lettres accentuées : `#tracéModalSave` était tronqué en `#trac`, donc
+          // déclaré absent alors qu'il existe. Le test se trompait, pas l'entrée — un identifiant
+          // accentué est licite en HTML comme en CSS.
+          const m = /^#([^\s.>:[]+)/.exec(sel);
           return m && !idsPresents.has(m[1]);
         });
       assert.deepEqual(orphelins, [],
@@ -599,5 +602,62 @@ describe('Raccourcis du manuel — aucune touche promise sans écouteur', () => 
     };
     [...atomes].forEach(a => assert.ok(litLaTouche(a),
       `le manuel promet « ${a} », qu'aucun gestionnaire ne lit`));
+  });
+});
+
+// ── Le trou qu'on vient de boucher ────────────────────────────────────────────────────────────
+describe('Aucun bouton ne reste en français en mode anglais', () => {
+  // RELEVÉ D'UN COUP : 49 boutons sur 123 n'avaient aucune entrée i18n. Le symptôme est muet — en
+  // français, tout paraît normal ; c'est l'utilisateur anglophone qui découvre « Supprimer du
+  // disque » dans son menu. Rien ne pouvait le signaler, puisqu'une traduction absente n'est pas
+  // une erreur, juste un texte qui ne change pas.
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const i18nSrc = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  // Boutons dont le libellé est posé PAR LE CODE, et qui n'ont donc rien à faire dans les tables.
+  const POSES_PAR_LE_CODE = new Set([
+    // Son libellé nomme la cible (« au Personnage » / « au Modèle »), cf. syncPersonaEditorDom.
+    'personaEditorApplyBtn',
+  ]);
+
+  const boutons = [...html.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)]
+    .map(m => ({ attrs: m[1], inner: m[2] }))
+    .filter(b => /id="/.test(b.attrs))
+    .map(b => ({ id: /id="([^"]+)"/.exec(b.attrs)[1], texte: b.inner.replace(/<[^>]+>/g, '').trim() }))
+    // Un bouton sans texte (croix de fermeture, icône seule) se traduit par son `title`, couvert
+    // ailleurs par des sélecteurs de classe.
+    .filter(b => b.texte && b.texte !== '&times;' && b.texte !== '×');
+
+  test('le relevé a bien trouvé les boutons (sinon le test ne vérifie rien)', () => {
+    assert.ok(boutons.length > 100, `${boutons.length} boutons trouvés — lecture suspecte`);
+  });
+
+  test('LE TEST QUI COMPTE : chaque bouton visible a une entrée i18n', () => {
+    const orphelins = boutons
+      .filter(b => !POSES_PAR_LE_CODE.has(b.id))
+      .filter(b => !(i18nSrc.includes(`#${b.id}'`) || i18nSrc.includes(`#${b.id} `)
+                  || i18nSrc.includes(`#${b.id}>`)))
+      .map(b => `${b.id} (« ${b.texte.slice(0, 30)} »)`);
+    assert.deepEqual(orphelins, [], `boutons sans traduction :\n  ${orphelins.join('\n  ')}`);
+  });
+
+  test('RÉGRESSION : un même objet porte le MÊME nom anglais partout', () => {
+    // Les animaux et le mobilier sont nommés deux fois : dans le menu contextuel (#ctxAdd…) et dans
+    // le sélecteur de Type de la fiche. Deux traductions divergentes se contrediraient sous les
+    // yeux de l'utilisateur, dans deux écrans qu'il ouvre à la suite.
+    const paires = [
+      ['#ctxAddOiseau', 'oiseau'], ['#ctxAddLezard', 'lezard'], ['#ctxAddLoup', 'loup'],
+      ['#ctxAddGriffon', 'griffon'], ['#ctxAddSinge', 'singe'], ['#ctxAddPiscine', 'piscine'],
+      ['#ctxAddBarbecue', 'barbecue'], ['#ctxAddLampadaire', 'lampadaire'],
+      ['#ctxAddTombe', 'tombe'], ['#ctxAddCaveau', 'caveau'], ['#ctxAddAutel', 'autel'],
+    ];
+    paires.forEach(([sel, valeur]) => {
+      const ctx = new RegExp(`\\['${sel}', '([^']+)'`).exec(i18nSrc);
+      const opt = new RegExp(`option\\[value="${valeur}"\\]', "([^"]+)"`).exec(i18nSrc);
+      assert.ok(ctx, `entrée introuvable : ${sel}`);
+      assert.ok(opt, `entrée introuvable : option ${valeur}`);
+      const nomOption = opt[1].replace(/^[^\w]+\s*/, '');
+      assert.equal(nomOption, ctx[1], `« ${valeur} » : « ${ctx[1]} » dans le menu, « ${nomOption} » dans la fiche`);
+    });
   });
 });
