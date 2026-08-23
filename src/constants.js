@@ -169,6 +169,28 @@ export const OBJECT_TYPE_LABELS = {
   modele: 'Modèle importé',
 };
 
+// Les MÊMES types, en anglais. Deux tables plutôt qu'une table de paires : `OBJECT_TYPE_LABELS` est
+// lu depuis des dizaines d'endroits, et en changer la forme aurait touché tout ce code pour un
+// bénéfice nul. La correspondance entre les deux est épinglée par un test — une clé ajoutée d'un
+// seul côté rendrait `undefined` là où l'utilisateur attend un nom.
+//
+// ⚠️ CES MOTS SONT AUSSI CEUX DU SÉLECTEUR DE TYPE (cf. I18N_TEXT, #objectTypeSelect) et du menu
+// contextuel (#ctxAdd…). Le même objet ne doit pas porter deux noms anglais selon l'écran.
+export const OBJECT_TYPE_LABELS_EN = {
+  voiture: 'Car', velo: 'Bicycle',
+  table: 'Table', chaise: 'Chair', etagere: 'Shelf', armoire: 'Wardrobe',
+  canape: 'Sofa', bureau: 'Desk', lit: 'Bed',
+  fenetre_ouverte: 'Window', porte_ouverte: 'Door',
+  escalier: 'Stairs', baie_vitree: 'Patio door', mur: 'Plain wall', mur_coin: 'Corner wall',
+  buisson: 'Bush', arbre: 'Tree', arbuste: 'Shrub', fleur: 'Flower', pot_fleur: 'Flower pot',
+  oiseau: 'Bird', lezard: 'Lizard', loup: 'Wolf', griffon: 'Griffin', singe: 'Monkey',
+  piscine: 'Swimming pool', barbecue: 'Barbecue',
+  lampadaire: 'Street lamp', panneau_signalisation: 'Road sign',
+  tombe: 'Grave', pierre_tombale: 'Headstone', caveau: 'Vault',
+  banc_eglise: 'Pew', autel: 'Altar',
+  modele: 'Imported model',
+};
+
 // ---------- Wall magnetism ----------
 // "WallOpening" elements (windows, doors, staircase, bay window) automatically snap, as soon
 // as they're created, to the last Wall created: they're placed flush against it and follow it

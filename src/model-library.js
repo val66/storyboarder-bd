@@ -1,3 +1,4 @@
+import { tr } from './state.js';
 /**
  * @file model-library.js
  * La bibliothèque de modèles : ce qui est sur le disque, et ce qui s'en sert.
@@ -50,7 +51,7 @@ export function groupModelsByUsage(fichiers, { tomes = [], scenes = [] } = {}){
   recenser(scenes, (f, sc) => {
     if (!parScene.has(f)) parScene.set(f, []);
     const noms = parScene.get(f);
-    const nom = sc.name || '(sans nom)';
+    const nom = sc.name || tr('(unnamed)', '(sans nom)');
     if (!noms.includes(nom)) noms.push(nom);
   });
   recenser(tomes, (f) => parCase.set(f, (parCase.get(f) || 0) + 1));
@@ -99,7 +100,7 @@ export function messageSuppressionModele(fichier, usages, traduire){
   const conséquence = usages > 0
     ? t(`${usages} Element(s) in this project use it — they will show as placeholder boxes.`,
       `${usages} Élément(s) de ce Projet l'utilisent — ils deviendront des boîtes de remplacement.`)
-    : t('No Element in this project uses it.', 'Aucun Élément de ce Projet ne l\'utilise.');
+    : t('No Element in this project uses it.', tr('No Element of this project uses it.', 'Aucun Élément de ce Projet ne l\'utilise.'));
   return t(
     `Delete "${fichier}" from disk? ${conséquence} Other projects cannot be checked from here, and this cannot be undone.`,
     `Supprimer « ${fichier} » du disque ? ${conséquence} Les autres Projets ne peuvent pas être vérifiés d'ici, et cette suppression est définitive.`,

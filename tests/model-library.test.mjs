@@ -16,7 +16,7 @@
  *     garantir : les autres Projets.
  */
 import './helpers/dom-stub.mjs';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
@@ -116,6 +116,10 @@ describe('countModelUsages — le chiffre annoncé avant une suppression', () =>
 });
 
 describe('messageSuppressionModele — dire les trois choses', () => {
+  // Le message passe par tr() : la langue est fixée ici, sinon ces assertions dépendraient de
+  // `S.appLang`, qui vaut 'en' par défaut dans state.js et n'a rien à voir avec ce qu'on vérifie.
+  beforeEach(() => { S.appLang = 'fr'; });
+
   const msg = (n) => messageSuppressionModele('salon.glb', n, (en, fr) => fr);
 
   test('il nomme le fichier et annonce la conséquence chiffrée', () => {

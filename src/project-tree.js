@@ -444,6 +444,6 @@ export async function renderModelList(){
   groupe(tr('Used by Scenes', 'Utilisés par des Scènes'),
     g.parScenes.map(e => ligne(e.nom, e.scenes)));
   groupe(tr('Used in Panels', 'Utilisés dans des Cases'),
-    g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} Élément(s)`)])));
+    g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} ${tr('Element(s)', 'Élément(s)')}`)])));
   groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
 }

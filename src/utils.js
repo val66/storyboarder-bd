@@ -11,7 +11,8 @@
  * Element helpers: getElementDepth
  */
 
-import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D } from './constants.js';
+import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D,
+  OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
@@ -1135,4 +1136,43 @@ export function pageVoisine3D(nbPages, pi, sens){
   const i = depart + (sens < 0 ? -1 : 1);
   // `+ nbPages` avant le modulo : en JavaScript, (-1 % 5) vaut -1, pas 4.
   return ((i % nbPages) + nbPages) % nbPages;
+}
+
+
+/**
+ * Premier nom libre de la forme « base », « base 2 », « base 3 »… Fonction PURE.
+ *
+ * ⚠️ LE MOT EST UN PARAMÈTRE, PAS UNE CONSTANTE D'ICI. utils.js ne peut pas importer state.js —
+ * c'est state.js qui importe utils.js — donc `tr` lui est inaccessible. L'appelant, lui, sait dans
+ * quelle langue il écrit : il passe « Pièce » ou « Room ». La numérotation, elle, est la même
+ * partout, et c'est tout ce que cette fonction connaît.
+ *
+ * Elle existe parce que ces sept lignes étaient écrites TROIS fois — canvas-tools.js, draw.js et
+ * events.js —, chacune avec son propre littéral « Pièce ». Traduire les trois séparément aurait
+ * fait trois traductions à tenir d'accord pour un seul nom.
+ */
+export function nomNumeroteLibre3D(pris, base){
+  const dejaPris = pris instanceof Set ? pris : new Set(pris || []);
+  if (!dejaPris.has(base)) return base;
+  let n = 2;
+  while (dejaPris.has(`${base} ${n}`)) n++;
+  return `${base} ${n}`;
+}
+
+
+/**
+ * Le nom d'un type d'Objet, dans la langue courante.
+ *
+ * ⚠️ `traduire` EST UN PARAMÈTRE. utils.js ne peut pas importer state.js — c'est state.js qui
+ * importe utils.js —, donc `tr` lui est inaccessible. Même procédé que `groupesPosables`, qui
+ * reçoit déjà son traducteur de la même façon.
+ *
+ * Sans repli silencieux : un type inconnu rend `undefined`, et l'appelant décide quoi afficher. Un
+ * repli sur la clé technique (« pot_fleur ») aurait l'air d'un nom sans en être un.
+ */
+export function libelleTypeObjet3D(objType, traduire){
+  const t = traduire || ((en) => en);
+  const en = OBJECT_TYPE_LABELS_EN[objType];
+  const fr = OBJECT_TYPE_LABELS[objType];
+  return (en || fr) ? t(en || fr, fr || en) : undefined;
 }

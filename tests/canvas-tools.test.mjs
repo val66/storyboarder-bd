@@ -188,6 +188,11 @@ describe('Tracé enregistré — le seuil, et le vocabulaire persisté', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('startBuildMode — le nom de la Pièce ne se répète pas', () => {
+  // Le nom par défaut SUIT LA LANGUE depuis qu'il passe par tr() : « Pièce » ou « Room ». La langue
+  // est donc fixée explicitement ici — `S.appLang` vaut 'en' par défaut dans state.js, et s'appuyer
+  // dessus sans le dire rendrait ces tests dépendants d'un réglage qui n'a rien à voir avec eux.
+  beforeEach(() => { S.appLang = 'fr'; });
+
   test('la première Pièce d\'une Case s\'appelle « Pièce »', () => {
     startBuildMode(CASE, { objects: objets() });
     assert.equal(S.buildTool.pieceLabel, 'Pièce');
@@ -210,6 +215,13 @@ describe('startBuildMode — le nom de la Pièce ne se répète pas', () => {
     startBuildMode(CASE, page);
     assert.equal(S.buildTool.pieceLabel, 'Pièce 3',
       'le premier numéro libre n\'a pas été trouvé (collision, ou trou sauté)');
+  });
+
+  test('en anglais, le même nom part de « Room »', () => {
+    // La numérotation ne dépend pas de la langue ; seul le mot change.
+    S.appLang = 'en';
+    startBuildMode(CASE, { objects: objets() });
+    assert.equal(S.buildTool.pieceLabel, 'Room');
   });
 
   test('chaque activation crée un identifiant de Pièce neuf', () => {

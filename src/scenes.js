@@ -56,10 +56,14 @@ export function createScene(){
 function nextDefaultSceneName(){
   let maxN = 0;
   S.scenes.forEach(s => {
-    const m = /^Scène (\d+)$/.exec(s.name || '');
+    // ⚠️ LES DEUX LANGUES, dans le MÊME motif. Le nom donné dépend de la langue (« Scène 3 » ou
+    // « Scene 3 »), mais la lecture, elle, ne doit pas : un Projet commencé en français puis
+    // continué en anglais ne reconnaissait plus aucun numéro, repartait de 1, et créait autant de
+    // « Scene 1 » qu'on demandait de Scènes. Un test l'a montré à la première tentative.
+    const m = /^(?:Scène|Scene) (\d+)$/.exec(s.name || '');
     if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
   });
-  return `Scène ${maxN + 1}`;
+  return `${tr('Scene', 'Scène')} ${maxN + 1}`;
 }
 
 // Switches the central canvas to the dedicated editor of the given Scene (per user request: "we would

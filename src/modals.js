@@ -25,7 +25,7 @@ import { isImportedModel } from './model-store.js';
 import { modelState, getLoadedModel } from './model-cache.js';
 import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
-  OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
+  WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
   POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
@@ -36,7 +36,7 @@ import {
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D,
 
-  optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D,
+  optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
@@ -350,7 +350,7 @@ export function openPersonaModal(obj, isNew){
   S.modalTarget = obj;
   S.modalDirty = false;
   S.modalIsNew = !!isNew;
-  descModalTitle.textContent = 'Personnage';
+  descModalTitle.textContent = tr('Character', 'Personnage');
   personaNameInput.value = obj.name || '';
   personaGenreSelect.value = obj.genre || 'homme';
   personaEmotionSelect.value = obj.emotion || 'neutre';
@@ -843,7 +843,7 @@ export function openObjectModal(obj, isNew){
   S.modalIsNew = !!isNew;
   // Wall belonging to a Room: position and orientation are managed by the Room only.
   const isRoomWall = WALL_TYPES.includes(obj.objType) && !!obj.pieceId;
-  objectModalTitle.textContent = OBJECT_TYPE_LABELS[obj.objType] || 'Objet';
+  objectModalTitle.textContent = libelleTypeObjet3D(obj.objType, tr) || tr('Object', 'Objet');
   objectNameInput.value = obj.name || '';
   objectTypeSelect.value = obj.objType || 'voiture';
   // Le sélecteur de Type est masqué pour un modèle importé : on ne transforme pas une chaise en
@@ -1265,24 +1265,25 @@ export function populateMagnetWallOptions(obj){
   objectMagnetWallField.style.display = '';
   // Precompute the Building components once for this panel
   const components = panel ? getRoomConnectedComponents(panel, page) : [];
-  const tracéMurLabel = { muret:'Muret', cloture:'Clôture', haie:'Haie végétale', barriere:'Barrière de route' };
+  const tracéMurLabel = { muret: tr('Low wall', 'Muret'), cloture: tr('Fence', 'Clôture'),
+    haie: tr('Hedge', 'Haie végétale'), barriere: tr('Road barrier', 'Barrière de route') };
   walls.forEach(w => {
     const opt = document.createElement('option');
     opt.value = w.id;
     // Path wall
     if (w.type === 'tracé') {
-      opt.textContent = w.name || ((TRACÉ_EMOJI[w.tracéType] || '') + ' ' + (tracéMurLabel[w.tracéType] || 'Tracé'));
+      opt.textContent = w.name || ((TRACÉ_EMOJI[w.tracéType] || '') + ' ' + (tracéMurLabel[w.tracéType] || tr('Path', 'Tracé')));
       objectMagnetWallSelect.appendChild(opt);
       return;
     }
-    const wallName = w.name || OBJECT_TYPE_LABELS[w.objType] || 'Mur';
+    const wallName = w.name || libelleTypeObjet3D(w.objType, tr) || tr('Wall', 'Mur');
     if (w.pieceId) {
       const roomName = w.pieceLabel || w.pieceId;
       // Look for the Building containing this Room (component of ≥ 2 Rooms)
       const comp = components.find(c => c.length >= 2 && c.includes(w.pieceId));
       if (comp) {
         const buildingKey = comp.slice().sort().join(',');
-        const buildingName = panel.batimentNames?.[buildingKey] || 'Bâtiment';
+        const buildingName = panel.batimentNames?.[buildingKey] || tr('Building', 'Bâtiment');
         opt.textContent = `${buildingName} — ${roomName} — ${wallName}`;
       } else {
         opt.textContent = `${roomName} — ${wallName}`;
@@ -1346,7 +1347,7 @@ export function openRoomModal(pieceId, panel, page, inBuilding = false) {
   if (!members.length) return;
   const first = members[0];
   // Title
-  roomModalTitle.textContent = '🧱 ' + (first.pieceLabel || 'Pièce');
+  roomModalTitle.textContent = '🧱 ' + (first.pieceLabel || tr('Room', 'Pièce'));
   // Name
   roomNameInput.value = first.pieceLabel || '';
   // Real size (editable inputs)
@@ -1414,7 +1415,7 @@ export function openBuildingModal(buildingKey, roomIds, panel, page) {
   S.buildingModalPanelRef  = panel;
   S.buildingModalPageRef   = page;
   document.getElementById('buildingModalTitle').textContent =
-    '🏠 ' + (panel.batimentNames?.[buildingKey] || 'Bâtiment');
+    '🏠 ' + (panel.batimentNames?.[buildingKey] || tr('Building', 'Bâtiment'));
   buildingNameInput.value = panel.batimentNames?.[buildingKey] || '';
   const bb = getBuildingBoundingBoxXZ(roomIds, page);
   const buildingWidthInput = document.getElementById('buildingWidthInput');
@@ -1465,10 +1466,10 @@ export function openTracéModal(obj){
   S.tracéModalTarget = obj;
   const _tracéTitles = {
     route: '🛣️ Route', chemin: '🟤 Chemin de terre',
-    muret: '🧱 Muret', cloture: '⛓️ Clôture',
-    haie: '🌳 Haie végétale', barriere: '🚧 Barrière de route',
+    muret: '🧱 ' + tr('Low wall', 'Muret'), cloture: '⛓️ ' + tr('Fence', 'Clôture'),
+    haie: '🌳 ' + tr('Hedge', 'Haie végétale'), barriere: '🚧 ' + tr('Road barrier', 'Barrière de route'),
   };
-  document.getElementById('tracéModalTitle').textContent = _tracéTitles[obj.tracéType] || '📍 Tracé';
+  document.getElementById('tracéModalTitle').textContent = _tracéTitles[obj.tracéType] || ('📍 ' + tr('Path', 'Tracé'));
   document.getElementById('tracéNameInput').value  = obj.name  || '';
   const _def = TRACÉ_DEFAULTS[obj.tracéType] || {};
   document.getElementById('tracéColorInput').value = obj.color || _def.color || '#888888';
@@ -1783,7 +1784,7 @@ roomModalSave.onclick = () => {
   _snapshot();
   const members = page.objects.filter(o => o.pieceId === pieceId);
   // 1. Rename the Room
-  const newLabel = roomNameInput.value.trim() || (members[0]?.pieceLabel || 'Pièce');
+  const newLabel = roomNameInput.value.trim() || (members[0]?.pieceLabel || tr('Room', 'Pièce'));
   members.forEach(m => { m.pieceLabel = newLabel; });
   // 2. Ceiling visibility
   const ceilingObj = page.objects.find(o =>
@@ -1958,7 +1959,7 @@ buildingModalSave.onclick = () => {
   const buildingPosYInput         = document.getElementById('buildingPosYInput');
   // 1. Rename
   if (!panel.batimentNames) panel.batimentNames = {};
-  panel.batimentNames[buildingKey] = buildingNameInput.value.trim() || 'Bâtiment';
+  panel.batimentNames[buildingKey] = buildingNameInput.value.trim() || tr('Building', 'Bâtiment');
   // 2. Ceiling visibility — apply to each Room of the Building
   const ceilingVisible = document.getElementById('buildingCeilingVisibleCheckbox').checked;
   roomIds.forEach(pid => {

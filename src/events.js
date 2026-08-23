@@ -50,7 +50,7 @@ import {
 import {
   EMOTIONS, HAND_STATES, POSITIONS, FIXED_SHAPE, FIXED_COLOR, PANEL_CAM_REF_DIST_3D,
   PANEL_CAM_DEFAULT_DIST_3D, BUILD_WALL_DEFAULT_HEIGHT, BUILD_SNAP_ANGLE_DEG, BUILD_CLOSE_DIST, MAX_UNDO,
-  OBJECT_TYPE_LABELS, WALL_OPENING_MAGNET_TYPES, WALL_TYPES, TRAVERSANT_TYPES, WALL_OPENING_MARGIN_FRAC,
+  WALL_OPENING_MAGNET_TYPES, WALL_TYPES, TRAVERSANT_TYPES, WALL_OPENING_MARGIN_FRAC,
   OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M, OBJECT_REAL_HEIGHT_M, ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
   BUBBLE_TAIL_ANGLE_DEFAULT, BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
   POSE_3D, GROUND_Y_DEFAULT_3D, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES, WALL_PX_PER_UNIT_3D,
@@ -67,7 +67,7 @@ import {
 
   hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
 
-  pageVoisine3D,
+  pageVoisine3D, nomNumeroteLibre3D, libelleTypeObjet3D,
 } from './utils.js';
 import {
   S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr, isLockedScenePanel,
@@ -1138,7 +1138,7 @@ function addObjectToPanel(panel, objType){
   // this addition, used as a safety net in findOwningPanel.
   const obj = {
     id: newId(), type: 'objet3d', objType, x, y, w, h, baseW: w, baseH: h, z: 0,
-    name: uniqueDefaultName(panel, page, OBJECT_TYPE_LABELS[objType] || 'Objet'),
+    name: uniqueDefaultName(panel, page, libelleTypeObjet3D(objType, tr) || tr('Object', 'Objet')),
     rotX: 0, rotY: 0, rotZ: 0, color: FIXED_COLOR, homePanelId: panel.id,
   };
   // realHeightFloor: real size in meters, source of truth for the 3D renderer (Phase 3).
@@ -1219,12 +1219,7 @@ function addRoomToPanel(panel){
   const existingRoomLabels = new Set(
     page.objects.filter(o => o.type === 'objet3d' && o.pieceId && findOwningPanel(o, page) === panel).map(o => o.pieceLabel)
   );
-  let pieceLabel = 'Pièce';
-  if (existingRoomLabels.has(pieceLabel)) {
-    let n = 2;
-    while (existingRoomLabels.has('Pièce ' + n)) n++;
-    pieceLabel = 'Pièce ' + n;
-  }
+  const pieceLabel = nomNumeroteLibre3D(existingRoomLabels, tr('Room', 'Pièce'));
   // Floor/Ceiling: a "flat" Wall (rotX=90°) — its length (local X axis, unaffected by the rotation)
   // covers the room's width, its height (local Y axis, which flips onto the world Z axis under the
   // rotation) covers its depth.
@@ -1232,7 +1227,7 @@ function addRoomToPanel(panel){
   addRoomWallElement(panel, page, 'Plafond', 0, halfH, 0, roomW, roomD, Math.PI / 2, 0, pieceId, pieceLabel);
   // Back/front Walls: no rotation needed (default orientation, facing the camera), just offset in
   // depth on either side of the room's center.
-  addRoomWallElement(panel, page, 'Mur arrière', 0, 0, -halfD, roomW, roomH, 0, 0, pieceId, pieceLabel);
+  addRoomWallElement(panel, page, tr('Back wall', 'Mur arrière'), 0, 0, -halfD, roomW, roomH, 0, 0, pieceId, pieceLabel);
   addRoomWallElement(panel, page, 'Mur avant', 0, 0, halfD, roomW, roomH, 0, 0, pieceId, pieceLabel);
   // Left/right Walls: rotY=90° — their length (local X axis) flips onto the world Z axis (room
   // depth), their height (local Y axis, vertical) stays unchanged.
@@ -2181,7 +2176,7 @@ canvas.addEventListener('mousedown', (e) => {
         // 1st click: starting point
         S.measureTool.start = { x: worldPt.x, z: worldPt.z };
         const st = document.getElementById('sideMesureStatus');
-        if (st) st.textContent = 'Cliquez le 2e point.';
+        if (st) st.textContent = tr('Click the 2nd point.', 'Cliquez le 2e point.');
       } else if (!S.measureTool.end) {
         // 2nd click: end point — locks in the measurement
         S.measureTool.end  = { x: worldPt.x, z: worldPt.z };
@@ -2191,7 +2186,7 @@ canvas.addEventListener('mousedown', (e) => {
                     : dist < 0.1  ? `${(dist * 100).toFixed(1)} cm`
                                    : `${dist.toFixed(2)} m`;
         const st = document.getElementById('sideMesureStatus');
-        if (st) st.textContent = 'Distance mesurée :';
+        if (st) st.textContent = tr('Measured distance:', 'Distance mesurée :');
         const res = document.getElementById('sideMesureResult');
         if (res) { res.textContent = label; res.style.display = ''; }
       } else {
@@ -2200,7 +2195,7 @@ canvas.addEventListener('mousedown', (e) => {
         S.measureTool.end   = null;
         S.measureTool.live  = null;
         const st  = document.getElementById('sideMesureStatus');
-        if (st) st.textContent = 'Cliquez le 2e point.';
+        if (st) st.textContent = tr('Click the 2nd point.', 'Cliquez le 2e point.');
         const res = document.getElementById('sideMesureResult');
         if (res) res.style.display = 'none';
       }
@@ -3725,7 +3720,7 @@ canvas.addEventListener('contextmenu', (e) => {
   }
   // The label reflects the CURRENT state of the targeted Panel (cf. ctxToggleCamera): a checkmark
   // when Camera mode (and thus the X/Y/Z 3D gizmo, cf. drawPanelAxisGizmo) is already active on it.
-  ctxToggleCamera.textContent = hit.cameraMode ? '✅ Caméra' : '🎥 Caméra';
+  ctxToggleCamera.textContent = (hit.cameraMode ? '✅ ' : '🎥 ') + tr('Camera', 'Caméra');
   // The Camera option only makes sense if there's at least one Element to frame in the Panel (cf.
   // elementsInPanel) — per user request ("I don't want Camera to appear if there isn't at least
   // one Element in the Panel").
@@ -3792,7 +3787,7 @@ function renderLoadSceneSubmenu(){
     const hint = document.createElement('div');
     hint.className = 'empty-hint';
     hint.style.padding = '6px 10px';
-    hint.textContent = 'Aucune Scène créée.';
+    hint.textContent = tr('No Scene created yet.', 'Aucune Scène créée.');
     loadSceneSubmenu.appendChild(hint);
     return;
   }
@@ -4995,7 +4990,7 @@ objectPreview3D.addEventListener('mousemove', (e) => {
   objectPreview3D.style.cursor = def ? 'pointer' : 'default';
 });
 objectTypeSelect.addEventListener('change', () => {
-  objectModalTitle.textContent = OBJECT_TYPE_LABELS[objectTypeSelect.value] || 'Objet';
+  objectModalTitle.textContent = libelleTypeObjet3D(objectTypeSelect.value, tr) || tr('Object', 'Objet');
   objectDoorField.style.display = (objectTypeSelect.value === 'porte_ouverte') ? '' : 'none';
   objectWindowField.style.display = (objectTypeSelect.value === 'fenetre_ouverte') ? '' : 'none';
   objectTraversantField.style.display = TRAVERSANT_TYPES.includes(objectTypeSelect.value) ? '' : 'none';

@@ -160,9 +160,14 @@ describe('getLinkedElementName — nom du Mur/Tracé auquel une Parois est aiman
   });
 
   test('Tracé mur (muret) sans nom personnalisé : label généré depuis tracéType', () => {
+    // Le libellé de repli passe par tr() : il suit la langue. On l'épingle dans les DEUX, parce que
+    // c'est le fait intéressant — un Tracé sans nom reste désignable quelle que soit la langue.
     const page = { objects: [{ id: 't1', type: 'tracé', tracéType: 'muret' }] };
-    const name = getLinkedElementName({ type: 'objet3d', magnetWallId: 't1' }, page);
-    assert.ok(name.includes('Muret'), `attendu un nom contenant "Muret", obtenu "${name}"`);
+    const parois = { type: 'objet3d', magnetWallId: 't1' };
+    S.appLang = 'fr';
+    assert.ok(getLinkedElementName(parois, page).includes('Muret'));
+    S.appLang = 'en';
+    assert.ok(getLinkedElementName(parois, page).includes('Low wall'));
   });
 });
 

@@ -18,6 +18,7 @@ import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDesc
          I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL } from '../src/i18n.js';
 import { HELP_MANUAL_EN, HELP_MANUAL_FR , sectionDuManuel} from '../src/help-content.js';
 import { S } from '../src/state.js';
+import { OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN } from '../src/constants.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
 function makeFakeParent(initialChildren = []) {
@@ -658,6 +659,34 @@ describe('Aucun bouton ne reste en français en mode anglais', () => {
       assert.ok(opt, `entrée introuvable : option ${valeur}`);
       const nomOption = opt[1].replace(/^[^\w]+\s*/, '');
       assert.equal(nomOption, ctx[1], `« ${valeur} » : « ${ctx[1]} » dans le menu, « ${nomOption} » dans la fiche`);
+    });
+  });
+});
+
+
+// ── Les deux tables de types d'Objet ──────────────────────────────────────────────────────────
+describe('OBJECT_TYPE_LABELS — les deux langues décrivent les mêmes types', () => {
+  // Le nom d'un type sert à trois choses : le titre de la fiche, le nom par défaut d'un Élément
+  // ajouté, et le libellé du Mur lié à une Parois. Une clé présente d'un seul côté rendrait
+  // `undefined` là où l'utilisateur attend un nom — et le repli afficherait « Objet » pour tout.
+  test('les deux tables ont exactement les mêmes clés', () => {
+    assert.deepEqual(Object.keys(OBJECT_TYPE_LABELS_EN).sort(), Object.keys(OBJECT_TYPE_LABELS).sort());
+  });
+
+  test('aucun libellé vide', () => {
+    Object.entries(OBJECT_TYPE_LABELS_EN).forEach(([k, v]) =>
+      assert.ok(v && v.trim(), `libellé anglais vide pour « ${k} »`));
+  });
+
+  test('LE POINT QUI COMPTE : le même type porte le même nom anglais que dans le sélecteur', () => {
+    // Le sélecteur de Type (index.html) est traduit par I18N_TEXT, la fiche par cette table. Deux
+    // écrans, deux chemins, un seul objet — s'ils divergent, l'utilisateur voit « Shelf » d'un côté
+    // et « Bookcase » de l'autre pour la même chose.
+    const i18nSrc = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+    Object.entries(OBJECT_TYPE_LABELS_EN).forEach(([cle, en]) => {
+      const m = new RegExp(`option\\[value="${cle}"\\]', "([^"]+)"`).exec(i18nSrc);
+      if (!m) return;   // le type « modele » n'a pas d'option : on n'ajoute pas un modèle par la liste
+      assert.equal(m[1].replace(/^[^\w]+\s*/, ''), en, `« ${cle} » : deux noms anglais`);
     });
   });
 });

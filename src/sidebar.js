@@ -144,7 +144,8 @@ export function getLinkedElementName(o, page){
   if (!wall) return null;
   // Tracé wall (low wall, fence, hedge, barrier)
   if (wall.type === 'tracé') {
-    const tracéLabel = { muret:'Muret', cloture:'Clôture', haie:'Haie végétale', barriere:'Barrière de route' };
+    const tracéLabel = { muret: tr('Low wall', 'Muret'), cloture: tr('Fence', 'Clôture'),
+    haie: tr('Hedge', 'Haie végétale'), barriere: tr('Road barrier', 'Barrière de route') };
     return wall.name || ((TRACÉ_EMOJI[wall.tracéType] || '') + ' ' + (tracéLabel[wall.tracéType] || 'Tracé'));
   }
   const wallName = wall.name || OBJECT_TYPE_LABELS[wall.objType] || 'Mur';
@@ -163,7 +164,7 @@ export function edgeLengths(o){
   const labels = S.appLang === 'en' ? ['Top', 'Right', 'Bottom', 'Left'] : ['Haut', 'Droite', 'Bas', 'Gauche'];
   return pts.map((p, i) => {
     const q = pts[(i + 1) % pts.length];
-    return { label: labels[i] || tr(`Side ${i + 1}`, `Côté ${i + 1}`), len: Math.hypot(q.x - p.x, q.y - p.y) };
+    return { label: labels[i] || tr(`Side ${i + 1}`, `${tr('Side', 'Côté')} ${i + 1}`), len: Math.hypot(q.x - p.x, q.y - p.y) };
   });
 }
 
@@ -226,7 +227,7 @@ export function renderSideElementRow(p, panel, page){
   if (linkedName) {
     const linkSpan = document.createElement('span');
     linkSpan.className = 'perso-link';
-    linkSpan.textContent = '🧲 Lié à : ' + linkedName;
+    linkSpan.textContent = '🧲 ' + tr('Linked to: ', 'Lié à : ') + linkedName;
     nameSpan.appendChild(linkSpan);
   }
   const emojiSpan = document.createElement('span');
@@ -355,7 +356,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   if (list.length === 0 && panelTracés.length === 0) {
     const hint = document.createElement('div');
     hint.className = 'empty-hint';
-    hint.textContent = 'Aucun Élément dans cette case.';
+    hint.textContent = tr('No Element in this panel.', 'Aucun Élément dans cette case.');
     sidePersonas.appendChild(hint);
     return;
   }
@@ -645,7 +646,7 @@ export function renderSidePagePanels(page){
   if (panels.length === 0) {
     const hint = document.createElement('div');
     hint.className = 'empty-hint';
-    hint.textContent = 'Aucune Case dans cette planche.';
+    hint.textContent = tr('No panel on this page.', 'Aucune Case dans cette planche.');
     sidePagePanels.appendChild(hint);
     return;
   }
@@ -1105,7 +1106,7 @@ export function refreshSceneTopDownBtn(panel){
   const isTD = isSceneTopDownView(panel);
   sceneTopDownBtn.style.display = 'block';
   sceneTopDownBtn.classList.toggle('active', isTD);
-  sceneTopDownBtn.textContent = isTD ? '📐 Vue de dessus (cliquer pour revenir)' : '📐 Vue de dessus';
+  sceneTopDownBtn.textContent = isTD ? '📐 ' + tr('Top-down view (click to go back)', 'Vue de dessus (cliquer pour revenir)') : '📐 Vue de dessus';
 }
 
 export function closeRightPanelMenu(){

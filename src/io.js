@@ -587,10 +587,10 @@ export function updateLastSavedIndicator(){
   if (!S.lastSaveDate) { el.textContent = S.appLang === 'en' ? 'No save yet' : "Aucune sauvegarde pour l'instant"; return; }
   const elapsedSec = Math.max(0, Math.floor((Date.now() - S.lastSaveDate.getTime()) / 1000));
   if (elapsedSec < 60) {
-    el.textContent = S.appLang === 'en' ? `Last saved: ${elapsedSec}s ago` : `Dernière sauvegarde : il y a ${elapsedSec} s`;
+    el.textContent = S.appLang === 'en' ? `Last saved: ${elapsedSec}s ago` : tr(`Last saved ${elapsedSec} s ago`, `Dernière sauvegarde : il y a ${elapsedSec} s`);
   } else {
     const elapsedMin = Math.floor(elapsedSec / 60);
-    el.textContent = S.appLang === 'en' ? `Last saved: ${elapsedMin}min ago` : `Dernière sauvegarde : il y a ${elapsedMin} min`;
+    el.textContent = S.appLang === 'en' ? `Last saved: ${elapsedMin}min ago` : tr(`Last saved ${elapsedMin} min ago`, `Dernière sauvegarde : il y a ${elapsedMin} min`);
   }
 }
 setInterval(updateLastSavedIndicator, 1000);
@@ -605,7 +605,7 @@ export async function writeProjectToHandle(handle){
     S.projectDirty = false;
     markProjectSaved();
     const now = new Date();
-    setProjectModalStatus(tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`));
+    setProjectModalStatus(tr(`Saved at ${heure(now)}`, tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`)));
     return true;
   } catch (err) {
     console.warn('Échec de l\'enregistrement du Projet :', err);
@@ -624,7 +624,7 @@ export async function writeProjectToPath(filePath){
     S.projectDirty = false;
     markProjectSaved();
     const now = new Date();
-    setProjectModalStatus(tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`));
+    setProjectModalStatus(tr(`Saved at ${heure(now)}`, tr(`Saved at ${heure(now)}`, `Enregistré à ${heure(now)}`)));
     return true;
   } catch (err) {
     console.warn('Échec de l\'enregistrement du Projet :', err);
@@ -755,7 +755,7 @@ export async function loadExistingProjectFlow(){
       S.projectFilePath = res.filePath;
       S.projectFileHandle = null;
       startAutosave();
-      setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
+      setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`)));
       closeProjectModal();
     } catch (err) {
       // stopAutosave() a été appelé AVANT la lecture. Sans ce redémarrage, un fichier refusé
@@ -784,7 +784,7 @@ export async function loadExistingProjectFlow(){
     applyProjectData(data);
     S.projectFileHandle = handle;
     startAutosave();
-    setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`));
+    setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`)));
   } catch (err) {
     startAutosave();   // idem : ne pas laisser la sauvegarde automatique éteinte (cf. plus haut)
     if (err && err.name !== 'AbortError') setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
@@ -945,7 +945,7 @@ function updateRenameEntityConfirmState(){
     disabled = true;
   } else if (S.renameModalContext && isEntityNameTakenByOther(S.renameModalContext.kind, S.renameModalContext.target, newName)) {
     disabled = true;
-    errorMsg = S.renameModalContext.kind === 'tome' ? 'Ce nom est déjà utilisé par un autre tome.' : 'Ce nom est déjà utilisé par une autre scène.';
+    errorMsg = S.renameModalContext.kind === 'tome' ? tr('That name is already used by another volume.', 'Ce nom est déjà utilisé par un autre tome.') : tr('That name is already used by another scene.', 'Ce nom est déjà utilisé par une autre scène.');
   }
   renameEntityConfirm.disabled = disabled;
   renameEntityError.textContent = errorMsg;

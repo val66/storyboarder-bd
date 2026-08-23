@@ -28,8 +28,8 @@ import {
   BUILD_ALIGN_THRESHOLD, BUILD_SNAP_ANGLE_DEG, GROUND_Y_DEFAULT_3D, PANEL_CAM_DEFAULT_DIST_3D,
   TRACÉ_DEFAULTS, WALL_PX_PER_UNIT_3D,
 } from './constants.js';
-import { S, currentPage, newId } from './state.js';
-import { tracéBBox } from './utils.js';
+import { S, currentPage, newId, tr } from './state.js';
+import { tracéBBox , nomNumeroteLibre3D} from './utils.js';
 import { computeTracéWorld3D, getCamOrbitWorld, panelCamBasis3D, findOwningPanel } from './scene3d.js';
 import { drawCurrentPage } from './draw.js';
 
@@ -163,12 +163,7 @@ export function startBuildMode(panel, page){
       .filter(o => o.type === 'objet3d' && o.pieceId && findOwningPanel(o, page) === panel)
       .map(o => o.pieceLabel)
   );
-  let pieceLabel = 'Pièce';
-  if (existingRoomLabels.has(pieceLabel)) {
-    let n = 2;
-    while (existingRoomLabels.has('Pièce ' + n)) n++;
-    pieceLabel = 'Pièce ' + n;
-  }
+  const pieceLabel = nomNumeroteLibre3D(existingRoomLabels, tr('Room', 'Pièce'));
   S.buildTool = {
     panelId: panel.id,
     pieceId: newId('piece'),
@@ -269,7 +264,7 @@ export function startMeasureTool(panel){
   const res = document.getElementById('sideMesureResult');
   if (res) res.style.display = 'none';
   const st = document.getElementById('sideMesureStatus');
-  if (st) st.textContent = 'Cliquez un 1er point sur le sol.';
+  if (st) st.textContent = tr('Click a 1st point on the ground.', tr('Click a 1st point on the ground.', 'Cliquez un 1er point sur le sol.'));
   drawCurrentPage();
 }
 

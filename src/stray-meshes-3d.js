@@ -101,6 +101,10 @@ export function boitesDesMaillages3D(racine){
  * fois la même chose ne permet pas de les distinguer, et le cas ne s'est présenté sur aucun des six
  * fichiers réels du dépôt.
  */
+// ⚠️ « (sans nom) » N'EST PAS TRADUIT, et c'est délibéré : la même chaîne sert de CLÉ entre
+// `maillagesHorsCorps3D`, qui la met dans sa liste, et `maillagesParNom3D`, qui la cherche. Traduite,
+// un maillage relevé en français ne serait plus retrouvé après un passage en anglais — et le
+// masquage viserait alors dans le vide, sans rien signaler.
 export function maillagesParNom3D(racine, noms){
   const cherchés = new Set(noms || []);
   const trouvés = [];

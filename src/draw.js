@@ -16,7 +16,7 @@
  * buildSinglePageImagePdf, downloadCanvasAsPdf, exportPage, exportVolume
  */
 
-import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, newId } from './state.js';
+import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -30,7 +30,7 @@ import {
   BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
-         poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS } from './utils.js';
+         poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS , nomNumeroteLibre3D} from './utils.js';
 import {
   findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
@@ -603,8 +603,7 @@ export function buildToolClose(panel, page){
   );
   takenLabels.add(S.buildTool.pieceLabel); // reserve the label of the 1st face
   function nextLabel() {
-    let lbl = 'Pièce';
-    if (takenLabels.has(lbl)) { let n = 2; while (takenLabels.has('Pièce ' + n)) n++; lbl = 'Pièce ' + n; }
+    const lbl = nomNumeroteLibre3D(takenLabels, tr('Room', 'Pièce'));
     takenLabels.add(lbl);
     return lbl;
   }
