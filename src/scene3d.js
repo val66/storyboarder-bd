@@ -21,7 +21,7 @@ import {
 // referenced when placing a Wall-Opening on a Trace wall whose wallHeight was unset, but was never
 // imported — a guaranteed ReferenceError on that path. Trace creation normally fills wallHeight in
 // from these very defaults, which is why it stayed hidden.
-import { clamp, getElementDepth, wrapAngle, tracéBBox } from './utils.js';
+import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
@@ -657,6 +657,25 @@ export function projectElementCenterToCanvas3D(o, panel, page){
     y: panelCy - v.y * (page.h / 2),
   };
 }
+/**
+ * Cet Élément ne montre-t-il RIEN de lui-même dans sa Case ?
+ *
+ * Assemble les deux projections existantes et leur applique la décision, qui vit dans utils.js
+ * parce qu'elle, elle est vérifiable : ici on a besoin de la caméra de la Case, donc de WebGL.
+ *
+ * PAS DE MISE EN CACHE, ET C'EST DÉLIBÉRÉ. `framePanelCamera3D` n'est que de l'arithmétique
+ * scalaire — pas de parcours de scène, pas de boîte englobante. L'appeler une fois par Élément ne
+ * coûte rien de mesurable, et un cache introduirait la seule chose vraiment chère ici : une
+ * seconde source de vérité sur ce qui est visible, à invalider correctement.
+ */
+export function elementHorsChamp3D(o, panel, page){
+  if (!o || !panel || !page) return false;
+  return estHorsChamp3D(
+    projectElementCenterToCanvas3D(o, panel, page),
+    getElementProjectedHalfExtents3D(o, panel, page),
+    panel);
+}
+
 // Computes the ACTUALLY projected half-width/half-height (px) of an Element's 3D Model, by
 // projecting two world points offset from the center along the Camera's ACTUAL axes (basis.right/up,
 // cf. panelCamBasis3D), at its REAL size in units (cf. ensureElementUnits3D) — instead of relying

@@ -23,6 +23,8 @@ import { clamp, getEmotion, pxPerMm } from './utils.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
+
+  elementHorsChamp3D,
 } from './scene3d.js';
 import { getPanelPoints, drawCurrentPage } from './draw.js';
 import { stackRankLabel, noDescriptionLabel } from './i18n.js';
@@ -334,7 +336,15 @@ export function getRoomConnectedComponents(panel, page){
   return Object.values(comps);
 }
 
-export function renderSidePersonas(panel, page){
+/**
+ * ⚠️ `horsChampFn` EST INJECTABLE, et ce n'est pas une commodité de test gratuite. Décider qu'un
+ * Élément est hors champ demande de le PROJETER, donc la caméra de la Case, donc WebGL —
+ * injoignable sous Node (cf. docs/testing-method.md). Sans ce paramètre, toute la construction de
+ * cette liste devenait invérifiable, y compris ce qui n'a rien à voir avec la 3D : l'ordre des
+ * groupes, le compte dans le titre, la présence des séparateurs. Le défaut par défaut reste le
+ * vrai calcul ; seuls les tests passent autre chose.
+ */
+export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D){
   sidePersonas.innerHTML = '';
   const list = elementsInPanel(panel, page);
   // Tracés (Roads, Paths, Zones) attached to this panel.
@@ -498,15 +508,49 @@ export function renderSidePersonas(panel, page){
   });
 
   // Free Elements (personas, objects without pieceId).
+  //
+  // ═══════════════════════════════════════════════════════════════════════════════════════════
+  // CEUX QU'ON NE VOIT PAS SONT RANGÉS À PART, EN BAS
+  // ═══════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // Demandé à l'usage : une Case chargée finit par mêler, dans la même liste, ce qu'on est en
+  // train de composer et ce qui a glissé hors du cadre. Les seconds ne se distinguent par rien,
+  // alors qu'ils ne se rapportent à aucun pixel de l'image.
+  //
+  // ⚠️ RANGÉS, PAS CACHÉS. Ils restent listés, sélectionnables et nommés — c'est souvent par cette
+  // liste qu'on va les rechercher. Une sous-section dépliée mais atténuée dit « ils sont là, ils
+  // ne comptent pas pour l'image » ; la replier ferait disparaître l'information qu'ils existent,
+  // qui est précisément ce qu'on veut signaler.
+  //
+  // ⚠️ LES ÉLÉMENTS LIBRES SEULEMENT. Ni les Pièces/Bâtiments — reléguer un GROUPE entier parce
+  // que ses murs sortent du cadre dirait autre chose que ce qu'on veut dire —, ni les Tracés, qui
+  // ont déjà leur propre bloc. Décidé avec l'utilisateur ; à rouvrir à l'usage, pas avant.
   const freeElements = list.filter(p => !p.pieceId);
-  if (freeElements.length > 0) {
-    // Visual separator between Rooms/Buildings and free Elements.
-    if (renderedRoomIds.size > 0) {
-      const sep = document.createElement('div');
-      sep.style.cssText = 'border-top:1px solid var(--line); margin:4px 2px; opacity:.35;';
-      sidePersonas.appendChild(sep);
-    }
-    freeElements.forEach(p => sidePersonas.appendChild(renderSideElementRow(p, panel, page)));
+  // UNE SEULE passe : deux `filter` appelleraient la décision deux fois par Élément, donc
+  // projetteraient chacun deux fois. Deux calculs de la même chose, c'est déjà un de trop.
+  const dansLeCadre = [], horsChamp = [];
+  freeElements.forEach(p => (horsChampFn(p, panel, page) ? horsChamp : dansLeCadre).push(p));
+  const separateur = () => {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid var(--line); margin:4px 2px; opacity:.35;';
+    return sep;
+  };
+  if (dansLeCadre.length > 0) {
+    if (renderedRoomIds.size > 0) sidePersonas.appendChild(separateur());
+    dansLeCadre.forEach(p => sidePersonas.appendChild(renderSideElementRow(p, panel, page)));
+  }
+  if (horsChamp.length > 0) {
+    if (renderedRoomIds.size > 0 || dansLeCadre.length > 0) sidePersonas.appendChild(separateur());
+    const titre = document.createElement('div');
+    titre.className = 'side-hors-champ-titre';
+    // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien
+    // d'Éléments ont quitté le cadre — c'est la première question qu'on se pose en le lisant.
+    titre.textContent = tr(`Off-frame (${horsChamp.length})`, `Hors champ (${horsChamp.length})`);
+    sidePersonas.appendChild(titre);
+    const bloc = document.createElement('div');
+    bloc.className = 'side-hors-champ';
+    horsChamp.forEach(p => bloc.appendChild(renderSideElementRow(p, panel, page)));
+    sidePersonas.appendChild(bloc);
   }
 
   // Tracés (Roads, Dirt paths, Terrain Zones) associated with this panel.

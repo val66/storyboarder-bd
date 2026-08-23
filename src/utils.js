@@ -858,6 +858,47 @@ export function posesUsedByProject3D(library, ...roots){
  * @param avantDuCorps le vecteur `avant` de `repereDuCorps` (⚠️ dirigé vers l'arrière visuel)
  * @returns l'angle d'orbite, ou `null` si le corps n'a pas d'orientation horizontale exploitable
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UN ÉLÉMENT EST-IL HORS CHAMP ? — la décision, séparée de la projection
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * POURQUOI CETTE FONCTION EST PURE. Projeter un Élément demande la caméra de la Case, donc WebGL,
+ * donc un environnement injoignable sous Node (cf. docs/testing-method.md). La DÉCISION, elle, ne
+ * demande que deux rectangles — et c'est là que sont les cas limites qu'on a envie de vérifier.
+ *
+ * LE CRITÈRE, choisi avec l'utilisateur : hors champ = la boîte projetée ne rencontre **pas du
+ * tout** le cadre de la Case. Un Élément à moitié sorti reste donc dans la liste principale : il
+ * est visible, même partiellement, et le reléguer serait faux. L'autre lecture possible — « centre
+ * hors du cadre » — aurait rangé parmi les invisibles des Éléments qu'on voit encore.
+ *
+ * ⚠️ SE TOUCHER N'EST PAS SE RENCONTRER, ici. Un Élément dont le bord affleure exactement celui de
+ * la Case n'a aucun pixel à l'intérieur : il est hors champ. D'où des comparaisons strictes, et un
+ * test qui épingle cette frontière — c'est le genre de détail qu'on inverse sans s'en apercevoir.
+ *
+ * @param centre {{x, y}|null} centre projeté, dans le repère de la Planche. `null` = non projetable
+ *   (derrière la caméra, ou hors du tronc de vue) — donc invisible.
+ * @param demi {{halfW, halfH}|null} demi-dimensions projetées. `null` : l'Élément est traité comme
+ *   un POINT, ce qui reste vrai — un point sans étendue n'est visible que si son centre l'est.
+ * @param cadre {{x, y, w, h}} le cadre de la Case.
+ * @returns `true` si l'Élément ne peut rien montrer de lui-même.
+ */
+export function estHorsChamp3D(centre, demi, cadre){
+  const c = cadre || {};
+  const cx = Number(c.x), cy = Number(c.y), cw = Number(c.w), ch = Number(c.h);
+  // Cadre inexploitable : on ne relègue RIEN. Devant une entrée qu'on ne comprend pas, la liste
+  // doit rester complète — cacher un Élément par erreur est plus coûteux que d'en montrer un de
+  // trop, parce que l'utilisateur ne peut pas deviner ce qui manque.
+  if (![cx, cy, cw, ch].every(Number.isFinite) || cw <= 0 || ch <= 0) return false;
+  if (!centre) return true;
+  const px = Number(centre.x), py = Number(centre.y);
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return true;
+  const hw = Math.abs(Number(demi && demi.halfW)) || 0;
+  const hh = Math.abs(Number(demi && demi.halfH)) || 0;
+  return (px + hw <= cx) || (px - hw >= cx + cw)
+      || (py + hh <= cy) || (py - hh >= cy + ch);
+}
+
 export function orbiteDeFace3D(avantDuCorps){
   if (!Array.isArray(avantDuCorps) || avantDuCorps.length !== 3) return null;
   const x = Number(avantDuCorps[0]), z = Number(avantDuCorps[2]);

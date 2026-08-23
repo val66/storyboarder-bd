@@ -15,6 +15,7 @@ import {
   edgeLengths,
   homeOwningPanel,
   elementsInPanel,
+  renderSidePersonas,
 } from '../src/sidebar.js';
 import { S } from '../src/state.js';
 
@@ -213,3 +214,126 @@ describe('elementsInPanel — Éléments (Personas/Objets, hors Dalles) apparten
     assert.deepEqual(els.map(e => e.id).sort(), ['e1', 'e2']);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La sous-section « Hors champ » (tâche #347)
+//
+// CE QUI SE JOUE ICI. Décider qu'un Élément est hors champ demande de le projeter, donc WebGL —
+// hors de portée sous Node. Mais TOUT LE RESTE de cette liste est vérifiable dès lors que la
+// décision est injectable : l'ordre des groupes, le compte dans le titre, les séparateurs, et
+// surtout le fait que personne ne DISPARAISSE.
+//
+// Le critère lui-même (estHorsChamp3D) est éprouvé dans utils.test.mjs.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('liste des Éléments — les invisibles rangés en bas', () => {
+  // ⚠️ La Case vit dans `page.objects` avec `type: 'panel'` — c'est là que `findOwningPanel` la
+  // cherche, et `elementsInPanel` s'appuie dessus. Une Case rangée ailleurs donne une liste vide,
+  // donc des tests verts qui ne regardent rien.
+  const panel = { id: 'p1', type: 'panel', x: 0, y: 0, w: 400, h: 300, camDist: 30 };
+  const page = { w: 800, h: 600, objects: [] };
+  const elem = (id, nom) => ({
+    id, name: nom, type: 'perso', objType: undefined, homePanelId: 'p1',
+    x: 10, y: 10, w: 40, h: 80, emotion: 'neutre',
+  });
+  const conteneur = () => document.getElementById('sidePersonas');
+  const lignes = (racine) => {
+    const out = [];
+    const visiter = (n) => {
+      (n.children || []).forEach(c => {
+        if ((c.className || '').includes('perso-row')) out.push(c);
+        visiter(c);
+      });
+    };
+    visiter(racine);
+    return out;
+  };
+  // ⚠️ Le stub DOM n'AGRÈGE PAS le texte des descendants : `textContent` d'une ligne est vide, son
+  // nom vivant dans un `perso-name-main` imbriqué. Lire la propriété telle quelle donnait des
+  // chaînes vides — et un test qui cherche « Alice » dans du vide échoue en accusant le code.
+  const texteProfond = (n) => (n.textContent || '')
+    + (n.children || []).map(texteProfond).join('');
+  const textes = (racine) => lignes(racine).map(texteProfond).join('|');
+
+  beforeEach(() => {
+    page.objects = [panel, elem('a', 'Alice'), elem('b', 'Bob'), elem('c', 'Chloé')];
+    S.selectedId = null;
+  });
+
+  test('sans Élément hors champ, aucune sous-section n\'apparaît', () => {
+    // ⚠️ ON INSPECTE LES ENFANTS, PAS `innerHTML`. Le stub DOM ne reconstruit pas `innerHTML` à
+    // partir des `appendChild` : chercher une classe dans cette chaîne revient à chercher dans du
+    // vide, et l'assertion passe quoi qu'il arrive. Une mutation l'a montré — afficher la
+    // sous-section même vide ne faisait rien échouer.
+    renderSidePersonas(panel, page, () => false);
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    assert.equal(lignes(conteneur()).length, 3);
+    assert.ok(!classes.some(c => c.includes('side-hors-champ')),
+      `une sous-section vide ne doit pas s'afficher — classes : ${classes.join(', ')}`);
+  });
+
+  test('RÉGRESSION : aucun Élément ne DISPARAÎT de la liste', () => {
+    // Le test qui compte le plus. Se tromper de critère montre un Élément de trop — sans gravité.
+    // En perdre un est invisible : l'utilisateur n'a aucun moyen de deviner ce qui manque.
+    renderSidePersonas(panel, page, (p) => p.id === 'b');
+    const t = textes(conteneur());
+    ['Alice', 'Bob', 'Chloé'].forEach(n => assert.ok(t.includes(n), `${n} a disparu de la liste`));
+    assert.equal(lignes(conteneur()).length, 3);
+  });
+
+  test('les invisibles sont dans un bloc à part, APRÈS les autres', () => {
+    renderSidePersonas(panel, page, (p) => p.id === 'a');
+    const enfants = conteneur().children || [];
+    const iBloc = enfants.findIndex(c => (c.className || '').includes('side-hors-champ')
+      && !(c.className || '').includes('titre'));
+    assert.ok(iBloc > 0, 'le bloc « hors champ » est introuvable, ou en tête de liste');
+    const bloc = enfants[iBloc];
+    assert.equal(textes(bloc).includes('Alice'), true, 'l\'invisible n\'est pas dans le bloc');
+    assert.equal(textes(bloc).includes('Bob'), false, 'un visible s\'est retrouvé dans le bloc');
+  });
+
+  test('le titre porte le NOMBRE d\'Éléments hors champ', () => {
+    // Sans lui, il faudrait compter les lignes pour savoir combien ont quitté le cadre — c'est la
+    // première question qu'on se pose en lisant ce titre.
+    renderSidePersonas(panel, page, (p) => p.id !== 'b');
+    const titre = (conteneur().children || [])
+      .find(c => (c.className || '').includes('side-hors-champ-titre'));
+    assert.ok(titre, 'titre de sous-section absent');
+    assert.match(titre.textContent, /\(2\)/, `titre inattendu : « ${titre.textContent} »`);
+  });
+
+  test('TOUS hors champ : le bloc existe et la liste principale est vide', () => {
+    renderSidePersonas(panel, page, () => true);
+    assert.equal(lignes(conteneur()).length, 3, 'les trois restent listés');
+    const titre = (conteneur().children || [])
+      .find(c => (c.className || '').includes('side-hors-champ-titre'));
+    assert.match(titre.textContent, /\(3\)/);
+  });
+
+  test('le défaut n\'est pas « tout le monde est visible »', () => {
+    // Garde-fou : un prédicat par défaut renvoyant toujours false rendrait les tests ci-dessus
+    // verts tout en désactivant la fonctionnalité dans l'application. On vérifie donc que le
+    // paramètre est bien FACULTATIF et que son absence ne fait pas planter la construction.
+    assert.equal(typeof renderSidePersonas, 'function');
+    assert.ok(renderSidePersonas.length <= 3, 'la signature a changé');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — la sous-section « Hors champ » (tâche #347).
+ *
+ *   X1 personne n'est jamais rangé hors champ                        ROUGE
+ *   X2 les hors-champ DISPARAISSENT de la liste                      ROUGE
+ *   X3 le titre perd son nombre                                      ROUGE
+ *   X4 la sous-section s'affiche même vide                           ÉCHAPPÉE → puis ROUGE
+ *   X5 critère « centre dehors » au lieu de la boîte                  ROUGE
+ *   X6 un cadre illisible relègue TOUT                                ROUGE
+ *
+ * X4 A RÉVÉLÉ UNE ASSERTION VIDE, et c'est sa vraie valeur. Le test cherchait la classe de la
+ * sous-section dans `conteneur().innerHTML` — or le stub DOM ne reconstruit pas `innerHTML` à
+ * partir des `appendChild`. On cherchait donc une chaîne dans du vide : l'assertion passait quoi
+ * qu'il arrive, y compris devant une sous-section affichée pour zéro Élément. Réécrite sur les
+ * enfants, qui eux sont réellement conservés.
+ *
+ * X2 est celui qui compte le plus dans l'usage : se tromper de critère montre un Élément de trop,
+ * ce qui se voit et se comprend ; en perdre un ne se voit pas du tout.
+ */

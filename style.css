@@ -337,6 +337,21 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .perso-row .perso-edit{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px; padding:2px; }
 .perso-row .perso-edit:hover{ color:var(--accent); }
 .side-persos .empty-hint{ font-size:11.5px; }
+
+/* Les Éléments qui ne montrent rien d'eux-mêmes dans la Case (cf. estHorsChamp3D).
+   ATTÉNUÉS, PAS CACHÉS : ils restent lisibles, sélectionnables et nommés — c'est souvent par cette
+   liste qu'on va les rechercher. L'opacité dit « ils sont là, ils ne comptent pas pour l'image ».
+   Le titre reprend la graisse et la casse des autres en-têtes du panneau, pour se lire comme une
+   subdivision de la liste et non comme une section indépendante. */
+.side-hors-champ-titre{
+  font-size:10.5px; font-weight:600; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.04em;
+  margin:2px 2px 0; opacity:.75;
+}
+.side-hors-champ{ display:flex; flex-direction:column; gap:6px; opacity:.55; }
+/* La ligne SÉLECTIONNÉE retrouve sa pleine opacité : atténuer ce que l'utilisateur vient de
+   désigner contredirait son geste, et rendrait la sélection difficile à retrouver dans le bloc. */
+.side-hors-champ .perso-row.active{ opacity:1; }
 /* En-tête de groupe d'une Pièce (cf. renderSidePersos/pieceId) : visuellement distinct d'une ligne
    d'Élément normale, pour signaler qu'un clic ici sélectionne les 6 Murs ENSEMBLE plutôt qu'un seul. */
 .piece-group-header{

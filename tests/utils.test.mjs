@@ -27,7 +27,7 @@ import {
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
   hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
-  orbiteDeFace3D,
+  orbiteDeFace3D, estHorsChamp3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -2042,5 +2042,70 @@ describe('orbiteDeFace3D', () => {
     [null, undefined, [], [1, 2], 'x', [NaN, 0, 1], [0, 0, 'a']].forEach(mauvais => {
       assert.equal(orbiteDeFace3D(mauvais), null, `entrée ${JSON.stringify(mauvais)}`);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// estHorsChamp3D — ce qui mérite d'être relégué en bas de la liste (tâche #347)
+//
+// CE QUI SE JOUE ICI. La liste des Éléments d'une Case range désormais à part ceux qu'on ne voit
+// pas. Se tromper dans un sens montre un Élément de trop — sans gravité. Se tromper dans l'autre
+// CACHE un Élément que l'utilisateur voit à l'écran, et il n'a alors aucun moyen de deviner
+// pourquoi sa ligne a disparu. Les cas limites vont donc tous dans le même sens : le doute
+// profite à la liste principale.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('estHorsChamp3D', () => {
+  const CADRE = { x: 100, y: 50, w: 200, h: 150 }; // donc x ∈ [100, 300], y ∈ [50, 200]
+  const pt = (x, y) => ({ x, y });
+
+  test('au centre du cadre : visible', () => {
+    assert.equal(estHorsChamp3D(pt(200, 125), null, CADRE), false);
+  });
+
+  test('franchement à l\'extérieur, dans les quatre directions : hors champ', () => {
+    [pt(50, 125), pt(400, 125), pt(200, 10), pt(200, 300)]
+      .forEach(c => assert.equal(estHorsChamp3D(c, null, CADRE), true, JSON.stringify(c)));
+  });
+
+  test('À MOITIÉ SORTI : visible — c\'est le choix qui distingue les deux lectures', () => {
+    // Centre hors du cadre, mais la boîte mord encore dessus. L'autre critère possible — « centre
+    // dehors » — l'aurait rangé parmi les invisibles alors qu'on en voit la moitié.
+    assert.equal(estHorsChamp3D(pt(80, 125), { halfW: 40, halfH: 30 }, CADRE), false);
+    assert.equal(estHorsChamp3D(pt(320, 125), { halfW: 40, halfH: 30 }, CADRE), false);
+  });
+
+  test('la boîte ne rattrape pas un Élément vraiment loin', () => {
+    assert.equal(estHorsChamp3D(pt(20, 125), { halfW: 40, halfH: 30 }, CADRE), true);
+  });
+
+  test('AFFLEURER n\'est pas se rencontrer : le bord exact est hors champ', () => {
+    // Un Élément dont le bord droit touche exactement le bord gauche du cadre n'a aucun pixel
+    // dedans. Cette frontière s'inverse sans qu'on s'en aperçoive ; elle est donc épinglée.
+    assert.equal(estHorsChamp3D(pt(60, 125), { halfW: 40, halfH: 10 }, CADRE), true, 'bord gauche');
+    assert.equal(estHorsChamp3D(pt(61, 125), { halfW: 40, halfH: 10 }, CADRE), false, 'un px dedans');
+    assert.equal(estHorsChamp3D(pt(200, 40), { halfW: 10, halfH: 10 }, CADRE), true, 'bord haut');
+    assert.equal(estHorsChamp3D(pt(200, 41), { halfW: 10, halfH: 10 }, CADRE), false);
+  });
+
+  test('un centre non projetable est hors champ', () => {
+    // `null` veut dire « derrière la caméra, ou hors du tronc de vue » : rien à montrer.
+    assert.equal(estHorsChamp3D(null, { halfW: 999, halfH: 999 }, CADRE), true);
+    assert.equal(estHorsChamp3D(pt(NaN, 125), null, CADRE), true);
+    assert.equal(estHorsChamp3D(pt(200, undefined), null, CADRE), true);
+  });
+
+  test('un cadre inexploitable ne relègue RIEN', () => {
+    // Le doute profite à la liste principale : montrer un Élément de trop se voit et se comprend ;
+    // en cacher un ne se voit pas du tout.
+    [null, {}, { x: 0, y: 0, w: 0, h: 100 }, { x: 0, y: 0, w: 100, h: -5 },
+      { x: NaN, y: 0, w: 100, h: 100 }].forEach(c =>
+      assert.equal(estHorsChamp3D(pt(9999, 9999), null, c), false, JSON.stringify(c)));
+  });
+
+  test('des demi-dimensions absurdes ne font pas basculer la décision', () => {
+    // NaN ou négatif : traités comme zéro, donc l'Élément redevient un point. Propager un NaN dans
+    // la comparaison la rendrait fausse dans les deux sens, au hasard.
+    assert.equal(estHorsChamp3D(pt(200, 125), { halfW: NaN, halfH: NaN }, CADRE), false);
+    assert.equal(estHorsChamp3D(pt(20, 125), { halfW: -40, halfH: -30 }, CADRE), true);
   });
 });
