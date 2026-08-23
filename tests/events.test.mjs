@@ -2502,8 +2502,21 @@ describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
     const b = bloc("e.key === 'e'");
     assert.match(b, /modeleImportePosable3D\(selE\)/, 'la condition doit être empruntée, pas réécrite');
     assert.match(b, /selE\.type === 'perso'/, 'un Personnage est toujours posable');
-    assert.match(b, /showPersonaEditor\(cible, null\)/,
-      'aucune fiche à rouvrir : on ne vient d\'aucune');
+    assert.match(b, /showPersonaEditor\(null, null\)/,
+      'sans cible : éditeur autonome, aucune fiche à rouvrir');
+  });
+
+  test('LE DÉFAUT SIGNALÉ : sur une cible, E ouvre la FICHE puis son crayon', () => {
+    // « E » ouvrait bien l'éditeur, mais « Appliquer » n'y était pas : l'éditeur n'écrit jamais
+    // dans l'Élément, il remplit le brouillon de la fiche. Sans fiche ouverte, le bouton n'a pas de
+    // destinataire et se masque. Emprunter le crayon plutôt que d'écrire ici un second chemin qui
+    // poserait les angles sur l'Élément — ce serait une TROISIÈME définition d'« appliquer une
+    // pose », après les deux gestionnaires d'enregistrement des fiches.
+    const b = bloc("e.key === 'e'");
+    assert.match(b, /openPersonaModal\(cible\); personaEditorOpenBtn\.click\(\)/);
+    assert.match(b, /openObjectModal\(cible\); objectEditorOpenBtn\.click\(\)/);
+    assert.ok(!/joints3d\s*=/.test(b), 'aucun champ persisté ne doit être écrit ici');
+    assert.ok(!/skeletonPose3d/.test(b), 'ni la pose d\'os');
   });
 
   test('RÉGRESSION : E n\'ouvre rien par-dessus une modale', () => {
@@ -2535,19 +2548,14 @@ describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
     assert.match(b, /!e\.ctrlKey && !e\.metaKey/);
   });
 
-  test('F1 AFFICHE le Manuel, il ne le bascule pas', () => {
+  test('F1 EST le bouton « ? », donc il BASCULE', () => {
+    // J'avais écrit un « affiche seulement », en me disant qu'une touche n'a pas d'état visible à
+    // inverser. C'est faux : le Manuel est à l'écran, son état se voit, et une seconde pression
+    // doit le refermer. Cliquer le bouton emprunte du même coup sa sortie de l'Éditeur.
     const b = bloc("e.key === 'F1'");
-    assert.match(b, /afficherManuelLateral\(\)/);
-    assert.ok(!/masquerManuelLateral/.test(b), 'une touche n\'a pas d\'état visible à inverser');
-  });
-
-  test('F1 depuis l\'Éditeur emprunte la sortie déjà écrite', () => {
-    // L'éditeur recouvre le panneau droit : afficher le Manuel derrière ne se verrait pas. Passer
-    // par le bouton réutilise l'interception qui sait quitter l'éditeur (confirmation, fiche
-    // abandonnée) au lieu d'en écrire une seconde version.
-    const b = bloc("e.key === 'F1'");
-    assert.match(b, /isPersonaEditorOpen\(\)/);
     assert.match(b, /getElementById\('helpBtn'\)\.click\(\)/);
+    assert.ok(!/afficherManuelLateral/.test(b),
+      'poser les drapeaux ici en ferait une seconde version, qui ne basculerait pas');
   });
 
   test('RÉGRESSION : aucune lettre ne se déclenche dans un champ de saisie', () => {

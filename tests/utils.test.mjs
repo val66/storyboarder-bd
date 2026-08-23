@@ -2131,22 +2131,31 @@ describe('estHorsChamp3D', () => {
 
 
 // ── pageVoisine3D ─────────────────────────────────────────────────────────────────────────────
-describe('pageVoisine3D — la Planche voisine, ou rien', () => {
+describe('pageVoisine3D — la Planche voisine, en bouclant', () => {
   test('avance et recule d\'un cran', () => {
     assert.equal(pageVoisine3D(5, 2, 1), 3);
     assert.equal(pageVoisine3D(5, 2, -1), 1);
   });
 
-  test('LE POINT QUI COMPTE : aux extrémités, elle rend null — elle ne reboucle PAS', () => {
-    // Passer de la dernière Planche à la première d'un seul raccourci ressemblerait à un défaut :
-    // dans un Tome de quarante Planches, on se retrouverait au début sans avoir rien demandé.
-    assert.equal(pageVoisine3D(5, 4, 1), null, 'depuis la dernière, il n\'y a pas de suivante');
-    assert.equal(pageVoisine3D(5, 0, -1), null, 'depuis la première, pas de précédente');
+  test('LE POINT QUI COMPTE : elle BOUCLE aux extrémités', () => {
+    // J'avais d'abord écrit l'inverse, en avançant qu'arriver au début d'un Tome de quarante
+    // Planches sans l'avoir demandé ressemblerait à un défaut. L'usage a tranché autrement : le
+    // raccourci sert à parcourir, et s'arrêter net oblige à repartir à la souris.
+    assert.equal(pageVoisine3D(5, 4, 1), 0, 'depuis la dernière, on revient à la première');
+    assert.equal(pageVoisine3D(5, 0, -1), 4, 'depuis la première, on va à la dernière');
   });
 
-  test('un Tome d\'une seule Planche ne bouge dans aucun sens', () => {
-    assert.equal(pageVoisine3D(1, 0, 1), null);
-    assert.equal(pageVoisine3D(1, 0, -1), null);
+  test('RÉGRESSION : le modulo d\'un négatif, en JavaScript, est négatif', () => {
+    // (-1 % 5) vaut -1, pas 4. Sans le `+ nbPages`, reculer depuis la première Planche donnerait un
+    // index négatif — une Planche introuvable, et l'écran resterait sur place sans rien expliquer.
+    assert.equal(pageVoisine3D(5, 0, -1), 4);
+    assert.equal(pageVoisine3D(2, 0, -1), 1);
+    assert.equal(pageVoisine3D(1, 0, -1), 0);
+  });
+
+  test('un Tome d\'une seule Planche revient toujours sur elle-même', () => {
+    assert.equal(pageVoisine3D(1, 0, 1), 0);
+    assert.equal(pageVoisine3D(1, 0, -1), 0);
   });
 
   test('un Tome vide ou une entrée absurde rendent null, sans lever', () => {
@@ -2158,7 +2167,7 @@ describe('pageVoisine3D — la Planche voisine, ou rien', () => {
   test('un index de départ non entier est traité comme 0', () => {
     // S.currentPageIndex est toujours un entier ; c'est une garde, pas un comportement attendu.
     assert.equal(pageVoisine3D(5, undefined, 1), 1);
-    assert.equal(pageVoisine3D(5, undefined, -1), null);
+    assert.equal(pageVoisine3D(5, undefined, -1), 4);
   });
 
   test('tout sens négatif recule, tout sens positif ou nul avance', () => {

@@ -1484,7 +1484,20 @@ window.addEventListener('keydown', (e) => {
     // Un Personnage est toujours posable ; pour un modèle importé, la question se pose, et la
     // réponse vit dans rig3d.js — la même que pour le crayon de sa fiche.
     const cible = (selE && (selE.type === 'perso' || modeleImportePosable3D(selE))) ? selE : null;
-    showPersonaEditor(cible, null);
+    if (!cible) { showPersonaEditor(null, null); return; }
+    // ⚠️ SUR UNE CIBLE, ON OUVRE LA FICHE PUIS SON CRAYON — on ne saute pas droit dans l'éditeur.
+    //
+    // Signalé à l'usage : « E » ouvrait bien l'éditeur, mais « Appliquer » n'y était pas. C'est que
+    // l'éditeur n'écrit JAMAIS dans l'Élément : il remplit le brouillon de la fiche, que
+    // l'utilisateur enregistre ensuite. Sans fiche ouverte, « Appliquer » n'a pas de destinataire,
+    // et le bouton se masque (cf. syncPersonaEditorDom).
+    //
+    // Écrire ici un second chemin qui poserait les angles directement sur l'Élément aurait fait une
+    // TROISIÈME définition de « appliquer une pose » — après les deux gestionnaires d'enregistrement
+    // des fiches, qui écrivent chacun une demi-douzaine de champs persistés. Emprunter le crayon
+    // coûte deux lignes et ne peut pas diverger de lui.
+    if (cible.type === 'perso') { openPersonaModal(cible); personaEditorOpenBtn.click(); }
+    else { openObjectModal(cible); objectEditorOpenBtn.click(); }
     return;
   }
 
@@ -1501,28 +1514,23 @@ window.addEventListener('keydown', (e) => {
     const tomeCourant = S.tomes[S.currentTomeIndex];
     const cible = pageVoisine3D(tomeCourant ? tomeCourant.pages.length : 0,
       S.currentPageIndex, e.key === ']' ? 1 : -1);
-    // null = on est au bout du Tome. Ne rien faire, plutôt que reboucler.
+    // null = Tome vide. Le bouclage, lui, est fait par pageVoisine3D.
     if (cible !== null) allerALaPlanche(S.currentTomeIndex, cible);
     return;
   }
 
   // ── F1 : le Manuel d'utilisation ──────────────────────────────────────────────────────────
   //
-  // AFFICHE, ne bascule pas : contrairement au bouton « ? », une touche n'a pas d'état visible à
-  // inverser, et « F1 » veut dire « montre-moi l'aide », jamais « cache-la ».
+  // F1 EST le bouton « ? », rien de plus : on le clique. Il BASCULE donc, ce qui est le
+  // comportement attendu — j'avais d'abord écrit un « affiche seulement », en me disant qu'une
+  // touche n'a pas d'état visible à inverser. C'est faux : le Manuel est à l'écran, son état se
+  // voit, et une seconde pression doit le refermer.
+  //
+  // Passer par le bouton emprunte du même coup tout ce qu'il sait faire, dont la sortie de
+  // l'Éditeur de Personnage, qui recouvre le panneau où le Manuel s'affiche.
   if (e.key === 'F1' && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
     e.preventDefault();
-    if (isPersonaEditorOpen()) {
-      // L'éditeur recouvre le panneau droit. On passe par le bouton lui-même pour emprunter
-      // l'interception qui sait quitter l'éditeur proprement (confirmation, fiche abandonnée) —
-      // plutôt que de réécrire ici une seconde version de cette sortie.
-      document.getElementById('helpBtn').click();
-      return;
-    }
-    afficherManuelLateral();
-    // Redessin SYNCHRONE : la coalescence est réservée aux chemins répétitifs (souris, molette),
-    // et un test épingle cette portée pour qu'elle ne s'étende pas par imitation.
-    drawCurrentPage();
+    document.getElementById('helpBtn').click();
     return;
   }
 
