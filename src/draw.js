@@ -1570,6 +1570,18 @@ export function drawObjectPreview(targetCanvas, spec){
     // Pose du squelette importé : lue par ensureObjectRigEntry3D exactement comme animalJoints3d.
     // Sans elle, l'aperçu de la modale resterait au repos pendant qu'on déplace les curseurs.
     skeletonPose3d: spec.skeletonPose3d || null,
+    // ⚠️ L'INTENTION, ET PAS SEULEMENT LE RÉSULTAT. `skeletonPose3d` porte des angles d'OS ; ce qui
+    // se joue au niveau du CORPS — « allongé », qui bascule la figure entière — vit dans `joints3d`.
+    // Sans ce champ, `getEffectiveJoints` retombait sur « debout » et l'aperçu montrait un modèle
+    // debout pendant que la Case, elle, le couchait. Signalé à l'usage.
+    joints3d: spec.joints3d || null,
+    // Le REPLI de `getEffectiveJoints` quand le brouillon n'a pas d'angles : la pose que l'Élément
+    // cite par son nom. Sans lui, un modèle dont la fiche s'ouvre avant tout réglage retomberait sur
+    // « debout » dans l'aperçu, tout en étant couché dans sa Case.
+    position: spec.position,
+    // Idem : la case « morceaux détachés » était transmise par l'appelant et s'arrêtait ici. Cocher
+    // ne changeait donc rien à l'aperçu — le champ mourait dans cette énumération.
+    afficherMaillagesEgares: spec.afficherMaillagesEgares,
   };
   const style = resolveStyle3D();
   // (#86) Real Size (%) doesn't affect the rig's own geometry (the preview stays framed on its

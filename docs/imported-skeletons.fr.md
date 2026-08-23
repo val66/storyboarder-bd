@@ -390,3 +390,34 @@ encore l'échelle de l'image précédente.
 modèle assis est agrandi, sa boîte étant plus basse). Le Personnage, lui, garde sa hauteur debout
 quelle que soit sa pose. Uniformiser changerait la taille des modèles déjà posés dans les Projets
 existants — à décider, pas à glisser dans un correctif.
+
+### 7.6 Trois fabricants d'Élément temporaire, trois occasions de perdre un champ
+
+Le rig d'un modèle importé est construit par **une** fonction, mais alimenté depuis **trois** endroits :
+
+| | l'Élément vient de |
+|---|---|
+| la Case | l'Élément réel du Projet |
+| l'aperçu de la fiche | un Élément TEMPORAIRE (`drawObjectPreview`) |
+| l'Éditeur | un autre Élément TEMPORAIRE (`dessinerModeleDansEditeur`) |
+
+Les deux derniers recopient les champs **un à un**. Cette énumération est juste le jour où on l'écrit
+et prend du retard à chaque champ ajouté ailleurs. Ont déjà été perdus :
+
+- `maillagesEgares` (dans `buildPropRig3D`) — masquage écrit et testé, sans effet **deux versions
+  durant** ;
+- `afficherMaillagesEgares` — transmis par l'appelant, jamais recopié : cocher la case ne changeait
+  rien à l'aperçu ;
+- `joints3d` et `position` — sans l'**intention**, « allongé » restait invisible dans l'aperçu et
+  dans l'Éditeur, alors que la Case couchait bien le modèle.
+
+⚠️ **La distinction qui compte** : `skeletonPose3d` porte des angles d'**os** — le RÉSULTAT.
+Ce qui se joue au niveau du **corps** (« allongé », qui bascule la figure entière) ne voyage que dans
+l'INTENTION. Transmettre l'un sans l'autre donne un aperçu qui montre les bonnes articulations sur un
+corps mal orienté.
+
+Un test **dérive** désormais la liste au lieu de la réciter : il relit les champs que
+`ensureObjectRigEntry3D` lit sur son Élément et exige que chacun arrive, sauf exclusions justifiées
+(identifiant de rig propre à l'aperçu, taille simulée par la caméra). ⚠️ Les lectures **indirectes**
+ne se dérivent pas — `getEffectiveJoints(o)` lit `joints3d` et `position` sans que le rig les nomme —
+et sont donc ajoutées explicitement. C'est précisément ce trou qui avait laissé passer `joints3d`.

@@ -1039,6 +1039,11 @@ export function refreshObjectPreview(){
     // La pose du brouillon, pas celle de l'Élément : c'est ce qui fait bouger l'aperçu pendant
     // qu'on tire un curseur, avant tout enregistrement.
     skeletonPose3d: _estModele ? S.modalDraftSkeletonPose : null,
+    // L'INTENTION du brouillon — la pose de CORPS. C'est elle qui porte « allongé », que les angles
+    // d'os ne transportent pas (cf. rotationAllongee3D). Sans elle, l'aperçu restait debout.
+    joints3d: _estModele ? S.modalDraftJoints : null,
+    // Le repli, si le brouillon n'a pas encore d'angles : la pose que l'Élément cite par son nom.
+    position: _estModele ? (S.modalTarget && S.modalTarget.position) : undefined,
     // Idem : la case du brouillon, pas celle de l'Élément — cocher doit se voir immédiatement.
     afficherMaillagesEgares: _estModele ? !!S.modalDraftAfficherEgares : undefined,
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),

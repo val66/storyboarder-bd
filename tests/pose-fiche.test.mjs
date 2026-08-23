@@ -1187,3 +1187,38 @@ describe('un modèle couché n\'est pas agrandi', () => {
  * porte donc encore celle de l'image précédente. Sans neutralisation, la hauteur de référence serait
  * multipliée par elle — et le modèle rétrécirait un peu plus à chaque image, jusqu'à disparaître.
  */
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'Éditeur fabrique lui aussi un Élément temporaire
+//
+// TROISIÈME FABRICANT, ET DONC TROISIÈME OCCASION DE PERDRE UN CHAMP. La Scène pose l'Élément réel ;
+// l'aperçu de la fiche en fabrique un temporaire (gardé dans model-import.test.mjs) ; l'Éditeur en
+// fabrique un autre. Les trois passent par le même rig, et chacun peut oublier ce que les deux
+// autres transmettent — c'est exactement ce qui est arrivé à `joints3d`, invisible dans l'aperçu
+// pendant que la Case couchait bien le modèle.
+//
+// Ce qui est gardé ici : l'INTENTION arrive. Les angles d'os (`skeletonPose3d`) sont le résultat ;
+// ce qui se joue au niveau du corps — « allongé » — ne voyage que dans l'intention.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => {
+  const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : l\'Élément temporaire de l\'Éditeur porte la pose du CORPS', () => {
+    const i = EDITEUR.indexOf('function dessinerModeleDansEditeur');
+    assert.ok(i > 0, 'dessinerModeleDansEditeur introuvable');
+    const temp = EDITEUR.slice(i, EDITEUR.indexOf('};', i));
+    ['skeletonPose3d', 'joints3d', 'position'].forEach(c =>
+      assert.match(temp, new RegExp(`\\b${c}\\s*:`),
+        `« ${c} » n'atteint pas la figure de l'Éditeur — une pose couchée y resterait debout`));
+  });
+
+  test('et il les prend sur le BROUILLON, pas sur l\'Élément d\'origine', () => {
+    // L'Éditeur compose une pose qui n'est pas encore appliquée : lire l'Élément ferait que tirer un
+    // curseur ne changerait rien à l'écran, et que « Réinitialiser » n'aurait aucun effet visible.
+    const i = EDITEUR.indexOf('function dessinerModeleDansEditeur');
+    const temp = EDITEUR.slice(i, EDITEUR.indexOf('};', i));
+    assert.match(temp, /joints3d:\s*S\.personaEditorDraft/);
+    assert.match(temp, /position:\s*S\.personaEditorPoseKey/);
+  });
+});

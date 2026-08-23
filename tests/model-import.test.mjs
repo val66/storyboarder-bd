@@ -611,3 +611,81 @@ describe('L\'empreinte 2D mesurée traverse toute la chaîne d\'import', () => {
     assert.equal(el.w, el.h);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'aperçu de la fiche montre-t-il LA MÊME CHOSE que la Case ?
+//
+// LE DÉFAUT QUI A COÛTÉ CE BLOC, et c'est la troisième fois que le motif frappe. `drawObjectPreview`
+// fabrique un Élément TEMPORAIRE, champ par champ, pour le donner au même rig que la Scène. Cette
+// énumération est tenue à la main : elle est juste le jour où on l'écrit, et elle prend du retard à
+// chaque champ ajouté ailleurs. Ont déjà été perdus en route :
+//
+//   — `maillagesEgares` (côté buildPropRig3D) : masquage écrit et testé, sans effet pendant deux
+//     versions livrées ;
+//   — `afficherMaillagesEgares` : transmis par l'appelant, jamais recopié dans l'Élément temporaire.
+//     Cocher la case ne changeait donc rien à l'aperçu ;
+//   — `joints3d` : sans l'INTENTION, la pose « allongé » restait invisible dans l'aperçu alors que
+//     la Case, elle, couchait bien le modèle. Signalé à l'usage.
+//
+// CE TEST DÉRIVE la liste au lieu de la réciter : il relit les champs que `ensureObjectRigEntry3D`
+// lit sur son Élément, et exige que chacun arrive. Un champ ajouté au rig demain fera échouer ce
+// test tant que personne ne l'aura soit transmis, soit exclu en s'expliquant.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', () => {
+  const RIG = readFileSync(join(RACINE, 'src/rig3d.js'), 'utf8');
+  const DRAW = readFileSync(join(RACINE, 'src/draw.js'), 'utf8');
+
+  // ⚠️ EXCLUSIONS, ET CHACUNE A SA RAISON. Ce ne sont pas des oublis tolérés : ce sont des
+  // différences VOULUES entre l'aperçu et la Scène.
+  const EXCLUS = {
+    id: 'l\'aperçu a son propre identifiant de rig (PREVIEW_OBJECT_ID), sinon il partagerait le '
+      + 'cache de l\'Élément et les deux vues se disputeraient la même entrée',
+    w: 'la taille n\'agit pas sur la géométrie du rig dans l\'aperçu : elle est simulée en '
+      + 'rapprochant la caméra (cf. sizePercent), pour ne pas casser le cadrage centré',
+    h: 'idem w',
+    realHeightFloor: 'idem w — la hauteur réelle ne concerne que le placement dans une Case',
+  };
+
+  test('RÉGRESSION : aucun champ lu par le rig ne s\'arrête en chemin', () => {
+    const i = RIG.indexOf('export function ensureObjectRigEntry3D(o){');
+    assert.ok(i > 0, 'ensureObjectRigEntry3D introuvable');
+    const suite = RIG.indexOf('\nexport function ', i + 10);
+    const bloc = RIG.slice(i, suite > 0 ? suite : RIG.length);
+    const lus = new Set([...bloc.matchAll(/\bo\s*(?:&&\s*o)?\.([A-Za-z][A-Za-z0-9_]*)/g)]
+      .map(m => m[1]));
+
+    // ⚠️ LES LECTURES INDIRECTES NE SE DÉRIVENT PAS, et c'est précisément ce qui a laissé passer
+    // `joints3d` : le rig ne l'écrit nulle part, il appelle `getEffectiveJoints(o)`, qui lit
+    // `o.joints3d` puis `o.position`. Une dérivation naïve aurait donc déclaré le champ absent du
+    // rig et validé son absence de l'aperçu. On les ajoute donc explicitement, en le disant.
+    if (/getEffectiveJoints\(o\)/.test(bloc)) { lus.add('joints3d'); lus.add('position'); }
+
+    const j = DRAW.indexOf('export function drawObjectPreview');
+    const temp = DRAW.slice(j, DRAW.indexOf('};', j));
+    const manquants = [...lus].filter(c => !EXCLUS[c] && !new RegExp(`\\b${c}\\s*:`).test(temp));
+    assert.deepEqual(manquants.sort(), [],
+      `champ(s) lu(s) par le rig et absent(s) de l'aperçu : ${manquants.join(', ')} — les `
+      + 'transmettre, ou les exclure dans EXCLUS en expliquant pourquoi');
+  });
+
+  test('le garde-fou : la dérivation trouve VRAIMENT des champs', () => {
+    // Sans lui, une expression régulière cassée rendrait un ensemble vide et le test précédent
+    // serait vert en ne comparant rien — le piège classique de la propriété vérifiée sur le néant.
+    const i = RIG.indexOf('export function ensureObjectRigEntry3D(o){');
+    const bloc = RIG.slice(i, i + 4000);
+    const lus = new Set([...bloc.matchAll(/\bo\s*(?:&&\s*o)?\.([A-Za-z][A-Za-z0-9_]*)/g)]
+      .map(m => m[1]));
+    assert.ok(lus.size >= 8, `${lus.size} champ(s) dérivé(s) seulement`);
+    ['modelFile', 'objType', 'skeletonPose3d'].forEach(c =>
+      assert.ok(lus.has(c), `${c} devrait être dérivé du rig`));
+  });
+
+  test('les trois champs perdus par le passé sont bien là aujourd\'hui', () => {
+    // Nommés explicitement EN PLUS de la dérivation : ce sont des régressions vécues, et une
+    // dérivation qui cesserait de fonctionner ne doit pas les faire disparaître en silence.
+    const j = DRAW.indexOf('export function drawObjectPreview');
+    const temp = DRAW.slice(j, DRAW.indexOf('};', j));
+    ['skeletonPose3d', 'joints3d', 'afficherMaillagesEgares'].forEach(c =>
+      assert.match(temp, new RegExp(`\\b${c}\\s*:`), `${c} ne parvient plus à l'aperçu`));
+  });
+});

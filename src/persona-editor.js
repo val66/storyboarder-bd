@@ -602,6 +602,11 @@ function dessinerModeleDansEditeur(cnv, fichier, size){
     id: PERSONA_EDITOR_MODEL_ID,
     type: 'objet3d', objType: 'modele', modelFile: fichier,
     skeletonPose3d: poseOsPourModeleImporte(fichier, S.personaEditorDraft) || null,
+    // L'INTENTION, à côté du résultat. Les angles d'os ne portent pas « allongé » — c'est une
+    // bascule du corps entier. Sans ce champ, l'Éditeur montrerait un modèle debout pendant que
+    // le brouillon dit « couché », et le même défaut qu'à l'aperçu de la fiche se rejouerait ici.
+    joints3d: S.personaEditorDraft,
+    position: S.personaEditorPoseKey,
     rotX: 0, rotY: 0, rotZ: 0,
   };
   const style = resolveStyle3D();

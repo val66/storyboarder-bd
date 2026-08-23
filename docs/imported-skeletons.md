@@ -381,3 +381,33 @@ still carries the previous frame's scale.
 enlarged, its box being lower). The Character keeps its standing height whatever its pose. Unifying
 this would change the size of models already placed in existing projects — a decision, not something
 to slip into a fix.
+
+### 7.6 Three temporary-Element factories, three chances to drop a field
+
+An imported model's rig is built by **one** function, but fed from **three** places:
+
+| | the Element comes from |
+|---|---|
+| the Panel | the project's real Element |
+| the card preview | a TEMPORARY Element (`drawObjectPreview`) |
+| the editor | another TEMPORARY Element (`dessinerModeleDansEditeur`) |
+
+The last two copy fields **one by one**. Such an enumeration is right the day it is written and falls
+behind with every field added elsewhere. Already lost this way:
+
+- `maillagesEgares` (in `buildPropRig3D`) — masking written and tested, with no effect **for two
+  released versions**;
+- `afficherMaillagesEgares` — passed by the caller, never copied across: ticking the box changed
+  nothing in the preview;
+- `joints3d` and `position` — without the **intent**, "lying down" stayed invisible in the preview and
+  in the editor, while the Panel did lay the model down.
+
+⚠️ **The distinction that matters**: `skeletonPose3d` carries **bone** angles — the RESULT. What
+happens at **body** level ("lying down", which tips the whole figure) travels only in the INTENT.
+Passing one without the other yields a preview showing the right joints on a wrongly oriented body.
+
+A test now **derives** the list instead of reciting it: it re-reads the fields
+`ensureObjectRigEntry3D` reads off its Element and requires each to arrive, barring justified
+exclusions (the preview's own rig id, size simulated by the camera). ⚠️ **Indirect** reads cannot be
+derived — `getEffectiveJoints(o)` reads `joints3d` and `position` without the rig naming them — so
+they are added explicitly. That gap is exactly what let `joints3d` slip through.
