@@ -171,7 +171,7 @@ unchanged.
 
 - the "Pose" section of the editor (`buildPersonaEditorPosesUI`);
 - the Position `<select>` of the Character dialog (`buildPersonaPositionOptions`), rebuilt every time
-  the dialog opens via `setModalPoseOptionsBuilder`, since modals.js cannot import events.js without
+  the dialog opens via `setPersonaEditorCallbacks`, since persona-editor.js cannot import events.js without
   creating a cycle.
 
 Every write into the library must refresh both, otherwise they diverge.

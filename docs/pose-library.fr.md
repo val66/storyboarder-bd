@@ -170,7 +170,7 @@ modale se croit inchangée.
 
 - la section « Pose » de l'éditeur (`buildPersonaEditorPosesUI`) ;
 - le `<select>` Position de la modale Personnage (`buildPersonaPositionOptions`), reconstruit à
-  chaque ouverture de la modale via `setModalPoseOptionsBuilder`, car modals.js ne peut pas importer
+  chaque ouverture de la modale via `setPersonaEditorCallbacks`, car persona-editor.js ne peut pas importer
   events.js sans créer un cycle.
 
 Toute écriture dans la bibliothèque doit rafraîchir les deux, faute de quoi elles divergent.

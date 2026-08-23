@@ -109,7 +109,7 @@ the domain concept, present in the data (`type: 'tracé'`), in function identifi
 ## And if a rename really is necessary?
 
 It takes a **migration**, not a rename. The repository already contains some:
-`migratePanelWorldCoords`, `ensureElementWorldCoords` (`src/io.js`) read the old format and write
+`migratePanelWorldCoords`, `migrateElementWxFloor` (`src/io.js`) read the old format and write
 the new one on load. The scheme:
 
 1. The new field is written on save.

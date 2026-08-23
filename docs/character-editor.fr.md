@@ -172,7 +172,8 @@ la bibliothèque en place.
 
 ### Phase 1 — Coquille de l'éditeur
 
-- **1.1** Mode `S.editingPersonaId`, calqué sur `S.editingSceneId` : prise en main du rendu, sortie,
+- **1.1** Un mode dédié, calqué sur `S.editingSceneId` (implémenté en `S.personaEditorOpen` +
+  `S.personaEditorTargetId`) : prise en main du rendu, sortie,
   garde-fous sur les clics hors zones légitimes.
 
   ⚠️ **Piège de l'ordre d'enregistrement (Fix 67).** L'éditeur RECOUVRE l'application au lieu de la
@@ -202,7 +203,7 @@ la bibliothèque en place.
 
 - **2.1** Réglage fin par curseurs, sur le modèle de `buildAnimalJointSlidersUI`.
 - **2.2** Poignées cliquables sur le canevas.
-- **2.3** Tout opère sur un brouillon `S.editorDraftJoints`, jamais sur l'objet.
+- **2.3** Tout opère sur un brouillon, jamais sur l'objet (implémenté en `S.personaEditorDraft`).
 
 ### Phase 3 — Poses en lecture
 

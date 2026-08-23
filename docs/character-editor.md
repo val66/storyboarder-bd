@@ -167,7 +167,8 @@ place.
 
 ### Phase 1 — Editor shell
 
-- **1.1** `S.editingPersonaId` mode, modelled on `S.editingSceneId`: taking over the rendering,
+- **1.1** A dedicated mode, modelled on `S.editingSceneId` (implemented as `S.personaEditorOpen` +
+  `S.personaEditorTargetId`): taking over the rendering,
   exiting, guards against clicks outside legitimate areas.
 
   ⚠️ **Registration-order trap (Fix 67).** The editor COVERS the application instead of replacing
@@ -196,7 +197,7 @@ place.
 
 - **2.1** Fine adjustment by sliders, modelled on `buildAnimalJointSlidersUI`.
 - **2.2** Clickable handles on the canvas.
-- **2.3** Everything operates on a `S.editorDraftJoints` draft, never on the object.
+- **2.3** Everything operates on a draft, never on the object (implemented as `S.personaEditorDraft`).
 
 ### Phase 3 — Poses, read-only
 

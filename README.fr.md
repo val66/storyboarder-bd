@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.16**
+**Version 1.4.17**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -81,7 +81,7 @@ Planche ou une Scène quitte l'éditeur.
 - Format de projet **JSON**, lisible et versionnable
 - Sauvegarde automatique configurable
 - Export des planches en **PNG** ou **PDF**
-- Undo/Redo illimité
+- Annuler, sur les 50 dernières actions
 
 ---
 
@@ -170,6 +170,7 @@ storyboarder-bd/
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
 │   ├── persona-editor.js # Éditeur de Personnage : vue de pose sur la zone centrale
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré
+│   ├── version.js      # Numéro de version, GÉNÉRÉ par tools/bump-version.mjs
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
 ├── tests/              # Tests unitaires (test runner natif de Node)
 ├── tools/              # Outillage de dépôt (incrément de version, installation des hooks git)

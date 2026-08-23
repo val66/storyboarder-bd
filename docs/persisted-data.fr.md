@@ -111,7 +111,7 @@ ne ferait qu'ajouter un troisième vocabulaire.
 ## Et si un renommage est vraiment nécessaire ?
 
 Il faut une **migration**, pas un renommage. Le dépôt en contient déjà :
-`migratePanelWorldCoords`, `ensureElementWorldCoords` (`src/io.js`) lisent l'ancien format et
+`migratePanelWorldCoords`, `migrateElementWxFloor` (`src/io.js`) lisent l'ancien format et
 écrivent le nouveau au chargement. Le schéma :
 
 1. Le nouveau champ est écrit à la sauvegarde.

@@ -558,3 +558,46 @@ describe('L\'écart autour de la sous-section des articulations', () => {
       'le bouton a retrouvé une marge : elle se collapserait avec le padding du conteneur');
   });
 });
+
+
+// ── Les raccourcis promis existent-ils ? ──────────────────────────────────────────────────────
+describe('Raccourcis du manuel — aucune touche promise sans écouteur', () => {
+  // NÉ D'UN DÉFAUT RÉEL : le manuel annonçait « Ctrl+Z / Ctrl+Y : annuler / rétablir » alors
+  // qu'aucun `redo` n'a jamais existé dans ce dépôt. Rien ne pouvait le signaler — une touche qui
+  // ne fait rien ne lève pas d'erreur, elle déçoit en silence.
+  //
+  // Le test lit la section « Raccourcis » du manuel ANGLAIS : ses noms de touches (Escape, Delete,
+  // Enter, Tab) sont exactement les valeurs de `e.key`, ce qui évite une table de correspondance
+  // qui serait elle-même à tenir à jour.
+  const src = ['events.js', 'io.js', 'persona-editor.js', 'modals.js']
+    .map(f => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8')).join('\n');
+  const section = HELP_MANUAL_EN.find(g => g.id === 'raccourcis');
+
+  // Les atomes cités : Ctrl+X, F1, une lettre seule en tête de paragraphe, les touches nommées.
+  const atomes = new Set();
+  section.paragraphs.forEach(p => {
+    (p.match(/\bCtrl\+(\S)/g) || []).forEach(m => atomes.add(m.slice(5)));
+    (p.match(/\bF\d\b/g) || []).forEach(m => atomes.add(m));
+    const seul = p.match(/^([A-Z]|\[ \/ \]|W A S D):/);
+    if (seul) atomes.add(seul[1]);
+    ['Escape', 'Delete', 'Enter', 'Tab'].forEach(n => { if (p.includes(n + ':') || p.includes(n + ' /')) atomes.add(n); });
+  });
+
+  test('la section cite bien une poignée de touches', () => {
+    // Sans cette garde, une extraction cassée rendrait tous les tests suivants vrais par vacuité.
+    assert.ok(atomes.size >= 8, `seulement ${atomes.size} touche(s) extraite(s) : ${[...atomes]}`);
+  });
+
+  test('LE TEST QUI COMPTE : chaque touche citée est lue quelque part', () => {
+    const litLaTouche = (atome) => {
+      if (atome === '[ / ]') return /e\.key === '\[' \|\| e\.key === '\]'/.test(src);
+      if (atome === 'W A S D') return /e\.key === 'w'/.test(src) && /e\.key === 'd'/.test(src);
+      const bas = atome.toLowerCase();
+      return src.includes(`e.key === '${atome}'`)
+          || src.includes(`e.key === '${bas}'`)
+          || src.includes(`e.key.toLowerCase() === '${bas}'`);
+    };
+    [...atomes].forEach(a => assert.ok(litLaTouche(a),
+      `le manuel promet « ${a} », qu'aucun gestionnaire ne lit`));
+  });
+});
