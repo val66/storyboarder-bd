@@ -13,6 +13,78 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.4.0
+
+**Poser un modèle importé comme un Personnage.** La v1.3.0 ouvrait l'application aux fichiers venus
+d'ailleurs, mais ils y arrivaient figés : on pouvait les placer, les tourner, les redimensionner —
+pas les animer. Cette version leur donne le même vocabulaire de pose qu'au Personnage intégré.
+
+Ce n'est pas une affaire de câblage. **Aucun fichier ne nomme ses os de la même façon**, et aucun ne
+garantit dans quel sens ils pointent : sur les six fichiers d'essai, cinq conventions différentes.
+Appliquer tels quels les angles du Personnage à un squelette importé produirait un membre qui part de
+travers — sans qu'aucune erreur ne soit levée, ce qui est le pire des deux mondes.
+
+La réponse est de **passer par le corps** : l'application mesure le haut, la droite et l'avant sur le
+squelette lui-même, à partir d'os que la correspondance reconnaît, puis traduit chaque geste dans ce
+repère-là. « Lever le bras » veut alors dire la même chose partout, quelle que soit la façon dont le
+fichier a été exporté.
+
+### Ce qui change pour vous
+
+**Un modèle articulé se règle comme un Personnage.** Sa fiche gagne une section d'articulations —
+des curseurs par articulation reconnue, et des points cliquables sur l'aperçu. Le bassin n'en a pas :
+racine du squelette, le tourner ferait pivoter tout le personnage, ce que fait déjà l'Orientation.
+
+**L'écran de correspondance.** Reconnaître un squelette est une affaire de conventions, et aucune
+n'est universelle : l'application propose, vous corrigez. Chaque proposition dit d'où elle vient —
+du nom de l'os ou de la structure du squelette — pour qu'on sache laquelle mérite un second regard.
+Une correspondance validée cesse d'alerter, et l'Élément n'est créé qu'après validation.
+
+**La bibliothèque de poses s'applique aux modèles importés**, depuis leur fiche ou depuis l'Éditeur
+de Personnage — la même bibliothèque, partagée par tous vos Projets. Les poses couchées basculent le
+modèle quel que soit son axe vertical, et sans changer sa taille.
+
+**Changer de figure.** Un Élément articulé peut porter un autre fichier importé : la pose du corps
+est conservée et retraduite pour le nouveau squelette. Les retouches faites aux curseurs, elles, sont
+perdues — elles étaient exprimées dans les axes de l'ancienne figure et n'y voudraient plus rien dire.
+
+**L'Éditeur de Personnage affiche le modèle**, pas une silhouette de substitution : ses poignées se
+posent sur ses propres os. Poser un personnage trapu en regardant une figure élancée fait juger de
+travers. Le panneau droit permet de choisir la figure sur laquelle on compose.
+
+**Le Personnage intégré gagne les articulations qui lui manquaient** — cou, clavicules et chevilles,
+avec des pieds pour que le mouvement se voie — et trois axes pour la tête et le torse : hocher,
+tourner, pencher. Il parle enfin le même corps qu'un squelette importé.
+
+**La taille se saisit en mètres.** La fiche d'un Élément 3D affiche sa hauteur réelle à côté du
+curseur de pourcentage ; les deux se suivent, et c'est la hauteur qui est enregistrée.
+
+**Les poses de base sont réduites à six** — debout, assis, allongé, course, accroupi, à genoux. Les
+autres restent lisibles dans les Projets qui les citent : rien n'a été perdu, seule la liste proposée
+a été resserrée.
+
+**Cinq défauts trouvés en essayant de vrais fichiers**, tous invisibles sur un modèle simple : un
+personnage réduit à ses articulations à l'écran ; un accessoire flottant à trois fois la hauteur du
+corps, correctement lié mais projeté hors de lui par sa géométrie de liaison ; un modèle qui
+atterrissait hors de sa Case ; une boîte de sélection trop large ; un aperçu rogné en haut. Chacun a
+été mesuré avant d'être corrigé, et les hypothèses fausses sont consignées dans le code.
+
+### Sous le capot
+
+Le changement de repère est écrit sur des tableaux de nombres, sans dépendance au moteur 3D, pour
+que la seule chose capable de tordre silencieusement un personnage soit vérifiable sous Node. Aucune
+convention de signe n'y est écrite à la main : le Personnage intégré est mesuré comme les autres, si
+bien qu'un changement de son orientation serait suivi tout seul.
+
+Le format de Projet n'a pas changé d'un champ existant — les nouveautés s'ajoutent, rien n'est
+renommé. Un Projet d'avant s'ouvre et rend à l'identique.
+
+La suite compte 1 765 tests. Ce qu'ils ne peuvent pas dire est documenté : aucun ne décode un vrai
+`.glb` de modélisateur, faute de pouvoir le faire sous Node — ce qui explique que tous les défauts
+sérieux de ce cycle aient été trouvés à l'usage.
+
+---
+
 ## v1.3.0
 
 **Vos propres modèles 3D.** Cette version ouvre l'application aux fichiers venus d'ailleurs :
