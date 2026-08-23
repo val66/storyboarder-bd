@@ -2442,6 +2442,39 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
       'un refus doit interrompre la sortie, pas seulement sauter la confirmation');
   });
 
+  test('LE CAS QUI A MORDU : le bouton « ? » n\'est PAS rejoué', () => {
+    // Le « ? » est un basculeur. Si le Manuel était déjà ouvert dans le panneau droit avant
+    // d'entrer dans l'éditeur — panneau que l'éditeur recouvre — rejouer le clic le REFERMAIT :
+    // l'utilisateur demandait le Manuel et obtenait un panneau vide. Il agissait sur un état
+    // invisible, ce qui ôte tout sens à une bascule ; sa demande, elle, est sans ambiguïté.
+    const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
+    const corps = fn.slice(0, fn.indexOf('\n}'));
+    assert.match(corps, /helpBtn/, 'le cas du Manuel doit être distingué du rejeu');
+    assert.match(corps, /afficherManuelLateral\(\)/,
+      'on AFFICHE le Manuel, on ne bascule pas son état');
+    const iHelp = corps.indexOf('afficherManuelLateral');
+    const iRejeu = corps.indexOf('cible.click()');
+    assert.ok(iHelp > 0 && iRejeu > iHelp, 'ce cas doit sortir AVANT le rejeu générique');
+    // Et il doit SORTIR, pas seulement passer en premier : sans le `return`, on affiche le Manuel
+    // puis on rejoue le clic, qui le referme aussitôt — le défaut d'origine, à l'identique.
+    assert.ok(corps.slice(iHelp, iRejeu).includes('return;'),
+      'sans sortie franche, le rejeu rebascule le Manuel qu\'on vient d\'afficher');
+  });
+
+  test('RÉGRESSION : « afficher le Manuel » est nommé une seule fois', () => {
+    // Le bouton « ? » et la sortie de l'éditeur posent la MÊME paire de drapeaux. Recopiée des deux
+    // côtés, elle aurait fini par ne plus dire la même chose — le défaut d'origine était déjà que
+    // deux endroits n'étaient pas d'accord sur ce que « affiché » veut dire.
+    const sidebar = readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8');
+    assert.match(sidebar, /export function afficherManuelLateral\(\)/);
+    const events = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const bloc = events.slice(events.indexOf("getElementById('helpBtn').onclick"));
+    assert.match(bloc.slice(0, 700), /masquerManuelLateral\(\); else afficherManuelLateral\(\)/,
+      'le bouton « ? » doit passer par les mêmes fonctions nommées');
+    assert.ok(!/helpPanelDismissed = false/.test(bloc.slice(0, 700)),
+      'plus aucune pose de drapeau en direct ici');
+  });
+
   test('le clic est REJOUÉ une fois l\'éditeur fermé', () => {
     const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
     assert.match(fn.slice(0, 800), /cible\.click\(\)/,

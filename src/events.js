@@ -99,7 +99,7 @@ import { setI18nCallbacks, applyI18n } from './i18n.js';
 import {
   setSidebarCallbacks, isSceneTopDownView, homeOwningPanel, exitCameraMode, elementsInPanel,
   getRoomConnectedComponents, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
-  refreshSceneTopDownBtn, closeRightPanelMenu,
+  refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
 } from './sidebar.js';
 import {
   toggleModalSection, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -3595,12 +3595,10 @@ document.getElementById('helpBtn').onclick = (e) => {
   e.stopPropagation();
   hideContextMenu();
   const helpAlreadyShown = S.selectedId == null && !S.helpPanelDismissed;
-  if (helpAlreadyShown) {
-    S.helpPanelDismissed = true;
-  } else {
-    S.selectedId = null;
-    S.helpPanelDismissed = false;
-  }
+  // Les deux branches passent par les fonctions nommées de sidebar.js : la sortie de l'Éditeur de
+  // Personnage appelle la même « afficher », et deux endroits qui poseraient ces drapeaux
+  // séparément finiraient par diverger sur ce que « affiché » veut dire.
+  if (helpAlreadyShown) masquerManuelLateral(); else afficherManuelLateral();
   scheduleDrawCurrentPage();
 };
 

@@ -42,6 +42,10 @@ import {
   refreshPersonaPreview, syncJointSlidersFromDraft,
 } from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
+// sidebar.js n'importe pas persona-editor.js : pas de cycle. `afficherManuelLateral` est nommée
+// là-bas parce que c'est updateSidePanel qui relit ces drapeaux — cf. son commentaire.
+import { afficherManuelLateral } from './sidebar.js';
+import { scheduleDrawCurrentPage } from './draw.js';
 
 // The ONLY thing this module needs from events.js, and therefore the only thing that would make a
 // cycle: refreshing the Character modal's pose <select> after the library changes. Injected rather
@@ -1069,6 +1073,16 @@ async function quitterEditeurParNavigation(cible){
   }
   quitterEditeurSansRetour();
   syncPersonaEditorDom();
+  // ⚠️ LE BOUTON « ? » NE SE REJOUE PAS, IL S'INTERPRÈTE. C'est un BASCULEUR : il lit l'état affiché
+  // du panneau droit et l'inverse. Or l'éditeur recouvrait ce panneau — si le Manuel y était déjà
+  // ouvert avant d'entrer dans l'éditeur, rejouer le clic le REFERMAIT, et l'utilisateur se
+  // retrouvait devant un panneau vide après avoir demandé le Manuel. Il agissait sur un état qu'il
+  // ne pouvait pas voir, ce qui ôte tout sens à une bascule. Sa demande, elle, n'a rien d'ambigu.
+  if (clicQuitteLEditeur3D(cible, { ids: ['helpBtn'], classes: [] })) {
+    afficherManuelLateral();
+    scheduleDrawCurrentPage();
+    return;
+  }
   if (cible && typeof cible.click === 'function') cible.click();
 }
 

@@ -990,6 +990,30 @@ function updateSidePanelImpl(){
   rightPanel.classList.remove('collapsed');
 }
 
+/**
+ * Afficher / masquer le Manuel dans le panneau droit.
+ *
+ * POURQUOI CES DEUX FONCTIONS EXISTENT PLUTÔT QUE DEUX PAIRES D'AFFECTATIONS. Le bouton « ? » est
+ * un BASCULEUR : il lit l'état affiché et l'inverse. Or l'Éditeur de Personnage recouvre le panneau
+ * droit — l'utilisateur qui cliquait « ? » depuis l'éditeur agissait sur un état qu'il ne voyait
+ * pas, et refermait le Manuel qu'il croyait ouvrir. La sortie de l'éditeur doit donc pouvoir dire
+ * « AFFICHE le Manuel », sans basculer.
+ *
+ * Nommer l'action au lieu de recopier les deux affectations chez l'appelant : c'est la même paire
+ * de drapeaux qu'`updateSidePanel` relit juste en dessous, et deux endroits qui les posent
+ * séparément finiraient par ne plus s'accorder sur ce que « affiché » veut dire.
+ */
+export function afficherManuelLateral(){
+  // Le Manuel n'apparaît que si RIEN n'est sélectionné : un Élément sélectionné donne sa fiche au
+  // panneau droit. Poser les deux drapeaux, pas seulement le second.
+  S.selectedId = null;
+  S.helpPanelDismissed = false;
+}
+
+export function masquerManuelLateral(){
+  S.helpPanelDismissed = true;
+}
+
 export function updateSidePanel(){
   updateSidePanelImpl();
   if (_restoreSectionCollapseStates) _restoreSectionCollapseStates();

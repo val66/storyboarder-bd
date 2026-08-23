@@ -16,6 +16,7 @@ import {
   homeOwningPanel,
   elementsInPanel,
   renderSidePersonas,
+  afficherManuelLateral, masquerManuelLateral,
 } from '../src/sidebar.js';
 import { S } from '../src/state.js';
 
@@ -395,3 +396,38 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
  *
  * Une propriété énoncée dans un commentaire et non épinglée par un test n'est qu'une intention.
  */
+
+
+// ── Le Manuel dans le panneau droit ───────────────────────────────────────────────────────────
+describe('afficherManuelLateral / masquerManuelLateral — l\'action est nommée, pas recopiée', () => {
+  // Ces deux fonctions existent parce que le bouton « ? » est un BASCULEUR et que l'Éditeur de
+  // Personnage recouvre le panneau qu'il bascule : depuis l'éditeur, l'utilisateur agissait sur un
+  // état qu'il ne voyait pas et refermait le Manuel qu'il croyait ouvrir. La sortie de l'éditeur
+  // doit pouvoir dire « AFFICHE », sans inverser quoi que ce soit.
+  test('LE POINT QUI COMPTE : afficher DÉSÉLECTIONNE aussi', () => {
+    // Le Manuel n'apparaît que si rien n'est sélectionné — un Élément sélectionné donne sa fiche au
+    // panneau droit. Ne lever que `helpPanelDismissed` laisserait le panneau afficher cette fiche,
+    // et le Manuel resterait invisible pour une raison que rien n'indique.
+    S.selectedId = 'e1';
+    S.helpPanelDismissed = true;
+    afficherManuelLateral();
+    assert.equal(S.helpPanelDismissed, false);
+    assert.equal(S.selectedId, null, 'un Élément sélectionné masquerait le Manuel');
+  });
+
+  test('masquer ne touche PAS à la sélection', () => {
+    // Refermer le Manuel ne doit rien désélectionner : la sélection appartient à l'utilisateur.
+    S.selectedId = 'e1';
+    S.helpPanelDismissed = false;
+    masquerManuelLateral();
+    assert.equal(S.helpPanelDismissed, true);
+    assert.equal(S.selectedId, 'e1');
+  });
+
+  test('afficher deux fois de suite AFFICHE toujours', () => {
+    // C'est toute la différence avec une bascule, et c'est ce dont la sortie de l'éditeur a besoin.
+    afficherManuelLateral();
+    afficherManuelLateral();
+    assert.equal(S.helpPanelDismissed, false);
+  });
+});
