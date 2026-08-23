@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDescriptionLabel,
          I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL } from '../src/i18n.js';
-import { HELP_MANUAL_EN, HELP_MANUAL_FR } from '../src/help-content.js';
+import { HELP_MANUAL_EN, HELP_MANUAL_FR , sectionDuManuel} from '../src/help-content.js';
 import { S } from '../src/state.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
@@ -222,10 +222,23 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   const bloc = (() => {
     const i = html.indexOf('<div class="help-text">');
     assert.ok(i > 0, 'bloc d\'aide introuvable dans index.html');
-    return html.slice(i, html.indexOf('</div>', html.lastIndexOf('</details>')));
+    return html.slice(i, html.indexOf('</div>', html.lastIndexOf('class="help-group"')));
   })();
-  const clesHtml = [...bloc.matchAll(/<details class="help-group" data-help="([^"]+)"/g)].map(m => m[1]);
-  const nbGroupes = (bloc.match(/<details class="help-group"/g) || []).length;
+  const clesHtml = [...bloc.matchAll(/<button type="button" class="help-group" data-help="([^"]+)"/g)].map(m => m[1]);
+  const nbGroupes = (bloc.match(/class="help-group"/g) || []).length;
+
+  test('RÉGRESSION : les sections sont des BOUTONS, plus des accordéons', () => {
+    // Le panneau latéral fait quelques centimètres de large : y déplier des paragraphes donnait des
+    // lignes de trois mots et noyait les autres sections. Le contenu s'affiche désormais au centre.
+    //
+    // On fige la forme parce que c'est ELLE qui rend la section actionnable : un <details> s'ouvre
+    // tout seul au clic sans qu'aucun code n'écoute, un <div> n'est ni focalisable ni annoncé comme
+    // cliquable. Revenir à l'un ou à l'autre laisserait le manuel muet ou inaccessible au clavier.
+    assert.equal((bloc.match(/<details/g) || []).length, 0,
+      'les sections du manuel ne sont plus dépliantes');
+    assert.equal(clesHtml.length, nbGroupes,
+      `${nbGroupes - clesHtml.length} section(s) ne sont pas des <button type="button">`);
+  });
 
   test('RÉGRESSION : chaque groupe du HTML porte une clé data-help', () => {
     // Sans clé, applyI18nHelpManual ne retrouve pas son entrée et laisse le groupe muet. C'est
@@ -358,6 +371,51 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   });
 });
 
+describe('sectionDuManuel — la table est la SEULE source du contenu affiché', () => {
+  // La modale rend ses paragraphes à l'ouverture, par cette fonction. C'est ce qui garde une seule
+  // liste de textes : le panneau latéral ne porte plus que des titres, et il n'existe nulle part de
+  // copie des paragraphes susceptible de diverger.
+  test('rend le titre et les paragraphes de la langue demandée', () => {
+    const fr = sectionDuManuel('cases', 'fr');
+    const en = sectionDuManuel('cases', 'en');
+    assert.equal(fr.title, HELP_MANUAL_FR.find(g => g.id === 'cases').title);
+    assert.equal(en.title, HELP_MANUAL_EN.find(g => g.id === 'cases').title);
+    assert.notEqual(fr.title, en.title, 'les deux langues doivent différer, sinon on lit la même table');
+    assert.deepEqual(fr.paragraphs, HELP_MANUAL_FR.find(g => g.id === 'cases').paragraphs);
+  });
+
+  test('toute langue autre que « en » retombe sur le français', () => {
+    // Le français est la langue par défaut de l'application ; une valeur inattendue ne doit pas
+    // vider la modale.
+    assert.equal(sectionDuManuel('cases', 'zz').title, sectionDuManuel('cases', 'fr').title);
+    assert.equal(sectionDuManuel('cases', undefined).title, sectionDuManuel('cases', 'fr').title);
+  });
+
+  test('LE POINT QUI COMPTE : une clé inconnue rend null, jamais une section vide', () => {
+    // Une clé inconnue est un défaut d'appariement — le même que celui qui avait décalé tous les
+    // groupes d'un cran. Rendre une section vide l'afficherait comme une section légitimement sans
+    // contenu ; null laisse l'appelant refuser d'ouvrir, ce qui se voit.
+    assert.equal(sectionDuManuel('inexistant', 'fr'), null);
+    assert.equal(sectionDuManuel('', 'fr'), null);
+    assert.equal(sectionDuManuel(null, 'fr'), null);
+  });
+
+  test('RÉGRESSION : les paragraphes rendus sont une COPIE', () => {
+    // L'appelant les dépose dans le DOM ; s'il recevait le tableau de la table et le modifiait, il
+    // corromprait le manuel pour tout le reste de la session.
+    const s = sectionDuManuel('cases', 'fr');
+    s.paragraphs.push('intrus');
+    assert.ok(!sectionDuManuel('cases', 'fr').paragraphs.includes('intrus'));
+  });
+
+  test('chaque clé du manuel se résout dans les deux langues', () => {
+    HELP_MANUAL_FR.forEach(g => {
+      assert.ok(sectionDuManuel(g.id, 'fr'), `« ${g.id} » ne se résout pas en FR`);
+      assert.ok(sectionDuManuel(g.id, 'en'), `« ${g.id} » ne se résout pas en EN`);
+    });
+  });
+});
+
 describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () => {
   // Les tests précédents vérifient que HTML et tables concordent. Ils ne verraient PAS un retour à
   // l'appariement par rang : tant que l'ordre coïncide, le résultat est le même — jusqu'au jour où
@@ -380,11 +438,13 @@ describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () =>
     assert.ok(!/data\[\s*i\s*\]/.test(corps), 'un accès indexé aux tables réintroduit le décalage');
   });
 
-  test('RÉGRESSION : les paragraphes sont ENGENDRÉS, pas appariés à des <p> existants', () => {
-    assert.match(corps, /createElement\('p'\)/, 'les <p> doivent être créés depuis les données');
-    assert.match(corps, /paragraphs\.forEach/, 'on parcourt les données, pas le DOM');
-    assert.ok(!/querySelectorAll\('p'\)\.forEach\(\s*\(p,\s*j\)/.test(corps),
-      'parcourir les <p> du DOM laisse retomber les paragraphes surnuméraires');
+  test('RÉGRESSION : cette fonction ne pose QUE les titres', () => {
+    // Les paragraphes vivaient ici tant que le panneau les dépliait. Ils s'affichent maintenant
+    // dans la modale, rendue à l'ouverture depuis la même table. Continuer à les injecter ici en
+    // ferait une seconde copie — invisible, donc jamais corrigée, et libre de diverger.
+    assert.ok(!/createElement\('p'\)/.test(corps),
+      'les paragraphes sont rendus par la modale, pas déposés dans le panneau');
+    assert.match(corps, /textContent = d\.title/, 'le titre du bouton vient bien de la table');
   });
 
   test('un groupe sans entrée est laissé intact, jamais rempli avec autre chose', () => {

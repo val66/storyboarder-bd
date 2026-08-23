@@ -7,11 +7,14 @@
  * Consumed by: src/app.js
  */
 
-// Manuel d'utilisation (#sideHelpSection) : un groupe par <details>, chacun avec un titre
-// (<summary>) et ses paragraphes — traduit intégralement sur demande utilisateur ("Tout traduire,
-// y compris le Manuel d'utilisation").
+// Manuel d'utilisation (#sideHelpSection) : un groupe par bouton de section, chacun avec un titre
+// et ses paragraphes — traduit intégralement sur demande utilisateur ("Tout traduire, y compris le
+// Manuel d'utilisation").
 //
-// Chaque entrée porte un `id`, qui doit correspondre à l'attribut data-help du <details>.
+// Le panneau latéral n'affiche que les TITRES ; les paragraphes sont rendus dans #helpModal à
+// l'ouverture (cf. sectionDuManuel, en bas de ce fichier). Ils ne sont donc écrits qu'ici.
+//
+// Chaque entrée porte un `id`, qui doit correspondre à l'attribut data-help du bouton de section.
 //
 // L'appariement se faisait auparavant par RANG d'apparition, « ordre stable, jamais réordonné ».
 // L'ordre l'est bien resté ; c'est la LISTE qui a bougé. Le groupe « Scènes » a été ajouté au HTML
@@ -253,3 +256,24 @@ export const HELP_MANUAL_FR = [
 // chargé la police choisie, même après avoir changé la valeur du sélecteur.
 export const BUBBLE_FONT_PRELOAD_LIST = ['Bangers', 'Comic Neue', 'Permanent Marker', 'Luckiest Guy', 'Anton', 'Patrick Hand', 'Caveat', 'Fredoka', 'Bubblegum Sans', 'Kalam'];
 
+
+
+/**
+ * Une section du manuel, par sa clé et sa langue. Fonction PURE.
+ *
+ * POURQUOI ELLE EXISTE PLUTÔT QU'UN `find` SUR PLACE. La modale du manuel rend son contenu à
+ * l'OUVERTURE, depuis ces tables — et non depuis des paragraphes déjà injectés dans le panneau
+ * latéral. C'est ce qui garde une seule liste de textes : celle-ci. Le jour où la modale et le
+ * panneau se seraient nourris à deux endroits, ils auraient fini par ne plus dire la même chose.
+ *
+ * ⚠️ RENDRE `null` PLUTÔT QU'UNE SECTION VIDE. Une clé inconnue est un défaut d'appariement — le
+ * même que celui qui avait décalé tous les groupes d'un cran. Une section vide s'afficherait comme
+ * une section légitimement sans contenu ; `null` laisse l'appelant refuser d'ouvrir.
+ */
+export function sectionDuManuel(id, lang){
+  const table = lang === 'en' ? HELP_MANUAL_EN : HELP_MANUAL_FR;
+  if (!id) return null;
+  const g = table.find(x => x && x.id === id);
+  if (!g) return null;
+  return { id: g.id, title: g.title, paragraphs: [...(g.paragraphs || [])] };
+}

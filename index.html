@@ -373,53 +373,66 @@
     </div>
     <div id="sideHelpSection" class="side-section" style="display:none;">
       <div class="help-text">
-        <!-- Manuel d'utilisation : la CHARPENTE seule vit ici. Titres et paragraphes viennent de
-             src/help-content.js, injectés par applyI18nHelpManual au démarrage puis à chaque
-             changement de langue. `data-help` est la clé d'appariement : auparavant c'était le RANG
-             du groupe qui faisait foi, si bien qu'ajouter « Scènes » ici sans ajouter son entrée
-             là-bas a décalé d'un cran le titre ET le contenu de tous les groupes suivants. -->
-        <details class="help-group" data-help="cases">
-          <summary class="help-group-title">Cases</summary>
-        </details>
-        <details class="help-group" data-help="bulles">
-          <summary class="help-group-title">Bulles de dialogue</summary>
-        </details>
-        <details class="help-group" data-help="personnages">
-          <summary class="help-group-title">Personnages</summary>
-        </details>
-        <details class="help-group" data-help="editeur">
-          <summary class="help-group-title">Éditeur de Personnage</summary>
-        </details>
-        <details class="help-group" data-help="objets">
-          <summary class="help-group-title">Objets &amp; décor</summary>
-        </details>
-        <details class="help-group" data-help="camera">
-          <summary class="help-group-title">Caméra</summary>
-        </details>
-        <details class="help-group" data-help="calques">
-          <summary class="help-group-title">Calques</summary>
-        </details>
-        <details class="help-group" data-help="scenes">
-          <summary class="help-group-title">Scènes</summary>
-        </details>
-        <details class="help-group" data-help="modeles">
-          <summary class="help-group-title">Modèles 3D importés</summary>
-        </details>
-        <!-- Scindée de la précédente : un modèle ARTICULÉ a sa propre poignée de gestes (curseurs
-             d'articulations, poses, morceaux détachés) qui n'a rien à voir avec l'import lui-même.
-             La section unique atteignait le plafond du garde-fou de longueur (cf. tests/i18n). -->
-        <details class="help-group" data-help="modeles_articules">
-          <summary class="help-group-title">Modèles articulés</summary>
-        </details>
-        <details class="help-group" data-help="projet">
-          <summary class="help-group-title">Projet</summary>
-        </details>
-        <details class="help-group" data-help="tomes">
-          <summary class="help-group-title">Tomes &amp; planches</summary>
-        </details>
-        <details class="help-group" data-help="raccourcis">
-          <summary class="help-group-title">Raccourcis clavier</summary>
-        </details>
+        <!-- Manuel d'utilisation : la CHARPENTE seule vit ici — une LISTE DE BOUTONS. Les titres
+             viennent de src/help-content.js (applyI18nHelpManual), les paragraphes ne sont plus
+             injectés ici du tout : un clic ouvre #helpModal, qui les rend depuis la même table.
+             `data-help` est la clé d'appariement : auparavant c'était le RANG du groupe qui faisait
+             foi, si bien qu'ajouter « Scènes » ici sans ajouter son entrée là-bas a décalé d'un cran
+             le titre ET le contenu de tous les groupes suivants.
+             Le panneau latéral est ÉTROIT : y déplier des paragraphes donnait des colonnes de texte
+             de quelques mots de large. La modale leur rend la largeur d'une page. -->
+        <button type="button" class="help-group" data-help="cases">
+          <span class="help-group-title">Cases</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="bulles">
+          <span class="help-group-title">Bulles de dialogue</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="personnages">
+          <span class="help-group-title">Personnages</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="editeur">
+          <span class="help-group-title">Éditeur de Personnage</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="objets">
+          <span class="help-group-title">Objets &amp; décor</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="camera">
+          <span class="help-group-title">Caméra</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="calques">
+          <span class="help-group-title">Calques</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="scenes">
+          <span class="help-group-title">Scènes</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="modeles">
+          <span class="help-group-title">Modèles 3D importés</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="modeles_articules">
+          <span class="help-group-title">Modèles articulés</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="projet">
+          <span class="help-group-title">Projet</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="tomes">
+          <span class="help-group-title">Tomes &amp; planches</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="help-group" data-help="raccourcis">
+          <span class="help-group-title">Raccourcis clavier</span>
+          <span class="help-group-chevron" aria-hidden="true">›</span>
+        </button>
       </div>
     </div>
   </div>
@@ -715,6 +728,21 @@
     <div class="modal-actions">
       <button class="danger-btn" id="confirmActionCancel" type="button">Annuler</button>
       <button class="full-btn" id="confirmActionOk" type="button">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale du Manuel d'utilisation. Le panneau latéral ne porte plus que les TITRES ; le contenu
+     s'affiche ici, où il a la largeur d'une page plutôt que celle d'une colonne.
+     ⚠️ AUCUN TEXTE EN DUR : le titre et les paragraphes sont rendus depuis src/help-content.js à
+     l'ouverture (cf. openHelpModal). Écrire quoi que ce soit ici recréerait la seconde liste que
+     l'appariement par clé a précisément supprimée. -->
+<div class="modal-overlay hidden" id="helpModal">
+  <div class="modal-box modal-box-help">
+    <h3 id="helpModalTitle"></h3>
+    <div id="helpModalBody" class="help-modal-body"></div>
+    <div class="modal-actions">
+      <button class="full-btn" id="helpModalClose" type="button">Fermer</button>
     </div>
   </div>
 </div>

@@ -113,6 +113,8 @@ import {
   recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
 
   arrondiCm3D,
+
+  openHelpModal, closeHelpModal, rafraichirManuelOuvert,
 } from './modals.js';
 setModalsCallbacks({ snapshot });
 // Collapses/expands a section of the Persona/Object modal (cf. .modal-section, per user
@@ -6050,6 +6052,11 @@ themeSelect.addEventListener('change', () => {
 languageSelect.addEventListener('change', () => {
   S.appLang = languageSelect.value;
   applyI18n(S.appLang);
+  // Le manuel ouvert se retraduit aussi. applyI18n ne parcourt que le DOM écrit dans index.html ;
+  // le contenu de la modale du manuel, lui, est rendu à l'ouverture depuis help-content.js, et
+  // resterait donc en français sous une interface repassée en anglais — sans que rien à l'écran
+  // n'indique qu'il faut la refermer pour en sortir.
+  rafraichirManuelOuvert(S.appLang);
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('lang', S.appLang);
 });
 // "Export" section — per user request: these two settings are read by exportPage() at export
@@ -6238,6 +6245,30 @@ function restoreSectionCollapseStates() {
 // `classList.add('hidden')` laisserait cette promesse en suspens pour toujours : l'import
 // resterait figé, sans message, sans modèle, et sans rien à quoi se raccrocher. `fermerSkeletonMap`
 // est le seul chemin de sortie, et il résout — ici avec `false`, comme le bouton Annuler.
+// ── Manuel d'utilisation : un clic sur une section ouvre la modale centrale ──────────────────────
+//
+// ÉCOUTE DÉLÉGUÉE, sur le conteneur. Les boutons de section sont réécrits à chaque changement de
+// langue (applyI18nHelpManual) : y accrocher un gestionnaire un par un obligerait à les rebrancher
+// à chaque fois, et le jour où on l'oublierait, le manuel deviendrait muet sans rien signaler.
+const sideHelpSection = document.getElementById('sideHelpSection');
+if (sideHelpSection) {
+  sideHelpSection.addEventListener('click', (e) => {
+    const bouton = e.target && e.target.closest ? e.target.closest('.help-group') : null;
+    if (!bouton || !bouton.dataset || !bouton.dataset.help) return;
+    openHelpModal(bouton.dataset.help, S.appLang);
+  });
+}
+const helpModalCloseBtn = document.getElementById('helpModalClose');
+if (helpModalCloseBtn) helpModalCloseBtn.onclick = () => closeHelpModal();
+const helpModalOverlay = document.getElementById('helpModal');
+if (helpModalOverlay) {
+  // Clic sur le voile, hors de la boîte : ferme. Même geste que les autres modales de lecture.
+  helpModalOverlay.addEventListener('mousedown', (e) => {
+    if (e.target === helpModalOverlay) closeHelpModal();
+  });
+}
+enregistrerFermeture('helpModal', () => closeHelpModal());
+
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));
 // Pour ces deux-là, Échap doit faire ce que fait « Annuler » — et « Annuler » sur un Élément qu'on

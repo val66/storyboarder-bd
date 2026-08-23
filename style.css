@@ -442,19 +442,35 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
 .help-text{ width:290px; padding:8px 10px; font-size:12px; line-height:1.55; color:var(--ink-soft); }
 .help-text p{ margin:0 0 6px; }
 .help-text p:last-child{ margin-bottom:0; }
+/* Sections du manuel : des BOUTONS, plus des accordéons. Le panneau fait 290 px — y déplier des
+   paragraphes donnait des lignes de trois mots et noyait les autres sections. Le contenu s'affiche
+   maintenant dans #helpModal ; ici il ne reste que la liste des titres. */
 .help-group{
-  margin-bottom:10px; padding:10px 12px; border-radius:8px;
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  margin-bottom:8px; padding:10px 12px; border-radius:8px;
   background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+  cursor:pointer; font-family:inherit;
 }
 .help-group:last-child{ margin-bottom:0; }
+.help-group:hover{ background:rgba(255,255,255,.09); border-color:var(--accent); }
 .help-group-title{
-  margin:0 0 6px; padding-bottom:4px; border-bottom:1px solid var(--line);
+  flex:1 1 auto; margin:0;
   font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink);
-  cursor:pointer; list-style:revert; user-select:none;
+  user-select:none;
 }
-.help-group:not([open]) .help-group-title{ margin-bottom:0; padding-bottom:0; border-bottom:none; }
-.help-group-title:hover{ color:var(--accent); }
+.help-group:hover .help-group-title{ color:var(--accent); }
+/* Le chevron dit que le clic MÈNE quelque part. Sans lui, ces pavés se lisent comme des en-têtes
+   inertes : rien ne les distingue des titres de section du même panneau. */
+.help-group-chevron{ flex:0 0 auto; font-size:14px; line-height:1; color:var(--ink-soft); }
 #sideHelpSection .help-text{ width:auto; padding:0; }
+
+/* La modale du manuel : une largeur de lecture, pas la largeur par défaut d'une modale de saisie.
+   `ch` plutôt que `px` — c'est la longueur de LIGNE qui fatigue l'œil, pas la largeur en pixels, et
+   elle suit ainsi la taille de police du lecteur. */
+.modal-box.modal-box-help{ width:min(72ch, 92vw); }
+.help-modal-body{ font-size:13.5px; line-height:1.6; color:var(--ink); }
+.help-modal-body p{ margin:0 0 10px; }
+.help-modal-body p:last-child{ margin-bottom:0; }
 
 #sceneTopDownBtn{
   display:block; width:100%; margin-top:10px;

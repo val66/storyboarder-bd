@@ -191,6 +191,7 @@ export const I18N_MODALS = [
   ['#exportShowPanelBadgesCheckbox', null], // handled via trailing helper below
   ['#exportShowPanelDescriptionsCheckbox', null],
   ['#settingsModalClose', 'Close', 'Fermer'],
+  ['#helpModalClose', 'Close', 'Fermer'],
   ['#quitConfirmModal h3', 'Quit the application', "Quitter l'application"],
   ['#quitConfirmSave', '💾 Save and quit', '💾 Enregistrer et quitter'],
   ['#quitConfirmDiscard', '🚪 Quit without saving', '🚪 Quitter sans enregistrer'],
@@ -339,6 +340,11 @@ export function applyI18nModalSectionTitles(lang){
 // l'éditeur — n'avaient pas de <p> pour les recevoir et n'atteignaient jamais l'écran, tandis que
 // des <p> sans entrée gardaient leur français en dur jusqu'en anglais. Les générer supprime la
 // seconde liste, donc la possibilité même de l'écart.
+//
+// ⚠️ CETTE FONCTION NE RÈGLE PLUS QUE LES TITRES. Les paragraphes s'affichent désormais dans une
+// modale, rendue à l'ouverture depuis la même table (cf. openHelpModal). Continuer à les injecter
+// ici en aurait fait une seconde copie — invisible, mais bien là, et prête à diverger le jour où
+// l'une des deux serait modifiée seule.
 export function applyI18nHelpManual(lang){
   const data = lang === 'en' ? HELP_MANUAL_EN : HELP_MANUAL_FR;
   const groups = document.querySelectorAll('#sideHelpSection .help-group');
@@ -347,14 +353,8 @@ export function applyI18nHelpManual(lang){
     // Pas d'entrée : on laisse le groupe tel quel plutôt que de lui donner le contenu d'un autre.
     // Visiblement vide vaut mieux qu'à tort rempli — et tests/i18n.test.mjs refuse ce cas.
     if (!d) return;
-    const summary = group.querySelector('.help-group-title');
-    if (summary) summary.textContent = d.title;
-    group.querySelectorAll('p').forEach(p => p.remove());
-    d.paragraphs.forEach(texte => {
-      const p = document.createElement('p');
-      p.textContent = texte;
-      group.appendChild(p);
-    });
+    const titre = group.querySelector('.help-group-title');
+    if (titre) titre.textContent = d.title;
   });
   const helpMenuTitle = document.querySelector('#helpMenuHeader .menu-title');
   if (helpMenuTitle) helpMenuTitle.textContent = lang === 'en' ? 'User manual' : "Manuel d'utilisation";

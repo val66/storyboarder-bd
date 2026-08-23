@@ -16,7 +16,8 @@ import { readFileSync } from 'node:fs';
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
   pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos,
   selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
-  remplirChampHauteur3D } from '../src/modals.js';
+  remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert } from '../src/modals.js';
+import { HELP_MANUAL_FR, HELP_MANUAL_EN } from '../src/help-content.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -407,5 +408,89 @@ describe('le champ Hauteur est rempli par les DEUX fiches', () => {
     remplirChampHauteur3D(elem(1.75), champ, input, () => 100);
     assert.equal(Number(input.min), 0.18, '10 % de 1,75 m, au centimètre');
     assert.equal(Number(input.max), 7, '400 % de 1,75 m');
+  });
+});
+
+
+// ── La modale du Manuel d'utilisation ─────────────────────────────────────────────────────────
+describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau', () => {
+  // Ces tests portent sur le COMPORTEMENT, pas sur le source : le dom-stub conserve réellement les
+  // enfants et les classes, et vide la liste d'enfants quand on pose innerHTML. Ce qu'on affirme
+  // ici — le nombre de paragraphes déposés, le titre, la classe `hidden` — est donc observable.
+  // C'est la différence avec les fonctions qui traversent la scène 3D, où seule la lecture du
+  // source reste possible.
+  const titre = () => document.getElementById('helpModalTitle');
+  const corps = () => document.getElementById('helpModalBody');
+  const voile = () => document.getElementById('helpModal');
+
+  beforeEach(() => { closeHelpModal(); });
+
+  test('une section connue : titre posé, un paragraphe par entrée, modale révélée', () => {
+    const attendu = HELP_MANUAL_FR.find(g => g.id === 'cases');
+    assert.equal(openHelpModal('cases', 'fr'), true);
+    assert.equal(titre().textContent, attendu.title);
+    assert.equal(corps().children.length, attendu.paragraphs.length);
+    assert.deepEqual(corps().children.map(c => c.textContent), attendu.paragraphs);
+    assert.ok(!voile().classList.contains('hidden'), 'la modale doit être visible');
+  });
+
+  test('LE TEST QUI COMPTE : une clé inconnue n\'ouvre RIEN', () => {
+    // Ouvrir une modale vide se lirait comme « cette section n'a pas de contenu », alors que c'est
+    // un défaut d'appariement. Et si elle s'ouvrait après avoir vidé le corps, elle effacerait au
+    // passage la section légitime qu'on était en train de lire.
+    openHelpModal('cases', 'fr');
+    const avant = corps().children.length;
+    assert.equal(openHelpModal('cle-qui-nexiste-pas', 'fr'), false);
+    assert.equal(corps().children.length, avant, 'le contenu affiché ne doit pas être effacé');
+    assert.equal(titre().textContent, HELP_MANUAL_FR.find(g => g.id === 'cases').title);
+  });
+
+  test('... et depuis une modale fermée, elle le RESTE', () => {
+    // Le cas ci-dessus part d'une modale déjà ouverte : elle reste visible, ce qui est correct mais
+    // ne dit rien du dévoilement. Une mutation qui retirait la classe `hidden` avant de rendre
+    // `false` passait la suite au vert et affichait une boîte vide.
+    closeHelpModal();
+    assert.equal(openHelpModal('cle-qui-nexiste-pas', 'fr'), false);
+    assert.ok(voile().classList.contains('hidden'), 'aucune boîte vide ne doit apparaître');
+  });
+
+  test('RÉGRESSION : rouvrir REMPLACE le contenu, il ne s\'accumule pas', () => {
+    // Sans remise à zéro, lire trois sections d'affilée les empilerait dans la même modale — et le
+    // défaut ne se verrait qu'après plusieurs clics, donc jamais pendant un essai rapide.
+    openHelpModal('cases', 'fr');
+    openHelpModal('bulles', 'fr');
+    const attendu = HELP_MANUAL_FR.find(g => g.id === 'bulles');
+    assert.equal(corps().children.length, attendu.paragraphs.length);
+    assert.equal(titre().textContent, attendu.title);
+  });
+
+  test('closeHelpModal masque la modale', () => {
+    openHelpModal('cases', 'fr');
+    closeHelpModal();
+    assert.ok(voile().classList.contains('hidden'));
+  });
+
+  test('changer de langue pendant la lecture retraduit la section OUVERTE', () => {
+    // Sans cela, on lirait le français dans une interface repassée en anglais jusqu'à refermer la
+    // modale — et rien à l'écran n'indiquerait qu'il faut la refermer.
+    openHelpModal('cases', 'fr');
+    assert.equal(rafraichirManuelOuvert('en'), true);
+    const en = HELP_MANUAL_EN.find(g => g.id === 'cases');
+    assert.equal(titre().textContent, en.title);
+    assert.deepEqual(corps().children.map(c => c.textContent), en.paragraphs);
+  });
+
+  test('modale fermée : le rafraîchissement ne fait rien', () => {
+    closeHelpModal();
+    assert.equal(rafraichirManuelOuvert('en'), false);
+  });
+
+  test('RÉGRESSION : après fermeture, plus aucune section n\'est « ouverte »', () => {
+    // La section lue est mémorisée pour pouvoir la retraduire. Si la fermeture ne l'oubliait pas,
+    // un changement de langue rouvrirait tout seul une modale que l'utilisateur avait fermée.
+    openHelpModal('cases', 'fr');
+    closeHelpModal();
+    rafraichirManuelOuvert('en');
+    assert.ok(voile().classList.contains('hidden'), 'la modale fermée doit le rester');
   });
 });

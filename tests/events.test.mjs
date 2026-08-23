@@ -2282,3 +2282,35 @@ describe('Extraction de persona-editor.js — la couture tient', () => {
       'du code d\'éditeur est revenu dans events.js');
   });
 });
+
+// ── Le manuel : ouvrir la modale au clic ─────────────────────────────────────────────────────
+describe('Manuel d\'utilisation — le clic sur une section est bien câblé', () => {
+  // LECTURE DU SOURCE, faute de mieux : le dom-stub a un addEventListener qui ne fait rien, donc
+  // aucun clic ne peut être joué ici. C'est assumé, mais le câblage vaut d'être figé : retiré, le
+  // manuel devient entièrement muet — douze boutons qui ne font rien — et la suite restait verte,
+  // openHelpModal étant testée par ailleurs. C'est le même angle mort que les branchements de
+  // modales relevés plus haut dans ce fichier.
+  const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+
+  test('un écouteur DÉLÉGUÉ sur le conteneur, pas un par bouton', () => {
+    // Les boutons sont réécrits à chaque changement de langue ; des écouteurs posés un par un
+    // devraient être rebranchés à chaque fois, et l'oubli ne se verrait qu'en anglais.
+    assert.match(src, /sideHelpSection\.addEventListener\('click'/,
+      'le clic doit être écouté sur le conteneur du manuel');
+    assert.match(src, /closest\('\.help-group'\)/, 'la section cliquée se retrouve par sa classe');
+    assert.match(src, /openHelpModal\(\s*bouton\.dataset\.help/,
+      'la clé data-help du bouton doit décider de la section ouverte');
+  });
+
+  test('RÉGRESSION : la modale du manuel déclare sa fermeture (Échap)', () => {
+    assert.match(src, /enregistrerFermeture\('helpModal'/,
+      'sans cela, Échap fermerait la modale du dessous — cf. Fix 320');
+  });
+
+  test('RÉGRESSION : changer de langue retraduit le manuel ouvert', () => {
+    const bloc = src.slice(src.indexOf("languageSelect.addEventListener('change'"));
+    assert.match(bloc.slice(0, 400), /rafraichirManuelOuvert\(S\.appLang\)/,
+      'applyI18n ne touche pas au contenu rendu par la modale');
+  });
+});

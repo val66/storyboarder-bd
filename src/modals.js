@@ -1,3 +1,4 @@
+import { sectionDuManuel } from './help-content.js';
 /**
  * @file modals.js
  * Persona / 3D Object / Room / Building / Path / Terrain modals.
@@ -2311,3 +2312,60 @@ enregistrerFermeture('terrainModal', () => {
   document.getElementById('terrainModal').classList.add('hidden');
   S.terrainModalTarget = null;
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LE MANUEL D'UTILISATION EN MODALE
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Le panneau latéral ne porte plus que les TITRES ; le contenu s'affiche au centre. Demandé après
+// usage : déplier des paragraphes dans une colonne de quelques centimètres donnait des lignes de
+// trois mots, et il fallait faire défiler le panneau entier pour lire une section.
+//
+// ⚠️ LE CONTENU EST RENDU À L'OUVERTURE, DEPUIS LA TABLE. Pas déplacé depuis le panneau, pas mis en
+// cache : `sectionDuManuel` est la seule source. C'est ce qui empêche la modale et le panneau de se
+// nourrir à deux endroits — l'écart qui avait déjà fait afficher au manuel le contenu du voisin.
+const helpModal = document.getElementById('helpModal');
+const helpModalTitle = document.getElementById('helpModalTitle');
+const helpModalBody = document.getElementById('helpModalBody');
+
+// La section ouverte, pour pouvoir la re-rendre si la langue change pendant la lecture.
+let sectionManuelOuverte = null;
+
+export function openHelpModal(id, lang){
+  if (!helpModal || !helpModalTitle || !helpModalBody) return false;
+  const section = sectionDuManuel(id, lang || S.appLang);
+  // Clé inconnue : on n'ouvre RIEN. Une modale vide se lirait comme une section sans contenu, alors
+  // que c'est un défaut d'appariement — le même que celui qui avait décalé tous les groupes.
+  if (!section) return false;
+  sectionManuelOuverte = section.id;
+  helpModalTitle.textContent = section.title;
+  helpModalBody.innerHTML = '';
+  section.paragraphs.forEach(texte => {
+    const p = document.createElement('p');
+    p.textContent = texte;
+    helpModalBody.appendChild(p);
+  });
+  helpModal.classList.remove('hidden');
+  return true;
+}
+
+export function closeHelpModal(){
+  sectionManuelOuverte = null;
+  if (helpModal) helpModal.classList.add('hidden');
+}
+
+/**
+ * Re-rend la modale dans la nouvelle langue, si elle est ouverte. Appelée par le changement de
+ * langue : sans elle, on lirait la section en français dans une interface repassée en anglais —
+ * jusqu'à ce qu'on la referme et la rouvre, ce que rien n'indique.
+ */
+export function rafraichirManuelOuvert(lang){
+  // ⚠️ UNE SEULE GARDE, et c'est `sectionManuelOuverte`. J'avais d'abord ajouté un second test sur
+  // la classe `hidden` : les deux disent la même chose, et cette redondance rendait indétectable
+  // l'oubli de la remise à zéro dans closeHelpModal — une mutation qui la supprimait passait la
+  // suite au vert, alors qu'elle fait rouvrir tout seul, au changement de langue, un manuel que
+  // l'utilisateur venait de fermer.
+  if (!sectionManuelOuverte) return false;
+  return openHelpModal(sectionManuelOuverte, lang);
+}
