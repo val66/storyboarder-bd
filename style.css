@@ -517,11 +517,11 @@ canvas{
 }
 
 /* MODAL */
-/* Voile des modales. Assombri de .6 à .78 sur demande utilisateur : le contenu derrière restait
-   trop lisible, et l'œil continuait de le suivre au lieu de se poser sur la modale. Volontairement
-   pas opaque — voir de quoi la modale parle reste utile. */
+/* Voile des modales. Assombri en deux fois sur demande utilisateur, .6 → .78 → .88 : le contenu
+   derrière restait trop lisible et l'œil continuait de le suivre au lieu de se poser sur la modale.
+   Volontairement pas opaque — deviner de quoi la modale parle reste utile. */
 .modal-overlay{
-  position:fixed; inset:0; background:rgba(0,0,0,0.78);
+  position:fixed; inset:0; background:rgba(0,0,0,0.88);
   display:flex; align-items:center; justify-content:center; z-index:1000;
 }
 .modal-overlay.hidden{ display:none; }
