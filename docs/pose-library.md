@@ -1,7 +1,7 @@
 # Pose library — how it works
 
-> **Current behaviour**, not the history of the decisions. The reasoning that led here — including
-> its reversals — is in [character-editor.md](character-editor.md).
+> **Current behaviour**, not the history of the decisions. The reasoning that led here, including
+> its reversals, is in [character-editor.md](character-editor.md).
 >
 > Up to date as of Fix 62.
 
@@ -13,7 +13,7 @@ the only one the user sees and modifies, and it is shared by all their Projects.
 (`setPoseLibrary`, io.js).
 
 On first launch, the 6 poses of `POSITIONS` are **seeded** into it (`seedPoseLibrary3D`) with the
-built-in key as `id` — `'assis'`, `'debout'`… That is what makes already-saved files, which contain
+built-in key as `id`: `'assis'`, `'debout'`… That is what makes already-saved files, which contain
 `position: 'assis'`, resolve without any migration. They become ordinary entries, with no special
 status.
 
@@ -40,11 +40,11 @@ exists so that a project opened elsewhere keeps the names of its poses.
 
 - The angles are **copied**, therefore frozen at the moment of the click. Moving the sliders
   afterwards no longer changes the saved pose.
-- `id` comes from `newId('pose')` — "pose1", "pose2"… No collision with the built-in keys is
+- `id` comes from `newId('pose')`: "pose1", "pose2"… No collision with the built-in keys is
   possible. ⚠️ Depends on `resyncIdCounter` (io.js), which visits `poses`: without it, a pose
   created after loading would reuse a taken id, and a Character would end up with the wrong pose.
 - With no name supplied: `nextDefaultPoseName3D` fills the first free "Pose N" rather than counting
-  entries — after deletions, "Pose 12" in a list of three would help nobody.
+  entries: after deletions, "Pose 12" in a list of three would help nobody.
 - `skeleton` is tagged from the moment of saving, even though only humans have poses: catching up
   later on already-written files would be impossible.
 
@@ -55,7 +55,7 @@ the pose immediately shows the new name.
 
 `deletePersonaEditorPose` → `deletePose3D` + `setDismissedPoses`.
 
-**Always a confirmation**, including for a pose nobody uses. The message is differentiated — short
+**Always a confirmation**, including for a pose nobody uses. The message is differentiated: short
 when unused, detailed with the count otherwise, stating that the count only covers the open Project.
 Making the message uniform would add noise where there is nothing to report, and it is noise that
 eventually makes people click without reading.
@@ -68,7 +68,7 @@ Effects:
 - The id is **remembered** in `S.dismissedPoses` (key `poseLibraryDismissed`). `mergePoseLibrary3D`
   never reintroduces it again.
 
-⚠️ The record keeps **only the id** — never the angles nor the name. Keeping the content so it could
+⚠️ The record keeps **only the id**, never the angles nor the name. Keeping the content so it could
 be resurrected would contradict what the confirmation announces.
 
 Consequence: irreversible for personal poses.
@@ -82,7 +82,7 @@ Built-in poses are recoverable because the application knows them in code, not b
 was kept.
 
 - Re-adds **only the missing ones** (`missingBuiltinPoses3D`).
-- Lifts their dismissal (`forgetDismissedPoses3D`) — without which they would be discarded again at
+- Lifts their dismissal (`forgetDismissedPoses3D`), without which they would be discarded again at
   the first merge: restored on screen, then gone on the next Project opened.
 - ⚠️ Gap filling, **not** a factory reset. A renamed built-in pose is *present*, therefore not
   missing: clicking can never lose a rename.
@@ -94,7 +94,7 @@ was kept.
 
 The merge **adds**, it never replaces:
 
-- a pose unknown from the file joins the library — that is the point of a Project received from
+- a pose unknown from the file joins the library: that is the point of a Project received from
   someone else;
 - an **already known** pose keeps the library's name, not the file's: opening an old Project cannot
   undo a rename;
@@ -104,9 +104,9 @@ The merge **adds**, it never replaces:
 
 Order, in `poseJointsByKey3D` and `resolvePoseLabel3D`:
 
-1. **the library** — it is authoritative, otherwise renaming "Assis" would be undone by the frozen
+1. **the library**: it is authoritative, otherwise renaming "Assis" would be undone by the frozen
    table;
-2. **`POSE_3D` / `POSITIONS`** — safety net for a file citing a deleted built-in pose. It resolves,
+2. **`POSE_3D` / `POSITIONS`**: safety net for a file citing a deleted built-in pose. It resolves,
    but **never** appears in the list: deleting does make the pose disappear from the interface.
 
 Not found in either: label "unknown", and `position` **stays intact** in the file. Writing "unknown"
@@ -116,14 +116,14 @@ would destroy the name; as it stands, the Project repairs itself if it finds the
 
 `applyPersonaEditorToModal` (events.js) writes into **`S.modalDraftJoints`**, never into
 `S.modalTarget`. It is `descModalSave` that copies the draft into the Element, and it alone decides
-when — otherwise "Cancel" would no longer cancel (the defect fixed by Fix 35 elsewhere).
+when; otherwise "Cancel" would no longer cancel (the defect fixed by Fix 35 elsewhere).
 
 It does nothing without `S.personaEditorFromModal`: with no dialog behind, there is nothing to feed.
 That is also the display condition of the button, **hidden** rather than greyed out in standalone
 mode.
 
 The pose key is only carried over to the `<select>` if the library still knows it
-(`poseKeyStillInLibrary`) — the Fix 44 trap through another door: a value absent from the options
+(`poseKeyStillInLibrary`): the Fix 44 trap through another door: a value absent from the options
 leaves the `<select>` EMPTY, and the next save would write an empty string into `position`.
 
 ## `positionLabel` — last known name
@@ -132,7 +132,7 @@ Written by `descModalSave`, and **nowhere else**: that is the only moment the El
 it also covers a pose picked directly from the `<select>`.
 
 `resolvePoseLabel3D` reads it **only** if the pose cannot be found. A stale value is therefore never
-displayed while the authoritative name exists — and once that has gone, a stale name beats an opaque
+displayed while the authoritative name exists, and once that has gone, a stale name beats an opaque
 id. `nameOfPose3D` returns `null` if the pose is not found: writing an invented name there would
 make the field lie precisely in the case where it is used.
 
@@ -142,7 +142,7 @@ Two places answer a neighbouring question:
 
 | | Question | Scope | How |
 |---|---|---|---|
-| Character dialog, **Save** button | is there anything to save? | every form field — name, gender, emotion, size, rotations, **and the joint sliders** | `captureModalSnapshot`: a string built from the dialog's `input/select/textarea` |
+| Character dialog, **Save** button | is there anything to save? | every form field (name, gender, emotion, size, rotations, **and the joint sliders**) | `captureModalSnapshot`: a string built from the dialog's `input/select/textarea` |
 | Editor, **Reset** / **Apply** buttons | is there anything to apply? | the joints **and** the reference pose | `poseSliderSignature3D` + comparison of `S.personaEditorPoseKey` |
 
 The scopes genuinely differ: the editor has neither name nor emotion, and the dialog knows nothing
@@ -150,7 +150,7 @@ of the reference-pose notion. **Unifying them into a single mechanism would deta
 what it actually writes** (`joints3d`, `position`, `positionLabel`) and bind it to widgets instead.
 
 What IS common, and what was put in common (Fix 62): the **granularity**. Both now compare the pose
-as the sliders display it — whole degrees. On the dialog side by construction (it reads the `input`
+as the sliders display it: whole degrees. On the dialog side by construction (it reads the `input`
 values), on the editor side through `poseSliderSignature3D`, built on the same `poseSliderSpecs3D`
 descriptors.
 
@@ -159,7 +159,7 @@ on the worst rounding gap (0.459°). The threshold described the symptom; compar
 removes the cause.
 
 ⚠️ `recomputeModalDirty` fires on `input`/`change` events. A **programmatic** write into
-`S.modalDraftJoints` — which is what "Apply" does — emits none: `syncJointSlidersFromDraft()` then
+`S.modalDraftJoints`, which is what "Apply" does, emits none: `syncJointSlidersFromDraft()` then
 `recomputeModalDirty()` must then be called explicitly, otherwise the dialog believes itself
 unchanged.
 
@@ -171,7 +171,7 @@ unchanged.
 
 - the "Pose" section of the editor (`buildPersonaEditorPosesUI`);
 - the Position `<select>` of the Character dialog (`buildPersonaPositionOptions`), rebuilt every time
-  the dialog opens via `setModalPoseOptionsBuilder` — modals.js cannot import events.js without
+  the dialog opens via `setModalPoseOptionsBuilder`, since modals.js cannot import events.js without
   creating a cycle.
 
 Every write into the library must refresh both, otherwise they diverge.
@@ -180,9 +180,9 @@ Every write into the library must refresh both, otherwise they diverge.
 
 `POSITIONS` and `POSE_3D` no longer hold the same thing, and **the gap is deliberate**.
 
-- `POSITIONS` — the **offered** poses. It drives the pose picker and the library seeding. Six
+- `POSITIONS`: the **offered** poses. It drives the pose picker and the library seeding. Six
   entries: standing, sitting, lying, running, crouching, kneeling.
-- `POSE_3D` — the **angles**. It holds nine more: combat, jump, flight, spellcasting, archery, raised
+- `POSE_3D`: the **angles**. It holds nine more: combat, jump, flight, spellcasting, archery, raised
   sword, defeated, meditation, recoil. Those nine are no longer offered or seeded.
 
 ### Why the angles are not removed along with the entries
@@ -192,7 +192,7 @@ render time**, through `position` → library → `POSE_3D`. Measured with a pro
 
 | what is removed | what an existing project renders |
 |---|---|
-| the `POSITIONS` entry alone | **identically** — `POSE_3D` still answers |
+| the `POSITIONS` entry alone | **identically**, `POSE_3D` still answers |
 | the entry **and** the angles | the archer **stands up** (rElbow 1.4 → 0.1) |
 
 `POSE_3D` is therefore the last resort, and it does not get emptied. The 2D `POSE_RENDERERS` table
@@ -202,6 +202,6 @@ render time**, through `position` → library → `POSE_3D`. Measured with a pro
 
 Removing an entry from `POSITIONS` **does not remove it** from an existing `settings.json`: the
 on-disk copy is authoritative (see the "Seeding" section). An already-seeded library therefore keeps
-the removed poses, which is consistent — they have become ordinary entries, which the user deletes
+the removed poses, which is consistent: they have become ordinary entries, which the user deletes
 themselves if they wish, one at a time and remembered (`dismissedPoses`). "Restore built-in poses"
 will not bring them back: it only knows `POSITIONS`.

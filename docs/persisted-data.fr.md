@@ -12,41 +12,41 @@ JSON fait partie du **format de fichier**, pas du code : c'est un contrat avec l
 
 Jamais renommés, jamais supprimés. Ajouter est permis ; retirer ou renommer ne l'est pas.
 
-**Niveau projet** — `projectName`, `tomes`, `scenes`, `currentTomeIndex`, `currentPageIndex`,
+**Niveau projet** : `projectName`, `tomes`, `scenes`, `currentTomeIndex`, `currentPageIndex`,
 `poses` (bibliothèque de poses : `[{ id, name, skeleton, joints }]`).
 
 ⚠️ **La portée de `poses` a changé (Fix 57)** sans que son nom ni sa forme bougent : la
 bibliothèque appartient désormais à l'**Application** (`settings.json`, clé `poseLibrary`). Ce que
 le fichier projet porte n'est plus la bibliothèque entière mais une **copie des poses qu'il
 utilise**, pour rester lisible sur une machine qui ne les a pas. À l'ouverture, ces poses sont
-**fusionnées** dans la bibliothèque (ids inconnus seulement — un vieux projet ne peut donc pas
+**fusionnées** dans la bibliothèque (ids inconnus seulement, un vieux projet ne peut donc pas
 annuler un renommage). Un fichier écrit avant ce changement reste lu à l'identique, et un fichier
 écrit après reste lisible par une version antérieure.
 
 Les 6 poses proposées sont **semées** dans la bibliothèque au premier lancement, avec la clé
-intégrée comme `id` (`'assis'`, `'debout'`…) — c'est ce qui évite toute migration des fichiers
+intégrée comme `id` (`'assis'`, `'debout'`…), ce qui évite toute migration des fichiers
 existants. `POSE_3D` reste consulté **après** la bibliothèque, comme filet pour un fichier citant
 une pose intégrée que l'utilisateur a supprimée.
 
 Sur `poses` : aucun Personnage n'en **dépend**. Appliquer une pose copie ses angles dans `joints3d`
 et n'y laisse qu'une référence d'affichage. Supprimer la bibliothèque, ou ouvrir le projet sur une
-machine qui ne l'a pas, ne change l'allure d'aucun Personnage — seule l'étiquette devient
+machine qui ne l'a pas, ne change l'allure d'aucun Personnage : seule l'étiquette devient
 « inconnue ». C'est délibéré, et `normalizePoses3D` (`io.js`) lit le champ avec la même tolérance :
 absent, nul ou malformé donne une liste vide, jamais une erreur.
 
-**Éléments** — `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
+**Éléments** : `pieceId`, `pieceLabel`, `altPieceId`, `pieceFloorType`, `objType`, `caseNumber`,
 `batimentNames`, `batimentRotY`, `wallSide`, `modelFile`, `afficherMaillagesEgares`.
 
-**Coordonnées monde** — `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
+**Coordonnées monde** : `wxFloor`, `wyFloor`, `wzFloor`, `realHeightFloor`, `realLenFloor`.
 
 ⚠️ `realHeightFloor` est la taille **enregistrée**. Le pourcentage qu'affiche le curseur « Taille
 réelle » n'est stocké nulle part : il est recalculé à l'ouverture de chaque fiche
-(`getPersonaScalePercent`). La fiche propose les deux, et c'est la HAUTEUR qu'elle applique — le
+(`getPersonaScalePercent`). La fiche propose les deux, et c'est la HAUTEUR qu'elle applique, car le
 curseur avance par crans de 5 %, ce qui corrigerait une hauteur saisie au centimètre.
 
-**Parois sur un support** — `wallYFrac`, `wallAlongFrac`, `magnetWallId`, `wallHeight`.
+**Parois sur un support** : `wallYFrac`, `wallAlongFrac`, `magnetWallId`, `wallHeight`.
 
-**Caméra d'une Case** — `camWx`, `camWy`, `camWz`, `camDist`, `camRotX`, `camRotY`.
+**Caméra d'une Case** : `camWx`, `camWy`, `camWz`, `camDist`, `camRotX`, `camRotY`.
 
 Certains de ces noms sont en français, d'autres en anglais, quelques-uns sont maladroits
 (`batimentNames` a survécu au renommage Bâtiment → Building). **C'est sans importance.** Un nom de
@@ -77,7 +77,7 @@ Deux conséquences qui font partie du format, pas de l'implémentation :
 
 - **Rien ne garantit que le fichier soit là.** Il vit hors du Projet, et l'utilisateur peut le
   déplacer ou le supprimer. Un modèle introuvable s'affiche en boîte de remplacement ; l'Élément
-  **n'est jamais supprimé**. Cf. § 5 — une panne passagère (disque non monté, antivirus qui
+  **n'est jamais supprimé**. Cf. § 5 : une panne passagère (disque non monté, antivirus qui
   verrouille) détruirait sinon un placement, et la sauvegarde automatique graverait la perte
   quelques secondes plus tard.
 - **Les modèles suivent les Projets.** Ils sont rangés dans le dossier que l'utilisateur a choisi
@@ -99,7 +99,7 @@ Un id DOM peut être renommé, mais alors **dans le même commit** :
 ## 4. Les classes CSS et les textes affichés
 
 Même logique : une classe CSS lie `style.css` au JS qui la pose ou la teste. Les libellés visibles
-passent par `src/i18n.js` — les modifier au bon endroit, pas en dur dans le code.
+passent par `src/i18n.js` ; les modifier au bon endroit, pas en dur dans le code.
 
 ## 5. Le terme protégé `tracé`
 
@@ -116,7 +116,7 @@ Il faut une **migration**, pas un renommage. Le dépôt en contient déjà :
 
 1. Le nouveau champ est écrit à la sauvegarde.
 2. Au chargement, si l'ancien est présent et le nouveau absent, on convertit.
-3. L'ancien champ reste **lu** aussi longtemps que des fichiers peuvent le contenir — c'est-à-dire
+3. L'ancien champ reste **lu** aussi longtemps que des fichiers peuvent le contenir, c'est-à-dire
    indéfiniment, pour un logiciel dont les fichiers vivent chez les gens.
 
 C'est plus coûteux qu'un rechercher-remplacer. C'est précisément pourquoi la règle par défaut est de
@@ -130,7 +130,7 @@ un fichier et en perdre deux.
 
 Auparavant, la fonction assignait `S.tomes` puis atteignait plus loin le code qui levait.
 L'exception laissait un projet à moitié chargé en mémoire pendant que `S.projectFilePath` désignait
-encore le fichier **précédent** — à un Ctrl+S de l'écraser avec l'épave.
+encore le fichier **précédent**, à un Ctrl+S de l'écraser avec l'épave.
 
 **Elle refuse plutôt qu'elle ne répare.** Ramener un `tomes` malformé à `[]` ouvrirait un projet
 vide en silence, et la sauvegarde automatique suivante écrirait ce vide par-dessus le vrai fichier.
@@ -142,7 +142,7 @@ Ce qui est refusé : une valeur présente et du mauvais type là où le chargeme
 propreté.
 
 Même mode de défaillance, corrigé en même temps : un chargement refusé laissait la **sauvegarde
-automatique éteinte** pour le reste de la session — `stopAutosave()` s'exécute avant la lecture,
+automatique éteinte** pour le reste de la session : `stopAutosave()` s'exécute avant la lecture,
 `startAutosave()` seulement en cas de succès. En silence, et sur le projet précédent, resté ouvert.
 
 `tests/persisted-format.test.mjs` garde tout cela, y compris ce qu'`assert.throws` seul ne peut pas

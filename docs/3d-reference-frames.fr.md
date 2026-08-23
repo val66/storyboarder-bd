@@ -16,14 +16,14 @@
 
 ## Deux systèmes de coordonnées, à ne pas confondre
 
-**Canvas 2D** — `o.x`, `o.y`, `o.w`, `o.h`. Des pixels sur la planche. C'est ce que l'utilisateur
+**Canvas 2D** : `o.x`, `o.y`, `o.w`, `o.h`. Des pixels sur la planche. C'est ce que l'utilisateur
 manipule à la souris, et ce que la boîte de sélection dessine.
 
-**Monde 3D** — `o.wxFloor`, `o.wyFloor`, `o.wzFloor`, `o.realHeightFloor`, `o.realLenFloor`. Des
+**Monde 3D** : `o.wxFloor`, `o.wyFloor`, `o.wzFloor`, `o.realHeightFloor`, `o.realLenFloor`. Des
 unités monde. **C'est la source de vérité pour le rendu 3D.**
 
 Le piège : `o.y` d'un Élément est une coordonnée **canvas**, pas une hauteur. Convertir naïvement
-`o.y` en Y monde donne un Élément qui flotte en l'air — c'est exactement ce qui arrivait aux Parois
+`o.y` en Y monde donne un Élément qui flotte en l'air, c'est exactement ce qui arrivait aux Parois
 avant le Fix 28. Pour les Éléments vus de dessus, `o.y` correspond à une **profondeur** (Z monde),
 pas à une élévation.
 
@@ -38,7 +38,7 @@ souvent ; l'oublier retourne l'objet de 180°.
 
 Pour un groupe Three.js tourné de `rotY`, l'axe local `+X` pointe vers la tangente et l'axe local
 `+Z` vers la normale du chemin. Les deux conventions doivent coïncider entre un rig et le relief qui
-l'entoure, sans quoi ils se croisent — constaté à 47° d'écart dans un coude.
+l'entoure, sans quoi ils se croisent, comme constaté à 47° d'écart dans un coude.
 
 ## Les Éléments sans position propre
 
@@ -46,8 +46,8 @@ Une Parois aimantée à un Mur ou à un Tracé **n'a pas** de position monde uti
 en coordonnées canvas vues de dessus, et ses `wxFloor`/`wzFloor` sont périmés. Sa position se calcule
 à chaque rendu en marchant le long de son support :
 
-- `wallAlongFrac` — position **le long** du support, de 0 à 1.
-- `wallYFrac` — position **en hauteur**, de 0 à 1.
+- `wallAlongFrac` : position **le long** du support, de 0 à 1.
+- `wallYFrac` : position **en hauteur**, de 0 à 1.
 
 `wallYFrac` ne couvre pas toute la hauteur du support mais la **travée atteignable** :
 `hauteur du mur − hauteur de la Parois`. La fraction 1 amène donc le *sommet* de la Parois au niveau
@@ -57,9 +57,9 @@ de la crête, et non sa base. Voir `wallOpeningWorldPosOnTracé3D`.
 
 Un rig est construit à une taille de référence puis mis à l'échelle. Deux mécanismes coexistent :
 
-- **`placeRigCentered3D`** — échelle **uniforme** calculée sur la hauteur cible. Convient à un
+- **`placeRigCentered3D`** : échelle **uniforme** calculée sur la hauteur cible. Convient à un
   Personnage ou un meuble.
-- **`CHILD_DESIGN_SIZE_3D`** — taille nominale par type d'Élément, permettant une échelle
+- **`CHILD_DESIGN_SIZE_3D`** : taille nominale par type d'Élément, permettant une échelle
   **indépendante** en largeur et en hauteur. Obligatoire pour une Parois, qui doit remplir exactement
   le trou découpé pour elle.
 
@@ -70,7 +70,7 @@ Attention : `placeRigCentered3D` mesure la boîte englobante **après** rotation
 
 Il n'y a **qu'un** `personaRenderer3D` (`rig3d.js`), hors écran, redimensionné à la demande par
 `setSize()` puis recopié dans un canvas 2D via `drawImage`. Chaque consommateur redimensionne, rend,
-copie — il n'y a donc pas de contention, mais il ne faut pas supposer que sa taille est stable entre
+copie ; il n'y a donc pas de contention, mais il ne faut pas supposer que sa taille est stable entre
 deux appels.
 
 `THREE.WebGLRenderer` ne peut pas être construit sous Node : tout ce qui appelle

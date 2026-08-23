@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.11**
+**Version 1.4.12**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -19,15 +19,15 @@
 - Speech bubbles with adjustable tails
 
 ### 3D Scenes
-- **Reusable scenes**: compose a 3D scene once, load it into any panel — characters, furniture, buildings, roads, vegetation, terrain…
+- **Reusable scenes**: compose a 3D scene once, load it into any panel: characters, furniture, buildings, roads, vegetation, terrain…
 - Real-time 3D rendering via **Three.js** (r128)
-- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor — no height restrictions; the orbit centre re-anchors onto whatever is aimed at when a rotation starts, then stays strictly fixed for the whole drag; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control — like Blender/Maya); pitch clamped to ±85° to avoid scene flip
+- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor, with no height restriction; the orbit centre re-anchors onto whatever is aimed at when a rotation starts, then stays strictly fixed for the whole drag; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control, as in Blender or Maya); pitch clamped to ±85° to avoid scene flip
 - Integrated top-down view for element placement
 
 ### Available elements
-- 👤 **Characters** with poses, emotions, orientation and joint articulation — neck, head, torso,
+- 👤 **Characters** with poses, emotions, orientation and joint articulation: neck, head, torso,
   collarbones, shoulders, elbows, wrists, hips, knees and ankles, the same body an imported skeleton
-  offers — with feet, so ankle movement is visible. Head and torso have three axes each: nod, turn
+  offers, with feet, so ankle movement is visible. Head and torso have three axes each: nod, turn
   and tilt; bend, twist and side-lean (see **Character editor** below)
 - 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
@@ -37,7 +37,7 @@
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
 - 📏 **Size to the centimetre**: a 3D Element's real height is typed in metres
-- ↩️ **Cancelling** the dialog of a just-added Element removes it — nothing is committed until you save
+- ↩️ **Cancelling** the dialog of a just-added Element removes it: nothing is committed until you save
 
 ### Imported 3D models
 
@@ -45,9 +45,9 @@
   real size
 - **Right-click → Import a model**: the same entry in a panel and in a Scene. To make a reusable
   set out of a file, import it into a Scene
-- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them
-  — by Scenes, in panels, or unused. One click takes you to where a model is used
-- 🦴 **Articulated models**: a file carrying bones poses like a character — sliders per joint,
+- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them:
+  by Scenes, in panels, or unused. One click takes you to where a model is used
+- 🦴 **Articulated models**: a file carrying bones poses like a character, with sliders per joint,
   clickable points on the preview, and a mapping screen when a bone is misrecognised
 - **The pose library applies to them**, whatever axis convention the file uses
 - **Changing figure**: an articulated Element can wear another imported file and keep its pose
@@ -61,7 +61,7 @@
 
 ### Character editor
 
-A workspace for posing a figure — a character, or an articulated imported model —, opened from the
+A workspace for posing a figure (a character, or an articulated imported model), opened from the
 pencil on a 3D preview, or standalone from the left menu to build a pose with no target in mind. It
 takes over the central area only: the left menu stays available, and clicking a Page or a Scene
 leaves the editor.
@@ -71,12 +71,12 @@ leaves the editor.
 - **A slider per field** for exact values, the wheel switching between them
 - **Right-drag to orbit**, wheel to zoom; the figure is always shown facing front
 - **Choose the figure** you pose on: the built-in character, or any recognised imported model
-- **Pose library shared across every project**: apply, save, rename, delete — built-in poses
-  included, restorable from Settings
+- **Pose library shared across every project**: apply, save, rename, delete, built-in poses
+  included and restorable from Settings
 - **Nothing is committed** until the pose is applied and the dialog saved
 
 ### Project & saving
-- **JSON** project format — human-readable and versionable
+- **JSON** project format, human-readable and versionable
 - Configurable auto-save
 - Export pages as **PNG** or **PDF**
 - Unlimited undo/redo
@@ -86,7 +86,7 @@ leaves the editor.
 ## 🚀 Getting started
 
 ### Prerequisites
-- [Node.js LTS](https://nodejs.org) (v20 or higher — v18 reached end of life in April 2025)
+- [Node.js LTS](https://nodejs.org) (v20 or higher; v18 reached end of life in April 2025)
 
 ### Run in development
 ```bash
@@ -105,14 +105,14 @@ The installer appears in the `dist/` folder and creates Desktop and Start Menu s
 ### Contributing
 
 Setup, the three rules that will get a change rejected, and what is expected of a test:
-**[CONTRIBUTING.md](CONTRIBUTING.md)**. One step matters more than the rest — `npm run setup-hooks`,
+**[CONTRIBUTING.md](CONTRIBUTING.md)**. One step matters more than the rest: `npm run setup-hooks`,
 which git cannot carry over on clone.
 
 ### Run the unit tests
 ```bash
 npm test
 ```
-Runs the unit test suite with Node's built-in test runner — no external framework, no browser. One
+Runs the unit test suite with Node's built-in test runner: no external framework, no browser. One
 `tests/<module>.test.mjs` file per `src/` module, plus a lightweight DOM stub so the modules can be
 imported outside Electron.
 
@@ -123,7 +123,7 @@ migrations, EN/FR translation, 2D drawing helpers (panel shapes, speech bubbles,
 the sidebar/modal helpers.
 
 Anything requiring real WebGL is deliberately out of scope (building a `THREE.WebGLRenderer` fails
-under Node), as is the event wiring itself — see the header comment in each test file for what is
+under Node), as is the event wiring itself; see the header comment in each test file for what is
 excluded and why.
 
 ---
@@ -157,7 +157,7 @@ storyboarder-bd/
 │   ├── model-cache.js  # Asynchronous model decoding + cache (the drawing path never waits)
 │   ├── model-import.js # The three import gestures, and what each one creates
 │   ├── model-library.js # Model library: grouping by usage, deletion message
-│   ├── model-usages.js # "Where is this model used?" — pure location + navigation
+│   ├── model-usages.js # "Where is this model used?": pure location + navigation
 │   ├── skeleton-map.js # Recognising an imported skeleton: which bone plays which role
 │   ├── skeleton-store.js # Skeleton mappings, stored next to the Modeles folder
 │   ├── skeleton-pose.js # Turning a mapped bone: composing with its rest orientation
@@ -171,7 +171,7 @@ storyboarder-bd/
 │   └── events.js       # Event wiring + remaining business logic (real entry point)
 ├── tests/              # Unit tests (Node's built-in test runner)
 ├── tools/              # Repo tooling (version bump, git hooks installation)
-├── docs/               # Contributor notes, EN + FR — start with docs/README.md
+├── docs/               # Contributor notes, EN + FR, start with docs/README.md
 ├── package.json        # Electron + electron-builder config
 └── LICENSE
 ```
@@ -184,7 +184,7 @@ storyboarder-bd/
 |---|---|
 | [Electron](https://www.electronjs.org/) | Cross-platform desktop app |
 | [Three.js r128](https://threejs.org/) | 3D scene rendering |
-| Vanilla HTML / CSS / JS | Full UI — no framework, no bundler |
+| Vanilla HTML / CSS / JS | Full UI, no framework, no bundler |
 
 ---
 

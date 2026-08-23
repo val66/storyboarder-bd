@@ -13,7 +13,7 @@ Cette règle a une conséquence concrète et non évidente : le renderer ne peut
 `tools/bump-version.mjs`. Quand une information « appartient » au processus principal, la bonne
 réponse est le plus souvent de la faire descendre sous forme de fichier généré, pas d'ouvrir un canal.
 
-`src/app.js` est un talon d'une ligne qui importe `events.js` — le vrai point d'entrée.
+`src/app.js` est un talon d'une ligne qui importe `events.js`, le vrai point d'entrée.
 
 ### L'unique exception, et ce qui en fait une
 
@@ -23,13 +23,13 @@ gratuit :
 
 - La règle interdit de mettre de la **logique** applicative dans `main.js`. Sa propre description
   range l'**accès disque** dans les attributions de ce fichier, et écrire un `.glb` est exactement
-  cela — aucun canal existant ne sait le faire, `project:write` écrivant une *chaîne*.
-- Le remède habituel de la règle — « faire descendre l'information en fichier généré » — ne
+  cela : aucun canal existant ne sait le faire, `project:write` écrivant une *chaîne*.
+- Le remède habituel de la règle (« faire descendre l'information en fichier généré ») ne
   s'applique pas ici. Ces octets arrivent à l'exécution, choisis par l'utilisateur ; rien ne peut les
   produire à la construction.
 - La répartition est vérifiée, pas seulement voulue : `main.js` fait des entrées-sorties et **se
   défend** (`nomDeModeleAcceptable` refuse tout nom qui n'est pas un nom de fichier nu), tandis que
-  `src/model-store.js` **décide** — nom retenu, collisions, messages. La décision reste testable, et
+  `src/model-store.js` **décide** : nom retenu, collisions, messages. La décision reste testable, et
   `tests/model-store.test.mjs` garde les deux moitiés.
 
 Tout ce qui peut se décider dans `src/` reste dans `src/`. Une exception dont on se sert deux fois
@@ -55,13 +55,13 @@ setScenesCallbacks({ snapshot });
 ```
 
 `setPersonaEditorCallbacks` est le cas le plus petit possible, et il vaut comme modèle : extraire
-`persona-editor.js` d'`events.js` n'a laissé **qu'une** dépendance remontante — rafraîchir la liste de poses de la modale
+`persona-editor.js` d'`events.js` n'a laissé **qu'une** dépendance remontante : rafraîchir la liste de poses de la modale
 Personnage après un changement de bibliothèque. Une fonction. L'importer aurait fermé le cycle pour
 un seul appel ; l'injecter coûte quatre lignes et garde le graphe acyclique.
 
 **Cas d'école.** `tracéBBox` était défini dans `events.js` et appelé depuis `scene3d.js`. Un import
 aurait bouclé ; sans import, l'appel levait `ReferenceError` au premier rendu d'une Page contenant un
-Tracé — et plus aucune Case n'était sélectionnable. La bonne réponse n'était ni l'import ni le
+Tracé, et plus aucune Case n'était sélectionnable. La bonne réponse n'était ni l'import ni le
 callback : la fonction était **pure**, sa place était dans `utils.js`.
 
 D'où l'ordre de préférence : fonction pure dans `utils.js` → callback injecté → import direct
@@ -79,13 +79,13 @@ dépend de `S`, le dire dans son commentaire.
 ## Nomenclature
 
 Les règles ci-dessous portent sur le **code**. Elles ne s'appliquent pas aux données persistées, qui
-suivent leur propre logique — voir `docs/persisted-data.fr.md`.
+suivent leur propre logique (voir `docs/persisted-data.fr.md`).
 
 ### Suffixe `3D`
 
 Toute fonction ou constante qui travaille en unités monde 3D le porte : `tracéWallHeight3D`,
 `GROUND_Y_DEFAULT_3D`, `wallOpeningWorldPosOnTracé3D`. Une centaine de fonctions le portent
-aujourd'hui. C'est ce qui permet de distinguer d'un coup d'œil un calcul monde d'un calcul canvas —
+aujourd'hui. C'est ce qui permet de distinguer d'un coup d'œil un calcul monde d'un calcul canvas :
 la confusion la plus coûteuse du projet.
 
 ### Préfixe `ensure*` pour les fonctions qui créent au besoin
@@ -100,7 +100,7 @@ Réserver `get*` à ce qui ne modifie rien.
 
 Les `_` en tête d'identifiant ont été retirés là où ils ne signifiaient rien. Ils subsistent pour les
 variables locales d'une portée dense (`_tracéPos`, `_tmHoles`) où ils marquent un temporaire de
-calcul — pas une quelconque privauté.
+calcul, pas une quelconque privauté.
 
 ### Deux pièges conservés volontairement
 
@@ -108,17 +108,17 @@ Ces deux-là ne sont pas des incohérences à corriger. Ils se lisent une fois e
 pourquoi ils sont écrits ici plutôt que renommés.
 
 **`trace` (l'outil) vs `tracé` (l'objet).** `S.traceTool`, `startTraceTool`, `stopTraceTool`
-désignent l'outil interactif de dessin à la souris — utilisé pour les Routes/Chemins *et* pour les
+désignent l'outil interactif de dessin à la souris, utilisé pour les Routes/Chemins *et* pour les
 zones de Terrain. `tracéBBox`, `TRACÉ_DEFAULTS`, `drawTracé`, `computeTracéWorld3D`, `type: 'tracé'`
-désignent l'objet persistant qui en résulte (route, chemin, muret, clôture, haie, barrière — *pas* la
+désignent l'objet persistant qui en résulte (route, chemin, muret, clôture, haie, barrière ; *pas* la
 zone de Terrain, qui est `type: 'terrain'`). Les deux mots ne diffèrent que par un accent : une
 recherche plein-texte sur `trace` rate tous les `tracé`, et réciproquement. Chercher les deux.
 Renommer l'un ou l'autre est exclu : `'tracé'` est une valeur discriminante persistée.
 
 **`render` à trois sens.** Rendu WebGL vers une texture ou un canvas (`renderPanelScene3D`,
 `renderPersonaToCanvas3D`) ; construction du DOM (`renderSideElementRow`, `renderTree`,
-`renderSceneList`) ; et `renderAll()`, qui orchestre les deux. C'est l'usage courant du web — React
-appelle aussi « render » la construction du DOM — donc les noms restent. Ne pas supposer pour autant
+`renderSceneList`) ; et `renderAll()`, qui orchestre les deux. C'est l'usage courant du web : React
+appelle aussi « render » la construction du DOM, donc les noms restent. Ne pas supposer pour autant
 qu'un `render*` de `sidebar.js` ou `project-tree.js` touche à Three.js.
 
 ### Langue
@@ -158,22 +158,22 @@ sont le coût connu de l'accès au DOM non typé (`getElementById` rend `HTMLEle
 est correct à l'exécution et invérifiable statiquement), ~45 sont TypeScript qui n'infère pas de
 tuple depuis un littéral de tableau hétérogène (`[[-1, 'wingL'], [1, 'wingR']].forEach(([sx, id]) =>
 sx * 0.09)`), et le reste étaient des **faux positifs produits par notre propre fichier de
-déclarations** — douze, contre zéro défaut réel dans le code.
+déclarations** : douze, contre zéro défaut réel dans le code.
 
 Ce résultat est une information, pas un échec. Il dit que les frontières entre modules se portent
 mieux que supposé, et il plafonne ce que cet outil vaut ici. D'où : le vérificateur n'est **pas**
 branché au hook pre-commit. L'y brancher demanderait d'annoter quatre cents endroits ou de figer une
 ligne de base, pour un rendement mesuré nul.
 
-**Ce qui a été gardé, parce qu'il le mérite :** `types/globals.d.ts` déclare le pont Electron — la
-seule porte de l'application vers le disque — et `tests/electron-bridge.test.mjs` refuse toute
+**Ce qui a été gardé, parce qu'il le mérite :** `types/globals.d.ts` déclare le pont Electron, la
+seule porte de l'application vers le disque, et `tests/electron-bridge.test.mjs` refuse toute
 divergence entre cette déclaration et `preload.js`. C'est une vraie seconde description d'un vrai
 contrat, et les descriptions qui divergent sont la classe de bug numéro un de ce dépôt.
 
 Deux pièges consignés sur place, tous deux déjà connus ici :
 - une signature d'index (`[clé: string]: unknown`) sur une interface de frontière **autorise tout et
-  ne vérifie rien** — elle a produit neuf diagnostics « non appelable » entièrement faux, en masquant
+  ne vérifie rien** : elle a produit neuf diagnostics « non appelable » entièrement faux, en masquant
   les méthodes réelles ;
 - un test qui lit du source doit d'abord écarter les commentaires. Le garde anti-signature-d'index
-  échouait sur le *commentaire* expliquant pourquoi il n'y a plus de signature d'index — le piège du
+  échouait sur le *commentaire* expliquant pourquoi il n'y a plus de signature d'index, le piège du
   Fix 88, à l'identique.

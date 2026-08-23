@@ -3,7 +3,7 @@
 *[Version française](imported-skeletons.fr.md)*
 
 This document collects the MEASUREMENTS taken on the six real `.glb` files used as a test bench. It
-exists because this is the area where I most often assumed instead of measuring — and where two of
+exists because this is the area where I most often assumed instead of measuring, and where two of
 my assumptions turned out to be wrong.
 
 The files themselves are not versioned (22 MB of user-owned assets). The figures below are
@@ -22,7 +22,7 @@ therefore the only remaining trace of what they contain.
 | `anime_girl2.glb` | in-house, close to VRoid | — |
 
 **The word "leg" is irredeemably ambiguous**: `mixamorig:LeftLeg` is the SHIN, while `Left_leg` in
-`worker_j` is the THIGH. This is what forced the split of duties in `skeleton-map.js` — the name
+`worker_j` is the THIGH. This is what forced the split of duties in `skeleton-map.js`: the name
 for the SIDE, the structure for the SEGMENT.
 
 ---
@@ -56,12 +56,12 @@ Direction of each mapped bone toward its child, expressed in ITS OWN local frame
 | `hulk_-_sm_bnd` | `+X` × 7, `−X` × 5 |
 
 The Unreal rig aligns bones on X, with a sign that flips between sides and between arms and legs.
-**No convention can therefore be assumed** — but the direction can be MEASURED, bone by bone, by
+**No convention can therefore be assumed**, but the direction can be MEASURED, bone by bone, by
 reading the child's position (already expressed in the parent's frame).
 
 > ⚠️ **Correction of an earlier note.** At step Rigs A I wrote that on `anime_girl1` "the limbs
 > point along +Y and the spine along −Z". That is wrong: the spine points along +Y too. The claim
-> confused a bone's rest ROTATION with its DIRECTION toward its child — two different things. It
+> confused a bone's rest ROTATION with its DIRECTION toward its child, two different things. It
 > was copied verbatim into several comments before being checked.
 
 ---
@@ -84,7 +84,7 @@ reading the child's position (already expressed in the parent's frame).
 Two different up axes coexist (`+Y` and `+Z`): here too nothing can be assumed, but everything can
 be measured.
 
-`anime_girl1` is the only notable deviation — about 6°. The model is not in a neutral pose
+`anime_girl1` is the only notable deviation, about 6°. The model is not in a neutral pose
 (asymmetric arms), which tilts the shoulder line. Usable, but this is the case to watch if an axis
 correction relies on that frame.
 
@@ -94,8 +94,8 @@ correction relies on that frame.
 
 Both unknowns of "apply a pose to an imported skeleton" are therefore **derivable from geometry**:
 
-1. the along-bone axis — measured by the direction toward the child;
-2. the body's orientation — measured by the frame above.
+1. the along-bone axis, measured by the direction toward the child;
+2. the body's orientation, measured by the frame above.
 
 Translating "bend the elbow forward" then means expressing the desired rotation axis (a body axis)
 in the bone's LOCAL frame, via the inverse of its world rest rotation.
@@ -113,13 +113,13 @@ solved and must not be presented as if it were.
 above, never through the bones' raw axes.
 
 **The built-in rig is not a special case there**: its frame is measured by the same function as an
-imported file's. No sign is hand-written — deliberately, since every hand-written sign is a place
+imported file's. No sign is hand-written, deliberately, since every hand-written sign is a place
 where one can be wrong with nothing to signal it. A test even refuses to let the module mention the
 built-in rig by name.
 
 ### 6.1 A measurement that changed the code: coincident collarbones
 
-The body frame was first derived from **four** bones — hips, head and the two collarbones. Applied
+The body frame was first derived from **four** bones: hips, head and the two collarbones. Applied
 to the application's own built-in Character, it returned nothing at all.
 
 Reason, measured on the rig actually built:
@@ -131,19 +131,19 @@ Reason, measured on the rig actually built:
 | `lClavicle` | `(0, 0.564, 0)` |
 | `rClavicle` | `(0, 0.564, 0)` |
 
-Both collarbones **pivot at the sternum** — anatomically right, since a collarbone turns at the
+Both collarbones **pivot at the sternum**, which is anatomically right, since a collarbone turns at the
 breastbone and only carries the shoulder at its far end. Their difference is the zero vector, and no
 lateral direction can come out of it.
 
 `repereDuCorps` therefore falls back to the **upper arms**, which are laterally separated on every
-humanoid. Both pairs point the same anatomical way — from the body's right towards its left — so the
+humanoid. Both pairs point the same anatomical way (from the body's right towards its left), so the
 frame obtained is the same whichever one served. Any imported file built like this benefits from the
 same fallback.
 
 ### 6.2 A model's size is measured on its body
 
-Two files out of six reported an absurd size on import — `hulk_-_sm_bnd.glb` at **0.845 m**,
-`worker_j.glb` at **9.433 m** — without triggering any warning.
+Two files out of six reported an absurd size on import: `hulk_-_sm_bnd.glb` at **0.845 m**,
+`worker_j.glb` at **9.433 m**, without triggering any warning.
 
 The measurement took the **Y** extent of the bounding box, and was wrong twice:
 
@@ -152,7 +152,7 @@ The measurement took the **Y** extent of the bounding box, and was wrong twice:
 | `hulk` | 0.845 m | measured at decode, **before** the up-axis conversion: that is its depth; its height is 2.374 m |
 | `worker_j` | 9.433 m | the box wraps the **whole file**, katana included |
 
-Size is now measured on the **mapped bones**, projected onto the body's own vertical — the one
+Size is now measured on the **mapped bones**, projected onto the body's own vertical, the one
 `repereDuCorps` derives from the skeleton itself. No axis is assumed, and a prop standing next to the
 character no longer counts. Falls back to the mesh box when no skeleton is recognised: the same rule
 as framing, two paths that never overlap.
@@ -162,7 +162,7 @@ as framing, two paths that never overlap.
 `src/pose-bridge.js` is the only place where the two pose vocabularies meet: the Character's
 *fields* (`lElbow`, `lClavicleRotZ`) and the mapping's *slots* (`avantbras_g`, `clavicule_g`).
 
-Applying a library pose **replaces** manual slider settings — the Character's behaviour, kept
+Applying a library pose **replaces** manual slider settings: the Character's behaviour, kept
 identical on purpose. The result is written back as three angles per slot, i.e. exactly
 `skeletonPose3d`: the applied pose then shows up in the sliders, stays adjustable, and adds no
 persisted field, hence no migration.
@@ -170,7 +170,7 @@ persisted field, hence no migration.
 ### 6.4 Framing: what is painted AND every handle
 
 The card's and the editor's framing used the **bones alone** for a dozen versions, for a good
-reason: `worker_j`'s mesh box was polluted by its katana sheath. That reason is gone — the mesh is
+reason: `worker_j`'s mesh box was polluted by its katana sheath. That reason is gone: the mesh is
 detected and hidden (§ 6.5 below), and the box ignores it.
 
 But the bones alone were not enough, and that was measurable. Framing leaves a 22 % margin; here is
@@ -178,7 +178,7 @@ how far the mesh exceeds the bones on the real files:
 
 | file | max overshoot | cropped? |
 |---|---|---|
-| `hulk_-_sm_bnd` | 13 % | no — the only one of the three under the margin |
+| `hulk_-_sm_bnd` | 13 % | no, the only one of the three under the margin |
 | `anime_girl1` | 24 % (top) | hair just clipped |
 | `worker_j` | 28 % (top) | top of the skull cut off |
 
@@ -188,7 +188,7 @@ framed. The mapped bones, because joint handles are drawn at their positions, an
 frame cannot be clicked.
 
 The Element's **size** still comes from the bones alone (§ 6.2). Framing and sizing are two separate
-questions — confusing them is what produced the defects of tasks #333 and #334.
+questions; confusing them is what produced the defects of tasks #333 and #334.
 
 ### 6.5 A mesh the file places outside the body
 
@@ -206,18 +206,18 @@ The character is 33 units tall: the sheath floats at three times its height.
 
 **Two hypotheses were refuted before this one**, and writing them down avoids revisiting them:
 
-1. *"no bone drives it"* — false. It is 100 % weighted to `Sheath_080`, a regular child of
+1. *"no bone drives it"*: false. It is 100 % weighted to `Sheath_080`, a regular child of
    `Spine_010`. And that lead was a dead end anyway: GLTFLoader calls `normalizeSkinWeights()`,
    which replaces a zero weight vector with `(1, 0, 0, 0)`. After decoding, an unweighted mesh is
-   indistinguishable from one bound to the first bone — a detection reading `skinWeight` can never
+   indistinguishable from one bound to the first bone, and a detection reading `skinWeight` can never
    fire (the "MESURE" test in `tests/glb-decoding.test.mjs`).
-2. *"it's the resize"* — false, the symptom shows without resizing. Nothing comes loose: the sheath
-   was always up there. The illusion comes from a **lever** effect — scaling is uniform about a
+2. *"it's the resize"*: false, the symptom shows without resizing. Nothing comes loose: the sheath
+   was always up there. The illusion comes from a **lever** effect: scaling is uniform about a
    centre computed on the bones, so a point three times further away moves three times as much
    on screen.
 
 **The criterion has no threshold**: a mesh is stray when it intersects no other mesh's box. No
-maximum distance, no multiple of the body height — "touches nothing" is a property of the file, not
+maximum distance, no multiple of the body height; "touches nothing" is a property of the file, not
 a setting. Verified by reading all six real files directly:
 
 | file | meshes | stray |
@@ -229,15 +229,15 @@ a setting. Verified by reading all six real files directly:
 | `capoera`, `female_pose` | 1 | criterion does not apply |
 
 The hiding applies to BOXES too: `expandBoxSkinAware3D` ignores a mesh whose own visibility is
-`false`. This is not cosmetic — `placeRigCentered3D` derives from that box both the scale and the
+`false`. This is not cosmetic: `placeRigCentered3D` derives from that box both the scale and the
 centre of the rig placed in a Panel. On decoded `worker_j`, the sheath took it from z −18.5..6.1 to
 z −28.4..52.4: a factor of 4.6 on the scale, and a model landing next to its Panel. The GROUP's
-visibility is deliberately not consulted — hiding a whole Element ("Invisible in the 3D scene")
+visibility is deliberately not consulted: hiding a whole Element ("Invisible in the 3D scene")
 must not empty its box, or it would reappear anywhere.
 
 Those meshes are **hidden**, never removed: the geometry stays in the clone, the file on disk is
 untouched, and the "Show detached parts" checkbox in the model's card brings them back. The
-persisted field `afficherMaillagesEgares` is only written when `true` — its absence means "hidden",
+persisted field `afficherMaillagesEgares` is only written when `true`, so its absence means "hidden",
 which is the default.
 
 
@@ -247,12 +247,12 @@ which is the default.
 
 Eleven modules make up this piece of work. Two things were measured rather than assumed:
 
-- **public surface covered**: across all their exports, exactly one is never named in the tests —
+- **public surface covered**: across all their exports, exactly one is never named in the tests:
   `loadedModelNames`, exercised indirectly through `figuresPosables` (rig3d.js). A second,
   `produitVectoriel`, was exported by accident: it only served its own file, and the export was
   removed. A public surface nothing calls is a surface nothing verifies;
 - **mutation campaigns**: every module now carries its journal, inside its test file. The three core
-  modules — `skeleton-pose`, `skeleton-retarget`, `pose-bridge` — had none; twelve mutations were
+  modules (`skeleton-pose`, `skeleton-retarget`, `pose-bridge`) had none; twelve mutations were
   run against them, eleven red. The twelfth was a REDUNDANT guard, fixed in the code rather than
   covered by one more test.
 
@@ -262,7 +262,7 @@ No test in this repository decodes a real modeller's `.glb`. The versioned witne
 no material, no extension, and the six test files are 22 MB that belong to the user. Above all,
 **GLTFLoader does not decode those files under Node**: their textures need a browser environment.
 
-That is a structural limit, not a lack of diligence — and it explains why EVERY serious defect in
+That is a structural limit, not a lack of diligence, and it explains why EVERY serious defect in
 this work was found in use, never by the test suite:
 
 | found in use | actual cause |
@@ -278,11 +278,11 @@ this work was found in use, never by the test suite:
 
 For each of the six files, starting from an EMPTY Panel:
 
-1. import the model — it should appear centred, at a size comparable to a Character's;
-2. open its card — the preview should show all of it, hair and props included;
-3. apply a pose from the library, then tweak one slider — both must show;
+1. import the model: it should appear centred, at a size comparable to a Character's;
+2. open its card: the preview should show all of it, hair and props included;
+3. apply a pose from the library, then tweak one slider: both must show;
 4. change its size, move it, rotate it;
-5. save, close, reopen the project — everything must be exactly as it was.
+5. save, close, reopen the project: everything must be exactly as it was.
 
 Step 5 matters most: it is the only one that exercises the persisted form end to end.
 
@@ -301,12 +301,12 @@ and exactly what turns the second one around: every imported model opened showin
 
 **The rule is now measured** (`orbiteDeFace3D`, utils.js): the opening azimuth is the one that puts
 the camera on the front side, itself derived from the file's body frame
-(`repereDuCorpsPourFichier3D`). Hard-coding `0` would have covered the six test files — and left the
+(`repereDuCorpsPourFichier3D`). Hard-coding `0` would have covered the six test files, and left the
 first differently-exported file facing away.
 
 ⚠️ **The rule is about the CAUSE, not the moment.** The azimuth is recomputed **when the figure
 changes**, which happens in two places: opening the editor, and the "Model" selector in its right
-panel. The first version only handled opening — entering on the Character then picking an imported
+panel. The first version only handled opening: entering on the Character then picking an imported
 model still showed its back. A rule phrased about the moment rather than the cause always leaves one
 moment out.
 
@@ -324,13 +324,13 @@ them would discard framing the user has just composed.
 
 ⚠️ **The fix stays on the camera side.** Rotating the figure by 180° would put its axes at odds with
 the world, and the handle-drag direction computation (`projectModelAxisToScreen3D`) would become
-wrong again — which is what Fix 76 removed.
+wrong again, which is what Fix 76 removed.
 
 ### 7.5 "Lying down" — a whole-body gesture, not a joint
 
 `POSE_3D.allonge` is `debout` plus a `lieFlat` flag. The built-in Character consumes it by rotating
 its ROOT group (`J.root.rotation.z = π/2`). The bridge to imported bones translates angles **bone by
-bone**: a flag that turns the whole body is not a bone angle, so it was dropped — the model stayed
+bone**: a flag that turns the whole body is not a bone angle, so it was dropped: the model stayed
 standing.
 
 **The gesture, measured** on the built-in rig (body frame before/after applying the pose):
@@ -341,13 +341,13 @@ standing.
 | lying | (0, −1, 0) | (−1, 0, 0) | (0, 0, 1) |
 
 that is, in the body frame: **right → −up, up → right, forward unchanged**. A quarter turn about the
-*forward* axis — expressible in any body, just as the joint angles already are.
+*forward* axis, expressible in any body, just as the joint angles already are.
 
 ⚠️ **`rotation.z = π/2` is not copied**: hulk stands along +Z, that quarter turn would lay it down
 crooked.
 
 ⚠️ **A matrix, not an axis-angle.** The SIGN of the angle would depend on the frame's handedness, and
-`repereDuCorps` guarantees none — measured, the Character's is **left-handed** (determinant −1).
+`repereDuCorps` guarantees none: measured, the Character's is **left-handed** (determinant −1).
 Building the rotation from the correspondence requires no bet. It stays proper (determinant +1)
 either way: the signed permutation is the same on both sides.
 
@@ -355,7 +355,7 @@ either way: the signed permutation is the same on both sides.
 carries the tilt when active: re-reading its frame would compose the rotation a second time on every
 call, and the model would keep turning frame after frame.
 
-**A pose group** (`poseGroup`) sits between `figureGroup` — which carries the Element's orientation —
+**A pose group** (`poseGroup`) sits between `figureGroup` (which carries the Element's orientation)
 and the clone. Writing both in the same place would make one overwrite the other.
 
 #### SCALE
@@ -363,25 +363,25 @@ and the clone. Writing both in the same place would make one overwrite the other
 `placeRigCentered3D` derives the factor from the box height (`s = targetHeight / size.y`). Lying
 down, a body is low and wide: the factor blows up. The Character is protected by
 `entry.deboutNaturalH`, measured **once when the rig is built**; an imported model cannot do the
-same — its pose changes without the rig being rebuilt.
+same: its pose changes without the rig being rebuilt.
 
 `hauteurDeboutModele3D` (scene3d.js) therefore measures **at every placement**, neutralising the tilt
-for the duration of the measurement — and nothing else.
+for the duration of the measurement, and nothing else.
 
-⚠️ **Both the tilt AND the pose are neutralised** — the same rule as the Character. An Element's size
+⚠️ **Both the tilt AND the pose are neutralised**, the same rule as the Character. An Element's size
 describes its **stature**, not its footprint at that instant: a crouching model is lower, and without
 this its scale factor swelled accordingly.
 
 It was not always so: the first version neutralised only the lying tilt, which left the inconsistency
 on every other pose. Extending it **changes the size** of imported models already posed other than
-standing in existing projects — arbitrated with the user, not slipped into a fix.
+standing in existing projects, arbitrated with the user, not slipped into a fix.
 
 ⚠️ **The pose is neutralised in place, not read elsewhere.** Measuring the cached scene would be
 simpler and would be wrong: `boneTransform` reads `skeleton.boneMatrices`, which are only computed
 **at render time**. On a scene never rendered, the skin-aware box therefore describes the bind
-geometry in the **file's** own frame — the mistake that produced three wrong fixes.
+geometry in the **file's** own frame, the mistake that produced three wrong fixes.
 
-⚠️ **Same box as the placement**, passed as a parameter — not a second measurement. And the rig's
+⚠️ **Same box as the placement**, passed as a parameter, not a second measurement. And the rig's
 scale is reset to 1 before measuring: the measurement happens BEFORE `placeRigCentered3D`, so the rig
 still carries the previous frame's scale.
 
@@ -398,19 +398,19 @@ An imported model's rig is built by **one** function, but fed from **three** pla
 The last two copy fields **one by one**. Such an enumeration is right the day it is written and falls
 behind with every field added elsewhere. Already lost this way:
 
-- `maillagesEgares` (in `buildPropRig3D`) — masking written and tested, with no effect **for two
+- `maillagesEgares` (in `buildPropRig3D`): masking written and tested, with no effect **for two
   released versions**;
-- `afficherMaillagesEgares` — passed by the caller, never copied across: ticking the box changed
+- `afficherMaillagesEgares`: passed by the caller, never copied across: ticking the box changed
   nothing in the preview;
-- `joints3d` and `position` — without the **intent**, "lying down" stayed invisible in the preview and
+- `joints3d` and `position`: without the **intent**, "lying down" stayed invisible in the preview and
   in the editor, while the Panel did lay the model down.
 
-⚠️ **The distinction that matters**: `skeletonPose3d` carries **bone** angles — the RESULT. What
+⚠️ **The distinction that matters**: `skeletonPose3d` carries **bone** angles, the RESULT. What
 happens at **body** level ("lying down", which tips the whole figure) travels only in the INTENT.
 Passing one without the other yields a preview showing the right joints on a wrongly oriented body.
 
 A test now **derives** the list instead of reciting it: it re-reads the fields
 `ensureObjectRigEntry3D` reads off its Element and requires each to arrive, barring justified
 exclusions (the preview's own rig id, size simulated by the camera). ⚠️ **Indirect** reads cannot be
-derived — `getEffectiveJoints(o)` reads `joints3d` and `position` without the rig naming them — so
+derived: `getEffectiveJoints(o)` reads `joints3d` and `position` without the rig naming them, so
 they are added explicitly. That gap is exactly what let `joints3d` slip through.

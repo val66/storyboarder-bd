@@ -45,4 +45,4 @@ Every document exists in two languages: `name.md` in English, `name.fr.md` in Fr
 originally written in; both are kept in step, and `tests/docs.test.mjs` refuses a document without
 its counterpart.
 
-The code and its comments are in English — see [architecture.md](architecture.md#language).
+The code and its comments are in English (see [architecture.md](architecture.md#language)).

@@ -14,7 +14,7 @@ node --test tests/scene3d.test.mjs   # a single file
 ```
 
 One test file per module of `src/`. `tests/helpers/dom-stub.mjs` imports the real `three` and stubs
-the DOM — so the tests work on **real** Three.js geometry, not on imitations.
+the DOM, so the tests work on **real** Three.js geometry, not on imitations.
 
 ## Mutation testing — the central rule
 
@@ -25,7 +25,7 @@ Writing a test that passes proves nothing. After every fix:
 3. **If a mutation survives, the test is decorative.**
 
 A mutation that escapes almost always signals the same thing: the logic is locked inside somewhere
-unobservable — an event listener, a render loop. The answer is not to write a cleverer test, it is
+unobservable: an event listener, a render loop. The answer is not to write a cleverer test, it is
 to **extract the logic into an exported pure function**.
 
 Most of the functions in `docs/3d-rendering-single-sources.md` were born that way. Two examples:
@@ -41,12 +41,12 @@ Two traps met while practising this method:
 A mutation that "escapes" when it ought to bite deserves a check of *where* it was applied.
 
 **Verify that the substitution happened.** A test insertion that does not match the pattern does
-nothing, silently — an unchanged test count is the only clue.
+nothing, silently, and an unchanged test count is the only clue.
 
 **A layered fix needs one test per layer.** `loadSceneIntoPanel` was writing NaN world coordinates
 into saved Elements. The repair had two parts: the cause (the Scene's Page was handed to the ground
 projection without its dimensions) and the net (a non-finite projection now reports `clamped`).
-Reintroducing *either half alone* left the suite green — the other half still caught it. Two real
+Reintroducing *either half alone* left the suite green: the other half still caught it. Two real
 defects, zero red. Nothing was broken, but neither line was held by anything, and a later reader
 could have deleted one as useless. The fix is not a cleverer assertion: it is one test aimed at each
 layer. Two protections and no test is two protections and no guarantee.
@@ -78,7 +78,7 @@ suggests a coverage that does not exist.
 ## Invariant tests
 
 Beyond the unit tests, `tests/scene3d.test.mjs` contains a suite that checks the **relations between
-functions** — that the hole, the rig, the render box and the camera designate the same place, over
+functions**: that the hole, the rig, the render box and the camera designate the same place, over
 the whole parameter range and on several support shapes.
 
 It is the only kind of test that catches the class of bug that has cost the most here. A unit test
@@ -94,7 +94,7 @@ npm run lint
 
 ESLint handles the **grammatical** layer: a variable declared and never read, a variable used
 without being declared, a duplicate key in an object literal, unreachable code. The `pre-commit`
-hook runs it before the tests — it costs a fraction of a second where the suite costs four, and a
+hook runs it before the tests: it costs a fraction of a second where the suite costs four, and a
 lint error often explains the test failure that would follow.
 
 It is **tolerant of ESLint being absent**: a fresh clone with no `npm install`, or an offline
@@ -115,12 +115,12 @@ Everything **specific to this project** stays in `tests/`, and that split is del
 Roughly: ESLint knows JavaScript, the tests know *this* application. Trying to express one in the
 other gives a fragile rule on one side, and a rewritten compiler on the other.
 
-Rules were chosen conservatively, each because it targets a defect actually seen here —
+Rules were chosen conservatively, each because it targets a defect actually seen here:
 `no-unused-vars` would have found `roomSizeDisplay`, declared and never used, without anyone
 looking for it. A configuration copied from elsewhere produces noise on 22 000 existing lines, and
 noise is what gets a tool switched off.
 
 ## Bypassing the hook
 
-`git commit --no-verify` skips the tests — for a work-in-progress commit only. See
+`git commit --no-verify` skips the tests, for a work-in-progress commit only. See
 `docs/versioning.md`.

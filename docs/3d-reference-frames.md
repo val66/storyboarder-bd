@@ -16,14 +16,14 @@
 
 ## Two coordinate systems, not to be confused
 
-**2D canvas** — `o.x`, `o.y`, `o.w`, `o.h`. Pixels on the page. This is what the user manipulates
+**2D canvas**: `o.x`, `o.y`, `o.w`, `o.h`. Pixels on the page. This is what the user manipulates
 with the mouse, and what the selection box draws.
 
-**3D world** — `o.wxFloor`, `o.wyFloor`, `o.wzFloor`, `o.realHeightFloor`, `o.realLenFloor`. World
+**3D world**: `o.wxFloor`, `o.wyFloor`, `o.wzFloor`, `o.realHeightFloor`, `o.realLenFloor`. World
 units. **This is the source of truth for 3D rendering.**
 
 The trap: an Element's `o.y` is a **canvas** coordinate, not a height. Naively converting `o.y` into
-a world Y gives an Element floating in mid-air — which is exactly what happened to Wall Openings
+a world Y gives an Element floating in mid-air, which is exactly what happened to Wall Openings
 before Fix 28. For Elements seen from above, `o.y` corresponds to a **depth** (world Z), not to an
 elevation.
 
@@ -38,7 +38,7 @@ back often; forgetting it flips the object by 180°.
 
 For a Three.js group rotated by `rotY`, the local `+X` axis points along the tangent and the local
 `+Z` axis along the normal of the path. Both conventions must agree between a rig and the terrain
-around it, otherwise they cross each other — measured at 47° apart in a bend.
+around it, otherwise they cross each other, as measured at 47° apart in a bend.
 
 ## Elements with no position of their own
 
@@ -46,8 +46,8 @@ A Wall Opening magnetized to a Wall or to a Path **has no** usable world positio
 canvas coordinates seen from above, and its `wxFloor`/`wzFloor` are stale. Its position is computed
 at every render by walking along its support:
 
-- `wallAlongFrac` — position **along** the support, from 0 to 1.
-- `wallYFrac` — position **in height**, from 0 to 1.
+- `wallAlongFrac`: position **along** the support, from 0 to 1.
+- `wallYFrac`: position **in height**, from 0 to 1.
 
 `wallYFrac` does not span the full height of the support but the **reachable span**:
 `wall height − opening height`. Fraction 1 therefore brings the *top* of the Opening level with the
@@ -57,9 +57,9 @@ crest, not its base. See `wallOpeningWorldPosOnTracé3D`.
 
 A rig is built at a reference size then scaled. Two mechanisms coexist:
 
-- **`placeRigCentered3D`** — **uniform** scale computed from the target height. Suitable for a
+- **`placeRigCentered3D`**: **uniform** scale computed from the target height. Suitable for a
   Character or a piece of furniture.
-- **`CHILD_DESIGN_SIZE_3D`** — nominal size per Element type, allowing an **independent** scale in
+- **`CHILD_DESIGN_SIZE_3D`**: nominal size per Element type, allowing an **independent** scale in
   width and height. Mandatory for a Wall Opening, which has to fill exactly the hole cut for it.
 
 Careful: `placeRigCentered3D` measures the bounding box **after** rotation, which makes a
@@ -68,7 +68,7 @@ non-uniform scale incorrect. That is why Openings on a Path have their own place
 ## The shared renderer
 
 There is **only one** `personaRenderer3D` (`rig3d.js`), off-screen, resized on demand by `setSize()`
-then copied into a 2D canvas via `drawImage`. Every consumer resizes, renders, copies — so there is
+then copied into a 2D canvas via `drawImage`. Every consumer resizes, renders, copies, so there is
 no contention, but do not assume its size is stable between two calls.
 
 `THREE.WebGLRenderer` cannot be constructed under Node: anything that calls

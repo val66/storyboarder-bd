@@ -13,7 +13,7 @@ node --test tests/scene3d.test.mjs   # un seul fichier
 ```
 
 Un fichier de test par module de `src/`. `tests/helpers/dom-stub.mjs` importe le vrai `three` et
-bouchonne le DOM — les tests travaillent donc sur de la **vraie** géométrie Three.js, pas sur des
+bouchonne le DOM : les tests travaillent donc sur de la **vraie** géométrie Three.js, pas sur des
 imitations.
 
 ## Le test par mutation — la règle centrale
@@ -25,7 +25,7 @@ imitations.
 3. **Si une mutation passe, le test est décoratif.**
 
 Une mutation qui s'échappe signale presque toujours la même chose : la logique est enfermée dans un
-endroit non observable — un écouteur d'événement, une boucle de rendu. La réponse n'est pas d'écrire
+endroit non observable : un écouteur d'événement, une boucle de rendu. La réponse n'est pas d'écrire
 un test plus malin, c'est d'**extraire la logique en fonction pure exportée**.
 
 La plupart des fonctions de `docs/3d-rendering-single-sources.fr.md` sont nées ainsi. Deux exemples :
@@ -42,13 +42,13 @@ le fichier. Une mutation qui « s'échappe » alors qu'elle devrait mordre méri
 elle a été appliquée.
 
 **Vérifier que la substitution a eu lieu.** Une insertion de test qui ne correspond pas au motif ne
-fait rien, en silence — le compte de tests inchangé est le seul indice.
+fait rien, en silence, et le compte de tests inchangé est le seul indice.
 
 **Une correction en profondeur demande un test par couche.** `loadSceneIntoPanel` écrivait des
 coordonnées monde NaN dans les Éléments enregistrés. La réparation avait deux étages : la cause (la
 Planche de la Scène était donnée à la projection au Sol sans ses dimensions) et le filet (une
 projection non finie se déclare désormais `clamped`). Réintroduire *l'une ou l'autre moitié seule*
-laissait la suite au vert — l'autre moitié rattrapait. Deux défauts réels, zéro rouge. Rien n'était
+laissait la suite au vert : l'autre moitié rattrapait. Deux défauts réels, zéro rouge. Rien n'était
 cassé, mais aucune des deux lignes n'était retenue par quoi que ce soit, et un lecteur ultérieur
 aurait pu en supprimer une comme inutile. La réponse n'est pas une assertion plus fine : c'est un
 test visant chaque étage. Deux protections et aucun test, cela fait deux protections et aucune
@@ -82,7 +82,7 @@ périmée fait croire à une couverture qui n'existe pas.
 ## Les tests d'invariants
 
 Au-delà des tests unitaires, `tests/scene3d.test.mjs` contient une suite qui vérifie les **relations
-entre fonctions** — que le trou, le rig, la boîte de rendu et la caméra désignent le même endroit, sur
+entre fonctions** : que le trou, le rig, la boîte de rendu et la caméra désignent le même endroit, sur
 toute la plage des paramètres et sur plusieurs formes de support.
 
 C'est le seul type de test qui attrape la classe de bug qui a le plus coûté ici. Un test unitaire
@@ -98,7 +98,7 @@ npm run lint
 
 ESLint prend en charge la couche **grammaticale** : variable déclarée et jamais lue, variable
 utilisée sans être déclarée, clé dupliquée dans un objet littéral, code inatteignable. Le hook
-`pre-commit` le lance avant les tests — il coûte une fraction de seconde là où la suite en prend
+`pre-commit` le lance avant les tests : il coûte une fraction de seconde là où la suite en prend
 quatre, et une erreur de lint explique souvent l'échec de test qui suivrait.
 
 Il est **tolérant à l'absence d'ESLint** : un clone frais sans `npm install`, ou un poste hors
@@ -120,11 +120,11 @@ En résumé : ESLint connaît JavaScript, les tests connaissent *cette* applicat
 l'un dans l'autre donne une règle fragile d'un côté, et un compilateur réécrit de l'autre.
 
 Les règles ont été choisies avec prudence, chacune parce qu'elle vise un défaut réellement constaté
-ici — `no-unused-vars` aurait trouvé `roomSizeDisplay`, déclaré et jamais utilisé, sans qu'on le
+ici : `no-unused-vars` aurait trouvé `roomSizeDisplay`, déclaré et jamais utilisé, sans qu'on le
 cherche. Une configuration copiée d'ailleurs produit du bruit sur 22 000 lignes existantes, et
 c'est le bruit qui fait désactiver un outil.
 
 ## Contourner le hook
 
-`git commit --no-verify` saute les tests — pour un commit en cours de travail uniquement. Voir
+`git commit --no-verify` saute les tests, pour un commit en cours de travail uniquement. Voir
 `docs/versioning.fr.md`.

@@ -4,14 +4,14 @@
 > #209–219); this note was originally written in French, the language the decisions were taken in,
 > and is kept in step with this English version.
 >
-> ⚠️ **This note retraces a LINE OF REASONING, including its reversals** — several decisions here
+> ⚠️ **This note retraces a LINE OF REASONING, including its reversals**: several decisions here
 > are marked "REVISED" or "CORRECTED since". To find out how the system works **today**, read
 > [pose-library.md](pose-library.md), which has no archaeology.
 
 ## Intent
 
 A character editor, with fine joint adjustment, a pose library and emotions. It covers the central
-area only — the header and the left menu stay usable, and navigating away leaves the editor without
+area only: the header and the left menu stay usable, and navigating away leaves the editor without
 reopening the dialog it came from (`clicQuitteLEditeur3D`). Two entry points:
 
 - **Left menu → Character section**: default character, no target. The only useful outcome is "save
@@ -47,7 +47,7 @@ renaming a pose thus keeps the label right on every Character citing it. No coll
 built-in poses is possible, since `newId('pose')` produces "pose1", "pose2"…
 
 Trade-off: an id means nothing to a human. When the pose cannot be found, we fall back on
-`positionLabel` — the last known name, if it was recorded. An **optional** field: the resolver reads
+`positionLabel`: the last known name, if it was recorded. An **optional** field: the resolver reads
 it if present, nothing breaks if it is missing. Deciding whether to write it belongs to phase 4.
 
 ### Two identified traps, to be handled explicitly
@@ -71,19 +71,19 @@ it if present, nothing breaks if it is missing. Deciding whether to write it bel
 poses: [ { id, name, skeleton, joints } ]
 ```
 
-- At **project level**, next to `scenes` in `serializeProject` — "usable anywhere in the project, in
+- At **project level**, next to `scenes` in `serializeProject`, "usable anywhere in the project, in
   every volume and page".
 - `joints` = exactly what `cloneJoints` already produces. No format to invent.
 - `skeleton`: `'humain'` / animal type. Even though v1 only covers humans, tagging from the very
   first save avoids applying a dog pose to a human. Painful to catch up otherwise.
-- **v1: joints only.** Neither emotion nor hands — otherwise applying a pose overwrites the
+- **v1: joints only.** Neither emotion nor hands, otherwise applying a pose overwrites the
   expression, which is rarely wanted. To revisit later if the need is confirmed.
 - `lieFlat` (lying pose) lives **inside** the joint values, not in `position`: a pose saved lying
   down works with no special case. Verified (`rig3d.js:367`).
 - ⚠️ These field names become **permanent** as of the first shipped version (project compatibility
   constraint).
 - ⚠️ `resyncIdCounter` (`io.js`) currently visits only `tomes` and `scenes`. It **must** visit
-  `poses` too, otherwise a pose created after loading can reuse an already-taken id — and with
+  `poses` too, otherwise a pose created after loading can reuse an already-taken id, and with
   matching by id, that means a Character ends up with the wrong pose.
 
 ### Reuse across projects — ~~out of scope~~, **REVISED (Fix 57)**
@@ -92,17 +92,17 @@ The note excluded this need. It came back the moment the user noticed that the b
 their Rename/Delete buttons greyed out, and asked the right question: *if the built-in poses apply
 to the whole application, why would mine be limited to one Project?*
 
-The consistency argument holds. Its conclusion — "that way we could delete them without worry" —
+The consistency argument holds. Its conclusion ("that way we could delete them without worry")
 did not: moving the library to application level makes deletion **more** risky, since it then
 touches Projects the application cannot inspect in order to warn. And a file stops describing
 itself: sent to someone, it would display "unknown" everywhere.
 
-**Chosen design** — both at once:
+**Chosen design**, both at once:
 
 - **Library at Application level** (`settings.json`, key `poseLibrary`). Shared by all Projects.
 - **The poses of `POSITIONS` are SEEDED into it** on first launch, with the built-in key as `id`
   (`'assis'`, `'debout'`…). No migration: existing files already cite those keys. They become
-  ordinary entries — renamable and deletable like the others.
+  ordinary entries, renamable and deletable like the others.
 - **`POSE_3D` is still consulted AFTER the library**, as a safety net: a file citing a built-in pose
   the user has deleted still resolves. It never appears in the list, so deleting really does make
   the pose disappear from the interface.
@@ -115,15 +115,15 @@ explain why the code has the shape it has. From now on: every deletion is record
 (`S.dismissedPoses`, key `poseLibraryDismissed`) and the merge never reintroduces a discarded id.
 Surprise 1 therefore no longer happens.
 
-Knock-on consequence: deletion having become permanent, the Fix 56 rule — only confirm if the pose
-is in use — was no longer tenable. A single irreversible click on an unused pose, right after
+Knock-on consequence: deletion having become permanent, the Fix 56 rule (only confirm if the pose
+is in use) was no longer tenable. A single irreversible click on an unused pose, right after
 clicking a built-in pose just to look at it, was too easy. **Every deletion now asks for
 confirmation**, with a differentiated rather than uniform message: mentioning Characters where there
 are none would be noise, and it is noise that eventually makes people click without reading.
 
 To offset surprise 2, a **"Restore built-in poses"** button (Settings dialog) re-adds the missing
 built-in poses and lifts their dismissal. Gap filling, not a reset: a renamed built-in pose is
-present, therefore never overwritten. Deleted personal poses, however, stay lost — keeping them
+present, therefore never overwritten. Deleted personal poses, however, stay lost, since keeping them
 would contradict what the confirmation announces.
 
 **Original state, for the record:**
@@ -134,25 +134,25 @@ would contradict what the confirmation announces.
    ⚠️ **Clarification added afterwards, the first wording was misleading.** The embedded copy is
    RECOMPUTED on every save, from the library filtered by usage (`posesUsedByProject3D`). Deleting
    then re-saving the project therefore removes it from the file too: nothing comes back, and the
-   Character keeps a `position` nobody can name any more — "unknown" for good. Verified by running
+   Character keeps a `position` nobody can name any more: "unknown" for good. Verified by running
    both scenarios.
 
    In other words, the reappearance concerns ONLY the files present on disk at the moment of the
    deletion, and only for as long as they have not been re-saved.
-2. An **emptied** library is not re-seeded at startup — seeding only triggers if the settings key is
+2. An **emptied** library is not re-seeded at startup: seeding only triggers if the settings key is
    ABSENT. Without that distinction, the seeded poses would come back on every restart, undoing the
    user's decision.
 
 ### Label / values drift
 
-Choosing "Assis" then moving an elbow leaves the label on "Assis" while the values have changed —
+Choosing "Assis" then moving an elbow leaves the label on "Assis" while the values have changed,
 this drift already exists today. Display "Assis (modified)" rather than clearing the label: the
 provenance is kept, and it is useful information.
 
 ## Breakdown
 
 Chosen order: the dialog entry first (the draft mechanism already exists there, immediate value),
-the library next, the standalone entry last — it is only worth anything once the library is in
+the library next, the standalone entry last: it is only worth anything once the library is in
 place.
 
 ### Phase 0 — Foundations, no visible change
@@ -172,19 +172,19 @@ place.
 
   ⚠️ **Registration-order trap (Fix 67).** The editor COVERS the application instead of replacing
   it: everything listening to the keyboard at `window` level keeps running behind it.
-  `stopImmediatePropagation` only stops listeners registered **after** its own on the same target —
+  `stopImmediatePropagation` only stops listeners registered **after** its own on the same target,
   and `io.js` is imported before `events.js`, so its "Escape → Project menu" runs first, whatever
   the editor does afterwards. Result: leaving the editor with Escape opened the Project menu behind
-  it. The fix belongs on the `io.js` side, in its guard list — which is an **enumeration** that
+  it. The fix belongs on the `io.js` side, in its guard list, which is an **enumeration** that
   every new overlay has to remember to complete, the second recurring bug family in this
   repository.
 - **1.2** Editing canvas fed by the shared renderer (render → `drawImage`), capped resolution.
 - **1.3** Editor camera (orbit, zoom) reusing the existing logic. ✅ *(Fix 65/66)*
 
   Final state: **hold right-click** to orbit, **wheel** to zoom, and nothing else. No lateral
-  panning — a lone figure is already centred, moving it only loses it from view. Fix 65 had added a
+  panning: a lone figure is already centred, moving it only loses it from view. Fix 65 had added a
   "Camera" section, expandable with the `C` key, with numeric rotations, drag sensitivity and a
-  "Reframe" button; Fix 66 **removed** it on request — right-click is enough, and three sliders for
+  "Reframe" button; Fix 66 **removed** it on request: right-click is enough, and three sliders for
   what a drag does better did not earn their screen space. Lesson kept: a keyboard shortcut inside a
   mode that COVERS another (the editor leaves the Panel alive behind it) costs a
   `stopImmediatePropagation` and permanent vigilance; do not open one without needing it.
@@ -201,7 +201,7 @@ place.
 ### Phase 3 — Poses, read-only
 
 - **3.1** "Existing poses" section: applying = copying the values into the draft. ✅ *(Fix 54)*
-- **3.2** ~~"Emotions" section~~ — **dropped** at implementation time. The note planned an emotion
+- **3.2** ~~"Emotions" section~~: **dropped** at implementation time. The note planned an emotion
   selector in the editor; the initial arbitration ("only worrying about joints is enough, we will
   see later for emotions and hands") was upheld. As a bonus, an emotion editable here would have
   raised one more question in phase 5: should "Apply" write it into the Character alongside the
@@ -211,7 +211,7 @@ place.
 adds `allonge` and `vaincu` to it (the two lying poses, cf. `lieFlat`). When only `constants.js` has
 loaded, they do not exist. Consequences held in the code:
 
-- the pose list **never** filters on the presence of an entry in `POSE_3D` — a filter would make
+- the pose list **never** filters on the presence of an entry in `POSE_3D`: a filter would make
   them disappear depending on import order, and disappear in the tests without it showing in the
   application;
 - `poseJointsByKey3D` receives the table **as a parameter**, read at call time and never captured at
@@ -221,13 +221,13 @@ loaded, they do not exist. Consequences held in the code:
 
 - **4.1** Save the draft as a pose (name, `id`, `skeleton`). ✅
 - **4.2** Rename / delete, without ever breaking a Character (values already copied into it). ✅
-- **4.3** `io.js` integration ✅ — done back in phase 0.3; a full round-trip test
+- **4.3** `io.js` integration ✅, done back in phase 0.3; a full round-trip test
   (save → serialise → reload → apply) now covers it end to end, as well as the id-counter
   realignment by `resyncIdCounter`.
 
-**`positionLabel` — settled here**, the note left it open. We will write it: it is the last known
+**`positionLabel`, settled here**, the note left it open. We will write it: it is the last known
 name of a pose, and `resolvePoseLabel3D` reads it ONLY when the pose cannot be found. A stale value
-is therefore never displayed while the authoritative name exists — and once that has gone, a stale
+is therefore never displayed while the authoritative name exists, and once that has gone, a stale
 name beats an opaque id. The writing itself belongs to phase 5, the only moment the editor touches a
 Character; the name is then derived from `S.personaEditorPoseKey` and `S.poses`, with no extra state
 to maintain.

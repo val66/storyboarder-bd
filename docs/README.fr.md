@@ -45,4 +45,4 @@ de `README.md` / `README.fr.md` à la racine. La version française est celle da
 décisions ont été prises ; les deux sont tenues d'accord, et `tests/docs.test.mjs` refuse un
 document sans sa contrepartie.
 
-Le code et ses commentaires sont en anglais — voir [architecture.fr.md](architecture.fr.md#langue).
+Le code et ses commentaires sont en anglais (voir [architecture.fr.md](architecture.fr.md#langue)).

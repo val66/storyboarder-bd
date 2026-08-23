@@ -4,7 +4,7 @@
 
 Ce document rassemble les MESURES faites sur les six fichiers `.glb` réels qui ont servi de banc
 d'essai. Il existe parce que ce chantier est celui où j'ai le plus souvent supposé au lieu de
-mesurer — et où deux de mes suppositions se sont révélées fausses.
+mesurer, et où deux de mes suppositions se sont révélées fausses.
 
 Les fichiers eux-mêmes ne sont pas versionnés (22 Mo d'assets appartenant à l'utilisateur). Les
 chiffres ci-dessous sont donc la seule trace de ce qu'ils contiennent.
@@ -22,7 +22,7 @@ chiffres ci-dessous sont donc la seule trace de ce qu'ils contiennent.
 | `anime_girl2.glb` | maison, proche de VRoid | — |
 
 **Le mot « leg » est irrémédiablement ambigu** : `mixamorig:LeftLeg` désigne le TIBIA, `Left_leg`
-de `worker_j` désigne la CUISSE. C'est ce qui a imposé le partage des rôles de `skeleton-map.js` —
+de `worker_j` désigne la CUISSE. C'est ce qui a imposé le partage des rôles de `skeleton-map.js` :
 le nom pour le CÔTÉ, la structure pour le SEGMENT.
 
 ---
@@ -56,13 +56,13 @@ Direction de chaque os mappé vers son enfant, exprimée dans SON repère local 
 | `hulk_-_sm_bnd` | `+X` × 7, `−X` × 5 |
 
 Le rig Unreal aligne ses os sur X, avec un signe qui s'inverse entre les deux côtés et entre bras
-et jambes. **Aucune convention ne peut donc être supposée** — mais la direction se MESURE, os par
+et jambes. **Aucune convention ne peut donc être supposée**, mais la direction se MESURE, os par
 os, en lisant la position de l'enfant (qui est déjà exprimée dans le repère du parent).
 
 > ⚠️ **Correction d'une note antérieure.** J'avais écrit, à l'étape Rigs A, que sur `anime_girl1`
 > « les membres pointent selon +Y et la colonne selon −Z ». C'est faux : la colonne pointe elle
 > aussi vers +Y. Cette affirmation confondait la ROTATION de repos d'un os avec sa DIRECTION vers
-> son enfant — deux choses différentes. Elle a été recopiée telle quelle dans plusieurs
+> son enfant, deux choses différentes. Elle a été recopiée telle quelle dans plusieurs
 > commentaires avant d'être vérifiée.
 
 ---
@@ -85,7 +85,7 @@ os, en lisant la position de l'enfant (qui est déjà exprimée dans le repère 
 Deux axes verticaux différents cohabitent (`+Y` et `+Z`) : là encore, rien ne peut être supposé,
 mais tout se mesure.
 
-`anime_girl1` est le seul écart notable — environ 6°. Le modèle n'est pas dans une pose neutre
+`anime_girl1` est le seul écart notable, environ 6°. Le modèle n'est pas dans une pose neutre
 (bras dissymétriques), ce qui incline la ligne d'épaules. Utilisable, mais c'est le cas à
 surveiller si une correction d'axes s'appuie sur ce repère.
 
@@ -96,8 +96,8 @@ surveiller si une correction d'axes s'appuie sur ce repère.
 Les deux inconnues de l'étape « appliquer une pose à un squelette importé » sont donc **toutes
 deux dérivables de la géométrie** :
 
-1. l'axe le long de l'os — mesuré par la direction vers l'enfant ;
-2. l'orientation du corps — mesurée par le repère ci-dessus.
+1. l'axe le long de l'os, mesuré par la direction vers l'enfant ;
+2. l'orientation du corps, mesurée par le repère ci-dessus.
 
 Traduire « plier le coude vers l'avant » revient alors à exprimer l'axe de rotation voulu (celui du
 corps) dans le repère LOCAL de l'os, via l'inverse de sa rotation de repos en monde.
@@ -115,13 +115,13 @@ fichier ne donne aucun indice. Ce point n'est pas résolu et ne doit pas être p
 ci-dessus, jamais par les axes bruts des os.
 
 **Le rig intégré n'y est pas un cas particulier** : son repère est mesuré par la même fonction que
-celui d'un fichier importé. Aucun signe n'est donc écrit à la main — et c'est délibéré, chaque
+celui d'un fichier importé. Aucun signe n'est donc écrit à la main, et c'est délibéré, chaque
 signe écrit à la main étant un endroit où l'on peut se tromper sans que rien ne le signale. Un test
 refuse d'ailleurs que le module mentionne le rig intégré par son nom.
 
 ### 6.1 Une mesure qui a changé le code : les clavicules confondues
 
-Le repère du corps était d'abord dérivé de **quatre** os — bassin, tête et les deux clavicules.
+Le repère du corps était d'abord dérivé de **quatre** os : bassin, tête et les deux clavicules.
 Appliqué au Personnage intégré de l'application, il ne rendait rien du tout.
 
 Raison, mesurée sur le rig réellement construit :
@@ -133,19 +133,19 @@ Raison, mesurée sur le rig réellement construit :
 | `lClavicle` | `(0, 0,564, 0)` |
 | `rClavicle` | `(0, 0,564, 0)` |
 
-Les deux clavicules **pivotent au sternum** — ce qui est anatomiquement juste, une clavicule tournant
+Les deux clavicules **pivotent au sternum**, ce qui est anatomiquement juste, une clavicule tournant
 au niveau du sternum et ne portant l'épaule qu'à son extrémité. Leur différence est le vecteur nul,
 et aucune direction latérale n'en sort.
 
 `repereDuCorps` retombe donc sur les **bras**, latéralement séparés sur tout humanoïde. Les deux
-paires pointent dans le même sens anatomique — de la droite du corps vers sa gauche —, donc le repère
+paires pointent dans le même sens anatomique (de la droite du corps vers sa gauche), donc le repère
 obtenu est le même quelle que soit celle qui a servi. Tout fichier importé bâti de la même façon
 profite du même repli.
 
 ### 6.2 La taille d'un modèle se mesure sur son corps
 
-Deux fichiers sur six sortaient une taille absurde à l'import — `hulk_-_sm_bnd.glb` à **0,845 m**,
-`worker_j.glb` à **9,433 m** — sans qu'aucun avertissement ne se déclenche.
+Deux fichiers sur six sortaient une taille absurde à l'import : `hulk_-_sm_bnd.glb` à **0,845 m**,
+`worker_j.glb` à **9,433 m**, sans qu'aucun avertissement ne se déclenche.
 
 La mesure prenait l'extension en **Y** de la boîte englobante, et se trompait deux fois :
 
@@ -154,7 +154,7 @@ La mesure prenait l'extension en **Y** de la boîte englobante, et se trompait d
 | `hulk` | 0,845 m | mesure au décodage, **avant** la remise debout : c'est son épaisseur, sa taille est 2,374 m |
 | `worker_j` | 9,433 m | la boîte englobe **tout le fichier**, katana compris |
 
-La taille se mesure désormais sur les **os mappés**, projetés sur la verticale du corps — celle que
+La taille se mesure désormais sur les **os mappés**, projetés sur la verticale du corps, celle que
 `repereDuCorps` dérive du squelette lui-même. Aucun axe n'est supposé, et un accessoire posé à côté
 ne compte plus. Repli sur la boîte du maillage quand aucun squelette n'est reconnu : la même règle
 que le cadrage, deux chemins qui ne se recouvrent jamais.
@@ -165,7 +165,7 @@ que le cadrage, deux chemins qui ne se recouvrent jamais.
 *champs* du Personnage (`lElbow`, `lClavicleRotZ`) et les *emplacements* de la correspondance
 (`avantbras_g`, `clavicule_g`).
 
-Appliquer une pose de la bibliothèque **remplace** les réglages manuels — le comportement du
+Appliquer une pose de la bibliothèque **remplace** les réglages manuels : le comportement du
 Personnage, conservé à l'identique volontairement. Le résultat est réécrit en trois angles par
 emplacement, c'est-à-dire exactement `skeletonPose3d` : la pose appliquée apparaît donc dans les
 curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migration.
@@ -174,7 +174,7 @@ curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migr
 
 Le cadrage de la fiche et de l'éditeur s'est fait sur les **os seuls** pendant une dizaine de
 versions, pour une bonne raison : la boîte du maillage de `worker_j` était polluée par le fourreau
-de son katana. Cette raison a disparu — ce maillage est détecté et masqué (§ 6.4 ci-dessous), et la
+de son katana. Cette raison a disparu : ce maillage est détecté et masqué (§ 6.4 ci-dessous), et la
 boîte l'ignore.
 
 Or les os seuls ne suffisaient pas, et c'était mesurable. Le cadrage laisse 22 % de marge ; voici de
@@ -182,7 +182,7 @@ combien le maillage dépasse les os sur les fichiers réels :
 
 | fichier | dépassement max | rogné ? |
 |---|---|---|
-| `hulk_-_sm_bnd` | 13 % | non — seul des trois sous la marge |
+| `hulk_-_sm_bnd` | 13 % | non, seul des trois sous la marge |
 | `anime_girl1` | 24 % (en haut) | cheveux tout juste coupés |
 | `worker_j` | 28 % (en haut) | sommet du crâne coupé |
 
@@ -192,7 +192,7 @@ sortent du cadre est mal cadré. Les os mappés, parce que les poignées d'artic
 à leur position, et qu'une poignée hors champ ne se clique pas.
 
 La **taille** de l'Élément, elle, continue de se mesurer sur les os seuls (§ 6.2). Cadrer et
-dimensionner sont deux questions distinctes — c'est leur confusion qui avait produit les défauts
+dimensionner sont deux questions distinctes ; c'est leur confusion qui avait produit les défauts
 des tâches #333 et #334.
 
 ### 6.5 Un maillage que le fichier place hors du corps
@@ -211,19 +211,19 @@ Le personnage mesure 33 unités : le fourreau flotte à trois fois sa hauteur.
 
 **Deux hypothèses ont été réfutées avant celle-ci**, et les écrire évite de les reprendre :
 
-1. *« aucun os ne le pilote »* — faux. Il est pesé à 100 % sur `Sheath_080`, enfant régulier de
+1. *« aucun os ne le pilote »* : faux. Il est pesé à 100 % sur `Sheath_080`, enfant régulier de
    `Spine_010`. Et cette piste était de toute façon sans issue : GLTFLoader appelle
    `normalizeSkinWeights()`, qui remplace un vecteur de poids nul par `(1, 0, 0, 0)`. Après
-   décodage, un maillage sans poids est indiscernable d'un maillage attaché au premier os — une
+   décodage, un maillage sans poids est indiscernable d'un maillage attaché au premier os, et une
    détection lisant `skinWeight` ne peut jamais se déclencher (test « MESURE » dans
    `tests/glb-decoding.test.mjs`).
-2. *« c'est le redimensionnement »* — faux, le symptôme est là sans redimensionner. Rien ne se
-   décroche : le fourreau a toujours été là-haut. L'illusion vient d'un effet de **levier** — la
+2. *« c'est le redimensionnement »* : faux, le symptôme est là sans redimensionner. Rien ne se
+   décroche : le fourreau a toujours été là-haut. L'illusion vient d'un effet de **levier** : la
    mise à l'échelle est uniforme autour d'un centre calculé sur les os, donc un point trois fois
    plus loin se déplace trois fois plus à l'écran.
 
 **Le critère retenu n'a pas de seuil** : un maillage est égaré s'il ne recoupe la boîte d'aucun
-autre. Pas de distance maximale, pas de multiple de la hauteur du corps — « ne touche rien » est une
+autre. Pas de distance maximale, pas de multiple de la hauteur du corps ; « ne touche rien » est une
 propriété du fichier, pas un réglage. Vérifié par lecture directe des six fichiers réels :
 
 | fichier | maillages | égarés |
@@ -235,16 +235,16 @@ propriété du fichier, pas un réglage. Vérifié par lecture directe des six f
 | `capoera`, `female_pose` | 1 | hors critère |
 
 Ce masquage vaut aussi pour les BOÎTES : `expandBoxSkinAware3D` ignore un maillage dont la
-visibilité propre est `false`. Ce n'est pas cosmétique — `placeRigCentered3D` déduit de cette boîte
+visibilité propre est `false`. Ce n'est pas cosmétique : `placeRigCentered3D` déduit de cette boîte
 l'échelle et le centre du rig posé dans une Case. Sur `worker_j` décodé, le fourreau la faisait
 passer de z −18,5..6,1 à z −28,4..52,4 : un facteur 4,6 sur l'échelle, et un modèle qui atterrissait
-à côté de sa Case. La visibilité du GROUPE n'est volontairement pas consultée — masquer un Élément
+à côté de sa Case. La visibilité du GROUPE n'est volontairement pas consultée : masquer un Élément
 entier (« Invisible dans la scène 3D ») ne doit pas vider sa boîte, sous peine de le faire
 réapparaître n'importe où.
 
 Ces maillages sont **masqués**, jamais supprimés : la géométrie reste dans le clone, le fichier sur
 le disque n'est pas touché, et la case « Afficher les morceaux détachés » de la fiche les rend. Le
-champ persisté `afficherMaillagesEgares` n'est écrit que lorsqu'il vaut `true` — son absence
+champ persisté `afficherMaillagesEgares` n'est écrit que lorsqu'il vaut `true`, et son absence
 signifie « masqués », qui est le défaut.
 
 
@@ -255,12 +255,12 @@ signifie « masqués », qui est le défaut.
 Onze modules composent ce chantier. Deux mesures ont été faites plutôt que supposées :
 
 - **surface publique couverte** : sur l'ensemble de leurs exports, un seul n'est jamais nommé dans
-  les tests — `loadedModelNames`, exercé indirectement par `figuresPosables` (rig3d.js). Un
+  les tests : `loadedModelNames`, exercé indirectement par `figuresPosables` (rig3d.js). Un
   deuxième, `produitVectoriel`, n'était exporté que par inadvertance : il ne servait qu'à son
   propre fichier, et l'export a été retiré. Une surface publique que rien n'appelle est une surface
   que rien ne vérifie ;
 - **campagnes de mutation** : chaque module en porte désormais le journal, dans son fichier de test.
-  Les trois modules du cœur — `skeleton-pose`, `skeleton-retarget`, `pose-bridge` — n'en avaient
+  Les trois modules du cœur (`skeleton-pose`, `skeleton-retarget`, `pose-bridge`) n'en avaient
   aucun ; douze mutations y ont été jouées, onze rouges. La douzième était une garde REDONDANTE,
   corrigée dans le code et non dans les tests.
 
@@ -271,7 +271,7 @@ ni matériau, ni extension, et les six fichiers d'essai pèsent 22 Mo qui appart
 l'utilisateur. Surtout, **GLTFLoader ne décode pas ces fichiers sous Node** : leurs textures
 réclament un environnement navigateur.
 
-C'est une limite structurelle, pas un manque de zèle — et elle explique que TOUS les défauts sérieux
+C'est une limite structurelle, pas un manque de zèle, et elle explique que TOUS les défauts sérieux
 de ce chantier aient été trouvés à l'usage, jamais par la suite de tests :
 
 | trouvé à l'usage | cause réelle |
@@ -287,11 +287,11 @@ de ce chantier aient été trouvés à l'usage, jamais par la suite de tests :
 
 Sur chacun des six fichiers, en partant d'une Case VIDE :
 
-1. importer le modèle — il doit apparaître centré, à une taille comparable à celle d'un Personnage ;
-2. ouvrir sa fiche — l'aperçu doit le montrer en entier, cheveux et accessoires compris ;
-3. lui appliquer une pose de la bibliothèque, puis retoucher un curseur — les deux doivent se voir ;
+1. importer le modèle : il doit apparaître centré, à une taille comparable à celle d'un Personnage ;
+2. ouvrir sa fiche : l'aperçu doit le montrer en entier, cheveux et accessoires compris ;
+3. lui appliquer une pose de la bibliothèque, puis retoucher un curseur : les deux doivent se voir ;
 4. changer sa taille, le déplacer, le faire tourner ;
-5. enregistrer, fermer, rouvrir le Projet — tout doit être exactement dans le même état.
+5. enregistrer, fermer, rouvrir le Projet : tout doit être exactement dans le même état.
 
 Le point 5 est le plus important : c'est le seul qui exerce la forme persistée de bout en bout.
 
@@ -310,12 +310,12 @@ et c'est exactement ce qui retourne le second : tous les modèles importés s'ou
 
 **La règle est désormais mesurée** (`orbiteDeFace3D`, utils.js) : l'azimut d'ouverture est celui qui
 place la caméra du côté du devant, lui-même dérivé du repère de corps du fichier
-(`repereDuCorpsPourFichier3D`). Coder `0` en dur aurait suffi pour les six fichiers d'essai — et
+(`repereDuCorpsPourFichier3D`). Coder `0` en dur aurait suffi pour les six fichiers d'essai, et
 laissé de dos le premier fichier exporté autrement.
 
 ⚠️ **La règle porte sur la CAUSE, pas sur le moment.** L'azimut se reprend **quand la figure
 change**, ce qui arrive à deux endroits : l'ouverture de l'Éditeur, et le sélecteur « Modèle » de son
-panneau droit. La première version ne traitait que l'ouverture — entrer sur le Personnage puis
+panneau droit. La première version ne traitait que l'ouverture : entrer sur le Personnage puis
 choisir un modèle importé le montrait encore de dos. Une règle formulée sur le moment plutôt que sur
 la cause laisse toujours un moment dehors.
 
@@ -333,14 +333,14 @@ les remettre à neuf annulerait un cadrage que l'utilisateur vient de composer.
 
 ⚠️ **La correction reste côté caméra.** Faire pivoter la figure de 180° remettrait ses axes de
 travers vis-à-vis du monde, et le calcul de direction du glisser d'une poignée
-(`projectModelAxisToScreen3D`) redeviendrait faux — c'est ce que le Fix 76 avait supprimé.
+(`projectModelAxisToScreen3D`) redeviendrait faux, c'est ce que le Fix 76 avait supprimé.
 
 ### 7.5 « Allongé » — un geste du corps entier, pas une articulation
 
 `POSE_3D.allonge` est `debout` plus un drapeau `lieFlat`. Le Personnage intégré le consomme en
 tournant son groupe RACINE (`J.root.rotation.z = π/2`). Le pont vers les os importés traduit des
 angles **os par os** : un drapeau qui fait tourner le corps entier n'est pas un angle d'os, et il
-tombait — le modèle restait debout.
+tombait : le modèle restait debout.
 
 **Le geste, mesuré** sur le rig intégré (repère du corps avant/après application de la pose) :
 
@@ -350,13 +350,13 @@ tombait — le modèle restait debout.
 | allongé | (0, −1, 0) | (−1, 0, 0) | (0, 0, 1) |
 
 soit, dans le repère du corps : **droite → −haut, haut → droite, avant inchangé**. Un quart de tour
-autour de l'axe *avant*, donc — exprimable dans n'importe quel corps, comme les angles le sont déjà.
+autour de l'axe *avant*, donc, exprimable dans n'importe quel corps, comme les angles le sont déjà.
 
 ⚠️ **On ne recopie pas `rotation.z = π/2`** : hulk est debout selon +Z, ce quart de tour le
 coucherait de travers.
 
 ⚠️ **Une matrice, pas un axe-angle.** Le SIGNE de l'angle dépendrait de l'orientation du trièdre, et
-`repereDuCorps` n'en garantit aucune — mesuré, celui du Personnage est **gaucher** (déterminant −1).
+`repereDuCorps` n'en garantit aucune : mesuré, celui du Personnage est **gaucher** (déterminant −1).
 Construire la rotation depuis la correspondance ne demande aucun pari. Elle reste propre
 (déterminant +1) dans les deux cas : la permutation signée est la même des deux côtés.
 
@@ -364,34 +364,34 @@ Construire la rotation depuis la correspondance ne demande aucun pari. Elle rest
 bascule quand elle est active : y relire le repère composerait la rotation une seconde fois à chaque
 appel, et le modèle tournerait sur lui-même image après image.
 
-**Un groupe de pose** (`poseGroup`) s'intercale entre `figureGroup` — qui porte l'orientation de
-l'Élément — et le clone. Les écrire au même endroit ferait que l'une écraserait l'autre.
+**Un groupe de pose** (`poseGroup`) s'intercale entre `figureGroup` (qui porte l'orientation de
+l'Élément) et le clone. Les écrire au même endroit ferait que l'une écraserait l'autre.
 
 #### L'ÉCHELLE
 
 `placeRigCentered3D` déduit le facteur de la hauteur de la boîte (`s = hauteurCible / size.y`).
 Couché, un corps est bas et large : le facteur s'emballe. Le Personnage s'en protège par
 `entry.deboutNaturalH`, mesuré **une fois à la construction** du rig ; un modèle importé ne peut pas
-faire pareil — sa pose change sans que le rig soit reconstruit.
+faire pareil : sa pose change sans que le rig soit reconstruit.
 
 `hauteurDeboutModele3D` (scene3d.js) mesure donc **à chaque placement**, en neutralisant la bascule
-le temps de la mesure — et rien d'autre.
+le temps de la mesure, et rien d'autre.
 
-⚠️ **La bascule ET la pose sont neutralisées** — la même règle que le Personnage. La taille d'un
+⚠️ **La bascule ET la pose sont neutralisées**, la même règle que le Personnage. La taille d'un
 Élément décrit sa **stature**, pas son encombrement à l'instant : un modèle accroupi est plus bas, et
 sans cela son facteur d'échelle enflait d'autant.
 
 Ce n'a pas toujours été le cas : la première version ne neutralisait que le couchage, ce qui laissait
 l'incohérence sur toutes les autres poses. L'étendre **change la taille** des modèles importés déjà
-posés autrement que debout dans les Projets existants — arbitré avec l'utilisateur, pas glissé dans
+posés autrement que debout dans les Projets existants, arbitré avec l'utilisateur, pas glissé dans
 un correctif.
 
 ⚠️ **La pose est neutralisée sur place, pas relue ailleurs.** Mesurer la scène du cache serait plus
 simple et serait faux : `boneTransform` lit `skeleton.boneMatrices`, qui ne sont calculées qu'**au
 rendu**. Sur une scène jamais rendue, la boîte sensible au skinning décrit donc la géométrie de
-liaison dans le repère du **fichier** — l'erreur qui a produit trois correctifs faux.
+liaison dans le repère du **fichier**, l'erreur qui a produit trois correctifs faux.
 
-⚠️ **Même boîte que le placement**, passée en paramètre — pas une seconde mesure. Et l'échelle du rig
+⚠️ **Même boîte que le placement**, passée en paramètre, pas une seconde mesure. Et l'échelle du rig
 est remise à 1 avant de mesurer : la mesure a lieu AVANT `placeRigCentered3D`, donc le rig porte
 encore l'échelle de l'image précédente.
 
@@ -408,14 +408,14 @@ Le rig d'un modèle importé est construit par **une** fonction, mais alimenté 
 Les deux derniers recopient les champs **un à un**. Cette énumération est juste le jour où on l'écrit
 et prend du retard à chaque champ ajouté ailleurs. Ont déjà été perdus :
 
-- `maillagesEgares` (dans `buildPropRig3D`) — masquage écrit et testé, sans effet **deux versions
+- `maillagesEgares` (dans `buildPropRig3D`) : masquage écrit et testé, sans effet **deux versions
   durant** ;
-- `afficherMaillagesEgares` — transmis par l'appelant, jamais recopié : cocher la case ne changeait
+- `afficherMaillagesEgares` : transmis par l'appelant, jamais recopié : cocher la case ne changeait
   rien à l'aperçu ;
-- `joints3d` et `position` — sans l'**intention**, « allongé » restait invisible dans l'aperçu et
+- `joints3d` et `position` : sans l'**intention**, « allongé » restait invisible dans l'aperçu et
   dans l'Éditeur, alors que la Case couchait bien le modèle.
 
-⚠️ **La distinction qui compte** : `skeletonPose3d` porte des angles d'**os** — le RÉSULTAT.
+⚠️ **La distinction qui compte** : `skeletonPose3d` porte des angles d'**os**, le RÉSULTAT.
 Ce qui se joue au niveau du **corps** (« allongé », qui bascule la figure entière) ne voyage que dans
 l'INTENTION. Transmettre l'un sans l'autre donne un aperçu qui montre les bonnes articulations sur un
 corps mal orienté.
@@ -423,5 +423,5 @@ corps mal orienté.
 Un test **dérive** désormais la liste au lieu de la réciter : il relit les champs que
 `ensureObjectRigEntry3D` lit sur son Élément et exige que chacun arrive, sauf exclusions justifiées
 (identifiant de rig propre à l'aperçu, taille simulée par la caméra). ⚠️ Les lectures **indirectes**
-ne se dérivent pas — `getEffectiveJoints(o)` lit `joints3d` et `position` sans que le rig les nomme —
+ne se dérivent pas : `getEffectiveJoints(o)` lit `joints3d` et `position` sans que le rig les nomme,
 et sont donc ajoutées explicitement. C'est précisément ce trou qui avait laissé passer `joints3d`.
