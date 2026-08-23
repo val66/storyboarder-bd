@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.3.60**
+**Version 1.3.61**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -36,88 +36,43 @@
 - 🏠 **Buildings** with rooms, walls, doors and windows
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
+- 📏 **Size to the centimetre**: a 3D Element's real height is typed in metres
 - ↩️ **Cancelling** the dialog of a just-added Element removes it — nothing is committed until you save
 
 ### Imported 3D models
 
-- 📦 **glTF import** (`.glb` / `.gltf`): your models from Blender, Maya or anywhere else. The format
-  guarantees the unit — the metre — so a model arrives at its real size, with no scale to redo.
-- Three ways in: right-click a panel → **Import** → *Model* (a single object) or *Scene* (a reusable
-  set, created **and** loaded); right-click inside a Scene → *Import a model*; left-hand menu →
-  *Import a set…*, which creates the Scene without loading it.
-- Files are copied into a `Modeles` folder next to your projects. Moved, renamed or deleted outside
-  the application, a file can no longer be read: its Elements become placeholder boxes, and the
-  library says so.
-- **Models section** in the left-hand menu: the files on disk, grouped by how the open project uses
-  them — by Scenes, in Panels, or unused. Left-click to reach where a model is used; right-click to
-  delete it from disk.
-- The file name cannot be renamed: it identifies the model across **every** project, including those
-  that are not open. Rename the Element instead.
+- 📦 **glTF import** (`.glb` / `.gltf`): your models from Blender, Maya or anywhere else, at their
+  real size
+- **As an Object or as a Scene**: a model dropped into a panel, or a reusable set — from a panel's
+  or a Scene's right-click menu, or from the left-hand menu
+- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them
+  — by Scenes, in panels, or unused. One click takes you to where a model is used
+- 🦴 **Articulated models**: a file carrying bones poses like a character — sliders per joint,
+  clickable points on the preview, and a mapping screen when a bone is misrecognised
+- **The pose library applies to them**, whatever axis convention the file uses
+- **Changing figure**: an articulated Element can wear another imported file and keep its pose
+- **Detached parts**: meshes a file places outside the body are hidden, and brought back with a
+  checkbox. The file on disk is never modified
+- 🎥 **Automatic framing**: the first Element dropped into an empty panel sets its camera distance
+  from its own size
 
-- **Posing an imported skeleton**: a model carrying bones gains a *Joint settings* section in its
-  dialog — three sliders per recognised joint. The hips get none: being the skeleton's root, turning
-  them rotates the whole figure, which the Element's Orientation already does. Which bone each
-  slider drives comes from the mapping screen, reachable from the same section. Clicking a joint
-  point on the preview unfolds its sliders — the same gesture as for Characters.
-- **The pose library applies to it too**: a *Pose* field appears in *Main characteristics*, fed by
-  the same library as a Character. The pose is translated into that file's own bone axes — the
-  application measures the body's up, right and forward directions from the skeleton itself rather
-  than assuming a convention, because the six test files use five different ones. Applying a pose
-  **replaces** the manual slider settings, as for a Character, and the resulting angles show up in
-  the sliders, still adjustable.
-
-- **Changing figure**: a *Model* field lets an articulated imported Element wear another imported
-  file. The Element keeps its body pose; the bone angles are recomputed for the new figure, so
-  fine-tuning done on the sliders is lost — those angles are expressed in the old figure's own axes
-  and mean nothing on another skeleton. Nothing is committed until the dialog is saved.
-
-- **A model's 2D footprint follows its silhouette**: the selection box on the Page is sized from the
-  span of its MAPPED BONES, measured in the body's own frame — the same single pass that gives its
-  height. Not the mesh box: at decode time the skinning matrices aren't computed yet, so that box
-  still describes the bind geometry in the file's own frame. What this costs is honest — a skirt or
-  a cape is bounded by no bone, so the footprint ignores it.
-
-- **First Element frames the Panel**: an empty Panel has no framing to preserve, so the first 3D
-  Element dropped into it sets the camera distance in proportion to its own height — a 1.1 m model
-  then fills the frame exactly as a 1.75 m Character would. A Panel that already holds something is
-  never re-framed: it carries a composition, and moving it under you would be a surprise.
-
-- **Detached parts**: some files place a mesh far away from the body, touching no other part of the
-  model — measured on one of the test files: a katana sheath sitting at three times the character's
-  height, correctly bound to its bone but with a bind geometry that projects it out of the body. Such
-  meshes are hidden, named in a message on import, and *Show detached parts* in the model's card
-  brings them back. The criterion has no threshold — a mesh is stray when it touches nothing — and
-  the file on disk is never modified.
-
-> **Not covered yet:** a file holding several objects is imported as a single Element; the sliders
-> turn each bone around its own axes (which one bends an elbow depends on the file); and a straight
-> limb at rest defines no bending plane, so nothing says which way such an elbow "should" fold.
+> **Not covered yet:** a file holding several objects is imported as a single Element; a straight
+> limb at rest defines no bending plane, so nothing says which way such an elbow should fold.
 
 ### Character editor
 
-A full-screen workspace for posing a character, opened from the pencil button on a 3D preview — a
-character's, or an imported model's when it carries joints — or standalone from the left menu, to
-build a pose with no target in mind. Applied to an imported model, the pose is translated into that
-file's bones, exactly as choosing one from the dialog does — and it is that model that the editor
-shows, with its joint points on its own bones. A *Model* section in the right-hand panel switches
-the figure you pose on — the built-in character, or any imported file whose skeleton is recognised;
-Apply then carries that choice to the Element's dialog. Opened from the left menu, the editor always
-starts on the built-in character.
+A full-screen workspace for posing a figure — a character, or an articulated imported model —,
+opened from the pencil on a 3D preview, or standalone from the left menu to build a pose with no
+target in mind.
 
-- **Pose by dragging**: hold the left button on a joint point and drag it. The other points hide so
-  you cannot grab a neighbour mid-gesture, the grabbable area is tinted, and an orange guide shows
-  the expected gesture — an arrow to drag along, a ring to turn around the point
-- **One field at a time**, the one highlighted in the right-hand panel; the wheel switches between a
-  joint's fields (a shoulder has several). A slider per field remains available for exact values
-- **Right-drag to orbit** around the figure, wheel to zoom. The figure is always shown facing
-  front — an imported model too, its own front being measured from its skeleton
-- **Pose library shared across every project**: apply a pose as a starting point, save the current
-  one under a name, rename or delete any of them — built-in poses included, restorable from Settings
-- **Nothing is committed** until you apply the pose and save the character's dialog
-- **Size to the centimetre**: a 3D Element's card shows its real height in metres next to the size
-  slider; the two follow each other, and it is the height that gets saved
-- **Lying-down poses** apply to imported models too, whatever their up axis, without changing their
-  size
+- **Pose by dragging**: grab a joint point and move it; an orange guide shows the expected gesture,
+  arrow or ring
+- **A slider per field** for exact values, the wheel switching between them
+- **Right-drag to orbit**, wheel to zoom; the figure is always shown facing front
+- **Choose the figure** you pose on: the built-in character, or any recognised imported model
+- **Pose library shared across every project**: apply, save, rename, delete — built-in poses
+  included, restorable from Settings
+- **Nothing is committed** until the pose is applied and the dialog saved
 
 ### Project & saving
 - **JSON** project format — human-readable and versionable

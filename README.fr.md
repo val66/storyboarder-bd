@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.3.60**
+**Version 1.3.61**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -37,97 +37,43 @@
 - 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
+- 📏 **Taille au centimètre** : la hauteur réelle d'un Élément 3D se saisit en mètres
 - ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime — rien n'est conservé tant que vous n'enregistrez pas
 
 ### Modèles 3D importés
 
-- 📦 **Import glTF** (`.glb` / `.gltf`) : vos modèles Blender, Maya ou autres. Ce format garantit
-  l'unité — le mètre — donc un modèle arrive à sa taille réelle, sans réglage d'échelle à refaire.
-- Trois portes d'entrée : clic droit sur une Case → **Importer** → *Modèle* (un objet) ou *Scène*
-  (un décor réutilisable, créé **et** chargé) ; clic droit dans une Scène → *Importer un Modèle* ;
-  menu de gauche → *Importer un décor…*, qui crée la Scène sans la charger.
-- Les fichiers sont recopiés dans un dossier `Modeles`, à côté de vos projets. Déplacé, renommé ou
-  supprimé hors de l'application, un fichier n'est plus lisible : ses Éléments deviennent des boîtes
-  de remplacement, et la bibliothèque le signale.
-- **Section Modèles** du menu de gauche : les fichiers du disque, groupés selon l'usage qu'en fait
-  le Projet ouvert — par des Scènes, dans des Cases, ou non utilisés. Clic gauche pour aller là où
-  un modèle sert ; clic droit pour le supprimer du disque.
-- Le nom de fichier n'est pas renommable : il identifie le modèle dans **tous** les Projets, y
-  compris ceux qui ne sont pas ouverts. C'est l'Élément qui se renomme.
+- 📦 **Import glTF** (`.glb` / `.gltf`) : vos modèles Blender, Maya ou autres, à leur taille réelle
+- **Comme Objet ou comme Scène** : un modèle posé dans une Case, ou un décor réutilisable — par le
+  clic droit d'une Case, d'une Scène, ou par le menu de gauche
+- 🗂️ **Section Modèles** du menu de gauche : vos fichiers groupés selon l'usage qu'en fait le Projet
+  ouvert — par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
+- 🦴 **Modèles articulés** : un fichier porteur d'os se pose comme un Personnage — curseurs par
+  articulation, points cliquables sur l'aperçu, et écran de correspondance quand un os est mal
+  reconnu
+- **La bibliothèque de poses s'y applique**, quelle que soit la convention d'axes du fichier
+- **Changer de figure** : un Élément articulé peut porter un autre fichier importé en gardant sa pose
+- **Morceaux détachés** : les maillages qu'un fichier place hors du corps sont masqués, et
+  réaffichables d'une case à cocher. Le fichier sur le disque n'est jamais modifié
+- 🎥 **Cadrage automatique** : le premier Élément posé dans une Case vide y règle la distance de
+  caméra sur sa propre taille
 
-- **Articuler un squelette importé** : un modèle porteur d'os gagne une section *Réglages des
-  articulations* dans sa fiche — trois curseurs par articulation reconnue. Le bassin n'en a pas :
-  racine du squelette, le tourner ferait pivoter tout le personnage, ce que fait déjà l'Orientation
-  de l'Élément. L'os piloté par chaque curseur vient de l'écran de correspondance, rappelable depuis
-  cette même section. Cliquer un point d'articulation sur l'aperçu déplie ses curseurs — le même
-  geste que pour les Personnages.
-- **La bibliothèque de poses s'y applique aussi** : un champ *Position* apparaît dans
-  *Caractéristiques principales*, alimenté par la même bibliothèque que pour un Personnage. La pose
-  est traduite dans les axes des os de ce fichier-là — l'application mesure le haut, la droite et
-  l'avant du corps sur le squelette lui-même plutôt que de supposer une convention, les six fichiers
-  d'essai en utilisant cinq différentes. Appliquer une pose **remplace** les réglages manuels, comme
-  pour un Personnage, et les angles obtenus s'affichent dans les curseurs, toujours retouchables.
-
-- **Changer de figure** : un champ *Modèle* permet à un Élément importé articulé de porter un autre
-  fichier importé. L'Élément garde sa pose de corps ; les angles des os sont recalculés pour la
-  nouvelle figure, si bien que les réglages fins faits aux curseurs sont perdus — ces angles sont
-  exprimés dans les axes de l'ancienne figure et ne veulent rien dire sur un autre squelette. Rien
-  n'est acquis tant que la fiche n'est pas enregistrée.
-
-- **L'empreinte 2D d'un modèle suit sa silhouette** : la boîte de sélection sur la Planche est
-  dimensionnée sur l'envergure de ses OS MAPPÉS, mesurée dans le repère du corps — le même parcours
-  unique qui donne sa hauteur. Pas la boîte du maillage : au décodage, les matrices de skinning ne
-  sont pas encore calculées, et cette boîte décrit donc encore la géométrie de liaison, dans le
-  repère du fichier. Ce que ça coûte est dit franchement — une jupe ou une cape n'est bornée par
-  aucun os, l'empreinte les ignore.
-
-- **Le premier Élément cadre la Case** : une Case vide n'a pas de cadrage à préserver, donc le
-  premier Élément 3D qu'on y pose règle la distance de caméra en proportion de sa propre hauteur —
-  un modèle d'1,1 m occupe alors l'image exactement comme le ferait un Personnage d'1,75 m. Une Case
-  qui contient déjà quelque chose n'est jamais recadrée : elle porte une composition, et la déplacer
-  sous vos yeux serait une surprise.
-
-- **Morceaux détachés** : certains fichiers placent un maillage loin du corps, sans contact avec
-  aucune autre partie du modèle — mesuré sur l'un des fichiers d'essai : un fourreau de katana à
-  trois fois la hauteur du personnage, correctement lié à son os mais dont la géométrie de liaison le
-  projette hors du corps. Ces maillages sont masqués, nommés dans un message à l'import, et
-  *Afficher les morceaux détachés*, dans la fiche du modèle, les rend. Le critère n'a pas de seuil —
-  un maillage est égaré quand il ne touche rien — et le fichier sur le disque n'est jamais modifié.
-
-> **Non couvert pour l'instant :** un fichier contenant plusieurs objets est importé comme un seul
-> Élément ; les curseurs tournent chaque os autour de ses propres axes (lequel plie un coude dépend
-> du fichier) ; et un membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de
-> quel côté un tel coude « devrait » plier.
+> **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément ; un
+> membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de quel côté un tel coude
+> devrait plier.
 
 ### Éditeur de Personnage
 
-Un espace plein écran pour poser un Personnage, ouvert par le bouton crayon d'un aperçu 3D — celui
-d'un Personnage, ou celui d'un Modèle importé porteur d'articulations — ou seul depuis le menu de
-gauche, pour composer une pose sans cible. Appliquée à un Modèle importé, la pose est traduite dans
-les os de son fichier, exactement comme lorsqu'on la choisit depuis sa fiche — et c'est ce Modèle
-que l'éditeur affiche, avec ses points d'articulation sur ses propres os. Une section *Modèle* dans
-le panneau droit change la figure sur laquelle on pose — le Personnage intégré, ou tout fichier
-importé dont le squelette est reconnu ; « Appliquer » emporte alors ce choix vers la fiche de
-l'Élément. Ouvert depuis le menu de gauche, l'éditeur part toujours du Personnage intégré.
+Un espace plein écran pour poser une figure — un Personnage, ou un Modèle importé articulé —, ouvert
+par le crayon d'un aperçu 3D, ou seul depuis le menu de gauche pour composer une pose sans cible.
 
-- **Poser au glisser** : maintenez le clic gauche sur un point d'articulation et déplacez-le. Les
-  autres points s'effacent pour éviter d'attraper le voisin en plein geste, la zone de prise se
-  teinte, et un repère orange indique le geste attendu — une flèche à suivre, ou un anneau pour
-  tourner autour du point
-- **Un seul champ à la fois**, celui que surligne le panneau de droite ; la molette passe d'un champ
-  à l'autre (une épaule en a plusieurs). Un curseur par champ reste disponible pour les valeurs
-  exactes
-- **Clic droit pour orbiter** autour de la figure, molette pour zoomer. Le Personnage est toujours
-  présenté de face — un modèle importé aussi, son devant étant mesuré sur son squelette
-- **Bibliothèque de poses partagée par tous vos Projets** : appliquer une pose comme point de
-  départ, enregistrer la pose en cours sous un nom, renommer ou supprimer n'importe laquelle —
-  poses de base comprises, restaurables depuis Configuration
-- **Rien n'est écrit** tant que vous n'avez pas appliqué la pose puis enregistré la modale du
-  Personnage
-- **Taille au centimètre** : la fiche d'un Élément 3D affiche sa hauteur réelle en mètres à côté du
-  curseur de taille ; les deux se suivent, et c'est la hauteur qui est enregistrée
-- **Les poses couchées** s'appliquent aussi aux modèles importés, quel que soit leur axe vertical,
-  et sans changer leur taille
+- **Poser au glisser** : attrapez un point d'articulation et déplacez-le ; un repère orange indique
+  le geste attendu, flèche ou anneau
+- **Un curseur par champ** pour les valeurs exactes, la molette passant de l'un à l'autre
+- **Clic droit pour orbiter**, molette pour zoomer ; la figure est toujours présentée de face
+- **Choisir la figure** sur laquelle on pose : le Personnage intégré, ou tout modèle importé reconnu
+- **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
+  supprimer — poses de base comprises, restaurables depuis Configuration
+- **Rien n'est écrit** tant que la pose n'est pas appliquée puis la fiche enregistrée
 
 ### Projet & sauvegarde
 - Format de projet **JSON** — lisible et versionnable
