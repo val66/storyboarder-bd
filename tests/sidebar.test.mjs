@@ -16,7 +16,7 @@ import {
   homeOwningPanel,
   elementsInPanel,
   renderSidePersonas,
-  afficherManuelLateral, masquerManuelLateral,
+  afficherManuelLateral, masquerManuelLateral, manuelEstAffiche,
 } from '../src/sidebar.js';
 import { S } from '../src/state.js';
 
@@ -415,6 +415,26 @@ describe('afficherManuelLateral / masquerManuelLateral — l\'action est nommée
     assert.equal(S.selectedId, null, 'un Élément sélectionné masquerait le Manuel');
   });
 
+  test('LE DÉFAUT SIGNALÉ : afficher libère aussi le menu de la PLANCHE', () => {
+    // `updateSidePanel` arbitre dans cet ordre : fiche de l'Élément, menu de la Planche, Manuel.
+    // Ne lever que le premier laissait la Planche passer devant : cliquer « ? » avec ce menu ouvert
+    // ne faisait rien de visible, et une seconde pression pas davantage.
+    S.pageSelected = true;
+    S.selectedId = null;
+    S.helpPanelDismissed = false;
+    afficherManuelLateral();
+    assert.equal(S.pageSelected, false, 'le menu Planche passe devant le Manuel');
+  });
+
+  test('afficher ne quitte PAS le mode Scène', () => {
+    // Demander le Manuel n'est pas demander à sortir d'une Scène : `editingSceneId` décide de ce
+    // qu'affiche le canevas, pas le panneau droit.
+    S.editingSceneId = 'sc1';
+    afficherManuelLateral();
+    assert.equal(S.editingSceneId, 'sc1');
+    S.editingSceneId = null;
+  });
+
   test('masquer ne touche PAS à la sélection', () => {
     // Refermer le Manuel ne doit rien désélectionner : la sélection appartient à l'utilisateur.
     S.selectedId = 'e1';
@@ -429,5 +449,36 @@ describe('afficherManuelLateral / masquerManuelLateral — l\'action est nommée
     afficherManuelLateral();
     afficherManuelLateral();
     assert.equal(S.helpPanelDismissed, false);
+  });
+});
+
+
+// ── manuelEstAffiche ──────────────────────────────────────────────────────────────────────────
+describe('manuelEstAffiche — la question est posée au DOM, pas aux drapeaux', () => {
+  // Le bouton « ? » est un basculeur : il doit inverser CE QUI EST À L'ÉCRAN. Sa condition recopiait
+  // l'arbitrage d'updateSidePanel et en oubliait une branche — le menu de la Planche —, si bien
+  // qu'il basculait un état que personne ne voyait. La visibilité réelle ne peut pas diverger.
+  const section = () => document.getElementById('sideHelpSection');
+
+  test('affiché quand la section est visible', () => {
+    section().style.display = 'block';
+    assert.equal(manuelEstAffiche(), true);
+  });
+
+  test('absent quand la section est masquée', () => {
+    section().style.display = 'none';
+    assert.equal(manuelEstAffiche(), false);
+  });
+
+  test('RÉGRESSION : la réponse ne dépend d\'AUCUN drapeau', () => {
+    // C'est tout l'intérêt : quels que soient selectedId, pageSelected ou helpPanelDismissed, seule
+    // compte la section elle-même. Une condition écrite sur les drapeaux redeviendrait fausse le
+    // jour où updateSidePanel gagnerait un quatrième niveau de priorité.
+    section().style.display = 'block';
+    S.selectedId = 'e1'; S.pageSelected = true; S.helpPanelDismissed = true;
+    assert.equal(manuelEstAffiche(), true);
+    section().style.display = 'none';
+    S.selectedId = null; S.pageSelected = false; S.helpPanelDismissed = false;
+    assert.equal(manuelEstAffiche(), false);
   });
 });

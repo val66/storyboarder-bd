@@ -1004,14 +1004,34 @@ function updateSidePanelImpl(){
  * séparément finiraient par ne plus s'accorder sur ce que « affiché » veut dire.
  */
 export function afficherManuelLateral(){
-  // Le Manuel n'apparaît que si RIEN n'est sélectionné : un Élément sélectionné donne sa fiche au
-  // panneau droit. Poser les deux drapeaux, pas seulement le second.
+  // ⚠️ TROIS NIVEAUX DE PRIORITÉ, PAS DEUX. `updateSidePanel` choisit dans cet ordre : la fiche de
+  // l'Élément sélectionné, puis le menu de la Planche (S.pageSelected), puis le Manuel. Je n'avais
+  // levé que le premier, si bien que cliquer « ? » avec le menu Planche ouvert ne faisait RIEN de
+  // visible — le Manuel était bien « autorisé », mais la Planche passait devant.
+  //
+  // Afficher le Manuel, c'est donc libérer TOUS les niveaux au-dessus de lui.
   S.selectedId = null;
+  S.pageSelected = false;
   S.helpPanelDismissed = false;
 }
 
 export function masquerManuelLateral(){
   S.helpPanelDismissed = true;
+}
+
+/**
+ * Le Manuel est-il À L'ÉCRAN ?
+ *
+ * ⚠️ ON LIT LE DOM, PAS LES DRAPEAUX. C'est délibéré, et c'est la leçon du défaut ci-dessus : une
+ * condition qui recopie l'arbitrage d'`updateSidePanel` en oublie une branche tôt ou tard, et le
+ * bouton « ? » se met alors à basculer un état que personne ne voit. La visibilité réelle de la
+ * section, elle, ne peut pas diverger de ce qui est affiché.
+ *
+ * `#sideHelpSection` part de `display:none` dans index.html et `updateSidePanel` n'y écrit ensuite
+ * que 'block' ou 'none' : la chaîne vide, ambiguë, ne se produit pas.
+ */
+export function manuelEstAffiche(){
+  return sideHelpSection.style.display !== 'none';
 }
 
 export function updateSidePanel(){

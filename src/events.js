@@ -106,6 +106,8 @@ import {
   setSidebarCallbacks, isSceneTopDownView, homeOwningPanel, exitCameraMode, elementsInPanel,
   getRoomConnectedComponents, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
   refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
+
+  manuelEstAffiche,
 } from './sidebar.js';
 import {
   toggleModalSection, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -3672,11 +3674,10 @@ function clampFloatingMenu(menu){
 document.getElementById('helpBtn').onclick = (e) => {
   e.stopPropagation();
   hideContextMenu();
-  const helpAlreadyShown = S.selectedId == null && !S.helpPanelDismissed;
-  // Les deux branches passent par les fonctions nommées de sidebar.js : la sortie de l'Éditeur de
-  // Personnage appelle la même « afficher », et deux endroits qui poseraient ces drapeaux
-  // séparément finiraient par diverger sur ce que « affiché » veut dire.
-  if (helpAlreadyShown) masquerManuelLateral(); else afficherManuelLateral();
+  // La question posée au DOM, pas aux drapeaux : `S.selectedId == null && !S.helpPanelDismissed`
+  // ignorait le menu de la Planche, qui passe devant le Manuel — cliquer « ? » avec ce menu ouvert
+  // ne faisait alors rien de visible. Cf. manuelEstAffiche dans sidebar.js.
+  if (manuelEstAffiche()) masquerManuelLateral(); else afficherManuelLateral();
   scheduleDrawCurrentPage();
 };
 

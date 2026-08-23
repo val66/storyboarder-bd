@@ -2462,6 +2462,17 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
       'sans sortie franche, le rejeu rebascule le Manuel qu\'on vient d\'afficher');
   });
 
+  test('LE DÉFAUT SIGNALÉ : la bascule interroge le DOM, pas les drapeaux', () => {
+    // `S.selectedId == null && !S.helpPanelDismissed` ignorait le menu de la Planche, qui passe
+    // devant le Manuel : cliquer « ? » avec ce menu ouvert ne faisait rien de visible. Une condition
+    // qui recopie l'arbitrage d'updateSidePanel en oubliera toujours une branche.
+    const events = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const bloc = events.slice(events.indexOf("getElementById('helpBtn').onclick"));
+    assert.match(bloc.slice(0, 900), /if \(manuelEstAffiche\(\)\) masquerManuelLateral\(\); else afficherManuelLateral\(\)/);
+    assert.ok(!/helpAlreadyShown/.test(bloc.slice(0, 900)),
+      'la condition recopiée ne doit plus exister');
+  });
+
   test('RÉGRESSION : « afficher le Manuel » est nommé une seule fois', () => {
     // Le bouton « ? » et la sortie de l'éditeur posent la MÊME paire de drapeaux. Recopiée des deux
     // côtés, elle aurait fini par ne plus dire la même chose — le défaut d'origine était déjà que
@@ -2470,9 +2481,9 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
     assert.match(sidebar, /export function afficherManuelLateral\(\)/);
     const events = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
     const bloc = events.slice(events.indexOf("getElementById('helpBtn').onclick"));
-    assert.match(bloc.slice(0, 700), /masquerManuelLateral\(\); else afficherManuelLateral\(\)/,
+    assert.match(bloc.slice(0, 900), /masquerManuelLateral\(\); else afficherManuelLateral\(\)/,
       'le bouton « ? » doit passer par les mêmes fonctions nommées');
-    assert.ok(!/helpPanelDismissed = false/.test(bloc.slice(0, 700)),
+    assert.ok(!/helpPanelDismissed = false/.test(bloc.slice(0, 900)),
       'plus aucune pose de drapeau en direct ici');
   });
 
