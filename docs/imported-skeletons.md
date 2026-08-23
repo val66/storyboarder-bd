@@ -358,9 +358,26 @@ call, and the model would keep turning frame after frame.
 **A pose group** (`poseGroup`) sits between `figureGroup` — which carries the Element's orientation —
 and the clone. Writing both in the same place would make one overwrite the other.
 
-#### What is still missing: SCALE
+#### SCALE
 
 `placeRigCentered3D` derives the factor from the box height (`s = targetHeight / size.y`). Lying
 down, a body is low and wide: the factor blows up. The Character is protected by
-`entry.deboutNaturalH`, passed as `naturalHOverride` **for it only**; imported models have no
-equivalent yet. Deliberate split — see the orientation right before fixing the size.
+`entry.deboutNaturalH`, measured **once when the rig is built**; an imported model cannot do the
+same — its pose changes without the rig being rebuilt.
+
+`hauteurDeboutModele3D` (scene3d.js) therefore measures **at every placement**, neutralising the tilt
+for the duration of the measurement — and nothing else.
+
+⚠️ **The pose is left alone.** Only the lying tilt is neutralised, not the bone angles. That is what
+guarantees a STANDING model is measured exactly as before: the tilt being identity, the returned
+value is `size.y` word for word, and the factor does not move by a thousandth. No existing project
+can change size. A test pins this with a strict equality.
+
+⚠️ **Same box as the placement**, passed as a parameter — not a second measurement. And the rig's
+scale is reset to 1 before measuring: the measurement happens BEFORE `placeRigCentered3D`, so the rig
+still carries the previous frame's scale.
+
+**Left open, not fixed**: an imported model's size currently depends on its pose (a sitting model is
+enlarged, its box being lower). The Character keeps its standing height whatever its pose. Unifying
+this would change the size of models already placed in existing projects — a decision, not something
+to slip into a fix.

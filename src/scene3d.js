@@ -1640,6 +1640,46 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════
+ * LA HAUTEUR DEBOUT D'UN MODÈLE IMPORTÉ — pour que « allongé » ne le fasse pas grandir
+ * ═══════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `placeRigCentered3D` déduit son facteur de la hauteur de la boîte : `s = hauteurCible / size.y`.
+ * Couché, un corps est bas et large — `size.y` devient son épaisseur, et l'échelle s'emballe. Le
+ * Personnage s'en protège depuis toujours par `entry.deboutNaturalH` ; les modèles importés
+ * n'avaient pas d'équivalent, et « allongé » les faisait donc grandir d'un facteur ~5.
+ *
+ * ⚠️ ON NEUTRALISE LA BASCULE, ET RIEN D'AUTRE. La hauteur rendue ici est celle de la boîte que le
+ * placement utiliserait si le modèle n'était pas couché — sa POSE, elle, est laissée telle quelle.
+ * C'est ce qui garantit qu'un modèle DEBOUT est placé exactement comme avant : la bascule étant
+ * alors l'identité, la valeur rendue est mot pour mot `size.y`, et le facteur ne bouge pas d'un
+ * millième. Un Projet existant ne peut donc pas changer de taille.
+ *
+ * ⚠️ MÊME BOÎTE QUE LE PLACEMENT. `boxFn` est celle que `placeRigCentered3D` va utiliser, pas une
+ * seconde mesure : deux façons de mesurer la même chose auraient fini par ne plus s'accorder — le
+ * défaut le plus fréquent de ce dépôt. On remet aussi l'échelle et la position à neuf comme le
+ * fait `placeRigCentered3D`, sans quoi on mesurerait le rig à l'échelle de l'image PRÉCÉDENTE.
+ *
+ * L'état est restauré avant de rendre : cette fonction MESURE, elle ne place pas.
+ */
+export function hauteurDeboutModele3D(entry, boxFn){
+  const g = entry && entry.figureGroup;
+  const pg = entry && entry.poseGroup;
+  if (!g || !pg) return undefined;
+  const q = pg.quaternion.clone();
+  const sc = g.scale.clone(), po = g.position.clone();
+  pg.quaternion.set(0, 0, 0, 1);
+  g.scale.set(1, 1, 1); g.position.set(0, 0, 0);
+  g.updateMatrixWorld(true);
+  const box = boxFn ? boxFn(g) : new THREE.Box3().setFromObject(g);
+  const size = new THREE.Vector3(); box.getSize(size);
+  pg.quaternion.copy(q);
+  g.scale.copy(sc); g.position.copy(po);
+  g.updateMatrixWorld(true);
+  return (Number.isFinite(size.y) && size.y > 0) ? size.y : undefined;
+}
+
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
   const style = resolveStyle3D(styleKey);
@@ -1926,10 +1966,15 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       // réelle d'un Élément dans sa Scène. Ce sont deux questions distinctes, et la seconde est
       // suivie à part : la hauteur mesurée à l'import est fausse pour les fichiers Z-up.
       : (o.objType === 'modele' ? (fg) => box3FromObjectSkinAware3D(fg) : null);
+    // Un modèle importé COUCHÉ : même protection que le Personnage, mais mesurée plutôt que retenue
+    // à la construction — sa pose peut changer sans que le rig soit reconstruit. Rend `undefined`
+    // pour tout le reste, donc aucun autre type d'Élément n'est touché.
+    const _natH = (_persoNatH !== undefined) ? _persoNatH
+      : (o.objType === 'modele' ? hauteurDeboutModele3D(entry, _boxFn3D) : undefined);
     if (_tracéPos) {
       placeTracéOpeningRig3D(entry.figureGroup, o, _tracéPos, tracéWallThickness3D(_tracéMurHost));
     } else {
-      placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, _boxFn3D, _persoNatH);
+      placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, _boxFn3D, _natH);
     }
     // Pool: placeRigCentered3D's uniform scale would also enlarge the walls' height,
     // which is not desired — sY is locked to 1 (rig's natural height = constant 0.42 m)

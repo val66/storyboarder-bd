@@ -36,6 +36,8 @@ import {
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
 import { orbiteDeFace3D } from '../src/utils.js';
+import { hauteurDeboutModele3D } from '../src/scene3d.js';
+import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
 import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
@@ -1053,3 +1055,135 @@ describe('« Allongé » couche AUSSI un modèle importé', () => {
     assert.match(appel[0], /lieFlat/);
   });
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ÉCHELLE d'un modèle couché (tâche #345, partie 3)
+//
+// `placeRigCentered3D` déduit son facteur de la hauteur de la boîte : s = hauteurCible / size.y.
+// Couché, un corps est bas et large — size.y devient son épaisseur, et le facteur s'emballe. Le
+// Personnage s'en protège depuis toujours (deboutNaturalH) ; les modèles importés n'avaient rien.
+//
+// LE TEST QUI COMPTE EST LE PREMIER : un modèle DEBOUT doit être mesuré exactement comme avant.
+// C'est lui qui garantit qu'aucun Projet existant ne change de taille — et c'est la seule chose que
+// je puisse vérifier sans les fichiers .glb de l'utilisateur.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('un modèle couché n\'est pas agrandi', () => {
+  const BOITE = (g) => box3FromObjectSkinAware3D(g);
+  const elem = () => ({
+    id: 'ech1', type: 'objet3d', objType: 'modele', modelFile: FICHIER, realHeightFloor: 1.8,
+  });
+  const hauteurDeLaBoite = (g) => {
+    g.scale.set(1, 1, 1); g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+    const t = new THREE.Vector3(); BOITE(g).getSize(t); return t.y;
+  };
+
+  // ⚠️ UN TÉMOIN AVEC UNE GÉOMÉTRIE. `squeletteMixamo()` ne porte que des OS : la boîte du maillage
+  // y est vide, et toute mesure de hauteur y vaut zéro. On lui adjoint donc un volume nettement plus
+  // haut que large — 0,5 × 1,8 × 0,3 —, sans quoi « se coucher » ne changerait rien de mesurable et
+  // les tests seraient verts sans rien vérifier.
+  function squeletteAvecVolume(){
+    const scene = corrigerNomsCuisses(squeletteMixamo());
+    const corps = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.3), new THREE.MeshBasicMaterial());
+    corps.name = 'Corps';
+    corps.position.set(0, 0.9, 0);
+    scene.add(corps);
+    scene.updateMatrixWorld(true);
+    return scene;
+  }
+
+  beforeEach(() => {
+    clearModelCache();
+    _setModelCacheEntry(FICHIER, { scene: squeletteAvecVolume() });
+  });
+
+  test('RÉGRESSION : DEBOUT, la hauteur rendue est mot pour mot celle de la boîte', () => {
+    // Donc le facteur d'échelle est identique à celui d'avant ce correctif, au bit près. Sans cette
+    // égalité, tous les modèles déjà posés dans les Projets changeraient de taille en silence.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    const attendue = hauteurDeLaBoite(entry.figureGroup);
+    assert.equal(hauteurDeboutModele3D(entry, BOITE), attendue);
+  });
+
+  test('RÉGRESSION : COUCHÉ, la hauteur rendue reste celle du corps debout', () => {
+    // LE défaut de la partie 3. Sans override, size.y devient l'épaisseur du corps et l'échelle
+    // s'emballe — le modèle apparaît démesuré.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    const debout = hauteurDeLaBoite(entry.figureGroup);
+    appliquerAllonge3D(entry.poseGroup, FICHIER, true);
+    const coucheeMesuree = hauteurDeLaBoite(entry.figureGroup);
+    assert.ok(coucheeMesuree < debout * 0.9,
+      `le témoin doit vraiment s'aplatir en se couchant (${coucheeMesuree} vs ${debout})`);
+    assert.ok(Math.abs(hauteurDeboutModele3D(entry, BOITE) - debout) < 1e-9,
+      'la hauteur de référence suit la bascule au lieu de l\'ignorer');
+  });
+
+  test('la mesure RESTAURE l\'état : elle mesure, elle ne place pas', () => {
+    // Elle neutralise la bascule, l'échelle et la position le temps de mesurer. Ne pas les rendre
+    // laisserait un modèle redressé et à l'échelle 1 — c'est-à-dire un modèle qui saute d'un coup.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    appliquerAllonge3D(entry.poseGroup, FICHIER, true);
+    entry.figureGroup.scale.set(3, 3, 3);
+    entry.figureGroup.position.set(7, -2, 5);
+    const q = entry.poseGroup.quaternion.clone();
+    hauteurDeboutModele3D(entry, BOITE);
+    assert.ok(entry.poseGroup.quaternion.equals(q), 'la bascule n\'a pas été rendue');
+    assert.deepEqual(entry.figureGroup.scale.toArray(), [3, 3, 3], 'l\'échelle n\'a pas été rendue');
+    assert.deepEqual(entry.figureGroup.position.toArray(), [7, -2, 5], 'la position non plus');
+  });
+
+  test('la mesure ne dépend PAS de l\'échelle courante du rig', () => {
+    // Le piège : `placeRigCentered3D` remet l'échelle à 1 avant de mesurer, mais notre mesure a lieu
+    // AVANT lui — le rig porte encore l'échelle de l'image précédente. La mesurer telle quelle
+    // donnerait une hauteur trois fois trop grande, et un modèle qui rétrécit à chaque image.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    const a = hauteurDeboutModele3D(entry, BOITE);
+    entry.figureGroup.scale.set(3, 3, 3);
+    entry.figureGroup.updateMatrixWorld(true);
+    assert.ok(Math.abs(hauteurDeboutModele3D(entry, BOITE) - a) < 1e-9);
+  });
+
+  test('RÉGRESSION : le PLACEMENT s\'en sert vraiment', () => {
+    // Attrapé par mutation : retirer l'appel dans renderPanelSceneUncached3D laissait tout vert. Le
+    // rendu construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md) — la
+    // lecture de source est donc le seul moyen honnête de dire que la mesure atteint le placement.
+    //
+    // Ce qui est gardé : que la hauteur debout serve de `naturalHOverride`, et SEULEMENT pour les
+    // modèles importés — le passer à tous les Éléments changerait la taille de tout le reste.
+    const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+    const calcul = /const _natH =[\s\S]{0,220}?;/.exec(SCENE);
+    assert.ok(calcul, 'le placement ne calcule plus de hauteur de référence');
+    assert.match(calcul[0], /hauteurDeboutModele3D\(entry, _boxFn3D\)/,
+      'la hauteur debout n\'est plus mesurée, ou pas avec la boîte du placement');
+    assert.match(calcul[0], /'modele'/, 'la mesure ne serait plus réservée aux modèles importés');
+    assert.match(SCENE, /placeRigCentered3D\(entry\.figureGroup, wx, wy, z, unitsH, _boxFn3D, _natH\)/,
+      'le placement n\'utilise plus cette hauteur');
+  });
+
+  test('un rig sans groupe de pose rend undefined, donc ne change rien', () => {
+    // `undefined` fait retomber placeRigCentered3D sur size.y : c'est le comportement d'avant, et
+    // c'est ce qui protège tous les autres types d'Éléments.
+    assert.equal(hauteurDeboutModele3D(null, BOITE), undefined);
+    assert.equal(hauteurDeboutModele3D({ figureGroup: new THREE.Group() }, BOITE), undefined);
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION — l'échelle d'un modèle couché (tâche #345, partie 3).
+ *
+ *   U1 la bascule n'est pas neutralisée avant la mesure              ROUGE
+ *   U2 l'échelle courante du rig n'est pas neutralisée               ROUGE
+ *   U3 l'état n'est pas restauré après la mesure                     ROUGE
+ *   U4 le placement n'utilise pas la hauteur debout                  ÉCHAPPÉE → puis ROUGE
+ *   U5 un rig sans groupe de pose n'est plus écarté                  ROUGE
+ *
+ * U4 EST LA MÊME ÉCHAPPÉE QUE DANS LES PARTIES 1 ET 2, et c'est ce qui la rend instructive : le
+ * calcul est juste, testé, et son résultat n'arrive nulle part. Le rendu construit un WebGLRenderer,
+ * injoignable sous Node — la lecture de source est le seul moyen honnête de dire que la mesure
+ * atteint le placement. Cette limite est structurelle (cf. docs/imported-skeletons §7.2) ; ce qui ne
+ * l'est pas, c'est de l'oublier une troisième fois.
+ *
+ * U2 mérite un mot : la mesure a lieu AVANT `placeRigCentered3D`, qui remet l'échelle à 1. Le rig
+ * porte donc encore celle de l'image précédente. Sans neutralisation, la hauteur de référence serait
+ * multipliée par elle — et le modèle rétrécirait un peu plus à chaque image, jusqu'à disparaître.
+ */

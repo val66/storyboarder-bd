@@ -367,10 +367,26 @@ appel, et le modèle tournerait sur lui-même image après image.
 **Un groupe de pose** (`poseGroup`) s'intercale entre `figureGroup` — qui porte l'orientation de
 l'Élément — et le clone. Les écrire au même endroit ferait que l'une écraserait l'autre.
 
-#### Ce qui reste à faire : l'ÉCHELLE
+#### L'ÉCHELLE
 
 `placeRigCentered3D` déduit le facteur de la hauteur de la boîte (`s = hauteurCible / size.y`).
 Couché, un corps est bas et large : le facteur s'emballe. Le Personnage s'en protège par
-`entry.deboutNaturalH`, passé en `naturalHOverride` **uniquement pour lui** ; les modèles importés
-n'ont pas encore d'équivalent. Découpage assumé — voir l'orientation correcte avant de corriger la
-taille.
+`entry.deboutNaturalH`, mesuré **une fois à la construction** du rig ; un modèle importé ne peut pas
+faire pareil — sa pose change sans que le rig soit reconstruit.
+
+`hauteurDeboutModele3D` (scene3d.js) mesure donc **à chaque placement**, en neutralisant la bascule
+le temps de la mesure — et rien d'autre.
+
+⚠️ **La pose est laissée telle quelle.** On ne neutralise que le couchage, pas les angles d'os. C'est
+ce qui garantit qu'un modèle DEBOUT est mesuré exactement comme avant : la bascule étant l'identité,
+la valeur rendue est mot pour mot `size.y`, et le facteur ne bouge pas d'un millième. Aucun Projet
+existant ne peut changer de taille. Un test l'épingle par une égalité stricte.
+
+⚠️ **Même boîte que le placement**, passée en paramètre — pas une seconde mesure. Et l'échelle du rig
+est remise à 1 avant de mesurer : la mesure a lieu AVANT `placeRigCentered3D`, donc le rig porte
+encore l'échelle de l'image précédente.
+
+**Reste ouvert, non corrigé** : la taille d'un modèle importé dépend aujourd'hui de sa pose (un
+modèle assis est agrandi, sa boîte étant plus basse). Le Personnage, lui, garde sa hauteur debout
+quelle que soit sa pose. Uniformiser changerait la taille des modèles déjà posés dans les Projets
+existants — à décider, pas à glisser dans un correctif.
