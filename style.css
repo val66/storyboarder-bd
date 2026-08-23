@@ -4,6 +4,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Permanent+Marker&family=Luckiest+Guy&family=Anton&family=Patrick+Hand&family=Caveat:wght@400;700&family=Fredoka:wght@400;600&family=Bubblegum+Sans&family=Kalam:wght@400;700&display=swap');
 
 :root{
+  /* Largeur du menu de gauche. Variable, et non plus un littéral, parce que l'Éditeur de
+     Personnage se cale EXACTEMENT à sa droite : deux 260px écrits séparément auraient fini par
+     diverger, et l'écart se serait vu comme une bande du panneau qui dépasse. */
+  --sidebar-w:260px;
   --paper:#1B1C1F;
   --paper-dark:#212226;
   --ink:#EDEDEF;
@@ -81,11 +85,15 @@ header span{ font-size:12px; color:var(--ink-soft); }
    .tool-btn générique de la barre latérale. */
 .header-btn{ margin-left:auto; }
 
-.app{ display:flex; height:calc(100vh - 54px); }
+/* `position:relative` : c'est le bloc de référence de l'Éditeur de Personnage, positionné en
+   absolu à l'intérieur. Le calage vertical vient donc de .app lui-même, qui commence déjà sous
+   l'en-tête — l'éditeur n'a pas à connaître la hauteur de celui-ci, qu'aucune règle ne fixe et que
+   le 54px ci-dessous ne fait qu'estimer. */
+.app{ display:flex; position:relative; height:calc(100vh - 54px); }
 
 /* SIDEBAR */
 .sidebar{
-  width:260px; background:var(--paper-dark); border-right:1px solid var(--line);
+  width:var(--sidebar-w); background:var(--paper-dark); border-right:1px solid var(--line);
   flex-shrink:0; display:flex; flex-direction:column; min-height:0;
 }
 .sidebar h2{ font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 8px; text-transform:uppercase; letter-spacing:.05em;}
@@ -786,7 +794,14 @@ canvas{
 /* Fix 51 — couleurs prises dans les variables de thème et non écrites en dur : l'application se
    décline en clair et en sombre (cf. :root et le jeu de variables posé sur <body>), et un overlay
    plein écran figé en clair devenait illisible dans l'autre thème. */
-.persona-editor { position: fixed; inset: 0; z-index: 900; background: var(--paper);
+/* ⚠️ RECOUVRE LA ZONE CENTRALE, PAS LA FENÊTRE. L'éditeur était en `position:fixed; inset:0` et
+   masquait tout : en-tête, menu de gauche, jusqu'au bouton de sauvegarde. Il était le seul écran à
+   confisquer la fenêtre — le mode Scène, lui, change ce qu'affiche le canevas sans toucher au reste.
+   Positionné dans .app et décalé de --sidebar-w, il laisse l'en-tête et le menu de gauche VISIBLES
+   ET CLIQUABLES : ce qui suppose que quitter l'éditeur par le menu soit géré (cf. clicQuitteLEditeur3D
+   dans src/persona-editor.js), sans quoi on pourrait éditer une figure d'une Page qu'on a quittée. */
+.persona-editor { position: absolute; top: 0; right: 0; bottom: 0; left: var(--sidebar-w);
+                  z-index: 900; background: var(--paper);
                   color: var(--ink); display: flex; flex-direction: column; }
 .persona-editor.hidden { display: none; }
 .persona-editor-bar { display: flex; align-items: center; justify-content: space-between;

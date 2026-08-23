@@ -37,8 +37,13 @@
   <button class="help-round-btn" id="helpBtn" title="Manuel d'utilisation">?</button>
 </header>
 
-<!-- Éditeur de Personnage (cf. openPersonaEditor, events.js). Recouvre l'application sans la
-     démonter : la Page ou la Scène dessous reste intacte, fermer rend la main à ce qui était là. -->
+
+<div class="app">
+
+  <!-- Éditeur de Personnage (cf. openPersonaEditor, persona-editor.js). VIT DANS .app, dont il
+       recouvre la zone centrale — pas la fenêtre : l'en-tête et le menu de gauche restent
+       visibles et utilisables, comme pour toute autre vue. La Page ou la Scène dessous reste
+       intacte, fermer rend la main à ce qui était là. -->
 <div id="personaEditorOverlay" class="persona-editor hidden">
   <div class="persona-editor-bar">
     <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
@@ -103,7 +108,6 @@
   </div>
 </div>
 
-<div class="app">
 
   <div class="sidebar">
   <div class="sidebar-scroll">

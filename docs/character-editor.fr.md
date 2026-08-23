@@ -10,7 +10,9 @@
 
 ## Intention
 
-Un éditeur de Personnage plein écran, avec réglage fin des articulations, bibliothèque de poses et
+Un éditeur de Personnage occupant la zone centrale — l'en-tête et le menu de gauche restent
+utilisables, et naviguer ailleurs quitte l'éditeur sans rouvrir la fiche dont il vient
+(`clicQuitteLEditeur3D`) —, avec réglage fin des articulations, bibliothèque de poses et
 émotions. Deux points d'entrée :
 
 - **Menu de gauche → section Personnage** : Personnage par défaut, aucune cible. La seule sortie
@@ -22,7 +24,7 @@ Un éditeur de Personnage plein écran, avec réglage fin des articulations, bib
 
 | Brique | Où | Rôle dans l'éditeur |
 |---|---|---|
-| Mode plein écran | `S.editingSceneId` (events.js) | Modèle exact du mode qui prend la main sur le rendu |
+| Mode Scène | `S.editingSceneId` (events.js) | Modèle exact du mode qui prend la main sur le rendu sans confisquer la fenêtre |
 | Brouillon d'articulations | `S.modalDraftJoints` (modals.js) | L'éditeur alimente ce brouillon, pas l'objet |
 | Poignées d'articulation | `objectPreview3D` (animaux) | Édition directe au clic sur le canevas |
 | Renderer 3D | `personaRenderer3D` (rig3d.js) | **Vérifié** : renderer hors écran unique, `setSize` à la demande puis `drawImage` dans un canevas 2D. Aucune contention : l'éditeur est un consommateur de plus. Plafonner la résolution comme `PANEL_SCENE_RENDER_MAX_PX`. |

@@ -134,6 +134,83 @@ export function closePersonaEditor(){
 
 export function isPersonaEditorOpen(){ return !!S.personaEditorOpen; }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// QUITTER L'ÉDITEUR PAR LE MENU DE GAUCHE
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// L'éditeur ne recouvre plus que la zone centrale : le menu de gauche reste cliquable pendant
+// l'édition. Deux choses cassent alors, et ce sont les deux mêmes :
+//
+//   1. LE RETOUR À LA FICHE. Ouvert depuis le crayon d'un aperçu, l'éditeur retient la fiche à
+//      rouvrir (S.personaEditorFromModal). Changer de Page entre-temps la ferait réapparaître
+//      au-dessus d'une Page où son Élément n'est pas.
+//   2. LA CIBLE. personaEditorTarget la cherche par identifiant DANS LA PAGE COURANTE. Après une
+//      navigation, elle est introuvable, et « Appliquer au Personnage » n'a plus rien à appliquer.
+//
+// Les deux disparaissent ensemble si l'on ne peut pas être à la fois dans l'éditeur et sur une
+// autre Page : naviguer FERME l'éditeur, et le ferme sans rouvrir la fiche.
+
+// Les éléments du menu qui NAVIGUENT — c'est-à-dire qui changent ce qu'affiche la zone centrale.
+//
+// ⚠️ LISTE EXPLICITE, ET C'EST UN CHOIX. Intercepter tout clic dans le menu serait plus simple et
+// FAUX : la ligne d'un Tome ne fait que déplier, le <select> de format ne navigue pas, et un clic
+// dans le vide du panneau ne fait rien du tout — fermer l'éditeur là-dessus détruirait le travail
+// en cours sans que rien ne l'ait demandé. Chaque entrée ci-dessous a été vérifiée dans le code qui
+// la crée (src/project-tree.js) : elle écrit S.currentPageIndex, appelle openScene, ou rouvre
+// l'éditeur.
+//
+// ⚠️ SA LIMITE, ÉCRITE ICI PLUTÔT QUE DÉCOUVERTE PLUS TARD : une NOUVELLE entrée de navigation
+// ajoutée au menu ne fermera pas l'éditeur tant qu'elle n'est pas ajoutée ici. Le symptôme serait
+// discret — l'éditeur resté ouvert par-dessus une autre Page.
+export const CIBLES_NAV_EDITEUR_3D = Object.freeze({
+  // Par identifiant, en remontant les ancêtres.
+  //   sceneList .............. ouvrir une Scène (openScene)
+  //   addVolumeBtn ........... créer un Tome, qui devient le Tome courant
+  //   addSceneBtn ............ créer une Scène et l'ouvrir
+  //   importSceneBtn ......... importer un décor et l'ouvrir
+  //   openPoseEditorBtn ...... rouvrir l'éditeur, sans cible cette fois
+  //   helpBtn ................ affiche le Manuel dans le PANNEAU DROIT, que l'éditeur recouvre :
+  //                            sans quitter l'éditeur, le bouton aurait l'air cassé.
+  ids: Object.freeze(['sceneList', 'addVolumeBtn', 'addSceneBtn', 'importSceneBtn',
+    'openPoseEditorBtn', 'helpBtn']),
+  // Par classe :
+  //   page-row ............... les Planches d'un Tome déplié, seule partie navigante de #volumeList
+  //                            (la ligne du Tome, elle, ne fait que déplier).
+  //   model-usage-target ..... « Où est utilisé ce modèle ? » saute à l'usage : c'est une modale,
+  //                            elle s'ouvre AU-DESSUS de l'éditeur, et sa navigation laisserait
+  //                            sinon l'éditeur ouvert sur une autre Page.
+  classes: Object.freeze(['page-row', 'model-usage-target']),
+});
+
+/**
+ * Ce clic quitte-t-il l'éditeur ? Fonction PURE : elle remonte `parentElement` elle-même plutôt que
+ * d'appeler `closest`, pour être vérifiable sur de simples objets — le stub de DOM des tests ne
+ * gréerait pas un vrai arbre, et la décision serait restée invérifiable.
+ */
+export function clicQuitteLEditeur3D(el, cibles = CIBLES_NAV_EDITEUR_3D){
+  const ids = (cibles && cibles.ids) || [];
+  const classes = (cibles && cibles.classes) || [];
+  for (let n = el; n; n = n.parentElement) {
+    if (n.id && ids.includes(n.id)) return true;
+    const cl = typeof n.className === 'string' ? n.className.split(/\s+/) : [];
+    if (classes.some(c => cl.includes(c))) return true;
+  }
+  return false;
+}
+
+/**
+ * Ferme l'éditeur SANS rouvrir la fiche dont il vient.
+ *
+ * ⚠️ C'EST LE POINT DE TOUTE LA MANŒUVRE. closePersonaEditor rend l'identifiant de la fiche masquée
+ * pour que l'appelant la rouvre ; ici on l'abandonne délibérément, parce qu'on est en train de
+ * partir ailleurs. La fiche reste simplement masquée — elle n'a jamais été détruite, et rien ne la
+ * rouvrira au-dessus d'une Page qui n'est pas la sienne.
+ */
+export function quitterEditeurSansRetour(){
+  S.personaEditorFromModal = null;
+  return closePersonaEditor();
+}
+
 // L'Élément édité, ou null en mode autonome. Relu à la demande plutôt que gardé en référence : un
 // Élément supprimé pendant que l'éditeur est ouvert doit donner null, pas un objet fantôme détaché
 // de la Page.
@@ -974,10 +1051,55 @@ const PERSONA_EDITOR_DEFAULT_ZOOM = 0.8;
 // evaluation. Extracting the module would have moved that execution EARLIER (an imported module
 // is evaluated before its importer): naming it and calling it from events.js at the same point in
 // the file keeps the original ordering, which is the whole point of a move.
+/**
+ * Quitte l'éditeur parce qu'on navigue ailleurs, puis rejoue le clic qui l'a demandé.
+ *
+ * La confirmation ne porte QUE sur un brouillon modifié : demander « êtes-vous sûr ? » à chaque
+ * clic sur une Planche apprendrait surtout à répondre oui sans lire. Refuser laisse l'éditeur
+ * ouvert et PERD le clic — l'utilisateur reste où il voulait rester, ce qui est la réponse qu'il
+ * vient de donner.
+ */
+async function quitterEditeurParNavigation(cible){
+  if (personaEditorHasChanges()) {
+    const ok = await confirmAction(
+      tr('Leaving the editor will discard the pose being composed. Continue?',
+         'Quitter l\'éditeur abandonnera la pose en cours de composition. Continuer ?'),
+      tr('Leave the editor', 'Quitter l\'éditeur'));
+    if (!ok) return;
+  }
+  quitterEditeurSansRetour();
+  syncPersonaEditorDom();
+  if (cible && typeof cible.click === 'function') cible.click();
+}
+
 export function wirePersonaEditor(){
   const cnv = document.getElementById('personaEditorCanvas');
   const closeBtn = document.getElementById('personaEditorCloseBtn');
   if (closeBtn) closeBtn.onclick = () => hidePersonaEditor();
+
+  // ── Naviguer quitte l'éditeur ─────────────────────────────────────────────────────────────
+  //
+  // EN PHASE DE CAPTURE, SUR LE DOCUMENT. Trois raisons, et aucune n'est un détail :
+  //   • les lignes du menu sont RECONSTRUITES à chaque rendu (renderTree, renderSceneList) ; des
+  //     écouteurs posés un par un devraient être rebranchés à chaque fois.
+  //   • en capture, on passe AVANT le `onclick` de la ligne. Il faut décider de quitter l'éditeur
+  //     avant que la navigation ait lieu — après, la confirmation arriverait trop tard pour
+  //     empêcher quoi que ce soit.
+  //   • sur le document, et non sur le seul menu de gauche : la modale « Où est utilisé ce
+  //     modèle ? » navigue elle aussi, et elle n'est pas dedans. Le filtrage est fait par
+  //     clicQuitteLEditeur3D, qui ne reconnaît qu'une liste nommée — écouter large ne veut pas
+  //     dire intercepter large.
+  //
+  // Le clic est ensuite REJOUÉ sur la même cible une fois l'éditeur fermé. Rejouer plutôt que
+  // d'appeler la navigation nous-mêmes : nous ne savons pas ce que fait la ligne cliquée, et
+  // dupliquer sa décision ici en ferait une seconde version à maintenir.
+  document.addEventListener('click', (e) => {
+    if (!isPersonaEditorOpen()) return;
+    if (!clicQuitteLEditeur3D(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    quitterEditeurParNavigation(e.target);
+  }, true);
   // Fix 55 — écriture dans la bibliothèque. Après chaque opération la liste est RECONSTRUITE : elle
   // affiche S.poses, et se contenter de mettre à jour l'étiquette laisserait un bouton pour une pose
   // supprimée, ou aucun pour une pose qu'on vient de créer.

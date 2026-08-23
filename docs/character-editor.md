@@ -10,8 +10,9 @@
 
 ## Intent
 
-A full-screen character editor, with fine joint adjustment, a pose library and emotions. Two entry
-points:
+A character editor, with fine joint adjustment, a pose library and emotions. It covers the central
+area only — the header and the left menu stay usable, and navigating away leaves the editor without
+reopening the dialog it came from (`clicQuitteLEditeur3D`). Two entry points:
 
 - **Left menu → Character section**: default character, no target. The only useful outcome is "save
   as a pose".
@@ -22,7 +23,7 @@ points:
 
 | Building block | Where | Role in the editor |
 |---|---|---|
-| Full-screen mode | `S.editingSceneId` (events.js) | Exact model of a mode that takes over rendering |
+| Scene mode | `S.editingSceneId` (events.js) | Exact model of a mode that takes over rendering without confiscating the window |
 | Joint draft | `S.modalDraftJoints` (modals.js) | The editor feeds this draft, not the object |
 | Joint handles | `objectPreview3D` (animals) | Direct editing by clicking on the canvas |
 | 3D renderer | `personaRenderer3D` (rig3d.js) | **Verified**: a single off-screen renderer, `setSize` on demand then `drawImage` into a 2D canvas. No contention: the editor is one more consumer. Cap the resolution as `PANEL_SCENE_RENDER_MAX_PX` does. |

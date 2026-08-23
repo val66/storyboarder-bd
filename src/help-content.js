@@ -64,6 +64,7 @@ export const HELP_MANUAL_EN = [
     '"Pose" section: click a pose to apply it as a starting point, or type a name then Save to add the current one. Rename and Delete apply to any pose; the Settings dialog restores deleted built-in poses. The library is shared by all your projects.',
     'A project made with an older version may use a pose that is no longer offered — it still displays correctly: the application keeps those angles as a fallback, even though the pose is no longer proposed for new characters.',
     '"Reset pose" returns to the pose the editor opened with. "Apply to character" sends the pose back to the dialog: nothing is written into the character until you save there. Closing the editor without applying changes nothing.',
+    'The editor covers the central area only: the left menu stays usable. Clicking a Page or a Scene leaves the editor, without reopening the dialog you came from.',
   ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
@@ -168,12 +169,13 @@ export const HELP_MANUAL_FR = [
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [
     "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Personnages » du menu de gauche pour composer une pose sans cible — dans ce second cas, « Appliquer » est absent.",
     "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles importés compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
-    "Cliquez un point d'articulation pour le sélectionner : les autres points disparaissent, et la zone teintée en orange montre où vous pouvez cliquer sans perdre la sélection. Cliquer dans le vide désélectionne. Déplier un groupe de curseurs à droite sélectionne aussi son articulation.",
+    "Cliquez un point d'articulation pour le sélectionner : les autres disparaissent, et la zone orange montre où cliquer sans perdre la sélection. Cliquer dans le vide désélectionne. Déplier un groupe de curseurs sélectionne aussi son articulation.",
     "Maintenez le clic gauche sur un point et glissez pour régler l'articulation. Le repère orange indique le geste attendu : une double flèche pour glisser dans sa direction, un anneau pour tourner autour du point.",
     "Un seul champ bouge à la fois, celui que le panneau de droite surligne le plus. La molette passe d'un champ à l'autre tant qu'une articulation est sélectionnée ; désélectionnez pour retrouver le zoom. La section « Réglages des articulations » offre un curseur par champ.",
-    "Section « Pose » : cliquez une pose pour l'appliquer comme point de départ, ou saisissez un nom puis Enregistrer pour y ajouter la pose en cours. Renommer et Supprimer s'appliquent à n'importe quelle pose ; la modale Configuration restaure les poses de base supprimées. La bibliothèque est partagée par tous vos Projets.",
-    "Un Projet fait avec une version antérieure peut utiliser une pose qui n'est plus proposée — elle s'affiche toujours correctement : l'application conserve ces angles en dernier recours, même si la pose n'est plus offerte aux nouveaux Personnages.",
+    "Section « Pose » : cliquez une pose pour l'appliquer, ou saisissez un nom puis Enregistrer pour ajouter la pose en cours. Renommer et Supprimer valent pour toute pose ; Configuration restaure les poses de base supprimées. Bibliothèque partagée par tous vos Projets.",
+    "Un Projet plus ancien peut utiliser une pose qui n'est plus proposée : elle s'affiche toujours correctement, ses angles étant conservés en dernier recours.",
     "« Réinitialiser la pose » revient à la pose d'ouverture. « Appliquer au Personnage » renvoie la pose vers la modale : rien n'est écrit dans le Personnage tant que vous n'y avez pas enregistré. Fermer l'éditeur sans appliquer ne change rien.",
+    "L'éditeur n'occupe que la zone centrale : le menu de gauche reste utilisable. Cliquer une Planche ou une Scène quitte l'éditeur, sans rouvrir la fiche d'où vous veniez.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',

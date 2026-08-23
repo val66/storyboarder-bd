@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.6**
+**Version 1.4.7**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -61,9 +61,10 @@
 
 ### Character editor
 
-A full-screen workspace for posing a figure — a character, or an articulated imported model —,
-opened from the pencil on a 3D preview, or standalone from the left menu to build a pose with no
-target in mind.
+A workspace for posing a figure — a character, or an articulated imported model —, opened from the
+pencil on a 3D preview, or standalone from the left menu to build a pose with no target in mind. It
+takes over the central area only: the left menu stays available, and clicking a Page or a Scene
+leaves the editor.
 
 - **Pose by dragging**: grab a joint point and move it; an orange guide shows the expected gesture,
   arrow or ring
@@ -165,7 +166,7 @@ storyboarder-bd/
 │   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
 │   ├── stray-meshes-3d.js # Meshes a file places away from the body, and which get hidden
 │   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
-│   ├── persona-editor.js # Character editor: full-screen posing mode
+│   ├── persona-editor.js # Character editor: posing view over the central area
 │   ├── help-content.js # Built-in user manual content
 │   └── events.js       # Event wiring + remaining business logic (real entry point)
 ├── tests/              # Unit tests (Node's built-in test runner)

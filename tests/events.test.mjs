@@ -49,6 +49,7 @@ import {
   beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
   PERSONA_EDITOR_ROT_X_MAX,
+  clicQuitteLEditeur3D, quitterEditeurSansRetour, CIBLES_NAV_EDITEUR_3D,
 } from '../src/persona-editor.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
 import { S } from '../src/state.js';
@@ -2312,5 +2313,138 @@ describe('Manuel d\'utilisation — le clic sur une section est bien câblé', (
     const bloc = src.slice(src.indexOf("languageSelect.addEventListener('change'"));
     assert.match(bloc.slice(0, 400), /rafraichirManuelOuvert\(S\.appLang\)/,
       'applyI18n ne touche pas au contenu rendu par la modale');
+  });
+});
+
+
+// ── L'éditeur n'est plus plein écran : naviguer par le menu le quitte ─────────────────────────
+describe('éditeur de Personnage — quitter par le menu de gauche', () => {
+  // L'éditeur laisse désormais l'en-tête et le menu de gauche visibles ET cliquables. Deux choses
+  // cassaient alors ensemble : la fiche à rouvrir (rouverte au-dessus d'une autre Page) et la cible
+  // (introuvable, cherchée dans la Page courante). Naviguer ferme l'éditeur, ce qui supprime les
+  // deux — encore faut-il reconnaître ce qui navigue et ce qui ne navigue pas.
+  const noeud = (attrs, parent = null) => ({ id: '', className: '', ...attrs, parentElement: parent });
+
+  test('une Planche du menu : c\'est une navigation', () => {
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'page-row' })), true);
+  });
+
+  test('LE POINT QUI COMPTE : la ligne d\'un Tome ne fait que DÉPLIER', () => {
+    // Elle est dans #volumeList, juste à côté des Planches, et son clic n'appelle que renderTree.
+    // Fermer l'éditeur là-dessus détruirait le travail en cours pour un geste qui ne change rien
+    // à l'affichage. C'est la raison d'être de la liste nommée plutôt que d'une interception large.
+    const liste = noeud({ id: 'volumeList' });
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'tome-row' }, liste)), false);
+  });
+
+  test('RÉGRESSION : le <select> de format, dans la même liste, ne navigue pas non plus', () => {
+    const liste = noeud({ id: 'volumeList' });
+    const wrap = noeud({ className: 'tome-format' }, liste);
+    assert.equal(clicQuitteLEditeur3D(noeud({}, wrap)), false);
+  });
+
+  test('un clic dans le vide du menu ne ferme rien', () => {
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'sidebar-scroll' })), false);
+    assert.equal(clicQuitteLEditeur3D(null), false);
+  });
+
+  test('la décision remonte les ANCÊTRES, pas seulement l\'élément cliqué', () => {
+    // On clique le <span> d\'un bouton, jamais le bouton lui-même.
+    const bouton = noeud({ id: 'addSceneBtn' });
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'caret' }, bouton)), true);
+  });
+
+  test('chaque entrée déclarée est effectivement reconnue', () => {
+    CIBLES_NAV_EDITEUR_3D.ids.forEach(id =>
+      assert.equal(clicQuitteLEditeur3D(noeud({ id })), true, `id « ${id} » non reconnu`));
+    CIBLES_NAV_EDITEUR_3D.classes.forEach(c =>
+      assert.equal(clicQuitteLEditeur3D(noeud({ className: c })), true, `classe « ${c} » non reconnue`));
+  });
+
+  test('une classe n\'est pas reconnue par simple préfixe', () => {
+    // `className` est une chaîne : chercher 'page-row' dedans par indexOf ferait répondre oui à
+    // 'page-row-header' ou à 'sous-page-rows'.
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'page-row-header' })), false);
+    assert.equal(clicQuitteLEditeur3D(noeud({ className: 'x page-row y' })), true,
+      'mais bien au milieu d\'une liste de classes');
+  });
+
+  test('LE TEST QUI COMPTE : quitter par le menu ne rouvre JAMAIS la fiche', () => {
+    // C\'est tout l\'objet de la manœuvre. closePersonaEditor rend la fiche à rouvrir ; ce
+    // chemin-là doit l\'abandonner, sans quoi elle réapparaîtrait au-dessus d\'une autre Page.
+    openPersonaEditor({ id: 'e1', type: 'perso' }, 'descModal');
+    assert.equal(quitterEditeurSansRetour(), null);
+    assert.equal(isPersonaEditorOpen(), false, 'et l\'éditeur est bien fermé');
+    assert.equal(S.personaEditorFromModal, null);
+  });
+
+  test('« Fermer », lui, rouvre toujours la fiche', () => {
+    // Le contraste est l\'invariant : deux sorties, deux comportements, et c\'est délibéré.
+    openPersonaEditor({ id: 'e1', type: 'perso' }, 'objectModal');
+    assert.equal(closePersonaEditor(), 'objectModal');
+  });
+});
+
+// ── La couture : mise en page et câblage de la sortie ─────────────────────────────────────────
+describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', () => {
+  // LECTURE DES FICHIERS, faute de mieux : il n'y a pas de moteur de rendu CSS sous Node, et le
+  // dom-stub n'exécute aucun écouteur. Ce qui est figé ici, c'est ce qui rendrait le reste
+  // inopérant — un retour au plein écran, ou une sortie non câblée.
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+
+  test('RÉGRESSION : l\'éditeur se cale sur le menu de gauche, il ne le recouvre plus', () => {
+    const regle = css.slice(css.indexOf('.persona-editor {'), css.indexOf('.persona-editor.hidden'));
+    assert.ok(!/position:\s*fixed/.test(regle), 'position:fixed reprendrait toute la fenêtre');
+    assert.match(regle, /left:\s*var\(--sidebar-w\)/,
+      'le décalage doit suivre la largeur du menu, pas un 260px recopié');
+  });
+
+  test('la largeur du menu est déclarée UNE fois', () => {
+    assert.match(css, /--sidebar-w:\s*260px/);
+    assert.match(css, /\.sidebar\{[^}]*width:var\(--sidebar-w\)/,
+      'le menu lui-même doit lire la variable, sinon les deux valeurs divergeront');
+  });
+
+  test('LE POINT QUI COMPTE : l\'éditeur vit DANS .app, qui lui sert de repère', () => {
+    // Positionné en absolu, il se cale sur le premier ancêtre positionné. Laissé hors de .app, ce
+    // serait la fenêtre — et il recouvrirait de nouveau l'en-tête, silencieusement.
+    const iApp = html.indexOf('<div class="app">');
+    const iEditeur = html.indexOf('id="personaEditorOverlay"');
+    assert.ok(iApp > 0 && iEditeur > iApp, 'l\'éditeur doit être déclaré à l\'intérieur de .app');
+    assert.match(css, /\.app\{[^}]*position:relative/, '.app doit être le bloc de référence');
+  });
+
+  test('RÉGRESSION : la sortie par navigation est câblée EN CAPTURE', () => {
+    // En phase de bouillonnement, la ligne cliquée aurait déjà navigué : la confirmation
+    // arriverait après coup, et n'empêcherait plus rien.
+    assert.match(src, /document\.addEventListener\('click',[\s\S]{0,400}\}, true\)/,
+      'écoute en capture sur le document');
+    assert.match(src, /clicQuitteLEditeur3D\(e\.target\)/);
+  });
+
+  test('RÉGRESSION : ce chemin passe par quitterEditeurSansRetour', () => {
+    const corps = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
+    const fin = corps.indexOf('\n}');
+    const fn = corps.slice(0, fin);
+    assert.match(fn, /quitterEditeurSansRetour\(\)/,
+      'appeler closePersonaEditor ici rouvrirait la fiche sur une autre Page');
+    assert.ok(!/hidePersonaEditor\(\)/.test(fn), 'hidePersonaEditor rouvre la fiche, justement');
+  });
+
+  test('RÉGRESSION : refuser la confirmation laisse l\'éditeur ouvert', () => {
+    const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
+    assert.match(fn.slice(0, 600), /personaEditorHasChanges\(\)/,
+      'on ne demande confirmation que si le brouillon a changé');
+    assert.match(fn.slice(0, 600), /if \(!ok\) return;/,
+      'un refus doit interrompre la sortie, pas seulement sauter la confirmation');
+  });
+
+  test('le clic est REJOUÉ une fois l\'éditeur fermé', () => {
+    const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
+    assert.match(fn.slice(0, 800), /cible\.click\(\)/,
+      'sans rejeu, cliquer une Planche fermerait l\'éditeur sans y aller');
   });
 });

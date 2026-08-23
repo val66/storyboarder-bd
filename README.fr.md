@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.6**
+**Version 1.4.7**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -63,8 +63,10 @@
 
 ### Éditeur de Personnage
 
-Un espace plein écran pour poser une figure — un Personnage, ou un Modèle importé articulé —, ouvert
-par le crayon d'un aperçu 3D, ou seul depuis le menu de gauche pour composer une pose sans cible.
+Un espace pour poser une figure — un Personnage, ou un Modèle importé articulé —, ouvert par le
+crayon d'un aperçu 3D, ou seul depuis le menu de gauche pour composer une pose sans cible. Il occupe
+la zone centrale seule : le menu de gauche reste disponible, et cliquer une Planche ou une Scène
+quitte l'éditeur.
 
 - **Poser au glisser** : attrapez un point d'articulation et déplacez-le ; un repère orange indique
   le geste attendu, flèche ou anneau
@@ -166,7 +168,7 @@ storyboarder-bd/
 │   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
 │   ├── stray-meshes-3d.js # Les maillages qu'un fichier place hors du corps, et qu'on masque
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
-│   ├── persona-editor.js # Éditeur de Personnage : mode plein écran de pose
+│   ├── persona-editor.js # Éditeur de Personnage : vue de pose sur la zone centrale
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
 ├── tests/              # Tests unitaires (test runner natif de Node)
