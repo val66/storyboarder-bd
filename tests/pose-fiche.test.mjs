@@ -648,7 +648,10 @@ describe('remplirSelecteurDePose — une seule liste de poses dans l\'applicatio
     const sel = document.createElement('select');
     remplirSelecteurDePose(sel, { position: 'p_effacee' });
     assert.equal(sel.value, 'p_effacee');
-    assert.ok(sel.children.some(o => o.value === 'p_effacee' && /inconnue/.test(o.textContent)));
+    // « (inconnue) » suit la langue de l'interface — d'où les deux orthographes acceptées ici. Ce
+    // que le test épingle est l'existence de l'option de repli et son marquage, pas sa langue, qui
+    // est vérifiée à la source dans tests/events.test.mjs.
+    assert.ok(sel.children.some(o => o.value === 'p_effacee' && /\((inconnue|unknown)\)/.test(o.textContent)));
   });
 
   test('RÉGRESSION : l\'option de repli est retirée du BON sélecteur', () => {

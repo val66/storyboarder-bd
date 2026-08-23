@@ -18,7 +18,10 @@ import { applyTextEntry, setLeadingText, setTrailingText, stackRankLabel, noDesc
          I18N_TEXT, I18N_TRAILING, I18N_LEADING, I18N_MODALS, I18N_PREV_LABEL } from '../src/i18n.js';
 import { HELP_MANUAL_EN, HELP_MANUAL_FR , sectionDuManuel} from '../src/help-content.js';
 import { S } from '../src/state.js';
-import { OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN } from '../src/constants.js';
+import { OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN,
+         ANIMAL_JOINT_DEFS, ANIMAL_LABELS_EN, EMOTIONS, FORMATS, GROUND_TYPE_DEFS, HAND_STATES,
+         JOINT_GROUPS, JOINT_LABELS, JOINT_LABELS_EN, POSE_HANDLES, POSITIONS, STYLES_3D } from '../src/constants.js';
+import { libelleAnimal3D, libelleArticulation3D, libelleTable3D, poseSliderSpecs3D } from '../src/utils.js';
 
 function makeTextNode(text) { return { nodeType: 3, textContent: text }; }
 function makeFakeParent(initialChildren = []) {
@@ -688,5 +691,74 @@ describe('OBJECT_TYPE_LABELS — les deux langues décrivent les mêmes types', 
       if (!m) return;   // le type « modele » n'a pas d'option : on n'ajoute pas un modèle par la liste
       assert.equal(m[1].replace(/^[^\w]+\s*/, ''), en, `« ${cle} » : deux noms anglais`);
     });
+  });
+});
+
+
+// ── Les tables de libellés de constants.js ────────────────────────────────────────────────────
+//
+// Ces tables alimentent des menus déroulants et des curseurs, pas des gabarits HTML : applyI18n ne
+// les voit pas. Rien, à l'exécution, ne signale un `labelEn` oublié — l'entrée s'affiche simplement
+// en français au milieu d'une interface anglaise, et personne ne le remarque avant un utilisateur.
+// D'où une vérification à la construction.
+describe('libellés bilingues — chaque entrée porte ses deux langues', () => {
+  const tables = {
+    FORMATS, STYLES_3D, EMOTIONS, HAND_STATES, POSITIONS, GROUND_TYPE_DEFS, JOINT_GROUPS,
+  };
+
+  Object.entries(tables).forEach(([nom, table]) => {
+    test(`${nom} : un labelEn non vide, distinct du français`, () => {
+      table.forEach(e => {
+        assert.ok(e.label && e.label.trim(), `${nom} : entrée sans label français`);
+        assert.ok(e.labelEn && e.labelEn.trim(), `${nom} : « ${e.label} » n'a pas de labelEn`);
+      });
+    });
+
+    test(`${nom} : libelleTable3D rend la langue demandée`, () => {
+      const enTete = table[0];
+      assert.equal(libelleTable3D(enTete, (en) => en), enTete.labelEn);
+      assert.equal(libelleTable3D(enTete, (en, fr) => fr), enTete.label);
+    });
+  });
+
+  test('JOINT_LABELS_EN couvre exactement les mêmes articulations que JOINT_LABELS', () => {
+    // Une clé absente d'un seul côté ferait retomber le curseur sur son identifiant technique
+    // (« lClavicle ») dans une langue et pas dans l'autre.
+    assert.deepEqual(Object.keys(JOINT_LABELS_EN).sort(), Object.keys(JOINT_LABELS).sort());
+    Object.entries(JOINT_LABELS_EN).forEach(([k, v]) =>
+      assert.ok(v && v.trim(), `libellé anglais vide pour « ${k} »`));
+  });
+
+  test('toute articulation citée par POSE_HANDLES ou JOINT_GROUPS a ses deux libellés', () => {
+    const ids = new Set([...POSE_HANDLES.map(d => d.id), ...JOINT_GROUPS.flatMap(g => g.ids)]);
+    ids.forEach(id => {
+      assert.ok(JOINT_LABELS[id], `${id} sans libellé français`);
+      assert.ok(JOINT_LABELS_EN[id], `${id} sans libellé anglais`);
+      assert.equal(libelleArticulation3D(id, (en) => en), JOINT_LABELS_EN[id]);
+    });
+  });
+
+  test('ANIMAL_LABELS_EN traduit CHAQUE mot d\'ANIMAL_JOINT_DEFS', () => {
+    // Le dictionnaire est indexé par le libellé français : un animal ajouté avec un mot inédit
+    // ressortirait en français au milieu des curseurs anglais, sans autre signe.
+    const mots = new Set();
+    Object.values(ANIMAL_JOINT_DEFS).forEach(groupes => groupes.forEach(g => {
+      mots.add(g.group);
+      g.joints.forEach(j => mots.add(j.label));
+    }));
+    const absents = [...mots].filter(m => !ANIMAL_LABELS_EN[m]);
+    assert.deepEqual(absents, [], `mots sans traduction : ${absents.join(', ')}`);
+    assert.equal(libelleAnimal3D('Genou', (en) => en), 'Knee');
+    assert.equal(libelleAnimal3D('Genou', (en, fr) => fr), 'Genou');
+  });
+
+  test('les suffixes de curseur suivent la langue, y compris celui porté par la poignée', () => {
+    // `suffixR` est le seul suffixe défini dans POSE_HANDLES plutôt que dans poseSliderSpecs3D :
+    // c'est aussi le seul qui pouvait rester français sans que le reste bouge.
+    const tete = POSE_HANDLES.find(d => d.id === 'head');
+    const enAnglais = poseSliderSpecs3D(tete, (en) => en).map(s => s.suffix);
+    const enFrancais = poseSliderSpecs3D(tete, (en, fr) => fr).map(s => s.suffix);
+    assert.deepEqual(enAnglais, [' (up/down)', ' (left/right)', ' (tilt)']);
+    assert.deepEqual(enFrancais, [' (haut/bas)', ' (gauche/droite)', ' (inclinaison)']);
   });
 });

@@ -67,7 +67,7 @@ import {
 
   hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
 
-  pageVoisine3D, nomNumeroteLibre3D, libelleTypeObjet3D,
+  pageVoisine3D, nomNumeroteLibre3D, libelleTypeObjet3D, libelleTable3D,
 } from './utils.js';
 import {
   S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr, isLockedScenePanel,
@@ -4694,11 +4694,25 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 // Serializes the value of all fields (inputs/selects/textarea, including the joint sliders
 // dynamically added to #jointSlidersContainer) of the given modal.
 
-EMOTIONS.forEach(em => {
-  const opt = document.createElement('option');
-  opt.value = em.key; opt.textContent = em.label;
-  personaEmotionSelect.appendChild(opt);
-});
+// Émotions et états de main : listes CONSTRUITES, donc invisibles pour applyI18n, qui ne parcourt
+// que le DOM écrit dans index.html. D'où deux fonctions rejouables plutôt que deux boucles au
+// chargement : `rafraichirListesTraduites` les rappelle à chaque changement de langue. Sans ça,
+// passer en anglais laissait « 😠 En colère » et « Tient une épée » dans deux menus déroulants.
+//
+// La valeur choisie est RELUE APRÈS reconstruction. Vider un <select> remet sa `value` à vide, et la
+// fiche ouverte se serait retrouvée sur « Neutre » au seul fait de changer de langue.
+export function buildPersonaEmotionOptions(){
+  if (!personaEmotionSelect) return;
+  const choisi = personaEmotionSelect.value;
+  personaEmotionSelect.innerHTML = '';
+  EMOTIONS.forEach(em => {
+    const opt = document.createElement('option');
+    opt.value = em.key; opt.textContent = libelleTable3D(em, tr);
+    personaEmotionSelect.appendChild(opt);
+  });
+  if (choisi) personaEmotionSelect.value = choisi;
+}
+buildPersonaEmotionOptions();
 // Fix 57 — le <select> Position vient de la BIBLIOTHÈQUE, plus de POSITIONS. Sans quoi renommer
 // « Assis » dans l'éditeur laisserait l'ancien nom ici, et les poses personnalisées resteraient
 // inaccessibles depuis la modale — deux listes de poses qui divergent.
@@ -4714,13 +4728,27 @@ export function buildPersonaPositionOptions(){
   });
 }
 buildPersonaPositionOptions();
-HAND_STATES.forEach(hs => {
+export function buildPersonaHandOptions(){
   [personaHandLSelect, personaHandRSelect].forEach(sel => {
-    const opt = document.createElement('option');
-    opt.value = hs.key; opt.textContent = hs.label;
-    sel.appendChild(opt);
+    if (!sel) return;
+    const choisi = sel.value;
+    sel.innerHTML = '';
+    HAND_STATES.forEach(hs => {
+      const opt = document.createElement('option');
+      opt.value = hs.key; opt.textContent = libelleTable3D(hs, tr);
+      sel.appendChild(opt);
+    });
+    if (choisi) sel.value = choisi;
   });
-});
+}
+buildPersonaHandOptions();
+
+// Toutes les listes bâties en JS que le changement de langue doit rejouer. Une seule fonction pour
+// que les trois appels à applyI18n de ce fichier n'aient pas à se souvenir de la liste.
+export function rafraichirListesTraduites(){
+  buildPersonaEmotionOptions();
+  buildPersonaHandOptions();
+}
 
 // The modal's "horizontal rotation" slider displays a more intuitive angle than the one stored
 // in obj.rotY: 0 (slider centered) = persona facing forward, dragging left/right rotates in the
@@ -4784,7 +4812,7 @@ descModalSave.onclick = () => {
     //
     // Écrit à la SAUVEGARDE, pas à l'application d'une pose : c'est le seul moment où l'on touche
     // l'Élément, et ça vaut donc aussi pour une pose choisie directement dans le <select>.
-    S.modalTarget.positionLabel = nameOfPose3D(personaPositionSelect.value, S.poses, POSITIONS);
+    S.modalTarget.positionLabel = nameOfPose3D(personaPositionSelect.value, S.poses, POSITIONS, tr);
     S.modalTarget.handL = personaHandLSelect.value;
     S.modalTarget.handR = personaHandRSelect.value;
     S.modalTarget.joints3d = cloneJoints(S.modalDraftJoints);
@@ -5182,7 +5210,7 @@ objectModalSave.onclick = () => {
       const champPose = document.getElementById('objectPoseField');
       if (selPose && champPose && champPose.style.display !== 'none' && selPose.value) {
         S.modalTarget.position = selPose.value;
-        S.modalTarget.positionLabel = nameOfPose3D(selPose.value, S.poses, POSITIONS);
+        S.modalTarget.positionLabel = nameOfPose3D(selPose.value, S.poses, POSITIONS, tr);
       }
     }
     // Walls have dedicated length/height fields (rather than the generic percentage, which resizes
@@ -6096,6 +6124,7 @@ themeSelect.addEventListener('change', () => {
 languageSelect.addEventListener('change', () => {
   S.appLang = languageSelect.value;
   applyI18n(S.appLang);
+  rafraichirListesTraduites();
   // Le manuel ouvert se retraduit aussi. applyI18n ne parcourt que le DOM écrit dans index.html ;
   // le contenu de la modale du manuel, lui, est rendu à l'ouverture depuis help-content.js, et
   // resterait donc en français sous une interface repassée en anglais — sans que rien à l'écran
@@ -6151,7 +6180,7 @@ async function loadAppSettings(){
   await loadPoseLibrary(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
   await loadDismissedPoses();
   buildPersonaPositionOptions();
-  if (!hasElectronAPI()) { applyI18n(S.appLang); return; }
+  if (!hasElectronAPI()) { applyI18n(S.appLang); rafraichirListesTraduites(); return; }
   try {
     const settings = await window.storyboarderAPI.getSettings();
     if (settings && typeof settings.autosaveIntervalMs === 'number') {
@@ -6174,6 +6203,7 @@ async function loadAppSettings(){
     console.warn('Unable to load settings:', err);
   }
   applyI18n(S.appLang);
+  rafraichirListesTraduites();
 }
 
 // ---------- START ----------

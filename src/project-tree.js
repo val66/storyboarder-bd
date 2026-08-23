@@ -17,7 +17,7 @@ import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
 import { listModels } from './model-store.js';
 import { groupModelsByUsage } from './model-library.js';
 import { resolveModelClick } from './model-usages.js';
-import { getFormat } from './utils.js';
+import { getFormat, libelleTable3D } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal } from './io.js';
 import { renderAll } from './draw.js';
 
@@ -117,7 +117,7 @@ export function renderTree(){
     const row = document.createElement('div');
     row.className = 'tome-row' + (ti === S.currentTomeIndex && !S.editingSceneId ? ' active' : '');
     const expanded = S.expandedVolumes.has(t.id);
-    row.innerHTML = `<span>${t.name} <small style="color:var(--sepia)">— ${getFormat(t.format).label.split(' (')[0]}</small></span><span class="caret">${expanded ? '▾' : '▸'}</span>`;
+    row.innerHTML = `<span>${t.name} <small style="color:var(--sepia)">— ${libelleTable3D(getFormat(t.format), tr).split(' (')[0]}</small></span><span class="caret">${expanded ? '▾' : '▸'}</span>`;
     row.onclick = () => {
       if (S.expandedVolumes.has(t.id)) S.expandedVolumes.delete(t.id); else S.expandedVolumes.add(t.id);
       renderTree();
@@ -137,7 +137,7 @@ export function renderTree(){
       const formatSelect = document.createElement('select');
       FORMATS.forEach(f => {
         const opt = document.createElement('option');
-        opt.value = f.key; opt.textContent = f.label;
+        opt.value = f.key; opt.textContent = libelleTable3D(f, tr);
         formatSelect.appendChild(opt);
       });
       formatSelect.value = t.format;

@@ -12,7 +12,7 @@
  */
 
 import {
-  JOINT_GROUPS, JOINT_LABELS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
+  JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
   PERSONA_SKELETON_3D, POSE_3D, POSE_HANDLES,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
@@ -22,6 +22,7 @@ import {
   nextDefaultPoseName3D, personaEditorPoseList3D, pointerSweepAngle3D, poseDragIsStraight3D,
   poseJointsByKey3D, posePickRadii3D, poseSliderSignature3D, poseSliderSpecs3D,
   poseSpecRotationAxis3D, poseUsageCount3D, readPoseSliderDeg3D, rememberDismissedPose3D,
+  libelleArticulation3D, libelleTable3D,
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
   writePoseSliderDeg3D,
 
@@ -483,7 +484,7 @@ export function personaEditorTitle3D(target, lang){
 
 export function personaEditorPoseLabel(){
   return resolvePoseLabel3D(
-    { position: S.personaEditorPoseKey, joints3d: S.personaEditorDraft }, S.poses);
+    { position: S.personaEditorPoseKey, joints3d: S.personaEditorDraft }, S.poses, tr);
 }
 
 // Fix 51 — écrit un angle du panneau dans le brouillon. Sépare l'écriture du DOM pour la même raison
@@ -796,7 +797,7 @@ export function buildPersonaEditorJointSlidersUI(){
     const details = document.createElement('details');
     details.className = 'joint-group-details';
     const summary = document.createElement('summary');
-    summary.textContent = g.label;
+    summary.textContent = libelleTable3D(g, tr);
     details.appendChild(summary);
     container.appendChild(details);
     g.ids.forEach(id => { personaEditorGroupOf[id] = details; });
@@ -818,9 +819,9 @@ export function buildPersonaEditorJointSlidersUI(){
   });
   POSE_HANDLES.forEach(def => {
     const target = personaEditorGroupOf[def.id] || container;
-    const label = JOINT_LABELS[def.id] || def.id;
+    const label = libelleArticulation3D(def.id, tr);
     personaEditorRowsOf[def.id] = personaEditorRowsOf[def.id] || [];
-    poseSliderSpecs3D(def).forEach(spec => {
+    poseSliderSpecs3D(def, tr).forEach(spec => {
       const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
         if (!setPersonaEditorJointDeg(spec, deg)) return;
         syncPersonaEditorActionButtons();

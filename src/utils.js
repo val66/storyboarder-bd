@@ -12,7 +12,7 @@
  */
 
 import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D,
-  OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN } from './constants.js';
+  OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN, ANIMAL_LABELS_EN, JOINT_LABELS, JOINT_LABELS_EN } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
@@ -89,22 +89,26 @@ export function jointsEqual3D(a, b, eps = 1e-9){
 // Même inversion que poseJointsByKey3D, et pour la même raison : les poses intégrées y sont semées
 // et deviennent renommables. Chercher d'abord dans POSITIONS ferait gagner le nom figé et annulerait
 // tout renommage de « Assis ».
-export function resolvePoseLabel3D(o, poses){
+export function resolvePoseLabel3D(o, poses, traduire){
+  const t = traduire || ((en, fr) => fr);
   const key = (o && o.position) || 'debout';
   const custom = Array.isArray(poses) ? poses.find(p => p && p.id === key) : null;
   const builtin = !custom ? POSITIONS.find(p => p.key === key) : null;
   const known = !!(custom || builtin);
   if (!known) {
     const shown = (o && o.positionLabel) || key;
-    return { key, known: false, modified: false, label: `${shown} (inconnue)` };
+    return { key, known: false, modified: false, label: `${shown} ${t('(unknown)', '(inconnue)')}` };
   }
 
   // Articulations de référence de cette pose. Sans joints3d, le Personnage EST la pose : rien à
   // signaler. Avec, on compare — c'est ce qui distingue « Assis » de « Assis (modifié) ».
   const reference = custom ? custom.joints : POSE_3D[key];
   const modified = !!(o && o.joints3d) && !!reference && !jointsEqual3D(o.joints3d, reference);
-  const base = custom ? custom.name : builtin.label;
-  return { key, known: true, modified, label: modified ? `${base} (modifié)` : base };
+  // Le nom d'une pose de bibliothèque est une DONNÉE (l'utilisateur l'a peut-être renommée) : il ne
+  // se traduit pas. Seul le libellé d'une pose intégrée suit la langue, et seuls les deux qualifieurs
+  // ajoutés ici — « (modifié) », « (inconnue) » — sont du texte d'interface.
+  const base = custom ? custom.name : libelleTable3D(builtin, traduire);
+  return { key, known: true, modified, label: modified ? `${base} ${t('(modified)', '(modifié)')}` : base };
 }
 
 // Fix 51 — descripteurs des curseurs d'une articulation.
@@ -123,15 +127,22 @@ export function resolvePoseLabel3D(o, poses){
 //
 // Les suffixes de libellé vivent ici plutôt que dans l'interface, pour la même raison : deux
 // panneaux qui nomment différemment le même axe seraient déroutants, et rien ne le rattraperait.
-export function poseSliderSpecs3D(def){
+//
+// `traduire` est OPTIONNEL, et son absence donne le français. Ce module ne peut pas importer
+// state.js (state.js importe utils.js : le cycle serait immédiat), donc la langue arrive par
+// paramètre, comme pour groupesPosables/libelleTypeObjet3D. Les appelants qui ne se servent pas du
+// suffixe — pose-bridge.js, poseSliderSignature3D — n'ont rien à passer.
+/** @param {any} def @param {(en:string,fr:string)=>string} [traduire] */
+export function poseSliderSpecs3D(def, traduire){
+  const t = traduire || ((en, fr) => fr);
   if (!def) return [];
   if (def.mode === 'hinge') {
     return [{ key: def.id, jointId: def.id, field: def.field, axis: null, suffix: '' }];
   }
   if (def.mode === 'hinge2') {
     return [
-      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: ' (haut/bas)' },
-      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: ' (gauche/droite)' },
+      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: t(' (up/down)', ' (haut/bas)') },
+      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: t(' (left/right)', ' (gauche/droite)') },
     ];
   }
   // TROIS AXES POUR UNE SEULE POIGNÉE.
@@ -148,14 +159,15 @@ export function poseSliderSpecs3D(def){
   // ici. Les CHAMPS persistés, eux, ne bougent pas : lWristRotZ reste lWristRotZ.
   if (def.mode === 'hinge3') {
     return [
-      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: ' (haut/bas)' },
-      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: ' (gauche/droite)' },
-      { key: def.id + ':r', jointId: def.id, field: def.fieldR, axis: null, suffix: def.suffixR || ' (torsion)' },
+      { key: def.id + ':v', jointId: def.id, field: def.fieldV, axis: null, suffix: t(' (up/down)', ' (haut/bas)') },
+      { key: def.id + ':h', jointId: def.id, field: def.fieldH, axis: null, suffix: t(' (left/right)', ' (gauche/droite)') },
+      { key: def.id + ':r', jointId: def.id, field: def.fieldR, axis: null,
+        suffix: def.suffixR ? t(def.suffixREn || def.suffixR, def.suffixR) : t(' (twist)', ' (torsion)') },
     ];
   }
   return [
-    { key: def.id + ':x', jointId: def.id, field: def.field, axis: 'x', suffix: ' (avant/arr.)' },
-    { key: def.id + ':z', jointId: def.id, field: def.field, axis: 'z', suffix: ' (écart)' },
+    { key: def.id + ':x', jointId: def.id, field: def.field, axis: 'x', suffix: t(' (fwd/back)', ' (avant/arr.)') },
+    { key: def.id + ':z', jointId: def.id, field: def.field, axis: 'z', suffix: t(' (spread)', ' (écart)') },
   ];
 }
 
@@ -716,12 +728,12 @@ export function nextDefaultPoseName3D(poses){
 // Même ordre que partout : la bibliothèque fait autorité, les intégrées servent de filet. Renvoie
 // null si la pose est introuvable — écrire un nom inventé serait pire que ne rien écrire, puisque ce
 // champ ne sert qu'à dire ce qu'ON A VU la dernière fois.
-export function nameOfPose3D(key, poses, builtins){
+export function nameOfPose3D(key, poses, builtins, traduire){
   if (!key) return null;
   const custom = (Array.isArray(poses) ? poses : []).find(p => p && p.id === key);
   if (custom) return custom.name || null;
   const builtin = (Array.isArray(builtins) ? builtins : []).find(p => p && p.key === key);
-  return (builtin && builtin.label) || null;
+  return (builtin && libelleTable3D(builtin, traduire)) || null;
 }
 
 export function poseJointsByKey3D(key, poseTable, poses){
@@ -740,10 +752,10 @@ export function poseJointsByKey3D(key, poseTable, poses){
 //
 // Une clé sans angles dans la table est ignorée : elle donnerait une entrée inapplicable. ⚠️ Appeler
 // APRÈS le chargement de draw.js, qui complète POSE_3D avec 'allonge' et 'vaincu' (cf. Fix 54).
-export function seedPoseLibrary3D(builtins, poseTable, skeleton){
+export function seedPoseLibrary3D(builtins, poseTable, skeleton, traduire){
   return (builtins || [])
     .filter(p => p && p.key && poseTable && poseTable[p.key])
-    .map(p => makePose3D(p.key, p.label, poseTable[p.key], skeleton));
+    .map(p => makePose3D(p.key, libelleTable3D(p, traduire), poseTable[p.key], skeleton));
 }
 
 // Fusionne des poses entrantes (celles embarquées dans un fichier projet) dans la bibliothèque.
@@ -790,10 +802,10 @@ export function rememberDismissedPose3D(dismissed, id){
 // « Absente » et non « différente » : une pose intégrée que l'utilisateur a RENOMMÉE est présente,
 // donc pas concernée. Restaurer ne peut ainsi jamais lui faire perdre un renommage — c'est un
 // comblement de trous, pas une remise à zéro d'usine.
-export function missingBuiltinPoses3D(builtins, poseTable, library, skeleton){
+export function missingBuiltinPoses3D(builtins, poseTable, library, skeleton, traduire){
   const présents = new Set((Array.isArray(library) ? library : [])
     .map(p => p && p.id).filter(Boolean));
-  return seedPoseLibrary3D(builtins, poseTable, skeleton).filter(p => !présents.has(p.id));
+  return seedPoseLibrary3D(builtins, poseTable, skeleton, traduire).filter(p => !présents.has(p.id));
 }
 
 // Retire des ids de la liste des suppressions mémorisées. Sans quoi une pose restaurée serait
@@ -1175,4 +1187,56 @@ export function libelleTypeObjet3D(objType, traduire){
   const en = OBJECT_TYPE_LABELS_EN[objType];
   const fr = OBJECT_TYPE_LABELS[objType];
   return (en || fr) ? t(en || fr, fr || en) : undefined;
+}
+
+
+/**
+ * Le libellé d'une entrée de table de constantes, dans la langue courante.
+ *
+ * Une entrée porte `label` (français) et `labelEn` (anglais) — cf. l'en-tête de FORMATS dans
+ * constants.js. Cette fonction est le SEUL endroit qui connaît cette convention : les écrans
+ * appellent `libelleTable3D(entrée, tr)` sans savoir comment les deux langues sont rangées.
+ *
+ * Le repli est symétrique et volontairement silencieux : une entrée à qui il manque une langue
+ * s'affiche dans l'autre plutôt que « undefined ». C'est le test de parité de
+ * tests/i18n.test.mjs qui interdit ce manque, pas l'affichage — un libellé absent doit se
+ * voir à la construction, pas devenir un trou dans l'interface de l'utilisateur.
+ *
+ * @param {{label?:string, labelEn?:string}|null|undefined} entree
+ * @param {(en:string,fr:string)=>string} [traduire]
+ */
+export function libelleTable3D(entree, traduire){
+  if (!entree) return undefined;
+  // Sans traducteur, le FRANÇAIS — c'est la langue du champ `label`, celui qui existe toujours.
+  // L'application passe toujours `tr` ; ce repli ne sert qu'aux appels de test.
+  const t = traduire || ((en, fr) => fr);
+  const fr = entree.label, en = entree.labelEn;
+  return (en || fr) ? t(en || fr, fr || en) : undefined;
+}
+
+/**
+ * Le nom d'une articulation du Personnage intégré, dans la langue courante.
+ *
+ * Renvoie l'identifiant technique quand il n'a pas de libellé — c'est le repli qu'avaient déjà les
+ * deux panneaux de curseurs (`JOINT_LABELS[def.id] || def.id`), et le conserver garde un curseur
+ * nommé plutôt qu'un curseur vide si une articulation est ajoutée sans son mot.
+ */
+export function libelleArticulation3D(jointId, traduire){
+  const t = traduire || ((en) => en);
+  const en = JOINT_LABELS_EN[jointId], fr = JOINT_LABELS[jointId];
+  return (en || fr) ? t(en || fr, fr || en) : String(jointId || '');
+}
+
+/**
+ * Le nom d'un groupe ou d'une articulation d'Animal, dans la langue courante.
+ *
+ * Indexé par le libellé FRANÇAIS, qui fait ici office de clé (cf. ANIMAL_LABELS_EN). Un mot absent
+ * du dictionnaire ressort tel quel, en français : mieux vaut un libellé non traduit qu'un curseur
+ * anonyme.
+ */
+export function libelleAnimal3D(labelFr, traduire){
+  const t = traduire || ((en) => en);
+  const fr = String(labelFr || '');
+  const en = ANIMAL_LABELS_EN[fr];
+  return en ? t(en, fr) : fr;
 }

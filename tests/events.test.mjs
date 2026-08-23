@@ -1135,7 +1135,15 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
     setPersonaEditorJointDeg(torso, 88);
     const info = personaEditorPoseLabel();
     assert.equal(info.modified, true, 'retouchée');
-    assert.match(info.label, /modifié/, 'et l\'utilisateur en est informé');
+    // Le qualifieur suit la LANGUE, le nom de la pose aussi. Les deux sont vérifiés : n'en épingler
+    // qu'un laisserait passer l'oubli du traducteur dans l'autre moitié de l'étiquette.
+    const langue = S.appLang;
+    try {
+      S.appLang = 'fr';
+      assert.match(personaEditorPoseLabel().label, /^🪑 Assis \(modifié\)$/, 'informé, en français');
+      S.appLang = 'en';
+      assert.match(personaEditorPoseLabel().label, /^🪑 Sitting \(modified\)$/, 'et en anglais');
+    } finally { S.appLang = langue; }
     assert.equal(S.personaEditorPoseKey, 'assis', 'la provenance est conservée, pas effacée');
   });
 
@@ -1262,7 +1270,13 @@ describe('éditeur de Personnage — bibliothèque en écriture (Fix 55)', () =>
     deletePersonaEditorPose(pose.id);
     const info = personaEditorPoseLabel();
     assert.equal(info.known, false);
-    assert.match(info.label, /inconnue/);
+    const langue = S.appLang;
+    try {
+      S.appLang = 'fr';
+      assert.match(personaEditorPoseLabel().label, /\(inconnue\)$/);
+      S.appLang = 'en';
+      assert.match(personaEditorPoseLabel().label, /\(unknown\)$/);
+    } finally { S.appLang = langue; }
     assert.equal(S.personaEditorPoseKey, pose.id, 'la provenance est conservée, pas effacée');
   });
 

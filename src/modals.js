@@ -24,7 +24,7 @@ import { S, currentPage, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
 import { modelState, getLoadedModel } from './model-cache.js';
 import {
-  ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS, JOINT_LABELS,
+  ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
   POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
@@ -37,6 +37,7 @@ import {
   personaEditorPoseList3D, poseJointsByKey3D,
 
   optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
+  libelleAnimal3D, libelleArticulation3D, libelleTable3D,
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
@@ -320,7 +321,7 @@ function ensurePoseOptionExists(select, obj){
   opt.value = unknown;
   // Le nom EXACT est conservé comme valeur : c'est lui qui sera réécrit à la sauvegarde, et il doit
   // survivre intact pour que le projet se répare si sa bibliothèque de poses revient un jour.
-  opt.textContent = `${unknown} (inconnue)`;
+  opt.textContent = `${unknown} ${tr('(unknown)', '(inconnue)')}`;
   select.appendChild(opt);
   syntheticPoseOption = { select, option: opt };
 }
@@ -525,7 +526,7 @@ export function buildAnimalJointSlidersUI(objType){
     const details = document.createElement('details');
     details.className = 'joint-group-details';
     const summary = document.createElement('summary');
-    summary.textContent = groupDef.group;
+    summary.textContent = libelleAnimal3D(groupDef.group, tr);
     details.appendChild(summary);
     container.appendChild(details);
 
@@ -553,7 +554,7 @@ export function buildAnimalJointSlidersUI(objType){
                        && S.modalDraftAnimalJoints[jDef.id][jDef.axis]) || 0;
       const initDeg = Math.round(initRad * 180 / Math.PI);
 
-      const ref = makeAnimalJointRangeRow(details, jDef.label, minDeg, maxDeg, initDeg, (deg) => {
+      const ref = makeAnimalJointRangeRow(details, libelleAnimal3D(jDef.label, tr), minDeg, maxDeg, initDeg, (deg) => {
         const rad = deg * Math.PI / 180;
         if (!S.modalDraftAnimalJoints) S.modalDraftAnimalJoints = {};
         if (!S.modalDraftAnimalJoints[jDef.id]) S.modalDraftAnimalJoints[jDef.id] = {};
@@ -1329,7 +1330,7 @@ export function buildRoomFloorTypeGrid(currentType) {
     btn.type = 'button';
     btn.className = 'sol-ground-btn' + (def.id === currentType ? ' active' : '');
     btn.dataset.floorType = def.id;
-    btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${def.label}`;
+    btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${libelleTable3D(def, tr)}`;
     btn.addEventListener('mousedown', e => {
       e.preventDefault();
       grid.querySelectorAll('.sol-ground-btn').forEach(b => b.classList.remove('active'));
@@ -1490,7 +1491,7 @@ export function buildTerrainTypeGrid(currentType){
   GROUND_TYPE_DEFS.forEach(def => {
     const btn = document.createElement('button');
     btn.className = 'sol-ground-btn' + (def.id === currentType ? ' active' : '');
-    btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${def.label}`;
+    btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${libelleTable3D(def, tr)}`;
     btn.addEventListener('mousedown', (e) => {
       e.preventDefault();
       S.terrainModalType = def.id;
@@ -1630,7 +1631,7 @@ export function buildJointSlidersUI(){
     const details = document.createElement('details');
     details.className = 'joint-group-details';
     const summary = document.createElement('summary');
-    summary.textContent = g.label;
+    summary.textContent = libelleTable3D(g, tr);
     details.appendChild(summary);
     container.appendChild(details);
     g.ids.forEach(id => { jointGroupDetailsById[id] = details; });
@@ -1655,9 +1656,9 @@ export function buildJointSlidersUI(){
   // la répétait une deuxième fois.
   POSE_HANDLES.forEach(def => {
     const target = jointGroupDetailsById[def.id] || container;
-    const label = JOINT_LABELS[def.id] || def.id;
+    const label = libelleArticulation3D(def.id, tr);
     (jointRowsById[def.id] = jointRowsById[def.id] || []);
-    poseSliderSpecs3D(def).forEach(spec => {
+    poseSliderSpecs3D(def, tr).forEach(spec => {
       const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
         if (!S.modalDraftJoints) return;
         writePoseSliderDeg3D(S.modalDraftJoints, spec, deg);

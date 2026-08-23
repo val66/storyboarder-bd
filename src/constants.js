@@ -10,45 +10,50 @@
 // ══════════════════════════════════════════════════════════════
 // PAGE FORMATS & RENDER STYLES
 // ══════════════════════════════════════════════════════════════
+// LIBELLÉS BILINGUES — `label` porte le français, `labelEn` l'anglais, et c'est
+// `libelleTable3D(entrée, tr)` (src/utils.js) qui choisit. Le champ EN est à CÔTÉ de l'entrée plutôt
+// que dans une table parallèle : une entrée ajoutée sans sa traduction se voit à la ligne près, et
+// tests/i18n.test.mjs refuse un `labelEn` manquant. Ce qui est persisté reste la CLÉ (`key`,
+// `id`), jamais le libellé — traduire une étiquette ne peut donc pas abîmer un Projet.
 export const FORMATS = [
-  {key:'fb', label:'Franco-Belge (220×290mm)', w:550, h:725, scale:4, mmW:220},
-  {key:'us', label:'Comics US (170×260mm)', w:480, h:735, scale:4, mmW:170},
-  {key:'webtoon', label:'Webtoon vertical (800×1280px)', w:400, h:640, scale:2, mmW:400 * 25.4 / 96},
-  {key:'custom', label:'Format personnalisé', w:480, h:660, scale:3, mmW:480 * 25.4 / 96},
+  {key:'fb', label:'Franco-Belge (220×290mm)', labelEn:'Franco-Belgian (220×290mm)', w:550, h:725, scale:4, mmW:220},
+  {key:'us', label:'Comics US (170×260mm)', labelEn:'US comics (170×260mm)', w:480, h:735, scale:4, mmW:170},
+  {key:'webtoon', label:'Webtoon vertical (800×1280px)', labelEn:'Vertical webtoon (800×1280px)', w:400, h:640, scale:2, mmW:400 * 25.4 / 96},
+  {key:'custom', label:'Format personnalisé', labelEn:'Custom format', w:480, h:660, scale:3, mmW:480 * 25.4 / 96},
 ];
 
 // 3D rendering style of Elements (personas, objects, plants...), settable per Volume just like
 // its Format. Only one style exists for now ("Simplifié" = the current Three.js primitive-based
 // rendering); others can be added later without changing the selection mechanics below.
 export const STYLES_3D = [
-  { key: 'simplifie', label: 'Simplifié' },
+  { key: 'simplifie', label: 'Simplifié', labelEn: 'Simplified' },
 ];
 
 
 // ── Character emotions, poses, hand states ──────────────────────
 export const EMOTIONS = [
-  {key:'neutre', label:'😐 Neutre'},
-  {key:'content', label:'🙂 Content'},
-  {key:'triste', label:'🙁 Triste'},
-  {key:'colere', label:'😠 En colère'},
-  {key:'surpris', label:'😮 Surpris'},
-  {key:'rire', label:'😂 Rire'},
-  {key:'degout', label:'🤢 Dégoût'},
-  {key:'fier', label:'😏 Fier'},
-  {key:'peur', label:'😨 Peur'},
-  {key:'confus', label:'😕 Confus'},
-  {key:'fatigue', label:'😪 Fatigué'},
+  {key:'neutre', label:'😐 Neutre', labelEn:'😐 Neutral'},
+  {key:'content', label:'🙂 Content', labelEn:'🙂 Happy'},
+  {key:'triste', label:'🙁 Triste', labelEn:'🙁 Sad'},
+  {key:'colere', label:'😠 En colère', labelEn:'😠 Angry'},
+  {key:'surpris', label:'😮 Surpris', labelEn:'😮 Surprised'},
+  {key:'rire', label:'😂 Rire', labelEn:'😂 Laughing'},
+  {key:'degout', label:'🤢 Dégoût', labelEn:'🤢 Disgusted'},
+  {key:'fier', label:'😏 Fier', labelEn:'😏 Proud'},
+  {key:'peur', label:'😨 Peur', labelEn:'😨 Afraid'},
+  {key:'confus', label:'😕 Confus', labelEn:'😕 Confused'},
+  {key:'fatigue', label:'😪 Fatigué', labelEn:'😪 Tired'},
 ];
 
 export const HAND_STATES = [
-  { key: 'ouverte', label: 'Ouverte' },
-  { key: 'fermee', label: 'Fermée' },
-  { key: 'pointe', label: 'Pointe du doigt' },
-  { key: 'sphere', label: 'Tient une sphère' },
-  { key: 'baton', label: 'Tient un bâton' },
-  { key: 'batonLong', label: 'Tient un long bâton (au milieu)' },
-  { key: 'epee', label: 'Tient une épée' },
-  { key: 'smartphone', label: 'Tient un smartphone' },
+  { key: 'ouverte', label: 'Ouverte', labelEn: 'Open' },
+  { key: 'fermee', label: 'Fermée', labelEn: 'Closed' },
+  { key: 'pointe', label: 'Pointe du doigt', labelEn: 'Pointing' },
+  { key: 'sphere', label: 'Tient une sphère', labelEn: 'Holding a sphere' },
+  { key: 'baton', label: 'Tient un bâton', labelEn: 'Holding a stick' },
+  { key: 'batonLong', label: 'Tient un long bâton (au milieu)', labelEn: 'Holding a long staff (in the middle)' },
+  { key: 'epee', label: 'Tient une épée', labelEn: 'Holding a sword' },
+  { key: 'smartphone', label: 'Tient un smartphone', labelEn: 'Holding a smartphone' },
 ];
 
 // Les poses PROPOSÉES. Cette liste pilote deux choses, et deux seulement : le sélecteur de pose, et
@@ -67,13 +72,18 @@ export const HAND_STATES = [
 // POSE_3D est donc le dernier recours, et il ne se vide pas. Ajouter une clé ici la propose ;
 // l'enlever cesse de la proposer sans rien casser. Le test de docs/pose-library.md épingle le sens
 // de l'inclusion : POSITIONS ⊆ POSE_3D, jamais l'égalité.
+// ⚠️ CES LIBELLÉS-LÀ DEVIENNENT DES DONNÉES. Le semis de la bibliothèque (seedPoseLibrary3D) COPIE
+// le libellé dans le `name` de la pose, qui est ensuite persisté et renommable. Changer de langue
+// après le semis ne renomme donc pas une bibliothèque déjà écrite : « 🧍 Debout » reste tel quel, et
+// c'est voulu — renommer d'office écraserait le nom que l'utilisateur a pu choisir. Seuls le semis
+// d'une installation neuve et le repli de nameOfPose3D suivent la langue.
 export const POSITIONS = [
-  {key:'debout', label:'🧍 Debout'},
-  {key:'assis', label:'🪑 Assis'},
-  {key:'allonge', label:'🛌 Allongé'},
-  {key:'course', label:'🏃 Course'},
-  {key:'accroupi', label:'🥷 Accroupi / furtif'},
-  {key:'genoux', label:'🛡️ À genoux'},
+  {key:'debout', label:'🧍 Debout', labelEn:'🧍 Standing'},
+  {key:'assis', label:'🪑 Assis', labelEn:'🪑 Sitting'},
+  {key:'allonge', label:'🛌 Allongé', labelEn:'🛌 Lying down'},
+  {key:'course', label:'🏃 Course', labelEn:'🏃 Running'},
+  {key:'accroupi', label:'🥷 Accroupi / furtif', labelEn:'🥷 Crouching / stealth'},
+  {key:'genoux', label:'🛡️ À genoux', labelEn:'🛡️ Kneeling'},
 ];
 
 
@@ -475,9 +485,11 @@ export const POSE_HANDLES = [
   // sans possibilité de se tourner. Un personnage ne pouvait donc pas regarder de côté autrement
   // qu'en pivotant l'Élément entier.
   { id: 'head', group: 'headGroup', mode: 'hinge3',
-    fieldV: 'headRotX', fieldH: 'headRotY', fieldR: 'headRotZ', suffixR: ' (inclinaison)' },
+    fieldV: 'headRotX', fieldH: 'headRotY', fieldR: 'headRotZ',
+    suffixR: ' (inclinaison)', suffixREn: ' (tilt)' },
   { id: 'torso', group: 'torsoGroup', mode: 'hinge3',
-    fieldV: 'torsoRotX', fieldH: 'torsoRotY', fieldR: 'torsoRotZ', suffixR: ' (inclinaison)' },
+    fieldV: 'torsoRotX', fieldH: 'torsoRotY', fieldR: 'torsoRotZ',
+    suffixR: ' (inclinaison)', suffixREn: ' (tilt)' },
   { id: 'lShoulder', group: 'lShoulder', mode: 'ball', field: 'lShoulder' },
   { id: 'rShoulder', group: 'rShoulder', mode: 'ball', field: 'rShoulder' },
   // Elbow: flexion (up/down, rotation.x, as before) + left/right rotation (rotation.y)
@@ -540,20 +552,20 @@ export const GROUND_TYPE_DEFS = [
   // dispBias = -dispScale*0.5 centers the displacement around GROUND_Y_DEFAULT_3D (applied in applyGroundType)
   // repeat: GROUND_PLANE_SIZE_3D=12000u → repeat=9600 gives a tile≈1.25u, repeat=1200 gives a tile≈10u.
   // The previous values (20-160) gave 75-600u tiles, hence the blurry look that was observed.
-  { id: 'neutre',    label: 'Neutre',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1,    dispScale: 0    },
-  { id: 'herbe',     label: 'Herbe',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600, dispScale: 2.5  },
-  { id: 'gazon',     label: 'Gazon',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200, dispScale: 0.5  },
-  { id: 'terre',     label: 'Terre',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000, dispScale: 4.5  },
-  { id: 'sable',     label: 'Sable',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600, dispScale: 3.0  },
-  { id: 'gravier',   label: 'Gravier',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800, dispScale: 2.0  },
-  { id: 'bitume',    label: 'Bitume',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600, dispScale: 0.35 },
-  { id: 'béton',     label: 'Béton',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800, dispScale: 0.30 },
-  { id: 'neige',     label: 'Neige',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000, dispScale: 2.0  },
-  { id: 'eau',       label: 'Eau',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000, dispScale: 0.9  },
-  { id: 'carrelage', label: 'Carrelage',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400, dispScale: 0.12 },
-  { id: 'plancher',  label: 'Plancher bois', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800, dispScale: 0.18 },
-  { id: 'marbre',    label: 'Marbre',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200, dispScale: 0.08 },
-  { id: 'moquette',  label: 'Moquette',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800, dispScale: 0.15 },
+  { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1,    dispScale: 0    },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600, dispScale: 2.5  },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200, dispScale: 0.5  },
+  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000, dispScale: 4.5  },
+  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600, dispScale: 3.0  },
+  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800, dispScale: 2.0  },
+  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600, dispScale: 0.35 },
+  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800, dispScale: 0.30 },
+  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000, dispScale: 2.0  },
+  { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000, dispScale: 0.9  },
+  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400, dispScale: 0.12 },
+  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800, dispScale: 0.18 },
+  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200, dispScale: 0.08 },
+  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800, dispScale: 0.15 },
 ];
 
 
@@ -569,6 +581,30 @@ export const OBJECT_3D_W = 260, OBJECT_3D_H = 175;
 // ── Animal rig types & joint definitions ────────────────────────
 // ─── Animal joint system ─────────────────────────────────────────
 export const ANIMAL_TYPES = ['oiseau', 'lezard', 'loup', 'griffon', 'singe'];
+
+// Traduction des libellés d'ANIMAL_JOINT_DEFS, indexée par le libellé FRANÇAIS.
+//
+// Un dictionnaire français → anglais, et non un `labelEn` sur chaque entrée comme ailleurs dans ce
+// fichier : les cinq animaux répètent les mêmes trente mots (« Hanche », « Genou », « Patte AV-G »)
+// sur soixante lignes. Doubler chaque ligne rendrait la table illisible pour trente traductions
+// distinctes, et chaque ajout d'animal en redemanderait autant. La contrepartie est assumée : deux
+// libellés français identiques ne peuvent pas recevoir deux traductions différentes — ce qui est
+// exactement ce qu'on veut ici, « Genou » se traduit pareil chez le loup et chez le lézard.
+//
+// tests/i18n.test.mjs vérifie que CHAQUE libellé de la table y figure : un animal ajouté sans
+// ses mots échoue à la construction, pas à l'affichage.
+export const ANIMAL_LABELS_EN = {
+  'Tête': 'Head', 'Tête / Cou': 'Head / Neck', 'Cou': 'Neck', 'Queue': 'Tail',
+  'Aile gauche': 'Left wing', 'Aile droite': 'Right wing', 'Aile G': 'Wing L', 'Aile D': 'Wing R',
+  'Patte AV-G': 'Front leg L', 'Patte AV-D': 'Front leg R',
+  'Patte AR-G': 'Hind leg L', 'Patte AR-D': 'Hind leg R',
+  'Jambe G': 'Leg L', 'Jambe D': 'Leg R', 'Bras gauche': 'Left arm', 'Bras droit': 'Right arm',
+  'Hanche': 'Hip', 'Genou': 'Knee',
+  'Hanche G': 'Hip L', 'Genou G': 'Knee L', 'Hanche D': 'Hip R', 'Genou D': 'Knee R',
+  'Épaule G': 'Shoulder L', 'Coude G': 'Elbow L', 'Épaule D': 'Shoulder R', 'Coude D': 'Elbow R',
+  'Racine': 'Root', 'Milieu': 'Middle', 'Pointe': 'Tip', 'Base': 'Base',
+  'Racine G': 'Root L', 'Pointe G': 'Tip L', 'Racine D': 'Root R', 'Pointe D': 'Tip R',
+};
 
 // Slider definitions per animal: { group, joints:[{ id, label, axis, min, max }] }
 export const ANIMAL_JOINT_DEFS = {
@@ -829,18 +865,33 @@ export const JOINT_LABELS = {
   lFoot: 'Pied gauche', rFoot: 'Pied droit',
 };
 
+// Miroir anglais de JOINT_LABELS. Une table parallèle plutôt qu'un champ `labelEn` : JOINT_LABELS
+// est un dictionnaire id → chaîne, pas une liste d'entrées, et le doubler garde les deux langues
+// lisibles côte à côte. tests/i18n.test.mjs exige les MÊMES clés des deux côtés.
+export const JOINT_LABELS_EN = {
+  head: 'Head', torso: 'Torso',
+  lShoulder: 'Left shoulder', rShoulder: 'Right shoulder',
+  lElbow: 'Left elbow', rElbow: 'Right elbow',
+  lHip: 'Left hip', rHip: 'Right hip',
+  lKnee: 'Left knee', rKnee: 'Right knee',
+  lWrist: 'Left wrist', rWrist: 'Right wrist',
+  neck: 'Neck',
+  lClavicle: 'Left collarbone', rClavicle: 'Right collarbone',
+  lFoot: 'Left foot', rFoot: 'Right foot',
+};
+
 // Grouping of joints by body area, to collapse the list into dropdown
 // menus rather than showing every slider flat.
 // L'ORDRE EST ANATOMIQUE, du tronc vers l'extrémité — c'est aussi celui des modèles importés
 // (cf. SLOT_GROUPS dans src/skeleton-map.js), pour que les deux écrans se lisent pareil : la
 // clavicule avant l'épaule, la cheville après le genou, le cou sous la tête.
 export const JOINT_GROUPS = [
-  { key: 'tete', label: 'Tête', ids: ['neck', 'head'] },
-  { key: 'torse', label: 'Torse', ids: ['torso'] },
-  { key: 'brasG', label: 'Bras gauche', ids: ['lClavicle', 'lShoulder', 'lElbow', 'lWrist'] },
-  { key: 'brasD', label: 'Bras droit', ids: ['rClavicle', 'rShoulder', 'rElbow', 'rWrist'] },
-  { key: 'jambeG', label: 'Jambe gauche', ids: ['lHip', 'lKnee', 'lFoot'] },
-  { key: 'jambeD', label: 'Jambe droite', ids: ['rHip', 'rKnee', 'rFoot'] },
+  { key: 'tete', label: 'Tête', labelEn: 'Head', ids: ['neck', 'head'] },
+  { key: 'torse', label: 'Torse', labelEn: 'Torso', ids: ['torso'] },
+  { key: 'brasG', label: 'Bras gauche', labelEn: 'Left arm', ids: ['lClavicle', 'lShoulder', 'lElbow', 'lWrist'] },
+  { key: 'brasD', label: 'Bras droit', labelEn: 'Right arm', ids: ['rClavicle', 'rShoulder', 'rElbow', 'rWrist'] },
+  { key: 'jambeG', label: 'Jambe gauche', labelEn: 'Left leg', ids: ['lHip', 'lKnee', 'lFoot'] },
+  { key: 'jambeD', label: 'Jambe droite', labelEn: 'Right leg', ids: ['rHip', 'rKnee', 'rFoot'] },
 ];
 
 export const PERSONA_PREVIEW_PAN_SENS = 0.0055;

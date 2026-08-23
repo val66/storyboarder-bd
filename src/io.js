@@ -121,7 +121,7 @@ export async function loadPoseLibrary(builtins, poseTable, skeleton){
     } catch { stored = null; }
   }
   if (Array.isArray(stored)) { S.poses = normalizePoses3D(stored); return S.poses; }
-  return setPoseLibrary(seedPoseLibrary3D(builtins, poseTable, skeleton));
+  return setPoseLibrary(seedPoseLibrary3D(builtins, poseTable, skeleton, tr));
 }
 
 // Fix 59 — charge la liste des suppressions mémorisées. Séparée de loadPoseLibrary : elle n'a pas
@@ -145,7 +145,7 @@ export async function loadDismissedPoses(){
 // Lève aussi leur mémorisation de suppression, sans quoi elles seraient réécartées au premier projet
 // ouvert : restaurées à l'écran, puis disparues sans explication.
 export function restoreBuiltinPoses(builtins, poseTable, skeleton){
-  const manquantes = missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton);
+  const manquantes = missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton, tr);
   if (!manquantes.length) return 0;
   setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), ...manquantes]);
   setDismissedPoses(forgetDismissedPoses3D(S.dismissedPoses, manquantes.map(p => p.id)));
@@ -154,7 +154,7 @@ export function restoreBuiltinPoses(builtins, poseTable, skeleton){
 
 // Combien de poses intégrées manquent — pour l'étiquette du bouton, qui se désactive à zéro.
 export function missingBuiltinPoseCount(builtins, poseTable, skeleton){
-  return missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton).length;
+  return missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton, tr).length;
 }
 
 // Derives the Project name from the file name the user picked in the save dialog

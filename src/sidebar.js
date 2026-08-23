@@ -19,7 +19,7 @@ import {
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
   WALL_TYPES,
 } from './constants.js';
-import { clamp, getEmotion, pxPerMm } from './utils.js';
+import { clamp, getEmotion, libelleTable3D, pxPerMm } from './utils.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
@@ -844,7 +844,7 @@ function updateSidePanelImpl(){
       GROUND_TYPE_DEFS.forEach(def => {
         const btn = document.createElement('button');
         btn.className = 'sol-ground-btn' + (def.id === currentGroundType ? ' active' : '');
-        btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${def.label}`;
+        btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${libelleTable3D(def, tr)}`;
         // mousedown rather than click: window.addEventListener('mouseup') calls drawCurrentPage()
         // on EVERY mouseup, which rebuilds the buttons (sideGroundGrid.innerHTML='') before
         // the click is emitted — Chromium doesn't fire click on a DOM-detached node.
