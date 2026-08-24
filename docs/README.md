@@ -37,6 +37,7 @@ down.
 | Document | Subject |
 |---|---|
 | [character-editor.md](character-editor.md) | Character editor: settled decisions and breakdown (tasks #229 to #237). |
+| [creature-rigs.md](creature-rigs.md) | Non-humanoid rigs: corpus, measured defects, plan (tasks #358 to #362). |
 
 ---
 
