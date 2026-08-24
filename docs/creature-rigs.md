@@ -210,9 +210,18 @@ Recorded so they are neither relitigated nor forgotten.
 
 **#363, the CAT convention.** Measured, independent of everything else. The starting point.
 
-**#364, the fixtures.** Pin the raptor and the three centaurs, and add each bone's **rest position**
-to every fixture. They carry only `{i, name, children}` today, deliberately, so tests run without
-Three; a position is test data, not persisted data.
+**#364, the fixtures. DONE.** Raptor and the three centaurs pinned, and every bone now carries its
+world **rest position**, `t: [x, y, z]`, at relative precision. A position is test data, not
+persisted data: it enters no Project file.
+
+Extraction became a tool, `tools/make-skeleton-fixture.mjs`, because redoing twelve files by hand
+always ends with one of them drifting. It **preserves** the `origine` field, hand-written and absent
+from the `.glb`, and it **refuses** to rewrite a fixture whose exact source it cannot find, bone by
+bone: `.glb` files are not versioned, so a file with the same name is not necessarily the same file.
+
+⚠️ **Two fixtures have no positions**, `mixamo` and `vroid-alt`, whose `.glb` files are no longer in
+the user's folder. The refusal above did its job, and that is the right behaviour. No consequence
+for now: both are humanoids, recognised by name.
 
 **#365, the naming vocabulary**, with its priority table. Known defect to fix: on centaur3 finger
 words outrank leg words, and `CATRigLLeg1` is proposed as "Arm".

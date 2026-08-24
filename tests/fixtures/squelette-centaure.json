@@ -6,6 +6,11 @@
    "name": "_rootJoint",
    "children": [
     17
+   ],
+   "t": [
+    -24.6826,
+    9.46726,
+    -4.09098
    ]
   },
   {
@@ -15,6 +20,11 @@
     18,
     72,
     77
+   ],
+   "t": [
+    -189.762,
+    133.448,
+    166.563
    ]
   },
   {
@@ -22,6 +32,11 @@
    "name": "mixamorig:Spine_02",
    "children": [
     19
+   ],
+   "t": [
+    -189.762,
+    157.418,
+    166.422
    ]
   },
   {
@@ -29,6 +44,11 @@
    "name": "mixamorig:Spine1_03",
    "children": [
     20
+   ],
+   "t": [
+    -189.762,
+    185.382,
+    166.257
    ]
   },
   {
@@ -38,6 +58,11 @@
     21,
     24,
     48
+   ],
+   "t": [
+    -189.762,
+    217.342,
+    166.069
    ]
   },
   {
@@ -45,6 +70,11 @@
    "name": "mixamorig:Neck_05",
    "children": [
     22
+   ],
+   "t": [
+    -189.762,
+    253.296,
+    165.857
    ]
   },
   {
@@ -52,18 +82,33 @@
    "name": "mixamorig:Head_06",
    "children": [
     23
+   ],
+   "t": [
+    -189.762,
+    267.602,
+    174.246
    ]
   },
   {
    "i": 23,
    "name": "mixamorig:HeadTop_End_07",
-   "children": []
+   "children": [],
+   "t": [
+    -189.762,
+    305.422,
+    196.424
+   ]
   },
   {
    "i": 24,
    "name": "mixamorig:LeftShoulder_08",
    "children": [
     25
+   ],
+   "t": [
+    -177.501,
+    248.948,
+    165.777
    ]
   },
   {
@@ -71,6 +116,11 @@
    "name": "mixamorig:LeftArm_09",
    "children": [
     26
+   ],
+   "t": [
+    -153.201,
+    240.234,
+    165.616
    ]
   },
   {
@@ -78,6 +128,11 @@
    "name": "mixamorig:LeftForeArm_010",
    "children": [
     27
+   ],
+   "t": [
+    -129.515,
+    205.127,
+    161.183
    ]
   },
   {
@@ -89,6 +144,11 @@
     36,
     40,
     44
+   ],
+   "t": [
+    -110.27,
+    183.358,
+    165.893
    ]
   },
   {
@@ -96,6 +156,11 @@
    "name": "mixamorig:LeftHandThumb1_012",
    "children": [
     29
+   ],
+   "t": [
+    -107.237,
+    176.035,
+    175.629
    ]
   },
   {
@@ -103,6 +168,11 @@
    "name": "mixamorig:LeftHandThumb2_013",
    "children": [
     30
+   ],
+   "t": [
+    -104.81,
+    170.176,
+    183.417
    ]
   },
   {
@@ -110,18 +180,33 @@
    "name": "mixamorig:LeftHandThumb3_014",
    "children": [
     31
+   ],
+   "t": [
+    -104.822,
+    165.632,
+    189.971
    ]
   },
   {
    "i": 31,
    "name": "mixamorig:LeftHandThumb4_015",
-   "children": []
+   "children": [],
+   "t": [
+    -103.62,
+    161.59,
+    193.533
+   ]
   },
   {
    "i": 32,
    "name": "mixamorig:LeftHandIndex1_016",
    "children": [
     33
+   ],
+   "t": [
+    -95.5571,
+    164.937,
+    179.383
    ]
   },
   {
@@ -129,6 +214,11 @@
    "name": "mixamorig:LeftHandIndex2_017",
    "children": [
     34
+   ],
+   "t": [
+    -91.8343,
+    157.512,
+    180.497
    ]
   },
   {
@@ -136,18 +226,33 @@
    "name": "mixamorig:LeftHandIndex3_018",
    "children": [
     35
+   ],
+   "t": [
+    -89.4388,
+    150.059,
+    182.13
    ]
   },
   {
    "i": 35,
    "name": "mixamorig:LeftHandIndex4_019",
-   "children": []
+   "children": [],
+   "t": [
+    -86.8792,
+    144.569,
+    183.047
+   ]
   },
   {
    "i": 36,
    "name": "mixamorig:LeftHandMiddle1_020",
    "children": [
     37
+   ],
+   "t": [
+    -95.0134,
+    158.615,
+    173.298
    ]
   },
   {
@@ -155,6 +260,11 @@
    "name": "mixamorig:LeftHandMiddle2_021",
    "children": [
     38
+   ],
+   "t": [
+    -91.8872,
+    151.718,
+    173.751
    ]
   },
   {
@@ -162,18 +272,33 @@
    "name": "mixamorig:LeftHandMiddle3_022",
    "children": [
     39
+   ],
+   "t": [
+    -89.0216,
+    144.82,
+    174.314
    ]
   },
   {
    "i": 39,
    "name": "mixamorig:LeftHandMiddle4_023",
-   "children": []
+   "children": [],
+   "t": [
+    -85.5527,
+    140.101,
+    174.06
+   ]
   },
   {
    "i": 40,
    "name": "mixamorig:LeftHandRing1_024",
    "children": [
     41
+   ],
+   "t": [
+    -99.779,
+    159.815,
+    166.699
    ]
   },
   {
@@ -181,6 +306,11 @@
    "name": "mixamorig:LeftHandRing2_025",
    "children": [
     42
+   ],
+   "t": [
+    -96.2845,
+    152.945,
+    167.27
    ]
   },
   {
@@ -188,18 +318,33 @@
    "name": "mixamorig:LeftHandRing3_026",
    "children": [
     43
+   ],
+   "t": [
+    -93.0093,
+    145.827,
+    168.005
    ]
   },
   {
    "i": 43,
    "name": "mixamorig:LeftHandRing4_027",
-   "children": []
+   "children": [],
+   "t": [
+    -89.7256,
+    140.631,
+    168.176
+   ]
   },
   {
    "i": 44,
    "name": "mixamorig:LeftHandPinky1_028",
    "children": [
     45
+   ],
+   "t": [
+    -102.196,
+    157.933,
+    160.949
    ]
   },
   {
@@ -207,6 +352,11 @@
    "name": "mixamorig:LeftHandPinky2_029",
    "children": [
     46
+   ],
+   "t": [
+    -100.172,
+    151.524,
+    160.605
    ]
   },
   {
@@ -214,18 +364,33 @@
    "name": "mixamorig:LeftHandPinky3_030",
    "children": [
     47
+   ],
+   "t": [
+    -98.8744,
+    146.453,
+    160.484
    ]
   },
   {
    "i": 47,
    "name": "mixamorig:LeftHandPinky4_031",
-   "children": []
+   "children": [],
+   "t": [
+    -97.9276,
+    142.579,
+    160.398
+   ]
   },
   {
    "i": 48,
    "name": "mixamorig:RightShoulder_032",
    "children": [
     49
+   ],
+   "t": [
+    -202.022,
+    248.948,
+    165.937
    ]
   },
   {
@@ -233,6 +398,11 @@
    "name": "mixamorig:RightArm_033",
    "children": [
     50
+   ],
+   "t": [
+    -226.322,
+    240.234,
+    166.098
    ]
   },
   {
@@ -240,6 +410,11 @@
    "name": "mixamorig:RightForeArm_034",
    "children": [
     51
+   ],
+   "t": [
+    -250.008,
+    205.127,
+    160.954
    ]
   },
   {
@@ -251,6 +426,11 @@
     60,
     64,
     68
+   ],
+   "t": [
+    -269.253,
+    183.358,
+    165.759
    ]
   },
   {
@@ -258,6 +438,11 @@
    "name": "mixamorig:RightHandThumb1_036",
    "children": [
     53
+   ],
+   "t": [
+    -272.924,
+    176.201,
+    175.26
    ]
   },
   {
@@ -265,6 +450,11 @@
    "name": "mixamorig:RightHandThumb2_037",
    "children": [
     54
+   ],
+   "t": [
+    -275.861,
+    170.475,
+    182.86
    ]
   },
   {
@@ -272,18 +462,33 @@
    "name": "mixamorig:RightHandThumb3_038",
    "children": [
     55
+   ],
+   "t": [
+    -275.436,
+    166.103,
+    189.505
    ]
   },
   {
    "i": 55,
    "name": "mixamorig:RightHandThumb4_039",
-   "children": []
+   "children": [],
+   "t": [
+    -277.178,
+    162.476,
+    194.408
+   ]
   },
   {
    "i": 56,
    "name": "mixamorig:RightHandIndex1_040",
    "children": [
     57
+   ],
+   "t": [
+    -285.596,
+    163.866,
+    179.82
    ]
   },
   {
@@ -291,6 +496,11 @@
    "name": "mixamorig:RightHandIndex2_041",
    "children": [
     58
+   ],
+   "t": [
+    -288.581,
+    156.323,
+    180.446
    ]
   },
   {
@@ -298,18 +508,33 @@
    "name": "mixamorig:RightHandIndex3_042",
    "children": [
     59
+   ],
+   "t": [
+    -290.514,
+    149.203,
+    181.401
    ]
   },
   {
    "i": 59,
    "name": "mixamorig:RightHandIndex4_043",
-   "children": []
+   "children": [],
+   "t": [
+    -292.352,
+    143.649,
+    181.996
+   ]
   },
   {
    "i": 60,
    "name": "mixamorig:RightHandMiddle1_044",
    "children": [
     61
+   ],
+   "t": [
+    -283.595,
+    161.329,
+    172.921
    ]
   },
   {
@@ -317,6 +542,11 @@
    "name": "mixamorig:RightHandMiddle2_045",
    "children": [
     62
+   ],
+   "t": [
+    -287.422,
+    153.731,
+    173.627
    ]
   },
   {
@@ -324,18 +554,33 @@
    "name": "mixamorig:RightHandMiddle3_046",
    "children": [
     63
+   ],
+   "t": [
+    -290.749,
+    145.846,
+    174.613
    ]
   },
   {
    "i": 63,
    "name": "mixamorig:RightHandMiddle4_047",
-   "children": []
+   "children": [],
+   "t": [
+    -294.844,
+    140.25,
+    174.631
+   ]
   },
   {
    "i": 64,
    "name": "mixamorig:RightHandRing1_048",
    "children": [
     65
+   ],
+   "t": [
+    -279.642,
+    160.099,
+    166.764
    ]
   },
   {
@@ -343,6 +588,11 @@
    "name": "mixamorig:RightHandRing2_049",
    "children": [
     66
+   ],
+   "t": [
+    -283.806,
+    152.904,
+    167.305
    ]
   },
   {
@@ -350,18 +600,33 @@
    "name": "mixamorig:RightHandRing3_050",
    "children": [
     67
+   ],
+   "t": [
+    -287.075,
+    145.968,
+    168.118
    ]
   },
   {
    "i": 67,
    "name": "mixamorig:RightHandRing4_051",
-   "children": []
+   "children": [],
+   "t": [
+    -290.391,
+    140.661,
+    168.426
+   ]
   },
   {
    "i": 68,
    "name": "mixamorig:RightHandPinky1_052",
    "children": [
     69
+   ],
+   "t": [
+    -276.626,
+    161.142,
+    160.965
    ]
   },
   {
@@ -369,6 +634,11 @@
    "name": "mixamorig:RightHandPinky2_053",
    "children": [
     70
+   ],
+   "t": [
+    -279.324,
+    153.662,
+    160.904
    ]
   },
   {
@@ -376,18 +646,33 @@
    "name": "mixamorig:RightHandPinky3_054",
    "children": [
     71
+   ],
+   "t": [
+    -281.133,
+    147.432,
+    161.052
    ]
   },
   {
    "i": 71,
    "name": "mixamorig:RightHandPinky4_055",
-   "children": []
+   "children": [],
+   "t": [
+    -282.976,
+    142.926,
+    160.921
+   ]
   },
   {
    "i": 72,
    "name": "mixamorig:LeftUpLeg_00",
    "children": [
     73
+   ],
+   "t": [
+    -163.367,
+    120.14,
+    166.092
    ]
   },
   {
@@ -395,6 +680,11 @@
    "name": "mixamorig:LeftLeg_056",
    "children": [
     74
+   ],
+   "t": [
+    -163.753,
+    70.7287,
+    155.134
    ]
   },
   {
@@ -402,6 +692,11 @@
    "name": "mixamorig:LeftFoot_057",
    "children": [
     75
+   ],
+   "t": [
+    -172.521,
+    32.0434,
+    177.105
    ]
   },
   {
@@ -409,18 +704,33 @@
    "name": "mixamorig:LeftToeBase_058",
    "children": [
     76
+   ],
+   "t": [
+    -176.114,
+    11.1602,
+    198.586
    ]
   },
   {
    "i": 76,
    "name": "mixamorig:LeftToe_End_059",
-   "children": []
+   "children": [],
+   "t": [
+    -177.558,
+    10.4134,
+    207.907
+   ]
   },
   {
    "i": 77,
    "name": "mixamorig:RightUpLeg_060",
    "children": [
     78
+   ],
+   "t": [
+    -216.156,
+    120.14,
+    164.946
    ]
   },
   {
@@ -428,6 +738,11 @@
    "name": "mixamorig:RightLeg_061",
    "children": [
     79
+   ],
+   "t": [
+    -215.77,
+    70.7287,
+    155.166
    ]
   },
   {
@@ -435,6 +750,11 @@
    "name": "mixamorig:RightFoot_062",
    "children": [
     80
+   ],
+   "t": [
+    -207.002,
+    32.0434,
+    178.549
    ]
   },
   {
@@ -442,12 +762,22 @@
    "name": "mixamorig:RightToeBase_063",
    "children": [
     81
+   ],
+   "t": [
+    -203.409,
+    11.1602,
+    198.712
    ]
   },
   {
    "i": 81,
    "name": "mixamorig:RightToe_End_064",
-   "children": []
+   "children": [],
+   "t": [
+    -201.965,
+    10.4135,
+    208.069
+   ]
   }
  ]
 }

@@ -2,7 +2,7 @@
  * tests/skeleton-creatures.test.mjs, la reconnaissance face à ce qui n'est pas humanoïde.
  *
  * CE FICHIER N'ÉPINGLE PAS UN COMPORTEMENT CORRECT. Il épingle le comportement ACTUEL, fautes
- * comprises, sur huit créatures réelles fournies par l'utilisateur. C'est un filet, pas un satisfecit.
+ * comprises, sur DOUZE créatures réelles fournies par l'utilisateur. C'est un filet, pas un satisfecit.
  *
  * POURQUOI ÉCRIRE DES TESTS QUI CONSACRENT DES ERREURS. La reconnaissance a été écrite pour des
  * humanoïdes et le dit. Confrontée à un cerbère ou à une araignée, elle ne se contente pas
@@ -15,7 +15,7 @@
  * LES SIX SQUELETTES HUMANOÏDES restent dans skeleton-map.test.mjs, et eux ne doivent pas bouger.
  * C'est la contrainte de non-régression du chantier.
  *
- * CE QUE CES HUIT FICHIERS APPRENNENT, et qu'aucun montage n'aurait donné :
+ * CE QUE CES FICHIERS APPRENNENT, et qu'aucun montage n'aurait donné :
  *
  *   1. la règle de la PAIRE LATÉRALE tient, elle ne boucle simplement pas. L'araignée porte quatre
  *      paires successives, une par segment de corps ; on n'en retient que deux ;
@@ -27,17 +27,26 @@
  *      quadrupède : une patte avant chez le cerbère, une oreille chez le chien ;
  *   5. le nom ne peut PAS décider avant/arrière. Le cerbère nomme ses pattes avant `UpperArm`, le
  *      chien les nomme `FrontUpperLeg`. Seule la structure, donc l'ancre, peut trancher ;
- *   6. les chaînes réelles sont longues. Patte arrière du dragon : 9 segments. On s'arrête à 3.
+ *   6. les chaînes réelles sont longues. Patte arrière du dragon : 9 segments. On s'arrête à 3 ;
+ *   7. (#364) un BIPÈDE peut avoir le tronc horizontal. Le raptor sort à 112° là où les bipèdes
+ *      mesuraient 149 à 164°, ce qui a tué le critère d'angle : il mesurait « tronc vertical » ;
+ *   8. (#364) la COLONNE BIFURQUÉE existe pour de bon, centaure1 et centaure3, ce dernier portant
+ *      littéralement deux `Hub` sur son tronc. La doc l'annonçait absente du corpus ;
+ *   9. (#364) un fichier peut ne PAS CONTENIR l'information. L'arrière-train de centaure2 n'est pas
+ *      riggé : aucune règle n'inventera les os manquants.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { inferSkeletonMap, membresDuSquelette3D, SLOTS } from '../src/skeleton-map.js';
+import { inferSkeletonMap, membresDuSquelette3D, coteDuNom, SLOTS } from '../src/skeleton-map.js';
 
 const charger = (nom) => {
   const d = JSON.parse(readFileSync(new URL(`fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
-  return d.os.map(o => ({ id: o.i, name: o.name, children: o.children }));
+  // `t`, la position de repos en monde, est transportée telle quelle. `membresDuSquelette3D` ne la
+  // lit pas et ne doit pas la lire : elle ne sert qu'au classement par archétype (tâche #366), qui
+  // est une couche AU-DESSUS de la décomposition. Un champ de plus ne change rien à celle-ci.
+  return d.os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
 };
 
 /** La carte réduite à ce qui est rempli : `{ emplacement: nom d'os }`. */
@@ -452,5 +461,183 @@ describe('étape 3 : la longueur NE sépare PAS, mesuré', () => {
     const vraisMembres = ['thigh_l', 'thigh_r', 'clavicle_l', 'clavicle_r', 'Wing1.L', 'Wing1.R',
       'ThighBase.L', 'ThighBase.R', 'FrontUpperLeg.L', 'BackShoulder.L'];
     vraisMembres.forEach(n => assert.ok(!trouves.includes(n), `${n} est tombé dans le filet`));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES QUATRE CRÉATURES DE LA TÂCHE #364, et ce que chacune a démenti ou apporté.
+//
+// Elles n'ont pas été ajoutées pour grossir le corpus. Chacune a changé une décision : le raptor a
+// tué le critère d'angle, centaure1 et centaure3 ont apporté la colonne bifurquée que la doc
+// déclarait absente, centaure3 a imposé la sixième convention de nommage, et centaure2 a montré un
+// mode d'échec qu'aucune reconnaissance ne rattrapera.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('raptor : le bipède qui a démenti le critère d\'angle', () => {
+  const os = charger('raptor');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+
+  test('deux paires et une queue démesurée', () => {
+    const lat = r.membres.filter(m => m.cote);
+    assert.equal(lat.length, 4, 'deux pattes et deux bras');
+    const centrales = r.membres.filter(m => !m.cote).map(m => m.segments.length);
+    assert.ok(centrales.includes(14), 'la queue fait 14 os, la plus longue chaîne centrale du corpus');
+  });
+
+  test('LE FICHIER QUI A TUÉ LE CRITÈRE D\'ANGLE', () => {
+    // Deux bandes semblaient nettes sur les onze premiers modèles, bipèdes 149 à 164°, quadrupèdes
+    // 87 à 102°. Le raptor sort à 112° et 122°, PILE DANS LE TROU, et c'est un bipède. Le critère
+    // ne mesurait pas « bipède », il mesurait « tronc vertical », et le raptor a le tronc
+    // horizontal. Le repli sur le rapport de longueurs échoue aussi (worker_j 2,51, labrador 3,42).
+    //
+    // Ce test n'épingle pas un angle, il épingle la STRUCTURE qui rend le critère indécidable :
+    // deux paires, comme un quadrupède, comme un humanoïde, comme un oiseau. Voir
+    // docs/creature-rigs.md, section « Deux hypothèses énoncées avec assurance, et démenties ».
+    assert.equal(r.membres.filter(m => m.cote).length, 4,
+      'même signature topologique qu\'un quadrupède : c\'est tout le problème');
+  });
+
+  test('aucun os ne porte de mot anatomique', () => {
+    // `Bone.034.L`, `Bone.020.R`. Le vocabulaire de nommage (tâche #365) rendra ZÉRO sur ce
+    // fichier, et c'est la moitié de l'histoire qu'il faut garder : la couverture de 54 % mesurée
+    // sur le corpus n'est pas un dégradé, c'est un interrupteur par fichier.
+    const ANATOMIQUE = /thigh|calf|shin|foot|hand|head|neck|tail|wing|arm|leg/i;
+    const parlants = os.filter(o => ANATOMIQUE.test(o.name));
+    assert.deepEqual(parlants, [], 'un os parlant est apparu, la mesure de #365 est à refaire');
+    assert.ok(parId.get(r.membres[0].segments[0]).name.startsWith('Bone.'));
+  });
+});
+
+describe('centaure1 : LA COLONNE BIFURQUÉE, enfin', () => {
+  const os = charger('centaure1');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+  const surTronc = r.membres.filter(m => m.cote && r.tronc.indexOf(m.ancre) >= 0 && m.segments.length >= 4);
+
+  test('trois paires sur trois ancres successives du tronc', () => {
+    // La doc annonçait ce cas comme NON COUVERT, le centaure Mixamo du corpus étant riggé en
+    // bipède. Celui-ci l'apporte pour de bon : pattes arrière au pelvis, pattes avant à spine_02,
+    // bras humains au chest. Un tronc, trois étages, six membres.
+    assert.equal(surTronc.length, 6);
+    assert.equal(new Set(surTronc.map(m => m.ancre)).size, 3, 'trois ancres distinctes');
+    const ancres = [...new Set(surTronc.map(m => r.tronc.indexOf(m.ancre)))].sort((a, b) => a - b);
+    assert.deepEqual(ancres.map((v, k) => v > (ancres[k - 1] ?? -1)), [true, true, true],
+      'et elles se suivent le long du tronc');
+  });
+
+  test('MÊME SIGNATURE QUE LE GRIFFON, et c\'est pourquoi l\'archétype est proposé', () => {
+    // Trois paires : exactement ce que porte le griffon intégré (quatre pattes plus deux ailes).
+    // Rien dans la structure ne distingue « bras humains » de « ailes ». C'est la raison pour
+    // laquelle Centaure et Quadrupède ailé sont des archétypes PROPOSÉS et non détectés.
+    assert.equal(surTronc.length, 6, 'trois paires, comme le griffon');
+  });
+
+  test('des accessoires riggés sont des membres au sens de la décomposition', () => {
+    // `weapon`, `quiver`, `arrow`. La décomposition ne filtre rien, délibérément : ce sont bien des
+    // branches du squelette. C'est à l'écran de correspondance de les décocher.
+    const noms = r.membres.map(m => parId.get(m.segments[0]).name);
+    assert.ok(noms.some(n => n.startsWith('weapon')), 'l\'arme doit apparaître, pas être écartée');
+    assert.ok(noms.some(n => n.startsWith('quiver')));
+  });
+});
+
+describe('centaure2 : ce qu\'aucune reconnaissance ne rattrapera', () => {
+  const os = charger('centaure2');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+
+  test('UNE SEULE paire dans tout le fichier, et l\'arrière-train est une chaîne', () => {
+    // L'arrière-train n'est pas riggé : `LowerBody1` est une chaîne CENTRALE de 7 os, pas quatre
+    // pattes. Le fichier ne contient tout simplement pas l'information. Un centaure qui se lit
+    // comme un buste humain sur une queue.
+    //
+    // CONSIGNÉ POUR QU'ON NE CHERCHE PAS À LE CORRIGER. Ce n'est pas un défaut de la
+    // reconnaissance ; aucune règle ne peut inventer des os absents. Le refuge « Complexe » est la
+    // seule réponse honnête, et la modale doit le proposer sans prétendre avoir compris.
+    assert.equal(r.membres.filter(m => m.cote).length, 2, 'les bras, et rien d\'autre');
+    const bas = r.membres.find(m => parId.get(m.segments[0]).name.startsWith('LowerBody'));
+    assert.ok(bas, 'l\'arrière-train doit être là');
+    assert.equal(bas.cote, null, 'et sans côté, puisque ce n\'est pas une paire');
+    assert.equal(bas.segments.length, 7);
+  });
+});
+
+describe('centaure3 : le fichier qui a imposé la sixième convention', () => {
+  const os = charger('centaure3');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+  const nom = (id) => parId.get(id).name;
+
+  test('le côté se lit, et sans lui il n\'y avait RIEN', () => {
+    // Avant la tâche #363, `coteDuNom` rendait null sur les 79 os : aucun côté, donc aucune paire,
+    // donc zéro membre latéral. Ce test relie les deux tâches : si quelqu'un retire la convention
+    // CAT de skeleton-map.js, c'est ici que la conséquence se voit, sur un vrai fichier.
+    assert.equal(coteDuNom('CATRigLLeg1_065'), 'g');
+    assert.equal(r.membres.filter(m => m.cote).length, 6, 'trois paires');
+  });
+
+  test('DEUX `Hub`, deux colonnes : la bifurcation à l\'état explicite', () => {
+    const hubs = r.tronc.map(nom).filter(n => n.includes('Hub'));
+    assert.deepEqual(hubs, ['CATRigHub001_01', 'CATRigHub002_07'],
+      'le tronc traverse les deux hubs, et c\'est ce qui fait un centaure');
+    const parAncre = new Map();
+    r.membres.filter(m => m.cote).forEach(m => parAncre.set(nom(m.ancre), (parAncre.get(nom(m.ancre)) || 0) + 1));
+    assert.deepEqual([...parAncre.entries()], [
+      ['CATRigHub001_01', 2],   // pattes arrière du cheval
+      ['CATRigHub002_07', 2],   // pattes avant du cheval
+      ['Pecho_011', 2],         // bras humains, « pecho » = poitrine
+    ]);
+  });
+
+  test('la queue est sur le PREMIER hub, pas sur le second', () => {
+    // Détail qui a son importance pour l'archétype Centaure : la queue s'ancre sur le bassin
+    // animal, pas sur le buste. Une table d'emplacements qui la rattacherait au tronc humain
+    // produirait une queue qui pivote depuis les épaules.
+    const queue = r.membres.find(m => nom(m.segments[0]).startsWith('CATRigTail'));
+    assert.equal(nom(queue.ancre), 'CATRigHub001_01');
+    assert.equal(queue.cote, null);
+  });
+});
+
+describe('les fixtures portent la position de repos de chaque os (#364)', () => {
+  // POURQUOI CE CHAMP EXISTE. Le classement par archétype (#366) a besoin de géométrie, ne
+  // serait-ce que pour constater qu'elle ne tranche pas. Les fixtures ne portaient jusqu'ici que
+  // `{i, name, children}`, délibérément, pour que la suite tourne sans Three ni WebGL. Une
+  // position de repos est une donnée de TEST, pas une donnée persistée : elle n'entre dans aucun
+  // fichier de Projet et ne relève donc pas de la règle de non-renommage.
+  //
+  // Les positions sont en MONDE, au repos, à précision relative (`toPrecision(6)`). Aucune
+  // normalisation : la fixture reste une réduction fidèle du `.glb`, et ramener à l'échelle est
+  // une décision du code.
+  const avecPositions = ['cerbere', 'araignee', 'kraken', 'serpent', 'dragon', 'chien', 'oiseau',
+    'centaure', 'unreal', 'maison', 'vrm', 'raptor', 'centaure1', 'centaure2', 'centaure3'];
+
+  avecPositions.forEach(nom => {
+    test(`${nom} : chaque os a trois coordonnées finies`, () => {
+      const os = charger(nom);
+      os.forEach(o => {
+        assert.ok(Array.isArray(o.t) && o.t.length === 3, `${o.name} n'a pas de position`);
+        o.t.forEach(v => assert.ok(Number.isFinite(v), `${o.name} a une coordonnée non finie`));
+      });
+      // Un squelette entier au même point signalerait une accumulation de matrices ratée, le
+      // défaut le plus probable de l'extracteur et le plus silencieux.
+      const distincts = new Set(os.map(o => o.t.join(',')));
+      assert.ok(distincts.size > os.length / 2, 'les os se superposent, l\'extraction est fausse');
+    });
+  });
+
+  test('DEUX FIXTURES N\'EN ONT PAS, et il faut le savoir', () => {
+    // `mixamo` et `vroid-alt` viennent de `.glb` que l'utilisateur n'a plus dans son dossier. Le
+    // générateur REFUSE de réécrire une fixture dont il ne retrouve pas la source exacte, ce qui
+    // est le bon comportement : les `.glb` ne sont pas versionnés, et un fichier du même nom n'est
+    // pas forcément le même fichier.
+    //
+    // Sans conséquence pour l'instant : ce sont deux humanoïdes, reconnus par le NOM, et le
+    // classement par archétype n'a pas besoin de leur géométrie. À reprendre si ces deux fichiers
+    // réapparaissent.
+    ['mixamo', 'vroid-alt'].forEach(nom => {
+      assert.equal(charger(nom)[0].t, undefined, `${nom} a gagné des positions, mettre à jour ce test`);
+    });
   });
 });

@@ -218,10 +218,19 @@ Consignées pour n'être ni rediscutées ni oubliées.
 
 **#363, la convention CAT.** Mesurée, indépendante de tout le reste. Point de départ.
 
-**#364, les fixtures.** Épingler raptor et les trois centaures, et ajouter à toutes les fixtures la
-**position de repos** de chaque os. Elles ne portent aujourd'hui que `{i, name, children}`,
-délibérément, pour tester sans Three ; une position est une donnée de test, pas une donnée
-persistée.
+**#364, les fixtures. FAITE.** Raptor et les trois centaures épinglés, et chaque os porte désormais
+sa **position de repos** en monde, `t: [x, y, z]`, à précision relative. Une position est une donnée
+de test, pas une donnée persistée : elle n'entre dans aucun fichier de Projet.
+
+L'extraction est devenue un outil, `tools/make-skeleton-fixture.mjs`, parce que reprendre douze
+fichiers à la main finit toujours par en faire diverger un. Il **préserve** le champ `origine`,
+écrit à la main et absent du `.glb`, et il **refuse** de réécrire une fixture dont il ne retrouve
+pas la source exacte, os par os : les `.glb` ne sont pas versionnés, donc un fichier du même nom
+n'est pas forcément le même fichier.
+
+⚠️ **Deux fixtures n'ont pas de positions**, `mixamo` et `vroid-alt`, dont les `.glb` ne sont plus
+dans le dossier de l'utilisateur. Le refus ci-dessus a joué, et c'est le bon comportement. Sans
+conséquence pour l'instant : ce sont deux humanoïdes, reconnus par le nom.
 
 **#365, le vocabulaire de nommage.** Avec sa table de priorité. Défaut connu à corriger : sur
 centaur3, les mots de doigt l'emportent sur les mots de patte, et `CATRigLLeg1` est proposé comme
