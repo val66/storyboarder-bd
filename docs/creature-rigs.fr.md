@@ -3,7 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.30.
+> À jour de la v1.4.32.
 
 ## Où l'on en est
 
@@ -16,7 +16,8 @@ Face à une créature, elle ne se contente pas d'échouer, elle **se trompe** : 
 dix-huit emplacements avec ce qu'elle trouve. Sur un cerbère, `tete` reçoit une patte avant et les
 bras reçoivent les deux têtes latérales.
 
-L'étape 1 est faite. Les cinq suivantes sont ouvertes, dans l'ordre où elles se conditionnent.
+Les étapes 1 et 2 sont faites. Les quatre suivantes sont ouvertes, dans l'ordre où elles se
+conditionnent.
 
 ## Le corpus
 
@@ -45,27 +46,46 @@ ce qui est juste et ce qui ne l'est pas. Toute évolution se mesure contre ces h
 Une seule correction de code y a été faite, parce qu'elle relevait du nom seul : `coteDuNom` lit
 désormais `l101` / `r301`, la convention du kraken.
 
-## Étape 2 : N chaînes au lieu de deux paires
+## Étape 2 : N chaînes au lieu de deux paires (faite)
 
-Tâche #358. La reconnaissance rend une **liste de membres** au lieu d'une carte de dix-huit cases :
-`{ ancre, côté, rang, segments }`. Toutes les paires latérales de chaque ancre, ordonnées le long
-de l'axe de l'ancre pour que « patte 1 » soit l'avant. Puis les chaînes sans côté qui ne sont pas la
-colonne : queue, têtes supplémentaires.
+Tâche #358, livrée en v1.4.32. `membresDuSquelette3D` décompose un squelette en un **tronc** et des
+**membres** `{ ancre, côté, rang, segments }`, sans présupposé de morphologie.
 
-L'humanoïde devient un cas particulier, reconnu quand la forme correspond. C'est ce qui garantit la
-non-régression.
+La règle est l'ancienne retournée. Le fichier savait que le nom est fiable pour le côté et pour lui
+seul ; on en tirait « deux branches de côtés opposés forment une paire ». On en tire son complément,
+qui vaut partout : **une branche qui porte un côté est un membre, une branche qui n'en porte pas
+continue le tronc**.
 
-Deux défauts mesurés relèvent de cette étape : la mauvaise tête chez le cerbère et le chien, causée
-par la descente « branche la plus profonde », et `poitrine` qui reçoit un tentacule chez le kraken,
-causée par « la colonne est la plus grosse branche restante ».
+Ce que la mesure donne sur le corpus :
+
+| | avant | après |
+|---|---|---|
+| cerbère | `tete` = une patte avant | tronc jusqu'à `Head`, 7 membres dont la queue et les 3 têtes |
+| araignée | 2 pattes sur 8 | 8 pattes sur 4 ancres, plus 3 paires d'appendices buccaux |
+| kraken | 0, puis 2 tentacules | 8 tentacules, 4 rangs sur une seule ancre |
+| serpent | rien | un tronc de 86 os |
+| dragon | patte tronquée à 3 os | patte 9, aile 7, queue 8 |
+| mixamo, centaure | 18 emplacements | exactement 4 membres, rien d'inventé |
+
+Elle NE FILTRE RIEN, et c'est délibéré. Sur le rig Unreal elle rend 185 membres, dont 131 de deux
+os : chaînes de torsion et correctifs. Ce bruit est consigné plutôt qu'écarté par un seuil inventé,
+et il donne son critère à l'étape 3 : la longueur sépare nettement les quatre vrais membres, de 6 à
+10 os, du reste.
 
 ## Étape 3 : chaînes de longueur variable
 
-Tâche #359. Un membre n'est plus trois emplacements mais N segments. Mesuré sur le dragon : patte
-arrière 9 segments, queue 8, cou 7 en comptant mâchoire et langue.
+Tâche #359. `membresDuSquelette3D` rend déjà les chaînes entières ; reste à décider ce qu'on en
+montre. Mesuré sur le dragon : patte arrière 9 segments, queue 8, cou 7 en comptant mâchoire et
+langue.
 
 Il faudra distinguer la **chaîne principale** de ses extrémités. Neuf curseurs par patte fois quatre
 pattes est inutilisable, et un orteil ne mérite pas le même statut qu'un fémur.
+
+Deux questions y sont renvoyées, mesurées à l'étape 2. Le **bruit des gros rigs**, 131 chaînes de
+deux os sur le rig Unreal. Et les **chaînes d'aide à l'animation**, `IK`, `Pole`, `Target`,
+`neutral_bone`, présentes chez le dragon et le chien : les écarter demande de se fier au nom pour
+EXCLURE, alors qu'il ne sert jusqu'ici qu'à CONFIRMER. Ce renversement mérite d'être décidé, pas
+glissé.
 
 ## Étape 4 : écran de correspondance généré
 

@@ -33,7 +33,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { inferSkeletonMap, SLOTS } from '../src/skeleton-map.js';
+import { inferSkeletonMap, membresDuSquelette3D, SLOTS } from '../src/skeleton-map.js';
 
 const charger = (nom) => {
   const d = JSON.parse(readFileSync(new URL(`fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
@@ -236,5 +236,156 @@ describe('ce que le corpus couvre, et ce qu\'il ne couvre pas', () => {
         return racines.length > 3;
       });
     assert.deepEqual(bifurque, [], 'un fichier à colonne bifurquée est peut-être arrivé, à vérifier');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 2 : le squelette vu comme un tronc et des membres
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `membresDuSquelette3D` ne remplit pas des cases, elle DÉCRIT. Elle applique une seule règle, qui
+// est l'ancienne retournée : une branche qui porte un côté est un membre, une branche qui n'en
+// porte pas continue le tronc. Ce qui suit mesure ce qu'elle rend sur les quatorze squelettes.
+//
+// ELLE NE FILTRE RIEN, et c'est délibéré. Sur le rig Unreal elle rend 185 membres, dont 131 de deux
+// os : chaînes de torsion, correctifs, auxiliaires. Ce bruit est CONSIGNÉ ici plutôt qu'écarté par
+// un seuil, parce que ce dépôt s'est déjà fait prendre à inventer un seuil (« 3 % de la descendance
+// du parent ») dont la campagne de mutation a montré qu'il ne servait à rien. Distinguer la chaîne
+// principale de ses extrémités est l'objet de l'étape 3, et la mesure ci-dessous lui donne son
+// critère : la longueur.
+describe('membresDuSquelette3D : le cerbère retrouve sa vraie tête', () => {
+  const os = charger('cerbere');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const nom = (id) => parId.get(id).name;
+  const r = membresDuSquelette3D(os);
+
+  test('LE DÉFAUT CENTRAL EST CORRIGÉ : le tronc va jusqu\'à Head', () => {
+    // `inferSkeletonMap` mettait `L Clavicle`, une patte avant, dans `tete`. La descente par
+    // profondeur partait dans la patte, plus longue qu'un enchaînement cou-tête. Ici le tronc suit
+    // la seule continuation SANS CÔTÉ, et une patte en a toujours un.
+    assert.ok(r.tronc.map(nom).some(n => n.includes('Head_09')), 'la vraie tête n\'est pas sur le tronc');
+    assert.ok(!r.tronc.map(nom).some(n => n.includes('Clavicle')), 'une patte avant s\'est glissée dans le tronc');
+  });
+
+  test('les sept membres sont là, les trois têtes comprises', () => {
+    const parCote = r.membres.map(m => `${m.cote || '-'} ${nom(m.segments[0]).replace(/^CERBERUS_ ?/, '')}`);
+    assert.deepEqual(parCote, [
+      'g L Thigh_030', 'd R Thigh_035',      // pattes arrière
+      '- Tail_040',                          // la queue, invisible pour l'ancienne reconnaissance
+      'g L_NECK_1_022', 'd R_NECK_1_026',    // les deux têtes latérales, sur la poitrine
+      'g L Clavicle_011', 'd R Clavicle_016', // pattes avant, invisibles elles aussi
+    ]);
+  });
+});
+
+describe('membresDuSquelette3D : les huit pattes de l\'araignée', () => {
+  const os = charger('araignee');
+  const r = membresDuSquelette3D(os);
+
+  test('quatre paires de pattes, une par segment de corps', () => {
+    // L'ancienne reconnaissance en trouvait deux, faute de boucler. Les quatre ancres sont quatre
+    // os successifs du tronc, et les huit pattes font TOUTES exactement sept os.
+    const pattes = r.membres.filter(m => m.cote && m.segments.length === 7);
+    assert.equal(pattes.length, 8, 'huit pattes attendues');
+    assert.equal(new Set(pattes.map(m => m.ancre)).size, 4, 'sur quatre ancres distinctes');
+  });
+
+  test('le dernier segment porte TROIS paires de plus, et ce ne sont pas des pattes', () => {
+    // MON ASSERTION ÉTAIT FAUSSE AVANT CELLE-CI, et c'est le fichier qui a corrigé : je comptais
+    // huit membres latéraux, il y en a douze. Le dernier segment du tronc porte trois paires
+    // supplémentaires, de 6, 5 et 1 os. Sur une araignée ce sont les pédipalpes et les chélicères,
+    // appendices buccaux bien réels et parfaitement posables.
+    //
+    // Consigné parce que c'est exactement ce que la décomposition générique doit savoir faire : ne
+    // pas décider d'avance combien de paires un corps peut porter.
+    const derniere = r.membres.filter(m => m.cote && m.segments.length !== 7);
+    assert.equal(derniere.length, 6, 'trois paires : 6 os, 5 os, et une de 1 os');
+    assert.equal(new Set(derniere.map(m => m.ancre)).size, 1, 'toutes sur la même ancre');
+    assert.deepEqual(derniere.map(m => m.rang), [1, 1, 2, 2, 3, 3]);
+    assert.deepEqual(derniere.map(m => m.segments.length), [6, 6, 5, 5, 1, 1]);
+  });
+});
+
+describe('membresDuSquelette3D : les huit tentacules du kraken', () => {
+  const os = charger('kraken');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+
+  test('quatre paires sur UNE seule ancre, et un tronc qui est la tête', () => {
+    // La symétrie radiale : pas de bassin, pas de colonne, une ancre qui porte tout. C'est le cas
+    // où l'appariement rang par rang compte, quatre gauches et quatre droites au même niveau.
+    const tentacules = r.membres.filter(m => m.cote);
+    assert.equal(tentacules.length, 8);
+    assert.equal(new Set(tentacules.map(m => m.ancre)).size, 1, 'toutes sur la même ancre');
+    assert.deepEqual([...new Set(tentacules.map(m => m.rang))], [1, 2, 3, 4]);
+    assert.ok(r.tronc.map(i => parId.get(i).name).some(n => n.startsWith('head')),
+      'le tronc doit suivre la tête, seule branche sans côté');
+  });
+});
+
+describe('membresDuSquelette3D : le serpent devient posable', () => {
+  test('un tronc de 86 os, là où rien n\'était reconnu', () => {
+    // Aucune paire latérale nulle part, donc zéro emplacement pour l'ancienne reconnaissance. Vu
+    // comme un tronc, le serpent est au contraire le cas le plus simple du corpus.
+    const r = membresDuSquelette3D(charger('serpent'));
+    assert.equal(r.tronc.length, 86);
+    assert.equal(r.membres.filter(m => m.cote).length, 0, 'et aucun membre latéral, ce qui est juste');
+  });
+});
+
+describe('membresDuSquelette3D : le dragon, chaînes complètes', () => {
+  const os = charger('dragon');
+  const parId = new Map(os.map(o => [o.id, o]));
+  const r = membresDuSquelette3D(os);
+  const parNom = (debut) => r.membres.find(m => parId.get(m.segments[0]).name.startsWith(debut));
+
+  test('les chaînes ne sont plus tronquées à trois', () => {
+    // L'ancienne reconnaissance mettait `Thigh.L`, la cuisse, dans `pied_g`. La chaîne entière fait
+    // neuf os. La queue, huit, n'était nulle part.
+    assert.equal(parNom('ThighBase.L').segments.length, 9, 'patte arrière gauche');
+    assert.equal(parNom('Shoulder.L').segments.length, 7, 'aile gauche');
+    assert.equal(parNom('TailBase').segments.length, 8, 'queue');
+    assert.equal(parNom('TailBase').cote, null, 'la queue n\'a pas de côté, c\'est une annexe');
+  });
+});
+
+describe('membresDuSquelette3D : un rig humanoïde propre ne donne QUE quatre membres', () => {
+  // La contrepartie du reste : sur un rig sans auxiliaires, la décomposition générique retrouve
+  // exactement les quatre membres attendus, sans rien inventer. C'est ce qui rend crédible qu'elle
+  // puisse un jour remplacer la reconnaissance humanoïde.
+  ['mixamo', 'centaure'].forEach(nom => {
+    test(`${nom} : deux bras, deux jambes, rien d'autre`, () => {
+      const r = membresDuSquelette3D(charger(nom));
+      assert.equal(r.membres.length, 4);
+      assert.deepEqual(r.membres.map(m => m.segments.length).sort(), [5, 5, 8, 8]);
+      assert.deepEqual(r.membres.map(m => m.cote), ['g', 'd', 'g', 'd']);
+    });
+  });
+});
+
+describe('membresDuSquelette3D : le bruit mesuré, que l\'étape 3 devra trier', () => {
+  test('rig Unreal : 185 membres, dont 131 de DEUX os', () => {
+    // Os de torsion, correctifs, auxiliaires `FX_`, `_twist_`. Ils forment de vraies paires
+    // latérales, la règle les attrape donc légitimement. Ce qui manque n'est pas une exception à la
+    // règle, c'est un critère d'IMPORTANCE, et ce chiffre le donne : la longueur sépare nettement
+    // les quatre vrais membres (6 à 10 os) du bruit (2 os).
+    const r = membresDuSquelette3D(charger('unreal'));
+    assert.equal(r.membres.length, 185);
+    const parLongueur = {};
+    r.membres.forEach(m => { parLongueur[m.segments.length] = (parLongueur[m.segments.length] || 0) + 1; });
+    assert.equal(parLongueur[2], 131);
+    assert.equal(r.membres.filter(m => m.segments.length >= 6).length, 6, 'six chaînes longues seulement');
+  });
+
+  test('les chaînes IK et les cibles sont des membres comme les autres, pour l\'instant', () => {
+    // Dragon et chien portent des chaînes `IK`, `Pole`, `Target`, `neutral_bone`. Elles portent un
+    // côté, donc la règle en fait des membres. Les écarter demande de se fier au NOM pour EXCLURE,
+    // alors que le fichier ne s'en sert jusqu'ici que pour CONFIRMER. Ce renversement mérite d'être
+    // décidé, pas glissé : il est renvoyé à l'étape 3.
+    const r = membresDuSquelette3D(charger('chien'));
+    const parId = new Map(charger('chien').map(o => [o.id, o]));
+    const noms = r.membres.map(m => parId.get(m.segments[0]).name);
+    assert.ok(noms.some(n => n.startsWith('IKBackLeg')), 'la chaîne IK est bien présente');
+    assert.ok(noms.some(n => n.startsWith('PoleTarget')), 'les cibles de pôle aussi');
   });
 });

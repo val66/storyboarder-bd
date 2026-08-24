@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.30.
+> Up to date as of v1.4.32.
 
 ## Where things stand
 
@@ -15,7 +15,8 @@ Faced with a creature, it does not merely fail, it **gets it wrong**: it fills i
 with whatever it finds. On a cerberus, `tete` receives a front leg and the arms receive the two side
 heads.
 
-Step 1 is done. The five that follow are open, in the order in which they depend on each other.
+Steps 1 and 2 are done. The four that follow are open, in the order in which they depend on each
+other.
 
 ## The corpus
 
@@ -44,27 +45,43 @@ saying what is right and what is not. Every change is measured against those eig
 Only one code fix was made there, because it was a matter of naming alone: `coteDuNom` now reads
 `l101` / `r301`, the kraken convention.
 
-## Step 2: N chains instead of two pairs
+## Step 2: N chains instead of two pairs (done)
 
-Task #358. Recognition returns a **list of limbs** instead of an eighteen-slot map:
-`{ anchor, side, rank, segments }`. Every lateral pair of every anchor, ordered along the anchor's
-axis so that "leg 1" is the front one. Then the side-less chains that are not the spine: tail, extra
-heads.
+Task #358, shipped in v1.4.32. `membresDuSquelette3D` breaks a skeleton down into a **trunk** and
+**limbs** `{ anchor, side, rank, segments }`, with no assumption about morphology.
 
-The humanoid becomes a special case, recognised when the shape matches. That is what guarantees
-non-regression.
+The rule is the old one, turned around. The file already knew that names are reliable for the side
+and for nothing else; from that came "two branches of opposite sides form a pair". Its complement
+holds everywhere: **a branch that carries a side is a limb, a branch that carries none continues the
+trunk**.
 
-Two measured defects belong to this step: the wrong head on cerberus and dog, caused by the "deepest
-branch" descent, and `poitrine` receiving a tentacle on the kraken, caused by "the spine is the
-largest remaining branch".
+What the corpus measures:
+
+| | before | after |
+|---|---|---|
+| cerberus | `tete` = a front leg | trunk down to `Head`, 7 limbs including tail and 3 heads |
+| spider | 2 legs out of 8 | 8 legs on 4 anchors, plus 3 pairs of mouthparts |
+| kraken | 0, then 2 tentacles | 8 tentacles, 4 ranks on a single anchor |
+| snake | nothing | an 86-bone trunk |
+| dragon | leg truncated to 3 bones | leg 9, wing 7, tail 8 |
+| mixamo, centaur | 18 slots | exactly 4 limbs, nothing invented |
+
+It filters NOTHING, deliberately. On the Unreal rig it returns 185 limbs, 131 of them two bones:
+twist and corrective chains. That noise is recorded rather than cut by an invented threshold, and it
+hands step 3 its criterion: length separates the four real limbs, 6 to 10 bones, from the rest.
 
 ## Step 3: variable-length chains
 
-Task #359. A limb is no longer three slots but N segments. Measured on the dragon: hind leg 9
-segments, tail 8, neck 7 counting jaw and tongue.
+Task #359. `membresDuSquelette3D` already returns whole chains; what remains is deciding what to
+show. Measured on the dragon: hind leg 9 segments, tail 8, neck 7 counting jaw and tongue.
 
 The **main chain** will have to be told apart from its extremities. Nine sliders per leg times four
 legs is unusable, and a toe does not deserve the same standing as a femur.
+
+Two questions are deferred here, both measured in step 2. The **noise of large rigs**, 131 two-bone
+chains on the Unreal rig. And the **animation helper chains**, `IK`, `Pole`, `Target`,
+`neutral_bone`, present on dragon and dog: discarding them means trusting the name to EXCLUDE, where
+so far it only ever CONFIRMS. That reversal deserves to be decided, not slipped in.
 
 ## Step 4: generated mapping screen
 
