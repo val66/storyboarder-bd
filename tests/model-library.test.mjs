@@ -1,9 +1,9 @@
 /**
- * tests/model-library.test.mjs — la bibliothèque de modèles, groupée par usage RÉEL.
+ * tests/model-library.test.mjs, la bibliothèque de modèles, groupée par usage RÉEL.
  *
  * Le groupement affiché dans le menu de gauche est DÉDUIT du Projet ouvert, à chaque affichage. Ce
- * choix a été tranché contre deux alternatives — un manifeste, ou des sous-dossiers « Décors » /
- * « Objets » — pour une raison qui se teste : un même fichier peut servir de décor dans une Scène ET
+ * choix a été tranché contre deux alternatives, un manifeste, ou des sous-dossiers « Décors » /
+ * « Objets », pour une raison qui se teste : un même fichier peut servir de décor dans une Scène ET
  * d'objet dans une Case. Le fichier ne peut donc pas porter la distinction ; l'usage la porte.
  *
  * CE QUE CES TESTS GARDENT, et qui n'est visible nulle part ailleurs :
@@ -30,7 +30,7 @@ import { renameModel } from '../src/model-store.js';
 const el = (modelFile) => ({ id: 'e' + Math.random(), type: 'objet3d', objType: 'modele', modelFile });
 const volume = (nom, ...objets) => ({ name: nom, pages: [{ objects: objets }] });
 
-describe('groupModelsByUsage — le groupement ne peut pas mentir', () => {
+describe('groupModelsByUsage : le groupement ne peut pas mentir', () => {
   test('chaque fichier tombe dans le groupe de son usage', () => {
     const projet = {
       scenes: [volume('Salon', el('salon.glb'))],
@@ -44,7 +44,7 @@ describe('groupModelsByUsage — le groupement ne peut pas mentir', () => {
 
   test('RÉGRESSION : un fichier utilisé des DEUX façons apparaît deux fois', () => {
     // Le cas qui a fait écarter les sous-dossiers. Le montrer dans un seul groupe ferait croire
-    // qu'il n'a qu'un usage — donc qu'on peut le supprimer une fois cet usage traité.
+    // qu'il n'a qu'un usage, donc qu'on peut le supprimer une fois cet usage traité.
     const projet = {
       scenes: [volume('Salon', el('salon.glb'))],
       tomes: [volume('Tome 1', el('salon.glb'))],
@@ -57,7 +57,7 @@ describe('groupModelsByUsage — le groupement ne peut pas mentir', () => {
 
   test('RÉGRESSION : un fichier référencé mais ABSENT du disque apparaît quand même', () => {
     // C'est le fichier que l'utilisateur cherche quand il voit une boîte orangée. L'omettre de la
-    // liste — au motif qu'il n'est pas sur le disque — le rendrait introuvable au moment précis où
+    // liste, au motif qu'il n'est pas sur le disque, le rendrait introuvable au moment précis où
     // on le cherche.
     const projet = { scenes: [], tomes: [volume('Tome 1', el('disparu.glb'))] };
     const g = groupModelsByUsage([], projet);
@@ -97,7 +97,7 @@ describe('groupModelsByUsage — le groupement ne peut pas mentir', () => {
   });
 });
 
-describe('countModelUsages — le chiffre annoncé avant une suppression', () => {
+describe('countModelUsages : le chiffre annoncé avant une suppression', () => {
   test('compte les Éléments, Scènes et Cases confondues', () => {
     const projet = {
       scenes: [volume('S', el('x.glb'))],
@@ -110,7 +110,7 @@ describe('countModelUsages — le chiffre annoncé avant une suppression', () =>
 
   test('RÉGRESSION : un `modelFile` résiduel sur un autre type ne compte pas', () => {
     // Trou trouvé par mutation. Un Élément dont le type a changé peut garder un `modelFile` qui ne
-    // veut plus rien dire ; le compter gonflerait le chiffre annoncé avant une suppression — donc
+    // veut plus rien dire; le compter gonflerait le chiffre annoncé avant une suppression, donc
     // dissuaderait de supprimer un fichier que plus rien n'utilise.
     const projet = { scenes: [], tomes: [volume('T',
       { type: 'objet3d', objType: 'chaise', modelFile: 'x.glb' },
@@ -119,7 +119,7 @@ describe('countModelUsages — le chiffre annoncé avant une suppression', () =>
   });
 });
 
-describe('messageSuppressionModele — dire les trois choses', () => {
+describe('messageSuppressionModele : dire les trois choses', () => {
   // Le message passe par tr() : la langue est fixée ici, sinon ces assertions dépendraient de
   // `S.appLang`, qui vaut 'en' par défaut dans state.js et n'a rien à voir avec ce qu'on vérifie.
   beforeEach(() => { S.appLang = 'fr'; });
@@ -140,7 +140,7 @@ describe('messageSuppressionModele — dire les trois choses', () => {
 
   test('RÉGRESSION : il avoue ce qu\'on ne peut PAS vérifier', () => {
     // On ne connaît que le Projet ouvert. Taire les autres Projets laisserait croire à une garantie
-    // qu'on n'a pas — et c'est justement ce que l'utilisateur risque de casser.
+    // qu'on n'a pas, et c'est justement ce que l'utilisateur risque de casser.
     [0, 3].forEach(n => assert.match(msg(n), /autres Projets/,
       'le message ne mentionne pas les autres Projets'));
   });
@@ -151,7 +151,7 @@ describe('messageSuppressionModele — dire les trois choses', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — six fautes, toutes rouges.
+ * JOURNAL DE MUTATION : six fautes, toutes rouges.
  *
  *   X1 « non utilisé » calculé sans tenir compte de l'usage en Scène        ROUGE
  *   X2 un fichier référencé mais absent du disque, oublié de la liste       ROUGE
@@ -162,7 +162,7 @@ describe('messageSuppressionModele — dire les trois choses', () => {
  *
  * X4 A ÉCHAPPÉ D'ABORD : tous mes montages n'avaient que de vrais modèles importés, donc retirer le
  * filtre de type ne changeait rien. Le cas manquant est un `modelFile` RÉSIDUEL sur un Élément dont
- * le type a changé — il gonflerait le chiffre annoncé avant une suppression, et dissuaderait donc de
+ * le type a changé, il gonflerait le chiffre annoncé avant une suppression, et dissuaderait donc de
  * supprimer un fichier que plus rien n'utilise. Montage complété.
  *
  * PIÈGE DE CIBLAGE, noté pour la prochaine fois : ma première version de X5 mutait la chaîne
@@ -198,7 +198,7 @@ function corpsDuRenommage(){
   return sourceSansCommentaires(bloc.slice(0, bloc.indexOf('\nsetRenameModelCallback')));
 }
 
-describe('Section Modèles — le câblage', () => {
+describe('Section Modèles : le câblage', () => {
   test('la section et son menu contextuel existent', () => {
     ['modelTrigger', 'modelPanel', 'modelList', 'modelContextMenu', 'ctxDeleteModel', 'ctxRenameModel']
       .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
@@ -207,7 +207,7 @@ describe('Section Modèles — le câblage', () => {
   // CE TEST DISAIT L'INVERSE. Il épinglait « le menu n'offre AUCUN renommage », au nom d'une
   // décision réelle : `modelFile` est un identifiant persisté, le renommer casse les Éléments des
   // autres Projets. La décision a été levée sur demande, et pour une raison qui tenait : la
-  // SUPPRESSION, offerte juste à côté, fait exactement le même dégât en pire — le fichier ne revient
+  // SUPPRESSION, offerte juste à côté, fait exactement le même dégât en pire, le fichier ne revient
   // pas. Ce qui remplace l'interdit, ce sont les garanties ci-dessous.
   test('RÉGRESSION : le renommage demande confirmation AVANT de toucher au disque', () => {
     const corps = corpsDuRenommage();
@@ -219,7 +219,7 @@ describe('Section Modèles — le câblage', () => {
 
   test('RÉGRESSION : le disque D\'ABORD, les références ENSUITE', () => {
     // L'ordre inverse laisserait les Éléments pointer vers un fichier inexistant au premier refus
-    // d'écriture — un Projet cassé par une opération qui a échoué.
+    // d'écriture, un Projet cassé par une opération qui a échoué.
     const corps = corpsDuRenommage();
     assert.ok(corps.indexOf('renameModel(') < corps.indexOf('repointerModele3D'),
       'les Éléments sont repointés avant de savoir si le renommage a réussi');
@@ -272,7 +272,7 @@ describe('Section Modèles — le câblage', () => {
   });
 
   test('RÉGRESSION : aucun snapshot() avant un renommage', () => {
-    // Un instantané rendrait l'opération « annulable » — et l'annulation restaurerait l'ancien nom
+    // Un instantané rendrait l'opération « annulable », et l'annulation restaurerait l'ancien nom
     // de fichier alors que le disque porte le nouveau.
     const corps = corpsDuRenommage();
     assert.doesNotMatch(corps, /\bsnapshot\(\)/,
@@ -290,7 +290,7 @@ describe('Section Modèles — le câblage', () => {
 
   test('RÉGRESSION : après suppression, le cache est vidé', () => {
     // Sans cela, un modèle supprimé du disque continuerait de s'afficher jusqu'au prochain
-    // changement de Projet — un mensonge à l'écran, et le contraire de ce que l'utilisateur vient
+    // changement de Projet, un mensonge à l'écran, et le contraire de ce que l'utilisateur vient
     // de demander.
     const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
     assert.match(bloc.slice(0, bloc.indexOf('\n};')), /clearModelCache\(\)/,
@@ -324,7 +324,7 @@ describe('Section Modèles — le câblage', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — le câblage, quatre fautes de plus (les six du noyau restent valables).
+ * JOURNAL DE MUTATION : le câblage, quatre fautes de plus (les six du noyau restent valables).
  *
  *   Y1 le fichier supprimé AVANT que l'utilisateur ait répondu                  ROUGE
  *   Y2 le cache non vidé après suppression                                      ROUGE
@@ -336,7 +336,7 @@ describe('Section Modèles — le câblage', () => {
  * d'un fichier qu'elle vient d'effacer. Répondre « non » ne le ramène pas. Le test compare les
  * positions des deux appels, faute de pouvoir observer un disque.
  *
- * Y2 est du même genre : sans vidage du cache, un modèle supprimé continuerait de s'afficher — la
+ * Y2 est du même genre : sans vidage du cache, un modèle supprimé continuerait de s'afficher, la
  * suppression aurait l'air de n'avoir rien fait, jusqu'au prochain changement de Projet.
  */
 
@@ -344,7 +344,7 @@ describe('Section Modèles — le câblage', () => {
 // La FORME des lignes affichées
 //
 // Signalé à l'usage : dans un panneau étroit, le nom de fichier et les endroits se partageaient une
-// ligne (flex, `justify-content: space-between`) et se coupaient tous les deux au milieu — on ne
+// ligne (flex, `justify-content: space-between`) et se coupaient tous les deux au milieu, on ne
 // pouvait lire ni le nom du fichier, ni celui de la Scène, et le texte débordait de la section.
 //
 // Ce qui suit observe le DOM réellement construit. Les assertions par lecture du source ne valent
@@ -368,10 +368,10 @@ async function rendre(fichiers, projet){
   return list.children.filter(n => String(n.className || '').includes('model-row'));
 }
 
-describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par ligne', () => {
+describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne', () => {
   test('RÉGRESSION : deux Scènes font DEUX lignes, pas une liste concaténée', async () => {
     // Joints par « , », la coupe tombait au milieu du premier nom et les suivants disparaissaient
-    // sans qu'aucun signe ne dise qu'il y en avait — l'utilisateur croyait à un seul usage.
+    // sans qu'aucun signe ne dise qu'il y en avait, l'utilisateur croyait à un seul usage.
     const [ligne] = await rendre(['salon.glb'], {
       scenes: [volume('Salon principal', el('salon.glb')), volume('Cuisine', el('salon.glb'))],
     });
@@ -413,7 +413,7 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
 
   test('RÉGRESSION : le premier titre de groupe est à la MÊME distance du bouton que le bouton du haut de la carte', () => {
     // Signalé à l'œil : la liste commençait plus bas que le bouton ne commence lui-même, et la
-    // section paraissait décentrée. L'égalité tient à TROIS valeurs dans TROIS règles distinctes —
+    // section paraissait décentrée. L'égalité tient à TROIS valeurs dans TROIS règles distinctes,
     // exactement la forme de désaccord silencieux qui a déjà mordu ici. On l'épingle donc par le
     // calcul plutôt que par un chiffre recopié.
     const valeur = (regle, prop) => {
@@ -476,17 +476,17 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
 });
 
 /**
- * JOURNAL DE MUTATION — la forme des lignes.
+ * JOURNAL DE MUTATION : la forme des lignes.
  *
  *   Z1 les Scènes rejointes par « , » sur une seule ligne                        ROUGE
  *   Z2 `title` retiré des lignes                                                 ROUGE
  *   Z3 `text-overflow: ellipsis` retiré du CSS                                   ROUGE
  *   Z4 l'avertissement « introuvable » placé avant les endroits                  ROUGE
  *   Z5 la classe `model-row-where` retirée des endroits                          ROUGE
- *   Z6 `.model-row { display: block }` retiré                                    ÉCHAPPÉE — assumé
+ *   Z6 `.model-row { display: block }` retiré                                    ÉCHAPPÉE, assumé
  *
  * Z6 EST ASSUMÉE, et mérite d'être dite plutôt que maquillée : on peut vérifier que les classes
- * existent et qu'elles coupent, pas que la disposition obtenue à l'écran est bien verticale — il
+ * existent et qu'elles coupent, pas que la disposition obtenue à l'écran est bien verticale, il
  * faudrait un moteur de rendu. Ce qui est gardé ici, c'est que le JS produit des lignes séparées et
  * coupables ; que le navigateur les empile relève de l'essai à l'œil.
  */
@@ -501,7 +501,7 @@ describe('Affichage de la bibliothèque — le nom d\'abord, un endroit par lign
 
 const { setProjectTreeCallbacks: _setTreeCb } = await import('../src/project-tree.js');
 
-describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
+describe('Bibliothèque : un clic gauche qui tient sa promesse', () => {
   let demandes;
   const rendreAvecClic = async (fichiers, projet) => {
     demandes = [];
@@ -511,7 +511,7 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
 
   test('RÉGRESSION : chaque ligne demande SES usages, pas ceux d\'une autre', async () => {
     // Trois fichiers, et on interroge le DEUXIÈME. Avec un seul fichier, n'importe quelle
-    // expression rendant « le fichier » passait — y compris `fichiers[0]`, qui aurait fait pointer
+    // expression rendant « le fichier » passait, y compris `fichiers[0]`, qui aurait fait pointer
     // toutes les lignes vers la première. Les lignes sont construites en boucle : c'est exactement
     // l'endroit où une fermeture mal fermée fait tout désigner la même chose.
     const lignes = await rendreAvecClic(['a.glb', 'b.glb', 'c.glb'], {
@@ -524,7 +524,7 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
   });
 
   test('RÉGRESSION : un modèle inutilisé ne réagit pas, ET le montre avant le clic', () => {
-    // Décision utilisateur : plutôt qu'une fenêtre disant « rien », la ligne est inerte — mais
+    // Décision utilisateur : plutôt qu'une fenêtre disant « rien », la ligne est inerte, mais
     // l'inertie doit se LIRE. Un clic sans effet, sur une ligne qui ressemble à toutes les autres,
     // passe pour une panne.
     return rendreAvecClic(['orphelin.glb'], {}).then(([ligne]) => {
@@ -555,7 +555,7 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — le clic gauche.
+ * JOURNAL DE MUTATION : le clic gauche.
  *
  *   T1 la ligne inutilisée reçoit quand même un onclick                          ROUGE
  *   T2 la classe .model-row-inert n'est plus posée                               ROUGE
@@ -563,7 +563,7 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
  *   T4 le clic demande les usages d'un AUTRE fichier                             ROUGE
  *
  * T4 A ÉCHAPPÉ D'ABORD, et pour la raison la plus banale : mon montage n'avait qu'UN seul fichier.
- * Remplacer `nom` par `fichiers[0]` ne changeait donc rien — les deux désignaient la même chose. Or
+ * Remplacer `nom` par `fichiers[0]` ne changeait donc rien, les deux désignaient la même chose. Or
  * c'est précisément la faute que ce test doit attraper : les lignes sont construites en boucle, et
  * c'est l'endroit classique où toutes finissent par désigner la même. Montage porté à TROIS
  * fichiers, en interrogeant celui du MILIEU ; la mutation devient rouge.
@@ -577,7 +577,7 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Renommer un modèle
 // ─────────────────────────────────────────────────────────────────────────────
-describe('repointerModele3D — les Éléments suivent le fichier', () => {
+describe('repointerModele3D : les Éléments suivent le fichier', () => {
   test('Cases ET Scènes, et rien d\'autre', () => {
     const suit = el('vieux.glb');
     const autre = el('autre.glb');
@@ -606,7 +606,7 @@ describe('repointerModele3D — les Éléments suivent le fichier', () => {
   });
 });
 
-describe('repointerPileAnnulation3D — Ctrl+Z ne ressuscite pas un nom mort', () => {
+describe('repointerPileAnnulation3D : Ctrl+Z ne ressuscite pas un nom mort', () => {
   const etat = (fichier) => JSON.stringify({ tomes: [volume('T', el(fichier))], scenes: [] });
 
   test('RÉGRESSION : chaque état antérieur cite le nouveau nom', () => {
@@ -638,7 +638,7 @@ describe('repointerPileAnnulation3D — Ctrl+Z ne ressuscite pas un nom mort', (
   });
 });
 
-describe('messageRenommageModele — ce qu\'il promet, et ce qu\'il ne promet pas', () => {
+describe('messageRenommageModele : ce qu\'il promet, et ce qu\'il ne promet pas', () => {
   test('il chiffre ce qui suivra, et nomme ce qui ne peut pas être vérifié', () => {
     const m = messageRenommageModele('a.glb', 'b.glb', 3, null);
     assert.match(m, /a\.glb/); assert.match(m, /b\.glb/);
@@ -656,7 +656,7 @@ describe('messageRenommageModele — ce qu\'il promet, et ce qu\'il ne promet pa
   });
 });
 
-describe('renameModel — le pont, et le refus d\'écraser', () => {
+describe('renameModel : le pont, et le refus d\'écraser', () => {
   let appels;
   const pont = (existants) => {
     appels = [];
@@ -687,7 +687,7 @@ describe('renameModel — le pont, et le refus d\'écraser', () => {
     });
   });
 
-  test('la collision ignore la casse — Windows ne distingue pas deux noms', () => {
+  test('la collision ignore la casse : Windows ne distingue pas deux noms', () => {
     pont(['vieux.glb', 'Chaise.glb']);
     return renameModel('vieux.glb', 'chaise').then(r => assert.equal(r.ok, false));
   });
@@ -724,7 +724,7 @@ describe('renameModel — le pont, et le refus d\'écraser', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Le journal des renommages
 // ─────────────────────────────────────────────────────────────────────────────
-describe('resoudreRenommage3D — suivre la chaîne jusqu\'au nom actuel', () => {
+describe('resoudreRenommage3D : suivre la chaîne jusqu\'au nom actuel', () => {
   test('un renommage simple', () => {
     assert.equal(resoudreRenommage3D([{ de: 'a.glb', vers: 'b.glb' }], 'a.glb'), 'b.glb');
   });
@@ -756,7 +756,7 @@ describe('resoudreRenommage3D — suivre la chaîne jusqu\'au nom actuel', () =>
   });
 });
 
-describe('ajouterRenommage3D — un journal qui ne grandit pas sans fin', () => {
+describe('ajouterRenommage3D : un journal qui ne grandit pas sans fin', () => {
   test('une entrée est ajoutée, sans muter le journal reçu', () => {
     const journal = [];
     const suivant = ajouterRenommage3D(journal, 'a.glb', 'b.glb');
@@ -785,7 +785,7 @@ describe('ajouterRenommage3D — un journal qui ne grandit pas sans fin', () => 
   });
 });
 
-describe('modelesARepointer3D — les trois conditions', () => {
+describe('modelesARepointer3D : les trois conditions', () => {
   const projet = (...fichiers) => ({ tomes: [volume('T', ...fichiers.map(el))], scenes: [] });
   const journal = [{ de: 'vieux.glb', vers: 'neuf.glb' }];
 
@@ -827,7 +827,7 @@ describe('modelesARepointer3D — les trois conditions', () => {
   });
 });
 
-describe('messageRepointageModeles — une phrase pour un, une liste pour plusieurs', () => {
+describe('messageRepointageModeles : une phrase pour un, une liste pour plusieurs', () => {
   const une = [{ de: 'a.glb', vers: 'b.glb', usages: 8 }];
   const deux = [...une, { de: 'c.glb', vers: 'd.glb', usages: 6 }];
 

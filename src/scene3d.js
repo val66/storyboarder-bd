@@ -1,5 +1,5 @@
 /**
- * scene3d.js — 3D rendering of Panels: camera, scene, trace geometry, world helpers.
+ * scene3d.js, 3D rendering of Panels: camera, scene, trace geometry, world helpers.
  *
  * Contains:
  *   • 3D coordinate helpers (panelDepthToDistance3D, ensureElementWorldPos3D…)
@@ -19,7 +19,7 @@ import {
 } from './constants.js';
 // FIX (pre-existing latent bug, surfaced by the Fix 28 tests): TRACÉ_DEFAULTS above was already
 // referenced when placing a Wall-Opening on a Trace wall whose wallHeight was unset, but was never
-// imported — a guaranteed ReferenceError on that path. Trace creation normally fills wallHeight in
+// imported, a guaranteed ReferenceError on that path. Trace creation normally fills wallHeight in
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
@@ -29,7 +29,7 @@ import { S, currentPage } from './state.js';
 // carte graphique, invisibles et cumulatives).
 import { clearModelCache, collectModelFiles, modelCacheSignature } from './model-cache.js';
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
-// squelette, pas seulement de la géométrie brute — sinon l'échelle réelle et la boîte de sélection
+// squelette, pas seulement de la géométrie brute, sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
@@ -144,7 +144,7 @@ export function applyGroundMagnetY(o, panel){
   const dist = panelDepthToDistance3D(getElementDepth(o));
   const factor = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist);
   // If realHeightFloor is defined (elements loaded from a Scene or added after loading), use it
-  // directly — the renderer uses it in priority over o.h/factor, so the world-height computation
+  // directly, the renderer uses it in priority over o.h/factor, so the world-height computation
   // must stay consistent so the feet properly touch the ground.
   const halfHWorld = o.realHeightFloor !== undefined
     ? o.realHeightFloor / 2
@@ -157,13 +157,13 @@ export function applyGroundMagnetY(o, panel){
 
 export function clampWorldYAboveGround(o, worldY, realH) {
   if (!groundMagnetEligible(o)) return worldY;
-  if (o.magnetGround !== false) return worldY; // magnetized — applyGroundMagnetY handles it
+  if (o.magnetGround !== false) return worldY; // magnetized, applyGroundMagnetY handles it
   if (o.traverseGround) return worldY;         // explicit authorization
   return Math.max(worldY, GROUND_Y_DEFAULT_3D + realH / 2);
 }
 
 // Projects an ARBITRARY world point through the Panel's camera. Same maths as worldFloorToScreen,
-// which was restricted to the ground plane — the Y is now a parameter, so callers that need the top
+// which was restricted to the ground plane, the Y is now a parameter, so callers that need the top
 // of a Wall (cf. the magnetized Wall-Opening drag in events.js) no longer have to re-derive the
 // projection by hand. Returns page-centre-relative coordinates, or null behind the camera.
 function worldPointToScreenCore3D(wx, wy, wz, panel, page){
@@ -213,12 +213,12 @@ export function worldToPageXY(wx, wz, panel, page) {
 
 export function findOwningPanel(perso, page){
   // An Element created in a Panel belongs to it forever, whatever happens to the other Panels
-  // (moving, resizing, Bring Forward/Send Backward, overlap...) — only its deletion can detach it
+  // (moving, resizing, Bring Forward/Send Backward, overlap...), only its deletion can detach it
   // (cf. explicit user feedback). We therefore fall back in PRIORITY to homePanelId (recorded on
   // creation, cf. addPersonaToPanel/addObjectToPanel), as long as that Panel still exists. The old
   // "Panel it overlaps the most" heuristic (by area, then by stacking) has been abandoned as the
   // main criterion: being purely geometric, it could make an Element "change Panel" as soon as
-  // ANOTHER Panel moved/reordered nearby, without the Element itself having been touched — which
+  // ANOTHER Panel moved/reordered nearby, without the Element itself having been touched, which
   // is precisely the reported bug. Geometric overlap is now only a safety net, for the rare
   // Elements without a valid homePanelId (old migrated data, or a deleted original Panel) so they
   // are never left orphaned (excluded from all rendering/cascade logic).
@@ -252,11 +252,11 @@ export function findOwningPanel(perso, page){
  * mais des modèles de taille différente paraissent plus éloignés lorsqu'ils sont plus petits ».
  *
  * C'est exact, et c'est arithmétique. `PANEL_CAM_DEFAULT_DIST_3D` est FIXE, et
- * `ensureNewElementVisibleInPanel3D` ne fait que TRANSLATER le centre d'orbite — elle ne touche
+ * `ensureNewElementVisibleInPanel3D` ne fait que TRANSLATER le centre d'orbite, elle ne touche
  * jamais la distance. Un modèle de 1,11 m à la distance d'un Personnage de 1,75 m occupe donc 63 %
  * de la hauteur qu'occuperait celui-ci. Il n'est pas mal placé : rien ne compense sa taille.
  *
- * LA RÈGLE N'A RIEN D'UN SEUIL. C'est la proportion — et une seule — qui fait qu'un Élément de
+ * LA RÈGLE N'A RIEN D'UN SEUIL. C'est la proportion, et une seule, qui fait qu'un Élément de
  * n'importe quelle hauteur occupe l'image comme le ferait le Personnage de référence. Les deux
  * termes existaient déjà : la distance par défaut, et `PERSONA_REAL_HEIGHT_M`.
  *
@@ -275,7 +275,7 @@ export function distanceCameraPourPremierElement3D(hauteurM){
 /**
  * Cet Élément est-il le PREMIER Élément 3D de sa Case ?
  *
- * Appelée APRÈS que l'Élément a rejoint la page — d'où l'exclusion explicite de lui-même. C'est
+ * Appelée APRÈS que l'Élément a rejoint la page, d'où l'exclusion explicite de lui-même. C'est
  * cette question, et elle seule, qui autorise à recadrer : une Case vide n'a pas de composition à
  * préserver, une Case déjà peuplée en a une, et la déplacer sous les yeux de quelqu'un qui vient
  * seulement d'ajouter un Élément serait une surprise désagréable. C'est la règle que ce fichier
@@ -343,13 +343,13 @@ export function startCamSmoothing(panel){
   requestAnimationFrame(step);
 }
 export function framePanelCamera3D(camera, panel, page){
-  // FOV/aspect computed from the PAGE's dimensions (page.w/h) — a FIXED reference, common to ALL
-  // Panels on this page, which NEVER changes when resizing/moving ONE Panel — instead of panel.w/h
-  // (which does vary). Per user request (a "window onto a landscape" model: the camera itself —
-  // both its position AND its FOV — must NOT move AT ALL when playing with the window's size,
+  // FOV/aspect computed from the PAGE's dimensions (page.w/h), a FIXED reference, common to ALL
+  // Panels on this page, which NEVER changes when resizing/moving ONE Panel, instead of panel.w/h
+  // (which does vary). Per user request (a "window onto a landscape" model: the camera itself,
+  // both its position AND its FOV, must NOT move AT ALL when playing with the window's size,
   // exactly like a real window where only the frame size changes, without moving the observer or
   // "zooming"). With a FOV recomputed on panel.h (previous version), shrinking the Panel changed
-  // the FOV on every frame, which — even with a still camera — produces a "dolly zoom" effect
+  // the FOV on every frame, which, even with a still camera, produces a "dolly zoom" effect
   // visually very close to camera movement (the Elements' perspective changes). With a fixed FOV
   // based on the page, the render (cf. renderPanelScene3D) always produces EXACTLY the same image,
   // and only the rectangle CROPPED from this image (cf. crop in drawPanelScene3D) depends on
@@ -359,7 +359,7 @@ export function framePanelCamera3D(camera, panel, page){
   // The FOV stays calibrated on the camera's FIXED default distance (PANEL_CAM_DEFAULT_DIST_3D, cf.
   // above), not on the camera's actual/current distance (cf. dist below): this is precisely what
   // makes moving the camera forward/back (panel.camDist, cf. scroll wheel in Camera mode) actually
-  // zoom the scene (true dolly), instead of auto-reframing to compensate — otherwise the scroll
+  // zoom the scene (true dolly), instead of auto-reframing to compensate, otherwise the scroll
   // wheel would have no visible effect. The REFERENCE distance for depth (PANEL_CAM_REF_DIST_3D, cf.
   // getElementDepth/Depth, panelDepthToDistance3D) is kept separate and deliberately doesn't depend
   // on the camera's current position (an Element's depth is a property of the world, not the view).
@@ -367,22 +367,22 @@ export function framePanelCamera3D(camera, panel, page){
   camera.aspect = page.w / page.h;
   // In Camera mode (cf. panel.cameraMode), a click-drag on the Panel (cf. S.dragMode
   // 'panelCamRotate') drives panel.camRotX/camRotY: the camera orbits around a central point, at
-  // distance panel.camDist (default PANEL_CAM_DEFAULT_DIST_3D, driven by the scroll wheel — cf.
-  // wheel on canvasWrap — which moves the camera forward/back WITHOUT touching this angle) — rotY =
+  // distance panel.camDist (default PANEL_CAM_DEFAULT_DIST_3D, driven by the scroll wheel, cf.
+  // wheel on canvasWrap, which moves the camera forward/back WITHOUT touching this angle), rotY =
   // yaw (left/right), rotX = pitch (up/down), standard spherical orbit. The arrow keys (cf.
   // keydown), on the other hand, drive panel.camPanX/camPanY, which TRANSLATE this central point
-  // along the camera's CURRENT right/up axes (cf. panelCamBasis3D) — the camera and its target move
+  // along the camera's CURRENT right/up axes (cf. panelCamBasis3D), the camera and its target move
   // together, so no rotation results, just a pure lateral/vertical dolly.
   const dist = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
   // Dynamic near plane: 1/10 of the current distance, capped at 0.01.
-  // Guarantees the orbit center stays in front of the clipping plane even at camDist=0.01 — cf. scroll wheel.
+  // Guarantees the orbit center stays in front of the clipping plane even at camDist=0.01, cf. scroll wheel.
   camera.near = Math.min(0.01, dist * 0.1);
   // far: at minimum dist + 80 (margin for near/far elements at standard camDist).
   // For large distances (Phase 2, camDist = PANEL_CAM_DEFAULT_DIST_3D / s), we extend
   // to dist * 1.2 so elements at the most negative wzFloor stay within the frustum.
   camera.far = Math.max(dist + 80, dist * 1.2);
   const basis = panelCamBasis3D(panel);
-  // Orbit center — decreasing priority:
+  // Orbit center : decreasing priority:
   //   1. panel.camOrbitTargetId: explicit target chosen in the Camera menu → "el:<id>" or "piece:<pieceId>"
   //   2. Currently selected Element or Room: dynamic orbit around the selected subject
   //   3. camPanX/Y: free orbit (camera not anchored)
@@ -420,7 +420,7 @@ export function framePanelCamera3D(camera, panel, page){
     //      - Camera mode → DYNAMIC orbit around the Element (desired behavior for pivoting around
     //        the subject in Camera mode).
     //      - Outside Camera mode → ONE-SHOT centering on selection (camPanXTarget/Y updated once
-    //        when the Element's ID changes), then FREE orbit on camPanX/Y — the camera no longer
+    //        when the Element's ID changes), then FREE orbit on camPanX/Y, the camera no longer
     //        stays glued to the Element; the user can move it freely.
     //   b. Room selected in this panel → barycenter of its walls (dynamic orbit).
     //   c. No selection → camPanX/Y (free orbit).
@@ -435,10 +435,10 @@ export function framePanelCamera3D(camera, panel, page){
       // give a wrong position and shift the camera to the wrong place.
       let _elWx, _elWy, _elWz;
       // Fix 28: an Opening carried by a TRACE wall (Low Wall, Fence…) has no world position of its
-      // own — it is placed by walking the host path (cf. wallOpeningWorldPosOnTracé3D). The
+      // own, it is placed by walking the host path (cf. wallOpeningWorldPosOnTracé3D). The
       // WALL_TYPES lookup below only matches 'mur'/'mur_coin' hosts, so without this the orbit fell
       // back to the Element's stale wxFloor/wzFloor and centred the camera somewhere else entirely.
-      // Fix 31 — the CENTRE, not the base: every other branch below feeds _elWy from wyFloor,
+      // Fix 31, the CENTRE, not the base: every other branch below feeds _elWy from wyFloor,
       // which is already an Element centre. Aiming at the base tilted the orbit half an Opening low.
       const _tracéOrbit = tracéOpeningWorldCenter3D(_selObjOrbit, page);
       const _orbitHostWall = (!_tracéOrbit && _selObjOrbit.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(_selObjOrbit.objType))
@@ -456,7 +456,7 @@ export function framePanelCamera3D(camera, panel, page){
         _elWx = _p.x; _elWy = _p.y; _elWz = getElementDepth(_orbitSrc);
       }
       if (panel.cameraMode) {
-        // Camera mode: dynamic orbit — the Element is the permanent rotation center
+        // Camera mode: dynamic orbit, the Element is the permanent rotation center
         cx = _elWx; cy = _elWy; cz = _elWz;
       } else {
         // Outside Camera mode: NO automatic centering on selection (Fix 21).
@@ -481,7 +481,7 @@ export function framePanelCamera3D(camera, panel, page){
       if (panel._lastOrbitSelId) {
         panel._lastOrbitSelId = null;
         // Fix 21: restore the pre-centering position only if the user had triggered a manual
-        // centering (F) — not in Camera mode, not if F was never pressed.
+        // centering (F), not in Camera mode, not if F was never pressed.
         if (!panel.cameraMode && panel._manualCenterActive && panel._preCenterWx !== undefined) {
           panel.camWxTarget = panel._preCenterWx;
           panel.camWyTarget = panel._preCenterWy;
@@ -526,7 +526,7 @@ export function framePanelCamera3D(camera, panel, page){
   // normalize(eye - target), a SUBTRACTION of two points whose coordinates can be large (as soon as
   // panel.camPanX/Y != 0) while their actual DIFFERENCE (the tiny horizontal component of
   // "backward" in an almost-exact top-down view, cf. panelCamBasis3D) can be much smaller than the
-  // floating-point rounding error inherent to the representation of cx/cz — the "right" vector
+  // floating-point rounding error inherent to the representation of cx/cz, the "right" vector
   // recomputed by lookAt then becomes dominated by numeric noise, unstable from one frame to the
   // next as soon as panel.camDist changes (cf. scroll wheel), which gave the impression of a
   // spurious rotation of the Camera in top-down view. panelCamBasis3D's right/up/backward vectors
@@ -543,14 +543,14 @@ export function framePanelCamera3D(camera, panel, page){
 }
 // Computes the WORLD point (X,Y,Z) targeted by a given canvas pixel (px,py), on an arbitrary WORLD
 // plane (point planePoint + normal planeNormal), by casting a real ray from the Panel's ACTUAL
-// Camera (cf. framePanelCamera3D/personaCamera3D) — used by dragging an Element within a Scene
+// Camera (cf. framePanelCamera3D/personaCamera3D), used by dragging an Element within a Scene
 // (cf. S.dragMode 'move', isLockedScenePanel), regardless of the Camera's orientation. An earlier
 // version of this drag, restricted to the top-down view, always intersected a HORIZONTAL plane
 // (fixed Y); an even earlier version simply projected dx/dy onto panelCamBasis3D's right/up axes
 // at a constant scale factor. Both approaches remain wrong as soon as the Camera is no longer
 // exactly aligned with the assumed plane (horizontal rotation in top-down view, or any rotation
-// outside top-down view) — they only model a plane shift, not the real perspective projection,
-// which made the drag visibly "twisted" — per user report. We therefore fix here the plane
+// outside top-down view), they only model a plane shift, not the real perspective projection,
+// which made the drag visibly "twisted", per user report. We therefore fix here the plane
 // perpendicular to the Camera's CURRENT viewing axis (normal = basis.backward, cf.
 // panelCamBasis3D) passing through the Element's current WORLD position (planePoint): with an
 // unrotated Camera (default case), this plane becomes vertical facing the Camera again and gives
@@ -581,19 +581,19 @@ export function panelDragRayOnPlane(panel, page, px, py, planePoint, planeNormal
 }
 // Checks whether an Element's current WORLD position (cf. ensureElementWorldPos3D) actually falls
 // within this Panel's effectively visible rectangle, i.e. the CROP rectangle actually taken by
-// drawPanelScene3D from the Page's full-frame render — not just "within the camera's field of
+// drawPanelScene3D from the Page's full-frame render, not just "within the camera's field of
 // view" (which covers the entire Page, cf. framePanelCamera3D). Reuses the same shared Three.js
 // camera (personaCamera3D) as the actual render, configured exactly the same way (same function),
-// so this test faithfully matches what will actually be displayed — not a separate approximation.
+// so this test faithfully matches what will actually be displayed, not a separate approximation.
 // A small margin (MARGIN_3D) avoids considering an Element "visible" when it would only just
 // graze the edge of the frame.
 // Computes the canvas position (PAGE space, like o.x/o.y) of the actually displayed CENTER of an
 // Element owned by this Panel, by reproducing exactly the same camera projection as the real 3D
-// render (cf. placeRigCentered3D/framePanelCamera3D) — useful for anything that needs to visually
+// render (cf. placeRigCentered3D/framePanelCamera3D), useful for anything that needs to visually
 // overlay the 3D Model (cf. drawSelection) rather than the raw 2D position (o.x/o.y), which is
 // only an intermediate representation (used to compute ownership/Ground magnetism) that can
 // diverge from the actual appearance as soon as the Panel's Camera has been moved/oriented (pan or
-// rotation, cf. ensureNewElementVisibleInPanel3D) — without this correction, the selection frame
+// rotation, cf. ensureNewElementVisibleInPanel3D), without this correction, the selection frame
 // would stay visually offset from the 3D Model it's supposed to surround.
 // The full-frame render (cf. renderPanelScene3D) always covers exactly page.w x page.h in screen
 // units, centered on the Panel's OWN center (cf. framePanelCamera3D): an NDC coordinate (-1..1)
@@ -629,12 +629,12 @@ export function projectElementCenterToCanvas3D(o, panel, page){
       posY = _wallBottomY + _doorCenterLocalY;
       posZ = _wall.wzFloor + _along * _dirZ;
     } else if (_wall && _wall.type === 'tracé' && _wall.world && _wall.world.pts) {
-      // Fix 31 — this branch used to carry a THIRD private copy of the walk along the host path,
+      // Fix 31 : this branch used to carry a THIRD private copy of the walk along the host path,
       // and its vertical formula had never been updated: it mapped wallYFrac onto the wall's FULL
       // height (and used ensureElementUnits3D rather than o.h) while the renderer maps it onto the
       // span shortened by the Opening's own height. Along the path the two walks agreed, which is
       // why only the VERTICAL drag made the render-box drift away from the Opening. It now defers
-      // to wallOpeningWorldPosOnTracé3D like everything else — one walk, one span, no drift.
+      // to wallOpeningWorldPosOnTracé3D like everything else, one walk, one span, no drift.
       const _tp = tracéOpeningWorldCenter3D(o, page);
       if (_tp) { posX = _tp.x; posY = _tp.y; posZ = _tp.z; }
     }
@@ -649,7 +649,7 @@ export function projectElementCenterToCanvas3D(o, panel, page){
     posZ = o.wzFloor !== undefined ? o.wzFloor : getElementDepth(o);
   }
   // ⚠️ DEVANT OU DERRIÈRE LA CAMÉRA ? `project()` divise par `w` ; derrière, `w` est NÉGATIF et le
-  // point ressort en MIROIR — à des coordonnées parfaitement finies, qui peuvent retomber dans le
+  // point ressort en MIROIR, à des coordonnées parfaitement finies, qui peuvent retomber dans le
   // cadre. Un Élément passé derrière la caméra était donc déclaré visible, ce qui se voyait dans la
   // liste latérale : « beaucoup d'Éléments qui devraient être hors champ et qui ne le sont pas ».
   //
@@ -676,7 +676,7 @@ export function projectElementCenterToCanvas3D(o, panel, page){
  * parce qu'elle, elle est vérifiable : ici on a besoin de la caméra de la Case, donc de WebGL.
  *
  * PAS DE MISE EN CACHE, ET C'EST DÉLIBÉRÉ. `framePanelCamera3D` n'est que de l'arithmétique
- * scalaire — pas de parcours de scène, pas de boîte englobante. L'appeler une fois par Élément ne
+ * scalaire, pas de parcours de scène, pas de boîte englobante. L'appeler une fois par Élément ne
  * coûte rien de mesurable, et un cache introduirait la seule chose vraiment chère ici : une
  * seconde source de vérité sur ce qui est visible, à invalider correctement.
  */
@@ -690,13 +690,13 @@ export function elementHorsChamp3D(o, panel, page){
 
 // Computes the ACTUALLY projected half-width/half-height (px) of an Element's 3D Model, by
 // projecting two world points offset from the center along the Camera's ACTUAL axes (basis.right/up,
-// cf. panelCamBasis3D), at its REAL size in units (cf. ensureElementUnits3D) — instead of relying
+// cf. panelCamBasis3D), at its REAL size in units (cf. ensureElementUnits3D), instead of relying
 // on o.w/o.h (APPROXIMATE apparent size encoded relative to a fixed REFERENCE distance, cf.
 // panelApparentPx3D/PANEL_CAM_REF_DIST_3D, which deliberately does NOT depend on the actual
 // Camera, cf. panelDepthToDistance3D's comment): this approximation remains necessary for STORAGE
 // (o.w/o.h, later decoded by ensureElementUnits3D to give the real size at render time), but must
 // NOT be used to draw the selection frame, or it would change size during a move/scroll while the
-// displayed 3D Model itself doesn't change — per user report.
+// displayed 3D Model itself doesn't change, per user report.
 export function getElementProjectedHalfExtents3D(o, panel, page){
   if (typeof THREE === 'undefined') return null;
   ensurePersonaScene3D();
@@ -729,7 +729,7 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
   };
   // Special case: walls created by the build tool. Their exact world coordinates and orientation
   // are stored (wxFloor/wyFloor/wzFloor/realLenFloor/realHeightFloor/rotY). We project the wall's 4
-  // real corners in 3D to get a correct selection frame — instead of relying on o.w/o.h (a 5px 2D
+  // real corners in 3D to get a correct selection frame, instead of relying on o.w/o.h (a 5px 2D
   // thin-box in one dimension, which gives nearly-zero extents).
   if (o.realLenFloor != null && o.realHeightFloor != null && o.wxFloor !== undefined) {
     const cx3d = o.wxFloor, cy3d = (o.wyFloor !== undefined ? o.wyFloor : wy), cz3d = (o.wzFloor !== undefined ? o.wzFloor : z);
@@ -752,12 +752,12 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
     };
   }
   // Wall Opening linked to a wall trace: correct world center via interpolation over the smoothed
-  // path — ensureElementWorldPos3D(o, panel) gave a world Y (height) instead of a Z (depth) for
+  // path, ensureElementWorldPos3D(o, panel) gave a world Y (height) instead of a Z (depth) for
   // these objects, which distorted the perspective factor and the frame's size.
   if (page && o.type === 'objet3d' && o.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(o.objType)) {
     const _tw = page.objects.find(w => w.id === o.magnetWallId && w.type === 'tracé'
         && ['muret','cloture','haie','barriere'].includes(w.tracéType));
-    // Fix 31 — was a private copy of the walk with the outdated full-height vertical formula
+    // Fix 31 : was a private copy of the walk with the outdated full-height vertical formula
     // (see projectElementCenterToCanvas3D); it now defers to the single shared placement.
     const _tp = _tw ? tracéOpeningWorldCenter3D(o, page) : null;
     if (_tp) {
@@ -781,11 +781,11 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
   const pUp = projectPt(wx + basis.up.x * realH / 2, wy + basis.up.y * realH / 2, z + basis.up.z * realH / 2);
   const pDown = projectPt(wx - basis.up.x * realH / 2, wy - basis.up.y * realH / 2, z - basis.up.z * realH / 2);
   // ⚠️ GARDE MANQUANTE, ET C'EST UN DÉFAUT PRÉEXISTANT. `projectPt` rend `null` dès qu'un point
-  // passe DERRIÈRE le plan proche de la caméra — les branches Mur et Tracé ci-dessus le testent,
+  // passe DERRIÈRE le plan proche de la caméra, les branches Mur et Tracé ci-dessus le testent,
   // celle-ci l'avait oublié. Lire `pRight.x` sur un `null` lève alors une TypeError, et la seule
   // raison pour laquelle personne ne l'avait vu est que cette fonction n'était appelée QUE pour
   // dessiner la boîte de sélection d'un Élément déjà à l'écran, donc jamais derrière la caméra.
-  // La liste latérale, elle, l'appelle pour TOUS les Éléments d'une Case — y compris ceux passés
+  // La liste latérale, elle, l'appelle pour TOUS les Éléments d'une Case, y compris ceux passés
   // derrière : elle a fait remonter le défaut, elle ne l'a pas créé.
   if (!pRight || !pLeft || !pUp || !pDown) return null;
   return {
@@ -794,7 +794,7 @@ export function getElementProjectedHalfExtents3D(o, panel, page){
   };
 }
 // Returns the exact world position {wx, wy, wz} of a Wall Opening linked to a wall trace,
-// by interpolating the smoothed path along wallAlongFrac/wallYFrac — same computation as the
+// by interpolating the smoothed path along wallAlongFrac/wallYFrac, same computation as the
 // render (renderPanelScene3D) to guarantee camera/drag/visibility consistency.
 // Returns null if the object isn't a wall-trace Wall Opening or if data is missing.
 function getTracéMurWallOpeningWorldPos3D(obj, page) {
@@ -803,7 +803,7 @@ function getTracéMurWallOpeningWorldPos3D(obj, page) {
   const _tw = page.objects.find(w => w.id === obj.magnetWallId && w.type === 'tracé'
       && ['muret','cloture','haie','barriere'].includes(w.tracéType));
   if (!_tw || !_tw.world || !_tw.world.pts || _tw.world.pts.length < 2) return null;
-  // Fix 31 — third and last private copy of the walk, same outdated full-height vertical formula.
+  // Fix 31 : third and last private copy of the walk, same outdated full-height vertical formula.
   // Kept as a thin wrapper only because callers here want the Element's CENTRE, not its base.
   const _tp = tracéOpeningWorldCenter3D(obj, page);
   if (!_tp) return null;
@@ -821,7 +821,7 @@ function isElementVisibleInPanel3D(obj, panel, page){
   else { const _p = ensureElementWorldPos3D(obj, panel); wx = _p.x; wy = _p.y; wz = getElementDepth(obj); }
   const v = new THREE.Vector3(wx, wy, wz).project(personaCamera3D);
   // The crop rectangle (cf. drawPanelScene3D) is centered and occupies, within the Page's
-  // full-frame render, exactly a panel.w/page.w (width) and panel.h/page.h (height) fraction —
+  // full-frame render, exactly a panel.w/page.w (width) and panel.h/page.h (height) fraction,
   // which translates directly into NDC coordinates (-1..1 over this full-frame render's whole
   // width/height) by the same fractions, with no pixel conversion needed.
   const MARGIN_3D = 0.88; // slight inset (12%) to stay clearly within the frame, not just at the edge
@@ -829,21 +829,21 @@ function isElementVisibleInPanel3D(obj, panel, page){
   const halfH = (panel.h / page.h) * MARGIN_3D;
   return v.z < 1 && Math.abs(v.x) <= halfW && Math.abs(v.y) <= halfH;
 }
-// Called ONLY when an Element is created (cf. addPersonaToPanel/addObjectToPanel) — never from
+// Called ONLY when an Element is created (cf. addPersonaToPanel/addObjectToPanel), never from
 // drawContent nor any Panel resize/move code: per explicit user request, resizing a Panel must
 // NEVER move its Camera (the "window onto a landscape" model), only change what's cropped from an
-// already-fixed image — including if this would push out of frame an Element added here while
+// already-fixed image, including if this would push out of frame an Element added here while
 // being rendered visible.
 // If the Element we just created isn't visible in its Panel (cf. isElementVisibleInPanel3D), we
 // move the Camera's target by pure TRANSLATION (camPanX/camPanY, cf. panelCamBasis3D) to recenter
-// it exactly on this Element — never a rotation, so no side effect on the framing of the rest of
+// it exactly on this Element, never a rotation, so no side effect on the framing of the rest of
 // the already-in-place scene.
 export function ensureNewElementVisibleInPanel3D(obj, panel, page){
   if (typeof THREE === 'undefined') return;
   if (groundMagnetEligible(obj) && obj.magnetGround !== false) applyGroundMagnetY(obj, panel);
   if (isElementVisibleInPanel3D(obj, panel, page)) return;
   // For a Wall Opening linked to a wall trace, the real world position is derived from
-  // wallAlongFrac along the smoothed path — not o.x/o.y, which would give an incorrect 2D canvas position.
+  // wallAlongFrac along the smoothed path, not o.x/o.y, which would give an incorrect 2D canvas position.
   let wx, wy, wz;
   const _tmcPos = getTracéMurWallOpeningWorldPos3D(obj, page);
   if (_tmcPos) { wx = _tmcPos.wx; wy = _tmcPos.wy; wz = _tmcPos.wz; }
@@ -856,13 +856,13 @@ export function ensureNewElementVisibleInPanel3D(obj, panel, page){
 // ↳ src/constants.js
 // Cache of the 3D bitmap rendered per Panel (cf. renderPanelScene3D), kept as long as nothing
 // relevant has changed (cf. computePanelSceneSignature3D): resizing/moving a Panel modifies
-// panel.x/y/w/h on EVERY frame during the drag, but — the "window onto a landscape" model — must
+// panel.x/y/w/h on EVERY frame during the drag, but, the "window onto a landscape" model, must
 // NEVER retrigger the Three.js render (expensive, and now at the resolution of the entire Page);
 // only the cropping (cf. drawPanelScene3D) depends on it, and that's a cheap 2D operation. Key = panel.id.
 export const panelSceneCache3D = new Map();
 // FIX (pre-existing bug, regression from extraction #158): these 3 caches weren't exported even
 // though events.js uses them directly (cache invalidation after editing from the Room/Building/Trace
-// modals) — an immediate ReferenceError, which crashed THESE modals' Save button on every click
+// modals), an immediate ReferenceError, which crashed THESE modals' Save button on every click
 // (as soon as a Room member is a Slab, which is systematic: the Floor). Reported by the user: "I
 // uncheck the ceiling option, the Save button turns orange but clicking it does nothing, the modal
 // stays open".
@@ -877,7 +877,7 @@ export const tracéMeshCache3D = new Map();
 export function panelPixelToGroundXZ3D(px, py, panel, page) {
   const basis = panelCamBasis3D(panel);
   const dist  = panel.camDist || PANEL_CAM_DEFAULT_DIST_3D;
-  // Camera orbit center (world space) — stable across rotation (Fix 13).
+  // Camera orbit center (world space) : stable across rotation (Fix 13).
   const _porb = getCamOrbitWorld(panel, basis);
   const orbX = _porb.x, orbY = _porb.y, orbZ = _porb.z;
   // Camera position.
@@ -908,7 +908,7 @@ export function panelPixelToGroundXZ3D(px, py, panel, page) {
   if (Math.abs(t) > 50000) return { x: camX, z: camZ, clamped: true };
   const wx = camX + t * rayX, wz = camZ + t * rayZ;
   // Last guard, and the only one that catches a MALFORMED input rather than an awkward geometry.
-  // If `page` lacks w/h, halfW/halfH are NaN and so is the whole ray — but NaN fails every
+  // If `page` lacks w/h, halfW/halfH are NaN and so is the whole ray, but NaN fails every
   // comparison above, including `Math.abs(t) > 50000`, so the two guards let it through and the
   // function returned NaN coordinates announced as `clamped: false`, i.e. as trustworthy.
   // loadSceneIntoPanel then wrote them into the Elements, and a NaN world coordinate is a
@@ -979,7 +979,7 @@ export function tracéUpdateScreenPts(obj, panel, page) {
 // Catmull-Rom smoothing of a path of world points [{x,z}...].
 // subdivisions = number of intermediate points per segment (8 = smooth curves).
 // Returns a new array with more points following the curve that passes
-// through all the original points — ideal for natural road turns.
+// through all the original points, ideal for natural road turns.
 export function smoothTracéPath3D(pts, subdivisions) {
   const n = pts ? pts.length : 0;
   if (n < 2) return pts || [];
@@ -1006,7 +1006,7 @@ export function smoothTracéPath3D(pts, subdivisions) {
   return out;
 }
 
-// Fix 27 — world point located at the arc-length FRACTION `frac` (0 = start, 1 = end) along a path
+// Fix 27 : world point located at the arc-length FRACTION `frac` (0 = start, 1 = end) along a path
 // of {x,z} points, interpolating inside the segment it lands in. Arc length, not point index: a
 // Trace's segments are not evenly spaced, so indexing would make the Element speed up and slow down
 // as it crosses them.
@@ -1034,9 +1034,9 @@ export function tracéPointAtFrac3D(pts, frac) {
   return { x: pts[pts.length-1].x, z: pts[pts.length-1].z };
 }
 
-// Fix 31 — scale to apply to a Wall-Opening rig carried by a Trace wall. Deliberately identical to
-// what ensureWallRenderEntry3D does for an Opening carried by a real Wall — scale from the type's
-// DESIGN size, independently in width and height — instead of the uniform height-driven scale
+// Fix 31 : scale to apply to a Wall-Opening rig carried by a Trace wall. Deliberately identical to
+// what ensureWallRenderEntry3D does for an Opening carried by a real Wall, scale from the type's
+// DESIGN size, independently in width and height, instead of the uniform height-driven scale
 // placeRigCentered3D applies. The uniform scale ignored o.w entirely, so a Window was never as wide
 // as the hole cut for it: it sat in an oversized gap, which is what made it look sunk into the wall.
 // sz follows sy (as on a Wall) so the frame keeps a sane depth-to-height ratio.
@@ -1047,7 +1047,7 @@ export function tracéOpeningRigScale3D(objType, targetW, targetH){
   return { sx, sy, sz: sy, design };
 }
 
-// Fix 31 — offset along the wall's normal that sits the Opening FLUSH against one face instead of
+// Fix 31 : offset along the wall's normal that sits the Opening FLUSH against one face instead of
 // straddling the path's centre line. Positive = towards the wall's front face; `wallSide` flips it,
 // exactly as it already flips the rotation elsewhere. Clamped at 0 so an Opening deeper than the
 // wall stays centred rather than being pushed out the far side.
@@ -1056,24 +1056,24 @@ export function tracéOpeningFlushOffset3D(wallT, rigDepth, wallSide){
   return wallSide === 'arriere' ? -d : d;
 }
 
-// Fix 31 — CENTRE of a Wall-Opening carried by a Trace wall, i.e. what the render-box, the
+// Fix 31 : CENTRE of a Wall-Opening carried by a Trace wall, i.e. what the render-box, the
 // projected half-extents and the visibility test all need (wallOpeningWorldPosOnTracé3D returns the
 // BASE). Each of those three had grown its own copy of the walk along the path AND its own vertical
 // formula, still mapping wallYFrac onto the wall's FULL height; the renderer maps it onto the span
 // shortened by the Opening's own height. Along the path all four agreed, so only the VERTICAL drag
-// revealed it — the render-box drifted upwards by up to one full Opening height at fraction 1.
+// revealed it, the render-box drifted upwards by up to one full Opening height at fraction 1.
 export function tracéOpeningWorldCenter3D(o, page){
   const p = wallOpeningWorldPosOnTracé3D(o, page);
   if (!p) return null;
   return { x: p.x, y: p.y + tracéOpeningSize3D(o).h / 2, z: p.z };
 }
 
-// Fix 31 — descriptor of the hole an Opening cuts into a Trace wall: the arc span it occupies along
+// Fix 31 : descriptor of the hole an Opening cuts into a Trace wall: the arc span it occupies along
 // the path, the vertical band it occupies, and the point/tangent where it sits.
 //
 // Extracted from renderPanelScene3D on purpose. The vertical band was computed there against the
 // wall's FULL height while wallOpeningWorldPosOnTracé3D places the rig against a span shortened by
-// the Opening's own height (Fix 30) — so raising a Window made the hole climb faster than the Window
+// the Opening's own height (Fix 30), so raising a Window made the hole climb faster than the Window
 // itself and the two came apart. Locked inside the render loop, that divergence was untestable;
 // out here the parity between hole and rig can be asserted directly.
 export function tracéOpeningHole3D(child, smoothPts, totalLen, yBase, wallH){
@@ -1091,13 +1091,13 @@ export function tracéOpeningHole3D(child, smoothPts, totalLen, yBase, wallH){
   };
 }
 
-// Fix 31 — "tableau": the relief framing an Opening cut into a Low Wall (two jambs, a lintel and a
+// Fix 31 : "tableau": the relief framing an Opening cut into a Low Wall (two jambs, a lintel and a
 // sill), which is what makes the Opening read as a real hole pierced through masonry instead of a
 // Window sprite floating in a rectangular gap. It is built from the SAME hole descriptor that cut
 // the wall, so it cannot drift from the hole it frames.
 //
 // `wallBaseY`/`wallTopY` suppress the sill/lintel when the Opening is flush with the ground or with
-// the top of the wall — a lintel hovering above the wall's crest looked far worse than none.
+// the top of the wall, a lintel hovering above the wall's crest looked far worse than none.
 export function buildOpeningRevealGroup3D(hole, wallT, color, wallBaseY, wallTopY){
   if (!hole || !hole.at || !(hole.cW > 0) || !(hole.cH > 0) || !(wallT > 0)) return null;
   const r  = clamp(hole.cH * 0.10, 0.015, 0.06);
@@ -1118,14 +1118,14 @@ export function buildOpeningRevealGroup3D(hole, wallT, color, wallBaseY, wallTop
   if (wallTopY  == null || hole.yMax + r <= wallTopY  + 1e-6) add(hole.cW + 2 * r, r, 0, hole.yMax + r / 2);
   if (wallBaseY == null || hole.yMin - r >= wallBaseY - 1e-6) add(hole.cW + 2 * r, r, 0, hole.yMin - r / 2);
   if (group.children.length === 0) return null;
-  // Local +X follows the tangent and local +Z the path normal — the same convention the Opening rig
+  // Local +X follows the tangent and local +Z the path normal, the same convention the Opening rig
   // is oriented with (see the renderer's atan2(-tz, tx)), so the two stay coplanar on a curve.
   group.position.set(hole.at.x, 0, hole.at.z);
   group.rotation.y = Math.atan2(-hole.at.tz, hole.at.tx);
   return group;
 }
 
-// Fix 31 — point AND unit tangent of a Trace path at a fraction of its arc length. The tangent is
+// Fix 31 : point AND unit tangent of a Trace path at a fraction of its arc length. The tangent is
 // sampled rather than read off a segment so it stays meaningful at a vertex, where the incoming and
 // outgoing segments disagree. Returns null for a path that has no usable direction at all.
 const TRACÉ_TANGENT_EPS_3D = 0.002;
@@ -1141,7 +1141,7 @@ export function tracéFrameAtFrac3D(pts, frac){
   return { x: p.x, z: p.z, tx: dx / len, tz: dz / len };
 }
 
-// Fix 28 — the Trace-type wall (Low Wall, Fence, Hedge, Barrier) a Wall-Opening is magnetized to,
+// Fix 28 : the Trace-type wall (Low Wall, Fence, Hedge, Barrier) a Wall-Opening is magnetized to,
 // or null. Deliberately NOT WALL_TYPES, which only covers the 'mur'/'mur_coin' Objects: a Trace is
 // a different `type` entirely, and confusing the two is exactly what left the camera centring on
 // the wrong spot.
@@ -1152,7 +1152,7 @@ export function tracéWallHostOf3D(o, page){
     && ['muret', 'cloture', 'haie', 'barriere'].includes(w.tracéType)) || null;
 }
 
-// Fix 31 — world size of a Wall-Opening carried by a Trace wall. THE single source for both the
+// Fix 31 : world size of a Wall-Opening carried by a Trace wall. THE single source for both the
 // hole cut into the wall and the rig placed in it: they were computed separately (the hole from
 // o.w/o.h, the rig from a uniform height-based scale), so the opening rarely matched its hole.
 export function tracéOpeningSize3D(o){
@@ -1162,8 +1162,8 @@ export function tracéOpeningSize3D(o){
   };
 }
 
-// Fix 33 — height of a Trace wall. Was written out at SEVEN sites, four of them with the old
-// literal 0.50 hardcoded — which silently contradicted TRACÉ_DEFAULTS the moment the default
+// Fix 33 : height of a Trace wall. Was written out at SEVEN sites, four of them with the old
+// literal 0.50 hardcoded, which silently contradicted TRACÉ_DEFAULTS the moment the default
 // changed: the hole was cut against the table's height while the wall was built against the
 // literal. One source now, and the table is the only place the number lives.
 export function tracéWallHeight3D(o){
@@ -1171,7 +1171,7 @@ export function tracéWallHeight3D(o){
   return o.wallHeight != null ? o.wallHeight : (TRACÉ_DEFAULTS[o.tracéType]?.wallHeight ?? 0.5);
 }
 
-// Fix 31 — representative thickness of a Trace wall where an Opening sits, used to sit the Opening
+// Fix 31 : representative thickness of a Trace wall where an Opening sits, used to sit the Opening
 // flush against a face instead of floating on the path's centre line. Mirrors the ratios the
 // renderer builds each type with; for the Jersey Barrier it deliberately takes the NARROW upper
 // part rather than the wide base, so the Opening is never pushed out beyond the wall.
@@ -1182,22 +1182,22 @@ export function tracéWallThickness3D(host){
   return h * (TRACÉ_WALL_THICKNESS_RATIO_3D[host.tracéType] ?? 0.12);
 }
 
-// Fix 28 — REAL world position of a Wall-Opening carried by a Trace wall, plus the local tangent of
+// Fix 28 : REAL world position of a Wall-Opening carried by a Trace wall, plus the local tangent of
 // the path at that spot. Returns null when the Element is not on such a wall.
 //
 // Such an Opening has NO usable world position of its own: its 2D box lives in top-down canvas
 // coordinates and its wxFloor/wzFloor are stale, so it is placed at render time by walking the host
 // path at wallAlongFrac. That walk used to exist only inside renderPanelScene3D, which is why
-// everything else — camera orbit, Scene centring — silently fell back to the meaningless stored
+// everything else, camera orbit, Scene centring, silently fell back to the meaningless stored
 // coordinates. Extracted here so the render and the camera can no longer disagree.
 //
 // `y` is the Opening's BASE on the wall; `tangent` is the path direction used to orient it.
 //
-// Fix 30 — `childHUnits` (the Opening's own height in world units) shrinks the span wallYFrac maps
+// Fix 30 : `childHUnits` (the Opening's own height in world units) shrinks the span wallYFrac maps
 // onto, exactly as ensureWallRenderEntry3D does for real Walls: fraction 1 then puts the Opening's
 // TOP flush with the wall's top rather than its BASE, so it never sticks out above the wall.
 //
-// Fix 31 — it now DEFAULTS to the Opening's own size rather than to 0. The hole cut into the wall is
+// Fix 31 : it now DEFAULTS to the Opening's own size rather than to 0. The hole cut into the wall is
 // sized from o.w/o.h, so any caller omitting the argument (the camera paths) was mapping wallYFrac
 // onto a different span than the hole and centring slightly off; and the renderer was passing
 // realHeightFloor, which is not guaranteed to equal o.h/WALL_PX_PER_UNIT_3D either. One source now.
@@ -1206,7 +1206,7 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
   if (!host || !host.world || !host.world.pts || host.world.pts.length < 2) return null;
   const pts = smoothTracéPath3D(host.world.pts, 4);
   const frac = clamp(o.wallAlongFrac != null ? o.wallAlongFrac : 0.5, 0, 1);
-  // Fix 31 — point AND tangent from tracéFrameAtFrac3D. The tangent used to be that of the raw
+  // Fix 31 : point AND tangent from tracéFrameAtFrac3D. The tangent used to be that of the raw
   // SEGMENT the point fell in, while the reveal ("tableau") sampled the smoothed curve: at a bend
   // the two disagreed by up to ~47°, so the Window and the relief framing it visibly crossed. One
   // sampling now, and the Opening follows the curve the wall is actually built along.
@@ -1232,34 +1232,34 @@ export function wallOpeningWorldPosOnTracé3D(o, page, childHUnits){
 // Builds a THREE.BufferGeometry of a VERTICAL RIBBON for traces that have a height
 // (Low Wall, Hedge, Barrier): front/back faces + top face, horizontal miter joints.
 // worldPts = [{x,z}…], wallH = height in world units, wallT = thickness, yBase = ground Y.
-// holes (optional): [{arcStart, arcEnd, yMin, yMax}…] in arc length and world Y —
+// holes (optional): [{arcStart, arcEnd, yMin, yMax}…] in arc length and world Y,
 // segments whose arc midpoint falls within [arcStart, arcEnd] are cut
 // vertically: the [yMin, yMax] band is omitted and the concrete above and below is kept
 // (lintel + window sill), reproducing the behavior of simple Walls (#83 Traversant/opening).
 
 // ════════════════════════════════════════════════════════════
-// 3D — TRACÉ GEOMETRY
+// 3D : TRACÉ GEOMETRY
 // ════════════════════════════════════════════════════════════
-// Fix 34b — which Walls get a corner post. Deliberately NOT the buildMurWalls predicate used by
+// Fix 34b : which Walls get a corner post. Deliberately NOT the buildMurWalls predicate used by
 // the colinear merge: that one drops any Wall carrying an Opening, because a Wall pierced by a door
 // or a window must not be merged into a chain (holes are cut per Wall). Reusing it here inherited
 // that exclusion for no reason, and every corner touching a Wall with a door or a window stayed
-// hollow — the half that were still wrong. A corner post only cares about where the Wall ENDS.
+// hollow, the half that were still wrong. A corner post only cares about where the Wall ENDS.
 export function isJunctionWall3D(o){
   return !!o && o.objType === 'mur' && !!o.pieceId && !o.hidden3d;
 }
 
-// Fix 34 — junction points where two NON-COLINEAR build-tool Walls meet, with the post needed to
+// Fix 34 : junction points where two NON-COLINEAR build-tool Walls meet, with the post needed to
 // fill the notch there.
 //
 // Each Wall is rendered as a box that stops exactly at its endpoint. Where two of them meet at a
 // corner, each covers three quarters of the square the two thicknesses span and the outer quadrant
-// is left empty — the hollow visible on every Room and Building corner. Filling it by LENGTHENING
+// is left empty, the hollow visible on every Room and Building corner. Filling it by LENGTHENING
 // the walls was not an option: a Wall's length also drives its selection box and its Openings'
 // placement. A separate post touches none of that.
 //
 // The post is square, of side = the Wall's thickness, and aligned with the FIRST wall of the pair:
-// at a right angle — what the Build tool snaps to — that covers the missing quadrant exactly.
+// at a right angle, what the Build tool snaps to, that covers the missing quadrant exactly.
 //
 // `thickOf(wall)` is injected rather than hardcoded: a Wall's thickness is 6 % of its own height
 // (see buildWallRig3D), and the renderer knows heights the caller of a pure function should not
@@ -1297,10 +1297,10 @@ export function buildWallJunctions3D(walls, thickOf, eps = 0.02){
   return out;
 }
 
-// Fix 33 — builds the whole Low Wall: the masonry ribbon plus the reveal framing each Opening.
+// Fix 33 : builds the whole Low Wall: the masonry ribbon plus the reveal framing each Opening.
 // Extracted from renderPanelScene3D because the thickness it BUILDS with and the thickness
 // tracéWallThickness3D flush-mounts the Openings against were two independent expressions, free to
-// drift apart — the exact failure mode of Fixes 28/30/31/31b. Locked inside the render loop that
+// drift apart, the exact failure mode of Fixes 28/30/31/31b. Locked inside the render loop that
 // divergence was untestable; out here the parity is asserted directly.
 export function buildMuretGroup3D(o, holes){
   if (!o || !o.world || !o.world.pts) return null;
@@ -1314,7 +1314,7 @@ export function buildMuretGroup3D(o, holes){
       color: new THREE.Color(col), roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
     })));
   }
-  // Fix 31 — jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
+  // Fix 31 : jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
   // Only on the Low Wall: a stone reveal makes no sense on a Hedge or a Jersey Barrier.
   if (holes) holes.forEach(h => {
     const rev = buildOpeningRevealGroup3D(h, wallT, col, GROUND_Y_DEFAULT_3D, GROUND_Y_DEFAULT_3D + wallH);
@@ -1419,7 +1419,7 @@ export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) 
     if (yb - ya < 1e-6) return;
     const pi = pts[i], ni = norms[i];
     const pj = pts[i+1], nj = norms[i+1];
-    // Fix 32 — the horizontal faces get their OWN vertices, not the side faces'. They used to
+    // Fix 32 : the horizontal faces get their OWN vertices, not the side faces'. They used to
     // share them, so computeVertexNormals averaged the vertical face normal with the +Y of the top
     // face at every upper corner: the crest was shaded like a fillet and the whole Low Wall read as
     // a rounded tube instead of the square-topped masonry a Wall is. Duplicating the four corners
@@ -1600,13 +1600,13 @@ function buildTracéDashGeometry3D(worldPts, dashW, dashL, gapL, yOff) {
 
 // Cache of merged rigs (colinear walls visually combined into a single BoxGeometry).
 // Key = sorted ids of the walls in the group, value = { figureGroup, fp (length+color fingerprint) }.
-// FIX (pre-existing bug): export added — see equivalent comment on slabMeshCache3D above.
+// FIX (pre-existing bug): export added, see equivalent comment on slabMeshCache3D above.
 export const mergedBuildWallRigCache3D = new Map();
-// Fix 34 — one Mesh per Room/Building corner, keyed by position (see buildWallJunctions3D).
+// Fix 34 : one Mesh per Room/Building corner, keyed by position (see buildWallJunctions3D).
 export const wallJunctionMeshCache3D = new Map();
 // Signature of everything that must REALLY trigger a new Three.js render of a Panel: the
 // graphic style, the camera parameters (camDist/camRotX/camRotY/camPanX/camPanY), and for each Element
-// owned, its state EXCEPT its raw canvas position (o.x/o.y) — replaced by its already computed
+// owned, its state EXCEPT its raw canvas position (o.x/o.y), replaced by its already computed
 // WORLD position (see ensureElementWorldPos3D), which does NOT vary during a move/resize
 // of the Panel (see compensatePanelChildrenResize, #107-109): without this substitution, dragging the
 // Panel would invalidate the cache on every frame (since Elements' o.x/o.y follow the Panel's center),
@@ -1624,7 +1624,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
   });
   // État du cache des modèles importés. INDISPENSABLE, et pas évident : un Élément ne change pas
   // quand son modèle finit d'être décodé. Sans cette part, la Case resterait en cache avec sa boîte
-  // de remplacement, et le modèle chargé n'apparaîtrait qu'au prochain déplacement — « comme par
+  // de remplacement, et le modèle chargé n'apparaîtrait qu'au prochain déplacement, « comme par
   // magie », sans rapport visible avec l'import.
   const modelPart = modelCacheSignature(collectModelFiles(elements));
   const camPart = JSON.stringify({
@@ -1641,7 +1641,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     camOrbitTargetId: panel.cameraMode ? (panel.camOrbitTargetId || null) : null,
     _camSelId: panel.cameraMode ? (S.selectedId || null) : null,
   });
-  // Traces (Roads/Paths/Zones) belonging to this panel — included in the signature so
+  // Traces (Roads/Paths/Zones) belonging to this panel, included in the signature so
   // that any move or property change invalidates the cache and triggers a re-render.
   // We use the raw 2D coordinates (pts/x/y): they change during drag, forcing a
   // re-render. The camera params are already in camPart; the world coordinates (obj.world) are
@@ -1666,11 +1666,11 @@ function computePanelSceneSignature3D(panel, page, styleKey){
 // as long as its signature doesn't change.
 
 // ════════════════════════════════════════════════════════════
-// 3D — CAMERA & SCENE
+// 3D : CAMERA & SCENE
 // ════════════════════════════════════════════════════════════
 // Cache gate, kept separate from the render itself. The signature is computed on EVERY call, cache
 // hit included: it is the incompressible cost of this path, and measurement put it second overall
-// (16% of the drawing time, 8 calls per frame — one per Panel) behind the WebGL render it protects,
+// (16% of the drawing time, 8 calls per frame, one per Panel) behind the WebGL render it protects,
 // which runs less than once per frame thanks to a 91.4% hit rate. See docs/rendering-performance.md.
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
@@ -1681,15 +1681,15 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════
- * LA HAUTEUR DEBOUT D'UN MODÈLE IMPORTÉ — pour que « allongé » ne le fasse pas grandir
+ * LA HAUTEUR DEBOUT D'UN MODÈLE IMPORTÉ : pour que « allongé » ne le fasse pas grandir
  * ═══════════════════════════════════════════════════════════════════════════════════════════
  *
  * `placeRigCentered3D` déduit son facteur de la hauteur de la boîte : `s = hauteurCible / size.y`.
- * Couché, un corps est bas et large — `size.y` devient son épaisseur, et l'échelle s'emballe. Le
+ * Couché, un corps est bas et large, `size.y` devient son épaisseur, et l'échelle s'emballe. Le
  * Personnage s'en protège depuis toujours par `entry.deboutNaturalH` ; les modèles importés
  * n'avaient pas d'équivalent, et « allongé » les faisait donc grandir d'un facteur ~5.
  *
- * ⚠️ ON NEUTRALISE LA BASCULE **ET LA POSE** — la même règle que le Personnage. La taille d'un
+ * ⚠️ ON NEUTRALISE LA BASCULE **ET LA POSE** : la même règle que le Personnage. La taille d'un
  * Élément décrit sa STATURE, pas son encombrement à l'instant : un modèle accroupi est plus bas,
  * et sans cela son facteur d'échelle enflait d'autant. Le Personnage s'en protège depuis toujours
  * (`deboutNaturalH`, mesuré une fois dans la pose « debout ») ; les modèles importés ne l'étaient
@@ -1697,16 +1697,16 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
  *
  * ⚠️ CE QUE CE CHANGEMENT A COÛTÉ, ET IL FALLAIT LE DIRE AVANT DE LE FAIRE : un modèle importé déjà
  * posé autrement que debout dans un Projet existant CHANGE de taille à la réouverture. C'est le prix
- * assumé de la cohérence — arbitré avec l'utilisateur, pas glissé dans un correctif.
+ * assumé de la cohérence, arbitré avec l'utilisateur, pas glissé dans un correctif.
  *
  * LA POSE EST NEUTRALISÉE SUR PLACE, PAS RELUE AILLEURS. Mesurer la scène du cache serait plus
  * simple et serait FAUX : `boneTransform` lit `skeleton.boneMatrices`, qui ne sont calculées qu'AU
  * RENDU. Sur une scène jamais rendue, la boîte sensible au skinning décrit donc la géométrie de
- * liaison dans le repère du FICHIER — l'erreur qui a produit trois correctifs faux (cf. §7.5 de
+ * liaison dans le repère du FICHIER, l'erreur qui a produit trois correctifs faux (cf. §7.5 de
  * docs/imported-skeletons). On reste donc sur le rig affiché, et on y remet les os au repos.
  *
  * ⚠️ MÊME BOÎTE QUE LE PLACEMENT. `boxFn` est celle que `placeRigCentered3D` va utiliser, pas une
- * seconde mesure : deux façons de mesurer la même chose auraient fini par ne plus s'accorder — le
+ * seconde mesure : deux façons de mesurer la même chose auraient fini par ne plus s'accorder, le
  * défaut le plus fréquent de ce dépôt. On remet aussi l'échelle et la position à neuf comme le
  * fait `placeRigCentered3D`, sans quoi on mesurerait le rig à l'échelle de l'image PRÉCÉDENTE.
  *
@@ -1848,7 +1848,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // the low-angle threshold gets crossed after only ~5° of rotation (with camDist ≈ 50) →
   // Ground/Floors/traces flicker on every small movement and the user perceives a
   // "rotation center that moves". This case occurs when camWy drifts below ground via repeated zoom.
-  // Solution: disable low-angle masking when the orbit center is already very deep —
+  // Solution: disable low-angle masking when the orbit center is already very deep,
   // the camera is effectively underground for almost every angle there, so the alternate toggling would
   // be disruptive rather than useful. The intentional low-angle-shot mode (camera below ground at a large
   // camRotX angle) continues to work normally for panels with camWy >= -7.
@@ -1867,10 +1867,10 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // local origin anchored on their BASE rather than on their box's center (inherited from the old
   // per-Element individual camera system, where frameCameraToFigure always framed the true box
   // regardless of the rig's internal origin convention). Without this centering, the rig would appear
-  // offset relative to the center expected by ensureElementWorldPos3D — exactly the offset observed
+  // offset relative to the center expected by ensureElementWorldPos3D, exactly the offset observed
   // between the rendered 3D Model and its 2D selection frame (which is based on the center of o.x/o.y/o.w/o.h).
   // boxFn(figureGroup) must return the THREE.Box3 (in coordinates LOCAL to the group, i.e. with the
-  // group at scale=1/position=0) used to compute the center and scale — by default the bounding
+  // group at scale=1/position=0) used to compute the center and scale, by default the bounding
   // box of the whole sub-tree (see below for the special case of Walls, where this box is deliberately
   // restricted to only the Wall's meshes, excluding its embedded Wall Openings).
   function placeRigCentered3D(figureGroup, targetX, targetY, targetZ, targetUnitsH, boxFn, naturalHOverride){
@@ -1889,11 +1889,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     figureGroup.updateMatrixWorld(true);
     return s;
   }
-  // Fix 31 — dedicated placement for a Wall-Opening carried by a Trace wall. placeRigCentered3D is
+  // Fix 31 : dedicated placement for a Wall-Opening carried by a Trace wall. placeRigCentered3D is
   // NOT usable here for two reasons: its scale is uniform (see tracéOpeningRigScale3D) and its
   // centring is computed from a bounding box measured AFTER rotation, which makes a non-uniform
-  // scale meaningless. This anchors on the rig's local origin in X/Z — the frame's axis, at local
-  // (0, ·, 0), which is also why the old code had to re-force position.x/z for open leaves — and on
+  // scale meaningless. This anchors on the rig's local origin in X/Z, the frame's axis, at local
+  // (0, ·, 0), which is also why the old code had to re-force position.x/z for open leaves, and on
   // the box centre in Y, then slides the whole thing onto a face of the wall.
   function placeTracéOpeningRig3D(figureGroup, o, tracéPos, wallT){
     const target = tracéOpeningSize3D(o);
@@ -1904,7 +1904,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const box = new THREE.Box3().setFromObject(figureGroup);
     const center = new THREE.Vector3(); box.getCenter(center);
     const size = new THREE.Vector3(); box.getSize(size);
-    // The rig is already yawed onto the tangent, so its local Z — and hence size.z — lies along the
+    // The rig is already yawed onto the tangent, so its local Z, and hence size.z, lies along the
     // path normal: that is the depth to compare against the wall's thickness.
     const off = tracéOpeningFlushOffset3D(wallT, size.z, o.wallSide);
     const nx = -tracéPos.tangent.z, nz = tracéPos.tangent.x;
@@ -1918,11 +1918,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   }
   // Box RESTRICTED to only the Wall's meshes (wallMeshA/B), excluding any embedded Wall Opening
   // (window/door/etc.): reuses the same principle as expandBoxByMeshOnly3D, already used in Phase 1
-  // (see renderObjectToCanvas3D) for the SAME reason — avoid a Wall Opening that exceeds the Wall's
+  // (see renderObjectToCanvas3D) for the SAME reason, avoid a Wall Opening that exceeds the Wall's
   // thickness (the frame of an open door/window, or simply a Wall Opening resized larger than the
   // Wall itself) making the Wall look smaller/bigger than it actually is. Without
   // this restriction, enlarging a Wall Opening with the scroll wheel would enlarge the COMBINED
-  // group's (Wall + Wall Openings) bounding box, which — via placeRigCentered3D — would reduce the
+  // group's (Wall + Wall Openings) bounding box, which, via placeRigCentered3D, would reduce the
   // scale applied to the whole to fit within targetUnitsH, thus visually shrinking the Wall without
   // touching its true stored size (o.w/o.h).
   function wallOnlyBoxFn3D(entry){
@@ -1958,7 +1958,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // Wall Opening linked to a trace wall (muret/cloture/haie/barriere): position interpolated on the
     // trace's world polyline, based on wallAlongFrac (along) and wallYFrac (height). Without this branch,
     // ensureElementWorldPos3D converts the canvas Y (2D position in top-down view) into world Y
-    // (height), whereas it should give world Z (depth) — the Wall Opening floated in mid-air.
+    // (height), whereas it should give world Z (depth), the Wall Opening floated in mid-air.
     const _tracéMurHost = (o.type === 'objet3d' && o.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(o.objType))
       ? page.objects.find(w => w.id === o.magnetWallId && w.type === 'tracé'
           && ['muret','cloture','haie','barriere'].includes(w.tracéType))
@@ -1966,10 +1966,10 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     let wx, wy, z;
     // Fix 28: the walk along the host path now lives in wallOpeningWorldPosOnTracé3D, shared with
     // the camera (orbit centre, Scene centring) so the two can no longer place the same Element
-    // differently — which is precisely what made the camera centre on the wrong spot.
+    // differently, which is precisely what made the camera centre on the wrong spot.
     // Fix 30: unitsH (the Opening's own height) is passed so wallYFrac spans only the height the
-    // Opening can actually occupy — otherwise fraction 1 pushed it clean above the wall.
-    // Fix 31 — no longer passes unitsH (realHeightFloor): the span must be shrunk by the height the
+    // Opening can actually occupy, otherwise fraction 1 pushed it clean above the wall.
+    // Fix 31, no longer passes unitsH (realHeightFloor): the span must be shrunk by the height the
     // HOLE was cut with, i.e. o.h converted to world units, which is what the default now supplies.
     const _tracéPos = _tracéMurHost ? wallOpeningWorldPosOnTracé3D(o, page) : null;
     if (_tracéPos) {
@@ -1987,11 +1987,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     } else {
       // wxFloor always defined for perso/objet3d (migration + creation + loadSceneIntoPanel).
       // wyFloor only defined for build-tool Rooms; otherwise derived from canvas Y via the
-      // face-on reference camera — ensureElementWorldPos3D called only once if needed.
+      // face-on reference camera, ensureElementWorldPos3D called only once if needed.
       const _epNeeded = o.wxFloor === undefined || o.wyFloor === undefined;
       const _ep = _epNeeded ? ensureElementWorldPos3D(o, panel) : null;
       wx = o.wxFloor ?? _ep.x;
-      // roomFloatY: the Room's vertical offset (ground magnetism disabled) — added to wyFloor
+      // roomFloatY: the Room's vertical offset (ground magnetism disabled), added to wyFloor
       // which is frozen at creation (GROUND_Y_DEFAULT_3D + height/2). Without this +, only slabs
       // (which read roomFloatY live on every render) would move, not the walls.
       wy = (o.wyFloor ?? _ep.y) + (o.roomFloatY || 0);
@@ -2006,13 +2006,13 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // (entry.deboutNaturalH) as a fixed reference, to prevent lying-down (lieFlat)
     // or crouching poses from changing the scale (size.y too small → s too large).
     const _persoNatH = (o.type === 'perso' && entry.deboutNaturalH) ? entry.deboutNaturalH : undefined;
-    // Fix 31 — an Opening on a Trace wall gets its own placement: non-uniform scale so it actually
+    // Fix 31 : an Opening on a Trace wall gets its own placement: non-uniform scale so it actually
     // fills the hole cut for it, and a flush mount against a face of the wall. This supersedes the
     // old post-hoc "force position.x/z back onto the centre line" patch, which only papered over
     // placeRigCentered3D's bbox centring for open leaves and left the Opening straddling the wall.
     // Un modèle importé articulé (SkinnedMesh) a une géométrie brute qui ne représente pas sa pose
     // réellement affichée : boxFn doit donc tenir compte du squelette (cf. skinned-box-3d.js),
-    // sinon l'échelle appliquée ici (déduite de cette boîte) diverge de ce que le GPU dessine —
+    // sinon l'échelle appliquée ici (déduite de cette boîte) diverge de ce que le GPU dessine,
     // symptôme observé : boîte de sélection décalée vers le bas, modèle à la mauvaise échelle.
     const _boxFn3D = WALL_TYPES.includes(o.objType) ? wallOnlyBoxFn3D(entry)
       // ⚠️ LA BOÎTE DU MAILLAGE ICI, ET C'EST DÉLIBÉRÉ. Ce n'est pas un cadrage de caméra mais le
@@ -2024,7 +2024,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       // suivie à part : la hauteur mesurée à l'import est fausse pour les fichiers Z-up.
       : (o.objType === 'modele' ? (fg) => box3FromObjectSkinAware3D(fg) : null);
     // Un modèle importé COUCHÉ : même protection que le Personnage, mais mesurée plutôt que retenue
-    // à la construction — sa pose peut changer sans que le rig soit reconstruit. Rend `undefined`
+    // à la construction, sa pose peut changer sans que le rig soit reconstruit. Rend `undefined`
     // pour tout le reste, donc aucun autre type d'Élément n'est touché.
     const _natH = (_persoNatH !== undefined) ? _persoNatH
       : (o.objType === 'modele' ? hauteurDeboutModele3D(entry, _boxFn3D) : undefined);
@@ -2034,7 +2034,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       placeRigCentered3D(entry.figureGroup, wx, wy, z, unitsH, _boxFn3D, _natH);
     }
     // Pool: placeRigCentered3D's uniform scale would also enlarge the walls' height,
-    // which is not desired — sY is locked to 1 (rig's natural height = constant 0.42 m)
+    // which is not desired, sY is locked to 1 (rig's natural height = constant 0.42 m)
     // while the Y position is recomputed so the base stays glued to the ground.
     if (o.objType === 'piscine') {
       const sXZ = entry.figureGroup.scale.x;
@@ -2050,12 +2050,12 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // otherwise stay frozen at the Three.js origin (and at an unsynchronized scale) while the render rig is
     // moved/resized to (wx, wy, z) above, hence the visual offset observed between the selection
     // frame and the displayed 3D Model. So the same centering is applied to the render rig, with the
-    // same target — only its position/scale matter for computing the selection framing box
+    // same target, only its position/scale matter for computing the selection framing box
     // (see getWallChildProjectedQuad3D).
     // BUG (Fix 8): the global masking (objectRigCache3D.forEach visible=false, above) only covers
     // rigs ALREADY IN CACHE. If ensureObjectRigEntry3D creates a NEW rig here (first render of
-    // this page), it arrives in the scene with visible=true by default — AFTER the global
-    // masking — and shows up as a duplicate ghost wall in the render. visible=false is forced
+    // this page), it arrives in the scene with visible=true by default. AFTER the global
+    // masking, and shows up as a duplicate ghost wall in the render. visible=false is forced
     // explicitly to guarantee invisibility regardless of how old the rig is in the cache.
     if (WALL_TYPES.includes(o.objType)) {
       const selEntry = ensureObjectRigEntry3D(o);
@@ -2095,10 +2095,10 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // hollow too.
   wallJunctionMeshCache3D.forEach(mesh => { mesh.visible = false; });
   {
-    // Fix 34b — NOT buildMurWalls: that list deliberately drops any Wall carrying an Opening,
+    // Fix 34b : NOT buildMurWalls: that list deliberately drops any Wall carrying an Opening,
     // because a Wall pierced by a door or a window must not be merged into a colinear chain (the
     // holes are cut per Wall). Reusing it here inherited that exclusion for no reason, and every
-    // corner touching a Wall with a door or a window stayed hollow — which is exactly the half of
+    // corner touching a Wall with a door or a window stayed hollow, which is exactly the half of
     // them that were still wrong. A corner post cares only about where the Wall ENDS.
     const _junctionWalls = elements.filter(isJunctionWall3D);
     const _jw = _junctionWalls.map(o => ({
@@ -2110,7 +2110,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       color: o.color || FIXED_COLOR,
       roomFloatY: o.roomFloatY || 0,
     }));
-    // A Wall's thickness is 6 % of its own height — the ratio buildWallRig3D builds with, and the
+    // A Wall's thickness is 6 % of its own height : the ratio buildWallRig3D builds with, and the
     // reason the post is sized from the height rather than from a constant of its own.
     const jonctions = buildWallJunctions3D(_jw, w => w.height * BUILD_WALL_THICKNESS_RATIO_3D);
     jonctions.forEach(j => {
@@ -2168,7 +2168,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       // eliminating z-fighting with the Ground (floor) or the top of the walls (ceiling).
       let mat;
       if (pieceFloorType) {
-        // Textured floor — same logic as Terrain Zones
+        // Textured floor : same logic as Terrain Zones
         const tDef = GROUND_TYPE_DEFS.find(d => d.id === pieceFloorType);
         if (tDef) {
           const { map: tMap } = buildGroundTexture(pieceFloorType);
@@ -2210,12 +2210,12 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     // the old "if (!hidden) visible=true" instruction wouldn't reset it to false for a hidden
     // ceiling → artifact: apparent ceiling + walls seeming to stretch in the perspective view.
     // Low-angle shot: also hide Floors (ground-level slabs) when the camera
-    // is below — keep Ceilings visible (useful when viewed from below).
+    // is below, keep Ceilings visible (useful when viewed from below).
     mesh.visible = !o.ceilingHidden && (!isCeiling ? !_camBelowGround : true);
   });
 
   // ── Traces (Roads / Paths / Zones): flat planes at Ground level ────────────────────────
-  // Cache: Map<id, { group: THREE.Group, sigKey }> — one group per trace (1 or 2 meshes).
+  // Cache: Map<id, { group: THREE.Group, sigKey }>, one group per trace (1 or 2 meshes).
   // Hide all groups; the active ones for this panel are reactivated below.
   tracéMeshCache3D.forEach(e => { e.group.visible = false; });
   const panelTracés3D = page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id);
@@ -2431,10 +2431,10 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   });
   // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-  // The offscreen 3D render is now sized in the EXACT proportion of page.w/h — NOT panel.w/h —
+  // The offscreen 3D render is now sized in the EXACT proportion of page.w/h. NOT panel.w/h,
   // (see framePanelCamera3D, the "window on a landscape" model per user request): the whole
   // Page is rendered once, at rigorously fixed FOV/aspect, and each Panel then crops out
-  // only a rectangle from it (see drawPanelScene3D) — shrinking/moving a Panel thus changes neither the
+  // only a rectangle from it (see drawPanelScene3D), shrinking/moving a Panel thus changes neither the
   // FOV, nor the zoom, nor the camera position, exactly like shrinking a window's frame without moving the observer.
   // "scale" (see S.pageRenderScale/scheduleSharpRender, anti-blur option C) refines this resolution with the
   // screen zoom level; the ceiling (PANEL_SCENE_RENDER_MAX_PX, more generous than before since it now
@@ -2505,7 +2505,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     _smesh.renderOrder = 999;
     _orbitGroup3D.add(_smesh);
 
-    // World XYZ gizmo — AxesHelper: X=red, Y=green, Z=blue
+    // World XYZ gizmo : AxesHelper: X=red, Y=green, Z=blue
     const _ax = new THREE.AxesHelper(_aLen);
     _ax.traverse(o => { if (o.material) o.material.depthTest = false; });
     _ax.renderOrder = 998;
@@ -2518,7 +2518,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // transparency around the rig is desired. For a Panel's COMBINED scene, however, this transparent
   // background was a problem: the Ground (see groundMesh3D) does not cover the camera's whole field of view
   // (the "sky" above the horizon, or any area out of the Ground's reach, stays transparent), and these
-  // transparent pixels let what had just been drawn in drawContent show THROUGH — i.e. the Panel
+  // transparent pixels let what had just been drawn in drawContent show THROUGH, i.e. the Panel
   // immediately behind it in case of overlap (user feedback: "a Panel's background is transparent and
   // lets you see the Elements of the Panels below it"). So an opaque background (white, like an empty
   // Panel, see drawObject) is forced just for THIS render, then removed immediately after so as not to
@@ -2560,7 +2560,7 @@ export function drawPanelScene3D(c, panel, page, styleKey, scale = 1){
   const style = resolveStyle3D(styleKey);
   const { canvas: cnv, rw, rh } = renderPanelScene3D(panel, page, style, scale);
   // Crop (never stretch): the camera (see framePanelCamera3D) always aims at the Panel's OWN
-  // center, so that center falls exactly at the center of the rendered bitmap (rw x rh) — the
+  // center, so that center falls exactly at the center of the rendered bitmap (rw x rh), the
   // rectangle to extract is therefore centered, sized proportionally to panel.w/h relative to page.w/h
   // (the whole bitmap representing, in world width/height, exactly page.w/page.h). Shrinking the
   // Panel thus only reduces this extracted rectangle (less of the already-frozen landscape is seen), without
@@ -2583,12 +2583,12 @@ export function drawPanelScene3D(c, panel, page, styleKey, scale = 1){
 // camera (see framePanelCamera3D) from panel.camRotX/camRotY, with EXACTLY the
 // same construction as Three.js's Object3D.lookAt (backward = normalize(cameraPosition), since
 // the target is always the origin; right = normalize(cross(worldUp, backward)); up = cross(backward,
-// right)) — needed so that the 3D gizmo (see drawPanelAxisGizmo) projects the X/Y/Z axes EXACTLY
+// right)), needed so that the 3D gizmo (see drawPanelAxisGizmo) projects the X/Y/Z axes EXACTLY
 // as the real Three.js camera would, and thus rotates in sync with it during a
 // click-drag in Camera mode (see S.dragMode 'panelCamRotate').
 
 // ════════════════════════════════════════════════════════════
-// 3D — CAMERA MATH
+// 3D : CAMERA MATH
 // ════════════════════════════════════════════════════════════
 export function panelCamBasis3D(panel){
   const rotX = panel.camRotX || 0, rotY = panel.camRotY || 0;
@@ -2623,7 +2623,7 @@ export function panelCamBasis3D(panel){
 // Fix 13: returns the camera's orbit center in world coordinates {x,y,z} for the free
 // orbit mode (without camOrbitTargetId or a selected element as dynamic orbit).
 // If panel.camWx is defined, it is used directly (stable across any camera rotation).
-// Otherwise — an old project saved with the camPanX/Y camera encoding — it is migrated once:
+// Otherwise, an old project saved with the camPanX/Y camera encoding, it is migrated once:
 //   world = right * panX + up * panY  (loses the backward component → fine, it was zero at save time)
 // and the result is stored in camWx/y/z + camWxTarget/y/zTarget for subsequent accesses.
 export function getCamOrbitWorld(panel, basis) {
@@ -2639,30 +2639,30 @@ export function getCamOrbitWorld(panel, basis) {
   return { x: wx, y: wy, z: wz };
 }
 
-// Fix 24 ("Auto Depth", Blender-style) — re-anchors the orbit pivot onto whatever the Panel is
+// Fix 24 ("Auto Depth", Blender-style), re-anchors the orbit pivot onto whatever the Panel is
 // actually AIMED AT, called once at the start of every rotation drag (cf. S.dragMode
 // 'panelCamRotate').
 //
 // PROBLEM. The pivot (camWx/y/z) is a fixed world point that only the scroll wheel and the keyboard
-// move. Repeated zooming — especially the dolly-through below 3 units (Fix 18b), which pushes the
-// pivot FORWARD along the view axis instead of bringing the camera closer — eventually strands it
+// move. Repeated zooming, especially the dolly-through below 3 units (Fix 18b), which pushes the
+// pivot FORWARD along the view axis instead of bringing the camera closer, eventually strands it
 // in empty space, with camDist pinned to its 0.3 minimum. An orbit only keeps motionless whatever
 // sits AT the pivot's distance: with the pivot 30 cm from the camera and every Element several
-// units further away, nothing on screen stays still and the rotation center feels like it drifts —
+// units further away, nothing on screen stays still and the rotation center feels like it drifts,
 // even though it is provably fixed (verified in the logs: cx/cy/cz constant to 4 decimals).
 //
 // FIX. Slide the pivot ALONG the current view axis until it lands on the subject being looked at,
 // and set camDist to that same distance. Because camera position = pivot + backward × camDist, and
 // both terms shift by exactly the same amount along that axis, THE CAMERA DOES NOT MOVE: the
 // rendered image is bit-for-bit identical before and after. Only what the next rotation will turn
-// around changes. Moving the pivot OFF that axis is deliberately never done — that would displace
+// around changes. Moving the pivot OFF that axis is deliberately never done, that would displace
 // the camera and produce a visible jump.
 //
 // The subject is picked analytically from the Elements' stored world coordinates rather than by
 // raycasting the Three.js scene: personaScene3D is shared between all Panels and its per-rig
 // visibility only reflects the last render (which may well be another Panel), so a raycast there
 // would be unreliable. Retained candidates are those falling inside a cone around the view axis
-// covering the central third of the frame — "what the user has in the middle of the Panel" — and
+// covering the central third of the frame, "what the user has in the middle of the Panel", and
 // the nearest one in front of the camera wins. Falls back to the Ground plane when no Element
 // qualifies (typical when framing scenery), and leaves the pivot untouched when nothing at all is
 // hit (camera pointing at the sky), which preserves the previous behavior in that case.
@@ -2718,7 +2718,7 @@ export function panelAutoDepthPivot3D(panel, page){
 // see startCamSmoothing) changes, like a reframing rather than a viewpoint change. The
 // target (camPanX/Y) can only represent a point on the right/up plane passing through the
 // Panel's center: the Element's world position is therefore projected onto it (dot product with
-// right/up) — its component along the view axis (backward) is ignored, which amounts to aiming
+// right/up), its component along the view axis (backward) is ignored, which amounts to aiming
 // exactly at the Element as it appears on screen, without changing the Camera's distance. Reserved for
 // the Scene editor (per user request), where the canvas stays locked onto its single Panel and the
 // Camera is the only way to "move around" the Scene.
@@ -2726,15 +2726,15 @@ export function centerSceneCameraOnElement(panel, obj){
   if (!S.editingSceneId || !panel || panel.type !== 'panel' || !obj) return;
   let wx, wy, wz;
   // Wall Opening magnetized to a Wall: the Wall Opening's 2D canvas position does not correspond to a
-  // valid world position (the Wall Opening is rendered inside the Wall's rig, not standalone) — instead
+  // valid world position (the Wall Opening is rendered inside the Wall's rig, not standalone), instead
   // center directly on the host Wall, whose centering already works correctly.
   if (obj.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(obj.objType)) {
     const _page = currentPage();
     // Fix 28: an Opening carried by a TRACE wall (Low Wall, Fence, Hedge, Barrier) is placed by
-    // walking the host path, so its real position is computable — centre on the Opening ITSELF
+    // walking the host path, so its real position is computable, centre on the Opening ITSELF
     // rather than on the host. Falling through to the WALL_TYPES lookup below (which never matches
     // a Trace) left the camera aiming at the Element's stale stored coordinates.
-    // Fix 31 — centre rather than base, for the same reason as the orbit above.
+    // Fix 31 : centre rather than base, for the same reason as the orbit above.
     const _tracéPos = _page && tracéOpeningWorldCenter3D(obj, _page);
     if (_tracéPos) {
       panel.camWxTarget = _tracéPos.x;
@@ -2861,7 +2861,7 @@ function drawAxisArrowHead3D(c, x, y, angle, color){
 
 // FIX (pre-existing bug, regression from extraction #158): useObjectFormat3D/useObjectBoxFormat3D
 // were moved into rig3d.js (they only depend on the shared renderer/camera that live there; calling
-// them from here would have prevented rig3d.js from using them without creating a cycle — see
+// them from here would have prevented rig3d.js from using them without creating a cycle, see
 // rig3d.js's header). Imported from rig3d.js above, re-exported here for modules that were
 // already importing them from scene3d.js (events.js).
 export { useObjectFormat3D, useObjectBoxFormat3D };
@@ -2870,14 +2870,14 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  * La boîte sur laquelle cadrer un modèle importé : celle de ses OS quand son squelette est reconnu,
  * celle de son maillage sinon.
  *
- * ÉCRITE UNE FOIS, UTILISÉE AUX TROIS ENDROITS QUI CADRENT — la fiche, l'Éditeur, la Case. Trois
+ * ÉCRITE UNE FOIS, UTILISÉE AUX TROIS ENDROITS QUI CADRENT, la fiche, l'Éditeur, la Case. Trois
  * copies de cette décision auraient fini par diverger, et c'est précisément une divergence de ce
  * genre qui a produit le bug qu'elle corrige (cf. boiteDesOsMappes3D).
  *
  * Les deux chemins ne se recouvrent jamais : un modèle a un squelette reconnu, ou il n'en a pas.
  */
 /**
- * LA boîte de cadrage d'un modèle importé — celle de la fiche comme celle de l'éditeur.
+ * LA boîte de cadrage d'un modèle importé, celle de la fiche comme celle de l'éditeur.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * CE QU'ELLE DOIT CONTENIR : CE QUI EST PEINT, ET CHAQUE POIGNÉE
@@ -2896,7 +2896,7 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  *
  * Le cadrage s'est fait sur les OS SEULS pendant une dizaine de versions, et pour une bonne raison :
  * la boîte du maillage de `worker_j` était polluée par le fourreau de son katana, que le fichier
- * place à trois fois la hauteur du personnage — elle cadrait donc sur un objet flottant plutôt que
+ * place à trois fois la hauteur du personnage, elle cadrait donc sur un objet flottant plutôt que
  * sur le corps.
  *
  * CETTE RAISON A DISPARU : ce maillage est détecté et masqué (cf. src/stray-meshes-3d.js), et
@@ -2913,13 +2913,13 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  * `hulk` était le seul des trois à passer, ce qui explique qu'il ait longtemps semblé sain.
  *
  * CE QUE CETTE FONCTION NE DÉCIDE PAS : la TAILLE réelle de l'Élément, qui se mesure sur les os
- * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes — c'est
+ * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes, c'est
  * précisément leur confusion qui avait produit les défauts des tâches #333 et #334.
  */
 export function boiteDeCadrageModele3D(entry){
   const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
   const os = boiteDesOsMappes3D(entry && entry.skeletonBones);
-  // `union` avec une boîte VIDE est sans effet — les deux cas dégénérés (modèle sans os reconnus,
+  // `union` avec une boîte VIDE est sans effet : les deux cas dégénérés (modèle sans os reconnus,
   // ou sans maillage visible) se replient donc l'un sur l'autre sans branche supplémentaire.
   if (os) boite.union(os);
   return boite;
@@ -2960,7 +2960,7 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   }
   // Un modèle importé articulé (SkinnedMesh) a une géométrie brute qui ne représente pas sa pose
   // réellement affichée : frameCameraToFigure (Box3.setFromObject standard) cadrait alors sur une
-  // boîte sans rapport avec ce qui s'affiche vraiment — symptôme observé : aperçu de la modale
+  // boîte sans rapport avec ce qui s'affiche vraiment, symptôme observé : aperçu de la modale
   // cadré sur les pieds seuls, tout le reste hors champ (presque blanc). cf. skinned-box-3d.js.
   if (o.objType === 'modele') {
     entry.figureGroup.updateMatrixWorld(true);
@@ -2977,13 +2977,13 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
  * Rendre un MODÈLE IMPORTÉ dans le canevas de l'Éditeur de Personnage.
  *
  * Pourquoi une fonction de plus plutôt qu'un paramètre de `renderObjectToCanvas3D` : l'éditeur a
- * besoin de trois choses que l'aperçu d'une fiche n'a pas — une taille de rendu imposée (le canevas
+ * besoin de trois choses que l'aperçu d'une fiche n'a pas, une taille de rendu imposée (le canevas
  * plein écran, cf. Fix 53), un déplacement, et une orbite. Les ajouter à la fonction générique
  * aurait allongé une signature déjà à cinq paramètres pour un seul appelant.
  *
  * CE QUI EST PARTAGÉ EST PARTAGÉ : le cadrage passe par la même boîte consciente du skinning que
  * l'aperçu (cf. skinned-box-3d.js). Un modèle articulé a une géométrie brute qui ne représente pas
- * sa pose affichée ; sans cela, l'éditeur cadrerait sur les pieds seuls — le défaut exact déjà
+ * sa pose affichée; sans cela, l'éditeur cadrerait sur les pieds seuls, le défaut exact déjà
  * mesuré sur la fiche.
  */
 export function renderModelForEditor3D(o, zoom, pan, styleKey, sizeOverride, orbit){
@@ -3035,7 +3035,7 @@ export function disposeAllRigs3D(){
     if (personaScene3D) personaScene3D.remove(mesh);
   });
   slabMeshCache3D.clear();
-  // Fix 34 — same treatment as the Slabs: without this, every project change left orphan corner
+  // Fix 34 : same treatment as the Slabs: without this, every project change left orphan corner
   // posts in the scene, holding their buffers.
   wallJunctionMeshCache3D.forEach(mesh => {
     if (mesh.geometry) mesh.geometry.dispose();
@@ -3120,12 +3120,12 @@ export function getBuildingJunctionCorners(walls, panel, page, tol = 0.12) {
 }
 
 // FIX (pre-existing bug, regression from extraction #158): this function only existed in app.js
-// (never exported/imported), whereas getWallChildProjectedQuad3D — which depends on it directly —
+// (never exported/imported), whereas getWallChildProjectedQuad3D, which depends on it directly,
 // had already been moved here. Result: selecting a Wall Opening magnetized to a Wall crashed
 // (ReferenceError) as soon as drawSelection tried to draw its 3D selection outline.
-// Finds the REAL embedded node (see ensureWallRenderEntry3D) corresponding to child — the one whose
+// Finds the REAL embedded node (see ensureWallRenderEntry3D) corresponding to child, the one whose
 // matrixWorld carries the full composition: the Wall's rotation, position along the chosen side, AND its
-// own local rotation — exactly the pose with which the 3D Model is actually drawn.
+// own local rotation, exactly the pose with which the 3D Model is actually drawn.
 export function getWallChildRenderNode3D(child, wall, page){
   if (typeof THREE === 'undefined' || !page) return null;
   if (wall.w && wall.h) useObjectBoxFormat3D(wall); else useObjectFormat3D();

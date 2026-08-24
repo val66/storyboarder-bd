@@ -1,8 +1,8 @@
 /**
- * tests/stray-meshes.test.mjs — les maillages qui ne sont pas là où est le corps.
+ * tests/stray-meshes.test.mjs, les maillages qui ne sont pas là où est le corps.
  *
  * CE QUI SE JOUE ICI. Le critère n'a pas de seuil : un maillage est égaré s'il ne touche AUCUN
- * autre. Ce fichier vérifie les deux moitiés de cette phrase — qu'un maillage éloigné est vu, et
+ * autre. Ce fichier vérifie les deux moitiés de cette phrase, qu'un maillage éloigné est vu, et
  * surtout qu'un accessoire normalement collé au corps ne l'est PAS. La seconde moitié est la plus
  * importante : une détection trop large masquerait des morceaux légitimes du modèle de quelqu'un.
  *
@@ -37,7 +37,7 @@ function scene(...maillages){
   return g;
 }
 
-describe('maillagesHorsCorps3D — le critère sans seuil', () => {
+describe('maillagesHorsCorps3D : le critère sans seuil', () => {
   test('un maillage très loin des autres est signalé', () => {
     // La reproduction de worker_j : trois morceaux de corps groupés, un accessoire à 100 unités.
     const s = scene(cube('torse', [0, 1, 0]), cube('tete', [0, 2, 0]), cube('jambes', [0, 0, 0]),
@@ -54,7 +54,7 @@ describe('maillagesHorsCorps3D — le critère sans seuil', () => {
 
   test('un accessoire qui touche à peine reste dans le corps', () => {
     // La frontière exacte du critère : les boîtes se touchent sans se chevaucher. « Ne touche rien »
-    // veut dire rien du tout — c'est ce qui rend le critère lisible et non réglable.
+    // veut dire rien du tout, c'est ce qui rend le critère lisible et non réglable.
     const s = scene(cube('torse', [0, 1, 0]), cube('tete', [0, 2, 0]), cube('cape', [1, 1, 0]));
     assert.deepEqual(maillagesHorsCorps3D(s), []);
   });
@@ -66,7 +66,7 @@ describe('maillagesHorsCorps3D — le critère sans seuil', () => {
   });
 
   test('un seul maillage : jamais signalé', () => {
-    // « Loin des autres » n'a pas de sens sans autres — et un modèle d'un seul tenant est le cas
+    // « Loin des autres » n'a pas de sens sans autres, et un modèle d'un seul tenant est le cas
     // le plus courant (deux des six fichiers réels du dépôt).
     assert.deepEqual(maillagesHorsCorps3D(scene(cube('tout', [0, 0, 0]))), []);
     assert.deepEqual(maillagesHorsCorps3D(scene()), []);
@@ -99,7 +99,7 @@ describe('maillagesHorsCorps3D — le critère sans seuil', () => {
   });
 });
 
-describe('maillagesParNom3D — retrouver les égarés dans un clone', () => {
+describe('maillagesParNom3D : retrouver les égarés dans un clone', () => {
   test('rend exactement les maillages nommés, et rien d\'autre', () => {
     const s = scene(cube('torse', [0, 1, 0]), cube('fourreau', [0, 100, 0]), cube('lance', [0, 5, 0]));
     assert.deepEqual(maillagesParNom3D(s, ['fourreau']).map(m => m.name), ['fourreau']);
@@ -122,7 +122,7 @@ describe('maillagesParNom3D — retrouver les égarés dans un clone', () => {
   });
 
   test('un maillage sans nom se retrouve par son nom de repli', () => {
-    // Le même repli que dans boitesDesMaillages3D — sinon la détection nommerait « (sans nom) » et
+    // Le même repli que dans boitesDesMaillages3D : sinon la détection nommerait « (sans nom) » et
     // le masquage ne retrouverait jamais personne.
     const s = scene(cube('torse', [0, 1, 0]), cube('', [0, 100, 0]));
     assert.equal(maillagesParNom3D(s, ['(sans nom)']).length, 1);
@@ -170,7 +170,7 @@ describe('boitesDesMaillages3D', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — la détection et le masquage des morceaux détachés.
+ * JOURNAL DE MUTATION : la détection et le masquage des morceaux détachés.
  *
  *   N1 critère inversé : signale ceux qui TOUCHENT                              ROUGE
  *   N2 la garde du maillage unique est retirée                                  ROUGE

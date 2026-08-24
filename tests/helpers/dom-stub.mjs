@@ -1,19 +1,19 @@
 /**
- * dom-stub.mjs — Environnement DOM/THREE minimal pour charger les modules src/*.js sous Node
+ * dom-stub.mjs. Environnement DOM/THREE minimal pour charger les modules src/*.js sous Node
  * (node:test), qui n'a ni `document`, ni `window`, ni WebGL.
  *
  * Ce fichier DOIT être importé en toute première ligne de chaque fichier de test, AVANT tout
  * import depuis src/, car plusieurs modules (io.js notamment) exécutent du code au chargement du
  * module (déclarations `const X = document.getElementById('X')`, `window.addEventListener(...)`,
- * `X.addEventListener(...)`) — sans ce stub, importer draw.js/scene3d.js/sidebar.js (qui importent
+ * `X.addEventListener(...)`), sans ce stub, importer draw.js/scene3d.js/sidebar.js (qui importent
  * transitivement i18n.js → io.js) provoquerait un ReferenceError immédiat.
  *
  * Ne couvre QUE ce qui est nécessaire pour que le chargement des modules (temps d'import) et les
- * fonctions pures testées ici (caméra, construction de Bâtiments) s'exécutent sans planter — ce
+ * fonctions pures testées ici (caméra, construction de Bâtiments) s'exécutent sans planter, ce
  * n'est pas un DOM fonctionnel (pas de rendu réel, pas de vrai cycle d'événements).
  *
  * personaRenderer3D (THREE.WebGLRenderer) n'est construit que paresseusement dans
- * ensurePersonaScene3D() (rig3d.js) — jamais au chargement du module — donc tant que les tests
+ * ensurePersonaScene3D() (rig3d.js), jamais au chargement du module, donc tant que les tests
  * n'appellent pas cette fonction (ou une fonction qui l'appelle), l'absence de vrai contexte WebGL
  * n'est jamais un problème.
  */
@@ -22,12 +22,12 @@ import * as THREE from 'three';
 globalThis.THREE = THREE; // rig3d.js utilise `THREE` comme global (chargé via <script> dans index.html)
 
 // Contexte canvas 2D factice : un Proxy qui accepte N'IMPORTE QUEL appel de méthode (save,
-// translate, fillRect, drawImage, etc. — la surface de l'API Canvas2D utilisée par draw.js est bien
+// translate, fillRect, drawImage, etc. la surface de l'API Canvas2D utilisée par draw.js est bien
 // trop large pour l'énumérer) en no-op, tout en spécial-casant les quelques méthodes dont le résultat
-// est ensuite déréférencé (measureText().width, createLinearGradient().addColorStop(...)) — sans ce
+// est ensuite déréférencé (measureText().width, createLinearGradient().addColorStop(...)), sans ce
 // cas particulier, `c.measureText(x).width` planterait (`.width` sur `undefined`). Nécessaire pour
 // que initStartupProject() (appelée au chargement du module events.js, qui rend un projet vide par
-// défaut) ne plante pas dès l'import — même si aucun test ici ne vérifie le contenu réellement dessiné.
+// défaut) ne plante pas dès l'import, même si aucun test ici ne vérifie le contenu réellement dessiné.
 function makeFakeCanvasContext2D() {
   const fakeGradient = { addColorStop(){} };
   const specialReturns = {
@@ -59,7 +59,7 @@ function makeFakeElement() {
   // le commentaire qui l'explique). Même famille de piège que la mémorisation par id plus bas.
   //
   // Ce n'est PAS un DOM : pas de parentNode tenu à jour, pas d'analyse du HTML posé en `innerHTML`.
-  // Poser `innerHTML` vide seulement la liste d'enfants — ce qui suffit, car c'est ainsi que le code
+  // Poser `innerHTML` vide seulement la liste d'enfants, ce qui suffit, car c'est ainsi que le code
   // de rendu remet une liste à zéro avant de la reconstruire.
   const enfants = [];
   // Les classes sont RÉELLEMENT tenues. Un `classList` en no-op rendait indémontrable tout ce qui
@@ -116,11 +116,11 @@ function makeFakeElement() {
     closest(){ return null; },
     // '2d' → contexte factice fonctionnel (cf. makeFakeCanvasContext2D) ; 'webgl'/'webgl2' → null
     // intentionnellement (aucun test n'appelle jamais ensurePersonaScene3D, qui construirait un vrai
-    // THREE.WebGLRenderer — cf. en-tête de ce fichier).
+    // THREE.WebGLRenderer, cf. en-tête de ce fichier).
     getContext(type){ return type === '2d' ? makeFakeCanvasContext2D() : null; },
     getBoundingClientRect(){ return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }; },
     // `select` manquait, et son absence ne s'est vue qu'au moment de tester la modale de
-    // renommage : elle est appelée dans un setTimeout, donc APRÈS la fin du test — l'erreur
+    // renommage : elle est appelée dans un setTimeout, donc APRÈS la fin du test, l'erreur
     // remontait en uncaughtException, sans rapport visible avec la ligne fautive.
     focus(){}, blur(){}, click(){}, remove(){}, select(){},
     cloneNode(){ return makeFakeElement(); },
@@ -133,7 +133,7 @@ function makeFakeElement() {
 
 // Les éléments sont MÉMORISÉS PAR ID. Sans cela, `getElementById('board')` rendait un objet neuf à
 // chaque appel : poser `canvas.style.cursor` puis le relire depuis un autre appel donnait toujours
-// `undefined`, et tout test qui l'observait était vrai quoi qu'il arrive — la même famille de piège
+// `undefined`, et tout test qui l'observait était vrai quoi qu'il arrive, la même famille de piège
 // que le `textContent` non conservé. Les mémoriser rend ces effets observables.
 //
 // Volontairement PAS de vidage entre les tests : ces éléments tiennent lieu de page HTML, qui ne se
@@ -147,7 +147,7 @@ globalThis.document = {
     return _elementsParId.get(id);
   },
   createElement(){ return makeFakeElement(); },
-  // Nœud texte factice minimal (nodeType 3, comme un vrai Text) — nécessaire pour i18n.js
+  // Nœud texte factice minimal (nodeType 3, comme un vrai Text), nécessaire pour i18n.js
   // (setLeadingText/setTrailingText appellent document.createTextNode au chargement/à l'usage).
   createTextNode(text){ return { nodeType: 3, textContent: text }; },
   // Comme getElementById : renvoie un élément factice plutôt que null, pour que le code au niveau

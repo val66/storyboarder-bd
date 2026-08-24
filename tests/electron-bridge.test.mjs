@@ -1,16 +1,16 @@
 /**
- * tests/electron-bridge.test.mjs — le pont Electron et sa déclaration ne doivent pas diverger.
+ * tests/electron-bridge.test.mjs, le pont Electron et sa déclaration ne doivent pas diverger.
  *
  * `preload.js` expose au renderer la SEULE porte de l'application vers le disque. Sa surface est
  * décrite deux fois : dans preload.js, qui l'implémente, et dans types/globals.d.ts, que lit la
  * vérification de types. Deux descriptions de la même chose, donc deux descriptions qui peuvent
- * dériver — c'est la classe de bug numéro un de ce dépôt.
+ * dériver, c'est la classe de bug numéro un de ce dépôt.
  *
  * Ce que la dérive coûte : une méthode ajoutée au pont mais absente de la déclaration devient
  * invisible au vérificateur, et son mauvais usage passe. Une méthode retirée du pont mais laissée
  * dans la déclaration est pire : le vérificateur affirme qu'elle existe alors qu'un appel lèvera.
  *
- * Ces tests lisent les deux fichiers comme du TEXTE. Ils ne peuvent pas charger preload.js — c'est
+ * Ces tests lisent les deux fichiers comme du TEXTE. Ils ne peuvent pas charger preload.js, c'est
  * du CommonJS qui require('electron'), indisponible sous Node nu (cf. la règle n°1
  * d'architecture.md). L'inspection de source est ici la seule voie, et elle suffit : ce qu'on
  * compare, ce sont deux listes de noms.
@@ -41,9 +41,9 @@ function methodesDeclarees() {
   return [...corps.matchAll(/^\s{2}([A-Za-z_$][\w$]*)\s*\(/gm)].map(m => m[1]);
 }
 
-describe('Pont Electron — les deux descriptions concordent', () => {
+describe('Pont Electron : les deux descriptions concordent', () => {
   test('le garde-fou : les deux listes sont non vides', () => {
-    // Sans lui, une expression cassée rendrait les deux tests suivants verts et vides — l'état déjà
+    // Sans lui, une expression cassée rendrait les deux tests suivants verts et vides, l'état déjà
     // constaté trois fois dans ce dépôt.
     assert.ok(methodesDuPont().length >= 8, `${methodesDuPont().length} méthode(s) dans preload.js`);
     assert.ok(methodesDeclarees().length >= 8, `${methodesDeclarees().length} déclarée(s)`);
@@ -67,12 +67,12 @@ describe('Pont Electron — les deux descriptions concordent', () => {
 
   test('la déclaration ne porte pas de signature d\'index', () => {
     // `[autre: string]: unknown` autorise tout et ne vérifie rien. Elle avait produit neuf
-    // diagnostics « This expression is not callable », tous faux — la déclaration masquait les
+    // diagnostics « This expression is not callable », tous faux, la déclaration masquait les
     // méthodes réelles au lieu de les décrire. Sur une interface de FRONTIÈRE, elle annule
     // précisément ce qu'on venait chercher.
     // LES COMMENTAIRES SONT RETIRÉS D'ABORD. Sans cela, ce test échouait sur le commentaire
     // ci-dessus, qui CITE `[autre: string]: unknown` pour expliquer pourquoi il n'y en a plus.
-    // Deuxième fois que ce dépôt se fait prendre par un test satisfait — ici, mis en échec — par du
+    // Deuxième fois que ce dépôt se fait prendre par un test satisfait, ici, mis en échec, par du
     // texte en commentaire (cf. Fix 88 et son sourceSansCommentaires). Un test qui lit du source
     // doit toujours écarter les commentaires avant de chercher du code.
     const i = DECL.indexOf('interface StoryboarderAPI {');

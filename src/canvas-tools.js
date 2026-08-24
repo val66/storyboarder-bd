@@ -5,11 +5,11 @@
  * What they have in common, and what makes them one module rather than three: each owns a state
  * object in `S` (`S.buildTool`, `S.traceTool`, `S.measureTool`), each takes over the cursor while
  * active, and each is mutually exclusive with the others. Starting one is the same gesture every
- * time — the click then means something different until the tool is stopped.
+ * time, the click then means something different until the tool is stopped.
  *
  * WHERE THEY COME FROM. The section of events.js banner-headed "BUILD A BUILDING TOOL". That banner
  * lied, for the third time in this repository: under it sat the Build tool, the Tracé tool, the
- * Measure tool, three keyboard-navigation helpers and the wiring of the Undo button — five subjects.
+ * Measure tool, three keyboard-navigation helpers and the wiring of the Undo button, five subjects.
  * Only the three tools moved here; a banner is a comment, not a map.
  *
  * NOT HERE, on purpose:
@@ -38,7 +38,7 @@ let _snapshot = () => {};
 export function setCanvasToolsCallbacks({ snapshot }) { _snapshot = snapshot; }
 
 // Cursor shown while a tool is active. Set through a helper so the three tools cannot drift apart
-// on this detail — and so a missing #board never throws mid-gesture.
+// on this detail, and so a missing #board never throws mid-gesture.
 function setCanvasCursor(valeur){
   const canvas = document.getElementById('board');
   if (canvas) canvas.style.cursor = valeur;
@@ -80,7 +80,7 @@ export function screenToWorldFloor(pageX, pageY, panel, page){
 }
 
 // ════════════════════════════════════════════════════════════
-// BUILD tool — drawing Walls in top-down view
+// BUILD tool, drawing Walls in top-down view
 // ════════════════════════════════════════════════════════════
 
 /**
@@ -135,7 +135,7 @@ export function buildApplyAlignSnap(ax, az){
   // placed point (< BUILD_ALIGN_THRESHOLD ≈ 18 cm).
   // Without this, the first mousemove after a click immediately regenerates a Z guide coinciding
   // with the recent horizontal wall, making it look like a full-width wall (blue line too long).
-  // Guides resume as soon as the cursor leaves this zone — so they remain usable for intentional
+  // Guides resume as soon as the cursor leaves this zone, so they remain usable for intentional
   // alignment.
   const suppressGuides = distFromLast < BUILD_ALIGN_THRESHOLD;
   let x = ax, z = az;
@@ -185,7 +185,7 @@ export function startBuildMode(panel, page){
 }
 
 // ════════════════════════════════════════════════════════════
-// TRACÉ tool — roads, paths, low walls, hedges, fences, terrain zones
+// TRACÉ tool, roads, paths, low walls, hedges, fences, terrain zones
 // ════════════════════════════════════════════════════════════
 
 // Display names, kept next to the only place that assigns them. French because they are shown to
@@ -209,7 +209,7 @@ export function startTraceTool(panel, type){
 
 /**
  * Stops the Tracé tool. `save === true` turns what was drawn into an Element; anything else drops
- * it. Both paths clear the tool and the cursor — a tool that stops halfway leaves the canvas in a
+ * it. Both paths clear the tool and the cursor, a tool that stops halfway leaves the canvas in a
  * mode the user cannot get out of.
  */
 export function stopTraceTool(save){
@@ -253,7 +253,7 @@ export function stopTraceTool(save){
 }
 
 // ════════════════════════════════════════════════════════════
-// MEASURE tool — distance on the ground, top-down view only
+// MEASURE tool, distance on the ground, top-down view only
 // ════════════════════════════════════════════════════════════
 
 export function startMeasureTool(panel){

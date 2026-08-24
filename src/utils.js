@@ -1,7 +1,7 @@
 /**
  * @file utils.js
  * Pure utility functions for Storyboarder.
- * No side effects, no global state — safe to import from any module.
+ * No side effects, no global state, safe to import from any module.
  *
  * Data lookups:    getFormat, pxPerMm, getStyle3D, getEmotion, getPosition
  * Poses:           unknownPoseKey3D, jointsEqual3D, resolvePoseLabel3D
@@ -34,11 +34,11 @@ export function getEmotion(key){ return EMOTIONS.find(e => e.key === key) || EMO
 
 export function getPosition(key){ return POSITIONS.find(p => p.key === key) || POSITIONS[0]; }
 
-// Fix 44 — the pose key of an Element when that key is NOT one of the built-ins; null otherwise.
+// Fix 44 : the pose key of an Element when that key is NOT one of the built-ins; null otherwise.
 //
 // getPosition just above deliberately falls back to POSITIONS[0] so callers always get something to
 // display. That silence is harmless for a label, but dangerous for the modal's <select>: assigning a
-// value that is absent from the option list leaves the select EMPTY — standard DOM behaviour — and
+// value that is absent from the option list leaves the select EMPTY, standard DOM behaviour, and
 // the next save writes that empty string back over obj.position. The pose name is destroyed, without
 // a single error anywhere.
 //
@@ -51,7 +51,7 @@ export function unknownPoseKey3D(position, knownKeys){
   return known.includes(position) ? null : position;
 }
 
-// Fix 45 — égalité de deux jeux d'articulations. Les valeurs sont des nombres, des booléens
+// Fix 45 : égalité de deux jeux d'articulations. Les valeurs sont des nombres, des booléens
 // (lieFlat) ou des objets imbriqués {x, z} ; la comparaison est donc récursive. Une tolérance est
 // nécessaire : un angle passe par degrés → radians au retour de la modale, et un aller-retour peut
 // décaler le dernier bit. Comparer par JSON.stringify serait plus court mais dépendrait de l'ordre
@@ -66,7 +66,7 @@ export function jointsEqual3D(a, b, eps = 1e-9){
   return ka.every(k => Object.prototype.hasOwnProperty.call(b, k) && jointsEqual3D(a[k], b[k], eps));
 }
 
-// Fix 45 — étiquette de pose d'un Personnage, CALCULÉE À L'AFFICHAGE et jamais persistée.
+// Fix 45 : étiquette de pose d'un Personnage, CALCULÉE À L'AFFICHAGE et jamais persistée.
 //
 // `o.position` est une étiquette, pas une dépendance : les valeurs d'articulations vivent dans
 // `o.joints3d` et font foi (cf. getEffectiveJoints). Cette fonction se contente de décider comment
@@ -79,13 +79,13 @@ export function jointsEqual3D(a, b, eps = 1e-9){
 // `poses` est la bibliothèque du projet, [{ id, name, skeleton, joints }]. L'appariement d'une pose
 // personnalisée se fait par ID, pas par nom : renommer une pose garde donc l'étiquette juste chez
 // tous les Personnages qui la citent. Les poses intégrées, elles, restent appariées par leur clé
-// ('assis', 'debout'…) — c'est ce que contiennent les fichiers existants, et ça ne changera pas.
+// ('assis', 'debout'…), c'est ce que contiennent les fichiers existants, et ça ne changera pas.
 // Aucune collision possible entre les deux : newId('pose') produit « pose1 », « pose2 »…
 //
 // Contrepartie de l'id opaque : quand la pose est introuvable, il n'y a rien d'humainement lisible à
-// afficher. `o.positionLabel` — le dernier nom connu, s'il a été enregistré à l'application de la
-// pose — sert alors de repli. Champ facultatif : son absence n'empêche rien, on retombe sur l'id.
-// Fix 57 — la BIBLIOTHÈQUE est consultée en premier, POSITIONS/POSE_3D ne sont plus qu'un filet.
+// afficher. `o.positionLabel`, le dernier nom connu, s'il a été enregistré à l'application de la
+// pose, sert alors de repli. Champ facultatif : son absence n'empêche rien, on retombe sur l'id.
+// Fix 57 : la BIBLIOTHÈQUE est consultée en premier, POSITIONS/POSE_3D ne sont plus qu'un filet.
 // Même inversion que poseJointsByKey3D, et pour la même raison : les poses intégrées y sont semées
 // et deviennent renommables. Chercher d'abord dans POSITIONS ferait gagner le nom figé et annulerait
 // tout renommage de « Assis ».
@@ -101,28 +101,28 @@ export function resolvePoseLabel3D(o, poses, traduire){
   }
 
   // Articulations de référence de cette pose. Sans joints3d, le Personnage EST la pose : rien à
-  // signaler. Avec, on compare — c'est ce qui distingue « Assis » de « Assis (modifié) ».
+  // signaler. Avec, on compare, c'est ce qui distingue « Assis » de « Assis (modifié) ».
   const reference = custom ? custom.joints : POSE_3D[key];
   const modified = !!(o && o.joints3d) && !!reference && !jointsEqual3D(o.joints3d, reference);
   // Le nom d'une pose de bibliothèque est une DONNÉE (l'utilisateur l'a peut-être renommée) : il ne
   // se traduit pas. Seul le libellé d'une pose intégrée suit la langue, et seuls les deux qualifieurs
-  // ajoutés ici — « (modifié) », « (inconnue) » — sont du texte d'interface.
+  // ajoutés ici, « (modifié) », « (inconnue) », sont du texte d'interface.
   const base = custom ? custom.name : libelleTable3D(builtin, traduire);
   return { key, known: true, modified, label: modified ? `${base} ${t('(modified)', '(modifié)')}` : base };
 }
 
-// Fix 51 — descripteurs des curseurs d'une articulation.
+// Fix 51 : descripteurs des curseurs d'une articulation.
 //
 // POSE_HANDLES décrit des ARTICULATIONS ; l'interface, elle, affiche des CURSEURS, et les deux ne se
 // correspondent pas un pour un : une charnière simple donne un curseur, une charnière double ou une
 // rotule en donnent deux. Traduire l'un vers l'autre demandait jusqu'ici un aiguillage sur `mode`,
-// et cet aiguillage existait DEUX FOIS dans modals.js — une fois pour construire les curseurs, une
+// et cet aiguillage existait DEUX FOIS dans modals.js, une fois pour construire les curseurs, une
 // fois pour les resynchroniser depuis le brouillon. Ajouter le panneau de l'éditeur en aurait fait
 // une troisième copie.
 //
 // C'est exactement la forme du bug qui s'est reproduit cinq fois dans ce dépôt (Fix 28/30/31/31b/33,
 // puis la cohérence de version) : deux endroits calculent la même chose et finissent par diverger.
-// Un seul descripteur, et n'importe quel panneau — modale, éditeur, un futur autre — se contente de
+// Un seul descripteur, et n'importe quel panneau, modale, éditeur, un futur autre, se contente de
 // le parcourir.
 //
 // Les suffixes de libellé vivent ici plutôt que dans l'interface, pour la même raison : deux
@@ -131,7 +131,7 @@ export function resolvePoseLabel3D(o, poses, traduire){
 // `traduire` est OPTIONNEL, et son absence donne le français. Ce module ne peut pas importer
 // state.js (state.js importe utils.js : le cycle serait immédiat), donc la langue arrive par
 // paramètre, comme pour groupesPosables/libelleTypeObjet3D. Les appelants qui ne se servent pas du
-// suffixe — pose-bridge.js, poseSliderSignature3D — n'ont rien à passer.
+// suffixe, pose-bridge.js, poseSliderSignature3D, n'ont rien à passer.
 /** @param {any} def @param {(en:string,fr:string)=>string} [traduire] */
 export function poseSliderSpecs3D(def, traduire){
   const t = traduire || ((en, fr) => fr);
@@ -149,13 +149,13 @@ export function poseSliderSpecs3D(def, traduire){
   //
   // Le troisième axe existait déjà pour les poignets, mais sous la forme d'une SECONDE entrée dans
   // POSE_HANDLES (`lWristRoll`), qui désignait le même groupe que la première. Conséquence : deux
-  // poignées superposées au même pixel sur l'aperçu, dont une seule attrapable — alors qu'un
+  // poignées superposées au même pixel sur l'aperçu, dont une seule attrapable, alors qu'un
   // commentaire affirmait qu'il n'y en avait pas de dédiée. Le code et le commentaire disaient deux
   // choses différentes, et c'est le commentaire qui avait raison sur l'intention.
   //
   // `hinge3` dit la même chose en une entrée : une articulation, une poignée, trois curseurs. Le
-  // SENS du troisième axe change d'une articulation à l'autre — torsion pour un poignet, inclinaison
-  // latérale pour une tête ou un buste — d'où un suffixe porté par le descripteur plutôt que figé
+  // SENS du troisième axe change d'une articulation à l'autre, torsion pour un poignet, inclinaison
+  // latérale pour une tête ou un buste, d'où un suffixe porté par le descripteur plutôt que figé
   // ici. Les CHAMPS persistés, eux, ne bougent pas : lWristRotZ reste lWristRotZ.
   if (def.mode === 'hinge3') {
     return [
@@ -171,7 +171,7 @@ export function poseSliderSpecs3D(def, traduire){
   ];
 }
 
-// Fix 62 — la pose TELLE QUE LES CURSEURS L'AFFICHENT, sous forme comparable.
+// Fix 62 : la pose TELLE QUE LES CURSEURS L'AFFICHENT, sous forme comparable.
 //
 // Répond à « la pose a-t-elle changé ? » en comparant ce que l'utilisateur VOIT, pas les radians
 // sous-jacents. La granularité vient alors des curseurs par construction, au lieu d'une tolérance
@@ -183,7 +183,7 @@ export function poseSliderSpecs3D(def, traduire){
 // supprime la cause.
 //
 // Même parti pris que captureModalSnapshot (modals.js), qui répond à la même question pour la modale
-// en comparant les valeurs de ses champs de formulaire — dont ces mêmes curseurs. Les deux portées
+// en comparant les valeurs de ses champs de formulaire, dont ces mêmes curseurs. Les deux portées
 // diffèrent (la modale couvre aussi nom, émotion, taille…), mais la granularité est désormais la
 // même des deux côtés, et par le même raisonnement.
 export function poseSliderSignature3D(joints, handles){
@@ -192,7 +192,7 @@ export function poseSliderSignature3D(joints, handles){
     .join('|');
 }
 
-// Valeur d'un curseur, en DEGRÉS ARRONDIS — c'est la seule unité que l'interface manipule, alors que
+// Valeur d'un curseur, en DEGRÉS ARRONDIS, c'est la seule unité que l'interface manipule, alors que
 // le brouillon est en radians. Arrondir ici et non à l'affichage garantit que lire puis réécrire un
 // curseur qu'on n'a pas touché ne dérive pas : sans l'arrondi commun, chaque aller-retour ajouterait
 // une fraction de degré.
@@ -200,11 +200,11 @@ export function readPoseSliderDeg3D(draft, spec){
   return Math.round(readPoseSliderRad3D(draft, spec) * 180 / Math.PI);
 }
 
-// Valeur d'un curseur en RADIANS, sans arrondi — l'unité dans laquelle la pose est réellement
+// Valeur d'un curseur en RADIANS, sans arrondi, l'unité dans laquelle la pose est réellement
 // stockée. Extraite de la précédente, qui n'en est plus que la conversion : le retargeting vers un
 // squelette importé (cf. src/pose-bridge.js) compose des rotations, et arrondir au degré AVANT de
 // composer ferait dériver la chaîne. Deux lectures séparées du même champ auraient fini par ne plus
-// lire la même chose — c'est le défaut qui revient le plus souvent dans ce dépôt.
+// lire la même chose, c'est le défaut qui revient le plus souvent dans ce dépôt.
 export function readPoseSliderRad3D(draft, spec){
   if (!draft || !spec) return 0;
   const raw = draft[spec.field];
@@ -225,9 +225,9 @@ export function writePoseSliderDeg3D(draft, spec, deg){
   return draft;
 }
 
-// Fix 71/72 (ESSAI) — glisser une poignée pour régler son articulation.
+// Fix 71/72 (ESSAI) : glisser une poignée pour régler son articulation.
 //
-// Bornes et arrondi : ceux des curseurs (-180..180, pas de 1°). Ce n'est pas un choix esthétique —
+// Bornes et arrondi : ceux des curseurs (-180..180, pas de 1°). Ce n'est pas un choix esthétique,
 // c'est la MÊME valeur qui doit sortir du glisser et du curseur, sinon la signature de pose
 // (poseSliderSignature3D, qui compare des degrés arrondis) verrait changer une pose que personne
 // n'a touchée, et « Réinitialiser » s'allumerait tout seul.
@@ -235,7 +235,7 @@ export const POSE_DRAG_DEG_PER_PX = 0.5;   // 360 px de course = un demi-tour
 export const POSE_DRAG_DEG_MIN = -180;
 export const POSE_DRAG_DEG_MAX = 180;
 
-// ─── Fix 75 (ESSAI) — le geste de glisser SUIT L'ORIENTATION du modèle ───────────────────────
+// ─── Fix 75 (ESSAI) : le geste de glisser SUIT L'ORIENTATION du modèle ───────────────────────
 //
 // Le problème, en une phrase : le geste vit en repère ÉCRAN, les champs d'articulation vivent en
 // repère MODÈLE. Tant que la figure est vue de face les deux coïncident ; dès qu'on orbite, la
@@ -247,18 +247,18 @@ export const POSE_DRAG_DEG_MAX = 180;
 //
 // APPROXIMATION ASSUMÉE : l'axe est pris dans le repère du MODÈLE, pas dans celui de l'articulation.
 // Pour un coude dont l'épaule est déjà tournée, la direction obtenue n'est donc pas exacte. Le
-// repère réel vit dans la scène WebGL, hors de portée d'un calcul pur — et donc hors de portée des
+// repère réel vit dans la scène WebGL, hors de portée d'un calcul pur, et donc hors de portée des
 // tests. Compromis délibéré : approché mais vérifiable, plutôt qu'exact et intestable.
 //
-// Fix 76 — cette approximation ne porte plus QUE sur les articulations filles. L'éditeur affiche
+// Fix 76 : cette approximation ne porte plus QUE sur les articulations filles. L'éditeur affiche
 // désormais le Personnage sans sa rotation propre (cf. drawPersonaEditor), si bien que les axes du
 // modèle coïncident exactement avec ceux du monde. Auparavant, un Personnage tourné dans sa Scène
-// faussait la direction de TOUTES ses articulations, racine comprise — c'est ce qui rendait le
+// faussait la direction de TOUTES ses articulations, racine comprise, c'est ce qui rendait le
 // glisser inutilisable dès qu'on avait affaire à un Personnage de dos ou de profil.
 
 // Axe de rotation d'un champ, dans le repère du modèle. Déduit du descripteur, pas d'une table
 // parallèle : une table de plus finirait par diverger de ce que rig3d applique réellement
-// (cf. applyPoseToRig — `lElbow` et `lKnee` pilotent rotation.x, d'où le défaut à 'x').
+// (cf. applyPoseToRig, `lElbow` et `lKnee` pilotent rotation.x, d'où le défaut à 'x').
 export function poseSpecRotationAxis3D(spec){
   if (!spec) return 'x';
   if (spec.axis) return spec.axis;
@@ -295,14 +295,14 @@ export function projectModelAxisToScreen3D(axis, orbit){
   return projectVectorToScreen3D(modelAxisVector3D(axis), orbit);
 }
 
-// Fix 81 — de quel CÔTÉ l'axe pointe : produit scalaire avec la direction de visée. Négatif quand
+// Fix 81 : de quel CÔTÉ l'axe pointe : produit scalaire avec la direction de visée. Négatif quand
 // l'axe vient vers l'œil, positif quand il s'en éloigne.
 //
 // C'est ce qui donne son SENS au geste circulaire, et il manquait. Pour une rotation de +θ autour
 // de `a`, un point situé à droite du pivot se déplace vers le bas de l'écran d'une quantité
 // proportionnelle à a·f (démonstration : le produit vectoriel des vecteurs droite et haut de la
 // caméra vaut -f, cf. projectModelAxisToScreen3D). Une même rotation paraît donc HORAIRE d'un côté
-// et ANTIHORAIRE de l'autre — d'où un glisser circulaire juste de face et inversé de profil.
+// et ANTIHORAIRE de l'autre, d'où un glisser circulaire juste de face et inversé de profil.
 //
 // Le signe est toujours franc là où on s'en sert : pour un axe unitaire, |projection|² + (a·f)² = 1,
 // donc le mode circulaire (|projection| < 0.35) implique |a·f| > 0.93. Le mode droit et le mode
@@ -325,7 +325,7 @@ export function circularSweepSign3D(axis, orbit){
 
 // En deçà de cette longueur de projection, l'axe pointe vers l'œil : sa perpendiculaire à l'écran
 // n'a plus de direction stable et se met à tourner sur elle-même au moindre mouvement de caméra.
-// 0.35 ≈ 20° d'écart à l'axe de visée. Seuil CHOISI, donc à revoir à l'usage — pas mesuré.
+// 0.35 ≈ 20° d'écart à l'axe de visée. Seuil CHOISI, donc à revoir à l'usage, pas mesuré.
 export const POSE_AXIS_VISIBLE_MIN = 0.35;
 
 // Le geste est-il exploitable en ligne droite pour cet axe, sous cette orbite ?
@@ -334,18 +334,18 @@ export function poseDragIsStraight3D(axis, orbit, seuil = POSE_AXIS_VISIBLE_MIN)
   return Math.hypot(a.x, a.y) >= seuil;
 }
 
-// ─── Fix 84 — direction du glisser droit : la TANGENTE d'abord, l'axe en repli ───────────────
+// ─── Fix 84 : direction du glisser droit : la TANGENTE d'abord, l'axe en repli ───────────────
 //
 // Conclusion d'une campagne de 14 gestes jugés par l'utilisateur (« bon sens » / « inversé »), et
 // non d'un raisonnement de plus. Le fait décisif : deux gestes sur la MÊME articulation, sous la
-// MÊME orbite, ont reçu des verdicts opposés — ils ne différaient que par la direction du geste.
+// MÊME orbite, ont reçu des verdicts opposés, ils ne différaient que par la direction du geste.
 // Aucune règle de la forme « le signe dépend de l'axe et de l'orientation » ne peut produire cela,
 // ce qui a écarté d'un coup les quatre tentatives précédentes.
 //
 // Ce que l'utilisateur juge, c'est l'endroit où le membre PART À L'ÉCRAN, pas l'axe autour duquel
 // il tourne. On calcule donc la tangente : le déplacement d'un point du membre sous une rotation
 // positive, soit `axe × levier`. Le levier est le membre lui-même, pris pendant (−Y) pour une
-// flexion ou un écart, et vers l'avant (−Z) pour un pivot — puisqu'un pivot autour de la verticale
+// flexion ou un écart, et vers l'avant (−Z) pour un pivot, puisqu'un pivot autour de la verticale
 // ne déplace rien de ce qui est sur son axe.
 //
 // REPLI NÉCESSAIRE : vue de face, la tangente d'une flexion pointe vers la caméra et devient
@@ -355,7 +355,7 @@ export function poseDragIsStraight3D(axis, orbit, seuil = POSE_AXIS_VISIBLE_MIN)
 //
 // Le seuil n'est contraint par les données qu'à l'intervalle ]0.58, 0.91[ : deux cas voisins,
 // à 0.56 et 0.58, réclament des modèles opposés. Aucun seuil ne peut les départager, et c'est
-// pourquoi 13/14 est le maximum atteignable ici — le résidu est du bruit de jugement, pas une
+// pourquoi 13/14 est le maximum atteignable ici, le résidu est du bruit de jugement, pas une
 // règle qui manquerait. 0.75 est pris au milieu de cet intervalle.
 export const POSE_TANGENT_VISIBLE_MIN = 0.75;
 
@@ -381,7 +381,7 @@ export function straightDragDirection3D(axis, orbit, seuil = POSE_TANGENT_VISIBL
   const t = poseTangentToScreen3D(axis, orbit);
   const nt = Math.hypot(t.x, t.y);
   // Le plancher absolu s'ajoute au seuil, et il n'est pas décoratif : vue de face, la tangente de
-  // la flexion vaut 1.2e-16 et non zéro — sin(π) n'est pas exactement nul en virgule flottante.
+  // la flexion vaut 1.2e-16 et non zéro, sin(π) n'est pas exactement nul en virgule flottante.
   // Normaliser ce résidu produirait un vecteur unitaire fait de pur bruit numérique, pointant dans
   // une direction arbitraire. Le seuil courant (0.75) le rejette de toute façon ; ce plancher
   // protège les seuils bas, et le jour où l'on voudra en essayer un.
@@ -401,10 +401,10 @@ export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_
 
 // ─── Glisser CIRCULAIRE, employé quand l'axe pointe vers l'œil ───────────────────────────────
 //
-// Fix 79 — le balayage se CUMULE d'une image à l'autre au lieu d'être mesuré d'un bloc depuis le
+// Fix 79 : le balayage se CUMULE d'une image à l'autre au lieu d'être mesuré d'un bloc depuis le
 // point d'appui, et ce n'est pas un raffinement : mesurer `wrapAngle(courant - départ)` borne le
 // résultat à ±180°, si bien qu'un balayage de 181° se lisait -179°. Passé le demi-tour, le geste
-// s'inversait donc franchement — c'est le défaut signalé. Mesuré : 200° réels donnaient -160°.
+// s'inversait donc franchement, c'est le défaut signalé. Mesuré : 200° réels donnaient -160°.
 //
 // Cumuler est ici SANS RISQUE de dérive, contrairement au glisser droit : l'accumulation se fait en
 // degrés flottants et n'est arrondie qu'une fois, tout à la fin, par dragJointStep3D. Un aller de
@@ -412,7 +412,7 @@ export function straightDragDegrees3D(axis, orbit, dx, dy, degPerPx = POSE_DRAG_
 
 // En deçà de ce rayon, la position du curseur ne définit plus d'angle utilisable : à un pixel du
 // pivot, deux images voisines peuvent être séparées de 127° (mesuré). Traverser le point
-// d'articulation faisait donc sauter la rotation — l'autre moitié du défaut signalé.
+// d'articulation faisait donc sauter la rotation, l'autre moitié du défaut signalé.
 export const POSE_SWEEP_MIN_RADIUS = 18;
 
 // Angle du curseur autour du pivot, en radians. null quand le curseur est trop près pour que cet
@@ -428,7 +428,7 @@ export function pointerSweepAngle3D(pivot, point, minRadius = POSE_SWEEP_MIN_RAD
 
 // Ajoute au balayage total l'incrément le plus COURT depuis l'angle précédent. C'est ce choix du
 // plus court chemin qui déroule le tour : tant que deux images consécutives sont séparées de moins
-// d'un demi-tour — toujours vrai à la main — la somme suit le geste réel sans jamais se replier.
+// d'un demi-tour, toujours vrai à la main, la somme suit le geste réel sans jamais se replier.
 // Positif dans le sens horaire à l'écran, dont l'ordonnée croît vers le bas.
 export function accumulateSweepDegrees3D(sweptDeg, previousAngle, currentAngle){
   const acquis = sweptDeg || 0;
@@ -439,16 +439,16 @@ export function accumulateSweepDegrees3D(sweptDeg, previousAngle, currentAngle){
 // Un pas de glisser : nouvel angle du champ piloté, et origine à conserver pour le pas suivant.
 //
 // deltaDeg est une variation en DEGRÉS déjà calculée par l'un des deux gestes ci-dessus. Cette
-// fonction ne sait donc rien des axes ni de la caméra — ce qui lui a évité de changer les trois
+// fonction ne sait donc rien des axes ni de la caméra, ce qui lui a évité de changer les trois
 // fois où la convention de geste a changé.
 //
 // startDeg est l'angle capturé au DÉBUT du glisser, pas relu à chaque image : cumuler des deltas
 // image par image ferait dériver l'arrondi, et la poignée n'arriverait pas au même angle selon la
 // vitesse du geste.
 //
-// Fix 73 — RÉ-ANCRAGE aux bornes. L'angle était borné, la course de souris ne l'était pas :
+// Fix 73 : RÉ-ANCRAGE aux bornes. L'angle était borné, la course de souris ne l'était pas :
 // dépasser 180° stockait le surplus, qu'il fallait reparcourir en sens inverse avant que quoi que
-// ce soit bouge — l'articulation paraissait figée. Au contact d'une borne, l'origine se recale donc
+// ce soit bouge, l'articulation paraissait figée. Au contact d'une borne, l'origine se recale donc
 // pour que le retour réponde au premier pixel. Le geste reste absolu PARTOUT AILLEURS : le recalage
 // n'a lieu que quand la valeur brute sort de la plage, et il est idempotent. Contrepartie assumée :
 // après avoir écrasé une borne, revenir au point de départ ne rend plus l'angle de départ.
@@ -460,13 +460,13 @@ export function dragJointStep3D(startDeg, deltaDeg){
   return { deg, startDeg: debordé ? deg - delta : (startDeg || 0) };
 }
 
-// ─── Fix 85 — géométrie du repère de glisser affiché sur la poignée ─────────────────────────
+// ─── Fix 85 : géométrie du repère de glisser affiché sur la poignée ─────────────────────────
 //
 // Diagnostic d'une seconde campagne : le rendement du geste s'effondre exactement quand la souris
-// s'écarte de la direction utile. Mesuré sur 13 gestes — écart de 0 à 14° : 48 à 50°/100px, soit
+// s'écarte de la direction utile. Mesuré sur 13 gestes, écart de 0 à 14° : 48 à 50°/100px, soit
 // le maximum théorique ; écart de 70 à 90° : 0,3 à 17°/100px. Et les gestes les plus longs sont
 // précisément les moins rendus (647, 900, 968 px), signe qu'on pousse de plus en plus fort en
-// voyant que rien ne bouge — puis qu'on dérive par hasard sur la bonne direction, et « d'un coup
+// voyant que rien ne bouge, puis qu'on dérive par hasard sur la bonne direction, et « d'un coup
 // ça se débloque ».
 //
 // Le comportement n'est donc pas en cause : c'est sa LISIBILITÉ. La direction utile est une droite
@@ -487,11 +487,11 @@ export function poseDragHintSegment3D(pos, dir, longueur = POSE_DRAG_HINT_LEN){
   };
 }
 
-// Fix 72 — champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.
+// Fix 72 : champ suivant/précédent PARMI CEUX de l'articulation sélectionnée, en boucle.
 //
 // Renvoie toujours un index valide : c'est un index de tableau, et un appelant qui recevrait -1 ou
 // `count` lirait un descripteur inexistant. Le modulo est écrit en deux temps parce que celui de
-// JavaScript garde le signe du dividende — `-1 % 2` vaut -1, pas 1.
+// JavaScript garde le signe du dividende, `-1 % 2` vaut -1, pas 1.
 export function cyclePoseSpecIndex3D(index, count, delta){
   if (!count || count < 1) return 0;
   const n = Math.trunc(count);
@@ -499,33 +499,33 @@ export function cyclePoseSpecIndex3D(index, count, delta){
   return ((i % n) + n) % n;
 }
 
-// Fix 52 — poignée la plus proche d'un point, dans un rayon donné.
+// Fix 52 : poignée la plus proche d'un point, dans un rayon donné.
 //
 // La carte des positions est un PARAMÈTRE, pas une variable de module. C'est tout l'enjeu : l'aperçu
 // de la modale et le canevas de l'éditeur affichent le même squelette à des résolutions différentes,
 // donc à des coordonnées différentes. Une carte unique partagée ferait que le dernier canevas rendu
 // écraserait les positions de l'autre, et cliquer dans la modale au retour de l'éditeur viserait à
-// côté — sans que rien n'échoue, le clic tomberait simplement sur la mauvaise articulation.
+// côté, sans que rien n'échoue, le clic tomberait simplement sur la mauvaise articulation.
 //
 // Renvoie l'id de la poignée, ou null. Les positions nulles sont ignorées : une articulation hors
 // champ n'a pas de projection utilisable.
-// Fix 87 — rayon de saisie d'une poignée. Deux valeurs, parce que la situation n'est pas la même :
+// Fix 87, rayon de saisie d'une poignée. Deux valeurs, parce que la situation n'est pas la même :
 // tant que toutes les poignées sont affichées, un grand rayon ferait attraper la voisine ; une fois
 // une articulation seule à l'écran (cf. Fix 86), il n'y a plus d'ambiguïté possible et le rayon peut
 // être large. C'est ce qui évite de désélectionner en repartant d'un cheveu à côté au moment de
-// commencer un geste — le clic dans le vide reste possible, simplement plus loin.
+// commencer un geste, le clic dans le vide reste possible, simplement plus loin.
 export const POSE_HANDLE_PICK_RADIUS = 17;
 export const POSE_HANDLE_PICK_RADIUS_SOLO = 48;
-// Demi-largeur de la bande cliquable le long du membre — l'autre moitié de la zone de prise
+// Demi-largeur de la bande cliquable le long du membre, l'autre moitié de la zone de prise
 // (cf. pickLimbSegmentAt) : on attrape une articulation par son point, mais aussi en saisissant le
 // membre qu'elle entraîne.
 export const POSE_LIMB_PICK_RADIUS = 11;
 export const POSE_LIMB_PICK_RADIUS_SOLO = 24;
 
-// Fix 88 — les deux rayons de prise, décidés en UN endroit.
+// Fix 88 : les deux rayons de prise, décidés en UN endroit.
 //
 // Ce n'est pas de la coquetterie : depuis le Fix 88, cette zone est aussi DESSINÉE sur le modèle.
-// Deux sources de vérité — l'une pour le clic, l'autre pour le tracé — finiraient par diverger, et
+// Deux sources de vérité, l'une pour le clic, l'autre pour le tracé, finiraient par diverger, et
 // le dessin promettrait alors une prise là où le clic ne mord pas. C'est exactement le genre
 // d'écart qui a coûté cher plusieurs fois dans ce dépôt.
 export function posePickRadii3D(solo){
@@ -547,16 +547,16 @@ export function pickNearestHandle3D(positions, px, py, radius = POSE_HANDLE_PICK
   return best;
 }
 
-// Fix 52 — coordonnées d'un clic dans le repère INTERNE d'un canevas.
+// Fix 52 : coordonnées d'un clic dans le repère INTERNE d'un canevas.
 //
 // Un canevas a deux tailles : celle de son bitmap (width/height) et celle de sa boîte CSS. Elles ne
 // coïncident presque jamais ici, puisque la résolution de rendu est plafonnée (cf. drawPersonaEditor)
 // alors que la boîte occupe tout l'écran. Confondre les deux fait viser à côté d'autant plus que
-// l'écart est grand — un décalage qui passe inaperçu sur un petit aperçu et devient flagrant en
+// l'écart est grand, un décalage qui passe inaperçu sur un petit aperçu et devient flagrant en
 // plein écran.
 //
 // Vaut pour un canevas étiré sur sa boîte (object-fit: fill, le comportement par défaut). L'aperçu
-// de la modale, lui, est en object-fit: contain et a besoin d'un calcul de bandes en plus — cf.
+// de la modale, lui, est en object-fit: contain et a besoin d'un calcul de bandes en plus, cf.
 // getPersonaPreviewCanvasCoords.
 export function canvasEventCoords3D(rect, cnvW, cnvH, clientX, clientY){
   if (!rect || !rect.width || !rect.height) return { px: 0, py: 0 };
@@ -568,10 +568,10 @@ export function canvasEventCoords3D(rect, cnvW, cnvH, clientX, clientY){
 
 // Réciproque de canvasEventCoords3D : d'un point du canevas vers le repère de la fenêtre.
 //
-// Fix 75 — indispensable au geste circulaire. Le canevas est étiré en `object-fit: fill`, donc avec
+// Fix 75, indispensable au geste circulaire. Le canevas est étiré en `object-fit: fill`, donc avec
 // des facteurs d'échelle X et Y INDÉPENDANTS : un angle mesuré dans son repère interne ne vaut pas
 // l'angle vu à l'écran. Tout le calcul du geste se fait donc en repère fenêtre, et c'est la poignée
-// qu'on y ramène — pas le curseur qu'on emmène dans le canevas.
+// qu'on y ramène, pas le curseur qu'on emmène dans le canevas.
 export function canvasPointToClient3D(rect, cnvW, cnvH, px, py){
   if (!rect || !cnvW || !cnvH) return { x: 0, y: 0 };
   return {
@@ -580,13 +580,13 @@ export function canvasPointToClient3D(rect, cnvW, cnvH, px, py){
   };
 }
 
-// Fix 53 — taille du rendu hors écran d'une figure, aux PROPORTIONS de la boîte qui l'affiche.
+// Fix 53 : taille du rendu hors écran d'une figure, aux PROPORTIONS de la boîte qui l'affiche.
 //
 // Le rendu de Personnage se faisait toujours au format portrait de l'aperçu de la modale
 // (PERSONA_3D_W × PERSONA_3D_H, 200×320), puis était étiré sur le canevas de destination. Tant que
 // ce canevas était lui aussi portrait, l'étirement restait invisible. En plein écran, il ne l'est
 // plus : mesuré sur une boîte 1620×1036, le bitmap source faisait 313×500, soit une DÉFORMATION
-// horizontale de ×2.5 et un agrandissement de ×5.2 en largeur — d'où un Personnage à la fois flou
+// horizontale de ×2.5 et un agrandissement de ×5.2 en largeur, d'où un Personnage à la fois flou
 // et élargi.
 //
 // Rendre aux proportions de la boîte supprime les deux d'un coup : plus d'étirement, et une
@@ -594,7 +594,7 @@ export function canvasPointToClient3D(rect, cnvW, cnvH, px, py){
 //
 // Le plafond reste nécessaire : le renderer hors écran est partagé, et suivre aveuglément un
 // canevas plein écran sur un écran dense lui demanderait des tampons démesurés à chaque image. Il
-// s'applique au plus grand côté, pour ne jamais altérer les proportions — c'est tout l'objet de la
+// s'applique au plus grand côté, pour ne jamais altérer les proportions, c'est tout l'objet de la
 // fonction.
 export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
   let w = Math.max(1, boxW || 1) * Math.max(1, dpr || 1);
@@ -607,41 +607,41 @@ export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
   return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
 }
 
-// Fix 54 — liste des poses proposées par l'éditeur : les intégrées, puis celles du projet.
+// Fix 54 : liste des poses proposées par l'éditeur : les intégrées, puis celles du projet.
 //
 // ⚠️ La liste ne filtre PAS sur la présence d'une entrée dans POSE_3D, et c'est délibéré : POSE_3D
 // est COMPLÉTÉ À L'EXÉCUTION par draw.js, qui y ajoute 'allonge' et 'vaincu' (les deux poses
 // allongées, cf. lieFlat). Au chargement de constants.js seul, elles n'existent pas encore. Un
-// filtre les ferait disparaître de la liste selon l'ordre d'import — et disparaître dans les tests,
+// filtre les ferait disparaître de la liste selon l'ordre d'import, et disparaître dans les tests,
 // qui n'importent pas toujours draw.js, sans qu'on le voie dans l'application.
 //
 // Les poses personnalisées sont identifiées par leur `id` (cf. resolvePoseLabel3D) ; celles sans id
 // exploitable sont écartées, faute de quoi les appliquer serait impossible.
 // `skeleton` (facultatif) : ne garder que les poses compatibles. Une pose SANS squelette déclaré est
-// considérée compatible — tolérance envers un fichier bricolé à la main, cohérente avec
+// considérée compatible, tolérance envers un fichier bricolé à la main, cohérente avec
 // normalizePoses3D qui ne rejette jamais sur ce critère. Aujourd'hui seuls les humains ont des
 // poses ; le filtre existe pour que le jour où les animaux en auront, aucune pose de chien ne
 // puisse être appliquée à un humain sur d'anciens fichiers.
-// Fix 57 — la liste vient de la SEULE bibliothèque. Plus de paramètre `builtins` : les poses
+// Fix 57, la liste vient de la SEULE bibliothèque. Plus de paramètre `builtins` : les poses
 // intégrées y sont semées au premier lancement (cf. seedPoseLibrary3D) et n'ont plus de statut
-// particulier. C'est ce qui rend le traitement uniforme — tout ce qui s'affiche ici est renommable
+// particulier. C'est ce qui rend le traitement uniforme, tout ce qui s'affiche ici est renommable
 // et supprimable, sans bouton grisé à expliquer.
 //
 // Conséquence directe : une pose supprimée disparaît vraiment de la liste, même intégrée. Elle reste
 // résoluble via POSE_3D pour les fichiers qui la citent (cf. poseJointsByKey3D), mais n'est plus
-// proposée — ce qui est exactement ce qu'on attend d'une suppression.
+// proposée, ce qui est exactement ce qu'on attend d'une suppression.
 export function personaEditorPoseList3D(poses, skeleton){
   return (Array.isArray(poses) ? poses : [])
     .filter(p => p && p.id && !(skeleton && p.skeleton && p.skeleton !== skeleton))
     .map(p => ({ key: p.id, label: p.name || p.id }));
 }
 
-// Fix 55 — écritures sur la bibliothèque. Toutes RENVOIENT UNE NOUVELLE LISTE au lieu de modifier
+// Fix 55 : écritures sur la bibliothèque. Toutes RENVOIENT UNE NOUVELLE LISTE au lieu de modifier
 // celle qu'on leur passe : l'appelant décide d'affecter ou non, et un test peut comparer l'avant et
 // l'après sans avoir à cloner d'abord.
 //
 // Aucune de ces opérations ne touche à un Personnage, et c'est le point : ses angles ont été COPIÉS
-// à l'application de la pose. Supprimer une pose ne peut donc pas déformer qui que ce soit — au pire
+// à l'application de la pose. Supprimer une pose ne peut donc pas déformer qui que ce soit, au pire
 // une étiquette devient « inconnue ». C'est la propriété que la phase 4 ne doit pas casser.
 export function makePose3D(id, name, joints, skeleton){
   return {
@@ -667,18 +667,18 @@ export function renamePose3D(poses, id, name){
 //
 // Deux, et la liste est close : le Personnage intégré ('perso') et le modèle importé ('objet3d',
 // dont seuls ceux qui ont une correspondance de squelette voient le champ). Ce sont exactement les
-// deux écrans qui écrivent `position` — personaPositionSelect et objectPositionSelect dans
+// deux écrans qui écrivent `position`, personaPositionSelect et objectPositionSelect dans
 // events.js. Aucun autre Élément ne porte ce champ.
 const TYPES_PORTEURS_DE_POSE_3D = ['perso', 'objet3d'];
 
-// Fix 56 — combien d'Éléments du projet citent cette pose.
+// Fix 56 : combien d'Éléments du projet citent cette pose.
 //
 // Sert à deux choses, et les deux se trompaient de la même façon : décider s'il faut avertir avant
 // une suppression, et choisir les poses qu'un fichier projet EMBARQUE (posesUsedByProject3D).
 //
 // ⚠️ CETTE FONCTION NE COMPTAIT QUE LES PERSONNAGES. Un modèle importé cite pourtant une pose de la
 // même manière depuis que sa fiche a un sélecteur (`position` + `positionLabel`, écrits par
-// objectPositionSelect). Les deux conséquences se sont mesurées sur un vrai fichier — un Projet où
+// objectPositionSelect). Les deux conséquences se sont mesurées sur un vrai fichier, un Projet où
 // une pose personnelle n'était portée que par un modèle importé :
 //
 //   1. le fichier enregistré ne l'embarquait PAS. Rouvert sur une autre machine, ou envoyé à
@@ -691,7 +691,7 @@ const TYPES_PORTEURS_DE_POSE_3D = ['perso', 'objet3d'];
 //
 // Parcours récursif générique plutôt qu'un chemin figé `tomes[].pages[].objects[]`. Deux raisons :
 // les Scènes ont la même forme imbriquée mais vivent dans une autre racine, et un oubli de branche
-// donnerait un comptage FAUX — donc une suppression silencieuse là où il fallait avertir. Le couple
+// donnerait un comptage FAUX, donc une suppression silencieuse là où il fallait avertir. Le couple
 // (type porteur, position) reste une signature assez précise pour qu'un balayage large ne compte
 // rien d'autre. Même parti pris que resyncIdCounter (io.js), qui a survécu aux changements de
 // structure.
@@ -727,26 +727,26 @@ export function nextDefaultPoseName3D(poses){
 }
 
 // Angles d'une pose donnée, prêts à être copiés dans un brouillon. Renvoie null si la pose est
-// introuvable — l'appelant ne doit alors RIEN écrire, plutôt que d'écraser le brouillon par une
+// introuvable, l'appelant ne doit alors RIEN écrire, plutôt que d'écraser le brouillon par une
 // pose de repli que l'utilisateur n'a pas demandée.
 //
 // `poseTable` est lue à l'APPEL et non capturée au chargement, toujours pour la raison ci-dessus :
 // deux de ses entrées n'existent qu'une fois draw.js chargé.
-// Fix 57 — LA BIBLIOTHÈQUE FAIT AUTORITÉ, `poseTable` n'est qu'un filet.
+// Fix 57 : LA BIBLIOTHÈQUE FAIT AUTORITÉ, `poseTable` n'est qu'un filet.
 //
 // Inversion de l'ordre par rapport au Fix 54, et c'est le cœur du changement de conception : les
 // poses intégrées sont désormais SEMÉES dans la bibliothèque (cf. seedPoseLibrary3D), où elles
-// deviennent des entrées ordinaires — renommables et supprimables comme les autres. Consulter
+// deviennent des entrées ordinaires, renommables et supprimables comme les autres. Consulter
 // POSE_3D en premier annulerait tout renommage de « Assis », puisque la table figée gagnerait.
 //
 // POSE_3D reste consulté APRÈS, et sert exactement à un cas : un fichier citant une pose intégrée
 // que l'utilisateur a supprimée de sa bibliothèque. Sans ce filet, le Personnage serait « inconnue »
 // alors que l'application connaît parfaitement cette pose. Il n'apparaît jamais dans la LISTE, qui
 // vient de la seule bibliothèque : supprimer une pose la fait bien disparaître de l'interface.
-// Fix 60 — nom actuel d'une pose, pour l'enregistrer comme dernier nom connu (`positionLabel`).
+// Fix 60 : nom actuel d'une pose, pour l'enregistrer comme dernier nom connu (`positionLabel`).
 //
 // Même ordre que partout : la bibliothèque fait autorité, les intégrées servent de filet. Renvoie
-// null si la pose est introuvable — écrire un nom inventé serait pire que ne rien écrire, puisque ce
+// null si la pose est introuvable, écrire un nom inventé serait pire que ne rien écrire, puisque ce
 // champ ne sert qu'à dire ce qu'ON A VU la dernière fois.
 export function nameOfPose3D(key, poses, builtins, traduire){
   if (!key) return null;
@@ -763,10 +763,10 @@ export function poseJointsByKey3D(key, poseTable, poses){
   return (poseTable && poseTable[key]) || null;
 }
 
-// Fix 57 — convertit les poses intégrées en entrées de bibliothèque, au premier lancement.
+// Fix 57 : convertit les poses intégrées en entrées de bibliothèque, au premier lancement.
 //
 // ⚠️ L'id vaut la CLÉ intégrée ('debout', 'assis'…), pas un newId(). C'est ce qui fait que tous les
-// fichiers déjà enregistrés — qui contiennent `position: 'assis'` — continuent de résoudre sans
+// fichiers déjà enregistrés, qui contiennent `position: 'assis'`, continuent de résoudre sans
 // migration ni cas particulier. Aucune collision possible avec les poses créées ensuite,
 // newId('pose') produisant « pose1 », « pose2 »…
 //
@@ -785,16 +785,16 @@ export function seedPoseLibrary3D(builtins, poseTable, skeleton, traduire){
 // annulerait silencieusement un renommage.
 //
 // Conséquence assumée : rouvrir un projet qui utilise une pose qu'on vient de supprimer la fait
-// réapparaître. C'est le prix de fichiers qui se décrivent eux-mêmes, et c'est le bon compromis —
+// réapparaître. C'est le prix de fichiers qui se décrivent eux-mêmes, et c'est le bon compromis,
 // le projet a besoin de cette pose, et la resupprimer reste à un clic.
-// Fix 59 — `dismissed` : ids que l'utilisateur a explicitement supprimés. Ils ne sont JAMAIS
+// Fix 59, `dismissed` : ids que l'utilisateur a explicitement supprimés. Ils ne sont JAMAIS
 // réintroduits par la fusion.
 //
 // Sans cette liste, supprimer une pose était défait par un geste sans rapport : ouvrir un projet
 // enregistré avant la suppression la réinjectait, silencieusement et pour tous les projets. Une
 // action confirmée ne doit pas pouvoir être annulée par accident.
 //
-// La mémorisation ne conserve QUE l'id — pas les angles, pas le nom. « Supprimé » veut dire
+// La mémorisation ne conserve QUE l'id, pas les angles, pas le nom. « Supprimé » veut dire
 // supprimé ; garder le contenu pour pouvoir le ressusciter contredirait ce qu'on annonce à
 // l'utilisateur. Les poses intégrées font exception, mais parce que l'application les connaît en
 // dur, pas parce qu'on en aurait gardé une copie cachée (cf. le bouton Restaurer).
@@ -817,10 +817,10 @@ export function rememberDismissedPose3D(dismissed, id){
   return [...list, id];
 }
 
-// Fix 59 — poses intégrées ABSENTES de la bibliothèque, seule chose que « Restaurer » réajoute.
+// Fix 59 : poses intégrées ABSENTES de la bibliothèque, seule chose que « Restaurer » réajoute.
 //
 // « Absente » et non « différente » : une pose intégrée que l'utilisateur a RENOMMÉE est présente,
-// donc pas concernée. Restaurer ne peut ainsi jamais lui faire perdre un renommage — c'est un
+// donc pas concernée. Restaurer ne peut ainsi jamais lui faire perdre un renommage, c'est un
 // comblement de trous, pas une remise à zéro d'usine.
 export function missingBuiltinPoses3D(builtins, poseTable, library, skeleton, traduire){
   const présents = new Set((Array.isArray(library) ? library : [])
@@ -829,7 +829,7 @@ export function missingBuiltinPoses3D(builtins, poseTable, library, skeleton, tr
 }
 
 // Retire des ids de la liste des suppressions mémorisées. Sans quoi une pose restaurée serait
-// réécartée à la première fusion — restaurée à l'écran, puis disparue au prochain projet ouvert.
+// réécartée à la première fusion, restaurée à l'écran, puis disparue au prochain projet ouvert.
 export function forgetDismissedPoses3D(dismissed, ids){
   const àOublier = new Set(Array.isArray(ids) ? ids : []);
   return (Array.isArray(dismissed) ? dismissed : []).filter(id => !àOublier.has(id));
@@ -837,7 +837,7 @@ export function forgetDismissedPoses3D(dismissed, ids){
 
 // Poses à EMBARQUER dans un fichier projet : celles que ses Personnages citent réellement.
 //
-// C'est ce qui garde un fichier autonome — envoyé à quelqu'un ou rouvert sur une autre machine, il
+// C'est ce qui garde un fichier autonome, envoyé à quelqu'un ou rouvert sur une autre machine, il
 // porte les noms de ses propres poses. Embarquer la bibliothèque entière gonflerait chaque fichier
 // de poses sans rapport avec lui ; n'en embarquer aucune ferait afficher « inconnue » partout.
 export function posesUsedByProject3D(library, ...roots){
@@ -845,13 +845,13 @@ export function posesUsedByProject3D(library, ...roots){
     .filter(p => p && p.id && poseUsageCount3D(p.id, ...roots) > 0);
 }
 
-// Fix 65 — position d'une caméra en orbite autour d'un point.
+// Fix 65 : position d'une caméra en orbite autour d'un point.
 //
 // `rotY` fait tourner autour de l'axe vertical, `rotX` monte ou descend. Angle nul = la caméra reste
 // sur +Z, exactement là où elle était avant l'introduction de l'orbite : les aperçus qui n'orbitent
 // pas gardent donc leur cadrage au pixel près.
 //
-// ⚠️ `rotX` doit rester dans ]-90°, 90°[ — même contrainte que la caméra d'une Case, qui la borne à
+// ⚠️ `rotX` doit rester dans ]-90°, 90°[, même contrainte que la caméra d'une Case, qui la borne à
 // ±85°. À 90° pile, la direction de visée devient parallèle au vecteur « haut » de la caméra et
 // l'orientation bascule brutalement.
 /**
@@ -861,7 +861,7 @@ export function posesUsedByProject3D(library, ...roots){
  *
  * LE DÉFAUT QUE ÇA RÉPARE. L'Éditeur ouvre sa caméra sur un demi-tour fixe. C'est ce qu'il faut pour
  * le Personnage intégré, dont le devant est vers −Z (cf. events.js, `rotY: Math.PI` à la création) ;
- * c'est exactement ce qui retourne tous les modèles importés, dont le devant est déjà vers +Z — ils
+ * c'est exactement ce qui retourne tous les modèles importés, dont le devant est déjà vers +Z, ils
  * apparaissent de face dans une Case à `rotY: 0`. Deux conventions opposées, une seule constante :
  * l'une des deux figures est forcément à l'envers.
  *
@@ -881,38 +881,38 @@ export function posesUsedByProject3D(library, ...roots){
  *
  *   1. `-0` n'est pas `0` pour `atan2` : `atan2(-0, -1)` rend −π là où `atan2(0, -1)` rend +π. Nier
  *      un vecteur dont une composante est nulle suffit donc à changer le résultat. On ajoute π à
- *      l'angle du vecteur au lieu de nier le vecteur — même demi-tour, aucun zéro signé produit.
+ *      l'angle du vecteur au lieu de nier le vecteur, même demi-tour, aucun zéro signé produit.
  *   2. `wrapAngle` (utils.js) ramène dans [−π, π) et NON dans ]−π, π] comme l'annonce le
  *      commentaire qui l'accompagne ailleurs : il envoie π sur −π. S'en servir ici renverrait −π
  *      pour le Personnage, qui ne se compare plus à `PERSONA_EDITOR_FRONT_ROT_Y`. Constaté par le
  *      test, pas deviné. La normalisation est donc faite ici, dans ]−π, π], où π est le
- *      représentant — et `wrapAngle` n'est pas corrigé : d'autres appelants en dépendent tel quel.
+ *      représentant, et `wrapAngle` n'est pas corrigé : d'autres appelants en dépendent tel quel.
  *
  * @param avantDuCorps le vecteur `avant` de `repereDuCorps` (⚠️ dirigé vers l'arrière visuel)
  * @returns l'angle d'orbite, ou `null` si le corps n'a pas d'orientation horizontale exploitable
  */
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * UN ÉLÉMENT EST-IL HORS CHAMP ? — la décision, séparée de la projection
+ * UN ÉLÉMENT EST-IL HORS CHAMP ? : la décision, séparée de la projection
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * POURQUOI CETTE FONCTION EST PURE. Projeter un Élément demande la caméra de la Case, donc WebGL,
  * donc un environnement injoignable sous Node (cf. docs/testing-method.md). La DÉCISION, elle, ne
- * demande que deux rectangles — et c'est là que sont les cas limites qu'on a envie de vérifier.
+ * demande que deux rectangles, et c'est là que sont les cas limites qu'on a envie de vérifier.
  *
  * LE CRITÈRE, choisi avec l'utilisateur : hors champ = la boîte projetée ne rencontre **pas du
  * tout** le cadre de la Case. Un Élément à moitié sorti reste donc dans la liste principale : il
- * est visible, même partiellement, et le reléguer serait faux. L'autre lecture possible — « centre
- * hors du cadre » — aurait rangé parmi les invisibles des Éléments qu'on voit encore.
+ * est visible, même partiellement, et le reléguer serait faux. L'autre lecture possible, « centre
+ * hors du cadre », aurait rangé parmi les invisibles des Éléments qu'on voit encore.
  *
  * ⚠️ SE TOUCHER N'EST PAS SE RENCONTRER, ici. Un Élément dont le bord affleure exactement celui de
  * la Case n'a aucun pixel à l'intérieur : il est hors champ. D'où des comparaisons strictes, et un
- * test qui épingle cette frontière — c'est le genre de détail qu'on inverse sans s'en apercevoir.
+ * test qui épingle cette frontière, c'est le genre de détail qu'on inverse sans s'en apercevoir.
  *
  * @param centre {{x, y}|null} centre projeté, dans le repère de la Planche. `null` = non projetable
- *   (derrière la caméra, ou hors du tronc de vue) — donc invisible.
+ *   (derrière la caméra, ou hors du tronc de vue), donc invisible.
  * @param demi {{halfW, halfH}|null} demi-dimensions projetées. `null` : l'Élément est traité comme
- *   un POINT, ce qui reste vrai — un point sans étendue n'est visible que si son centre l'est.
+ *   un POINT, ce qui reste vrai, un point sans étendue n'est visible que si son centre l'est.
  * @param cadre {{x, y, w, h}} le cadre de la Case.
  * @returns `true` si l'Élément ne peut rien montrer de lui-même.
  */
@@ -920,14 +920,14 @@ export function estHorsChamp3D(centre, demi, cadre){
   const c = cadre || {};
   const cx = Number(c.x), cy = Number(c.y), cw = Number(c.w), ch = Number(c.h);
   // Cadre inexploitable : on ne relègue RIEN. Devant une entrée qu'on ne comprend pas, la liste
-  // doit rester complète — cacher un Élément par erreur est plus coûteux que d'en montrer un de
+  // doit rester complète, cacher un Élément par erreur est plus coûteux que d'en montrer un de
   // trop, parce que l'utilisateur ne peut pas deviner ce qui manque.
   if (![cx, cy, cw, ch].every(Number.isFinite) || cw <= 0 || ch <= 0) return false;
   if (!centre) return true;
   // ⚠️ DERRIÈRE LA CAMÉRA = HORS CHAMP, quelles que soient les coordonnées rendues. La projection
   // divise par `w` ; derrière, `w` est négatif et le point ressort EN MIROIR, à des coordonnées
   // parfaitement finies qui peuvent retomber dans le cadre. Sans ce test, un Élément passé derrière
-  // la caméra était déclaré visible — c'est la sous-détection signalée à l'usage.
+  // la caméra était déclaré visible, c'est la sous-détection signalée à l'usage.
   //
   // `undefined` ne déclenche rien : un appelant qui ne renseigne pas ce champ garde le comportement
   // précédent, et ce sont les tests qui construisent des centres sans lui.
@@ -969,7 +969,7 @@ export function orbitCameraPosition3D(center, dist, rotX, rotY){
 
 export function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-// Brings an angle (in radians) back into the ]-π, π] range by adding/removing full turns — used
+// Brings an angle (in radians) back into the ]-π, π] range by adding/removing full turns, used
 // for the UNBOUNDED camera rotations in Camera Mode (cf. dragMode 'panelCamRotate'): this keeps
 // the numeric values small even after many turns, without ever limiting the rotation itself
 // (since sin/cos are periodic, ]-π, π] already covers the whole circle).
@@ -994,8 +994,8 @@ export function getBBox(pts){
 // Computes the bounding box of an array of {x,y} points (Trace/Road/Path variant of getBBox
 // above): guards against an empty/null array, and enforces a minimum width/height of 1px so a
 // Trace with all its points at the same spot never collapses to a zero-size selection box.
-// Lives here (rather than in events.js, its original home) so that lower-level modules — notably
-// scene3d.js's tracéUpdateScreenPts — can use it too without a circular import back into events.js.
+// Lives here (rather than in events.js, its original home) so that lower-level modules, notably
+// scene3d.js's tracéUpdateScreenPts, can use it too without a circular import back into events.js.
 export function tracéBBox(pts){
   if (!pts || pts.length === 0) return { x:0, y:0, w:1, h:1 };
   let mx = Infinity, my = Infinity, Mx = -Infinity, My = -Infinity;
@@ -1033,11 +1033,11 @@ export function getHandles(o){
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * HAUTEUR RÉELLE ↔ POURCENTAGE — une seule conversion, écrite une seule fois
+ * HAUTEUR RÉELLE ↔ POURCENTAGE : une seule conversion, écrite une seule fois
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * LAQUELLE DES DEUX EST LA VRAIE ? La hauteur. `realHeightFloor` est ce qui est ENREGISTRÉ dans le
- * Projet et ce qui pilote le rendu 3D ; le pourcentage n'est stocké nulle part — il est RECALCULÉ à
+ * Projet et ce qui pilote le rendu 3D; le pourcentage n'est stocké nulle part, il est RECALCULÉ à
  * chaque ouverture de fiche par `getPersonaScalePercent`. Le curseur est donc une vue sur la
  * hauteur, et non l'inverse.
  *
@@ -1048,7 +1048,7 @@ export function getHandles(o){
  * qu'un affichage arrondi.
  *
  * LES BORNES SONT DÉFINIES SUR LE POURCENTAGE (10 % à 400 %) et traduites ici. Écrire des bornes en
- * mètres à côté aurait donné deux vérités pour une seule limite — le défaut qui revient le plus
+ * mètres à côté aurait donné deux vérités pour une seule limite, le défaut qui revient le plus
  * souvent dans ce dépôt. Elles sont donc DÉRIVÉES, jamais ressaisies.
  */
 /**
@@ -1058,7 +1058,7 @@ export function getHandles(o){
  * POURQUOI LE REPLI EST NÉCESSAIRE, et pas de la prudence décorative. Les options viennent de
  * `figuresPosables()`, qui filtre `loadedModelNames()` : un fichier INTROUVABLE, ou pas encore
  * décodé, ou sans os reconnu, n'y figure pas. Or `select.value = <valeur absente des options>` ne
- * lève rien — la valeur devient vide et le champ affiche autre chose. La fiche nommait donc un
+ * lève rien, la valeur devient vide et le champ affiche autre chose. La fiche nommait donc un
  * fichier qui n'est pas celui de l'Élément, en silence. Ajouter l'entrée courante garantit que le
  * champ dit toujours ce que l'Élément porte réellement.
  *
@@ -1084,7 +1084,7 @@ export function hauteurDepuisPourcentage3D(pct, baseRealH){
 }
 
 /**
- * Pourcentage correspondant à une hauteur réelle (m). NON ARRONDI — l'arrondi appartient à
+ * Pourcentage correspondant à une hauteur réelle (m). NON ARRONDI, l'arrondi appartient à
  * l'affichage, pas au calcul : arrondir ici ferait perdre au passage les centimètres saisis.
  */
 export function pourcentageDepuisHauteur3D(hauteurM, baseRealH){
@@ -1130,7 +1130,7 @@ export function repairElementBase3D(o){
 //
 // L'ordonnanceur ne retient QUE la demande : l'action lit l'état au moment où elle s'exécute, donc
 // elle voit toujours la position la plus récente. Il n'y a rien à mémoriser, et donc rien qui
-// puisse devenir périmé — c'est ce qui rend cette coalescence sûre alors qu'une file d'attente ne
+// puisse devenir périmé, c'est ce qui rend cette coalescence sûre alors qu'une file d'attente ne
 // le serait pas.
 //
 // `planifier` et `annuler` sont des PARAMÈTRES : requestAnimationFrame n'existe pas sous Node, et
@@ -1143,7 +1143,7 @@ export function makeFrameScheduler(planifier, annuler, action){
     // Demande un passage. Les demandes surnuméraires d'une même image sont absorbées.
     demander(){ if (id === null) id = planifier(executer); },
     // Force l'exécution immédiate et annule le passage prévu. À utiliser quand la suite du code
-    // doit lire un état à jour tout de suite — un relâchement de souris, par exemple.
+    // doit lire un état à jour tout de suite, un relâchement de souris, par exemple.
     vider(){ if (id === null) return false; annuler(id); id = null; action(); return true; },
     enAttente(){ return id !== null; },
   };
@@ -1174,13 +1174,13 @@ export function pageVoisine3D(nbPages, pi, sens){
 /**
  * Premier nom libre de la forme « base », « base 2 », « base 3 »… Fonction PURE.
  *
- * ⚠️ LE MOT EST UN PARAMÈTRE, PAS UNE CONSTANTE D'ICI. utils.js ne peut pas importer state.js —
- * c'est state.js qui importe utils.js — donc `tr` lui est inaccessible. L'appelant, lui, sait dans
+ * ⚠️ LE MOT EST UN PARAMÈTRE, PAS UNE CONSTANTE D'ICI. utils.js ne peut pas importer state.js,
+ * c'est state.js qui importe utils.js, donc `tr` lui est inaccessible. L'appelant, lui, sait dans
  * quelle langue il écrit : il passe « Pièce » ou « Room ». La numérotation, elle, est la même
  * partout, et c'est tout ce que cette fonction connaît.
  *
- * Elle existe parce que ces sept lignes étaient écrites TROIS fois — canvas-tools.js, draw.js et
- * events.js —, chacune avec son propre littéral « Pièce ». Traduire les trois séparément aurait
+ * Elle existe parce que ces sept lignes étaient écrites TROIS fois, canvas-tools.js, draw.js et
+ * events.js, chacune avec son propre littéral « Pièce ». Traduire les trois séparément aurait
  * fait trois traductions à tenir d'accord pour un seul nom.
  */
 export function nomNumeroteLibre3D(pris, base){
@@ -1195,8 +1195,8 @@ export function nomNumeroteLibre3D(pris, base){
 /**
  * Le nom d'un type d'Objet, dans la langue courante.
  *
- * ⚠️ `traduire` EST UN PARAMÈTRE. utils.js ne peut pas importer state.js — c'est state.js qui
- * importe utils.js —, donc `tr` lui est inaccessible. Même procédé que `groupesPosables`, qui
+ * ⚠️ `traduire` EST UN PARAMÈTRE. utils.js ne peut pas importer state.js, c'est state.js qui
+ * importe utils.js, donc `tr` lui est inaccessible. Même procédé que `groupesPosables`, qui
  * reçoit déjà son traducteur de la même façon.
  *
  * Sans repli silencieux : un type inconnu rend `undefined`, et l'appelant décide quoi afficher. Un
@@ -1213,13 +1213,13 @@ export function libelleTypeObjet3D(objType, traduire){
 /**
  * Le libellé d'une entrée de table de constantes, dans la langue courante.
  *
- * Une entrée porte `label` (français) et `labelEn` (anglais) — cf. l'en-tête de FORMATS dans
+ * Une entrée porte `label` (français) et `labelEn` (anglais), cf. l'en-tête de FORMATS dans
  * constants.js. Cette fonction est le SEUL endroit qui connaît cette convention : les écrans
  * appellent `libelleTable3D(entrée, tr)` sans savoir comment les deux langues sont rangées.
  *
  * Le repli est symétrique et volontairement silencieux : une entrée à qui il manque une langue
  * s'affiche dans l'autre plutôt que « undefined ». C'est le test de parité de
- * tests/i18n.test.mjs qui interdit ce manque, pas l'affichage — un libellé absent doit se
+ * tests/i18n.test.mjs qui interdit ce manque, pas l'affichage, un libellé absent doit se
  * voir à la construction, pas devenir un trou dans l'interface de l'utilisateur.
  *
  * @param {{label?:string, labelEn?:string}|null|undefined} entree
@@ -1227,7 +1227,7 @@ export function libelleTypeObjet3D(objType, traduire){
  */
 export function libelleTable3D(entree, traduire){
   if (!entree) return undefined;
-  // Sans traducteur, le FRANÇAIS — c'est la langue du champ `label`, celui qui existe toujours.
+  // Sans traducteur, le FRANÇAIS, c'est la langue du champ `label`, celui qui existe toujours.
   // L'application passe toujours `tr` ; ce repli ne sert qu'aux appels de test.
   const t = traduire || ((en, fr) => fr);
   const fr = entree.label, en = entree.labelEn;
@@ -1237,7 +1237,7 @@ export function libelleTable3D(entree, traduire){
 /**
  * Le nom d'une articulation du Personnage intégré, dans la langue courante.
  *
- * Renvoie l'identifiant technique quand il n'a pas de libellé — c'est le repli qu'avaient déjà les
+ * Renvoie l'identifiant technique quand il n'a pas de libellé, c'est le repli qu'avaient déjà les
  * deux panneaux de curseurs (`JOINT_LABELS[def.id] || def.id`), et le conserver garde un curseur
  * nommé plutôt qu'un curseur vide si une articulation est ajoutée sans son mot.
  */

@@ -4,18 +4,18 @@ import { tr } from './state.js';
  * La bibliothèque de modèles : ce qui est sur le disque, et ce qui s'en sert.
  *
  * POURQUOI GROUPER PAR USAGE PLUTÔT QUE PAR NATURE. On a envisagé de marquer chaque fichier
- * « décor » ou « objet » à l'import — un manifeste, ou deux sous-dossiers. Écarté, et la raison
+ * « décor » ou « objet » à l'import, un manifeste, ou deux sous-dossiers. Écarté, et la raison
  * tient en un cas banal : le même `salon.glb` peut servir de décor dans une Scène aujourd'hui et
  * d'objet posé dans une Case demain. Un fichier ne PEUT PAS porter cette distinction ; c'est son
  * usage qui la porte, et un fichier peut avoir les deux.
  *
  * Avec des sous-dossiers, réimporter ce salon comme objet obligerait soit à dupliquer ses vingt
  * méga-octets, soit à mentir sur le classement. Avec un manifeste, un `.glb` déposé à la main
- * n'y figurerait pas — une désynchronisation silencieuse de plus.
+ * n'y figurerait pas, une désynchronisation silencieuse de plus.
  *
  * Le groupement ci-dessous est DÉDUIT du Projet ouvert, à chaque affichage. Il ne peut donc pas
  * mentir, et il répond à la question qu'on se pose vraiment en ouvrant ce menu : « puis-je
- * supprimer ce fichier sans rien casser ? » — à quoi « non utilisé » répond, et à quoi « Décors »
+ * supprimer ce fichier sans rien casser ? », à quoi « non utilisé » répond, et à quoi « Décors »
  * n'aurait pas répondu.
  *
  * CE QU'ON NE PEUT PAS SAVOIR, et qu'il faut donc dire à l'utilisateur : les AUTRES Projets. On ne
@@ -28,11 +28,11 @@ import { isImportedModel } from './model-store.js';
  * Recense l'usage de chaque fichier dans un Projet. Fonction PURE.
  *
  * @param {string[]} fichiers  les .glb présents sur le disque
- * @param {object} projet      { tomes, scenes } — les deux racines d'un Projet
+ * @param {object} projet      { tomes, scenes }, les deux racines d'un Projet
  * @returns {{parScenes: Array, dansCases: Array, nonUtilises: string[]}}
  *
  * Un fichier utilisé des deux façons apparaît dans les DEUX groupes. C'est la vérité, et la cacher
- * ferait croire qu'il n'a qu'un usage — donc qu'on peut le supprimer après avoir traité l'autre.
+ * ferait croire qu'il n'a qu'un usage, donc qu'on peut le supprimer après avoir traité l'autre.
  */
 export function groupModelsByUsage(fichiers, { tomes = [], scenes = [] } = {}){
   const parScene = new Map();      // fichier → noms de Scènes
@@ -70,7 +70,7 @@ export function groupModelsByUsage(fichiers, { tomes = [], scenes = [] } = {}){
 }
 
 /**
- * Combien d'Éléments du Projet ouvert utilisent ce fichier — Scènes ET Cases confondues.
+ * Combien d'Éléments du Projet ouvert utilisent ce fichier. Scènes ET Cases confondues.
  *
  * C'est le chiffre annoncé avant une suppression. Il porte sur les ÉLÉMENTS, pas sur les Scènes :
  * « 3 Éléments » dit combien de choses vont se transformer en boîte de remplacement, ce qui est la
@@ -89,7 +89,7 @@ export function countModelUsages(fichier, { tomes = [], scenes = [] } = {}){
 }
 
 /**
- * Le message de confirmation d'une suppression. Fonction PURE — c'est ce qui la rend vérifiable.
+ * Le message de confirmation d'une suppression. Fonction PURE, c'est ce qui la rend vérifiable.
  *
  * Il dit TROIS choses, et les trois comptent : que c'est irréversible, ce que ça casse ici, et
  * qu'on ne peut rien affirmer des autres Projets. Taire la troisième serait laisser croire à une
@@ -98,8 +98,8 @@ export function countModelUsages(fichier, { tomes = [], scenes = [] } = {}){
 export function messageSuppressionModele(fichier, usages, traduire){
   const t = traduire || ((en) => en);
   const conséquence = usages > 0
-    ? t(`${usages} Element(s) in this project use it — they will show as placeholder boxes.`,
-      `${usages} Élément(s) de ce Projet l'utilisent — ils deviendront des boîtes de remplacement.`)
+    ? t(`${usages} Element(s) in this project use it, and will show as placeholder boxes.`,
+      `${usages} Élément(s) de ce Projet l'utilisent, et deviendront des boîtes de remplacement.`)
     : t('No Element in this project uses it.', tr('No Element of this project uses it.', 'Aucun Élément de ce Projet ne l\'utilise.'));
   return t(
     `Delete "${fichier}" from disk? ${conséquence} Other projects cannot be checked from here, and this cannot be undone.`,
@@ -118,7 +118,7 @@ export function messageSuppressionModele(fichier, usages, traduire){
 // C'est exact, et ça le reste. Mais c'est aussi mot pour mot ce que fait déjà la SUPPRESSION, qui
 // est offerte : elle casse les autres Projets sans pouvoir les réparer. La différence n'était donc
 // pas dans le danger, elle était dans le fait qu'un danger avait été assumé et l'autre non. Le
-// renommage est même le moins grave des deux — le fichier existe toujours, sous un autre nom, et
+// renommage est même le moins grave des deux, le fichier existe toujours, sous un autre nom, et
 // rien n'est perdu que des références réparables à la main.
 //
 // Ce qui est réparé automatiquement : le Projet OUVERT, sa pile d'annulation, et la correspondance
@@ -155,7 +155,7 @@ export function repointerModele3D(racines, ancien, nouveau){
  * ⚠️ SANS ÇA, Ctrl+Z RESSUSCITE UN NOM DE FICHIER MORT. La pile contient des états ANTÉRIEURS du
  * Projet, sérialisés (cf. snapshot dans events.js) : ils citent tous l'ancien nom. Annuler
  * n'importe quelle action faite AVANT le renommage restaurerait donc des Éléments pointant vers un
- * fichier qui n'existe plus — ils deviendraient des boîtes de remplacement, sans un mot, pour une
+ * fichier qui n'existe plus, ils deviendraient des boîtes de remplacement, sans un mot, pour une
  * opération sans rapport avec celle qu'on annulait.
  *
  * Rend une NOUVELLE pile ; l'appelant remplace la sienne. Une entrée illisible est laissée telle

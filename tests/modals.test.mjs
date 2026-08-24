@@ -1,10 +1,10 @@
-// tests/modals.test.mjs — Tests unitaires de src/modals.js (calculs purs utilisés par les modales
+// tests/modals.test.mjs. Tests unitaires de src/modals.js (calculs purs utilisés par les modales
 // Personnage/Objet : conversion rotation↔slider, pourcentage de taille, détection de poignée
 // d'articulation la plus proche).
 //
 // NON couvert ici, volontairement : le reste de modals.js est presque entièrement de la construction/
 // manipulation DOM (openXModal/closeXModal/build...UI/draw...Overlay), impossible à vérifier de façon
-// significative avec le dom-stub (pas de vrai rendu, querySelectorAll renvoie [] par défaut) — cf.
+// significative avec le dom-stub (pas de vrai rendu, querySelectorAll renvoie [] par défaut), cf.
 // même limite documentée dans l'en-tête de tests/i18n.test.mjs. getObjectPreviewCanvasCoords/
 // getPersonaPreviewCanvasCoords dépendent de getBoundingClientRect() sur un canvas dont le stub
 // renvoie des dimensions nulles (division par zéro → NaN), donc non plus assertables ici.
@@ -25,7 +25,7 @@ function assertClose(actual, expected, msg, eps = 1e-9) {
 }
 
 // ── rotYToSliderDeg / sliderDegToRotY ────────────────────────────────────────────────────────
-describe('rotYToSliderDeg / sliderDegToRotY — conversion entre rotY (radians) et le slider "0..360°"', () => {
+describe('rotYToSliderDeg / sliderDegToRotY : conversion entre rotY (radians) et le slider "0..360°"', () => {
   test('rotYToSliderDeg : rotY=0 (face caméra par défaut) → -180° (le slider représente 0=dos, 180/-180=face)', () => {
     assert.equal(rotYToSliderDeg(0), -180);
   });
@@ -56,7 +56,7 @@ describe('rotYToSliderDeg / sliderDegToRotY — conversion entre rotY (radians) 
 });
 
 // ── getPersonaScalePercent ────────────────────────────────────────────────────────────────────
-describe('getPersonaScalePercent — pourcentage de taille affiché dans la modale', () => {
+describe('getPersonaScalePercent : pourcentage de taille affiché dans la modale', () => {
   test('realHeightFloor défini : pourcentage = realHeightFloor / (baseH en unités réelles) * 100', () => {
     // WALL_PX_PER_UNIT_3D=40 → baseRealH = baseH/40 = 70/40 = 1.75 ; realHeightFloor = 3.5 → 200%
     const o = { w: 40, h: 70, baseW: 40, baseH: 70, realHeightFloor: 3.5 };
@@ -72,7 +72,7 @@ describe('getPersonaScalePercent — pourcentage de taille affiché dans la moda
 });
 
 // ── pickAnimalHandleAt ────────────────────────────────────────────────────────────────────────
-describe('pickAnimalHandleAt — détecte la poignée d\'articulation animale la plus proche (rayon 17px)', () => {
+describe('pickAnimalHandleAt : détecte la poignée d\'articulation animale la plus proche (rayon 17px)', () => {
   beforeEach(() => {
     Object.keys(animalHandleScreenPos).forEach(k => delete animalHandleScreenPos[k]);
   });
@@ -102,7 +102,7 @@ describe('pickAnimalHandleAt — détecte la poignée d\'articulation animale la
 // ─────────────────────────────────────────────────────────────────────────────
 // Rapatriement des gestionnaires des modales Pièce/Bâtiment.
 //
-// Ils vivaient dans events.js, sous une bannière « BUILD TOOL » qui décrivait autre chose — l'outil
+// Ils vivaient dans events.js, sous une bannière « BUILD TOOL » qui décrivait autre chose, l'outil
 // Construire, lui, est dans draw.js depuis une extraction précédente. Le prix de cette dérive était
 // concret : SEIZE getElementById en double, events.js et modals.js allant chercher les mêmes nœuds.
 // C'est exactement ce qu'attrape tests/dom-ids.test.mjs pour l'absence d'un id ; pour un id présent
@@ -110,7 +110,7 @@ describe('pickAnimalHandleAt — détecte la poignée d\'articulation animale la
 //
 // Par inspection de source : le câblage manipule le DOM, hors de portée du stub.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Rapatriement des modales Pièce/Bâtiment — la couture tient', () => {
+describe('Rapatriement des modales Pièce/Bâtiment : la couture tient', () => {
   const lireSrc = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
   const evt = lireSrc('../src/events.js');
   const mod = lireSrc('../src/modals.js');
@@ -156,7 +156,7 @@ describe('Rapatriement des modales Pièce/Bâtiment — la couture tient', () =>
 describe('Poignées d\'articulation — une seule prise pour tous les types d\'Élément', () => {
   // CE BLOC EXISTE PARCE QUE LE CODE ÉTAIT SUR LE POINT D'ÊTRE RECOPIÉ. Les Animaux avaient leur
   // fonction de sélection, les Modèles importés allaient avoir la leur : deux fois la même
-  // arithmétique, donc deux occasions de dériver — un rayon de prise ajusté d'un côté et pas de
+  // arithmétique, donc deux occasions de dériver, un rayon de prise ajusté d'un côté et pas de
   // l'autre, et le même geste ne répondrait plus pareil selon l'Élément. `pickHandleAt` est
   // désormais commune ; les deux entrées publiques ne font que lui passer leur carte de positions.
   beforeEach(() => {
@@ -243,7 +243,7 @@ describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement'
 });
 
 
-describe('Déplier un groupe ne vole pas la sélection — le défaut des trois écrans', () => {
+describe('Déplier un groupe ne vole pas la sélection : le défaut des trois écrans', () => {
   // SIGNALÉ À L'USAGE sur les modèles importés : « quand je passe d'une sous-section à une autre,
   // ça sélectionne le premier groupe de la sous-section plutôt que le bon ».
   //
@@ -254,7 +254,7 @@ describe('Déplier un groupe ne vole pas la sélection — le défaut des trois 
   // gauche », dont le toggle différé resélectionnait l'épaule.
   //
   // Le remède existait DÉJÀ dans persona-editor.js, avec un commentaire désignant nommément la
-  // version de la modale comme le contre-exemple. Il n'y avait jamais été reporté — et je l'ai
+  // version de la modale comme le contre-exemple. Il n'y avait jamais été reporté, et je l'ai
   // recopié cassé une troisième fois en écrivant l'écran des modèles importés. La décision est
   // maintenant une fonction unique, testée ici, que les trois écrans appellent.
 
@@ -282,9 +282,9 @@ describe('Déplier un groupe ne vole pas la sélection — le défaut des trois 
 
   test('RÉGRESSION : plus aucun drapeau de synchronisation dans les trois écrans', () => {
     // Un drapeau synchrone ne peut pas protéger d'un événement asynchrone. S'il réapparaît, c'est
-    // que quelqu'un a réintroduit le motif — et le défaut avec.
+    // que quelqu'un a réintroduit le motif, et le défaut avec.
     // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : la première version ne cherchait qu'une AFFECTATION
-    // (`= true`). Une réintroduction qui se contente de LIRE le drapeau — `if (S.syncing…) return;`
+    // (`= true`). Une réintroduction qui se contente de LIRE le drapeau, `if (S.syncing…) return;`
     // — passait donc au travers, alors que c'est exactement le motif qu'on veut interdire.
     const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
@@ -324,14 +324,14 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
   });
 
   test('et ce libellé est bien celui choisi', () => {
-    // Sans ce second test, renommer les DEUX à l'identique passerait — or le nom a été choisi.
+    // Sans ce second test, renommer les DEUX à l'identique passerait, or le nom a été choisi.
     assert.deepEqual(libelles(MODALS, "getElementById('objectSkeletonMapBtn')"),
       { en: 'Mapping table', fr: 'Tableau de correspondance' });
   });
 });
 
 /**
- * JOURNAL DE MUTATION — la fiche d'un Élément 3D : « Modèle » fusionné, « Hauteur » maîtresse
+ * JOURNAL DE MUTATION : la fiche d'un Élément 3D : « Modèle » fusionné, « Hauteur » maîtresse
  * (tâches #343 et #344).
  *
  *   H1 optionsDeFigure3D n'ajoute plus la figure courante absente        ROUGE
@@ -361,10 +361,10 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Le champ « Hauteur » des deux fiches
 //
-// CE QUI SE JOUE ICI. Le champ existe à DEUX endroits — fiche Personnage et fiche Objet/Modèle —
+// CE QUI SE JOUE ICI. Le champ existe à DEUX endroits, fiche Personnage et fiche Objet/Modèle,
 // et c'est la même fonction qui les remplit. Le risque n'est donc pas dans le calcul (couvert dans
 // utils.test.mjs) mais dans le CÂBLAGE : une des deux fiches qui oublie d'appeler. Une mutation l'a
-// montré — retirer l'appel côté Personnage ne faisait échouer aucun test.
+// montré, retirer l'appel côté Personnage ne faisait échouer aucun test.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('le champ Hauteur est rempli par les DEUX fiches', () => {
   // baseH = 70 px ⇒ 1,75 m à 100 % (WALL_PX_PER_UNIT_3D = 40).
@@ -388,7 +388,7 @@ describe('le champ Hauteur est rempli par les DEUX fiches', () => {
 
   test('1,83 m N\'EST PAS ramené au cran du curseur', () => {
     // 1,83 m sur une base de 1,75 m vaut 104,57 %. Le curseur ne connaît que les multiples de 5 :
-    // si la hauteur affichée en dérivait, elle vaudrait 1,84 m (105 %) — et l'Élément finirait par
+    // si la hauteur affichée en dérivait, elle vaudrait 1,84 m (105 %), et l'Élément finirait par
     // y être vraiment, à force d'ouvertures et d'enregistrements. Elle est lue sur l'Élément.
     const input = document.getElementById('personaHeightInput');
     updatePersonaSizeDisplay(elem(1.83));
@@ -413,10 +413,10 @@ describe('le champ Hauteur est rempli par les DEUX fiches', () => {
 
 
 // ── La modale du Manuel d'utilisation ─────────────────────────────────────────────────────────
-describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau', () => {
+describe('openHelpModal : le manuel s\'affiche au centre, plus dans le panneau', () => {
   // Ces tests portent sur le COMPORTEMENT, pas sur le source : le dom-stub conserve réellement les
   // enfants et les classes, et vide la liste d'enfants quand on pose innerHTML. Ce qu'on affirme
-  // ici — le nombre de paragraphes déposés, le titre, la classe `hidden` — est donc observable.
+  // ici, le nombre de paragraphes déposés, le titre, la classe `hidden`, est donc observable.
   // C'est la différence avec les fonctions qui traversent la scène 3D, où seule la lecture du
   // source reste possible.
   const titre = () => document.getElementById('helpModalTitle');
@@ -455,7 +455,7 @@ describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau
   });
 
   test('RÉGRESSION : rouvrir REMPLACE le contenu, il ne s\'accumule pas', () => {
-    // Sans remise à zéro, lire trois sections d'affilée les empilerait dans la même modale — et le
+    // Sans remise à zéro, lire trois sections d'affilée les empilerait dans la même modale, et le
     // défaut ne se verrait qu'après plusieurs clics, donc jamais pendant un essai rapide.
     openHelpModal('cases', 'fr');
     openHelpModal('bulles', 'fr');
@@ -472,7 +472,7 @@ describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau
 
   test('changer de langue pendant la lecture retraduit la section OUVERTE', () => {
     // Sans cela, on lirait le français dans une interface repassée en anglais jusqu'à refermer la
-    // modale — et rien à l'écran n'indiquerait qu'il faut la refermer.
+    // modale, et rien à l'écran n'indiquerait qu'il faut la refermer.
     openHelpModal('cases', 'fr');
     assert.equal(rafraichirManuelOuvert('en'), true);
     const en = HELP_MANUAL_EN.find(g => g.id === 'cases');
@@ -496,11 +496,11 @@ describe('openHelpModal — le manuel s\'affiche au centre, plus dans le panneau
 });
 
 // ── L'ouverture des sections d'une fiche ──────────────────────────────────────────────────────
-describe('resetModalSections — par clé, jamais par titre affiché', () => {
+describe('resetModalSections : par clé, jamais par titre affiché', () => {
   // DÉFAUT VIVANT AVANT CORRECTION : la comparaison portait sur le TEXTE des titres, et ce texte est
   // traduit. En anglais, « Main characteristics » ne figurait dans aucune liste écrite en français :
   // plus une seule section ne correspondait, et toutes s'ouvraient repliées. Invisible en français,
-  // systématique en anglais — exactement le genre de défaut que personne ne signale.
+  // systématique en anglais, exactement le genre de défaut que personne ne signale.
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
   const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');

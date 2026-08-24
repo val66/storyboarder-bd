@@ -1,17 +1,17 @@
 /**
- * tests/save-path.test.mjs — le chemin d'enregistrement et ses deux silences.
+ * tests/save-path.test.mjs, le chemin d'enregistrement et ses deux silences.
  *
  * Suite de tests/persisted-format.test.mjs, qui gardait le FORMAT. Celui-ci garde le MOMENT :
  * qu'un enregistrement raté se dise raté, et qu'une question posée à l'utilisateur reçoive
  * toujours une réponse.
  *
  * Les deux défauts épinglés ici ont été trouvés en écrivant ce fichier. Ils partagent une forme :
- * l'application continue comme si tout allait bien. Personne ne peut les voir en s'en servant —
+ * l'application continue comme si tout allait bien. Personne ne peut les voir en s'en servant,
  * c'est précisément pour cela qu'ils méritent des tests plutôt qu'un essai à la main.
  *
  * Hors de portée : l'écriture réelle sur disque (elle passe par window.storyboarderAPI, côté
  * Electron, cf. la règle n°1 d'architecture.md). On simule ce pont, et on vérifie ce que le code du
- * renderer FAIT du résultat — ce qui est justement là où les deux défauts se trouvaient.
+ * renderer FAIT du résultat, ce qui est justement là où les deux défauts se trouvaient.
  */
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach, afterEach } from 'node:test';
@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 afterEach(() => { stopAutosave(); delete window.storyboarderAPI; });
 
-describe('Enregistrement — un échec ne doit jamais passer pour un succès', () => {
+describe('Enregistrement : un échec ne doit jamais passer pour un succès', () => {
   test('RÉGRESSION : une écriture ratée ne marque PAS le Projet comme enregistré', () => {
     // La garde la plus importante du lot. Si `projectDirty` retombait à faux sur un échec, la
     // sauvegarde automatique cesserait de réessayer (elle sort tôt quand rien n'est modifié) et la
@@ -107,11 +107,11 @@ describe('Enregistrement — un échec ne doit jamais passer pour un succès', (
   });
 });
 
-describe('Confirmations — une question posée reçoit toujours une réponse', () => {
+describe('Confirmations : une question posée reçoit toujours une réponse', () => {
   test('RÉGRESSION : une confirmation en attente est réglée avant qu\'une autre s\'ouvre', async () => {
     // Défaut trouvé en écrivant ce fichier, et corrigé. S.confirmActionResolve était simplement
     // ÉCRASÉ : la première promesse ne se résolvait jamais. Le `await confirmAction(...)` qui la
-    // portait ne rendait pas la main, et toute la suite — charger un projet, en créer un — était
+    // portait ne rendait pas la main, et toute la suite, charger un projet, en créer un, était
     // abandonnée en silence. Rien ne levait, rien ne s'affichait ; l'application avait l'air de ne
     // pas avoir entendu.
     //
@@ -152,7 +152,7 @@ describe('Confirmations — une question posée reçoit toujours une réponse', 
   });
 });
 
-describe('Sauvegarde automatique — un minuteur qui s\'arrête doit être voulu', () => {
+describe('Sauvegarde automatique : un minuteur qui s\'arrête doit être voulu', () => {
   test('startAutosave remplace le minuteur précédent au lieu d\'en empiler un', () => {
     // Deux minuteurs actifs écriraient le fichier deux fois par période. startAutosave appelle
     // stopAutosave en entrée ; ce test empêche qu'on le retire en croyant l'appel redondant.
@@ -186,7 +186,7 @@ describe('Sauvegarde automatique — un minuteur qui s\'arrête doit être voulu
 
   test('RÉGRESSION : le chemin d\'échec du chargement redémarre la sauvegarde automatique', () => {
     // Par inspection de source : loadExistingProjectFlow dépend d'une boîte de dialogue Electron
-    // qu'on ne peut pas simuler jusqu'au bout ici. Ce qu'on épingle est la FORME — que chacun des
+    // qu'on ne peut pas simuler jusqu'au bout ici. Ce qu'on épingle est la FORME, que chacun des
     // deux `catch` rallume le minuteur.
     //
     // Le défaut corrigé : stopAutosave() s'exécute AVANT la lecture, startAutosave() seulement en
@@ -197,7 +197,7 @@ describe('Sauvegarde automatique — un minuteur qui s\'arrête doit être voulu
     const fin = src.indexOf('\nexport ', debut + 10);
     const corps = src.slice(debut, fin > 0 ? fin : src.length);
 
-    // Ne comptent que les `catch` qui traitent un ÉCHEC DE CHARGEMENT — reconnus au message
+    // Ne comptent que les `catch` qui traitent un ÉCHEC DE CHARGEMENT, reconnus au message
     // qu'ils affichent. La fonction en contient un troisième, autour de requestPermission, dont ce
     // n'est pas le rôle : ma première version comptait les `catch` tout court et échouait sur
     // celui-là. Compter ce qui ressemble à la cible plutôt que la cible est une façon classique

@@ -1,10 +1,10 @@
 /**
  * @file model-usages.js
- * « Où ce modèle est-il utilisé ? » — et comment s'y rendre.
+ * « Où ce modèle est-il utilisé ? », et comment s'y rendre.
  *
  * La bibliothèque du menu de gauche répond déjà à « puis-je supprimer ce fichier ? » (cf.
  * model-library.js). Ce module répond à la question d'après, celle qu'on se pose une fois qu'on sait
- * qu'un fichier sert quelque part : OÙ, exactement — et surtout, comment y aller.
+ * qu'un fichier sert quelque part : OÙ, exactement, et surtout, comment y aller.
  *
  * DEUX MÉTIERS, SÉPARÉS EXPRÈS. `modelUsageLocations` est PURE : elle lit un Projet et rend une
  * liste. `goToModelUsage` MUTE l'état affiché. La première se teste sans DOM ni WebGL ; la seconde
@@ -12,13 +12,13 @@
  * vérifier. Les mélanger aurait rendu la première invérifiable.
  *
  * POURQUOI PAS DANS model-library.js : ce fichier-là s'annonce pur, et le reste. Y ajouter une
- * fonction qui écrit dans `S` aurait démenti son en-tête — et un en-tête qui ment coûte plus cher
+ * fonction qui écrit dans `S` aurait démenti son en-tête, et un en-tête qui ment coûte plus cher
  * qu'un fichier de plus.
  *
  * LE GROUPEMENT EST HIÉRARCHIQUE, sur demande : un en-tête par contenant (une Scène, ou une Case),
  * et dessous un Élément par ligne. Un même fichier peut être posé plusieurs fois dans la MÊME Case ;
  * les aplatir donnerait des lignes quasi identiques qu'on ne saurait pas distinguer, et un seul
- * en-tête par Case sans détail ne permettrait de sélectionner qu'un des exemplaires — arbitrairement
+ * en-tête par Case sans détail ne permettrait de sélectionner qu'un des exemplaires, arbitrairement
  * le premier. La hiérarchie dit les deux choses : combien, et lequel.
  */
 
@@ -26,7 +26,7 @@ import { S } from './state.js';
 import { isImportedModel } from './model-store.js';
 
 // Injectés (cf. docs/architecture.md règle n°2) : events.js importe ce module, l'importer en retour
-// fermerait un cycle. `disableSceneCameraMode` n'est pas un ornement — quitter l'éditeur de Scène
+// fermerait un cycle. `disableSceneCameraMode` n'est pas un ornement, quitter l'éditeur de Scène
 // sans l'appeler laisse le mode Caméra actif « en arrière-plan » (cf. scenes.js).
 let _cb = {};
 export function setModelUsagesCallbacks(callbacks){ _cb = callbacks || {}; }
@@ -38,7 +38,7 @@ export function setModelUsagesCallbacks(callbacks){ _cb = callbacks || {}; }
  * @param {object} projet             { tomes, scenes }
  * @returns {Array<object>}           groupes, dans l'ordre du Projet
  *
- * Chaque groupe : { kind: 'scene'|'panel', elements: [{ id, name }], … } avec de quoi s'y rendre —
+ * Chaque groupe : { kind: 'scene'|'panel', elements: [{ id, name }], … } avec de quoi s'y rendre,
  * `sceneId` pour une Scène, `tomeIndex`/`pageIndex` pour une Case. Les étiquettes ne sont PAS
  * composées ici : elles demandent la langue, et une fonction qui rend du texte traduit ne se
  * compare plus qu'à elle-même (cf. usageLabel plus bas).
@@ -56,13 +56,13 @@ export function modelUsageLocations(fichier, { tomes = [], scenes = [] } = {}){
 
   (tomes || []).forEach((tome, tomeIndex) => {
     (tome.pages || []).forEach((page, pageIndex) => {
-      // Regroupés par Case, dans l'ordre où les Éléments apparaissent — donc par ordre de
+      // Regroupés par Case, dans l'ordre où les Éléments apparaissent, donc par ordre de
       // création. Une Map préserve cet ordre d'insertion, une clé numérique l'aurait perdu.
       const parCase = new Map();
       (page.objects || []).forEach(o => {
         if (!isImportedModel(o) || o.modelFile !== fichier) return;
         // `homePanelId` peut désigner une Case supprimée depuis : on ne devine pas, on l'assume.
-        // La clé `null` regroupe alors ces Éléments sous la Page seule — les taire les rendrait
+        // La clé `null` regroupe alors ces Éléments sous la Page seule, les taire les rendrait
         // introuvables, ce qui est précisément ce que cette liste doit empêcher.
         const panel = (page.objects || []).find(p => p.type === 'panel' && p.id === o.homePanelId);
         const cle = panel ? panel.id : null;
@@ -103,7 +103,7 @@ function elementsUtilisant(volume, fichier){
  * PURE, et séparée du calcul : c'est ce qui permet de vérifier le texte sans monter un Projet, et
  * de vérifier le groupement sans dépendre de la langue.
  *
- * Une Case sans numéro (Élément dont la Case a disparu) s'arrête à la Page — on n'invente pas un
+ * Une Case sans numéro (Élément dont la Case a disparu) s'arrête à la Page, on n'invente pas un
  * numéro, et l'absence dit quelque chose de vrai.
  */
 export function usageLabel(groupe, traduire){
@@ -121,7 +121,7 @@ export function usageLabel(groupe, traduire){
 /**
  * Les étiquettes des Éléments d'un groupe. Fonction PURE.
  *
- * LE RANG NE S'AJOUTE QUE S'IL DÉPARTAGE. Un rang systématique — « (1/2) », « (2/2) » — est du bruit
+ * LE RANG NE S'AJOUTE QUE S'IL DÉPARTAGE. Un rang systématique, « (1/2) », « (2/2) », est du bruit
  * dès que les Éléments portent des noms différents : le nom suffit alors à les distinguer, et le
  * rang ne fait que compter quelque chose qu'on ne demandait pas. Pire, il survit au renommage :
  * l'utilisateur baptise l'un des deux exemplaires, le doublon disparaît, et l'étiquette continue
@@ -129,7 +129,7 @@ export function usageLabel(groupe, traduire){
  *
  * Le rang est donc calculé PAR NOM, pas par groupe : seuls les Éléments dont le nom est partagé en
  * reçoivent un, et la numérotation porte sur ce sous-ensemble. Trois Éléments nommés « A », « A »
- * et « B » donnent « A (1/2) », « A (2/2) » et « B » — car c'est bien parmi les deux « A » qu'il
+ * et « B » donnent « A (1/2) », « A (2/2) » et « B », car c'est bien parmi les deux « A » qu'il
  * faut choisir, pas parmi les trois.
  *
  * Le repli (« Modèle ») entre dans le compte : deux Éléments sans nom se ressemblent tout autant.
@@ -187,7 +187,7 @@ export function targetFor(groupe, element){
  *
  * Un usage unique mène DIRECTEMENT à destination (choix utilisateur) : une modale qui ne propose
  * qu'une ligne fait cliquer deux fois pour un choix qui n'existe pas. Le prix assumé de ce raccourci
- * est que le clic ne fait pas toujours la même chose — d'où l'importance que `'rien'` se voie AVANT
+ * est que le clic ne fait pas toujours la même chose, d'où l'importance que `'rien'` se voie AVANT
  * le clic, par le curseur, et pas seulement après.
  */
 export function resolveModelClick(fichier, projet){
@@ -203,7 +203,7 @@ export function resolveModelClick(fichier, projet){
  *
  * Rend `true` si l'on a bougé. La sélection est posée APRÈS `openScene`, qui sélectionne le canevas
  * de la Scène : dans l'autre ordre, l'ouverture écraserait la sélection demandée et l'utilisateur
- * arriverait au bon endroit sans que rien n'y soit désigné — un déplacement qui a l'air de n'avoir
+ * arriverait au bon endroit sans que rien n'y soit désigné, un déplacement qui a l'air de n'avoir
  * rien fait.
  */
 export function goToModelUsage(cible){

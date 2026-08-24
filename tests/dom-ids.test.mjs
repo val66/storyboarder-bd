@@ -1,5 +1,5 @@
 /**
- * tests/dom-ids.test.mjs — le code et le document parlent-ils des mêmes éléments ?
+ * tests/dom-ids.test.mjs, le code et le document parlent-ils des mêmes éléments ?
  *
  * Cette classe de défaut a déjà interrompu l'application DEUX fois, entièrement :
  *
@@ -11,11 +11,11 @@
  *     Les 822 tests d'alors sont restés verts.
  *
  * Le point commun : aucune de ces liaisons n'est vérifiée par quoi que ce soit. Le HTML n'est pas
- * compilé, `getElementById` ne se plaint pas d'un id absent, il renvoie `null` — et l'exception
+ * compilé, `getElementById` ne se plaint pas d'un id absent, il renvoie `null`, et l'exception
  * n'arrive que plus tard, ailleurs, sous une forme qui ne désigne pas le coupable.
  *
  * Ce que ces tests couvrent : les ids littéraux. Un id CALCULÉ (`getElementById(btnId)`,
- * `'ctxAdd' + label`) leur échappe par construction, et c'est assumé — vérifier une chaîne
+ * `'ctxAdd' + label`) leur échappe par construction, et c'est assumé, vérifier une chaîne
  * construite à l'exécution demanderait d'exécuter le code, pas de le lire.
  */
 import { test, describe } from 'node:test';
@@ -54,11 +54,11 @@ function referencesLitterales() {
   return trouvees;
 }
 
-describe('index.html ↔ src/ — les ids cherchés existent', () => {
+describe('index.html ↔ src/ : les ids cherchés existent', () => {
   const refs = referencesLitterales();
 
   test('le balayage trouve bien quelque chose à vérifier', () => {
-    // Sans ce garde-fou, une expression cassée rendrait tous les tests suivants verts et vides —
+    // Sans ce garde-fou, une expression cassée rendrait tous les tests suivants verts et vides,
     // le pire état possible, constaté ailleurs dans ce dépôt (cf. tests/i18n.test.mjs, Fix 92).
     assert.ok(refs.length > 400, `seulement ${refs.length} références trouvées`);
     assert.ok(IDS.size > 300, `seulement ${IDS.size} ids dans index.html`);
@@ -90,10 +90,10 @@ describe('index.html ↔ src/ — les ids cherchés existent', () => {
   });
 });
 
-describe('index.html ↔ src/ — les liaisons vivantes ne sont pas cassées', () => {
+describe('index.html ↔ src/ : les liaisons vivantes ne sont pas cassées', () => {
   test('RÉGRESSION : setProjectModalStatus a bien une cible', () => {
-    // Défaut trouvé en écrivant ce fichier : la fonction est appelée depuis quatorze endroits —
-    // « Enregistré à 14:32 », « Échec de l'enregistrement du Projet » — et l'élément n'existait
+    // Défaut trouvé en écrivant ce fichier : la fonction est appelée depuis quatorze endroits,
+    // « Enregistré à 14:32 », « Échec de l'enregistrement du Projet », et l'élément n'existait
     // pas. Sa garde `if (el)` absorbait l'absence, si bien que TOUS ces retours, y compris les
     // échecs d'enregistrement, n'arrivaient nulle part. Un test générique l'aurait signalé ; il
     // n'en existait aucun. Celui-ci nomme le cas pour qu'il ne se reperde pas dans la masse.
@@ -109,7 +109,7 @@ describe('index.html ↔ src/ — les liaisons vivantes ne sont pas cassées', (
     const io = modules.find(m => m.nom === 'io.js').texte;
     [...io.matchAll(/setProjectModalStatus\(([^;]*)\);/g)].forEach(m => {
       const arg = m[1].trim();
-      // `text)` : c'est la DÉFINITION que l'expression vient d'attraper, pas un appel — son
+      // `text)` : c'est la DÉFINITION que l'expression vient d'attraper, pas un appel, son
       // paramètre s'appelle `text`. `''` : l'effacement du message, rien à traduire.
       if (arg === "''" || /^text\)/.test(arg)) return;
       assert.match(arg, /^tr\(/, `message non traduit : ${arg.slice(0, 60)}`);
@@ -121,14 +121,14 @@ describe('index.html ↔ src/ — les liaisons vivantes ne sont pas cassées', (
 // Les menus déroulants du panneau de gauche
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Menus déroulants — un panneau déclaré est un panneau ouvrable', () => {
+describe('Menus déroulants : un panneau déclaré est un panneau ouvrable', () => {
   test('RÉGRESSION : chaque .dropdown-panel a son setupDropdown', () => {
     // Trouvé en vrai, à l'usage, sur la section Modèles : le panneau existait dans index.html et
-    // n'avait aucun gestionnaire — le titre ne réagissait pas au clic, et la section restait
+    // n'avait aucun gestionnaire, le titre ne réagissait pas au clic, et la section restait
     // fermée. Rien ne levait. Les tests d'ids ne pouvaient pas le voir : les ids ÉTAIENT là.
     //
     // `setupDropdown` est appelé une fois par menu, à la main. C'est exactement le genre
-    // d'énumération que l'on complète à moitié — la deuxième classe de bug récurrente du dépôt.
+    // d'énumération que l'on complète à moitié, la deuxième classe de bug récurrente du dépôt.
     const panneaux = [...html.matchAll(/class="dropdown-panel[^"]*"\s+id="([^"]+)"/g)].map(m => m[1]);
     assert.ok(panneaux.length >= 3, `trop peu de panneaux trouvés : ${panneaux.length}`);
     const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
@@ -139,7 +139,7 @@ describe('Menus déroulants — un panneau déclaré est un panneau ouvrable', (
 
   test('… et chaque setupDropdown vise un panneau et un titre qui existent', () => {
     // Le sens inverse : un câblage vers un id disparu échouerait au chargement du module, donc
-    // interromprait events.js en entier — la panne la plus brutale de ce dépôt (cf. § 3 de
+    // interromprait events.js en entier, la panne la plus brutale de ce dépôt (cf. § 3 de
     // docs/persisted-data.md).
     const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
     [...EVENTS_TXT.matchAll(/setupDropdown\('([^']+)',\s*'([^']+)'\)/g)].forEach(([, trigger, panel]) => {
@@ -153,12 +153,12 @@ describe('Menus déroulants — un panneau déclaré est un panneau ouvrable', (
 // Les menus flottants (clic droit)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Menus contextuels — un menu qui s\'ouvre doit pouvoir se refermer', () => {
+describe('Menus contextuels : un menu qui s\'ouvre doit pouvoir se refermer', () => {
   const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
 
   test('RÉGRESSION : la liste des menus est DÉDUITE du DOM, pas énumérée à la main', () => {
     // Trouvé en vrai, à l'usage : « supprimer du disque » restait affiché après un clic ailleurs.
-    // `allContextMenus` sert à deux choses qui doivent rester d'accord — fermer tous les menus, et
+    // `allContextMenus` sert à deux choses qui doivent rester d'accord, fermer tous les menus, et
     // reconnaître un clic tombé DANS l'un d'eux. Énumérée à la main sur vingt-six menus, il en
     // manquait deux. Troisième occurrence de cette famille (le manuel désaligné, les ids DOM
     // oubliés, les panneaux sans setupDropdown) : la seule réparation durable est de supprimer
@@ -182,7 +182,7 @@ describe('Menus contextuels — un menu qui s\'ouvre doit pouvoir se refermer', 
 
   test('RÉGRESSION : le menu signalé est bien un .context-menu', () => {
     // Nommément, parce qu'il a été signalé : le menu de la bibliothèque de modèles. Le sous-menu
-    // d'import figurait ici pour la même raison — il a depuis été supprimé avec l'option « comme
+    // d'import figurait ici pour la même raison, il a depuis été supprimé avec l'option « comme
     // Scène », et le retirer d'ici plutôt que de garder un identifiant mort est ce qui garde ce
     // test capable d'échouer.
     ['modelContextMenu'].forEach(id => {

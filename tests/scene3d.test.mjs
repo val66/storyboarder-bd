@@ -1,12 +1,12 @@
-// tests/scene3d.test.mjs — Tests unitaires de src/scene3d.js (Caméra 3D de Case + helpers monde).
+// tests/scene3d.test.mjs. Tests unitaires de src/scene3d.js (Caméra 3D de Case + helpers monde).
 // Priorité explicite demandée : couvrir en premier tout ce qui touche à la Caméra.
 //
 // NON couvert ici, volontairement : toute fonction qui appelle ensurePersonaScene3D() en interne
 // (projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D, getRoomScreenBBoxFrom2DProjections,
-// getBuildingJunctionCorners, panelDragRayOnPlane, renderPanelScene3D...) — ensurePersonaScene3D()
+// getBuildingJunctionCorners, panelDragRayOnPlane, renderPanelScene3D...), ensurePersonaScene3D()
 // tente de construire un vrai THREE.WebGLRenderer, qui échoue sous Node (pas de WebGL réel, et le
 // canvas factice de dom-stub.mjs n'implémente pas document.createElementNS). Vérifié empiriquement :
-// `ensurePersonaScene3D()` seule lève déjà "document.createElementNS is not a function" — hors de
+// `ensurePersonaScene3D()` seule lève déjà "document.createElementNS is not a function", hors de
 // portée d'un test unitaire sans un vrai environnement navigateur/headless-gl.
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
@@ -115,7 +115,7 @@ describe('panelDepthToDistance3D / clampPanelDepth3D / panelApparentPx3D', () =>
   });
 });
 
-describe('ensureElementUnits3D — décodage de la taille apparente (o.w/o.h) en unités monde réelles', () => {
+describe('ensureElementUnits3D : décodage de la taille apparente (o.w/o.h) en unités monde réelles', () => {
   test('profondeur nulle : conversion directe par WALL_PX_PER_UNIT_3D', () => {
     const units = ensureElementUnits3D({ w: 80, h: 120, z: 0 });
     assertClose(units.w, 2, 'w');
@@ -194,7 +194,7 @@ describe('groundMagnetEligible / applyGroundMagnetY / clampWorldYAboveGround', (
   });
 });
 
-describe('findOwningPanel — appartenance d\'un Élément à une Case', () => {
+describe('findOwningPanel : appartenance d\'un Élément à une Case', () => {
   const page = {
     objects: [
       { type: 'panel', id: 'p1', x: 0, y: 0, w: 400, h: 400 },
@@ -218,9 +218,9 @@ describe('findOwningPanel — appartenance d\'un Élément à une Case', () => {
   });
 });
 
-describe('ensureElementWorldPos3D / setElementWorldPos3D / storeElementWorldCoords — conversions pixel↔monde', () => {
+describe('ensureElementWorldPos3D / setElementWorldPos3D / storeElementWorldCoords : conversions pixel↔monde', () => {
   // Zone historiquement fragile (Phases 1 à 3 de l'historique du projet : synchronisation
-  // wxFloor/wzFloor, suppression du scaling des coordonnées monde) — un test de round-trip est la
+  // wxFloor/wzFloor, suppression du scaling des coordonnées monde), un test de round-trip est la
   // meilleure protection contre une régression silencieuse de ces fonctions inverses.
   test('round-trip pixel → monde → pixel : retombe exactement sur la position d\'origine', () => {
     const panel = { x: 100, y: 50, w: 800, h: 600 };
@@ -280,7 +280,7 @@ describe('ensureElementWorldPos3D / setElementWorldPos3D / storeElementWorldCoor
   });
 });
 
-describe('panelCamBasis3D — repère orthonormé de la caméra', () => {
+describe('panelCamBasis3D : repère orthonormé de la caméra', () => {
   test('caméra par défaut (rotX=0, rotY=0) : backward=+Z, right=+X, up=+Y (repère monde standard)', () => {
     const basis = panelCamBasis3D({ camRotX: 0, camRotY: 0 });
     assertVecClose(basis.backward, { x: 0, y: 0, z: 1 }, 'backward');
@@ -309,7 +309,7 @@ describe('panelCamBasis3D — repère orthonormé de la caméra', () => {
   });
 });
 
-describe('getCamOrbitWorld — centre d\'orbite en coordonnées monde (Fix 13)', () => {
+describe('getCamOrbitWorld : centre d\'orbite en coordonnées monde (Fix 13)', () => {
   test('panel.camWx déjà défini : renvoyé directement, sans recalcul (stable à la rotation)', () => {
     const panel = { camWx: 5, camWy: 2, camWz: -3 };
     const basis = panelCamBasis3D({ camRotX: 0.5, camRotY: 0.7 }); // orientation quelconque, ignorée dans ce cas
@@ -338,7 +338,7 @@ describe('getCamOrbitWorld — centre d\'orbite en coordonnées monde (Fix 13)',
   });
 });
 
-describe('worldFloorToScreen / worldToPageXY — projection écran du plan du sol', () => {
+describe('worldFloorToScreen / worldToPageXY : projection écran du plan du sol', () => {
   // Caméra par défaut, alignée sur les axes du monde (cf. test panelCamBasis3D ci-dessus) : permet
   // de vérifier la projection par un calcul indépendant, à la main.
   function defaultPanel(extra = {}) {
@@ -395,7 +395,7 @@ describe('worldFloorToScreen / worldToPageXY — projection écran du plan du so
   });
 });
 
-describe('framePanelCamera3D — configuration complète de la caméra THREE.js', () => {
+describe('framePanelCamera3D : configuration complète de la caméra THREE.js', () => {
   test('sans sélection ni cible d\'orbite : fov/aspect/near/far/position calculés à partir de la planche et de l\'orbite libre', () => {
     const panel = { camRotX: 0, camRotY: 0, camDist: PANEL_CAM_DEFAULT_DIST_3D, camWx: 0, camWy: 0, camWz: 0 };
     const page = { w: 800, h: 600, objects: [] };
@@ -444,7 +444,7 @@ describe('framePanelCamera3D — configuration complète de la caméra THREE.js'
 // ── panelAutoDepthPivot3D (Fix 24) ────────────────────────────────────────────────────────────
 // Fonction de maths pures (aucun appel à ensurePersonaScene3D) → testable ici, contrairement au
 // reste du pipeline de rendu 3D (cf. en-tête de fichier).
-describe('panelAutoDepthPivot3D — réancrage du pivot d\'orbite sur le sujet visé (Fix 24)', () => {
+describe('panelAutoDepthPivot3D : réancrage du pivot d\'orbite sur le sujet visé (Fix 24)', () => {
   // Caméra en (0, 1.15, 10) regardant vers -Z : rotX=0, rotY=0 → backward = (0,0,1),
   // donc camPos = pivot + (0,0,1)*camDist et l'axe de visée est -Z.
   function makePanel(camDist) {
@@ -572,7 +572,7 @@ describe('panelAutoDepthPivot3D — réancrage du pivot d\'orbite sur le sujet v
 
   test('un Élément situé DERRIÈRE la caméra est ignoré', () => {
     // NOTE (constatée par test de mutation) : ce rejet est assuré DEUX fois dans
-    // panelAutoDepthPivot3D — par le garde-fou `along <= 0`, et incidemment par le filtre du cône
+    // panelAutoDepthPivot3D, par le garde-fou `along <= 0`, et incidemment par le filtre du cône
     // central, dont le seuil (proportionnel à `along`) devient négatif dès que l'Élément est dans
     // le dos. Supprimer le garde-fou ne fait donc pas tomber ce test : il verrouille le
     // COMPORTEMENT (rien derrière ne peut devenir pivot), pas cette ligne précise.
@@ -609,7 +609,7 @@ describe('panelAutoDepthPivot3D — réancrage du pivot d\'orbite sur le sujet v
 });
 
 // ── worldPointToPageXY3D (Fix 26) ─────────────────────────────────────────────────────────────
-describe('worldPointToPageXY3D — projection d\'un point monde quelconque (Fix 26)', () => {
+describe('worldPointToPageXY3D : projection d\'un point monde quelconque (Fix 26)', () => {
   const page = { w: 800, h: 600 };
   const panelFace = () => ({ x: 0, y: 0, w: 800, h: 600,
                              camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 });
@@ -668,7 +668,7 @@ describe('worldPointToPageXY3D — projection d\'un point monde quelconque (Fix 
 });
 
 // ── tracéPointAtFrac3D (Fix 27) ───────────────────────────────────────────────────────────────
-describe('tracéPointAtFrac3D — point à une fraction d\'abscisse curviligne (Fix 27)', () => {
+describe('tracéPointAtFrac3D : point à une fraction d\'abscisse curviligne (Fix 27)', () => {
   // Chemin en L : 4 unités vers +x, puis 4 vers -z. Longueur totale 8.
   const L = [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: -4 }];
 
@@ -760,9 +760,9 @@ describe('Tracé : échelle écran locale du chemin (Fix 27)', () => {
 // ── tracéWallHostOf3D / wallOpeningWorldPosOnTracé3D (Fix 28) ─────────────────────────────────
 // Une Parois posée sur un Tracé mur (muret, clôture, haie, barrière) n'a PAS de position monde
 // propre : elle est placée en parcourant le chemin de son hôte. Ces deux fonctions sont la source
-// unique de cette position, partagée par le rendu ET la caméra — c'est leur divergence qui faisait
+// unique de cette position, partagée par le rendu ET la caméra, c'est leur divergence qui faisait
 // que la caméra ne se centrait pas au bon endroit.
-describe('tracéWallHostOf3D — hôte Tracé d\'une Parois (Fix 28)', () => {
+describe('tracéWallHostOf3D : hôte Tracé d\'une Parois (Fix 28)', () => {
   const muret = { id: 'm1', type: 'tracé', tracéType: 'muret',
                   world: { pts: [{ x: 0, z: 0 }, { x: 10, z: 0 }] } };
   const porte = { id: 'p1', type: 'objet3d', objType: 'porte_ouverte', magnetWallId: 'm1' };
@@ -794,7 +794,7 @@ describe('tracéWallHostOf3D — hôte Tracé d\'une Parois (Fix 28)', () => {
   });
 });
 
-describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur un Tracé (Fix 28)', () => {
+describe('wallOpeningWorldPosOnTracé3D : position réelle d\'une Parois sur un Tracé (Fix 28)', () => {
   // Muret en L : 10 u vers +x puis 10 u vers -z. Longueur totale 20.
   const muretL = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 2,
                    world: { pts: [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: -10 }] } };
@@ -824,7 +824,7 @@ describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur u
       'valeur par défaut TRACÉ_DEFAULTS.muret');
   });
 
-  // Fix 31 — childHUnits omis : la valeur par défaut est la hauteur RÉELLE de la Parois (o.h),
+  // Fix 31 : childHUnits omis : la valeur par défaut est la hauteur RÉELLE de la Parois (o.h),
   // celle-là même avec laquelle le trou est découpé. Avant, l'omission valait 0, donc la caméra et
   // le trou n'utilisaient pas la même travée que le rig et se décalaient verticalement.
   test('childHUnits omis → travée réduite de la hauteur propre de la Parois (o.h)', () => {
@@ -878,11 +878,11 @@ describe('wallOpeningWorldPosOnTracé3D — position réelle d\'une Parois sur u
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 31 — rendu d'une Parois sur un Tracé mur : taille du trou = taille du rig,
+// Fix 31, rendu d'une Parois sur un Tracé mur : taille du trou = taille du rig,
 // pose plaquée sur une face, et tableau (jambages/linteau/appui) autour de l'ouverture.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('tracéOpeningSize3D — taille monde d\'une Parois sur un Tracé (Fix 31)', () => {
+describe('tracéOpeningSize3D : taille monde d\'une Parois sur un Tracé (Fix 31)', () => {
   test('convertit o.w/o.h en unités monde via WALL_PX_PER_UNIT_3D', () => {
     const s = tracéOpeningSize3D({ w: 80, h: 44 });
     assertClose(s.w, 80 / WALL_PX_PER_UNIT_3D, 'largeur');
@@ -895,7 +895,7 @@ describe('tracéOpeningSize3D — taille monde d\'une Parois sur un Tracé (Fix 
   });
 });
 
-describe('tracéWallThickness3D — épaisseur du Tracé mur (Fix 31)', () => {
+describe('tracéWallThickness3D : épaisseur du Tracé mur (Fix 31)', () => {
   test('suit le ratio du type appliqué à wallHeight', () => {
     assertClose(tracéWallThickness3D({ tracéType: 'muret', wallHeight: 2 }), 2 * 0.12, 'muret');
     assertClose(tracéWallThickness3D({ tracéType: 'haie', wallHeight: 2 }), 2 * 0.611, 'haie');
@@ -923,7 +923,7 @@ describe('tracéWallThickness3D — épaisseur du Tracé mur (Fix 31)', () => {
   });
 });
 
-describe('tracéOpeningRigScale3D — échelle NON uniforme du rig (Fix 31)', () => {
+describe('tracéOpeningRigScale3D : échelle NON uniforme du rig (Fix 31)', () => {
   test('largeur et hauteur suivent indépendamment la taille demandée', () => {
     // fenetre_ouverte : design 1.0 × 1.1
     const sc = tracéOpeningRigScale3D('fenetre_ouverte', 2.0, 0.55);
@@ -931,7 +931,7 @@ describe('tracéOpeningRigScale3D — échelle NON uniforme du rig (Fix 31)', ()
     assertClose(sc.sy, 0.5, 'sy = 0.55 / 1.1');
   });
 
-  test('RÉGRESSION : sx ≠ sy — l\'échelle uniforme de placeRigCentered3D ignorait o.w', () => {
+  test('RÉGRESSION : sx ≠ sy : l\'échelle uniforme de placeRigCentered3D ignorait o.w', () => {
     // C'est la cause du symptôme « la Fenêtre a l\'air enfoncée » : elle était mise à
     // l\'échelle sur sa seule hauteur, donc jamais aussi large que le trou découpé pour elle.
     const sc = tracéOpeningRigScale3D('fenetre_ouverte', 2.0, 0.55);
@@ -951,7 +951,7 @@ describe('tracéOpeningRigScale3D — échelle NON uniforme du rig (Fix 31)', ()
   });
 });
 
-describe('tracéOpeningFlushOffset3D — plaquage sur une face (Fix 31)', () => {
+describe('tracéOpeningFlushOffset3D : plaquage sur une face (Fix 31)', () => {
   test('décale d\'une demi-épaisseur moins une demi-profondeur de rig', () => {
     assertClose(tracéOpeningFlushOffset3D(0.72, 0.20), 0.26, 'face avant');
   });
@@ -972,7 +972,7 @@ describe('tracéOpeningFlushOffset3D — plaquage sur une face (Fix 31)', () => 
   });
 });
 
-describe('tracéFrameAtFrac3D — point + tangente unitaire sur un Tracé (Fix 31)', () => {
+describe('tracéFrameAtFrac3D : point + tangente unitaire sur un Tracé (Fix 31)', () => {
   const L = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: -10 }];
 
   test('la tangente est unitaire et suit la direction locale', () => {
@@ -1003,7 +1003,7 @@ describe('tracéFrameAtFrac3D — point + tangente unitaire sur un Tracé (Fix 3
   });
 });
 
-describe('buildOpeningRevealGroup3D — tableau autour de l\'ouverture (Fix 31)', () => {
+describe('buildOpeningRevealGroup3D : tableau autour de l\'ouverture (Fix 31)', () => {
   const at = { x: 4, z: -2, tx: 1, tz: 0 };
   const hole = { cW: 1, cH: 0.6, yMin: -2.5, yMax: -1.9, at };
 
@@ -1044,7 +1044,7 @@ describe('buildOpeningRevealGroup3D — tableau autour de l\'ouverture (Fix 31)'
   });
 });
 
-describe('tracéOpeningHole3D — trou découpé dans le Tracé mur (Fix 31)', () => {
+describe('tracéOpeningHole3D : trou découpé dans le Tracé mur (Fix 31)', () => {
   const droit = [{ x: 0, z: 0 }, { x: 20, z: 0 }];
   const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 2,
                   world: { pts: droit } };
@@ -1094,7 +1094,7 @@ describe('tracéOpeningHole3D — trou découpé dans le Tracé mur (Fix 31)', (
   });
 });
 
-describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix 31)', () => {
+describe('tracéOpeningWorldCenter3D : centre d\'une Parois sur un Tracé (Fix 31)', () => {
   const droit = [{ x: 0, z: 0 }, { x: 6, z: 0 }];
   const muret = { id: 'm1', type: 'tracé', tracéType: 'muret', wallHeight: 0.5,
                   world: { pts: droit } };
@@ -1124,7 +1124,7 @@ describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix
 
   test('la dérive de l\'ancienne formule croît avec wallYFrac (0 en bas, pleine hauteur en haut)', () => {
     // Vérifie que le bug ÉTAIT bien invisible en déplacement horizontal (yFrac constant à 0)
-    // et maximal en haut du muret — ce qui correspond au symptôme rapporté.
+    // et maximal en haut du muret, ce qui correspond au symptôme rapporté.
     const ancienne = y => GROUND_Y_DEFAULT_3D + y * 0.5 + 0.3 / 2;
     const derive = y => {
       const o = fenetre(y);
@@ -1142,7 +1142,7 @@ describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 31 — INVARIANTS Muret ↔ Parois.
+// Fix 31 : INVARIANTS Muret ↔ Parois.
 //
 // Quatre bugs successifs (Fix 28, 30, 31, 31b) ont eu la même cause : deux bouts de
 // code calculant indépendamment le même point, puis divergeant. Les tests unitaires
@@ -1150,7 +1150,7 @@ describe('tracéOpeningWorldCenter3D — centre d\'une Parois sur un Tracé (Fix
 // RELATIONS entre elles, balayées sur toute la plage des deux fractions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('INVARIANTS Muret ↔ Parois — cohérence trou / rig / boîte / caméra (Fix 31)', () => {
+describe('INVARIANTS Muret ↔ Parois : cohérence trou / rig / boîte / caméra (Fix 31)', () => {
   const FRACS = [0, 0.13, 0.25, 0.5, 0.75, 0.87, 1];
   const cas = {
     droit:  [{ x: 0, z: 0 }, { x: 8, z: 0 }],
@@ -1320,7 +1320,7 @@ describe('tangente d\'une Parois sur un Tracé — cohérence avec la courbe lis
 
   // Mesuré sur ce L (angle réel 90°) : chemin brut → un saut unique de 1.571 rad ; lissé x4 →
   // réparti sur ~2 pas, plus gros saut 0.825 rad ; lissé x8 → 0.460 rad. Le lissage ADOUCIT le
-  // virage sans l'effacer — le seuil ci-dessous encadre ce comportement mesuré, il n'est pas
+  // virage sans l'effacer, le seuil ci-dessous encadre ce comportement mesuré, il n'est pas
   // arbitraire.
   test('le lissage répartit le virage au lieu de le faire d\'un bloc', () => {
     const yaws = [];
@@ -1340,8 +1340,8 @@ describe('tangente d\'une Parois sur un Tracé — cohérence avec la courbe lis
   });
 
   // RÉGRESSION du Fix 29 (« la direction finit par s'inverser »). L'invariant qui compte n'est pas
-  // que la tangente tourne parfaitement — sur une ellipse échantillonnée à 13 points, le lissage
-  // produit 2 micro-contre-sens de 0.045 rad sur 100 pas, mesurés — mais qu'augmenter
+  // que la tangente tourne parfaitement, sur une ellipse échantillonnée à 13 points, le lissage
+  // produit 2 micro-contre-sens de 0.045 rad sur 100 pas, mesurés, mais qu'augmenter
   // wallAlongFrac fasse TOUJOURS avancer la Parois vers l'avant du muret, jamais reculer.
   test('sur un muret qui boucle, augmenter wallAlongFrac avance toujours vers l\'avant', () => {
     const ovale = Array.from({ length: 13 }, (_, i) => {
@@ -1392,14 +1392,14 @@ describe('tangente d\'une Parois sur un Tracé — cohérence avec la courbe lis
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 32 — arêtes du Tracé mur.
+// Fix 32 : arêtes du Tracé mur.
 //
 // emitStrip réutilisait les mêmes 8 sommets pour les faces verticales ET les faces
 // horizontales. computeVertexNormals moyennait donc, à chaque coin haut, la normale de la
 // face verticale avec le +Y du dessus : la crête était ombrée comme un congé et le Muret
 // avait l'air d'un tube. Les faces horizontales ont désormais leurs propres sommets.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('buildTracéWallGeometry3D — arêtes franches du Tracé mur (Fix 32)', () => {
+describe('buildTracéWallGeometry3D : arêtes franches du Tracé mur (Fix 32)', () => {
   const droit = [{ x: 0, z: 0 }, { x: 8, z: 0 }];
   const classe = geo => {
     const N = geo.getAttribute('normal');
@@ -1411,7 +1411,7 @@ describe('buildTracéWallGeometry3D — arêtes franches du Tracé mur (Fix 32)'
     return { laterale, horizontale, diagonale, total: N.count };
   };
 
-  test('RÉGRESSION : aucune normale diagonale — la crête est une arête, pas un congé', () => {
+  test('RÉGRESSION : aucune normale diagonale : la crête est une arête, pas un congé', () => {
     const c = classe(buildTracéWallGeometry3D(droit, 0.5, 0.18, GROUND_Y_DEFAULT_3D, null));
     assert.equal(c.diagonale, 0, `${c.diagonale} sommets à normale diagonale sur ${c.total}`);
     assert.ok(c.laterale > 0 && c.horizontale > 0, 'les deux familles de faces sont présentes');
@@ -1456,9 +1456,9 @@ describe('buildTracéWallGeometry3D — arêtes franches du Tracé mur (Fix 32)'
   });
 });
 
-// Fix 33 — les deux valeurs choisies avec l'utilisateur, verrouillées explicitement : les tests
+// Fix 33 : les deux valeurs choisies avec l'utilisateur, verrouillées explicitement : les tests
 // ci-dessus lisent la table (ils vérifient le CHEMIN de repli), celui-ci vérifie son CONTENU.
-describe('Muret par défaut — hauteur et épaisseur retenues (Fix 33)', () => {
+describe('Muret par défaut : hauteur et épaisseur retenues (Fix 33)', () => {
   test('1.00 de haut pour 0.12 d\'épaisseur', () => {
     assertClose(TRACÉ_DEFAULTS.muret.wallHeight, 1.00, 'hauteur par défaut');
     assertClose(tracéWallThickness3D({ tracéType: 'muret' }), 0.12, 'épaisseur par défaut');
@@ -1485,9 +1485,9 @@ describe('Muret par défaut — hauteur et épaisseur retenues (Fix 33)', () => 
   });
 });
 
-// Fix 33 — le Muret est CONSTRUIT avec l'épaisseur contre laquelle les Parois sont plaquées.
+// Fix 33 : le Muret est CONSTRUIT avec l'épaisseur contre laquelle les Parois sont plaquées.
 // Ces deux valeurs étaient deux expressions indépendantes ; c'est ce couplage-là qu'on verrouille.
-describe('buildMuretGroup3D — le Muret bâti et les Parois plaquées partagent une épaisseur (Fix 33)', () => {
+describe('buildMuretGroup3D : le Muret bâti et les Parois plaquées partagent une épaisseur (Fix 33)', () => {
   const droit = [{ x: 0, z: 0 }, { x: 8, z: 0 }];
   const muret = extra => ({ id: 'm1', type: 'tracé', tracéType: 'muret',
                             world: { pts: droit }, ...extra });
@@ -1546,13 +1546,13 @@ describe('buildMuretGroup3D — le Muret bâti et les Parois plaquées partagent
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 34 — angles pleins des Pièces et Bâtiments.
+// Fix 34 : angles pleins des Pièces et Bâtiments.
 //
 // Chaque Mur est une boîte qui s'arrête pile à son extrémité. À un angle, les deux
 // boîtes couvrent trois quarts du carré balayé par les deux épaisseurs et laissent le
-// quadrant extérieur vide — le creux visible à chaque coin. On y pose un poteau.
+// quadrant extérieur vide, le creux visible à chaque coin. On y pose un poteau.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('buildWallJunctions3D — poteaux d\'angle (Fix 34)', () => {
+describe('buildWallJunctions3D : poteaux d\'angle (Fix 34)', () => {
   const RATIO = 0.06;
   const ep = w => w.height * RATIO;
   // Pièce carrée de 4×4, murs de 3 de haut. rotY = atan2(-dz, dx).
@@ -1597,7 +1597,7 @@ describe('buildWallJunctions3D — poteaux d\'angle (Fix 34)', () => {
   });
 
   test('le poteau est aligné sur un des deux Murs, pas sur la bissectrice', () => {
-    // À 90° — ce sur quoi l'outil Construire magnétise — un carré aligné sur l'un des deux
+    // À 90° : ce sur quoi l'outil Construire magnétise, un carré aligné sur l'un des deux
     // couvre exactement le quadrant manquant ; tourné à 45° il ne le couvrirait pas.
     const j = buildWallJunctions3D(carre, ep);
     for (const p of j) {
@@ -1619,13 +1619,13 @@ describe('buildWallJunctions3D — poteaux d\'angle (Fix 34)', () => {
   });
 });
 
-describe('isJunctionWall3D — quels Murs reçoivent un poteau d\'angle (Fix 34b)', () => {
+describe('isJunctionWall3D : quels Murs reçoivent un poteau d\'angle (Fix 34b)', () => {
   const mur = extra => ({ objType: 'mur', pieceId: 'p1', ...extra });
 
   test('RÉGRESSION : un Mur qui porte une Parois compte quand même', () => {
     // La 1re version réutilisait le prédicat de la FUSION des murs colinéaires, qui écarte
     // volontairement les Murs percés (les trous sont découpés mur par mur). Résultat : tout
-    // angle touchant un Mur à porte ou à fenêtre restait creux — la moitié des cas.
+    // angle touchant un Mur à porte ou à fenêtre restait creux, la moitié des cas.
     assert.equal(isJunctionWall3D(mur({ id: 'm1' })), true, 'Mur nu');
     // Le prédicat ne regarde que le Mur lui-même : porter une Parois ne le disqualifie pas.
     assert.equal(isJunctionWall3D(mur({ id: 'm2', hasOpening: true })), true, 'Mur percé');
@@ -1644,7 +1644,7 @@ describe('isJunctionWall3D — quels Murs reçoivent un poteau d\'angle (Fix 34b
 // La distance de caméra d'une Case qui reçoit son premier Élément
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('distanceCameraPourPremierElement3D — compenser la taille de l\'Élément', () => {
+describe('distanceCameraPourPremierElement3D : compenser la taille de l\'Élément', () => {
   // Signalé à l'usage : « pour un Personnage de taille standard c'est nickel car sa hauteur est
   // fixe, mais des modèles de taille différente paraissent plus éloignés lorsqu'ils sont plus
   // petits ». C'est arithmétique : la distance par défaut est fixe et calibrée sur 1,75 m.
@@ -1653,7 +1653,7 @@ describe('distanceCameraPourPremierElement3D — compenser la taille de l\'Élé
     assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M), PANEL_CAM_DEFAULT_DIST_3D);
   });
 
-  test('deux fois plus grand, deux fois plus loin — et réciproquement', () => {
+  test('deux fois plus grand, deux fois plus loin : et réciproquement', () => {
     // C'est LA propriété : la taille apparente ne dépend plus de la hauteur du modèle.
     assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M * 2), PANEL_CAM_DEFAULT_DIST_3D * 2);
     assert.equal(distanceCameraPourPremierElement3D(PERSONA_REAL_HEIGHT_M / 2), PANEL_CAM_DEFAULT_DIST_3D / 2);
@@ -1673,9 +1673,9 @@ describe('distanceCameraPourPremierElement3D — compenser la taille de l\'Élé
   });
 });
 
-describe('estPremierElement3DdeLaCase — qui a le droit de recadrer', () => {
+describe('estPremierElement3DdeLaCase : qui a le droit de recadrer', () => {
   // Une Case déjà peuplée porte une composition. La recadrer sous les yeux de quelqu'un qui vient
-  // seulement d'ajouter un Élément serait une surprise — c'est la règle que le rendu s'est déjà
+  // seulement d'ajouter un Élément serait une surprise, c'est la règle que le rendu s'est déjà
   // donnée pour la rotation, étendue ici au zoom.
   const panel = { id: 'c1', type: 'panel', x: 0, y: 0, w: 400, h: 300, shape: 'rect' };
   const el = (id, x, y) => ({ id, type: 'objet3d', objType: 'modele', x, y, w: 40, h: 40, homePanelId: 'c1' });
@@ -1701,16 +1701,16 @@ describe('estPremierElement3DdeLaCase — qui a le droit de recadrer', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Projeter un Élément qui n'est plus devant la caméra
 //
-// DEUX DÉFAUTS, DONT UN PRÉEXISTANT, tous deux révélés par la liste latérale « hors champ » —
+// DEUX DÉFAUTS, DONT UN PRÉEXISTANT, tous deux révélés par la liste latérale « hors champ »,
 // révélés, pas créés : elle est la première à projeter TOUS les Éléments d'une Case, y compris
 // ceux passés derrière la caméra. Les boîtes de sélection, elles, ne se dessinent que pour un
 // Élément déjà à l'écran.
 //
 // Ces deux gardes vivent dans du code qui demande WebGL, injoignable sous Node. La lecture de
-// source est le seul moyen honnête de dire qu'elles sont là — et il vaut mieux que rien, comme
+// source est le seul moyen honnête de dire qu'elles sont là, et il vaut mieux que rien, comme
 // l'a montré la mutation qui retirait la première sans faire échouer un seul test.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('scene3d — projections derrière la caméra', () => {
+describe('scene3d : projections derrière la caméra', () => {
   const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
 
   test('RÉGRESSION : les quatre points d\'étendue sont gardés avant d\'être lus', () => {
@@ -1730,7 +1730,7 @@ describe('scene3d — projections derrière la caméra', () => {
   test('RÉGRESSION : le centre projeté dit s\'il est DEVANT la caméra', () => {
     // `project()` divise par `w` ; derrière, `w` est négatif et le point ressort en miroir, à des
     // coordonnées finies qui peuvent retomber dans le cadre. Sans cette information, un Élément
-    // passé derrière était déclaré visible — la sous-détection signalée à l'usage.
+    // passé derrière était déclaré visible, la sous-détection signalée à l'usage.
     const i = SCENE.indexOf('export function projectElementCenterToCanvas3D');
     const bloc = SCENE.slice(i, SCENE.indexOf('\nexport function ', i + 10));
     assert.match(bloc, /matrixWorldInverse/, 'la position en repère CAMÉRA n\'est plus calculée');
@@ -1741,7 +1741,7 @@ describe('scene3d — projections derrière la caméra', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — les projections derrière la caméra.
+ * JOURNAL DE MUTATION : les projections derrière la caméra.
  *
  *   Z1 le test « derrière la caméra » retiré d'estHorsChamp3D       ROUGE
  *   Z2 « devant » absent vaut derrière (change tous les appels)     ROUGE
@@ -1751,9 +1751,9 @@ describe('scene3d — projections derrière la caméra', () => {
  *
  * Z2 MÉRITE D'ÊTRE LU. Écrire `if (!centre.devant)` au lieu de `if (centre.devant === false)` a
  * l'air équivalent, et ne l'est pas : un appelant qui ne renseigne pas le champ verrait alors tous
- * ses Éléments déclarés hors champ. Cinq tests tombent — c'est la mesure de ce que coûte la
+ * ses Éléments déclarés hors champ. Cinq tests tombent, c'est la mesure de ce que coûte la
  * nuance entre « absent » et « faux » quand on ajoute un champ à une valeur déjà partagée.
  *
  * Z3 était l'ancien : la garde ne se traverse pas sous Node, faute de caméra. La mutation l'a
- * montré en ne faisant échouer AUCUN test — d'où la lecture de source, qui vaut mieux que rien.
+ * montré en ne faisant échouer AUCUN test, d'où la lecture de source, qui vaut mieux que rien.
  */

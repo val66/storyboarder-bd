@@ -1,5 +1,5 @@
 /**
- * tests/skinned-box.test.mjs — la boîte d'un modèle articulé dont le FICHIER mélange deux échelles.
+ * tests/skinned-box.test.mjs, la boîte d'un modèle articulé dont le FICHIER mélange deux échelles.
  *
  * POURQUOI CE FICHIER EXISTE. Signalé à l'usage : `worker_j.glb` n'affiche que ses points
  * d'articulation, ni dans sa fiche ni dans l'éditeur. Quatre hypothèses ont été réfutées par la
@@ -14,7 +14,7 @@
  *
  * Second fait mesuré : la MÊME fonction rend des tailles de l'ordre de 33 au rendu et de 9,4 au
  * décodage, pour les mêmes maillages. Or c'est la mesure du décodage qui devient `realHeightFloor`,
- * et celle du rendu qui cadre la caméra. Deux réponses pour une seule question — le défaut qui
+ * et celle du rendu qui cadre la caméra. Deux réponses pour une seule question, le défaut qui
  * revient le plus souvent dans ce dépôt.
  *
  * Ce fichier reproduit la structure en cause SANS aucun `.glb` : deux os, un maillage lié, et une
@@ -36,7 +36,7 @@ const HAUTEUR_OS = 33;    // la tête y est à y = 33,006
 
 /**
  * Un maillage articulé minimal : deux os alignés sur Y, deux sommets liés chacun à un os.
- * `echelleMaillage` s'applique au MAILLAGE seul — les os restent à 1, comme dans worker_j.
+ * `echelleMaillage` s'applique au MAILLAGE seul, les os restent à 1, comme dans worker_j.
  */
 function figureArticulee(echelleMaillage){
   const racine = new THREE.Group();
@@ -61,7 +61,7 @@ function figureArticulee(echelleMaillage){
   return racine;
 }
 
-/** La boîte des os en monde — la référence : c'est là qu'est le corps. */
+/** La boîte des os en monde : la référence : c'est là qu'est le corps. */
 function boiteDesOs(racine){
   const b = new THREE.Box3();
   const p = new THREE.Vector3();
@@ -83,7 +83,7 @@ describe('box3FromObjectSkinAware3D face à un fichier à deux échelles', () =>
   });
 
   test('LA CORRECTION : le cadrage suit les OS malgré la double échelle', () => {
-    // worker_j.glb. La boîte du maillage et celle des os diffèrent ici d'un facteur 0,1297 — le
+    // worker_j.glb. La boîte du maillage et celle des os diffèrent ici d'un facteur 0,1297, le
     // garde-fou en fin de test le vérifie. Ce qui compte, c'est que le CADRAGE ne s'appuie plus sur
     // la première : `boiteDesOsMappes3D` rend la boîte des os, donc celle du corps réellement pointé
     // par les poignées d'articulation. Une seule origine pour les deux, donc plus de divergence.
@@ -100,7 +100,7 @@ describe('box3FromObjectSkinAware3D face à un fichier à deux échelles', () =>
       `cadrage ${t.y.toFixed(3)} contre os ${tOs.y.toFixed(3)} : le cadrage ne suit pas le corps`);
 
     // Et le garde-fou : sans lui, l'assertion précédente serait vraie même si les deux boîtes
-    // coïncidaient déjà — le test ne prouverait alors rien sur le cas à double échelle.
+    // coïncidaient déjà, le test ne prouverait alors rien sur le cas à double échelle.
     const tMaillage = new THREE.Vector3();
     box3FromObjectSkinAware3D(racine).getSize(tMaillage);
     assert.ok(Math.abs(tMaillage.y - tOs.y) > 1,
@@ -118,7 +118,7 @@ describe('box3FromObjectSkinAware3D face à un fichier à deux échelles', () =>
 
 });
 
-describe('boiteDeCadrageModele3D — le cadre contient ce qui est peint ET chaque poignée', () => {
+describe('boiteDeCadrageModele3D : le cadre contient ce qui est peint ET chaque poignée', () => {
   // DEUX EXIGENCES, et l'union des deux boîtes est exactement leur somme :
   //   — le maillage visible, sans quoi les cheveux d'un modèle sortent du cadre ;
   //   — les os mappés, sans quoi une poignée d'articulation se retrouve hors champ, donc
@@ -130,7 +130,7 @@ describe('boiteDeCadrageModele3D — le cadre contient ce qui est peint ET chaqu
 
   test('les OS sont dans le cadre, même quand le maillage est bien plus petit', () => {
     // worker_j : ses maillages portent une échelle que ses os n'ont pas. Le maillage ne borne donc
-    // pas les poignées — le cadre doit quand même toutes les contenir.
+    // pas les poignées, le cadre doit quand même toutes les contenir.
     const racine = figureArticulee(ECHELLE);
     const skeletonBones = {};
     let i = 0;
@@ -179,7 +179,7 @@ describe('boiteDeCadrageModele3D — le cadre contient ce qui est peint ET chaqu
   });
 
   test('aucun squelette reconnu : le maillage seul', () => {
-    // Une chaise importée. L'union avec une boîte absente est sans effet — pas de branche en plus.
+    // Une chaise importée. L'union avec une boîte absente est sans effet, pas de branche en plus.
     const racine = figureArticulee(ECHELLE);
     const t = new THREE.Vector3();
     boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones: {} }).getSize(t);
@@ -192,12 +192,12 @@ describe('boiteDeCadrageModele3D — le cadre contient ce qui est peint ET chaqu
 describe('Un modèle importé n\'est pas éliminé par le tronc de vue', () => {
   test('RÉGRESSION : ses maillages portent frustumCulled = false', () => {
     // Three teste la SPHÈRE ENGLOBANTE calculée sur la géométrie de LIAISON, qui pour un maillage
-    // articulé ne décrit pas ce qui est affiché — même racine que la boîte englobante, et écart
+    // articulé ne décrit pas ce qui est affiché, même racine que la boîte englobante, et écart
     // mesuré à 7,7 sur worker_j.glb. Symptôme : en dézoomant, les morceaux disparaissent un à un.
     //
     // Test de FORME sur le source, et c'est assumé : l'élimination se décide dans le rendu WebGL,
     // hors de portée sous Node. Ce qui est épinglé, c'est que la désactivation vise les maillages
-    // d'un modèle IMPORTÉ — la restreindre est aussi important que la faire, le reste du décor
+    // d'un modèle IMPORTÉ, la restreindre est aussi important que la faire, le reste du décor
     // ayant tout intérêt à rester éliminé.
     const src = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
     const sansCommentaires = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -216,7 +216,7 @@ describe('Les plans de coupe de la caméra suivent la boîte cadrée', () => {
   });
 
   test('RÉGRESSION : un objet lointain n\'est plus tranché par le plan far', () => {
-    // Les plans valaient 0,05 et 2000 une fois pour toutes — taillés pour le Personnage intégré,
+    // Les plans valaient 0,05 et 2000 une fois pour toutes, taillés pour le Personnage intégré,
     // haut d'environ deux unités. Les os de worker_j.glb s'étendent sur près de quarante, et
     // l'éditeur ne les normalise pas : dézoomer éloignait la caméra jusqu'à faire passer des
     // morceaux derrière le plan lointain, qui les TRANCHAIT net.
@@ -274,7 +274,7 @@ describe('La taille naturelle d\'un modèle : le CORPS, pas la boîte du fichier
 
   test('la verticale est DÉRIVÉE : +Y et +Z donnent la même taille', () => {
     // Deux des six fichiers mesurés ont +Z pour verticale. L'ancienne mesure prenait l'extension en
-    // Y de la boîte, avant remise debout de la scène : hulk sortait à 0,845 m — son épaisseur.
+    // Y de la boîte, avant remise debout de la scène : hulk sortait à 0,845 m, son épaisseur.
     const enY = hauteurNaturelleModele3D(humanoide({ vertical: 'y' }));
     const enZ = hauteurNaturelleModele3D(humanoide({ vertical: 'z' }));
     assert.ok(Math.abs(enY - enZ) < 1e-6,
@@ -302,9 +302,9 @@ describe('La taille naturelle d\'un modèle : le CORPS, pas la boîte du fichier
   });
 });
 
-describe('ratioLargeurModele3D — l\'empreinte 2D suit la silhouette', () => {
+describe('ratioLargeurModele3D : l\'empreinte 2D suit la silhouette', () => {
   // L'empreinte 2D d'un modèle importé était FORCÉE CARRÉE, sur un commentaire devenu faux
-  // (« 1:1 tant qu'on n'a pas lu le fichier » — il EST lu). Un Personnage reçoit w = h / 1.6.
+  // (« 1:1 tant qu'on n'a pas lu le fichier », il EST lu). Un Personnage reçoit w = h / 1.6.
   // Mesuré sur les fichiers réels : worker_j 0,86, anime_girl1 0,49, Personnage 0,63.
   const pave = (lx, ly) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(lx, ly, 1), new THREE.MeshBasicMaterial());
@@ -320,7 +320,7 @@ describe('ratioLargeurModele3D — l\'empreinte 2D suit la silhouette', () => {
 
   test('bras écartés : le rapport s\'approche de 1, et peut le dépasser', () => {
     // worker_j est en T-pose : sa boîte fait 8,14 de large pour 9,43 de haut. Rien n'interdit de
-    // dépasser 1 — un modèle couché le ferait.
+    // dépasser 1, un modèle couché le ferait.
     assert.ok(Math.abs(ratioLargeurModele3D(pave(3, 1)) - 3) < 1e-6);
   });
 
@@ -338,13 +338,13 @@ describe('ratioLargeurModele3D — l\'empreinte 2D suit la silhouette', () => {
   });
 });
 
-describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
+describe('ratioLargeurModele3D : un modèle dont la verticale est +Z', () => {
   // LE DÉFAUT GARDÉ ICI, signalé à l'usage sur `hulk` : une boîte de sélection PLUS LARGE QUE HAUTE
   // pour un personnage debout. La première version prenait le rapport x/y de la boîte, en supposant
   // que la verticale du fichier est Y. Deux des six fichiers mesurés ont +Z. La boîte de hulk fait
   // 1,0 × 0,8 × 2,5 : `t.y` est son ÉPAISSEUR, et le rapport sortait à 1,25 au lieu de 0,4.
   //
-  // La justification écrite alors — « la mesure et le rendu se tromperaient ensemble » — était
+  // La justification écrite alors, « la mesure et le rendu se tromperaient ensemble », était
   // FAUSSE : cette fonction voit la scène telle qu'elle sort du fichier, le rendu la voit REMISE
   // DEBOUT. Ils ne mesurent pas au même moment.
 
@@ -358,7 +358,7 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
    *
    * Le nommage suit Mixamo, la convention la plus répandue des cinq mesurées : c'est ce qui rend le
    * squelette RECONNAISSABLE par inferSkeletonMap. Une hiérarchie inventée ne l'était pas, et la
-   * fonction tombait alors dans son repli — le test mesurait le comportement d'avant sans le dire.
+   * fonction tombait alors dans son repli, le test mesurait le comportement d'avant sans le dire.
    */
   function squeletteMixamo(){
     const os = (nom, x, y, z) => {
@@ -394,7 +394,7 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
    * Le même corps, plus un maillage de `largeur` × `hauteur`, le tout COUCHÉ : le groupe est tourné
    * de −90° autour de X, si bien que la verticale du corps devient +Z en coordonnées monde. C'est
    * la situation de `hulk`, obtenue sans inventer une hiérarchie d'os que la reconnaissance
-   * pourrait ne pas admettre — celle-ci est déjà éprouvée ailleurs.
+   * pourrait ne pas admettre, celle-ci est déjà éprouvée ailleurs.
    */
   function corpsCouche(largeur, hauteur){
     const interne = new THREE.Group();
@@ -423,7 +423,7 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
   }
 
   test('le garde-fou : coucher le corps CHANGE bien la boîte du maillage', () => {
-    // Sans lui, le test suivant serait vert même si les deux montages étaient identiques — il ne
+    // Sans lui, le test suivant serait vert même si les deux montages étaient identiques, il ne
     // prouverait alors rien sur l'orientation.
     const tc = new THREE.Vector3(); box3FromObjectSkinAware3D(corpsCouche(0.7, 1.75)).getSize(tc);
     const td = new THREE.Vector3(); box3FromObjectSkinAware3D(corpsDebout(0.7, 1.75)).getSize(td);
@@ -434,7 +434,7 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
   });
 
   test('RÉGRESSION : le rapport VAUT l\'envergure sur la hauteur, debout comme couché', () => {
-    // LA propriété, et elle est épinglée par sa VALEUR — pas seulement par une invariance. Une
+    // LA propriété, et elle est épinglée par sa VALEUR, pas seulement par une invariance. Une
     // première version ne vérifiait que « couché == debout » : une campagne de mutation a montré
     // qu'un rapport constant, un rapport inversé et deux projections croisées la satisfaisaient
     // tous. Une invariance seule ne dit rien de ce qui est mesuré.
@@ -448,7 +448,7 @@ describe('ratioLargeurModele3D — un modèle dont la verticale est +Z', () => {
 
   test('et il ne dépend pas non plus du MAILLAGE, seulement des os', () => {
     // Conséquence assumée du choix : la mesure porte sur les os, pas sur la silhouette dessinée.
-    // Deux maillages très différents autour du même squelette donnent donc le même rapport — ce qui
+    // Deux maillages très différents autour du même squelette donnent donc le même rapport, ce qui
     // est le prix d'une mesure cohérente, et ce que le module documente.
     assert.ok(Math.abs(ratioLargeurModele3D(corpsDebout(0.7, 1.75))
       - ratioLargeurModele3D(corpsDebout(3.0, 1.75))) < 1e-6);

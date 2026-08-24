@@ -1,9 +1,9 @@
 /**
- * tests/canvas-tools.test.mjs — les trois outils qui prennent le canevas.
+ * tests/canvas-tools.test.mjs, les trois outils qui prennent le canevas.
  *
  * Construire, Tracer, Mesurer. Ce qu'ils ont en commun est aussi ce qui les rend risqués : chacun
  * détourne le sens du clic tant qu'il est actif. Un outil qui ne se range pas laisse l'utilisateur
- * dans un mode dont il ne peut plus sortir — le curseur reste une croix, et chaque clic continue de
+ * dans un mode dont il ne peut plus sortir, le curseur reste une croix, et chaque clic continue de
  * poser des points.
  *
  * CE QU'ON N'AFFIRME PAS : le dessin des aperçus (draw.js), ni les gestionnaires souris qui
@@ -57,7 +57,7 @@ describe('Les trois outils s\'excluent, et se rangent', () => {
     // PAS le tracé abandonné : on change d'avis, on ne valide pas.
     //
     // Note honnête sur la portée : `startTraceTool` ouvre par `stopTraceTool(false)`, mais retirer
-    // cet appel ne fait tomber aucun test — et c'est correct, pas un trou. La ligne suivante
+    // cet appel ne fait tomber aucun test, et c'est correct, pas un trou. La ligne suivante
     // réaffecte `S.traceTool` en entier ; l'appel ne sert qu'au redessin. Mutant équivalent, noté
     // plutôt que contourné par un test artificiel.
     startTraceTool(CASE, 'route');
@@ -97,7 +97,7 @@ describe('Les trois outils s\'excluent, et se rangent', () => {
     // distingue le mode outil du mode normal ; s'il ne se retire pas, l'application a l'air bloquée
     // en mode outil alors qu'elle n'y est plus.
     //
-    // Observable seulement depuis que le stub DOM mémorise les éléments par id — auparavant chaque
+    // Observable seulement depuis que le stub DOM mémorise les éléments par id, auparavant chaque
     // `getElementById` rendait un objet neuf, et toute assertion sur le curseur était vraie quoi
     // qu'il arrive. Le trou a été trouvé par la campagne de mutation, pas par la lecture.
     const canevas = () => document.getElementById('board');
@@ -123,9 +123,9 @@ describe('Les trois outils s\'excluent, et se rangent', () => {
 // 2. Ce qu'un Tracé enregistré contient
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Tracé enregistré — le seuil, et le vocabulaire persisté', () => {
+describe('Tracé enregistré : le seuil, et le vocabulaire persisté', () => {
   test('un tracé d\'un seul point n\'est pas un tracé', () => {
-    // Un clic isolé ne doit pas créer un Élément invisible dans le Projet — l'utilisateur ne le
+    // Un clic isolé ne doit pas créer un Élément invisible dans le Projet, l'utilisateur ne le
     // verrait pas et ne saurait pas le supprimer.
     startTraceTool(CASE, 'route');
     S.traceTool.pts = [{ x: 10, y: 10 }];
@@ -164,7 +164,7 @@ describe('Tracé enregistré — le seuil, et le vocabulaire persisté', () => {
 
   test('une Zone de terrain trop petite est un clic maladroit, pas une Zone', () => {
     // Seuil de 4 px sur les DEUX côtés. Une zone de 200×2 px est un glissement raté, pas une
-    // intention — et elle serait invisible une fois rendue.
+    // intention, et elle serait invisible une fois rendue.
     startTraceTool(CASE, 'terrain');
     Object.assign(S.traceTool, { startX: 0, startY: 0, endX: 200, endY: 2 });
     stopTraceTool(true);
@@ -187,9 +187,9 @@ describe('Tracé enregistré — le seuil, et le vocabulaire persisté', () => {
 // 3. L'outil Construire nomme ses Pièces
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('startBuildMode — le nom de la Pièce ne se répète pas', () => {
+describe('startBuildMode : le nom de la Pièce ne se répète pas', () => {
   // Le nom par défaut SUIT LA LANGUE depuis qu'il passe par tr() : « Pièce » ou « Room ». La langue
-  // est donc fixée explicitement ici — `S.appLang` vaut 'en' par défaut dans state.js, et s'appuyer
+  // est donc fixée explicitement ici, `S.appLang` vaut 'en' par défaut dans state.js, et s'appuyer
   // dessus sans le dire rendrait ces tests dépendants d'un réglage qui n'a rien à voir avec eux.
   beforeEach(() => { S.appLang = 'fr'; });
 
@@ -203,7 +203,7 @@ describe('startBuildMode — le nom de la Pièce ne se répète pas', () => {
   test('les suivantes sont numérotées à partir du premier numéro LIBRE', () => {
     // Le `while` cherche un TROU, il ne compte pas. Le montage doit donc contenir à la fois un
     // numéro pris (2) et un trou (3) : ma première version n'avait que le trou, et retirer le
-    // `while` donnait alors la même réponse — la mutation passait au vert.
+    // `while` donnait alors la même réponse, la mutation passait au vert.
     //
     // Deux Pièces d'une même Case portant le même nom seraient indiscernables dans le panneau
     // latéral, et le nom est ce que l'utilisateur lit pour les distinguer.
@@ -236,7 +236,7 @@ describe('startBuildMode — le nom de la Pièce ne se répète pas', () => {
 // 4. La couture avec events.js
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('canvas-tools.js — la couture', () => {
+describe('canvas-tools.js : la couture', () => {
   const evt = lire('src/events.js');
   const ct = lire('src/canvas-tools.js');
 
@@ -262,7 +262,7 @@ describe('canvas-tools.js — la couture', () => {
     // contenait à cet instant. La règle est écrite dans l'en-tête du module ; ce test l'applique.
     const enTeteFini = ct.indexOf('*/');
     // Colonne 0 = portée module. Volontairement PAS de `trim()` : ma première version en mettait
-    // un, et elle attrapait la ligne indentée à l'intérieur de setCanvasCursor — c'est-à-dire
+    // un, et elle attrapait la ligne indentée à l'intérieur de setCanvasCursor, c'est-à-dire
     // exactement la bonne façon de faire. Un test trop large échoue sur ce qu'il devrait approuver.
     const corps = ct.slice(enTeteFini).split('\n').filter(l => !l.trimStart().startsWith('//'));
     corps.forEach(l => {
@@ -274,7 +274,7 @@ describe('canvas-tools.js — la couture', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — treize fautes réintroduites dans src/canvas-tools.js.
+ * JOURNAL DE MUTATION : treize fautes réintroduites dans src/canvas-tools.js.
  *
  *   N2  seuil de la Zone de terrain : `&&` → `||`                                   ROUGE
  *   N3  un tracé d'un seul point accepté                                            ROUGE
@@ -293,12 +293,12 @@ describe('canvas-tools.js — la couture', () => {
  *   — N6/N12/N13 ont d'abord échappé faute d'OUTIL D'OBSERVATION, pas faute de test. Le stub DOM
  *     rendait un élément neuf à chaque `getElementById`, donc écrire puis relire `style.cursor`
  *     donnait toujours `undefined` : toute assertion sur le curseur aurait été vraie quoi qu'il
- *     arrive. Le stub mémorise désormais les éléments par id — même famille de piège que le
+ *     arrive. Le stub mémorise désormais les éléments par id, même famille de piège que le
  *     `textContent` non conservé, corrigée à la racine cette fois.
  *   — N9 a échappé à cause du MONTAGE : sans un numéro déjà pris, chercher un trou et compter
  *     donnent la même réponse.
  *
  * MUTANT ÉQUIVALENT ASSUMÉ. Retirer le `stopTraceTool(false)` qui ouvre `startTraceTool` ne fait
  * tomber aucun test, et c'est correct : la ligne suivante réaffecte `S.traceTool` en entier. Noté
- * ici plutôt que masqué par un test artificiel — un mutant équivalent n'est pas un trou.
+ * ici plutôt que masqué par un test artificiel, un mutant équivalent n'est pas un trou.
  */

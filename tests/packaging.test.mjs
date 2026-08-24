@@ -1,5 +1,5 @@
 /**
- * tests/packaging.test.mjs — ce que l'installeur emporte vraiment.
+ * tests/packaging.test.mjs, ce que l'installeur emporte vraiment.
  *
  * `build.files` (package.json, electron-builder) est une LISTE BLANCHE : ce qui n'y figure pas
  * n'entre pas dans l'application installée. Rien ne le signale. Le développement continue de
@@ -8,11 +8,11 @@
  *
  * CE FICHIER EXISTE À CAUSE D'UN DÉFAUT RÉEL. `style.css` est né le 28 juillet 2026, quand
  * index.html a été scindé. La liste de packaging n'a jamais suivi. Le seul build du dépôt datant du
- * 26 juillet — deux jours avant — personne n'a rien vu : `npm run dist` aurait produit une
+ * 26 juillet, deux jours avant, personne n'a rien vu : `npm run dist` aurait produit une
  * application en HTML brut, 795 lignes de CSS absentes.
  *
  * On ne garde donc PAS « style.css est dans la liste » : ce serait épingler le symptôme. On garde la
- * règle qui l'englobe — tout fichier local que l'application charge doit être embarqué — pour que le
+ * règle qui l'englobe, tout fichier local que l'application charge doit être embarqué, pour que le
  * PROCHAIN asset ajouté ne reparte pas en silence.
  *
  * CE QU'ON N'AFFIRME PAS : que l'installeur se construit, ni qu'il s'installe. Cela demande Windows
@@ -34,7 +34,7 @@ const INDEX = lire('index.html');
 
 /**
  * Les assets LOCAUX chargés par index.html. On exclut les ancres (#), les URL absolues et les
- * data: — seuls les chemins relatifs voyagent dans l'installeur.
+ * data:, seuls les chemins relatifs voyagent dans l'installeur.
  */
 function assetsLocaux(html){
   const trouvés = new Set();
@@ -60,7 +60,7 @@ function couvert(chemin, motif){
   return regex.test(chemin);
 }
 
-describe('Installeur — tout ce que l\'application charge est embarqué', () => {
+describe('Installeur : tout ce que l\'application charge est embarqué', () => {
   test('RÉGRESSION : chaque asset local d\'index.html figure dans build.files', () => {
     // Le défaut du 28 juillet, épinglé sous sa forme générale. C'est ce test qui aurait dû exister
     // le jour où index.html a été scindé.
@@ -88,7 +88,7 @@ describe('Installeur — tout ce que l\'application charge est embarqué', () =>
 
   test('le point d\'entrée déclaré par npm est packagé', () => {
     // `main` est ce qu'Electron lance. S'il sortait de la liste, l'application ne démarrerait pas
-    // du tout — panne plus visible que le CSS manquant, mais de la même famille.
+    // du tout, panne plus visible que le CSS manquant, mais de la même famille.
     assert.ok(MOTIFS.some(m => couvert(PKG.main, m)), `${PKG.main} (champ "main") n'est pas packagé`);
     assert.ok(existsSync(join(RACINE, PKG.main)));
   });
@@ -107,7 +107,7 @@ describe('Le garde-fou du garde-fou', () => {
   });
 
   test('le matcher de motifs distingue vraiment', () => {
-    // Sans cela, un `couvert()` qui renverrait toujours true rendrait le test principal inutile —
+    // Sans cela, un `couvert()` qui renverrait toujours true rendrait le test principal inutile,
     // et c'est exactement l'erreur qu'on ne verrait jamais.
     assert.equal(couvert('style.css', 'style.css'), true);
     assert.equal(couvert('src/app.js', 'src/**/*'), true);
@@ -118,7 +118,7 @@ describe('Le garde-fou du garde-fou', () => {
   });
 
   test('les URL distantes et les data: sont bien ignorées', () => {
-    // style.css charge deux polices Google et une icône en data: — aucune ne voyage dans
+    // style.css charge deux polices Google et une icône en data:, aucune ne voyage dans
     // l'installeur, et les traiter comme des fichiers ferait échouer les tests pour rien.
     const faux = assetsLocaux(
       '<link href="https://fonts.googleapis.com/x"><img src="data:image/svg+xml;utf8,<svg/>">'
@@ -128,7 +128,7 @@ describe('Le garde-fou du garde-fou', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — cinq fautes, dont celle qui s'était réellement produite.
+ * JOURNAL DE MUTATION : cinq fautes, dont celle qui s'était réellement produite.
  *
  *   P1 « style.css » retiré de build.files (LE défaut du 28 juillet 2026)          ROUGE
  *   P2 un nouvel asset ajouté à index.html sans toucher build.files                ROUGE
@@ -137,7 +137,7 @@ describe('Le garde-fou du garde-fou', () => {
  *   P5 un motif de packaging pointé vers un dossier inexistant                     ROUGE
  *
  * P1 est la seule qui compte vraiment : elle rejoue à l'identique la situation dans laquelle le
- * dépôt se trouvait depuis deux semaines. Le test passe au rouge — il aurait donc fait son travail
+ * dépôt se trouvait depuis deux semaines. Le test passe au rouge, il aurait donc fait son travail
  * le jour où index.html a été scindé.
  *
  * P3 et P4 gardent les GARDES : un test bâti sur `[].filter(...)` est satisfait par un tableau vide

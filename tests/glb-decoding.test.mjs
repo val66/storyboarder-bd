@@ -1,5 +1,5 @@
 /**
- * tests/glb-decoding.test.mjs — le seul test qui transforme vraiment des OCTETS en modèle.
+ * tests/glb-decoding.test.mjs, le seul test qui transforme vraiment des OCTETS en modèle.
  *
  * TOUT LE RESTE DE LA CHAÎNE ÉTAIT TESTÉ SAUF ÇA. model-store, model-cache, model-import et
  * model-library ont chacun leurs tests, mais tous s'arrêtent au même endroit : `_setModelCacheEntry`
@@ -40,7 +40,7 @@ import { MODEL_HEIGHT_WARN_MAX_M, OBJECT_REAL_HEIGHT_M } from '../src/constants.
 const OCTETS = readFileSync(CHEMIN_FIXTURE);
 const OCTETS_SQUELETTE = readFileSync(CHEMIN_FIXTURE_SQUELETTE);
 
-/** Pont simulé rendant de VRAIS octets — c'est tout ce qui reste de simulé ici. */
+/** Pont simulé rendant de VRAIS octets : c'est tout ce qui reste de simulé ici. */
 function pontAvec(fichiers){
   setModelBridge({
     readModelFile: async (n) => (fichiers[n] ? { ok: true, data: new Uint8Array(fichiers[n]) } : { ok: false }),
@@ -75,7 +75,7 @@ describe('Décodage d\'un vrai .glb — de l\'octet à la hauteur', () => {
 
   test('RÉGRESSION : le rapport largeur/hauteur arrive jusqu\'au CACHE', async () => {
     // Le pavé témoin fait 0,6 de large pour 1,75 de haut : son rapport vaut 0,343. C'est lui qui
-    // donne son empreinte 2D à l'Élément créé (cf. createModelElement) — sans ce relevé, l'empreinte
+    // donne son empreinte 2D à l'Élément créé (cf. createModelElement), sans ce relevé, l'empreinte
     // redeviendrait carrée en silence, la mesure étant juste mais jamais rangée.
     pontAvec({ 'pave.glb': OCTETS });
     await preloadModels(['pave.glb']);
@@ -96,7 +96,7 @@ describe('Décodage d\'un vrai .glb — de l\'octet à la hauteur', () => {
 
   test('RÉGRESSION : un fichier TRONQUÉ passe à « introuvable » sans lever', async () => {
     // Jusqu'ici ce chemin n'était éprouvé qu'avec des octets inventés. Un vrai en-tête GLB suivi
-    // d'un corps coupé est le cas réel — une copie interrompue, un disque plein. Le décodage doit
+    // d'un corps coupé est le cas réel, une copie interrompue, un disque plein. Le décodage doit
     // échouer proprement : un Projet dont un modèle est abîmé doit s'ouvrir entièrement.
     pontAvec({ 'coupe.glb': OCTETS.subarray(0, 60) });
     await assert.doesNotReject(() => preloadModels(['coupe.glb']));
@@ -118,7 +118,7 @@ describe('Décodage d\'un vrai .glb — de l\'octet à la hauteur', () => {
   });
 });
 
-describe('Le pavé témoin — le fichier versionné et son générateur', () => {
+describe('Le pavé témoin : le fichier versionné et son générateur', () => {
   test('RÉGRESSION : le .glb du dépôt est bien celui que produit le générateur', () => {
     // Le fichier est versionné (les tests doivent tourner sans étape de génération), le générateur
     // aussi. Deux copies de la même chose : sans ce test, modifier les dimensions dans le script
@@ -153,7 +153,7 @@ describe('Le seuil d\'alerte de taille, confronté à un vrai décodage', () => 
   });
 
   test('le seuil laisse de la marge au-dessus des types intégrés les plus grands', () => {
-    // Le seuil de 10 m est un CHOIX, pas une mesure — c'est écrit tel quel dans constants.js. Ce
+    // Le seuil de 10 m est un CHOIX, pas une mesure, c'est écrit tel quel dans constants.js. Ce
     // qu'on peut vérifier, c'est qu'il reste cohérent avec les hauteurs réelles du dépôt : s'il
     // passait sous le plus grand type intégré, l'avertissement se déclencherait sur des tailles
     // parfaitement légitimes.
@@ -163,10 +163,10 @@ describe('Le seuil d\'alerte de taille, confronté à un vrai décodage', () => 
   });
 });
 
-describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids en chemin', () => {
+describe('Un modèle ARTICULÉ décodé : et ce que GLTFLoader fait aux poids en chemin', () => {
   // Le second témoin porte un os et deux maillages : l'un pesé sur l'os, l'autre écrit dans le
-  // fichier avec des poids TOUS NULS. Il ferme le trou annoncé en tête de ce fichier — « ce pavé
-  // n'a ni texture, ni squelette » — et il a servi à trancher une question qu'on ne pouvait pas
+  // fichier avec des poids TOUS NULS. Il ferme le trou annoncé en tête de ce fichier, « ce pavé
+  // n'a ni texture, ni squelette », et il a servi à trancher une question qu'on ne pouvait pas
   // poser autrement.
   test('le fichier articulé se décode, avec son squelette et ses trois maillages', async () => {
     pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
@@ -190,11 +190,11 @@ describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids 
     //
     // CONSÉQUENCE : après décodage, un maillage sans aucun poids est INDISCERNABLE d'un maillage
     // rigidement attaché au premier os. Toute détection écrite sur `geometry.attributes.skinWeight`
-    // est donc AVEUGLE à ce défaut — elle ne peut pas se déclencher, jamais. Une tentative d'avertir
+    // est donc AVEUGLE à ce défaut, elle ne peut pas se déclencher, jamais. Une tentative d'avertir
     // à l'import a été écrite puis retirée sur la foi de cette mesure.
     //
     // Ce test épingle le comportement du décodeur, pas une intention de ce dépôt : si une mise à
-    // jour de GLTFLoader cessait de normaliser, il deviendrait rouge — et la détection redeviendrait
+    // jour de GLTFLoader cessait de normaliser, il deviendrait rouge, et la détection redeviendrait
     // possible.
     // ═════════════════════════════════════════════════════════════════════════════════════════
     pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
@@ -214,7 +214,7 @@ describe('Un modèle ARTICULÉ décodé — et ce que GLTFLoader fait aux poids 
     //
     // Ce test garde le CHEMIN, pas le critère (celui-là est dans tests/stray-meshes.test.mjs) :
     // décoder de vrais octets, relever, ranger dans le cache. Sans lui, une détection parfaitement
-    // juste pourrait n'être appelée par personne — le défaut « annoncé fait, sans effet ».
+    // juste pourrait n'être appelée par personne, le défaut « annoncé fait, sans effet ».
     pontAvec({ 'rig.glb': OCTETS_SQUELETTE });
     await preloadModels(['rig.glb']);
     assert.deepEqual(getLoadedModel('rig.glb').egares, [MAILLAGES_SQUELETTE.égaré]);

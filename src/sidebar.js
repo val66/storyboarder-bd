@@ -1,7 +1,7 @@
 /**
  * @file sidebar.js
  * Right-hand side panel (Panel/Bubble/Page/Camera menu) + "Elements" list.
- * Extracted from app.js — Refactor step B.12.
+ * Extracted from app.js. Refactor step B.12.
  *
  * Exported functions: renderSideElementRow, renderSidePersonas, renderTracéSideRow,
  * renderSidePagePanels, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
@@ -42,7 +42,7 @@ let _openTracéModal = null;
 // FIX (pre-existing bug, regression from extraction B.12): restoreSectionCollapseStates() (persistence
 // of the right-hand panel's sections' collapsed/expanded state) lived in app.js/events.js, which tried
 // to hook it at the end of updateSidePanel() by REASSIGNING the imported `updateSidePanel` binding
-// (`updateSidePanel = function(){...}`) — an ES import is a READ-ONLY binding, this
+// (`updateSidePanel = function(){...}`), an ES import is a READ-ONLY binding, this
 // reassignment threw a TypeError on every page load (silent: occurs at the very bottom
 // of the file, after everything else had already initialized correctly). Injected here as a callback,
 // like the modal openers above, and called directly from updateSidePanel (cf. further down).
@@ -207,7 +207,7 @@ export function renderSideElementRow(p, panel, page){
   nameMainSpan.textContent = p.name || (p.type === 'perso' ? 'Personnage' : 'Objet');
   nameSpan.appendChild(nameMainSpan);
   // Modèle importé : dire son état sur la ligne. Un modèle qui n'arrive pas doit se voir ICI, à
-  // côté de son nom — la boîte de remplacement dans la Case dit qu'il manque quelque chose, elle ne
+  // côté de son nom, la boîte de remplacement dans la Case dit qu'il manque quelque chose, elle ne
   // dit pas quoi. L'Élément reste sélectionnable et déplaçable dans tous les cas.
   if (isImportedModel(p)) {
     const état = modelState(p.modelFile);
@@ -221,7 +221,7 @@ export function renderSideElementRow(p, panel, page){
     }
   }
   // Makes visible the link to another Element (today: a WallOpening magnetized to a present Wall),
-  // until now only perceptible through behavior (the WallOpening follows the Wall) — cf.
+  // until now only perceptible through behavior (the WallOpening follows the Wall), cf.
   // getLinkedElementName.
   const linkedName = getLinkedElementName(p, page);
   if (linkedName) {
@@ -342,7 +342,7 @@ export function getRoomConnectedComponents(panel, page){
 
 /**
  * ⚠️ `horsChampFn` EST INJECTABLE, et ce n'est pas une commodité de test gratuite. Décider qu'un
- * Élément est hors champ demande de le PROJETER, donc la caméra de la Case, donc WebGL —
+ * Élément est hors champ demande de le PROJETER, donc la caméra de la Case, donc WebGL,
  * injoignable sous Node (cf. docs/testing-method.md). Sans ce paramètre, toute la construction de
  * cette liste devenait invérifiable, y compris ce qui n'a rien à voir avec la 3D : l'ordre des
  * groupes, le compte dans le titre, la présence des séparateurs. Le défaut par défaut reste le
@@ -456,7 +456,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
 
       // Single click → select the Building; double-click → Building modal
       // Note: buildingLastClickTime MUST be a module-level variable (S.sideHeaderLastBuildingKey/Time)
-      // because drawCurrentPage() recreates the DOM on every click — a variable local to the closure
+      // because drawCurrentPage() recreates the DOM on every click, a variable local to the closure
       // would be reset to 0 on the second click, making the double-click undetectable.
       buildingHeader.addEventListener('mousedown', (e) => {
         if (e.target === buildingToggle) return;
@@ -521,13 +521,13 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   // train de composer et ce qui a glissé hors du cadre. Les seconds ne se distinguent par rien,
   // alors qu'ils ne se rapportent à aucun pixel de l'image.
   //
-  // ⚠️ RANGÉS, PAS CACHÉS. Ils restent listés, sélectionnables et nommés — c'est souvent par cette
+  // ⚠️ RANGÉS, PAS CACHÉS. Ils restent listés, sélectionnables et nommés, c'est souvent par cette
   // liste qu'on va les rechercher. Une sous-section dépliée mais atténuée dit « ils sont là, ils
   // ne comptent pas pour l'image » ; la replier ferait disparaître l'information qu'ils existent,
   // qui est précisément ce qu'on veut signaler.
   //
-  // ⚠️ LES ÉLÉMENTS LIBRES SEULEMENT. Ni les Pièces/Bâtiments — reléguer un GROUPE entier parce
-  // que ses murs sortent du cadre dirait autre chose que ce qu'on veut dire —, ni les Tracés, qui
+  // ⚠️ LES ÉLÉMENTS LIBRES SEULEMENT. Ni les Pièces/Bâtiments, reléguer un GROUPE entier parce
+  // que ses murs sortent du cadre dirait autre chose que ce qu'on veut dire, ni les Tracés, qui
   // ont déjà leur propre bloc. Décidé avec l'utilisateur ; à rouvrir à l'usage, pas avant.
   const freeElements = list.filter(p => !p.pieceId);
   // UNE SEULE passe : deux `filter` appelleraient la décision deux fois par Élément, donc
@@ -537,13 +537,13 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   // donc du code qui a ses propres cas particuliers (Parois aimantées, Murs d'outil, Tracés…). Une
   // exception ici arrêterait `renderSidePersonas` en plein milieu : les Éléments déjà ajoutés
   // resteraient, les suivants ne viendraient jamais, et la section se retrouverait vide sans que
-  // rien ne l'explique — signalé à l'usage sur la première version.
+  // rien ne l'explique, signalé à l'usage sur la première version.
   //
   // LE GARDE EST ICI, PAS DANS LE PRÉDICAT. Le mettre dans `elementHorsChamp3D` ne protégerait que
   // le prédicat par défaut : cette liste doit tenir quel qu'il soit. C'est aussi ce qui le rend
   // vérifiable, puisque les tests injectent le leur.
   //
-  // EN CAS D'ÉCHEC, L'ÉLÉMENT EST DÉCLARÉ VISIBLE — le doute profite à la liste principale : montrer
+  // EN CAS D'ÉCHEC, L'ÉLÉMENT EST DÉCLARÉ VISIBLE, le doute profite à la liste principale : montrer
   // un Élément de trop se voit et se comprend, en cacher un ne se voit pas du tout. ⚠️ ET ON LE DIT,
   // UNE FOIS : un `catch` muet transformerait un défaut en comportement, et la fonctionnalité se
   // désactiverait toute seule sans que personne ne l'apprenne. Une seule fois, parce que cette
@@ -556,8 +556,8 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     } catch (e) {
       if (!horsChampAlerteDonnee) {
         horsChampAlerteDonnee = true;
-        console.warn('[hors champ] décision impossible pour un Élément — il reste dans la liste '
-          + 'principale. Type :', p && p.type, p && p.objType, '— cause :', e);
+        console.warn('[hors champ] décision impossible pour un Élément, il reste dans la liste '
+          + 'principale. Type :', p && p.type, p && p.objType, 'cause :', e);
       }
     }
     (hors ? horsChamp : dansLeCadre).push(p);
@@ -583,7 +583,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     panelTracés.forEach(t => sidePersonas.appendChild(renderTracéSideRow(t, panel, page)));
   }
 
-  // ⚠️ TOUT EN BAS, APRÈS LES TRACÉS — demandé après un premier essai où ce bloc s'intercalait
+  // ⚠️ TOUT EN BAS, APRÈS LES TRACÉS, demandé après un premier essai où ce bloc s'intercalait
   // entre les Éléments libres et les Tracés. Ce qui ne se voit pas doit venir après TOUT ce qui se
   // voit, sans quoi la sous-section coupe la liste en deux au lieu de la conclure.
   if (horsChamp.length > 0) {
@@ -593,7 +593,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     const titre = document.createElement('div');
     titre.className = 'side-hors-champ-titre';
     // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien
-    // d'Éléments ont quitté le cadre — c'est la première question qu'on se pose en le lisant.
+    // d'Éléments ont quitté le cadre, c'est la première question qu'on se pose en le lisant.
     titre.textContent = tr(`Off-frame (${horsChamp.length})`, `Hors champ (${horsChamp.length})`);
     sidePersonas.appendChild(titre);
     const bloc = document.createElement('div');
@@ -662,7 +662,7 @@ export function renderSidePagePanels(page){
     row.appendChild(num);
     row.appendChild(desc);
     // Clicking the row (without dragging) selects this Panel on the canvas, like for Element
-    // rows — handy for finding it, in addition to the requested listing/reordering.
+    // rows, handy for finding it, in addition to the requested listing/reordering.
     row.addEventListener('click', () => {
       S.selectedId = p.id;
       S.selectedRoomId = null;
@@ -725,7 +725,7 @@ function updateSidePanelImpl(){
   if (sel) S.helpPanelDismissed = false;
   if (sel && sel.type === 'panel' && sel.cameraMode) {
     // In Camera mode, the Panel's usual right-hand menu (Dimensions/Elements/Description) is
-    // replaced by the Camera menu (sensitivities + rotation sliders) — cf. user request:
+    // replaced by the Camera menu (sensitivities + rotation sliders), cf. user request:
     // "on the right it should no longer be the Panel's menu but a new menu, the Camera's".
     S.sideDescTarget = null;
     S.sideCameraTarget = sel;
@@ -756,7 +756,7 @@ function updateSidePanelImpl(){
   if (sel && sel.type === 'panel') {
     // A Scene's locked canvas (cf. isLockedScenePanel) is not a Panel: its header
     // therefore shows "Scène" rather than "Case", and its "Dimensions" section (edges in mm) doesn't
-    // make sense for it (it has no separate Page format to speak of) — per user request.
+    // make sense for it (it has no separate Page format to speak of), per user request.
     const isSceneCanvas = isLockedScenePanel(sel);
     // For a Scene's canvas, the menu title is that Scene's NAME (not just a generic "Scène")
     // — per user request, more informative when several Scenes exist.
@@ -767,7 +767,7 @@ function updateSidePanelImpl(){
       panelMenuTitle.textContent = S.appLang === 'en' ? 'Panel' : 'Case';
     }
     // The Panel's number within its Page (cf. caseNumber), shown right next to the "Case" title
-    // rather than in a dedicated section — per user request.
+    // rather than in a dedicated section, per user request.
     if (!isSceneCanvas) {
       ensurePanelNumbers(page);
       panelMenuNumber.textContent = ' ' + (sel.caseNumber || 1);
@@ -808,7 +808,7 @@ function updateSidePanelImpl(){
       sideDimsSection.style.display = 'block';
       // The Panel's stacking level relative to the OTHER Panels of this Page (stacking
       // order = order in page.objects, same order as Bring forward/Send backward and as the
-      // rendering anchor in drawContent) — dedicated section between Dimensions and Elements, per
+      // rendering anchor in drawContent), dedicated section between Dimensions and Elements, per
       // user request, to visually understand which Panel is "in front" when several
       // overlap.
       const panelsInOrder = page.objects.filter(o => o.type === 'panel' && !isLockedScenePanel(o));
@@ -823,9 +823,9 @@ function updateSidePanelImpl(){
         sideStackSection.style.display = 'none';
       }
     }
-    // "Border" section (cf. o.borderVisible/o.borderColor) — per user request, right after
+    // "Border" section (cf. o.borderVisible/o.borderColor), per user request, right after
     // Dimensions/Stacking level, before the Elements list. Doesn't make sense for a Scene's
-    // canvas (which never has a drawn border): section hidden in that case — per user
+    // canvas (which never has a drawn border): section hidden in that case, per user
     // request.
     if (isSceneCanvas) {
       sideBorderSection.style.display = 'none';
@@ -837,7 +837,7 @@ function updateSidePanelImpl(){
       sideBorderWidthWrap.style.display = sideBorderToggle.checked ? 'block' : 'none';
       sideBorderSection.style.display = 'block';
     }
-    // Ground section — floor plan texture type for this Panel/Scene
+    // Ground section : floor plan texture type for this Panel/Scene
     {
       const currentGroundType = sel.groundType || 'herbe';
       sideGroundGrid.innerHTML = '';
@@ -847,7 +847,7 @@ function updateSidePanelImpl(){
         btn.innerHTML = `<span class="sol-ground-swatch" style="background:${def.swatch}"></span>${libelleTable3D(def, tr)}`;
         // mousedown rather than click: window.addEventListener('mouseup') calls drawCurrentPage()
         // on EVERY mouseup, which rebuilds the buttons (sideGroundGrid.innerHTML='') before
-        // the click is emitted — Chromium doesn't fire click on a DOM-detached node.
+        // the click is emitted. Chromium doesn't fire click on a DOM-detached node.
         // Same workaround as for the Element rows (cf. renderSideElementRow).
         btn.addEventListener('mousedown', (e) => {
           e.preventDefault();
@@ -868,7 +868,7 @@ function updateSidePanelImpl(){
     sideBubbleBorderSection.style.display = 'none';
   } else if (sel && sel.type === 'bulle') {
     // A speech Bubble has neither border dimensions nor contained Elements: only its text
-    // (description) is edited here, like for a Panel — plus the option to show/hide its
+    // (description) is edited here, like for a Panel, plus the option to show/hide its
     // tail (shown by default) and the choice of its shape (Oval by default, or Rectangle).
     panelMenuHeader.style.display = 'none';
     bubbleMenuHeader.style.display = 'grid';
@@ -898,7 +898,7 @@ function updateSidePanelImpl(){
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
     // The Bubble's stacking level relative to the OTHER Bubbles of this Page, same logic
-    // as for a Panel (cf. the "panel" branch above) — per user request.
+    // as for a Panel (cf. the "panel" branch above), per user request.
     {
       const bubblesInOrder = page.objects.filter(o => o.type === 'bulle');
       const rank = bubblesInOrder.indexOf(sel) + 1;
@@ -947,7 +947,7 @@ function updateSidePanelImpl(){
     bubbleMenuHeader.style.display = 'none';
     // Nothing selected on the canvas (Panel/Bubble): if a Page has been explicitly
     // selected (cf. S.pageSelected, renderTree) and we're not in the Scene editor, the
-    // "Page" menu is shown (list of its Panels, reorderable) rather than the Manual — per user
+    // "Page" menu is shown (list of its Panels, reorderable) rather than the Manual, per user
     // request. Deselecting the current Panel/Bubble (click in empty space) therefore falls back here rather
     // than to the Manual, since the user is still "inside" the Page.
     if (S.pageSelected && !S.editingSceneId) {
@@ -955,12 +955,12 @@ function updateSidePanelImpl(){
       sideHelpSection.style.display = 'none';
       pageMenuHeader.style.display = 'grid';
       // Number of the displayed Page (its position within its Volume), shown next to the "Planche" title,
-      // same style as the Panel's number in its own menu — per user request.
+      // same style as the Panel's number in its own menu, per user request.
       pageMenuNumber.textContent = ' ' + (S.currentPageIndex + 1);
       ensurePanelNumbers(page);
       renderSidePagePanels(page);
       sidePagePanelsSection.style.display = 'block';
-      // "Background" section (cf. pd.bgColor) — per user request. pd rather than `page`
+      // "Background" section (cf. pd.bgColor), per user request. pd rather than `page`
       // (synthetic, cf. currentPage()) since it's the actually persisted object that needs modifying.
       sidePageBgColorInput.value = page.bgColor || '#ffffff';
       sidePageBgSection.style.display = 'block';
@@ -973,9 +973,9 @@ function updateSidePanelImpl(){
     if (S.helpPanelDismissed) {
       // The user explicitly closed the user Manual (cf. helpMenuCloseBtn): the right-hand
       // panel stays entirely empty as long as nothing is selected, rather than immediately
-      // making the Manual reappear — per user request ("the right-hand menu must
+      // making the Manual reappear, per user request ("the right-hand menu must
       // disappear"). Also, the panel must no longer reserve its width (280px) once empty: it's
-      // collapsed entirely to free up space for the canvas — per user request
+      // collapsed entirely to free up space for the canvas, per user request
       // ("this must completely remove the space to the right of the application").
       helpMenuHeader.style.display = 'none';
       sideHelpSection.style.display = 'none';
@@ -996,7 +996,7 @@ function updateSidePanelImpl(){
  *
  * POURQUOI CES DEUX FONCTIONS EXISTENT PLUTÔT QUE DEUX PAIRES D'AFFECTATIONS. Le bouton « ? » est
  * un BASCULEUR : il lit l'état affiché et l'inverse. Or l'Éditeur de Personnage recouvre le panneau
- * droit — l'utilisateur qui cliquait « ? » depuis l'éditeur agissait sur un état qu'il ne voyait
+ * droit, l'utilisateur qui cliquait « ? » depuis l'éditeur agissait sur un état qu'il ne voyait
  * pas, et refermait le Manuel qu'il croyait ouvrir. La sortie de l'éditeur doit donc pouvoir dire
  * « AFFICHE le Manuel », sans basculer.
  *
@@ -1008,7 +1008,7 @@ export function afficherManuelLateral(){
   // ⚠️ TROIS NIVEAUX DE PRIORITÉ, PAS DEUX. `updateSidePanel` choisit dans cet ordre : la fiche de
   // l'Élément sélectionné, puis le menu de la Planche (S.pageSelected), puis le Manuel. Je n'avais
   // levé que le premier, si bien que cliquer « ? » avec le menu Planche ouvert ne faisait RIEN de
-  // visible — le Manuel était bien « autorisé », mais la Planche passait devant.
+  // visible, le Manuel était bien « autorisé », mais la Planche passait devant.
   //
   // Afficher le Manuel, c'est donc libérer TOUS les niveaux au-dessus de lui.
   S.selectedId = null;
@@ -1099,10 +1099,10 @@ export function refreshSceneTopDownBtn(panel){
   // The visual state (pressed/not, label) is now based on the Camera's REAL angle (cf.
   // isSceneTopDownView), not on panel._topDownActive alone: the latter was only updated by
   // clicking this button, so it stayed "active" even after manually rotating the Camera out of
-  // the top-down view (dragging in Camera Mode, sliders, 3D gizmo...) — the button then appeared
+  // the top-down view (dragging in Camera Mode, sliders, 3D gizmo...), the button then appeared
   // permanently pressed while the Camera was no longer in top-down view at all, which misled the
   // user about drag-and-drop behavior (meant to change axis ONLY in a real top-down
-  // view) — per user report.
+  // view), per user report.
   const isTD = isSceneTopDownView(panel);
   sceneTopDownBtn.style.display = 'block';
   sceneTopDownBtn.classList.toggle('active', isTD);

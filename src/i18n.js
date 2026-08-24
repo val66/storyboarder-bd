@@ -24,7 +24,7 @@ export function setI18nCallbacks(onUpdateSidePanel, onRenderTree) {
 
 // ---------- INTERNATIONALIZATION (i18n) ----------
 // CSS-selector-based approach rather than data-i18n attributes inserted into the HTML (too
-// risky on a file this size) — on user request ("Translate everything, including the User
+// risky on a file this size), on user request ("Translate everything, including the User
 // manual"). Each entry targets an already stably identifiable element (an id, or a position
 // relative to an existing id) and carries the English text ("en") and French text ("fr",
 // which reproduces the app's original text). applyI18n(lang) is called on load and on every
@@ -37,12 +37,12 @@ export const I18N_TEXT = [
   ['#undoBtn', null, null, 'title', 'Undo (Ctrl+Z)', "Annuler (Ctrl+Z)"],
   ['#headerSaveBtn', null, null, 'title', 'Save project (Ctrl+S)', "Sauvegarder le projet (Ctrl+S)"],
   ['#settingsBtn', null, null, 'title', 'Settings', 'Configuration'],
-  // Fix 63 — ce bouton porte une ICÔNE : son libellé traduit va sur `title`, pas sur le texte.
+  // Fix 63 : ce bouton porte une ICÔNE : son libellé traduit va sur `title`, pas sur le texte.
   // Écrire dans textContent remplaçait l'icône par la phrase, qui débordait du bouton de 30px.
   //
   // ⚠️ Il vit ici et non dans I18N_MODALS avec les autres boutons de la modale Personnage : cette
   // table-là ne déstructure que trois éléments et ignore la forme à attribut. L'y laisser rendait
-  // l'entrée silencieusement inopérante — l'icône était bien préservée, mais l'infobulle restait
+  // l'entrée silencieusement inopérante, l'icône était bien préservée, mais l'infobulle restait
   // figée en français. Constaté par un test, pas à l'œil.
   ['#personaEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
   ['#helpBtn', null, null, 'title', 'User manual', "Manuel d'utilisation"],
@@ -324,7 +324,7 @@ export const I18N_MODALS = [
   ['#quitConfirmCancel', 'Cancel', 'Annuler'],
   ['#descModalCancel', 'Cancel', 'Annuler'],
   ['#personaEditorCloseBtn', 'Close', 'Fermer'],
-  // Fix 68 — les deux en-têtes de section de l'éditeur. Ils n'étaient traduits nulle part :
+  // Fix 68 : les deux en-têtes de section de l'éditeur. Ils n'étaient traduits nulle part :
   // en anglais, le panneau affichait « Réglages des articulations » en toutes lettres.
   ['#personaEditorPoseHeading', 'Pose', 'Pose'],
   ['#personaEditorJointsHeading', 'Joint settings', 'Réglages des articulations'],
@@ -336,7 +336,7 @@ export const I18N_MODALS = [
 ];
 
 // Various ".modal-field-label"/labels identified by the id of the field that follows them
-// (these labels have no id of their own, but the associated field always does) — avoids
+// (these labels have no id of their own, but the associated field always does), avoids
 // having to modify the HTML to give each one an id.
 export const I18N_PREV_LABEL = [
   ['themeSelect', 'Interface theme', "Thème de l'interface"],
@@ -413,7 +413,7 @@ export function applyI18n(lang){
     if (input && input.previousElementSibling) applyTextEntry(input.previousElementSibling, en, fr, lang);
   });
   // Labels of the inline Export checkboxes (text after the input, inside the parent <label>
-  // which has no id of its own — so we target the checkbox's parent rather than a direct selector).
+  // which has no id of its own, so we target the checkbox's parent rather than a direct selector).
   const badgesCb = document.getElementById('exportShowPanelBadgesCheckbox');
   if (badgesCb) setTrailingText(badgesCb.parentElement, 'Show panel number badges', 'Afficher le badge numéro sur les Cases', lang);
   const descCb = document.getElementById('exportShowPanelDescriptionsCheckbox');
@@ -444,7 +444,7 @@ export function applyI18n(lang){
 export function applyI18nModalSectionTitles(lang){
   // Titres appariés par CLÉ (`data-section`), plus par rang. Le rang avait déjà décalé tout le
   // Manuel d'un cran le jour où une section y a été ajoutée d'un seul côté ; ici, la même clé sert
-  // en plus à `resetModalSections`, qui décide quelles sections s'ouvrent — deux mécanismes qui ne
+  // en plus à `resetModalSections`, qui décide quelles sections s'ouvrent, deux mécanismes qui ne
   // peuvent plus se contredire.
   const titres = {
     principal:   ['Main characteristics', 'Caractéristiques principales'],
@@ -461,7 +461,7 @@ export function applyI18nModalSectionTitles(lang){
 }
 
 // Le manuel est apparié par CLÉ (data-help sur le <details>), et ses paragraphes sont RENDUS
-// depuis les tables — deux changements qui corrigent le même défaut, par ses deux bouts.
+// depuis les tables, deux changements qui corrigent le même défaut, par ses deux bouts.
 //
 // L'appariement se faisait par rang d'apparition. Le groupe « Scènes » a été ajouté au HTML sans
 // entrée correspondante dans les tables, et tout ce qui suivait s'est décalé : la section Scènes
@@ -470,14 +470,14 @@ export function applyI18nModalSectionTitles(lang){
 // silence. Un rang manquant ne laisse pas de trou : il prend la place du suivant.
 //
 // Les paragraphes, eux, étaient appariés un à un avec des <p> écrits en dur. Les deux listes ont
-// divergé dans les deux sens : dix paragraphes sur les Personnages — dont toute la documentation de
-// l'éditeur — n'avaient pas de <p> pour les recevoir et n'atteignaient jamais l'écran, tandis que
+// divergé dans les deux sens : dix paragraphes sur les Personnages, dont toute la documentation de
+// l'éditeur, n'avaient pas de <p> pour les recevoir et n'atteignaient jamais l'écran, tandis que
 // des <p> sans entrée gardaient leur français en dur jusqu'en anglais. Les générer supprime la
 // seconde liste, donc la possibilité même de l'écart.
 //
 // ⚠️ CETTE FONCTION NE RÈGLE PLUS QUE LES TITRES. Les paragraphes s'affichent désormais dans une
 // modale, rendue à l'ouverture depuis la même table (cf. openHelpModal). Continuer à les injecter
-// ici en aurait fait une seconde copie — invisible, mais bien là, et prête à diverger le jour où
+// ici en aurait fait une seconde copie, invisible, mais bien là, et prête à diverger le jour où
 // l'une des deux serait modifiée seule.
 export function applyI18nHelpManual(lang){
   const data = lang === 'en' ? HELP_MANUAL_EN : HELP_MANUAL_FR;
@@ -485,7 +485,7 @@ export function applyI18nHelpManual(lang){
   groups.forEach((group) => {
     const d = data.find(g => g.id === group.dataset.help);
     // Pas d'entrée : on laisse le groupe tel quel plutôt que de lui donner le contenu d'un autre.
-    // Visiblement vide vaut mieux qu'à tort rempli — et tests/i18n.test.mjs refuse ce cas.
+    // Visiblement vide vaut mieux qu'à tort rempli, et tests/i18n.test.mjs refuse ce cas.
     if (!d) return;
     const titre = group.querySelector('.help-group-title');
     if (titre) titre.textContent = d.title;
@@ -499,14 +499,14 @@ export function applyI18nHelpManual(lang){
 export function refreshDynamicI18nTexts(lang){
   updateLastSavedIndicator();
   // updateSidePanel() relies on a Project already being loaded (S.tomes/pages): on the very
-  // first call to applyI18n (before initStartupProject), that isn't the case yet — silently ignored.
+  // first call to applyI18n (before initStartupProject), that isn't the case yet, silently ignored.
   try { if (_updateSidePanel && typeof S.tomes !== 'undefined' && S.tomes.length) _updateSidePanel(); } catch (err) { /* project not loaded yet */ }
   // renderTree() regenerates the Volumes/Pages list in the left-hand menu.
   try { if (_renderTree && typeof S.tomes !== 'undefined' && S.tomes.length) _renderTree(); } catch (err) { /* project not loaded yet */ }
 }
 
 // Stacking-rank text ("X / Y (frontmost/backmost/middle)"), used for Panels and Bubbles in
-// updateSidePanel() — language-aware via S.appLang.
+// updateSidePanel(), language-aware via S.appLang.
 export function stackRankLabel(rank, total){
   if (S.appLang === 'en') return rank === total ? 'frontmost' : rank === 1 ? 'backmost' : 'middle';
   return rank === total ? 'la plus en avant' : rank === 1 ? 'la plus en arrière' : 'au milieu';

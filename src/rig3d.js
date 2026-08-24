@@ -1,5 +1,5 @@
 /**
- * rig3d.js — Persona / Object / Wall 3D rigs + preview scene
+ * rig3d.js. Persona / Object / Wall 3D rigs + preview scene
  *
  * This module handles building and caching the Three.js groups for all
  * element types (persona, objects, walls), the shared materials, and the
@@ -34,7 +34,7 @@ import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
 /**
- * LA pose de corps d'un Élément — l'unique résolveur de l'application.
+ * LA pose de corps d'un Élément, l'unique résolveur de l'application.
  *
  * Ordre : les angles portés par l'Élément d'abord, la bibliothèque ensuite, « debout » en dernier
  * recours. Un Personnage écrit ses angles à chaque enregistrement, donc les deux replis ne le
@@ -42,7 +42,7 @@ import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
  * et sans la bibliothèque il paraîtrait debout alors qu'il est assis.
  *
  * ⚠️ IL N'Y EN A QU'UN, ET C'EST DÉLIBÉRÉ. J'avais ajouté un second résolveur dans l'éditeur pour
- * consulter la bibliothèque — deux réponses possibles à « quelle est la pose de cet Élément »,
+ * consulter la bibliothèque, deux réponses possibles à « quelle est la pose de cet Élément »,
  * exactement le défaut qui revient le plus souvent dans ce dépôt. Le repli de la bibliothèque est
  * remonté ici, où tout le monde le voit.
  */
@@ -110,7 +110,7 @@ export function getBodyProportions3D(genre){
 // named and exposed in rig.joints, so it can be posed/re-posed without rebuilding the geometry.
 
 // ════════════════════════════════════════════════════════════
-// 3D — CHARACTER RIGS
+// 3D : CHARACTER RIGS
 // ════════════════════════════════════════════════════════════
 export function buildPersonaRig3D(colorHex, genre, styleKey){
   const P = getBodyProportions3D(genre);
@@ -235,7 +235,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   // LES BRAS PENDENT D'UNE CLAVICULE, plus directement du torse.
   //
   // C'est la troisième articulation qui manquait au Personnage face aux modèles importés. Une
-  // clavicule fait monter, descendre et avancer l'ÉPAULE elle-même — hausser les épaules, se
+  // clavicule fait monter, descendre et avancer l'ÉPAULE elle-même, hausser les épaules, se
   // ramasser, tendre le bras plus loin que ne le permet l'articulation de l'épaule seule.
   //
   // Le pivot est placé au creux du cou (x = 0) et non au point d'attache du bras : c'est là que la
@@ -271,7 +271,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   //
   // La cheville est devenue une articulation à l'étape Rig A, mais la jambe s'arrêtait net : on
   // pouvait la faire tourner sans rien voir bouger. Une articulation qu'on ne voit pas agir ne vaut
-  // pas mieux qu'un curseur qui ne pilote rien — signalé à l'usage.
+  // pas mieux qu'un curseur qui ne pilote rien, signalé à l'usage.
   //
   // Le pied est enfant du groupe de la CHEVILLE : il suit donc la rotation, ce qui est tout l'objet.
   // Il pointe vers −Z, l'AVANT du Personnage (c'est de ce côté qu'est posé le visage, cf. faceMesh),
@@ -280,7 +280,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
     const longueur = P.legR * 2.2, hauteur = P.legR * 0.62, largeur = P.legR * 1.5;
     const pied = new THREE.Mesh(new THREE.BoxGeometry(largeur, hauteur, longueur), mat);
     // Reculé d'un talon : le pivot de la cheville tombe ainsi au-dessus du tiers arrière du pied,
-    // comme une vraie cheville — sans quoi le pied tournerait autour de son propre milieu et le
+    // comme une vraie cheville, sans quoi le pied tournerait autour de son propre milieu et le
     // talon traverserait le sol dès qu'on lève la pointe.
     pied.position.set(0, -hauteur / 2, -longueur / 2 + P.legR * 0.55);
     addBodyMeshWithOutline3D(cheville, pied, styleKey);
@@ -289,7 +289,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
     if (styleKey === 'comics_numerique') {
       // Rayon EXACTEMENT la demi-épaisseur du pied, centré à sa mi-hauteur : la pointe arrondit le
       // bout sans dépasser ni au-dessus de la cheville, ni sous la semelle. Une première version au
-      // rayon plus large débordait de 1 cm au-dessus de la cheville — le pied n'était plus tout à
+      // rayon plus large débordait de 1 cm au-dessus de la cheville, le pied n'était plus tout à
       // fait suspendu sous elle, ce qu'un test a refusé.
       const bout = new THREE.Mesh(new THREE.SphereGeometry(hauteur * 0.5, 10, 8), mat);
       bout.position.set(0, -hauteur / 2, pied.position.z - longueur / 2);
@@ -309,7 +309,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
       lHip: lLeg.shoulder, lKnee: lLeg.elbow,
       rHip: rLeg.shoulder, rKnee: rLeg.elbow,
       // Les chevilles existaient DÉJÀ : addLimb3D crée un `tip` au bout de chaque membre, et c'est
-      // lui qui porte la main. Côté jambe il n'était simplement jamais exposé — le pied ne coûtait
+      // lui qui porte la main. Côté jambe il n'était simplement jamais exposé, le pied ne coûtait
       // donc aucune géométrie, seulement d'être nommé.
       lFoot: lLeg.tip, rFoot: rLeg.tip,
     },
@@ -319,17 +319,17 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
 // Mémorisé après le premier calcul : la géométrie du Personnage est figée dans le code, donc son
 // repère de repos ne change jamais en cours d'exécution. Un rig jetable par pose appliquée serait du
 // gâchis pur. ⚠️ Cette mémorisation est une OPTIMISATION PURE : la retirer ne change aucun résultat,
-// et aucun test ne la couvre — échappée assumée, consignée plutôt que masquée par un test de forme.
+// et aucun test ne la couvre, échappée assumée, consignée plutôt que masquée par un test de forme.
 let _repereDuPersonnage = null;
 
 /**
- * Le repère du corps du PERSONNAGE INTÉGRÉ — l'origine des poses de la bibliothèque.
+ * Le repère du corps du PERSONNAGE INTÉGRÉ, l'origine des poses de la bibliothèque.
  *
  * MESURÉ, PAS ÉCRIT. On construit un Personnage, on le met au repos (toutes les articulations à
  * zéro), et on lit la position monde des quatre mêmes os que pour un fichier importé. Le Personnage
  * n'est donc pas la référence dont les autres s'écarteraient : c'est un corps parmi deux, passé à la
- * même fonction. Si sa géométrie changeait demain — comme elle vient de le faire, avec les
- * clavicules —, ce repère suivrait tout seul.
+ * même fonction. Si sa géométrie changeait demain, comme elle vient de le faire, avec les
+ * clavicules, ce repère suivrait tout seul.
  *
  * AU REPOS, ET NON DANS LA POSE COURANTE. Le repère doit dire où sont le haut et la droite du corps
  * indépendamment de ce qu'il est en train de faire ; le mesurer sur un Personnage assis ferait
@@ -343,7 +343,7 @@ export function repereDuPersonnage(){
   const pos = (groupe) => { groupe.getWorldPosition(p); return [p.x, p.y, p.z]; };
   const J = rig.joints;
   // Les clavicules du Personnage pivotent au sternum : elles sont TOUTES LES DEUX sur la colonne, et
-  // leur différence est nulle. C'est le repli sur les bras qui donne ici la latéralité — le même
+  // leur différence est nulle. C'est le repli sur les bras qui donne ici la latéralité, le même
   // repli que pour un fichier importé bâti de la même façon (cf. repereDuCorps).
   _repereDuPersonnage = repereDuCorps({
     bassin: pos(J.hipGroup), tete: pos(J.headGroup),
@@ -460,7 +460,7 @@ export function buildHandShape3D(handGroup, stateKey, bodyMat){
       const fist = new THREE.Mesh(new THREE.SphereGeometry(fistR, 8, 8), bodyMat);
       fist.position.y = -fistR;
       add(fist);
-      // Smartphone body — black with metallic highlights
+      // Smartphone body : black with metallic highlights
       const phonePivot = new THREE.Group();
       phonePivot.position.y = -fistR - 0.09; // centered below the hand
       add(phonePivot);
@@ -495,7 +495,7 @@ export function buildHandShape3D(handGroup, stateKey, bodyMat){
 // Applies a set of joint angles (POSE_3D table or custom joints3d) to the already-built skeleton.
 // Reads an angle from a pose. Returns 0 for anything that is not a finite number.
 //
-// The previous guard was `j.lElbow || 0`, which catches undefined, null and 0 — but NOT a string
+// The previous guard was `j.lElbow || 0`, which catches undefined, null and 0, but NOT a string
 // or a NaN: `'texte' || 0` is `'texte'`. THREE then writes NaN through the whole world matrix and
 // the Character DISAPPEARS from the render, with no error anywhere. That is the most expensive
 // failure mode this file can produce: one looks at the camera, at the style, at the cache, and the
@@ -519,7 +519,7 @@ export function applyJointAngles(rig, joints){
   J.torsoGroup.position.y = angle3D(j.rootY);
   J.headGroup.rotation.x = angle3D(j.headRotX);
   J.headGroup.rotation.y = angle3D(j.headRotY);
-  // Pencher la tête vers l'épaule — le geste qui manquait le plus à une silhouette.
+  // Pencher la tête vers l'épaule : le geste qui manquait le plus à une silhouette.
   J.headGroup.rotation.z = angle3D(j.headRotZ);
   J.hipGroup.position.y = angle3D(j.rootY);
   J.lShoulder.rotation.x = angle3D(j.lShoulder && j.lShoulder.x);
@@ -527,7 +527,7 @@ export function applyJointAngles(rig, joints){
   J.rShoulder.rotation.x = angle3D(j.rShoulder && j.rShoulder.x);
   J.rShoulder.rotation.z = angle3D(j.rShoulder && j.rShoulder.z);
   // x = flexion (up/down, as before); z = left/right pivot, on the axis perpendicular to the
-  // flexion (the same "spread" axis as for the shoulder/hip) — rotation.y was tried first
+  // flexion (the same "spread" axis as for the shoulder/hip), rotation.y was tried first
   // but corresponds to the arm's own axis (a simple in-place twist, nearly invisible) rather than
   // a true lateral pivot of the forearm.
   J.lElbow.rotation.x = angle3D(j.lElbow);
@@ -546,7 +546,7 @@ export function applyJointAngles(rig, joints){
   J.rHand.rotation.x = angle3D(j.rWristRotX);
   J.rHand.rotation.y = angle3D(j.rWristRotY);
   J.rHand.rotation.z = angle3D(j.rWristRotZ);
-  // Cou, clavicules et chevilles — les trois articulations que le Personnage n'avait pas et que les
+  // Cou, clavicules et chevilles, les trois articulations que le Personnage n'avait pas et que les
   // modèles importés ont. `angle3D` rend 0 pour tout champ absent : une pose enregistrée avant leur
   // existence les laisse donc au repos, et le Personnage est rendu exactement comme avant. C'est ce
   // qui permet d'ajouter des articulations sans migrer une seule pose ni un seul Projet.
@@ -567,7 +567,7 @@ export function applyJointAngles(rig, joints){
 export let personaScene3D = null, personaCamera3D = null, personaRenderer3D = null;
 // Ground: an "infinite" flat surface (in practice a very large plane, see GROUND_PLANE_SIZE_3D) perpendicular
 // to the Y axis (hence perfectly horizontal, placed under the Elements), present by default in EVERY
-// Panel (see ensurePanelHasGround/migration of existing Volumes) — unlike all other
+// Panel (see ensurePanelHasGround/migration of existing Volumes), unlike all other
 // Elements, it can neither be manually created (no menu entry), nor selected, nor
 // moved/rotated: a single shared Three.js mesh therefore suffices (no per-Panel cache), simply
 // shown/hidden depending on whether a Panel's combined scene is being rendered (see renderPanelScene3D) or
@@ -585,7 +585,7 @@ const _groundTexCache = {};
 
 
 // ════════════════════════════════════════════════════════════
-// 3D — ENVIRONMENT
+// 3D : ENVIRONMENT
 // ════════════════════════════════════════════════════════════
 export function buildGroundTexture(type) {
   if (_groundTexCache[type]) return _groundTexCache[type];
@@ -601,7 +601,7 @@ export function buildGroundTexture(type) {
   const S = 512;
   const c = document.createElement('canvas'); c.width = c.height = S;
   const ctx = c.getContext('2d');
-  // ── 256×256 displacement map — DataTexture (not CanvasTexture: more reliable) ──
+  // ── 256×256 displacement map : DataTexture (not CanvasTexture: more reliable) ──
   const DS = 256;
   const dispData = new Uint8Array(DS * DS * 4); // RGBA, initialized to 0
   const setH = (x, y, h) => {
@@ -625,7 +625,7 @@ export function buildGroundTexture(type) {
 
   if (type === 'neutre') {
     // Neutral ground: solid color identical to the one used for Room Slabs (#B8A890).
-    // No pattern, no displacement — ideal for indoor scenes.
+    // No pattern, no displacement, ideal for indoor scenes.
     ctx.fillStyle = '#B8A890'; ctx.fillRect(0,0,S,S);
     // dispData stays at zero (initialized above): perfectly flat ground.
 
@@ -810,7 +810,7 @@ export function buildGroundTexture(type) {
     }
 
   } else if (type === 'carrelage') {
-    // Diffuse: tile flooring — 64×64 px tiles = 8 tiles/side in the texture.
+    // Diffuse: tile flooring, 64×64 px tiles = 8 tiles/side in the texture.
     // With repeat=2400 → world tile = 5u → each tile ≈ 62cm (large modern format).
     const TW=64,GAP=6;
     for(let tx=0;tx<S;tx+=TW) for(let ty=0;ty<S;ty+=TW){
@@ -831,7 +831,7 @@ export function buildGroundTexture(type) {
     }
 
   } else if (type === 'plancher') {
-    // Diffuse: 40 px tall planks — with repeat=4800 → plank ≈ 20cm wide, ≈ 98cm long
+    // Diffuse: 40 px tall planks, with repeat=4800 → plank ≈ 20cm wide, ≈ 98cm long
     const PH=40,SHIFT=110,LW=200;
     for(let row=0;row*PH<S;row++){
       const y=row*PH,shift=(row%2)*SHIFT;
@@ -854,7 +854,7 @@ export function buildGroundTexture(type) {
       }
       ctx.fillStyle='rgba(35,15,3,.55)'; ctx.fillRect(0,y,S,1);
     }
-    // Disp: rounded profile per plank — PDIM proportional to PH
+    // Disp: rounded profile per plank. PDIM proportional to PH
     { const PDIM=Math.round(DS*PH/S); // ≈ 6 px per plank in the displacement map
       for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
         const jy=y%PDIM,edge=Math.min(jy,PDIM-jy);
@@ -892,7 +892,7 @@ export function buildGroundTexture(type) {
   } else if (type === 'moquette') {
     // Diffuse: short-pile carpet, beige-gray tones, slightly oriented fibers
     ctx.fillStyle='#9E8E7E'; ctx.fillRect(0,0,S,S);
-    // Horizontal fiber lines — main weave
+    // Horizontal fiber lines : main weave
     for(let i=0;i<1800;i++){
       const px=rr(0,S),py=rr(0,S),l=rr(1,5),a=rr(-0.15,0.15);
       const v=Math.floor(rr(-22,22));
@@ -922,7 +922,7 @@ export function buildGroundTexture(type) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(rep, rep); map.needsUpdate = true;
 
-  // DataTexture: passes the Uint8Array directly to the GPU — more reliable than an offscreen CanvasTexture
+  // DataTexture: passes the Uint8Array directly to the GPU, more reliable than an offscreen CanvasTexture
   const dispMap = new THREE.DataTexture(dispData, DS, DS, THREE.RGBAFormat, THREE.UnsignedByteType);
   dispMap.wrapS = dispMap.wrapT = THREE.RepeatWrapping;
   dispMap.repeat.set(rep, rep); dispMap.needsUpdate = true;
@@ -955,7 +955,7 @@ export function applyGroundType(panel, page) {
     o.objType === 'piscine' && o.homePanelId === panel.id
   ));
   // Same for Traces (Roads, Paths, Terrain Zones): they sit at Ground level
-  // and would be hidden by the upward-displaced vertices — same treatment as Buildings.
+  // and would be hidden by the upward-displaced vertices, same treatment as Buildings.
   const hasTracé = !!(page && page.objects.some(o =>
     o.type === 'tracé' && o.panelId === panel.id
   ));
@@ -977,7 +977,7 @@ export function applyGroundType(panel, page) {
 // personas/objects), a Wall is first and foremost a flat surface that we want to be able to measure
 // linearly (see wallOpeningRect, resizing a magnetized Element with the scroll wheel...).
 // In perspective, a Side that recedes in depth (see a corner Wall, Second Side along Z)
-// appears deformed into a trapezoid (converging lines) instead of a simple parallelogram — the
+// appears deformed into a trapezoid (converging lines) instead of a simple parallelogram, the
 // correspondence between position/size in real units and in page pixels is then no longer
 // linear, which incorrectly offsets and resizes the 2D selection "border" (always an
 // axis-aligned rectangle) relative to the actual 3D render. An orthographic camera eliminates
@@ -992,7 +992,7 @@ export const personaRigCache3D = new Map(); // persona id -> { figureGroup, face
 // Dynamically frames the camera on the figure's (world) bounding box, whatever
 // pose or 3D orientation is chosen: guarantees the head and feet always remain visible.
 // "pan" (optional) offsets the aimed point in the screen plane (x = right, y = up), in world
-// units — used for the "grip" drag of the persona preview in the modal (see personaPreviewPan).
+// units, used for the "grip" drag of the persona preview in the modal (see personaPreviewPan).
 // The camera never rolls/yaws here (only the figure rotates), so offsetting world X/Y really does
 // shift the on-screen view, without rotating it or changing the zoom.
 export function frameCameraToFigure(camera, figureGroup, zoom, pan, orbit){
@@ -1006,15 +1006,15 @@ export function frameCameraToFigure(camera, figureGroup, zoom, pan, orbit){
 // (see ensureWallRenderEntry3D): we do want to RENDER the complete group (Wall + embedded magnetized
 // Elements), but FRAME the camera only on the Wall's own box. Without this distinction, the
 // depth (Z) added by an Element that slightly exceeds the Wall's thickness (e.g. the frame of an
-// open Door/Window) enlarges the combined box — which pulls the camera back
+// open Door/Window) enlarges the combined box, which pulls the camera back
 // (see `dist + size.z / 2` below, anchored on the box's front face) and makes the Wall look
 // smaller on screen, including when the Element is resized with the scroll wheel (its depth
 // follows its height via the non-uniform scale): the Wall would then appear to change size too.
 // Extends a bounding box using only a mesh's OWN geometry (without descending into its
-// children) — unlike THREE.Box3.expandByObject()/setFromObject(), which ALWAYS traverse
+// children), unlike THREE.Box3.expandByObject()/setFromObject(), which ALWAYS traverse
 // the entire subtree. Essential here: magnetized Wall-Opening Elements are added as REAL
 // children of the Wall's mesh (see ensureWallRenderEntry3D, `parentMesh.add(node)`), so expandByObject(wallMesh)
-// would still include their geometry — exactly the problem being avoided here (see frameCameraToBox).
+// would still include their geometry, exactly the problem being avoided here (see frameCameraToBox).
 export function expandBoxByMeshOnly3D(box, mesh){
   if (!mesh || !mesh.geometry) return;
   mesh.geometry.computeBoundingBox();
@@ -1024,7 +1024,7 @@ export function expandBoxByMeshOnly3D(box, mesh){
   box.union(meshBox);
 }
 
-// Fix 65 — `orbit` ({ rotX, rotY }, facultatif) fait tourner la caméra AUTOUR de la boîte, sans
+// Fix 65 : `orbit` ({ rotX, rotY }, facultatif) fait tourner la caméra AUTOUR de la boîte, sans
 // toucher au sujet. C'est ce que fait déjà le mode Caméra d'une Case ; l'éditeur de Personnage en a
 // besoin depuis qu'on lui a retiré le déplacement de vue.
 //
@@ -1049,23 +1049,23 @@ export function frameCameraToBox(camera, box, zoom, pan, orbit){
   camera.lookAt(cx, cy, cz);
   // LES PLANS DE COUPE SUIVENT LA BOÎTE, ils ne sont plus figés à la construction de la caméra.
   //
-  // Ils valaient 0,05 et 2000 une fois pour toutes — des valeurs taillées pour le Personnage
+  // Ils valaient 0,05 et 2000 une fois pour toutes, des valeurs taillées pour le Personnage
   // intégré, haut d'environ deux unités. Un modèle importé n'a aucune raison de tenir dans cet
   // intervalle : mesuré, les os de worker_j.glb s'étendent sur près de quarante unités, et
   // l'éditeur ne les normalise pas. Dézoomer éloigne la caméra proportionnellement, et ce qui passe
-  // derrière le plan lointain est TRANCHÉ — d'où des morceaux coupés net plutôt que disparus, ce
+  // derrière le plan lointain est TRANCHÉ, d'où des morceaux coupés net plutôt que disparus, ce
   // qui les distingue d'une élimination par le tronc de vue.
   //
   // La formule est celle de frameOrthoCameraToBox, quelques lignes plus haut : on la reprend plutôt
   // que d'en inventer une seconde. La diagonale de la boîte est ajoutée parce qu'un objet peut
-  // s'étendre loin DERRIÈRE le point visé — le katana de worker_j, par exemple.
+  // s'étendre loin DERRIÈRE le point visé, le katana de worker_j, par exemple.
   const diagonale = size.length();
   camera.near = Math.max(0.01, dist / 1000);
   camera.far = dist + diagonale * 2 + 10;
   camera.updateProjectionMatrix();
 }
 
-// Orthographic variant of frameCameraToBox(), see the comment on personaCameraOrtho3D — used
+// Orthographic variant of frameCameraToBox(), see the comment on personaCameraOrtho3D, used
 // for rendering and gauge calculations (see getWallPanRect2D) of Walls: the box covers exactly
 // [-halfW,halfW]x[-halfH,halfH] (with the same margin as the perspective camera, to stay visually
 // consistent with personas/objects), and near/far are widened to never crop the embedded
@@ -1150,7 +1150,7 @@ export function ensureOutlineMat3D(){
   return OUTLINE_MAT_3D;
 }
 // "Body" material accounting for the style: MeshToonMaterial (steps + gradient map) in Digital
-// Comics, MeshStandardMaterial (continuous gradient) in Simplified — same call API in both cases.
+// Comics, MeshStandardMaterial (continuous gradient) in Simplified, same call API in both cases.
 export function makeBodyMaterial3D(colorHex, styleKey, opts){
   opts = opts || {};
   if (styleKey === 'comics_numerique') {
@@ -1165,7 +1165,7 @@ export function makeBodyMaterial3D(colorHex, styleKey, opts){
   });
 }
 // Adds a mesh to its parent then, in Digital Comics, gives it its black double-outline
-// (same geometry, just enlarged and seen from the inside) — call this for each body part
+// (same geometry, just enlarged and seen from the inside), call this for each body part
 // that should be outlined, like the inked silhouettes of a comics page.
 export function addBodyMeshWithOutline3D(parent, mesh, styleKey, thickness){
   parent.add(mesh);
@@ -1187,7 +1187,7 @@ export function ensurePersonaScene3D(){
   // Far plane originally at 20, sized for personas/objects about 2 units
   // tall. A genuinely elongated Wall (see WALL_PX_PER_UNIT_3D) can require a much greater
   // camera distance (frameCameraToFigure pulls the camera back proportionally to the figure's
-  // size) — beyond 20, the Wall would simply fall out of the frustum and get
+  // size), beyond 20, the Wall would simply fall out of the frustum and get
   // truncated/clipped by this plane, which looked like a gap or tear between the two sides.
   personaCamera3D = new THREE.PerspectiveCamera(36, PERSONA_3D_W / PERSONA_3D_H, 0.05, 2000);
   personaCamera3D.position.set(0, 0.55, 2.05);
@@ -1206,14 +1206,14 @@ export function ensurePersonaScene3D(){
   personaFillLight3D.position.set(-1.6, 0.4, 0.8);
   personaScene3D.add(personaFillLight3D);
   // logarithmicDepthBuffer : le plan far s'étire avec panel.camDist (cf. framePanelCamera3D,
-  // scene3d.js — far = dist + 80, environ) alors que le plan near reste épinglé à 0.01. Au
+  // scene3d.js, far = dist + 80, environ) alors que le plan near reste épinglé à 0.01. Au
   // dézoom, ce ratio near/far explose ; un depth-buffer WebGL classique concentre presque toute
   // sa précision près du plan near, si bien que deux surfaces proches (vêtement sur un corps,
-  // sangle sur un fourreau — le cas d'un modèle importé articulé) qui ne scintillaient pas de
-  // près se mettent à scintiller (z-fighting) une fois éloignées de la caméra — exactement le
+  // sangle sur un fourreau, le cas d'un modèle importé articulé) qui ne scintillaient pas de
+  // près se mettent à scintiller (z-fighting) une fois éloignées de la caméra, exactement le
   // symptôme rapporté (« bug » au dézoom, propre en gros plan ; cf. retour utilisateur, distinct
   // du moiré de minification déjà traité par applyAnisotropy dans model-cache.js). Le tampon
-  // logarithmique répartit la précision de façon beaucoup plus uniforme sur toute la plage — le
+  // logarithmique répartit la précision de façon beaucoup plus uniforme sur toute la plage, le
   // remède standard Three.js pour un grand ratio far/near, sans toucher au calcul near/far
   // lui-même ni à aucun matériau.
   personaRenderer3D = new THREE.WebGLRenderer({
@@ -1238,7 +1238,7 @@ export function ensurePersonaScene3D(){
  *
  * Injecté dans model-cache.js (cf. architecture, règle n°2) : ce module y règle l'anisotropie des
  * textures d'un modèle importé au moment de son décodage, mais n'a et ne doit avoir aucune
- * connaissance du WebGLRenderer — qui vit ici. `ensurePersonaScene3D()` est idempotent : cet appel
+ * connaissance du WebGLRenderer, qui vit ici. `ensurePersonaScene3D()` est idempotent : cet appel
  * ne fait rien si le renderer existe déjà, et le crée sinon (la capacité ne peut être lue qu'une
  * fois un contexte WebGL ouvert).
  */
@@ -1249,7 +1249,7 @@ export function getMaxAnisotropy3D(){
 
 // FIX (pre-existing bug, regression from extraction #158): these two functions lived in scene3d.js
 // (downstream of rig3d.js) even though they only touch the shared renderer/camera defined here
-// (personaRenderer3D/personaCamera3D) — no dependency on scene3d.js. Yet ensureWallRenderEntry3D
+// (personaRenderer3D/personaCamera3D), no dependency on scene3d.js. Yet ensureWallRenderEntry3D
 // (further down in this file, via wallOpeningRect/wallPanAlongSign) needs them: calling them from
 // scene3d.js would have created a cycle. Brought back here; scene3d.js now imports them from this module.
 export function useObjectFormat3D(resScale = 1){
@@ -1284,7 +1284,7 @@ export function useObjectBoxFormat3D(o, resScale = 1){
 
 // FIX (pre-existing bug, regression from extraction #155): drawFace lived in draw.js without being
 // imported here, even though updatePersonaFaceTexture3D (just below) calls it on the hot path
-// of every 3D Persona render (on every emotion change) — a latent ReferenceError.
+// of every 3D Persona render (on every emotion change), a latent ReferenceError.
 // Brought back here (rig3d.js is upstream of draw.js in the dependency chain); draw.js
 // now imports it from this module instead of defining it locally.
 export function drawFace(c, o, cx, cy, headR){
@@ -1391,7 +1391,7 @@ export function drawFace(c, o, cx, cy, headR){
   }
   if (emotion === 'rire') {
     // mouth wide open in a smile (hearty laughter): corners raised like "content" at the top,
-    // a deeper rounded opening at the bottom — so it isn't confused with the surprise circle.
+    // a deeper rounded opening at the bottom, so it isn't confused with the surprise circle.
     const mHalf = mw * 0.62;
     const lipY = mouthY - headR * 0.08;
     c.beginPath();
@@ -1452,7 +1452,7 @@ export function updatePersonaFaceTexture3D(faceMesh, emotion){
 }
 
 // If a hand holds a long staff (grasped at its middle), corrects its rotation so it stays
-// vertical in world space regardless of the arm's pose — otherwise, oriented according to the
+// vertical in world space regardless of the arm's pose, otherwise, oriented according to the
 // hand/forearm's angle, the staff would often end up passing through the torso or the arm.
 const _uprightStaffQuat = new THREE.Quaternion();
 export function uprightHeldStaff3D(handGroup){
@@ -1524,7 +1524,7 @@ export function disposePersonaRig3D(id){
 // Used by the modals' 3D Preview (see drawPersonaPreview) to render sharply on HiDPI/Retina screens
 // — per user report, these previews were blurry because rendered at a fixed resolution (200×320) then
 // upscaled by CSS (width/height:100% of the .persona-preview-wrap canvas) to fill the whole Box.
-// Fix 53 — sizeOverride : taille EXACTE du rendu hors écran, proportions comprises.
+// Fix 53, sizeOverride : taille EXACTE du rendu hors écran, proportions comprises.
 //
 // Sans elle, le format était toujours celui de l'aperçu portrait de la modale, et le canevas plein
 // écran de l'éditeur recevait ce bitmap étiré (cf. figureRenderSize3D). Le camera.aspect suit la
@@ -1559,7 +1559,7 @@ export function renderPersonaToCanvas3D(o, zoom, pan, styleKey, resScale = 1, si
 
 export function drawPersona3D(c, o, styleKey){
   // FIX (pre-existing bug, regression from extraction #155): this fallback called drawStickFigure, which
-  // lives in draw.js (downstream of rig3d.js in the dependency chain) — impossible to import here
+  // lives in draw.js (downstream of rig3d.js in the dependency chain), impossible to import here
   // without creating a cycle. drawStickFigure only ever calls drawStickFigureStanding in
   // practice anyway (window[fnName] never resolves, see POSE_RENDERERS). An equivalent minimal
   // fallback is drawn here (simple silhouette) to avoid a ReferenceError if THREE.js fails to load.
@@ -1595,7 +1595,7 @@ export function ensurePropMatsByType3D(objType, colorHex){
 let TIRE_MAT_3D = null, METAL_MAT_3D = null, GLASS_MAT_3D = null, BAY_GLASS_MAT_3D = null;
 // Plant materials: unlike furniture (whose single FIXED_COLOR tint suits any piece well),
 // a Plant must keep fixed natural colors (green foliage, brown trunk, terracotta pot, pink
-// flower) regardless of FIXED_COLOR — so these materials do NOT depend on the colorHex
+// flower) regardless of FIXED_COLOR, so these materials do NOT depend on the colorHex
 // passed to the buildXxxRig3D functions, unlike
 // ensurePropMatsByType3D.
 let FOLIAGE_MAT_3D = null, FOLIAGE_MAT_LIGHT_3D = null, TRUNK_MAT_3D = null, POT_MAT_3D = null, FLOWER_BLOOM_MAT_3D = null, FLOWER_CENTER_MAT_3D = null;
@@ -1629,10 +1629,10 @@ export function ensureSharedPropMats3D(){
 //    to canvas pixels elsewhere (scene3d.js/events.js).
 //  - Local frame: origin at the center of the object's ground base (Y=0 = the object's ground
 //    level), +Y upward, +Z forward (the face facing the camera by default, see
-//    rotY=Math.PI applied at creation in events.js for Personas — but NOT for these
+//    rotY=Math.PI applied at creation in events.js for Personas, but NOT for these
 //    Objects/Props, whose front face therefore faces -Z without that half-turn).
 //  - The numeric dimensions/positions (0.95, 1.9, 0.02…) are proportions chosen by eye
-//    for a readable silhouette in a Panel, not real-world measurements of physical objects — no
+//    for a readable silhouette in a Panel, not real-world measurements of physical objects, no
 //    dedicated comment for each one, except when a value has a non-obvious reason
 //    (see BAY_GLASS_MAT_3D above, or the occasional comments in some functions
 //    below for cases where mesh stacking order or a margin value matters).
@@ -1852,18 +1852,18 @@ export function buildBedRig3D(colorHex){
 // side hinge to clearly distinguish the two states in preview.
 // side ('gauche'/'droite') chooses which post the sash's hinge is on, and thus the opening
 // direction; has no visual effect when the window is closed. angleDeg sets the sash's opening
-// angle (in degrees) — same logic as for buildDoorRig3D.
+// angle (in degrees), same logic as for buildDoorRig3D.
 export function buildWindowRig3D(colorHex, open, side, angleDeg){
   ensureSharedPropMats3D();
   const group = new THREE.Group();
   const frameMat = ensurePropMatsByType3D(open ? 'fenetre_ouverte' : 'fenetre_fermee', colorHex);
-  // Fix 31 — the frame was so slim (0.06 thick, 0.08 deep) that against a Low Wall it read as a
+  // Fix 31 : the frame was so slim (0.06 thick, 0.08 deep) that against a Low Wall it read as a
   // flat rectangle painted on the masonry rather than a window sitting in an opening. It is now
-  // noticeably chunkier and built in two steps — frame + proud casing — which is what gives the
+  // noticeably chunkier and built in two steps, frame + proud casing, which is what gives the
   // silhouette an edge to catch the light on. Everything stays strictly inside w × h: those are the
   // dimensions the hole is cut from (see tracéOpeningRigScale3D), so overflowing would reintroduce
   // the very mismatch this fix removes.
-  // Fix 31d — la présence du dormant vient de son épaisseur DANS LE PLAN du mur (frameThick, 0.10
+  // Fix 31d : la présence du dormant vient de son épaisseur DANS LE PLAN du mur (frameThick, 0.10
   // contre 0.06 auparavant, bien visible de face), pas de sa profondeur. Le Fix 31 avait poussé la
   // profondeur à 0.16 et le chambranle à 0.24, et la caisse débordait dans la pièce.
   //
@@ -1871,7 +1871,7 @@ export function buildWindowRig3D(colorHex, open, side, angleDeg){
   // d'accueil. Le noeud enfant est mis à l'échelle par child.h/design.h, puis tout le rig de Mur
   // par realHeightFloor/heightUnits ; la profondeur finale dépend donc du rapport entre la hauteur
   // de la Fenêtre et celle du Mur. Ces deux valeurs sont calibrées pour une Fenêtre occupant
-  // ~40 % de la hauteur du Mur, cas le plus courant — au-delà, elle ressortira un peu.
+  // ~40 % de la hauteur du Mur, cas le plus courant, au-delà, elle ressortira un peu.
   const FRAME_DEPTH_REF = 0.10;
   const w = 1.0, h = 1.1, frameThick = 0.10;
   const frameDepth = FRAME_DEPTH_REF;
@@ -2029,7 +2029,7 @@ export function buildBayWindowRig3D(colorHex){
     const panel = new THREE.Mesh(panelGeo, BAY_GLASS_MAT_3D);
     panel.position.set(centerX, h / 2, zOff);
     group.add(panel);
-    // Thin border: top, bottom, left, right — never covers the glazed center.
+    // Thin border: top, bottom, left, right, never covers the glazed center.
     [h / 2 + panelH / 2, h / 2 - panelH / 2].forEach(yPos => {
       const trimH = new THREE.Mesh(trimHGeo, frameMat);
       trimH.position.set(centerX, yPos, zOff);
@@ -2050,15 +2050,15 @@ export function buildBayWindowRig3D(colorHex){
 // fixed-proportion render in 2D, which distorted it and misaligned the magnetized Wall-Openings
 // (which keep their own proportions). Thickness stays proportional to height, not absolute, so it
 // doesn't look abnormally thin or thick as the Wall's size changes.
-// Builds the geometry for a Wall panel of length w, height h, thickness thick — a simple box
+// Builds the geometry for a Wall panel of length w, height h, thickness thick, a simple box
 // (BoxGeometry) if holes is empty/absent, or a REALLY PERFORATED box (see the "Traversant"
 // property, TRAVERSANT_TYPES) if holes contains one or more rectangles to cut out. Each hole is defined in
-// local coordinates "along the Wall" (along, 0..w) and "height from the ground" (0..h) — exactly the
+// local coordinates "along the Wall" (along, 0..w) and "height from the ground" (0..h), exactly the
 // frame of reference used by ensureWallRenderEntry3D to place the Wall-Opening Elements themselves, so that the
 // hole falls exactly at the visual location of the Element that creates it. THREE.Shape + its
 // "holes" (triangulated via earcut, built into Three.js) are used rather than a true CSG operation (not
 // available without a third-party library): the Wall's front/back face is thus a single perforated polygon,
-// extruded over the thickness — a single mesh, as required by expandBoxByMeshOnly3D (mesh.geometry).
+// extruded over the thickness, a single mesh, as required by expandBoxByMeshOnly3D (mesh.geometry).
 export function buildWallPanelGeometry3D(w, h, thick, holes){
   if (!holes || !holes.length) return new THREE.BoxGeometry(w, h, thick);
   const shape = new THREE.Shape();
@@ -2098,7 +2098,7 @@ export function buildWallRig3D(colorHex, lenUnits, heightUnits, holes){
   const wall = new THREE.Mesh(buildWallPanelGeometry3D(w, h, thick, holes), mat);
   wall.position.y = h / 2;
   group.add(wall);
-  // A few horizontal joints in slight relief to suggest a brick/block coursing pattern —
+  // A few horizontal joints in slight relief to suggest a brick/block coursing pattern,
   // we skip rows that would vertically cross a "Traversant" hole: without this, this thin
   // decorative relief would remain visible "floating" across the opening, with no Wall behind it.
   const jointGeo = new THREE.BoxGeometry(w + 0.01, 0.015, thick * 0.5);
@@ -2139,7 +2139,7 @@ export function buildCornerWallRig3D(colorHex, lenUnits, heightUnits, holesA, ho
   wallB.position.set(0, h / 2, w / 2 - thick / 2);
   wallB.userData.pan = 'B';
   group.add(wallB);
-  // Horizontal relief joints on each panel, as for the simple Wall — skipping, on
+  // Horizontal relief joints on each panel, as for the simple Wall, skipping, on
   // each panel, rows that would cross a "Traversant" hole of that panel.
   const jointGeoA = new THREE.BoxGeometry(w + 0.01, 0.015, thick * 0.5);
   const jointGeoB = new THREE.BoxGeometry(thick * 0.5, 0.015, w + 0.01);
@@ -2302,7 +2302,7 @@ export function buildOiseauRig3D(colorHex){
   const mat = ensurePropMatsByType3D('oiseau', colorHex);
   const joints = {};
 
-  // Main body (perched) — static
+  // Main body (perched) : static
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), mat);
   body.scale.set(1, 0.75, 1.3);
   body.position.y = 0.22;
@@ -2533,7 +2533,7 @@ export function buildLoupRig3D(colorHex){
     shin.rotation.x = tiltX;
     shin.position.set(0, -Math.cos(tiltX) * shinH / 2, -Math.sin(tiltX) * shinH / 2);
     kneePivot.add(shin);
-    // Paw: below the bottom of the shin — in knee-local space
+    // Paw: below the bottom of the shin, in knee-local space
     const paw = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.04, 0.12), mat);
     paw.position.set(0, -0.12, -Math.sin(tiltX) * shinH); // approx below the shin
     kneePivot.add(paw);
@@ -2685,7 +2685,7 @@ export function buildGriffonRig3D(colorHex){
     joints[kneeId] = kneePivot;
   });
 
-  // ── Tail (pivot at the root — at the bottom of the tail cylinder)
+  // ── Tail (pivot at the root : at the bottom of the tail cylinder)
   // tail center = (0, groundY+bodyH*0.55, -0.55), rot.x=-1.0, h=0.55
   // bottom (attach) = center - direction*h/2 = center - (0,cos(-1)*0.275,sin(-1)*0.275)
   //                 = (0, 0.7675-0.149, -0.55+0.231) = (0, 0.619, -0.319)
@@ -3110,7 +3110,7 @@ export function buildAutelRig3D(colorHex){
  * l'ouverture du Projet (cf. model-cache.js) ; ici on ne fait que retrouver ce qui est prêt. Rien
  * n'attend, rien ne lève, et le chemin de dessin reste ce qu'il était.
  *
- * Le clone PARTAGE géométries et matériaux avec l'original — c'est voulu : dix chaises du même
+ * Le clone PARTAGE géométries et matériaux avec l'original, c'est voulu : dix chaises du même
  * fichier ne pèsent qu'une fois sur la carte graphique. La contrepartie est que la libération se
  * fait sur l'original, une seule fois (cf. clearModelCache).
  *
@@ -3119,7 +3119,7 @@ export function buildAutelRig3D(colorHex){
  * fait en centimètres.
  *
  * `cloneSkinned` (pas `.clone(true)`) : un modèle articulé (personnage, squelette) a un
- * `SkinnedMesh` dont `.clone(true)` casse le lien vers son `Skeleton` — le clone garde des `bones`
+ * `SkinnedMesh` dont `.clone(true)` casse le lien vers son `Skeleton`, le clone garde des `bones`
  * pointant vers l'ORIGINAL. La boîte englobante que `placeRigCentered3D` mesure pour calculer
  * l'échelle devient alors incohérente avec ce que le GPU affiche réellement : le rig ignore
  * `realHeightFloor`, quelle que soit la valeur demandée. Cf. src/vendor/SkeletonUtils.js.
@@ -3134,21 +3134,21 @@ function buildImportedModelRig3D(colorHex, o){
     // PAS D'ÉLIMINATION PAR LE TRONC DE VUE SUR UN MODÈLE IMPORTÉ.
     //
     // Three décide de dessiner ou non chaque maillage en testant sa SPHÈRE ENGLOBANTE, qu'il
-    // calcule sur `geometry` — c'est-à-dire sur la POSE DE LIAISON. Pour un maillage articulé, cette
+    // calcule sur `geometry`, c'est-à-dire sur la POSE DE LIAISON. Pour un maillage articulé, cette
     // géométrie ne décrit pas ce qui est affiché : le GPU la déforme dans le shader, un calcul que
     // la CPU ne voit jamais. C'est la même racine que la boîte englobante (cf. skinned-box-3d.js),
-    // et l'écart est mesuré — sur worker_j.glb, la boîte du maillage et celle des os diffèrent d'un
+    // et l'écart est mesuré, sur worker_j.glb, la boîte du maillage et celle des os diffèrent d'un
     // facteur 7,7, parce que le fichier porte deux échelles.
     //
     // Conséquence observée : en dézoomant ou en tournant le modèle, ses morceaux disparaissent UN À
-    // UN — les cheveux, puis la tête, puis la jupe — chacun quand sa sphère fausse quitte le champ,
+    // UN : les cheveux, puis la tête, puis la jupe, chacun quand sa sphère fausse quitte le champ,
     // alors qu'il est encore parfaitement visible à l'écran.
     //
     // POURQUOI DÉSACTIVER PLUTÔT QUE CORRIGER LA SPHÈRE : la corriger demanderait de la recalculer à
-    // CHAQUE image, puisqu'elle change avec la pose — c'est-à-dire de refaire sur le CPU le travail
+    // CHAQUE image, puisqu'elle change avec la pose, c'est-à-dire de refaire sur le CPU le travail
     // que le GPU fait déjà, à chaque image et pour chaque sommet. Le coût de ne pas éliminer est
     // sans commune mesure : quelques appels de dessin de plus pour des Éléments qui sont, presque
-    // toujours, à l'écran — on ne pose pas un personnage qu'on ne regarde pas.
+    // toujours, à l'écran, on ne pose pas un personnage qu'on ne regarde pas.
     //
     // Limité aux modèles IMPORTÉS. Tout le reste (mobilier, murs, Personnage intégré) garde
     // l'élimination : leur géométrie brute décrit bien ce qui est dessiné.
@@ -3156,7 +3156,7 @@ function buildImportedModelRig3D(colorHex, o){
     // ⚠️ UN NIVEAU DE PLUS ENTRE LE GROUPE ET LE CLONE, et il n'est pas décoratif. `figureGroup`
     // porte l'orientation de l'ÉLÉMENT (`rotX/rotY/rotZ`, écrits en fin de ensureObjectRigEntry3D) ;
     // y écrire aussi la bascule « allongé » ferait que l'une écraserait l'autre. Le Personnage a
-    // exactement ce niveau intermédiaire — c'est `J.root`, celui que `lieFlat` fait tourner.
+    // exactement ce niveau intermédiaire, c'est `J.root`, celui que `lieFlat` fait tourner.
     const poseGroup = new THREE.Group();
     poseGroup.add(clone);
     g.add(poseGroup);
@@ -3166,13 +3166,13 @@ function buildImportedModelRig3D(colorHex, o){
       skeletonBones: recolterOsMappes(clone, nom),
       // Les maillages égarés du fichier, retrouvés dans CE clone. La liste des noms vient du cache,
       // relevée une seule fois au décodage (cf. src/stray-meshes-3d.js) : on ne redétecte rien ici.
-      // Leur visibilité est décidée à chaque appel dans ensureObjectRigEntry3D, pas ici — la case de
+      // Leur visibilité est décidée à chaque appel dans ensureObjectRigEntry3D, pas ici, la case de
       // la fiche doit se voir sans reconstruire le rig.
       maillagesEgares: maillagesParNom3D(clone, chargé.egares),
     };
   }
-  // Boîte de remplacement. Deux situations très différentes la produisent — modèle pas encore
-  // décodé, ou fichier introuvable — et elles se distinguent à la couleur : neutre pendant le
+  // Boîte de remplacement. Deux situations très différentes la produisent, modèle pas encore
+  // décodé, ou fichier introuvable, et elles se distinguent à la couleur : neutre pendant le
   // chargement, orangée quand le fichier manque. L'utilisateur voit la différence sans lire un
   // message, et l'Élément reste manipulable dans les deux cas.
   const manquant = !nom || modelState(nom) === 'introuvable';
@@ -3182,13 +3182,13 @@ function buildImportedModelRig3D(colorHex, o){
   });
   g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
   // Une boîte de remplacement n'a pas d'os : `skeletonBones` vide, et non pas absent. La fiche lit
-  // cette carte pour savoir quels curseurs afficher — une boîte n'en montre aucun, ce qui est
+  // cette carte pour savoir quels curseurs afficher, une boîte n'en montre aucun, ce qui est
   // exact, plutôt que les curseurs du modèle attendu qui ne piloteraient rien.
   return { figureGroup: g, skeletonBones: {} };
 }
 
 /**
- * Retrouver, DANS LE CLONE, l'os de chaque emplacement — et mémoriser sa rotation de repos.
+ * Retrouver, DANS LE CLONE, l'os de chaque emplacement, et mémoriser sa rotation de repos.
  *
  * SUR LE CLONE, PAS SUR L'ORIGINAL. Le cache de modèles garde une scène décodée que tous les
  * Éléments partagent ; tourner un os de CETTE scène-là poserait d'un coup tous les exemplaires du
@@ -3196,12 +3196,12 @@ function buildImportedModelRig3D(colorHex, o){
  *
  * LE REPOS EST CAPTURÉ ICI, UNE FOIS, AVANT QUE QUOI QUE CE SOIT NE SOIT APPLIQUÉ. C'est la seule
  * fenêtre où il est certainement intact : dès la première pose, la rotation courante de l'os n'est
- * plus le repos, et le relire donnerait un repos qui dérive à chaque curseur touché — les angles
+ * plus le repos, et le relire donnerait un repos qui dérive à chaque curseur touché, les angles
  * s'accumuleraient au lieu de se remplacer. Cf. src/skeleton-pose.js pour la mesure qui impose de
  * composer avec ce repos plutôt que de l'écraser.
  *
  * La correspondance combine la reconnaissance automatique et ce que l'utilisateur a corrigé, par
- * `fusionner` — exactement comme l'écran de correspondance. Deux chemins qui calculeraient la même
+ * `fusionner`, exactement comme l'écran de correspondance. Deux chemins qui calculeraient la même
  * correspondance de deux façons finiraient par diverger, et c'est un des travers récurrents de ce
  * dépôt.
  */
@@ -3211,14 +3211,14 @@ function recolterOsMappes(clone, nomFichier){
   const carte = correspondancePourModele(nomFichier);
   // RÉSOLUTION PAR NOM, pas par identifiant. La correspondance est calculée sur la scène décodée du
   // cache ; les os manipulés sont ceux du CLONE, qui porte d'autres `uuid`. Le nom est le seul lien
-  // commun — c'est déjà la raison pour laquelle le fichier de correspondances mémorise des noms et
+  // commun, c'est déjà la raison pour laquelle le fichier de correspondances mémorise des noms et
   // non des indices (cf. l'en-tête de skeleton-store.js).
   const parNom = new Map();
   clone.traverse(n => { if (n && n.isBone && !parNom.has(n.name)) parNom.set(n.name, n); });
   // MESURE EN MONDE, prise ICI et une seule fois. L'objet reçu est encore au repos : aucune pose ne
   // lui a été appliquée, c'est le seul instant où `getWorldQuaternion` répond la ROTATION DE REPOS
   // et non l'état courant. Prise plus tard, la même ligne renverrait la pose déjà posée, et chaque
-  // application de pose se composerait sur la précédente — une dérive invisible, qui ne se voit
+  // application de pose se composerait sur la précédente, une dérive invisible, qui ne se voit
   // qu'après plusieurs allers-retours.
   //
   // À quoi elles servent : la rotation de repos en monde ramène un axe du CORPS dans le repère de
@@ -3228,7 +3228,7 @@ function recolterOsMappes(clone, nomFichier){
   // AUCUN `updateWorldMatrix` EXPLICITE, et c'est vérifié plutôt que supposé : `getWorldPosition` et
   // `getWorldQuaternion` appellent eux-mêmes `updateWorldMatrix(true, false)` sur le nœud lu. Une
   // première version en posait un ici ; la campagne de mutation l'a retiré sans qu'aucun test ne
-  // bronche, ce qui a mené à la vérification — la ligne ne faisait rien.
+  // bronche, ce qui a mené à la vérification, la ligne ne faisait rien.
   const qm = new THREE.Quaternion(), pm = new THREE.Vector3();
   SLOTS.forEach(slot => {
     const e = carte[slot];
@@ -3247,7 +3247,7 @@ function recolterOsMappes(clone, nomFichier){
 
 /**
  * Le repère du corps d'un squelette importé, mesuré sur ses os mappés. Rend `null` si les quatre os
- * nécessaires ne sont pas tous reconnus — un corps dont on ignore le haut ou la droite ne peut pas
+ * nécessaires ne sont pas tous reconnus, un corps dont on ignore le haut ou la droite ne peut pas
  * recevoir de geste, et le dire vaut mieux que d'inventer une orientation.
  */
 export function repereDuModeleImporte(osMappes){
@@ -3267,27 +3267,27 @@ export function repereDuModeleImporte(osMappes){
  * POURQUOI PAS LA BOÎTE DU MAILLAGE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Mesuré sur les six fichiers réels : `worker_j.glb` porte DEUX ÉCHELLES — ses douze maillages sont
+ * Mesuré sur les six fichiers réels : `worker_j.glb` porte DEUX ÉCHELLES, ses douze maillages sont
  * à 0,1297, ses cent-neuf os à 1. `hulk_-_sm_bnd.glb`, qui s'affiche correctement, est à 1 partout.
  * C'est la seule différence structurelle entre les deux.
  *
  * Or le code cadrait la caméra sur la boîte du MAILLAGE tout en projetant les points d'articulation
  * depuis les OS. Sur un fichier à échelle unique les deux coïncident et rien ne se voit ; sur
- * worker_j ils divergent d'un facteur 7,7 et l'un des deux est nécessairement hors du cadre —
+ * worker_j ils divergent d'un facteur 7,7 et l'un des deux est nécessairement hors du cadre,
  * symptôme signalé : « on ne voit que ses points d'articulation ».
  *
  * LE DÉFAUT ÉTAIT LE MÉLANGE, pas l'une ou l'autre des deux mesures. Cadrer sur les os supprime la
  * divergence PAR CONSTRUCTION : une seule origine pour le cadrage et pour les poignées.
  *
  * DEUXIÈME RAISON, indépendante de ce bug : les os mappés SONT le corps. Un fichier peut contenir
- * autre chose — worker_j porte un katana dont la boîte est centrée à z ≈ −111, très loin. Cadrer
+ * autre chose, worker_j porte un katana dont la boîte est centrée à z ≈ −111, très loin. Cadrer
  * sur le maillage englobe cet accessoire et rapetisse le personnage ; cadrer sur les os le suit,
  * quoi que l'auteur ait mis autour.
  *
  * AUCUNE MARGE INVENTÉE ICI. La boîte des os est un nuage de POINTS : elle n'a pas l'épaisseur de la
  * chair. `frameCameraToBox` applique déjà sa propre marge (1,22), mesurée en son temps ; on s'appuie
  * dessus plutôt que d'ajouter un second facteur qu'il faudrait justifier. Si le cadrage se révèle
- * trop serré à l'usage, la marge se mesurera alors — elle ne se choisira pas.
+ * trop serré à l'usage, la marge se mesurera alors, elle ne se choisira pas.
  *
  * Rend `null` s'il y a moins de deux os : une boîte réduite à un point ne cadre rien, et l'appelant
  * doit alors se replier sur la boîte du maillage (chaise importée, squelette non reconnu).
@@ -3303,7 +3303,7 @@ export function boiteDesOsMappes3D(osMappes){
   return boite;
 }
 
-/** Les rotations de repos en monde, rangées par emplacement — l'entrée de poseOsDepuisPosePersonnage. */
+/** Les rotations de repos en monde, rangées par emplacement, l'entrée de poseOsDepuisPosePersonnage. */
 export function reposMondeParEmplacement(osMappes){
   const sortie = {};
   for (const [slot, e] of Object.entries(osMappes || {})){
@@ -3315,7 +3315,7 @@ export function reposMondeParEmplacement(osMappes){
 /**
  * Les fichiers qu'un Élément peut PORTER comme figure : ceux dont le squelette est reconnu.
  *
- * Un modèle sans squelette reconnu n'est pas proposé — on ne peut pas poser ce qu'on ne sait pas
+ * Un modèle sans squelette reconnu n'est pas proposé, on ne peut pas poser ce qu'on ne sait pas
  * lire, et une figure que les curseurs ne pilotent pas serait un mensonge. C'est la MÊME condition
  * que le champ Position et que le crayon de l'aperçu : trois contrôles, une seule règle.
  */
@@ -3328,21 +3328,21 @@ export function figuresPosables(){
  * Une pose de la bibliothèque, traduite pour un fichier importé donné. Rend `skeletonPose3d`.
  *
  * MESURÉ SUR LA SCÈNE DÉCODÉE, PAS SUR UN CLONE POSÉ. Le cache garde le modèle tel qu'il est sorti
- * du fichier ; les clones seuls reçoivent des poses. C'est donc là — et seulement là — qu'on lit un
+ * du fichier; les clones seuls reçoivent des poses. C'est donc là, et seulement là, qu'on lit un
  * repos qui est vraiment un repos.
  *
  * DEUX ÉCHECS DIFFÉRENTS, DEUX VALEURS DIFFÉRENTES. `null` veut dire « ce modèle ne peut pas
- * recevoir de pose » — fichier pas encore décodé, ou bassin/tête/clavicules pas tous reconnus, donc
+ * recevoir de pose », fichier pas encore décodé, ou bassin/tête/clavicules pas tous reconnus, donc
  * pas de repère de corps dérivable. Un objet VIDE veut dire « la pose s'applique, mais elle ne
  * bouge rien ». L'interface a besoin de distinguer les deux : le premier grise le sélecteur, le
  * second est un résultat légitime.
  */
 /**
- * Couche — ou redresse — un modèle importé, en tournant son groupe de pose.
+ * Couche, ou redresse, un modèle importé, en tournant son groupe de pose.
  *
  * ⚠️ LE REPÈRE EST MESURÉ SUR LA SCÈNE DU CACHE, PAS SUR LE CLONE AFFICHÉ. Le clone porte déjà la
  * bascule quand elle est active : y relire le repère rendrait un corps DÉJÀ couché, et la rotation
- * se composerait une seconde fois à chaque appel — le modèle tournerait sur lui-même image après
+ * se composerait une seconde fois à chaque appel, le modèle tournerait sur lui-même image après
  * image. La scène du cache, elle, n'est jamais posée ni tournée : c'est la seule référence stable.
  *
  * ÉCRIT À CHAQUE APPEL, dans les deux sens. Ne poser le quaternion que lorsqu'on couche laisserait
@@ -3365,7 +3365,7 @@ export function appliquerAllonge3D(groupe, nomFichier, couche){
  *
  * Extrait de `poseOsPourModeleImporte`, qui commençait par exactement ces trois lignes : deux
  * chemins vers le même repère auraient fini par ne plus rendre le même. `null` couvre indistinctement
- * « pas encore décodé », « fichier introuvable » et « os du tronc non reconnus » — l'appelant n'a
+ * « pas encore décodé », « fichier introuvable » et « os du tronc non reconnus », l'appelant n'a
  * rien à faire de la nuance, il n'a de toute façon pas de repère.
  */
 export function repereDuCorpsPourFichier3D(nomFichier){
@@ -3394,7 +3394,7 @@ export function poseOsPourModeleImporte(nomFichier, joints){
  * UN SEUL ENDROIT CALCULE CETTE CARTE, et c'est exprès. Le rig en a besoin pour savoir quel os
  * tourner ; la fiche en a besoin pour savoir quels curseurs afficher. Les laisser la recalculer
  * chacun de leur côté, à partir des mêmes ingrédients, est très exactement la panne qui revient le
- * plus souvent dans ce dépôt — deux calculs d'une même valeur qui finissent par diverger. Ici la
+ * plus souvent dans ce dépôt, deux calculs d'une même valeur qui finissent par diverger. Ici la
  * divergence serait invisible et cruelle : un curseur intitulé « Coude gauche » piloterait un autre
  * os que celui que l'écran de correspondance montre.
  */
@@ -3404,7 +3404,7 @@ export function poseOsPourModeleImporte(nomFichier, joints){
  * ⚠️ UNE SEULE DÉFINITION, ET C'EST LE POINT. La condition vivait dans `buildSkeletonPoseFieldUI`
  * (modals.js), qui l'utilisait pour deux choses à la fois : afficher le sélecteur de pose et
  * afficher le crayon qui ouvre l'Éditeur. Son commentaire disait déjà pourquoi elles ne devaient
- * pas être écrites séparément — « un crayon devant un modèle sans articulations ouvrirait un
+ * pas être écrites séparément, « un crayon devant un modèle sans articulations ouvrirait un
  * éditeur dont Appliquer ne pourrait rien appliquer ». Le raccourci clavier est un TROISIÈME
  * appelant : le recopier une fois de plus aurait fait exactement ce que ce commentaire redoutait.
  *
@@ -3428,14 +3428,14 @@ export function correspondancePourModele(nomFichier){
 /**
  * Applique une pose à un squelette importé.
  *
- * AUCUNE REMISE À ZÉRO, contrairement à `applyAnimalJointAngles` juste au-dessus — la différence
+ * AUCUNE REMISE À ZÉRO, contrairement à `applyAnimalJointAngles` juste au-dessus, la différence
  * est le cœur de l'étape. Un pivot d'Animal naît à (0,0,0) ; un os importé naît à son repos, et
  * 106 des 108 os mappés des six fichiers réels ont un repos NON identitaire. Remettre à zéro
  * effondrerait le personnage.
  *
  * Chaque os est réécrit à CHAQUE appel, y compris ceux que la pose ne mentionne pas : c'est ce qui
  * fait revenir au repos un os dont on vient de ramener le curseur à zéro. Repartir du repos mémorisé
- * plutôt que de la rotation courante rend l'opération idempotente — la rejouer dix fois donne le
+ * plutôt que de la rotation courante rend l'opération idempotente, la rejouer dix fois donne le
  * même corps que la jouer une fois.
  */
 export function applySkeletonPose(osMappes, pose){
@@ -3492,12 +3492,12 @@ export function buildPropRig3D(objType, colorHex, o){
     // TOUT CE QUE LE CONSTRUCTEUR REND EST CONSERVÉ, et ce n'est pas un détail de style.
     //
     // Ces quatre champs étaient recopiés UN À UN. Le jour où buildImportedModelRig3D s'est mis à
-    // rendre `maillagesEgares` — la liste des maillages à masquer —, l'énumération ne l'a pas
+    // rendre `maillagesEgares`, la liste des maillages à masquer, l'énumération ne l'a pas
     // suivi : le champ mourait ici, en silence. La détection était juste, le masquage écrit et
     // testé, et rien ne se passait à l'écran. Trouvé par sonde, après deux hypothèses fausses.
     //
     // C'est la deuxième famille de défauts récurrents de ce dépôt : une énumération tenue à la
-    // main qui cesse d'être complète. On l'enlève plutôt que d'y ajouter une ligne — sinon le
+    // main qui cesse d'être complète. On l'enlève plutôt que d'y ajouter une ligne, sinon le
     // prochain champ retombera exactement dans le même trou.
     //
     // Les deux champs ajoutés ici n'appartiennent pas au rig mais à l'ENTRÉE DE CACHE : ils
@@ -3521,7 +3521,7 @@ export function buildPropRig3D(objType, colorHex, o){
 // on the pivot, and THREE.js propagates the transform to its children.
 
 // ════════════════════════════════════════════════════════════
-// 3D — ANIMAL RIGS
+// 3D : ANIMAL RIGS
 // ════════════════════════════════════════════════════════════
 export function applyAnimalJointAngles(rigJoints, angleMap){
   if (!rigJoints) return;
@@ -3544,7 +3544,7 @@ export const objectRigCache3D = new Map(); // object id -> { figureGroup, objTyp
 // Caches a figure kind ('persona' or 'objet3d') and a given id, hiding all other
 // figures from both caches: necessary because both pipelines share the same 3D scene.
 export function showOnlyFigure3D(kind, id){
-  // Fix 63 — on masque D'ABORD tout ce que la scène partagée contient, quoi que ce soit.
+  // Fix 63 : on masque D'ABORD tout ce que la scène partagée contient, quoi que ce soit.
   //
   // Cette fonction n'énumérait que les trois caches de rigs. Or personaScene3D est PARTAGÉE avec le
   // rendu des Cases, qui y ajoute aussi les tracés, les dalles, les murs fusionnés, les jonctions et
@@ -3555,7 +3555,7 @@ export function showOnlyFigure3D(kind, id){
   // quatrième occasion de diverger, et c'est justement d'un oubli d'énumération que venait le bug.
   // Tout nouveau type de maillage ajouté à la scène sera masqué sans qu'on ait à y penser.
   //
-  // Les lumières sont épargnées — les masquer laisserait un aperçu noir.
+  // Les lumières sont épargnées, les masquer laisserait un aperçu noir.
   personaScene3D.children.forEach(child => {
     if (!child.isLight) child.visible = false;
   });
@@ -3573,10 +3573,10 @@ export const wallRenderRigCache3D = new Map(); // wall id -> { figureGroup, fing
 
 // Builds (or retrieves from cache) the COMBINED 3D rig of a Wall and its magnetized Wall-Opening
 // Elements. Unlike objectRigCache3D (which renders EACH object separately, with its own
-// camera framing — see renderObjectToCanvas3D), the magnetized Elements here become REAL
+// camera framing, see renderObjectToCanvas3D), the magnetized Elements here become REAL
 // Three.js children of the Wall's mesh (or of the panel chosen for a corner Wall): they are rendered with
 // EXACTLY the same camera/framing as the Wall, so they stick to it in a geometrically
-// exact way — no more risk of residual detachment after several successive Wall rotations.
+// exact way, no more risk of residual detachment after several successive Wall rotations.
 // This combined rig is used ONLY for final rendering: the bounding/magnetization calculations themselves
 // (wallOpeningRect, wallChildFraction, etc.) still use the Wall's rig ALONE (see
 // ensureObjectRigEntry3D), so its reference box doesn't widen along with that of the Elements
@@ -3587,12 +3587,12 @@ export const wallRenderRigCache3D = new Map(); // wall id -> { figureGroup, fing
 // wallOpeningRect lived in app.js (today events.js, downstream of rig3d.js) whereas
 // ensureWallRenderEntry3D below (wallOpeningRect/wallPanAlongSign) depends on them directly on the
 // hot path of ANY rendering of a Wall carrying a magnetized Element (door, window, stairs, bay
-// window...) — a latent ReferenceError as soon as such a Wall had to be rendered in 3D. Moved back here;
+// window...), a latent ReferenceError as soon as such a Wall had to be rendered in 3D. Moved back here;
 // events.js now imports them from this module instead of defining them locally.
 
 // Same principle as getWallPanAnchor2D (which stayed in events.js, its only caller), but returns the
 // full rectangle (not just its center) occupied by the Wall (or by the panel chosen for a corner
-// Wall), in page pixels — necessary to bound the movement of a magnetized Element to the
+// Wall), in page pixels, necessary to bound the movement of a magnetized Element to the
 // ACTUALLY RENDERED size of the Wall/panel.
 export function getWallPanRect2D(wall, pan){
   if (typeof THREE === 'undefined') return null;
@@ -3659,22 +3659,22 @@ export function wallOpeningRect(obj, wall){
   return { x: base.x + mx, y: base.y + my, w: Math.max(0, base.w - 2 * mx), h: Math.max(0, base.h - 2 * my) };
 }
 
-// Fix 25 — everything that determines a Wall-Opening child's GEOMETRY (as opposed to merely where
+// Fix 25 : everything that determines a Wall-Opening child's GEOMETRY (as opposed to merely where
 // it sits on the Wall). Two children sharing this key can share the same built rig, so dragging one
-// along its Wall — which only changes its position — no longer forces a rebuild.
-// Exported for unit tests (tests/rig3d.test.mjs) — unchanged behavior.
+// along its Wall, which only changes its position, no longer forces a rebuild.
+// Exported for unit tests (tests/rig3d.test.mjs), unchanged behavior.
 export function wallChildShapeKey3D(child){
   return [child.objType, child.color || FIXED_COLOR, child.w, child.h,
     child.doorState || '', child.doorAngle != null ? child.doorAngle : '',
     child.windowState || '', child.windowAngle != null ? child.windowAngle : ''].join(':');
 }
 
-// Fix 25 — releases the GPU buffers of a discarded rig. Geometries ONLY: materials come from the
+// Fix 25 : releases the GPU buffers of a discarded rig. Geometries ONLY: materials come from the
 // process-wide caches (ensurePropMatsByType3D / ensureSharedPropMats3D) and are shared with every
 // other rig, so disposing them here would blank out unrelated Elements.
 // Several meshes routinely share one geometry instance (cf. the joint rows in buildWallRig3D), hence
 // the Set guarding against disposing the same buffer twice.
-// Exported for unit tests (tests/rig3d.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/rig3d.test.mjs), unchanged behavior.
 export function disposeGroupGeometries3D(root){
   if (!root) return;
   const seen = new Set();
@@ -3708,7 +3708,7 @@ export function ensureWallRenderEntry3D(wall, children){
     const thick = heightUnits * 0.06;
     const builder = PROP_RIG_BUILDERS_3D[wall.objType] || buildWallRig3D;
     // Preliminary pass (#83, "Traversant" property): first compute the placement (along/localY/
-    // dimensions) of EACH child — including its own 3D node — BEFORE building the Wall's mesh,
+    // dimensions) of EACH child, including its own 3D node. BEFORE building the Wall's mesh,
     // so a real hole can be cut into it (see buildWallPanelGeometry3D) at the exact location
     // of the Traversant Elements (TRAVERSANT_TYPES) it carries. The mesh is thus no longer a
     // solid box systematically covered by the Wall-Opening's 3D Model, but genuinely open.
@@ -3724,7 +3724,7 @@ export function ensureWallRenderEntry3D(wall, children){
         if (prev) {
           // Stale rig: detach it before releasing its buffers. Detaching matters even when the Wall
           // group is about to be rebuilt anyway, because it may instead be REUSED below (wallKey
-          // unchanged) — the orphan would then stay in the scene with a disposed geometry.
+          // unchanged), the orphan would then stay in the scene with a disposed geometry.
           if (prev.node.parent) prev.node.parent.remove(prev.node);
           disposeGroupGeometries3D(prev.node);
         }
@@ -3742,7 +3742,7 @@ export function ensureWallRenderEntry3D(wall, children){
       // the Wall. A UNIFORM scale (computed from height alone) had two flaws: (1) it
       // totally ignored child.w/h, so resizing a magnetized Wall-Opening had no visual
       // effect; (2) even once fixed to follow child.h, the actually rendered width remained
-      // stuck to CHILD_DESIGN_SIZE_3D's fixed ratio, which doesn't necessarily match child.w/h —
+      // stuck to CHILD_DESIGN_SIZE_3D's fixed ratio, which doesn't necessarily match child.w/h,
       // misaligning the selection border (based on child.w/h) from the actually displayed 3D Model,
       // and making the Wall-Opening nearly impossible to re-select/drag after a resize.
       const scaleX = (child.w ? child.w / WALL_PX_PER_UNIT_3D : heightUnits * 0.82) / design.w;
@@ -3756,17 +3756,17 @@ export function ensureWallRenderEntry3D(wall, children){
       // its size changed (scroll wheel) even while keeping its center fixed on screen, since the
       // left edge moves when the width changes around a fixed center. The reference rectangle
       // (wallOpeningRect) stays unchanged by a resize, so this center fraction, by contrast,
-      // doesn't move as long as the displayed center doesn't move — exactly the intended behavior.
+      // doesn't move as long as the displayed center doesn't move, exactly the intended behavior.
       const rect = wallOpeningRect(child, wall);
       const childWUnits = design.w * scaleX, childHUnits = design.h * scaleY;
       const centerFracX = rect.w > 0 ? (child.x + child.w / 2 - rect.x) / rect.w : 0.5;
       // Vertical (height) axis: the screen has its origin at the top (y grows downward) whereas
-      // the Wall's height has its origin at the ground (see buildWallRig3D, group.position.y = h/2) — hence
+      // the Wall's height has its origin at the ground (see buildWallRig3D, group.position.y = h/2), hence
       // the (1 - ...) inversion below to convert the bottom edge (screen) into a height from the ground.
       const bottomFracYScreen = rect.h > 0 ? clamp((child.y + child.h - rect.y) / rect.h, 0, 1) : 1;
       // wallYFrac (0 = ground, 1 = max height): introduced to offer the full 3D vertical range
       // independently of the obj.h / wall.h ratio. If absent (old Elements), fall back to the
-      // bottomFracYScreen formula — a range limited to (1 - fit) = ~18% but compatible with
+      // bottomFracYScreen formula, a range limited to (1 - fit) = ~18% but compatible with
       // existing data.
       const effectiveMaxY = Math.max(0, heightUnits - childHUnits);
       const bottomWorldY = (child.wallYFrac != null)
@@ -3775,12 +3775,12 @@ export function ensureWallRenderEntry3D(wall, children){
       const half = childWUnits / 2;
       // Direction correction (see wallPanAlongSign): the screen fraction (0 = projected left edge, 1 =
       // right edge) must always translate into a RENDERED movement in the same direction as the
-      // drag-and-drop (see mousemove, which only manipulates obj.x/y in page coordinates) — otherwise
+      // drag-and-drop (see mousemove, which only manipulates obj.x/y in page coordinates), otherwise
       // the Element appears to slide backwards as soon as the panel's local axis projects in the
       // opposite direction from the screen (typically the Second Panel of a corner Wall depending on its rotation).
       const pan = isB ? 'B' : (wall.objType === 'mur_coin' ? 'A' : null);
       // wallAlongFrac (0 = left edge, 1 = right edge): horizontal fraction along the Wall,
-      // decoupled from obj.x exactly as wallYFrac is from obj.y — offers the full
+      // decoupled from obj.x exactly as wallYFrac is from obj.y, offers the full
       // horizontal range [0, 1] even if obj.w ≥ wall.w (a case where centerFracX would be stuck). Present
       // only on simple Walls (see positionWallOpeningOnWall + drag handler); falls back to
       // centerFracX for corner Walls and old Elements (wallAlongFrac == null).
@@ -3790,7 +3790,7 @@ export function ensureWallRenderEntry3D(wall, children){
         : clamp(centerFracX, 0, 1);
       // wallPanAlongSign (ortho cam) only for the centerFracX path (old Elements /
       // corner wall): wallAlongFrac is stored in local space with the sign of the ACTUAL camera
-      // (perspSign) already corrected on the drag-handler side — no additional flip here.
+      // (perspSign) already corrected on the drag-handler side, no additional flip here.
       if (!_useWallAlongFrac && wallPanAlongSign(wall, pan) < 0) alongFrac = 1 - alongFrac;
       let along = alongFrac * lenUnits;
       along = (lenUnits > childWUnits) ? clamp(along, half, lenUnits - half) : lenUnits / 2;
@@ -3800,7 +3800,7 @@ export function ensureWallRenderEntry3D(wall, children){
     // "Traversant" holes (#83) per panel: rectangle {along, w, h, y} in the same along/height frame
     // as above (y = height from the ground, NOT the localY already recentered on the Wall's origin).
     // Panel B of a corner Wall: its geometry is built "flat" and then rotated 90° (see
-    // buildCornerWallRig3D) — which reverses the direction of the along axis; this is compensated here by passing
+    // buildCornerWallRig3D), which reverses the direction of the along axis; this is compensated here by passing
     // (lenUnits - along) so the cut hole correctly falls under the Element that creates it.
     const holesA = [], holesB = [];
     placements.forEach(p => {
@@ -3811,7 +3811,7 @@ export function ensureWallRenderEntry3D(wall, children){
     });
     // Fix 25: the Wall's own geometry only depends on its type/colour/dimensions and on the
     // "Traversant" holes cut into it. Serialized as a key so the whole group can be reused when it
-    // comes out identical — which is the case whenever a NON-Traversant child is dragged, and
+    // comes out identical, which is the case whenever a NON-Traversant child is dragged, and
     // whenever the Wall itself is untouched. A Traversant child (door, window, bay window) does move
     // its hole, so there the group is genuinely rebuilt: the hole must follow the Element.
     const _holeKey = hs => hs.map(h => [h.along.toFixed(4), h.w.toFixed(4), h.h.toFixed(4), h.y.toFixed(4)].join(',')).join(';');
@@ -3876,7 +3876,7 @@ export function disposeWallRenderRig3D(id){
   const entry = wallRenderRigCache3D.get(id);
   if (!entry) return;
   if (personaScene3D) personaScene3D.remove(entry.figureGroup);
-  // Fix 25: release the geometries too — the group holds both the Wall's own meshes and the rigs of
+  // Fix 25: release the geometries too, the group holds both the Wall's own meshes and the rigs of
   // the Wall-Openings embedded in it, so dropping the reference alone leaked every one of them.
   disposeGroupGeometries3D(entry.figureGroup);
   if (entry.childRigs) entry.childRigs.forEach(({ node }) => disposeGroupGeometries3D(node));
@@ -3885,7 +3885,7 @@ export function disposeWallRenderRig3D(id){
 
 
 // ════════════════════════════════════════════════════════════
-// 3D — OBJECT RIGS
+// 3D : OBJECT RIGS
 // ════════════════════════════════════════════════════════════
 export function ensureObjectRigEntry3D(o){
   ensurePersonaScene3D();
@@ -3912,10 +3912,10 @@ export function ensureObjectRigEntry3D(o){
   );
   // Un modèle importé articulé (SkinnedMesh) se reconstruit AUSSI quand la hauteur cible change,
   // et pas seulement à la création. En théorie, placeRigCentered3D (qui remet figureGroup.scale à
-  // (1,1,1) puis réapplique le facteur voulu à CHAQUE rendu) devrait suffire sans reclonage — c'est
+  // (1,1,1) puis réapplique le facteur voulu à CHAQUE rendu) devrait suffire sans reclonage, c'est
   // ce qui se passe pour tout rig rigide (chaise, voiture…). Mais pour un modèle importé posé une
   // fois (import) puis redimensionné ensuite depuis sa modale, seule la Case orange (2D) suivait le
-  // nouveau pourcentage ; le rendu 3D restait figé à sa taille de création — cf. retours
+  // nouveau pourcentage; le rendu 3D restait figé à sa taille de création, cf. retours
   // utilisateur. Un reclonage (cloneSkinned) à chaque changement de hauteur cible est le remède sûr,
   // au prix d'un coût négligeable (un redimensionnement est un geste rare, pas un événement par
   // image).
@@ -3931,15 +3931,15 @@ export function ensureObjectRigEntry3D(o){
   if (entry.animalJoints) {
     applyAnimalJointAngles(entry.animalJoints, o.animalJoints3d || {});
   }
-  // Idem pour un squelette importé — à chaque appel, pour que le curseur se voie sans reconstruire
+  // Idem pour un squelette importé : à chaque appel, pour que le curseur se voie sans reconstruire
   // le rig. Le reclonage reste réservé aux changements de fichier, d'état ou de hauteur : poser un
   // os ne justifie pas de re-décoder un modèle de plusieurs mégaoctets.
   if (entry.skeletonBones) {
     applySkeletonPose(entry.skeletonBones, o.skeletonPose3d || {});
   }
   // « Allongé » est un geste du CORPS ENTIER, pas une articulation : le pont vers les os ne le
-  // transporte pas (cf. rotationAllongee3D). On le lit donc sur l'INTENTION — la pose de corps que
-  // l'Élément porte —, comme le Personnage intégré le lit sur la sienne. Aucun champ persisté
+  // transporte pas (cf. rotationAllongee3D). On le lit donc sur l'INTENTION, la pose de corps que
+  // l'Élément porte, comme le Personnage intégré le lit sur la sienne. Aucun champ persisté
   // nouveau : `lieFlat` voyage déjà dans `joints3d` ou dans la pose de la bibliothèque.
   if (entry.poseGroup) {
     appliquerAllonge3D(entry.poseGroup, o && o.modelFile, !!(getEffectiveJoints(o) || {}).lieFlat);
@@ -3968,6 +3968,6 @@ export function disposeObjectRig3D(id){
 
 // ---------- Single 3D scene per Panel, all Elements (Phase 2, #79 step 2/2) ----------
 // Returns, in their ORIGINAL ORDER (page.objects), all 'perso'/'objet3d' Elements actually
-// owned by this panel — excluding Wall-Opening Elements still magnetized to a present Wall: these
+// owned by this panel, excluding Wall-Opening Elements still magnetized to a present Wall: these
 // remain rendered as embedded children of the Wall's rig (see ensureWallRenderEntry3D, unchanged since
 // Phase 1), not as independent members of the combined scene.

@@ -1,5 +1,5 @@
 /**
- * tests/model-store.test.mjs — le magasin de modèles importés.
+ * tests/model-store.test.mjs, le magasin de modèles importés.
  *
  * Deux choses s'y jouent, et une seule se voit :
  *
@@ -12,7 +12,7 @@
  *   l'usage : un disque non monté effacerait un placement patiemment réglé.
  *
  * CE QU'ON N'AFFIRME PAS : que l'écriture sur disque fonctionne. Elle passe par le process Electron
- * (cf. main.js), simulé ici. On vérifie ce que le renderer DÉCIDE — ce qui est justement la part
+ * (cf. main.js), simulé ici. On vérifie ce que le renderer DÉCIDE, ce qui est justement la part
  * qu'on lui a laissée.
  */
 import './helpers/dom-stub.mjs';
@@ -54,7 +54,7 @@ beforeEach(() => setModelBridge(null));
 // 1. Le nommage
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('sanitizeModelName — un nom de fichier, et rien d\'autre', () => {
+describe('sanitizeModelName : un nom de fichier, et rien d\'autre', () => {
   test('RÉGRESSION : un chemin relatif ne peut pas sortir du dossier', () => {
     // La garde la plus importante du fichier. Le nom vient d'un fichier choisi par l'utilisateur ;
     // s'il portait un chemin, l'écriture atterrirait ailleurs sur le disque.
@@ -83,7 +83,7 @@ describe('sanitizeModelName — un nom de fichier, et rien d\'autre', () => {
   });
 });
 
-describe('resolveModelName — ne jamais écraser un modèle existant', () => {
+describe('resolveModelName : ne jamais écraser un modèle existant', () => {
   test('un nom libre est rendu tel quel', () => {
     assert.equal(resolveModelName('chaise.glb', ['table.glb']), 'chaise.glb');
   });
@@ -95,7 +95,7 @@ describe('resolveModelName — ne jamais écraser un modèle existant', () => {
 
   test('RÉGRESSION : la comparaison ignore la casse', () => {
     // Windows ne distingue pas Chaise.glb de chaise.glb. Rendre ce nom « libre » écraserait le
-    // fichier existant — le contraire exact de ce que cette fonction promet.
+    // fichier existant, le contraire exact de ce que cette fonction promet.
     assert.equal(resolveModelName('chaise.glb', ['CHAISE.GLB']), 'chaise (2).glb');
   });
 
@@ -113,7 +113,7 @@ describe('resolveModelName — ne jamais écraser un modèle existant', () => {
 // 2. L'import
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('importModel — ce qui est écrit, et ce qui ne l\'est pas', () => {
+describe('importModel : ce qui est écrit, et ce qui ne l\'est pas', () => {
   test('un fichier choisi est rangé sous un nom propre', async () => {
     const { écrits } = pontSimulé({ choisi: { name: 'chaise.glb', data: octets(1, 2, 3) } });
     const r = await importModel();
@@ -130,7 +130,7 @@ describe('importModel — ce qui est écrit, et ce qui ne l\'est pas', () => {
   });
 
   test('RÉGRESSION : un fichier vide est refusé plutôt qu\'écrit', async () => {
-    // Un .glb de zéro octet s'écrirait sans erreur et ne se chargerait jamais — l'utilisateur
+    // Un .glb de zéro octet s'écrirait sans erreur et ne se chargerait jamais, l'utilisateur
     // verrait un Élément de remplacement sans comprendre, alors que le problème est à l'import.
     const { écrits } = pontSimulé({ choisi: { name: 'vide.glb', data: octets() } });
     const r = await importModel();
@@ -140,7 +140,7 @@ describe('importModel — ce qui est écrit, et ce qui ne l\'est pas', () => {
   });
 
   test('réimporter le MÊME fichier ne crée pas de doublon', async () => {
-    // Sinon trois imports du même modèle donnent chaise.glb, chaise (2).glb, chaise (3).glb — trois
+    // Sinon trois imports du même modèle donnent chaise.glb, chaise (2).glb, chaise (3).glb, trois
     // fois le même contenu sur le disque, et trois entrées indiscernables dans la liste.
     const contenu = octets(9, 8, 7);
     const { écrits } = pontSimulé({
@@ -187,18 +187,18 @@ describe('importModel — ce qui est écrit, et ce qui ne l\'est pas', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. La lecture — et le refus de supprimer
+// 3. La lecture, et le refus de supprimer
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('readModel — un modèle introuvable n\'est pas une raison de détruire', () => {
+describe('readModel : un modèle introuvable n\'est pas une raison de détruire', () => {
   test('un modèle présent rend ses octets', async () => {
     pontSimulé({ fichiers: { 'chaise.glb': octets(4, 5, 6) } });
     assert.deepEqual(await readModel('chaise.glb'), octets(4, 5, 6));
   });
 
   test('RÉGRESSION : un modèle absent rend null, et rien d\'autre', async () => {
-    // `null` veut dire « affiche une boîte de remplacement ». Tout autre contrat — lever, ou rendre
-    // un drapeau de suppression — mettrait l'appelant en position de détruire l'Élément sur une
+    // `null` veut dire « affiche une boîte de remplacement ». Tout autre contrat, lever, ou rendre
+    // un drapeau de suppression, mettrait l'appelant en position de détruire l'Élément sur une
     // panne passagère : disque externe non monté, fichier verrouillé par un antivirus.
     // Cf. docs/persisted-data.md § 5.
     pontSimulé({ fichiers: {} });
@@ -227,7 +227,7 @@ describe('memeContenu', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Le pont Electron — ce que le renderer ne peut pas garantir seul
+// 4. Le pont Electron, ce que le renderer ne peut pas garantir seul
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
@@ -266,10 +266,10 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
 
   test('l\'exception à la règle n°1 est écrite, pas seulement commise', () => {
     // Toucher main.js pour une fonctionnalité contredit la règle n°1. Le faire est défendable ; le
-    // faire en silence ne l'est pas — la prochaine personne y verrait un précédent sans raison.
+    // faire en silence ne l'est pas, la prochaine personne y verrait un précédent sans raison.
     // Les deux noms sont COMPOSÉS plutôt qu'écrits : docs.test.mjs exige que le code ne renvoie
-    // qu'à la version anglaise, et citer la française en toutes lettres — même dans un test qui
-    // vérifie sa présence — fait tomber cette règle. Constaté au premier lancement.
+    // qu'à la version anglaise, et citer la française en toutes lettres, même dans un test qui
+    // vérifie sa présence, fait tomber cette règle. Constaté au premier lancement.
     ['', '.fr'].map(suffixe => `docs/architecture${suffixe}.md`).forEach(f => {
       const doc = readFileSync(join(RACINE, f), 'utf8');
       assert.match(doc, /models:|Modeles|model-store/,
@@ -279,7 +279,7 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — dix fautes réintroduites, dans src/, dans main.js et dans preload.js.
+ * JOURNAL DE MUTATION : dix fautes réintroduites, dans src/, dans main.js et dans preload.js.
  *
  *   S1  le retrait du chemin supprimé de sanitizeModelName (traversée de dossier)   ROUGE (5)
  *   S2  les points de tête conservés (« .. » passe)                                 ROUGE
@@ -292,7 +292,7 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
  *   S9  les modèles rangés dans les données d'application, hors dossier de Projets  ROUGE
  *   S10 une méthode retirée de preload.js                                           ROUGE
  *
- * S1 ET S7 SONT LA MÊME FAUTE, vue des deux côtés — et c'est voulu. L'assainissement de src/ est
+ * S1 ET S7 SONT LA MÊME FAUTE, vue des deux côtés, et c'est voulu. L'assainissement de src/ est
  * une commodité pour l'utilisateur ; la garde de main.js est ce qui protège le disque. Chacune est
  * épinglée séparément, parce qu'un défaut dans src/ ne doit pas pouvoir écrire hors du dossier des
  * modèles, et parce que la leçon de la campagne précédente est qu'une correction en profondeur
@@ -312,10 +312,10 @@ import { MODEL_OBJ_TYPE, isImportedModel, createModelElement } from '../src/mode
 const CASE_TEST = { id: 'c1', type: 'panel', x: 100, y: 50, w: 400, h: 300 };
 const PAGE_TEST = { w: 1240, h: 1754 };
 
-describe('La forme persistée — un modèle importé est un objet3d comme les autres', () => {
+describe('La forme persistée : un modèle importé est un objet3d comme les autres', () => {
   test('RÉGRESSION : le discriminant est bien celui que le format a figé', () => {
     // `type: 'objet3d'` ET `objType: 'modele'`. Ce couple est ce qui fait hériter le modèle de tout
-    // l'existant — placement, aimantation au Sol, coordonnées monde, panneau latéral. Choisir un
+    // l'existant, placement, aimantation au Sol, coordonnées monde, panneau latéral. Choisir un
     // `type` nouveau aurait obligé à recâbler chacun de ces chemins.
     const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'chaise.glb' });
     assert.equal(el.type, 'objet3d');
@@ -333,7 +333,7 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
 
   test('il a tout ce qu\'un objet3d ordinaire doit avoir', () => {
     // La liste vient d'addObjectToPanel. Un champ manquant ne lève pas : il produit un Élément qui
-    // se déplace mal, ne s'aimante pas, ou disparaît du rendu 3D — trois symptômes sans rapport
+    // se déplace mal, ne s'aimante pas, ou disparaît du rendu 3D, trois symptômes sans rapport
     // apparent avec l'import.
     const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb' });
     ['id', 'x', 'y', 'w', 'h', 'baseW', 'baseH', 'z', 'rotX', 'rotY', 'rotZ',
@@ -351,7 +351,7 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
   });
 
   test('une hauteur absurde retombe sur la valeur par défaut', () => {
-    // Zéro ou NaN produirait un Élément de hauteur nulle — invisible, et impossible à rattraper au
+    // Zéro ou NaN produirait un Élément de hauteur nulle, invisible, et impossible à rattraper au
     // clic puisqu'il n'aurait aucune surface.
     [0, -3, NaN, undefined, 'grand'].forEach(v => {
       const el = createModelElement({
@@ -379,7 +379,7 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
 });
 
 /**
- * JOURNAL DE MUTATION — étape 3, huit fautes de plus (les dix de l'étape 2 restent valables).
+ * JOURNAL DE MUTATION : étape 3, huit fautes de plus (les dix de l'étape 2 restent valables).
  *
  *   T1  le discriminant renommé « model3d »                                      ROUGE (5)
  *   T2  le champ `modelFile` retiré de l'Élément                                 ROUGE
@@ -391,7 +391,7 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
  *   T8  le libellé de « modele » retiré de OBJECT_TYPE_LABELS                    ROUGE (après ajout)
  *
  * T8 A ÉCHAPPÉ D'ABORD, et le trou n'était pas le mien. Retirer un libellé ne faisait tomber aucun
- * test — pour AUCUN des trente-cinq types, pas seulement pour le nouveau. Trois tables parallèles
+ * test, pour AUCUN des trente-cinq types, pas seulement pour le nouveau. Trois tables parallèles
  * (hauteurs, libellés, émojis) et rien qui exigeait qu'elles s'accordent : c'est la deuxième classe
  * de bug récurrente du dépôt. Le contrôle ajouté dans rig-geometry.test.mjs couvre désormais les
  * trente-cinq.
@@ -403,12 +403,12 @@ describe('La forme persistée — un modèle importé est un objet3d comme les a
 
 describe('L\'empreinte 2D d\'un modèle importé suit sa silhouette', () => {
   // Elle était FORCÉE CARRÉE (`w = h`), sur ce commentaire : « 1:1 tant qu'on n'a pas lu le
-  // fichier ». Le commentaire était périmé — le fichier EST décodé à cet instant, c'est de lui que
+  // fichier ». Le commentaire était périmé, le fichier EST décodé à cet instant, c'est de lui que
   // vient `realHeightM`, et sa largeur se mesure au même endroit (ratioLargeurModele3D). Un
   // Personnage reçoit depuis toujours `w = h / 1.6`.
   //
   // Mesuré sur les fichiers réels : worker_j 0,86, anime_girl1 0,49, Personnage intégré 0,63. Une
-  // boîte carrée était donc jusqu'à deux fois trop large — d'où une sélection qui déborde très au
+  // boîte carrée était donc jusqu'à deux fois trop large, d'où une sélection qui déborde très au
   // delà de ce qu'on voit.
   const creer = (extra) => createModelElement(
     Object.assign({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'x.glb', realHeightM: 1.75 }, extra));

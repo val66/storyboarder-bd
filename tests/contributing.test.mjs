@@ -1,11 +1,11 @@
 /**
- * tests/contributing.test.mjs — le document d'accueil dit-il encore la vérité ?
+ * tests/contributing.test.mjs, le document d'accueil dit-il encore la vérité ?
  *
  * CONTRIBUTING est le seul fichier que quelqu'un lit AVANT de connaître le dépôt. Un lien mort ou
  * une commande qui n'existe plus y coûte plus cher qu'ailleurs : la personne n'a rien pour deviner
  * ce qu'on voulait dire, et sa première impression est que le projet ne se relit pas.
  *
- * Ces contrôles portent sur la CHARPENTE — les commandes citées existent, les documents pointés
+ * Ces contrôles portent sur la CHARPENTE, les commandes citées existent, les documents pointés
  * existent, les deux langues sont là. Ils ne peuvent pas vérifier que le texte est juste.
  */
 import { test, describe } from 'node:test';
@@ -19,7 +19,7 @@ const lire = (f) => readFileSync(join(RACINE, f), 'utf8');
 const pkg = JSON.parse(lire('package.json'));
 const FICHIERS = ['CONTRIBUTING.md', 'CONTRIBUTING.fr.md'];
 
-describe('CONTRIBUTING — la charpente tient', () => {
+describe('CONTRIBUTING : la charpente tient', () => {
   test('les deux langues existent, comme pour le README', () => {
     FICHIERS.forEach(f => assert.ok(existsSync(join(RACINE, f)), `${f} manquant`));
   });
@@ -53,7 +53,7 @@ describe('CONTRIBUTING — la charpente tient', () => {
 
   test('RÉGRESSION : l\'étape des hooks est bien mise en avant', () => {
     // C'est LA raison d'être de ce fichier. Sans setup-hooks, un contributeur commite sans aucune
-    // vérification locale et découvre ses erreurs dans la CI — ou pire, ne les découvre pas.
+    // vérification locale et découvre ses erreurs dans la CI, ou pire, ne les découvre pas.
     FICHIERS.forEach(f => assert.match(lire(f), /npm run setup-hooks/,
       `${f} ne mentionne pas l'installation des hooks`));
   });
@@ -71,7 +71,7 @@ describe('CONTRIBUTING — la charpente tient', () => {
 
   test('les README renvoient vers CONTRIBUTING', () => {
     // Sans ce lien, le fichier n'existe que pour GitHub, qui l'affiche à l'ouverture d'une pull
-    // request — trop tard pour la mise en route.
+    // request, trop tard pour la mise en route.
     assert.match(lire('README.md'), /CONTRIBUTING\.md/);
     assert.match(lire('README.fr.md'), /CONTRIBUTING\.fr\.md/);
   });

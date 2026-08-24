@@ -1,8 +1,8 @@
-// tests/draw.test.mjs — Tests unitaires de src/draw.js (dessin des Cases, construction de
+// tests/draw.test.mjs. Tests unitaires de src/draw.js (dessin des Cases, construction de
 // Bâtiments, géométrie des Bulles, wrap de texte).
 import './helpers/dom-stub.mjs';
 // events.js déclenche à son chargement initStartupProject() (async, via loadAppSettings().then(...))
-// qui peuple S.tomes avec un Tome/Page de démarrage — sans cet import, S.tomes reste [] et
+// qui peuple S.tomes avec un Tome/Page de démarrage, sans cet import, S.tomes reste [] et
 // currentPage()/currentPageData() plantent (utilisés en interne par stopBuildMode → drawCurrentPage,
 // appelé depuis buildToolClose). draw.js ne déclenche pas cette initialisation lui-même (c'est
 // events.js qui orchestre le démarrage de l'appli), d'où cet import par effet de bord uniquement.
@@ -36,7 +36,7 @@ import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
-// Fix 92 — les extracteurs de source RETIRENT les commentaires avant de chercher.
+// Fix 92 : les extracteurs de source RETIRENT les commentaires avant de chercher.
 //
 // Découvert en mutant : remplacer l'appel à personaLimbSegmentScreen3D par `null` dans l'overlay
 // n'a fait échouer AUCUN test, parce qu'un commentaire voisin citait le nom de la fonction. Le
@@ -57,7 +57,7 @@ beforeEach(() => {
 });
 
 // ── detectBuildFaces ──────────────────────────────────────────────────────────────────────────
-describe('detectBuildFaces — détection des faces planaires du graphe de murs', () => {
+describe('detectBuildFaces : détection des faces planaires du graphe de murs', () => {
   test('moins de 3 segments : pas assez pour fermer une face, renvoie null', () => {
     assert.equal(detectBuildFaces([]), null);
     assert.equal(detectBuildFaces([{ id: 'w1', x1: 0, z1: 0, x2: 1, z2: 0 }]), null);
@@ -126,7 +126,7 @@ describe('detectBuildFaces — détection des faces planaires du graphe de murs'
 });
 
 // ── addRoomWallElement / uniqueDefaultName / buildToolCreateWallSegment ─────────────────────────
-describe('addRoomWallElement / uniqueDefaultName — création d\'un Mur', () => {
+describe('addRoomWallElement / uniqueDefaultName : création d\'un Mur', () => {
   test('crée un objet Mur poussé dans page.objects, avec le bon pieceId/pieceLabel', () => {
     const panel = { id: 'panel1', x: 0, y: 0, w: 800, h: 600 };
     const page = { objects: [] };
@@ -160,7 +160,7 @@ describe('addRoomWallElement / uniqueDefaultName — création d\'un Mur', () =>
   });
 });
 
-describe('buildToolCreateWallSegment — création d\'un mur entre deux points sol', () => {
+describe('buildToolCreateWallSegment : création d\'un mur entre deux points sol', () => {
   function makePanel() {
     return { id: 'panel1', x: 0, y: 0, w: 800, h: 600, camRotX: 0, camRotY: 0, camDist: PANEL_CAM_DEFAULT_DIST_3D, camWx: 0, camWy: 0, camWz: 0 };
   }
@@ -205,7 +205,7 @@ describe('buildToolCreateWallSegment — création d\'un mur entre deux points s
 });
 
 // ── getRoomBoundingBoxXZ / getBuildingBoundingBoxXZ ────────────────────────────────────────────
-describe('getRoomBoundingBoxXZ / getBuildingBoundingBoxXZ — boîtes englobantes XZ', () => {
+describe('getRoomBoundingBoxXZ / getBuildingBoundingBoxXZ : boîtes englobantes XZ', () => {
   function floorDalle(pieceId, polygon) {
     return { pieceId, objType: 'dalle', polygon, worldY: GROUND_Y_DEFAULT_3D + 0.01 };
   }
@@ -240,14 +240,14 @@ describe('getRoomBoundingBoxXZ / getBuildingBoundingBoxXZ — boîtes englobante
 
 // ── buildTryExtendWall ───────────────────────────────────────────────────────────────────────
 // NOTE : cette fonction n'est actuellement appelée nulle part ailleurs dans le codebase (recherche
-// exhaustive faite lors de l'écriture de ces tests) — code mort à ce jour. On la teste quand même
+// exhaustive faite lors de l'écriture de ces tests), code mort à ce jour. On la teste quand même
 // (comportement figé, prête à être branchée), mais le second test ci-dessous documente une
 // asymétrie réelle du code actuel plutôt qu'un comportement idéalisé : la vérification "au-delà de
 // l'extrémité opposée" est TOUJOURS mesurée depuis A=(seg.x1,seg.z1) vers B=(seg.x2,seg.z2), même
-// quand c'est l'extrémité A qui a été détectée comme point de départ (atA) — prolonger un mur ancien
+// quand c'est l'extrémité A qui a été détectée comme point de départ (atA), prolonger un mur ancien
 // dans le sens INVERSE (au-delà de A, en s'éloignant de B) ne fonctionne donc pas avec ce code, alors
 // que le prolonger dans le sens direct (au-delà de B) fonctionne correctement.
-describe('buildTryExtendWall — prolongement d\'un mur colinéaire existant', () => {
+describe('buildTryExtendWall : prolongement d\'un mur colinéaire existant', () => {
   beforeEach(() => {
     S.buildTool = { wallSegs: [{ id: 'w1', x1: 0, z1: 0, x2: 4, z2: 0 }], snapWallSegsCount: 1 };
   });
@@ -281,7 +281,7 @@ describe('buildTryExtendWall — prolongement d\'un mur colinéaire existant', (
 });
 
 // ── buildToolClose (test d'intégration) ──────────────────────────────────────────────────────
-describe('buildToolClose — fermeture de la boucle de murs (intégration)', () => {
+describe('buildToolClose : fermeture de la boucle de murs (intégration)', () => {
   beforeEach(() => {
     S.selectedId = null;
     S.selectedRoomId = null;
@@ -323,7 +323,7 @@ describe('buildToolClose — fermeture de la boucle de murs (intégration)', () 
     assert.equal(S.buildTool, null, 'outil Build désactivé après fermeture');
   });
 
-  test('moins de 3 points : annule (revert) au lieu de fermer — les murs déjà tracés sont supprimés', () => {
+  test('moins de 3 points : annule (revert) au lieu de fermer : les murs déjà tracés sont supprimés', () => {
     const page = currentPage();
     page.objects.length = 0;
     const panel = makePanel();
@@ -375,8 +375,8 @@ describe('buildToolClose — fermeture de la boucle de murs (intégration)', () 
   });
 });
 
-// ── getPanelPoints — géométrie des formes de Case ────────────────────────────────────────────
-describe('getPanelPoints — sommets d\'une Case selon sa forme', () => {
+// ── getPanelPoints : géométrie des formes de Case ────────────────────────────────────────────
+describe('getPanelPoints : sommets d\'une Case selon sa forme', () => {
   test('rectangle (par défaut) : 4 coins', () => {
     const pts = getPanelPoints({ x: 0, y: 0, w: 100, h: 50 });
     assert.deepEqual(pts, [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }]);
@@ -389,7 +389,7 @@ describe('getPanelPoints — sommets d\'une Case selon sa forme', () => {
 });
 
 // ── Bulles (bubbleTailVisible / bubbleShapeOf / bubbleEdgePoint / getBubbleTailTip) ─────────────────
-describe('bubbleTailVisible / bubbleShapeOf — propriétés simples d\'une Bulle', () => {
+describe('bubbleTailVisible / bubbleShapeOf : propriétés simples d\'une Bulle', () => {
   test('bubbleTailVisible : true par défaut, false si tailVisible === false explicitement', () => {
     assert.equal(bubbleTailVisible({}), true);
     assert.equal(bubbleTailVisible({ tailVisible: false }), false);
@@ -401,7 +401,7 @@ describe('bubbleTailVisible / bubbleShapeOf — propriétés simples d\'une Bull
   });
 });
 
-describe('bubbleEdgePoint — point sur le contour d\'une Bulle selon un angle', () => {
+describe('bubbleEdgePoint : point sur le contour d\'une Bulle selon un angle', () => {
   const o = { x: 0, y: 0, w: 100, h: 50 };
 
   test('forme ovale : ellipse paramétrique (theta=0 → bord droit, theta=PI/2 → bord bas)', () => {
@@ -420,7 +420,7 @@ describe('bubbleEdgePoint — point sur le contour d\'une Bulle selon un angle',
   });
 });
 
-describe('getBubbleTailTip — pointe de la queue de Bulle', () => {
+describe('getBubbleTailTip : pointe de la queue de Bulle', () => {
   test('valeurs par défaut (BUBBLE_TAIL_ANGLE_DEFAULT / BUBBLE_TAIL_LEN_DEFAULT)', () => {
     const tip = getBubbleTailTip({ x: 0, y: 0, w: 100, h: 50 });
     assertClose(tip.x, 30.01970710522281, 'x (angle/longueur par défaut)');
@@ -434,8 +434,8 @@ describe('getBubbleTailTip — pointe de la queue de Bulle', () => {
   });
 });
 
-// ── distToSegmentSq — distance point/segment (au carré) ─────────────────────────────────────
-describe('distToSegmentSq — distance au carré d\'un point à un segment', () => {
+// ── distToSegmentSq : distance point/segment (au carré) ─────────────────────────────────────
+describe('distToSegmentSq : distance au carré d\'un point à un segment', () => {
   test('point projeté sur le segment : distance nulle', () => {
     assertClose(distToSegmentSq(3, 0, 0, 0, 4, 0), 0);
   });
@@ -449,10 +449,10 @@ describe('distToSegmentSq — distance au carré d\'un point à un segment', () 
   });
 });
 
-// ── wrapText / wrapTextLines — retour à la ligne du texte de Bulle ──────────────────────────
-describe('wrapTextLines / wrapText — découpage du texte en lignes selon une largeur max', () => {
+// ── wrapText / wrapTextLines : retour à la ligne du texte de Bulle ──────────────────────────
+describe('wrapTextLines / wrapText : découpage du texte en lignes selon une largeur max', () => {
   // Utilise le vrai faux contexte 2D du dom-stub (measureText : width = nbCaractères * 6px), via un
-  // canvas factice de document.createElement — un simple objet littéral n'a pas de measureText.
+  // canvas factice de document.createElement, un simple objet littéral n'a pas de measureText.
   function makeCtx() {
     return document.createElement('canvas').getContext('2d');
   }
@@ -477,8 +477,8 @@ describe('wrapTextLines / wrapText — découpage du texte en lignes selon une l
 // ── Fix 34 : angles pleins, sur de VRAIS Murs produits par l'outil Construire ────────────────
 // Les tests unitaires de buildWallJunctions3D travaillent sur un carré écrit à la main. Ici on
 // passe par buildToolCreateWallSegment/buildToolClose, donc par les vraies coordonnées monde,
-// les vrais rotY et le vrai mur de fermeture — c'est ce chemin-là que l'utilisateur emprunte.
-describe('buildWallJunctions3D — angles d\'une Pièce réellement construite (Fix 34)', () => {
+// les vrais rotY et le vrai mur de fermeture, c'est ce chemin-là que l'utilisateur emprunte.
+describe('buildWallJunctions3D : angles d\'une Pièce réellement construite (Fix 34)', () => {
   function pieceRectangulaire() {
     const panel = {
       id: 'panelJ', type: 'panel', x: 0, y: 0, w: 800, h: 600,
@@ -532,14 +532,14 @@ describe('buildWallJunctions3D — angles d\'une Pièce réellement construite (
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 85 — le repère de glisser est effectivement DESSINÉ.
+// Fix 85 : le repère de glisser est effectivement DESSINÉ.
 //
 // Par inspection de source : le contexte 2D du stub est un Proxy qui accepte tout appel en no-op
 // (cf. tests/helpers/dom-stub.mjs), donc aucune assertion sur le tracé n'est possible. Ce qu'on
-// vérifie est le CÂBLAGE — que la fonction de dessin soit appelée, et qu'on lui passe le repère —
+// vérifie est le CÂBLAGE, que la fonction de dessin soit appelée, et qu'on lui passe le repère,
 // c'est-à-dire précisément ce qu'une mutation « on ne dessine plus rien » casse.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 85 — câblage du repère de glisser', () => {
+describe('Fix 85 : câblage du repère de glisser', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const evt = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
@@ -567,12 +567,12 @@ describe('Fix 85 — câblage du repère de glisser', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 86 — une articulation sélectionnée masque les autres, dans l'ÉDITEUR seulement.
+// Fix 86 : une articulation sélectionnée masque les autres, dans l'ÉDITEUR seulement.
 //
 // Par inspection de source : dessiner exige WebGL. Ce qu'on épingle, c'est l'endroit exact où le
-// masquage opère — la carte de positions — parce que c'est de là que vient l'inertie au clic.
+// masquage opère, la carte de positions, parce que c'est de là que vient l'inertie au clic.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 86 — masquage des poignées non sélectionnées', () => {
+describe('Fix 86 : masquage des poignées non sélectionnées', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const evt = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   const corps = (nom) => {
@@ -581,15 +581,15 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
     return sourceSansCommentaires(src.slice(i, src.indexOf('\n}', i)));
   };
   const overlay = corps('drawPersonaPoseHandlesOverlay');
-  // Fix 91 — le masquage a suivi la passe de positions, qui a été extraite du dessin. C'est bien là
+  // Fix 91 : le masquage a suivi la passe de positions, qui a été extraite du dessin. C'est bien là
   // qu'il doit vivre : masquer, ici, veut dire « ne pas enregistrer de position », pas « ne pas
-  // peindre » — les deux effets viennent de la même ligne, et c'est tout l'intérêt.
+  // peindre », les deux effets viennent de la même ligne, et c'est tout l'intérêt.
   const passe = corps('projectPoseHandlePositions3D');
 
   test('RÉGRESSION : la poignée masquée voit sa position mise à NULL', () => {
     // Et non simplement « non dessinée » : c'est la carte de positions que consultent
     // pickNearestHandle3D et pickLimbSegmentAt. Se contenter de sauter le tracé laisserait une
-    // poignée invisible mais toujours cliquable — le pire des deux mondes.
+    // poignée invisible mais toujours cliquable, le pire des deux mondes.
     assert.match(passe, /positions\[def\.id\] = null;/,
       'sans cette ligne, la poignée reste sensible au clic');
   });
@@ -609,7 +609,7 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
     // L'aperçu de la modale garde toutes ses poignées : on y choisit une articulation, on ne l'y
     // manipule pas au glisser. Un masquage global y rendrait la sélection impossible à changer.
     // ⚠️ On regarde l'ARGUMENT `solo`, pas la fin de l'appel. La version d'avant exigeait que
-    // l'appel se termine par « , true) » — vrai tant qu'il n'y avait qu'un appel et pas d'argument
+    // l'appel se termine par «, true) », vrai tant qu'il n'y avait qu'un appel et pas d'argument
     // après. L'éditeur en a désormais deux (le Personnage intégré, et un modèle importé, qui passe
     // en plus la figure sur laquelle poser les poignées), et le drapeau n'est plus le dernier. La
     // forme avait changé, l'intention non : c'est elle qu'on vérifie.
@@ -627,13 +627,13 @@ describe('Fix 86 — masquage des poignées non sélectionnées', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 88 — la zone de prise est DESSINÉE telle qu'elle est TESTÉE.
+// Fix 88 : la zone de prise est DESSINÉE telle qu'elle est TESTÉE.
 //
 // L'enjeu n'est pas le tracé (hors de portée : le contexte 2D du stub est un no-op) mais le fait
 // que le dessin et le test de clic lisent les mêmes valeurs et la même géométrie. Un dessin qui
 // promettrait une prise là où le clic ne mord pas serait pire que pas de dessin du tout.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
+describe('Fix 88 : le dessin de la zone de prise ne peut pas mentir', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const corpsDe = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
@@ -651,14 +651,14 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
   test('RÉGRESSION : le repli sur le membre reçoit AUSSI le rayon élargi', () => {
     // Sans le passer, la bande du membre resterait étroite alors qu'elle est dessinée large : le
     // tracé promettrait une prise sur toute la largeur, et le clic ne mordrait qu'au centre. C'est
-    // exactement le mensonge que ce Fix cherche à rendre impossible — et il a échappé au premier
+    // exactement le mensonge que ce Fix cherche à rendre impossible, et il a échappé au premier
     // jet des mutations, faute d'un test sur cet argument précis.
     assert.match(corpsDe('pickPoseHandleAt'), /pickLimbSegmentAt\([^)]*r\.limb\)/,
       'le rayon du membre doit être transmis au repli');
   });
 
   test('RÉGRESSION : clic et dessin partagent le MÊME segment de membre', () => {
-    // Deux calculs séparés du segment auraient fini par diverger — c'est la famille de bugs la
+    // Deux calculs séparés du segment auraient fini par diverger, c'est la famille de bugs la
     // plus fréquente de ce dépôt.
     assert.match(corpsDe('pickLimbSegmentAt'), /personaLimbSegmentScreen3D/);
     assert.match(corpsDe('drawPersonaPoseHandlesOverlay'), /personaLimbSegmentScreen3D/);
@@ -681,11 +681,11 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 91 — la teinte montre où l'articulation EST, pas où elle était.
+// Fix 91 : la teinte montre où l'articulation EST, pas où elle était.
 //
 // Signalé à l'usage : « la zone teintée supposée être la partie cliquable n'est pas bonne dans
 // certains cas ; un clic dans cette zone désélectionne l'articulation ». Le fond de prise était
-// peint AVANT que les positions de l'image courante ne soient calculées — il montrait donc l'état
+// peint AVANT que les positions de l'image courante ne soient calculées, il montrait donc l'état
 // de l'image précédente, alors que le clic, lui, est testé contre la carte fraîche. Tant que la
 // figure ne bouge pas, les deux coïncident ; pendant un glisser, elles s'écartent d'autant plus
 // que le geste est rapide. D'où « dans certains cas ».
@@ -693,7 +693,7 @@ describe('Fix 88 — le dessin de la zone de prise ne peut pas mentir', () => {
 // La même famille que les bugs les plus coûteux de ce dépôt : une grandeur calculée deux fois,
 // ici à deux INSTANTS, qui finissent par ne plus dire la même chose.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 91 — la zone de prise lit les positions de l\'image courante', () => {
+describe('Fix 91 : la zone de prise lit les positions de l\'image courante', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const overlay = (() => {
     const i = src.indexOf('export function drawPersonaPoseHandlesOverlay(');
@@ -701,7 +701,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
   })();
 
   // Caméra construite à la main : personaCamera3D naît avec le renderer WebGL, hors de portée sous
-  // Node — mais THREE.PerspectiveCamera, lui, se construit sans écran. C'est tout l'intérêt
+  // Node, mais THREE.PerspectiveCamera, lui, se construit sans écran. C'est tout l'intérêt
   // d'avoir sorti la caméra en PARAMÈTRE de la passe de positions.
   const camera = () => {
     const c = new THREE.PerspectiveCamera(50, 4 / 3, 0.1, 100);
@@ -736,7 +736,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
 
   test('RÉGRESSION : plus aucune projection de poignée hors de la passe', () => {
     // Une seconde projection dans le corps du dessin recréerait immédiatement deux vérités
-    // concurrentes — le défaut qu'on vient de supprimer, par une autre porte.
+    // concurrentes, le défaut qu'on vient de supprimer, par une autre porte.
     assert.ok(!/projectJointToCanvas\(/.test(overlay),
       'la projection appartient à projectPoseHandlePositions3D, et à elle seule');
   });
@@ -758,7 +758,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
   });
 
   test('RÉGRESSION : bouger l\'articulation déplace la position DÈS l\'appel suivant', () => {
-    // C'est la propriété qui manquait : entre deux images, l'articulation a bougé — c'est même la
+    // C'est la propriété qui manquait : entre deux images, l'articulation a bougé, c'est même la
     // raison du redessin. Une carte mise à jour après coup laissait la teinte en retard.
     const cam = camera();
     const entry = rig();
@@ -789,7 +789,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 92 — la bande du membre ne se recalcule plus au moment du clic.
+// Fix 92 : la bande du membre ne se recalcule plus au moment du clic.
 //
 // Signalé à l'usage : ouvert depuis le menu de gauche la zone teintée est juste, ouvert depuis la
 // modale d'un Personnage « la zone semble plus petite bien qu'elle soit affichée identique ». Le
@@ -798,7 +798,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
 //
 // Cette asymétrie disque/bande désignait le coupable. Le disque ne lit que p1, mémorisé dans la
 // carte de positions au dernier dessin. La bande, elle, lisait p1 dans la carte mais REPROJETAIT
-// son autre extrémité au moment du clic, avec personaCamera3D — une caméra partagée par l'aperçu
+// son autre extrémité au moment du clic, avec personaCamera3D, une caméra partagée par l'aperçu
 // de la modale, l'éditeur et le rendu des Cases. Qu'une autre figure soit rendue entre le tracé et
 // le clic, et la bande testée partait ailleurs que la bande peinte, en restant ancrée au bon
 // endroit côté articulation. Mesuré sur la figure debout : 144 px d'écart au bout, pour une bande
@@ -808,7 +808,7 @@ describe('Fix 91 — la zone de prise lit les positions de l\'image courante', (
 // trois fonctions de sélection : sans lui, reprojeter tardivement n'est plus seulement déconseillé,
 // c'est impossible.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 92 — le segment du membre est mémorisé, jamais reprojeté', () => {
+describe('Fix 92 : le segment du membre est mémorisé, jamais reprojeté', () => {
   const src = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const corps = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
@@ -854,7 +854,7 @@ describe('Fix 92 — le segment du membre est mémorisé, jamais reprojeté', ()
     assert.ok(avant, 'segment présent après le dessin');
 
     // Une autre figure est rendue entre-temps : la caméra PARTAGÉE est recadrée ailleurs.
-    // Le segment, lui, ne doit pas bouger d'un pixel — il décrit l'image qu'on a peinte.
+    // Le segment, lui, ne doit pas bouger d'un pixel, il décrit l'image qu'on a peinte.
     camera(1.5);
     const apres = personaLimbSegmentScreen3D('lShoulder', positions);
     assert.deepEqual(apres.p1, avant.p1, 'le départ ne bouge pas');

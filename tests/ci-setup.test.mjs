@@ -1,9 +1,9 @@
 /**
- * tests/ci-setup.test.mjs — l'intégration continue vérifie-t-elle vraiment quelque chose ?
+ * tests/ci-setup.test.mjs, l'intégration continue vérifie-t-elle vraiment quelque chose ?
  *
  * Même intention que tests/lint-setup.test.mjs : une CI qui existe sur le disque et ne lance pas ce
  * qu'on croit est pire qu'une CI absente, parce qu'elle affiche une coche verte. Ce qui est vérifié
- * ici, c'est que les pièces se tiennent — pas que GitHub l'exécute, ce qu'aucun test local ne peut
+ * ici, c'est que les pièces se tiennent, pas que GitHub l'exécute, ce qu'aucun test local ne peut
  * savoir.
  *
  * Pourquoi une inspection de texte plutôt qu'un parseur YAML : ajouter une dépendance pour lire
@@ -20,7 +20,7 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHEMIN_CI = join(RACINE, '.github', 'workflows', 'ci.yml');
 const pkg = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8'));
 
-describe('Intégration continue — les pièces se tiennent', () => {
+describe('Intégration continue : les pièces se tiennent', () => {
   test('le workflow existe', () => {
     assert.ok(existsSync(CHEMIN_CI), '.github/workflows/ci.yml manquant');
   });
@@ -36,7 +36,7 @@ describe('Intégration continue — les pièces se tiennent', () => {
   test('RÉGRESSION : la CI installe avec `npm ci`, pas `npm install`', () => {
     // C'est LE contrôle qu'aucun hook local ne peut faire : `npm ci` installe exactement le
     // package-lock.json et échoue s'il diverge de package.json. Sans lui, une dépendance utilisée
-    // mais non déclarée passerait — le cas « ça marche chez moi » parce que le paquet traîne dans
+    // mais non déclarée passerait, le cas « ça marche chez moi » parce que le paquet traîne dans
     // node_modules.
     const ci = readFileSync(CHEMIN_CI, 'utf8');
     assert.match(ci, /^\s+run: npm ci$/m, '`npm ci` absent des étapes');
@@ -45,7 +45,7 @@ describe('Intégration continue — les pièces se tiennent', () => {
   });
 
   test('RÉGRESSION : les versions de Node testées respectent le champ `engines`', () => {
-    // Deux descriptions de la même contrainte — package.json qui la déclare, la CI qui l'éprouve.
+    // Deux descriptions de la même contrainte : package.json qui la déclare, la CI qui l'éprouve.
     // Elles peuvent diverger, et c'est la classe de bug numéro un de ce dépôt. Tester une version
     // que `engines` interdit, ou déclarer un minimum que la CI n'essaie jamais, rend l'une des deux
     // affirmations gratuite.
@@ -53,7 +53,7 @@ describe('Intégration continue — les pièces se tiennent', () => {
     const minimum = Number((pkg.engines?.node || '').replace(/[^\d.]/g, '').split('.')[0]);
     assert.ok(Number.isFinite(minimum), 'package.json ne déclare pas engines.node');
     // BORNÉ À LA LIGNE `node:` DE LA MATRICE. Ma première version balayait tout le fichier avec
-    // /'(\d+)'/ et attrapait le '1' de ELECTRON_SKIP_BINARY_DOWNLOAD — la CI semblait alors tester
+    // /'(\d+)'/ et attrapait le '1' de ELECTRON_SKIP_BINARY_DOWNLOAD, la CI semblait alors tester
     // Node 1. Troisième fois aujourd'hui qu'une expression trop large appliquée à du source me
     // trompe. Chercher la ligne, pas le motif.
     const ligneMatrice = ci.split('\n').find(l => /^\s+node:\s*\[/.test(l));

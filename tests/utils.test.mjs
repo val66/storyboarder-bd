@@ -1,4 +1,4 @@
-// tests/utils.test.mjs — Tests unitaires des helpers purs (src/utils.js).
+// tests/utils.test.mjs. Tests unitaires des helpers purs (src/utils.js).
 // utils.js n'a aucune dépendance DOM (ni transitive : il n'importe que constants.js) : pas besoin
 // du dom-stub ici.
 import { test, describe } from 'node:test';
@@ -40,10 +40,10 @@ function assertClose(actual, expected, msg, eps = 1e-9) {
 // wrapAngle est au cœur du lissage de la rotation caméra (startCamSmoothing, scene3d.js) : la
 // caméra orbite librement (angles NON bornés, cf. commentaire dans scene3d.js), et c'est cette
 // fonction qui garantit qu'un écart cible-actuel prend toujours le chemin le plus court, même
-// après plusieurs tours complets — un mauvais calcul ici fait repartir la caméra pour un tour
+// après plusieurs tours complets, un mauvais calcul ici fait repartir la caméra pour un tour
 // presque complet au lieu d'un petit ajustement (bug historique explicitement documenté dans le
 // code). D'où l'insistance sur les cas limites ci-dessous.
-describe('wrapAngle — ramène un angle dans [-π, π[', () => {
+describe('wrapAngle : ramène un angle dans [-π, π[', () => {
   test('valeurs déjà dans l\'intervalle : inchangées', () => {
     assertClose(wrapAngle(0), 0, 'zéro');
     assertClose(wrapAngle(1), 1, 'valeur positive');
@@ -113,7 +113,7 @@ describe('getBBox', () => {
 });
 
 // ── Data lookups (getFormat / pxPerMm / getStyle3D / getEmotion / getPosition) ──────────────────
-describe('getFormat / pxPerMm — Format d\'un Tome et conversion px→mm', () => {
+describe('getFormat / pxPerMm : Format d\'un Tome et conversion px→mm', () => {
   test('getFormat : renvoie l\'entrée FORMATS correspondant à la clé, undefined si inconnue', () => {
     assert.equal(getFormat('fb').label, 'Franco-Belge (220×290mm)');
     assert.equal(getFormat('nope'), undefined);
@@ -129,7 +129,7 @@ describe('getFormat / pxPerMm — Format d\'un Tome et conversion px→mm', () =
   });
 });
 
-describe('getStyle3D / getEmotion / getPosition — lookups avec repli sur la première entrée', () => {
+describe('getStyle3D / getEmotion / getPosition : lookups avec repli sur la première entrée', () => {
   test('clé connue : renvoie l\'entrée correspondante', () => {
     assert.equal(getStyle3D('simplifie').key, 'simplifie');
     assert.equal(getEmotion('content').key, 'content');
@@ -145,7 +145,7 @@ describe('getStyle3D / getEmotion / getPosition — lookups avec repli sur la pr
 });
 
 // ── Element helpers (getElementDepth / getHandles / repairElementBase3D) ────────────────────────
-describe('getElementDepth — profondeur 3D d\'un Élément dans sa Case', () => {
+describe('getElementDepth : profondeur 3D d\'un Élément dans sa Case', () => {
   test('o.z défini : renvoyé tel quel', () => {
     assert.equal(getElementDepth({ z: 2.5 }), 2.5);
   });
@@ -156,7 +156,7 @@ describe('getElementDepth — profondeur 3D d\'un Élément dans sa Case', () =>
   });
 });
 
-describe('getHandles — 8 poignées de redimensionnement d\'une boîte', () => {
+describe('getHandles : 8 poignées de redimensionnement d\'une boîte', () => {
   test('4 coins + 4 milieux de côté, en coordonnées page', () => {
     const handles = getHandles({ x: 10, y: 20, w: 100, h: 50 });
     assert.deepEqual(handles, {
@@ -166,7 +166,7 @@ describe('getHandles — 8 poignées de redimensionnement d\'une boîte', () => 
   });
 });
 
-describe('repairElementBase3D — répare un baseH/baseW corrompu (projets pré-Fix 22)', () => {
+describe('repairElementBase3D : répare un baseH/baseW corrompu (projets pré-Fix 22)', () => {
   test('ratio realHeightFloor/(baseH/40) hors de [0.095, 4.05] : recalibre baseH/baseW, renvoie true', () => {
     const o = { id: 'x', realHeightFloor: 1.75, baseH: 1000, w: 40, h: 70 }; // ratio ≈ 0.07 < 0.095
     const repaired = repairElementBase3D(o);
@@ -189,13 +189,13 @@ describe('repairElementBase3D — répare un baseH/baseW corrompu (projets pré-
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 44 — détection d'une pose inconnue, préalable à l'option synthétique de la modale.
+// Fix 44 : détection d'une pose inconnue, préalable à l'option synthétique de la modale.
 //
 // Sans elle : affecter au <select> une valeur absente de ses options le laisse VIDE (comportement
 // standard du DOM), et la sauvegarde suivante écrit cette chaîne vide par-dessus obj.position. Le
 // nom de la pose est détruit, sans la moindre erreur nulle part.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('unknownPoseKey3D — repérer une pose absente des poses intégrées (Fix 44)', () => {
+describe('unknownPoseKey3D : repérer une pose absente des poses intégrées (Fix 44)', () => {
   test('une pose intégrée est considérée comme connue', () => {
     for (const key of POSITIONS.map(p => p.key)) {
       assert.equal(unknownPoseKey3D(key), null, key);
@@ -225,7 +225,7 @@ describe('unknownPoseKey3D — repérer une pose absente des poses intégrées (
   });
 });
 
-describe('jointsEqual3D — comparaison de deux jeux d\'articulations (Fix 45)', () => {
+describe('jointsEqual3D : comparaison de deux jeux d\'articulations (Fix 45)', () => {
   test('identiques, y compris avec objets imbriqués', () => {
     const a = { torsoRotX: 0.1, lShoulder: { x: 0.05, z: -0.05 }, lElbow: 0 };
     assert.equal(jointsEqual3D(a, JSON.parse(JSON.stringify(a))), true);
@@ -261,11 +261,11 @@ describe('jointsEqual3D — comparaison de deux jeux d\'articulations (Fix 45)',
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 45 — l'étiquette de pose se CALCULE à l'affichage. Rien n'est jamais réécrit dans le
+// Fix 45 : l'étiquette de pose se CALCULE à l'affichage. Rien n'est jamais réécrit dans le
 // fichier : « inconnu » persisté détruirait le nom, et le projet ne pourrait plus se réparer
 // en retrouvant sa bibliothèque de poses.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('resolvePoseLabel3D — étiquette affichée d\'une pose (Fix 45)', () => {
+describe('resolvePoseLabel3D : étiquette affichée d\'une pose (Fix 45)', () => {
   test('pose intégrée : son libellé, sans mention', () => {
     const r = resolvePoseLabel3D({ position: 'assis' }, []);
     assert.equal(r.known, true);
@@ -354,16 +354,16 @@ describe('resolvePoseLabel3D — étiquette affichée d\'une pose (Fix 45)', () 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 51 — descripteurs de curseurs (poseSliderSpecs3D / read / write)
+// Fix 51 : descripteurs de curseurs (poseSliderSpecs3D / read / write)
 //
 // Ces trois fonctions ont été extraites de modals.js, où l'aiguillage sur le type d'articulation
 // existait en DEUX exemplaires (construction des curseurs, puis resynchronisation depuis le
 // brouillon). Le panneau de l'éditeur en aurait fait un troisième. Aucun test ne couvrait ces deux
 // exemplaires : le refactor était donc à l'aveugle, d'où l'insistance ci-dessous sur les propriétés
-// que les deux copies devaient respecter — et sur la COUVERTURE, qui est la seule chose capable
+// que les deux copies devaient respecter, et sur la COUVERTURE, qui est la seule chose capable
 // d'attraper une articulation oubliée.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
+describe('poseSliderSpecs3D : combien de curseurs, et lesquels', () => {
   test('une charnière simple donne un curseur, sans suffixe de libellé', () => {
     const specs = poseSliderSpecs3D({ id: 'torso', mode: 'hinge', field: 'torsoRotX' });
     assert.equal(specs.length, 1);
@@ -395,7 +395,7 @@ describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
 
   test('COUVERTURE : chaque champ déclaré dans POSE_HANDLES est piloté par un curseur', () => {
     // Le vrai garde-fou. Ajouter une articulation à POSE_HANDLES sans que poseSliderSpecs3D sache
-    // la traduire donnerait une articulation réglable nulle part — silencieusement, puisque rien
+    // la traduire donnerait une articulation réglable nulle part, silencieusement, puisque rien
     // n'échoue quand un curseur manque.
     const pilotes = new Set();
     POSE_HANDLES.forEach(def => poseSliderSpecs3D(def).forEach(s => pilotes.add(s.field)));
@@ -414,7 +414,7 @@ describe('poseSliderSpecs3D — combien de curseurs, et lesquels', () => {
     assert.equal(new Set(keys).size, keys.length, 'collision de clé entre deux curseurs');
     // 23 → 33 à l'ajout du cou, des clavicules et des chevilles (Rig A) : 2 + 4 + 4 nouveaux
     // curseurs. Puis 33 → 36 (Rig B) : la tête gagne son 3ᵉ axe, le torse ses 2ᵉ et 3ᵉ, et les deux
-    // entrées `WristRoll` disparaissent au profit d'un `hinge3` par poignet — à nombre de curseurs
+    // entrées `WristRoll` disparaissent au profit d'un `hinge3` par poignet, à nombre de curseurs
     // constant de ce côté. Ce nombre est MESURÉ à chaque évolution du rig, jamais deviné.
     assert.equal(keys.length, 36, 'nombre total de curseurs du panneau (mesuré, pas supposé)');
   });
@@ -435,7 +435,7 @@ describe('readPoseSliderDeg3D / writePoseSliderDeg3D', () => {
   test('un champ absent se lit 0 plutôt que NaN ou undefined', () => {
     // Un brouillon ne contient QUE les articulations non neutres : la plupart des champs sont
     // absents à l'ouverture. Un NaN ici remonterait jusqu'à la valeur du <input type=range>, que le
-    // navigateur remplacerait par sa valeur médiane — un Personnage se tordrait tout seul.
+    // navigateur remplacerait par sa valeur médiane, un Personnage se tordrait tout seul.
     assert.equal(readPoseSliderDeg3D({}, hinge), 0);
     assert.equal(readPoseSliderDeg3D({}, ballX), 0);
     assert.equal(readPoseSliderDeg3D({ lShoulder: {} }, ballZ), 0);
@@ -445,7 +445,7 @@ describe('readPoseSliderDeg3D / writePoseSliderDeg3D', () => {
 
   test('RÉGRESSION : écrire un axe d\'une rotule PRÉSERVE l\'autre', () => {
     // Le piège de la rotule : ses deux curseurs partagent un champ objet. Remplacer {x, z} sans
-    // relire l'axe voisin remettrait celui-ci à zéro — bouger l'écart d'une épaule remettrait à
+    // relire l'axe voisin remettrait celui-ci à zéro, bouger l'écart d'une épaule remettrait à
     // plat son avant/arrière, sous les doigts de l'utilisateur.
     const draft = {};
     writePoseSliderDeg3D(draft, ballX, 30);
@@ -480,15 +480,15 @@ describe('readPoseSliderDeg3D / writePoseSliderDeg3D', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 52 — désignation des poignées d'articulation.
+// Fix 52 : désignation des poignées d'articulation.
 //
 // La carte de positions est un PARAMÈTRE. C'est le point du refactor : l'aperçu de la modale et le
 // canevas plein écran de l'éditeur montrent le même squelette à des résolutions différentes, donc à
 // des coordonnées différentes. Avec la carte unique d'avant, la dernière vue rendue écrasait les
-// positions de l'autre — et au retour dans la modale, les clics visaient les coordonnées du plein
+// positions de l'autre, et au retour dans la modale, les clics visaient les coordonnées du plein
 // écran, sans que rien n'échoue.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => {
+describe('pickNearestHandle3D : poignée la plus proche dans un rayon', () => {
   const positions = { head: { x: 100, y: 50 }, lElbow: { x: 120, y: 60 }, rKnee: { x: 300, y: 400 } };
 
   test('clic pile sur une poignée : c\'est elle', () => {
@@ -502,7 +502,7 @@ describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => 
     //
     // La condition qui rend ce test probant : les deux candidates doivent être DANS le rayon,
     // sinon la bonne réponse sortirait par élimination et non par comparaison. Une première version
-    // testait en (118, 59), où la tête est à ≈20.1px — hors du rayon de 17 : la mutation « garder la
+    // testait en (118, 59), où la tête est à ≈20.1px, hors du rayon de 17 : la mutation « garder la
     // première trouvée » passait donc au travers. Vérifié en la faisant échouer.
     //
     // En (114, 57) : tête à √(14²+7²) ≈ 15.65px, coude à √(6²+3²) ≈ 6.71px. Les deux à portée, et
@@ -512,7 +512,7 @@ describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => 
     assert.equal(pickNearestHandle3D(positions, 106, 53), 'head');
   });
 
-  test('hors du rayon : rien — le clic doit pouvoir tomber dans le vide', () => {
+  test('hors du rayon : rien : le clic doit pouvoir tomber dans le vide', () => {
     // Sans ce null, un clic n'importe où attraperait la poignée la moins lointaine, et déplacer la
     // vue deviendrait impossible.
     assert.equal(pickNearestHandle3D(positions, 200, 200), null);
@@ -523,7 +523,7 @@ describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => 
   test('le rayon est réglable', () => {
     // Distances CALCULÉES depuis `positions`, pas devinées : au point (80, 50) la tête est à 20px et
     // le coude à √(40²+10²) ≈ 41.2px. Une première version de ce test plaçait le point à (100, 90),
-    // où le coude (≈36.1px) est en fait plus proche que la tête (40px) — le test échouait, et le
+    // où le coude (≈36.1px) est en fait plus proche que la tête (40px), le test échouait, et le
     // code avait raison.
     assert.equal(pickNearestHandle3D(positions, 80, 50), null, '20px : au-delà du rayon de 17');
     assert.equal(pickNearestHandle3D(positions, 80, 50, 50), 'head', 'rayon élargi à 50px');
@@ -538,7 +538,7 @@ describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => 
   });
 
   test('ISOLATION : deux cartes distinctes donnent deux réponses distinctes au même point', () => {
-    // La propriété que le refactor existe pour garantir. Même clic, deux vues, deux résultats —
+    // La propriété que le refactor existe pour garantir. Même clic, deux vues, deux résultats,
     // impossible tant que la carte était une variable de module.
     const apercu = { head: { x: 100, y: 50 } };
     const editeur = { head: { x: 900, y: 700 } };
@@ -548,11 +548,11 @@ describe('pickNearestHandle3D — poignée la plus proche dans un rayon', () => 
   });
 });
 
-describe('canvasEventCoords3D — écran → repère interne du canevas', () => {
+describe('canvasEventCoords3D : écran → repère interne du canevas', () => {
   test('bitmap plus grand que la boîte CSS : les coordonnées sont mises à l\'échelle', () => {
     // Le cas réel de l'éditeur : la résolution de rendu est plafonnée (PANEL_SCENE_RENDER_MAX_PX)
     // alors que la boîte occupe tout l'écran. Confondre les deux fait viser d'autant plus à côté que
-    // l'écart est grand — invisible sur un petit aperçu, flagrant en plein écran.
+    // l'écart est grand, invisible sur un petit aperçu, flagrant en plein écran.
     const rect = { left: 0, top: 0, width: 800, height: 600 };
     assert.deepEqual(canvasEventCoords3D(rect, 1600, 1200, 400, 300), { px: 800, py: 600 });
   });
@@ -564,7 +564,7 @@ describe('canvasEventCoords3D — écran → repère interne du canevas', () => 
 
   test('les deux axes sont mis à l\'échelle indépendamment', () => {
     // Un seul facteur pour les deux axes marcherait tant que les proportions coïncident, et
-    // dériverait silencieusement dès qu'elles divergent — au redimensionnement de la fenêtre.
+    // dériverait silencieusement dès qu'elles divergent, au redimensionnement de la fenêtre.
     const rect = { left: 0, top: 0, width: 400, height: 400 };
     assert.deepEqual(canvasEventCoords3D(rect, 800, 400, 100, 100), { px: 200, py: 100 });
   });
@@ -577,7 +577,7 @@ describe('canvasEventCoords3D — écran → repère interne du canevas', () => 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 53 — taille du rendu hors écran d'une figure.
+// Fix 53 : taille du rendu hors écran d'une figure.
 //
 // Le Personnage apparaissait flou ET élargi dans l'éditeur plein écran. Une seule cause aux deux
 // symptômes : le rendu se faisait toujours au format portrait de l'aperçu de la modale (200×320),
@@ -585,10 +585,10 @@ describe('canvasEventCoords3D — écran → repère interne du canevas', () => 
 // soit ×2.5 de déformation horizontale et ×5.2 d'agrandissement en largeur.
 //
 // La propriété qui compte ici est donc la CONSERVATION DES PROPORTIONS, y compris quand le plafond
-// s'applique — un plafond qui écrêterait un seul côté réintroduirait exactement la déformation qu'on
+// s'applique, un plafond qui écrêterait un seul côté réintroduirait exactement la déformation qu'on
 // vient de supprimer.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('figureRenderSize3D — rendu aux proportions de la boîte', () => {
+describe('figureRenderSize3D : rendu aux proportions de la boîte', () => {
   const ratio = (s) => s.w / s.h;
 
   test('sous le plafond : la taille de la boîte est reprise telle quelle', () => {
@@ -643,10 +643,10 @@ describe('figureRenderSize3D — rendu aux proportions de la boîte', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 53 — CÂBLAGE, vérifié par inspection de source.
+// Fix 53 : CÂBLAGE, vérifié par inspection de source.
 //
 // figureRenderSize3D est testée ci-dessus, mais son résultat ne sert à rien s'il n'atteint pas le
-// renderer. Or tout ce chemin — useFigureFormat3D → ensurePersonaScene3D → THREE.WebGLRenderer — est
+// renderer. Or tout ce chemin, useFigureFormat3D → ensurePersonaScene3D → THREE.WebGLRenderer, est
 // hors de portée sous Node (cf. docs/testing-method.md). Constaté : la mutation « ignorer
 // sizeOverride et revenir au format portrait figé », qui reproduit exactement le bug d'origine,
 // traverse la suite sans faire échouer un seul test.
@@ -655,12 +655,12 @@ describe('figureRenderSize3D — rendu aux proportions de la boîte', () => {
 // bump-version.mjs (cf. tests/version.test.mjs). Elle ne prouve pas que le rendu est juste ; elle
 // empêche que le paramètre soit silencieusement débranché.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
+describe('Fix 53 : la taille demandée atteint bien le renderer', () => {
   const lire = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 
   // Corps d'une fonction, borné sur la déclaration SUIVANTE et non sur une longueur fixe. Une
   // première version découpait 2000 caractères : la ligne à vérifier commençait au caractère 1990 et
-  // se retrouvait tronquée. Le test échouait — mais l'inverse aurait été pire, un extrait trop court
+  // se retrouvait tronquée. Le test échouait, mais l'inverse aurait été pire, un extrait trop court
   // qui ne contient pas ce qu'on cherche ne prouve rien tout en restant vert le jour où l'assertion
   // devient une simple absence.
   const corpsDe = (src, nom) => {
@@ -702,18 +702,18 @@ describe('Fix 53 — la taille demandée atteint bien le renderer', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 54 — section « Pose » de l'éditeur.
+// Fix 54 : section « Pose » de l'éditeur.
 //
 // La décision structurante : appliquer une pose COPIE ses angles dans le brouillon. Aucun
-// Personnage ne dépend de la bibliothèque — supprimer une pose, ou ouvrir le projet sur une machine
+// Personnage ne dépend de la bibliothèque, supprimer une pose, ou ouvrir le projet sur une machine
 // qui ne l'a pas, ne change l'allure de personne, seule l'étiquette devient « inconnue ».
 //
 // Le piège de cette phase est ailleurs : POSE_3D est COMPLÉTÉ À L'EXÉCUTION par draw.js, qui y
 // ajoute 'allonge' et 'vaincu'. Au chargement de constants.js seul, ces deux poses n'existent pas.
 // D'où deux précautions : la liste ne filtre pas sur POSE_3D, et poseJointsByKey3D lit sa table à
-// l'appel. Les tests ci-dessous vérifient les deux — dont un qui charge draw.js exprès.
+// l'appel. Les tests ci-dessous vérifient les deux, dont un qui charge draw.js exprès.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('personaEditorPoseList3D — la liste vient de la seule bibliothèque (Fix 57)', () => {
+describe('personaEditorPoseList3D : la liste vient de la seule bibliothèque (Fix 57)', () => {
   test('chaque entrée de la bibliothèque devient une entrée de liste', () => {
     const l = personaEditorPoseList3D([
       { id: 'debout', name: '🧍 Debout', joints: {} },
@@ -726,7 +726,7 @@ describe('personaEditorPoseList3D — la liste vient de la seule bibliothèque (
   test('CHANGEMENT DE CONCEPTION : plus de notion de pose « intégrée » ici', () => {
     // Les 15 poses de base sont SEMÉES dans la bibliothèque au premier lancement
     // (cf. seedPoseLibrary3D) et n'ont plus de statut particulier. C'est ce qui rend leur
-    // traitement uniforme — plus de bouton grisé à expliquer.
+    // traitement uniforme, plus de bouton grisé à expliquer.
     const l = personaEditorPoseList3D([{ id: 'debout', name: '🧍 Debout', joints: {} }]);
     assert.equal(l[0].builtin, undefined, 'aucune entrée n\'est marquée comme intégrée');
   });
@@ -752,7 +752,7 @@ describe('personaEditorPoseList3D — la liste vient de la seule bibliothèque (
   });
 });
 
-describe('poseJointsByKey3D — angles d\'une pose', () => {
+describe('poseJointsByKey3D : angles d\'une pose', () => {
   const table = { debout: { torsoRotX: 0 }, assis: { torsoRotX: 0.5 } };
   const poses = [{ id: 'pose1', name: 'X', joints: { torsoRotX: 1.2 } }];
 
@@ -790,7 +790,7 @@ describe('poseJointsByKey3D — angles d\'une pose', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 55 — écritures sur la bibliothèque de poses.
+// Fix 55 : écritures sur la bibliothèque de poses.
 //
 // Toutes ces fonctions renvoient une NOUVELLE liste plutôt que de modifier celle qu'on leur passe :
 // l'appelant décide d'affecter, et un test compare l'avant et l'après sans cloner d'abord.
@@ -799,10 +799,10 @@ describe('poseJointsByKey3D — angles d\'une pose', () => {
 // Personnage, ses angles ayant été COPIÉS chez lui à l'application (cf. Fix 54). Au pire son
 // étiquette devient « inconnue ».
 // ─────────────────────────────────────────────────────────────────────────────
-describe('makePose3D — enregistrement d\'une pose', () => {
+describe('makePose3D : enregistrement d\'une pose', () => {
   test('les angles sont COPIÉS, pas référencés', () => {
     // Sans copie, continuer à bouger les curseurs après avoir enregistré modifierait la pose
-    // enregistrée en même temps — elle ne figerait donc rien du tout.
+    // enregistrée en même temps, elle ne figerait donc rien du tout.
     const draft = { torsoRotX: 0.5 };
     const pose = makePose3D('pose1', 'Salut', draft, 'humain');
     draft.torsoRotX = 9;
@@ -824,7 +824,7 @@ describe('makePose3D — enregistrement d\'une pose', () => {
     assert.equal(makePose3D('pose1', '  Salut  ', {}).name, 'Salut');
   });
 
-  test('squelette par défaut : humain — jamais laissé vide', () => {
+  test('squelette par défaut : humain : jamais laissé vide', () => {
     // Une pose sans squelette déclaré empêcherait, le jour où les animaux en auront, de savoir à
     // quoi elle se rapporte. Le rattraper sur des fichiers déjà enregistrés serait impossible.
     assert.equal(makePose3D('pose1', 'X', {}).skeleton, 'humain');
@@ -892,7 +892,7 @@ describe('deletePose3D', () => {
   });
 });
 
-describe('nextDefaultPoseName3D — nom proposé par défaut', () => {
+describe('nextDefaultPoseName3D : nom proposé par défaut', () => {
   test('bibliothèque vide : Pose 1', () => {
     assert.equal(nextDefaultPoseName3D([]), 'Pose 1');
     assert.equal(nextDefaultPoseName3D(null), 'Pose 1');
@@ -909,7 +909,7 @@ describe('nextDefaultPoseName3D — nom proposé par défaut', () => {
   });
 });
 
-describe('personaEditorPoseList3D — filtre par squelette (Fix 55)', () => {
+describe('personaEditorPoseList3D : filtre par squelette (Fix 55)', () => {
   const poses = [
     { id: 'p1', name: 'Humaine', skeleton: 'humain', joints: {} },
     { id: 'p2', name: 'Canine', skeleton: 'chien', joints: {} },
@@ -933,17 +933,17 @@ describe('personaEditorPoseList3D — filtre par squelette (Fix 55)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 57 — la bibliothèque de poses passe au niveau APPLICATION.
+// Fix 57 : la bibliothèque de poses passe au niveau APPLICATION.
 //
 // Changement de conception demandé après usage : les 15 poses de base étaient en lecture seule,
 // leurs boutons Renommer/Supprimer grisés. Elles sont désormais SEMÉES dans la bibliothèque, où
-// elles deviennent des entrées ordinaires — traitement uniforme, plus de statut particulier.
+// elles deviennent des entrées ordinaires, traitement uniforme, plus de statut particulier.
 //
 // Le risque de ce déplacement était de perdre l'autonomie des fichiers : une bibliothèque au niveau
 // application ne voyage pas avec le projet. D'où l'embarquement des poses utilisées à la
 // sérialisation, et la fusion à l'ouverture.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('seedPoseLibrary3D — les poses intégrées deviennent des entrées ordinaires', () => {
+describe('seedPoseLibrary3D : les poses intégrées deviennent des entrées ordinaires', () => {
   test('RÉGRESSION : l\'id vaut la CLÉ intégrée, pas un identifiant neuf', () => {
     // Le point qui évite toute migration : tous les fichiers déjà enregistrés contiennent
     // `position: 'assis'`. Un id neuf les laisserait tous à citer une clé introuvable.
@@ -976,7 +976,7 @@ describe('seedPoseLibrary3D — les poses intégrées deviennent des entrées or
   });
 });
 
-describe('mergePoseLibrary3D — fusion des poses d\'un fichier dans la bibliothèque', () => {
+describe('mergePoseLibrary3D : fusion des poses d\'un fichier dans la bibliothèque', () => {
   const biblio = () => [{ id: 'debout', name: '🧍 Debout', joints: {} }];
 
   test('une pose inconnue du fichier est ajoutée', () => {
@@ -1014,7 +1014,7 @@ describe('mergePoseLibrary3D — fusion des poses d\'un fichier dans la biblioth
   });
 });
 
-describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
+describe('posesUsedByProject3D : ce qu\'un fichier embarque', () => {
   const perso = (position) => ({ id: 'e' + Math.random(), type: 'perso', position });
   const biblio = [
     { id: 'pose1', name: 'Utilisée', joints: {} },
@@ -1045,7 +1045,7 @@ describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
   test('RÉGRESSION : un modèle importé compte autant qu\'un Personnage', () => {
     // MESURÉ SUR UN VRAI FICHIER, pas supposé. Dans Projet 2, « Pose 1 » n'était portée que par un
     // modèle importé (hulk_-_sm_bnd, page 6) : le fichier enregistré citait `pose2918` sans
-    // l'embarquer. Rouvert ailleurs, le modèle affichait « Pose 1 (inconnue) » — le nom était perdu
+    // l'embarquer. Rouvert ailleurs, le modèle affichait « Pose 1 (inconnue) », le nom était perdu
     // pour de bon, puisque rien dans le fichier ne le portait plus.
     //
     // Le compteur ne décidait alors que de l'avertissement de suppression, d'où l'oubli ; il décide
@@ -1056,7 +1056,7 @@ describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
   });
 });
 
-describe('poseUsageCount3D — qui cite une pose', () => {
+describe('poseUsageCount3D : qui cite une pose', () => {
   const dans = (...objets) => [{ id: 't1', pages: [{ id: 'p1', objects: objets }] }];
 
   test('un Personnage et un modèle importé comptent tous les deux', () => {
@@ -1068,7 +1068,7 @@ describe('poseUsageCount3D — qui cite une pose', () => {
   });
 
   test('ce qui ne porte pas de pose n\'est pas compté', () => {
-    // Le balayage est large — il traverse tout objet rencontré — donc la signature doit rester
+    // Le balayage est large : il traverse tout objet rencontré, donc la signature doit rester
     // discriminante. Une Bulle qui porterait par hasard un champ `position` ne doit pas gonfler le
     // compte : c'est lui qui déclenche, ou non, l'avertissement de suppression.
     const bulle = { id: 'b1', type: 'bulle', position: 'pose1' };
@@ -1086,14 +1086,14 @@ describe('poseUsageCount3D — qui cite une pose', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 59 — une suppression tient, et reste rattrapable pour les poses de base.
+// Fix 59 : une suppression tient, et reste rattrapable pour les poses de base.
 //
 // Le Fix 57 avait laissé une incohérence : supprimer était confirmé, mais défait par un geste sans
 // rapport (ouvrir un vieux projet réinjectait la pose, pour tous les projets). La mémorisation
-// ci-dessous ferme ça. Sa contrepartie — une suppression devenue définitive — a rendu inacceptable
+// ci-dessous ferme ça. Sa contrepartie, une suppression devenue définitive, a rendu inacceptable
 // le clic unique sans confirmation du Fix 56, révisé au passage.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('mergePoseLibrary3D — les suppressions mémorisées sont respectées', () => {
+describe('mergePoseLibrary3D : les suppressions mémorisées sont respectées', () => {
   test('RÉGRESSION : une pose supprimée n\'est PAS réintroduite par un projet', () => {
     // Le cœur du correctif. Sans la liste, ouvrir un projet enregistré avant la suppression
     // annulait celle-ci en silence.
@@ -1129,7 +1129,7 @@ describe('rememberDismissedPose3D', () => {
   });
 });
 
-describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
+describe('missingBuiltinPoses3D : ce que « Restaurer » réajoute', () => {
   test('seules les poses intégrées ABSENTES sont proposées', () => {
     const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain').filter(p => p.id !== 'course');
     const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain');
@@ -1139,7 +1139,7 @@ describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
   test('RÉGRESSION : une pose retirée de POSITIONS n\'est jamais « restaurée »', () => {
     // Neuf poses ont été retirées de POSITIONS mais gardées dans POSE_3D comme dernier recours de
     // résolution (cf. l'en-tête de POSITIONS). Si « Restaurer » se fondait sur POSE_3D plutôt que sur
-    // POSITIONS, un clic les ferait toutes revenir dans la bibliothèque — l'utilisateur qui les a
+    // POSITIONS, un clic les ferait toutes revenir dans la bibliothèque, l'utilisateur qui les a
     // fait retirer les verrait réapparaître, sans comprendre pourquoi.
     // ⚠️ Ce fichier n'importe pas draw.js, donc POSE_3D n'a ici ni 'allonge' ni 'vaincu' (ajoutées à
     // l'exécution). On ne compte donc PAS les poses de compatibilité : on vérifie l'appartenance,
@@ -1156,7 +1156,7 @@ describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
 
   test('RÉGRESSION : une pose de base RENOMMÉE n\'est pas « manquante »', () => {
     // Elle est présente, seul son nom diffère. La compter comme manquante ferait qu'un clic sur
-    // Restaurer écrase le renommage — exactement ce que ce bouton ne doit jamais faire.
+    // Restaurer écrase le renommage, exactement ce que ce bouton ne doit jamais faire.
     const biblio = seedPoseLibrary3D(POSITIONS, POSE_3D, 'humain')
       .map(p => p.id === 'assis' ? { ...p, name: 'Mon nom à moi' } : p);
     const manquantes = missingBuiltinPoses3D(POSITIONS, POSE_3D, biblio, 'humain');
@@ -1164,7 +1164,7 @@ describe('missingBuiltinPoses3D — ce que « Restaurer » réajoute', () => {
   });
 
   test('bibliothèque vidée : tout le semis est proposé', () => {
-    // Comparé au SEMIS, pas à POSITIONS.length. Ce fichier ne charge pas draw.js — POSE_3D n'y a
+    // Comparé au SEMIS, pas à POSITIONS.length. Ce fichier ne charge pas draw.js. POSE_3D n'y a
     // donc que 13 entrées au lieu de 15, 'allonge' et 'vaincu' étant ajoutées à l'exécution
     // (cf. Fix 54). C'est la TROISIÈME fois que ce piège me fait écrire une assertion fausse ; la
     // formuler ainsi la rend juste quel que soit l'ordre des imports, ce qui est de toute façon la
@@ -1195,7 +1195,7 @@ describe('forgetDismissedPoses3D', () => {
   });
 });
 
-describe('nameOfPose3D — dernier nom connu, pour positionLabel (Fix 60)', () => {
+describe('nameOfPose3D : dernier nom connu, pour positionLabel (Fix 60)', () => {
   const poses = [{ id: 'pose1', name: 'Salut militaire', joints: {} }];
 
   test('pose du projet : son nom', () => {
@@ -1215,7 +1215,7 @@ describe('nameOfPose3D — dernier nom connu, pour positionLabel (Fix 60)', () =
 
   test('pose introuvable : null, pas un nom inventé', () => {
     // Ce champ ne sert qu'à dire ce qu'on a VU. Y écrire une valeur par défaut le rendrait mensonger
-    // précisément dans le cas où il est lu — quand la pose a disparu.
+    // précisément dans le cas où il est lu, quand la pose a disparu.
     assert.equal(nameOfPose3D('inexistante', poses, POSITIONS), null);
     assert.equal(nameOfPose3D(null, poses, POSITIONS), null);
     assert.equal(nameOfPose3D('pose1', null, null), null);
@@ -1223,14 +1223,14 @@ describe('nameOfPose3D — dernier nom connu, pour positionLabel (Fix 60)', () =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 62 — la pose telle que les curseurs l'affichent.
+// Fix 62 : la pose telle que les curseurs l'affichent.
 //
-// Remplace la tolérance d'un demi-degré du Fix 61. Celle-ci décrivait un symptôme — les poses sont
+// Remplace la tolérance d'un demi-degré du Fix 61. Celle-ci décrivait un symptôme, les poses sont
 // stockées en radians, les curseurs gradués au degré, d'où un écart résiduel après un aller-retour.
 // Comparer directement les valeurs AFFICHÉES supprime la cause : la granularité vient de l'interface
 // par construction, il n'y a plus de seuil à choisir ni à justifier.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => {
+describe('poseSliderSignature3D : comparer ce que l\'utilisateur voit', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   const handles = [{ id: 'torso', mode: 'hinge', field: 'torsoRotX' }];
 
@@ -1241,7 +1241,7 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
 
   test('RÉGRESSION : un aller-retour par les curseurs ne change pas la signature', () => {
     // Le cas qui a motivé le correctif. 0.2 rad ≈ 11.46° : le curseur affiche 11, et réécrire 11
-    // donne 0.19198 rad — 0.459° d'écart, que la comparaison en radians voyait comme un changement.
+    // donne 0.19198 rad, 0.459° d'écart, que la comparaison en radians voyait comme un changement.
     const départ = { torsoRotX: 0.2 };
     const avant = poseSliderSignature3D(départ, handles);
     const après = {};
@@ -1259,7 +1259,7 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
 
   test('COUVERTURE : la signature couvre TOUS les curseurs du panneau', () => {
     // Une articulation absente de la signature deviendrait réglable sans que les boutons
-    // Réinitialiser/Appliquer s'en aperçoivent — un travail perdu en silence.
+    // Réinitialiser/Appliquer s'en aperçoivent, un travail perdu en silence.
     const vide = poseSliderSignature3D({});
     assert.equal(vide.split('|').length, 36, 'les 36 curseurs (cf. poseSliderSpecs3D)');
   });
@@ -1280,7 +1280,7 @@ describe('poseSliderSignature3D — comparer ce que l\'utilisateur voit', () => 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 65 — position d'une caméra en orbite.
+// Fix 65 : position d'une caméra en orbite.
 //
 // L'éditeur ne DÉPLACE plus la vue, il l'ORBITE : une figure seule est déjà centrée, la déplacer ne
 // fait que la perdre de vue. Ce qui manquait, c'était d'en faire le tour.
@@ -1331,14 +1331,14 @@ describe('orbitCameraPosition3D', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 71/72 (ESSAI) — glisser une poignée, et choisir lequel de ses champs on règle.
+// Fix 71/72 (ESSAI), glisser une poignée, et choisir lequel de ses champs on règle.
 //
 // Fonctionnalité explicitement expérimentale : elle peut être retirée. Ces tests décrivent donc les
 // PROPRIÉTÉS du geste (absolu, borné, arrondi comme les curseurs), pas des valeurs à préserver.
 // ─────────────────────────────────────────────────────────────────────────────
 const DEG = Math.PI / 180;
 
-describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner', () => {
+describe('poseSpecRotationAxis3D : l\'axe autour duquel un champ fait tourner', () => {
   test('il est déduit du descripteur, et couvre TOUS les champs réels', () => {
     // Balayage exhaustif plutôt que quelques cas choisis : c'est une correspondance avec ce que
     // rig3d applique, et un champ oublié donnerait un glisser silencieusement de travers.
@@ -1348,11 +1348,11 @@ describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner'
       lKnee: 'x', rKnee: 'x',
       lWristRotX: 'x', rWristRotX: 'x', lWristRotY: 'y', rWristRotY: 'y',
       lWristRotZ: 'z', rWristRotZ: 'z',
-      // Rig A — cou, clavicules, chevilles. Leur axe se déduit du même suffixe que les autres
+      // Rig A : cou, clavicules, chevilles. Leur axe se déduit du même suffixe que les autres
       // (RotY → y, RotZ → z, sinon x) : c'est justement ce que ce balayage vérifie, plutôt que de
       // faire confiance à la convention.
       neckRotX: 'x', neckRotY: 'y',
-      // Rig B — 3ᵉ axe de la tête, 2ᵉ et 3ᵉ du torse.
+      // Rig B : 3ᵉ axe de la tête, 2ᵉ et 3ᵉ du torse.
       headRotZ: 'z', torsoRotY: 'y', torsoRotZ: 'z',
       lClavicleRotX: 'x', rClavicleRotX: 'x', lClavicleRotZ: 'z', rClavicleRotZ: 'z',
       lFootRotX: 'x', rFootRotX: 'x', lFootRotZ: 'z', rFootRotZ: 'z',
@@ -1374,7 +1374,7 @@ describe('poseSpecRotationAxis3D — l\'axe autour duquel un champ fait tourner'
   });
 });
 
-describe('projectModelAxisToScreen3D — un axe du modèle vu à l\'écran', () => {
+describe('projectModelAxisToScreen3D : un axe du modèle vu à l\'écran', () => {
   const long = (axe, orbit) => {
     const a = projectModelAxisToScreen3D(axe, orbit);
     return Math.hypot(a.x, a.y);
@@ -1397,7 +1397,7 @@ describe('projectModelAxisToScreen3D — un axe du modèle vu à l\'écran', () 
 
   test('RÉGRESSION : à 90° d\'orbite, X et Z ÉCHANGENT leurs rôles', () => {
     // La raison d'être du Fix 75. De face c'est l'écart (Z) qui est aveugle, de profil c'est la
-    // flexion (X) — une correspondance figée ne peut donc pas convenir aux deux vues.
+    // flexion (X), une correspondance figée ne peut donc pas convenir aux deux vues.
     const profil = { rotX: 0, rotY: 90 * DEG };
     assertClose(long('x', profil), 0, 'X de profil');
     assertClose(long('z', profil), 1, 'Z de profil');
@@ -1417,14 +1417,14 @@ describe('projectModelAxisToScreen3D — un axe du modèle vu à l\'écran', () 
   });
 });
 
-describe('straightDragDegrees3D — la direction du glisser suit la vue (Fix 84)', () => {
+describe('straightDragDegrees3D : la direction du glisser suit la vue (Fix 84)', () => {
   // De FACE vaut azimut π depuis le Fix 80 : le rig place le visage en Z négatif. Les versions
-  // précédentes de ces tests appelaient « face » un azimut nul, qui est en réalité le DOS — et
+  // précédentes de ces tests appelaient « face » un azimut nul, qui est en réalité le DOS, et
   // continuaient de passer, puisqu'elles ne comparaient qu'à elles-mêmes.
   const face = { rotX: 0, rotY: Math.PI };
   const profil = { rotX: 0, rotY: Math.PI / 2 };
   // 120° et non 135° : à 135° la tangente vaut 0.71, sous le seuil de 0.75. Le modèle bascule
-  // donc plus tard qu'on ne l'imagine, et les données ne disent rien de cette zone — aucun geste
+  // donc plus tard qu'on ne l'imagine, et les données ne disent rien de cette zone, aucun geste
   // jugé ne s'y trouvait.
   const troisQuarts = { rotX: 0, rotY: Math.PI * (120 / 180) };
 
@@ -1441,7 +1441,7 @@ describe('straightDragDegrees3D — la direction du glisser suit la vue (Fix 84)
     // Une rotation autour de la verticale ne déplace rien de ce qui se trouve SUR cet axe : prendre
     // le membre pendant (−Y) comme levier donnerait `Y × (−Y) = 0`, une tangente identiquement
     // nulle, et le pivot retomberait éternellement sur la perpendiculaire. Son levier est donc la
-    // direction du regard (−Z) — ce qu'un pivot déplace effectivement, à commencer par le visage.
+    // direction du regard (−Z), ce qu'un pivot déplace effectivement, à commencer par le visage.
     //
     // Aucun des 14 gestes jugés ne portait sur un pivot : sans ce test, la mutation « un seul
     // levier pour tous les axes » passait inaperçue.
@@ -1469,7 +1469,7 @@ describe('straightDragDegrees3D — la direction du glisser suit la vue (Fix 84)
   });
 
   test('RÉGRESSION : une orbite horizontale fait bien TOURNER la direction du geste', () => {
-    // L'inverse de ce que la version précédente de ce test affirmait — et c'était exact pour le
+    // L'inverse de ce que la version précédente de ce test affirmait, et c'était exact pour le
     // modèle d'alors, qui suivait l'axe : la projection d'un axe horizontal reste horizontale quel
     // que soit le lacet, seule sa longueur change. La tangente, elle, pivote réellement avec la vue.
     const deFace = straightDragDirection3D('x', face);
@@ -1499,18 +1499,18 @@ describe('straightDragDegrees3D — la direction du glisser suit la vue (Fix 84)
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 84 — le modèle confronté aux VERDICTS RÉELS.
+// Fix 84 : le modèle confronté aux VERDICTS RÉELS.
 //
 // Ce test rejoue les 14 gestes que l'utilisateur a jugés « bon sens » ou « inversé » dans
 // l'éditeur, et vérifie que le modèle retenu prédit le sens qu'il attendait. C'est le seul test de
-// ce dépôt dont l'oracle vienne d'un humain plutôt que du code — et c'est précisément ce qui lui
+// ce dépôt dont l'oracle vienne d'un humain plutôt que du code, et c'est précisément ce qui lui
 // donne sa valeur : quatre corrections successives raisonnées à froid s'étaient trompées.
 //
 // Le jeu de données est FIGÉ ici plutôt que lu depuis le fichier de diagnostic : celui-ci est
 // ignoré par git, réécrit à chaque campagne, et absent d'une nouvelle installation. Un test qui
 // disparaît selon la machine ne protège rien.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 84 — le modèle mixte contre les 14 gestes jugés', () => {
+describe('Fix 84 : le modèle mixte contre les 14 gestes jugés', () => {
   // champ, axe, mode, orbiteY, orbiteX, sourisDx, sourisDy, angleDelta, verdict
   const CAMPAGNE = [
     ['rShoulder:x', 'x', 'droit',      180,  0,  -26,  168,  -84, 'bon'],
@@ -1548,7 +1548,7 @@ describe('Fix 84 — le modèle mixte contre les 14 gestes jugés', () => {
 
   test('le résidu est CELUI qu\'on a accepté, pas un autre', () => {
     // 14 sur 14 est hors d'atteinte : deux cas voisins, à 0.56 et 0.58 de tangente visible,
-    // réclament des modèles opposés — aucun seuil ne peut les départager. Nommer le résidu évite
+    // réclament des modèles opposés, aucun seuil ne peut les départager. Nommer le résidu évite
     // qu'un changement futur en substitue un autre sans qu'on s'en aperçoive, le compte restant 13.
     const rates = CAMPAGNE.filter(([champ, axe, mode, oY, oX, dx, dy, angleDelta, verdict]) => {
       const applique = angleDelta > 0 ? 1 : -1;
@@ -1566,7 +1566,7 @@ describe('Fix 84 — le modèle mixte contre les 14 gestes jugés', () => {
   });
 });
 
-describe('balayage circulaire — pointerSweepAngle3D + accumulateSweepDegrees3D', () => {
+describe('balayage circulaire : pointerSweepAngle3D + accumulateSweepDegrees3D', () => {
   const pivot = { x: 100, y: 100 };
   const surCercle = (deg, r = 100) => ({
     x: pivot.x + r * Math.cos(deg * DEG),
@@ -1634,7 +1634,7 @@ describe('balayage circulaire — pointerSweepAngle3D + accumulateSweepDegrees3D
   });
 });
 
-describe('canvasPointToClient3D — réciproque de canvasEventCoords3D', () => {
+describe('canvasPointToClient3D : réciproque de canvasEventCoords3D', () => {
   const rect = { left: 30, top: 12, width: 400, height: 250 };
 
   test('RÉGRESSION : aller-retour exact, même avec des échelles X et Y différentes', () => {
@@ -1652,7 +1652,7 @@ describe('canvasPointToClient3D — réciproque de canvasEventCoords3D', () => {
   });
 });
 
-describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', () => {
+describe('dragJointStep3D : de la variation en degrés à l\'angle écrit', () => {
   const deg = (...a) => dragJointStep3D(...a).deg;
 
   test('le résultat part de l\'angle de DÉPART, pas de zéro', () => {
@@ -1660,7 +1660,7 @@ describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', ()
     assert.equal(deg(30, -10), 20);
   });
 
-  test('RÉGRESSION : le geste est ABSOLU — deux fois le même delta ne cumule pas', () => {
+  test('RÉGRESSION : le geste est ABSOLU : deux fois le même delta ne cumule pas', () => {
     // Le piège serait de relire l'angle courant à chaque image et d'y ajouter le delta : la même
     // course de souris n'aboutirait alors pas au même angle selon la fluidité de l'affichage.
     assert.equal(deg(0, 10), deg(0, 10));
@@ -1687,7 +1687,7 @@ describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', ()
   });
 
   test('RÉGRESSION : revenir au point de départ rend l\'angle initial À L\'IDENTIQUE', () => {
-    // Vrai TANT QU'AUCUNE BORNE n'a été touchée — le ré-ancrage décale volontairement le repère
+    // Vrai TANT QU'AUCUNE BORNE n'a été touchée : le ré-ancrage décale volontairement le repère
     // au-delà. C'est ce qui permet à « Réinitialiser » de rester éteint après un aller-retour : la
     // signature de pose compare des degrés arrondis, un écart d'un degré l'allumerait.
     dragJointStep3D(17, 30);
@@ -1703,7 +1703,7 @@ describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', ()
 
   test('RÉGRESSION : après un dépassement, le RETOUR répond au premier pixel', () => {
     // Le défaut signalé au Fix 73 : « à force de bouger une articulation, cela finit par la
-    // bloquer ». L'angle était borné, la course de souris ne l'était pas — le surplus était stocké
+    // bloquer ». L'angle était borné, la course de souris ne l'était pas, le surplus était stocké
     // et devait être reparcouru avant que rien ne bouge.
     let origine = 0;
     const pousser = (d) => {
@@ -1738,7 +1738,7 @@ describe('dragJointStep3D — de la variation en degrés à l\'angle écrit', ()
   });
 });
 
-describe('cyclePoseSpecIndex3D — passer d\'un champ à l\'autre à la molette', () => {
+describe('cyclePoseSpecIndex3D : passer d\'un champ à l\'autre à la molette', () => {
   test('avance et recule en boucle', () => {
     assert.equal(cyclePoseSpecIndex3D(0, 2, 1), 1);
     assert.equal(cyclePoseSpecIndex3D(1, 2, 1), 0, 'boucle par le haut');
@@ -1748,7 +1748,7 @@ describe('cyclePoseSpecIndex3D — passer d\'un champ à l\'autre à la molette'
   test('RÉGRESSION : reculer depuis 0 ne donne JAMAIS un index négatif', () => {
     // Le modulo de JavaScript garde le signe du dividende : `-1 % 2` vaut -1, pas 1. Un index
     // négatif lirait `undefined` dans la liste des descripteurs, et le glisser ne bougerait plus
-    // rien — sans erreur, donc sans rien pour l'expliquer.
+    // rien, sans erreur, donc sans rien pour l'expliquer.
     for (let n = 1; n <= 4; n++) {
       for (let d = -9; d <= 9; d++) {
         const i = cyclePoseSpecIndex3D(0, n, d);
@@ -1768,7 +1768,7 @@ describe('cyclePoseSpecIndex3D — passer d\'un champ à l\'autre à la molette'
   });
 });
 
-describe('Fix 87 — rayon de saisie d\'une poignée', () => {
+describe('Fix 87 : rayon de saisie d\'une poignée', () => {
   test('RÉGRESSION : le rayon « seul » est franchement plus large que le rayon normal', () => {
     // Toute la raison d'être de la seconde valeur : une fois une articulation seule à l'écran,
     // aucune voisine ne peut être attrapée par erreur, et un rayon large évite de désélectionner
@@ -1793,7 +1793,7 @@ describe('Fix 87 — rayon de saisie d\'une poignée', () => {
   });
 });
 
-describe('posePickRadii3D — une seule source pour le clic ET pour le dessin', () => {
+describe('posePickRadii3D : une seule source pour le clic ET pour le dessin', () => {
   test('les deux rayons s\'élargissent quand l\'articulation est seule', () => {
     const normal = posePickRadii3D(false);
     const solo = posePickRadii3D(true);
@@ -1802,7 +1802,7 @@ describe('posePickRadii3D — une seule source pour le clic ET pour le dessin', 
   });
 
   test('RÉGRESSION : la fonction rend les DEUX rayons, pas seulement celui du point', () => {
-    // Fix 88 — la zone de prise est dessinée à partir de ces valeurs. Si la bande du membre
+    // Fix 88 : la zone de prise est dessinée à partir de ces valeurs. Si la bande du membre
     // disparaissait du descripteur, le tracé montrerait une zone plus petite que la zone réellement
     // cliquable : l'utilisateur croirait devoir viser le point alors que le membre suffit.
     for (const solo of [false, true]) {
@@ -1821,17 +1821,17 @@ describe('posePickRadii3D — une seule source pour le clic ET pour le dessin', 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// makeFrameScheduler — coalescence d'un redessin sur une image d'affichage.
+// makeFrameScheduler, coalescence d'un redessin sur une image d'affichage.
 //
 // Mesure qui a motivé son écriture : drawCurrentPage est appelé depuis 110 endroits, dont 8 dans
 // des `mousemove` et 4 dans des `wheel`. Une souris à 1000 Hz émet une quinzaine d'événements
-// entre deux images de 60 Hz — autant de redessins dont personne ne voit jamais le résultat.
+// entre deux images de 60 Hz, autant de redessins dont personne ne voit jamais le résultat.
 //
 // L'ordonnanceur reçoit son horloge en paramètre. Ce n'est pas une commodité de test : c'est ce
 // qui rend le comptage OBSERVABLE. Un `requestAnimationFrame` écrit en dur aurait donné une
 // fonction dont on ne peut affirmer que « ça a l'air plus fluide ».
 // ─────────────────────────────────────────────────────────────────────────────
-describe('makeFrameScheduler — au plus une exécution par image', () => {
+describe('makeFrameScheduler : au plus une exécution par image', () => {
   // Fausse horloge : `passerUneImage` joue les rappels en attente, comme le ferait l'écran.
   function horloge() {
     let suivant = 1;
@@ -1921,7 +1921,7 @@ describe('makeFrameScheduler — au plus une exécution par image', () => {
 // Hauteur réelle ↔ pourcentage (tâche #344)
 //
 // CE QUI SE JOUE ICI. La fiche d'un Élément affiche désormais les DEUX : un curseur en pourcentage
-// et une hauteur en mètres. Deux vues d'une seule donnée — et deux vues d'une seule donnée, dans ce
+// et une hauteur en mètres. Deux vues d'une seule donnée, et deux vues d'une seule donnée, dans ce
 // dépôt, c'est l'endroit où elles se mettent à diverger. Ces tests épinglent le seul fait qui
 // l'empêche : les deux conversions sont réciproques, et les bornes des deux sont la même borne.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1986,7 +1986,7 @@ describe('hauteur réelle ↔ pourcentage', () => {
     // Trouvé par mutation (H6). `baseH` est la taille à 100 % ; `h` est la taille ACTUELLE. Se
     // rabattre sur `h` quand `baseH` manque paraît clément et fait exactement le contraire : le
     // pourcentage vaudrait toujours 100 %, et chaque redimensionnement repartirait de la taille
-    // déjà agrandie — l'Élément grossirait à chaque passage, sans que rien ne l'explique.
+    // déjà agrandie, l'Élément grossirait à chaque passage, sans que rien ne l'explique.
     //
     // L'initialisation de `baseH` existe, mais elle est FAITE UNE FOIS, explicitement, par
     // applyElementRealHeight (`if (!o.baseW || !o.baseH) { … o.baseH = o.h; }`). Un lecteur ne doit
@@ -1996,11 +1996,11 @@ describe('hauteur réelle ↔ pourcentage', () => {
   });
 });
 
-describe('optionsDeFigure3D — le champ « Modèle » nomme toujours le bon fichier', () => {
+describe('optionsDeFigure3D : le champ « Modèle » nomme toujours le bon fichier', () => {
   test('la figure courante ABSENTE des posables est ajoutée, en tête', () => {
     // LE cas qui compte : un fichier introuvable n'est pas dans loadedModelNames(), donc pas dans
     // les options. Sans ce repli, `select.value = 'perdu.glb'` échoue en silence et la fiche
-    // affiche le nom d'un AUTRE modèle — celui qui se trouve en première position.
+    // affiche le nom d'un AUTRE modèle, celui qui se trouve en première position.
     assert.deepEqual(optionsDeFigure3D(['a.glb', 'b.glb'], 'perdu.glb'),
       ['perdu.glb', 'a.glb', 'b.glb']);
   });
@@ -2023,7 +2023,7 @@ describe('optionsDeFigure3D — le champ « Modèle » nomme toujours le bon fic
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// orbiteDeFace3D — présenter un corps de face, quelle que soit sa convention (tâche #346)
+// orbiteDeFace3D, présenter un corps de face, quelle que soit sa convention (tâche #346)
 //
 // CE QUI SE JOUE ICI. L'Éditeur ouvrait sa caméra sur un demi-tour FIXE. Juste pour le Personnage
 // intégré (devant vers −Z), faux pour tout modèle importé (devant vers +Z). Deux conventions
@@ -2044,7 +2044,7 @@ describe('orbiteDeFace3D', () => {
   });
 
   test('le piège du zéro négatif ne passe pas', () => {
-    // `atan2(-0, -1)` rend −π, `atan2(0, -1)` rend +π. Même caméra, valeurs différentes — et l'une
+    // `atan2(-0, -1)` rend −π, `atan2(0, -1)` rend +π. Même caméra, valeurs différentes, et l'une
     // des deux ne se compare pas à la constante. wrapAngle tranche ; ce test le vérifie des deux
     // côtés, parce que le signe de zéro dépend de la façon dont l'appelant a construit le vecteur.
     assert.equal(orbiteDeFace3D([0, 0, 1]), Math.PI);
@@ -2059,7 +2059,7 @@ describe('orbiteDeFace3D', () => {
 
   test('un corps tourné d\'un quart de tour est présenté de face lui aussi', () => {
     // Ce que la constante ne pouvait pas faire. Un fichier exporté de travers doit s'ouvrir de face
-    // comme les autres — c'est tout l'intérêt de mesurer plutôt que de choisir.
+    // comme les autres, c'est tout l'intérêt de mesurer plutôt que de choisir.
     assertClose(orbiteDeFace3D([1, 0, 0]), -Math.PI / 2, 'devant vers −X');
     assertClose(orbiteDeFace3D([-1, 0, 0]), Math.PI / 2, 'devant vers +X');
   });
@@ -2073,7 +2073,7 @@ describe('orbiteDeFace3D', () => {
 
   test('un axe fore-aft VERTICAL rend null, jamais un angle inventé', () => {
     // Un corps couché dans son propre fichier n'a pas de « de face » horizontal. Rendre 0 ferait
-    // passer une absence de réponse pour une réponse — et l'appelant ne pourrait plus choisir son
+    // passer une absence de réponse pour une réponse, et l'appelant ne pourrait plus choisir son
     // repli.
     assert.equal(orbiteDeFace3D([0, 1, 0]), null);
     assert.equal(orbiteDeFace3D([0, -1, 0]), null);
@@ -2089,10 +2089,10 @@ describe('orbiteDeFace3D', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// estHorsChamp3D — ce qui mérite d'être relégué en bas de la liste (tâche #347)
+// estHorsChamp3D, ce qui mérite d'être relégué en bas de la liste (tâche #347)
 //
 // CE QUI SE JOUE ICI. La liste des Éléments d'une Case range désormais à part ceux qu'on ne voit
-// pas. Se tromper dans un sens montre un Élément de trop — sans gravité. Se tromper dans l'autre
+// pas. Se tromper dans un sens montre un Élément de trop, sans gravité. Se tromper dans l'autre
 // CACHE un Élément que l'utilisateur voit à l'écran, et il n'a alors aucun moyen de deviner
 // pourquoi sa ligne a disparu. Les cas limites vont donc tous dans le même sens : le doute
 // profite à la liste principale.
@@ -2110,9 +2110,9 @@ describe('estHorsChamp3D', () => {
       .forEach(c => assert.equal(estHorsChamp3D(c, null, CADRE), true, JSON.stringify(c)));
   });
 
-  test('À MOITIÉ SORTI : visible — c\'est le choix qui distingue les deux lectures', () => {
-    // Centre hors du cadre, mais la boîte mord encore dessus. L'autre critère possible — « centre
-    // dehors » — l'aurait rangé parmi les invisibles alors qu'on en voit la moitié.
+  test('À MOITIÉ SORTI : visible : c\'est le choix qui distingue les deux lectures', () => {
+    // Centre hors du cadre, mais la boîte mord encore dessus. L'autre critère possible, « centre
+    // dehors », l'aurait rangé parmi les invisibles alors qu'on en voit la moitié.
     assert.equal(estHorsChamp3D(pt(80, 125), { halfW: 40, halfH: 30 }, CADRE), false);
     assert.equal(estHorsChamp3D(pt(320, 125), { halfW: 40, halfH: 30 }, CADRE), false);
   });
@@ -2133,7 +2133,7 @@ describe('estHorsChamp3D', () => {
   test('RÉGRESSION : DERRIÈRE LA CAMÉRA, même au milieu du cadre, c\'est hors champ', () => {
     // Signalé à l'usage : beaucoup d'Éléments restaient dans la liste principale alors qu'ils
     // avaient quitté l'image. La projection divise par `w` ; derrière la caméra, `w` est négatif et
-    // le point ressort EN MIROIR — à des coordonnées finies, qui retombent parfois pile au centre.
+    // le point ressort EN MIROIR, à des coordonnées finies, qui retombent parfois pile au centre.
     // Sans ce test, la correction se résumerait à une ligne que rien n'exige.
     assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: false }, null, CADRE), true);
     assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: false },
@@ -2141,7 +2141,7 @@ describe('estHorsChamp3D', () => {
   });
 
   test('`devant: true` ou absent laisse la décision aux rectangles', () => {
-    // Un appelant qui ne renseigne pas ce champ garde exactement le comportement précédent — sans
+    // Un appelant qui ne renseigne pas ce champ garde exactement le comportement précédent, sans
     // quoi ajouter l'information aurait changé le sens de tous les appels existants.
     assert.equal(estHorsChamp3D({ x: 200, y: 125, devant: true }, null, CADRE), false);
     assert.equal(estHorsChamp3D({ x: 200, y: 125 }, null, CADRE), false);
@@ -2173,7 +2173,7 @@ describe('estHorsChamp3D', () => {
 
 
 // ── pageVoisine3D ─────────────────────────────────────────────────────────────────────────────
-describe('pageVoisine3D — la Planche voisine, en bouclant', () => {
+describe('pageVoisine3D : la Planche voisine, en bouclant', () => {
   test('avance et recule d\'un cran', () => {
     assert.equal(pageVoisine3D(5, 2, 1), 3);
     assert.equal(pageVoisine3D(5, 2, -1), 1);
@@ -2189,7 +2189,7 @@ describe('pageVoisine3D — la Planche voisine, en bouclant', () => {
 
   test('RÉGRESSION : le modulo d\'un négatif, en JavaScript, est négatif', () => {
     // (-1 % 5) vaut -1, pas 4. Sans le `+ nbPages`, reculer depuis la première Planche donnerait un
-    // index négatif — une Planche introuvable, et l'écran resterait sur place sans rien expliquer.
+    // index négatif, une Planche introuvable, et l'écran resterait sur place sans rien expliquer.
     assert.equal(pageVoisine3D(5, 0, -1), 4);
     assert.equal(pageVoisine3D(2, 0, -1), 1);
     assert.equal(pageVoisine3D(1, 0, -1), 0);

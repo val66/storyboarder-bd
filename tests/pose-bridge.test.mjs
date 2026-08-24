@@ -1,11 +1,11 @@
 /**
- * tests/pose-bridge.test.mjs — le passage entre les deux vocabulaires de pose.
+ * tests/pose-bridge.test.mjs, le passage entre les deux vocabulaires de pose.
  *
  * CE QUI EST COUVERT ICI : la table articulation ↔ emplacement (dans les DEUX sens, parce qu'une
  * énumération tenue à la main est la panne la plus fréquente de ce dépôt), l'ordre de composition
  * des axes, et la traduction elle-même sur des repères construits à la main.
  *
- * CE QUI NE L'EST PAS : le rendu WebGL, et la MESURE des repères sur de vrais fichiers `.glb` — les
+ * CE QUI NE L'EST PAS : le rendu WebGL, et la MESURE des repères sur de vrais fichiers `.glb`, les
  * six fichiers d'essai ne sont pas versionnés (cf. docs/imported-skeletons.md), et Three ne construit
  * pas de renderer sous Node. Les repères sont donc fournis en dur ici : ce qu'on vérifie, c'est le
  * calcul, pas la lecture du disque.
@@ -23,7 +23,7 @@ import {
 } from '../src/pose-bridge.js';
 
 const REPERE_IDENTITE = { droite: [1, 0, 0], haut: [0, 1, 0], avant: [0, 0, 1] };
-// Un corps dont la verticale est +Z — ce n'est pas une hypothèse d'école : `hulk_-_sm_bnd.glb` et
+// Un corps dont la verticale est +Z : ce n'est pas une hypothèse d'école : `hulk_-_sm_bnd.glb` et
 // `worker_j.glb` sont exactement dans ce cas (cf. docs/imported-skeletons.md §4).
 const REPERE_VERTICAL_Z = { droite: [1, 0, 0], haut: [0, 0, 1], avant: [0, -1, 0] };
 
@@ -66,7 +66,7 @@ test('tous les emplacements cités existent vraiment', () => {
 
 test('gauche va à gauche, droite va à droite', () => {
   // LE DÉFAUT QUE LA COMPLÉTUDE NE VOIT PAS. Une table où `lElbow` pointerait sur `avantbras_d` est
-  // parfaitement complète et parfaitement bijective — elle produirait simplement un modèle importé
+  // parfaitement complète et parfaitement bijective, elle produirait simplement un modèle importé
   // qui lève le mauvais bras, en miroir de ce que montre le Personnage. Les deux vocabulaires
   // portent le côté dans leur nom (`l`/`r` d'un côté, `_g`/`_d` de l'autre) : autant s'en servir.
   Object.entries(EMPLACEMENT_PAR_ARTICULATION).forEach(([id, slot]) => {
@@ -79,7 +79,7 @@ test('gauche va à gauche, droite va à droite', () => {
 test('la carte des poignées se dérive des os mappés, sans table nouvelle', () => {
   // Le dessin des points d'articulation lit `entry.joints[def.group]`, où `def.group` nomme un
   // groupe du rig intégré. Pour poser ces points sur un modèle importé il faut la même forme,
-  // remplie d'os — et le seul lien manquant était articulation → emplacement, que la table
+  // remplie d'os, et le seul lien manquant était articulation → emplacement, que la table
   // ci-dessus tient déjà. Une seconde correspondance groupe → emplacement aurait été l'énumération
   // parallèle de trop.
   const osMappes = Object.fromEntries(
@@ -131,7 +131,7 @@ test('une articulation à trois axes en fournit bien trois', () => {
 
 test('deux corps identiques : la pose ressort inchangée', () => {
   // LE TEST QUI COMPTE LE PLUS. Si les deux repères coïncident et que l'os est au repos identité,
-  // traduire ne doit RIEN changer — sans quoi le module déformerait gratuitement, et personne ne
+  // traduire ne doit RIEN changer, sans quoi le module déformerait gratuitement, et personne ne
   // pourrait dire de combien.
   const sortie = poseOsDepuisPosePersonnage({
     joints: { headRotX: 0.3, headRotY: -0.2, headRotZ: 0.1, lKnee: 0.7 },
@@ -217,7 +217,7 @@ test('les rotules sont lues sur leurs deux axes', () => {
 test('les angles ne sont pas arrondis au degré en chemin', () => {
   // Le brouillon des curseurs est arrondi pour l'affichage ; la traduction, elle, compose des
   // rotations, et un arrondi avant composition ferait dériver toute la chaîne.
-  const petit = 0.001;   // ≈ 0,057° — disparaîtrait entièrement avec un arrondi au degré
+  const petit = 0.001;   // ≈ 0,057°, disparaîtrait entièrement avec un arrondi au degré
   const sortie = poseOsDepuisPosePersonnage({
     joints: { headRotX: petit },
     repereSource: REPERE_IDENTITE, repereCible: REPERE_IDENTITE,
@@ -227,7 +227,7 @@ test('les angles ne sont pas arrondis au degré en chemin', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — le pont entre les deux vocabulaires de pose (tâche #310).
+ * JOURNAL DE MUTATION : le pont entre les deux vocabulaires de pose (tâche #310).
  *
  *   W9  les curseurs ne sont plus ordonnés par axe                              ROUGE
  *   W10 une rotation nulle compose quand même                                   ROUGE

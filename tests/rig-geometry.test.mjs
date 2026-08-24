@@ -1,16 +1,16 @@
 /**
- * tests/rig-geometry.test.mjs — les rigs 3D sont-ils mesurables, et complets ?
+ * tests/rig-geometry.test.mjs, les rigs 3D sont-ils mesurables, et complets ?
  *
  * CE QUI REND CE FICHIER POSSIBLE : `THREE.WebGLRenderer` échoue sous Node, mais `THREE.Group`,
  * `Mesh`, `BoxGeometry` et `Box3` fonctionnent parfaitement. On ne peut pas RENDRE un rig, on peut
  * le CONSTRUIRE et le MESURER. Les quatre-vingt-dix exports de rig3d.js n'étaient pas hors de
- * portée — ils n'avaient simplement jamais été essayés.
+ * portée, ils n'avaient simplement jamais été essayés.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * UNE HYPOTHÈSE FAUSSE, GARDÉE ICI PARCE QU'ELLE SE REPRÉSENTERA.
  *
  * En mesurant, j'ai trouvé que 17 des 28 constructeurs produisent une boîte englobante dont la
- * hauteur s'écarte de plus de 15 % de la valeur déclarée dans OBJECT_REAL_HEIGHT_M — l'arbre de
+ * hauteur s'écarte de plus de 15 % de la valeur déclarée dans OBJECT_REAL_HEIGHT_M, l'arbre de
  * −54 %, le lézard de +187 %. Cela ressemblait exactement à la classe de bug de ce dépôt : deux
  * calculs de la même grandeur qui divergent.
  *
@@ -20,7 +20,7 @@
  * la seule autorité sur la taille à l'écran. Comparer les deux n'a aucun sens.
  *
  * Ce qu'il fallait retenir n'est pas l'écart mais la DIVISION : puisque l'échelle se calcule à
- * partir de la boîte du rig, une boîte dégénérée — hauteur nulle, NaN, Infini — donne un facteur
+ * partir de la boîte du rig, une boîte dégénérée, hauteur nulle, NaN, Infini, donne un facteur
  * d'échelle infini ou indéfini. L'Élément disparaît, ou explose à travers la Case. C'est ce que ce
  * fichier garde.
  * ─────────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ import {
 
 // Le constructeur de chaque type d'Objet. Cette table est elle-même l'objet d'un test : une entrée
 // manquante des deux côtés passerait inaperçue, et c'est la deuxième classe de bug récurrente de ce
-// dépôt — l'énumération incomplète.
+// dépôt, l'énumération incomplète.
 const CONSTRUCTEURS = {
   voiture: 'buildCarRig3D', velo: 'buildBikeRig3D',
   table: 'buildTableRig3D', chaise: 'buildChairRig3D', etagere: 'buildShelfRig3D',
@@ -56,12 +56,12 @@ const CONSTRUCTEURS = {
 const groupeDe = (r) => (r && r.isObject3D) ? r : (r && (r.group || r.figureGroup));
 const boiteDe = (g) => new THREE.Box3().setFromObject(g);
 
-describe('Rigs 3D — aucune boîte englobante dégénérée', () => {
+describe('Rigs 3D : aucune boîte englobante dégénérée', () => {
   Object.entries(CONSTRUCTEURS).forEach(([type, fn]) => {
     test(`${type} : dimensions finies et non nulles`, () => {
       // L'échelle de rendu DIVISE par ces dimensions (cf. scene3d.js ~1720). Une hauteur nulle
       // donne un facteur infini : l'Élément explose à travers la Case. Un NaN le fait simplement
-      // disparaître, sans erreur — le pire des deux, parce qu'on cherche ailleurs.
+      // disparaître, sans erreur, le pire des deux, parce qu'on cherche ailleurs.
       const g = groupeDe(R[fn]('#8844aa'));
       assert.ok(g, `${fn} ne renvoie pas d'Object3D exploitable`);
       const b = boiteDe(g);
@@ -80,11 +80,11 @@ describe('Rigs 3D — aucune boîte englobante dégénérée', () => {
   });
 });
 
-describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
+describe('Rigs 3D : l\'énumération est complète des deux côtés', () => {
   test('RÉGRESSION : chaque type déclaré a AUSSI un libellé et une émoji', () => {
     // Trou trouvé par mutation en ajoutant « modele » : retirer son libellé ne faisait tomber aucun
-    // test. La conséquence est cosmétique — le repli `|| 'Objet'` prend la main, et le panneau
-    // latéral comme le titre de modale affichent « Objet » — mais c'est la deuxième classe de bug
+    // test. La conséquence est cosmétique, le repli `|| 'Objet'` prend la main, et le panneau
+    // latéral comme le titre de modale affichent « Objet », mais c'est la deuxième classe de bug
     // récurrente du dépôt : trois tables parallèles, et rien qui exige qu'elles s'accordent.
     //
     // Ce contrôle couvre les trente-cinq types, pas seulement le dernier ajouté.
@@ -104,7 +104,7 @@ describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
     // buildWallRig3D(couleur, longueur, hauteur, ouvertures), dont la géométrie dépend de
     // l'instance. Même chose pour les Parois, dont la taille vient de CHILD_DESIGN_SIZE_3D.
     // « modele » rejoint cette liste pour EXACTEMENT la même raison que les Murs : sa géométrie ne
-    // vient pas d'un constructeur fixe mais de l'instance — ici du fichier .glb qu'elle porte. Ce
+    // vient pas d'un constructeur fixe mais de l'instance, ici du fichier .glb qu'elle porte. Ce
     // n'est pas une dérogation de complaisance ; un constructeur codé en dur pour un modèle importé
     // n'aurait aucun sens.
     const aPart = ['mur', 'mur_coin', 'fenetre_ouverte', 'porte_ouverte', 'baie_vitree', 'autel',
@@ -126,7 +126,7 @@ describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
 
   test('chaque type d\'Animal a une hauteur réelle déclarée', () => {
     // ANIMAL_TYPES pilote le menu ; OBJECT_REAL_HEIGHT_M pilote la taille par défaut à l'ajout.
-    // Un animal absent de la seconde table retombe sur 60 % d'un Personnage — un lézard d'un
+    // Un animal absent de la seconde table retombe sur 60 % d'un Personnage, un lézard d'un
     // mètre.
     const cles = Array.isArray(ANIMAL_TYPES)
       ? ANIMAL_TYPES.map(a => (typeof a === 'string' ? a : a.key || a.type))
@@ -137,7 +137,7 @@ describe('Rigs 3D — l\'énumération est complète des deux côtés', () => {
   });
 });
 
-describe('Rigs 3D — reproductibilité', () => {
+describe('Rigs 3D : reproductibilité', () => {
   test('deux constructions du même type donnent la même géométrie', () => {
     // Un rig qui varie d'un appel à l'autre (aléatoire non semé dans le feuillage, par exemple)
     // rendrait le cache de Case inutile : la signature serait stable mais l'image changerait,

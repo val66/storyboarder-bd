@@ -1,5 +1,5 @@
 /**
- * tests/skeleton-store.test.mjs — ranger une correspondance de squelette, et la retrouver.
+ * tests/skeleton-store.test.mjs, ranger une correspondance de squelette, et la retrouver.
  *
  * TROIS DÉCISIONS SONT GARDÉES ICI, et aucune ne se voit à l'usage tant que rien ne casse :
  *
@@ -34,7 +34,7 @@ const OS = [
   { id: 5, name: 'mixamorig:Hips' },
 ];
 
-describe('normaliserFichier — relire sans jamais faire échouer une ouverture', () => {
+describe('normaliserFichier : relire sans jamais faire échouer une ouverture', () => {
   test('un contenu valide traverse intact', () => {
     const r = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } });
     assert.deepEqual(r.entrees['a.glb'], { os: { bassin: 'Hips' }, valide: true });
@@ -51,7 +51,7 @@ describe('normaliserFichier — relire sans jamais faire échouer une ouverture'
 
   test('RÉGRESSION : une version FUTURE est ignorée, pas réinterprétée', () => {
     // On ne sait pas ce que contient un format plus récent. Le lire de travers puis le RÉÉCRIRE
-    // écraserait le travail fait par une version plus récente de l'application — sur un fichier
+    // écraserait le travail fait par une version plus récente de l'application, sur un fichier
     // partagé par tous les Projets, donc sans recours.
     const r = normaliserFichier({ version: 99, entrees: { 'a.glb': { os: { bassin: 'Hips' } } } });
     assert.deepEqual(r.entrees, {});
@@ -64,9 +64,9 @@ describe('normaliserFichier — relire sans jamais faire échouer une ouverture'
   });
 
   test('RÉGRESSION : une entrée VALIDÉE sans aucun os est conservée', () => {
-    // Signalé à l'usage. J'écrivais qu'une entrée sans os « n'apprend rien » — c'était faux : elle
+    // Signalé à l'usage. J'écrivais qu'une entrée sans os « n'apprend rien », c'était faux : elle
     // apprend que l'utilisateur a VU cet écran et l'a tranché. Sans elle, valider sans rien
-    // corriger — le cas le plus fréquent — n'écrivait rien, et la modale se rouvrait à chaque
+    // corriger, le cas le plus fréquent, n'écrivait rien, et la modale se rouvrait à chaque
     // import. Ce qui revient exactement à ne pas avoir enregistré.
     const r = normaliserFichier({ version: 1, entrees: {
       'valide.glb': { os: {}, valide: true },
@@ -82,7 +82,7 @@ describe('normaliserFichier — relire sans jamais faire échouer une ouverture'
   });
 });
 
-describe('entreePourFichier — n\'enregistrer que ce que l\'utilisateur a décidé', () => {
+describe('entreePourFichier : n\'enregistrer que ce que l\'utilisateur a décidé', () => {
   test('RÉGRESSION : les propositions automatiques ne sont PAS enregistrées', () => {
     // Les figer condamnerait toute amélioration future de la reconnaissance : elle ne s'appliquerait
     // plus jamais, puisqu'elle trouverait une correspondance « enregistrée » partout. La validation
@@ -116,7 +116,7 @@ describe('entreePourFichier — n\'enregistrer que ce que l\'utilisateur a déci
   });
 });
 
-describe('fusionner — l\'enregistré prime, tant qu\'il désigne un os qui existe', () => {
+describe('fusionner : l\'enregistré prime, tant qu\'il désigne un os qui existe', () => {
   const auto = {
     cuisse_g: { bone: 3, name: 'mixamorig:LeftUpLeg', origine: 'structure' },
     bassin: { bone: 5, name: 'mixamorig:Hips', origine: 'nom' },
@@ -134,7 +134,7 @@ describe('fusionner — l\'enregistré prime, tant qu\'il désigne un os qui exi
 
   test('RÉGRESSION : un os enregistré qui a DISPARU du fichier ne pointe pas dans le vide', () => {
     // Le `.glb` a été remplacé par une autre version, et l'os retenu n'existe plus. On retombe sur
-    // la reconnaissance pour CET emplacement — pointer vers un os absent tordrait le personnage
+    // la reconnaissance pour CET emplacement, pointer vers un os absent tordrait le personnage
     // ou ne ferait rien, selon les cas, sans jamais le dire.
     const r = fusionner(auto, { os: { cuisse_g: 'os_qui_nexiste_plus' } }, OS);
     assert.deepEqual(r.cuisse_g, auto.cuisse_g);
@@ -175,18 +175,18 @@ beforeEach(() => {
   });
 });
 
-describe('Le cache résident — la correspondance sans attendre le disque', () => {
+describe('Le cache résident : la correspondance sans attendre le disque', () => {
   // POURQUOI CE CACHE EXISTE. Construire le rig 3D d'un modèle importé se fait DANS un rendu, un
   // chemin strictement synchrone : on ne peut pas y attendre une lecture disque. Le rig lit donc
   // `correspondanceEnregistreeSync`, alimentée par les lectures et les écritures réussies.
   //
   // CE BLOC A ÉTÉ ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : mettre à jour le cache SANS vérifier que
   // l'écriture a réussi ne faisait échouer aucun test. À l'usage, cela ferait afficher au rig une
-  // correspondance que le disque ne porte pas — et l'écart ne se verrait qu'au redémarrage
+  // correspondance que le disque ne porte pas, et l'écart ne se verrait qu'au redémarrage
   // suivant, très loin de sa cause.
   beforeEach(() => { _viderCacheCorrespondances(); });
 
-  test('avant toute lecture, le cache est vide — la reconnaissance automatique fait le travail', () => {
+  test('avant toute lecture, le cache est vide : la reconnaissance automatique fait le travail', () => {
     assert.equal(correspondanceEnregistreeSync('a.glb'), null);
   });
 
@@ -253,7 +253,7 @@ describe('lireCorrespondances / enregistrerCorrespondance', () => {
   test('RÉGRESSION : on RELIT avant d\'écrire, pour ne pas écraser une autre fenêtre', async () => {
     // Le fichier est partagé par tous les Projets. Entre le chargement et l'enregistrement, une
     // autre fenêtre de l'application a pu ajouter la correspondance d'un autre modèle. Réécrire ce
-    // qu'on avait en mémoire l'effacerait — et personne ne s'en apercevrait avant de rouvrir.
+    // qu'on avait en mémoire l'effacerait, et personne ne s'en apercevrait avant de rouvrir.
     pontRepond = { ok: true, data: { version: 1, entrees: { 'autre.glb': { os: { tete: 'Head' } } } } };
     await enregistrerCorrespondance('a.glb', { bassin: { bone: 5, name: 'Hips', origine: 'manuel' } });
     assert.deepEqual(Object.keys(ecrit[0].entrees).sort(), ['a.glb', 'autre.glb']);
@@ -261,7 +261,7 @@ describe('lireCorrespondances / enregistrerCorrespondance', () => {
 
   test('RÉGRESSION : valider sans rien corriger écrit quand même une entrée', async () => {
     // LE défaut signalé à l'usage. Sans cela, la modale se rouvrait à chaque import d'un fichier
-    // dont la reconnaissance était juste — c'est-à-dire la plupart.
+    // dont la reconnaissance était juste, c'est-à-dire la plupart.
     pontRepond = { ok: true, data: { version: 1, entrees: {} } };
     await enregistrerCorrespondance('a.glb', { bassin: { bone: 5, name: 'Hips', origine: 'nom' } });
     assert.deepEqual(ecrit[0].entrees['a.glb'], { os: {}, valide: true });
@@ -277,7 +277,7 @@ describe('lireCorrespondances / enregistrerCorrespondance', () => {
 
   test('RÉGRESSION : oublierCorrespondance n\'écrit pas une coquille VALIDÉE', async () => {
     // Un `.glb` supprimé du disque. Sans `valide: false`, on réécrirait une entrée validée pour un
-    // fichier qui n'existe plus — et un homonyme réimporté plus tard n'ouvrirait jamais l'écran.
+    // fichier qui n'existe plus, et un homonyme réimporté plus tard n'ouvrirait jamais l'écran.
     pontRepond = { ok: true, data: { version: 1, entrees: {
       'a.glb': { os: { bassin: 'H' }, valide: true }, 'b.glb': { os: { tete: 'T' }, valide: true } } } };
     await oublierCorrespondance('a.glb');
@@ -312,13 +312,13 @@ describe('lireCorrespondances / enregistrerCorrespondance', () => {
  *   P6 un échec d'écriture est rendu comme un succès                           ROUGE
  *
  * P4 EST CELLE QU'ON NE VERRAIT JAMAIS EN DÉVELOPPANT. Elle demande deux fenêtres ouvertes, et son
- * effet — la correspondance d'un autre modèle effacée — ne se découvre qu'en rouvrant le fichier
+ * effet, la correspondance d'un autre modèle effacée, ne se découvre qu'en rouvrant le fichier
  * bien plus tard. C'est exactement la forme des défauts que ce dépôt collectionne : rien ne lève,
  * rien ne s'affiche, et le problème se manifeste ailleurs, plus tard.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Le câblage vers le disque — par lecture de source, faute de pouvoir l'exécuter
+// Le câblage vers le disque, par lecture de source, faute de pouvoir l'exécuter
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readFileSync as _lire } from 'node:fs';
@@ -352,7 +352,7 @@ describe('Câblage des correspondances vers le processus principal', () => {
 
   test('RÉGRESSION : le fichier est écrit par un TEMPORAIRE puis renommé', () => {
     // Une coupure en pleine écriture laisserait sinon un JSON tronqué, donc illisible, donc TOUTES
-    // les correspondances perdues d'un coup — pas seulement celle qu'on enregistrait. Le renommage
+    // les correspondances perdues d'un coup, pas seulement celle qu'on enregistrait. Le renommage
     // est atomique sur les systèmes de fichiers visés.
     const bloc = MAIN.slice(MAIN.indexOf("ipcMain.handle('skeletons:write'"));
     const corps = bloc.slice(0, bloc.indexOf('\n});'));
@@ -377,11 +377,11 @@ describe('Câblage des correspondances vers le processus principal', () => {
   });
 });
 
-describe('doitOuvrirCorrespondance — n\'ouvrir que quand il y a quelque chose à montrer', () => {
+describe('doitOuvrirCorrespondance : n\'ouvrir que quand il y a quelque chose à montrer', () => {
   const os = [{ id: 1, name: 'Hips' }];
 
   test('RÉGRESSION : un modèle SANS squelette n\'ouvre jamais l\'écran', () => {
-    // Une chaise, un bâtiment, un décor — probablement la majorité des imports. L'écran n'aurait
+    // Une chaise, un bâtiment, un décor, probablement la majorité des imports. L'écran n'aurait
     // littéralement aucune ligne à afficher.
     assert.equal(doitOuvrirCorrespondance({ osDuFichier: [], dejaEnregistree: false }), false);
     assert.equal(doitOuvrirCorrespondance({ osDuFichier: null, dejaEnregistree: false }), false);
@@ -420,7 +420,7 @@ describe('Câblage de l\'écran de correspondance', () => {
   });
 
   test('RÉGRESSION : l\'import demande l\'autorisation AVANT de créer', () => {
-    // Il y avait DEUX fonctions — « comme Modèle » et « comme Scène » — et ma première version de
+    // Il y avait DEUX fonctions : « comme Modèle » et « comme Scène », et ma première version de
     // ce test comptait les appels, ce qui était fragile. Elle vérifie maintenant que CHAQUE
     // fonction exportée porte le crochet, ce qui reste vrai depuis qu'il n'en reste qu'une.
     ['importModelIntoPanel'].forEach(fn => {
@@ -430,7 +430,7 @@ describe('Câblage de l\'écran de correspondance', () => {
       assert.match(corps, /await _confirmerImport\(/, `${fn} ne demande pas l'autorisation`);
       // ET AVANT toute modification du Projet. Signalé à l'usage : l'Élément apparaissait dans la
       // Case pendant que la modale était encore ouverte. `snapshot` est le premier geste qui touche
-      // au Projet — le point de contrôle doit le précéder, sinon il n'y aurait plus rien à annuler.
+      // au Projet, le point de contrôle doit le précéder, sinon il n'y aurait plus rien à annuler.
       assert.ok(corps.indexOf('_confirmerImport(') < corps.indexOf('_snapshot()'),
         `${fn} modifie le Projet AVANT de demander`);
     });
@@ -449,13 +449,13 @@ describe('Câblage de l\'écran de correspondance', () => {
 
   test('RÉGRESSION : sans crochet branché, l\'import continue', () => {
     // Le défaut par défaut doit être le comportement d'origine. Un `false` implicite bloquerait
-    // TOUS les imports dès qu'un appelant oublie de câbler le crochet — y compris les tests.
+    // TOUS les imports dès qu'un appelant oublie de câbler le crochet, y compris les tests.
     assert.match(IMPORT, /let _confirmerImport = async \(\) => true;/);
     assert.match(IMPORT, /_confirmerImport = confirmerImport \|\| \(async \(\) => true\);/);
   });
 
   test('RÉGRESSION : l\'attente de la réponse est bien AWAITÉE', () => {
-    // Sans `await`, on compare une PROMESSE à false — toujours vrai — et l'import se poursuit quoi
+    // Sans `await`, on compare une PROMESSE à false, toujours vrai, et l'import se poursuit quoi
     // que l'utilisateur réponde. Défaut que j'ai écrit puis corrigé dans le même commit.
     const EV = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
     const debut = EV.indexOf('async function proposerCorrespondance');
@@ -467,7 +467,7 @@ describe('Câblage de l\'écran de correspondance', () => {
   test('RÉGRESSION : « Tout remettre en automatique » ne rouvre PAS l\'écran', () => {
     // Rouvrir créerait une seconde promesse et abandonnerait la première : pendant un import,
     // l'appelant attendrait indéfiniment une réponse que plus personne ne donnerait. Un blocage
-    // silencieux, sans message ni erreur — la pire forme de panne dans ce dépôt.
+    // silencieux, sans message ni erreur, la pire forme de panne dans ce dépôt.
     const EV = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
     const debut = EV.indexOf("skeletonMapReset').onclick");
     const corps = EV.slice(debut, EV.indexOf('\n};', debut));
@@ -483,7 +483,7 @@ describe('Câblage de l\'écran de correspondance', () => {
 
   test('RÉGRESSION : supprimer un modèle oublie sa correspondance', () => {
     // Sans cela, une entrée orpheline resterait dans un fichier partagé par tous les Projets, et
-    // ressusciterait au réimport d'un homonyme — avec les os de l'ANCIEN squelette.
+    // ressusciterait au réimport d'un homonyme, avec les os de l'ANCIEN squelette.
     const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
     assert.match(bloc.slice(0, bloc.indexOf('\n};')), /oublierCorrespondance\(/);
   });
@@ -515,7 +515,7 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
 
   test('RÉGRESSION : les étiquettes de provenance NE sont PAS remplacées par « validé »', () => {
     // C'était l'argument décisif contre l'autre option : sur worker_j, les deux cuisses sont en
-    // « structure » parce que le fichier les nomme « Left leg » — un mot qui, chez Mixamo, désigne
+    // « structure » parce que le fichier les nomme « Left leg », un mot qui, chez Mixamo, désigne
     // le tibia. Tout marquer « validé » effacerait la trace de la seule ligne sur laquelle il a
     // fallu réfléchir, noyée parmi dix-sept évidences.
     const debut = EV2.indexOf('function ligneCorrespondance');
@@ -532,7 +532,7 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
 
   test('RÉGRESSION : « Réinitialiser » fait repasser l\'écran en NON validé', () => {
     // Sans cela, le bouton effacerait bien les décisions mais l'écran resterait d'apparence
-    // confirmée — les lignes que l'utilisateur vient justement de vouloir revoir resteraient
+    // confirmée, les lignes que l'utilisateur vient justement de vouloir revoir resteraient
     // muettes. C'est tout l'objet du bouton.
     const debut = EV2.indexOf("skeletonMapReset').onclick");
     const corps = EV2.slice(debut, EV2.indexOf('\n};', debut));
@@ -549,7 +549,7 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
 
   test('RÉGRESSION : l\'ordre des boutons est Annuler, Réinitialiser, Enregistrer', () => {
     // Ordre demandé : les deux sorties neutres d'abord, l'action affirmative en dernier. Une
-    // énumération dans du HTML, donc invisible pour tout le reste — d'où ce test.
+    // énumération dans du HTML, donc invisible pour tout le reste, d'où ce test.
     const bloc = HTML2.slice(HTML2.indexOf('id="skeletonMapModal"'));
     const ordre = [...bloc.slice(0, 1400).matchAll(/id="(skeletonMap(?:Cancel|Reset|Save))"/g)].map(m => m[1]);
     assert.deepEqual(ordre, ['skeletonMapCancel', 'skeletonMapReset', 'skeletonMapSave']);
@@ -562,7 +562,7 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
 
   test('validé, le sous-titre ne compte plus ce qu\'il « reste à vérifier »', () => {
     // Il ne reste rien : c'est fait. Le décompte n'a de sens que tant que la décision n'est pas
-    // prise — l'afficher après coup reproduit l'alerte qu'on vient de retirer.
+    // prise, l'afficher après coup reproduit l'alerte qu'on vient de retirer.
     const debut = EV2.indexOf('skeletonMapSubtitle');
     const corps = EV2.slice(debut, debut + 700);
     assert.match(corps, /valide\s*\?/, 'le sous-titre ne distingue pas les deux états');
@@ -573,7 +573,7 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
 describe('La légende dit l\'état, pas le devenir', () => {
   // LES COMMENTAIRES SONT RETIRÉS AVANT TOUTE COMPARAISON, et ce n'est pas une précaution
   // théorique : ma première version de ce test a échoué sur son propre remède. Le commentaire que
-  // je venais d'écrire CITE l'ancienne formule — « manuel disait votre choix, enregistré » — et le
+  // je venais d'écrire CITE l'ancienne formule, « manuel disait votre choix, enregistré », et le
   // `doesNotMatch` la retrouvait là. Quatrième occurrence dans ce dépôt d'un test satisfait (ou ici
   // mis en échec) par la prose qui l'entoure.
   const sansCommentaires = (txt) => txt
@@ -587,7 +587,7 @@ describe('La légende dit l\'état, pas le devenir', () => {
   test('RÉGRESSION : « manuel » ne prétend plus être ENREGISTRÉ', () => {
     // Signalé à l'usage, et c'était faux : changer une liste déroulante passe la ligne en « manuel »
     // IMMÉDIATEMENT, alors que rien n'est écrit avant Enregistrer. Une légende décrit un état, pas
-    // un devenir — annoncer un enregistrement qui n'a pas eu lieu est la même famille de faute que
+    // un devenir, annoncer un enregistrement qui n'a pas eu lieu est la même famille de faute que
     // « un succès annoncé pour un travail sans effet ».
     assert.doesNotMatch(bloc, /votre choix, enregistré/);
     assert.doesNotMatch(bloc, /your choice, saved/);
@@ -618,9 +618,9 @@ describe('La légende dit l\'état, pas le devenir', () => {
 });
 
 
-describe('renommerCorrespondance — la carte d\'os suit le fichier renommé', () => {
-  // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : transformer le DÉPLACEMENT en simple copie — garder
-  // l'ancienne clé en plus de la nouvelle — ne faisait échouer aucun test. À l'usage, l'entrée
+describe('renommerCorrespondance : la carte d\'os suit le fichier renommé', () => {
+  // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : transformer le DÉPLACEMENT en simple copie, garder
+  // l'ancienne clé en plus de la nouvelle, ne faisait échouer aucun test. À l'usage, l'entrée
   // orpheline ressusciterait le jour où un homonyme est réimporté, avec les os de l'ANCIEN
   // squelette : exactement la panne contre laquelle `oublierCorrespondance` avait été écrite.
   beforeEach(() => {
@@ -647,7 +647,7 @@ describe('renommerCorrespondance — la carte d\'os suit le fichier renommé', (
   });
 
   test('un fichier SANS correspondance : rien à écrire, et ce n\'est pas un échec', async () => {
-    // Le cas le plus courant — une chaise, un décor : aucun os, donc aucune correspondance.
+    // Le cas le plus courant : une chaise, un décor : aucun os, donc aucune correspondance.
     const r = await renommerCorrespondance('inconnu.glb', 'neuf.glb');
     assert.equal(r.ok, true);
     assert.deepEqual(ecrit, [], 'une écriture inutile a été faite');

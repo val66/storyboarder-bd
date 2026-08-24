@@ -2,11 +2,11 @@ import { sectionDuManuel } from './help-content.js';
 /**
  * @file modals.js
  * Persona / 3D Object / Room / Building / Path / Terrain modals.
- * Extracted from app.js — Refactoring step B.13.
+ * Extracted from app.js. Refactoring step B.13.
  *
  * NOTE (fix included): 39 missing DOM declarations for the 3D Object modal
  * (objectNameInput, objectTypeSelect, objectModalTitle, etc.) were added
- * here — a pre-existing bug that crashed openObjectModal() (ReferenceError),
+ * here, a pre-existing bug that crashed openObjectModal() (ReferenceError),
  * unrelated to this refactoring. The same declarations are also added in
  * app.js (its own onclick/addEventListener handlers need them).
  *
@@ -15,7 +15,7 @@ import { sectionDuManuel } from './help-content.js';
  * highlightJointRows, getPersonaPreviewCanvasCoords + the
  * wheel/mousedown/mousemove listeners of personaPreview3D were repatriated
  * from draw.js, where they had landed by mistake during extraction #165
- * (not exported there, so inaccessible from app.js which called them —
+ * (not exported there, so inaccessible from app.js which called them,
  * a latent ReferenceError). They functionally belong to the pose editor of
  * the Persona modal, hence this module.
  */
@@ -67,7 +67,7 @@ import { enregistrerFermeture } from './modal-stack.js';
 
 
 // The only upward dependency left by repatriating the Room/Building handlers: snapshot(), the undo
-// stack, which lives in events.js. Injected rather than imported — events.js already imports this
+// stack, which lives in events.js. Injected rather than imported, events.js already imports this
 // module, so the import would close a cycle (cf. docs/architecture.md rule #2).
 let _snapshot = () => {};
 export function setModalsCallbacks({ snapshot }) { _snapshot = snapshot; }
@@ -158,7 +158,7 @@ export function toggleModalSection(headerEl){
 }
 
 export function resetModalSections(modalBoxEl, clesOuvertes){
-  // ⚠️ PAR CLÉ (`data-section`), PLUS PAR TITRE. La comparaison portait sur le texte affiché — et ce
+  // ⚠️ PAR CLÉ (`data-section`), PLUS PAR TITRE. La comparaison portait sur le texte affiché, et ce
   // texte est TRADUIT (cf. applyI18nModalSectionTitles). En anglais, « Main characteristics » ne
   // figurait dans aucune liste écrite en français : plus une seule section ne correspondait, et
   // TOUTES s'ouvraient repliées. Muet en français, systématique en anglais.
@@ -209,7 +209,7 @@ export function updateObjectSizeDisplay(o){
  *
  * ⚠️ UNE SEULE FONCTION POUR LES DEUX FICHES (Personnage et Objet/Modèle). Les deux champs sont le
  * même champ posé à deux endroits ; en écrire deux versions aurait donné deux comportements aux
- * bornes, aux arrondis et au cas « pas de base exploitable » — et l'écart ne se serait vu que sur
+ * bornes, aux arrondis et au cas « pas de base exploitable », et l'écart ne se serait vu que sur
  * l'une des deux fiches, donc tard.
  */
 export function remplirChampHauteur3D(o, champ, input, pourcentage){
@@ -232,7 +232,7 @@ export function updateObjectHeightField(o){
   remplirChampHauteur3D(o, objectHeightField, objectHeightInput, getPersonaScalePercent);
 }
 
-/** Au centimètre — la précision du champ, et la seule qu'on affiche. */
+/** Au centimètre : la précision du champ, et la seule qu'on affiche. */
 export function arrondiCm3D(m){
   return Number.isFinite(Number(m)) ? Math.round(Number(m) * 100) / 100 : '';
 }
@@ -292,7 +292,7 @@ export function sliderDegToRotY(deg){
   return d * Math.PI / 180;
 }
 
-// Fix 44 — the modal's Position <select> only lists the built-in poses. Assigning it a value that
+// Fix 44 : the modal's Position <select> only lists the built-in poses. Assigning it a value that
 // is absent from that list leaves it EMPTY (standard DOM behaviour), and descModalSave then writes
 // that empty string back over obj.position: the pose name is destroyed, silently, on the first save.
 //
@@ -300,7 +300,7 @@ export function sliderDegToRotY(deg){
 // modal reopens on a known one. Kept in a module variable rather than looked up in the DOM: the
 // option is ours, we know where it is, and no selector can go stale.
 // ⚠️ LE <select> D'ORIGINE EST MÉMORISÉ AVEC L'OPTION. Depuis que DEUX fiches portent un sélecteur
-// de pose — le Personnage et le modèle importé articulé —, retirer l'option du <select> qu'on est en
+// de pose, le Personnage et le modèle importé articulé, retirer l'option du <select> qu'on est en
 // train de remplir retirerait un enfant qui n'y est pas : l'option resterait dans l'autre liste, et
 // une pose « inconnue » finirait par s'y accumuler. Le couple dit d'où elle vient.
 let syntheticPoseOption = null;
@@ -311,7 +311,7 @@ function ensurePoseOptionExists(select, obj){
     if (origine && origine.removeChild) origine.removeChild(option);
     syntheticPoseOption = null;
   }
-  // Fix 57 — les clés connues viennent de la BIBLIOTHÈQUE, qui alimente désormais ce <select>
+  // Fix 57 : les clés connues viennent de la BIBLIOTHÈQUE, qui alimente désormais ce <select>
   // (cf. buildPersonaPositionOptions). Se référer à POSITIONS ferait injecter une option
   // « inconnue » pour toute pose personnalisée, pourtant bien présente dans la liste.
   const unknown = unknownPoseKey3D(obj && obj.position,
@@ -331,7 +331,7 @@ function ensurePoseOptionExists(select, obj){
  *
  * Extrait de `buildPersonaPositionOptions` + les deux lignes qui suivaient dans `openPersonaModal`,
  * parce qu'un SECOND écran en a maintenant besoin. Recopier ces trois gestes aurait donné deux
- * listes de poses qui divergent au premier renommage — la panne exacte que le Fix 57 a corrigée, et
+ * listes de poses qui divergent au premier renommage, la panne exacte que le Fix 57 a corrigée, et
  * qu'on aurait réintroduite par une autre porte.
  */
 export function remplirSelecteurDePose(select, obj){
@@ -355,9 +355,9 @@ export function openPersonaModal(obj, isNew){
   personaNameInput.value = obj.name || '';
   personaGenreSelect.value = obj.genre || 'homme';
   personaEmotionSelect.value = obj.emotion || 'neutre';
-  // Fix 57 — la bibliothèque a pu changer depuis la dernière ouverture (pose enregistrée, renommée
+  // Fix 57 : la bibliothèque a pu changer depuis la dernière ouverture (pose enregistrée, renommée
   // ou supprimée dans l'éditeur) : la liste est reconstruite avant de sélectionner une valeur.
-  // Fix 44 — l'option synthétique DOIT être posée avant l'affectation : sinon le navigateur laisse
+  // Fix 44, l'option synthétique DOIT être posée avant l'affectation : sinon le navigateur laisse
   // le champ vide et la sauvegarde suivante écrase le nom de la pose par une chaîne vide.
   // Les deux sont dans remplirSelecteurDePose, partagée avec la fiche d'un modèle importé articulé.
   // L'appel à `personaPositionOptionsBuilder` qui se trouvait ici faisait exactement le premier
@@ -387,13 +387,13 @@ export function openPersonaModal(obj, isNew){
   personaTraverseGroundCheckbox.checked = !!obj.traverseGround;
   personaTraverseGroundField.style.display = (obj.magnetGround === false) ? 'flex' : 'none';
   // Position X/Y fields (cf. setElementWorldPos3D): pre-filled with the current world position,
-  // derived from o.x/o.y at the current depth (cf. ensureElementWorldPos3D) — on user request,
+  // derived from o.x/o.y at the current depth (cf. ensureElementWorldPos3D), on user request,
   // in addition to the click-drag already possible on the canvas once the Element is selected.
   // The Y field is disabled when the Persona is snapped to the ground, since applyGroundMagnetY
   // then overwrites o.y every frame (vertical movement silently blocked); we track this same
   // state live if the "Snapped to Ground" checkbox is toggled while the modal is open.
   // Fix 19: for elements loaded from a Scene, o.x/o.y are in the Scene's coordinate system
-  // (not the panel's) — ensureElementWorldPos3D(o, panel) would give a wrong world X, which
+  // (not the panel's), ensureElementWorldPos3D(o, panel) would give a wrong world X, which
   // saving would write into wxFloor and make the element "disappear". We prefer wxFloor
   // (always correct, updated at creation, on drag, and on loadSceneIntoPanel), falling back to
   // the canvas-derived value for old elements without wxFloor.
@@ -432,7 +432,7 @@ export function closeDescModal(){
 
 export function refreshPersonaPreview(){
   if (!S.modalTarget || descModal.classList.contains('hidden')) return;
-  // Fix 63 — rendu AUX PROPORTIONS du cadre, comme l'éditeur depuis le Fix 53.
+  // Fix 63 : rendu AUX PROPORTIONS du cadre, comme l'éditeur depuis le Fix 53.
   //
   // L'aperçu rendait au format portrait figé 180×260, que `object-fit: contain` centrait ensuite
   // dans un cadre bien plus large : d'où deux bandes mortes à gauche et à droite, et un Personnage
@@ -535,7 +535,7 @@ export function buildAnimalJointSlidersUI(objType){
     // Expanding a group → selects its first joint in the preview
     details.addEventListener('toggle', () => {
       if (!details.open) return;
-      // Même défaut que pour les squelettes importés — cf. la note détaillée plus bas dans
+      // Même défaut que pour les squelettes importés : cf. la note détaillée plus bas dans
       // buildSkeletonJointSlidersUI. Corrigé ici aussi : le motif était identique, donc la panne
       // aussi, même si personne ne l'avait encore signalée sur les Animaux.
       const choisi = S.selectedAnimalHandle && S.selectedAnimalHandle.id;
@@ -568,7 +568,7 @@ export function buildAnimalJointSlidersUI(objType){
 }
 
 /**
- * Les curseurs d'un Modèle importé articulé — trois axes par emplacement reconnu.
+ * Les curseurs d'un Modèle importé articulé, trois axes par emplacement reconnu.
  *
  * TROIS DIFFÉRENCES AVEC LES ANIMAUX JUSTE AU-DESSUS, toutes imposées par le fait que le squelette
  * vient d'un fichier inconnu et non de notre code :
@@ -615,14 +615,14 @@ export function buildSkeletonJointSlidersUI(obj){
     groupe.slots.forEach(({ slot }) => { skeletonJointGroupDetailsById[slot] = details; });
 
     // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
-    // le dialogue aille dans les deux sens — exactement comme pour les Animaux et le Personnage.
+    // le dialogue aille dans les deux sens, exactement comme pour les Animaux et le Personnage.
     details.addEventListener('toggle', () => {
       if (!details.open) return;
     // LA GARDE EST UN TEST D'ÉTAT, PAS UN DRAPEAU. L'événement `toggle` d'un <details> est émis de
     // façon ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà retombé quand le
     // gestionnaire s'exécute, et ne protège de rien. Concrètement, cliquer un point sur l'aperçu
     // dépliait son groupe, dont le toggle différé resélectionnait aussitôt la PREMIÈRE articulation
-    // du groupe — signalé à l'usage : « ça sélectionne le premier groupe de la sous-section plutôt
+    // du groupe, signalé à l'usage : « ça sélectionne le premier groupe de la sous-section plutôt
     // que le bon ». Se demander « ce groupe contient-il déjà la sélection ? » ne dépend d'aucun
     // ordre d'arrivée. Le remède était déjà écrit dans persona-editor.js ; il n'avait pas été
     // reporté ici, et je l'ai recopié cassé une troisième fois.
@@ -651,7 +651,7 @@ export function buildSkeletonJointSlidersUI(obj){
 }
 
 /**
- * Le sélecteur de FIGURE — quel fichier cet Élément porte.
+ * Le sélecteur de FIGURE, quel fichier cet Élément porte.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * DEUX CHAMPS, UN SENS UNIQUE
@@ -659,15 +659,15 @@ export function buildSkeletonJointSlidersUI(obj){
  *
  * Depuis cette étape, un Élément posable retient DEUX choses :
  *
- *   • `joints3d` — l'INTENTION : la pose du corps, ce que produisent l'éditeur et la bibliothèque ;
- *   • `skeletonPose3d` — le RÉSULTAT : les angles appliqués aux os de la figure courante.
+ *   • `joints3d`, l'INTENTION : la pose du corps, ce que produisent l'éditeur et la bibliothèque;
+ *   • `skeletonPose3d`, le RÉSULTAT : les angles appliqués aux os de la figure courante.
  *
  * ⚠️ LE SENS EST UNIQUE : corps → os, JAMAIS l'inverse. Les curseurs d'os écrivent le résultat et
  * n'y touchent pas ; rien ne sait retraduire des angles d'os en pose de corps, et prétendre le
- * contraire ferait diverger les deux — le défaut le plus fréquent de ce dépôt.
+ * contraire ferait diverger les deux, le défaut le plus fréquent de ce dépôt.
  *
  * D'où le comportement, décidé explicitement : CHANGER DE FIGURE RECALCULE le résultat depuis
- * l'intention. La pose est conservée, les retouches faites aux curseurs sont perdues — elles sont
+ * l'intention. La pose est conservée, les retouches faites aux curseurs sont perdues, elles sont
  * exprimées dans les axes des os de l'ANCIENNE figure et ne veulent rien dire sur la nouvelle.
  */
 export function buildFigureFieldUI(obj){
@@ -698,7 +698,7 @@ export function buildFigureFieldUI(obj){
   sel.disabled = noms.length <= 1;
 
   // L'ÉTAT, ET SEULEMENT S'IL N'EST PAS « PRÊT ». C'est la seule information que portait l'ancien
-  // champ « Fichier » et que le sélecteur ne dit pas de lui-même — un fichier introuvable n'est pas
+  // champ « Fichier » et que le sélecteur ne dit pas de lui-même, un fichier introuvable n'est pas
   // dans `loadedModelNames()`, donc son absence serait muette sans ce message.
   const indice = document.getElementById('objectFigureHint');
   if (indice) {
@@ -712,8 +712,8 @@ export function buildFigureFieldUI(obj){
 
   sel.onchange = () => {
     S.modalDraftModelFile = sel.value;
-    // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null` — figure
-    // illisible — laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
+    // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null`, figure
+    // illisible, laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
     S.modalDraftSkeletonPose = poseOsPourModeleImporte(sel.value, S.modalDraftJoints) || {};
     // La correspondance change avec le fichier : les curseurs affichés doivent être ceux des os de
     // la NOUVELLE figure, pas ceux d'avant.
@@ -731,11 +731,11 @@ export function buildFigureFieldUI(obj){
  *
  * CE QUE CHOISIR UNE POSE FAIT : elle est traduite dans le vocabulaire des os de CE fichier
  * (cf. src/pose-bridge.js), puis elle ÉCRASE le brouillon des réglages fins. C'est le comportement
- * du Personnage, conservé volontairement — et il se lit dans le code : `S.modalDraftSkeletonPose`
+ * du Personnage, conservé volontairement, et il se lit dans le code : `S.modalDraftSkeletonPose`
  * est remplacé, pas fusionné.
  *
  * LES CURSEURS SONT RECONSTRUITS DERRIÈRE. Sans cela, la pose s'appliquerait à l'aperçu pendant que
- * les curseurs continueraient d'afficher les anciens angles — deux vérités à l'écran, dont une
+ * les curseurs continueraient d'afficher les anciens angles, deux vérités à l'écran, dont une
  * fausse. C'est la panne exacte qu'a produite l'étape D5 en oubliant la reconstruction.
  *
  * Le champ reste MASQUÉ si le modèle n'a aucune articulation reconnue : une chaise importée n'a rien
@@ -746,12 +746,12 @@ export function buildSkeletonPoseFieldUI(obj){
   const sel = document.getElementById('objectPositionSelect');
   if (!champ || !sel) return;
   // La condition vit dans rig3d.js : le raccourci clavier « E » l'interroge aussi, et une troisième
-  // copie aurait fini par diverger — c'est ce que le commentaire ci-dessous redoutait déjà.
+  // copie aurait fini par diverger, c'est ce que le commentaire ci-dessous redoutait déjà.
   const posable = modeleImportePosable3D(obj);
   champ.style.display = posable ? '' : 'none';
   // Le crayon de l'aperçu suit la MÊME condition, et depuis le même endroit : les deux ouvrent la
   // bibliothèque de poses sur ce modèle, l'un par une liste, l'autre par l'éditeur. Deux conditions
-  // séparées auraient fini par diverger — un crayon devant un modèle sans articulations ouvrirait
+  // séparées auraient fini par diverger, un crayon devant un modèle sans articulations ouvrirait
   // un éditeur dont « Appliquer » ne pourrait rien appliquer.
   const crayon = document.getElementById('objectEditorOpenBtn');
   if (crayon) crayon.style.display = posable ? '' : 'none';
@@ -773,7 +773,7 @@ export function buildSkeletonPoseFieldUI(obj){
     // non dérivable). On ne touche alors à RIEN : mieux vaut un choix sans effet qu'un modèle
     // remis à zéro sans explication.
     if (!pose) return;
-    // L'INTENTION d'abord — c'est elle qui survivra à un changement de figure —, le résultat ensuite.
+    // L'INTENTION d'abord : c'est elle qui survivra à un changement de figure, le résultat ensuite.
     S.modalDraftJoints = cloneJoints(joints);
     S.modalDraftSkeletonPose = pose;
     buildSkeletonJointSlidersUI(obj);
@@ -787,11 +787,11 @@ export function buildSkeletonPoseFieldUI(obj){
  * QUAND ELLE APPARAÎT : seulement si le fichier place effectivement un ou plusieurs maillages hors
  * du corps (cf. src/stray-meshes-3d.js pour la mesure et le critère). Une case toujours présente
  * ferait croire à un réglage disponible pour tous les modèles, alors qu'elle ne concerne qu'un
- * fichier mal fabriqué — c'est la même règle que pour le sélecteur de pose juste au-dessus.
+ * fichier mal fabriqué, c'est la même règle que pour le sélecteur de pose juste au-dessus.
  *
  * ELLE NOMME CE QUI EST MASQUÉ. Masquer un morceau du modèle de quelqu'un sans dire lequel serait
  * indéfendable ; l'utilisateur doit pouvoir reconnaître la pièce et, s'il le veut, la corriger dans
- * son logiciel 3D — ou simplement cocher pour la revoir.
+ * son logiciel 3D, ou simplement cocher pour la revoir.
  *
  * L'EFFET EST IMMÉDIAT DANS L'APERÇU, mais reste un BROUILLON : « Annuler » annule, comme partout
  * ailleurs dans ce dépôt.
@@ -849,7 +849,7 @@ export function openObjectModal(obj, isNew){
   objectTypeSelect.value = obj.objType || 'voiture';
   // Le sélecteur de Type est masqué pour un modèle importé : on ne transforme pas une chaise en
   // modèle importé (il n'y aurait aucun fichier à lui donner), ni l'inverse sans perdre le lien au
-  // fichier. Le nom du fichier, son état et sa hauteur vivent désormais ailleurs — respectivement
+  // fichier. Le nom du fichier, son état et sa hauteur vivent désormais ailleurs, respectivement
   // dans le champ « Modèle » (cf. buildFigureFieldUI) et le champ « Hauteur ».
   const _estModele = isImportedModel(obj);
   if (objectTypeSelect && objectTypeSelect.parentElement) {
@@ -864,7 +864,7 @@ export function openObjectModal(obj, isNew){
   objectRotYInput.value = Math.round((obj.rotY || 0) * 180 / Math.PI);
   objectRotZInput.value = Math.round((obj.rotZ || 0) * 180 / Math.PI);
   // (#85+) For a WallOpening snapped to a Wall, rotation is entirely governed by the host Wall
-  // (cf. wallOpeningRotationForWall) — the user can't modify it manually, exactly like for a
+  // (cf. wallOpeningRotationForWall), the user can't modify it manually, exactly like for a
   // Wall belonging to a Room (isRoomWall). So the 3 rotation fields are disabled.
   const isWallOpeningMagnet = obj.type === 'objet3d' && obj.magnetWallId && WALL_OPENING_MAGNET_TYPES.includes(obj.objType);
   const rotLocked = isRoomWall || isWallOpeningMagnet;
@@ -874,7 +874,7 @@ export function openObjectModal(obj, isNew){
   document.getElementById('objectRoomWallOrientNotice').style.display = isRoomWall ? '' : 'none';
   document.getElementById('objectWallOpeningMagnetOrientNotice').style.display = isWallOpeningMagnet ? '' : 'none';
   document.getElementById('objectOrientLabel').style.opacity = rotLocked ? '.5' : '';
-  // (#85) For a WallOpening, we offer to choose which Wall of the same Panel it's snapped to —
+  // (#85) For a WallOpening, we offer to choose which Wall of the same Panel it's snapped to,
   // by default the one it's already linked to (the last Wall created when it was created), but
   // the user can now re-link it to another Wall of the Panel if there are several.
   populateMagnetWallOptions(obj);
@@ -888,7 +888,7 @@ export function openObjectModal(obj, isNew){
     objectWallSizeField.style.display = '';
     objectSizeField.style.display = 'none';
     // (#81) Show the REAL size (independent of the current depth), not obj.w/obj.h which are
-    // the APPARENT on-screen size and vary with obj.z — otherwise these fields would show a
+    // the APPARENT on-screen size and vary with obj.z, otherwise these fields would show a
     // different length/height after a simple scroll-wheel nudge, without the Wall having
     // actually changed size (cf. ensureElementUnits3D).
     const realWall = ensureElementUnits3D(obj);
@@ -934,7 +934,7 @@ export function openObjectModal(obj, isNew){
   // applyGroundMagnetY, which overwrites o.y on the next frame anyway). On user request, in
   // addition to click-dragging on the canvas.
   {
-    // Fix 19: same fix as for the Persona modal (cf. openDescModal) — use wxFloor (3D source
+    // Fix 19: same fix as for the Persona modal (cf. openDescModal), use wxFloor (3D source
     // of truth) rather than re-deriving from canvas o.x, which can be in a Scene's coordinate
     // system (not the panel's) for elements loaded via loadSceneIntoPanel.
     const _panelForPosObj = findOwningPanel(obj, currentPage());
@@ -947,16 +947,16 @@ export function openObjectModal(obj, isNew){
     objectPosLabel.style.opacity = wallGoverned ? '.5' : '';
     document.getElementById('objectRoomWallPosNotice').style.display = isRoomWall ? '' : 'none';
   }
-  // (#83) "Passable" property: purely informational (read-only, not tied to an input field) —
+  // (#83) "Passable" property: purely informational (read-only, not tied to an input field),
   // shown only for Elements that actually cut a hole in the Wall (cf. TRAVERSANT_TYPES,
   // ensureWallRenderEntry3D), not for the Staircase which also snaps but doesn't pierce.
   objectTraversantField.style.display = TRAVERSANT_TYPES.includes(obj.objType) ? '' : 'none';
-  // Ground snapping: field shown only for eligible 3D Objects (cf. groundMagnetEligible — not
+  // Ground snapping: field shown only for eligible 3D Objects (cf. groundMagnetEligible, not
   // Walls or WallOpenings, cf. the exclusions commented there). `magnetGround !== false`:
   // snapped by default, including for Elements already saved before this field was introduced.
   // Invisible in the 3D scene: always reset, regardless of the Element's nature (Walls
   // included). Saving (cf. objectModalSave) is outside the groundMagnetEligible block, but the
-  // initialization was inside it — hence the "sticky" value on Walls (not eligible).
+  // initialization was inside it, hence the "sticky" value on Walls (not eligible).
   objectHidden3dCheckbox.checked = !!obj.hidden3d;
   if (groundMagnetEligible(obj)) {
     objectGroundMagnetField.style.display = '';
@@ -970,7 +970,7 @@ export function openObjectModal(obj, isNew){
     objectGroundMagnetField.style.display = 'none';
   }
   // Makes the link to the host Element visible right in the modal (today: the Wall a
-  // WallOpening is snapped to) — cf. getLinkedElementName, and its equivalent in the side list
+  // WallOpening is snapped to), cf. getLinkedElementName, and its equivalent in the side list
   // (cf. renderSidePersonas).
   const linkedName = getLinkedElementName(obj, currentPage());
   if (linkedName) {
@@ -989,11 +989,11 @@ export function openObjectModal(obj, isNew){
   Object.keys(animalHandleScreenPos).forEach(id => delete animalHandleScreenPos[id]);
   buildAnimalJointSlidersUI(obj.objType);
   // Même principe pour un squelette importé : on travaille sur une COPIE, et l'Élément n'est touché
-  // qu'à l'enregistrement. C'est la règle de toutes les modales de ce dépôt — annuler doit vraiment
+  // qu'à l'enregistrement. C'est la règle de toutes les modales de ce dépôt, annuler doit vraiment
   // annuler, y compris après vingt curseurs déplacés.
   S.modalDraftSkeletonPose = obj.skeletonPose3d ? JSON.parse(JSON.stringify(obj.skeletonPose3d)) : {};
   // L'INTENTION et la FIGURE, en brouillon comme le reste : « Annuler » doit vraiment annuler.
-  // `modalDraftJoints` est partagé avec la fiche du Personnage — une seule modale est ouverte à la
+  // `modalDraftJoints` est partagé avec la fiche du Personnage, une seule modale est ouverte à la
   // fois, et c'est bien la même chose qu'il désigne : la pose de corps en cours d'édition.
   S.modalDraftJoints = cloneJoints(getEffectiveJoints(obj));
   S.modalDraftModelFile = isImportedModel(obj) ? obj.modelFile : null;
@@ -1026,14 +1026,14 @@ export function closeObjectModal(){
 export function refreshObjectPreview(){
   if (!S.modalTarget || objectModal.classList.contains('hidden')) return;
   // Un modèle importé n'a pas d'entrée dans objectTypeSelect (masqué, cf. openObjectModal) : lire
-  // sa .value donnerait le premier <option> du <select> (« voiture »), pas 'modele' — l'aperçu
+  // sa .value donnerait le premier <option> du <select> (« voiture »), pas 'modele', l'aperçu
   // montrerait alors une voiture à la place du fichier importé. On lit le vrai objType de
   // l'Élément, et on transmet modelFile pour que buildImportedModelRig3D retrouve le bon modèle.
   const _estModele = isImportedModel(S.modalTarget);
   drawObjectPreview(objectPreview3D, {
     objType: _estModele ? 'modele' : objectTypeSelect.value,
     // La figure du BROUILLON : changer de Modèle doit se voir avant d'enregistrer. ⚠️ Aucun test ne
-    // couvre cette ligne — l'aperçu passe par WebGL, injoignable sous Node (cf. docs/testing-method.md).
+    // couvre cette ligne, l'aperçu passe par WebGL, injoignable sous Node (cf. docs/testing-method.md).
     modelFile: _estModele ? (S.modalDraftModelFile || S.modalTarget.modelFile) : undefined,
     color: S.modalTarget.color,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,
@@ -1047,12 +1047,12 @@ export function refreshObjectPreview(){
     // La pose du brouillon, pas celle de l'Élément : c'est ce qui fait bouger l'aperçu pendant
     // qu'on tire un curseur, avant tout enregistrement.
     skeletonPose3d: _estModele ? S.modalDraftSkeletonPose : null,
-    // L'INTENTION du brouillon — la pose de CORPS. C'est elle qui porte « allongé », que les angles
+    // L'INTENTION du brouillon : la pose de CORPS. C'est elle qui porte « allongé », que les angles
     // d'os ne transportent pas (cf. rotationAllongee3D). Sans elle, l'aperçu restait debout.
     joints3d: _estModele ? S.modalDraftJoints : null,
     // Le repli, si le brouillon n'a pas encore d'angles : la pose que l'Élément cite par son nom.
     position: _estModele ? (S.modalTarget && S.modalTarget.position) : undefined,
-    // Idem : la case du brouillon, pas celle de l'Élément — cocher doit se voir immédiatement.
+    // Idem : la case du brouillon, pas celle de l'Élément, cocher doit se voir immédiatement.
     afficherMaillagesEgares: _estModele ? !!S.modalDraftAfficherEgares : undefined,
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
@@ -1099,7 +1099,7 @@ export function drawAnimalJointHandlesOverlay(){
 //
 // LA DIFFÉRENCE EST LA SOURCE DES POINTS. Un Animal a des pivots que nous avons construits ; un
 // modèle importé n'a que les os que la correspondance a reconnus. Les poignées sont donc exactement
-// les emplacements PILOTABLES — pas un de plus, pas un de moins. Un point qu'on peut attraper mais
+// les emplacements PILOTABLES, pas un de plus, pas un de moins. Un point qu'on peut attraper mais
 // qui ne mène à aucun curseur serait le même mensonge qu'un curseur ne pilotant aucun os.
 export const skeletonHandleScreenPos = {};
 
@@ -1163,7 +1163,7 @@ const RAYON_PRISE_POIGNEE = 17;
 /**
  * La poignée la plus proche d'un clic, dans une carte `id -> {x, y}`. Rend `null` au-delà du rayon.
  *
- * Partagée par les Animaux et les Modèles importés. La version précédente était écrite deux fois —
+ * Partagée par les Animaux et les Modèles importés. La version précédente était écrite deux fois,
  * une occasion de plus, dans ce dépôt, de voir deux copies du même calcul diverger.
  */
 export function pickHandleAt(positions, px, py){
@@ -1200,14 +1200,14 @@ function dessinerPoignee(ctx, pt, active){
  * POURQUOI CETTE DÉCISION EST UNE FONCTION, ET NON UN DRAPEAU
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * L'événement `toggle` d'un <details> est émis de façon ASYNCHRONE — la spécification HTML le fait
+ * L'événement `toggle` d'un <details> est émis de façon ASYNCHRONE, la spécification HTML le fait
  * mettre en file d'attente, contrairement à la plupart des événements. Les trois écrans à
  * articulations de cette application (Personnage, Animaux, Modèle importé) se protégeaient de la
  * boucle « clic → ouverture → resélection » par un drapeau posé puis retiré dans la foulée. Ce
  * drapeau était TOUJOURS retombé quand le gestionnaire s'exécutait : il ne protégeait de rien.
  *
  * À l'usage : cliquer le coude gauche dépliait « Bras gauche », dont le toggle différé
- * resélectionnait aussitôt la première articulation du groupe — l'épaule. Signalé sur les modèles
+ * resélectionnait aussitôt la première articulation du groupe, l'épaule. Signalé sur les modèles
  * importés (« ça sélectionne le premier groupe de la sous-section plutôt que le bon »), le défaut
  * était identique sur les Animaux et dans la modale Personnage.
  *
@@ -1370,7 +1370,7 @@ export function openRoomModal(pieceId, panel, page, inBuilding = false) {
   roomPosYInput.value = Math.round((first.roomFloatY || 0) * 100) / 100;
   roomPosYInput.disabled = magnetGround;
   roomPosZInput.value = bb ? (Math.round(bb.cz * 100) / 100) : 0;
-  // Orientation — rotX/rotZ disabled (fixed horizontal plane, the pipeline doesn't handle tilted rooms)
+  // Orientation : rotX/rotZ disabled (fixed horizontal plane, the pipeline doesn't handle tilted rooms)
   roomRotYInput.value = Math.round((first.roomRotY || 0) * 180 / Math.PI);
   roomRotXInput.value = 0; roomRotXInput.disabled = true;
   roomRotZInput.value = 0; roomRotZInput.disabled = true;
@@ -1425,7 +1425,7 @@ export function openBuildingModal(buildingKey, roomIds, panel, page) {
   buildingDepthInput.value = bb ? (Math.round(bb.d * 100) / 100) : '';
   buildingPosXInput.value = bb ? (Math.round(bb.cx * 100) / 100) : 0;
   buildingPosZInput.value = bb ? (Math.round(bb.cz * 100) / 100) : 0;
-  // Snapped to Ground / Y float — read from the first member of the first pieceId
+  // Snapped to Ground / Y float : read from the first member of the first pieceId
   const firstMember = page.objects.find(o => roomIds.includes(o.pieceId));
   const magnetGround = firstMember ? firstMember.roomMagnetGround !== false : true;
   const buildingMagnetGroundCheckbox = document.getElementById('buildingMagnetGroundCheckbox');
@@ -1433,7 +1433,7 @@ export function openBuildingModal(buildingKey, roomIds, panel, page) {
   buildingMagnetGroundCheckbox.checked = magnetGround;
   buildingPosYInput.value           = Math.round((firstMember?.roomFloatY || 0) * 100) / 100;
   buildingPosYInput.disabled        = magnetGround;
-  // Ceiling visible — read from the first ceiling found among all the Rooms
+  // Ceiling visible : read from the first ceiling found among all the Rooms
   const firstCeiling = page.objects.find(o =>
     roomIds.includes(o.pieceId) && o.objType === 'dalle'
     && o.worldY != null && o.worldY > GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2);
@@ -1539,7 +1539,7 @@ export function refreshBuildingPreview() {
 }
 
 
-// ── Block repatriated from draw.js (Persona pose editor — side effect of #165) ──
+// ── Block repatriated from draw.js (Persona pose editor, side effect of #165) ──
 
 personaPreview3D.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -1636,7 +1636,7 @@ export function buildJointSlidersUI(){
     container.appendChild(details);
     g.ids.forEach(id => { jointGroupDetailsById[id] = details; });
     // Reciprocal: expanding this sub-section selects in the preview the joint handle it
-    // represents (the first one of its group, per user request — "the right point").
+    // represents (the first one of its group, per user request, "the right point").
     details.addEventListener('toggle', () => {
       if (!details.open) return;
       // Le commentaire de persona-editor.js désignait NOMMÉMENT ce code comme l'exemple du procédé
@@ -1650,7 +1650,7 @@ export function buildJointSlidersUI(){
       refreshPersonaPreview();
     });
   });
-  // Fix 51 — un seul chemin, quel que soit le type d'articulation : poseSliderSpecs3D dit quels
+  // Fix 51 : un seul chemin, quel que soit le type d'articulation : poseSliderSpecs3D dit quels
   // curseurs existent et quel champ chacun pilote, writePoseSliderDeg3D sait les écrire. Les trois
   // branches qui vivaient ici répétaient cette connaissance, et syncJointSlidersFromDraft plus bas
   // la répétait une deuxième fois.
@@ -1732,7 +1732,7 @@ personaPreview3D.addEventListener('mousedown', (e) => {
   e.preventDefault();
 });
 // "Pointer" cursor when hovering a joint handle (per user request), to signal that
-// the point is clickable/selectable — "default" everywhere else on the preview.
+// the point is clickable/selectable, "default" everywhere else on the preview.
 personaPreview3D.addEventListener('mousemove', (e) => {
   if (!S.modalDraftJoints) return;
   const { px, py } = getPersonaPreviewCanvasCoords(e);
@@ -1764,7 +1764,7 @@ window.addEventListener('mouseup', () => {
 // Repatriated from events.js. The openers (openRoomModal, closeRoomModal, refreshRoomPreview…)
 // already lived here; only the save/cancel handlers had stayed behind, and with them a SECOND set
 // of getElementById calls for the same sixteen elements. Two modules reaching for the same DOM
-// nodes is how an id rename breaks one half and not the other — the failure mode that
+// nodes is how an id rename breaks one half and not the other, the failure mode that
 // tests/dom-ids.test.mjs exists for.
 const roomModalCancel     = document.getElementById('roomModalCancel');
 const roomModalSave       = document.getElementById('roomModalSave');
@@ -1809,7 +1809,7 @@ roomModalSave.onclick = () => {
     if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
       // Walls: update the world coords and recompute the 2D thin-box.
       // IMPORTANT: before removing an entry from wallRenderRigCache3D, remove its figureGroup from
-      // the scene — otherwise renderPanelScene3D can no longer tell it "visible = false" (it's no
+      // the scene, otherwise renderPanelScene3D can no longer tell it "visible = false" (it's no
       // longer in the Map) and the ghost wall stays displayed at its old position.
       members.filter(o => WALL_TYPES.includes(o.objType)).forEach(w => {
         const wEntry = wallRenderRigCache3D.get(w.id);
@@ -1856,7 +1856,7 @@ roomModalSave.onclick = () => {
   const magnetGround = roomMagnetGroundCheckbox.checked;
   const floatY    = magnetGround ? 0 : (Number(roomPosYInput.value) || 0);
   members.forEach(m => { m.roomMagnetGround = magnetGround; m.roomFloatY = floatY; });
-  // 5. Horizontal rotation (rotY) — pivot = bounding box center after any translation
+  // 5. Horizontal rotation (rotY), pivot = bounding box center after any translation
   const prevRotY  = members[0]?.roomRotY || 0;
   const newRotY   = Number(roomRotYInput.value) * Math.PI / 180;
   const deltaRotY = newRotY - prevRotY;
@@ -1934,7 +1934,7 @@ roomModal.addEventListener('mousedown', (e) => { if (e.target === roomModal) { e
 window.addEventListener('keydown', (e) => {
   if (!roomModal.classList.contains('hidden')) {
     // Échap n'est PLUS traité ici : cet écouteur est enregistré après celui d'io.js, qui avait
-    // déjà tranché — `stopImmediatePropagation` n'y changeait rien. La fermeture est déclarée en
+    // déjà tranché, `stopImmediatePropagation` n'y changeait rien. La fermeture est déclarée en
     // bas de ce fichier (cf. enregistrerFermeture), et io.js l'appelle. Ctrl+Entrée reste local.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) roomModalSave.onclick();
   }
@@ -1961,7 +1961,7 @@ buildingModalSave.onclick = () => {
   // 1. Rename
   if (!panel.batimentNames) panel.batimentNames = {};
   panel.batimentNames[buildingKey] = buildingNameInput.value.trim() || tr('Building', 'Bâtiment');
-  // 2. Ceiling visibility — apply to each Room of the Building
+  // 2. Ceiling visibility, apply to each Room of the Building
   const ceilingVisible = document.getElementById('buildingCeilingVisibleCheckbox').checked;
   roomIds.forEach(pid => {
     const ceilingObj = page.objects.find(o =>
@@ -2017,7 +2017,7 @@ buildingModalSave.onclick = () => {
       }
     }
   }
-  // 4. Magnetized to Ground + Y float — apply to all members of all Rooms
+  // 4. Magnetized to Ground + Y float, apply to all members of all Rooms
   const magnetGround = buildingMagnetGroundCheckbox.checked;
   const floatY    = magnetGround ? 0 : (Number(buildingPosYInput.value) || 0);
   page.objects.filter(o => roomIds.includes(o.pieceId)).forEach(m => {
@@ -2025,7 +2025,7 @@ buildingModalSave.onclick = () => {
     m.roomFloatY    = floatY;
   });
   // Invalidate wall caches: mergedBuildWallRigCache3D stores roomFloatY at the moment the group
-  // is built — without invalidation, walls would stay at their old Y position.
+  // is built, without invalidation, walls would stay at their old Y position.
   page.objects.filter(o => roomIds.includes(o.pieceId) && WALL_TYPES.includes(o.objType)).forEach(w => {
     const wEntry = wallRenderRigCache3D.get(w.id);
     if (wEntry && personaScene3D) personaScene3D.remove(wEntry.figureGroup);
@@ -2095,20 +2095,20 @@ document.getElementById('buildingMagnetGroundCheckbox').addEventListener('change
 buildingModal.addEventListener('mousedown', (e) => { if (e.target === buildingModal) { e.stopPropagation(); closeBuildingModal(); } });
 window.addEventListener('keydown', (e) => {
   if (!buildingModal.classList.contains('hidden')) {
-    // Échap : cf. la note sur roomModal plus haut — un seul arbitre, dans io.js.
+    // Échap : cf. la note sur roomModal plus haut, un seul arbitre, dans io.js.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) buildingModalSave.onclick();
   }
 });
 
 // ── Room / Building geometry ──────────────────────────────────────────────────────────────────
 // Repatriated from events.js, where it sat under a banner that read « BUILD TOOL ». It is not the
-// Build tool — that lives in draw.js (buildToolClose, buildTryExtendWall, detectBuildFaces). What
+// Build tool, that lives in draw.js (buildToolClose, buildTryExtendWall, detectBuildFaces). What
 // this is: the geometry the Room and Building modals need in order to move, scale and re-anchor a
 // Room once the dialog is saved. It belongs next to those handlers, which are just below.
 // Recomputes a S.buildTool wall's 2D thin-box after its Room is moved (X/Z translation).
 // Duplicates buildToolCreateWallSegment's logic to remain independent of the current S.buildTool.
 
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function recomputeBuildWallBox2D(obj, panel) {
   if (obj.wxFloor === undefined || obj.wzFloor === undefined || !obj.realLenFloor) return;
   const ca = Math.cos(obj.rotY || 0), sa = Math.sin(obj.rotY || 0);
@@ -2149,7 +2149,7 @@ export function recomputeBuildWallBox2D(obj, panel) {
 // ── Resizing one or more Rooms ─────────────────────────────
 // Stores the CURRENT positions/polygons of a list of roomIds' walls and slabs,
 // so they can be re-read every frame during a resize drag.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function storeRoomGeometry(roomIds, page) {
   const walls = [], dalles = [];
   page.objects.forEach(o => {
@@ -2221,7 +2221,7 @@ export function applyRoomScaleFixed(roomIds, page, panel, sx, sz, fixedWX, fixed
 
 // Collects all wall junctions of a Building (each wall's unique endpoints),
 // deduplicates them by proximity (tol in world units), and projects them to screen via the same
-// Three.js camera as the actual render — each junction produces a handle square.
+// Three.js camera as the actual render, each junction produces a handle square.
 // Returns [{wx, wz, sx, sy}, ...] or null.
 // [SCENE3D→scene3d.js] getBuildingJunctionCorners → imported from scene3d.js (already in the import above)
 
@@ -2280,7 +2280,7 @@ export function moveJunctionToWorld(jx, jz, newJx, newJz, buildingRoomIds, page,
 
 // Projects the 4 corners of a set of Rooms' XZ bbox to screen.
 // Returns [{wx,wz,sx,sy}, ...] (4 entries) or null if the bbox is invalid.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function getRoomOrBuildingScreenBBox(roomIds, page, panel) {
   const bb = roomIds.length === 1
     ? getRoomBoundingBoxXZ(roomIds[0], page)
@@ -2307,7 +2307,7 @@ export function getRoomOrBuildingScreenBBox(roomIds, page, panel) {
 //
 // Pièce et Bâtiment avaient déjà leur écouteur Échap, avec `stopImmediatePropagation`. Il ne
 // retenait RIEN : io.js est importé en premier, donc son écouteur s'exécutait avant, et le menu
-// Projet était déjà ouvert quand celui-ci reprenait la main. Les deux modales se fermaient bien —
+// Projet était déjà ouvert quand celui-ci reprenait la main. Les deux modales se fermaient bien,
 // en laissant le menu Projet derrière. Ces écouteurs ont été retirés au profit d'une déclaration
 // unique ; cf. src/modal-stack.js pour pourquoi il ne peut y avoir qu'un seul arbitre.
 enregistrerFermeture('roomModal', closeRoomModal);
@@ -2332,7 +2332,7 @@ enregistrerFermeture('terrainModal', () => {
 //
 // ⚠️ LE CONTENU EST RENDU À L'OUVERTURE, DEPUIS LA TABLE. Pas déplacé depuis le panneau, pas mis en
 // cache : `sectionDuManuel` est la seule source. C'est ce qui empêche la modale et le panneau de se
-// nourrir à deux endroits — l'écart qui avait déjà fait afficher au manuel le contenu du voisin.
+// nourrir à deux endroits, l'écart qui avait déjà fait afficher au manuel le contenu du voisin.
 const helpModal = document.getElementById('helpModal');
 const helpModalTitle = document.getElementById('helpModalTitle');
 const helpModalBody = document.getElementById('helpModalBody');
@@ -2344,7 +2344,7 @@ export function openHelpModal(id, lang){
   if (!helpModal || !helpModalTitle || !helpModalBody) return false;
   const section = sectionDuManuel(id, lang || S.appLang);
   // Clé inconnue : on n'ouvre RIEN. Une modale vide se lirait comme une section sans contenu, alors
-  // que c'est un défaut d'appariement — le même que celui qui avait décalé tous les groupes.
+  // que c'est un défaut d'appariement, le même que celui qui avait décalé tous les groupes.
   if (!section) return false;
   sectionManuelOuverte = section.id;
   helpModalTitle.textContent = section.title;
@@ -2365,13 +2365,13 @@ export function closeHelpModal(){
 
 /**
  * Re-rend la modale dans la nouvelle langue, si elle est ouverte. Appelée par le changement de
- * langue : sans elle, on lirait la section en français dans une interface repassée en anglais —
+ * langue : sans elle, on lirait la section en français dans une interface repassée en anglais,
  * jusqu'à ce qu'on la referme et la rouvre, ce que rien n'indique.
  */
 export function rafraichirManuelOuvert(lang){
   // ⚠️ UNE SEULE GARDE, et c'est `sectionManuelOuverte`. J'avais d'abord ajouté un second test sur
   // la classe `hidden` : les deux disent la même chose, et cette redondance rendait indétectable
-  // l'oubli de la remise à zéro dans closeHelpModal — une mutation qui la supprimait passait la
+  // l'oubli de la remise à zéro dans closeHelpModal, une mutation qui la supprimait passait la
   // suite au vert, alors qu'elle fait rouvrir tout seul, au changement de langue, un manuel que
   // l'utilisateur venait de fermer.
   if (!sectionManuelOuverte) return false;

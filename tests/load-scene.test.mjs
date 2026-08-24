@@ -1,5 +1,5 @@
 /**
- * tests/load-scene.test.mjs — `loadSceneIntoPanel`, la fonction la plus souvent réparée du dépôt.
+ * tests/load-scene.test.mjs, `loadSceneIntoPanel`, la fonction la plus souvent réparée du dépôt.
  *
  * POURQUOI ELLE, ET PAS UNE AUTRE. Sept tâches de l'historique n'ont fait que la corriger : #74
  * (décalage Y des Personnages et des Murs), #75 (décalage Z du mobilier), #76 (rendu des Scènes
@@ -9,7 +9,7 @@
  *
  * Elle réunit trois propriétés rares ici : elle ne touche AUCUN DOM (aucun `getElementById` dans
  * tout scenes.js), elle prend des données et rend des données, et elle a un passé. C'est exactement
- * le profil qu'on veut tester — par opposition à un gestionnaire de 500 lignes dont on ne pourrait
+ * le profil qu'on veut tester, par opposition à un gestionnaire de 500 lignes dont on ne pourrait
  * observer que des stubs.
  *
  * CE QU'ON N'AFFIRME PAS : que le résultat est BEAU. Le cadrage, l'échelle « fit », la distance de
@@ -18,10 +18,10 @@
  * loin : identités remappées, référence entre Éléments préservée, contenu de la Scène source non
  * altéré, coordonnées monde décalées et jamais mises à l'échelle.
  *
- * Chaque test de ce fichier a été vérifié par mutation — cf. le journal en fin de fichier.
+ * Chaque test de ce fichier a été vérifié par mutation, cf. le journal en fin de fichier.
  */
 import './helpers/dom-stub.mjs';
-// Le rendu est neutralisé par ce stub partagé — lire son en-tête : il dit ce que cela retire.
+// Le rendu est neutralisé par ce stub partagé : lire son en-tête : il dit ce que cela retire.
 import './helpers/render-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -45,7 +45,7 @@ setScenesCallbacks({ snapshot: () => { snapshots++; } });
 // erreur de décalage ou d'axe inversé reste invisible sur une Case en (0,0) de côté égal.
 //
 // `pts` n'est pas décoratif : toute Case réelle en porte (createPanel/createScene les calculent), et
-// le dessin de la sélection les lit sans garde. Une première version de ce montage les omettait —
+// le dessin de la sélection les lit sans garde. Une première version de ce montage les omettait,
 // les dix-neuf tests tombaient sur « Cannot read properties of undefined ». Un montage irréaliste
 // fait échouer un test pour la mauvaise raison.
 function caseCible(){
@@ -112,7 +112,7 @@ describe('Chargement d\'une Scène — les identités sont remappées de façon 
     // La propriété structurelle la plus fragile de cette fonction. Une Pièce n'existe que par le
     // `pieceId` partagé de ses Murs : si le remappage était fait Élément par Élément, chaque Mur
     // partirait dans sa propre Pièce et le Bâtiment se désagrégerait en N Pièces d'un seul Mur.
-    // Rien ne lèverait — la Pièce cesserait simplement d'exister comme telle.
+    // Rien ne lèverait, la Pièce cesserait simplement d'exister comme telle.
     const scène = scèneAvec([
       mur('e1', { x: 10, y: 10, wxFloor: -3, pieceId: 'piece-A' }),
       mur('e2', { x: 90, y: 10, wxFloor: -1, pieceId: 'piece-A' }),
@@ -151,8 +151,8 @@ describe('Chargement d\'une Scène — les identités sont remappées de façon 
 
 describe('Chargement d\'une Scène — la Scène source sort intacte', () => {
   test('RÉGRESSION : modifier un Élément chargé ne modifie pas la Scène', async () => {
-    // La copie est profonde (JSON.parse(JSON.stringify)). Si elle devenait superficielle — un
-    // `{...src}` a l'air équivalent et ne l'est pas — les objets imbriqués (articulations, points
+    // La copie est profonde (JSON.parse(JSON.stringify)). Si elle devenait superficielle, un
+    // `{...src}` a l'air équivalent et ne l'est pas, les objets imbriqués (articulations, points
     // d'un tracé, polygone d'une Dalle) resteraient PARTAGÉS. Poser un Personnage dans une Case
     // modifierait alors la Scène, et toutes les autres Cases où elle a été chargée.
     const perso = {
@@ -206,7 +206,7 @@ describe('Chargement d\'une Scène — les coordonnées monde ne sont pas mises 
     const [a, b] = copiesHorsCase();
     assert.equal(b.wxFloor - a.wxFloor, 8,
       'l\'écart monde entre deux Murs a changé : ce n\'est plus un décalage mais une échelle');
-    // Et le décalage est le même pour les deux — sinon ils ne seraient pas déplacés ensemble.
+    // Et le décalage est le même pour les deux : sinon ils ne seraient pas déplacés ensemble.
     assert.equal((-3) - a.wxFloor, 5 - b.wxFloor, 'les deux Murs ont subi des décalages différents');
   });
 
@@ -220,7 +220,7 @@ describe('Chargement d\'une Scène — les coordonnées monde ne sont pas mises 
     //
     // Le pire n'était pas le NaN, c'était son ANNONCE : la fonction rendait `clamped: false`, son
     // mot pour « résultat digne de confiance ». Les deux garde-fous existants comparent avec `>` et
-    // `<`, et toute comparaison avec NaN est fausse — ils laissaient donc passer précisément ce
+    // `<`, et toute comparaison avec NaN est fausse, ils laissaient donc passer précisément ce
     // qu'ils étaient censés arrêter. L'appelant écrivait alors NaN dans l'Élément, et un Élément à
     // coordonnée monde NaN est invisible pour toujours, y compris dans le fichier enregistré.
     //
@@ -244,7 +244,7 @@ describe('Chargement d\'une Scène — les coordonnées monde ne sont pas mises 
     // Complément indispensable du test précédent, et il a fallu la campagne de mutation pour s'en
     // apercevoir : « aucune valeur NaN » est satisfait aussi bien par une projection juste que par
     // une projection abandonnée. Réintroduire la cause seule (rendre à la projection une Planche
-    // sans dimensions) laissait donc la suite au vert — le filet posé dans scene3d.js rattrapait.
+    // sans dimensions) laissait donc la suite au vert, le filet posé dans scene3d.js rattrapait.
     //
     // Ici on exige que la projection AIT LIEU : sans elle, wxFloor reste absent et le Personnage se
     // place d'après sa seule position 2D, en perdant sa profondeur dans la Scène.
@@ -286,7 +286,7 @@ describe('Chargement d\'une Scène — un Tracé n\'entre pas dans le cadrage', 
     // Le défaut #77, épinglé. La boîte 2D d'un Tracé couvre l'emprise de ses points, qui peut
     // dépasser très largement le canevas de la Scène (un terrain plein cadre → x=0, w=1240). S'il
     // entrait dans le calcul de la boîte englobante, le facteur d'ajustement s s'effondrerait et
-    // TOUS les autres Éléments seraient rendus minuscules et décentrés — les Murs « disparaissaient ».
+    // TOUS les autres Éléments seraient rendus minuscules et décentrés, les Murs « disparaissaient ».
     //
     // On compare deux chargements de la même Scène, l'un avec le Tracé, l'autre sans : la géométrie
     // du Mur doit être rigoureusement identique. C'est ce qui distingue « le Tracé est ignoré » de
@@ -316,7 +316,7 @@ describe('Chargement d\'une Scène — un Tracé n\'entre pas dans le cadrage', 
 
   test('le Tracé copié est bien rattaché à la Case cible', async () => {
     // Second volet de #77 : le rendu 3D et le dessin 2D filtrent les Tracés sur `panelId`. Sans
-    // remappage, le Tracé restait rattaché au canevas de la Scène — présent dans les données, et
+    // remappage, le Tracé restait rattaché au canevas de la Scène, présent dans les données, et
     // invisible à l'écran. Un Élément invisible mais présent est pire qu'un Élément absent.
     const route = {
       id: 'e1', type: 'tracé', tracéType: 'route', panelId: 'sc-panel',
@@ -339,7 +339,7 @@ describe('Chargement d\'une Scène — un Tracé n\'entre pas dans le cadrage', 
 describe('Chargement d\'une Scène — le remplacement reste borné à la Case visée', () => {
   test('les Éléments d\'une AUTRE Case survivent au chargement', async () => {
     // Le filtre de remplacement porte sur `homePanelId`. Une erreur ici efface le travail de
-    // l'utilisateur dans des Cases qu'il n'a pas touchées — la pire faute possible pour cette
+    // l'utilisateur dans des Cases qu'il n'a pas touchées, la pire faute possible pour cette
     // fonction, et la plus silencieuse : le contenu disparaît sans message.
     const autreCase = { id: 'panel-autre', type: 'panel', x: 600, y: 50, w: 300, h: 200, shape: 'rect' };
     const voisin = { id: 'v1', type: 'perso', x: 610, y: 60, w: 30, h: 60, homePanelId: 'panel-autre' };
@@ -415,7 +415,7 @@ describe('Chargement d\'une Scène — la caméra de la Case repart d\'un état 
 
   test('la caméra recule d\'autant que le contenu a été réduit', async () => {
     // Contrepartie de la phase 2 : puisque les grandeurs physiques ne sont plus redimensionnées,
-    // c'est la caméra qui s'éloigne pour tout faire tenir — camDist = distance par défaut / s.
+    // c'est la caméra qui s'éloigne pour tout faire tenir, camDist = distance par défaut / s.
     // Le test ne réinvente pas s : il vérifie la RELATION entre les deux, qui est la vraie règle.
     const scène = scèneAvec([mur('e1', { x: 10, y: 10, wxFloor: -3 })]);
     await loadSceneIntoPanel(scène, cible);
@@ -429,7 +429,7 @@ describe('Chargement d\'une Scène — la caméra de la Case repart d\'un état 
 
   test('une Scène vide ne produit ni division par zéro ni caméra infinie', async () => {
     // Chemin `hasContent === false`. Il ne se produit qu'en chargeant une Scène qu'on vient de
-    // créer — geste banal, et le seul endroit où srcW/srcH retombent sur le canevas nominal.
+    // créer, geste banal, et le seul endroit où srcW/srcH retombent sur le canevas nominal.
     await loadSceneIntoPanel(scèneAvec([]), cible);
     assert.equal(copiesHorsCase().length, 0);
     assert.equal(cible.camDist, PANEL_CAM_DEFAULT_DIST_3D,
@@ -449,7 +449,7 @@ describe('Chargement d\'une Scène — la caméra de la Case repart d\'un état 
 // 7. Le filet, testé pour lui-même
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Projection au Sol — une entrée malformée est déclarée comme telle', () => {
+describe('Projection au Sol : une entrée malformée est déclarée comme telle', () => {
   test('RÉGRESSION : une Planche sans dimensions donne « clamped », pas des NaN crédibles', () => {
     // Deuxième volet du défaut ci-dessus, et second enseignement de la campagne de mutation :
     // retirer ce filet seul laissait la suite au vert, puisque la cause était corrigée par ailleurs.
@@ -459,7 +459,7 @@ describe('Projection au Sol — une entrée malformée est déclarée comme tell
     // `clamped` est le seul mot de cette fonction pour dire « ne vous fiez pas à x et z ». Le rendre
     // avec des NaN et `clamped: false` était pire que lever : l'appelant écrivait la valeur.
     const canevas = { id: 'sc-panel', type: 'panel', x: 0, y: 0, w: 480, h: 360 };
-    const planche = { id: 'sc-p1', objects: [canevas] };   // ni w ni h — la forme réelle d'une Scène
+    const planche = { id: 'sc-p1', objects: [canevas] };   // ni w ni h, la forme réelle d'une Scène
 
     const r = panelPixelToGroundXZ3D(55, 100, canevas, planche);
     assert.equal(r.clamped, true, 'une projection impossible s\'est annoncée comme fiable');
@@ -487,7 +487,7 @@ test('garde-fou : le montage produit bien ce que les tests croient observer', as
 });
 
 /**
- * JOURNAL DE MUTATION — quinze fautes réintroduites une à une dans le code, chacune relancée contre
+ * JOURNAL DE MUTATION : quinze fautes réintroduites une à une dans le code, chacune relancée contre
  * ce fichier. Une garantie non éprouvée n'est qu'une intention. Résultats RÉELS, dans cet ordre :
  *
  *   M1  `idMap.set(src.id, newId())` → `set(src.id, src.id)`                            ROUGE
@@ -507,7 +507,7 @@ test('garde-fou : le montage produit bien ce que les tests croient observer', as
  *   M15 la garde « projection non finie → clamped » retirée (le FILET)                  ROUGE
  *
  * CE QUE LA CAMPAGNE A APPRIS, et qui a modifié ce fichier. À leur première exécution, M14 et M15
- * ont toutes deux ÉCHAPPÉ — alors que chacune réintroduit la moitié d'un défaut réel.
+ * ont toutes deux ÉCHAPPÉ, alors que chacune réintroduit la moitié d'un défaut réel.
  *
  * Rien n'était cassé : la correction est double, cause plus filet, et retirer une moitié laisse
  * l'autre faire le travail. Mais cela signifiait qu'aucune des deux lignes n'était retenue par un
@@ -516,6 +516,6 @@ test('garde-fou : le montage produit bien ce que les tests croient observer', as
  * monde en REÇOIT par projection » (épingle la cause) et le describe « Projection au Sol » (épingle
  * le filet). Les deux mutations passent au rouge depuis.
  *
- * Règle à retenir : une correction en profondeur — cause + garde-fou — demande un test par couche.
+ * Règle à retenir : une correction en profondeur, cause + garde-fou, demande un test par couche.
  * Sinon on a deux protections et zéro garantie.
  */

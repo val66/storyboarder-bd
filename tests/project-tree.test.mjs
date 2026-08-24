@@ -1,9 +1,9 @@
 /**
- * tests/project-tree.test.mjs — le menu de gauche, extrait d'events.js.
+ * tests/project-tree.test.mjs, le menu de gauche, extrait d'events.js.
  *
  * Ce qui EST testable ici : que le module s'importe seul (donc qu'il ne dépend pas d'un ordre
  * d'évaluation particulier), et que la couture qui le relie à events.js tient. Le rendu lui-même
- * écrit dans le DOM et n'est pas vérifiable sous le stub — cf. l'en-tête de dom-stub.mjs.
+ * écrit dans le DOM et n'est pas vérifiable sous le stub, cf. l'en-tête de dom-stub.mjs.
  */
 import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
@@ -17,7 +17,7 @@ const lire = (f) => readFileSync(join(RACINE, f), 'utf8');
 const evt = lire('src/events.js');
 const arbre = lire('src/project-tree.js');
 
-describe('project-tree.js — la couture avec events.js', () => {
+describe('project-tree.js : la couture avec events.js', () => {
   test('RÉGRESSION : events.js injecte les sept dépendances remontantes', () => {
     // Sans injection, cliquer une Scène, un Tome ou une Planche du menu de gauche lève un
     // TypeError sur un callback absent. Rien ne le dit avant le clic.

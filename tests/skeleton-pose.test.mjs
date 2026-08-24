@@ -1,16 +1,16 @@
 /**
- * tests/skeleton-pose.test.mjs — tourner un os importé sans casser le personnage.
+ * tests/skeleton-pose.test.mjs, tourner un os importé sans casser le personnage.
  *
  * CE QUE CE FICHIER PROTÈGE, ET POURQUOI ÇA VAUT UN FICHIER ENTIER.
  *
  * Le rig d'un Animal naît à la rotation (0,0,0) : poser une articulation s'y écrit
  * `pivot.rotation.set(x, y, z)`, et `applyAnimalJointAngles` commence même par tout remettre à
- * zéro — ce qui est exact, puisque zéro EST la pose de repos.
+ * zéro, ce qui est exact, puisque zéro EST la pose de repos.
  *
  * Un squelette importé, non. Mesure faite sur les six fichiers réels de l'utilisateur, en lisant
  * les quaternions de repos des `nodes` glTF :
  *
- *     108 os mappés au total — 2 au repos identitaire, 106 DÉJÀ TOURNÉS.
+ *     108 os mappés au total, 2 au repos identitaire, 106 DÉJÀ TOURNÉS.
  *
  * Copier la méthode des Animaux effondrerait donc 106 os sur 108 : le personnage se casserait au
  * premier curseur, et le curseur suivant partirait d'un corps déjà tordu. La seule opération
@@ -18,11 +18,11 @@
  *
  * Le piège, c'est que RIEN DE TOUT CELA NE LÈVE D'EXCEPTION. Un ordre de multiplication inversé,
  * un repos relu au lieu d'être mémorisé, une remise à zéro : tout compile, tout s'exécute, et le
- * seul symptôme est un personnage qui a l'air bizarre — sur un modèle importé qu'on ne connaît
+ * seul symptôme est un personnage qui a l'air bizarre, sur un modèle importé qu'on ne connaît
  * pas, et dont on suppose volontiers que c'est LUI qui est mal fait. D'où des tests qui épinglent
  * l'algèbre elle-même, y compris contre Three.
  *
- * CE QU'ON N'AFFIRME PAS : que tourner l'axe X lève le bras. C'est faux, et c'est assumé — cinq
+ * CE QU'ON N'AFFIRME PAS : que tourner l'axe X lève le bras. C'est faux, et c'est assumé, cinq
  * des six fichiers mesurés alignent leurs os sur +Y, le rig Unreal sur ±X selon le côté et le
  * membre (cf. docs/imported-skeletons.md). Traduire un vocabulaire de pose partagé vers le bon
  * axe de chaque os est le travail de l'étape E.
@@ -54,7 +54,7 @@ const CARTE = {
   avantbras_g: { bone: 'b4', name: 'Left_elbow' },
 };
 
-describe('normaliserPose — relire une pose sans jamais faire échouer une ouverture', () => {
+describe('normaliserPose : relire une pose sans jamais faire échouer une ouverture', () => {
   test('une pose valide traverse intacte', () => {
     assert.deepEqual(normaliserPose({ tete: { x: 0.5, z: -0.25 } }), { tete: { x: 0.5, z: -0.25 } });
   });
@@ -87,7 +87,7 @@ describe('normaliserPose — relire une pose sans jamais faire échouer une ouve
   });
 });
 
-describe('lireAngleDeg / ecrireAngleDeg — ce qu\'un curseur lit et écrit', () => {
+describe('lireAngleDeg / ecrireAngleDeg : ce qu\'un curseur lit et écrit', () => {
   test('aller-retour degrés → radians → degrés', () => {
     const pose = {};
     ecrireAngleDeg(pose, 'bras_g', 'x', 90);
@@ -103,7 +103,7 @@ describe('lireAngleDeg / ecrireAngleDeg — ce qu\'un curseur lit et écrit', ()
 
   test('RÉGRESSION : ramener un curseur à zéro EFFACE, il ne stocke pas un zéro', () => {
     // Sans cela, effleurer un curseur puis le remettre où il était laisserait l'Élément porteur
-    // d'une pose à jamais — et le Projet grossirait d'un objet qui ne dit rien.
+    // d'une pose à jamais, et le Projet grossirait d'un objet qui ne dit rien.
     const pose = {};
     ecrireAngleDeg(pose, 'bras_g', 'x', 45);
     ecrireAngleDeg(pose, 'bras_g', 'y', 10);
@@ -121,7 +121,7 @@ describe('lireAngleDeg / ecrireAngleDeg — ce qu\'un curseur lit et écrit', ()
   });
 });
 
-describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', () => {
+describe('groupesPosables : un curseur qui ne pilote rien est un mensonge', () => {
   const tr = (en) => en;
 
   test('seuls les emplacements AYANT un os donnent une ligne', () => {
@@ -133,8 +133,8 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
 
   test('RÉGRESSION : le BASSIN n\'a pas de curseur, bien qu\'il soit reconnu', () => {
     // Signalé à l'usage : « les trois premiers curseurs sont les mêmes que ceux de l'orientation ».
-    // C'était exact. Le bassin est la RACINE du squelette — mesuré : il entraîne 108 os sur 109
-    // dans worker_j, la totalité dans capoera — donc le tourner fait pivoter tout le personnage,
+    // C'était exact. Le bassin est la RACINE du squelette, mesuré : il entraîne 108 os sur 109
+    // dans worker_j, la totalité dans capoera, donc le tourner fait pivoter tout le personnage,
     // exactement comme l'Orientation de l'Élément. Deux commandes pour un seul effet.
     const tous = groupesPosables(CARTE, tr).flatMap(g => g.slots.map(s => s.slot));
     assert.ok(!tous.includes('bassin'), 'le bassin a de nouveau des curseurs');
@@ -144,7 +144,7 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
     assert.equal(estPosable('poitrine'), true);
   });
 
-  test('le bassin reste dans la CORRESPONDANCE — la reconnaissance en dépend', () => {
+  test('le bassin reste dans la CORRESPONDANCE : la reconnaissance en dépend', () => {
     // Ne pas confondre « on ne le pilote pas » et « on ne le reconnaît pas » : la descente
     // structurelle PART du bassin pour trouver les jambes et la colonne (cf. skeleton-map.js).
     assert.ok(SLOTS.includes('bassin'), 'le bassin a disparu des emplacements reconnus');
@@ -174,12 +174,12 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
 
   test('une entrée sans `bone` ne compte pas', () => {
     // fusionner() peut rendre `{ name, bone: undefined }` si le nom enregistré ne correspond plus à
-    // aucun os du fichier — modèle réexporté, os renommé. La ligne ne doit pas apparaître.
+    // aucun os du fichier, modèle réexporté, os renommé. La ligne ne doit pas apparaître.
     const carte = { cou: { name: 'Neck' }, poitrine: { bone: 'b2', name: 'Chest' } };
     assert.equal(nombrePosable(carte), 1);
   });
 
-  test('une correspondance vide ne donne aucun groupe — la section entière disparaît', () => {
+  test('une correspondance vide ne donne aucun groupe : la section entière disparaît', () => {
     assert.deepEqual(groupesPosables({}, tr), []);
     assert.deepEqual(groupesPosables(null, tr), []);
     assert.equal(nombrePosable(null), 0);
@@ -191,7 +191,7 @@ describe('groupesPosables — un curseur qui ne pilote rien est un mensonge', ()
   });
 });
 
-describe('orientationFinale — LA fonction, celle dont dépend l\'intégrité du personnage', () => {
+describe('orientationFinale : LA fonction, celle dont dépend l\'intégrité du personnage', () => {
   test('GARANTIE : une pose vide rend le repos, au bit près', () => {
     // C'est ce qui assure qu'ouvrir la fiche d'un modèle importé, regarder, et refermer ne le
     // déforme pas. Un `!==` ici se verrait comme une dérive lente, pose après pose.
@@ -220,7 +220,7 @@ describe('orientationFinale — LA fonction, celle dont dépend l\'intégrité d
       'le cas choisi ne distingue pas les deux ordres : il ne prouve donc rien');
   });
 
-  test('appliquer depuis le repos est IDEMPOTENT — dix fois vaut une fois', () => {
+  test('appliquer depuis le repos est IDEMPOTENT : dix fois vaut une fois', () => {
     // La propriété qui rend un curseur utilisable : chaque application repart du repos MÉMORISÉ, et
     // non de la rotation courante. Repartir du courant ferait s'additionner les angles à chaque
     // rendu, et le membre tournerait indéfiniment tant qu'on regarde la Case.
@@ -235,7 +235,7 @@ describe('orientationFinale — LA fonction, celle dont dépend l\'intégrité d
 describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
   // Réécrire quaternion et produit à la main est ce qui permet de tester sous Node la seule
   // opération capable de tordre un personnage sans rien signaler. Encore faut-il que cette algèbre
-  // soit juste — et « juste » veut dire : identique à celle de la bibliothèque qui fait le rendu.
+  // soit juste, et « juste » veut dire : identique à celle de la bibliothèque qui fait le rendu.
   // Trois cents tirages, comparés à Three lui-même.
   const THREE = globalThis.THREE;   // posé par le stub DOM, cf. tests/helpers/dom-stub.mjs
 
@@ -252,7 +252,7 @@ describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
     assert.ok(pire < 1e-12, `écart maximal ${pire} — l'algèbre maison a divergé de Three`);
   });
 
-  test('la CONVENTION est XYZ, celle du rig intégré — pas une autre', () => {
+  test('la CONVENTION est XYZ, celle du rig intégré : pas une autre', () => {
     // Deux conventions dans la même application donneraient deux gestes différents pour un même
     // curseur selon le type d'Élément. Le cas est choisi pour que ZYX donne un autre résultat.
     const [x, y, z] = [0.7, 1.1, -0.5];
@@ -280,8 +280,8 @@ describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
   test('eulerDepuisQuaternion défait exactement quaternionDepuisEuler', () => {
     // L'ALLER ET LE RETOUR VIVENT DANS LE MÊME FICHIER POUR CETTE RAISON. Une pose de la
     // bibliothèque appliquée à un squelette importé fait l'aller (composer des rotations) puis le
-    // retour (les redire en angles pour les curseurs). Si les deux divergeaient d'une convention —
-    // ordre XYZ contre ZYX, signe d'un terme —, la pose s'afficherait de travers dans les curseurs
+    // retour (les redire en angles pour les curseurs). Si les deux divergeaient d'une convention,
+    // ordre XYZ contre ZYX, signe d'un terme, la pose s'afficherait de travers dans les curseurs
     // tout en s'appliquant correctement à l'écran, ou l'inverse. Rien ne lèverait.
     //
     // Les angles restent dans le domaine PRINCIPAL d'Euler XYZ (|y| < π/2) : au-delà, deux triplets
@@ -303,7 +303,7 @@ describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
   test('même au pôle, le quaternion relu est le bon', () => {
     // Verrouillage de cardan : X et Z tournent autour du même axe et leur partage est arbitraire.
     // Ce qui doit rester vrai, c'est que RECONSTRUIRE depuis les angles relus redonne la même
-    // rotation — sinon l'os partirait de travers exactement dans le cas le plus visible.
+    // rotation, sinon l'os partirait de travers exactement dans le cas le plus visible.
     [[0.7, Math.PI / 2, 0.3], [-0.4, -Math.PI / 2, 1.1]].forEach(angles => {
       const q = quaternionDepuisEuler(...angles);
       const r = quaternionDepuisEuler(...eulerDepuisQuaternion(q));
@@ -329,7 +329,7 @@ describe('L\'algèbre maison rend EXACTEMENT ce que Three rendrait', () => {
   });
 });
 
-describe('applySkeletonPose — le comportement, pas la forme du code', () => {
+describe('applySkeletonPose : le comportement, pas la forme du code', () => {
   // ÉCRIT APRÈS DEUX MUTATIONS ÉCHAPPÉES. J'avais d'abord gardé ces deux invariants par des
   // `assert.match` sur le texte de rig3d.js. Les deux ont laissé passer la faute qu'ils
   // prétendaient interdire :
@@ -389,7 +389,7 @@ describe('applySkeletonPose — le comportement, pas la forme du code', () => {
   });
 });
 
-describe('rig3d — ce qui distingue un os importé d\'un pivot d\'Animal', () => {
+describe('rig3d : ce qui distingue un os importé d\'un pivot d\'Animal', () => {
   const sansCommentaires = (txt) => txt
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
@@ -401,7 +401,7 @@ describe('rig3d — ce qui distingue un os importé d\'un pivot d\'Animal', () =
   };
 
   test('RÉGRESSION : applySkeletonPose ne remet JAMAIS un os à zéro', () => {
-    // La faute qu'on ferait en copiant applyAnimalJointAngles juste au-dessus — et qui casserait
+    // La faute qu'on ferait en copiant applyAnimalJointAngles juste au-dessus, et qui casserait
     // 106 des 108 os mappés des six fichiers mesurés.
     const bloc = corps('applySkeletonPose');
     assert.doesNotMatch(bloc, /rotation\.set\(0,\s*0,\s*0\)/, 'la remise à zéro des Animaux a été recopiée');
@@ -435,14 +435,14 @@ describe('rig3d — ce qui distingue un os importé d\'un pivot d\'Animal', () =
   test('RÉGRESSION : un modèle sans os récolte une carte VIDE, pas rien du tout', () => {
     // La boîte de remplacement (fichier introuvable, ou pas encore décodé) doit rendre
     // `skeletonBones: {}`. Rendre `undefined` ferait retomber la fiche sur les curseurs du modèle
-    // attendu — des curseurs qui ne piloteraient aucun os.
+    // attendu, des curseurs qui ne piloteraient aucun os.
     assert.match(corps('buildImportedModelRig3D'), /skeletonBones: \{\}/,
       'la boîte de remplacement ne déclare plus de carte d\'os vide');
   });
 
   test('RÉGRESSION : la correspondance n\'est calculée qu\'à UN endroit', () => {
     // Le rig et la fiche en ont besoin tous les deux. Les laisser la recalculer chacun de leur côté
-    // est la panne la plus fréquente de ce dépôt — et ici elle serait cruelle : un curseur intitulé
+    // est la panne la plus fréquente de ce dépôt, et ici elle serait cruelle : un curseur intitulé
     // « Coude gauche » piloterait un autre os que celui qu'affiche l'écran de correspondance.
     assert.equal((RIG.match(/inferSkeletonMap\(/g) || []).length, 1,
       'la reconnaissance est appelée à plus d\'un endroit dans rig3d.js');
@@ -503,7 +503,7 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — la composition, cœur du chantier « squelettes importés » (tâche #310).
+ * JOURNAL DE MUTATION : la composition, cœur du chantier « squelettes importés » (tâche #310).
  *
  *   W1 le bassin redevient posable                                              ROUGE
  *   W2 normaliserPose garde les emplacements non posables                       ROUGE

@@ -1,12 +1,12 @@
 /**
- * html.test.mjs — intégrité STRUCTURELLE de index.html.
+ * html.test.mjs, intégrité STRUCTURELLE de index.html.
  *
- * Fix 90. Écrit après un incident : le retrait d'un bloc de diagnostic (Fix 89) a laissé derrière
+ * Fix 90 : Écrit après un incident : le retrait d'un bloc de diagnostic (Fix 89) a laissé derrière
  * lui un `</div>` orphelin. Le corps de l'éditeur de Personnage se refermait donc trop tôt, son
  * panneau droit se retrouvait hors du conteneur flex, et l'éditeur cessait d'occuper l'écran. La
  * suite complète est restée VERTE pendant tout ce temps : rien n'y regardait la forme du document.
  *
- * Le stub DOM ne construit aucun arbre — il rend des objets factices — donc aucun test existant ne
+ * Le stub DOM ne construit aucun arbre, il rend des objets factices, donc aucun test existant ne
  * pouvait voir le problème. Un simple contrôle d'imbrication, lui, le voit immédiatement.
  *
  * Portée assumée : on vérifie la CHARPENTE, pas l'apparence. Un document bien imbriqué peut très
@@ -22,7 +22,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const VIDES = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'source', 'area',
                        'base', 'col', 'embed', 'param', 'track', 'wbr', '!doctype']);
 
-// Analyse volontairement minimale — on ne cherche pas à interpréter le HTML, seulement à suivre
+// Analyse volontairement minimale : on ne cherche pas à interpréter le HTML, seulement à suivre
 // l'ouverture et la fermeture des balises. Commentaires, scripts et styles sont retirés d'abord :
 // leur contenu peut contenir des « < » qui n'ont rien de balises.
 function pileDeBalises(source) {
@@ -56,7 +56,7 @@ function pileDeBalises(source) {
   return { pile, erreurs };
 }
 
-// Chemin d'un élément vers la racine, par ids et noms de balises — de quoi affirmer qu'un bloc est
+// Chemin d'un élément vers la racine, par ids et noms de balises, de quoi affirmer qu'un bloc est
 // bien CONTENU dans un autre, ce qu'un simple « les deux existent » ne dit pas.
 function ancetresDe(source, id) {
   const { pile, erreurs } = (() => {
@@ -70,7 +70,7 @@ function ancetresDe(source, id) {
   return pile.map(e => e.id || e.nom);
 }
 
-describe('index.html — imbrication des balises', () => {
+describe('index.html : imbrication des balises', () => {
   test('RÉGRESSION : aucune balise fermante orpheline ou mal appariée', () => {
     // C'est exactement ce qu'un `</div>` de trop produit, et ce qu'aucun autre test ne voyait.
     const { pile, erreurs } = pileDeBalises(html);
@@ -79,8 +79,8 @@ describe('index.html — imbrication des balises', () => {
   });
 });
 
-describe('index.html — charpente de l\'éditeur de Personnage', () => {
-  // L'éditeur recouvre l'application : sa mise en page repose entièrement sur cette imbrication —
+describe('index.html : charpente de l\'éditeur de Personnage', () => {
+  // L'éditeur recouvre l'application : sa mise en page repose entièrement sur cette imbrication,
   // un conteneur plein écran, un corps en flex, et DEUX enfants côte à côte. Sortez le panneau du
   // corps, et l'éditeur cesse d'occuper l'écran tout en restant syntaxiquement valide.
   test('RÉGRESSION : le canevas est bien DANS le corps de l\'éditeur', () => {
@@ -91,7 +91,7 @@ describe('index.html — charpente de l\'éditeur de Personnage', () => {
 
   test('RÉGRESSION : le panneau droit est bien DANS le corps de l\'éditeur', () => {
     // Le défaut du Fix 89 : le panneau se retrouvait frère du corps au lieu d'en être l'enfant, donc
-    // hors du flex — invisible en pratique. Les deux éléments existaient pourtant toujours.
+    // hors du flex, invisible en pratique. Les deux éléments existaient pourtant toujours.
     const chemin = ancetresDe(html, 'personaEditorPoseSection');
     assert.ok(chemin, '#personaEditorPoseSection introuvable');
     assert.ok(chemin.includes('personaEditorOverlay'), `hors de l'éditeur : ${chemin.join(' > ')}`);
@@ -110,13 +110,13 @@ describe('index.html — charpente de l\'éditeur de Personnage', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// L'ORDRE DES CHAMPS — quand il porte une intention, il se garde
+// L'ORDRE DES CHAMPS : quand il porte une intention, il se garde
 //
 // Un ordre demandé par l'utilisateur ne laisse aucune trace dans le code : il vit dans la
 // succession de deux blocs HTML, que le premier remaniement peut inverser sans que rien ne le
-// signale. Ces tests ne vérifient pas une apparence — ils épinglent une décision, avec sa raison.
+// signale. Ces tests ne vérifient pas une apparence, ils épinglent une décision, avec sa raison.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('index.html — l\'ordre voulu des champs', () => {
+describe('index.html : l\'ordre voulu des champs', () => {
   const avant = (a, b, ou) => {
     const ia = html.indexOf(a), ib = html.indexOf(b);
     assert.notEqual(ia, -1, `${a} introuvable`);
@@ -134,7 +134,7 @@ describe('index.html — l\'ordre voulu des champs', () => {
 
   test('dans l\'éditeur, la section Modèle vient avant Pose et Articulations', () => {
     // L'ordre dit le geste : on choisit le CORPS, puis la pose qu'on lui donne, puis le réglage fin.
-    // Changer de figure recalcule la pose et efface les retouches — le geste le plus englobant se
+    // Changer de figure recalcule la pose et efface les retouches, le geste le plus englobant se
     // pose donc en premier.
     avant('id="personaEditorModelSection"', 'id="personaEditorPoseSection"', 'panneau de l\'éditeur');
     avant('id="personaEditorPoseSection"', 'id="personaEditorJointsSection"', 'panneau de l\'éditeur');
@@ -159,7 +159,7 @@ describe('index.html — l\'ordre voulu des champs', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — l'ordre des champs et le câblage des deux fiches.
+ * JOURNAL DE MUTATION : l'ordre des champs et le câblage des deux fiches.
  *
  *   O1 la Hauteur repassée APRÈS le curseur (fiche Objet)              ROUGE
  *   O2 la section Modèle remise entre Pose et Articulations            ROUGE
@@ -168,7 +168,7 @@ describe('index.html — l\'ordre voulu des champs', () => {
  *   O5 la fiche Objet ne remplit plus le sien                          ROUGE
  *   O6 la hauteur affichée dérivée du CURSEUR au lieu de l'Élément     ROUGE
  *
- * O4 EST LA LEÇON. Un ordre de champs se garde par un test de structure — c'est ce que fait ce
+ * O4 EST LA LEÇON. Un ordre de champs se garde par un test de structure, c'est ce que fait ce
  * fichier. Mais le CÂBLAGE, lui, ne se voit pas dans le HTML : le champ Personnage était en place,
  * bien positionné, et restait vide. Rien ne le disait, parce qu'aucun test n'appelait
  * updatePersonaSizeDisplay en regardant ce qu'elle écrit. Les tests correspondants vivent dans

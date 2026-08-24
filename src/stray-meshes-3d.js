@@ -18,7 +18,7 @@
  *
  * RIEN NE SE DÉCROCHE, et c'est important pour ne pas chercher au mauvais endroit : le fourreau a
  * toujours été là-haut. Il est pesé à 100 % sur l'os `Sheath_080`, lequel est un enfant régulier de
- * `Spine_010` — la liaison est correcte. Ce qui ne l'est pas, c'est sa géométrie de liaison, qui le
+ * `Spine_010`, la liaison est correcte. Ce qui ne l'est pas, c'est sa géométrie de liaison, qui le
  * projette hors du corps. L'illusion de décrochage vient d'un simple effet de LEVIER : la mise à
  * l'échelle est uniforme autour d'un centre calculé sur les os, donc un point trois fois plus loin
  * que le corps se déplace trois fois plus à l'écran.
@@ -47,7 +47,7 @@
  * Zéro faux positif, une seule détection, celle qu'on cherchait.
  *
  * MOINS DE DEUX MAILLAGES : aucun signalement. « Loin des autres » n'a pas de sens quand il n'y a
- * pas d'autres — et un modèle d'un seul tenant est le cas le plus courant.
+ * pas d'autres, et un modèle d'un seul tenant est le cas le plus courant.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * CE QUE CE MODULE NE FAIT PAS
@@ -57,7 +57,7 @@
  * reste réversible depuis la fiche du modèle. Rendre des NOMS plutôt que des objets est délibéré :
  * la détection tourne UNE fois, au décodage, sur la scène du cache ; le masquage s'applique bien
  * plus tard, sur un CLONE de cette scène. Deux calculs de la même valeur finissent toujours par
- * diverger — c'est le défaut le plus fréquent de ce dépôt.
+ * diverger, c'est le défaut le plus fréquent de ce dépôt.
  */
 
 import { expandBoxSkinAware3D } from './skinned-box-3d.js';
@@ -67,14 +67,14 @@ import { expandBoxSkinAware3D } from './skinned-box-3d.js';
  *
  * `expandBoxSkinAware3D` et non `Box3.setFromObject` : pour un `SkinnedMesh`, la géométrie brute est
  * celle de la position de liaison, que le squelette déforme au rendu. C'est précisément l'écart
- * entre les deux qui est en cause ici — mesurer la mauvaise donnerait une réponse fausse pour
+ * entre les deux qui est en cause ici, mesurer la mauvaise donnerait une réponse fausse pour
  * exactement la bonne raison (cf. src/skinned-box-3d.js).
  */
 export function boitesDesMaillages3D(racine){
   const boites = [];
   if (!racine || !racine.traverse) return boites;
   // Pas d'`updateMatrixWorld` ici : `expandBoxSkinAware3D` appelle déjà `updateWorldMatrix(true, …)`
-  // sur chaque nœud, qui remonte toute la chaîne des parents. La campagne de mutation l'a établi —
+  // sur chaque nœud, qui remonte toute la chaîne des parents. La campagne de mutation l'a établi,
   // retirer l'appel ne faisait échouer aucun test, y compris celui qui vérifie que la boîte est
   // bien mesurée en MONDE. Le garder aurait été une seconde source de vérité pour la même chose.
   racine.traverse(n => {
@@ -83,7 +83,7 @@ export function boitesDesMaillages3D(racine){
     expandBoxSkinAware3D(boite, n);
     // Un maillage sans géométrie exploitable rend une boîte vide. L'écarter ici plutôt que plus bas :
     // une boîte vide ne recoupe rien, elle serait donc signalée comme égarée alors qu'elle n'est
-    // nulle part — un faux positif garanti sur tout maillage vide.
+    // nulle part, un faux positif garanti sur tout maillage vide.
     if (boite.isEmpty()) return;
     boites.push({ nom: n.name || '(sans nom)', boite });
   });
@@ -95,7 +95,7 @@ export function boitesDesMaillages3D(racine){
  *
  * POURQUOI PAR LE NOM. La détection tourne une fois, au décodage, sur la scène du cache ; le
  * masquage s'applique sur un clone construit bien plus tard. Le nom est le seul lien stable entre
- * les deux — `cloneSkinned` le conserve, contrairement aux `uuid`, qui sont refaits à chaque clone.
+ * les deux, `cloneSkinned` le conserve, contrairement aux `uuid`, qui sont refaits à chaque clone.
  *
  * DEUX MAILLAGES DE MÊME NOM seraient masqués ensemble. C'est assumé : un fichier qui nomme deux
  * fois la même chose ne permet pas de les distinguer, et le cas ne s'est présenté sur aucun des six
@@ -103,7 +103,7 @@ export function boitesDesMaillages3D(racine){
  */
 // ⚠️ « (sans nom) » N'EST PAS TRADUIT, et c'est délibéré : la même chaîne sert de CLÉ entre
 // `maillagesHorsCorps3D`, qui la met dans sa liste, et `maillagesParNom3D`, qui la cherche. Traduite,
-// un maillage relevé en français ne serait plus retrouvé après un passage en anglais — et le
+// un maillage relevé en français ne serait plus retrouvé après un passage en anglais, et le
 // masquage viserait alors dans le vide, sans rien signaler.
 export function maillagesParNom3D(racine, noms){
   const cherchés = new Set(noms || []);
@@ -129,7 +129,7 @@ export function appliquerVisibiliteEgares3D(maillages, afficher){
 }
 
 /**
- * Les noms des maillages égarés — ceux qui ne touchent aucun autre. Tableau vide si le modèle est
+ * Les noms des maillages égarés, ceux qui ne touchent aucun autre. Tableau vide si le modèle est
  * sain, s'il n'a qu'un maillage, ou si la scène est absente.
  *
  * Fonction PURE vis-à-vis de l'état : elle ne fait que lire une scène décodée.
@@ -138,7 +138,7 @@ export function maillagesHorsCorps3D(racine){
   const boites = boitesDesMaillages3D(racine);
   if (boites.length < 2) return [];
   return boites
-    // `intersectsBox` est FAUX exactement quand il existe un axe séparateur — c'est mot pour mot le
+    // `intersectsBox` est FAUX exactement quand il existe un axe séparateur, c'est mot pour mot le
     // critère énoncé plus haut, et c'est pourquoi il n'y a rien à régler ici.
     .filter((b, i) => {
       const autres = new THREE.Box3();

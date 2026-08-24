@@ -1,10 +1,10 @@
 /**
- * tests/scenes.test.mjs — le domaine Scène, extrait d'events.js.
+ * tests/scenes.test.mjs, le domaine Scène, extrait d'events.js.
  *
  * Une Scène a la MÊME FORME qu'un Tome à une seule Planche portant une Case plein cadre. Ce n'est
  * pas un détail d'implémentation : c'est ce qui permet à tout le moteur de rendu et d'édition de
  * travailler sur une Scène sans savoir qu'elle existe. Si cette forme change, des pans entiers de
- * l'application cessent de fonctionner sur les Scènes — sans qu'aucun d'eux ne le signale.
+ * l'application cessent de fonctionner sur les Scènes, sans qu'aucun d'eux ne le signale.
  */
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
@@ -18,7 +18,7 @@ import { createScene } from '../src/scenes.js';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lire = (f) => readFileSync(join(RACINE, f), 'utf8');
 
-describe('scenes.js — la forme d\'une Scène', () => {
+describe('scenes.js : la forme d\'une Scène', () => {
   beforeEach(() => { S.scenes = []; });
 
   test('une Scène est un Tome à une Planche portant une Case plein cadre', () => {
@@ -31,7 +31,7 @@ describe('scenes.js — la forme d\'une Scène', () => {
     const c = cases[0];
     assert.equal(c.x, 0); assert.equal(c.y, 0);
     // Le format est porté par la SCÈNE, pas par sa Planche : `pages[0]` ne contient qu'`objects`.
-    // Vérifié en écrivant ce test — ma première version comparait à `pages[0].w`, undefined.
+    // Vérifié en écrivant ce test, ma première version comparait à `pages[0].w`, undefined.
     assert.equal(c.w, s.w, 'la Case couvre toute la largeur de la Scène');
     assert.equal(c.h, s.h, 'et toute sa hauteur');
     assert.ok(Array.isArray(c.pts) && c.pts.length > 0, 'ses points sont calculés');
@@ -50,7 +50,7 @@ describe('scenes.js — la forme d\'une Scène', () => {
   });
 });
 
-describe('scenes.js — la couture avec events.js', () => {
+describe('scenes.js : la couture avec events.js', () => {
   const evt = lire('src/events.js');
   const sc = lire('src/scenes.js');
 
@@ -66,7 +66,7 @@ describe('scenes.js — la couture avec events.js', () => {
 
   test('le domaine Scène n\'est plus éparpillé dans events.js', () => {
     // \b obligatoire : sans lui, « function openScene » matche openSceneContextMenu, qui reste
-    // légitimement dans events.js. Constaté en écrivant ce test — il échouait pour rien.
+    // légitimement dans events.js. Constaté en écrivant ce test, il échouait pour rien.
     ['createScene', 'openScene', 'loadSceneIntoPanel'].forEach(n =>
       assert.ok(!new RegExp(`^(async )?function ${n}\\b`, 'm').test(evt),
         `${n} est revenu dans events.js`));

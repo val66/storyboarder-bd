@@ -2,14 +2,14 @@
  * @file project-tree.js
  * The LEFT menu: the Volume → Page tree and the list of Scenes.
  *
- * Extracted from events.js, where it sat under a banner reading « SIDEBAR — TREE ». Its
+ * Extracted from events.js, where it sat under a banner reading « SIDEBAR. TREE ». Its
  * counterpart, sidebar.js, is the RIGHT-hand panel and nothing else: two different panels, on two
  * sides of the screen, had ended up sharing one word.
  *
- * What lives here: rendering both lists, and the operations they offer — create a Volume, a Page,
+ * What lives here: rendering both lists, and the operations they offer, create a Volume, a Page,
  * a Scene; duplicate; reorder by drag-and-drop; rename. What does NOT: what a Scene IS
  * (createScene / openScene, still in events.js) and the context menus these rows open. Both are
- * injected — see setProjectTreeCallbacks.
+ * injected, see setProjectTreeCallbacks.
  */
 
 import { FORMATS } from './constants.js';
@@ -23,7 +23,7 @@ import { renderAll } from './draw.js';
 
 // Six upward dependencies, all of them things the left menu TRIGGERS rather than owns: what a
 // Scene is (createScene / openScene / disableSceneCameraMode), the context menus its rows open,
-// and the undo stack. Injected rather than imported — events.js imports this module, so importing
+// and the undo stack. Injected rather than imported, events.js imports this module, so importing
 // back would close a cycle (cf. docs/architecture.md rule #2).
 let _cb = {};
 export function setProjectTreeCallbacks(callbacks) { _cb = callbacks; }
@@ -45,7 +45,7 @@ export function renderSceneList(){
     list.innerHTML = '<div class="empty-hint">Aucune Scène pour l\'instant.</div>';
     return;
   }
-  // Displayed in alphabetical order (not creation order) — on user request. We sort a copy:
+  // Displayed in alphabetical order (not creation order), on user request. We sort a copy:
   // `S.scenes` itself must keep its original order (referenced elsewhere by id, not position).
   const sorted = S.scenes.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }));
   sorted.forEach((s) => {
@@ -63,7 +63,7 @@ export function renderSceneList(){
   });
 }
 // Was a bare top-level call. Kept, but note WHY it is safe where wirePersonaEditor was not:
-// this only reads S.scenes and writes the DOM — it calls nothing injected. Any future
+// this only reads S.scenes and writes the DOM, it calls nothing injected. Any future
 // top-level statement here that DOES would run before setProjectTreeCallbacks, since an
 // imported module is evaluated before its importer.
 renderSceneList();
@@ -76,20 +76,20 @@ document.getElementById('addSceneBtn').onclick = () => {
 // ---------- TREE (S.tomes / pages) ----------
 // Drag-and-drop to reorder the Pages of a Volume (on user request: a Page can't be renamed, but
 // its order can be changed by dragging it, which changes its displayed number since that's just
-// its position — cf. `Page ${pi + 1}` below, already recomputed dynamically, so nothing to do on
+// its position, cf. `Page ${pi + 1}` below, already recomputed dynamically, so nothing to do on
 // that side). Limited to drag-and-drop BETWEEN Pages of the same Volume (moving a Page from one
 // Volume to another wasn't requested).
 // [STATE→S] let S.draggedPage = null;
 
 // ════════════════════════════════════════════════════════════
-// SIDEBAR — TREE
+// SIDEBAR : TREE
 // ════════════════════════════════════════════════════════════
 /**
  * Aller à une Planche : la rendre courante et l'afficher.
  *
  * Extraite du clic sur une ligne du menu parce qu'un SECOND appelant est arrivé, le raccourci
  * Ctrl+[ / Ctrl+]. Recopier ces six affectations là-bas aurait fait deux définitions de « changer de
- * Planche » — et la première à être oubliée aurait été `editingSceneId`, qui laisse l'application
+ * Planche », et la première à être oubliée aurait été `editingSceneId`, qui laisse l'application
  * afficher une Scène tout en croyant être sur une Planche.
  *
  * `pageSelected` ouvre le menu « Planche » à droite (liste des Cases), sur demande utilisateur :
@@ -106,7 +106,7 @@ export function allerALaPlanche(ti, pi){
 export function renderTree(){
   const list = document.getElementById('volumeList');
   list.innerHTML = '';
-  // Displayed in alphabetical order (not creation order), on user request — same as for Scenes. We
+  // Displayed in alphabetical order (not creation order), on user request, same as for Scenes. We
   // sort a COPY: the `S.tomes` array itself keeps its original order, since `ti` (the real index in
   // `S.tomes`) is still used everywhere else (openVolumeContextMenu, S.ctxVolumeTarget,
   // S.currentTomeIndex...); so we recover this real ti via indexOf rather than via the position in
@@ -197,7 +197,7 @@ export function renderTree(){
           if (!S.draggedPage || S.draggedPage.volumeId !== t.id) return;
           e.preventDefault();
           // We visualize the GAP where the Page will be inserted (above or below the hovered Page
-          // depending on which half of its height the cursor is over), not the hovered Page itself —
+          // depending on which half of its height the cursor is over), not the hovered Page itself,
           // on user request, more readable.
           const rect = pdiv.getBoundingClientRect();
           const before = (e.clientY - rect.top) < rect.height / 2;
@@ -272,7 +272,7 @@ export async function deletePage(ti, pi){
 
 // Duplicates Page (ti, pi): deep-clone + full remapping of all internal IDs to avoid conflicts
 // with the original Page (Panel, Bubble, Room, Wall IDs, etc.). IDs are replaced via JSON string
-// substitution ("oldId" → "newId") rather than walking each named field — more robust against
+// substitution ("oldId" → "newId") rather than walking each named field, more robust against
 // cross-reference fields (altPieceId, camOrbitTargetId…) without having to list every property.
 // Automatically navigates to the copy after insertion.
 export function duplicatePage(ti, pi){
@@ -310,7 +310,7 @@ export function duplicatePage(ti, pi){
 
 // Renames a Volume (on user request, so Volumes follow the same logic as Scenes: default name
 // "Volume N" freely editable afterward). window.prompt() isn't reliable in Electron (and doesn't
-// allow live validation) — instead we open the dedicated renameEntityModal (cf. below), which
+// allow live validation), instead we open the dedicated renameEntityModal (cf. below), which
 // applies the rename via applyRenameVolume/applyRenameScene.
 export function renameVolume(ti){
   const t = S.tomes[ti];
@@ -351,7 +351,7 @@ export async function deleteScene(id){
 /**
  * La bibliothèque de modèles 3D importés, dans le menu de gauche.
  *
- * Elle montre le DISQUE, pas le Projet — les Scènes et les Éléments ont déjà leurs propres listes.
+ * Elle montre le DISQUE, pas le Projet, les Scènes et les Éléments ont déjà leurs propres listes.
  * Le groupement par usage est DÉDUIT à chaque affichage (cf. model-library.js) : rien n'est
  * mémorisé, donc rien ne peut diverger de la réalité.
  *
@@ -380,16 +380,16 @@ export async function renderModelList(){
    * l'autre. Empilés, chaque texte dispose de toute la largeur ; ce qui dépasse est coupé par
    * `.model-row-*` (une seule ligne, points de suspension) plutôt que de déborder du panneau.
    *
-   * Le texte complet reste accessible en `title` — c'est ce qui rend la coupe acceptable : on perd
+   * Le texte complet reste accessible en `title`, c'est ce qui rend la coupe acceptable : on perd
    * l'affichage, pas l'information.
    *
    * Le CLIC GAUCHE mène aux usages : directement s'il n'y en a qu'un, par une modale de choix s'il
-   * y en a plusieurs. Un modèle inutilisé rend une ligne INERTE — et cela se voit avant le clic
+   * y en a plusieurs. Un modèle inutilisé rend une ligne INERTE, et cela se voit avant le clic
    * (curseur, survol), pas seulement après. Un clic sans effet passe pour une panne ; une ligne qui
    * n'invite pas au clic ne promet rien.
    *
    * La décision n'est pas prise ici : `resolveModelClick` est pure et testable, ce que ce rendu
-   * n'est pas. Elle est appelée UNE fois — son résultat sert à la fois à l'apparence et à l'action,
+   * n'est pas. Elle est appelée UNE fois, son résultat sert à la fois à l'apparence et à l'action,
    * qui ne peuvent donc pas se contredire.
    *
    * @param {string} nom       le nom de fichier

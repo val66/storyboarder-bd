@@ -1,7 +1,7 @@
 /**
- * tests/model-import.test.mjs — les trois gestes d'import, et ce qu'ils créent.
+ * tests/model-import.test.mjs, les trois gestes d'import, et ce qu'ils créent.
  *
- * Ce qui se joue ici n'est pas le décodage — c'est l'ENCHAÎNEMENT : ranger le fichier, le décoder,
+ * Ce qui se joue ici n'est pas le décodage, c'est l'ENCHAÎNEMENT : ranger le fichier, le décoder,
  * en tirer une taille, créer le bon objet au bon endroit. Chaque maillon a déjà ses tests ; celui-ci
  * garde la chaîne, et surtout ce qu'elle fait quand un maillon cède.
  *
@@ -11,7 +11,7 @@
  *     et l'Élément doit naître à cette taille. Un mètre par défaut serait un réglage à refaire à
  *     chaque import, sur une information qu'on avait déjà.
  *   — un fichier illisible ne fait PAS perdre le geste. L'Élément est créé quand même, en boîte de
- *     remplacement, et l'utilisateur est prévenu. Le contraire — annuler l'import — lui ferait
+ *     remplacement, et l'utilisateur est prévenu. Le contraire, annuler l'import, lui ferait
  *     refaire le choix de fichier sans lui dire ce qui a échoué.
  *
  * CE QU'ON N'AFFIRME PAS : que le sélecteur de fichiers s'ouvre, ni que GLTFLoader décode un vrai
@@ -35,7 +35,7 @@ import { OBJECT_REAL_HEIGHT_M, PANEL_CAM_DEFAULT_DIST_3D } from '../src/constant
 
 let snapshots = 0;
 let alertes = [];
-// Les appels au GESTE FINAL de création — figer les coordonnées monde, puis s'assurer que
+// Les appels au GESTE FINAL de création : figer les coordonnées monde, puis s'assurer que
 // l'Élément est dans le champ. Les trois chemins de création doivent le partager (cf. le bloc de
 // tests dédié plus bas).
 let visibilites = [];
@@ -84,7 +84,7 @@ const modelesDeLaPage = () => objets().filter(o => o.objType === 'modele');
 // 1. Le nom
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('nomLisible — reprendre le nom que l\'utilisateur a donné à son fichier', () => {
+describe('nomLisible : reprendre le nom que l\'utilisateur a donné à son fichier', () => {
   test('l\'extension tombe, le reste est gardé tel quel', () => {
     assert.equal(nomLisible('salon.glb'), 'salon');
     assert.equal(nomLisible('Chaise Louis XV.glb'), 'Chaise Louis XV');
@@ -99,7 +99,7 @@ describe('nomLisible — reprendre le nom que l\'utilisateur a donné à son fic
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. La préparation — d'où vient la taille
+// 2. La préparation, d'où vient la taille
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('choisirEtPreparerModele', () => {
@@ -130,10 +130,10 @@ describe('choisirEtPreparerModele', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2b. L'avertissement de taille — un fichier mesuré démesuré
+// 2b. L'avertissement de taille, un fichier mesuré démesuré
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('choisirEtPreparerModele — hauteur mesurée > MODEL_HEIGHT_WARN_MAX_M', () => {
+describe('choisirEtPreparerModele : hauteur mesurée > MODEL_HEIGHT_WARN_MAX_M', () => {
   test('sous le seuil, aucune confirmation n\'est demandée', async () => {
     pontQuiChoisit('table.glb');
     _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 9.9 });
@@ -190,7 +190,7 @@ describe('choisirEtPreparerModele — hauteur mesurée > MODEL_HEIGHT_WARN_MAX_M
 //
 // Mesuré sur worker_j.glb : le fourreau du katana occupe y 91→131 quand le personnage entier tient
 // dans y −0,3→41,8. Le CRITÈRE est testé dans tests/stray-meshes.test.mjs ; ce qui se joue ici est
-// la DÉCISION D'EN PARLER — et surtout celle de se taire.
+// la DÉCISION D'EN PARLER, et surtout celle de se taire.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('messageMaillagesEgares', () => {
@@ -212,7 +212,7 @@ describe('messageMaillagesEgares', () => {
     //
     // CHAQUE LANGUE EST VÉRIFIÉE SÉPARÉMENT, et c'est le fond du test : une première version
     // écrite en alternance (`/not modified|pas modifié/`) était satisfaite par la branche anglaise
-    // seule. La campagne de mutation l'a montré — vider la phrase française ne la faisait pas
+    // seule. La campagne de mutation l'a montré, vider la phrase française ne la faisait pas
     // rougir. Deux textes, deux assertions.
     const langue = S.appLang;
     try {
@@ -235,7 +235,7 @@ describe('messageMaillagesEgares', () => {
     assert.ok(m.includes('5'), `le total réel manque : ${m}`);
   });
 
-  test('un seul nom en trop se dit au singulier — EN FRANÇAIS', () => {
+  test('un seul nom en trop se dit au singulier : EN FRANÇAIS', () => {
     // La langue est forcée, et c'est le fond du test : l'anglais dit « 1 more » comme « 2 more »,
     // donc un pluriel systématique y passerait inaperçu.
     const langue = S.appLang;
@@ -249,7 +249,7 @@ describe('messageMaillagesEgares', () => {
   });
 });
 
-describe('choisirEtPreparerModele — avertissement sur les morceaux détachés', () => {
+describe('choisirEtPreparerModele : avertissement sur les morceaux détachés', () => {
   test('prévient, et n\'empêche pas l\'import', async () => {
     pontQuiChoisit('worker.glb');
     _setModelCacheEntry('worker.glb', {
@@ -386,7 +386,7 @@ describe('importModelIntoPanel', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — huit fautes, toutes rouges.
+ * JOURNAL DE MUTATION : huit fautes, toutes rouges.
  *
  *   V1 la hauteur du fichier ignorée au profit du défaut                        ROUGE (6)
  *   V2 un échec d'écriture avalé au lieu d'être signalé                         ROUGE
@@ -404,7 +404,7 @@ describe('importModelIntoPanel', () => {
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Le câblage — ce que les tests unitaires ne voient pas
+// 5. Le câblage, ce que les tests unitaires ne voient pas
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readFileSync } from 'node:fs';
@@ -439,7 +439,7 @@ describe('Le câblage de l\'import', () => {
 
   test('la même entrée sert dans une Case et dans une Scène', () => {
     // C'était la raison d'être des deux entrées : « comme Scène » n'a pas de sens dans une Scène.
-    // Une fois cette option retirée, la distinction n'a plus lieu d'être — et la conserver aurait
+    // Une fois cette option retirée, la distinction n'a plus lieu d'être, et la conserver aurait
     // laissé deux chemins à tenir d'accord pour un seul geste.
     const bloc = EVENTS.slice(EVENTS.indexOf("ctxImportModel').style.display"));
     assert.match(bloc.slice(0, 200), /_surCase \? '' : 'none'/,
@@ -464,7 +464,7 @@ describe('Le câblage de l\'import', () => {
   test('RÉGRESSION : UN SEUL champ nomme le fichier, plus deux', () => {
     // « Fichier » (lecture seule) et « Modèle » (sélecteur) disaient la même chose, mais pas dans
     // les mêmes cas : le second n'apparaissait qu'à partir de deux figures posables. Fusionnés dans
-    // « Modèle », toujours présent. Ce test garde la disparition — un champ mort qu'on réintroduit
+    // « Modèle », toujours présent. Ce test garde la disparition, un champ mort qu'on réintroduit
     // par copier-coller est le genre de retour en arrière que personne ne remarque.
     assert.doesNotMatch(HTML, /objectModelFileField|objectModelFileValue/);
     assert.doesNotMatch(MODALS, /objectModelFileField|objectModelFileValue/);
@@ -486,23 +486,23 @@ describe('Le câblage de l\'import', () => {
 describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
   // LE DÉFAUT GARDÉ ICI, et la façon dont il s'est manifesté. Un modèle importé dans une Case VIDE
   // apparaissait en dehors d'elle ; le même import dans une Case contenant déjà un Personnage
-  // tombait bien centré. D'où l'impression d'un défaut dépendant de l'ORDRE DES GESTES — ce qui a
+  // tombait bien centré. D'où l'impression d'un défaut dépendant de l'ORDRE DES GESTES, ce qui a
   // fait chercher longtemps du côté du placement, où tout était juste.
   //
-  // La cause : `addPersonaToPanel` et `addObjectToPanel` finissent tous deux par le même geste —
+  // La cause : `addPersonaToPanel` et `addObjectToPanel` finissent tous deux par le même geste,
   // figer les coordonnées monde, puis recentrer la caméra si l'Élément est hors champ. L'import,
   // troisième chemin de création, n'en faisait AUCUNE des deux moitiés. Une Case vide n'avait donc
   // jamais vu sa caméra recadrée ; dès qu'un Personnage y était passé, elle l'avait été pour lui,
   // et le modèle en profitait.
   //
   // LE SECOND SYMPTÔME, signalé après la première correction : un modèle bien centré à l'import
-  // mais « un peu loin ». C'était l'autre moitié — les coordonnées monde non figées. La conversion
+  // mais « un peu loin ». C'était l'autre moitié, les coordonnées monde non figées. La conversion
   // « position sur la page → position dans le monde » dépend de la CAMÉRA ; sans coordonnées
   // figées, elle est refaite à chaque rendu, avec la caméra qu'on vient justement de déplacer.
   // Deux symptômes, une seule omission, réparée en deux fois faute d'avoir nommé le geste.
   //
   // Trois chemins pour un même geste : c'est l'énumération tenue à la main, encore. Le geste porte
-  // maintenant un NOM (`finaliserCreationDansCase3D`, events.js) et les trois chemins l'appellent —
+  // maintenant un NOM (`finaliserCreationDansCase3D`, events.js) et les trois chemins l'appellent,
   // un geste nommé se transmet, une paire de lignes recopiées se perd. Le test porte sur le CHEMIN
   // D'IMPORT, seul testable ici sans DOM 3D ; les deux autres sont dans events.js.
 
@@ -533,7 +533,7 @@ describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
   });
 
   test('un défaut non câblé ne fait pas échouer l\'import', async () => {
-    // Le module doit rester utilisable sans ce crochet — c'est la règle de tous les autres.
+    // Le module doit rester utilisable sans ce crochet, c'est la règle de tous les autres.
     setModelImportCallbacks({});
     pontQuiChoisit('table.glb');
     _setModelCacheEntry('table.glb', { scene: { traverse(){} }, hauteurM: 0.74 });
@@ -543,12 +543,12 @@ describe('Un Élément importé est rendu VISIBLE dans sa Case', () => {
 
 describe('L\'empreinte 2D mesurée traverse toute la chaîne d\'import', () => {
   // `currentPage()` et NON `S.tomes[0].pages[0]` : une page ne porte que ses objets, ses dimensions
-  // viennent du Tome, et c'est `currentPage()` qui réunit les deux — exactement ce que l'application
+  // viennent du Tome, et c'est `currentPage()` qui réunit les deux, exactement ce que l'application
   // passe. Le montage naïf donne `page.h === undefined`, donc une empreinte NaN que seule une
   // assertion sur w/h révèle. Les tests plus haut ne la voyaient pas : ils ne lisent pas ces champs.
   // Le CHEMIN, pas la mesure : le rapport est relevé au décodage (model-cache), lu par la
   // préparation, puis passé à la création de l'Élément. Une campagne de mutation a montré que
-  // couper ce fil ne faisait rougir aucun test — la mesure restait juste, et sans effet.
+  // couper ce fil ne faisait rougir aucun test, la mesure restait juste, et sans effet.
 
   test('choisirEtPreparerModele rend le rapport du cache', async () => {
     pontQuiChoisit('svelte.glb');
@@ -631,7 +631,7 @@ describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', ()
 
   test('le garde-fou : la dérivation trouve VRAIMENT des champs', () => {
     // Sans lui, une expression régulière cassée rendrait un ensemble vide et le test précédent
-    // serait vert en ne comparant rien — le piège classique de la propriété vérifiée sur le néant.
+    // serait vert en ne comparant rien, le piège classique de la propriété vérifiée sur le néant.
     const i = RIG.indexOf('export function ensureObjectRigEntry3D(o){');
     const bloc = RIG.slice(i, i + 4000);
     const lus = new Set([...bloc.matchAll(/\bo\s*(?:&&\s*o)?\.([A-Za-z][A-Za-z0-9_]*)/g)]

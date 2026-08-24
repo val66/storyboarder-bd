@@ -1,4 +1,4 @@
-// tests/state.test.mjs — Tests unitaires de src/state.js (état applicatif partagé S, accesseurs de
+// tests/state.test.mjs. Tests unitaires de src/state.js (état applicatif partagé S, accesseurs de
 // page/Tome courants, création de Tomes/Pages, numérotation des Cases, traduction).
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
@@ -30,7 +30,7 @@ beforeEach(() => {
 });
 
 // ── newId ─────────────────────────────────────────────────────────────────────────────────────
-describe('newId — générateur d\'identifiant unique', () => {
+describe('newId : générateur d\'identifiant unique', () => {
   test('préfixe par défaut "o", incrémente S.idCounter à chaque appel', () => {
     assert.equal(newId(), 'o1');
     assert.equal(newId(), 'o2');
@@ -43,7 +43,7 @@ describe('newId — générateur d\'identifiant unique', () => {
 });
 
 // ── tr ────────────────────────────────────────────────────────────────────────────────────────
-describe('tr — sélection de chaîne EN/FR selon S.appLang', () => {
+describe('tr : sélection de chaîne EN/FR selon S.appLang', () => {
   test('S.appLang === "en" : renvoie la chaîne anglaise', () => {
     S.appLang = 'en';
     assert.equal(tr('Hello', 'Bonjour'), 'Hello');
@@ -56,7 +56,7 @@ describe('tr — sélection de chaîne EN/FR selon S.appLang', () => {
 });
 
 // ── nextDefaultVolumeName / createVolume / addPageToVolume ────────────────────────────────────────────
-describe('nextDefaultVolumeName — nom par défaut du prochain Tome', () => {
+describe('nextDefaultVolumeName : nom par défaut du prochain Tome', () => {
   test('aucun Tome existant : "Tome 1"', () => {
     assert.equal(nextDefaultVolumeName(), 'Tome 1');
   });
@@ -67,7 +67,7 @@ describe('nextDefaultVolumeName — nom par défaut du prochain Tome', () => {
   });
 });
 
-describe('createVolume / addPageToVolume — création d\'un Tome et de ses Pages', () => {
+describe('createVolume / addPageToVolume : création d\'un Tome et de ses Pages', () => {
   test('createVolume("fb") : Tome au format Franco-Belge, poussé dans S.tomes, sans Page', () => {
     const t = createVolume('fb');
     assert.equal(S.tomes.length, 1);
@@ -91,7 +91,7 @@ describe('createVolume / addPageToVolume — création d\'un Tome et de ses Page
 });
 
 // ── currentVolume / currentPageData / currentPage ─────────────────────────────────────────────────
-describe('currentVolume / currentPageData / currentPage — accesseurs de la Planche courante', () => {
+describe('currentVolume / currentPageData / currentPage : accesseurs de la Planche courante', () => {
   test('hors édition de Scène : lit S.tomes[S.currentTomeIndex] / .pages[S.currentPageIndex]', () => {
     const t = createVolume('fb');
     addPageToVolume(t);
@@ -131,7 +131,7 @@ describe('currentVolume / currentPageData / currentPage — accesseurs de la Pla
 });
 
 // ── isLockedScenePanel ────────────────────────────────────────────────────────────────────────
-describe('isLockedScenePanel — Case verrouillée = canevas plein-cadre d\'une Scène en édition', () => {
+describe('isLockedScenePanel : Case verrouillée = canevas plein-cadre d\'une Scène en édition', () => {
   test('aucune Scène en édition : toujours false, même pour un panel', () => {
     S.editingSceneId = null;
     assert.equal(isLockedScenePanel({ type: 'panel' }), false);
@@ -154,7 +154,7 @@ describe('isLockedScenePanel — Case verrouillée = canevas plein-cadre d\'une 
 });
 
 // ── panelsInPage / renumberPanels / ensurePanelNumbers ─────────────────────────────────────────────
-describe('panelsInPage / renumberPanels / ensurePanelNumbers — numérotation des Cases d\'une Planche', () => {
+describe('panelsInPage / renumberPanels / ensurePanelNumbers : numérotation des Cases d\'une Planche', () => {
   test('panelsInPage : ne garde que les objets type:"panel" (exclut Personas/Objets)', () => {
     const page = { objects: [
       { type: 'panel', id: 'p1', caseNumber: 3 },

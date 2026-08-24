@@ -11,7 +11,7 @@ const defaultProjectsDir = app.isPackaged
 
 // Mémorise le chemin du dernier fichier de Projet ouvert/enregistré, ainsi que les réglages de
 // l'Application (cf. modale Configuration dans index.html : délai de sauvegarde automatique, dossier
-// des Projets personnalisé, thème) dans le dossier de données utilisateur de l'app — sur demande
+// des Projets personnalisé, thème) dans le dossier de données utilisateur de l'app, sur demande
 // utilisateur. Mis à jour à chaque saveAs/write/rename/open réussi ci-dessous.
 const settingsFilePath = path.join(app.getPath('userData'), 'settings.json');
 
@@ -20,7 +20,7 @@ function readSettings() {
 }
 
 // Dossier des Projets effectif : le dossier choisi par l'utilisateur (cf. settings:chooseProjectsDir)
-// s'il y en a un, sinon le dossier par défaut ci-dessus — sur demande utilisateur ("possibilité de
+// s'il y en a un, sinon le dossier par défaut ci-dessus, sur demande utilisateur ("possibilité de
 // changer le dossier des Projets par défaut").
 function getProjectsDir() {
   const { projectsDir } = readSettings();
@@ -40,7 +40,7 @@ function setLastProjectPath(filePath) {
 }
 
 // Devient true une fois que le renderer a explicitement confirmé qu'il faut fermer (après avoir
-// proposé d'enregistrer ou non, cf. 'app:confirmQuit' ci-dessous) — sur demande utilisateur : plutôt
+// proposé d'enregistrer ou non, cf. 'app:confirmQuit' ci-dessous), sur demande utilisateur : plutôt
 // que d'empêcher la fermeture tant que le Projet n'est pas enregistré, on intercepte la fermeture une
 // première fois pour demander au renderer ce qu'il souhaite faire, puis on laisse la seconde tentative
 // (déclenchée depuis le renderer lui-même) passer normalement.
@@ -151,7 +151,7 @@ ipcMain.handle('project:open', async (event) => {
 });
 
 // Récupère le dernier Projet ouvert/enregistré (cf. settings.json) pour le rouvrir automatiquement au
-// démarrage de l'app (cf. initStartupProject dans index.html) — sur demande utilisateur. Si le fichier
+// démarrage de l'app (cf. initStartupProject dans index.html), sur demande utilisateur. Si le fichier
 // mémorisé n'existe plus (déplacé/supprimé), on l'ignore silencieusement : l'app retombe alors sur le
 // comportement par défaut (nouveau Projet vierge "Projet").
 ipcMain.handle('project:getLastProject', async () => {
@@ -166,7 +166,7 @@ ipcMain.handle('project:getLastProject', async () => {
 });
 
 // Accès générique au même fichier settings.json (cf. lastFilePath ci-dessus) pour les réglages de
-// l'Application (cf. modale Configuration dans index.html, ex. délai de sauvegarde automatique) — sur
+// l'Application (cf. modale Configuration dans index.html, ex. délai de sauvegarde automatique), sur
 // demande utilisateur. 'settings:get' renvoie l'objet entier, 'settings:set' fusionne une clé/valeur.
 ipcMain.handle('settings:get', async () => {
   return readSettings();
@@ -185,13 +185,13 @@ ipcMain.handle('settings:set', async (event, key, value) => {
 
 // Dossier des Projets affiché dans la modale Configuration (cf. getProjectsDir ci-dessus) : calculé
 // côté main process car il dépend du chemin de l'exécutable (app.getPath/app.isPackaged), inconnu du
-// renderer — sur demande utilisateur.
+// renderer, sur demande utilisateur.
 ipcMain.handle('settings:getProjectsDir', async () => {
   return getProjectsDir();
 });
 
 // Ouvre un sélecteur de dossier natif pour choisir un nouveau dossier de Projets par défaut (cf. bouton
-// "Choisir un dossier..." de la modale Configuration) — sur demande utilisateur. Le dossier est créé
+// "Choisir un dossier..." de la modale Configuration), sur demande utilisateur. Le dossier est créé
 // s'il n'existe pas encore, mais PAS encore persisté ici : c'est le renderer qui appelle ensuite
 // settings:set('projectsDir', ...) pour rester cohérent avec le reste des réglages.
 ipcMain.handle('settings:chooseProjectsDir', async (event) => {
@@ -212,7 +212,7 @@ ipcMain.handle('settings:chooseProjectsDir', async (event) => {
 // EXCEPTION ASSUMÉE à la règle n°1 d'architecture.md (« main.js ne se touche jamais pour une
 // fonctionnalité applicative »), documentée là-bas. La règle interdit d'y mettre de la LOGIQUE
 // applicative ; sa propre description range l'« accès disque » dans les attributions de ce fichier.
-// Écrire un .glb — du binaire — est de l'accès disque, et aucun canal existant ne sait le faire :
+// Écrire un .glb, du binaire, est de l'accès disque, et aucun canal existant ne sait le faire :
 // project:write écrit une chaîne. Le remède habituel de la règle (« pousser l'information en
 // fichier généré ») ne s'applique pas : ces octets arrivent à l'exécution, choisis par
 // l'utilisateur.
@@ -233,7 +233,7 @@ function ensureModelsDir() {
 }
 
 // Le renderer propose un nom ; ce process REFUSE tout ce qui n'est pas déjà un nom de fichier nu.
-// Ce n'est PAS un doublon de l'assainissement de src/model-store.js — les deux font des métiers
+// Ce n'est PAS un doublon de l'assainissement de src/model-store.js, les deux font des métiers
 // différents : là-bas on NETTOIE ce que l'utilisateur a fourni, ici on n'accepte que du déjà propre.
 // Sans cette garde, un nom comme « ../../../Bureau/quelque-chose » écrirait hors du dossier des
 // modèles. Un process principal ne fait jamais confiance à son renderer, même quand c'est le nôtre.
@@ -281,14 +281,14 @@ ipcMain.handle('models:read', async (event, name) => {
     return { ok: true, data: new Uint8Array(data) };
   } catch (err) {
     // Cas nominal, pas une panne : le fichier a été déplacé ou supprimé hors de l'application.
-    // Le renderer en fait un Élément de remplacement — il ne supprime SURTOUT pas l'Élément.
+    // Le renderer en fait un Élément de remplacement, il ne supprime SURTOUT pas l'Élément.
     return { ok: false, error: String(err) };
   }
 });
 
 // Suppression d'un modèle du disque. Le renderer a DÉJÀ confirmé auprès de l'utilisateur, avec le
 // décompte de ce que ça casse (cf. model-library.js) : ici on exécute, on ne redemande pas. La garde
-// de nom s'applique comme pour l'écriture — un process principal ne fait pas confiance à son
+// de nom s'applique comme pour l'écriture, un process principal ne fait pas confiance à son
 // renderer, et une suppression est la pire opération sur laquelle se tromper de chemin.
 ipcMain.handle('models:delete', async (event, name) => {
   if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
@@ -310,7 +310,7 @@ ipcMain.handle('models:delete', async (event, name) => {
 // LE REFUS D'ÉCRASER EST ICI, PAS SEULEMENT DANS LE RENDERER. `fs.rename` écrase silencieusement un
 // fichier existant, sur toutes les plateformes visées : renommer « a.glb » en « b.glb » détruirait
 // b.glb sans un mot, et avec lui tous les Éléments de tous les Projets qui le citent. La vérification
-// d'existence laisse une fenêtre théorique entre le test et le renommage — deux instances de
+// d'existence laisse une fenêtre théorique entre le test et le renommage, deux instances de
 // l'application renommant vers le même nom à la milliseconde près. Le dossier des modèles est local
 // et mono-utilisateur : cette fenêtre est acceptée, la perte qu'elle éviterait ne l'était pas.
 ipcMain.handle('models:rename', async (event, ancien, nouveau) => {
@@ -346,8 +346,8 @@ ipcMain.handle('models:list', async () => {
 // garde pour un cas particulier.
 //
 // Ces deux canaux relèvent de la même exception que `models:*` (cf. docs/architecture.md, règle
-// n°1) : l'accès disque est le métier déclaré du processus principal, et la logique — reconnaître,
-// fusionner, décider quoi enregistrer — reste dans src/, où elle se teste.
+// n°1) : l'accès disque est le métier déclaré du processus principal, et la logique, reconnaître,
+// fusionner, décider quoi enregistrer, reste dans src/, où elle se teste.
 function getSkeletonMapsPath() {
   return path.join(getProjectsDir(), 'correspondances-squelettes.json');
 }
@@ -368,7 +368,7 @@ ipcMain.handle('skeletons:write', async (event, contenu) => {
   try {
     ensureProjectsDir();
     // Écriture par fichier temporaire puis renommage : une coupure en pleine écriture laisserait
-    // sinon un JSON tronqué, donc illisible, donc TOUTES les correspondances perdues d'un coup —
+    // sinon un JSON tronqué, donc illisible, donc TOUTES les correspondances perdues d'un coup,
     // et pas seulement celle qu'on était en train d'enregistrer.
     const cible = getSkeletonMapsPath();
     const temporaire = cible + '.tmp';

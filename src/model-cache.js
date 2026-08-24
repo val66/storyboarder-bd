@@ -1,6 +1,6 @@
 /**
  * @file model-cache.js
- * Les modèles importés, décodés une fois et gardés prêts — parce que le rendu ne sait pas attendre.
+ * Les modèles importés, décodés une fois et gardés prêts, parce que le rendu ne sait pas attendre.
  *
  * LE PROBLÈME QUE CE FICHIER RÉSOUT. `GLTFLoader` est asynchrone ; tout le chemin de dessin est
  * synchrone. `renderPanelSceneUncached3D` construit les rigs en ligne, dans une boucle, sans jamais
@@ -10,17 +10,17 @@
  * LA SORTIE. On décale le décodage AVANT le dessin. Les modèles d'un Projet sont chargés à son
  * ouverture, rangés ici, et le constructeur de rig ne fait plus qu'une LECTURE SYNCHRONE de ce
  * cache. Un modèle pas encore là donne une boîte de remplacement, et son arrivée déclenche un
- * redessin — c'est le rôle du callback `onChange`.
+ * redessin, c'est le rôle du callback `onChange`.
  *
  * TROIS ÉTATS, ET ILS COMPTENT TOUS LES TROIS :
  *   'absent'      jamais demandé
- *   'chargement'  décodage en cours — surtout ne pas le relancer, ce qui décoderait N fois
+ *   'chargement'  décodage en cours, surtout ne pas le relancer, ce qui décoderait N fois
  *   'prêt'        utilisable
  *   'introuvable' le fichier n'est pas là, ou ne se décode pas
  *
  * « introuvable » n'est PAS une erreur passagère qu'on réessaie en boucle : sans cet état, chaque
  * image relancerait une lecture disque vouée à échouer. Et il ne vaut JAMAIS suppression de
- * l'Élément — cf. docs/persisted-data.md § 5.
+ * l'Élément, cf. docs/persisted-data.md § 5.
  *
  * CE QUI N'EST PAS ICI : le dessin de la boîte de remplacement (rig3d.js) et la décision de
  * redessiner (scene3d.js). Ce module ne connaît que des octets et des scènes Three.
@@ -28,10 +28,10 @@
 
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { readModel } from './model-store.js';
-// cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh) — la
+// cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh), la
 // hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
-// La verticale d'un corps se DÉRIVE de son squelette, elle ne se suppose pas — cf. la mesure des six
+// La verticale d'un corps se DÉRIVE de son squelette, elle ne se suppose pas, cf. la mesure des six
 // fichiers réels dans docs/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
 import { bonesFromObject3D, inferSkeletonMap } from './skeleton-map.js';
 import { repereDuCorps } from './skeleton-retarget.js';
@@ -44,7 +44,7 @@ const _cache = new Map();
 // sans que l'utilisateur ait à cliquer. Injecté plutôt qu'importé (cf. architecture, règle n°2).
 let _onChange = () => {};
 // Le filtrage anisotrope max de la carte graphique : dépend du WebGLRenderer, qui vit dans
-// rig3d.js. Injecté pour la même raison — cf. applyAnisotropy ci-dessous.
+// rig3d.js. Injecté pour la même raison, cf. applyAnisotropy ci-dessous.
 let _getMaxAnisotropy = () => 1;
 export function setModelCacheCallbacks({ onChange, getMaxAnisotropy }){
   _onChange = onChange || (() => {});
@@ -55,7 +55,7 @@ export function setModelCacheCallbacks({ onChange, getMaxAnisotropy }){
  * Les noms de fichiers distincts référencés par une liste d'Éléments. Fonction PURE.
  *
  * Distincts : dix chaises du même modèle ne doivent décoder qu'une fois. C'est aussi ce qui rend le
- * partage de géométrie possible plus loin — les instances sont des clones qui se partagent leurs
+ * partage de géométrie possible plus loin, les instances sont des clones qui se partagent leurs
  * tampons.
  */
 export function collectModelFiles(objects){
@@ -68,7 +68,7 @@ export function collectModelFiles(objects){
   return [...noms];
 }
 
-/** L'état d'un modèle. Synchrone, sans effet de bord — appelable depuis le chemin de dessin. */
+/** L'état d'un modèle. Synchrone, sans effet de bord, appelable depuis le chemin de dessin. */
 export function modelState(nom){
   const e = _cache.get(nom);
   if (e === undefined) return 'absent';
@@ -87,7 +87,7 @@ export function getLoadedModel(nom){
  *
  * INDISPENSABLE au rendu, et pas évident : la signature de Case est calculée à partir des Éléments,
  * or un Élément ne change pas quand son modèle finit d'arriver. Sans cette part, la Case resterait
- * en cache avec sa boîte de remplacement, et le modèle chargé ne s'afficherait jamais — jusqu'au
+ * en cache avec sa boîte de remplacement, et le modèle chargé ne s'afficherait jamais, jusqu'au
  * prochain déplacement, qui la ferait apparaître comme par magie.
  */
 export function modelCacheSignature(noms){
@@ -115,15 +115,15 @@ function parseGlb(octets){
  *
  * POURQUOI. GLTFLoader ne règle jamais l'anisotropie (elle reste à 1, la valeur par défaut de
  * Three.js) : chaque texture n'est alors adoucie que par ses mipmaps, une moyenne isotrope qui
- * ignore l'angle et la distance de vue. Sur un motif à fort contraste — tissu à carreaux, sangles,
- * hachures d'un vêtement, exactement le genre de détail d'un personnage articulé importé — regardé
+ * ignore l'angle et la distance de vue. Sur un motif à fort contraste, tissu à carreaux, sangles,
+ * hachures d'un vêtement, exactement le genre de détail d'un personnage articulé importé, regardé
  * de loin (Scène dézoomée), cette moyenne grossière scintille : c'est un moiré de minification, pas
  * un souci de décodage ni de la boîte englobante skin-aware (cf. skinned-box-3d.js, un bug
- * différent). Rapproché, un mipmap plus fin suffit déjà et le défaut disparaît de lui-même — c'est
+ * différent). Rapproché, un mipmap plus fin suffit déjà et le défaut disparaît de lui-même, c'est
  * exactement la description du retour utilisateur (glitch au dézoom, propre en gros plan).
  *
  * Appliqué une fois, au décodage : les clones posés dans les Cases PARTAGENT ce matériau (cf.
- * buildImportedModelRig3D, rig3d.js), donc ses textures — inutile de le refaire par instance.
+ * buildImportedModelRig3D, rig3d.js), donc ses textures, inutile de le refaire par instance.
  */
 function applyAnisotropy(scene){
   const niveau = _getMaxAnisotropy();
@@ -141,7 +141,7 @@ function applyAnisotropy(scene){
 /**
  * Charge les modèles manquants. Idempotent : un nom déjà chargé ou en cours est ignoré.
  *
- * N'échoue jamais. Un fichier absent ou illisible passe à « introuvable » et la fonction continue —
+ * N'échoue jamais. Un fichier absent ou illisible passe à « introuvable » et la fonction continue,
  * un Projet dont un modèle manque doit s'ouvrir entièrement, pas s'arrêter au premier trou.
  */
 export async function preloadModels(noms){
@@ -156,17 +156,17 @@ export async function preloadModels(noms){
       const gltf = await parseGlb(octets);
       const scene = gltf && gltf.scene;
       if (!scene) { _cache.set(nom, 'introuvable'); return; }
-      // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici —
+      // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici,
       // placeRigCentered3D (scene3d.js) normalise déjà tout rig sur `realHeightFloor`. On la garde
       // parce qu'elle est le seul moyen de proposer une hauteur de départ sensée dans la modale.
       // box3FromObjectSkinAware3D (pas Box3().setFromObject) : un modèle articulé (SkinnedMesh) a une
-      // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée — cf.
+      // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée, cf.
       // src/skinned-box-3d.js.
       applyAnisotropy(scene);
       _cache.set(nom, {
         scene,
         hauteurM: hauteurNaturelleModele3D(scene),
-        // Relevé UNE fois, au décodage. L'import le lit pour avertir, rig3d.js pour masquer — et le
+        // Relevé UNE fois, au décodage. L'import le lit pour avertir, rig3d.js pour masquer, et le
         // recalculer de part et d'autre garantirait qu'un jour les deux réponses divergent.
         egares: maillagesHorsCorps3D(scene),
         // Le rapport largeur/hauteur de la silhouette : c'est lui qui donne son empreinte 2D à
@@ -181,17 +181,17 @@ export async function preloadModels(noms){
 }
 
 /**
- * La TAILLE d'un modèle importé, en mètres — celle qu'on propose dans sa fiche.
+ * La TAILLE d'un modèle importé, en mètres, celle qu'on propose dans sa fiche.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * POURQUOI PAS SIMPLEMENT LA HAUTEUR DE SA BOÎTE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * C'est ce qui était fait — l'extension en Y de la boîte englobante — et c'est faux DEUX FOIS :
+ * C'est ce qui était fait, l'extension en Y de la boîte englobante, et c'est faux DEUX FOIS :
  *
  *   — L'AXE. La mesure a lieu au DÉCODAGE, avant que la scène ne soit remise debout. Un fichier
  *     dont la verticale est +Z (deux des six mesurés) voit donc mesurer sa PROFONDEUR. Mesuré :
- *     `hulk_-_sm_bnd.glb` sortait à 0,845 m — c'est son épaisseur ; sa taille est 2,374 m.
+ *     `hulk_-_sm_bnd.glb` sortait à 0,845 m, c'est son épaisseur; sa taille est 2,374 m.
  *   — CE QUE LA BOÎTE CONTIENT. Elle englobe tout le fichier, personnage ET accessoires.
  *     `worker_j.glb` porte un katana dont la boîte est centrée très loin : il sortait à 9,433 m.
  *
@@ -203,23 +203,23 @@ export async function preloadModels(noms){
  * CE QU'ON MESURE À LA PLACE : LE CORPS, LE LONG DE SA PROPRE VERTICALE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Quand le squelette est reconnu, la verticale du corps se DÉRIVE de lui — bassin vers tête,
- * cf. src/skeleton-retarget.js — et la taille est l'étendue des os mappés PROJETÉE sur cet axe.
+ * Quand le squelette est reconnu, la verticale du corps se DÉRIVE de lui, bassin vers tête,
+ * cf. src/skeleton-retarget.js, et la taille est l'étendue des os mappés PROJETÉE sur cet axe.
  * Aucun axe n'est supposé, et un accessoire posé à côté ne compte plus : ce n'est pas le corps.
  *
  * C'est la même règle que le cadrage (cf. boiteDeCadrageModele3D) : les os font foi quand ils sont
  * là, la boîte du maillage sinon. Deux chemins qui ne se recouvrent jamais.
  */
 /**
- * Le repère du corps d'une scène décodée — haut, droite, avant — ou `null` si on ne peut pas le
+ * Le repère du corps d'une scène décodée, haut, droite, avant, ou `null` si on ne peut pas le
  * dériver, avec la position de chaque os mappé.
  *
  * EXTRAIT POUR ÊTRE PARTAGÉ, et c'est le fond de l'affaire. La hauteur et la largeur d'un modèle
  * doivent se mesurer DANS LE MÊME REPÈRE : deux dérivations séparées finissent par diverger, et
- * c'est précisément ce qui vient d'arriver — la largeur avait d'abord été prise comme l'étendue en
+ * c'est précisément ce qui vient d'arriver, la largeur avait d'abord été prise comme l'étendue en
  * X divisée par l'étendue en Y de la boîte, ce qui suppose que la verticale du fichier est Y. Deux
  * des six fichiers mesurés ont +Z pour verticale : sur `hulk`, `t.y` est son ÉPAISSEUR, et le
- * rapport sortait à 1,25 au lieu de 0,4 — une boîte de sélection plus large que haute pour un
+ * rapport sortait à 1,25 au lieu de 0,4, une boîte de sélection plus large que haute pour un
  * personnage debout.
  *
  * Rend `{ repere, positions }` : le repère, et une fonction slot → position monde (ou `null`).
@@ -256,12 +256,12 @@ function repereEtOsDuModele3D(scene){
  * faux, et deux versions livrées n'ont pas suffi à le voir. Ce que la sonde a fini par établir, sur
  * `hulk` :
  *
- *   verticale dérivée des os     (0, 1, 0,08)     — donc +Y
- *   boîte du maillage            1,78 × 0,84 × 2,37 — donc la plus longue dimension est Z
+ *   verticale dérivée des os     (0, 1, 0,08), donc +Y
+ *   boîte du maillage            1,78 × 0,84 × 2,37, donc la plus longue dimension est Z
  *
  * Les deux ne sont pas dans le même repère, DANS LA MÊME FONCTION. La raison est mécanique :
  * `box3FromObjectSkinAware3D` passe par `SkinnedMesh.boneTransform()`, qui lit
- * `skeleton.boneMatrices` — or ces matrices ne sont calculées qu'au RENDU. Au décodage, elles ne le
+ * `skeleton.boneMatrices`, or ces matrices ne sont calculées qu'au RENDU. Au décodage, elles ne le
  * sont pas encore : la boîte reflète donc la géométrie de LIAISON, dans le repère du fichier, quand
  * les os, eux, sont déjà dans celui de la scène décodée.
  *
@@ -269,12 +269,12 @@ function repereEtOsDuModele3D(scene){
  * repère du corps, en un seul parcours. Un seul repère, une seule source, aucune divergence possible.
  *
  * DEUXIÈME BÉNÉFICE, mesuré lui aussi : les os mappés EXCLUENT les accessoires égarés. La boîte du
- * maillage de `worker_j` sortait à 17,08 de profondeur au décodage — le fourreau du katana, que le
+ * maillage de `worker_j` sortait à 17,08 de profondeur au décodage, le fourreau du katana, que le
  * masquage ne peut pas encore avoir écarté puisqu'il s'applique au clone, pas à la scène du cache.
  *
  * CE QU'ON PERD, et il faut le dire : une jupe, une cape ou une arme tenue à bout de bras ne sont
  * bornées par aucun os. L'empreinte les ignore donc. C'est le prix d'une mesure cohérente, et c'est
- * le bon prix — deux tentatives de garder la silhouette ont produit deux empreintes fausses.
+ * le bon prix, deux tentatives de garder la silhouette ont produit deux empreintes fausses.
  */
 function etendueDuCorps3D(scene){
   const corps = repereEtOsDuModele3D(scene);
@@ -304,7 +304,7 @@ export function hauteurNaturelleModele3D(scene){
   };
   try {
     // Pas de garde « assez d'os ? » : elle serait REDONDANTE. Un fichier sans squelette donne une
-    // correspondance vide, donc aucune position, donc aucun repère — et le repli plus bas s'en
+    // correspondance vide, donc aucune position, donc aucun repère, et le repli plus bas s'en
     // charge. Elle était là, et son seul effet était de rendre ce repli inatteignable par les tests.
     //
     // L'étendue des os le long de la verticale DU CORPS. Les pieds ne sont pas toujours l'os le plus
@@ -324,7 +324,7 @@ export function hauteurNaturelleModele3D(scene){
  * POURQUOI IL EXISTE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * L'empreinte 2D d'un modèle importé — sa boîte de sélection sur la Planche — était FORCÉE CARRÉE,
+ * L'empreinte 2D d'un modèle importé, sa boîte de sélection sur la Planche, était FORCÉE CARRÉE,
  * sur ce commentaire : « 1:1 tant qu'on n'a pas lu le fichier ». Le commentaire était périmé : à cet
  * instant le fichier EST décodé, c'est de lui que vient la hauteur. Un Personnage, lui, reçoit
  * depuis toujours `w = h / 1.6`, c'est-à-dire une silhouette debout.
@@ -336,8 +336,8 @@ export function hauteurNaturelleModele3D(scene){
  * POURQUOI LA BOÎTE DU MAILLAGE, ET NON LES OS
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Contrairement à la HAUTEUR — mesurée sur les os, le long de la verticale dérivée du corps (cf.
- * hauteurNaturelleModele3D) —, la largeur qui nous intéresse ici est celle de ce qui est DESSINÉ :
+ * Contrairement à la HAUTEUR, mesurée sur les os, le long de la verticale dérivée du corps (cf.
+ * hauteurNaturelleModele3D), la largeur qui nous intéresse ici est celle de ce qui est DESSINÉ :
  * une jupe, une cape ou une arme tenue à bout de bras occupent l'image alors qu'aucun os ne les
  * borne. Et c'est bien une empreinte à l'écran qu'on cherche à décrire.
  *
@@ -348,17 +348,17 @@ export function hauteurNaturelleModele3D(scene){
  * La première version prenait le rapport x/y de la boîte, en écrivant que si la verticale du
  * fichier n'était pas Y, la mesure et le rendu « se tromperaient ensemble ». C'ÉTAIT FAUX, et
  * signalé à l'usage sur `hulk` : une boîte de sélection plus large que haute pour un personnage
- * debout. Les deux ne mesurent pas au même moment — cette fonction voit la scène telle qu'elle sort
+ * debout. Les deux ne mesurent pas au même moment, cette fonction voit la scène telle qu'elle sort
  * du fichier, le rendu la voit REMISE DEBOUT.
  *
  * Or `hulk` a +Z pour verticale (deux des six fichiers mesurés l'ont) : sa boîte fait 1,0 × 0,8 × 2,5,
  * donc `t.y` est son ÉPAISSEUR et le rapport sortait à 1,25 au lieu de 0,4.
  *
- * On projette donc la boîte sur les axes DU CORPS — les mêmes que ceux de la hauteur, dérivés du
+ * On projette donc la boîte sur les axes DU CORPS, les mêmes que ceux de la hauteur, dérivés du
  * squelette par `repereEtOsDuModele3D`. Une seule dérivation partagée : deux repères séparés
  * finiraient par diverger, ce qui est exactement ce qui vient d'arriver.
  *
- * Sans squelette reconnu, on retombe sur x/y — pour un objet sans corps, il n'y a pas de verticale
+ * Sans squelette reconnu, on retombe sur x/y, pour un objet sans corps, il n'y a pas de verticale
  * à dériver, et la convention du fichier est tout ce qu'on a.
  *
  * Fonction PURE : elle ne fait que lire une scène décodée.
@@ -370,7 +370,7 @@ export function ratioLargeurModele3D(scene){
     if (mesure) {
       r = mesure.largeur / mesure.hauteur;
     } else {
-      // Aucun corps dérivable — un meuble, un véhicule. Il n'y a pas de verticale à déduire : la
+      // Aucun corps dérivable : un meuble, un véhicule. Il n'y a pas de verticale à déduire : la
       // convention du fichier est tout ce qu'on a, et la boîte du maillage la porte.
       const t = new THREE.Vector3();
       box3FromObjectSkinAware3D(scene).getSize(t);
@@ -391,7 +391,7 @@ export async function preloadModelsFor(objects){
  * Vide le cache et libère la mémoire GPU.
  *
  * Appelé au changement de Projet. Sans cela, les géométries et textures des modèles du Projet
- * précédent resteraient sur la carte graphique — invisibles, et cumulatives à chaque ouverture. Les
+ * précédent resteraient sur la carte graphique, invisibles, et cumulatives à chaque ouverture. Les
  * instances posées dans les Cases sont des CLONES qui partagent ces tampons : on libère donc
  * l'original, une seule fois, et non chaque clone.
  */
@@ -399,7 +399,7 @@ export function clearModelCache(){
   _cache.forEach(e => {
     if (!e || e === 'chargement' || e === 'introuvable') return;
     // Cette fonction est appelée au CHANGEMENT DE PROJET. Si elle lève, c'est le changement de
-    // Projet qui échoue — une panne bien plus grave que la fuite mémoire qu'elle évite. D'où cette
+    // Projet qui échoue, une panne bien plus grave que la fuite mémoire qu'elle évite. D'où cette
     // garde : on libère ce qui est libérable, on ne s'arrête jamais dessus.
     if (!e.scene || typeof e.scene.traverse !== 'function') return;
     e.scene.traverse(n => {
@@ -421,7 +421,7 @@ export function clearModelCache(){
 /**
  * Les fichiers actuellement DÉCODÉS, dans l'ordre alphabétique.
  *
- * Ce n'est pas la liste du dossier `Modeles` — celle-là s'obtient par `listModels()`, qui passe par
+ * Ce n'est pas la liste du dossier `Modeles`, celle-là s'obtient par `listModels()`, qui passe par
  * le disque et donc par une promesse. Ici on répond tout de suite, et on ne cite que des modèles
  * dont la géométrie est en mémoire : c'est ce qu'il faut pour proposer une FIGURE, puisqu'il faut
  * avoir lu le squelette pour savoir s'il est reconnu.

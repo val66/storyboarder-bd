@@ -1,15 +1,15 @@
 /**
- * tests/hit-test.test.mjs — ce que le clic attrape, et ce que le glisser en fait.
+ * tests/hit-test.test.mjs, ce que le clic attrape, et ce que le glisser en fait.
  *
  * Ces huit fonctions viennent d'être sorties du bloc CANVAS d'events.js, où elles étaient privées
  * et où rien ne pouvait les atteindre. Elles décident de l'Élément que le clic sélectionne : quand
  * elles se trompent, l'utilisateur attrape le mauvais objet. C'est visible, c'est agaçant, et
- * c'était gardé par rien — la tâche #32 avait modifié `hitTestForDrag`, la #34 avait ANNULÉ cette
+ * c'était gardé par rien, la tâche #32 avait modifié `hitTestForDrag`, la #34 avait ANNULÉ cette
  * modification, et aucune des deux fois la suite n'a bronché.
  *
  * CE QU'ON N'AFFIRME PAS : ce que le gestionnaire `mousedown` FAIT du résultat. Décider qu'un clic
  * sélectionne, déplace, redimensionne ou ouvre un menu demande le DOM, l'outil courant et l'état du
- * glisser — cette couche reste dans events.js, hors de portée d'ici et assumée comme telle.
+ * glisser, cette couche reste dans events.js, hors de portée d'ici et assumée comme telle.
  *
  * Les seuils (rayon de prise 10 px, côté minimal 24 px) sont RELUS du module, jamais réinventés :
  * un seuil recopié à la main dérive du code le jour où on le change, et le test devient un piège.
@@ -35,11 +35,11 @@ beforeEach(() => { S.selectedId = null; });
 // 1. Ce que le clic désigne
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('hitTestPanelOrBubble — ce qu\'on voit dessus est ce qu\'on attrape', () => {
+describe('hitTestPanelOrBubble : ce qu\'on voit dessus est ce qu\'on attrape', () => {
   test('une Bulle l\'emporte sur une Case, même si la Case vient APRÈS elle', () => {
     // La règle entière tient dans ce cas. Les Bulles sont toujours dessinées par-dessus les Cases
     // (cf. drawContent), quel que soit leur rang dans page.objects. Un parcours en ordre inverse
-    // « naïf » rendrait ici la Case — et l'utilisateur cliquerait sur une Bulle pour sélectionner
+    // « naïf » rendrait ici la Case, et l'utilisateur cliquerait sur une Bulle pour sélectionner
     // ce qu'il y a derrière.
     const bulle = boite('b1', 'bulle', 100, 100, 80, 40);
     const caseQuiSuit = boite('c1', 'panel', 0, 0, 400, 300);
@@ -59,7 +59,7 @@ describe('hitTestPanelOrBubble — ce qu\'on voit dessus est ce qu\'on attrape',
   test('entre deux Bulles superposées aussi, la DERNIÈRE gagne', () => {
     // Trou trouvé par la campagne de mutation : remettre la boucle des Bulles à l'endroit ne
     // faisait tomber aucun test, parce qu'aucun n'en superposait deux. La règle « le dernier
-    // dessiné gagne » était donc épinglée pour les Cases et pas pour les Bulles — deux boucles,
+    // dessiné gagne » était donc épinglée pour les Cases et pas pour les Bulles, deux boucles,
     // une seule gardée.
     const dessous = boite('b1', 'bulle', 0, 0, 200, 100);
     const dessus = boite('b2', 'bulle', 50, 20, 200, 100);
@@ -82,7 +82,7 @@ describe('hitTestPanelOrBubble — ce qu\'on voit dessus est ce qu\'on attrape',
   });
 });
 
-describe('hitTestForDrag — deux exclusions qui font tout le travail', () => {
+describe('hitTestForDrag : deux exclusions qui font tout le travail', () => {
   test('RÉGRESSION : un Personnage NON sélectionné ne s\'attrape pas au glisser', () => {
     // L'exclusion la plus importante, et celle qui a un passé (#32 puis son revert #34). Sans
     // elle, glisser à travers une Case pleine de Personnages accroche celui qui passe sous le
@@ -95,7 +95,7 @@ describe('hitTestForDrag — deux exclusions qui font tout le travail', () => {
 
   test('… et s\'attrape dès qu\'il EST sélectionné', () => {
     // Le pendant obligatoire : sans lui, le test précédent resterait vert avec une fonction qui
-    // ignore les Personnages en toutes circonstances — et plus personne ne pourrait en déplacer un.
+    // ignore les Personnages en toutes circonstances, et plus personne ne pourrait en déplacer un.
     const c = boite('c1', 'panel', 0, 0, 400, 300);
     const perso = boite('p1', 'perso', 100, 100, 40, 80);
     S.selectedId = 'p1';
@@ -134,7 +134,7 @@ describe('hitTestForDrag — deux exclusions qui font tout le travail', () => {
 // 2. Les poignées, les coins, les arêtes
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('hitHandle / hitPanelCorner / hitPanelEdge — le rayon de prise', () => {
+describe('hitHandle / hitPanelCorner / hitPanelEdge : le rayon de prise', () => {
   // Relu du module plutôt que recopié : `getHandles` donne les positions exactes, on s'en sert
   // pour viser. Un test qui code en dur « la poignée droite est en x=200 » casse au premier
   // changement de fixture, pour rien.
@@ -155,7 +155,7 @@ describe('hitHandle / hitPanelCorner / hitPanelEdge — le rayon de prise', () =
 
   test('un coin de Case se distingue du milieu de son arête', () => {
     // Les deux fonctions travaillent sur les mêmes `pts` avec le même rayon : c'est leur POINT DE
-    // RÉFÉRENCE qui diffère — sommet pour l'une, milieu du segment pour l'autre. Les confondre
+    // RÉFÉRENCE qui diffère, sommet pour l'une, milieu du segment pour l'autre. Les confondre
     // rendrait les deux gestes (déplacer un coin, ajouter un point) indiscernables.
     const c = { pts: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }] };
     assert.equal(hitPanelCorner(c, 100, 0), 1, 'le sommet 1 n\'est pas reconnu');
@@ -176,7 +176,7 @@ describe('hitHandle / hitPanelCorner / hitPanelEdge — le rayon de prise', () =
 // 3. Le redimensionnement
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('applyResize — les deux règles, et leur asymétrie voulue', () => {
+describe('applyResize : les deux règles, et leur asymétrie voulue', () => {
   const p = { w: 1240, h: 1754 };
 
   test('RÉGRESSION : arrivé au minimum, c\'est le bord OPPOSÉ qui reste en place', () => {
@@ -229,7 +229,7 @@ describe('applyResize — les deux règles, et leur asymétrie voulue', () => {
   });
 });
 
-describe('compensatePanelChildrenResize — le contenu suit le centre', () => {
+describe('compensatePanelChildrenResize : le contenu suit le centre', () => {
   test('les Éléments se déplacent du même vecteur que le centre de la Case', () => {
     // Redimensionner par la gauche déplace le centre. Sans compensation, le contenu reste où il
     // était et paraît sortir de la Case.
@@ -264,7 +264,7 @@ describe('compensatePanelChildrenResize — le contenu suit le centre', () => {
 // 4. L'aimantation à l'angle droit
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('snapCornerToRightAngle — deux axes, indépendants', () => {
+describe('snapCornerToRightAngle : deux axes, indépendants', () => {
   //  0 ── 1
   //  │    │
   //  3 ── 2
@@ -312,12 +312,12 @@ describe('snapCornerToRightAngle — deux axes, indépendants', () => {
   });
 
   test('le premier et le dernier point sont bien voisins', () => {
-    // L'indice 0 doit voir le DERNIER point comme précédent — c'est le rôle du `(i - 1 + n) % n`.
+    // L'indice 0 doit voir le DERNIER point comme précédent, c'est le rôle du `(i - 1 + n) % n`.
     // Sans lui, `pts[-1]` vaut undefined et la lecture de `.x` fait tomber tout le glisser.
     //
     // Le carré ne suffit PAS à le montrer, la mutation l'a prouvé : ses points 0 et 3 partagent
     // x=0, donc confondre le voisin précédent avec soi-même donne le même résultat. Il faut une
-    // forme où le dernier point diffère du premier sur les deux axes — sinon le test est vrai pour
+    // forme où le dernier point diffère du premier sur les deux axes, sinon le test est vrai pour
     // une raison qui n'est pas la sienne.
     const asym = [{ x: 10, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 60, y: 100 }];
     const r = snapCornerToRightAngle(0, asym, 62, 97, 5);
@@ -332,7 +332,7 @@ describe('snapCornerToRightAngle — deux axes, indépendants', () => {
 
 test('garde-fou : les huit fonctions sont bien celles du module', () => {
   // Deux fois dans ce dépôt une suite est restée verte en n'observant rien. Si une fonction était
-  // renommée ou rendue non exportée, l'import échouerait — mais si elle était vidée, il faut que
+  // renommée ou rendue non exportée, l'import échouerait, mais si elle était vidée, il faut que
   // quelque chose le dise.
   [hitTestPanelOrBubble, hitTestForDrag, hitHandle, applyResize,
     compensatePanelChildrenResize, hitPanelCorner, hitPanelEdge, snapCornerToRightAngle]
@@ -342,7 +342,7 @@ test('garde-fou : les huit fonctions sont bien celles du module', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — dix-huit fautes réintroduites une à une dans src/hit-test.js.
+ * JOURNAL DE MUTATION : dix-huit fautes réintroduites une à une dans src/hit-test.js.
  *
  *   M1  la Bulle perd sa priorité sur la Case (les deux boucles fusionnées)         ROUGE
  *   M2  les quatre boucles remises à l'endroit, une par une                         ROUGE ×4

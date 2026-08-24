@@ -5,8 +5,8 @@
  * management, adding Elements, the Build a Building tool, drag & drop, canvas zoom/pan,
  * etc.), and the wiring of callbacks to the modules that depend on them
  * (setIOCallbacks, setI18nCallbacks, setDrawCallbacks, setSidebarCallbacks,
- * setScene3DCallbacks — cf. end of file).
- * Extracted from app.js — Refactor step B.14 (last module of Step B).
+ * setScene3DCallbacks, cf. end of file).
+ * Extracted from app.js. Refactor step B.14 (last module of Step B).
  *
  * This module is now the application's real entry point: app.js is now just a
  * simple redirect (`import './events.js'`) kept so index.html doesn't have to change.
@@ -163,9 +163,9 @@ window.toggleModalSection = toggleModalSection;
 // application close (cf. window.beforeunload) is also only shown in that case.
 // [STATE→S] let S.projectDirty = false;
 // [STATE→S] let S.autosaveIntervalId = null;
-// Delay (ms) between two automatic saves (cf. startAutosave) — adjustable via the
+// Delay (ms) between two automatic saves (cf. startAutosave), adjustable via the
 // Configuration modal (#settingsModal) and persisted on the Electron side (settings.json, cf. window.storyboarderAPI
-// .getSettings/setSetting) — per user request. 0 = automatic saving disabled.
+// .getSettings/setSetting), per user request. 0 = automatic saving disabled.
 // [STATE→S] let S.autosaveIntervalMs = 60000;
 // [STATE→S] let S.tomes = [];
 // [STATE→S] let S.currentTomeIndex = 0;
@@ -173,25 +173,25 @@ window.toggleModalSection = toggleModalSection;
 // [STATE→S] let S.expandedVolumes = new Set();
 // Scenes (per user request): sets of reusable Elements, loadable into a Panel to
 // avoid having to place everything by hand again. Each Scene has EXACTLY the same shape as a Volume with a
-// single Page containing a single full-frame Panel (cf. createScene) — which allows reusing the
+// single Page containing a single full-frame Panel (cf. createScene), which allows reusing the
 // existing rendering/editing engine as-is (currentVolume/currentPageData below redirect to
 // the Scene being edited rather than to normal Volumes/Pages).
 // [STATE→S] let S.scenes = [];
 // Id of the Scene currently open in the dedicated editor, or null if a Volume/Page is being
-// edited normally — cf. currentVolume()/currentPageData() further down.
+// edited normally, cf. currentVolume()/currentPageData() further down.
 // [STATE→S] let S.editingSceneId = null;
 // [STATE→S] let S.selectedId = null;
 // Has the currently displayed Page been explicitly "selected" (click on its row in
 // the left-hand menu, cf. renderTree)? Per user request, this opens the "Page" menu (list of
 // its Panels, reorderable) in the right-hand panel, which stays displayed as long as no Panel/Bubble is
-// itself selected on the canvas (cf. updateSidePanel) — including after a click in the empty space
+// itself selected on the canvas (cf. updateSidePanel), including after a click in the empty space
 // of the Page, which deselects the current Panel/Bubble without "leaving" the Page.
 // [STATE→S] let S.pageSelected = false;
 // Selection of a WHOLE Room (cf. addRoomToPanel) as a group, distinct from S.selectedId (which
 // stays reserved for a SINGLE Element at a time): allows highlighting/deleting a Room's 6 Walls
 // together from the group header of the "Elements" list, while keeping the ability to
 // select each of these Walls independently (via its own row, or a direct click on the
-// canvas) — which must then cancel the group selection (cf. every point where
+// canvas), which must then cancel the group selection (cf. every point where
 // S.selectedId is reassigned below, now accompanied by resetting this variable to null).
 // [STATE→S] let S.selectedRoomId = null;
 // [STATE→S] let S.selectedBuildingKey  = null; // buildingKey = sorted roomIds joined by ',' for the selected Bâtiment
@@ -204,36 +204,36 @@ window.toggleModalSection = toggleModalSection;
 
 // ↳ src/utils.js (getFormat)
 // When a Scene is being edited (cf. S.editingSceneId/openScene), the entire rendering and
-// editing engine (which systematically goes through these two functions) works on the Scene — which has the same
-// shape as a Volume with a single Page — rather than on normal Volumes/Pages, without any
+// editing engine (which systematically goes through these two functions) works on the Scene, which has the same
+// shape as a Volume with a single Page, rather than on normal Volumes/Pages, without any
 // other part of the code needing to know about it.
 // [STATE→state.js] currentVolume / currentPageData / currentPage → exported from state.js
 
 // A Scene's full-frame canvas (cf. createScene) is not a Panel placed on a Page: it
 // REPRESENTS the Scene itself, there's nothing "behind" it. Moving or resizing it with the
 // mouse therefore doesn't make sense (unlike a real Panel, cf. user feedback: "there's no
-// page behind, just the Scene") — this safeguard allows disabling these two interactions
+// page behind, just the Scene"), this safeguard allows disabling these two interactions
 // specifically for that panel, without touching the behavior of normal Panels.
 // [STATE→state.js] isLockedScenePanel → imported from state.js
 
 // True if a Scene's locked canvas (cf. isLockedScenePanel) is currently (or about
-// to be, cf. camRotXTarget during smoothing) in top-down view — used by an Element's
+// to be, cf. camRotXTarget during smoothing) in top-down view, used by an Element's
 // drag-and-drop (cf. S.dragMode 'move'): in this view, the screen's vertical axis represents the
 // Element's depth (Z) rather than its height (Y, cf. ensureElementWorldPos3D), since the Camera then
-// looks along the Y axis — per user request ("we should be able to move a ground-magnetized Element
+// looks along the Y axis, per user request ("we should be able to move a ground-magnetized Element
 // on the X axis AND the Z axis [in top-down view]").
 
 // [STATE→state.js] nextDefaultVolumeName / createVolume / addPageToVolume → exported from state.js
 
 
 // Clicking outside the Scene's canvas (anywhere else in the interface) disables the
-// Camera mode of the Scene being edited if it was active — per user request: "if I
+// Camera mode of the Scene being edited if it was active, per user request: "if I
 // click outside the Scene while in Camera mode, this exits Camera mode (except in
 // the Camera menu of course)". A Scene's canvas occupies the WHOLE Page (cf. createScene), so
 // the already-existing logic for disabling on exiting the x/y/w/h bounds (in the <canvas>'s
 // mousedown) can never trigger for it: there is no "empty area of the Page" outside
 // the locked panel. This global listener therefore covers the real "outside", i.e. outside the
-// <canvas> itself — excepting the Camera menu (sideCameraSection) and the context menus
+// <canvas> itself, excepting the Camera menu (sideCameraSection) and the context menus
 // (which contain, e.g., the 🎥 Camera button that toggles this mode), which remain
 // legitimate ways to act on the Scene without "leaving" it.
 document.addEventListener('mousedown', (e) => {
@@ -252,7 +252,7 @@ document.addEventListener('mousedown', (e) => {
   let changed = false;
   (scene.pages[0].objects || []).forEach(o => { if (o.type === 'panel' && o.cameraMode) { exitCameraMode(o); changed = true; } });
   // Clicking outside the Scene's canvas deselects the current Element (or the canvas itself if it
-  // is selected as a "panel") — per user request. This deselection is distinct from
+  // is selected as a "panel"), per user request. This deselection is distinct from
   // disabling Camera mode above (which stays handled separately) and only applies to the
   // Scene being edited (S.editingSceneId), outside legitimate interaction areas (sideCameraSection, rightPanel,
   // context menus, modals).
@@ -261,7 +261,7 @@ document.addEventListener('mousedown', (e) => {
 });
 
 // Clicking outside a selected speech Bubble deselects it, even if the click falls outside
-// the <canvas> (left-hand menu, header, etc.) — per user request. Only the Bubble's right-hand
+// the <canvas> (left-hand menu, header, etc.), per user request. Only the Bubble's right-hand
 // menu (#rightPanel, which then shows its "Text"/"Bubble appearance") remains a legitimate
 // way to act on it without deselecting it; context menus are also excepted (e.g. right-click
 // to reopen a menu on the Bubble itself).
@@ -278,7 +278,7 @@ document.addEventListener('mousedown', (e) => {
   drawCurrentPage();
 });
 
-// Clicking outside the canvas (Page) while a Panel is selected deselects it — on user request.
+// Clicking outside the canvas (Page) while a Panel is selected deselects it, on user request.
 // Same principle as for the Bubble above; the right-hand panel (which can show the Panel's
 // properties) and context menus remain legitimate zones.
 // Does not act in the Scene editor (covered by the dedicated listener above).
@@ -307,7 +307,7 @@ document.addEventListener('mousedown', (e) => {
 // ---------- Character editor ----------
 // Extracted to src/persona-editor.js. Only the wiring stays here, at the exact point where the
 // editor's listener block used to run: an imported module is evaluated BEFORE its importer, so
-// calling wirePersonaEditor() from here — rather than letting the module wire itself on load —
+// calling wirePersonaEditor() from here, rather than letting the module wire itself on load,
 // keeps the original ordering.
 setPersonaEditorCallbacks({ buildPersonaPositionOptions });
 setScenesCallbacks({ snapshot });
@@ -315,12 +315,12 @@ setCanvasToolsCallbacks({ snapshot });
 // Un modèle importé qui finit d'être décodé doit apparaître sans que l'utilisateur touche à
 // quoi que ce soit. C'est ce rappel qui remplace la boîte de remplacement par le modèle.
 // `getMaxAnisotropy` : le filtrage anisotrope des textures dépend du WebGLRenderer (rig3d.js),
-// dont model-cache.js ne doit rien savoir — cf. son en-tête, applyAnisotropy.
+// dont model-cache.js ne doit rien savoir, cf. son en-tête, applyAnisotropy.
 setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAnisotropy3D });
 // L'import pose un point d'annulation et parle à l'utilisateur : les deux lui sont injectés,
 // plutôt qu'importés, pour qu'il ne dépende ni de la pile d'annulation ni des modales.
 // `confirmer` : la question « redimensionner ce modèle manifestement trop grand ? » (cf.
-// model-import.js, MODEL_HEIGHT_WARN_MAX_M) — même modale de confirmation que le reste de
+// model-import.js, MODEL_HEIGHT_WARN_MAX_M), même modale de confirmation que le reste de
 // l'application.
 setModelImportCallbacks({
   snapshot, renderAll, alerter: alertAction, confirmer: confirmAction,
@@ -336,7 +336,7 @@ setProjectTreeCallbacks({
 });
 // `disableSceneCameraMode` n'est pas facultatif ici : se rendre dans une Case depuis l'éditeur de
 // Scène quitte cet éditeur, et le faire sans cet appel laisse le mode Caméra actif en arrière-plan
-// (cf. scenes.js — la contrainte y est écrite, elle ne se devine pas).
+// (cf. scenes.js, la contrainte y est écrite, elle ne se devine pas).
 setModelUsagesCallbacks({ openScene, disableSceneCameraMode, renderAll });
 wirePersonaEditor();
 
@@ -351,7 +351,7 @@ wirePersonaEditor();
 // [STATE→state.js] panelsInPage → imported from state.js
 
 // Reassigns 1..N contiguously to all Panels of a Page, in the order of their current number
-// (Panels with no number — old projects created before this feature — are placed last, in their
+// (Panels with no number, old projects created before this feature, are placed last, in their
 // order of appearance). Called after deleting a Panel to fill the "gap" left by its number, and
 // as a migration safety net for existing Pages.
 // [STATE→state.js] renumberPanels → imported from state.js
@@ -368,17 +368,17 @@ function assignNextPanelNumber(page, panelObj){
 }
 
 // Changes a Panel's number by cascading the shift onto the numbers of the OTHER Panels in the
-// same Page, so they all stay unique and contiguous (1..N) — like reordering a list: the target
+// same Page, so they all stay unique and contiguous (1..N), like reordering a list: the target
 // Panel is removed from the sorted list, reinserted at the requested position, then everyone is
-// renumbered sequentially — on user request.
+// renumbered sequentially, on user request.
 // ↳ src/utils.js (wrapAngle)
 // ↳ src/utils.js (getElementDepth)
 
 // ↳ src/constants.js
 // ↳ src/constants.js
 // Converts a depth o.z (world units, cf. scroll wheel) into a real camera↔Element distance in the
-// combined scene. We use PANEL_CAM_DEFAULT_DIST_3D (30) as the reference focal length — it's the
-// real Three.js camera — so that the 2D size/position formula exactly matches the 3D render (no
+// combined scene. We use PANEL_CAM_DEFAULT_DIST_3D (30) as the reference focal length, it's the
+// real Three.js camera, so that the 2D size/position formula exactly matches the 3D render (no
 // Element drift even at large depths). Clamped to 0.1 to avoid div/0.
 // [SCENE3D] 3D helpers extracted into src/scene3d.js
 // ↳ src/constants.js
@@ -397,7 +397,7 @@ function assignNextPanelNumber(page, panelObj){
 // proportional to 1/distance, calibrated to give back exactly `unitsSize * WALL_PX_PER_UNIT_3D` at
 // z = 0 (cf. PANEL_CAM_REF_DIST_3D in the denominator).
 // Computes the REAL size in world units of an Element, derived from its CURRENT apparent size
-// (o.w/o.h, in px) at its CURRENT depth (cf. panelApparentPx3D inverted) — RECOMPUTED on every
+// (o.w/o.h, in px) at its CURRENT depth (cf. panelApparentPx3D inverted). RECOMPUTED on every
 // call (no cache): as long as the existing drag/resize interactions (which still modify
 // o.w/o.h/o.x/o.y directly, cf. upcoming #81) haven't been replaced with real-unit equivalents, we
 // MUST re-derive from o.w/o.h on every render so that a mouse drag/resize stays visible. As long
@@ -405,17 +405,17 @@ function assignNextPanelNumber(page, panelObj){
 // existing page changes visually until the depth has been explicitly modified (not yet possible
 // before #81).
 // World position (X,Y, in units) of an Element's center, relative to the center of its Panel,
-// RECOMPUTED on every call (cf. ensureElementUnits3D's comment — same reason).
+// RECOMPUTED on every call (cf. ensureElementUnits3D's comment, same reason).
 // Computes and stores wxFloor from the element's current canvas position.
-// Same formula as ensureElementWorldPos3D.x — must be called after every update to o.x/o.w.
+// Same formula as ensureElementWorldPos3D.x, must be called after every update to o.x/o.w.
 // Stores an Element's XZ world coordinates from its current 2D position.
 // wxFloor = world X position (relative to the panel's center).
-// wzFloor = world Z depth = o.z (both must stay in sync — wzFloor is the source of truth for the
+// wzFloor = world Z depth = o.z (both must stay in sync, wzFloor is the source of truth for the
 // 3D renderer, o.z is kept for backward compatibility and 2D perspective calculations). Called on
 // creation and after every drag.
-// Compatibility alias — prefer storeElementWorldCoords for new calls.
+// Compatibility alias, prefer storeElementWorldCoords for new calls.
 // Inverse of ensureElementWorldPos3D: repositions an Element's CENTER so it matches a given world
-// position (X,Y), at its CURRENT depth — used by the "Position X/Y" fields of the Persona/Object
+// position (X,Y), at its CURRENT depth, used by the "Position X/Y" fields of the Persona/Object
 // modals (cf. openPersonaModal/openObjectModal), as a complement to the click-and-drag already
 // possible with the mouse on the canvas (cf. S.dragMode 'move') once the Element is selected via
 // the "Elements" list in the right-hand menu. Doesn't touch o.w/o.h (size unchanged).
@@ -463,7 +463,7 @@ setupDropdown('sceneTrigger', 'scenePanel');
 setupDropdown('personaTrigger', 'personaPanel');
 setupDropdown('modelTrigger', 'modelPanel');
 
-// Fix 64 — entrée AUTONOME de l'éditeur : aucune cible, Personnage par défaut. Sert à composer des
+// Fix 64 : entrée AUTONOME de l'éditeur : aucune cible, Personnage par défaut. Sert à composer des
 // poses pour la bibliothèque sans passer par un Personnage d'une Case. `fromModal` à false : il n'y
 // a rien derrière à alimenter, et « Appliquer » est donc absent (cf. syncPersonaEditorDom).
 {
@@ -473,17 +473,17 @@ setupDropdown('modelTrigger', 'modelPanel');
 
 
 // Loads a Scene's content (cf. createScene) into a real Panel: deep-copies its Elements with new
-// ids (detached from the Scene — any later edit stays local to the Panel, on user request),
+// ids (detached from the Scene, any later edit stays local to the Panel, on user request),
 // "fit" scaling (without distortion, cf. the "Crop, don't stretch" philosophy already applied to
 // the 3D render) from the Scene's canvas to the Panel's real rectangle, and TOTALLY replaces the
-// Elements already present in that Panel (after explicit confirmation — user's own answer: "Full
+// Elements already present in that Panel (after explicit confirmation, user's own answer: "Full
 // replacement, but the user must be warned beforehand").
 
 
 // ---------- LAYERING ----------
 // A panel and the elements (personas/objects) it contains must move forward/backward together in
 // the stacking order, to stay consistent when panels overlap.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior for existing callers
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior for existing callers
 // (bringForward/sendBackward), still internal to this module.
 export function getStackGroup(id, page){
   const obj = page.objects.find(o => o.id === id);
@@ -498,7 +498,7 @@ export function getStackGroup(id, page){
 // immediate out-of-group neighbor, preserving the group's internal relative order.
 // blockedIds: neighbors the group isn't allowed to jump over (e.g. the panel containing the moved
 // element, so it can never move behind it).
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function moveStackGroup(group, page, dir, blockedIds){
   const objs = page.objects;
   const groupIds = new Set(group.map(o => o.id));
@@ -569,7 +569,7 @@ function sendBackward(){
  * l'autre. Figer d'abord, recadrer ensuite : la position est décidée une fois, puis regardée.
  *
  * POURQUOI CETTE FONCTION EXISTE. Ces deux gestes étaient recopiés à la main dans chaque chemin de
- * création. Le troisième — l'import d'un modèle — n'en avait AUCUN des deux : d'où un modèle qui
+ * création. Le troisième, l'import d'un modèle, n'en avait AUCUN des deux : d'où un modèle qui
  * naissait hors champ dans une Case vide (corrigé en v1.3.43 en ajoutant le second), puis qui
  * dérivait « un peu loin » faute du premier. Deux symptômes, une seule omission, réparée deux fois.
  * Un geste nommé se transmet ; une paire de lignes recopiées se perd.
@@ -605,13 +605,13 @@ function addPersonaToPanel(panel){
   const w = h / 1.6;
   const x = clamp(panel.x + panel.w / 2 - w / 2, 0, page.w - w);
   const y = clamp(panel.y + panel.h / 2 - h / 2, 0, page.h - h);
-  // rotY: Math.PI by default — the camera is placed on the +Z side while the persona's front
+  // rotY: Math.PI by default, the camera is placed on the +Z side while the persona's front
   // corresponds to -Z (cf. buildPersonaRig3D): without this half-turn, we'd see the back by default.
   // z: depth in the Panel's 3D scene. 0 = default plane; scroll wheel to adjust.
   // magnetGround: Persona always eligible for Ground magnetism (true by default).
-  // homePanelId: owning Panel — safety net for findOwningPanel.
+  // homePanelId: owning Panel, safety net for findOwningPanel.
   const obj = { id: newId(), type: 'perso', x, y, w, h, baseW: w, baseH: h, z: 0, name: uniqueDefaultName(panel, page, 'Personnage'), genre: 'homme', emotion: 'neutre', position: 'debout', handL: 'ouverte', handR: 'ouverte', joints3d: null, rotY: Math.PI, rotX: 0, rotZ: 0, color: FIXED_COLOR, magnetGround: true, homePanelId: panel.id };
-  // realHeightFloor: source of truth for the 3D renderer (always real size — Phase 3).
+  // realHeightFloor: source of truth for the 3D renderer (always real size. Phase 3).
   obj.realHeightFloor = PERSONA_REAL_HEIGHT_M;
   page.objects.push(obj);
   S.selectedId = obj.id; S.selectedRoomId = null;
@@ -625,7 +625,7 @@ function addPersonaToPanel(panel){
 // (#81) baseW/baseH are frozen at creation, ALWAYS at depth z=0 (cf. addPersonaToPanel /
 // addObjectToPanel): they therefore directly represent a REAL size (in px-equivalent at z=0,
 // factor = WALL_PX_PER_UNIT_3D). The percentage shown/edited in the modal must stay a percentage
-// of this REAL size, independent of the current depth — not of the current on-screen appearance —
+// of this REAL size, independent of the current depth, not of the current on-screen appearance,
 // so "100%" keeps a stable meaning even after turning the scroll wheel.
 // Repairs baseH/baseW if corrupted (projects loaded before Fix 22, where loadSceneIntoPanel used
 // to do copy.baseH *= s, while realHeightFloor wasn't scaled). Detection: ratio
@@ -639,12 +639,12 @@ function addPersonaToPanel(panel){
 // depth (cf. option B decision).
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * REDIMENSIONNER — LA HAUTEUR RÉELLE EST LA PRIMITIVE, LE POURCENTAGE EST UN APPELANT
+ * REDIMENSIONNER : LA HAUTEUR RÉELLE EST LA PRIMITIVE, LE POURCENTAGE EST UN APPELANT
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * `realHeightFloor` est ce qui est ENREGISTRÉ dans le Projet et ce qui pilote le rendu 3D. Le
  * pourcentage, lui, n'est stocké nulle part : `getPersonaScalePercent` le recalcule à chaque
- * ouverture de fiche. Écrire deux redimensionnements — un par hauteur, un par pourcentage —
+ * ouverture de fiche. Écrire deux redimensionnements, un par hauteur, un par pourcentage,
  * aurait donné deux chemins vers la même donnée, donc deux occasions de diverger. C'est le défaut
  * qui revient le plus souvent dans ce dépôt ; il n'y a donc qu'un seul calcul, et il est ici.
  *
@@ -667,7 +667,7 @@ function applyElementRealHeight(o, heightM, page){
   // Base inexploitable : ne rien faire plutôt que propager un NaN. Un NaN traverse o.w/o.h puis la
   // matrice monde, et l'Élément DISPARAÎT du rendu sans qu'aucune erreur ne soit levée.
   if (baseRealH === null) return;
-  // Les bornes sont celles du pourcentage, TRADUITES — jamais ressaisies en mètres (cf. utils.js).
+  // Les bornes sont celles du pourcentage, TRADUITES, jamais ressaisies en mètres (cf. utils.js).
   const pctBorne = pourcentageDepuisHauteur3D(heightM, baseRealH);
   if (pctBorne === null) return;
   const pct = pctBorne / 100;
@@ -690,7 +690,7 @@ function applyElementRealHeight(o, heightM, page){
 }
 
 /**
- * Redimensionner par POURCENTAGE — une vue sur `applyElementRealHeight`, pas un second calcul.
+ * Redimensionner par POURCENTAGE, une vue sur `applyElementRealHeight`, pas un second calcul.
  * Conservée parce que le glisser-redimensionner et les Scènes raisonnent en proportion.
  */
 function applyPersonaSizePercent(o, percent, page){
@@ -710,9 +710,9 @@ function applyPersonaSizePercent(o, percent, page){
 // ↳ src/constants.js
 
 // ---------- Ground Magnetism ----------
-// By default, any Element placed in a Panel — Persona, or Object3D other than a Wall (which has no
+// By default, any Element placed in a Panel. Persona, or Object3D other than a Wall (which has no
 // notion of "resting on the ground") or an Opening (already magnetized to its Wall, cf.
-// WALL_OPENING_MAGNET_TYPES) — is "magnetized to the Ground" (cf. magnetGround on the object, set
+// WALL_OPENING_MAGNET_TYPES) : is "magnetized to the Ground" (cf. magnetGround on the object, set
 // to true at creation in addPersonaToPanel / addObjectToPanel): its base stays exactly resting on
 // the Ground (cf. GROUND_Y_DEFAULT_3D) regardless of its current depth or size, and it therefore
 // can't float or be moved vertically until this constraint is removed in its modal ("Magnetized to
@@ -722,10 +722,10 @@ function applyPersonaSizePercent(o, percent, page){
 // formulas are reused here but inverted, to arrive at an o.y rather than start from one).
 // Called on every render (cf. drawContent): stays valid even after a depth change (scroll wheel) or
 // size change (modal), and silently cancels any attempt at vertical mouse dragging (which does
-// modify o.y during the drag, but gets immediately overwritten on the next render — so only
+// modify o.y during the drag, but gets immediately overwritten on the next render, so only
 // horizontal movement, o.x, remains effective for a magnetized Element).
 
-// Prevents a non-magnetized Element (magnetGround === false) from passing through the Ground —
+// Prevents a non-magnetized Element (magnetGround === false) from passing through the Ground,
 // unless the Element explicitly has `traverseGround = true` (an option checked in the modal,
 // Position section).
 // Formula: the Element's world center must stay above GROUND_Y_DEFAULT_3D + its half-height in
@@ -734,7 +734,7 @@ function applyPersonaSizePercent(o, percent, page){
 // recomputing factor here). Returns worldY, corrected if needed.
 
 // Display name for the Element that o is linked to (currently: only an Opening magnetized to an
-// existing Wall), or null if o isn't linked to anything — used to make it visible both in the
+// existing Wall), or null if o isn't linked to anything, used to make it visible both in the
 // "Elements" list of the side panel (cf. renderSidePersonas) and in the linked Element's own modal
 // (cf. openObjectModal), rather than leaving this link implicit (visible only through behavior,
 // e.g. the Opening that follows the Wall).
@@ -767,7 +767,7 @@ function getWallPanAnchor2D(wall, pan){
 }
 // Same principle as getWallPanAnchor2D above, but returns the full rectangle (not just its center)
 // occupied by the Wall (or by the chosen pan for a corner Wall, if "pan" is provided), in page
-// pixels (Wall's own frame, x/y/w/h) — needed to constrain a magnetized Element's movement to the
+// pixels (Wall's own frame, x/y/w/h), needed to constrain a magnetized Element's movement to the
 // ACTUALLY RENDERED footprint of the Wall/pan, which no longer matches the plain data box
 // wall.x/y/w/h as soon as the Wall has a 3D rotation (rotX/Y/Z): perspective projection visually
 // shortens it (foreshortening effect), so using the raw box would let the Element overflow or
@@ -778,7 +778,7 @@ function getWallPanAnchor2D(wall, pan){
 // ensureWallRenderEntry3D in rig3d.js, couldn't stay here without creating a cycle).
 // Angle (radians, page frame: x rightward, y downward) of the "length" axis of the Wall/pan that an
 // Opening Element is magnetized to, projected on screen through the same orthographic camera as the
-// final render (cf. frameOrthoCameraToBox) — used to rotate the 2D selection "border" (cf.
+// final render (cf. frameOrthoCameraToBox), used to rotate the 2D selection "border" (cf.
 // drawSelection) by the same angle as the 3D Model it contains, rather than leaving it aligned to
 // the page axes: a simple aligned rectangle, even well-sized, remained hard to read and visually
 // offset as soon as the Wall (and even more so the Second Pan of a corner Wall) isn't perfectly
@@ -789,25 +789,25 @@ function getWallPanAnchor2D(wall, pan){
 // Computes, in page coordinates, the REALLY projected quadrilateral of the embedded Element's 3D
 // silhouette (no longer a simple rectangle rotated by a single angle): a single angle applied to a
 // fixed-size rectangle (o.w/o.h) can't represent the foreshortening that the apparent width of an
-// Element rotated around the vertical axis undergoes, even in orthographic projection — hence the
+// Element rotated around the vertical axis undergoes, even in orthographic projection, hence the
 // border that "stuck" better but remained visibly wrong. Here we take the embedded node's REAL local
 // box (its own geometry, independent of its position/rotation/scale), transform it by its
 // matrixWorld (so with the REAL pose inherited from the Wall), then project the 4 corners of its
-// front face through the same ortho camera as the rest of the Wall's footprint — the resulting
+// front face through the same ortho camera as the rest of the Wall's footprint, the resulting
 // polygon is therefore, by construction, "glued" to the Wall exactly like the 3D Model it represents.
 // [SCENE3D→scene3d.js] getWallChildProjectedQuad3D → imported from scene3d.js (already in the import
 // above)
-// Computes the Element's position on the axis perpendicular to the Wall — the one it can NOT slide
+// Computes the Element's position on the axis perpendicular to the Wall, the one it can NOT slide
 // freely along (cf. mousemove below), which therefore serves as the "anchor" to the Wall. For a
 // simple Wall, this anchor is the box's center. For a corner Wall, we use the chosen pan's real
 // position in the render (cf. getWallPanAnchor2D above), which correctly follows the Wall's
-// rotation — falling back to the box's center if the projection fails for any reason (rig not ready
+// rotation, falling back to the box's center if the projection fails for any reason (rig not ready
 // yet, etc.).
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallLockedAxis(obj, wall){
   const anchor = getWallPanAnchor2D(wall, obj.wallFace === 'B' ? 'B' : 'A');
   // wall.lockedAxis (frozen at creation, cf. addObjectToPanel) takes priority over the dynamic w/h
-  // comparison — falling back to it only for Walls created before this field was added.
+  // comparison, falling back to it only for Walls created before this field was added.
   const axis = wall.lockedAxis || (wall.w >= wall.h ? 'y' : 'x');
   if (axis === 'y') {
     const value = anchor ? (wall.y + anchor.y * wall.h - obj.h / 2) : (wall.y + wall.h / 2 - obj.h / 2);
@@ -823,17 +823,17 @@ export function wallLockedAxis(obj, wall){
 // carrying the Element (X for a simple Wall/First Pan, Z for the Second Pan of a corner Wall, cf.
 // ensureWallRenderEntry3D): a 3D rotation of the Wall can very well cause this local axis to project
 // toward the LEFT of the screen while the screen fraction (and therefore obj.x) increases toward the
-// right — without this correction, dragging the Element to the right would then make it appear to
+// right, without this correction, dragging the Element to the right would then make it appear to
 // move to the LEFT (cf. user feedback on the Second Pan of a corner Wall), since the embedded 3D
 // position (node.position, along this local axis) was computed as if the screen fraction and the
 // local axis always pointed the same way.
 // [RIG3D→rig3d.js] wallPanAlongSign / wallOpeningRect → imported from rig3d.js (FIX for a
 // preexisting bug, cf. rig3d.js's header).
-// 3D units (Wall/pan length, height, Element's real size) — same formulas used in
+// 3D units (Wall/pan length, height, Element's real size), same formulas used in
 // ensureWallRenderEntry3D to position the REAL embedded node (lenUnits/heightUnits/
-// childWUnits/childHUnits) — centralized here so the allowed drag range (cf. wallLockedAxisRange)
+// childWUnits/childHUnits), centralized here so the allowed drag range (cf. wallLockedAxisRange)
 // stays ALWAYS exactly consistent with the real 3D constraint.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallChildUnits3D(obj, wall){
   const lenUnits = Math.max(0.3, wall.w / WALL_PX_PER_UNIT_3D);
   const heightUnits = Math.max(0.3, wall.h / WALL_PX_PER_UNIT_3D);
@@ -842,7 +842,7 @@ export function wallChildUnits3D(obj, wall){
   const scaleY = (obj.h ? obj.h / WALL_PX_PER_UNIT_3D : heightUnits * 0.82) / design.h;
   return { lenUnits, heightUnits, childWUnits: design.w * scaleX, childHUnits: design.h * scaleY };
 }
-// Fix 26 — the Wall's two axes AS THEY APPEAR ON SCREEN, in canvas pixels: `along` spans it end to
+// Fix 26 : the Wall's two axes AS THEY APPEAR ON SCREEN, in canvas pixels: `along` spans it end to
 // end at ground level, `up` spans the height usable by a Wall-Opening. Obtained by projecting the
 // real world points through the Panel's camera, so both already account for the Wall's orientation,
 // perspective foreshortening and any camera angle.
@@ -852,7 +852,7 @@ export function wallChildUnits3D(obj, wall){
 // distance that box collapses to its 5 px floor while the Wall really spans hundreds of pixels, so
 // the drag ran ~44× too fast and the Element jumped from one end to the other (user report).
 // Returns null for a Tracé (which keeps its own path-based branch) or a Wall with no world position.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallScreenAxes3D(wall, panel, page, spanY){
   if (!wall || !panel || wall.type === 'tracé') return null;
   if (!isFinite(wall.wxFloor) || !isFinite(wall.wzFloor)) return null;
@@ -871,14 +871,14 @@ export function wallScreenAxes3D(wall, panel, page, spanY){
   };
 }
 
-// Fix 27 — the Trace equivalent of wallScreenAxes3D, measured LOCALLY: a Trace is curved, so there
+// Fix 27 : the Trace equivalent of wallScreenAxes3D, measured LOCALLY: a Trace is curved, so there
 // is no single end-to-end screen segment to map onto. Two points of the path a short fraction apart
 // are projected, and dividing that screen offset by that fraction gives the on-screen travel
-// matching a FULL unit of fraction at this spot — the axis fracDeltaAlongAxis2D expects.
+// matching a FULL unit of fraction at this spot, the axis fracDeltaAlongAxis2D expects.
 // `smoothPts` is the SMOOTHED path (cf. smoothTracéPath3D): on a right angle the raw points give a
 // tangent that flips by 90° between two segments, which used to make the Element stick at the
 // corner.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export const TRACÉ_DRAG_EPS = 0.02;   // 2 % of the path: local enough to follow curvature, large
                                       // enough to stay clear of projection rounding noise.
 export function tracéScreenAxisAtFrac3D(smoothPts, frac, panel, page){
@@ -894,15 +894,15 @@ export function tracéScreenAxisAtFrac3D(smoothPts, frac, panel, page){
   return { x: (sb.x - sa.x) / TRACÉ_DRAG_EPS, y: (sb.y - sa.y) / TRACÉ_DRAG_EPS };
 }
 
-// Fix 30 — VERTICAL screen axis of a Trace wall, at the Wall-Opening's current spot along the path:
+// Fix 30 : VERTICAL screen axis of a Trace wall, at the Wall-Opening's current spot along the path:
 // the on-screen travel matching a full sweep of wallYFrac, from the wall's foot to the highest the
 // Opening can sit without poking out above it.
 //
 // Without this the vertical drag fell back to `dy / wall.h`, and for a Trace `wall.h` is the height
-// of the projected 2D BOUNDING BOX of the whole path — hundreds of pixels for a loop like an oval
+// of the projected 2D BOUNDING BOX of the whole path, hundreds of pixels for a loop like an oval
 // Low Wall. Dragging vertically therefore moved the Opening by a fraction of a percent and felt
 // completely stuck, whereas on a real Wall it works.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function tracéUpScreenAxis3D(o, page, panel, childHUnits){
   if (!panel) return null;
   const pos = wallOpeningWorldPosOnTracé3D(o, page, childHUnits);
@@ -913,16 +913,16 @@ export function tracéUpScreenAxis3D(o, page, panel, childHUnits){
   return { x: top.x - base.x, y: top.y - base.y };
 }
 
-// Fix 29 — advances a Wall-Opening's position along a Trace by ONE step: the axis is re-evaluated at
+// Fix 29 : advances a Wall-Opening's position along a Trace by ONE step: the axis is re-evaluated at
 // the Element's CURRENT fraction and applied to the movement since the last frame. Returns the new
 // fraction, or null when the axis is degenerate (path seen exactly end-on) and the caller should
 // leave the Element where it is.
 //
 // Stepwise integration is what lets the Element follow a turning path. Mapping the TOTAL mouse
-// offset onto a single axis frozen at mousedown — as this did before — breaks down as soon as the
+// offset onto a single axis frozen at mousedown, as this did before, breaks down as soon as the
 // tangent rotates: past a quarter of a closed loop the projection onto that stale axis turns
 // negative and the Element travels backwards while the user is still dragging forwards.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function integrateTracéFrac3D(smoothPts, liveFrac, ddx, ddy, panel, page){
   const axis = tracéScreenAxisAtFrac3D(smoothPts, liveFrac, panel, page);
   const d = fracDeltaAlongAxis2D(ddx, ddy, axis);
@@ -930,12 +930,12 @@ export function integrateTracéFrac3D(smoothPts, liveFrac, ddx, ddy, panel, page
   return clamp(liveFrac + d, 0, 1);
 }
 
-// Fix 26 — fraction of an axis covered when the mouse moves by (dx, dy): the movement projected onto
+// Fix 26 : fraction of an axis covered when the mouse moves by (dx, dy): the movement projected onto
 // the axis, divided by its SQUARED length. Dragging exactly from one end of the axis to the other
 // therefore returns 1, which is what makes the Element follow the cursor 1:1 on screen.
-// Null when the axis is missing or degenerate (it projects to a point — e.g. a Wall seen exactly
+// Null when the axis is missing or degenerate (it projects to a point, e.g. a Wall seen exactly
 // edge-on, or its height in a strict top-down view), leaving the caller free to fall back.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function fracDeltaAlongAxis2D(dx, dy, axis){
   if (!axis) return null;
   const a2 = axis.x * axis.x + axis.y * axis.y;
@@ -946,10 +946,10 @@ export function fracDeltaAlongAxis2D(dx, dy, axis){
 // Allowed position range for a magnetized Element, on the requested axis ('x' or 'y'): the Element
 // can move freely up to the edges of the Wall/side's projected rectangle, WITHOUT applying the
 // WALL_OPENING_MARGIN_FRAC safety margin (which only serves to avoid AABB-vs-silhouette overflow
-// in the 3D render — cf. wallOpeningRect — but must not restrict drag-and-drop).
+// in the 3D render, cf. wallOpeningRect, but must not restrict drag-and-drop).
 // The 3D renderer already clamps its centerFracX and bottomFracYScreen fractions to [0,1], so a
 // slight overflow of the rect with margin causes no visible 3D artifact.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallLockedAxisRange(obj, wall, axis){
   if (wall.objType === 'mur_coin') {
     // Corner Wall: uses the pan's real projected rect (getWallPanRect2D + margin).
@@ -966,7 +966,7 @@ export function wallLockedAxisRange(obj, wall, axis){
     }
     return [r.x, Math.max(r.x, r.x + r.w - obj.w)];
   }
-  // Simple Wall —
+  // Simple Wall,
   // X: extended range = the wall's full length (+ half the opening's margin width on each side),
   //    exactly symmetric to the Y range below. Avoids the case obj.w ≥ wall.w → empty range which
   //    blocked all horizontal movement (e.g. a wide opening on a narrow vertical wall). The 3D
@@ -983,11 +983,11 @@ export function wallLockedAxisRange(obj, wall, axis){
   return [wall.x - obj.w * 0.5, wall.x + wall.w - obj.w * 0.5];
 }
 // Relative position (fraction [0,1] on each axis) of a magnetized Element WITHIN its Wall/pan's
-// rectangle (cf. wallOpeningRect) — captured before a rotation or resize of the Wall, so the
+// rectangle (cf. wallOpeningRect), captured before a rotation or resize of the Wall, so the
 // Element can be placed back at the same RELATIVE spot once the Wall is transformed (cf.
 // applyWallChildFraction), instead of leaving it at its old absolute position which no longer
 // matches the new rectangle and detaches it from the Wall.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallChildFraction(obj, wall){
   const rect = wallOpeningRect(obj, wall);
   return {
@@ -996,9 +996,9 @@ export function wallChildFraction(obj, wall){
   };
 }
 // Repositions a magnetized Element according to a relative fraction captured beforehand (cf.
-// wallChildFraction), reapplying it to its Wall/pan's CURRENT rectangle — i.e. after the Wall has
+// wallChildFraction), reapplying it to its Wall/pan's CURRENT rectangle, i.e. after the Wall has
 // rotated/resized.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function applyWallChildFraction(obj, wall, frac){
   const rect = wallOpeningRect(obj, wall);
   obj.x = rect.x + frac.fx * Math.max(0, rect.w - obj.w);
@@ -1006,11 +1006,11 @@ export function applyWallChildFraction(obj, wall, frac){
 }
 // Computes the rotation to apply to a magnetized Opening Element, based on the chosen pan. In the
 // corner Wall's rig (cf. buildCornerWallRig3D), the Second Pan (B) has its face rotated 90° relative
-// to the First Pan (A) — without this 90° Y offset, the Element placed on the Second Pan would
+// to the First Pan (A), without this 90° Y offset, the Element placed on the Second Pan would
 // render with the First Pan's orientation/curvature instead of the Second's, making it appear "on
 // the wrong side" despite a correct position. The First Pan (and a simple Wall) receive no offset:
 // only the Wall's overall rotation applies, as-is.
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function wallOpeningRotationForWall(wall, face){
   // Wall tracé: orient the Opening in the direction of the tracé's first segment
   if (wall.type === 'tracé') {
@@ -1026,7 +1026,7 @@ export function wallOpeningRotationForWall(wall, face){
 }
 // Positions an Opening Element within its host Wall's 2D box: centered on the free axis (along the
 // Wall), anchored per wallLockedAxis on the perpendicular axis (cf. above).
-// Exported for unit tests (tests/events.test.mjs) — unchanged behavior.
+// Exported for unit tests (tests/events.test.mjs), unchanged behavior.
 export function positionWallOpeningOnWall(obj, wall, face){
   obj.wallFace = face;
   // Wall tracé: place the Opening at the middle of the tracé (canvas pts)
@@ -1079,16 +1079,16 @@ export function positionWallOpeningOnWall(obj, wall, face){
 }
 // Applies a new length/height to a Wall, keeping its center fixed. Does NOT touch the position of
 // its magnetized Opening Elements: since a rotation can be applied to the Wall in the same save
-// (modal), repositioning the Elements here — with the old rotation but already the new size — would
+// (modal), repositioning the Elements here, with the old rotation but already the new size, would
 // give an inconsistent position. It's the calling code (cf. objectModalSave) that repositions all
 // Elements in a single pass, after ALL the Wall's mutations (rotation AND size), from a relative
 // fraction captured before any change (cf. wallChildFraction).
 // (#81) newW/newH represent the Wall's REAL length/height (px-equivalent at depth z=0, same
-// convention as the modal fields above) — NOT its current apparent size (wall.w/wall.h), which
+// convention as the modal fields above). NOT its current apparent size (wall.w/wall.h), which
 // depends on wall.z (cf. ensureElementUnits3D). We therefore convert to apparent at wall's CURRENT
 // depth (already updated by the caller before this call, cf. objectModalSave) so the stored real
 // size matches exactly what was entered, regardless of depth. wall.baseW/baseH stay frozen at their
-// creation-time value (z=0) — like other Elements — and are no longer rewritten here.
+// creation-time value (z=0), like other Elements, and are no longer rewritten here.
 function resizeWallTo(wall, newRealW, newRealH, page){
   const cx = wall.x + wall.w / 2, cy = wall.y + wall.h / 2;
   const currentReal = ensureElementUnits3D(wall);
@@ -1115,14 +1115,14 @@ function resizeWallTo(wall, newRealW, newRealH, page){
 function addObjectToPanel(panel, objType){
   snapshot();
   const page = currentPage();
-  // The default box respects the object's real aspect ratio (OBJECT_ASPECT_RATIOS) when known —
+  // The default box respects the object's real aspect ratio (OBJECT_ASPECT_RATIOS) when known,
   // otherwise, we fall back to the objects' landscape render format ratio (OBJECT_3D_W/H), suited
   // to cars/bikes/furniture. Without respecting this ratio, the rendered image would be stretched
   // non-uniformly in the box and distort the object (this was the reported bug for the car/bike,
   // then for Opening Elements that looked misaligned/non-parallel to the Wall).
   const aspect = OBJECT_ASPECT_RATIOS[objType] || (OBJECT_3D_W / OBJECT_3D_H);
   // Default size derived from the object's real height (cf. OBJECT_REAL_HEIGHT_M) rather than from
-  // the Panel's size — on user request, so e.g. a Flower stays clearly smaller than a Persona and a
+  // the Panel's size, on user request, so e.g. a Flower stays clearly smaller than a Persona and a
   // Car, regardless of the size of the Panel it's added to.
   // Exception for a Wall/Corner Wall (cf. WALL_TYPES): its default WIDTH represents its LENGTH (very
   // variable in real life, with no "typical" value), so we keep the old Panel-relative calibration
@@ -1134,10 +1134,10 @@ function addObjectToPanel(panel, objType){
   const w = WALL_TYPES.includes(objType) ? clamp(panel.w * 0.4, 30, 120) : clamp(h * aspect, 2, page.w * 0.95);
   const x = clamp(panel.x + panel.w / 2 - w / 2, 0, page.w - w);
   const y = clamp(panel.y + panel.h / 2 - h / 2, 0, page.h - h);
-  // z: real depth in the Panel's 3D scene (Phase 2 — cf. task #78), cf. the equivalent comment in
+  // z: real depth in the Panel's 3D scene (Phase 2, cf. task #78), cf. the equivalent comment in
   // addPersonaToPanel. For an Opening magnetized to a Wall (cf. below), z stays at 0: its depth is
   // entirely fixed by the Wall, not by free movement via the scroll wheel.
-  // homePanelId: cf. the equivalent comment in addPersonaToPanel — remembers the Panel targeted by
+  // homePanelId: cf. the equivalent comment in addPersonaToPanel, remembers the Panel targeted by
   // this addition, used as a safety net in findOwningPanel.
   const obj = {
     id: newId(), type: 'objet3d', objType, x, y, w, h, baseW: w, baseH: h, z: 0,
@@ -1147,7 +1147,7 @@ function addObjectToPanel(panel, objType){
   // realHeightFloor: real size in meters, source of truth for the 3D renderer (Phase 3).
   if (!WALL_TYPES.includes(objType)) obj.realHeightFloor = realH;
   // magnetGround: true by default for any Object3D other than Wall/Opening (cf.
-  // groundMagnetEligible) — a Wall has no notion of "resting on the ground", an Opening already
+  // groundMagnetEligible), a Wall has no notion of "resting on the ground", an Opening already
   // magnetizes to its Wall (cf. below).
   if (groundMagnetEligible(obj)) obj.magnetGround = true;
   // By default, an open Door opens to the left at 76° (editable afterward in its modal).
@@ -1160,7 +1160,7 @@ function addObjectToPanel(panel, objType){
     // cf. wallLockedAxis) based on the Wall's INITIAL footprint. Without this freeze, the
     // computation kept re-comparing wall.w/wall.h: once the length is actually modeled in 3D (cf.
     // resizeWallTo / buildPropRig3D), a large lengthwise enlargement could flip w above h (or vice
-    // versa), suddenly reversing which axis is free/locked — which completely detached already
+    // versa), suddenly reversing which axis is free/locked, which completely detached already
     // magnetized Opening Elements (they stayed positioned according to the old axis).
     obj.lockedAxis = (w >= h) ? 'y' : 'x';
   } else if (WALL_OPENING_MAGNET_TYPES.includes(objType)) {
@@ -1176,7 +1176,7 @@ function addObjectToPanel(panel, objType){
       // thus automatically parallel to the Wall and visually "stuck/embedded" in it.
       const fit = 0.82;
       // For build-tool walls (2D thin-box of 5 px), wall.h is tiny and doesn't represent the real
-      // height — we use realHeightFloor * WALL_PX_PER_UNIT_3D (same convention
+      // height, we use realHeightFloor * WALL_PX_PER_UNIT_3D (same convention
       // as ensureWallRenderEntry3D) to get the correct reference size.
       const _wallRefH = (wall.realHeightFloor != null)
         ? wall.realHeightFloor * WALL_PX_PER_UNIT_3D
@@ -1204,7 +1204,7 @@ function addObjectToPanel(panel, objType){
 // Adds a whole Room (Floor, Ceiling, 4 side Walls = 4 Sides) to the Panel, forming a hollow cube.
 // Real dimensions derived from the Panel's size (with an absolute minimum), deliberately large
 // enough so the Camera (right-click the Panel → Camera, cf. ctxToggleCamera) can "enter" the Room
-// by dollying (scroll wheel) without visually passing through a Wall — the sphere of possible camera
+// by dollying (scroll wheel) without visually passing through a Wall, the sphere of possible camera
 // positions (radius = camera distance) must stay strictly inside the cube as long as we don't
 // approach the minimum (cf. camDist clamp to 1 in the existing scroll-wheel code in Camera mode).
 function addRoomToPanel(panel){
@@ -1216,14 +1216,14 @@ function addRoomToPanel(panel){
   const halfW = roomW / 2, halfH = roomH / 2, halfD = roomD / 2;
   // pieceId: identifier shared by the 6 Walls created below (one per call to addRoomToPanel), so
   // they can later be grouped/selected together (cf. renderSidePersonas/S.selectedRoomId).
-  // pieceLabel: display label for the group header — numbered ("Pièce 2", "Pièce 3", ...) if the
+  // pieceLabel: display label for the group header, numbered ("Pièce 2", "Pièce 3", ...) if the
   // Panel already contains one or more other Rooms, on the same principle as uniqueDefaultName.
   const pieceId = newId('piece');
   const existingRoomLabels = new Set(
     page.objects.filter(o => o.type === 'objet3d' && o.pieceId && findOwningPanel(o, page) === panel).map(o => o.pieceLabel)
   );
   const pieceLabel = nomNumeroteLibre3D(existingRoomLabels, tr('Room', 'Pièce'));
-  // Floor/Ceiling: a "flat" Wall (rotX=90°) — its length (local X axis, unaffected by the rotation)
+  // Floor/Ceiling: a "flat" Wall (rotX=90°), its length (local X axis, unaffected by the rotation)
   // covers the room's width, its height (local Y axis, which flips onto the world Z axis under the
   // rotation) covers its depth.
   addRoomWallElement(panel, page, 'Plancher', 0, -halfH, 0, roomW, roomD, Math.PI / 2, 0, pieceId, pieceLabel);
@@ -1232,7 +1232,7 @@ function addRoomToPanel(panel){
   // depth on either side of the room's center.
   addRoomWallElement(panel, page, tr('Back wall', 'Mur arrière'), 0, 0, -halfD, roomW, roomH, 0, 0, pieceId, pieceLabel);
   addRoomWallElement(panel, page, 'Mur avant', 0, 0, halfD, roomW, roomH, 0, 0, pieceId, pieceLabel);
-  // Left/right Walls: rotY=90° — their length (local X axis) flips onto the world Z axis (room
+  // Left/right Walls: rotY=90°, their length (local X axis) flips onto the world Z axis (room
   // depth), their height (local Y axis, vertical) stays unchanged.
   addRoomWallElement(panel, page, 'Mur gauche', -halfW, 0, 0, roomD, roomH, 0, Math.PI / 2, pieceId, pieceLabel);
   addRoomWallElement(panel, page, 'Mur droit', halfW, 0, 0, roomD, roomH, 0, Math.PI / 2, pieceId, pieceLabel);
@@ -1241,7 +1241,7 @@ function addRoomToPanel(panel){
 }
 
 // ============================================================
-// "BUILD A BUILDING" TOOL — drawing walls in top-down view
+// "BUILD A BUILDING" TOOL : drawing walls in top-down view
 // ============================================================
 
 
@@ -1368,7 +1368,7 @@ window.addEventListener('keydown', (e) => {
   const tag = document.activeElement.tagName;
   // In Camera mode (cf. ctxToggleCamera), the arrow keys TRANSLATE the selected Panel's camera
   // horizontally/vertically (camPanX/camPanY, along its CURRENT right/up axes, cf.
-  // panelCamBasis3D) — a simple lateral/vertical tracking shot, without any rotation (which
+  // panelCamBasis3D), a simple lateral/vertical tracking shot, without any rotation (which
   // remains exclusively driven by click-and-drag, cf. S.dragMode 'panelCamRotate').
   if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
        e.key === 'w' || e.key === 'a' || e.key === 's' || e.key === 'd') &&
@@ -1401,7 +1401,7 @@ window.addEventListener('keydown', (e) => {
     }
   }
   // C shortcut: toggles Camera mode on the currently selected Panel/Scene, equivalent to the 🎥
-  // button in the context menu (cf. ctxToggleCamera) — on user request.
+  // button in the context menu (cf. ctxToggleCamera), on user request.
   // Also works when a Scene Element is selected: in that case we activate Camera mode on the
   // Scene's locked panel AND automatically pin that Element as the orbit target
   // (camOrbitTargetId), which sets it directly in the Camera menu and avoids the confusing
@@ -1474,7 +1474,7 @@ window.addEventListener('keydown', (e) => {
   //
   // ⚠️ LA GARDE SUR LA PILE DE MODALES est ce qui manque aux raccourcis C/F/T, écrits avant elle :
   // sans elle, « E » ouvrirait l'éditeur DERRIÈRE une fiche restée à l'écran. Je ne l'ai pas
-  // ajoutée aux trois autres dans le même geste — ce serait changer leur comportement en douce,
+  // ajoutée aux trois autres dans le même geste, ce serait changer leur comportement en douce,
   // sous couvert d'ajouter un raccourci.
   if (e.key === 'e' && !e.ctrlKey && !e.metaKey && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA'
       && !S.personaEditorOpen && pileOuverte().length === 0) {
@@ -1482,10 +1482,10 @@ window.addEventListener('keydown', (e) => {
     const pageE = currentPageData();
     const selE = pageE.objects.find(o => o.id === S.selectedId);
     // Un Personnage est toujours posable ; pour un modèle importé, la question se pose, et la
-    // réponse vit dans rig3d.js — la même que pour le crayon de sa fiche.
+    // réponse vit dans rig3d.js, la même que pour le crayon de sa fiche.
     const cible = (selE && (selE.type === 'perso' || modeleImportePosable3D(selE))) ? selE : null;
     if (!cible) { showPersonaEditor(null, null); return; }
-    // ⚠️ SUR UNE CIBLE, ON OUVRE LA FICHE PUIS SON CRAYON — on ne saute pas droit dans l'éditeur.
+    // ⚠️ SUR UNE CIBLE, ON OUVRE LA FICHE PUIS SON CRAYON, on ne saute pas droit dans l'éditeur.
     //
     // Signalé à l'usage : « E » ouvrait bien l'éditeur, mais « Appliquer » n'y était pas. C'est que
     // l'éditeur n'écrit JAMAIS dans l'Élément : il remplit le brouillon de la fiche, que
@@ -1493,7 +1493,7 @@ window.addEventListener('keydown', (e) => {
     // et le bouton se masque (cf. syncPersonaEditorDom).
     //
     // Écrire ici un second chemin qui poserait les angles directement sur l'Élément aurait fait une
-    // TROISIÈME définition de « appliquer une pose » — après les deux gestionnaires d'enregistrement
+    // TROISIÈME définition de « appliquer une pose », après les deux gestionnaires d'enregistrement
     // des fiches, qui écrivent chacun une demi-douzaine de champs persistés. Emprunter le crayon
     // coûte deux lignes et ne peut pas diverger de lui.
     if (cible.type === 'perso') { openPersonaModal(cible); personaEditorOpenBtn.click(); }
@@ -1522,7 +1522,7 @@ window.addEventListener('keydown', (e) => {
   // ── F1 : le Manuel d'utilisation ──────────────────────────────────────────────────────────
   //
   // F1 EST le bouton « ? », rien de plus : on le clique. Il BASCULE donc, ce qui est le
-  // comportement attendu — j'avais d'abord écrit un « affiche seulement », en me disant qu'une
+  // comportement attendu, j'avais d'abord écrit un « affiche seulement », en me disant qu'une
   // touche n'a pas d'état visible à inverser. C'est faux : le Manuel est à l'écran, son état se
   // voit, et une seconde pression doit le refermer.
   //
@@ -1580,8 +1580,8 @@ window.addEventListener('keydown', (e) => {
       }
     }
   }
-  // T shortcut: toggles the top-down view in a Scene (cf. sceneTopDownBtn) — only available in the
-  // Scene editor (S.editingSceneId), on the selected Panel/Scene — on user request.
+  // T shortcut: toggles the top-down view in a Scene (cf. sceneTopDownBtn), only available in the
+  // Scene editor (S.editingSceneId), on the selected Panel/Scene, on user request.
   // We look for the Scene's locked panel directly in the page's objects (rather than via
   // S.sideCameraTarget, which is only set when the Camera menu is open).
   if (e.key === 't' && !e.ctrlKey && !e.metaKey && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
@@ -1643,7 +1643,7 @@ window.addEventListener('keydown', (e) => {
   }
   // Escape (with no modal open): goes up from an Element to its parent Panel.
   // If a Panel is already selected, leaves the existing behavior alone (Project menu).
-  // Guard: does nothing if a modal is visible — the modals' listeners (descModal, objectModal…)
+  // Guard: does nothing if a modal is visible, the modals' listeners (descModal, objectModal…)
   // handle Escape themselves with stopImmediatePropagation, but this listener is registered
   // BEFORE them (registration order) and would still fire without this guard.
   if (e.key === 'Escape' && tag !== 'INPUT' && tag !== 'TEXTAREA'
@@ -1656,7 +1656,7 @@ window.addEventListener('keydown', (e) => {
       if (panel) {
         e.preventDefault();
         // stopImmediatePropagation prevents the "Escape → Project menu" listener (registered
-        // further below) from firing — we consume the event here.
+        // further below) from firing, we consume the event here.
         e.stopImmediatePropagation();
         S.selectedId = panel.id;
         S.selectedRoomId = null;
@@ -1795,7 +1795,7 @@ window.addEventListener('keydown', (e) => {
       // Extra safety net: homePanelId (recorded at creation, cf. addPersonaToPanel/
       // addObjectToPanel/loadSceneIntoPanel) remains the source of truth for ownership, unlike the
       // geometric heuristics above which can diverge once an Element is moved/resized outside its
-      // Panel (#37, "Objects can extend past the page") — without this safety net, such an
+      // Panel (#37, "Objects can extend past the page"), without this safety net, such an
       // Element stayed orphaned on the Page after its Panel was deleted, ready to visually "latch
       // onto" the next Panel created at the same spot (cf. user feedback).
       pageData.objects.filter(o => o.type !== 'panel' && o.homePanelId === deleted.id)
@@ -1814,7 +1814,7 @@ window.addEventListener('keydown', (e) => {
       resetPanelCamera(ownerPanel);
     }
     // The Panel itself was deleted: its Panel numbers must update to stay contiguous (fill the
-    // "gap" left by its number) — on user request.
+    // "gap" left by its number), on user request.
     if (deleted && deleted.type === 'panel') renumberPanels(pageData);
     S.selectedRoomId = null;
     S.selectedId = (ownerPanel && pageData.objects.some(o => o.id === ownerPanel.id)) ? ownerPanel.id : null;
@@ -1846,14 +1846,14 @@ function applyZoom(){
   canvasWrap.classList.toggle('scene-editing', !!S.editingSceneId);
 }
 // Anti-blur (option C): the canvas's REAL resolution (canvas.width/height, cf. drawCurrentPage/
-// drawCanvasOnly) — and therefore of the per-Panel 3D scenes it contains (cf. renderPanelScene3D,
-// which receives this factor as the "scale" parameter) — is governed by S.pageRenderScale, DISTINCT
+// drawCanvasOnly), and therefore of the per-Panel 3D scenes it contains (cf. renderPanelScene3D,
+// which receives this factor as the "scale" parameter), is governed by S.pageRenderScale, DISTINCT
 // from S.zoomLevel (which only drives the displayed CSS size, cf. applyZoom). Idea: during a zoom
-// gesture (scroll wheel/window resize), we do NOT touch S.pageRenderScale — the display stays the
+// gesture (scroll wheel/window resize), we do NOT touch S.pageRenderScale, the display stays the
 // usual CSS stretch (so temporarily a bit blurry, but without the cost of a 3D re-render on every
 // scroll-wheel notch). Once the gesture ends (~150ms with no new event, cf. scheduleSharpRender), we
 // recompute S.pageRenderScale to match the zoom AND the screen's resolution (devicePixelRatio), then
-// redraw once at this finer resolution — the result becomes sharp again "at rest".
+// redraw once at this finer resolution, the result becomes sharp again "at rest".
 // [STATE→S] let S.pageRenderScale = 1;
 // ↳ src/constants.js
 function computeIdealRenderScale(){
@@ -1884,7 +1884,7 @@ function fitZoomToWrap(){
 window.addEventListener('resize', fitZoomToWrap);
 
 // Clicking inside canvasWrap but OUTSIDE the canvas itself (the visible margin around the Page when
-// zoomed out/scrolled) deselects the Page — on user request ("if I click outside this area it
+// zoomed out/scrolled) deselects the Page, on user request ("if I click outside this area it
 // should deselect the Page"). A click ON the canvas is already handled by its own mousedown handler
 // (cf. above, which sets S.pageSelected to true); we do nothing here in that case to avoid any
 // conflict.
@@ -1915,7 +1915,7 @@ canvasWrap.addEventListener('wheel', (e) => {
   if (sel && sel.type === 'panel' && sel.cameraMode) {
     // In Camera mode (cf. ctxToggleCamera), the scroll wheel moves the Panel's camera forward/back
     // along its CURRENT viewing axis (panel.camRotX/camRotY preserved, cf.
-    // panelCamBasis3D/framePanelCamera3D) — a real camera tracking shot, distinct from the depth
+    // panelCamBasis3D/framePanelCamera3D), a real camera tracking shot, distinct from the depth
     // (Z) specific to each Element (cf. the perso/objet3d branch below, which only applies to a
     // selected Element, never to a Panel).
     const oldDist = sel.camDistTarget !== undefined ? sel.camDistTarget : (sel.camDist || PANEL_CAM_DEFAULT_DIST_3D);
@@ -1930,7 +1930,7 @@ canvasWrap.addEventListener('wheel', (e) => {
     // restores it → visible flicker of the rotation center during rotation.
     // We simply update camDistTarget and start the smoothing on camDist only.
     const _isRotateDrag = S.dragMode === 'panelCamRotate';
-    // Phase 8: zoom toward the cursor — move the orbit center toward the point under the mouse.
+    // Phase 8: zoom toward the cursor, move the orbit center toward the point under the mouse.
     // Without this correction, the scroll wheel moves the camera toward the current orbit (often
     // the origin), not toward what the user is looking at. With the correction, the world point
     // under the cursor stays at the same screen position after the zoom, like in Blender/Maya.
@@ -1957,14 +1957,14 @@ canvasWrap.addEventListener('wheel', (e) => {
       const _wy0 = sel.camWyTarget !== undefined ? sel.camWyTarget : (sel.camWy || 0);
       const _wz0 = sel.camWzTarget !== undefined ? sel.camWzTarget : (sel.camWz || 0);
       sel.camWxTarget = clamp(_wx0 + _panDX * _zBasis.right.x + _panDY * _zBasis.up.x, -_panLim, _panLim);
-      // Fix 14b (relaxed — Fix 18a): dynamic floor = GROUND_Y - max(5, dist×0.5).
+      // Fix 14b (relaxed : Fix 18a): dynamic floor = GROUND_Y - max(5, dist×0.5).
       // The old fixed threshold of GROUND_Y - 1 = -4 blocked zooming close to the ground. The
       // floor now moves away when the camera is far (prevents excessive drift) but stays low when
       // getting closer (ground-level shots, low-angle view from the ground).
       const _wyFloor18 = GROUND_Y_DEFAULT_3D - Math.max(5, oldDist * 0.5);
       sel.camWyTarget = clamp(_wy0 + _panDX * _zBasis.right.y + _panDY * _zBasis.up.y, Math.max(-_panLim, _wyFloor18), _panLim);
       sel.camWzTarget = clamp(_wz0 + _panDX * _zBasis.right.z + _panDY * _zBasis.up.z, -_panLim, _panLim);
-      // Fix 18b: dolly-through — when camDist is near the minimum (< 3 u), ALSO move the orbit
+      // Fix 18b: dolly-through, when camDist is near the minimum (< 3 u), ALSO move the orbit
       // pivot forward (along -backward). Without this, the camera stays stuck to the orbit sphere
       // as soon as camDist = minimum: the sphere grows, the view gets blocked.
       // The effect ramps up progressively (t = 0 at 3 u → 1 at 0 u) to avoid any jump.
@@ -1985,7 +1985,7 @@ canvasWrap.addEventListener('wheel', (e) => {
   if (sel && (sel.type === 'perso' || sel.type === 'objet3d') && !selWallMagnet) {
     // #81: the scroll wheel now drives DEPTH (o.z), not apparent size. The REAL size (world units)
     // must stay constant: we derive it from the current apparent size (o.w/o.h) at the OLD depth,
-    // then recompute o.w/o.h at the NEW depth for that same real size — the change in apparent
+    // then recompute o.w/o.h at the NEW depth for that same real size, the change in apparent
     // size is thus an automatic consequence of the change in camera↔Element distance, not a
     // direct action on o.w/o.h.
     const oldZ = getElementDepth(sel);
@@ -1997,7 +1997,7 @@ canvasWrap.addEventListener('wheel', (e) => {
 
     // The scroll wheel moves depth in a STRAIGHT line along the Camera's real viewing axis
     // (basis.backward), not just along the world Z axis (which only coincides with the viewing
-    // axis when the Camera isn't rotated) — valid for all Panels (Scenes included).
+    // axis when the Camera isn't rotated), valid for all Panels (Scenes included).
     // Initially reserved for Scenes (cf. isLockedScenePanel, old condition), extended to all
     // Panels on user request for consistency.
     const ownerPanel = findOwningPanel(sel, page);
@@ -2074,7 +2074,7 @@ canvasWrap.addEventListener('wheel', (e) => {
   // We explicitly re-center .canvas-wrap's scroll after every scroll-wheel notch, in a Scene as on
   // a normal Page: once the content is larger than the visible area, the flex layout's "safe
   // center" falls back to a top-left alignment (overflow), which made the render visually "flee"
-  // toward that corner instead of zooming in place — per user report, we keep the render centered
+  // toward that corner instead of zooming in place, per user report, we keep the render centered
   // on every zoom, regardless of mode.
   canvasWrap.scrollLeft = (canvasWrap.scrollWidth - canvasWrap.clientWidth) / 2;
   canvasWrap.scrollTop = (canvasWrap.scrollHeight - canvasWrap.clientHeight) / 2;
@@ -2086,7 +2086,7 @@ function getCoords(e){
   // DIRECTLY from the actually measured CSS size (rect.width/height) rather than from the
   // zoomLevel variable: right after the application window is resized, several "resize" events can
   // fire in quick succession (cf. fitZoomToWrap) and S.zoomLevel can then be momentarily one notch
-  // ahead of or behind the canvas's actual CSS reflow — using S.zoomLevel directly created a small
+  // ahead of or behind the canvas's actual CSS reflow, using S.zoomLevel directly created a small
   // coordinate offset, which could create/select the wrong Panel right after a resize (per user
   // report). rect always comes from the size ACTUALLY displayed at the moment of the click, so
   // this computation stays exact even if S.zoomLevel doesn't (yet) have that value.
@@ -2148,7 +2148,7 @@ canvas.addEventListener('mousedown', (e) => {
   if (e.button === 1) {
     // Fix 11.2: ignore the middle-click if a drag is already in progress (e.g. panelCamRotate via LMB).
     // Without this guard, an accidental MMB during a rotation would overwrite S.dragMode='panelCamPan',
-    // then window.mouseup (button-agnostic) would reset S.dragMode=null while LMB was still held down —
+    // then window.mouseup (button-agnostic) would reset S.dragMode=null while LMB was still held down,
     // leaving the camera with no active drag until the next click.
     if (S.dragMode) return;
     const { x: _xmid, y: _ymid } = getCoords(e);
@@ -2181,7 +2181,7 @@ canvas.addEventListener('mousedown', (e) => {
         const st = document.getElementById('sideMesureStatus');
         if (st) st.textContent = tr('Click the 2nd point.', 'Cliquez le 2e point.');
       } else if (!S.measureTool.end) {
-        // 2nd click: end point — locks in the measurement
+        // 2nd click: end point, locks in the measurement
         S.measureTool.end  = { x: worldPt.x, z: worldPt.z };
         S.measureTool.live = null;
         const dist  = Math.hypot(S.measureTool.end.x - S.measureTool.start.x, S.measureTool.end.z - S.measureTool.start.z);
@@ -2292,7 +2292,7 @@ canvas.addEventListener('mousedown', (e) => {
 
         // Snap onto an existing point of the tracé (screen space, excl. last point).
         // We ignore points that are no longer endpoints of any real wall (absorbed by a
-        // colinear merge) — they no longer make sense as snap targets.
+        // colinear merge), they no longer make sense as snap targets.
         const SNAP_EPS_W = 0.015;
         const isRealEndpoint = (px, pz) => S.buildTool.wallSegs.some(s =>
           Math.hypot(s.x1 - px, s.z1 - pz) < SNAP_EPS_W ||
@@ -2323,7 +2323,7 @@ canvas.addEventListener('mousedown', (e) => {
         const aligned = buildApplyAlignSnap(angleSnapped.x, angleSnapped.z);
         const snapped = { x: aligned.x, z: aligned.z };
         // Closing test: if ≥3 pts and we're close to the first point.
-        // Two thresholds: raw position (BUILD_CLOSE_DIST) OR snapped position (1 cm — alignment
+        // Two thresholds: raw position (BUILD_CLOSE_DIST) OR snapped position (1 cm, alignment
         // snap can have brought the cursor exactly onto the first point even if the raw click was
         // slightly farther, which prevents the merge logic from running incorrectly).
         if (pts.length >= 3) {
@@ -2395,7 +2395,7 @@ canvas.addEventListener('mousedown', (e) => {
             }
           }
           // Junction check: if other non-colinear walls also end at "last", it's a legitimate
-          // junction — we don't merge (the point must stay visible).
+          // junction, we don't merge (the point must stay visible).
           if (mergeTarget) {
             const { seg: ms, fx, fz } = mergeTarget;
             const arrId = S.buildTool.snapArrivalWallId;
@@ -2434,7 +2434,7 @@ canvas.addEventListener('mousedown', (e) => {
             }
             // 3. Remove residual colinear walls at "last" that would double up in thickness.
             // We only look for walls going in the SAME DIRECTION as the extension (identical
-            // direction, ± mergeRad) — never the opposite direction, since that could mistakenly
+            // direction, ± mergeRad), never the opposite direction, since that could mistakenly
             // remove a legitimate perimeter wall (e.g. a side of the rectangle coming back to
             // "last" from the other side).
             const extAng2 = Math.atan2(snapped.z - fz, snapped.x - fx);
@@ -2458,7 +2458,7 @@ canvas.addEventListener('mousedown', (e) => {
               const cw = S.buildTool.wallIds.indexOf(cid);
               if (cw !== -1) S.buildTool.wallIds.splice(cw, 1);
             }
-            // 4. Create the merged wall (no pts manipulation — the points come from wallSegs)
+            // 4. Create the merged wall (no pts manipulation, the points come from wallSegs)
             wallId = buildToolCreateWallSegment(panel, page, fx, fz, snapped.x, snapped.z);
           } else {
             wallId = buildToolCreateWallSegment(panel, page, last.x, last.z, snapped.x, snapped.z);
@@ -2480,7 +2480,7 @@ canvas.addEventListener('mousedown', (e) => {
   }
 
   // Clicking anywhere in the canvas (the Page's space, whether there's a Panel/Bubble under the
-  // click or not) "selects" that Page, like a click on its row in the left-hand menu — on user
+  // click or not) "selects" that Page, like a click on its row in the left-hand menu, on user
   // request ("I want to be able to [open the Page menu] by selecting [...] the space where the
   // Panels and Bubbles are"). Clicking outside (cf. listener on canvasWrap further below)
   // deselects it.
@@ -2541,18 +2541,18 @@ canvas.addEventListener('mousedown', (e) => {
     }
     S.dragMode = 'panelCamRotate'; S.dragStart = { x, y };
     // Fix 13: camWx/Wy/Wz store the orbit center in stable world coordinates.
-    // During rotation, we no longer touch camWx/Wy/Wz — they naturally stay fixed.
+    // During rotation, we no longer touch camWx/Wy/Wz, they naturally stay fixed.
     // Phase 9: capture camDist for sensitivity proportional to distance.
     { const _bRot0 = panelCamBasis3D(sel); getCamOrbitWorld(sel, _bRot0); } // migration if needed
     // Fix 24 ("Auto Depth"): slide the pivot along the view axis onto whatever is actually being
-    // aimed at, BEFORE the Fix 13c snap and the S.dragOrig capture below — so both freeze the
+    // aimed at, BEFORE the Fix 13c snap and the S.dragOrig capture below, so both freeze the
     // re-anchored pivot/distance rather than the stale ones. The camera itself does not move (cf.
     // panelAutoDepthPivot3D), so this is invisible on screen; it only makes the rotation turn
     // around the subject instead of around a point left stranded in empty space by earlier zooming.
     panelAutoDepthPivot3D(sel, page);
     // Fix 13c: freeze the orbit center and distance at their CURRENT value (reverse snap).
     // Fix 13b (camWx = camWxTarget, "forward snap") caused a big visual jump at high zoom:
-    // camDist converges at 0.22/frame, camWx only at 0.10/frame — when the zoom looks visually
+    // camDist converges at 0.22/frame, camWx only at 0.10/frame, when the zoom looks visually
     // finished (~10 frames), camWx can still have ~35% residual, i.e. up to 30 px of apparent
     // offset × 1/camDist on screen at the moment of mousedown.
     // By reversing it (camWxTarget = camWx), the animation stops instantly with no jump: the
@@ -2575,7 +2575,7 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
   // A Bubble's tail is grabbed and moved freely all around it (priority over the resize handles,
-  // which are on the bounding rectangle — the tail extends outside it).
+  // which are on the bounding rectangle, the tail extends outside it).
   // Pointless (and impossible) to grab it if it's hidden.
   if (sel && sel.type === 'bulle' && bubbleTailVisible(sel)) {
     const tip = getBubbleTailTip(sel);
@@ -2660,7 +2660,7 @@ canvas.addEventListener('mousedown', (e) => {
           if (Math.abs(x - co.sx) <= 6 && Math.abs(y - co.sy) <= 6) {
             snapshot();
             // INTENTION INACHEVÉE, retirée. Cette boucle cherchait « le coin le plus éloigné à
-            // l'écran du coin cliqué » pour en faire le point fixe du glisser — et jetait le
+            // l'écran du coin cliqué » pour en faire le point fixe du glisser, et jetait le
             // résultat : `farthest` n'était lu nulle part. Elle ne faisait donc que consommer du
             // temps à chaque saisie d'un sommet de Bâtiment. Signalée par ESLint (no-unused-vars).
             // Si ce point fixe redevient nécessaire, le calcul est dans l'historique git.
@@ -2688,7 +2688,7 @@ canvas.addEventListener('mousedown', (e) => {
     const roomMembers = page2.objects.filter(o => o.pieceId === S.selectedRoomId);
     const firstWall = roomMembers.find(o => WALL_TYPES.includes(o.objType));
     const ownerPanel = firstWall ? homeOwningPanel(firstWall, page2) : null;
-    // Rooms belonging to a Building: individual movement blocked — use the Building selection
+    // Rooms belonging to a Building: individual movement blocked, use the Building selection
     const inBat = ownerPanel && getRoomConnectedComponents(ownerPanel, page2)
                                   .some(c => c.length >= 2 && c.includes(S.selectedRoomId));
     if (!inBat && ownerPanel && x >= ownerPanel.x && x <= ownerPanel.x + ownerPanel.w
@@ -2750,12 +2750,12 @@ canvas.addEventListener('mousedown', (e) => {
   // An Element (perso/objet3d) already selected via the "Elements" list can be dragged from its
   // apparent rectangle (o.x/o.y/o.w/o.h). If the click lands INSIDE this rectangle, we start the
   // drag with absolute priority. If the click lands OUTSIDE (in the Panel or the Page), we
-  // deselect the Element — requested behavior: click outside the Element = deselect.
+  // deselect the Element, requested behavior: click outside the Element = deselect.
   if (sel && (sel.type === 'perso' || sel.type === 'objet3d')) {
     const ownerPanel = findOwningPanel(sel, page);
     if (ownerPanel && x >= ownerPanel.x && x <= ownerPanel.x + ownerPanel.w && y >= ownerPanel.y && y <= ownerPanel.y + ownerPanel.h) {
       // Uses the VISUAL projected bounding box (via the real camera) rather than o.x/y/w/h (raw 2D
-      // position invalid after a camera rotation) — cf. projectElementCenterToCanvas3D /
+      // position invalid after a camera rotation), cf. projectElementCenterToCanvas3D /
       // getElementProjectedHalfExtents3D, already used by drawSelection for the same reason.
       let _hitEl = false;
       const _projC = projectElementCenterToCanvas3D(sel, ownerPanel, page);
@@ -2814,7 +2814,7 @@ canvas.addEventListener('mousedown', (e) => {
         .filter(o => o.type === 'objet3d' && o.magnetWallId === hit.id)
         .map(o => ({ id: o.id, x: o.x, y: o.y }));
     } else if (hit.type === 'objet3d' && hit.magnetWallId) {
-      // Fix 27 — a Wall-Opening magnetized to a TRACE: its host's smoothed path is needed on every
+      // Fix 27 : a Wall-Opening magnetized to a TRACE: its host's smoothed path is needed on every
       // mouse move to measure the path's on-screen scale, but the host does not move during the
       // drag, so the Catmull-Rom smoothing is computed ONCE here instead of on every frame.
       const _hostW = page.objects.find(o => o.id === hit.magnetWallId);
@@ -2874,18 +2874,18 @@ window.addEventListener('mousemove', (e) => {
       const isWallSelf = obj.type === 'objet3d' && WALL_TYPES.includes(obj.objType);
       // A "free" Element (neither a Wall itself, nor an Opening magnetized to a Wall, which each
       // have their own movement logic below) moves by following a real raycast from its Panel's
-      // REAL Camera (cf. panelDragRayOnPlane), REGARDLESS of its orientation — valid for all
+      // REAL Camera (cf. panelDragRayOnPlane), REGARDLESS of its orientation, valid for all
       // Panels (Scenes included). Initially reserved for Scenes (cf. isLockedScenePanel, old
       // condition), extended to all Panels on user request for consistency.
       const ownerPanel = (!isWallSelf && !obj.magnetWallId) ? findOwningPanel(obj, page) : null;
       if (ownerPanel) {
         // IMPORTANT: we reason here in WORLD position (cf. ensureElementWorldPos3D/setElementWorldPos3D),
-        // NOT by keeping the PIXEL center unchanged like the scroll wheel does (cf. wheel listener) — this
+        // NOT by keeping the PIXEL center unchanged like the scroll wheel does (cf. wheel listener), this
         // latter approach, correct in a front view (where depth o.z IS the Camera's axis, so keeping the
         // pixel fixed during a change to o.z reproduces a real optical dolly effect), becomes WRONG in a
         // top-down view: ensureElementWorldPos3D's px↔world conversion itself also depends on o.z (cf.
         // `factor`), so freezing the PIXEL center while changing o.z makes the computed WORLD X/Y
-        // position drift — and this drift then gets faithfully rendered by the real Three.js camera (cf.
+        // position drift, and this drift then gets faithfully rendered by the real Three.js camera (cf.
         // renderPanelScene3D), which has no reason to keep the Element at the same pixel in a top-down
         // view (where o.z no longer corresponds to the viewing axis). Observed result: a purely vertical
         // drag (cf. user feedback) made the Element visually "drift" sideways.
@@ -2898,7 +2898,7 @@ window.addEventListener('mousemove', (e) => {
         const factorOld = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / distOld);
         // Phase 5: use realHeightFloor as the source of truth for world dimensions.
         // After loadSceneIntoPanel (Phase 2/3), o.w/o.h are scaled by s (the 2D layout factor),
-        // which would give realH = s * realRealH — incorrect. realHeightFloor, on the other hand,
+        // which would give realH = s * realRealH, incorrect. realHeightFloor, on the other hand,
         // is always stored at real size (Phase 1/3) and stays reliable regardless of the panel's
         // camera distance (camDist ≠ PANEL_CAM_DEFAULT_DIST_3D).
         const _rhf5 = (typeof S.dragOrig.realHeightFloor === 'number' && S.dragOrig.realHeightFloor > 0)
@@ -2922,7 +2922,7 @@ window.addEventListener('mousemove', (e) => {
         // An earlier version, reserved for the top-down view, always intersected the ray with a
         // HORIZONTAL plane (Y fixed); we now use the plane perpendicular to the Camera's CURRENT
         // viewing axis (basis.backward, cf. panelCamBasis3D), passing through the Element's starting
-        // WORLD position — a generalization that gives exactly the same result in a top-down view
+        // WORLD position, a generalization that gives exactly the same result in a top-down view
         // (horizontal plane) AND in an un-rotated front view (vertical plane facing the camera,
         // direct X/Y drag), while staying correct for any intermediate Camera rotation/tilt (cf.
         // panelDragRayOnPlane). As a fallback (if the ray doesn't intersect this plane, an edge
@@ -2952,7 +2952,7 @@ window.addEventListener('mousemove', (e) => {
         obj.x = newCx - newW / 2;
         obj.y = newCy - newH / 2;
         // Keep wxFloor/wzFloor in sync with the new world position after every drag
-        // (Phase 1 migration — wxFloor/wzFloor are now the 3D source of truth).
+        // (Phase 1 migration, wxFloor/wzFloor are now the 3D source of truth).
         if (obj.type === 'perso' || obj.type === 'objet3d') {
           obj.wxFloor = worldX;
           obj.wzFloor = newZ;  // identical to obj.z, redundant for now but the future source of truth
@@ -2980,7 +2980,7 @@ window.addEventListener('mousemove', (e) => {
             const rangeY = wallLockedAxisRange(obj, wall, 'y');
             obj.x = clamp(S.dragOrig.x + dx, rangeX[0], rangeX[1]);
             obj.y = clamp(S.dragOrig.y + dy, rangeY[0], rangeY[1]);
-            // Fix 26 — the Wall's REAL dimensions, exactly as ensureWallRenderEntry3D derives them.
+            // Fix 26 : the Wall's REAL dimensions, exactly as ensureWallRenderEntry3D derives them.
             // Deliberately not wallChildUnits3D, which reads wall.w/h: those are the 2D thin box (cf.
             // recomputeBuildWallBox2D), not the modelled size, and diverge as soon as realLenFloor
             // exists.
@@ -2988,14 +2988,14 @@ window.addEventListener('mousemove', (e) => {
             const _wOpenPanel = obj.homePanelId
               ? page.objects.find(p => p.type === 'panel' && p.id === obj.homePanelId)
               : findOwningPanel(wall, page);
-            // Fix 26 — usable only when the Wall really is placed in the world (build-tool Walls and
+            // Fix 26 : usable only when the Wall really is placed in the world (build-tool Walls and
             // migrated Elements both store wxFloor/wzFloor); a Tracé keeps its own path-based branch.
             const _wProjectable = _wOpenPanel && wall.type !== 'tracé' &&
               isFinite(wall.wxFloor) && isFinite(wall.wzFloor);
 
             // Height on the Wall's face via wallYFrac (0 = floor, 1 = max reachable height).
-            // Fix 26: map the mouse onto the Wall's ACTUAL vertical extent on screen — obtained by
-            // projecting its base and its top — instead of dividing by wall.h. wall.h is the height
+            // Fix 26: map the mouse onto the Wall's ACTUAL vertical extent on screen, obtained by
+            // projecting its base and its top, instead of dividing by wall.h. wall.h is the height
             // of the 2D THIN BOX, i.e. the screen extent of the Wall's GROUND LINE: for a Wall seen
             // face-on both ends project to the same height, so wall.h collapsed to its 5 px floor and
             // barely 5 px of vertical mouse travel swept the Wall from floor to ceiling.
@@ -3012,11 +3012,11 @@ window.addEventListener('mousemove', (e) => {
               const _dFracY = fracDeltaAlongAxis2D(dx, dy, _axes.up);
               if (_dFracY !== null) obj.wallYFrac = clamp(curFrac + _dFracY, 0, 1);
             } else {
-              // Fix 30 — Trace wall: same principle, but the Opening slides ALONG the path while
+              // Fix 30 : Trace wall: same principle, but the Opening slides ALONG the path while
               // being dragged, so its vertical axis has to be re-read where it currently sits and
               // applied to the movement since the last frame (same stepwise integration as Fix 29).
-              // The old fallback divided by wall.h — the projected bounding box of the whole path,
-              // hundreds of pixels wide on a loop — which made vertical dragging feel dead.
+              // The old fallback divided by wall.h, the projected bounding box of the whole path,
+              // hundreds of pixels wide on a loop, which made vertical dragging feel dead.
               const _upDr = tracéUpScreenAxis3D(obj, page, _wOpenPanel, _chU);
               const _dFracYDr = fracDeltaAlongAxis2D(
                 dx - (S.dragOrig.tracéLastDx || 0), dy - (S.dragOrig.tracéLastDy || 0), _upDr);
@@ -3067,11 +3067,11 @@ window.addEventListener('mousemove', (e) => {
               // low walls where the local direction differs from the global direction.
               // Projection via the camera basis (right/up) automatically handles any camera rotation.
               if (wall.type === 'tracé' && wall.world && wall.world.pts && wall.world.pts.length >= 2 && _wallOpeningPanel) {
-                // Fix 27 — same principle as Fix 26 for straight Walls, but measured LOCALLY since a
+                // Fix 27 : same principle as Fix 26 for straight Walls, but measured LOCALLY since a
                 // Trace is curved: there is no single end-to-end screen segment to map onto.
                 // Two nearby points of the path are projected, curAlongFrac and curAlongFrac + ε,
                 // and dividing that screen offset by ε gives the on-screen travel corresponding to a
-                // FULL unit of fraction at this spot — exactly the axis fracDeltaAlongAxis2D expects.
+                // FULL unit of fraction at this spot, exactly the axis fracDeltaAlongAxis2D expects.
                 //
                 // What it replaces divided by `_iscrDr * wallW`, mixing a dimensionless direction
                 // with the 2D bounding box's width. Measured on a Trace running into the distance,
@@ -3083,13 +3083,13 @@ window.addEventListener('mousemove', (e) => {
                 // the corner. Smoothing keeps the transition gradual. It is computed once per drag
                 // (cf. S.dragOrig.hostSmoothPts) rather than on every mouse move.
                 const _wptsDr = S.dragOrig.hostSmoothPts || smoothTracéPath3D(wall.world.pts, 4);
-                // Fix 29 — INTEGRATE step by step instead of mapping the total mouse offset onto a
+                // Fix 29 : INTEGRATE step by step instead of mapping the total mouse offset onto a
                 // single axis frozen at mousedown.
                 //
                 // A Trace's tangent turns; on a closed loop it sweeps a full 360°. Evaluating the
                 // axis once at the starting fraction meant that, as the user followed the wall with
                 // the mouse, the projection onto that stale axis shrank, hit zero after about a
-                // quarter of the way round, then went NEGATIVE — the Element started travelling
+                // quarter of the way round, then went NEGATIVE, the Element started travelling
                 // backwards while the user was still dragging forwards (measured on an oval loop:
                 // +0.68 %/10 px at the start, -0.65 %/10 px at the halfway point).
                 //
@@ -3108,7 +3108,7 @@ window.addEventListener('mousemove', (e) => {
                 S.dragOrig.tracéLastDx = dx;
                 S.dragOrig.tracéLastDy = dy;
               } else {
-                // Fix 26 — THE reported bug. The old formula was dx / wall.w, i.e. the mouse divided
+                // Fix 26 : THE reported bug. The old formula was dx / wall.w, i.e. the mouse divided
                 // by the width of the 2D THIN BOX. The Element is now mapped onto the Wall's REAL
                 // screen segment (cf. wallScreenAxes3D), so it follows the cursor 1:1 whatever the
                 // Wall's orientation. perspSign is only still needed by the fallback: the direction
@@ -3282,13 +3282,13 @@ window.addEventListener('mousemove', (e) => {
     // Phase 9: sensitivity proportional to distance (Blender/Maya style).
     // Close = slow = precise; far = fast = large repositioning.
     // Factor √(camDist / D_ref): at D_ref (30 u) = 1×; at 270 u = 3× faster.
-    // Fix 23: floor at 0.09 (√0.09 = 0.30) instead of 0.01 (√0.01 = 0.10) — at very low camDist
+    // Fix 23: floor at 0.09 (√0.09 = 0.30) instead of 0.01 (√0.01 = 0.10), at very low camDist
     // (< 1 u), sensitivity no longer drops below 30% of normal, avoiding the "stuck" feeling
     // experienced when rotating after a strong zoom-in.
     // Captured on mousedown to stay stable during the drag.
     const _distF9 = Math.sqrt(clamp((S.dragOrig.camDist || PANEL_CAM_DEFAULT_DIST_3D) / PANEL_CAM_DEFAULT_DIST_3D, 0.09, 9));
     const _effSens9 = camRotSens * _distF9;
-    // Phase 10 — two turntable improvements:
+    // Phase 10 : two turntable improvements:
     //
     // A) Clamp pitch ±85°: prevents passing the orbit sphere's poles (camRotX ≥ ±90°).
     //    Beyond that, the camera "flips to the other side" → the scene inverts and yaw becomes a
@@ -3296,7 +3296,7 @@ window.addEventListener('mousemove', (e) => {
     //
     // B) Adaptive yaw cos(pitch): at zero angle, horizontal sensitivity is full; approaching the
     //    pole, cos(rotX) → 0 → yaw progressively slows down, which maintains a consistent
-    //    APPARENT angular movement (same visible arc per dragged pixel) regardless of tilt —
+    //    APPARENT angular movement (same visible arc per dragged pixel) regardless of tilt,
     //    exactly the fix used by Blender/Maya.
     //    Floor at 0.05 to keep a minimal response if the 85° limit is reached.
     const _CAM_PITCH_MAX = 85 * Math.PI / 180;   // ±1.4835 rad
@@ -3311,7 +3311,7 @@ window.addEventListener('mousemove', (e) => {
     // Fix 16: reaffirm the pivot on every frame (defensive lock).
     // Without this, a smoothing animation in progress at mousedown (e.g. centering on an Element,
     // background pan) can keep modifying camWx via step() between two frames, drifting the
-    // rotation center — observed on old Panels/Scenes with migrated camPanX/Y.
+    // rotation center, observed on old Panels/Scenes with migrated camPanX/Y.
     // Reassigning both (current + target) prevents any drift regardless of the smoothing's state.
     obj.camWx = S.dragOrig.camWx; obj.camWxTarget = S.dragOrig.camWx;
     obj.camWy = S.dragOrig.camWy; obj.camWyTarget = S.dragOrig.camWy;
@@ -3319,7 +3319,7 @@ window.addEventListener('mousemove', (e) => {
     startCamSmoothing(obj);
   } else if (S.dragMode === 'panelCamPan') {
     // Phase 9: mouse-driven camera pan (middle-click or Ctrl+LMB).
-    // "Grab" style: the scene follows the mouse — the world point under the cursor stays fixed.
+    // "Grab" style: the scene follows the mouse, the world point under the cursor stays fixed.
     // Formula: factor = WALL_PX_PER_UNIT_3D * PANEL_CAM_DEFAULT_DIST_3D / camDist
     //   Δw = Δpixels / factor = Δpixels * camDist / K  (world units)
     //   drag right (dx > 0) → panX decreases → orbit moves left → scene follows right ✓
@@ -3443,7 +3443,7 @@ window.addEventListener('mouseup', () => {
   S.dragMode = null; S.tempBox = null; S.snapGuide = null;
   // Fin du geste. Un dessin peut être encore PRÉVU par la coalescence du mousemove : le vider le
   // fait exécuter tout de suite et annule le passage programmé, qui ferait double emploi. Sans
-  // ça, on dessinerait deux fois — et surtout, la suite du code lirait un canevas en retard d'une
+  // ça, on dessinerait deux fois, et surtout, la suite du code lirait un canevas en retard d'une
   // image. `vider` renvoie false s'il n'y avait rien en attente : on dessine alors normalement.
   if (!flushDrawCurrentPage()) drawCurrentPage();
 });
@@ -3554,7 +3554,7 @@ canvas.addEventListener('mousemove', (e) => {
           } else {
             // `buildTool` nu : seul rescapé de la migration vers `S` sur 99 occurrences. Cette
             // ligne levait un ReferenceError dès qu'on approchait du point de départ sans le
-            // survoler — l'outil Construire s'arrêtait net. Trouvé par ESLint (no-undef).
+            // survoler, l'outil Construire s'arrêtait net. Trouvé par ESLint (no-undef).
             S.buildTool.previewPos = { ...S.buildTool.points[0] };
             S.buildTool.activeGuideX = []; S.buildTool.activeGuideZ = [];
           }
@@ -3619,22 +3619,22 @@ const zoneSubmenu      = document.getElementById('zoneSubmenu');
 const cheminsTracéSubmenu = document.getElementById('cheminsTracéSubmenu');
 const mursTracéSubmenu    = document.getElementById('mursTracéSubmenu');
 /**
- * Tous les menus flottants, DÉDUITS DU DOM — surtout pas énumérés à la main.
+ * Tous les menus flottants, DÉDUITS DU DOM, surtout pas énumérés à la main.
  *
  * Cette liste sert à deux choses qui doivent rester d'accord : les fermer tous (hideContextMenu) et
  * reconnaître un clic tombé DANS l'un d'eux (pour ne pas le fermer aussitôt ouvert). Un menu absent
- * de la liste s'ouvre normalement mais ne se referme jamais au clic extérieur — il reste posé à
+ * de la liste s'ouvre normalement mais ne se referme jamais au clic extérieur, il reste posé à
  * l'écran, par-dessus tout le reste.
  *
  * Elle a été énumérée à la main pendant vingt-six menus, et il en manquait deux : `modelContextMenu`
  * (signalé à l'usage : « supprimer du disque » restait affiché) et le sous-menu d'import, masqué à
- * la main en deux endroits — ce qui était l'aveu du trou plutôt que sa réparation ; il a depuis
+ * la main en deux endroits, ce qui était l'aveu du trou plutôt que sa réparation; il a depuis
  * disparu avec l'option « comme Scène ». Le sélecteur les prend désormais tous, y compris ceux qui
  * n'existent pas encore.
  *
  * Les modules sont différés (`<script type="module">`) : le DOM est complet quand cette ligne
  * s'exécute. Un test épingle l'accord entre cette classe et celle portée par les menus dans
- * index.html — s'ils divergeaient, la liste serait VIDE et plus aucun menu ne se fermerait.
+ * index.html, s'ils divergeaient, la liste serait VIDE et plus aucun menu ne se fermerait.
  */
 const allContextMenus = [...document.querySelectorAll('.context-menu')];
 // [STATE→S] let S.ctxVolumeTarget = null, S.ctxPageTarget = null, S.ctxSceneTarget = null;
@@ -3665,15 +3665,15 @@ function clampFloatingMenu(menu){
 }
 
 // The "?" button now opens the User Manual directly in the right-hand panel (Help section, cf.
-// sideHelpSection/helpMenuHeader) rather than a floating modal anchored to the button — the latter
-// could overflow off-screen near the edge — per user request ("I want this to open the right-hand
+// sideHelpSection/helpMenuHeader) rather than a floating modal anchored to the button, the latter
+// could overflow off-screen near the edge, per user request ("I want this to open the right-hand
 // user manual menu, rather than a modal"). Toggle: a second click while nothing is selected closes
 // the panel (cf. S.helpPanelDismissed in updateSidePanel).
 document.getElementById('helpBtn').onclick = (e) => {
   e.stopPropagation();
   hideContextMenu();
   // La question posée au DOM, pas aux drapeaux : `S.selectedId == null && !S.helpPanelDismissed`
-  // ignorait le menu de la Planche, qui passe devant le Manuel — cliquer « ? » avec ce menu ouvert
+  // ignorait le menu de la Planche, qui passe devant le Manuel, cliquer « ? » avec ce menu ouvert
   // ne faisait alors rien de visible. Cf. manuelEstAffiche dans sidebar.js.
   if (manuelEstAffiche()) masquerManuelLateral(); else afficherManuelLateral();
   scheduleDrawCurrentPage();
@@ -3687,7 +3687,7 @@ canvas.addEventListener('contextmenu', (e) => {
   if (S.buildTool) return;
   const { x, y } = getCoords(e);
   const page = currentPage();
-  // Right-click on the canvas no longer ever hits an Element (perso/objet3d) — only Panels and
+  // Right-click on the canvas no longer ever hits an Element (perso/objet3d), only Panels and
   // Dialogue Bubbles (which are manipulated like Panels). A perso/objet3d Element no longer has
   // its own context menu since #81 (its depth replaces Bring Forward/Send Backward, and is set via
   // the scroll wheel or the modal); cf. the right-click on its row in the "Elements" list of the
@@ -3695,7 +3695,7 @@ canvas.addEventListener('contextmenu', (e) => {
   const hit = hitTestPanelOrBubble(page, x, y);
   if (!hit) {
     // Empty space: right-click = open the small choice menu (Panel / Dialogue Bubble), positioned
-    // at the clicked point — per user request, replacing the left double-click used previously
+    // at the clicked point, per user request, replacing the left double-click used previously
     // (cf. canvas.dblclick below, which now does nothing on empty space).
     hideContextMenu();
     S.pendingCreatePos = { x, y };
@@ -3707,7 +3707,7 @@ canvas.addEventListener('contextmenu', (e) => {
   }
   S.selectedId = hit.id; S.selectedRoomId = null;
   // La Case (ou le canevas de Scène) visée par ce clic droit, pour l'import de modèle/scène plus bas
-  // (cf. _cibleDuMenu) — sans cette ligne, S.ctxTarget n'était jamais écrit et l'import ne faisait
+  // (cf. _cibleDuMenu), sans cette ligne, S.ctxTarget n'était jamais écrit et l'import ne faisait
   // jamais rien.
   S.ctxTarget = hit;
   drawCurrentPage();
@@ -3725,7 +3725,7 @@ canvas.addEventListener('contextmenu', (e) => {
   // when Camera mode (and thus the X/Y/Z 3D gizmo, cf. drawPanelAxisGizmo) is already active on it.
   ctxToggleCamera.textContent = (hit.cameraMode ? '✅ ' : '🎥 ') + tr('Camera', 'Caméra');
   // The Camera option only makes sense if there's at least one Element to frame in the Panel (cf.
-  // elementsInPanel) — per user request ("I don't want Camera to appear if there isn't at least
+  // elementsInPanel), per user request ("I don't want Camera to appear if there isn't at least
   // one Element in the Panel").
   ctxToggleCamera.style.display = (hit.type === 'panel' && elementsInPanel(hit, page).length > 0) ? '' : 'none';
   // "Build a Building" + "Trace" + "Zone": only visible on a Scene canvas in top-down view.
@@ -3736,7 +3736,7 @@ canvas.addEventListener('contextmenu', (e) => {
   document.getElementById('ctxZoneTrigger').style.display   = _isTopDown ? '' : 'none';
   document.getElementById('ctxMesure').style.display        = _isTopDown ? '' : 'none';
   // A Scene's locked canvas (cf. isLockedScenePanel) has neither a Page behind it (so nothing to
-  // "Load a Scene" into, and no other Panel to Bring Forward/Send Backward relative to) — per user
+  // "Load a Scene" into, and no other Panel to Bring Forward/Send Backward relative to), per user
   // request, its context menu is limited to Add and Camera.
   const isSceneCanvas = isLockedScenePanel(hit);
   // Import : la MÊME entrée dans une Case et sur le canevas d'une Scène. Elles étaient deux, un
@@ -3897,7 +3897,7 @@ document.getElementById('ctxAddVelo').onclick = () => {
   hideContextMenu();
   if (panel) addObjectToPanel(panel, 'velo');
 };
-// "Furniture" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Furniture" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 ['Table', 'Chaise', 'Etagere', 'Armoire', 'Canape', 'Bureau', 'Lit'].forEach(label => {
   const objType = label.toLowerCase().replace('etagere', 'etagere');
   document.getElementById('ctxAdd' + label).onclick = () => {
@@ -3907,7 +3907,7 @@ document.getElementById('ctxAddVelo').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Wall Openings" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Wall Openings" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddFenetreOuverte', 'fenetre_ouverte'], ['ctxAddPorteOuverte', 'porte_ouverte'],
   ['ctxAddEscalier', 'escalier'], ['ctxAddBaieVitree', 'baie_vitree'],
@@ -3919,7 +3919,7 @@ document.getElementById('ctxAddVelo').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Walls" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Walls" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddMurSimple', 'mur'], ['ctxAddMurCoin', 'mur_coin'],
 ].forEach(([btnId, objType]) => {
@@ -3930,7 +3930,7 @@ document.getElementById('ctxAddVelo').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Plants" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Plants" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddBuisson', 'buisson'], ['ctxAddArbre', 'arbre'], ['ctxAddArbuste', 'arbuste'],
   ['ctxAddFleur', 'fleur'], ['ctxAddPotFleur', 'pot_fleur'],
@@ -3942,7 +3942,7 @@ document.getElementById('ctxAddVelo').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Buildings" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Buildings" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 document.getElementById('ctxAddRoom').onclick = () => {
   const page = currentPage();
   const panel = page.objects.find(o => o.id === S.selectedId && o.type === 'panel');
@@ -3959,7 +3959,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
     drawCurrentPage();
   }
 };
-// "Animals" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Animals" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddOiseau', 'oiseau'], ['ctxAddLezard', 'lezard'], ['ctxAddLoup', 'loup'], ['ctxAddGriffon', 'griffon'], ['ctxAddSinge', 'singe'],
 ].forEach(([btnId, objType]) => {
@@ -3970,7 +3970,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Garden" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Garden" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddPiscine', 'piscine'], ['ctxAddBarbecue', 'barbecue'],
 ].forEach(([btnId, objType]) => {
@@ -3981,7 +3981,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "City" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "City" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddLampadaire', 'lampadaire'], ['ctxAddPanneauSignalisation', 'panneau_signalisation'],
 ].forEach(([btnId, objType]) => {
@@ -3992,7 +3992,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Cemetery" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Cemetery" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddTombe', 'tombe'], ['ctxAddPierreTombale', 'pierre_tombale'], ['ctxAddCaveau', 'caveau'],
 ].forEach(([btnId, objType]) => {
@@ -4003,7 +4003,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
     if (panel) addObjectToPanel(panel, objType);
   };
 });
-// "Church" submenu — managed via addSubmenuL2Groups (see Vehicles block above).
+// "Church" submenu : managed via addSubmenuL2Groups (see Vehicles block above).
 [
   ['ctxAddBancEglise', 'banc_eglise'], ['ctxAddAutel', 'autel'],
 ].forEach(([btnId, objType]) => {
@@ -4022,7 +4022,7 @@ document.getElementById('ctxBuildMode').onclick = () => {
 // geste : plus de sous-menu, plus de minuterie de fermeture, plus deux chemins à tenir d'accord.
 
 // La Case visée est LUE AVANT de masquer le menu : hideContextMenu efface S.ctxTarget, et l'import
-// est asynchrone — sans cette capture, la cible aurait disparu au retour du sélecteur de fichiers.
+// est asynchrone, sans cette capture, la cible aurait disparu au retour du sélecteur de fichiers.
 function _cibleDuMenu(){
   const page = currentPage();
   const panel = S.ctxTarget && S.ctxTarget.type === 'panel' ? S.ctxTarget : null;
@@ -4039,7 +4039,7 @@ document.getElementById('ctxImportModel').onclick = () => {
 //
 // LE RENOMMAGE ÉTAIT REFUSÉ ICI, et la note disait pourquoi : « `modelFile` est un identifiant
 // persisté, et le renommer casserait les Éléments des AUTRES Projets, qu'on ne peut pas réparer
-// d'ici. » C'est vrai, et ça le reste — mais c'est mot pour mot ce que fait la SUPPRESSION, juste
+// d'ici. » C'est vrai, et ça le reste, mais c'est mot pour mot ce que fait la SUPPRESSION, juste
 // en dessous, qui était offerte. Le danger n'était pas la différence ; l'un avait été assumé et
 // l'autre non. Cf. l'en-tête de la section « Renommer un modèle » dans model-library.js.
 //
@@ -4089,7 +4089,7 @@ async function _renommerModele(ancien, nomVoulu){
   const r = await renameModel(ancien, nouveau);
   if (!r || !r.ok) {
     alertAction(r && r.collision
-      ? tr(`A model named "${nouveau}" already exists. Renaming was cancelled — nothing was overwritten.`,
+      ? tr(`A model named "${nouveau}" already exists. Renaming was cancelled, nothing was overwritten.`,
         `Un modèle nommé « ${nouveau} » existe déjà. Le renommage est annulé : rien n'a été écrasé.`)
       : tr(`Could not rename "${ancien}": ${(r && r.error) || 'unknown error'}`,
         `Impossible de renommer « ${ancien} » : ${(r && r.error) || 'erreur inconnue'}`));
@@ -4097,7 +4097,7 @@ async function _renommerModele(ancien, nomVoulu){
   }
 
   // Le Projet ouvert suit. `snapshot()` n'est PAS appelé : une annulation restaurerait l'ancien nom
-  // de fichier alors que le disque porte le nouveau — Ctrl+Z transformerait les Éléments en boîtes
+  // de fichier alors que le disque porte le nouveau. Ctrl+Z transformerait les Éléments en boîtes
   // de remplacement, pour une opération qui a réussi. La pile existante est réécrite pour la même
   // raison : elle cite l'ancien nom dans TOUS ses états.
   repointerModele3D({ tomes: S.tomes, scenes: S.scenes }, ancien, r.name);
@@ -4133,10 +4133,10 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   }
   // Le cache garde encore le modèle décodé : le vider force sa relecture, donc l'état
   // « introuvable », donc les boîtes de remplacement. Sans cela, un modèle supprimé continuerait de
-  // s'afficher jusqu'au prochain changement de Projet — un mensonge à l'écran.
+  // s'afficher jusqu'au prochain changement de Projet, un mensonge à l'écran.
   clearModelCache();
   // La correspondance du fichier n'a plus d'objet : la garder laisserait une entrée orpheline dans
-  // un fichier partagé par tous les Projets, et elle ressusciterait au réimport d'un homonyme —
+  // un fichier partagé par tous les Projets, et elle ressusciterait au réimport d'un homonyme,
   // avec les os de l'ANCIEN squelette.
   await oublierCorrespondance(fichier);
   renderAll();
@@ -4148,7 +4148,7 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
 // décision d'ouvrir (doitOuvrirCorrespondance) sont ailleurs, purs, et testés.
 const skeletonMapModal = document.getElementById('skeletonMapModal');
 const skeletonMapList  = document.getElementById('skeletonMapList');
-// { fichier, os, carte, resoudre } — l'état de l'écran ouvert. `carte` est un BROUILLON : rien n'est
+// { fichier, os, carte, resoudre }, l'état de l'écran ouvert. `carte` est un BROUILLON : rien n'est
 // écrit tant que l'utilisateur n'a pas enregistré, comme partout ailleurs dans cette application.
 // `resoudre` rend l'écran ATTENDABLE : ouvert pendant un import, il doit pouvoir répondre « oui » ou
 // « non » à l'appelant, qui ne créera l'Élément qu'ensuite (cf. _confirmerImport, model-import.js).
@@ -4170,7 +4170,7 @@ function osDuModele(nomFichier){
 
 /**
  * Ouvre l'écran pour un fichier. `auto` seulement : ignore la correspondance enregistrée et
- * repropose la reconnaissance — utilisé par « Tout remettre en automatique ».
+ * repropose la reconnaissance, utilisé par « Tout remettre en automatique ».
  */
 async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pendantImport = false } = {}){
   const os = osDuModele(nomFichier);
@@ -4223,8 +4223,8 @@ function renderSkeletonMapModal(){
   //
   // « manuel » disait « votre choix, enregistré ». Signalé à l'usage, et c'était faux : changer une
   // liste déroulante passe la ligne en « manuel » IMMÉDIATEMENT, alors que rien n'est écrit avant
-  // Enregistrer. Le mot essayait de porter une vraie distinction — seules ces lignes-là sont
-  // conservées dans le fichier — mais une légende décrit un état, pas un devenir. La distinction
+  // Enregistrer. Le mot essayait de porter une vraie distinction, seules ces lignes-là sont
+  // conservées dans le fichier, mais une légende décrit un état, pas un devenir. La distinction
   // est donc dite à part, sous la légende, où elle est vraie tout le temps.
   [['nom', tr('the bone name confirms it', 'le nom de l\'os le confirme')],
     ['structure', tr('deduced from the skeleton\'s shape', 'déduit de la forme du squelette')],
@@ -4277,7 +4277,7 @@ function ligneCorrespondance(slot, valeur, os){
   });
   if (!valeur) aucun.selected = true;
   sel.onchange = () => {
-    // Tout changement devient une décision HUMAINE, donc enregistrable — y compris remettre un
+    // Tout changement devient une décision HUMAINE, donc enregistrable, y compris remettre un
     // emplacement à « aucun », qui est une information et pas une absence de choix.
     const choisi = os.find(o => String(o.id) === sel.value);
     _skelEcran.carte[slot] = choisi
@@ -4285,7 +4285,7 @@ function ligneCorrespondance(slot, valeur, os){
       : null;
     // Toucher à un emplacement DÉVALIDE l'écran : la correspondance affichée n'est plus celle qui
     // avait été confirmée. Garder l'apparence « validée » pendant qu'on la modifie laisserait
-    // croire que le changement est déjà acquis — alors que rien n'est écrit avant Enregistrer.
+    // croire que le changement est déjà acquis, alors que rien n'est écrit avant Enregistrer.
     _skelEcran.valide = false;
     renderSkeletonMapModal();
   };
@@ -4299,23 +4299,23 @@ function ligneCorrespondance(slot, valeur, os){
 }
 
 document.getElementById('skeletonMapCancel').onclick = () => fermerSkeletonMap(false);
-// Le clic sur le voile vaut Annuler — même sortie, donc même conséquence pendant un import.
+// Le clic sur le voile vaut Annuler : même sortie, donc même conséquence pendant un import.
 skeletonMapModal.addEventListener('click', (e) => {
   if (e.target === skeletonMapModal) fermerSkeletonMap(false);
 });
 document.getElementById('skeletonMapReset').onclick = async () => {
   // Efface les décisions ET la validation, puis repropose la reconnaissance. Sans ce bouton, une
-  // correction faite par erreur serait définitive — et comme le fichier est partagé par tous les
+  // correction faite par erreur serait définitive, et comme le fichier est partagé par tous les
   // Projets, elle suivrait l'utilisateur partout. `oublierCorrespondance` retire aussi la
   // validation : c'est ce qui permet à l'écran de se reproposer tout seul au prochain import.
   //
   // On REMET À JOUR l'écran ouvert, on ne le rouvre pas. Rouvrir créerait une seconde promesse et
   // abandonnerait la première : pendant un import, l'appelant attendrait alors indéfiniment une
-  // réponse que plus personne ne donnerait — un blocage silencieux, sans message ni erreur.
+  // réponse que plus personne ne donnerait, un blocage silencieux, sans message ni erreur.
   if (!_skelEcran) return;
   await oublierCorrespondance(_skelEcran.fichier);
   _skelEcran.carte = fusionner(inferSkeletonMap(_skelEcran.os), null, _skelEcran.os);
-  // Repasse en NON validé : c'est tout l'objet du bouton — retrouver l'écran tel qu'il se présente
+  // Repasse en NON validé : c'est tout l'objet du bouton, retrouver l'écran tel qu'il se présente
   // la première fois, lignes signalées comprises.
   _skelEcran.valide = false;
   renderSkeletonMapModal();
@@ -4335,11 +4335,11 @@ document.getElementById('skeletonMapSave').onclick = async () => {
 };
 
 /**
- * Pendant un import : ouvrir l'écran si — et seulement si — il a quelque chose à montrer, puis
+ * Pendant un import : ouvrir l'écran si, et seulement si, il a quelque chose à montrer, puis
  * ATTENDRE la réponse. Rend `false` si l'utilisateur a annulé, ce qui annule tout l'import.
  *
  * La décision d'ouvrir est dans skeleton-store.js, pure et testée ; ici on la suit. Quand l'écran
- * n'a pas lieu d'être — pas de squelette, ou correspondance déjà validée — on rend `true` sans rien
+ * n'a pas lieu d'être, pas de squelette, ou correspondance déjà validée, on rend `true` sans rien
  * afficher : l'import doit se poursuivre exactement comme avant.
  */
 async function proposerCorrespondance(nomFichier){
@@ -4361,7 +4361,7 @@ async function proposerCorrespondance(nomFichier){
  *
  * LES CURSEURS SONT RECONSTRUITS AU RETOUR, et c'est le point délicat. Corriger la correspondance
  * change QUELS emplacements ont un os : un « Coude gauche » peut apparaître, un autre disparaître.
- * Laisser les anciens curseurs en place afficherait des lignes qui ne pilotent plus rien — le
+ * Laisser les anciens curseurs en place afficherait des lignes qui ne pilotent plus rien, le
  * mensonge que toute cette étape s'applique à éviter.
  *
  * LE RIG EST JETÉ, LUI AUSSI. `skeletonBones` a été récolté à la construction, avec les os d'AVANT
@@ -4493,7 +4493,7 @@ ctxTracerMurTrigger.addEventListener('mouseenter', openMursTracéSubmenu);
 ctxTracerMurTrigger.addEventListener('mouseleave', scheduleCloseMursTracéSubmenu);
 mursTracéSubmenu.addEventListener('mouseenter', () => {
   clearTimeout(S.mursTracéSubmenuCloseTimer);
-  clearTimeout(S.tracerSubmenuCloseTimer); // same — prevents the parent from closing this sub-submenu
+  clearTimeout(S.tracerSubmenuCloseTimer); // same, prevents the parent from closing this sub-submenu
 });
 mursTracéSubmenu.addEventListener('mouseleave', scheduleCloseMursTracéSubmenu);
 
@@ -4637,7 +4637,7 @@ document.getElementById('ctxDuplicatePage').onclick = () => {
   hideContextMenu();
 };
 // "Export this page" submenu (PNG/PDF): same hover behavior as the other submenus (Vehicles,
-// Furniture, etc.) — opens to the right of the trigger, with a small delay before closing to
+// Furniture, etc.), opens to the right of the trigger, with a small delay before closing to
 // leave time to cross diagonally to the submenu.
 const ctxExportPageTrigger = document.getElementById('ctxExportPageTrigger');
 // [STATE→S] let S.exportPageSubmenuCloseTimer = null;
@@ -4704,7 +4704,7 @@ const personaSizeValue = document.getElementById('personaSizeValue');
 // FIX (pre-existing bug, unrelated to the refactor): these 39 DOM references for the 3D Object modal
 // (vehicles, furniture, walls, doors, windows, animals…) were used throughout the modal's code
 // (openObjectModal, refreshObjectPreview, objectModalSave.onclick, etc.) without ever having been
-// declared here — an immediate ReferenceError on every opening of the Object modal. The HTML
+// declared here, an immediate ReferenceError on every opening of the Object modal. The HTML
 // elements did exist in index.html, only the JS declaration was missing.
 const objectModal = document.getElementById('objectModal');
 const objectModalTitle = document.getElementById('objectModalTitle');
@@ -4749,7 +4749,7 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 // (.full-btn) if there's actually something to save: either the Element was just created
 // (S.modalIsNew, cf. openPersonaModal/openObjectModal called with isNew=true right after
 // addPersonaToPanel/addObjectToPanel), or a modal field has been changed since it was opened
-// (S.modalDirty, updated via input/change event delegation below — simply reading the initial
+// (S.modalDirty, updated via input/change event delegation below, simply reading the initial
 // values via `.value =` doesn't trigger these events, so it doesn't arm the flag on opening).
 // [STATE→S] let S.modalDirty = false;
 // [STATE→S] let S.modalIsNew = false;
@@ -4780,9 +4780,9 @@ export function buildPersonaEmotionOptions(){
   if (choisi) personaEmotionSelect.value = choisi;
 }
 buildPersonaEmotionOptions();
-// Fix 57 — le <select> Position vient de la BIBLIOTHÈQUE, plus de POSITIONS. Sans quoi renommer
+// Fix 57 : le <select> Position vient de la BIBLIOTHÈQUE, plus de POSITIONS. Sans quoi renommer
 // « Assis » dans l'éditeur laisserait l'ancien nom ici, et les poses personnalisées resteraient
-// inaccessibles depuis la modale — deux listes de poses qui divergent.
+// inaccessibles depuis la modale, deux listes de poses qui divergent.
 // Reconstruit à chaque ouverture de la modale : la bibliothèque change au fil des enregistrements.
 export function buildPersonaPositionOptions(){
   const sel = personaPositionSelect;
@@ -4850,7 +4850,7 @@ personaSizeInput.addEventListener('input', () => {
   refreshPersonaPreview();
 });
 
-// Le pendant du curseur — mêmes règles que dans la fiche d'un Objet : chacun ne met à jour que
+// Le pendant du curseur : mêmes règles que dans la fiche d'un Objet : chacun ne met à jour que
 // l'autre, et c'est la hauteur qu'on enregistre.
 if (personaHeightInput) {
   personaHeightInput.addEventListener('input', () => {
@@ -4870,10 +4870,10 @@ descModalSave.onclick = () => {
     S.modalTarget.genre = personaGenreSelect.value;
     S.modalTarget.emotion = personaEmotionSelect.value;
     S.modalTarget.position = personaPositionSelect.value;
-    // Fix 60 — `positionLabel` : DERNIER NOM CONNU de la pose, écrit ici et nulle part ailleurs.
+    // Fix 60 : `positionLabel` : DERNIER NOM CONNU de la pose, écrit ici et nulle part ailleurs.
     //
     // resolvePoseLabel3D ne le lit QUE si la pose est introuvable. Une valeur périmée n'est donc
-    // jamais affichée tant que le nom faisant autorité existe — et quand il a disparu, un nom
+    // jamais affichée tant que le nom faisant autorité existe, et quand il a disparu, un nom
     // périmé vaut mieux qu'un id opaque (« pose1 (inconnue) »). Décision reportée depuis la note de
     // conception, tranchée en phase 4.
     //
@@ -4921,7 +4921,7 @@ descModalSave.onclick = () => {
   S.modalIsNew = false;
   closeDescModal();
 };
-// Fix 35 — an Element added through the Add menu opens its modal straight away (see
+// Fix 35 : an Element added through the Add menu opens its modal straight away (see
 // addPersonaToPanel/addObjectToPanel, both calling open*Modal with isNew=true). Cancelling that
 // FIRST modal means "I don't want this Element after all", so it must be removed rather than left
 // behind: the user had no chance to accept it, and dismissing the dialog they never asked for
@@ -4943,7 +4943,7 @@ export function discardJustAddedElement(obj, pageData){
   return true;
 }
 
-// Fix 35 — dismissing a modal: Cancel, Escape and a click on the backdrop are the same intent and
+// Fix 35 : dismissing a modal: Cancel, Escape and a click on the backdrop are the same intent and
 // must behave identically. Only the FIRST opening of a just-added Element discards it; reopening
 // the same Element later and cancelling leaves it alone (S.modalIsNew is false then).
 // `pageData` is injectable so the decision logic can be tested without a DOM.
@@ -4955,7 +4955,7 @@ export function dismissModal(closeFn, pageData){
   if (wasNew && target && discardJustAddedElement(target, page)) { drawCurrentPage(); return true; }
   return false;
 }
-// Fix 49 — ouverture de l'éditeur depuis la modale. La modale est masquée le temps de l'édition
+// Fix 49 : ouverture de l'éditeur depuis la modale. La modale est masquée le temps de l'édition
 // (elle sera rouverte en phase 5) ; S.modalTarget est conservé, c'est lui qui identifie le
 // Personnage à retrouver.
 const personaEditorOpenBtn = document.getElementById('personaEditorOpenBtn');
@@ -5035,7 +5035,7 @@ objectPreview3D.addEventListener('mousedown', (e) => {
     e.preventDefault();
     return;
   }
-  // Recliquer le point déjà choisi le désélectionne — même bascule que pour les Personnages.
+  // Recliquer le point déjà choisi le désélectionne, même bascule que pour les Personnages.
   if (S.selectedSkeletonHandle && S.selectedSkeletonHandle.id === def.id) {
     S.selectedSkeletonHandle = null;
     closeAllSkeletonJointSliders();
@@ -5114,14 +5114,14 @@ objectWindowAngleInput.addEventListener('input', refreshObjectPreview);
 // percentage must follow the drag live.
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * LE CURSEUR ET LA HAUTEUR SE SUIVENT — ET C'EST LA HAUTEUR QU'ON ENREGISTRE
+ * LE CURSEUR ET LA HAUTEUR SE SUIVENT : ET C'EST LA HAUTEUR QU'ON ENREGISTRE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * Deux champs pour une seule donnée, donc deux occasions de diverger. Ce qui les empêche :
  *
  *   • CHACUN NE MET À JOUR QUE L'AUTRE, jamais lui-même. Se réécrire ferait sauter le curseur au
  *     cran voisin pendant qu'on tape dans la hauteur, et déplacerait le curseur sous la souris ;
- *   • la conversion est celle de utils.js, appelée des deux côtés — pas deux formules symétriques
+ *   • la conversion est celle de utils.js, appelée des deux côtés, pas deux formules symétriques
  *     écrites à la main, qui finiraient par ne plus l'être ;
  *   • l'ENREGISTREMENT lit la hauteur (cf. la sauvegarde de la modale). Le pas de 5 % du curseur ne
  *     peut donc pas altérer une taille que personne n'a voulu changer.
@@ -5156,15 +5156,15 @@ if (objectHeightInput) {
   });
 }
 // (#85) Fills the "Linked wall" selector with all Walls (simple or corner) present in the same
-// Panel as the edited Element, and preselects the one it's currently magnetized to — or the first
+// Panel as the edited Element, and preselects the one it's currently magnetized to, or the first
 // available Wall if the Element wasn't linked to any yet (case of a Wall Opening created before a
 // Wall existed in the Panel). Only shows the field for Wall Opening types (cf.
 // WALL_OPENING_MAGNET_TYPES), and only if there's at least one candidate Wall.
 // (#85) Syncs S.modalTargetHostWall and the "Corner wall side" field to the Wall currently
-// selected in objectMagnetWallSelect (no longer only to the Element's former host Wall) — called
+// selected in objectMagnetWallSelect (no longer only to the Element's former host Wall), called
 // when the modal opens as well as on every selection change.
 // (#85) Choosing another linked Wall must immediately reflect, in the 3D preview, the rotation
-// corresponding to this new Wall (and its Face if applicable) — otherwise the preview would keep
+// corresponding to this new Wall (and its Face if applicable), otherwise the preview would keep
 // showing the old Wall until saving.
 objectMagnetWallSelect.addEventListener('change', () => {
   updateWallFaceFieldForSelectedWall();
@@ -5177,7 +5177,7 @@ objectMagnetWallSelect.addEventListener('change', () => {
   refreshObjectPreview();
 });
 // Changing the side in the modal must immediately reflect, in the 3D preview, the Second Side's
-// differential rotation (cf. wallOpeningRotationForWall) — otherwise the preview would keep
+// differential rotation (cf. wallOpeningRotationForWall), otherwise the preview would keep
 // showing the previously selected side until saving, which doesn't allow checking before confirming.
 objectWallFaceSelect.addEventListener('change', () => {
   if (!S.modalTargetHostWall || S.modalTargetHostWall.objType !== 'mur_coin') return;
@@ -5202,7 +5202,7 @@ objectModalSave.onclick = () => {
     // Un modèle importé n'a pas d'entrée dans objectTypeSelect (cf. modals.js, sélecteur masqué) :
     // lui assigner objType = objectTypeSelect.value écraserait 'modele' par la valeur par défaut du
     // <select> (« voiture »), perdant le lien avec modelFile et faisant tourner l'Élément en voiture
-    // dès le premier Enregistrer — y compris juste pour changer sa taille ou son nom.
+    // dès le premier Enregistrer, y compris juste pour changer sa taille ou son nom.
     if (!isImportedModel(S.modalTarget)) S.modalTarget.objType = objectTypeSelect.value;
     // Ground Magnetism: only saves the checkbox for an eligible Element (cf. groundMagnetEligible
     // — excludes Walls/Wall Openings, for which the field is hidden and thus meaningless).
@@ -5247,28 +5247,28 @@ objectModalSave.onclick = () => {
     // à zéro efface réellement le champ au lieu de laisser l'Élément marqué comme posé à jamais.
     if (isImportedModel(S.modalTarget)) {
       // LA FIGURE, avant la pose : c'est elle qui donne son sens aux angles d'os écrits juste après.
-      // `realHeightFloor` est volontairement laissé tel quel — la taille réelle est une propriété de
+      // `realHeightFloor` est volontairement laissé tel quel, la taille réelle est une propriété de
       // l'Élément dans la Scène, choisie par l'utilisateur, pas une conséquence du fichier.
       if (S.modalDraftModelFile) S.modalTarget.modelFile = S.modalDraftModelFile;
       // L'INTENTION. C'est elle qui permettra de recalculer les angles d'os si la figure change plus
-      // tard — sans elle, changer de Modèle ne pourrait que remettre à zéro. Le sens reste unique :
+      // tard, sans elle, changer de Modèle ne pourrait que remettre à zéro. Le sens reste unique :
       // rien ne réécrit `joints3d` depuis les curseurs d'os (cf. buildFigureFieldUI).
       S.modalTarget.joints3d = cloneJoints(S.modalDraftJoints);
       const pose = normaliserPose(S.modalDraftSkeletonPose);
       S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
       // Le choix d'AFFICHAGE des maillages que le fichier place hors du corps (cf.
-      // src/stray-meshes-3d.js). Champ simplement AJOUTÉ à un modèle importé — aucun champ existant
+      // src/stray-meshes-3d.js). Champ simplement AJOUTÉ à un modèle importé, aucun champ existant
       // n'est renommé (cf. docs/persisted-data.md). Écrit seulement quand il vaut `true` : l'absence
       // du champ signifie « masqués », ce qui est le comportement par défaut, et évite d'alourdir
       // tous les Projets d'un booléen faux.
       ecrireChoixEgares(S.modalTarget, S.modalDraftAfficherEgares);
       // `position` sur un modèle importé : LA MÉMOIRE D'UN CHOIX, pas la source de vérité.
       //
-      // Ce qui est rendu à l'écran, ce sont les os — `skeletonPose3d`, et lui seul. Ce champ ne sert
+      // Ce qui est rendu à l'écran, ce sont les os, `skeletonPose3d`, et lui seul. Ce champ ne sert
       // qu'à rouvrir la fiche sur la pose qu'on avait prise, et à en afficher le nom. Il porte le
       // même nom que chez le Personnage à dessein : c'est le même rôle, et deux noms pour un même
       // rôle finiraient par recevoir deux traitements. Le champ est simplement AJOUTÉ à un modèle
-      // importé — aucun champ existant n'est renommé (cf. docs/persisted-data.md).
+      // importé, aucun champ existant n'est renommé (cf. docs/persisted-data.md).
       //
       // Il peut mentir après un réglage manuel des curseurs, exactement comme chez le Personnage :
       // resolvePoseLabel3D signale alors « (modifié) ». Une étiquette imprécise vaut mieux qu'une
@@ -5281,7 +5281,7 @@ objectModalSave.onclick = () => {
       }
     }
     // Walls have dedicated length/height fields (rather than the generic percentage, which resizes
-    // them together while keeping the ratio) — cf. resizeWallTo.
+    // them together while keeping the ratio), cf. resizeWallTo.
     // The depth of a Wall Opening magnetized to a Wall is governed by it (cf. field disabled in
     // the modal): we don't overwrite it here even if the field contains a value.
     if (!_isRoomWall && !(S.modalTarget.magnetWallId && S.modalTargetHostWall)) {
@@ -5310,7 +5310,7 @@ objectModalSave.onclick = () => {
       resizeWallTo(S.modalTarget, objectWallLengthInput.value, objectWallHeightInput.value, currentPage());
     } else {
       // LA HAUTEUR FAIT FOI quand son champ est là. Appliquer la valeur du curseur redimensionnerait
-      // l'Élément au cran voisin — un Élément réellement à 103 % ressortirait à 105 % pour avoir
+      // l'Élément au cran voisin, un Élément réellement à 103 % ressortirait à 105 % pour avoir
       // seulement été ouvert puis enregistré. Repli sur le pourcentage si l'Élément n'a pas de base
       // exploitable, seul cas où le champ Hauteur est absent.
       const _hSaisie = (objectHeightField && objectHeightField.style.display !== 'none')
@@ -5322,12 +5322,12 @@ objectModalSave.onclick = () => {
       }
     }
     // (#85) If the Element is a Wall Opening, (re)apply the magnetism to the Wall currently
-    // selected in objectMagnetWallSelect — whether it's still the same Wall (just a Face change for
+    // selected in objectMagnetWallSelect, whether it's still the same Wall (just a Face change for
     // a Corner Wall) or an entirely different Wall in the same Panel. In both cases, we recenter
     // the Element in the middle of the chosen Wall/side's box (cf. positionWallOpeningOnWall) and
     // apply the rotation specific to that Wall/side (cf. wallOpeningRotationForWall): the Second
     // Side has its face rotated 90° relative to the First in the Corner Wall rig, without which the
-    // Element would visually keep the First Side's orientation even when placed on the Second —
+    // Element would visually keep the First Side's orientation even when placed on the Second,
     // or, in case of a Wall change, the old Wall's orientation.
     if (WALL_OPENING_MAGNET_TYPES.includes(S.modalTarget.objType) && objectMagnetWallField.style.display !== 'none') {
       const newWall = currentPage().objects.find(o => o.id === objectMagnetWallSelect.value) || null;
@@ -5352,7 +5352,7 @@ objectModalSave.onclick = () => {
     }
     // If a Wall is rotated and/or resized, all Wall Opening Elements magnetized to it must rotate
     // the same way to stay parallel to it (otherwise rotating the Wall alone would leave them
-    // misaligned relative to its new orientation — cf. wallOpeningRotationForWall), AND be
+    // misaligned relative to its new orientation, cf. wallOpeningRotationForWall), AND be
     // repositioned based on the relative fraction captured BEFORE any mutation (cf.
     // wallChildFracSnapshot above): we apply this fraction to the Wall/side rectangle as it is now,
     // once both rotation AND size are up to date, so they stay properly attached to the Wall
@@ -5379,7 +5379,7 @@ objectModal.addEventListener('input', recomputeModalDirty);
 objectModal.addEventListener('change', recomputeModalDirty);
 window.addEventListener('keydown', (e) => {
   if (!objectModal.classList.contains('hidden')) {
-    // Échap : cf. la note sur descModal plus haut — un seul arbitre, dans io.js.
+    // Échap : cf. la note sur descModal plus haut, un seul arbitre, dans io.js.
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !objectModalSave.disabled) objectModalSave.onclick();
   }
 });
@@ -5503,7 +5503,7 @@ function personasInPanel(panel, page){
 }
 
 // For SELECTION purposes (rebuilding a selected Element's right-hand menu, or reselecting "its
-// Panel" after a click/deletion) — as opposed to RENDER/grouping purposes (cf. findOwningPanel
+// Panel" after a click/deletion), as opposed to RENDER/grouping purposes (cf. findOwningPanel
 // below, whose best-geometric-overlap heuristic is deliberate for rendering): here we want the
 // Element's ACTUAL owning Panel, not the one it currently overlaps most. An Element moved/resized
 // outside its Panel (#37) can overlap ANOTHER Panel more than its own; using findOwningPanel in
@@ -5518,7 +5518,7 @@ function personasInPanel(panel, page){
 // its original state, simply by deleting these properties to fall back on the default values
 // already used everywhere else in this file (cf. all the `|| 0`/`|| 1`/`!= null ? ... : 1` that
 // read these fields). Called when a Panel's last Element disappears: the Camera then no longer
-// makes sense (cf. ctxToggleCamera, hidden in this case) — per user request ("If all Elements of
+// makes sense (cf. ctxToggleCamera, hidden in this case), per user request ("If all Elements of
 // a Panel are deleted, the Panel's Camera returns to its original state").
 // Exits a panel's Camera mode and clears the pinned orbit target (camOrbitTargetId) so that
 // translations (arrows) work freely again the next time Camera mode is entered.
@@ -5587,14 +5587,14 @@ function resetPanelCamera(panel){
 // click. So we track the timestamp/id of the last click ourselves to recognize a double-click.
 // [STATE→S] let S.sideElementLastClickId = null, S.sideElementLastClickTime = 0;
 // Tracks the last click on a Room header (cf. renderSidePersonas) to detect a double-click and
-// open the Room modal — same logic as S.sideElementLastClickId for Elements.
+// open the Room modal, same logic as S.sideElementLastClickId for Elements.
 // [STATE→S] let S.sideHeaderLastClickId  = null, S.sideHeaderLastClickTime  = 0;
 // [STATE→S] let S.sideHeaderLastBuildingKey   = null, S.sideHeaderLastBuildingClickTime = 0; // Building double-click
 // Collapse state of Rooms and the Building in the side panel.
 // Ids are pieceId (for Room groups) or panelId+'_bat' (for the Building wrapper).
 // Value = true → collapsed.
 
-// Builds ONE Element's row (perso/object/Wall) of the "Elements" list — extracted from
+// Builds ONE Element's row (perso/object/Wall) of the "Elements" list, extracted from
 // renderSidePersonas so it can be reused both for a "free" Element and for a Wall grouped under
 // its Room's header (cf. renderSidePersonas).
 // Groups a panel's Rooms into connected components via Union-Find:
@@ -5603,7 +5603,7 @@ function resetPanelCamera(panel){
 // Returns an array of components, each component being an array of roomIds.
 
 
-// Side row for a Trace or a Terrain Zone — same UX as renderSideElementRow:
+// Side row for a Trace or a Terrain Zone : same UX as renderSideElementRow:
 // single click = selection, double-click = modal.
 
 // ── Trace and Terrain Modals ─────────────────────────────────────────────────
@@ -5676,11 +5676,11 @@ document.getElementById('terrainModal').addEventListener('click', function(e){
 });
 
 // Panel currently being dragged in the "Page" menu's list (cf. sidePagePanels), same principle as
-// S.draggedPage for Pages in the left-hand menu — per user request.
+// S.draggedPage for Pages in the left-hand menu, per user request.
 // [STATE→S] let S.draggedPageThumbnail = null;
 // List of the displayed Page's Panels, sorted by number (cf. caseNumber), in the right-hand panel's
 // "Page" menu: each row can be dragged and dropped to reorder, which changes the affected Panels'
-// number via setPanelNumber (same algorithm as the Panel menu's +/- stepper) — per user request
+// number via setPanelNumber (same algorithm as the Panel menu's +/- stepper), per user request
 // ("It will be possible to reorder the position of Panels in this list to change their number, like
 // for Pages in the Pages section of the left-hand menu").
 
@@ -5691,17 +5691,17 @@ document.getElementById('terrainModal').addEventListener('click', function(e){
 
 // ---------- CAMERA MENU (right-hand panel, a Panel's Camera mode) ----------
 // Updates the 4 sliders' displayed value from the panel's ACTUAL state (not the target), to
-// reflect what's actually visible on screen — including during smoothing (cf. the call from
+// reflect what's actually visible on screen, including during smoothing (cf. the call from
 // startCamSmoothing) where the actual value progressively converges toward the target.
 // Draws the panel's 3D gizmo (X/Y/Z axes) in the Camera menu's dedicated small canvas (cf.
 // sideCameraGizmoCanvas), centered on this canvas rather than anchored to a Panel's corner on the
-// main canvas — per user request ("the 3D gizmo should no longer display at the bottom left of a
+// main canvas, per user request ("the 3D gizmo should no longer display at the bottom left of a
 // Panel but in the Camera menu"). Reuses drawAxisGizmoAt/panelCamBasis3D, which only depend on
 // panel.camRotX/camRotY, so the rendering stays consistent with the Panel's real Three.js camera.
 // Camera menu's "Top-down view" button: only relevant for a Scene's locked canvas (cf.
 // isLockedScenePanel), not for normal Panels (per user request, "This button should only be
 // visible [...] in a Scene, not in a Panel"). Only affects its visibility/visual state (pressed or
-// not, cf. panel._topDownActive) — the toggle logic is in the click handler.
+// not, cf. panel._topDownActive), the toggle logic is in the click handler.
 sceneTopDownBtn.addEventListener('click', () => {
   const panel = S.sideCameraTarget;
   if (!panel || !isLockedScenePanel(panel)) return;
@@ -5736,7 +5736,7 @@ sceneTopDownBtn.addEventListener('click', () => {
   refreshSceneTopDownBtn(panel);
 });
 // "Rotation center" selector: remembers the chosen Element or Room as the permanent orbit target
-// (panel.camOrbitTargetId) — takes priority over the dynamic orbit around the selected element (cf.
+// (panel.camOrbitTargetId), takes priority over the dynamic orbit around the selected element (cf.
 // framePanelCamera3D). Value "" = none (orbit around camPanX/Y).
 camOrbitTargetSelect.addEventListener('change', () => {
   const panel = S.sideCameraTarget;
@@ -5769,7 +5769,7 @@ camRotYInput.addEventListener('input', () => {
   const deg = parseInt(camRotYInput.value, 10);
   camRotYValue.textContent = deg;
   S.sideCameraTarget.camRotYTarget = deg * Math.PI / 180;
-  // Fix 13c (slider): same principle as the reverse snap on panelCamRotate mousedown —
+  // Fix 13c (slider): same principle as the reverse snap on panelCamRotate mousedown,
   // freeze the orbit center at its CURRENT value to prevent post-zoom smoothing
   // (camWx → camWxTarget, slow at 0.10/frame) from continuing to drift during rotation.
   const _st = S.sideCameraTarget;
@@ -5796,7 +5796,7 @@ camRotXInput.addEventListener('input', () => {
 });
 camRotXInput.addEventListener('change', () => { S.camRotSliderSnapshotTaken = false; });
 // Camera menu's close button (top-right of the header): exits the Panel's Camera mode and returns
-// to the normal Panel menu — per user request ("It should be possible to exit Camera mode by
+// to the normal Panel menu, per user request ("It should be possible to exit Camera mode by
 // clicking a new close button... Leaving the Camera menu returns to the selected Panel's menu").
 // drawCurrentPage() already calls updateSidePanel(), which then automatically switches to the
 // Panel menu since S.sideCameraTarget.cameraMode is now false.
@@ -5808,19 +5808,19 @@ sideCameraCloseBtn.addEventListener('click', () => {
 });
 // Panel/Bubble menu close buttons (top-right of their header, cf. panelMenuHeader/bubbleMenuHeader):
 // deselect the current object, which falls back the right-hand panel to the User Manual (cf. the
-// "else" branch of updateSidePanel) — per user request ("Each right-hand menu must now have a
+// "else" branch of updateSidePanel), per user request ("Each right-hand menu must now have a
 // title and a close button").
 panelMenuCloseBtn.addEventListener('click', closeRightPanelMenu);
 bubbleMenuCloseBtn.addEventListener('click', closeRightPanelMenu);
 // "Page" menu's close button: unlike closeRightPanelMenu (which deliberately doesn't touch
 // S.pageSelected, so it stays "sticky" until this menu is explicitly closed), this button
-// deselects the Page itself, which falls the right-hand panel back to the User Manual — per user
+// deselects the Page itself, which falls the right-hand panel back to the User Manual, per user
 // request.
 pageMenuCloseBtn.addEventListener('click', () => {
   S.pageSelected = false;
   drawCurrentPage();
 });
-// "Background" section of the Page menu (cf. pd.bgColor) — per user request. Writes to
+// "Background" section of the Page menu (cf. pd.bgColor), per user request. Writes to
 // currentPageData() (the actually persisted record), not to currentPage()'s synthetic object.
 // [STATE→S] let S.sidePageBgColorSnapshotTaken = false;
 sidePageBgColorInput.addEventListener('input', () => {
@@ -5840,7 +5840,7 @@ helpMenuCloseBtn.addEventListener('click', () => {
 });
 // Click-and-drag on the Camera menu's 3D gizmo drives the camera's orientation exactly like a
 // click-and-drag on the Panel itself in Camera mode (cf. S.dragMode 'panelCamRotate' on the main
-// canvas) — per user request ("move the 3D gizmo... the same way as rotations in a Panel").
+// canvas), per user request ("move the 3D gizmo... the same way as rotations in a Panel").
 // Dedicated drag state (S.camGizmoDrag), independent of the main canvas's global S.dragMode since
 // it's a completely different element (the side menu's small canvas).
 // [STATE→S] let S.camGizmoDrag = null;
@@ -5905,7 +5905,7 @@ sideBubbleTailToggle.addEventListener('change', () => {
   drawCurrentPage();
 });
 
-// "Border" section of the Panel menu (cf. o.borderVisible/o.borderColor) — per user request.
+// "Border" section of the Panel menu (cf. o.borderVisible/o.borderColor), per user request.
 sideBorderToggle.addEventListener('change', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'panel') return;
   snapshot();
@@ -6051,7 +6051,7 @@ sideBubbleFontSizeInput.addEventListener('change', () => { S.sideBubbleFontSizeS
 // Three possible paths, in this order of preference:
 // 1) window.storyboarderAPI (cf. preload.js + main.js): available when the app actually runs in
 //    Electron (npm start / the installed executable). Goes through native dialogs + fs on the main
-//    process side — the ONLY path that allows a silent automatic save, since the web File System
+//    process side, the ONLY path that allows a silent automatic save, since the web File System
 //    Access API below is NOT available for pages loaded via file:// (neither in Electron, which
 //    also loads via file://, nor in a regular browser like Brave).
 // 2) Web File System Access API (showSaveFilePicker/showOpenFilePicker): kept as a safety net for
@@ -6079,15 +6079,15 @@ const themeSelect = document.getElementById('themeSelect');
 const languageSelect = document.getElementById('languageSelect');
 const exportShowPanelBadgesCheckbox = document.getElementById('exportShowPanelBadgesCheckbox');
 const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowPanelDescriptionsCheckbox');
-// Current UI theme ("dark"/"light", cf. body.theme-light in the <style>) — per user request.
+// Current UI theme ("dark"/"light", cf. body.theme-light in the <style>), per user request.
 // Persisted via settings:set('theme', ...) like the rest of the settings.
 // [STATE→S] let S.appTheme = 'dark';
-// "Export" section of the Settings modal (cf. exportPage) — per user request: allows disabling the
+// "Export" section of the Settings modal (cf. exportPage), per user request: allows disabling the
 // numbered badge on Panels and/or the name+description section below the exported Page, both shown
 // by default. Persisted like the rest of the settings.
 // [STATE→S] let S.exportShowPanelBadges = true;
 // [STATE→S] let S.exportShowPanelDescriptions = true;
-// UI language ("en"/"fr") — per user request: English by default, French available (the app's
+// UI language ("en"/"fr"), per user request: English by default, French available (the app's
 // original language, hence the "fr" strings below reproduce the original French text). Persisted
 // like the rest of the settings. cf. applyI18n()/I18N_ENTRIES below.
 // [STATE→S] let S.appLang = 'en';
@@ -6099,7 +6099,7 @@ function applyTheme(theme){
   document.body.classList.toggle('theme-light', theme === 'light');
 }
 // Displays the actual Projects folder (computed on the main process side, cf. getProjectsDir in
-// main.js, since it depends on the executable's path) — called each time the modal is opened and
+// main.js, since it depends on the executable's path), called each time the modal is opened and
 // after a change (Choose.../Reset).
 async function refreshProjectsDirDisplay(){
   if (!hasElectronAPI()) { projectsDirDisplay.textContent = "Indisponible hors de l'application de bureau."; return; }
@@ -6120,7 +6120,7 @@ function openSettingsModal(){
   settingsModal.classList.remove('hidden');
 }
 
-// Fix 59 — état du bouton « Restaurer les poses de base ». Désactivé quand il n'en manque aucune :
+// Fix 59 : état du bouton « Restaurer les poses de base ». Désactivé quand il n'en manque aucune :
 // le bouton enseigne ainsi son utilité rien qu'en existant, au lieu de laisser cliquer dans le vide.
 function refreshRestoreBuiltinPosesBtn(){
   const btn = document.getElementById('restoreBuiltinPosesBtn');
@@ -6164,9 +6164,9 @@ setIOCallbacks(renderAll, applyRenameVolume, applyRenameScene, closeSettingsModa
 // Wire up i18n.js callbacks (avoids circular imports i18n→app)
 // updateSidePanel and renderTree are defined well before this point.
 setI18nCallbacks(updateSidePanel, renderTree);
-// Wire up draw.js callbacks (canvas, ctx, render helpers — avoids circular imports draw→app)
+// Wire up draw.js callbacks (canvas, ctx, render helpers, avoids circular imports draw→app)
 setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, updateContextualControls, fitZoomToWrap });
-// Wire up sidebar.js callbacks (snapshot + modal openers — avoids circular imports
+// Wire up sidebar.js callbacks (snapshot + modal openers, avoids circular imports
 // sidebar→app; these modals will themselves be extracted into src/modals.js at Step B.13).
 setSidebarCallbacks({ snapshot, openPersonaModal, openObjectModal, openRoomModal, openBuildingModal, openTerrainModal, openTracéModal, restoreSectionCollapseStates });
 // Wire up scene3d.js's UI render callbacks (avoids the circular import scene3d→app)
@@ -6179,13 +6179,13 @@ autosaveIntervalSelect.addEventListener('change', () => {
   startAutosave();
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('S.autosaveIntervalMs', S.autosaveIntervalMs);
 });
-// Immediately toggles the UI theme and persists it — per user request.
+// Immediately toggles the UI theme and persists it, per user request.
 themeSelect.addEventListener('change', () => {
   S.appTheme = themeSelect.value;
   applyTheme(S.appTheme);
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('theme', S.appTheme);
 });
-// Immediately toggles the UI language and persists it — per user request. applyI18n() updates all
+// Immediately toggles the UI language and persists it, per user request. applyI18n() updates all
 // text already displayed on screen (open menus, the Settings modal itself...) without requiring a
 // restart.
 languageSelect.addEventListener('change', () => {
@@ -6194,12 +6194,12 @@ languageSelect.addEventListener('change', () => {
   rafraichirListesTraduites();
   // Le manuel ouvert se retraduit aussi. applyI18n ne parcourt que le DOM écrit dans index.html ;
   // le contenu de la modale du manuel, lui, est rendu à l'ouverture depuis help-content.js, et
-  // resterait donc en français sous une interface repassée en anglais — sans que rien à l'écran
+  // resterait donc en français sous une interface repassée en anglais, sans que rien à l'écran
   // n'indique qu'il faut la refermer pour en sortir.
   rafraichirManuelOuvert(S.appLang);
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('lang', S.appLang);
 });
-// "Export" section — per user request: these two settings are read by exportPage() at export
+// "Export" section : per user request: these two settings are read by exportPage() at export
 // time, no need to redraw the editing canvas (they never affect the editor).
 exportShowPanelBadgesCheckbox.addEventListener('change', () => {
   S.exportShowPanelBadges = exportShowPanelBadgesCheckbox.checked;
@@ -6210,7 +6210,7 @@ exportShowPanelDescriptionsCheckbox.addEventListener('change', () => {
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('S.exportShowPanelDescriptions', S.exportShowPanelDescriptions);
 });
 // Choose a new Projects folder (native dialog on the main process side, cf.
-// settings:chooseProjectsDir in main.js) then persist it here — per user request.
+// settings:chooseProjectsDir in main.js) then persist it here, per user request.
 document.getElementById('projectsDirBrowse').onclick = async () => {
   if (!hasElectronAPI()) return;
   const res = await window.storyboarderAPI.chooseProjectsDir();
@@ -6227,7 +6227,7 @@ document.getElementById('projectsDirReset').onclick = async () => {
 };
 // Loads persisted settings before starting the Project (cf. initStartupProject below), so that
 // startAutosave()/applyTheme() use the right values right away instead of the hardcoded defaults.
-// Fix 36 — version de l'application, affichée à côté de son nom dans l'en-tête.
+// Fix 36 : version de l'application, affichée à côté de son nom dans l'en-tête.
 // Lue depuis src/version.js (généré par tools/bump-version.mjs) et non depuis package.json : ce
 // dernier n'est pas atteignable depuis le renderer sans un IPC, donc sans toucher main.js ou
 // preload.js, interdits pour une fonctionnalité applicative.
@@ -6241,7 +6241,7 @@ function renderAppVersion(){
 renderAppVersion();
 
 async function loadAppSettings(){
-  // Fix 57 — la bibliothèque de poses est un réglage d'Application, au même titre que le thème.
+  // Fix 57 : la bibliothèque de poses est un réglage d'Application, au même titre que le thème.
   // Chargée AVANT tout le reste, et hors du garde hasElectronAPI ci-dessous : sans Electron, elle
   // doit quand même être semée en mémoire, sans quoi la liste des poses serait vide.
   await loadPoseLibrary(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
@@ -6288,7 +6288,7 @@ function startDefaultProject(){
 }
 
 // When the Electron app starts, automatically reopens the last opened/saved Project (cf.
-// settings.json on the main process side) — per user request. If there isn't one (first launch,
+// settings.json on the main process side), per user request. If there isn't one (first launch,
 // moved/deleted file, or non-Electron path), falls back to the default behavior above.
 async function initStartupProject(){
   if (hasElectronAPI()) {
@@ -6364,7 +6364,7 @@ function restoreSectionCollapseStates() {
 // Scoped to #rightPanel only (the left-hand menu also uses .side-section, without a direct h2).
 // FIX (pre-existing bug, regression from the B.12 extraction): this block used to try reassigning
 // `updateSidePanel` (`updateSidePanel = function(){...}`) to hook restoreSectionCollapseStates onto
-// it — but updateSidePanel is now an ES import from sidebar.js (a read-only binding), so this
+// it, but updateSidePanel is now an ES import from sidebar.js (a read-only binding), so this
 // reassignment threw a TypeError on every page load. restoreSectionCollapseStates is now injected
 // into sidebar.js via setSidebarCallbacks (cf. the final wiring block further below):
 // updateSidePanel() calls it itself internally, no more need to "graft" it on from here.
@@ -6389,7 +6389,7 @@ function restoreSectionCollapseStates() {
 // que l'import attend pour savoir s'il doit se poursuivre ou s'annuler. Le masquer par un simple
 // `classList.add('hidden')` laisserait cette promesse en suspens pour toujours : l'import
 // resterait figé, sans message, sans modèle, et sans rien à quoi se raccrocher. `fermerSkeletonMap`
-// est le seul chemin de sortie, et il résout — ici avec `false`, comme le bouton Annuler.
+// est le seul chemin de sortie, et il résout, ici avec `false`, comme le bouton Annuler.
 // ── Manuel d'utilisation : un clic sur une section ouvre la modale centrale ──────────────────────
 //
 // ÉCOUTE DÉLÉGUÉE, sur le conteneur. Les boutons de section sont réécrits à chaque changement de
@@ -6416,7 +6416,7 @@ enregistrerFermeture('helpModal', () => closeHelpModal());
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));
-// Pour ces deux-là, Échap doit faire ce que fait « Annuler » — et « Annuler » sur un Élément qu'on
+// Pour ces deux-là, Échap doit faire ce que fait « Annuler », et « Annuler » sur un Élément qu'on
 // vient d'ajouter le SUPPRIME (cf. dismissModal). Un masquage générique le laisserait derrière.
 enregistrerFermeture('descModal', () => dismissModal(closeDescModal));
 enregistrerFermeture('objectModal', () => dismissModal(closeObjectModal));

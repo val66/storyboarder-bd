@@ -1,11 +1,11 @@
 /**
- * state.js — Storyboarder's shared mutable application state
+ * state.js. Storyboarder's shared mutable application state
  *
  * All of app.js's former mutable global variables are centralized here under
  * a single S (State) object. Modules import { S } from this file to read and
  * mutate application state.
  *
- * Rule: never put Three.js singletons here (scene, renderer, materials…) —
+ * Rule: never put Three.js singletons here (scene, renderer, materials…),
  * those belong in src/renderer3d.js (Step B).
  */
 
@@ -23,60 +23,60 @@ export const S = {
   autosaveIntervalMs: 60000,
 
   // ── Data (Volumes / Pages / Scenes) ────────────────────────────────────
-  // NOTE: the field below is still named `tomes` (not `volumes`) on purpose — it is written
+  // NOTE: the field below is still named `tomes` (not `volumes`) on purpose, it is written
   // verbatim as the top-level "tomes" key in every saved Project .json file (cf.
   // serializeProject/applyProjectData in io.js). Renaming this field would silently break every
   // Project ever saved with this app. Everywhere ELSE in the code, prefer "Volume" terminology
-  // (matches the English UI label, cf. i18n.js) — only this specific field keeps the old name.
+  // (matches the English UI label, cf. i18n.js), only this specific field keeps the old name.
   tomes:            [],
   currentTomeIndex: 0,
   currentPageIndex: 0,
   expandedVolumes:    new Set(),
   scenes:           [],
-  // Fix 47 — bibliothèque de poses du Projet : [{ id, name, skeleton, joints }]. Au niveau projet
+  // Fix 47 : bibliothèque de poses du Projet : [{ id, name, skeleton, joints }]. Au niveau projet
   // pour être « utilisable partout, dans chaque Tome et chaque Page ». Aucun Personnage n'en dépend :
   // appliquer une pose COPIE ses angles dans joints3d, la bibliothèque n'est qu'un confort d'auteur.
   poses:            [],
-  // Fix 59 — ids de poses explicitement SUPPRIMÉES par l'utilisateur. La fusion à l'ouverture d'un
+  // Fix 59 : ids de poses explicitement SUPPRIMÉES par l'utilisateur. La fusion à l'ouverture d'un
   // projet ne les réintroduit jamais : une action confirmée ne doit pas pouvoir être défaite par un
-  // geste sans rapport. Ne contient que des ids — jamais les angles ni le nom.
+  // geste sans rapport. Ne contient que des ids, jamais les angles ni le nom.
   dismissedPoses:   [],
-  // Fix 48 — éditeur de Personnage. RECOUVRE ce qui est à l'écran (Page ou Scène) au lieu de le
+  // Fix 48 : éditeur de Personnage. RECOUVRE ce qui est à l'écran (Page ou Scène) au lieu de le
   // remplacer : fermer l'éditeur doit rendre la main exactement à ce qui était là. C'est la
   // différence avec S.editingSceneId, qui lui redirige currentPageData vers la Scène.
   personaEditorOpen:     false,   // un targetId nul est légitime (mode autonome), d'où ce drapeau
   personaEditorTargetId: null,    // Élément édité, ou null : Personnage par défaut sans cible
-  personaEditorDraft:    null,    // brouillon d'articulations — jamais l'objet de l'Élément
+  personaEditorDraft:    null,    // brouillon d'articulations, jamais l'objet de l'Élément
   // Caméra PROPRE à l'éditeur. Partager celle de l'aperçu de la modale ferait que zoomer ici
   // zoomerait là-bas : deux vues sur un même état, le motif qui a coûté cher cinq fois ici.
   personaEditorZoom:     1,
   personaEditorPan:      { x: 0, y: 0 },
-  // Fix 50 — l'éditeur a-t-il été ouvert DEPUIS la modale Personnage ? Si oui, la refermer rend la
+  // Fix 50 : l'éditeur a-t-il été ouvert DEPUIS la modale Personnage ? Si oui, la refermer rend la
   // main à cette modale au lieu de la laisser perdue : c'est elle qui portera « Appliquer ».
   personaEditorFromModal: false,
-  // Fix 52 — poignée d'articulation sélectionnée DANS L'ÉDITEUR. Distincte de S.selectedPoseHandle,
+  // Fix 52 : poignée d'articulation sélectionnée DANS L'ÉDITEUR. Distincte de S.selectedPoseHandle,
   // qui appartient à l'aperçu de la modale : la modale reste ouverte (seulement masquée) pendant
   // l'édition, partager la sélection ferait que fermer l'éditeur laisserait la modale avec une
   // poignée surlignée que l'utilisateur n'y a jamais choisie.
   personaEditorHandleId: null,
-  // Fix 72 — INDEX du champ piloté au sein de l'articulation sélectionnée (une charnière double ou
+  // Fix 72 : INDEX du champ piloté au sein de l'articulation sélectionnée (une charnière double ou
   // une rotule en ont deux). Le glisser n'en bouge qu'un à la fois ; la molette passe de l'un à
   // l'autre. Un index et non une clé de descripteur : les descripteurs sont recalculés à la volée
   // par poseSliderSpecs3D, une clé mémorisée pourrait désigner un champ que l'articulation
   // sélectionnée n'a pas.
   personaEditorSpecIndex: 0,
-  // Fix 54 — pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
+  // Fix 54 : pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
   // projet ('pose1'). Une étiquette, jamais une dépendance : les angles vivent dans le brouillon et
   // font foi (cf. docs/character-editor.md). Bouger un curseur après avoir appliqué une pose ne
-  // l'efface pas — c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
+  // l'efface pas, c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
   // ce qui préserve la provenance.
   personaEditorPoseKey: null,
-  // Fix 61 — état du brouillon À L'OUVERTURE. Sert à répondre « y a-t-il quelque chose à faire ? »,
+  // Fix 61 : état du brouillon À L'OUVERTURE. Sert à répondre « y a-t-il quelque chose à faire ? »,
   // qui pilote l'activation de Réinitialiser et Appliquer. Figé une fois pour toutes plutôt que
   // recalculé depuis l'Élément : « depuis l'ouverture » doit vouloir dire exactement ça.
   personaEditorBaseline:    null,
   personaEditorBaselineKey: null,
-  // Fix 65 — caméra de l'éditeur : ORBITE autour du Personnage, comme le mode Caméra d'une Case.
+  // Fix 65 : caméra de l'éditeur : ORBITE autour du Personnage, comme le mode Caméra d'une Case.
   // Le déplacement latéral a été retiré (une figure seule est déjà centrée : le déplacer ne fait que
   // la perdre de vue), d'où l'absence de pan ici. rotX est borné à ±85° comme pour une Case.
   personaEditorCamRotY: 0,
@@ -89,7 +89,7 @@ export const S = {
   selectedRoomId:   null,
   selectedBuildingKey: null,   // buildingKey = sorted roomIds joined by ',' (batch key)
   idCounter:        0,
-  // Case (ou canevas de Scène) visée par le clic droit courant — lue par l'import de modèle/scène
+  // Case (ou canevas de Scène) visée par le clic droit courant, lue par l'import de modèle/scène
   // du menu contextuel (cf. events.js, _cibleDuMenu).
   ctxTarget:        null,
 
@@ -106,11 +106,11 @@ export const S = {
   // ── Active tools ─────────────────────────────────────────────────────
   buildTool:   null,
   // Careful not to confuse "trace" (this field) and "tracé" (with an accent, kept as-is in object
-  // type values — cf. note below): traceTool is the state of the INTERACTIVE mouse-drawing tool
+  // type values, cf. note below): traceTool is the state of the INTERACTIVE mouse-drawing tool
   // (cf. startTraceTool/stopTraceTool in events.js), used both for Routes/Paths and for the Terrain
   // Zone tool. Once the drawing is confirmed, it produces a persistent object whose TYPE is
-  // `'tracé'` (Route/Path/low wall/fence/hedge/roadside barrier — cf. drawTracé, tracéBBox,
-  // TRACÉ_DEFAULTS) or `'terrain'` (Terrain Zone) depending on the case — two words that differ only
+  // `'tracé'` (Route/Path/low wall/fence/hedge/roadside barrier, cf. drawTracé, tracéBBox,
+  // TRACÉ_DEFAULTS) or `'terrain'` (Terrain Zone) depending on the case, two words that differ only
   // by an accent, but one names the tool, the other the resulting object. `'tracé'`/`'terrain'` are
   // left untranslated on purpose: they are literal type-discriminator values written into every
   // saved Project .json file, so renaming them would break existing Projects (same reasoning as the
@@ -164,9 +164,9 @@ export const S = {
   modalDraftAfficherEgares:   false,
   // Quelle FIGURE l'Éditeur de Personnage affiche : `null` = le Personnage intégré, sinon le nom de
   // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
-  // l'Élément qu'« Appliquer » alimente. Jamais persisté — un choix de vue, pas une propriété.
+  // l'Élément qu'« Appliquer » alimente. Jamais persisté, un choix de vue, pas une propriété.
   personaEditorModelFile:     null,
-  selectedSkeletonHandle:      null,  // { id: slot } ou null — poignée choisie sur l'aperçu
+  selectedSkeletonHandle:      null,  // { id: slot } ou null, poignée choisie sur l'aperçu
   modalDirty:                 false,
   modalIsNew:                 false,
   modalSnapshot:              '',
@@ -189,13 +189,13 @@ export const S = {
   terrainModalTarget: null,
   terrainModalType:   'herbe', // ground type selected in the modal's grid
 
-  // ── Side panel — targets ─────────────────────────────────────────────
+  // ── Side panel : targets ─────────────────────────────────────────────
   sideDescTarget:          null,
   sideCameraTarget:        null,
   helpPanelDismissed:      false,
   sideDescSnapshotTaken:   false,
 
-  // ── Side panel — double-click tracking ───────────────────────────────
+  // ── Side panel : double-click tracking ───────────────────────────────
   sideElementLastClickId:    null,
   sideElementLastClickTime:  0,
   sideHeaderLastClickId:     null,
@@ -203,10 +203,10 @@ export const S = {
   sideHeaderLastBuildingKey:      null,
   sideHeaderLastBuildingClickTime: 0,
 
-  // ── Side panel — page drag ───────────────────────────────────────────
+  // ── Side panel : page drag ───────────────────────────────────────────
   draggedPageThumbnail: null,
 
-  // ── Side panel — snapshot tracking ───────────────────────────────────
+  // ── Side panel : snapshot tracking ───────────────────────────────────
   camSensSnapshotTaken:              false,
   camRotSliderSnapshotTaken:         false,
   sidePageBgColorSnapshotTaken:      false,

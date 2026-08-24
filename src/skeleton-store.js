@@ -5,13 +5,13 @@
  * OÙ, ET POURQUOI LÀ. Une correspondance appartient au FICHIER, pas à l'Élément ni au Projet : tous
  * les exemplaires de `worker_j.glb` partagent le même squelette, et le corriger une fois doit
  * suffire pour toujours. Elle est donc rangée à côté du dossier `Modeles`, comme la bibliothèque de
- * poses est rangée à côté des Projets — choix de l'utilisateur, en connaissance du prix : la
+ * poses est rangée à côté des Projets, choix de l'utilisateur, en connaissance du prix : la
  * correspondance NE VOYAGE PAS avec un `.json` de Projet transmis à quelqu'un d'autre. Ce qui est
  * cohérent, puisque le `.glb` ne voyage pas non plus.
  *
  * ON MÉMORISE DES NOMS D'OS, PAS DES INDICES. Un indice de nœud glTF n'a de sens que pour un fichier
  * donné : réexporter le même personnage depuis Blender renumérote tout, et une correspondance par
- * indices désignerait alors des os arbitraires — silencieusement. Les noms, eux, survivent aux
+ * indices désignerait alors des os arbitraires, silencieusement. Les noms, eux, survivent aux
  * réexports dans les cinq conventions mesurées, et ce sont eux que l'utilisateur lit à l'écran.
  *
  * CE FICHIER NE DEVINE RIEN. La reconnaissance automatique est dans skeleton-map.js et reste pure.
@@ -53,7 +53,7 @@ export function normaliserFichier(brut){
       const nom = (entree.os || {})[slot];
       if (typeof nom === 'string' && nom) os[slot] = nom;
     });
-    // `valide` dit que l'utilisateur A VU cet écran et l'a validé — indépendamment de savoir s'il a
+    // `valide` dit que l'utilisateur A VU cet écran et l'a validé, indépendamment de savoir s'il a
     // corrigé quelque chose. Une entrée peut donc être vide d'os et malgré tout signifiante.
     const valide = entree.valide === true;
     if (Object.keys(os).length || valide) entrees[fichier] = { os, valide };
@@ -73,9 +73,9 @@ export function normaliserFichier(brut){
  *     tout seul au prochain import.
  *
  * Ma première version ne gardait que `os`, et n'écrivait donc RIEN quand l'utilisateur validait
- * sans rien corriger — le cas le plus fréquent, puisque la reconnaissance est souvent juste. La
+ * sans rien corriger, le cas le plus fréquent, puisque la reconnaissance est souvent juste. La
  * modale se rouvrait alors à chaque import, ce qui revenait à n'avoir jamais enregistré. Le
- * commentaire que j'avais écrit à l'époque — « une entrée sans os n'apprend rien » — était faux :
+ * commentaire que j'avais écrit à l'époque, « une entrée sans os n'apprend rien », était faux :
  * elle apprend que l'utilisateur a tranché.
  */
 export function entreePourFichier(carte, { valide = false } = {}){
@@ -93,12 +93,12 @@ export function entreePourFichier(carte, { valide = false } = {}){
  *
  * @param {object} auto     ce que rend inferSkeletonMap (par emplacement, ou null)
  * @param {object} enregistree  { os: { slot: nomDOs } }, ou null
- * @param {Array}  osDuFichier  [{ id, name }] — les os réellement présents
+ * @param {Array}  osDuFichier  [{ id, name }], les os réellement présents
  *
  * L'ENREGISTRÉ PRIME, MAIS SEULEMENT S'IL DÉSIGNE UN OS QUI EXISTE ENCORE. Un `.glb` remplacé par
  * une autre version peut avoir perdu l'os retenu ; l'entrée devient alors caduque, et on retombe
  * sur la reconnaissance pour cet emplacement plutôt que de pointer dans le vide. Le reste de la
- * correspondance enregistrée, lui, reste valable — on ne jette pas tout pour un os.
+ * correspondance enregistrée, lui, reste valable, on ne jette pas tout pour un os.
  */
 export function fusionner(auto, enregistree, osDuFichier){
   const parNom = new Map((osDuFichier || []).filter(o => o && o.name).map(o => [o.name, o.id]));
@@ -123,12 +123,12 @@ export function fusionner(auto, enregistree, osDuFichier){
  *
  * POURQUOI UN CACHE, ALORS QUE LA LECTURE EST DÉJÀ RAPIDE. Ce n'est pas une optimisation, c'est une
  * question de FORME : construire le rig 3D d'un modèle importé se fait à l'intérieur d'un rendu, un
- * chemin strictement synchrone (cf. l'en-tête de model-cache.js — « le chemin de dessin n'attend
+ * chemin strictement synchrone (cf. l'en-tête de model-cache.js, « le chemin de dessin n'attend
  * jamais »). Une lecture disque y est impossible, et la rendre asynchrone contaminerait tout
  * `buildPropRig3D`.
  *
- * Le cache est rempli au démarrage puis tenu à jour à chaque enregistrement. S'il est vide — au
- * tout premier rendu, avant que le préchargement n'aboutisse — la reconnaissance automatique fait
+ * Le cache est rempli au démarrage puis tenu à jour à chaque enregistrement. S'il est vide, au
+ * tout premier rendu, avant que le préchargement n'aboutisse, la reconnaissance automatique fait
  * le travail seule : c'est le comportement de l'étape A, correct sur les six fichiers mesurés. Une
  * correction manuelle apparaît donc au pire au rendu suivant, jamais « jamais ».
  */
@@ -164,7 +164,7 @@ export async function lireCorrespondances(){
 }
 
 /**
- * Vide le cache résident. Réservé aux tests — un état qui survit d'un test à l'autre est un test
+ * Vide le cache résident. Réservé aux tests, un état qui survit d'un test à l'autre est un test
  * qui passe pour une mauvaise raison, et ce dépôt s'y est déjà laissé prendre.
  */
 export function _viderCacheCorrespondances(){
@@ -186,7 +186,7 @@ export async function enregistrerCorrespondance(fichier, carte, { valide = true 
   const entree = entreePourFichier(carte, { valide });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
-  // écrirait donc dans le cache — avant l'écriture disque, et sans moyen de revenir en arrière si
+  // écrirait donc dans le cache, avant l'écriture disque, et sans moyen de revenir en arrière si
   // elle échoue. Le garde-fou « ne mettre à jour qu'en cas de succès » plus bas était strictement
   // inopérant tant que cette copie manquait : c'est une mutation de test échappée qui l'a montré,
   // puis le test lui-même qui a mis au jour le partage de référence.
@@ -196,7 +196,7 @@ export async function enregistrerCorrespondance(fichier, carte, { valide = true 
   try {
     const r = await p.writeSkeletonMaps(suivant);
     // Le cache résident ne suit QUE les écritures réussies. Le mettre à jour avant, ou malgré un
-    // échec, ferait afficher au rig une correspondance que le disque ne porte pas — et l'écart ne
+    // échec, ferait afficher au rig une correspondance que le disque ne porte pas, et l'écart ne
     // se verrait qu'au redémarrage suivant, longtemps après la cause.
     if (r && r.ok) _enMemoire = suivant;
     return (r && r.ok) ? { ok: true } : { ok: false, error: (r && r.error) || 'écriture refusée' };
@@ -213,10 +213,10 @@ export async function enregistrerCorrespondance(fichier, carte, { valide = true 
  *   — pas d'os : une chaise, un bâtiment, un décor. C'est probablement la majorité des imports, et
  *     l'écran n'aurait littéralement aucune ligne à afficher ;
  *   — une correspondance déjà VALIDÉE : l'utilisateur a vu cet écran et l'a enregistré. Peu importe
- *     qu'il reste des lignes « structure » — il les a vues, signalées, et a tranché. Les lui
+ *     qu'il reste des lignes « structure », il les a vues, signalées, et a tranché. Les lui
  *     remontrer à chaque import reviendrait à ne pas avoir enregistré (signalé à l'usage) ;
  *   — un squelette, jamais vu : on ouvre. MÊME si la reconnaissance est complète et sans
- *     avertissement — choix de l'utilisateur, contre mon avis initial. Sa raison est meilleure que
+ *     avertissement, choix de l'utilisateur, contre mon avis initial. Sa raison est meilleure que
  *     la mienne : c'est le seul moment où l'on pense à ce modèle, et un écran qui ne s'ouvre jamais
  *     quand tout va bien est un écran dont on ignore l'existence le jour où ça va mal.
  */
@@ -227,7 +227,7 @@ export function doitOuvrirCorrespondance({ osDuFichier, dejaEnregistree } = {}){
 }
 
 /**
- * Oublie la correspondance d'un fichier — appelé quand le `.glb` est supprimé du disque.
+ * Oublie la correspondance d'un fichier, appelé quand le `.glb` est supprimé du disque.
  *
  * `valide: false` est essentiel : sans lui, on réécrirait une coquille validée pour un fichier qui
  * n'existe plus, et un homonyme réimporté plus tard n'ouvrirait jamais l'écran.
@@ -241,11 +241,11 @@ export async function oublierCorrespondance(fichier){
  *
  * Les correspondances sont indexées par NOM DE FICHIER : renommer sans les déplacer laisserait la
  * carte d'os attachée à un fichier disparu, et le modèle renommé repartirait de la reconnaissance
- * automatique — l'écran de correspondance se rouvrirait, et le travail de correction serait à
+ * automatique, l'écran de correspondance se rouvrirait, et le travail de correction serait à
  * refaire alors qu'il est là, dans le fichier, sous l'ancienne clé.
  *
  * DÉPLACEMENT, PAS COPIE : l'ancienne clé est retirée. La garder ferait ressusciter la carte de
- * l'ANCIEN squelette le jour où un homonyme est réimporté — la panne exacte contre laquelle
+ * l'ANCIEN squelette le jour où un homonyme est réimporté, la panne exacte contre laquelle
  * `oublierCorrespondance` a été écrite.
  *
  * Une seule écriture pour les deux moitiés : écrire la nouvelle clé puis effacer l'ancienne, en deux

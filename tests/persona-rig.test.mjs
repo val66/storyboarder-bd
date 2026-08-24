@@ -1,5 +1,5 @@
 /**
- * tests/persona-rig.test.mjs — le squelette du Personnage et l'application des poses.
+ * tests/persona-rig.test.mjs, le squelette du Personnage et l'application des poses.
  *
  * Suite de tests/rig-geometry.test.mjs, qui gardait les rigs d'Objets. Celui-ci porte sur le rig
  * de Personnage, plus délicat parce qu'il est ARTICULÉ : ce n'est plus une géométrie figée mais
@@ -11,7 +11,7 @@
  *   — UNE POSE EST UNE DESCRIPTION, PAS UN DELTA. L'appliquer deux fois doit donner le même
  *     résultat qu'une fois, et revenir à « debout » doit redonner exactement « debout ». Si les
  *     poses s'accumulaient, un Personnage dériverait à chaque changement, et le symptôme
- *     n'apparaîtrait qu'après plusieurs allers-retours — trop tard pour qu'on fasse le lien.
+ *     n'apparaîtrait qu'après plusieurs allers-retours, trop tard pour qu'on fasse le lien.
  *
  *   — CE QUE L'INTERFACE EXPOSE DOIT EXISTER. Une poignée ou un curseur qui désigne une
  *     articulation absente du rig ne lève rien : il ne fait rien. C'est la panne muette la plus
@@ -38,7 +38,7 @@ import { poseSliderSpecs3D } from '../src/utils.js';
 const rigNeuf = () => buildPersonaRig3D('#8844aa', 'homme', 'comics_numerique');
 
 // Signature géométrique du rig : la matrice monde de chaque articulation, arrondie. C'est ce qui
-// change quand une pose s'applique — et ce qui ne doit PAS changer quand elle ne devrait pas.
+// change quand une pose s'applique, et ce qui ne doit PAS changer quand elle ne devrait pas.
 function empreinte(rig) {
   rig.figureGroup.updateMatrixWorld(true);
   return Object.keys(rig.joints).sort().map(k => {
@@ -48,7 +48,7 @@ function empreinte(rig) {
   }).join('|');
 }
 
-describe('Rig de Personnage — ce que l\'interface expose existe vraiment', () => {
+describe('Rig de Personnage : ce que l\'interface expose existe vraiment', () => {
   test('RÉGRESSION : chaque poignée de POSE_HANDLES désigne une articulation du rig', () => {
     // Une poignée pointant vers un groupe absent est invisible et incliquable, sans erreur. Le
     // Personnage a simplement une articulation qu'on ne peut pas attraper, et rien ne le dit.
@@ -76,7 +76,7 @@ describe('Rig de Personnage — ce que l\'interface expose existe vraiment', () 
   });
 });
 
-describe('Rig de Personnage — une pose est une description, pas un delta', () => {
+describe('Rig de Personnage : une pose est une description, pas un delta', () => {
   test('RÉGRESSION : appliquer deux fois la même pose donne le même résultat qu\'une fois', () => {
     // L'idempotence. Si l'application accumulait, chaque passage sur une pose déplacerait un peu
     // plus le Personnage. Le symptôme n'apparaîtrait qu'après plusieurs allers-retours, ce qui
@@ -105,7 +105,7 @@ describe('Rig de Personnage — une pose est une description, pas un delta', () 
 
   test('deux rigs neufs recevant la même pose sont géométriquement identiques', () => {
     // Le pendant des deux précédents : ils comparent un rig à lui-même et resteraient verts si
-    // applyJointAngles ne faisait RIEN. Ici, deux rigs partis du même point doivent converger —
+    // applyJointAngles ne faisait RIEN. Ici, deux rigs partis du même point doivent converger,
     // ce qui n'a d'intérêt que parce que le test suivant vérifie qu'une pose change quelque chose.
     Object.keys(POSE_3D).forEach(cle => {
       const a = rigNeuf(), b = rigNeuf();
@@ -139,7 +139,7 @@ describe('Rig de Personnage — une pose est une description, pas un delta', () 
  * table sont le défaut le plus fréquent de ce dépôt : elles sont justes le jour où on les écrit.
  * Une articulation ajoutée à POSE_HANDLES demain entre ici toute seule.
  *
- * Les angles n'ont pas besoin d'être anatomiquement crédibles — seulement non nuls et distincts,
+ * Les angles n'ont pas besoin d'être anatomiquement crédibles, seulement non nuls et distincts,
  * pour qu'un champ oublié se voie.
  */
 function poseTousChampsRegles(){
@@ -154,26 +154,26 @@ function poseTousChampsRegles(){
   return pose;
 }
 
-describe('Rig de Personnage — un champ ABSENT d\'une pose vaut le repos', () => {
+describe('Rig de Personnage : un champ ABSENT d\'une pose vaut le repos', () => {
   /**
    * CE QUE CE BLOC PROTÈGE, ET POURQUOI IL A FALLU L'ÉCRIRE (tâche #313).
    *
    * MESURE : sur les 36 champs qu'exposent les poignées, les poses intégrées n'en écrivent que 14.
-   * Les 22 autres — cou, clavicules, chevilles, poignets, rotation Z des coudes, deuxième et
-   * troisième axes de la tête et du torse — ne sont nommés par AUCUNE pose de base.
+   * Les 22 autres, cou, clavicules, chevilles, poignets, rotation Z des coudes, deuxième et
+   * troisième axes de la tête et du torse, ne sont nommés par AUCUNE pose de base.
    *
    * `applyJointAngles` les écrit quand même, tous, via `angle3D` : un champ absent devient 0, donc
    * le repos. C'est ce qui a permis d'ajouter cinq articulations sans migrer une seule pose ni un
    * seul Projet. Mais RIEN NE L'ÉPINGLAIT : rendre une seule de ces écritures conditionnelle
    * (`if (j.lFootRotX !== undefined)`) ferait traîner les pieds, les poignets ou les clavicules
-   * d'une pose à la suivante — un Personnage qui garde un morceau de sa pose précédente, sans
+   * d'une pose à la suivante, un Personnage qui garde un morceau de sa pose précédente, sans
    * erreur nulle part.
    *
    * POURQUOI LES TESTS DE RÉVERSIBILITÉ CI-DESSUS NE SUFFISENT PAS. Ils comparent des poses
    * intégrées entre elles ; comme les 22 champs sont absents des DEUX côtés, ils restent verts
    * quoi qu'il arrive sur ces axes. C'est le cas d'école du test satisfait pour la mauvaise raison :
    * une propriété vérifiée sur un domaine où elle est triviale. D'où la pose de contrôle ci-dessous,
-   * qui règle les 36 champs — le seul témoin capable de distinguer « remis au repos » de
+   * qui règle les 36 champs, le seul témoin capable de distinguer « remis au repos » de
    * « jamais touché ».
    */
   test('RÉGRESSION : une pose de base efface une pose entièrement réglée', () => {
@@ -206,12 +206,12 @@ describe('Rig de Personnage — un champ ABSENT d\'une pose vaut le repos', () =
   test('chacun des 36 champs, PRIS SÉPARÉMENT, déforme le rig', () => {
     // LE TEST QUI EMPÊCHE LE PRÉCÉDENT DE PASSER POUR RIEN, et il a été écrit parce qu'une mutation
     // l'a exigé : retirer purement et simplement `J.lClavicle.rotation.z = angle3D(...)` laissait
-    // toute la suite VERTE. Logique — un axe jamais écrit reste au repos, donc « absent vaut le
+    // toute la suite VERTE. Logique, un axe jamais écrit reste au repos, donc « absent vaut le
     // repos » demeure vrai. Sauf que le curseur Clavicule de l'interface ne fait alors plus rien.
     //
     // « Un champ exposé qui ne déforme rien » est la panne la plus chère de ce fichier : le curseur
     // bouge, le chiffre change, la valeur part dans le Projet enregistré, et le corps ne bronche
-    // pas. On cherche alors dans le dessin, la caméra, le cache — jamais dans la ligne manquante.
+    // pas. On cherche alors dans le dessin, la caméra, le cache, jamais dans la ligne manquante.
     const neuf = rigNeuf();
     const repos = empreinte(neuf);
     const complet = poseTousChampsRegles();
@@ -253,7 +253,7 @@ describe('Rig de Personnage — un champ ABSENT d\'une pose vaut le repos', () =
   });
 });
 
-describe('Rig de Personnage — aucune pose ne produit de géométrie invalide', () => {
+describe('Rig de Personnage : aucune pose ne produit de géométrie invalide', () => {
   test('toutes les poses intégrées donnent des matrices finies', () => {
     // Un NaN dans une matrice monde ne lève pas : le maillage disparaît simplement du rendu. Le
     // Personnage devient invisible et l'on cherche du côté de la caméra.
@@ -271,7 +271,7 @@ describe('Rig de Personnage — aucune pose ne produit de géométrie invalide',
 
   test('des angles absurdes ne produisent ni NaN ni disparition', () => {
     // Les curseurs sont bornés dans l'interface, mais un fichier projet peut porter n'importe
-    // quelle valeur — y compris écrite par une version future. Le rig doit rester constructible.
+    // quelle valeur, y compris écrite par une version future. Le rig doit rester constructible.
     [1e6, -1e6, Math.PI * 100].forEach(v => {
       const rig = rigNeuf();
       assert.doesNotThrow(() => applyJointAngles(rig, {
@@ -298,7 +298,7 @@ describe('Rig de Personnage — aucune pose ne produit de géométrie invalide',
 });
 
 
-describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', () => {
+describe('Rig A : cou, clavicules et chevilles, sans rien casser derrière', () => {
   // POURQUOI CES TROIS-LÀ. Le Personnage intégré n'avait pas les articulations que les modèles
   // importés ont (cf. SLOTS dans src/skeleton-map.js) : demandé pour que les deux parlent le même
   // corps. Mesuré avant de coder : les poignets, eux, existaient déjà.
@@ -310,7 +310,7 @@ describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', (
   describe('Une pose d\'avant ne bouge rien', () => {
     test('les nouvelles articulations restent EXACTEMENT à zéro', () => {
       // POSE_3D.debout ne contient aucun des nouveaux champs : angle3D doit donc rendre 0, et non
-      // NaN ou undefined — une rotation NaN propage silencieusement à tout le sous-arbre.
+      // NaN ou undefined, une rotation NaN propage silencieusement à tout le sous-arbre.
       const rig = rigNeuf();
       applyJointAngles(rig, POSE_3D.debout);
       const J = rig.joints;
@@ -324,7 +324,7 @@ describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', (
 
     test('les 13 poses de base laissent les nouvelles articulations au repos', () => {
       // Aucune n'a été réécrite : c'est justement ce qui rend l'ajout indolore. Si un jour l'une
-      // d'elles s'en sert (Rig C), ce test le dira — et ce sera une décision, pas un accident.
+      // d'elles s'en sert (Rig C), ce test le dira, et ce sera une décision, pas un accident.
       const rig = rigNeuf();
       Object.keys(POSE_3D).forEach(cle => {
         applyJointAngles(rig, POSE_3D[cle]);
@@ -344,7 +344,7 @@ describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', (
       assert.ok(Math.abs(tete.x - cou.x) < 1e-9 && Math.abs(tete.z - cou.z) < 1e-9,
         'la tête a été décalée latéralement par l\'insertion du cou');
       // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : « la tête est plus haut que le cou » laissait passer un
-      // décalage de 5 cm. Ce qu'il faut affirmer est la valeur EXACTE — la tête est au sommet du
+      // décalage de 5 cm. Ce qu'il faut affirmer est la valeur EXACTE, la tête est au sommet du
       // cylindre du cou, donc à sa hauteur près, ni plus ni moins.
       const cylindre = J.neckGroup.children.find(c => c.geometry && c.geometry.parameters
         && c.geometry.parameters.radiusTop !== undefined);
@@ -442,10 +442,10 @@ describe('Rig A — cou, clavicules et chevilles, sans rien casser derrière', (
 });
 
 
-describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien', () => {
+describe('Les pieds : une articulation qu\'on ne voit pas agir ne sert à rien', () => {
   // Rig A avait donné une CHEVILLE au Personnage, mais la jambe s'arrêtait net : on pouvait la
   // tourner sans que rien ne bouge à l'écran. Signalé à l'usage, et c'est la même famille qu'un
-  // curseur ne pilotant aucun os — la commande existe, l'effet est invisible.
+  // curseur ne pilotant aucun os, la commande existe, l'effet est invisible.
   const V = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
   const boite = (o) => { o.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o); };
 
@@ -458,7 +458,7 @@ describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien
 
   test('RÉGRESSION : le pied pointe vers l\'AVANT, du même côté que le visage', () => {
     // LE DÉFAUT QUE CE TEST A ATTRAPÉ. L'avant du Personnage est −Z (c'est là qu'est posé le
-    // visage), et mon premier repère de pied — dans LIMB_SEGMENTS — pointait vers +Z, donc vers
+    // visage), et mon premier repère de pied, dans LIMB_SEGMENTS, pointait vers +Z, donc vers
     // l'arrière. Rien ne l'aurait signalé : un pied à l'envers se voit, mais seulement si on
     // regarde le bon Personnage sous le bon angle.
     const rig = rigNeuf();
@@ -517,8 +517,8 @@ describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien
 
   test('la semelle devient le point le plus bas de la figure', () => {
     // Conséquence assumée et MESURÉE : la boîte englobante grandit d'environ 4 %, donc à hauteur
-    // normalisée le corps se réduit d'autant. C'est plus juste — la taille d'une personne se mesure
-    // jusqu'aux semelles, pas jusqu'aux chevilles — mais ce n'est pas neutre pour les Projets déjà
+    // normalisée le corps se réduit d'autant. C'est plus juste, la taille d'une personne se mesure
+    // jusqu'aux semelles, pas jusqu'aux chevilles, mais ce n'est pas neutre pour les Projets déjà
     // dessinés, d'où ce test qui rend le fait explicite plutôt que caché.
     const rig = rigNeuf();
     applyJointAngles(rig, POSE_3D.debout);
@@ -529,7 +529,7 @@ describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien
     // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : un seuil de 3 cm laissait passer un pied CENTRÉ sur la
     // cheville, la pointe arrondie descendant assez pour le franchir.
     //
-    // La première correction — « rien du pied ne remonte au-dessus de la cheville » — était trop
+    // La première correction, « rien du pied ne remonte au-dessus de la cheville », était trop
     // stricte : le CONTOUR du style comics est une copie légèrement agrandie du maillage, il
     // dépasse donc par construction. L'invariant juste n'est pas « rien au-dessus » mais
     // « l'essentiel en dessous » : le pied PEND sous la cheville, il ne l'entoure pas.
@@ -544,9 +544,9 @@ describe('Les pieds — une articulation qu\'on ne voit pas agir ne sert à rien
 });
 
 
-describe('Rig B — le troisième axe de la tête, les deuxième et troisième du torse', () => {
+describe('Rig B : le troisième axe de la tête, les deuxième et troisième du torse', () => {
   // CE QUI MANQUAIT. La tête pouvait hocher (x) et tourner (y), mais pas PENCHER vers l'épaule. Le
-  // torse n'avait qu'un seul axe — se pencher en avant — donc un personnage ne pouvait ni se
+  // torse n'avait qu'un seul axe, se pencher en avant, donc un personnage ne pouvait ni se
   // tourner ni s'incliner sans faire pivoter l'Élément entier. Ce sont les gestes qui portent
   // l'essentiel de l'expression d'une silhouette en storyboard.
   const V = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
@@ -562,17 +562,17 @@ describe('Rig B — le troisième axe de la tête, les deuxième et troisième d
   });
 
   test('RÉGRESSION : chacun des trois axes déplace vraiment quelque chose', () => {
-    // Un champ appliqué au mauvais objet — ou deux fois le même — ne lèverait aucune erreur. On
+    // Un champ appliqué au mauvais objet : ou deux fois le même, ne lèverait aucune erreur. On
     // vérifie donc que chaque axe, PRIS SEUL, bouge la figure.
     //
     // ⚠️ LE TÉMOIN NE PEUT PAS ÊTRE LE GROUPE QU'ON TOURNE : un groupe qui pivote sur lui-même ne
     // déplace pas son origine. Ma première version prenait headGroup comme témoin de headRotZ et
-    // échouait pour cette raison — pas parce que le code était faux. Il faut regarder un ENFANT
+    // échouait pour cette raison, pas parce que le code était faux. Il faut regarder un ENFANT
     // (le visage pour la tête) ou un descendant (la tête pour le buste).
     const base = { ...POSE_3D.debout };
     const surLeVisage = (rig) => { const v = new THREE.Vector3(); rig.faceMesh.getWorldPosition(v); return v; };
     // Deuxième correction du même ordre : `torsoRotY` tourne autour de l'axe VERTICAL, et la tête
-    // est posée sur cet axe — elle ne bouge donc pas d'un millimètre. Il faut un témoin ÉCARTÉ de
+    // est posée sur cet axe, elle ne bouge donc pas d'un millimètre. Il faut un témoin ÉCARTÉ de
     // l'axe, d'où la main. Choisir un témoin, c'est déjà connaître la géométrie.
     [['headRotZ', surLeVisage],
       ['torsoRotY', (r) => V(r.joints.lHand)],
@@ -618,11 +618,11 @@ describe('Rig B — le troisième axe de la tête, les deuxième et troisième d
     });
   });
 
-  describe('hinge3 — une articulation, une poignée, trois curseurs', () => {
+  describe('hinge3 : une articulation, une poignée, trois curseurs', () => {
     test('RÉGRESSION : plus aucune poignée en double sur le même groupe', () => {
       // LE DÉFAUT QUE CE MODE SUPPRIME. Le 3ᵉ axe des poignets était une SECONDE entrée
       // (`lWristRoll`) désignant le groupe `lHand`, déjà pris par `lWrist` : l'aperçu dessinait donc
-      // deux poignées au même pixel, dont une seule attrapable — alors qu'un commentaire affirmait
+      // deux poignées au même pixel, dont une seule attrapable, alors qu'un commentaire affirmait
       // qu'il n'y en avait pas de dédiée. Le code contredisait son propre commentaire.
       const groupes = POSE_HANDLES.map(d => d.group);
       assert.equal(new Set(groupes).size, groupes.length,
@@ -656,7 +656,7 @@ describe('Rig B — le troisième axe de la tête, les deuxième et troisième d
   });
 });
 
-describe('Le repère du corps du Personnage — mesuré, jamais écrit à la main', () => {
+describe('Le repère du corps du Personnage : mesuré, jamais écrit à la main', () => {
   test('c\'est une base orthonormée directe', () => {
     const r = repereDuPersonnage();
     assert.ok(r, 'le Personnage doit toujours avoir un repère : sa géométrie est connue');
@@ -669,15 +669,15 @@ describe('Le repère du corps du Personnage — mesuré, jamais écrit à la mai
 
   test('le haut du Personnage va bien du bassin vers la tête', () => {
     // MESURÉ, pas supposé : c'est la seule affirmation de ce fichier qui décrit le corps intégré,
-    // et elle est vérifiée sur le rig réellement construit. Si la géométrie changeait — comme elle
-    // vient de le faire avec les clavicules et les pieds —, ce test le dirait.
+    // et elle est vérifiée sur le rig réellement construit. Si la géométrie changeait, comme elle
+    // vient de le faire avec les clavicules et les pieds, ce test le dirait.
     const r = repereDuPersonnage();
     assert.ok(r.haut[1] > 0.99, `le haut mesuré est ${JSON.stringify(r.haut)} — la tête n'est plus au-dessus du bassin`);
   });
 
   test('c\'est le repère AU REPOS, pas celui de la pose du moment', () => {
     // Un Personnage assis ou penché a la tête ailleurs : mesurer le repère sur lui ferait dépendre
-    // la traduction d'une pose de la pose déjà appliquée — une dérive qui ne se voit qu'après
+    // la traduction d'une pose de la pose déjà appliquée, une dérive qui ne se voit qu'après
     // plusieurs allers-retours. On recalcule donc ici, à la main, ce que doit être le repère de
     // REPOS, et on exige que ce soit exactement celui que rend la fonction. Comparer à un autre
     // appel ne prouverait rien : le résultat est mémorisé.
@@ -732,7 +732,7 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
     assert.ok(r.droite[0] < -0.99, 'la droite du corps va de la clavicule droite vers la gauche');
   });
 
-  test('sans les quatre os, aucun repère — et donc aucune pose appliquée au hasard', () => {
+  test('sans les quatre os, aucun repère : et donc aucune pose appliquée au hasard', () => {
     const m = Object.fromEntries([
       osFictif('bassin', [0, 0, 0], [0, 0, 0, 1]),
       osFictif('tete', [0, 1.6, 0], [0, 0, 0, 1]),
@@ -755,7 +755,7 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — « un champ absent vaut le repos » (tâche #313).
+ * JOURNAL DE MUTATION : « un champ absent vaut le repos » (tâche #313).
  *
  *   X1 `if (j.lFootRotX !== undefined)` devant l'écriture de la cheville      ROUGE
  *   X2 l'écriture de lClavicleRotZ purement RETIRÉE                          ÉCHAPPÉE → puis ROUGE
@@ -767,7 +767,7 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
  *   X8 la cheville droite écrit son axe Z sur X                              ROUGE
  *
  * X2 EST LA MUTATION QUI A APPRIS QUELQUE CHOSE, et elle mérite d'être racontée. Retirer complètement
- * l'écriture d'un axe laissait TOUTE la suite verte — y compris les trois tests écrits juste au-dessus
+ * l'écriture d'un axe laissait TOUTE la suite verte, y compris les trois tests écrits juste au-dessus
  * pour cette tâche. C'est logique après coup : un axe jamais écrit reste au repos, donc « absent vaut
  * le repos » demeure trivialement vrai. La propriété était bien vérifiée ; elle ne suffisait pas.
  *
@@ -783,15 +783,15 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
 
 
 // ── Le sens de pliure des genoux ──────────────────────────────────────────────────────────────
-describe('poses proposées — aucun genou ne plie à l\'envers', () => {
+describe('poses proposées : aucun genou ne plie à l\'envers', () => {
   // TROIS POSES SUR SIX PLIAIENT LES GENOUX DU MAUVAIS CÔTÉ, et rien ne le signalait : accroupi
   // (+1,9), course (+1,0 / +0,3) et à genoux (+1,8 / +1,5). Le défaut ne se voit qu'à l'écran, sur
-  // un rendu WebGL qu'aucun test ne peut produire — mais il se DÉMONTRE sur les angles seuls, et
+  // un rendu WebGL qu'aucun test ne peut produire, mais il se DÉMONTRE sur les angles seuls, et
   // c'est ce que fait ce test.
   //
   // La démonstration : les membres pendent vers −Y au repos, le Personnage regarde vers −Z (côté
   // faceMesh, cf. buildPersonaRig3D). Une rotation de +θ autour de X envoie donc le tibia vers
-  // l'AVANT — la jambe se plie à l'envers, genou en hyperextension. Un genou humain ne se replie
+  // l'AVANT, la jambe se plie à l'envers, genou en hyperextension. Un genou humain ne se replie
   // que vers l'arrière, donc vers les X NÉGATIFS. Sans exception, et sans réglage de goût.
   //
   // Portée volontairement limitée aux poses PROPOSÉES : saut, meditation, combat et recul plient

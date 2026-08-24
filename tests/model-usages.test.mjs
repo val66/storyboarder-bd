@@ -1,5 +1,5 @@
 /**
- * tests/model-usages.test.mjs — « Où est utilisé ce modèle ? », et comment on s'y rend.
+ * tests/model-usages.test.mjs, « Où est utilisé ce modèle ? », et comment on s'y rend.
  *
  * DEUX CHOSES SE JOUENT ICI, et elles ont été séparées exprès dans le module :
  *
@@ -38,7 +38,7 @@ const el = (modelFile, name, homePanelId) =>
   ({ id: 'e' + Math.random().toString(36).slice(2), type: 'objet3d', objType: 'modele', modelFile, name, homePanelId });
 const caseObj = (id, caseNumber) => ({ id, type: 'panel', caseNumber });
 
-describe('modelUsageLocations — recenser sans rien perdre', () => {
+describe('modelUsageLocations : recenser sans rien perdre', () => {
   test('une Scène et une Case font deux groupes, dans l\'ordre du Projet', () => {
     const projet = {
       scenes: [{ id: 'sc1', name: 'Salon', pages: [{ objects: [el('x.glb', 'Canapé')] }] }],
@@ -54,7 +54,7 @@ describe('modelUsageLocations — recenser sans rien perdre', () => {
 
   test('RÉGRESSION : deux exemplaires dans la MÊME Case font UN groupe et DEUX Éléments', () => {
     // C'est la raison d'être de la hiérarchie. À plat, ces deux lignes porteraient le même texte ;
-    // fondues en une seule, la sélection ne pourrait viser que l'une des deux — arbitrairement.
+    // fondues en une seule, la sélection ne pourrait viser que l'une des deux, arbitrairement.
     const projet = { scenes: [], tomes: [{ name: 'T', pages: [{ objects: [
       caseObj('c1', 1), el('x.glb', 'Chaise', 'c1'), el('x.glb', 'Chaise', 'c1'),
     ] }] }] };
@@ -72,7 +72,7 @@ describe('modelUsageLocations — recenser sans rien perdre', () => {
   });
 
   test('RÉGRESSION : un Élément dont la Case a disparu reste listé, sans numéro inventé', () => {
-    // Le taire le rendrait introuvable — exactement ce que cette liste doit empêcher. Lui inventer
+    // Le taire le rendrait introuvable : exactement ce que cette liste doit empêcher. Lui inventer
     // un numéro serait pire : on désignerait une Case qui n'existe pas.
     const projet = { scenes: [], tomes: [{ name: 'T', pages: [{ objects: [el('x.glb', 'Orphelin', 'disparue')] }] }] };
     const g = modelUsageLocations('x.glb', projet);
@@ -98,7 +98,7 @@ describe('modelUsageLocations — recenser sans rien perdre', () => {
   });
 });
 
-describe('usageLabel — dire où, sans inventer', () => {
+describe('usageLabel : dire où, sans inventer', () => {
   test('une Scène se nomme par son nom', () => {
     assert.equal(usageLabel({ kind: 'scene', sceneName: 'Salon' }, FR), 'Salon');
   });
@@ -126,7 +126,7 @@ describe('usageLabel — dire où, sans inventer', () => {
   });
 });
 
-describe('usageElementLabels — le rang ne s\'ajoute que s\'il départage', () => {
+describe('usageElementLabels : le rang ne s\'ajoute que s\'il départage', () => {
   const g = (...noms) => ({ elements: noms.map(name => ({ id: 'x', name })) });
 
   test('des noms tous différents ne reçoivent AUCUN rang', () => {
@@ -147,7 +147,7 @@ describe('usageElementLabels — le rang ne s\'ajoute que s\'il départage', () 
 
   test('RÉGRESSION : le rang porte sur les HOMONYMES, pas sur le groupe entier', () => {
     // « A, A, B » : c'est parmi les deux A qu'il faut choisir, pas parmi les trois. Numéroter sur
-    // le groupe donnerait « A (1/3) », « A (2/3) » — un dénominateur qui compte un Élément que le
+    // le groupe donnerait « A (1/3) », « A (2/3) », un dénominateur qui compte un Élément que le
     // nom distingue déjà.
     assert.deepEqual(usageElementLabels(g('A', 'A', 'B'), FR), ['A (1/2)', 'A (2/2)', 'B']);
   });
@@ -168,7 +168,7 @@ describe('usageElementLabels — le rang ne s\'ajoute que s\'il départage', () 
   });
 });
 
-describe('resolveModelClick — la décision, et elle seule', () => {
+describe('resolveModelClick : la décision, et elle seule', () => {
   const projetAvec = (n) => ({ scenes: [], tomes: [{ name: 'T', pages: [{ objects:
     [caseObj('c1', 1), ...Array.from({ length: n }, (_, i) => el('x.glb', 'M' + i, 'c1'))] }] }] });
 
@@ -186,7 +186,7 @@ describe('resolveModelClick — la décision, et elle seule', () => {
 
   test('RÉGRESSION : DEUX exemplaires dans la même Case font choisir, pas aller', () => {
     // Le décompte porte sur les ÉLÉMENTS, pas sur les groupes. Compter les groupes ferait sauter
-    // directement au premier des deux — un choix arbitraire déguisé en évidence.
+    // directement au premier des deux, un choix arbitraire déguisé en évidence.
     const r = resolveModelClick('x.glb', projetAvec(2));
     assert.equal(r.action, 'choisir', 'un choix a été tranché à la place de l\'utilisateur');
     assert.equal(r.count, 2);
@@ -214,7 +214,7 @@ beforeEach(() => {
   S.editingSceneId = null; S.selectedId = null; S.currentTomeIndex = 0; S.currentPageIndex = 0;
 });
 
-describe('goToModelUsage — arriver quelque part, et y désigner quelque chose', () => {
+describe('goToModelUsage : arriver quelque part, et y désigner quelque chose', () => {
   test('vers une Case : on quitte l\'éditeur, on change de Page, on sélectionne', () => {
     const ok = goToModelUsage({ kind: 'panel', tomeIndex: 0, pageIndex: 1, elementId: 'e9' });
     assert.equal(ok, true);

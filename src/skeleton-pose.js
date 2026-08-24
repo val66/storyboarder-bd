@@ -1,6 +1,6 @@
 /**
  * @file skeleton-pose.js
- * Tourner un os d'un squelette importé — la forme persistée, et la seule opération qui compte.
+ * Tourner un os d'un squelette importé, la forme persistée, et la seule opération qui compte.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * POURQUOI CE FICHIER N'EST PAS UNE COPIE DE `applyAnimalJointAngles`
@@ -8,7 +8,7 @@
  *
  * Le rig d'un Animal est construit par nous : chaque pivot naît à la rotation (0,0,0), et poser une
  * articulation s'écrit `pivot.rotation.set(x, y, z)`. La fonction commence même par remettre TOUS
- * les pivots à zéro, ce qui est exact — zéro y est la pose de repos.
+ * les pivots à zéro, ce qui est exact, zéro y est la pose de repos.
  *
  * UN SQUELETTE IMPORTÉ NE MARCHE PAS COMME ÇA, ET LE CHIFFRE EST SANS APPEL. Mesure faite sur les
  * six fichiers réels de l'utilisateur, en lisant les quaternions de repos des `nodes` glTF :
@@ -23,8 +23,8 @@
  *   ─────────────────────────────────────────────────────────────────
  *   total                 108             2                 106
  *
- * 106 os sur 108. Écrire `bone.rotation.set(...)` — ou remettre à zéro avant d'écrire, comme le
- * fait la version Animal — DÉTRUIRAIT la pose de repos de presque chaque os : le personnage
+ * 106 os sur 108. Écrire `bone.rotation.set(...)`, ou remettre à zéro avant d'écrire, comme le
+ * fait la version Animal. DÉTRUIRAIT la pose de repos de presque chaque os : le personnage
  * s'effondrerait au premier curseur touché, et le curseur suivant partirait d'un corps déjà cassé.
  *
  * D'où l'unique règle de ce fichier : ON COMPOSE, ON N'ÉCRASE PAS.
@@ -33,7 +33,7 @@
  *
  * `repos` est le quaternion que l'os portait à la sortie du décodeur, capturé une fois à la
  * construction du rig. `delta` est ce que l'utilisateur demande, exprimé dans le repère LOCAL de
- * l'os. Une pose vide redonne exactement le repos — propriété qu'un test épingle, parce que c'est
+ * l'os. Une pose vide redonne exactement le repos, propriété qu'un test épingle, parce que c'est
  * elle qui garantit qu'ouvrir la fiche d'un modèle sans rien toucher ne l'abîme pas.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ export const POSE_LIMITE_DEG = 180;
  *
  * LE BASSIN EST LA RACINE DU SQUELETTE, et le tourner fait pivoter le personnage ENTIER. Mesuré sur
  * les fichiers réels : il entraîne 108 os sur 109 dans worker_j, et la totalité dans capoera et
- * female_pose. Son curseur faisait donc exactement ce que fait déjà l'Orientation de l'Élément —
+ * female_pose. Son curseur faisait donc exactement ce que fait déjà l'Orientation de l'Élément,
  * deux commandes pour un seul effet, sans que rien ne le dise. Signalé à l'usage, sous la forme
  * « les trois premiers curseurs sont les mêmes que ceux de l'orientation » : c'était exact.
  *
@@ -109,7 +109,7 @@ export function estPosable(slot){
  *
  * Les angles NULS SONT JETÉS. Un `{ x: 0, y: 0, z: 0 }` ne dit rien de plus qu'une absence, et le
  * garder ferait grossir chaque Projet d'un bruit que personne ne relit. C'est aussi ce qui rend
- * `estPosee` fiable — voir plus bas.
+ * `estPosee` fiable, voir plus bas.
  */
 export function normaliserPose(brut){
   const sortie = {};
@@ -117,7 +117,7 @@ export function normaliserPose(brut){
   SLOTS.forEach(slot => {
     // Un emplacement devenu non pilotable est JETÉ à la relecture. Un Projet enregistré par une
     // version où le bassin avait des curseurs porterait sinon une rotation que plus personne ne
-    // peut voir ni annuler — le personnage resterait de travers, sans commande pour le redresser.
+    // peut voir ni annuler, le personnage resterait de travers, sans commande pour le redresser.
     // C'est une valeur qu'on cesse de lire, pas un champ renommé : la forme persistée ne bouge pas.
     if (!estPosable(slot)) return;
     const angles = brut[slot];
@@ -137,7 +137,7 @@ export function estPosee(pose){
   return Object.keys(normaliserPose(pose)).length > 0;
 }
 
-/** L'angle d'un axe, en degrés arrondis — ce qu'un curseur affiche. Absent vaut 0. */
+/** L'angle d'un axe, en degrés arrondis, ce qu'un curseur affiche. Absent vaut 0. */
 export function lireAngleDeg(pose, slot, axe){
   const angles = (pose || {})[slot];
   const rad = angles ? Number(angles[axe]) : 0;
@@ -174,7 +174,7 @@ export function ecrireAngleDeg(pose, slot, axe, deg){
  * sans effet ». L'utilisateur le tournerait, ne verrait rien, et n'aurait aucun moyen de savoir si
  * le modèle est en cause ou l'application.
  *
- * Un groupe entièrement vide disparaît aussi — un titre « Bras gauche » sans une ligne dessous
+ * Un groupe entièrement vide disparaît aussi, un titre « Bras gauche » sans une ligne dessous
  * pose la même question sans y répondre.
  */
 export function groupesPosables(carte, traduire){
@@ -188,7 +188,7 @@ export function groupesPosables(carte, traduire){
     .filter(g => g.slots.length > 0);
 }
 
-/** Combien d'emplacements sont pilotables — le chiffre que la fiche annonce avant de dérouler. */
+/** Combien d'emplacements sont pilotables : le chiffre que la fiche annonce avant de dérouler. */
 export function nombrePosable(carte){
   return SLOTS.filter(slot => estPosable(slot) && (carte || {})[slot] && (carte || {})[slot].bone).length;
 }
@@ -198,7 +198,7 @@ export function nombrePosable(carte){
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Quaternion d'une rotation d'Euler (radians), convention XYZ — celle de THREE.Euler par défaut.
+ * Quaternion d'une rotation d'Euler (radians), convention XYZ, celle de THREE.Euler par défaut.
  *
  * Réécrit ici plutôt qu'emprunté à Three pour que la composition reste vérifiable sous Node, sans
  * WebGL ni dépendance. La convention DOIT rester XYZ : c'est celle que THREE.Euler applique aux
@@ -230,7 +230,7 @@ export function quaternionDepuisEuler(x, y, z){
  * VERROUILLAGE DU PÔLE. Quand la rotation approche ±90° sur Y, X et Z tournent autour du même axe et
  * ne se distinguent plus. On met alors Z à zéro et on met tout dans X : le quaternion reconstruit
  * est le bon, seule la RÉPARTITION entre les deux curseurs est arbitraire. Renvoyer NaN ou lever
- * serait pire — l'os serait juste perdu.
+ * serait pire, l'os serait juste perdu.
  */
 export function eulerDepuisQuaternion(q){
   const [x, y, z, w] = Array.isArray(q) && q.length === 4 ? q : [0, 0, 0, 1];
@@ -248,7 +248,7 @@ export function eulerDepuisQuaternion(q){
   return [Math.atan2(m32, m22), ey, 0];
 }
 
-/** Produit de deux quaternions [x, y, z, w] — `a` puis `b`, dans le repère de `a`. */
+/** Produit de deux quaternions [x, y, z, w], `a` puis `b`, dans le repère de `a`. */
 export function multiplierQuaternions(a, b){
   const [ax, ay, az, aw] = a;
   const [bx, by, bz, bw] = b;
@@ -264,7 +264,7 @@ export function multiplierQuaternions(a, b){
  * L'orientation finale d'un os : son repos, puis la demande de l'utilisateur.
  *
  * L'ORDRE N'EST PAS INTERCHANGEABLE. `repos ⊗ delta` tourne l'os autour de SES propres axes, tels
- * qu'ils sont après le repos — c'est ce qu'on attend en attrapant un membre. `delta ⊗ repos`
+ * qu'ils sont après le repos, c'est ce qu'on attend en attrapant un membre. `delta ⊗ repos`
  * tournerait autour des axes du parent, et un bras déjà orienté vers le bas partirait de travers.
  * Une mutation épingle cet ordre, parce que les deux formes se compilent aussi bien et que
  * l'inversion ne se voit qu'à l'écran.

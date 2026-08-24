@@ -1,5 +1,5 @@
 /**
- * tests/model-cache.test.mjs — le décalage entre un chargeur asynchrone et un rendu synchrone.
+ * tests/model-cache.test.mjs, le décalage entre un chargeur asynchrone et un rendu synchrone.
  *
  * C'est l'endroit du projet où l'architecture pouvait résister. `GLTFLoader` est asynchrone ;
  * `renderPanelSceneUncached3D` construit ses rigs en ligne, sans jamais rendre la main. Aucun `await`
@@ -9,7 +9,7 @@
  * propriétés qui font tenir ce montage, et dont trois ne se voient pas à l'usage.
  *
  *   1. La lecture depuis le rendu est SYNCHRONE et sans effet de bord.
- *   2. Un décodage en cours n'est jamais relancé — sinon N images relancent N décodages.
+ *   2. Un décodage en cours n'est jamais relancé, sinon N images relancent N décodages.
  *   3. Un fichier introuvable est un ÉTAT, pas une erreur qu'on réessaie à chaque image.
  *   4. L'état du cache entre dans la signature de rendu, sans quoi un modèle arrivé ne s'affiche pas.
  *
@@ -41,10 +41,10 @@ beforeEach(() => { clearModelCache(); setModelCacheCallbacks({}); setModelBridge
 // 1. Ce que le Projet réclame
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('collectModelFiles — les fichiers à décoder, sans doublon', () => {
+describe('collectModelFiles : les fichiers à décoder, sans doublon', () => {
   test('dix Éléments du même modèle ne demandent qu\'un décodage', () => {
     // La propriété qui rend le montage viable. Un décor peuplé de vingt chaises identiques doit
-    // décoder un fichier, pas vingt — et les vingt instances partageront ensuite les mêmes tampons.
+    // décoder un fichier, pas vingt, et les vingt instances partageront ensuite les mêmes tampons.
     const objets = Array.from({ length: 10 }, (_, i) => modele(`e${i}`, 'chaise.glb'));
     assert.deepEqual(collectModelFiles(objets), ['chaise.glb']);
   });
@@ -90,7 +90,7 @@ describe('Les états du cache', () => {
 
   test('RÉGRESSION : un décodage en cours n\'est jamais relancé', async () => {
     // Sans ce filtre, chaque appel de préchargement relancerait la lecture des fichiers déjà en
-    // cours — et le préchargement est appelé à chaque ouverture de Projet.
+    // cours, et le préchargement est appelé à chaque ouverture de Projet.
     let lectures = 0;
     setModelBridge({ readModelFile: async () => { lectures++; return { ok: false }; } });
     _setModelCacheEntry('encours.glb', 'chargement');
@@ -100,7 +100,7 @@ describe('Les états du cache', () => {
 
   test('RÉGRESSION : un fichier introuvable n\'est pas réessayé', async () => {
     // L'état « introuvable » existe pour ça. Sans lui, un modèle supprimé du disque provoquerait
-    // une lecture ratée par image — soixante par seconde, indéfiniment.
+    // une lecture ratée par image, soixante par seconde, indéfiniment.
     let lectures = 0;
     setModelBridge({ readModelFile: async () => { lectures++; return { ok: false }; } });
     await preloadModels(['perdu.glb']);
@@ -126,12 +126,12 @@ describe('Les états du cache', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. La signature — le piège de cette étape
+// 3. La signature, le piège de cette étape
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('modelCacheSignature — sans elle, un modèle chargé ne s\'affiche jamais', () => {
+describe('modelCacheSignature : sans elle, un modèle chargé ne s\'affiche jamais', () => {
   test('RÉGRESSION : la signature CHANGE quand un modèle passe de chargement à prêt', () => {
-    // LE piège de l'étape 4. La signature de Case est calculée à partir des Éléments — or un Élément
+    // LE piège de l'étape 4. La signature de Case est calculée à partir des Éléments, or un Élément
     // ne change pas quand son modèle finit d'arriver. Sans cette part, la Case resterait en cache
     // avec sa boîte de remplacement, et le modèle n'apparaîtrait qu'au prochain déplacement.
     _setModelCacheEntry('a.glb', 'chargement');
@@ -159,7 +159,7 @@ describe('modelCacheSignature — sans elle, un modèle chargé ne s\'affiche ja
 // 4. La libération
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('clearModelCache — la mémoire de la carte graphique', () => {
+describe('clearModelCache : la mémoire de la carte graphique', () => {
   test('RÉGRESSION : géométries, matériaux ET textures sont libérés', () => {
     // Les textures sont portées par le matériau et ne se libèrent PAS avec lui. Les oublier laisse
     // la mémoire monter à chaque ouverture de Projet, sans rien de visible avant l'effondrement.
@@ -199,12 +199,12 @@ describe('clearModelCache — la mémoire de la carte graphique', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4bis. L'anisotropie — le moiré au dézoom sur un modèle importé
+// 4bis. L'anisotropie, le moiré au dézoom sur un modèle importé
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('applyAnisotropy — le scintillement des textures au dézoom', () => {
+describe('applyAnisotropy : le scintillement des textures au dézoom', () => {
   // RETOUR UTILISATEUR : « quand je dezoom la Scène, les Modèles importés ont leur textures qui
-  // bug un peu [...] quand je les regarde de près [...] je n'ai pas le soucis. » — signature exacte
+  // bug un peu [...] quand je les regarde de près [...] je n'ai pas le soucis. », signature exacte
   // d'un moiré de minification (cf. l'en-tête d'applyAnisotropy, model-cache.js) : GLTFLoader ne
   // règle jamais l'anisotropie d'une texture, qui reste à 1 (son défaut Three.js).
   const texture = () => ({});
@@ -231,7 +231,7 @@ describe('applyAnisotropy — le scintillement des textures au dézoom', () => {
 
   test('RÉGRESSION : sans callback injecté (niveau 1 par défaut), rien n\'est touché', () => {
     // Pas de renderer câblé (ex. environnement de test) : le défaut Three.js (1) ne doit rien
-    // écrire — sinon un aller-retour GPU inutile à chaque modèle décodé, pour rien.
+    // écrire, sinon un aller-retour GPU inutile à chaque modèle décodé, pour rien.
     setModelCacheCallbacks({});
     const maille = mailleAvecTextures();
     _applyAnisotropyForTests({ traverse: (f) => f(maille) });
@@ -247,7 +247,7 @@ describe('applyAnisotropy — le scintillement des textures au dézoom', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Le câblage — ce que les tests unitaires ne peuvent pas voir
+// 5. Le câblage, ce que les tests unitaires ne peuvent pas voir
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Le câblage du décalage', () => {
@@ -288,9 +288,9 @@ describe('Le câblage du décalage', () => {
 
   test('RÉGRESSION : le rig d\'un modèle importé se reconstruit quand la hauteur cible change', () => {
     // placeRigCentered3D remet figureGroup.scale à 1 puis réapplique le facteur voulu à CHAQUE
-    // rendu — en théorie, ça suffirait sans reclonage. Mais pour un modèle importé ARTICULÉ
+    // rendu, en théorie, ça suffirait sans reclonage. Mais pour un modèle importé ARTICULÉ
     // (SkinnedMesh), redimensionner depuis la modale APRÈS l'import laissait le rendu 3D figé à sa
-    // taille de création (seule la Case 2D suivait) — cf. retours utilisateur. Le remède sûr : un
+    // taille de création (seule la Case 2D suivait), cf. retours utilisateur. Le remède sûr : un
     // reclonage (cloneSkinned) à chaque changement de realHeightFloor, exactement le chemin déjà
     // vérifié correct à l'import (cf. tests/vendor-skeleton-utils.test.mjs).
     assert.match(RIG3D, /heightChanged/, 'l\'invalidation par hauteur cible a disparu');
@@ -314,7 +314,7 @@ describe('Le câblage du décalage', () => {
 
   test('RÉGRESSION : l\'anisotropie du renderer est câblée jusqu\'au cache de modèles', () => {
     // Sans ce fil, applyAnisotropy() ne voit jamais que sa valeur par défaut (1) : le moiré au
-    // dézoom reviendrait silencieusement, sans qu'aucun test ci-dessus ne le détecte — ces tests
+    // dézoom reviendrait silencieusement, sans qu'aucun test ci-dessus ne le détecte, ces tests
     // vérifient applyAnisotropy en isolation, pas qu'elle reçoit la vraie capacité du GPU.
     assert.match(EVENTS, /getMaxAnisotropy:\s*getMaxAnisotropy3D/,
       'setModelCacheCallbacks n\'injecte plus getMaxAnisotropy — le module retombe sur son défaut (1)');
@@ -325,7 +325,7 @@ describe('Le câblage du décalage', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — huit fautes, sur le module et sur son câblage.
+ * JOURNAL DE MUTATION : huit fautes, sur le module et sur son câblage.
  *
  *   U1 le filtre « absent » retiré : rechargement de ce qui charge déjà        ROUGE (3)
  *   U3 l'état retiré de la signature de cache                                  ROUGE
@@ -343,6 +343,6 @@ describe('Le câblage du décalage', () => {
  *
  * MUTANT ÉQUIVALENT ASSUMÉ. Retirer `|| !octets.length` du refus d'un fichier vide ne change pas
  * l'état final : le décodeur reçoit alors zéro octet, échoue, et l'entrée passe quand même à
- * « introuvable ». La garde est gardée quand même — elle ne fait pas DÉPENDRE le résultat du
+ * « introuvable ». La garde est gardée quand même, elle ne fait pas DÉPENDRE le résultat du
  * comportement de GLTFLoader sur une entrée vide, comportement qu'on ne contrôle pas.
  */

@@ -1,16 +1,16 @@
 /**
- * tests/skinned-box-3d.test.mjs — la boîte englobante d'un modèle articulé doit suivre sa pose, pas
+ * tests/skinned-box-3d.test.mjs, la boîte englobante d'un modèle articulé doit suivre sa pose, pas
  * sa géométrie brute.
  *
- * LE BUG QUE CE FICHIER GARDE. `THREE.Box3.setFromObject()` lit `geometry.boundingBox` — la
- * géométrie de BIND, telle que stockée dans le fichier — transformée par la seule matrice DU
+ * LE BUG QUE CE FICHIER GARDE. `THREE.Box3.setFromObject()` lit `geometry.boundingBox`, la
+ * géométrie de BIND, telle que stockée dans le fichier, transformée par la seule matrice DU
  * MAILLAGE. Le skinning (déformation par les os) est un calcul GPU, dans le vertex shader : la CPU
  * ne le voit jamais avec cette méthode. Résultat observé : un modèle importé articulé mesuré/cadré
- * sur sa géométrie de bind, sans rapport avec ce qui s'affiche réellement une fois posé — aperçu de
+ * sur sa géométrie de bind, sans rapport avec ce qui s'affiche réellement une fois posé, aperçu de
  * la modale cadré sur les pieds seuls, boîte de sélection 2D décalée vers le bas.
  *
  * CE QUE CE FICHIER VÉRIFIE : `box3FromObjectSkinAware3D` reflète la position RÉELLEMENT POSÉE des
- * sommets (via `SkinnedMesh.boneTransform`), pas leur position de bind — là où
+ * sommets (via `SkinnedMesh.boneTransform`), pas leur position de bind, là où
  * `Box3.setFromObject` reste aveugle à la pose.
  */
 import { test, describe } from 'node:test';
@@ -23,7 +23,7 @@ import { box3FromObjectSkinAware3D, expandBoxSkinAware3D } from '../src/skinned-
 globalThis.THREE = THREE;
 
 /**
- * Un SkinnedMesh minimal à deux sommets, un par os, en pose de BIND toute petite (0 → 1 en Y) —
+ * Un SkinnedMesh minimal à deux sommets, un par os, en pose de BIND toute petite (0 → 1 en Y),
  * puis un deuxième os DÉPLACÉ loin de sa position de bind, pour simuler une pose réelle très
  * différente de la géométrie brute (le cas d'un modèle importé articulé quelconque).
  */
@@ -56,7 +56,7 @@ function maillageArticuléPosé(){
   return { scène, maillage, racine, enfant };
 }
 
-describe('box3FromObjectSkinAware3D — suit la pose, pas la géométrie de bind', () => {
+describe('box3FromObjectSkinAware3D : suit la pose, pas la géométrie de bind', () => {
   test('RÉGRESSION : Box3.setFromObject() reste aveugle à la pose (le bug que ce module répare)', () => {
     const { scène } = maillageArticuléPosé();
     const boîteNaïve = new THREE.Box3().setFromObject(scène);
@@ -76,7 +76,7 @@ describe('box3FromObjectSkinAware3D — suit la pose, pas la géométrie de bind
   });
 
   test('un maillage rigide (non skinné) donne la même boîte que Box3.setFromObject standard', () => {
-    // La réparation ne doit rien changer pour tout ce qui n'est PAS skinné (meuble, véhicule…) —
+    // La réparation ne doit rien changer pour tout ce qui n'est PAS skinné (meuble, véhicule…),
     // sinon on remplace un bug par une régression sur tout le reste de l'application.
     const boîte1 = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 4), new THREE.MeshBasicMaterial());
     boîte1.position.set(5, 5, 5);
@@ -103,7 +103,7 @@ describe('box3FromObjectSkinAware3D — suit la pose, pas la géométrie de bind
 
 describe('un maillage masqué ne compte pas dans la boîte', () => {
   // LE DÉFAUT GARDÉ ICI. Un modèle importé posé dans une Case atterrissait partiellement, voire
-  // complètement, en dehors d'elle — alors qu'un Personnage n'avait jamais ce défaut.
+  // complètement, en dehors d'elle, alors qu'un Personnage n'avait jamais ce défaut.
   //
   // `placeRigCentered3D` déduit de cette boîte l'échelle ET le centre du rig. Sur worker_j.glb,
   // dont un maillage est masqué parce que le fichier le place hors du corps, la boîte passait de
@@ -139,7 +139,7 @@ describe('un maillage masqué ne compte pas dans la boîte', () => {
 
   test('RÉGRESSION : un GROUPE invisible n\'annule pas la boîte de ses maillages', () => {
     // « Invisible dans la scène 3D » (hidden3d) pose visible = false sur le GROUPE de l'Élément.
-    // Si cela vidait la boîte, son placement deviendrait absurde — et le réafficher le ferait
+    // Si cela vidait la boîte, son placement deviendrait absurde, et le réafficher le ferait
     // réapparaître n'importe où. Seule la visibilité PROPRE d'un maillage est consultée.
     const g = groupe(cube('corps', [0, 0, 0]), cube('tete', [0, 2, 0]));
     g.visible = false;
@@ -157,7 +157,7 @@ describe('un maillage masqué ne compte pas dans la boîte', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — le filtre de visibilité.
+ * JOURNAL DE MUTATION : le filtre de visibilité.
  *
  *   Q1 le filtre retiré (un maillage masqué compte à nouveau)                    ROUGE
  *   Q2 le filtre appliqué à TOUT nœud, groupes compris                           ROUGE
@@ -168,7 +168,7 @@ describe('un maillage masqué ne compte pas dans la boîte', () => {
  * initialise `visible` à `true` dans le constructeur d'Object3D, si bien qu'elle ne vaut jamais
  * `undefined` sur un objet réel. Les deux écritures sont donc strictement interchangeables ici.
  *
- * On garde `=== false` — « seul un masquage EXPLICITE compte » — et on n'écrit pas de test pour
+ * On garde `=== false`, « seul un masquage EXPLICITE compte », et on n'écrit pas de test pour
  * la distinguer : il faudrait fabriquer un faux maillage sans `visible`, c'est-à-dire un état que
  * la bibliothèque ne produit pas. Un test qui défend une fiction ne garde rien.
  */

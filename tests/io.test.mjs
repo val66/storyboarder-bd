@@ -1,4 +1,4 @@
-// tests/io.test.mjs — Tests unitaires de src/io.js (sérialisation, migrations de Projet,
+// tests/io.test.mjs. Tests unitaires de src/io.js (sérialisation, migrations de Projet,
 // chargement/application des données d'un Projet).
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
@@ -22,7 +22,7 @@ import {
   setIOCallbacks, setRenameModelCallback, openRenameEntityModal, confirmRenameEntity,
 } from '../src/io.js';
 // draw.js complète POSE_3D à l'exécution ('allonge', 'vaincu'). Importé explicitement ici parce que
-// le semis de la bibliothèque en dépend — cf. le test d'ordre d'import plus bas.
+// le semis de la bibliothèque en dépend, cf. le test d'ordre d'import plus bas.
 import '../src/draw.js';
 import { S } from '../src/state.js';
 import { GROUND_Y_DEFAULT_3D, PANEL_CAM_DEFAULT_DIST_3D, POSITIONS, POSE_3D } from '../src/constants.js';
@@ -42,10 +42,10 @@ beforeEach(() => {
 });
 
 // ── serializeProject ──────────────────────────────────────────────────────────────────────────
-describe('serializeProject — instantané JSON du Projet courant', () => {
+describe('serializeProject : instantané JSON du Projet courant', () => {
   // Le compte de champs est volontairement figé : chacun d'eux devient un élément PERMANENT du
   // format de fichier (cf. docs/persisted-data.md). Ce test tombe à chaque ajout, ce qui est le
-  // but — il force à se demander si le champ mérite vraiment d'être gravé.
+  // but, il force à se demander si le champ mérite vraiment d'être gravé.
   test('sérialise exactement les 6 champs attendus depuis S', () => {
     S.projectName = 'Test'; S.tomes = [{ id: 't1' }]; S.currentTomeIndex = 0; S.currentPageIndex = 0;
     S.scenes = []; S.poses = [];
@@ -54,7 +54,7 @@ describe('serializeProject — instantané JSON du Projet courant', () => {
                              currentPageIndex: 0, scenes: [], poses: [] });
   });
 
-  test('Fix 57 — le fichier n\'embarque QUE les poses que le Projet utilise', () => {
+  test('Fix 57 : le fichier n\'embarque QUE les poses que le Projet utilise', () => {
     // La bibliothèque appartient désormais à l'Application (settings.json). Ce que le fichier porte
     // est une copie de secours, pour rester lisible sur une autre machine. Embarquer la
     // bibliothèque entière gonflerait chaque fichier de poses sans rapport avec lui.
@@ -83,7 +83,7 @@ describe('serializeProject — instantané JSON du Projet courant', () => {
 });
 
 // ── applyProjectNameFromFileName ─────────────────────────────────────────────────────────────
-describe('applyProjectNameFromFileName — déduit le nom du Projet depuis un nom de fichier', () => {
+describe('applyProjectNameFromFileName : déduit le nom du Projet depuis un nom de fichier', () => {
   test('chemin Windows avec extension .json : extrait le nom de base', () => {
     S.projectName = 'Projet';
     applyProjectNameFromFileName('C:\\Users\\me\\Aventure.json');
@@ -106,7 +106,7 @@ describe('applyProjectNameFromFileName — déduit le nom du Projet depuis un no
 });
 
 // ── cleanupOrphanedElements ──────────────────────────────────────────────────────────────────
-describe('cleanupOrphanedElements — supprime les Éléments dont la Case d\'origine n\'existe plus', () => {
+describe('cleanupOrphanedElements : supprime les Éléments dont la Case d\'origine n\'existe plus', () => {
   test('homePanelId pointant vers une Case supprimée : Élément retiré ; sans homePanelId : conservé', () => {
     S.tomes = [{ pages: [{ objects: [
       { id: 'p1', type: 'panel' },
@@ -129,7 +129,7 @@ describe('cleanupOrphanedElements — supprime les Éléments dont la Case d\'or
 });
 
 // ── migrateMissingHomePanelId ────────────────────────────────────────────────────────────────
-describe('migrateMissingHomePanelId — attribue homePanelId aux Éléments qui en sont dépourvus', () => {
+describe('migrateMissingHomePanelId : attribue homePanelId aux Éléments qui en sont dépourvus', () => {
   test('propage via pieceId déjà résolu, puis retombe sur le chevauchement géométrique', () => {
     S.tomes = [{ pages: [{ objects: [
       { id: 'p1', type: 'panel', x: 0, y: 0, w: 800, h: 600 },
@@ -155,7 +155,7 @@ describe('migrateMissingHomePanelId — attribue homePanelId aux Éléments qui 
 });
 
 // ── migrateSceneTopDownDefault ───────────────────────────────────────────────────────────────
-describe('migrateSceneTopDownDefault — vue de dessus par défaut pour les anciennes Scènes', () => {
+describe('migrateSceneTopDownDefault : vue de dessus par défaut pour les anciennes Scènes', () => {
   test('camRotX jamais défini : bascule à PI/2 (dessus), camRotY à 0 ; camRotX déjà défini : inchangé', () => {
     S.scenes = [{ pages: [{ objects: [
       { type: 'panel', id: 'sc1' },
@@ -170,7 +170,7 @@ describe('migrateSceneTopDownDefault — vue de dessus par défaut pour les anci
 });
 
 // ── resyncIdCounter ───────────────────────────────────────────────────────────────────────────
-describe('resyncIdCounter — resynchronise S.idCounter sur le plus grand id du Projet chargé', () => {
+describe('resyncIdCounter : resynchronise S.idCounter sur le plus grand id du Projet chargé', () => {
   test('trouve le plus grand suffixe numérique parmi tous les id (récursif)', () => {
     S.idCounter = 0;
     resyncIdCounter({ tomes: [{ id: 't1', pages: [{ id: 'p5', objects: [{ id: 'o12' }] }] }], scenes: [] });
@@ -185,7 +185,7 @@ describe('resyncIdCounter — resynchronise S.idCounter sur le plus grand id du 
 });
 
 // ── migrateElementWxFloor ─────────────────────────────────────────────────────────────────────
-describe('migrateElementWxFloor — dérive wxFloor/wzFloor/realHeightFloor manquants', () => {
+describe('migrateElementWxFloor : dérive wxFloor/wzFloor/realHeightFloor manquants', () => {
   function makePanel() {
     return { id: 'panel1', type: 'panel', x: 0, y: 0, w: 800, h: 600 };
   }
@@ -221,7 +221,7 @@ describe('migrateElementWxFloor — dérive wxFloor/wzFloor/realHeightFloor manq
 });
 
 // ── migratePanelWorldCoords ───────────────────────────────────────────────────────────────────
-describe('migratePanelWorldCoords — dé-scale les coordonnées monde des anciens projets (sceneScale < 1)', () => {
+describe('migratePanelWorldCoords : dé-scale les coordonnées monde des anciens projets (sceneScale < 1)', () => {
   test('panel scalé à 0.5 : multiplie toutes les grandeurs physiques de ses Éléments par 1/sceneScale', () => {
     S.tomes = [{ pages: [{ objects: [
       { id: 'panel1', type: 'panel', sceneScale: 0.5, camDist: 15, camDistTarget: 15 },
@@ -252,7 +252,7 @@ describe('migratePanelWorldCoords — dé-scale les coordonnées monde des ancie
 });
 
 // ── applyProjectData (test d'intégration) ────────────────────────────────────────────────────
-describe('applyProjectData — chargement complet d\'un ancien Projet (intégration de toutes les migrations)', () => {
+describe('applyProjectData : chargement complet d\'un ancien Projet (intégration de toutes les migrations)', () => {
   test('remplace l\'état, nettoie les orphelins, migre homePanelId/wxFloor, resynchronise idCounter', () => {
     const oldData = {
       projectName: 'Vieux Projet',
@@ -297,11 +297,11 @@ describe('applyProjectData — chargement complet d\'un ancien Projet (intégrat
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 47 — bibliothèque de poses du Projet. Tolérante par principe : un projet enregistré avant
+// Fix 47, bibliothèque de poses du Projet. Tolérante par principe : un projet enregistré avant
 // l'existence des poses n'a pas le champ, et un fichier bricolé peut contenir n'importe quoi.
-// Rien de tout cela ne doit empêcher l'ouverture — les Personnages portent déjà leurs angles.
+// Rien de tout cela ne doit empêcher l'ouverture, les Personnages portent déjà leurs angles.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('normalizePoses3D — lecture tolérante de la bibliothèque (Fix 47)', () => {
+describe('normalizePoses3D : lecture tolérante de la bibliothèque (Fix 47)', () => {
   test('une bibliothèque valide traverse intacte', () => {
     const brut = [{ id: 'pose1', name: 'maPose', skeleton: 'humain', joints: { lElbow: 0.4 } }];
     assert.deepEqual(normalizePoses3D(brut), brut);
@@ -348,7 +348,7 @@ describe('normalizePoses3D — lecture tolérante de la bibliothèque (Fix 47)',
   });
 });
 
-describe('resyncIdCounter — les ids de poses comptent aussi (Fix 47)', () => {
+describe('resyncIdCounter : les ids de poses comptent aussi (Fix 47)', () => {
   test('RÉGRESSION : une pose créée après chargement ne réutilise pas un id pris', () => {
     // Sans la visite de `poses`, S.idCounter repartait sous le plus grand id existant : newId
     // rendait « pose7 » alors qu'une pose7 existait déjà. Les Personnages citant leur pose PAR ID,
@@ -371,7 +371,7 @@ describe('resyncIdCounter — les ids de poses comptent aussi (Fix 47)', () => {
   });
 });
 
-describe('applyProjectData — les poses du fichier FUSIONNENT dans la bibliothèque (Fix 57)', () => {
+describe('applyProjectData : les poses du fichier FUSIONNENT dans la bibliothèque (Fix 57)', () => {
   test('les poses inconnues du fichier sont ajoutées à la bibliothèque', () => {
     S.poses = [];
     applyProjectData({ projectName: 'P', tomes: [], scenes: [],
@@ -383,7 +383,7 @@ describe('applyProjectData — les poses du fichier FUSIONNENT dans la biblioth�
   test('RÉGRESSION : ouvrir un projet n\'efface pas la bibliothèque personnelle', () => {
     // La bibliothèque appartient à l'Application. Remplacer S.poses par le contenu du fichier
     // ferait qu'ouvrir un projet ancien détruirait tout le travail accumulé, poses semées
-    // comprises — et sans le moindre avertissement.
+    // comprises, et sans le moindre avertissement.
     S.poses = [{ id: 'debout', name: '🧍 Debout', skeleton: 'humain', joints: {} }];
     applyProjectData({ projectName: 'P', tomes: [] });
     assert.equal(S.poses.length, 1, 'projet sans poses : la bibliothèque est intacte');
@@ -403,17 +403,17 @@ describe('applyProjectData — les poses du fichier FUSIONNENT dans la biblioth�
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 57 — bibliothèque de poses au niveau APPLICATION (settings.json).
+// Fix 57 : bibliothèque de poses au niveau APPLICATION (settings.json).
 //
-// Sans window.storyboarderAPI — le cas de ces tests — tout fonctionne en mémoire. C'est délibéré :
+// Sans window.storyboarderAPI, le cas de ces tests, tout fonctionne en mémoire. C'est délibéré :
 // une bibliothèque non persistée vaut mieux qu'une exception au démarrage, et ça rend le semis
 // testable sans Electron.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('loadPoseLibrary — semis au premier lancement', () => {
+describe('loadPoseLibrary : semis au premier lancement', () => {
   beforeEach(() => { S.poses = []; });
 
   test('ORDRE D\'IMPORT : POSE_3D doit être complet avant le semis', () => {
-    // Constaté en écrivant ce test : sans draw.js, POSE_3D n'a que 13 entrées — 'allonge' et
+    // Constaté en écrivant ce test : sans draw.js, POSE_3D n'a que 13 entrées, 'allonge' et
     // 'vaincu' y sont ajoutées À L'EXÉCUTION (cf. Fix 54). Semer trop tôt priverait définitivement
     // l'utilisateur des deux poses couchées, sans le moindre signal.
     //
@@ -456,7 +456,7 @@ describe('loadPoseLibrary — semis au premier lancement', () => {
   });
 });
 
-describe('setPoseLibrary — écriture en mémoire, persistance silencieuse', () => {
+describe('setPoseLibrary : écriture en mémoire, persistance silencieuse', () => {
   test('S.poses reflète immédiatement la nouvelle liste', () => {
     // Toutes les lectures de l'application sont SYNCHRONES : attendre l'IPC à chaque affichage de
     // la liste des poses ferait bégayer l'interface.
@@ -477,7 +477,7 @@ describe('setPoseLibrary — écriture en mémoire, persistance silencieuse', ()
   });
 });
 
-describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () => {
+describe('loadPoseLibrary : bibliothèque vidée volontairement (Fix 57)', () => {
   // Un faux storyboarderAPI suffit : loadPoseLibrary ne lit que getSettings, et setSetting est
   // appelé sans await. Restauré après chaque test pour ne pas contaminer les suivants.
   const withSettings = async (settings, fn) => {
@@ -518,7 +518,7 @@ describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () 
   test('réglages illisibles, et pont INCOMPLET : on sème quand même', async () => {
     // Deux pannes à la fois, et c'est voulu : ce pont n'expose que getSettings, qui échoue. La
     // première version de setPoseLibrary levait alors une TypeError synchrone sur setSetting
-    // absent — elle remontait jusqu'à l'appelant et annulait l'enregistrement de la pose. Perdre
+    // absent, elle remontait jusqu'à l'appelant et annulait l'enregistrement de la pose. Perdre
     // la persistance est acceptable ; perdre la pose que l'utilisateur vient de créer, non.
     S.poses = [];
     const avant = window.storyboarderAPI;
@@ -530,13 +530,13 @@ describe('loadPoseLibrary — bibliothèque vidée volontairement (Fix 57)', () 
   });
 });
 
-describe('Fix 57 — les deux comportements surprenants, épinglés volontairement', () => {
+describe('Fix 57 : les deux comportements surprenants, épinglés volontairement', () => {
   // Vérifiés en exécutant le scénario, pas déduits. Ils sont documentés dans
   // docs/character-editor.md comme assumés : ces tests existent pour que quiconque les prendrait
   // pour des bugs trouve l'intention écrite avant de « corriger ».
   test('supprimer une pose, puis rouvrir un projet qui l\'utilise, la fait RÉAPPARAÎTRE', () => {
     // C'est le prix de l'autonomie des fichiers : le projet embarque les poses dont il a besoin, et
-    // l'ouverture les réintègre. Le projet a réellement besoin de celle-ci — sans quoi son
+    // l'ouverture les réintègre. Le projet a réellement besoin de celle-ci, sans quoi son
     // Personnage s'afficherait « inconnue ». La resupprimer reste à un clic.
     S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
     S.tomes = [{ id: 't1', pages: [{ id: 'p1', objects: [
@@ -569,7 +569,7 @@ describe('Fix 57 — les deux comportements surprenants, épinglés volontaireme
   });
 });
 
-describe('Fix 58b — supprimer PUIS réenregistrer retire la pose du fichier aussi', () => {
+describe('Fix 58b : supprimer PUIS réenregistrer retire la pose du fichier aussi', () => {
   test('la copie embarquée est recalculée : elle disparaît avec la pose', () => {
     // Nuance manquée à la première rédaction de la doc, trouvée en répondant à une question de
     // l'utilisateur. La copie n'est pas une donnée figée dans le fichier : posesUsedByProject3D la
@@ -596,9 +596,9 @@ describe('Fix 58b — supprimer PUIS réenregistrer retire la pose du fichier au
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 59 — suppressions mémorisées et restauration des poses de base.
+// Fix 59 : suppressions mémorisées et restauration des poses de base.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 59 — une suppression n\'est plus défaite par l\'ouverture d\'un projet', () => {
+describe('Fix 59 : une suppression n\'est plus défaite par l\'ouverture d\'un projet', () => {
   test('RÉGRESSION : le scénario complet, de bout en bout', () => {
     // Le comportement corrigé, dans l'ordre où il se produit pour l'utilisateur.
     S.poses = [{ id: 'pose1', name: 'Salut militaire', skeleton: 'humain', joints: { lElbow: 0.4 } }];
@@ -657,7 +657,7 @@ describe('Fix 59 — une suppression n\'est plus défaite par l\'ouverture d\'un
   });
 });
 
-describe('Fix 59 — restaurer les poses de base', () => {
+describe('Fix 59 : restaurer les poses de base', () => {
   beforeEach(() => { S.dismissedPoses = []; });
 
   test('réajoute les manquantes et lève leur mémorisation', () => {
@@ -703,11 +703,11 @@ describe('Fix 59 — restaurer les poses de base', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 67 — Échap dans l'éditeur de Personnage ne doit pas ouvrir le menu Projet.
+// Fix 67 : Échap dans l'éditeur de Personnage ne doit pas ouvrir le menu Projet.
 //
 // Testé par INSPECTION de la source : le stub DOM ne distribue aucun événement (addEventListener
 // y est un no-op), on ne peut donc pas déclencher un vrai appui sur Échap. Ce qu'on vérifie ici est
-// exactement ce qui était faux — l'ORDRE des gardes dans l'écouteur, pas leur effet.
+// exactement ce qui était faux, l'ORDRE des gardes dans l'écouteur, pas leur effet.
 //
 // Le piège de fond : l'écouteur d'io.js est enregistré AVANT celui de l'éditeur (events.js importe
 // io.js), donc le stopImmediatePropagation de l'éditeur arrive trop tard. C'est donc io.js, et lui
@@ -715,14 +715,14 @@ describe('Fix 59 — restaurer les poses de base', () => {
 //
 // LA LISTE DE GARDES QUI VIVAIT ICI A DISPARU : elle citait huit modales sur quatorze, et les six
 // absentes voyaient Échap ouvrir le menu Projet derrière elles (signalé à l'usage sur l'écran de
-// correspondance du squelette). La décision est maintenant une fonction pure — `actionEchap`, cf.
+// correspondance du squelette). La décision est maintenant une fonction pure, `actionEchap`, cf.
 // tests/modal-stack.test.mjs, où elle se teste sur son comportement et non sur sa forme.
 //
 // CE QUI RESTE VÉRIFIÉ ICI est le point que la fonction pure ne peut PAS attraper : que l'éditeur
 // de Personnage soit bien passé à `actionEchap`, et AVANT toute autre action. L'éditeur n'est pas
-// une modale — aucune classe ne parle pour lui, seul ce drapeau le peut.
+// une modale, aucune classe ne parle pour lui, seul ce drapeau le peut.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est ouvert', () => {
+describe('Fix 67 : Échap appartient à l\'éditeur de Personnage quand il est ouvert', () => {
   const src = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
   const debut = src.indexOf("window.addEventListener('keydown', (e) => {\n  if (e.key !== 'Escape') return;");
   const corps = src.slice(debut, src.indexOf('openProjectModal();', debut));
@@ -733,7 +733,7 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
 
   test('RÉGRESSION : il renonce si l\'éditeur de Personnage est ouvert', () => {
     // L'état de l'éditeur doit être TRANSMIS à la décision. S'il ne l'était pas, quitter l'éditeur
-    // par Échap ouvrirait le menu Projet derrière lui — le défaut d'origine du Fix 67.
+    // par Échap ouvrirait le menu Projet derrière lui, le défaut d'origine du Fix 67.
     assert.match(corps, /editeurOuvert:\s*S\.personaEditorOpen/,
       'l\'état de l\'éditeur n\'est plus transmis à la décision Échap');
     assert.match(corps, /quoi\.action === 'rien'\) return;/,
@@ -771,7 +771,7 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
 // ─────────────────────────────────────────────────────────────────────────────
 // La modale de renommage : à qui la confirmation est-elle transmise ?
 // ─────────────────────────────────────────────────────────────────────────────
-describe('confirmRenameEntity — chaque sorte va à son destinataire', () => {
+describe('confirmRenameEntity : chaque sorte va à son destinataire', () => {
   let recu;
   beforeEach(() => {
     recu = [];
@@ -793,7 +793,7 @@ describe('confirmRenameEntity — chaque sorte va à son destinataire', () => {
     //     else if (_applyRenameScene) _applyRenameScene(...);
     //
     // L'`else` se rattache au `if` INTÉRIEUR, pas au premier. Le tout se lit donc « si c'est un
-    // tome : appeler le renommage de tome, sinon celui de scène » — et pour une Scène, la condition
+    // tome : appeler le renommage de tome, sinon celui de scène », et pour une Scène, la condition
     // extérieure étant fausse, RIEN ne s'exécutait. La modale se fermait, le nom ne changeait pas.
     // Pire encore : un renommage de Tome avec `_applyRenameVolume` absent appelait celui des Scènes.
     renommer('scene', 'sc1', 'Ancien', 'Nouveau');

@@ -14,26 +14,26 @@
  *
  * SUR LE SECOND, LA RECHERCHE PAR NOM NE SE CONTENTE PAS D'ÉCHOUER : ELLE SE TROMPE. Elle rangeait
  * « Left_leg » dans l'emplacement du tibia parce que le mot « leg » y figurait. Un os mal attribué
- * est pire qu'un os manquant — le personnage se tord, et rien ne le signale.
+ * est pire qu'un os manquant, le personnage se tord, et rien ne le signale.
  *
  * D'OÙ LE PARTAGE DES RÔLES, qui est l'idée de ce fichier :
  *
  *   — le NOM est fiable pour le CÔTÉ. « Left », « _L », « _l_ » : les trois conventions se
  *     reconnaissent, et les deux fichiers les respectent ;
- *   — la STRUCTURE est fiable pour le SEGMENT. Les deux squelettes ont exactement la même forme —
+ *   — la STRUCTURE est fiable pour le SEGMENT. Les deux squelettes ont exactement la même forme,
  *     un bassin d'où partent trois chaînes (deux jambes, une colonne), une poitrine d'où partent
  *     trois chaînes (deux bras, un cou). Cette forme-là ne dépend d'aucune convention de nommage.
  *
- * Chaque proposition porte donc son ORIGINE — 'nom' ou 'structure' — et l'interface l'affiche.
+ * Chaque proposition porte donc son ORIGINE, 'nom' ou 'structure', et l'interface l'affiche.
  * Après ce qu'on vient de voir, une correspondance automatique silencieuse est inacceptable :
  * l'utilisateur doit pouvoir repérer d'un coup d'œil les lignes que le nom ne confirmait pas.
  *
- * LE PIÈGE DU BRUIT. Le rig Unreal porte des centaines d'os auxiliaires — `FX_`, `_twist_`,
+ * LE PIÈGE DU BRUIT. Le rig Unreal porte des centaines d'os auxiliaires, `FX_`, `_twist_`,
  * `_vol_`, `_end`. Ils s'accrochent partout et fausseraient une descente naïve « premier enfant ».
  * On descend donc toujours par l'enfant dont la descendance est la plus PROFONDE : les auxiliaires
  * sont des culs-de-sac, les membres sont des chaînes.
  *
- * ENTRÉE : une liste d'os neutres `{ id, name, children: [id…] }`. Ni Three, ni glTF — ce qui rend
+ * ENTRÉE : une liste d'os neutres `{ id, name, children: [id…] }`. Ni Three, ni glTF, ce qui rend
  * la reconnaissance testable contre des squelettes réels sans décoder un seul octet.
  */
 
@@ -58,7 +58,7 @@ export const SLOTS = [
  * Les emplacements groupés pour l'affichage, avec leur libellé.
  *
  * Dix-huit lignes d'affilée sont illisibles ; groupées par membre, elles se parcourent. L'ordre est
- * anatomique — du tronc vers les extrémités, gauche avant droite — et non celui de SLOTS, qui suit
+ * anatomique, du tronc vers les extrémités, gauche avant droite, et non celui de SLOTS, qui suit
  * l'ordre de reconnaissance. Deux ordres pour deux métiers, et c'est délibéré : mélanger les deux
  * obligerait à réordonner la reconnaissance pour changer l'affichage.
  */
@@ -70,7 +70,7 @@ export const SLOT_GROUPS = [
   { titre: ['Right leg', 'Jambe droite'], slots: ['cuisse_d', 'jambe_d', 'pied_d'] },
 ];
 
-/** Libellé d'un emplacement, sans son côté — le groupe le porte déjà. */
+/** Libellé d'un emplacement, sans son côté, le groupe le porte déjà. */
 const LIBELLES = {
   bassin: ['Hips', 'Bassin'], poitrine: ['Chest', 'Poitrine'], cou: ['Neck', 'Cou'], tete: ['Head', 'Tête'],
   clavicule: ['Collarbone', 'Clavicule'], bras: ['Upper arm', 'Bras'],
@@ -89,7 +89,7 @@ export function slotLabel(slot, traduire){
 /**
  * Extrait la liste d'os NEUTRE d'une scène Three décodée.
  *
- * Ne lit que des propriétés génériques — `isBone`, `uuid`, `name`, `children` — pour que la
+ * Ne lit que des propriétés génériques, `isBone`, `uuid`, `name`, `children`, pour que la
  * reconnaissance reste testable contre des squelettes de fixture, sans Three ni WebGL. C'est ce qui
  * permet à tests/skeleton-map.test.mjs d'éprouver cinq rigs réels sans décoder un seul octet.
  */
@@ -131,7 +131,7 @@ export function normaliserNom(nom){
 /**
  * Le côté d'un os d'après son nom : 'g', 'd' ou null.
  *
- * Le nom est fiable POUR ÇA, et seulement pour ça. Trois conventions cohabitent — « Left… »,
+ * Le nom est fiable POUR ÇA, et seulement pour ça. Trois conventions cohabitent, « Left… »,
  * « …_L », « L_… ». Le piège : un os nommé « leg » contient un « l » sans être à gauche, d'où des
  * motifs ancrés plutôt qu'une recherche de lettre.
  */
@@ -199,7 +199,7 @@ function suivant(id, ctx){
  * @returns {Object} { slot: { bone: id, name, origine: 'nom'|'structure' } | null }
  *
  * La structure propose, le nom confirme. Un emplacement dont le nom corrobore la structure est
- * marqué 'nom' — c'est le cas tranquille. Marqué 'structure', il signifie : le nom ne disait pas
+ * marqué 'nom', c'est le cas tranquille. Marqué 'structure', il signifie : le nom ne disait pas
  * ça, j'ai suivi la forme du squelette. C'est exactement là que l'utilisateur doit regarder.
  */
 export function inferSkeletonMap(os){
@@ -218,12 +218,12 @@ export function inferSkeletonMap(os){
   };
 
   /**
-   * Les branches d'un os. Simple alias local — voir `branches` et son filtre de profondeur.
+   * Les branches d'un os. Simple alias local, voir `branches` et son filtre de profondeur.
    *
    * J'AI D'ABORD ÉCRIT ICI UN SEUIL DE TAILLE RELATIF (3 % de la descendance du parent), en
    * croyant que c'était lui qui écartait les chaînes `ik_*` du rig Unreal. La campagne de mutation
    * a démenti : le retirer ne fait échouer aucun test, sur aucun des deux squelettes réels. Ce qui
-   * écarte réellement ces chaînes, c'est l'exigence de PAIRE LATÉRALE plus bas — les hiérarchies IK
+   * écarte réellement ces chaînes, c'est l'exigence de PAIRE LATÉRALE plus bas, les hiérarchies IK
    * ne portent pas de couple gauche/droite au même niveau, donc la descente les traverse sans
    * s'arrêter. Le seuil a été supprimé : un nombre que j'avais choisi et que rien ne justifiait.
    */
@@ -300,12 +300,12 @@ export function inferSkeletonMap(os){
   if (!bras) return carte;
 
   // Le cou : parmi ce qui reste à la poitrine, la branche SANS côté. Ma première version prenait
-  // « la moins fournie des trois », et elle a désigné un accessoire de torse sur le rig maison —
+  // « la moins fournie des trois », et elle a désigné un accessoire de torse sur le rig maison,
   // qui porte, en plus des bras et du cou, des chaînes décoratives. L'absence de côté distingue le
   // cou d'un membre bien mieux que sa taille, et c'est encore le nom utilisé pour ce qu'il sait
   // faire : dire un côté, ou dire qu'il n'y en a pas.
   // Le cou est cherché SANS le filtre de profondeur, contrairement aux membres. Un cou minimal fait
-  // deux os — « Neck » puis « Head » — et la spécification VRM ne demande rien de plus. Le filtre,
+  // deux os, « Neck » puis « Head », et la spécification VRM ne demande rien de plus. Le filtre,
   // calibré pour écarter les auxiliaires courts des rigs bruités, jetait donc le cou des rigs
   // sobres : mesuré sur un squelette VRM minimal, cou et tête restaient vides. Chercher un couple
   // gauche/droite exige de trier le bruit ; trouver le seul enfant sans côté, non.
@@ -319,7 +319,7 @@ export function inferSkeletonMap(os){
   if (cou !== undefined) {
     poser('cou', cou);
     // La tête est sous le cou, mais pas forcément d'un cran : le rig Unreal enchaîne neck_01 →
-    // neck_02 → head. Prendre l'enfant immédiat désignait donc `neck_02` comme tête — flagué
+    // neck_02 → head. Prendre l'enfant immédiat désignait donc `neck_02` comme tête, flagué
     // 'structure', donc visible, mais faux. On descend tant que le nom dit encore « cou », et on
     // s'arrête au premier qui dit « tête ». Le nom sert ici à AFFINER une chaîne que la structure
     // a déjà trouvée, pas à la deviner : s'il ne dit rien, on retombe sur l'enfant immédiat.
@@ -336,13 +336,13 @@ export function inferSkeletonMap(os){
   }
 
   // ── Les bras se lisent PAR LA FIN, contrairement aux jambes. La spécification VRM (humanoïde,
-  // § « détails ») l'énonce : « les os non obligatoires peuvent être sautés — le parent du bras
+  // § « détails ») l'énonce : « les os non obligatoires peuvent être sautés, le parent du bras
   // peut être la poitrine plutôt qu'une clavicule ». Un rig sans clavicule existe donc légalement,
   // et descendre depuis la branche en supposant clavicule → bras → avant-bras → main décalerait
   // TOUT d'un cran, sans qu'aucune règle ne s'en aperçoive.
   //
   // Aucun de mes six squelettes n'est dans ce cas : ils ont tous une clavicule. C'est la
-  // documentation qui a révélé le trou, pas les fichiers — et c'est précisément le genre de défaut
+  // documentation qui a révélé le trou, pas les fichiers, et c'est précisément le genre de défaut
   // qui n'apparaît que chez l'utilisateur, sur le premier fichier qui sort de l'échantillon.
   //
   // J'AI D'ABORD VOULU LIRE LA CHAÎNE PAR LA FIN, en reconnaissant la main à l'embranchement des
@@ -352,8 +352,8 @@ export function inferSkeletonMap(os){
   // On descend donc depuis la racine de branche, comme pour les jambes, mais on décide D'ABORD si
   // cette racine est une clavicule. C'est le seul endroit où le nom sert à autre chose qu'un côté,
   // et c'est assumé : l'os en question est OPTIONNEL, donc aucune règle de structure ne peut
-  // trancher son absence. Si le nom ne dit rien, on suppose une clavicule — le cas des six
-  // squelettes mesurés — et la ligne part en 'structure', donc signalée à l'utilisateur.
+  // trancher son absence. Si le nom ne dit rien, on suppose une clavicule, le cas des six
+  // squelettes mesurés, et la ligne part en 'structure', donc signalée à l'utilisateur.
   bras.forEach((racineBras, i) => {
     const c = coteDuNom(ctx.parId.get(racineBras).name) || (i === 0 ? 'g' : 'd');
     const nomRacine = normaliserNom(ctx.parId.get(racineBras).name);

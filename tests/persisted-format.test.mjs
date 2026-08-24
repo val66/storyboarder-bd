@@ -1,5 +1,5 @@
 /**
- * tests/persisted-format.test.mjs — le CONTRAT AVEC LE PASSÉ.
+ * tests/persisted-format.test.mjs, le CONTRAT AVEC LE PASSÉ.
  *
  * `docs/persisted-data.md` s'ouvre sur « la règle la plus importante du dépôt ». Elle n'était
  * gardée par rien. Une infraction ne casse pas la compilation, ne fait tomber aucun test, ne se
@@ -12,10 +12,10 @@
  *   1. LE VOCABULAIRE. Les noms de champs et les valeurs discriminantes sont listés ici en dur.
  *      Renommer `wxFloor` dans le code fait tomber le test. Renommer les deux ensemble aussi,
  *      parce que la liste est également confrontée à docs/persisted-data.md : il faut trois gestes
- *      délibérés — code, document, test — pour toucher au format. C'est le but.
+ *      délibérés, code, document, test, pour toucher au format. C'est le but.
  *
  *   2. L'ALLER-RETOUR. Un projet déjà migré, réenregistré puis rechargé, doit redonner exactement
- *      le même JSON. C'est ce qui attrape le champ silencieusement PERDU au chargement — celui
+ *      le même JSON. C'est ce qui attrape le champ silencieusement PERDU au chargement, celui
  *      qu'aucune liste ne peut prévoir parce qu'il disparaît sans être renommé.
  *
  *   3. LA TOLÉRANCE. Un fichier amputé ou malformé doit se charger sans lever. Un projet qui
@@ -69,7 +69,7 @@ const VALEURS = {
   'état porte/fenêtre': ['gauche', 'droite', 'fermee'],
 };
 
-describe('Format de fichier — le vocabulaire est figé', () => {
+describe('Format de fichier : le vocabulaire est figé', () => {
   Object.entries(CHAMPS).forEach(([groupe, noms]) => {
     test(`les champs « ${groupe} » existent encore dans src/`, () => {
       // Un renommage dans le code fait tomber ce test AVANT que le premier fichier ne devienne
@@ -98,7 +98,7 @@ describe('Format de fichier — le vocabulaire est figé', () => {
   });
 
   test('le garde-fou : la liste n\'est pas vide et le balayage trouve les sources', () => {
-    // Sans lui, un chemin cassé rendrait tous les tests ci-dessus verts et vides — l'état le pire
+    // Sans lui, un chemin cassé rendrait tous les tests ci-dessus verts et vides, l'état le pire
     // possible, déjà constaté deux fois dans ce dépôt.
     assert.ok(SOURCES.length > 100000, `sources trop courtes : ${SOURCES.length} caractères`);
     assert.ok(DOC.length > 2000, 'docs/persisted-data.md semble vide');
@@ -112,7 +112,7 @@ describe('Format de fichier — le vocabulaire est figé', () => {
 
 // Un projet DÉJÀ MIGRÉ, portant chacun des champs figés avec une valeur reconnaissable. Déjà migré
 // est essentiel : les migrations d'applyProjectData ont le droit de modifier un vieux fichier, pas
-// un fichier récent. C'est cette seconde propriété — l'idempotence — qu'on épingle.
+// un fichier récent. C'est cette seconde propriété, l'idempotence, qu'on épingle.
 function projetComplet() {
   const persona = {
     id: 'e1', type: 'perso', x: 10, y: 20, w: 30, h: 60, homePanelId: 'c1',
@@ -167,7 +167,7 @@ function projetComplet() {
   };
 }
 
-describe('Format de fichier — l\'aller-retour ne perd rien', () => {
+describe('Format de fichier : l\'aller-retour ne perd rien', () => {
   beforeEach(() => {
     S.tomes = []; S.scenes = []; S.idCounter = 0; S.editingSceneId = null;
     setPoseLibrary([]); setDismissedPoses([]);
@@ -200,7 +200,7 @@ describe('Format de fichier — l\'aller-retour ne perd rien', () => {
 
   test('les valeurs, pas seulement les clés, traversent intactes', () => {
     // Un champ conservé mais écrasé par une valeur par défaut serait aussi destructeur qu'un champ
-    // perdu — et plus difficile à voir, puisque la clé est toujours là.
+    // perdu, et plus difficile à voir, puisque la clé est toujours là.
     applyProjectData(structuredClone(projetComplet()));
     const page = S.tomes[0].pages[0];
     const el = (id) => page.objects.find(o => o.id === id);
@@ -233,20 +233,20 @@ describe('Format de fichier — l\'aller-retour ne perd rien', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Les formes qu'un fichier ne peut pas avoir : mal typées là où le chargement itère. Partagées par
-// les deux tests ci-dessous, qui vérifient deux choses différentes du même refus — qu'il a lieu, et
+// les deux tests ci-dessous, qui vérifient deux choses différentes du même refus, qu'il a lieu, et
 // qu'il a lieu AVANT la moindre écriture.
 const REFUSÉS = [
   { tomes: 'pas un tableau' },
   { scenes: 42 },
   { tomes: [null] },
   { tomes: [{ pages: 'non' }] },
-  // Trou constaté en mutant : sans ce cas, retirer la validation des PLANCHES passait inaperçu —
+  // Trou constaté en mutant : sans ce cas, retirer la validation des PLANCHES passait inaperçu,
   // le seul cas de Planche que je testais (`objects: null`) est justement toléré.
   { tomes: [{ pages: [{ objects: 'pas un tableau' }] }] },
   { tomes: [{ pages: [null] }] },
 ];
 
-describe('Format de fichier — un fichier abîmé ne doit pas être un fichier perdu', () => {
+describe('Format de fichier : un fichier abîmé ne doit pas être un fichier perdu', () => {
   beforeEach(() => {
     S.tomes = []; S.scenes = []; S.idCounter = 0; S.editingSceneId = null;
     setPoseLibrary([]); setDismissedPoses([]);
@@ -254,7 +254,7 @@ describe('Format de fichier — un fichier abîmé ne doit pas être un fichier 
 
   test('un projet amputé de chacun de ses champs, un par un, se charge quand même', () => {
     // Chaque champ retiré tour à tour. Un projet qui refuse de s'ouvrir est aussi perdu qu'un
-    // projet corrompu — et c'est le mode de défaillance le plus probable d'un fichier tronqué par
+    // projet corrompu, et c'est le mode de défaillance le plus probable d'un fichier tronqué par
     // une coupure d'alimentation en pleine sauvegarde automatique.
     Object.keys(projetComplet()).forEach(champ => {
       const abîmé = projetComplet();
@@ -266,7 +266,7 @@ describe('Format de fichier — un fichier abîmé ne doit pas être un fichier 
   test('RÉGRESSION : un fichier structurellement inutilisable est REFUSÉ, pas réparé', () => {
     // Défaut trouvé en écrivant ces tests, et corrigé : applyProjectData assignait S.tomes puis
     // atteignait plus loin le code qui levait. L'exception laissait un Projet à moitié chargé en
-    // mémoire pendant que S.projectFilePath désignait encore le fichier PRÉCÉDENT — à un Ctrl+S de
+    // mémoire pendant que S.projectFilePath désignait encore le fichier PRÉCÉDENT, à un Ctrl+S de
     // le détruire.
     //
     // Le refus est délibéré. Ramener un `tomes` malformé à `[]` ouvrirait un Projet vide en
@@ -280,7 +280,7 @@ describe('Format de fichier — un fichier abîmé ne doit pas être un fichier 
   test('RÉGRESSION : un fichier refusé ne touche PAS au Projet en mémoire', () => {
     // LE test de ce lot, et le seul que la mutation « retirer la validation » ne pouvait pas
     // tromper. `assert.throws` seul ne distingue pas « refusé proprement avant d'écrire » de
-    // « planté à mi-chemin » : dans les deux cas ça lève. Constaté en mutant — retirer la
+    // « planté à mi-chemin » : dans les deux cas ça lève. Constaté en mutant, retirer la
     // validation des Planches laissait la suite verte parce que le code levait quand même, plus
     // loin, APRÈS avoir remplacé S.tomes.
     //
@@ -300,7 +300,7 @@ describe('Format de fichier — un fichier abîmé ne doit pas être un fichier 
     // absurde passe. Un index de Tome hors bornes ou un nom nul ne rend le fichier ni illisible ni
     // ambigu.
     // `objects: null` est ici et non dans la liste des refus : `null` pour une liste est une
-    // sérialisation plausible de « vide », et l'accepter ne perd rien — la Planche était vide.
+    // sérialisation plausible de « vide », et l'accepter ne perd rien, la Planche était vide.
     // Ma première version le refusait ; c'était le test qui avait tort, pas le code.
     [{ poses: 'non' }, { currentTomeIndex: 999 }, { projectName: null }, { tomes: null },
      { scenes: null }, { tomes: [{ pages: [{ objects: null }] }] }]

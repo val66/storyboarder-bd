@@ -1,8 +1,8 @@
-// tests/i18n.test.mjs — Tests unitaires de src/i18n.js (fonctions pures/DOM-helper de la
+// tests/i18n.test.mjs. Tests unitaires de src/i18n.js (fonctions pures/DOM-helper de la
 // localisation EN/FR).
 //
 // NON couvert ici, volontairement : applyI18n / applyI18nModalSectionTitles / applyI18nHelpManual /
-// refreshDynamicI18nTexts — ce sont des orchestrateurs qui parcourent I18N_TEXT/I18N_TRAILING/
+// refreshDynamicI18nTexts, ce sont des orchestrateurs qui parcourent I18N_TEXT/I18N_TRAILING/
 // I18N_LEADING/I18N_MODALS/I18N_PREV_LABEL via document.querySelectorAll sur des sélecteurs CSS
 // réels (des dizaines d'ids du vrai index.html) : le dom-stub (querySelectorAll → [] par défaut)
 // n'a aucun moyen de les résoudre significativement, et un test qui se contenterait de vérifier
@@ -36,7 +36,7 @@ function makeFakeParent(initialChildren = []) {
 }
 
 // ── applyTextEntry ────────────────────────────────────────────────────────────────────────────
-describe('applyTextEntry — remplace .textContent selon la langue', () => {
+describe('applyTextEntry : remplace .textContent selon la langue', () => {
   test('lang "en" : texte anglais', () => {
     const el = { textContent: '' };
     applyTextEntry(el, 'Hello', 'Bonjour', 'en');
@@ -51,7 +51,7 @@ describe('applyTextEntry — remplace .textContent selon la langue', () => {
 });
 
 // ── setLeadingText ────────────────────────────────────────────────────────────────────────────
-describe('setLeadingText — remplace le texte "en tête" d\'un élément (avant une icône/caret)', () => {
+describe('setLeadingText : remplace le texte "en tête" d\'un élément (avant une icône/caret)', () => {
   test('premier enfant déjà un nœud texte : réutilise ce nœud (ne le duplique pas)', () => {
     const el = makeFakeParent([makeTextNode('old'), { nodeType: 1, tag: 'span' }]);
     setLeadingText(el, 'Volumes', 'Tomes', 'en');
@@ -72,7 +72,7 @@ describe('setLeadingText — remplace le texte "en tête" d\'un élément (avant
 });
 
 // ── setTrailingText ───────────────────────────────────────────────────────────────────────────
-describe('setTrailingText — remplace le texte "en fin" d\'un élément (après une icône)', () => {
+describe('setTrailingText : remplace le texte "en fin" d\'un élément (après une icône)', () => {
   test('dernier enfant déjà un nœud texte : réutilise ce nœud', () => {
     const el = makeFakeParent([{ nodeType: 1, tag: 'span' }, makeTextNode('old')]);
     setTrailingText(el, 'Add', 'Ajouter', 'en');
@@ -93,7 +93,7 @@ describe('setTrailingText — remplace le texte "en fin" d\'un élément (après
 });
 
 // ── stackRankLabel ────────────────────────────────────────────────────────────────────────────
-describe('stackRankLabel — libellé de rang d\'empilement (Cases/Bulles), langue-aware', () => {
+describe('stackRankLabel : libellé de rang d\'empilement (Cases/Bulles), langue-aware', () => {
   test('rang === total (le plus en avant) prime, même quand rang === 1 aussi (cas d\'un seul élément)', () => {
     S.appLang = 'en';
     assert.equal(stackRankLabel(1, 1), 'frontmost');
@@ -115,7 +115,7 @@ describe('stackRankLabel — libellé de rang d\'empilement (Cases/Bulles), lang
 });
 
 // ── noDescriptionLabel ────────────────────────────────────────────────────────────────────────
-describe('noDescriptionLabel — texte de remplacement pour une Case sans description', () => {
+describe('noDescriptionLabel : texte de remplacement pour une Case sans description', () => {
   test('EN / FR selon S.appLang', () => {
     S.appLang = 'en';
     assert.equal(noDescriptionLabel(), '(no description)');
@@ -125,7 +125,7 @@ describe('noDescriptionLabel — texte de remplacement pour une Case sans descri
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 63 — un bouton-ICÔNE ne doit pas avoir d'entrée TEXTE dans I18N_TEXT.
+// Fix 63 : un bouton-ICÔNE ne doit pas avoir d'entrée TEXTE dans I18N_TEXT.
 //
 // Bug constaté : le bouton d'ouverture de l'éditeur est passé d'un libellé à une icône ✏️, mais son
 // entrée I18N_TEXT écrivait toujours dans `textContent`. applyI18n remplaçait donc l'icône par la
@@ -134,7 +134,7 @@ describe('noDescriptionLabel — texte de remplacement pour une Case sans descri
 // La table est une donnée exportée : la vérifier ne demande aucun DOM, contrairement à applyI18n
 // lui-même (cf. l'en-tête de ce fichier).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('I18N_TEXT — forme des entrées', () => {
+describe('I18N_TEXT : forme des entrées', () => {
   test('RÉGRESSION : le bouton-icône de l\'éditeur est traduit via `title`, pas via son texte', () => {
     const entry = I18N_TEXT.find(e => e[0] === '#personaEditorOpenBtn');
     assert.ok(entry, 'entrée absente — le bouton n\'aurait plus d\'infobulle traduite');
@@ -165,19 +165,19 @@ describe('I18N_TEXT — forme des entrées', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 68 — les sélecteurs des tables i18n désignent-ils quelque chose ?
+// Fix 68 : les sélecteurs des tables i18n désignent-ils quelque chose ?
 //
 // Une entrée dont le sélecteur ne correspond à rien est SILENCIEUSE : la traduction ne s'applique
 // pas, aucune erreur n'est levée, et le libellé reste dans la langue où il a été écrit dans
-// index.html — donc invisible tant qu'on travaille en français. C'est déjà arrivé ici sous une
+// index.html, donc invisible tant qu'on travaille en français. C'est déjà arrivé ici sous une
 // autre forme (une entrée placée dans I18N_MODALS, table qui ignore la forme attributaire).
 //
 // Portée honnête : on ne vérifie QUE l'`#id` de tête de chaque sélecteur, faute de moteur CSS sous
 // Node (pas de registre npm accessible ici). Un sélecteur comme `#foo .bar-inexistante` passe donc
-// ce test. Il attrape la faute la plus fréquente — l'id mal orthographié ou renommé d'un côté
-// seulement — pas toutes.
+// ce test. Il attrape la faute la plus fréquente, l'id mal orthographié ou renommé d'un côté
+// seulement, pas toutes.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
+describe('Fix 68 : chaque #id des tables i18n existe dans index.html', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const idsPresents = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]));
 
@@ -190,13 +190,13 @@ describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
   });
 
   for (const [nom, table] of Object.entries(tables)) {
-    test(`${nom} — aucun sélecteur ne pointe vers un id absent`, () => {
+    test(`${nom} : aucun sélecteur ne pointe vers un id absent`, () => {
       const orphelins = table
         .map(entree => entree[0])
         .filter(sel => typeof sel === 'string')
         .filter(sel => {
           // `\w` exclut les lettres accentuées : `#tracéModalSave` était tronqué en `#trac`, donc
-          // déclaré absent alors qu'il existe. Le test se trompait, pas l'entrée — un identifiant
+          // déclaré absent alors qu'il existe. Le test se trompait, pas l'entrée, un identifiant
           // accentué est licite en HTML comme en CSS.
           const m = /^#([^\s.>:[]+)/.exec(sel);
           return m && !idsPresents.has(m[1]);
@@ -208,17 +208,17 @@ describe('Fix 68 — chaque #id des tables i18n existe dans index.html', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Manuel d'utilisation — appariement HTML ↔ tables de contenu.
+// Manuel d'utilisation, appariement HTML ↔ tables de contenu.
 //
 // Défaut constaté, et resté invisible longtemps : l'appariement se faisait par RANG d'apparition
 // du <details>. Le groupe « Scènes » a été ajouté à index.html sans entrée correspondante dans
-// help-content.js, et tout ce qui suivait a glissé d'un cran — la section Scènes s'intitulait
+// help-content.js, et tout ce qui suivait a glissé d'un cran, la section Scènes s'intitulait
 // « Projet » et affichait le texte du Projet, Projet montrait celui des Tomes, les Tomes celui des
 // Raccourcis, et les Raccourcis n'étaient plus traduits du tout. En français comme en anglais.
 // Un rang manquant ne laisse pas de trou : il prend la place du suivant.
 //
 // Second versant du même défaut : les paragraphes étaient appariés un à un avec des <p> écrits en
-// dur. Les deux listes ont divergé DANS LES DEUX SENS — dix paragraphes sur les Personnages (toute
+// dur. Les deux listes ont divergé DANS LES DEUX SENS, dix paragraphes sur les Personnages (toute
 // la documentation de l'éditeur) n'avaient aucun <p> pour les accueillir et n'atteignaient jamais
 // l'écran, pendant que des <p> sans entrée gardaient leur français jusqu'en anglais.
 //
@@ -287,7 +287,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
 
   test('RÉGRESSION : FR et EN ont le MÊME nombre de paragraphes par groupe', () => {
     // Une traduction plus courte que l'original, c'est du contenu perdu pour la moitié des
-    // utilisateurs — et rien dans l'interface ne le signale.
+    // utilisateurs, et rien dans l'interface ne le signale.
     HELP_MANUAL_FR.forEach((fr, i) => {
       const en = HELP_MANUAL_EN[i];
       assert.equal(en.paragraphs.length, fr.paragraphs.length,
@@ -306,7 +306,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
 
   test('la section Éditeur décrit bien les GESTES disponibles', () => {
     // Cette documentation était écrite depuis longtemps et n'était affichée nulle part, faute de
-    // <p> pour la recevoir. On vérifie donc qu'elle est là — mais par les ACTIONS qu'elle couvre,
+    // <p> pour la recevoir. On vérifie donc qu'elle est là, mais par les ACTIONS qu'elle couvre,
     // jamais par sa longueur. La version précédente de ce test exigeait « au moins 10
     // paragraphes » : elle transformait la verbosité en exigence, et il a fallu la casser pour
     // pouvoir raccourcir la section. Un test ne doit pas défendre le défaut qu'on veut corriger.
@@ -326,7 +326,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   test('RÉGRESSION : dans une fiche, l\'écart au-dessus d\'un libellé vient du champ précédent', () => {
     // `.modal-field-label` n'a pas de marge HAUTE : l'espace au-dessus de « Modèle », « Position »
     // ou « Type » est la marge BASSE du champ qui les précède. Une valeur en lecture seule sans
-    // marge basse colle donc le libellé suivant au champ d'avant — c'est ce qui est arrivé quand
+    // marge basse colle donc le libellé suivant au champ d'avant, c'est ce qui est arrivé quand
     // « Modèle » est apparu sous « Fichier ». Les deux valeurs doivent rester égales.
     const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
     const bas = (sel) => {
@@ -341,7 +341,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   });
 
   test('le manuel reste un MANUEL : paragraphes et sections bornés', () => {
-    // « Cela doit expliquer les actions possibles, pas la logique interne » — la section Éditeur
+    // « Cela doit expliquer les actions possibles, pas la logique interne », la section Éditeur
     // avait dérivé vers 4707 caractères d'explications de fonctionnement.
     //
     // Les deux seuils sont MESURÉS sur le contenu réel après réécriture (paragraphe le plus long
@@ -362,7 +362,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
     // La section Personnages avait absorbé toute la documentation de l'éditeur et en devenait
     // illisible. Elle ne doit décrire que le Personnage lui-même : sa création, sa modale, son
     // placement dans la Case. Sans ce test, le prochain paragraphe sur l'éditeur y retournerait
-    // naturellement — c'est là qu'il avait atterri la première fois.
+    // naturellement, c'est là qu'il avait atterri la première fois.
     [['FR', HELP_MANUAL_FR], ['EN', HELP_MANUAL_EN]].forEach(([langue, table]) => {
       const perso = table.find(g => g.id === 'personnages');
       const editeur = table.find(g => g.id === 'editeur');
@@ -378,7 +378,7 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   });
 });
 
-describe('sectionDuManuel — la table est la SEULE source du contenu affiché', () => {
+describe('sectionDuManuel : la table est la SEULE source du contenu affiché', () => {
   // La modale rend ses paragraphes à l'ouverture, par cette fonction. C'est ce qui garde une seule
   // liste de textes : le panneau latéral ne porte plus que des titres, et il n'existe nulle part de
   // copie des paragraphes susceptible de diverger.
@@ -399,7 +399,7 @@ describe('sectionDuManuel — la table est la SEULE source du contenu affiché',
   });
 
   test('LE POINT QUI COMPTE : une clé inconnue rend null, jamais une section vide', () => {
-    // Une clé inconnue est un défaut d'appariement — le même que celui qui avait décalé tous les
+    // Une clé inconnue est un défaut d'appariement : le même que celui qui avait décalé tous les
     // groupes d'un cran. Rendre une section vide l'afficherait comme une section légitimement sans
     // contenu ; null laisse l'appelant refuser d'ouvrir, ce qui se voit.
     assert.equal(sectionDuManuel('inexistant', 'fr'), null);
@@ -423,9 +423,9 @@ describe('sectionDuManuel — la table est la SEULE source du contenu affiché',
   });
 });
 
-describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () => {
+describe('applyI18nHelpManual : le mécanisme d\'appariement lui-même', () => {
   // Les tests précédents vérifient que HTML et tables concordent. Ils ne verraient PAS un retour à
-  // l'appariement par rang : tant que l'ordre coïncide, le résultat est le même — jusqu'au jour où
+  // l'appariement par rang : tant que l'ordre coïncide, le résultat est le même, jusqu'au jour où
   // un groupe est ajouté d'un seul côté, c'est-à-dire exactement le jour où l'on a besoin du
   // garde-fou. C'est donc le mécanisme qu'il faut figer, pas seulement son résultat actuel.
   //
@@ -448,7 +448,7 @@ describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () =>
   test('RÉGRESSION : cette fonction ne pose QUE les titres', () => {
     // Les paragraphes vivaient ici tant que le panneau les dépliait. Ils s'affichent maintenant
     // dans la modale, rendue à l'ouverture depuis la même table. Continuer à les injecter ici en
-    // ferait une seconde copie — invisible, donc jamais corrigée, et libre de diverger.
+    // ferait une seconde copie, invisible, donc jamais corrigée, et libre de diverger.
     assert.ok(!/createElement\('p'\)/.test(corps),
       'les paragraphes sont rendus par la modale, pas déposés dans le panneau');
     assert.match(corps, /textContent = d\.title/, 'le titre du bouton vient bien de la table');
@@ -463,8 +463,8 @@ describe('applyI18nHelpManual — le mécanisme d\'appariement lui-même', () =>
 describe('Un seul nom pour « Réglages des articulations »', () => {
   // QUATRE LIBELLÉS AVAIENT DIVERGÉ SANS QUE RIEN NE LE VOIE : le panneau de l'éditeur disait
   // « Réglage fin des articulations » au singulier, les deux sous-sections de la modale
-  // « Réglages fins des articulations » au pluriel, et celle des modèles importés — que j'ai
-  // écrite — encore le singulier. Côté anglais, « Fine joint adjustment » et « Joint fine-tuning »
+  // « Réglages fins des articulations » au pluriel, et celle des modèles importés, que j'ai
+  // écrite, encore le singulier. Côté anglais, « Fine joint adjustment » et « Joint fine-tuning »
   // coexistaient pour la même chose.
   //
   // C'est la même famille que le titre de modale désaccordé de son bouton : plusieurs endroits
@@ -492,7 +492,7 @@ describe('Un seul nom pour « Réglages des articulations »', () => {
 
   test('RÉGRESSION : aucune trace des anciennes formulations', () => {
     // Ce sont elles qui avaient divergé ; si l'une réapparaît, c'est qu'un endroit a été oublié.
-    // COMMENTAIRES RETIRÉS AVANT DE CHERCHER — cinquième fois dans ce dépôt qu'un test est mis en
+    // COMMENTAIRES RETIRÉS AVANT DE CHERCHER : cinquième fois dans ce dépôt qu'un test est mis en
     // échec par la prose qui l'entoure. Ce qu'on vérifie ici est ce que l'UTILISATEUR lit ; un
     // commentaire de code qui cite l'ancien nom pour raconter son histoire est légitime.
     const sansCommentaires = (txt) => txt
@@ -514,7 +514,7 @@ describe('L\'écart autour de la sous-section des articulations', () => {
   // l'utilisateur qui l'a vu, pas le commentaire.
   //
   // Ce test RELIT les quatre nombres dans style.css et refait l'addition. Il ne prétend pas
-  // remplacer l'œil — le collapsing des marges, lui, ne se déduit pas d'une somme — mais si
+  // remplacer l'œil, le collapsing des marges, lui, ne se déduit pas d'une somme, mais si
   // quelqu'un change le padding de .modal-subsection ou la marge de .joint-sliders-details
   // ailleurs, l'égalité promise tombe et le test le dit, au lieu de laisser un commentaire mentir.
   const CSS = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
@@ -550,7 +550,7 @@ describe('L\'écart autour de la sous-section des articulations', () => {
 
   test('RÉGRESSION : replié et déplié n\'ont PAS le même padding', () => {
     // Le défaut signalé : une seule valeur pour les deux états donnait un bas trop grand une fois
-    // la sous-section refermée, puisque le bouton — qui justifiait l'écart — n'est plus visible.
+    // la sous-section refermée, puisque le bouton, qui justifiait l'écart, n'est plus visible.
     const replie = nombre(/#objectSkeletonSlidersDetails \{ padding-bottom: (\d+)px; \}/, 'padding replié');
     const deplie = nombre(/#objectSkeletonSlidersDetails\[open\] \{ padding-bottom: (\d+)px; \}/, 'padding déplié');
     assert.notEqual(replie, deplie,
@@ -559,7 +559,7 @@ describe('L\'écart autour de la sous-section des articulations', () => {
 
   test('RÉGRESSION : la marge du dernier groupe est bien annulée', () => {
     // Sans cela elle se collapse hors du conteneur et l\'écart au-dessus du bouton redevient
-    // indéterminé — c\'est exactement ce qui rendait ma première version inopérante.
+    // indéterminé, c\'est exactement ce qui rendait ma première version inopérante.
     assert.match(CSS, /#objectSkeletonSlidersContainer > \.joint-group-details:last-child \{ margin-bottom: 0; \}/);
     assert.match(CSS, /\.skeleton-map-open-btn \{ margin: 0; \}/,
       'le bouton a retrouvé une marge : elle se collapserait avec le padding du conteneur');
@@ -568,9 +568,9 @@ describe('L\'écart autour de la sous-section des articulations', () => {
 
 
 // ── Les raccourcis promis existent-ils ? ──────────────────────────────────────────────────────
-describe('Raccourcis du manuel — aucune touche promise sans écouteur', () => {
+describe('Raccourcis du manuel : aucune touche promise sans écouteur', () => {
   // NÉ D'UN DÉFAUT RÉEL : le manuel annonçait « Ctrl+Z / Ctrl+Y : annuler / rétablir » alors
-  // qu'aucun `redo` n'a jamais existé dans ce dépôt. Rien ne pouvait le signaler — une touche qui
+  // qu'aucun `redo` n'a jamais existé dans ce dépôt. Rien ne pouvait le signaler, une touche qui
   // ne fait rien ne lève pas d'erreur, elle déçoit en silence.
   //
   // Le test lit la section « Raccourcis » du manuel ANGLAIS : ses noms de touches (Escape, Delete,
@@ -611,7 +611,7 @@ describe('Raccourcis du manuel — aucune touche promise sans écouteur', () => 
 
 // ── Le trou qu'on vient de boucher ────────────────────────────────────────────────────────────
 describe('Aucun bouton ne reste en français en mode anglais', () => {
-  // RELEVÉ D'UN COUP : 49 boutons sur 123 n'avaient aucune entrée i18n. Le symptôme est muet — en
+  // RELEVÉ D'UN COUP : 49 boutons sur 123 n'avaient aucune entrée i18n. Le symptôme est muet, en
   // français, tout paraît normal ; c'est l'utilisateur anglophone qui découvre « Supprimer du
   // disque » dans son menu. Rien ne pouvait le signaler, puisqu'une traduction absente n'est pas
   // une erreur, juste un texte qui ne change pas.
@@ -668,10 +668,10 @@ describe('Aucun bouton ne reste en français en mode anglais', () => {
 
 
 // ── Les deux tables de types d'Objet ──────────────────────────────────────────────────────────
-describe('OBJECT_TYPE_LABELS — les deux langues décrivent les mêmes types', () => {
+describe('OBJECT_TYPE_LABELS : les deux langues décrivent les mêmes types', () => {
   // Le nom d'un type sert à trois choses : le titre de la fiche, le nom par défaut d'un Élément
   // ajouté, et le libellé du Mur lié à une Parois. Une clé présente d'un seul côté rendrait
-  // `undefined` là où l'utilisateur attend un nom — et le repli afficherait « Objet » pour tout.
+  // `undefined` là où l'utilisateur attend un nom, et le repli afficherait « Objet » pour tout.
   test('les deux tables ont exactement les mêmes clés', () => {
     assert.deepEqual(Object.keys(OBJECT_TYPE_LABELS_EN).sort(), Object.keys(OBJECT_TYPE_LABELS).sort());
   });
@@ -683,7 +683,7 @@ describe('OBJECT_TYPE_LABELS — les deux langues décrivent les mêmes types', 
 
   test('LE POINT QUI COMPTE : le même type porte le même nom anglais que dans le sélecteur', () => {
     // Le sélecteur de Type (index.html) est traduit par I18N_TEXT, la fiche par cette table. Deux
-    // écrans, deux chemins, un seul objet — s'ils divergent, l'utilisateur voit « Shelf » d'un côté
+    // écrans, deux chemins, un seul objet, s'ils divergent, l'utilisateur voit « Shelf » d'un côté
     // et « Bookcase » de l'autre pour la même chose.
     const i18nSrc = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
     Object.entries(OBJECT_TYPE_LABELS_EN).forEach(([cle, en]) => {
@@ -698,10 +698,10 @@ describe('OBJECT_TYPE_LABELS — les deux langues décrivent les mêmes types', 
 // ── Les tables de libellés de constants.js ────────────────────────────────────────────────────
 //
 // Ces tables alimentent des menus déroulants et des curseurs, pas des gabarits HTML : applyI18n ne
-// les voit pas. Rien, à l'exécution, ne signale un `labelEn` oublié — l'entrée s'affiche simplement
+// les voit pas. Rien, à l'exécution, ne signale un `labelEn` oublié, l'entrée s'affiche simplement
 // en français au milieu d'une interface anglaise, et personne ne le remarque avant un utilisateur.
 // D'où une vérification à la construction.
-describe('libellés bilingues — chaque entrée porte ses deux langues', () => {
+describe('libellés bilingues : chaque entrée porte ses deux langues', () => {
   const tables = {
     FORMATS, STYLES_3D, EMOTIONS, HAND_STATES, POSITIONS, GROUND_TYPE_DEFS, JOINT_GROUPS,
   };

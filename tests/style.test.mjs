@@ -1,5 +1,5 @@
 /**
- * style.test.mjs — invariants de style.css qu'on ne voit PAS en lisant le CSS.
+ * style.test.mjs, invariants de style.css qu'on ne voit PAS en lisant le CSS.
  *
  * Aucun moteur de rendu ici (ni navigateur, ni registre npm pour en installer un) : on ne mesure
  * donc jamais une hauteur, une couleur ou une position. Ce fichier ne couvre qu'une chose : les
@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
-// Corps d'une règle, commentaires retirés — sinon un mot cité dans un commentaire compterait comme
+// Corps d'une règle, commentaires retirés, sinon un mot cité dans un commentaire compterait comme
 // une déclaration (le commentaire du Fix 69 mentionne « margin-bottom » sans le déclarer).
 //
 // Le sélecteur est ANCRÉ en DÉBUT DE LIGNE (drapeau `m`), et suivi immédiatement de `{`. Deux
@@ -38,10 +38,10 @@ function declarations(selecteur) {
   return corps;
 }
 
-describe('Fix 69 — hauteurs égales dans la rangée Enregistrer / Renommer / Supprimer', () => {
+describe('Fix 69 : hauteurs égales dans la rangée Enregistrer / Renommer / Supprimer', () => {
   // Le piège : dans une ligne flex, `align-items` vaut `stretch` par défaut, et l'étirement porte
   // sur la boîte MARGES COMPRISES. Une marge verticale sur un seul des enfants le rend donc plus
-  // court que ses voisins — sans qu'aucune hauteur ne soit déclarée nulle part.
+  // court que ses voisins, sans qu'aucune hauteur ne soit déclarée nulle part.
   const dangerBtn = declarationsOuNull('.danger-btn');
   const rangee = declarationsOuNull('.persona-editor-pose-actions button');
 
@@ -52,7 +52,7 @@ describe('Fix 69 — hauteurs égales dans la rangée Enregistrer / Renommer / S
 
   test('RÉGRESSION : la rangée neutralise toute marge verticale héritée de .danger-btn', () => {
     // Test CONDITIONNEL, et c'est voulu : si un jour .danger-btn cesse de porter une marge
-    // verticale, la neutralisation devient inutile et ce test cesse de l'exiger — au lieu de figer
+    // verticale, la neutralisation devient inutile et ce test cesse de l'exiger, au lieu de figer
     // une ligne de CSS devenue sans objet.
     const apporteUneMarge = /margin(-top|-bottom)?\s*:/.test(dangerBtn);
     if (!apporteUneMarge) return;
@@ -67,13 +67,13 @@ describe('Fix 69 — hauteurs égales dans la rangée Enregistrer / Renommer / S
   });
 });
 
-describe('Fix 70 — le panneau de l\'éditeur ne diverge pas de l\'encart de droite', () => {
+describe('Fix 70 : le panneau de l\'éditeur ne diverge pas de l\'encart de droite', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
   test('RÉGRESSION : les deux panneaux déclarent le même jeton de fond', () => {
     // C'était déjà vrai quand l'utilisateur a signalé un panneau « plus sombre » : ce n'est pas la
     // couleur qui différait, mais la SURFACE de fond laissée visible autour de cartes plus petites.
-    // On épingle quand même l'égalité — c'est elle qui rend le reste du raisonnement valable.
+    // On épingle quand même l'égalité, c'est elle qui rend le reste du raisonnement valable.
     const fond = regle => (/background:\s*var\((--[\w-]+)\)/.exec(regle) || [])[1];
     assert.equal(fond(declarations('.persona-editor-panel')),
                  fond(declarations('.right-panel')),
@@ -99,7 +99,7 @@ describe('Fix 70 — le panneau de l\'éditeur ne diverge pas de l\'encart de dr
   });
 });
 
-describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de l\'articulation', () => {
+describe('Fix 72 (ESSAI) : le champ piloté se distingue des autres champs de l\'articulation', () => {
   const active = declarations('.joint-slider-row.active');
   const driven = declarationsOuNull('.joint-slider-row.active.driven');
 
@@ -110,7 +110,7 @@ describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de 
   test('RÉGRESSION : elle ne se contente pas de répéter celle du groupe', () => {
     // Deux questions distinctes : `.active` dit quelle ARTICULATION est choisie, `.driven` dit quel
     // CHAMP la souris va bouger. Des déclarations identiques les rendraient indiscernables à
-    // l'écran — le défaut signalé — sans qu'aucun test ne s'en aperçoive.
+    // l'écran, le défaut signalé, sans qu'aucun test ne s'en aperçoive.
     const fond = r => (/background:\s*([^;]+)/.exec(r) || [])[1];
     assert.ok(fond(driven), 'le champ piloté doit déclarer un fond');
     assert.notEqual(fond(driven).trim(), (fond(active) || '').trim(),
@@ -119,7 +119,7 @@ describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de 
 
   test('RÉGRESSION : le liséré ne décale pas le contenu de la ligne', () => {
     // La ligne de base a 4px de padding à gauche. Un liséré de 3px ajouté sans réduire d'autant le
-    // padding ferait sauter la ligne latéralement au moment où elle devient pilotée — un mouvement
+    // padding ferait sauter la ligne latéralement au moment où elle devient pilotée, un mouvement
     // parasite juste sous l'œil, pendant qu'on règle un angle.
     const base = declarations('.joint-slider-row');
     const inset = r => {
@@ -132,7 +132,7 @@ describe('Fix 72 (ESSAI) — le champ piloté se distingue des autres champs de 
   });
 });
 
-describe('Fix 73 — une ligne de curseur tient dans son cadre', () => {
+describe('Fix 73 : une ligne de curseur tient dans son cadre', () => {
   const ligne = declarations('.joint-slider-row');
   const curseur = declarations('.joint-slider-row input[type=range]');
   const libelle = declarations('.joint-slider-row .joint-slider-label');
@@ -140,7 +140,7 @@ describe('Fix 73 — une ligne de curseur tient dans son cadre', () => {
 
   test('RÉGRESSION : l\'enfant flexible déclare min-width:0', () => {
     // LA règle qui empêche le débordement, et elle n'a rien d'évident : un enfant de conteneur flex
-    // a `min-width:auto` par défaut, donc il refuse de rétrécir sous sa largeur INTRINSÈQUE — celle
+    // a `min-width:auto` par défaut, donc il refuse de rétrécir sous sa largeur INTRINSÈQUE, celle
     // d'un input[type=range] vaut ~129px. Avec un libellé et une valeur non rétrécissables à côté,
     // la somme dépassait la largeur du panneau et le curseur sortait du cadre, sans qu'aucune
     // largeur excessive ne soit déclarée nulle part.
@@ -160,7 +160,7 @@ describe('Fix 73 — une ligne de curseur tient dans son cadre', () => {
   });
 });
 
-describe('Fix 74 — le curseur d\'articulation garde une largeur utilisable', () => {
+describe('Fix 74 : le curseur d\'articulation garde une largeur utilisable', () => {
   // Le seul calcul de largeur possible sans moteur de rendu : additionner ce qui est DÉCLARÉ. Il ne
   // prouve pas que l'affichage est correct, il empêche qu'un futur ajustement de rembourrage ou de
   // libellé ramène le curseur à la taille dérisoire signalée ici.
@@ -207,16 +207,16 @@ describe('Fix 74 — le curseur d\'articulation garde une largeur utilisable', (
   });
 });
 
-describe('Ascenseurs — un seul style, pour toute l\'application', () => {
+describe('Ascenseurs : un seul style, pour toute l\'application', () => {
   const CSS_ASC = css;
 
   test('RÉGRESSION : le style est GLOBAL, pas recopié par conteneur', () => {
     // Signalé à l'usage : le menu de gauche et les modales héritaient de l'ascenseur natif, tandis
-    // que l'encart de droite avait le bon. Le style y était déjà recopié à DEUX endroits — une
+    // que l'encart de droite avait le bon. Le style y était déjà recopié à DEUX endroits, une
     // troisième copie n'aurait fait que repousser le problème d'un cran.
     //
     // Une règle globale plutôt qu'une classe à poser : une classe est une énumération tenue à la
-    // main, et on sait ce que ça donne ici — le prochain conteneur défilant l'oublierait.
+    // main, et on sait ce que ça donne ici, le prochain conteneur défilant l'oublierait.
     assert.match(CSS_ASC, /\*::-webkit-scrollbar\s*\{/, 'aucune règle globale d\'ascenseur');
     assert.match(CSS_ASC, /\*\{\s*scrollbar-width:thin/, 'scrollbar-width n\'est pas global');
   });
@@ -231,7 +231,7 @@ describe('Ascenseurs — un seul style, pour toute l\'application', () => {
   test('RÉGRESSION : la couleur du curseur a son propre jeton, défini dans les DEUX thèmes', () => {
     // Sur fond sombre, la couleur d'une bordure (`--line`) est trop discrète pour un objet qu'on
     // doit pouvoir attraper. Un jeton dédié permet de régler les deux thèmes séparément sans
-    // toucher aux bordures — et surtout, de ne pas les oublier l'un ou l'autre.
+    // toucher aux bordures, et surtout, de ne pas les oublier l'un ou l'autre.
     assert.match(CSS_ASC, /--scroll-thumb\s*:/, 'jeton absent');
     const clair = CSS_ASC.slice(CSS_ASC.indexOf('body.theme-light{'));
     assert.match(clair.slice(0, 500), /--scroll-thumb\s*:/, 'le thème clair ne le redéfinit pas');
@@ -239,24 +239,24 @@ describe('Ascenseurs — un seul style, pour toute l\'application', () => {
   });
 
   test('le curseur n\'utilise aucune couleur en dur', () => {
-    // Une valeur littérale ne basculerait pas avec le thème — le défaut que ce jeton existe pour
+    // Une valeur littérale ne basculerait pas avec le thème, le défaut que ce jeton existe pour
     // empêcher.
     const bloc = CSS_ASC.slice(CSS_ASC.indexOf('*::-webkit-scrollbar-thumb{'));
     assert.doesNotMatch(bloc.slice(0, 300), /background:\s*#/, 'couleur en dur dans le curseur');
   });
 });
 
-describe('Boutons de modale — même hauteur, quelle que soit la modale', () => {
+describe('Boutons de modale : même hauteur, quelle que soit la modale', () => {
   const CSS_B = css;
 
   test('RÉGRESSION : les marges sont remises à ZÉRO, pas seulement celle du haut', () => {
     // Signalé à l'usage sur la modale de correspondance : Enregistrer paraissait plus haut
     // qu'Annuler. C'est EXACTEMENT le Fix 69, qui avait été réglé pour les boutons de l'éditeur de
-    // Personnage et laissé tel quel ici — la moitié d'énumération habituelle de ce dépôt.
+    // Personnage et laissé tel quel ici, la moitié d'énumération habituelle de ce dépôt.
     //
     // `.danger-btn` déclare `margin-bottom: 6px`. Dans une ligne flex, `align-items` vaut `stretch`
     // par défaut : chaque bouton est étiré à la hauteur de la ligne MARGES COMPRISES. Ces 6px
-    // étaient donc pris sur la boîte d'Annuler, sans qu'aucune règle de hauteur ne soit en cause —
+    // étaient donc pris sur la boîte d'Annuler, sans qu'aucune règle de hauteur ne soit en cause,
     // et toucher aux hauteurs n'y aurait rien changé.
     const i = CSS_B.indexOf('.modal-actions .full-btn, .modal-actions .danger-btn{');
     assert.ok(i > 0, 'la règle des boutons de modale a disparu');
@@ -268,7 +268,7 @@ describe('Boutons de modale — même hauteur, quelle que soit la modale', () =>
   test('RÉGRESSION : un champ de la modale squelette n\'hérite pas de la marge des formulaires', () => {
     // `.modal-box select` porte 14px de marge basse, faite pour des champs EMPILÉS. Dans une ligne
     // flex cette marge fait partie de la boîte : le champ paraissait collé en haut de son encadré
-    // alors que `align-items: center` centrait bien — il centrait la boîte, marge comprise.
+    // alors que `align-items: center` centrait bien, il centrait la boîte, marge comprise.
     const i = CSS_B.indexOf('.skeleton-map-row select');
     assert.ok(i > 0);
     assert.match(CSS_B.slice(i, CSS_B.indexOf('}', i)), /margin-bottom:\s*0/);
@@ -278,10 +278,10 @@ describe('Boutons de modale — même hauteur, quelle que soit la modale', () =>
 describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE', () => {
   // LE PIÈGE, ET IL A DÉJÀ MORDU DEUX FOIS. `.modal-field-label` n'a qu'une marge basse de 5 px :
   // ce qui sépare deux champs, c'est la marge BASSE du champ précédent. Un champ qui n'en porte
-  // pas se colle donc au libellé suivant — sans qu'aucune règle ne soit fausse prise seule.
+  // pas se colle donc au libellé suivant, sans qu'aucune règle ne soit fausse prise seule.
   //
   //   1re fois : `.modal-readonly-value` (Fichier), contre lequel « Modèle » venait buter ;
-  //   2e fois  : `input[type=number]` (Hauteur), contre lequel « Taille réelle » vient buter —
+  //   2e fois  : `input[type=number]` (Hauteur), contre lequel « Taille réelle » vient buter,
   //              signalé à l'usage, la règle générique `select, input[type=number]` donnant
   //              bordure, padding et police, mais aucune marge.
   //

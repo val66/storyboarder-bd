@@ -8,7 +8,7 @@
  */
 
 // Manuel d'utilisation (#sideHelpSection) : un groupe par bouton de section, chacun avec un titre
-// et ses paragraphes — traduit intégralement sur demande utilisateur ("Tout traduire, y compris le
+// et ses paragraphes, traduit intégralement sur demande utilisateur ("Tout traduire, y compris le
 // Manuel d'utilisation").
 //
 // Le panneau latéral n'affiche que les TITRES ; les paragraphes sont rendus dans #helpModal à
@@ -21,7 +21,7 @@
 // sans entrée ici, et tout ce qui suivait s'est décalé d'un cran : la section Scènes s'intitulait
 // « Projet » et affichait le texte du Projet, Projet affichait celui des Tomes, les Tomes celui des
 // Raccourcis, et les Raccourcis n'étaient plus traduits du tout. En français comme en anglais, et
-// sans que rien ne le signale — un rang manquant ne manque pas, il vole celui du voisin.
+// sans que rien ne le signale, un rang manquant ne manque pas, il vole celui du voisin.
 //
 // Avec une clé, une entrée absente est absente : elle ne peut plus emprunter le contenu d'une
 // autre. C'est aussi ce que vérifie tests/i18n.test.mjs, qui refuse tout groupe HTML sans entrée
@@ -29,7 +29,7 @@
 //
 // Les paragraphes sont RENDUS à partir de ces tables (cf. applyI18nHelpManual) : le HTML n'en
 // contient plus aucun. Deux listes de paragraphes à tenir en accord, c'était la seconde moitié du
-// même défaut — dix paragraphes sur les Personnages étaient écrits ici et n'atteignaient jamais
+// même défaut, dix paragraphes sur les Personnages étaient écrits ici et n'atteignaient jamais
 // l'écran, faute de <p> pour les recevoir.
 export const HELP_MANUAL_EN = [
   { id: 'projet', title: 'Project', paragraphs: [
@@ -268,11 +268,11 @@ export const BUBBLE_FONT_PRELOAD_LIST = ['Bangers', 'Comic Neue', 'Permanent Mar
  * Une section du manuel, par sa clé et sa langue. Fonction PURE.
  *
  * POURQUOI ELLE EXISTE PLUTÔT QU'UN `find` SUR PLACE. La modale du manuel rend son contenu à
- * l'OUVERTURE, depuis ces tables — et non depuis des paragraphes déjà injectés dans le panneau
+ * l'OUVERTURE, depuis ces tables, et non depuis des paragraphes déjà injectés dans le panneau
  * latéral. C'est ce qui garde une seule liste de textes : celle-ci. Le jour où la modale et le
  * panneau se seraient nourris à deux endroits, ils auraient fini par ne plus dire la même chose.
  *
- * ⚠️ RENDRE `null` PLUTÔT QU'UNE SECTION VIDE. Une clé inconnue est un défaut d'appariement — le
+ * ⚠️ RENDRE `null` PLUTÔT QU'UNE SECTION VIDE. Une clé inconnue est un défaut d'appariement, le
  * même que celui qui avait décalé tous les groupes d'un cran. Une section vide s'afficherait comme
  * une section légitimement sans contenu ; `null` laisse l'appelant refuser d'ouvrir.
  */

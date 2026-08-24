@@ -1,8 +1,8 @@
 /**
- * tests/release-notes.test.mjs — le texte publié avec une release, et le workflow qui le publie.
+ * tests/release-notes.test.mjs, le texte publié avec une release, et le workflow qui le publie.
  *
  * Un workflow ne s'exécute qu'au push d'un tag, sur le serveur. C'est le pire moment pour découvrir
- * qu'il produit une note vide ou fausse : le tag est déjà public. D'où la découpe — la mise en forme
+ * qu'il produit une note vide ou fausse : le tag est déjà public. D'où la découpe, la mise en forme
  * est une fonction pure éprouvée ici, le YAML ne fait plus que l'appeler, et ce fichier vérifie
  * aussi le peu de YAML qui reste.
  *
@@ -21,7 +21,7 @@ import { buildReleaseNotes, normaliseRepoUrl, extractChangelogSection } from '..
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKFLOW_BRUT = readFileSync(join(RACINE, '.github/workflows/release.yml'), 'utf8');
 // Les commentaires sont RETIRÉS avant toute vérification. Ce fichier explique longuement pourquoi
-// `fetch-depth: 0` est indispensable — et ma première version du test cherchait cette chaîne dans
+// `fetch-depth: 0` est indispensable, et ma première version du test cherchait cette chaîne dans
 // le fichier entier : elle la trouvait dans le COMMENTAIRE. Passer le réglage à 1 laissait donc le
 // test au vert. Troisième fois que ce dépôt se fait prendre par un test satisfait par sa propre
 // documentation ; cette fois la parade est en tête de fichier, pour tout le monde.
@@ -32,7 +32,7 @@ const note = (o) => buildReleaseNotes({
   tag: 'v1.2.0', previousTag: 'v1.1.0', subjects: ['Premier', 'Second'], repoUrl: URL_DEPOT, ...o,
 });
 
-describe('Note de version — ce qu\'elle contient', () => {
+describe('Note de version : ce qu\'elle contient', () => {
   test('chaque sujet de commit apparaît, dans l\'ordre reçu', () => {
     const texte = note({ subjects: ['Le plus récent', 'Celui du milieu', 'Le plus ancien'] });
     assert.match(texte, /- Le plus récent\n- Celui du milieu\n- Le plus ancien/,
@@ -40,7 +40,7 @@ describe('Note de version — ce qu\'elle contient', () => {
   });
 
   test('le compte annoncé est celui des commits réellement listés', () => {
-    // Deux calculs d'une même quantité — le compte en tête et la liste — sont exactement ce qui
+    // Deux calculs d'une même quantité : le compte en tête et la liste, sont exactement ce qui
     // dérive dans ce dépôt. On les confronte.
     const sujets = Array.from({ length: 7 }, (_, i) => `Commit ${i}`);
     const texte = note({ subjects: sujets });
@@ -50,7 +50,7 @@ describe('Note de version — ce qu\'elle contient', () => {
   });
 
   test('le lien de comparaison va bien du tag précédent au nouveau', () => {
-    // Inversé, il renvoie une page vide sur GitHub — et personne ne s'en aperçoit avant de cliquer.
+    // Inversé, il renvoie une page vide sur GitHub, et personne ne s'en aperçoit avant de cliquer.
     assert.match(note(), new RegExp(`${URL_DEPOT}/compare/v1\\.1\\.0\\.\\.\\.v1\\.2\\.0`));
   });
 
@@ -63,7 +63,7 @@ describe('Note de version — ce qu\'elle contient', () => {
   });
 });
 
-describe('Note de version — les cas où l\'on se serait tu', () => {
+describe('Note de version : les cas où l\'on se serait tu', () => {
   test('une première release ne prétend pas comparer à un tag inexistant', () => {
     const texte = buildReleaseNotes({
       tag: 'v1.0.0', previousTag: null, subjects: ['Premier commit'], repoUrl: URL_DEPOT,
@@ -97,7 +97,7 @@ describe('Note de version — les cas où l\'on se serait tu', () => {
   });
 });
 
-describe('normaliseRepoUrl — les deux formes de remote', () => {
+describe('normaliseRepoUrl : les deux formes de remote', () => {
   test('https avec .git', () => {
     assert.equal(normaliseRepoUrl('https://github.com/val66/storyboarder-bd.git'), URL_DEPOT);
   });
@@ -116,7 +116,7 @@ describe('Le workflow lui-même', () => {
   test('RÉGRESSION : fetch-depth: 0, sans quoi toute release se croit la première', () => {
     // LE piège de ce workflow. actions/checkout ne récupère qu'un commit par défaut : `git describe`
     // ne verrait aucun tag antérieur, et chaque release annoncerait « Première version publiée »
-    // avec un seul commit. Rien n'échouerait — la note serait simplement fausse, à chaque fois.
+    // avec un seul commit. Rien n'échouerait, la note serait simplement fausse, à chaque fois.
     assert.match(WORKFLOW, /fetch-depth:\s*0/,
       'sans fetch-depth: 0, le tag précédent est invisible et la note publiée est fausse');
   });
@@ -129,7 +129,7 @@ describe('Le workflow lui-même', () => {
 
   test('il demande l\'écriture sur contents, et rien de plus', () => {
     // Le jeton par défaut est en lecture seule : sans cette permission, `gh release create` échoue.
-    // Et on n'accorde que ce qui sert — une permission de trop est une permission qu'on oublie.
+    // Et on n'accorde que ce qui sert, une permission de trop est une permission qu'on oublie.
     assert.match(WORKFLOW, /permissions:\s*\n\s*contents:\s*write/);
     ['packages:', 'actions:', 'id-token:'].forEach(p =>
       assert.ok(!WORKFLOW.includes(p), `permission superflue accordée : ${p}`));
@@ -152,7 +152,7 @@ describe('Le workflow lui-même', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — dix fautes réintroduites, dans l'outil comme dans le workflow.
+ * JOURNAL DE MUTATION : dix fautes réintroduites, dans l'outil comme dans le workflow.
  *
  *   R1 `fetch-depth: 0` → `1` (LE piège de ce workflow)                            ROUGE
  *   R2 les lignes vides de `git log` gardées comme des sujets                       ROUGE
@@ -166,22 +166,22 @@ describe('Le workflow lui-même', () => {
  *
  * R1 A D'ABORD ÉCHAPPÉ, et pour une raison déjà rencontrée deux fois ici : le test cherchait
  * `fetch-depth: 0` dans le fichier ENTIER, et le trouvait dans le commentaire qui explique pourquoi
- * ce réglage est indispensable. Passer la valeur à 1 laissait donc le test au vert — la
+ * ce réglage est indispensable. Passer la valeur à 1 laissait donc le test au vert, la
  * documentation satisfaisait le test à la place du code. Les commentaires sont désormais retirés
  * avant toute vérification, en tête de fichier, une fois pour toutes.
  *
  * MUTANT ÉQUIVALENT ÉCARTÉ : remplacer `tronqué ? propres.slice(0, MAX) : propres` par
- * `propres.slice(0, MAX)` ne change rien — `slice` au-delà de la longueur rend le tableau entier.
+ * `propres.slice(0, MAX)` ne change rien, `slice` au-delà de la longueur rend le tableau entier.
  * C'est la même fonction écrite autrement, pas un trou de couverture.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHANGELOG.md — la section rédigée passe devant la liste des commits
+// CHANGELOG.md, la section rédigée passe devant la liste des commits
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CHANGELOG = readFileSync(join(RACINE, 'CHANGELOG.md'), 'utf8');
 
-describe('extractChangelogSection — trouver la bonne section, ou aucune', () => {
+describe('extractChangelogSection : trouver la bonne section, ou aucune', () => {
   const CL = ['# Journal', '', '## v1.2.0', 'Contenu douze.', '', '## v1.1.0', 'Contenu onze.'].join('\n');
 
   test('rend la section demandée, et elle seule', () => {
@@ -222,7 +222,7 @@ describe('extractChangelogSection — trouver la bonne section, ou aucune', () =
   });
 });
 
-describe('Note de version — avec une section rédigée', () => {
+describe('Note de version : avec une section rédigée', () => {
   const CL = '## v1.2.0\n**Résumé.** Une version de fiabilité.\n\n### Ce qui change pour vous\n- Un truc.';
 
   test('la section rédigée passe DEVANT, la liste des commits est repliée', () => {
@@ -252,7 +252,7 @@ describe('Note de version — avec une section rédigée', () => {
 describe('Le CHANGELOG.md réel', () => {
   test('tous ses titres de version valent exactement « ## vX.Y.Z »', () => {
     // Une section « À paraître » serait republiée telle quelle à la version suivante si personne ne
-    // la renommait — une note fausse, là où le repli généré aurait été honnête. La contrainte est
+    // la renommait, une note fausse, là où le repli généré aurait été honnête. La contrainte est
     // donc vérifiée sur le fichier, pas seulement documentée dans son en-tête.
     const titres = CHANGELOG.split('\n').filter(l => l.startsWith('## '));
     assert.ok(titres.length > 0, 'aucune section de version dans CHANGELOG.md');

@@ -1,7 +1,7 @@
 /**
  * @file draw.js
  * 2D canvas rendering for Storyboarder.
- * Extracted from app.js — Refactor step B.11.
+ * Extracted from app.js. Refactor step B.11.
  *
  * Exported functions: getPanelPoints, drawTracé, drawTraceToolPreview,
  * drawMeasureToolPreview, drawBuildToolOverlay, drawPanelNumberBadge,
@@ -301,7 +301,7 @@ export function drawMeasureToolPreview(c, panel, page) {
 
 // FIX (pre-existing bug, regression from extraction #165): uniqueDefaultName, addRoomWallElement and
 // stopBuildMode had stayed in app.js while buildToolCreateWallSegment/buildToolClose (which
-// depend on them) had been moved here without being exported — the "Build a Building"
+// depend on them) had been moved here without being exported, the "Build a Building"
 // tool (drawing walls with the mouse) therefore crashed immediately (ReferenceError) as soon as it was used.
 // Repatriated here (and exported for app.js, which also uses them in addObjectToPanel/
 // addRoomToPanel/addPersonaToPanel) to break the circular dependency draw.js → app.js.
@@ -419,7 +419,7 @@ export function buildToolCreateWallSegment(panel, page, x1, z1, x2, z2){
 // Only searches among walls created BEFORE reaching the snapped vertex (snapWallSegsCount).
 // Returns {seg} if extension is possible, null otherwise.
 // Exported (Step C, unit tests): reads S.buildTool.wallSegs/snapWallSegsCount but mutates
-// nothing — purely additive export, only buildToolClose calls it internally (unchanged).
+// nothing, purely additive export, only buildToolClose calls it internally (unchanged).
 export function buildTryExtendWall(fromX, fromZ, toX, toZ){
   if (!S.buildTool) return null;
   const dxNew = toX - fromX, dzNew = toZ - fromZ;
@@ -438,7 +438,7 @@ export function buildTryExtendWall(fromX, fromZ, toX, toZ){
     while (diff >  Math.PI) diff -= 2 * Math.PI;
     while (diff < -Math.PI) diff += 2 * Math.PI;
     if (Math.abs(diff) < snapRad || Math.abs(Math.abs(diff) - Math.PI) < snapRad) {
-      // Collinear — check that toX,toZ is beyond the opposite end from A=(seg.x1,seg.z1)
+      // Collinear : check that toX,toZ is beyond the opposite end from A=(seg.x1,seg.z1)
       const abx = seg.x2 - seg.x1, abz = seg.z2 - seg.z1;
       const aqx = toX   - seg.x1, aqz = toZ   - seg.z1;
       const dot = abx * aqx + abz * aqz;
@@ -449,7 +449,7 @@ export function buildTryExtendWall(fromX, fromZ, toX, toZ){
   return null;
 }
 
-// Adds a horizontal Slab (floor or ceiling) — arbitrary polygon in XZ.
+// Adds a horizontal Slab (floor or ceiling) : arbitrary polygon in XZ.
 // Stored as objet3d/dalle, invisible in 2D (1×1 px), rendered in 3D via THREE.ShapeGeometry.
 function addSlabElement(panel, page, name, polygon, worldY, pieceId, pieceLabel){
   const obj = {
@@ -473,7 +473,7 @@ function addSlabElement(panel, page, name, polygon, worldY, pieceId, pieceLabel)
 // Algorithm: half-edge traversal always taking the minimum clockwise rotation.
 // The exterior (infinite) face is identified by its largest absolute area (Shoelace).
 // Exported (Step C, unit tests): pure function (no DOM/S/THREE dependency), it's the
-// algorithmic core of automatic multi-Room splitting — purely additive export, changes
+// algorithmic core of automatic multi-Room splitting, purely additive export, changes
 // nothing for buildToolClose (the only application caller, still in this same file).
 export function detectBuildFaces(wallSegs) {
   if (wallSegs.length < 3) return null;
@@ -665,7 +665,7 @@ export function drawBuildToolOverlay(c, page){
     });
     c.setLineDash([]);
   }
-  // Drawn segments (solid blue line) — from wallSegs, not from pts.
+  // Drawn segments (solid blue line) : from wallSegs, not from pts.
   // Correct even after merge/split and in detached mode (no phantom line).
   if (S.buildTool.wallSegs.length > 0) {
     c.strokeStyle = '#3E5FA8'; c.lineWidth = 2; c.setLineDash([]);
@@ -674,7 +674,7 @@ export function drawBuildToolOverlay(c, page){
       if (s1 && s2) { c.beginPath(); c.moveTo(s1.x, s1.y); c.lineTo(s2.x, s2.y); c.stroke(); }
     });
   }
-  // Segment in progress (last point → mouse) — thin dashed blue line (not in detached mode)
+  // Segment in progress (last point → mouse) : thin dashed blue line (not in detached mode)
   if (pts.length >= 1 && S.buildTool.previewPos && !S.buildTool.disconnected) {
     const sLast = toScreen(pts[pts.length - 1].x, pts[pts.length - 1].z);
     const sPrev = toScreen(S.buildTool.previewPos.x, S.buildTool.previewPos.z);
@@ -694,7 +694,7 @@ export function drawBuildToolOverlay(c, page){
       }
     }
   }
-  // Placed points — drawn from the walls' real endpoints (not from pts)
+  // Placed points : drawn from the walls' real endpoints (not from pts)
   // A point only appears at real junctions between different walls,
   // never in the middle of an extended wall.
   {
@@ -736,7 +736,7 @@ export function drawBuildToolOverlay(c, page){
       c.beginPath(); c.moveTo(sp.x, sp.y - 3); c.lineTo(sp.x, sp.y + 3); c.stroke();
     }
   }
-  // Current point (preview) — same size as the others (not in detached mode)
+  // Current point (preview) : same size as the others (not in detached mode)
   if (S.buildTool.previewPos && !S.buildTool.disconnected) {
     const sp = toScreen(S.buildTool.previewPos.x, S.buildTool.previewPos.z);
     if (sp) {
@@ -785,15 +785,15 @@ export function getBuildingBoundingBoxXZ(buildingRoomIds, page) {
 // BUILD TOOL
 
 // ---------- DRAWING ----------
-// Round numbered badge (cf. caseNumber) drawn at the bottom LEFT of a Panel — ONLY during an export
-// (cf. drawContent/exportBadges, exportPage), never in the editor — per user request. Based
+// Round numbered badge (cf. caseNumber) drawn at the bottom LEFT of a Panel. ONLY during an export
+// (cf. drawContent/exportBadges, exportPage), never in the editor, per user request. Based
 // on the bounding box of the Panel's points (o.pts) to stay correct regardless of its shape
 // (rect/diamond/trapezoid/parallelogram).
 export function drawPanelNumberBadge(c, o){
   const pts = o.pts || getPanelPoints(o);
   const minX = Math.min(...pts.map(p => p.x));
   const maxY = Math.max(...pts.map(p => p.y));
-  // Badge size slightly reduced compared to the initial version (r:13/14px) — per user
+  // Badge size slightly reduced compared to the initial version (r:13/14px), per user
   // request.
   const r = 11;
   const cx = minX + r + 6;
@@ -811,13 +811,13 @@ export function drawPanelNumberBadge(c, o){
   c.restore();
 }
 
-// exportBadges: true ONLY during an export (cf. exportPage) — shows a numbered badge at the bottom
+// exportBadges: true ONLY during an export (cf. exportPage), shows a numbered badge at the bottom
 // right of each Panel, never on screen in the editor (per user request: "this badge is only
 // visible in the export").
 export function drawContent(c, page, scale, withSelection, exportBadges){
   c.save();
   c.scale(scale, scale);
-  // Volume page's background color (cf. "Background" section of the Page menu, page.bgColor) — white
+  // Volume page's background color (cf. "Background" section of the Page menu, page.bgColor), white
   // by default, including for Pages already created before this field was introduced.
   c.fillStyle = page.bgColor || '#fff'; c.fillRect(0, 0, page.w, page.h);
   c.strokeStyle = '#ccc'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, page.w - 1, page.h - 1);
@@ -846,12 +846,12 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     }
     // FIX (bug reported by the user, Bring forward/Send backward a Panel): a Panel's combined 3D
     // scene (cf. drawPanelScene3D) is now drawn when the PANEL itself (type
-    // 'panel') is encountered in page.objects, at ITS OWN position in the stacking order — not when
+    // 'panel') is encountered in page.objects, at ITS OWN position in the stacking order, not when
     // the FIRST of its Elements (perso/objet3d) is encountered while iterating the array, as before. With
     // the old logic, bringing forward/sending backward a Panel (which moves its whole Panel+Elements
     // group by one step, cf. moveStackGroup) could leave the first "encountered" Element of that Panel at a
     // position completely different from the Panel's own position as soon as several Panels had
-    // Elements interleaved in the array — the whole scene then stayed anchored at the old spot,
+    // Elements interleaved in the array, the whole scene then stayed anchored at the old spot,
     // which could reverse the intended visual order, or even make a scene disappear under the
     // opaque white background of another Panel drawn after it (cf. the 'panel' case in drawObject). Now
     // the stacking order between Panels is entirely driven by the Panel's own
@@ -875,12 +875,12 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
       c.restore();
       // The clip above (needed so the 3D scene doesn't spill outside the Panel's shape) only
       // draws the INSIDE of the Panel: its border (visible "as before" per user request)
-      // must be retraced separately, on top, without clipping — otherwise, since `drawObject` no longer
+      // must be retraced separately, on top, without clipping, otherwise, since `drawObject` no longer
       // draws it for a non-empty Panel (cf. above), the border disappeared entirely.
       // borderVisible/borderColor (cf. "Border" section of the Panel menu): visible in black by default,
-      // including for Panels created before these fields were introduced — per user request.
+      // including for Panels created before these fields were introduced, per user request.
       // A Scene's locked canvas (cf. isLockedScenePanel), however, never has a border
-      // drawn, regardless of its borderVisible value — per user request.
+      // drawn, regardless of its borderVisible value, per user request.
       if (o.borderVisible !== false && !isLockedScenePanel(o)) {
         c.save();
         c.beginPath();
@@ -896,13 +896,13 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     }
     if (o.type === 'perso' || o.type === 'objet3d') {
       // Already drawn above as part of its Panel's combined scene (cf. the 'panel' block
-      // just above); invisible if it doesn't belong to any Panel (cf. findOwningPanel) — anything
+      // just above); invisible if it doesn't belong to any Panel (cf. findOwningPanel), anything
       // extending beyond a Panel is not visible (clip on its shape), and an orphaned Element
       // disappears entirely if it no longer overlaps any Panel.
       return;
     }
     if (o.type === 'bulle') {
-      // Drawn separately below, always AFTER all Panels — cf. comment further down.
+      // Drawn separately below, always AFTER all Panels, cf. comment further down.
       return;
     }
     drawObject(c, o, page.style3d, page);
@@ -1006,7 +1006,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
   // Speech Bubbles are always rendered ON TOP OF all Panels, independent of their
   // position in page.objects (per user request: "Bubbles are always in front of Panels.
   // Panel stacking and Bubble stacking are not correlated. Panel stacking only concerns
-  // Panels among themselves and Bubble stacking only concerns Bubbles among themselves.") — their
+  // Panels among themselves and Bubble stacking only concerns Bubbles among themselves."), their
   // RELATIVE order among themselves (cf. Bring forward/Send backward, and the rank shown in "Stacking
   // level") stays driven by their respective position in page.objects, only among themselves.
   page.objects.forEach(o => {
@@ -1018,7 +1018,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
   }
   // Highlight of the WHOLE Room when it's selected as a group (S.selectedRoomId):
   // dashed frames per wall (original behavior) + 4 corner handles on the XZ bbox
-  // for resizing (no extra quadrilateral — a single visual selector).
+  // for resizing (no extra quadrilateral, a single visual selector).
   if (withSelection && S.selectedRoomId) {
     const members = page.objects.filter(o => o.pieceId === S.selectedRoomId || o.altPieceId === S.selectedRoomId);
     if (members.length) {
@@ -1126,9 +1126,9 @@ export function drawObject(c, o, styleKey, page){
       for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
       c.closePath();
       c.fillStyle = '#fff'; c.fill();
-      // borderVisible/borderColor (cf. "Border" section of the Panel menu) — per user request. A
+      // borderVisible/borderColor (cf. "Border" section of the Panel menu), per user request. A
       // Scene's locked canvas (cf. isLockedScenePanel), however, never has a border
-      // drawn — per user request.
+      // drawn, per user request.
       if (o.borderVisible !== false && !isLockedScenePanel(o)) {
         c.lineJoin = 'round';
         c.lineWidth = o.borderWidth || 2.25; c.strokeStyle = o.borderColor || '#23242A'; c.stroke();
@@ -1167,7 +1167,7 @@ export function bubbleShapeOf(o){
   return o.bulleShape === 'rect' ? 'rect' : 'ovale';
 }
 
-// Point located on the bubble's outline, in the "theta" direction from its center — parameterized
+// Point located on the bubble's outline, in the "theta" direction from its center, parameterized
 // by the ellipse for the Oval shape, and by ray intersection for the Rectangle shape. Lets
 // getBubbleTailTip and the tail drawing stay generic regardless of the shape.
 export function bubbleEdgePoint(o, theta){
@@ -1184,7 +1184,7 @@ export function bubbleEdgePoint(o, theta){
 }
 
 // Computes the position of a Bubble's tail tip, in page-space, from its stored angle/length
-// (o.tailAngle/o.tailLen) — used for drawing AND for the click/drag hit-test.
+// (o.tailAngle/o.tailLen), used for drawing AND for the click/drag hit-test.
 export function getBubbleTailTip(o){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
@@ -1203,7 +1203,7 @@ export function drawBubble(c, o){
   c.save();
   if (isRect) {
     // Rectangle: same continuous-outline technique as for the oval (cf. else branch), but
-    // replacing the arc with a traversal of the rectangle's corners — this way the small edge segment
+    // replacing the arc with a traversal of the rectangle's corners, this way the small edge segment
     // between base1 and base2 (under the tail) is never traced, and no line stays visible there.
     c.beginPath();
     if (bubbleTailVisible(o)) {
@@ -1213,7 +1213,7 @@ export function drawBubble(c, o){
       const base1 = bubbleEdgePoint(o, angleBase1);
       const base2 = bubbleEdgePoint(o, angleBase2);
       const tip = getBubbleTailTip(o);
-      // The 4 corners, with their angle (from the center) — since bubbleEdgePoint(o, theta) is an
+      // The 4 corners, with their angle (from the center), since bubbleEdgePoint(o, theta) is an
       // increasing bijection from the angle to the rectangle's outline (centered convex shape), these
       // angles give the same cyclic order as the real traversal of the perimeter.
       const corners = [
@@ -1252,7 +1252,7 @@ export function drawBubble(c, o){
       const base2 = bubbleEdgePoint(o, angleBase2);
       const tip = getBubbleTailTip(o);
       // Single continuous outline: we follow the ellipse all the way around EXCEPT the small arc between
-      // base1 and base2 (just under the tail), replaced by the two segments toward the tail — this way
+      // base1 and base2 (just under the tail), replaced by the two segments toward the tail, this way
       // no line crosses the inside of the bubble at the base of the tail.
       c.moveTo(base1.x, base1.y);
       c.lineTo(tip.x, tip.y);
@@ -1316,15 +1316,15 @@ POSE_3D.vaincu = {
 // [RIG3D] Block L9777–12671 extracted to src/rig3d.js
 // [SCENE3D] Camera/3D render area extracted to src/scene3d.js
 
-// Anti-blur for modal 3D Previews (Persona/Object) — per user report. Two compounding causes:
+// Anti-blur for modal 3D Previews (Persona/Object), per user report. Two compounding causes:
 // (1) the displayed canvas has a fixed intrinsic resolution (180×260 / 240×161, cf. original
 // HTML attributes) but the CSS then stretches it to width/height:100% to fill the whole Box
-// (.persona-preview-wrap, 276px tall) — hence a systematic bitmap upscale, blurry even with
+// (.persona-preview-wrap, 276px tall), hence a systematic bitmap upscale, blurry even with
 // no HiDPI screen involved; (2) on a Retina screen/Windows scaling
 // (devicePixelRatio > 1), this same bitmap gets STILL further downscaled/upscaled by the browser. Both are
 // fixed by increasing the canvas's REAL resolution (canvas.width/height) by a "scale" factor that
 // accounts for both the devicePixelRatio and the effective CSS enlargement (Box size / base
-// size), WHILE PRESERVING the base width/height ratio (baseW/baseH) — otherwise object-fit:contain
+// size), WHILE PRESERVING the base width/height ratio (baseW/baseH), otherwise object-fit:contain
 // (which relies on this ratio to fit/letterbox the render inside the Box) would be broken and the image
 // stretched disproportionately. This same "scale" is then passed as resScale to
 // renderPersonaToCanvas3D/renderObjectToCanvas3D so the offscreen Three.js render itself is
@@ -1339,7 +1339,7 @@ export function syncPreviewCanvasRes(canvas, baseW, baseH){
   const w = Math.max(1, Math.round(baseW * scale));
   const h = Math.max(1, Math.round(baseH * scale));
   // FIX (pre-existing bug, unrelated to the refactor): was mistakenly resizing _canvas (the
-  // MAIN page canvas, cf. setDrawCallbacks) instead of the canvas passed as a parameter — off-screen
+  // MAIN page canvas, cf. setDrawCallbacks) instead of the canvas passed as a parameter, off-screen
   // in a modal, this clears the main canvas (changing width/height wipes a <canvas>'s
   // content) and leaves the Scene grey until the modal is closed (next drawCurrentPage()).
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -1438,7 +1438,7 @@ export function drawRoomPreview(targetCanvas, pieceId, page, showCeiling, liveRo
     ctx.stroke();
   });
 
-  // Elements (personas/objects) — small colored dots
+  // Elements (personas/objects) : small colored dots
   const elems = members.filter(o =>
     (o.type === 'perso' || o.type === 'objet3d')
     && isFinite(o.wxFloor) && isFinite(o.wzFloor)
@@ -1555,7 +1555,7 @@ export function drawObjectPreview(targetCanvas, spec){
     id: PREVIEW_OBJECT_ID,
     objType: spec.objType || 'voiture',
     // Modèle importé : buildImportedModelRig3D lit modelFile pour retrouver le fichier décodé dans
-    // le cache (cf. model-cache.js) — sans lui, l'aperçu tombe sur sa boîte de remplacement.
+    // le cache (cf. model-cache.js), sans lui, l'aperçu tombe sur sa boîte de remplacement.
     modelFile: spec.modelFile,
     color: spec.color || FIXED_COLOR,
     rotX: spec.rotX || 0,
@@ -1570,7 +1570,7 @@ export function drawObjectPreview(targetCanvas, spec){
     // Sans elle, l'aperçu de la modale resterait au repos pendant qu'on déplace les curseurs.
     skeletonPose3d: spec.skeletonPose3d || null,
     // ⚠️ L'INTENTION, ET PAS SEULEMENT LE RÉSULTAT. `skeletonPose3d` porte des angles d'OS ; ce qui
-    // se joue au niveau du CORPS — « allongé », qui bascule la figure entière — vit dans `joints3d`.
+    // se joue au niveau du CORPS, « allongé », qui bascule la figure entière, vit dans `joints3d`.
     // Sans ce champ, `getEffectiveJoints` retombait sur « debout » et l'aperçu montrait un modèle
     // debout pendant que la Case, elle, le couchait. Signalé à l'usage.
     joints3d: spec.joints3d || null,
@@ -1579,13 +1579,13 @@ export function drawObjectPreview(targetCanvas, spec){
     // « debout » dans l'aperçu, tout en étant couché dans sa Case.
     position: spec.position,
     // Idem : la case « morceaux détachés » était transmise par l'appelant et s'arrêtait ici. Cocher
-    // ne changeait donc rien à l'aperçu — le champ mourait dans cette énumération.
+    // ne changeait donc rien à l'aperçu, le champ mourait dans cette énumération.
     afficherMaillagesEgares: spec.afficherMaillagesEgares,
   };
   const style = resolveStyle3D();
   // (#86) Real Size (%) doesn't affect the rig's own geometry (the preview stays framed on its
   // "natural" box): the enlargement/shrinking is simulated by moving the camera closer/farther
-  // by a factor proportional to the percentage — visually equivalent to scaling, but without
+  // by a factor proportional to the percentage, visually equivalent to scaling, but without
   // touching the existing centered framing (cf. frameCameraToBox: higher zoom = camera closer).
   const sizeFactor = clamp(Number(spec.sizePercent) || 100, 10, 400) / 100;
   const scale = syncPreviewCanvasRes(targetCanvas, OBJECT_PREVIEW_BASE_W, OBJECT_PREVIEW_BASE_H);
@@ -1600,7 +1600,7 @@ export function drawObjectPreview(targetCanvas, spec){
 // [STATE→S] let S.objectPreviewZoom = 1;
 // FIX (pre-existing bug, regression from extraction #165): this listener was repatriated to modals.js
 // (it references objectPreview3D and refreshObjectPreview, both specific to the 3D Object modal, and
-// not declared/imported here — latent ReferenceError, same cause as the equivalent bug already fixed
+// not declared/imported here, latent ReferenceError, same cause as the equivalent bug already fixed
 // for personaPreview3D).
 
 // ↳ src/constants.js
@@ -1622,14 +1622,14 @@ export function drawPersonaPreview(targetCanvas, spec){
   // (#86) cf. equivalent comment in drawObjectPreview: simulates Real Size (%) via a
   // camera zoom factor rather than scaling the rig (which would break the centered framing).
   const sizeFactor = clamp(Number(spec.sizePercent) || 100, 10, 400) / 100;
-  // Fix 49 — zoom et déplacement injectables. Ils étaient lus directement dans S.personaPreviewZoom
+  // Fix 49 : zoom et déplacement injectables. Ils étaient lus directement dans S.personaPreviewZoom
   // et personaPreviewPan, partagés par tout le monde : l'éditeur de Personnage, qui réutilise cette
   // fonction sur un bien plus grand canevas, aurait alors zoomé l'aperçu de la modale en même temps
-  // que lui — deux vues sur le même état, le motif qui a coûté cher cinq fois dans ce dépôt.
+  // que lui, deux vues sur le même état, le motif qui a coûté cher cinq fois dans ce dépôt.
   const zoom = (spec.zoom != null) ? spec.zoom : S.personaPreviewZoom;
   const pan = spec.pan || personaPreviewPan;
-  // Fix 53 — spec.renderSize : le rendu hors écran est fait à CETTE taille, et le canevas de
-  // destination prend la même. Le drawImage ci-dessous devient alors du 1:1 — ni étirement (donc
+  // Fix 53 : spec.renderSize : le rendu hors écran est fait à CETTE taille, et le canevas de
+  // destination prend la même. Le drawImage ci-dessous devient alors du 1:1, ni étirement (donc
   // plus de Personnage élargi) ni agrandissement (donc plus de flou). C'est le chemin de l'éditeur
   // plein écran ; l'aperçu de la modale garde le sien, où un format fixe suivi d'un ajustement
   // proportionnel est le bon compromis pour une petite vignette.
@@ -1658,7 +1658,7 @@ export function drawPersonaPreview(targetCanvas, spec){
 // personaDepthInput): it's a simple visualization zoom local to the preview, with no effect on o.z
 // nor on the page's rendering (per user request).
 // [STATE→S] let S.personaPreviewZoom = 1;
-// View offset ("grip") in the Persona preview, in world units — cf. frameCameraToFigure.
+// View offset ("grip") in the Persona preview, in world units, cf. frameCameraToFigure.
 export const personaPreviewPan = { x: 0, y: 0 };
 
 // ---------- JOINT HANDLES (selectable, but no longer draggable with the mouse: per
@@ -1673,16 +1673,16 @@ export function projectJointToCanvas(group, camera, canvasW, canvasH){
   return { x: (wp.x * 0.5 + 0.5) * canvasW, y: (1 - (wp.y * 0.5 + 0.5)) * canvasH };
 }
 
-// Fix 52 — canevas, carte de positions et poignée active sont désormais des paramètres.
+// Fix 52 : canevas, carte de positions et poignée active sont désormais des paramètres.
 //
 // L'éditeur de Personnage rend LE MÊME rig (PREVIEW_PERSONA_ID, personaCamera3D) sur un autre canevas,
 // à une autre résolution. Sans ces paramètres, les deux vues se partageraient personaHandleScreenPos
 // et la dernière rendue écraserait les coordonnées de l'autre : au retour dans la modale, les clics
 // auraient visé les positions calculées pour le plein écran. Les valeurs par défaut reproduisent
 // exactement le comportement de la modale, seul appelant historique.
-// Fix 88 — la ZONE DE PRISE de l'articulation sélectionnée, dessinée telle qu'elle est réellement
+// Fix 88 : la ZONE DE PRISE de l'articulation sélectionnée, dessinée telle qu'elle est réellement
 // testée : le disque autour du point, et la bande le long du membre. Cliquer à l'intérieur garde la
-// sélection ; cliquer dehors la lâche. C'est donc la frontière du « je peux repartir d'ici » —
+// sélection; cliquer dehors la lâche. C'est donc la frontière du « je peux repartir d'ici »,
 // autrement dit ce que l'utilisateur a demandé à voir, et non ce que l'articulation entraîne.
 //
 // Les rayons viennent de posePickRadii3D, la même source que le test de clic (cf. pickPoseHandleAt).
@@ -1706,7 +1706,7 @@ export function drawPersonaPickZone(hctx, pos, segment, radii){
   hctx.arc(pos.x, pos.y, radii.handle, 0, Math.PI * 2);
   hctx.fill();
   // Un liséré net sur le disque : sans lui, un aplat à 16 % laisse la frontière indécise, or c'est
-  // précisément la frontière qui porte l'information — dedans on garde, dehors on lâche.
+  // précisément la frontière qui porte l'information, dedans on garde, dehors on lâche.
   hctx.globalAlpha = 0.5;
   hctx.lineWidth = 1;
   hctx.stroke();
@@ -1714,8 +1714,8 @@ export function drawPersonaPickZone(hctx, pos, segment, radii){
   return true;
 }
 
-// Fix 85 — repère de glisser dessiné sur la poignée sélectionnée. `hint` vaut soit
-// { mode: 'droit', x, y } — la direction utile — soit { mode: 'circulaire' }, et null quand aucune
+// Fix 85 : repère de glisser dessiné sur la poignée sélectionnée. `hint` vaut soit
+// { mode: 'droit', x, y }, la direction utile, soit { mode: 'circulaire' }, et null quand aucune
 // articulation n'est choisie. Purement indicatif : il ne change rien au geste, il le rend lisible.
 export function drawPersonaDragHint(hctx, pos, hint){
   if (!hctx || !pos || !hint) return false;
@@ -1751,7 +1751,7 @@ export function drawPersonaDragHint(hctx, pos, hint){
   return true;
 }
 
-// `soloActive` — Fix 86 : une fois une articulation choisie, elle reste SEULE à l'écran et seule
+// `soloActive` : Fix 86 : une fois une articulation choisie, elle reste SEULE à l'écran et seule
 // sensible au clic. Les voisines n'y gagnaient rien et coûtaient des sélections involontaires en
 // plein glisser, l'épaule et le coude n'étant séparés que de quelques pixels sur certaines vues.
 //
@@ -1759,7 +1759,7 @@ export function drawPersonaDragHint(hctx, pos, hint){
 // pickNearestHandle3D et pickLimbSegmentAt, qui ignorent l'une comme l'autre une position nulle. Ne
 // pas enregistrer une poignée la rend donc invisible ET inerte, sans second mécanisme à tenir en
 // accord avec le premier.
-// Fix 91 — passe de POSITIONS des poignées, séparée de leur dessin.
+// Fix 91 : passe de POSITIONS des poignées, séparée de leur dessin.
 //
 // Elle porte à elle seule la règle « où sont les articulations à l'écran, et lesquelles sont
 // saisissables » : la carte qu'elle remplit est celle que consultent pickNearestHandle3D et
@@ -1785,20 +1785,20 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
       return;
     }
     const pt = projectJointToCanvas(grp, camera, cnvW, cnvH);
-    // Fix 92 — l'EXTRÉMITÉ du membre est projetée ici, dans la même image et avec la même caméra
+    // Fix 92 : l'EXTRÉMITÉ du membre est projetée ici, dans la même image et avec la même caméra
     // que la poignée, puis rangée AVEC elle. Auparavant seul le départ du segment était mémorisé et
     // le bout était recalculé au moment du clic : personaLibSegment le reprojetait à la volée avec
-    // personaCamera3D — une caméra PARTAGÉE avec le rendu des Cases et de l'aperçu de la modale.
+    // personaCamera3D, une caméra PARTAGÉE avec le rendu des Cases et de l'aperçu de la modale.
     // Il suffisait donc qu'une autre figure soit rendue entre le tracé et le clic pour que la bande
     // testée parte ailleurs que la bande peinte. Mesuré : 144 px d'écart au bout, pour une bande de
-    // 24 px de demi-largeur — les deux ne se recouvrent plus que près de l'articulation, ce qui
+    // 24 px de demi-largeur, les deux ne se recouvrent plus que près de l'articulation, ce qui
     // explique que le disque continuait de mordre alors que le membre, lui, ne répondait plus.
     const seg = LIMB_SEGMENTS.find(l => l.id === def.id);
     if (seg) {
       const cible = seg.toGroup ? entry.joints[seg.toGroup] : null;
       if (seg.toGroup && cible) pt.tip = projectJointToCanvas(cible, camera, cnvW, cnvH);
       // `toLocal` est un décalage EN UNITÉS DU RIG INTÉGRÉ (sept segments sur dix-huit). Sur un os
-      // importé — en mètres, avec ses propres axes — il désignerait un point sans rapport, et la
+      // importé, en mètres, avec ses propres axes, il désignerait un point sans rapport, et la
       // bande de prise partirait de travers. Ces segments-là n'ont alors simplement pas d'extrémité :
       // la poignée reste attrapable par son disque, ce qui est exact plutôt qu'approximatif.
       else if (!seg.toGroup && !entry.osImportes) {
@@ -1824,7 +1824,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   // draw.js n'importe nulle part : elle ne se résolvait que par la « nommage global » du
   // navigateur, qui expose tout élément portant un id sur `window`. Ça marchait par accident, et
   // seulement dans un navigateur. L'importer créerait un cycle (modals.js dépend déjà de draw.js) ;
-  // c'est donc l'appelant qui passe son canevas — même remède qu'au Fix 92, où le paramètre a été
+  // c'est donc l'appelant qui passe son canevas, même remède qu'au Fix 92, où le paramètre a été
   // retiré plutôt que rendu implicite. Trouvé par ESLint (no-undef).
   if (!canvas) return;
   const cnv = canvas;
@@ -1834,10 +1834,10 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     : (S.selectedPoseHandle && S.selectedPoseHandle.id) || null;
   const hctx = cnv.getContext('2d');
   const solo = !!soloActive && !!selectedId;
-  // Fix 91 — les POSITIONS d'abord, le dessin ensuite. Deux passes, pour une raison précise.
+  // Fix 91 : les POSITIONS d'abord, le dessin ensuite. Deux passes, pour une raison précise.
   //
   // La zone de prise est un FOND : elle doit se peindre avant les poignées, sinon elle les
-  // recouvre. Elle était donc tracée avant la boucle — c'est-à-dire à partir des positions de
+  // recouvre. Elle était donc tracée avant la boucle, c'est-à-dire à partir des positions de
   // l'image PRÉCÉDENTE, ce que le commentaire d'alors justifiait par « la figure n'a pas bougé
   // entre deux tracés du même rendu ». C'est faux : entre deux images on redessine JUSTEMENT
   // parce que quelque chose a bougé. Pendant un glisser, la teinte restait donc là où le membre
@@ -1845,11 +1845,11 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   // D'où des clics tombant dans la zone colorée et désélectionnant quand même l'articulation.
   //
   // Le décalage vaut aussi pour le segment du membre : personaLimbSegmentScreen3D lit son point
-  // de départ dans `positions` et calcule son autre extrémité à neuf — une extrémité en retard,
+  // de départ dans `positions` et calcule son autre extrémité à neuf, une extrémité en retard,
   // l'autre à jour, la bande partait donc de travers.
   //
   // C'est le défaut récurrent de ce dépôt : la MÊME grandeur calculée à deux moments, qui
-  // divergent. La séparation en deux passes le supprime à la racine — il n'y a plus qu'un seul
+  // divergent. La séparation en deux passes le supprime à la racine, il n'y a plus qu'un seul
   // calcul de position par image, et tout le monde en lit le résultat.
   const points = projectPoseHandlePositions3D(entry, personaCamera3D, cnv.width, cnv.height,
     selectedId, solo, positions);
@@ -1874,7 +1874,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   if (dragHint && positions[selectedId]) drawPersonaDragHint(hctx, positions[selectedId], dragHint);
 }
 
-// Fix 92 — plus de paramètre `canvas` : il n'était transmis que pour reprojeter le bout du membre
+// Fix 92 : plus de paramètre `canvas` : il n'était transmis que pour reprojeter le bout du membre
 // au moment du clic, ce que personaLimbSegmentScreen3D ne fait plus. Tout ce dont la sélection a
 // besoin est dans la carte de positions, écrite par la dernière image dessinée.
 export function pickPoseHandleAt(px, py, positions, radii){
@@ -1907,18 +1907,18 @@ export function distToSegmentSq(px, py, ax, ay, bx, by){
   return ddx * ddx + ddy * ddy;
 }
 
-// Fix 88 — le segment ÉCRAN du membre entraîné par une articulation, ou null. Extrait pour être
+// Fix 88 : le segment ÉCRAN du membre entraîné par une articulation, ou null. Extrait pour être
 // partagé entre la sélection et le dessin de la zone de prise : le tracé doit montrer exactement ce
 // que le clic accepte, et deux calculs séparés du même segment auraient fini par se contredire.
 //
-// Fix 92 — le segment est désormais entièrement LU dans la carte de positions, sans aucune
+// Fix 92 : le segment est désormais entièrement LU dans la carte de positions, sans aucune
 // reprojection. Le paramètre `canvas` a disparu, et ce n'est pas un détail de nettoyage : il ne
-// servait qu'à reprojeter le bout du membre au moment du clic, avec personaCamera3D — la caméra
+// servait qu'à reprojeter le bout du membre au moment du clic, avec personaCamera3D, la caméra
 // PARTAGÉE par l'aperçu de la modale, l'éditeur et le rendu des Cases. Le retirer rend la
 // reprojection tardive structurellement impossible, plutôt que simplement déconseillée.
 //
 // Conséquence assumée : un segment dont le bout n'a pas été projeté à la dernière image n'existe
-// pas. C'est la bonne réponse — on ne peut pas accepter un clic sur une bande qu'on n'a pas
+// pas. C'est la bonne réponse, on ne peut pas accepter un clic sur une bande qu'on n'a pas
 // dessinée. Même raison que le `null` des poignées masquées : ne rien enregistrer, c'est rendre
 // inerte, sans second mécanisme à tenir en accord avec le premier.
 export function personaLimbSegmentScreen3D(handleId, positions){
@@ -1959,25 +1959,25 @@ export function pickLimbSegmentAt(px, py, positions, radius = POSE_LIMB_PICK_RAD
 // is "letterboxed" (empty bands on either side, centered). This function recomputes the sub-
 // rectangle actually occupied by the render (same rules as object-fit:contain) and converts
 // screen coordinates to the canvas's internal coordinates based on THIS sub-rectangle, rather than on the
-// full rect — without this, the pose handles and pan-drag would drift as soon as there was any letterboxing.
+// full rect, without this, the pose handles and pan-drag would drift as soon as there was any letterboxing.
 
 // ════════════════════════════════════════════════════════════════════════════════════════════
 // STICK FIGURE (simplified 2D silhouette of a Persona, one pose = one drawStickFigureX function)
 // ════════════════════════════════════════════════════════════════════════════════════════════
 // Conventions common to all the drawStickFigureXxx functions below (not repeated in
 // each one): draw WITHIN the object's box (o.x, o.y, o.w, o.h), head at the top; all
-// coordinates are fractions of o.w/o.h chosen by eye for a readable silhouette — no
+// coordinates are fractions of o.w/o.h chosen by eye for a readable silhouette, no
 // dedicated comment for each constant, except when the order of the strokes (e.g. "shortened torso"
 // for the sitting position) isn't obvious to read. poseHeadFace() just factors out the drawing
 // of the head, common to several poses.
 //
 // FIX: POSE_RENDERERS used to map each pose to a function NAME (string), resolved via
-// `window[fnName]` — which never resolved (no code assigns these functions to `window`; they
+// `window[fnName]`, which never resolved (no code assigns these functions to `window`; they
 // are ES module exports, not classic script globals). In practice, drawStickFigure()
 // therefore ALWAYS fell back to drawStickFigureStanding, regardless of the requested pose (cf. the
 // comment still present in rig3d.js, drawPersona3D, which documented this finding). It now maps
 // directly to the functions themselves (the `function` declarations further down in
-// this file are hoisted, so usable here before their textual position) — each pose
+// this file are hoisted, so usable here before their textual position), each pose
 // therefore now displays correctly in this fallback. This fallback itself is only used if
 // THREE.js fails to load (a Persona's normal render goes through rig3d.js/scene3d.js, in 3D).
 const POSE_RENDERERS = {
@@ -2289,7 +2289,7 @@ export function drawSelection(c, o, page){
   c.save();
   if (o.type === 'panel') {
     // A Scene's full-frame canvas (cf. isLockedScenePanel) no longer shows any dashed
-    // selection outline (neither the outline nor the handles that follow just below) — per
+    // selection outline (neither the outline nor the handles that follow just below), per
     // user request, consistent with the absence of a drawn border for this same canvas.
     if (!isLockedScenePanel(o)) {
       c.strokeStyle = '#B5482A'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
@@ -2313,7 +2313,7 @@ export function drawSelection(c, o, page){
     return;
   }
   // For a WallOpening Element magnetized to a Wall, the selection border (and its handles) follows the
-  // REAL projected quadrilateral of the actually displayed 3D Model (cf. getWallChildProjectedQuad3D) — instead
+  // REAL projected quadrilateral of the actually displayed 3D Model (cf. getWallChildProjectedQuad3D), instead
   // of staying aligned to the page axes, or even being a simple rectangle rotated by a single
   // angle (insufficient: that didn't represent the apparent-width foreshortening caused by the rotation).
   // Moving/resizing (o.x/y/w/h) and hit-testing the handles (cf. getHandles/
@@ -2351,7 +2351,7 @@ export function drawSelection(c, o, page){
     // For an Element owned by a Panel (perso/objet3d rendered via the combined 3D scene, cf.
     // drawPanelScene3D), the REALLY displayed center can differ from its raw canvas center
     // (o.x/o.y, which is only used to compute ownership/Ground magnetism) as soon as the Panel's
-    // Camera has been moved (pan, cf. ensureNewElementVisibleInPanel3D) or oriented (Camera Mode) — without
+    // Camera has been moved (pan, cf. ensureNewElementVisibleInPanel3D) or oriented (Camera Mode), without
     // this correction, the selection frame stayed visually offset from the 3D Model.
     if (page && (o.type === 'perso' || o.type === 'objet3d')) {
       const owner = findOwningPanel(o, page);
@@ -2359,10 +2359,10 @@ export function drawSelection(c, o, page){
         const proj = projectElementCenterToCanvas3D(o, owner, page);
         if (proj) { cx = proj.x; cy = proj.y; }
         // Same for the frame's SIZE: o.w/o.h are just a storage encoding relative to a fixed
-        // REFERENCE distance (cf. getElementProjectedHalfExtents3D) — so the REAL size projected
+        // REFERENCE distance (cf. getElementProjectedHalfExtents3D), so the REAL size projected
         // by the actual Camera is used, so the frame doesn't change size when only the
         // position changes (moving or scroll wheel) with no real visual change to the 3D Model. Valid for
-        // all Panels (Scenes included) — initially reserved for Scenes (cf. isLockedScenePanel,
+        // all Panels (Scenes included), initially reserved for Scenes (cf. isLockedScenePanel,
         // old condition), extended per user request for consistency.
         const ext = getElementProjectedHalfExtents3D(o, owner, page);
         if (ext) { half.x = ext.halfW; half.y = ext.halfH; }
@@ -2405,7 +2405,7 @@ export function wrapText(c, text, x, y, maxWidth, lineHeight){
   if (line) c.fillText(line, x, yy);
 }
 
-// Like wrapText, but returns the array of computed lines instead of drawing them directly —
+// Like wrapText, but returns the array of computed lines instead of drawing them directly,
 // used when the total height of the text block needs to be known before drawing it (e.g.
 // to center it vertically inside a Bubble).
 export function wrapTextLines(c, text, maxWidth){
@@ -2438,7 +2438,7 @@ export function drawCurrentPage(){
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
-  // rather than currentPage() which rebuilds a NEW object on every call — the old comparison
+  // rather than currentPage() which rebuilds a NEW object on every call, the old comparison
   // page !== S.drawCurrentPageLastRef was therefore ALWAYS true (two distinct objects even for the same
   // page), clearing the cache on every drawCurrentPage() and canceling out any benefit from the cache.
   const _pageDataRef = currentPageData();
@@ -2447,7 +2447,7 @@ export function drawCurrentPage(){
     S.drawCurrentPageLastRef = _pageDataRef;
   }
   // Cost of these four phases, measured over 1071 frames: canvas 0.6%, drawContent the bulk,
-  // side panel 7.6%. See docs/rendering-performance.md — the audit suspected the canvas
+  // side panel 7.6%. See docs/rendering-performance.md, the audit suspected the canvas
   // reallocation of being as expensive as the drawing itself; it is not.
   _canvas.width = Math.round(page.w * S.pageRenderScale);
   _canvas.height = Math.round(page.h * S.pageRenderScale);
@@ -2461,10 +2461,10 @@ export function drawCurrentPage(){
 // COALESCED drawing: at most one per display frame.
 //
 // `drawCurrentPage()` is called from 110 places, 8 of them in `mousemove` handlers and 4 in
-// `wheel` — events that arrive faster than the screen refreshes. No throttle existed in the repo.
+// `wheel`, events that arrive faster than the screen refreshes. No throttle existed in the repo.
 //
 // HOW MUCH THIS ACTUALLY SAVES: unknown, and measured to be nothing so far. Over the campaign of
-// docs/rendering-performance.md, 1018 scheduled requests produced 1018 frames — not a single one
+// docs/rendering-performance.md, 1018 scheduled requests produced 1018 frames, not a single one
 // was absorbed, on that mouse and that page. The scheduler is kept because it costs nothing when
 // it never fires and it bounds the worst case, NOT because a saving was observed. Anyone tempted
 // to cite it as an optimisation should re-measure first.
@@ -2481,7 +2481,7 @@ export function scheduleDrawCurrentPage(){
   _planificateurDessin.demander();
 }
 
-// À appeler quand la suite du code doit voir un canevas à jour immédiatement — typiquement au
+// À appeler quand la suite du code doit voir un canevas à jour immédiatement, typiquement au
 // relâchement de la souris, qui clôt un geste et enchaîne souvent sur une lecture d'état.
 export function flushDrawCurrentPage(){ return _planificateurDessin.vider(); }
 
@@ -2494,7 +2494,7 @@ export function renderAll(){
   _renderTree();
   _renderSceneList();
   // La bibliothèque de modèles suit le même cycle que la liste des Scènes : ce sont deux listes
-  // du menu de gauche, et celle des modèles est DÉDUITE du Projet (usages) — elle doit donc se
+  // du menu de gauche, et celle des modèles est DÉDUITE du Projet (usages), elle doit donc se
   // recalculer quand le Projet change, pas seulement à l'ouverture.
   _renderModelList();
   _updateContextualControls();
@@ -2565,7 +2565,7 @@ export function exportPage(volumeIdx, pageIdx, format = 'png'){
   const pd = t.pages[pageIdx];
   const page = { w: t.w, h: t.h, scale: t.scale, style3d: t.style3d, objects: pd.objects, bgColor: pd.bgColor };
   // The exported Page is drawn SMALLER than its usual editing size (EXPORT_PLANCHE_SCALE
-  // < 1), and the text of the Panels section below it is BIGGER — per user request ("shrink the
+  // < 1), and the text of the Panels section below it is BIGGER, per user request ("shrink the
   // page size [...] and increase the size of the text below the page").
   const EXPORT_PLANCHE_SCALE = 0.65;
   const exportScale = page.scale * EXPORT_PLANCHE_SCALE;
@@ -2573,7 +2573,7 @@ export function exportPage(volumeIdx, pageIdx, format = 'png'){
   const pageH = page.h * exportScale;
 
   // "Panels" section added BELOW the exported Page image: name ("Panel N") + description of each
-  // Panel, sorted by number — on user request. The required height is measured FIRST (in a
+  // Panel, sorted by number, on user request. The required height is measured FIRST (in a
   // throwaway context), because a <canvas>'s size can no longer change once its content has
   // started being drawn.
   ensurePanelNumbers(page);
@@ -2652,7 +2652,7 @@ export function exportVolume(ti){
 // Three possible paths, in this order of preference:
 // 1) window.storyboarderAPI (cf. preload.js + main.js): available when the app is actually running in
 //    Electron (npm start / the installed executable). Goes through native dialog boxes + fs on the
-//    main process side — the ONLY path that allows silent automatic saving, because the
+//    main process side, the ONLY path that allows silent automatic saving, because the
 //    web File System Access API below is NOT available for pages loaded over file:// (neither in
 //    Electron, which also loads over file://, nor in a regular browser like Brave).
 // 2) Web File System Access API (showSaveFilePicker/showOpenFilePicker): kept as a safeguard for

@@ -1,5 +1,5 @@
 /**
- * tests/modal-stack.test.mjs — Échap ferme ce qui est devant, et rien d'autre.
+ * tests/modal-stack.test.mjs. Échap ferme ce qui est devant, et rien d'autre.
  *
  * LE DÉFAUT D'ORIGINE, SIGNALÉ À L'USAGE. Échap dans l'écran de correspondance du squelette ne le
  * fermait pas, et ouvrait le menu Projet DERRIÈRE lui. La cause : io.js, qui enregistre le premier
@@ -20,8 +20,8 @@
  * CE FICHIER GARDE DEUX CHOSES DE NATURES DIFFÉRENTES. La décision (« que fait Échap ? »), qui est
  * pure et se teste directement. Et surtout la COMPLÉTUDE : le dernier bloc relit index.html et
  * refuse toute `.modal-overlay` sans fermeture déclarée. C'est lui qui compte. Sans lui, la table
- * des fermetures serait une énumération tenue à la main de plus — exactement ce qu'on vient de
- * supprimer — et la prochaine modale ajoutée retomberait dans le même défaut, silencieusement.
+ * des fermetures serait une énumération tenue à la main de plus, exactement ce qu'on vient de
+ * supprimer, et la prochaine modale ajoutée retomberait dans le même défaut, silencieusement.
  *
  * C'est la troisième énumération de ce dépôt à avoir menti (les menus contextuels, 24 sur 26 ; les
  * sections dépliantes du menu de gauche ; celle-ci). À chaque fois le remède a été le même :
@@ -44,12 +44,12 @@ const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
 const SRC = ['io.js', 'events.js', 'modals.js']
   .map(f => readFileSync(join(RACINE, 'src', f), 'utf8')).join('\n');
 
-/** Les identifiants de TOUTES les modales déclarées dans index.html — la source de vérité. */
+/** Les identifiants de TOUTES les modales déclarées dans index.html, la source de vérité. */
 function modalesDuDocument(){
   return [...HTML.matchAll(/class="modal-overlay[^"]*"\s+id="([^"]+)"/g)].map(m => m[1]);
 }
 
-describe('empiler / depiler / modaleDuDessus — l\'ordre d\'ouverture', () => {
+describe('empiler / depiler / modaleDuDessus : l\'ordre d\'ouverture', () => {
   test('la modale du dessus est la DERNIÈRE ouverte, pas la première', () => {
     // Depuis qu'une modale peut s'ouvrir par-dessus une autre (l'écran de correspondance appelé
     // depuis la fiche d'un Modèle), « devant » ne se déduit plus de l'ordre du document.
@@ -89,7 +89,7 @@ describe('empiler / depiler / modaleDuDessus — l\'ordre d\'ouverture', () => {
   });
 });
 
-describe('actionEchap — la décision que la liste de gardes prenait', () => {
+describe('actionEchap : la décision que la liste de gardes prenait', () => {
   test('rien d\'ouvert : Échap ouvre le menu Projet', () => {
     assert.deepEqual(actionEchap({ pile: [], editeurOuvert: false }), { action: 'menuProjet' });
   });
@@ -117,7 +117,7 @@ describe('actionEchap — la décision que la liste de gardes prenait', () => {
   });
 });
 
-describe('fermerModaleDuDessus — on appelle la bonne fermeture', () => {
+describe('fermerModaleDuDessus : on appelle la bonne fermeture', () => {
   beforeEach(() => { _reinitialiserPile(); });
 
   test('rien d\'ouvert : rend false, n\'appelle personne', () => {
@@ -133,7 +133,7 @@ describe('fermerModaleDuDessus — on appelle la bonne fermeture', () => {
     try {
       enregistrerFermeture('a', () => {});
       // on force une pile en passant par l'API publique : empiler est pur, la pile interne
-      // se remplit par observation — d'où ce test ciblé sur la seule branche atteignable.
+      // se remplit par observation, d'où ce test ciblé sur la seule branche atteignable.
       assert.equal(fermerModaleDuDessus(), false, 'aucune modale observée : rien à fermer');
     } finally { console.warn = brut; }
   });
@@ -153,7 +153,7 @@ describe('fermerModaleDuDessus — on appelle la bonne fermeture', () => {
   });
 });
 
-describe('COMPLÉTUDE — aucune modale ne peut être oubliée', () => {
+describe('COMPLÉTUDE : aucune modale ne peut être oubliée', () => {
   test('index.html déclare bien les quatorze modales attendues', () => {
     // Garde-fou du garde-fou : si ce compte change sans que personne y pense, c'est qu'une modale
     // vient d'apparaître (ou de disparaître) et que le test suivant mérite d'être relu.
@@ -184,7 +184,7 @@ describe('COMPLÉTUDE — aucune modale ne peut être oubliée', () => {
 
   test('RÉGRESSION : l\'écran de correspondance RÉSOUT sa promesse en se fermant', () => {
     // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE. Le test de complétude ci-dessus vérifie qu'une fermeture
-    // est déclarée — pas LAQUELLE. Or remplacer celle-ci par un `classList.add('hidden')` générique
+    // est déclarée, pas LAQUELLE. Or remplacer celle-ci par un `classList.add('hidden')` générique
     // passait inaperçu, et c'est le pire des cas : l'écran rend une PROMESSE que l'import attend
     // pour savoir s'il continue. Masquer sans résoudre laisse l'import suspendu pour toujours, sans
     // message et sans modèle. `fermerSkeletonMap` est le seul chemin de sortie.
@@ -211,7 +211,7 @@ describe('COMPLÉTUDE — aucune modale ne peut être oubliée', () => {
   });
 
   test('RÉGRESSION : plus aucun écouteur Échap concurrent dans les modales', () => {
-    // roomModal et buildingModal en avaient un, avec stopImmediatePropagation — inopérant, puisque
+    // roomModal et buildingModal en avaient un, avec stopImmediatePropagation, inopérant, puisque
     // io.js s'exécute avant. Le laisser en place ferait croire qu'il protège quelque chose.
     const modalsSrc = readFileSync(join(RACINE, 'src/modals.js'), 'utf8');
     assert.doesNotMatch(modalsSrc, /Escape'\s*\)\s*\{\s*e\.stopImmediatePropagation\(\);\s*close(Room|Building)Modal/,
@@ -241,7 +241,7 @@ describe('L\'empilement visuel — la dernière ouverte est devant', () => {
   test('RÉGRESSION : l\'écran de correspondance est déclaré AVANT la fiche dans index.html', () => {
     // C'est le fait qui rendait l'empilement nécessaire : à z-index égal, l'ordre du document
     // décide, et la fiche recouvrait donc l'écran ouvert depuis elle. Si un jour l'ordre du
-    // document changeait, ce test le signalerait — et la note ci-dessus deviendrait fausse.
+    // document changeait, ce test le signalerait, et la note ci-dessus deviendrait fausse.
     assert.ok(HTML.indexOf('id="skeletonMapModal"') < HTML.indexOf('id="objectModal"'),
       'l\'ordre du document a changé : relire la justification de l\'empilement');
   });

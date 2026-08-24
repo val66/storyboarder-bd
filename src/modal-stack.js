@@ -1,24 +1,24 @@
 /**
  * @file modal-stack.js
- * Quelle modale est DEVANT — et ce qu'Échap doit fermer.
+ * Quelle modale est DEVANT, et ce qu'Échap doit fermer.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * LE DÉFAUT QUI A MOTIVÉ CE FICHIER, SIGNALÉ À L'USAGE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Échap dans l'écran de correspondance du squelette ne le fermait pas — et OUVRAIT le menu Projet
+ * Échap dans l'écran de correspondance du squelette ne le fermait pas, et OUVRAIT le menu Projet
  * derrière. La cause est une énumération tenue à la main : io.js enregistre le premier écouteur
  * Échap de l'application, et il ne renonçait à ouvrir le menu Projet que si l'une de HUIT modales
  * nommées une à une était visible. L'application en compte QUATORZE.
  *
  * Le commentaire qui accompagnait cette liste disait déjà, noir sur blanc, que tout ce qui recouvre
- * l'application « doit se déclarer ICI » — et racontait que l'éditeur de Personnage l'avait
+ * l'application « doit se déclarer ICI », et racontait que l'éditeur de Personnage l'avait
  * justement oublié, avec exactement le même symptôme. La liste avait donc déjà échoué une fois,
  * et rien n'empêchait qu'elle échoue encore. Six modales sur quatorze y manquaient :
  * skeletonMapModal, modelUsagesModal, tracéModal, terrainModal, roomModal, buildingModal.
  *
  * Les deux dernières sont un cas plus retors : elles ont bien leur propre écouteur Échap, avec
- * `stopImmediatePropagation`. Mais cet appel ne peut RIEN retenir — io.js est importé en premier,
+ * `stopImmediatePropagation`. Mais cet appel ne peut RIEN retenir, io.js est importé en premier,
  * donc son écouteur s'exécute AVANT, et le menu Projet est déjà ouvert quand elles reprennent la
  * main. Elles se fermaient, en laissant le menu Projet derrière : le symptôme exact du rapport.
  *
@@ -29,14 +29,14 @@
  * On ne corrige pas ça en ajoutant une neuvième ligne à la liste. C'est la troisième fois dans ce
  * dépôt qu'une énumération tenue à la main finit par mentir (les menus contextuels, 24 sur 26 ; les
  * sections dépliantes ; celle-ci). Le remède éprouvé est le même : INTERROGER LE DOM plutôt que se
- * souvenir. `.modal-overlay` est déjà la classe que porte chaque modale — elle fait autorité.
+ * souvenir. `.modal-overlay` est déjà la classe que porte chaque modale, elle fait autorité.
  *
  * DEUX CHOSES SONT NÉCESSAIRES, ET ELLES SONT DE NATURES DIFFÉRENTES :
  *
  *   1. SAVOIR CE QUI EST OUVERT, et dans quel ORDRE. L'ordre compte depuis qu'une modale peut
  *      s'ouvrir par-dessus une autre (l'écran de correspondance appelé depuis la fiche d'un
  *      Modèle) : Échap doit fermer celle du dessus, pas celle du dessous. Cet ordre est capté par
- *      un MutationObserver sur la classe `hidden` de chaque `.modal-overlay` — aucun point d'appel
+ *      un MutationObserver sur la classe `hidden` de chaque `.modal-overlay`, aucun point d'appel
  *      à modifier, donc aucune occasion d'oublier, y compris pour une modale future ;
  *
  *   2. SAVOIR LA FERMER. Là, une table est inévitable : fermer n'est PAS uniforme. La modale d'un
@@ -45,7 +45,7 @@
  *      toujours ; une demande de confirmation doit répondre « non ». Un `classList.add('hidden')`
  *      générique serait faux pour au moins trois modales, et silencieusement.
  *
- * La table du point 2 est donc une énumération — exactement ce qu'on vient de condamner. Ce qui la
+ * La table du point 2 est donc une énumération, exactement ce qu'on vient de condamner. Ce qui la
  * rend sûre, et c'est tout l'enjeu, est un TEST qui relit index.html et refuse toute
  * `.modal-overlay` sans fermeture déclarée. Une modale ajoutée demain sans câbler Échap ne partira
  * pas en production : elle fera échouer la suite. L'oubli devient impossible au lieu d'être
@@ -54,7 +54,7 @@
  * L'EMPILEMENT VISUEL EST RÉGLÉ AU MÊME ENDROIT, et pour la même raison. Toutes les modales
  * partagent `z-index:1000` ; à égalité, c'est l'ordre du DOM qui décide, et l'écran de
  * correspondance est déclaré AVANT la fiche d'un Élément dans index.html. Ouvert depuis cette
- * fiche, il passait donc DERRIÈRE elle — invisible. Puisque ce fichier connaît déjà l'ordre
+ * fiche, il passait donc DERRIÈRE elle, invisible. Puisque ce fichier connaît déjà l'ordre
  * d'ouverture, il pose le `z-index` en conséquence : la dernière ouverte est toujours devant.
  */
 
@@ -62,7 +62,7 @@
 export const Z_MODALE_BASE = 1000;
 
 /**
- * L'identifiant de la modale du dessus — la dernière ouverte. Fonction PURE.
+ * L'identifiant de la modale du dessus, la dernière ouverte. Fonction PURE.
  *
  * Rend `null` si rien n'est ouvert, ce qui est la question que pose réellement l'appelant : « y
  * a-t-il quelque chose devant l'application ? »
@@ -113,14 +113,14 @@ const _fermetures = new Map();
 /**
  * Déclare comment fermer une modale. À appeler une fois, au câblage.
  *
- * La fonction doit produire le MÊME effet qu'un clic sur « Annuler » — c'est déjà la règle du
+ * La fonction doit produire le MÊME effet qu'un clic sur « Annuler », c'est déjà la règle du
  * dépôt (« Annuler, Échap et un clic sur le fond sont une seule intention », cf. dismissModal).
  */
 export function enregistrerFermeture(id, fermer){
   if (id && typeof fermer === 'function') _fermetures.set(id, fermer);
 }
 
-/** Les identifiants ayant une fermeture déclarée — lu par le test de complétude. */
+/** Les identifiants ayant une fermeture déclarée : lu par le test de complétude. */
 export function fermeturesEnregistrees(){
   return [..._fermetures.keys()];
 }
@@ -157,7 +157,7 @@ export function fermerModaleDuDessus(){
  * PAR OBSERVATION, ET NON EN INSTRUMENTANT LES POINTS D'APPEL. Les quatorze modales s'ouvrent et se
  * ferment par `classList.remove/add('hidden')`, à des dizaines d'endroits. Demander à chacun de
  * signaler son changement, ce serait reconstituer l'énumération que ce fichier existe pour
- * supprimer — et la première modale ajoutée sans le savoir retomberait dans le même défaut.
+ * supprimer, et la première modale ajoutée sans le savoir retomberait dans le même défaut.
  *
  * Sans MutationObserver (environnement de test), la fonction ne fait rien et le rend : la logique
  * pure ci-dessus reste testable, et l'application n'échoue pas au chargement.

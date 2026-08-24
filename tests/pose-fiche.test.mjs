@@ -1,10 +1,10 @@
 /**
- * tests/pose-fiche.test.mjs — appliquer une pose de la bibliothèque à un modèle importé, de bout en
+ * tests/pose-fiche.test.mjs, appliquer une pose de la bibliothèque à un modèle importé, de bout en
  * bout.
  *
  * CE QUI REND CE FICHIER POSSIBLE SANS UN SEUL `.glb`. Les six fichiers d'essai ne sont pas
  * versionnés (22 Mo appartenant à l'utilisateur), et le décodage glTF ne tourne pas sous Node. Mais
- * ce que le code lit d'un fichier importé, c'est une HIÉRARCHIE D'OS — des noms, des positions, des
+ * ce que le code lit d'un fichier importé, c'est une HIÉRARCHIE D'OS, des noms, des positions, des
  * rotations de repos. Cela se fabrique à la main avec Three, et `_setModelCacheEntry` le pose dans
  * le cache comme s'il venait du disque.
  *
@@ -49,7 +49,7 @@ import { tr } from '../src/state.js';
 
 const FICHIER = 'essai-mixamo.glb';
 
-// Un humanoïde Mixamo minimal, monté en T-pose. Les positions sont celles d'un adulte en mètres —
+// Un humanoïde Mixamo minimal, monté en T-pose. Les positions sont celles d'un adulte en mètres,
 // glTF garantit l'unité, donc ces chiffres sont ceux qu'un vrai fichier porterait.
 function squeletteMixamo(){
   const os = (nom, x, y, z) => {
@@ -104,7 +104,7 @@ beforeEach(() => {
   ];
 });
 
-describe('Le squelette fabriqué est bien reconnu — sans quoi tout le reste est vide', () => {
+describe('Le squelette fabriqué est bien reconnu : sans quoi tout le reste est vide', () => {
   test('les dix-huit emplacements sont trouvés', () => {
     const carte = correspondancePourModele(FICHIER);
     const trouves = Object.keys(carte).filter(k => carte[k] && carte[k].name);
@@ -217,7 +217,7 @@ describe('Le sélecteur de pose de la fiche', () => {
   });
 
   test('un modèle sans repère de corps ne voit pas sa pose écrasée', () => {
-    // Un squelette SANS BRAS a bien des articulations posables — les jambes — mais aucune paire
+    // Un squelette SANS BRAS a bien des articulations posables, les jambes, mais aucune paire
     // latérale, donc aucune droite dérivable (cf. repereDuCorps). Le champ s'affiche, le choix
     // n'aboutit pas, et le réglage manuel en cours doit survivre intact : mieux vaut un sélecteur
     // sans effet qu'un modèle remis à zéro sans explication.
@@ -307,7 +307,7 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
     assert.ok(res && res.modeleImporte, 'la cible est un modèle importé, et le résultat doit le dire');
     // ⚠️ Cette assertion disait autrefois « le brouillon du Personnage ne doit pas être touché ».
     // Elle n'a plus lieu d'être : `modalDraftJoints` ne désigne plus la fiche du Personnage mais LA
-    // POSE DE CORPS en cours d'édition, quelle que soit la fiche ouverte — et un modèle importé la
+    // POSE DE CORPS en cours d'édition, quelle que soit la fiche ouverte, et un modèle importé la
     // retient désormais, parce que c'est elle qui survit à un changement de figure.
     assert.ok(S.modalDraftJoints && S.modalDraftJoints.headRotY,
       'l\'intention doit voyager avec le résultat');
@@ -351,7 +351,7 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
 
   test('un modèle sans repère de corps : « Appliquer » ne détruit rien', () => {
     // Même règle qu'au sélecteur : « impossible » n'est pas « remettre à zéro ». Ici en plus,
-    // rendre null empêche la fermeture de l'éditeur — le travail n'est pas perdu en silence.
+    // rendre null empêche la fermeture de l'éditeur, le travail n'est pas perdu en silence.
     const sansBras = new THREE.Group();
     const os = (nom, x, y, z) => {
       const b = new THREE.Bone(); b.name = 'mixamorig:' + nom; b.position.set(x, y, z); return b;
@@ -390,7 +390,7 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
   });
 
   test('depuis le menu de gauche, TOUJOURS le Personnage intégré', () => {
-    // Aucune cible, donc aucune raison de choisir un fichier plutôt qu'un autre — et surtout aucun
+    // Aucune cible, donc aucune raison de choisir un fichier plutôt qu'un autre, et surtout aucun
     // héritage de la session précédente : retrouver la figure de quelqu'un d'autre en ouvrant
     // l'éditeur ne s'expliquerait pas.
     const o = modele();
@@ -445,13 +445,13 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     // Une SECONDE figure reconnue, sinon il n'y a aucun choix à offrir.
     //
     // ⚠️ ELLE DOIT DIFFÉRER PAR SES ROTATIONS DE REPOS, pas par sa taille. Première version : le
-    // même squelette agrandi — une mutation qui recalculait depuis l'ANCIENNE figure passait alors
+    // même squelette agrandi, une mutation qui recalculait depuis l'ANCIENNE figure passait alors
     // au vert, parce que l'échelle ne change ni le repère du corps ni les axes des os, donc les
     // angles sortaient identiques. Ce qui distingue vraiment deux fichiers, c'est le repos de leurs
     // os : 106 sur 108 sont déjà tournés dans les fichiers réels (cf. docs/imported-skeletons.md).
     //
     // ⚠️ ET PAS AUTOUR DE L'AXE DU GESTE. Deuxième version : une rotation de repos autour de Z, pour
-    // un geste d'épaule qui tourne justement autour de Z — or tourner autour de Z ne déplace pas
+    // un geste d'épaule qui tourne justement autour de Z, or tourner autour de Z ne déplace pas
     // l'axe Z, donc les angles ressortaient encore identiques et la mutation restait verte. C'est
     // X qui discrimine ici.
     const autre = corrigerNomsCuisses(squeletteMixamo());
@@ -478,7 +478,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
 
   test('changer de figure RECALCULE les angles depuis la pose du corps', () => {
     // La décision de conception, épinglée : l'intention survit, le résultat est refait. Sans le
-    // recalcul, les angles de l'ancienne figure resteraient appliqués à la nouvelle — mêmes
+    // recalcul, les angles de l'ancienne figure resteraient appliqués à la nouvelle, mêmes
     // nombres, autres os, posture fausse et rien pour le signaler.
     const obj = modele();
     S.modalDraftJoints = { rShoulder: { x: 0, z: -1.2 }, headRotY: 0.3 };
@@ -494,7 +494,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     assert.notEqual(S.modalDraftSkeletonPose, avant, 'les angles doivent être refaits, pas gardés');
     const t = S.modalDraftSkeletonPose.bras_d;
     assert.ok(t, 'la pose doit avoir survécu au changement');
-    // L'AMPLITUDE est conservée — c'est le même geste — mais l'AXE change, parce qu'il est
+    // L'AMPLITUDE est conservée : c'est le même geste, mais l'AXE change, parce qu'il est
     // maintenant exprimé dans les os de la nouvelle figure. Les deux assertions comptent : la
     // première dit que le geste a survécu, la seconde qu'il a bien été retraduit.
     assert.ok(Math.abs(Math.hypot(t.x, t.y, t.z) - 1.2) < 1e-6, 'le geste doit valoir 1,2 rad');
@@ -532,7 +532,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
 
   test('« Appliquer » emporte la figure choisie, et la pose traduite POUR elle', () => {
     // Sans cela, poser sur une autre figure puis appliquer rendrait des angles calculés pour un
-    // corps que l'Élément ne portera jamais — muet, et faux.
+    // corps que l'Élément ne portera jamais, muet, et faux.
     const o = modele();
     S.tomes = [{ pages: [{ objects: [o] }] }];
     S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
@@ -570,7 +570,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     // CHANGÉ EN #343, et le changement est le sujet du test. Le champ disparaissait quand il n'y
     // avait rien à choisir, un champ « Fichier » distinct portant le nom le reste du temps. Les deux
     // ont fusionné : « Modèle » est désormais le seul endroit où lire le fichier d'un Élément, donc
-    // il doit être là même sans choix — désactivé, pour ne pas promettre un choix inexistant.
+    // il doit être là même sans choix, désactivé, pour ne pas promettre un choix inexistant.
     clearModelCache();
     _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
     const champ = document.getElementById('objectFigureField');
@@ -583,7 +583,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
 
   test('RÉGRESSION : un fichier ABSENT des figures posables est quand même nommé', () => {
     // Le défaut trouvé en #343. Les options viennent de figuresPosables(), qui filtre les modèles
-    // CHARGÉS : un fichier introuvable n'y est pas. `select.value = <absent>` ne lève rien — la
+    // CHARGÉS : un fichier introuvable n'y est pas. `select.value = <absent>` ne lève rien, la
     // valeur devient vide et la fiche nomme un AUTRE modèle. Sans bruit, et sur la seule ligne qui
     // dit à l'utilisateur ce que son Élément porte.
     clearModelCache();
@@ -595,14 +595,14 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
 
   test('RÉGRESSION : le sens est unique, corps → os et jamais l\'inverse', () => {
     // Une retouche faite aux curseurs d'os ne doit PAS remonter dans la pose du corps. Si elle le
-    // faisait, les deux champs finiraient par se contredire — et changer de figure propagerait une
+    // faisait, les deux champs finiraient par se contredire, et changer de figure propagerait une
     // intention que l'utilisateur n'a jamais formulée.
     //
     // ⚠️ ÉCHAPPÉE ASSUMÉE. On écrit ici DIRECTEMENT dans le brouillon des os, comme le fait le
     // rappel d'un curseur. Déclencher le vrai curseur demanderait que le stub DOM retienne et
     // rejoue les écouteurs, ce qu'il ne fait pas : une mutation ajoutant une écriture de
     // `modalDraftJoints` DANS ce rappel passerait donc au vert. La règle est épinglée, la ligne de
-    // câblage ne l'est pas — consigné plutôt que masqué par un test de forme.
+    // câblage ne l'est pas, consigné plutôt que masqué par un test de forme.
     S.modalDraftJoints = { headRotY: 0.3 };
     const intention = JSON.stringify(S.modalDraftJoints);
     const obj = modele();
@@ -626,7 +626,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
   });
 });
 
-describe('remplirSelecteurDePose — une seule liste de poses dans l\'application', () => {
+describe('remplirSelecteurDePose : une seule liste de poses dans l\'application', () => {
   test('une option par pose de la bibliothèque, et rien de plus', () => {
     const sel = document.createElement('select');
     remplirSelecteurDePose(sel, { position: 'p_debout' });
@@ -643,12 +643,12 @@ describe('remplirSelecteurDePose — une seule liste de poses dans l\'applicatio
   });
 
   test('une pose disparue garde sa place, au lieu de vider le champ', () => {
-    // Fix 44 — un <select> laissé vide fait écrire une chaîne vide dans `position` à la sauvegarde
+    // Fix 44 : un <select> laissé vide fait écrire une chaîne vide dans `position` à la sauvegarde
     // suivante : le nom de la pose serait détruit au lieu d'être seulement introuvable.
     const sel = document.createElement('select');
     remplirSelecteurDePose(sel, { position: 'p_effacee' });
     assert.equal(sel.value, 'p_effacee');
-    // « (inconnue) » suit la langue de l'interface — d'où les deux orthographes acceptées ici. Ce
+    // « (inconnue) » suit la langue de l'interface : d'où les deux orthographes acceptées ici. Ce
     // que le test épingle est l'existence de l'option de repli et son marquage, pas sa langue, qui
     // est vérifiée à la source dans tests/events.test.mjs.
     assert.ok(sel.children.some(o => o.value === 'p_effacee' && /\((inconnue|unknown)\)/.test(o.textContent)));
@@ -656,7 +656,7 @@ describe('remplirSelecteurDePose — une seule liste de poses dans l\'applicatio
 
   test('RÉGRESSION : l\'option de repli est retirée du BON sélecteur', () => {
     // Depuis que deux fiches portent un sélecteur de pose, l'option synthétique est mémorisée avec
-    // le <select> d'où elle vient. Sans cela, remplir le second retirerait un enfant absent — et
+    // le <select> d'où elle vient. Sans cela, remplir le second retirerait un enfant absent, et
     // l'option resterait dans le premier, où elle s'accumulerait à chaque aller-retour.
     const persoSel = document.createElement('select');
     const modeleSel = document.createElement('select');
@@ -730,7 +730,7 @@ describe('La case « Afficher les morceaux détachés »', () => {
   });
 });
 
-describe('ecrireChoixEgares — ce que l\'enregistrement pose dans l\'Élément', () => {
+describe('ecrireChoixEgares : ce que l\'enregistrement pose dans l\'Élément', () => {
   test('coché écrit `true`', () => {
     const o = { objType: 'modele' };
     ecrireChoixEgares(o, true);
@@ -751,7 +751,7 @@ describe('ecrireChoixEgares — ce que l\'enregistrement pose dans l\'Élément'
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// buildPropRig3D — le passage du constructeur à l'entrée de cache
+// buildPropRig3D, le passage du constructeur à l'entrée de cache
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
@@ -759,10 +759,10 @@ describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
   //
   // La branche « modele » de buildPropRig3D recopiait ses champs UN À UN : figureGroup,
   // skeletonBones, modelFile, modelState. Quand buildImportedModelRig3D s'est mis à rendre
-  // `maillagesEgares` — la liste des maillages à masquer —, l'énumération ne l'a pas suivi. Le
+  // `maillagesEgares`, la liste des maillages à masquer, l'énumération ne l'a pas suivi. Le
   // champ mourait là, en silence : détection juste, masquage écrit ET testé, aucun effet à l'écran.
   //
-  // Le test est écrit sur la PROPRIÉTÉ — tout ce que le constructeur rend arrive — et non sur le
+  // Le test est écrit sur la PROPRIÉTÉ, tout ce que le constructeur rend arrive, et non sur le
   // champ du jour. Un test qui n'aurait cité que `maillagesEgares` serait retombé dans le même
   // piège au champ suivant.
   const FIGURE = 'passe-plat.glb';
@@ -796,7 +796,7 @@ describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
   });
 
   test('les maillages égarés arrivent RÉSOLUS, pas seulement nommés', () => {
-    // Le bout de chaîne : le cache donne des noms, le rig doit rendre les objets du clone — sans
+    // Le bout de chaîne : le cache donne des noms, le rig doit rendre les objets du clone, sans
     // quoi il n'y a rien à masquer.
     const scene = sceneMinimale();
     const perdu = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
@@ -824,15 +824,15 @@ describe('buildPropRig3D ne perd RIEN de ce que le constructeur rend', () => {
 //
 // CE QUE CES TESTS GARDENT, et que la fonction pure d'utils.js ne peut pas garder seule : que la
 // MESURE ARRIVE JUSQU'À LA CAMÉRA. Une formule juste dont personne n'appelle le résultat laisse le
-// symptôme intact — c'est exactement l'échappée qui a coûté une reprise sur la fiche Personnage.
+// symptôme intact, c'est exactement l'échappée qui a coûté une reprise sur la fiche Personnage.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
+describe('Éditeur : l\'azimut d\'ouverture suit la figure affichée', () => {
   beforeEach(() => {
     clearModelCache();
     _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
   });
 
-  test('sans fichier — le Personnage intégré — c\'est le demi-tour d\'origine', () => {
+  test('sans fichier : le Personnage intégré : c\'est le demi-tour d\'origine', () => {
     // Son devant est connu par construction (visage en Z négatif) : on ne le mesure pas, et le
     // comportement ne change pas d\'un iota par rapport au Fix 80.
     assert.equal(orbiteDouvertureEditeur3D(null), PERSONA_EDITOR_FRONT_ROT_Y);
@@ -840,7 +840,7 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
   });
 
   test('RÉGRESSION : un modèle importé n\'hérite PAS du demi-tour du Personnage', () => {
-    // LE test de la tâche. Le témoin est monté face à +Z, comme les six fichiers réels — qui
+    // LE test de la tâche. Le témoin est monté face à +Z, comme les six fichiers réels, qui
     // apparaissent de face dans une Case à rotY = 0.
     const azimut = orbiteDouvertureEditeur3D(FICHIER);
     assert.notEqual(azimut, PERSONA_EDITOR_FRONT_ROT_Y,
@@ -861,7 +861,7 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
   test('un repère INEXPLOITABLE se replie sur 0, pas sur le demi-tour', () => {
     // Fichier pas encore décodé, ou os du tronc non reconnus. 0 est l\'azimut sous lequel un modèle
     // importé se présente de face dans une Case : le meilleur pari sans mesure. Le demi-tour, lui,
-    // serait le pire — c\'est le défaut qu\'on corrige.
+    // serait le pire, c\'est le défaut qu\'on corrige.
     assert.equal(orbiteDouvertureEditeur3D('jamais-decode.glb'), 0);
     assert.equal(orbiteDouvertureEditeur3D(FICHIER, null), 0);
   });
@@ -902,7 +902,7 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
 
   test('changer de figure ne touche QU\'À l\'azimut', () => {
     // rotX, zoom et déplacement ne dépendent pas de la figure. Les reprendre annulerait un cadrage
-    // que l'utilisateur vient de composer, sans qu'il l'ait demandé — et ce test est la seule chose
+    // que l'utilisateur vient de composer, sans qu'il l'ait demandé, et ce test est la seule chose
     // qui empêche « remettre le cadrage à neuf » de paraître une simplification acceptable.
     openPersonaEditor(null, null);
     setPersonaEditorOrbit(0.4, 2.0);
@@ -926,7 +926,7 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — l'azimut d'ouverture de l'Éditeur (tâche #346).
+ * JOURNAL DE MUTATION : l'azimut d'ouverture de l'Éditeur (tâche #346).
  *
  *   R1 resetPersonaEditorCamera revient à la constante                  ROUGE
  *   R2 tout le monde reçoit le demi-tour du Personnage                  ROUGE
@@ -939,13 +939,13 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
  * R1 EST CELLE QUI COMPTE et elle explique pourquoi ces tests ne vivent pas seulement dans
  * utils.test.mjs : une formule juste dont personne n'appelle le résultat laisse le symptôme entier.
  * C'est exactement l'échappée qui avait coûté une reprise sur le champ Hauteur de la fiche
- * Personnage — le champ était en place, bien positionné, et restait vide.
+ * Personnage, le champ était en place, bien positionné, et restait vide.
  *
  * R7 méritait une garde explicite : si `repereDuCorpsPourFichier3D` rendait toujours `null`, le test
  * « l'azimut présente bien le DEVANT » comparerait deux replis à 0 et resterait vert. D'où
- * l'`assert.ok(repere)` qui le précède — sans lui, la propriété serait vérifiée sur un domaine vide.
+ * l'`assert.ok(repere)` qui le précède, sans lui, la propriété serait vérifiée sur un domaine vide.
  *
- * SECONDE PASSE — le sélecteur de figure du panneau droit :
+ * SECONDE PASSE : le sélecteur de figure du panneau droit :
  *
  *   S1 le sélecteur ne reprend plus l'azimut (le défaut signalé)         ROUGE
  *   S2 le sélecteur remet TOUT le cadrage à neuf                         ROUGE
@@ -965,7 +965,7 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
 //
 // CE QUI SE JOUE ICI. « Allongé » n'est pas une pose d'articulations : c'est un drapeau `lieFlat`
 // que seul le rig intégré consommait, en tournant son groupe racine. Le pont vers les os n'a aucune
-// raison de le transporter — un geste du corps entier n'est pas un angle d'os — et le modèle restait
+// raison de le transporter, un geste du corps entier n'est pas un angle d'os, et le modèle restait
 // debout. Ces tests couvrent le CÂBLAGE ; la rotation elle-même est vérifiée dans
 // skeleton-retarget.test.mjs, sur la correspondance mesurée.
 //
@@ -976,10 +976,10 @@ describe('Éditeur — l\'azimut d\'ouverture suit la figure affichée', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('« Allongé » couche AUSSI un modèle importé', () => {
   // ⚠️ ON N'APPELLE PAS ensureObjectRigEntry3D ICI : elle ajoute le rig à la scène 3D, ce qui
-  // construit un WebGLRenderer — injoignable sous Node (cf. docs/testing-method.md). On exerce donc
+  // construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md). On exerce donc
   // les deux moitiés séparément : le constructeur (joignable) pour le groupe de pose, et la
   // fonction qui écrit la bascule. Le fait que la seconde soit bien APPELÉE par la première est
-  // épinglé par une lecture de source, plus bas — c'est le seul moyen honnête de le dire ici.
+  // épinglé par une lecture de source, plus bas, c'est le seul moyen honnête de le dire ici.
   const elem = (joints) => ({
     id: 'couche1', type: 'objet3d', objType: 'modele', modelFile: FICHIER,
     joints3d: joints, realHeightFloor: 1.8,
@@ -1000,7 +1000,7 @@ describe('« Allongé » couche AUSSI un modèle importé', () => {
 
   test('le rig d\'un modèle importé porte un groupe de POSE, distinct du groupe de figure', () => {
     // `figureGroup` porte l'orientation de l'Élément. Écrire la bascule au même endroit ferait que
-    // l'une écraserait l'autre — tourner un modèle couché le redresserait.
+    // l'une écraserait l'autre, tourner un modèle couché le redresserait.
     const construit = buildPropRig3D('modele', '#888', elem(null));
     assert.ok(construit.poseGroup, 'le groupe de pose manque');
     assert.notEqual(construit.poseGroup, construit.figureGroup, 'ce doit être deux groupes');
@@ -1013,7 +1013,7 @@ describe('« Allongé » couche AUSSI un modèle importé', () => {
       'le haut du corps est resté vertical : le modèle est encore debout');
   });
 
-  test('sans le drapeau, le modèle reste DEBOUT — rien ne bouge pour les Projets existants', () => {
+  test('sans le drapeau, le modèle reste DEBOUT : rien ne bouge pour les Projets existants', () => {
     const g = groupeNeuf();
     appliquerAllonge3D(g, FICHIER, false);
     assert.ok(Math.abs(hautDuCorps(g).y - 1) < 1e-6, 'le modèle a été couché sans raison');
@@ -1049,8 +1049,8 @@ describe('« Allongé » couche AUSSI un modèle importé', () => {
 
   test('RÉGRESSION : le rig LIT le drapeau sur l\'intention, à chaque appel', () => {
     // Lecture de source, faute de pouvoir traverser ensureObjectRigEntry3D sous Node. Ce qui est
-    // gardé : que la bascule soit appliquée depuis getEffectiveJoints — donc depuis la pose que
-    // l'Élément DIT porter, joints3d ou pose de la bibliothèque — et non depuis un champ persisté
+    // gardé : que la bascule soit appliquée depuis getEffectiveJoints, donc depuis la pose que
+    // l'Élément DIT porter, joints3d ou pose de la bibliothèque, et non depuis un champ persisté
     // nouveau, qu'il aurait fallu migrer.
     const RIG = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
     const appel = /appliquerAllonge3D\(entry\.poseGroup[\s\S]{0,120}?\);/.exec(RIG);
@@ -1065,11 +1065,11 @@ describe('« Allongé » couche AUSSI un modèle importé', () => {
 // L'ÉCHELLE d'un modèle couché (tâche #345, partie 3)
 //
 // `placeRigCentered3D` déduit son facteur de la hauteur de la boîte : s = hauteurCible / size.y.
-// Couché, un corps est bas et large — size.y devient son épaisseur, et le facteur s'emballe. Le
+// Couché, un corps est bas et large, size.y devient son épaisseur, et le facteur s'emballe. Le
 // Personnage s'en protège depuis toujours (deboutNaturalH) ; les modèles importés n'avaient rien.
 //
 // LE TEST QUI COMPTE EST LE PREMIER : un modèle DEBOUT doit être mesuré exactement comme avant.
-// C'est lui qui garantit qu'aucun Projet existant ne change de taille — et c'est la seule chose que
+// C'est lui qui garantit qu'aucun Projet existant ne change de taille, et c'est la seule chose que
 // je puisse vérifier sans les fichiers .glb de l'utilisateur.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('un modèle couché n\'est pas agrandi', () => {
@@ -1084,7 +1084,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   // ⚠️ UN TÉMOIN AVEC UNE GÉOMÉTRIE. `squeletteMixamo()` ne porte que des OS : la boîte du maillage
   // y est vide, et toute mesure de hauteur y vaut zéro. On lui adjoint donc un volume nettement plus
-  // haut que large — 0,5 × 1,8 × 0,3 —, sans quoi « se coucher » ne changerait rien de mesurable et
+  // haut que large, 0,5 × 1,8 × 0,3, sans quoi « se coucher » ne changerait rien de mesurable et
   // les tests seraient verts sans rien vérifier.
   function squeletteAvecVolume(){
     const scene = corrigerNomsCuisses(squeletteMixamo());
@@ -1093,7 +1093,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
     corps.position.set(0, 0.9, 0);
     // ⚠️ ACCROCHÉ À UN OS, et c'est ce qui rend les tests de pose DISCRIMINANTS. Posé sur la scène,
     // ce volume ne bougerait pas quand on tourne un os : « la hauteur de référence ignore la pose »
-    // serait alors vrai sans rien prouver — la boîte n'aurait de toute façon pas changé.
+    // serait alors vrai sans rien prouver, la boîte n'aurait de toute façon pas changé.
     let hote = null;
     scene.traverse(n => { if (n.isBone && n.name === 'mixamorig:Spine1') hote = n; });
     (hote || scene).add(corps);
@@ -1119,7 +1119,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('RÉGRESSION : COUCHÉ, la hauteur rendue reste celle du corps debout', () => {
     // LE défaut de la partie 3. Sans override, size.y devient l'épaisseur du corps et l'échelle
-    // s'emballe — le modèle apparaît démesuré.
+    // s'emballe, le modèle apparaît démesuré.
     const entry = buildPropRig3D('modele', '#888', elem());
     const debout = hauteurDeLaBoite(entry.figureGroup);
     appliquerAllonge3D(entry.poseGroup, FICHIER, true);
@@ -1147,7 +1147,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('la mesure RESTAURE aussi la POSE des os', () => {
     // Elle remet les os au repos le temps de mesurer. Ne pas les rendre laisserait le modèle
-    // brutalement redressé — une pose effacée par un simple placement.
+    // brutalement redressé, une pose effacée par un simple placement.
     const entry = buildPropRig3D('modele', '#888', elem());
     applySkeletonPose(entry.skeletonBones, POSE_PLIEE());
     const avant = hauteurDeLaBoite(entry.figureGroup);
@@ -1158,7 +1158,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('la mesure RESTAURE l\'état : elle mesure, elle ne place pas', () => {
     // Elle neutralise la bascule, l'échelle et la position le temps de mesurer. Ne pas les rendre
-    // laisserait un modèle redressé et à l'échelle 1 — c'est-à-dire un modèle qui saute d'un coup.
+    // laisserait un modèle redressé et à l'échelle 1, c'est-à-dire un modèle qui saute d'un coup.
     const entry = buildPropRig3D('modele', '#888', elem());
     appliquerAllonge3D(entry.poseGroup, FICHIER, true);
     entry.figureGroup.scale.set(3, 3, 3);
@@ -1172,7 +1172,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('la mesure ne dépend PAS de l\'échelle courante du rig', () => {
     // Le piège : `placeRigCentered3D` remet l'échelle à 1 avant de mesurer, mais notre mesure a lieu
-    // AVANT lui — le rig porte encore l'échelle de l'image précédente. La mesurer telle quelle
+    // AVANT lui, le rig porte encore l'échelle de l'image précédente. La mesurer telle quelle
     // donnerait une hauteur trois fois trop grande, et un modèle qui rétrécit à chaque image.
     const entry = buildPropRig3D('modele', '#888', elem());
     const a = hauteurDeboutModele3D(entry, BOITE);
@@ -1183,11 +1183,11 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('RÉGRESSION : le PLACEMENT s\'en sert vraiment', () => {
     // Attrapé par mutation : retirer l'appel dans renderPanelSceneUncached3D laissait tout vert. Le
-    // rendu construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md) — la
+    // rendu construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md), la
     // lecture de source est donc le seul moyen honnête de dire que la mesure atteint le placement.
     //
     // Ce qui est gardé : que la hauteur debout serve de `naturalHOverride`, et SEULEMENT pour les
-    // modèles importés — le passer à tous les Éléments changerait la taille de tout le reste.
+    // modèles importés, le passer à tous les Éléments changerait la taille de tout le reste.
     const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
     const calcul = /const _natH =[\s\S]{0,220}?;/.exec(SCENE);
     assert.ok(calcul, 'le placement ne calcule plus de hauteur de référence');
@@ -1207,7 +1207,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — l'échelle d'un modèle couché (tâche #345, partie 3).
+ * JOURNAL DE MUTATION : l'échelle d'un modèle couché (tâche #345, partie 3).
  *
  *   U1 la bascule n'est pas neutralisée avant la mesure              ROUGE
  *   U2 l'échelle courante du rig n'est pas neutralisée               ROUGE
@@ -1217,13 +1217,13 @@ describe('un modèle couché n\'est pas agrandi', () => {
  *
  * U4 EST LA MÊME ÉCHAPPÉE QUE DANS LES PARTIES 1 ET 2, et c'est ce qui la rend instructive : le
  * calcul est juste, testé, et son résultat n'arrive nulle part. Le rendu construit un WebGLRenderer,
- * injoignable sous Node — la lecture de source est le seul moyen honnête de dire que la mesure
+ * injoignable sous Node, la lecture de source est le seul moyen honnête de dire que la mesure
  * atteint le placement. Cette limite est structurelle (cf. docs/imported-skeletons §7.2) ; ce qui ne
  * l'est pas, c'est de l'oublier une troisième fois.
  *
  * U2 mérite un mot : la mesure a lieu AVANT `placeRigCentered3D`, qui remet l'échelle à 1. Le rig
  * porte donc encore celle de l'image précédente. Sans neutralisation, la hauteur de référence serait
- * multipliée par elle — et le modèle rétrécirait un peu plus à chaque image, jusqu'à disparaître.
+ * multipliée par elle, et le modèle rétrécirait un peu plus à chaque image, jusqu'à disparaître.
  */
 
 
@@ -1233,11 +1233,11 @@ describe('un modèle couché n\'est pas agrandi', () => {
 // TROISIÈME FABRICANT, ET DONC TROISIÈME OCCASION DE PERDRE UN CHAMP. La Scène pose l'Élément réel ;
 // l'aperçu de la fiche en fabrique un temporaire (gardé dans model-import.test.mjs) ; l'Éditeur en
 // fabrique un autre. Les trois passent par le même rig, et chacun peut oublier ce que les deux
-// autres transmettent — c'est exactement ce qui est arrivé à `joints3d`, invisible dans l'aperçu
+// autres transmettent, c'est exactement ce qui est arrivé à `joints3d`, invisible dans l'aperçu
 // pendant que la Case couchait bien le modèle.
 //
 // Ce qui est gardé ici : l'INTENTION arrive. Les angles d'os (`skeletonPose3d`) sont le résultat ;
-// ce qui se joue au niveau du corps — « allongé » — ne voyage que dans l'intention.
+// ce qui se joue au niveau du corps, « allongé », ne voyage que dans l'intention.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => {
   const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
@@ -1262,19 +1262,19 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
 });
 
 /**
- * JOURNAL DE MUTATION — la taille décrit la STATURE, pas l'encombrement du moment.
+ * JOURNAL DE MUTATION : la taille décrit la STATURE, pas l'encombrement du moment.
  *
  *   W1 la pose n'est plus neutralisée (le comportement d'avant)      ROUGE
  *   W2 la pose n'est pas restaurée après la mesure                   ROUGE
  *   W3 la bascule n'est plus neutralisée                             ROUGE
  *
  * CE QUE LE TÉMOIN A EXIGÉ, et qui vaut d'être noté : le volume du squelette d'essai a dû être
- * ACCROCHÉ À UN OS. Posé sur la scène, il ne bougeait pas quand on tournait un os — et « la hauteur
+ * ACCROCHÉ À UN OS. Posé sur la scène, il ne bougeait pas quand on tournait un os, et « la hauteur
  * de référence ignore la pose » aurait été vrai sans rien prouver, la boîte n'ayant de toute façon
  * pas changé. Une propriété vérifiée sur un domaine où elle est triviale reste une propriété non
  * vérifiée.
  *
  * Le format de pose a mordu au passage : `orientationFinale` attend des angles `{x, y, z}`, pas un
- * quaternion. Un quaternion passé là est lu comme trois angles absents, donc comme le repos — le
+ * quaternion. Un quaternion passé là est lu comme trois angles absents, donc comme le repos, le
  * test était vert et ne posait rien. Constaté par la sonde, pas par la relecture.
  */

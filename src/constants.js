@@ -1,7 +1,7 @@
 /**
  * @file constants.js
  * Application-wide constants for Storyboarder.
- * All values are static data — no runtime dependencies, safe to import anywhere.
+ * All values are static data, no runtime dependencies, safe to import anywhere.
  *
  * Exported by: src/constants.js
  * Consumed by: src/app.js (and future feature modules)
@@ -10,11 +10,11 @@
 // ══════════════════════════════════════════════════════════════
 // PAGE FORMATS & RENDER STYLES
 // ══════════════════════════════════════════════════════════════
-// LIBELLÉS BILINGUES — `label` porte le français, `labelEn` l'anglais, et c'est
+// LIBELLÉS BILINGUES : `label` porte le français, `labelEn` l'anglais, et c'est
 // `libelleTable3D(entrée, tr)` (src/utils.js) qui choisit. Le champ EN est à CÔTÉ de l'entrée plutôt
 // que dans une table parallèle : une entrée ajoutée sans sa traduction se voit à la ligne près, et
 // tests/i18n.test.mjs refuse un `labelEn` manquant. Ce qui est persisté reste la CLÉ (`key`,
-// `id`), jamais le libellé — traduire une étiquette ne peut donc pas abîmer un Projet.
+// `id`), jamais le libellé, traduire une étiquette ne peut donc pas abîmer un Projet.
 export const FORMATS = [
   {key:'fb', label:'Franco-Belge (220×290mm)', labelEn:'Franco-Belgian (220×290mm)', w:550, h:725, scale:4, mmW:220},
   {key:'us', label:'Comics US (170×260mm)', labelEn:'US comics (170×260mm)', w:480, h:735, scale:4, mmW:170},
@@ -66,7 +66,7 @@ export const HAND_STATES = [
 //   un Personnage créé puis jamais ouvert dans sa fiche garde `joints3d: null` (events.js) ; sa pose
 //   est RÉSOLUE à l'affichage par `position` → bibliothèque → POSE_3D. Retirer les angles de POSE_3D
 //   ferait donc retomber sur « debout » tout Personnage citant une pose retirée dont l'utilisateur a
-//   aussi supprimé l'entrée de bibliothèque. Sonde : un archer passe de rElbow 1,4 à 0,1 — il se
+//   aussi supprimé l'entrée de bibliothèque. Sonde : un archer passe de rElbow 1,4 à 0,1, il se
 //   redresse, sans message, dans un Projet qu'on croyait seulement rouvrir.
 //
 // POSE_3D est donc le dernier recours, et il ne se vide pas. Ajouter une clé ici la propose ;
@@ -75,7 +75,7 @@ export const HAND_STATES = [
 // ⚠️ CES LIBELLÉS-LÀ DEVIENNENT DES DONNÉES. Le semis de la bibliothèque (seedPoseLibrary3D) COPIE
 // le libellé dans le `name` de la pose, qui est ensuite persisté et renommable. Changer de langue
 // après le semis ne renomme donc pas une bibliothèque déjà écrite : « 🧍 Debout » reste tel quel, et
-// c'est voulu — renommer d'office écraserait le nom que l'utilisateur a pu choisir. Seuls le semis
+// c'est voulu, renommer d'office écraserait le nom que l'utilisateur a pu choisir. Seuls le semis
 // d'une installation neuve et le repli de nameOfPose3D suivent la langue.
 export const POSITIONS = [
   {key:'debout', label:'🧍 Debout', labelEn:'🧍 Standing'},
@@ -98,7 +98,7 @@ export const FIXED_COLOR = PALETTE[0];
 // ── 3D camera distances ─────────────────────────────────────────
 // ---------- Single 3D scene per Panel (Phase 2, cf. tasks #77-82) ----------
 // Math FOUNDATIONS ONLY at this stage (#79, step 1/2): these functions aren't called by any
-// existing rendering path yet — so they have no visual effect until step 2 (combined
+// existing rendering path yet, so they have no visual effect until step 2 (combined
 // camera/scene per Panel) uses them. Goal: express every Element of a Panel in the same
 // "world" units already used by Walls/WallOpenings (cf. WALL_PX_PER_UNIT_3D = 40 px/unit),
 // so that tomorrow they can all be placed in ONE scene/camera shared per Panel with real
@@ -111,7 +111,7 @@ export const FIXED_COLOR = PALETTE[0];
 // - o.z = 0 → reference depth (current appearance unchanged). o.z > 0 → moves the camera
 //   closer (the Element looks bigger), o.z < 0 → moves it away (cf. scroll-wheel decision: up = closer).
 // - World X/Y are computed once, in units, from the Element's center relative to the center
-//   of its Panel, with the same scale factor — so the XY placement stays consistent with the
+//   of its Panel, with the same scale factor, so the XY placement stays consistent with the
 //   size once both are combined in a perspective scene.
 
 // Camera↔reference-plane distance (o.z = 0) in the future combined scene per Panel. Chosen
@@ -121,15 +121,15 @@ export const PANEL_CAM_REF_DIST_3D = 12;
 
 // Default distance of the REAL Three.js camera (cf. framePanelCamera3D), distinct from
 // PANEL_CAM_REF_DIST_3D above (which remains the REFERENCE distance for encoding
-// depth/apparent size — cf. panelDepthToDistance3D/panelApparentPx3D — and must not change,
+// depth/apparent size, cf. panelDepthToDistance3D/panelApparentPx3D, and must not change,
 // or it would alter the meaning of every depth already recorded). With a FOV calibrated
 // directly on PANEL_CAM_REF_DIST_3D (old version), the camera ended up very close to the
 // reference plane relative to the Page's height, giving a very wide field of view ("wide-angle"
 // effect): an Element moved far from the center of the image would end up looking
-// distorted/"twisting on itself" under the effect of perspective — per user report. So here
+// distorted/"twisting on itself" under the effect of perspective, per user report. So here
 // we pull the default camera back (and shrink the FOV accordingly, cf. framePanelCamera3D) to
 // reduce this wide-angle distortion, the same way you'd step back with a camera and zoom in
-// to "un-zoom" a face distorted at the edge of the frame — this changes neither the real
+// to "un-zoom" a face distorted at the edge of the frame, this changes neither the real
 // depth/size of Elements (still based on PANEL_CAM_REF_DIST_3D), nor the fact that the Page
 // always exactly fills the Panel by default (the FOV is recalibrated on this same distance).
 export const PANEL_CAM_DEFAULT_DIST_3D = PANEL_CAM_REF_DIST_3D * 2.5;
@@ -142,7 +142,7 @@ export const PANEL_DEPTH_MAX_3D = PANEL_CAM_DEFAULT_DIST_3D - 0.1;
 // ── Building tool ───────────────────────────────────────────────
 // ---- "Build a Building" tool ----
 export const BUILD_WALL_DEFAULT_HEIGHT = 3.0; // height of created walls (world units)
-// Fix 34 — a build-tool Wall's thickness, as a fraction of its own height. Was written out inside
+// Fix 34 : a build-tool Wall's thickness, as a fraction of its own height. Was written out inside
 // buildWallRig3D and buildCornerWallRig3D; the corner posts that fill Room/Building junctions must
 // match it exactly, so it lives here rather than being copied a third time.
 export const BUILD_WALL_THICKNESS_RATIO_3D = 0.06;
@@ -175,13 +175,13 @@ export const OBJECT_TYPE_LABELS = {
 
   // Modèle 3D importé (.glb). Un seul objType pour tous les modèles importés : ce qui les distingue
   // est le fichier qu'ils portent (`modelFile`), pas leur type. Absent des menus d'ajout, qui sont
-  // figés dans index.html — on y arrive par « Importer un modèle », pas par la liste des Objets.
+  // figés dans index.html, on y arrive par « Importer un modèle », pas par la liste des Objets.
   modele: 'Modèle importé',
 };
 
 // Les MÊMES types, en anglais. Deux tables plutôt qu'une table de paires : `OBJECT_TYPE_LABELS` est
 // lu depuis des dizaines d'endroits, et en changer la forme aurait touché tout ce code pour un
-// bénéfice nul. La correspondance entre les deux est épinglée par un test — une clé ajoutée d'un
+// bénéfice nul. La correspondance entre les deux est épinglée par un test, une clé ajoutée d'un
 // seul côté rendrait `undefined` là où l'utilisateur attend un nom.
 //
 // ⚠️ CES MOTS SONT AUSSI CEUX DU SÉLECTEUR DE TYPE (cf. I18N_TEXT, #objectTypeSelect) et du menu
@@ -219,13 +219,13 @@ export const WALL_TYPES = ['mur', 'mur_coin'];
 export const TRAVERSANT_TYPES = ['fenetre_ouverte', 'porte_ouverte', 'baie_vitree'];
 
 // Rectangle (in page pixels) a snapped WallOpening Element must stay within: the ACTUALLY
-// RENDERED rectangle of the Wall (or of its face for a corner Wall), cf. getWallPanRect2D —
+// RENDERED rectangle of the Wall (or of its face for a corner Wall), cf. getWallPanRect2D,
 // which accounts for perspective foreshortening as soon as the Wall has a 3D rotation, unlike
 // the plain wall.x/y/w/h data box (always used as a fallback if the projection fails, e.g.
 // the rig isn't ready yet). We shrink this rectangle by a small safety margin (cf.
 // WALL_OPENING_MARGIN_FRAC): the projected rectangle is only the bounding box (AABB) of the
-// rotated Wall, which — as soon as a rotation introduces shear (the projected Wall becomes a
-// quadrilateral, not an axis-aligned rectangle) — slightly exceeds the ACTUALLY visible
+// rotated Wall, which, as soon as a rotation introduces shear (the projected Wall becomes a
+// quadrilateral, not an axis-aligned rectangle), slightly exceeds the ACTUALLY visible
 // silhouette, especially at its corners. Without this margin, an Element placed near an edge
 // of the rectangle (allowed by the AABB) can very slightly overshoot the Wall's real
 // silhouette, and the gap grows after several successive rotations.
@@ -254,9 +254,9 @@ export const OBJECT_ASPECT_RATIOS = {
   modele: 1.0 / 1.0,
 };
 
-// Hauteur RÉELLE approximative (en unités monde "mètres", même convention que WALL_PX_PER_UNIT_3D —
+// Hauteur RÉELLE approximative (en unités monde "mètres", même convention que WALL_PX_PER_UNIT_3D,
 // 1 unité = WALL_PX_PER_UNIT_3D px à l'écran à la profondeur de référence o.z=0, cf. addRoomWallElement
-// pour les Murs d'une Pièce) de chaque type d'Élément à sa CRÉATION — sur demande utilisateur, pour que
+// pour les Murs d'une Pièce) de chaque type d'Élément à sa CRÉATION, sur demande utilisateur, pour que
 // les tailles par défaut restent cohérentes ENTRE ELLES (une Fleur nettement plus petite qu'un
 // Personnage, un Arbre nettement plus grand, etc.) plutôt que d'être chacune une fraction arbitraire de
 // la largeur de la Case (ancien comportement : tout Élément occupait ~20-40% de la largeur de la Case
@@ -284,7 +284,7 @@ export const OBJECT_REAL_HEIGHT_M = {
 
 // Au-delà de cette hauteur mesurée dans le fichier, on avertit à l'import (cf. model-import.js) :
 // c'est presque toujours un souci d'échelle côté export (racine mise à l'échelle, unité cm prise
-// pour des mètres) plutôt qu'un modèle réellement gigantesque — les plus grands types intégrés
+// pour des mètres) plutôt qu'un modèle réellement gigantesque, les plus grands types intégrés
 // (arbre, lampadaire) plafonnent déjà autour de 4-4,5 m. Le curseur de taille de la modale (10 à
 // 400 %) ne peut pas rattraper une erreur de cet ordre : à 10 % d'un modèle mesuré 100x trop
 // grand, il reste 10x trop grand.
@@ -307,7 +307,7 @@ export const TRACÉ_DEFAULTS = {
   route:    { color: '#888888', width: 10 },
   chemin:   { color: '#9B7240', width: 8  },
   terrain:  { color: '#6B8E23' },
-  // Fix 33 — hauteur par défaut portée de 0.50 à 1.00, et épaisseur ramenée à 0.12 (soit le ratio
+  // Fix 33 : hauteur par défaut portée de 0.50 à 1.00, et épaisseur ramenée à 0.12 (soit le ratio
   // 0.12 appliqué dans tracéWallThickness3D) : à 0.50 de haut pour 0.18 d'épaisseur, le Muret
   // faisait plus d'un tiers de sa hauteur en épaisseur et se lisait comme un gros bloc.
   muret:    { color: '#606060', width: 5,  wallHeight: 1.00 },
@@ -332,7 +332,7 @@ export const PAGE_RENDER_SCALE_MAX = 4;
 // its padding, cf. .canvas-wrap) while keeping its format (page.w/page.h ratio) and staying
 // centered (already handled by .canvas-wrap: justify-content/align-items "safe center"/"safe
 // flex-start"). Called on window resize and every time the displayed Page changes (new
-// page/volume, format change — cf. renderAll), NOT on every drawCurrentPage (which happens
+// page/volume, format change, cf. renderAll), NOT on every drawCurrentPage (which happens
 // continuously during an interaction, e.g. a drag): a manual scroll-wheel zoom (cf. wheel on
 // canvasWrap) therefore remains possible and persists until the next resize.
 export const CANVAS_WRAP_PADDING = 28;
@@ -405,7 +405,7 @@ export const BUBBLE_FONT_FALLBACK = {
 // ⚠️ CETTE TABLE CONTIENT PLUS DE POSES QUE POSITIONS N'EN PROPOSE. Les clés absentes de POSITIONS
 // (combat, saut, vol, sort, arc, epee_levee, vaincu, meditation, recul) ne sont plus offertes ni
 // semées : elles ne subsistent que comme DERNIER RECOURS de résolution, pour les Projets déjà
-// enregistrés qui les citent. Ne pas les supprimer — cf. l'en-tête de POSITIONS pour la mesure.
+// enregistrés qui les citent. Ne pas les supprimer, cf. l'en-tête de POSITIONS pour la mesure.
 // CONVENTION DE SIGNES, mesurée sur la géométrie plutôt que devinée. Elle a manqué à au moins deux
 // poses, qui pliaient les genoux du mauvais côté sans que rien ne le signale.
 //
@@ -417,7 +417,7 @@ export const BUBBLE_FONT_FALLBACK = {
 //   genou   x < 0  → tibia replié en ARRIÈRE, talon vers la fesse. C'EST LE SEUL SENS ANATOMIQUE.
 //                    Un genou positif plie la jambe à l'envers.
 //   épaule  x > 0  → bras en avant ; coude x > 0 → avant-bras vers l'avant (le bon sens pour un
-//                    bras, l'inverse de la jambe — les deux membres se plient en sens opposés).
+//                    bras, l'inverse de la jambe, les deux membres se plient en sens opposés).
 //   torse   x > 0  → buste penché en avant ; tête x > 0 → menton vers la poitrine. Une tête qui
 //                    doit regarder devant sur un buste penché porte donc un angle NÉGATIF.
 //   rootY          → décalage vertical du bassin, en unités monde. Les segments de jambe mesurent
@@ -444,7 +444,7 @@ export const POSE_3D = {
   //
   // L'ancienne version mettait la jambe gauche EN ARRIÈRE (−0,8) et le bras gauche EN ARRIÈRE
   // aussi (−0,7) : même côté devant, même côté derrière. C'est l'amble, l'allure du chameau, pas
-  // la course d'un bipède — qui contre-balance toujours bras et jambe opposés. Les épaules sont
+  // la course d'un bipède, qui contre-balance toujours bras et jambe opposés. Les épaules sont
   // donc échangées : bras gauche devant (+0,85) avec jambe droite devant (+0,75).
   //
   // Les deux genoux ne se plient PAS pareil, et c'est ce qui fait lire la foulée : la jambe avant
@@ -454,7 +454,7 @@ export const POSE_3D = {
   //
   // Bassin à −0,08 : la cheville avant tombe 0,63 sous la hanche contre 0,74 debout, donc le pied
   // avant frôle le sol au lieu de flotter à 11 cm. La jambe arrière, elle, reste franchement en
-  // l'air — c'est une foulée, pas une marche.
+  // l'air, c'est une foulée, pas une marche.
   course: {
     torsoRotX: 0.2, headRotX: -0.12,
     lShoulder: { x: 0.85, z: -0.05 }, rShoulder: { x: -0.75, z: 0.05 }, lElbow: 1.1, rElbow: 1.1,
@@ -474,24 +474,24 @@ export const POSE_3D = {
   // `lHip.x: -1.7, lKnee: 1.9`. Les deux signes étaient inversés, et la mesure le dit sans avoir à
   // regarder l'écran (cf. le rappel de convention en tête de cette table). Résultat à l'affichage :
   // un personnage assis dans le vide, tibias pointant vers l'avant, jambes en Z. La pose de
-  // référence `assis` (+1.4 / −1.3) a toujours porté les bons signes — c'est d'elle que celle-ci
+  // référence `assis` (+1.4 / −1.3) a toujours porté les bons signes, c'est d'elle que celle-ci
   // dérive, en plus profond.
   //
   // Les chiffres de la descente du bassin sont CALCULÉS, pas approchés : cuisse 0,38 orientée à
   // +1,75 rad met le genou 0,068 au-dessus de la hanche ; tibia 0,36 à −0,25 rad cumulé met la
-  // cheville 0,349 sous le genou. La cheville est donc 0,281 sous la hanche, contre 0,74 debout —
+  // cheville 0,349 sous le genou. La cheville est donc 0,281 sous la hanche, contre 0,74 debout,
   // d'où un bassin descendu de 0,46 pour que les pieds restent au sol.
   //
   // La tête contre-tourne le buste (−0,15 face à +0,45) : accroupi mais REGARDANT DEVANT, comme
   // `vol` le fait déjà (+0,9 / −0,2). L'ancienne valeur, +0,1, ajoutait au buste et faisait fixer
-  // le sol — une posture de repos, pas d'affût.
+  // le sol, une posture de repos, pas d'affût.
   accroupi: {
     torsoRotX: 0.45, headRotX: -0.15,
     lShoulder: { x: 0.55, z: -0.22 }, rShoulder: { x: 0.55, z: 0.22 }, lElbow: 1.0, rElbow: 1.0,
     lHip: { x: 1.75, z: -0.2 }, rHip: { x: 1.75, z: 0.2 }, lKnee: -2.0, rKnee: -2.0, rootY: -0.46,
   },
   // JAMBES REPRISES DE LA POSE FAITE PAR L'UTILISATEUR dans l'Éditeur (« Pose 1 »), relevée sur
-  // hulk_-_sm_bnd, page 6 du Projet 2. Les angles sont les SIENS, au degré près — c'est lui qui
+  // hulk_-_sm_bnd, page 6 du Projet 2. Les angles sont les SIENS, au degré près, c'est lui qui
   // décide de quoi « à genoux » a l'air. Le haut du corps est inchangé, il ne l'avait pas touché.
   //
   //   jambe gauche  cuisse 6°, genou −89°  → le tibia se replie à plat derrière : c'est le genou
@@ -503,7 +503,7 @@ export const POSE_3D = {
   // un reste de l'ancienne pose, dont les jambes n'avaient rien à voir. Avec celles-ci, le
   // Personnage flottait. Le genou gauche tombe 0,378 sous la hanche, la cheville droite 0,436,
   // contre 0,74 debout : poser le genou demanderait −0,362, poser le pied −0,304. Aucun des deux
-  // ne peut être exact en même temps — les angles décrivent un appui légèrement plus étalé qu'un
+  // ne peut être exact en même temps, les angles décrivent un appui légèrement plus étalé qu'un
   // agenouillement strict. D'où le milieu, −0,33 : le genou frôle le sol à 2,9 cm, le pied s'y
   // enfonce d'autant. Deux écarts invisibles, plutôt qu'un seul bien voyant d'un côté.
   genoux: {
@@ -543,7 +543,7 @@ export const POSE_3D = {
 // mode 'hinge': a single angle (rotation.x); mode 'ball': two angles {x,z}.
 export const POSE_HANDLES = [
   // Tête et torse ont TROIS axes chacun. Le troisième est celui qui manquait le plus au
-  // storyboard : pencher la tête vers l'épaule, et incliner le buste sur le côté — deux gestes qui
+  // storyboard : pencher la tête vers l'épaule, et incliner le buste sur le côté, deux gestes qui
   // portent presque toute l'expression d'une silhouette, et qu'aucun curseur n'atteignait.
   //
   // Le torse gagne aussi son DEUXIÈME axe au passage : il n'en avait qu'un (se pencher en avant),
@@ -567,7 +567,7 @@ export const POSE_HANDLES = [
   { id: 'rKnee', group: 'rKnee', mode: 'hinge', field: 'rKnee' },
   // Les poignets passent eux aussi à `hinge3`. Leur troisième axe existait déjà, mais comme une
   // SECONDE entrée (`lWristRoll`) pointant sur le même groupe : l'aperçu dessinait donc deux
-  // poignées au même pixel, dont une seule attrapable — alors que le commentaire d'alors affirmait
+  // poignées au même pixel, dont une seule attrapable, alors que le commentaire d'alors affirmait
   // qu'il n'y en avait pas de dédiée. Une entrée, une poignée, trois curseurs : le code dit
   // maintenant ce que le commentaire promettait. Le champ persisté lWristRotZ ne change pas.
   { id: 'lWrist', group: 'lHand', mode: 'hinge3',
@@ -578,7 +578,7 @@ export const POSE_HANDLES = [
   // Les trois articulations que le Personnage n'avait pas alors que les modèles importés les ont
   // (cf. SLOTS dans src/skeleton-map.js). Ajoutées pour que les deux parlent le même corps.
   //
-  // NOMMAGE DES CHAMPS PERSISTÉS — suffixe d'axe explicite (`neckRotX`), comme la tête et les
+  // NOMMAGE DES CHAMPS PERSISTÉS : suffixe d'axe explicite (`neckRotX`), comme la tête et les
   // poignets, et non un objet `{ x, z }` comme l'épaule et la hanche. Les deux conventions
   // coexistent déjà ; celle-ci est la plus récente et la plus lisible dans un fichier de Projet, où
   // `lClavicleRotZ: 0.2` se comprend seul. ⚠️ Ces noms partent dans les Projets enregistrés : ils ne
@@ -600,9 +600,9 @@ export const GROUND_Y_DEFAULT_3D = -3; // below the Panel's center, so Elements 
 // applyGroundMagnetY), so its geometry is never EXACTLY coplanar with the Ground mesh
 // (groundMesh3D, at exactly GROUND_Y_DEFAULT_3D): two perfectly coplanar surfaces fight over
 // the same depth-buffer pixel ("z-fighting"), and which one wins depends on tiny
-// floating-point rounding variations that change with the viewing angle — hence a visible
+// floating-point rounding variations that change with the viewing angle, hence a visible
 // flicker/jitter at the foot/Ground contact point WHILE rotating the Camera (cf. smoothing,
-// startCamSmoothing), which stabilizes once the angle is fixed — per user report. A value of
+// startCamSmoothing), which stabilizes once the angle is fixed, per user report. A value of
 // this order stays completely imperceptible visually (the Element still looks "resting" on
 // the Ground) but is enough to remove the depth ambiguity for the GPU.
 export const GROUND_CONTACT_EPS_3D = 0.01;
@@ -653,7 +653,7 @@ export const ANIMAL_TYPES = ['oiseau', 'lezard', 'loup', 'griffon', 'singe'];
 // fichier : les cinq animaux répètent les mêmes trente mots (« Hanche », « Genou », « Patte AV-G »)
 // sur soixante lignes. Doubler chaque ligne rendrait la table illisible pour trente traductions
 // distinctes, et chaque ajout d'animal en redemanderait autant. La contrepartie est assumée : deux
-// libellés français identiques ne peuvent pas recevoir deux traductions différentes — ce qui est
+// libellés français identiques ne peuvent pas recevoir deux traductions différentes, ce qui est
 // exactement ce qu'on veut ici, « Genou » se traduit pareil chez le loup et chez le lézard.
 //
 // tests/i18n.test.mjs vérifie que CHAQUE libellé de la table y figure : un animal ajouté sans
@@ -805,7 +805,7 @@ export const WALL_PX_PER_UNIT_3D = 40;
 
 // ---------- Combined rendering of a Wall + its snapped WallOpenings (shared 3D scene, Phase 1) ----------
 // Design sizes (width/height, in the rig's 3D units) of the 4 WallOpening Element types that
-// can snap to a Wall — needed to scale them consistently with the host Wall's height (cf.
+// can snap to a Wall, needed to scale them consistently with the host Wall's height (cf.
 // ensureWallRenderEntry3D), since they're now inserted as REAL Three.js children of the
 // Wall's mesh rather than being rendered/framed independently (cf. the file header on the old
 // system's limitation: two independent renders, each with its own framing margin, could only
@@ -843,28 +843,28 @@ export const CAM_SMOOTH_EPS = 0.0008;
 // rendering scale is reduced as needed.
 export const PANEL_SCENE_RENDER_MAX_PX = 1400;
 
-// Fix 53 — plafond propre à l'éditeur de Personnage, qui occupe TOUT l'écran là où une Case n'occupe
+// Fix 53 : plafond propre à l'éditeur de Personnage, qui occupe TOUT l'écran là où une Case n'occupe
 // qu'une vignette. Reprendre les 1400 ci-dessus laissait un agrandissement visible (mesuré : ×1.16
 // sur une boîte 1620 de large, ×1.61 sur 2260).
 //
-// 2048 : rendu exactement 1:1 en 1920×1080, ×1.10 en 2560×1440 — et un tampon qui reste sous les
+// 2048 : rendu exactement 1:1 en 1920×1080, ×1.10 en 2560×1440, et un tampon qui reste sous les
 // 10.2 Mo dans le pire cas mesuré (écran dense). Le plafond ne peut pas simplement disparaître : le
 // renderer hors écran est partagé, et suivre un canevas plein écran sur un écran 4K à forte densité
 // lui demanderait de réallouer des tampons démesurés à chaque image.
 export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
 
-// Fix 63 — plafond de l'aperçu 3D des modales, qui rend désormais aux proportions de son cadre
+// Fix 63 : plafond de l'aperçu 3D des modales, qui rend désormais aux proportions de son cadre
 // (quelques centaines de pixels) et non plus à un format portrait figé. 900 couvre largement un
 // cadre d'aperçu même sur écran dense, sans demander au renderer partagé les tampons d'un plein
 // écran (cf. PERSONA_EDITOR_RENDER_MAX_PX, qui a ce besoin-là).
 export const PERSONA_PREVIEW_MAX_PX = 900;
 
-// Fix 55 — squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
+// Fix 55 : squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
 // cf. docs/persisted-data.md) : ne pas renommer.
 //
 // Seuls les Personnages ont des poses aujourd'hui, donc une seule valeur existe. On la tague quand
 // même dès le premier enregistrement : le jour où les animaux en auront, distinguer après coup les
-// poses déjà enregistrées dans les fichiers des utilisateurs serait impossible — rien ne dirait à
+// poses déjà enregistrées dans les fichiers des utilisateurs serait impossible, rien ne dirait à
 // quel squelette elles se rapportent.
 export const PERSONA_SKELETON_3D = 'humain';
 
@@ -888,7 +888,7 @@ export const PREVIEW_PERSONA_ID = '__personaEditPreview__';
 export const PERSONA_EDITOR_MODEL_ID = '__personaEditorModel__';
 
 
-// ── Persona editor — joint segments & labels ────────────────────
+// ── Persona editor : joint segments & labels ────────────────────
 // Describes, for each joint, the visual limb segment it controls: either up to the child
 // joint ("toGroup"), or up to an extremity (hand/foot/head) computed as a local point offset
 // from the joint ("toLocal").
@@ -906,12 +906,12 @@ export const LIMB_SEGMENTS = [
   { id: 'lWrist', toLocal: [0, -0.12, 0] },
   { id: 'rWrist', toLocal: [0, -0.12, 0] },
   // Le cou va jusqu'à la tête ; la clavicule jusqu'à l'épaule qu'elle porte ; la cheville dessine
-  // le pied, court et vers l'avant plutôt que vers le bas — c'est le seul segment horizontal.
+  // le pied, court et vers l'avant plutôt que vers le bas, c'est le seul segment horizontal.
   { id: 'neck', toGroup: 'headGroup' },
   { id: 'lClavicle', toGroup: 'lShoulder' },
   { id: 'rClavicle', toGroup: 'rShoulder' },
   // ⚠️ −Z, pas +Z : l'AVANT du Personnage est −Z (c'est de ce côté qu'est posé le visage, cf.
-  // faceMesh dans rig3d.js). La première version pointait vers l'arrière — le repère du pied dans
+  // faceMesh dans rig3d.js). La première version pointait vers l'arrière, le repère du pied dans
   // l'éditeur partait donc à contresens, sans que rien ne le signale.
   { id: 'lFoot', toLocal: [0, -0.02, -0.13] },
   { id: 'rFoot', toLocal: [0, -0.02, -0.13] },
@@ -947,7 +947,7 @@ export const JOINT_LABELS_EN = {
 
 // Grouping of joints by body area, to collapse the list into dropdown
 // menus rather than showing every slider flat.
-// L'ORDRE EST ANATOMIQUE, du tronc vers l'extrémité — c'est aussi celui des modèles importés
+// L'ORDRE EST ANATOMIQUE, du tronc vers l'extrémité, c'est aussi celui des modèles importés
 // (cf. SLOT_GROUPS dans src/skeleton-map.js), pour que les deux écrans se lisent pareil : la
 // clavicule avant l'épaule, la cheville après le genou, le cou sous la tête.
 export const JOINT_GROUPS = [

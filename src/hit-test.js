@@ -1,19 +1,19 @@
 /**
  * @file hit-test.js
- * What is under the cursor, and what a drag does to it — the geometry only.
+ * What is under the cursor, and what a drag does to it, the geometry only.
  *
  * These eight functions used to sit inside the CANVAS section of events.js, private to it. They
  * are pure: no DOM, nothing written to `S`, no rendering. That is what separates them from the
  * ~1500 lines of mouse handlers they were buried in, and it is the only reason they could be moved.
  *
  * WHY THEY EARN THEIR OWN FILE. Hit-testing decides which Element a click selects. When it is
- * wrong, the user grabs the wrong thing — visible, irritating, and easy to break by editing a
+ * wrong, the user grabs the wrong thing, visible, irritating, and easy to break by editing a
  * neighbouring branch. The repository already has the scar: task #32 changed `hitTestForDrag`,
  * task #34 reverted that change. Nothing was watching either time. `tests/hit-test.test.mjs` is.
  *
  * NOT HERE, on purpose: the handlers that call them. `mousedown` decides what a click MEANS
  * (select, drag, resize, open a menu) and needs the DOM, the current tool and the drag state.
- * That layer stays in events.js — moving it would relocate the problem, not solve it.
+ * That layer stays in events.js, moving it would relocate the problem, not solve it.
  *
  * The one impurity kept: `hitTestForDrag` reads `S.selectedId`, because "already selected" is part
  * of the rule it applies (a Tracé is only draggable once selected). It reads, never writes.
@@ -23,7 +23,7 @@ import { S } from './state.js';
 import { getBBox, getHandles } from './utils.js';
 
 // Minimum side of a resized object, in page pixels. Below this a Panel becomes impossible to grab
-// again — the handles would overlap.
+// again, the handles would overlap.
 const MIN_SIDE_PX = 24;
 
 // Grab radius around a handle, a corner or an edge midpoint, in page pixels. Generous on purpose:
@@ -34,7 +34,7 @@ const GRAB_RADIUS_PX = 10;
  * The Panel or Bubble under (x, y), or null.
  *
  * Bubbles win over Panels regardless of their position in `page.objects`, because they are always
- * drawn on top (cf. drawContent). Within each family, the LAST drawn wins — hence the reverse
+ * drawn on top (cf. drawContent). Within each family, the LAST drawn wins, hence the reverse
  * iteration: what the user sees on top is what the click reaches.
  */
 export function hitTestPanelOrBubble(page, x, y){
@@ -53,7 +53,7 @@ export function hitTestPanelOrBubble(page, x, y){
 /**
  * What a drag started at (x, y) should take hold of, or null.
  *
- * Same Bubble-first rule as above, then everything else in reverse order — but with two exclusions
+ * Same Bubble-first rule as above, then everything else in reverse order, but with two exclusions
  * that are the point of this function:
  *
  *   — a Persona or a 3D Object is only draggable when ALREADY selected. Without this, dragging
@@ -92,7 +92,7 @@ export function hitHandle(o, x, y){
 /**
  * The new box of an object being resized: `orig` + a (dx, dy) drag on `handle`.
  *
- * Two rules, and their asymmetry is deliberate. A side never shrinks below MIN_SIDE_PX — and when
+ * Two rules, and their asymmetry is deliberate. A side never shrinks below MIN_SIDE_PX, and when
  * it hits the floor the OPPOSITE edge stays put, so the object stops growing instead of sliding.
  * And a Panel or a Bubble stays inside the Page, while a Persona or a 3D Object may spill past it
  * (they are enlarged to be framed, cf. #37).
@@ -128,7 +128,7 @@ export function applyResize(orig, handle, dx, dy, page){
  * where they were and appear to slide out of it. Elements follow the translation, not the scale:
  * their own size is theirs.
  *
- * Mutates `page.objects` — the only function here that writes anything, and the reason it is not
+ * Mutates `page.objects`, the only function here that writes anything, and the reason it is not
  * called a hit test.
  */
 export function compensatePanelChildrenResize(dragOrig, bb, page){
@@ -164,7 +164,7 @@ export function hitPanelEdge(o, x, y){
  * Aligns corner `i` dragged to (nx, ny) with its two neighbours, to keep right angles reachable.
  *
  * Each axis snaps independently: a corner can align in X with the previous one and in Y with the
- * next. The previous neighbour is tried first — arbitrary, but stable, which is what matters when
+ * next. The previous neighbour is tried first, arbitrary, but stable, which is what matters when
  * both are within `threshold`.
  *
  * `snappedX`/`snappedY` are what the caller draws the alignment guides from: without them it would

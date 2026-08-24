@@ -1,4 +1,4 @@
-// tests/version.test.mjs — politique de version de l'application (tools/bump-version.mjs).
+// tests/version.test.mjs, politique de version de l'application (tools/bump-version.mjs).
 //
 // Deux fichiers portent la version : package.json (source de vérité, et ce dont electron-builder
 // tamponne l'installeur) et src/version.js (généré, lu par le renderer). Le test de cohérence en
@@ -31,7 +31,7 @@ describe('parseVersion / formatVersion', () => {
   });
 });
 
-describe('bumpVersion — la politique convenue', () => {
+describe('bumpVersion : la politique convenue', () => {
   test('correctif : incrémente le 3e nombre, à chaque commit', () => {
     assert.equal(bumpVersion('1.0.0', 'patch'), '1.0.1');
     assert.equal(bumpVersion('1.4.9', 'patch'), '1.4.10');
@@ -78,7 +78,7 @@ describe('renderVersionModule', () => {
   });
 });
 
-describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger', () => {
+describe('COHÉRENCE : package.json et src/version.js ne peuvent pas diverger', () => {
   test('les deux fichiers portent la même version', () => {
     assert.equal(readModuleVersion(), readPackageVersion(),
       'src/version.js désynchronisé de package.json — lancer `npm run bump sync`');
@@ -93,7 +93,7 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
   });
 
   test('les deux README annoncent la même version que package.json', () => {
-    // Sans ce test, un README annonçant une version fausse passerait inaperçu — et c'est la
+    // Sans ce test, un README annonçant une version fausse passerait inaperçu, et c'est la
     // première chose que lit quelqu'un qui découvre le projet.
     for (const readme of READMES) {
       assert.equal(readReadmeVersion(readme), readPackageVersion(), readme);
@@ -111,7 +111,7 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
 
   test('RÉGRESSION : rien n\'est écrit si un seul des fichiers est invalide', () => {
     // La 1re version écrivait package.json PUIS vérifiait les README : une ligne de version
-    // manquante laissait package.json déjà incrémenté et les README en arrière — précisément
+    // manquante laissait package.json déjà incrémenté et les README en arrière, précisément
     // l'incohérence que ce script existe pour empêcher. Les vérifications précèdent désormais
     // toutes les écritures. Constaté en testant le cas d'échec, pas deviné.
     const src = readFileSync(new URL('../tools/bump-version.mjs', import.meta.url), 'utf8');
@@ -130,7 +130,7 @@ describe('COHÉRENCE — package.json et src/version.js ne peuvent pas diverger'
   });
 });
 
-describe('shouldAutoBump — un seul incrément par commit (Fix 40)', () => {
+describe('shouldAutoBump : un seul incrément par commit (Fix 40)', () => {
   test('version inchangée depuis le dernier commit → le hook incrémente', () => {
     assert.equal(shouldAutoBump('1.0.4', '1.0.4'), true);
   });
@@ -148,7 +148,7 @@ describe('shouldAutoBump — un seul incrément par commit (Fix 40)', () => {
   });
 });
 
-describe('tagForBump — marquer les mineures et majeures seulement (Fix 40)', () => {
+describe('tagForBump : marquer les mineures et majeures seulement (Fix 40)', () => {
   test('une mineure et une majeure sont taguées', () => {
     assert.equal(tagForBump('1.0.7', '1.1.0'), 'v1.1.0');
     assert.equal(tagForBump('1.4.2', '2.0.0'), 'v2.0.0');

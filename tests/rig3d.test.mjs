@@ -1,12 +1,12 @@
-// tests/rig3d.test.mjs — Tests unitaires de src/rig3d.js (rigs 3D Persona/Objet/Mur + caméra
+// tests/rig3d.test.mjs. Tests unitaires de src/rig3d.js (rigs 3D Persona/Objet/Mur + caméra
 // des aperçus 3D). Priorité explicite demandée : couvrir en premier tout ce qui touche à la Caméra
 // (frameCameraToBox/frameOrthoCameraToBox/frameCameraToFigure sont la caméra des aperçus
 // Personnage/Objet des modales, cf. personaCamera3D/personaCameraOrtho3D).
 //
 // NON couvert ici, volontairement : buildPersonaRig3D/buildObjectRig3D/buildWallRig3D et consorts
-// (construction de graphes de scène THREE.js complets — testables uniquement par comparaison
+// (construction de graphes de scène THREE.js complets, testables uniquement par comparaison
 // visuelle, pas par assertion de valeurs), ensurePersonaScene3D et tout ce qui en dépend (essaie de
-// construire un vrai THREE.WebGLRenderer, qui échoue sous Node — cf. en-tête de scene3d.test.mjs
+// construire un vrai THREE.WebGLRenderer, qui échoue sous Node, cf. en-tête de scene3d.test.mjs
 // pour la vérification empirique), drawFace/drawPersona3D (peinture canvas 2D, pas de valeur de
 // retour assertable).
 import './helpers/dom-stub.mjs';
@@ -42,7 +42,7 @@ beforeEach(() => {
   S.editingSceneId = null;
 });
 
-describe('frameCameraToBox / frameOrthoCameraToBox / frameCameraToFigure — caméra des aperçus 3D (Personnage/Objet)', () => {
+describe('frameCameraToBox / frameOrthoCameraToBox / frameCameraToFigure : caméra des aperçus 3D (Personnage/Objet)', () => {
   test('frameCameraToBox : distance calculée pour que la boîte tienne dans le champ de vision, caméra centrée', () => {
     const camera = new THREE.PerspectiveCamera(90, 1, 0.1, 1000);
     // box 2×4×1 centrée à l'origine ; fov=90°/aspect=1 → tan(halfFov)=1 des deux côtés
@@ -102,7 +102,7 @@ describe('frameCameraToBox / frameOrthoCameraToBox / frameCameraToFigure — cam
   });
 });
 
-describe('getEffectiveJoints / cloneJoints — pose active d\'un Personnage', () => {
+describe('getEffectiveJoints / cloneJoints : pose active d\'un Personnage', () => {
   test('sans joints3d ni position explicite : pose "debout" par défaut', () => {
     assert.equal(getEffectiveJoints({}), POSE_3D.debout);
   });
@@ -129,7 +129,7 @@ describe('getEffectiveJoints / cloneJoints — pose active d\'un Personnage', ()
   });
 });
 
-describe('getBodyProportions3D — silhouette homme/femme', () => {
+describe('getBodyProportions3D : silhouette homme/femme', () => {
   test('genre "femme" : proportions plus fines que le modèle par défaut (homme)', () => {
     const femme = getBodyProportions3D('femme');
     const homme = getBodyProportions3D('homme');
@@ -145,7 +145,7 @@ describe('getBodyProportions3D — silhouette homme/femme', () => {
   });
 });
 
-describe('resolveStyle3D / applyStyleCanvasFilter3D — style graphique 3D', () => {
+describe('resolveStyle3D / applyStyleCanvasFilter3D : style graphique 3D', () => {
   test('styleKey explicite : renvoyé tel quel (pas de repli sur le Tome courant)', () => {
     assert.equal(resolveStyle3D('un_style_quelconque'), 'un_style_quelconque');
   });
@@ -169,7 +169,7 @@ describe('resolveStyle3D / applyStyleCanvasFilter3D — style graphique 3D', () 
   });
 });
 
-describe('expandBoxByMeshOnly3D — boîte englobante d\'un seul mesh (sans ses enfants)', () => {
+describe('expandBoxByMeshOnly3D : boîte englobante d\'un seul mesh (sans ses enfants)', () => {
   test('étend une boîte vide aux dimensions monde du mesh (géométrie + position)', () => {
     const box = new THREE.Box3();
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 6), new THREE.MeshBasicMaterial());
@@ -194,7 +194,7 @@ describe('expandBoxByMeshOnly3D — boîte englobante d\'un seul mesh (sans ses 
 // d'une frame à l'autre. Elle doit donc ignorer tout ce qui n'est que du placement (sinon on
 // reconstruit la géométrie à chaque pixel de glisser) et réagir à tout ce qui change la forme
 // (sinon on affiche un rig périmé).
-describe('wallChildShapeKey3D — clé de forme d\'une Parois (Fix 25)', () => {
+describe('wallChildShapeKey3D : clé de forme d\'une Parois (Fix 25)', () => {
   const base = () => ({ id: 'c1', objType: 'porte_ouverte', color: '#888', w: 40, h: 90,
                         doorState: 'gauche', doorAngle: 76,
                         x: 100, y: 200, wallAlongFrac: 0.25, wallYFrac: 0.1 });
@@ -233,7 +233,7 @@ describe('wallChildShapeKey3D — clé de forme d\'une Parois (Fix 25)', () => {
 });
 
 // ── disposeGroupGeometries3D (Fix 25) ─────────────────────────────────────────────────────────
-describe('disposeGroupGeometries3D — libération des géométries d\'un rig jeté (Fix 25)', () => {
+describe('disposeGroupGeometries3D : libération des géométries d\'un rig jeté (Fix 25)', () => {
   test('libère les géométries de tout le sous-arbre', () => {
     const group = new THREE.Group();
     const g1 = new THREE.BoxGeometry(1, 1, 1), g2 = new THREE.BoxGeometry(2, 2, 2);
@@ -278,7 +278,7 @@ describe('disposeGroupGeometries3D — libération des géométries d\'un rig je
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 31d — encombrement du dormant de Fenêtre.
+// Fix 31d : encombrement du dormant de Fenêtre.
 //
 // Le Fix 31 avait épaissi le dormant pour le rendre plus présent sur un Muret, mais en
 // jouant sur la PROFONDEUR : 0.16 pour le cadre et 0.24 pour le chambranle, contre une
@@ -286,7 +286,7 @@ describe('disposeGroupGeometries3D — libération des géométries d\'un rig je
 // La caisse débordait donc de 0.06 par face à l'intérieur de la pièce. La présence vient
 // désormais de l'épaisseur DANS LE PLAN du mur ; la profondeur est calée sur le mur.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
+describe('buildWindowRig3D : encombrement du dormant (Fix 31d)', () => {
   const MUR_REF = 0.12; // profondeur de reference du dormant, pas l epaisseur d un Mur
   // Profondeur du dormant SEUL : l'ouvrant (le pivot) sort du mur par construction quand
   // la Fenêtre est ouverte, ce n'est pas lui qui était en cause.
@@ -304,7 +304,7 @@ describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
       assert.ok(debord >= 0, `affleurant, pas enfoncé (${debord.toFixed(4)})`);
       // Seuil mesuré, pas posé : la valeur réelle est 0.0100. Les deux régressions plausibles
       // (chambranle rendu proportionnel au cadre → 0.0147, cadre remis à 0.16 → 0.0200)
-      // doivent tomber au-dessus, d'où 0.012 — 20 % de marge sur le réel, sous la 1re fautive.
+      // doivent tomber au-dessus, d'où 0.012, 20 % de marge sur le réel, sous la 1re fautive.
       assert.ok(debord <= 0.012,
         `débord ≤ 1.2 cm par face — obtenu ${debord.toFixed(4)} (ouvert : ${ouvert})`);
     }
@@ -340,17 +340,17 @@ describe('buildWindowRig3D — encombrement du dormant (Fix 31d)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 63 — CÂBLAGE de showOnlyFigure3D, vérifié par inspection de source.
+// Fix 63 : CÂBLAGE de showOnlyFigure3D, vérifié par inspection de source.
 //
 // personaScene3D est construite par ensurePersonaScene3D, qui instancie un THREE.WebGLRenderer :
-// hors de portée sous Node (cf. l'en-tête de ce fichier). Constaté par mutation — retirer le
+// hors de portée sous Node (cf. l'en-tête de ce fichier). Constaté par mutation, retirer le
 // balayage, donc laisser reparaître les tracés dans l'aperçu, traverse la suite sans échec.
 //
 // Le bug d'origine venait précisément d'une ÉNUMÉRATION incomplète : la fonction ne connaissait que
 // les trois caches de rigs, alors que le rendu des Cases ajoute aussi tracés, dalles, murs fusionnés
 // et jonctions à la MÊME scène. Ces assertions surveillent que le balayage reste générique.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Fix 63 — l\'aperçu d\'un Élément seul n\'affiche que lui', () => {
+describe('Fix 63 : l\'aperçu d\'un Élément seul n\'affiche que lui', () => {
   const source = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
   const corps = (() => {
     const i = source.indexOf('export function showOnlyFigure3D');
@@ -364,7 +364,7 @@ describe('Fix 63 — l\'aperçu d\'un Élément seul n\'affiche que lui', () => 
   });
 
   test('les lumières sont épargnées', () => {
-    // Les masquer donnerait un aperçu entièrement noir — panne spectaculaire, mais qu'aucun test
+    // Les masquer donnerait un aperçu entièrement noir, panne spectaculaire, mais qu'aucun test
     // sous Node ne peut voir.
     assert.match(corps, /isLight/, 'le balayage doit exclure les lumières');
   });
@@ -379,15 +379,15 @@ describe('Fix 63 — l\'aperçu d\'un Élément seul n\'affiche que lui', () => 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 65 — paramètre `orbit` de frameCameraToBox.
+// Fix 65 : paramètre `orbit` de frameCameraToBox.
 //
 // L'éditeur de Personnage a perdu le déplacement de vue et gagné l'orbite : il fallait donc que la
 // caméra des aperçus sache tourner autour de son sujet, ce qu'elle ne faisait pas.
 //
-// Constaté par mutation : sans ces tests, ignorer complètement le paramètre passait inaperçu — les
+// Constaté par mutation : sans ces tests, ignorer complètement le paramètre passait inaperçu, les
 // autres assertions n'orbitent pas et restaient donc vertes.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('frameCameraToBox — orbite (Fix 65)', () => {
+describe('frameCameraToBox : orbite (Fix 65)', () => {
   const boite = () => new THREE.Box3(new THREE.Vector3(-1, -2, -0.5), new THREE.Vector3(1, 2, 0.5));
   const cam = () => new THREE.PerspectiveCamera(90, 1, 0.1, 1000);
 
@@ -435,21 +435,21 @@ describe('frameCameraToBox — orbite (Fix 65)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CÂBLAGE — depth-buffer logarithmique, vérifié par inspection de source.
+// CÂBLAGE : depth-buffer logarithmique, vérifié par inspection de source.
 //
 // RETOUR UTILISATEUR : « quand je dezoom la Scène, les Modèles importés ont leur textures qui
 // bug un peu [...] quand je les regarde de près [...] je n'ai pas le soucis. » Un premier
 // correctif (applyAnisotropy, cf. model-cache.test.mjs) traitait le moiré de minification, mais le
 // symptôme a persisté : la cause est en réalité un z-fighting. framePanelCamera3D (scene3d.js) pousse
 // le plan far avec panel.camDist (far = dist + 80, environ) alors que le plan near reste épinglé à
-// 0.01 (cf. scene3d.js) — le ratio far/near explose au dézoom, et un depth-buffer WebGL classique
+// 0.01 (cf. scene3d.js), le ratio far/near explose au dézoom, et un depth-buffer WebGL classique
 // concentre presque toute sa précision près du plan near : deux surfaces proches (vêtement/corps,
 // sangle/fourreau d'un modèle importé articulé) scintillent une fois éloignées de la caméra.
 //
-// ensurePersonaScene3D() (qui construit le WebGLRenderer) échoue sous Node — cf. l'en-tête de ce
-// fichier — d'où la vérification par inspection de source plutôt que par instanciation réelle.
+// ensurePersonaScene3D() (qui construit le WebGLRenderer) échoue sous Node, cf. l'en-tête de ce
+// fichier, d'où la vérification par inspection de source plutôt que par instanciation réelle.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('CÂBLAGE — logarithmicDepthBuffer (z-fighting au dézoom)', () => {
+describe('CÂBLAGE : logarithmicDepthBuffer (z-fighting au dézoom)', () => {
   const source = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
 
   test('RÉGRESSION : le renderer partagé est construit avec un depth-buffer logarithmique', () => {

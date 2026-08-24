@@ -1,9 +1,9 @@
 /**
- * tests/lint-setup.test.mjs — l'analyse statique est-elle réellement branchée ?
+ * tests/lint-setup.test.mjs, l'analyse statique est-elle réellement branchée ?
  *
  * ⚠️ CE FICHIER NE LANCE PAS ESLINT. Il n'était pas installable dans l'environnement où la
  * configuration a été écrite (registre npm inaccessible), et de toute façon un test qui
- * l'exécuterait rendrait la suite dépendante d'un paquet optionnel — or le hook, lui, est
+ * l'exécuterait rendrait la suite dépendante d'un paquet optionnel, or le hook, lui, est
  * volontairement tolérant à son absence.
  *
  * Ce qui EST vérifié : que les quatre pièces se tiennent. Une configuration sans script, un script
@@ -21,7 +21,7 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8'));
 const hooks = readFileSync(join(RACINE, 'tools', 'setup-hooks.mjs'), 'utf8');
 
-describe('Analyse statique — les quatre pièces se tiennent', () => {
+describe('Analyse statique : les quatre pièces se tiennent', () => {
   test('la configuration existe et se charge', async () => {
     // Le peu que je puisse vérifier sans ESLint : que le fichier est du JavaScript valide et qu'il
     // a la forme attendue d'une configuration « flat » (un tableau de blocs).
@@ -43,7 +43,7 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
   test('les trois environnements sont distingués', async () => {
     // src/ est un renderer navigateur, main.js/preload.js du Node CommonJS, tests/ et tools/ des
     // modules Node. Les confondre reviendrait à autoriser `require` dans le renderer et `window`
-    // dans le processus principal — la frontière que pose la règle n°1 d'architecture.md.
+    // dans le processus principal, la frontière que pose la règle n°1 d'architecture.md.
     const conf = (await import('file://' + join(RACINE, 'eslint.config.mjs'))).default;
     const cibles = conf.flatMap(b => b.files || []).join(' ');
     ['src/', 'main.js', 'tests/'].forEach(c =>
@@ -55,7 +55,7 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
   });
 
   test('RÉGRESSION : eslint est déclaré en dépendance de développement', () => {
-    // Sans déclaration, `npm install` ne l'installe pas et le hook saute l'analyse à vie — en le
+    // Sans déclaration, `npm install` ne l'installe pas et le hook saute l'analyse à vie, en le
     // disant poliment à chaque commit, ce que personne ne lit au bout de trois jours.
     assert.ok(pkg.devDependencies.eslint, 'eslint absent des devDependencies');
   });
@@ -68,7 +68,7 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
 
   test('RÉGRESSION : l\'absence d\'ESLint ne bloque pas le commit', () => {
     // Décision assumée : un clone frais sans `npm install`, ou un poste hors ligne, doit pouvoir
-    // commiter. L'analyse est un confort, pas une condition d'existence du dépôt — contrairement
+    // commiter. L'analyse est un confort, pas une condition d'existence du dépôt, contrairement
     // aux tests, qui eux bloquent.
     assert.match(hooks, /if \[ -f "\$ESLINT" \]; then/,
       'l\'appel n\'est pas gardé par un test d\'existence');
@@ -86,11 +86,11 @@ describe('Analyse statique — les quatre pièces se tiennent', () => {
   });
 });
 
-describe('Analyse statique — le partage des rôles avec les tests', () => {
+describe('Analyse statique : le partage des rôles avec les tests', () => {
   test('les règles retenues sont ACTIVES sur src/, pas seulement présentes', async () => {
     // Une configuration copiée d'ailleurs produit du bruit sur 22 000 lignes existantes, et le
     // bruit fait désactiver l'outil. Chaque règle activée doit pouvoir se justifier par un
-    // incident du dépôt — no-unused-vars aurait trouvé `roomSizeDisplay` sans qu'on le cherche.
+    // incident du dépôt, no-unused-vars aurait trouvé `roomSizeDisplay` sans qu'on le cherche.
     //
     // La première version de ce test cherchait la chaîne « 'no-unused-vars' » N'IMPORTE OÙ dans le
     // fichier. Elle passait donc même en désactivant la règle pour src/, puisque les blocs

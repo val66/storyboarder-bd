@@ -1,13 +1,13 @@
-// tests/events.test.mjs — Tests unitaires de src/events.js (logique métier pure : empilement des
+// tests/events.test.mjs. Tests unitaires de src/events.js (logique métier pure : empilement des
 // Cases/Éléments, magnétisme au tracé/mur pendant l'outil Construire, aimantation des Parois à un
 // Mur, géométrie 2D des Bâtiments).
 //
 // NON couvert ici, volontairement : tout ce qui dépend de ensurePersonaScene3D (getWallPanAnchor2D
 // pour un Mur en coin, et donc wallLockedAxis*/positionWallOpeningOnWall/wallChildFraction pour un Mur en
-// coin spécifiquement — cf. en-tête de scene3d.test.mjs pour la vérification empirique de cette
+// coin spécifiquement, cf. en-tête de scene3d.test.mjs pour la vérification empirique de cette
 // limite) ; les tests ci-dessous se limitent donc aux Murs simples pour ces fonctions. Le câblage des
 // event listeners lui-même (mousedown/mousemove/mouseup, menus contextuels) n'est pas non plus
-// testable unitairement (pas de vrai DOM sous Node) — cf. en-tête de dom-stub.mjs.
+// testable unitairement (pas de vrai DOM sous Node), cf. en-tête de dom-stub.mjs.
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -70,7 +70,7 @@ beforeEach(() => {
 });
 
 // ── buildApplyAngleSnap / buildApplyAlignSnap (outil Construire) ───────────────────────────────
-describe('buildApplyAngleSnap — magnétisme à 90°/180° pendant le tracé au clavier/souris', () => {
+describe('buildApplyAngleSnap : magnétisme à 90°/180° pendant le tracé au clavier/souris', () => {
   test('aucun point posé : pas de snap possible (renvoie la position brute)', () => {
     S.buildTool = { points: [] };
     assert.deepEqual(buildApplyAngleSnap(4, 0.3), { x: 4, z: 0.3 });
@@ -97,7 +97,7 @@ describe('buildApplyAngleSnap — magnétisme à 90°/180° pendant le tracé au
   });
 });
 
-describe('buildApplyAlignSnap — alignement sur les points déjà posés (guides)', () => {
+describe('buildApplyAlignSnap : alignement sur les points déjà posés (guides)', () => {
   test('aucun S.buildTool actif : renvoie la position brute sans guide', () => {
     S.buildTool = null;
     assert.deepEqual(buildApplyAlignSnap(1, 1), { x: 1, z: 1, guideX: [], guideZ: [] });
@@ -121,7 +121,7 @@ describe('buildApplyAlignSnap — alignement sur les points déjà posés (guide
 });
 
 // ── getStackGroup / moveStackGroup (empilement Case + Éléments) ────────────────────────────────
-describe('getStackGroup — groupe d\'empilement (une Case + ses Éléments propres)', () => {
+describe('getStackGroup : groupe d\'empilement (une Case + ses Éléments propres)', () => {
   function makePage() {
     return {
       objects: [
@@ -150,7 +150,7 @@ describe('getStackGroup — groupe d\'empilement (une Case + ses Éléments prop
   });
 });
 
-describe('moveStackGroup — déplacement d\'un cran du groupe dans l\'ordre d\'empilement', () => {
+describe('moveStackGroup : déplacement d\'un cran du groupe dans l\'ordre d\'empilement', () => {
   test('avance le groupe par-dessus son voisin immédiat, en préservant l\'ordre interne', () => {
     const panelA = { id: 'panelA' }, perso1 = { id: 'perso1' }, obj1 = { id: 'obj1' }, panelB = { id: 'panelB' };
     const page = { objects: [panelA, perso1, obj1, panelB] };
@@ -177,7 +177,7 @@ describe('moveStackGroup — déplacement d\'un cran du groupe dans l\'ordre d\'
 });
 
 // ── tracéBBox ─────────────────────────────────────────────────────────────────────────────────
-describe('tracéBBox — boîte englobante d\'un tracé (points canvas)', () => {
+describe('tracéBBox : boîte englobante d\'un tracé (points canvas)', () => {
   test('tableau vide ou absent : boîte par défaut 1×1 à l\'origine', () => {
     assert.deepEqual(tracéBBox([]), { x: 0, y: 0, w: 1, h: 1 });
     assert.deepEqual(tracéBBox(null), { x: 0, y: 0, w: 1, h: 1 });
@@ -189,7 +189,7 @@ describe('tracéBBox — boîte englobante d\'un tracé (points canvas)', () => 
 });
 
 // ── wallLockedAxis / wallChildUnits3D / wallLockedAxisRange (Mur simple uniquement) ─────────────
-describe('wallLockedAxis — axe/valeur d\'ancrage d\'une Parois sur un Mur simple', () => {
+describe('wallLockedAxis : axe/valeur d\'ancrage d\'une Parois sur un Mur simple', () => {
   test('Mur plus large que haut (w>=h) : ancrage sur l\'axe Y (centré verticalement)', () => {
     const wall = { x: 0, y: 0, w: 400, h: 100, objType: 'mur' };
     const obj = { w: 40, h: 60 };
@@ -203,7 +203,7 @@ describe('wallLockedAxis — axe/valeur d\'ancrage d\'une Parois sur un Mur simp
   });
 });
 
-describe('wallChildUnits3D — unités 3D (longueur/hauteur du Mur, taille de l\'Élément embarqué)', () => {
+describe('wallChildUnits3D : unités 3D (longueur/hauteur du Mur, taille de l\'Élément embarqué)', () => {
   test('type connu (fenetre_ouverte) : taille dérivée de CHILD_DESIGN_SIZE_3D et de obj.w/h', () => {
     const wall = { w: 400, h: 300 };
     const obj = { w: 40, h: 44, objType: 'fenetre_ouverte' };
@@ -223,7 +223,7 @@ describe('wallChildUnits3D — unités 3D (longueur/hauteur du Mur, taille de l\
   });
 });
 
-describe('wallLockedAxisRange — plage de positions autorisées pour une Parois (Mur simple)', () => {
+describe('wallLockedAxisRange : plage de positions autorisées pour une Parois (Mur simple)', () => {
   test('axe Y : hauteur complète du Mur + demi-hauteur de marge de chaque côté', () => {
     const wall = { x: 0, y: 0, w: 400, h: 100, objType: 'mur' };
     const obj = { w: 40, h: 60 };
@@ -237,8 +237,8 @@ describe('wallLockedAxisRange — plage de positions autorisées pour une Parois
   });
 });
 
-// ── wallChildFraction / applyWallChildFraction — round-trip ────────────────────────────────────
-describe('wallChildFraction / applyWallChildFraction — capture puis réapplication de la position relative', () => {
+// ── wallChildFraction / applyWallChildFraction : round-trip ────────────────────────────────────
+describe('wallChildFraction / applyWallChildFraction : capture puis réapplication de la position relative', () => {
   test('round-trip : réappliquer la fraction capturée sur le même rectangle redonne la même position', () => {
     const wall = { x: 0, y: 0, w: 400, h: 100, objType: 'mur' };
     const obj = { x: 50, y: 20, w: 40, h: 60 };
@@ -251,7 +251,7 @@ describe('wallChildFraction / applyWallChildFraction — capture puis réapplica
 });
 
 // ── wallOpeningRotationForWall ────────────────────────────────────────────────────────────────────
-describe('wallOpeningRotationForWall — rotation à appliquer à une Parois selon son support', () => {
+describe('wallOpeningRotationForWall : rotation à appliquer à une Parois selon son support', () => {
   test('Mur simple : reprend directement la rotation du Mur, sans écart', () => {
     const wall = { objType: 'mur', rotX: 0.1, rotY: 0.5, rotZ: 0 };
     assert.deepEqual(wallOpeningRotationForWall(wall, 'A'), { rotX: 0.1, rotY: 0.5, rotZ: 0 });
@@ -276,7 +276,7 @@ describe('wallOpeningRotationForWall — rotation à appliquer à une Parois sel
 });
 
 // ── positionWallOpeningOnWall ─────────────────────────────────────────────────────────────────────
-describe('positionWallOpeningOnWall — placement d\'une Parois dans la boîte 2D de son support', () => {
+describe('positionWallOpeningOnWall : placement d\'une Parois dans la boîte 2D de son support', () => {
   test('Mur simple : centré le long du Mur, ancré selon wallLockedAxis sur l\'axe perpendiculaire', () => {
     const wall = { x: 0, y: 0, w: 400, h: 100, objType: 'mur' };
     const obj = { w: 40, h: 60 };
@@ -298,7 +298,7 @@ describe('positionWallOpeningOnWall — placement d\'une Parois dans la boîte 2
 });
 
 // ── recomputeBuildWallBox2D ───────────────────────────────────────────────────────────────────
-describe('recomputeBuildWallBox2D — thin-box 2D d\'un Mur projetée depuis ses coordonnées monde', () => {
+describe('recomputeBuildWallBox2D : thin-box 2D d\'un Mur projetée depuis ses coordonnées monde', () => {
   test('Mur horizontal centré dans une Case à la caméra par défaut : boîte projetée cohérente', () => {
     const panel = { id: 'panel1', x: 0, y: 0, w: 800, h: 600, camRotX: 0, camRotY: 0, camDist: 30, camWx: 0, camWy: 0, camWz: 0 };
     const wall = { id: 'w1', wxFloor: 2, wzFloor: 0, rotY: 0, realLenFloor: 4 };
@@ -320,7 +320,7 @@ describe('recomputeBuildWallBox2D — thin-box 2D d\'un Mur projetée depuis ses
 });
 
 // ── storeRoomGeometry ────────────────────────────────────────────────────────────────────────
-describe('storeRoomGeometry — instantané des Murs/Dalles d\'un ensemble de Pièces', () => {
+describe('storeRoomGeometry : instantané des Murs/Dalles d\'un ensemble de Pièces', () => {
   test('sépare Murs et Dalles, filtre par roomIds, ne garde que les champs pertinents', () => {
     const page = {
       objects: [
@@ -338,7 +338,7 @@ describe('storeRoomGeometry — instantané des Murs/Dalles d\'un ensemble de Pi
 });
 
 // ── getRoomOrBuildingScreenBBox ───────────────────────────────────────────────────────────────────
-describe('getRoomOrBuildingScreenBBox — projection écran des 4 coins de la bbox XZ d\'une/plusieurs Pièces', () => {
+describe('getRoomOrBuildingScreenBBox : projection écran des 4 coins de la bbox XZ d\'une/plusieurs Pièces', () => {
   function makePanel() {
     return { id: 'panel1', x: 0, y: 0, w: 800, h: 600, camRotX: 0, camRotY: 0, camDist: 30, camWx: 0, camWy: 0, camWz: 0 };
   }
@@ -370,7 +370,7 @@ describe('getRoomOrBuildingScreenBBox — projection écran des 4 coins de la bb
 // ── wallScreenAxes3D / fracDeltaAlongAxis2D (Fix 26) ──────────────────────────────────────────
 // Cœur du correctif de glisser des Parois : la fraction parcourue doit se mesurer sur l'étendue
 // RÉELLE du Mur à l'écran, pas sur sa boîte 2D fine.
-describe('wallScreenAxes3D / fracDeltaAlongAxis2D — mapping souris → Mur (Fix 26)', () => {
+describe('wallScreenAxes3D / fracDeltaAlongAxis2D : mapping souris → Mur (Fix 26)', () => {
   const page = { w: 800, h: 600 };
   const panel = () => ({ x: 0, y: 0, w: 800, h: 600,
                          camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 });
@@ -441,7 +441,7 @@ describe('wallScreenAxes3D / fracDeltaAlongAxis2D — mapping souris → Mur (Fi
 });
 
 // ── tracéScreenAxisAtFrac3D (Fix 27) ──────────────────────────────────────────────────────────
-describe('tracéScreenAxisAtFrac3D — échelle écran locale d\'un Tracé (Fix 27)', () => {
+describe('tracéScreenAxisAtFrac3D : échelle écran locale d\'un Tracé (Fix 27)', () => {
   const page = { w: 800, h: 600 };
   const panel = { x: 0, y: 0, w: 800, h: 600,
                   camRotX: 0, camRotY: 0, camDist: 12, camWx: 0, camWy: 1.15, camWz: 0 };
@@ -496,7 +496,7 @@ describe('tracéScreenAxisAtFrac3D — échelle écran locale d\'un Tracé (Fix 
 // une Parois le long du mur, la direction finissait par s'inverser. Cause : l'axe écran était
 // évalué une seule fois, à la fraction de départ ; la tangente d'une boucle tournant de 360°, la
 // projection sur cet axe périmé changeait de signe après environ un quart de tour.
-describe('integrateTracéFrac3D — suivi d\'un Tracé qui tourne (Fix 29)', () => {
+describe('integrateTracéFrac3D : suivi d\'un Tracé qui tourne (Fix 29)', () => {
   const page = { w: 800, h: 600 };
   const panel = { x: 0, y: 0, w: 800, h: 600,
                   camRotX: 0.9, camRotY: 0, camDist: 25, camWx: 0, camWy: 1, camWz: 0 };
@@ -512,7 +512,7 @@ describe('integrateTracéFrac3D — suivi d\'un Tracé qui tourne (Fix 29)', () 
     return smoothTracéPath3D(raw, 4);
   }
   // Souris qui SUIT le mur : à chaque pas, on se déplace de `px` pixels le long de la tangente
-  // écran locale — exactement ce que fait l'utilisateur.
+  // écran locale, exactement ce que fait l'utilisateur.
   function pasEnSuivantLeMur(pts, frac, px) {
     const A = tracéScreenAxisAtFrac3D(pts, frac, panel, page);
     const n = Math.hypot(A.x, A.y) || 1;
@@ -579,8 +579,8 @@ describe('integrateTracéFrac3D — suivi d\'un Tracé qui tourne (Fix 29)', () 
 // ── tracéUpScreenAxis3D (Fix 30) ──────────────────────────────────────────────────────────────
 // Bug rapporté : impossible de déplacer verticalement une Parois posée sur un Muret, alors que ça
 // marche sur un Mur. Le glisser vertical retombait sur `dy / wall.h`, et pour un Tracé wall.h est
-// la hauteur de la boîte englobante 2D du chemin ENTIER — des centaines de pixels sur une boucle.
-describe('tracéUpScreenAxis3D — axe vertical d\'un Muret (Fix 30)', () => {
+// la hauteur de la boîte englobante 2D du chemin ENTIER, des centaines de pixels sur une boucle.
+describe('tracéUpScreenAxis3D : axe vertical d\'un Muret (Fix 30)', () => {
   const panel = { x: 0, y: 0, w: 800, h: 600,
                   camRotX: 0.5, camRotY: 0, camDist: 20, camWx: 0, camWy: 1, camWz: 0 };
   function scene({ wallHeight = 1.2, alongFrac = 0.3 } = {}) {
@@ -665,13 +665,13 @@ describe('tracéUpScreenAxis3D — axe vertical d\'un Muret (Fix 30)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 35 — Annuler la PREMIÈRE modale d'un Élément qu'on vient d'ajouter le supprime.
+// Fix 35 : Annuler la PREMIÈRE modale d'un Élément qu'on vient d'ajouter le supprime.
 //
 // Le menu Ajouter crée l'Élément puis ouvre sa modale (isNew=true). Annuler à ce
 // moment-là veut dire « finalement je n'en veux pas » : fermer sans rien faire laissait
 // l'Élément posé dans la Case alors que l'utilisateur n'avait jamais pu l'accepter.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('discardJustAddedElement — retrait de l\'Élément à peine ajouté (Fix 35)', () => {
+describe('discardJustAddedElement : retrait de l\'Élément à peine ajouté (Fix 35)', () => {
   const faire = () => {
     const panel = { id: 'panel1', type: 'panel', x: 0, y: 0, w: 400, h: 300 };
     const obj = { id: 'o1', type: 'objet3d', objType: 'voiture', homePanelId: 'panel1',
@@ -713,7 +713,7 @@ describe('discardJustAddedElement — retrait de l\'Élément à peine ajouté (
   });
 });
 
-describe('dismissModal — Annuler / Échap / clic hors modale (Fix 35)', () => {
+describe('dismissModal : Annuler / Échap / clic hors modale (Fix 35)', () => {
   const faire = () => {
     const panel = { id: 'panel1', type: 'panel', x: 0, y: 0, w: 400, h: 300 };
     const obj = { id: 'o1', type: 'objet3d', objType: 'voiture', homePanelId: 'panel1' };
@@ -761,13 +761,13 @@ describe('dismissModal — Annuler / Échap / clic hors modale (Fix 35)', () => 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 48 — machine à états de l'éditeur de Personnage.
+// Fix 48 : machine à états de l'éditeur de Personnage.
 //
 // Il RECOUVRE ce qui est affiché au lieu de le remplacer : contrairement au mode Scène, ni la Page
 // courante, ni S.editingSceneId, ni la sélection ne bougent. Fermer rend donc la main exactement à
 // ce qui était là, sans avoir à reconstruire un état de retour.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — ouverture et fermeture (Fix 48)', () => {
+describe('éditeur de Personnage : ouverture et fermeture (Fix 48)', () => {
   const perso = () => ({ id: 'e1', type: 'perso', position: 'assis' });
   beforeEach(() => { closePersonaEditor(); S.editingSceneId = null; S.selectedId = null; });
 
@@ -847,11 +847,11 @@ describe('éditeur de Personnage — ouverture et fermeture (Fix 48)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 50 — retour à la modale. Ouvrir l'éditeur depuis la modale Personnage la MASQUE ; la
+// Fix 50 : retour à la modale. Ouvrir l'éditeur depuis la modale Personnage la MASQUE; la
 // refermer doit la retrouver. Sans ça, on perd le contexte de travail et, à terme, le bouton
 // « Appliquer » que cette modale portera.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
+describe('éditeur de Personnage : retour à la modale (Fix 50)', () => {
   const perso = () => ({ id: 'e1', type: 'perso', position: 'assis' });
   beforeEach(() => { closePersonaEditor(); S.selectedId = null; S.editingSceneId = null; });
 
@@ -911,7 +911,7 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 51 — brouillon d'articulations du panneau de réglage fin.
+// Fix 51 : brouillon d'articulations du panneau de réglage fin.
 //
 // La règle qui structure toute la phase : les curseurs écrivent dans S.personaEditorDraft et NULLE
 // PART ailleurs. C'est ce qui rend l'édition annulable, et c'est exactement le manquement que le
@@ -922,7 +922,7 @@ describe('éditeur de Personnage — retour à la modale (Fix 50)', () => {
 // docs/testing-method.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
 // gestionnaire de curseur, qui redessine.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', () => {
+describe('éditeur de Personnage : réglage fin des articulations (Fix 51)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   const shoulderX = { key: 'lShoulder:x', field: 'lShoulder', axis: 'x', suffix: '' };
   const shoulderZ = { key: 'lShoulder:z', field: 'lShoulder', axis: 'z', suffix: '' };
@@ -960,7 +960,7 @@ describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', (
     assert.equal(Math.round(S.personaEditorDraft.lShoulder.z * 180 / Math.PI), -40);
   });
 
-  test('personaEditorInitialJoints : sans cible, la pose debout — et une COPIE', () => {
+  test('personaEditorInitialJoints : sans cible, la pose debout : et une COPIE', () => {
     const j = personaEditorInitialJoints(null);
     assert.deepEqual(j, POSE_3D.debout);
     assert.notEqual(j, POSE_3D.debout, 'copie : modifier le brouillon ne doit pas altérer la pose de référence');
@@ -986,7 +986,7 @@ describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', (
   });
 
   test('réinitialiser ne réutilise pas l\'objet de l\'Élément', () => {
-    // Réinitialiser puis bouger un curseur écrirait dans l'Élément si le brouillon était partagé —
+    // Réinitialiser puis bouger un curseur écrirait dans l'Élément si le brouillon était partagé,
     // le bug annulé par le Fix 35, réintroduit par une porte dérobée.
     const o = perso({ torsoRotX: 0.5 });
     openPersonaEditor(o);
@@ -1008,7 +1008,7 @@ describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', (
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 52 — sélection d'une poignée d'articulation dans l'éditeur.
+// Fix 52 : sélection d'une poignée d'articulation dans l'éditeur.
 //
 // S.personaEditorHandleId est DISTINCT de S.selectedPoseHandle, qui appartient à l'aperçu de la
 // modale. La modale n'est pas fermée pendant l'édition, seulement masquée (cf. Fix 50) : partager la
@@ -1018,7 +1018,7 @@ describe('éditeur de Personnage — réglage fin des articulations (Fix 51)', (
 // Le dessin des poignées n'est pas couvert (WebGL), ni la projection 3D→écran. Ce qui l'est : la
 // règle de bascule, et le fait que les deux sélections restent étanches.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — sélection d\'une poignée (Fix 52)', () => {
+describe('éditeur de Personnage : sélection d\'une poignée (Fix 52)', () => {
   beforeEach(() => { closePersonaEditor(); S.selectedPoseHandle = null; });
 
   test('sélectionner, puis recliquer la même poignée la désélectionne', () => {
@@ -1062,17 +1062,17 @@ describe('éditeur de Personnage — sélection d\'une poignée (Fix 52)', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 54 — application d'une pose depuis l'éditeur.
+// Fix 54 : application d'une pose depuis l'éditeur.
 //
 // LA décision de toute la fonctionnalité : appliquer une pose COPIE ses angles dans le brouillon.
-// Aucun Personnage ne dépend de la bibliothèque — supprimer une pose, ou ouvrir le projet sur une
+// Aucun Personnage ne dépend de la bibliothèque, supprimer une pose, ou ouvrir le projet sur une
 // machine qui ne l'a pas, ne change l'allure de personne (cf. docs/persisted-data.md).
 //
 // `position` reste une ÉTIQUETTE : bouger un curseur après avoir appliqué « Assis » ne l'efface
 // pas, c'est resolvePoseLabel3D qui en déduit « Assis (modifié) » en comparant les valeurs. On
 // garde ainsi la provenance, qui est une information utile.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
+describe('éditeur de Personnage : appliquer une pose (Fix 54)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   beforeEach(() => { closePersonaEditor(); S.poses = []; });
 
@@ -1102,7 +1102,7 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
 
   test('RÉGRESSION : une pose introuvable ne touche à RIEN', () => {
     // Écrire une pose de repli écraserait le travail en cours par quelque chose que l'utilisateur
-    // n'a pas demandé — le pire comportement possible ici.
+    // n'a pas demandé, le pire comportement possible ici.
     openPersonaEditor(null);
     setPersonaEditorJointDeg(torso, 42);
     const avant = JSON.stringify(S.personaEditorDraft);
@@ -1149,7 +1149,7 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
 
   test('réinitialiser ramène AUSSI l\'étiquette à la pose d\'ouverture', () => {
     // Sinon le panneau afficherait le nom de la dernière pose appliquée alors que les angles sont
-    // revenus à ceux de l'Élément — deux affichages qui se contredisent.
+    // revenus à ceux de l'Élément, deux affichages qui se contredisent.
     const o = { id: 'e1', type: 'perso', position: 'combat', joints3d: { torsoRotX: 0.3 } };
     openPersonaEditor(o);
     applyPersonaEditorPose('assis');
@@ -1166,7 +1166,7 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
 
   test('les deux poses allongées, ajoutées à POSE_3D par draw.js, sont applicables', () => {
     // draw.js est chargé par la chaîne d'imports de ce fichier de test (events.js en dépend). Sans
-    // lui, POSE_3D n'aurait que 13 entrées et ces deux poses seraient introuvables — le genre
+    // lui, POSE_3D n'aurait que 13 entrées et ces deux poses seraient introuvables, le genre
     // d'écart entre les tests et l'application qui passe inaperçu longtemps.
     openPersonaEditor(null);
     for (const key of ['allonge', 'vaincu']) {
@@ -1177,13 +1177,13 @@ describe('éditeur de Personnage — appliquer une pose (Fix 54)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 55 — bibliothèque de poses en écriture.
+// Fix 55 : bibliothèque de poses en écriture.
 //
 // LA propriété à ne pas casser : supprimer une pose ne déforme AUCUN Personnage. Ses angles ont été
 // copiés chez lui à l'application (Fix 54) ; au pire son étiquette devient « inconnue ». C'est ce
 // qui rend la suppression sans danger, et ce que le test de régression ci-dessous surveille.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — bibliothèque en écriture (Fix 55)', () => {
+describe('éditeur de Personnage : bibliothèque en écriture (Fix 55)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   beforeEach(() => { closePersonaEditor(); S.poses = []; });
 
@@ -1313,14 +1313,14 @@ describe('éditeur de Personnage — bibliothèque en écriture (Fix 55)', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 56 — usage d'une pose dans le Projet, pour la confirmation de suppression.
+// Fix 56 : usage d'une pose dans le Projet, pour la confirmation de suppression.
 //
 // Le gestionnaire de clic lui-même n'est pas testable (confirmAction manipule le DOM), d'où la
 // séparation : personaEditorPoseUsage décide, le bouton se contente de demander. Un comptage faux
-// ne fait rien planter — il fait taire l'avertissement là où il fallait avertir, ce qui est
+// ne fait rien planter, il fait taire l'avertissement là où il fallait avertir, ce qui est
 // précisément ce qu'on ne verrait pas.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — usage d\'une pose dans le Projet (Fix 56)', () => {
+describe('éditeur de Personnage : usage d\'une pose dans le Projet (Fix 56)', () => {
   const perso = (position) => ({ id: 'e' + Math.random(), type: 'perso', position });
   beforeEach(() => { S.tomes = []; S.scenes = []; });
 
@@ -1349,14 +1349,14 @@ describe('éditeur de Personnage — usage d\'une pose dans le Projet (Fix 56)',
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 59 — supprimer mémorise, et toute suppression est confirmée.
+// Fix 59 : supprimer mémorise, et toute suppression est confirmée.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — la suppression est mémorisée (Fix 59)', () => {
+describe('éditeur de Personnage : la suppression est mémorisée (Fix 59)', () => {
   beforeEach(() => { closePersonaEditor(); S.poses = []; S.dismissedPoses = []; });
 
   test('RÉGRESSION : supprimer enregistre l\'id dans les suppressions', () => {
     // Constaté par mutation : sans cette assertion, retirer l'appel à setDismissedPoses passait
-    // inaperçu — et la pose serait revenue au premier vieux projet ouvert.
+    // inaperçu, et la pose serait revenue au premier vieux projet ouvert.
     openPersonaEditor(null);
     const pose = savePersonaEditorPose('Éphémère');
     deletePersonaEditorPose(pose.id);
@@ -1380,10 +1380,10 @@ describe('éditeur de Personnage — la suppression est mémorisée (Fix 59)', (
   });
 });
 
-describe('Fix 59 — CÂBLAGE : toute suppression passe par une confirmation', () => {
+describe('Fix 59 : CÂBLAGE : toute suppression passe par une confirmation', () => {
   // Le gestionnaire de clic n'est pas testable (confirmAction manipule le DOM). Constaté par
-  // mutation : réintroduire le `if (used > 0)` du Fix 56 — donc un clic unique irréversible sur une
-  // pose inutilisée — traverse la suite sans faire échouer un test. Inspection de source, comme pour
+  // mutation : réintroduire le `if (used > 0)` du Fix 56, donc un clic unique irréversible sur une
+  // pose inutilisée, traverse la suite sans faire échouer un test. Inspection de source, comme pour
   // l'atomicité de bump-version.mjs et le câblage du Fix 53.
   test('la confirmation n\'est PAS conditionnée à l\'usage de la pose', () => {
     const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
@@ -1399,12 +1399,12 @@ describe('Fix 59 — CÂBLAGE : toute suppression passe par une confirmation', (
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 60 — « Appliquer » : de l'éditeur vers le BROUILLON de la modale.
+// Fix 60, « Appliquer » : de l'éditeur vers le BROUILLON de la modale.
 //
 // La règle qui structure toute la phase : jamais dans l'Élément. Écrire dans S.modalTarget donnerait
-// une modale dont « Annuler » n'annule plus — le défaut exact que le Fix 35 a corrigé ailleurs.
+// une modale dont « Annuler » n'annule plus, le défaut exact que le Fix 35 a corrigé ailleurs.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
+describe('éditeur de Personnage : Appliquer (Fix 60)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   const perso = () => ({ id: 'e1', type: 'perso', position: 'debout', joints3d: { torsoRotX: 0 } });
   beforeEach(() => {
@@ -1423,7 +1423,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
 
   test('RÉGRESSION : Appliquer ne touche PAS l\'Élément', () => {
     // Le cœur de la phase. C'est descModalSave, et lui seul, qui recopie le brouillon dans
-    // l'Élément — donc « Annuler » continue d'annuler.
+    // l'Élément, donc « Annuler » continue d'annuler.
     const o = perso();
     S.modalTarget = o;
     openPersonaEditor(o, 'descModal');
@@ -1451,7 +1451,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
   });
 
   test('mode autonome : Appliquer ne fait RIEN', () => {
-    // Sans modale derrière, il n'y a rien à alimenter — et c'est aussi la condition d'affichage du
+    // Sans modale derrière, il n'y a rien à alimenter, et c'est aussi la condition d'affichage du
     // bouton (cf. syncPersonaEditorDom).
     openPersonaEditor(null, false);
     setPersonaEditorJointDeg(torso, 47);
@@ -1473,7 +1473,7 @@ describe('éditeur de Personnage — Appliquer (Fix 60)', () => {
   });
 });
 
-describe('poseKeyStillInLibrary — garde contre le piège du <select> (Fix 60)', () => {
+describe('poseKeyStillInLibrary : garde contre le piège du <select> (Fix 60)', () => {
   beforeEach(() => { S.poses = []; });
 
   test('pose présente : sa clé est reportable', () => {
@@ -1495,13 +1495,13 @@ describe('poseKeyStillInLibrary — garde contre le piège du <select> (Fix 60)'
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 61 — « y a-t-il quelque chose à faire ? », qui pilote Réinitialiser et Appliquer.
+// Fix 61 : « y a-t-il quelque chose à faire ? », qui pilote Réinitialiser et Appliquer.
 //
 // Le repère est FIGÉ à l'ouverture plutôt que relu depuis l'Élément : « depuis l'ouverture » doit
 // vouloir dire exactement ça. Réinitialiser repart du même repère, sans quoi le bouton pourrait
 // rester actif juste après avoir été cliqué.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — détection des changements (Fix 61)', () => {
+describe('éditeur de Personnage : détection des changements (Fix 61)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   const perso = () => ({ id: 'e1', type: 'perso', position: 'debout', joints3d: { torsoRotX: 0.2 } });
   beforeEach(() => { closePersonaEditor(); S.poses = []; });
@@ -1533,7 +1533,7 @@ describe('éditeur de Personnage — détection des changements (Fix 61)', () =>
     //
     // ⚠️ Ce test a d'abord ÉCHOUÉ, et c'était le code qui avait tort. Les curseurs sont gradués au
     // degré entier alors que les poses sont stockées en radians : mesuré, l'aller-retour sur
-    // 0.2 rad donne 0.459° d'écart. La comparaison se fait donc à un demi-degré près — la
+    // 0.2 rad donne 0.459° d'écart. La comparaison se fait donc à un demi-degré près, la
     // granularité réelle de l'interface, en dessous de laquelle rien n'est atteignable à la souris.
     openPersonaEditor(perso());               // torsoRotX = 0.2 rad ≈ 11.46°
     const départ = readPoseSliderDeg3D(S.personaEditorDraft, torso);
@@ -1596,14 +1596,14 @@ describe('éditeur de Personnage — détection des changements (Fix 61)', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 64 — entrée AUTONOME de l'éditeur (phase 6).
+// Fix 64 : entrée AUTONOME de l'éditeur (phase 6).
 //
 // Deux entrées, deux sémantiques : depuis une modale on retouche UN Personnage et « Appliquer »
 // existe ; depuis le menu de gauche on compose une pose pour la bibliothèque, sans cible, et le
-// bouton est ABSENT — masqué, pas grisé. Le titre nomme le mode, sans quoi cette disparition
+// bouton est ABSENT, masqué, pas grisé. Le titre nomme le mode, sans quoi cette disparition
 // resterait inexpliquée.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — titre selon le mode (Fix 64)', () => {
+describe('éditeur de Personnage : titre selon le mode (Fix 64)', () => {
   test('sans cible : le titre annonce le mode pose libre', () => {
     assert.match(personaEditorTitle3D(null), /pose libre/);
     assert.match(personaEditorTitle3D(null, 'en'), /free pose/);
@@ -1615,7 +1615,7 @@ describe('éditeur de Personnage — titre selon le mode (Fix 64)', () => {
   });
 
   test('cible sans nom : titre nu, pas de tiret orphelin', () => {
-    // Un « Éditeur de Personnage — » suivi de rien ferait croire à un libellé tronqué.
+    // Un « Éditeur de Personnage : » suivi de rien ferait croire à un libellé tronqué.
     assert.equal(personaEditorTitle3D({ name: '' }), 'Éditeur de Personnage');
     assert.equal(personaEditorTitle3D({ name: '   ' }), 'Éditeur de Personnage');
     assert.equal(personaEditorTitle3D({}), 'Éditeur de Personnage');
@@ -1628,7 +1628,7 @@ describe('éditeur de Personnage — titre selon le mode (Fix 64)', () => {
   });
 });
 
-describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
+describe('éditeur de Personnage : mode autonome complet (Fix 64)', () => {
   const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
   beforeEach(() => { closePersonaEditor(); S.poses = []; S.dismissedPoses = []; });
 
@@ -1657,9 +1657,9 @@ describe('éditeur de Personnage — mode autonome complet (Fix 64)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 65/66 — caméra de l'éditeur : orbite au clic droit, sans déplacement ni raccourci.
+// Fix 65/66, caméra de l'éditeur : orbite au clic droit, sans déplacement ni raccourci.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
+describe('éditeur de Personnage : orbite de la caméra (Fix 65/66)', () => {
   beforeEach(() => { closePersonaEditor(); });
 
   test('RÉGRESSION : la rotation verticale est bornée à ±85°', () => {
@@ -1703,7 +1703,7 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
   test('RÉGRESSION : « de face » veut dire du CÔTÉ DU VISAGE, pas azimut nul', () => {
     // Le piège corrigé au Fix 80 : un azimut nul semble être « la vue par défaut », mais il place
     // la caméra en Z POSITIF (cf. orbitCameraPosition3D) alors que le rig place le visage en Z
-    // NÉGATIF — l'éditeur s'ouvrait donc dans le dos du Personnage.
+    // NÉGATIF : l'éditeur s'ouvrait donc dans le dos du Personnage.
     //
     // Le test CALCULE de quel côté est le visage en lisant rig3d.js, au lieu d'attendre une valeur
     // écrite en dur : si un jour le rig retournait la figure, c'est ici qu'on l'apprendrait.
@@ -1716,7 +1716,7 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
       'la caméra d\'ouverture doit être du même côté que le visage');
   });
 
-  // Fix 66 — la section Caméra et le raccourci C ont été retirés : le clic droit suffit. Ce test
+  // Fix 66 : la section Caméra et le raccourci C ont été retirés : le clic droit suffit. Ce test
   // garde la porte fermée, sinon rien n'empêcherait de réintroduire une touche qui vole son
   // raccourci à la Case restée derrière l'éditeur.
   test('RÉGRESSION : aucun raccourci clavier hors Échap dans l\'éditeur', () => {
@@ -1730,23 +1730,23 @@ describe('éditeur de Personnage — orbite de la caméra (Fix 65/66)', () => {
 
   test('RÉGRESSION : la sensibilité de l\'orbite est une constante, pas un état réglable', () => {
     // Elle n'était réglable que par le curseur retiré au Fix 66. La laisser dans S serait un état
-    // que plus personne n'écrit — et que le prochain lecteur croirait vivant.
+    // que plus personne n'écrit, et que le prochain lecteur croirait vivant.
     const src = readFileSync(new URL('../src/state.js', import.meta.url), 'utf8');
     assert.ok(!/personaEditorCam(Sens|Open)/.test(src), 'état de caméra devenu inatteignable');
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 71/72 (ESSAI) — glisser une poignée, et choisir lequel de ses champs on règle.
+// Fix 71/72 (ESSAI), glisser une poignée, et choisir lequel de ses champs on règle.
 //
 // Ce que le stub DOM ne permet PAS de vérifier : que les gestionnaires de souris appellent bien ces
 // fonctions (aucun événement n'est distribué), ni que le surlignage `.driven` apparaît au bon
-// endroit (les classes du stub sont des no-op). Ce qui est couvert, c'est la machine à états —
-// sélection, champ actif, session de glisser — extraite exprès des gestionnaires.
+// endroit (les classes du stub sont des no-op). Ce qui est couvert, c'est la machine à états,
+// sélection, champ actif, session de glisser, extraite exprès des gestionnaires.
 //
 // Fonctionnalité explicitement expérimentale : si elle est retirée, ce bloc part avec.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)', () => {
+describe('éditeur de Personnage : glisser d\'articulation (Fix 71/72, ESSAI)', () => {
   const specsDe = id => poseSliderSpecs3D(POSE_HANDLES.find(d => d.id === id));
   beforeEach(() => { closePersonaEditor(); });
 
@@ -1781,17 +1781,17 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     focusPersonaEditorHandle('lKnee');
     const session = beginPersonaEditorJointDrag('lKnee');
     applyPersonaEditorJointDrag(session, 0, 40);
-    // Fix 80 — signe NÉGATIF depuis que la caméra s'ouvre devant le visage et non derrière. Ce
+    // Fix 80 : signe NÉGATIF depuis que la caméra s'ouvre devant le visage et non derrière. Ce
     // n'est pas un détail de test : vérifié par le calcul, un headRotX positif fait LEVER la tête
     // (le visage, en Z négatif, monte quand on tourne autour de +X). Glisser vers le bas doit donc
-    // donner un angle négatif — ce qui n'était pas le cas vu de dos.
+    // donner un angle négatif, ce qui n'était pas le cas vu de dos.
     assert.equal(readPoseSliderDeg3D(S.personaEditorDraft, specsDe('lKnee')[0]), -20);
   });
 
   test('RÉGRESSION : glisser allume Réinitialiser, revenir l\'éteint', () => {
     // La dirty-detection est partagée avec les curseurs (poseSliderSignature3D) : si le glisser
     // écrivait des radians non arrondis, un aller-retour laisserait le bouton allumé sans que la
-    // pose ait bougé — exactement le symptôme que le Fix 62 avait supprimé côté curseurs.
+    // pose ait bougé, exactement le symptôme que le Fix 62 avait supprimé côté curseurs.
     openPersonaEditor(null);
     assert.equal(personaEditorHasChanges(), false, 'rien à faire à l\'ouverture');
     focusPersonaEditorHandle('head');
@@ -1811,7 +1811,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     focusPersonaEditorHandle('head');
     const session = beginPersonaEditorJointDrag('head');
     // La tête tourne autour de X pour son premier champ : de face, l'axe est horizontal à l'écran,
-    // donc le geste est VERTICAL et dx est ignoré. Inchangé depuis le Fix 74 — c'est justement ce
+    // donc le geste est VERTICAL et dx est ignoré. Inchangé depuis le Fix 74, c'est justement ce
     // que le Fix 75 devait préserver dans la vue de face.
     assert.equal(session.droit, true);
     applyPersonaEditorJointDrag(session, 999, 50);
@@ -1828,7 +1828,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
     const x0 = readPoseSliderDeg3D(S.personaEditorDraft, x);
     const z0 = readPoseSliderDeg3D(S.personaEditorDraft, z);
     cyclePersonaEditorSpec(1);                       // on passe sur l'écart
-    // Fix 75 — l'écart tourne autour de Z, qui pointe vers l'œil dans la vue de face d'ouverture :
+    // Fix 75 : l'écart tourne autour de Z, qui pointe vers l'œil dans la vue de face d'ouverture :
     // la session bascule donc en mode CIRCULAIRE, et c'est un balayage qu'il faut lui fournir.
     const session = beginPersonaEditorJointDrag('lShoulder');
     assert.equal(session.droit, false, 'de face, l\'écart d\'épaule se règle en tournant');
@@ -1892,7 +1892,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
   test('RÉGRESSION : pousser une articulation à fond ne la BLOQUE pas', () => {
     // Le défaut signalé. La session porte l'origine du geste ; sans ré-ancrage, écraser la borne
     // pendant 600 px stockait ces 600 px, et il fallait les reparcourir en sens inverse avant que
-    // l'angle ne bouge — l'articulation semblait figée. Testé ICI en plus de la fonction pure,
+    // l'angle ne bouge, l'articulation semblait figée. Testé ICI en plus de la fonction pure,
     // parce que c'est la MUTATION de la session qui rend le ré-ancrage effectif : oublier de
     // réécrire session.startDeg laisserait la fonction pure correcte et le geste toujours bloqué.
     openPersonaEditor(null);
@@ -1906,7 +1906,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
   test('RÉGRESSION : la session GÈLE l\'orbite et le mode à l\'appui', () => {
     // On peut orbiter au clic DROIT pendant un glisser gauche. Si la session relisait la caméra à
     // chaque image, la direction du geste changerait sous la main, et le mode pourrait basculer de
-    // droit à circulaire en plein mouvement — l'articulation ferait un bond.
+    // droit à circulaire en plein mouvement, l'articulation ferait un bond.
     openPersonaEditor(null);
     focusPersonaEditorHandle('head');
     const session = beginPersonaEditorJointDrag('head');
@@ -1918,8 +1918,8 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
   });
 
   test('le mode suit l\'orientation AU MOMENT de l\'appui', () => {
-    // Cœur du Fix 75 : l'écart d'épaule tourne autour de Z. De face, Z pointe vers l'œil — mode
-    // circulaire. De profil, Z est en travers de l'écran — mode droit.
+    // Cœur du Fix 75 : l'écart d'épaule tourne autour de Z. De face, Z pointe vers l'œil, mode
+    // circulaire. De profil, Z est en travers de l'écran, mode droit.
     openPersonaEditor(null);
     focusPersonaEditorHandle('lShoulder');
     cyclePersonaEditorSpec(1);                              // l'écart
@@ -1950,7 +1950,7 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
 
   test('RÉGRESSION : « ouvert » et « brouillon présent » sont vérifiés SÉPARÉMENT', () => {
     // closePersonaEditor vide le brouillon EN PLUS de baisser le drapeau : le test ci-dessus passe
-    // donc même si l'un des deux gardes disparaît — il ne distinguait rien, et une mutation lui a
+    // donc même si l'un des deux gardes disparaît, il ne distinguait rien, et une mutation lui a
     // échappé. Ici on baisse le drapeau À LA MAIN, brouillon intact, ce qui est la seule façon
     // d'exiger vraiment les deux.
     openPersonaEditor(null);
@@ -1965,13 +1965,13 @@ describe('éditeur de Personnage — glisser d\'articulation (Fix 71/72, ESSAI)'
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 76 (ESSAI) — les deux causes du glisser erratique.
+// Fix 76 (ESSAI), les deux causes du glisser erratique.
 //
 // Testé par INSPECTION de la source : drawPersonaEditor exige WebGL et le stub DOM ne distribue
-// aucun événement. Ce qu'on épingle est donc la FORME du code, faute de pouvoir l'exécuter — mais
+// aucun événement. Ce qu'on épingle est donc la FORME du code, faute de pouvoir l'exécuter, mais
 // ce sont deux formes précises, chacune correspondant à un défaut observé à l'écran.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
+describe('éditeur de Personnage : glisser erratique (Fix 76, ESSAI)', () => {
   const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   const corpsDe = (nom) => {
     const i = src.indexOf(`export function ${nom}(`);
@@ -1982,7 +1982,7 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
 
   test('RÉGRESSION : l\'éditeur rend le Personnage SANS sa rotation propre', () => {
     // Deux effets d'une même ligne : il apparaît toujours de face, et les axes du modèle coïncident
-    // avec ceux du monde — ce que suppose projectModelAxisToScreen3D. Réintroduire target.rotY
+    // avec ceux du monde, ce que suppose projectModelAxisToScreen3D. Réintroduire target.rotY
     // rendrait le glisser faux pour tout Personnage tourné dans sa Scène.
     const corps = corpsDe('drawPersonaEditor');
     for (const axe of ['rotY', 'rotX', 'rotZ']) {
@@ -2015,9 +2015,9 @@ describe('éditeur de Personnage — glisser erratique (Fix 76, ESSAI)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 79 (ESSAI) — le balayage circulaire se déroule au lieu de s'inverser.
+// Fix 79 (ESSAI), le balayage circulaire se déroule au lieu de s'inverser.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
+describe('éditeur de Personnage : balayage circulaire (Fix 79)', () => {
   const pivot = { x: 100, y: 100 };
   const surCercle = (deg, r = 100) => ({
     x: pivot.x + r * Math.cos(deg * Math.PI / 180),
@@ -2055,7 +2055,7 @@ describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
   });
 
   test('RÉGRESSION : aller puis retour rend l\'angle de départ', () => {
-    // « De grands mouvements dans un sens puis dans l'autre » — la formulation exacte du défaut.
+    // « De grands mouvements dans un sens puis dans l'autre », la formulation exacte du défaut.
     //
     // Le balayage reste SOUS la borne des 180° : au-delà, le ré-ancrage du Fix 73 décale
     // volontairement le repère et l'aller-retour ne revient plus au point de départ (cf. le test
@@ -2068,7 +2068,7 @@ describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
     assert.equal(deg, depart, 'retour au point de départ');
   });
 
-  test('au-delà de la borne, le repère se décale — et c\'est voulu', () => {
+  test('au-delà de la borne, le repère se décale : et c\'est voulu', () => {
     // Comportement de tout défilement borné : on pousse contre la butée, le surplus est absorbé, et
     // le geste repart ensuite de l'endroit où on a quitté la butée. C'est ce qui évite l'effet
     // « articulation bloquée » du Fix 73. Épinglé ici pour qu'il soit reconnu comme un choix.
@@ -2129,17 +2129,17 @@ describe('éditeur de Personnage — balayage circulaire (Fix 79)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 77 — un angle de 0° ne doit pas fermer la session de glisser.
+// Fix 77 : un angle de 0° ne doit pas fermer la session de glisser.
 //
 // L'instrumentation qui a permis de trouver ce défaut a été retirée au Fix 89 ; le défaut, lui,
 // était bien réel, et ce test reste la seule chose qui empêche la garde de redevenir laxiste.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — la garde de fin de glisser (Fix 77)', () => {
+describe('éditeur de Personnage : la garde de fin de glisser (Fix 77)', () => {
   const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
   beforeEach(() => { closePersonaEditor(); });
 
   test('RÉGRESSION : un angle de 0° ne ferme PAS la session', () => {
-    // Le gestionnaire testait `if (!apply(...))`. Or 0° est un cas ordinaire — toute articulation
+    // Le gestionnaire testait `if (!apply(...))`. Or 0° est un cas ordinaire, toute articulation
     // au repos, et tout passage par le zéro en cours de geste. La session était donc fermée en
     // pleine manipulation, sans rien pour l'expliquer.
     openPersonaEditor(null);
@@ -2152,14 +2152,14 @@ describe('éditeur de Personnage — la garde de fin de glisser (Fix 77)', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fix 87/88 — câblage du rayon de saisie.
+// Fix 87/88, câblage du rayon de saisie.
 //
 // Par inspection de source : il vit dans le câblage des événements, hors de portée du stub DOM. Ce
-// qu'on épingle est le lien entre l'état de sélection et le rayon transmis — c'est-à-dire
+// qu'on épingle est le lien entre l'état de sélection et le rayon transmis, c'est-à-dire
 // précisément ce qu'une mutation « on repasse au réglage fixe » efface sans que rien d'autre ne
 // s'en aperçoive.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('éditeur de Personnage — rayon de saisie (Fix 87/88)', () => {
+describe('éditeur de Personnage : rayon de saisie (Fix 87/88)', () => {
   const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
   test('RÉGRESSION : le rayon de saisie dépend de la SÉLECTION', () => {
@@ -2178,20 +2178,20 @@ describe('éditeur de Personnage — rayon de saisie (Fix 87/88)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Coalescence du redessin — le câblage, pas la mécanique.
+// Coalescence du redessin, le câblage, pas la mécanique.
 //
 // La mécanique de makeFrameScheduler est vérifiée dans tests/utils.test.mjs avec une fausse
 // horloge. Ce qu'on garde ICI, c'est que les chemins RÉPÉTITIFS s'en servent : un `mousemove` qui
-// redessine directement annule tout le bénéfice, et rien ne le signalerait — l'application
+// redessine directement annule tout le bénéfice, et rien ne le signalerait, l'application
 // resterait correcte, juste plus lente. C'est la définition d'une régression invisible.
 //
 // Mesuré au moment de la bascule : 8 appels sous `mousemove`, 4 sous `wheel`.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Redessin coalescé — les chemins répétitifs passent par l\'ordonnanceur', () => {
+describe('Redessin coalescé : les chemins répétitifs passent par l\'ordonnanceur', () => {
   const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
   const lignes = src.split('\n');
 
-  // Chaque appel est rattaché à l'écouteur ouvert le plus proche au-dessus de lui — la même
+  // Chaque appel est rattaché à l'écouteur ouvert le plus proche au-dessus de lui, la même
   // attribution que celle qui a servi à mesurer, pour que le test parle de la même chose.
   function appelsParEvenement() {
     const ecouteurs = [];
@@ -2239,7 +2239,7 @@ describe('Redessin coalescé — les chemins répétitifs passent par l\'ordonna
 
   test('les autres appelants restent SYNCHRONES', () => {
     // Choix assumé : basculer les 110 sites demanderait de vérifier un par un que rien ne lit le
-    // canevas juste après. Seuls les chemins répétitifs sont concernés — ce test constate que la
+    // canevas juste après. Seuls les chemins répétitifs sont concernés, ce test constate que la
     // portée est restée limitée, au lieu de s'étendre par imitation.
     const par = appelsParEvenement();
     Object.entries(par).forEach(([kind, v]) => {
@@ -2255,13 +2255,13 @@ describe('Redessin coalescé — les chemins répétitifs passent par l\'ordonna
 //
 // Deux appels, deux lignes, et l'éditeur entier en dépend : sans wirePersonaEditor() aucun bouton
 // ne répond, sans setPersonaEditorCallbacks() la liste de poses de la modale Personnage diverge de
-// celle de l'éditeur. Ni l'un ni l'autre ne lève quoi que ce soit s'il disparaît — c'est la même
+// celle de l'éditeur. Ni l'un ni l'autre ne lève quoi que ce soit s'il disparaît, c'est la même
 // panne muette que les dix paragraphes d'aide qui n'atteignaient pas l'écran, et que la garde
 // `if (el)` de setProjectModalStatus qui avalait les échecs d'enregistrement.
 //
 // Par inspection de source : le câblage manipule le DOM, hors de portée du stub.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Extraction de persona-editor.js — la couture tient', () => {
+describe('Extraction de persona-editor.js : la couture tient', () => {
   const evt = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
   const edit = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
@@ -2285,7 +2285,7 @@ describe('Extraction de persona-editor.js — la couture tient', () => {
 
   test('RÉGRESSION : persona-editor.js n\'importe RIEN d\'events.js', () => {
     // La seule dépendance remontante a été remplacée par une injection. La réintroduire créerait un
-    // cycle d'imports — ce que setDrawCallbacks / setIOCallbacks / setSidebarCallbacks existent
+    // cycle d'imports, ce que setDrawCallbacks / setIOCallbacks / setSidebarCallbacks existent
     // précisément pour éviter (cf. docs/architecture.md).
     assert.doesNotMatch(edit, /from '\.\/events\.js'/,
       'import remontant vers events.js : cycle réintroduit');
@@ -2303,7 +2303,7 @@ describe('Extraction de persona-editor.js — la couture tient', () => {
 describe('Manuel d\'utilisation — le clic sur une section est bien câblé', () => {
   // LECTURE DU SOURCE, faute de mieux : le dom-stub a un addEventListener qui ne fait rien, donc
   // aucun clic ne peut être joué ici. C'est assumé, mais le câblage vaut d'être figé : retiré, le
-  // manuel devient entièrement muet — douze boutons qui ne font rien — et la suite restait verte,
+  // manuel devient entièrement muet, douze boutons qui ne font rien, et la suite restait verte,
   // openHelpModal étant testée par ailleurs. C'est le même angle mort que les branchements de
   // modales relevés plus haut dans ce fichier.
   const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8')
@@ -2333,11 +2333,11 @@ describe('Manuel d\'utilisation — le clic sur une section est bien câblé', (
 
 
 // ── L'éditeur n'est plus plein écran : naviguer par le menu le quitte ─────────────────────────
-describe('éditeur de Personnage — quitter par le menu de gauche', () => {
+describe('éditeur de Personnage : quitter par le menu de gauche', () => {
   // L'éditeur laisse désormais l'en-tête et le menu de gauche visibles ET cliquables. Deux choses
   // cassaient alors ensemble : la fiche à rouvrir (rouverte au-dessus d'une autre Page) et la cible
   // (introuvable, cherchée dans la Page courante). Naviguer ferme l'éditeur, ce qui supprime les
-  // deux — encore faut-il reconnaître ce qui navigue et ce qui ne navigue pas.
+  // deux, encore faut-il reconnaître ce qui navigue et ce qui ne navigue pas.
   const noeud = (attrs, parent = null) => ({ id: '', className: '', ...attrs, parentElement: parent });
 
   test('une Planche du menu : c\'est une navigation', () => {
@@ -2401,10 +2401,10 @@ describe('éditeur de Personnage — quitter par le menu de gauche', () => {
 });
 
 // ── La couture : mise en page et câblage de la sortie ─────────────────────────────────────────
-describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', () => {
+describe('éditeur de Personnage : il n\'occupe plus la fenêtre entière', () => {
   // LECTURE DES FICHIERS, faute de mieux : il n'y a pas de moteur de rendu CSS sous Node, et le
   // dom-stub n'exécute aucun écouteur. Ce qui est figé ici, c'est ce qui rendrait le reste
-  // inopérant — un retour au plein écran, ou une sortie non câblée.
+  // inopérant, un retour au plein écran, ou une sortie non câblée.
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8')
@@ -2425,7 +2425,7 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
 
   test('LE POINT QUI COMPTE : l\'éditeur vit DANS .app, qui lui sert de repère', () => {
     // Positionné en absolu, il se cale sur le premier ancêtre positionné. Laissé hors de .app, ce
-    // serait la fenêtre — et il recouvrirait de nouveau l'en-tête, silencieusement.
+    // serait la fenêtre, et il recouvrirait de nouveau l'en-tête, silencieusement.
     const iApp = html.indexOf('<div class="app">');
     const iEditeur = html.indexOf('id="personaEditorOverlay"');
     assert.ok(iApp > 0 && iEditeur > iApp, 'l\'éditeur doit être déclaré à l\'intérieur de .app');
@@ -2459,7 +2459,7 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
 
   test('LE CAS QUI A MORDU : le bouton « ? » n\'est PAS rejoué', () => {
     // Le « ? » est un basculeur. Si le Manuel était déjà ouvert dans le panneau droit avant
-    // d'entrer dans l'éditeur — panneau que l'éditeur recouvre — rejouer le clic le REFERMAIT :
+    // d'entrer dans l'éditeur, panneau que l'éditeur recouvre, rejouer le clic le REFERMAIT :
     // l'utilisateur demandait le Manuel et obtenait un panneau vide. Il agissait sur un état
     // invisible, ce qui ôte tout sens à une bascule ; sa demande, elle, est sans ambiguïté.
     const fn = src.slice(src.indexOf('async function quitterEditeurParNavigation'));
@@ -2471,7 +2471,7 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
     const iRejeu = corps.indexOf('cible.click()');
     assert.ok(iHelp > 0 && iRejeu > iHelp, 'ce cas doit sortir AVANT le rejeu générique');
     // Et il doit SORTIR, pas seulement passer en premier : sans le `return`, on affiche le Manuel
-    // puis on rejoue le clic, qui le referme aussitôt — le défaut d'origine, à l'identique.
+    // puis on rejoue le clic, qui le referme aussitôt, le défaut d'origine, à l'identique.
     assert.ok(corps.slice(iHelp, iRejeu).includes('return;'),
       'sans sortie franche, le rejeu rebascule le Manuel qu\'on vient d\'afficher');
   });
@@ -2489,7 +2489,7 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
 
   test('RÉGRESSION : « afficher le Manuel » est nommé une seule fois', () => {
     // Le bouton « ? » et la sortie de l'éditeur posent la MÊME paire de drapeaux. Recopiée des deux
-    // côtés, elle aurait fini par ne plus dire la même chose — le défaut d'origine était déjà que
+    // côtés, elle aurait fini par ne plus dire la même chose, le défaut d'origine était déjà que
     // deux endroits n'étaient pas d'accord sur ce que « affiché » veut dire.
     const sidebar = readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8');
     assert.match(sidebar, /export function afficherManuelLateral\(\)/);
@@ -2509,10 +2509,10 @@ describe('éditeur de Personnage — il n\'occupe plus la fenêtre entière', ()
 });
 
 // ── Les trois raccourcis ajoutés ──────────────────────────────────────────────────────────────
-describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
+describe('Raccourcis clavier : E, Ctrl+[ / Ctrl+], F1', () => {
   // LECTURE DU SOURCE, faute de mieux : le dom-stub n'exécute aucun écouteur, aucune frappe ne peut
   // être jouée ici. Ce qui est figé, ce sont les décisions qui rendraient le raccourci faux plutôt
-  // qu'absent — une cible mal choisie, un bouclage, une modale par-dessus laquelle on ouvre.
+  // qu'absent, une cible mal choisie, un bouclage, une modale par-dessus laquelle on ouvre.
   const src = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
   const bloc = (marqueur) => {
@@ -2535,7 +2535,7 @@ describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
     // « E » ouvrait bien l'éditeur, mais « Appliquer » n'y était pas : l'éditeur n'écrit jamais
     // dans l'Élément, il remplit le brouillon de la fiche. Sans fiche ouverte, le bouton n'a pas de
     // destinataire et se masque. Emprunter le crayon plutôt que d'écrire ici un second chemin qui
-    // poserait les angles sur l'Élément — ce serait une TROISIÈME définition d'« appliquer une
+    // poserait les angles sur l'Élément, ce serait une TROISIÈME définition d'« appliquer une
     // pose », après les deux gestionnaires d'enregistrement des fiches.
     const b = bloc("e.key === 'e'");
     assert.match(b, /openPersonaModal\(cible\); personaEditorOpenBtn\.click\(\)/);
@@ -2592,7 +2592,7 @@ describe('Raccourcis clavier — E, Ctrl+[ / Ctrl+], F1', () => {
 
 
 // ── allerALaPlanche ───────────────────────────────────────────────────────────────────────────
-describe('allerALaPlanche — un seul endroit sait changer de Planche', () => {
+describe('allerALaPlanche : un seul endroit sait changer de Planche', () => {
   // Extraite du clic sur une ligne du menu quand le raccourci Ctrl+[ / Ctrl+] est arrivé. Elle est
   // vérifiée par son EFFET, pas par lecture du source : elle ne touche que S.
   beforeEach(() => {
@@ -2603,7 +2603,7 @@ describe('allerALaPlanche — un seul endroit sait changer de Planche', () => {
     }];
     // Une VRAIE Scène : `currentVolume()` efface un `editingSceneId` qui ne désigne rien, si bien
     // qu'avec une liste vide le test passait quoi que fasse allerALaPlanche. Une mutation l'a
-    // montré — le décor du test rendait l'assertion creuse, pas le code correct.
+    // montré, le décor du test rendait l'assertion creuse, pas le code correct.
     S.scenes = [{
       id: 'sc1', name: 'Scène', format: 'fb', w: 550, h: 725, scale: 4,
       pages: [{ id: 'sp1', objects: [] }],
@@ -2613,7 +2613,7 @@ describe('allerALaPlanche — un seul endroit sait changer de Planche', () => {
 
   test('LE POINT QUI COMPTE : elle sort du mode Scène', () => {
     // Sans cette remise à zéro, l'application afficherait la Scène tout en se croyant sur une
-    // Planche — currentPageData() redirige sur la Scène tant que `editingSceneId` est posé.
+    // Planche, currentPageData() redirige sur la Scène tant que `editingSceneId` est posé.
     S.editingSceneId = 'sc1';
     allerALaPlanche(0, 1);
     assert.equal(S.editingSceneId, null, 'on reste dans la Scène en croyant en être sorti');

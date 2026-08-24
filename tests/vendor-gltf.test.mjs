@@ -1,12 +1,12 @@
 /**
- * tests/vendor-gltf.test.mjs — la copie adaptée de GLTFLoader et son lien avec sa source.
+ * tests/vendor-gltf.test.mjs, la copie adaptée de GLTFLoader et son lien avec sa source.
  *
  * `src/vendor/GLTFLoader.js` est une copie de three, modifiée en un seul endroit : son en-tête
  * d'import, remplacé par une déstructuration du `THREE` global (ce dépôt n'a pas de bundler, donc
  * le spécificateur nu « three » n'est pas résoluble).
  *
  * CE QUE CE FICHIER GARDE, et pourquoi c'est nécessaire. Une copie se périme en silence. Le jour où
- * quelqu'un met three à jour, la version de node_modules peut réclamer un symbole de plus — et la
+ * quelqu'un met three à jour, la version de node_modules peut réclamer un symbole de plus, et la
  * seule manifestation serait un `ReferenceError` à l'exécution, au moment précis où l'utilisateur
  * importe son premier modèle. On confronte donc la liste déstructurée à celle de l'original.
  *
@@ -38,10 +38,10 @@ function symbolesDéstructurés(source){
   return m ? m[1].split(',').map(s => s.trim()).filter(Boolean) : [];
 }
 
-describe('GLTFLoader embarqué — la copie ne dérive pas de sa source', () => {
+describe('GLTFLoader embarqué : la copie ne dérive pas de sa source', () => {
   test('RÉGRESSION : la copie tire du global TOUT ce que l\'original importe', () => {
     // Le test qui justifie ce fichier. Une mise à jour de three qui ajoute un symbole doit faire
-    // tomber la suite, pas le chargeur — et surtout pas chez l'utilisateur.
+    // tomber la suite, pas le chargeur, et surtout pas chez l'utilisateur.
     const attendus = symbolesImportés(ORIGINAL);
     const fournis = new Set(symbolesDéstructurés(COPIE));
     const manquants = attendus.filter(n => !fournis.has(n));
@@ -58,7 +58,7 @@ describe('GLTFLoader embarqué — la copie ne dérive pas de sa source', () => 
 
   test('RÉGRESSION : plus aucun import de spécificateur nu', () => {
     // C'est LA modification. Si quelqu'un recopie le fichier de node_modules par-dessus, cette
-    // ligne revient — et le chargement du module échoue dans le navigateur, pas ici.
+    // ligne revient, et le chargement du module échoue dans le navigateur, pas ici.
     assert.doesNotMatch(COPIE, /^import .* from ['"]three['"];/m,
       'l\'import nu « three » est revenu : la copie n\'est plus adaptée');
     assert.match(COPIE, /^const \{[\s\S]*?\} = THREE;/m, 'la déstructuration a disparu');
@@ -86,7 +86,7 @@ describe('GLTFLoader embarqué — la copie ne dérive pas de sa source', () => 
   });
 });
 
-describe('GLTFLoader embarqué — il se charge vraiment', () => {
+describe('GLTFLoader embarqué : il se charge vraiment', () => {
   test('le module s\'importe et expose un constructeur', async () => {
     // Le vrai contrôle de bout en bout accessible sous Node : si la déstructuration réclamait un
     // symbole absent du THREE global, cet import lèverait ici plutôt que chez l'utilisateur.
@@ -99,7 +99,7 @@ describe('GLTFLoader embarqué — il se charge vraiment', () => {
 
   test('il est packagé dans l\'installeur', () => {
     // `src/**/*` le couvre déjà, mais rien ne dit que ce motif restera. Le vérifier ici coûte deux
-    // lignes, et la panne qu'il évite — un chargeur absent du .exe seulement — a déjà eu lieu une
+    // lignes, et la panne qu'il évite, un chargeur absent du .exe seulement, a déjà eu lieu une
     // fois dans ce dépôt, avec style.css.
     const motifs = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8')).build.files;
     assert.ok(motifs.some(m => m === 'src/**/*' || m.includes('vendor')),

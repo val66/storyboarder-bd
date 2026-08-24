@@ -13,7 +13,7 @@
  *
  * CE QU'ON NE FAIT PAS, et c'est une règle : un modèle introuvable ne supprime JAMAIS l'Élément qui
  * le porte. Un disque externe non monté, un antivirus qui verrouille un fichier, et le placement
- * patiemment réglé — position, échelle, orientation — disparaîtrait, gravé quelques secondes plus
+ * patiemment réglé, position, échelle, orientation, disparaîtrait, gravé quelques secondes plus
  * tard par la sauvegarde automatique. L'Élément reste, en boîte de remplacement, et redevient normal
  * dès que le fichier revient. Cf. docs/persisted-data.md § 5.
  */
@@ -29,7 +29,7 @@ const EXTENSION = '.glb';
  * Le discriminant persisté d'un modèle importé.
  *
  * PAS de nouveau `type` : un modèle importé est un `type: 'objet3d'` comme les autres, avec un
- * `objType` nouveau. C'est le choix qui coûte le moins et rapporte le plus — il hérite d'un coup du
+ * `objType` nouveau. C'est le choix qui coûte le moins et rapporte le plus, il hérite d'un coup du
  * placement, de l'aimantation au Sol, des coordonnées monde, de la ligne de panneau latéral, du
  * glisser, du redimensionnement. Trente-huit constructeurs de rigs se distinguent déjà par `objType` ;
  * celui-ci en est un trente-neuvième, qui lit un fichier au lieu de bâtir des boîtes.
@@ -47,14 +47,14 @@ export function isImportedModel(o){
 
 /**
  * Construit l'Élément persisté d'un modèle importé. Fonction PURE : elle ne touche ni `S`, ni la
- * Page — c'est l'appelant qui range le résultat où il veut (une Case, ou le canevas d'une Scène).
+ * Page, c'est l'appelant qui range le résultat où il veut (une Case, ou le canevas d'une Scène).
  *
- * `modelFile` est le seul champ vraiment nouveau du format. Tout le reste — x, y, w, h, baseW/baseH,
- * z, rotations, realHeightFloor, magnetGround — est la forme d'un objet3d ordinaire, délibérément
+ * `modelFile` est le seul champ vraiment nouveau du format. Tout le reste, x, y, w, h, baseW/baseH,
+ * z, rotations, realHeightFloor, magnetGround, est la forme d'un objet3d ordinaire, délibérément
  * recopiée d'addObjectToPanel pour qu'un modèle importé se comporte comme une chaise.
  *
  * La hauteur : `realHeightM` est la source de vérité du rendu 3D, qui normalise le modèle dessus
- * (cf. scene3d.js). Une valeur fausse se corrige donc dans la modale sans rien casser — c'est ce qui
+ * (cf. scene3d.js). Une valeur fausse se corrige donc dans la modale sans rien casser, c'est ce qui
  * nous dispense d'aller lire les dimensions du fichier ici, où elles ne sont pas encore disponibles.
  */
 export function createModelElement({ panel, page, modelFile, name, realHeightM, ratioLargeur } = {}){
@@ -62,11 +62,11 @@ export function createModelElement({ panel, page, modelFile, name, realHeightM, 
     ? realHeightM
     : OBJECT_REAL_HEIGHT_M[MODEL_OBJ_TYPE];
   const h = clamp(realH * WALL_PX_PER_UNIT_3D, 2, page.h * 0.95);
-  // L'EMPREINTE 2D SUIT LA SILHOUETTE, elle n'est plus carrée. Elle l'était sur ce commentaire —
-  // « 1:1 tant qu'on n'a pas lu le fichier » — devenu faux : le fichier EST décodé à cet instant,
+  // L'EMPREINTE 2D SUIT LA SILHOUETTE, elle n'est plus carrée. Elle l'était sur ce commentaire,
+  // « 1:1 tant qu'on n'a pas lu le fichier », devenu faux : le fichier EST décodé à cet instant,
   // c'est de lui que vient `realHeightM`, et sa largeur se mesure au même endroit (cf.
   // ratioLargeurModele3D dans model-cache.js). Mesuré : worker_j 0,86, anime_girl1 0,49, un
-  // Personnage intégré 0,63 — une boîte carrée était donc jusqu'à deux fois trop large.
+  // Personnage intégré 0,63, une boîte carrée était donc jusqu'à deux fois trop large.
   //
   // 1 PAR DÉFAUT, ET CE N'EST PAS UN REPLI PARESSEUX : sans fichier lisible, l'Élément s'affiche en
   // boîte de remplacement, qui est un CUBE. Carré est alors la bonne réponse.
@@ -93,8 +93,8 @@ export function createModelElement({ panel, page, modelFile, name, realHeightM, 
  * `nomDeModeleAcceptable` dans main.js). Deux métiers différents, pas un doublon : si l'un des deux
  * disparaissait, l'autre ne le remplacerait pas.
  *
- * Retire les séparateurs de chemin — c'est ce qui empêche un nom comme `../../ailleurs` de sortir du
- * dossier —, les caractères interdits par Windows, les points de tête (fichiers cachés et `..`), et
+ * Retire les séparateurs de chemin, c'est ce qui empêche un nom comme `../../ailleurs` de sortir du
+ * dossier, les caractères interdits par Windows, les points de tête (fichiers cachés et `..`), et
  * force l'extension.
  */
 export function sanitizeModelName(nom){
@@ -155,7 +155,7 @@ export async function listModels(){
 /**
  * Ouvre le sélecteur, range le fichier choisi, rend le nom retenu.
  *
- * Résultats possibles, tous explicites — aucun ne se tait :
+ * Résultats possibles, tous explicites, aucun ne se tait :
  *   { canceled: true }               l'utilisateur a renoncé
  *   { ok: true, name, déjàPrésent }  rangé (ou retrouvé à l'identique, cf. `déjàPrésent`)
  *   { ok: false, error }             rien n'a été écrit, et on dit pourquoi
@@ -195,7 +195,7 @@ export async function importModel(){
  * refusera de son côté tout ce qui ne serait pas déjà propre.
  *
  * ⚠️ AUCUNE RÉSOLUTION DE COLLISION, contrairement à l'import. `resolveModelName` transformerait
- * « chaise » en « chaise (2) » si le nom est pris — acceptable pour un import, où l'utilisateur
+ * « chaise » en « chaise (2) » si le nom est pris, acceptable pour un import, où l'utilisateur
  * demande « range ce fichier », inacceptable pour un renommage, où il demande « appelle-le
  * comme ça ». Recevoir un autre nom que celui qu'on a écrit est une réponse à une question qu'on
  * n'a pas posée. On refuse, et on le dit.
@@ -208,7 +208,7 @@ export async function renameModel(ancien, nouveau){
   if (propre === ancien) return { ok: true, name: ancien, inchangé: true };
   const existants = await listModels();
   // La casse ne distingue pas deux fichiers sous Windows. Le seul cas autorisé est le renommage du
-  // fichier vers lui-même à la casse près — « chaise.glb » → « Chaise.glb » —, que le process
+  // fichier vers lui-même à la casse près, « chaise.glb » → « Chaise.glb », que le process
   // principal sait exécuter et qui n'écrase rien.
   const conflit = existants.some(n => n.toLowerCase() === propre.toLowerCase()
     && n.toLowerCase() !== ancien.toLowerCase());

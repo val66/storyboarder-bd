@@ -1,8 +1,8 @@
 /**
- * tests/docs.test.mjs — parité bilingue de `docs/`.
+ * tests/docs.test.mjs, parité bilingue de `docs/`.
  *
  * Les notes de contributeur existent en deux langues : `nom.md` en anglais, `nom.fr.md` en
- * français. Rien dans le code ne les lit, donc rien ne casse quand elles divergent — et c'est
+ * français. Rien dans le code ne les lit, donc rien ne casse quand elles divergent, et c'est
  * précisément ce qui rend la divergence probable.
  *
  * Le précédent est frais : le manuel intégré appariait ses sections par RANG, un groupe a été
@@ -12,7 +12,7 @@
  * langue en cours de route, ou une section ajoutée dans une seule version.
  *
  * Ce qui n'est PAS vérifié, et ne peut pas l'être : que les deux versions disent la même chose.
- * Aucun test ne lit le français. Ces contrôles portent sur la CHARPENTE — ils attrapent l'oubli,
+ * Aucun test ne lit le français. Ces contrôles portent sur la CHARPENTE, ils attrapent l'oubli,
  * pas le contresens.
  */
 import { test, describe } from 'node:test';
@@ -33,7 +33,7 @@ const liensDe = (texte) => [...texte.matchAll(/\]\(([^)\s]+)\)/g)]
   .map(m => m[1])
   .filter(c => !/^https?:/.test(c) && !c.startsWith('#'));
 
-describe('docs/ — chaque note existe dans les deux langues', () => {
+describe('docs/ : chaque note existe dans les deux langues', () => {
   test('il y a autant de documents anglais que français', () => {
     assert.ok(anglais.length > 0, 'aucun document anglais trouvé');
     assert.equal(anglais.length, francais.length,
@@ -42,7 +42,7 @@ describe('docs/ — chaque note existe dans les deux langues', () => {
 
   test('RÉGRESSION : aucun document sans sa contrepartie', () => {
     // Le cas qui se produira : on ajoute une note, on oublie l'autre langue. Sans ce test, elle
-    // reste seule indéfiniment — personne ne relit un dossier de documentation pour l'inventorier.
+    // reste seule indéfiniment, personne ne relit un dossier de documentation pour l'inventorier.
     fichiers.forEach(f => {
       assert.ok(existsSync(join(DOCS, jumeau(f))),
         `« ${f} » n'a pas de contrepartie : « ${jumeau(f)} » manque`);
@@ -50,7 +50,7 @@ describe('docs/ — chaque note existe dans les deux langues', () => {
   });
 });
 
-describe('docs/ — les liens mènent quelque part', () => {
+describe('docs/ : les liens mènent quelque part', () => {
   test('RÉGRESSION : aucun lien mort entre documents', () => {
     // Les neuf fichiers ont été renommés en une fois ; un lien oublié n'aurait fait échouer
     // strictement rien.
@@ -64,7 +64,7 @@ describe('docs/ — les liens mènent quelque part', () => {
 
   test('RÉGRESSION : les renvois en code inline désignent aussi un fichier réel', () => {
     // Trou découvert en mutant : la première version ne regardait que les liens Markdown. Or trois
-    // documents citent leurs voisins en code inline — `docs/persisted-data.md` — et une mutation
+    // documents citent leurs voisins en code inline, `docs/persisted-data.md`, et une mutation
     // sur l'un d'eux passait sans être vue. Une référence est une référence, sa syntaxe n'y change
     // rien.
     fichiers.forEach(f => {
@@ -102,7 +102,7 @@ describe('docs/ — les liens mènent quelque part', () => {
   });
 });
 
-describe('docs/ — les deux versions ont la même charpente', () => {
+describe('docs/ : les deux versions ont la même charpente', () => {
   test('RÉGRESSION : même nombre de titres dans les deux langues', () => {
     // Une section ajoutée d'un seul côté est le début exact de la dérive qu'a connue le manuel
     // intégré. Le compte de titres ne dit rien du contenu, mais il attrape l'oubli.
@@ -126,7 +126,7 @@ describe('docs/ — les deux versions ont la même charpente', () => {
   });
 });
 
-describe('docs/ — les renvois depuis le code visent une note existante', () => {
+describe('docs/ : les renvois depuis le code visent une note existante', () => {
   test('RÉGRESSION : « cf. docs/xxx.md » dans le code pointe vers un fichier réel', () => {
     // Treize renvois vivaient dans src/, tests/ et tools/ avec les anciens noms français. Un
     // renommage les casse en silence : ce sont des commentaires, rien ne les compile.

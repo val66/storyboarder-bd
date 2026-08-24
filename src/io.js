@@ -1,5 +1,5 @@
 /**
- * io.js — Project persistence: serialization, migrations, save/load,
+ * io.js. Project persistence: serialization, migrations, save/load,
  * Project management modals (rename, confirm, quit).
  *
  * Callbacks injected by app.js (setIOCallbacks) to avoid circular imports:
@@ -50,15 +50,15 @@ export function setRenameModelCallback(fn){ _applyRenameModel = fn; }
 //
 // _descModal / _objectModal / _settingsModal ont disparu avec la liste de gardes d'Échap : ils n'y
 // servaient qu'à demander « celle-ci est-elle ouverte ? », question désormais posée au DOM une
-// seule fois (cf. src/modal-stack.js). Les retirer plutôt que les garder « au cas où » — du code
+// seule fois (cf. src/modal-stack.js). Les retirer plutôt que les garder « au cas où », du code
 // mort dans un fichier de 1100 lignes finit par se faire relire comme s'il comptait.
 
 export function hasElectronAPI(){ return !!(window.storyboarderAPI); }
 export function supportsFileSystemAccess(){ return typeof window.showSaveFilePicker === 'function'; }
 
-// Fix 57 — `poses` n'embarque plus la bibliothèque entière, mais SEULEMENT les poses citées par ce
+// Fix 57 : `poses` n'embarque plus la bibliothèque entière, mais SEULEMENT les poses citées par ce
 // projet. La bibliothèque appartient à l'application (settings.json) ; ce que le fichier porte est
-// une copie de secours, pour qu'il reste lisible sur une autre machine — sans quoi un projet envoyé
+// une copie de secours, pour qu'il reste lisible sur une autre machine, sans quoi un projet envoyé
 // à quelqu'un afficherait « inconnue » sur chacune de ses poses.
 //
 // ⚠️ Le NOM du champ et sa forme ne changent pas : un fichier écrit avant ce changement reste lu à
@@ -78,10 +78,10 @@ export function serializeProject(){
 // l'application se font sur S.poses, de façon SYNCHRONE ; la persistance, elle, est asynchrone et
 // silencieuse. Sans ce découplage, chaque affichage de la liste des poses attendrait une IPC.
 //
-// Sans window.storyboarderAPI — les tests sous Node, notamment — tout continue de fonctionner en
+// Sans window.storyboarderAPI, les tests sous Node, notamment, tout continue de fonctionner en
 // mémoire. Une bibliothèque non persistée vaut mieux qu'une exception au démarrage.
 export const POSE_LIBRARY_SETTING_KEY = 'poseLibrary';
-// Fix 59 — ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier toutes les suppressions, et les poses
+// Fix 59 : ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier toutes les suppressions, et les poses
 // écartées réapparaîtraient au premier projet ouvert.
 export const POSE_DISMISSED_SETTING_KEY = 'poseLibraryDismissed';
 // ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier tous les renommages de modèles, et les Projets qui
@@ -181,7 +181,7 @@ export function setPoseLibrary(poses){
 }
 
 // Au démarrage. Premier lancement (clé absente) : on SÈME les poses intégrées, qui deviennent des
-// entrées ordinaires — c'est ce qui rend leur traitement uniforme.
+// entrées ordinaires, c'est ce qui rend leur traitement uniforme.
 //
 // ⚠️ Une bibliothèque VIDE n'est pas un premier lancement : c'est un utilisateur qui a tout
 // supprimé. Resemer là ferait réapparaître les 15 poses à chaque redémarrage, en annulant sans
@@ -198,7 +198,7 @@ export async function loadPoseLibrary(builtins, poseTable, skeleton){
   return setPoseLibrary(seedPoseLibrary3D(builtins, poseTable, skeleton, tr));
 }
 
-// Fix 59 — charge la liste des suppressions mémorisées. Séparée de loadPoseLibrary : elle n'a pas
+// Fix 59 : charge la liste des suppressions mémorisées. Séparée de loadPoseLibrary : elle n'a pas
 // de semis, une liste absente signifie simplement « rien de supprimé ».
 export async function loadDismissedPoses(){
   if (!hasElectronAPI()) { S.dismissedPoses = []; return S.dismissedPoses; }
@@ -210,10 +210,10 @@ export async function loadDismissedPoses(){
   return S.dismissedPoses;
 }
 
-// Fix 59 — « Restaurer les poses de base » (modale Configuration).
+// Fix 59 : « Restaurer les poses de base » (modale Configuration).
 //
 // Comblement de trous, PAS remise à zéro d'usine : seules les poses intégrées ABSENTES sont
-// réajoutées. Une pose de base renommée est présente, donc jamais écrasée — cliquer ne peut pas
+// réajoutées. Une pose de base renommée est présente, donc jamais écrasée, cliquer ne peut pas
 // faire perdre un renommage. Les poses personnelles ne sont pas touchées non plus.
 //
 // Lève aussi leur mémorisation de suppression, sans quoi elles seraient réécartées au premier projet
@@ -226,13 +226,13 @@ export function restoreBuiltinPoses(builtins, poseTable, skeleton){
   return manquantes.length;
 }
 
-// Combien de poses intégrées manquent — pour l'étiquette du bouton, qui se désactive à zéro.
+// Combien de poses intégrées manquent : pour l'étiquette du bouton, qui se désactive à zéro.
 export function missingBuiltinPoseCount(builtins, poseTable, skeleton){
   return missingBuiltinPoses3D(builtins, poseTable, S.poses, skeleton, tr).length;
 }
 
 // Derives the Project name from the file name the user picked in the save dialog
-// (e.g. "Adventure.json" -> "Adventure"), and updates the display accordingly — on user
+// (e.g. "Adventure.json" -> "Adventure"), and updates the display accordingly, on user
 // request, so that the name given to the file at creation time is the one shown at the
 // top of the left-hand menu, instead of staying on the default "Projet".
 export function applyProjectNameFromFileName(nameOrPath){
@@ -254,7 +254,7 @@ export function applyProjectNameFromFileName(nameOrPath){
 // handler above): an Element whose homePanelId points to a Panel that no longer exists in
 // its Page is unambiguously an orphan, even if it geometrically overlaps ANOTHER existing
 // Panel (which would otherwise make it visually "latch onto" that other Panel without ever
-// really belonging to it, cf. findOwningPanel — a RENDERING heuristic, not the source of
+// really belonging to it, cf. findOwningPanel, a RENDERING heuristic, not the source of
 // truth for ownership). Run on every Project load to catch orphans already created by old
 // bugs (cf. user feedback: "no Element should exist in the Page unless it's linked to a
 // Panel").
@@ -276,7 +276,7 @@ export function cleanupOrphanedElements(){
 // Migration: assign homePanelId to Elements (perso/objet3d) that are missing it.
 // Needed for old saved files predating homePanelId as the source of truth for ownership.
 // Without this field, findOwningPanel falls back to the geometric heuristic (last panel in
-// page.objects that the Element overlaps the most) — correct at creation time, but unstable
+// page.objects that the Element overlaps the most), correct at creation time, but unstable
 // if Panels move afterwards, and especially fragile for Build-Tool Walls whose 2D box can
 // extend past the edges of their original panel. Visible symptom of the bug: a Panel shows
 // the Walls of a NEIGHBORING Panel, and "nudging the Panel slightly" fixes it (because it
@@ -310,7 +310,7 @@ export function migrateMissingHomePanelId(){
         o.homePanelId = roomToPanel.get(o.pieceId);
         return;
       }
-      // (b) Geometric overlap — same logic as findOwningPanel (last panel by index).
+      // (b) Geometric overlap : same logic as findOwningPanel (last panel by index).
       let best = null, bestIdx = -1;
       panelEntries.forEach(({ panel, idx }) => {
         const ow = Math.max(0, Math.min(o.x + o.w, panel.x + panel.w) - Math.max(o.x, panel.x));
@@ -348,7 +348,7 @@ export function migrateSceneTopDownDefault(){
 
 // wxFloor migration: computes and stores wxFloor for every perso/objet3d that's missing it.
 // Without an explicit wxFloor, renderPanelScene3D fell back to ensureElementWorldPos3D, which
-// depends on the current camera angle — giving wrong positions after loadSceneIntoPanel
+// depends on the current camera angle, giving wrong positions after loadSceneIntoPanel
 // (camera reset). After this migration, the world X position is always stored and stable
 // regardless of the camera.
 // Migration Phase 1: guarantees wxFloor, wzFloor and realHeightFloor are defined for every
@@ -373,7 +373,7 @@ export function migrateElementWxFloor(){
       if (o.wzFloor === undefined) {
         o.wzFloor = typeof o.z === 'number' ? o.z : 0;
       }
-      // realHeightFloor (excludes Walls — they use their own geometry)
+      // realHeightFloor (excludes Walls : they use their own geometry)
       if (o.realHeightFloor === undefined && !WALL_TYPES.includes(o.objType)) {
         const dist = panelDepthToDistance3D(getElementDepth(o));
         const factor = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist);
@@ -381,17 +381,17 @@ export function migrateElementWxFloor(){
       }
       // Fix 22b: repair corrupted baseH/baseW on load (old projects where
       // loadSceneIntoPanel used to multiply baseH*s while realHeightFloor stayed unscaled).
-      // Repaired eagerly here so the data is sound as soon as the project is read — the lazy
+      // Repaired eagerly here so the data is sound as soon as the project is read, the lazy
       // calls in getPersonaScalePercent/applyPersonaSizePercent remain as a safety net.
       if (!WALL_TYPES.includes(o.objType)) repairElementBase3D(o);
     });
   });
 }
 
-// Phase 3 — De-scaling world coords for old projects where loadSceneIntoPanel used to apply
+// Phase 3 : De-scaling world coords for old projects where loadSceneIntoPanel used to apply
 // a factor s (panel.sceneScale) to every physical quantity. After this migration, all
 // Elements are at real size and the camera is pulled back to camDist =
-// PANEL_CAM_DEFAULT_DIST_3D/s to show the entirety of the content — identical to Phase 2's
+// PANEL_CAM_DEFAULT_DIST_3D/s to show the entirety of the content, identical to Phase 2's
 // behavior for new loads. Called AFTER migrateElementWxFloor so the missing world coords are
 // already populated (from the 2D position) before being de-scaled.
 export function migratePanelWorldCoords(){
@@ -405,7 +405,7 @@ export function migratePanelWorldCoords(){
       const invS = 1 / sc;
       (page.objects || []).forEach(o => {
         if (o.homePanelId !== panel.id) return;
-        // World positions / sizes — multiplying by invS reverses the original factor s.
+        // World positions / sizes : multiplying by invS reverses the original factor s.
         if (typeof o.wxFloor        === 'number') o.wxFloor        *= invS;
         if (typeof o.wzFloor        === 'number') o.wzFloor        *= invS;
         if (typeof o.realHeightFloor=== 'number') o.realHeightFloor*= invS;
@@ -456,19 +456,19 @@ export function migratePanelWorldCoords(){
 // the saved Project's objects already carry ids "o1", "o2", ... : the very next newId() call
 // would then reuse an id already used by an existing object, and
 // page.objects.find(o => o.id === S.selectedId) would fall back to THAT existing object (the
-// first in the array with that id) instead of the object just created — hence the reported
+// first in the array with that id) instead of the object just created, hence the reported
 // symptom ("it selects a different Panel", especially after relaunching the app). Recursively
 // walks everything that may contain ids (Volumes/Pages/Elements, Scenes) to cover every
 // prefix (o/t/p/sc/piece...).
-// Fix 47 — remet la bibliothèque de poses d'un fichier chargé dans une forme exploitable.
+// Fix 47 : remet la bibliothèque de poses d'un fichier chargé dans une forme exploitable.
 //
 // Tolérante par principe : un projet enregistré avant l'existence des poses n'a pas le champ, et un
 // fichier bricolé à la main peut contenir n'importe quoi. Rien de tout cela ne doit empêcher
-// l'ouverture du projet — les Personnages, eux, portent déjà leurs angles et s'affichent
+// l'ouverture du projet, les Personnages, eux, portent déjà leurs angles et s'affichent
 // correctement même sans bibliothèque du tout.
 //
 // Une entrée sans `id` utilisable est écartée : aucun Personnage ne peut la citer, elle
-// n'encombrerait la liste des poses que pour rien. Les doublons d'id sont CONSERVÉS tels quels —
+// n'encombrerait la liste des poses que pour rien. Les doublons d'id sont CONSERVÉS tels quels,
 // les dédoublonner en silence masquerait un vrai problème ; la recherche prend simplement le
 // premier, comportement couvert par un test.
 export function normalizePoses3D(raw){
@@ -497,7 +497,7 @@ export function resyncIdCounter(data){
   };
   visit(data && data.tomes);
   visit(data && data.scenes);
-  // Fix 47 — les poses portent des ids (« pose1 », « pose2 »…). Sans cette visite, une pose créée
+  // Fix 47 : les poses portent des ids (« pose1 », « pose2 »…). Sans cette visite, une pose créée
   // après chargement réutiliserait un id déjà pris, et comme les Personnages citent leur pose PAR ID
   // (cf. resolvePoseLabel3D), c'est un Personnage qui se retrouverait avec la mauvaise pose.
   visit(data && data.poses);
@@ -509,13 +509,13 @@ export function resyncIdCounter(data){
  * present but structurally unusable; returns silently for absent/empty data (a new Project).
  *
  * WHY IT THROWS INSTEAD OF REPAIRING. Coercing a malformed `tomes` to `[]` would open an empty
- * Project silently — and the next autosave would then overwrite the real file with that emptiness.
+ * Project silently, and the next autosave would then overwrite the real file with that emptiness.
  * A file we cannot read must leave the current Project untouched, so the user still has both.
  * Refusing loudly is the safe answer here; repairing quietly is the destructive one.
  *
  * WHY IT RUNS FIRST. applyProjectData used to assign S.tomes and only then reach the code that
  * throws. The exception left a half-loaded Project in memory while S.projectFilePath still pointed
- * at the PREVIOUS file — one Ctrl+S away from destroying it. Same ordering rule as
+ * at the PREVIOUS file, one Ctrl+S away from destroying it. Same ordering rule as
  * tools/bump-version.mjs: all checks before all writes (cf. docs/versioning.md).
  */
 export function validateProjectShape(data){
@@ -550,10 +550,10 @@ export function applyProjectData(data){
   S.currentTomeIndex = (data && data.currentTomeIndex) || 0;
   S.currentPageIndex = (data && data.currentPageIndex) || 0;
   S.scenes = (data && data.scenes) || [];
-  // Fix 57 — la bibliothèque de poses appartient désormais à l'APPLICATION, pas au projet. Un
+  // Fix 57 : la bibliothèque de poses appartient désormais à l'APPLICATION, pas au projet. Un
   // fichier n'en porte qu'une copie des poses qu'il utilise, pour rester lisible ailleurs : on
   // FUSIONNE au lieu de remplacer. Écraser S.poses ici ferait qu'ouvrir un projet effacerait toute
-  // la bibliothèque personnelle — y compris les poses semées au premier lancement.
+  // la bibliothèque personnelle, y compris les poses semées au premier lancement.
   //
   // La fusion n'ajoute que les ids inconnus (cf. mergePoseLibrary3D) : un projet ancien ne peut donc
   // pas annuler un renommage fait depuis.
@@ -607,7 +607,7 @@ export function applyProjectData(data){
     // Fix 13d: reset the one-shot centering state (Element selection outside Camera mode).
     // These fields are included in JSON.stringify (runtime, non-Symbol): if a save happens
     // while an Element was selected (_lastOrbitSelId ≠ null) and the pre-centering restore is
-    // pending (_preCenterWx set), reloading restores this intermediate state — on the first
+    // pending (_preCenterWx set), reloading restores this intermediate state, on the first
     // render, framePanelCamera3D's "deselection" branch triggers camWxTarget = _preCenterWx,
     // diverging from camWx (aligned above on camWxTarget BEFORE the reload) and restarting a
     // spurious animation. Resetting here guarantees a neutral starting state: the next
@@ -627,7 +627,7 @@ export function applyProjectData(data){
   // Décodage des modèles importés, LANCÉ SANS ÊTRE ATTENDU. C'est le cœur du montage de l'étape 4 :
   // le chemin de dessin est synchrone et ne peut pas patienter, donc les modèles arrivent après, et
   // leur arrivée redéclenche un rendu (cf. setModelCacheCallbacks). Le Projet s'ouvre entièrement
-  // même si un fichier manque — chaque modèle absent devient une boîte de remplacement, et aucun
+  // même si un fichier manque, chaque modèle absent devient une boîte de remplacement, et aucun
   // Élément n'est supprimé (cf. docs/persisted-data.md § 5).
   const _tousLesObjets = [...S.tomes, ...S.scenes]
     .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
@@ -670,7 +670,7 @@ export function updateLastSavedIndicator(){
 setInterval(updateLastSavedIndicator, 1000);
 
 // Silently writes the Project's current state to an already-obtained file handle (cf.
-// S.projectFileHandle) — used by both manual save and autosave.
+// S.projectFileHandle), used by both manual save and autosave.
 export async function writeProjectToHandle(handle){
   try {
     const writable = await handle.createWritable();
@@ -689,7 +689,7 @@ export async function writeProjectToHandle(handle){
 }
 
 // Electron-side write (window.storyboarderAPI path, cf. preload.js/main.js) to the
-// already-known file (S.projectFilePath) — equivalent to writeProjectToHandle above but for
+// already-known file (S.projectFilePath), equivalent to writeProjectToHandle above but for
 // the native IPC path.
 export async function writeProjectToPath(filePath){
   try {
@@ -709,7 +709,7 @@ export async function writeProjectToPath(filePath){
 
 // Fallback without the File System Access API nor window.storyboarderAPI: a plain classic
 // download (the user then chooses where to save it via the browser's usual dialog), with no
-// reusable handle — autosave will therefore remain unavailable in this case.
+// reusable handle, autosave will therefore remain unavailable in this case.
 export function downloadProjectAsFile(){
   const blob = new Blob([serializeProject()], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -725,7 +725,7 @@ export function downloadProjectAsFile(){
 export function stopAutosave(){
   if (S.autosaveIntervalId) { clearInterval(S.autosaveIntervalId); S.autosaveIntervalId = null; }
 }
-// Autosave every minute — on user request ("once the project is created, have an automatic
+// Autosave every minute : on user request ("once the project is created, have an automatic
 // save every minute"): only rewrites the file if the Project has actually changed since the
 // last save (cf. S.projectDirty) and only if a file location is already known, preferring the
 // Electron IPC path (S.projectFilePath), otherwise the web File System Access API path
@@ -740,7 +740,7 @@ export function startAutosave(){
   }, S.autosaveIntervalMs);
 }
 
-// Returns true if the save succeeded, false if it was canceled or failed — needed so the
+// Returns true if the save succeeded, false if it was canceled or failed, needed so the
 // "Save and quit" button in quitConfirmModal knows whether it can quit or must stay open (on
 // user request).
 
@@ -763,7 +763,7 @@ export async function saveProjectFlow(){
         // Message conditionnel. Il était inconditionnel : un disque plein ou un fichier en lecture
         // seule affichait « Projet enregistré. » par-dessus le message d'échec que
         // writeProjectToPath venait de poser. L'utilisateur était informé du contraire de ce qui
-        // s'était passé — et refermait la modale, satisfait.
+        // s'était passé, et refermait la modale, satisfait.
         if (!ok) return false;                      // le message d'échec est déjà posé
         setProjectModalStatus(tr('Project saved.', 'Projet enregistré.'));
         startAutosave();
@@ -834,7 +834,7 @@ export async function loadExistingProjectFlow(){
       closeProjectModal();
     } catch (err) {
       // stopAutosave() a été appelé AVANT la lecture. Sans ce redémarrage, un fichier refusé
-      // laissait la sauvegarde automatique éteinte pour le reste de la session — en silence, sur
+      // laissait la sauvegarde automatique éteinte pour le reste de la session, en silence, sur
       // le Projet précédent resté ouvert. Le message d'erreur ne parlait que du fichier refusé.
       startAutosave();
       setProjectModalStatus(tr('Could not load this project file.', 'Impossible de charger ce fichier de Projet.'));
@@ -900,7 +900,7 @@ document.getElementById('projectModalLoad').onclick = () => loadExistingProjectF
 document.getElementById('projectModalSave').onclick = () => saveProjectFlow();
 document.getElementById('headerSaveBtn').onclick = () => saveProjectFlow();
 // Ctrl+S (or Cmd+S on Mac) keyboard shortcut to save the Project without going through the
-// modal — preventDefault is essential to stop the browser's "Save page" dialog.
+// modal, preventDefault is essential to stop the browser's "Save page" dialog.
 window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault();
@@ -910,12 +910,12 @@ window.addEventListener('keydown', (e) => {
 // Échap ferme la modale du DESSUS ; s'il n'y en a aucune, il ouvre le menu Projet (à la demande de
 // l'utilisateur). Cet écouteur est le PREMIER enregistré sur window pour Échap (io.js est importé
 // avant events.js) : c'est donc lui, et lui seul, qui tranche. Un `stopImmediatePropagation` posé
-// par un écouteur plus tardif ne peut rien retenir — au moment où il s'exécute, la décision est
+// par un écouteur plus tardif ne peut rien retenir, au moment où il s'exécute, la décision est
 // déjà prise.
 //
 // CE CODE ÉNUMÉRAIT HUIT MODALES, une par ligne, pour savoir s'il devait se taire. L'application en
 // compte quatorze : les six absentes voyaient Échap ouvrir le menu Projet DERRIÈRE elles au lieu de
-// les fermer — signalé à l'usage sur l'écran de correspondance du squelette. Le commentaire d'alors
+// les fermer, signalé à l'usage sur l'écran de correspondance du squelette. Le commentaire d'alors
 // disait pourtant déjà que tout ce qui recouvre l'application « doit se déclarer ICI », et
 // rappelait que l'éditeur de Personnage l'avait oublié : la liste avait donc déjà échoué une fois.
 //
@@ -949,7 +949,7 @@ export function openRenameProjectModal(){
 }
 export function closeRenameProjectModal(){ renameProjectModal.classList.add('hidden'); }
 // Also renames the .json file on disk when a Project file already exists (preferring the
-// Electron IPC path, cf. window.storyboarderAPI.renameProjectFile/main.js) — on user request,
+// Electron IPC path, cf. window.storyboarderAPI.renameProjectFile/main.js), on user request,
 // so that a "Save" after renaming rewrites that same renamed file instead of proposing a new one.
 export async function confirmRenameProject(){
   const newName = renameProjectInput.value.trim();
@@ -1012,7 +1012,7 @@ function isEntityNameTakenByOther(kind, target, name){
   }
   // Un modèle se compare sur le NOM DE FICHIER assaini, pas sur ce qui est tapé : « chaise » et
   // « chaise.glb » désignent le même fichier, et laisser passer le second écraserait le premier.
-  // La liste des noms pris est celle capturée à l'ouverture — le dossier ne peut pas changer sous
+  // La liste des noms pris est celle capturée à l'ouverture, le dossier ne peut pas changer sous
   // nos pieds pendant qu'une modale est ouverte, et la relire ici rendrait la fonction asynchrone.
   if (kind === 'modele') {
     const voulu = sanitizeModelName(name).toLowerCase();
@@ -1086,7 +1086,7 @@ renameEntityModal.addEventListener('mousedown', (e) => {
 // window.confirm() opens a blocking NATIVE dialog under Electron: beyond the visual
 // inconsistency with the rest of the app, closing such a dialog sometimes desyncs the main
 // window's keyboard focus for several seconds (user feedback: after deleting/renaming
-// several Scenes in a row — thus triggering several confirm() calls — the rename modal
+// several Scenes in a row, thus triggering several confirm() calls, the rename modal
 // showed a cursor that stopped receiving keystrokes for ~10s). confirmAction() replaces
 // confirm() with this modal, and returns a Promise<boolean> (true = confirmed).
 const confirmActionModal = document.getElementById('confirmActionModal');
@@ -1110,7 +1110,7 @@ export function confirmAction(message, title){
   setTimeout(() => confirmActionOk.focus(), 0);
   return new Promise((resolve) => { S.confirmActionResolve = resolve; });
 }
-// "Information" variant (a single OK button) — replaces window.alert(), which causes exactly
+// "Information" variant (a single OK button) : replaces window.alert(), which causes exactly
 // the same keyboard-focus-desync issue we're trying to avoid with confirm()/prompt().
 export function alertAction(message, title){
   preemptConfirmAction();
@@ -1126,7 +1126,7 @@ export function alertAction(message, title){
 //
 // Sans cela, S.confirmActionResolve était simplement écrasé et la première promesse ne se résolvait
 // jamais : le `await confirmAction(...)` qui la portait ne rendait pas la main, et toute la suite de
-// l'opération — charger un projet, en créer un — était abandonnée en silence. Rien ne levait, rien
+// l'opération, charger un projet, en créer un, était abandonnée en silence. Rien ne levait, rien
 // ne s'affichait ; l'application avait juste l'air de ne pas avoir entendu.
 //
 // Régler à « non » plutôt qu'à « oui » : une confirmation qu'on n'a pas vue ne vaut pas accord.
@@ -1154,7 +1154,7 @@ confirmActionModal.addEventListener('keydown', (e) => {
 
 // ---------- QUIT (confirmation before closing the Application) ----------
 // Rather than preventing the app from closing until the Project is saved, we now offer the
-// user the choice to save then quit, quit without saving, or cancel — on user request. The
+// user the choice to save then quit, quit without saving, or cancel, on user request. The
 // 'beforeunload' safety net below stays in place as an ultimate fallback (in case the window
 // gets closed through a mechanism that doesn't go through main.js), but is neutralized once
 // the user has explicitly decided via quitConfirmModal (cf. S.quittingConfirmed).
@@ -1192,7 +1192,7 @@ document.getElementById('quitConfirmCancel').onclick = closeQuitConfirmModal;
 quitConfirmModal.addEventListener('mousedown', (e) => { if (e.target === quitConfirmModal) closeQuitConfirmModal(); });
 
 // Native warning when closing the application if there are unsaved changes left (cf.
-// S.projectDirty) — used only as a browser fallback (without the Electron API) or if closing
+// S.projectDirty), used only as a browser fallback (without the Electron API) or if closing
 // couldn't be intercepted on the main-process side. Neutralized as soon as
 // S.quittingConfirmed is true, so as not to re-prompt for confirmation after the user has
 // already decided via quitConfirmModal.
@@ -1206,7 +1206,7 @@ window.addEventListener('beforeunload', (e) => {
 // Échap : les fermetures des modales de CE fichier, et la mise sous surveillance
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Chaque fermeture doit produire le même effet qu'un clic sur « Annuler » — c'est la règle du dépôt
+// Chaque fermeture doit produire le même effet qu'un clic sur « Annuler », c'est la règle du dépôt
 // (« Annuler, Échap et un clic sur le fond sont une seule intention »). Pour une demande de
 // confirmation, cela veut dire répondre NON, et non pas seulement masquer : quelqu'un attend la
 // réponse.

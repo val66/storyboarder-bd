@@ -1,13 +1,13 @@
 /**
- * tests/skeleton-retarget.test.mjs — le même geste, d'un corps à l'autre.
+ * tests/skeleton-retarget.test.mjs, le même geste, d'un corps à l'autre.
  *
  * CE QUI EST EN JEU. La bibliothèque de poses range « lElbow: 1.0 rad ». Appliquer cet angle tel
- * quel à un os importé produit un membre qui part de travers, SANS lever la moindre erreur — les
+ * quel à un os importé produit un membre qui part de travers, SANS lever la moindre erreur, les
  * axes des os diffèrent d'un fichier à l'autre, et cela a été mesuré sur les six fichiers réels
  * (cf. docs/imported-skeletons.md) : cinq alignent leurs os sur +Y, le rig Unreal sur ±X avec un
  * signe qui s'inverse entre les côtés, et deux axes verticaux différents cohabitent.
  *
- * D'où le passage par le CORPS — haut, droite, avant — plutôt que par les axes bruts. Les tests
+ * D'où le passage par le CORPS, haut, droite, avant, plutôt que par les axes bruts. Les tests
  * ci-dessous vérifient les propriétés de cette traduction, pas des valeurs d'exemple : un
  * changement de base se juge sur ce qu'il PRÉSERVE.
  *
@@ -41,14 +41,14 @@ const CORPS_Z = repereDuCorps({
   clavicule_g: [0.15, 0, 1.4], clavicule_d: [-0.15, 0, 1.4],
 });
 
-describe('normaliser — une direction, ou rien', () => {
+describe('normaliser : une direction, ou rien', () => {
   test('rend un vecteur unitaire', () => {
     assert.ok(vecteurProche(normaliser([0, 3, 0]), [0, 1, 0]));
     assert.ok(vecteurProche(normaliser([3, 4, 0]), [0.6, 0.8, 0]));
   });
 
   test('RÉGRESSION : un vecteur NUL rend null, jamais un axe inventé', () => {
-    // Le cas se produit quand deux os sont confondus — une clavicule posée exactement sur la
+    // Le cas se produit quand deux os sont confondus, une clavicule posée exactement sur la
     // précédente. Normaliser au hasard propagerait une orientation fausse dans tout le corps ;
     // rendre null laisse l'appelant renoncer proprement.
     assert.equal(normaliser([0, 0, 0]), null);
@@ -59,7 +59,7 @@ describe('normaliser — une direction, ou rien', () => {
   });
 });
 
-describe('repereDuCorps — mesurer l\'orientation d\'un corps', () => {
+describe('repereDuCorps : mesurer l\'orientation d\'un corps', () => {
   test('les trois axes sont unitaires et orthogonaux', () => {
     [CORPS_Y, CORPS_Z].forEach(r => {
       assert.ok(r, 'repère non calculé');
@@ -110,7 +110,7 @@ describe('repereDuCorps — mesurer l\'orientation d\'un corps', () => {
   test('clavicules confondues : les bras prennent le relais', () => {
     // CE N'EST PAS UN CAS D'ÉCOLE. Le Personnage intégré de cette application est exactement dans
     // cette situation : ses deux clavicules pivotent au sternum, donc au MÊME point, et
-    // l'écartement latéral ne commence qu'au bras. Sans ce repli, il n'aurait aucun repère — et la
+    // l'écartement latéral ne commence qu'au bras. Sans ce repli, il n'aurait aucun repère, et la
     // bibliothèque de poses ne pourrait s'appliquer à aucun modèle importé.
     const r = repereDuCorps({
       bassin: [0, 0, 0], tete: [0, 1.6, 0],
@@ -140,7 +140,7 @@ describe('repereDuCorps — mesurer l\'orientation d\'un corps', () => {
   });
 });
 
-describe('coordonnées ↔ vecteur — l\'aller-retour ne perd rien', () => {
+describe('coordonnées ↔ vecteur : l\'aller-retour ne perd rien', () => {
   test('un vecteur quelconque revient identique', () => {
     [[1, 0, 0], [0, 0, 1], [0.3, -0.5, 0.81]].forEach(v => {
       const retour = vecteurDepuisRepere(coordonneesDansRepere(v, CORPS_Z), CORPS_Z);
@@ -149,7 +149,7 @@ describe('coordonnées ↔ vecteur — l\'aller-retour ne perd rien', () => {
   });
 });
 
-describe('axeEquivalent — LE cœur : le même geste dans un autre corps', () => {
+describe('axeEquivalent : LE cœur : le même geste dans un autre corps', () => {
   test('GARANTIE : entre deux corps identiques, l\'axe ne bouge pas', () => {
     // La propriété qui interdit toute déformation gratuite. Si elle tombe, appliquer une pose du
     // rig intégré AU rig intégré la modifierait déjà.
@@ -187,7 +187,7 @@ describe('axeEquivalent — LE cœur : le même geste dans un autre corps', () =
   });
 });
 
-describe('axeMondeVersLocal — descendre du monde jusqu\'à l\'os', () => {
+describe('axeMondeVersLocal : descendre du monde jusqu\'à l\'os', () => {
   test('un os au repos non tourné laisse l\'axe inchangé', () => {
     assert.ok(vecteurProche(axeMondeVersLocal([1, 0, 0], [0, 0, 0, 1]), [1, 0, 0], 1e-12));
   });
@@ -205,7 +205,7 @@ describe('axeMondeVersLocal — descendre du monde jusqu\'à l\'os', () => {
     const q = quaternionAxeAngle(normaliser([0.3, 0.7, -0.2]), 0.9);
     const axeMonde = normaliser([0.2, -0.4, 0.9]);
     const local = axeMondeVersLocal(axeMonde, q);
-    // Rotation directe de `local` par q — l'opération inverse, écrite ici indépendamment.
+    // Rotation directe de `local` par q : l'opération inverse, écrite ici indépendamment.
     const [x, y, z, w] = q;
     const ix = w * local[0] + y * local[2] - z * local[1];
     const iy = w * local[1] + z * local[0] - x * local[2];
@@ -231,7 +231,7 @@ describe('quaternionAxeAngle', () => {
   });
 
   test('RÉGRESSION : un axe inexploitable rend l\'IDENTITÉ, pas un quaternion nul', () => {
-    // Un quaternion nul écraserait silencieusement l'orientation de l'os — le membre disparaîtrait
+    // Un quaternion nul écraserait silencieusement l'orientation de l'os, le membre disparaîtrait
     // ou se replierait sur lui-même, sans message.
     assert.deepEqual(quaternionAxeAngle([0, 0, 0], 1.2), [0, 0, 0, 1]);
     assert.deepEqual(quaternionAxeAngle(null, 1.2), [0, 0, 0, 1]);
@@ -244,7 +244,7 @@ describe('quaternionAxeAngle', () => {
   });
 });
 
-describe('deltaPourOs — le geste complet', () => {
+describe('deltaPourOs : le geste complet', () => {
   test('entre corps identiques et os au repos, on retrouve la rotation d\'origine', () => {
     // Le cas de référence : rien à traduire, rien à corriger. Le résultat doit être exactement la
     // rotation demandée, sinon le rig intégré lui-même serait altéré.
@@ -283,7 +283,7 @@ describe('deltaPourOs — le geste complet', () => {
 describe('Le rig intégré n\'est pas un cas particulier', () => {
   test('son repère se mesure avec LA MÊME fonction que celui d\'un modèle importé', () => {
     // C'est ce qui interdit d'écrire des signes à la main. Si le rig intégré changeait
-    // d'orientation, ce fichier suivrait sans être touché — et un signe écrit en dur, non.
+    // d'orientation, ce fichier suivrait sans être touché, et un signe écrit en dur, non.
     const src = readFileSync(new URL('../src/skeleton-retarget.js', import.meta.url), 'utf8');
     assert.doesNotMatch(src, /PERSONA|persona/i,
       'le module connaît le rig intégré par son nom : il en fait un cas particulier');
@@ -293,7 +293,7 @@ describe('Le rig intégré n\'est pas un cas particulier', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — le changement de repère (tâche #310).
+ * JOURNAL DE MUTATION : le changement de repère (tâche #310).
  *
  *   W6 deltaPourOs ignore le repère cible (l'axe source est pris tel quel)      ROUGE
  *   W7 deltaPourOs ignore le repos de l'os                                      ROUGE
@@ -301,15 +301,15 @@ describe('Le rig intégré n\'est pas un cas particulier', () => {
  *
  * W8 A ÉTÉ CORRIGÉE DANS LE CODE, pas dans les tests : la garde était REDONDANTE.
  * `axeMondeVersLocal` commence par `normaliser`, qui rend `null` sur une entrée nulle, et la garde
- * suivante faisait déjà le travail. Deux gardes pour un seul cas, c'était une de trop — et son seul
+ * suivante faisait déjà le travail. Deux gardes pour un seul cas, c'était une de trop, et son seul
  * effet était de rendre l'autre inatteignable par les tests.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// rotationAllongee3D — coucher un corps, quel que soit son axe vertical (tâche #345)
+// rotationAllongee3D, coucher un corps, quel que soit son axe vertical (tâche #345)
 //
 // CE QUI SE JOUE ICI. « Allongé » tournait le groupe racine du Personnage intégré d'un quart de tour
-// autour de Z. Un modèle importé n'a aucune raison d'être debout selon Y — hulk l'est selon +Z — et
+// autour de Z. Un modèle importé n'a aucune raison d'être debout selon Y, hulk l'est selon +Z, et
 // le même quart de tour le coucherait de travers. Le geste se dit donc dans le repère du CORPS.
 //
 // LES TESTS SONT ÉCRITS SUR LA CORRESPONDANCE, pas sur les 9 nombres : ce qui doit rester vrai,
@@ -345,7 +345,7 @@ describe('rotationAllongee3D', () => {
     });
 
     test(`${nom} : c'est une ROTATION, pas une réflexion`, () => {
-      // Un déterminant −1 retournerait le modèle comme un gant — main gauche devenue droite — sans
+      // Un déterminant −1 retournerait le modèle comme un gant, main gauche devenue droite, sans
       // qu'aucune erreur ne soit levée. Le trièdre du Personnage étant gaucher, la question n'est
       // pas théorique : c'est le seul test qui interdit que son orientation contamine le résultat.
       assert.ok(Math.abs(det(rotationAllongee3D(repere)) - 1) < 1e-9);
@@ -383,7 +383,7 @@ describe('rotationAllongee3D', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — coucher un corps importé (tâche #345, parties 1 et 2).
+ * JOURNAL DE MUTATION : coucher un corps importé (tâche #345, parties 1 et 2).
  *
  *   T1 le rig n'applique plus la bascule                                ROUGE
  *   T2 le drapeau lu sur joints3d au lieu de l'intention                ROUGE
@@ -393,7 +393,7 @@ describe('rotationAllongee3D', () => {
  *   T6 demi-tour au lieu d'un quart                                     ROUGE
  *   T7 S au lieu de Sᵀ dans le produit                                  ROUGE
  *
- * T5 mérite un mot : une réflexion retourne le modèle comme un gant — sa main gauche devient droite
+ * T5 mérite un mot : une réflexion retourne le modèle comme un gant, sa main gauche devient droite
  * — sans qu'aucune erreur ne soit levée, et sur un corps couché personne ne le remarque tout de
  * suite. C'est le test sur le DÉTERMINANT qui l'attrape, et il n'existe que parce que le trièdre du
  * Personnage s'est révélé gaucher à la mesure : sans cette surprise, on n'aurait pas pensé à

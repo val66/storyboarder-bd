@@ -1,8 +1,8 @@
-// tests/sidebar.test.mjs — Tests unitaires de src/sidebar.js (panneau latéral droit : arborescence
+// tests/sidebar.test.mjs. Tests unitaires de src/sidebar.js (panneau latéral droit : arborescence
 // Pièces/Bâtiments, liste des Éléments d'une Case, vue Scène).
 import './helpers/dom-stub.mjs';
 // sidebar.js dépend transitivement de draw.js/events.js pour son bon fonctionnement au chargement
-// (mêmes raisons que dans draw.test.mjs) — importer events.js par effet de bord garantit que
+// (mêmes raisons que dans draw.test.mjs), importer events.js par effet de bord garantit que
 // S.tomes/S.editingSceneId sont dans un état cohérent avant les tests.
 import '../src/events.js';
 import { test, describe, beforeEach } from 'node:test';
@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 // ── getRoomConnectedComponents (Union-Find) ─────────────────────────────────────────────────
-describe('getRoomConnectedComponents — composantes connexes de Pièces (Union-Find)', () => {
+describe('getRoomConnectedComponents : composantes connexes de Pièces (Union-Find)', () => {
   const panel = { id: 'panel1' };
 
   function wall(id, pieceId, cx, cz, len, rotY = 0) {
@@ -108,7 +108,7 @@ describe('getRoomConnectedComponents — composantes connexes de Pièces (Union-
 });
 
 // ── isSceneTopDownView ────────────────────────────────────────────────────────────────────────
-describe('isSceneTopDownView — détection de la vue "de dessus" d\'une Scène en édition', () => {
+describe('isSceneTopDownView : détection de la vue "de dessus" d\'une Scène en édition', () => {
   test('panel non-Scène (S.editingSceneId non défini) : toujours false', () => {
     S.editingSceneId = null;
     assert.equal(isSceneTopDownView({ type: 'panel', camRotX: Math.PI / 2 }), false);
@@ -137,7 +137,7 @@ describe('isSceneTopDownView — détection de la vue "de dessus" d\'une Scène 
 });
 
 // ── getLinkedElementName ─────────────────────────────────────────────────────────────────────
-describe('getLinkedElementName — nom du Mur/Tracé auquel une Parois est aimantée', () => {
+describe('getLinkedElementName : nom du Mur/Tracé auquel une Parois est aimantée', () => {
   test('objet non aimanté (pas de magnetWallId) : null', () => {
     const page = { objects: [] };
     assert.equal(getLinkedElementName({ type: 'objet3d' }, page), null);
@@ -161,7 +161,7 @@ describe('getLinkedElementName — nom du Mur/Tracé auquel une Parois est aiman
 
   test('Tracé mur (muret) sans nom personnalisé : label généré depuis tracéType', () => {
     // Le libellé de repli passe par tr() : il suit la langue. On l'épingle dans les DEUX, parce que
-    // c'est le fait intéressant — un Tracé sans nom reste désignable quelle que soit la langue.
+    // c'est le fait intéressant, un Tracé sans nom reste désignable quelle que soit la langue.
     const page = { objects: [{ id: 't1', type: 'tracé', tracéType: 'muret' }] };
     const parois = { type: 'objet3d', magnetWallId: 't1' };
     S.appLang = 'fr';
@@ -172,7 +172,7 @@ describe('getLinkedElementName — nom du Mur/Tracé auquel une Parois est aiman
 });
 
 // ── edgeLengths ───────────────────────────────────────────────────────────────────────────────
-describe('edgeLengths — longueurs des 4 côtés d\'une Case/Bulle', () => {
+describe('edgeLengths : longueurs des 4 côtés d\'une Case/Bulle', () => {
   test('rectangle 100×50 : deux côtés de longueur 100, deux de longueur 50', () => {
     const lens = edgeLengths({ x: 0, y: 0, w: 100, h: 50 });
     assert.equal(lens.length, 4);
@@ -191,7 +191,7 @@ describe('edgeLengths — longueurs des 4 côtés d\'une Case/Bulle', () => {
 });
 
 // ── homeOwningPanel / elementsInPanel ────────────────────────────────────────────────────────
-describe('homeOwningPanel — Case propriétaire (priorité à homePanelId)', () => {
+describe('homeOwningPanel : Case propriétaire (priorité à homePanelId)', () => {
   test('homePanelId valide : renvoie directement cette Case, sans recours au repli géométrique', () => {
     const panelA = { id: 'panelA', type: 'panel', x: 0, y: 0, w: 100, h: 100 };
     const panelB = { id: 'panelB', type: 'panel', x: 1000, y: 1000, w: 100, h: 100 };
@@ -208,7 +208,7 @@ describe('homeOwningPanel — Case propriétaire (priorité à homePanelId)', ()
   });
 });
 
-describe('elementsInPanel — Éléments (Personas/Objets, hors Dalles) appartenant à une Case', () => {
+describe('elementsInPanel : Éléments (Personas/Objets, hors Dalles) appartenant à une Case', () => {
   test('filtre par Case propriétaire, exclut les Dalles et les autres types', () => {
     const panel = { id: 'panel1', type: 'panel', x: 0, y: 0, w: 100, h: 100 };
     const perso = { id: 'e1', type: 'perso', homePanelId: 'panel1' };
@@ -224,15 +224,15 @@ describe('elementsInPanel — Éléments (Personas/Objets, hors Dalles) apparten
 // ─────────────────────────────────────────────────────────────────────────────
 // La sous-section « Hors champ » (tâche #347)
 //
-// CE QUI SE JOUE ICI. Décider qu'un Élément est hors champ demande de le projeter, donc WebGL —
+// CE QUI SE JOUE ICI. Décider qu'un Élément est hors champ demande de le projeter, donc WebGL,
 // hors de portée sous Node. Mais TOUT LE RESTE de cette liste est vérifiable dès lors que la
 // décision est injectable : l'ordre des groupes, le compte dans le titre, les séparateurs, et
 // surtout le fait que personne ne DISPARAISSE.
 //
 // Le critère lui-même (estHorsChamp3D) est éprouvé dans utils.test.mjs.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('liste des Éléments — les invisibles rangés en bas', () => {
-  // ⚠️ La Case vit dans `page.objects` avec `type: 'panel'` — c'est là que `findOwningPanel` la
+describe('liste des Éléments : les invisibles rangés en bas', () => {
+  // ⚠️ La Case vit dans `page.objects` avec `type: 'panel'`, c'est là que `findOwningPanel` la
   // cherche, et `elementsInPanel` s'appuie dessus. Une Case rangée ailleurs donne une liste vide,
   // donc des tests verts qui ne regardent rien.
   const panel = { id: 'p1', type: 'panel', x: 0, y: 0, w: 400, h: 300, camDist: 30 };
@@ -255,7 +255,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
   };
   // ⚠️ Le stub DOM n'AGRÈGE PAS le texte des descendants : `textContent` d'une ligne est vide, son
   // nom vivant dans un `perso-name-main` imbriqué. Lire la propriété telle quelle donnait des
-  // chaînes vides — et un test qui cherche « Alice » dans du vide échoue en accusant le code.
+  // chaînes vides, et un test qui cherche « Alice » dans du vide échoue en accusant le code.
   const texteProfond = (n) => (n.textContent || '')
     + (n.children || []).map(texteProfond).join('');
   const textes = (racine) => lignes(racine).map(texteProfond).join('|');
@@ -268,7 +268,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
   test('sans Élément hors champ, aucune sous-section n\'apparaît', () => {
     // ⚠️ ON INSPECTE LES ENFANTS, PAS `innerHTML`. Le stub DOM ne reconstruit pas `innerHTML` à
     // partir des `appendChild` : chercher une classe dans cette chaîne revient à chercher dans du
-    // vide, et l'assertion passe quoi qu'il arrive. Une mutation l'a montré — afficher la
+    // vide, et l'assertion passe quoi qu'il arrive. Une mutation l'a montré, afficher la
     // sous-section même vide ne faisait rien échouer.
     renderSidePersonas(panel, page, () => false);
     const classes = (conteneur().children || []).map(c => c.className || '');
@@ -278,7 +278,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
   });
 
   test('RÉGRESSION : aucun Élément ne DISPARAÎT de la liste', () => {
-    // Le test qui compte le plus. Se tromper de critère montre un Élément de trop — sans gravité.
+    // Le test qui compte le plus. Se tromper de critère montre un Élément de trop, sans gravité.
     // En perdre un est invisible : l'utilisateur n'a aucun moyen de deviner ce qui manque.
     renderSidePersonas(panel, page, (p) => p.id === 'b');
     const t = textes(conteneur());
@@ -298,7 +298,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
   });
 
   test('le titre porte le NOMBRE d\'Éléments hors champ', () => {
-    // Sans lui, il faudrait compter les lignes pour savoir combien ont quitté le cadre — c'est la
+    // Sans lui, il faudrait compter les lignes pour savoir combien ont quitté le cadre, c'est la
     // première question qu'on se pose en lisant ce titre.
     renderSidePersonas(panel, page, (p) => p.id !== 'b');
     const titre = (conteneur().children || [])
@@ -338,7 +338,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
 
   test('RÉGRESSION : une décision qui ÉCHOUE ne vide pas la liste', () => {
     // Signalé à l'usage : certaines Cases n'affichaient plus rien. Une exception pendant la
-    // partition interrompt toute la construction — les Éléments déjà ajoutés restent, les suivants
+    // partition interrompt toute la construction, les Éléments déjà ajoutés restent, les suivants
     // ne viennent jamais. Ici on force l'échec sur un Élément du MILIEU pour que la différence
     // entre « tout est là » et « la liste s'arrête » soit visible.
     renderSidePersonas(panel, page, (p) => {
@@ -350,7 +350,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
       assert.ok(t.includes(n), `${n} manque : la liste s'est arrêtée en chemin`));
 
     // ⚠️ ET IL RESTE DANS LA LISTE PRINCIPALE. Une mutation l'a exigé : reléguer l'Élément en échec
-    // vers « hors champ » gardait le test précédent vert — il y est toujours listé. Or le principe
+    // vers « hors champ » gardait le test précédent vert, il y est toujours listé. Or le principe
     // annoncé est que le DOUTE PROFITE À LA LISTE PRINCIPALE : on ne range pas parmi les invisibles
     // un Élément dont on n'a justement pas pu établir la visibilité.
     const classes = (conteneur().children || []).map(c => c.className || '');
@@ -368,7 +368,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
 });
 
 /**
- * JOURNAL DE MUTATION — la sous-section « Hors champ » (tâche #347).
+ * JOURNAL DE MUTATION : la sous-section « Hors champ » (tâche #347).
  *
  *   X1 personne n'est jamais rangé hors champ                        ROUGE
  *   X2 les hors-champ DISPARAISSENT de la liste                      ROUGE
@@ -378,7 +378,7 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
  *   X6 un cadre illisible relègue TOUT                                ROUGE
  *
  * X4 A RÉVÉLÉ UNE ASSERTION VIDE, et c'est sa vraie valeur. Le test cherchait la classe de la
- * sous-section dans `conteneur().innerHTML` — or le stub DOM ne reconstruit pas `innerHTML` à
+ * sous-section dans `conteneur().innerHTML`, or le stub DOM ne reconstruit pas `innerHTML` à
  * partir des `appendChild`. On cherchait donc une chaîne dans du vide : l'assertion passait quoi
  * qu'il arrive, y compris devant une sous-section affichée pour zéro Élément. Réécrite sur les
  * enfants, qui eux sont réellement conservés.
@@ -388,14 +388,14 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
  */
 
 /**
- * JOURNAL DE MUTATION — seconde passe, après deux retours d'usage (tâche #347).
+ * JOURNAL DE MUTATION : seconde passe, après deux retours d'usage (tâche #347).
  *
  *   Y1 le garde retiré : une exception vide la liste                   ROUGE
  *   Y2 un échec de décision RELÈGUE au lieu de garder                  ÉCHAPPÉE → puis ROUGE
  *   Y3 le bloc « hors champ » remonte avant les Tracés                 ROUGE
  *
  * Y2 EST INSTRUCTIVE PARCE QU'ELLE NE CASSAIT RIEN DE VISIBLE. Reléguer l'Élément dont la décision
- * a échoué le laisse dans la liste — dans l'autre bloc. Le test « personne ne disparaît » restait
+ * a échoué le laisse dans la liste, dans l'autre bloc. Le test « personne ne disparaît » restait
  * donc vert, alors que le principe annoncé était violé : le doute doit profiter à la liste
  * PRINCIPALE, puisque c'est précisément la visibilité qu'on n'a pas su établir.
  *
@@ -404,13 +404,13 @@ describe('liste des Éléments — les invisibles rangés en bas', () => {
 
 
 // ── Le Manuel dans le panneau droit ───────────────────────────────────────────────────────────
-describe('afficherManuelLateral / masquerManuelLateral — l\'action est nommée, pas recopiée', () => {
+describe('afficherManuelLateral / masquerManuelLateral : l\'action est nommée, pas recopiée', () => {
   // Ces deux fonctions existent parce que le bouton « ? » est un BASCULEUR et que l'Éditeur de
   // Personnage recouvre le panneau qu'il bascule : depuis l'éditeur, l'utilisateur agissait sur un
   // état qu'il ne voyait pas et refermait le Manuel qu'il croyait ouvrir. La sortie de l'éditeur
   // doit pouvoir dire « AFFICHE », sans inverser quoi que ce soit.
   test('LE POINT QUI COMPTE : afficher DÉSÉLECTIONNE aussi', () => {
-    // Le Manuel n'apparaît que si rien n'est sélectionné — un Élément sélectionné donne sa fiche au
+    // Le Manuel n'apparaît que si rien n'est sélectionné, un Élément sélectionné donne sa fiche au
     // panneau droit. Ne lever que `helpPanelDismissed` laisserait le panneau afficher cette fiche,
     // et le Manuel resterait invisible pour une raison que rien n'indique.
     S.selectedId = 'e1';
@@ -459,9 +459,9 @@ describe('afficherManuelLateral / masquerManuelLateral — l\'action est nommée
 
 
 // ── manuelEstAffiche ──────────────────────────────────────────────────────────────────────────
-describe('manuelEstAffiche — la question est posée au DOM, pas aux drapeaux', () => {
+describe('manuelEstAffiche : la question est posée au DOM, pas aux drapeaux', () => {
   // Le bouton « ? » est un basculeur : il doit inverser CE QUI EST À L'ÉCRAN. Sa condition recopiait
-  // l'arbitrage d'updateSidePanel et en oubliait une branche — le menu de la Planche —, si bien
+  // l'arbitrage d'updateSidePanel et en oubliait une branche, le menu de la Planche, si bien
   // qu'il basculait un état que personne ne voyait. La visibilité réelle ne peut pas diverger.
   const section = () => document.getElementById('sideHelpSection');
 

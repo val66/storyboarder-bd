@@ -1,6 +1,6 @@
 /**
  * @file skeleton-retarget.js
- * Traduire un geste d'un corps à l'autre — « plier le coude vers l'avant », quel que soit le rig.
+ * Traduire un geste d'un corps à l'autre, « plier le coude vers l'avant », quel que soit le rig.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * LE PROBLÈME, ET POURQUOI IL N'EST PAS SOLUBLE PAR LES NOMS
@@ -17,7 +17,7 @@
  *   — deux axes verticaux différents cohabitent selon les fichiers : +Y et +Z.
  *
  * Appliquer tel quel l'angle du rig intégré à un os importé produirait donc un membre qui part de
- * travers, sans qu'aucune erreur ne soit levée — exactement le genre de panne que ce dépôt cherche
+ * travers, sans qu'aucune erreur ne soit levée, exactement le genre de panne que ce dépôt cherche
  * à rendre impossible.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -26,7 +26,7 @@
  *
  * Un axe n'a de sens que rapporté à un CORPS : « vers le haut », « vers la droite », « vers
  * l'avant ». Ces trois directions se mesurent sur n'importe quel squelette humanoïde à partir de
- * quatre os que la correspondance connaît déjà — bassin, tête et les deux clavicules. Traduire un
+ * quatre os que la correspondance connaît déjà, bassin, tête et les deux clavicules. Traduire un
  * geste devient alors :
  *
  *     axe source → coordonnées dans le repère du corps SOURCE
@@ -35,7 +35,7 @@
  *                → axe LOCAL de l'os, via l'inverse de sa rotation de repos
  *
  * CE QUI REND CE FICHIER SÛR : LA MÊME FONCTION DÉRIVE LES DEUX REPÈRES. Le rig intégré n'est pas
- * traité comme la référence dont l'autre s'écarterait — c'est un corps parmi deux, mesuré par
+ * traité comme la référence dont l'autre s'écarterait, c'est un corps parmi deux, mesuré par
  * `repereDuCorps` comme l'autre. Aucune convention de signe n'est donc écrite à la main ici, et
  * c'est délibéré : chaque signe écrit à la main est un endroit où l'on peut se tromper sans que
  * rien ne le dise. Si le rig intégré changeait d'orientation demain, ce fichier suivrait tout seul.
@@ -44,7 +44,7 @@
  * CE QUE CE FICHIER NE RÉSOUT PAS, ET NE PRÉTEND PAS RÉSOUDRE
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Une chaîne quasi rectiligne au repos — un bras tendu — ne définit AUCUN plan de flexion. Rien
+ * Une chaîne quasi rectiligne au repos, un bras tendu, ne définit AUCUN plan de flexion. Rien
  * dans le fichier ne dit alors de quel côté le coude « devrait » plier. Le repère du corps répond
  * pour les trois axes principaux, pas pour ce cas-là. Un modèle dont le coude plierait à l'envers
  * relève de cette limite, pas d'un défaut de calcul.
@@ -54,14 +54,14 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vecteurs — le strict nécessaire, pour ne dépendre de rien
+// Vecteurs, le strict nécessaire, pour ne dépendre de rien
 // ─────────────────────────────────────────────────────────────────────────────
 
 const soustraire = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const produitScalaire = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 // Non exporté, comme ses deux voisins : il ne sert qu'ici, et l'exporter donnait une surface
-// publique que rien n'appelait — donc que rien ne vérifiait. Repéré par l'audit de la tâche #310.
+// publique que rien n'appelait, donc que rien ne vérifiait. Repéré par l'audit de la tâche #310.
 function produitVectoriel(a, b){
   return [
     a[1] * b[2] - a[2] * b[1],
@@ -98,15 +98,15 @@ export function normaliser(v){
  * DEUX PAIRES LATÉRALES, ET LA SECONDE N'EST PAS DE LA PRUDENCE DÉCORATIVE. Sur beaucoup de rigs,
  * une clavicule PIVOTE AU STERNUM et ne porte l'épaule qu'à son extrémité : les deux clavicules sont
  * alors au même point, et leur différence ne définit aucune direction. C'est exactement le cas du
- * Personnage intégré de cette application — les deux pivots sont sur la colonne, à 0,564 m, et
+ * Personnage intégré de cette application, les deux pivots sont sur la colonne, à 0,564 m, et
  * l'écartement vit dans le bras. Mesuré, pas supposé : la première version de ce fichier n'avait que
  * les clavicules, et elle ne rendait tout simplement pas de repère pour le Personnage. On retombe
  * donc sur les BRAS, qui sont latéralement séparés sur tout humanoïde. Les deux paires pointent dans
- * le même sens anatomique — de la droite du corps vers sa gauche —, donc le repère obtenu est le
+ * le même sens anatomique, de la droite du corps vers sa gauche, donc le repère obtenu est le
  * même quelle que soit celle qui a servi.
  *
  * ORTHONORMALISATION PLUTÔT QUE CONFIANCE. La ligne d'épaules n'est pas exactement perpendiculaire
- * à la colonne : mesuré à 0,011 sur cinq fichiers, mais à 0,105 — six degrés — sur anime_girl1, qui
+ * à la colonne : mesuré à 0,011 sur cinq fichiers, mais à 0,105, six degrés, sur anime_girl1, qui
  * n'est pas dans une pose neutre. On garde donc le HAUT tel quel (la colonne est l'axe le plus
  * fiable) et on redresse la droite par rapport à lui. Sans cela, le repère ne serait pas
  * orthogonal et l'aller-retour source → cible déformerait légèrement chaque geste.
@@ -138,7 +138,7 @@ export function coordonneesDansRepere(v, repere){
   ];
 }
 
-/** Le vecteur monde correspondant à des coordonnées de corps. Fonction PURE — inverse de la précédente. */
+/** Le vecteur monde correspondant à des coordonnées de corps. Fonction PURE, inverse de la précédente. */
 export function vecteurDepuisRepere(c, repere){
   if (!c || !repere) return null;
   return [
@@ -153,7 +153,7 @@ export function vecteurDepuisRepere(c, repere){
  * SOURCE. Fonction PURE.
  *
  * « Tourner autour de cet axe-là » devient « tourner autour de l'axe qui joue le même rôle
- * anatomique ». Quand les deux repères coïncident, l'axe ressort inchangé — propriété qu'un test
+ * anatomique ». Quand les deux repères coïncident, l'axe ressort inchangé, propriété qu'un test
  * épingle, parce que c'est elle qui garantit qu'on n'introduit aucune déformation gratuite.
  */
 export function axeEquivalent(axeSource, repereSource, repereCible){
@@ -174,7 +174,7 @@ export function axeEquivalent(axeSource, repereSource, repereCible){
  *
  * C'est la dernière marche : un os ne sait tourner qu'autour de ses propres axes, et sa rotation de
  * repos dit comment ceux-ci sont orientés dans le monde. On applique donc l'inverse de cette
- * rotation à l'axe voulu. Pour un quaternion unitaire, l'inverse est le CONJUGUÉ — inutile de
+ * rotation à l'axe voulu. Pour un quaternion unitaire, l'inverse est le CONJUGUÉ, inutile de
  * diviser par une norme qui vaut 1, et surtout inutile d'inverser une matrice.
  */
 export function axeMondeVersLocal(axeMonde, reposMonde){
@@ -211,7 +211,7 @@ export function quaternionAxeAngle(axe, radians){
  * Le geste complet : un angle autour d'un axe du corps SOURCE, rendu comme quaternion à composer
  * avec le repos d'un os du corps CIBLE. Fonction PURE.
  *
- * Rend l'identité — donc « ne bouge pas » — dès qu'un ingrédient manque. C'est le comportement
+ * Rend l'identité, donc « ne bouge pas », dès qu'un ingrédient manque. C'est le comportement
  * voulu : mieux vaut une articulation qui reste au repos qu'une articulation tournée au hasard,
  * parce que la seconde se voit mais ne s'explique pas.
  */
@@ -219,7 +219,7 @@ export function deltaPourOs({ axeSource, radians, repereSource, repereCible, rep
   const axeCible = axeEquivalent(axeSource, repereSource, repereCible);
   // Pas de garde sur `axeCible` : elle serait REDONDANTE. `axeMondeVersLocal` commence par
   // `normaliser`, qui rend `null` sur une entrée nulle, et la garde ci-dessous fait alors le même
-  // travail. La campagne de mutation l'a établi — la retirer ne faisait échouer aucun test, sur
+  // travail. La campagne de mutation l'a établi, la retirer ne faisait échouer aucun test, sur
   // aucun des deux chemins. Deux gardes pour un seul cas, c'est une de trop : la seconde est celle
   // qui couvre les DEUX raisons de renoncer (axe inconvertible, ou os sans repos exploitable).
   const axeLocal = axeMondeVersLocal(axeCible, reposMondeOs);
@@ -244,7 +244,7 @@ export function deltaPourOs({ axeSource, radians, repereSource, repereCible, rep
  * n'est pas un angle d'os, et il tombait. Un modèle importé restait donc debout.
  *
  * ⚠️ ON NE RECOPIE PAS `rotation.z = π/2`. Cet axe n'a de sens que pour le rig intégré. Deux des six
- * fichiers d'essai ne sont pas Y-up — hulk est debout selon +Z : le même quart de tour le
+ * fichiers d'essai ne sont pas Y-up, hulk est debout selon +Z : le même quart de tour le
  * coucherait de travers. Comme partout dans ce fichier, le geste se dit dans le repère du CORPS,
  * et chaque corps le traduit dans le sien.
  *
@@ -267,7 +267,7 @@ export function deltaPourOs({ axeSource, radians, repereSource, repereCible, rep
  *
  * ET LA ROTATION RESTE PROPRE quelle que soit cette orientation : passer de (d, h, a) à (−h, d, a)
  * est la même permutation signée des deux côtés, de déterminant +1. Le déterminant du repère se
- * simplifie donc, et `R` ne peut pas être une réflexion — ce qui retournerait le modèle comme un
+ * simplifie donc, et `R` ne peut pas être une réflexion, ce qui retournerait le modèle comme un
  * gant, sans qu'aucune erreur ne soit levée.
  *
  * @param repere {{ droite, haut, avant }} le repère du corps, en coordonnées MONDE
@@ -278,7 +278,7 @@ export function rotationAllongee3D(repere){
   const d = normaliser(r.droite), h = normaliser(r.haut), a = normaliser(r.avant);
   if (!d || !h || !a) return null;
   // R = T · Sᵀ, avec S = [d h a] et T = [−h d a] en COLONNES. S étant orthonormée, Sᵀ est son
-  // inverse — c'est vrai que le trièdre soit droitier ou gaucher, seule l'orthonormalité compte.
+  // inverse, c'est vrai que le trièdre soit droitier ou gaucher, seule l'orthonormalité compte.
   const T = [[-h[0], d[0], a[0]], [-h[1], d[1], a[1]], [-h[2], d[2], a[2]]];
   const S = [d, h, a]; // Sᵀ a pour LIGNES les colonnes de S, donc d, h, a
   const R = [];

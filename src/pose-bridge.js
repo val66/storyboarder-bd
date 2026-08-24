@@ -16,14 +16,14 @@
  *
  *   1. la table qui dit quelle articulation du Personnage joue le rôle de quel emplacement ;
  *   2. la traduction d'une pose complète, en s'appuyant sur src/skeleton-retarget.js pour la
- *      géométrie — ce module-là ignore volontairement jusqu'au nom du Personnage.
+ *      géométrie, ce module-là ignore volontairement jusqu'au nom du Personnage.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * POURQUOI LE RÉSULTAT EST ÉCRIT DANS LA MÊME FORME QUE LES CURSEURS
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * Appliquer une pose produit un quaternion par os. On aurait pu le garder tel quel et retenir « ce
- * modèle est dans la pose assise ». On rend à la place trois angles par emplacement — exactement
+ * modèle est dans la pose assise ». On rend à la place trois angles par emplacement, exactement
  * `skeletonPose3d`, la forme que les curseurs affichent et que l'enregistrement écrit déjà.
  *
  * Trois conséquences, et c'est pour elles que ce choix a été fait :
@@ -45,13 +45,13 @@ import { deltaPourOs } from './skeleton-retarget.js';
 /**
  * Quelle articulation du Personnage tient le rôle de quel emplacement du squelette.
  *
- * ⚠️ UNE ÉNUMÉRATION TENUE À LA MAIN — la panne la plus fréquente de ce dépôt. Ajouter une
+ * ⚠️ UNE ÉNUMÉRATION TENUE À LA MAIN : la panne la plus fréquente de ce dépôt. Ajouter une
  * articulation au Personnage sans l'ajouter ici la laisserait sans effet sur les modèles importés,
  * en silence. Deux tests l'interdisent : l'un exige que chaque entrée de POSE_HANDLES ait sa ligne,
  * l'autre que chaque emplacement posable soit atteint, et une seule fois.
  *
  * `bassin` n'y figure pas, et c'est délibéré : c'est la racine du squelette, la tourner ferait
- * pivoter la figure entière — ce que l'Orientation de l'Élément fait déjà. Le Personnage n'a
+ * pivoter la figure entière, ce que l'Orientation de l'Élément fait déjà. Le Personnage n'a
  * d'ailleurs aucun curseur pour lui non plus (cf. SLOTS_NON_POSABLES).
  */
 export const EMPLACEMENT_PAR_ARTICULATION = {
@@ -63,19 +63,19 @@ export const EMPLACEMENT_PAR_ARTICULATION = {
 };
 
 /**
- * La carte que le dessin des poignées attend — `{ nomDeGroupe: os }` —, construite depuis les os
+ * La carte que le dessin des poignées attend, `{ nomDeGroupe: os }`, construite depuis les os
  * mappés d'un modèle importé. Fonction PURE : elle ne fait que déplacer des références.
  *
  * POURQUOI ELLE N'EST PAS UNE TABLE DE PLUS. `projectPoseHandlePositions3D` lit
  * `entry.joints[def.group]`, où `def.group` nomme un groupe du rig intégré. Pour poser les poignées
  * sur un modèle importé, il faut la même forme, remplie d'os. Tout ce qu'il manquait était le lien
- * articulation → emplacement — celui-là même que la table ci-dessus tient déjà. Écrire une seconde
+ * articulation → emplacement, celui-là même que la table ci-dessus tient déjà. Écrire une seconde
  * correspondance `groupe → emplacement` aurait créé exactement le genre d'énumération parallèle que
  * ce fichier existe pour éviter.
  *
  * `osImportes` accompagne la carte : il dit au dessin que les décalages LOCAUX de LIMB_SEGMENTS
  * (`toLocal`, sept entrées sur dix-huit) sont exprimés en unités du rig intégré et n'ont aucun sens
- * ici — un os importé est en mètres, avec ses propres axes.
+ * ici, un os importé est en mètres, avec ses propres axes.
  */
 export function jointsDepuisOsMappes(osMappes){
   const joints = {};
@@ -108,7 +108,7 @@ export function curseursOrdonnesParAxe(def){
  * @param joints    la pose au format bibliothèque (`{ lElbow: 1.0, headRotX: 0.2, … }`)
  * @param repereSource  le repère du corps du Personnage (cf. repereDuCorps)
  * @param repereCible   celui du modèle importé
- * @param reposMondeParEmplacement  `{ avantbras_g: [x,y,z,w], … }` — rotation de repos EN MONDE de
+ * @param reposMondeParEmplacement  `{ avantbras_g: [x,y,z,w], … }`, rotation de repos EN MONDE de
  *                                  chaque os mappé. C'est elle qui dit comment les axes de l'os sont
  *                                  posés dans le monde, et donc comment y ramener un axe du corps.
  * @returns `{ emplacement: { x, y, z } }` au format `skeletonPose3d`

@@ -1,20 +1,20 @@
 /**
- * tests/vendor-skeleton-utils.test.mjs — cloneSkinned() répare le lien SkinnedMesh↔Skeleton perdu
+ * tests/vendor-skeleton-utils.test.mjs, cloneSkinned() répare le lien SkinnedMesh↔Skeleton perdu
  * par Object3D.clone().
  *
  * LE BUG QUE CE FICHIER GARDE. `SkinnedMesh.copy()` (appelé par `.clone(true)`) fait
- * `this.skeleton = source.skeleton` — une copie de RÉFÉRENCE. Le maillage cloné garde donc le
+ * `this.skeleton = source.skeleton`, une copie de RÉFÉRENCE. Le maillage cloné garde donc le
  * squelette de l'ORIGINAL, dont les os ne font pas partie de la hiérarchie clonée : leur
  * `matrixWorld` ne bouge jamais quand on transforme le clone (échelle/position appliquées par
  * `placeRigCentered3D`, cf. rig3d.js). Le GPU déforme alors le maillage avec des matrices d'os
- * figées à leur pose brute du fichier — le rendu ignore totalement la taille demandée.
+ * figées à leur pose brute du fichier, le rendu ignore totalement la taille demandée.
  *
  * Symptôme observé en conditions réelles : `realHeightFloor` corrigé (confirmé en clair dans la
  * modale), aperçu de la modale correctement petit (lui ne dépend pas du squelette, cf. plus bas),
  * mais rendu dans la Scène resté gigantesque quel que soit le redimensionnement demandé.
  *
  * CE QUE CE FICHIER VÉRIFIE : après cloneSkinned(), le SkinnedMesh cloné pointe vers un Skeleton
- * DISTINCT dont les os sont ceux du CLONE (pas de l'original) — la propriété qui manque à
+ * DISTINCT dont les os sont ceux du CLONE (pas de l'original), la propriété qui manque à
  * `.clone(true)`.
  */
 import { test, describe } from 'node:test';
@@ -44,7 +44,7 @@ function personnageArticuléMinimal(){
   return { scène, maillage, squelette, racine, enfant };
 }
 
-describe('cloneSkinned — le clone a son PROPRE squelette', () => {
+describe('cloneSkinned : le clone a son PROPRE squelette', () => {
   test('RÉGRESSION : .clone(true) partage le squelette de l\'original (le bug)', () => {
     // Documente le défaut qui justifie ce fichier : sans lui, on ne saurait pas dire si
     // cloneSkinned répare quelque chose de réel ou résout un problème imaginaire.
