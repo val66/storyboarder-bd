@@ -490,10 +490,27 @@ export const POSE_3D = {
     lShoulder: { x: 0.55, z: -0.22 }, rShoulder: { x: 0.55, z: 0.22 }, lElbow: 1.0, rElbow: 1.0,
     lHip: { x: 1.75, z: -0.2 }, rHip: { x: 1.75, z: 0.2 }, lKnee: -2.0, rKnee: -2.0, rootY: -0.46,
   },
+  // JAMBES REPRISES DE LA POSE FAITE PAR L'UTILISATEUR dans l'Éditeur (« Pose 1 »), relevée sur
+  // hulk_-_sm_bnd, page 6 du Projet 2. Les angles sont les SIENS, au degré près — c'est lui qui
+  // décide de quoi « à genoux » a l'air. Le haut du corps est inchangé, il ne l'avait pas touché.
+  //
+  //   jambe gauche  cuisse 6°, genou −89°  → le tibia se replie à plat derrière : c'est le genou
+  //                                          posé au sol, celui qui nomme la pose.
+  //   jambe droite  cuisse 78°, genou −71° → 7° cumulés, tibia quasi vertical : le pied d'appui,
+  //                                          posé en avant.
+  //
+  // SEUL rootY A ÉTÉ RECALCULÉ, et pour une raison qui ne se voit pas dans l'Éditeur : −0,22 était
+  // un reste de l'ancienne pose, dont les jambes n'avaient rien à voir. Avec celles-ci, le
+  // Personnage flottait. Le genou gauche tombe 0,378 sous la hanche, la cheville droite 0,436,
+  // contre 0,74 debout : poser le genou demanderait −0,362, poser le pied −0,304. Aucun des deux
+  // ne peut être exact en même temps — les angles décrivent un appui légèrement plus étalé qu'un
+  // agenouillement strict. D'où le milieu, −0,33 : le genou frôle le sol à 2,9 cm, le pied s'y
+  // enfonce d'autant. Deux écarts invisibles, plutôt qu'un seul bien voyant d'un côté.
   genoux: {
     torsoRotX: 0.05, headRotX: 0,
     lShoulder: { x: 0.3, z: -0.1 }, rShoulder: { x: 0.2, z: 0.25 }, lElbow: 0.6, rElbow: 0.9,
-    lHip: { x: 0.9, z: -0.05 }, rHip: { x: -1.3, z: 0.05 }, lKnee: 1.8, rKnee: 1.5, rootY: -0.22,
+    lHip: { x: 0.1047, z: -0.05 }, rHip: { x: 1.3614, z: 0.05 },
+    lKnee: -1.5533, rKnee: -1.2392, rootY: -0.33,
   },
   sort: {
     torsoRotX: -0.05, headRotX: -0.05,

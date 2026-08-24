@@ -32,7 +32,7 @@ import {
 import { poseOsDepuisPosePersonnage } from '../src/pose-bridge.js';
 import { repereDuCorps } from '../src/skeleton-retarget.js';
 import { SLOTS } from '../src/skeleton-map.js';
-import { POSE_HANDLES, POSE_3D, JOINT_GROUPS, JOINT_LABELS } from '../src/constants.js';
+import { POSE_HANDLES, POSE_3D, POSITIONS, JOINT_GROUPS, JOINT_LABELS } from '../src/constants.js';
 import { poseSliderSpecs3D } from '../src/utils.js';
 
 const rigNeuf = () => buildPersonaRig3D('#8844aa', 'homme', 'comics_numerique');
@@ -780,3 +780,42 @@ describe('Le repère d\'un squelette importé, et ses repos en monde', () => {
  * : 0)` calcule exactement `isFinite(v) ? v : 0`. Aucun test ne pouvait la distinguer, et c'est
  * correct.
  */
+
+
+// ── Le sens de pliure des genoux ──────────────────────────────────────────────────────────────
+describe('poses proposées — aucun genou ne plie à l\'envers', () => {
+  // TROIS POSES SUR SIX PLIAIENT LES GENOUX DU MAUVAIS CÔTÉ, et rien ne le signalait : accroupi
+  // (+1,9), course (+1,0 / +0,3) et à genoux (+1,8 / +1,5). Le défaut ne se voit qu'à l'écran, sur
+  // un rendu WebGL qu'aucun test ne peut produire — mais il se DÉMONTRE sur les angles seuls, et
+  // c'est ce que fait ce test.
+  //
+  // La démonstration : les membres pendent vers −Y au repos, le Personnage regarde vers −Z (côté
+  // faceMesh, cf. buildPersonaRig3D). Une rotation de +θ autour de X envoie donc le tibia vers
+  // l'AVANT — la jambe se plie à l'envers, genou en hyperextension. Un genou humain ne se replie
+  // que vers l'arrière, donc vers les X NÉGATIFS. Sans exception, et sans réglage de goût.
+  //
+  // Portée volontairement limitée aux poses PROPOSÉES : saut, meditation, combat et recul plient
+  // elles aussi à l'envers, mais elles ne sont plus offertes et ne subsistent que comme repli de
+  // résolution pour les Projets qui les citent (cf. l'en-tête de POSITIONS). Les corriger
+  // changerait des poses déjà en usage ; les épingler ici ferait échouer le test sur un défaut
+  // qu'on a décidé de ne pas toucher.
+  POSITIONS.forEach(({ key, label }) => {
+    const pose = POSE_3D[key];
+    if (!pose) return;   // 'allonge' n'est complété que par draw.js, absent de ce fichier
+    test(`${label} (${key})`, () => {
+      ['lKnee', 'rKnee'].forEach(cote => {
+        const angle = pose[cote];
+        if (angle === undefined) return;   // champ absent = repos, invariant de POSE_3D
+        assert.ok(angle <= 0,
+          `${key}.${cote} vaut ${angle} : un genou positif plie la jambe vers l'avant`);
+      });
+    });
+  });
+
+  test('la pose de référence est bien celle dont les signes ont toujours été justes', () => {
+    // `assis` n'a jamais été fautive : c'est d'elle que dérivent les corrections d'accroupi et de
+    // course. Si elle changeait de sens, le raisonnement ci-dessus perdrait son point d'appui.
+    assert.ok(POSE_3D.assis.lHip.x > 0, 'cuisse en avant pour s\'asseoir');
+    assert.ok(POSE_3D.assis.lKnee < 0, 'tibia replié vers l\'arrière');
+  });
+});
