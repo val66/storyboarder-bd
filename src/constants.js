@@ -406,6 +406,23 @@ export const BUBBLE_FONT_FALLBACK = {
 // (combat, saut, vol, sort, arc, epee_levee, vaincu, meditation, recul) ne sont plus offertes ni
 // semées : elles ne subsistent que comme DERNIER RECOURS de résolution, pour les Projets déjà
 // enregistrés qui les citent. Ne pas les supprimer — cf. l'en-tête de POSITIONS pour la mesure.
+// CONVENTION DE SIGNES, mesurée sur la géométrie plutôt que devinée. Elle a manqué à au moins deux
+// poses, qui pliaient les genoux du mauvais côté sans que rien ne le signale.
+//
+// Le Personnage regarde vers −Z (c'est le côté où faceMesh est posé, cf. buildPersonaRig3D dans
+// rig3d.js), et tous les membres pendent vers −Y au repos. Une rotation de +θ autour de X envoie
+// donc un membre vers −Z, c'est-à-dire VERS L'AVANT. D'où :
+//
+//   hanche  x > 0  → cuisse en AVANT (s'asseoir, monter le genou) ; x < 0 → cuisse en arrière.
+//   genou   x < 0  → tibia replié en ARRIÈRE, talon vers la fesse. C'EST LE SEUL SENS ANATOMIQUE.
+//                    Un genou positif plie la jambe à l'envers.
+//   épaule  x > 0  → bras en avant ; coude x > 0 → avant-bras vers l'avant (le bon sens pour un
+//                    bras, l'inverse de la jambe — les deux membres se plient en sens opposés).
+//   torse   x > 0  → buste penché en avant ; tête x > 0 → menton vers la poitrine. Une tête qui
+//                    doit regarder devant sur un buste penché porte donc un angle NÉGATIF.
+//   rootY          → décalage vertical du bassin, en unités monde. Les segments de jambe mesurent
+//                    0,38 et 0,36, soit 0,74 de hanche à cheville debout : c'est à cette longueur
+//                    que se compare la descente d'une pose fléchie.
 export const POSE_3D = {
   debout: {
     torsoRotX: 0, headRotX: 0,
@@ -437,10 +454,25 @@ export const POSE_3D = {
     lShoulder: { x: -1.3, z: -0.1 }, rShoulder: { x: -1.3, z: 0.1 }, lElbow: 0.1, rElbow: 0.1,
     lHip: { x: 0.3, z: -0.05 }, rHip: { x: 0.3, z: 0.05 }, lKnee: 0.1, rKnee: 0.1, rootY: 0.1,
   },
+  // REFAITE. L'ancienne version pliait les genoux À L'ENVERS et poussait les cuisses en ARRIÈRE :
+  // `lHip.x: -1.7, lKnee: 1.9`. Les deux signes étaient inversés, et la mesure le dit sans avoir à
+  // regarder l'écran (cf. le rappel de convention en tête de cette table). Résultat à l'affichage :
+  // un personnage assis dans le vide, tibias pointant vers l'avant, jambes en Z. La pose de
+  // référence `assis` (+1.4 / −1.3) a toujours porté les bons signes — c'est d'elle que celle-ci
+  // dérive, en plus profond.
+  //
+  // Les chiffres de la descente du bassin sont CALCULÉS, pas approchés : cuisse 0,38 orientée à
+  // +1,75 rad met le genou 0,068 au-dessus de la hanche ; tibia 0,36 à −0,25 rad cumulé met la
+  // cheville 0,349 sous le genou. La cheville est donc 0,281 sous la hanche, contre 0,74 debout —
+  // d'où un bassin descendu de 0,46 pour que les pieds restent au sol.
+  //
+  // La tête contre-tourne le buste (−0,15 face à +0,45) : accroupi mais REGARDANT DEVANT, comme
+  // `vol` le fait déjà (+0,9 / −0,2). L'ancienne valeur, +0,1, ajoutait au buste et faisait fixer
+  // le sol — une posture de repos, pas d'affût.
   accroupi: {
-    torsoRotX: 0.5, headRotX: 0.1,
-    lShoulder: { x: 0.5, z: -0.2 }, rShoulder: { x: 0.5, z: 0.2 }, lElbow: 0.8, rElbow: 0.8,
-    lHip: { x: -1.7, z: -0.1 }, rHip: { x: -1.7, z: 0.1 }, lKnee: 1.9, rKnee: 1.9, rootY: -0.32,
+    torsoRotX: 0.45, headRotX: -0.15,
+    lShoulder: { x: 0.55, z: -0.22 }, rShoulder: { x: 0.55, z: 0.22 }, lElbow: 1.0, rElbow: 1.0,
+    lHip: { x: 1.75, z: -0.2 }, rHip: { x: 1.75, z: 0.2 }, lKnee: -2.0, rKnee: -2.0, rootY: -0.46,
   },
   genoux: {
     torsoRotX: 0.05, headRotX: 0,
