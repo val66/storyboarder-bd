@@ -177,3 +177,28 @@ Deux pièges consignés sur place, tous deux déjà connus ici :
 - un test qui lit du source doit d'abord écarter les commentaires. Le garde anti-signature-d'index
   échouait sur le *commentaire* expliquant pourquoi il n'y a plus de signature d'index, le piège du
   Fix 88, à l'identique.
+
+## Règle n°6 — un gros chantier a sa doc, et elle se demande
+
+Un chantier qui s'étale sur plusieurs semaines, qui touche plusieurs fichiers et qui procède par
+mesures successives reçoit son document dans `docs/`, bilingue comme les autres et indexé dans
+`docs/README*.md`. Exemple de référence : [creature-rigs.fr.md](creature-rigs.fr.md).
+
+**Cette doc ne se crée pas d'office. Elle se propose, et l'utilisateur tranche.** Un document de
+chantier coûte deux fichiers à tenir à jour ; il ne vaut son prix ni pour une correction de bug, ni
+pour une fonctionnalité qui tient en un commit, où le message de commit suffit et où le dépôt en a
+déjà l'habitude.
+
+Cinq rubriques, et la deuxième est celle qui justifie tout le reste :
+
+- **le corpus et les mesures**, avec les chiffres. Jamais « c'est mieux » ;
+- **les hypothèses démenties**, avec ce qui les a tuées. Une doc qui ne garde que les conclusions
+  justes donne un plan à l'air évident, et le lecteur suivant retente le critère qui a déjà échoué,
+  parce que rien ne dit qu'il a échoué ;
+- **les décisions prises avec l'utilisateur**, pour ne pas les rediscuter trois semaines plus tard ;
+- **ce qui n'est pas au programme**, qui coupe court aux demandes implicites ;
+- **ce que le corpus ne couvre pas**, qui empêche d'affirmer qu'un cas est traité.
+
+**La doc se met à jour dans le même commit que le chantier**, au même titre que les README et le
+manuel intégré plus haut. Sans cette contrainte elle dérive en deux semaines, et une doc périmée est
+pire que pas de doc : on lui fait confiance.

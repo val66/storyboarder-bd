@@ -173,3 +173,28 @@ Two traps recorded on the spot, both already known here:
   verifies nothing**: it produced nine bogus "not callable" diagnostics by masking the real methods;
 - a test reading source must strip comments first. The index-signature guard failed on the *comment*
   explaining why there is no index signature, the same trap as Fix 88.
+
+## Rule #6 — a large piece of work gets its document, and it is asked for
+
+Work that spans several weeks, touches several files and proceeds by successive measurement gets its
+own document in `docs/`, bilingual like the others and indexed in `docs/README*.md`. Reference
+example: [creature-rigs.md](creature-rigs.md).
+
+**That document is not created as a matter of course. It is proposed, and the user decides.** A
+work-in-progress document costs two files to keep current; it earns its price neither for a bug fix
+nor for a feature that fits in one commit, where the commit message suffices and this repository is
+already used to that.
+
+Five headings, and the second is the one that justifies all the rest:
+
+- **the corpus and the measurements**, with figures. Never "this is better";
+- **the disproved hypotheses**, with what killed them. A document keeping only the correct
+  conclusions gives a plan that looks obvious, and the next reader retries the criterion that
+  already failed, because nothing says it failed;
+- **the decisions taken with the user**, so they are not relitigated three weeks later;
+- **what is not on the programme**, which heads off implicit requests;
+- **what the corpus does not cover**, which prevents claiming a case is handled.
+
+**The document is updated in the same commit as the work**, exactly like the READMEs and the
+built-in manual above. Without that constraint it drifts within two weeks, and a stale document is
+worse than none: people trust it.
