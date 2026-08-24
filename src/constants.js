@@ -439,10 +439,26 @@ export const POSE_3D = {
     lShoulder: { x: -0.9, z: -0.1 }, rShoulder: { x: 0.5, z: 0.3 }, lElbow: 0.3, rElbow: 0.6,
     lHip: { x: -0.5, z: -0.08 }, rHip: { x: 0.4, z: 0.05 }, lKnee: 0.6, rKnee: 0.1, rootY: -0.06,
   },
+  // REFAITE, pour la même raison qu'`accroupi` : genoux à l'envers (+1,0 et +0,3). Un DEUXIÈME
+  // défaut s'est vu en la reprenant, et celui-là ne tenait pas au signe mais au balancement.
+  //
+  // L'ancienne version mettait la jambe gauche EN ARRIÈRE (−0,8) et le bras gauche EN ARRIÈRE
+  // aussi (−0,7) : même côté devant, même côté derrière. C'est l'amble, l'allure du chameau, pas
+  // la course d'un bipède — qui contre-balance toujours bras et jambe opposés. Les épaules sont
+  // donc échangées : bras gauche devant (+0,85) avec jambe droite devant (+0,75).
+  //
+  // Les deux genoux ne se plient PAS pareil, et c'est ce qui fait lire la foulée : la jambe avant
+  // n'est qu'entrouverte (−0,55, tibia presque à l'aplomb, prêt à poser), la jambe arrière est
+  // repliée fort (−1,55, cumulé −2,1 rad : le tibia repart vers le HAUT et l'ARRIÈRE, talon sous
+  // la fesse). Une valeur unique aux deux genoux donnerait un saut à pieds joints.
+  //
+  // Bassin à −0,08 : la cheville avant tombe 0,63 sous la hanche contre 0,74 debout, donc le pied
+  // avant frôle le sol au lieu de flotter à 11 cm. La jambe arrière, elle, reste franchement en
+  // l'air — c'est une foulée, pas une marche.
   course: {
-    torsoRotX: 0.25, headRotX: 0,
-    lShoulder: { x: -0.7, z: 0 }, rShoulder: { x: 0.7, z: 0 }, lElbow: 1.0, rElbow: 1.0,
-    lHip: { x: -0.8, z: 0 }, rHip: { x: 0.6, z: 0 }, lKnee: 1.0, rKnee: 0.3, rootY: -0.04,
+    torsoRotX: 0.2, headRotX: -0.12,
+    lShoulder: { x: 0.85, z: -0.05 }, rShoulder: { x: -0.75, z: 0.05 }, lElbow: 1.1, rElbow: 1.1,
+    lHip: { x: -0.55, z: -0.03 }, rHip: { x: 0.75, z: 0.03 }, lKnee: -1.55, rKnee: -0.55, rootY: -0.08,
   },
   saut: {
     torsoRotX: -0.1, headRotX: -0.05,
