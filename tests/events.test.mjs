@@ -12,6 +12,7 @@ import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 // Les deux magnétismes de l'outil Construire ont suivi cet outil dans src/canvas-tools.js. Les
 // tests, eux, restent ici : ils portent sur la géométrie du tracé, pas sur le fichier qui l'héberge.
@@ -19,6 +20,7 @@ import { buildApplyAngleSnap, buildApplyAlignSnap } from '../src/canvas-tools.js
 import {
   getStackGroup,
   moveStackGroup,
+  echangerBulleVoisine3D,
   tracéBBox,
   wallLockedAxis,
   wallChildUnits3D,
@@ -173,6 +175,85 @@ describe('moveStackGroup : déplacement d\'un cran du groupe dans l\'ordre d\'em
     const moved = moveStackGroup([a], page, -1, new Set(['blocked']));
     assert.equal(moved, false);
     assert.deepEqual(page.objects.map(o => o.id), ['blocked', 'a', 'c']);
+  });
+});
+
+describe('echangerBulleVoisine3D : une Bulle ne s\'empile qu\'avec les autres Bulles', () => {
+  const bulle = (id) => ({ id, type: 'bulle' });
+  const autre = (id, type) => ({ id, type });
+
+  test('RÉGRESSION : le cas signalé, quatre clics sans effet', () => {
+    // C'est la reproduction exacte du défaut. `moveStackGroup` faisait avancer B1 d'un cran dans
+    // page.objects à chaque clic, donc par-dessus P1, e1, P2 puis e2, sans JAMAIS changer l'ordre
+    // des Bulles ni le rang affiché dans le panneau droit. Le menu paraissait mort.
+    const B1 = bulle('B1'), B2 = bulle('B2');
+    const objects = [B1, autre('P1', 'panel'), autre('e1', 'perso'),
+      autre('P2', 'panel'), autre('e2', 'perso'), B2];
+    assert.equal(echangerBulleVoisine3D(objects, B1, 1), true);
+    assert.deepEqual(objects.filter(o => o.type === 'bulle').map(o => o.id), ['B2', 'B1'],
+      'un seul clic doit suffire à passer devant l\'autre Bulle');
+  });
+
+  test('les objets qui ne sont pas des Bulles ne bougent pas d\'un indice', () => {
+    // L'échange plutôt que l'insertion : deux Bulles troquent leur place, tout le reste garde la
+    // sienne. Une Case ne doit pas changer d'empilement parce qu'une Bulle a avancé.
+    const B1 = bulle('B1'), B2 = bulle('B2');
+    const objects = [B1, autre('P1', 'panel'), autre('P2', 'panel'), B2];
+    echangerBulleVoisine3D(objects, B1, 1);
+    assert.deepEqual(objects.map(o => o.id), ['B2', 'P1', 'P2', 'B1']);
+  });
+
+  test('reculer emprunte le chemin inverse', () => {
+    const B1 = bulle('B1'), B2 = bulle('B2');
+    const objects = [B1, autre('P1', 'panel'), B2];
+    assert.equal(echangerBulleVoisine3D(objects, B2, -1), true);
+    assert.deepEqual(objects.map(o => o.id), ['B2', 'P1', 'B1']);
+  });
+
+  test('trois Bulles : on ne saute que la voisine, pas toutes', () => {
+    const B1 = bulle('B1'), B2 = bulle('B2'), B3 = bulle('B3');
+    const objects = [B1, B2, B3];
+    echangerBulleVoisine3D(objects, B1, 1);
+    assert.deepEqual(objects.map(o => o.id), ['B2', 'B1', 'B3']);
+  });
+
+  test('aucune autre Bulle dans cette direction : false, et rien ne bouge', () => {
+    // Le cas de la Bulle déjà au premier plan, et celui de la Bulle unique. C'est ce `false` qui
+    // fait retirer l'instantané d'annulation : sans lui, un clic sans effet consommerait un Ctrl+Z.
+    const B1 = bulle('B1');
+    const objects = [autre('P1', 'panel'), B1, autre('P2', 'panel')];
+    assert.equal(echangerBulleVoisine3D(objects, B1, 1), false);
+    assert.deepEqual(objects.map(o => o.id), ['P1', 'B1', 'P2']);
+  });
+
+  test('RÉGRESSION : les deux sens du menu passent bien par ce chemin', () => {
+    // `bringForward` et `sendBackward` ne sont pas exportés (ils lisent S.selectedId et redessinent).
+    // Ce qui se vérifie ici est l'aiguillage : une Bulle ne doit PAS repartir dans moveStackGroup,
+    // qui est précisément ce qui ne marchait pas. Un seul des deux sens corrigé passerait sinon
+    // inaperçu, l'utilisateur n'essayant en général qu'une direction.
+    const src = sourceSansCommentaires(
+      readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+    ['bringForward', 'sendBackward'].forEach(nom => {
+      const i = src.indexOf(`function ${nom}(){`);
+      assert.ok(i > 0, `${nom} introuvable`);
+      const corps = src.slice(i, src.indexOf('\n}', i));
+      assert.match(corps, /echangerBulleVoisine3D/, `${nom} n'aiguille pas les Bulles`);
+      assert.match(corps, /'bulle'/, `${nom} ne teste pas le type`);
+    });
+  });
+
+  test('les cas dégénérés ne lèvent rien', () => {
+    assert.equal(echangerBulleVoisine3D(null, bulle('B1'), 1), false);
+    assert.equal(echangerBulleVoisine3D([], null, 1), false);
+    // ⚠️ AVEC UNE BULLE APRÈS, sinon le test ne prouve rien. Un tableau d'un seul élément rend
+    // `false` même sans la garde de type, la boucle ne trouvant aucune Bulle : mutation échappée
+    // au premier passage. Ici, retirer la garde ferait avancer la Case par-dessus la Bulle.
+    const P1 = autre('P1', 'panel');
+    const objets = [P1, bulle('B1')];
+    assert.equal(echangerBulleVoisine3D(objets, P1, 1), false,
+      'un objet qui n\'est pas une Bulle ne passe pas par ce chemin');
+    assert.deepEqual(objets.map(o => o.id), ['P1', 'B1'], 'et rien n\'a bougé');
+    assert.equal(echangerBulleVoisine3D([bulle('B1')], bulle('absente'), 1), false);
   });
 });
 

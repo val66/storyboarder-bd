@@ -516,6 +516,39 @@ export function moveStackGroup(group, page, dir, blockedIds){
   });
   return moved;
 }
+/**
+ * Échange une Bulle avec la Bulle voisine dans la direction donnée. MUTE `objects`, rend `true` si
+ * quelque chose a bougé.
+ *
+ * POURQUOI UNE BULLE NE SUIT PAS LA RÈGLE COMMUNE. `moveStackGroup` fait sauter un objet par-dessus
+ * son voisin IMMÉDIAT dans `page.objects`. Pour une Case, c'est la bonne unité : elle se dessine
+ * dans cet ordre, et ses Éléments voyagent avec elle. Pour une Bulle, non : les Bulles sont rendues
+ * APRÈS toutes les Cases (cf. drawContent dans draw.js), et leur empilement ne se joue qu'entre
+ * elles. Le panneau droit dit d'ailleurs la même chose, il affiche « 1 / 2 » compté sur les seules
+ * Bulles.
+ *
+ * Conséquence mesurée sur un cas banal, `[B1, P1, e1, P2, e2, B2]` : quatre clics sur « Avancer »
+ * déplaçaient bien B1 dans le tableau, sans jamais changer l'ordre des Bulles ni le rang affiché.
+ * Le menu paraissait mort. Il fallait un cinquième clic pour que quoi que ce soit se voie.
+ *
+ * L'échange plutôt que l'insertion : les deux Bulles troquent leur place, et aucun autre objet ne
+ * change d'indice. C'est exactement ce que veut dire « un cran » entre deux Bulles, puisque rien
+ * d'autre ne s'intercale entre elles à l'affichage.
+ */
+export function echangerBulleVoisine3D(objects, bulle, dir){
+  if (!Array.isArray(objects) || !bulle || bulle.type !== 'bulle') return false;
+  const i = objects.indexOf(bulle);
+  if (i < 0) return false;
+  const pas = dir > 0 ? 1 : -1;
+  for (let j = i + pas; j >= 0 && j < objects.length; j += pas) {
+    if (objects[j] && objects[j].type === 'bulle') {
+      [objects[i], objects[j]] = [objects[j], objects[i]];
+      return true;
+    }
+  }
+  return false;
+}
+
 function undoLastNoOpSnapshot(){
   S.undoStack.pop();
   const btn = document.getElementById('undoBtn');
@@ -530,7 +563,10 @@ function bringForward(){
   const group = getStackGroup(S.selectedId, page);
   if (group.length === 0) return;
   snapshot();
-  if (!moveStackGroup(group, page, 1)) { undoLastNoOpSnapshot(); return; }
+  const bougé = group[0].type === 'bulle'
+    ? echangerBulleVoisine3D(page.objects, group[0], 1)
+    : moveStackGroup(group, page, 1);
+  if (!bougé) { undoLastNoOpSnapshot(); return; }
   drawCurrentPage();
 }
 function sendBackward(){
@@ -546,7 +582,10 @@ function sendBackward(){
     if (panel) blockedIds = new Set([panel.id]);
   }
   snapshot();
-  if (!moveStackGroup(group, page, -1, blockedIds)) { undoLastNoOpSnapshot(); return; }
+  const bougé = group[0].type === 'bulle'
+    ? echangerBulleVoisine3D(page.objects, group[0], -1)
+    : moveStackGroup(group, page, -1, blockedIds);
+  if (!bougé) { undoLastNoOpSnapshot(); return; }
   drawCurrentPage();
 }
 
