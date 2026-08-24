@@ -109,7 +109,8 @@ fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait «
 - **`POSE_3D` reste consulté APRÈS la bibliothèque**, comme filet : un fichier citant une pose
   intégrée que l'utilisateur a supprimée continue de résoudre. Il n'apparaît jamais dans la liste,
   donc supprimer fait bien disparaître la pose de l'interface.
-- **Chaque fichier embarque les poses qu'il utilise** (`posesUsedByProject3D`), et l'ouverture
+- **Chaque fichier embarque les poses qu'il utilise** (`posesUsedByProject3D` — Personnages ET
+  modèles importés, cf. pose-library.fr.md), et l'ouverture
   **fusionne** les ids inconnus. Un fichier reste autonome ; un vieux projet ne peut pas annuler un
   renommage, la fusion n'écrasant jamais une entrée existante.
 

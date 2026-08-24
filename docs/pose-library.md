@@ -23,9 +23,15 @@ user decision, re-seeding it would undo that on every restart.
 ⚠️ Seed AFTER `draw.js` has loaded, since it completes `POSE_3D` at runtime with `'allonge'` and
 `'vaincu'`. Seeding before would permanently deprive the user of the two lying-down poses.
 
-**A project file** additionally carries a **fallback copy** of the poses its Characters cite
+**A project file** additionally carries a **fallback copy** of the poses its Elements cite
 (`posesUsedByProject3D`, field `poses`). Recomputed on **every** save, never directly editable. It
 exists so that a project opened elsewhere keeps the names of its poses.
+
+⚠️ **Elements, not just Characters.** An imported model with a skeleton mapping cites a pose the
+same way (`position`, written by `objectPositionSelect`). `poseUsageCount3D` counted Characters
+only until v1.4.25: a project whose pose was carried by an imported model alone did **not** embed
+it, and the name was lost for good once the file was opened elsewhere. The same count also drives
+the deletion warning, which therefore announced "0 elements" while one was using it.
 
 | | Library | Copy inside the file |
 |---|---|---|

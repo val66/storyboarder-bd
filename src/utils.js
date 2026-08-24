@@ -663,18 +663,38 @@ export function renamePose3D(poses, id, name){
   return list.map(p => (p && p.id === id) ? { ...p, name: clean } : p);
 }
 
-// Fix 56 — combien de Personnages du projet citent cette pose.
+// Types d'Élément qui peuvent CITER une pose de la bibliothèque.
 //
-// Sert uniquement à décider s'il faut demander confirmation avant suppression. Supprimer reste sans
-// danger — les angles sont copiés chez chaque Personnage, rien ne se déforme (cf. Fix 55) — mais
-// perdre le NOM d'une pose portée par vingt Personnages mérite un avertissement : c'est ce nom qui
-// dit à l'auteur pourquoi ils sont dans cette position-là.
+// Deux, et la liste est close : le Personnage intégré ('perso') et le modèle importé ('objet3d',
+// dont seuls ceux qui ont une correspondance de squelette voient le champ). Ce sont exactement les
+// deux écrans qui écrivent `position` — personaPositionSelect et objectPositionSelect dans
+// events.js. Aucun autre Élément ne porte ce champ.
+const TYPES_PORTEURS_DE_POSE_3D = ['perso', 'objet3d'];
+
+// Fix 56 — combien d'Éléments du projet citent cette pose.
+//
+// Sert à deux choses, et les deux se trompaient de la même façon : décider s'il faut avertir avant
+// une suppression, et choisir les poses qu'un fichier projet EMBARQUE (posesUsedByProject3D).
+//
+// ⚠️ CETTE FONCTION NE COMPTAIT QUE LES PERSONNAGES. Un modèle importé cite pourtant une pose de la
+// même manière depuis que sa fiche a un sélecteur (`position` + `positionLabel`, écrits par
+// objectPositionSelect). Les deux conséquences se sont mesurées sur un vrai fichier — un Projet où
+// une pose personnelle n'était portée que par un modèle importé :
+//
+//   1. le fichier enregistré ne l'embarquait PAS. Rouvert sur une autre machine, ou envoyé à
+//      quelqu'un, le modèle affichait « Pose 1 (inconnue) » : le nom était perdu, définitivement.
+//   2. la supprimer annonçait « utilisée par 0 Élément » et ne demandait donc rien, alors qu'un
+//      modèle s'en servait. L'avertissement existe précisément pour ce cas.
+//
+// Le comptage n'est donc pas une commodité d'affichage : c'est lui qui décide de ce qui SURVIT
+// dans le fichier. Un type oublié se paie en donnée perdue, pas en message imprécis.
 //
 // Parcours récursif générique plutôt qu'un chemin figé `tomes[].pages[].objects[]`. Deux raisons :
 // les Scènes ont la même forme imbriquée mais vivent dans une autre racine, et un oubli de branche
 // donnerait un comptage FAUX — donc une suppression silencieuse là où il fallait avertir. Le couple
-// (type 'perso', position) est une signature assez précise pour qu'un balayage large ne compte rien
-// d'autre. Même parti pris que resyncIdCounter (io.js), qui a survécu aux changements de structure.
+// (type porteur, position) reste une signature assez précise pour qu'un balayage large ne compte
+// rien d'autre. Même parti pris que resyncIdCounter (io.js), qui a survécu aux changements de
+// structure.
 export function poseUsageCount3D(poseId, ...roots){
   if (!poseId) return 0;
   let n = 0;
@@ -683,7 +703,7 @@ export function poseUsageCount3D(poseId, ...roots){
     if (Array.isArray(v)) { v.forEach(visit); return; }
     if (!v || typeof v !== 'object' || seen.has(v)) return;
     seen.add(v);
-    if (v.type === 'perso' && v.position === poseId) n++;
+    if (TYPES_PORTEURS_DE_POSE_3D.includes(v.type) && v.position === poseId) n++;
     Object.values(v).forEach(visit);
   };
   roots.forEach(visit);

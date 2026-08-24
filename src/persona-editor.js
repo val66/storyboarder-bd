@@ -1155,11 +1155,15 @@ export function wirePersonaEditor(){
       // Fix 58 — le message dit désormais que la suppression porte sur la bibliothèque de
       // l'APPLICATION, pas sur ce seul Projet. Le comptage, lui, ne peut couvrir que le Projet
       // ouvert : les autres ne sont pas inspectables. Passer cette limite sous silence laisserait
-      // croire que « 2 Personnages » est le total, alors que c'est un minimum.
+      // croire que « 2 Éléments » est le total, alors que c'est un minimum.
+      //
+      // « Élément » et non « Personnage » : un modèle importé cite une pose exactement de la même
+      // façon, et le comptage l'inclut désormais (cf. poseUsageCount3D). Le mot précédent annonçait
+      // un chiffre plus juste que lui.
       const ok = await confirmAction(used > 0
         ? tr(
-          `The pose "${nom}" is used by ${used} character(s) in the project currently open. Deleting it removes the pose from your library, which is shared by ALL your projects — others may use it too, and cannot be counted from here. No character is altered: their joint angles are stored on each of them. Only the pose name is lost, and shown as unknown. This cannot be undone. Delete anyway?`,
-          `La pose « ${nom} » est utilisée par ${used} Personnage(s) du Projet ouvert. La supprimer la retire de votre bibliothèque, partagée par TOUS vos Projets — d'autres peuvent l'utiliser aussi, sans qu'on puisse les compter d'ici. Aucun Personnage n'est modifié : leurs articulations sont enregistrées sur chacun d'eux. Seul le nom de la pose est perdu, et affiché comme inconnu. Cette action est irréversible. Supprimer quand même ?`)
+          `The pose "${nom}" is used by ${used} element(s) in the project currently open. Deleting it removes the pose from your library, which is shared by ALL your projects — others may use it too, and cannot be counted from here. No element is altered: their joint angles are stored on each of them. Only the pose name is lost, and shown as unknown. This cannot be undone. Delete anyway?`,
+          `La pose « ${nom} » est utilisée par ${used} Élément(s) du Projet ouvert. La supprimer la retire de votre bibliothèque, partagée par TOUS vos Projets — d'autres peuvent l'utiliser aussi, sans qu'on puisse les compter d'ici. Aucun Élément n'est modifié : leurs articulations sont enregistrées sur chacun d'eux. Seul le nom de la pose est perdu, et affiché comme inconnu. Cette action est irréversible. Supprimer quand même ?`)
         : tr(
           `Delete the pose "${nom}" from your library? It is shared by all your projects, and this cannot be undone — except for built-in poses, which the Settings dialog can restore.`,
           `Supprimer la pose « ${nom} » de votre bibliothèque ? Elle est partagée par tous vos Projets, et l'action est irréversible — sauf pour les poses de base, que la modale Configuration permet de restaurer.`));

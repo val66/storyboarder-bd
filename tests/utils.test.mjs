@@ -24,7 +24,7 @@ import {
   pickNearestHandle3D, canvasEventCoords3D, figureRenderSize3D, orbitCameraPosition3D,
   personaEditorPoseList3D, poseJointsByKey3D,
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, 
-  seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
+  seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D, poseUsageCount3D,
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
   hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
   orbiteDeFace3D, estHorsChamp3D,
@@ -1040,6 +1040,48 @@ describe('posesUsedByProject3D — ce qu\'un fichier embarque', () => {
   test('la pose embarquée porte son nom ET ses angles', () => {
     const lib = [{ id: 'pose1', name: 'Salut', skeleton: 'humain', joints: { lElbow: 0.4 } }];
     assert.deepEqual(posesUsedByProject3D(lib, tomes)[0], lib[0]);
+  });
+
+  test('RÉGRESSION : un modèle importé compte autant qu\'un Personnage', () => {
+    // MESURÉ SUR UN VRAI FICHIER, pas supposé. Dans Projet 2, « Pose 1 » n'était portée que par un
+    // modèle importé (hulk_-_sm_bnd, page 6) : le fichier enregistré citait `pose2918` sans
+    // l'embarquer. Rouvert ailleurs, le modèle affichait « Pose 1 (inconnue) » — le nom était perdu
+    // pour de bon, puisque rien dans le fichier ne le portait plus.
+    //
+    // Le compteur ne décidait alors que de l'avertissement de suppression, d'où l'oubli ; il décide
+    // aussi de ce qui SURVIT dans le fichier.
+    const modele = { id: 'm1', type: 'objet3d', objType: 'modele', position: 'pose2' };
+    const projet = [{ id: 't1', pages: [{ id: 'p1', objects: [modele] }] }];
+    assert.deepEqual(posesUsedByProject3D(biblio, projet).map(p => p.id), ['pose2']);
+  });
+});
+
+describe('poseUsageCount3D — qui cite une pose', () => {
+  const dans = (...objets) => [{ id: 't1', pages: [{ id: 'p1', objects: objets }] }];
+
+  test('un Personnage et un modèle importé comptent tous les deux', () => {
+    const perso = { id: 'e1', type: 'perso', position: 'pose1' };
+    const modele = { id: 'e2', type: 'objet3d', objType: 'modele', position: 'pose1' };
+    assert.equal(poseUsageCount3D('pose1', dans(perso)), 1, 'Personnage');
+    assert.equal(poseUsageCount3D('pose1', dans(modele)), 1, 'modèle importé');
+    assert.equal(poseUsageCount3D('pose1', dans(perso, modele)), 2, 'les deux ensemble');
+  });
+
+  test('ce qui ne porte pas de pose n\'est pas compté', () => {
+    // Le balayage est large — il traverse tout objet rencontré — donc la signature doit rester
+    // discriminante. Une Bulle qui porterait par hasard un champ `position` ne doit pas gonfler le
+    // compte : c'est lui qui déclenche, ou non, l'avertissement de suppression.
+    const bulle = { id: 'b1', type: 'bulle', position: 'pose1' };
+    const tracé = { id: 'x1', type: 'tracé', position: 'pose1' };
+    assert.equal(poseUsageCount3D('pose1', dans(bulle, tracé)), 0);
+  });
+
+  test('les deux racines sont parcourues, et une pose absente vaut zéro', () => {
+    const perso = { id: 'e1', type: 'perso', position: 'pose1' };
+    const modele = { id: 'e2', type: 'objet3d', position: 'pose1' };
+    assert.equal(poseUsageCount3D('pose1', dans(perso), dans(modele)), 2, 'Tomes ET Scènes');
+    assert.equal(poseUsageCount3D('inexistante', dans(perso, modele)), 0);
+    assert.equal(poseUsageCount3D(null, dans(perso)), 0);
   });
 });
 

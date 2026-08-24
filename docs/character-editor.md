@@ -106,7 +106,8 @@ itself: sent to someone, it would display "unknown" everywhere.
 - **`POSE_3D` is still consulted AFTER the library**, as a safety net: a file citing a built-in pose
   the user has deleted still resolves. It never appears in the list, so deleting really does make
   the pose disappear from the interface.
-- **Every file embeds the poses it uses** (`posesUsedByProject3D`), and opening **merges** the
+- **Every file embeds the poses it uses** (`posesUsedByProject3D` — Characters AND imported
+  models, cf. pose-library.md), and opening **merges** the
   unknown ids. A file stays self-contained; an old project cannot undo a rename, since the merge
   never overwrites an existing entry.
 

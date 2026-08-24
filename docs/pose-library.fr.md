@@ -23,9 +23,16 @@ vidée est une décision de l'utilisateur, la resemer l'annulerait à chaque red
 ⚠️ Semer APRÈS le chargement de `draw.js`, qui complète `POSE_3D` à l'exécution avec `'allonge'` et
 `'vaincu'`. Semer avant priverait définitivement l'utilisateur des deux poses couchées.
 
-**Un fichier projet** porte en plus une **copie de secours** des poses que ses Personnages citent
+**Un fichier projet** porte en plus une **copie de secours** des poses que ses Éléments citent
 (`posesUsedByProject3D`, champ `poses`). Recalculée à **chaque** enregistrement, jamais modifiable
 directement. Elle sert à ce qu'un projet ouvert ailleurs garde le nom de ses poses.
+
+⚠️ **Des Éléments, pas seulement des Personnages.** Un modèle importé pourvu d'une correspondance
+de squelette cite une pose de la même façon (`position`, écrit par `objectPositionSelect`).
+`poseUsageCount3D` ne comptait que les Personnages jusqu'à la v1.4.25 : un Projet dont la pose
+n'était portée que par un modèle importé ne l'embarquait **pas**, et le nom était perdu pour de bon
+dès l'ouverture ailleurs. Le même comptage alimente l'avertissement de suppression, qui annonçait
+donc « 0 Élément » alors qu'un s'en servait.
 
 | | Bibliothèque | Copie dans le fichier |
 |---|---|---|
