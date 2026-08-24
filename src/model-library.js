@@ -190,3 +190,138 @@ export function messageRenommageModele(ancien, nouveau, usages, traduire){
     `Renommer « ${ancien} » en « ${nouveau} » sur le disque ? ${conséquence} Les autres Projets qui utilisent ce modèle ne peuvent être ni vérifiés ni réparés d'ici : ils afficheront des boîtes de remplacement tant que le nom n'aura pas été remis.`,
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le journal des renommages
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// À QUOI IL RÉPOND. Renommer un modèle répare le Projet ouvert, et lui seul : les autres Projets
+// citent encore l'ancien nom et afficheront des boîtes de remplacement. On ne peut pas aller les
+// corriger, on ne sait même pas où ils sont. En revanche on sait ce qu'on a renommé, et on peut
+// le PROPOSER au moment où l'un d'eux s'ouvre.
+//
+// OÙ IL VIT. Dans les réglages de l'application (settings.json), à côté de la bibliothèque de poses,
+// parce qu'il concerne le dossier Modeles, lui aussi partagé par tous les Projets.
+//
+// CE QU'IL NE COUVRE PAS, et c'est à dire clairement : un Projet envoyé à quelqu'un d'autre, ou
+// ouvert sur une autre machine, n'a pas ce journal. La réparation ne le suit pas.
+
+/** Au-delà, les plus anciennes entrées sont oubliées. Même ordre de grandeur que MAX_UNDO. */
+export const MAX_RENOMMAGES_3D = 50;
+
+/**
+ * Le nom actuel d'un fichier, en suivant la chaîne des renommages. Fonction PURE.
+ *
+ * LES RENOMMAGES S'ENCHAÎNENT : A vers B, puis B vers C. Un Projet qui cite A doit atterrir sur C,
+ * pas sur B qui n'existe plus. D'où le suivi de proche en proche plutôt qu'une simple lecture.
+ *
+ * Le garde-fou de cycle n'est pas théorique : renommer A en B puis B en A produit exactement
+ * `[{de:'A',vers:'B'},{de:'B',vers:'A'}]`, et une boucle sans fin au premier appel.
+ *
+ * DEUX GARDE-FOUS, ET LE SECOND N'EST PAS REDONDANT. `vus` donne le bon RÉSULTAT sur un cycle : on
+ * s'arrête au dernier nom sain. La borne, elle, garantit qu'on s'arrête TOUT COURT. La distinction
+ * s'est payée comptant : en campagne de mutation, retirer `vus` n'a pas donné un test rouge mais
+ * une suite de tests qui ne rendait jamais la main, tuée au bout de deux minutes. Une application
+ * gelée est le pire des retours, et un test qui gèle n'en est pas un.
+ *
+ * La borne est donc INATTEIGNABLE tant que `vus` est en place : aucun test ne peut la distinguer,
+ * et retirer `for (let i = 0; i <= entrees.length; i++)` ne fait échouer personne. C'est une
+ * équivalence assumée, consignée plutôt que masquée, pas une évasion à rattraper.
+ */
+export function resoudreRenommage3D(journal, nom){
+  const entrees = Array.isArray(journal) ? journal : [];
+  let courant = nom;
+  const vus = new Set([nom]);
+  for (let i = 0; i <= entrees.length; i++) {
+    const e = entrees.find(x => x && x.de === courant);
+    if (!e || !e.vers || vus.has(e.vers)) return courant;
+    courant = e.vers;
+    vus.add(courant);
+  }
+  return courant;
+}
+
+/**
+ * Ajoute un renommage au journal. Rend un NOUVEAU tableau.
+ *
+ * Une entrée dont la source est déjà citée est remplacée : renommer A en B puis A en C (après avoir
+ * réimporté un A) laisserait sinon deux chemins pour A, et `resoudreRenommage3D` prendrait le
+ * premier trouvé, c'est-à-dire le plus ancien.
+ */
+export function ajouterRenommage3D(journal, de, vers, max = MAX_RENOMMAGES_3D){
+  const entrees = (Array.isArray(journal) ? journal : []).filter(e => e && e.de && e.vers);
+  if (!de || !vers || de === vers) return entrees.slice();
+  const suivant = [...entrees.filter(e => e.de !== de), { de, vers }];
+  return suivant.length > max ? suivant.slice(suivant.length - max) : suivant;
+}
+
+/**
+ * Ce qu'il y aurait à repointer dans un Projet. Fonction PURE.
+ *
+ * TROIS CONDITIONS, ET LES TROIS COMPTENT :
+ *   le fichier cité est ABSENT du disque,
+ *   le journal connaît un successeur pour lui,
+ *   ce successeur est PRÉSENT sur le disque.
+ *
+ * La première est celle qu'on oublierait. Renommer `chaise.glb` en `tabouret.glb` puis réimporter
+ * un AUTRE modèle sous le nom `chaise.glb` est parfaitement légitime : un Projet citant
+ * `chaise.glb` est alors correct, et le repointer vers `tabouret.glb` lui changerait son décor
+ * sous prétexte de le réparer.
+ *
+ * Rend une entrée par fichier concerné, avec le nombre d'Éléments : c'est ce chiffre qui distingue
+ * un détail d'une demi-planche.
+ */
+export function modelesARepointer3D(racines, journal, fichiersPresents){
+  const presents = new Set((fichiersPresents || []).map(n => String(n).toLowerCase()));
+  const cites = new Map();
+  [...(racines && racines.tomes || []), ...(racines && racines.scenes || [])].forEach(vol => {
+    (vol && vol.pages || []).forEach(page => {
+      (page && page.objects || []).forEach(o => {
+        if (!isImportedModel(o) || !o.modelFile) return;
+        cites.set(o.modelFile, (cites.get(o.modelFile) || 0) + 1);
+      });
+    });
+  });
+  const sortie = [];
+  cites.forEach((usages, de) => {
+    if (presents.has(de.toLowerCase())) return;              // le fichier est là : rien à réparer
+    const vers = resoudreRenommage3D(journal, de);
+    if (vers === de || !presents.has(vers.toLowerCase())) return;
+    sortie.push({ de, vers, usages });
+  });
+  return sortie;
+}
+
+/**
+ * Le message de la proposition. Fonction PURE, comme les deux autres.
+ *
+ * Deux formes selon le nombre d'entrées : une phrase qui se lit d'un trait pour un seul fichier,
+ * une liste dès qu'il y en a plusieurs. La liste demande `white-space: pre-line` sur
+ * `#confirmActionMessage`, sans quoi les retours à la ligne sont écrasés.
+ *
+ * « depuis cet ordinateur » est délibéré : c'est la seule phrase qui dise à l'utilisateur d'où
+ * l'application tient ce qu'elle affirme, et donc pourquoi elle ne le saurait pas ailleurs.
+ *
+ * Ce qui n'est PAS promis : que rien ne sera enregistré avant qu'il ne le demande. Ce serait faux,
+ * la sauvegarde automatique écrirait la modification quelques secondes plus tard. Ce qui est vrai
+ * et vaut d'être dit, c'est que le placement n'est jamais perdu, quelle que soit la réponse.
+ */
+export function messageRepointageModeles(entrees, traduire){
+  const t = traduire || ((en) => en);
+  const liste = (entrees || []);
+  const conserve = t(
+    'Their position, size and pose are kept either way.',
+    'Leur position, leur taille et leur pose sont conservées dans tous les cas.');
+  if (liste.length === 1) {
+    const { de, vers, usages } = liste[0];
+    return t(
+      `This project uses "${de}", which no longer exists under that name: it was renamed to "${vers}" on this computer. ${usages} Element(s) refer to it.\n\nUpdate this project so they point at the new name? Otherwise they will show as placeholder boxes. ${conserve}`,
+      `Ce Projet utilise « ${de} », qui n'existe plus sous ce nom : il a été renommé en « ${vers} » depuis cet ordinateur. ${usages} Élément(s) le citent.\n\nMettre à jour ce Projet pour qu'ils pointent vers le nouveau nom ? Sans cela ils s'afficheront en boîtes de remplacement. ${conserve}`);
+  }
+  const lignes = liste.map(({ de, vers, usages }) => t(
+    `${de} → ${vers} (${usages} Element(s))`,
+    `${de} → ${vers} (${usages} Élément(s))`)).join('\n');
+  return t(
+    `This project uses ${liste.length} models that no longer exist under those names. They were renamed on this computer:\n\n${lignes}\n\nUpdate this project so they point at the new names? Otherwise these Elements will show as placeholder boxes. ${conserve}`,
+    `Ce Projet utilise ${liste.length} modèles qui n'existent plus sous ce nom. Ils ont été renommés depuis cet ordinateur :\n\n${lignes}\n\nMettre à jour ce Projet pour qu'ils pointent vers les nouveaux noms ? Sans cela ces Éléments s'afficheront en boîtes de remplacement. ${conserve}`);
+}

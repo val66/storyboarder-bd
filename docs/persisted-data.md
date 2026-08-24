@@ -84,8 +84,12 @@ Two consequences that are part of the format, not of the implementation:
   (v1.4.26). Renaming rewrites `modelFile` in every Element of the OPEN project, plus its undo
   stack — the stack holds earlier states, all citing the old name, and undoing an unrelated action
   would otherwise resurrect a dead file name. The skeleton mapping, keyed by file name, moves with
-  it. **Other projects cannot be reached**, exactly as for deletion: they keep the old name and show
-  placeholder boxes. The field itself is never renamed — only its value changes.
+  it. Other projects cannot be reached at rename time, exactly as for deletion. They are covered
+  afterwards: every rename is journalled in `settings.json` under `modelRenames`, and opening a
+  project that still cites an old name OFFERS to update it (`proposerRepointageModeles`). The offer
+  only fires when the cited file is gone AND its successor is present, so a re-imported namesake is
+  never silently swapped. That journal lives in the user's settings, so it does not follow a project
+  sent to someone else. The field itself is never renamed, only its value changes.
 
 ## 3. DOM ids
 

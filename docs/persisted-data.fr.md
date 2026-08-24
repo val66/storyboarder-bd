@@ -88,7 +88,13 @@ Deux conséquences qui font partie du format, pas de l'implémentation :
   nom, et annuler une action sans rapport ressusciterait sinon un nom de fichier mort. La
   correspondance de squelette, indexée par nom de fichier, est déplacée avec lui. **Les autres
   Projets sont hors d'atteinte**, exactement comme pour la suppression : ils gardent l'ancien nom et
-  affichent des boîtes de remplacement. Le champ, lui, n'est jamais renommé — seule sa valeur change.
+  affichent des boîtes de remplacement au moment du renommage. Ils sont couverts APRÈS : chaque
+  renommage est journalisé dans `settings.json` sous `modelRenames`, et ouvrir un Projet qui cite
+  encore un ancien nom PROPOSE de le mettre à jour (`proposerRepointageModeles`). La proposition ne
+  se déclenche que si le fichier cité a disparu ET que son successeur est présent : un homonyme
+  réimporté n'est donc jamais remplacé en douce. Ce journal vit dans les réglages de l'utilisateur,
+  il ne suit donc pas un Projet envoyé à quelqu'un d'autre. Le champ, lui, n'est jamais renommé,
+  seule sa valeur change.
 
 ## 3. Les ids DOM
 

@@ -22,6 +22,8 @@ import assert from 'node:assert/strict';
 import {
   groupModelsByUsage, countModelUsages, messageSuppressionModele, messageRenommageModele,
   repointerModele3D, repointerPileAnnulation3D,
+  resoudreRenommage3D, ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles,
+  MAX_RENOMMAGES_3D,
 } from '../src/model-library.js';
 import { renameModel } from '../src/model-store.js';
 
@@ -183,6 +185,7 @@ const EVENTS = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
 const TREE = readFileSync(join(RACINE, 'src/project-tree.js'), 'utf8');
 const DRAW = readFileSync(join(RACINE, 'src/draw.js'), 'utf8');
 const MAIN = readFileSync(join(RACINE, 'main.js'), 'utf8');
+const IO = readFileSync(join(RACINE, 'src/io.js'), 'utf8');
 
 // Le corps de `_renommerModele`, COMMENTAIRES RETIRÉS. Sans ce filtrage, le test « aucun
 // snapshot() » échouait sur le commentaire de la fonction, qui explique justement pourquoi
@@ -231,6 +234,41 @@ describe('Section Modèles — le câblage', () => {
     assert.match(corps, /repointerPileAnnulation3D/, 'la pile d\'annulation n\'est pas réécrite');
     assert.match(corps, /renommerCorrespondance/, 'la correspondance de squelette ne suit pas');
     assert.match(corps, /clearModelCache/, 'le cache n\'est pas vidé');
+  });
+
+  test('RÉGRESSION : le renommage est NOTÉ pour les autres Projets', () => {
+    // Sans cette note, la réparation proposée à l'ouverture d'un autre Projet n'aurait jamais de
+    // quoi travailler : c'est la seule trace de ce qui a été renommé.
+    assert.match(corpsDuRenommage(), /noterRenommageModele/);
+  });
+
+  test('RÉGRESSION : le journal est chargé AVANT l\'ouverture du dernier Projet', () => {
+    // Chargé après, il ne servirait qu'à l'ouverture SUIVANTE : le Projet rouvert au démarrage est
+    // précisément celui qu'on veut réparer en premier.
+    const src = sourceSansCommentaires(EVENTS);
+    const chargement = src.indexOf('loadModelRenames()');
+    const demarrage = src.indexOf('initStartupProject)');
+    // ⚠️ LES DEUX PRÉSENCES D'ABORD. `indexOf` rend −1 quand l'appel disparaît, et −1 est inférieur
+    // à tout : la comparaison seule restait verte alors que le chargement avait été supprimé.
+    // Mutation échappée, puis rattrapée ici.
+    assert.ok(chargement >= 0, 'loadModelRenames() n\'est plus appelé au démarrage');
+    assert.ok(demarrage >= 0, 'initStartupProject introuvable');
+    assert.ok(chargement < demarrage, 'loadModelRenames doit précéder initStartupProject');
+  });
+
+  test('RÉGRESSION : chaque ouverture de Projet propose le repointage', () => {
+    // Trois chemins ouvrent un Projet existant : deux dans io.js (Electron et navigateur), un au
+    // démarrage dans events.js. Un oubli sur l'un d'eux ne se verrait qu'à l'usage, et seulement
+    // par la personne qui ouvre ses Projets de cette façon-là.
+    const io = sourceSansCommentaires(IO);
+    // Les APPELS, pas la déclaration : `export function applyProjectData(data){` répond au même
+    // motif, et le compte devenait 3 pour 2 chemins.
+    const ouvertures = (io.match(/\n\s+applyProjectData\(data\);/g) || []).length;
+    assert.equal(ouvertures, 2, 'le nombre de chemins d\'ouverture dans io.js a changé');
+    assert.equal((io.match(/proposerRepointageModeles\(\)/g) || []).length, 3,
+      'la définition plus deux appels : un chemin d\'ouverture ne propose rien');
+    assert.match(sourceSansCommentaires(EVENTS), /proposerRepointageModeles\(\)/,
+      'le Projet rouvert au démarrage ne propose rien');
   });
 
   test('RÉGRESSION : aucun snapshot() avant un renommage', () => {
@@ -679,5 +717,143 @@ describe('renameModel — le pont, et le refus d\'écraser', () => {
       assert.equal(r.ok, false);
       assert.ok(r.error);
     });
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le journal des renommages
+// ─────────────────────────────────────────────────────────────────────────────
+describe('resoudreRenommage3D — suivre la chaîne jusqu\'au nom actuel', () => {
+  test('un renommage simple', () => {
+    assert.equal(resoudreRenommage3D([{ de: 'a.glb', vers: 'b.glb' }], 'a.glb'), 'b.glb');
+  });
+
+  test('LES RENOMMAGES S\'ENCHAÎNENT : A vers B, puis B vers C', () => {
+    // Un Projet qui cite A doit atterrir sur C. S'arrêter à B le ferait pointer vers un fichier qui
+    // n'existe pas davantage que A.
+    const journal = [{ de: 'a.glb', vers: 'b.glb' }, { de: 'b.glb', vers: 'c.glb' }];
+    assert.equal(resoudreRenommage3D(journal, 'a.glb'), 'c.glb');
+    assert.equal(resoudreRenommage3D(journal, 'b.glb'), 'c.glb');
+  });
+
+  test('RÉGRESSION : un cycle s\'arrête au dernier nom sain', () => {
+    // Renommer A en B puis B en C puis C en A produit exactement ce journal.
+    //
+    // ⚠️ LE CYCLE À DEUX NE PROUVE RIEN, et c'est une mutation échappée qui l'a montré. Avec
+    // `a→b, b→a`, la version SANS garde-fou rend elle aussi « b » : la borne de boucle l'arrête au
+    // même endroit, par accident. Il faut trois maillons pour que les deux versions divergent,
+    // « c » avec le garde-fou contre « b » sans lui.
+    const journal = [
+      { de: 'a.glb', vers: 'b.glb' }, { de: 'b.glb', vers: 'c.glb' }, { de: 'c.glb', vers: 'a.glb' },
+    ];
+    assert.equal(resoudreRenommage3D(journal, 'a.glb'), 'c.glb');
+  });
+
+  test('un nom inconnu du journal ressort tel quel', () => {
+    assert.equal(resoudreRenommage3D([{ de: 'a.glb', vers: 'b.glb' }], 'z.glb'), 'z.glb');
+    assert.equal(resoudreRenommage3D(null, 'z.glb'), 'z.glb');
+  });
+});
+
+describe('ajouterRenommage3D — un journal qui ne grandit pas sans fin', () => {
+  test('une entrée est ajoutée, sans muter le journal reçu', () => {
+    const journal = [];
+    const suivant = ajouterRenommage3D(journal, 'a.glb', 'b.glb');
+    assert.deepEqual(suivant, [{ de: 'a.glb', vers: 'b.glb' }]);
+    assert.deepEqual(journal, [], 'le journal d\'origine a été modifié');
+  });
+
+  test('RÉGRESSION : une seconde origine identique REMPLACE la première', () => {
+    // Renommer A en B, réimporter un nouveau A, le renommer en C : deux chemins pour A
+    // coexisteraient, et la résolution prendrait le plus ancien.
+    const journal = ajouterRenommage3D([{ de: 'a.glb', vers: 'b.glb' }], 'a.glb', 'c.glb');
+    assert.deepEqual(journal, [{ de: 'a.glb', vers: 'c.glb' }]);
+  });
+
+  test('au-delà du plafond, les plus anciennes sont oubliées', () => {
+    let journal = [];
+    for (let i = 0; i < MAX_RENOMMAGES_3D + 5; i++) journal = ajouterRenommage3D(journal, `a${i}.glb`, `b${i}.glb`);
+    assert.equal(journal.length, MAX_RENOMMAGES_3D);
+    assert.equal(journal[journal.length - 1].de, `a${MAX_RENOMMAGES_3D + 4}.glb`, 'la dernière doit être la plus récente');
+    assert.ok(!journal.some(e => e.de === 'a0.glb'), 'la plus ancienne aurait dû être oubliée');
+  });
+
+  test('les entrées vides ou nulles sont écartées', () => {
+    assert.deepEqual(ajouterRenommage3D(null, 'a.glb', 'a.glb'), []);
+    assert.deepEqual(ajouterRenommage3D([{ de: 'x' }], 'a.glb', 'b.glb'), [{ de: 'a.glb', vers: 'b.glb' }]);
+  });
+});
+
+describe('modelesARepointer3D — les trois conditions', () => {
+  const projet = (...fichiers) => ({ tomes: [volume('T', ...fichiers.map(el))], scenes: [] });
+  const journal = [{ de: 'vieux.glb', vers: 'neuf.glb' }];
+
+  test('fichier absent + successeur présent : à repointer, avec le compte', () => {
+    const r = modelesARepointer3D(projet('vieux.glb', 'vieux.glb'), journal, ['neuf.glb']);
+    assert.deepEqual(r, [{ de: 'vieux.glb', vers: 'neuf.glb', usages: 2 }]);
+  });
+
+  test('RÉGRESSION : un homonyme réimporté n\'est PAS repointé', () => {
+    // Renommer « vieux » en « neuf » puis réimporter un AUTRE modèle sous le nom « vieux » est
+    // légitime. Le Projet qui cite « vieux » est alors correct : le repointer lui changerait son
+    // décor sous prétexte de le réparer. C'est la condition qu'on oublierait.
+    assert.deepEqual(modelesARepointer3D(projet('vieux.glb'), journal, ['vieux.glb', 'neuf.glb']), []);
+  });
+
+  test('successeur absent lui aussi : rien à proposer', () => {
+    // Le fichier a été renommé puis supprimé. Proposer un repointage vers un fichier qui n'existe
+    // pas remplacerait une boîte de remplacement par une autre.
+    assert.deepEqual(modelesARepointer3D(projet('vieux.glb'), journal, []), []);
+  });
+
+  test('la comparaison ignore la casse, comme le système de fichiers', () => {
+    assert.deepEqual(modelesARepointer3D(projet('vieux.glb'), journal, ['Neuf.GLB']),
+      [{ de: 'vieux.glb', vers: 'neuf.glb', usages: 1 }]);
+  });
+
+  test('Scènes comprises, et un seul Personnage ne compte pas', () => {
+    const racines = {
+      tomes: [volume('T', el('vieux.glb'))],
+      scenes: [volume('S', el('vieux.glb'), { id: 'p', type: 'perso', modelFile: 'vieux.glb' })],
+    };
+    assert.deepEqual(modelesARepointer3D(racines, journal, ['neuf.glb']),
+      [{ de: 'vieux.glb', vers: 'neuf.glb', usages: 2 }]);
+  });
+
+  test('projet vide, journal vide : rien, et aucune exception', () => {
+    assert.deepEqual(modelesARepointer3D({}, journal, ['neuf.glb']), []);
+    assert.deepEqual(modelesARepointer3D(projet('vieux.glb'), [], ['neuf.glb']), []);
+  });
+});
+
+describe('messageRepointageModeles — une phrase pour un, une liste pour plusieurs', () => {
+  const une = [{ de: 'a.glb', vers: 'b.glb', usages: 8 }];
+  const deux = [...une, { de: 'c.glb', vers: 'd.glb', usages: 6 }];
+
+  test('un seul modèle : le nom, le nouveau nom, et le décompte', () => {
+    const m = messageRepointageModeles(une, (en, fr) => fr);
+    assert.match(m, /« a\.glb »/); assert.match(m, /« b\.glb »/);
+    assert.match(m, /8 Élément/, 'le décompte distingue un détail d\'une demi-planche');
+    assert.match(m, /depuis cet ordinateur/, 'la provenance de l\'information n\'est pas dite');
+  });
+
+  test('plusieurs : une ligne par modèle, séparées par des retours à la ligne', () => {
+    const m = messageRepointageModeles(deux, (en, fr) => fr);
+    assert.match(m, /a\.glb → b\.glb \(8 Élément/);
+    assert.match(m, /c\.glb → d\.glb \(6 Élément/);
+    assert.ok(m.split('\n').length >= 5, 'la liste doit être sur plusieurs lignes');
+  });
+
+  test('il ne promet PAS que rien ne sera enregistré', () => {
+    // Ce serait faux : la sauvegarde automatique écrirait la modification quelques secondes plus
+    // tard. Ce qui est promis, et qui est vrai, c'est que le placement n'est jamais perdu.
+    const m = messageRepointageModeles(une, (en, fr) => fr);
+    assert.doesNotMatch(m, /tant que vous n'enregistrez pas/);
+    assert.match(m, /conservées dans tous les cas/);
+  });
+
+  test('il suit la langue', () => {
+    assert.match(messageRepointageModeles(une, (en) => en), /on this computer/);
   });
 });

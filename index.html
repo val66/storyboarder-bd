@@ -707,7 +707,10 @@
 <div class="modal-overlay hidden" id="confirmActionModal">
   <div class="modal-box">
     <h3 id="confirmActionTitle">Confirmer</h3>
-    <p id="confirmActionMessage" style="margin:0 0 14px; font-size:13.5px; color:var(--ink); line-height:1.4;"></p>
+    <!-- white-space:pre-line : le message est posé en textContent, et certains portent une LISTE
+         (les modèles renommés, un par ligne). Sans cette règle les retours à la ligne sont
+         écrasés et tout se met sur une seule ligne. -->
+    <p id="confirmActionMessage" style="margin:0 0 14px; font-size:13.5px; color:var(--ink); line-height:1.4; white-space:pre-line;"></p>
     <div class="modal-actions">
       <button class="danger-btn" id="confirmActionCancel" type="button">Annuler</button>
       <button class="full-btn" id="confirmActionOk" type="button">Confirmer</button>

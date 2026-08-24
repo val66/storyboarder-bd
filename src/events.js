@@ -97,6 +97,7 @@ import {
   setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, confirmAction, alertAction,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
   openRenameEntityModal, setRenameModelCallback,
+  loadModelRenames, noterRenommageModele, proposerRepointageModeles,
 } from './io.js';
 import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
@@ -4102,6 +4103,9 @@ async function _renommerModele(ancien, nomVoulu){
   repointerModele3D({ tomes: S.tomes, scenes: S.scenes }, ancien, r.name);
   S.undoStack = repointerPileAnnulation3D(S.undoStack, ancien, r.name);
   S.projectDirty = true;
+  // Les AUTRES Projets, eux, citent encore l'ancien nom. On ne peut pas les corriger d'ici, mais on
+  // note ce qu'on a fait : à leur prochaine ouverture, la réparation leur sera proposée.
+  noterRenommageModele(ancien, r.name);
 
   // La correspondance de squelette est indexée par nom de fichier : sans ce déplacement, le modèle
   // renommé repartirait de la reconnaissance automatique et le travail de correction serait à refaire.
@@ -6242,6 +6246,9 @@ async function loadAppSettings(){
   // doit quand même être semée en mémoire, sans quoi la liste des poses serait vide.
   await loadPoseLibrary(POSITIONS, POSE_3D, PERSONA_SKELETON_3D);
   await loadDismissedPoses();
+  // AVANT initStartupProject, qui ouvre le dernier Projet et proposera aussitôt le repointage :
+  // un journal chargé après ne servirait qu'à l'ouverture SUIVANTE.
+  await loadModelRenames();
   buildPersonaPositionOptions();
   if (!hasElectronAPI()) { applyI18n(S.appLang); rafraichirListesTraduites(); return; }
   try {
@@ -6292,6 +6299,7 @@ async function initStartupProject(){
         applyProjectData(data);
         S.projectFilePath = res.filePath;
         startAutosave();
+        await proposerRepointageModeles();
         return;
       }
     } catch (err) {

@@ -10,7 +10,10 @@
  */
 import { S, tr, createVolume, addPageToVolume } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
-import { sanitizeModelName } from './model-store.js';
+import { sanitizeModelName, listModels } from './model-store.js';
+import {
+  ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles, repointerModele3D,
+} from './model-library.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
 import {
   getElementDepth, repairElementBase3D,
@@ -81,6 +84,70 @@ export const POSE_LIBRARY_SETTING_KEY = 'poseLibrary';
 // Fix 59 — ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier toutes les suppressions, et les poses
 // écartées réapparaîtraient au premier projet ouvert.
 export const POSE_DISMISSED_SETTING_KEY = 'poseLibraryDismissed';
+// ⚠️ CLÉ PERSISTÉE : la renommer ferait oublier tous les renommages de modèles, et les Projets qui
+// citent encore un ancien nom ne se verraient plus proposer la réparation.
+export const MODEL_RENAMES_SETTING_KEY = 'modelRenames';
+
+// Mémorise un renommage de modèle. Même découplage que setDismissedPoses : écriture mémoire
+// synchrone, persistance asynchrone et silencieuse.
+export function setModelRenames(journal){
+  S.modelRenames = Array.isArray(journal) ? journal : [];
+  const api = hasElectronAPI() ? window.storyboarderAPI : null;
+  if (api && typeof api.setSetting === 'function') {
+    try {
+      Promise.resolve(api.setSetting(MODEL_RENAMES_SETTING_KEY, S.modelRenames))
+        .catch(() => { /* la session reste utilisable */ });
+    } catch { /* idem */ }
+  }
+  return S.modelRenames;
+}
+
+export function noterRenommageModele(ancien, nouveau){
+  return setModelRenames(ajouterRenommage3D(S.modelRenames, ancien, nouveau));
+}
+
+/** Relit le journal au démarrage. Un journal absent signifie « aucun renommage », pas une panne. */
+export async function loadModelRenames(){
+  if (!hasElectronAPI()) { S.modelRenames = []; return S.modelRenames; }
+  try {
+    const settings = await window.storyboarderAPI.getSettings();
+    const stored = settings ? settings[MODEL_RENAMES_SETTING_KEY] : null;
+    S.modelRenames = Array.isArray(stored) ? stored.filter(e => e && e.de && e.vers) : [];
+  } catch { S.modelRenames = []; }
+  return S.modelRenames;
+}
+
+/**
+ * À l'ouverture d'un Projet : proposer de repointer les modèles renommés depuis cet ordinateur.
+ *
+ * APPELÉE APRÈS applyProjectData, jamais dedans. Deux raisons. Elle est asynchrone, alors que
+ * l'application d'un Projet est synchrone et sert aussi à créer un Projet neuf, où la question n'a
+ * aucun sens. Et surtout, elle POSE UNE QUESTION : la mêler au chargement ferait apparaître une
+ * modale au milieu d'une opération que l'utilisateur croit terminée.
+ *
+ * Ne modifie rien tant qu'il n'a pas répondu oui. Refuser laisse le Projet tel quel, avec ses
+ * boîtes de remplacement : c'est visible, donc réparable plus tard.
+ */
+export async function proposerRepointageModeles(){
+  if (!Array.isArray(S.modelRenames) || !S.modelRenames.length) return 0;
+  const presents = await listModels();
+  const aRepointer = modelesARepointer3D({ tomes: S.tomes, scenes: S.scenes }, S.modelRenames, presents);
+  if (!aRepointer.length) return 0;
+  const ok = await confirmAction(messageRepointageModeles(aRepointer, tr),
+    tr('Renamed models', 'Modèles renommés'));
+  if (!ok) return 0;
+  let n = 0;
+  aRepointer.forEach(({ de, vers }) => {
+    n += repointerModele3D({ tomes: S.tomes, scenes: S.scenes }, de, vers);
+  });
+  // La pile d'annulation est VIDE à ce stade (applyProjectData vient de la vider) : rien à réécrire,
+  // contrairement au renommage lui-même. Le Projet devient « modifié », ce qu'il est.
+  S.projectDirty = true;
+  const objets = [...S.tomes, ...S.scenes].flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
+  preloadModelsFor(objets);
+  if (_renderAll) _renderAll();
+  return n;
+}
 
 // Mémorise les ids supprimés. Même découplage que setPoseLibrary : écriture mémoire synchrone,
 // persistance asynchrone et silencieuse.
@@ -762,6 +829,7 @@ export async function loadExistingProjectFlow(){
       S.projectFilePath = res.filePath;
       S.projectFileHandle = null;
       startAutosave();
+      await proposerRepointageModeles();
       setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`)));
       closeProjectModal();
     } catch (err) {
@@ -791,6 +859,7 @@ export async function loadExistingProjectFlow(){
     applyProjectData(data);
     S.projectFileHandle = handle;
     startAutosave();
+    await proposerRepointageModeles();
     setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`)));
   } catch (err) {
     startAutosave();   // idem : ne pas laisser la sauvegarde automatique éteinte (cf. plus haut)
@@ -1029,8 +1098,12 @@ const confirmActionCancel = document.getElementById('confirmActionCancel');
 export function confirmAction(message, title){
   preemptConfirmAction();
   confirmActionCancel.style.display = '';
-  confirmActionOk.textContent = 'Confirmer';
-  confirmActionTitle.textContent = title || 'Confirmer';
+  // Le texte du bouton est RÉÉCRIT à chaque ouverture, parce que la variante « information »
+  // ci-dessous y met « OK ». Il était écrit en dur, en français : `#confirmActionOk` a pourtant son
+  // entrée dans I18N_TEXT, appliquée au chargement et à chaque changement de langue, mais cette
+  // ligne repassait par-dessus. Le bouton affichait donc « Confirmer » sous une interface anglaise.
+  confirmActionOk.textContent = tr('Confirm', 'Confirmer');
+  confirmActionTitle.textContent = title || tr('Confirm', 'Confirmer');
   confirmActionMessage.textContent = message;
   confirmActionModal.classList.remove('hidden');
   // Deferred focus (cf. renameEntityModal above) to avoid the same keyboard desync.
@@ -1042,8 +1115,8 @@ export function confirmAction(message, title){
 export function alertAction(message, title){
   preemptConfirmAction();
   confirmActionCancel.style.display = 'none';
-  confirmActionOk.textContent = 'OK';
-  confirmActionTitle.textContent = title || 'Information';
+  confirmActionOk.textContent = 'OK';   // même mot dans les deux langues
+  confirmActionTitle.textContent = title || tr('Information', 'Information');
   confirmActionMessage.textContent = message;
   confirmActionModal.classList.remove('hidden');
   setTimeout(() => confirmActionOk.focus(), 0);

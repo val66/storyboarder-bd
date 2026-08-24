@@ -120,6 +120,9 @@ export const S = {
 
   // ── History ──────────────────────────────────────────────────────────
   undoStack:   [],
+  // Journal des renommages de modèles, chargé depuis settings.json au démarrage. Sert à
+  // proposer la réparation d'un Projet qui cite encore un ancien nom (cf. model-library.js).
+  modelRenames: [],
   draggedPage: null,
 
   // ── View / Zoom ──────────────────────────────────────────────────────
