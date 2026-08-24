@@ -74,6 +74,60 @@ describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () =>
       .forEach(n => assert.equal(coteDuNom(n), null, `${n} ne doit avoir aucun côté`));
   });
 
+  test('SIXIÈME convention : majuscule collée devant un mot de membre, rig CAT de 3ds Max', () => {
+    // Mesurée sur centaur3.glb, riggé avec le CAT de 3ds Max. Sans ce motif, ZÉRO membre latéral
+    // sur 79 os : tout partait en chaîne centrale, et le centaure ne se décomposait pas du tout.
+    // Avec lui, +57 côtés lus, 0 conflit sur les 2866 os des 21 modèles.
+    ['CATRigLLeg1', 'CATRigLArmCollarbone', 'CATRigLArmPalm', 'Bone_LFoot', 'LWing']
+      .forEach(n => assert.equal(coteDuNom(n), 'g', n));
+    ['CATRigRLeg1', 'CATRigRArmCollarbone', 'CATRigRArmDigit21', 'Bone_RFoot', 'RWing']
+      .forEach(n => assert.equal(coteDuNom(n), 'd', n));
+    // Et la garde qui va avec : « Rear » n'est pas « R » + « Ear ». Le mot du membre est
+    // sensible à la casse, `ear` en minuscules ne le déclenche pas.
+    assert.equal(coteDuNom('RearLeg'), null, 'arrière n\'est pas un côté');
+  });
+
+  test('AUCUNE ANCRE DE DÉBUT : la lettre peut suivre d\'autres lettres', () => {
+    // Le motif exigeait d'abord la tête de nom ou un séparateur, avec une exception pour `CATRig`.
+    // La campagne de mutation a montré que l'ancre ne faisait échouer aucun test ; en cherchant
+    // pourquoi, elle s'est révélée NUISIBLE et pas seulement inutile. Ces trois noms ont un côté
+    // parfaitement lisible, et l'ancre le refusait. Le besoin d'une exception pour `CATRig` disait
+    // déjà que l'ancre faisait le mauvais travail.
+    assert.equal(coteDuNom('SPRLArm'), 'g');
+    assert.equal(coteDuNom('FLLeg'), 'g');
+    assert.equal(coteDuNom('RigLWing'), 'g');
+  });
+
+  test('EN DERNIER : ce motif ne contredit jamais un « Left » explicite', () => {
+    // C'est la moins sûre des six conventions, donc la dernière consultée. Si elle passait devant,
+    // un nom portant les deux indices se déciderait sur le moins fiable des deux.
+    assert.equal(coteDuNom('LeftRArm'), 'g', 'Left explicite doit gagner');
+    assert.equal(coteDuNom('Right_LFoot'), 'd', 'Right explicite doit gagner');
+  });
+
+  test('la CASSE porte l\'information, ce motif seul se lit sur le nom brut', () => {
+    // Les cinq autres conventions s'appuient sur un séparateur ou sur un chiffre, qui survivent au
+    // passage en minuscules. Celle-ci n'a que la majuscule : la lire après `toLowerCase()` ne
+    // rendrait plus rien. Ce test échoue si quelqu'un « simplifie » en normalisant d'abord.
+    assert.equal(coteDuNom('CATRigLLeg1'), 'g');
+    assert.equal(coteDuNom('catriglleg1'), null, 'en minuscules, il n\'y a plus rien à lire');
+  });
+
+  test('POURQUOI UNE LISTE DE MOTS ET NON `[LR][A-Z][a-z]`', () => {
+    // Le motif générique mesure EXACTEMENT pareil sur le corpus, +57 côtés et 0 conflit. Il a été
+    // écarté parce qu'il ne doit ce score qu'à l'absence de contre-exemples : ces quatre noms sont
+    // parfaitement plausibles dans un rig, et il les latéraliserait tous à tort. Un critère qui ne
+    // tient que parce que ses contre-exemples manquent du corpus n'est pas un critère.
+    ['ARMature', 'CTRLRoot', 'MASTERControl', 'CHRHead']
+      .forEach(n => assert.equal(coteDuNom(n), null, `${n} ne doit avoir aucun côté`));
+  });
+
+  test('le mot doit être FERMÉ, sinon une boucle d\'oreille devient une oreille', () => {
+    // `(?![a-z])` dans le motif. Sans lui, `LEarring` passerait pour `L` + `Ear`.
+    assert.equal(coteDuNom('LEarring'), null);
+    assert.equal(coteDuNom('LEar'), 'g');
+  });
+
   test('RÉGRESSION : un os nommé « leg » n\'est pas à gauche', () => {
     // Le « l » de « leg », « pelvis », « clavicle »… Chercher la lettre plutôt qu'un motif ancré
     // latéraliserait la moitié du squelette, et un membre attribué au mauvais côté ne lève rien.

@@ -129,11 +129,38 @@ export function normaliserNom(nom){
 }
 
 /**
+ * Un mot de membre collé derrière une majuscule L ou R : la convention du rig CAT de 3ds Max.
+ *
+ * SE LIT SUR LE NOM BRUT, PAS SUR LE NOM EN MINUSCULES, seul motif du fichier dans ce cas. C'est
+ * la MAJUSCULE qui distingue le côté du reste du mot : `CATRigLLeg1` est une patte gauche,
+ * `catriglleg1` n'est plus rien de lisible. Les cinq autres conventions s'appuient sur un
+ * séparateur ou sur un chiffre, qui survivent au passage en minuscules ; celle-ci n'a que la casse.
+ *
+ * POURQUOI UNE LISTE DE MOTS ET NON `[LR][A-Z][a-z]`, QUI MESURE PAREIL. Le motif générique donne
+ * exactement le même résultat sur le corpus, +57 côtés et 0 conflit sur 2866 os. Il a pourtant été
+ * écarté, parce qu'il ne doit ce score qu'à l'absence de contre-exemples : il lit `ARMature` comme
+ * une droite, `CTRLRoot` comme une gauche, `MASTERControl` comme une droite. Aucun de ces noms
+ * n'est dans les 21 modèles, tous sont plausibles dans le prochain. Un critère qui ne tient que
+ * parce que ses contre-exemples manquent n'est pas un critère.
+ *
+ * `(?![a-z])` ferme le mot : sans lui, `LEarring` (une boucle d'oreille) passerait pour une
+ * oreille gauche.
+ *
+ * PAS D'ANCRE DE DÉBUT, ET C'EST UNE CORRECTION. Ce motif exigeait d'abord que la lettre soit en
+ * tête ou après un séparateur, avec une exception pour `CATRig`. La campagne de mutation a montré
+ * que retirer l'ancre ne fait échouer aucun test ; en cherchant pourquoi, il est apparu qu'elle
+ * était NUISIBLE, pas seulement inutile : elle refusait `SPRLArm`, `FLLeg` et `RigLWing`, dont le
+ * côté est parfaitement lisible. Le besoin même d'une exception pour `CATRig` disait que l'ancre
+ * faisait le mauvais travail. Ce qui porte la garde, c'est la liste de mots plus la casse.
+ */
+const COTE_MOT_COLLE = /([LR])(?:Leg|Arm|Hand|Foot|Finger|Toe|Thigh|Calf|Shin|Wing|Ear|Eye|Shoulder|Clavicle|Elbow|Wrist|Knee|Ankle|Palm|Tentacle)(?![a-z])/;
+
+/**
  * Le côté d'un os d'après son nom : 'g', 'd' ou null.
  *
- * Le nom est fiable POUR ÇA, et seulement pour ça. Trois conventions cohabitent, « Left… »,
- * « …_L », « L_… ». Le piège : un os nommé « leg » contient un « l » sans être à gauche, d'où des
- * motifs ancrés plutôt qu'une recherche de lettre.
+ * Le nom est fiable POUR ÇA, et seulement pour ça. Six conventions cohabitent, « Left… », « …_L »,
+ * « L_… », « l101 », et la majuscule collée du rig CAT. Le piège : un os nommé « leg » contient un
+ * « l » sans être à gauche, d'où des motifs ancrés plutôt qu'une recherche de lettre.
  */
 export function coteDuNom(nom){
   const brut = String(nom || '').toLowerCase().replace(/^.*:/, '');
@@ -147,10 +174,15 @@ export function coteDuNom(nom){
   //
   // LE CHIFFRE EST LA GARDE, et il n'est pas décoratif : exiger `^l` seul rangerait `leg`, `lower`,
   // `lip` du côté gauche, et `root`, `rib`, `ring` du côté droit. Une lettre suivie d'un chiffre ne
-  // peut pas être un mot. Vérifié sur les quatorze squelettes du corpus : ce motif ne change le
+  // peut pas être un mot. Vérifié sur les dix-huit squelettes du corpus : ce motif ne change le
   // verdict d'aucun autre fichier.
   if (/^l\d/.test(brut)) return 'g';
   if (/^r\d/.test(brut)) return 'd';
+  // EN DERNIER, ET SUR LE NOM BRUT. Dernier parce que c'est la convention la moins sûre des six :
+  // elle ne doit se prononcer que là où aucune autre n'a rien lu, jamais contredire un « Left »
+  // explicite. Sur le nom brut parce que `toLowerCase()` détruit la seule information qu'elle a.
+  const colle = COTE_MOT_COLLE.exec(String(nom || ''));
+  if (colle) return colle[1] === 'L' ? 'g' : 'd';
   return null;
 }
 

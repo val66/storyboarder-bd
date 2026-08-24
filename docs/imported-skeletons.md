@@ -11,7 +11,7 @@ therefore the only remaining trace of what they contain.
 
 ---
 
-## 1. Five naming conventions, nothing in common
+## 1. Seven naming conventions, nothing in common
 
 | File | Convention | Bones |
 |---|---|---|
@@ -20,6 +20,12 @@ therefore the only remaining trace of what they contain.
 | `capoera.glb`, `female_pose.glb` | Mixamo (`mixamorig:`) | 65 |
 | `anime_girl1.glb` | VRM (`J_Bip_C_Hips`) | — |
 | `anime_girl2.glb` | in-house, close to VRoid | — |
+| `kraken.glb` | Maya, letter then digit (`l101`, `r301`) | 47 |
+| `centaur3.glb` | 3ds Max CAT, glued capital (`CATRigLLeg1`) | 79 |
+
+The last two rows came out of the creature work ([creature-rigs.md](creature-rigs.md)): they change
+only how the SIDE is read, never the segment. Without them, those two files yielded **zero lateral
+limbs**.
 
 **The word "leg" is irredeemably ambiguous**: `mixamorig:LeftLeg` is the SHIN, while `Left_leg` in
 `worker_j` is the THIGH. This is what forced the split of duties in `skeleton-map.js`: the name

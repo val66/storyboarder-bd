@@ -131,10 +131,24 @@ ni la structure ni la géométrie. C'est pour cela que ces archétypes-là sont 
 
 **Par le nom, deux acquis mesurés :**
 
-*La 6e convention de côté.* Le rig CAT de 3ds Max écrit `CATRigLLeg1`, `CATRigRArmCollarbone` :
-majuscule L ou R collée devant un mot de membre. Éprouvée sur les 21 modèles, soit 2866 os,
-**+57 côtés lus, 0 conflit**. Sans elle, centaur3 rend zéro membre latéral sur 79 os ; avec elle, il
-se décompose entièrement.
+*La 6e convention de côté.* **Livrée, tâche #363.** Le rig CAT de 3ds Max écrit `CATRigLLeg1`,
+`CATRigRArmCollarbone` : majuscule L ou R collée devant un mot de membre. Éprouvée sur les 21
+modèles, soit 2866 os, **+57 côtés lus, 0 conflit**. Sans elle, centaur3 rend zéro membre latéral
+sur 79 os ; avec elle, il se décompose entièrement, deux `Hub`, trois paires et la queue.
+
+Trois choix de ce motif méritent d'être retenus, parce que deux d'entre eux sont contre-intuitifs :
+
+- **une liste de mots, et non `[LR][A-Z][a-z]`.** Le motif générique mesure exactement pareil sur le
+  corpus, +57 et 0 conflit. Il a été écarté parce qu'il ne doit ce score qu'à l'absence de
+  contre-exemples : il lit `ARMature` comme une droite, `CTRLRoot` comme une gauche. Un critère qui
+  ne tient que parce que ses contre-exemples manquent du corpus n'est pas un critère ;
+- **aucune ancre de début**, alors que le motif en avait une au premier jet. La campagne de mutation
+  a montré qu'elle ne faisait échouer aucun test ; en cherchant pourquoi, elle s'est révélée
+  NUISIBLE et pas seulement inutile, refusant `SPRLArm`, `FLLeg`, `RigLWing`. Le fait qu'elle ait
+  eu besoin d'une exception pour `CATRig` le disait déjà ;
+- **consultée en dernier**, après les cinq autres, parce que c'est la moins sûre. Elle ne doit
+  jamais contredire un `Left` explicite. C'est aussi le seul motif du fichier qui se lit sur le nom
+  BRUT : les autres survivent au passage en minuscules, celui-ci n'a que la casse.
 
 *Le vocabulaire anatomique.* Une table de mots avec **priorité** : le mot qui identifie le membre
 l'emporte sur celui qui nomme l'articulation à sa racine. `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW`

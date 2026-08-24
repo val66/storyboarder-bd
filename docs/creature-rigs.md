@@ -127,10 +127,23 @@ structure nor geometry. That is why those archetypes are *proposed* and not *det
 
 **By name, two measured gains:**
 
-*The 6th side convention.* The 3ds Max CAT rig writes `CATRigLLeg1`, `CATRigRArmCollarbone`: a
-capital L or R glued in front of a limb word. Tested on the 21 models, 2866 bones: **+57 sides read,
-0 conflicts**. Without it centaur3 yields zero lateral limbs out of 79 bones; with it, it decomposes
-completely.
+*The 6th side convention.* **Shipped, task #363.** The 3ds Max CAT rig writes `CATRigLLeg1`,
+`CATRigRArmCollarbone`: a capital L or R glued in front of a limb word. Tested on the 21 models,
+2866 bones: **+57 sides read, 0 conflicts**. Without it centaur3 yields zero lateral limbs out of 79
+bones; with it, it decomposes completely, two `Hub`s, three pairs and the tail.
+
+Three choices in that pattern are worth keeping in mind, two of them counter-intuitive:
+
+- **a word list, not `[LR][A-Z][a-z]`.** The generic pattern measures exactly the same on the
+  corpus, +57 and 0 conflicts. It was rejected because it owes that score only to the absence of
+  counter-examples: it reads `ARMature` as a right, `CTRLRoot` as a left. A criterion that only
+  holds because its counter-examples are missing from the corpus is not a criterion;
+- **no start anchor**, though the pattern had one at first. The mutation campaign showed it failed
+  no test; digging into why, it turned out to be HARMFUL and not merely useless, rejecting
+  `SPRLArm`, `FLLeg`, `RigLWing`. The fact that it needed an exception for `CATRig` said as much;
+- **consulted last**, after the other five, because it is the least certain. It must never
+  contradict an explicit `Left`. It is also the only pattern in the file read on the RAW name: the
+  others survive lowercasing, this one has nothing but case.
 
 *The anatomical vocabulary.* A word table with **priority**: the word identifying the limb outranks
 the one naming the joint at its root. `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW` gives "Head", not

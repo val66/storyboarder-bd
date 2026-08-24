@@ -11,7 +11,7 @@ chiffres ci-dessous sont donc la seule trace de ce qu'ils contiennent.
 
 ---
 
-## 1. Cinq conventions de nommage, aucune commune
+## 1. Sept conventions de nommage, aucune commune
 
 | Fichier | Convention | Os |
 |---|---|---|
@@ -20,6 +20,12 @@ chiffres ci-dessous sont donc la seule trace de ce qu'ils contiennent.
 | `capoera.glb`, `female_pose.glb` | Mixamo (`mixamorig:`) | 65 |
 | `anime_girl1.glb` | VRM (`J_Bip_C_Hips`) | — |
 | `anime_girl2.glb` | maison, proche de VRoid | — |
+| `kraken.glb` | Maya, lettre puis chiffre (`l101`, `r301`) | 47 |
+| `centaur3.glb` | CAT de 3ds Max, majuscule collée (`CATRigLLeg1`) | 79 |
+
+Les deux dernières lignes sont venues du chantier créatures
+([creature-rigs.fr.md](creature-rigs.fr.md)) : elles ne changent que la lecture du CÔTÉ, jamais
+celle du segment. Sans elles, ces deux fichiers rendaient **zéro membre latéral**.
 
 **Le mot « leg » est irrémédiablement ambigu** : `mixamorig:LeftLeg` désigne le TIBIA, `Left_leg`
 de `worker_j` désigne la CUISSE. C'est ce qui a imposé le partage des rôles de `skeleton-map.js` :
