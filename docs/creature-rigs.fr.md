@@ -3,7 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.32.
+> À jour de la v1.4.33.
 
 ## Où l'on en est
 
@@ -68,24 +68,38 @@ Ce que la mesure donne sur le corpus :
 | mixamo, centaure | 18 emplacements | exactement 4 membres, rien d'inventé |
 
 Elle NE FILTRE RIEN, et c'est délibéré. Sur le rig Unreal elle rend 185 membres, dont 131 de deux
-os : chaînes de torsion et correctifs. Ce bruit est consigné plutôt qu'écarté par un seuil inventé,
-et il donne son critère à l'étape 3 : la longueur sépare nettement les quatre vrais membres, de 6 à
-10 os, du reste.
+os. Ce bruit est consigné plutôt qu'écarté par un seuil inventé.
 
-## Étape 3 : chaînes de longueur variable
+⚠️ Ce commit concluait que « la longueur sépare nettement les vrais membres du bruit ». **C'était
+faux**, et l'étape 3 l'a mesuré, cf. plus bas.
 
-Tâche #359. `membresDuSquelette3D` rend déjà les chaînes entières ; reste à décider ce qu'on en
-montre. Mesuré sur le dragon : patte arrière 9 segments, queue 8, cou 7 en comptant mâchoire et
-langue.
+## Étape 3 : trier les chaînes, et par qui
 
-Il faudra distinguer la **chaîne principale** de ses extrémités. Neuf curseurs par patte fois quatre
-pattes est inutilisable, et un orteil ne mérite pas le même statut qu'un fémur.
+Tâche #359. Le problème est réel : `membresDuSquelette3D` rend 185 chaînes sur le rig Unreal et 27
+sur l'oiseau. Neuf curseurs par patte fois quatre pattes est inutilisable.
 
-Deux questions y sont renvoyées, mesurées à l'étape 2. Le **bruit des gros rigs**, 131 chaînes de
-deux os sur le rig Unreal. Et les **chaînes d'aide à l'animation**, `IK`, `Pole`, `Target`,
-`neutral_bone`, présentes chez le dragon et le chien : les écarter demande de se fier au nom pour
-EXCLURE, alors qu'il ne sert jusqu'ici qu'à CONFIRMER. Ce renversement mérite d'être décidé, pas
-glissé.
+**L'HYPOTHÈSE DE DÉPART ÉTAIT FAUSSE, ET LA MESURE L'A DIT.** L'étape 2 concluait que la longueur
+séparait les vrais membres du bruit. Mesuré sur les treize squelettes, le recouvrement est total :
+
+| | longueur |
+|---|---|
+| plus longue chaîne NON anatomique | 7 segments (une mèche de cheveux, rig VRM) |
+| plus courte chaîne anatomique | 1 segment (chélicère d'araignée, brin musculaire du cou d'oiseau) |
+
+Aucun seuil ne peut trancher. En chercher un reviendrait à inventer un nombre, ce que ce dépôt
+s'interdit.
+
+**CE QUI SE NOMME, EN REVANCHE.** Un seul sous-ensemble s'identifie sans ambiguïté par le nom : les
+**échafaudages de rig**, `IK`, `Pole`, `Target`, `neutral_bone`, `FX_`, `Socket`. 62 chaînes sur le
+corpus, aucune anatomique. C'est le point de départ raisonnable, et le seul.
+
+Le reste du bruit n'est pas du bruit : ce sont des cils, des lèvres, des mèches, des plumes. De
+l'anatomie mineure, qu'aucune règle ne distingue d'une queue ou d'une oreille.
+
+**D'OÙ LA CONSÉQUENCE, qui déplace l'étape 4 plutôt qu'elle ne la précède** : ce n'est pas au code de
+trancher, c'est à l'écran de correspondance. Il propose les chaînes classées, l'utilisateur coche
+celles qui l'intéressent. C'est exactement le contrat que la reconnaissance s'était fixé dès le
+début, proposer sans décider, et il vaut ici plus qu'ailleurs.
 
 ## Étape 4 : écran de correspondance généré
 

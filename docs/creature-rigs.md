@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.32.
+> Up to date as of v1.4.33.
 
 ## Where things stand
 
@@ -66,22 +66,39 @@ What the corpus measures:
 | dragon | leg truncated to 3 bones | leg 9, wing 7, tail 8 |
 | mixamo, centaur | 18 slots | exactly 4 limbs, nothing invented |
 
-It filters NOTHING, deliberately. On the Unreal rig it returns 185 limbs, 131 of them two bones:
-twist and corrective chains. That noise is recorded rather than cut by an invented threshold, and it
-hands step 3 its criterion: length separates the four real limbs, 6 to 10 bones, from the rest.
+It filters NOTHING, deliberately. On the Unreal rig it returns 185 limbs, 131 of them two bones.
+That noise is recorded rather than cut by an invented threshold.
 
-## Step 3: variable-length chains
+⚠️ That commit concluded that "length separates the real limbs from the noise". **It was wrong**, and
+step 3 measured it, see below.
 
-Task #359. `membresDuSquelette3D` already returns whole chains; what remains is deciding what to
-show. Measured on the dragon: hind leg 9 segments, tail 8, neck 7 counting jaw and tongue.
+## Step 3: sorting the chains, and by whom
 
-The **main chain** will have to be told apart from its extremities. Nine sliders per leg times four
-legs is unusable, and a toe does not deserve the same standing as a femur.
+Task #359. The problem is real: `membresDuSquelette3D` returns 185 chains on the Unreal rig and 27
+on the bird. Nine sliders per leg times four legs is unusable.
 
-Two questions are deferred here, both measured in step 2. The **noise of large rigs**, 131 two-bone
-chains on the Unreal rig. And the **animation helper chains**, `IK`, `Pole`, `Target`,
-`neutral_bone`, present on dragon and dog: discarding them means trusting the name to EXCLUDE, where
-so far it only ever CONFIRMS. That reversal deserves to be decided, not slipped in.
+**THE STARTING ASSUMPTION WAS WRONG, AND MEASUREMENT SAID SO.** Step 2 concluded that length
+separated real limbs from noise. Measured across the thirteen skeletons, the overlap is total:
+
+| | length |
+|---|---|
+| longest NON-anatomical chain | 7 segments (a hair strand, VRM rig) |
+| shortest anatomical chain | 1 segment (spider chelicera, bird neck muscle strand) |
+
+No threshold can cut it. Looking for one would mean inventing a number, which this repository
+forbids itself.
+
+**WHAT DOES NAME ITSELF.** Only one subset is unambiguously identified by name: **rig scaffolding**,
+`IK`, `Pole`, `Target`, `neutral_bone`, `FX_`, `Socket`. 62 chains across the corpus, none
+anatomical. That is the reasonable starting point, and the only one.
+
+The rest of the noise is not noise: it is eyelashes, lips, hair strands, feathers. Minor anatomy,
+which no rule tells apart from a tail or an ear.
+
+**HENCE THE CONSEQUENCE, which moves step 4 rather than following it**: it is not for the code to
+decide, it is for the mapping screen. It offers the chains, ranked, and the user ticks the ones that
+matter. That is exactly the contract recognition set itself from the start, propose without
+deciding, and it holds here more than anywhere.
 
 ## Step 4: generated mapping screen
 

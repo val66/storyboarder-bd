@@ -389,3 +389,68 @@ describe('membresDuSquelette3D : le bruit mesuré, que l\'étape 3 devra trier',
     assert.ok(noms.some(n => n.startsWith('PoleTarget')), 'les cibles de pôle aussi');
   });
 });
+
+describe('étape 3 : la longueur NE sépare PAS, mesuré', () => {
+  // CE TEST A INVALIDÉ L'HYPOTHÈSE SUR LAQUELLE L'ÉTAPE 3 REPOSAIT. Le commit de l'étape 2 concluait
+  // que « la longueur sépare nettement les quatre vrais membres du bruit ». C'était vrai sur le
+  // seul rig Unreal, et faux sur le corpus entier.
+  //
+  // Mesuré sur les treize squelettes : les chaînes au nom non anatomique montent jusqu'à SEPT
+  // segments (les mèches de cheveux d'un rig VRM), et les chaînes anatomiques descendent à UN
+  // (les chélicères de l'araignée, les brins musculaires du cou de l'oiseau). Le recouvrement est
+  // total : aucun seuil de longueur ne peut trancher.
+  //
+  // CE QUE ÇA CHANGE. Il n'y a pas de critère automatique à trouver, et en chercher un revient à
+  // inventer un seuil, ce que ce dépôt s'interdit. La conséquence est écrite dans
+  // docs/creature-rigs.md : c'est l'ÉCRAN DE CORRESPONDANCE qui doit trancher, en proposant les
+  // chaînes classées et en laissant l'utilisateur cocher. Ce qui est d'ailleurs le contrat que la
+  // reconnaissance s'était fixé depuis le début, proposer sans décider.
+  const noms = ['cerbere', 'araignee', 'kraken', 'serpent', 'dragon', 'chien', 'oiseau',
+    'centaure', 'unreal', 'maison', 'mixamo', 'vrm', 'vroid-alt'];
+  // Les mots qui désignent une vraie partie de corps dans AU MOINS un fichier du corpus. Sert
+  // uniquement à séparer les deux populations pour cette mesure, jamais à décider quoi que ce soit
+  // dans le code de production.
+  const ANATOMIQUE = /thigh|clavicle|upperarm|upleg|shoulder|wing|leg|^l\d|^r\d|bone_|bone\.00|tail|neck/i;
+
+  test('les deux populations se recouvrent complètement', () => {
+    const longueurs = { anatomique: [], autre: [] };
+    noms.forEach(nom => {
+      const os = charger(nom);
+      const parId = new Map(os.map(o => [o.id, o]));
+      membresDuSquelette3D(os).membres.forEach(m => {
+        const n = parId.get(m.segments[0]).name.replace(/_\d+(_\d+)?$/, '');
+        longueurs[ANATOMIQUE.test(n) ? 'anatomique' : 'autre'].push(m.segments.length);
+      });
+    });
+    const max = (a) => Math.max(...a), min = (a) => Math.min(...a);
+    assert.equal(min(longueurs.anatomique), 1, 'une vraie chaîne peut ne faire QU\'UN os');
+    assert.equal(max(longueurs.autre), 7, 'une mèche de cheveux en fait SEPT');
+    assert.ok(max(longueurs.autre) > min(longueurs.anatomique),
+      'si un jour ces deux populations se séparent, un seuil redevient envisageable');
+  });
+
+  test('les chaînes d\'aide à l\'animation, elles, se nomment', () => {
+    // Le seul sous-ensemble que le nom identifie sans ambiguïté : `IK`, `Pole`, `Target`,
+    // `neutral_bone`, `FX_`, `Socket`. Ce sont des échafaudages de rig, jamais de l'anatomie.
+    // Consigné ici comme point de départ possible de l'étape 3, à distinguer du reste du bruit,
+    // qui est de l'anatomie mineure (cils, lèvres, mèches) et ne se règle pas par un nom.
+    const ECHAFAUDAGE = /\bik\b|^ik|ik$|pole|target|neutral_bone|^fx_|socket/i;
+    const trouves = [];
+    noms.forEach(nom => {
+      const os = charger(nom);
+      const parId = new Map(os.map(o => [o.id, o]));
+      membresDuSquelette3D(os).membres.forEach(m => {
+        const n = parId.get(m.segments[0]).name.replace(/_\d+(_\d+)?$/, '');
+        if (ECHAFAUDAGE.test(n)) trouves.push(n);
+      });
+    });
+    assert.equal(trouves.length, 62, 'le compte d\'échafaudages du corpus a changé');
+    // ⚠️ LA GARDE SE FAIT SUR DES NOMS EXACTS, pas sur un mot contenu. Ma première version
+    // cherchait « thigh » quelque part dans le nom, et elle a accusé le filet à tort :
+    // `thigh_vol_end_rSocket` est une prise d'attache, pas une cuisse. Le mot d'une partie du corps
+    // apparaît couramment dans le nom d'un accessoire qui s'y rattache.
+    const vraisMembres = ['thigh_l', 'thigh_r', 'clavicle_l', 'clavicle_r', 'Wing1.L', 'Wing1.R',
+      'ThighBase.L', 'ThighBase.R', 'FrontUpperLeg.L', 'BackShoulder.L'];
+    vraisMembres.forEach(n => assert.ok(!trouves.includes(n), `${n} est tombé dans le filet`));
+  });
+});
