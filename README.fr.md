@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.25**
+**Version 1.4.26**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -47,6 +47,8 @@
   d'un fichier un décor réutilisable, importez-le dans une Scène
 - 🗂️ **Section Modèles** du menu de gauche : vos fichiers groupés selon l'usage qu'en fait le Projet
   ouvert : par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
+- **Renommer ou supprimer un fichier** depuis cette section : le renommage entraîne avec lui les
+  Éléments du Projet ouvert, son historique d'annulation et la correspondance de squelette
 - 🦴 **Modèles articulés** : un fichier porteur d'os se pose comme un Personnage, avec des curseurs par
   articulation, points cliquables sur l'aperçu, et écran de correspondance quand un os est mal
   reconnu

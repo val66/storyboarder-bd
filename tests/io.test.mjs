@@ -19,6 +19,7 @@ import {
   setPoseLibrary, loadPoseLibrary, POSE_LIBRARY_SETTING_KEY,
   setDismissedPoses, loadDismissedPoses, POSE_DISMISSED_SETTING_KEY,
   restoreBuiltinPoses, missingBuiltinPoseCount,
+  setIOCallbacks, setRenameModelCallback, openRenameEntityModal, confirmRenameEntity,
 } from '../src/io.js';
 // draw.js complète POSE_3D à l'exécution ('allonge', 'vaincu'). Importé explicitement ici parce que
 // le semis de la bibliothèque en dépend — cf. le test d'ordre d'import plus bas.
@@ -765,3 +766,55 @@ describe('Fix 67 — Échap appartient à l\'éditeur de Personnage quand il est
 });
 
 
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La modale de renommage : à qui la confirmation est-elle transmise ?
+// ─────────────────────────────────────────────────────────────────────────────
+describe('confirmRenameEntity — chaque sorte va à son destinataire', () => {
+  let recu;
+  beforeEach(() => {
+    recu = [];
+    setIOCallbacks(() => {}, (c, n) => recu.push(['tome', c, n]), (c, n) => recu.push(['scene', c, n]), () => {});
+    setRenameModelCallback((c, n) => recu.push(['modele', c, n]));
+  });
+
+  const renommer = (kind, cible, ancien, nouveau, extra) => {
+    openRenameEntityModal(kind, cible, ancien, extra);
+    document.getElementById('renameEntityInput').value = nouveau;
+    document.getElementById('renameEntityConfirm').disabled = false;
+    confirmRenameEntity();
+  };
+
+  test('RÉGRESSION : renommer une SCÈNE ne faisait rien du tout', () => {
+    // `else` PENDANT, découvert en ajoutant la troisième sorte. Le code était :
+    //
+    //     if (kind === 'tome') if (_applyRenameVolume) _applyRenameVolume(...);
+    //     else if (_applyRenameScene) _applyRenameScene(...);
+    //
+    // L'`else` se rattache au `if` INTÉRIEUR, pas au premier. Le tout se lit donc « si c'est un
+    // tome : appeler le renommage de tome, sinon celui de scène » — et pour une Scène, la condition
+    // extérieure étant fausse, RIEN ne s'exécutait. La modale se fermait, le nom ne changeait pas.
+    // Pire encore : un renommage de Tome avec `_applyRenameVolume` absent appelait celui des Scènes.
+    renommer('scene', 'sc1', 'Ancien', 'Nouveau');
+    assert.deepEqual(recu, [['scene', 'sc1', 'Nouveau']]);
+  });
+
+  test('un Tome va au renommage de Tome', () => {
+    renommer('tome', 2, 'Ancien', 'Nouveau');
+    assert.deepEqual(recu, [['tome', 2, 'Nouveau']]);
+  });
+
+  test('un modèle va au renommage de modèle, avec son nom de fichier comme cible', () => {
+    renommer('modele', 'chaise.glb', 'chaise', 'tabouret', { pris: ['chaise.glb'] });
+    assert.deepEqual(recu, [['modele', 'chaise.glb', 'tabouret']]);
+  });
+
+  test('le bouton grisé ne transmet rien', () => {
+    openRenameEntityModal('scene', 'sc1', 'Ancien');
+    document.getElementById('renameEntityInput').value = 'Nouveau';
+    document.getElementById('renameEntityConfirm').disabled = true;
+    confirmRenameEntity();
+    assert.deepEqual(recu, []);
+  });
+});

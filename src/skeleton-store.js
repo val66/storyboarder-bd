@@ -235,3 +235,42 @@ export function doitOuvrirCorrespondance({ osDuFichier, dejaEnregistree } = {}){
 export async function oublierCorrespondance(fichier){
   return enregistrerCorrespondance(fichier, {}, { valide: false });
 }
+
+/**
+ * Fait suivre la correspondance quand le `.glb` est RENOMMÉ. Rend { ok, error? }.
+ *
+ * Les correspondances sont indexées par NOM DE FICHIER : renommer sans les déplacer laisserait la
+ * carte d'os attachée à un fichier disparu, et le modèle renommé repartirait de la reconnaissance
+ * automatique — l'écran de correspondance se rouvrirait, et le travail de correction serait à
+ * refaire alors qu'il est là, dans le fichier, sous l'ancienne clé.
+ *
+ * DÉPLACEMENT, PAS COPIE : l'ancienne clé est retirée. La garder ferait ressusciter la carte de
+ * l'ANCIEN squelette le jour où un homonyme est réimporté — la panne exacte contre laquelle
+ * `oublierCorrespondance` a été écrite.
+ *
+ * Une seule écriture pour les deux moitiés : écrire la nouvelle clé puis effacer l'ancienne, en deux
+ * temps, laisserait un doublon sur le disque si la seconde échouait.
+ */
+export async function renommerCorrespondance(ancien, nouveau){
+  const p = pont();
+  if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
+  if (!ancien || !nouveau) return { ok: false, error: 'fichier manquant' };
+  if (ancien === nouveau) return { ok: true };
+  const tout = await lireCorrespondances();
+  const entree = (tout.entrees || {})[ancien];
+  // Rien à déplacer : ce n'est pas un échec. Un modèle sans os n'a jamais eu de correspondance, et
+  // c'est le cas le plus courant (une chaise, un décor).
+  if (!entree) return { ok: true };
+  // Copie, pour la même raison que dans enregistrerCorrespondance : `tout` et le cache résident
+  // désignent le même objet après la relecture.
+  const suivant = { version: tout.version, entrees: { ...tout.entrees } };
+  suivant.entrees[nouveau] = entree;
+  delete suivant.entrees[ancien];
+  try {
+    const r = await p.writeSkeletonMaps(suivant);
+    if (r && r.ok) _enMemoire = suivant;
+    return (r && r.ok) ? { ok: true } : { ok: false, error: (r && r.error) || 'écriture refusée' };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}

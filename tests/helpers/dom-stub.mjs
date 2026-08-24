@@ -119,7 +119,10 @@ function makeFakeElement() {
     // THREE.WebGLRenderer — cf. en-tête de ce fichier).
     getContext(type){ return type === '2d' ? makeFakeCanvasContext2D() : null; },
     getBoundingClientRect(){ return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }; },
-    focus(){}, blur(){}, click(){}, remove(){},
+    // `select` manquait, et son absence ne s'est vue qu'au moment de tester la modale de
+    // renommage : elle est appelée dans un setTimeout, donc APRÈS la fin du test — l'erreur
+    // remontait en uncaughtException, sans rapport visible avec la ligne fautive.
+    focus(){}, blur(){}, click(){}, remove(){}, select(){},
     cloneNode(){ return makeFakeElement(); },
     scrollIntoView(){},
     parentNode: null,

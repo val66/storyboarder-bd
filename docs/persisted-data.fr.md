@@ -82,6 +82,13 @@ Deux conséquences qui font partie du format, pas de l'implémentation :
   quelques secondes plus tard.
 - **Les modèles suivent les Projets.** Ils sont rangés dans le dossier que l'utilisateur a choisi
   pour ses Projets : ce qu'il fait pour les synchroniser ou les sauvegarder les couvre aussi.
+- **Le nom peut être RENOMMÉ, et c'est une modification à l'échelle du Projet.** La section Modèles
+  le propose (v1.4.26). Le renommage réécrit `modelFile` dans tous les Éléments du Projet OUVERT,
+  ainsi que dans sa pile d'annulation — elle contient des états antérieurs, qui citent tous l'ancien
+  nom, et annuler une action sans rapport ressusciterait sinon un nom de fichier mort. La
+  correspondance de squelette, indexée par nom de fichier, est déplacée avec lui. **Les autres
+  Projets sont hors d'atteinte**, exactement comme pour la suppression : ils gardent l'ancien nom et
+  affichent des boîtes de remplacement. Le champ, lui, n'est jamais renommé — seule sa valeur change.
 
 ## 3. Les ids DOM
 

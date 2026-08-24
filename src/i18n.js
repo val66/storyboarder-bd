@@ -100,6 +100,7 @@ export const I18N_TRAILING = [
   ['#ctxImportModel', 'Import a model', 'Importer un Modèle'],
   ['#ctxMesure', 'Measure', 'Mesure'],
   ['#ctxSkeletonMap', 'Skeleton mapping…', 'Correspondance du squelette…'],
+  ['#ctxRenameModel', 'Rename the file…', 'Renommer le fichier…'],
   ['#ctxDeleteModel', 'Delete from disk', 'Supprimer du disque'],
   ['#ctxBuildMode', 'Build a building', 'Construire un Bâtiment'],
   ['#ctxAddOiseau', 'Bird', 'Oiseau'],

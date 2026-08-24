@@ -22,7 +22,8 @@ import {
   setCanvasToolsCallbacks, screenToWorldFloor, buildApplyAngleSnap, buildApplyAlignSnap,
   startBuildMode, startTraceTool, stopTraceTool, startMeasureTool, stopMeasureTool,
 } from './canvas-tools.js';
-import { countModelUsages, messageSuppressionModele } from './model-library.js';
+import { countModelUsages, messageSuppressionModele, messageRenommageModele,
+  repointerModele3D, repointerPileAnnulation3D } from './model-library.js';
 import {
   setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, usageElementLabels,
   targetFor,
@@ -31,7 +32,7 @@ import {
   inferSkeletonMap, resumeCorrespondance, bonesFromObject3D, slotLabel, SLOT_GROUPS,
 } from './skeleton-map.js';
 import {
-  lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, fusionner,
+  lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance, fusionner,
   doitOuvrirCorrespondance,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
@@ -40,7 +41,7 @@ import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model
 import {
   setModelImportCallbacks, importModelIntoPanel,
 } from './model-import.js';
-import { isImportedModel } from './model-store.js';
+import { isImportedModel, listModels, renameModel, sanitizeModelName } from './model-store.js';
 import {
   setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
@@ -95,6 +96,7 @@ import {
 import {
   setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, confirmAction, alertAction,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
+  openRenameEntityModal, setRenameModelCallback,
 } from './io.js';
 import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
@@ -4032,9 +4034,16 @@ document.getElementById('ctxImportModel').onclick = () => {
 };
 
 // ─── Bibliothèque de modèles : clic droit sur une ligne ───
-// Une seule action, la suppression. PAS de renommage de fichier : `modelFile` est un identifiant
+// Correspondance du squelette, renommage du fichier, suppression.
+//
+// LE RENOMMAGE ÉTAIT REFUSÉ ICI, et la note disait pourquoi : « `modelFile` est un identifiant
 // persisté, et le renommer casserait les Éléments des AUTRES Projets, qu'on ne peut pas réparer
-// d'ici. Ce qui se renomme, c'est l'Élément (son champ `name`, déjà éditable dans sa modale).
+// d'ici. » C'est vrai, et ça le reste — mais c'est mot pour mot ce que fait la SUPPRESSION, juste
+// en dessous, qui était offerte. Le danger n'était pas la différence ; l'un avait été assumé et
+// l'autre non. Cf. l'en-tête de la section « Renommer un modèle » dans model-library.js.
+//
+// Ce qui se renomme ici est le FICHIER. Le champ `name` de l'Élément, lui, reste ce que
+// l'utilisateur a écrit dans sa fiche : les deux ne sont pas la même chose et ne se suivent pas.
 const modelContextMenu = document.getElementById('modelContextMenu');
 let _modelCtxFichier = null;
 function openModelContextMenu(e, nomFichier){
@@ -4050,6 +4059,60 @@ document.getElementById('ctxSkeletonMap').onclick = () => {
   hideContextMenu();
   if (fichier) openSkeletonMapModal(fichier);
 };
+// Ouvre la saisie du nom. Le renommage lui-même est dans `_renommerModele` ci-dessous, appelé par
+// la modale à la confirmation : le clic ne fait qu'ouvrir, comme pour un Tome ou une Scène.
+document.getElementById('ctxRenameModel').onclick = async () => {
+  const fichier = _modelCtxFichier;
+  modelContextMenu.classList.add('hidden');
+  if (!fichier) return;
+  // La liste des noms pris est capturée MAINTENANT et passée à la modale : c'est elle qui grise le
+  // bouton en cas de collision, et elle ne peut pas relire le disque (elle est synchrone).
+  const pris = await listModels();
+  openRenameEntityModal('modele', fichier, fichier.replace(/\.glb$/i, ''), { pris });
+};
+
+/**
+ * Renomme le fichier, puis répare ce qui peut l'être ici.
+ *
+ * L'ORDRE COMPTE, et il est le seul possible : le disque D'ABORD, les références ENSUITE. Repointer
+ * les Éléments avant de savoir si le renommage a réussi les laisserait pointer vers un fichier qui
+ * n'existe pas, sur un simple refus d'écriture.
+ */
+async function _renommerModele(ancien, nomVoulu){
+  const nouveau = sanitizeModelName(nomVoulu);
+  if (!ancien || nouveau === ancien) return;
+  const usages = countModelUsages(ancien, { tomes: S.tomes, scenes: S.scenes });
+  const ok = await confirmAction(messageRenommageModele(ancien, nouveau, usages, tr));
+  if (!ok) return;
+
+  const r = await renameModel(ancien, nouveau);
+  if (!r || !r.ok) {
+    alertAction(r && r.collision
+      ? tr(`A model named "${nouveau}" already exists. Renaming was cancelled — nothing was overwritten.`,
+        `Un modèle nommé « ${nouveau} » existe déjà. Le renommage est annulé : rien n'a été écrasé.`)
+      : tr(`Could not rename "${ancien}": ${(r && r.error) || 'unknown error'}`,
+        `Impossible de renommer « ${ancien} » : ${(r && r.error) || 'erreur inconnue'}`));
+    return;
+  }
+
+  // Le Projet ouvert suit. `snapshot()` n'est PAS appelé : une annulation restaurerait l'ancien nom
+  // de fichier alors que le disque porte le nouveau — Ctrl+Z transformerait les Éléments en boîtes
+  // de remplacement, pour une opération qui a réussi. La pile existante est réécrite pour la même
+  // raison : elle cite l'ancien nom dans TOUS ses états.
+  repointerModele3D({ tomes: S.tomes, scenes: S.scenes }, ancien, r.name);
+  S.undoStack = repointerPileAnnulation3D(S.undoStack, ancien, r.name);
+  S.projectDirty = true;
+
+  // La correspondance de squelette est indexée par nom de fichier : sans ce déplacement, le modèle
+  // renommé repartirait de la reconnaissance automatique et le travail de correction serait à refaire.
+  await renommerCorrespondance(ancien, r.name);
+  // Le cache garde le modèle décodé sous l'ANCIEN nom : le vider force sa relecture sous le nouveau.
+  clearModelCache();
+  renderAll();
+  renderModelList();
+}
+setRenameModelCallback(_renommerModele);
+
 document.getElementById('ctxDeleteModel').onclick = async () => {
   const fichier = _modelCtxFichier;
   modelContextMenu.classList.add('hidden');

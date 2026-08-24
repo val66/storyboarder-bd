@@ -188,6 +188,41 @@ export async function importModel(){
 }
 
 /**
+ * Renomme un modèle sur le disque. Rend { ok, name } ou { ok: false, error }.
+ *
+ * Le nom demandé est ASSAINI ici (`sanitizeModelName`), comme à l'import : l'utilisateur tape ce
+ * qu'il veut, l'extension est réimposée, les séparateurs de chemin retirés. Le process principal
+ * refusera de son côté tout ce qui ne serait pas déjà propre.
+ *
+ * ⚠️ AUCUNE RÉSOLUTION DE COLLISION, contrairement à l'import. `resolveModelName` transformerait
+ * « chaise » en « chaise (2) » si le nom est pris — acceptable pour un import, où l'utilisateur
+ * demande « range ce fichier », inacceptable pour un renommage, où il demande « appelle-le
+ * comme ça ». Recevoir un autre nom que celui qu'on a écrit est une réponse à une question qu'on
+ * n'a pas posée. On refuse, et on le dit.
+ */
+export async function renameModel(ancien, nouveau){
+  const p = pont();
+  if (!p || !p.renameModelFile) return { ok: false, error: 'indisponible hors de l\'application' };
+  if (!ancien) return { ok: false, error: 'modèle manquant' };
+  const propre = sanitizeModelName(nouveau);
+  if (propre === ancien) return { ok: true, name: ancien, inchangé: true };
+  const existants = await listModels();
+  // La casse ne distingue pas deux fichiers sous Windows. Le seul cas autorisé est le renommage du
+  // fichier vers lui-même à la casse près — « chaise.glb » → « Chaise.glb » —, que le process
+  // principal sait exécuter et qui n'écrase rien.
+  const conflit = existants.some(n => n.toLowerCase() === propre.toLowerCase()
+    && n.toLowerCase() !== ancien.toLowerCase());
+  if (conflit) return { ok: false, error: 'un modèle porte déjà ce nom', collision: true, name: propre };
+  try {
+    const r = await p.renameModelFile(ancien, propre);
+    if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'renommage refusé' };
+    return { ok: true, name: propre };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+/**
  * Les octets d'un modèle rangé, ou null s'il est introuvable.
  *
  * `null` veut dire « affiche une boîte de remplacement », jamais « supprime l'Élément ». L'appelant

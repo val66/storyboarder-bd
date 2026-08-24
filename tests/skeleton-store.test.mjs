@@ -22,7 +22,8 @@ import assert from 'node:assert/strict';
 
 import {
   normaliserFichier, entreePourFichier, fusionner, setSkeletonBridge,
-  lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, SKELETON_MAP_FORMAT,
+  lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance,
+  SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
 } from '../src/skeleton-store.js';
 import { SLOTS } from '../src/skeleton-map.js';
@@ -613,5 +614,58 @@ describe('La légende dit l\'état, pas le devenir', () => {
   test('la note occupe sa propre ligne, pour ne pas passer pour une quatrième catégorie', () => {
     const i = CSS3.indexOf('.skeleton-map-legend-note');
     assert.match(CSS3.slice(i, CSS3.indexOf('}', i)), /flex-basis:\s*100%/);
+  });
+});
+
+
+describe('renommerCorrespondance — la carte d\'os suit le fichier renommé', () => {
+  // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : transformer le DÉPLACEMENT en simple copie — garder
+  // l'ancienne clé en plus de la nouvelle — ne faisait échouer aucun test. À l'usage, l'entrée
+  // orpheline ressusciterait le jour où un homonyme est réimporté, avec les os de l'ANCIEN
+  // squelette : exactement la panne contre laquelle `oublierCorrespondance` avait été écrite.
+  beforeEach(() => {
+    pontRepond = { ok: true, data: { version: 1, entrees: {
+      'vieux.glb': { os: { bassin: 'Hips' }, valide: true },
+      'autre.glb': { os: { tete: 'Head' }, valide: true },
+    } } };
+  });
+
+  test('la nouvelle clé porte l\'entrée, et l\'ancienne DISPARAÎT', async () => {
+    const r = await renommerCorrespondance('vieux.glb', 'neuf.glb');
+    assert.equal(r.ok, true);
+    assert.equal(ecrit.length, 1, 'une seule écriture, pas deux');
+    const entrees = ecrit[0].entrees;
+    assert.deepEqual(entrees['neuf.glb'], { os: { bassin: 'Hips' }, valide: true });
+    assert.ok(!('vieux.glb' in entrees), 'l\'ancienne clé subsiste : entrée orpheline');
+    assert.ok('autre.glb' in entrees, 'les autres correspondances ont été perdues');
+  });
+
+  test('le cache résident suit, sans relire le disque', async () => {
+    await renommerCorrespondance('vieux.glb', 'neuf.glb');
+    assert.deepEqual(correspondanceEnregistreeSync('neuf.glb'), { os: { bassin: 'Hips' }, valide: true });
+    assert.equal(correspondanceEnregistreeSync('vieux.glb'), null);
+  });
+
+  test('un fichier SANS correspondance : rien à écrire, et ce n\'est pas un échec', async () => {
+    // Le cas le plus courant — une chaise, un décor : aucun os, donc aucune correspondance.
+    const r = await renommerCorrespondance('inconnu.glb', 'neuf.glb');
+    assert.equal(r.ok, true);
+    assert.deepEqual(ecrit, [], 'une écriture inutile a été faite');
+  });
+
+  test('une écriture refusée ne touche pas au cache', async () => {
+    setSkeletonBridge({
+      readSkeletonMaps: async () => pontRepond,
+      writeSkeletonMaps: async () => ({ ok: false, error: 'disque plein' }),
+    });
+    const r = await renommerCorrespondance('vieux.glb', 'neuf.glb');
+    assert.equal(r.ok, false);
+    assert.equal(correspondanceEnregistreeSync('neuf.glb'), null, 'le cache annonce un renommage qui n\'a pas eu lieu');
+    assert.ok(correspondanceEnregistreeSync('vieux.glb'), 'l\'ancienne entrée a été perdue malgré l\'échec');
+  });
+
+  test('les cas dégénérés ne cassent rien', async () => {
+    assert.equal((await renommerCorrespondance('a.glb', 'a.glb')).ok, true);
+    assert.equal((await renommerCorrespondance('', 'b.glb')).ok, false);
   });
 });

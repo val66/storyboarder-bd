@@ -80,6 +80,12 @@ Two consequences that are part of the format, not of the implementation:
   auto-save would write the loss out seconds later.
 - **The models follow the projects.** They sit inside the folder the user chose for projects, so
   whatever they do to sync or back those up covers the models too.
+- **The name can be RENAMED, and that is a project-wide edit.** The Models section offers it
+  (v1.4.26). Renaming rewrites `modelFile` in every Element of the OPEN project, plus its undo
+  stack — the stack holds earlier states, all citing the old name, and undoing an unrelated action
+  would otherwise resurrect a dead file name. The skeleton mapping, keyed by file name, moves with
+  it. **Other projects cannot be reached**, exactly as for deletion: they keep the old name and show
+  placeholder boxes. The field itself is never renamed — only its value changes.
 
 ## 3. DOM ids
 

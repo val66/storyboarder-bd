@@ -42,11 +42,8 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // n'a fait échouer AUCUN test, parce qu'un commentaire voisin citait le nom de la fonction. Le
 // test croyait vérifier un appel, il vérifiait une phrase. C'est le pire état pour un test : vert,
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
-export function sourceSansCommentaires(texte) {
-  return texte
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-}
+import { sourceSansCommentaires } from './helpers/source.mjs';
+export { sourceSansCommentaires };
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,

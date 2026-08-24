@@ -68,6 +68,10 @@ interface StoryboarderAPI {
   readModelFile(name: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }>;
   listModelFiles(): Promise<string[]>;
   deleteModelFile(name: string): Promise<{ ok: boolean; error?: string }>;
+  // `ok: false` couvre aussi le refus d'écraser un homonyme : le renommage ne remplace jamais
+  // un fichier existant, il échoue et le dit.
+  renameModelFile(ancien: string, nouveau: string):
+    Promise<{ ok: boolean; name?: string; error?: string }>;
   // Correspondances de squelette : un seul fichier partagé par tous les Projets, à côté du dossier
   // Modeles. `ok: false` couvre l'absence au premier usage comme le fichier illisible — les deux
   // se traitent pareil côté renderer, on repart d'une correspondance vide.

@@ -10,6 +10,7 @@
  */
 import { S, tr, createVolume, addPageToVolume } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
+import { sanitizeModelName } from './model-store.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
 import {
   getElementDepth, repairElementBase3D,
@@ -34,6 +35,12 @@ export function setIOCallbacks(onRenderAll, onRenameVolume, onRenameScene, onClo
   _applyRenameScene    = onRenameScene;
   _closeSettingsModal  = onCloseSettings;
 }
+
+// Poseur SÉPARÉ plutôt qu'un cinquième paramètre positionnel à setIOCallbacks. Quatre fonctions
+// anonymes à la file se distinguent déjà mal ; une cinquième, ajoutée deux ans après les autres,
+// s'intervertirait un jour avec sa voisine sans que rien ne le signale.
+let _applyRenameModel = null;
+export function setRenameModelCallback(fn){ _applyRenameModel = fn; }
 
 // ── DOM references used by several functions in this module ─────────────
 // (each modal's own const variables are declared locally in their section below)
@@ -934,6 +941,15 @@ function isEntityNameTakenByOther(kind, target, name){
   if (kind === 'tome') {
     return S.tomes.some((t, ti) => ti !== target && (t.name || '').trim().toLowerCase() === norm);
   }
+  // Un modèle se compare sur le NOM DE FICHIER assaini, pas sur ce qui est tapé : « chaise » et
+  // « chaise.glb » désignent le même fichier, et laisser passer le second écraserait le premier.
+  // La liste des noms pris est celle capturée à l'ouverture — le dossier ne peut pas changer sous
+  // nos pieds pendant qu'une modale est ouverte, et la relire ici rendrait la fonction asynchrone.
+  if (kind === 'modele') {
+    const voulu = sanitizeModelName(name).toLowerCase();
+    return ((S.renameModalContext && S.renameModalContext.pris) || [])
+      .some(n => String(n).toLowerCase() === voulu && String(n).toLowerCase() !== String(target).toLowerCase());
+  }
   return S.scenes.some(s => s.id !== target && (s.name || '').trim().toLowerCase() === norm);
 }
 function updateRenameEntityConfirmState(){
@@ -945,14 +961,23 @@ function updateRenameEntityConfirmState(){
     disabled = true;
   } else if (S.renameModalContext && isEntityNameTakenByOther(S.renameModalContext.kind, S.renameModalContext.target, newName)) {
     disabled = true;
-    errorMsg = S.renameModalContext.kind === 'tome' ? tr('That name is already used by another volume.', 'Ce nom est déjà utilisé par un autre tome.') : tr('That name is already used by another scene.', 'Ce nom est déjà utilisé par une autre scène.');
+    const quoi = S.renameModalContext.kind;
+    errorMsg = quoi === 'tome'
+      ? tr('That name is already used by another volume.', 'Ce nom est déjà utilisé par un autre tome.')
+      : quoi === 'modele'
+        ? tr('A model file already has that name.', 'Un fichier de modèle porte déjà ce nom.')
+        : tr('That name is already used by another scene.', 'Ce nom est déjà utilisé par une autre scène.');
   }
   renameEntityConfirm.disabled = disabled;
   renameEntityError.textContent = errorMsg;
 }
-export function openRenameEntityModal(kind, target, currentName){
-  S.renameModalContext = { kind, target, currentName };
-  renameEntityTitle.textContent = kind === 'tome' ? tr('Rename volume', 'Renommer le tome') : tr('Rename scene', 'Renommer la scène');
+export function openRenameEntityModal(kind, target, currentName, extra){
+  S.renameModalContext = { kind, target, currentName, ...(extra || {}) };
+  renameEntityTitle.textContent = kind === 'tome'
+    ? tr('Rename volume', 'Renommer le tome')
+    : kind === 'modele'
+      ? tr('Rename the model file', 'Renommer le fichier du modèle')
+      : tr('Rename scene', 'Renommer la scène');
   renameEntityInput.value = currentName;
   updateRenameEntityConfirmState();
   renameEntityModal.classList.remove('hidden');
@@ -973,7 +998,8 @@ export function confirmRenameEntity(){
   const newName = renameEntityInput.value.trim();
   const { kind, target } = S.renameModalContext;
   closeRenameEntityModal();
-  if (kind === 'tome') if (_applyRenameVolume) _applyRenameVolume(target, newName);
+  if (kind === 'tome') { if (_applyRenameVolume) _applyRenameVolume(target, newName); }
+  else if (kind === 'modele') { if (_applyRenameModel) _applyRenameModel(target, newName); }
   else if (_applyRenameScene) _applyRenameScene(target, newName);
 }
 document.getElementById('renameEntityCancel').onclick = closeRenameEntityModal;

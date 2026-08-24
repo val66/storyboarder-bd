@@ -20,8 +20,10 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  groupModelsByUsage, countModelUsages, messageSuppressionModele,
+  groupModelsByUsage, countModelUsages, messageSuppressionModele, messageRenommageModele,
+  repointerModele3D, repointerPileAnnulation3D,
 } from '../src/model-library.js';
+import { renameModel } from '../src/model-store.js';
 
 const el = (modelFile) => ({ id: 'e' + Math.random(), type: 'objet3d', objType: 'modele', modelFile });
 const volume = (nom, ...objets) => ({ name: nom, pages: [{ objects: objets }] });
@@ -170,6 +172,7 @@ describe('messageSuppressionModele — dire les trois choses', () => {
 // Le câblage de la section Modèles
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { sourceSansCommentaires } from './helpers/source.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -181,19 +184,61 @@ const TREE = readFileSync(join(RACINE, 'src/project-tree.js'), 'utf8');
 const DRAW = readFileSync(join(RACINE, 'src/draw.js'), 'utf8');
 const MAIN = readFileSync(join(RACINE, 'main.js'), 'utf8');
 
+// Le corps de `_renommerModele`, COMMENTAIRES RETIRÉS. Sans ce filtrage, le test « aucun
+// snapshot() » échouait sur le commentaire de la fonction, qui explique justement pourquoi
+// snapshot() n'y est pas appelé. Troisième fois que ce dépôt se fait prendre par un test satisfait
+// — ou mis en échec — par du texte en commentaire (cf. Fix 88, puis la signature d'index du pont).
+function corpsDuRenommage(){
+  const i = EVENTS.indexOf('async function _renommerModele');
+  assert.ok(i > 0, '_renommerModele introuvable');
+  const bloc = EVENTS.slice(i);
+  return sourceSansCommentaires(bloc.slice(0, bloc.indexOf('\nsetRenameModelCallback')));
+}
+
 describe('Section Modèles — le câblage', () => {
   test('la section et son menu contextuel existent', () => {
-    ['modelTrigger', 'modelPanel', 'modelList', 'modelContextMenu', 'ctxDeleteModel']
+    ['modelTrigger', 'modelPanel', 'modelList', 'modelContextMenu', 'ctxDeleteModel', 'ctxRenameModel']
       .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
   });
 
-  test('RÉGRESSION : le menu contextuel n\'offre AUCUN renommage', () => {
-    // Décision tranchée : `modelFile` est un identifiant persisté. Le renommer casserait les
-    // Éléments des autres Projets, qu'on ne peut pas réparer d'ici. On renomme l'Élément.
-    const bloc = HTML.slice(HTML.indexOf('id="modelContextMenu"'));
-    const menu = bloc.slice(0, bloc.indexOf('</div>'));
-    assert.doesNotMatch(menu, /[Rr]enommer|[Rr]ename/,
-      'un renommage de fichier est proposé : il casserait les autres Projets');
+  // CE TEST DISAIT L'INVERSE. Il épinglait « le menu n'offre AUCUN renommage », au nom d'une
+  // décision réelle : `modelFile` est un identifiant persisté, le renommer casse les Éléments des
+  // autres Projets. La décision a été levée sur demande, et pour une raison qui tenait : la
+  // SUPPRESSION, offerte juste à côté, fait exactement le même dégât en pire — le fichier ne revient
+  // pas. Ce qui remplace l'interdit, ce sont les garanties ci-dessous.
+  test('RÉGRESSION : le renommage demande confirmation AVANT de toucher au disque', () => {
+    const corps = corpsDuRenommage();
+    assert.ok(corps.indexOf('confirmAction') < corps.indexOf('renameModel('),
+      'le fichier est renommé avant que l\'utilisateur ait répondu');
+    assert.match(corps, /messageRenommageModele/, 'le message chiffré n\'est pas utilisé');
+    assert.match(corps, /countModelUsages/, 'le décompte des usages n\'est pas fait');
+  });
+
+  test('RÉGRESSION : le disque D\'ABORD, les références ENSUITE', () => {
+    // L'ordre inverse laisserait les Éléments pointer vers un fichier inexistant au premier refus
+    // d'écriture — un Projet cassé par une opération qui a échoué.
+    const corps = corpsDuRenommage();
+    assert.ok(corps.indexOf('renameModel(') < corps.indexOf('repointerModele3D'),
+      'les Éléments sont repointés avant de savoir si le renommage a réussi');
+  });
+
+  test('RÉGRESSION : la pile d\'annulation, la correspondance et le cache suivent', () => {
+    // Les trois oublis possibles, et ce que chacun coûte :
+    //   pile d'annulation  → Ctrl+Z ressuscite l'ancien nom, donc des boîtes de remplacement ;
+    //   correspondance     → le travail de correspondance des os est à refaire ;
+    //   cache              → le modèle continue de s'afficher sous son ancien nom.
+    const corps = corpsDuRenommage();
+    assert.match(corps, /repointerPileAnnulation3D/, 'la pile d\'annulation n\'est pas réécrite');
+    assert.match(corps, /renommerCorrespondance/, 'la correspondance de squelette ne suit pas');
+    assert.match(corps, /clearModelCache/, 'le cache n\'est pas vidé');
+  });
+
+  test('RÉGRESSION : aucun snapshot() avant un renommage', () => {
+    // Un instantané rendrait l'opération « annulable » — et l'annulation restaurerait l'ancien nom
+    // de fichier alors que le disque porte le nouveau.
+    const corps = corpsDuRenommage();
+    assert.doesNotMatch(corps, /\bsnapshot\(\)/,
+      'le renommage est rendu annulable, alors que le disque ne l\'est pas');
   });
 
   test('RÉGRESSION : la suppression demande confirmation AVANT de supprimer', () => {
@@ -489,3 +534,150 @@ describe('Bibliothèque — un clic gauche qui tient sa promesse', () => {
  * hit-test.test.mjs, où aucune Bulle ne se chevauchait). La leçon se répète : un montage où toutes
  * les valeurs coïncident ne teste pas qu'on a choisi la bonne.
  */
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Renommer un modèle
+// ─────────────────────────────────────────────────────────────────────────────
+describe('repointerModele3D — les Éléments suivent le fichier', () => {
+  test('Cases ET Scènes, et rien d\'autre', () => {
+    const suit = el('vieux.glb');
+    const autre = el('autre.glb');
+    const perso = { id: 'p1', type: 'perso', modelFile: 'vieux.glb' };   // pas un modèle importé
+    const racines = { tomes: [volume('T', suit, autre)], scenes: [volume('S', el('vieux.glb'), perso)] };
+    assert.equal(repointerModele3D(racines, 'vieux.glb', 'neuf.glb'), 2);
+    assert.equal(suit.modelFile, 'neuf.glb');
+    assert.equal(autre.modelFile, 'autre.glb', 'un autre fichier n\'est pas touché');
+    assert.equal(perso.modelFile, 'vieux.glb', 'un Personnage n\'est pas un modèle importé');
+  });
+
+  test('MUTE les Éléments plutôt que de les recopier', () => {
+    // L'identité des objets est partagée avec la sélection, les caches de rig et le panneau
+    // latéral. Reconstruire les tableaux ferait perdre la sélection pour un changement de nom.
+    const e = el('vieux.glb');
+    const page = { objects: [e] };
+    const racines = { tomes: [{ pages: [page] }] };
+    repointerModele3D(racines, 'vieux.glb', 'neuf.glb');
+    assert.equal(page.objects[0], e, 'l\'Élément a été remplacé au lieu d\'être modifié');
+  });
+
+  test('les cas qui ne font rien ne cassent rien', () => {
+    assert.equal(repointerModele3D({}, 'a.glb', 'b.glb'), 0);
+    assert.equal(repointerModele3D({ tomes: [volume('T', el('a.glb'))] }, 'a.glb', 'a.glb'), 0);
+    assert.equal(repointerModele3D({ tomes: [volume('T', el('a.glb'))] }, '', 'b.glb'), 0);
+  });
+});
+
+describe('repointerPileAnnulation3D — Ctrl+Z ne ressuscite pas un nom mort', () => {
+  const etat = (fichier) => JSON.stringify({ tomes: [volume('T', el(fichier))], scenes: [] });
+
+  test('RÉGRESSION : chaque état antérieur cite le nouveau nom', () => {
+    // Sans cela, annuler une action ANTÉRIEURE au renommage restaure des Éléments pointant vers un
+    // fichier qui n'existe plus : ils deviennent des boîtes de remplacement, sans un mot, pour une
+    // opération sans rapport avec celle qu'on annulait.
+    const pile = [etat('vieux.glb'), etat('vieux.glb')];
+    const suivante = repointerPileAnnulation3D(pile, 'vieux.glb', 'neuf.glb');
+    suivante.forEach(e => {
+      assert.match(e, /neuf\.glb/);
+      assert.doesNotMatch(e, /vieux\.glb/);
+    });
+  });
+
+  test('une entrée illisible est gardée telle quelle, pas perdue', () => {
+    // Une pile d'annulation amputée serait pire qu'une entrée périmée : elle ferait disparaître des
+    // états valides qui n'ont rien à voir avec le modèle renommé.
+    const pile = ['{ ceci n\'est pas du JSON', etat('vieux.glb')];
+    const suivante = repointerPileAnnulation3D(pile, 'vieux.glb', 'neuf.glb');
+    assert.equal(suivante.length, 2);
+    assert.equal(suivante[0], pile[0]);
+    assert.match(suivante[1], /neuf\.glb/);
+  });
+
+  test('pile absente ou renommage nul : une copie, jamais une exception', () => {
+    assert.deepEqual(repointerPileAnnulation3D(null, 'a.glb', 'b.glb'), []);
+    const pile = [etat('a.glb')];
+    assert.deepEqual(repointerPileAnnulation3D(pile, 'a.glb', 'a.glb'), pile);
+  });
+});
+
+describe('messageRenommageModele — ce qu\'il promet, et ce qu\'il ne promet pas', () => {
+  test('il chiffre ce qui suivra, et nomme ce qui ne peut pas être vérifié', () => {
+    const m = messageRenommageModele('a.glb', 'b.glb', 3, null);
+    assert.match(m, /a\.glb/); assert.match(m, /b\.glb/);
+    assert.match(m, /3 Element/, 'le décompte manque');
+    assert.match(m, /Other projects/, 'la limite sur les autres Projets n\'est pas dite');
+  });
+
+  test('zéro usage : le message ne prétend pas qu\'il y en a', () => {
+    assert.match(messageRenommageModele('a.glb', 'b.glb', 0, null), /No Element/);
+  });
+
+  test('il suit la langue', () => {
+    const fr = messageRenommageModele('a.glb', 'b.glb', 2, (en, f) => f);
+    assert.match(fr, /Renommer/); assert.match(fr, /autres Projets/);
+  });
+});
+
+describe('renameModel — le pont, et le refus d\'écraser', () => {
+  let appels;
+  const pont = (existants) => {
+    appels = [];
+    setModelBridge({
+      listModelFiles: async () => existants,
+      renameModelFile: async (a, b) => { appels.push([a, b]); return { ok: true, name: b }; },
+    });
+  };
+
+  test('le nom tapé est assaini, comme à l\'import', () => {
+    pont(['vieux.glb']);
+    return renameModel('vieux.glb', '  ../ailleurs/mon modèle  ').then(r => {
+      assert.equal(r.ok, true);
+      assert.deepEqual(appels, [['vieux.glb', 'mon modèle.glb']],
+        'le chemin doit être retiré et l\'extension réimposée');
+    });
+  });
+
+  test('RÉGRESSION : un homonyme fait ÉCHOUER le renommage, sans suffixe inventé', () => {
+    // `resolveModelName` transformerait « chaise » en « chaise (2) ». Acceptable pour un import,
+    // où l'utilisateur demande « range ce fichier » ; inacceptable ici, où il demande « appelle-le
+    // comme ça ». Recevoir un autre nom que celui qu'on a écrit répond à une question non posée.
+    pont(['vieux.glb', 'chaise.glb']);
+    return renameModel('vieux.glb', 'chaise').then(r => {
+      assert.equal(r.ok, false);
+      assert.equal(r.collision, true);
+      assert.deepEqual(appels, [], 'le pont a été appelé malgré la collision');
+    });
+  });
+
+  test('la collision ignore la casse — Windows ne distingue pas deux noms', () => {
+    pont(['vieux.glb', 'Chaise.glb']);
+    return renameModel('vieux.glb', 'chaise').then(r => assert.equal(r.ok, false));
+  });
+
+  test('changer la CASSE de son propre nom reste permis', () => {
+    // Le seul cas où le nom voulu figure déjà dans la liste sans être un conflit : c'est le fichier
+    // lui-même. L'interdire empêcherait « chaise.glb » → « Chaise.glb ».
+    pont(['chaise.glb']);
+    return renameModel('chaise.glb', 'Chaise').then(r => {
+      assert.equal(r.ok, true);
+      assert.deepEqual(appels, [['chaise.glb', 'Chaise.glb']]);
+    });
+  });
+
+  test('même nom exactement : rien n\'est demandé au disque', () => {
+    pont(['chaise.glb']);
+    return renameModel('chaise.glb', 'chaise').then(r => {
+      assert.equal(r.ok, true);
+      assert.equal(r.inchangé, true);
+      assert.deepEqual(appels, []);
+    });
+  });
+
+  test('sans pont : un échec explicite, jamais un silence', () => {
+    setModelBridge(null);
+    return renameModel('a.glb', 'b').then(r => {
+      assert.equal(r.ok, false);
+      assert.ok(r.error);
+    });
+  });
+});

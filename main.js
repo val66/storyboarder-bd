@@ -303,6 +303,35 @@ ipcMain.handle('models:delete', async (event, name) => {
   }
 });
 
+// Renommage d'un modèle sur le disque. Même exception de règle que les autres canaux `models:*`
+// (cf. docs/architecture.md, règle n°1) : renommer un fichier est de l'accès disque, et aucun canal
+// existant ne sait le faire.
+//
+// LE REFUS D'ÉCRASER EST ICI, PAS SEULEMENT DANS LE RENDERER. `fs.rename` écrase silencieusement un
+// fichier existant, sur toutes les plateformes visées : renommer « a.glb » en « b.glb » détruirait
+// b.glb sans un mot, et avec lui tous les Éléments de tous les Projets qui le citent. La vérification
+// d'existence laisse une fenêtre théorique entre le test et le renommage — deux instances de
+// l'application renommant vers le même nom à la milliseconde près. Le dossier des modèles est local
+// et mono-utilisateur : cette fenêtre est acceptée, la perte qu'elle éviterait ne l'était pas.
+ipcMain.handle('models:rename', async (event, ancien, nouveau) => {
+  if (!nomDeModeleAcceptable(ancien) || !nomDeModeleAcceptable(nouveau)) {
+    return { ok: false, error: 'nom de modèle refusé' };
+  }
+  const dir = getModelsDir();
+  const src = path.join(dir, ancien);
+  const dst = path.join(dir, nouveau);
+  // Même nom à la casse près sous Windows : `fs.existsSync(dst)` répondrait « oui » alors que c'est
+  // le fichier source lui-même, et un simple changement de casse deviendrait impossible.
+  const memeFichier = src.toLowerCase() === dst.toLowerCase();
+  try {
+    if (!memeFichier && fs.existsSync(dst)) return { ok: false, error: 'un modèle porte déjà ce nom' };
+    await fs.promises.rename(src, dst);
+    return { ok: true, name: nouveau };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('models:list', async () => {
   try {
     return fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable);

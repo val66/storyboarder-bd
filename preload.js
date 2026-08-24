@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   readModelFile: (name) => ipcRenderer.invoke('models:read', name),
   listModelFiles: () => ipcRenderer.invoke('models:list'),
   deleteModelFile: (name) => ipcRenderer.invoke('models:delete', name),
+  renameModelFile: (ancien, nouveau) => ipcRenderer.invoke('models:rename', ancien, nouveau),
   readSkeletonMaps: () => ipcRenderer.invoke('skeletons:read'),
   writeSkeletonMaps: (contenu) => ipcRenderer.invoke('skeletons:write', contenu),
   // Flux de confirmation avant de quitter (cf. main.js, événement 'close' intercepté + quitConfirmModal

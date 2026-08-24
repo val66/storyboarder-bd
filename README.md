@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.25**
+**Version 1.4.26**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -47,6 +47,8 @@
   set out of a file, import it into a Scene
 - 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them:
   by Scenes, in panels, or unused. One click takes you to where a model is used
+- **Renaming or deleting a file** from that section: renaming carries the open project's Elements,
+  its undo history and the skeleton mapping along with it
 - 🦴 **Articulated models**: a file carrying bones poses like a character, with sliders per joint,
   clickable points on the preview, and a mapping screen when a bone is misrecognised
 - **The pose library applies to them**, whatever axis convention the file uses
