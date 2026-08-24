@@ -1,0 +1,357 @@
+{
+ "origine": "Sketchfab, rig Blender. Quadrupède ordinaire : pattes avant nommées FrontUpperLeg, pas UpperArm. Quatre chaînes IK et un neutral_bone frères du corps à la racine.",
+ "os": [
+  {
+   "i": 5,
+   "name": "GLTF_created_0_rootJoint",
+   "children": [
+    8,
+    53,
+    55,
+    57,
+    59,
+    61
+   ]
+  },
+  {
+   "i": 8,
+   "name": "Body_43",
+   "children": [
+    9,
+    49,
+    50,
+    51,
+    52
+   ]
+  },
+  {
+   "i": 9,
+   "name": "Back_38",
+   "children": [
+    10,
+    35,
+    39,
+    43
+   ]
+  },
+  {
+   "i": 10,
+   "name": "Torso_23",
+   "children": [
+    11
+   ]
+  },
+  {
+   "i": 11,
+   "name": "Torso2_22",
+   "children": [
+    12,
+    29,
+    32
+   ]
+  },
+  {
+   "i": 12,
+   "name": "Torso3_15",
+   "children": [
+    13
+   ]
+  },
+  {
+   "i": 13,
+   "name": "Neck1_14",
+   "children": [
+    14
+   ]
+  },
+  {
+   "i": 14,
+   "name": "Neck2_13",
+   "children": [
+    15
+   ]
+  },
+  {
+   "i": 15,
+   "name": "Neck3_12",
+   "children": [
+    16,
+    19,
+    23,
+    27
+   ]
+  },
+  {
+   "i": 16,
+   "name": "Head_1",
+   "children": []
+  },
+  {
+   "i": 19,
+   "name": "Ear1.L_5",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "Ear2.L_4",
+   "children": [
+    21
+   ]
+  },
+  {
+   "i": 21,
+   "name": "Ear3.L_3",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 22,
+   "name": "Ear4.L_2",
+   "children": []
+  },
+  {
+   "i": 23,
+   "name": "Ear1.R_9",
+   "children": [
+    24
+   ]
+  },
+  {
+   "i": 24,
+   "name": "Ear2.R_8",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 25,
+   "name": "Ear3.R_7",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "Ear4.R_6",
+   "children": []
+  },
+  {
+   "i": 27,
+   "name": "Neck3.001_11",
+   "children": [
+    28
+   ]
+  },
+  {
+   "i": 28,
+   "name": "Neck3.002_10",
+   "children": []
+  },
+  {
+   "i": 29,
+   "name": "FrontShoulder.L_18",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 30,
+   "name": "FrontUpperLeg.L_17",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "FrontLowerLeg.L_16",
+   "children": []
+  },
+  {
+   "i": 32,
+   "name": "FrontShoulder.R_21",
+   "children": [
+    33
+   ]
+  },
+  {
+   "i": 33,
+   "name": "FrontUpperLeg.R_20",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "FrontLowerLeg.R_19",
+   "children": []
+  },
+  {
+   "i": 35,
+   "name": "BackShoulder.L_27",
+   "children": [
+    36
+   ]
+  },
+  {
+   "i": 36,
+   "name": "BackLeg.L_26",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "BackUpperLeg.L_25",
+   "children": [
+    38
+   ]
+  },
+  {
+   "i": 38,
+   "name": "BackLowerLeg.L_24",
+   "children": []
+  },
+  {
+   "i": 39,
+   "name": "BackShoulder.R_31",
+   "children": [
+    40
+   ]
+  },
+  {
+   "i": 40,
+   "name": "BackLeg.R_30",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "BackUpperLeg.R_29",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "BackLowerLeg.R_28",
+   "children": []
+  },
+  {
+   "i": 43,
+   "name": "Tail1_37",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 44,
+   "name": "Tail2_36",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "Tail3_35",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "Tail4_34",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "Tail5_33",
+   "children": [
+    48
+   ]
+  },
+  {
+   "i": 48,
+   "name": "Tail6_32",
+   "children": []
+  },
+  {
+   "i": 49,
+   "name": "PoleTargetBack.L_39",
+   "children": []
+  },
+  {
+   "i": 50,
+   "name": "PoleTarget.L_40",
+   "children": []
+  },
+  {
+   "i": 51,
+   "name": "PoleTargetBack.R_41",
+   "children": []
+  },
+  {
+   "i": 52,
+   "name": "PoleTarget.R_42",
+   "children": []
+  },
+  {
+   "i": 53,
+   "name": "IKBackLeg.L_45",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "FFB.L_44",
+   "children": []
+  },
+  {
+   "i": 55,
+   "name": "IKFrontLeg.L_47",
+   "children": [
+    56
+   ]
+  },
+  {
+   "i": 56,
+   "name": "FF.L_46",
+   "children": []
+  },
+  {
+   "i": 57,
+   "name": "IKBackLeg.R_49",
+   "children": [
+    58
+   ]
+  },
+  {
+   "i": 58,
+   "name": "FFB.R_48",
+   "children": []
+  },
+  {
+   "i": 59,
+   "name": "IKFrontLeg.R_51",
+   "children": [
+    60
+   ]
+  },
+  {
+   "i": 60,
+   "name": "FF.R_50",
+   "children": []
+  },
+  {
+   "i": 61,
+   "name": "neutral_bone_52",
+   "children": []
+  }
+ ]
+}

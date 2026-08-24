@@ -1,0 +1,323 @@
+{
+ "origine": "Sketchfab, rig Maya. Symétrie RADIALE : 8 tentacules l101..l401 / r101..r401 plus une tête, aucun bassin. Le côté est dans le nom, sous la forme lettre+chiffre.",
+ "os": [
+  {
+   "i": 5,
+   "name": "_rootJoint",
+   "children": [
+    7
+   ]
+  },
+  {
+   "i": 7,
+   "name": "krakenjoints_01",
+   "children": [
+    8,
+    13,
+    18,
+    23,
+    28,
+    33,
+    38,
+    43,
+    48,
+    52
+   ]
+  },
+  {
+   "i": 8,
+   "name": "l101_02",
+   "children": [
+    9
+   ]
+  },
+  {
+   "i": 9,
+   "name": "l102_03",
+   "children": [
+    10
+   ]
+  },
+  {
+   "i": 10,
+   "name": "l103_04",
+   "children": [
+    11
+   ]
+  },
+  {
+   "i": 11,
+   "name": "l104_05",
+   "children": [
+    12
+   ]
+  },
+  {
+   "i": 12,
+   "name": "l105_06",
+   "children": []
+  },
+  {
+   "i": 13,
+   "name": "l201_07",
+   "children": [
+    14
+   ]
+  },
+  {
+   "i": 14,
+   "name": "l202_08",
+   "children": [
+    15
+   ]
+  },
+  {
+   "i": 15,
+   "name": "l203_09",
+   "children": [
+    16
+   ]
+  },
+  {
+   "i": 16,
+   "name": "l204_010",
+   "children": [
+    17
+   ]
+  },
+  {
+   "i": 17,
+   "name": "l205_011",
+   "children": []
+  },
+  {
+   "i": 18,
+   "name": "l301_012",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 19,
+   "name": "l302_013",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "l303_014",
+   "children": [
+    21
+   ]
+  },
+  {
+   "i": 21,
+   "name": "l304_015",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 22,
+   "name": "l305_00",
+   "children": []
+  },
+  {
+   "i": 23,
+   "name": "l401_016",
+   "children": [
+    24
+   ]
+  },
+  {
+   "i": 24,
+   "name": "l402_017",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 25,
+   "name": "l403_018",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "l404_019",
+   "children": [
+    27
+   ]
+  },
+  {
+   "i": 27,
+   "name": "l405_020",
+   "children": []
+  },
+  {
+   "i": 28,
+   "name": "r101_021",
+   "children": [
+    29
+   ]
+  },
+  {
+   "i": 29,
+   "name": "r102_022",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 30,
+   "name": "r103_023",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "r104_024",
+   "children": [
+    32
+   ]
+  },
+  {
+   "i": 32,
+   "name": "r105_025",
+   "children": []
+  },
+  {
+   "i": 33,
+   "name": "r201_026",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "r202_027",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "r203_028",
+   "children": [
+    36
+   ]
+  },
+  {
+   "i": 36,
+   "name": "r204_029",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "r205_030",
+   "children": []
+  },
+  {
+   "i": 38,
+   "name": "r301_031",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 39,
+   "name": "r302_032",
+   "children": [
+    40
+   ]
+  },
+  {
+   "i": 40,
+   "name": "r303_033",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "r304_034",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "r305_035",
+   "children": []
+  },
+  {
+   "i": 43,
+   "name": "r401_036",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 44,
+   "name": "r402_037",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "r403_038",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "r404_039",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "r405_040",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "head01_041",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "head02_042",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "head03_043",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "head04_044",
+   "children": []
+  },
+  {
+   "i": 52,
+   "name": "joint1_045",
+   "children": []
+  }
+ ]
+}

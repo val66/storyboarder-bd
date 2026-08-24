@@ -1,0 +1,453 @@
+{
+ "origine": "Sketchfab, rig Mixamo. ⚠️ RIGGÉ EN BIPÈDE malgré le corps de cheval : Hips ne porte que la colonne et deux jambes.",
+ "os": [
+  {
+   "i": 5,
+   "name": "_rootJoint",
+   "children": [
+    17
+   ]
+  },
+  {
+   "i": 17,
+   "name": "mixamorig:Hips_01",
+   "children": [
+    18,
+    72,
+    77
+   ]
+  },
+  {
+   "i": 18,
+   "name": "mixamorig:Spine_02",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 19,
+   "name": "mixamorig:Spine1_03",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "mixamorig:Spine2_04",
+   "children": [
+    21,
+    24,
+    48
+   ]
+  },
+  {
+   "i": 21,
+   "name": "mixamorig:Neck_05",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 22,
+   "name": "mixamorig:Head_06",
+   "children": [
+    23
+   ]
+  },
+  {
+   "i": 23,
+   "name": "mixamorig:HeadTop_End_07",
+   "children": []
+  },
+  {
+   "i": 24,
+   "name": "mixamorig:LeftShoulder_08",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 25,
+   "name": "mixamorig:LeftArm_09",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "mixamorig:LeftForeArm_010",
+   "children": [
+    27
+   ]
+  },
+  {
+   "i": 27,
+   "name": "mixamorig:LeftHand_011",
+   "children": [
+    28,
+    32,
+    36,
+    40,
+    44
+   ]
+  },
+  {
+   "i": 28,
+   "name": "mixamorig:LeftHandThumb1_012",
+   "children": [
+    29
+   ]
+  },
+  {
+   "i": 29,
+   "name": "mixamorig:LeftHandThumb2_013",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 30,
+   "name": "mixamorig:LeftHandThumb3_014",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "mixamorig:LeftHandThumb4_015",
+   "children": []
+  },
+  {
+   "i": 32,
+   "name": "mixamorig:LeftHandIndex1_016",
+   "children": [
+    33
+   ]
+  },
+  {
+   "i": 33,
+   "name": "mixamorig:LeftHandIndex2_017",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "mixamorig:LeftHandIndex3_018",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "mixamorig:LeftHandIndex4_019",
+   "children": []
+  },
+  {
+   "i": 36,
+   "name": "mixamorig:LeftHandMiddle1_020",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "mixamorig:LeftHandMiddle2_021",
+   "children": [
+    38
+   ]
+  },
+  {
+   "i": 38,
+   "name": "mixamorig:LeftHandMiddle3_022",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 39,
+   "name": "mixamorig:LeftHandMiddle4_023",
+   "children": []
+  },
+  {
+   "i": 40,
+   "name": "mixamorig:LeftHandRing1_024",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "mixamorig:LeftHandRing2_025",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "mixamorig:LeftHandRing3_026",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 43,
+   "name": "mixamorig:LeftHandRing4_027",
+   "children": []
+  },
+  {
+   "i": 44,
+   "name": "mixamorig:LeftHandPinky1_028",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "mixamorig:LeftHandPinky2_029",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "mixamorig:LeftHandPinky3_030",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "mixamorig:LeftHandPinky4_031",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "mixamorig:RightShoulder_032",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "mixamorig:RightArm_033",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "mixamorig:RightForeArm_034",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "mixamorig:RightHand_035",
+   "children": [
+    52,
+    56,
+    60,
+    64,
+    68
+   ]
+  },
+  {
+   "i": 52,
+   "name": "mixamorig:RightHandThumb1_036",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "mixamorig:RightHandThumb2_037",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "mixamorig:RightHandThumb3_038",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 55,
+   "name": "mixamorig:RightHandThumb4_039",
+   "children": []
+  },
+  {
+   "i": 56,
+   "name": "mixamorig:RightHandIndex1_040",
+   "children": [
+    57
+   ]
+  },
+  {
+   "i": 57,
+   "name": "mixamorig:RightHandIndex2_041",
+   "children": [
+    58
+   ]
+  },
+  {
+   "i": 58,
+   "name": "mixamorig:RightHandIndex3_042",
+   "children": [
+    59
+   ]
+  },
+  {
+   "i": 59,
+   "name": "mixamorig:RightHandIndex4_043",
+   "children": []
+  },
+  {
+   "i": 60,
+   "name": "mixamorig:RightHandMiddle1_044",
+   "children": [
+    61
+   ]
+  },
+  {
+   "i": 61,
+   "name": "mixamorig:RightHandMiddle2_045",
+   "children": [
+    62
+   ]
+  },
+  {
+   "i": 62,
+   "name": "mixamorig:RightHandMiddle3_046",
+   "children": [
+    63
+   ]
+  },
+  {
+   "i": 63,
+   "name": "mixamorig:RightHandMiddle4_047",
+   "children": []
+  },
+  {
+   "i": 64,
+   "name": "mixamorig:RightHandRing1_048",
+   "children": [
+    65
+   ]
+  },
+  {
+   "i": 65,
+   "name": "mixamorig:RightHandRing2_049",
+   "children": [
+    66
+   ]
+  },
+  {
+   "i": 66,
+   "name": "mixamorig:RightHandRing3_050",
+   "children": [
+    67
+   ]
+  },
+  {
+   "i": 67,
+   "name": "mixamorig:RightHandRing4_051",
+   "children": []
+  },
+  {
+   "i": 68,
+   "name": "mixamorig:RightHandPinky1_052",
+   "children": [
+    69
+   ]
+  },
+  {
+   "i": 69,
+   "name": "mixamorig:RightHandPinky2_053",
+   "children": [
+    70
+   ]
+  },
+  {
+   "i": 70,
+   "name": "mixamorig:RightHandPinky3_054",
+   "children": [
+    71
+   ]
+  },
+  {
+   "i": 71,
+   "name": "mixamorig:RightHandPinky4_055",
+   "children": []
+  },
+  {
+   "i": 72,
+   "name": "mixamorig:LeftUpLeg_00",
+   "children": [
+    73
+   ]
+  },
+  {
+   "i": 73,
+   "name": "mixamorig:LeftLeg_056",
+   "children": [
+    74
+   ]
+  },
+  {
+   "i": 74,
+   "name": "mixamorig:LeftFoot_057",
+   "children": [
+    75
+   ]
+  },
+  {
+   "i": 75,
+   "name": "mixamorig:LeftToeBase_058",
+   "children": [
+    76
+   ]
+  },
+  {
+   "i": 76,
+   "name": "mixamorig:LeftToe_End_059",
+   "children": []
+  },
+  {
+   "i": 77,
+   "name": "mixamorig:RightUpLeg_060",
+   "children": [
+    78
+   ]
+  },
+  {
+   "i": 78,
+   "name": "mixamorig:RightLeg_061",
+   "children": [
+    79
+   ]
+  },
+  {
+   "i": 79,
+   "name": "mixamorig:RightFoot_062",
+   "children": [
+    80
+   ]
+  },
+  {
+   "i": 80,
+   "name": "mixamorig:RightToeBase_063",
+   "children": [
+    81
+   ]
+  },
+  {
+   "i": 81,
+   "name": "mixamorig:RightToe_End_064",
+   "children": []
+  }
+ ]
+}

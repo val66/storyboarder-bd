@@ -1,0 +1,339 @@
+{
+ "origine": "Sketchfab, rig biped 3ds Max. Quadrupède à TROIS têtes, deux latérales sur des chaînes L_NECK/R_NECK, plus une queue de 6 os. Pattes avant nommées Clavicle/UpperArm.",
+ "os": [
+  {
+   "i": 5,
+   "name": "_rootJoint",
+   "children": [
+    8
+   ]
+  },
+  {
+   "i": 8,
+   "name": "CERBERUS__01",
+   "children": [
+    9
+   ]
+  },
+  {
+   "i": 9,
+   "name": "CERBERUS_ Pelvis_02",
+   "children": [
+    10
+   ]
+  },
+  {
+   "i": 10,
+   "name": "CERBERUS_ Spine_03",
+   "children": [
+    11,
+    38,
+    43,
+    48
+   ]
+  },
+  {
+   "i": 11,
+   "name": "CERBERUS_ Spine1_04",
+   "children": [
+    12
+   ]
+  },
+  {
+   "i": 12,
+   "name": "CERBERUS_ Spine2_05",
+   "children": [
+    13
+   ]
+  },
+  {
+   "i": 13,
+   "name": "CERBERUS_ Spine3_06",
+   "children": [
+    14,
+    30,
+    34
+   ]
+  },
+  {
+   "i": 14,
+   "name": "CERBERUS_ Neck_07",
+   "children": [
+    15,
+    18,
+    24
+   ]
+  },
+  {
+   "i": 15,
+   "name": "CERBERUS_ Neck1_08",
+   "children": [
+    16
+   ]
+  },
+  {
+   "i": 16,
+   "name": "CERBERUS_ Head_09",
+   "children": [
+    17
+   ]
+  },
+  {
+   "i": 17,
+   "name": "CERBERUS_ Queue de cheval 1_010",
+   "children": []
+  },
+  {
+   "i": 18,
+   "name": "CERBERUS_ L Clavicle_011",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 19,
+   "name": "CERBERUS_ L UpperArm_012",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "CERBERUS_ L Forearm_013",
+   "children": [
+    21
+   ]
+  },
+  {
+   "i": 21,
+   "name": "CERBERUS_ L Hand_014",
+   "children": [
+    22
+   ]
+  },
+  {
+   "i": 22,
+   "name": "CERBERUS_ L Finger0_00",
+   "children": [
+    23
+   ]
+  },
+  {
+   "i": 23,
+   "name": "CERBERUS_ L Finger01_015",
+   "children": []
+  },
+  {
+   "i": 24,
+   "name": "CERBERUS_ R Clavicle_016",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 25,
+   "name": "CERBERUS_ R UpperArm_017",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "CERBERUS_ R Forearm_018",
+   "children": [
+    27
+   ]
+  },
+  {
+   "i": 27,
+   "name": "CERBERUS_ R Hand_019",
+   "children": [
+    28
+   ]
+  },
+  {
+   "i": 28,
+   "name": "CERBERUS_ R Finger0_020",
+   "children": [
+    29
+   ]
+  },
+  {
+   "i": 29,
+   "name": "CERBERUS_ R Finger01_021",
+   "children": []
+  },
+  {
+   "i": 30,
+   "name": "CERBERUS_L_NECK_1_022",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "CERBERUS_L_NECK_2_023",
+   "children": [
+    32
+   ]
+  },
+  {
+   "i": 32,
+   "name": "CERBERUS_L_HEAD_024",
+   "children": [
+    33
+   ]
+  },
+  {
+   "i": 33,
+   "name": "CERBERUS_L_JAW_025",
+   "children": []
+  },
+  {
+   "i": 34,
+   "name": "CERBERUS_R_NECK_1_026",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "CERBERUS_R_NECK_2_027",
+   "children": [
+    36
+   ]
+  },
+  {
+   "i": 36,
+   "name": "CERBERUS_R_HEAD_028",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "CERBERUS_R_JAW_029",
+   "children": []
+  },
+  {
+   "i": 38,
+   "name": "CERBERUS_ L Thigh_030",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 39,
+   "name": "CERBERUS_ L Calf_031",
+   "children": [
+    40
+   ]
+  },
+  {
+   "i": 40,
+   "name": "CERBERUS_ L HorseLink_032",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "CERBERUS_ L Foot_033",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "CERBERUS_ L Toe0_034",
+   "children": []
+  },
+  {
+   "i": 43,
+   "name": "CERBERUS_ R Thigh_035",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 44,
+   "name": "CERBERUS_ R Calf_036",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "CERBERUS_ R HorseLink_037",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "CERBERUS_ R Foot_038",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "CERBERUS_ R Toe0_039",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "CERBERUS_ Tail_040",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "CERBERUS_ Tail1_041",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "CERBERUS_ Tail2_042",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "CERBERUS_ Tail3_043",
+   "children": [
+    52
+   ]
+  },
+  {
+   "i": 52,
+   "name": "CERBERUS_ Tail4_044",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "CERBERUS_ Tail5_045",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "CERBERUS_ Tail6_046",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 55,
+   "name": "CERBERUS_ Tail7_047",
+   "children": []
+  }
+ ]
+}

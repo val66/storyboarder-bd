@@ -141,6 +141,16 @@ export function coteDuNom(nom){
   if (/right/.test(brut)) return 'd';
   if (/[._\- ]l$|^l[._\- ]|[._\- ]l[._\- ]/.test(brut)) return 'g';
   if (/[._\- ]r$|^r[._\- ]|[._\- ]r[._\- ]/.test(brut)) return 'd';
+  // LETTRE PUIS CHIFFRE, sans séparateur : `l101`, `r301`. Convention mesurée sur un rig Maya de
+  // kraken, dont les huit tentacules s'appellent l101 à l401 et r101 à r401. Sans ce motif, aucun
+  // côté n'était lu, donc aucune paire latérale, donc zéro emplacement reconnu sur 47 os.
+  //
+  // LE CHIFFRE EST LA GARDE, et il n'est pas décoratif : exiger `^l` seul rangerait `leg`, `lower`,
+  // `lip` du côté gauche, et `root`, `rib`, `ring` du côté droit. Une lettre suivie d'un chiffre ne
+  // peut pas être un mot. Vérifié sur les quatorze squelettes du corpus : ce motif ne change le
+  // verdict d'aucun autre fichier.
+  if (/^l\d/.test(brut)) return 'g';
+  if (/^r\d/.test(brut)) return 'd';
   return null;
 }
 

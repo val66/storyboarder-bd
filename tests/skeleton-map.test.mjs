@@ -58,6 +58,22 @@ describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () =>
       .forEach(n => assert.equal(coteDuNom(n), 'd', n));
   });
 
+  test('QUATRIÈME convention : lettre puis chiffre, sans séparateur', () => {
+    // Mesurée sur un rig Maya de kraken, dont les huit tentacules s'appellent l101 à l401 et r101 à
+    // r401. Sans ce motif, aucun côté n'était lu sur ce fichier, donc aucune paire latérale, donc
+    // zéro emplacement reconnu sur 47 os.
+    ['l101', 'l401', 'l2'].forEach(n => assert.equal(coteDuNom(n), 'g', n));
+    ['r101', 'r301', 'r9'].forEach(n => assert.equal(coteDuNom(n), 'd', n));
+  });
+
+  test('LE CHIFFRE EST LA GARDE, et il n\'est pas décoratif', () => {
+    // Sans lui, `^l` seul rangerait tous ces mots à gauche et tous ceux-là à droite. Ce sont des
+    // noms d'os courants : le rig du chien porte `Leg`, celui du dragon `Root Bone`, l'oiseau des
+    // côtes. Une lettre suivie d'un CHIFFRE, elle, ne peut pas être un mot.
+    ['leg', 'lowerleg', 'lip', 'lung', 'root', 'rib', 'ring', 'reye']
+      .forEach(n => assert.equal(coteDuNom(n), null, `${n} ne doit avoir aucun côté`));
+  });
+
   test('RÉGRESSION : un os nommé « leg » n\'est pas à gauche', () => {
     // Le « l » de « leg », « pelvis », « clavicle »… Chercher la lettre plutôt qu'un motif ancré
     // latéraliserait la moitié du squelette, et un membre attribué au mauvais côté ne lève rien.

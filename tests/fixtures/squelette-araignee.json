@@ -1,0 +1,758 @@
+{
+ "origine": "Sketchfab, rig Blender. Corps en QUATRE segments, chacun portant une paire de pattes, soit 8 pattes. Chaîne de cibles IK à 8 enfants en parallèle.",
+ "os": [
+  {
+   "i": 7,
+   "name": "_rootJoint",
+   "children": [
+    11
+   ]
+  },
+  {
+   "i": 11,
+   "name": "Bone.009_01",
+   "children": [
+    12,
+    114
+   ]
+  },
+  {
+   "i": 12,
+   "name": "Bone_02",
+   "children": [
+    13,
+    89,
+    97,
+    105
+   ]
+  },
+  {
+   "i": 13,
+   "name": "Bone.004_03",
+   "children": [
+    14,
+    73,
+    81
+   ]
+  },
+  {
+   "i": 14,
+   "name": "Bone.003_04",
+   "children": [
+    15,
+    57,
+    65
+   ]
+  },
+  {
+   "i": 15,
+   "name": "Bone.002_05",
+   "children": [
+    16,
+    41,
+    49
+   ]
+  },
+  {
+   "i": 16,
+   "name": "Bone.001_06",
+   "children": [
+    17,
+    22,
+    27,
+    33,
+    39,
+    40
+   ]
+  },
+  {
+   "i": 17,
+   "name": "Bone.001_L_07",
+   "children": [
+    18
+   ]
+  },
+  {
+   "i": 18,
+   "name": "Bone.001_L.001_08",
+   "children": [
+    19
+   ]
+  },
+  {
+   "i": 19,
+   "name": "Bone.001_L.002_09",
+   "children": [
+    20
+   ]
+  },
+  {
+   "i": 20,
+   "name": "Bone.001_L.003_010",
+   "children": [
+    21
+   ]
+  },
+  {
+   "i": 21,
+   "name": "Bone.001_L.004_011",
+   "children": []
+  },
+  {
+   "i": 22,
+   "name": "Bone.001_R_00",
+   "children": [
+    23
+   ]
+  },
+  {
+   "i": 23,
+   "name": "Bone.001_R.001_012",
+   "children": [
+    24
+   ]
+  },
+  {
+   "i": 24,
+   "name": "Bone.001_R.002_013",
+   "children": [
+    25
+   ]
+  },
+  {
+   "i": 25,
+   "name": "Bone.001_R.003_014",
+   "children": [
+    26
+   ]
+  },
+  {
+   "i": 26,
+   "name": "Bone.001_R.004_015",
+   "children": []
+  },
+  {
+   "i": 27,
+   "name": "Bone.001_L.005_016",
+   "children": [
+    28
+   ]
+  },
+  {
+   "i": 28,
+   "name": "Bone.001_L.006_017",
+   "children": [
+    29
+   ]
+  },
+  {
+   "i": 29,
+   "name": "Bone.001_L.007_018",
+   "children": [
+    30
+   ]
+  },
+  {
+   "i": 30,
+   "name": "Bone.001_L.008_019",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "Bone.001_L.009_020",
+   "children": [
+    32
+   ]
+  },
+  {
+   "i": 32,
+   "name": "Bone.001_L.010_021",
+   "children": []
+  },
+  {
+   "i": 33,
+   "name": "Bone.001_R.005_022",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "Bone.001_R.006_023",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "Bone.001_R.007_024",
+   "children": [
+    36
+   ]
+  },
+  {
+   "i": 36,
+   "name": "Bone.001_R.008_025",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "Bone.001_R.009_026",
+   "children": [
+    38
+   ]
+  },
+  {
+   "i": 38,
+   "name": "Bone.001_R.010_027",
+   "children": []
+  },
+  {
+   "i": 39,
+   "name": "Bone.001_L.011_028",
+   "children": []
+  },
+  {
+   "i": 40,
+   "name": "Bone.001_R.011_029",
+   "children": []
+  },
+  {
+   "i": 41,
+   "name": "Bone.002_L_030",
+   "children": [
+    42,
+    48
+   ]
+  },
+  {
+   "i": 42,
+   "name": "Bone.002_L.001_031",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 43,
+   "name": "Bone.002_L.002_032",
+   "children": [
+    44
+   ]
+  },
+  {
+   "i": 44,
+   "name": "Bone.002_L.003_033",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "Bone.002_L.004_034",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "Bone.002_L.005_035",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "Bone.002_L.006_036",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "Bone.002_L.007_037",
+   "children": []
+  },
+  {
+   "i": 49,
+   "name": "Bone.002_R_038",
+   "children": [
+    50,
+    56
+   ]
+  },
+  {
+   "i": 50,
+   "name": "Bone.002_R.001_039",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "Bone.002_R.002_040",
+   "children": [
+    52
+   ]
+  },
+  {
+   "i": 52,
+   "name": "Bone.002_R.003_041",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "Bone.002_R.004_042",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "Bone.002_R.005_043",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 55,
+   "name": "Bone.002_R.006_044",
+   "children": []
+  },
+  {
+   "i": 56,
+   "name": "Bone.002_R.007_045",
+   "children": []
+  },
+  {
+   "i": 57,
+   "name": "Bone.003_L_046",
+   "children": [
+    58,
+    64
+   ]
+  },
+  {
+   "i": 58,
+   "name": "Bone.003_L.001_047",
+   "children": [
+    59
+   ]
+  },
+  {
+   "i": 59,
+   "name": "Bone.003_L.002_048",
+   "children": [
+    60
+   ]
+  },
+  {
+   "i": 60,
+   "name": "Bone.003_L.003_049",
+   "children": [
+    61
+   ]
+  },
+  {
+   "i": 61,
+   "name": "Bone.003_L.004_050",
+   "children": [
+    62
+   ]
+  },
+  {
+   "i": 62,
+   "name": "Bone.003_L.005_051",
+   "children": [
+    63
+   ]
+  },
+  {
+   "i": 63,
+   "name": "Bone.003_L.006_052",
+   "children": []
+  },
+  {
+   "i": 64,
+   "name": "Bone.003_L.007_053",
+   "children": []
+  },
+  {
+   "i": 65,
+   "name": "Bone.003_R_054",
+   "children": [
+    66,
+    72
+   ]
+  },
+  {
+   "i": 66,
+   "name": "Bone.003_R.001_055",
+   "children": [
+    67
+   ]
+  },
+  {
+   "i": 67,
+   "name": "Bone.003_R.002_056",
+   "children": [
+    68
+   ]
+  },
+  {
+   "i": 68,
+   "name": "Bone.003_R.003_057",
+   "children": [
+    69
+   ]
+  },
+  {
+   "i": 69,
+   "name": "Bone.003_R.004_058",
+   "children": [
+    70
+   ]
+  },
+  {
+   "i": 70,
+   "name": "Bone.003_R.005_059",
+   "children": [
+    71
+   ]
+  },
+  {
+   "i": 71,
+   "name": "Bone.003_R.006_060",
+   "children": []
+  },
+  {
+   "i": 72,
+   "name": "Bone.003_R.007_061",
+   "children": []
+  },
+  {
+   "i": 73,
+   "name": "Bone.004_L_062",
+   "children": [
+    74,
+    80
+   ]
+  },
+  {
+   "i": 74,
+   "name": "Bone.004_L.001_063",
+   "children": [
+    75
+   ]
+  },
+  {
+   "i": 75,
+   "name": "Bone.004_L.002_064",
+   "children": [
+    76
+   ]
+  },
+  {
+   "i": 76,
+   "name": "Bone.004_L.003_065",
+   "children": [
+    77
+   ]
+  },
+  {
+   "i": 77,
+   "name": "Bone.004_L.004_066",
+   "children": [
+    78
+   ]
+  },
+  {
+   "i": 78,
+   "name": "Bone.004_L.005_067",
+   "children": [
+    79
+   ]
+  },
+  {
+   "i": 79,
+   "name": "Bone.004_L.006_068",
+   "children": []
+  },
+  {
+   "i": 80,
+   "name": "Bone.004_L.007_069",
+   "children": []
+  },
+  {
+   "i": 81,
+   "name": "Bone.004_R_070",
+   "children": [
+    82,
+    88
+   ]
+  },
+  {
+   "i": 82,
+   "name": "Bone.004_R.001_071",
+   "children": [
+    83
+   ]
+  },
+  {
+   "i": 83,
+   "name": "Bone.004_R.002_072",
+   "children": [
+    84
+   ]
+  },
+  {
+   "i": 84,
+   "name": "Bone.004_R.003_073",
+   "children": [
+    85
+   ]
+  },
+  {
+   "i": 85,
+   "name": "Bone.004_R.004_074",
+   "children": [
+    86
+   ]
+  },
+  {
+   "i": 86,
+   "name": "Bone.004_R.005_075",
+   "children": [
+    87
+   ]
+  },
+  {
+   "i": 87,
+   "name": "Bone.004_R.006_076",
+   "children": []
+  },
+  {
+   "i": 88,
+   "name": "Bone.004_R.007_077",
+   "children": []
+  },
+  {
+   "i": 89,
+   "name": "Bone_L_078",
+   "children": [
+    90,
+    96
+   ]
+  },
+  {
+   "i": 90,
+   "name": "Bone_L.001_079",
+   "children": [
+    91
+   ]
+  },
+  {
+   "i": 91,
+   "name": "Bone_L.002_080",
+   "children": [
+    92
+   ]
+  },
+  {
+   "i": 92,
+   "name": "Bone_L.003_081",
+   "children": [
+    93
+   ]
+  },
+  {
+   "i": 93,
+   "name": "Bone_L.004_082",
+   "children": [
+    94
+   ]
+  },
+  {
+   "i": 94,
+   "name": "Bone_L.005_083",
+   "children": [
+    95
+   ]
+  },
+  {
+   "i": 95,
+   "name": "Bone_L.006_084",
+   "children": []
+  },
+  {
+   "i": 96,
+   "name": "Bone_L.007_085",
+   "children": []
+  },
+  {
+   "i": 97,
+   "name": "Bone_R_086",
+   "children": [
+    98,
+    104
+   ]
+  },
+  {
+   "i": 98,
+   "name": "Bone_R.001_087",
+   "children": [
+    99
+   ]
+  },
+  {
+   "i": 99,
+   "name": "Bone_R.002_088",
+   "children": [
+    100
+   ]
+  },
+  {
+   "i": 100,
+   "name": "Bone_R.003_089",
+   "children": [
+    101
+   ]
+  },
+  {
+   "i": 101,
+   "name": "Bone_R.004_090",
+   "children": [
+    102
+   ]
+  },
+  {
+   "i": 102,
+   "name": "Bone_R.005_091",
+   "children": [
+    103
+   ]
+  },
+  {
+   "i": 103,
+   "name": "Bone_R.006_092",
+   "children": []
+  },
+  {
+   "i": 104,
+   "name": "Bone_R.007_093",
+   "children": []
+  },
+  {
+   "i": 105,
+   "name": "Bone.005_094",
+   "children": [
+    106,
+    110,
+    111,
+    112,
+    113
+   ]
+  },
+  {
+   "i": 106,
+   "name": "Bone.006_095",
+   "children": [
+    107,
+    108,
+    109
+   ]
+  },
+  {
+   "i": 107,
+   "name": "Bone.007_096",
+   "children": []
+  },
+  {
+   "i": 108,
+   "name": "Bone.006_L_097",
+   "children": []
+  },
+  {
+   "i": 109,
+   "name": "Bone.006_R_098",
+   "children": []
+  },
+  {
+   "i": 110,
+   "name": "Bone.005_L_099",
+   "children": []
+  },
+  {
+   "i": 111,
+   "name": "Bone.005_R_0100",
+   "children": []
+  },
+  {
+   "i": 112,
+   "name": "Bone.005_L.001_0101",
+   "children": []
+  },
+  {
+   "i": 113,
+   "name": "Bone.005_R.001_0102",
+   "children": []
+  },
+  {
+   "i": 114,
+   "name": "Bone.008_0103",
+   "children": [
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122
+   ]
+  },
+  {
+   "i": 115,
+   "name": "Bone.002_L.008_0104",
+   "children": []
+  },
+  {
+   "i": 116,
+   "name": "Bone.002_R.008_0105",
+   "children": []
+  },
+  {
+   "i": 117,
+   "name": "Bone.003_L.008_0106",
+   "children": []
+  },
+  {
+   "i": 118,
+   "name": "Bone.003_R.008_0107",
+   "children": []
+  },
+  {
+   "i": 119,
+   "name": "Bone.004_L.008_0108",
+   "children": []
+  },
+  {
+   "i": 120,
+   "name": "Bone.004_R.008_0109",
+   "children": []
+  },
+  {
+   "i": 121,
+   "name": "Bone_L.008_0110",
+   "children": []
+  },
+  {
+   "i": 122,
+   "name": "Bone_R.008_0111",
+   "children": []
+  }
+ ]
+}

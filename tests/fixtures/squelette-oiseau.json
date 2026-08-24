@@ -1,0 +1,3632 @@
+{
+ "origine": "Sketchfab, rig biped 3ds Max. 554 os, l’essentiel en plumes. Ailes nommées Clavicle/UpperArm, pattes digitigrades (HorseLink entre le tibia et le pied).",
+ "os": [
+  {
+   "i": 5,
+   "name": "_rootJoint",
+   "children": [
+    28
+   ]
+  },
+  {
+   "i": 28,
+   "name": "CK_05",
+   "children": [
+    29,
+    30
+   ]
+  },
+  {
+   "i": 29,
+   "name": "CK Footsteps_06",
+   "children": []
+  },
+  {
+   "i": 30,
+   "name": "CK Pelvis_07",
+   "children": [
+    31
+   ]
+  },
+  {
+   "i": 31,
+   "name": "CK Spine_08",
+   "children": [
+    32,
+    52,
+    72,
+    136
+   ]
+  },
+  {
+   "i": 32,
+   "name": "CK L Thigh_09",
+   "children": [
+    33
+   ]
+  },
+  {
+   "i": 33,
+   "name": "CK L Calf_010",
+   "children": [
+    34
+   ]
+  },
+  {
+   "i": 34,
+   "name": "CK L HorseLink_011",
+   "children": [
+    35
+   ]
+  },
+  {
+   "i": 35,
+   "name": "CK L Foot_012",
+   "children": [
+    36,
+    40,
+    44,
+    48
+   ]
+  },
+  {
+   "i": 36,
+   "name": "CK L Toe0_013",
+   "children": [
+    37
+   ]
+  },
+  {
+   "i": 37,
+   "name": "CK L Toe01_014",
+   "children": [
+    38
+   ]
+  },
+  {
+   "i": 38,
+   "name": "CK L Toe02_015",
+   "children": [
+    39
+   ]
+  },
+  {
+   "i": 39,
+   "name": "CK L Toe0Nub_016",
+   "children": []
+  },
+  {
+   "i": 40,
+   "name": "CK L Toe1_017",
+   "children": [
+    41
+   ]
+  },
+  {
+   "i": 41,
+   "name": "CK L Toe11_018",
+   "children": [
+    42
+   ]
+  },
+  {
+   "i": 42,
+   "name": "CK L Toe12_019",
+   "children": [
+    43
+   ]
+  },
+  {
+   "i": 43,
+   "name": "CK L Toe1Nub_020",
+   "children": []
+  },
+  {
+   "i": 44,
+   "name": "CK L Toe2_021",
+   "children": [
+    45
+   ]
+  },
+  {
+   "i": 45,
+   "name": "CK L Toe21_022",
+   "children": [
+    46
+   ]
+  },
+  {
+   "i": 46,
+   "name": "CK L Toe22_023",
+   "children": [
+    47
+   ]
+  },
+  {
+   "i": 47,
+   "name": "CK L Toe2Nub_024",
+   "children": []
+  },
+  {
+   "i": 48,
+   "name": "CK L Toe3_025",
+   "children": [
+    49
+   ]
+  },
+  {
+   "i": 49,
+   "name": "CK L Toe31_026",
+   "children": [
+    50
+   ]
+  },
+  {
+   "i": 50,
+   "name": "CK L Toe32_027",
+   "children": [
+    51
+   ]
+  },
+  {
+   "i": 51,
+   "name": "CK L Toe3Nub_028",
+   "children": []
+  },
+  {
+   "i": 52,
+   "name": "CK R Thigh_029",
+   "children": [
+    53
+   ]
+  },
+  {
+   "i": 53,
+   "name": "CK R Calf_030",
+   "children": [
+    54
+   ]
+  },
+  {
+   "i": 54,
+   "name": "CK R HorseLink_031",
+   "children": [
+    55
+   ]
+  },
+  {
+   "i": 55,
+   "name": "CK R Foot_032",
+   "children": [
+    56,
+    60,
+    64,
+    68
+   ]
+  },
+  {
+   "i": 56,
+   "name": "CK R Toe0_033",
+   "children": [
+    57
+   ]
+  },
+  {
+   "i": 57,
+   "name": "CK R Toe01_034",
+   "children": [
+    58
+   ]
+  },
+  {
+   "i": 58,
+   "name": "CK R Toe02_035",
+   "children": [
+    59
+   ]
+  },
+  {
+   "i": 59,
+   "name": "CK R Toe0Nub_036",
+   "children": []
+  },
+  {
+   "i": 60,
+   "name": "CK R Toe1_037",
+   "children": [
+    61
+   ]
+  },
+  {
+   "i": 61,
+   "name": "CK R Toe11_038",
+   "children": [
+    62
+   ]
+  },
+  {
+   "i": 62,
+   "name": "CK R Toe12_039",
+   "children": [
+    63
+   ]
+  },
+  {
+   "i": 63,
+   "name": "CK R Toe1Nub_040",
+   "children": []
+  },
+  {
+   "i": 64,
+   "name": "CK R Toe2_041",
+   "children": [
+    65
+   ]
+  },
+  {
+   "i": 65,
+   "name": "CK R Toe21_042",
+   "children": [
+    66
+   ]
+  },
+  {
+   "i": 66,
+   "name": "CK R Toe22_043",
+   "children": [
+    67
+   ]
+  },
+  {
+   "i": 67,
+   "name": "CK R Toe2Nub_044",
+   "children": []
+  },
+  {
+   "i": 68,
+   "name": "CK R Toe3_045",
+   "children": [
+    69
+   ]
+  },
+  {
+   "i": 69,
+   "name": "CK R Toe31_046",
+   "children": [
+    70
+   ]
+  },
+  {
+   "i": 70,
+   "name": "CK R Toe32_047",
+   "children": [
+    71
+   ]
+  },
+  {
+   "i": 71,
+   "name": "CK R Toe3Nub_048",
+   "children": []
+  },
+  {
+   "i": 72,
+   "name": "CK Tail_049",
+   "children": [
+    73
+   ]
+  },
+  {
+   "i": 73,
+   "name": "CK Tail1_050",
+   "children": [
+    74,
+    106,
+    113,
+    120,
+    124,
+    128,
+    132
+   ]
+  },
+  {
+   "i": 74,
+   "name": "CK Tail2_051",
+   "children": [
+    75,
+    76,
+    83,
+    90,
+    94,
+    98,
+    102
+   ]
+  },
+  {
+   "i": 75,
+   "name": "CK TailNub_052",
+   "children": []
+  },
+  {
+   "i": 76,
+   "name": "CK R Tail Mid_053",
+   "children": [
+    77,
+    81
+   ]
+  },
+  {
+   "i": 77,
+   "name": "CK R Tail Mid02_054",
+   "children": [
+    78,
+    79
+   ]
+  },
+  {
+   "i": 78,
+   "name": "CK R Tail MidNub_055",
+   "children": []
+  },
+  {
+   "i": 79,
+   "name": "CK_F_tail_bone00_056",
+   "children": [
+    80
+   ]
+  },
+  {
+   "i": 80,
+   "name": "CK_F_tail_bone01_057",
+   "children": []
+  },
+  {
+   "i": 81,
+   "name": "CK_F_tail_bone46_058",
+   "children": [
+    82
+   ]
+  },
+  {
+   "i": 82,
+   "name": "CK_F_tail_bone03_059",
+   "children": []
+  },
+  {
+   "i": 83,
+   "name": "CK L Tail Mid_060",
+   "children": [
+    84,
+    88
+   ]
+  },
+  {
+   "i": 84,
+   "name": "CK L Tail Mid02_061",
+   "children": [
+    85,
+    86
+   ]
+  },
+  {
+   "i": 85,
+   "name": "CK L Tail MidNub_062",
+   "children": []
+  },
+  {
+   "i": 86,
+   "name": "CK_F_tail_bone04_063",
+   "children": [
+    87
+   ]
+  },
+  {
+   "i": 87,
+   "name": "CK_F_tail_bone05_064",
+   "children": []
+  },
+  {
+   "i": 88,
+   "name": "CK_F_tail_bone45_065",
+   "children": [
+    89
+   ]
+  },
+  {
+   "i": 89,
+   "name": "CK_F_tail_bone07_066",
+   "children": []
+  },
+  {
+   "i": 90,
+   "name": "CK_F_tail_bone43_067",
+   "children": [
+    91,
+    92
+   ]
+  },
+  {
+   "i": 91,
+   "name": "CK_F_tail_bone09_068",
+   "children": []
+  },
+  {
+   "i": 92,
+   "name": "CK_F_tail_bone10_069",
+   "children": [
+    93
+   ]
+  },
+  {
+   "i": 93,
+   "name": "CK_F_tail_bone11_070",
+   "children": []
+  },
+  {
+   "i": 94,
+   "name": "CK_F_tail_bone42_071",
+   "children": [
+    95,
+    96
+   ]
+  },
+  {
+   "i": 95,
+   "name": "CK_F_tail_bone13_072",
+   "children": []
+  },
+  {
+   "i": 96,
+   "name": "CK_F_tail_bone14_073",
+   "children": [
+    97
+   ]
+  },
+  {
+   "i": 97,
+   "name": "CK_F_tail_bone15_074",
+   "children": []
+  },
+  {
+   "i": 98,
+   "name": "CK_F_tail_bone41_075",
+   "children": [
+    99,
+    100
+   ]
+  },
+  {
+   "i": 99,
+   "name": "CK_F_tail_bone17_076",
+   "children": []
+  },
+  {
+   "i": 100,
+   "name": "CK_F_tail_bone18_077",
+   "children": [
+    101
+   ]
+  },
+  {
+   "i": 101,
+   "name": "CK_F_tail_bone19_078",
+   "children": []
+  },
+  {
+   "i": 102,
+   "name": "CK_F_tail_bone39_079",
+   "children": [
+    103,
+    104
+   ]
+  },
+  {
+   "i": 103,
+   "name": "CK_F_tail_bone21_080",
+   "children": []
+  },
+  {
+   "i": 104,
+   "name": "CK_F_tail_bone22_081",
+   "children": [
+    105
+   ]
+  },
+  {
+   "i": 105,
+   "name": "CK_F_tail_bone23_082",
+   "children": []
+  },
+  {
+   "i": 106,
+   "name": "CK R Tail Sid_083",
+   "children": [
+    107,
+    111
+   ]
+  },
+  {
+   "i": 107,
+   "name": "CK R Tail Sid02_084",
+   "children": [
+    108,
+    109
+   ]
+  },
+  {
+   "i": 108,
+   "name": "CK R Tail SidNub_085",
+   "children": []
+  },
+  {
+   "i": 109,
+   "name": "CK_F_tail_bone24_086",
+   "children": [
+    110
+   ]
+  },
+  {
+   "i": 110,
+   "name": "CK_F_tail_bone25_087",
+   "children": []
+  },
+  {
+   "i": 111,
+   "name": "CK_F_tail_bone38_088",
+   "children": [
+    112
+   ]
+  },
+  {
+   "i": 112,
+   "name": "CK_F_tail_bone27_089",
+   "children": []
+  },
+  {
+   "i": 113,
+   "name": "CK L Tail Sid_090",
+   "children": [
+    114,
+    118
+   ]
+  },
+  {
+   "i": 114,
+   "name": "CK L Tail Sid02_091",
+   "children": [
+    115,
+    116
+   ]
+  },
+  {
+   "i": 115,
+   "name": "CK L Tail SidNub_092",
+   "children": []
+  },
+  {
+   "i": 116,
+   "name": "CK_F_tail_bone28_093",
+   "children": [
+    117
+   ]
+  },
+  {
+   "i": 117,
+   "name": "CK_F_tail_bone29_094",
+   "children": []
+  },
+  {
+   "i": 118,
+   "name": "CK_F_tail_bone37_095",
+   "children": [
+    119
+   ]
+  },
+  {
+   "i": 119,
+   "name": "CK_F_tail_bone31_096",
+   "children": []
+  },
+  {
+   "i": 120,
+   "name": "CK_F_tail_bone47_097",
+   "children": [
+    121,
+    122
+   ]
+  },
+  {
+   "i": 121,
+   "name": "CK_F_tail_bone33_098",
+   "children": []
+  },
+  {
+   "i": 122,
+   "name": "CK_F_tail_bone34_099",
+   "children": [
+    123
+   ]
+  },
+  {
+   "i": 123,
+   "name": "CK_F_tail_bone32_0100",
+   "children": []
+  },
+  {
+   "i": 124,
+   "name": "CK_F_tail_bone36_0101",
+   "children": [
+    125,
+    126
+   ]
+  },
+  {
+   "i": 125,
+   "name": "CK_F_tail_bone30_0102",
+   "children": []
+  },
+  {
+   "i": 126,
+   "name": "CK_F_tail_bone26_0103",
+   "children": [
+    127
+   ]
+  },
+  {
+   "i": 127,
+   "name": "CK_F_tail_bone20_0104",
+   "children": []
+  },
+  {
+   "i": 128,
+   "name": "CK_F_tail_bone40_0105",
+   "children": [
+    129,
+    130
+   ]
+  },
+  {
+   "i": 129,
+   "name": "CK_F_tail_bone16_0106",
+   "children": []
+  },
+  {
+   "i": 130,
+   "name": "CK_F_tail_bone12_0107",
+   "children": [
+    131
+   ]
+  },
+  {
+   "i": 131,
+   "name": "CK_F_tail_bone08_0108",
+   "children": []
+  },
+  {
+   "i": 132,
+   "name": "CK_F_tail_bone44_0109",
+   "children": [
+    133,
+    134
+   ]
+  },
+  {
+   "i": 133,
+   "name": "CK_F_tail_bone06_0110",
+   "children": []
+  },
+  {
+   "i": 134,
+   "name": "CK_F_tail_bone02_0111",
+   "children": [
+    135
+   ]
+  },
+  {
+   "i": 135,
+   "name": "CK_F_tail_bone35_0112",
+   "children": []
+  },
+  {
+   "i": 136,
+   "name": "CK Spine1_0113",
+   "children": [
+    137,
+    567,
+    574
+   ]
+  },
+  {
+   "i": 137,
+   "name": "CK Neck_0114",
+   "children": [
+    138,
+    187,
+    376,
+    565
+   ]
+  },
+  {
+   "i": 138,
+   "name": "CK Neck1_0115",
+   "children": [
+    139
+   ]
+  },
+  {
+   "i": 139,
+   "name": "CK Neck2_0116",
+   "children": [
+    140,
+    181,
+    184
+   ]
+  },
+  {
+   "i": 140,
+   "name": "CK Neck3_0117",
+   "children": [
+    141
+   ]
+  },
+  {
+   "i": 141,
+   "name": "CK Head_0118",
+   "children": [
+    142,
+    143,
+    147,
+    149,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    158,
+    160,
+    165,
+    170,
+    175,
+    180
+   ]
+  },
+  {
+   "i": 142,
+   "name": "CK HeadNub_0119",
+   "children": []
+  },
+  {
+   "i": 143,
+   "name": "CK Jaw_0120",
+   "children": [
+    144,
+    145
+   ]
+  },
+  {
+   "i": 144,
+   "name": "CK JawNub_0121",
+   "children": []
+  },
+  {
+   "i": 145,
+   "name": "CK_Muscle Strand003M_End_0122",
+   "children": [
+    146
+   ]
+  },
+  {
+   "i": 146,
+   "name": "CK_Muscle Strand003M_EndHdl_0123",
+   "children": []
+  },
+  {
+   "i": 147,
+   "name": "CK R eyeball_0124",
+   "children": [
+    148
+   ]
+  },
+  {
+   "i": 148,
+   "name": "CK R eyeballNub_0125",
+   "children": []
+  },
+  {
+   "i": 149,
+   "name": "CK L eyeball_0126",
+   "children": [
+    150
+   ]
+  },
+  {
+   "i": 150,
+   "name": "CK L eyeballNub_0127",
+   "children": []
+  },
+  {
+   "i": 151,
+   "name": "CK_Muscle Strand003_0153",
+   "children": []
+  },
+  {
+   "i": 152,
+   "name": "CK_Muscle Strand001_0154",
+   "children": []
+  },
+  {
+   "i": 153,
+   "name": "CK_Muscle Strand002_0155",
+   "children": []
+  },
+  {
+   "i": 154,
+   "name": "CK_Neck_Muscle Strand002_0156",
+   "children": []
+  },
+  {
+   "i": 155,
+   "name": "CK_Neck_Muscle Strand001_0157",
+   "children": []
+  },
+  {
+   "i": 156,
+   "name": "CK_Neck_Muscle Strand003M_End_0128",
+   "children": [
+    157
+   ]
+  },
+  {
+   "i": 157,
+   "name": "CK_Neck_Muscle Strand003M_EndHdl_0129",
+   "children": []
+  },
+  {
+   "i": 158,
+   "name": "CK_Muscle Strand002M_End_0130",
+   "children": [
+    159
+   ]
+  },
+  {
+   "i": 159,
+   "name": "CK_Muscle Strand002M_EndHdl_0131",
+   "children": []
+  },
+  {
+   "i": 160,
+   "name": "CK_Point RT R Eye2_0132",
+   "children": [
+    161,
+    163
+   ]
+  },
+  {
+   "i": 161,
+   "name": "CK_R_eyelid_down00_0133",
+   "children": [
+    162
+   ]
+  },
+  {
+   "i": 162,
+   "name": "CK_R_eyelid_down01_0134",
+   "children": []
+  },
+  {
+   "i": 163,
+   "name": "CK_R_eyelid_downKEY00_0135",
+   "children": [
+    164
+   ]
+  },
+  {
+   "i": 164,
+   "name": "CK_R_eyelid_downKEY01_0136",
+   "children": []
+  },
+  {
+   "i": 165,
+   "name": "CK_Point RT R Eye1_0137",
+   "children": [
+    166,
+    168
+   ]
+  },
+  {
+   "i": 166,
+   "name": "CK_R_eyelid_up00_0138",
+   "children": [
+    167
+   ]
+  },
+  {
+   "i": 167,
+   "name": "CK_R_eyelid_up01_0139",
+   "children": []
+  },
+  {
+   "i": 168,
+   "name": "CK_R_eyelid_upKEY00_0140",
+   "children": [
+    169
+   ]
+  },
+  {
+   "i": 169,
+   "name": "CK_R_eyelid_upKEY01_0141",
+   "children": []
+  },
+  {
+   "i": 170,
+   "name": "CK_Point RT L Eye1_0142",
+   "children": [
+    171,
+    173
+   ]
+  },
+  {
+   "i": 171,
+   "name": "CK_L_eyelid_up00_0143",
+   "children": [
+    172
+   ]
+  },
+  {
+   "i": 172,
+   "name": "CK_L_eyelid_up01_0144",
+   "children": []
+  },
+  {
+   "i": 173,
+   "name": "CK_L_eyelid_upKEY00_0145",
+   "children": [
+    174
+   ]
+  },
+  {
+   "i": 174,
+   "name": "CK_L_eyelid_upKEY01_0146",
+   "children": []
+  },
+  {
+   "i": 175,
+   "name": "CK_Point RT L Eye2_0147",
+   "children": [
+    176,
+    178
+   ]
+  },
+  {
+   "i": 176,
+   "name": "CK_L_eyelid_down00_0148",
+   "children": [
+    177
+   ]
+  },
+  {
+   "i": 177,
+   "name": "CK_L_eyelid_down01_0149",
+   "children": []
+  },
+  {
+   "i": 178,
+   "name": "CK_L_eyelid_downKEY00_0150",
+   "children": [
+    179
+   ]
+  },
+  {
+   "i": 179,
+   "name": "CK_L_eyelid_downKEY01_0151",
+   "children": []
+  },
+  {
+   "i": 180,
+   "name": "CK_Neck_Muscle Strand003_0152",
+   "children": []
+  },
+  {
+   "i": 181,
+   "name": "CK_Neck_Dummy100_0158",
+   "children": [
+    182
+   ]
+  },
+  {
+   "i": 182,
+   "name": "CK_Muscle Strand002M_START_0159",
+   "children": [
+    183
+   ]
+  },
+  {
+   "i": 183,
+   "name": "CK_Muscle Strand002M_StartHdl_0160",
+   "children": []
+  },
+  {
+   "i": 184,
+   "name": "CK_Neck_Dummy201_0161",
+   "children": [
+    185
+   ]
+  },
+  {
+   "i": 185,
+   "name": "CK_Muscle Strand003M_START_0162",
+   "children": [
+    186
+   ]
+  },
+  {
+   "i": 186,
+   "name": "CK_Muscle Strand003M_StartHdl_0163",
+   "children": []
+  },
+  {
+   "i": 187,
+   "name": "CK L Clavicle_0164",
+   "children": [
+    188,
+    346,
+    352,
+    358,
+    364,
+    366,
+    368,
+    370,
+    372,
+    374
+   ]
+  },
+  {
+   "i": 188,
+   "name": "CK L UpperArm_0165",
+   "children": [
+    189,
+    290,
+    297,
+    303,
+    309,
+    315,
+    322,
+    328,
+    334,
+    340
+   ]
+  },
+  {
+   "i": 189,
+   "name": "CK L Forearm_0166",
+   "children": [
+    190,
+    262,
+    272,
+    278,
+    284
+   ]
+  },
+  {
+   "i": 190,
+   "name": "CK L Hand_0167",
+   "children": [
+    191,
+    232,
+    238,
+    244,
+    250,
+    256
+   ]
+  },
+  {
+   "i": 191,
+   "name": "CK L Finger0_0168",
+   "children": [
+    192,
+    202,
+    208,
+    214,
+    220,
+    226
+   ]
+  },
+  {
+   "i": 192,
+   "name": "CK L Finger01_0169",
+   "children": [
+    193,
+    200
+   ]
+  },
+  {
+   "i": 193,
+   "name": "CK L Finger02_0170",
+   "children": [
+    194,
+    198
+   ]
+  },
+  {
+   "i": 194,
+   "name": "CK L Finger03_0171",
+   "children": [
+    195,
+    196
+   ]
+  },
+  {
+   "i": 195,
+   "name": "CK L Finger0Nub_0172",
+   "children": []
+  },
+  {
+   "i": 196,
+   "name": "CK_F_Lwimg_bone103_0173",
+   "children": [
+    197
+   ]
+  },
+  {
+   "i": 197,
+   "name": "CK_F_Lwimg_bone104_0174",
+   "children": []
+  },
+  {
+   "i": 198,
+   "name": "CK_F_Lwimg_bone02_0175",
+   "children": [
+    199
+   ]
+  },
+  {
+   "i": 199,
+   "name": "CK_F_Lwimg_bone03_0176",
+   "children": []
+  },
+  {
+   "i": 200,
+   "name": "CK_F_Lwimg_bone04_0177",
+   "children": [
+    201
+   ]
+  },
+  {
+   "i": 201,
+   "name": "CK_F_Lwimg_bone05_0178",
+   "children": []
+  },
+  {
+   "i": 202,
+   "name": "CK_F_Lwimg_bone06_0179",
+   "children": [
+    203,
+    204
+   ]
+  },
+  {
+   "i": 203,
+   "name": "CK_F_Lwimg_bone07_0180",
+   "children": []
+  },
+  {
+   "i": 204,
+   "name": "CK_F_Lwimg_bone08_0181",
+   "children": [
+    205,
+    206
+   ]
+  },
+  {
+   "i": 205,
+   "name": "CK_F_Lwimg_bone09_0182",
+   "children": []
+  },
+  {
+   "i": 206,
+   "name": "CK_F_Lwimg_bone102_0183",
+   "children": [
+    207
+   ]
+  },
+  {
+   "i": 207,
+   "name": "CK_F_Lwimg_bone105_0184",
+   "children": []
+  },
+  {
+   "i": 208,
+   "name": "CK_F_Lwimg_bone11_0185",
+   "children": [
+    209,
+    210
+   ]
+  },
+  {
+   "i": 209,
+   "name": "CK_F_Lwimg_bone12_0186",
+   "children": []
+  },
+  {
+   "i": 210,
+   "name": "CK_F_Lwimg_bone13_0187",
+   "children": [
+    211,
+    212
+   ]
+  },
+  {
+   "i": 211,
+   "name": "CK_F_Lwimg_bone14_0188",
+   "children": []
+  },
+  {
+   "i": 212,
+   "name": "CK_F_Lwimg_bone101_0189",
+   "children": [
+    213
+   ]
+  },
+  {
+   "i": 213,
+   "name": "CK_F_Lwimg_bone106_0190",
+   "children": []
+  },
+  {
+   "i": 214,
+   "name": "CK_F_Lwimg_bone16_0191",
+   "children": [
+    215,
+    216
+   ]
+  },
+  {
+   "i": 215,
+   "name": "CK_F_Lwimg_bone17_0192",
+   "children": []
+  },
+  {
+   "i": 216,
+   "name": "CK_F_Lwimg_bone18_0193",
+   "children": [
+    217,
+    218
+   ]
+  },
+  {
+   "i": 217,
+   "name": "CK_F_Lwimg_bone19_0194",
+   "children": []
+  },
+  {
+   "i": 218,
+   "name": "CK_F_Lwimg_bone100_0195",
+   "children": [
+    219
+   ]
+  },
+  {
+   "i": 219,
+   "name": "CK_F_Lwimg_bone107_0196",
+   "children": []
+  },
+  {
+   "i": 220,
+   "name": "CK_F_Lwimg_bone21_0197",
+   "children": [
+    221,
+    222
+   ]
+  },
+  {
+   "i": 221,
+   "name": "CK_F_Lwimg_bone22_0198",
+   "children": []
+  },
+  {
+   "i": 222,
+   "name": "CK_F_Lwimg_bone23_0199",
+   "children": [
+    223,
+    224
+   ]
+  },
+  {
+   "i": 223,
+   "name": "CK_F_Lwimg_bone24_0200",
+   "children": []
+  },
+  {
+   "i": 224,
+   "name": "CK_F_Lwimg_bone99_0201",
+   "children": [
+    225
+   ]
+  },
+  {
+   "i": 225,
+   "name": "CK_F_Lwimg_bone108_0202",
+   "children": []
+  },
+  {
+   "i": 226,
+   "name": "CK_F_Lwimg_bone26_0203",
+   "children": [
+    227,
+    228
+   ]
+  },
+  {
+   "i": 227,
+   "name": "CK_F_Lwimg_bone27_0204",
+   "children": []
+  },
+  {
+   "i": 228,
+   "name": "CK_F_Lwimg_bone28_0205",
+   "children": [
+    229,
+    230
+   ]
+  },
+  {
+   "i": 229,
+   "name": "CK_F_Lwimg_bone29_0206",
+   "children": []
+  },
+  {
+   "i": 230,
+   "name": "CK_F_Lwimg_bone98_0207",
+   "children": [
+    231
+   ]
+  },
+  {
+   "i": 231,
+   "name": "CK_F_Lwimg_bone109_0208",
+   "children": []
+  },
+  {
+   "i": 232,
+   "name": "CK_F_Lwimg_bone31_0209",
+   "children": [
+    233,
+    234
+   ]
+  },
+  {
+   "i": 233,
+   "name": "CK_F_Lwimg_bone32_0210",
+   "children": []
+  },
+  {
+   "i": 234,
+   "name": "CK_F_Lwimg_bone33_0211",
+   "children": [
+    235,
+    236
+   ]
+  },
+  {
+   "i": 235,
+   "name": "CK_F_Lwimg_bone34_0212",
+   "children": []
+  },
+  {
+   "i": 236,
+   "name": "CK_F_Lwimg_bone97_0213",
+   "children": [
+    237
+   ]
+  },
+  {
+   "i": 237,
+   "name": "CK_F_Lwimg_bone96_0214",
+   "children": []
+  },
+  {
+   "i": 238,
+   "name": "CK_F_Lwimg_bone37_0215",
+   "children": [
+    239,
+    240
+   ]
+  },
+  {
+   "i": 239,
+   "name": "CK_F_Lwimg_bone38_0216",
+   "children": []
+  },
+  {
+   "i": 240,
+   "name": "CK_F_Lwimg_bone39_0217",
+   "children": [
+    241,
+    242
+   ]
+  },
+  {
+   "i": 241,
+   "name": "CK_F_Lwimg_bone40_0218",
+   "children": []
+  },
+  {
+   "i": 242,
+   "name": "CK_F_Lwimg_bone95_0219",
+   "children": [
+    243
+   ]
+  },
+  {
+   "i": 243,
+   "name": "CK_F_Lwimg_bone110_0220",
+   "children": []
+  },
+  {
+   "i": 244,
+   "name": "CK_F_Lwimg_bone42_0221",
+   "children": [
+    245,
+    246
+   ]
+  },
+  {
+   "i": 245,
+   "name": "CK_F_Lwimg_bone43_0222",
+   "children": []
+  },
+  {
+   "i": 246,
+   "name": "CK_F_Lwimg_bone44_0223",
+   "children": [
+    247,
+    248
+   ]
+  },
+  {
+   "i": 247,
+   "name": "CK_F_Lwimg_bone45_0224",
+   "children": []
+  },
+  {
+   "i": 248,
+   "name": "CK_F_Lwimg_bone94_0225",
+   "children": [
+    249
+   ]
+  },
+  {
+   "i": 249,
+   "name": "CK_F_Lwimg_bone111_0226",
+   "children": []
+  },
+  {
+   "i": 250,
+   "name": "CK_F_Lwimg_bone47_0227",
+   "children": [
+    251,
+    252
+   ]
+  },
+  {
+   "i": 251,
+   "name": "CK_F_Lwimg_bone48_0228",
+   "children": []
+  },
+  {
+   "i": 252,
+   "name": "CK_F_Lwimg_bone49_0229",
+   "children": [
+    253,
+    254
+   ]
+  },
+  {
+   "i": 253,
+   "name": "CK_F_Lwimg_bone50_0230",
+   "children": []
+  },
+  {
+   "i": 254,
+   "name": "CK_F_Lwimg_bone93_0231",
+   "children": [
+    255
+   ]
+  },
+  {
+   "i": 255,
+   "name": "CK_F_Lwimg_bone112_0232",
+   "children": []
+  },
+  {
+   "i": 256,
+   "name": "CK_F_Lwimg_bone01_0233",
+   "children": [
+    257,
+    258
+   ]
+  },
+  {
+   "i": 257,
+   "name": "CK_F_Lwimg_bone53_0234",
+   "children": []
+  },
+  {
+   "i": 258,
+   "name": "CK_F_Lwimg_bone54_0235",
+   "children": [
+    259,
+    260
+   ]
+  },
+  {
+   "i": 259,
+   "name": "CK_F_Lwimg_bone55_0236",
+   "children": []
+  },
+  {
+   "i": 260,
+   "name": "CK_F_Lwimg_bone92_0237",
+   "children": [
+    261
+   ]
+  },
+  {
+   "i": 261,
+   "name": "CK_F_Lwimg_bone113_0238",
+   "children": []
+  },
+  {
+   "i": 262,
+   "name": "CK L Wing Mid _0239",
+   "children": [
+    263,
+    270
+   ]
+  },
+  {
+   "i": 263,
+   "name": "CK L Wing Mid 02_0240",
+   "children": [
+    264,
+    268
+   ]
+  },
+  {
+   "i": 264,
+   "name": "CK L Wing Mid 03_0241",
+   "children": [
+    265,
+    266
+   ]
+  },
+  {
+   "i": 265,
+   "name": "CK L Wing Mid Nub_0242",
+   "children": []
+  },
+  {
+   "i": 266,
+   "name": "CK_F_Lwimg_bone00_0243",
+   "children": [
+    267
+   ]
+  },
+  {
+   "i": 267,
+   "name": "CK_F_Lwimg_bone89_0244",
+   "children": []
+  },
+  {
+   "i": 268,
+   "name": "CK_F_Lwimg_bone58_0245",
+   "children": [
+    269
+   ]
+  },
+  {
+   "i": 269,
+   "name": "CK_F_Lwimg_bone59_0246",
+   "children": []
+  },
+  {
+   "i": 270,
+   "name": "CK_F_Lwimg_bone60_0247",
+   "children": [
+    271
+   ]
+  },
+  {
+   "i": 271,
+   "name": "CK_F_Lwimg_bone61_0248",
+   "children": []
+  },
+  {
+   "i": 272,
+   "name": "CK_F_Lwimg_bone62_0249",
+   "children": [
+    273,
+    274
+   ]
+  },
+  {
+   "i": 273,
+   "name": "CK_F_Lwimg_bone63_0250",
+   "children": []
+  },
+  {
+   "i": 274,
+   "name": "CK_F_Lwimg_bone64_0251",
+   "children": [
+    275,
+    276
+   ]
+  },
+  {
+   "i": 275,
+   "name": "CK_F_Lwimg_bone65_0252",
+   "children": []
+  },
+  {
+   "i": 276,
+   "name": "CK_F_Lwimg_bone88_0253",
+   "children": [
+    277
+   ]
+  },
+  {
+   "i": 277,
+   "name": "CK_F_Lwimg_bone87_0254",
+   "children": []
+  },
+  {
+   "i": 278,
+   "name": "CK_F_Lwimg_bone68_0255",
+   "children": [
+    279,
+    280
+   ]
+  },
+  {
+   "i": 279,
+   "name": "CK_F_Lwimg_bone69_0256",
+   "children": []
+  },
+  {
+   "i": 280,
+   "name": "CK_F_Lwimg_bone70_0257",
+   "children": [
+    281,
+    282
+   ]
+  },
+  {
+   "i": 281,
+   "name": "CK_F_Lwimg_bone71_0258",
+   "children": []
+  },
+  {
+   "i": 282,
+   "name": "CK_F_Lwimg_bone86_0259",
+   "children": [
+    283
+   ]
+  },
+  {
+   "i": 283,
+   "name": "CK_F_Lwimg_bone85_0260",
+   "children": []
+  },
+  {
+   "i": 284,
+   "name": "CK_F_Lwimg_bone74_0261",
+   "children": [
+    285,
+    286
+   ]
+  },
+  {
+   "i": 285,
+   "name": "CK_F_Lwimg_bone75_0262",
+   "children": []
+  },
+  {
+   "i": 286,
+   "name": "CK_F_Lwimg_bone76_0263",
+   "children": [
+    287,
+    288
+   ]
+  },
+  {
+   "i": 287,
+   "name": "CK_F_Lwimg_bone77_0264",
+   "children": []
+  },
+  {
+   "i": 288,
+   "name": "CK_F_Lwimg_bone84_0265",
+   "children": [
+    289
+   ]
+  },
+  {
+   "i": 289,
+   "name": "CK_F_Lwimg_bone83_0266",
+   "children": []
+  },
+  {
+   "i": 290,
+   "name": "CK L Wing Cen _0267",
+   "children": [
+    291,
+    296
+   ]
+  },
+  {
+   "i": 291,
+   "name": "CK L Wing Cen 02_0268",
+   "children": [
+    292,
+    295
+   ]
+  },
+  {
+   "i": 292,
+   "name": "CK L Wing Cen 03_0269",
+   "children": [
+    293,
+    294
+   ]
+  },
+  {
+   "i": 293,
+   "name": "CK L Wing Cen Nub_0270",
+   "children": []
+  },
+  {
+   "i": 294,
+   "name": "CK_W_Dummy003_0271",
+   "children": []
+  },
+  {
+   "i": 295,
+   "name": "CK_W_Dummy002_0272",
+   "children": []
+  },
+  {
+   "i": 296,
+   "name": "CK_W_Dummy001_0273",
+   "children": []
+  },
+  {
+   "i": 297,
+   "name": "CK_F_Lwimg_bone72_0274",
+   "children": [
+    298,
+    299
+   ]
+  },
+  {
+   "i": 298,
+   "name": "CK_F_Lwimg_bone67_0275",
+   "children": []
+  },
+  {
+   "i": 299,
+   "name": "CK_F_Lwimg_bone66_0276",
+   "children": [
+    300,
+    301
+   ]
+  },
+  {
+   "i": 300,
+   "name": "CK_F_Lwimg_bone57_0277",
+   "children": []
+  },
+  {
+   "i": 301,
+   "name": "CK_F_Lwimg_bone90_0278",
+   "children": [
+    302
+   ]
+  },
+  {
+   "i": 302,
+   "name": "CK_F_Lwimg_bone91_0279",
+   "children": []
+  },
+  {
+   "i": 303,
+   "name": "CK_F_Lwimg_bone56_0280",
+   "children": [
+    304,
+    305
+   ]
+  },
+  {
+   "i": 304,
+   "name": "CK_F_Lwimg_bone51_0281",
+   "children": []
+  },
+  {
+   "i": 305,
+   "name": "CK_F_Lwimg_bone46_0282",
+   "children": [
+    306,
+    307
+   ]
+  },
+  {
+   "i": 306,
+   "name": "CK_F_Lwimg_bone41_0283",
+   "children": []
+  },
+  {
+   "i": 307,
+   "name": "CK_F_Lwimg_bone36_0284",
+   "children": [
+    308
+   ]
+  },
+  {
+   "i": 308,
+   "name": "CK_F_Lwimg_bone35_0285",
+   "children": []
+  },
+  {
+   "i": 309,
+   "name": "CK_F_Lwimg_bone30_0286",
+   "children": [
+    310,
+    311
+   ]
+  },
+  {
+   "i": 310,
+   "name": "CK_F_Lwimg_bone25_0287",
+   "children": []
+  },
+  {
+   "i": 311,
+   "name": "CK_F_Lwimg_bone20_0288",
+   "children": [
+    312,
+    313
+   ]
+  },
+  {
+   "i": 312,
+   "name": "CK_F_Lwimg_bone15_0289",
+   "children": []
+  },
+  {
+   "i": 313,
+   "name": "CK_F_Lwimg_bone10_0290",
+   "children": [
+    314
+   ]
+  },
+  {
+   "i": 314,
+   "name": "CK_F_Lwimg_bone52_0291",
+   "children": []
+  },
+  {
+   "i": 315,
+   "name": "CK Xtra02Opp_0292",
+   "children": [
+    316,
+    321
+   ]
+  },
+  {
+   "i": 316,
+   "name": "CK Xtra02Opp02_0293",
+   "children": [
+    317,
+    320
+   ]
+  },
+  {
+   "i": 317,
+   "name": "CK Xtra02Opp03_0295",
+   "children": [
+    318,
+    319
+   ]
+  },
+  {
+   "i": 318,
+   "name": "CK Xtra02OppNub_0296",
+   "children": []
+  },
+  {
+   "i": 319,
+   "name": "CK_W_Dummy011_0297",
+   "children": []
+  },
+  {
+   "i": 320,
+   "name": "CK_W_Dummy008_0294",
+   "children": []
+  },
+  {
+   "i": 321,
+   "name": "CK_W_Dummy007_0298",
+   "children": []
+  },
+  {
+   "i": 322,
+   "name": "CK_F_L2wimg_bone12_0299",
+   "children": [
+    323,
+    324
+   ]
+  },
+  {
+   "i": 323,
+   "name": "CK_F_L2wimg_bone15_0300",
+   "children": []
+  },
+  {
+   "i": 324,
+   "name": "CK_F_L2wimg_bone13_0301",
+   "children": [
+    325,
+    326
+   ]
+  },
+  {
+   "i": 325,
+   "name": "CK_F_L2wimg_bone14_0302",
+   "children": []
+  },
+  {
+   "i": 326,
+   "name": "CK_F_L2wimg_bone048_0303",
+   "children": [
+    327
+   ]
+  },
+  {
+   "i": 327,
+   "name": "CK_F_L2wimg_bone049_0304",
+   "children": []
+  },
+  {
+   "i": 328,
+   "name": "CK_F_L2wimg_bone16_0305",
+   "children": [
+    329,
+    330
+   ]
+  },
+  {
+   "i": 329,
+   "name": "CK_F_L2wimg_bone19_0306",
+   "children": []
+  },
+  {
+   "i": 330,
+   "name": "CK_F_L2wimg_bone17_0307",
+   "children": [
+    331,
+    332
+   ]
+  },
+  {
+   "i": 331,
+   "name": "CK_F_L2wimg_bone18_0308",
+   "children": []
+  },
+  {
+   "i": 332,
+   "name": "CK_F_L2wimg_bone050_0309",
+   "children": [
+    333
+   ]
+  },
+  {
+   "i": 333,
+   "name": "CK_F_L2wimg_bone051_0310",
+   "children": []
+  },
+  {
+   "i": 334,
+   "name": "CK_F_L2wimg_bone20_0311",
+   "children": [
+    335,
+    336
+   ]
+  },
+  {
+   "i": 335,
+   "name": "CK_F_L2wimg_bone21_0312",
+   "children": []
+  },
+  {
+   "i": 336,
+   "name": "CK_F_L2wimg_bone22_0313",
+   "children": [
+    337,
+    338
+   ]
+  },
+  {
+   "i": 337,
+   "name": "CK_F_L2wimg_bone23_0314",
+   "children": []
+  },
+  {
+   "i": 338,
+   "name": "CK_F_L2wimg_bone052_0315",
+   "children": [
+    339
+   ]
+  },
+  {
+   "i": 339,
+   "name": "CK_F_L2wimg_bone053_0316",
+   "children": []
+  },
+  {
+   "i": 340,
+   "name": "CK_F_L2wimg_bone24_0317",
+   "children": [
+    341,
+    342
+   ]
+  },
+  {
+   "i": 341,
+   "name": "CK_F_L2wimg_bone27_0318",
+   "children": []
+  },
+  {
+   "i": 342,
+   "name": "CK_F_L2wimg_bone25_0319",
+   "children": [
+    343,
+    344
+   ]
+  },
+  {
+   "i": 343,
+   "name": "CK_F_L2wimg_bone26_0320",
+   "children": []
+  },
+  {
+   "i": 344,
+   "name": "CK_F_L2wimg_bone054_0321",
+   "children": [
+    345
+   ]
+  },
+  {
+   "i": 345,
+   "name": "CK_F_L2wimg_bone055_0322",
+   "children": []
+  },
+  {
+   "i": 346,
+   "name": "CK_F_L2wimg_bone30_0323",
+   "children": [
+    347,
+    348
+   ]
+  },
+  {
+   "i": 347,
+   "name": "CK_F_L2wimg_bone33_0324",
+   "children": []
+  },
+  {
+   "i": 348,
+   "name": "CK_F_L2wimg_bone31_0325",
+   "children": [
+    349,
+    350
+   ]
+  },
+  {
+   "i": 349,
+   "name": "CK_F_L2wimg_bone32_0326",
+   "children": []
+  },
+  {
+   "i": 350,
+   "name": "CK_F_L2wimg_bone056_0327",
+   "children": [
+    351
+   ]
+  },
+  {
+   "i": 351,
+   "name": "CK_F_L2wimg_bone057_0328",
+   "children": []
+  },
+  {
+   "i": 352,
+   "name": "CK_F_L2wimg_bone34_0329",
+   "children": [
+    353,
+    354
+   ]
+  },
+  {
+   "i": 353,
+   "name": "CK_F_L2wimg_bone35_0330",
+   "children": []
+  },
+  {
+   "i": 354,
+   "name": "CK_F_L2wimg_bone36_0331",
+   "children": [
+    355,
+    356
+   ]
+  },
+  {
+   "i": 355,
+   "name": "CK_F_L2wimg_bone37_0332",
+   "children": []
+  },
+  {
+   "i": 356,
+   "name": "CK_F_L2wimg_bone058_0333",
+   "children": [
+    357
+   ]
+  },
+  {
+   "i": 357,
+   "name": "CK_F_L2wimg_bone059_0334",
+   "children": []
+  },
+  {
+   "i": 358,
+   "name": "CK_F_L2wimg_bone38_0335",
+   "children": [
+    359,
+    360
+   ]
+  },
+  {
+   "i": 359,
+   "name": "CK_F_L2wimg_bone39_0336",
+   "children": []
+  },
+  {
+   "i": 360,
+   "name": "CK_F_L2wimg_bone40_0337",
+   "children": [
+    361,
+    362
+   ]
+  },
+  {
+   "i": 361,
+   "name": "CK_F_L2wimg_bone41_0338",
+   "children": []
+  },
+  {
+   "i": 362,
+   "name": "CK_F_L2wimg_bone060_0339",
+   "children": [
+    363
+   ]
+  },
+  {
+   "i": 363,
+   "name": "CK_F_L2wimg_bone061_0340",
+   "children": []
+  },
+  {
+   "i": 364,
+   "name": "CK_F_L2wimg_bone10_0341",
+   "children": [
+    365
+   ]
+  },
+  {
+   "i": 365,
+   "name": "CK_F_L2wimg_bone11_0342",
+   "children": []
+  },
+  {
+   "i": 366,
+   "name": "CK_F_L2wimg_bone08_0343",
+   "children": [
+    367
+   ]
+  },
+  {
+   "i": 367,
+   "name": "CK_F_L2wimg_bone09_0344",
+   "children": []
+  },
+  {
+   "i": 368,
+   "name": "CK_F_Lwimg_bone78_0345",
+   "children": [
+    369
+   ]
+  },
+  {
+   "i": 369,
+   "name": "CK_F_Lwimg_bone73_0346",
+   "children": []
+  },
+  {
+   "i": 370,
+   "name": "CK_F_Lwimg_bone80_0347",
+   "children": [
+    371
+   ]
+  },
+  {
+   "i": 371,
+   "name": "CK_F_Lwimg_bone79_0348",
+   "children": []
+  },
+  {
+   "i": 372,
+   "name": "CK_F_Lwimg_bone82_0349",
+   "children": [
+    373
+   ]
+  },
+  {
+   "i": 373,
+   "name": "CK_F_Lwimg_bone81_0350",
+   "children": []
+  },
+  {
+   "i": 374,
+   "name": "CK_F_L2wimg_bone046_0351",
+   "children": [
+    375
+   ]
+  },
+  {
+   "i": 375,
+   "name": "CK_F_L2wimg_bone047_0352",
+   "children": []
+  },
+  {
+   "i": 376,
+   "name": "CK R Clavicle_0353",
+   "children": [
+    377,
+    535,
+    541,
+    547,
+    553,
+    555,
+    557,
+    559,
+    561,
+    563
+   ]
+  },
+  {
+   "i": 377,
+   "name": "CK R UpperArm_0354",
+   "children": [
+    378,
+    479,
+    486,
+    492,
+    498,
+    504,
+    510,
+    516,
+    522,
+    528
+   ]
+  },
+  {
+   "i": 378,
+   "name": "CK R Forearm_0355",
+   "children": [
+    379,
+    451,
+    461,
+    467,
+    473
+   ]
+  },
+  {
+   "i": 379,
+   "name": "CK R Hand_0356",
+   "children": [
+    380,
+    421,
+    427,
+    433,
+    439,
+    445
+   ]
+  },
+  {
+   "i": 380,
+   "name": "CK R Finger0_0357",
+   "children": [
+    381,
+    391,
+    397,
+    403,
+    409,
+    415
+   ]
+  },
+  {
+   "i": 381,
+   "name": "CK R Finger01_0358",
+   "children": [
+    382,
+    389
+   ]
+  },
+  {
+   "i": 382,
+   "name": "CK R Finger02_0359",
+   "children": [
+    383,
+    387
+   ]
+  },
+  {
+   "i": 383,
+   "name": "CK R Finger03_0360",
+   "children": [
+    384,
+    385
+   ]
+  },
+  {
+   "i": 384,
+   "name": "CK R Finger0Nub_0361",
+   "children": []
+  },
+  {
+   "i": 385,
+   "name": "CK_F_Rwimg_bone00_0362",
+   "children": [
+    386
+   ]
+  },
+  {
+   "i": 386,
+   "name": "CK_F_Rwimg_bone01_0363",
+   "children": []
+  },
+  {
+   "i": 387,
+   "name": "CK_F_Rwimg_bone02_0364",
+   "children": [
+    388
+   ]
+  },
+  {
+   "i": 388,
+   "name": "CK_F_Rwimg_bone03_0365",
+   "children": []
+  },
+  {
+   "i": 389,
+   "name": "CK_F_Rwimg_bone04_0366",
+   "children": [
+    390
+   ]
+  },
+  {
+   "i": 390,
+   "name": "CK_F_Rwimg_bone05_0367",
+   "children": []
+  },
+  {
+   "i": 391,
+   "name": "CK_F_Rwimg_bone06_0368",
+   "children": [
+    392,
+    393
+   ]
+  },
+  {
+   "i": 392,
+   "name": "CK_F_Rwimg_bone07_0369",
+   "children": []
+  },
+  {
+   "i": 393,
+   "name": "CK_F_Rwimg_bone95_0370",
+   "children": [
+    394,
+    395
+   ]
+  },
+  {
+   "i": 394,
+   "name": "CK_F_Rwimg_bone94_0371",
+   "children": []
+  },
+  {
+   "i": 395,
+   "name": "CK_F_Rwimg_bone93_0372",
+   "children": [
+    396
+   ]
+  },
+  {
+   "i": 396,
+   "name": "CK_F_Rwimg_bone99_0373",
+   "children": []
+  },
+  {
+   "i": 397,
+   "name": "CK_F_Rwimg_bone11_0374",
+   "children": [
+    398,
+    399
+   ]
+  },
+  {
+   "i": 398,
+   "name": "CK_F_Rwimg_bone12_0375",
+   "children": []
+  },
+  {
+   "i": 399,
+   "name": "CK_F_Rwimg_bone91_0376",
+   "children": [
+    400,
+    401
+   ]
+  },
+  {
+   "i": 400,
+   "name": "CK_F_Rwimg_bone14_0377",
+   "children": []
+  },
+  {
+   "i": 401,
+   "name": "CK_F_Rwimg_bone90_0378",
+   "children": [
+    402
+   ]
+  },
+  {
+   "i": 402,
+   "name": "CK_F_Rwimg_bone100_0379",
+   "children": []
+  },
+  {
+   "i": 403,
+   "name": "CK_F_Rwimg_bone16_0380",
+   "children": [
+    404,
+    405
+   ]
+  },
+  {
+   "i": 404,
+   "name": "CK_F_Rwimg_bone17_0381",
+   "children": []
+  },
+  {
+   "i": 405,
+   "name": "CK_F_Rwimg_bone18_0382",
+   "children": [
+    406,
+    407
+   ]
+  },
+  {
+   "i": 406,
+   "name": "CK_F_Rwimg_bone19_0383",
+   "children": []
+  },
+  {
+   "i": 407,
+   "name": "CK_F_Rwimg_bone89_0384",
+   "children": [
+    408
+   ]
+  },
+  {
+   "i": 408,
+   "name": "CK_F_Rwimg_bone101_0385",
+   "children": []
+  },
+  {
+   "i": 409,
+   "name": "CK_F_Rwimg_bone21_0386",
+   "children": [
+    410,
+    411
+   ]
+  },
+  {
+   "i": 410,
+   "name": "CK_F_Rwimg_bone22_0387",
+   "children": []
+  },
+  {
+   "i": 411,
+   "name": "CK_F_Rwimg_bone23_0388",
+   "children": [
+    412,
+    413
+   ]
+  },
+  {
+   "i": 412,
+   "name": "CK_F_Rwimg_bone24_0389",
+   "children": []
+  },
+  {
+   "i": 413,
+   "name": "CK_F_Rwimg_bone88_0390",
+   "children": [
+    414
+   ]
+  },
+  {
+   "i": 414,
+   "name": "CK_F_Rwimg_bone102_0391",
+   "children": []
+  },
+  {
+   "i": 415,
+   "name": "CK_F_Rwimg_bone26_0392",
+   "children": [
+    416,
+    417
+   ]
+  },
+  {
+   "i": 416,
+   "name": "CK_F_Rwimg_bone27_0393",
+   "children": []
+  },
+  {
+   "i": 417,
+   "name": "CK_F_Rwimg_bone28_0394",
+   "children": [
+    418,
+    419
+   ]
+  },
+  {
+   "i": 418,
+   "name": "CK_F_Rwimg_bone29_0395",
+   "children": []
+  },
+  {
+   "i": 419,
+   "name": "CK_F_Rwimg_bone86_0396",
+   "children": [
+    420
+   ]
+  },
+  {
+   "i": 420,
+   "name": "CK_F_Rwimg_bone85_0397",
+   "children": []
+  },
+  {
+   "i": 421,
+   "name": "CK_F_Rwimg_bone32_0398",
+   "children": [
+    422,
+    423
+   ]
+  },
+  {
+   "i": 422,
+   "name": "CK_F_Rwimg_bone33_0399",
+   "children": []
+  },
+  {
+   "i": 423,
+   "name": "CK_F_Rwimg_bone34_0400",
+   "children": [
+    424,
+    425
+   ]
+  },
+  {
+   "i": 424,
+   "name": "CK_F_Rwimg_bone35_0401",
+   "children": []
+  },
+  {
+   "i": 425,
+   "name": "CK_F_Rwimg_bone84_0402",
+   "children": [
+    426
+   ]
+  },
+  {
+   "i": 426,
+   "name": "CK_F_Rwimg_bone103_0403",
+   "children": []
+  },
+  {
+   "i": 427,
+   "name": "CK_F_Rwimg_bone37_0404",
+   "children": [
+    428,
+    429
+   ]
+  },
+  {
+   "i": 428,
+   "name": "CK_F_Rwimg_bone38_0405",
+   "children": []
+  },
+  {
+   "i": 429,
+   "name": "CK_F_Rwimg_bone39_0406",
+   "children": [
+    430,
+    431
+   ]
+  },
+  {
+   "i": 430,
+   "name": "CK_F_Rwimg_bone40_0407",
+   "children": []
+  },
+  {
+   "i": 431,
+   "name": "CK_F_Rwimg_bone83_0408",
+   "children": [
+    432
+   ]
+  },
+  {
+   "i": 432,
+   "name": "CK_F_Rwimg_bone104_0409",
+   "children": []
+  },
+  {
+   "i": 433,
+   "name": "CK_F_Rwimg_bone42_0410",
+   "children": [
+    434,
+    435
+   ]
+  },
+  {
+   "i": 434,
+   "name": "CK_F_Rwimg_bone43_0411",
+   "children": []
+  },
+  {
+   "i": 435,
+   "name": "CK_F_Rwimg_bone82_0412",
+   "children": [
+    436,
+    437
+   ]
+  },
+  {
+   "i": 436,
+   "name": "CK_F_Rwimg_bone81_0413",
+   "children": []
+  },
+  {
+   "i": 437,
+   "name": "CK_F_Rwimg_bone80_0414",
+   "children": [
+    438
+   ]
+  },
+  {
+   "i": 438,
+   "name": "CK_F_Rwimg_bone105_0415",
+   "children": []
+  },
+  {
+   "i": 439,
+   "name": "CK_F_Rwimg_bone47_0416",
+   "children": [
+    440,
+    441
+   ]
+  },
+  {
+   "i": 440,
+   "name": "CK_F_Rwimg_bone48_0417",
+   "children": []
+  },
+  {
+   "i": 441,
+   "name": "CK_F_Rwimg_bone79_0418",
+   "children": [
+    442,
+    443
+   ]
+  },
+  {
+   "i": 442,
+   "name": "CK_F_Rwimg_bone78_0419",
+   "children": []
+  },
+  {
+   "i": 443,
+   "name": "CK_F_Rwimg_bone77_0420",
+   "children": [
+    444
+   ]
+  },
+  {
+   "i": 444,
+   "name": "CK_F_Rwimg_bone106_0421",
+   "children": []
+  },
+  {
+   "i": 445,
+   "name": "CK_F_Rwimg_bone52_0422",
+   "children": [
+    446,
+    447
+   ]
+  },
+  {
+   "i": 446,
+   "name": "CK_F_Rwimg_bone53_0423",
+   "children": []
+  },
+  {
+   "i": 447,
+   "name": "CK_F_Rwimg_bone75_0424",
+   "children": [
+    448,
+    449
+   ]
+  },
+  {
+   "i": 448,
+   "name": "CK_F_Rwimg_bone74_0425",
+   "children": []
+  },
+  {
+   "i": 449,
+   "name": "CK_F_Rwimg_bone73_0426",
+   "children": [
+    450
+   ]
+  },
+  {
+   "i": 450,
+   "name": "CK_F_Rwimg_bone107_0427",
+   "children": []
+  },
+  {
+   "i": 451,
+   "name": "CK R Wing Mid _0428",
+   "children": [
+    452,
+    459
+   ]
+  },
+  {
+   "i": 452,
+   "name": "CK R Wing Mid 02_0429",
+   "children": [
+    453,
+    457
+   ]
+  },
+  {
+   "i": 453,
+   "name": "CK R Wing Mid 03_0430",
+   "children": [
+    454,
+    455
+   ]
+  },
+  {
+   "i": 454,
+   "name": "CK R Wing Mid Nub_0431",
+   "children": []
+  },
+  {
+   "i": 455,
+   "name": "CK_F_Rwimg_bone72_0432",
+   "children": [
+    456
+   ]
+  },
+  {
+   "i": 456,
+   "name": "CK_F_Rwimg_bone108_0433",
+   "children": []
+  },
+  {
+   "i": 457,
+   "name": "CK_F_Rwimg_bone58_0434",
+   "children": [
+    458
+   ]
+  },
+  {
+   "i": 458,
+   "name": "CK_F_Rwimg_bone59_0435",
+   "children": []
+  },
+  {
+   "i": 459,
+   "name": "CK_F_Rwimg_bone60_0436",
+   "children": [
+    460
+   ]
+  },
+  {
+   "i": 460,
+   "name": "CK_F_Rwimg_bone61_0437",
+   "children": []
+  },
+  {
+   "i": 461,
+   "name": "CK_F_Rwimg_bone62_0438",
+   "children": [
+    462,
+    463
+   ]
+  },
+  {
+   "i": 462,
+   "name": "CK_F_Rwimg_bone63_0439",
+   "children": []
+  },
+  {
+   "i": 463,
+   "name": "CK_F_Rwimg_bone64_0440",
+   "children": [
+    464,
+    465
+   ]
+  },
+  {
+   "i": 464,
+   "name": "CK_F_Rwimg_bone65_0441",
+   "children": []
+  },
+  {
+   "i": 465,
+   "name": "CK_F_Rwimg_bone96_0442",
+   "children": [
+    466
+   ]
+  },
+  {
+   "i": 466,
+   "name": "CK_F_Rwimg_bone109_0443",
+   "children": []
+  },
+  {
+   "i": 467,
+   "name": "CK_F_Rwimg_bone67_0444",
+   "children": [
+    468,
+    469
+   ]
+  },
+  {
+   "i": 468,
+   "name": "CK_F_Rwimg_bone68_0445",
+   "children": []
+  },
+  {
+   "i": 469,
+   "name": "CK_F_Rwimg_bone69_0447",
+   "children": [
+    470,
+    471
+   ]
+  },
+  {
+   "i": 470,
+   "name": "CK_F_Rwimg_bone66_0448",
+   "children": []
+  },
+  {
+   "i": 471,
+   "name": "CK_F_Rwimg_bone71_0449",
+   "children": [
+    472
+   ]
+  },
+  {
+   "i": 472,
+   "name": "CK_F_Rwimg_bone110_0450",
+   "children": []
+  },
+  {
+   "i": 473,
+   "name": "CK_F_Rwimg_bone57_0451",
+   "children": [
+    474,
+    475
+   ]
+  },
+  {
+   "i": 474,
+   "name": "CK_F_Rwimg_bone56_0452",
+   "children": []
+  },
+  {
+   "i": 475,
+   "name": "CK_F_Rwimg_bone55_0453",
+   "children": [
+    476,
+    477
+   ]
+  },
+  {
+   "i": 476,
+   "name": "CK_F_Rwimg_bone54_0454",
+   "children": []
+  },
+  {
+   "i": 477,
+   "name": "CK_F_Rwimg_bone76_00",
+   "children": [
+    478
+   ]
+  },
+  {
+   "i": 478,
+   "name": "CK_F_Rwimg_bone111_0455",
+   "children": []
+  },
+  {
+   "i": 479,
+   "name": "CK R Wing Cen _0456",
+   "children": [
+    480,
+    485
+   ]
+  },
+  {
+   "i": 480,
+   "name": "CK R Wing Cen 02_0457",
+   "children": [
+    481,
+    484
+   ]
+  },
+  {
+   "i": 481,
+   "name": "CK R Wing Cen 03_0458",
+   "children": [
+    482,
+    483
+   ]
+  },
+  {
+   "i": 482,
+   "name": "CK R Wing Cen Nub_0459",
+   "children": []
+  },
+  {
+   "i": 483,
+   "name": "CK_W_Dummy006_0460",
+   "children": []
+  },
+  {
+   "i": 484,
+   "name": "CK_W_Dummy005_0461",
+   "children": []
+  },
+  {
+   "i": 485,
+   "name": "CK_W_Dummy004_0462",
+   "children": []
+  },
+  {
+   "i": 486,
+   "name": "CK_F_Rwimg_bone41_0463",
+   "children": [
+    487,
+    488
+   ]
+  },
+  {
+   "i": 487,
+   "name": "CK_F_Rwimg_bone36_0464",
+   "children": []
+  },
+  {
+   "i": 488,
+   "name": "CK_F_Rwimg_bone31_0465",
+   "children": [
+    489,
+    490
+   ]
+  },
+  {
+   "i": 489,
+   "name": "CK_F_Rwimg_bone30_0446",
+   "children": []
+  },
+  {
+   "i": 490,
+   "name": "CK_F_Rwimg_bone87_0467",
+   "children": [
+    491
+   ]
+  },
+  {
+   "i": 491,
+   "name": "CK_F_Rwimg_bone112_0468",
+   "children": []
+  },
+  {
+   "i": 492,
+   "name": "CK_F_Rwimg_bone25_0469",
+   "children": [
+    493,
+    494
+   ]
+  },
+  {
+   "i": 493,
+   "name": "CK_F_Rwimg_bone20_0470",
+   "children": []
+  },
+  {
+   "i": 494,
+   "name": "CK_F_Rwimg_bone15_0471",
+   "children": [
+    495,
+    496
+   ]
+  },
+  {
+   "i": 495,
+   "name": "CK_F_Rwimg_bone13_0472",
+   "children": []
+  },
+  {
+   "i": 496,
+   "name": "CK_F_Rwimg_bone92_0473",
+   "children": [
+    497
+   ]
+  },
+  {
+   "i": 497,
+   "name": "CK_F_Rwimg_bone113_01",
+   "children": []
+  },
+  {
+   "i": 498,
+   "name": "CK_F_Rwimg_bone10_02",
+   "children": [
+    499,
+    500
+   ]
+  },
+  {
+   "i": 499,
+   "name": "CK_F_Rwimg_bone09_03",
+   "children": []
+  },
+  {
+   "i": 500,
+   "name": "CK_F_Rwimg_bone08_04",
+   "children": [
+    501,
+    502
+   ]
+  },
+  {
+   "i": 501,
+   "name": "CK_F_Rwimg_bone70_0474",
+   "children": []
+  },
+  {
+   "i": 502,
+   "name": "CK_F_Rwimg_bone97_0475",
+   "children": [
+    503
+   ]
+  },
+  {
+   "i": 503,
+   "name": "CK_F_Rwimg_bone98_0476",
+   "children": []
+  },
+  {
+   "i": 504,
+   "name": "CK_F_R2wimg_bone08_0477",
+   "children": [
+    505,
+    506
+   ]
+  },
+  {
+   "i": 505,
+   "name": "CK_F_R2wimg_bone09_0478",
+   "children": []
+  },
+  {
+   "i": 506,
+   "name": "CK_F_R2wimg_bone10_0479",
+   "children": [
+    507,
+    508
+   ]
+  },
+  {
+   "i": 507,
+   "name": "CK_F_R2wimg_bone11_0480",
+   "children": []
+  },
+  {
+   "i": 508,
+   "name": "CK_F_R2wimg_bone046_0481",
+   "children": [
+    509
+   ]
+  },
+  {
+   "i": 509,
+   "name": "CK_F_R2wimg_bone047_0466",
+   "children": []
+  },
+  {
+   "i": 510,
+   "name": "CK_F_R2wimg_bone12_0483",
+   "children": [
+    511,
+    512
+   ]
+  },
+  {
+   "i": 511,
+   "name": "CK_F_R2wimg_bone13_0484",
+   "children": []
+  },
+  {
+   "i": 512,
+   "name": "CK_F_R2wimg_bone14_0485",
+   "children": [
+    513,
+    514
+   ]
+  },
+  {
+   "i": 513,
+   "name": "CK_F_R2wimg_bone15_0486",
+   "children": []
+  },
+  {
+   "i": 514,
+   "name": "CK_F_R2wimg_bone048_0487",
+   "children": [
+    515
+   ]
+  },
+  {
+   "i": 515,
+   "name": "CK_F_R2wimg_bone049_0488",
+   "children": []
+  },
+  {
+   "i": 516,
+   "name": "CK_F_R2wimg_bone16_0489",
+   "children": [
+    517,
+    518
+   ]
+  },
+  {
+   "i": 517,
+   "name": "CK_F_R2wimg_bone17_0490",
+   "children": []
+  },
+  {
+   "i": 518,
+   "name": "CK_F_R2wimg_bone18_0491",
+   "children": [
+    519,
+    520
+   ]
+  },
+  {
+   "i": 519,
+   "name": "CK_F_R2wimg_bone19_0492",
+   "children": []
+  },
+  {
+   "i": 520,
+   "name": "CK_F_R2wimg_bone050_0493",
+   "children": [
+    521
+   ]
+  },
+  {
+   "i": 521,
+   "name": "CK_F_R2wimg_bone051_0494",
+   "children": []
+  },
+  {
+   "i": 522,
+   "name": "CK_F_R2wimg_bone20_0495",
+   "children": [
+    523,
+    524
+   ]
+  },
+  {
+   "i": 523,
+   "name": "CK_F_R2wimg_bone21_0496",
+   "children": []
+  },
+  {
+   "i": 524,
+   "name": "CK_F_R2wimg_bone22_0497",
+   "children": [
+    525,
+    526
+   ]
+  },
+  {
+   "i": 525,
+   "name": "CK_F_R2wimg_bone23_0498",
+   "children": []
+  },
+  {
+   "i": 526,
+   "name": "CK_F_R2wimg_bone052_0499",
+   "children": [
+    527
+   ]
+  },
+  {
+   "i": 527,
+   "name": "CK_F_R2wimg_bone053_0500",
+   "children": []
+  },
+  {
+   "i": 528,
+   "name": "CK Xtra02_0501",
+   "children": [
+    529,
+    534
+   ]
+  },
+  {
+   "i": 529,
+   "name": "CK Xtra0202_0482",
+   "children": [
+    530,
+    533
+   ]
+  },
+  {
+   "i": 530,
+   "name": "CK Xtra0203_0504",
+   "children": [
+    531,
+    532
+   ]
+  },
+  {
+   "i": 531,
+   "name": "CK Xtra02Nub_0505",
+   "children": []
+  },
+  {
+   "i": 532,
+   "name": "CK_W_Dummy012_0506",
+   "children": []
+  },
+  {
+   "i": 533,
+   "name": "CK_W_Dummy010_0503",
+   "children": []
+  },
+  {
+   "i": 534,
+   "name": "CK_W_Dummy009_0507",
+   "children": []
+  },
+  {
+   "i": 535,
+   "name": "CK_F_R2wimg_bone30_0508",
+   "children": [
+    536,
+    537
+   ]
+  },
+  {
+   "i": 536,
+   "name": "CK_F_R2wimg_bone31_0509",
+   "children": []
+  },
+  {
+   "i": 537,
+   "name": "CK_F_R2wimg_bone32_0510",
+   "children": [
+    538,
+    539
+   ]
+  },
+  {
+   "i": 538,
+   "name": "CK_F_R2wimg_bone33_0511",
+   "children": []
+  },
+  {
+   "i": 539,
+   "name": "CK_F_R2wimg_bone056_0512",
+   "children": [
+    540
+   ]
+  },
+  {
+   "i": 540,
+   "name": "CK_F_R2wimg_bone057_0513",
+   "children": []
+  },
+  {
+   "i": 541,
+   "name": "CK_F_R2wimg_bone34_0514",
+   "children": [
+    542,
+    543
+   ]
+  },
+  {
+   "i": 542,
+   "name": "CK_F_R2wimg_bone35_0515",
+   "children": []
+  },
+  {
+   "i": 543,
+   "name": "CK_F_R2wimg_bone36_0516",
+   "children": [
+    544,
+    545
+   ]
+  },
+  {
+   "i": 544,
+   "name": "CK_F_R2wimg_bone37_0517",
+   "children": []
+  },
+  {
+   "i": 545,
+   "name": "CK_F_R2wimg_bone058_0518",
+   "children": [
+    546
+   ]
+  },
+  {
+   "i": 546,
+   "name": "CK_F_R2wimg_bone059_0519",
+   "children": []
+  },
+  {
+   "i": 547,
+   "name": "CK_F_R2wimg_bone44_0520",
+   "children": [
+    548,
+    549
+   ]
+  },
+  {
+   "i": 548,
+   "name": "CK_F_R2wimg_bone39_0521",
+   "children": []
+  },
+  {
+   "i": 549,
+   "name": "CK_F_R2wimg_bone40_0502",
+   "children": [
+    550,
+    551
+   ]
+  },
+  {
+   "i": 550,
+   "name": "CK_F_R2wimg_bone41_0523",
+   "children": []
+  },
+  {
+   "i": 551,
+   "name": "CK_F_R2wimg_bone060_0524",
+   "children": [
+    552
+   ]
+  },
+  {
+   "i": 552,
+   "name": "CK_F_R2wimg_bone061_0525",
+   "children": []
+  },
+  {
+   "i": 553,
+   "name": "CK_F_Rwimg_bone51_0526",
+   "children": [
+    554
+   ]
+  },
+  {
+   "i": 554,
+   "name": "CK_F_Rwimg_bone50_0527",
+   "children": []
+  },
+  {
+   "i": 555,
+   "name": "CK_F_Rwimg_bone49_0528",
+   "children": [
+    556
+   ]
+  },
+  {
+   "i": 556,
+   "name": "CK_F_Rwimg_bone46_0529",
+   "children": []
+  },
+  {
+   "i": 557,
+   "name": "CK_F_Rwimg_bone45_0530",
+   "children": [
+    558
+   ]
+  },
+  {
+   "i": 558,
+   "name": "CK_F_Rwimg_bone44_0531",
+   "children": []
+  },
+  {
+   "i": 559,
+   "name": "CK_F_R2wimg_bone26_0532",
+   "children": [
+    560
+   ]
+  },
+  {
+   "i": 560,
+   "name": "CK_F_R2wimg_bone27_0533",
+   "children": []
+  },
+  {
+   "i": 561,
+   "name": "CK_F_R2wimg_bone24_0534",
+   "children": [
+    562
+   ]
+  },
+  {
+   "i": 562,
+   "name": "CK_F_R2wimg_bone25_0535",
+   "children": []
+  },
+  {
+   "i": 563,
+   "name": "CK_F_R2wimg_bone054_0536",
+   "children": [
+    564
+   ]
+  },
+  {
+   "i": 564,
+   "name": "CK_F_R2wimg_bone055_0537",
+   "children": []
+  },
+  {
+   "i": 565,
+   "name": "CK_Neck_Muscle Strand003M_START_0538",
+   "children": [
+    566
+   ]
+  },
+  {
+   "i": 566,
+   "name": "CK_Neck_Muscle Strand003M_StartHdl_0539",
+   "children": []
+  },
+  {
+   "i": 567,
+   "name": "CK Xtra01_0540",
+   "children": [
+    568,
+    572
+   ]
+  },
+  {
+   "i": 568,
+   "name": "CK Xtra0102_0541",
+   "children": [
+    569,
+    570
+   ]
+  },
+  {
+   "i": 569,
+   "name": "CK Xtra01Nub_0522",
+   "children": []
+  },
+  {
+   "i": 570,
+   "name": "CK_F_R2wimg_bone45_0542",
+   "children": [
+    571
+   ]
+  },
+  {
+   "i": 571,
+   "name": "CK_F_R2wimg_bone38_0543",
+   "children": []
+  },
+  {
+   "i": 572,
+   "name": "CK_F_R2wimg_bone43_0544",
+   "children": [
+    573
+   ]
+  },
+  {
+   "i": 573,
+   "name": "CK_F_R2wimg_bone42_0545",
+   "children": []
+  },
+  {
+   "i": 574,
+   "name": "CK Xtra01Opp_0546",
+   "children": [
+    575,
+    579
+   ]
+  },
+  {
+   "i": 575,
+   "name": "CK Xtra01Opp02_0547",
+   "children": [
+    576,
+    577
+   ]
+  },
+  {
+   "i": 576,
+   "name": "CK Xtra01OppNub_0548",
+   "children": []
+  },
+  {
+   "i": 577,
+   "name": "CK_F_L2wimg_bone42_0549",
+   "children": [
+    578
+   ]
+  },
+  {
+   "i": 578,
+   "name": "CK_F_L2wimg_bone43_0550",
+   "children": []
+  },
+  {
+   "i": 579,
+   "name": "CK_F_L2wimg_bone45_0551",
+   "children": [
+    580
+   ]
+  },
+  {
+   "i": 580,
+   "name": "CK_F_L2wimg_bone44_0552",
+   "children": []
+  }
+ ]
+}
