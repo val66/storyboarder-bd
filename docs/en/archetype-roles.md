@@ -211,7 +211,36 @@ the epithet after the noun where English places it before. One order for both la
 "Shoulder left", which reads and sounds wrong. The English version would have been right without
 anyone thinking about it.
 
-**#378b, the screen.** One row per role, the list coming from the archetype. The persisted `os`
-field stays written, derived.
+**#378b, the screen's model. HALF DONE:** the assignment is written and tested
+(`propositionDeRoles3D`), the rendering remains.
+
+**One row per LIMB, not per role.** My design gave one row per role with a menu of every bone:
+thirteen rows and forty-nine-entry menus on a cerberus. Measurement said otherwise. `hipFL` means
+"the first bone of the front left leg", and that leg is a chain already known. Six rows,
+seven-entry menus, and the role level stays reachable, folded.
+
+**Folding follows CERTAINTY, not morphology**, a rule the user corrected against mine. What needs a
+decision is what unfolds. Measured across the humanoids, limbs unfolded out of five: vrm 0, unreal 1,
+mixamo, maison, vroid-alt and centaur 2, bird 3, cerberus, centaur1 and raptor 5. A spider whose legs
+had been named by hand would fold like a tidy humanoid; my version would have kept it open forever.
+
+### What the assignment cannot do, and shows rather than hides
+
+**Front and rear cannot be told apart.** `typeDeChaine3D` returns "leg" without saying which. The
+order of anchors along the trunk might say, but that is not measured. A quadruped's four legs
+therefore come out AMBIGUOUS, therefore unfolded.
+
+**An ambiguous assignment is never "certain".** That is what makes the folding rule usable, and a
+first version ignored it: it took the first chain available and labelled it "name", folding a wrong
+limb. That was the eighteen-slot defect on a cerberus, reintroduced at the scale of roles.
+
+**Scaffolding chains are still candidates.** Step 3's name filter (`IK`, `Pole`, `Target`) was never
+written in code, the modal being meant to handle it. On the dog the first leg chains are `IKBackLegL`
+and `IKFrontLegL`. They come out "structure", hence unfolded, hence visible.
+
+**On a quadruped, a chain named "arm" is a front leg.** Measured on the cerberus, whose front legs are
+called `Clavicle`, `UpperArm`, `Forearm`. Without that equivalence they find no limb and stay orphans.
+
+The persisted `os` field stays written, derived.
 
 **#375, poses per archetype**, which unblocks once the two above are in place.

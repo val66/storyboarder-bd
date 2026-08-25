@@ -12,8 +12,12 @@ import assert from 'node:assert/strict';
 
 import {
   decomposerRole3D, libelleDeRole3D, libelleCourtDeRole3D, membreDuRole3D, rolesDeLArchetype3D,
-  clesDeLArchetype3D,
+  clesDeLArchetype3D, propositionDeRoles3D, chainesAttribuables3D, estSur3D,
 } from '../src/archetype-roles.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { inferSkeletonMap } from '../src/skeleton-map.js';
 import { ANIMAL_JOINT_DEFS, ANIMAL_ARCHETYPES_3D, ARCHETYPES_3D } from '../src/constants.js';
 import { SLOTS } from '../src/skeleton-map.js';
 
@@ -274,6 +278,158 @@ describe('Les archétypes déclarés, numérotés, et vides (#378a)', () => {
   });
 });
 
+describe('Un membre par ligne, et la chaîne qui le tient (#378b)', () => {
+  const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const charger = (nom) => JSON.parse(
+    readFileSync(join(RACINE, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+  const proposer = (nom, archetype, enregistre) => {
+    const os = charger(nom);
+    return propositionDeRoles3D({ os, archetype, carte: inferSkeletonMap(os), enregistre: enregistre || {} }, fr);
+  };
+
+  test('un MEMBRE par ligne, pas un rôle : six lignes pour un quadrupède, pas treize', () => {
+    // Ma première conception donnait une ligne par rôle avec un menu de tous les os du fichier :
+    // treize lignes et des menus de quarante-neuf entrées sur un cerbère. `hipFL` veut dire « le
+    // premier os de la patte avant gauche », et cette patte est une chaîne déjà connue.
+    const p = proposer('cerbere', 'quadrupede');
+    assert.equal(p.length, 6);
+    assert.deepEqual(p.map(m => m.label), ['Tête', 'Patte avant gauche', 'Patte avant droite',
+      'Patte arrière gauche', 'Patte arrière droite', 'Queue']);
+    assert.equal(p.find(m => m.label === 'Queue').roles.length, 3, 'la queue porte ses trois rôles');
+  });
+
+  test('les segments prennent les rôles DANS L\'ORDRE, de la racine vers l\'extrémité', () => {
+    const queue = proposer('cerbere', 'quadrupede').find(m => m.label === 'Queue');
+    assert.deepEqual(queue.roles.map(r => r.osNom),
+      ['CERBERUS__Tail_040', 'CERBERUS__Tail1_041', 'CERBERUS__Tail2_042']);
+  });
+
+  test('une chaîne plus longue que ses rôles laisse ses derniers os SANS rôle', () => {
+    // Une patte de cerbère a cinq os, l'archétype quadrupède n'en nomme que deux. Les trois autres
+    // restent pilotables par curseurs et n'entrent dans aucune pose : c'est la décision n°12.
+    //
+    // ⚠️ LE CHIEN NE SERT PAS À CE TEST, et l'apprendre a été instructif : ses premières chaînes de
+    // patte sont des ÉCHAFAUDAGES `IKBackLegL`, longues de deux os exactement. Le filtre nommé de
+    // l'étape 3 n'a jamais été écrit en code, la modale devant s'en charger ; ces chaînes sont donc
+    // encore candidates. Elles sortent « structure », donc dépliées, donc visibles.
+    const patte = proposer('cerbere', 'quadrupede').find(m => m.label === 'Patte avant gauche');
+    assert.equal(patte.roles.length, 2, 'deux rôles seulement, hanche et genou');
+    assert.ok(patte.chaine.osNoms.length > 2, 'la chaîne du fichier est plus longue');
+    assert.equal(patte.roles.filter(r => r.osNom).length, 2, 'seuls les deux premiers os ont un rôle');
+  });
+
+  test('RÉGRESSION : une attribution AMBIGUË n\'est jamais « sûre »', () => {
+    // C'est ce qui rend la règle de repli utilisable. Sur le cerbère, `head` est réclamé par ses DEUX
+    // têtes latérales, la vraie étant sur le tronc. Une première version prenait la première venue
+    // et l'étiquetait « nom » : elle repliait donc un membre faux, c'est-à-dire le défaut des
+    // dix-huit emplacements réintroduit à l'échelle des rôles.
+    const tete = proposer('cerbere', 'quadrupede').find(m => m.label === 'Tête');
+    assert.equal(tete.origine, 'structure');
+    assert.equal(tete.sur, false, 'un membre ambigu doit rester déplié');
+  });
+
+  test('RÉGRESSION : avant et arrière ne se distinguent PAS, donc les pattes se déplient', () => {
+    // `typeDeChaine3D` rend « patte » sans dire laquelle. L'ordre des ancres le long du tronc
+    // pourrait le dire, mais ce n'est pas mesuré : plutôt que de deviner, on déplie.
+    ['cerbere', 'chien'].forEach(nom => {
+      proposer(nom, 'quadrupede').filter(m => /Patte/.test(m.label)).forEach(m => {
+        assert.equal(m.sur, false, `${nom} : ${m.label} est repliée alors que rien ne dit son côté`);
+      });
+    });
+  });
+
+  test('sur un quadrupède, une chaîne nommée « bras » est une patte avant', () => {
+    // Mesuré sur le cerbère, dont les pattes avant s'appellent `Clavicle`, `UpperArm`, `Forearm`.
+    // Sans cette équivalence, ces chaînes ne trouvent aucun membre et restent orphelines.
+    const p = proposer('cerbere', 'quadrupede');
+    const prises = p.map(m => m.chaine && m.chaine.nom).filter(Boolean);
+    assert.ok(prises.includes('Bras G') && prises.includes('Bras D'),
+      `les chaînes « bras » du cerbère ne sont attribuées à aucune patte : ${prises.join(', ')}`);
+  });
+
+  test('une chaîne n\'est JAMAIS attribuée à deux membres', () => {
+    // Deux membres sur une même chaîne donneraient deux fois les mêmes os, et une pose en
+    // annulerait une autre. Même garantie que « un os sous une seule clé » de #374.
+    [['cerbere', 'quadrupede'], ['chien', 'quadrupede'], ['araignee', 'arachnide'],
+      ['dragon', 'bipede_aile']].forEach(([nom, arch]) => {
+      const prises = proposer(nom, arch).map(m => m.chaine && m.chaine.racine).filter(Boolean);
+      assert.equal(new Set(prises).size, prises.length, `${nom} : une chaîne sert deux fois`);
+    });
+  });
+
+  test('l\'humanoïde RELIT la reconnaissance existante, il ne la refait pas', () => {
+    // `inferSkeletonMap` est mesurée et éprouvée sur les six fichiers réels. La refaire ici pour
+    // l'uniformité aurait été une seconde reconnaissance à côté de la première.
+    const p = proposer('mixamo', 'humanoide');
+    assert.equal(p.length, 5);
+    const bras = p.find(m => m.label === 'Bras gauche');
+    assert.deepEqual(bras.roles.map(r => r.osNom), ['mixamorigLeftShoulder', 'mixamorigLeftArm',
+      'mixamorigLeftForeArm', 'mixamorigLeftHand']);
+    assert.equal(bras.sur, true, 'un bras Mixamo est reconnu par le nom, il doit rester replié');
+  });
+
+  test('le REPLI suit la certitude, pas la morphologie', () => {
+    // Règle redressée par l'utilisateur : on déplie ce qui demande une DÉCISION. Une araignée dont
+    // les pattes seraient nommées à la main se replierait comme un humanoïde bien rangé.
+    // Mesuré sur les humanoïdes du corpus, membres dépliés sur cinq.
+    const attendu = { vrm: 0, unreal: 1, mixamo: 2, maison: 2, 'vroid-alt': 2, oiseau: 3, raptor: 5 };
+    Object.entries(attendu).forEach(([nom, n]) => {
+      const deplies = proposer(nom, 'humanoide').filter(m => !m.sur).length;
+      assert.equal(deplies, n, `${nom} : ${deplies} membres dépliés, ${n} attendus`);
+    });
+  });
+
+  test('« votre choix » compte comme SÛR, et gagne sur la proposition', () => {
+    // Un os choisi à la main est une décision prise ; la redemander à chaque ouverture reviendrait à
+    // ne pas l'avoir enregistrée.
+    const avant = proposer('cerbere', 'quadrupede').find(m => m.label === 'Tête');
+    assert.equal(avant.sur, false);
+    const apres = proposer('cerbere', 'quadrupede', {
+      os: { head: 'CERBERUS_R_HEAD_028', neck: 'CERBERUS_R_NECK_2_027' },
+    }).find(m => m.label === 'Tête');
+    assert.equal(apres.roles[0].osNom, 'CERBERUS_R_HEAD_028');
+    assert.equal(apres.roles[0].origine, 'manuel');
+    assert.equal(apres.sur, true, 'un membre entièrement choisi à la main doit se replier');
+  });
+
+  test('l\'étiquette d\'un membre montre son rôle le MOINS sûr', () => {
+    // TROU TROUVÉ PAR MUTATION : rien ne vérifiait l'étiquette affichée. Déclarer « vide » aussi sûr
+    // que « votre choix » passait tous les tests, parce que le REPLI se calcule ailleurs. Un membre
+    // à moitié rempli aurait donc porté l'étiquette de sa moitié réussie.
+    //
+    // Le chien est le cas réel : son groupe de tête trouve `Head_1` par le nom, et ne trouve rien
+    // pour le cou. L'étiquette doit dire « vide », pas « nom ».
+    const tete = proposer('chien', 'quadrupede').find(m => m.label === 'Tête');
+    assert.equal(tete.roles[0].origine, 'nom', 'la tête du chien est bien trouvée par son nom');
+    assert.equal(tete.roles[1].osNom, null, 'son cou, lui, n\'est pas trouvé');
+    assert.equal(tete.origine, 'vide', 'l\'étiquette du membre a pris celle de sa moitié réussie');
+    assert.equal(tete.sur, false);
+  });
+
+  test('un archétype sans rôle ne propose rien, il ne lève pas', () => {
+    assert.deepEqual(proposer('serpent', 'serpentin'), []);
+    assert.deepEqual(proposer('cerbere', 'complexe'), []);
+    assert.deepEqual(propositionDeRoles3D({}, fr), []);
+  });
+
+  test('estSur3D : « nom » et « manuel » seuls sont sûrs', () => {
+    assert.equal(estSur3D([{ origine: 'nom' }, { origine: 'manuel' }]), true);
+    assert.equal(estSur3D([{ origine: 'nom' }, { origine: 'structure' }]), false);
+    assert.equal(estSur3D([{ origine: 'vide' }]), false);
+    assert.equal(estSur3D([]), true, 'un membre sans rôle n\'a rien à confirmer');
+  });
+
+  test('les chaînes attribuables portent leur famille, ou null quand le nom ne dit rien', () => {
+    // Mesuré : 235 chaînes sur 488 n'ont aucun type lisible dans le corpus.
+    const araignee = chainesAttribuables3D(charger('araignee'), [], fr);
+    assert.ok(araignee.length > 20);
+    assert.ok(araignee.every(c => c.famille === null), 'l\'araignée ne nomme rien de lisible');
+    const cerbere = chainesAttribuables3D(charger('cerbere'), [], fr);
+    assert.deepEqual([...new Set(cerbere.map(c => c.famille))].sort(), ['arm', 'head', 'leg', 'tail']);
+  });
+});
+
 /**
  * JOURNAL DE MUTATION : la table des rôles (tâche #378a).
  *
@@ -287,4 +443,20 @@ describe('Les archétypes déclarés, numérotés, et vides (#378a)', () => {
  *   P8  les tentacules réutilisent la clé de la queue                           ROUGE
  *   P9  le radial invente huit tentacules sans lire le fichier                  ROUGE
  *   P10 l'anglais garde la majuscule du nom au milieu de la phrase              ROUGE
+ *
+ * JOURNAL DE MUTATION : l'attribution (tâche #378b, modèle).
+ *
+ *   Q1  une attribution ambiguë redevient « sûre »                              ROUGE
+ *   Q2  les pattes avant/arrière se déclarent sûres                             ROUGE
+ *   Q3  une chaîne peut servir deux membres                                     ROUGE
+ *   Q4  « bras » n'est plus une patte avant sur un quadrupède                    ROUGE
+ *   Q5  le choix manuel ne compte plus comme sûr                                ROUGE
+ *   Q6  les segments prennent les rôles à l'envers                              ROUGE
+ *   Q7  l'humanoïde refait sa propre reconnaissance                             ROUGE
+ *   Q8  un membre à moitié vide porte l'étiquette de sa moitié réussie          ROUGE
+ *
+ * ⚠️ Q8 A ÉCHAPPÉ D'ABORD, et le trou était réel : rien ne vérifiait l'ÉTIQUETTE affichée. Le repli
+ * se calcule par `estSur3D`, qui n'appelle pas `pireOrigine3D` ; déclarer « vide » aussi sûr que
+ * « votre choix » passait donc tous les tests. Le chien est le cas réel, son groupe de tête trouvant
+ * `Head_1` par le nom et rien pour le cou.
  */

@@ -223,7 +223,39 @@ français plaçant l'épithète après le nom là où l'anglais la place avant. 
 langues donne « Shoulder left », qui se comprend et sonne faux. La version anglaise, elle, aurait été
 juste sans qu'on y pense.
 
-**#378b, l'écran.** Une ligne par rôle, la liste venant de l'archétype. Le champ persisté `os` reste
-écrit, dérivé.
+**#378b, le modèle de l'écran. FAIT à moitié :** l'attribution est écrite et testée
+(`propositionDeRoles3D`), le rendu reste à faire.
+
+**Une ligne par MEMBRE, pas par rôle.** Ma conception donnait une ligne par rôle avec un menu de tous
+les os : treize lignes et des menus de quarante-neuf entrées sur un cerbère. La mesure a dit autre
+chose. `hipFL` veut dire « le premier os de la patte avant gauche », et cette patte est une chaîne
+déjà connue. Six lignes, des menus de sept entrées, et le niveau du rôle reste atteignable replié.
+
+**Le repli suit la CERTITUDE, pas la morphologie**, règle redressée par l'utilisateur contre la
+mienne. On déplie ce qui demande une décision. Mesuré sur les humanoïdes, membres dépliés sur cinq :
+vrm 0, unreal 1, mixamo, maison, vroid-alt et centaure 2, oiseau 3, cerbère, centaur1 et raptor 5.
+Une araignée dont les pattes seraient nommées à la main se replierait comme un humanoïde bien rangé ;
+ma version l'aurait gardée ouverte à vie.
+
+### Ce que l'attribution ne sait PAS faire, et qui se voit à l'écran plutôt que de se cacher
+
+**Avant et arrière ne se distinguent pas.** `typeDeChaine3D` rend « patte » sans dire laquelle.
+L'ordre des ancres le long du tronc pourrait le dire, mais ce n'est pas mesuré. Les quatre pattes
+d'un quadrupède sortent donc AMBIGUËS, donc dépliées.
+
+**Une attribution ambiguë n'est jamais « sûre ».** C'est ce qui rend la règle de repli utilisable, et
+une première version l'ignorait : elle prenait la première chaîne venue et l'étiquetait « nom »,
+repliant donc un membre faux. C'était le défaut des dix-huit emplacements sur un cerbère, réintroduit
+à l'échelle des rôles.
+
+**Les échafaudages sont encore candidats.** Le filtre nommé de l'étape 3 (`IK`, `Pole`, `Target`)
+n'a jamais été écrit en code, la modale devant s'en charger. Sur le chien, les premières chaînes de
+patte sont `IKBackLegL` et `IKFrontLegL`. Elles sortent « structure », donc dépliées, donc visibles.
+
+**Sur un quadrupède, une chaîne nommée « bras » est une patte avant.** Mesuré sur le cerbère, dont
+les pattes avant s'appellent `Clavicle`, `UpperArm`, `Forearm`. Sans cette équivalence elles ne
+trouvent aucun membre et restent orphelines.
+
+Le champ persisté `os` reste écrit, dérivé.
 
 **#375, les poses par archétype**, qui se débloque une fois les deux précédentes en place.

@@ -52,7 +52,9 @@
  */
 
 import { ANIMAL_JOINT_DEFS, ANIMAL_ARCHETYPES_3D } from './constants.js';
-import { SLOTS, SLOT_GROUPS, slotLabel } from './skeleton-map.js';
+import {
+  SLOTS, SLOT_GROUPS, slotLabel, lignesDeCorrespondance3D, typeDeChaine3D,
+} from './skeleton-map.js';
 
 /**
  * Les morceaux d'un identifiant d'articulation, et leur libellé dans les deux langues.
@@ -377,4 +379,215 @@ export function clesDeLArchetype3D(archetype, options){
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
     return 0;
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ATTRIBUTION : quelle chaîne du fichier tient quel membre de l'archétype.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Du vocabulaire des CHAÎNES à celui des RÔLES.
+ *
+ * `typeDeChaine3D` lit un nom d'os et rend « patte », « bras », « aile » ; les rôles parlent de
+ * `leg`, `arm`, `wing`. Deux vocabulaires nés à deux moments, et cette table est le seul endroit qui
+ * les rapproche. `cou` vise `head` parce que le cou appartient au groupe de la tête, exactement
+ * comme `neck` chez les animaux intégrés.
+ */
+const FAMILLE_DE_TYPE_3D = {
+  patte: 'leg', bras: 'arm', aile: 'wing', tete: 'head', cou: 'head', queue: 'tail',
+  tentacule: 'tentacle',
+};
+
+/** Le côté d'un membre, dans le vocabulaire des chaînes ('g' / 'd'), ou null. */
+function coteDuMembre3D(cleDeRole){
+  const d = decomposerRole3D(cleDeRole);
+  if (!d || !d.cote) return null;
+  return d.cote === 'L' ? 'g' : 'd';
+}
+
+/** La famille anatomique d'un membre, depuis la clé d'un de ses rôles. */
+function familleDuRole3D(cleDeRole){
+  const d = decomposerRole3D(cleDeRole);
+  return d ? (MEMBRE_PAR_SEGMENT_3D[d.segment] || d.segment) : null;
+}
+
+/**
+ * Les chaînes d'un squelette, prêtes à être attribuées. Fonction PURE.
+ *
+ * @returns `[{ racine, nom, cote, rang, osNoms, famille }]`, `famille` étant nulle quand le nom des
+ *          os ne dit rien. Mesuré : c'est le cas de 235 chaînes sur 488 dans le corpus.
+ */
+export function chainesAttribuables3D(os, membresEnregistres, traduire){
+  const t = traduire || ((en) => en);
+  const liste = (os || []).filter(o => o && o.id !== undefined);
+  const nomDe = new Map(liste.map(o => [o.id, o.name]));
+  const lignes = lignesDeCorrespondance3D(liste, membresEnregistres, t);
+  const sortie = [];
+  lignes.groupes.forEach(g => g.membres.forEach(m => {
+    const osNoms = m.segments.map(id => nomDe.get(id)).filter(Boolean);
+    const type = typeDeChaine3D(osNoms);
+    sortie.push({
+      racine: m.racine, nom: m.nom, cote: m.cote, rang: m.rang, retenu: m.retenu, osNoms,
+      famille: type ? (FAMILLE_DE_TYPE_3D[type[0]] || null) : null,
+    });
+  }));
+  return sortie;
+}
+
+/**
+ * Ce que l'écran de correspondance propose : un MEMBRE par ligne, et la chaîne qui le tient.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LE MEMBRE ET NON LE RÔLE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Ma première conception donnait une ligne par RÔLE, avec un menu de tous les os du fichier : sur un
+ * cerbère, treize lignes et des menus de quarante-neuf entrées. La mesure a dit autre chose. `hipFL`
+ * veut dire « le premier os de la patte avant gauche », et cette patte est une CHAÎNE que la
+ * décomposition connaît déjà. Attribuer la chaîne donne tous les rôles du membre d'un coup, dans
+ * l'ordre : six lignes, des menus de sept entrées.
+ *
+ * Le niveau du rôle reste atteignable, replié, pour les fichiers où l'ordre des segments trompe.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'HUMANOÏDE PASSE PAR LA RECONNAISSANCE EXISTANTE, ET C'EST DÉLIBÉRÉ
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `inferSkeletonMap` attribue déjà les dix-huit emplacements, elle est mesurée et éprouvée sur les
+ * six fichiers réels. La refaire ici pour l'uniformité aurait été une seconde reconnaissance à côté
+ * de la première, c'est-à-dire la faute que ce chantier passe son temps à éviter. L'unification est
+ * dans la FORME de l'écran, pas dans la duplication de ce qui marche.
+ *
+ * @param enregistre `{ os: { role: nomDOs }, membres: [...] }`, les choix humains relus du disque
+ * @returns `[{ cle, label, chaine, origine, sur, roles: [{ cle, label, osNom }] }]`
+ */
+export function propositionDeRoles3D({ os, archetype, carte, enregistre } = {}, traduire){
+  const t = traduire || ((en) => en);
+  const memoire = enregistre || {};
+  const roles = rolesDeLArchetype3D(archetype, { chaines: chainesAttribuables3D(os, memoire.membres, t).length }, t);
+  if (!roles.length) return [];
+
+  const membres = [];
+  roles.forEach(r => {
+    let m = membres.find(x => x.cle === r.membre);
+    if (!m) m = membres[membres.push({ cle: r.membre, label: r.membreLabel, roles: [] }) - 1];
+    m.roles.push({ cle: r.cle, label: r.label, osNom: null });
+  });
+
+  if (archetype === 'humanoide') return depuisLaCarte3D(membres, carte, memoire);
+  return depuisLesChaines3D(membres, chainesAttribuables3D(os, memoire.membres, t), memoire);
+}
+
+/** Cas humanoïde : on RELIT `inferSkeletonMap`, on ne la refait pas. */
+function depuisLaCarte3D(membres, carte, memoire){
+  const choix = (memoire.os) || {};
+  return membres.map(m => {
+    const roles = m.roles.map(r => {
+      const e = (carte || {})[r.cle];
+      return { ...r, osNom: choix[r.cle] || (e && e.name) || null, origine: origineDe3D(r.cle, choix, e) };
+    });
+    return { ...m, chaine: null, roles, origine: pireOrigine3D(roles), sur: estSur3D(roles) };
+  });
+}
+
+function origineDe3D(cle, choix, entree){
+  if (choix[cle]) return 'manuel';
+  if (!entree || entree.bone === undefined) return 'vide';
+  return entree.origine || 'structure';
+}
+
+/** Cas créature : on attribue une chaîne par membre, et ses segments prennent les rôles dans l'ordre. */
+function depuisLesChaines3D(membres, chaines, memoire){
+  const choix = (memoire.os) || {};
+  const prises = new Set();
+  // ⚠️ SUR UN QUADRUPÈDE, « BRAS » EST UNE PATTE AVANT. Mesuré sur le cerbère, dont les pattes avant
+  // s'appellent `Clavicle`, `UpperArm`, `Forearm` : `typeDeChaine3D` les lit « bras », ce qui est
+  // exact au niveau du NOM et faux au niveau de l'anatomie. Sans cette équivalence, ces chaînes ne
+  // trouvent aucun membre, et les pattes arrière remplissent les emplacements avant par défaut.
+  const familles = (cleDeRole) => {
+    const f = familleDuRole3D(cleDeRole);
+    if (f !== 'leg') return [f];
+    const aDesBras = membres.some(m => familleDuRole3D(m.roles[0].cle) === 'arm');
+    return aDesBras ? ['leg'] : ['leg', 'arm'];
+  };
+  // LE NOM D'ABORD, POUR TOUS LES MEMBRES, ensuite seulement le repli par côté. Attribuer membre par
+  // membre en essayant les deux à chaque fois laisserait le premier membre voler par sa règle faible
+  // une chaîne que le second aurait réclamée par son nom. Deux passes, et l'ordre des membres cesse
+  // de décider à la place du fichier.
+  const parNom = new Map(), ambigus = new Set();
+  membres.forEach(m => {
+    const fam = familles(m.roles[0].cle);
+    const cote = coteDuMembre3D(m.roles[0].cle);
+    const candidats = chaines.filter(x => !prises.has(x.racine) && x.retenu !== false
+      && fam.includes(x.famille) && (cote === null || x.cote === cote));
+    if (!candidats.length) return;
+    // ⚠️ UNE ATTRIBUTION AMBIGUË N'EST PAS UNE ATTRIBUTION SÛRE, et cette distinction est ce qui
+    // rend la règle de repli utilisable. Deux chaînes du même côté et de la même famille se
+    // disputent le membre : le fichier ne dit pas laquelle, et rien ici ne le sait.
+    //
+    // MESURÉ, ET C'EST LE CAS LE PLUS FRÉQUENT. Sur le cerbère, `head` est réclamé par ses DEUX
+    // têtes latérales, la vraie étant sur le tronc. Sur le chien, quatre chaînes réclament `patte`
+    // de chaque côté, dont des échafaudages `IKBackLegL`. Une première version prenait la première
+    // venue et l'étiquetait « nom » : elle repliait donc un membre faux, ce qui est exactement le
+    // défaut des dix-huit emplacements sur un cerbère, réintroduit à l'échelle des rôles.
+    //
+    // ⚠️ AVANT ET ARRIÈRE NE SE DISTINGUENT PAS ENCORE. `typeDeChaine3D` rend « patte » sans dire
+    // laquelle, et l'ordre des ancres le long du tronc pourrait le dire, mais ce n'est PAS mesuré.
+    // Les quatre pattes d'un quadrupède sortent donc ambiguës, donc dépliées : l'utilisateur voit
+    // le problème au lieu de le subir.
+    const avantEtArriere = membres.some(x => (decomposerRole3D(x.roles[0].cle) || {}).avant === 'B')
+      && familleDuRole3D(m.roles[0].cle) === 'leg';
+    prises.add(candidats[0].racine);
+    parNom.set(m.cle, candidats[0]);
+    if (candidats.length > 1 || avantEtArriere) ambigus.add(m.cle);
+  });
+  return membres.map(m => {
+    const cote = coteDuMembre3D(m.roles[0].cle);
+    const manuel = m.roles.map(r => choix[r.cle]).find(Boolean);
+    let chaine = parNom.get(m.cle) || null;
+    let origine = chaine ? (ambigus.has(m.cle) ? 'structure' : 'nom') : 'vide';
+    if (manuel) {
+      const c = chaines.find(x => x.osNoms.includes(manuel));
+      if (c) { chaine = c; origine = 'manuel'; }
+    } else if (!chaine) {
+      const c = chaines.find(x => !prises.has(x.racine) && x.retenu !== false
+        && (cote === null || x.cote === cote));
+      if (c) { prises.add(c.racine); chaine = c; origine = 'structure'; }
+    }
+    // LES SEGMENTS PRENNENT LES RÔLES DANS L'ORDRE, de la racine vers l'extrémité. Une chaîne plus
+    // longue que la liste de rôles laisse ses derniers os sans rôle, ce qui est exact : une patte de
+    // chien importé a six os, l'archétype quadrupède n'en nomme que deux.
+    const roles = m.roles.map((r, i) => ({
+      ...r,
+      osNom: choix[r.cle] || (chaine ? (chaine.osNoms[i] || null) : null),
+      origine: choix[r.cle] ? 'manuel' : (chaine && chaine.osNoms[i] ? origine : 'vide'),
+    }));
+    return { ...m, chaine, roles, origine: pireOrigine3D(roles), sur: estSur3D(roles) };
+  });
+}
+
+/**
+ * Ce membre est-il SÛR, c'est-à-dire replié à l'ouverture ? Fonction PURE.
+ *
+ * ⚠️ LA RÈGLE NE PARLE PAS D'ARCHÉTYPE, et c'est l'utilisateur qui l'a redressée. Je proposais de
+ * déplier selon la morphologie, humanoïde ouvert, créature repliée. Sa règle est meilleure : on
+ * déplie ce qui demande une DÉCISION, pas ce qui appartient à une catégorie. Une araignée dont les
+ * huit pattes ont été nommées à la main se replie donc comme un humanoïde bien rangé, alors que ma
+ * version l'aurait gardée ouverte à vie.
+ *
+ * Mesuré sur les dix humanoïdes du corpus, membres dépliés sur cinq : vrm 0, unreal 1, mixamo,
+ * maison, vroid-alt et centaure 2, oiseau 3, cerbère, centaur1 et raptor 5. Le raptor est à 100 %
+ * de « structure », il s'ouvre en entier, ce qui est juste.
+ *
+ * « votre choix » COMPTE COMME SÛR : un os choisi à la main est une décision prise, la redemander à
+ * chaque ouverture reviendrait à ne pas l'avoir enregistrée.
+ */
+export function estSur3D(roles){
+  return (roles || []).every(r => r.origine === 'nom' || r.origine === 'manuel');
+}
+
+/** L'origine la MOINS sûre parmi les rôles d'un membre : c'est elle que l'étiquette affiche. */
+function pireOrigine3D(roles){
+  const rang = { manuel: 0, nom: 1, structure: 2, vide: 3 };
+  return (roles || []).reduce((pire, r) => (rang[r.origine] > rang[pire] ? r.origine : pire), 'manuel');
 }
