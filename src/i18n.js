@@ -224,7 +224,7 @@ export const I18N_TRAILING = [
   ['#terrainModalCancel', 'Cancel', 'Annuler'],
   ['#terrainModalSave', 'Save', 'Enregistrer'],
   // ── Champs et listes restés en français en mode anglais, relevés avec les 49 boutons ─────────
-  //    Les <option> sont visées par leur `value`, qui est PERSISTÉE (cf. docs/persisted-data.md) :
+  //    Les <option> sont visées par leur `value`, qui est PERSISTÉE (cf. docs/en/persisted-data.md) :
   //    viser le rang aurait cassé au premier réordonnancement, viser le texte aurait été circulaire.
   ['#personaGenreSelect option[value="homme"]', 'Male', 'Homme'],
   ['#personaGenreSelect option[value="femme"]', 'Female', 'Femme'],

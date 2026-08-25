@@ -1,8 +1,8 @@
 # Internal notes
 
-*[Version française](README.fr.md)*
+*[Version française](../fr/README.md)*
 
-Contributor documentation. What is addressed to the user is in the [README](../README.md) and in
+Contributor documentation. What is addressed to the user is in the [README](../../README.md) and in
 the built-in manual (`src/help-content.js`).
 
 ## Read before touching the code
@@ -42,9 +42,9 @@ down.
 
 ---
 
-Every document exists in two languages: `name.md` in English, `name.fr.md` in French, mirroring
-`README.md` / `README.fr.md` at the root. The French version is the one the decisions were
-originally written in; both are kept in step, and `tests/docs.test.mjs` refuses a document without
-its counterpart.
+Every document exists in two languages, **one folder per language**: `docs/en/name.md` and
+`docs/fr/name.md`, same base name. The French version is the one the decisions were originally
+written in; both are kept in step, and `tests/docs.test.mjs` refuses a document without its
+counterpart, a dead link, or a section added on one side only.
 
 The code and its comments are in English (see [architecture.md](architecture.md#language)).

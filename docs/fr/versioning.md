@@ -109,7 +109,7 @@ paquets installés, sous Windows. La CI couvre exactement ce qui lui échappe :
 - **`git commit --no-verify`**, que ce document recommande lui-même pour un amend.
 
 Volontairement absents : la vérification de types (402 diagnostics, zéro défaut réel, cf.
-architecture.fr.md règle n°5) et la construction de l'installeur (demande Windows et plusieurs
+architecture.md règle n°5) et la construction de l'installeur (demande Windows et plusieurs
 minutes, pour une chaîne qui ne change presque jamais).
 
 `tests/ci-setup.test.mjs` garde le câblage : que la CI lance **les deux** vérifications, qu'elle

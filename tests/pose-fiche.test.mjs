@@ -14,7 +14,7 @@
  * que par lecture du source, c'est-à-dire pas du tout.
  *
  * Le squelette fabriqué suit la convention Mixamo, la plus répandue des cinq mesurées
- * (cf. docs/imported-skeletons.md), et il est monté en T-pose bras écartés.
+ * (cf. docs/en/imported-skeletons.md), et il est monté en T-pose bras écartés.
  *
  * Hors de portée, comme partout : le rendu. On vérifie ce qui est écrit, pas ce qui est peint.
  */
@@ -448,7 +448,7 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     // même squelette agrandi, une mutation qui recalculait depuis l'ANCIENNE figure passait alors
     // au vert, parce que l'échelle ne change ni le repère du corps ni les axes des os, donc les
     // angles sortaient identiques. Ce qui distingue vraiment deux fichiers, c'est le repos de leurs
-    // os : 106 sur 108 sont déjà tournés dans les fichiers réels (cf. docs/imported-skeletons.md).
+    // os : 106 sur 108 sont déjà tournés dans les fichiers réels (cf. docs/en/imported-skeletons.md).
     //
     // ⚠️ ET PAS AUTOUR DE L'AXE DU GESTE. Deuxième version : une rotation de repos autour de Z, pour
     // un geste d'épaule qui tourne justement autour de Z, or tourner autour de Z ne déplace pas
@@ -976,7 +976,7 @@ describe('Éditeur : l\'azimut d\'ouverture suit la figure affichée', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('« Allongé » couche AUSSI un modèle importé', () => {
   // ⚠️ ON N'APPELLE PAS ensureObjectRigEntry3D ICI : elle ajoute le rig à la scène 3D, ce qui
-  // construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md). On exerce donc
+  // construit un WebGLRenderer, injoignable sous Node (cf. docs/en/testing-method.md). On exerce donc
   // les deux moitiés séparément : le constructeur (joignable) pour le groupe de pose, et la
   // fonction qui écrit la bascule. Le fait que la seconde soit bien APPELÉE par la première est
   // épinglé par une lecture de source, plus bas, c'est le seul moyen honnête de le dire ici.
@@ -1183,7 +1183,7 @@ describe('un modèle couché n\'est pas agrandi', () => {
 
   test('RÉGRESSION : le PLACEMENT s\'en sert vraiment', () => {
     // Attrapé par mutation : retirer l'appel dans renderPanelSceneUncached3D laissait tout vert. Le
-    // rendu construit un WebGLRenderer, injoignable sous Node (cf. docs/testing-method.md), la
+    // rendu construit un WebGLRenderer, injoignable sous Node (cf. docs/en/testing-method.md), la
     // lecture de source est donc le seul moyen honnête de dire que la mesure atteint le placement.
     //
     // Ce qui est gardé : que la hauteur debout serve de `naturalHOverride`, et SEULEMENT pour les

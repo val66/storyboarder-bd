@@ -343,7 +343,7 @@ export function getRoomConnectedComponents(panel, page){
 /**
  * ⚠️ `horsChampFn` EST INJECTABLE, et ce n'est pas une commodité de test gratuite. Décider qu'un
  * Élément est hors champ demande de le PROJETER, donc la caméra de la Case, donc WebGL,
- * injoignable sous Node (cf. docs/testing-method.md). Sans ce paramètre, toute la construction de
+ * injoignable sous Node (cf. docs/en/testing-method.md). Sans ce paramètre, toute la construction de
  * cette liste devenait invérifiable, y compris ce qui n'a rien à voir avec la 3D : l'ordre des
  * groupes, le compte dans le titre, la présence des séparateurs. Le défaut par défaut reste le
  * vrai calcul ; seuls les tests passent autre chose.

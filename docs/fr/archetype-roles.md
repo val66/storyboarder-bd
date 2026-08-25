@@ -1,13 +1,13 @@
 # Rôles d'archétype
 
-*[English version](archetype-roles.md)*
+*[English version](../en/archetype-roles.md)*
 
 > **Décidé avec l'utilisateur, pas encore construit.** Écrit avant une ligne de code, pour ne pas
 > être rediscuté dans trois semaines. Tâches #378a et #378b ; c'est le prérequis de #375.
 >
 > Ce qui fonctionne déjà pour les fichiers importés est dans
-> [imported-skeletons.fr.md](imported-skeletons.fr.md). Le chantier des rigs non humanoïdes est dans
-> [creature-rigs.fr.md](creature-rigs.fr.md).
+> [imported-skeletons.md](imported-skeletons.md). Le chantier des rigs non humanoïdes est dans
+> [creature-rigs.md](creature-rigs.md).
 
 ## D'où ça vient
 
@@ -40,7 +40,7 @@ libellés français : réparé là, refait ici.
 
 ## Le corpus, et ce qu'il mesure
 
-Les mêmes dix-sept fixtures que [creature-rigs.fr.md](creature-rigs.fr.md), 3032 os, 488 chaînes.
+Les mêmes dix-sept fixtures que [creature-rigs.md](creature-rigs.md), 3032 os, 488 chaînes.
 
 ### La coïncidence qui rend l'unification possible
 
@@ -101,7 +101,7 @@ persistés.
 ⚠️ **Ces listes existent déjà.** Elles ont été écrites en #367, en alignant les animaux intégrés sur
 les archétypes, sans qu'on voie à quoi elles serviraient d'autre : ce sont les identifiants
 d'articulation des animaux intégrés, et ils sont **déjà persistés et protégés** (cf.
-[persisted-data.fr.md](persisted-data.fr.md)).
+[persisted-data.md](persisted-data.md)).
 
 | archétype | rôles |
 |---|---|

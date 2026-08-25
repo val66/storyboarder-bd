@@ -70,7 +70,7 @@ export const HAND_STATES = [
 //   redresse, sans message, dans un Projet qu'on croyait seulement rouvrir.
 //
 // POSE_3D est donc le dernier recours, et il ne se vide pas. Ajouter une clé ici la propose ;
-// l'enlever cesse de la proposer sans rien casser. Le test de docs/pose-library.md épingle le sens
+// l'enlever cesse de la proposer sans rien casser. Le test de docs/en/pose-library.md épingle le sens
 // de l'inclusion : POSITIONS ⊆ POSE_3D, jamais l'égalité.
 // ⚠️ CES LIBELLÉS-LÀ DEVIENNENT DES DONNÉES. Le semis de la bibliothèque (seedPoseLibrary3D) COPIE
 // le libellé dans le `name` de la pose, qui est ensuite persisté et renommable. Changer de langue
@@ -582,7 +582,7 @@ export const POSE_HANDLES = [
   // poignets, et non un objet `{ x, z }` comme l'épaule et la hanche. Les deux conventions
   // coexistent déjà ; celle-ci est la plus récente et la plus lisible dans un fichier de Projet, où
   // `lClavicleRotZ: 0.2` se comprend seul. ⚠️ Ces noms partent dans les Projets enregistrés : ils ne
-  // se renomment plus (cf. docs/persisted-data.md).
+  // se renomment plus (cf. docs/en/persisted-data.md).
   { id: 'neck', group: 'neckGroup', mode: 'hinge2', fieldV: 'neckRotX', fieldH: 'neckRotY' },
   { id: 'lClavicle', group: 'lClavicle', mode: 'hinge2', fieldV: 'lClavicleRotX', fieldH: 'lClavicleRotZ' },
   { id: 'rClavicle', group: 'rClavicle', mode: 'hinge2', fieldV: 'rClavicleRotX', fieldH: 'rClavicleRotZ' },
@@ -681,7 +681,7 @@ export const ANIMAL_JOINT_DEFS = {
   // LES IDENTIFIANTS SONT CEUX DU SINGE, l'autre bipède : `hipFL`, `kneeFL`. Le `F` y veut dire
   // « avant » et ne signifie rien pour un bipède, mais c'est un identifiant PERSISTÉ dans
   // `animalJoints3d` ; en inventer un quatrième style coûterait plus que cette bizarrerie, qui ne
-  // s'affiche nulle part. Ajouter est permis, renommer non (cf. docs/persisted-data.md).
+  // s'affiche nulle part. Ajouter est permis, renommer non (cf. docs/en/persisted-data.md).
   oiseau: [
     { group: 'Tête',         joints: [{ id:'head',  label:'Tête',   axis:'x', min:-0.8, max:0.8 }] },
     { group: 'Aile gauche',  joints: [{ id:'wingL', label:'Aile G', axis:'z', min:-0.5, max:1.5 }] },
@@ -877,7 +877,7 @@ export const PERSONA_EDITOR_RENDER_MAX_PX = 2048;
 export const PERSONA_PREVIEW_MAX_PX = 900;
 
 // Fix 55 : squelette d'une pose enregistrée. ⚠️ VALEUR PERSISTÉE (champ `skeleton` de `poses`,
-// cf. docs/persisted-data.md) : ne pas renommer.
+// cf. docs/en/persisted-data.md) : ne pas renommer.
 //
 // Seuls les Personnages ont des poses aujourd'hui, donc une seule valeur existe. On la tague quand
 // même dès le premier enregistrement : le jour où les animaux en auront, distinguer après coup les
@@ -996,7 +996,7 @@ export const PERSONA_PREVIEW_PAN_SENS = 0.0055;
 //   `origine: 'structure'` — rien ne dit rien, on propose la forme la plus simple compatible.
 //
 // AUCUN ARCHÉTYPE N'EST UN VERDICT. L'utilisateur peut toujours en changer, et « Complexe » rend
-// l'écran générique, où chaque chaîne se coche et se nomme à la main. Voir docs/creature-rigs.md.
+// l'écran générique, où chaque chaîne se coche et se nomme à la main. Voir docs/en/creature-rigs.md.
 /**
  * La morphologie de chaque animal intégré. SOURCE UNIQUE du lien entre les deux mondes.
  *

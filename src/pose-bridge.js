@@ -31,7 +31,7 @@
  *     modèle manifestement plié ;
  *   — elle est RETOUCHABLE : on part d'une pose et on l'ajuste, sans quoi la bibliothèque serait un
  *     aller sans retour ;
- *   — aucun champ persisté n'est ajouté, donc aucune migration (cf. docs/persisted-data.md).
+ *   — aucun champ persisté n'est ajouté, donc aucune migration (cf. docs/en/persisted-data.md).
  *
  * Et cela dit sans ambiguïté ce qu'une pose fait aux réglages manuels : elle les REMPLACE. C'est le
  * comportement du Personnage, demandé explicitement pour que les deux se ressemblent.

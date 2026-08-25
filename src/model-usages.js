@@ -25,7 +25,7 @@
 import { S } from './state.js';
 import { isImportedModel } from './model-store.js';
 
-// Injectés (cf. docs/architecture.md règle n°2) : events.js importe ce module, l'importer en retour
+// Injectés (cf. docs/en/architecture.md règle n°2) : events.js importe ce module, l'importer en retour
 // fermerait un cycle. `disableSceneCameraMode` n'est pas un ornement, quitter l'éditeur de Scène
 // sans l'appeler laisse le mode Caméra actif « en arrière-plan » (cf. scenes.js).
 let _cb = {};

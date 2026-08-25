@@ -24,7 +24,7 @@
  *
  * CE QU'ON N'AFFIRME PAS : que tourner l'axe X lève le bras. C'est faux, et c'est assumé, cinq
  * des six fichiers mesurés alignent leurs os sur +Y, le rig Unreal sur ±X selon le côté et le
- * membre (cf. docs/imported-skeletons.md). Traduire un vocabulaire de pose partagé vers le bon
+ * membre (cf. docs/en/imported-skeletons.md). Traduire un vocabulaire de pose partagé vers le bon
  * axe de chaque os est le travail de l'étape E.
  */
 // Le stub DOM/THREE : rig3d.js utilise `THREE` comme global (chargé par <script> dans index.html),
@@ -609,7 +609,7 @@ describe('Les curseurs d\'une créature viennent de ses chaînes (#374)', () => 
   test('les os de tête de tronc, qui portent TOUS les membres, n\'ont pas de curseur', () => {
     // Même argument que pour le bassin : les tourner fait pivoter la figure entière, ce que
     // l'Orientation de l'Élément fait déjà. Critère structurel, pas un pourcentage : la mesure des
-    // fractions entraînées ne montre AUCUN trou où couper (cf. docs/creature-rigs.md).
+    // fractions entraînées ne montre AUCUN trou où couper (cf. docs/en/creature-rigs.md).
     const os = charger('araignee');
     const pilotables = new Set(tousLesOs(groupesPosablesMembres3D(os, [], fr)));
     assert.equal(pilotables.has('_rootJoint'), false, 'la racine ne doit pas être pilotable');

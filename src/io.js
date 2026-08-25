@@ -63,7 +63,7 @@ export function supportsFileSystemAccess(){ return typeof window.showSaveFilePic
 //
 // ⚠️ Le NOM du champ et sa forme ne changent pas : un fichier écrit avant ce changement reste lu à
 // l'identique, et un fichier écrit après reste lisible par une version antérieure. Seule la portée
-// change (cf. docs/persisted-data.md).
+// change (cf. docs/en/persisted-data.md).
 export function serializeProject(){
   return JSON.stringify({
     projectName: S.projectName, tomes: S.tomes,
@@ -516,7 +516,7 @@ export function resyncIdCounter(data){
  * WHY IT RUNS FIRST. applyProjectData used to assign S.tomes and only then reach the code that
  * throws. The exception left a half-loaded Project in memory while S.projectFilePath still pointed
  * at the PREVIOUS file, one Ctrl+S away from destroying it. Same ordering rule as
- * tools/bump-version.mjs: all checks before all writes (cf. docs/versioning.md).
+ * tools/bump-version.mjs: all checks before all writes (cf. docs/en/versioning.md).
  */
 export function validateProjectShape(data){
   if (data === null || data === undefined) return;      // nouveau Projet
@@ -628,7 +628,7 @@ export function applyProjectData(data){
   // le chemin de dessin est synchrone et ne peut pas patienter, donc les modèles arrivent après, et
   // leur arrivée redéclenche un rendu (cf. setModelCacheCallbacks). Le Projet s'ouvre entièrement
   // même si un fichier manque, chaque modèle absent devient une boîte de remplacement, et aucun
-  // Élément n'est supprimé (cf. docs/persisted-data.md § 5).
+  // Élément n'est supprimé (cf. docs/en/persisted-data.md § 5).
   const _tousLesObjets = [...S.tomes, ...S.scenes]
     .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
   preloadModelsFor(_tousLesObjets);

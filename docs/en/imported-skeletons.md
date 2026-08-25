@@ -1,6 +1,6 @@
 # Imported skeletons — what has been measured, and what is still open
 
-*[Version française](imported-skeletons.fr.md)*
+*[Version française](../fr/imported-skeletons.md)*
 
 This document collects the MEASUREMENTS taken on the six real `.glb` files used as a test bench. It
 exists because this is the area where I most often assumed instead of measuring, and where two of

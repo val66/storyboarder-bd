@@ -2,7 +2,7 @@
 
 *[Version française](CONTRIBUTING.fr.md)*
 
-Thanks for looking. This file is deliberately short; the reasoning lives in [`docs/`](docs/README.md).
+Thanks for looking. This file is deliberately short; the reasoning lives in [`docs/`](docs/en/README.md).
 
 ## Setup
 
@@ -28,11 +28,11 @@ commit and touches nothing. Escape hatch for a work-in-progress commit: `git com
 **1. Never rename anything that is written to a project file.** Field names, type discriminator
 values — `'tracé'` with its accent, `'cloture'` without. Renaming one makes every already-saved
 project unreadable, and nothing signals it. This is the most important rule here:
-[`docs/persisted-data.md`](docs/persisted-data.md), guarded by `tests/persisted-format.test.mjs`.
+[`docs/en/persisted-data.md`](docs/en/persisted-data.md), guarded by `tests/persisted-format.test.mjs`.
 
 **2. `main.js` and `preload.js` are never touched for an application feature.** They are the
 Electron process files. Application code lives in `src/*.js`. See
-[`docs/architecture.md`](docs/architecture.md).
+[`docs/en/architecture.md`](docs/en/architecture.md).
 
 **3. A user-visible change updates four things in the same commit:** `README.md`, `README.fr.md`,
 the built-in manual `src/help-content.js` **in both languages**, and `src/i18n.js` if a label is
@@ -48,7 +48,7 @@ the code it defends and check it goes red. This repository has been bitten repea
 were green for the wrong reason: one satisfied by a *comment* rather than code, one asserting on a
 value the DOM stub never stores, one whose mutation silently did not apply. Each of those looked
 like a passing test and proved nothing. See
-[`docs/testing-method.md`](docs/testing-method.md).
+[`docs/en/testing-method.md`](docs/en/testing-method.md).
 
 Anything needing real WebGL is out of reach (`THREE.WebGLRenderer` cannot be built under Node), as
 is event wiring — there is no real DOM. Those parts are checked by source inspection, and each test
@@ -57,18 +57,19 @@ file's header says what it excludes and why.
 ## Things you do not need to do
 
 **Do not bump the version by hand.** The pre-commit hook does it. `package.json`, `src/version.js`
-and both READMEs must agree, and a test enforces it — [`docs/versioning.md`](docs/versioning.md).
+and both READMEs must agree, and a test enforces it — [`docs/en/versioning.md`](docs/en/versioning.md).
 
 **Do not fix type-checker diagnostics.** `npm run typecheck` reports around 400 of them, of which
 **zero** were real defects when measured. It is not wired into any gate for that reason
-([`docs/architecture.md`](docs/architecture.md), rule #5). If you are about to "clean them up",
+([`docs/en/architecture.md`](docs/en/architecture.md), rule #5). If you are about to "clean them up",
 read that section first.
 
 ## Language
 
 Code and comments in English. Domain terms stay French — `tracé`, `Case`, `Tome`, `Planche` — because
 they are in the saved data and on screen; translating them would create a third vocabulary.
-Documentation in `docs/` is bilingual and a test refuses a file without its counterpart.
+Documentation in `docs/` is bilingual, one folder per language (`docs/en/`, `docs/fr/`, same base
+name), and a test refuses a file without its counterpart.
 
 Commit messages: whichever language you think in. Say **why**, not what — the diff already says what.
 

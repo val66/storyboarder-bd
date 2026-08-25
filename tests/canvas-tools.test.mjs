@@ -135,7 +135,7 @@ describe('Tracé enregistré : le seuil, et le vocabulaire persisté', () => {
 
   test('deux points suffisent, et l\'Élément porte le vocabulaire figé', () => {
     // `type: 'tracé'` et `tracéType: 'muret'` sont des valeurs PERSISTÉES (cf.
-    // docs/persisted-data.md) : ce test les épingle à l'endroit où elles sont écrites, en plus
+    // docs/en/persisted-data.md) : ce test les épingle à l'endroit où elles sont écrites, en plus
     // du balayage global de persisted-format.test.mjs.
     startTraceTool(CASE, 'muret');
     S.traceTool.pts = [{ x: 10, y: 10 }, { x: 110, y: 60 }];

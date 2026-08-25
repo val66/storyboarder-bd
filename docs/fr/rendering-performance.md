@@ -1,6 +1,6 @@
 # Performance du rendu — mesurée, août 2026
 
-*[English version](rendering-performance.md)*
+*[English version](../en/rendering-performance.md)*
 
 Cette note consigne une campagne de mesure pour que la prochaine personne qui se demande « le
 chemin de dessin est-il lent ? » lise des chiffres au lieu de refaire des suppositions. La sonde qui

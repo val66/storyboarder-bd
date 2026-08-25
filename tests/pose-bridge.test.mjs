@@ -6,7 +6,7 @@
  * des axes, et la traduction elle-même sur des repères construits à la main.
  *
  * CE QUI NE L'EST PAS : le rendu WebGL, et la MESURE des repères sur de vrais fichiers `.glb`, les
- * six fichiers d'essai ne sont pas versionnés (cf. docs/imported-skeletons.md), et Three ne construit
+ * six fichiers d'essai ne sont pas versionnés (cf. docs/en/imported-skeletons.md), et Three ne construit
  * pas de renderer sous Node. Les repères sont donc fournis en dur ici : ce qu'on vérifie, c'est le
  * calcul, pas la lecture du disque.
  */
@@ -24,7 +24,7 @@ import {
 
 const REPERE_IDENTITE = { droite: [1, 0, 0], haut: [0, 1, 0], avant: [0, 0, 1] };
 // Un corps dont la verticale est +Z : ce n'est pas une hypothèse d'école : `hulk_-_sm_bnd.glb` et
-// `worker_j.glb` sont exactement dans ce cas (cf. docs/imported-skeletons.md §4).
+// `worker_j.glb` sont exactement dans ce cas (cf. docs/en/imported-skeletons.md §4).
 const REPERE_VERTICAL_Z = { droite: [1, 0, 0], haut: [0, 0, 1], avant: [0, -1, 0] };
 
 const IDENTITE = [0, 0, 0, 1];

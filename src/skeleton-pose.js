@@ -42,7 +42,7 @@
  *
  * Les axes de repos DIFFÈRENT D'UN FICHIER À L'AUTRE, et parfois d'un os à l'autre : cinq des six
  * fichiers mesurés alignent leurs os sur +Y, le rig Unreal sur ±X selon le côté et le membre
- * (cf. docs/imported-skeletons.md). « Lever le bras » n'est donc pas le même axe partout, et
+ * (cf. docs/en/imported-skeletons.md). « Lever le bras » n'est donc pas le même axe partout, et
  * aucune correction générale n'est tentée ICI.
  *
  * ⚠️ UNE VERSION ANTÉRIEURE DE CE COMMENTAIRE AFFIRMAIT que sur anime_girl1 « les membres pointent
@@ -312,7 +312,7 @@ export function groupesPosablesMembres3D(os, membres, traduire){
   lignes.groupes.forEach(g => {
     // UNE CHAÎNE DÉCOCHÉE N'A PAS DE CURSEUR. C'est le seul filtre, et il est HUMAIN : la case de
     // l'écran de correspondance (#373). Le code n'écarte rien de lui-même, faute de savoir le faire,
-    // cf. l'étape 3 de docs/creature-rigs.md et l'hypothèse de la longueur, démentie.
+    // cf. l'étape 3 de docs/en/creature-rigs.md et l'hypothèse de la longueur, démentie.
     const chaines = g.membres
       .filter(m => m.retenu)
       .map(m => ({ titre: m.rang > 1 ? `${m.nom} ${t('rank', 'rang')} ${m.rang}` : m.nom, os: rangees(m.segments) }))

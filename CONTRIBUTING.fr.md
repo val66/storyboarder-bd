@@ -3,7 +3,7 @@
 *[English version](CONTRIBUTING.md)*
 
 Merci d'être passé. Ce fichier est volontairement court ; le raisonnement est dans
-[`docs/`](docs/README.fr.md).
+[`docs/`](docs/fr/README.md).
 
 ## Mise en route
 
@@ -30,12 +30,12 @@ le commit sans rien toucher. Échappatoire pour un commit en cours de travail : 
 **1. Ne jamais renommer ce qui est écrit dans un fichier projet.** Noms de champs, valeurs
 discriminantes — `'tracé'` avec son accent, `'cloture'` sans le sien. En renommer un rend illisible
 tout projet déjà enregistré, et rien ne le signale. C'est la règle la plus importante ici :
-[`docs/persisted-data.fr.md`](docs/persisted-data.fr.md), gardée par
+[`docs/fr/persisted-data.md`](docs/fr/persisted-data.md), gardée par
 `tests/persisted-format.test.mjs`.
 
 **2. `main.js` et `preload.js` ne se touchent jamais pour une fonctionnalité.** Ce sont les fichiers
 de processus Electron. Le code applicatif vit dans `src/*.js`. Voir
-[`docs/architecture.fr.md`](docs/architecture.fr.md).
+[`docs/fr/architecture.md`](docs/fr/architecture.md).
 
 **3. Une modification visible par l'utilisateur met à jour quatre choses dans le même commit :**
 `README.md`, `README.fr.md`, le manuel intégré `src/help-content.js` **dans ses deux langues**, et
@@ -52,7 +52,7 @@ de lui faire confiance, cassez le code qu'il défend et vérifiez qu'il passe au
 fait avoir plusieurs fois par des tests verts pour de mauvaises raisons : l'un satisfait par un
 *commentaire* plutôt que par du code, un autre affirmant sur une valeur que le stub DOM ne conserve
 pas, un troisième dont la mutation ne s'appliquait pas. Chacun ressemblait à un test qui passe et ne
-prouvait rien. Voir [`docs/testing-method.fr.md`](docs/testing-method.fr.md).
+prouvait rien. Voir [`docs/fr/testing-method.md`](docs/fr/testing-method.md).
 
 Tout ce qui exige un vrai WebGL est hors de portée (`THREE.WebGLRenderer` ne se construit pas sous
 Node), de même que le câblage des événements — il n'y a pas de vrai DOM. Ces parties sont contrôlées
@@ -62,18 +62,19 @@ par inspection de source, et l'en-tête de chaque fichier de test dit ce qu'il e
 
 **Ne pas incrémenter la version à la main.** Le hook pre-commit s'en charge. `package.json`,
 `src/version.js` et les deux README doivent concorder, et un test l'exige —
-[`docs/versioning.fr.md`](docs/versioning.fr.md).
+[`docs/fr/versioning.md`](docs/fr/versioning.md).
 
 **Ne pas corriger les diagnostics du vérificateur de types.** `npm run typecheck` en signale environ
 400, dont **zéro** était un défaut réel à la mesure. C'est pour cette raison qu'il n'est branché à
-aucune barrière ([`docs/architecture.fr.md`](docs/architecture.fr.md), règle n°5). Si vous vous
+aucune barrière ([`docs/fr/architecture.md`](docs/fr/architecture.md), règle n°5). Si vous vous
 apprêtez à « faire le ménage », lisez cette section d'abord.
 
 ## Langue
 
 Code et commentaires en anglais. Les termes métier restent français — `tracé`, `Case`, `Tome`,
 `Planche` — parce qu'ils sont dans les données enregistrées et à l'écran ; les traduire créerait un
-troisième vocabulaire. La documentation de `docs/` est bilingue, et un test refuse un fichier sans
+troisième vocabulaire. La documentation de `docs/` est bilingue, un dossier par langue
+(`docs/en/`, `docs/fr/`, même nom de base), et un test refuse un fichier sans
 sa contrepartie.
 
 Messages de commit : dans la langue dans laquelle vous pensez. Dites **pourquoi**, pas quoi — le

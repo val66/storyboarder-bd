@@ -20,7 +20,7 @@
  *
  * « introuvable » n'est PAS une erreur passagère qu'on réessaie en boucle : sans cet état, chaque
  * image relancerait une lecture disque vouée à échouer. Et il ne vaut JAMAIS suppression de
- * l'Élément, cf. docs/persisted-data.md § 5.
+ * l'Élément, cf. docs/en/persisted-data.md § 5.
  *
  * CE QUI N'EST PAS ICI : le dessin de la boîte de remplacement (rig3d.js) et la décision de
  * redessiner (scene3d.js). Ce module ne connaît que des octets et des scènes Three.
@@ -32,7 +32,7 @@ import { readModel } from './model-store.js';
 // hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 // La verticale d'un corps se DÉRIVE de son squelette, elle ne se suppose pas, cf. la mesure des six
-// fichiers réels dans docs/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
+// fichiers réels dans docs/en/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
 import { bonesFromObject3D, inferSkeletonMap } from './skeleton-map.js';
 import { repereDuCorps } from './skeleton-retarget.js';
 import { maillagesHorsCorps3D } from './stray-meshes-3d.js';

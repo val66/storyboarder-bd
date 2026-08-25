@@ -68,7 +68,7 @@ import { enregistrerFermeture } from './modal-stack.js';
 
 // The only upward dependency left by repatriating the Room/Building handlers: snapshot(), the undo
 // stack, which lives in events.js. Injected rather than imported, events.js already imports this
-// module, so the import would close a cycle (cf. docs/architecture.md rule #2).
+// module, so the import would close a cycle (cf. docs/en/architecture.md rule #2).
 let _snapshot = () => {};
 export function setModalsCallbacks({ snapshot }) { _snapshot = snapshot; }
 
@@ -1059,7 +1059,7 @@ export function refreshObjectPreview(){
   drawObjectPreview(objectPreview3D, {
     objType: _estModele ? 'modele' : objectTypeSelect.value,
     // La figure du BROUILLON : changer de Modèle doit se voir avant d'enregistrer. ⚠️ Aucun test ne
-    // couvre cette ligne, l'aperçu passe par WebGL, injoignable sous Node (cf. docs/testing-method.md).
+    // couvre cette ligne, l'aperçu passe par WebGL, injoignable sous Node (cf. docs/en/testing-method.md).
     modelFile: _estModele ? (S.modalDraftModelFile || S.modalTarget.modelFile) : undefined,
     color: S.modalTarget.color,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,

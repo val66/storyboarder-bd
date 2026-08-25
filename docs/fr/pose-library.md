@@ -1,7 +1,7 @@
 # Bibliothèque de poses — comment ça marche
 
 > **État actuel du fonctionnement**, pas l'historique des décisions. Le raisonnement qui a mené là,
-> avec ses revirements, est dans [character-editor.fr.md](character-editor.fr.md).
+> avec ses revirements, est dans [character-editor.md](character-editor.md).
 >
 > À jour du Fix 62.
 

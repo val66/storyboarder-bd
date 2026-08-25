@@ -8,7 +8,7 @@
 
 ## Where things stand
 
-Imported skeleton recognition ([skeleton-map.js](../src/skeleton-map.js)) was written for humanoids,
+Imported skeleton recognition ([skeleton-map.js](../../src/skeleton-map.js)) was written for humanoids,
 and says so. It rests on a rule that holds: the **lateral pair**, a left/right couple at the same
 level. That rule fires exactly twice, at the pelvis for the legs and at the chest for the arms.
 

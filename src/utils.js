@@ -897,7 +897,7 @@ export function posesUsedByProject3D(library, ...roots){
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * POURQUOI CETTE FONCTION EST PURE. Projeter un Élément demande la caméra de la Case, donc WebGL,
- * donc un environnement injoignable sous Node (cf. docs/testing-method.md). La DÉCISION, elle, ne
+ * donc un environnement injoignable sous Node (cf. docs/en/testing-method.md). La DÉCISION, elle, ne
  * demande que deux rectangles, et c'est là que sont les cas limites qu'on a envie de vérifier.
  *
  * LE CRITÈRE, choisi avec l'utilisateur : hors champ = la boîte projetée ne rencontre **pas du

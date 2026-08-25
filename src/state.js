@@ -67,7 +67,7 @@ export const S = {
   personaEditorSpecIndex: 0,
   // Fix 54 : pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
   // projet ('pose1'). Une étiquette, jamais une dépendance : les angles vivent dans le brouillon et
-  // font foi (cf. docs/character-editor.md). Bouger un curseur après avoir appliqué une pose ne
+  // font foi (cf. docs/en/character-editor.md). Bouger un curseur après avoir appliqué une pose ne
   // l'efface pas, c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
   // ce qui préserve la provenance.
   personaEditorPoseKey: null,

@@ -4,7 +4,7 @@
  * CE QUI EST EN JEU. La bibliothèque de poses range « lElbow: 1.0 rad ». Appliquer cet angle tel
  * quel à un os importé produit un membre qui part de travers, SANS lever la moindre erreur, les
  * axes des os diffèrent d'un fichier à l'autre, et cela a été mesuré sur les six fichiers réels
- * (cf. docs/imported-skeletons.md) : cinq alignent leurs os sur +Y, le rig Unreal sur ±X avec un
+ * (cf. docs/en/imported-skeletons.md) : cinq alignent leurs os sur +Y, le rig Unreal sur ±X avec un
  * signe qui s'inverse entre les côtés, et deux axes verticaux différents cohabitent.
  *
  * D'où le passage par le CORPS, haut, droite, avant, plutôt que par les axes bruts. Les tests

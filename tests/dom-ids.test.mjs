@@ -140,7 +140,7 @@ describe('Menus déroulants : un panneau déclaré est un panneau ouvrable', () 
   test('… et chaque setupDropdown vise un panneau et un titre qui existent', () => {
     // Le sens inverse : un câblage vers un id disparu échouerait au chargement du module, donc
     // interromprait events.js en entier, la panne la plus brutale de ce dépôt (cf. § 3 de
-    // docs/persisted-data.md).
+    // docs/en/persisted-data.md).
     const EVENTS_TXT = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
     [...EVENTS_TXT.matchAll(/setupDropdown\('([^']+)',\s*'([^']+)'\)/g)].forEach(([, trigger, panel]) => {
       assert.match(html, new RegExp(`id="${trigger}"`), `titre introuvable : ${trigger}`);

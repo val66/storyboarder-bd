@@ -17,13 +17,13 @@
 #      mais non déclarée — le cas où « ça marche chez moi » parce que le paquet traîne dans
 #      node_modules sans être dans le fichier.
 #
-#   4. `git commit --no-verify`, que docs/versioning.md recommande explicitement pour un `--amend`.
+#   4. `git commit --no-verify`, que docs/en/versioning.md recommande explicitement pour un `--amend`.
 #      Le hook est alors entièrement sauté.
 #
 # CE QUI N'EST PAS ICI, ET POURQUOI :
 #
 #   — La vérification de types. Elle produit 402 diagnostics dont ZÉRO défaut réel (campagne d'août
-#     2026, cf. docs/architecture.md règle n°5). En faire une barrière demanderait d'annoter quatre
+#     2026, cf. docs/en/architecture.md règle n°5). En faire une barrière demanderait d'annoter quatre
 #     cents endroits pour un rendement nul. Elle reste à la main : npm run typecheck:report.
 #   — La construction de l'installeur (npm run dist). Elle demande Windows et plusieurs minutes,
 #     pour vérifier une chaîne qui ne change presque jamais. À ajouter le jour où une release

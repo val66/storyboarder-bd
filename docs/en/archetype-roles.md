@@ -1,6 +1,6 @@
 # Archetype roles
 
-*[Version française](archetype-roles.fr.md)*
+*[Version française](../fr/archetype-roles.md)*
 
 > **Decided with the user, not yet built.** Written before a line of code, so that it is not
 > rediscussed in three weeks. Tasks #378a and #378b; it is the prerequisite of #375.

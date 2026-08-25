@@ -472,7 +472,7 @@ describe('étape 3 : la longueur NE sépare PAS, mesuré', () => {
   //
   // CE QUE ÇA CHANGE. Il n'y a pas de critère automatique à trouver, et en chercher un revient à
   // inventer un seuil, ce que ce dépôt s'interdit. La conséquence est écrite dans
-  // docs/creature-rigs.md : c'est l'ÉCRAN DE CORRESPONDANCE qui doit trancher, en proposant les
+  // docs/en/creature-rigs.md : c'est l'ÉCRAN DE CORRESPONDANCE qui doit trancher, en proposant les
   // chaînes classées et en laissant l'utilisateur cocher. Ce qui est d'ailleurs le contrat que la
   // reconnaissance s'était fixé depuis le début, proposer sans décider.
   const noms = ['cerbere', 'araignee', 'kraken', 'serpent', 'dragon', 'chien', 'oiseau',
@@ -554,7 +554,7 @@ describe('raptor : le bipède qui a démenti le critère d\'angle', () => {
     //
     // Ce test n'épingle pas un angle, il épingle la STRUCTURE qui rend le critère indécidable :
     // deux paires, comme un quadrupède, comme un humanoïde, comme un oiseau. Voir
-    // docs/creature-rigs.md, section « Deux hypothèses énoncées avec assurance, et démenties ».
+    // docs/en/creature-rigs.md, section « Deux hypothèses énoncées avec assurance, et démenties ».
     assert.equal(r.membres.filter(m => m.cote).length, 4,
       'même signature topologique qu\'un quadrupède : c\'est tout le problème');
   });
@@ -1148,7 +1148,7 @@ describe('l\'oiseau intégré a gagné des pattes (#367)', () => {
 
   test('RIEN N\'A ÉTÉ RENOMMÉ : les quatre identifiants d\'avant sont intacts', () => {
     // `animalJoints3d` est PERSISTÉ sur chaque Élément, et ses clés sont ces identifiants. Ajouter
-    // est permis, renommer casserait tous les Projets existants (cf. docs/persisted-data.md).
+    // est permis, renommer casserait tous les Projets existants (cf. docs/en/persisted-data.md).
     ['head', 'wingL', 'wingR', 'tail0'].forEach(id =>
       assert.ok(ids('oiseau').includes(id), `${id} a disparu, un Projet d'avant perdrait sa pose`));
   });

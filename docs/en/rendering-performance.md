@@ -1,6 +1,6 @@
 # Rendering performance — measured, August 2026
 
-*[Version française](rendering-performance.fr.md)*
+*[Version française](../fr/rendering-performance.md)*
 
 This note records a measurement campaign so that the next person to wonder "is the drawing path
 slow?" reads figures instead of re-deriving guesses. The probe that produced them

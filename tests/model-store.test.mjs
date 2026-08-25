@@ -200,7 +200,7 @@ describe('readModel : un modèle introuvable n\'est pas une raison de détruire'
     // `null` veut dire « affiche une boîte de remplacement ». Tout autre contrat, lever, ou rendre
     // un drapeau de suppression, mettrait l'appelant en position de détruire l'Élément sur une
     // panne passagère : disque externe non monté, fichier verrouillé par un antivirus.
-    // Cf. docs/persisted-data.md § 5.
+    // Cf. docs/en/persisted-data.md § 5.
     pontSimulé({ fichiers: {} });
     assert.equal(await readModel('disparue.glb'), null);
   });
@@ -267,10 +267,10 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
   test('l\'exception à la règle n°1 est écrite, pas seulement commise', () => {
     // Toucher main.js pour une fonctionnalité contredit la règle n°1. Le faire est défendable ; le
     // faire en silence ne l'est pas, la prochaine personne y verrait un précédent sans raison.
-    // Les deux noms sont COMPOSÉS plutôt qu'écrits : docs.test.mjs exige que le code ne renvoie
+    // Les deux chemins sont COMPOSÉS plutôt qu'écrits : docs.test.mjs exige que le code ne renvoie
     // qu'à la version anglaise, et citer la française en toutes lettres, même dans un test qui
     // vérifie sa présence, fait tomber cette règle. Constaté au premier lancement.
-    ['', '.fr'].map(suffixe => `docs/architecture${suffixe}.md`).forEach(f => {
+    ['en', 'fr'].map(langue => `docs/${langue}/architecture.md`).forEach(f => {
       const doc = readFileSync(join(RACINE, f), 'utf8');
       assert.match(doc, /models:|Modeles|model-store/,
         `${f} ne mentionne pas l'exception des modèles importés`);
@@ -325,7 +325,7 @@ describe('La forme persistée : un modèle importé est un objet3d comme les aut
 
   test('l\'Élément porte le fichier, et un NOM de fichier seulement', () => {
     // Jamais un chemin absolu : il casserait au premier changement de machine (cf.
-    // docs/persisted-data.md).
+    // docs/en/persisted-data.md).
     const el = createModelElement({ panel: CASE_TEST, page: PAGE_TEST, modelFile: 'salon.glb' });
     assert.equal(el.modelFile, 'salon.glb');
     assert.doesNotMatch(el.modelFile, /[\\/]/, 'un séparateur de chemin s\'est glissé dans modelFile');

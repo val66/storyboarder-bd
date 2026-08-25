@@ -5,7 +5,7 @@
 # workflow y met la liste des changements, construite à partir des messages de commit.
 #
 # CE QUI DÉCLENCHE. Les tags `v*` uniquement. Le hook post-commit n'en pose que pour les versions
-# MINEURES et MAJEURES (cf. docs/versioning.md) : les correctifs, eux, n'en produisent pas — trente
+# MINEURES et MAJEURES (cf. docs/en/versioning.md) : les correctifs, eux, n'en produisent pas — trente
 # releases pour trente commits n'informeraient personne.
 #
 # CE QU'IL NE FAIT PAS : construire l'installeur. Cela demande Windows et plusieurs minutes, pour

@@ -2447,7 +2447,7 @@ export function drawCurrentPage(){
     S.drawCurrentPageLastRef = _pageDataRef;
   }
   // Cost of these four phases, measured over 1071 frames: canvas 0.6%, drawContent the bulk,
-  // side panel 7.6%. See docs/rendering-performance.md, the audit suspected the canvas
+  // side panel 7.6%. See docs/en/rendering-performance.md, the audit suspected the canvas
   // reallocation of being as expensive as the drawing itself; it is not.
   _canvas.width = Math.round(page.w * S.pageRenderScale);
   _canvas.height = Math.round(page.h * S.pageRenderScale);
@@ -2464,7 +2464,7 @@ export function drawCurrentPage(){
 // `wheel`, events that arrive faster than the screen refreshes. No throttle existed in the repo.
 //
 // HOW MUCH THIS ACTUALLY SAVES: unknown, and measured to be nothing so far. Over the campaign of
-// docs/rendering-performance.md, 1018 scheduled requests produced 1018 frames, not a single one
+// docs/en/rendering-performance.md, 1018 scheduled requests produced 1018 frames, not a single one
 // was absorbed, on that mouse and that page. The scheduler is kept because it costs nothing when
 // it never fires and it bounds the worst case, NOT because a saving was observed. Anyone tempted
 // to cite it as an optimisation should re-measure first.

@@ -25,7 +25,7 @@ import { createModelElement } from './model-store.js';
 import { S, currentPageData, tr, isLockedScenePanel } from './state.js';
 import { OBJECT_REAL_HEIGHT_M, MODEL_HEIGHT_WARN_MAX_M, PANEL_CAM_DEFAULT_DIST_3D } from './constants.js';
 
-// Le point d'annulation, injecté (cf. docs/architecture.md règle n°2). Un import est une
+// Le point d'annulation, injecté (cf. docs/en/architecture.md règle n°2). Un import est une
 // modification du Projet comme une autre : il doit pouvoir s'annuler.
 let _snapshot = () => {};
 let _renderAll = () => {};
@@ -46,7 +46,7 @@ let _alerter = () => {};
  * est reconvertie depuis la page à chaque rendu, et cette conversion dépend de la caméra qu'on vient
  * justement de déplacer.
  *
- * Injecté plutôt qu'importé (cf. docs/architecture.md règle n°2) : ce module enchaîne des gestes,
+ * Injecté plutôt qu'importé (cf. docs/en/architecture.md règle n°2) : ce module enchaîne des gestes,
  * il n'a pas à connaître la caméra d'une Case.
  */
 let _finaliserCreation = () => {};

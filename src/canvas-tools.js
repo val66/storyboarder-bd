@@ -19,7 +19,7 @@
  *     Building domain, not to the tool that collects the clicks.
  *
  * The canvas element is looked up when needed rather than held in a module-level `const`. An
- * imported module is evaluated BEFORE the module that imports it (cf. docs/architecture.md rule
+ * imported module is evaluated BEFORE the module that imports it (cf. docs/en/architecture.md rule
  * #2): a top-level `getElementById` here would run earlier than the one in events.js, and would
  * silently bind to whatever the DOM held at that instant.
  */
@@ -33,7 +33,7 @@ import { tracéBBox , nomNumeroteLibre3D} from './utils.js';
 import { computeTracéWorld3D, getCamOrbitWorld, panelCamBasis3D, findOwningPanel } from './scene3d.js';
 import { drawCurrentPage } from './draw.js';
 
-// The undo stack, injected rather than imported (cf. docs/architecture.md rule #2).
+// The undo stack, injected rather than imported (cf. docs/en/architecture.md rule #2).
 let _snapshot = () => {};
 export function setCanvasToolsCallbacks({ snapshot }) { _snapshot = snapshot; }
 

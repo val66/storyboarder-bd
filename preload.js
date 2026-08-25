@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   chooseProjectsDir: () => ipcRenderer.invoke('settings:chooseProjectsDir'),
   // Modèles 3D importés (.glb), rangés dans <dossier de Projets>/Modeles. Le pont ne fait que des
   // entrées-sorties : c'est src/model-store.js qui décide du nom retenu et des collisions, pour que
-  // cette décision reste testable. Cf. l'exception documentée dans docs/architecture.md, règle n°1.
+  // cette décision reste testable. Cf. l'exception documentée dans docs/en/architecture.md, règle n°1.
   pickModelFile: () => ipcRenderer.invoke('models:pick'),
   writeModelFile: (name, data) => ipcRenderer.invoke('models:write', name, data),
   readModelFile: (name) => ipcRenderer.invoke('models:read', name),

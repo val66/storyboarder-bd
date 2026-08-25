@@ -10,7 +10,7 @@
  * rig intégré, cela veut dire « tourner de 1 radian autour de l'axe X du coude gauche ». Or dans un
  * squelette importé, l'axe X du coude ne désigne rien de comparable : il dépend de la façon dont le
  * fichier a été exporté, et cela a été MESURÉ sur les six fichiers réels (cf.
- * docs/imported-skeletons.md) :
+ * docs/en/imported-skeletons.md) :
  *
  *   — cinq fichiers alignent leurs os sur +Y ; le rig Unreal sur ±X, avec un signe qui s'inverse
  *     entre les côtés ET entre bras et jambes ;

@@ -1,6 +1,6 @@
 # Squelettes importés — ce qui est mesuré, et ce qui reste à faire
 
-*[English version](imported-skeletons.md)*
+*[English version](../en/imported-skeletons.md)*
 
 Ce document rassemble les MESURES faites sur les six fichiers `.glb` réels qui ont servi de banc
 d'essai. Il existe parce que ce chantier est celui où j'ai le plus souvent supposé au lieu de
@@ -24,7 +24,7 @@ chiffres ci-dessous sont donc la seule trace de ce qu'ils contiennent.
 | `centaur3.glb` | CAT de 3ds Max, majuscule collée (`CATRigLLeg1`) | 79 |
 
 Les deux dernières lignes sont venues du chantier créatures
-([creature-rigs.fr.md](creature-rigs.fr.md)) : elles ne changent que la lecture du CÔTÉ, jamais
+([creature-rigs.md](creature-rigs.md)) : elles ne changent que la lecture du CÔTÉ, jamais
 celle du segment. Sans elles, ces deux fichiers rendaient **zéro membre latéral**.
 
 **Le mot « leg » est irrémédiablement ambigu** : `mixamorig:LeftLeg` désigne le TIBIA, `Left_leg`
@@ -250,7 +250,7 @@ sans curseur, parce que `repereDuModeleImporte` a besoin de sa position.
 Les os de tête de tronc, ceux qui portent la totalité des membres, n'ont pas de curseur. Critère
 STRUCTUREL et non un pourcentage : la fraction du squelette entraînée décroît sans aucun trou où
 couper (araignée 100, 99, 90, 67 % ; serpent 100, 99, 92, 91, 90 %), et n'importe quel seuil aurait
-coupé le serpent en plein tronc. Cf. [creature-rigs.fr.md](creature-rigs.fr.md).
+coupé le serpent en plein tronc. Cf. [creature-rigs.md](creature-rigs.md).
 
 ### 6.4 Le cadrage : ce qui est peint ET chaque poignée
 

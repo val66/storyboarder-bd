@@ -28,7 +28,7 @@ Une mutation qui s'échappe signale presque toujours la même chose : la logique
 endroit non observable : un écouteur d'événement, une boucle de rendu. La réponse n'est pas d'écrire
 un test plus malin, c'est d'**extraire la logique en fonction pure exportée**.
 
-La plupart des fonctions de `docs/3d-rendering-single-sources.fr.md` sont nées ainsi. Deux exemples :
+La plupart des fonctions de `docs/fr/3d-rendering-single-sources.md` sont nées ainsi. Deux exemples :
 
 - Les formules de glissement vivaient dans le `mousemove` : impossible à muter utilement.
   → `wallScreenAxes3D`, `fracDeltaAlongAxis2D`, `integrateTracéFrac3D`.
@@ -127,4 +127,4 @@ c'est le bruit qui fait désactiver un outil.
 ## Contourner le hook
 
 `git commit --no-verify` saute les tests, pour un commit en cours de travail uniquement. Voir
-`docs/versioning.fr.md`.
+`docs/fr/versioning.md`.

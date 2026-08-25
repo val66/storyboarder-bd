@@ -1,7 +1,7 @@
 /**
  * tests/persisted-format.test.mjs, le CONTRAT AVEC LE PASSÉ.
  *
- * `docs/persisted-data.md` s'ouvre sur « la règle la plus importante du dépôt ». Elle n'était
+ * `docs/en/persisted-data.md` s'ouvre sur « la règle la plus importante du dépôt ». Elle n'était
  * gardée par rien. Une infraction ne casse pas la compilation, ne fait tomber aucun test, ne se
  * voit pas à l'écran : elle rend illisibles tous les fichiers projet déjà enregistrés, et le
  * symptôme apparaît des semaines plus tard chez quelqu'un qui rouvre un vieux fichier.
@@ -11,7 +11,7 @@
  *
  *   1. LE VOCABULAIRE. Les noms de champs et les valeurs discriminantes sont listés ici en dur.
  *      Renommer `wxFloor` dans le code fait tomber le test. Renommer les deux ensemble aussi,
- *      parce que la liste est également confrontée à docs/persisted-data.md : il faut trois gestes
+ *      parce que la liste est également confrontée à docs/en/persisted-data.md : il faut trois gestes
  *      délibérés, code, document, test, pour toucher au format. C'est le but.
  *
  *   2. L'ALLER-RETOUR. Un projet déjà migré, réenregistré puis rechargé, doit redonner exactement
@@ -39,13 +39,13 @@ const SOURCES = readdirSync(join(RACINE, 'src'))
   .filter(f => f.endsWith('.js'))
   .map(f => readFileSync(join(RACINE, 'src', f), 'utf8'))
   .join('\n');
-const DOC = readFileSync(join(RACINE, 'docs', 'persisted-data.md'), 'utf8');
+const DOC = readFileSync(join(RACINE, 'docs', 'en', 'persisted-data.md'), 'utf8');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Le vocabulaire figé
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Recopié de docs/persisted-data.md § 1. Certains noms sont français, d'autres anglais, quelques-uns
+// Recopié de docs/en/persisted-data.md § 1. Certains noms sont français, d'autres anglais, quelques-uns
 // maladroits (`batimentNames` a survécu au renommage Bâtiment → Building). Cela n'a aucune
 // importance : un nom de champ persisté n'est pas de la nomenclature, c'est un identifiant de
 // format.
@@ -58,7 +58,7 @@ const CHAMPS = {
   'caméra de Case': ['camWx', 'camWy', 'camWz', 'camDist', 'camRotX', 'camRotY'],
 };
 
-// Recopié de docs/persisted-data.md § 2. Noter `'tracé'` avec son accent, `'cloture'` et
+// Recopié de docs/en/persisted-data.md § 2. Noter `'tracé'` avec son accent, `'cloture'` et
 // `'barriere'` sans les leurs, `'fermee'` sans accent : ces irrégularités SONT dans les fichiers
 // enregistrés. Les « corriger » les casserait.
 const VALEURS = {
@@ -77,14 +77,14 @@ describe('Format de fichier : le vocabulaire est figé', () => {
       const absents = noms.filter(n => !new RegExp(`\\b${n}\\b`).test(SOURCES));
       assert.deepEqual(absents, [],
         `champ(s) persisté(s) introuvable(s) dans src/ : ${absents.join(', ')} — `
-        + 'renommage ? cf. docs/persisted-data.md');
+        + 'renommage ? cf. docs/en/persisted-data.md');
     });
 
     test(`les champs « ${groupe} » sont toujours documentés`, () => {
       // Sans ce second contrôle, on pourrait retirer un nom du document et du test ensemble, et
       // croire le champ libéré. Le document est la trace de la décision ; il doit tomber avec.
       const absents = noms.filter(n => !DOC.includes('`' + n + '`') && !DOC.includes(n));
-      assert.deepEqual(absents, [], `absent(s) de docs/persisted-data.md : ${absents.join(', ')}`);
+      assert.deepEqual(absents, [], `absent(s) de docs/en/persisted-data.md : ${absents.join(', ')}`);
     });
   });
 
@@ -101,7 +101,7 @@ describe('Format de fichier : le vocabulaire est figé', () => {
     // Sans lui, un chemin cassé rendrait tous les tests ci-dessus verts et vides, l'état le pire
     // possible, déjà constaté deux fois dans ce dépôt.
     assert.ok(SOURCES.length > 100000, `sources trop courtes : ${SOURCES.length} caractères`);
-    assert.ok(DOC.length > 2000, 'docs/persisted-data.md semble vide');
+    assert.ok(DOC.length > 2000, 'docs/en/persisted-data.md semble vide');
     assert.equal(Object.values(CHAMPS).flat().length, 32);
   });
 });

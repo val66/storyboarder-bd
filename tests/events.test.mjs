@@ -1000,7 +1000,7 @@ describe('éditeur de Personnage : retour à la modale (Fix 50)', () => {
 // rien à annuler). D'où les assertions insistantes ci-dessous sur l'intégrité de l'Élément cible.
 //
 // Le rendu du canevas n'est pas couvert : il passe par WebGL, injoignable sous Node (cf.
-// docs/testing-method.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
+// docs/en/testing-method.md). D'où la séparation entre setPersonaEditorJointDeg, qui décide, et le
 // gestionnaire de curseur, qui redessine.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('éditeur de Personnage : réglage fin des articulations (Fix 51)', () => {
@@ -1147,7 +1147,7 @@ describe('éditeur de Personnage : sélection d\'une poignée (Fix 52)', () => {
 //
 // LA décision de toute la fonctionnalité : appliquer une pose COPIE ses angles dans le brouillon.
 // Aucun Personnage ne dépend de la bibliothèque, supprimer une pose, ou ouvrir le projet sur une
-// machine qui ne l'a pas, ne change l'allure de personne (cf. docs/persisted-data.md).
+// machine qui ne l'a pas, ne change l'allure de personne (cf. docs/en/persisted-data.md).
 //
 // `position` reste une ÉTIQUETTE : bouger un curseur après avoir appliqué « Assis » ne l'efface
 // pas, c'est resolvePoseLabel3D qui en déduit « Assis (modifié) » en comparant les valeurs. On
@@ -2367,7 +2367,7 @@ describe('Extraction de persona-editor.js : la couture tient', () => {
   test('RÉGRESSION : persona-editor.js n\'importe RIEN d\'events.js', () => {
     // La seule dépendance remontante a été remplacée par une injection. La réintroduire créerait un
     // cycle d'imports, ce que setDrawCallbacks / setIOCallbacks / setSidebarCallbacks existent
-    // précisément pour éviter (cf. docs/architecture.md).
+    // précisément pour éviter (cf. docs/en/architecture.md).
     assert.doesNotMatch(edit, /from '\.\/events\.js'/,
       'import remontant vers events.js : cycle réintroduit');
   });

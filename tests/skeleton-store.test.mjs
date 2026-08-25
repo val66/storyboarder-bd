@@ -14,7 +14,7 @@
  *     refuse de s'ouvrir, non.
  *
  * CE QU'ON N'AFFIRME PAS : que l'écriture sur le disque fonctionne. Elle est dans main.js, hors de
- * portée des tests (cf. docs/architecture.md, l'unique exception). Ce qui est testé, c'est tout ce
+ * portée des tests (cf. docs/en/architecture.md, l'unique exception). Ce qui est testé, c'est tout ce
  * qui décide de CE QU'ON ÉCRIT et de comment on relit.
  */
 import { test, describe, beforeEach } from 'node:test';

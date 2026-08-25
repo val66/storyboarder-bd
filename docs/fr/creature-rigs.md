@@ -1,14 +1,14 @@
 # Rigs de créatures : plan du chantier
 
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
-> aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
+> aujourd'hui est décrit dans [imported-skeletons.md](imported-skeletons.md).
 >
 > À jour de la v1.4.50. Les étapes 1 à 3 et les tâches #363 à #374, #376 et #377 sont livrées ;
 > #375 reste à faire.
 
 ## Où l'on en est
 
-La reconnaissance d'un squelette importé ([skeleton-map.js](../src/skeleton-map.js)) a été écrite
+La reconnaissance d'un squelette importé ([skeleton-map.js](../../src/skeleton-map.js)) a été écrite
 pour des humanoïdes, et le dit. Elle repose sur une règle qui tient : la **paire latérale**, un
 couple gauche/droite au même niveau. Cette règle ne se déclenche que deux fois, au bassin pour les
 jambes et à la poitrine pour les bras.
@@ -611,7 +611,7 @@ Consignées pour n'être ni rediscutées ni oubliées.
 ### Les rôles de chaînes (décidé, pas encore construit)
 
 Tranché en conversation, et déménagé dans sa propre note :
-[archetype-roles.fr.md](archetype-roles.fr.md). En un paragraphe : les dix-huit emplacements
+[archetype-roles.md](archetype-roles.md). En un paragraphe : les dix-huit emplacements
 deviennent un cas particulier des chaînes, chaque segment porte un rôle, et c'est l'ARCHÉTYPE qui
 définit la liste des rôles possibles. Sans rôle, une pose d'archétype n'a rien à viser, le nom d'une
 chaîne étant du texte libre propre à un fichier.
@@ -656,7 +656,7 @@ trouverait une morphologie « enregistrée » sur chaque fichier jamais touché.
 **#367, l'alignement des animaux intégrés.** CONTRAINTE DURE : les `id` d'articulation (`wingL`,
 `tail0`, `head`) sont persistés dans `animalJoints3d`, et les valeurs d'`ANIMAL_TYPES` sont
 persistées comme type de l'Élément. **Les libellés sont libres, les identifiants ne le sont pas.**
-Ajouter est permis, renommer est interdit (cf. [persisted-data.fr.md](persisted-data.fr.md)).
+Ajouter est permis, renommer est interdit (cf. [persisted-data.md](persisted-data.md)).
 
 **#373, l'écran généré, #374, les curseurs des membres surnuméraires, et #377, l'écran qui ne montre
 que ce qui pilote. FAITES.** Cf. les sections dédiées ci-dessus.

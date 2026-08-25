@@ -24,7 +24,7 @@ import { exitCameraMode } from './sidebar.js';
 import { getPanelPoints, renderAll } from './draw.js';
 import { confirmAction } from './io.js';
 
-// One upward dependency, the undo stack. Injected, not imported (cf. docs/architecture.md rule #2).
+// One upward dependency, the undo stack. Injected, not imported (cf. docs/en/architecture.md rule #2).
 let _snapshot = () => {};
 export function setScenesCallbacks({ snapshot }) { _snapshot = snapshot; }
 

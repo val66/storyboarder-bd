@@ -6,7 +6,7 @@
 >
 > ⚠️ **Cette note retrace un RAISONNEMENT, avec ses revirements** : plusieurs décisions y sont
 > marquées « REVU » ou « CORRIGÉ depuis ». Pour savoir comment le système fonctionne **aujourd'hui**,
-> lire [pose-library.fr.md](pose-library.fr.md), qui n'a pas d'archéologie.
+> lire [pose-library.md](pose-library.md), qui n'a pas d'archéologie.
 
 ## Intention
 
@@ -110,7 +110,7 @@ fichier cesse de se décrire lui-même : envoyé à quelqu'un, il afficherait «
   intégrée que l'utilisateur a supprimée continue de résoudre. Il n'apparaît jamais dans la liste,
   donc supprimer fait bien disparaître la pose de l'interface.
 - **Chaque fichier embarque les poses qu'il utilise** (`posesUsedByProject3D` — Personnages ET
-  modèles importés, cf. pose-library.fr.md), et l'ouverture
+  modèles importés, cf. `docs/fr/pose-library.md`), et l'ouverture
   **fusionne** les ids inconnus. Un fichier reste autonome ; un vieux projet ne peut pas annuler un
   renommage, la fusion n'écrasant jamais une entrée existante.
 

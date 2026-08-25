@@ -79,7 +79,7 @@ dépend de `S`, le dire dans son commentaire.
 ## Nomenclature
 
 Les règles ci-dessous portent sur le **code**. Elles ne s'appliquent pas aux données persistées, qui
-suivent leur propre logique (voir `docs/persisted-data.fr.md`).
+suivent leur propre logique (voir `docs/fr/persisted-data.md`).
 
 ### Suffixe `3D`
 
@@ -132,10 +132,16 @@ fichier projet, l'interface et le code.
 `tracé` / `Tracé` / `TRACÉ` est explicitement protégé : il n'est traduit nulle part, pas même en
 commentaire.
 
-**Documentation de `docs/` : bilingue.** Chaque document existe en `nom.md` (anglais) et
-`nom.fr.md` (français), sur le modèle de `README.md` / `README.fr.md`. La version française est
-celle dans laquelle les décisions ont été prises à l'origine ; les deux sont tenues d'accord. Le
-manuel intégré (`src/help-content.js`) est bilingue également.
+**Documentation de `docs/` : bilingue, un dossier par langue.** Chaque document existe en
+`docs/en/nom.md` et `docs/fr/nom.md`, **même nom de base**, le dossier portant la langue. Le suffixe
+`.fr.md` a disparu avec les dossiers : dire la langue deux fois est exactement le genre de
+redondance qui finit par diverger. La version française est celle dans laquelle les décisions ont été
+prises à l'origine ; les deux sont tenues d'accord. Le manuel intégré (`src/help-content.js`) est
+bilingue également.
+
+⚠️ **Les commentaires de code renvoient vers `docs/en/`**, jamais vers le jumeau français : les
+commentaires sont écrits en anglais, envoyer un lecteur anglophone vers une note française serait
+incohérent. Un test épingle les deux moitiés, que la cible existe et qu'elle soit l'anglaise.
 
 ## Quand une modification est visible par l'utilisateur
 
@@ -182,7 +188,7 @@ Deux pièges consignés sur place, tous deux déjà connus ici :
 
 Un chantier qui s'étale sur plusieurs semaines, qui touche plusieurs fichiers et qui procède par
 mesures successives reçoit son document dans `docs/`, bilingue comme les autres et indexé dans
-`docs/README*.md`. Exemple de référence : [creature-rigs.fr.md](creature-rigs.fr.md).
+`docs/README*.md`. Exemple de référence : [creature-rigs.md](creature-rigs.md).
 
 **Cette doc ne se crée pas d'office. Elle se propose, et l'utilisateur tranche.** Un document de
 chantier coûte deux fichiers à tenir à jour ; il ne vaut son prix ni pour une correction de bug, ni

@@ -304,7 +304,7 @@ ipcMain.handle('models:delete', async (event, name) => {
 });
 
 // Renommage d'un modèle sur le disque. Même exception de règle que les autres canaux `models:*`
-// (cf. docs/architecture.md, règle n°1) : renommer un fichier est de l'accès disque, et aucun canal
+// (cf. docs/en/architecture.md, règle n°1) : renommer un fichier est de l'accès disque, et aucun canal
 // existant ne sait le faire.
 //
 // LE REFUS D'ÉCRASER EST ICI, PAS SEULEMENT DANS LE RENDERER. `fs.rename` écrase silencieusement un
@@ -345,7 +345,7 @@ ipcMain.handle('models:list', async () => {
 // et models:list y refuse déjà tout le reste. Le mettre à l'intérieur obligerait à percer cette
 // garde pour un cas particulier.
 //
-// Ces deux canaux relèvent de la même exception que `models:*` (cf. docs/architecture.md, règle
+// Ces deux canaux relèvent de la même exception que `models:*` (cf. docs/en/architecture.md, règle
 // n°1) : l'accès disque est le métier déclaré du processus principal, et la logique, reconnaître,
 // fusionner, décider quoi enregistrer, reste dans src/, où elle se teste.
 function getSkeletonMapsPath() {

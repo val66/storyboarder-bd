@@ -1671,7 +1671,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
 // Cache gate, kept separate from the render itself. The signature is computed on EVERY call, cache
 // hit included: it is the incompressible cost of this path, and measurement put it second overall
 // (16% of the drawing time, 8 calls per frame, one per Panel) behind the WebGL render it protects,
-// which runs less than once per frame thanks to a 91.4% hit rate. See docs/rendering-performance.md.
+// which runs less than once per frame thanks to a 91.4% hit rate. See docs/en/rendering-performance.md.
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
   const cached = panelSceneCache3D.get(panel.id);

@@ -5509,7 +5509,7 @@ objectModalSave.onclick = () => {
       S.modalTarget.skeletonPose3d = Object.keys(pose).length ? pose : null;
       // Le choix d'AFFICHAGE des maillages que le fichier place hors du corps (cf.
       // src/stray-meshes-3d.js). Champ simplement AJOUTÉ à un modèle importé, aucun champ existant
-      // n'est renommé (cf. docs/persisted-data.md). Écrit seulement quand il vaut `true` : l'absence
+      // n'est renommé (cf. docs/en/persisted-data.md). Écrit seulement quand il vaut `true` : l'absence
       // du champ signifie « masqués », ce qui est le comportement par défaut, et évite d'alourdir
       // tous les Projets d'un booléen faux.
       ecrireChoixEgares(S.modalTarget, S.modalDraftAfficherEgares);
@@ -5519,7 +5519,7 @@ objectModalSave.onclick = () => {
       // qu'à rouvrir la fiche sur la pose qu'on avait prise, et à en afficher le nom. Il porte le
       // même nom que chez le Personnage à dessein : c'est le même rôle, et deux noms pour un même
       // rôle finiraient par recevoir deux traitements. Le champ est simplement AJOUTÉ à un modèle
-      // importé, aucun champ existant n'est renommé (cf. docs/persisted-data.md).
+      // importé, aucun champ existant n'est renommé (cf. docs/en/persisted-data.md).
       //
       // Il peut mentir après un réglage manuel des curseurs, exactement comme chez le Personnage :
       // resolvePoseLabel3D signale alors « (modifié) ». Une étiquette imprécise vaut mieux qu'une

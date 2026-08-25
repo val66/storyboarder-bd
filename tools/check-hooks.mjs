@@ -30,6 +30,6 @@ if (!existsSync(join(RACINE, '.git', 'hooks', 'pre-commit'))) {
   console.log('  Les hooks git ne sont pas installés — vos commits ne seront pas vérifiés.');
   console.log('    npm run setup-hooks');
   console.log('  (lint + tests avant chaque commit, et incrément automatique de la version)');
-  console.log('  Détail : docs/versioning.md');
+  console.log('  Détail : docs/en/versioning.md');
   console.log('');
 }

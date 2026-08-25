@@ -76,7 +76,7 @@ Accepted trade-off: a modification of `S` is invisible in the signatures. When a
 ## Naming
 
 The rules below concern the **code**. They do not apply to persisted data, which follows its own
-logic (see `docs/persisted-data.md`).
+logic (see `docs/en/persisted-data.md`).
 
 ### `3D` suffix
 
@@ -130,10 +130,16 @@ project file, the interface and the code.
 `tracé` / `Tracé` / `TRACÉ` is explicitly protected: it is translated nowhere, not even in a
 comment.
 
-**`docs/` documentation: bilingual.** Each document exists as `name.md` (English) and
-`name.fr.md` (French), mirroring `README.md` / `README.fr.md`. The French version is the one the
-decisions were originally written in; both are kept in step. The built-in manual
-(`src/help-content.js`) is bilingual too.
+**`docs/` documentation: bilingual, one folder per language.** Each document exists as
+`docs/en/name.md` and `docs/fr/name.md`, **same base name**, the folder carrying the language. The
+suffix `.fr.md` was dropped when the folders appeared: saying the language twice invited the two
+halves to drift apart in the way only naming can. The French version is the one the decisions were
+originally written in; both are kept in step. The built-in manual (`src/help-content.js`) is
+bilingual too.
+
+⚠️ **Code comments point at `docs/en/`**, never at the French twin: comments are written in English,
+sending an English reader to a French note would be incoherent. A test enforces both halves, that the
+target exists and that it is the English one.
 
 ## When a change is visible to the user
 

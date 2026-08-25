@@ -732,7 +732,7 @@ export function typeDeChaine3D(nomsDOs){
  */
 // ⚠️ LA CLÉ DE `typeDeChaine3D` EST JETÉE ICI, et c'est le sujet de la tâche #378 : seul le libellé
 // traduit survit, alors que c'est la clé stable qui permettrait à une pose d'archétype de viser une
-// chaîne. Mesuré sur le corpus, 253 chaînes sur 488 en ont une. Cf. docs/archetype-roles.md.
+// chaîne. Mesuré sur le corpus, 253 chaînes sur 488 en ont une. Cf. docs/en/archetype-roles.md.
 export function nomSuggereDeChaine3D(nomsDOs, traduire){
   const t = traduire || ((en) => en);
   const entree = typeDeChaine3D(nomsDOs);
@@ -880,7 +880,7 @@ export function archetypeSuggere3D(os){
  *
  * ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS, elle s'y ajoute. Depuis #374, c'est la MORPHOLOGIE
  * qui dit lesquels pilotent le rig : un humanoïde garde ses emplacements, une créature est pilotée
- * par ses chaînes (cf. groupesPosablesMembres3D dans skeleton-pose.js, et docs/creature-rigs.md).
+ * par ses chaînes (cf. groupesPosablesMembres3D dans skeleton-pose.js, et docs/en/creature-rigs.md).
  * Les remplacer pour tout le monde d'un coup aurait cassé tout modèle déjà posé.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════

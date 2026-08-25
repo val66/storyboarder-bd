@@ -121,7 +121,7 @@ export function openPersonaEditor(target, fromModal){
 
 // Renvoie true si la modale Personnage doit être rouverte. La décision vit ici, dans la partie
 // sans DOM, pour être testable : la couche qui manipule l'overlay passe par le rendu WebGL, hors
-// de portée de la suite sous Node (cf. docs/testing-method.md).
+// de portée de la suite sous Node (cf. docs/en/testing-method.md).
 export function closePersonaEditor(){
   const backToModal = S.personaEditorFromModal || null;
   S.personaEditorOpen = false;
@@ -243,7 +243,7 @@ export function resetPersonaEditorDraft(page){
 
 // Fix 54 : applique une pose au brouillon : les angles sont COPIÉS, jamais référencés.
 //
-// C'est la décision structurante de toute la fonctionnalité (cf. docs/character-editor.md) : un
+// C'est la décision structurante de toute la fonctionnalité (cf. docs/en/character-editor.md) : un
 // Personnage ne dépend d'aucune pose. Supprimer une pose de la bibliothèque, ou ouvrir le projet sur
 // une machine qui ne l'a pas, ne change l'allure de personne, seule l'étiquette devient
 // « inconnue ». Garder une référence vive ferait exactement l'inverse.

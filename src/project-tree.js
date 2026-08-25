@@ -24,7 +24,7 @@ import { renderAll } from './draw.js';
 // Six upward dependencies, all of them things the left menu TRIGGERS rather than owns: what a
 // Scene is (createScene / openScene / disableSceneCameraMode), the context menus its rows open,
 // and the undo stack. Injected rather than imported, events.js imports this module, so importing
-// back would close a cycle (cf. docs/architecture.md rule #2).
+// back would close a cycle (cf. docs/en/architecture.md rule #2).
 let _cb = {};
 export function setProjectTreeCallbacks(callbacks) { _cb = callbacks; }
 const createScene              = (...a) => _cb.createScene(...a);

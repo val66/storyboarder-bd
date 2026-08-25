@@ -28,7 +28,7 @@ A mutation that escapes almost always signals the same thing: the logic is locke
 unobservable: an event listener, a render loop. The answer is not to write a cleverer test, it is
 to **extract the logic into an exported pure function**.
 
-Most of the functions in `docs/3d-rendering-single-sources.md` were born that way. Two examples:
+Most of the functions in `docs/en/3d-rendering-single-sources.md` were born that way. Two examples:
 
 - The sliding formulas lived inside the `mousemove`: impossible to mutate usefully.
   → `wallScreenAxes3D`, `fracDeltaAlongAxis2D`, `integrateTracéFrac3D`.
@@ -123,4 +123,4 @@ noise is what gets a tool switched off.
 ## Bypassing the hook
 
 `git commit --no-verify` skips the tests, for a work-in-progress commit only. See
-`docs/versioning.md`.
+`docs/en/versioning.md`.

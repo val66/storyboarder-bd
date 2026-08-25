@@ -3253,7 +3253,7 @@ function recolterOsMappes(clone, nomFichier){
   //
   // À quoi elles servent : la rotation de repos en monde ramène un axe du CORPS dans le repère de
   // l'os (cf. axeMondeVersLocal), et les positions donnent le repère du corps lui-même
-  // (cf. repereDuCorps). Les deux inconnues de l'application d'une pose, cf. docs/imported-skeletons.md.
+  // (cf. repereDuCorps). Les deux inconnues de l'application d'une pose, cf. docs/en/imported-skeletons.md.
   //
   // AUCUN `updateWorldMatrix` EXPLICITE, et c'est vérifié plutôt que supposé : `getWorldPosition` et
   // `getWorldQuaternion` appellent eux-mêmes `updateWorldMatrix(true, false)` sur le nœud lu. Une
