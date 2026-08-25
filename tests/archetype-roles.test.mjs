@@ -13,12 +13,12 @@ import assert from 'node:assert/strict';
 import {
   decomposerRole3D, libelleDeRole3D, libelleCourtDeRole3D, membreDuRole3D, rolesDeLArchetype3D,
   clesDeLArchetype3D, propositionDeRoles3D, chainesAttribuables3D, estSur3D,
-  estEchafaudage3D, chaineEchafaudage3D,
+  estEchafaudage3D, chaineEchafaudage3D, rolesDuTronc3D,
 } from '../src/archetype-roles.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inferSkeletonMap } from '../src/skeleton-map.js';
+import { inferSkeletonMap, lignesDeCorrespondance3D } from '../src/skeleton-map.js';
 import { ANIMAL_JOINT_DEFS, ANIMAL_ARCHETYPES_3D, ARCHETYPES_3D } from '../src/constants.js';
 import { SLOTS } from '../src/skeleton-map.js';
 
@@ -418,10 +418,12 @@ describe('Un membre par ligne, et la chaîne qui le tient (#378b)', () => {
     // que « votre choix » passait tous les tests, parce que le REPLI se calcule ailleurs. Un membre
     // à moitié rempli aurait donc porté l'étiquette de sa moitié réussie.
     //
-    // Le chien est le cas réel : son groupe de tête trouve `Head_1` par le nom, et ne trouve rien
-    // pour le cou. L'étiquette doit dire « vide », pas « nom ».
-    const tete = proposer('chien', 'quadrupede').find(m => m.label === 'Tête');
-    assert.equal(tete.roles[0].origine, 'nom', 'la tête du chien est bien trouvée par son nom');
+    // ⚠️ CE TEST UTILISAIT LE CHIEN, dont le cou n'était pas trouvé. Il l'est depuis #381, qui va
+    // chercher la tête et le cou sur le TRONC : le cas réel a disparu, ce qui est un progrès et non
+    // une régression. centaure3 le remplace, dont le tronc nomme `Cabeza_052` mais aucun cou.
+    const tete = proposer('centaure3', 'centaure').find(m => m.label === 'Tête');
+    assert.equal(tete.roles[0].osNom, 'Cabeza_052', 'la tête est trouvée sur le tronc, en espagnol');
+    assert.equal(tete.roles[0].origine, 'nom');
     assert.equal(tete.roles[1].osNom, null, 'son cou, lui, n\'est pas trouvé');
     assert.equal(tete.origine, 'vide', 'l\'étiquette du membre a pris celle de sa moitié réussie');
     assert.equal(tete.sur, false);
@@ -529,6 +531,83 @@ describe('Les échafaudages de rig ne concourent pas pour un rôle (#379)', () =
   });
 });
 
+describe('La tête et le cou se cherchent sur le TRONC (#381)', () => {
+  const RACINE3 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const charger3 = (nom) => JSON.parse(
+    readFileSync(join(RACINE3, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+  const proposer3 = (nom, archetype, enregistre) => {
+    const os = charger3(nom);
+    return propositionDeRoles3D({ os, archetype, carte: inferSkeletonMap(os), enregistre: enregistre || {} }, fr);
+  };
+  const troncDe = (nom) => {
+    const os = charger3(nom);
+    const nomDe = new Map(os.map(o => [o.id, o.name]));
+    return lignesDeCorrespondance3D(os, [], fr).tronc.segments.map(id => nomDe.get(id));
+  };
+
+  test('la tête n\'est pas une chaîne, c\'est l\'extrémité du tronc', () => {
+    // Mesuré avant correction sur les sept fixtures non humanoïdes : trois têtes sur sept sont sur
+    // le tronc, hors d'atteinte d'une recherche par chaînes. Le cerbère donnait `head` à une de ses
+    // TÊTES LATÉRALES.
+    assert.deepEqual(rolesDuTronc3D(troncDe('dragon'), ['head', 'neck']), {
+      head: { nom: 'Head_65_72', origine: 'nom' },
+      neck: { nom: 'Neck_66_71', origine: 'nom' },
+    });
+    const tete = proposer3('cerbere', 'quadrupede').find(m => m.label === 'Tête');
+    assert.equal(tete.roles[0].osNom, 'CERBERUS__Head_09', 'le cerbère reprend SA tête');
+  });
+
+  test('RÉGRESSION : par le NOM, jamais par la position', () => {
+    // Deux règles positionnelles essayées, deux démenties par la mesure :
+    //   « les k derniers os du tronc » : celui du cerbère finit par un os de QUEUE DE CHEVAL ;
+    //   « les k derniers, pris de la fin » : sur Mixamo le tronc finit par `Head` puis
+    //   `HeadTop_End`, ce qui donnerait `neck` = la tête et `head` = le bout du crâne.
+    const cerbere = troncDe('cerbere');
+    assert.ok(/Queue_de_cheval/.test(cerbere[cerbere.length - 1]), 'la fixture a changé');
+    assert.equal(rolesDuTronc3D(cerbere, ['head']).head.nom, 'CERBERUS__Head_09');
+    const mixamo = troncDe('mixamo');
+    assert.ok(/HeadTop_End/.test(mixamo[mixamo.length - 1]), 'la fixture a changé');
+    assert.equal(rolesDuTronc3D(mixamo, ['head']).head.nom, 'mixamorigHead');
+  });
+
+  test('le vocabulaire est celui des chaînes, `Cabeza` compris', () => {
+    // Pas une seconde liste de mots : `typeDeChaine3D`, déjà mesurée. centaure3 nomme sa tête en
+    // espagnol et elle est trouvée.
+    assert.equal(rolesDuTronc3D(troncDe('centaure3'), ['head']).head.nom, 'Cabeza_052');
+  });
+
+  test('PLUSIEURS candidats valent « structure », donc déplié', () => {
+    // Le chien porte CINQ os de cou sur son tronc, et rien ne dit lequel est LE cou. Même règle que
+    // pour les chaînes : on propose le premier, on ne prétend pas que c'est sûr.
+    const r = rolesDuTronc3D(troncDe('chien'), ['neck']);
+    assert.equal(r.neck.origine, 'structure');
+    assert.equal(rolesDuTronc3D(troncDe('dragon'), ['neck']).neck.origine, 'nom', 'un seul cou');
+  });
+
+  test('RÉGRESSION : les sources se composent RÔLE PAR RÔLE, pas membre par membre', () => {
+    // Une première version choisissait une source pour tout le membre, et le chien y perdait sa
+    // tête : son tronc nomme cinq os de cou mais aucune tête, alors que son `Head_1` EST une chaîne.
+    const tete = proposer3('chien', 'quadrupede').find(m => m.label === 'Tête');
+    assert.equal(tete.roles[0].osNom, 'Head_1', 'la tête vient de la CHAÎNE');
+    assert.equal(tete.roles[1].osNom, 'Neck1_14', 'le cou vient du TRONC');
+  });
+
+  test('l\'ordre est choix humain, puis tronc, puis chaîne', () => {
+    const tete = proposer3('cerbere', 'quadrupede', { os: { head: 'CERBERUS_R_HEAD_028' } })
+      .find(m => m.label === 'Tête');
+    assert.equal(tete.roles[0].osNom, 'CERBERUS_R_HEAD_028', 'le choix humain passe avant le tronc');
+    assert.equal(tete.roles[0].origine, 'manuel');
+  });
+
+  test('un tronc sans tête ni cou ne rend rien, et ne lève pas', () => {
+    assert.deepEqual(rolesDuTronc3D(troncDe('araignee'), ['head', 'neck']), {});
+    assert.deepEqual(rolesDuTronc3D([], ['head']), {});
+    assert.deepEqual(rolesDuTronc3D(null, null), {});
+    assert.deepEqual(rolesDuTronc3D(troncDe('cerbere'), ['hipFL']), {}, 'une patte n\'est pas sur le tronc');
+  });
+});
+
 /**
  * JOURNAL DE MUTATION : la table des rôles (tâche #378a).
  *
@@ -562,6 +641,15 @@ describe('Les échafaudages de rig ne concourent pas pour un rôle (#379)', () =
  *   R4 la chaîne est jugée sur TOUS ses os au lieu de sa racine                 ROUGE
  *   R5 les échafaudages redeviennent candidats à un rôle                        ROUGE
  *   R6 un échafaudage est SUPPRIMÉ au lieu d'être marqué                        ROUGE
+ *
+ * JOURNAL DE MUTATION : la tête sur le tronc (tâche #381).
+ *
+ *   S1 le tronc n'est plus consulté                                             ROUGE
+ *   S2 le DERNIER candidat du tronc au lieu du premier                          ROUGE
+ *   S3 plusieurs candidats se déclarent sûrs                                    ROUGE
+ *   S4 le tronc passe AVANT le choix humain                                     ROUGE
+ *   S5 la chaîne passe AVANT le tronc                                           ROUGE
+ *   S6 le cou réclame le même type que la tête                                  ROUGE
  *
  * R2 mérite un mot : c'est la version que j'ai écrite en premier, et elle laissait `HeadIK` prendre
  * le rôle de tête du dragon avec l'étiquette « nom », donc REPLIÉ. La règle de repli transforme

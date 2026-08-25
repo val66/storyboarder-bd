@@ -487,6 +487,63 @@ export function chaineEchafaudage3D(osNoms){
   return liste.length > 0 && estEchafaudage3D(liste[0]);
 }
 
+/**
+ * Le type de chaîne qu'un rôle du TRONC réclame. Deux lignes, et elles ne se dérivent pas.
+ *
+ * `FAMILLE_DE_TYPE_3D` va du vocabulaire des chaînes vers celui des rôles ; il faut ici l'inverse,
+ * et l'inverse d'une table qui écrase (`tete` et `cou` visent tous deux `head`) ne s'obtient pas en
+ * la retournant.
+ */
+const TYPE_DU_SEGMENT_3D = { head: 'tete', neck: 'cou' };
+
+/**
+ * Les os du TRONC qui portent un rôle, cherchés PAR LEUR NOM. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LE TRONC EST UN CAS À PART
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'attribution cherche une CHAÎNE pour chaque membre. Or la tête n'est pas une chaîne : c'est
+ * l'extrémité du TRONC. Les rôles `head` et `neck` ne pouvaient donc presque jamais être attribués.
+ * Mesuré avant correction, sur les sept fixtures non humanoïdes : trois têtes sur sept sont sur le
+ * tronc, hors d'atteinte ; le cerbère donnait `head` à une de ses TÊTES LATÉRALES ; le dragon le
+ * donnait à `HeadIK`, un échafaudage, jusqu'à ce que #379 l'écarte.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * PAR LE NOM, ET NON PAR LA POSITION
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ J'AI ESSAYÉ DEUX RÈGLES POSITIONNELLES, et la mesure les a démenties toutes les deux :
+ *
+ *   — « les k derniers os du tronc » : le tronc du cerbère finit par un os de QUEUE DE CHEVAL, pas
+ *     par sa tête ;
+ *   — « les k derniers, pris de la fin » : sur Mixamo le tronc finit par `Head` puis
+ *     `HeadTop_End`, ce qui donnerait `neck` = la tête et `head` = le bout du crâne.
+ *
+ * Le nom, lui, tient : 14 fixtures sur 17 portent un os de tête ou de cou nommé sur leur tronc,
+ * `Cabeza` espagnol compris. Le vocabulaire est celui de `typeDeChaine3D`, déjà mesuré, et non une
+ * seconde liste de mots.
+ *
+ * PLUSIEURS CANDIDATS VALENT « structure », pas « nom » : le chien porte CINQ os de cou sur son
+ * tronc, et rien ne dit lequel est LE cou. Même règle que pour les chaînes, et c'est elle qui fait
+ * déplier le membre plutôt que de replier un choix arbitraire.
+ */
+export function rolesDuTronc3D(troncNoms, cles){
+  const noms = (troncNoms || []).filter(n => typeof n === 'string' && n);
+  const sortie = {};
+  (cles || []).forEach(cle => {
+    const d = decomposerRole3D(cle);
+    const type = d ? TYPE_DU_SEGMENT_3D[d.segment] : null;
+    if (!type) return;
+    const trouves = noms.filter(n => {
+      const t = typeDeChaine3D([n]);
+      return t && t[0] === type;
+    });
+    if (trouves.length) sortie[cle] = { nom: trouves[0], origine: trouves.length === 1 ? 'nom' : 'structure' };
+  });
+  return sortie;
+}
+
 /** Le côté d'un membre, dans le vocabulaire des chaînes ('g' / 'd'), ou null. */
 function coteDuMembre3D(cleDeRole){
   const d = decomposerRole3D(cleDeRole);
@@ -565,7 +622,10 @@ export function propositionDeRoles3D({ os, archetype, carte, enregistre } = {}, 
   });
 
   if (archetype === 'humanoide') return depuisLaCarte3D(membres, carte, memoire);
-  return depuisLesChaines3D(membres, chainesAttribuables3D(os, memoire.membres, t), memoire);
+  const lignes = lignesDeCorrespondance3D(os, memoire.membres, t);
+  const nomDe = new Map((os || []).filter(o => o && o.id !== undefined).map(o => [o.id, o.name]));
+  const tronc = lignes.tronc ? lignes.tronc.segments.map(id => nomDe.get(id)).filter(Boolean) : [];
+  return depuisLesChaines3D(membres, chainesAttribuables3D(os, memoire.membres, t), memoire, tronc);
 }
 
 /** Cas humanoïde : on RELIT `inferSkeletonMap`, on ne la refait pas. */
@@ -587,9 +647,12 @@ function origineDe3D(cle, choix, entree){
 }
 
 /** Cas créature : on attribue une chaîne par membre, et ses segments prennent les rôles dans l'ordre. */
-function depuisLesChaines3D(membres, chaines, memoire){
+function depuisLesChaines3D(membres, chaines, memoire, tronc){
   const choix = (memoire.os) || {};
   const prises = new Set();
+  // LA TÊTE VIENT DU TRONC, PAS D'UNE CHAÎNE, et c'est le seul membre dans ce cas : elle en est
+  // l'extrémité, pas une branche. Cf. rolesDuTronc3D pour la mesure qui l'impose.
+  const surTronc = rolesDuTronc3D(tronc, membres.flatMap(m => m.roles.map(r => r.cle)));
   // ⚠️ SUR UN QUADRUPÈDE, « BRAS » EST UNE PATTE AVANT. Mesuré sur le cerbère, dont les pattes avant
   // s'appellent `Clavicle`, `UpperArm`, `Forearm` : `typeDeChaine3D` les lit « bras », ce qui est
   // exact au niveau du NOM et faux au niveau de l'anatomie. Sans cette équivalence, ces chaînes ne
@@ -647,11 +710,19 @@ function depuisLesChaines3D(membres, chaines, memoire){
     // LES SEGMENTS PRENNENT LES RÔLES DANS L'ORDRE, de la racine vers l'extrémité. Une chaîne plus
     // longue que la liste de rôles laisse ses derniers os sans rôle, ce qui est exact : une patte de
     // chien importé a six os, l'archétype quadrupède n'en nomme que deux.
-    const roles = m.roles.map((r, i) => ({
-      ...r,
-      osNom: choix[r.cle] || (chaine ? (chaine.osNoms[i] || null) : null),
-      origine: choix[r.cle] ? 'manuel' : (chaine && chaine.osNoms[i] ? origine : 'vide'),
-    }));
+    // TROIS SOURCES, ET L'ORDRE EST CELUI DE LA CERTITUDE : le choix humain, puis le TRONC, puis la
+    // chaîne. Elles se composent RÔLE PAR RÔLE, pas membre par membre.
+    //
+    // ⚠️ UNE PREMIÈRE VERSION CHOISISSAIT UNE SOURCE POUR TOUT LE MEMBRE, et le chien y perdait sa
+    // tête : son tronc nomme cinq os de cou mais aucune tête, alors que son `Head_1` EST une
+    // chaîne. Prendre le tronc pour le membre entier vidait donc le rôle `head`. Les deux sources ne
+    // visent pas le même genre d'os, elles se complètent au lieu de se disputer.
+    const roles = m.roles.map((r, i) => {
+      if (choix[r.cle]) return { ...r, osNom: choix[r.cle], origine: 'manuel' };
+      if (surTronc[r.cle]) return { ...r, osNom: surTronc[r.cle].nom, origine: surTronc[r.cle].origine };
+      const osNom = chaine ? (chaine.osNoms[i] || null) : null;
+      return { ...r, osNom, origine: osNom ? origine : 'vide' };
+    });
     return { ...m, chaine, roles, origine: pireOrigine3D(roles), sur: estSur3D(roles) };
   });
 }

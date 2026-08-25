@@ -215,9 +215,9 @@ conçue sur un seul exemple.
 **Un seul quadrupède propre**, le chien. Le cerbère est l'autre, et c'est l'exception qui a motivé
 toute la discussion.
 
-**La tête et le cou vivent sur le TRONC**, pas sur une chaîne, et l'attribution ne cherche que des
-chaînes. Mesuré sur les sept fixtures non humanoïdes : trois têtes sur sept sont sur le tronc, donc
-hors d'atteinte. Le cerbère attribue `head` à une de ses têtes LATÉRALES. C'est la tâche #381.
+**Le corpus ne contient aucun rig dont la tête ne soit ni sur le tronc ni une chaîne**, et rien ne
+dit que ce cas n'existe pas. Trois fixtures sur dix-sept ne nomment ni tête ni cou nulle part :
+araignée, raptor, serpent.
 
 ## Ce qui reste à construire
 
@@ -279,6 +279,34 @@ d'un quadrupède sortent donc AMBIGUËS, donc dépliées.
 une première version l'ignorait : elle prenait la première chaîne venue et l'étiquetait « nom »,
 repliant donc un membre faux. C'était le défaut des dix-huit emplacements sur un cerbère, réintroduit
 à l'échelle des rôles.
+
+### La tête se cherche sur le TRONC (#381, faite)
+
+L'attribution cherchait une CHAÎNE pour chaque membre. Or la tête n'est pas une chaîne, c'est
+l'extrémité du tronc : les rôles `head` et `neck` ne pouvaient donc presque jamais être attribués. Le
+cerbère donnait `head` à une de ses TÊTES LATÉRALES, le dragon à `HeadIK`.
+
+**Mesuré : 14 fixtures sur 17 portent un os de tête ou de cou nommé sur leur tronc**, `Cabeza`
+espagnol compris. Le vocabulaire est celui de `typeDeChaine3D`, déjà mesuré, et non une seconde liste
+de mots.
+
+⚠️ **Deux règles POSITIONNELLES essayées, deux démenties :**
+
+- « les k derniers os du tronc » : celui du cerbère finit par un os de QUEUE DE CHEVAL, pas par sa
+  tête ;
+- « les k derniers, pris de la fin » : sur Mixamo le tronc finit par `Head` puis `HeadTop_End`, ce
+  qui donnerait `neck` = la tête et `head` = le bout du crâne.
+
+Le NOM, lui, tient sur les quatorze.
+
+**Trois sources, dans l'ordre de la certitude** : le choix humain, puis le tronc, puis la chaîne. Elles
+se composent RÔLE PAR RÔLE. Une première version choisissait une source pour tout le membre, et le
+chien y perdait sa tête : son tronc nomme cinq os de cou mais aucune tête, alors que son `Head_1` EST
+une chaîne. Les deux sources ne visent pas le même genre d'os, elles se complètent.
+
+**Plusieurs candidats valent « structure », pas « nom ».** Le chien porte cinq os de cou sur son
+tronc, et rien ne dit lequel est LE cou : le membre se déplie plutôt que de replier un choix
+arbitraire.
 
 ### Les échafaudages de rig, écartés des candidats (#379, faite)
 

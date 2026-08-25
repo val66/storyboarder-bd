@@ -204,9 +204,9 @@ designed on a single example.
 **One clean quadruped only**, the dog. The cerberus is the other one, and it is the exception that
 motivated the whole discussion.
 
-**The head and neck live on the TRUNK**, not on a chain, and the assignment only looks for chains.
-Measured across the seven non-humanoid fixtures: three heads out of seven are on the trunk, hence out
-of reach. The cerberus assigns `head` to one of its SIDE heads. That is task #381.
+**The corpus holds no rig whose head is neither on the trunk nor a chain**, and nothing says that case
+does not exist. Three fixtures out of seventeen name neither head nor neck anywhere: spider, raptor,
+snake.
 
 ## What is left to build
 
@@ -266,6 +266,31 @@ therefore come out AMBIGUOUS, therefore unfolded.
 **An ambiguous assignment is never "certain".** That is what makes the folding rule usable, and a
 first version ignored it: it took the first chain available and labelled it "name", folding a wrong
 limb. That was the eighteen-slot defect on a cerberus, reintroduced at the scale of roles.
+
+### The head is looked for on the TRUNK (#381, done)
+
+The assignment looked for a CHAIN for every limb. But the head is not a chain, it is the trunk's end:
+the `head` and `neck` roles could therefore almost never be assigned. The cerberus gave `head` to one
+of its SIDE heads, the dragon to `HeadIK`.
+
+**Measured: 14 fixtures out of 17 carry a named head or neck bone on their trunk**, Spanish `Cabeza`
+included. The vocabulary is `typeDeChaine3D`'s, already measured, not a second word list.
+
+⚠️ **Two POSITIONAL rules tried, two disproved:**
+
+- "the last k bones of the trunk": the cerberus's ends with a PONYTAIL bone, not its head;
+- "the last k, taken from the end": on Mixamo the trunk ends with `Head` then `HeadTop_End`, which
+  would give `neck` = the head and `head` = the top of the skull.
+
+The NAME holds on all fourteen.
+
+**Three sources, in order of certainty**: the human choice, then the trunk, then the chain. They
+compose ROLE BY ROLE. A first version picked one source for the whole limb, and the dog lost its head:
+its trunk names five neck bones but no head, while its `Head_1` IS a chain. The two sources do not aim
+at the same kind of bone, they complete each other.
+
+**Several candidates mean "structure", not "name".** The dog carries five neck bones on its trunk, and
+nothing says which is THE neck: the limb unfolds rather than folding an arbitrary choice.
 
 ### Rig scaffolding, removed from the candidates (#379, done)
 
