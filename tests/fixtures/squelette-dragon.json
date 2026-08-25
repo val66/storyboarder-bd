@@ -27,7 +27,7 @@
   },
   {
    "i": 56,
-   "name": "Root Bone_149_39",
+   "name": "Root_Bone_149_39",
    "children": [
     57,
     173,
@@ -152,7 +152,7 @@
   },
   {
    "i": 66,
-   "name": "ThighBase.L_52_49",
+   "name": "ThighBaseL_52_49",
    "children": [
     67,
     84
@@ -165,7 +165,7 @@
   },
   {
    "i": 67,
-   "name": "Chain2 Thigh.L_49_50",
+   "name": "Chain2_ThighL_49_50",
    "children": [
     68,
     72
@@ -178,7 +178,7 @@
   },
   {
    "i": 68,
-   "name": "Chain2 Shin.L_36_51",
+   "name": "Chain2_ShinL_36_51",
    "children": [
     69
    ],
@@ -190,7 +190,7 @@
   },
   {
    "i": 69,
-   "name": "Chain2 Foot.L_35_52",
+   "name": "Chain2_FootL_35_52",
    "children": [
     70
    ],
@@ -202,7 +202,7 @@
   },
   {
    "i": 70,
-   "name": "FootRollControl.L_34_53",
+   "name": "FootRollControlL_34_53",
    "children": [
     71
    ],
@@ -214,7 +214,7 @@
   },
   {
    "i": 71,
-   "name": "FootRollTarget.L_33_54",
+   "name": "FootRollTargetL_33_54",
    "children": [],
    "t": [
     0.0620132,
@@ -224,7 +224,7 @@
   },
   {
    "i": 72,
-   "name": "Thigh.L_48_55",
+   "name": "ThighL_48_55",
    "children": [
     73
    ],
@@ -236,7 +236,7 @@
   },
   {
    "i": 73,
-   "name": "Shin.L_47_56",
+   "name": "ShinL_47_56",
    "children": [
     74
    ],
@@ -248,7 +248,7 @@
   },
   {
    "i": 74,
-   "name": "Foot.L_46_57",
+   "name": "FootL_46_57",
    "children": [
     75
    ],
@@ -260,7 +260,7 @@
   },
   {
    "i": 75,
-   "name": "ToeBase.L_45_58",
+   "name": "ToeBaseL_45_58",
    "children": [
     76,
     78,
@@ -274,7 +274,7 @@
   },
   {
    "i": 76,
-   "name": "MIddleToe1.L_38_59",
+   "name": "MIddleToe1L_38_59",
    "children": [
     77
    ],
@@ -286,7 +286,7 @@
   },
   {
    "i": 77,
-   "name": "MiddleToe2.L_37_60",
+   "name": "MiddleToe2L_37_60",
    "children": [],
    "t": [
     0.073774,
@@ -296,7 +296,7 @@
   },
   {
    "i": 78,
-   "name": "OuterToeBase.L_41_61",
+   "name": "OuterToeBaseL_41_61",
    "children": [
     79
    ],
@@ -308,7 +308,7 @@
   },
   {
    "i": 79,
-   "name": "OuterToe1.L_40_62",
+   "name": "OuterToe1L_40_62",
    "children": [
     80
    ],
@@ -320,7 +320,7 @@
   },
   {
    "i": 80,
-   "name": "OuterToe2.L_39_63",
+   "name": "OuterToe2L_39_63",
    "children": [],
    "t": [
     0.0997,
@@ -330,7 +330,7 @@
   },
   {
    "i": 81,
-   "name": "InnerToeBase.L_44_64",
+   "name": "InnerToeBaseL_44_64",
    "children": [
     82
    ],
@@ -342,7 +342,7 @@
   },
   {
    "i": 82,
-   "name": "InnerToe1.L_43_65",
+   "name": "InnerToe1L_43_65",
    "children": [
     83
    ],
@@ -354,7 +354,7 @@
   },
   {
    "i": 83,
-   "name": "InnerToe2.L_42_66",
+   "name": "InnerToe2L_42_66",
    "children": [],
    "t": [
     0.0493902,
@@ -364,7 +364,7 @@
   },
   {
    "i": 84,
-   "name": "Chain1Thigh.L_51_67",
+   "name": "Chain1ThighL_51_67",
    "children": [
     85
    ],
@@ -376,7 +376,7 @@
   },
   {
    "i": 85,
-   "name": "Chain1Shin.L_50_68",
+   "name": "Chain1ShinL_50_68",
    "children": [],
    "t": [
     0.0782844,
@@ -503,7 +503,7 @@
   },
   {
    "i": 95,
-   "name": "Eye.L_58_78",
+   "name": "EyeL_58_78",
    "children": [],
    "t": [
     0.0255663,
@@ -513,7 +513,7 @@
   },
   {
    "i": 96,
-   "name": "Eye.R_59_79",
+   "name": "EyeR_59_79",
    "children": [],
    "t": [
     -0.0232308,
@@ -533,7 +533,7 @@
   },
   {
    "i": 98,
-   "name": "Jaw IK_62_81",
+   "name": "Jaw_IK_62_81",
    "children": [
     99
    ],
@@ -545,7 +545,7 @@
   },
   {
    "i": 99,
-   "name": "Jaw IK Target_61_82",
+   "name": "Jaw_IK_Target_61_82",
    "children": [],
    "t": [
     -0.000672549,
@@ -555,7 +555,7 @@
   },
   {
    "i": 100,
-   "name": "Brow.L_63_83",
+   "name": "BrowL_63_83",
    "children": [],
    "t": [
     0.0296647,
@@ -565,7 +565,7 @@
   },
   {
    "i": 101,
-   "name": "Brow.R_64_84",
+   "name": "BrowR_64_84",
    "children": [],
    "t": [
     -0.0265956,
@@ -585,7 +585,7 @@
   },
   {
    "i": 103,
-   "name": "Shoulder.L_91_86",
+   "name": "ShoulderL_91_86",
    "children": [
     104
    ],
@@ -597,7 +597,7 @@
   },
   {
    "i": 104,
-   "name": "Wing1.L_90_87",
+   "name": "Wing1L_90_87",
    "children": [
     105,
     125
@@ -610,7 +610,7 @@
   },
   {
    "i": 105,
-   "name": "Wing2.L_87_88",
+   "name": "Wing2L_87_88",
    "children": [
     106
    ],
@@ -622,7 +622,7 @@
   },
   {
    "i": 106,
-   "name": "Hand.L_86_89",
+   "name": "HandL_86_89",
    "children": [
     107,
     110,
@@ -639,7 +639,7 @@
   },
   {
    "i": 107,
-   "name": "MIddleFinger1.L_70_90",
+   "name": "MIddleFinger1L_70_90",
    "children": [
     108
    ],
@@ -651,7 +651,7 @@
   },
   {
    "i": 108,
-   "name": "MiddleFinger2.L_69_91",
+   "name": "MiddleFinger2L_69_91",
    "children": [
     109
    ],
@@ -663,7 +663,7 @@
   },
   {
    "i": 109,
-   "name": "MiddleFinger3.L_68_92",
+   "name": "MiddleFinger3L_68_92",
    "children": [],
    "t": [
     0.33108,
@@ -673,7 +673,7 @@
   },
   {
    "i": 110,
-   "name": "SubPinky1.L_73_93",
+   "name": "SubPinky1L_73_93",
    "children": [
     111
    ],
@@ -685,7 +685,7 @@
   },
   {
    "i": 111,
-   "name": "SubPinky2.L_72_94",
+   "name": "SubPinky2L_72_94",
    "children": [
     112
    ],
@@ -697,7 +697,7 @@
   },
   {
    "i": 112,
-   "name": "SubPinky3.L_71_95",
+   "name": "SubPinky3L_71_95",
    "children": [],
    "t": [
     0.276701,
@@ -707,7 +707,7 @@
   },
   {
    "i": 113,
-   "name": "Pinky1.L_76_96",
+   "name": "Pinky1L_76_96",
    "children": [
     114
    ],
@@ -719,7 +719,7 @@
   },
   {
    "i": 114,
-   "name": "Pinky2.L_75_97",
+   "name": "Pinky2L_75_97",
    "children": [
     115
    ],
@@ -731,7 +731,7 @@
   },
   {
    "i": 115,
-   "name": "Pinky3.L_74_98",
+   "name": "Pinky3L_74_98",
    "children": [],
    "t": [
     0.240688,
@@ -741,7 +741,7 @@
   },
   {
    "i": 116,
-   "name": "Tuhmb Base.L_79_99",
+   "name": "Tuhmb_BaseL_79_99",
    "children": [
     117
    ],
@@ -753,7 +753,7 @@
   },
   {
    "i": 117,
-   "name": "Thumb1.L_78_100",
+   "name": "Thumb1L_78_100",
    "children": [
     118
    ],
@@ -765,7 +765,7 @@
   },
   {
    "i": 118,
-   "name": "Thumb2.L_77_101",
+   "name": "Thumb2L_77_101",
    "children": [],
    "t": [
     0.199212,
@@ -775,7 +775,7 @@
   },
   {
    "i": 119,
-   "name": "SubIndex1.L_82_102",
+   "name": "SubIndex1L_82_102",
    "children": [
     120
    ],
@@ -787,7 +787,7 @@
   },
   {
    "i": 120,
-   "name": "SubIndex2.L_81_103",
+   "name": "SubIndex2L_81_103",
    "children": [
     121
    ],
@@ -799,7 +799,7 @@
   },
   {
    "i": 121,
-   "name": "SubIndex3.L_80_104",
+   "name": "SubIndex3L_80_104",
    "children": [],
    "t": [
     0.260545,
@@ -809,7 +809,7 @@
   },
   {
    "i": 122,
-   "name": "IndexFinger1.L_85_105",
+   "name": "IndexFinger1L_85_105",
    "children": [
     123
    ],
@@ -821,7 +821,7 @@
   },
   {
    "i": 123,
-   "name": "IndexFinger2.L_84_106",
+   "name": "IndexFinger2L_84_106",
    "children": [
     124
    ],
@@ -833,7 +833,7 @@
   },
   {
    "i": 124,
-   "name": "IndexFinger3.L_83_107",
+   "name": "IndexFinger3L_83_107",
    "children": [],
    "t": [
     0.23432,
@@ -843,7 +843,7 @@
   },
   {
    "i": 125,
-   "name": "Elbow1.L_89_108",
+   "name": "Elbow1L_89_108",
    "children": [
     126
    ],
@@ -855,7 +855,7 @@
   },
   {
    "i": 126,
-   "name": "elbow2.L_88_109",
+   "name": "elbow2L_88_109",
    "children": [],
    "t": [
     0.175094,
@@ -865,7 +865,7 @@
   },
   {
    "i": 127,
-   "name": "Shoulder.R_115_110",
+   "name": "ShoulderR_115_110",
    "children": [
     128
    ],
@@ -877,7 +877,7 @@
   },
   {
    "i": 128,
-   "name": "Wing1.R_114_111",
+   "name": "Wing1R_114_111",
    "children": [
     129,
     149
@@ -890,7 +890,7 @@
   },
   {
    "i": 129,
-   "name": "Wing2.R_111_112",
+   "name": "Wing2R_111_112",
    "children": [
     130
    ],
@@ -902,7 +902,7 @@
   },
   {
    "i": 130,
-   "name": "Hand.R_110_113",
+   "name": "HandR_110_113",
    "children": [
     131,
     134,
@@ -919,7 +919,7 @@
   },
   {
    "i": 131,
-   "name": "MIddleFinger1.R_94_114",
+   "name": "MIddleFinger1R_94_114",
    "children": [
     132
    ],
@@ -931,7 +931,7 @@
   },
   {
    "i": 132,
-   "name": "MiddleFinger2.R_93_115",
+   "name": "MiddleFinger2R_93_115",
    "children": [
     133
    ],
@@ -943,7 +943,7 @@
   },
   {
    "i": 133,
-   "name": "MiddleFinger3.R_92_116",
+   "name": "MiddleFinger3R_92_116",
    "children": [],
    "t": [
     -0.390944,
@@ -953,7 +953,7 @@
   },
   {
    "i": 134,
-   "name": "SubPinky1.R_97_117",
+   "name": "SubPinky1R_97_117",
    "children": [
     135
    ],
@@ -965,7 +965,7 @@
   },
   {
    "i": 135,
-   "name": "SubPinky2.R_96_118",
+   "name": "SubPinky2R_96_118",
    "children": [
     136
    ],
@@ -977,7 +977,7 @@
   },
   {
    "i": 136,
-   "name": "SubPinky3.R_95_119",
+   "name": "SubPinky3R_95_119",
    "children": [],
    "t": [
     -0.324622,
@@ -987,7 +987,7 @@
   },
   {
    "i": 137,
-   "name": "Pinky1.R_100_120",
+   "name": "Pinky1R_100_120",
    "children": [
     138
    ],
@@ -999,7 +999,7 @@
   },
   {
    "i": 138,
-   "name": "Pinky2.R_99_121",
+   "name": "Pinky2R_99_121",
    "children": [
     139
    ],
@@ -1011,7 +1011,7 @@
   },
   {
    "i": 139,
-   "name": "Pinky3.R_98_122",
+   "name": "Pinky3R_98_122",
    "children": [],
    "t": [
     -0.276085,
@@ -1021,7 +1021,7 @@
   },
   {
    "i": 140,
-   "name": "Tuhmb Base.R_103_123",
+   "name": "Tuhmb_BaseR_103_123",
    "children": [
     141
    ],
@@ -1033,7 +1033,7 @@
   },
   {
    "i": 141,
-   "name": "Thumb1.R_102_124",
+   "name": "Thumb1R_102_124",
    "children": [
     142
    ],
@@ -1045,7 +1045,7 @@
   },
   {
    "i": 142,
-   "name": "Thumb2.R_101_125",
+   "name": "Thumb2R_101_125",
    "children": [],
    "t": [
     -0.198107,
@@ -1055,7 +1055,7 @@
   },
   {
    "i": 143,
-   "name": "SubIndex1.R_106_126",
+   "name": "SubIndex1R_106_126",
    "children": [
     144
    ],
@@ -1067,7 +1067,7 @@
   },
   {
    "i": 144,
-   "name": "SubIndex2.R_105_127",
+   "name": "SubIndex2R_105_127",
    "children": [
     145
    ],
@@ -1079,7 +1079,7 @@
   },
   {
    "i": 145,
-   "name": "SubIndex3.R_104_128",
+   "name": "SubIndex3R_104_128",
    "children": [],
    "t": [
     -0.260035,
@@ -1089,7 +1089,7 @@
   },
   {
    "i": 146,
-   "name": "IndexFinger1.R_109_129",
+   "name": "IndexFinger1R_109_129",
    "children": [
     147
    ],
@@ -1101,7 +1101,7 @@
   },
   {
    "i": 147,
-   "name": "IndexFinger2.R_108_130",
+   "name": "IndexFinger2R_108_130",
    "children": [
     148
    ],
@@ -1113,7 +1113,7 @@
   },
   {
    "i": 148,
-   "name": "IndexFinger3.R_107_131",
+   "name": "IndexFinger3R_107_131",
    "children": [],
    "t": [
     -0.236139,
@@ -1123,7 +1123,7 @@
   },
   {
    "i": 149,
-   "name": "Elbow1.R_113_132",
+   "name": "Elbow1R_113_132",
    "children": [
     150
    ],
@@ -1135,7 +1135,7 @@
   },
   {
    "i": 150,
-   "name": "elbow2.R_112_133",
+   "name": "elbow2R_112_133",
    "children": [],
    "t": [
     -0.197194,
@@ -1145,7 +1145,7 @@
   },
   {
    "i": 151,
-   "name": "Wing Fly IK.L_116_134",
+   "name": "Wing_Fly_IKL_116_134",
    "children": [],
    "t": [
     0.00432644,
@@ -1155,7 +1155,7 @@
   },
   {
    "i": 152,
-   "name": "Wing Fly IK.R_117_135",
+   "name": "Wing_Fly_IKR_117_135",
    "children": [],
    "t": [
     0.00432644,
@@ -1165,7 +1165,7 @@
   },
   {
    "i": 153,
-   "name": "ThighBase.R_139_136",
+   "name": "ThighBaseR_139_136",
    "children": [
     154,
     171
@@ -1178,7 +1178,7 @@
   },
   {
    "i": 154,
-   "name": "Chain2 Thigh.R_136_137",
+   "name": "Chain2_ThighR_136_137",
    "children": [
     155,
     159
@@ -1191,7 +1191,7 @@
   },
   {
    "i": 155,
-   "name": "Chain2 Shin.R_123_138",
+   "name": "Chain2_ShinR_123_138",
    "children": [
     156
    ],
@@ -1203,7 +1203,7 @@
   },
   {
    "i": 156,
-   "name": "Chain2 Foot.R_122_139",
+   "name": "Chain2_FootR_122_139",
    "children": [
     157
    ],
@@ -1215,7 +1215,7 @@
   },
   {
    "i": 157,
-   "name": "FootRollControl.R_121_140",
+   "name": "FootRollControlR_121_140",
    "children": [
     158
    ],
@@ -1227,7 +1227,7 @@
   },
   {
    "i": 158,
-   "name": "FootRollTarget.R_120_141",
+   "name": "FootRollTargetR_120_141",
    "children": [],
    "t": [
     -0.0651137,
@@ -1237,7 +1237,7 @@
   },
   {
    "i": 159,
-   "name": "Thigh.R_135_142",
+   "name": "ThighR_135_142",
    "children": [
     160
    ],
@@ -1249,7 +1249,7 @@
   },
   {
    "i": 160,
-   "name": "Shin.R_134_143",
+   "name": "ShinR_134_143",
    "children": [
     161
    ],
@@ -1261,7 +1261,7 @@
   },
   {
    "i": 161,
-   "name": "Foot.R_133_144",
+   "name": "FootR_133_144",
    "children": [
     162
    ],
@@ -1273,7 +1273,7 @@
   },
   {
    "i": 162,
-   "name": "ToeBase.R_132_145",
+   "name": "ToeBaseR_132_145",
    "children": [
     163,
     165,
@@ -1287,7 +1287,7 @@
   },
   {
    "i": 163,
-   "name": "MIddleToe1.R_125_146",
+   "name": "MIddleToe1R_125_146",
    "children": [
     164
    ],
@@ -1299,7 +1299,7 @@
   },
   {
    "i": 164,
-   "name": "MiddleToe2.R_124_147",
+   "name": "MiddleToe2R_124_147",
    "children": [],
    "t": [
     -0.0777463,
@@ -1309,7 +1309,7 @@
   },
   {
    "i": 165,
-   "name": "OuterToeBase.R_128_148",
+   "name": "OuterToeBaseR_128_148",
    "children": [
     166
    ],
@@ -1321,7 +1321,7 @@
   },
   {
    "i": 166,
-   "name": "OuterToe1.R_127_149",
+   "name": "OuterToe1R_127_149",
    "children": [
     167
    ],
@@ -1333,7 +1333,7 @@
   },
   {
    "i": 167,
-   "name": "OuterToe2.R_126_150",
+   "name": "OuterToe2R_126_150",
    "children": [],
    "t": [
     -0.104146,
@@ -1343,7 +1343,7 @@
   },
   {
    "i": 168,
-   "name": "InnerToeBase.R_131_151",
+   "name": "InnerToeBaseR_131_151",
    "children": [
     169
    ],
@@ -1355,7 +1355,7 @@
   },
   {
    "i": 169,
-   "name": "InnerToe1.R_130_152",
+   "name": "InnerToe1R_130_152",
    "children": [
     170
    ],
@@ -1367,7 +1367,7 @@
   },
   {
    "i": 170,
-   "name": "InnerToe2.R_129_153",
+   "name": "InnerToe2R_129_153",
    "children": [],
    "t": [
     -0.0513283,
@@ -1377,7 +1377,7 @@
   },
   {
    "i": 171,
-   "name": "Chain1Thigh.R_138_154",
+   "name": "Chain1ThighR_138_154",
    "children": [
     172
    ],
@@ -1389,7 +1389,7 @@
   },
   {
    "i": 172,
-   "name": "Chain1Shin.R_137_155",
+   "name": "Chain1ShinR_137_155",
    "children": [],
    "t": [
     -0.0865007,
@@ -1399,7 +1399,7 @@
   },
   {
    "i": 173,
-   "name": "Wing IK.L_142_156",
+   "name": "Wing_IKL_142_156",
    "children": [
     174
    ],
@@ -1411,7 +1411,7 @@
   },
   {
    "i": 174,
-   "name": "Wing Pole.L_141_157",
+   "name": "Wing_PoleL_141_157",
    "children": [],
    "t": [
     0.391052,
@@ -1421,7 +1421,7 @@
   },
   {
    "i": 175,
-   "name": "Wing IK.R_144_158",
+   "name": "Wing_IKR_144_158",
    "children": [
     176
    ],
@@ -1433,7 +1433,7 @@
   },
   {
    "i": 176,
-   "name": "Wing Pole.R_143_159",
+   "name": "Wing_PoleR_143_159",
    "children": [],
    "t": [
     -0.457389,
@@ -1443,7 +1443,7 @@
   },
   {
    "i": 177,
-   "name": "Leg IK.L_146_160",
+   "name": "Leg_IKL_146_160",
    "children": [
     178
    ],
@@ -1455,7 +1455,7 @@
   },
   {
    "i": 178,
-   "name": "Leg POLE.L_145_161",
+   "name": "Leg_POLEL_145_161",
    "children": [],
    "t": [
     0.105984,
@@ -1465,7 +1465,7 @@
   },
   {
    "i": 179,
-   "name": "Leg IK.R_148_162",
+   "name": "Leg_IKR_148_162",
    "children": [
     180
    ],
@@ -1477,7 +1477,7 @@
   },
   {
    "i": 180,
-   "name": "Leg POLE.R_147_163",
+   "name": "Leg_POLER_147_163",
    "children": [],
    "t": [
     -0.105984,

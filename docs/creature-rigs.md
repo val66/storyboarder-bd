@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.41. Steps 1 to 3, #363 to #366, #368 and #369 are shipped; #367 is
+> Up to date as of v1.4.42. Steps 1 to 3, #363 to #366 and #368 to #370 are shipped; #367 is
 > open.
 
 ## Where things stand
@@ -295,6 +295,48 @@ in the help, not in the taxonomy.
 
 Note: the griffin has three pairs, like the centaur. Topologically indistinguishable, so both sit in
 the "proposed" group.
+
+## The net was measuring a fiction (#370)
+
+**Reported through use, and the costliest defect of this project.** `labrador_dog.glb` came out
+"quadruped" in the tests and **"serpentine" in the application**.
+
+**THE CAUSE.** Three SANITISES node names on decoding (`PropertyBinding.sanitizeNodeName`, called by
+`GLTFLoader.createUniqueName`): spaces become underscores, and `. : / [ ]` are **removed**. The
+fixtures, meanwhile, were extracted from the `.glb`'s RAW JSON. They described names the application
+never sees.
+
+`Ear1.L_5` arrives as `Ear1L_5`, where no separator precedes the `L` any more: `coteDuNom` read no
+side at all.
+
+| file | in the tests | in the application |
+|---|---|---|
+| dog | quadruped, 14 lateral limbs | **serpentine, 0** |
+| dragon | winged biped, 14 | **serpentine, 0** |
+| raptor | 4 | **serpentine, 0** |
+| spider | 28 | arachnid, but **14** |
+
+**TWO FIXES, AND THE FIRST MATTERS MOST.**
+
+*Fixtures now carry the name the application sees.* The generator sanitises like Three, and a test
+refuses any fixture still holding a reserved character. Without that, the second fix would have been
+measured against the same fiction.
+
+*`coteDuNom` learns two more forms*, bringing it to eight conventions: Blender's sanitised `.L`
+(`Ear1L_5`, `IKBackLegL_45`) and the separator-letter-digit form (`Bone_L001`). Measured on the 3032
+bones of the sanitised corpus: **+408 sides read, 0 conflicts**.
+
+The Blender pattern's guard is double, and both halves count: the letter must **follow** a lowercase
+letter or digit, which rejects `MODEL_root` and `CTRL_x`, and **precede** an underscore, a digit or
+the end, which rejects `PELVIS` and `SpineLower`.
+
+**Classification stays at 13 out of 17**, with the same four errors. But this time it is measured on
+what the code actually sees.
+
+**WHAT THIS TEACHES, beyond this file.** A fixture is a reduction of reality, and "a reduction of
+WHAT" is not a rhetorical question. These twelve skeletons reduced the file on disk, while the code
+reads a decoded scene. Two neighbouring realities, one character apart, and three creatures out of
+twelve classified wrong without 2000 tests flinching.
 
 ## Decisions taken with the user
 

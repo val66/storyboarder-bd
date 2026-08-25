@@ -78,16 +78,24 @@ describe('cerbère : un quadrupède à trois têtes, le pire cas mesuré', () =>
   //   les deux pattes AVANT et la queue (6 os) ne sont nulle part.
   test('instantané du comportement actuel', () => {
     assert.deepEqual(reconnu(charger('cerbere')), {
-      bassin: 'CERBERUS_ Spine_03',
-      poitrine: 'CERBERUS_ Spine3_06',
-      cou: 'CERBERUS_ Neck_07',
-      tete: 'CERBERUS_ L Clavicle_011',
-      clavicule_g: 'CERBERUS_L_NECK_1_022', bras_g: 'CERBERUS_L_NECK_2_023',
-      avantbras_g: 'CERBERUS_L_HEAD_024', main_g: 'CERBERUS_L_JAW_025',
-      clavicule_d: 'CERBERUS_R_NECK_1_026', bras_d: 'CERBERUS_R_NECK_2_027',
-      avantbras_d: 'CERBERUS_R_HEAD_028', main_d: 'CERBERUS_R_JAW_029',
-      cuisse_g: 'CERBERUS_ L Thigh_030', jambe_g: 'CERBERUS_ L Calf_031', pied_g: 'CERBERUS_ L HorseLink_032',
-      cuisse_d: 'CERBERUS_ R Thigh_035', jambe_d: 'CERBERUS_ R Calf_036', pied_d: 'CERBERUS_ R HorseLink_037',
+      bassin: 'CERBERUS__Spine_03',
+      poitrine: 'CERBERUS__Spine3_06',
+      cou: 'CERBERUS__Neck_07',
+      tete: 'CERBERUS__L_Clavicle_011',
+      clavicule_g: 'CERBERUS_L_NECK_1_022',
+      bras_g: 'CERBERUS_L_NECK_2_023',
+      avantbras_g: 'CERBERUS_L_HEAD_024',
+      main_g: 'CERBERUS_L_JAW_025',
+      clavicule_d: 'CERBERUS_R_NECK_1_026',
+      bras_d: 'CERBERUS_R_NECK_2_027',
+      avantbras_d: 'CERBERUS_R_HEAD_028',
+      main_d: 'CERBERUS_R_JAW_029',
+      cuisse_g: 'CERBERUS__L_Thigh_030',
+      jambe_g: 'CERBERUS__L_Calf_031',
+      pied_g: 'CERBERUS__L_HorseLink_032',
+      cuisse_d: 'CERBERUS__R_Thigh_035',
+      jambe_d: 'CERBERUS__R_Calf_036',
+      pied_d: 'CERBERUS__R_HorseLink_037',
     });
   });
 });
@@ -98,13 +106,24 @@ describe('araignée : quatre paires de pattes, deux reconnues', () => {
   // qu'aux deux ancres qu'on lui donne. `cou` et `tete` reçoivent deux segments de corps.
   test('instantané du comportement actuel', () => {
     assert.deepEqual(reconnu(charger('araignee')), {
-      bassin: 'Bone_02', poitrine: 'Bone.004_03', cou: 'Bone.003_04', tete: 'Bone.002_05',
-      clavicule_g: 'Bone.004_L_062', bras_g: 'Bone.004_L.001_063',
-      avantbras_g: 'Bone.004_L.002_064', main_g: 'Bone.004_L.003_065',
-      clavicule_d: 'Bone.004_R_070', bras_d: 'Bone.004_R.001_071',
-      avantbras_d: 'Bone.004_R.002_072', main_d: 'Bone.004_R.003_073',
-      cuisse_g: 'Bone_L_078', jambe_g: 'Bone_L.001_079', pied_g: 'Bone_L.002_080',
-      cuisse_d: 'Bone_R_086', jambe_d: 'Bone_R.001_087', pied_d: 'Bone_R.002_088',
+      bassin: 'Bone_02',
+      poitrine: 'Bone004_03',
+      cou: 'Bone003_04',
+      tete: 'Bone002_05',
+      clavicule_g: 'Bone004_L_062',
+      bras_g: 'Bone004_L001_063',
+      avantbras_g: 'Bone004_L002_064',
+      main_g: 'Bone004_L003_065',
+      clavicule_d: 'Bone004_R_070',
+      bras_d: 'Bone004_R001_071',
+      avantbras_d: 'Bone004_R002_072',
+      main_d: 'Bone004_R003_073',
+      cuisse_g: 'Bone_L_078',
+      jambe_g: 'Bone_L001_079',
+      pied_g: 'Bone_L002_080',
+      cuisse_d: 'Bone_R_086',
+      jambe_d: 'Bone_R001_087',
+      pied_d: 'Bone_R002_088',
     });
   });
 });
@@ -163,13 +182,24 @@ describe('dragon : la wyverne passe, mais les chaînes sont tronquées', () => {
   // La queue, 8 os, n'est nulle part.
   test('instantané du comportement actuel', () => {
     assert.deepEqual(reconnu(charger('dragon')), {
-      bassin: 'Pelvis_140_40', poitrine: 'Torso_118_70', cou: 'Neck_66_71', tete: 'Head_65_72',
-      clavicule_g: 'Shoulder.L_91_86', bras_g: 'Wing1.L_90_87',
-      avantbras_g: 'Wing2.L_87_88', main_g: 'Hand.L_86_89',
-      clavicule_d: 'Shoulder.R_115_110', bras_d: 'Wing1.R_114_111',
-      avantbras_d: 'Wing2.R_111_112', main_d: 'Hand.R_110_113',
-      cuisse_g: 'ThighBase.L_52_49', jambe_g: 'Chain2 Thigh.L_49_50', pied_g: 'Thigh.L_48_55',
-      cuisse_d: 'ThighBase.R_139_136', jambe_d: 'Chain2 Thigh.R_136_137', pied_d: 'Thigh.R_135_142',
+      bassin: 'Pelvis_140_40',
+      poitrine: 'Torso_118_70',
+      cou: 'Neck_66_71',
+      tete: 'Head_65_72',
+      clavicule_g: 'ShoulderL_91_86',
+      bras_g: 'Wing1L_90_87',
+      avantbras_g: 'Wing2L_87_88',
+      main_g: 'HandL_86_89',
+      clavicule_d: 'ShoulderR_115_110',
+      bras_d: 'Wing1R_114_111',
+      avantbras_d: 'Wing2R_111_112',
+      main_d: 'HandR_110_113',
+      cuisse_g: 'ThighBaseL_52_49',
+      jambe_g: 'Chain2_ThighL_49_50',
+      pied_g: 'ThighL_48_55',
+      cuisse_d: 'ThighBaseR_139_136',
+      jambe_d: 'Chain2_ThighR_136_137',
+      pied_d: 'ThighR_135_142',
     });
   });
 });
@@ -184,24 +214,24 @@ describe('centaure : le fichier est riggé en BIPÈDE', () => {
   test('18 emplacements justes, comme pour un humanoïde ordinaire', () => {
     const carte = reconnu(charger('centaure'));
     assert.equal(Object.keys(carte).length, 18);
-    assert.equal(carte.bassin, 'mixamorig:Hips_01');
-    assert.equal(carte.tete, 'mixamorig:Head_06');
-    assert.equal(carte.cuisse_g, 'mixamorig:LeftUpLeg_00');
-    assert.equal(carte.main_d, 'mixamorig:RightHand_035');
+    assert.equal(carte.bassin, 'mixamorigHips_01');
+    assert.equal(carte.tete, 'mixamorigHead_06');
+    assert.equal(carte.cuisse_g, 'mixamorigLeftUpLeg_00');
+    assert.equal(carte.main_d, 'mixamorigRightHand_035');
   });
 });
 
 describe('oiseau : les ailes passent pour des bras, la poitrine pour un cou', () => {
   // 554 os, dont l'immense majorité en plumes. Les ailes tombent dans les bras, ce qui est le bon
-  // rôle. Deux erreurs : `poitrine` reçoit `CK Neck`, le cou lui-même, et `pied` reçoit
+  // rôle. Deux erreurs : `poitrine` reçoit `CK_Neck`, le cou lui-même, et `pied` reçoit
   // `HorseLink`, la cheville d'une patte digitigrade, le pied étant plus loin.
   test('instantané du comportement actuel', () => {
     const carte = reconnu(charger('oiseau'));
-    assert.equal(carte.poitrine, 'CK Neck_0114', 'la poitrine reçoit le cou');
-    assert.equal(carte.cou, 'CK Neck1_0115');
-    assert.equal(carte.tete, 'CK Head_0118', 'la tête, elle, est juste');
-    assert.equal(carte.bras_g, 'CK L UpperArm_0165', 'l\'aile tombe dans le bras');
-    assert.equal(carte.pied_g, 'CK L HorseLink_011', 'la cheville prise pour le pied');
+    assert.equal(carte.poitrine, 'CK_Neck_0114', 'la poitrine reçoit le cou');
+    assert.equal(carte.cou, 'CK_Neck1_0115');
+    assert.equal(carte.tete, 'CK_Head_0118', 'la tête, elle, est juste');
+    assert.equal(carte.bras_g, 'CK_L_UpperArm_0165', 'l\'aile tombe dans le bras');
+    assert.equal(carte.pied_g, 'CK_L_HorseLink_011', 'la cheville prise pour le pied');
     assert.equal(Object.keys(carte).length, 18);
   });
 });
@@ -217,11 +247,22 @@ describe('chien : un quadrupède ordinaire, et la question du nommage tranchée'
   // faisant que trois os avant la patte elle-même.
   test('instantané du comportement actuel', () => {
     assert.deepEqual(reconnu(charger('chien')), {
-      bassin: 'Back_38', poitrine: 'Torso2_22', cou: 'Torso3_15', tete: 'Ear1.L_5',
-      clavicule_g: 'FrontShoulder.L_18', bras_g: 'FrontUpperLeg.L_17', avantbras_g: 'FrontLowerLeg.L_16',
-      clavicule_d: 'FrontShoulder.R_21', bras_d: 'FrontUpperLeg.R_20', avantbras_d: 'FrontLowerLeg.R_19',
-      cuisse_g: 'BackShoulder.L_27', jambe_g: 'BackLeg.L_26', pied_g: 'BackUpperLeg.L_25',
-      cuisse_d: 'BackShoulder.R_31', jambe_d: 'BackLeg.R_30', pied_d: 'BackUpperLeg.R_29',
+      bassin: 'Back_38',
+      poitrine: 'Torso2_22',
+      cou: 'Torso3_15',
+      tete: 'Ear1L_5',
+      clavicule_g: 'FrontShoulderL_18',
+      bras_g: 'FrontUpperLegL_17',
+      avantbras_g: 'FrontLowerLegL_16',
+      clavicule_d: 'FrontShoulderR_21',
+      bras_d: 'FrontUpperLegR_20',
+      avantbras_d: 'FrontLowerLegR_19',
+      cuisse_g: 'BackShoulderL_27',
+      jambe_g: 'BackLegL_26',
+      pied_g: 'BackUpperLegL_25',
+      cuisse_d: 'BackShoulderR_31',
+      jambe_d: 'BackLegR_30',
+      pied_d: 'BackUpperLegR_29',
     });
   });
 });
@@ -288,10 +329,10 @@ describe('membresDuSquelette3D : le cerbère retrouve sa vraie tête', () => {
   test('les sept membres sont là, les trois têtes comprises', () => {
     const parCote = r.membres.map(m => `${m.cote || '-'} ${nom(m.segments[0]).replace(/^CERBERUS_ ?/, '')}`);
     assert.deepEqual(parCote, [
-      'g L Thigh_030', 'd R Thigh_035',      // pattes arrière
-      '- Tail_040',                          // la queue, invisible pour l'ancienne reconnaissance
-      'g L_NECK_1_022', 'd R_NECK_1_026',    // les deux têtes latérales, sur la poitrine
-      'g L Clavicle_011', 'd R Clavicle_016', // pattes avant, invisibles elles aussi
+      'g _L_Thigh_030', 'd _R_Thigh_035',      // pattes arrière
+      '- _Tail_040',                           // la queue, invisible pour l'ancienne reconnaissance
+      'g L_NECK_1_022', 'd R_NECK_1_026',      // les deux têtes latérales, sur la poitrine
+      'g _L_Clavicle_011', 'd _R_Clavicle_016', // pattes avant, invisibles elles aussi
     ]);
   });
 });
@@ -363,8 +404,8 @@ describe('membresDuSquelette3D : le dragon, chaînes complètes', () => {
   test('les chaînes ne sont plus tronquées à trois', () => {
     // L'ancienne reconnaissance mettait `Thigh.L`, la cuisse, dans `pied_g`. La chaîne entière fait
     // neuf os. La queue, huit, n'était nulle part.
-    assert.equal(parNom('ThighBase.L').segments.length, 9, 'patte arrière gauche');
-    assert.equal(parNom('Shoulder.L').segments.length, 7, 'aile gauche');
+    assert.equal(parNom('ThighBaseL').segments.length, 9, 'patte arrière gauche');
+    assert.equal(parNom('ShoulderL').segments.length, 7, 'aile gauche');
     assert.equal(parNom('TailBase').segments.length, 8, 'queue');
     assert.equal(parNom('TailBase').cote, null, 'la queue n\'a pas de côté, c\'est une annexe');
   });
@@ -471,7 +512,7 @@ describe('étape 3 : la longueur NE sépare PAS, mesuré', () => {
         if (ECHAFAUDAGE.test(n)) trouves.push(n);
       });
     });
-    assert.equal(trouves.length, 67, 'le compte d\'échafaudages du corpus a changé');
+    assert.equal(trouves.length, 63, 'le compte d\'échafaudages du corpus a changé');
     // ⚠️ LA GARDE SE FAIT SUR DES NOMS EXACTS, pas sur un mot contenu. Ma première version
     // cherchait « thigh » quelque part dans le nom, et elle a accusé le filet à tort :
     // `thigh_vol_end_rSocket` est une prise d'attache, pas une cuisse. Le mot d'une partie du corps
@@ -523,7 +564,8 @@ describe('raptor : le bipède qui a démenti le critère d\'angle', () => {
     const ANATOMIQUE = /thigh|calf|shin|foot|hand|head|neck|tail|wing|arm|leg/i;
     const parlants = os.filter(o => ANATOMIQUE.test(o.name));
     assert.deepEqual(parlants, [], 'un os parlant est apparu, la mesure de #365 est à refaire');
-    assert.ok(parId.get(r.membres[0].segments[0]).name.startsWith('Bone.'));
+    assert.ok(parId.get(r.membres[0].segments[0]).name.startsWith('Bone'),
+      'os numérotés, et sans le point : Three retire le `.` de `Bone.034.L` au décodage (#370)');
   });
 });
 
@@ -824,8 +866,8 @@ describe('nomSuggereDeChaine3D : mesuré sur le corpus', () => {
       'centaure', 'raptor', 'centaure1', 'centaure2', 'centaure3', 'maison', 'vrm', 'unreal'];
     let total = 0, nommees = 0;
     noms.forEach(n => nomsProposes(n).forEach(s => { total++; if (s) nommees++; }));
-    assert.equal(total, 457);
-    assert.equal(nommees, 226);
+    assert.equal(total, 463);
+    assert.equal(nommees, 228);
   });
 
   test('la traduction passe par le paramètre, jamais par un import d\'état', () => {

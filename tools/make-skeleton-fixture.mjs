@@ -24,6 +24,16 @@
  * n'est appliquée, la fixture reste une réduction FIDÈLE du fichier ; ramener à l'échelle est une
  * décision du code, pas de la donnée.
  *
+ * ⚠️ LES NOMS SONT CEUX QUE L'APPLICATION VOIT, PAS CEUX DU FICHIER. Three nettoie les noms de
+ * nœuds au décodage (`PropertyBinding.sanitizeNodeName`, appelé par `GLTFLoader.createUniqueName`) :
+ * les espaces deviennent des soulignés, et `. : / [ ]` DISPARAISSENT. `Ear1.L_5` arrive donc dans
+ * l'application sous la forme `Ear1L_5`.
+ *
+ * Les fixtures ont d'abord été extraites du JSON BRUT du `.glb`, et elles mesuraient donc une
+ * fiction : le chien, le dragon et le raptor y passaient pour des quadrupèdes et des bipèdes alors
+ * que l'application, elle, n'y lisait AUCUN côté et les classait « serpentin ». Défaut signalé à
+ * l'usage, cf. tâche #370. Un filet qui ne mesure pas ce que le code voit ne protège rien.
+ *
  * Usage :  node tools/make-skeleton-fixture.mjs <dossier-des-glb>
  *          node tools/make-skeleton-fixture.mjs <dossier> --nouveau <nom-fixture> <fichier.glb>
  */
@@ -71,6 +81,20 @@ const matriceLocale = (n) => {
 const arrondi = (v) => Number(Number(v).toPrecision(6));
 
 /**
+ * Le nom tel que Three le donnera, copie de `PropertyBinding.sanitizeNodeName`.
+ *
+ * RECOPIÉ PLUTÔT QU'IMPORTÉ, à dessein : cet outil ne dépend pas de Three, c'est ce qui lui permet
+ * de tourner sous Node sans WebGL. La copie est donc épinglée par un test qui la confronte à des
+ * noms réels du corpus ; si Three change sa règle, c'est ce test qui doit être relu.
+ *
+ * `createUniqueName` ajoute en plus un suffixe `_1`, `_2`… en cas de collision. Mesuré sur les
+ * dix-sept fixtures : le nettoyage n'en produit AUCUNE, ce suffixe n'est donc pas reproduit ici.
+ */
+export function nomVuParThree(nom){
+  return String(nom || '').replace(/\s/g, '_').replace(/[[\].:/]/g, '');
+}
+
+/**
  * La liste d'os d'un `.glb` : `{ i, name, children, t }`.
  *
  * Ne retient que les nœuds cités par `skins[].joints`, et ne garde d'`children` que ceux qui sont
@@ -97,17 +121,28 @@ export function osDuGlb(gltf){
     const m = monde(i);
     return {
       i,
-      name: nodes[i].name || String(i),
+      name: nomVuParThree(nodes[i].name) || String(i),
       children: (nodes[i].children || []).filter(c => joints.has(c)),
       t: [arrondi(m[12]), arrondi(m[13]), arrondi(m[14])],
     };
   });
 }
 
-/** Deux listes d'os décrivent-elles le MÊME squelette ? Identifiants et noms, dans l'ordre. */
+/**
+ * Deux listes d'os décrivent-elles le MÊME squelette ? Identifiants, hiérarchie et noms, dans
+ * l'ordre.
+ *
+ * LE NOM EST ACCEPTÉ SOUS SES DEUX FORMES, brute ou nettoyée, et c'est le prix d'une migration.
+ * Les fixtures d'avant la tâche #370 portaient le nom BRUT du `.glb` ; celles d'après portent le
+ * nom que Three donne. Refuser les premières interdirait de les mettre à jour, ce qui est
+ * exactement l'inverse du but. La protection, elle, ne bouge pas : les identifiants et la
+ * hiérarchie doivent correspondre EXACTEMENT, et c'est cela qui garantit qu'on a bien le même
+ * fichier sous la main.
+ */
 const memeSquelette = (a, b) =>
   a.length === b.length &&
-  a.every((o, k) => o.i === b[k].i && o.name === b[k].name &&
+  a.every((o, k) => o.i === b[k].i &&
+    (o.name === b[k].name || o.name === nomVuParThree(b[k].name)) &&
     JSON.stringify(o.children) === JSON.stringify(b[k].children));
 
 const ecrire = (nom, origine, os) =>

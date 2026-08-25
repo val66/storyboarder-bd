@@ -28,7 +28,7 @@
   },
   {
    "i": 29,
-   "name": "CK Footsteps_06",
+   "name": "CK_Footsteps_06",
    "children": [],
    "t": [
     0.0401653,
@@ -38,7 +38,7 @@
   },
   {
    "i": 30,
-   "name": "CK Pelvis_07",
+   "name": "CK_Pelvis_07",
    "children": [
     31
    ],
@@ -50,7 +50,7 @@
   },
   {
    "i": 31,
-   "name": "CK Spine_08",
+   "name": "CK_Spine_08",
    "children": [
     32,
     52,
@@ -65,7 +65,7 @@
   },
   {
    "i": 32,
-   "name": "CK L Thigh_09",
+   "name": "CK_L_Thigh_09",
    "children": [
     33
    ],
@@ -77,7 +77,7 @@
   },
   {
    "i": 33,
-   "name": "CK L Calf_010",
+   "name": "CK_L_Calf_010",
    "children": [
     34
    ],
@@ -89,7 +89,7 @@
   },
   {
    "i": 34,
-   "name": "CK L HorseLink_011",
+   "name": "CK_L_HorseLink_011",
    "children": [
     35
    ],
@@ -101,7 +101,7 @@
   },
   {
    "i": 35,
-   "name": "CK L Foot_012",
+   "name": "CK_L_Foot_012",
    "children": [
     36,
     40,
@@ -116,7 +116,7 @@
   },
   {
    "i": 36,
-   "name": "CK L Toe0_013",
+   "name": "CK_L_Toe0_013",
    "children": [
     37
    ],
@@ -128,7 +128,7 @@
   },
   {
    "i": 37,
-   "name": "CK L Toe01_014",
+   "name": "CK_L_Toe01_014",
    "children": [
     38
    ],
@@ -140,7 +140,7 @@
   },
   {
    "i": 38,
-   "name": "CK L Toe02_015",
+   "name": "CK_L_Toe02_015",
    "children": [
     39
    ],
@@ -152,7 +152,7 @@
   },
   {
    "i": 39,
-   "name": "CK L Toe0Nub_016",
+   "name": "CK_L_Toe0Nub_016",
    "children": [],
    "t": [
     0.236586,
@@ -162,7 +162,7 @@
   },
   {
    "i": 40,
-   "name": "CK L Toe1_017",
+   "name": "CK_L_Toe1_017",
    "children": [
     41
    ],
@@ -174,7 +174,7 @@
   },
   {
    "i": 41,
-   "name": "CK L Toe11_018",
+   "name": "CK_L_Toe11_018",
    "children": [
     42
    ],
@@ -186,7 +186,7 @@
   },
   {
    "i": 42,
-   "name": "CK L Toe12_019",
+   "name": "CK_L_Toe12_019",
    "children": [
     43
    ],
@@ -198,7 +198,7 @@
   },
   {
    "i": 43,
-   "name": "CK L Toe1Nub_020",
+   "name": "CK_L_Toe1Nub_020",
    "children": [],
    "t": [
     0.170445,
@@ -208,7 +208,7 @@
   },
   {
    "i": 44,
-   "name": "CK L Toe2_021",
+   "name": "CK_L_Toe2_021",
    "children": [
     45
    ],
@@ -220,7 +220,7 @@
   },
   {
    "i": 45,
-   "name": "CK L Toe21_022",
+   "name": "CK_L_Toe21_022",
    "children": [
     46
    ],
@@ -232,7 +232,7 @@
   },
   {
    "i": 46,
-   "name": "CK L Toe22_023",
+   "name": "CK_L_Toe22_023",
    "children": [
     47
    ],
@@ -244,7 +244,7 @@
   },
   {
    "i": 47,
-   "name": "CK L Toe2Nub_024",
+   "name": "CK_L_Toe2Nub_024",
    "children": [],
    "t": [
     0.111454,
@@ -254,7 +254,7 @@
   },
   {
    "i": 48,
-   "name": "CK L Toe3_025",
+   "name": "CK_L_Toe3_025",
    "children": [
     49
    ],
@@ -266,7 +266,7 @@
   },
   {
    "i": 49,
-   "name": "CK L Toe31_026",
+   "name": "CK_L_Toe31_026",
    "children": [
     50
    ],
@@ -278,7 +278,7 @@
   },
   {
    "i": 50,
-   "name": "CK L Toe32_027",
+   "name": "CK_L_Toe32_027",
    "children": [
     51
    ],
@@ -290,7 +290,7 @@
   },
   {
    "i": 51,
-   "name": "CK L Toe3Nub_028",
+   "name": "CK_L_Toe3Nub_028",
    "children": [],
    "t": [
     0.0984683,
@@ -300,7 +300,7 @@
   },
   {
    "i": 52,
-   "name": "CK R Thigh_029",
+   "name": "CK_R_Thigh_029",
    "children": [
     53
    ],
@@ -312,7 +312,7 @@
   },
   {
    "i": 53,
-   "name": "CK R Calf_030",
+   "name": "CK_R_Calf_030",
    "children": [
     54
    ],
@@ -324,7 +324,7 @@
   },
   {
    "i": 54,
-   "name": "CK R HorseLink_031",
+   "name": "CK_R_HorseLink_031",
    "children": [
     55
    ],
@@ -336,7 +336,7 @@
   },
   {
    "i": 55,
-   "name": "CK R Foot_032",
+   "name": "CK_R_Foot_032",
    "children": [
     56,
     60,
@@ -351,7 +351,7 @@
   },
   {
    "i": 56,
-   "name": "CK R Toe0_033",
+   "name": "CK_R_Toe0_033",
    "children": [
     57
    ],
@@ -363,7 +363,7 @@
   },
   {
    "i": 57,
-   "name": "CK R Toe01_034",
+   "name": "CK_R_Toe01_034",
    "children": [
     58
    ],
@@ -375,7 +375,7 @@
   },
   {
    "i": 58,
-   "name": "CK R Toe02_035",
+   "name": "CK_R_Toe02_035",
    "children": [
     59
    ],
@@ -387,7 +387,7 @@
   },
   {
    "i": 59,
-   "name": "CK R Toe0Nub_036",
+   "name": "CK_R_Toe0Nub_036",
    "children": [],
    "t": [
     -0.352235,
@@ -397,7 +397,7 @@
   },
   {
    "i": 60,
-   "name": "CK R Toe1_037",
+   "name": "CK_R_Toe1_037",
    "children": [
     61
    ],
@@ -409,7 +409,7 @@
   },
   {
    "i": 61,
-   "name": "CK R Toe11_038",
+   "name": "CK_R_Toe11_038",
    "children": [
     62
    ],
@@ -421,7 +421,7 @@
   },
   {
    "i": 62,
-   "name": "CK R Toe12_039",
+   "name": "CK_R_Toe12_039",
    "children": [
     63
    ],
@@ -433,7 +433,7 @@
   },
   {
    "i": 63,
-   "name": "CK R Toe1Nub_040",
+   "name": "CK_R_Toe1Nub_040",
    "children": [],
    "t": [
     -0.262016,
@@ -443,7 +443,7 @@
   },
   {
    "i": 64,
-   "name": "CK R Toe2_041",
+   "name": "CK_R_Toe2_041",
    "children": [
     65
    ],
@@ -455,7 +455,7 @@
   },
   {
    "i": 65,
-   "name": "CK R Toe21_042",
+   "name": "CK_R_Toe21_042",
    "children": [
     66
    ],
@@ -467,7 +467,7 @@
   },
   {
    "i": 66,
-   "name": "CK R Toe22_043",
+   "name": "CK_R_Toe22_043",
    "children": [
     67
    ],
@@ -479,7 +479,7 @@
   },
   {
    "i": 67,
-   "name": "CK R Toe2Nub_044",
+   "name": "CK_R_Toe2Nub_044",
    "children": [],
    "t": [
     -0.214052,
@@ -489,7 +489,7 @@
   },
   {
    "i": 68,
-   "name": "CK R Toe3_045",
+   "name": "CK_R_Toe3_045",
    "children": [
     69
    ],
@@ -501,7 +501,7 @@
   },
   {
    "i": 69,
-   "name": "CK R Toe31_046",
+   "name": "CK_R_Toe31_046",
    "children": [
     70
    ],
@@ -513,7 +513,7 @@
   },
   {
    "i": 70,
-   "name": "CK R Toe32_047",
+   "name": "CK_R_Toe32_047",
    "children": [
     71
    ],
@@ -525,7 +525,7 @@
   },
   {
    "i": 71,
-   "name": "CK R Toe3Nub_048",
+   "name": "CK_R_Toe3Nub_048",
    "children": [],
    "t": [
     -0.238435,
@@ -535,7 +535,7 @@
   },
   {
    "i": 72,
-   "name": "CK Tail_049",
+   "name": "CK_Tail_049",
    "children": [
     73
    ],
@@ -547,7 +547,7 @@
   },
   {
    "i": 73,
-   "name": "CK Tail1_050",
+   "name": "CK_Tail1_050",
    "children": [
     74,
     106,
@@ -565,7 +565,7 @@
   },
   {
    "i": 74,
-   "name": "CK Tail2_051",
+   "name": "CK_Tail2_051",
    "children": [
     75,
     76,
@@ -583,7 +583,7 @@
   },
   {
    "i": 75,
-   "name": "CK TailNub_052",
+   "name": "CK_TailNub_052",
    "children": [],
    "t": [
     -0.0143384,
@@ -593,7 +593,7 @@
   },
   {
    "i": 76,
-   "name": "CK R Tail Mid_053",
+   "name": "CK_R_Tail_Mid_053",
    "children": [
     77,
     81
@@ -606,7 +606,7 @@
   },
   {
    "i": 77,
-   "name": "CK R Tail Mid02_054",
+   "name": "CK_R_Tail_Mid02_054",
    "children": [
     78,
     79
@@ -619,7 +619,7 @@
   },
   {
    "i": 78,
-   "name": "CK R Tail MidNub_055",
+   "name": "CK_R_Tail_MidNub_055",
    "children": [],
    "t": [
     -0.0384049,
@@ -673,7 +673,7 @@
   },
   {
    "i": 83,
-   "name": "CK L Tail Mid_060",
+   "name": "CK_L_Tail_Mid_060",
    "children": [
     84,
     88
@@ -686,7 +686,7 @@
   },
   {
    "i": 84,
-   "name": "CK L Tail Mid02_061",
+   "name": "CK_L_Tail_Mid02_061",
    "children": [
     85,
     86
@@ -699,7 +699,7 @@
   },
   {
    "i": 85,
-   "name": "CK L Tail MidNub_062",
+   "name": "CK_L_Tail_MidNub_062",
    "children": [],
    "t": [
     -0.0564551,
@@ -933,7 +933,7 @@
   },
   {
    "i": 106,
-   "name": "CK R Tail Sid_083",
+   "name": "CK_R_Tail_Sid_083",
    "children": [
     107,
     111
@@ -946,7 +946,7 @@
   },
   {
    "i": 107,
-   "name": "CK R Tail Sid02_084",
+   "name": "CK_R_Tail_Sid02_084",
    "children": [
     108,
     109
@@ -959,7 +959,7 @@
   },
   {
    "i": 108,
-   "name": "CK R Tail SidNub_085",
+   "name": "CK_R_Tail_SidNub_085",
    "children": [],
    "t": [
     -0.139941,
@@ -1013,7 +1013,7 @@
   },
   {
    "i": 113,
-   "name": "CK L Tail Sid_090",
+   "name": "CK_L_Tail_Sid_090",
    "children": [
     114,
     118
@@ -1026,7 +1026,7 @@
   },
   {
    "i": 114,
-   "name": "CK L Tail Sid02_091",
+   "name": "CK_L_Tail_Sid02_091",
    "children": [
     115,
     116
@@ -1039,7 +1039,7 @@
   },
   {
    "i": 115,
-   "name": "CK L Tail SidNub_092",
+   "name": "CK_L_Tail_SidNub_092",
    "children": [],
    "t": [
     0.0447209,
@@ -1273,7 +1273,7 @@
   },
   {
    "i": 136,
-   "name": "CK Spine1_0113",
+   "name": "CK_Spine1_0113",
    "children": [
     137,
     567,
@@ -1287,7 +1287,7 @@
   },
   {
    "i": 137,
-   "name": "CK Neck_0114",
+   "name": "CK_Neck_0114",
    "children": [
     138,
     187,
@@ -1302,7 +1302,7 @@
   },
   {
    "i": 138,
-   "name": "CK Neck1_0115",
+   "name": "CK_Neck1_0115",
    "children": [
     139
    ],
@@ -1314,7 +1314,7 @@
   },
   {
    "i": 139,
-   "name": "CK Neck2_0116",
+   "name": "CK_Neck2_0116",
    "children": [
     140,
     181,
@@ -1328,7 +1328,7 @@
   },
   {
    "i": 140,
-   "name": "CK Neck3_0117",
+   "name": "CK_Neck3_0117",
    "children": [
     141
    ],
@@ -1340,7 +1340,7 @@
   },
   {
    "i": 141,
-   "name": "CK Head_0118",
+   "name": "CK_Head_0118",
    "children": [
     142,
     143,
@@ -1367,7 +1367,7 @@
   },
   {
    "i": 142,
-   "name": "CK HeadNub_0119",
+   "name": "CK_HeadNub_0119",
    "children": [],
    "t": [
     0.138416,
@@ -1377,7 +1377,7 @@
   },
   {
    "i": 143,
-   "name": "CK Jaw_0120",
+   "name": "CK_Jaw_0120",
    "children": [
     144,
     145
@@ -1390,7 +1390,7 @@
   },
   {
    "i": 144,
-   "name": "CK JawNub_0121",
+   "name": "CK_JawNub_0121",
    "children": [],
    "t": [
     -0.104307,
@@ -1400,7 +1400,7 @@
   },
   {
    "i": 145,
-   "name": "CK_Muscle Strand003M_End_0122",
+   "name": "CK_Muscle_Strand003M_End_0122",
    "children": [
     146
    ],
@@ -1412,7 +1412,7 @@
   },
   {
    "i": 146,
-   "name": "CK_Muscle Strand003M_EndHdl_0123",
+   "name": "CK_Muscle_Strand003M_EndHdl_0123",
    "children": [],
    "t": [
     0.064338,
@@ -1422,7 +1422,7 @@
   },
   {
    "i": 147,
-   "name": "CK R eyeball_0124",
+   "name": "CK_R_eyeball_0124",
    "children": [
     148
    ],
@@ -1434,7 +1434,7 @@
   },
   {
    "i": 148,
-   "name": "CK R eyeballNub_0125",
+   "name": "CK_R_eyeballNub_0125",
    "children": [],
    "t": [
     -0.00732111,
@@ -1444,7 +1444,7 @@
   },
   {
    "i": 149,
-   "name": "CK L eyeball_0126",
+   "name": "CK_L_eyeball_0126",
    "children": [
     150
    ],
@@ -1456,7 +1456,7 @@
   },
   {
    "i": 150,
-   "name": "CK L eyeballNub_0127",
+   "name": "CK_L_eyeballNub_0127",
    "children": [],
    "t": [
     0.230712,
@@ -1466,7 +1466,7 @@
   },
   {
    "i": 151,
-   "name": "CK_Muscle Strand003_0153",
+   "name": "CK_Muscle_Strand003_0153",
    "children": [],
    "t": [
     0.0889844,
@@ -1476,7 +1476,7 @@
   },
   {
    "i": 152,
-   "name": "CK_Muscle Strand001_0154",
+   "name": "CK_Muscle_Strand001_0154",
    "children": [],
    "t": [
     0.16701,
@@ -1486,7 +1486,7 @@
   },
   {
    "i": 153,
-   "name": "CK_Muscle Strand002_0155",
+   "name": "CK_Muscle_Strand002_0155",
    "children": [],
    "t": [
     0.160871,
@@ -1496,7 +1496,7 @@
   },
   {
    "i": 154,
-   "name": "CK_Neck_Muscle Strand002_0156",
+   "name": "CK_Neck_Muscle_Strand002_0156",
    "children": [],
    "t": [
     0.132007,
@@ -1506,7 +1506,7 @@
   },
   {
    "i": 155,
-   "name": "CK_Neck_Muscle Strand001_0157",
+   "name": "CK_Neck_Muscle_Strand001_0157",
    "children": [],
    "t": [
     0.113327,
@@ -1516,7 +1516,7 @@
   },
   {
    "i": 156,
-   "name": "CK_Neck_Muscle Strand003M_End_0128",
+   "name": "CK_Neck_Muscle_Strand003M_End_0128",
    "children": [
     157
    ],
@@ -1528,7 +1528,7 @@
   },
   {
    "i": 157,
-   "name": "CK_Neck_Muscle Strand003M_EndHdl_0129",
+   "name": "CK_Neck_Muscle_Strand003M_EndHdl_0129",
    "children": [],
    "t": [
     0.15388,
@@ -1538,7 +1538,7 @@
   },
   {
    "i": 158,
-   "name": "CK_Muscle Strand002M_End_0130",
+   "name": "CK_Muscle_Strand002M_End_0130",
    "children": [
     159
    ],
@@ -1550,7 +1550,7 @@
   },
   {
    "i": 159,
-   "name": "CK_Muscle Strand002M_EndHdl_0131",
+   "name": "CK_Muscle_Strand002M_EndHdl_0131",
    "children": [],
    "t": [
     0.209909,
@@ -1560,7 +1560,7 @@
   },
   {
    "i": 160,
-   "name": "CK_Point RT R Eye2_0132",
+   "name": "CK_Point_RT_R_Eye2_0132",
    "children": [
     161,
     163
@@ -1617,7 +1617,7 @@
   },
   {
    "i": 165,
-   "name": "CK_Point RT R Eye1_0137",
+   "name": "CK_Point_RT_R_Eye1_0137",
    "children": [
     166,
     168
@@ -1674,7 +1674,7 @@
   },
   {
    "i": 170,
-   "name": "CK_Point RT L Eye1_0142",
+   "name": "CK_Point_RT_L_Eye1_0142",
    "children": [
     171,
     173
@@ -1731,7 +1731,7 @@
   },
   {
    "i": 175,
-   "name": "CK_Point RT L Eye2_0147",
+   "name": "CK_Point_RT_L_Eye2_0147",
    "children": [
     176,
     178
@@ -1788,7 +1788,7 @@
   },
   {
    "i": 180,
-   "name": "CK_Neck_Muscle Strand003_0152",
+   "name": "CK_Neck_Muscle_Strand003_0152",
    "children": [],
    "t": [
     0.143351,
@@ -1810,7 +1810,7 @@
   },
   {
    "i": 182,
-   "name": "CK_Muscle Strand002M_START_0159",
+   "name": "CK_Muscle_Strand002M_START_0159",
    "children": [
     183
    ],
@@ -1822,7 +1822,7 @@
   },
   {
    "i": 183,
-   "name": "CK_Muscle Strand002M_StartHdl_0160",
+   "name": "CK_Muscle_Strand002M_StartHdl_0160",
    "children": [],
    "t": [
     0.198855,
@@ -1844,7 +1844,7 @@
   },
   {
    "i": 185,
-   "name": "CK_Muscle Strand003M_START_0162",
+   "name": "CK_Muscle_Strand003M_START_0162",
    "children": [
     186
    ],
@@ -1856,7 +1856,7 @@
   },
   {
    "i": 186,
-   "name": "CK_Muscle Strand003M_StartHdl_0163",
+   "name": "CK_Muscle_Strand003M_StartHdl_0163",
    "children": [],
    "t": [
     0.131216,
@@ -1866,7 +1866,7 @@
   },
   {
    "i": 187,
-   "name": "CK L Clavicle_0164",
+   "name": "CK_L_Clavicle_0164",
    "children": [
     188,
     346,
@@ -1887,7 +1887,7 @@
   },
   {
    "i": 188,
-   "name": "CK L UpperArm_0165",
+   "name": "CK_L_UpperArm_0165",
    "children": [
     189,
     290,
@@ -1908,7 +1908,7 @@
   },
   {
    "i": 189,
-   "name": "CK L Forearm_0166",
+   "name": "CK_L_Forearm_0166",
    "children": [
     190,
     262,
@@ -1924,7 +1924,7 @@
   },
   {
    "i": 190,
-   "name": "CK L Hand_0167",
+   "name": "CK_L_Hand_0167",
    "children": [
     191,
     232,
@@ -1941,7 +1941,7 @@
   },
   {
    "i": 191,
-   "name": "CK L Finger0_0168",
+   "name": "CK_L_Finger0_0168",
    "children": [
     192,
     202,
@@ -1958,7 +1958,7 @@
   },
   {
    "i": 192,
-   "name": "CK L Finger01_0169",
+   "name": "CK_L_Finger01_0169",
    "children": [
     193,
     200
@@ -1971,7 +1971,7 @@
   },
   {
    "i": 193,
-   "name": "CK L Finger02_0170",
+   "name": "CK_L_Finger02_0170",
    "children": [
     194,
     198
@@ -1984,7 +1984,7 @@
   },
   {
    "i": 194,
-   "name": "CK L Finger03_0171",
+   "name": "CK_L_Finger03_0171",
    "children": [
     195,
     196
@@ -1997,7 +1997,7 @@
   },
   {
    "i": 195,
-   "name": "CK L Finger0Nub_0172",
+   "name": "CK_L_Finger0Nub_0172",
    "children": [],
    "t": [
     0.0913541,
@@ -2753,7 +2753,7 @@
   },
   {
    "i": 262,
-   "name": "CK L Wing Mid _0239",
+   "name": "CK_L_Wing_Mid__0239",
    "children": [
     263,
     270
@@ -2766,7 +2766,7 @@
   },
   {
    "i": 263,
-   "name": "CK L Wing Mid 02_0240",
+   "name": "CK_L_Wing_Mid_02_0240",
    "children": [
     264,
     268
@@ -2779,7 +2779,7 @@
   },
   {
    "i": 264,
-   "name": "CK L Wing Mid 03_0241",
+   "name": "CK_L_Wing_Mid_03_0241",
    "children": [
     265,
     266
@@ -2792,7 +2792,7 @@
   },
   {
    "i": 265,
-   "name": "CK L Wing Mid Nub_0242",
+   "name": "CK_L_Wing_Mid_Nub_0242",
    "children": [],
    "t": [
     0.166923,
@@ -3072,7 +3072,7 @@
   },
   {
    "i": 290,
-   "name": "CK L Wing Cen _0267",
+   "name": "CK_L_Wing_Cen__0267",
    "children": [
     291,
     296
@@ -3085,7 +3085,7 @@
   },
   {
    "i": 291,
-   "name": "CK L Wing Cen 02_0268",
+   "name": "CK_L_Wing_Cen_02_0268",
    "children": [
     292,
     295
@@ -3098,7 +3098,7 @@
   },
   {
    "i": 292,
-   "name": "CK L Wing Cen 03_0269",
+   "name": "CK_L_Wing_Cen_03_0269",
    "children": [
     293,
     294
@@ -3111,7 +3111,7 @@
   },
   {
    "i": 293,
-   "name": "CK L Wing Cen Nub_0270",
+   "name": "CK_L_Wing_Cen_Nub_0270",
    "children": [],
    "t": [
     0.428522,
@@ -3355,7 +3355,7 @@
   },
   {
    "i": 315,
-   "name": "CK Xtra02Opp_0292",
+   "name": "CK_Xtra02Opp_0292",
    "children": [
     316,
     321
@@ -3368,7 +3368,7 @@
   },
   {
    "i": 316,
-   "name": "CK Xtra02Opp02_0293",
+   "name": "CK_Xtra02Opp02_0293",
    "children": [
     317,
     320
@@ -3381,7 +3381,7 @@
   },
   {
    "i": 317,
-   "name": "CK Xtra02Opp03_0295",
+   "name": "CK_Xtra02Opp03_0295",
    "children": [
     318,
     319
@@ -3394,7 +3394,7 @@
   },
   {
    "i": 318,
-   "name": "CK Xtra02OppNub_0296",
+   "name": "CK_Xtra02OppNub_0296",
    "children": [],
    "t": [
     0.349224,
@@ -4042,7 +4042,7 @@
   },
   {
    "i": 376,
-   "name": "CK R Clavicle_0353",
+   "name": "CK_R_Clavicle_0353",
    "children": [
     377,
     535,
@@ -4063,7 +4063,7 @@
   },
   {
    "i": 377,
-   "name": "CK R UpperArm_0354",
+   "name": "CK_R_UpperArm_0354",
    "children": [
     378,
     479,
@@ -4084,7 +4084,7 @@
   },
   {
    "i": 378,
-   "name": "CK R Forearm_0355",
+   "name": "CK_R_Forearm_0355",
    "children": [
     379,
     451,
@@ -4100,7 +4100,7 @@
   },
   {
    "i": 379,
-   "name": "CK R Hand_0356",
+   "name": "CK_R_Hand_0356",
    "children": [
     380,
     421,
@@ -4117,7 +4117,7 @@
   },
   {
    "i": 380,
-   "name": "CK R Finger0_0357",
+   "name": "CK_R_Finger0_0357",
    "children": [
     381,
     391,
@@ -4134,7 +4134,7 @@
   },
   {
    "i": 381,
-   "name": "CK R Finger01_0358",
+   "name": "CK_R_Finger01_0358",
    "children": [
     382,
     389
@@ -4147,7 +4147,7 @@
   },
   {
    "i": 382,
-   "name": "CK R Finger02_0359",
+   "name": "CK_R_Finger02_0359",
    "children": [
     383,
     387
@@ -4160,7 +4160,7 @@
   },
   {
    "i": 383,
-   "name": "CK R Finger03_0360",
+   "name": "CK_R_Finger03_0360",
    "children": [
     384,
     385
@@ -4173,7 +4173,7 @@
   },
   {
    "i": 384,
-   "name": "CK R Finger0Nub_0361",
+   "name": "CK_R_Finger0Nub_0361",
    "children": [],
    "t": [
     -0.140694,
@@ -4929,7 +4929,7 @@
   },
   {
    "i": 451,
-   "name": "CK R Wing Mid _0428",
+   "name": "CK_R_Wing_Mid__0428",
    "children": [
     452,
     459
@@ -4942,7 +4942,7 @@
   },
   {
    "i": 452,
-   "name": "CK R Wing Mid 02_0429",
+   "name": "CK_R_Wing_Mid_02_0429",
    "children": [
     453,
     457
@@ -4955,7 +4955,7 @@
   },
   {
    "i": 453,
-   "name": "CK R Wing Mid 03_0430",
+   "name": "CK_R_Wing_Mid_03_0430",
    "children": [
     454,
     455
@@ -4968,7 +4968,7 @@
   },
   {
    "i": 454,
-   "name": "CK R Wing Mid Nub_0431",
+   "name": "CK_R_Wing_Mid_Nub_0431",
    "children": [],
    "t": [
     -0.154044,
@@ -5248,7 +5248,7 @@
   },
   {
    "i": 479,
-   "name": "CK R Wing Cen _0456",
+   "name": "CK_R_Wing_Cen__0456",
    "children": [
     480,
     485
@@ -5261,7 +5261,7 @@
   },
   {
    "i": 480,
-   "name": "CK R Wing Cen 02_0457",
+   "name": "CK_R_Wing_Cen_02_0457",
    "children": [
     481,
     484
@@ -5274,7 +5274,7 @@
   },
   {
    "i": 481,
-   "name": "CK R Wing Cen 03_0458",
+   "name": "CK_R_Wing_Cen_03_0458",
    "children": [
     482,
     483
@@ -5287,7 +5287,7 @@
   },
   {
    "i": 482,
-   "name": "CK R Wing Cen Nub_0459",
+   "name": "CK_R_Wing_Cen_Nub_0459",
    "children": [],
    "t": [
     -0.102228,
@@ -5803,7 +5803,7 @@
   },
   {
    "i": 528,
-   "name": "CK Xtra02_0501",
+   "name": "CK_Xtra02_0501",
    "children": [
     529,
     534
@@ -5816,7 +5816,7 @@
   },
   {
    "i": 529,
-   "name": "CK Xtra0202_0482",
+   "name": "CK_Xtra0202_0482",
    "children": [
     530,
     533
@@ -5829,7 +5829,7 @@
   },
   {
    "i": 530,
-   "name": "CK Xtra0203_0504",
+   "name": "CK_Xtra0203_0504",
    "children": [
     531,
     532
@@ -5842,7 +5842,7 @@
   },
   {
    "i": 531,
-   "name": "CK Xtra02Nub_0505",
+   "name": "CK_Xtra02Nub_0505",
    "children": [],
    "t": [
     -0.152454,
@@ -6218,7 +6218,7 @@
   },
   {
    "i": 565,
-   "name": "CK_Neck_Muscle Strand003M_START_0538",
+   "name": "CK_Neck_Muscle_Strand003M_START_0538",
    "children": [
     566
    ],
@@ -6230,7 +6230,7 @@
   },
   {
    "i": 566,
-   "name": "CK_Neck_Muscle Strand003M_StartHdl_0539",
+   "name": "CK_Neck_Muscle_Strand003M_StartHdl_0539",
    "children": [],
    "t": [
     0.11747,
@@ -6240,7 +6240,7 @@
   },
   {
    "i": 567,
-   "name": "CK Xtra01_0540",
+   "name": "CK_Xtra01_0540",
    "children": [
     568,
     572
@@ -6253,7 +6253,7 @@
   },
   {
    "i": 568,
-   "name": "CK Xtra0102_0541",
+   "name": "CK_Xtra0102_0541",
    "children": [
     569,
     570
@@ -6266,7 +6266,7 @@
   },
   {
    "i": 569,
-   "name": "CK Xtra01Nub_0522",
+   "name": "CK_Xtra01Nub_0522",
    "children": [],
    "t": [
     -0.222926,
@@ -6320,7 +6320,7 @@
   },
   {
    "i": 574,
-   "name": "CK Xtra01Opp_0546",
+   "name": "CK_Xtra01Opp_0546",
    "children": [
     575,
     579
@@ -6333,7 +6333,7 @@
   },
   {
    "i": 575,
-   "name": "CK Xtra01Opp02_0547",
+   "name": "CK_Xtra01Opp02_0547",
    "children": [
     576,
     577
@@ -6346,7 +6346,7 @@
   },
   {
    "i": 576,
-   "name": "CK Xtra01OppNub_0548",
+   "name": "CK_Xtra01OppNub_0548",
    "children": [],
    "t": [
     0.263767,

@@ -14,7 +14,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { osDuGlb } from '../tools/make-skeleton-fixture.mjs';
+import { readdirSync, readFileSync } from 'node:fs';
+
+import { osDuGlb, nomVuParThree } from '../tools/make-skeleton-fixture.mjs';
 
 /** Un glTF minimal : une chaîne de nœuds, tous déclarés comme os d'un même `skin`. */
 const gltf = (nodes) => ({ nodes, skins: [{ joints: nodes.map((_, i) => i) }] });
@@ -104,5 +106,50 @@ describe('osDuGlb : ce qu\'il retient, et ce qu\'il refuse', () => {
     const os = osDuGlb(gltf([{ name: 'minuscule', translation: [0.000123456789, 0, 0] }]));
     assert.equal(os[0].t[0], 0.000123457);
     assert.ok(os[0].t[0] !== 0, 'la petite valeur ne doit pas être écrasée');
+  });
+});
+
+describe('nomVuParThree : les fixtures doivent porter le nom que l\'APPLICATION voit (#370)', () => {
+  // LE DÉFAUT LE PLUS COÛTEUX DE CE CHANTIER, et il n'a été trouvé qu'à l'usage. Les fixtures
+  // étaient extraites du JSON BRUT du `.glb`, alors que l'application lit une scène décodée par
+  // Three, qui NETTOIE les noms de nœuds : `PropertyBinding.sanitizeNodeName`, appelé par
+  // `GLTFLoader.createUniqueName`, remplace les espaces par des soulignés et SUPPRIME `. : / [ ]`.
+  //
+  // Conséquence mesurée, et elle est brutale : `labrador_dog.glb` sortait « quadrupède » dans les
+  // tests et « SERPENTIN » dans l'application, parce que `Ear1.L_5` y arrive sous la forme
+  // `Ear1L_5`, où `coteDuNom` ne lisait plus aucun côté. Le chien, le dragon et le raptor tombaient
+  // tous les trois à ZÉRO membre latéral. Le filet mesurait une fiction.
+
+  test('les caractères que Three supprime, et ceux qu\'il remplace', () => {
+    assert.equal(nomVuParThree('Ear1.L_5'), 'Ear1L_5');
+    assert.equal(nomVuParThree('mixamorig:LeftUpLeg'), 'mixamorigLeftUpLeg');
+    assert.equal(nomVuParThree('CERBERUS_ L Thigh_030'), 'CERBERUS__L_Thigh_030');
+    assert.equal(nomVuParThree('Bone_L.001_79'), 'Bone_L001_79');
+    assert.equal(nomVuParThree('a/b[c]d'), 'abcd');
+  });
+
+  test('osDuGlb NETTOIE, il ne se contente pas de recopier', () => {
+    // TROU TROUVÉ PAR MUTATION : retirer l'appel au nettoyage dans le générateur ne faisait échouer
+    // aucun test, la garde ci-dessous portant sur les fixtures DÉJÀ ÉCRITES et non sur l'outil qui
+    // les écrit. Le jour où une fixture est régénérée, le défaut reviendrait en silence.
+    const os = osDuGlb(gltf([{ name: 'Ear1.L_5', translation: [0, 0, 0] }]));
+    assert.equal(os[0].name, 'Ear1L_5');
+  });
+
+  test('un nom sans caractère réservé traverse sans changer', () => {
+    ['thigh_l_0566', 'CATRigLLeg1_065', 'J_Bip_L_UpperArm', 'l101_02']
+      .forEach(n => assert.equal(nomVuParThree(n), n, n));
+  });
+
+  test('AUCUNE fixture ne contient plus de caractère que Three supprimerait', () => {
+    // LA GARDE QUI COMPTE, et elle porte sur les données plutôt que sur la fonction : si une
+    // fixture réapparaît un jour avec des noms bruts, tout le corpus se remet à mesurer une
+    // fiction, sans que rien d'autre ne le signale.
+    const dossier = new URL('fixtures/', import.meta.url);
+    readdirSync(dossier).filter(f => /^squelette-.*\.json$/.test(f)).forEach(f => {
+      const d = JSON.parse(readFileSync(new URL(f, dossier), 'utf8'));
+      const fautifs = d.os.filter(o => o.name !== nomVuParThree(o.name)).map(o => o.name);
+      assert.deepEqual(fautifs, [], `${f} porte des noms que l'application ne verra jamais`);
+    });
   });
 });

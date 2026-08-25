@@ -3,7 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.41. Les étapes 1 à 3, #363 à #366, #368 et #369 sont livrées ; #367 est
+> À jour de la v1.4.42. Les étapes 1 à 3, #363 à #366 et #368 à #370 sont livrées ; #367 est
 > ouverte.
 
 ## Où l'on en est
@@ -302,6 +302,48 @@ rejoindre. Les noms d'espèces vont dans l'aide, pas dans la taxonomie.
 
 Note : le griffon a trois paires, comme le centaure. Topologiquement indiscernables, donc tous deux
 dans le groupe « proposé ».
+
+## Le filet mesurait une fiction (#370)
+
+**Défaut signalé à l'usage, et le plus coûteux du chantier.** `labrador_dog.glb` sortait
+« quadrupède » dans les tests et **« serpentin » dans l'application**.
+
+**LA CAUSE.** Three NETTOIE les noms de nœuds au décodage
+(`PropertyBinding.sanitizeNodeName`, appelé par `GLTFLoader.createUniqueName`) : les espaces
+deviennent des soulignés, et `. : / [ ]` **disparaissent**. Les fixtures, elles, étaient extraites du
+JSON BRUT du `.glb`. Elles décrivaient donc des noms que l'application ne voit jamais.
+
+`Ear1.L_5` arrive sous la forme `Ear1L_5`, où plus aucun séparateur ne précède le `L` : `coteDuNom`
+n'y lisait plus aucun côté.
+
+| fichier | dans les tests | dans l'application |
+|---|---|---|
+| chien | quadrupède, 14 membres latéraux | **serpentin, 0** |
+| dragon | bipède ailé, 14 | **serpentin, 0** |
+| raptor | 4 | **serpentin, 0** |
+| araignée | 28 | arachnide, mais **14** |
+
+**DEUX CORRECTIONS, ET LA PREMIÈRE EST LA PLUS IMPORTANTE.**
+
+*Les fixtures portent désormais le nom que l'application voit.* Le générateur nettoie comme Three,
+et un test refuse toute fixture contenant encore un caractère réservé. Sans ça, la seconde
+correction aurait été mesurée contre la même fiction.
+
+*`coteDuNom` apprend deux formes de plus*, ce qui la porte à huit conventions : le `.L` de Blender
+nettoyé (`Ear1L_5`, `IKBackLegL_45`) et la forme séparateur-lettre-chiffre (`Bone_L001`). Mesuré sur
+les 3032 os du corpus nettoyé : **+408 côtés lus, 0 conflit**.
+
+La garde du motif Blender est double, et les deux moitiés comptent : la lettre doit **suivre** une
+minuscule ou un chiffre, ce qui écarte `MODEL_root` et `CTRL_x`, et **précéder** un souligné, un
+chiffre ou la fin, ce qui écarte `PELVIS` et `SpineLower`.
+
+**Le classement reste à 13 sur 17**, avec les mêmes quatre erreurs. Mais cette fois, il est mesuré
+sur ce que le code voit.
+
+**CE QUE ÇA APPREND, au-delà de ce fichier.** Une fixture est une réduction de la réalité, et la
+question « réduction de QUOI » n'est pas rhétorique. Ces douze squelettes réduisaient le fichier sur
+le disque, alors que le code, lui, lit une scène décodée. Deux réalités voisines, un seul caractère
+d'écart, et trois créatures sur douze classées faux sans que 2000 tests ne bronchent.
 
 ## Décisions prises avec l'utilisateur
 

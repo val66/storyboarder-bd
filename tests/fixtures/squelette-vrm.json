@@ -105,7 +105,7 @@
   },
   {
    "i": 9,
-   "name": "Bone.002_end_end_0120",
+   "name": "Bone002_end_end_0120",
    "children": [],
    "t": [
     0.117041,
@@ -115,7 +115,7 @@
   },
   {
    "i": 10,
-   "name": "Bone.002_end_017",
+   "name": "Bone002_end_017",
    "children": [
     9
    ],
@@ -139,7 +139,7 @@
   },
   {
    "i": 12,
-   "name": "Bone.001_end_end_0121",
+   "name": "Bone001_end_end_0121",
    "children": [],
    "t": [
     0.0420145,
@@ -149,7 +149,7 @@
   },
   {
    "i": 13,
-   "name": "Bone.001_end_019",
+   "name": "Bone001_end_019",
    "children": [
     12
    ],
@@ -1720,7 +1720,7 @@
   },
   {
    "i": 147,
-   "name": "Skrit_B_01.001_end_0151",
+   "name": "Skrit_B_01001_end_0151",
    "children": [],
    "t": [
     0.00160903,
@@ -1730,7 +1730,7 @@
   },
   {
    "i": 148,
-   "name": "Skrit_B_01.001_0116",
+   "name": "Skrit_B_01001_0116",
    "children": [
     147
    ],

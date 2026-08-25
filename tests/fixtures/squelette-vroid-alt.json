@@ -1,5 +1,5 @@
 {
- "origine": "VRoid, nommage « Left arm / Left elbow » — même famille que worker_j",
+ "origine": "VRoid, nommage « Left arm / Left elbow » — même famille que worker_j ⚠️ Noms NETTOYÉS à la main (#370) : le .glb source n'est plus dans le dossier de l'utilisateur, le générateur refuse donc de la réécrire. Seuls les noms ont été transformés, par la même règle que Three, et cette fixture n'a toujours pas de positions de repos.",
  "animations": 0,
  "os": [
   {
@@ -384,7 +384,7 @@
   },
   {
    "i": 59,
-   "name": "Left wrist_050",
+   "name": "Left_wrist_050",
    "children": [
     46,
     49,
@@ -395,21 +395,21 @@
   },
   {
    "i": 60,
-   "name": "Left elbow_049",
+   "name": "Left_elbow_049",
    "children": [
     59
    ]
   },
   {
    "i": 61,
-   "name": "Left arm_048",
+   "name": "Left_arm_048",
    "children": [
     60
    ]
   },
   {
    "i": 62,
-   "name": "Left shoulder_047",
+   "name": "Left_shoulder_047",
    "children": [
     61
    ]
@@ -511,7 +511,7 @@
   },
   {
    "i": 78,
-   "name": "Right wrist_069",
+   "name": "Right_wrist_069",
    "children": [
     65,
     68,
@@ -522,21 +522,21 @@
   },
   {
    "i": 79,
-   "name": "Right elbow_068",
+   "name": "Right_elbow_068",
    "children": [
     78
    ]
   },
   {
    "i": 80,
-   "name": "Right arm_067",
+   "name": "Right_arm_067",
    "children": [
     79
    ]
   },
   {
    "i": 81,
-   "name": "Right shoulder_066",
+   "name": "Right_shoulder_066",
    "children": [
     80
    ]
@@ -585,26 +585,26 @@
   },
   {
    "i": 88,
-   "name": "Left toe_092",
+   "name": "Left_toe_092",
    "children": []
   },
   {
    "i": 89,
-   "name": "Left ankle_091",
+   "name": "Left_ankle_091",
    "children": [
     88
    ]
   },
   {
    "i": 90,
-   "name": "Left knee_090",
+   "name": "Left_knee_090",
    "children": [
     89
    ]
   },
   {
    "i": 91,
-   "name": "Left leg_085",
+   "name": "Left_leg_085",
    "children": [
     85,
     87,
@@ -637,26 +637,26 @@
   },
   {
    "i": 96,
-   "name": "Right toe_0100",
+   "name": "Right_toe_0100",
    "children": []
   },
   {
    "i": 97,
-   "name": "Right ankle_099",
+   "name": "Right_ankle_099",
    "children": [
     96
    ]
   },
   {
    "i": 98,
-   "name": "Right knee_098",
+   "name": "Right_knee_098",
    "children": [
     97
    ]
   },
   {
    "i": 99,
-   "name": "Right leg_093",
+   "name": "Right_leg_093",
    "children": [
     93,
     95,

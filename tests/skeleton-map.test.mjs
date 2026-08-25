@@ -52,7 +52,7 @@ const VROID  = charger('squelette-vroid-alt');
 
 describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () => {
   test('les trois conventions se reconnaissent', () => {
-    ['LeftArm', 'mixamorig:LeftForeArm', 'upper_arm.L', 'thigh_l_0566', 'L_hand']
+    ['LeftArm', 'mixamorigLeftForeArm', 'upper_arm.L', 'thigh_l_0566', 'L_hand']
       .forEach(n => assert.equal(coteDuNom(n), 'g', n));
     ['RightArm', 'upper_arm.R', 'calf_r_0601', 'R_hand']
       .forEach(n => assert.equal(coteDuNom(n), 'd', n));
@@ -72,6 +72,37 @@ describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () =>
     // côtes. Une lettre suivie d'un CHIFFRE, elle, ne peut pas être un mot.
     ['leg', 'lowerleg', 'lip', 'lung', 'root', 'rib', 'ring', 'reye']
       .forEach(n => assert.equal(coteDuNom(n), null, `${n} ne doit avoir aucun côté`));
+  });
+
+  test('SEPTIÈME convention : le `.L` de Blender, une fois NETTOYÉ par Three', () => {
+    // LE DÉFAUT SIGNALÉ À L'USAGE (#370). Three supprime `. : / [ ]` des noms de nœuds au décodage,
+    // donc `Ear1.L_5` arrive sous la forme `Ear1L_5` : plus aucun séparateur devant le `L`, et les
+    // conventions ci-dessus n'y voyaient RIEN. Le chien, le dragon et le raptor tombaient à ZÉRO
+    // membre latéral et sortaient « serpentin » dans l'application, alors que les tests, eux, les
+    // donnaient justes : les fixtures portaient les noms BRUTS du fichier.
+    ['Ear1L_5', 'IKBackLegL_45', 'ThighBaseL_52', 'Wing1L_90'].forEach(n =>
+      assert.equal(coteDuNom(n), 'g', n));
+    ['Ear1R_9', 'IKBackLegR_49', 'ThighBaseR_139', 'Wing1R_114'].forEach(n =>
+      assert.equal(coteDuNom(n), 'd', n));
+    // La forme séparateur + lettre + chiffre, elle aussi produite par le nettoyage : `Bone_L.001`
+    // devient `Bone_L001`, et le chiffre y joue le même rôle de garde que pour le kraken.
+    assert.equal(coteDuNom('Bone_L001_79'), 'g');
+    assert.equal(coteDuNom('Bone_R001_87'), 'd');
+  });
+
+  test('LA GARDE EST DOUBLE, et les deux moitiés comptent', () => {
+    // À GAUCHE : la lettre doit suivre une MINUSCULE ou un chiffre. Sans cette moitié, tous les
+    // mots en capitales se latéralisent : un modèle nommé `MODEL_root` passerait pour un gauche.
+    ['MODEL_root', 'CTRL_x', 'GLOBAL_1', 'ANIMAL_2'].forEach(n =>
+      assert.equal(coteDuNom(n), null, `${n} ne doit avoir aucun côté`));
+    // ⚠️ `ROOT_L` N'EST PAS DANS CETTE LISTE, et mon assertion le mettait à tort : il rend bien
+    // 'g', non par le motif Blender, mais par la convention `…_L` qui existait avant lui. C'est
+    // juste, un os nommé ainsi EST un gauche. Un test de garde doit porter sur des noms qu'AUCUNE
+    // autre règle n'attrape, sans quoi il mesure la mauvaise chose.
+    assert.equal(coteDuNom('ROOT_L'), 'g', 'attrapé par `…_L`, et c\'est correct');
+    // À DROITE : elle doit précéder un souligné, un chiffre, ou la fin du nom.
+    assert.equal(coteDuNom('PELVIS'), null);
+    assert.equal(coteDuNom('SpineLower'), null, 'un `L` suivi d\'une minuscule n\'est pas un côté');
   });
 
   test('SIXIÈME convention : majuscule collée devant un mot de membre, rig CAT de 3ds Max', () => {
@@ -138,6 +169,16 @@ describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () =>
   test('le préfixe de rig est ignoré', () => {
     assert.equal(normaliserNom('mixamorig:LeftForeArm'), 'leftforearm');
     assert.equal(normaliserNom('upper_arm.L'), 'upperarml');
+  });
+
+  test('⚠️ CE RETRAIT DE PRÉFIXE NE SERT PLUS AUX MODÈLES IMPORTÉS', () => {
+    // Mesuré pendant la tâche #370 : Three SUPPRIME `:` des noms de nœuds au décodage. Un os
+    // Mixamo arrive donc sous la forme `mixamorigLeftForeArm`, où il n'y a plus de préfixe à
+    // retirer. La règle `^.*:` est conservée, une liste d'os pouvant venir d'ailleurs un jour,
+    // mais elle ne se déclenche plus sur aucun `.glb` chargé par l'application.
+    assert.equal(normaliserNom('mixamorigLeftForeArm'), 'mixamorigleftforearm');
+    // Sans conséquence : les alias se cherchent par inclusion, `leftforearm` reste dedans.
+    assert.ok(normaliserNom('mixamorigLeftForeArm').includes('forearm'));
   });
 });
 
@@ -313,14 +354,14 @@ describe('RÉGRESSION : « leg » désigne DEUX os différents selon la conventi
 
   test('chez Mixamo, LeftLeg est le TIBIA', () => {
     const c = inferSkeletonMap(MIXAMO);
-    assert.equal(c.cuisse_g.name, 'mixamorig:LeftUpLeg');
-    assert.equal(c.jambe_g.name, 'mixamorig:LeftLeg');
+    assert.equal(c.cuisse_g.name, 'mixamorigLeftUpLeg');
+    assert.equal(c.jambe_g.name, 'mixamorigLeftLeg');
   });
 
   test('chez VRoid, « Left leg » est la CUISSE', () => {
     const c = inferSkeletonMap(VROID);
-    assert.equal(c.cuisse_g.name, 'Left leg_085');
-    assert.equal(c.jambe_g.name, 'Left knee_090');
+    assert.equal(c.cuisse_g.name, 'Left_leg_085');
+    assert.equal(c.jambe_g.name, 'Left_knee_090');
   });
 
   test('les DEUX sont signalées, parce que le nom ne confirme ni l\'une ni l\'autre', () => {

@@ -158,8 +158,9 @@ const COTE_MOT_COLLE = /([LR])(?:Leg|Arm|Hand|Foot|Finger|Toe|Thigh|Calf|Shin|Wi
 /**
  * Le côté d'un os d'après son nom : 'g', 'd' ou null.
  *
- * Le nom est fiable POUR ÇA, et seulement pour ça. Six conventions cohabitent, « Left… », « …_L »,
- * « L_… », « l101 », et la majuscule collée du rig CAT. Le piège : un os nommé « leg » contient un
+ * Le nom est fiable POUR ÇA, et seulement pour ça. HUIT conventions cohabitent, « Left… »,
+ * « …_L », « L_… », « l101 », « Bone_L001 », le `.L` de Blender nettoyé par Three, et la majuscule
+ * collée du rig CAT. Le piège : un os nommé « leg » contient un
  * « l » sans être à gauche, d'où des motifs ancrés plutôt qu'une recherche de lettre.
  */
 export function coteDuNom(nom){
@@ -178,6 +179,26 @@ export function coteDuNom(nom){
   // verdict d'aucun autre fichier.
   if (/^l\d/.test(brut)) return 'g';
   if (/^r\d/.test(brut)) return 'd';
+  // La même chose PRÉCÉDÉE D'UN SÉPARATEUR : `Bone_L.001` devient `Bone_L001` une fois nettoyé par
+  // Three, et le chiffre y joue exactement le même rôle de garde qu'au-dessus.
+  if (/[._\- ]l\d/.test(brut)) return 'g';
+  if (/[._\- ]r\d/.test(brut)) return 'd';
+  // LE `.L` DE BLENDER, UNE FOIS NETTOYÉ PAR THREE. Se lit sur le nom BRUT, la casse portant ici
+  // toute l'information, comme pour la convention CAT juste en dessous.
+  //
+  // POURQUOI CE MOTIF EXISTE, ET C'EST UN DÉFAUT SIGNALÉ À L'USAGE. Three supprime `. : / [ ]` des
+  // noms de nœuds au décodage (`PropertyBinding.sanitizeNodeName`). `Ear1.L_5` arrive donc sous la
+  // forme `Ear1L_5`, où plus aucun séparateur ne précède le `L` : les conventions ci-dessus n'y
+  // voyaient RIEN. Le chien, le dragon et le raptor tombaient à ZÉRO membre latéral et étaient
+  // classés « serpentin », alors que les fixtures, extraites du JSON brut, les donnaient justes.
+  //
+  // LA GARDE EST DOUBLE, et les deux moitiés comptent. La lettre doit SUIVRE une minuscule ou un
+  // chiffre, ce qui écarte `MODEL_root`, `CTRL_x`, `ROOT_L` et tous les mots en capitales ; et elle
+  // doit PRÉCÉDER un souligné, un chiffre ou la fin, ce qui écarte `PELVIS`. Mesuré sur les 3032 os
+  // du corpus nettoyé : +408 côtés lus, 0 conflit.
+  const blender = /[a-z0-9]([LR])(?=_|\d|$)/.exec(String(nom || ''));
+  if (blender) return blender[1] === 'L' ? 'g' : 'd';
+
   // EN DERNIER, ET SUR LE NOM BRUT. Dernier parce que c'est la convention la moins sûre des six :
   // elle ne doit se prononcer que là où aucune autre n'a rien lu, jamais contredire un « Left »
   // explicite. Sur le nom brut parce que `toLowerCase()` détruit la seule information qu'elle a.
