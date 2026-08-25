@@ -875,10 +875,10 @@ export function archetypeSuggere3D(os){
  * surnuméraires. Ce n'est pas un défaut de la reconnaissance, qui les trouve toutes ; c'est l'écran
  * qui n'a pas de case pour elles.
  *
- * ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS, elle s'y ajoute. Ce sont eux qui pilotent le rig
- * aujourd'hui (`applySkeletonPose`, `jointsDepuisOsMappes`), et les remplacer d'un coup casserait
- * tout modèle déjà posé. Les deux vivront côte à côte tant que les poignées (#374) n'auront pas
- * appris à venir d'ici.
+ * ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS, elle s'y ajoute. Depuis #374, c'est la MORPHOLOGIE
+ * qui dit lesquels pilotent le rig : un humanoïde garde ses emplacements, une créature est pilotée
+ * par ses chaînes (cf. groupesPosablesMembres3D dans skeleton-pose.js, et docs/creature-rigs.md).
+ * Les remplacer pour tout le monde d'un coup aurait cassé tout modèle déjà posé.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * CE QU'ELLE REND, ET POURQUOI GROUPÉ PAR ANCRE

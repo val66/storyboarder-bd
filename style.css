@@ -625,6 +625,15 @@ canvas{
 }
 .joint-group-details[open] summary::after{ transform:rotate(0deg); }
 .joint-group-details:last-child{ margin-bottom:0; }
+/* #374 — un groupe de CHAÎNE vit dans un groupe d'ANCRE. Les créatures sont les seules à avoir deux
+   niveaux : une ancre qui porte plusieurs chaînes. Laisser le style du parent s'appliquer donnerait
+   deux cadres à un pixel d'écart, qui se lisent comme un défaut d'alignement plutôt que comme une
+   imbrication. Le niveau intérieur n'a donc ni fond ni cadre, seul un filet à gauche dit qu'il est
+   contenu. Le repli à un seul niveau, celui de l'humanoïde, ne rencontre jamais cette règle. */
+.joint-group-details .joint-group-details{
+  background:none; border:none; border-radius:0; border-left:1px solid var(--line);
+  padding:0 0 0 8px; margin:0 0 4px;
+}
 .joint-group-details .joint-slider-row{ margin-left:0; }
 .joint-group-details:not([open]) summary{ margin-bottom:0; }
 .modal-box h3{

@@ -60,7 +60,39 @@
  * testable sous Node la seule chose qui puisse silencieusement tordre un personnage.
  */
 
-import { SLOTS, SLOT_GROUPS, slotLabel } from './skeleton-map.js';
+import { SLOTS, SLOT_GROUPS, slotLabel, lignesDeCorrespondance3D } from './skeleton-map.js';
+
+/**
+ * Le préfixe des clés de pose qui désignent un OS et non un emplacement (#374).
+ *
+ * POURQUOI UN PRÉFIXE PLUTÔT QUE LE NOM NU. Une pose est un dictionnaire `{ clé: {x,y,z} }` dont
+ * les clés étaient jusqu'ici les dix-huit emplacements. Les membres surnuméraires n'en ont pas :
+ * leur seule identité stable est le NOM de l'os, celui-là même que le fichier de correspondances
+ * mémorise déjà (cf. skeleton-store.js). Un os pourrait donc s'appeler `tete` et écraser
+ * l'emplacement du même nom.
+ *
+ * MESURÉ : sur les 3032 os des dix-sept fixtures, zéro nom coïncide avec un emplacement, et zéro
+ * nom est en double dans son fichier. Le préfixe n'est donc PAS une réponse à un problème observé,
+ * c'est le refus d'un pari : la même mesure « aucun contre-exemple dans le corpus » avait fait
+ * accepter un motif de côté trop large en #363, et il lisait `ARMature` comme une droite. Deux
+ * caractères coûtent moins cher qu'un fichier de Projet silencieusement faux.
+ *
+ * Aucun champ persisté nouveau : ces clés vivent dans `skeletonPose3d`, à côté des emplacements.
+ */
+export const PREFIXE_OS_3D = 'os:';
+
+/** La clé de pose d'un os, depuis son nom. */
+export function clePoseOs3D(nom){ return PREFIXE_OS_3D + nom; }
+
+/** Cette clé désigne-t-elle un os plutôt qu'un emplacement ? */
+export function estClePoseOs3D(cle){
+  return typeof cle === 'string' && cle.startsWith(PREFIXE_OS_3D) && cle.length > PREFIXE_OS_3D.length;
+}
+
+/** Le nom d'os d'une clé, ou `null` si la clé est un emplacement. */
+export function nomDOsDeCle3D(cle){
+  return estClePoseOs3D(cle) ? cle.slice(PREFIXE_OS_3D.length) : null;
+}
 
 /**
  * Les trois axes pilotables, dans l'ordre d'affichage.
@@ -114,22 +146,45 @@ export function estPosable(slot){
 export function normaliserPose(brut){
   const sortie = {};
   if (!brut || typeof brut !== 'object') return sortie;
+  // LES CLÉS D'OS SONT GARDÉES SANS ÊTRE VÉRIFIÉES, et c'est le contraire d'un oubli. Un emplacement
+  // se vérifie parce que les emplacements forment une liste FERMÉE ; un nom d'os ne se vérifie qu'en
+  // ayant le `.glb` décodé sous la main, ce qui n'est pas garanti au moment où un Projet
+  // s'enregistre. Une clé qui ne désigne aucun os du fichier est de toute façon INERTE :
+  // `applySkeletonPose` parcourt les os récoltés, pas la pose. Le pire cas est donc quelques octets
+  // conservés dans le Projet, et l'utilisateur retrouve sa pose s'il rebranche le bon fichier ; la
+  // jeter serait perdre du travail pour cause de fichier momentanément absent.
+  Object.keys(brut).forEach(cle => {
+    if (!estClePoseOs3D(cle)) return;
+    const garde = anglesNonNuls(brut[cle]);
+    if (garde) sortie[cle] = garde;
+  });
   SLOTS.forEach(slot => {
     // Un emplacement devenu non pilotable est JETÉ à la relecture. Un Projet enregistré par une
     // version où le bassin avait des curseurs porterait sinon une rotation que plus personne ne
     // peut voir ni annuler, le personnage resterait de travers, sans commande pour le redresser.
     // C'est une valeur qu'on cesse de lire, pas un champ renommé : la forme persistée ne bouge pas.
     if (!estPosable(slot)) return;
-    const angles = brut[slot];
-    if (!angles || typeof angles !== 'object') return;
-    const garde = {};
-    POSE_AXES.forEach(axe => {
-      const v = Number(angles[axe]);
-      if (Number.isFinite(v) && v !== 0) garde[axe] = v;
-    });
-    if (Object.keys(garde).length) sortie[slot] = garde;
+    const garde = anglesNonNuls(brut[slot]);
+    if (garde) sortie[slot] = garde;
   });
   return sortie;
+}
+
+/**
+ * Les angles non nuls d'une entrée de pose, ou `null` s'il n'en reste aucun. Fonction PURE.
+ *
+ * Extraite pour être appelée aux DEUX endroits de `normaliserPose`. Deux copies de cette boucle,
+ * c'était deux endroits où oublier plus tard qu'un zéro se jette, et une mutation qui n'en casse
+ * qu'un seul passe à travers les tests.
+ */
+function anglesNonNuls(angles){
+  if (!angles || typeof angles !== 'object') return null;
+  const garde = {};
+  POSE_AXES.forEach(axe => {
+    const v = Number(angles[axe]);
+    if (Number.isFinite(v) && v !== 0) garde[axe] = v;
+  });
+  return Object.keys(garde).length ? garde : null;
 }
 
 /** Un Élément porte-t-il une pose ? Vrai seulement si un angle non nul subsiste après normalisation. */
@@ -152,7 +207,8 @@ export function lireAngleDeg(pose, slot, axe){
  * l'Élément marqué comme posé à jamais.
  */
 export function ecrireAngleDeg(pose, slot, axe, deg){
-  if (!pose || !SLOTS.includes(slot) || !estPosable(slot) || !POSE_AXES.includes(axe)) return pose;
+  const accepte = estClePoseOs3D(slot) || (SLOTS.includes(slot) && estPosable(slot));
+  if (!pose || !accepte || !POSE_AXES.includes(axe)) return pose;
   const rad = Number(deg) * Math.PI / 180;
   if (!Number.isFinite(rad) || Math.round(Number(deg)) === 0) {
     if (pose[slot]) {
@@ -186,6 +242,115 @@ export function groupesPosables(carte, traduire){
         .map(slot => ({ slot, label: slotLabel(slot, t) })),
     }))
     .filter(g => g.slots.length > 0);
+}
+
+/**
+ * Les groupes de curseurs d'un squelette QUELCONQUE, engendrés depuis ses chaînes. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI CETTE FONCTION REMPLACE `groupesPosables` AU LIEU DE S'Y AJOUTER
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Sur une créature, les dix-huit emplacements ne sont pas incomplets, ils sont FAUX. Mesuré sur le
+ * cerbère : `tete` reçoit le premier os de la patte avant gauche, et `clavicule_g` à `main_g`
+ * reçoivent la TÊTE gauche. Sur l'araignée, `bras_g` et `cuisse_g` sont deux pattes sur huit et
+ * `tete` est un segment de corps.
+ *
+ * Ajouter une section « membres surnuméraires » À CÔTÉ aurait donc laissé un curseur « Bras gauche »
+ * qui bouge une tête, et la bonne tête juste en dessous : deux commandes pour un seul os, sans que
+ * rien ne le dise. C'est exactement le défaut qui a fait retirer ses curseurs au bassin
+ * (cf. SLOTS_NON_POSABLES), et il aurait été réintroduit à l'échelle d'un squelette entier.
+ *
+ * C'est donc la MORPHOLOGIE qui tranche, celle que le sélecteur de #369 laisse corriger :
+ * `humanoide` garde les dix-huit emplacements, tout le reste passe par ici. Les six fichiers réels
+ * de l'utilisateur sont humanoïdes, et ne bougent pas d'un pixel.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUI EST ÉCARTÉ EN TÊTE DE TRONC, ET POURQUOI CE N'EST PAS UN SEUIL
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Les os du tronc qui précèdent la première ancre, celle-ci comprise, N'ONT PAS DE CURSEUR : ce sont
+ * ceux qui portent la TOTALITÉ des membres, donc les tourner fait pivoter la figure entière, ce que
+ * l'Orientation de l'Élément fait déjà. Même argument que pour le bassin, appliqué à la lettre.
+ *
+ * ⚠️ J'AI D'ABORD CHERCHÉ UN SEUIL, « écarter un os qui entraîne plus de 90 % du squelette », et la
+ * mesure l'a démenti. Fraction du squelette entraînée par les premiers os du tronc :
+ *
+ *   araignée   100, 99, 90, 67, 52, 37, 21 %
+ *   cerbère    100, 98, 96, 94, 54, 52, 50 %
+ *   serpent    100, 99, 92, 91, 90, 89, 88 %
+ *
+ * Aucun trou. N'importe quel pourcentage aurait coupé le serpent en plein milieu de son tronc de
+ * 86 os. Le critère retenu est STRUCTUREL et ne se règle pas : « cet os porte-t-il tous les
+ * membres ? ». Il coûte 2 os de tronc sur les fixtures, 4 au pire (cerbère), jamais plus.
+ *
+ * @param {Array<{id, name, children}>} os la liste d'os neutre
+ * @param {Array<{racine, nom, retenu}>} [membres] les choix humains relus du disque
+ * @returns `[{ titre, chaines: [{ titre, os: [{ cle, label }] }] }]`, `cle` étant préfixée `os:`
+ */
+export function groupesPosablesMembres3D(os, membres, traduire){
+  const t = traduire || ((en) => en);
+  const lignes = lignesDeCorrespondance3D(os, membres, t);
+  if (!lignes.tronc) return [];
+
+  const nomDe = new Map((os || []).filter(o => o && o.id !== undefined).map(o => [o.id, o.name]));
+  const ancres = new Set(lignes.groupes.map(g => g.ancre));
+  const rangees = (ids) => ids
+    .map(id => nomDe.get(id))
+    .filter(nom => typeof nom === 'string' && nom)
+    .map(nom => ({ cle: clePoseOs3D(nom), label: nom }));
+
+  const groupes = [];
+  const segments = lignes.tronc.segments;
+  // `findIndex` rend -1 quand AUCUN os du tronc n'est une ancre, cas du serpent, dont l'unique
+  // chaîne part d'un os déjà écarté. Le `+ 1` ci-dessous en fait alors une coupe à zéro : tout le
+  // tronc est pilotable, ce qui est exact, rien d'autre ne bouge avec lui.
+  const coupe = segments.findIndex(id => ancres.has(id));
+  const osTronc = rangees(segments.slice(coupe + 1));
+  if (osTronc.length) groupes.push({ titre: lignes.tronc.nom, chaines: [{ titre: lignes.tronc.nom, os: osTronc }] });
+
+  lignes.groupes.forEach(g => {
+    // UNE CHAÎNE DÉCOCHÉE N'A PAS DE CURSEUR. C'est le seul filtre, et il est HUMAIN : la case de
+    // l'écran de correspondance (#373). Le code n'écarte rien de lui-même, faute de savoir le faire,
+    // cf. l'étape 3 de docs/creature-rigs.md et l'hypothèse de la longueur, démentie.
+    const chaines = g.membres
+      .filter(m => m.retenu)
+      .map(m => ({ titre: m.rang > 1 ? `${m.nom} ${t('rank', 'rang')} ${m.rang}` : m.nom, os: rangees(m.segments) }))
+      .filter(c => c.os.length);
+    if (chaines.length) groupes.push({ titre: `${t('Anchor', 'Ancre')} ${g.ancreNom}`, chaines });
+  });
+  return groupes;
+}
+
+/**
+ * Quels os récolter sur un modèle, et sous quelle clé. Fonction PURE.
+ *
+ * ⚠️ UN OS NE DOIT JAMAIS ÊTRE RÉCOLTÉ SOUS DEUX CLÉS, et c'est cette fonction qui le garantit.
+ * `applySkeletonPose` réécrit le quaternion de chaque entrée récoltée ; deux entrées visant le même
+ * os se termineraient par « la dernière parcourue gagne », c'est-à-dire par un curseur qui en annule
+ * un autre selon un ordre de clés que personne ne contrôle. Sur une créature les chaînes et les
+ * emplacements désignent LES MÊMES OS, la question n'est donc pas théorique.
+ *
+ * ELLE EXISTE PARCE QUE LA MUTATION A ÉCHAPPÉ. La décision vivait dans `recolterOsMappes`, sous la
+ * forme « branche créature, `return`, puis les dix-huit emplacements ». Retirer ce `return` unissait
+ * les deux sources sans qu'aucun test ne bronche : le test qui prétendait le surveiller cherchait la
+ * position d'un `return sortie;` qui apparaît TROIS fois dans cette fonction, et lisait donc la
+ * garde du haut. Une décision qu'on peut appeler et vérifier vaut mieux qu'une position dans un
+ * corps de fonction.
+ *
+ * @returns `[{ cle, nom }]`, `nom` étant le nom de l'os à retrouver dans le clone
+ */
+export function clesARecolter3D({ morphologie, carte, os, membres } = {}, traduire){
+  if (morphologie !== 'humanoide') {
+    return groupesPosablesMembres3D(os, membres, traduire)
+      .flatMap(g => g.chaines.flatMap(c => c.os.map(o => ({ cle: o.cle, nom: nomDOsDeCle3D(o.cle) }))));
+  }
+  // LE BASSIN EN FAIT PARTIE bien qu'il n'ait pas de curseur : `repereDuModeleImporte` a besoin de
+  // sa POSITION pour orienter le corps. Récolter un os et lui donner un curseur sont deux questions
+  // distinctes, et les confondre ferait disparaître le repère avec le curseur.
+  return SLOTS
+    .map(slot => ({ cle: slot, nom: ((carte || {})[slot] || {}).name }))
+    .filter(e => typeof e.nom === 'string' && e.nom);
 }
 
 /** Combien d'emplacements sont pilotables : le chiffre que la fiche annonce avant de dérouler. */

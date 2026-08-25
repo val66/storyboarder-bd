@@ -219,6 +219,35 @@ Personnage, conservé à l'identique volontairement. Le résultat est réécrit 
 emplacement, c'est-à-dire exactement `skeletonPose3d` : la pose appliquée apparaît donc dans les
 curseurs, reste retouchable, et n'ajoute aucun champ persisté, donc aucune migration.
 
+⚠️ **Depuis #374, seuls les HUMANOÏDES la reçoivent.** Une créature ne récolte plus les dix-huit
+emplacements mais ses chaînes ; « assis » ne trouverait donc aucun os. Rétablir les emplacements
+pour que le geste « marche » n'aurait rien réparé : plier le « bras gauche » d'une araignée pliait
+une de ses huit pattes. Les poses par morphologie sont la tâche #375.
+
+### 6.3 bis La morphologie décide d'où viennent les curseurs (#374)
+
+Un fichier articulé a **deux jeux d'os pilotables possibles**, et un seul est actif à la fois :
+
+| morphologie | curseurs et poignées | clé de pose |
+|---|---|---|
+| `humanoide` | les dix-huit emplacements, comme avant | `tete`, `avantbras_g`, … |
+| tout le reste | le tronc et les chaînes cochées (#373) | `os:<nom de l'os>` |
+
+C'est `groupesDeCurseurs3D` (`src/rig3d.js`) qui tranche, **une seule fois**, et la fiche, le rig et
+les poignées l'appellent tous. Trois lecteurs qui trancheraient chacun de leur côté finiraient par
+diverger, et la fiche montrerait les curseurs d'une morphologie pendant que le rig récolterait ceux
+d'une autre.
+
+⚠️ **Un os n'est récolté que sous une seule clé.** `applySkeletonPose` réécrit le quaternion de
+chaque entrée récoltée ; deux entrées visant le même os se termineraient par « la dernière parcourue
+gagne ». D'où une branche, jamais une union. Seule exception, le bassin d'un humanoïde : récolté
+sans curseur, parce que `repereDuModeleImporte` a besoin de sa position.
+
+Les os de tête de tronc, ceux qui portent la totalité des membres, n'ont pas de curseur. Critère
+STRUCTUREL et non un pourcentage : la fraction du squelette entraînée décroît sans aucun trou où
+couper (araignée 100, 99, 90, 67 % ; serpent 100, 99, 92, 91, 90 %), et n'importe quel seuil aurait
+coupé le serpent en plein tronc. Cf. [creature-rigs.fr.md](creature-rigs.fr.md).
+
 ### 6.4 Le cadrage : ce qui est peint ET chaque poignée
 
 Le cadrage de la fiche et de l'éditeur s'est fait sur les **os seuls** pendant une dizaine de

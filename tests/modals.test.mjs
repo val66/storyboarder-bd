@@ -221,8 +221,20 @@ describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement'
 
   test('RÉGRESSION : déplier un groupe sélectionne son point, et réciproquement', () => {
     // Le dialogue doit aller dans les deux sens, comme pour le Personnage et les Animaux.
-    const debut = MODALS.indexOf('export function buildSkeletonJointSlidersUI');
-    const corps = MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
+    //
+    // ⚠️ CE TEST LISAIT `buildSkeletonJointSlidersUI` jusqu'à sa première accolade fermante, et la
+    // tâche #374 l'a cassé en sortant la construction d'un groupe dans sa propre fonction. La
+    // fenêtre était le défaut, pas le déplacement : elle épinglait OÙ le code se trouve alors que
+    // l'exigence porte sur ce qu'il fait. On vérifie donc les deux maillons, le constructeur qui
+    // appelle et la fonction qui pose le gestionnaire, ce qui reste vrai où qu'elle vive.
+    const bloc = (nom) => {
+      const debut = MODALS.indexOf(nom);
+      assert.ok(debut > 0, `${nom} a disparu`);
+      return MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
+    };
+    assert.match(bloc('export function buildSkeletonJointSlidersUI'), /ajouterGroupeDeCurseurs3D\(/,
+      'la fiche ne construit plus ses groupes par le chemin qui pose le gestionnaire');
+    const corps = bloc('function ajouterGroupeDeCurseurs3D');
     assert.match(corps, /addEventListener\('toggle'/, 'déplier un groupe ne sélectionne plus rien');
     // La décision elle-même est déléguée à selectionALOuvertureDuGroupe, testée plus bas sur son
     // COMPORTEMENT : ici on vérifie seulement que le gestionnaire la consulte au lieu de trancher.

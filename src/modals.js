@@ -46,12 +46,12 @@ import {
   worldToPageXY,
 } from './scene3d.js';
 import {
-  cloneJoints, correspondancePourModele, figuresPosables, getEffectiveJoints, objectRigCache3D,
+  cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
   personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
   modeleImportePosable3D,
 } from './rig3d.js';
 import {
-  POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, groupesPosables, lireAngleDeg,
+  POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
 } from './skeleton-pose.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
@@ -592,8 +592,7 @@ export function buildSkeletonJointSlidersUI(obj){
   S.selectedSkeletonHandle = null;
   if (!isImportedModel(obj)) { subsection.style.display = 'none'; return; }
 
-  const carte = correspondancePourModele(obj.modelFile);
-  const groupes = groupesPosables(carte, tr);
+  const { groupes } = groupesDeCurseurs3D(obj.modelFile, tr);
   if (!groupes.length) { subsection.style.display = 'none'; return; }
   subsection.style.display = '';
 
@@ -604,20 +603,32 @@ export function buildSkeletonJointSlidersUI(obj){
   const btn = document.getElementById('objectSkeletonMapBtn');
   if (btn) btn.textContent = tr('Mapping table', 'Tableau de correspondance');
 
+  // UN GROUPE À UNE SEULE CHAÎNE N'EN CRÉE PAS UN SECOND. Un humanoïde n'a qu'un niveau de repli et
+  // doit rester exactement tel qu'avant ; une créature n'en a deux que là où l'ancre porte plusieurs
+  // chaînes. « Ancre Bone006 » contenant un unique « droite, 1 os » aurait fait deux clics pour
+  // atteindre trois curseurs, et un titre qui ne dit rien de plus que celui du dessus.
   groupes.forEach(groupe => {
-    const details = document.createElement('details');
-    details.className = 'joint-group-details';
-    const summary = document.createElement('summary');
-    summary.textContent = groupe.titre;
-    details.appendChild(summary);
-    container.appendChild(details);
+    const bloc = ajouterGroupeDeCurseurs3D(container, groupe.titre);
+    if (groupe.chaines.length === 1) { remplirChaineDeCurseurs3D(bloc, groupe.chaines[0].os); return; }
+    groupe.chaines.forEach(chaine => {
+      remplirChaineDeCurseurs3D(ajouterGroupeDeCurseurs3D(bloc, chaine.titre), chaine.os);
+    });
+  });
+}
 
-    groupe.slots.forEach(({ slot }) => { skeletonJointGroupDetailsById[slot] = details; });
+/** Un `<details>` de groupe, avec sa réciproque « déplier sélectionne le premier point ». */
+function ajouterGroupeDeCurseurs3D(parent, titre){
+  const details = document.createElement('details');
+  details.className = 'joint-group-details';
+  const summary = document.createElement('summary');
+  summary.textContent = titre;
+  details.appendChild(summary);
+  parent.appendChild(details);
 
-    // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
-    // le dialogue aille dans les deux sens, exactement comme pour les Animaux et le Personnage.
-    details.addEventListener('toggle', () => {
-      if (!details.open) return;
+  // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
+  // le dialogue aille dans les deux sens, exactement comme pour les Animaux et le Personnage.
+  details.addEventListener('toggle', () => {
+    if (!details.open) return;
     // LA GARDE EST UN TEST D'ÉTAT, PAS UN DRAPEAU. L'événement `toggle` d'un <details> est émis de
     // façon ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà retombé quand le
     // gestionnaire s'exécute, et ne protège de rien. Concrètement, cliquer un point sur l'aperçu
@@ -626,26 +637,41 @@ export function buildSkeletonJointSlidersUI(obj){
     // que le bon ». Se demander « ce groupe contient-il déjà la sélection ? » ne dépend d'aucun
     // ordre d'arrivée. Le remède était déjà écrit dans persona-editor.js ; il n'avait pas été
     // reporté ici, et je l'ai recopié cassé une troisième fois.
-      const choisi = S.selectedSkeletonHandle && S.selectedSkeletonHandle.id;
-      const aPrendre = selectionALOuvertureDuGroupe(groupe.slots.map(s => s.slot), choisi);
-      if (aPrendre === null) { highlightSkeletonJointRows(choisi); return; }
-      S.selectedSkeletonHandle = { id: aPrendre };
-      highlightSkeletonJointRows(aPrendre);
-      refreshObjectPreview();
-    });
+    //
+    // LES CLÉS SONT LUES DANS LE DOM, pas dans une liste capturée à la construction : depuis #374 un
+    // groupe d'ancre ne porte pas de curseur lui-même, ses chaînes en portent. Demander « quelles
+    // clés sont sous moi ? » répond juste aux deux niveaux, sans les distinguer.
+    const clefs = clesDuGroupe3D(details);
+    const choisi = S.selectedSkeletonHandle && S.selectedSkeletonHandle.id;
+    const aPrendre = selectionALOuvertureDuGroupe(clefs, choisi);
+    if (aPrendre === null) { highlightSkeletonJointRows(choisi); return; }
+    S.selectedSkeletonHandle = { id: aPrendre };
+    highlightSkeletonJointRows(aPrendre);
+    refreshObjectPreview();
+  });
+  return details;
+}
 
-    groupe.slots.forEach(({ slot, label }) => {
-      skeletonJointRowsById[slot] = skeletonJointRowsById[slot] || [];
-      POSE_AXES.forEach(axe => {
-        const initDeg = lireAngleDeg(S.modalDraftSkeletonPose, slot, axe);
-        const ref = makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
-          -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
-            if (!S.modalDraftSkeletonPose) S.modalDraftSkeletonPose = {};
-            ecrireAngleDeg(S.modalDraftSkeletonPose, slot, axe, deg);
-            refreshObjectPreview();
-          });
-        skeletonJointRowsById[slot].push(ref.row);
-      });
+/** Les clés pilotées sous un groupe, dans l'ordre d'affichage. */
+function clesDuGroupe3D(details){
+  return Object.keys(skeletonJointGroupDetailsById)
+    .filter(cle => details.contains(skeletonJointGroupDetailsById[cle]));
+}
+
+/** Les trois curseurs de chaque os d'une chaîne, dans son `<details>`. */
+function remplirChaineDeCurseurs3D(details, osDeLaChaine){
+  osDeLaChaine.forEach(({ cle, label }) => {
+    skeletonJointGroupDetailsById[cle] = details;
+    skeletonJointRowsById[cle] = skeletonJointRowsById[cle] || [];
+    POSE_AXES.forEach(axe => {
+      const initDeg = lireAngleDeg(S.modalDraftSkeletonPose, cle, axe);
+      const ref = makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
+        -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
+          if (!S.modalDraftSkeletonPose) S.modalDraftSkeletonPose = {};
+          ecrireAngleDeg(S.modalDraftSkeletonPose, cle, axe, deg);
+          refreshObjectPreview();
+        });
+      skeletonJointRowsById[cle].push(ref.row);
     });
   });
 }
@@ -1134,21 +1160,46 @@ export function highlightSkeletonJointRows(slot){
   (skeletonJointRowsById[slot] || []).forEach(row => row.classList.add('active'));
 }
 
+/**
+ * Les `<details>` qui contiennent celui-là, du plus proche au plus lointain, dans la sous-section.
+ *
+ * NÉCESSAIRE DEPUIS #374 : les curseurs d'une créature sont repliés à DEUX niveaux, l'ancre puis la
+ * chaîne. Sans cette remontée, la règle « on ferme tout sauf le groupe visé » fermait l'ancre qui
+ * contient le groupe visé, et cliquer une poignée n'ouvrait donc rien du tout. Le cas humanoïde n'a
+ * qu'un niveau et cette fonction lui rend une liste vide, sans branche supplémentaire.
+ */
+function ancetresDeGroupe3D(details){
+  const chaine = [];
+  let n = details && details.parentElement;
+  while (n && n.id !== 'objectSkeletonSlidersContainer') {
+    if (n.tagName === 'DETAILS') chaine.push(n);
+    n = n.parentElement;
+  }
+  return chaine;
+}
+
 export function openSkeletonJointGroupForHandle(slot){
   highlightSkeletonJointRows(slot);
   const details = skeletonJointGroupDetailsById[slot];
   const outer = document.getElementById('objectSkeletonSlidersDetails');
   if (outer && !outer.open) outer.open = true;
-  new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => {
-    if (d !== details && d.open) d.open = false;
-  });
-  if (details && !details.open) details.open = true;
+  const aGarder = new Set(details ? [details, ...ancetresDeGroupe3D(details)] : []);
+  // TOUS LES `<details>` DE LA SOUS-SECTION, lus dans le document plutôt que dans la table des
+  // groupes : celle-ci ne retient que le niveau le PLUS PROFOND, celui qui porte les curseurs. Les
+  // ancres n'y figurent pas, et se seraient donc empilées ouvertes, une par poignée cliquée.
+  tousLesGroupesSkeleton3D().forEach(d => { if (!aGarder.has(d) && d.open) d.open = false; });
+  aGarder.forEach(d => { if (!d.open) d.open = true; });
+}
+
+function tousLesGroupesSkeleton3D(){
+  const racine = document.getElementById('objectSkeletonSlidersContainer');
+  return racine ? [...racine.querySelectorAll('details')] : [];
 }
 
 export function closeAllSkeletonJointSliders(){
   highlightSkeletonJointRows(null);
   const outer = document.getElementById('objectSkeletonSlidersDetails');
-  new Set(Object.values(skeletonJointGroupDetailsById)).forEach(d => { d.open = false; });
+  tousLesGroupesSkeleton3D().forEach(d => { d.open = false; });
   if (outer) outer.open = false;
 }
 

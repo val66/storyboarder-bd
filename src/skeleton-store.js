@@ -121,6 +121,27 @@ function normaliserMembres(brut){
     .map(e => (e.nom !== null ? { racine: e.racine, nom: e.nom, retenu: e.retenu } : { racine: e.racine, retenu: false }));
 }
 
+/**
+ * La morphologie EFFECTIVE d'un fichier : le choix humain s'il existe, sinon le proposé. PURE.
+ *
+ * MÊME RÈGLE QUE `fusionner` POUR LES EMPLACEMENTS, et elle est ici pour être à côté d'elle : ce
+ * fichier tient déjà « l'enregistré prime, le proposé comble ». La dupliquer à l'endroit qui lit le
+ * disque l'aurait rendue invérifiable, et la mutation qui supprime la priorité du choix humain
+ * ÉCHAPPAIT à la campagne de la tâche #374, faute d'un appelant testable.
+ *
+ * Sans os, on rend `humanoide`, la valeur qui laisse tout comme avant : à cet instant on ne sait
+ * rien, et supposer une créature ferait disparaître les dix-huit emplacements d'un personnage le
+ * temps d'un décodage.
+ *
+ * @param propose une fonction `(os) => cle`, injectée pour que ce module n'importe pas la
+ *                reconnaissance : skeleton-store ne devine RIEN, c'est sa règle d'en-tête.
+ */
+export function morphologieEffective3D(enregistree, osDuFichier, propose){
+  if (enregistree && enregistree.morphologie) return enregistree.morphologie;
+  const os = osDuFichier || [];
+  return (os.length && propose) ? propose(os) : 'humanoide';
+}
+
 export function entreePourFichier(carte, { valide = false, morphologie = null, membres = null } = {}){
   const os = {};
   SLOTS.forEach(slot => {

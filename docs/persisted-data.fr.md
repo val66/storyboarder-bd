@@ -96,6 +96,30 @@ Deux conséquences qui font partie du format, pas de l'implémentation :
   il ne suit donc pas un Projet envoyé à quelqu'un d'autre. Le champ, lui, n'est jamais renommé,
   seule sa valeur change.
 
+### `skeletonPose3d` — deux sortes de clés dans un seul dictionnaire
+
+La pose d'un modèle importé est un dictionnaire `{ clé: {x, y, z} }` en radians. Ses clés sont de
+**deux natures**, et la distinction fait partie du format :
+
+- un **emplacement** de la correspondance humanoïde, `tete`, `avantbras_g`, `cuisse_d` : liste
+  fermée, dix-huit valeurs, jamais renommées ;
+- un **os**, préfixé `os:`, par exemple `os:Bone_L_078` (tâche #374). C'est le nom de l'os tel que
+  Three le voit, celui-là même que le fichier de correspondances mémorise.
+
+Le préfixe est ce qui interdit à un os réellement nommé `tete` d'écraser l'emplacement du même nom.
+Mesuré sur les 3032 os des dix-sept fixtures : zéro coïncidence, zéro doublon. Le préfixe ne répond
+donc à aucun défaut constaté, il refuse un pari.
+
+Ces deux natures ne se mélangent jamais **dans un même fichier** : un humanoïde écrit des
+emplacements, une créature écrit des os, et c'est la morphologie enregistrée qui tranche. Un fichier
+portant les deux, écrit par une version antérieure ou changé de morphologie depuis, reste lisible :
+la clé qui ne désigne aucun os récolté est simplement inerte.
+
+⚠️ **Une clé d'os est relue SANS être vérifiée**, contrairement à un emplacement. Un emplacement se
+vérifie parce que la liste est fermée ; un nom d'os ne se vérifie qu'avec le `.glb` décodé sous la
+main, ce qui n'est pas garanti au moment où un Projet s'enregistre. Jeter ces clés perdrait du
+travail pour cause de fichier momentanément absent.
+
 ## 3. Les ids DOM
 
 Moins évident, et pourtant vécu : lors du renommage Case/Tome/Pièce/Bâtiment →

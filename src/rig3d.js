@@ -26,10 +26,10 @@ import { isImportedModel } from './model-store.js';
 import { cloneSkinned } from './vendor/SkeletonUtils.js';
 // Reconnaissance et rangement des squelettes importés. La lecture est SYNCHRONE
 // (correspondanceEnregistreeSync) : construire un rig se fait dans un rendu, qui n'attend pas.
-import { bonesFromObject3D, inferSkeletonMap, SLOTS } from './skeleton-map.js';
+import { bonesFromObject3D, inferSkeletonMap, archetypeSuggere3D } from './skeleton-map.js';
 import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3d.js';
-import { correspondanceEnregistreeSync, fusionner } from './skeleton-store.js';
-import { orientationFinale, groupesPosables } from './skeleton-pose.js';
+import { correspondanceEnregistreeSync, fusionner, morphologieEffective3D } from './skeleton-store.js';
+import { orientationFinale, groupesPosables, groupesPosablesMembres3D, clesARecolter3D } from './skeleton-pose.js';
 import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
@@ -3260,18 +3260,27 @@ function recolterOsMappes(clone, nomFichier){
   // première version en posait un ici ; la campagne de mutation l'a retiré sans qu'aucun test ne
   // bronche, ce qui a mené à la vérification, la ligne ne faisait rien.
   const qm = new THREE.Quaternion(), pm = new THREE.Vector3();
-  SLOTS.forEach(slot => {
-    const e = carte[slot];
-    const os = e && e.name ? parNom.get(e.name) : null;
+  const recolter = (cle, nom) => {
+    const os = nom ? parNom.get(nom) : null;
     if (!os) return;
     const q = os.quaternion;
     os.getWorldQuaternion(qm);
     os.getWorldPosition(pm);
-    sortie[slot] = {
-      os, name: e.name, repos: [q.x, q.y, q.z, q.w],
+    sortie[cle] = {
+      os, name: nom, repos: [q.x, q.y, q.z, q.w],
       reposMonde: [qm.x, qm.y, qm.z, qm.w], positionMonde: [pm.x, pm.y, pm.z],
     };
-  });
+  };
+
+  // QUOI RÉCOLTER EST DÉCIDÉ AILLEURS, par une fonction pure et testable. Un os récolté sous deux
+  // clés ferait s'annuler deux curseurs selon un ordre que personne ne contrôle ; cette garantie
+  // mérite mieux qu'une branche noyée dans une fonction qui manipule des clones et des quaternions.
+  clesARecolter3D({
+    morphologie: morphologiePourModele(nomFichier),
+    carte,
+    os: osNeutresDuModele3D(nomFichier),
+    membres: membresPourModele(nomFichier),
+  }, tr).forEach(({ cle, nom }) => recolter(cle, nom));
   return sortie;
 }
 
@@ -3350,8 +3359,25 @@ export function reposMondeParEmplacement(osMappes){
  * que le champ Position et que le crayon de l'aperçu : trois contrôles, une seule règle.
  */
 export function figuresPosables(){
-  return loadedModelNames().filter(nom => Object.values(correspondancePourModele(nom))
-    .some(e => e && e.bone));
+  return loadedModelNames().filter(nom => groupesDeCurseurs3D(nom).groupes.length > 0);
+}
+
+/**
+ * Les figures que la BIBLIOTHÈQUE DE POSES peut habiller : les humanoïdes, et elles seules.
+ *
+ * ⚠️ UNE RESTRICTION, ET ELLE EST ASSUMÉE. Une pose de la bibliothèque est un geste de CORPS
+ * HUMAIN, traduit vers dix-huit emplacements (cf. EMPLACEMENT_PAR_ARTICULATION dans
+ * pose-bridge.js). Depuis #374, une créature ne récolte plus ces emplacements mais ses chaînes :
+ * lui appliquer « assis » ne trouverait aucun os et ne ferait donc RIEN.
+ *
+ * Le choix n'est pas de rétablir les emplacements pour que le geste « marche », il ne marchait pas
+ * davantage avant : plier le « bras gauche » d'une araignée pliait une de ses huit pattes, et son
+ * « avant-bras » une autre patte encore. Un geste sans effet vaut mieux qu'un geste posé au hasard,
+ * et une figure retirée de la liste vaut mieux qu'un geste sans effet. Les poses par morphologie
+ * sont la tâche #375.
+ */
+export function figuresDeLaBibliotheque3D(){
+  return figuresPosables().filter(nom => morphologiePourModele(nom) === 'humanoide');
 }
 
 /**
@@ -3442,17 +3468,67 @@ export function poseOsPourModeleImporte(nomFichier, joints){
  * répond que du cas incertain, celui du fichier importé.
  */
 export function modeleImportePosable3D(o){
-  return isImportedModel(o)
-    && groupesPosables(correspondancePourModele(o.modelFile), tr).length > 0;
+  return isImportedModel(o) && groupesDeCurseurs3D(o.modelFile).groupes.length > 0;
 }
 
 export function correspondancePourModele(nomFichier){
   const vide = {};
-  const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
-  if (!chargé || !chargé.scene) return vide;
-  const osNeutres = bonesFromObject3D(chargé.scene);
+  const osNeutres = osNeutresDuModele3D(nomFichier);
   if (!osNeutres.length) return vide;
   return fusionner(inferSkeletonMap(osNeutres), correspondanceEnregistreeSync(nomFichier), osNeutres);
+}
+
+/** Les os d'un fichier chargé, tels que la reconnaissance les voit. Liste vide si rien n'est chargé. */
+export function osNeutresDuModele3D(nomFichier){
+  const chargé = nomFichier ? getLoadedModel(nomFichier) : null;
+  return (chargé && chargé.scene) ? bonesFromObject3D(chargé.scene) : [];
+}
+
+/**
+ * La morphologie EFFECTIVE d'un fichier : le choix humain s'il existe, sinon ce que le classement
+ * propose. C'est elle qui décide, depuis #374, d'où viennent les curseurs et les poignées.
+ *
+ * MÊME RÈGLE QUE POUR LES EMPLACEMENTS : l'enregistré prime, le proposé comble. Un seul endroit la
+ * calcule, sans quoi l'écran de correspondance et le rig finiraient par ne plus dire la même chose,
+ * et un modèle afficherait les curseurs d'une morphologie tout en étant classé dans une autre.
+ *
+ * Un fichier non chargé rend `humanoide`, la valeur qui laisse tout comme avant : à cet instant on
+ * ne sait rien, et supposer une créature ferait disparaître les dix-huit emplacements d'un
+ * personnage le temps d'un décodage.
+ */
+export function morphologiePourModele(nomFichier){
+  return morphologieEffective3D(
+    nomFichier ? correspondanceEnregistreeSync(nomFichier) : null,
+    osNeutresDuModele3D(nomFichier),
+    (os) => archetypeSuggere3D(os).cle,
+  );
+}
+
+/** Les choix de chaînes enregistrés pour un fichier, ceux de l'écran de correspondance (#373). */
+export function membresPourModele(nomFichier){
+  const enregistree = nomFichier ? correspondanceEnregistreeSync(nomFichier) : null;
+  return (enregistree && enregistree.membres) || [];
+}
+
+/**
+ * Les groupes de curseurs d'un fichier, quelle que soit sa morphologie. UN SEUL point de décision.
+ *
+ * Rend `{ morphologie, groupes }` où `groupes` est déjà dans la forme que la fiche affiche. La
+ * fiche, le rig et les poignées appellent tous ceci : trois lecteurs qui trancheraient chacun de
+ * leur côté « humanoïde ou pas » finiraient par diverger, et c'est le travers le plus fréquent de
+ * ce dépôt.
+ */
+export function groupesDeCurseurs3D(nomFichier, traduire){
+  const t = traduire || tr;
+  const morphologie = morphologiePourModele(nomFichier);
+  if (morphologie === 'humanoide') {
+    return {
+      morphologie,
+      groupes: groupesPosables(correspondancePourModele(nomFichier), t)
+        .map(g => ({ titre: g.titre, chaines: [{ titre: g.titre, os: g.slots.map(s => ({ cle: s.slot, label: s.label })) }] })),
+    };
+  }
+  return { morphologie, groupes: groupesPosablesMembres3D(osNeutresDuModele3D(nomFichier), membresPourModele(nomFichier), t) };
 }
 
 /**

@@ -3,8 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.48. Les étapes 1 à 3 et les tâches #363 à #373 et #376 sont livrées ; #374 et
-> #375 restent à faire.
+> À jour de la v1.4.49. Les étapes 1 à 3 et les tâches #363 à #374 et #376 sont livrées ; #375
+> reste à faire.
 
 ## Où l'on en est
 
@@ -418,7 +418,8 @@ surnuméraires. La reconnaissance les trouve toutes ; c'est l'ÉCRAN qui n'a pas
 
 **ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS**, elle s'y ajoute. Ce sont eux qui pilotent le rig
 aujourd'hui, et les remplacer d'un coup casserait tout modèle déjà posé. Les deux vivront côte à
-côte tant que les poignées (#374) n'auront pas appris à venir d'ici.
+côte : depuis #374, c'est la MORPHOLOGIE qui dit lesquels pilotent le rig, un humanoïde garde ses
+emplacements, une créature est pilotée par ses chaînes.
 
 **Trois sources pour le nom, la première qui répond gagne :** `manuel` ce que l'utilisateur a tapé,
 `nom` ce que le vocabulaire tire des os, `structure` le descripteur neutre « gauche, 7 os » pour les
@@ -433,6 +434,123 @@ tout cet écran, proposer sans décider.
 Les choix vont dans le fichier de correspondances sous la clé `membres`, troisième AJOUT après `os`
 et `morphologie`, mêmes règles : la version du format ne bouge pas, et **seul le choix humain est
 écrit**. Une ligne sans nom tapé ni décochage n'apprend rien et n'est pas enregistrée.
+
+## Les curseurs viennent des chaînes (#374, faite)
+
+**Le défaut, mesuré plutôt que raconté.** Sur une créature, les dix-huit emplacements ne sont pas
+incomplets, ils sont FAUX. Cerbère :
+
+| emplacement | os réellement désigné |
+|---|---|
+| `tete` | premier os de la patte avant gauche |
+| `clavicule_g` à `main_g` | la TÊTE gauche |
+| `cuisse_g` à `pied_g` | la patte arrière gauche, juste |
+
+Araignée : `bras_g` et `cuisse_g` sont deux pattes sur huit, `tete` est un segment de corps.
+
+**Trois options ont été posées à l'utilisateur, il a tranché la deuxième.**
+
+- A, les chaînes remplacent les emplacements pour tout le monde : les six fichiers humains perdent
+  leurs libellés anatomiques pour rien.
+- **B, la MORPHOLOGIE tranche** : `humanoide` garde les dix-huit emplacements inchangés, tout le
+  reste passe par les chaînes. C'est le sélecteur de #369 qui décide, et il se corrige.
+- C, une section « membres surnuméraires » ajoutée en dessous : elle aurait laissé un curseur
+  « Bras gauche » qui bouge une tête, et la bonne tête juste en dessous. Deux commandes pour un seul
+  os, exactement le défaut qui a fait retirer ses curseurs au bassin.
+
+**Deux points tranchés à l'intérieur de B**, également par l'utilisateur : tous les os d'une chaîne
+reçoivent des curseurs, sans seuil de longueur ; et toutes les poignées sont dessinées d'un coup, on
+avisera à l'usage.
+
+### Un seuil cherché, et démenti par la mesure
+
+Les os de tête de tronc n'ont pas de curseur : ce sont ceux qui portent la TOTALITÉ des membres,
+donc les tourner fait pivoter la figure entière, ce que l'Orientation de l'Élément fait déjà.
+
+J'ai d'abord cherché à les désigner par un **pourcentage** du squelette entraîné. Fraction entraînée
+par les premiers os du tronc :
+
+| | os 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| araignée | 100 | 99 | 90 | 67 | 52 | 37 | 21 |
+| cerbère | 100 | 98 | 96 | 94 | 54 | 52 | 50 |
+| serpent | 100 | 99 | 92 | 91 | 90 | 89 | 88 |
+
+**Aucun trou.** N'importe quel seuil aurait coupé le serpent en plein milieu de son tronc de 86 os.
+Le critère retenu est structurel et ne se règle pas : « cet os porte-t-il tous les membres ? »,
+c'est-à-dire tout ce qui précède la première ancre, celle-ci comprise. Il coûte 2 os de tronc sur
+les fixtures, 4 au pire, jamais plus.
+
+### Un os n'est récolté que sous une seule clé
+
+`applySkeletonPose` réécrit le quaternion de chaque entrée récoltée. Deux entrées visant le même os
+se termineraient par « la dernière parcourue gagne », c'est-à-dire par un curseur qui en annule un
+autre selon un ordre de clés que personne ne contrôle. La récolte **branche** donc sur la
+morphologie au lieu d'unir les deux sources.
+
+Le bassin reste récolté pour un humanoïde bien qu'il n'ait aucun curseur : `repereDuModeleImporte` a
+besoin de sa POSITION. Récolter un os et lui donner un curseur sont deux questions distinctes.
+
+### La clé persistée, et pourquoi elle est préfixée
+
+Un membre surnuméraire n'a pas d'emplacement ; sa seule identité stable est le NOM de son os, celui
+que le fichier de correspondances mémorise déjà. La clé de pose s'écrit donc `os:Bone_L_078`, dans
+`skeletonPose3d`, à côté des emplacements. **Aucun champ persisté nouveau, aucune migration.**
+
+Mesuré sur les 3032 os des dix-sept fixtures : zéro nom coïncide avec un emplacement, zéro nom est
+en double dans son fichier. Le préfixe ne répond donc à aucun problème observé, il refuse un pari :
+c'est le même raisonnement « aucun contre-exemple dans le corpus » qui avait fait accepter un motif
+de côté trop large en #363, et il lisait `ARMature` comme une droite.
+
+À la relecture, une clé d'os est gardée **sans être vérifiée**, contrairement à un emplacement. Un
+emplacement se vérifie parce que la liste est fermée ; un nom d'os ne se vérifie qu'avec le `.glb`
+décodé sous la main, ce qui n'est pas garanti quand un Projet s'enregistre. Une clé qui ne désigne
+aucun os est de toute façon inerte, et la jeter perdrait du travail pour cause de fichier
+momentanément absent.
+
+### Une restriction assumée : la bibliothèque de poses
+
+Une pose de la bibliothèque est un geste de corps HUMAIN, traduit vers les dix-huit emplacements.
+Une créature ne les récolte plus : « assis » ne trouverait aucun os et ne ferait rien. La
+bibliothèque ne propose donc plus que les figures humanoïdes.
+
+Le choix n'est pas de rétablir les emplacements pour que le geste « marche » : il ne marchait pas
+davantage avant, plier le « bras gauche » d'une araignée pliait une de ses huit pattes et son
+« avant-bras » une autre patte encore. Un geste sans effet vaut mieux qu'un geste posé au hasard, et
+une figure retirée de la liste vaut mieux qu'un geste sans effet. Les poses par morphologie sont
+#375.
+
+**Le sélecteur de figure de la fiche, lui, garde les créatures** : porter une araignée reste
+possible, et ses curseurs de chaînes la pilotent. Il gagne même le serpent et centaur2, dont la
+correspondance humanoïde était vide et qui n'étaient donc proposés nulle part.
+
+### Deux mutations échappées, et ce qu'elles ont fait corriger
+
+Onze mutations écrites, onze attrapées, mais deux seulement après correction du CODE.
+
+**M8, unir les deux sources de récolte au lieu de brancher.** **M9, ignorer la morphologie
+enregistrée.** Les deux pour la même raison : la décision vivait dans une fonction qui manipule des
+clones Three et lit le disque, donc invérifiable, et le test qui prétendait la surveiller lisait des
+POSITIONS dans le texte du fichier. Celui de M8 cherchait un `return sortie;` avant une boucle, or
+cette chaîne apparaît TROIS fois dans la fonction : il lisait la garde du haut et passait toujours.
+
+D'où deux extractions, `clesARecolter3D` et `morphologieEffective3D`, toutes deux pures. La garantie
+qui compte, « un os n'est jamais récolté sous deux clés », se vérifie maintenant sur sept fixtures et
+trois morphologies, en COMPTANT les doublons plutôt qu'en lisant du code.
+
+Une onzième mutation a été ajoutée après coup : M8 telle qu'écrite ne mutait pas ce que je croyais,
+elle faisait tomber la branche créature dans la branche humanoïde. M11 fait l'union véritable.
+
+### Ce que ça donne, en chiffres
+
+| fixture | groupes | chaînes | os pilotables | sur |
+|---|---|---|---|---|
+| araignée | 10 | 31 | 103 | 113 |
+| cerbère | 4 | 8 | 45 | 49 |
+| kraken | 2 | 10 | 45 | 47 |
+| serpent | 2 | 2 | 89 | 91 |
+| oiseau | 14 | 36 | 120 | 554 |
+| Unreal | 23 | 223 | 554 | 1126 |
 
 ## Décisions prises avec l'utilisateur
 
@@ -493,8 +611,10 @@ trouverait une morphologie « enregistrée » sur chaque fichier jamais touché.
 persistées comme type de l'Élément. **Les libellés sont libres, les identifiants ne le sont pas.**
 Ajouter est permis, renommer est interdit (cf. [persisted-data.fr.md](persisted-data.fr.md)).
 
-Puis l'écran généré, les poignées des membres surnuméraires, et les poses par morphologie
-(anciennes #360 à #362), qui deviennent des conséquences une fois les archétypes en place.
+**#373, l'écran généré, et #374, les curseurs des membres surnuméraires. FAITES.** Cf. les sections
+dédiées ci-dessus. Reste **#375**, les poses par morphologie, qui devient une conséquence une fois
+les archétypes en place : `ANIMAL_JOINT_DEFS` fournit les butées d'articulation, mais aucune pose
+nommée, elles restent à écrire et à montrer avant d'être figées.
 
 ## Ce qui n'est pas au programme
 

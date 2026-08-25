@@ -217,6 +217,34 @@ identical on purpose. The result is written back as three angles per slot, i.e. 
 `skeletonPose3d`: the applied pose then shows up in the sliders, stays adjustable, and adds no
 persisted field, hence no migration.
 
+⚠️ **Since #374, only HUMANOIDS get it.** A creature no longer harvests the eighteen slots but its
+chains, so "sitting" would find no bone. Restoring the slots to make the gesture "work" would have
+fixed nothing: bending a spider's "left arm" bent one of its eight legs. Poses per morphology are
+task #375.
+
+### 6.3 bis Morphology decides where the sliders come from (#374)
+
+A rigged file has **two possible sets of drivable bones**, and only one is active at a time:
+
+| morphology | sliders and handles | pose key |
+|---|---|---|
+| `humanoide` | the eighteen slots, as before | `tete`, `avantbras_g`, … |
+| everything else | the trunk and the ticked chains (#373) | `os:<bone name>` |
+
+`groupesDeCurseurs3D` (`src/rig3d.js`) decides, **once**, and the card, the rig and the handles all
+call it. Three readers each deciding on their own would drift apart, and the card would show one
+morphology's sliders while the rig harvested another's.
+
+⚠️ **A bone is harvested under one key only.** `applySkeletonPose` rewrites the quaternion of every
+harvested entry; two entries aiming at the same bone would end in "last one wins". Hence a branch,
+never a union. The one exception is a humanoid's pelvis: harvested without a slider, because
+`repereDuModeleImporte` needs its position.
+
+The bones at the head of the trunk, those carrying every limb, get no slider. The criterion is
+STRUCTURAL, not a percentage: the fraction of the skeleton dragged along decreases with no gap to
+cut at (spider 100, 99, 90, 67 %; snake 100, 99, 92, 91, 90 %), and any threshold would have cut the
+snake mid-trunk. See [creature-rigs.md](creature-rigs.md).
+
 ### 6.4 Framing: what is painted AND every handle
 
 The card's and the editor's framing used the **bones alone** for a dozen versions, for a good

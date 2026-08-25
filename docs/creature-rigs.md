@@ -3,8 +3,8 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.48. Steps 1 to 3 and tasks #363 to #373 and #376 are shipped; #374 and
-> #375 remain.
+> Up to date as of v1.4.49. Steps 1 to 3 and tasks #363 to #374 and #376 are shipped; #375
+> remains.
 
 ## Where things stand
 
@@ -408,9 +408,10 @@ them all; it is the SCREEN that has no room for them.
 | spider | 30 chains over **9 anchors**, each one tickable |
 | mixamo | 2 anchors, 4 limbs, nothing invented |
 
-**IT DOES NOT REPLACE THE EIGHTEEN SLOTS**, it is added alongside. They are what drives the rig
-today, and replacing them at once would break every already-posed model. Both will live side by side
-until the handles (#374) learn to come from here.
+**IT DOES NOT REPLACE THE EIGHTEEN SLOTS**, it is added alongside. Since #374 it is MORPHOLOGY that
+says which of the two drives the rig: a humanoid keeps its slots, a creature is driven by its chains.
+Replacing them for everyone at once would have broken every already-posed model, and would have cost
+the six human files their anatomical labels for nothing.
 
 **Three sources for the name, first one wins:** `manuel` what the user typed, `nom` what the
 vocabulary reads from the bones, `structure` the neutral descriptor "left, 7 bones" for the four
@@ -425,6 +426,118 @@ contract, propose without deciding.
 Choices go into the mapping file under the `membres` key, a third ADDITION after `os` and
 `morphologie`, same rules: the format version does not move, and **only the human choice is
 written**. A row with no typed name and no unticking teaches nothing and is not saved.
+
+## The sliders come from the chains (#374, done)
+
+**The defect, measured rather than described.** On a creature the eighteen slots are not incomplete,
+they are WRONG. Cerberus:
+
+| slot | bone actually designated |
+|---|---|
+| `tete` | first bone of the front left leg |
+| `clavicule_g` to `main_g` | the LEFT HEAD |
+| `cuisse_g` to `pied_g` | the rear left leg, correct |
+
+Spider: `bras_g` and `cuisse_g` are two legs out of eight, `tete` is a body segment.
+
+**Three options were put to the user, who picked the second.**
+
+- A, the chains replace the slots for everyone: the six human files lose their anatomical labels for
+  nothing.
+- **B, MORPHOLOGY decides**: `humanoide` keeps the eighteen slots unchanged, everything else goes
+  through the chains. The #369 selector decides, and it can be corrected.
+- C, a "supernumerary limbs" section added below: it would have left a "Left arm" slider moving a
+  head, with the right head just underneath. Two commands for one bone, exactly the defect that got
+  the pelvis its sliders removed.
+
+**Two points settled inside B**, also by the user: every bone of a chain gets sliders, with no length
+threshold; and all handles are drawn at once, to be revisited through use.
+
+### A threshold looked for, and disproved by measurement
+
+The bones at the head of the trunk get no slider: they are the ones carrying ALL the limbs, so
+turning them swings the whole figure, which the Element's Orientation already does.
+
+I first tried to name them by a **percentage** of the skeleton dragged along. Fraction dragged by the
+first trunk bones:
+
+| | bone 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| spider | 100 | 99 | 90 | 67 | 52 | 37 | 21 |
+| cerberus | 100 | 98 | 96 | 94 | 54 | 52 | 50 |
+| snake | 100 | 99 | 92 | 91 | 90 | 89 | 88 |
+
+**No gap.** Any threshold would have cut the snake in the middle of its 86-bone trunk. The criterion
+kept is structural and has no dial: "does this bone carry every limb?", that is, everything before
+the first anchor, that anchor included. It costs 2 trunk bones across the fixtures, 4 at worst.
+
+### A bone is harvested under one key only
+
+`applySkeletonPose` rewrites the quaternion of every harvested entry. Two entries aiming at the same
+bone would end in "last one wins", that is, one slider cancelling another according to a key order
+nobody controls. Harvesting therefore **branches** on morphology instead of merging both sources.
+
+The pelvis is still harvested for a humanoid despite having no slider: `repereDuModeleImporte` needs
+its POSITION. Harvesting a bone and giving it a slider are two distinct questions.
+
+### The persisted key, and why it is prefixed
+
+A supernumerary limb has no slot; its only stable identity is its bone NAME, the one the mapping file
+already records. The pose key is therefore `os:Bone_L_078`, inside `skeletonPose3d`, next to the
+slots. **No new persisted field, no migration.**
+
+Measured across the 3032 bones of the seventeen fixtures: no name coincides with a slot, no name is
+duplicated within its file. The prefix answers no observed problem, it refuses a bet: it is the same
+"no counter-example in the corpus" reasoning that got an over-wide side pattern accepted in #363, and
+that pattern read `ARMature` as a right.
+
+On reread a bone key is kept **without being checked**, unlike a slot. A slot can be checked because
+the list is closed; a bone name can only be checked with the decoded `.glb` at hand, which is not
+guaranteed when a Project is saved. A key designating no bone is inert anyway, and dropping it would
+lose work because a file happened to be absent.
+
+### An assumed restriction: the pose library
+
+A library pose is a HUMAN body gesture, translated onto the eighteen slots. A creature no longer
+harvests them: "sitting" would find no bone and do nothing. The library therefore only offers
+humanoid figures.
+
+The choice is not to restore the slots so the gesture "works": it did not work before either, bending
+a spider's "left arm" bent one of its eight legs and its "forearm" yet another leg. A gesture with no
+effect beats a gesture aimed at random, and a figure removed from the list beats a gesture with no
+effect. Poses per morphology are #375.
+
+**The Element's figure selector, however, keeps creatures**: carrying a spider is still possible, and
+its chain sliders drive it. It even gains the snake and centaur2, whose humanoid mapping was empty and
+which were therefore offered nowhere.
+
+### Two escaped mutations, and what they had corrected
+
+Eleven mutations written, eleven caught, but two only after the CODE was corrected.
+
+**M8, merging the two harvest sources instead of branching.** **M9, ignoring the recorded
+morphology.** Both for the same reason: the decision lived in a function that manipulates Three
+clones and reads the disk, hence unverifiable, and the test claiming to watch it read POSITIONS in
+the file's text. M8's looked for a `return sortie;` before a loop, but that string occurs THREE times
+in the function: it read the guard at the top and always passed.
+
+Hence two extractions, `clesARecolter3D` and `morphologieEffective3D`, both pure. The guarantee that
+matters, "a bone is never harvested under two keys", is now checked across seven fixtures and three
+morphologies, by COUNTING duplicates rather than by reading code.
+
+An eleventh mutation was added afterwards: M8 as written did not mutate what I thought, it made the
+creature branch fall through into the humanoid one. M11 does the real merge.
+
+### What it comes to, in figures
+
+| fixture | groups | chains | posable bones | of |
+|---|---|---|---|---|
+| spider | 10 | 31 | 103 | 113 |
+| cerberus | 4 | 8 | 45 | 49 |
+| kraken | 2 | 10 | 45 | 47 |
+| snake | 2 | 2 | 89 | 91 |
+| bird | 14 | 36 | 120 | 554 |
+| Unreal | 23 | 223 | 554 | 1126 |
 
 ## Decisions taken with the user
 
@@ -482,8 +595,10 @@ are persisted in `animalJoints3d`, and `ANIMAL_TYPES` values are persisted as th
 **Labels are free, identifiers are not.** Adding is allowed, renaming is forbidden (see
 [persisted-data.md](persisted-data.md)).
 
-Then the generated screen, the handles for supernumerary limbs, and poses per morphology (formerly
-#360 to #362), which become consequences once the archetypes are in place.
+**#373, the generated screen, and #374, the supernumerary limb sliders. DONE.** See the dedicated
+sections above. **#375**, poses per morphology, remains, and becomes a consequence once the
+archetypes are in place: `ANIMAL_JOINT_DEFS` supplies joint limits but no named poses, which are
+still to be written and shown before being frozen.
 
 ## What is not on the programme
 

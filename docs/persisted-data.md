@@ -91,6 +91,29 @@ Two consequences that are part of the format, not of the implementation:
   never silently swapped. That journal lives in the user's settings, so it does not follow a project
   sent to someone else. The field itself is never renamed, only its value changes.
 
+### `skeletonPose3d` — two kinds of key in one dictionary
+
+An imported model's pose is a `{ key: {x, y, z} }` dictionary in radians. Its keys are of **two
+kinds**, and the distinction is part of the format:
+
+- a **slot** of the humanoid mapping, `tete`, `avantbras_g`, `cuisse_d`: closed list, eighteen
+  values, never renamed;
+- a **bone**, prefixed `os:`, for example `os:Bone_L_078` (task #374). That is the bone name as
+  Three sees it, the very one the mapping file records.
+
+The prefix is what stops a bone actually named `tete` from overwriting the slot of the same name.
+Measured across the 3032 bones of the seventeen fixtures: no coincidence, no duplicate. The prefix
+answers no observed defect, it refuses a bet.
+
+The two kinds never mix **within one file**: a humanoid writes slots, a creature writes bones, and
+the recorded morphology decides. A file carrying both, written by an earlier version or changed
+morphology since, stays readable: a key designating no harvested bone is simply inert.
+
+⚠️ **A bone key is reread WITHOUT being checked**, unlike a slot. A slot can be checked because the
+list is closed; a bone name can only be checked with the decoded `.glb` at hand, which is not
+guaranteed when a Project is saved. Dropping those keys would lose work because a file happened to
+be absent.
+
 ## 3. DOM ids
 
 Less obvious, and yet lived through: during the Case/Tome/Pièce/Bâtiment →

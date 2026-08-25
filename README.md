@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.48**
+**Version 1.4.49**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -59,7 +59,12 @@
 - **Every limb, not just eighteen**: the mapping table's "Limbs" section lists every chain in the
   skeleton, folded by the bone it hangs from. A cerberus's three heads and a spider's eight legs can
   be ticked and renamed there
-- **The pose library applies to them**, whatever axis convention the file uses
+- **A creature is posed through its chains**: as soon as the morphology is not "humanoid", the
+  sliders and the preview points come from the ticked chains, under the names you gave them, instead
+  of the eighteen humanoid slots
+- **The pose library applies to humanoids**, whatever axis convention the file uses. A creature does
+  not get it: "sitting" means nothing for a spider, and a gesture aimed at random would be worse than
+  a missing one
 - **Changing figure**: an articulated Element can wear another imported file and keep its pose
 - **Detached parts**: meshes a file places outside the body are hidden, and brought back with a
   checkbox. The file on disk is never modified

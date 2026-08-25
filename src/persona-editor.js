@@ -29,13 +29,12 @@ import {
   orbiteDeFace3D,
 } from './utils.js';
 import {
-  applyStyleCanvasFilter3D, cloneJoints, correspondancePourModele, figuresPosables,
+  applyStyleCanvasFilter3D, cloneJoints, figuresDeLaBibliotheque3D,
   getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
   resolveStyle3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { renderModelForEditor3D } from './scene3d.js';
-import { groupesPosables } from './skeleton-pose.js';
 import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
 import {
@@ -614,7 +613,7 @@ export function buildPersonaEditorModelUI(){
   const sel = document.getElementById('personaEditorModelSelect');
   if (!section || !sel) return;
   const cible = personaEditorTarget();
-  const figures = figuresPosables();
+  const figures = figuresDeLaBibliotheque3D();
   const utile = S.personaEditorOpen && figures.length > 0 && (!cible || isImportedModel(cible));
   section.style.display = utile ? '' : 'none';
   if (!utile) return;
@@ -669,7 +668,10 @@ export function choisirFigureDeLEditeur(fichier){
 export function figureImporteeDeLEditeur(){
   const fichier = S.personaEditorModelFile;
   if (!fichier) return null;
-  return groupesPosables(correspondancePourModele(fichier), tr).length ? fichier : null;
+  // MÊME LISTE QUE LE SÉLECTEUR, et pas une seconde condition qui lui ressemble. Un fichier choisi
+  // puis devenu inéligible (l'utilisateur a corrigé sa morphologie dans l'écran de correspondance)
+  // resterait sinon affiché dans un éditeur dont la liste ne le propose plus.
+  return figuresDeLaBibliotheque3D().includes(fichier) ? fichier : null;
 }
 
 // Rend le modèle importé dans le canevas de l'éditeur, à la pose du brouillon.

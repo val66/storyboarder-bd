@@ -40,8 +40,10 @@ import {
   POSE_AXES, POSE_LIMITE_DEG, normaliserPose, estPosee, lireAngleDeg, ecrireAngleDeg,
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
+  PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
 } from '../src/skeleton-pose.js';
 import { SLOTS } from '../src/skeleton-map.js';
+import { morphologieEffective3D } from '../src/skeleton-store.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -502,6 +504,262 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
   });
 });
 
+describe('Les clés d\'os ne peuvent pas se confondre avec un emplacement (#374)', () => {
+  test('aller-retour nom → clé → nom', () => {
+    assert.equal(clePoseOs3D('Bone_L_078'), PREFIXE_OS_3D + 'Bone_L_078');
+    assert.equal(nomDOsDeCle3D(clePoseOs3D('Bone_L_078')), 'Bone_L_078');
+  });
+
+  test('un os RÉELLEMENT nommé « tete » n\'écrase pas l\'emplacement du même nom', () => {
+    // Zéro coïncidence mesurée sur les 3032 os des dix-sept fixtures, et c'est justement pourquoi
+    // le préfixe existe : « aucun contre-exemple dans le corpus » est le raisonnement qui avait
+    // fait accepter un motif de côté trop large en #363. Un rig français nommerait très bien un os
+    // `tete`, et la pose de la tête humanoïde partirait sur lui.
+    assert.notEqual(clePoseOs3D('tete'), 'tete');
+    assert.ok(SLOTS.includes('tete') && !SLOTS.includes(clePoseOs3D('tete')));
+  });
+
+  test('un emplacement n\'est jamais pris pour un os', () => {
+    SLOTS.forEach(slot => assert.equal(estClePoseOs3D(slot), false, `${slot} passe pour un os`));
+    assert.equal(nomDOsDeCle3D('tete'), null);
+  });
+
+  test('le préfixe seul, sans nom, n\'est pas une clé', () => {
+    // Sans la garde de longueur, `os:` vide désignerait un os sans nom : une entrée de pose inerte
+    // que `normaliserPose` conserverait indéfiniment dans chaque Projet.
+    assert.equal(estClePoseOs3D(PREFIXE_OS_3D), false);
+    assert.equal(estClePoseOs3D(null), false);
+    assert.equal(estClePoseOs3D(42), false);
+  });
+});
+
+describe('Une pose porte aussi des os, pas seulement des emplacements (#374)', () => {
+  const CLE = clePoseOs3D('Head_L_02');
+
+  test('une clé d\'os traverse normaliserPose', () => {
+    assert.deepEqual(normaliserPose({ [CLE]: { x: 0.5 } }), { [CLE]: { x: 0.5 } });
+  });
+
+  test('les angles nuls d\'un os sont jetés comme ceux d\'un emplacement', () => {
+    // La règle vaut des deux côtés, sans quoi un curseur d\'os ramené à zéro laisserait l\'Élément
+    // marqué comme posé à jamais, exactement le défaut que `ecrireAngleDeg` évite déjà.
+    assert.deepEqual(normaliserPose({ [CLE]: { x: 0, y: 0, z: 0 } }), {});
+    assert.equal(estPosee({ [CLE]: { x: 0 } }), false);
+    assert.equal(estPosee({ [CLE]: { x: 0.2 } }), true);
+  });
+
+  test('une clé qui n\'est ni un emplacement ni un os est jetée', () => {
+    assert.deepEqual(normaliserPose({ inventé: { x: 0.5 }, bassin: { x: 0.5 } }), {});
+  });
+
+  test('ecrireAngleDeg écrit sur un os, et refuse toujours le bassin', () => {
+    const pose = {};
+    ecrireAngleDeg(pose, CLE, 'y', 90);
+    assert.ok(Math.abs(pose[CLE].y - Math.PI / 2) < 1e-9);
+    ecrireAngleDeg(pose, CLE, 'y', 0);
+    assert.deepEqual(pose, {}, 'le retour à zéro doit effacer l\'entrée');
+    ecrireAngleDeg(pose, 'bassin', 'y', 90);
+    assert.deepEqual(pose, {}, 'le bassin n\'a pas de curseur, il ne doit pas en gagner par cette porte');
+  });
+
+  test('lireAngleDeg relit ce que ecrireAngleDeg a écrit, pour un os', () => {
+    const pose = {};
+    ecrireAngleDeg(pose, CLE, 'z', -34);
+    assert.equal(lireAngleDeg(pose, CLE, 'z'), -34);
+  });
+});
+
+describe('Les curseurs d\'une créature viennent de ses chaînes (#374)', () => {
+  const charger = (nom) => JSON.parse(
+    readFileSync(join(RACINE, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+  const fr = (en, f) => f;
+  const tousLesOs = (groupes) => groupes.flatMap(g => g.chaines.flatMap(c => c.os.map(o => o.label)));
+
+  test('le cerbère reçoit ses TROIS têtes et sa queue, ce que les dix-huit emplacements cachaient', () => {
+    // Le défaut signalé à l'usage, mesuré : la correspondance humanoïde range les têtes latérales
+    // dans `clavicule_g`…`main_g` et met une patte avant dans `tete`.
+    const groupes = groupesPosablesMembres3D(charger('cerbere'), [], fr);
+    const chaines = groupes.flatMap(g => g.chaines.map(c => c.titre));
+    assert.equal(chaines.filter(t => /Tête/.test(t)).length, 2, 'les deux têtes latérales');
+    assert.equal(chaines.filter(t => /Queue/.test(t)).length, 1);
+    assert.ok(tousLesOs(groupes).length >= 40, 'presque tout le squelette devient pilotable');
+  });
+
+  test('l\'araignée reçoit ses HUIT pattes, pas deux', () => {
+    const groupes = groupesPosablesMembres3D(charger('araignee'), [], fr);
+    // SEPT OS, pas « six ou plus » : une première version comptait 10 chaînes, parce que l'ancre
+    // du dernier segment porte aussi une paire de six os. Compter large aurait laissé passer une
+    // décomposition qui perd une patte et gagne un appendice.
+    const pattes = groupes.flatMap(g => g.chaines).filter(c => c.os.length === 7);
+    assert.equal(pattes.length, 8, `attendu 8 pattes de 7 os, trouvé ${pattes.length}`);
+  });
+
+  test('toutes les clés sont préfixées, et aucune n\'est en double', () => {
+    // LE DOUBLON EST LE VRAI DANGER : `applySkeletonPose` réécrit le quaternion de chaque entrée,
+    // deux entrées visant le même os se termineraient par « la dernière parcourue gagne ».
+    ['cerbere', 'araignee', 'kraken', 'serpent', 'oiseau'].forEach(nom => {
+      const cles = groupesPosablesMembres3D(charger(nom), [], fr)
+        .flatMap(g => g.chaines.flatMap(c => c.os.map(o => o.cle)));
+      cles.forEach(cle => assert.ok(estClePoseOs3D(cle), `${nom} : clé non préfixée ${cle}`));
+      assert.equal(new Set(cles).size, cles.length, `${nom} : un os apparaît deux fois`);
+    });
+  });
+
+  test('les os de tête de tronc, qui portent TOUS les membres, n\'ont pas de curseur', () => {
+    // Même argument que pour le bassin : les tourner fait pivoter la figure entière, ce que
+    // l'Orientation de l'Élément fait déjà. Critère structurel, pas un pourcentage : la mesure des
+    // fractions entraînées ne montre AUCUN trou où couper (cf. docs/creature-rigs.md).
+    const os = charger('araignee');
+    const pilotables = new Set(tousLesOs(groupesPosablesMembres3D(os, [], fr)));
+    assert.equal(pilotables.has('_rootJoint'), false, 'la racine ne doit pas être pilotable');
+    assert.equal(pilotables.has('Bone009_01'), false, 'la première ancre porte les huit pattes');
+    assert.equal(pilotables.has('Bone_02'), true, 'le segment suivant, lui, se plie');
+  });
+
+  test('le serpent garde son tronc de 84 os : aucun seuil ne le coupe', () => {
+    // Le contre-exemple qui interdit le seuil en pourcentage : les os du serpent entraînent 100,
+    // 99, 92, 91, 90 % du squelette. Un seuil à 90 % lui aurait supprimé la moitié de son corps.
+    const groupes = groupesPosablesMembres3D(charger('serpent'), [], fr);
+    const tronc = groupes[0].chaines[0].os;
+    assert.ok(tronc.length > 80, `le tronc du serpent est tombé à ${tronc.length} os`);
+  });
+
+  test('une chaîne DÉCOCHÉE perd ses curseurs, et son nom manuel les retitre', () => {
+    // Le seul filtre est humain : la case et le champ de l'écran de correspondance (#373).
+    const os = charger('cerbere');
+    const avant = groupesPosablesMembres3D(os, [], fr);
+    // LE TRONC EST ÉCARTÉ DE LA RECHERCHE, il n'a pas de case à cocher : `retenu` ne concerne que
+    // les chaînes. Ma première version prenait le premier groupe, c'est-à-dire le tronc, et
+    // constatait qu'il survivait au décochage — ce qui est exact et ne prouvait rien.
+    const racine = avant.slice(1).flatMap(g => g.chaines).find(c => c.os.length > 3).os[0].label;
+    const apres = groupesPosablesMembres3D(os, [{ racine, retenu: false }], fr);
+    assert.equal(tousLesOs(apres).includes(racine), false, 'la chaîne décochée garde ses curseurs');
+    const nomme = groupesPosablesMembres3D(os, [{ racine, nom: 'Patte avant gauche', retenu: true }], fr);
+    assert.ok(nomme.flatMap(g => g.chaines).some(c => c.titre === 'Patte avant gauche'),
+      'le nom tapé par l\'utilisateur ne titre pas son groupe de curseurs');
+  });
+
+  test('un squelette illisible ne rend AUCUN groupe, plutôt qu\'un groupe vide', () => {
+    assert.deepEqual(groupesPosablesMembres3D([], [], fr), []);
+    assert.deepEqual(groupesPosablesMembres3D(null, null, fr), []);
+  });
+});
+
+describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
+  const charger = (nom) => JSON.parse(
+    readFileSync(join(RACINE, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+  const fr = (en, f) => f;
+
+  test('une créature récolte ses CHAÎNES, et aucun emplacement', () => {
+    // `applySkeletonPose` réécrit le quaternion de chaque entrée récoltée. Deux entrées visant le
+    // même os se termineraient par « la dernière parcourue gagne », c'est-à-dire par un curseur qui
+    // en annule un autre selon un ordre de clés que personne ne contrôle. Sur une créature, les
+    // chaînes et les emplacements désignent LES MÊMES OS : la question n'est pas théorique.
+    const os = charger('cerbere');
+    const cles = clesARecolter3D({ morphologie: 'quadrupede', carte: CARTE, os, membres: [] }, fr);
+    assert.ok(cles.length > 30, `récolte trop maigre : ${cles.length}`);
+    cles.forEach(({ cle }) => assert.ok(estClePoseOs3D(cle), `emplacement récolté sur une créature : ${cle}`));
+  });
+
+  test('un humanoïde récolte ses EMPLACEMENTS, et aucune chaîne', () => {
+    const os = charger('mixamo');
+    const cles = clesARecolter3D({ morphologie: 'humanoide', carte: CARTE, os, membres: [] }, fr);
+    assert.deepEqual(cles.map(e => e.cle), ['bassin', 'poitrine', 'bras_g', 'avantbras_g']);
+    assert.deepEqual(cles.map(e => e.nom), ['Hips', 'Chest', 'Left_arm', 'Left_elbow']);
+  });
+
+  test('le bassin est récolté bien qu\'il n\'ait pas de curseur', () => {
+    // `repereDuModeleImporte` a besoin de sa POSITION pour orienter le corps. Récolter un os et lui
+    // donner un curseur sont deux questions distinctes : les confondre ferait disparaître le repère
+    // avec le curseur, et la bibliothèque de poses avec lui.
+    const cles = clesARecolter3D({ morphologie: 'humanoide', carte: CARTE, os: [], membres: [] }, fr);
+    assert.ok(cles.some(e => e.cle === 'bassin'));
+    assert.equal(estPosable('bassin'), false, 'le bassin a repris un curseur');
+  });
+
+  test('AUCUN OS EN DOUBLE, quelle que soit la morphologie, sur tout le corpus', () => {
+    // Le test qui compte : c'est le doublon qui casse, pas l'appartenance à telle ou telle liste.
+    ['cerbere', 'araignee', 'kraken', 'serpent', 'oiseau', 'mixamo', 'unreal'].forEach(nom => {
+      const os = charger(nom);
+      ['humanoide', 'arachnide', 'quadrupede'].forEach(morphologie => {
+        const cles = clesARecolter3D({ morphologie, carte: CARTE, os, membres: [] }, fr);
+        const noms = cles.map(e => e.nom);
+        assert.equal(new Set(noms).size, noms.length, `${nom}/${morphologie} : un os récolté deux fois`);
+        assert.equal(new Set(cles.map(e => e.cle)).size, cles.length, `${nom}/${morphologie} : clé en double`);
+        noms.forEach(n => assert.ok(typeof n === 'string' && n, `${nom}/${morphologie} : os sans nom`));
+      });
+    });
+  });
+
+  test('un emplacement sans os n\'est pas récolté', () => {
+    // Sinon `recolter` chercherait `undefined` dans le clone, et l'entrée serait silencieusement
+    // absente : la même chose, mais après avoir fait croire qu'elle existait.
+    const cles = clesARecolter3D({ morphologie: 'humanoide', carte: { tete: { bone: 'b9' } }, os: [] }, fr);
+    assert.deepEqual(cles, []);
+  });
+
+  test('sans argument du tout, on récolte une liste vide plutôt que de lever', () => {
+    assert.deepEqual(clesARecolter3D(), []);
+  });
+});
+
+describe('Le choix humain de morphologie prime sur la proposition (#374)', () => {
+  const propose = () => 'arachnide';
+
+  test('la morphologie ENREGISTRÉE gagne', () => {
+    // Même règle que `fusionner` pour les emplacements. Sans elle, corriger « humanoïde » dans
+    // l'écran de correspondance n'aurait aucun effet sur les curseurs, et le sélecteur de #369
+    // deviendrait décoratif.
+    assert.equal(morphologieEffective3D({ morphologie: 'quadrupede' }, [{ id: 1 }], propose), 'quadrupede');
+  });
+
+  test('sans choix humain, on prend la proposition', () => {
+    assert.equal(morphologieEffective3D(null, [{ id: 1 }], propose), 'arachnide');
+    assert.equal(morphologieEffective3D({ os: {} }, [{ id: 1 }], propose), 'arachnide');
+  });
+
+  test('sans os, on rend « humanoide » : la valeur qui ne change rien', () => {
+    // Le modèle n'est pas encore décodé. Supposer une créature ferait disparaître les dix-huit
+    // emplacements d'un personnage le temps d'un décodage, puis les ferait revenir.
+    assert.equal(morphologieEffective3D(null, [], propose), 'humanoide');
+    assert.equal(morphologieEffective3D(null, null, propose), 'humanoide');
+  });
+});
+
+describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
+  const lire = (rel) => readFileSync(join(RACINE, rel), 'utf8');
+
+  test('la fiche passe par le point de décision unique', () => {
+    // Trois lecteurs qui trancheraient chacun de leur côté finiraient par diverger : la fiche
+    // montrerait les curseurs d'une morphologie pendant que le rig récolterait ceux d'une autre.
+    const MODALS = lire('src/modals.js');
+    assert.match(MODALS, /groupesDeCurseurs3D\(obj\.modelFile, tr\)/);
+    assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
+  });
+
+  test('la bibliothèque de poses ne propose que des humanoïdes', () => {
+    // Une pose de la bibliothèque est un geste de corps humain : depuis #374 une créature ne
+    // récolte plus les dix-huit emplacements, « assis » ne trouverait donc aucun os.
+    const RIG = lire('src/rig3d.js');
+    const debut = RIG.indexOf('export function figuresDeLaBibliotheque3D');
+    assert.ok(debut > 0, 'figuresDeLaBibliotheque3D a disparu');
+    assert.match(RIG.slice(debut, RIG.indexOf('\n}\n', debut)), /morphologiePourModele\(nom\) === 'humanoide'/);
+    const EDITEUR = lire('src/persona-editor.js');
+    assert.match(EDITEUR, /figuresDeLaBibliotheque3D\(\)/, 'l\'éditeur propose encore les créatures');
+    assert.doesNotMatch(EDITEUR, /figuresPosables\(\)/, 'deux listes de figures : elles vont diverger');
+  });
+
+  test('le sélecteur de figure de la FICHE, lui, garde les créatures', () => {
+    // Porter une araignée reste possible, et ses curseurs de chaînes la pilotent. C'est la
+    // bibliothèque qui se restreint, pas le choix du fichier.
+    const RIG = lire('src/rig3d.js');
+    const debut = RIG.indexOf('export function figuresPosables');
+    assert.match(RIG.slice(debut, RIG.indexOf('\n}\n', debut)), /groupesDeCurseurs3D\(nom\)\.groupes\.length > 0/);
+  });
+});
+
 /**
  * JOURNAL DE MUTATION : la composition, cœur du chantier « squelettes importés » (tâche #310).
  *
@@ -515,4 +773,36 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
  * `THREE.Euler` applique aux `rotation` du rig intégré ; deux conventions dans la même application
  * donneraient deux gestes différents pour un même curseur selon le type d'Élément. Le test qui
  * l'attrape compare une composition faite ici à ce que Three produit pour les mêmes angles.
+ */
+
+/**
+ * JOURNAL DE MUTATION : les curseurs des membres surnuméraires (tâche #374).
+ *
+ *   M1  la tête de tronc redevient pilotable                                    ROUGE
+ *   M2  une chaîne décochée garde ses curseurs                                  ROUGE
+ *   M3  la clé d'os perd son préfixe                                            ROUGE
+ *   M4  le préfixe seul, sans nom, passe pour une clé                           ROUGE
+ *   M5  normaliserPose jette les clés d'os                                      ROUGE
+ *   M6  les angles nuls sont conservés                                          ROUGE
+ *   M7  ecrireAngleDeg accepte n'importe quelle clé                             ROUGE
+ *   M8  la récolte tombe dans la branche humanoïde au lieu de rendre            ROUGE
+ *   M9  la morphologie enregistrée est ignorée                                  ROUGE
+ *   M10 la bibliothèque de poses propose aussi les créatures                    ROUGE
+ *   M11 la récolte UNIT chaînes ET emplacements                                 ROUGE
+ *
+ * ⚠️ DEUX ÉCHAPPÉES, ET LE CODE A ÉTÉ CORRIGÉ, PAS LES TESTS.
+ *
+ * M8 et M9 sont passées à travers la première campagne. Les deux pour la même raison : la décision
+ * vivait dans une fonction qui manipule des clones Three et lit le disque, donc invérifiable, et le
+ * test qui prétendait la surveiller lisait des POSITIONS dans le texte du fichier. Celui de M8
+ * cherchait un `return sortie;` avant une boucle, alors que cette chaîne apparaît TROIS fois dans la
+ * fonction : il lisait la garde du haut et passait toujours.
+ *
+ * D'où deux extractions, `clesARecolter3D` et `morphologieEffective3D`, toutes deux PURES. La
+ * garantie qui compte, « un os n'est jamais récolté sous deux clés », est maintenant vérifiée sur
+ * sept fixtures et trois morphologies, en comptant les doublons plutôt qu'en lisant du code.
+ *
+ * M11 a été ajoutée après coup, parce que M8 telle qu'écrite ne mutait pas ce que je croyais : elle
+ * faisait TOMBER la branche créature dans la branche humanoïde, ce qui est un autre défaut. M11 fait
+ * l'union véritable, chaînes puis emplacements, celle qui donne deux entrées sur le même os.
  */

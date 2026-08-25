@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.48**
+**Version 1.4.49**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -61,7 +61,12 @@
 - **Tous les membres, pas seulement dix-huit** : la section « Membres » du tableau de correspondance
   liste chaque chaîne du squelette, repliée par os d'attache. Les trois têtes d'un cerbère et les
   huit pattes d'une araignée s'y cochent et s'y renomment
-- **La bibliothèque de poses s'y applique**, quelle que soit la convention d'axes du fichier
+- **Une créature se pose par ses chaînes** : dès que la morphologie n'est pas « humanoïde », les
+  curseurs et les points de l'aperçu viennent des chaînes cochées, avec le nom que vous leur avez
+  donné, et non des dix-huit emplacements humanoïdes
+- **La bibliothèque de poses s'applique aux humanoïdes**, quelle que soit la convention d'axes du
+  fichier. Une créature n'y a pas droit : « assis » n'a pas de sens pour une araignée, et un geste
+  posé au hasard serait pire qu'un geste absent
 - **Changer de figure** : un Élément articulé peut porter un autre fichier importé en gardant sa pose
 - **Morceaux détachés** : les maillages qu'un fichier place hors du corps sont masqués, et
   réaffichables d'une case à cocher. Le fichier sur le disque n'est jamais modifié
