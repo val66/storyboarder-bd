@@ -244,8 +244,32 @@ the epithet after the noun where English places it before. One order for both la
 "Shoulder left", which reads and sounds wrong. The English version would have been right without
 anyone thinking about it.
 
-**#378b, the screen's model. HALF DONE:** the assignment is written and tested
-(`propositionDeRoles3D`), the rendering remains.
+**#378b, the screen. DONE.**
+
+**The trigger is a remark from use**: "I really like the humanoid rendering, for the other archetypes
+I find it too different". The two screens differed on six points:
+
+| | humanoid | creature, before | after |
+|---|---|---|---|
+| headers | `TRUNK`, `LEFT ARM` | `On CERBERUS__Spine_03` | anatomical labels |
+| row | label + menu + badge | checkbox + free text | label + menu + badge |
+| subtitle | "18 of 18 found" | "7 chains, 7 kept" | the same sentence |
+| folding | all open | folded per anchor | folded when CERTAIN |
+| chain preview | absent | grey line | only under roleless chains |
+| instruction | absent | italic line | absent |
+
+The worst was `On CERBERUS__Spine_03`: a RAW bone name where the humanoid screen said "Left arm". The
+anchor is a decomposition detail that had leaked all the way to the display.
+
+**What stays different, and cannot go away.** A cerberus has two heads no role claims. Nothing can be
+assigned to them, hence no menu: they keep a checkbox and a free name, under "Chains with no role",
+at the bottom. The section is EMPTY on a well-recognised humanoid, and the screen is then identical
+on both sides.
+
+⚠️ **That section's text says what unticking DOES, not what the chain IS.** Asked for through use,
+and the distinction is right. "Untick to remove its sliders. The chain stays in the file, it simply
+cannot be moved." The third clause matters as much as the other two: "untick", next to a file name,
+can read as a deletion.
 
 **One row per LIMB, not per role.** My design gave one row per role with a menu of every bone:
 thirteen rows and forty-nine-entry menus on a cerberus. Measurement said otherwise. `hipFL` means

@@ -29,7 +29,7 @@ import {
   targetFor,
 } from './model-usages.js';
 import {
-  inferSkeletonMap, sousTitreCorrespondance3D, cheminDOs3D, bonesFromObject3D, slotLabel, SLOT_GROUPS,
+  inferSkeletonMap, sousTitreCorrespondance3D, cheminDOs3D, bonesFromObject3D,
   archetypeSuggere3D, lignesDeCorrespondance3D,
 } from './skeleton-map.js';
 import {
@@ -37,6 +37,7 @@ import {
   doitOuvrirCorrespondance,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
+import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import {
@@ -4237,6 +4238,9 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
       // Les choix humains sur les MEMBRES, tels quels : ce sont eux qui repartiront sur le disque.
       // `lignes` en est la vue affichable, recalculée à chaque rendu par une fonction pure.
       membres: (enregistree && enregistree.membres) ? enregistree.membres.map(m => ({ ...m })) : [],
+      // Les choix de RÔLES, `{ role: nomDOs }` (tâche #378b). Relus tels quels, comme les membres :
+      // repartir des propositions effacerait chaque correction au premier « Enregistrer ».
+      roles: (enregistree && enregistree.roles) ? { ...enregistree.roles } : {},
       morphologie: (enregistree && enregistree.morphologie) || archetypeSuggere3D(os).cle,
       morphologieOrigine: (enregistree && enregistree.morphologie) ? 'manuel' : archetypeSuggere3D(os).origine,
       morphologieManuelle: (enregistree && enregistree.morphologie) || null,
@@ -4262,6 +4266,14 @@ function renderSkeletonMapModal(){
   // sections sous les yeux, ce qui rend la conséquence visible au lieu de la faire deviner.
   const humanoide = _skelEcran.morphologie === 'humanoide';
   const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr);
+  // UN SEUL MODÈLE POUR LES DEUX CAS depuis #378b, et c'est l'homogénéité demandée à l'usage :
+  // « j'aime beaucoup le rendu pour les humanoïdes, pour les autres archétypes je trouve ça trop
+  // différent ». Un humanoïde y relit `inferSkeletonMap`, une créature ses chaînes, mais l'écran ne
+  // voit plus la différence : des membres, des rôles, des menus d'os.
+  const proposition = propositionDeRoles3D({
+    os, archetype: _skelEcran.morphologie, carte,
+    enregistre: { os: humanoide ? {} : _skelEcran.roles, membres: _skelEcran.membres },
+  }, tr);
   // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonJointSlidersUI) : deux noms
   // pour une seule chose obligent l'utilisateur à faire le rapprochement lui-même.
   document.getElementById('skeletonMapTitle').textContent =
@@ -4273,7 +4285,7 @@ function renderSkeletonMapModal(){
   // travail à finir sur des emplacements qu'elle n'utilise pas ; ses chaînes, elles, sont toutes
   // trouvées, il n'y a rien à vérifier, seulement à cocher.
   document.getElementById('skeletonMapSubtitle').textContent =
-    sousTitreCorrespondance3D({ fichier, os, carte, lignes, humanoide, valide }, tr);
+    sousTitreCorrespondance3D({ fichier, os, proposition, valide }, tr);
 
   // Pendant un import, « Annuler » annule TOUT l'import (choix de l'utilisateur) : le bouton doit le
   // dire. Un bouton nommé « Annuler » qui fait disparaître un modèle serait un piège.
@@ -4309,68 +4321,70 @@ function renderSkeletonMapModal(){
 
   skeletonMapList.innerHTML = '';
   skeletonMapList.className = 'skeleton-map-list' + (valide ? ' validee' : '');
-  if (humanoide) {
-    SLOT_GROUPS.forEach(groupe => {
-      const t = document.createElement('div');
-      t.className = 'skeleton-map-group';
-      t.textContent = tr(groupe.titre[0], groupe.titre[1]);
-      skeletonMapList.appendChild(t);
-      groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
-    });
-  }
-  renderMembres(humanoide ? null : lignes, os);
+  proposition.forEach(membre => skeletonMapList.appendChild(groupeDeMembre(membre, os, humanoide)));
+  renderChainesSansRole(proposition, lignes, os);
 }
 
 /**
- * Les MEMBRES du squelette, groupés par ancre, sous les dix-huit emplacements.
+ * Un membre : son en-tête, et une ligne par rôle. REPLIÉ quand il est sûr.
  *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * POURQUOI CETTE SECTION EXISTE
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LE REPLI SUIT LA CERTITUDE, PAS LA MORPHOLOGIE. Règle de l'utilisateur, contre la mienne qui
+ * dépliait les humanoïdes et repliait les créatures : on déplie ce qui demande une DÉCISION. Une
+ * araignée dont les huit pattes ont été nommées à la main se replie donc comme un humanoïde bien
+ * rangé, là où ma version l'aurait gardée ouverte à vie.
  *
- * Signalé à l'usage : l'écran n'affichait que dix-huit lignes humanoïdes. Sur un cerbère, ses deux
- * têtes latérales étaient INVISIBLES ; sur une araignée, ses pattes surnuméraires aussi. La
- * reconnaissance les trouve toutes depuis #368, l'écran n'avait simplement pas de case pour elles.
- *
- * ELLE S'AJOUTE AUX DIX-HUIT, elle ne les remplace pas. Ce sont eux qui pilotent le rig aujourd'hui,
- * et les débrancher d'un coup casserait tout modèle déjà posé. Les deux listes cohabitent tant que
- * les poignées (#374) n'auront pas appris à venir d'ici.
- *
- * REPLI PAR ANCRE, décision prise avec l'utilisateur contre un regroupement des paires gauche et
- * droite : une liste plus longue, mais où chaque chaîne se coche séparément. Sur le rig Unreal, 222
- * chaînes sur une poignée d'ancres, c'est ce repli qui rend l'écran lisible.
- *
- * OUVERT PAR DÉFAUT EN DESSOUS DE SIX CHAÎNES. Un cerbère montre ses sept membres d'emblée, une
- * araignée replie ses neuf groupes. Le seuil n'est pas un réglage de finesse : c'est la limite
- * au-delà de laquelle la liste dépasse la hauteur de la modale, mesurée sur le corpus.
+ * L'en-tête est un `<summary>` et non un titre inerte : c'était `Sur CERBERUS__Spine_03`, un nom d'os
+ * BRUT là où l'écran humanoïde disait « Bras gauche ». L'ancre est un détail de la décomposition qui
+ * avait fui jusqu'à l'écran.
  */
-function renderMembres(lignes, os){
+function groupeDeMembre(membre, os, humanoide){
+  const bloc = document.createElement('details');
+  bloc.className = 'skeleton-map-membre-groupe';
+  bloc.open = !membre.sur;
+  const tete = document.createElement('summary');
+  tete.className = 'skeleton-map-group';
+  tete.textContent = membre.label;
+  bloc.appendChild(tete);
+  membre.roles.forEach(role => bloc.appendChild(ligneCorrespondance(role, os, humanoide)));
+  return bloc;
+}
+
+/**
+ * Les chaînes qu'AUCUN rôle ne réclame : cochables, renommables, et rien d'autre.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUI RESTE DIFFÉRENT, ET POURQUOI ÇA NE PEUT PAS DISPARAÎTRE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'écran a été unifié en #378b : mêmes en-têtes, mêmes lignes, mêmes menus, quelle que soit la
+ * morphologie. Il reste ceci, et c'est irréductible : un cerbère a DEUX TÊTES qu'aucun rôle ne
+ * réclame, l'archétype quadrupède n'en déclarant qu'une. On ne peut rien leur attribuer, donc elles
+ * n'ont pas de menu ; elles gardent une case et un nom libre, qui pilotent les curseurs de #374.
+ *
+ * LA SECTION EST VIDE SUR UN HUMANOÏDE BIEN RECONNU, et l'écran est alors identique des deux côtés.
+ *
+ * ⚠️ LE TEXTE DIT CE QUE LE DÉCOCHAGE FAIT, pas ce que la chaîne EST. Demandé à l'usage, et la
+ * distinction est juste : « pilotables par curseurs, absentes des poses » décrivait un état sans
+ * dire quelle conséquence a le geste qu'on propose. La troisième moitié de la phrase compte autant
+ * que les deux autres : « décocher », à côté d'un nom de fichier, peut se lire comme une
+ * suppression, et il vaut mieux le démentir tout de suite que de laisser quelqu'un hésiter.
+ */
+function renderChainesSansRole(proposition, lignes, os){
   const zone = document.getElementById('skeletonMapMembres');
   if (!zone) return;
   zone.innerHTML = '';
-  // `lignes` nul dit « cet écran montre ses emplacements » : un humanoïde n'a pas cette section, et
-  // ce n'est pas un retrait de confort. Ses chaînes ne pilotent rien, les cocher ou les renommer
-  // n'aurait aucun effet, et une section sans effet est le défaut qu'on vient de corriger sur
-  // l'araignée, pris dans l'autre sens.
   if (!lignes || !lignes.tronc) return;
 
-  const titre = document.createElement('div');
-  titre.className = 'skeleton-map-group';
-  const total = lignes.groupes.reduce((n, g) => n + g.membres.length, 0);
-  titre.textContent = tr(`Limbs (${total})`, `Membres (${total})`);
-  zone.appendChild(titre);
-
-  const note = document.createElement('div');
-  note.className = 'skeleton-map-legend-note';
-  note.textContent = tr('Untick what you do not want to animate. Names are yours to change.',
-    'Décochez ce que vous ne voulez pas animer. Les noms sont à vous.');
-  zone.appendChild(note);
-
-  // LE TRONC EST LÀ, SANS CASE NI CHAMP. Il n'a rien à choisir, il n'est ni cochable ni renommable,
-  // et pourtant il porte des curseurs : l'omettre laissait la liste de cet écran plus courte que
-  // celle des « Réglages des articulations », et c'est justement cette différence entre les deux
-  // écrans qui a été signalée à l'usage. Il dit aussi, sans avoir à l'expliquer, pourquoi ses
-  // premiers os n'ont pas de curseur : ils portent tous les membres.
+  // Une chaîne est « sans rôle » si aucun membre ne l'a prise. On compare les RACINES, jamais les
+  // objets : la proposition et la liste des chaînes viennent de deux appels distincts.
+  const prises = new Set(proposition.map(m => m.chaine && m.chaine.racine).filter(Boolean));
+  const restantes = [];
+  lignes.groupes.forEach(g => g.membres.forEach(m => {
+    if (!prises.has(m.racine)) restantes.push(m);
+  }));
+  // LE TRONC RESTE LISTÉ, sans case ni champ. Il n'a rien à choisir, mais il porte des curseurs :
+  // l'omettre laissait la liste de cet écran plus courte que celle des réglages, et c'est
+  // précisément l'écart entre les deux écrans qui avait été signalé en #377.
   const troncBloc = document.createElement('details');
   troncBloc.className = 'skeleton-map-ancre';
   const troncTete = document.createElement('summary');
@@ -4381,21 +4395,24 @@ function renderMembres(lignes, os){
   troncOs.className = 'skeleton-map-chaine';
   troncOs.textContent = cheminDOs3D(lignes.tronc.segments, os);
   troncBloc.appendChild(troncOs);
-  zone.appendChild(troncBloc);
 
-  lignes.groupes.forEach(groupe => {
-    const bloc = document.createElement('details');
-    bloc.className = 'skeleton-map-ancre';
-    bloc.open = total < 6;
-    const tete = document.createElement('summary');
-    const retenus = groupe.membres.filter(m => m.retenu).length;
-    tete.textContent = tr(
-      `On ${groupe.ancreNom} — ${groupe.membres.length} limbs, ${retenus} kept`,
-      `Sur ${groupe.ancreNom} — ${groupe.membres.length} membres, ${retenus} retenus`);
-    bloc.appendChild(tete);
-    groupe.membres.forEach(m => bloc.appendChild(ligneMembre(m, os)));
-    zone.appendChild(bloc);
-  });
+  if (!restantes.length) { zone.appendChild(troncBloc); return; }
+
+  const titre = document.createElement('div');
+  titre.className = 'skeleton-map-group';
+  titre.textContent = tr(`Chains with no role (${restantes.length})`,
+    `Chaînes sans rôle (${restantes.length})`);
+  zone.appendChild(titre);
+
+  const note = document.createElement('div');
+  note.className = 'skeleton-map-legend-note';
+  note.textContent = tr(
+    'Untick to remove its sliders. The chain stays in the file, it simply cannot be moved.',
+    'Décochez pour retirer ses curseurs. La chaîne reste dans le fichier, elle n\'est simplement plus pilotable.');
+  zone.appendChild(note);
+
+  restantes.forEach(m => zone.appendChild(ligneMembre(m, os)));
+  zone.appendChild(troncBloc);
 }
 
 /** Une chaîne : sa case, son nom modifiable, d'où vient ce nom, et les os qu'elle traverse. */
@@ -4503,14 +4520,14 @@ function renderMorphologie(){
 }
 
 /** Une ligne : le rôle, une liste déroulante de TOUS les os du fichier, et l'origine. */
-function ligneCorrespondance(slot, valeur, os){
+function ligneCorrespondance(role, os, humanoide){
   const row = document.createElement('div');
-  const origine = valeur ? valeur.origine : 'vide';
-  row.className = 'skeleton-map-row' + (origine === 'structure' ? ' a-verifier' : '');
+  const origine = role.origine || 'vide';
+  row.className = 'skeleton-map-row' + (origine === 'structure' || origine === 'vide' ? ' a-verifier' : '');
 
   const lib = document.createElement('span');
   lib.className = 'skeleton-map-slot';
-  lib.textContent = slotLabel(slot, tr);
+  lib.textContent = role.label;
   row.appendChild(lib);
 
   const sel = document.createElement('select');
@@ -4518,24 +4535,34 @@ function ligneCorrespondance(slot, valeur, os){
   aucun.value = '';
   aucun.textContent = tr('— none —', '— aucun —');
   sel.appendChild(aucun);
+  // LES OPTIONS SONT INDEXÉES PAR NOM, plus par identifiant. Un rôle de créature ne connaît que le
+  // nom de son os, comme le fichier de correspondances, qui mémorise des noms depuis toujours :
+  // « un indice de nœud glTF n'a de sens que pour un fichier donné ». Faire coexister les deux
+  // clés aurait redonné à cet écran les deux vocabulaires qu'il vient d'unifier.
   os.forEach(o => {
     const opt = document.createElement('option');
-    opt.value = String(o.id);
+    opt.value = o.name || '';
     opt.textContent = o.name || String(o.id);
-    if (valeur && String(valeur.bone) === String(o.id)) opt.selected = true;
+    if (role.osNom && role.osNom === o.name) opt.selected = true;
     sel.appendChild(opt);
   });
-  if (!valeur) aucun.selected = true;
+  if (!role.osNom) aucun.selected = true;
   sel.onchange = () => {
     // Tout changement devient une décision HUMAINE, donc enregistrable, y compris remettre un
-    // emplacement à « aucun », qui est une information et pas une absence de choix.
-    const choisi = os.find(o => String(o.id) === sel.value);
-    _skelEcran.carte[slot] = choisi
-      ? { bone: choisi.id, name: choisi.name, origine: 'manuel' }
-      : null;
-    // Toucher à un emplacement DÉVALIDE l'écran : la correspondance affichée n'est plus celle qui
-    // avait été confirmée. Garder l'apparence « validée » pendant qu'on la modifie laisserait
-    // croire que le changement est déjà acquis, alors que rien n'est écrit avant Enregistrer.
+    // rôle à « aucun », qui est une information et pas une absence de choix.
+    const choisi = os.find(o => o.name === sel.value);
+    if (humanoide) {
+      _skelEcran.carte[role.cle] = choisi
+        ? { bone: choisi.id, name: choisi.name, origine: 'manuel' }
+        : null;
+    } else if (choisi) {
+      _skelEcran.roles[role.cle] = choisi.name;
+    } else {
+      delete _skelEcran.roles[role.cle];
+    }
+    // Toucher à un rôle DÉVALIDE l'écran : la correspondance affichée n'est plus celle qui avait
+    // été confirmée. Garder l'apparence « validée » pendant qu'on la modifie laisserait croire que
+    // le changement est déjà acquis, alors que rien n'est écrit avant Enregistrer.
     _skelEcran.valide = false;
     renderSkeletonMapModal();
   };
@@ -4565,6 +4592,11 @@ document.getElementById('skeletonMapReset').onclick = async () => {
   if (!_skelEcran) return;
   await oublierCorrespondance(_skelEcran.fichier);
   _skelEcran.carte = fusionner(inferSkeletonMap(_skelEcran.os), null, _skelEcran.os);
+  // LES RÔLES ET LES MEMBRES AUSSI. Le bouton promet de retrouver l'écran tel qu'il se présente la
+  // première fois ; en laisser une moitié rendrait cette promesse fausse pour une créature, dont
+  // les corrections vivent justement là.
+  _skelEcran.roles = {};
+  _skelEcran.membres = [];
   // Repasse en NON validé : c'est tout l'objet du bouton, retrouver l'écran tel qu'il se présente
   // la première fois, lignes signalées comprises.
   _skelEcran.valide = false;
@@ -4572,8 +4604,12 @@ document.getElementById('skeletonMapReset').onclick = async () => {
 };
 document.getElementById('skeletonMapSave').onclick = async () => {
   if (!_skelEcran) return;
-  const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte,
-    { morphologie: _skelEcran.morphologieManuelle, membres: _skelEcran.membres });
+  // `os` OU `roles`, JAMAIS LES DEUX : un humanoïde écrit ses emplacements, une créature ses rôles,
+  // et la morphologie tranche. Cf. docs/en/persisted-data.md pour ce que coûterait le mélange.
+  const humanoide = _skelEcran.morphologie === 'humanoide';
+  const r = await enregistrerCorrespondance(_skelEcran.fichier, humanoide ? _skelEcran.carte : {},
+    { morphologie: _skelEcran.morphologieManuelle, membres: _skelEcran.membres,
+      roles: humanoide ? null : _skelEcran.roles });
   // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
   // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
   fermerSkeletonMap(true);

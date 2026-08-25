@@ -905,28 +905,29 @@ export function archetypeSuggere3D(os){
 /**
  * Le sous-titre de l'écran de correspondance. Fonction PURE.
  *
- * IL DOIT COMPTER CE QUE L'ÉCRAN MONTRE. « 12 sur 18 associés » sous une araignée annonçait un
- * travail à finir sur des emplacements qu'elle n'utilise pas depuis #374 ; ses chaînes, elles, sont
- * toutes trouvées, il n'y a rien à vérifier, seulement à cocher.
+ * ⚠️ LA MÊME PHRASE DES DEUX CÔTÉS depuis #378b. Elle disait « 18 sur 18 trouvés, 12 à vérifier »
+ * pour un humanoïde et « 7 chaînes, 7 retenues » pour une créature : deux comptes, deux vocabulaires,
+ * pour la même question. Signalé à l'usage comme faisant partie de ce qui rendait les deux écrans
+ * trop différents.
+ *
+ * Elle compte désormais des RÔLES, ce que l'écran affiche réellement : combien sont attribués, et
+ * combien restent à vérifier. Un quadrupède en a treize, un humanoïde dix-huit, et la phrase ne
+ * change pas.
  *
  * Validé, on ne compte plus ce qu'il « reste à vérifier » : il ne reste rien, c'est fait.
  */
-export function sousTitreCorrespondance3D({ fichier, os, carte, lignes, humanoide, valide } = {}, traduire){
+export function sousTitreCorrespondance3D({ fichier, os, proposition, valide } = {}, traduire){
   const t = traduire || ((en) => en);
   const nb = (os || []).length;
+  const roles = (proposition || []).flatMap(m => m.roles || []);
+  const remplis = roles.filter(r => r.osNom).length;
+  const aVerifier = roles.filter(r => r.origine !== 'nom' && r.origine !== 'manuel').length;
   const tete = t(`"${fichier}" — ${nb} bones`, `« ${fichier} » — ${nb} os`);
-  const confirme = valide ? t(' · ✓ confirmed', ' · ✓ correspondance validée') : '';
-  if (humanoide) {
-    const r = resumeCorrespondance(carte);
-    return tete + (valide
-      ? t(` · ${r.remplis} of ${r.total} mapped`, ` · ${r.remplis} sur ${r.total} associés`)
-      : t(` · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
-        ` · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`)) + confirme;
-  }
-  const groupes = (lignes && lignes.groupes) || [];
-  const chaines = groupes.reduce((n, g) => n + g.membres.length, 0);
-  const retenues = groupes.reduce((n, g) => n + g.membres.filter(m => m.retenu).length, 0);
-  return tete + t(` · ${chaines} chains, ${retenues} kept`, ` · ${chaines} chaînes, ${retenues} retenues`) + confirme;
+  const compte = t(` · ${remplis} of ${roles.length} assigned`, ` · ${remplis} sur ${roles.length} attribués`);
+  if (valide) return tete + compte + t(' · ✓ confirmed', ' · ✓ correspondance validée');
+  return tete + compte + (aVerifier
+    ? t(`, ${aVerifier} to check`, `, ${aVerifier} à vérifier`)
+    : '');
 }
 
 /**

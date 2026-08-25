@@ -1014,6 +1014,22 @@ canvas{
   opacity: .55; margin: 10px 0 4px 2px;
 }
 .skeleton-map-list > .skeleton-map-group:first-child { margin-top: 0; }
+/* #378b — un MEMBRE est un <details> dont le résumé EST l'en-tête de groupe. L'écran humanoïde
+   affichait des titres inertes, celui des créatures des blocs repliables aux titres techniques
+   (« Sur CERBERUS__Spine_03 ») : signalé à l'usage comme trop différents. Un seul objet désormais,
+   qui a l'allure d'un titre et se replie quand son membre est sûr.
+   PAS DE CADRE NI DE FOND : c'est ce qui le fait passer pour le titre plat qu'il remplace. Le
+   chevron seul dit qu'on peut cliquer, et il ne s'affiche que là où il y a quelque chose à replier. */
+.skeleton-map-membre-groupe > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.skeleton-map-membre-groupe > summary::-webkit-details-marker { display: none; }
+.skeleton-map-membre-groupe > summary::after {
+  content: '▾'; font-size: 9px; color: var(--ink-soft); transition: transform .15s ease;
+}
+.skeleton-map-membre-groupe:not([open]) > summary::after { transform: rotate(-90deg); }
+/* Replié, l'en-tête n'a plus de lignes en dessous : sa marge basse deviendrait un trou. */
+.skeleton-map-membre-groupe:not([open]) > .skeleton-map-group { margin-bottom: 0; }
 .skeleton-map-row {
   display: flex; align-items: center; gap: 10px; padding: 5px 8px; margin-bottom: 4px;
   border: 1px solid var(--line); border-radius: var(--radius, 6px);

@@ -288,12 +288,12 @@ export function _viderCacheCorrespondances(){
  * le moment où l'on a chargé les correspondances et celui où l'on enregistre, une autre fenêtre de
  * l'application a pu en ajouter une. Réécrire ce qu'on avait en mémoire l'effacerait.
  */
-export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null, membres = null } = {}){
+export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null, membres = null, roles = null } = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
-  const entree = entreePourFichier(carte, { valide, morphologie, membres });
+  const entree = entreePourFichier(carte, { valide, morphologie, membres, roles });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
   // écrirait donc dans le cache, avant l'écriture disque, et sans moyen de revenir en arrière si

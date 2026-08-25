@@ -255,8 +255,32 @@ français plaçant l'épithète après le nom là où l'anglais la place avant. 
 langues donne « Shoulder left », qui se comprend et sonne faux. La version anglaise, elle, aurait été
 juste sans qu'on y pense.
 
-**#378b, le modèle de l'écran. FAIT à moitié :** l'attribution est écrite et testée
-(`propositionDeRoles3D`), le rendu reste à faire.
+**#378b, l'écran. FAITE.**
+
+**Le déclencheur est une remarque d'usage** : « j'aime beaucoup le rendu pour les humanoïdes, pour
+les autres archétypes je trouve ça trop différent ». Les deux écrans différaient sur six points :
+
+| | humanoïde | créature, avant | après |
+|---|---|---|---|
+| en-têtes | `TRONC`, `BRAS GAUCHE` | `Sur CERBERUS__Spine_03` | libellés anatomiques |
+| ligne | libellé + menu + étiquette | case + champ libre | libellé + menu + étiquette |
+| sous-titre | « 18 sur 18 trouvés » | « 7 chaînes, 7 retenues » | la même phrase |
+| repli | tout ouvert | replié par ancre | replié quand c'est SÛR |
+| aperçu de chaîne | absent | ligne grise | seulement sous les chaînes sans rôle |
+| consigne | absente | ligne en italique | absente |
+
+Le pire était `Sur CERBERUS__Spine_03` : un nom d'os BRUT là où l'écran humanoïde disait « Bras
+gauche ». L'ancre est un détail de la décomposition qui avait fui jusqu'à l'affichage.
+
+**Ce qui reste différent, et ne peut pas disparaître.** Un cerbère a deux têtes qu'aucun rôle ne
+réclame. On ne peut rien leur attribuer, donc pas de menu : elles gardent une case et un nom libre,
+sous « Chaînes sans rôle », en bas. La section est VIDE sur un humanoïde bien reconnu, et l'écran est
+alors identique des deux côtés.
+
+⚠️ **Le texte de cette section dit ce que le décochage FAIT, pas ce que la chaîne EST.** Demandé à
+l'usage, et la distinction est juste. « Décochez pour retirer ses curseurs. La chaîne reste dans le
+fichier, elle n'est simplement plus pilotable. » La troisième proposition compte autant que les deux
+autres : « décocher », à côté d'un nom de fichier, peut se lire comme une suppression.
 
 **Une ligne par MEMBRE, pas par rôle.** Ma conception donnait une ligne par rôle avec un menu de tous
 les os : treize lignes et des menus de quarante-neuf entrées sur un cerbère. La mesure a dit autre

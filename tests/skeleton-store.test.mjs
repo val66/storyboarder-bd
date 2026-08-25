@@ -625,8 +625,11 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
     // ⚠️ CE TEST LISAIT 700 CARACTÈRES DE SOURCE après le mot `skeletonMapSubtitle`. Il cherchait
     // une ternaire sur `valide`, ce qui ne dit RIEN de ce qui s'affiche : la fenêtre s'est cassée
     // dès que le texte a été sorti dans une fonction pure. C'est ce texte qu'on compare désormais.
-    const carte = { tete: { bone: 'b1', name: 'Head', origine: 'nom' } };
-    const arg = { fichier: 'x.glb', os: [{ id: 1, name: 'Head' }], carte, humanoide: true };
+    const proposition = [{ roles: [
+      { cle: 'tete', osNom: 'Head', origine: 'nom' },
+      { cle: 'cou', osNom: 'Neck', origine: 'structure' },
+    ] }];
+    const arg = { fichier: 'x.glb', os: [{ id: 1, name: 'Head' }], proposition };
     const encours = sousTitreCorrespondance3D({ ...arg, valide: false }, tr);
     const fait = sousTitreCorrespondance3D({ ...arg, valide: true }, tr);
     assert.match(encours, /à vérifier/);
@@ -634,15 +637,20 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
     assert.match(fait, /✓/);
   });
 
-  test('le sous-titre compte CE QUE L\'ÉCRAN MONTRE (#374)', () => {
-    // « 12 sur 18 associés » sous une araignée annonçait un travail à finir sur des emplacements
-    // qu'elle n'utilise pas. Ses chaînes, elles, sont toutes trouvées : il n'y a rien à vérifier,
-    // seulement à cocher.
-    const lignes = { groupes: [{ membres: [{ retenu: true }, { retenu: false }, { retenu: true }] }] };
+  test('LA MÊME PHRASE des deux côtés, et elle compte des RÔLES (#378b)', () => {
+    // Elle disait « 18 sur 18 trouvés, 12 à vérifier » pour un humanoïde et « 7 chaînes, 7
+    // retenues » pour une créature : deux comptes, deux vocabulaires, pour la même question.
+    // Signalé à l'usage comme faisant partie de ce qui rendait les deux écrans trop différents.
+    const roles = (n, remplis, surs) => [{ roles: Array.from({ length: n }, (_, i) => ({
+      cle: 'r' + i, osNom: i < remplis ? 'Os' + i : null, origine: i < surs ? 'nom' : 'structure',
+    })) }];
     const creature = sousTitreCorrespondance3D(
-      { fichier: 'araignee.glb', os: [{ id: 1 }], carte: {}, lignes, humanoide: false, valide: false }, tr);
-    assert.match(creature, /3 chaînes, 2 retenues/);
-    assert.doesNotMatch(creature, /sur 18|à vérifier/, 'le décompte humanoïde survit sur une créature');
+      { fichier: 'araignee.glb', os: [{ id: 1 }], proposition: roles(13, 13, 3), valide: false }, tr);
+    assert.match(creature, /13 sur 13 attribués, 10 à vérifier/);
+    const humain = sousTitreCorrespondance3D(
+      { fichier: 'worker.glb', os: [{ id: 1 }], proposition: roles(18, 18, 18), valide: false }, tr);
+    assert.match(humain, /18 sur 18 attribués/);
+    assert.doesNotMatch(humain, /à vérifier/, 'rien à vérifier ne doit rien annoncer');
   });
 });
 
@@ -872,19 +880,20 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // aucun test, tous portant sur le contenu de `renderMembres`. Une fonction jamais appelée passe
     // toutes les inspections de source du monde.
     const debut = EV2.indexOf('function renderSkeletonMapModal');
-    assert.match(EV2.slice(debut, EV2.indexOf('\n}', debut)), /renderMembres\(/);
+    assert.match(EV2.slice(debut, EV2.indexOf('\n}', debut)), /renderChainesSansRole\(/);
   });
 
-  test('L\'écran montre ce qui PILOTE, pas les deux sections à la fois (#374)', () => {
-    // Signalé à l'usage sur l'araignée : « des sections qui font très humanoïde, tronc, bras
-    // gauche, ça ne fait aucun sens ». Depuis #374 ses dix-huit emplacements ne pilotent rien.
+  test('UN SEUL CHEMIN de rendu pour les deux morphologies (#378b)', () => {
+    // ⚠️ CE TEST EXIGEAIT DEUX BRANCHES, celles de #374 : un `if (humanoide)` pour les dix-huit
+    // emplacements, un `renderMembres` pour les chaînes. Signalé à l'usage : « j'aime beaucoup le
+    // rendu pour les humanoïdes, pour les autres archétypes je trouve ça trop différent ». Les deux
+    // branches ont disparu. Un humanoïde relit `inferSkeletonMap`, une créature ses chaînes, mais
+    // l'ÉCRAN ne voit plus la différence : des membres, des rôles, des menus d'os.
     const debut = EV2.indexOf('function renderSkeletonMapModal');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    assert.match(corps, /const humanoide = _skelEcran\.morphologie === 'humanoide'/);
-    assert.match(corps, /if \(humanoide\) \{\s*\n\s*SLOT_GROUPS\.forEach/,
-      'les dix-huit emplacements s\'affichent encore sur une créature');
-    assert.match(corps, /renderMembres\(humanoide \? null : lignes, os\)/,
-      'la section des chaînes s\'affiche encore sur un humanoïde, où elle ne pilote rien');
+    assert.match(corps, /propositionDeRoles3D\(/, 'le rendu ne passe plus par le modèle unique');
+    assert.doesNotMatch(corps, /SLOT_GROUPS/, 'les dix-huit emplacements ont retrouvé un chemin à eux');
+    assert.match(corps, /proposition\.forEach\(membre => skeletonMapList\.appendChild\(groupeDeMembre/);
   });
 
   test('le chemin d\'une chaîne se lit, et se tronque au-delà de quatre os', () => {
@@ -903,7 +912,7 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
   test('le TRONC figure dans la liste, sans case ni champ', () => {
     // Les deux écrans doivent lister la même chose : le tronc porte des curseurs, il doit donc se
     // voir ici. Sans case ni champ, parce qu'il n'y a rien à y choisir.
-    const debut = EV2.indexOf('function renderMembres');
+    const debut = EV2.indexOf('function renderChainesSansRole');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
     assert.match(corps, /cheminDOs3D\(lignes\.tronc\.segments, os\)/, 'le tronc a perdu ses os');
     assert.match(corps, /lignes\.tronc\.nom/);
@@ -932,18 +941,73 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(corps, /enregistree && enregistree\.membres/);
   });
 
-  test('les membres sont GROUPÉS PAR ANCRE, dans un bloc repliable', () => {
-    // Décision prise avec l'utilisateur, contre un regroupement des paires gauche/droite.
-    const debut = EV2.indexOf('function renderMembres');
+  test('RÉGRESSION : le menu d\'os est indexé par NOM, pas par identifiant', () => {
+    // Un rôle de créature ne connaît que le nom de son os, comme le fichier de correspondances, qui
+    // mémorise des noms depuis toujours : « un indice de nœud glTF n'a de sens que pour un fichier
+    // donné ». Faire coexister les deux clés redonnerait à cet écran les deux vocabulaires qu'il
+    // vient d'unifier.
+    const debut = EV2.indexOf('function ligneCorrespondance');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    // Le modèle est calculé par l'appelant depuis #374, qui s'en sert aussi pour le sous-titre :
-    // le recalculer ici donnerait deux comptes issus de deux appels, qui peuvent diverger.
-    assert.match(EV2.slice(EV2.indexOf('function renderSkeletonMapModal')), /lignesDeCorrespondance3D/);
-    assert.match(corps, /createElement\('details'\)/, 'chaque ancre se replie');
-    assert.match(corps, /groupe\.ancreNom/);
-    // La boucle porte sur les GROUPES rendus par le modèle, jamais sur une liste aplatie : sans
-    // cette garde, on pouvait tout mettre dans un seul bloc et le repli ne servait plus à rien.
-    assert.match(corps, /lignes\.groupes\.forEach/);
+    assert.match(corps, /opt\.value = o\.name/, 'le menu est revenu aux identifiants');
+    assert.match(corps, /role\.osNom === o\.name/, 'la sélection ne se retrouve plus par le nom');
+    assert.match(corps, /os\.find\(o => o\.name === sel\.value\)/);
+  });
+
+  test('RÉGRESSION : les rôles enregistrés sont RELUS à l\'ouverture', () => {
+    // Sans cela, rouvrir l'écran repartirait des propositions et « Enregistrer » effacerait chaque
+    // correction. Même défaut que celui des membres, corrigé en #373 : ils seraient bien sur le
+    // disque, mais l'écran ne les montrerait plus.
+    const debut = EV2.indexOf('async function openSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /enregistree && enregistree\.roles/, 'les rôles relus sont ignorés');
+  });
+
+  test('le sous-titre ne compte comme ATTRIBUÉ que ce qui porte un os', () => {
+    // « 13 sur 13 attribués » sur un modèle dont trois rôles sont vides annoncerait un travail
+    // terminé qui ne l'est pas. C'est la famille de fautes que ce dépôt appelle « un succès annoncé
+    // pour un travail sans effet ».
+    const proposition = [{ roles: [
+      { cle: 'a', osNom: 'Os1', origine: 'nom' },
+      { cle: 'b', osNom: null, origine: 'vide' },
+    ] }];
+    const t = sousTitreCorrespondance3D({ fichier: 'x.glb', os: [{ id: 1 }], proposition, valide: false }, tr);
+    assert.match(t, /1 sur 2 attribués/);
+  });
+
+  test('RÉGRESSION : `os` OU `roles`, jamais les deux, à l\'enregistrement', () => {
+    // Un humanoïde écrit ses emplacements, une créature ses rôles, et la morphologie tranche. Deux
+    // clés désignant le même bout de squelette finiraient par se contredire, et rien ne dirait
+    // laquelle croire — cf. docs/en/persisted-data.md.
+    const debut = EV2.indexOf("document.getElementById('skeletonMapSave')");
+    const corps = EV2.slice(debut, EV2.indexOf('\n};', debut));
+    assert.match(corps, /humanoide \? _skelEcran\.carte : \{\}/,
+      'une créature enverrait sa carte d\'emplacements sur le disque');
+    assert.match(corps, /roles: humanoide \? null : _skelEcran\.roles/,
+      'un humanoïde enverrait des rôles à côté de ses emplacements');
+  });
+
+  test('RÉGRESSION : « Réinitialiser » efface AUSSI les rôles et les membres', () => {
+    // Le bouton promet de retrouver l'écran tel qu'il se présente la première fois. En laisser une
+    // moitié rendrait cette promesse fausse pour une créature, dont les corrections vivent
+    // justement là et nulle part ailleurs.
+    const debut = EV2.indexOf("document.getElementById('skeletonMapReset')");
+    const corps = EV2.slice(debut, EV2.indexOf('\n};', debut));
+    assert.match(corps, /_skelEcran\.roles = \{\}/, 'les rôles survivent à la réinitialisation');
+    assert.match(corps, /_skelEcran\.membres = \[\]/, 'les membres survivent à la réinitialisation');
+  });
+
+  test('un membre se replie quand il est SÛR, et le nom d\'ancre a disparu (#378b)', () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE. Il épinglait le regroupement par ANCRE décidé en #373, c'est
+    // à dire un en-tête « Sur CERBERUS__Spine_03 » : un nom d'os BRUT là où l'écran humanoïde disait
+    // « Bras gauche ». L'ancre est un détail de la décomposition qui avait fui jusqu'à l'affichage,
+    // et c'était le plus voyant de l'écart entre les deux écrans.
+    const debut = EV2.indexOf('function groupeDeMembre');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /createElement\('details'\)/, 'un membre ne se replie plus');
+    assert.match(corps, /bloc\.open = !membre\.sur/, 'le repli ne suit plus la certitude');
+    assert.match(corps, /tete\.textContent = membre\.label/, 'l\'en-tête n\'est plus le libellé du membre');
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'), EV2.indexOf('function ligneMembre'));
+    assert.doesNotMatch(rendu, /ancreNom/, 'un nom d\'ancre brut est revenu dans l\'écran');
   });
 
   test('un nom se retient À CHAQUE FRAPPE, pas au `change`', () => {
