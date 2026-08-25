@@ -669,6 +669,12 @@ function depuisLesChaines3D(membres, chaines, memoire, tronc){
   // de décider à la place du fichier.
   const parNom = new Map(), ambigus = new Set();
   membres.forEach(m => {
+    // ⚠️ UN MEMBRE QUE LE TRONC REMPLIT NE RÉSERVE PAS DE CHAÎNE. Sans cette garde, le membre
+    // « Tête » du cerbère prenait la chaîne `Tête G` dans cette passe, puis affichait les os de son
+    // TRONC : l'écran montrait donc une chaîne qui ne correspondait à aucune de ses lignes, et la
+    // vraie tête latérale gauche disparaissait des chaînes restantes. Une réservation sans emploi
+    // est pire qu'une absence, elle retire la chaîne à qui pourrait s'en servir.
+    if (m.roles.every(r => surTronc[r.cle])) return;
     const fam = familles(m.roles[0].cle);
     const cote = coteDuMembre3D(m.roles[0].cle);
     const candidats = chaines.filter(x => !prises.has(x.racine) && x.retenu !== false && !x.echafaudage
@@ -702,7 +708,10 @@ function depuisLesChaines3D(membres, chaines, memoire, tronc){
     if (manuel) {
       const c = chaines.find(x => x.osNoms.includes(manuel));
       if (c) { chaine = c; origine = 'manuel'; }
-    } else if (!chaine) {
+    } else if (!chaine && !m.roles.every(r => surTronc[r.cle])) {
+      // LE MÊME REFUS QUE DANS LA PASSE PAR NOM, et il fallait le répéter ici : le repli par côté
+      // rattrapait ce que la garde du dessus venait de relâcher. Le membre « Tête » du cerbère
+      // reprenait donc `Tête G` par cette porte, tout en affichant les os de son tronc.
       const c = chaines.find(x => !prises.has(x.racine) && x.retenu !== false && !x.echafaudage
         && (cote === null || x.cote === cote));
       if (c) { prises.add(c.racine); chaine = c; origine = 'structure'; }

@@ -600,6 +600,25 @@ describe('La tête et le cou se cherchent sur le TRONC (#381)', () => {
     assert.equal(tete.roles[0].origine, 'manuel');
   });
 
+  test('RÉGRESSION : un membre rempli par le tronc ne RÉSERVE pas de chaîne', () => {
+    // Trouvé en préparant une maquette. Le membre « Tête » du cerbère prenait la chaîne `Tête G`
+    // tout en affichant les os de son TRONC : l'écran montrait une chaîne qui ne correspondait à
+    // aucune de ses lignes, et la vraie tête latérale gauche disparaissait des chaînes restantes.
+    // Une réservation sans emploi est pire qu'une absence, elle retire la chaîne à qui pourrait
+    // s'en servir.
+    //
+    // ⚠️ IL A FALLU DEUX GARDES. La première relâchait la chaîne dans la passe par NOM, et le repli
+    // par CÔTÉ la reprenait aussitôt par une autre porte.
+    const p = proposer3('cerbere', 'quadrupede');
+    const tete = p.find(m => m.label === 'Tête');
+    assert.equal(tete.chaine, null, 'la tête réserve encore une chaîne qu\'elle n\'utilise pas');
+    assert.equal(tete.roles[0].osNom, 'CERBERUS__Head_09');
+    const prises = new Set(p.map(m => m.chaine && m.chaine.racine).filter(Boolean));
+    const restantes = chainesAttribuables3D(charger3('cerbere'), [], fr)
+      .filter(c => !prises.has(c.racine) && !c.echafaudage).map(c => c.nom);
+    assert.deepEqual(restantes, ['Tête G', 'Tête D'], 'les deux têtes latérales doivent rester libres');
+  });
+
   test('un tronc sans tête ni cou ne rend rien, et ne lève pas', () => {
     assert.deepEqual(rolesDuTronc3D(troncDe('araignee'), ['head', 'neck']), {});
     assert.deepEqual(rolesDuTronc3D([], ['head']), {});
