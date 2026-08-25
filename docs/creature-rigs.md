@@ -590,6 +590,93 @@ Recorded so they are neither relitigated nor forgotten.
 5. **Poses are filtered by archetype.** They remain to be written; `ANIMAL_JOINT_DEFS` supplies
    joint limits but **no named pose**.
 
+### Chain roles (decided, not yet built)
+
+Settled in conversation, recorded before a line is written. The starting point is a question from the
+user: "what is the Limbs section, compared to the sections above it?". The honest answer is that they
+run in OPPOSITE directions. The eighteen slots start from a known role and look for a bone; the Limbs
+section starts from a chain found in the file and asks for a free name. That name, the application
+does nothing with: it displays it. So that section is not a mapping, it is a filter and a label.
+
+6. **One section everywhere, humanoids included.** The eighteen slots become a SPECIAL CASE of the
+   chains, not a parallel mechanism. Measured, and this is what makes the unification possible: across
+   the six humanoid skeletons in the corpus, a chain's segments land exactly on the slots, in order,
+   without exception.
+
+   ```
+   "arm" chain : clavicule_g  bras_g  avantbras_g  main_g  then the fingers
+   "leg" chain : cuisse_g     jambe_g pied_g              then the toes
+   ```
+
+   So `avantbras_g` is not independent information, it is "segment 3 of the chain whose role is arm,
+   left side".
+
+7. **EACH SEGMENT carries its own role**, not the chain alone. A pose must bend the knee, not "the
+   leg". One role per chain would have forced segments to be numbered, and a rig with one extra bone
+   would have shifted everything.
+
+8. **The ARCHETYPE defines the role list**, and a model that does not fit it does not belong to that
+   archetype. This finally gives archetypes some content; today they are a key and a label.
+
+   ⚠️ **Those lists already exist**, written in #367 without seeing what they would serve: they are
+   the joint identifiers of the built-in animals, and they are **already persisted and protected**
+   (see persisted-data.md).
+
+   | archetype | roles |
+   |---|---|
+   | `quadrupede` | `head neck` · 4 × `hip*/knee*` · `tail0..2` |
+   | `bipede_aile` | `head` · `wingL wingR` · `hipF*/kneeF*` · `tail0` |
+   | `quadrupede_aile` | `head neck` · 4 legs · `wingL wingTipL wingR wingTipR` · `tail0` |
+   | `bipede_queue` | `head neck` · 2 legs · `shoulder*/elbow*` · `tail0..2` |
+   | `humanoide` | the eighteen slots |
+
+   Reusing them means an imported dog and the built-in wolf speak the same language, so a pose written
+   once applies to both. That was the point of the #367 alignment.
+
+9. **A pose aims at roles; missing roles are skipped.** Not a new rule: it is already
+   `poseOsDepuisPosePersonnage`'s, "a missing gesture beats a gesture aimed at the wrong place". A
+   five-tentacle pose applied to a three-tentacle model poses three; on a seven-tentacle model the
+   last two do not move.
+
+10. **An archetype is numbered when its limbs are INTERCHANGEABLE.** The criterion is not the count.
+    A kraken's tentacles are interchangeable, the third is as good as the fourth, so `radial` takes
+    numbered roles. A spider's legs are not, its front legs do not make its rear legs' gesture, so
+    `arachnide` takes a FIXED list, ordered front to back, plus an optional tail for scorpions.
+
+11. **The cerberus stays a QUADRUPED, its two extra heads have no role.** They keep their sliders and
+    their name, they are in no pose. That is exactly the seven-tentacle case above. Demoting it to
+    `complexe` would have cost it the poses of its four legs and its tail, which are perfectly
+    ordinary.
+
+    `complexe` remains the explicit escape hatch, with poses attached to the FILE rather than to the
+    archetype. Measured: the classifier NEVER proposes it across the seventeen fixtures, so a model
+    lands there only if the user puts it there.
+
+12. **A chain with no role stays drivable.** 235 chains out of 488 have no possible role: hair
+    strands, fingers, eyelashes, clothing. They keep their free name and their sliders as since #374,
+    they simply enter no pose.
+
+13. **The persisted `os` field is still written as today**, derived from the roles. Existing Projects
+    open unchanged and an earlier version still reads them. Adding is allowed, renaming or removing is
+    not.
+
+### What measurement says BEFORE building
+
+**The automatic role proposal will be weak.** `typeDeChaine3D` finds a role for 253 of the corpus's
+488 chains, 52 %, but the figure flatters: it counts `visage` 58 times, `oeil` 40, `meche` 17, which
+are not limbs. The roles useful to a pose are rarer: `patte` 43, `bras` 28, `queue` 12, `tete` 11,
+`cou` 9, `aile` 8. And **four files come out at 0 %**: spider, kraken, raptor, snake.
+
+**A role does not DESIGNATE a chain, it calls for one.** On the dog, four left chains and four right
+ones all claim `patte`, for an animal with four legs: the decomposition descends into fingers and
+toes. On the Unreal rig, five chains claim `tete`. So the screen keeps the shape of the eighteen
+slots, one row PER ROLE and a menu of chains, and it is the LIST of rows that becomes the archetype's
+instead of being frozen at eighteen.
+
+**The animal vocabulary is coarser than the humanoid one.** A wolf's leg has two joints, `hipFL` and
+`kneeFL`; a human leg has three; an imported dog's leg has six or seven. So a quadruped pose will
+drive only two segments per leg, the rest staying manual. Do not promise better.
+
 ## What is left to do
 
 **#363, the CAT convention.** Measured, independent of everything else. The starting point.
@@ -631,10 +718,15 @@ are persisted in `animalJoints3d`, and `ANIMAL_TYPES` values are persisted as th
 **Labels are free, identifiers are not.** Adding is allowed, renaming is forbidden (see
 [persisted-data.md](persisted-data.md)).
 
-**#373, the generated screen, and #374, the supernumerary limb sliders. DONE.** See the dedicated
-sections above. **#375**, poses per morphology, remains, and becomes a consequence once the
-archetypes are in place: `ANIMAL_JOINT_DEFS` supplies joint limits but no named poses, which are
-still to be written and shown before being frozen.
+**#373, the generated screen, #374, the supernumerary limb sliders, and #377, the screen showing only
+what drives. DONE.** See the dedicated sections above.
+
+**#378, chain roles.** Decided with the user, see the section above, not yet built. It is #375's
+prerequisite: without roles an archetype pose has nothing to aim at, a chain's name being free text
+local to one file.
+
+**#375, poses per archetype.** Becomes a consequence once #378 is in place. `ANIMAL_JOINT_DEFS`
+supplies joint limits but no named poses: they remain to be written and shown before being frozen.
 
 ## What is not on the programme
 
