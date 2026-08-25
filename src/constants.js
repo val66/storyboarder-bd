@@ -961,3 +961,34 @@ export const JOINT_GROUPS = [
 
 export const PERSONA_PREVIEW_PAN_SENS = 0.0055;
 
+
+// ── Archétypes de morphologie ───────────────────────────────────
+//
+// UN ARCHÉTYPE EST UNE TABLE D'EMPLACEMENTS, ET ELLES EXISTAIENT DÉJÀ. `ANIMAL_JOINT_DEFS`
+// ci-dessus décrit cinq animaux intégrés, écrits bien avant qu'on sache en avoir besoin : le loup
+// EST la table du quadrupède, le singe celle du bipède à queue, le griffon celle du quadrupède
+// ailé. Le champ `animal` dit lequel, pour que les deux mondes finissent par n'en faire qu'un
+// (tâche #367). `null` quand aucun animal intégré n'a cette forme.
+//
+// CE QUI EST DÉTECTÉ ET CE QUI EST PROPOSÉ, et la distinction est mesurée, pas décrétée :
+//
+//   `origine: 'topologie'` — la signature du squelette suffit, sans ambiguïté sur le corpus. Trois
+//     archétypes seulement sont dans ce cas, et ils sont épinglés par des tests ;
+//   `origine: 'nom'` — le nom des chaînes classe, mais il peut se tromper. Le cerbère nomme ses
+//     pattes avant `Clavicle` / `UpperArm`, il est donc proposé « humanoïde ». Faux, et signalé ;
+//   `origine: 'structure'` — rien ne dit rien, on propose la forme la plus simple compatible.
+//
+// AUCUN ARCHÉTYPE N'EST UN VERDICT. L'utilisateur peut toujours en changer, et « Complexe » rend
+// l'écran générique, où chaque chaîne se coche et se nomme à la main. Voir docs/creature-rigs.md.
+export const ARCHETYPES_3D = [
+  { cle: 'humanoide',       label: 'Humanoïde',       labelEn: 'Humanoid',         animal: null },
+  { cle: 'bipede_queue',    label: 'Bipède à queue',  labelEn: 'Biped with tail',  animal: 'singe' },
+  { cle: 'quadrupede',      label: 'Quadrupède',      labelEn: 'Quadruped',        animal: 'loup' },
+  { cle: 'bipede_aile',     label: 'Bipède ailé',     labelEn: 'Winged biped',     animal: 'oiseau' },
+  { cle: 'quadrupede_aile', label: 'Quadrupède ailé', labelEn: 'Winged quadruped', animal: 'griffon' },
+  { cle: 'centaure',        label: 'Centaure',        labelEn: 'Centaur',          animal: null },
+  { cle: 'arachnide',       label: 'Arachnide',       labelEn: 'Arachnid',         animal: null },
+  { cle: 'radial',          label: 'Radial',          labelEn: 'Radial',           animal: null },
+  { cle: 'serpentin',       label: 'Serpentin',       labelEn: 'Serpentine',       animal: null },
+  { cle: 'complexe',        label: 'Complexe',        labelEn: 'Complex',          animal: null },
+];

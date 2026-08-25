@@ -622,13 +622,13 @@ export function motsDuNomDOs3D(nom){
  * étaient proposées comme des bras. Un membre se nomme par ce qu'il est, jamais par son attache.
  */
 const MOTS_IDENTITE_3D = [
-  [/\btentacle\b/, ['Tentacle', 'Tentacule']],
-  [/\bwing\b/, ['Wing', 'Aile']],
-  [/\bhead\b|\bskull\b|\bcabeza\b/, ['Head', 'Tête']],
-  [/\btail\b|\bqueue\b/, ['Tail', 'Queue']],
-  [/\bhorn\b/, ['Horn', 'Corne']],
-  [/\bantenna\b/, ['Antenna', 'Antenne']],
-  [/\bleg\b|\bthigh\b|\bcalf\b|\bshin\b|\bupleg\b|\bpaw\b|\bhoof\b|\bhorselink\b/, ['Leg', 'Patte']],
+  ['tentacule', /\btentacle\b/, ['Tentacle', 'Tentacule']],
+  ['aile', /\bwing\b/, ['Wing', 'Aile']],
+  ['tete', /\bhead\b|\bskull\b|\bcabeza\b/, ['Head', 'Tête']],
+  ['queue', /\btail\b|\bqueue\b/, ['Tail', 'Queue']],
+  ['corne', /\bhorn\b/, ['Horn', 'Corne']],
+  ['antenne', /\bantenna\b/, ['Antenna', 'Antenne']],
+  ['patte', /\bleg\b|\bthigh\b|\bcalf\b|\bshin\b|\bupleg\b|\bpaw\b|\bhoof\b|\bhorselink\b/, ['Leg', 'Patte']],
 ];
 
 /**
@@ -644,23 +644,23 @@ const MOTS_IDENTITE_3D = [
  * ailleurs, d'où le test qui l'épingle.
  */
 const MOTS_REGION_3D = [
-  [/\bfoot\b|\bankle\b|\btoe\b/, ['Leg', 'Patte']],
-  [/\bclavicle\b|\bcollarbone\b|\bshoulder\b|\bupperarm\b|\bforearm\b|\blowerarm\b|\barm\b|\bhand\b|\bwrist\b/, ['Arm', 'Bras']],
-  [/\bfinger\b|\bdigit\b|\bthumb\b/, ['Finger', 'Doigt']],
-  [/\bear\b/, ['Ear', 'Oreille']],
-  [/\beye\b|\beyelid\b|\beyebrow\b|\bbrow\b/, ['Eye', 'Œil']],
-  [/\bjaw\b|\bmandible\b/, ['Jaw', 'Mâchoire']],
-  [/\bneck\b/, ['Neck', 'Cou']],
-  [/\bhair\b|\bbraid\b|\bponytail\b/, ['Hair strand', 'Mèche']],
-  [/\bbreast\b|\btitty\b/, ['Chest', 'Poitrine']],
-  [/\blip\b|\bcheek\b|\bnose\b|\bnostril\b|\btongue\b/, ['Face', 'Visage']],
-  [/\bfeather\b|\bplume\b/, ['Feather', 'Plume']],
-  [/\bcloth\b|\bskirt\b|\bcape\b|\bcoat\b|\brobe\b|\bbelt\b/, ['Clothing', 'Vêtement']],
-  [/\bweapon\b|\bsword\b|\bquiver\b|\barrow\b|\bshield\b|\bbag\b/, ['Accessory', 'Accessoire']],
+  ['patte', /\bfoot\b|\bankle\b|\btoe\b/, ['Leg', 'Patte']],
+  ['bras', /\bclavicle\b|\bcollarbone\b|\bshoulder\b|\bupperarm\b|\bforearm\b|\blowerarm\b|\barm\b|\bhand\b|\bwrist\b/, ['Arm', 'Bras']],
+  ['doigt', /\bfinger\b|\bdigit\b|\bthumb\b/, ['Finger', 'Doigt']],
+  ['oreille', /\bear\b/, ['Ear', 'Oreille']],
+  ['oeil', /\beye\b|\beyelid\b|\beyebrow\b|\bbrow\b/, ['Eye', 'Œil']],
+  ['machoire', /\bjaw\b|\bmandible\b/, ['Jaw', 'Mâchoire']],
+  ['cou', /\bneck\b/, ['Neck', 'Cou']],
+  ['meche', /\bhair\b|\bbraid\b|\bponytail\b/, ['Hair strand', 'Mèche']],
+  ['poitrine', /\bbreast\b|\btitty\b/, ['Chest', 'Poitrine']],
+  ['visage', /\blip\b|\bcheek\b|\bnose\b|\bnostril\b|\btongue\b/, ['Face', 'Visage']],
+  ['plume', /\bfeather\b|\bplume\b/, ['Feather', 'Plume']],
+  ['vetement', /\bcloth\b|\bskirt\b|\bcape\b|\bcoat\b|\brobe\b|\bbelt\b/, ['Clothing', 'Vêtement']],
+  ['accessoire', /\bweapon\b|\bsword\b|\bquiver\b|\barrow\b|\bshield\b|\bbag\b/, ['Accessory', 'Accessoire']],
 ];
 
 const chercher3D = (table, mots) => {
-  for (const [motif, paire] of table) if (motif.test(mots)) return paire;
+  for (const entree of table) if (entree[1].test(mots)) return entree;
   return null;
 };
 
@@ -681,12 +681,11 @@ const chercher3D = (table, mots) => {
  * est proposée comme « Bras ». C'est la lecture honnête de ce fichier. Corriger en « Patte avant »
  * relève de l'archétype ou de l'utilisateur, pas d'ici.
  */
-export function nomSuggereDeChaine3D(nomsDOs, traduire){
-  const t = traduire || ((en) => en);
+export function typeDeChaine3D(nomsDOs){
   const mots = (Array.isArray(nomsDOs) ? nomsDOs : []).map(motsDuNomDOs3D);
   if (!mots.length) return null;
-  for (const [motif, paire] of MOTS_IDENTITE_3D) {
-    if (mots.some(m => motif.test(m))) return t(paire[0], paire[1]);
+  for (const entree of MOTS_IDENTITE_3D) {
+    if (mots.some(m => entree[1].test(m))) return entree;
   }
   // UN SEUL PARCOURS, DE LA RACINE VERS L'EXTRÉMITÉ. Il y avait ici un cas particulier pour la
   // racine, suivi de la même boucle sur le reste : la campagne de mutation a montré que le retirer
@@ -694,7 +693,147 @@ export function nomSuggereDeChaine3D(nomsDOs, traduire){
   // code en double qui donnait à croire à une règle supplémentaire.
   for (const m of mots) {
     const trouve = chercher3D(MOTS_REGION_3D, m);
-    if (trouve) return t(trouve[0], trouve[1]);
+    if (trouve) return trouve;
   }
   return null;
+}
+
+/**
+ * Le nom PROPOSÉ pour une chaîne, dans la langue de l'interface, ou `null`.
+ *
+ * @param {string[]} nomsDOs @param {(en:string,fr:string)=>string} [traduire]
+ *
+ * SÉPARÉE DE `typeDeChaine3D` PARCE QUE LE CLASSEMENT NE DOIT PAS LIRE DES LIBELLÉS. Première
+ * version : `archetypeSuggere3D` comptait les chaînes en comparant à « Patte » et « Bras ». Sans
+ * traducteur la fonction rend l'anglais, donc le compte était toujours nul et TOUS les archétypes
+ * tombaient dans le repli, 6 fichiers correctement classés sur 17. Un identifiant stable ne se
+ * traduit pas ; un libellé, si.
+ */
+export function nomSuggereDeChaine3D(nomsDOs, traduire){
+  const t = traduire || ((en) => en);
+  const entree = typeDeChaine3D(nomsDOs);
+  return entree ? t(entree[2][0], entree[2][1]) : null;
+}
+
+/**
+ * La SIGNATURE structurelle d'un squelette décomposé. Fonction PURE.
+ *
+ * @param {{tronc: Array, membres: Array}} decomposition la sortie de membresDuSquelette3D
+ * @returns {{lateraux, ancres, rangMax, ancresSuccessives, paires}}
+ *
+ * Ces cinq nombres sont tout ce que la STRUCTURE dit d'une morphologie, et c'est peu. Ils sont
+ * séparés du classement pour une raison précise : ils se mesurent et se lisent, alors que le
+ * classement les interprète. Un test peut donc épingler ce que le corpus donne, indépendamment de
+ * la règle qui s'en sert.
+ */
+export function signatureDuSquelette3D(decomposition){
+  const { tronc = [], membres = [] } = decomposition || {};
+  const surTronc = membres.filter(m => m.cote && tronc.indexOf(m.ancre) >= 0);
+  const parAncre = new Map();
+  surTronc.forEach(m => {
+    const i = tronc.indexOf(m.ancre);
+    if (!parAncre.has(i)) parAncre.set(i, { g: 0, d: 0 });
+    parAncre.get(i)[m.cote]++;
+  });
+  const indices = [...parAncre.keys()].sort((a, b) => a - b);
+  const rangs = [...parAncre.values()].map(v => Math.min(v.g, v.d));
+
+  // La plus longue suite d'ancres CONSÉCUTIVES le long du tronc. C'est la signature du corps
+  // segmenté : l'araignée en a cinq d'affilée, une par segment.
+  let meilleure = 0, courante = 0;
+  indices.forEach((v, k) => {
+    courante = (k > 0 && v === indices[k - 1] + 1) ? courante + 1 : 1;
+    if (courante > meilleure) meilleure = courante;
+  });
+
+  return {
+    lateraux: membres.filter(m => m.cote).length,
+    ancres: indices.length,
+    rangMax: rangs.length ? Math.max(...rangs) : 0,
+    ancresSuccessives: meilleure,
+    paires: rangs.reduce((s, v) => s + v, 0),
+  };
+}
+
+/**
+ * Compte les chaînes par nom proposé : `{ Patte: 4, Bras: 2, … }`. Fonction PURE.
+ *
+ * NE RETIENT QUE LES CHAÎNES D'AU MOINS TROIS OS, et ce n'est pas un seuil d'importance déguisé :
+ * c'est la longueur en dessous de laquelle le corpus ne contient plus que des cils, des lèvres et
+ * des paupières, qui portent bien un nom mais ne disent rien de la morphologie. Mesuré : sans ce
+ * filtre, le rig Unreal noie le compte sous vingt « Visage » et seize « Œil ».
+ */
+function comptesParNom3D(os, membres){
+  const parId = new Map(os.map(o => [o.id, o]));
+  const comptes = {};
+  membres.filter(m => m.segments.length >= 3).forEach(m => {
+    const entree = typeDeChaine3D(m.segments.map(s => parId.get(s).name));
+    if (entree) comptes[entree[0]] = (comptes[entree[0]] || 0) + 1;
+  });
+  return comptes;
+}
+
+/**
+ * Propose un archétype de morphologie. Fonction PURE.
+ *
+ * @param {Array<{id, name, children}>} os la liste d'os neutre
+ * @returns {{ cle: string, origine: 'topologie'|'nom'|'structure' }}
+ *
+ * TROIS ARCHÉTYPES SEULEMENT SE DÉTECTENT, ET LA MESURE LE DIT. Serpentin, radial et segmenté ont
+ * chacun une signature que rien d'autre ne présente dans le corpus. Tout le reste est PROPOSÉ, et
+ * `origine` le dit à l'interface, qui doit afficher « à confirmer ».
+ *
+ * ⚠️ L'HUMANOÏDE NE SE DÉTECTE PAS DAVANTAGE, contrairement à ce que le plan affirmait. Mesuré
+ * slot par slot, l'oiseau fait aussi bien que `maison` et `vroid-alt` sur les emplacements clés
+ * corroborés par le nom, et mieux que le dragon. Le compte d'emplacements ne sépare pas, et
+ * prétendre le contraire aurait consacré une erreur de plus.
+ *
+ * CE QUI CLASSE LE MIEUX, ce sont les NOMS DE CHAÎNES, et c'est mesuré : `Patte:2 Bras:2` pour les
+ * cinq humanoïdes, `Patte:4` pour le chien, `Patte:2 Aile:2` pour la wyverne, `Patte:4 Bras:2`
+ * pour deux centaures sur trois. Mais ils se trompent aussi : le cerbère nomme ses pattes avant
+ * `Clavicle` / `UpperArm`, il sort donc « humanoïde ». D'où `origine: 'nom'`, et le mot
+ * « proposé » plutôt que « reconnu ».
+ */
+export function archetypeSuggere3D(os){
+  const liste = (os || []).filter(o => o && o.id !== undefined);
+  if (liste.length < 2) return { cle: 'complexe', origine: 'structure' };
+
+  const decomposition = membresDuSquelette3D(liste);
+  const s = signatureDuSquelette3D(decomposition);
+
+  // ── Ce que la TOPOLOGIE tranche, sans ambiguïté sur les dix-sept squelettes ──────────────
+  //
+  // AUCUNE PAIRE LATÉRALE, nulle part. Le serpent est le seul, et il l'est absolument : il n'a pas
+  // « peu » de paires, il n'en a aucune. Pas de seuil à choisir.
+  if (!s.lateraux) return { cle: 'serpentin', origine: 'topologie' };
+
+  // PLUSIEURS RANGS SUR UNE SEULE ANCRE : la symétrie radiale. Le kraken porte ses huit tentacules
+  // sur `krakenjoints`, en quatre rangs. Seul cas du corpus à n'avoir qu'une ancre ET plus d'un
+  // rang ; centaure2 n'a qu'une ancre mais un seul rang, et n'est donc pas radial.
+  if (s.ancres === 1 && s.rangMax >= 2) return { cle: 'radial', origine: 'topologie' };
+
+  // QUATRE ANCRES CONSÉCUTIVES OU PLUS le long du tronc : un corps segmenté. L'araignée en a CINQ,
+  // et le suivant du corpus en a TROIS (rig Unreal, chien). Le seuil est posé dans un écart mesuré,
+  // ce qui n'est pas la même chose qu'un nombre inventé : il n'y a aucune valeur entre 3 et 5.
+  if (s.ancresSuccessives >= 4) return { cle: 'arachnide', origine: 'topologie' };
+
+  // ── Ce que les NOMS proposent, et qui peut se tromper ────────────────────────────────────
+  const c = comptesParNom3D(liste, decomposition.membres);
+  const pattes = c.patte || 0, bras = c.bras || 0, ailes = c.aile || 0;
+
+  if (ailes >= 2 && pattes >= 4) return { cle: 'quadrupede_aile', origine: 'nom' };
+  if (ailes >= 2) return { cle: 'bipede_aile', origine: 'nom' };
+  if (pattes >= 4 && bras >= 2) return { cle: 'centaure', origine: 'nom' };
+  if (pattes >= 4) return { cle: 'quadrupede', origine: 'nom' };
+  if (pattes >= 2 && bras >= 2) return { cle: 'humanoide', origine: 'nom' };
+
+  // ── Ce qui reste, proposé sur le seul nombre de paires ───────────────────────────────────
+  //
+  // Le raptor tombe ici : ses os s'appellent `Bone.034.L`, aucun nom ne dit rien. Il est proposé
+  // humanoïde alors que c'est un bipède à queue, et c'est assumé. Sa queue de 14 os pourrait le
+  // trahir, mais aucun seuil ne sépare une queue de raptor d'une queue de cerbère (8 os) sans
+  // inventer un nombre, ce que ce fichier s'interdit.
+  if (s.paires === 2) return { cle: 'humanoide', origine: 'structure' };
+  if (s.paires === 3) return { cle: 'centaure', origine: 'structure' };
+  return { cle: 'complexe', origine: 'structure' };
 }

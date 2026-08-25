@@ -42,8 +42,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  inferSkeletonMap, membresDuSquelette3D, coteDuNom, motsDuNomDOs3D, nomSuggereDeChaine3D, SLOTS,
+  inferSkeletonMap, membresDuSquelette3D, coteDuNom, motsDuNomDOs3D, nomSuggereDeChaine3D,
+  signatureDuSquelette3D, archetypeSuggere3D, SLOTS,
 } from '../src/skeleton-map.js';
+import { ARCHETYPES_3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS } from '../src/constants.js';
 
 /** Le traducteur du dépôt, réduit à ce dont ces tests ont besoin : la version française. */
 const tr = (en, fr) => fr;
@@ -866,5 +868,212 @@ describe('membresDuSquelette3D : le squelette à PLUSIEURS racines', () => {
     // La garde vaut surtout contre un fichier où l'accessoire est déclaré en premier.
     const inverse = [...os].reverse();
     assert.deepEqual(membresDuSquelette3D(inverse).tronc, [10, 11, 12]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #366 — PROPOSER UN ARCHÉTYPE DE MORPHOLOGIE
+//
+// Trois archétypes se DÉTECTENT, les autres se PROPOSENT. Ces tests épinglent les deux, et surtout
+// les quatre fichiers sur dix-sept où la proposition est fausse : c'est ce qui justifie que
+// l'écran affiche « à confirmer » au lieu de « reconnu ».
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('signatureDuSquelette3D : cinq nombres, et rien d\'autre', () => {
+  test('la signature du corpus, épinglée', () => {
+    // Séparée du classement à dessein : elle se MESURE, il INTERPRÈTE. Ces valeurs doivent changer
+    // quand la décomposition change, jamais quand une règle de classement change.
+    const sig = (n) => {
+      const s = signatureDuSquelette3D(membresDuSquelette3D(charger(n)));
+      return [s.lateraux, s.ancres, s.rangMax, s.ancresSuccessives];
+    };
+    assert.deepEqual(sig('serpent'), [0, 0, 0, 0], 'aucune paire, nulle part');
+    assert.deepEqual(sig('kraken'), [8, 1, 4, 1], 'une ancre, quatre rangs');
+    assert.deepEqual(sig('araignee'), [28, 5, 3, 5], 'cinq ancres consécutives');
+    assert.deepEqual(sig('mixamo'), [4, 2, 1, 1], 'deux paires, deux ancres');
+  });
+
+  test('un squelette vide ou absent ne fait rien exploser', () => {
+    assert.deepEqual(signatureDuSquelette3D(null),
+      { lateraux: 0, ancres: 0, rangMax: 0, ancresSuccessives: 0, paires: 0 });
+    assert.deepEqual(signatureDuSquelette3D({ tronc: [], membres: [] }).lateraux, 0);
+  });
+});
+
+describe('archetypeSuggere3D : ce que la TOPOLOGIE tranche', () => {
+  // Ces trois-là sont sûrs, et chacun pour une raison qu'aucun autre fichier du corpus ne présente.
+  test('serpentin : AUCUNE paire latérale, pas un « peu »', () => {
+    // Le serpent n'a pas peu de paires, il n'en a aucune. Aucun seuil à choisir, donc aucun seuil
+    // à inventer. C'est le seul des dix-sept dans ce cas.
+    assert.deepEqual(archetypeSuggere3D(charger('serpent')), { cle: 'serpentin', origine: 'topologie' });
+  });
+
+  test('radial : plusieurs rangs sur UNE seule ancre', () => {
+    // Huit tentacules sur `krakenjoints`, en quatre rangs. Centaure2 n'a lui aussi qu'UNE ancre sur
+    // le tronc, mais un seul rang : la condition porte bien sur les deux, sans quoi un centaure
+    // sortirait radial.
+    assert.deepEqual(archetypeSuggere3D(charger('kraken')), { cle: 'radial', origine: 'topologie' });
+    assert.notEqual(archetypeSuggere3D(charger('centaure2')).cle, 'radial');
+  });
+
+  test('arachnide : quatre ancres consécutives ou plus', () => {
+    // L'araignée en a CINQ d'affilée, une par segment de corps. Le suivant du corpus en a TROIS,
+    // le rig Unreal et le chien. Le seuil est posé dans un écart mesuré, ce qui n'est pas un nombre
+    // inventé : il n'existe aucune valeur entre 3 et 5 dans le corpus.
+    assert.deepEqual(archetypeSuggere3D(charger('araignee')), { cle: 'arachnide', origine: 'topologie' });
+    ['unreal', 'chien'].forEach(n =>
+      assert.notEqual(archetypeSuggere3D(charger(n)).cle, 'arachnide', `${n} ne doit pas être segmenté`));
+  });
+});
+
+describe('archetypeSuggere3D : ce que les NOMS proposent, et où ils se trompent', () => {
+  const cle = (n) => archetypeSuggere3D(charger(n)).cle;
+
+  test('les six humanoïdes sont proposés humanoïdes', () => {
+    ['maison', 'unreal', 'mixamo', 'vrm', 'vroid-alt', 'centaure']
+      .forEach(n => assert.equal(cle(n), 'humanoide', n));
+  });
+
+  test('chien quadrupède, wyverne bipède ailé, deux centaures centaures', () => {
+    assert.equal(cle('chien'), 'quadrupede');
+    assert.equal(cle('dragon'), 'bipede_aile');
+    assert.equal(cle('centaure2'), 'centaure');
+    assert.equal(cle('centaure3'), 'centaure');
+  });
+
+  test('⚠️ QUATRE FICHIERS SUR DIX-SEPT SONT MAL PROPOSÉS, avec leur cause', () => {
+    // C'EST LA RAISON D'ÊTRE DU MOT « PROPOSÉ ». Ces quatre erreurs ne sont pas des bugs à corriger
+    // mais la limite mesurée de ce que le nom peut dire, et l'écran doit donc afficher
+    // « à confirmer » sur tout ce qui n'est pas d'origine 'topologie'.
+    //
+    //   CERBÈRE : ses pattes AVANT s'appellent `L Clavicle > L UpperArm > L Forearm > L Hand`. Le
+    //     vocabulaire lit « Bras », donc deux pattes et deux bras, donc humanoïde. Le fichier ment,
+    //     pas la règle ;
+    //   OISEAU : ses ailes sont nommées comme des bras, même cause exactement ;
+    //   RAPTOR : ses os s'appellent `Bone.034.L`. AUCUN nom ne dit rien, il tombe dans le repli par
+    //     nombre de paires, qui ne connaît que l'humanoïde à deux paires ;
+    //   CENTAURE1 : ses pattes avant de cheval s'appellent `lower_L_shoulder`. Quatre « Bras » et
+    //     deux « Pattes », donc humanoïde. Compter `bras >= 4` le rattraperait et casserait le rig
+    //     Unreal, qui en a quatre aussi. Pas de règle sans contre-exemple, donc pas de règle.
+    assert.equal(cle('cerbere'), 'humanoide', 'devrait être quadrupède');
+    assert.equal(cle('oiseau'), 'humanoide', 'devrait être bipède ailé');
+    assert.equal(cle('raptor'), 'humanoide', 'devrait être bipède à queue');
+    assert.equal(cle('centaure1'), 'humanoide', 'devrait être centaure');
+  });
+
+  test('AUCUNE erreur ne porte l\'origine « topologie »', () => {
+    // La garde qui rend les quatre erreurs ci-dessus acceptables : elles sont toutes signalées.
+    ['cerbere', 'oiseau', 'raptor', 'centaure1'].forEach(n =>
+      assert.notEqual(archetypeSuggere3D(charger(n)).origine, 'topologie', n));
+  });
+
+  test('un squelette vide tombe dans le refuge, jamais dans une forme', () => {
+    assert.deepEqual(archetypeSuggere3D([]), { cle: 'complexe', origine: 'structure' });
+    assert.deepEqual(archetypeSuggere3D(null), { cle: 'complexe', origine: 'structure' });
+  });
+
+  test('chaque clé proposée existe dans ARCHETYPES_3D', () => {
+    // Une clé inventée passerait tous les tests ci-dessus et ne s'afficherait nulle part.
+    const connues = new Set(ARCHETYPES_3D.map(a => a.cle));
+    ['serpent', 'kraken', 'araignee', 'chien', 'dragon', 'centaure2', 'centaure3', 'mixamo',
+      'cerbere', 'oiseau', 'raptor', 'centaure1', 'maison', 'unreal', 'vrm', 'vroid-alt', 'centaure']
+      .forEach(n => assert.ok(connues.has(cle(n)), `${cle(n)} n'est pas un archétype connu`));
+  });
+});
+
+describe('ARCHETYPES_3D : la table, et son lien avec les animaux intégrés', () => {
+  test('les tables d\'emplacements existaient déjà dans ANIMAL_JOINT_DEFS', () => {
+    // C'est le constat qui a fait cette tâche : le loup EST la table du quadrupède, le singe celle
+    // du bipède à queue, le griffon celle du quadrupède ailé. Rien à inventer.
+    const par = Object.fromEntries(ARCHETYPES_3D.map(a => [a.cle, a.animal]));
+    assert.equal(par.quadrupede, 'loup');
+    assert.equal(par.bipede_queue, 'singe');
+    assert.equal(par.quadrupede_aile, 'griffon');
+    assert.equal(par.bipede_aile, 'oiseau');
+  });
+
+  test('chaque animal cité existe vraiment, et a ses articulations', () => {
+    ARCHETYPES_3D.filter(a => a.animal).forEach(a => {
+      assert.ok(ANIMAL_TYPES.includes(a.animal), `${a.animal} n'est pas un animal intégré`);
+      assert.ok((ANIMAL_JOINT_DEFS[a.animal] || []).length, `${a.animal} n'a aucune articulation`);
+    });
+  });
+
+  test('« complexe » est le refuge, et n\'emprunte à personne', () => {
+    const refuge = ARCHETYPES_3D.find(a => a.cle === 'complexe');
+    assert.ok(refuge, 'le refuge doit exister, c\'est la sortie de secours de l\'écran');
+    assert.equal(refuge.animal, null);
+  });
+
+  test('les clés sont uniques et les deux langues présentes', () => {
+    assert.equal(new Set(ARCHETYPES_3D.map(a => a.cle)).size, ARCHETYPES_3D.length);
+    ARCHETYPES_3D.forEach(a => assert.ok(a.label && a.labelEn, `${a.cle} n'a pas ses deux libellés`));
+    // « Radial » s'écrit pareil dans les deux langues, et c'est le seul du lot : une garde
+    // « les deux libellés diffèrent » l'exclurait à tort, donc elle porte sur les autres.
+    const identiques = ARCHETYPES_3D.filter(a => a.label === a.labelEn).map(a => a.cle);
+    assert.deepEqual(identiques, ['radial']);
+  });
+});
+
+describe('archetypeSuggere3D : trois gardes que le corpus ne couvre pas', () => {
+  // TROUS TROUVÉS PAR MUTATION. Trois altérations du code ne faisaient échouer aucun test, non pas
+  // parce que le code s'en moque, mais parce que le corpus ne contient aucun fichier qui les
+  // distingue. Les cas se montent donc à la main, et ils disent chacun pourquoi.
+
+  /** Un tronc de trois os, et les paires qu'on lui accroche. */
+  const squelette = (paires) => {
+    const os = [
+      { id: 1, name: 'Hips', children: [2] },
+      { id: 2, name: 'Spine', children: [3] },
+      { id: 3, name: 'Head', children: [] },
+    ];
+    let prochain = 100;
+    paires.forEach(({ ancre, noms }) => {
+      noms.forEach(n => {
+        const racine = prochain++;
+        os.find(o => o.id === ancre).children.push(racine);
+        os.push({ id: racine, name: n + '1', children: [prochain] });
+        os.push({ id: prochain, name: n + '2', children: [prochain + 1] });
+        os.push({ id: prochain + 1, name: n + '3', children: [] });
+        prochain += 2;
+      });
+    });
+    return os;
+  };
+
+  test('UNE seule paire ne fait pas un serpent', () => {
+    // Le serpent n'a AUCUNE paire ; remplacer l'égalité par un seuil (`< 3`) ne fait échouer aucun
+    // test du corpus, faute d'un fichier à une ou deux chaînes latérales. Un poisson à deux
+    // nageoires en serait un, et il n'a rien de serpentin.
+    const poisson = squelette([{ ancre: 1, noms: ['LeftFin', 'RightFin'] }]);
+    assert.notEqual(archetypeSuggere3D(poisson).cle, 'serpentin');
+    assert.equal(archetypeSuggere3D(squelette([])).cle, 'serpentin', 'zéro paire, lui, en est un');
+  });
+
+  test('un QUADRUPÈDE AILÉ se propose, alors qu\'aucun modèle importé n\'en est un', () => {
+    // La branche `ailes >= 2 && pattes >= 4` ne se déclenche sur AUCUN des dix-sept fichiers : le
+    // griffon intégré a cette forme, mais le corpus importé n'en contient pas, ce que la doc
+    // signale déjà. Sans ce cas monté à la main, la branche est du code jamais exécuté.
+    const griffon = squelette([
+      { ancre: 1, noms: ['LeftHindLeg', 'RightHindLeg'] },
+      { ancre: 2, noms: ['LeftFrontLeg', 'RightFrontLeg', 'LeftWing', 'RightWing'] },
+    ]);
+    assert.deepEqual(archetypeSuggere3D(griffon), { cle: 'quadrupede_aile', origine: 'nom' });
+  });
+
+  test('un RANG demande les DEUX côtés, pas le plus fourni', () => {
+    // `rangMax` prend le MINIMUM des deux côtés : trois chaînes à gauche et une à droite font UN
+    // rang, pas trois. Prendre le maximum ne fait échouer aucun test du corpus, où les ancres sont
+    // toutes symétriques. Sur un rig incomplet, cela ferait passer un modèle pour radial.
+    const bancal = [
+      { id: 1, name: 'Body', children: [10, 11, 12, 20] },
+      { id: 10, name: 'LeftArm1', children: [] },
+      { id: 11, name: 'LeftLeg1', children: [] },
+      { id: 12, name: 'LeftWing1', children: [] },
+      { id: 20, name: 'RightArm1', children: [] },
+    ];
+    const s = signatureDuSquelette3D(membresDuSquelette3D(bancal));
+    assert.equal(s.rangMax, 1, 'un seul rang complet');
+    assert.equal(s.lateraux, 4, 'quatre chaînes latérales tout de même');
   });
 });

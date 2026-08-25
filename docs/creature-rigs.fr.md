@@ -3,7 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.39. Les étapes 1 à 3, #363 à #365 et #368 sont livrées ; #366 et #367 sont ouvertes.
+> À jour de la v1.4.40. Les étapes 1 à 3, #363 à #366 et #368 sont livrées ; #367 est ouverte,
+> ainsi que l'écran qui utilisera les archétypes.
 
 ## Où l'on en est
 
@@ -87,10 +88,10 @@ l'anatomie mineure, qu'aucune règle ne distingue d'une queue ou d'une oreille. 
 au code de trancher, c'est à l'écran de correspondance.** Il propose les chaînes classées,
 l'utilisateur coche celles qui l'intéressent.
 
-## Deux hypothèses énoncées avec assurance, et démenties
+## Trois hypothèses énoncées avec assurance, et démenties
 
-Cette section existe pour qu'on ne les réessaie pas. Les deux ont été affirmées dans un message ou
-dans un commit avant d'être mesurées.
+Cette section existe pour qu'on ne les réessaie pas. Les trois ont été affirmées dans un message, un
+commit ou ce document même, avant d'être mesurées.
 
 **1. « La longueur sépare les vrais membres du bruit. »** Écrit dans le commit de l'étape 2, mesuré
 sur un seul rig. Sur les treize squelettes, le recouvrement est total :
@@ -109,6 +110,12 @@ worker_j 2,51 et labrador 3,42, un bipède et un quadrupède dans le même ordre
 
 **Conclusion : il n'existe, dans ce corpus, aucun critère géométrique qui sépare bipède de
 quadrupède.** Ne pas le rechercher.
+
+**3. « L'humanoïde se détecte par les noms normalisés. »** Écrit dans ce document même, à la
+section des archétypes. Mesuré emplacement par emplacement sur les dix-sept squelettes, les
+emplacements clés corroborés par le NOM donnent : `maison` 5/7, `vroid-alt` 5/7, **oiseau 5/7**,
+dragon 5/7. Le compte ne sépare pas un humanoïde d'un oiseau. Ce qui classe le mieux, ce sont les
+NOMS DE CHAÎNES, et ils se trompent quatre fois sur dix-sept, cf. la section #366.
 
 **Un effet de bord instructif :** le dragon sortait d'abord à 161°, donc bipède, ce qui est faux. La
 chaîne mesurée était `Wing IK.L`, un échafaudage. Une fois les IK exclus, ses pattes donnent 48° et
@@ -241,16 +248,53 @@ Le loup EST la table du quadrupède. Le singe EST celle du bipède à queue, don
 
 | archétype | reconnaissance | corpus |
 |---|---|---|
-| **Humanoïde** | automatique, par les noms normalisés | les 6 humanoïdes |
-| **Serpentin** | automatique, topologie | serpent |
-| **Radial** | automatique, topologie | kraken |
-| **Arachnide** | automatique, topologie | araignée |
-| **Quadrupède** | proposé | loup, lézard, chien, cerbère |
-| **Quadrupède ailé** | proposé | griffon, dragon classique. Aucun modèle importé |
-| **Bipède ailé** | proposé | oiseau, wyverne (`desert_dragon.glb`) |
-| **Bipède à queue** | proposé | singe, raptor |
-| **Centaure** | proposé | centaur1, centaur3 |
-| **Complexe** | refuge | centaur2, `maison.glb`, tout rig inconnu |
+| **Serpentin** | `origine: 'topologie'`, sûre | serpent |
+| **Radial** | `origine: 'topologie'`, sûre | kraken |
+| **Arachnide** | `origine: 'topologie'`, sûre | araignée |
+| **Humanoïde** | `origine: 'nom'`, PROPOSÉE | les 6 humanoïdes |
+| **Quadrupède** | `origine: 'nom'`, proposée | loup, lézard, chien |
+| **Quadrupède ailé** | `origine: 'nom'`, proposée | griffon. Aucun modèle importé |
+| **Bipède ailé** | `origine: 'nom'`, proposée | oiseau intégré, wyverne (`desert_dragon.glb`) |
+| **Bipède à queue** | `origine: 'nom'`, proposée | singe, raptor |
+| **Centaure** | `origine: 'nom'`, proposée | centaur2, centaur3 |
+| **Complexe** | refuge | tout rig inconnu |
+
+⚠️ **L'HUMANOÏDE N'EST PAS DÉTECTÉ, contrairement à ce que ce document affirmait.** Mesuré
+emplacement par emplacement, l'oiseau corrobore par le nom autant de slots clés que `maison` et
+`vroid-alt`, et plus que le dragon : 5 sur 7 pour les trois. Le compte ne sépare pas. C'est la
+troisième hypothèse de ce chantier démentie par la mesure, et elle est rangée avec les autres.
+
+## Ce que `archetypeSuggere3D` donne, et où elle se trompe (#366, faite)
+
+**13 fichiers sur 17 correctement proposés.** Les trois archétypes topologiques sont sûrs ; le reste
+s'appuie sur les NOMS DE CHAÎNES, qui classent mieux que les emplacements : `Patte:2 Bras:2` pour
+les six humanoïdes, `Patte:4` pour le chien, `Patte:2 Aile:2` pour la wyverne, `Patte:4 Bras:2`
+pour deux centaures sur trois.
+
+**Les quatre erreurs, avec leur cause, parce qu'elles justifient le mot « proposé » :**
+
+| fichier | proposé | juste | cause |
+|---|---|---|---|
+| cerbère | humanoïde | quadrupède | pattes AVANT nommées `L Clavicle > L UpperArm > L Forearm` |
+| oiseau | humanoïde | bipède ailé | ailes nommées comme des bras, même cause |
+| raptor | humanoïde | bipède à queue | os nommés `Bone.034.L`, AUCUN nom ne dit rien |
+| centaure1 | humanoïde | centaure | pattes avant de cheval nommées `lower_L_shoulder` |
+
+Aucune de ces quatre ne porte `origine: 'topologie'`, et un test le garantit. C'est ce qui rend
+l'erreur acceptable : l'écran affiche « à confirmer » sur tout ce qui n'est pas topologique.
+
+Rattraper centaure1 par `bras >= 4` casserait le rig Unreal, qui en compte quatre aussi. **Pas de
+règle sans contre-exemple, donc pas de règle.**
+
+Un détail mesuré : le compte de noms ne retient que les chaînes d'au moins trois os. Sans ce filtre
+le rig Unreal noie tout sous vingt « Visage » et seize « Œil ». Ce n'est pas un seuil d'importance
+déguisé, c'est la longueur en dessous de laquelle le corpus ne contient plus que des cils et des
+paupières.
+
+**Trois branches ne sont couvertes par AUCUN fichier** et s'éprouvent sur des squelettes montés à la
+main, ce que la campagne de mutation a révélé : le quadrupède ailé (le griffon n'a pas d'équivalent
+importé), un squelette à une seule paire (qui ne doit pas passer pour un serpent), et une ancre
+dissymétrique (trois chaînes à gauche, une à droite, ce qui fait UN rang et non trois).
 
 **Les archétypes sont nommés par leur FORME, pas par l'espèce.** Un griffon et un dragon classique
 ont la même forme, quatre pattes et deux ailes ; une wyverne n'en a que deux, et ne peut pas les
@@ -299,8 +343,9 @@ couverture mesurée. Le défaut connu est corrigé : `CATRigLLeg1` sort « Patte
 
 **#368, descendre dans un membre. FAITE.** Cf. la section dédiée ci-dessus.
 
-**#366, les tables d'archétypes**, extraites d'`ANIMAL_JOINT_DEFS`, et le sélecteur qui propose sans
-décider.
+**#366, les tables d'archétypes. FAITE** pour la partie pure, `ARCHETYPES_3D`,
+`signatureDuSquelette3D` et `archetypeSuggere3D`. Le SÉLECTEUR de l'écran reste à faire : il touche
+`events.js` et `index.html`, et relève donc de la règle n°3 (README et manuel dans le même commit).
 
 **#367, l'alignement des animaux intégrés.** CONTRAINTE DURE : les `id` d'articulation (`wingL`,
 `tail0`, `head`) sont persistés dans `animalJoints3d`, et les valeurs d'`ANIMAL_TYPES` sont

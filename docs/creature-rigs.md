@@ -3,7 +3,8 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.39. Steps 1 to 3, #363 to #365 and #368 are shipped; #366 and #367 are open.
+> Up to date as of v1.4.40. Steps 1 to 3, #363 to #366 and #368 are shipped; #367 is open, as is
+> the screen that will use the archetypes.
 
 ## Where things stand
 
@@ -85,10 +86,10 @@ The rest of the noise is not noise: it is eyelashes, lips, hair strands, feather
 which no rule tells apart from a tail or an ear. **So it is not for the code to decide, it is for
 the mapping screen.** It offers the chains, ranked, and the user ticks the ones that matter.
 
-## Two hypotheses stated confidently, then disproved
+## Three hypotheses stated confidently, then disproved
 
-This section exists so nobody retries them. Both were asserted in a message or a commit before being
-measured.
+This section exists so nobody retries them. All three were asserted in a message, a commit or this
+very document, before being measured.
 
 **1. "Length separates real limbs from noise."** Written in the step 2 commit, measured on one rig
 only. Across the thirteen skeletons the overlap is total:
@@ -106,6 +107,12 @@ is a biped with a horizontal trunk, and the criterion was not measuring "biped",
 
 **Conclusion: in this corpus there is no geometric criterion separating biped from quadruped.** Do
 not go looking for one.
+
+**3. "Humanoid is detected by normalised names."** Written in this very document, in the archetype
+section. Measured slot by slot across the seventeen skeletons, the key slots corroborated by NAME
+give: `maison` 5/7, `vroid-alt` 5/7, **bird 5/7**, dragon 5/7. The count does not separate a
+humanoid from a bird. What classifies best is CHAIN NAMES, and they are wrong four times out of
+seventeen, see the #366 section.
 
 **One instructive side effect:** the dragon first came out at 161°, therefore biped, which is wrong.
 The chain measured was `Wing IK.L`, a scaffold. With IKs excluded its legs give 48° and 89°.
@@ -234,16 +241,53 @@ The wolf IS the quadruped table. The monkey IS the biped-with-tail table, hence 
 
 | archetype | recognition | corpus |
 |---|---|---|
-| **Humanoid** | automatic, by normalised names | the 6 humanoids |
-| **Serpentine** | automatic, topology | snake |
-| **Radial** | automatic, topology | kraken |
-| **Arachnid** | automatic, topology | spider |
-| **Quadruped** | proposed | wolf, lizard, dog, cerberus |
-| **Winged quadruped** | proposed | griffin, classic dragon. No imported model |
-| **Winged biped** | proposed | bird, wyvern (`desert_dragon.glb`) |
-| **Biped with tail** | proposed | monkey, raptor |
-| **Centaur** | proposed | centaur1, centaur3 |
-| **Complex** | fallback | centaur2, `maison.glb`, any unknown rig |
+| **Serpentine** | `origine: 'topologie'`, certain | snake |
+| **Radial** | `origine: 'topologie'`, certain | kraken |
+| **Arachnid** | `origine: 'topologie'`, certain | spider |
+| **Humanoid** | `origine: 'nom'`, PROPOSED | the 6 humanoids |
+| **Quadruped** | `origine: 'nom'`, proposed | wolf, lizard, dog |
+| **Winged quadruped** | `origine: 'nom'`, proposed | griffin. No imported model |
+| **Winged biped** | `origine: 'nom'`, proposed | built-in bird, wyvern (`desert_dragon.glb`) |
+| **Biped with tail** | `origine: 'nom'`, proposed | monkey, raptor |
+| **Centaur** | `origine: 'nom'`, proposed | centaur2, centaur3 |
+| **Complex** | fallback | any unknown rig |
+
+⚠️ **HUMANOID IS NOT DETECTED, contrary to what this document claimed.** Measured slot by slot, the
+bird corroborates as many key slots by name as `maison` and `vroid-alt`, and more than the dragon:
+5 out of 7 for all three. The count does not separate. That is this project's third hypothesis
+disproved by measurement, and it is filed with the others.
+
+## What `archetypeSuggere3D` gives, and where it is wrong (#366, done)
+
+**13 files out of 17 proposed correctly.** The three topological archetypes are certain; the rest
+leans on CHAIN NAMES, which classify better than slots do: `Patte:2 Bras:2` for the six humanoids,
+`Patte:4` for the dog, `Patte:2 Aile:2` for the wyvern, `Patte:4 Bras:2` for two centaurs out of
+three.
+
+**The four errors, with their cause, because they justify the word "proposed":**
+
+| file | proposed | correct | cause |
+|---|---|---|---|
+| cerberus | humanoid | quadruped | FRONT legs named `L Clavicle > L UpperArm > L Forearm` |
+| bird | humanoid | winged biped | wings named like arms, same cause |
+| raptor | humanoid | biped with tail | bones named `Bone.034.L`, NO name says anything |
+| centaur1 | humanoid | centaur | horse fore-legs named `lower_L_shoulder` |
+
+None of the four carries `origine: 'topologie'`, and a test guarantees it. That is what makes the
+error acceptable: the screen shows "to confirm" on everything non-topological.
+
+Catching centaur1 with `bras >= 4` would break the Unreal rig, which has four as well. **No rule
+without a counter-example, therefore no rule.**
+
+One measured detail: the name count keeps only chains of at least three bones. Without that filter
+the Unreal rig drowns everything under twenty "Face" and sixteen "Eye". It is not an importance
+threshold in disguise, it is the length below which the corpus holds nothing but eyelashes and
+eyelids.
+
+**Three branches are covered by NO file** and are exercised on hand-built skeletons, which the
+mutation campaign revealed: the winged quadruped (the griffin has no imported counterpart), a
+skeleton with a single pair (which must not pass for a snake), and an asymmetric anchor (three
+chains left, one right, which makes ONE rank and not three).
 
 **Archetypes are named after their SHAPE, not the species.** A griffin and a classic dragon share
 one shape, four legs and two wings; a wyvern has only two and cannot join them. Species names belong
@@ -289,8 +333,9 @@ known defect is fixed: `CATRigLLeg1` comes out "Leg".
 
 **#368, descending into a limb. DONE.** See the dedicated section above.
 
-**#366, the archetype tables**, extracted from `ANIMAL_JOINT_DEFS`, and the selector that proposes
-without deciding.
+**#366, the archetype tables. DONE** for the pure part, `ARCHETYPES_3D`,
+`signatureDuSquelette3D` and `archetypeSuggere3D`. The screen SELECTOR is still to do: it touches
+`events.js` and `index.html`, so rule #3 applies (README and manual in the same commit).
 
 **#367, aligning the built-in animals.** HARD CONSTRAINT: the joint `id`s (`wingL`, `tail0`, `head`)
 are persisted in `animalJoints3d`, and `ANIMAL_TYPES` values are persisted as the Element's type.
