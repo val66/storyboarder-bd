@@ -53,17 +53,26 @@ qu'il porte un maillage NON articulé dont le parcours mettait les matrices à j
 
 **DEUX FORMES DE MISE À JOUR NE RÉPARENT PAS, et toutes deux ont été essayées :**
 
-- `updateWorldMatrix(true, true)` ne descend pas dans un nœud dont `matrixAutoUpdate` est faux, ce
-  que GLTFLoader pose sur tout nœud donné par matrice. Cerbère toujours à 0,05 ;
-- mettre à jour les OS seuls ne suffit pas non plus : `bone.updateMatrixWorld(true)` compose avec la
-  matrice de son parent, elle-même périmée. Cerbère toujours à 0,05.
+- `updateWorldMatrix(true, true)` laisse le cerbère à 0,047. Ma première explication était fausse,
+  je l'avais attribuée au parcours ; elle descend bel et bien dans tous les enfants. **La vraie
+  cause est dans Three** : `SkinnedMesh` REDÉFINIT `updateMatrixWorld` pour recalculer
+  `bindMatrixInverse` depuis `matrixWorld`, et ne redéfinit PAS `updateWorldMatrix`. Comme
+  `boneTransform` termine par `applyMatrix4(this.bindMatrixInverse)`, cette matrice périmée fausse
+  chaque sommet ;
+- mettre à jour les OS seuls ne suffit pas non plus, pour une raison différente :
+  `bone.updateMatrixWorld(true)` compose avec la matrice de son parent, elle-même périmée, et ne
+  touche pas au `bindMatrixInverse` du maillage. Cerbère toujours à 0,05.
 
-Seul `updateMatrixWorld(true)` depuis la racine du sous-arbre répare.
+Seul `updateMatrixWorld(true)` depuis la racine du sous-arbre répare : 4,661.
 
-⚠️ **Ces deux faits ne sont gardés par aucun test**, et c'est assumé : un squelette monté à la main
-est trop docile, les trois formes y passent. Les distinguer demande un vrai `.glb`, que Node ne sait
-pas décoder faute de savoir lire ses textures. Ils sont donc consignés ici et dans l'en-tête du
-module, avec leurs mesures.
+⚠️ **CE QUI EST GARDÉ, ET CE QUI NE L'EST PAS.** Aucun montage ne sépare les trois formes, et
+**quatre** ont été essayés : os frères du maillage, nœuds donnés par matrice, transformation
+appliquée après le `bind`, et jusqu'à un `.glb` FABRIQUÉ décodé par le vrai chargeur. Ce qui les
+sépare tient à la valeur de `bindMatrixInverse`, qu'un montage rend difficilement significative.
+
+Le test épingle donc le **mécanisme** plutôt que le symptôme : il vérifie que `SkinnedMesh` redéfinit
+`updateMatrixWorld` et pas `updateWorldMatrix`. Si une version de Three change cela, le test tombe,
+et c'est ce qu'on veut, la raison d'écrire l'une plutôt que l'autre aura disparu.
 
 ---
 

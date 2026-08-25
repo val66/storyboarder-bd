@@ -218,12 +218,11 @@ describe('LES OS DOIVENT ÊTRE À JOUR, et c\'est la fonction qui s\'en charge (
     // `matrixAutoUpdate = false` et une matrice posée à la main, parce que c'est ce que fait
     // GLTFLoader pour tout nœud que le fichier donne par matrice.
     //
-    // ⚠️ ET CELA NE SUFFIT TOUJOURS PAS À DISTINGUER LES TROIS FORMES DE MISE À JOUR. Éprouvé :
-    // `updateMatrixWorld()` sans forcer et `updateWorldMatrix(true, true)` passent ce montage, alors
-    // qu'elles laissent `cerberus.glb` à 0,05 de haut. Un montage reste un montage, et celui-ci est
-    // trop docile. Ces deux faits-là sont donc consignés dans l'en-tête du module avec leurs
-    // mesures, pas gardés par un test : l'essai sur un vrai `.glb` reste MANUEL, Node ne sachant
-    // pas décoder les textures (cf. tests/glb-decoding.test.mjs, même limite).
+    // ⚠️ CE MONTAGE NE DISTINGUE PAS `updateMatrixWorld` DE `updateWorldMatrix`, et quatre essais
+    // n'y sont pas parvenus, y compris un `.glb` FABRIQUÉ et décodé par le vrai chargeur. Ce qui
+    // sépare les deux tient à la valeur de `bindMatrixInverse`, difficile à rendre significative
+    // autrement que sur un vrai fichier. Le test « Three redéfinit… » plus bas prend le relais :
+    // il épingle le MÉCANISME plutôt que le symptôme.
     enfant.matrix.setPosition(0, 50, 0);
     enfant.matrixAutoUpdate = false;
     racine.matrixAutoUpdate = false;
@@ -236,6 +235,25 @@ describe('LES OS DOIVENT ÊTRE À JOUR, et c\'est la fonction qui s\'en charge (
     const taille = new THREE.Vector3();
     box3FromObjectSkinAware3D(maillagePoséNonÀJour()).getSize(taille);
     assert.ok(taille.y > 45, `la pose à Y=50 doit être vue, boîte mesurée ${taille.y.toFixed(2)}`);
+  });
+
+  test('THREE REDÉFINIT `updateMatrixWorld` SUR `SkinnedMesh`, ET PAS `updateWorldMatrix`', () => {
+    // LE FAIT DONT DÉPEND LA CORRECTION, épinglé directement faute de pouvoir épingler son effet.
+    //
+    // `SkinnedMesh.updateMatrixWorld` recalcule `bindMatrixInverse` depuis `matrixWorld` ;
+    // `updateWorldMatrix`, héritée d'`Object3D`, ne le fait pas. Comme `boneTransform` termine par
+    // `applyMatrix4(this.bindMatrixInverse)`, appeler la seconde laisse chaque sommet faux. Mesuré
+    // sur `cerberus.glb` : boîte de 0,047 contre 4,661.
+    //
+    // Si une version de Three redéfinit aussi `updateWorldMatrix`, ce test tombe, et c'est
+    // exactement ce qu'on veut : la raison d'écrire `updateMatrixWorld` aura disparu et il faudra
+    // relire le module plutôt que de découvrir le changement par un modèle démesuré.
+    const propre = (o, m) => Object.prototype.hasOwnProperty.call(o, m);
+    assert.equal(propre(THREE.SkinnedMesh.prototype, 'updateMatrixWorld'), true,
+      'c\'est cette redéfinition qui rafraîchit bindMatrixInverse');
+    assert.equal(propre(THREE.SkinnedMesh.prototype, 'updateWorldMatrix'), false,
+      'si elle apparaît, relire l\'en-tête de skinned-box-3d.js');
+    assert.equal(typeof THREE.Object3D.prototype.updateMatrixWorld, 'function');
   });
 
   test('elle rend LA MÊME chose que si on les avait mises à jour soi-même', () => {

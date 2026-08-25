@@ -120,15 +120,21 @@ export function box3FromObjectSkinAware3D(object) {
   // `placeRigCentered3D` déduisant l'échelle du rig de cette boîte, le cerbère était agrandi CENT
   // SEIZE fois. C'est ce que l'utilisateur voyait comme « le modèle passe sous le sol ».
   //
-  // ⚠️ DEUX PIÈGES, tous deux mesurés, et qu'aucun test monté à la main ne distingue :
+  // ⚠️ `updateWorldMatrix(true, true)` NE MARCHE PAS, et la raison n'est pas celle qu'on croit.
   //
-  //   `updateWorldMatrix(true, true)` NE SUFFIT PAS. Elle ne descend pas dans un nœud dont
-  //     `matrixAutoUpdate` est faux, ce que GLTFLoader pose sur tout nœud donné par matrice. Sur
-  //     `cerberus.glb`, elle laissait la boîte à 0,05, c'est-à-dire ne changeait rien ;
-  //   METTRE À JOUR LES OS SEULS NE SUFFIT PAS NON PLUS. `bone.updateMatrixWorld(true)` compose
-  //     avec la matrice de son PARENT, elle-même périmée. Essayé, mesuré, cerbère toujours à 0,05.
+  // Elle descend bien dans tous les enfants, ce n'est donc pas une question de parcours. La cause
+  // est dans Three : `SkinnedMesh` REDÉFINIT `updateMatrixWorld` pour recalculer
+  // `bindMatrixInverse` depuis `matrixWorld`, et ne redéfinit PAS `updateWorldMatrix`. Or
+  // `boneTransform` termine par `applyMatrix4(this.bindMatrixInverse)` : cette matrice périmée
+  // fausse chaque sommet. Vérifié dans la source de three r128, et épinglé par un test qui
+  // interroge les prototypes.
   //
-  // La seule forme qui répare est celle-ci, depuis la racine du sous-arbre.
+  // Mesuré sur `cerberus.glb` : `updateWorldMatrix(true, true)` laisse la boîte à 0,047,
+  // `updateMatrixWorld(true)` la rend à 4,661.
+  //
+  // METTRE À JOUR LES OS SEULS NE SUFFIT PAS NON PLUS, pour une raison différente :
+  // `bone.updateMatrixWorld(true)` compose avec la matrice de son PARENT, elle-même périmée, et ne
+  // touche évidemment pas au `bindMatrixInverse` du maillage. Essayé, mesuré, cerbère à 0,05.
   if (object && object.updateMatrixWorld) object.updateMatrixWorld(true);
   // TOUT LE SOUS-ARBRE, OS COMPRIS, avant de lire quoi que ce soit. Voir l'avertissement dans
   // `expandBoxSkinAware3D` : sans cette ligne, la boîte d'un modèle articulé est celle de ses os

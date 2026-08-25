@@ -54,17 +54,26 @@ the way past.
 
 **TWO FORMS OF UPDATE DO NOT FIX IT, and both were tried:**
 
-- `updateWorldMatrix(true, true)` does not descend into a node whose `matrixAutoUpdate` is false,
-  which GLTFLoader sets on every node given by matrix. Cerberus still at 0.05;
-- updating the BONES alone does not work either: `bone.updateMatrixWorld(true)` composes with its
-  parent's matrix, itself stale. Cerberus still at 0.05.
+- `updateWorldMatrix(true, true)` leaves the cerberus at 0.047. My first explanation was wrong, I
+  blamed the traversal; it does descend into every child. **The real cause is inside Three**:
+  `SkinnedMesh` OVERRIDES `updateMatrixWorld` to recompute `bindMatrixInverse` from `matrixWorld`,
+  and does NOT override `updateWorldMatrix`. Since `boneTransform` ends with
+  `applyMatrix4(this.bindMatrixInverse)`, that stale matrix corrupts every vertex;
+- updating the BONES alone does not work either, for a different reason:
+  `bone.updateMatrixWorld(true)` composes with its parent's matrix, itself stale, and does not touch
+  the mesh's `bindMatrixInverse`. Cerberus still at 0.05.
 
-Only `updateMatrixWorld(true)` from the subtree root fixes it.
+Only `updateMatrixWorld(true)` from the subtree root fixes it: 4.661.
 
-⚠️ **Neither fact is guarded by a test**, deliberately: a hand-built skeleton is too docile, all
-three forms pass it. Telling them apart needs a real `.glb`, which Node cannot decode because it
-cannot read its textures. They are therefore recorded here and in the module header, with their
-measurements.
+⚠️ **WHAT IS GUARDED, AND WHAT IS NOT.** No hand-built rig separates the three forms, and **four**
+were tried: bones as siblings of the mesh, nodes given by matrix, a transform applied after `bind`,
+and even a FABRICATED `.glb` decoded by the real loader. What separates them hinges on the value of
+`bindMatrixInverse`, which a mock makes hard to render meaningful.
+
+The test therefore pins the **mechanism** rather than the symptom: it checks that `SkinnedMesh`
+overrides `updateMatrixWorld` and not `updateWorldMatrix`. If a version of Three changes that, the
+test fails, and that is what we want: the reason for writing one rather than the other will be
+gone.
 
 ---
 
