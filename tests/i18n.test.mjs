@@ -762,3 +762,65 @@ describe('libellés bilingues : chaque entrée porte ses deux langues', () => {
     assert.deepEqual(enFrancais, [' (haut/bas)', ' (gauche/droite)', ' (inclinaison)']);
   });
 });
+
+describe('Un bouton-ICÔNE ne doit jamais afficher « null » (#371)', () => {
+  // DÉFAUT SIGNALÉ À L'USAGE. Le crayon de la fiche d'un Modèle importé affichait « null » à côté
+  // de son icône. La cause n'était pas la valeur mais la TABLE : `#objectEditorOpenBtn` portait la
+  // forme à attribut (`[sel, null, null, 'title', en, fr]`), et elle était rangée dans
+  // I18N_TRAILING, qui ne déstructure que trois éléments ET n'avait aucune garde contre `null`.
+  // `setTrailingText` écrivait donc ' ' + null.
+  //
+  // Le fichier redoutait déjà le symétrique : un commentaire de 2024 explique pourquoi
+  // `#personaEditorOpenBtn` vit dans I18N_TEXT et non dans I18N_MODALS. Le même piège, l'autre sens.
+
+  test('les entrées à ATTRIBUT vivent dans I18N_TEXT, la seule table qui les lit', () => {
+    // Les quatre autres tables déstructurent `[sel, en, fr]` : une entrée à attribut y est au mieux
+    // inopérante, au pire visible. Le test porte sur la FORME, pas sur une liste de boutons connus.
+    [['I18N_TRAILING', I18N_TRAILING], ['I18N_LEADING', I18N_LEADING],
+      ['I18N_MODALS', I18N_MODALS]].forEach(([nom, table]) => {
+      const aAttribut = table.filter(e => e.length > 3).map(e => e[0]);
+      assert.deepEqual(aAttribut, [], `${nom} ne sait pas lire une entrée à attribut`);
+    });
+  });
+
+  test('le crayon du Modèle importé a la même forme que celui du Personnage', () => {
+    // Les deux ouvrent le même éditeur depuis le même coin. Une forme différente signifierait que
+    // l'un des deux a été rangé ailleurs, ce qui est exactement ce qui s'était produit.
+    const perso = I18N_TEXT.find(e => e[0] === '#personaEditorOpenBtn');
+    const modele = I18N_TEXT.find(e => e[0] === '#objectEditorOpenBtn');
+    assert.ok(modele, '#objectEditorOpenBtn doit être dans I18N_TEXT');
+    assert.deepEqual(modele.slice(1), perso.slice(1), 'même infobulle, même forme');
+  });
+
+  test('la GARDE `null` existe dans les trois tables à trois éléments', () => {
+    // La garde de fond : même mal rangée, une entrée sans texte ne doit RIEN écrire. Sans elle,
+    // `setTrailingText` compose ' ' + null et le mot apparaît dans l'interface.
+    //
+    // `null` EST AUSSI UNE CONVENTION DÉLIBÉRÉE dans I18N_MODALS, où trois entrées à deux éléments
+    // servent de marqueurs « ne rien traduire ici » (`#themeSelect`, les deux cases d'export). Ce
+    // test ne les interdit donc pas : il vérifie que la garde les rend inoffensives, ce qui vaut
+    // pour les marqueurs voulus comme pour les entrées mal rangées.
+    const stub = { textContent: 'AVANT', firstChild: null, lastChild: null,
+      appendChild(){ throw new Error('setTrailingText a écrit malgré `null`'); },
+      insertBefore(){ throw new Error('setLeadingText a écrit malgré `null`'); } };
+    setTrailingText(stub, null, null, 'en');
+    setLeadingText(stub, null, null, 'en');
+    applyTextEntry(stub, null, null, 'en');
+    assert.equal(stub.textContent, 'AVANT', 'aucune écriture ne doit avoir eu lieu');
+  });
+
+  test('les ESPACES RÉSERVÉS sont dans la table qui pose les attributs', () => {
+    // SECOND DÉFAUT TROUVÉ PAR LE TEST CI-DESSUS, et celui-là était invisible : huit `placeholder`
+    // vivaient dans I18N_TRAILING, qui ne pose aucun attribut. Ils restaient donc en FRANÇAIS en
+    // mode anglais, sans que rien ne le montre, `setTrailingText` ajoutant un nœud de texte à un
+    // <input>, qui n'affiche pas ses enfants.
+    ['#personaEditorPoseName', '#personaNameInput', '#objectNameInput', '#roomNameInput',
+      '#buildingNameInput', '#tracéNameInput', '#terrainNameInput', '#terrainLabelInput',
+      '#sideDescInput'].forEach(sel => {
+      const e = I18N_TEXT.find(x => x[0] === sel);
+      assert.ok(e, `${sel} doit être dans I18N_TEXT, seule table qui pose les attributs`);
+      assert.equal(e[3], 'placeholder', `${sel} : l'attribut visé`);
+      assert.ok(e[4] && e[5], `${sel} : les deux langues`);
+    });
+  });
+});

@@ -45,6 +45,11 @@ export const I18N_TEXT = [
   // l'entrée silencieusement inopérante, l'icône était bien préservée, mais l'infobulle restait
   // figée en français. Constaté par un test, pas à l'œil.
   ['#personaEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
+  // MÊME FORME, MÊME TABLE, et c'est tout l'enjeu : cette entrée vivait dans I18N_TRAILING, qui ne
+  // déstructure que trois éléments ET n'a aucune garde contre `en === null`. `setTrailingText`
+  // écrivait donc ' ' + null : le crayon de la fiche d'un Modèle importé affichait « null » à côté
+  // de son icône. Signalé à l'usage. Le commentaire ci-dessus redoutait déjà le symétrique.
+  ['#objectEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
   ['#helpBtn', null, null, 'title', 'User manual', "Manuel d'utilisation"],
   // Sidebar
   ['#addVolumeBtn', 'New volume', 'Nouveau tome'],
@@ -84,6 +89,19 @@ export const I18N_TEXT = [
   ['label[for="sideBubbleFontSelect"]', 'Font', "Police d'écriture"],
   ['#descEmptyHint', 'Select a panel to view or edit its description.', 'Sélectionnez une case pour voir ou modifier sa description.'],
   ['#sideDescInput', null, null, 'placeholder', 'Describe what happens in this panel...', "Décrivez ce qui se passe dans cette case..."],
+  // LES HUIT AUTRES ESPACES RÉSERVÉS, rapatriés ici depuis I18N_TRAILING (#371). Ils y étaient
+  // MORTS : cette table ne déstructure que trois éléments, donc l'attribut n'était jamais posé et
+  // ces champs restaient en français en mode anglais. Rien ne le signalait, `setTrailingText`
+  // ajoutant un nœud de texte à un <input>, qui n'affiche pas ses enfants. Trouvé par le test
+  // écrit pour le crayon, pas à l'œil.
+  ['#personaEditorPoseName', null, null, 'placeholder', 'Pose name', "Nom de la pose"],
+  ['#personaNameInput', null, null, 'placeholder', 'E.g. character name', "Ex. nom du personnage"],
+  ['#objectNameInput', null, null, 'placeholder', 'E.g. object name', "Ex. nom de l'objet"],
+  ['#roomNameInput', null, null, 'placeholder', 'E.g. Living room', "Ex. Salon"],
+  ['#buildingNameInput', null, null, 'placeholder', 'E.g. House', "Ex. Maison"],
+  ['#tracéNameInput', null, null, 'placeholder', 'E.g. Main road', "Ex. Route principale"],
+  ['#terrainNameInput', null, null, 'placeholder', 'E.g. Meadow', "Ex. Prairie"],
+  ['#terrainLabelInput', null, null, 'placeholder', 'Optional', "Optionnel"],
   // Help menu
   ['#helpMenuHeader .menu-close-btn', null, null, 'title', 'Close', 'Fermer'],
   // Titres simples sans contenu imbriqué dynamique
@@ -205,18 +223,9 @@ export const I18N_TRAILING = [
   ['#tracéModalSave', 'Save', 'Enregistrer'],
   ['#terrainModalCancel', 'Cancel', 'Annuler'],
   ['#terrainModalSave', 'Save', 'Enregistrer'],
-  ['#objectEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
   // ── Champs et listes restés en français en mode anglais, relevés avec les 49 boutons ─────────
   //    Les <option> sont visées par leur `value`, qui est PERSISTÉE (cf. docs/persisted-data.md) :
   //    viser le rang aurait cassé au premier réordonnancement, viser le texte aurait été circulaire.
-  ['#personaEditorPoseName', null, null, 'placeholder', 'Pose name', "Nom de la pose"],
-  ['#personaNameInput', null, null, 'placeholder', 'E.g. character name', "Ex. nom du personnage"],
-  ['#objectNameInput', null, null, 'placeholder', 'E.g. object name', "Ex. nom de l'objet"],
-  ['#roomNameInput', null, null, 'placeholder', 'E.g. Living room', "Ex. Salon"],
-  ['#buildingNameInput', null, null, 'placeholder', 'E.g. House', "Ex. Maison"],
-  ['#tracéNameInput', null, null, 'placeholder', 'E.g. Main road', "Ex. Route principale"],
-  ['#terrainNameInput', null, null, 'placeholder', 'E.g. Meadow', "Ex. Prairie"],
-  ['#terrainLabelInput', null, null, 'placeholder', 'Optional', "Optionnel"],
   ['#personaGenreSelect option[value="homme"]', 'Male', 'Homme'],
   ['#personaGenreSelect option[value="femme"]', 'Female', 'Femme'],
   ['#objectWallFaceSelect option[value="A"]', 'Face 1', 'Face 1'],
@@ -374,17 +383,29 @@ export const I18N_PREV_LABEL = [
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Plain text: replaces the targeted element's .textContent.
-export function applyTextEntry(el, en, fr, lang){ el.textContent = lang === 'en' ? en : fr; }
+// LA GARDE `null` VIT DANS CES TROIS FONCTIONS, ET NON DANS LES BOUCLES QUI LES APPELLENT.
+//
+// `null` veut dire « cette entrée ne porte pas de texte » : soit c'est un bouton-ICÔNE dont le
+// libellé va sur un attribut, soit c'est un marqueur délibéré (`#themeSelect`). Dans les deux cas,
+// écrire quand même compose ' ' + null et le mot « null » apparaît dans l'interface. C'est arrivé
+// sur le crayon de la fiche d'un Modèle importé, signalé à l'usage (#371).
+//
+// La garde était dans les boucles, et seulement dans DEUX des quatre. La mettre ici la rend
+// impossible à oublier en ajoutant une table, et protège aussi tout appel direct.
+export function applyTextEntry(el, en, fr, lang){
+  if (!el || en === null) return;
+  el.textContent = lang === 'en' ? en : fr;
+}
 
 export function setLeadingText(el, en, fr, lang){
-  if (!el) return;
+  if (!el || en === null) return;
   const text = (lang === 'en' ? en : fr) + ' ';
   if (el.firstChild && el.firstChild.nodeType === 3) el.firstChild.textContent = text;
   else el.insertBefore(document.createTextNode(text), el.firstChild);
 }
 
 export function setTrailingText(el, en, fr, lang){
-  if (!el) return;
+  if (!el || en === null) return;
   const text = ' ' + (lang === 'en' ? en : fr);
   if (el.lastChild && el.lastChild.nodeType === 3) el.lastChild.textContent = text;
   else el.appendChild(document.createTextNode(text));
@@ -395,7 +416,7 @@ export function applyI18n(lang){
     const [sel, en, fr, attr, attrEn, attrFr] = entry;
     document.querySelectorAll(sel).forEach(el => {
       if (attr) { el.setAttribute(attr, lang === 'en' ? attrEn : attrFr); }
-      else if (en !== null) { applyTextEntry(el, en, fr, lang); }
+      else { applyTextEntry(el, en, fr, lang); }
     });
   });
   I18N_TRAILING.forEach(([sel, en, fr]) => {
@@ -405,7 +426,6 @@ export function applyI18n(lang){
     document.querySelectorAll(sel).forEach(el => setLeadingText(el, en, fr, lang));
   });
   I18N_MODALS.forEach(([sel, en, fr]) => {
-    if (en === null) return;
     document.querySelectorAll(sel).forEach(el => applyTextEntry(el, en, fr, lang));
   });
   I18N_PREV_LABEL.forEach(([id, en, fr]) => {
