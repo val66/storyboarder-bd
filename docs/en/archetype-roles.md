@@ -109,8 +109,29 @@ Reusing them means an imported dog and the built-in wolf **speak the same langua
 written once applies to both. That was the point of the #367 alignment, and it is only now that the
 reason appears.
 
-**Five archetypes have no list yet**: `centaure`, `arachnide`, `radial`, `serpentin`, `complexe`.
-They have no built-in animal to derive one from.
+**The centaur: two arms, four legs, one tail.** The user's decision, and it follows from his general
+rule: an archetype defines its list, a model that does not fit it is not one.
+
+**Derived by COMPOSITION**, not written by hand: the upper body comes from the monkey
+(`bipede_queue`), the four legs from the wolf (`quadrupede`). A centaur is exactly that, a humanoid
+torso on a quadruped body. Adding a joint to either animal propagates here.
+
+⚠️ **Two of the corpus's four centaurs have only two legs**, and the classifier proposes `humanoide`
+for them. That is RIGHT: it is a model defect, fixable with one click of the selector. Measured on
+all four:
+
+| file | what the file carries | limbs unfolded out of 8 |
+|---|---|---|
+| centaure2 | 2 arms, 4 legs | 6 |
+| centaure3 | 2 arms, 4 legs, 1 tail | 5 |
+| centaure1 | 2 arms, 2 legs, 1 tail, 39 unreadable chains | 7 |
+| centaure | 2 arms, 2 legs | 6 |
+
+**The nested anchor of #368 passes.** centaure2's hindquarters are a limb that is itself a body; its
+four legs are correctly assigned. That was the new case I could not predict.
+
+**Two archetypes have no list, and will not get one**: `serpentin`, whose trunk is 86 bones of 91 for
+ONE chain, and `complexe`, whose poses are attached to the file.
 
 ### Numbered when limbs are interchangeable
 
@@ -183,8 +204,9 @@ designed on a single example.
 **One clean quadruped only**, the dog. The cerberus is the other one, and it is the exception that
 motivated the whole discussion.
 
-**No centaur role list**, although three centaurs are in the corpus. They decompose correctly since
-#368 but nothing says which of their six limbs is an arm and which is a front leg.
+**The head and neck live on the TRUNK**, not on a chain, and the assignment only looks for chains.
+Measured across the seven non-humanoid fixtures: three heads out of seven are on the trunk, hence out
+of reach. The cerberus assigns `head` to one of its SIDE heads. That is task #381.
 
 ## What is left to build
 

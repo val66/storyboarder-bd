@@ -376,6 +376,20 @@ export function clesDeLArchetype3D(archetype, options){
     }
     return [...pattes, 'tail0'];
   }
+  if (archetype === 'centaure') {
+    // DEUX BRAS, QUATRE PATTES, UNE QUEUE OPTIONNELLE. Décision de l'utilisateur, et elle découle de
+    // sa règle générale : l'archétype définit sa liste, un modèle qui n'y entre pas n'en est pas un.
+    // Deux des quatre centaures du corpus n'ont que deux pattes ; le classement les propose
+    // `humanoide`, et c'est JUSTE, c'est un défaut du modèle, corrigeable à la main.
+    //
+    // DÉRIVÉE PAR COMPOSITION, pas écrite à la main : le haut vient du singe, `bipede_queue`, et les
+    // quatre pattes du loup, `quadrupede`. Un centaure est exactement cela, un torse d'humanoïde sur
+    // un corps de quadrupède. Ajouter une articulation à l'un des deux animaux la propage ici, ce
+    // qu'une liste recopiée n'aurait pas fait.
+    const haut = rolesDesAnimaux3D('bipede_queue').filter(c => familleDuRole3D(c) !== 'leg');
+    const bas = rolesDesAnimaux3D('quadrupede').filter(c => familleDuRole3D(c) === 'leg');
+    return trierParAnatomie3D([...new Set([...haut, ...bas])]);
+  }
   if (archetype === 'radial') {
     // NUMÉROTÉ, et le nombre vient du FICHIER : un radial n'a pas de compte canonique, le kraken en
     // a huit et le suivant en aura six ou douze. Une pose visant plus de membres que le modèle n'en
@@ -383,8 +397,12 @@ export function clesDeLArchetype3D(archetype, options){
     const n = Math.max(0, Number((options || {}).chaines) || 0);
     return Array.from({ length: n }, (_, i) => `tentacle${i}`);
   }
-  const derives = rolesDesAnimaux3D(archetype);
-  return derives.sort((a, b) => {
+  return trierParAnatomie3D(rolesDesAnimaux3D(archetype));
+}
+
+/** Range des rôles du tronc vers les extrémités, cf. ORDRE_MEMBRES_3D. Fonction PURE. */
+function trierParAnatomie3D(cles){
+  return [...cles].sort((a, b) => {
     const ra = rangDeMembre3D(a), rb = rangDeMembre3D(b);
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
     return 0;

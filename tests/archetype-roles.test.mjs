@@ -229,11 +229,30 @@ describe('Les archétypes déclarés, numérotés, et vides (#378a)', () => {
     radial.forEach(c => assert.ok(!c.startsWith('tail'), `${c} réutilise la clé de la queue`));
   });
 
+  test('le centaure a DEUX bras, QUATRE pattes et une queue', () => {
+    // Décision de l'utilisateur, et elle découle de sa règle générale : l'archétype définit sa
+    // liste, un modèle qui n'y entre pas n'en est pas un. Deux des quatre centaures du corpus n'ont
+    // que deux pattes ; le classement les propose `humanoide`, et c'est JUSTE.
+    //
+    // DÉRIVÉE PAR COMPOSITION : le haut vient du singe, les quatre pattes du loup. Un centaure est
+    // exactement cela. Une liste recopiée à la main n'aurait pas suivi l'ajout d'une articulation
+    // à l'un des deux animaux.
+    const cles = clesDeLArchetype3D('centaure');
+    assert.equal(cles.filter(c => /^shoulder|^elbow/.test(c)).length, 4, 'deux bras');
+    assert.equal(cles.filter(c => /^hip/.test(c)).length, 4, 'quatre pattes');
+    assert.ok(cles.includes('tail0') && cles.includes('head') && cles.includes('neck'));
+    assert.equal(cles.filter(c => /^wing/.test(c)).length, 0, 'un centaure n\'a pas d\'aile');
+    const membres = [...new Set(rolesDeLArchetype3D('centaure', {}, fr).map(r => r.membre))];
+    assert.equal(membres.length, 8, 'tête, deux bras, quatre pattes, queue');
+  });
+
   test('trois archétypes rendent une liste VIDE, et c\'est mesuré', () => {
-    // Un serpent n'a aucun membre. `complexe` porte des poses attachées au FICHIER, décision de
-    // l'utilisateur. Le centaure est un trou RECONNU : rien ne dit lequel de ses six membres est un
-    // bras et lequel est une patte avant, alors que trois centaures sont dans le corpus.
-    ['serpentin', 'centaure', 'complexe'].forEach(cle => {
+    // Un serpent n'a aucun membre, mesuré : son tronc fait 86 os sur 91 et il a UNE chaîne.
+    // `complexe` porte des poses attachées au FICHIER, décision de l'utilisateur, et le classement
+    // ne le propose jamais : c'est une porte de sortie qu'on ouvre à la main.
+    //
+    // Le centaure était le troisième, il ne l'est plus : l'utilisateur a tranché sa forme.
+    ['serpentin', 'complexe'].forEach(cle => {
       assert.deepEqual(clesDeLArchetype3D(cle), [], `${cle} a gagné des rôles inventés`);
       assert.deepEqual(rolesDeLArchetype3D(cle, {}, fr), []);
     });

@@ -115,8 +115,29 @@ Les réutiliser veut dire qu'un chien importé et le loup intégré **parlent la
 qu'une pose écrite une fois s'applique aux deux. C'était le but de l'alignement de #367, et ce n'est
 que maintenant que la raison apparaît.
 
-**Cinq archétypes n'ont pas encore de liste** : `centaure`, `arachnide`, `radial`, `serpentin`,
-`complexe`. Ils n'ont aucun animal intégré dont la dériver.
+**Le centaure : deux bras, quatre pattes, une queue.** Décision de l'utilisateur, et elle découle de
+sa règle générale : l'archétype définit sa liste, un modèle qui n'y entre pas n'en est pas un.
+
+**Dérivée par COMPOSITION**, pas écrite à la main : le haut vient du singe (`bipede_queue`), les
+quatre pattes du loup (`quadrupede`). Un centaure est exactement cela, un torse d'humanoïde sur un
+corps de quadrupède. Ajouter une articulation à l'un des deux animaux la propage ici.
+
+⚠️ **Deux des quatre centaures du corpus n'ont que deux pattes**, et le classement les propose
+`humanoide`. C'est JUSTE : c'est un défaut du modèle, corrigeable d'un coup de sélecteur. Mesuré sur
+les quatre :
+
+| fichier | ce que le fichier porte | membres dépliés sur 8 |
+|---|---|---|
+| centaure2 | 2 bras, 4 pattes | 6 |
+| centaure3 | 2 bras, 4 pattes, 1 queue | 5 |
+| centaure1 | 2 bras, 2 pattes, 1 queue, 39 chaînes illisibles | 7 |
+| centaure | 2 bras, 2 pattes | 6 |
+
+**L'ancre imbriquée de #368 passe.** L'arrière-train de centaure2 est un membre qui est lui-même un
+corps ; ses quatre pattes sont bien attribuées. C'était le cas neuf que je ne savais pas prédire.
+
+**Deux archétypes n'ont pas de liste, et n'en auront pas** : `serpentin`, dont le tronc fait 86 os sur
+91 pour UNE chaîne, et `complexe`, dont les poses sont attachées au fichier.
 
 ### Numéroté quand les membres sont permutables
 
@@ -194,9 +215,9 @@ conçue sur un seul exemple.
 **Un seul quadrupède propre**, le chien. Le cerbère est l'autre, et c'est l'exception qui a motivé
 toute la discussion.
 
-**Aucune liste de rôles pour le centaure**, alors que trois centaures sont dans le corpus. Ils se
-décomposent correctement depuis #368, mais rien ne dit lequel de leurs six membres est un bras et
-lequel est une patte avant.
+**La tête et le cou vivent sur le TRONC**, pas sur une chaîne, et l'attribution ne cherche que des
+chaînes. Mesuré sur les sept fixtures non humanoïdes : trois têtes sur sept sont sur le tronc, donc
+hors d'atteinte. Le cerbère attribue `head` à une de ses têtes LATÉRALES. C'est la tâche #381.
 
 ## Ce qui reste à construire
 
