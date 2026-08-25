@@ -3,7 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.38. Les étapes 1 à 3, #363, #364 et #365 sont livrées ; #366 à #368 sont ouvertes.
+> À jour de la v1.4.39. Les étapes 1 à 3, #363 à #365 et #368 sont livrées ; #366 et #367 sont ouvertes.
 
 ## Où l'on en est
 
@@ -33,7 +33,7 @@ Douze créatures riggées, réduites à leur hiérarchie d'os dans `tests/fixtur
 | raptor | 96 | bipède à tronc HORIZONTAL, queue de 14 os |
 | centaure | 66 | riggé en bipède Mixamo malgré le corps de cheval |
 | centaur1 | 130 | **colonne bifurquée**, trois paires, tronc explicite |
-| centaur2 | 74 | un MEMBRE qui est lui-même un corps portant 4 pattes, invisible pour la décomposition |
+| centaur2 | 74 | un MEMBRE qui est lui-même un corps portant 4 pattes. A imposé la descente récursive (#368) |
 | centaur3 | 79 | rig CAT 3ds Max, **deux `Hub`**, côté illisible sans la 6e convention |
 
 Les six squelettes humanoïdes de `tests/skeleton-map.test.mjs` sont la contrainte de
@@ -177,10 +177,11 @@ Deux corrections mesurées y ont été faites, et la seconde a révélé autre c
 centaure2 « n'est pas riggé ». Le vocabulaire proposait « Patte » là où j'attendais rien, parce que
 la chaîne contient `UpperBackRightLeg`. Voir la limite ci-dessous.
 
-## La limite que centaure2 a révélée (#368)
+## Descendre dans un membre (#368, faite)
 
-`membresDuSquelette3D` **ne descend jamais dans un membre**. Elle suit le tronc depuis la racine, et
-tout ce qui s'en détache devient une chaîne terminale.
+`membresDuSquelette3D` **ne descendait jamais dans un membre**. Elle suivait le tronc depuis la
+racine, et tout ce qui s'en détachait devenait une chaîne terminale, examinée par une seconde
+fonction qui, elle, ignorait ses propres branches.
 
 Sur centaure2, `LowerBody1` est une branche de `RootBone`, donc un membre. Elle porte pourtant les
 quatre pattes du cheval, sabots compris et correctement latéralisées :
@@ -192,11 +193,36 @@ LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > … > LowerBackRightH
            > UpperForeRightLeg > …
 ```
 
-Résultat : une chaîne de 7 os, et **neuf os de patte sur douze ne sont atteints par rien**.
+Résultat avant correction : une chaîne de 7 os, et **neuf os de patte sur douze atteints par rien**.
+Ce n'était pas un cas particulier : **un membre qui est lui-même un corps portant des membres était
+invisible**, et c'est exactement ce qu'est un centaure.
 
-Ce n'est pas un cas particulier, c'est la limite générale : **un membre qui est lui-même un corps
-portant des membres est invisible**. C'est exactement ce qu'est un centaure, et centaure1 comme
-centaure3 n'y échappent que parce que leur bifurcation est SUR le tronc.
+**LA RÈGLE, ENCORE ÉLARGIE D'UN CRAN, ET C'EST TOUJOURS LA MÊME.** Est un membre une branche qui
+porte **un côté que SA CHAÎNE n'a pas**.
+
+- sur le tronc, qui n'a pas de côté, toute branche latéralisée en est un : c'est l'ancienne règle,
+  mot pour mot, d'où l'absence de régression sur les humanoïdes ;
+- dans un bras GAUCHE, une branche gauche de plus n'est qu'un doigt, elle continue la chaîne ;
+- dans le corps du cheval, qui n'a pas de côté, une branche gauche est une patte.
+
+Une seule fonction parcourt désormais le tronc et chaque membre, et la file se vide en largeur
+d'abord.
+
+**Ce que la mesure donne, et le rayon d'action est petit :**
+
+| | avant | après |
+|---|---|---|
+| centaure2 | 3 membres, 9 os de patte perdus | 7 membres, **0 perdu**, les 4 pattes ancrées sur le corps |
+| araignée | 16 | 30, les petites paires terminales de chaque segment apparaissent |
+| oiseau | 27 | 31 | 
+| unreal | 185 | 222, sous-chaînes faciales (mâchoire, nez, dents) |
+| maison | 21 | 27 |
+| **cerbère, kraken, serpent, dragon, chien, centaure, raptor, centaure3, mixamo, vrm, vroid** | | **inchangés** |
+
+**Ce qui n'est PAS fait, et c'est délibéré.** Dans un membre, les branches délaissées restent
+abandonnées, comme avant. Les rendre toutes ferait de chaque doigt d'un humanoïde un membre à part
+et passerait le rig Unreal de 222 chaînes à 464. Question distincte, à trancher séparément si elle
+se pose.
 
 ## Les archétypes
 
@@ -271,7 +297,7 @@ conséquence pour l'instant : ce sont deux humanoïdes, reconnus par le nom.
 **#365, le vocabulaire de nommage. FAITE.** Table de priorité, découpage en mots, 51 % de
 couverture mesurée. Le défaut connu est corrigé : `CATRigLLeg1` sort « Patte ».
 
-**#368, descendre dans un membre.** Révélée par centaure2, cf. la section ci-dessus. Nouvelle.
+**#368, descendre dans un membre. FAITE.** Cf. la section dédiée ci-dessus.
 
 **#366, les tables d'archétypes**, extraites d'`ANIMAL_JOINT_DEFS`, et le sélecteur qui propose sans
 décider.

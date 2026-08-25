@@ -536,3 +536,39 @@ describe('bonesFromObject3D : extraire les os d\'une scène décodée', () => {
       assert.deepEqual(bonesFromObject3D(x), []));
   });
 });
+
+describe('inferSkeletonMap : le squelette à PLUSIEURS racines', () => {
+  // TROU DE TEST TROUVÉ PAR MUTATION, pendant la tâche #368. Les six rigs réels de ce fichier et
+  // les douze créatures ont tous UNE seule racine : le tri « la racine la plus fournie d'abord »
+  // n'y change donc jamais rien, et l'inverser ne faisait échouer aucun test.
+  //
+  // Ce n'est pas du code mort. Un `.glb` peut déclarer plusieurs os racines dans son `skin`, un
+  // accessoire riggé à part par exemple, et retenir le mauvais donnerait une carte entièrement
+  // vide. La garde se monte à la main faute d'exister dans le corpus.
+  const os = [
+    { id: 1, name: 'Prop_root', children: [2] },
+    { id: 2, name: 'Prop_tip', children: [] },
+    { id: 10, name: 'Hips', children: [11, 20, 30] },
+    { id: 11, name: 'Spine', children: [12] },
+    { id: 12, name: 'Chest', children: [13] },
+    { id: 13, name: 'Neck', children: [14] },
+    { id: 14, name: 'Head', children: [] },
+    { id: 20, name: 'LeftUpLeg', children: [21] },
+    { id: 21, name: 'LeftLeg', children: [22] },
+    { id: 22, name: 'LeftFoot', children: [] },
+    { id: 30, name: 'RightUpLeg', children: [31] },
+    { id: 31, name: 'RightLeg', children: [32] },
+    { id: 32, name: 'RightFoot', children: [] },
+  ];
+
+  test('le corps est reconnu, pas l\'accessoire déclaré en premier', () => {
+    const carte = inferSkeletonMap(os);
+    assert.equal(carte.bassin.name, 'Hips');
+    assert.equal(carte.cuisse_g.name, 'LeftUpLeg');
+    assert.equal(carte.cuisse_d.name, 'RightUpLeg');
+  });
+
+  test('l\'ordre de déclaration ne change rien', () => {
+    assert.equal(inferSkeletonMap([...os].reverse()).bassin.name, 'Hips');
+  });
+});

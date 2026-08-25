@@ -494,47 +494,92 @@ export function membresDuSquelette3D(os){
     return n;
   };
 
-  /** La chaîne sous un os, en suivant toujours la branche la plus profonde. */
-  const chaineDepuis = (depart) => {
-    const sortie = [];
-    let id = depart, garde = 0;
+  /**
+   * Parcourt UNE chaîne, et rend ce qui s'en détache.
+   *
+   * LA MÊME FONCTION SERT AU TRONC ET À CHAQUE MEMBRE, et c'est tout l'objet de la tâche #368. La
+   * version précédente avait deux traitements : une boucle qui descendait le tronc en examinant ses
+   * branches, et `chaineDepuis` qui suivait un membre en IGNORANT les siennes. D'où le défaut :
+   * un membre qui est lui-même un corps portant des membres était invisible.
+   *
+   * CE QUE CENTAURE2 A MONTRÉ. `LowerBody1` est une branche de la racine, donc un membre. Elle
+   * porte pourtant les quatre pattes du cheval, sabots compris. Elles étaient avalées dans une
+   * chaîne de sept os, et neuf os de patte sur douze n'étaient atteints par rien. Ce n'est pas un
+   * cas particulier : c'est ce qu'est un centaure.
+   *
+   * @param {*} debut premier os de la chaîne
+   * @param {'g'|'d'|null} coteChaine le côté que porte CETTE chaîne
+   * @param {boolean} estTronc le tronc rend ses annexes sans côté (queue, tête) ; un membre non
+   */
+  const parcourir = (debut, coteChaine, estTronc) => {
+    const segments = [];
+    const sorties = [];
+    let id = debut, garde = 0;
+
     while (id !== null && id !== undefined && garde++ < 200) {
-      sortie.push(id);
-      id = suivant(id, ctx);
+      segments.push(id);
+      const enfants = branches(id, ctx, 0);
+
+      // UN CÔTÉ QUE LA CHAÎNE N'A PAS, voilà ce qui fait un membre, et c'est la règle du fichier
+      // généralisée d'un cran. Sur le tronc, qui n'a pas de côté, toute branche latéralisée en est
+      // un : c'est l'ancienne règle, mot pour mot. Dans un bras GAUCHE, une branche gauche de plus
+      // n'est qu'un doigt, elle continue la chaîne ; mais dans le corps du cheval, qui n'a pas de
+      // côté, une branche gauche est bel et bien une patte.
+      const etrangers = enfants.filter(c => {
+        const k = coteDuNom(ctx.parId.get(c).name);
+        return k !== null && k !== coteChaine;
+      });
+      const gauches = etrangers.filter(c => coteDuNom(ctx.parId.get(c).name) === 'g');
+      const droites = etrangers.filter(c => coteDuNom(ctx.parId.get(c).name) === 'd');
+
+      // Les paires, appariées RANG PAR RANG. Une ancre peut en porter plusieurs : le kraken en a
+      // quatre sur la sienne, l'araignée une par segment de corps. Zipper les deux listes dans leur
+      // ordre d'apparition est le seul appariement disponible, la liste d'os neutre ne portant aucune
+      // coordonnée qui permettrait de trier d'avant en arrière.
+      const paires = Math.max(gauches.length, droites.length);
+      for (let i = 0; i < paires; i++) {
+        if (gauches[i] !== undefined) sorties.push({ ancre: id, cote: 'g', rang: i + 1, depart: gauches[i] });
+        if (droites[i] !== undefined) sorties.push({ ancre: id, cote: 'd', rang: i + 1, depart: droites[i] });
+      }
+
+      const suite = enfants.filter(c => !etrangers.includes(c));
+      if (!suite.length) break;
+
+      // LA PLUS FOURNIE DES BRANCHES RESTANTES CONTINUE LA CHAÎNE. C'est ce choix qui mène le tronc
+      // jusqu'à la tête : chez le cerbère, `Neck_07` porte deux clavicules (avec côté, donc
+      // membres) et `Neck1` (sans côté, donc suite), là où la descente par profondeur partait dans
+      // une patte avant.
+      //
+      // UNE SEULE MESURE, ET C'EST UNE SIMPLIFICATION DUE À LA MUTATION. Le tronc triait par taille
+      // de descendance, un membre suivait la branche la plus PROFONDE, héritage de l'ancienne
+      // `chaineDepuis`. Intervertir les deux ne fait échouer aucun test : sur les dix-sept
+      // squelettes, les deux mesures désignent toujours la même branche. Deux critères qui ne se
+      // départagent nulle part sont un critère de trop, et celui du tronc est le seul dont un cas
+      // réel justifie le choix.
+      const triees = [...suite].sort((a, b) => taille(b) - taille(a));
+      // Les branches délaissées ne deviennent des membres QUE sur le tronc : ce sont ses annexes,
+      // queue et têtes surnuméraires. Dans un membre, les rendre ferait de chaque doigt d'un
+      // humanoïde un membre à part, et passerait le rig Unreal de 222 chaînes à 464. Question
+      // distincte de #368, à trancher séparément si elle se pose.
+      if (estTronc) triees.slice(1).forEach(c => sorties.push({ ancre: id, cote: coteChaine, rang: 1, depart: c }));
+      id = triees[0];
     }
-    return sortie;
+    return { segments, sorties };
   };
 
-  const tronc = [];
+  const depart = racines.sort((a, b) => taille(b.id) - taille(a.id))[0].id;
+  const { segments: tronc, sorties } = parcourir(depart, null, true);
+
+  // Largeur d'abord : les membres du tronc, puis ce qu'ils portent à leur tour. L'ordre du tronc
+  // reste donc en tête, et un membre de second rang suit celui dont il dépend.
   const membres = [];
-  let courant = racines.sort((a, b) => taille(b.id) - taille(a.id))[0].id;
-  let garde = 0;
-
-  while (courant !== null && courant !== undefined && garde++ < 200) {
-    tronc.push(courant);
-    const enfants = branches(courant, ctx, 0);
-    const gauches = enfants.filter(c => coteDuNom(ctx.parId.get(c).name) === 'g');
-    const droites = enfants.filter(c => coteDuNom(ctx.parId.get(c).name) === 'd');
-    const sansCote = enfants.filter(c => coteDuNom(ctx.parId.get(c).name) === null);
-
-    // Les paires, appariées RANG PAR RANG. Une ancre peut en porter plusieurs : le kraken en a
-    // quatre sur la sienne, l'araignée une par segment de corps. Zipper les deux listes dans leur
-    // ordre d'apparition est le seul appariement disponible, la liste d'os neutre ne portant aucune
-    // coordonnée qui permettrait de trier d'avant en arrière.
-    const paires = Math.max(gauches.length, droites.length);
-    for (let i = 0; i < paires; i++) {
-      if (gauches[i] !== undefined) membres.push({ ancre: courant, cote: 'g', rang: i + 1, segments: chaineDepuis(gauches[i]) });
-      if (droites[i] !== undefined) membres.push({ ancre: courant, cote: 'd', rang: i + 1, segments: chaineDepuis(droites[i]) });
-    }
-
-    if (!sansCote.length) break;
-    // La plus fournie des branches sans côté CONTINUE le tronc, les autres en sont des annexes.
-    // C'est ce choix qui mène jusqu'à la tête : chez le cerbère, `Neck_07` porte deux clavicules
-    // (avec côté, donc membres) et `Neck1` (sans côté, donc tronc), là où la descente par
-    // profondeur partait dans une patte avant.
-    const triees = [...sansCote].sort((a, b) => taille(b) - taille(a));
-    triees.slice(1).forEach(c => membres.push({ ancre: courant, cote: null, rang: 1, segments: chaineDepuis(c) }));
-    courant = triees[0];
+  const file = [...sorties];
+  let tour = 0;
+  while (file.length && tour++ < 5000) {
+    const s = file.shift();
+    const { segments, sorties: enDessous } = parcourir(s.depart, s.cote, false);
+    membres.push({ ancre: s.ancre, cote: s.cote, rang: s.rang, segments });
+    enDessous.forEach(x => file.push(x));
   }
 
   return { tronc, membres };

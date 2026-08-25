@@ -306,19 +306,22 @@ describe('membresDuSquelette3D : les huit pattes de l\'araignée', () => {
     assert.equal(new Set(pattes.map(m => m.ancre)).size, 4, 'sur quatre ancres distinctes');
   });
 
-  test('le dernier segment porte TROIS paires de plus, et ce ne sont pas des pattes', () => {
+  test('des paires d\'appendices en plus, sur QUATRE ancres depuis #368', () => {
     // MON ASSERTION ÉTAIT FAUSSE AVANT CELLE-CI, et c'est le fichier qui a corrigé : je comptais
-    // huit membres latéraux, il y en a douze. Le dernier segment du tronc porte trois paires
-    // supplémentaires, de 6, 5 et 1 os. Sur une araignée ce sont les pédipalpes et les chélicères,
+    // huit membres latéraux, il y en avait douze. Le dernier segment du tronc porte des paires
+    // supplémentaires de 6, 5 et 1 os. Sur une araignée ce sont les pédipalpes et les chélicères,
     // appendices buccaux bien réels et parfaitement posables.
     //
-    // Consigné parce que c'est exactement ce que la décomposition générique doit savoir faire : ne
-    // pas décider d'avance combien de paires un corps peut porter.
+    // #368 EN A RÉVÉLÉ D'AUTRES. La descente récursive trouve maintenant vingt appendices latéraux
+    // au lieu de six, répartis sur quatre ancres au lieu d'une : chaque segment de corps porte,
+    // au bout de sa patte ou de son appendice, une petite paire terminale d'un seul os qui était
+    // avalée par la chaîne. Consigné parce que c'est exactement ce que la décomposition doit
+    // savoir faire : ne pas décider d'avance combien de paires un corps peut porter.
     const derniere = r.membres.filter(m => m.cote && m.segments.length !== 7);
-    assert.equal(derniere.length, 6, 'trois paires : 6 os, 5 os, et une de 1 os');
-    assert.equal(new Set(derniere.map(m => m.ancre)).size, 1, 'toutes sur la même ancre');
-    assert.deepEqual(derniere.map(m => m.rang), [1, 1, 2, 2, 3, 3]);
-    assert.deepEqual(derniere.map(m => m.segments.length), [6, 6, 5, 5, 1, 1]);
+    assert.equal(derniere.length, 20);
+    assert.equal(new Set(derniere.map(m => m.ancre)).size, 4);
+    assert.deepEqual(derniere.map(m => m.segments.length),
+      [6, 6, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
   });
 });
 
@@ -380,16 +383,22 @@ describe('membresDuSquelette3D : un rig humanoïde propre ne donne QUE quatre me
 });
 
 describe('membresDuSquelette3D : le bruit mesuré, que l\'étape 3 devra trier', () => {
-  test('rig Unreal : 185 membres, dont 131 de DEUX os', () => {
+  test('rig Unreal : 222 membres, dont 156 de DEUX os', () => {
     // Os de torsion, correctifs, auxiliaires `FX_`, `_twist_`. Ils forment de vraies paires
-    // latérales, la règle les attrape donc légitimement. Ce qui manque n'est pas une exception à la
-    // règle, c'est un critère d'IMPORTANCE, et ce chiffre le donne : la longueur sépare nettement
-    // les quatre vrais membres (6 à 10 os) du bruit (2 os).
+    // latérales, la règle les attrape donc légitimement.
+    //
+    // ⚠️ LE COMMENTAIRE D'ORIGINE CONCLUAIT ICI QUE « la longueur sépare nettement les vrais
+    // membres du bruit ». C'ÉTAIT FAUX, mesuré sur un seul rig, et l'étape 3 l'a démenti sur le
+    // corpus entier, cf. le test « la longueur NE sépare PAS » plus bas.
+    //
+    // Le passage de 185 à 222 vient de #368 : la descente récursive atteint les sous-chaînes
+    // faciales (mâchoire, nez, dents) qui portent leurs propres paires latérales, invisibles tant
+    // qu'on ne descendait pas dans un membre.
     const r = membresDuSquelette3D(charger('unreal'));
-    assert.equal(r.membres.length, 185);
+    assert.equal(r.membres.length, 222);
     const parLongueur = {};
     r.membres.forEach(m => { parLongueur[m.segments.length] = (parLongueur[m.segments.length] || 0) + 1; });
-    assert.equal(parLongueur[2], 131);
+    assert.equal(parLongueur[2], 156);
     assert.equal(r.membres.filter(m => m.segments.length >= 6).length, 6, 'six chaînes longues seulement');
   });
 
@@ -460,7 +469,7 @@ describe('étape 3 : la longueur NE sépare PAS, mesuré', () => {
         if (ECHAFAUDAGE.test(n)) trouves.push(n);
       });
     });
-    assert.equal(trouves.length, 62, 'le compte d\'échafaudages du corpus a changé');
+    assert.equal(trouves.length, 67, 'le compte d\'échafaudages du corpus a changé');
     // ⚠️ LA GARDE SE FAIT SUR DES NOMS EXACTS, pas sur un mot contenu. Ma première version
     // cherchait « thigh » quelque part dans le nom, et elle a accusé le filet à tort :
     // `thigh_vol_end_rSocket` est une prise d'attache, pas une cuisse. Le mot d'une partie du corps
@@ -549,40 +558,57 @@ describe('centaure1 : LA COLONNE BIFURQUÉE, enfin', () => {
   });
 });
 
-describe('centaure2 : un membre qui est lui-même un corps', () => {
+describe('centaure2 : un membre qui est lui-même un corps (#368)', () => {
   const os = charger('centaure2');
   const parId = new Map(os.map(o => [o.id, o]));
+  const nom = (id) => parId.get(id).name;
   const r = membresDuSquelette3D(os);
 
-  test('UNE SEULE paire trouvée, alors que le fichier en contient trois', () => {
-    // ⚠️ CORRECTION D'UNE AFFIRMATION DE #364. J'ai d'abord écrit ici que l'arrière-train « n'est
-    // pas riggé » et que « le fichier ne contient pas l'information ». C'était FAUX, et le test du
-    // vocabulaire (#365) l'a débusqué : il proposait « Patte » là où j'attendais rien, parce que
-    // la chaîne contient `UpperBackRightLeg`. Le cheval a bien ses quatre pattes et ses sabots.
-    //
-    // LE DÉFAUT EST DANS LA DÉCOMPOSITION. `membresDuSquelette3D` descend le tronc depuis la
-    // racine, et tout ce qui s'en détache devient un membre. `LowerBody1` est une branche de
-    // `RootBone` : elle devient donc UN membre de 7 os, et la fonction n'examine jamais les
-    // branches d'un membre. Les quatre pattes du cheval sont avalées dedans.
-    //
-    // C'est la limite générale, pas un cas particulier : un membre qui est lui-même un corps
-    // portant des membres est invisible. C'est exactement ce qu'est un centaure. Tâche #368.
-    assert.equal(r.membres.filter(m => m.cote).length, 2, 'seuls les bras humains sont vus');
-    const bas = r.membres.find(m => parId.get(m.segments[0]).name.startsWith('LowerBody'));
-    assert.ok(bas, 'l\'arrière-train est là, mais en un seul morceau');
-    assert.equal(bas.cote, null);
-    assert.equal(bas.segments.length, 7);
+  // L'HISTOIRE DE CE FICHIER, en trois temps, parce qu'elle vaut mieux que son résultat.
+  //
+  //   #364 : j'ai écrit ici que l'arrière-train « n'est pas riggé » et que « le fichier ne contient
+  //     pas l'information ». Affirmation commise dans un test ET dans la doc, sans l'avoir
+  //     vérifiée ;
+  //   #365 : le vocabulaire de nommage proposait « Patte » là où j'attendais rien. La chaîne
+  //     contenait `UpperBackRightLeg`. Le cheval a ses quatre pattes et ses sabots, correctement
+  //     latéralisés ;
+  //   #368 : le défaut était dans la DÉCOMPOSITION, qui suivait un membre sans jamais examiner ses
+  //     branches. `LowerBody1` est une branche de la racine, donc un membre, et elle avalait les
+  //     quatre pattes dans une chaîne de sept os.
+  //
+  // La règle qui corrige est celle du fichier généralisée d'un cran : est un membre une branche qui
+  // porte un côté que SA CHAÎNE n'a pas. Sur le tronc, sans côté, c'est l'ancienne règle mot pour
+  // mot. Dans un bras gauche, une branche gauche de plus n'est qu'un doigt. Dans le corps du
+  // cheval, qui n'a pas de côté, une branche gauche est une patte.
+
+  test('les quatre pattes du cheval sont des membres, sur le CORPS et non sur le tronc', () => {
+    const pattes = r.membres.filter(m => /Leg/.test(nom(m.segments[0])));
+    assert.equal(pattes.length, 4);
+    assert.deepEqual(pattes.map(m => `${m.cote} ${nom(m.ancre)}`), [
+      'g LowerBody1_033', 'd LowerBody1_033',   // antérieures, sur le premier os du corps
+      'g LowerBody3_035', 'd LowerBody3_035',   // postérieures, deux os plus loin
+    ]);
+    // L'ancre est un os du CORPS, pas du tronc : c'est ce qui fait la récursion, et c'est ce qui
+    // permettra à un archétype Centaure de rattacher les pattes au bon endroit.
+    pattes.forEach(m => assert.ok(!r.tronc.includes(m.ancre), 'ancrée hors du tronc'));
   });
 
-  test('ce que le fichier contient VRAIMENT, et qui n\'est pas atteint', () => {
+  test('le corps du cheval reste un membre, réduit à ce qu\'il est vraiment', () => {
+    const bas = r.membres.find(m => nom(m.segments[0]).startsWith('LowerBody'));
+    assert.equal(bas.cote, null, 'le corps n\'a pas de côté, ce sont ses pattes qui en ont un');
+    assert.equal(bas.segments.length, 3, 'trois os, contre sept quand il avalait une patte');
+    assert.deepEqual(bas.segments.map(nom), ['LowerBody1_033', 'LowerBody2_034', 'LowerBody3_035']);
+  });
+
+  test('PLUS AUCUN os de patte n\'est perdu, contre neuf sur douze avant', () => {
     const atteints = new Set(r.membres.flatMap(m => m.segments).concat(r.tronc));
     const pattes = os.filter(o => /Leg|Hoof/.test(o.name) && !/_end/.test(o.name));
     assert.equal(pattes.length, 12, 'quatre pattes de trois os');
-    const perdus = pattes.filter(o => !atteints.has(o.id));
-    // NEUF sur douze, et les trois « atteints » ne valent pas mieux : ce sont les os de la patte
-    // arrière droite, avalés au bout de la chaîne `LowerBody`, donc impossibles à piloter comme
-    // une patte. Trois pattes sur quatre sont purement et simplement absentes du résultat.
-    assert.equal(perdus.length, 9, 'neuf os de patte ne sont dans aucune chaîne');
+    assert.deepEqual(pattes.filter(o => !atteints.has(o.id)), []);
+  });
+
+  test('trois paires au total, alors qu\'une seule était vue', () => {
+    assert.equal(r.membres.filter(m => m.cote).length, 6, 'deux bras et quatre pattes');
   });
 });
 
@@ -774,42 +800,30 @@ describe('nomSuggereDeChaine3D : mesuré sur le corpus', () => {
     });
   });
 
-  test('⚠️ CENTAURE2 M\'A DÉMENTI, et c\'est ce test qui l\'a débusqué', () => {
-    // J'avais écrit en #364, dans un test ET dans la doc, que l'arrière-train de centaure2 « n'est
-    // pas riggé » et qu'« aucune reconnaissance ne rattrapera » le cas. C'EST FAUX. Le fichier
-    // contient les quatre pattes du cheval, sabots compris, correctement latéralisées :
+  test('⚠️ CE TEST A DÉBUSQUÉ UN DÉFAUT DE LA DÉCOMPOSITION', () => {
+    // Il proposait « Patte » sur centaure2 là où j'attendais rien, parce que la chaîne contenait
+    // `UpperBackRightLeg`. J'avais affirmé en #364, dans un test ET dans la doc, que
+    // l'arrière-train de ce fichier « n'est pas riggé ». C'était faux, et c'est le vocabulaire qui
+    // l'a montré : il lit les noms, et les noms disaient « patte ».
     //
-    //   LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > LowerBackRightLeg > …Hoof
-    //                                        > UpperBackLeftLeg  > …
-    //             > UpperForeLeftLeg  > …
-    //             > UpperForeRightLeg > …
-    //
-    // LE DÉFAUT EST DANS LA DÉCOMPOSITION, PAS DANS LE FICHIER. `membresDuSquelette3D` ne descend
-    // le tronc que depuis la racine ; `LowerBody1` est une BRANCHE de `RootBone`, donc un membre,
-    // et la fonction n'examine jamais les branches d'un membre. Un membre qui est lui-même un corps
-    // portant des membres est invisible. C'est exactement ce qu'est un centaure.
-    //
-    // Suite dans la tâche #368. Ce test épingle le comportement ACTUEL, faux, pour qu'on mesure la
-    // correction quand elle viendra.
-    const os = charger('centaure2');
-    const parId = new Map(os.map(o => [o.id, o]));
-    const r = membresDuSquelette3D(os);
-    const bas = r.membres.find(m => parId.get(m.segments[0]).name.startsWith('LowerBody'));
-    assert.equal(bas.segments.length, 7, 'les quatre pattes sont AVALÉES dans une seule chaîne');
-    const pattes = os.filter(o => /Leg|Hoof/.test(o.name) && !/_end/.test(o.name));
-    assert.equal(pattes.length, 12, 'douze os de patte bien présents dans le fichier');
-    assert.equal(coteDuNom('UpperBackRightLeg'), 'd', 'et parfaitement latéralisés');
+    // Le défaut n'était pas ici mais dans `membresDuSquelette3D`, corrigé par #368. Ce test reste
+    // pour garder la trace de qui a trouvé quoi : un outil qui LIT les données finit par contredire
+    // ce qu'on croit savoir d'elles, à condition de le laisser parler.
+    const proposes = nomsProposes('centaure2').filter(Boolean);
+    assert.ok(proposes.filter(n => n === 'Patte').length >= 4,
+      'les quatre pattes du cheval doivent se nommer');
+    assert.equal(coteDuNom('UpperBackRightLeg'), 'd', 'et leur côté se lit sans peine');
   });
 
-  test('la couverture globale du corpus est de 51 %', () => {
+  test('la couverture globale du corpus est de 49 %', () => {
     // Chiffre épinglé pour qu'un ajout de mots se mesure au lieu de se supposer. Il DOIT changer
     // quand la table change : c'est un instantané, pas un objectif.
     const noms = ['cerbere', 'araignee', 'kraken', 'serpent', 'dragon', 'chien', 'oiseau',
       'centaure', 'raptor', 'centaure1', 'centaure2', 'centaure3', 'maison', 'vrm', 'unreal'];
     let total = 0, nommees = 0;
     noms.forEach(n => nomsProposes(n).forEach(s => { total++; if (s) nommees++; }));
-    assert.equal(total, 392);
-    assert.equal(nommees, 198);
+    assert.equal(total, 457);
+    assert.equal(nommees, 226);
   });
 
   test('la traduction passe par le paramètre, jamais par un import d\'état', () => {
@@ -819,5 +833,38 @@ describe('nomSuggereDeChaine3D : mesuré sur le corpus', () => {
     assert.equal(nomSuggereDeChaine3D(['Tail_01'], en), 'Tail');
     assert.equal(nomSuggereDeChaine3D(['Tail_01'], tr), 'Queue');
     assert.equal(nomSuggereDeChaine3D(['Tail_01']), 'Tail', 'sans traducteur, l\'anglais');
+  });
+});
+
+describe('membresDuSquelette3D : le squelette à PLUSIEURS racines', () => {
+  // TROU DE TEST TROUVÉ PAR MUTATION. Les dix-sept fixtures ont toutes exactement UNE racine, donc
+  // le tri « la racine la plus fournie d'abord » n'y change jamais rien : l'inverser ne faisait
+  // échouer aucun test. Ce n'est pas du code mort pour autant, un `.glb` peut parfaitement déclarer
+  // plusieurs os racines dans son `skin`, et prendre le mauvais donnerait un tronc d'un seul os.
+  //
+  // Le cas n'existant pas dans le corpus, il se monte à la main. C'est l'exception assumée : un
+  // squelette de fixture épingle du RÉEL, un squelette monté épingle une garde.
+  const os = [
+    { id: 1, name: 'Accessoire', children: [2] },
+    { id: 2, name: 'Accessoire_bout', children: [] },
+    { id: 10, name: 'Hips', children: [11, 20, 30] },
+    { id: 11, name: 'Spine', children: [12] },
+    { id: 12, name: 'Head', children: [] },
+    { id: 20, name: 'LeftUpLeg', children: [21] },
+    { id: 21, name: 'LeftLeg', children: [] },
+    { id: 30, name: 'RightUpLeg', children: [31] },
+    { id: 31, name: 'RightLeg', children: [] },
+  ];
+
+  test('la racine la PLUS FOURNIE porte le tronc, pas la première venue', () => {
+    const r = membresDuSquelette3D(os);
+    assert.deepEqual(r.tronc, [10, 11, 12], 'le corps, pas l\'accessoire à deux os');
+    assert.equal(r.membres.filter(m => m.cote).length, 2, 'les deux jambes');
+  });
+
+  test('l\'ordre de déclaration ne change rien', () => {
+    // La garde vaut surtout contre un fichier où l'accessoire est déclaré en premier.
+    const inverse = [...os].reverse();
+    assert.deepEqual(membresDuSquelette3D(inverse).tronc, [10, 11, 12]);
   });
 });

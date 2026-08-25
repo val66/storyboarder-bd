@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.38. Steps 1 to 3, #363, #364 and #365 are shipped; #366 to #368 are open.
+> Up to date as of v1.4.39. Steps 1 to 3, #363 to #365 and #368 are shipped; #366 and #367 are open.
 
 ## Where things stand
 
@@ -32,7 +32,7 @@ Twelve rigged creatures, reduced to their bone hierarchy in `tests/fixtures`, pi
 | raptor | 96 | biped with a HORIZONTAL trunk, 14-bone tail |
 | centaur | 66 | rigged as a Mixamo biped despite the horse body |
 | centaur1 | 130 | **forking spine**, three pairs, explicit trunk |
-| centaur2 | 74 | a LIMB that is itself a body carrying 4 legs, invisible to the decomposition |
+| centaur2 | 74 | a LIMB that is itself a body carrying 4 legs. Forced the recursive descent (#368) |
 | centaur3 | 79 | 3ds Max CAT rig, **two `Hub`s**, side unreadable without the 6th convention |
 
 The six humanoid skeletons in `tests/skeleton-map.test.mjs` are the non-regression constraint: no
@@ -172,10 +172,11 @@ Two measured corrections went in, and the second revealed something else:
 not rigged". The vocabulary proposed "Leg" where I expected nothing, because the chain contains
 `UpperBackRightLeg`. See the limit below.
 
-## The limit centaur2 revealed (#368)
+## Descending into a limb (#368, done)
 
-`membresDuSquelette3D` **never descends into a limb**. It follows the trunk from the root, and
-anything branching off it becomes a terminal chain.
+`membresDuSquelette3D` **never descended into a limb**. It followed the trunk from the root, and
+anything branching off it became a terminal chain, walked by a second function that in turn ignored
+its own branches.
 
 On centaur2, `LowerBody1` is a branch of `RootBone`, hence a limb. Yet it carries the horse's four
 legs, hooves included and correctly sided:
@@ -187,11 +188,34 @@ LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > … > LowerBackRightH
            > UpperForeRightLeg > …
 ```
 
-Result: one 7-bone chain, and **nine of the twelve leg bones are reached by nothing**.
+Result before the fix: one 7-bone chain, and **nine of the twelve leg bones reached by nothing**.
+Not a special case: **a limb that is itself a body carrying limbs was invisible**, and that is
+exactly what a centaur is.
 
-This is not a special case, it is the general limit: **a limb that is itself a body carrying limbs
-is invisible**. That is exactly what a centaur is, and centaur1 and centaur3 escape it only because
-their fork sits ON the trunk.
+**THE RULE, WIDENED ONE MORE NOTCH, AND STILL THE SAME ONE.** A limb is a branch carrying **a side
+ITS OWN CHAIN does not have**.
+
+- on the trunk, which has no side, every sided branch is one: that is the old rule word for word,
+  hence no regression on the humanoids;
+- inside a LEFT arm, one more left branch is only a finger, it continues the chain;
+- inside the horse's body, which has no side, a left branch is a leg.
+
+One function now walks the trunk and every limb, and the queue drains breadth-first.
+
+**What measurement gives, and the blast radius is small:**
+
+| | before | after |
+|---|---|---|
+| centaur2 | 3 limbs, 9 leg bones lost | 7 limbs, **0 lost**, the 4 legs anchored on the body |
+| spider | 16 | 30, each segment's small terminal pairs now appear |
+| bird | 27 | 31 |
+| unreal | 185 | 222, facial sub-chains (jaw, nose, teeth) |
+| worker_j | 21 | 27 |
+| **cerberus, kraken, snake, dragon, dog, centaur, raptor, centaur3, mixamo, vrm, vroid** | | **unchanged** |
+
+**What is NOT done, deliberately.** Inside a limb, the branches not chosen stay dropped, as before.
+Returning them all would make every finger of a humanoid its own limb and take the Unreal rig from
+222 chains to 464. A separate question, to be settled on its own if it comes up.
 
 ## The archetypes
 
@@ -263,7 +287,7 @@ for now: both are humanoids, recognised by name.
 **#365, the naming vocabulary. DONE.** Priority table, word splitting, 51 % measured coverage. The
 known defect is fixed: `CATRigLLeg1` comes out "Leg".
 
-**#368, descending into a limb.** Revealed by centaur2, see the section above. New.
+**#368, descending into a limb. DONE.** See the dedicated section above.
 
 **#366, the archetype tables**, extracted from `ANIMAL_JOINT_DEFS`, and the selector that proposes
 without deciding.
