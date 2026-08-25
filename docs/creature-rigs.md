@@ -3,8 +3,8 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.47. Steps 1 to 3 and tasks #363 to #372, #376 and the #373 model are
-> shipped; the #373 screen, then #374 and #375, remain.
+> Up to date as of v1.4.48. Steps 1 to 3 and tasks #363 to #373 and #376 are shipped; #374 and
+> #375 remain.
 
 ## Where things stand
 
@@ -369,7 +369,30 @@ are two descriptions of the same object, and nothing kept them in step: a slider
 matching pivot shows up and does nothing, silently. A test now crosses both lists in both
 directions, for all five animals.
 
-## The generated screen: the model first (#373a)
+## The generated screen (#373, done)
+
+**The rendering, in one sentence:** below the eighteen slots, a "Limbs" section lists every chain in
+the skeleton, folded by the bone it hangs from, with its checkbox, its editable name, that name's
+origin and the bones it runs through. The cerberus's heads and the spider's legs are finally there.
+
+Three interface details carrying a decision:
+
+- **the name is kept on every keystroke**, not on `change`. Otherwise typing a name then clicking
+  "Save" without leaving the field would lose it, and it is the last field one touches;
+- **clearing a name clears the CHOICE**, it does not save an empty string. Someone who clears
+  everything is asking for the proposed name back; that is the only way to undo, no button would do
+  it better;
+- **an unticked chain stays visible, dimmed.** Hiding it would prevent finding it again to re-tick,
+  which is the most likely gesture after a mistake.
+
+The section has its OWN maximum height, separate from the slots': the spider's thirty chains must not
+push the hips out of view. Two scrollbars beat one that mixes two subjects.
+
+The manual had to be SPLIT: "Rigged models" exceeded the 2000-character-per-section cap, and an
+eighth attempt at trimming would have produced hollow sentences. "Mapping table" is now its own
+section.
+
+### The model, under the rendering (#373a)
 
 **Reported through use:** the mapping screen shows eighteen humanoid rows and nothing else. On a
 cerberus its two side heads are invisible, on a spider its supernumerary legs are. Recognition finds

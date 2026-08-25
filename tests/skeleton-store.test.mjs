@@ -550,8 +550,16 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
   test('RÉGRESSION : l\'ordre des boutons est Annuler, Réinitialiser, Enregistrer', () => {
     // Ordre demandé : les deux sorties neutres d'abord, l'action affirmative en dernier. Une
     // énumération dans du HTML, donc invisible pour tout le reste, d'où ce test.
-    const bloc = HTML2.slice(HTML2.indexOf('id="skeletonMapModal"'));
-    const ordre = [...bloc.slice(0, 1400).matchAll(/id="(skeletonMap(?:Cancel|Reset|Save))"/g)].map(m => m[1]);
+    //
+    // ⚠️ LA FENÊTRE VA JUSQU'À LA MODALE SUIVANTE, ET NON SUR 1400 CARACTÈRES. C'était le cas, et
+    // ce test a cassé le jour où un commentaire a été ajouté DANS la modale : les trois boutons
+    // sont sortis de la fenêtre, et l'échec accusait l'ordre alors que l'ordre n'avait pas bougé.
+    // Un test qui se déclenche sur autre chose que ce qu'il prétend mesurer envoie sur une fausse
+    // piste, ce qui est pire que de ne pas exister.
+    const debut = HTML2.indexOf('id="skeletonMapModal"');
+    const suivante = HTML2.indexOf('modal-overlay', debut + 20);
+    const bloc = HTML2.slice(debut, suivante > 0 ? suivante : undefined);
+    const ordre = [...bloc.matchAll(/id="(skeletonMap(?:Cancel|Reset|Save))"/g)].map(m => m[1]);
     assert.deepEqual(ordre, ['skeletonMapCancel', 'skeletonMapReset', 'skeletonMapSave']);
   });
 
@@ -772,5 +780,88 @@ describe('membres : le second AJOUT au fichier (#373)', () => {
     assert.deepEqual(Object.keys(complet), ['os', 'valide', 'morphologie', 'membres']);
     const ancien = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } });
     assert.deepEqual(ancien.entrees['a.glb'], { os: { bassin: 'Hips' }, valide: true });
+  });
+});
+
+describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#373)', () => {
+  const EV2 = _lire(_joindre(_RACINE, 'src/events.js'), 'utf8');
+  const CSS2 = _lire(_joindre(_RACINE, 'style.css'), 'utf8');
+  const HTML2 = _lire(_joindre(_RACINE, 'index.html'), 'utf8');
+
+  // Signalé à l'usage : les têtes latérales d'un cerbère et les pattes surnuméraires d'une araignée
+  // étaient invisibles. Ces tests lisent la SOURCE, comme le reste de ce fichier : le rendu touche
+  // au DOM et n'est pas exécutable ici, mais les décisions qu'il porte doivent tenir.
+
+  test('la section existe dans le HTML, et APRÈS les dix-huit emplacements', () => {
+    // L'ordre porte la décision : les emplacements restent en tête parce que ce sont EUX qui
+    // pilotent le rig aujourd'hui. Inverser suggérerait que les membres les remplacent déjà.
+    assert.match(HTML2, /id="skeletonMapMembres"/);
+    assert.ok(HTML2.indexOf('id="skeletonMapList"') < HTML2.indexOf('id="skeletonMapMembres"'));
+  });
+
+  test('la section est effectivement RENDUE, pas seulement écrite', () => {
+    // TROU TROUVÉ PAR MUTATION : retirer l'appel dans `renderSkeletonMapModal` ne faisait échouer
+    // aucun test, tous portant sur le contenu de `renderMembres`. Une fonction jamais appelée passe
+    // toutes les inspections de source du monde.
+    const debut = EV2.indexOf('function renderSkeletonMapModal');
+    assert.match(EV2.slice(debut, EV2.indexOf('\n}', debut)), /renderMembres\(os\)/);
+  });
+
+  test('les MEMBRES RELUS repartent de l\'entrée enregistrée, pas d\'une liste vide', () => {
+    // Sans cela, rouvrir l'écran perdrait chaque nom tapé et chaque décochage : ils seraient bien
+    // sur le disque, mais l'écran repartirait des propositions, et « Enregistrer » les effacerait.
+    const debut = EV2.indexOf('async function openSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /enregistree && enregistree\.membres/);
+  });
+
+  test('les membres sont GROUPÉS PAR ANCRE, dans un bloc repliable', () => {
+    // Décision prise avec l'utilisateur, contre un regroupement des paires gauche/droite.
+    const debut = EV2.indexOf('function renderMembres');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /lignesDeCorrespondance3D/);
+    assert.match(corps, /createElement\('details'\)/, 'chaque ancre se replie');
+    assert.match(corps, /groupe\.ancreNom/);
+    // La boucle porte sur les GROUPES rendus par le modèle, jamais sur une liste aplatie : sans
+    // cette garde, on pouvait tout mettre dans un seul bloc et le repli ne servait plus à rien.
+    assert.match(corps, /lignes\.groupes\.forEach/);
+  });
+
+  test('un nom se retient À CHAQUE FRAPPE, pas au `change`', () => {
+    // Sans quoi taper un nom puis cliquer « Enregistrer » sans quitter le champ perdrait la saisie.
+    // C'est le dernier champ qu'on touche avant de valider, donc le cas le plus fréquent.
+    const debut = EV2.indexOf('function ligneMembre');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /champ\.oninput/);
+    assert.ok(!/champ\.onchange/.test(corps), 'onchange perdrait la dernière saisie');
+  });
+
+  test('un nom VIDÉ efface le choix au lieu d\'enregistrer une chaîne vide', () => {
+    // L'utilisateur qui efface tout demande à revenir au nom proposé, pas à nommer son membre
+    // « rien ». C'est la seule façon de revenir en arrière ; aucun bouton ne le ferait mieux.
+    const debut = EV2.indexOf('function noterMembre');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /delete e\.nom/);
+    assert.match(corps, /liste\.splice/, 'une ligne redevenue muette sort de la liste');
+  });
+
+  test('toucher à un membre DÉVALIDE l\'écran, comme toucher à un emplacement', () => {
+    // La ligne doit être DANS le corps de la fonction, pas seulement quelque part dans le fichier :
+    // une mutation qui neutralisait la fonction entière passait, le motif étant trouvé ailleurs.
+    const debut = EV2.indexOf('function noterMembre(racine, champs){');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /_skelEcran\.valide = false;\n  renderSkeletonMapModal\(\);/);
+  });
+
+  test('« Enregistrer » emporte les membres, pas seulement les emplacements', () => {
+    const debut = EV2.indexOf('enregistrerCorrespondance(_skelEcran.fichier');
+    assert.match(EV2.slice(debut, debut + 220), /membres: _skelEcran\.membres/);
+  });
+
+  test('une chaîne écartée reste VISIBLE, seulement estompée', () => {
+    // La faire disparaître empêcherait de la retrouver pour la recocher, ce qui est le geste le
+    // plus probable après une erreur.
+    assert.match(CSS2, /\.skeleton-map-membre\.ecarte\s*\{[^}]*opacity/);
+    assert.ok(!/\.skeleton-map-membre\.ecarte\s*\{[^}]*display:\s*none/.test(CSS2));
   });
 });

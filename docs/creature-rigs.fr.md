@@ -3,8 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.47. Les étapes 1 à 3 et les tâches #363 à #372, #376 et le modèle de #373 sont
-> livrés ; l'écran de #373, puis #374 et #375, restent à faire.
+> À jour de la v1.4.48. Les étapes 1 à 3 et les tâches #363 à #373 et #376 sont livrées ; #374 et
+> #375 restent à faire.
 
 ## Où l'on en est
 
@@ -377,7 +377,30 @@ rig sont deux descriptions du même objet, et rien ne les tenait d'accord : un c
 pivot correspondant s'affiche et ne fait rien, en silence. Un test croise désormais les deux listes
 dans les deux sens, pour les cinq animaux.
 
-## L'écran généré : d'abord le modèle (#373a)
+## L'écran généré (#373, faite)
+
+**Le rendu, en une phrase :** sous les dix-huit emplacements, une section « Membres » liste chaque
+chaîne du squelette, repliée par os d'attache, avec sa case à cocher, son nom modifiable, l'origine
+de ce nom et les os traversés. Les têtes du cerbère et les pattes de l'araignée y sont enfin.
+
+Trois détails d'interface qui portent une décision :
+
+- **le nom se retient à chaque frappe**, pas au `change`. Sans quoi taper un nom puis cliquer
+  « Enregistrer » sans quitter le champ perdrait la saisie, et c'est le dernier champ qu'on touche ;
+- **un nom effacé efface le CHOIX**, il n'enregistre pas une chaîne vide. Qui efface tout demande à
+  revenir au nom proposé ; c'est la seule façon de revenir en arrière, aucun bouton ne ferait mieux ;
+- **une chaîne décochée reste visible, estompée.** La faire disparaître empêcherait de la retrouver
+  pour la recocher, ce qui est le geste le plus probable après une erreur.
+
+La section a sa PROPRE hauteur maximale, séparée de celle des emplacements : les trente chaînes de
+l'araignée ne doivent pas repousser le bassin hors de vue. Deux ascenseurs valent mieux qu'un seul
+qui mélange deux sujets.
+
+Le manuel a dû être SCINDÉ : « Modèles articulés » dépassait le plafond de 2000 caractères par
+section, et une huitième tentative de raboter aurait produit des phrases creuses. « Tableau de
+correspondance » est désormais sa propre section.
+
+### Le modèle, sous le rendu (#373a)
 
 **Signalé à l'usage :** l'écran de correspondance affiche dix-huit lignes humanoïdes et rien d'autre.
 Sur un cerbère on ne voit pas ses deux têtes latérales, sur une araignée pas ses pattes

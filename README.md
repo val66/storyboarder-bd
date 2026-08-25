@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.47**
+**Version 1.4.48**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -56,6 +56,9 @@
 - **Proposed morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or
   serpentine, from the skeleton's shape and its bone names. Correctable from a dropdown; only
   serpentine, radial and arachnid are certain, the others carry "to confirm", which blocks nothing
+- **Every limb, not just eighteen**: the mapping table's "Limbs" section lists every chain in the
+  skeleton, folded by the bone it hangs from. A cerberus's three heads and a spider's eight legs can
+  be ticked and renamed there
 - **The pose library applies to them**, whatever axis convention the file uses
 - **Changing figure**: an articulated Element can wear another imported file and keep its pose
 - **Detached parts**: meshes a file places outside the body are hidden, and brought back with a

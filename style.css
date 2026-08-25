@@ -944,6 +944,26 @@ canvas{
    liste des usages : les boutons du bas doivent rester atteignables. */
 .modal-box-large { max-width: 640px; width: 92vw; }
 .skeleton-map-list { max-height: 52vh; overflow-y: auto; margin-bottom: 12px; }
+/* ── Les MEMBRES, sous les dix-huit emplacements ────────────────────────────────────────────────
+   Sa PROPRE hauteur maximale, et non celle de la liste au-dessus : les deux sections se lisent
+   séparément, et un rig à trente chaînes (l'araignée) ne doit pas repousser les emplacements hors
+   de vue. Deux ascenseurs valent mieux qu'un seul qui mélange deux sujets. */
+.skeleton-map-membres { max-height: 34vh; overflow-y: auto; margin-bottom: 12px; }
+.skeleton-map-ancre { border: 1px solid var(--line); border-radius: 4px; margin-bottom: 6px; }
+.skeleton-map-ancre > summary { cursor: pointer; padding: 5px 8px; font-size: 12.5px;
+                                color: var(--sepia); background: var(--paper-dark); }
+.skeleton-map-membre { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+                       flex-wrap: wrap; }
+.skeleton-map-membre input[type=text] { flex: 1; min-width: 120px; font-size: 12.5px;
+                                        margin-bottom: 0; }
+/* Une chaîne écartée reste LISIBLE, seulement estompée : la faire disparaître empêcherait de la
+   retrouver pour la recocher, et c'est le geste le plus probable après une erreur. */
+.skeleton-map-membre.ecarte { opacity: .5; }
+/* Les os traversés : sur leur propre ligne, en petit, parce qu'ils servent à VÉRIFIER un choix, pas
+   à le faire. Le nom complet est dans l'infobulle, une chaîne de neuf os ne tenant pas ici. */
+.skeleton-map-chaine { flex-basis: 100%; font-size: 11px; color: var(--ink-soft);
+                       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                       padding-left: 22px; }
 /* Morphologie : une ligne, en haut, avec sa liste déroulante et son étiquette d'origine.
    Fond distinct de la légende juste en dessous : la légende EXPLIQUE, cette ligne AGIT. Les
    confondre visuellement ferait manquer le seul réglage de l'écran qui commande tous les autres. */

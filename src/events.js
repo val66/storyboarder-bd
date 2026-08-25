@@ -30,7 +30,7 @@ import {
 } from './model-usages.js';
 import {
   inferSkeletonMap, resumeCorrespondance, bonesFromObject3D, slotLabel, SLOT_GROUPS,
-  archetypeSuggere3D,
+  archetypeSuggere3D, lignesDeCorrespondance3D,
 } from './skeleton-map.js';
 import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance, fusionner,
@@ -4234,6 +4234,9 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
       // est ce qui partira sur le disque, et il reste nul tant que l'utilisateur n'a pas tranché,
       // pour la même raison que les emplacements automatiques ne sont pas recopiés : figer une
       // proposition condamnerait toute amélioration future du classement.
+      // Les choix humains sur les MEMBRES, tels quels : ce sont eux qui repartiront sur le disque.
+      // `lignes` en est la vue affichable, recalculée à chaque rendu par une fonction pure.
+      membres: (enregistree && enregistree.membres) ? enregistree.membres.map(m => ({ ...m })) : [],
       morphologie: (enregistree && enregistree.morphologie) || archetypeSuggere3D(os).cle,
       morphologieOrigine: (enregistree && enregistree.morphologie) ? 'manuel' : archetypeSuggere3D(os).origine,
       morphologieManuelle: (enregistree && enregistree.morphologie) || null,
@@ -4301,6 +4304,122 @@ function renderSkeletonMapModal(){
     skeletonMapList.appendChild(t);
     groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
   });
+  renderMembres(os);
+}
+
+/**
+ * Les MEMBRES du squelette, groupés par ancre, sous les dix-huit emplacements.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI CETTE SECTION EXISTE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : l'écran n'affichait que dix-huit lignes humanoïdes. Sur un cerbère, ses deux
+ * têtes latérales étaient INVISIBLES ; sur une araignée, ses pattes surnuméraires aussi. La
+ * reconnaissance les trouve toutes depuis #368, l'écran n'avait simplement pas de case pour elles.
+ *
+ * ELLE S'AJOUTE AUX DIX-HUIT, elle ne les remplace pas. Ce sont eux qui pilotent le rig aujourd'hui,
+ * et les débrancher d'un coup casserait tout modèle déjà posé. Les deux listes cohabitent tant que
+ * les poignées (#374) n'auront pas appris à venir d'ici.
+ *
+ * REPLI PAR ANCRE, décision prise avec l'utilisateur contre un regroupement des paires gauche et
+ * droite : une liste plus longue, mais où chaque chaîne se coche séparément. Sur le rig Unreal, 222
+ * chaînes sur une poignée d'ancres, c'est ce repli qui rend l'écran lisible.
+ *
+ * OUVERT PAR DÉFAUT EN DESSOUS DE SIX CHAÎNES. Un cerbère montre ses sept membres d'emblée, une
+ * araignée replie ses neuf groupes. Le seuil n'est pas un réglage de finesse : c'est la limite
+ * au-delà de laquelle la liste dépasse la hauteur de la modale, mesurée sur le corpus.
+ */
+function renderMembres(os){
+  const zone = document.getElementById('skeletonMapMembres');
+  if (!zone) return;
+  zone.innerHTML = '';
+  const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr);
+  if (!lignes.tronc) return;
+
+  const titre = document.createElement('div');
+  titre.className = 'skeleton-map-group';
+  const total = lignes.groupes.reduce((n, g) => n + g.membres.length, 0);
+  titre.textContent = tr(`Limbs (${total})`, `Membres (${total})`);
+  zone.appendChild(titre);
+
+  const note = document.createElement('div');
+  note.className = 'skeleton-map-legend-note';
+  note.textContent = tr('Untick what you do not want to animate. Names are yours to change.',
+    'Décochez ce que vous ne voulez pas animer. Les noms sont à vous.');
+  zone.appendChild(note);
+
+  lignes.groupes.forEach(groupe => {
+    const bloc = document.createElement('details');
+    bloc.className = 'skeleton-map-ancre';
+    bloc.open = total < 6;
+    const tete = document.createElement('summary');
+    const retenus = groupe.membres.filter(m => m.retenu).length;
+    tete.textContent = tr(
+      `On ${groupe.ancreNom} — ${groupe.membres.length} limbs, ${retenus} kept`,
+      `Sur ${groupe.ancreNom} — ${groupe.membres.length} membres, ${retenus} retenus`);
+    bloc.appendChild(tete);
+    groupe.membres.forEach(m => bloc.appendChild(ligneMembre(m, os)));
+    zone.appendChild(bloc);
+  });
+}
+
+/** Une chaîne : sa case, son nom modifiable, d'où vient ce nom, et les os qu'elle traverse. */
+function ligneMembre(m, os){
+  const parId = new Map(os.map(o => [o.id, o]));
+  const row = document.createElement('div');
+  row.className = 'skeleton-map-membre' + (m.retenu ? '' : ' ecarte');
+
+  const coche = document.createElement('input');
+  coche.type = 'checkbox';
+  coche.checked = m.retenu;
+  coche.onchange = () => { noterMembre(m.racine, { retenu: coche.checked }); };
+  row.appendChild(coche);
+
+  const champ = document.createElement('input');
+  champ.type = 'text';
+  champ.value = m.nom;
+  // À CHAQUE FRAPPE, PAS AU `change` : sans quoi taper un nom puis cliquer « Enregistrer »
+  // directement, sans quitter le champ, perdrait la saisie. Le cas est fréquent, c'est le dernier
+  // champ qu'on touche avant de valider.
+  champ.oninput = () => { noterMembre(m.racine, { nom: champ.value }); };
+  row.appendChild(champ);
+
+  const badge = document.createElement('span');
+  badge.className = `skeleton-map-origin origine-${m.origine}`;
+  badge.textContent = m.origine === 'manuel' ? tr('yours', 'votre choix')
+    : m.origine === 'nom' ? tr('name', 'nom') : tr('shape', 'forme');
+  row.appendChild(badge);
+
+  const chaine = document.createElement('div');
+  chaine.className = 'skeleton-map-chaine';
+  const noms = m.segments.map(s => parId.get(s).name);
+  chaine.textContent = noms.slice(0, 4).join(' › ') + (noms.length > 4 ? ' › …' : '');
+  chaine.title = noms.join(' › ');
+  row.appendChild(chaine);
+  return row;
+}
+
+/**
+ * Retient un choix humain sur une chaîne, et re-rend.
+ *
+ * `nom` VIDE EFFACE LE CHOIX plutôt que d'enregistrer une chaîne vide : l'utilisateur qui efface
+ * tout demande à revenir au nom proposé, pas à nommer son membre « rien ». C'est la seule façon de
+ * revenir en arrière, aucun bouton ne le ferait mieux.
+ */
+function noterMembre(racine, champs){
+  const liste = _skelEcran.membres;
+  let e = liste.find(x => x.racine === racine);
+  if (!e) { e = { racine, retenu: true }; liste.push(e); }
+  Object.assign(e, champs);
+  if (e.nom !== undefined && !String(e.nom).trim()) delete e.nom;
+  // Une ligne redevenue muette, ni renommée ni décochée, ne vaut pas d'être gardée : elle
+  // n'apprend rien, et `entreePourFichier` la refuserait de toute façon.
+  if (e.nom === undefined && e.retenu !== false) liste.splice(liste.indexOf(e), 1);
+  // Toucher à un membre DÉVALIDE l'écran, comme toucher à un emplacement : rien n'est écrit avant
+  // « Enregistrer ».
+  _skelEcran.valide = false;
+  renderSkeletonMapModal();
 }
 
 /**
@@ -4422,7 +4541,7 @@ document.getElementById('skeletonMapReset').onclick = async () => {
 document.getElementById('skeletonMapSave').onclick = async () => {
   if (!_skelEcran) return;
   const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte,
-    { morphologie: _skelEcran.morphologieManuelle });
+    { morphologie: _skelEcran.morphologieManuelle, membres: _skelEcran.membres });
   // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
   // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
   fermerSkeletonMap(true);

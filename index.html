@@ -414,6 +414,9 @@
         <button type="button" class="help-group" data-help="modeles_articules">
           <span class="help-group-title">Modèles articulés</span>
         </button>
+        <button type="button" class="help-group" data-help="correspondance">
+          <span class="help-group-title">Tableau de correspondance</span>
+        </button>
         <button type="button" class="help-group" data-help="editeur">
           <span class="help-group-title">Éditeur de Personnage</span>
         </button>
@@ -675,6 +678,12 @@
     <div class="skeleton-map-morpho" id="skeletonMapMorpho"></div>
     <div class="skeleton-map-legend" id="skeletonMapLegend"></div>
     <div id="skeletonMapList" class="skeleton-map-list"></div>
+    <!-- Les MEMBRES du squelette, sous les dix-huit emplacements et non à leur place (#373).
+         Signalé à l'usage : les têtes latérales d'un cerbère et les pattes surnuméraires d'une
+         araignée étaient invisibles, l'écran n'ayant de cases que pour un humanoïde. Cette section
+         montre ce que la décomposition trouve VRAIMENT, replié par ancre, chaque chaîne cochable et
+         renommable. Les dix-huit restent au-dessus : ce sont eux qui pilotent le rig aujourd'hui. -->
+    <div id="skeletonMapMembres" class="skeleton-map-membres"></div>
     <div class="modal-actions">
       <button class="danger-btn" id="skeletonMapCancel" type="button">Annuler</button>
       <button class="danger-btn" id="skeletonMapReset" type="button">Réinitialiser</button>
