@@ -267,17 +267,43 @@ therefore come out AMBIGUOUS, therefore unfolded.
 first version ignored it: it took the first chain available and labelled it "name", folding a wrong
 limb. That was the eighteen-slot defect on a cerberus, reintroduced at the scale of roles.
 
-**Scaffolding chains are still candidates, and that is task #379.** Step 3's name filter (`IK`,
-`Pole`, `Target`, `neutral_bone`) was never written in code, the modal being meant to handle it.
+### Rig scaffolding, removed from the candidates (#379, done)
 
-Measured today: **109 bones** in the corpus carry a scaffolding word, and **11 chains** contain at
-least one, concentrated on the dog and the dragon. **Ten of those eleven are typed ANATOMICAL**, so
-they compete with real legs. On the dog the four leg limbs receive `IKBackLegL` / `IKFrontLegL`
-instead of `BackShoulderL` / `FrontShoulderL`; on the dragon, `HeadIK` takes the `head` role.
+Step 3's name filter had never been written in code, the modal being meant to handle it; since #378b
+those chains competed for roles. On the dog the four leg limbs received `IKBackLegL` and
+`IKFrontLegL`, two bones each, instead of `BackShoulderL` and `FrontShoulderL`.
 
-They come out "structure", hence unfolded, hence visible, but the user has to correct them by hand.
-⚠️ The dragon is the counter-example not to forget: its angle measurement came out at 161°, therefore
-biped, which is wrong, because the chain measured was `Wing IK.L`.
+**64 chains excluded out of 488.** Every one that was typed anatomical is a scaffold named after the
+limb it drives, `Wing_IKL`, `Leg_IKL`, `FX_Head01`, `head_Socket`: that is exactly their function,
+not a loss.
+
+**Three obvious words were REJECTED by measurement**, and that is this task's real result:
+
+| word | bones in corpus | why it is refused |
+|---|---|---|
+| `root` | 166, across 15 files | lives inside `..._root_bind_jnt`, a REAL arm bone in centaure1 |
+| `bind` | 226 | a Maya naming convention, not scaffolding |
+| `jnt` | 130 | same; excluding it would delete centaure1's entire skeleton |
+| `twist` | 46 | a twist bone is a real piece of arm |
+
+**The `IK` pattern was reworked three times**, and the first two attempts say something:
+
+1. `IK` preceded AND followed by a non-letter: lets `HeadIK` through, since the `d` before it is a
+   letter. The dragon kept `HeadIK` as its head, labelled "name", hence FOLDED. The folding rule
+   turns a wrong assignment into an invisible one.
+2. `IK` not followed by a lowercase letter: catches all thirteen, no counter-example in the corpus.
+   **Rejected anyway**, because it reads `SPIKE_01` and `STRIKE_L` as scaffolding, and "no
+   counter-example in the corpus" is the reasoning that got an over-wide side pattern accepted in
+   #363.
+3. `IK` touching a word BOUNDARY on either side: the same thirteen, and `SPIKE` rejected by
+   construction rather than by luck.
+
+**A chain is judged on its ROOT.** A reassuring measurement: the "at least one suspect bone" rule
+excludes exactly the same chains. No scaffold hides in the middle of a real chain, so the root is not
+an arbitrarily narrow criterion.
+
+⚠️ **Removed from role CANDIDATES, not from the sliders.** A scaffold is still a bone the user may
+want to turn. That is this work's contract: it proposes, the user decides.
 
 **On a quadruped, a chain named "arm" is a front leg.** Measured on the cerberus, whose front legs are
 called `Clavicle`, `UpperArm`, `Forearm`. Without that equivalence they find no limb and stay orphans.

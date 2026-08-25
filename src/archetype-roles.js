@@ -426,6 +426,67 @@ const FAMILLE_DE_TYPE_3D = {
   tentacule: 'tentacle',
 };
 
+/**
+ * Les mots qui désignent un ÉCHAFAUDAGE de rig plutôt qu'un os du corps.
+ *
+ * ⚠️ CHAQUE MOTIF EST MESURÉ, ET TROIS CANDIDATS ÉVIDENTS ONT ÉTÉ REJETÉS. Le piège est celui de
+ * #363, où un motif de côté trop large lisait `ARMature` comme une droite. Comptés sur les 3032 os
+ * du corpus :
+ *
+ *   `root`  166 os dans 15 fichiers, dont `_rootJoint` mais aussi `..._root_bind_jnt`, qui est un
+ *           VRAI os de bras chez centaure1. Bien trop large.
+ *   `bind`  226 os, `jnt` 130 os : ce sont des CONVENTIONS DE NOMMAGE Maya, pas des échafaudages.
+ *           Les écarter supprimerait le squelette entier de centaure1.
+ *   `twist` 46 os. Un os de torsion est un vrai morceau de bras, pas une poignée de rig.
+ *
+ * ⚠️ LE MOTIF D'`IK` A ÉTÉ REPRIS TROIS FOIS, et les deux premiers essais sont instructifs :
+ *
+ *   1. `IK` précédé ET suivi d'un non-lettre. Attrape 12 os, mais laisse passer `HeadIK`, dont le
+ *      `d` qui précède est une lettre. Le dragon gardait donc `HeadIK` comme tête, étiqueté « nom »,
+ *      donc replié : un membre FAUX présenté comme sûr.
+ *   2. `IK` non suivi d'une minuscule. Attrape les 13, zéro contre-exemple dans le corpus. Rejeté
+ *      quand même : il lit `SPIKE_01` et `STRIKE_L` comme des échafaudages, et « aucun
+ *      contre-exemple dans le corpus » est exactement le raisonnement qui a fait accepter un motif
+ *      de côté trop large en #363.
+ *   3. `IK` touchant un BORD de mot, d'un côté ou de l'autre. Attrape les mêmes 13, et rejette
+ *      `SPIKE`, `STRIKE`, `VIKING` par construction plutôt que par chance.
+ *
+ * Jamais la sous-chaîne minuscule `ik`, qui vit dans des mots ordinaires comme `Mikael`.
+ */
+const ECHAFAUDAGES_3D = [
+  /(^|[^A-Za-z])IK|IK($|[^A-Za-z])/,
+  /Pole/i, /Target/i, /neutral_bone/i, /Socket/i, /Dummy/i,
+  /(^|[^A-Za-z])F[Xx]_/,
+  /RollControl|RollTarget/i,
+];
+
+/** Cet os porte-t-il un mot d'échafaudage ? Fonction PURE. */
+export function estEchafaudage3D(nom){
+  const n = String(nom || '');
+  return ECHAFAUDAGES_3D.some(r => r.test(n));
+}
+
+/**
+ * Cette chaîne est-elle un échafaudage ? Fonction PURE, décidée sur sa RACINE.
+ *
+ * ⚠️ LA RACINE, ET NON « TOUS SES OS ». Mesuré, et la différence porte exactement les six chaînes
+ * qui ont motivé cette tâche : les quatre pattes `IKBackLegL FFBL` du chien et les deux `Cou` de
+ * l'oiseau, dont la racine est un `Neck_Dummy` et la suite un brin musculaire. La règle « tous les
+ * os » les gardait, parce que leur second os ne porte aucun mot suspect.
+ *
+ * ⚠️ MESURE QUI RASSURE : la règle « au moins un os suspect » écarte exactement les MÊMES chaînes
+ * que la règle de la racine, 64 sur les 488 du corpus. Aucun échafaudage ne se cache donc au milieu d'une vraie chaîne, et la
+ * racine n'est pas un critère arbitrairement étroit, c'est le même critère écrit plus simplement.
+ *
+ * ⚠️ ÉCARTÉE DES CANDIDATES À UN RÔLE, PAS DES CURSEURS. Un échafaudage reste un os que
+ * l'utilisateur peut vouloir tourner, et le retirer de l'écran des membres serait décider à sa
+ * place. C'est le contrat de tout ce chantier : on propose, il tranche.
+ */
+export function chaineEchafaudage3D(osNoms){
+  const liste = Array.isArray(osNoms) ? osNoms : [];
+  return liste.length > 0 && estEchafaudage3D(liste[0]);
+}
+
 /** Le côté d'un membre, dans le vocabulaire des chaînes ('g' / 'd'), ou null. */
 function coteDuMembre3D(cleDeRole){
   const d = decomposerRole3D(cleDeRole);
@@ -457,6 +518,7 @@ export function chainesAttribuables3D(os, membresEnregistres, traduire){
     sortie.push({
       racine: m.racine, nom: m.nom, cote: m.cote, rang: m.rang, retenu: m.retenu, osNoms,
       famille: type ? (FAMILLE_DE_TYPE_3D[type[0]] || null) : null,
+      echafaudage: chaineEchafaudage3D(osNoms),
     });
   }));
   return sortie;
@@ -546,7 +608,7 @@ function depuisLesChaines3D(membres, chaines, memoire){
   membres.forEach(m => {
     const fam = familles(m.roles[0].cle);
     const cote = coteDuMembre3D(m.roles[0].cle);
-    const candidats = chaines.filter(x => !prises.has(x.racine) && x.retenu !== false
+    const candidats = chaines.filter(x => !prises.has(x.racine) && x.retenu !== false && !x.echafaudage
       && fam.includes(x.famille) && (cote === null || x.cote === cote));
     if (!candidats.length) return;
     // ⚠️ UNE ATTRIBUTION AMBIGUË N'EST PAS UNE ATTRIBUTION SÛRE, et cette distinction est ce qui
@@ -578,7 +640,7 @@ function depuisLesChaines3D(membres, chaines, memoire){
       const c = chaines.find(x => x.osNoms.includes(manuel));
       if (c) { chaine = c; origine = 'manuel'; }
     } else if (!chaine) {
-      const c = chaines.find(x => !prises.has(x.racine) && x.retenu !== false
+      const c = chaines.find(x => !prises.has(x.racine) && x.retenu !== false && !x.echafaudage
         && (cote === null || x.cote === cote));
       if (c) { prises.add(c.racine); chaine = c; origine = 'structure'; }
     }

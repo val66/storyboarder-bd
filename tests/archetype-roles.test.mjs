@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import {
   decomposerRole3D, libelleDeRole3D, libelleCourtDeRole3D, membreDuRole3D, rolesDeLArchetype3D,
   clesDeLArchetype3D, propositionDeRoles3D, chainesAttribuables3D, estSur3D,
+  estEchafaudage3D, chaineEchafaudage3D,
 } from '../src/archetype-roles.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -449,6 +450,85 @@ describe('Un membre par ligne, et la chaîne qui le tient (#378b)', () => {
   });
 });
 
+describe('Les échafaudages de rig ne concourent pas pour un rôle (#379)', () => {
+  const RACINE2 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const charger2 = (nom) => JSON.parse(
+    readFileSync(join(RACINE2, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+
+  test('RÉGRESSION : `IK` se lit sur un BORD de mot, jamais au milieu', () => {
+    // Le motif a été repris trois fois. Le deuxième essai, « IK non suivi d'une minuscule »,
+    // attrapait les treize os du corpus avec zéro contre-exemple, et je l'ai rejeté quand même :
+    // il lit `SPIKE_01` comme un échafaudage, et « aucun contre-exemple dans le corpus » est
+    // exactement le raisonnement qui a fait accepter un motif de côté trop large en #363.
+    ['IKBackLegL_45', 'HeadIK_67_85', 'Wing_IKL_142_156', 'Leg_IK', 'IK']
+      .forEach(n => assert.ok(estEchafaudage3D(n), `${n} devrait être un échafaudage`));
+    ['SPIKE_01', 'STRIKE_L', 'VIKING_hair', 'Mikael', 'Spike']
+      .forEach(n => assert.equal(estEchafaudage3D(n), false, `${n} n'est PAS un échafaudage`));
+  });
+
+  test('RÉGRESSION : `HeadIK` ne passe plus, et c\'est ce qui a fait reprendre le motif', () => {
+    // Premier essai : `IK` précédé ET suivi d'un non-lettre. Le `d` de `HeadIK` est une lettre, donc
+    // il passait. Le dragon gardait `HeadIK` comme tête, étiqueté « nom », donc REPLIÉ : un membre
+    // faux présenté comme sûr, ce que la règle de repli rend invisible.
+    assert.ok(estEchafaudage3D('HeadIK_67_85'));
+  });
+
+  test('trois mots évidents sont REJETÉS, parce que la mesure les dit trop larges', () => {
+    // `root` vit dans 166 os de 15 fichiers, dont de vrais os de bras chez centaure1 ;
+    // `bind` et `jnt` sont des conventions de nommage Maya, 226 et 130 os ; un os de `twist` est un
+    // vrai morceau de bras. Les écarter supprimerait le squelette entier de centaure1.
+    ['_rootJoint', 'root_bind_jnt_rootJoint', 'L_lwr_arm_twist_01_bind_jnt', 'spine_00_bind_jnt']
+      .forEach(n => assert.equal(estEchafaudage3D(n), false, `${n} ne doit pas être écarté`));
+  });
+
+  test('une chaîne est jugée sur sa RACINE, et la mesure dit que c\'est équivalent', () => {
+    // La règle « au moins un os suspect » écarte exactement les MÊMES chaînes que la racine :
+    // aucun échafaudage ne se cache au milieu d'une vraie chaîne. La racine n'est donc pas un
+    // critère arbitrairement étroit, c'est le même critère écrit plus simplement.
+    assert.ok(chaineEchafaudage3D(['IKBackLegL_45', 'FFBL_44']));
+    assert.equal(chaineEchafaudage3D(['BackShoulderL_27', 'BackLegL_26']), false);
+    assert.equal(chaineEchafaudage3D([]), false);
+    assert.equal(chaineEchafaudage3D(null), false);
+  });
+
+  test('le chien retrouve ses VRAIES pattes', () => {
+    // Le défaut qui a motivé la tâche : ses quatre membres de patte recevaient `IKBackLegL` et
+    // `IKFrontLegL`, des chaînes de deux os, plutôt que `BackShoulderL` et `FrontShoulderL`.
+    const os = charger2('chien');
+    const p = propositionDeRoles3D({ os, archetype: 'quadrupede', carte: inferSkeletonMap(os), enregistre: {} }, fr);
+    const pattes = p.filter(m => /Patte/.test(m.label)).map(m => m.roles[0].osNom);
+    pattes.forEach(n => assert.ok(!/^IK/.test(n), `une patte du chien reçoit encore ${n}`));
+    assert.ok(pattes.some(n => /BackShoulder/.test(n)) && pattes.some(n => /FrontShoulder/.test(n)));
+  });
+
+  test('un échafaudage garde sa CHAÎNE, il ne perd que sa candidature', () => {
+    // Il reste un os que l'utilisateur peut vouloir tourner, et le retirer de l'écran des membres
+    // serait décider à sa place. C'est le contrat de tout ce chantier : on propose, il tranche.
+    const chaines = chainesAttribuables3D(charger2('chien'), [], fr);
+    const ik = chaines.filter(c => c.echafaudage);
+    assert.ok(ik.length >= 4, `attendu au moins 4 chaînes d'échafaudage, trouvé ${ik.length}`);
+    ik.forEach(c => assert.ok(c.osNoms.length > 0, 'la chaîne a été supprimée au lieu d\'être marquée'));
+  });
+
+  test('le corpus perd 64 chaînes sur 488, et aucune n\'est anatomique', () => {
+    // La mesure dans les DEUX sens, promise avant de construire : combien d'écartées, et combien
+    // d'anatomiques perdues à tort. Les chaînes écartées et typées anatomiques sont toutes des
+    // échafaudages nommés d'après le membre qu'ils pilotent, `Wing_IKL`, `Leg_IKL`, `FX_Head01`,
+    // `head_Socket`, ce qui est exactement leur rôle et pas une perte.
+    const noms = ['araignee', 'centaure', 'centaure1', 'centaure2', 'centaure3', 'cerbere', 'chien',
+      'dragon', 'kraken', 'maison', 'mixamo', 'oiseau', 'raptor', 'serpent', 'unreal', 'vrm', 'vroid-alt'];
+    let total = 0, ecartees = 0;
+    noms.forEach(n => {
+      chainesAttribuables3D(charger2(n), [], fr).forEach(c => { total++; if (c.echafaudage) ecartees++; });
+    });
+    assert.equal(total, 488, `le corpus a changé de taille : ${total} chaînes`);
+    // 64 et non 63 : le troisième motif d'`IK` attrape `HeadIK` du dragon, que les deux premiers
+    // laissaient passer. C'est la chaîne qui a fait reprendre le motif.
+    assert.equal(ecartees, 64, `${ecartees} chaînes écartées, 64 mesurées`);
+  });
+});
+
 /**
  * JOURNAL DE MUTATION : la table des rôles (tâche #378a).
  *
@@ -473,6 +553,20 @@ describe('Un membre par ligne, et la chaîne qui le tient (#378b)', () => {
  *   Q6  les segments prennent les rôles à l'envers                              ROUGE
  *   Q7  l'humanoïde refait sa propre reconnaissance                             ROUGE
  *   Q8  un membre à moitié vide porte l'étiquette de sa moitié réussie          ROUGE
+ *
+ * JOURNAL DE MUTATION : les échafaudages de rig (tâche #379).
+ *
+ *   R1 le motif `IK` redevient la sous-chaîne minuscule                         ROUGE
+ *   R2 le motif `IK` exige un non-lettre des DEUX côtés, `HeadIK` repasse       ROUGE
+ *   R3 `root` redevient un mot d'échafaudage                                    ROUGE
+ *   R4 la chaîne est jugée sur TOUS ses os au lieu de sa racine                 ROUGE
+ *   R5 les échafaudages redeviennent candidats à un rôle                        ROUGE
+ *   R6 un échafaudage est SUPPRIMÉ au lieu d'être marqué                        ROUGE
+ *
+ * R2 mérite un mot : c'est la version que j'ai écrite en premier, et elle laissait `HeadIK` prendre
+ * le rôle de tête du dragon avec l'étiquette « nom », donc REPLIÉ. La règle de repli transforme
+ * une attribution fausse en attribution invisible, ce qui rend ce genre de mutation plus grave ici
+ * qu'ailleurs.
  *
  * ⚠️ Q8 A ÉCHAPPÉ D'ABORD, et le trou était réel : rien ne vérifiait l'ÉTIQUETTE affichée. Le repli
  * se calcule par `estSur3D`, qui n'appelle pas `pireOrigine3D` ; déclarer « vide » aussi sûr que

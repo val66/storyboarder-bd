@@ -280,18 +280,43 @@ une première version l'ignorait : elle prenait la première chaîne venue et l'
 repliant donc un membre faux. C'était le défaut des dix-huit emplacements sur un cerbère, réintroduit
 à l'échelle des rôles.
 
-**Les échafaudages sont encore candidats, et c'est la tâche #379.** Le filtre nommé de l'étape 3
-(`IK`, `Pole`, `Target`, `neutral_bone`) n'a jamais été écrit en code, la modale devant s'en charger.
+### Les échafaudages de rig, écartés des candidats (#379, faite)
 
-Mesuré à ce jour : **109 os** du corpus portent un mot d'échafaudage, et **11 chaînes** en contiennent
-au moins un, concentrées sur le chien et le dragon. **Dix de ces onze sont typées ANATOMIQUES**, elles
-concurrencent donc de vraies pattes. Sur le chien, les quatre membres de patte reçoivent
-`IKBackLegL` / `IKFrontLegL` plutôt que `BackShoulderL` / `FrontShoulderL` ; sur le dragon, `HeadIK`
-prend le rôle `head`.
+Le filtre nommé de l'étape 3 n'avait jamais été écrit en code, la modale devant s'en charger ; depuis
+#378b ces chaînes concouraient pour les rôles. Sur le chien, les quatre membres de patte recevaient
+`IKBackLegL` et `IKFrontLegL`, deux os chacun, plutôt que `BackShoulderL` et `FrontShoulderL`.
 
-Elles sortent « structure », donc dépliées, donc visibles, mais l'utilisateur doit les corriger à la
-main. ⚠️ Le dragon est le contre-exemple à ne pas oublier : sa mesure d'angle sortait à 161°, donc
-bipède, ce qui est faux, parce que la chaîne mesurée était `Wing IK.L`.
+**64 chaînes écartées sur 488.** Toutes celles qui étaient typées anatomiques sont des échafaudages
+nommés d'après le membre qu'ils pilotent, `Wing_IKL`, `Leg_IKL`, `FX_Head01`, `head_Socket` : c'est
+exactement leur fonction, pas une perte.
+
+**Trois mots évidents ont été REJETÉS par la mesure**, et c'est le vrai résultat de cette tâche :
+
+| mot | os du corpus | pourquoi il est refusé |
+|---|---|---|
+| `root` | 166, dans 15 fichiers | vit dans `..._root_bind_jnt`, un VRAI os de bras chez centaure1 |
+| `bind` | 226 | convention de nommage Maya, pas un échafaudage |
+| `jnt` | 130 | idem ; l'écarter supprimerait le squelette entier de centaure1 |
+| `twist` | 46 | un os de torsion est un vrai morceau de bras |
+
+**Le motif d'`IK` a été repris trois fois**, et les deux premiers essais disent quelque chose :
+
+1. `IK` précédé ET suivi d'un non-lettre : laisse passer `HeadIK`, dont le `d` qui précède est une
+   lettre. Le dragon gardait donc `HeadIK` comme tête, étiqueté « nom », donc REPLIÉ. La règle de
+   repli transforme une attribution fausse en attribution invisible.
+2. `IK` non suivi d'une minuscule : attrape les treize, zéro contre-exemple dans le corpus. **Rejeté
+   quand même**, parce qu'il lit `SPIKE_01` et `STRIKE_L` comme des échafaudages, et « aucun
+   contre-exemple dans le corpus » est le raisonnement qui a fait accepter un motif de côté trop
+   large en #363.
+3. `IK` touchant un BORD de mot, d'un côté ou de l'autre : les mêmes treize, et `SPIKE` rejeté par
+   construction plutôt que par chance.
+
+**Une chaîne est jugée sur sa RACINE.** Mesure qui rassure : la règle « au moins un os suspect »
+écarte exactement les mêmes chaînes. Aucun échafaudage ne se cache au milieu d'une vraie chaîne, la
+racine n'est donc pas un critère arbitrairement étroit.
+
+⚠️ **Écartée des CANDIDATES à un rôle, pas des curseurs.** Un échafaudage reste un os que
+l'utilisateur peut vouloir tourner. C'est le contrat de ce chantier : on propose, il tranche.
 
 **Sur un quadrupède, une chaîne nommée « bras » est une patte avant.** Mesuré sur le cerbère, dont
 les pattes avant s'appellent `Clavicle`, `UpperArm`, `Forearm`. Sans cette équivalence elles ne
