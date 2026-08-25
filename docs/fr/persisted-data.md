@@ -96,6 +96,31 @@ Deux conséquences qui font partie du format, pas de l'implémentation :
   il ne suit donc pas un Projet envoyé à quelqu'un d'autre. Le champ, lui, n'est jamais renommé,
   seule sa valeur change.
 
+### Le fichier de correspondances — `os` et `roles` ne coexistent jamais
+
+Rangé à côté du dossier `Modeles`, indexé par nom de fichier. Une entrée porte :
+
+| clé | qui l'écrit | forme |
+|---|---|---|
+| `os` | un HUMANOÏDE | `{ emplacement: nomDOs }`, liste fermée de dix-huit |
+| `roles` | toute AUTRE morphologie | `{ role: nomDOs }`, la liste venant de l'archétype |
+| `membres` | les chaînes cochées ou renommées | `[{ racine, nom, retenu }]` |
+| `morphologie` | le sélecteur, quand vous y touchez | une clé d'`ARCHETYPES_3D` |
+| `valide` | « j'ai vu cet écran » | booléen |
+
+⚠️ **`roles` n'élargit PAS `os`, il vit à côté.** Une version antérieure de l'application relit `os`
+en filtrant sur les dix-huit emplacements : y glisser `hipFL` ne la casserait pas, mais lui ferait
+perdre la clé en silence à la première réécriture. Elle relirait le fichier, jetterait ce qu'elle ne
+connaît pas, et le réenregistrerait amputé.
+
+⚠️ **Et les deux ne coexistent jamais dans un même fichier.** Un humanoïde écrit `os`, une créature
+écrit `roles`, la morphologie tranche. Même règle que la récolte des os de #374, pour la même
+raison : deux clés désignant le même bout de squelette finiraient par se contredire.
+
+`SKELETON_MAP_FORMAT` reste à **1**. C'est le troisième ajout après `morphologie` et `membres`, et la
+règle ne change pas : passer à 2 ferait REJETER le fichier entier par une version antérieure, alors
+qu'une clé inconnue est simplement ignorée.
+
 ### `skeletonPose3d` — deux sortes de clés dans un seul dictionnaire
 
 La pose d'un modèle importé est un dictionnaire `{ clé: {x, y, z} }` en radians. Ses clés sont de

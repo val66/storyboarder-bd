@@ -91,6 +91,31 @@ Two consequences that are part of the format, not of the implementation:
   never silently swapped. That journal lives in the user's settings, so it does not follow a project
   sent to someone else. The field itself is never renamed, only its value changes.
 
+### The mapping file — `os` and `roles` never coexist
+
+Stored next to the `Modeles` folder, keyed by file name. An entry carries:
+
+| key | who writes it | shape |
+|---|---|---|
+| `os` | a HUMANOID | `{ slot: boneName }`, closed list of eighteen |
+| `roles` | any OTHER morphology | `{ role: boneName }`, the list coming from the archetype |
+| `membres` | the ticked or renamed chains | `[{ racine, nom, retenu }]` |
+| `morphologie` | the selector, when you touch it | an `ARCHETYPES_3D` key |
+| `valide` | "I have seen this screen" | boolean |
+
+⚠️ **`roles` does NOT widen `os`, it lives beside it.** An earlier version of the application rereads
+`os` filtering on the eighteen slots: slipping `hipFL` in would not break it, but would make it lose
+the key silently on the first rewrite. It would reread the file, drop what it does not know, and save
+it back truncated.
+
+⚠️ **And the two never coexist in one file.** A humanoid writes `os`, a creature writes `roles`, the
+morphology decides. Same rule as #374's bone harvesting, for the same reason: two keys designating
+the same piece of skeleton would end up contradicting each other.
+
+`SKELETON_MAP_FORMAT` stays at **1**. This is the third addition after `morphologie` and `membres`,
+and the rule does not change: moving to 2 would make an earlier version REJECT the whole file, whereas
+an unknown key is simply ignored.
+
 ### `skeletonPose3d` — two kinds of key in one dictionary
 
 An imported model's pose is a `{ key: {x, y, z} }` dictionary in radians. Its keys are of **two

@@ -71,10 +71,14 @@ export function normaliserFichier(brut){
     // ligne sans `racine` désignerait une chaîne introuvable et disparaîtrait de l'écran sans rien
     // dire, en emportant le nom que l'utilisateur avait tapé.
     const membres = normaliserMembres(entree.membres);
-    if (Object.keys(os).length || valide || morphologie || membres.length) {
+    // `roles` est un TROISIÈME ajout (tâche #378b), et il vit à CÔTÉ de `os` sans jamais le
+    // remplacer. Voir normaliserRoles3D pour la raison, qui n'est pas une commodité.
+    const roles = normaliserRoles3D(entree.roles);
+    if (Object.keys(os).length || valide || morphologie || membres.length || Object.keys(roles).length) {
       entrees[fichier] = { os, valide };
       if (morphologie) entrees[fichier].morphologie = morphologie;
       if (membres.length) entrees[fichier].membres = membres;
+      if (Object.keys(roles).length) entrees[fichier].roles = roles;
     }
   });
   return { version: SKELETON_MAP_FORMAT, entrees };
@@ -122,6 +126,37 @@ function normaliserMembres(brut){
 }
 
 /**
+ * Les rôles enregistrés d'un fichier, `{ role: nomDOs }`. Fonction PURE, défensive comme le reste.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI UN CHAMP À CÔTÉ DE `os`, ET NON `os` ÉLARGI
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `os` est indexé par les DIX-HUIT emplacements humanoïdes, et une version antérieure de
+ * l'application le relit en filtrant sur cette liste fermée. Y glisser `hipFL` ne casserait rien
+ * chez elle, mais lui ferait perdre la clé en silence à la première réécriture : elle relirait le
+ * fichier, jetterait ce qu'elle ne connaît pas, et le réenregistrerait amputé.
+ *
+ * ⚠️ ET SURTOUT, LES DEUX NE COEXISTENT JAMAIS DANS UN MÊME FICHIER. Un humanoïde écrit `os`, une
+ * créature écrit `roles`, et c'est la morphologie qui tranche. La même règle que la récolte des os
+ * de #374, pour la même raison : deux clés désignant le même bout de squelette finiraient par se
+ * contredire, et rien ne dirait laquelle croire.
+ *
+ * LES CLÉS NE SONT PAS VÉRIFIÉES contre une liste d'archétypes. Un rôle inconnu est INERTE, comme
+ * une clé de pose d'os : l'écran ne l'affiche que s'il figure dans l'archétype courant. Le vérifier
+ * ici demanderait de connaître la morphologie du fichier, que cette fonction n'a pas, et le prix
+ * d'une clé oubliée serait de perdre un choix humain pour cause de morphologie changée un instant.
+ */
+function normaliserRoles3D(brut){
+  const sortie = {};
+  if (!brut || typeof brut !== 'object') return sortie;
+  Object.entries(brut).forEach(([cle, nom]) => {
+    if (typeof cle === 'string' && cle && typeof nom === 'string' && nom) sortie[cle] = nom;
+  });
+  return sortie;
+}
+
+/**
  * La morphologie EFFECTIVE d'un fichier : le choix humain s'il existe, sinon le proposé. PURE.
  *
  * MÊME RÈGLE QUE `fusionner` POUR LES EMPLACEMENTS, et elle est ici pour être à côté d'elle : ce
@@ -142,7 +177,7 @@ export function morphologieEffective3D(enregistree, osDuFichier, propose){
   return (os.length && propose) ? propose(os) : 'humanoide';
 }
 
-export function entreePourFichier(carte, { valide = false, morphologie = null, membres = null } = {}){
+export function entreePourFichier(carte, { valide = false, morphologie = null, membres = null, roles = null } = {}){
   const os = {};
   SLOTS.forEach(slot => {
     const v = (carte || {})[slot];
@@ -150,10 +185,16 @@ export function entreePourFichier(carte, { valide = false, morphologie = null, m
   });
   const m = MORPHOLOGIES_CONNUES.has(morphologie) ? morphologie : null;
   const mem = normaliserMembres(membres);
-  if (!Object.keys(os).length && !valide && !m && !mem.length) return null;
+  const rol = normaliserRoles3D(roles);
+  if (!Object.keys(os).length && !valide && !m && !mem.length && !Object.keys(rol).length) return null;
   const sortie = { os, valide };
   if (m) sortie.morphologie = m;
   if (mem.length) sortie.membres = mem;
+  // MÊME RÈGLE QUE `os` : seuls les choix HUMAINS sont écrits. Figer l'attribution proposée
+  // condamnerait toute amélioration de #379, #381 et de la suite, qui trouveraient un rôle
+  // « enregistré » sur chaque fichier jamais touché. L'appelant ne passe donc que ce qui a été
+  // choisi à la main.
+  if (Object.keys(rol).length) sortie.roles = rol;
   return sortie;
 }
 

@@ -37,6 +37,53 @@ const OS = [
   { id: 5, name: 'mixamorig:Hips' },
 ];
 
+describe('Les RÔLES d\'un archétype se rangent à côté des emplacements (#378b)', () => {
+  test('`roles` est un AJOUT : la version du format ne bouge pas', () => {
+    // Troisième ajout après `morphologie` et `membres`, et pour la même raison : passer
+    // SKELETON_MAP_FORMAT à 2 ferait REJETER le fichier entier par une version antérieure, alors
+    // qu'une clé inconnue est simplement ignorée.
+    assert.equal(SKELETON_MAP_FORMAT, 1);
+    const lu = normaliserFichier({ version: 1, entrees: {
+      'chien.glb': { os: {}, valide: true, roles: { hipFL: 'BackShoulderL_27', tail0: 'Tail1_37' } },
+    } });
+    assert.deepEqual(lu.entrees['chien.glb'].roles, { hipFL: 'BackShoulderL_27', tail0: 'Tail1_37' });
+  });
+
+  test('une entrée qui n\'a QUE des rôles est conservée', () => {
+    // Sans cette condition, une créature dont l'utilisateur n'a corrigé que des rôles verrait son
+    // travail jeté à la relecture : `os` reste vide sur une créature, c'est le cas NORMAL.
+    const lu = normaliserFichier({ version: 1, entrees: {
+      'cerberus.glb': { roles: { head: 'CERBERUS__Head_09' } },
+    } });
+    assert.ok(lu.entrees['cerberus.glb'], 'l\'entrée a été jetée');
+    assert.deepEqual(lu.entrees['cerberus.glb'].roles, { head: 'CERBERUS__Head_09' });
+  });
+
+  test('les entrées malformées sont écartées, jamais reprises', () => {
+    const lu = normaliserFichier({ version: 1, entrees: {
+      'x.glb': { valide: true, roles: { bon: 'Os_1', '': 'Os_2', vide: '', nul: null, nombre: 3 } },
+    } });
+    assert.deepEqual(lu.entrees['x.glb'].roles, { bon: 'Os_1' });
+  });
+
+  test('un fichier SANS rôles n\'en gagne pas un champ vide', () => {
+    // Un humanoïde écrit `os` et rien d'autre : le champ ne doit pas apparaître pour rien, sous
+    // peine de faire grossir le fichier d'un objet vide par modèle.
+    const lu = normaliserFichier({ version: 1, entrees: { 'h.glb': { os: { tete: 'Head' }, valide: true } } });
+    assert.equal('roles' in lu.entrees['h.glb'], false);
+    assert.equal('roles' in entreePourFichier({ tete: { bone: 1, name: 'Head', origine: 'manuel' } }, {}), false);
+  });
+
+  test('entreePourFichier écrit les rôles qu\'on lui donne, et eux seuls', () => {
+    // Même règle que `os` et `morphologie` : on n'écrit que le choix HUMAIN. Figer l'attribution
+    // proposée condamnerait toute amélioration de #379 et #381, qui trouveraient un rôle
+    // « enregistré » sur chaque fichier jamais touché.
+    const e = entreePourFichier({}, { valide: true, roles: { head: 'CERBERUS__Head_09' } });
+    assert.deepEqual(e.roles, { head: 'CERBERUS__Head_09' });
+    assert.deepEqual(e.os, {}, 'une créature n\'écrit pas d\'emplacements');
+  });
+});
+
 describe('normaliserFichier : relire sans jamais faire échouer une ouverture', () => {
   test('un contenu valide traverse intact', () => {
     const r = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } });
