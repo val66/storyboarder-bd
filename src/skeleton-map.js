@@ -539,3 +539,117 @@ export function membresDuSquelette3D(os){
 
   return { tronc, membres };
 }
+
+/**
+ * Découpe un nom d'os en MOTS, casse chameau comprise.
+ *
+ * POURQUOI CETTE ÉTAPE EXISTE, ET CE QU'ELLE A CORRIGÉ. Le premier jet cherchait les mots avec des
+ * `\b` directement dans le nom brut, et manquait la moitié du corpus pour deux raisons opposées :
+ * `_` est un caractère de mot pour une expression régulière, donc `L_HEAD` n'a AUCUNE frontière
+ * avant « head » ; et la casse chameau n'a pas de séparateur du tout, donc `IKBackLeg` n'en a pas
+ * non plus avant « leg ». Les têtes latérales du cerbère et les quatre pattes du chien passaient
+ * ainsi à travers.
+ *
+ * `IKBackLeg.L_45` devient « ik back leg l », `CATRigLLeg1_065` devient « cat rig l leg », et un
+ * `\bleg\b` les attrape tous les deux. Les chiffres disparaissent, ils ne portent jamais de sens
+ * anatomique.
+ */
+export function motsDuNomDOs3D(nom){
+  return String(nom || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/[^A-Za-z]+/g, ' ')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Les mots qui IDENTIFIENT un membre, cherchés dans TOUTE la chaîne.
+ *
+ * LA PRIORITÉ EST LE CŒUR DE LA TABLE, et elle vient d'une mesure, pas d'une intuition. La chaîne
+ * `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW` du cerbère est une TÊTE, pas un cou : le mot qui dit ce
+ * que le membre EST l'emporte sur celui qui nomme l'articulation à sa racine. Sans cette règle, les
+ * deux têtes latérales du cerbère s'appelaient « Cou ».
+ *
+ * LES MOTS DE PATTE SONT ICI, ET C'EST UNE CORRECTION MESURÉE. Ils étaient d'abord rangés dans la
+ * table des RÉGIONS, lue à partir de la racine. Le chien nomme ses pattes `BackShoulder >
+ * BackUpperLeg > …` : la racine dit « épaule », la chaîne dit « patte ». Quatre pattes sur quatre
+ * étaient proposées comme des bras. Un membre se nomme par ce qu'il est, jamais par son attache.
+ */
+const MOTS_IDENTITE_3D = [
+  [/\btentacle\b/, ['Tentacle', 'Tentacule']],
+  [/\bwing\b/, ['Wing', 'Aile']],
+  [/\bhead\b|\bskull\b|\bcabeza\b/, ['Head', 'Tête']],
+  [/\btail\b|\bqueue\b/, ['Tail', 'Queue']],
+  [/\bhorn\b/, ['Horn', 'Corne']],
+  [/\bantenna\b/, ['Antenna', 'Antenne']],
+  [/\bleg\b|\bthigh\b|\bcalf\b|\bshin\b|\bupleg\b|\bpaw\b|\bhoof\b|\bhorselink\b/, ['Leg', 'Patte']],
+];
+
+/**
+ * Les mots qui situent une RÉGION, cherchés os par os dans l'ORDRE de la chaîne.
+ *
+ * L'ordre de la chaîne, donc la racine en premier : c'est son attache qui situe un membre quand
+ * aucun mot d'identité ne le nomme. Une chaîne partant d'une main est un doigt, pas un bras.
+ *
+ * L'ORDRE DES LIGNES COMPTE quand un SEUL nom porte deux mots. `CATRigRArmDigit21` donne « cat rig
+ * r arm digit », et les deux motifs y répondent : c'est la position dans cette table qui tranche, et
+ * « bras » l'emporte parce qu'un os de doigt nommé d'après le bras qui le porte reste, à ce niveau
+ * de lecture, un morceau de bras. Intervertir les deux lignes change le verdict sans rien casser
+ * ailleurs, d'où le test qui l'épingle.
+ */
+const MOTS_REGION_3D = [
+  [/\bfoot\b|\bankle\b|\btoe\b/, ['Leg', 'Patte']],
+  [/\bclavicle\b|\bcollarbone\b|\bshoulder\b|\bupperarm\b|\bforearm\b|\blowerarm\b|\barm\b|\bhand\b|\bwrist\b/, ['Arm', 'Bras']],
+  [/\bfinger\b|\bdigit\b|\bthumb\b/, ['Finger', 'Doigt']],
+  [/\bear\b/, ['Ear', 'Oreille']],
+  [/\beye\b|\beyelid\b|\beyebrow\b|\bbrow\b/, ['Eye', 'Œil']],
+  [/\bjaw\b|\bmandible\b/, ['Jaw', 'Mâchoire']],
+  [/\bneck\b/, ['Neck', 'Cou']],
+  [/\bhair\b|\bbraid\b|\bponytail\b/, ['Hair strand', 'Mèche']],
+  [/\bbreast\b|\btitty\b/, ['Chest', 'Poitrine']],
+  [/\blip\b|\bcheek\b|\bnose\b|\bnostril\b|\btongue\b/, ['Face', 'Visage']],
+  [/\bfeather\b|\bplume\b/, ['Feather', 'Plume']],
+  [/\bcloth\b|\bskirt\b|\bcape\b|\bcoat\b|\brobe\b|\bbelt\b/, ['Clothing', 'Vêtement']],
+  [/\bweapon\b|\bsword\b|\bquiver\b|\barrow\b|\bshield\b|\bbag\b/, ['Accessory', 'Accessoire']],
+];
+
+const chercher3D = (table, mots) => {
+  for (const [motif, paire] of table) if (motif.test(mots)) return paire;
+  return null;
+};
+
+/**
+ * Un nom PROPOSÉ pour une chaîne d'os, ou `null` quand le fichier ne dit rien.
+ *
+ * @param {string[]} nomsDOs les noms des os de la chaîne, de la racine vers l'extrémité
+ * @param {(en: string, fr: string) => string} [traduire]
+ *
+ * `null` EST UNE RÉPONSE, ET LA MOITIÉ DE L'HISTOIRE. Mesurée sur le corpus, cette table nomme
+ * 51 % des chaînes, et ce n'est pas un dégradé : c'est un interrupteur par fichier. Le cerbère
+ * rend 7 chaînes sur 7, le chien 13 sur 17, le dragon 15 sur 18 ; l'araignée, le kraken, le raptor,
+ * le serpent et centaure2 rendent ZÉRO. Soit le modeleur a écrit `Thigh` et `Tail`, soit il a
+ * écrit `Bone.004_L.001` et `l101`, et aucune astuce ne fera parler le second.
+ *
+ * CE N'EST QU'UNE PROPOSITION, jamais un verdict. La fonction lit ce que le nom DIT, pas ce que le
+ * membre EST : la patte avant du cerbère s'appelle `L Clavicle > L UpperArm > L Forearm`, donc elle
+ * est proposée comme « Bras ». C'est la lecture honnête de ce fichier. Corriger en « Patte avant »
+ * relève de l'archétype ou de l'utilisateur, pas d'ici.
+ */
+export function nomSuggereDeChaine3D(nomsDOs, traduire){
+  const t = traduire || ((en) => en);
+  const mots = (Array.isArray(nomsDOs) ? nomsDOs : []).map(motsDuNomDOs3D);
+  if (!mots.length) return null;
+  for (const [motif, paire] of MOTS_IDENTITE_3D) {
+    if (mots.some(m => motif.test(m))) return t(paire[0], paire[1]);
+  }
+  // UN SEUL PARCOURS, DE LA RACINE VERS L'EXTRÉMITÉ. Il y avait ici un cas particulier pour la
+  // racine, suivi de la même boucle sur le reste : la campagne de mutation a montré que le retirer
+  // ne fait échouer aucun test, et pour cause, les deux formes sont strictement équivalentes. Du
+  // code en double qui donnait à croire à une règle supplémentaire.
+  for (const m of mots) {
+    const trouve = chercher3D(MOTS_REGION_3D, m);
+    if (trouve) return t(trouve[0], trouve[1]);
+  }
+  return null;
+}

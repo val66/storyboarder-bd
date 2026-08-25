@@ -3,7 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.33. Les étapes 1 à 3 sont livrées ; 363 à 367 sont ouvertes.
+> À jour de la v1.4.38. Les étapes 1 à 3, #363, #364 et #365 sont livrées ; #366 à #368 sont ouvertes.
 
 ## Où l'on en est
 
@@ -33,7 +33,7 @@ Douze créatures riggées, réduites à leur hiérarchie d'os dans `tests/fixtur
 | raptor | 96 | bipède à tronc HORIZONTAL, queue de 14 os |
 | centaure | 66 | riggé en bipède Mixamo malgré le corps de cheval |
 | centaur1 | 130 | **colonne bifurquée**, trois paires, tronc explicite |
-| centaur2 | 74 | arrière-train NON riggé, une seule paire dans le fichier |
+| centaur2 | 74 | un MEMBRE qui est lui-même un corps portant 4 pattes, invisible pour la décomposition |
 | centaur3 | 79 | rig CAT 3ds Max, **deux `Hub`**, côté illisible sans la 6e convention |
 
 Les six squelettes humanoïdes de `tests/skeleton-map.test.mjs` sont la contrainte de
@@ -150,17 +150,53 @@ Trois choix de ce motif méritent d'être retenus, parce que deux d'entre eux so
   jamais contredire un `Left` explicite. C'est aussi le seul motif du fichier qui se lit sur le nom
   BRUT : les autres survivent au passage en minuscules, celui-ci n'a que la casse.
 
-*Le vocabulaire anatomique.* Une table de mots avec **priorité** : le mot qui identifie le membre
-l'emporte sur celui qui nomme l'articulation à sa racine. `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW`
-donne « Tête », pas « Cou ». Couverture mesurée, 54 % des chaînes, mais ce n'est pas un dégradé,
-c'est un interrupteur :
+*Le vocabulaire anatomique.* **Livré, tâche #365**, `nomSuggereDeChaine3D`. Une table de mots avec
+**priorité** : le mot qui identifie le membre l'emporte sur celui qui nomme l'articulation à sa
+racine. `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW` donne « Tête », pas « Cou ». Couverture mesurée,
+**198 chaînes sur 392, soit 51 %**, mais ce n'est pas un dégradé, c'est un interrupteur :
 
 | donne des noms | ne donne rien |
 |---|---|
-| cerbère 7/7, centaure 4/4, oiseau 21/27, dragon 15/18, chien 10/17 | araignée 0/16, kraken 0/9, raptor 0/6, serpent 0/1, centaur2 0/3 |
+| cerbère 7/7, centaure 4/4, centaure3 7/7, dragon 17/18, chien 12/17, oiseau 18/27 | araignée 0/16, kraken 0/9, raptor 0/6, serpent 0/1 |
 
 Soit le modeleur a écrit `Thigh` et `Tail`, soit il a écrit `Bone.004_L.001` et `l101`. Aucune
-astuce ne fera parler `Bone.004_L.001`.
+astuce ne fera parler `Bone.004_L.001`, et l'écran de correspondance doit rester utilisable **sans
+aucun nom proposé**.
+
+Deux corrections mesurées y ont été faites, et la seconde a révélé autre chose :
+
+- **le découpage en mots précède la recherche.** Chercher `\bleg\b` dans le nom brut ne voit rien
+  dans `L_HEAD` (le souligné est un caractère de mot) ni dans `IKBackLeg` (la casse chameau n'a pas
+  de séparateur). Deux causes opposées pour un même angle mort, qui coûtait les têtes du cerbère et
+  les quatre pattes du chien. `motsDuNomDOs3D` normalise d'abord ;
+- **les mots de patte sont des mots d'IDENTITÉ, pas de région.** Rangés d'abord dans les régions,
+  lues à partir de la racine, ils perdaient contre `BackShoulder` chez le chien : quatre pattes
+  proposées comme des bras. Un membre se nomme par ce qu'il est, jamais par son attache.
+
+⚠️ **Et c'est ce test qui a démenti une affirmation de #364.** J'avais écrit que l'arrière-train de
+centaure2 « n'est pas riggé ». Le vocabulaire proposait « Patte » là où j'attendais rien, parce que
+la chaîne contient `UpperBackRightLeg`. Voir la limite ci-dessous.
+
+## La limite que centaure2 a révélée (#368)
+
+`membresDuSquelette3D` **ne descend jamais dans un membre**. Elle suit le tronc depuis la racine, et
+tout ce qui s'en détache devient une chaîne terminale.
+
+Sur centaure2, `LowerBody1` est une branche de `RootBone`, donc un membre. Elle porte pourtant les
+quatre pattes du cheval, sabots compris et correctement latéralisées :
+
+```
+LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > … > LowerBackRightHoof
+                                     > UpperBackLeftLeg  > …
+           > UpperForeLeftLeg  > …
+           > UpperForeRightLeg > …
+```
+
+Résultat : une chaîne de 7 os, et **neuf os de patte sur douze ne sont atteints par rien**.
+
+Ce n'est pas un cas particulier, c'est la limite générale : **un membre qui est lui-même un corps
+portant des membres est invisible**. C'est exactement ce qu'est un centaure, et centaure1 comme
+centaure3 n'y échappent que parce que leur bifurcation est SUR le tronc.
 
 ## Les archétypes
 
@@ -232,9 +268,10 @@ n'est pas forcément le même fichier.
 dans le dossier de l'utilisateur. Le refus ci-dessus a joué, et c'est le bon comportement. Sans
 conséquence pour l'instant : ce sont deux humanoïdes, reconnus par le nom.
 
-**#365, le vocabulaire de nommage.** Avec sa table de priorité. Défaut connu à corriger : sur
-centaur3, les mots de doigt l'emportent sur les mots de patte, et `CATRigLLeg1` est proposé comme
-« Bras ».
+**#365, le vocabulaire de nommage. FAITE.** Table de priorité, découpage en mots, 51 % de
+couverture mesurée. Le défaut connu est corrigé : `CATRigLLeg1` sort « Patte ».
+
+**#368, descendre dans un membre.** Révélée par centaure2, cf. la section ci-dessus. Nouvelle.
 
 **#366, les tables d'archétypes**, extraites d'`ANIMAL_JOINT_DEFS`, et le sélecteur qui propose sans
 décider.

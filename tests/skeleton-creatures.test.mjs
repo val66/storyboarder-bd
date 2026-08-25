@@ -32,14 +32,21 @@
  *      mesuraient 149 à 164°, ce qui a tué le critère d'angle : il mesurait « tronc vertical » ;
  *   8. (#364) la COLONNE BIFURQUÉE existe pour de bon, centaure1 et centaure3, ce dernier portant
  *      littéralement deux `Hub` sur son tronc. La doc l'annonçait absente du corpus ;
- *   9. (#364) un fichier peut ne PAS CONTENIR l'information. L'arrière-train de centaure2 n'est pas
- *      riggé : aucune règle n'inventera les os manquants.
+ *   9. (#365, CORRIGE LE POINT 9 D'AVANT) un membre peut être lui-même UN CORPS qui porte des
+ *      membres. J'avais écrit que l'arrière-train de centaure2 « n'est pas riggé » : c'est faux,
+ *      il a ses quatre pattes et ses sabots. C'est la DÉCOMPOSITION qui ne descend pas dans un
+ *      membre, et un centaure est précisément ce cas. Tâche #368.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { inferSkeletonMap, membresDuSquelette3D, coteDuNom, SLOTS } from '../src/skeleton-map.js';
+import {
+  inferSkeletonMap, membresDuSquelette3D, coteDuNom, motsDuNomDOs3D, nomSuggereDeChaine3D, SLOTS,
+} from '../src/skeleton-map.js';
+
+/** Le traducteur du dépôt, réduit à ce dont ces tests ont besoin : la version française. */
+const tr = (en, fr) => fr;
 
 const charger = (nom) => {
   const d = JSON.parse(readFileSync(new URL(`fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
@@ -542,24 +549,40 @@ describe('centaure1 : LA COLONNE BIFURQUÉE, enfin', () => {
   });
 });
 
-describe('centaure2 : ce qu\'aucune reconnaissance ne rattrapera', () => {
+describe('centaure2 : un membre qui est lui-même un corps', () => {
   const os = charger('centaure2');
   const parId = new Map(os.map(o => [o.id, o]));
   const r = membresDuSquelette3D(os);
 
-  test('UNE SEULE paire dans tout le fichier, et l\'arrière-train est une chaîne', () => {
-    // L'arrière-train n'est pas riggé : `LowerBody1` est une chaîne CENTRALE de 7 os, pas quatre
-    // pattes. Le fichier ne contient tout simplement pas l'information. Un centaure qui se lit
-    // comme un buste humain sur une queue.
+  test('UNE SEULE paire trouvée, alors que le fichier en contient trois', () => {
+    // ⚠️ CORRECTION D'UNE AFFIRMATION DE #364. J'ai d'abord écrit ici que l'arrière-train « n'est
+    // pas riggé » et que « le fichier ne contient pas l'information ». C'était FAUX, et le test du
+    // vocabulaire (#365) l'a débusqué : il proposait « Patte » là où j'attendais rien, parce que
+    // la chaîne contient `UpperBackRightLeg`. Le cheval a bien ses quatre pattes et ses sabots.
     //
-    // CONSIGNÉ POUR QU'ON NE CHERCHE PAS À LE CORRIGER. Ce n'est pas un défaut de la
-    // reconnaissance ; aucune règle ne peut inventer des os absents. Le refuge « Complexe » est la
-    // seule réponse honnête, et la modale doit le proposer sans prétendre avoir compris.
-    assert.equal(r.membres.filter(m => m.cote).length, 2, 'les bras, et rien d\'autre');
+    // LE DÉFAUT EST DANS LA DÉCOMPOSITION. `membresDuSquelette3D` descend le tronc depuis la
+    // racine, et tout ce qui s'en détache devient un membre. `LowerBody1` est une branche de
+    // `RootBone` : elle devient donc UN membre de 7 os, et la fonction n'examine jamais les
+    // branches d'un membre. Les quatre pattes du cheval sont avalées dedans.
+    //
+    // C'est la limite générale, pas un cas particulier : un membre qui est lui-même un corps
+    // portant des membres est invisible. C'est exactement ce qu'est un centaure. Tâche #368.
+    assert.equal(r.membres.filter(m => m.cote).length, 2, 'seuls les bras humains sont vus');
     const bas = r.membres.find(m => parId.get(m.segments[0]).name.startsWith('LowerBody'));
-    assert.ok(bas, 'l\'arrière-train doit être là');
-    assert.equal(bas.cote, null, 'et sans côté, puisque ce n\'est pas une paire');
+    assert.ok(bas, 'l\'arrière-train est là, mais en un seul morceau');
+    assert.equal(bas.cote, null);
     assert.equal(bas.segments.length, 7);
+  });
+
+  test('ce que le fichier contient VRAIMENT, et qui n\'est pas atteint', () => {
+    const atteints = new Set(r.membres.flatMap(m => m.segments).concat(r.tronc));
+    const pattes = os.filter(o => /Leg|Hoof/.test(o.name) && !/_end/.test(o.name));
+    assert.equal(pattes.length, 12, 'quatre pattes de trois os');
+    const perdus = pattes.filter(o => !atteints.has(o.id));
+    // NEUF sur douze, et les trois « atteints » ne valent pas mieux : ce sont les os de la patte
+    // arrière droite, avalés au bout de la chaîne `LowerBody`, donc impossibles à piloter comme
+    // une patte. Trois pattes sur quatre sont purement et simplement absentes du résultat.
+    assert.equal(perdus.length, 9, 'neuf os de patte ne sont dans aucune chaîne');
   });
 });
 
@@ -639,5 +662,162 @@ describe('les fixtures portent la position de repos de chaque os (#364)', () => 
     ['mixamo', 'vroid-alt'].forEach(nom => {
       assert.equal(charger(nom)[0].t, undefined, `${nom} a gagné des positions, mettre à jour ce test`);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #365 — LE VOCABULAIRE DE NOMMAGE DES CHAÎNES
+//
+// Il lit ce que le nom DIT, pas ce que le membre EST. Ces tests épinglent les deux : ce qu'il
+// nomme juste, et les cinq fichiers sur lesquels il ne rend rien du tout.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Le nom proposé pour chaque membre d'une créature, dans l'ordre de la décomposition. */
+const nomsProposes = (nom) => {
+  const os = charger(nom);
+  const parId = new Map(os.map(o => [o.id, o]));
+  return membresDuSquelette3D(os).membres
+    .map(m => nomSuggereDeChaine3D(m.segments.map(s => parId.get(s).name), tr));
+};
+
+describe('nomSuggereDeChaine3D : découper le nom en mots', () => {
+  test('la casse chameau et le souligné sont des séparateurs', () => {
+    // LES DEUX DÉFAUTS QUI ONT MOTIVÉ CETTE ÉTAPE, opposés l'un à l'autre. Un `\b` posé sur le nom
+    // brut ne voit RIEN dans `L_HEAD`, le souligné étant un caractère de mot ; et rien non plus
+    // dans `IKBackLeg`, la casse chameau n'ayant aucun séparateur. Les têtes du cerbère et les
+    // quatre pattes du chien passaient à travers, chacune pour une raison différente.
+    assert.equal(motsDuNomDOs3D('CERBERUS_L_HEAD_024'), 'cerberus l head');
+    assert.equal(motsDuNomDOs3D('IKBackLeg.L_45'), 'ik back leg l');
+    assert.equal(motsDuNomDOs3D('CATRigLLeg1_065'), 'cat rig l leg');
+    assert.equal(motsDuNomDOs3D('mixamorig:LeftForeArm'), 'mixamorig left fore arm');
+  });
+
+  test('un nom vide ou absent ne fait rien exploser', () => {
+    assert.equal(motsDuNomDOs3D(''), '');
+    assert.equal(motsDuNomDOs3D(null), '');
+    assert.equal(nomSuggereDeChaine3D([], tr), null);
+    assert.equal(nomSuggereDeChaine3D(null, tr), null);
+  });
+});
+
+describe('nomSuggereDeChaine3D : le mot d\'IDENTITÉ l\'emporte', () => {
+  test('la tête latérale du cerbère est une TÊTE, pas un cou', () => {
+    // `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW`. Le mot à la racine dit « cou », le mot au milieu dit
+    // ce que le membre EST. Sans la règle de priorité, le cerbère a deux « Cou » latéraux.
+    assert.equal(nomSuggereDeChaine3D(['L_NECK_1', 'L_NECK_2', 'L_HEAD', 'L_JAW'], tr), 'Tête');
+  });
+
+  test('LA PATTE DU CHIEN EST UNE PATTE, même attachée à une « épaule »', () => {
+    // Correction mesurée : les mots de patte étaient d'abord rangés dans les RÉGIONS, lues à
+    // partir de la racine. Le chien nomme ses pattes `BackShoulder > BackUpperLeg > …`, donc les
+    // quatre étaient proposées comme des bras. Un membre se nomme par ce qu'il est, pas par son
+    // attache.
+    assert.equal(nomSuggereDeChaine3D(['BackShoulder.L', 'BackUpperLeg.L', 'BackLowerLeg.L'], tr), 'Patte');
+  });
+
+  test('LE DÉFAUT DE CENTAURE3 EST CORRIGÉ : patte avant doigt', () => {
+    // `CATRigLLeg1 > … > CATRigLLegDigit11`. La chaîne contient un os de doigt, et la première
+    // version proposait « Bras ». Les mots de patte doivent primer sur les mots de doigt.
+    assert.equal(nomSuggereDeChaine3D(['CATRigLLeg1', 'CATRigLLegDigit11'], tr), 'Patte');
+  });
+
+  test('l\'aile de la wyverne est une AILE, même enracinée sur une épaule', () => {
+    assert.equal(nomSuggereDeChaine3D(['Shoulder.L', 'Wing1.L', 'Wing2.L'], tr), 'Aile');
+  });
+});
+
+describe('nomSuggereDeChaine3D : la RÉGION se lit dans l\'ordre de la chaîne', () => {
+  test('une chaîne partant d\'une main est un doigt, pas un bras', () => {
+    // La racine décide, puisqu'elle est lue en premier : sans cet ordre, `hand` gagnerait et toute
+    // chaîne de doigt s'appellerait « Bras ».
+    assert.equal(nomSuggereDeChaine3D(['Finger01.L', 'Finger02.L'], tr), 'Doigt');
+    assert.equal(nomSuggereDeChaine3D(['Hand.L', 'Finger01.L'], tr), 'Bras');
+  });
+
+  test('L\'ORDRE DES LIGNES DE LA TABLE tranche quand UN nom porte deux mots', () => {
+    // TROU DE TEST TROUVÉ PAR MUTATION. Intervertir « bras » et « doigt » dans la table ne faisait
+    // échouer aucun test, alors que le verdict change bel et bien : `CATRigRArmDigit21`, un os réel
+    // de centaure3, donne « cat rig r arm digit », et les DEUX motifs y répondent. Les cas montés
+    // à la main ne le voyaient pas, chacun de leurs noms ne portant qu'un seul mot.
+    assert.equal(nomSuggereDeChaine3D(['CATRigRArmDigit21'], tr), 'Bras');
+    assert.equal(nomSuggereDeChaine3D(['CATRigLArmPalm'], tr), 'Bras');
+  });
+
+  test('repli sur le reste de la chaîne quand la racine est muette', () => {
+    // Cas courant : la racine est un `Bone.004_L` sans le moindre mot, et l'information est plus
+    // loin. Sans le repli, la moitié des chaînes nommables seraient perdues.
+    assert.equal(nomSuggereDeChaine3D(['Bone.004_L', 'Bone.004_L.001', 'Ear_tip'], tr), 'Oreille');
+  });
+});
+
+describe('nomSuggereDeChaine3D : mesuré sur le corpus', () => {
+  test('le cerbère nomme ses sept chaînes, les trois têtes comprises', () => {
+    assert.deepEqual(nomsProposes('cerbere'),
+      ['Patte', 'Patte', 'Queue', 'Tête', 'Tête', 'Bras', 'Bras']);
+    // ⚠️ LES PATTES AVANT SORTENT « BRAS », et c'est JUSTE au niveau où cette fonction travaille :
+    // le fichier les nomme `L Clavicle > L UpperArm > L Forearm > L Hand`. Elle lit ce que le nom
+    // dit. Corriger en « Patte avant » relève de l'archétype ou de l'utilisateur, pas d'ici.
+  });
+
+  test('centaure3 : trois paires nommées, dont les pattes du fix', () => {
+    assert.deepEqual(nomsProposes('centaure3'),
+      ['Patte', 'Patte', 'Queue', 'Patte', 'Patte', 'Bras', 'Bras']);
+  });
+
+  test('QUATRE FICHIERS NE RENDENT RIEN, et c\'est la moitié de l\'histoire', () => {
+    // Ce n'est pas un dégradé, c'est un interrupteur par fichier. Soit le modeleur a écrit `Thigh`
+    // et `Tail`, soit il a écrit `Bone.004_L.001` et `l101`. Aucune astuce ne fera parler le
+    // second, et l'écran de correspondance doit donc rester utilisable SANS aucun nom proposé.
+    ['araignee', 'kraken', 'raptor', 'serpent'].forEach(nom => {
+      const proposes = nomsProposes(nom).filter(Boolean);
+      assert.deepEqual(proposes, [], `${nom} a gagné des noms, la mesure est à refaire`);
+    });
+  });
+
+  test('⚠️ CENTAURE2 M\'A DÉMENTI, et c\'est ce test qui l\'a débusqué', () => {
+    // J'avais écrit en #364, dans un test ET dans la doc, que l'arrière-train de centaure2 « n'est
+    // pas riggé » et qu'« aucune reconnaissance ne rattrapera » le cas. C'EST FAUX. Le fichier
+    // contient les quatre pattes du cheval, sabots compris, correctement latéralisées :
+    //
+    //   LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > LowerBackRightLeg > …Hoof
+    //                                        > UpperBackLeftLeg  > …
+    //             > UpperForeLeftLeg  > …
+    //             > UpperForeRightLeg > …
+    //
+    // LE DÉFAUT EST DANS LA DÉCOMPOSITION, PAS DANS LE FICHIER. `membresDuSquelette3D` ne descend
+    // le tronc que depuis la racine ; `LowerBody1` est une BRANCHE de `RootBone`, donc un membre,
+    // et la fonction n'examine jamais les branches d'un membre. Un membre qui est lui-même un corps
+    // portant des membres est invisible. C'est exactement ce qu'est un centaure.
+    //
+    // Suite dans la tâche #368. Ce test épingle le comportement ACTUEL, faux, pour qu'on mesure la
+    // correction quand elle viendra.
+    const os = charger('centaure2');
+    const parId = new Map(os.map(o => [o.id, o]));
+    const r = membresDuSquelette3D(os);
+    const bas = r.membres.find(m => parId.get(m.segments[0]).name.startsWith('LowerBody'));
+    assert.equal(bas.segments.length, 7, 'les quatre pattes sont AVALÉES dans une seule chaîne');
+    const pattes = os.filter(o => /Leg|Hoof/.test(o.name) && !/_end/.test(o.name));
+    assert.equal(pattes.length, 12, 'douze os de patte bien présents dans le fichier');
+    assert.equal(coteDuNom('UpperBackRightLeg'), 'd', 'et parfaitement latéralisés');
+  });
+
+  test('la couverture globale du corpus est de 51 %', () => {
+    // Chiffre épinglé pour qu'un ajout de mots se mesure au lieu de se supposer. Il DOIT changer
+    // quand la table change : c'est un instantané, pas un objectif.
+    const noms = ['cerbere', 'araignee', 'kraken', 'serpent', 'dragon', 'chien', 'oiseau',
+      'centaure', 'raptor', 'centaure1', 'centaure2', 'centaure3', 'maison', 'vrm', 'unreal'];
+    let total = 0, nommees = 0;
+    noms.forEach(n => nomsProposes(n).forEach(s => { total++; if (s) nommees++; }));
+    assert.equal(total, 392);
+    assert.equal(nommees, 198);
+  });
+
+  test('la traduction passe par le paramètre, jamais par un import d\'état', () => {
+    // `skeleton-map.js` est pur et doit le rester : `state.js` importe `utils.js`, et un import
+    // d'état ici fermerait un cycle. Le traducteur est donc un paramètre, comme partout ailleurs.
+    const en = (a) => a;
+    assert.equal(nomSuggereDeChaine3D(['Tail_01'], en), 'Tail');
+    assert.equal(nomSuggereDeChaine3D(['Tail_01'], tr), 'Queue');
+    assert.equal(nomSuggereDeChaine3D(['Tail_01']), 'Tail', 'sans traducteur, l\'anglais');
   });
 });

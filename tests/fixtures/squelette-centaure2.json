@@ -1,5 +1,5 @@
 {
- "origine": "Sketchfab. LE CAS QU'AUCUNE RECONNAISSANCE NE RATTRAPERA : l'arrière-train n'est PAS riggé, c'est une seule chaîne centrale `LowerBody1` de 7 os. Une seule paire dans tout le fichier, les bras. Un centaure qui se lit comme un buste humain sur une queue. Ce n'est pas un défaut de la reconnaissance, c'est une absence dans le fichier.",
+ "origine": "Sketchfab. LE MEMBRE QUI EST LUI-MÊME UN CORPS. J'ai d'abord écrit ici que l'arrière-train « n'est pas riggé » : c'était FAUX, et le test du vocabulaire (#365) l'a débusqué. Le cheval a ses quatre pattes et ses sabots, correctement latéralisés (`UpperBackRightLeg`, `LowerForeLeftHoof`). Mais `LowerBody1` est une BRANCHE de `RootBone`, donc un membre au sens de `membresDuSquelette3D`, et la fonction n'examine jamais les branches d'un membre : les quatre pattes sont avalées dans une chaîne de 7 os, et neuf os de patte sur douze ne sont atteints par rien. Tâche #368.",
  "os": [
   {
    "i": 6,

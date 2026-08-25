@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.33. Steps 1 to 3 are shipped; 363 to 367 are open.
+> Up to date as of v1.4.38. Steps 1 to 3, #363, #364 and #365 are shipped; #366 to #368 are open.
 
 ## Where things stand
 
@@ -32,7 +32,7 @@ Twelve rigged creatures, reduced to their bone hierarchy in `tests/fixtures`, pi
 | raptor | 96 | biped with a HORIZONTAL trunk, 14-bone tail |
 | centaur | 66 | rigged as a Mixamo biped despite the horse body |
 | centaur1 | 130 | **forking spine**, three pairs, explicit trunk |
-| centaur2 | 74 | hindquarters NOT rigged, a single pair in the whole file |
+| centaur2 | 74 | a LIMB that is itself a body carrying 4 legs, invisible to the decomposition |
 | centaur3 | 79 | 3ds Max CAT rig, **two `Hub`s**, side unreadable without the 6th convention |
 
 The six humanoid skeletons in `tests/skeleton-map.test.mjs` are the non-regression constraint: no
@@ -145,16 +145,53 @@ Three choices in that pattern are worth keeping in mind, two of them counter-int
   contradict an explicit `Left`. It is also the only pattern in the file read on the RAW name: the
   others survive lowercasing, this one has nothing but case.
 
-*The anatomical vocabulary.* A word table with **priority**: the word identifying the limb outranks
-the one naming the joint at its root. `L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW` gives "Head", not
-"Neck". Measured coverage, 54 % of chains, but it is a switch, not a gradient:
+*The anatomical vocabulary.* **Shipped, task #365**, `nomSuggereDeChaine3D`. A word table with
+**priority**: the word identifying the limb outranks the one naming the joint at its root.
+`L_NECK_1 > L_NECK_2 > L_HEAD > L_JAW` gives "Head", not "Neck". Measured coverage, **198 chains out
+of 392, 51 %**, but it is a switch, not a gradient:
 
 | yields names | yields nothing |
 |---|---|
-| cerberus 7/7, centaur 4/4, bird 21/27, dragon 15/18, dog 10/17 | spider 0/16, kraken 0/9, raptor 0/6, snake 0/1, centaur2 0/3 |
+| cerberus 7/7, centaur 4/4, centaur3 7/7, dragon 17/18, dog 12/17, bird 18/27 | spider 0/16, kraken 0/9, raptor 0/6, snake 0/1 |
 
 Either the modeller wrote `Thigh` and `Tail`, or they wrote `Bone.004_L.001` and `l101`. No trick
-will make `Bone.004_L.001` speak.
+will make `Bone.004_L.001` speak, and the mapping screen must stay usable **with no suggested name
+at all**.
+
+Two measured corrections went in, and the second revealed something else:
+
+- **word splitting comes before the search.** Looking for `\bleg\b` in the raw name sees nothing in
+  `L_HEAD` (underscore is a word character) and nothing in `IKBackLeg` (camel case has no
+  separator). Two opposite causes for one blind spot, costing the cerberus's heads and the dog's
+  four legs. `motsDuNomDOs3D` normalises first;
+- **leg words are IDENTITY words, not region words.** Filed under regions at first, read from the
+  root, they lost against `BackShoulder` on the dog: four legs proposed as arms. A limb is named by
+  what it is, never by what it hangs from.
+
+⚠️ **And that test disproved a claim made in #364.** I had written that centaur2's hindquarters "are
+not rigged". The vocabulary proposed "Leg" where I expected nothing, because the chain contains
+`UpperBackRightLeg`. See the limit below.
+
+## The limit centaur2 revealed (#368)
+
+`membresDuSquelette3D` **never descends into a limb**. It follows the trunk from the root, and
+anything branching off it becomes a terminal chain.
+
+On centaur2, `LowerBody1` is a branch of `RootBone`, hence a limb. Yet it carries the horse's four
+legs, hooves included and correctly sided:
+
+```
+LowerBody1 > LowerBody2 > LowerBody3 > UpperBackRightLeg > … > LowerBackRightHoof
+                                     > UpperBackLeftLeg  > …
+           > UpperForeLeftLeg  > …
+           > UpperForeRightLeg > …
+```
+
+Result: one 7-bone chain, and **nine of the twelve leg bones are reached by nothing**.
+
+This is not a special case, it is the general limit: **a limb that is itself a body carrying limbs
+is invisible**. That is exactly what a centaur is, and centaur1 and centaur3 escape it only because
+their fork sits ON the trunk.
 
 ## The archetypes
 
@@ -223,8 +260,10 @@ bone: `.glb` files are not versioned, so a file with the same name is not necess
 the user's folder. The refusal above did its job, and that is the right behaviour. No consequence
 for now: both are humanoids, recognised by name.
 
-**#365, the naming vocabulary**, with its priority table. Known defect to fix: on centaur3 finger
-words outrank leg words, and `CATRigLLeg1` is proposed as "Arm".
+**#365, the naming vocabulary. DONE.** Priority table, word splitting, 51 % measured coverage. The
+known defect is fixed: `CATRigLLeg1` comes out "Leg".
+
+**#368, descending into a limb.** Revealed by centaur2, see the section above. New.
 
 **#366, the archetype tables**, extracted from `ANIMAL_JOINT_DEFS`, and the selector that proposes
 without deciding.
