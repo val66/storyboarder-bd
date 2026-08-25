@@ -224,6 +224,10 @@ task #375.
 
 ### 6.3 bis Morphology decides where the sliders come from (#374)
 
+It also decides what the mapping screen SHOWS (#377): a humanoid sees its eighteen slots there, a
+creature its trunk and chains, never both. That screen shows what drives the rig and nothing else;
+changing the selector swaps the two lists at once.
+
 A rigged file has **two possible sets of drivable bones**, and only one is active at a time:
 
 | morphology | sliders and handles | pose key |

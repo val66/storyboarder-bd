@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.49**
+**Version 1.4.50**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -58,9 +58,9 @@
   serpentin, d'après la forme du squelette et le nom des os. Corrigible d'une liste déroulante ;
   seuls serpentin, radial et arachnide sont sûrs, les autres portent « à confirmer », qui ne bloque
   rien
-- **Tous les membres, pas seulement dix-huit** : la section « Membres » du tableau de correspondance
-  liste chaque chaîne du squelette, repliée par os d'attache. Les trois têtes d'un cerbère et les
-  huit pattes d'une araignée s'y cochent et s'y renomment
+- **Tous les membres, pas seulement dix-huit** : sur une créature, le tableau de correspondance
+  liste chaque chaîne du squelette, repliée par os d'attache, au lieu des emplacements humanoïdes.
+  Les trois têtes d'un cerbère et les huit pattes d'une araignée s'y cochent et s'y renomment
 - **Une créature se pose par ses chaînes** : dès que la morphologie n'est pas « humanoïde », les
   curseurs et les points de l'aperçu viennent des chaînes cochées, avec le nom que vous leur avez
   donné, et non des dix-huit emplacements humanoïdes

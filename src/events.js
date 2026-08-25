@@ -29,7 +29,7 @@ import {
   targetFor,
 } from './model-usages.js';
 import {
-  inferSkeletonMap, resumeCorrespondance, bonesFromObject3D, slotLabel, SLOT_GROUPS,
+  inferSkeletonMap, sousTitreCorrespondance3D, cheminDOs3D, bonesFromObject3D, slotLabel, SLOT_GROUPS,
   archetypeSuggere3D, lignesDeCorrespondance3D,
 } from './skeleton-map.js';
 import {
@@ -4250,18 +4250,30 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
 function renderSkeletonMapModal(){
   if (!_skelEcran) return;
   const { fichier, os, carte, valide } = _skelEcran;
-  const r = resumeCorrespondance(carte);
+  // ⚠️ CET ÉCRAN MONTRE CE QUI PILOTE LE RIG, ET RIEN D'AUTRE. Signalé à l'usage sur l'araignée :
+  // « je me retrouve avec des sections qui font très humanoïde, tronc, bras gauche, ça ne fait
+  // aucun sens ». C'était exact, et pire que laid : depuis #374, les dix-huit emplacements d'une
+  // créature ne pilotent RIEN, ses curseurs viennent de ses chaînes. Les afficher quand même
+  // proposait de corriger des lignes sans effet, la définition même d'un écran qui ment.
+  //
+  // La règle est donc symétrique, et c'est ce qui la rend tenable : un humanoïde montre ses
+  // emplacements, une créature montre ses chaînes, la morphologie tranche, exactement comme pour
+  // les curseurs (cf. groupesDeCurseurs3D dans src/rig3d.js). Changer le sélecteur échange les deux
+  // sections sous les yeux, ce qui rend la conséquence visible au lieu de la faire deviner.
+  const humanoide = _skelEcran.morphologie === 'humanoide';
+  const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr);
   // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonJointSlidersUI) : deux noms
   // pour une seule chose obligent l'utilisateur à faire le rapprochement lui-même.
   document.getElementById('skeletonMapTitle').textContent =
     tr('Mapping table', 'Tableau de correspondance');
   // Validée, on ne compte plus ce qu'il « reste à vérifier » : il ne reste rien, c'est fait. Le
   // décompte n'a de sens que tant que la décision n'a pas été prise.
-  document.getElementById('skeletonMapSubtitle').textContent = valide
-    ? tr(`"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} mapped · ✓ confirmed`,
-      `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} associés · ✓ correspondance validée`)
-    : tr(`"${fichier}" — ${os.length} bones · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
-      `« ${fichier} » — ${os.length} os · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`);
+  //
+  // LE DÉCOMPTE SUIT LA SECTION AFFICHÉE. « 12 sur 18 associés » sous une araignée annonçait un
+  // travail à finir sur des emplacements qu'elle n'utilise pas ; ses chaînes, elles, sont toutes
+  // trouvées, il n'y a rien à vérifier, seulement à cocher.
+  document.getElementById('skeletonMapSubtitle').textContent =
+    sousTitreCorrespondance3D({ fichier, os, carte, lignes, humanoide, valide }, tr);
 
   // Pendant un import, « Annuler » annule TOUT l'import (choix de l'utilisateur) : le bouton doit le
   // dire. Un bouton nommé « Annuler » qui fait disparaître un modèle serait un piège.
@@ -4297,14 +4309,16 @@ function renderSkeletonMapModal(){
 
   skeletonMapList.innerHTML = '';
   skeletonMapList.className = 'skeleton-map-list' + (valide ? ' validee' : '');
-  SLOT_GROUPS.forEach(groupe => {
-    const t = document.createElement('div');
-    t.className = 'skeleton-map-group';
-    t.textContent = tr(groupe.titre[0], groupe.titre[1]);
-    skeletonMapList.appendChild(t);
-    groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
-  });
-  renderMembres(os);
+  if (humanoide) {
+    SLOT_GROUPS.forEach(groupe => {
+      const t = document.createElement('div');
+      t.className = 'skeleton-map-group';
+      t.textContent = tr(groupe.titre[0], groupe.titre[1]);
+      skeletonMapList.appendChild(t);
+      groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
+    });
+  }
+  renderMembres(humanoide ? null : lignes, os);
 }
 
 /**
@@ -4330,12 +4344,15 @@ function renderSkeletonMapModal(){
  * araignée replie ses neuf groupes. Le seuil n'est pas un réglage de finesse : c'est la limite
  * au-delà de laquelle la liste dépasse la hauteur de la modale, mesurée sur le corpus.
  */
-function renderMembres(os){
+function renderMembres(lignes, os){
   const zone = document.getElementById('skeletonMapMembres');
   if (!zone) return;
   zone.innerHTML = '';
-  const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr);
-  if (!lignes.tronc) return;
+  // `lignes` nul dit « cet écran montre ses emplacements » : un humanoïde n'a pas cette section, et
+  // ce n'est pas un retrait de confort. Ses chaînes ne pilotent rien, les cocher ou les renommer
+  // n'aurait aucun effet, et une section sans effet est le défaut qu'on vient de corriger sur
+  // l'araignée, pris dans l'autre sens.
+  if (!lignes || !lignes.tronc) return;
 
   const titre = document.createElement('div');
   titre.className = 'skeleton-map-group';
@@ -4348,6 +4365,23 @@ function renderMembres(os){
   note.textContent = tr('Untick what you do not want to animate. Names are yours to change.',
     'Décochez ce que vous ne voulez pas animer. Les noms sont à vous.');
   zone.appendChild(note);
+
+  // LE TRONC EST LÀ, SANS CASE NI CHAMP. Il n'a rien à choisir, il n'est ni cochable ni renommable,
+  // et pourtant il porte des curseurs : l'omettre laissait la liste de cet écran plus courte que
+  // celle des « Réglages des articulations », et c'est justement cette différence entre les deux
+  // écrans qui a été signalée à l'usage. Il dit aussi, sans avoir à l'expliquer, pourquoi ses
+  // premiers os n'ont pas de curseur : ils portent tous les membres.
+  const troncBloc = document.createElement('details');
+  troncBloc.className = 'skeleton-map-ancre';
+  const troncTete = document.createElement('summary');
+  troncTete.textContent = tr(`${lignes.tronc.nom} — ${lignes.tronc.segments.length} bones, always kept`,
+    `${lignes.tronc.nom} — ${lignes.tronc.segments.length} os, toujours retenue`);
+  troncBloc.appendChild(troncTete);
+  const troncOs = document.createElement('div');
+  troncOs.className = 'skeleton-map-chaine';
+  troncOs.textContent = cheminDOs3D(lignes.tronc.segments, os);
+  troncBloc.appendChild(troncOs);
+  zone.appendChild(troncBloc);
 
   lignes.groupes.forEach(groupe => {
     const bloc = document.createElement('details');
@@ -4366,7 +4400,6 @@ function renderMembres(os){
 
 /** Une chaîne : sa case, son nom modifiable, d'où vient ce nom, et les os qu'elle traverse. */
 function ligneMembre(m, os){
-  const parId = new Map(os.map(o => [o.id, o]));
   const row = document.createElement('div');
   row.className = 'skeleton-map-membre' + (m.retenu ? '' : ' ecarte');
 
@@ -4393,9 +4426,8 @@ function ligneMembre(m, os){
 
   const chaine = document.createElement('div');
   chaine.className = 'skeleton-map-chaine';
-  const noms = m.segments.map(s => parId.get(s).name);
-  chaine.textContent = noms.slice(0, 4).join(' › ') + (noms.length > 4 ? ' › …' : '');
-  chaine.title = noms.join(' › ');
+  chaine.textContent = cheminDOs3D(m.segments, os, 4);
+  chaine.title = cheminDOs3D(m.segments, os);
   row.appendChild(chaine);
   return row;
 }

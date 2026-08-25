@@ -226,6 +226,10 @@ une de ses huit pattes. Les poses par morphologie sont la tâche #375.
 
 ### 6.3 bis La morphologie décide d'où viennent les curseurs (#374)
 
+Elle décide aussi de ce que MONTRE l'écran de correspondance (#377) : un humanoïde y voit ses
+dix-huit emplacements, une créature son tronc et ses chaînes, jamais les deux. Cet écran montre ce
+qui pilote le rig, et rien d'autre ; changer le sélecteur échange les deux listes aussitôt.
+
 Un fichier articulé a **deux jeux d'os pilotables possibles**, et un seul est actif à la fois :
 
 | morphologie | curseurs et poignées | clé de pose |

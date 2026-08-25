@@ -3,8 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.49. Les étapes 1 à 3 et les tâches #363 à #374 et #376 sont livrées ; #375
-> reste à faire.
+> À jour de la v1.4.50. Les étapes 1 à 3 et les tâches #363 à #374, #376 et #377 sont livrées ;
+> #375 reste à faire.
 
 ## Où l'on en est
 
@@ -523,6 +523,45 @@ une figure retirée de la liste vaut mieux qu'un geste sans effet. Les poses par
 **Le sélecteur de figure de la fiche, lui, garde les créatures** : porter une araignée reste
 possible, et ses curseurs de chaînes la pilotent. Il gagne même le serpent et centaur2, dont la
 correspondance humanoïde était vide et qui n'étaient donc proposés nulle part.
+
+### L'écran de correspondance montre la même chose que les curseurs (#377)
+
+Signalé à l'usage aussitôt après : « quand j'ouvre le tableau des correspondances d'une araignée, je
+me retrouve avec des sections qui font très humanoïde, tronc, bras gauche, ça ne fait aucun sens ».
+
+C'était exact, et pire que laid. Depuis #374 les dix-huit emplacements d'une créature ne pilotent
+RIEN. Les afficher quand même proposait de corriger des lignes sans effet, c'est-à-dire exactement
+la définition d'un écran qui ment.
+
+La règle est donc la même que pour les curseurs, et c'est ce qui la rend tenable : **cet écran
+montre ce qui pilote le rig, et rien d'autre.**
+
+| morphologie | l'écran montre |
+|---|---|
+| `humanoide` | les dix-huit emplacements, avec leur légende |
+| tout le reste | le tronc et les chaînes, cochables et renommables |
+
+Trois conséquences, toutes voulues :
+
+- **un humanoïde perd la section « Membres »**, livrée trois heures plus tôt en #373. Ses chaînes ne
+  pilotent rien non plus, les cocher n'aurait aucun effet : c'est le même défaut pris dans l'autre
+  sens ;
+- **changer le sélecteur échange les deux sections sous les yeux**, ce qui rend la conséquence du
+  choix visible au lieu de la faire deviner ;
+- **le décompte du sous-titre suit la section affichée.** « 12 sur 18 associés » annonçait un travail
+  à finir sur des emplacements inutilisés ; une créature lit « 30 chaînes, 28 retenues ».
+
+Le TRONC a été ajouté à la liste, sans case ni champ. Il n'a rien à choisir, mais il porte des
+curseurs : l'omettre laissait la liste de cet écran plus courte que celle des réglages, et c'est
+précisément l'écart entre les deux écrans qui avait été signalé.
+
+Deux mutations ont encore échappé, N3 et N4, pour la troisième et la quatrième fois de ce chantier
+et toujours par la même cause : un texte construit en ligne dans une fonction qui manipule le DOM
+n'est vérifiable qu'en lisant le code source, et une fenêtre de source ne dit rien de ce qui
+s'affiche. Celle de N4 cherchait `lignes.tronc.segments`, qui apparaît DEUX fois dans la fonction,
+une fois pour le compte et une fois pour le chemin : vider le chemin ne la faisait pas broncher.
+D'où deux extractions pures de plus, `sousTitreCorrespondance3D` et `cheminDOs3D`, comparées à des
+chaînes de caractères attendues.
 
 ### Deux mutations échappées, et ce qu'elles ont fait corriger
 

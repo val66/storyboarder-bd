@@ -899,6 +899,54 @@ export function archetypeSuggere3D(os){
  * `retenu` VAUT VRAI PAR DÉFAUT. Une chaîne que personne n'a décochée est proposée, c'est le contrat
  * de tout cet écran : proposer sans décider. Seul un `false` enregistré la retire.
  */
+/**
+ * Le sous-titre de l'écran de correspondance. Fonction PURE.
+ *
+ * IL DOIT COMPTER CE QUE L'ÉCRAN MONTRE. « 12 sur 18 associés » sous une araignée annonçait un
+ * travail à finir sur des emplacements qu'elle n'utilise pas depuis #374 ; ses chaînes, elles, sont
+ * toutes trouvées, il n'y a rien à vérifier, seulement à cocher.
+ *
+ * Validé, on ne compte plus ce qu'il « reste à vérifier » : il ne reste rien, c'est fait.
+ */
+export function sousTitreCorrespondance3D({ fichier, os, carte, lignes, humanoide, valide } = {}, traduire){
+  const t = traduire || ((en) => en);
+  const nb = (os || []).length;
+  const tete = t(`"${fichier}" — ${nb} bones`, `« ${fichier} » — ${nb} os`);
+  const confirme = valide ? t(' · ✓ confirmed', ' · ✓ correspondance validée') : '';
+  if (humanoide) {
+    const r = resumeCorrespondance(carte);
+    return tete + (valide
+      ? t(` · ${r.remplis} of ${r.total} mapped`, ` · ${r.remplis} sur ${r.total} associés`)
+      : t(` · ${r.remplis} of ${r.total} found, ${r.aVerifier} to check`,
+        ` · ${r.remplis} sur ${r.total} trouvés, ${r.aVerifier} à vérifier`)) + confirme;
+  }
+  const groupes = (lignes && lignes.groupes) || [];
+  const chaines = groupes.reduce((n, g) => n + g.membres.length, 0);
+  const retenues = groupes.reduce((n, g) => n + g.membres.filter(m => m.retenu).length, 0);
+  return tete + t(` · ${chaines} chains, ${retenues} kept`, ` · ${chaines} chaînes, ${retenues} retenues`) + confirme;
+}
+
+/**
+ * Le chemin d'une chaîne d'os, « Hips › Spine › Chest ». Fonction PURE.
+ *
+ * @param segments les identifiants d'os, dans l'ordre
+ * @param os la liste d'os neutre
+ * @param max au-delà, la suite est remplacée par « … ». Sans limite si absent.
+ *
+ * EXTRAITE PARCE QUE DEUX MUTATIONS ONT ÉCHAPPÉ. Ce texte était construit en ligne dans deux
+ * endroits de l'écran, la ligne d'un membre et celle du tronc, donc vérifiable seulement en lisant
+ * le code source. Or `lignes.tronc.segments` apparaît DEUX fois dans la fonction qui l'affiche, une
+ * fois pour le compte et une fois pour le chemin : un test qui cherchait cette chaîne de caractères
+ * ne voyait pas la disparition du chemin. Un texte qu'on peut appeler et comparer ne pose pas cette
+ * question.
+ */
+export function cheminDOs3D(segments, os, max){
+  const parId = new Map((os || []).filter(o => o && o.id !== undefined).map(o => [o.id, o.name]));
+  const noms = (segments || []).map(id => parId.get(id)).filter(n => typeof n === 'string' && n);
+  if (!max || noms.length <= max) return noms.join(' › ');
+  return noms.slice(0, max).join(' › ') + ' › …';
+}
+
 export function lignesDeCorrespondance3D(os, enregistres, traduire){
   const t = traduire || ((en) => en);
   const liste = (os || []).filter(o => o && o.id !== undefined);

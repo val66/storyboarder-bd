@@ -26,7 +26,10 @@ import {
   SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
 } from '../src/skeleton-store.js';
-import { SLOTS } from '../src/skeleton-map.js';
+import { SLOTS, sousTitreCorrespondance3D, cheminDOs3D } from '../src/skeleton-map.js';
+
+/** Le traducteur du dépôt, réduit à la version française : c'est elle que ces tests comparent. */
+const tr = (en, fr) => fr;
 
 const OS = [
   { id: 3, name: 'mixamorig:LeftUpLeg' },
@@ -571,10 +574,28 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
   test('validé, le sous-titre ne compte plus ce qu\'il « reste à vérifier »', () => {
     // Il ne reste rien : c'est fait. Le décompte n'a de sens que tant que la décision n'est pas
     // prise, l'afficher après coup reproduit l'alerte qu'on vient de retirer.
-    const debut = EV2.indexOf('skeletonMapSubtitle');
-    const corps = EV2.slice(debut, debut + 700);
-    assert.match(corps, /valide\s*\?/, 'le sous-titre ne distingue pas les deux états');
-    assert.match(corps, /validée/);
+    //
+    // ⚠️ CE TEST LISAIT 700 CARACTÈRES DE SOURCE après le mot `skeletonMapSubtitle`. Il cherchait
+    // une ternaire sur `valide`, ce qui ne dit RIEN de ce qui s'affiche : la fenêtre s'est cassée
+    // dès que le texte a été sorti dans une fonction pure. C'est ce texte qu'on compare désormais.
+    const carte = { tete: { bone: 'b1', name: 'Head', origine: 'nom' } };
+    const arg = { fichier: 'x.glb', os: [{ id: 1, name: 'Head' }], carte, humanoide: true };
+    const encours = sousTitreCorrespondance3D({ ...arg, valide: false }, tr);
+    const fait = sousTitreCorrespondance3D({ ...arg, valide: true }, tr);
+    assert.match(encours, /à vérifier/);
+    assert.doesNotMatch(fait, /à vérifier/, 'le décompte d\'alerte survit à la validation');
+    assert.match(fait, /✓/);
+  });
+
+  test('le sous-titre compte CE QUE L\'ÉCRAN MONTRE (#374)', () => {
+    // « 12 sur 18 associés » sous une araignée annonçait un travail à finir sur des emplacements
+    // qu'elle n'utilise pas. Ses chaînes, elles, sont toutes trouvées : il n'y a rien à vérifier,
+    // seulement à cocher.
+    const lignes = { groupes: [{ membres: [{ retenu: true }, { retenu: false }, { retenu: true }] }] };
+    const creature = sousTitreCorrespondance3D(
+      { fichier: 'araignee.glb', os: [{ id: 1 }], carte: {}, lignes, humanoide: false, valide: false }, tr);
+    assert.match(creature, /3 chaînes, 2 retenues/);
+    assert.doesNotMatch(creature, /sur 18|à vérifier/, 'le décompte humanoïde survit sur une créature');
   });
 });
 
@@ -793,8 +814,8 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
   // au DOM et n'est pas exécutable ici, mais les décisions qu'il porte doivent tenir.
 
   test('la section existe dans le HTML, et APRÈS les dix-huit emplacements', () => {
-    // L'ordre porte la décision : les emplacements restent en tête parce que ce sont EUX qui
-    // pilotent le rig aujourd'hui. Inverser suggérerait que les membres les remplacent déjà.
+    // L'ordre comptait quand les deux étaient visibles ensemble. Depuis #374 ils s'excluent, mais
+    // l'ordre reste : il décide de la place qu'occupe celle des deux qui est affichée.
     assert.match(HTML2, /id="skeletonMapMembres"/);
     assert.ok(HTML2.indexOf('id="skeletonMapList"') < HTML2.indexOf('id="skeletonMapMembres"'));
   });
@@ -804,7 +825,56 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // aucun test, tous portant sur le contenu de `renderMembres`. Une fonction jamais appelée passe
     // toutes les inspections de source du monde.
     const debut = EV2.indexOf('function renderSkeletonMapModal');
-    assert.match(EV2.slice(debut, EV2.indexOf('\n}', debut)), /renderMembres\(os\)/);
+    assert.match(EV2.slice(debut, EV2.indexOf('\n}', debut)), /renderMembres\(/);
+  });
+
+  test('L\'écran montre ce qui PILOTE, pas les deux sections à la fois (#374)', () => {
+    // Signalé à l'usage sur l'araignée : « des sections qui font très humanoïde, tronc, bras
+    // gauche, ça ne fait aucun sens ». Depuis #374 ses dix-huit emplacements ne pilotent rien.
+    const debut = EV2.indexOf('function renderSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /const humanoide = _skelEcran\.morphologie === 'humanoide'/);
+    assert.match(corps, /if \(humanoide\) \{\s*\n\s*SLOT_GROUPS\.forEach/,
+      'les dix-huit emplacements s\'affichent encore sur une créature');
+    assert.match(corps, /renderMembres\(humanoide \? null : lignes, os\)/,
+      'la section des chaînes s\'affiche encore sur un humanoïde, où elle ne pilote rien');
+  });
+
+  test('le chemin d\'une chaîne se lit, et se tronque au-delà de quatre os', () => {
+    // Le même texte sert à DEUX endroits, la ligne d'un membre et celle du tronc. Écrit en ligne aux
+    // deux, il n'était vérifiable qu'en lisant le code, et une mutation qui vidait celui du tronc a
+    // ÉCHAPPÉ : le test cherchait `lignes.tronc.segments`, qui apparaît aussi dans le compte affiché
+    // juste au-dessus, et le trouvait donc toujours.
+    const os = [1, 2, 3, 4, 5, 6].map(i => ({ id: i, name: `Os${i}` }));
+    assert.equal(cheminDOs3D([1, 2, 3], os), 'Os1 › Os2 › Os3');
+    assert.equal(cheminDOs3D([1, 2, 3, 4, 5, 6], os, 4), 'Os1 › Os2 › Os3 › Os4 › …');
+    assert.equal(cheminDOs3D([1, 2, 3, 4], os, 4), 'Os1 › Os2 › Os3 › Os4', 'pile quatre ne se tronque pas');
+    assert.equal(cheminDOs3D([1, 99], os), 'Os1', 'un identifiant inconnu est sauté, il ne lève pas');
+    assert.equal(cheminDOs3D(null, null), '');
+  });
+
+  test('le TRONC figure dans la liste, sans case ni champ', () => {
+    // Les deux écrans doivent lister la même chose : le tronc porte des curseurs, il doit donc se
+    // voir ici. Sans case ni champ, parce qu'il n'y a rien à y choisir.
+    const debut = EV2.indexOf('function renderMembres');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /cheminDOs3D\(lignes\.tronc\.segments, os\)/, 'le tronc a perdu ses os');
+    assert.match(corps, /lignes\.tronc\.nom/);
+    // La ligne du tronc ne doit PAS passer par `ligneMembre`, qui pose une case et un champ : les
+    // cocher ou le renommer n'aboutirait nulle part, `normaliserMembres` ne gardant que des racines
+    // de chaînes.
+    const bloc = corps.slice(corps.indexOf('troncBloc'), corps.indexOf('lignes.groupes.forEach'));
+    assert.doesNotMatch(bloc, /ligneMembre|checkbox/, 'le tronc a gagné une case ou un champ');
+  });
+
+  test('changer la morphologie ÉCHANGE les deux sections tout de suite', () => {
+    // Sans ce nouveau rendu, corriger « humanoïde » en « arachnide » laisserait l'écran affichant
+    // les emplacements qu'il vient de rendre inertes, et la conséquence du choix serait invisible.
+    const debut = EV2.indexOf('function renderMorphologie');
+    assert.ok(debut > 0, 'renderMorphologie a disparu');
+    const zone = EV2.slice(debut, debut + 3000);
+    assert.match(zone, /_skelEcran\.morphologieManuelle = sel\.value/);
+    assert.match(zone, /renderSkeletonMapModal\(\)/, 'le choix ne redessine plus l\'écran');
   });
 
   test('les MEMBRES RELUS repartent de l\'entrée enregistrée, pas d\'une liste vide', () => {
@@ -819,7 +889,9 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // Décision prise avec l'utilisateur, contre un regroupement des paires gauche/droite.
     const debut = EV2.indexOf('function renderMembres');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    assert.match(corps, /lignesDeCorrespondance3D/);
+    // Le modèle est calculé par l'appelant depuis #374, qui s'en sert aussi pour le sous-titre :
+    // le recalculer ici donnerait deux comptes issus de deux appels, qui peuvent diverger.
+    assert.match(EV2.slice(EV2.indexOf('function renderSkeletonMapModal')), /lignesDeCorrespondance3D/);
     assert.match(corps, /createElement\('details'\)/, 'chaque ancre se replie');
     assert.match(corps, /groupe\.ancreNom/);
     // La boucle porte sur les GROUPES rendus par le modèle, jamais sur une liste aplatie : sans

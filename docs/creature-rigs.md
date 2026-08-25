@@ -3,7 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.49. Steps 1 to 3 and tasks #363 to #374 and #376 are shipped; #375
+> Up to date as of v1.4.50. Steps 1 to 3 and tasks #363 to #374, #376 and #377 are shipped; #375
 > remains.
 
 ## Where things stand
@@ -510,6 +510,42 @@ effect. Poses per morphology are #375.
 **The Element's figure selector, however, keeps creatures**: carrying a spider is still possible, and
 its chain sliders drive it. It even gains the snake and centaur2, whose humanoid mapping was empty and
 which were therefore offered nowhere.
+
+### The mapping screen shows what the sliders show (#377)
+
+Reported through use right afterwards: "when I open a spider's mapping table I get sections that look
+very humanoid, trunk, left arm, it makes no sense".
+
+That was correct, and worse than ugly. Since #374 a creature's eighteen slots drive NOTHING. Showing
+them anyway offered to correct rows with no effect, which is the definition of a screen that lies.
+
+So the rule is the same as for the sliders, and that is what makes it hold: **this screen shows what
+drives the rig, and nothing else.**
+
+| morphology | the screen shows |
+|---|---|
+| `humanoide` | the eighteen slots, with their legend |
+| everything else | the trunk and the chains, tickable and renamable |
+
+Three consequences, all intended:
+
+- **a humanoid loses the "Limbs" section**, shipped three hours earlier in #373. Its chains drive
+  nothing either, ticking them would have no effect: the same defect the other way round;
+- **changing the selector swaps the two sections before your eyes**, making the consequence of the
+  choice visible instead of guessable;
+- **the subtitle's count follows the section shown.** "12 of 18 mapped" announced unfinished work on
+  unused slots; a creature reads "30 chains, 28 kept".
+
+The TRUNK was added to the list, with no checkbox and no field. It has nothing to choose, but it does
+carry sliders: leaving it out made this screen's list shorter than the settings list, and it is
+exactly that gap between the two screens that was reported.
+
+Two more mutations escaped, N3 and N4, for the third and fourth time in this piece of work and always
+from the same cause: text built inline inside a DOM-handling function is only verifiable by reading
+source, and a source window says nothing about what is displayed. N4's looked for
+`lignes.tronc.segments`, which occurs TWICE in the function, once for the count and once for the
+path: emptying the path did not disturb it. Hence two more pure extractions,
+`sousTitreCorrespondance3D` and `cheminDOs3D`, compared against expected strings.
 
 ### Two escaped mutations, and what they had corrected
 
