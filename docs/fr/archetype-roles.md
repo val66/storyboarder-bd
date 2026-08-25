@@ -248,9 +248,18 @@ une première version l'ignorait : elle prenait la première chaîne venue et l'
 repliant donc un membre faux. C'était le défaut des dix-huit emplacements sur un cerbère, réintroduit
 à l'échelle des rôles.
 
-**Les échafaudages sont encore candidats.** Le filtre nommé de l'étape 3 (`IK`, `Pole`, `Target`)
-n'a jamais été écrit en code, la modale devant s'en charger. Sur le chien, les premières chaînes de
-patte sont `IKBackLegL` et `IKFrontLegL`. Elles sortent « structure », donc dépliées, donc visibles.
+**Les échafaudages sont encore candidats, et c'est la tâche #379.** Le filtre nommé de l'étape 3
+(`IK`, `Pole`, `Target`, `neutral_bone`) n'a jamais été écrit en code, la modale devant s'en charger.
+
+Mesuré à ce jour : **109 os** du corpus portent un mot d'échafaudage, et **11 chaînes** en contiennent
+au moins un, concentrées sur le chien et le dragon. **Dix de ces onze sont typées ANATOMIQUES**, elles
+concurrencent donc de vraies pattes. Sur le chien, les quatre membres de patte reçoivent
+`IKBackLegL` / `IKFrontLegL` plutôt que `BackShoulderL` / `FrontShoulderL` ; sur le dragon, `HeadIK`
+prend le rôle `head`.
+
+Elles sortent « structure », donc dépliées, donc visibles, mais l'utilisateur doit les corriger à la
+main. ⚠️ Le dragon est le contre-exemple à ne pas oublier : sa mesure d'angle sortait à 161°, donc
+bipède, ce qui est faux, parce que la chaîne mesurée était `Wing IK.L`.
 
 **Sur un quadrupède, une chaîne nommée « bras » est une patte avant.** Mesuré sur le cerbère, dont
 les pattes avant s'appellent `Clavicle`, `UpperArm`, `Forearm`. Sans cette équivalence elles ne

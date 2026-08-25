@@ -234,9 +234,17 @@ therefore come out AMBIGUOUS, therefore unfolded.
 first version ignored it: it took the first chain available and labelled it "name", folding a wrong
 limb. That was the eighteen-slot defect on a cerberus, reintroduced at the scale of roles.
 
-**Scaffolding chains are still candidates.** Step 3's name filter (`IK`, `Pole`, `Target`) was never
-written in code, the modal being meant to handle it. On the dog the first leg chains are `IKBackLegL`
-and `IKFrontLegL`. They come out "structure", hence unfolded, hence visible.
+**Scaffolding chains are still candidates, and that is task #379.** Step 3's name filter (`IK`,
+`Pole`, `Target`, `neutral_bone`) was never written in code, the modal being meant to handle it.
+
+Measured today: **109 bones** in the corpus carry a scaffolding word, and **11 chains** contain at
+least one, concentrated on the dog and the dragon. **Ten of those eleven are typed ANATOMICAL**, so
+they compete with real legs. On the dog the four leg limbs receive `IKBackLegL` / `IKFrontLegL`
+instead of `BackShoulderL` / `FrontShoulderL`; on the dragon, `HeadIK` takes the `head` role.
+
+They come out "structure", hence unfolded, hence visible, but the user has to correct them by hand.
+⚠️ The dragon is the counter-example not to forget: its angle measurement came out at 161°, therefore
+biped, which is wrong, because the chain measured was `Wing IK.L`.
 
 **On a quadruped, a chain named "arm" is a front leg.** Measured on the cerberus, whose front legs are
 called `Clavicle`, `UpperArm`, `Forearm`. Without that equivalence they find no limb and stay orphans.
