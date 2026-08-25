@@ -2345,11 +2345,41 @@ export function buildOiseauRig3D(colorHex){
   group.add(tail0Pivot);
   joints.tail0 = tail0Pivot;
 
-  // Legs (static)
-  [-0.04, 0.04].forEach(dx => {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 5), DARK_CHARCOAL_MAT_3D);
-    leg.position.set(dx, 0.06, 0.04);
-    group.add(leg);
+  // ── Pattes articulées : hanche → cuisse → genou → tarse (tâche #367)
+  //
+  // ELLES ÉTAIENT STATIQUES, deux cylindres posés dans le groupe. L'oiseau intégré n'avait donc ni
+  // hanche ni genou, alors que tout oiseau importé en a : `bird.glb` porte deux pattes ET deux
+  // ailes, comme la wyverne. C'est l'oiseau qui se plie à l'archétype, pas l'inverse.
+  //
+  // La géométrie garde exactement la même emprise qu'avant, du bas du corps (y = 0,13) au sol
+  // (y = 0), en deux segments égaux au lieu d'un cylindre unique : rien ne bouge à l'écran tant
+  // qu'aucun angle n'est réglé, et un Projet d'avant rend donc pareil.
+  [[-0.04, 'hipFL', 'kneeFL'], [0.04, 'hipFR', 'kneeFR']].forEach(([px, hipId, kneeId]) => {
+    const attacheY = 0.13, cuisseH = 0.065, tarseH = 0.065;
+
+    const hipPivot = new THREE.Group();
+    hipPivot.position.set(px, attacheY, 0.04);
+    const cuisse = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, cuisseH, 5), DARK_CHARCOAL_MAT_3D);
+    cuisse.position.set(0, -cuisseH / 2, 0);
+    hipPivot.add(cuisse);
+
+    const kneePivot = new THREE.Group();
+    kneePivot.position.set(0, -cuisseH, 0);
+    const tarse = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, tarseH, 5), DARK_CHARCOAL_MAT_3D);
+    tarse.position.set(0, -tarseH / 2, 0);
+    kneePivot.add(tarse);
+    // Trois doigts vers l'avant, ce que le cylindre unique ne suggérait pas du tout : sans eux, une
+    // patte pliée se termine dans le vide et la silhouette perchée disparaît.
+    [-0.018, 0, 0.018].forEach(dx => {
+      const doigt = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.006, 0.035), DARK_CHARCOAL_MAT_3D);
+      doigt.position.set(dx, -tarseH, 0.014);
+      kneePivot.add(doigt);
+    });
+    hipPivot.add(kneePivot);
+
+    group.add(hipPivot);
+    joints[hipId]  = hipPivot;
+    joints[kneeId] = kneePivot;
   });
 
   return { figureGroup: group, joints };

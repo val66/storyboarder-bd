@@ -3,8 +3,7 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.42. Steps 1 to 3, #363 to #366 and #368 to #370 are shipped; #367 is
-> open.
+> Up to date as of v1.4.43. Steps 1 to 3 and tasks #363 to #370 are shipped.
 
 ## Where things stand
 
@@ -337,6 +336,37 @@ what the code actually sees.
 WHAT" is not a rhetorical question. These twelve skeletons reduced the file on disk, while the code
 reads a decoded scene. Two neighbouring realities, one character apart, and three creatures out of
 twelve classified wrong without 2000 tests flinching.
+
+## The built-in animals bend to the archetypes (#367, done)
+
+The user's decision: **the old rigs align on the new archetypes, not the reverse.**
+
+**THE BIRD GAINED ITS LEGS.** It had only a head, two wings and a tail, which matches no imported
+bird: `bird.glb` and the wyvern have two legs AND two wings. Its legs existed on screen, but as two
+static cylinders. They are now articulated, hip and knee, with the same footprint as before (from
+the bottom of the body to the ground): a pre-existing project renders exactly the same as long as no
+angle is set.
+
+**THE IDENTIFIERS ARE THE MONKEY'S**, `hipFL`, `kneeFL`. The `F` means "front" and is meaningless
+for a biped, but these are identifiers PERSISTED in `animalJoints3d`: inventing a fourth naming
+style would cost more than that oddity, which is displayed nowhere. Adding is allowed, renaming is
+not.
+
+**ONLY ONE DIRECTION IS WRITTEN.** `ANIMAL_ARCHETYPES_3D` goes from animal to archetype, and
+`animauxDeLArchetype3D` derives the reverse. The `animal` field `ARCHETYPES_3D` used to carry is
+gone: it could name only ONE animal while the wolf AND the lizard are both quadrupeds, and the two
+tables would have ended up contradicting each other.
+
+That function returns a **list**, not a favourite. My first version returned "the first one", which
+named the lizard purely by the ordering of `ANIMAL_TYPES`, whereas the quadruped's reference table
+is the wolf's, the only one carrying a neck. **Which one serves as the slot model is a real
+question, and it will come up at the sliders step**; settling it inside a `find` would have buried
+it.
+
+**A HOLE IN THE NET, AND IT WAS WIDER THAN THE BIRD.** `ANIMAL_JOINT_DEFS` and the rig constructors
+are two descriptions of the same object, and nothing kept them in step: a slider declared without a
+matching pivot shows up and does nothing, silently. A test now crosses both lists in both
+directions, for all five animals.
 
 ## Decisions taken with the user
 

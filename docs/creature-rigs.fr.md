@@ -3,8 +3,7 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.42. Les étapes 1 à 3, #363 à #366 et #368 à #370 sont livrées ; #367 est
-> ouverte.
+> À jour de la v1.4.43. Les étapes 1 à 3 et les tâches #363 à #370 sont livrées.
 
 ## Où l'on en est
 
@@ -344,6 +343,38 @@ sur ce que le code voit.
 question « réduction de QUOI » n'est pas rhétorique. Ces douze squelettes réduisaient le fichier sur
 le disque, alors que le code, lui, lit une scène décodée. Deux réalités voisines, un seul caractère
 d'écart, et trois créatures sur douze classées faux sans que 2000 tests ne bronchent.
+
+## Les animaux intégrés se plient aux archétypes (#367, faite)
+
+Décision de l'utilisateur : **les anciens rigs s'alignent sur les nouveaux archétypes, pas
+l'inverse.**
+
+**L'OISEAU A GAGNÉ SES PATTES.** Il n'avait qu'une tête, deux ailes et une queue, ce qui ne
+correspond à aucun oiseau importé : `bird.glb` et la wyverne ont deux pattes ET deux ailes. Ses
+pattes existaient à l'écran, mais comme deux cylindres statiques. Elles sont désormais articulées,
+hanche et genou, avec la même emprise qu'avant (du bas du corps au sol) : un Projet d'avant rend
+exactement pareil tant qu'aucun angle n'est réglé.
+
+**LES IDENTIFIANTS SONT CEUX DU SINGE**, `hipFL`, `kneeFL`. Le `F` y veut dire « avant » et ne
+signifie rien pour un bipède, mais ce sont des identifiants PERSISTÉS dans `animalJoints3d` : en
+inventer un quatrième style coûterait plus que cette bizarrerie, qui ne s'affiche nulle part.
+Ajouter est permis, renommer non.
+
+**UN SEUL SENS EST ÉCRIT.** `ANIMAL_ARCHETYPES_3D` va de l'animal vers l'archétype, et
+`animauxDeLArchetype3D` dérive l'inverse. Le champ `animal` que portait `ARCHETYPES_3D` a disparu :
+il ne pouvait désigner qu'UN animal alors que le loup ET le lézard sont des quadrupèdes, et les deux
+tables auraient fini par se contredire.
+
+Cette fonction rend d'ailleurs une **liste**, pas un favori. Ma première version rendait « le
+premier », ce qui désignait le lézard par le seul hasard de l'ordre d'`ANIMAL_TYPES`, alors que la
+table de référence du quadrupède est celle du loup, la seule à porter un cou. **Laquelle sert de
+modèle d'emplacements est une vraie question, qui se posera à l'étape des curseurs** ; la trancher
+au détour d'un `find` l'aurait enterrée.
+
+**UN TROU DE FILET COMBLÉ, ET IL DÉPASSAIT L'OISEAU.** `ANIMAL_JOINT_DEFS` et les constructeurs de
+rig sont deux descriptions du même objet, et rien ne les tenait d'accord : un curseur déclaré sans
+pivot correspondant s'affiche et ne fait rien, en silence. Un test croise désormais les deux listes
+dans les deux sens, pour les cinq animaux.
 
 ## Décisions prises avec l'utilisateur
 

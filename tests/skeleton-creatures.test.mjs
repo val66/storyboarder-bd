@@ -45,7 +45,9 @@ import {
   inferSkeletonMap, membresDuSquelette3D, coteDuNom, motsDuNomDOs3D, nomSuggereDeChaine3D,
   signatureDuSquelette3D, archetypeSuggere3D, SLOTS,
 } from '../src/skeleton-map.js';
-import { ARCHETYPES_3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS } from '../src/constants.js';
+import {
+  ARCHETYPES_3D, ANIMAL_ARCHETYPES_3D, animauxDeLArchetype3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS,
+} from '../src/constants.js';
 
 /** Le traducteur du dépôt, réduit à ce dont ces tests ont besoin : la version française. */
 const tr = (en, fr) => fr;
@@ -1027,24 +1029,37 @@ describe('ARCHETYPES_3D : la table, et son lien avec les animaux intégrés', ()
   test('les tables d\'emplacements existaient déjà dans ANIMAL_JOINT_DEFS', () => {
     // C'est le constat qui a fait cette tâche : le loup EST la table du quadrupède, le singe celle
     // du bipède à queue, le griffon celle du quadrupède ailé. Rien à inventer.
-    const par = Object.fromEntries(ARCHETYPES_3D.map(a => [a.cle, a.animal]));
-    assert.equal(par.quadrupede, 'loup');
-    assert.equal(par.bipede_queue, 'singe');
-    assert.equal(par.quadrupede_aile, 'griffon');
-    assert.equal(par.bipede_aile, 'oiseau');
+    assert.deepEqual(animauxDeLArchetype3D('bipede_queue'), ['singe']);
+    assert.deepEqual(animauxDeLArchetype3D('quadrupede_aile'), ['griffon']);
+    assert.deepEqual(animauxDeLArchetype3D('bipede_aile'), ['oiseau']);
+    // ⚠️ DEUX ANIMAUX pour le quadrupède, et c'est ce qui a fait rendre une LISTE. Ma première
+    // version rendait « le premier », donc le lézard par le seul hasard de l'ordre d'ANIMAL_TYPES,
+    // alors que la table de référence est celle du loup, la seule à porter un cou. Laquelle sert de
+    // modèle d'emplacements est une vraie question, qui se posera à l'étape des curseurs.
+    assert.deepEqual(animauxDeLArchetype3D('quadrupede'), ['lezard', 'loup']);
   });
 
-  test('chaque animal cité existe vraiment, et a ses articulations', () => {
-    ARCHETYPES_3D.filter(a => a.animal).forEach(a => {
-      assert.ok(ANIMAL_TYPES.includes(a.animal), `${a.animal} n'est pas un animal intégré`);
-      assert.ok((ANIMAL_JOINT_DEFS[a.animal] || []).length, `${a.animal} n'a aucune articulation`);
+  test('UN SEUL SENS EST ÉCRIT, l\'autre se dérive', () => {
+    // `ARCHETYPES_3D` portait d'abord un champ `animal`. Il ne pouvait en désigner qu'UN, alors que
+    // le loup ET le lézard sont tous deux des quadrupèdes : les deux tables auraient fini par se
+    // contredire. La source unique est donc `ANIMAL_ARCHETYPES_3D`, dans le sens animal → archétype.
+    assert.equal(ANIMAL_ARCHETYPES_3D.loup, 'quadrupede');
+    assert.equal(ANIMAL_ARCHETYPES_3D.lezard, 'quadrupede');
+    assert.ok(!('animal' in ARCHETYPES_3D[0]), 'plus de champ `animal` sur l\'archétype');
+  });
+
+  test('chaque animal intégré déclare une morphologie CONNUE, et a ses articulations', () => {
+    const connues = new Set(ARCHETYPES_3D.map(a => a.cle));
+    ANIMAL_TYPES.forEach(t => {
+      assert.ok(connues.has(ANIMAL_ARCHETYPES_3D[t]), `${t} : morphologie inconnue`);
+      assert.ok((ANIMAL_JOINT_DEFS[t] || []).length, `${t} n'a aucune articulation`);
     });
   });
 
   test('« complexe » est le refuge, et n\'emprunte à personne', () => {
-    const refuge = ARCHETYPES_3D.find(a => a.cle === 'complexe');
-    assert.ok(refuge, 'le refuge doit exister, c\'est la sortie de secours de l\'écran');
-    assert.equal(refuge.animal, null);
+    assert.ok(ARCHETYPES_3D.some(a => a.cle === 'complexe'), 'le refuge doit exister');
+    assert.deepEqual(animauxDeLArchetype3D('complexe'), []);
+    assert.deepEqual(animauxDeLArchetype3D('humanoide'), [], 'le Personnage n\'est pas un Animal');
   });
 
   test('les clés sont uniques et les deux langues présentes', () => {
@@ -1117,5 +1132,39 @@ describe('archetypeSuggere3D : trois gardes que le corpus ne couvre pas', () => 
     const s = signatureDuSquelette3D(membresDuSquelette3D(bancal));
     assert.equal(s.rangMax, 1, 'un seul rang complet');
     assert.equal(s.lateraux, 4, 'quatre chaînes latérales tout de même');
+  });
+});
+
+describe('l\'oiseau intégré a gagné des pattes (#367)', () => {
+  const ids = (t) => (ANIMAL_JOINT_DEFS[t] || []).flatMap(g => g.joints.map(j => j.id));
+
+  test('deux hanches et deux genoux, en plus de ce qu\'il avait', () => {
+    // POURQUOI IL LES GAGNE. L'oiseau intégré n'avait qu'une tête, deux ailes et une queue, ce qui
+    // ne correspond à aucun oiseau importé : `bird.glb` et la wyverne ont deux pattes ET deux
+    // ailes. Décision de l'utilisateur : les animaux intégrés se plient aux archétypes.
+    assert.deepEqual(ids('oiseau'),
+      ['head', 'wingL', 'wingR', 'hipFL', 'kneeFL', 'hipFR', 'kneeFR', 'tail0']);
+  });
+
+  test('RIEN N\'A ÉTÉ RENOMMÉ : les quatre identifiants d\'avant sont intacts', () => {
+    // `animalJoints3d` est PERSISTÉ sur chaque Élément, et ses clés sont ces identifiants. Ajouter
+    // est permis, renommer casserait tous les Projets existants (cf. docs/persisted-data.md).
+    ['head', 'wingL', 'wingR', 'tail0'].forEach(id =>
+      assert.ok(ids('oiseau').includes(id), `${id} a disparu, un Projet d'avant perdrait sa pose`));
+  });
+
+  test('les identifiants sont ceux du SINGE, l\'autre bipède', () => {
+    // Le `F` de `hipFL` veut dire « avant » et ne signifie rien pour un bipède. C'est la bizarrerie
+    // du singe, reprise plutôt qu'un quatrième style de nommage : ces identifiants ne s'affichent
+    // nulle part, et ils sont persistés, donc figés.
+    ['hipFL', 'kneeFL', 'hipFR', 'kneeFR'].forEach(id =>
+      assert.ok(ids('singe').includes(id), `${id} devrait venir du singe`));
+  });
+
+  test('l\'oiseau porte bien la morphologie qu\'il illustre', () => {
+    assert.equal(ANIMAL_ARCHETYPES_3D.oiseau, 'bipede_aile');
+    const g = (ANIMAL_JOINT_DEFS.oiseau || []).map(x => x.group);
+    assert.deepEqual(g, ['Tête', 'Aile gauche', 'Aile droite', 'Jambe G', 'Jambe D', 'Queue'],
+      'deux ailes ET deux jambes, ce qui est la définition de cet archétype');
   });
 });

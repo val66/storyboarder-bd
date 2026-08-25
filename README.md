@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.42**
+**Version 1.4.43**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -29,7 +29,8 @@
   collarbones, shoulders, elbows, wrists, hips, knees and ankles, the same body an imported skeleton
   offers, with feet, so ankle movement is visible. Head and torso have three axes each: nod, turn
   and tilt; bend, twist and side-lean (see **Character editor** below)
-- 🐾 **Animals** with articulated joints (dog, cat, horse, lizard…)
+- 🐾 **Animals** with articulated joints (bird, lizard, wolf, griffin, monkey), filed by morphology
+  like imported models. The bird has two articulated legs, hip and knee
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)
 - 🌳 **Vegetation** (trees, shrubs, flowers…)

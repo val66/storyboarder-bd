@@ -673,10 +673,27 @@ export const ANIMAL_LABELS_EN = {
 
 // Slider definitions per animal: { group, joints:[{ id, label, axis, min, max }] }
 export const ANIMAL_JOINT_DEFS = {
+  // L'OISEAU A GAGNÉ SES PATTES (tâche #367). Il n'avait qu'une tête, deux ailes et une queue, ce
+  // qui ne correspondait à aucun oiseau importé : `bird.glb` et la wyverne ont deux pattes ET deux
+  // ailes. Les animaux intégrés se plient aux archétypes, décision de l'utilisateur, et pas
+  // l'inverse.
+  //
+  // LES IDENTIFIANTS SONT CEUX DU SINGE, l'autre bipède : `hipFL`, `kneeFL`. Le `F` y veut dire
+  // « avant » et ne signifie rien pour un bipède, mais c'est un identifiant PERSISTÉ dans
+  // `animalJoints3d` ; en inventer un quatrième style coûterait plus que cette bizarrerie, qui ne
+  // s'affiche nulle part. Ajouter est permis, renommer non (cf. docs/persisted-data.md).
   oiseau: [
     { group: 'Tête',         joints: [{ id:'head',  label:'Tête',   axis:'x', min:-0.8, max:0.8 }] },
     { group: 'Aile gauche',  joints: [{ id:'wingL', label:'Aile G', axis:'z', min:-0.5, max:1.5 }] },
     { group: 'Aile droite',  joints: [{ id:'wingR', label:'Aile D', axis:'z', min:-1.5, max:0.5 }] },
+    { group: 'Jambe G', joints: [
+      { id:'hipFL',  label:'Hanche', axis:'x', min:-0.8, max:0.8 },
+      { id:'kneeFL', label:'Genou',  axis:'x', min:-1.2, max:1.2 },
+    ]},
+    { group: 'Jambe D', joints: [
+      { id:'hipFR',  label:'Hanche', axis:'x', min:-0.8, max:0.8 },
+      { id:'kneeFR', label:'Genou',  axis:'x', min:-1.2, max:1.2 },
+    ]},
     { group: 'Queue',        joints: [{ id:'tail0', label:'Queue',  axis:'x', min:-1.5, max:1.5 }] },
   ],
   lezard: [
@@ -980,15 +997,46 @@ export const PERSONA_PREVIEW_PAN_SENS = 0.0055;
 //
 // AUCUN ARCHÉTYPE N'EST UN VERDICT. L'utilisateur peut toujours en changer, et « Complexe » rend
 // l'écran générique, où chaque chaîne se coche et se nomme à la main. Voir docs/creature-rigs.md.
+/**
+ * La morphologie de chaque animal intégré. SOURCE UNIQUE du lien entre les deux mondes.
+ *
+ * ELLE VA DANS CE SENS ET PAS DANS L'AUTRE, parce que deux animaux peuvent partager un archétype :
+ * le loup et le lézard sont tous deux des quadrupèdes. Un champ `animal` sur l'archétype ne pourrait
+ * en désigner qu'un, et les deux tables finiraient par se contredire. `animalDeLArchetype3D`
+ * ci-dessous dérive le sens inverse quand on en a besoin.
+ */
+export const ANIMAL_ARCHETYPES_3D = {
+  oiseau: 'bipede_aile',
+  lezard: 'quadrupede',
+  loup: 'quadrupede',
+  griffon: 'quadrupede_aile',
+  singe: 'bipede_queue',
+};
+
 export const ARCHETYPES_3D = [
-  { cle: 'humanoide',       label: 'Humanoïde',       labelEn: 'Humanoid',         animal: null },
-  { cle: 'bipede_queue',    label: 'Bipède à queue',  labelEn: 'Biped with tail',  animal: 'singe' },
-  { cle: 'quadrupede',      label: 'Quadrupède',      labelEn: 'Quadruped',        animal: 'loup' },
-  { cle: 'bipede_aile',     label: 'Bipède ailé',     labelEn: 'Winged biped',     animal: 'oiseau' },
-  { cle: 'quadrupede_aile', label: 'Quadrupède ailé', labelEn: 'Winged quadruped', animal: 'griffon' },
-  { cle: 'centaure',        label: 'Centaure',        labelEn: 'Centaur',          animal: null },
-  { cle: 'arachnide',       label: 'Arachnide',       labelEn: 'Arachnid',         animal: null },
-  { cle: 'radial',          label: 'Radial',          labelEn: 'Radial',           animal: null },
-  { cle: 'serpentin',       label: 'Serpentin',       labelEn: 'Serpentine',       animal: null },
-  { cle: 'complexe',        label: 'Complexe',        labelEn: 'Complex',          animal: null },
+  { cle: 'humanoide',       label: 'Humanoïde',       labelEn: 'Humanoid' },
+  { cle: 'bipede_queue',    label: 'Bipède à queue',  labelEn: 'Biped with tail' },
+  { cle: 'quadrupede',      label: 'Quadrupède',      labelEn: 'Quadruped' },
+  { cle: 'bipede_aile',     label: 'Bipède ailé',     labelEn: 'Winged biped' },
+  { cle: 'quadrupede_aile', label: 'Quadrupède ailé', labelEn: 'Winged quadruped' },
+  { cle: 'centaure',        label: 'Centaure',        labelEn: 'Centaur' },
+  { cle: 'arachnide',       label: 'Arachnide',       labelEn: 'Arachnid' },
+  { cle: 'radial',          label: 'Radial',          labelEn: 'Radial' },
+  { cle: 'serpentin',       label: 'Serpentin',       labelEn: 'Serpentine' },
+  { cle: 'complexe',        label: 'Complexe',        labelEn: 'Complex' },
 ];
+
+/**
+ * TOUS les animaux intégrés qui ont cette morphologie. Fonction PURE.
+ *
+ * ELLE REND UNE LISTE, ET NON UN FAVORI, parce que le corpus a immédiatement démenti l'hypothèse du
+ * favori : le loup ET le lézard sont des quadrupèdes. Ma première version rendait « le premier »,
+ * ce qui désignait le lézard par le seul hasard de l'ordre d'`ANIMAL_TYPES`, alors que la table de
+ * référence du quadrupède est celle du loup, la seule à porter un cou.
+ *
+ * Choisir laquelle sert de modèle d'emplacements est une VRAIE question, et elle se posera à
+ * l'étape des curseurs. La trancher ici, au détour d'un `find`, l'aurait enterrée.
+ */
+export function animauxDeLArchetype3D(cle){
+  return ANIMAL_TYPES.filter(t => ANIMAL_ARCHETYPES_3D[t] === cle);
+}

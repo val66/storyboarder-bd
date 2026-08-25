@@ -32,7 +32,7 @@ import * as THREE from 'three';
 
 import * as R from '../src/rig3d.js';
 import {
-  OBJECT_REAL_HEIGHT_M, ANIMAL_TYPES, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
+  OBJECT_REAL_HEIGHT_M, ANIMAL_TYPES, ANIMAL_JOINT_DEFS, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
 } from '../src/constants.js';
 
 // Le constructeur de chaque type d'Objet. Cette table est elle-même l'objet d'un test : une entrée
@@ -159,5 +159,51 @@ describe('Rigs 3D : reproductibilité', () => {
       return `${(b.max.x - b.min.x).toFixed(4)}/${(b.max.y - b.min.y).toFixed(4)}`;
     };
     assert.equal(dims('#ff0000'), dims('#00ff00'));
+  });
+});
+
+describe('Animaux : chaque articulation DÉCLARÉE existe dans la géométrie', () => {
+  // TROU TROUVÉ PAR MUTATION (#367). Retirer les deux lignes qui déclarent les pivots de patte de
+  // l'oiseau, ou détacher le genou de la hanche, ne faisait échouer AUCUN test : `ANIMAL_JOINT_DEFS`
+  // et les constructeurs de rig étaient deux descriptions du même objet, sans rien pour les tenir
+  // d'accord. C'est la classe de bug numéro un de ce dépôt.
+  //
+  // Le symptôme aurait été silencieux et déroutant : un curseur affiché dans la fiche, qui ne fait
+  // rien du tout parce que le pivot correspondant n'existe pas dans la scène.
+
+  ANIMAL_TYPES.forEach(type => {
+    test(`${type} : les pivots répondent aux identifiants déclarés`, () => {
+      const { joints } = R[CONSTRUCTEURS[type]](0x888888);
+      const declares = (ANIMAL_JOINT_DEFS[type] || []).flatMap(g => g.joints.map(j => j.id));
+      const manquants = declares.filter(id => !joints[id]);
+      assert.deepEqual(manquants, [], `${type} : curseurs sans pivot, ils ne feraient rien`);
+      // Et l'inverse : un pivot construit mais jamais déclaré est une articulation inatteignable.
+      const orphelins = Object.keys(joints).filter(id => !declares.includes(id));
+      assert.deepEqual(orphelins, [], `${type} : pivots sans curseur, personne ne peut les bouger`);
+    });
+  });
+
+  test('oiseau : le genou est ENFANT de la hanche, pas son voisin', () => {
+    // Sans cette hiérarchie, plier la hanche laisse le tarse en place et la patte se disloque.
+    // Détacher le genou ne changeait rien aux tests ci-dessus, qui ne regardent que les clés.
+    //
+    // ⚠️ ON COMPARE DES `uuid`, PAS LES OBJETS. Comparer deux `Object3D` qui DIFFÈRENT fait
+    // construire à node un diff de deux graphes Three circulaires : le processus meurt en SIGKILL,
+    // faute de mémoire, sans jamais dire ce qui n'allait pas. Éprouvé pour de vrai, ce test ayant
+    // attrapé une mutation restée par accident dans le dépôt et n'ayant su le dire qu'en mourant.
+    const { joints } = R.buildOiseauRig3D(0x888888);
+    assert.equal(joints.kneeFL.parent && joints.kneeFL.parent.uuid, joints.hipFL.uuid);
+    assert.equal(joints.kneeFR.parent && joints.kneeFR.parent.uuid, joints.hipFR.uuid);
+  });
+
+  test('oiseau : les pattes touchent le sol, comme avant leur articulation', () => {
+    // Elles étaient deux cylindres statiques allant de y = 0 à y = 0,12. Articulées, elles vont de
+    // la hanche (0,13) au bout du tarse (0,13 − 0,065 − 0,065 = 0). Un Projet d'avant rend donc
+    // pareil tant qu'aucun angle n'est réglé, ce qui est la contrainte de cette tâche.
+    const { joints } = R.buildOiseauRig3D(0x888888);
+    const bout = new THREE.Vector3();
+    joints.kneeFL.updateMatrixWorld(true);
+    joints.kneeFL.getWorldPosition(bout);
+    assert.ok(Math.abs(bout.y - 0.065) < 1e-6, `le genou est à mi-patte, mesuré ${bout.y}`);
   });
 });

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.42**
+**Version 1.4.43**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -30,7 +30,8 @@
   importé, avec des pieds, pour que le mouvement des chevilles se voie. La tête et le torse ont
   trois axes chacun : hocher, tourner, pencher ; se plier, se tourner, s'incliner (voir **Éditeur
   de Personnage** plus bas)
-- 🐾 **Animaux** articulés (chien, chat, cheval, lézard…)
+- 🐾 **Animaux** articulés (oiseau, lézard, loup, griffon, singe), rangés par morphologie comme les
+  modèles importés. L'oiseau a deux pattes articulées, hanche et genou
 - 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
 - 🚗 **Véhicules** (voitures, motos, camions…)
 - 🌳 **Végétation** (arbres, arbustes, fleurs…)
