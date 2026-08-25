@@ -200,8 +200,28 @@ lequel est une patte avant.
 
 ## Ce qui reste à construire
 
-**#378a, la table des rôles.** Modèle pur, aucune interface. Dérivée d'`ANIMAL_JOINT_DEFS` plutôt
-qu'inventée, pour que les deux vocabulaires ne puissent pas diverger.
+**#378a, la table des rôles. FAITE**, `src/archetype-roles.js`, modèle pur, aucune interface.
+
+Ce qui a été appris en l'écrivant, et qui ne se devinait pas depuis la conception :
+
+- **le même chiffre ne dit pas la même chose selon la clé.** `tail0..2` sont trois os d'UNE queue, le
+  rang y compte les vertèbres ; `hipL0` et `hipL3` sont deux PATTES d'araignée, le rang y compte les
+  membres. Sans cette distinction, les huit pattes se seraient repliées dans un seul groupe et la
+  queue d'un loup en aurait occupé trois.
+- **« avant » ne se dit que s'il y a un arrière.** Les pattes d'un bipède portent `hipFL`, dont le
+  `F` veut dire « avant » : identifiant persisté hérité du singe, et le commentaire d'origine dit
+  déjà qu'il « ne signifie rien pour un bipède ». On le tait à l'affichage, la clé de GROUPE le
+  garde, sinon deux membres distincts se replieraient ensemble.
+- **la ligne ne répète pas ce que son groupe dit déjà.** « Hanche avant gauche » sous « Patte avant
+  gauche » dit trois fois la même chose. C'était déjà la règle des emplacements humanoïdes, où
+  `slotLabel` rend « Avant-bras » sans côté ; ma première version faisait deux mises en page dans un
+  seul écran, exactement ce que l'unification doit supprimer.
+
+**Deux fautes bilingues attrapées en écrivant plutôt qu'à l'écran**, et les deux n'existent qu'en
+français : « Bras droite », parce que `droit` s'accorde et pas `left`, et l'ordre des mots, le
+français plaçant l'épithète après le nom là où l'anglais la place avant. Un seul ordre pour les deux
+langues donne « Shoulder left », qui se comprend et sonne faux. La version anglaise, elle, aurait été
+juste sans qu'on y pense.
 
 **#378b, l'écran.** Une ligne par rôle, la liste venant de l'archétype. Le champ persisté `os` reste
 écrit, dérivé.

@@ -188,8 +188,28 @@ motivated the whole discussion.
 
 ## What is left to build
 
-**#378a, the role table.** Pure model, no interface. Derived from `ANIMAL_JOINT_DEFS` rather than
-invented, so that the two vocabularies cannot drift.
+**#378a, the role table. DONE**, `src/archetype-roles.js`, pure model, no interface.
+
+What writing it taught, and what design alone did not foresee:
+
+- **the same number does not mean the same thing depending on the key.** `tail0..2` are three bones
+  of ONE tail, the rank counting vertebrae; `hipL0` and `hipL3` are two spider LEGS, the rank
+  counting limbs. Without that distinction the eight legs would have folded into one group and a
+  wolf's tail would have taken three.
+- **"front" is only said when there is a rear.** A biped's legs carry `hipFL`, whose `F` means
+  "front": a persisted identifier inherited from the monkey, and the original comment already says it
+  "means nothing for a biped". It is silenced in the label; the GROUP key keeps it, otherwise two
+  distinct limbs would fold together.
+- **a row does not repeat what its group already says.** "Front left hip" under "Front left leg" says
+  the same thing three times. That was already the humanoid slots' rule, where `slotLabel` returns
+  "Forearm" with no side; my first version used two layouts in one screen, exactly what the
+  unification is meant to remove.
+
+**Two bilingual faults caught while writing rather than on screen**, and both exist only in French:
+"Bras droite", because `droit` agrees in gender while `left` does not, and word order, French placing
+the epithet after the noun where English places it before. One order for both languages gives
+"Shoulder left", which reads and sounds wrong. The English version would have been right without
+anyone thinking about it.
 
 **#378b, the screen.** One row per role, the list coming from the archetype. The persisted `os`
 field stays written, derived.
