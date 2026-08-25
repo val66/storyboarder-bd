@@ -610,95 +610,11 @@ Consignées pour n'être ni rediscutées ni oubliées.
 
 ### Les rôles de chaînes (décidé, pas encore construit)
 
-Tranché en conversation, à consigner avant d'écrire une ligne. Le point de départ est une question
-de l'utilisateur : « c'est quoi la section Membres par rapport aux sections du dessus ? ». La réponse
-honnête est qu'elles vont en sens INVERSE. Les dix-huit emplacements partent d'un rôle connu et
-cherchent un os ; la section Membres part d'une chaîne trouvée dans le fichier et demande un nom
-libre. Ce nom, l'application n'en fait rien : elle l'affiche. Cette section n'est donc pas une
-correspondance, c'est un filtre et une étiquette.
-
-6. **Une seule section partout, y compris pour les humanoïdes.** Les dix-huit emplacements deviennent
-   un CAS PARTICULIER des chaînes, pas un mécanisme parallèle. Mesuré, et c'est ce qui rend
-   l'unification possible : sur les six squelettes humanoïdes du corpus, les segments d'une chaîne
-   tombent exactement sur les emplacements, dans l'ordre et sans exception.
-
-   ```
-   chaîne « bras »  : clavicule_g  bras_g  avantbras_g  main_g  puis les doigts
-   chaîne « patte » : cuisse_g     jambe_g pied_g              puis les orteils
-   ```
-
-   `avantbras_g` n'est donc pas une information indépendante, c'est « segment 3 de la chaîne dont le
-   rôle est bras, côté gauche ».
-
-7. **CHAQUE SEGMENT porte son propre rôle**, et non la chaîne seule. Une pose doit plier le genou,
-   pas « la patte ». Un rôle par chaîne aurait obligé à numéroter les segments, et un rig avec un os
-   de plus aurait tout décalé.
-
-8. **L'ARCHÉTYPE définit la liste des rôles**, et un modèle qui n'y entre pas n'appartient pas à cet
-   archétype. C'est ce qui donne enfin un contenu aux archétypes, aujourd'hui réduits à une clé et un
-   libellé.
-
-   ⚠️ **Ces listes existent déjà**, écrites en #367 sans qu'on voie à quoi elles serviraient : ce sont
-   les identifiants d'articulation des animaux intégrés, et ils sont **déjà persistés et protégés**
-   (cf. persisted-data.fr.md).
-
-   | archétype | rôles |
-   |---|---|
-   | `quadrupede` | `head neck` · 4 × `hip*/knee*` · `tail0..2` |
-   | `bipede_aile` | `head` · `wingL wingR` · `hipF*/kneeF*` · `tail0` |
-   | `quadrupede_aile` | `head neck` · 4 pattes · `wingL wingTipL wingR wingTipR` · `tail0` |
-   | `bipede_queue` | `head neck` · 2 pattes · `shoulder*/elbow*` · `tail0..2` |
-   | `humanoide` | les dix-huit emplacements |
-
-   Les réutiliser veut dire qu'un chien importé et le loup intégré parlent la même langue, et donc
-   qu'une pose écrite une fois s'applique aux deux. C'était le but de l'alignement de #367.
-
-9. **UNE pose vise des rôles ; les rôles absents sont sautés.** Pas une règle nouvelle : c'est déjà
-   celle de `poseOsDepuisPosePersonnage`, « mieux vaut un geste qui manque qu'un geste posé au
-   mauvais endroit ». Une pose de cinq tentacules appliquée à un modèle qui en a trois en pose trois ;
-   sur un modèle à sept, les deux dernières ne bougent pas.
-
-10. **On numérote un archétype quand ses membres sont PERMUTABLES.** Le critère n'est pas le nombre.
-    Les tentacules d'un kraken sont interchangeables, la troisième vaut la quatrième, donc `radial`
-    prend des rôles numérotés. Les pattes d'une araignée ne le sont pas, ses pattes avant ne font pas
-    le geste de ses pattes arrière, donc `arachnide` prend une liste FIXE, ordonnée de l'avant vers
-    l'arrière, plus une queue optionnelle pour les scorpions.
-
-11. **Le cerbère reste un QUADRUPÈDE, ses deux têtes en trop n'ont pas de rôle.** Elles gardent leurs
-    curseurs et leur nom, elles n'entrent dans aucune pose. C'est exactement le cas du modèle à sept
-    tentacules ci-dessus. Le passer en `complexe` lui aurait fait perdre les poses de ses quatre
-    pattes et de sa queue, qui sont parfaitement ordinaires.
-
-    `complexe` reste la porte de sortie explicite, avec des poses attachées au FICHIER et non à
-    l'archétype. Mesuré : le classement ne le propose JAMAIS sur les dix-sept fixtures, un modèle n'y
-    tombe donc que si l'utilisateur l'y met.
-
-12. **Une chaîne sans rôle reste pilotable.** 235 chaînes sur 488 n'ont aucun rôle possible : mèches,
-    doigts, cils, vêtements. Elles gardent leur nom libre et leurs curseurs comme depuis #374, elles
-    n'entrent simplement dans aucune pose.
-
-13. **Le champ persisté `os` continue d'être écrit comme aujourd'hui**, dérivé des rôles. Les Projets
-    existants s'ouvrent sans rien changer et une version antérieure les relit encore. Ajouter est
-    permis, renommer ou retirer ne l'est pas.
-
-### Ce que la mesure dit AVANT de construire
-
-**La proposition automatique de rôle sera faible.** `typeDeChaine3D` trouve un rôle pour 253 des 488
-chaînes du corpus, soit 52 %, mais le chiffre est flatteur : il compte `visage` 58 fois, `oeil` 40,
-`meche` 17, qui ne sont pas des membres. Les rôles utiles à une pose sont plus rares, `patte` 43,
-`bras` 28, `queue` 12, `tete` 11, `cou` 9, `aile` 8. Et **quatre fichiers sortent à 0 %** : araignée,
-kraken, raptor, serpent.
-
-**Le rôle ne DÉSIGNE pas une chaîne, il en réclame une.** Sur le chien, quatre chaînes gauches et
-quatre droites réclament toutes `patte`, pour un animal qui en a quatre : la décomposition descend
-dans les doigts et les orteils. Sur le rig Unreal, cinq chaînes réclament `tete`. L'écran garde donc
-la forme des dix-huit emplacements, une ligne PAR RÔLE et un menu de chaînes, et c'est la LISTE des
-lignes qui devient celle de l'archétype au lieu d'être figée à dix-huit.
-
-**Le vocabulaire des animaux est plus grossier que celui des humanoïdes.** Une patte de loup a deux
-articulations, `hipFL` et `kneeFL` ; une jambe humaine en a trois ; une patte de chien importé en a
-six ou sept. Une pose de quadrupède ne pilotera donc que deux segments par patte, le reste restant
-manuel. Ne pas promettre mieux.
+Tranché en conversation, et déménagé dans sa propre note :
+[archetype-roles.fr.md](archetype-roles.fr.md). En un paragraphe : les dix-huit emplacements
+deviennent un cas particulier des chaînes, chaque segment porte un rôle, et c'est l'ARCHÉTYPE qui
+définit la liste des rôles possibles. Sans rôle, une pose d'archétype n'a rien à viser, le nom d'une
+chaîne étant du texte libre propre à un fichier.
 
 ## Ce qui reste à faire
 

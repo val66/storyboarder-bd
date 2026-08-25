@@ -730,6 +730,9 @@ export function typeDeChaine3D(nomsDOs){
  * tombaient dans le repli, 6 fichiers correctement classés sur 17. Un identifiant stable ne se
  * traduit pas ; un libellé, si.
  */
+// ⚠️ LA CLÉ DE `typeDeChaine3D` EST JETÉE ICI, et c'est le sujet de la tâche #378 : seul le libellé
+// traduit survit, alors que c'est la clé stable qui permettrait à une pose d'archétype de viser une
+// chaîne. Mesuré sur le corpus, 253 chaînes sur 488 en ont une. Cf. docs/archetype-roles.md.
 export function nomSuggereDeChaine3D(nomsDOs, traduire){
   const t = traduire || ((en) => en);
   const entree = typeDeChaine3D(nomsDOs);
