@@ -172,3 +172,80 @@ describe('un maillage masqué ne compte pas dans la boîte', () => {
  * la distinguer : il faudrait fabriquer un faux maillage sans `visible`, c'est-à-dire un état que
  * la bibliothèque ne produit pas. Un test qui défend une fiction ne garde rien.
  */
+
+describe('LES OS DOIVENT ÊTRE À JOUR, et c\'est la fonction qui s\'en charge (#372)', () => {
+  // DÉFAUT SIGNALÉ À L'USAGE : des modèles importés apparaissaient sous le sol. La cause n'était ni
+  // le placement ni l'aplomb, c'était l'ÉCHELLE, déduite de cette boîte par `placeRigCentered3D`.
+  //
+  // `boneTransform` lit `skeleton.bones[i].matrixWorld`, et un squelette n'est PAS un descendant du
+  // maillage qu'il déforme : c'est presque toujours un frère sous la même racine. La fonction ne
+  // faisait qu'un `updateWorldMatrix(true, false)`, qui met à jour les ANCÊTRES et le nœud lui-même,
+  // jamais les os. Leurs matrices restaient périmées et le sommet déformé s'effondrait vers
+  // l'origine.
+  //
+  // Mesuré sur `cerberus.glb` : 0,05 × 0,05 × 0,09 là où sa géométrie fait 4,52 × 4,66 × 8,53. Le
+  // rig était donc agrandi CENT SEIZE fois. Sur l'araignée, réduit à 13 %.
+  //
+  // ⚠️ POURQUOI AUCUN TEST NE LE VOYAIT. Le montage de ce fichier appelle `updateMatrixWorld` À LA
+  // MAIN après avoir posé l'os. Il mesurait donc une situation que l'application ne connaît jamais :
+  // un squelette déjà à jour. Le montage ci-dessous s'en abstient, comme un modèle qui vient d'être
+  // décodé.
+
+  /** Le même maillage, mais SANS mise à jour manuelle des matrices après la pose. */
+  const maillagePoséNonÀJour = () => {
+    const racine = new THREE.Bone(); racine.position.set(0, 0, 0);
+    const enfant = new THREE.Bone(); enfant.position.set(0, 1, 0);
+    racine.add(enfant);
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, 1, 0]), 3));
+    g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array([0, 0, 0, 0, 1, 0, 0, 0]), 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array([1, 0, 0, 0, 1, 0, 0, 0]), 4));
+
+    const maillage = new THREE.SkinnedMesh(g, new THREE.MeshBasicMaterial());
+    racine.updateMatrixWorld(true);
+    maillage.bind(new THREE.Skeleton([racine, enfant]));
+
+    // ⚠️ LES OS SONT FRÈRES DU MAILLAGE, PAS SES ENFANTS, et c'est ce que fait un vrai glTF. Le
+    // montage du haut de ce fichier les met SOUS le maillage, ce qui les rend joignables par une
+    // mise à jour partant de lui : la topologie réelle, elle, ne l'est pas, et c'est précisément
+    // ce qui rendait le défaut invisible aux tests.
+    const scène = new THREE.Group();
+    scène.add(maillage);
+    scène.add(racine);
+    // La pose, et RIEN d'autre : aucune mise à jour de matrice, comme après un décodage.
+    //
+    // `matrixAutoUpdate = false` et une matrice posée à la main, parce que c'est ce que fait
+    // GLTFLoader pour tout nœud que le fichier donne par matrice.
+    //
+    // ⚠️ ET CELA NE SUFFIT TOUJOURS PAS À DISTINGUER LES TROIS FORMES DE MISE À JOUR. Éprouvé :
+    // `updateMatrixWorld()` sans forcer et `updateWorldMatrix(true, true)` passent ce montage, alors
+    // qu'elles laissent `cerberus.glb` à 0,05 de haut. Un montage reste un montage, et celui-ci est
+    // trop docile. Ces deux faits-là sont donc consignés dans l'en-tête du module avec leurs
+    // mesures, pas gardés par un test : l'essai sur un vrai `.glb` reste MANUEL, Node ne sachant
+    // pas décoder les textures (cf. tests/glb-decoding.test.mjs, même limite).
+    enfant.matrix.setPosition(0, 50, 0);
+    enfant.matrixAutoUpdate = false;
+    racine.matrixAutoUpdate = false;
+    maillage.matrixAutoUpdate = false;
+    scène.matrixWorldNeedsUpdate = false;
+    return scène;
+  };
+
+  test('la boîte voit la pose même si personne n\'a mis les matrices à jour', () => {
+    const taille = new THREE.Vector3();
+    box3FromObjectSkinAware3D(maillagePoséNonÀJour()).getSize(taille);
+    assert.ok(taille.y > 45, `la pose à Y=50 doit être vue, boîte mesurée ${taille.y.toFixed(2)}`);
+  });
+
+  test('elle rend LA MÊME chose que si on les avait mises à jour soi-même', () => {
+    // La garde qui dit que la fonction est devenue INDÉPENDANTE de son appelant. Deux résultats
+    // différents selon qu'on a pensé à appeler `updateMatrixWorld` avant, c'est exactement le
+    // genre de dépendance invisible qui a produit ce défaut.
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    box3FromObjectSkinAware3D(maillagePoséNonÀJour()).getSize(a);
+    const s = maillagePoséNonÀJour(); s.updateMatrixWorld(true);
+    box3FromObjectSkinAware3D(s).getSize(b);
+    assert.ok(Math.abs(a.y - b.y) < 1e-6, `${a.y} contre ${b.y}`);
+  });
+});

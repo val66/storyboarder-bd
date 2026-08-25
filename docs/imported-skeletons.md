@@ -31,6 +31,41 @@ limbs**.
 `worker_j` is the THIGH. This is what forced the split of duties in `skeleton-map.js`: the name
 for the SIDE, the structure for the SEGMENT.
 
+### 1.1 An articulated model's box, and stale bones (#372)
+
+**Reported through use: imported models appeared below the ground.** It was neither the placement
+nor the grounding, it was the SCALE, which `placeRigCentered3D` derives from the bounding box.
+
+`box3FromObjectSkinAware3D` reads `bone.matrixWorld` for every vertex. But **a skeleton is not a
+descendant of the mesh it deforms**: in a glTF it is a sibling under the same root. The function only
+did an `updateWorldMatrix(true, false)` per node, which updates ancestors and the node itself; a mesh
+visited before the bones therefore read them stale.
+
+| file | measured box | real box | factor |
+|---|---|---|---|
+| `cerberus.glb` | 0.05 × 0.05 × 0.09 | 4.52 × 4.66 × 8.53 | **90** |
+| `snake.glb` | 2.14 × 0.11 × 0.09 | 7.36 × 0.37 × 0.32 | 3.4 |
+| `spider.glb` | 1.84 × 2.11 × 0.48 | 2.28 × 0.59 × 2.61 | 1.3 |
+| `labrador_dog.glb` | 1.35 × 2.78 × 5.44 | identical | 1 |
+
+The cerberus was therefore scaled up **one hundred and sixteen times**. The dog, the only healthy one
+of the lot, was healthy because it carries a NON-skinned mesh whose traversal updated the matrices on
+the way past.
+
+**TWO FORMS OF UPDATE DO NOT FIX IT, and both were tried:**
+
+- `updateWorldMatrix(true, true)` does not descend into a node whose `matrixAutoUpdate` is false,
+  which GLTFLoader sets on every node given by matrix. Cerberus still at 0.05;
+- updating the BONES alone does not work either: `bone.updateMatrixWorld(true)` composes with its
+  parent's matrix, itself stale. Cerberus still at 0.05.
+
+Only `updateMatrixWorld(true)` from the subtree root fixes it.
+
+⚠️ **Neither fact is guarded by a test**, deliberately: a hand-built skeleton is too docile, all
+three forms pass it. Telling them apart needs a real `.glb`, which Node cannot decode because it
+cannot read its textures. They are therefore recorded here and in the module header, with their
+measurements.
+
 ---
 
 ## 2. Rest rotations: 106 bones out of 108 are already rotated

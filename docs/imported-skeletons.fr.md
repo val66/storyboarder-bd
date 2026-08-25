@@ -31,6 +31,40 @@ celle du segment. Sans elles, ces deux fichiers rendaient **zéro membre latéra
 de `worker_j` désigne la CUISSE. C'est ce qui a imposé le partage des rôles de `skeleton-map.js` :
 le nom pour le CÔTÉ, la structure pour le SEGMENT.
 
+### 1.1 La boîte d'un modèle articulé, et les os périmés (#372)
+
+**Signalé à l'usage : des modèles importés apparaissaient sous le sol.** Ce n'était ni le placement
+ni l'aplomb, c'était l'ÉCHELLE, que `placeRigCentered3D` déduit de la boîte englobante.
+
+`box3FromObjectSkinAware3D` interroge `bone.matrixWorld` pour chaque sommet. Or **un squelette n'est
+pas un descendant du maillage qu'il déforme** : dans un glTF, c'est un frère sous la même racine. La
+fonction ne faisait qu'un `updateWorldMatrix(true, false)` par nœud, qui met à jour les ancêtres et
+le nœud lui-même ; un maillage visité avant les os les lisait donc périmés.
+
+| fichier | boîte mesurée | boîte réelle | facteur |
+|---|---|---|---|
+| `cerberus.glb` | 0,05 × 0,05 × 0,09 | 4,52 × 4,66 × 8,53 | **90** |
+| `snake.glb` | 2,14 × 0,11 × 0,09 | 7,36 × 0,37 × 0,32 | 3,4 |
+| `spider.glb` | 1,84 × 2,11 × 0,48 | 2,28 × 0,59 × 2,61 | 1,3 |
+| `labrador_dog.glb` | 1,35 × 2,78 × 5,44 | identique | 1 |
+
+Le cerbère était donc agrandi **cent seize fois**. Le chien, seul modèle sain du lot, l'était parce
+qu'il porte un maillage NON articulé dont le parcours mettait les matrices à jour au passage.
+
+**DEUX FORMES DE MISE À JOUR NE RÉPARENT PAS, et toutes deux ont été essayées :**
+
+- `updateWorldMatrix(true, true)` ne descend pas dans un nœud dont `matrixAutoUpdate` est faux, ce
+  que GLTFLoader pose sur tout nœud donné par matrice. Cerbère toujours à 0,05 ;
+- mettre à jour les OS seuls ne suffit pas non plus : `bone.updateMatrixWorld(true)` compose avec la
+  matrice de son parent, elle-même périmée. Cerbère toujours à 0,05.
+
+Seul `updateMatrixWorld(true)` depuis la racine du sous-arbre répare.
+
+⚠️ **Ces deux faits ne sont gardés par aucun test**, et c'est assumé : un squelette monté à la main
+est trop docile, les trois formes y passent. Les distinguer demande un vrai `.glb`, que Node ne sait
+pas décoder faute de savoir lire ses textures. Ils sont donc consignés ici et dans l'en-tête du
+module, avec leurs mesures.
+
 ---
 
 ## 2. Rotations de repos : 106 os sur 108 sont déjà tournés

@@ -59,6 +59,19 @@
  * de lui-même, ce qui est exactement ce que règle le masquage des maillages égarés.
  */
 export function expandBoxSkinAware3D(box, object) {
+  // ⚠️ `(true, false)` MET À JOUR LES ANCÊTRES ET CE NŒUD, PAS LES OS. C'est la cause du défaut
+  // corrigé en #372, et il faut la comprendre pour ne pas la réintroduire : `boneTransform` lit
+  // `skeleton.bones[i].matrixWorld`, et un squelette n'est PAS un descendant du maillage qu'il
+  // déforme, c'est presque toujours un frère sous la même racine. Ces matrices restaient donc
+  // périmées, souvent à l'identité, et le sommet déformé s'effondrait vers l'origine.
+  //
+  // Mesuré sur `cerberus.glb` : boîte de 0,05 × 0,05 × 0,09 là où sa géométrie fait
+  // 4,52 × 4,66 × 8,53, soit un facteur QUATRE-VINGT-DIX. Comme `placeRigCentered3D` déduit
+  // l'échelle du rig de cette boîte, le cerbère était agrandi d'autant.
+  //
+  // La mise à jour se fait donc UNE fois, en tête de `box3FromObjectSkinAware3D`, sur tout le
+  // sous-arbre. Elle est gardée ici pour les appels directs sur un nœud isolé (cf.
+  // stray-meshes-3d.js), où elle suffit puisqu'il n'y a pas de sous-arbre à couvrir.
   object.updateWorldMatrix(true, false);
   if (object.isMesh && object.visible === false) return;
   if (object.isMesh && object.geometry) {
@@ -88,6 +101,39 @@ export function expandBoxSkinAware3D(box, object) {
  */
 export function box3FromObjectSkinAware3D(object) {
   const box = new THREE.Box3();
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // METTRE LES MATRICES À JOUR DEPUIS LA RACINE, ET C'EST LA CORRECTION DE #372
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // `boneTransform` lit `skeleton.bones[i].matrixWorld`. Un squelette n'est PAS un descendant du
+  // maillage qu'il déforme : dans un glTF, c'est un FRÈRE sous la même racine. Le parcours ne
+  // faisait qu'un `updateWorldMatrix(true, false)` par nœud, qui met à jour les ancêtres et le
+  // nœud lui-même ; quand un maillage était visité avant les os, il les lisait périmés, et le
+  // sommet déformé s'effondrait vers l'origine.
+  //
+  // MESURÉ SUR LES FICHIERS RÉELS, et l'écart n'est pas une nuance :
+  //
+  //   cerberus.glb   boîte 0,05 × 0,05 × 0,09   au lieu de 4,52 × 4,66 × 8,53   (facteur 90)
+  //   spider.glb     1,84 × 2,11 × 0,48         au lieu de 2,28 × 0,59 × 2,61
+  //   snake.glb      2,14 × 0,11 × 0,09         au lieu de 7,36 × 0,37 × 0,32
+  //
+  // `placeRigCentered3D` déduisant l'échelle du rig de cette boîte, le cerbère était agrandi CENT
+  // SEIZE fois. C'est ce que l'utilisateur voyait comme « le modèle passe sous le sol ».
+  //
+  // ⚠️ DEUX PIÈGES, tous deux mesurés, et qu'aucun test monté à la main ne distingue :
+  //
+  //   `updateWorldMatrix(true, true)` NE SUFFIT PAS. Elle ne descend pas dans un nœud dont
+  //     `matrixAutoUpdate` est faux, ce que GLTFLoader pose sur tout nœud donné par matrice. Sur
+  //     `cerberus.glb`, elle laissait la boîte à 0,05, c'est-à-dire ne changeait rien ;
+  //   METTRE À JOUR LES OS SEULS NE SUFFIT PAS NON PLUS. `bone.updateMatrixWorld(true)` compose
+  //     avec la matrice de son PARENT, elle-même périmée. Essayé, mesuré, cerbère toujours à 0,05.
+  //
+  // La seule forme qui répare est celle-ci, depuis la racine du sous-arbre.
+  if (object && object.updateMatrixWorld) object.updateMatrixWorld(true);
+  // TOUT LE SOUS-ARBRE, OS COMPRIS, avant de lire quoi que ce soit. Voir l'avertissement dans
+  // `expandBoxSkinAware3D` : sans cette ligne, la boîte d'un modèle articulé est celle de ses os
+  // au repos vus depuis des matrices périmées, et non celle de sa géométrie déformée.
+  //
   expandBoxSkinAware3D(box, object);
   return box;
 }
