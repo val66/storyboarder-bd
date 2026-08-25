@@ -205,6 +205,17 @@ What writing it taught, and what design alone did not foresee:
   "Forearm" with no side; my first version used two layouts in one screen, exactly what the
   unification is meant to remove.
 
+⚠️ **A false claim was written here, and corrected by the #380 audit.** It said: "the Animals panel
+displays in French even in English". False. `libelleAnimal3D` translates those labels through
+`ANIMAL_LABELS_EN`, a dictionary keyed by the FRENCH WORD rather than by a field next to each entry;
+all 36 words are there. I had looked for a `labelEn`, found none, and concluded there was no
+translation without looking at what the screen shows. That is #372's fault repeated: inventing a
+cause instead of reading it.
+
+What remains true, and justifies the derivation: that dictionary is keyed by a LABEL, not by an
+identifier. Adding roles to it would mean translating "Front left hip" as one block, where the key
+`hipFL` decomposes.
+
 **Two bilingual faults caught while writing rather than on screen**, and both exist only in French:
 "Bras droite", because `droit` agrees in gender while `left` does not, and word order, French placing
 the epithet after the noun where English places it before. One order for both languages gives

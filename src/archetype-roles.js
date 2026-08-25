@@ -42,10 +42,20 @@
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * `ANIMAL_JOINT_DEFS` porte des libellés FRANÇAIS uniquement : mesuré, 61 articulations sur 61 n'ont
- * pas de `labelEn`. Le panneau des Animaux s'affiche donc en français même en anglais, ce qui est un
- * défaut existant et pas le sujet ici.
+ * pas de `labelEn`.
  *
- * Plutôt que d'y ajouter 61 traductions, ou pire d'en recopier une partie ici, le libellé se
+ * ⚠️ J'EN AI TIRÉ UNE CONCLUSION FAUSSE, écrite ici même : « le panneau des Animaux s'affiche donc en
+ * français même en anglais ». C'est démenti. `libelleAnimal3D` traduit ces libellés par
+ * `ANIMAL_LABELS_EN`, un dictionnaire INDEXÉ PAR LE MOT FRANÇAIS plutôt que par un champ à côté de
+ * chaque entrée. Les 36 mots y sont, sans exception. J'avais cherché un `labelEn` et conclu de son
+ * absence à celle d'une traduction, sans vérifier ce que l'écran affiche : la même faute que
+ * la tâche #372, où j'avais inventé une cause au lieu de la lire.
+ *
+ * Ce qui reste vrai, et qui justifie ce qui suit : ce dictionnaire est indexé par un LIBELLÉ, pas
+ * par un identifiant. Y ajouter les rôles voudrait dire traduire « Hanche avant gauche » d'un bloc,
+ * là où la clé `hipFL` se décompose. Un libellé traduit ne se recompose pas.
+ *
+ * Plutôt que d'étendre ce dictionnaire, ou pire d'en recopier une partie ici, le libellé se
  * DÉCOMPOSE depuis l'identifiant : `hipFL` se lit `hip` + `F` + `L`. Les vingt-et-une clés du dépôt
  * suivent cette forme sans exception. Conséquence recherchée : ajouter une articulation à un animal
  * lui donne son libellé dans les deux langues sans toucher à ce fichier.

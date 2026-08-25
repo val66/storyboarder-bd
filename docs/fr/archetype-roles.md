@@ -217,6 +217,17 @@ Ce qui a été appris en l'écrivant, et qui ne se devinait pas depuis la concep
   `slotLabel` rend « Avant-bras » sans côté ; ma première version faisait deux mises en page dans un
   seul écran, exactement ce que l'unification doit supprimer.
 
+⚠️ **Une affirmation fausse a été écrite ici, et corrigée par l'audit de #380.** Elle disait : « le
+panneau des Animaux s'affiche en français même en anglais ». Faux. `libelleAnimal3D` traduit ces
+libellés par `ANIMAL_LABELS_EN`, un dictionnaire indexé par le MOT FRANÇAIS plutôt que par un champ
+à côté de chaque entrée ; les 36 mots y sont. J'avais cherché un `labelEn`, constaté son absence, et
+conclu à celle d'une traduction sans regarder ce que l'écran affiche. C'est la faute de #372,
+répétée : inventer une cause au lieu de la lire.
+
+Ce qui reste vrai et qui justifie la dérivation : ce dictionnaire est indexé par un LIBELLÉ, pas par
+un identifiant. Y ajouter les rôles voudrait dire traduire « Hanche avant gauche » d'un bloc, là où
+la clé `hipFL` se décompose.
+
 **Deux fautes bilingues attrapées en écrivant plutôt qu'à l'écran**, et les deux n'existent qu'en
 français : « Bras droite », parce que `droit` s'accorde et pas `left`, et l'ordre des mots, le
 français plaçant l'épithète après le nom là où l'anglais la place avant. Un seul ordre pour les deux
