@@ -3,7 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.43. Les étapes 1 à 3 et les tâches #363 à #370 sont livrées.
+> À jour de la v1.4.47. Les étapes 1 à 3 et les tâches #363 à #372, #376 et le modèle de #373 sont
+> livrés ; l'écran de #373, puis #374 et #375, restent à faire.
 
 ## Où l'on en est
 
@@ -375,6 +376,40 @@ au détour d'un `find` l'aurait enterrée.
 rig sont deux descriptions du même objet, et rien ne les tenait d'accord : un curseur déclaré sans
 pivot correspondant s'affiche et ne fait rien, en silence. Un test croise désormais les deux listes
 dans les deux sens, pour les cinq animaux.
+
+## L'écran généré : d'abord le modèle (#373a)
+
+**Signalé à l'usage :** l'écran de correspondance affiche dix-huit lignes humanoïdes et rien d'autre.
+Sur un cerbère on ne voit pas ses deux têtes latérales, sur une araignée pas ses pattes
+surnuméraires. La reconnaissance les trouve toutes ; c'est l'ÉCRAN qui n'a pas de case pour elles.
+
+`lignesDeCorrespondance3D` rend ce que l'écran doit montrer, sans toucher au DOM :
+`{ tronc, groupes }`, chaque groupe rassemblant les chaînes qui partent du MÊME os.
+
+| fichier | ce que l'écran montrera |
+|---|---|
+| cerbère | `Patte G`, `Patte D`, `Queue`, **`Tête G`, `Tête D`**, `Bras G`, `Bras D` |
+| centaure2 | les **quatre pattes du cheval**, ancrées sur le corps et non sur le tronc |
+| araignée | 30 chaînes sur **9 ancres**, toutes décochables |
+| mixamo | 2 ancres, 4 membres, rien d'inventé |
+
+**ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS**, elle s'y ajoute. Ce sont eux qui pilotent le rig
+aujourd'hui, et les remplacer d'un coup casserait tout modèle déjà posé. Les deux vivront côte à
+côte tant que les poignées (#374) n'auront pas appris à venir d'ici.
+
+**Trois sources pour le nom, la première qui répond gagne :** `manuel` ce que l'utilisateur a tapé,
+`nom` ce que le vocabulaire tire des os, `structure` le descripteur neutre « gauche, 7 os » pour les
+quatre fichiers qui ne nomment rien.
+
+**Le côté est COLLÉ au nom**, pas seulement rangé dans un champ : sans lui le cerbère afficherait
+deux lignes « Patte » identiques, et le champ qu'on édite doit se distinguer seul.
+
+**`retenu` vaut vrai par défaut**, seul un `false` enregistré retire une chaîne. C'est le contrat de
+tout cet écran, proposer sans décider.
+
+Les choix vont dans le fichier de correspondances sous la clé `membres`, troisième AJOUT après `os`
+et `morphologie`, mêmes règles : la version du format ne bouge pas, et **seul le choix humain est
+écrit**. Une ligne sans nom tapé ni décochage n'apprend rien et n'est pas enregistrée.
 
 ## Décisions prises avec l'utilisateur
 

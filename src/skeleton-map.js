@@ -858,3 +858,98 @@ export function archetypeSuggere3D(os){
   if (s.paires === 3) return { cle: 'centaure', origine: 'structure' };
   return { cle: 'complexe', origine: 'structure' };
 }
+
+/**
+ * Les lignes de l'écran de correspondance pour un squelette QUELCONQUE. Fonction PURE.
+ *
+ * @param {Array<{id, name, children}>} os la liste d'os neutre
+ * @param {Array<{racine: string, nom: string, retenu: boolean}>} [enregistres] les choix humains
+ * @param {(en: string, fr: string) => string} [traduire]
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI CETTE FONCTION EXISTE, ET CE QU'ELLE NE REMPLACE PAS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'écran de correspondance affiche DIX-HUIT lignes humanoïdes, et rien d'autre. Signalé à l'usage :
+ * sur un cerbère on ne voit pas ses deux têtes latérales, sur une araignée pas ses pattes
+ * surnuméraires. Ce n'est pas un défaut de la reconnaissance, qui les trouve toutes ; c'est l'écran
+ * qui n'a pas de case pour elles.
+ *
+ * ELLE NE REMPLACE PAS LES DIX-HUIT EMPLACEMENTS, elle s'y ajoute. Ce sont eux qui pilotent le rig
+ * aujourd'hui (`applySkeletonPose`, `jointsDepuisOsMappes`), et les remplacer d'un coup casserait
+ * tout modèle déjà posé. Les deux vivront côte à côte tant que les poignées (#374) n'auront pas
+ * appris à venir d'ici.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QU'ELLE REND, ET POURQUOI GROUPÉ PAR ANCRE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `{ tronc, groupes }`, où chaque groupe rassemble les membres qui partent du MÊME os. Décision
+ * prise avec l'utilisateur, contre un regroupement des paires gauche/droite : une liste plus longue
+ * mais où chaque chaîne se coche séparément, quitte à corriger à l'usage. Sur le rig Unreal, 222
+ * chaînes sur une poignée d'ancres, c'est le repli par ancre qui rend l'écran lisible.
+ *
+ * TROIS SOURCES POUR LE NOM, ET LA PREMIÈRE QUI RÉPOND GAGNE :
+ *
+ *   'manuel'     ce que l'utilisateur a tapé, relu du fichier de correspondances ;
+ *   'nom'        ce que le vocabulaire tire des os de la chaîne (cf. nomSuggereDeChaine3D) ;
+ *   'structure'  le descripteur neutre, « gauche, 5 os », quand le fichier ne dit rien. Mesuré :
+ *                l'araignée, le kraken, le raptor et le serpent sont dans ce cas, ZÉRO nom lisible.
+ *
+ * `retenu` VAUT VRAI PAR DÉFAUT. Une chaîne que personne n'a décochée est proposée, c'est le contrat
+ * de tout cet écran : proposer sans décider. Seul un `false` enregistré la retire.
+ */
+export function lignesDeCorrespondance3D(os, enregistres, traduire){
+  const t = traduire || ((en) => en);
+  const liste = (os || []).filter(o => o && o.id !== undefined);
+  const vide = { tronc: null, groupes: [] };
+  if (liste.length < 2) return vide;
+
+  const parId = new Map(liste.map(o => [o.id, o]));
+  const { tronc, membres } = membresDuSquelette3D(liste);
+  if (!tronc.length) return vide;
+
+  // Les choix humains sont retrouvés par le NOM de l'os racine, jamais par un indice : un `.glb`
+  // réexporté renumérote tout, et une correspondance par indices désignerait alors des chaînes
+  // arbitraires, silencieusement. C'est la règle du fichier de correspondances (skeleton-store.js).
+  const choix = new Map((enregistres || [])
+    .filter(e => e && typeof e.racine === 'string')
+    .map(e => [e.racine, e]));
+
+  const groupes = new Map();
+  membres.forEach(m => {
+    const noms = m.segments.map(s => parId.get(s).name);
+    const racine = noms[0];
+    const memoire = choix.get(racine);
+    const propose = nomSuggereDeChaine3D(noms, t);
+
+    // Le descripteur neutre reste lisible quand rien d'autre ne l'est : le côté, puis la longueur.
+    // Les ancres étant ordonnées le long du tronc, « gauche, 7 os » sous la troisième ancre se lit
+    // comme « la patte gauche du troisième segment », ce qui suffit à taper un nom.
+    const cote = m.cote === 'g' ? t('left', 'gauche') : m.cote === 'd' ? t('right', 'droite') : t('centre', 'centre');
+    const neutre = `${cote}, ${m.segments.length} ${t('bones', 'os')}`;
+
+    // LE CÔTÉ EST COLLÉ AU NOM PROPOSÉ, et pas seulement rangé dans un champ. Sans lui, le cerbère
+    // affiche deux lignes « Patte » et deux lignes « Tête » strictement identiques : le champ que
+    // l'utilisateur va éditer doit se distinguer tout seul, sans dépendre d'une colonne d'à côté.
+    const suffixe = m.cote === 'g' ? ` ${t('L', 'G')}` : m.cote === 'd' ? ` ${t('R', 'D')}` : '';
+
+    const ligne = {
+      racine,
+      cote: m.cote,
+      rang: m.rang,
+      segments: m.segments,
+      nom: (memoire && memoire.nom) || (propose ? propose + suffixe : neutre),
+      origine: (memoire && memoire.nom) ? 'manuel' : (propose ? 'nom' : 'structure'),
+      retenu: memoire ? memoire.retenu !== false : true,
+    };
+    const cle = m.ancre;
+    if (!groupes.has(cle)) groupes.set(cle, { ancre: cle, ancreNom: parId.get(cle).name, membres: [] });
+    groupes.get(cle).membres.push(ligne);
+  });
+
+  return {
+    tronc: { segments: tronc, nom: t('Spine', 'Colonne') },
+    groupes: [...groupes.values()],
+  };
+}

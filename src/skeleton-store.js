@@ -65,8 +65,16 @@ export function normaliserFichier(brut){
     // lire `os` et `valide` ; la passer à 2 lui ferait au contraire rejeter le fichier ENTIER.
     // Une clé inconnue est écartée plutôt que reprise : elle ne s'afficherait nulle part.
     const morphologie = MORPHOLOGIES_CONNUES.has(entree.morphologie) ? entree.morphologie : null;
-    if (Object.keys(os).length || valide || morphologie) {
-      entrees[fichier] = morphologie ? { os, valide, morphologie } : { os, valide };
+    // `membres` est un second AJOUT (tâche #373), suivant exactement la même règle que
+    // `morphologie` : la version du format ne bouge pas, une clé inconnue est ignorée par les
+    // versions antérieures. Une entrée mal formée est écartée plutôt que reprise, sans quoi une
+    // ligne sans `racine` désignerait une chaîne introuvable et disparaîtrait de l'écran sans rien
+    // dire, en emportant le nom que l'utilisateur avait tapé.
+    const membres = normaliserMembres(entree.membres);
+    if (Object.keys(os).length || valide || morphologie || membres.length) {
+      entrees[fichier] = { os, valide };
+      if (morphologie) entrees[fichier].morphologie = morphologie;
+      if (membres.length) entrees[fichier].membres = membres;
     }
   });
   return { version: SKELETON_MAP_FORMAT, entrees };
@@ -94,15 +102,38 @@ export function normaliserFichier(brut){
  * trouverait une morphologie « enregistrée » sur chaque fichier jamais touché. L'appelant ne passe
  * donc `morphologie` que lorsque l'utilisateur a touché au sélecteur.
  */
-export function entreePourFichier(carte, { valide = false, morphologie = null } = {}){
+/**
+ * Les lignes de membres qu'on accepte de garder. Fonction PURE.
+ *
+ * ON N'ÉCRIT QUE CE QUI EST UN CHOIX HUMAIN, comme pour `os` et `morphologie` : une ligne qui n'a
+ * ni nom tapé ni décochage n'apprend rien, et la figer condamnerait toute amélioration du
+ * vocabulaire de nommage, qui trouverait un nom « enregistré » sur chaque chaîne jamais touchée.
+ */
+function normaliserMembres(brut){
+  return (Array.isArray(brut) ? brut : [])
+    .filter(e => e && typeof e.racine === 'string' && e.racine)
+    .map(e => ({
+      racine: e.racine,
+      nom: typeof e.nom === 'string' && e.nom ? e.nom : null,
+      retenu: e.retenu !== false,
+    }))
+    .filter(e => e.nom !== null || e.retenu === false)
+    .map(e => (e.nom !== null ? { racine: e.racine, nom: e.nom, retenu: e.retenu } : { racine: e.racine, retenu: false }));
+}
+
+export function entreePourFichier(carte, { valide = false, morphologie = null, membres = null } = {}){
   const os = {};
   SLOTS.forEach(slot => {
     const v = (carte || {})[slot];
     if (v && v.bone !== undefined && v.origine === 'manuel' && v.name) os[slot] = v.name;
   });
   const m = MORPHOLOGIES_CONNUES.has(morphologie) ? morphologie : null;
-  if (!Object.keys(os).length && !valide && !m) return null;
-  return m ? { os, valide, morphologie: m } : { os, valide };
+  const mem = normaliserMembres(membres);
+  if (!Object.keys(os).length && !valide && !m && !mem.length) return null;
+  const sortie = { os, valide };
+  if (m) sortie.morphologie = m;
+  if (mem.length) sortie.membres = mem;
+  return sortie;
 }
 
 /**
@@ -195,12 +226,12 @@ export function _viderCacheCorrespondances(){
  * le moment où l'on a chargé les correspondances et celui où l'on enregistre, une autre fenêtre de
  * l'application a pu en ajouter une. Réécrire ce qu'on avait en mémoire l'effacerait.
  */
-export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null } = {}){
+export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null, membres = null } = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
-  const entree = entreePourFichier(carte, { valide, morphologie });
+  const entree = entreePourFichier(carte, { valide, morphologie, membres });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
   // écrirait donc dans le cache, avant l'écriture disque, et sans moyen de revenir en arrière si

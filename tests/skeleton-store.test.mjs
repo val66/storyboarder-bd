@@ -726,3 +726,51 @@ describe('morphologie : un AJOUT au fichier, jamais un renommage (#369)', () => 
     assert.ok(!('morphologie' in relu.entrees['a.glb']), 'aucune clé inventée');
   });
 });
+
+describe('membres : le second AJOUT au fichier (#373)', () => {
+  // MÊME RÈGLE QUE `os` ET `morphologie`, pour la même raison : on n'écrit que le choix HUMAIN.
+  // Figer les noms proposés condamnerait toute amélioration du vocabulaire de nommage, qui
+  // trouverait un nom « enregistré » sur chaque chaîne que personne n'a jamais touchée.
+
+  test('une ligne sans nom tapé ET non décochée n\'apprend rien, elle n\'est pas écrite', () => {
+    assert.equal(entreePourFichier({}, { membres: [{ racine: 'Bone_L', retenu: true }] }), null);
+    assert.equal(entreePourFichier({}, { membres: [{ racine: 'Bone_L' }] }), null);
+  });
+
+  test('un nom tapé est gardé, un décochage aussi, et séparément', () => {
+    assert.deepEqual(entreePourFichier({}, { membres: [{ racine: 'Bone_L', nom: 'Patte avant G', retenu: true }] }),
+      { os: {}, valide: false, membres: [{ racine: 'Bone_L', nom: 'Patte avant G', retenu: true }] });
+    // Décochée sans nom : on garde le décochage SEUL, pas un nom qu'on aurait recopié de la
+    // proposition. C'est ce qui laisse le vocabulaire libre de changer d'avis plus tard.
+    assert.deepEqual(entreePourFichier({}, { membres: [{ racine: 'Bone_L', retenu: false }] }),
+      { os: {}, valide: false, membres: [{ racine: 'Bone_L', retenu: false }] });
+  });
+
+  test('une ligne SANS racine est écartée, à l\'écriture comme à la relecture', () => {
+    // Sans racine, la ligne ne désigne aucune chaîne : elle disparaîtrait de l'écran en silence,
+    // en emportant le nom que l'utilisateur avait tapé.
+    assert.equal(entreePourFichier({}, { membres: [{ nom: 'Sans racine', retenu: false }] }), null);
+    const relu = normaliserFichier({
+      version: 1,
+      entrees: { 'a.glb': { os: {}, valide: true, membres: [{ nom: 'x', retenu: false }, 'pas un objet'] } },
+    });
+    assert.deepEqual(relu.entrees['a.glb'], { os: {}, valide: true });
+  });
+
+  test('la relecture conserve des membres bien formés, sans toucher à la version', () => {
+    const relu = normaliserFichier({
+      version: 1,
+      entrees: { 'a.glb': { os: {}, valide: false, membres: [{ racine: 'B', nom: 'Aile G', retenu: true }] } },
+    });
+    assert.deepEqual(relu.entrees['a.glb'],
+      { os: {}, valide: false, membres: [{ racine: 'B', nom: 'Aile G', retenu: true }] });
+    assert.equal(relu.version, 1);
+  });
+
+  test('les trois ajouts cohabitent, et un fichier d\'AVANT se relit intact', () => {
+    const complet = entreePourFichier({}, { valide: true, morphologie: 'quadrupede', membres: [{ racine: 'B', nom: 'Queue', retenu: true }] });
+    assert.deepEqual(Object.keys(complet), ['os', 'valide', 'morphologie', 'membres']);
+    const ancien = normaliserFichier({ version: 1, entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } } });
+    assert.deepEqual(ancien.entrees['a.glb'], { os: { bassin: 'Hips' }, valide: true });
+  });
+});

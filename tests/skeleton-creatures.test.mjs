@@ -43,7 +43,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   inferSkeletonMap, membresDuSquelette3D, coteDuNom, motsDuNomDOs3D, nomSuggereDeChaine3D,
-  signatureDuSquelette3D, archetypeSuggere3D, SLOTS,
+  signatureDuSquelette3D, archetypeSuggere3D, lignesDeCorrespondance3D, SLOTS,
 } from '../src/skeleton-map.js';
 import {
   ARCHETYPES_3D, ANIMAL_ARCHETYPES_3D, animauxDeLArchetype3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS,
@@ -1166,5 +1166,118 @@ describe('l\'oiseau intégré a gagné des pattes (#367)', () => {
     const g = (ANIMAL_JOINT_DEFS.oiseau || []).map(x => x.group);
     assert.deepEqual(g, ['Tête', 'Aile gauche', 'Aile droite', 'Jambe G', 'Jambe D', 'Queue'],
       'deux ailes ET deux jambes, ce qui est la définition de cet archétype');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #373 — LES LIGNES DE L'ÉCRAN, POUR UN SQUELETTE QUELCONQUE
+//
+// Signalé à l'usage : l'écran de correspondance affiche dix-huit lignes humanoïdes, donc les têtes
+// du cerbère et les pattes surnuméraires de l'araignée sont INVISIBLES. La reconnaissance les trouve
+// toutes ; c'est l'écran qui n'a pas de case pour elles.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('lignesDeCorrespondance3D : ce que l\'écran doit montrer', () => {
+  const lignes = (nom, enregistres) => lignesDeCorrespondance3D(charger(nom), enregistres, tr);
+  const noms = (r) => r.groupes.flatMap(g => g.membres.map(m => m.nom));
+
+  test('LE CERBÈRE MONTRE ENFIN SES TROIS TÊTES', () => {
+    // Le défaut, vu par son symptôme. Les deux têtes latérales sont des chaînes comme les autres ;
+    // seul l'écran les ignorait.
+    const r = lignes('cerbere');
+    assert.deepEqual(noms(r), ['Patte G', 'Patte D', 'Queue', 'Tête G', 'Tête D', 'Bras G', 'Bras D']);
+    assert.equal(r.tronc.segments.length, 11, 'et le tronc reste une ligne à part');
+  });
+
+  test('LE CÔTÉ EST DANS LE NOM, pas seulement dans un champ', () => {
+    // Sans lui, le cerbère afficherait deux lignes « Patte » et deux « Tête » identiques. Le champ
+    // que l'utilisateur édite doit se distinguer seul, sans dépendre d'une colonne voisine.
+    const paires = lignes('cerbere').groupes[0].membres;
+    assert.equal(paires[0].nom, 'Patte G');
+    assert.equal(paires[1].nom, 'Patte D');
+    assert.equal(paires[2].nom, 'Queue', 'une annexe sans côté n\'a pas de suffixe');
+  });
+
+  test('le regroupement se fait par ANCRE, décision prise avec l\'utilisateur', () => {
+    // Contre un regroupement des paires gauche/droite : une liste plus longue mais où chaque chaîne
+    // se coche séparément. Sur l'araignée, neuf ancres pour vingt-huit chaînes.
+    const r = lignes('araignee');
+    assert.equal(r.groupes.length, 9);
+    assert.equal(r.groupes.reduce((n, g) => n + g.membres.length, 0), 30);
+    r.groupes.forEach(g => assert.ok(g.ancreNom, 'chaque groupe se nomme par son os d\'ancrage'));
+  });
+
+  test('QUATRE FICHIERS N\'ONT AUCUN NOM LISIBLE, et le descripteur neutre prend le relais', () => {
+    // Mesuré en #365 : araignée, kraken, raptor et serpent ne portent que des `Bone.004_L.001`. La
+    // ligne reste utilisable, les ancres étant ordonnées le long du tronc : « gauche, 7 os » sous la
+    // troisième ancre se lit comme la patte gauche du troisième segment.
+    ['araignee', 'kraken', 'raptor'].forEach(nom => {
+      const r = lignes(nom);
+      const origines = new Set(r.groupes.flatMap(g => g.membres.map(m => m.origine)));
+      assert.deepEqual([...origines], ['structure'], `${nom} ne devrait rien nommer`);
+    });
+    assert.equal(lignes('araignee').groupes[1].membres[0].nom, 'gauche, 7 os');
+  });
+
+  test('LE CENTAURE MONTRE LES QUATRE PATTES DU CHEVAL, sur le corps et non sur le tronc', () => {
+    // Ce que #368 a rendu visible dans la décomposition, cet écran le rend visible tout court.
+    const r = lignes('centaure2');
+    const ancres = r.groupes.map(g => g.ancreNom);
+    assert.ok(ancres.includes('LowerBody1_033') && ancres.includes('LowerBody3_035'));
+    assert.equal(noms(r).filter(n => n.startsWith('Patte')).length, 4);
+  });
+
+  test('un rig humanoïde propre ne donne QUE deux ancres et quatre membres', () => {
+    // La contrepartie : sur un squelette simple, l'écran généré n'invente rien de plus que les
+    // quatre membres attendus. C'est ce qui rend crédible qu'il remplace un jour les dix-huit
+    // lignes fixes.
+    const r = lignes('mixamo');
+    assert.equal(r.groupes.length, 2);
+    assert.deepEqual(noms(r), ['Patte G', 'Patte D', 'Bras G', 'Bras D']);
+  });
+});
+
+describe('lignesDeCorrespondance3D : ce que l\'utilisateur a tranché prime', () => {
+  test('un nom enregistré remplace le nom proposé, et le dit', () => {
+    const r = lignesDeCorrespondance3D(charger('cerbere'),
+      [{ racine: 'CERBERUS_L_NECK_1_022', nom: 'Tête du milieu', retenu: true }], tr);
+    const ligne = r.groupes.flatMap(g => g.membres).find(m => m.racine === 'CERBERUS_L_NECK_1_022');
+    assert.equal(ligne.nom, 'Tête du milieu');
+    assert.equal(ligne.origine, 'manuel');
+  });
+
+  test('LES CHOIX SE RETROUVENT PAR LE NOM D\'OS, jamais par un indice', () => {
+    // Règle du fichier de correspondances : un `.glb` réexporté renumérote tout, et une mémoire par
+    // indices désignerait alors des chaînes arbitraires, en silence.
+    const r = lignesDeCorrespondance3D(charger('cerbere'),
+      [{ racine: 'un_os_qui_n_existe_plus', nom: 'Perdu', retenu: false }], tr);
+    const tous = r.groupes.flatMap(g => g.membres);
+    assert.ok(!tous.some(m => m.nom === 'Perdu'), 'une racine absente ne s\'applique à personne');
+    assert.ok(tous.every(m => m.retenu), 'et ne décoche rien au passage');
+  });
+
+  test('RETENU VAUT VRAI PAR DÉFAUT, seul un `false` enregistré retire une chaîne', () => {
+    // Le contrat de tout cet écran : proposer sans décider. Une chaîne que personne n'a décochée
+    // reste proposée.
+    const sans = lignesDeCorrespondance3D(charger('cerbere'), null, tr);
+    assert.ok(sans.groupes.flatMap(g => g.membres).every(m => m.retenu));
+    const avec = lignesDeCorrespondance3D(charger('cerbere'),
+      [{ racine: 'CERBERUS__Tail_040', retenu: false }], tr);
+    const queue = avec.groupes.flatMap(g => g.membres).find(m => m.racine === 'CERBERUS__Tail_040');
+    assert.equal(queue.retenu, false);
+    assert.equal(queue.nom, 'Queue', 'décocher ne change pas le nom proposé');
+  });
+
+  test('un squelette vide ou minuscule ne fait rien exploser', () => {
+    assert.deepEqual(lignesDeCorrespondance3D([], null, tr), { tronc: null, groupes: [] });
+    assert.deepEqual(lignesDeCorrespondance3D(null, null, tr), { tronc: null, groupes: [] });
+  });
+
+  test('la traduction passe par le paramètre, comme partout dans ce fichier', () => {
+    const en = lignesDeCorrespondance3D(charger('cerbere'), null, (a) => a);
+    assert.equal(en.tronc.nom, 'Spine');
+    assert.equal(en.groupes[0].membres[0].nom, 'Leg L');
+    assert.equal(lignesDeCorrespondance3D(charger('araignee'), null, (a) => a)
+      .groupes[1].membres[0].nom, 'left, 7 bones');
   });
 });

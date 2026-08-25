@@ -3,7 +3,8 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.43. Steps 1 to 3 and tasks #363 to #370 are shipped.
+> Up to date as of v1.4.47. Steps 1 to 3 and tasks #363 to #372, #376 and the #373 model are
+> shipped; the #373 screen, then #374 and #375, remain.
 
 ## Where things stand
 
@@ -367,6 +368,40 @@ it.
 are two descriptions of the same object, and nothing kept them in step: a slider declared without a
 matching pivot shows up and does nothing, silently. A test now crosses both lists in both
 directions, for all five animals.
+
+## The generated screen: the model first (#373a)
+
+**Reported through use:** the mapping screen shows eighteen humanoid rows and nothing else. On a
+cerberus its two side heads are invisible, on a spider its supernumerary legs are. Recognition finds
+them all; it is the SCREEN that has no room for them.
+
+`lignesDeCorrespondance3D` returns what the screen must show, touching no DOM:
+`{ tronc, groupes }`, each group holding the chains leaving the SAME bone.
+
+| file | what the screen will show |
+|---|---|
+| cerberus | `Leg L`, `Leg R`, `Tail`, **`Head L`, `Head R`**, `Arm L`, `Arm R` |
+| centaur2 | the **horse's four legs**, anchored on the body and not on the trunk |
+| spider | 30 chains over **9 anchors**, each one tickable |
+| mixamo | 2 anchors, 4 limbs, nothing invented |
+
+**IT DOES NOT REPLACE THE EIGHTEEN SLOTS**, it is added alongside. They are what drives the rig
+today, and replacing them at once would break every already-posed model. Both will live side by side
+until the handles (#374) learn to come from here.
+
+**Three sources for the name, first one wins:** `manuel` what the user typed, `nom` what the
+vocabulary reads from the bones, `structure` the neutral descriptor "left, 7 bones" for the four
+files that name nothing.
+
+**The side is GLUED to the name**, not merely filed in a field: without it the cerberus would show
+two identical "Leg" rows, and the field one edits must stand apart on its own.
+
+**`retenu` defaults to true**, only a stored `false` removes a chain. That is this screen's whole
+contract, propose without deciding.
+
+Choices go into the mapping file under the `membres` key, a third ADDITION after `os` and
+`morphologie`, same rules: the format version does not move, and **only the human choice is
+written**. A row with no typed name and no unticking teaches nothing and is not saved.
 
 ## Decisions taken with the user
 
