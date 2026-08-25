@@ -669,3 +669,60 @@ describe('renommerCorrespondance : la carte d\'os suit le fichier renommé', () 
     assert.equal((await renommerCorrespondance('', 'b.glb')).ok, false);
   });
 });
+
+describe('morphologie : un AJOUT au fichier, jamais un renommage (#369)', () => {
+  // POURQUOI `SKELETON_MAP_FORMAT` NE BOUGE PAS. Une version antérieure de l'application ignore une
+  // clé qu'elle ne connaît pas et continue de lire `os` et `valide`. Passer la version à 2 lui
+  // ferait au contraire rejeter le fichier ENTIER, `normaliserFichier` refusant tout format futur.
+  // Ajouter sans toucher à la version est ce qui garde la compatibilité dans les DEUX sens.
+
+  test('une morphologie choisie est écrite, une morphologie proposée ne l\'est pas', () => {
+    // MÊME RÈGLE QUE POUR LES EMPLACEMENTS, et pour la même raison : on n'enregistre que le choix
+    // HUMAIN. Figer l'archétype proposé condamnerait toute amélioration du classement, qui
+    // trouverait une morphologie « enregistrée » sur chaque fichier jamais touché.
+    assert.deepEqual(entreePourFichier({}, { valide: true, morphologie: 'quadrupede' }),
+      { os: {}, valide: true, morphologie: 'quadrupede' });
+    assert.deepEqual(entreePourFichier({}, { valide: true }), { os: {}, valide: true });
+    assert.deepEqual(entreePourFichier({}, { valide: true, morphologie: null }), { os: {}, valide: true });
+  });
+
+  test('une morphologie SEULE suffit à créer une entrée', () => {
+    // Sans cette clause, choisir « quadrupède » sans rien corriger d'autre et sans valider
+    // n'écrirait rien : le choix serait perdu à la fermeture, silencieusement.
+    assert.deepEqual(entreePourFichier({}, { valide: false, morphologie: 'radial' }),
+      { os: {}, valide: false, morphologie: 'radial' });
+    assert.equal(entreePourFichier({}, { valide: false }), null, 'rien du tout reste rien');
+  });
+
+  test('une clé INCONNUE est écartée, à l\'écriture comme à la relecture', () => {
+    // Un fichier écrit à la main, ou par une version future qui aurait ajouté un archétype, ne doit
+    // pas imposer une valeur que l'interface ne saurait pas afficher : la liste déroulante ne la
+    // contiendrait pas, et le sélecteur retomberait sur son premier élément sans rien dire.
+    assert.deepEqual(entreePourFichier({}, { valide: true, morphologie: 'licorne' }),
+      { os: {}, valide: true });
+    const relu = normaliserFichier({
+      version: 1,
+      entrees: { 'a.glb': { os: {}, valide: true, morphologie: 'licorne' } },
+    });
+    assert.deepEqual(relu.entrees['a.glb'], { os: {}, valide: true });
+  });
+
+  test('la relecture conserve une morphologie connue', () => {
+    const relu = normaliserFichier({
+      version: 1,
+      entrees: { 'a.glb': { os: {}, valide: false, morphologie: 'serpentin' } },
+    });
+    assert.deepEqual(relu.entrees['a.glb'], { os: {}, valide: false, morphologie: 'serpentin' });
+    assert.equal(relu.version, 1, 'la version du format ne bouge pas');
+  });
+
+  test('un fichier d\'AVANT, sans morphologie, se relit sans rien perdre', () => {
+    // La compatibilité descendante, épinglée : tous les Projets existants sont dans ce cas.
+    const relu = normaliserFichier({
+      version: 1,
+      entrees: { 'a.glb': { os: { bassin: 'Hips' }, valide: true } },
+    });
+    assert.deepEqual(relu.entrees['a.glb'], { os: { bassin: 'Hips' }, valide: true });
+    assert.ok(!('morphologie' in relu.entrees['a.glb']), 'aucune clé inventée');
+  });
+});

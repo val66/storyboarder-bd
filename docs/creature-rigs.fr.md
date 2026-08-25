@@ -3,8 +3,8 @@
 > **Fil directeur d'un chantier en cours**, pas une description de l'existant. Ce qui fonctionne
 > aujourd'hui est décrit dans [imported-skeletons.fr.md](imported-skeletons.fr.md).
 >
-> À jour de la v1.4.40. Les étapes 1 à 3, #363 à #366 et #368 sont livrées ; #367 est ouverte,
-> ainsi que l'écran qui utilisera les archétypes.
+> À jour de la v1.4.41. Les étapes 1 à 3, #363 à #366, #368 et #369 sont livrées ; #367 est
+> ouverte.
 
 ## Où l'on en est
 
@@ -343,9 +343,19 @@ couverture mesurée. Le défaut connu est corrigé : `CATRigLLeg1` sort « Patte
 
 **#368, descendre dans un membre. FAITE.** Cf. la section dédiée ci-dessus.
 
-**#366, les tables d'archétypes. FAITE** pour la partie pure, `ARCHETYPES_3D`,
-`signatureDuSquelette3D` et `archetypeSuggere3D`. Le SÉLECTEUR de l'écran reste à faire : il touche
-`events.js` et `index.html`, et relève donc de la règle n°3 (README et manuel dans le même commit).
+**#366, les tables d'archétypes. FAITE**, `ARCHETYPES_3D`, `signatureDuSquelette3D` et
+`archetypeSuggere3D`.
+
+**#369, le sélecteur de morphologie. FAITE.** Une ligne en haut de l'écran de correspondance, avec
+son étiquette d'origine : `forme` quand la topologie tranche, `à confirmer` sinon, `votre choix`
+quand vous avez tranché. NON BLOQUANTE, décision de l'utilisateur : l'import ne s'interrompt jamais,
+et l'étiquette reste visible à chaque réouverture.
+
+Le choix se range à côté de `os` dans le fichier de correspondances, sous la clé `morphologie`. Deux
+règles reprises telles quelles de l'existant : c'est un **AJOUT**, donc `SKELETON_MAP_FORMAT` ne
+bouge pas (le passer à 2 ferait rejeter le fichier entier par une version antérieure) ; et **seul le
+choix HUMAIN est écrit**, jamais la proposition, sans quoi toute amélioration future du classement
+trouverait une morphologie « enregistrée » sur chaque fichier jamais touché.
 
 **#367, l'alignement des animaux intégrés.** CONTRAINTE DURE : les `id` d'articulation (`wingL`,
 `tail0`, `head`) sont persistés dans `animalJoints3d`, et les valeurs d'`ANIMAL_TYPES` sont

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.40**
+**Version 1.4.41**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -53,6 +53,10 @@
 - 🦴 **Modèles articulés** : un fichier porteur d'os se pose comme un Personnage, avec des curseurs par
   articulation, points cliquables sur l'aperçu, et écran de correspondance quand un os est mal
   reconnu
+- **Morphologie proposée** : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial ou
+  serpentin, d'après la forme du squelette et le nom des os. Corrigible d'une liste déroulante ;
+  seuls serpentin, radial et arachnide sont sûrs, les autres portent « à confirmer », qui ne bloque
+  rien
 - **La bibliothèque de poses s'y applique**, quelle que soit la convention d'axes du fichier
 - **Changer de figure** : un Élément articulé peut porter un autre fichier importé en gardant sa pose
 - **Morceaux détachés** : les maillages qu'un fichier place hors du corps sont masqués, et

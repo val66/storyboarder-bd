@@ -20,6 +20,10 @@
  */
 
 import { SLOTS } from './skeleton-map.js';
+import { ARCHETYPES_3D } from './constants.js';
+
+/** Les clés d'archétype acceptées à la relecture. Un fichier bricolé n'en impose pas d'autres. */
+const MORPHOLOGIES_CONNUES = new Set(ARCHETYPES_3D.map(a => a.cle));
 
 /** Version du format rangé. Incrémentée seulement si la forme change de façon incompatible. */
 export const SKELETON_MAP_FORMAT = 1;
@@ -56,7 +60,14 @@ export function normaliserFichier(brut){
     // `valide` dit que l'utilisateur A VU cet écran et l'a validé, indépendamment de savoir s'il a
     // corrigé quelque chose. Une entrée peut donc être vide d'os et malgré tout signifiante.
     const valide = entree.valide === true;
-    if (Object.keys(os).length || valide) entrees[fichier] = { os, valide };
+    // `morphologie` est un AJOUT (tâche #369), pas un renommage : `SKELETON_MAP_FORMAT` ne bouge
+    // donc pas. Une version antérieure de l'application ignore simplement cette clé et continue de
+    // lire `os` et `valide` ; la passer à 2 lui ferait au contraire rejeter le fichier ENTIER.
+    // Une clé inconnue est écartée plutôt que reprise : elle ne s'afficherait nulle part.
+    const morphologie = MORPHOLOGIES_CONNUES.has(entree.morphologie) ? entree.morphologie : null;
+    if (Object.keys(os).length || valide || morphologie) {
+      entrees[fichier] = morphologie ? { os, valide, morphologie } : { os, valide };
+    }
   });
   return { version: SKELETON_MAP_FORMAT, entrees };
 }
@@ -77,15 +88,21 @@ export function normaliserFichier(brut){
  * modale se rouvrait alors à chaque import, ce qui revenait à n'avoir jamais enregistré. Le
  * commentaire que j'avais écrit à l'époque, « une entrée sans os n'apprend rien », était faux :
  * elle apprend que l'utilisateur a tranché.
+ *
+ * `morphologie` SUIT EXACTEMENT LA MÊME RÈGLE QUE `os`, et pour la même raison : on n'écrit que le
+ * choix HUMAIN. Figer l'archétype proposé condamnerait toute amélioration du classement, qui
+ * trouverait une morphologie « enregistrée » sur chaque fichier jamais touché. L'appelant ne passe
+ * donc `morphologie` que lorsque l'utilisateur a touché au sélecteur.
  */
-export function entreePourFichier(carte, { valide = false } = {}){
+export function entreePourFichier(carte, { valide = false, morphologie = null } = {}){
   const os = {};
   SLOTS.forEach(slot => {
     const v = (carte || {})[slot];
     if (v && v.bone !== undefined && v.origine === 'manuel' && v.name) os[slot] = v.name;
   });
-  if (!Object.keys(os).length && !valide) return null;
-  return { os, valide };
+  const m = MORPHOLOGIES_CONNUES.has(morphologie) ? morphologie : null;
+  if (!Object.keys(os).length && !valide && !m) return null;
+  return m ? { os, valide, morphologie: m } : { os, valide };
 }
 
 /**
@@ -178,12 +195,12 @@ export function _viderCacheCorrespondances(){
  * le moment où l'on a chargé les correspondances et celui où l'on enregistre, une autre fenêtre de
  * l'application a pu en ajouter une. Réécrire ce qu'on avait en mémoire l'effacerait.
  */
-export async function enregistrerCorrespondance(fichier, carte, { valide = true } = {}){
+export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null } = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
-  const entree = entreePourFichier(carte, { valide });
+  const entree = entreePourFichier(carte, { valide, morphologie });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
   // écrirait donc dans le cache, avant l'écriture disque, et sans moyen de revenir en arrière si

@@ -668,6 +668,11 @@
   <div class="modal-box modal-box-large">
     <h3 id="skeletonMapTitle">Correspondance du squelette</h3>
     <p id="skeletonMapSubtitle" style="margin:0 0 10px; font-size:12.5px; color: var(--sepia);"></p>
+    <!-- Morphologie : l'archétype PROPOSÉ, et modifiable. Il est en haut parce qu'il commande le
+         reste de l'écran, et parce que le corriger d'abord évite de refaire les emplacements après.
+         L'étiquette « à confirmer » n'est PAS bloquante (choix de l'utilisateur) : elle reste
+         visible ici et à chaque réouverture, ce qui suffit à retrouver un modèle survolé. -->
+    <div class="skeleton-map-morpho" id="skeletonMapMorpho"></div>
     <div class="skeleton-map-legend" id="skeletonMapLegend"></div>
     <div id="skeletonMapList" class="skeleton-map-list"></div>
     <div class="modal-actions">

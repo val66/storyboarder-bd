@@ -30,6 +30,7 @@ import {
 } from './model-usages.js';
 import {
   inferSkeletonMap, resumeCorrespondance, bonesFromObject3D, slotLabel, SLOT_GROUPS,
+  archetypeSuggere3D,
 } from './skeleton-map.js';
 import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance, fusionner,
@@ -56,6 +57,7 @@ import {
   BUBBLE_TAIL_ANGLE_DEFAULT, BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
   POSE_3D, GROUND_Y_DEFAULT_3D, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES, WALL_PX_PER_UNIT_3D,
   CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID,
+  ARCHETYPES_3D,
 } from './constants.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
@@ -4227,6 +4229,14 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
       // n'a plus de ligne « à vérifier », l'utilisateur les a vues (cf. renderSkeletonMapModal).
       valide: !!(enregistree && enregistree.valide),
       carte: fusionner(inferSkeletonMap(os), enregistree, os),
+      // La morphologie ENREGISTRÉE prime, comme les emplacements : elle est le choix humain. À
+      // défaut, on affiche ce que le classement PROPOSE, sans l'enregistrer. `morphologieManuelle`
+      // est ce qui partira sur le disque, et il reste nul tant que l'utilisateur n'a pas tranché,
+      // pour la même raison que les emplacements automatiques ne sont pas recopiés : figer une
+      // proposition condamnerait toute amélioration future du classement.
+      morphologie: (enregistree && enregistree.morphologie) || archetypeSuggere3D(os).cle,
+      morphologieOrigine: (enregistree && enregistree.morphologie) ? 'manuel' : archetypeSuggere3D(os).origine,
+      morphologieManuelle: (enregistree && enregistree.morphologie) || null,
       resoudre,
     };
     renderSkeletonMapModal();
@@ -4255,6 +4265,8 @@ function renderSkeletonMapModal(){
   document.getElementById('skeletonMapCancel').textContent = _skelEcran.pendantImport
     ? tr('Cancel the import', 'Annuler l\'import')
     : tr('Cancel', 'Annuler');
+
+  renderMorphologie();
 
   const legende = document.getElementById('skeletonMapLegend');
   legende.innerHTML = '';
@@ -4289,6 +4301,54 @@ function renderSkeletonMapModal(){
     skeletonMapList.appendChild(t);
     groupe.slots.forEach(slot => skeletonMapList.appendChild(ligneCorrespondance(slot, carte[slot], os)));
   });
+}
+
+/**
+ * La ligne « Morphologie » : l'archétype proposé, modifiable, et d'où vient la proposition.
+ *
+ * POURQUOI CE N'EST PAS BLOQUANT, décision de l'utilisateur. Un archétype seulement proposé garde
+ * son étiquette « à confirmer » et n'empêche RIEN : l'import ne s'interrompt pas, le modèle
+ * s'utilise. L'étiquette reste visible ici à chaque réouverture, ce qui suffit à retrouver un
+ * fichier survolé. Interrompre chaque import pour une case à cocher coûterait plus cher que
+ * l'erreur qu'on éviterait.
+ *
+ * TROIS ARCHÉTYPES SEULEMENT NE PORTENT PAS L'ÉTIQUETTE : serpentin, radial et arachnide, dont la
+ * signature structurelle est sans ambiguïté sur le corpus (cf. archetypeSuggere3D). Tout le reste
+ * s'appuie sur les noms d'os, qui se trompent quatre fois sur dix-sept, mesuré.
+ */
+function renderMorphologie(){
+  const zone = document.getElementById('skeletonMapMorpho');
+  zone.innerHTML = '';
+  const lib = document.createElement('label');
+  lib.textContent = tr('Morphology', 'Morphologie');
+  zone.appendChild(lib);
+
+  const sel = document.createElement('select');
+  ARCHETYPES_3D.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.cle;
+    opt.textContent = tr(a.labelEn, a.label);
+    if (a.cle === _skelEcran.morphologie) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => {
+    _skelEcran.morphologie = sel.value;
+    _skelEcran.morphologieManuelle = sel.value;
+    _skelEcran.morphologieOrigine = 'manuel';
+    // Comme pour un emplacement : toucher au sélecteur DÉVALIDE l'écran, rien n'étant écrit avant
+    // « Enregistrer ». Garder l'apparence validée laisserait croire le changement déjà acquis.
+    _skelEcran.valide = false;
+    renderSkeletonMapModal();
+  };
+  zone.appendChild(sel);
+
+  const badge = document.createElement('span');
+  const origine = _skelEcran.morphologieOrigine;
+  badge.className = `skeleton-map-origin origine-${origine === 'topologie' ? 'nom' : origine}`;
+  badge.textContent = origine === 'topologie' ? tr('shape', 'forme')
+    : origine === 'manuel' ? tr('yours', 'votre choix')
+      : tr('to confirm', 'à confirmer');
+  zone.appendChild(badge);
 }
 
 /** Une ligne : le rôle, une liste déroulante de TOUS les os du fichier, et l'origine. */
@@ -4361,7 +4421,8 @@ document.getElementById('skeletonMapReset').onclick = async () => {
 };
 document.getElementById('skeletonMapSave').onclick = async () => {
   if (!_skelEcran) return;
-  const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte);
+  const r = await enregistrerCorrespondance(_skelEcran.fichier, _skelEcran.carte,
+    { morphologie: _skelEcran.morphologieManuelle });
   // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
   // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
   fermerSkeletonMap(true);

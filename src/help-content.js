@@ -109,6 +109,8 @@ export const HELP_MANUAL_EN = [
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton gains a "Joint settings" section: three sliders per recognised joint, except the hips, which are the skeleton\'s root: turning them rotates the whole figure, which Orientation already does.',
     'Click a joint point on the preview to unfold its sliders, and the other way round. Which bone each slider drives comes from "Mapping table", below; axes are the bone\'s own, so which one bends an elbow depends on the file.',
+    'The "Mapping table" starts with the MORPHOLOGY, proposed from the skeleton\'s shape and its bone names: humanoid, quadruped, winged biped, centaur, arachnid, radial, serpentine. Correct it if it is wrong.',
+    'Only serpentine, radial and arachnid are recognised for certain. The others carry "to confirm", which blocks nothing: a quadruped whose front legs are named "arm" comes out humanoid, and numbered bones say nothing.',
     'The pose library applies here too, from "Pose" in "Main characteristics", or from the pencil on the preview, which opens the Character editor. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable. Lying-down poses tip the model over without changing its size.',
     'The "Model" field makes this Element wear another imported file: the pose is kept and recomputed, the slider tweaks are lost. It also names the file this Element comes from, and warns you if that file is missing.',
     '"Height (m)" and the "Actual size" slider are two views of the same thing and follow each other. It is the height that gets saved: type it to the centimetre, the slider is only a rounded display.',
@@ -222,6 +224,8 @@ export const HELP_MANUAL_FR = [
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par articulation reconnue. Le bassin n\'en a pas, l\'Orientation faisant déjà tourner la figure entière.',
     'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. L\'os piloté vient de « Tableau de correspondance », plus bas ; les axes sont les siens.',
+    'Le « Tableau de correspondance » commence par la MORPHOLOGIE, proposée d\'après la forme du squelette et le nom des os : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial, serpentin. Corrigez-la si elle est fausse.',
+    'Seuls serpentin, radial et arachnide se reconnaissent à coup sûr. Les autres portent « à confirmer », qui ne bloque rien : un quadrupède dont les pattes avant s\'appellent « bras » sort humanoïde, et des os numérotés ne disent rien.',
     'La bibliothèque de poses s\'y applique aussi, depuis « Position » dans « Caractéristiques principales », ou par le crayon de l\'aperçu, qui ouvre l\'Éditeur de Personnage. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables. Les poses couchées basculent le modèle sans changer sa taille.',
     'Le champ « Modèle » fait porter un autre fichier à cet Élément : la pose est conservée et recalculée, les retouches des curseurs sont perdues. C\'est aussi lui qui nomme le fichier dont vient cet Élément, et qui vous prévient si ce fichier manque.',
     '« Hauteur (m) » et le curseur « Taille réelle » sont deux vues d\'une même chose et se suivent. C\'est la hauteur qui est enregistrée : saisissez-la au centimètre, le curseur n\'en est qu\'un affichage arrondi.',

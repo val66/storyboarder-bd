@@ -3,8 +3,8 @@
 > **Guiding thread for work in progress**, not a description of what exists. What works today is
 > described in [imported-skeletons.md](imported-skeletons.md).
 >
-> Up to date as of v1.4.40. Steps 1 to 3, #363 to #366 and #368 are shipped; #367 is open, as is
-> the screen that will use the archetypes.
+> Up to date as of v1.4.41. Steps 1 to 3, #363 to #366, #368 and #369 are shipped; #367 is
+> open.
 
 ## Where things stand
 
@@ -333,9 +333,19 @@ known defect is fixed: `CATRigLLeg1` comes out "Leg".
 
 **#368, descending into a limb. DONE.** See the dedicated section above.
 
-**#366, the archetype tables. DONE** for the pure part, `ARCHETYPES_3D`,
-`signatureDuSquelette3D` and `archetypeSuggere3D`. The screen SELECTOR is still to do: it touches
-`events.js` and `index.html`, so rule #3 applies (README and manual in the same commit).
+**#366, the archetype tables. DONE**, `ARCHETYPES_3D`, `signatureDuSquelette3D` and
+`archetypeSuggere3D`.
+
+**#369, the morphology selector. DONE.** One row at the top of the mapping screen, with its origin
+badge: `shape` when topology settles it, `to confirm` otherwise, `yours` once you have decided. NON
+BLOCKING, the user's decision: an import is never interrupted, and the badge stays visible on every
+reopening.
+
+The choice is stored next to `os` in the mapping file, under the `morphologie` key. Two rules taken
+straight from what already existed: it is an **ADDITION**, so `SKELETON_MAP_FORMAT` does not move
+(bumping it to 2 would make an older version reject the whole file); and **only the HUMAN choice is
+written**, never the proposal, otherwise any future improvement to the classifier would find a
+"saved" morphology on every file nobody ever touched.
 
 **#367, aligning the built-in animals.** HARD CONSTRAINT: the joint `id`s (`wingL`, `tail0`, `head`)
 are persisted in `animalJoints3d`, and `ANIMAL_TYPES` values are persisted as the Element's type.
