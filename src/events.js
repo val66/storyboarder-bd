@@ -4411,6 +4411,37 @@ function renderChainesSansRole(proposition, lignes, os){
     'Décochez pour retirer ses curseurs. La chaîne reste dans le fichier, elle n\'est simplement plus pilotable.');
   zone.appendChild(note);
 
+  // TOUT COCHER, TOUT DÉCOCHER. Demandé à l'usage, et le besoin est réel : une araignée porte
+  // trente chaînes sans rôle, un rig Unreal plus de deux cents. Les décocher une par une pour n'en
+  // garder que trois est un travail que personne ne fera deux fois.
+  //
+  // ⚠️ SON ÉTAT SE DÉDUIT DES LIGNES, il n'est pas retenu à part. Une case maîtresse qui garde sa
+  // propre mémoire finit par contredire ce qu'elle commande, et c'est exactement le genre d'écart
+  // que ce dépôt paie cher : elle est cochée si TOUTES le sont, indéterminée s'il y a mélange.
+  const tous = document.createElement('div');
+  tous.className = 'skeleton-map-membre';
+  const coche = document.createElement('input');
+  coche.type = 'checkbox';
+  const retenus = restantes.filter(m => m.retenu).length;
+  coche.checked = retenus === restantes.length;
+  coche.indeterminate = retenus > 0 && retenus < restantes.length;
+  coche.onchange = () => {
+    // On vise l'inverse de l'état AFFICHÉ, pas celui de la case après clic : sur une case
+    // indéterminée, le navigateur choisit lui-même, et le geste attendu est « tout cocher ».
+    const vers = retenus < restantes.length;
+    restantes.forEach(m => noterMembre(m.racine, { retenu: vers }, { rendre: false }));
+    renderSkeletonMapModal();
+  };
+  tous.appendChild(coche);
+  const libTous = document.createElement('span');
+  libTous.className = 'skeleton-map-tout';
+  libTous.textContent = retenus < restantes.length
+    ? tr(`Tick all (${restantes.length})`, `Tout cocher (${restantes.length})`)
+    : tr(`Untick all (${restantes.length})`, `Tout décocher (${restantes.length})`);
+  libTous.onclick = () => coche.click();
+  tous.appendChild(libTous);
+  zone.appendChild(tous);
+
   restantes.forEach(m => zone.appendChild(ligneMembre(m, os)));
   zone.appendChild(troncBloc);
 }
@@ -4456,7 +4487,7 @@ function ligneMembre(m, os){
  * tout demande à revenir au nom proposé, pas à nommer son membre « rien ». C'est la seule façon de
  * revenir en arrière, aucun bouton ne le ferait mieux.
  */
-function noterMembre(racine, champs){
+function noterMembre(racine, champs, { rendre = true } = {}){
   const liste = _skelEcran.membres;
   let e = liste.find(x => x.racine === racine);
   if (!e) { e = { racine, retenu: true }; liste.push(e); }
@@ -4468,7 +4499,10 @@ function noterMembre(racine, champs){
   // Toucher à un membre DÉVALIDE l'écran, comme toucher à un emplacement : rien n'est écrit avant
   // « Enregistrer ».
   _skelEcran.valide = false;
-  renderSkeletonMapModal();
+  // `rendre: false` sert au « tout cocher », qui touche trente lignes d'un coup : redessiner
+  // l'écran à chaque ligne le referait trente fois, et chaque rendu détruit les cases que la
+  // boucle en cours est en train de parcourir.
+  if (rendre) renderSkeletonMapModal();
 }
 
 /**

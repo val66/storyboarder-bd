@@ -125,7 +125,7 @@ export const HELP_MANUAL_EN = [
     'Then come the slots, hips, head, arms, legs. Each row carries a badge saying where the proposal comes from: the bone name, the skeleton\'s shape, or your own choice.',
     'On any OTHER morphology the list comes from the archetype: a quadruped has a head, four legs and a tail, a centaur two arms more. Same layout, same menus, only the roles change.',
     'A limb FOLDS when the application is sure of it, and stays open when it is not. You therefore see at a glance what needs a decision, without scanning rows that are already right.',
-    'Chains no role claims, such as a cerberus\'s two extra heads, fall to the bottom of the screen. Untick one to remove its sliders: it stays in the file, it simply cannot be moved.',
+    'Chains no role claims, such as a cerberus\'s two extra heads, fall to the bottom of the screen. Untick one to remove its sliders: it stays in the file, it simply cannot be moved. A box at the top of the list ticks or unticks them all.',
     'Clearing a name restores the one the application proposes: that is how to go back. Only your own choices are kept in the file, the rest is recomputed each time.',
   ]},
   { id: 'editeur', title: 'Character editor', paragraphs: [
@@ -251,7 +251,7 @@ export const HELP_MANUAL_FR = [
     'Viennent ensuite les emplacements, bassin, tête, bras, jambes. Chaque ligne porte une étiquette qui dit d\'où vient la proposition : le nom de l\'os, la forme du squelette, ou votre choix.',
     'Sur toute AUTRE morphologie, la liste vient de l\'archétype : un quadrupède a une tête, quatre pattes et une queue, un centaure deux bras de plus. Même présentation, mêmes menus, seuls les rôles changent.',
     'Un membre se REPLIE quand l\'application est sûre de lui, et reste ouvert quand elle ne l\'est pas. Vous voyez donc d\'un coup d\'œil ce qui demande une décision, sans parcourir des lignes déjà justes.',
-    'Les chaînes qu\'aucun rôle ne réclame, comme les deux têtes en trop d\'un cerbère, tombent en bas de l\'écran. Décochez-en une pour retirer ses curseurs : elle reste dans le fichier, elle n\'est simplement plus pilotable.',
+    'Les chaînes qu\'aucun rôle ne réclame, comme les deux têtes en trop d\'un cerbère, tombent en bas de l\'écran. Décochez-en une pour retirer ses curseurs : elle reste dans le fichier, elle n\'est simplement plus pilotable. Une case en tête de liste les coche ou les décoche toutes.',
     'Un nom effacé revient à celui que l\'application propose : c\'est la façon de revenir en arrière. Seuls vos choix sont conservés dans le fichier, le reste est recalculé à chaque ouverture.',
   ]},
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [

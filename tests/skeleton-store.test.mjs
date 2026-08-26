@@ -1028,12 +1028,34 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(corps, /liste\.splice/, 'une ligne redevenue muette sort de la liste');
   });
 
+  test('« tout cocher » vise l\'état AFFICHÉ, pas celui de la case après clic (#384)', () => {
+    // Une araignée porte trente chaînes sans rôle, un rig Unreal plus de deux cents : les décocher
+    // une par une pour n'en garder que trois est un travail que personne ne fera deux fois.
+    //
+    // ⚠️ SUR UNE CASE INDÉTERMINÉE, le navigateur choisit lui-même ce que devient `checked`, et le
+    // geste attendu est « tout cocher ». On vise donc l'inverse de ce qui est AFFICHÉ, jamais
+    // `coche.checked`, qui dépend d'un comportement qu'on ne contrôle pas.
+    const debut = EV2.indexOf('function renderChainesSansRole');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /const vers = retenus < restantes\.length/,
+      'le sens du geste dépend de la case plutôt que de l\'état affiché');
+    assert.doesNotMatch(corps, /coche\.checked\s*\?/, 'la décision lit `checked` après le clic');
+    // L'état de la case se DÉDUIT des lignes, il n'est pas retenu à part : une case maîtresse qui
+    // garde sa propre mémoire finit par contredire ce qu'elle commande.
+    assert.match(corps, /coche\.indeterminate = retenus > 0 && retenus < restantes\.length/);
+    // Un seul rendu pour trente lignes : chaque rendu détruit les cases que la boucle parcourt.
+    assert.match(corps, /noterMembre\(m\.racine, \{ retenu: vers \}, \{ rendre: false \}\)/);
+  });
+
   test('toucher à un membre DÉVALIDE l\'écran, comme toucher à un emplacement', () => {
     // La ligne doit être DANS le corps de la fonction, pas seulement quelque part dans le fichier :
     // une mutation qui neutralisait la fonction entière passait, le motif étant trouvé ailleurs.
-    const debut = EV2.indexOf('function noterMembre(racine, champs){');
+    const debut = EV2.indexOf('function noterMembre(racine, champs, ');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    assert.match(corps, /_skelEcran\.valide = false;\n  renderSkeletonMapModal\(\);/);
+    // Le rendu est devenu CONDITIONNEL en #384 : « tout cocher » touche trente lignes d'un coup et
+    // ne redessine qu'une fois. La dévalidation, elle, reste inconditionnelle.
+    assert.match(corps, /_skelEcran\.valide = false;\n  \/\//);
+    assert.match(corps, /if \(rendre\) renderSkeletonMapModal\(\);/);
   });
 
   test('« Enregistrer » emporte les membres, pas seulement les emplacements', () => {

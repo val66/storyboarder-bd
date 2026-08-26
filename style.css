@@ -967,6 +967,10 @@ canvas{
                                         margin-bottom: 0; }
 /* Une chaîne écartée reste LISIBLE, seulement estompée : la faire disparaître empêcherait de la
    retrouver pour la recocher, et c'est le geste le plus probable après une erreur. */
+/* #384 — la case maîtresse « tout cocher ». Son libellé est cliquable comme celui d'un <label>,
+   sans en être un : le <label for=...> demanderait un identifiant unique par modale, et la case
+   est recréée à chaque rendu. */
+.skeleton-map-tout { font-size: 12px; cursor: pointer; user-select: none; opacity: .85; }
 .skeleton-map-membre.ecarte { opacity: .5; }
 /* Les os traversés : sur leur propre ligne, en petit, parce qu'ils servent à VÉRIFIER un choix, pas
    à le faire. Le nom complet est dans l'infobulle, une chaîne de neuf os ne tenant pas ici. */
