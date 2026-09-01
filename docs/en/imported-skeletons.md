@@ -222,6 +222,25 @@ chains, so "sitting" would find no bone. Restoring the slots to make the gesture
 fixed nothing: bending a spider's "left arm" bent one of its eight legs. Poses per morphology are
 task #375.
 
+### 6.2 bis Opening the screen starts from what was saved (#385)
+
+Reported through use: "I switch the cerberus to quadruped, I save, I reopen, and it is humanoid
+again". The file on disk did carry `quadrupede`.
+
+**The cause**: the "Mapping table" button on an Element's card passed `ignorerEnregistree: true`, a
+flag written for "Reset", whose whole job is to THROW AWAY what was saved. Opening that screen from a
+card therefore restarted from automatic recognition and lost everything: morphology, hand-corrected
+slots, ticked chains, roles. Saving afterwards overwrote the file with the automatic proposal.
+
+⚠️ **The defect predates the whole creature work.** It dates from the original screen, where it was
+nearly invisible: automatic recognition often returns the same slots, and there was then neither a
+morphology nor chains to make the loss obvious.
+
+**The flag is REMOVED, not fixed.** Its documentation named a caller that did not use it: "Reset all
+to automatic" actually goes through `oublierCorrespondance` and then refreshes the open screen. A
+flag whose documentation invokes a false caller gives a reason to keep it, and the next reader wires
+it back.
+
 ### 6.3 bis Morphology decides where the sliders come from (#374)
 
 It also decides what the mapping screen SHOWS (#377): a humanoid sees its eighteen slots there, a

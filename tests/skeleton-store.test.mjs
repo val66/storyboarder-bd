@@ -1028,6 +1028,35 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(corps, /liste\.splice/, 'une ligne redevenue muette sort de la liste');
   });
 
+  test('RÉGRESSION : ouvrir l\'écran repart TOUJOURS de ce qui est enregistré (#385)', () => {
+    // Signalé à l'usage : « je passe le cerbère en quadrupède, j'enregistre, je rouvre, et il est de
+    // nouveau humanoïde ». Le fichier sur le disque portait bien `quadrupede` : c'est cette
+    // vérification, faite par l'utilisateur, qui a permis de chercher du bon côté.
+    //
+    // LA CAUSE : le bouton de la fiche passait `ignorerEnregistree: true`, un drapeau écrit pour
+    // « Réinitialiser », dont le rôle est justement de JETER ce qui a été enregistré. Ouvrir cet
+    // écran depuis une fiche repartait donc de la reconnaissance automatique et perdait tout :
+    // morphologie, emplacements corrigés, chaînes cochées, rôles. Enregistrer ensuite écrasait le
+    // fichier avec la proposition automatique.
+    //
+    // ⚠️ LE DRAPEAU EST SUPPRIMÉ, PAS CORRIGÉ. Sa documentation désignait un appelant qui ne
+    // l'utilisait pas, « Tout remettre en automatique » passant en réalité par
+    // `oublierCorrespondance`. Un drapeau dont la doc invoque un faux appelant donne une raison de
+    // le garder, et le prochain lecteur le rebranchera.
+    // COMMENTAIRES RETIRÉS AVANT DE CHERCHER : sixième fois dans ce dépôt qu'un test est mis en
+    // échec par la prose qui l'entoure. Les deux commentaires qui RACONTENT ce défaut citent
+    // nommément le drapeau, et c'est légitime ; ce qu'on interdit, c'est qu'il soit APPELÉ.
+    const sansCommentaires = EV2
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.doesNotMatch(sansCommentaires, /ignorerEnregistree/,
+      'le drapeau qui jette la correspondance enregistrée est revenu');
+    const debut = sansCommentaires.indexOf('async function openSkeletonMapModal');
+    const corps = sansCommentaires.slice(debut, sansCommentaires.indexOf('\n}', debut));
+    assert.match(corps, /const enregistree = tout\.entrees\[nomFichier\];/,
+      'l\'ouverture ne relit plus l\'entrée enregistrée sans condition');
+  });
+
   test('« tout cocher » vise l\'état AFFICHÉ, pas celui de la case après clic (#384)', () => {
     // Une araignée porte trente chaînes sans rôle, un rig Unreal plus de deux cents : les décocher
     // une par une pour n'en garder que trois est un travail que personne ne fera deux fois.

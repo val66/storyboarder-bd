@@ -4211,10 +4211,18 @@ function osDuModele(nomFichier){
 }
 
 /**
- * Ouvre l'écran pour un fichier. `auto` seulement : ignore la correspondance enregistrée et
- * repropose la reconnaissance, utilisé par « Tout remettre en automatique ».
+ * Ouvre l'écran pour un fichier, en repartant TOUJOURS de ce qui est enregistré.
+ *
+ * ⚠️ IL Y AVAIT ICI UN DRAPEAU `ignorerEnregistree`, retiré en #385. Sa documentation disait
+ * « utilisé par Tout remettre en automatique », et c'était faux depuis longtemps : ce bouton-là
+ * passe par `oublierCorrespondance` puis rafraîchit l'écran ouvert. Le seul appelant qui le passait
+ * était le bouton de la fiche d'un Élément, où il jetait silencieusement la morphologie, les
+ * emplacements corrigés, les chaînes cochées et les rôles.
+ *
+ * Un drapeau dont la documentation désigne un appelant qui ne l'utilise pas est pire qu'un drapeau
+ * inutile : il donne une raison de le garder. Il est supprimé plutôt que corrigé.
  */
-async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pendantImport = false } = {}){
+async function openSkeletonMapModal(nomFichier, { pendantImport = false } = {}){
   const os = osDuModele(nomFichier);
   if (!os.length) {
     alertAction(tr(`"${nomFichier}" has no skeleton: there is nothing to map.`,
@@ -4222,7 +4230,7 @@ async function openSkeletonMapModal(nomFichier, { ignorerEnregistree = false, pe
     return false;
   }
   const tout = await lireCorrespondances();
-  const enregistree = ignorerEnregistree ? null : tout.entrees[nomFichier];
+  const enregistree = tout.entrees[nomFichier];
   return new Promise((resoudre) => {
     _skelEcran = {
       fichier: nomFichier, os, pendantImport,
@@ -4688,11 +4696,25 @@ async function proposerCorrespondance(nomFichier){
  * LE RIG EST JETÉ, LUI AUSSI. `skeletonBones` a été récolté à la construction, avec les os d'AVANT
  * la correction ; sans reconstruction, les curseurs corrigés continueraient de tourner les anciens
  * os. Le rig étant reconstruit à partir du cache de modèles déjà décodé, cela ne relit aucun fichier.
+ *
+ * ⚠️ IL N'IGNORE PLUS LA CORRESPONDANCE ENREGISTRÉE (#385). Ce bouton passait
+ * `ignorerEnregistree: true`, un drapeau écrit pour « Réinitialiser », dont le rôle est justement de
+ * JETER ce qui a été enregistré. Ouvrir cet écran depuis une fiche repartait donc de la
+ * reconnaissance automatique et perdait tout : morphologie, emplacements corrigés à la main,
+ * chaînes cochées, rôles. Enregistrer ensuite écrasait le fichier avec la proposition automatique.
+ *
+ * SIGNALÉ À L'USAGE sous sa forme la plus visible : « je passe le cerbère en quadrupède,
+ * j'enregistre, je rouvre, et il est de nouveau humanoïde ». Le fichier sur le disque, lui, portait
+ * bien `quadrupede` : c'est cette vérification qui a permis de chercher du bon côté.
+ *
+ * LE DÉFAUT EST ANTÉRIEUR À TOUT CE CHANTIER. Il date de l'écran d'origine, où il ne se voyait
+ * presque pas : la reconnaissance automatique redonne souvent les mêmes emplacements, et il n'y
+ * avait alors ni morphologie ni chaînes pour rendre la perte évidente.
  */
 document.getElementById('objectSkeletonMapBtn').onclick = async () => {
   const cible = S.modalTarget;
   if (!cible || !isImportedModel(cible)) return;
-  await openSkeletonMapModal(cible.modelFile, { ignorerEnregistree: true });
+  await openSkeletonMapModal(cible.modelFile);
   if (S.modalTarget !== cible) return;   // la modale a été fermée entre-temps
   disposeObjectRig3D(cible.id);
   disposeObjectRig3D(PREVIEW_OBJECT_ID);

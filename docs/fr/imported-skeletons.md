@@ -224,6 +224,26 @@ emplacements mais ses chaînes ; « assis » ne trouverait donc aucun os. Rétab
 pour que le geste « marche » n'aurait rien réparé : plier le « bras gauche » d'une araignée pliait
 une de ses huit pattes. Les poses par morphologie sont la tâche #375.
 
+### 6.2 bis Ouvrir l'écran repart de ce qui est enregistré (#385)
+
+Signalé à l'usage : « je passe le cerbère en quadrupède, j'enregistre, je rouvre, et il est de
+nouveau humanoïde ». Le fichier sur le disque, lui, portait bien `quadrupede`.
+
+**La cause** : le bouton « Tableau de correspondance » de la fiche d'un Élément passait
+`ignorerEnregistree: true`, un drapeau écrit pour « Réinitialiser », dont le rôle est justement de
+JETER ce qui a été enregistré. Ouvrir cet écran depuis une fiche repartait donc de la reconnaissance
+automatique et perdait tout : morphologie, emplacements corrigés à la main, chaînes cochées, rôles.
+Enregistrer ensuite écrasait le fichier avec la proposition automatique.
+
+⚠️ **Le défaut est antérieur à tout le chantier des créatures.** Il date de l'écran d'origine, où il
+ne se voyait presque pas : la reconnaissance automatique redonne souvent les mêmes emplacements, et
+il n'y avait alors ni morphologie ni chaînes pour rendre la perte évidente.
+
+**Le drapeau est SUPPRIMÉ, pas corrigé.** Sa documentation désignait un appelant qui ne l'utilisait
+pas : « Tout remettre en automatique » passe en réalité par `oublierCorrespondance` puis rafraîchit
+l'écran ouvert. Un drapeau dont la documentation invoque un faux appelant donne une raison de le
+garder, et le prochain lecteur le rebranche.
+
 ### 6.3 bis La morphologie décide d'où viennent les curseurs (#374)
 
 Elle décide aussi de ce que MONTRE l'écran de correspondance (#377) : un humanoïde y voit ses
