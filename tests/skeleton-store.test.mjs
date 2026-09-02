@@ -26,7 +26,7 @@ import {
   SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
   correspondancesApplicables3D, osDesignesParEntree3D, repriseDeCorrespondance3D,
-  empreinteDeSquelette3D, libelleCandidatReprise3D,
+  empreinteDeSquelette3D, libelleCandidatReprise3D, morphologieEffective3D,
 } from '../src/skeleton-store.js';
 import { SLOTS, sousTitreCorrespondance3D, cheminDOs3D } from '../src/skeleton-map.js';
 
@@ -625,6 +625,37 @@ describe('Le cache résident : la correspondance sans attendre le disque', () =>
 
   test('avant toute lecture, le cache est vide : la reconnaissance automatique fait le travail', () => {
     assert.equal(correspondanceEnregistreeSync('a.glb'), null);
+  });
+
+  test('#383b : sans lecture, une morphologie CORRIGÉE À LA MAIN n\'existe pas', () => {
+    // ⚠️ CE TEST DIT CE QUE LE PRÉCÉDENT DÉCRIVAIT COMME ANODIN, et c'est la même situation vue
+    // depuis l'utilisateur. « La reconnaissance automatique fait le travail » n'est vrai que là où
+    // elle a raison. Une correction manuelle n'existe QUE là où elle a tort : le cache vide n'y
+    // rend pas un résultat approximatif, il rend le résultat que l'utilisateur avait justement
+    // rejeté.
+    //
+    // MESURÉ SUR LE DOSSIER RÉEL, ce sont les valeurs de son `cerberus.glb` : une entrée dont le
+    // seul contenu est `morphologie: 'quadrupede'` — `os` vide, `membres` vide, `roles` vide —
+    // parce que la reconnaissance le classe humanoïde et que lui l'a corrigé à la main. Tant que
+    // rien n'avait lu le disque, la fiche, l'Éditeur et le rig repartaient tous d'« humanoïde ».
+    const osDuFichier = ['Hips', 'Spine', 'Head'];
+    const reconnaissanceAutomatique = () => 'humanoide';
+    assert.equal(
+      morphologieEffective3D(correspondanceEnregistreeSync('cerberus.glb'), osDuFichier,
+        reconnaissanceAutomatique),
+      'humanoide',
+      'préalable : sans le disque, on retombe sur la suggestion automatique');
+
+    pontRepond = { ok: true, data: { version: 1, entrees: {
+      'cerberus.glb': { os: {}, membres: [], roles: {}, morphologie: 'quadrupede', valide: true },
+    } } };
+    return lireCorrespondances().then(() => {
+      assert.equal(
+        morphologieEffective3D(correspondanceEnregistreeSync('cerberus.glb'), osDuFichier,
+          reconnaissanceAutomatique),
+        'quadrupede',
+        'le choix de l\'utilisateur ne survit pas à la lecture du disque');
+    });
   });
 
   test('une lecture réussie remplit le cache', async () => {

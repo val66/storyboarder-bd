@@ -1153,13 +1153,20 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
       'la fiche propose de nouveau les mêmes poses à toutes les morphologies');
     assert.match(MODALS, /personaEditorPoseList3D\(S\.poses, vocabulaire\)/);
     assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
+    // ⚠️ L'ÉDITEUR LIT `figureImporteeDeLEditeur()`, PAS `S.personaEditorModelFile` (#383b). Les
+    // deux ne disent pas la même chose : la seconde est le fichier RETENU, la première le fichier
+    // réellement AFFICHÉ, filtré par la bibliothèque. Ce test épinglait la mauvaise des deux, si
+    // bien que les curseurs (qui lisaient la bonne) et la liste de poses pouvaient parler de deux
+    // figures différentes sur le même écran, avec sa bénédiction.
     const EDITEUR = lire('src/persona-editor.js');
-    assert.match(EDITEUR, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(S\.personaEditorModelFile\)\)/);
+    assert.match(EDITEUR, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(figureImporteeDeLEditeur\(\)\)\)/);
     // ⚠️ L'ÉTIQUETTE EST POSÉE À L'ENREGISTREMENT, et c'est irrattrapable après coup : rien dans une
     // pose ne dit sur quel squelette elle a été composée. Une pose de quadrupède née « humain »
     // serait proposée aux humanoïdes et introuvable pour les quadrupèdes, sans recours.
-    assert.match(EDITEUR, /S\.personaEditorDraft, squelettePourPose3D\(S\.personaEditorModelFile\)\)/,
+    assert.match(EDITEUR, /S\.personaEditorDraft, squelettePourPose3D\(figureImporteeDeLEditeur\(\)\)\)/,
       'une pose de créature naîtrait étiquetée « humain », sans moyen de la corriger ensuite');
+    assert.doesNotMatch(EDITEUR, /squelettePourPose3D\(S\.personaEditorModelFile\)/,
+      'les deux moitiés de l\'Éditeur relisent chacune de leur côté quelle figure est posée');
   });
 
   test('le sélecteur de figure de la FICHE, lui, garde les créatures', () => {

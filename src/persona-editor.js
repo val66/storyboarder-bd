@@ -282,7 +282,12 @@ export function savePersonaEditorPose(name){
     // introuvable pour les quadrupèdes. Et la rattraper plus tard serait impossible : rien dans une
     // pose ne dit sur quel squelette elle a été composée — c'est exactement pour cette raison que
     // `skeleton` est tagué depuis le premier jour, alors que seuls les humains posaient.
-    S.personaEditorDraft, squelettePourPose3D(S.personaEditorModelFile));
+    //
+    // `figureImporteeDeLEditeur()` et non `S.personaEditorModelFile` (#383b) : l'étiquette doit
+    // nommer le squelette RÉELLEMENT posé. Le brouillon vient des curseurs, qui lisent cette
+    // fonction-là ; l'autre lecture aurait étiqueté `quadrupede` une pose composée sur le
+    // Personnage intégré, affiché faute de mieux.
+    S.personaEditorDraft, squelettePourPose3D(figureImporteeDeLEditeur()));
   setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), pose]);
   S.personaEditorPoseKey = pose.id;
   return pose;
@@ -1051,7 +1056,12 @@ export function buildPersonaEditorPosesUI(){
   Object.keys(personaEditorPoseBtns).forEach(k => delete personaEditorPoseBtns[k]);
   // Même vocabulaire que l'enregistrement, sans quoi une pose qu'on vient de sauver ne
   // s'afficherait pas dans la liste d'où on l'a sauvée (#375b).
-  personaEditorPoseList3D(S.poses, squelettePourPose3D(S.personaEditorModelFile)).forEach(entry => {
+  // ⚠️ LA MÊME LECTURE QUE LES CURSEURS, `figureImporteeDeLEditeur()` et non `S.personaEditorModelFile`
+  // (#383b). Les deux moitiés de l'écran répondaient à « quelle figure pose-t-on ? » de deux façons :
+  // un fichier retenu mais absent de la bibliothèque affichait le Personnage intégré sous des poses
+  // de créature, inapplicables à ce qui est à l'écran. Deux lectures d'une même question finissent
+  // toujours par diverger, c'est le travers le plus fréquent de ce dépôt.
+  personaEditorPoseList3D(S.poses, squelettePourPose3D(figureImporteeDeLEditeur())).forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = entry.label;

@@ -2716,3 +2716,48 @@ describe('allerALaPlanche : un seul endroit sait changer de Planche', () => {
     assert.equal(S.pageSelected, true, 'choisir une Planche, c\'est aussi la sélectionner');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #383b — LE CACHE DES CORRESPONDANCES EST RELU AU LANCEMENT
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ LE DÉFAUT LE PLUS ANCIEN ET LE PLUS SILENCIEUX DE TOUT LE CHANTIER. `correspondanceEnregistreeSync`
+// sert un cache mémoire, parce que construire un rig se fait dans un rendu, chemin strictement
+// synchrone où aucune lecture disque n'est possible. Son commentaire affirmait « le cache est rempli
+// au démarrage ». RIEN NE LE REMPLISSAIT AU DÉMARRAGE : les deux seuls appels à `lireCorrespondances`
+// étaient l'ouverture de l'écran de correspondance et l'import d'un modèle.
+//
+// Conséquence, mesurée sur le dossier réel de l'utilisateur : `cerberus.glb` n'a QUE sa morphologie
+// enregistrée, « quadrupede », corrigée à la main parce que la reconnaissance le classe humanoïde.
+// Au lancement, ce choix n'existait pas. L'Éditeur, la fiche et le rig repartaient tous de la
+// suggestion automatique, jusqu'à ce qu'on ouvre le tableau de correspondance — qui remplissait le
+// cache et corrigeait tout d'un coup, donc très loin de sa cause.
+//
+// `spider.glb`, dont l'archétype est DEVINÉ et non corrigé, n'a jamais rien montré d'anormal. C'est
+// l'écart entre ces deux modèles, signalé par l'utilisateur, qui a mis le défaut au jour.
+//
+// Ce que ce test peut vraiment vérifier : la chaîne de lancement est du code au niveau du module,
+// qui s'exécute à l'import et ne se rejoue pas. On regarde donc le CÂBLAGE. Le comportement, lui,
+// est éprouvé dans skeleton-store.test.mjs (« sans lecture, une morphologie corrigée à la main
+// n'existe pas »), qui mesure ce que coûte un cache vide.
+describe('#383b : les correspondances enregistrées sont relues au lancement', () => {
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('la chaîne de lancement lit le disque AVANT d\'ouvrir le Projet', () => {
+    // `.then(` fait partie de l'ancre : sans lui on tombe sur la DÉFINITION de loadAppSettings,
+    // quelques milliers de lignes plus haut, et le test lirait un corps de fonction en croyant lire
+    // la chaîne de lancement.
+    const i = SRC.indexOf('loadAppSettings().then(');
+    assert.ok(i > 0, 'la chaîne de lancement a disparu');
+    const chaine = SRC.slice(i, SRC.indexOf(';', i));
+    assert.match(chaine, /lireCorrespondances/,
+      'toute correction enregistrée redevient invisible tant qu\'on n\'ouvre pas un écran de '
+      + 'correspondance : morphologie, os nommés et rôles compris');
+    // L'ORDRE EST LA DÉCISION : ouvrir un Projet DESSINE, et dessiner lit les correspondances.
+    // Lancer la lecture sans l'attendre laisserait le premier rendu se faire sur un cache vide,
+    // c'est-à-dire le même défaut, en plus court et en plus difficile à reproduire.
+    assert.ok(chaine.indexOf('lireCorrespondances') < chaine.indexOf('initStartupProject'),
+      'le premier rendu se ferait encore sur un cache vide');
+  });
+});

@@ -530,10 +530,22 @@ export function fusionner(auto, enregistree, osDuFichier){
  * jamais »). Une lecture disque y est impossible, et la rendre asynchrone contaminerait tout
  * `buildPropRig3D`.
  *
- * Le cache est rempli au démarrage puis tenu à jour à chaque enregistrement. S'il est vide, au
- * tout premier rendu, avant que le préchargement n'aboutisse, la reconnaissance automatique fait
- * le travail seule : c'est le comportement de l'étape A, correct sur les six fichiers mesurés. Une
- * correction manuelle apparaît donc au pire au rendu suivant, jamais « jamais ».
+ * Le cache est rempli au démarrage (cf. la chaîne de lancement dans events.js) puis tenu à jour à
+ * chaque enregistrement.
+ *
+ * ⚠️ CE COMMENTAIRE A ÉTÉ FAUX PENDANT TOUT LE CHANTIER, et le défaut qu'il cachait était exactement
+ * celui qu'il déclarait impossible (#383b). Il disait déjà « rempli au démarrage » alors que RIEN ne
+ * le remplissait au démarrage : les deux seuls appels à `lireCorrespondances` étaient l'ouverture de
+ * l'écran de correspondance et l'import d'un modèle. Tant qu'on n'avait pas ouvert l'un des deux,
+ * toute correction enregistrée — morphologie, os nommés, rôles — était INVISIBLE, et l'application
+ * repartait de la reconnaissance automatique en silence.
+ *
+ * Il ajoutait, pour rassurer, que la reconnaissance automatique seule est « correcte sur les six
+ * fichiers mesurés ». C'est vrai et hors sujet : une correction manuelle n'existe que là où
+ * l'automatique se trompe. La phrase mesurait la seule population où le défaut ne se voit pas.
+ *
+ * Si le cache est vide malgré tout — lecture disque en échec — la reconnaissance automatique
+ * reprend la main, et une correction manuelle réapparaît dès la lecture suivante.
  */
 let _enMemoire = { version: SKELETON_MAP_FORMAT, entrees: {} };
 

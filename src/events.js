@@ -6941,7 +6941,25 @@ async function initStartupProject(){
   }
   startDefaultProject();
 }
-loadAppSettings().then(initStartupProject);
+// ⚠️ LES CORRESPONDANCES SONT RELUES AVANT LE PROJET, ET RIEN NE LE FAISAIT (#383b).
+//
+// `correspondanceEnregistreeSync` sert un cache mémoire, parce que construire un rig se fait dans
+// un rendu, un chemin strictement synchrone où une lecture disque est impossible. Son commentaire
+// affirmait « le cache est rempli au démarrage » : c'était FAUX. Les deux seuls appels à
+// `lireCorrespondances` étaient l'ouverture de l'écran de correspondance et l'import d'un modèle.
+//
+// Conséquence mesurée sur le dossier de l'utilisateur : `cerberus.glb` n'a QUE sa morphologie
+// d'enregistrée, « quadrupede », corrigée à la main parce que la reconnaissance automatique le
+// classe humanoïde. Au lancement, ce choix n'existait pas : la fiche, l'Éditeur et le rig
+// repartaient tous de la suggestion automatique, jusqu'à ce qu'on ouvre le tableau de
+// correspondance, qui remplissait le cache et corrigeait tout d'un coup. `spider.glb`, dont
+// l'archétype est DEVINÉ et non corrigé, n'a jamais rien montré d'anormal : c'est cet écart entre
+// deux modèles qui a mis le défaut au jour.
+//
+// AVANT le Projet, et pas en parallèle : ouvrir un Projet dessine, et dessiner lit les
+// correspondances. Le lancer sans l'attendre laisserait le premier rendu se faire sur un cache
+// vide, c'est-à-dire exactement le défaut qu'on corrige, en plus court.
+loadAppSettings().then(lireCorrespondances).then(initStartupProject);
 
 // ↳ src/help-content.js
 if (window.document && document.fonts && document.fonts.load) {
