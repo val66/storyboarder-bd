@@ -11,7 +11,7 @@
 
 import {
   ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
-  OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC
+  OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
 import {
   clamp, orbitCameraPosition3D, poseJointsByKey3D
@@ -3379,6 +3379,31 @@ export function figuresPosables(){
  */
 export function figuresDeLaBibliotheque3D(){
   return figuresPosables().filter(nom => morphologiePourModele(nom) === 'humanoide');
+}
+
+/**
+ * Le VOCABULAIRE DE POSE d'une figure : `'humain'`, ou la clé de son archétype. Point unique (#375b).
+ *
+ * C'est ce que `personaEditorPoseList3D` compare pour ne proposer à un quadrupède que des poses de
+ * quadrupède. Décision de l'utilisateur : les listes se rangent par archétype plutôt que de tout
+ * montrer avec un avertissement.
+ *
+ * ⚠️ UN HUMANOÏDE REND `'humain'`, ET NON `'humanoide'`. Ce n'est pas une inélégance qu'on aurait pu
+ * éviter : `'humain'` est DÉJÀ écrit dans chaque pose de la bibliothèque et dans chaque Projet
+ * enregistré (cf. makePose3D, io.js). Le renommer est interdit — c'est la règle de
+ * docs/en/persisted-data.md — et le faire coexister avec `'humanoide'` couperait la bibliothèque en
+ * deux moitiés incompatibles à la première ouverture d'un ancien fichier.
+ *
+ * Conséquence recherchée : le Personnage intégré et un modèle importé humanoïde partagent leurs
+ * poses, ce qui est le comportement d'aujourd'hui et ce qu'on veut garder.
+ *
+ * ⚠️ LA FICHE NE TRANCHE PAS ELLE-MÊME. Elle appelle cette fonction, comme elle appelle déjà
+ * `groupesDeCurseurs3D` pour ses curseurs : trois lecteurs qui décideraient chacun de leur côté
+ * finiraient par proposer les poses d'une morphologie et les curseurs d'une autre.
+ */
+export function squelettePourPose3D(nomFichier){
+  const m = nomFichier ? morphologiePourModele(nomFichier) : 'humanoide';
+  return (!m || m === 'humanoide') ? PERSONA_SKELETON_3D : m;
 }
 
 /**

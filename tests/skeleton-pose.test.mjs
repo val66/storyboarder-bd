@@ -817,6 +817,33 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
       /correspondanceEnregistreeSync\(nomFichier\)[\s\S]*enregistree\.roles/);
   });
 
+  test('#375b : le VOCABULAIRE DE POSE d\'une figure a un seul point de décision', () => {
+    const RIG = lire('src/rig3d.js');
+    const debut = RIG.indexOf('export function squelettePourPose3D');
+    assert.ok(debut > 0, 'squelettePourPose3D a disparu');
+    const corps = RIG.slice(debut, RIG.indexOf('\n}\n', debut));
+    // ⚠️ UN HUMANOÏDE REND `'humain'`, PAS `'humanoide'`. Ce n'est pas une inélégance évitable :
+    // `'humain'` est déjà écrit dans chaque pose de la bibliothèque et dans chaque Projet
+    // enregistré, et le renommer est interdit. Faire coexister les deux couperait la bibliothèque
+    // en deux moitiés incompatibles à la première ouverture d'un ancien fichier.
+    assert.match(corps, /=== 'humanoide'\) \? PERSONA_SKELETON_3D : m/);
+    assert.match(corps, /morphologiePourModele\(nomFichier\)/);
+
+    // Les trois lecteurs passent par ce point, aucun ne tranche de son côté : trois décisions
+    // séparées finiraient par proposer les poses d'une morphologie et les curseurs d'une autre.
+    const MODALS = lire('src/modals.js');
+    assert.match(MODALS, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(obj && obj\.modelFile\)\)/,
+      'la fiche propose de nouveau les mêmes poses à toutes les morphologies');
+    assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
+    const EDITEUR = lire('src/persona-editor.js');
+    assert.match(EDITEUR, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(S\.personaEditorModelFile\)\)/);
+    // ⚠️ L'ÉTIQUETTE EST POSÉE À L'ENREGISTREMENT, et c'est irrattrapable après coup : rien dans une
+    // pose ne dit sur quel squelette elle a été composée. Une pose de quadrupède née « humain »
+    // serait proposée aux humanoïdes et introuvable pour les quadrupèdes, sans recours.
+    assert.match(EDITEUR, /S\.personaEditorDraft, squelettePourPose3D\(S\.personaEditorModelFile\)\)/,
+      'une pose de créature naîtrait étiquetée « humain », sans moyen de la corriger ensuite');
+  });
+
   test('le sélecteur de figure de la FICHE, lui, garde les créatures', () => {
     // Porter une araignée reste possible, et ses curseurs de chaînes la pilotent. C'est la
     // bibliothèque qui se restreint, pas le choix du fichier.

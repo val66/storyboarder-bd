@@ -27,7 +27,7 @@ import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
-  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
@@ -48,7 +48,7 @@ import {
 import {
   cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
   personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
-  modeleImportePosable3D,
+  modeleImportePosable3D, squelettePourPose3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
@@ -369,7 +369,12 @@ export function remplirSelecteurDePose(select, obj){
   if (!select) return;
   select.innerHTML = '';
   // Reconstruit à chaque ouverture : la bibliothèque change au fil des enregistrements.
-  personaEditorPoseList3D(S.poses, PERSONA_SKELETON_3D).forEach(entry => {
+  //
+  // ⚠️ LE VOCABULAIRE DÉPEND DE LA FIGURE, il n'est plus constant (#375b). Un quadrupède ne se voit
+  // proposer que des poses de quadrupède — décision de l'utilisateur, contre l'idée de tout montrer
+  // avec un avertissement. La fiche ne tranche pas elle-même : elle appelle le point unique, comme
+  // elle le fait déjà pour ses curseurs.
+  personaEditorPoseList3D(S.poses, squelettePourPose3D(obj && obj.modelFile)).forEach(entry => {
     const opt = document.createElement('option');
     opt.value = entry.key; opt.textContent = entry.label;
     select.appendChild(opt);

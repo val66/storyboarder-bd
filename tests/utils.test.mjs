@@ -744,6 +744,30 @@ describe('personaEditorPoseList3D : la liste vient de la seule bibliothèque (Fi
     assert.deepEqual(personaEditorPoseList3D('pas un tableau'), []);
   });
 
+  test('#375b : chaque archétype ne voit que SES poses', () => {
+    // Décision de l'utilisateur : les poses se rangent par archétype plutôt que d'être toutes
+    // montrées avec un avertissement. Le filtre existait déjà, écrit en prévision de ce jour ; ce
+    // qui change en #375b, c'est que les appelants passent enfin autre chose qu'une constante.
+    const lib = [
+      { id: 'debout', name: 'Debout', skeleton: 'humain', joints: {} },
+      { id: 'pose1', name: 'À l\'affût', skeleton: 'quadrupede', joints: {} },
+      { id: 'pose2', name: 'Repliée', skeleton: 'arachnide', joints: {} },
+    ];
+    assert.deepEqual(personaEditorPoseList3D(lib, 'quadrupede').map(e => e.key), ['pose1']);
+    assert.deepEqual(personaEditorPoseList3D(lib, 'humain').map(e => e.key), ['debout']);
+    // Sans vocabulaire demandé, tout reste visible : c'est le comportement d'un appelant qui ne
+    // sait pas, et il vaut mieux montrer trop que de vider une liste sans le dire.
+    assert.equal(personaEditorPoseList3D(lib).length, 3);
+  });
+
+  test('#375b : une pose SANS squelette déclaré reste compatible avec tout', () => {
+    // Tolérance envers un fichier bricolé à la main, cohérente avec normalizePoses3D qui ne rejette
+    // jamais sur ce critère. L'écarter ferait disparaître une pose d'une liste sans un mot.
+    const lib = [{ id: 'vieille', name: 'Sans étiquette', joints: {} }];
+    assert.deepEqual(personaEditorPoseList3D(lib, 'quadrupede').map(e => e.key), ['vieille']);
+    assert.deepEqual(personaEditorPoseList3D(lib, 'humain').map(e => e.key), ['vieille']);
+  });
+
   test('une pose supprimée disparaît vraiment de la liste, même intégrée', () => {
     // La contrepartie du traitement uniforme, et ce que l'utilisateur attend d'une suppression.
     // Elle reste résoluble via POSE_3D pour les fichiers qui la citent, mais n'est plus proposée.

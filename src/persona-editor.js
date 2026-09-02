@@ -13,7 +13,7 @@
 
 import {
   JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
-  PERSONA_SKELETON_3D, POSE_3D, POSE_HANDLES,
+  POSE_3D, POSE_HANDLES,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -31,7 +31,7 @@ import {
 import {
   applyStyleCanvasFilter3D, cloneJoints, figuresDeLaBibliotheque3D,
   getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
-  resolveStyle3D,
+  resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { renderModelForEditor3D } from './scene3d.js';
@@ -273,7 +273,12 @@ export function savePersonaEditorPose(name){
   if (!S.personaEditorOpen || !S.personaEditorDraft) return null;
   const pose = makePose3D(newId('pose'),
     (typeof name === 'string' && name.trim()) ? name : nextDefaultPoseName3D(S.poses),
-    S.personaEditorDraft, PERSONA_SKELETON_3D);
+    // ⚠️ LE VOCABULAIRE DE LA FIGURE POSÉE, plus une constante (#375b). Une pose enregistrée sur un
+    // quadrupède doit naître étiquetée `quadrupede`, sinon elle serait proposée aux humanoïdes et
+    // introuvable pour les quadrupèdes. Et la rattraper plus tard serait impossible : rien dans une
+    // pose ne dit sur quel squelette elle a été composée — c'est exactement pour cette raison que
+    // `skeleton` est tagué depuis le premier jour, alors que seuls les humains posaient.
+    S.personaEditorDraft, squelettePourPose3D(S.personaEditorModelFile));
   setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), pose]);
   S.personaEditorPoseKey = pose.id;
   return pose;
@@ -928,7 +933,9 @@ export function buildPersonaEditorPosesUI(){
   if (!container) return;
   container.innerHTML = '';
   Object.keys(personaEditorPoseBtns).forEach(k => delete personaEditorPoseBtns[k]);
-  personaEditorPoseList3D(S.poses, PERSONA_SKELETON_3D).forEach(entry => {
+  // Même vocabulaire que l'enregistrement, sans quoi une pose qu'on vient de sauver ne
+  // s'afficherait pas dans la liste d'où on l'a sauvée (#375b).
+  personaEditorPoseList3D(S.poses, squelettePourPose3D(S.personaEditorModelFile)).forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = entry.label;
