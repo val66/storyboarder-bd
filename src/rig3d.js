@@ -3280,6 +3280,7 @@ function recolterOsMappes(clone, nomFichier){
     carte,
     os: osNeutresDuModele3D(nomFichier),
     membres: membresPourModele(nomFichier),
+    roles: rolesPourModele(nomFichier),
   }, tr).forEach(({ cle, nom }) => recolter(cle, nom));
   return sortie;
 }
@@ -3508,6 +3509,18 @@ export function morphologiePourModele(nomFichier){
 export function membresPourModele(nomFichier){
   const enregistree = nomFichier ? correspondanceEnregistreeSync(nomFichier) : null;
   return (enregistree && enregistree.membres) || [];
+}
+
+/**
+ * Les RÔLES enregistrés d'un fichier, `{ role: nomDOs }`. Jumeau de `membresPourModele` (#375a).
+ *
+ * Il existe parce qu'une pose de créature vise désormais des rôles autant que des noms d'os : sans
+ * les choix humains relus du disque, `clesARecolter3D` reproposerait l'attribution automatique et
+ * une correction faite dans l'écran de correspondance n'atteindrait jamais les poses.
+ */
+export function rolesPourModele(nomFichier){
+  const enregistree = nomFichier ? correspondanceEnregistreeSync(nomFichier) : null;
+  return (enregistree && enregistree.roles) || {};
 }
 
 /**

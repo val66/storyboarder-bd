@@ -652,15 +652,62 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
   ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
   const fr = (en, f) => f;
 
-  test('une créature récolte ses CHAÎNES, et aucun emplacement', () => {
-    // `applySkeletonPose` réécrit le quaternion de chaque entrée récoltée. Deux entrées visant le
-    // même os se termineraient par « la dernière parcourue gagne », c'est-à-dire par un curseur qui
-    // en annule un autre selon un ordre de clés que personne ne contrôle. Sur une créature, les
-    // chaînes et les emplacements désignent LES MÊMES OS : la question n'est pas théorique.
+  test('une créature récolte ses RÔLES puis ses chaînes, jamais un emplacement (#375a)', () => {
+    // ⚠️ CE TEST EXIGEAIT « QUE DES CHAÎNES », et c'est la règle qui a changé, pas la garantie
+    // qu'elle protégeait. Une pose de créature vise désormais un RÔLE quand l'os en a un, un nom
+    // d'os sinon : mesuré, les rôles ne couvrent que 22 % des os pilotables du corpus, et une pose
+    // qui s'y limiterait laisserait les quatre cinquièmes du mouvement raides.
+    //
+    // Ce qui NE change pas, et qui reste le cœur de cette fonction : les emplacements humanoïdes
+    // n'ont rien à faire là, et aucun os n'est récolté deux fois.
     const os = charger('cerbere');
-    const cles = clesARecolter3D({ morphologie: 'quadrupede', carte: CARTE, os, membres: [] }, fr);
+    const cles = clesARecolter3D({ morphologie: 'quadrupede', carte: CARTE, os, membres: [], roles: {} }, fr);
     assert.ok(cles.length > 30, `récolte trop maigre : ${cles.length}`);
-    cles.forEach(({ cle }) => assert.ok(estClePoseOs3D(cle), `emplacement récolté sur une créature : ${cle}`));
+    const roles = cles.filter(e => !estClePoseOs3D(e.cle));
+    assert.ok(roles.length > 0, 'aucun rôle récolté : la pose ne sera portable vers aucun autre modèle');
+    roles.forEach(({ cle }) => assert.ok(!SLOTS.includes(cle), `emplacement humanoïde récolté : ${cle}`));
+    // La part portable reste MINORITAIRE, et le savoir est le fondement de tout ce choix.
+    assert.ok(roles.length < cles.length / 2,
+      'les rôles couvriraient plus de la moitié des os : la mesure de 22 % ne tient plus');
+  });
+
+  test('RÉGRESSION : la tête du cerbère, portée par le TRONC, n\'est pas récoltée deux fois', () => {
+    // ⚠️ LE CAS QUI JUSTIFIE LA PARTITION, et il n'a rien de théorique. La tête d'un cerbère vit sur
+    // le tronc (#381), lequel est AUSSI une chaîne posable : sans filtre, cet os partirait sous
+    // `head` et sous `os:CERBERUS_Head`, et `applySkeletonPose` réécrirait deux fois son quaternion.
+    const os = charger('cerbere');
+    const cles = clesARecolter3D({ morphologie: 'quadrupede', carte: CARTE, os, membres: [], roles: {} }, fr);
+    const tete = cles.filter(e => e.cle === 'head');
+    assert.equal(tete.length, 1, 'le rôle « head » a disparu de la récolte');
+    assert.equal(cles.filter(e => e.nom === tete[0].nom).length, 1,
+      `${tete[0].nom} est récolté sous deux clés : un curseur en annulera un autre`);
+  });
+
+  test('RÉGRESSION : deux rôles sur le MÊME os ne le récoltent qu\'une fois (#375a)', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE, parce que le corpus ne produit jamais ce cas tout seul :
+    // l'attribution automatique ne donne pas deux fois le même os. L'UTILISATEUR, lui, le peut —
+    // l'écran de correspondance laisse choisir n'importe quel os pour n'importe quel rôle, et rien
+    // ne l'empêche de désigner le même deux fois. La garde n'était donc pas morte, elle était
+    // seulement hors de portée de l'attribution automatique.
+    const os = charger('cerbere');
+    const cible = os[9].name;
+    const cles = clesARecolter3D(
+      { morphologie: 'quadrupede', carte: CARTE, os, membres: [], roles: { head: cible, neck: cible } }, fr);
+    assert.equal(cles.filter(e => e.nom === cible).length, 1,
+      `${cible} est récolté deux fois : un rôle en annulera un autre`);
+    // Le PREMIER rencontré garde l'os, comme partout ailleurs dans cet écran.
+    assert.equal(cles.find(e => e.nom === cible).cle, 'head');
+  });
+
+  test('un choix humain de rôle est SUIVI, pas recalculé (#375a)', () => {
+    // Sans les rôles relus du disque, la récolte reproposerait l'attribution automatique, et une
+    // correction faite dans l'écran de correspondance n'atteindrait jamais les poses.
+    const os = charger('cerbere');
+    const cible = os[20].name;
+    const cles = clesARecolter3D(
+      { morphologie: 'quadrupede', carte: CARTE, os, membres: [], roles: { head: cible } }, fr);
+    assert.equal(cles.find(e => e.cle === 'head').nom, cible);
+    assert.equal(cles.filter(e => e.nom === cible).length, 1, 'l\'os choisi est aussi récolté par sa chaîne');
   });
 
   test('un humanoïde récolte ses EMPLACEMENTS, et aucune chaîne', () => {
@@ -749,6 +796,25 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     const EDITEUR = lire('src/persona-editor.js');
     assert.match(EDITEUR, /figuresDeLaBibliotheque3D\(\)/, 'l\'éditeur propose encore les créatures');
     assert.doesNotMatch(EDITEUR, /figuresPosables\(\)/, 'deux listes de figures : elles vont diverger');
+  });
+
+  test('les RÔLES enregistrés atteignent la récolte (#375a)', () => {
+    // ⚠️ DEUX MUTATIONS ONT ÉCHAPPÉ ICI, et elles disent la même chose : `clesARecolter3D` est pure
+    // et testée, mais rien ne vérifiait qu'on lui PASSE les choix humains. Sans eux, elle
+    // reproposerait l'attribution automatique, et une correction faite dans l'écran de
+    // correspondance n'atteindrait jamais les poses — en silence, puisque la récolte marcherait.
+    const RIG = lire('src/rig3d.js');
+    const debut = RIG.indexOf('function recolterOsMappes');
+    assert.ok(debut > 0, 'recolterOsMappes a disparu');
+    const corps = RIG.slice(debut, RIG.indexOf('\n}\n', debut));
+    assert.match(corps, /roles: rolesPourModele\(nomFichier\)/,
+      'les rôles corrigés à la main n\'atteignent plus les poses');
+    assert.match(corps, /membres: membresPourModele\(nomFichier\)/);
+    // Et l'accesseur lit bien le disque, il ne rend pas un vide poli.
+    const acces = RIG.indexOf('export function rolesPourModele');
+    assert.ok(acces > 0, 'rolesPourModele a disparu');
+    assert.match(RIG.slice(acces, RIG.indexOf('\n}\n', acces)),
+      /correspondanceEnregistreeSync\(nomFichier\)[\s\S]*enregistree\.roles/);
   });
 
   test('le sélecteur de figure de la FICHE, lui, garde les créatures', () => {

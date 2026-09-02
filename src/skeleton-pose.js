@@ -61,6 +61,10 @@
  */
 
 import { SLOTS, SLOT_GROUPS, slotLabel, lignesDeCorrespondance3D } from './skeleton-map.js';
+// La proposition de rôles vient d'archetype-roles.js, qui n'importe que skeleton-map : aucune
+// boucle. On la RELIT plutôt que de la refaire, comme l'écran de correspondance, pour qu'une pose
+// vise exactement les os que l'utilisateur y voit attribués.
+import { propositionDeRoles3D } from './archetype-roles.js';
 
 /**
  * Le préfixe des clés de pose qui désignent un OS et non un emplacement (#374).
@@ -340,10 +344,41 @@ export function groupesPosablesMembres3D(os, membres, traduire){
  *
  * @returns `[{ cle, nom }]`, `nom` étant le nom de l'os à retrouver dans le clone
  */
-export function clesARecolter3D({ morphologie, carte, os, membres } = {}, traduire){
+export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {}, traduire){
   if (morphologie !== 'humanoide') {
-    return groupesPosablesMembres3D(os, membres, traduire)
-      .flatMap(g => g.chaines.flatMap(c => c.os.map(o => ({ cle: o.cle, nom: nomDOsDeCle3D(o.cle) }))));
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // DEUX VOCABULAIRES, UNE PARTITION STRICTE (#375a)
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // ⚠️ MESURÉ SUR LES HUIT CRÉATURES DU CORPUS : les rôles ne couvrent que 22 % des os pilotables,
+    // de 8 % sur l'oiseau à 45 % sur le chien. Une patte de cerbère a cinq os, l'archétype
+    // quadrupède n'en nomme que deux. Une pose qui ne viserait que des rôles figerait donc un
+    // cinquième du mouvement et laisserait le reste raide.
+    //
+    // Un os prend donc son RÔLE s'il en a un, son NOM sinon. Le rôle est la part PORTABLE de la
+    // pose, la seule qui s'applique à un autre modèle du même archétype ; le nom d'os ne vaut que
+    // pour ce squelette, et c'est déjà le contrat d'une clé `os:` (cf. normaliserPose).
+    //
+    // ⚠️ LA PARTITION EST LA RAISON D'ÊTRE DE CETTE FONCTION, et le cas n'a rien de théorique : la
+    // tête d'un cerbère est portée par le TRONC (#381), lequel est aussi une chaîne posable. Sans
+    // le filtre ci-dessous, cet os partirait sous `head` ET sous `os:CERBERUS_Head`, et
+    // `applySkeletonPose` réécrirait deux fois son quaternion — « la dernière clé parcourue gagne »,
+    // selon un ordre que personne ne contrôle.
+    const proposition = propositionDeRoles3D(
+      { os, archetype: morphologie, carte, enregistre: { os: roles || {}, membres } }, traduire);
+    const prisParRole = new Set();
+    const parRole = [];
+    proposition.forEach(m => m.roles.forEach(r => {
+      // Un rôle sans os n'a rien à récolter, et deux rôles ne peuvent pas viser le même os : le
+      // premier rencontré le garde, comme ailleurs dans cet écran.
+      if (!r.osNom || prisParRole.has(r.osNom)) return;
+      prisParRole.add(r.osNom);
+      parRole.push({ cle: r.cle, nom: r.osNom });
+    }));
+    const parOs = groupesPosablesMembres3D(os, membres, traduire)
+      .flatMap(g => g.chaines.flatMap(c => c.os.map(o => ({ cle: o.cle, nom: nomDOsDeCle3D(o.cle) }))))
+      .filter(e => !prisParRole.has(e.nom));
+    return [...parRole, ...parOs];
   }
   // LE BASSIN EN FAIT PARTIE bien qu'il n'ait pas de curseur : `repereDuModeleImporte` a besoin de
   // sa POSITION pour orienter le corps. Récolter un os et lui donner un curseur sont deux questions
