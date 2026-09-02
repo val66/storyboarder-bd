@@ -25,6 +25,7 @@ import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance,
   SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
+  correspondancesApplicables3D, osDesignesParEntree3D,
 } from '../src/skeleton-store.js';
 import { SLOTS, sousTitreCorrespondance3D, cheminDOs3D } from '../src/skeleton-map.js';
 
@@ -256,6 +257,101 @@ beforeEach(() => {
   setSkeletonBridge({
     readSkeletonMaps: async () => pontRepond,
     writeSkeletonMaps: async (c) => { ecrit.push(JSON.parse(JSON.stringify(c))); return { ok: true }; },
+  });
+});
+
+describe('Une correspondance peut resservir à un autre fichier (#386)', () => {
+  const RACINE4 = _dossier(_chemin(import.meta.url)) + '/..';
+  const charger4 = (nom) => JSON.parse(
+    _lire(_joindre(RACINE4, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name }));
+
+  test('les os qu\'une entrée DÉSIGNE, tous champs confondus', () => {
+    assert.deepEqual([...osDesignesParEntree3D({
+      os: { tete: 'Head' }, roles: { hipFL: 'ThighL' }, membres: [{ racine: 'Tail0', retenu: false }],
+    })].sort(), ['Head', 'Tail0', 'ThighL']);
+    assert.deepEqual([...osDesignesParEntree3D({ valide: true })], []);
+    assert.deepEqual([...osDesignesParEntree3D(null)], []);
+  });
+
+  test('elle s\'applique si TOUS ses os existent ici, pas si un seul manque', () => {
+    // Ce n'est pas un seuil de ressemblance, c'est une question fonctionnelle : cette
+    // correspondance peut-elle s'appliquer ICI ? Elle se répond par oui ou par non.
+    const os = [{ id: 1, name: 'Head' }, { id: 2, name: 'ArmL' }];
+    const entrees = {
+      'complet.glb': { os: { tete: 'Head', bras_g: 'ArmL' }, valide: true },
+      'partiel.glb': { os: { tete: 'Head', bras_d: 'ArmR' }, valide: true },
+      'ailleurs.glb': { os: { tete: 'Absent' }, valide: true },
+    };
+    assert.deepEqual(correspondancesApplicables3D(os, entrees, 'moi.glb').map(c => c.fichier),
+      ['complet.glb']);
+  });
+
+  test('un fichier ne se propose jamais à LUI-MÊME', () => {
+    const os = [{ id: 1, name: 'Head' }];
+    const entrees = { 'moi.glb': { os: { tete: 'Head' }, valide: true } };
+    assert.deepEqual(correspondancesApplicables3D(os, entrees, 'moi.glb'), []);
+  });
+
+  test('une entrée qui ne NOMME aucun os n\'est pas proposée', () => {
+    // Elle existe pourtant, et c'est même le cas le plus fréquent : un fichier validé sans
+    // correction. La proposer ferait miroiter un travail repris là où il n'y en a jamais eu.
+    const os = [{ id: 1, name: 'Head' }];
+    assert.deepEqual(correspondancesApplicables3D(os, { 'x.glb': { valide: true } }, 'moi.glb'), []);
+    assert.deepEqual(correspondancesApplicables3D(os, { 'y.glb': { os: {}, roles: {} } }, 'moi.glb'), []);
+  });
+
+  test('la plus RICHE d\'abord : c\'est elle qui fait gagner le plus de temps', () => {
+    const os = [{ id: 1, name: 'A' }, { id: 2, name: 'B' }, { id: 3, name: 'C' }];
+    const entrees = {
+      'maigre.glb': { os: { tete: 'A' }, valide: true },
+      'riche.glb': { os: { tete: 'A', cou: 'B', poitrine: 'C' }, valide: true },
+    };
+    assert.deepEqual(correspondancesApplicables3D(os, entrees, 'moi.glb').map(c => c.fichier),
+      ['riche.glb', 'maigre.glb']);
+  });
+
+  test('MESURE DU FAUX POSITIF : aucun modèle du corpus n\'en attire un autre', () => {
+    // 136 paires de fixtures, dont 87 n'ont AUCUN os en commun ; la paire la plus proche en partage
+    // DEUX, presque toujours `_rootJoint`. Aucun couple de modèles distincts n'approche le partage
+    // TOTAL qu'exige cette fonction.
+    //
+    // ⚠️ CE QUE LA MESURE NE DIT PAS : le corpus ne contient aucun couple de fichiers qui soient le
+    // même squelette. Le risque de faux positif est mesuré, la fréquence des vrais positifs ne
+    // l'est pas.
+    const noms = ['araignee', 'cerbere', 'chien', 'dragon', 'kraken', 'mixamo', 'oiseau', 'raptor',
+      'serpent', 'vrm', 'vroid-alt', 'maison', 'centaure', 'centaure1', 'centaure2', 'centaure3', 'unreal'];
+    const entrees = {};
+    noms.forEach(n => {
+      // Une correspondance riche pour chaque fixture : ses vingt premiers os, nommés.
+      const os = {};
+      charger4(n).slice(0, 20).forEach((o, i) => { os['slot' + i] = o.name; });
+      entrees[n + '.glb'] = { os, valide: true };
+    });
+    noms.forEach(n => {
+      const trouvees = correspondancesApplicables3D(charger4(n), entrees, n + '.glb');
+      assert.deepEqual(trouvees, [], `${n} attire ${trouvees.map(c => c.fichier).join(', ')}`);
+    });
+  });
+
+  test('VRAI POSITIF : un fichier au même squelette la reçoit', () => {
+    // Le cas visé, celui de l'utilisateur : « si j'importe un autre cerbère, les changements
+    // précédents auront été pris en compte ? ». Un réexport garde ses noms d'os, c'est le pari sur
+    // lequel repose ce fichier depuis son premier jour.
+    const os = charger4('cerbere');
+    const entrees = { 'cerberus.glb': {
+      os: { tete: os[8].name }, roles: { head: os[9].name }, valide: true, morphologie: 'quadrupede',
+    } };
+    const trouvees = correspondancesApplicables3D(os, entrees, 'cerberus (2).glb');
+    assert.equal(trouvees.length, 1);
+    assert.equal(trouvees[0].fichier, 'cerberus.glb');
+    assert.equal(trouvees[0].entree.morphologie, 'quadrupede');
+    assert.equal(trouvees[0].os, 2);
+  });
+
+  test('un fichier sans os ne reçoit rien, et ne lève pas', () => {
+    assert.deepEqual(correspondancesApplicables3D([], { 'x.glb': { os: { tete: 'H' } } }, null), []);
+    assert.deepEqual(correspondancesApplicables3D(null, null, null), []);
   });
 });
 

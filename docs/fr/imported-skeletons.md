@@ -224,6 +224,38 @@ emplacements mais ses chaînes ; « assis » ne trouverait donc aucun os. Rétab
 pour que le geste « marche » n'aurait rien réparé : plier le « bras gauche » d'une araignée pliait
 une de ses huit pattes. Les poses par morphologie sont la tâche #375.
 
+### 6.2 ter Une correspondance peut resservir à un autre fichier (#386, modèle)
+
+Question de l'utilisateur : « si j'importe un autre cerbère, les changements précédents auront été
+pris en compte ? ». La réponse est en deux temps, et le second méritait du travail.
+
+**Réimporter le MÊME fichier ne fait rien perdre.** L'import compare le CONTENU octet par octet,
+reconnaît le doublon et réutilise le nom. La correspondance, indexée par nom de fichier, s'applique
+telle quelle.
+
+**Un fichier au contenu différent, même d'un octet**, devient `cerberus (2).glb` et repartait d'une
+correspondance vide. C'est ce cas que `correspondancesApplicables3D` traite.
+
+⚠️ **PAS UN SEUIL DE RESSEMBLANCE, une question fonctionnelle.** « Ces deux squelettes se
+ressemblent-ils ? » demanderait un seuil ; « cette correspondance peut-elle s'appliquer ICI ? » se
+répond par oui ou par non : chacun des os qu'elle nomme existe-t-il dans ce fichier ?
+
+**Mesure du risque de faux positif**, sur les 136 paires des dix-sept fixtures :
+
+| | |
+|---|---|
+| paires sans AUCUN os en commun | 87 sur 136 |
+| paire la plus proche | 2 os en commun, jaccard 0.011 |
+
+Aucun couple de modèles distincts n'approche, même de loin, le partage TOTAL qu'exige cette
+fonction. Un test le rejoue sur les dix-sept fixtures.
+
+⚠️ **Ce que la mesure ne dit pas, et qu'il faut dire aussi** : le corpus ne contient AUCUN couple de
+fichiers qui soient le même squelette. Le risque de faux positif est mesuré, la FRÉQUENCE des vrais
+positifs ne l'est pas. Cette proposition peut très bien ne se déclencher qu'une fois sur vingt.
+
+**Rien n'est appliqué en silence.** Elle propose, l'écran affiche, l'utilisateur tranche.
+
 ### 6.2 bis Ouvrir l'écran repart de ce qui est enregistré (#385)
 
 Signalé à l'usage : « je passe le cerbère en quadrupède, j'enregistre, je rouvre, et il est de

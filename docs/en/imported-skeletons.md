@@ -222,6 +222,37 @@ chains, so "sitting" would find no bone. Restoring the slots to make the gesture
 fixed nothing: bending a spider's "left arm" bent one of its eight legs. Poses per morphology are
 task #375.
 
+### 6.2 ter A mapping can serve another file (#386, model)
+
+The user's question: "if I import another cerberus, will the previous changes be taken into
+account?". The answer comes in two parts, and the second deserved work.
+
+**Reimporting the SAME file loses nothing.** Import compares the CONTENT byte by byte, recognises the
+duplicate and reuses the name. The mapping, keyed by file name, applies as is.
+
+**A file with different content, even by one byte**, becomes `cerberus (2).glb` and started from an
+empty mapping. That is the case `correspondancesApplicables3D` handles.
+
+⚠️ **NOT a similarity threshold, a functional question.** "Do these two skeletons look alike?" would
+need a threshold; "can this mapping apply HERE?" answers yes or no: does every bone it names exist in
+this file?
+
+**Measured false-positive risk**, across the 136 pairs of the seventeen fixtures:
+
+| | |
+|---|---|
+| pairs with NO bone in common | 87 of 136 |
+| closest pair | 2 bones in common, jaccard 0.011 |
+
+No pair of distinct models comes anywhere near the TOTAL sharing this function requires. A test
+replays it across all seventeen fixtures.
+
+⚠️ **What the measurement does not say, and must be said too**: the corpus contains NO pair of files
+that are the same skeleton. The false-positive risk is measured, the FREQUENCY of true positives is
+not. This proposal may well fire once in twenty.
+
+**Nothing is applied silently.** It proposes, the screen shows, the user decides.
+
 ### 6.2 bis Opening the screen starts from what was saved (#385)
 
 Reported through use: "I switch the cerberus to quadruped, I save, I reopen, and it is humanoid

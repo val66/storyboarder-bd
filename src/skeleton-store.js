@@ -157,6 +157,66 @@ function normaliserRoles3D(brut){
 }
 
 /**
+ * Les os qu'une entrée DÉSIGNE par leur nom, tous champs confondus. Fonction PURE.
+ *
+ * C'est la question qui décide si une correspondance peut resservir ailleurs : une correspondance ne
+ * mémorise que des NOMS d'os, jamais des indices, et c'est vrai depuis le premier jour de ce
+ * fichier. Elle s'applique donc telle quelle à tout squelette qui porte ces mêmes noms.
+ */
+export function osDesignesParEntree3D(entree){
+  const e = entree || {};
+  const noms = new Set();
+  Object.values(e.os || {}).forEach(n => { if (typeof n === 'string' && n) noms.add(n); });
+  Object.values(e.roles || {}).forEach(n => { if (typeof n === 'string' && n) noms.add(n); });
+  (e.membres || []).forEach(m => { if (m && typeof m.racine === 'string' && m.racine) noms.add(m.racine); });
+  return noms;
+}
+
+/**
+ * Les correspondances d'AUTRES fichiers qui s'appliqueraient telles quelles à ce squelette. PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * PAS UN SEUIL DE RESSEMBLANCE, UNE QUESTION FONCTIONNELLE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La question n'est pas « ces deux squelettes se ressemblent-ils ? », qui demanderait un seuil, mais
+ * « cette correspondance peut-elle s'appliquer ICI ? », qui se répond par oui ou par non : chacun des
+ * os qu'elle nomme existe-t-il dans ce fichier ? Un seuil inventé aurait été le travers habituel ;
+ * ici la mesure ne sert qu'à vérifier que la réponse discrimine, et elle discrimine largement.
+ *
+ * ⚠️ MESURE DU RISQUE DE FAUX POSITIF, sur les 136 paires des dix-sept fixtures : 87 paires n'ont
+ * AUCUN os en commun, et la paire la plus proche en partage DEUX. Aucun couple de modèles distincts
+ * n'approche, même de loin, le partage total qu'exige cette fonction.
+ *
+ * ⚠️ CE QUE LA MESURE NE DIT PAS, et il faut le dire aussi : le corpus ne contient AUCUN couple de
+ * fichiers qui soient le même squelette. Le risque de faux positif est donc mesuré, la fréquence des
+ * vrais positifs ne l'est pas. Cette fonction peut très bien ne se déclencher qu'une fois sur vingt.
+ *
+ * ⚠️ RIEN N'EST APPLIQUÉ EN SILENCE. Elle PROPOSE, l'écran affiche, l'utilisateur tranche. Reprendre
+ * une correspondance sans le dire serait exactement le genre d'aide dont on ne comprend pas d'où
+ * elle vient, et qu'on ne sait pas défaire.
+ *
+ * @param osDuFichier la liste d'os neutre du fichier ouvert
+ * @param entrees `{ nomDeFichier: entree }`, tout le fichier de correspondances
+ * @param sauf le fichier ouvert, à ne pas se proposer à lui-même
+ * @returns `[{ fichier, entree, os }]`, la plus riche d'abord
+ */
+export function correspondancesApplicables3D(osDuFichier, entrees, sauf){
+  const presents = new Set((osDuFichier || [])
+    .map(o => o && o.name).filter(n => typeof n === 'string' && n));
+  if (!presents.size) return [];
+  return Object.entries(entrees || {})
+    .filter(([fichier]) => fichier !== sauf)
+    .map(([fichier, entree]) => ({ fichier, entree, noms: osDesignesParEntree3D(entree) }))
+    // UNE ENTRÉE QUI NE NOMME AUCUN OS N'APPREND RIEN. Elle existe pourtant : c'est le cas d'un
+    // fichier validé sans correction, le plus fréquent de tous. La proposer ferait miroiter un
+    // travail repris là où il n'y en a jamais eu.
+    .filter(c => c.noms.size > 0 && [...c.noms].every(n => presents.has(n)))
+    .map(c => ({ fichier: c.fichier, entree: c.entree, os: c.noms.size }))
+    .sort((a, b) => b.os - a.os || a.fichier.localeCompare(b.fichier));
+}
+
+/**
  * La morphologie EFFECTIVE d'un fichier : le choix humain s'il existe, sinon le proposé. PURE.
  *
  * MÊME RÈGLE QUE `fusionner` POUR LES EMPLACEMENTS, et elle est ici pour être à côté d'elle : ce
