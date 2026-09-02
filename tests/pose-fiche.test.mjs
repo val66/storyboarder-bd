@@ -45,8 +45,10 @@ import {
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
   buildPersonaEditorModelUI, choisirFigureDeLEditeur, orbiteDouvertureEditeur3D,
   PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit, editeurPoseUneCreature3D,
-  personaEditorHasChanges, showPersonaEditor,
+  personaEditorHasChanges, showPersonaEditor, entreeDePoigneesDeCreature3D, focusPersonaEditorHandle,
 } from '../src/persona-editor.js';
+import { projectPoseHandlePositions3D, pickPoseHandleAt } from '../src/draw.js';
+import { posePickRadii3D } from '../src/utils.js';
 import { tr } from '../src/state.js';
 
 const FICHIER = 'essai-mixamo.glb';
@@ -1556,3 +1558,170 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
  * quaternion. Un quaternion passé là est lu comme trois angles absents, donc comme le repos, le
  * test était vert et ne posait rien. Constaté par la sonde, pas par la relecture.
  */
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392b — UNE CRÉATURE A DES POIGNÉES, ET ELLES VIENNENT DE SES PROPRES CLÉS
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Ce qui la privait de points n'était pas une décision, c'était une CONSTANTE : la boucle qui pose
+// les poignées lisait POSE_HANDLES, les dix-huit articulations du Personnage. Aucune clé d'une
+// créature n'y figure, et la garde `if (!grp) return` les écartait donc toutes, une par une, sans
+// que rien ne le signale. Mesuré sur les fixtures, ce qu'une créature réclame : 45 poignées pour le
+// cerbère, 103 pour l'araignée, contre 18 pour le Personnage.
+describe('#392b : les poignées d\'une créature', () => {
+  const EDITEUR_SRC = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+  const os = (nom) => {
+    const b = new THREE.Bone();
+    b.name = nom;
+    return b;
+  };
+
+  test('la figure est réindexée par la CLÉ DE POSE, celle des curseurs', () => {
+    // C'est ce qui fait tenir tout l'enchaînement sans une ligne de traduction : le clic rend cette
+    // clé, le panneau droit l'indexe déjà, et le curseur qu'elle désigne écrit dans le brouillon
+    // sous cette même clé. Une carte indexée autrement aurait demandé un dictionnaire de plus.
+    const hanche = os('ThighL'), queue = os('Tail1');
+    const e = entreeDePoigneesDeCreature3D({
+      hipFL: { os: hanche, reposMonde: [0, 0, 0, 1] },
+      'os:Tail1': { os: queue },
+    });
+    assert.deepEqual(Object.keys(e.joints).sort(), ['hipFL', 'os:Tail1']);
+    assert.equal(e.joints.hipFL, hanche, 'la carte ne rend pas l\'os attendu');
+    assert.deepEqual(e.poignees.map(p => p.id).sort(), ['hipFL', 'os:Tail1']);
+    // `group` vaut `id` : une créature n'a pas l'indirection du Personnage, un os EST son pivot.
+    e.poignees.forEach(p => assert.equal(p.group, p.id));
+    assert.equal(e.osImportes, true,
+      'sans ce drapeau, la couche de dessin calcule un bout de membre en unités du rig intégré');
+  });
+
+  test('une entrée SANS os est écartée, pas dessinée à l\'origine', () => {
+    // Une clé récoltée dont l'os a disparu du clone (renommé, supprimé du fichier) donnerait sinon
+    // une poignée projetée depuis `undefined`, c'est-à-dire un point au hasard, attrapable, et
+    // relié à des curseurs qui ne bougent rien.
+    const e = entreeDePoigneesDeCreature3D({ hipFL: { os: null }, tail0: {}, head: { os: os('H') } });
+    assert.deepEqual(e.poignees.map(p => p.id), ['head']);
+    assert.deepEqual(Object.keys(e.joints), ['head']);
+  });
+
+  test('⚠️ et l\'ÉDITEUR passe bien cette figure-là (mutation échappée)', () => {
+    // MUTATION ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : remplacer l'appel de l'Éditeur par
+    // `jointsDepuisOsMappes` — le chemin humanoïde — ne faisait rien échouer. Tout le reste de
+    // #392b était vérifié, sauf le fait que quelqu'un s'en serve. C'est mot pour mot la faute de
+    // #383a, où la branche créature existait et n'était jamais atteinte.
+    //
+    // POURQUOI CE TEST EST TEXTUEL, ET C'EST UNE LIMITE, PAS UN CHOIX. La figure vient de
+    // `objectRigCache3D`, que seul un rendu WebGL remplit : sous Node, l'appel rendrait toujours
+    // rien, et un test « comportemental » serait vert sans rien exercer, ce qui est pire. On épingle
+    // donc le point d'appel, en réduisant la surface non tenue à un seul identifiant.
+    const i = EDITEUR_SRC.indexOf('function drawPersonaEditor');
+    assert.ok(i > 0, 'drawPersonaEditor a disparu');
+    const corps = EDITEUR_SRC.slice(i, EDITEUR_SRC.indexOf('\n}\n', i));
+    assert.match(corps, /editeurPoseUneCreature3D\(\)\s*\n?\s*\?\s*entreeDePoigneesDeCreature3D/,
+      'l\'Éditeur pose de nouveau les poignées d\'une créature avec le vocabulaire du Personnage');
+    assert.match(corps, /:\s*jointsDepuisOsMappes\(entree\.skeletonBones\)/,
+      'un humanoïde importé a perdu ses poignées');
+  });
+
+  test('rien à réindexer ne lève pas', () => {
+    [null, undefined, {}].forEach(v => {
+      const e = entreeDePoigneesDeCreature3D(v);
+      assert.deepEqual(e.poignees, []);
+    });
+  });
+
+  test('LA LISTE DES POIGNÉES VIENT DE LA FIGURE : sans elle, aucun point', () => {
+    // ⚠️ LE TEST DÉCISIF DE #392b, et il vérifie la CAUSE, pas seulement l'effet. La même entrée,
+    // avec et sans sa liste : sans elle on retombe sur les dix-huit du Personnage, dont aucune ne
+    // porte une clé de créature, et la carte de positions ressort VIDE. C'est exactement l'état
+    // d'avant, reproduit à côté du nouveau.
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 0, 5);
+    camera.updateMatrixWorld(true);
+    const racine = new THREE.Group();
+    const hanche = os('ThighL'); hanche.position.set(0.2, 0.5, 0);
+    const queue = os('Tail1'); queue.position.set(-0.2, 0.6, 0);
+    racine.add(hanche); racine.add(queue);
+    racine.updateMatrixWorld(true);
+    const figure = entreeDePoigneesDeCreature3D({
+      hipFL: { os: hanche }, 'os:Tail1': { os: queue },
+    });
+
+    const avec = {};
+    const points = projectPoseHandlePositions3D(figure, camera, 400, 300, null, false, avec);
+    assert.equal(points.length, 2, 'la créature n\'a pas reçu ses poignées');
+    assert.deepEqual(Object.keys(avec).sort(), ['hipFL', 'os:Tail1']);
+    assert.ok(Number.isFinite(avec.hipFL.x) && Number.isFinite(avec.hipFL.y));
+
+    const sans = {};
+    const rien = projectPoseHandlePositions3D(
+      { joints: figure.joints, osImportes: true }, camera, 400, 300, null, false, sans);
+    assert.equal(rien.length, 0,
+      'sans sa liste, une créature reçoit des points : la liste n\'est donc pas ce qui décide');
+    assert.deepEqual(Object.keys(sans), []);
+  });
+
+  test('le CLIC interroge la même liste que le dessin', () => {
+    // Deux listes auraient fini par désigner autre chose que ce qui est à l'écran, et le clic
+    // serait tombé sur une articulation voisine. Sans la liste, la clé trouvée n'a aucun
+    // descripteur et la fonction rend `null` plutôt qu'un objet inventé.
+    const positions = { hipFL: { x: 100, y: 100 } };
+    const defs = [{ id: 'hipFL', group: 'hipFL' }];
+    const r = posePickRadii3D(false);
+    assert.equal(pickPoseHandleAt(102, 102, positions, r, defs).id, 'hipFL');
+    assert.equal(pickPoseHandleAt(102, 102, positions, r), null,
+      'une clé de créature ressort comme une poignée du Personnage');
+  });
+});
+
+describe('#392b : cliquer un point d\'une créature ouvre le BON groupe', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+  // Le dessin est la dernière chose que fait syncPersonaEditorDom, et lui seul passe par WebGL :
+  // tout ce qui s'observe est déjà écrit quand il échoue (cf. le même procédé plus haut).
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  // Le clic rend la clé de pose ; le panneau droit l'indexe déjà, par les mêmes registres que le
+  // Personnage. Il n'y a donc aucune traduction à écrire, et c'est le but : les deux moitiés de
+  // l'écran parlent la même langue, celle du squelette.
+  const detailsDe = (el, prof = 0, out = []) => {
+    (el.children || []).forEach(c => {
+      if (c.tagName === 'DETAILS') {
+        out.push({ prof, ouvert: !!c.open, titre: (c.children[0] || {}).textContent });
+      }
+      detailsDe(c, prof + 1, out);
+    });
+    return out;
+  };
+
+  test('et ses GROUPES PARENTS avec lui, sinon rien n\'apparaît', () => {
+    // ⚠️ LES GROUPES D'UNE CRÉATURE SONT EMBOÎTÉS là où une ancre porte plusieurs chaînes, ici les
+    // deux jambes sous « Anchor mixamorig:Hips ». Le registre ne connaît que le bloc de la CHAÎNE :
+    // l'ouvrir sans ouvrir son parent ne montre rien du tout, les curseurs seraient dépliés à
+    // l'intérieur d'un bloc replié. Le Personnage n'a qu'un niveau et ne voit pas la différence.
+    _setModelCacheEntry('creature-poignees.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-poignees.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+
+    const conteneur = document.getElementById('personaEditorJointsContainer');
+    const avant = detailsDe(conteneur);
+    assert.ok(avant.some(d => d.prof > 0),
+      'préalable : cette fixture doit produire des groupes EMBOÎTÉS, sinon le test ne prouve rien');
+    assert.ok(avant.every(d => !d.ouvert), 'préalable : tout est replié à l\'ouverture');
+
+    focusPersonaEditorHandle('os:mixamorig:LeftLeg');
+    const apres = detailsDe(conteneur);
+    const chaine = apres.find(d => d.prof > 0 && d.ouvert);
+    assert.ok(chaine, 'le groupe de la chaîne cliquée ne s\'ouvre pas');
+    assert.ok(apres.some(d => d.prof === 0 && d.ouvert),
+      'le groupe PARENT reste replié : les curseurs sont dépliés dans un bloc fermé, donc invisibles');
+    // Et un seul à la fois : ouvrir sans refermer les autres ferait défiler tout le squelette.
+    assert.equal(apres.filter(d => d.prof === 0 && d.ouvert).length, 1);
+    hidePersonaEditor();
+  });
+});

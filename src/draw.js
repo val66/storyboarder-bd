@@ -1774,7 +1774,16 @@ export function drawPersonaDragHint(hctx, pos, hint){
 export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selectedId, solo, positionsOut){
   const positions = positionsOut || {};
   const points = [];
-  POSE_HANDLES.forEach(def => {
+  // ⚠️ LA LISTE DES POIGNÉES VIENT DE LA FIGURE, PLUS D'UNE CONSTANTE (#392b). POSE_HANDLES décrit
+  // les dix-huit articulations du Personnage intégré ; une créature a les siennes, mesurées entre
+  // 45 et 103 selon la fixture, et aucune ne porte un identifiant du Personnage. Tant que cette
+  // boucle lisait la constante, un modèle non humanoïde ne pouvait recevoir AUCUN point : la garde
+  // `if (!grp) return` les écartait tous, un par un, sans que rien ne le signale.
+  //
+  // La constante reste le défaut : le Personnage et un humanoïde importé ne fournissent pas de
+  // liste, et rien ne change pour eux.
+  const defs = (entry && entry.poignees) || POSE_HANDLES;
+  defs.forEach(def => {
     const grp = entry && entry.joints && entry.joints[def.group];
     if (!grp) return;
     const active = selectedId === def.id;
@@ -1877,11 +1886,16 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
 // Fix 92 : plus de paramètre `canvas` : il n'était transmis que pour reprojeter le bout du membre
 // au moment du clic, ce que personaLimbSegmentScreen3D ne fait plus. Tout ce dont la sélection a
 // besoin est dans la carte de positions, écrite par la dernière image dessinée.
-export function pickPoseHandleAt(px, py, positions, radii){
+// `defs` : les poignées de la figure affichée, quand ce ne sont pas les dix-huit du Personnage
+// (#392b). MÊME LISTE que celle qui a dessiné les points, et c'est tout l'objet du paramètre : une
+// seconde liste reconstruite ici aurait fini par désigner autre chose que ce qui est à l'écran, et
+// le clic serait tombé sur une articulation voisine.
+export function pickPoseHandleAt(px, py, positions, radii, defs){
   const pos = positions || personaHandleScreenPos;
   const r = radii || posePickRadii3D(false);
+  const liste = defs || POSE_HANDLES;
   const id = pickNearestHandle3D(pos, px, py, r.handle);
-  if (id) return POSE_HANDLES.find(d => d.id === id) || null;
+  if (id) return liste.find(d => d.id === id) || null;
   // No precise joint handle hit: try the limb itself (the segment
   // between the joint and its extremity), so the figure can be posed by grabbing the arm/leg.
   return pickLimbSegmentAt(px, py, pos, r.limb);

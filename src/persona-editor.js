@@ -821,15 +821,18 @@ export function drawPersonaEditor(){
     dessinerModeleDansEditeur(cnv, modele, size);
     // Les poignées se posent sur les OS du modèle, pas sur la silhouette intégrée. Même appel, même
     // carte de positions, même geste de clic derrière : seule la figure qu'on projette change.
-    // ⚠️ PAS DE POIGNÉES SUR UNE CRÉATURE, ET C'EST DIT PLUTÔT QUE SUBI (#383).
-    // `jointsDepuisOsMappes` remplit une carte `{ nomDeGroupeDuPersonnage: os }` : elle n'a rien à
-    // mettre pour `hipFL`, qui n'est le groupe d'aucune articulation du Personnage. Les poignées
-    // d'une créature sont un chantier à part, et une carte à moitié vide dessinerait des points
-    // pris au hasard sur son squelette. Ses curseurs, eux, la pilotent entièrement.
-    const entree = editeurPoseUneCreature3D() ? null : objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+    //
+    // ⚠️ UNE CRÉATURE EN A MAINTENANT (#392b), ET LA RAISON DE S'EN PASSER A EXPIRÉ. Ce qui la
+    // bloquait était `jointsDepuisOsMappes` : elle remplit une carte indexée par GROUPE DU
+    // PERSONNAGE, et n'a rien à mettre pour `hipFL`. La réponse n'était pas de traduire les clés
+    // d'une créature vers un vocabulaire qui ne les contient pas, mais de laisser la figure
+    // apporter SA liste de poignées.
+    const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
     if (entree && entree.skeletonBones) {
       drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
-        personaEditorDragHint(), true, jointsDepuisOsMappes(entree.skeletonBones));
+        personaEditorDragHint(), true, editeurPoseUneCreature3D()
+          ? entreeDePoigneesDeCreature3D(entree.skeletonBones)
+          : jointsDepuisOsMappes(entree.skeletonBones));
     }
     return;
   }
@@ -873,6 +876,47 @@ export function drawPersonaEditor(){
 // la sienne, et les deux vues ne se marchent plus dessus.
 const personaEditorHandlePos = {};
 
+/**
+ * La figure d'une CRÉATURE, telle que la couche de dessin des poignées l'attend (#392b).
+ *
+ * Rend `{ joints, poignees }` : la carte des os à projeter, et la liste des points à poser. Les
+ * deux sont indexées par la MÊME clé, celle de la pose — un rôle (`hipFL`) ou un os (`os:Tail1`) —
+ * et c'est ce qui fait tout marcher sans une ligne de traduction : le clic rend cette clé, le
+ * panneau droit l'indexe déjà (registreGroupes, registreLignes), et le curseur qu'elle désigne
+ * écrit dans le brouillon sous cette même clé.
+ *
+ * ⚠️ `group` VAUT `id`, ET CE N'EST PAS UNE REDONDANCE À SIMPLIFIER. Chez le Personnage les deux
+ * diffèrent : une poignée nomme une articulation, son `group` nomme le pivot du rig qui la porte,
+ * et plusieurs poignées peuvent viser le même. Une créature n'a pas cette indirection, un os EST
+ * son propre pivot. Faire porter la valeur par les deux champs laisse la couche de dessin
+ * inchangée ; la supprimer d'un côté demanderait une branche là-bas.
+ *
+ * Fonction PURE vis-à-vis de Three : elle ne fait que réindexer ce que la récolte a déjà mesuré.
+ */
+export function entreeDePoigneesDeCreature3D(osMappes){
+  const joints = {};
+  const poignees = [];
+  Object.keys(osMappes || {}).forEach(cle => {
+    const os = (osMappes[cle] || {}).os;
+    if (!os) return;
+    joints[cle] = os;
+    poignees.push({ id: cle, group: cle });
+  });
+  // `osImportes` : la couche de dessin s'en sert pour ne PAS calculer d'extrémité de membre à partir
+  // d'un décalage exprimé en unités du rig intégré, qui ne veut rien dire sur un os en mètres.
+  return { joints, poignees, osImportes: true };
+}
+
+// Les poignées de la figure COURANTE, pour que le clic interroge la même liste que celle qui a
+// dessiné les points. Rend `null` quand ce sont les dix-huit du Personnage, que la couche de dessin
+// prend alors par défaut : renvoyer POSE_HANDLES ici en ferait une seconde source.
+function poigneesDeLEditeur3D(){
+  if (!editeurPoseUneCreature3D()) return null;
+  const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+  return (entree && entree.skeletonBones)
+    ? entreeDePoigneesDeCreature3D(entree.skeletonBones).poignees : null;
+}
+
 // Fix 51 : curseurs du panneau droit.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -912,13 +956,17 @@ export function buildPersonaEditorJointSlidersUI(){
   // squelette, qui divergent au premier ajustement — la panne la plus fréquente de ce dépôt, et
   // celle que `construireCurseursDeSquelette3D` existe pour empêcher.
   //
-  // Les registres de l'Éditeur ne sont PAS passés : ils indexent des articulations du Personnage,
-  // et servent au dialogue avec des poignées qu'une créature n'a pas encore.
+  // ⚠️ LES REGISTRES SONT PASSÉS DEPUIS #392b, ET LA RAISON DE NE PAS LE FAIRE A EXPIRÉ. Elle était :
+  // « ils indexent des articulations du Personnage, et servent au dialogue avec des poignées qu'une
+  // créature n'a pas encore ». Elle en a. Ils sont indexés par la clé de pose, exactement celle que
+  // porte chaque poignée (cf. entreeDePoigneesDeCreature3D), si bien que cliquer un point déplie
+  // son groupe et surligne ses trois lignes sans une ligne de code de plus.
   if (editeurPoseUneCreature3D()) {
     construireCurseursDeSquelette3D({
       conteneur: container, fichier: figureImporteeDeLEditeur(),
       poseCourante: () => (S.personaEditorDraft || (S.personaEditorDraft = {})),
       auChangement: () => { syncPersonaEditorActionButtons(); drawPersonaEditor(); },
+      registreGroupes: personaEditorGroupOf, registreLignes: personaEditorRowsOf,
     });
     return;
   }
@@ -992,6 +1040,14 @@ function syncPersonaEditorPanelToHandle(){
     if (d !== details && d.open) d.open = false;
   });
   if (details && !details.open) details.open = true;
+  // ⚠️ ET SES PARENTS AVEC LUI (#392b). Les groupes d'une créature sont EMBOÎTÉS là où une ancre
+  // porte plusieurs chaînes : le registre ne connaît que le bloc de la chaîne, jamais celui du
+  // groupe qui la contient. Ouvrir le premier sans le second n'ouvre rien de visible — les curseurs
+  // seraient bien dépliés, dans un bloc replié. Le Personnage n'a qu'un niveau, la boucle ne fait
+  // donc rien pour lui.
+  for (let p = details && details.parentElement; p; p = p.parentElement) {
+    if (p.tagName === 'DETAILS' && !p.open) p.open = true;
+  }
 }
 
 export function selectPersonaEditorHandle(id){
@@ -1418,7 +1474,7 @@ export function wirePersonaEditor(){
       }
       if (e.button !== 0) return;
       const { px, py } = editorCoords(e);
-      const def = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie());
+      const def = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie(), poigneesDeLEditeur3D());
       if (def) {
         focusPersonaEditorHandle(def.id);
         drawPersonaEditor();
@@ -1442,7 +1498,7 @@ export function wirePersonaEditor(){
       if (!S.personaEditorOpen || orbiting) return;
       if (jointDrag) { cnv.style.cursor = 'grabbing'; return; }
       const { px, py } = editorCoords(e);
-      cnv.style.cursor = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie())
+      cnv.style.cursor = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie(), poigneesDeLEditeur3D())
         ? 'pointer' : 'grab';
     });
     window.addEventListener('mousemove', (e) => {

@@ -876,7 +876,10 @@ describe('Fix 92 : le segment du membre est mémorisé, jamais reprojeté', () =
     // la refaire ; les tests ci-dessus ne verraient rien tant que personne ne s'en sert.
     assert.match(src, /export function personaLimbSegmentScreen3D\(handleId, positions\)/);
     assert.match(src, /export function pickLimbSegmentAt\(px, py, positions, radius/);
-    assert.match(src, /export function pickPoseHandleAt\(px, py, positions, radii\)/);
+    // `defs` s'ajoute en #392b, et il ne rouvre PAS la porte que ce test ferme : c'est une liste de
+    // descripteurs, pas un canevas, et rien dans le corps ne projette quoi que ce soit — ce que le
+    // test juste au-dessus vérifie, lui, sur le CORPS de la fonction.
+    assert.match(src, /export function pickPoseHandleAt\(px, py, positions, radii, defs\)/);
   });
 
   test('un bout non mémorisé rend le membre inerte, pas approximatif', () => {

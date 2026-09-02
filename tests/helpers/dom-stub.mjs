@@ -52,7 +52,12 @@ function makeFakeCanvasContext2D() {
   });
 }
 
-function makeFakeElement() {
+// ⚠️ LE PARENT ET LE NOM DE BALISE SONT TENUS DEPUIS #392b, et leur absence était le même piège que
+// celui décrit juste en dessous pour les enfants et les classes : `parentElement` valait null en dur
+// et `tagName` n'existait pas, si bien qu'une remontée d'ancêtres — « ouvrir le groupe qui contient
+// ce sous-groupe » — ne faisait RIEN sous Node. Un test l'aurait déclarée bonne sans jamais
+// l'exécuter. Ils disent maintenant la vérité, comme le reste de ce stub.
+function makeFakeElement(tagName) {
   // Les enfants sont RÉELLEMENT conservés. Un `appendChild` qui rend l'enfant sans le ranger nulle
   // part rendait indémontrable tout ce qui construit une liste : « une Scène par ligne » ne pouvait
   // s'affirmer que par lecture du source, c'est-à-dire pas du tout (le test aurait été satisfait par
@@ -97,15 +102,22 @@ function makeFakeElement() {
     clientHeight: 0,
     addEventListener(){},
     removeEventListener(){},
-    appendChild(child){ enfants.push(child); return child; },
+    tagName: String(tagName || 'DIV').toUpperCase(),
+    appendChild(child){
+      enfants.push(child);
+      if (child && typeof child === 'object') { child.parentElement = el; child.parentNode = el; }
+      return child;
+    },
     removeChild(child){
       const i = enfants.indexOf(child);
       if (i >= 0) enfants.splice(i, 1);
+      if (child && typeof child === 'object') { child.parentElement = null; child.parentNode = null; }
       return child;
     },
     insertBefore(child, avant){
       const i = enfants.indexOf(avant);
       enfants.splice(i >= 0 ? i : enfants.length, 0, child);
+      if (child && typeof child === 'object') { child.parentElement = el; child.parentNode = el; }
       return child;
     },
     setAttribute(){},
@@ -146,7 +158,7 @@ globalThis.document = {
     if (!_elementsParId.has(id)) _elementsParId.set(id, makeFakeElement());
     return _elementsParId.get(id);
   },
-  createElement(){ return makeFakeElement(); },
+  createElement(tag){ return makeFakeElement(tag); },
   // Nœud texte factice minimal (nodeType 3, comme un vrai Text), nécessaire pour i18n.js
   // (setLeadingText/setTrailingText appellent document.createTextNode au chargement/à l'usage).
   createTextNode(text){ return { nodeType: 3, textContent: text }; },
