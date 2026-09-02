@@ -982,9 +982,8 @@ canvas{
    Le nombre de classes est donc porté à trois pour que celle-ci l'emporte à son tour. */
 .skeleton-map-list .modal-section.collapsed,
 .skeleton-map-membres .modal-section.collapsed { padding: 6px 10px; }
-.skeleton-map-ancre { border: 1px solid var(--line); border-radius: 4px; margin-bottom: 6px; }
-.skeleton-map-ancre > summary { cursor: pointer; padding: 5px 8px; font-size: 12.5px;
-                                color: var(--sepia); background: var(--paper-dark); }
+/* `.skeleton-map-ancre` A ÉTÉ RETIRÉE : c'était le dernier `<details>` de cet écran, donc le dernier
+   bloc à ne ressembler à aucun autre. Le tronc est devenu une section comme les autres (#388). */
 .skeleton-map-membre { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
                        flex-wrap: wrap; }
 .skeleton-map-membre input[type=text] { flex: 1; min-width: 120px; font-size: 12.5px;
@@ -1004,8 +1003,12 @@ canvas{
 /* Morphologie : une ligne, en haut, avec sa liste déroulante et son étiquette d'origine.
    Fond distinct de la légende juste en dessous : la légende EXPLIQUE, cette ligne AGIT. Les
    confondre visuellement ferait manquer le seul réglage de l'écran qui commande tous les autres. */
+/* ⚠️ 10px HORIZONTAUX, COMME LE BANDEAU ET LES SECTIONS. Cette ligne était à 8px, seule de son
+   espèce : son contenu commençait donc 2px plus à gauche que tout ce qui l'entoure, et l'écart se
+   lisait comme un décalage sans être assez grand pour qu'on en devine la cause. Signalé à l'usage,
+   capture à l'appui. Toute ligne ajoutée à cet écran doit reprendre cette valeur. */
 .skeleton-map-morpho { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-                       padding: 6px 8px; background: var(--paper-dark); border-radius: 4px; }
+                       padding: 6px 10px; background: var(--paper-dark); border-radius: 4px; }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
 /* Le bandeau de reprise (#386, remis en forme en #387).
@@ -1062,6 +1065,16 @@ canvas{
    le milieu d'un paragraphe qui peut en compter trois. */
 .skeleton-map-legend-item { display: flex; align-items: baseline; gap: 5px; }
 .skeleton-map-legend-item .skeleton-map-origin { flex: 0 0 auto; }
+/* ⚠️ EN LIGNE, RIEN NE SE RÉTRÉCIT NI NE SE CASSE, ET C'EST CE QUI REND LA MESURE VRAIE. Une
+   première version laissait les légendes se comprimer : leur texte passait alors à la ligne DANS sa
+   colonne, la rangée tenait toujours dans la largeur disponible, et `scrollWidth` répondait
+   invariablement « ça tient » — trois légendes sur une ligne, chacune haute de deux lignes, c'est
+   à dire exactement ce que l'utilisateur avait demandé d'éviter, et que sa capture a montré.
+   Figées à leur largeur naturelle, elles débordent pour de bon, et la mesure décide. */
+.skeleton-map-legend:not(.empilee) .skeleton-map-legend-item { flex: 0 0 auto; white-space: nowrap; }
+/* Empilée, chaque légende a toute la largeur : son texte peut alors se casser sans rien fausser,
+   et il garde sa colonne grâce au flex ci-dessus. */
+.skeleton-map-legend.empilee .skeleton-map-legend-item { flex: 0 1 auto; white-space: normal; }
 /* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
    fichier, et la mêler aux légendes la ferait passer pour une catégorie de plus.
    ⚠️ `flex-basis: 100%` NE SUFFIT PLUS À LA SORTIR DE LA LIGNE : il ne fait rien sans `flex-wrap`,
@@ -1069,7 +1082,13 @@ canvas{
    sortie du conteneur ; la propriété reste ici pour les autres emplois de cette classe, qui vivent
    toujours dans un flex enveloppant. */
 .skeleton-map-legend-note { flex-basis: 100%; font-style: italic; opacity: .8; }
-#skeletonMapLegendNote { font-size: 11.5px; color: var(--sepia); margin: -6px 0 10px; }
+/* ⚠️ AUCUNE MARGE NÉGATIVE. J'avais remonté cette note de 6px pour la rapprocher des légendes
+   qu'elle suit, ce qui lui donnait 4px au-dessus contre 10px en dessous : elle paraissait collée à
+   ce qui précède et détachée de rien. Signalé à l'usage. Les 10px du dessus viennent de la marge
+   basse de la légende, avec laquelle une marge haute FUSIONNERAIT (les marges verticales adjacentes
+   prennent le maximum des deux, elles ne s'ajoutent pas) : les écrire des deux côtés serait donc
+   trompeur, et seule celle du bas est à dire ici. */
+#skeletonMapLegendNote { font-size: 11.5px; color: var(--sepia); margin: 0 0 10px; }
 /* ⚠️ CETTE CLASSE N'A JAMAIS PORTÉ SA TAILLE : elle l'héritait de `.skeleton-map-legend`, son seul
    parent jusqu'ici. Sortie de la légende pour vivre sous un titre de section, elle a hérité de la
    taille de base de la modale et s'est affichée bien trop grosse. Signalé à l'usage. La taille est

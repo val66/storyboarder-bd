@@ -4476,16 +4476,25 @@ function renderChainesSansRole(proposition, lignes, os){
   // LE TRONC RESTE LISTÉ, sans case ni champ. Il n'a rien à choisir, mais il porte des curseurs :
   // l'omettre laissait la liste de cet écran plus courte que celle des réglages, et c'est
   // précisément l'écart entre les deux écrans qui avait été signalé en #377.
-  const troncBloc = document.createElement('details');
-  troncBloc.className = 'skeleton-map-ancre';
-  const troncTete = document.createElement('summary');
-  troncTete.textContent = tr(`${lignes.tronc.nom} — ${lignes.tronc.segments.length} bones, always kept`,
-    `${lignes.tronc.nom} — ${lignes.tronc.segments.length} os, toujours retenue`);
-  troncBloc.appendChild(troncTete);
+  //
+  // ⚠️ IL ÉTAIT LE DERNIER `<details>` DE L'ÉCRAN, donc le dernier bloc à ne pas ressembler aux
+  // autres : exactement l'hétérogénéité que #388 vient de retirer partout ailleurs. Demandé à
+  // l'usage, et la question était juste. Il devient une section comme les autres.
+  //
+  // ⚠️ SON TITRE DIT « CHAÎNE DU TRONC » ET NON « TRONC », qui est déjà le nom d'un GROUPE DE RÔLES
+  // sur un humanoïde. Deux sections nommées pareil dans un même écran, l'une pilotant des menus et
+  // l'autre montrant un chemin d'os, se seraient disputé le regard sans qu'on sache laquelle
+  // répond à quoi. Le mot ajouté coûte moins que l'ambiguïté.
+  //
+  // REPLIÉE : il n'y a rien à y décider, seulement un chemin d'os à consulter si on doute.
+  const troncNom = tr(`Trunk chain — ${lignes.tronc.segments.length} bones, always kept`,
+    `Chaîne du tronc — ${lignes.tronc.segments.length} os, toujours retenue`);
+  const tronc = sectionRepliable3D(troncNom, false);
+  const troncBloc = tronc.section;
   const troncOs = document.createElement('div');
   troncOs.className = 'skeleton-map-chaine';
   troncOs.textContent = cheminDOs3D(lignes.tronc.segments, os);
-  troncBloc.appendChild(troncOs);
+  tronc.corps.appendChild(troncOs);
 
   if (!restantes.length) { zone.appendChild(troncBloc); return; }
 

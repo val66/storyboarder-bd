@@ -1309,18 +1309,32 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.equal(cheminDOs3D(null, null), '');
   });
 
-  test('le TRONC figure dans la liste, sans case ni champ', () => {
+  test('le TRONC figure dans la liste, sans case ni champ, comme une section (#388)', () => {
     // Les deux écrans doivent lister la même chose : le tronc porte des curseurs, il doit donc se
     // voir ici. Sans case ni champ, parce qu'il n'y a rien à y choisir.
     const debut = EV2.indexOf('function renderChainesSansRole');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
     assert.match(corps, /cheminDOs3D\(lignes\.tronc\.segments, os\)/, 'le tronc a perdu ses os');
-    assert.match(corps, /lignes\.tronc\.nom/);
+    // ⚠️ CE TEST EXIGEAIT `lignes.tronc.nom`, LE NOM PROPOSÉ DE LA CHAÎNE. Il était le dernier
+    // `<details>` de l'écran, donc le dernier bloc à ne ressembler à aucun autre : signalé à
+    // l'usage, il devient une section comme les autres.
+    //
+    // Son titre est désormais FIXE, « Chaîne du tronc », et non plus le nom de la chaîne. Ce nom
+    // valait déjà « Tronc » en français, c'est-à-dire celui d'un GROUPE DE RÔLES sur un humanoïde :
+    // deux sections homonymes dans un même écran, l'une pilotant des menus, l'autre montrant un
+    // chemin d'os. Le mot ajouté coûte moins que l'ambiguïté.
+    assert.match(corps, /sectionRepliable3D\(troncNom, false\)/,
+      'le tronc n\'est plus une section, ou s\'ouvre alors qu\'il n\'y a rien à y décider');
+    assert.match(corps, /Chaîne du tronc/, 'le titre ne distingue plus la chaîne du groupe de rôles');
     // La ligne du tronc ne doit PAS passer par `ligneMembre`, qui pose une case et un champ : les
     // cocher ou le renommer n'aboutirait nulle part, `normaliserMembres` ne gardant que des racines
     // de chaînes.
-    const bloc = corps.slice(corps.indexOf('troncBloc'), corps.indexOf('lignes.groupes.forEach'));
+    const bloc = corps.slice(corps.indexOf('troncNom'), corps.indexOf('lignes.groupes.forEach'));
     assert.doesNotMatch(bloc, /ligneMembre|checkbox/, 'le tronc a gagné une case ou un champ');
+    // Plus aucun `<details>` dans cet écran : c'est ce qui rend les blocs homogènes.
+    const ecran = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'), EV2.indexOf('function noterMembre'));
+    assert.doesNotMatch(ecran, /createElement\('details'\)/,
+      'un bloc repliable maison est revenu à côté des sections');
   });
 
   test('changer la morphologie ÉCHANGE les deux sections tout de suite', () => {
@@ -1474,6 +1488,60 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // La ligne de base, et non le centre : le mot de l'étiquette doit s'aligner sur la PREMIÈRE
     // ligne du texte, pas sur le milieu d'un paragraphe qui peut en compter trois.
     assert.match(regle, /align-items:\s*baseline/);
+  });
+
+  test('RÉGRESSION : en ligne, une légende ne se rétrécit ni ne se casse (#388)', () => {
+    // ⚠️ SANS CETTE GARDE, LA MESURE RÉPOND TOUJOURS « ÇA TIENT ». Une légende qui peut se
+    // comprimer casse son texte DANS sa colonne : la rangée reste alors dans la largeur
+    // disponible, `scrollWidth` n'excède jamais `clientWidth`, et l'écran affiche trois légendes
+    // sur une ligne, chacune haute de deux lignes — précisément ce qu'on voulait éviter.
+    // Constaté sur une capture, alors que le mécanisme de mesure était déjà en place et testé.
+    const i = CSS2.indexOf('.skeleton-map-legend:not(.empilee) .skeleton-map-legend-item');
+    assert.notEqual(i, -1, 'rien n\'empêche plus les légendes de se comprimer avant la mesure');
+    const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+    assert.match(regle, /flex:\s*0 0 auto/, 'une légende peut de nouveau se rétrécir');
+    assert.match(regle, /white-space:\s*nowrap/, 'une légende peut de nouveau casser son texte');
+    // Empilée, chaque légende a toute la largeur : son texte DOIT alors pouvoir se casser, sans
+    // quoi une explication longue déborderait de la modale.
+    const j = CSS2.indexOf('.skeleton-map-legend.empilee .skeleton-map-legend-item');
+    assert.notEqual(j, -1);
+    assert.match(CSS2.slice(j, CSS2.indexOf('}', j)), /white-space:\s*normal/);
+  });
+
+  test('#388 : les lignes de tête ont toutes le même retrait horizontal', () => {
+    // Signalé à l'usage, capture à l'appui : la ligne « Morphologie » était à 8px quand le bandeau
+    // et les sections sont à 10px. Deux pixels ne se devinent pas, ils se voient comme un décalage
+    // dont on ne trouve pas la cause. Le test compare les trois entre elles plutôt que d'épingler
+    // une valeur : il tiendra si vous voulez resserrer ou aérer l'ensemble.
+    const retrait = (selecteur) => {
+      const i = CSS2.indexOf(selecteur);
+      assert.notEqual(i, -1, `${selecteur} a disparu`);
+      const m = /padding:\s*[\d.]+px\s+([\d.]+)px/.exec(CSS2.slice(i, CSS2.indexOf('}', i)));
+      assert.ok(m, `${selecteur} : padding horizontal illisible`);
+      return Number(m[1]);
+    };
+    const bandeau = retrait('.skeleton-map-reprise {');
+    assert.equal(retrait('.skeleton-map-morpho {'), bandeau, 'la ligne Morphologie est décalée');
+    assert.equal(retrait('.skeleton-map-list .modal-section,'), bandeau, 'les sections sont décalées');
+  });
+
+  test('#388 : la note a autant d\'écart au-dessus qu\'en dessous', () => {
+    // Signalé à l'usage. Je l'avais remontée de 6px pour la rapprocher des légendes, ce qui lui
+    // donnait 4px au-dessus contre 10px en dessous. ⚠️ LES 10px DU HAUT VIENNENT DE LA MARGE BASSE
+    // DE LA LÉGENDE, avec laquelle une marge haute FUSIONNERAIT au lieu de s'ajouter : les écrire
+    // des deux côtés serait trompeur, et une marge NÉGATIVE est le seul moyen de casser l'équilibre.
+    const i = CSS2.indexOf('#skeletonMapLegendNote {');
+    const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+    // `px` FACULTATIF sur les deux premières valeurs : un zéro s'écrit sans unité, et l'exiger
+    // faisait échouer ce test sur une règle parfaitement correcte.
+    const m = /margin:\s*(-?[\d.]+)(?:px)?\s+[\d.]+(?:px)?\s+([\d.]+)px/.exec(regle);
+    assert.ok(m, `margin illisible dans « ${regle} »`);
+    assert.equal(Number(m[1]), 0, 'la note est de nouveau remontée par une marge négative');
+    const legende = CSS2.slice(CSS2.indexOf('.skeleton-map-legend {'));
+    const mb = /margin-bottom:\s*([\d.]+)px/.exec(legende.slice(0, legende.indexOf('}')));
+    assert.ok(mb, 'la légende n\'a plus de marge basse : l\'écart du haut n\'est plus garanti');
+    assert.equal(Number(m[2]), Number(mb[1]),
+      `${mb[1]}px au-dessus de la note, ${m[2]}px en dessous`);
   });
 
   test('#388 : la note des chaînes DIT sa taille au lieu de l\'hériter', () => {
