@@ -225,7 +225,22 @@ export function lireAngleDeg(pose, slot, axe){
  * l'Élément marqué comme posé à jamais.
  */
 export function ecrireAngleDeg(pose, slot, axe, deg){
-  const accepte = estClePoseOs3D(slot) || (SLOTS.includes(slot) && estPosable(slot));
+  // ⚠️ LES CLÉS DE RÔLE PASSENT AUSSI, ET LES AVOIR OUBLIÉES A COÛTÉ DEUX FOIS (#392b4). C'est la
+  // SECONDE occurrence exacte du défaut que `normaliserPose` porte trente lignes plus haut : cette
+  // garde ne connaissait que les clés `os:` et les dix-huit emplacements, si bien que tout angle
+  // écrit sous `hipFL`, `head` ou `tail0` était REFUSÉ EN SILENCE. Le curseur bougeait, le nombre
+  // changeait à l'écran, et le brouillon ne recevait rien : l'articulation restait au repos.
+  //
+  // Signalé à l'usage, et deux causes se cachaient l'une derrière l'autre. La première (#392b3)
+  // faisait écrire les curseurs sous une clé `os:` que la récolte ne connaissait pas ; la corriger
+  // les a fait écrire sous leur rôle, que cette garde-ci refusait. Même symptôme, deux fois : rien
+  // ne bouge. La leçon est que corriger la première n'aurait jamais pu se voir sans la seconde.
+  //
+  // Le rôle se vérifie par sa FORME, exactement comme dans `normaliserPose`, et pour les mêmes
+  // raisons : la liste des emplacements est fermée, un nom d'os ne se vérifie pas faute d'avoir le
+  // `.glb` sous la main, et un rôle se DÉCOMPOSE.
+  const accepte = estClePoseOs3D(slot) || !!decomposerRole3D(slot)
+    || (SLOTS.includes(slot) && estPosable(slot));
   if (!pose || !accepte || !POSE_AXES.includes(axe)) return pose;
   const rad = Number(deg) * Math.PI / 180;
   if (!Number.isFinite(rad) || Math.round(Number(deg)) === 0) {

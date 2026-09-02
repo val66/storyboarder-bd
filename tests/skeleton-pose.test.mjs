@@ -125,6 +125,57 @@ describe('lireAngleDeg / ecrireAngleDeg : ce qu\'un curseur lit et écrit', () =
     ecrireAngleDeg(pose, 'bras_g', 'w', 45);
     assert.deepEqual(pose, {});
   });
+
+  test('⚠️ #392b4 : UNE CLÉ DE RÔLE S\'ÉCRIT, et la refuser était SILENCIEUX', () => {
+    // ⚠️ SECONDE OCCURRENCE EXACTE DU DÉFAUT DE `normaliserPose`, dans le même fichier. Cette garde
+    // ne connaissait que les clés `os:` et les dix-huit emplacements : tout angle écrit sous
+    // `hipFL`, `head` ou `tail0` était refusé SANS UN MOT. Le curseur bougeait, le nombre changeait
+    // à l'écran, et le brouillon ne recevait rien — l'articulation restait au repos.
+    //
+    // Signalé à l'usage, après un premier correctif (#392b3) qui n'avait pas pu se voir : il faisait
+    // écrire les curseurs sous leur rôle, précisément ce que cette garde refusait. Deux causes l'une
+    // derrière l'autre, un seul symptôme.
+    const pose = {};
+    ['head', 'neck', 'hipFL', 'kneeBR', 'tail0', 'wingL'].forEach(role => {
+      ecrireAngleDeg(pose, role, 'x', 30);
+      assert.ok(pose[role], `« ${role} » est refusé : son curseur ne bougera rien`);
+      assert.equal(lireAngleDeg(pose, role, 'x'), 30);
+    });
+    // Et les TROIS axes, pas seulement x : c'est par le Y qu'un défaut d'écriture se voit le moins,
+    // aucune pose du Personnage n'en ayant.
+    ecrireAngleDeg(pose, 'hipFL', 'y', -15);
+    assert.equal(lireAngleDeg(pose, 'hipFL', 'y'), -15);
+    // La règle du zéro vaut pour un rôle comme pour le reste.
+    ecrireAngleDeg(pose, 'head', 'x', 0);
+    assert.equal(pose.head, undefined);
+  });
+
+  test('mais un identifiant qui n\'est pas un rôle reste refusé', () => {
+    // La garde n'est pas remplacée par « tout passe » : un rôle se DÉCOMPOSE, et ce qui ne se
+    // décompose pas n'entre pas. Sans cette moitié, la correction ci-dessus ouvrirait la porte à
+    // n'importe quelle chaîne, y compris une clé mal formée venue d'un vieux Projet.
+    const pose = {};
+    ['headband', 'jambe_gauche', 'os_Tail1', '', 'hipFZ'].forEach(cle => {
+      ecrireAngleDeg(pose, cle, 'x', 30);
+    });
+    assert.deepEqual(pose, {});
+  });
+
+  test('#392b4 : et l\'os TOURNE vraiment, de bout en bout', () => {
+    // ⚠️ CE QUI MANQUAIT VRAIMENT : les tests d'écriture s'arrêtaient au brouillon, ceux
+    // d'application partaient d'une pose écrite à la main. Entre les deux, personne ne vérifiait
+    // que ce qu'un curseur ÉCRIT est ce qu'`applySkeletonPose` LIT. C'est là que le défaut vivait.
+    const repos = [0, 0, 0, 1];
+    const osMappes = { hipFL: { os: { quaternion: { set(x, y, z, w){ Object.assign(this, { x, y, z, w }); } } }, repos } };
+    const pose = {};
+    ecrireAngleDeg(pose, 'hipFL', 'x', 40);
+    applySkeletonPose(osMappes, pose);
+    const q = osMappes.hipFL.os.quaternion;
+    assert.ok(Math.abs(q.x) > 0.1,
+      'la patte reste au repos alors que son curseur affiche 40° : l\'écriture n\'atteint pas l\'os');
+    assert.deepEqual(orientationFinale(repos, pose.hipFL).map(n => Number(n.toFixed(6))),
+      [q.x, q.y, q.z, q.w].map(n => Number(n.toFixed(6))));
+  });
 });
 
 describe('groupesPosables : un curseur qui ne pilote rien est un mensonge', () => {
