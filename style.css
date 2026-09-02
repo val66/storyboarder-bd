@@ -991,23 +991,26 @@ canvas{
  * lignes. Sa règle est meilleure : la couleur doit dire la NATURE du bandeau à quelqu'un qui le
  * découvre, pas préfigurer une conséquence qu'il ne connaît pas encore.
  *
- * LE TEXTE RESTE EN `--ink`, la couleur ordinaire : seul le fond porte la teinte. Un texte coloré
- * sur fond coloré doit être réglé deux fois, une par thème, et ma version violette était déjà trop
- * sombre sur fond sombre. Le liseré gauche suffit à distinguer le bandeau du reste.
+ * ⚠️ TOUT LE TEXTE EST EN `--ink`, y compris la phrase de gauche. Je l'avais mise en `--sepia`, le
+ * gris des libellés secondaires, par réflexe : sur le fond bleu, elle devenait illisible. Signalé à
+ * l'usage. Le contraste d'un gris est réglé pour le fond du papier, pas pour une teinte ; sur un
+ * fond coloré il faudrait le refaire une fois par thème, et la couleur ordinaire s'en dispense.
+ *
+ * PAS DE LISERÉ À GAUCHE. J'en avais mis un pour « distinguer le bandeau du reste » : le fond teinté
+ * le fait déjà, et un ornement qui ne dit rien de plus est du bruit. Retiré à la demande.
  *
  * `vide` plutôt qu'un `display:none` général — la classe dit qu'il n'y a rien à proposer, ce qui
  * est un état, là où retirer l'élément du HTML obligerait à le recréer. */
 .skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
                         padding: 6px 10px; border-radius: 4px; font-size: 12.5px;
-                        background: rgba(90,130,200,.14); color: var(--ink);
-                        border-left: 3px solid rgba(90,130,200,.7); }
+                        background: rgba(90,130,200,.14); color: var(--ink); }
 .skeleton-map-reprise.vide { display: none; }
 /* ⚠️ LE MENU EST L'ÉLÉMENT QUI DOIT ÊTRE LARGE, et c'est ce que la première version ratait : le
    bouton portait `.full-btn`, donc `width: 100%`, et il écrasait le menu jusqu'à le réduire à sa
    flèche. Signalé à l'usage, capture à l'appui. Les deux voisins sont donc figés à leur contenu, et
    le menu prend tout ce qui reste. */
 .skeleton-map-reprise select { flex: 1 1 auto; min-width: 0; }
-.skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; color: var(--sepia); }
+.skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; }
 .skeleton-map-reprise-btn {
   flex: 0 0 auto; width: auto; margin: 0; padding: 5px 14px;
   border: 1px solid var(--accent); background: var(--accent); color: #fff;
@@ -1076,8 +1079,17 @@ canvas{
 /* `margin-bottom: 0` n'est pas cosmétique : `.modal-box select` porte 14px de marge basse, faite
    pour des champs EMPILÉS. Dans une ligne flex, cette marge fait partie de la boîte : le champ
    paraissait collé en haut de son encadré alors que `align-items: center` centrait bien — il
-   centrait la boîte, marge comprise. Signalé à l'usage. */
-.skeleton-map-row select { flex: 1; min-width: 0; font-size: 12.5px; margin-bottom: 0; }
+   centrait la boîte, marge comprise. Signalé à l'usage.
+ *
+ * ⚠️ SIGNALÉ UNE SECONDE FOIS, sur le bandeau de reprise de #386 : « le menu déroulant n'est pas
+ * centré verticalement ». J'avais lu ce commentaire en écrivant la ligne d'à côté et j'ai quand
+ * même refait la faute. Une règle par ligne en flex est une énumération, et une énumération prend
+ * du retard à chaque ligne ajoutée : les TROIS lignes de cet écran partagent donc désormais la
+ * remise à zéro, et la quatrième n'aura qu'à s'ajouter ici. */
+.skeleton-map-row select,
+.skeleton-map-morpho select,
+.skeleton-map-reprise select { margin-bottom: 0; }
+.skeleton-map-row select { flex: 1; min-width: 0; font-size: 12.5px; }
 /* L'étiquette d'origine, et c'est la pièce maîtresse de cet écran. Une proposition « structure »
    signifie : le vocabulaire du fichier ne confirmait pas, j'ai suivi la forme du squelette. C'est
    exactement là que l'utilisateur doit regarder — d'où une teinte, pas seulement un mot. */

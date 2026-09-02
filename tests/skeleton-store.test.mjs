@@ -1672,6 +1672,24 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(CSS2, /\.skeleton-map-reprise-texte\s*\{[^}]*flex:\s*0 0 auto/);
   });
 
+  test('RÉGRESSION : TOUTE ligne en flex de cet écran remet la marge du select à zéro', () => {
+    // ⚠️ SIGNALÉ DEUX FOIS, À UN AN D'INTERVALLE DANS LE MÊME ÉCRAN. `.modal-box select` porte
+    // `margin-bottom: 14px`, faite pour des champs EMPILÉS ; dans une ligne en flex, cette marge
+    // fait partie de la boîte, donc `align-items: center` centre la boîte MARGE COMPRISE et le
+    // champ paraît remonté de 7 px. Corrigé pour `.skeleton-map-row`, puis refait à l'identique sur
+    // le bandeau de #386 — j'avais le commentaire sous les yeux en écrivant la ligne d'à côté.
+    //
+    // Le test énumère les conteneurs qui alignent un `<select>` en flex ; toute nouvelle ligne
+    // devra s'y ajouter, et c'est justement le rappel qui a manqué.
+    const enFlex = ['skeleton-map-row', 'skeleton-map-morpho', 'skeleton-map-reprise'];
+    enFlex.forEach(cls => {
+      assert.match(CSS2, new RegExp(`\\.${cls}[^{]*\\{[^}]*display:\\s*flex`),
+        `${cls} n'aligne plus en flex : ce test ne le surveille peut-être plus pour rien`);
+      assert.match(CSS2, new RegExp(`\\.${cls} select[,\\s][^{]*\\{[^}]*margin-bottom:\\s*0`),
+        `${cls} : le select garde ses 14px de marge basse et remonte dans sa ligne`);
+    });
+  });
+
   test('#387 : le bandeau est BLEU, la couleur d\'une information', () => {
     // Décision de l'utilisateur contre ma première version violette, qui rappelait l'étiquette
     // « repris » que le bouton allait poser : une couleur doit dire la NATURE de ce qu'on lit, pas
