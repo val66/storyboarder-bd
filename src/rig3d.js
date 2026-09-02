@@ -29,7 +29,10 @@ import { cloneSkinned } from './vendor/SkeletonUtils.js';
 import { bonesFromObject3D, inferSkeletonMap, archetypeSuggere3D } from './skeleton-map.js';
 import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3d.js';
 import { correspondanceEnregistreeSync, fusionner, morphologieEffective3D } from './skeleton-store.js';
-import { orientationFinale, groupesPosables, groupesPosablesMembres3D, clesARecolter3D } from './skeleton-pose.js';
+import {
+  orientationFinale, groupesPosables, groupesPosablesMembres3D, clesARecolter3D,
+  groupesPosablesEnPlus3D,
+} from './skeleton-pose.js';
 import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
 import { poseOsDepuisPosePersonnage } from './pose-bridge.js';
 
@@ -3560,10 +3563,24 @@ export function groupesDeCurseurs3D(nomFichier, traduire){
   const t = traduire || tr;
   const morphologie = morphologiePourModele(nomFichier);
   if (morphologie === 'humanoide') {
+    const carte = correspondancePourModele(nomFichier);
     return {
       morphologie,
-      groupes: groupesPosables(correspondancePourModele(nomFichier), t)
-        .map(g => ({ titre: g.titre, chaines: [{ titre: g.titre, os: g.slots.map(s => ({ cle: s.slot, label: s.label })) }] })),
+      groupes: [
+        ...groupesPosables(carte, t)
+          .map(g => ({ titre: g.titre, chaines: [{ titre: g.titre, os: g.slots.map(s => ({ cle: s.slot, label: s.label })) }] })),
+        // ⚠️ SES CHAÎNES VIENNENT ENSUITE (#389), et l'ordre est la décision. Les dix-huit
+        // emplacements portent les libellés humains, « Bras gauche », et rendent une pose portable
+        // d'un rig à l'autre : ce sont eux qu'on cherche en ouvrant la fiche. Les os en plus —
+        // doigts, torsions — sont un réglage fin, ils viennent après et se replient.
+        //
+        // Un humanoïde était la SEULE morphologie à ne pas pouvoir bouger tout son squelette,
+        // alors qu'une araignée le peut depuis #374. Mesuré, les os laissés de côté : mixamo +12,
+        // maison +44, vrm +93, unreal +439.
+        ...groupesPosablesEnPlus3D({
+          carte, os: osNeutresDuModele3D(nomFichier), membres: membresPourModele(nomFichier),
+        }, t),
+      ],
     };
   }
   return { morphologie, groupes: groupesPosablesMembres3D(osNeutresDuModele3D(nomFichier), membresPourModele(nomFichier), t) };

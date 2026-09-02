@@ -327,6 +327,39 @@ export function groupesPosablesMembres3D(os, membres, traduire){
 }
 
 /**
+ * Les os d'un humanoïde qu'aucun EMPLACEMENT ne couvre, groupés comme ceux d'une créature. PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI UN HUMANOÏDE A AUSSI DES CHAÎNES (#389)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Les dix-huit emplacements sont une liste FERMÉE, dessinée sur un corps humain : ni doigts, ni os
+ * de torsion, ni queue de cheval. ⚠️ MESURÉ, les os pilotables laissés de côté : mixamo +12,
+ * maison +44, vroid-alt +46, centaure1 +71, vrm +93, unreal +439. Un humanoïde était donc la seule
+ * morphologie à ne pas pouvoir bouger tout son squelette, alors qu'une araignée le pouvait depuis
+ * #374 — l'inverse de l'homogénéité que cet écran poursuit.
+ *
+ * ⚠️ LA PARTITION EST LA MÊME QUE POUR LES CRÉATURES, et pour la même raison : un os ne doit jamais
+ * être récolté sous deux clés. Ici, `bras_g` et `os:LeftArm` désignent le même os ; sans ce filtre,
+ * deux curseurs le piloteraient et s'annuleraient selon un ordre que personne ne contrôle.
+ *
+ * L'EMPLACEMENT GAGNE, jamais la chaîne. C'est lui qui porte le libellé humain, « Bras gauche »
+ * plutôt que « mixamorig:LeftArm », et c'est lui qui rend une pose portable d'un rig à l'autre.
+ */
+export function groupesPosablesEnPlus3D({ carte, os, membres } = {}, traduire){
+  const prisParEmplacement = new Set(
+    SLOTS.map(slot => ((carte || {})[slot] || {}).name).filter(n => typeof n === 'string' && n));
+  return groupesPosablesMembres3D(os, membres, traduire)
+    .map(g => ({
+      ...g,
+      chaines: g.chaines
+        .map(c => ({ ...c, os: c.os.filter(o => !prisParEmplacement.has(nomDOsDeCle3D(o.cle))) }))
+        .filter(c => c.os.length),
+    }))
+    .filter(g => g.chaines.length);
+}
+
+/**
  * Quels os récolter sur un modèle, et sous quelle clé. Fonction PURE.
  *
  * ⚠️ UN OS NE DOIT JAMAIS ÊTRE RÉCOLTÉ SOUS DEUX CLÉS, et c'est cette fonction qui le garantit.
@@ -383,9 +416,16 @@ export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {},
   // LE BASSIN EN FAIT PARTIE bien qu'il n'ait pas de curseur : `repereDuModeleImporte` a besoin de
   // sa POSITION pour orienter le corps. Récolter un os et lui donner un curseur sont deux questions
   // distinctes, et les confondre ferait disparaître le repère avec le curseur.
-  return SLOTS
+  const emplacements = SLOTS
     .map(slot => ({ cle: slot, nom: ((carte || {})[slot] || {}).name }))
     .filter(e => typeof e.nom === 'string' && e.nom);
+  // ET SES CHAÎNES EN PLUS (#389), exactement comme une créature. Les dix-huit emplacements restent
+  // en tête : ce sont eux la part PORTABLE d'une pose, celle qui atteint un autre rig humanoïde.
+  // Le reste — doigts, os de torsion, queue de cheval — ne vaut que pour ce fichier, ce qui est
+  // déjà le contrat d'une clé `os:`.
+  const enPlus = groupesPosablesEnPlus3D({ carte, os, membres }, traduire)
+    .flatMap(g => g.chaines.flatMap(c => c.os.map(o => ({ cle: o.cle, nom: nomDOsDeCle3D(o.cle) }))));
+  return [...emplacements, ...enPlus];
 }
 
 /** Combien d'emplacements sont pilotables : le chiffre que la fiche annonce avant de dérouler. */

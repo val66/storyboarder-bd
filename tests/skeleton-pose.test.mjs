@@ -41,8 +41,9 @@ import {
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
+  groupesPosablesEnPlus3D,
 } from '../src/skeleton-pose.js';
-import { SLOTS } from '../src/skeleton-map.js';
+import { SLOTS, inferSkeletonMap } from '../src/skeleton-map.js';
 import { morphologieEffective3D } from '../src/skeleton-store.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 
@@ -710,11 +711,69 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     assert.equal(cles.filter(e => e.nom === cible).length, 1, 'l\'os choisi est aussi récolté par sa chaîne');
   });
 
-  test('un humanoïde récolte ses EMPLACEMENTS, et aucune chaîne', () => {
+  test('un humanoïde récolte ses EMPLACEMENTS D\'ABORD, puis ses chaînes (#389)', () => {
+    // ⚠️ CE TEST EXIGEAIT « ET AUCUNE CHAÎNE ». Les dix-huit emplacements sont une liste FERMÉE,
+    // dessinée sur un corps humain : ni doigts, ni os de torsion. Mesuré, les os pilotables qu'ils
+    // laissaient de côté : mixamo +12, maison +44, vrm +93, unreal +439. Un humanoïde était donc la
+    // SEULE morphologie à ne pas pouvoir bouger tout son squelette, alors qu'une araignée le peut
+    // depuis #374 — l'inverse de l'homogénéité que cet écran poursuit.
+    //
+    // L'ORDRE EST LA DÉCISION : les emplacements en tête, parce qu'ils portent les libellés humains
+    // et la part PORTABLE d'une pose. Le reste ne vaut que pour ce fichier.
     const os = charger('mixamo');
     const cles = clesARecolter3D({ morphologie: 'humanoide', carte: CARTE, os, membres: [] }, fr);
-    assert.deepEqual(cles.map(e => e.cle), ['bassin', 'poitrine', 'bras_g', 'avantbras_g']);
-    assert.deepEqual(cles.map(e => e.nom), ['Hips', 'Chest', 'Left_arm', 'Left_elbow']);
+    assert.deepEqual(cles.slice(0, 4).map(e => e.cle), ['bassin', 'poitrine', 'bras_g', 'avantbras_g']);
+    assert.deepEqual(cles.slice(0, 4).map(e => e.nom), ['Hips', 'Chest', 'Left_arm', 'Left_elbow']);
+    assert.ok(cles.length > 4, 'un humanoïde ne récolte de nouveau que ses emplacements');
+    cles.slice(4).forEach(e => assert.ok(estClePoseOs3D(e.cle), `clé inattendue : ${e.cle}`));
+  });
+
+  test('#389 : une chaîne entièrement absorbée par les emplacements DISPARAÎT', () => {
+    // Sans ce filtre, elle resterait dans la liste sous forme de groupe vide : un titre repliable
+    // qui ne contient rien, et sur lequel on clique deux fois avant de comprendre.
+    //
+    // ⚠️ AUCUNE FIXTURE NE PRODUIT CE CAS, et c'est ce qui a fait échapper la mutation : mesuré,
+    // les six humanoïdes rendent 5 à 223 chaînes, zéro vide. Tous leurs rigs ont des orteils, donc
+    // leur chaîne de jambe déborde toujours des trois emplacements cuisse/jambe/pied. Le cas est
+    // pourtant réel — un rig sans orteils l'atteint — et la garde n'est donc pas morte, elle est
+    // hors de portée du corpus. On la met à portée en fabriquant la carte plutôt qu'un squelette.
+    const os = charger('mixamo');
+    const avant = groupesPosablesEnPlus3D({ carte: inferSkeletonMap(os), os, membres: [] }, fr);
+    // LA PLUS COURTE, parce qu'il n'y a que dix-huit emplacements à distribuer : la colonne d'un
+    // rig en compte davantage, et une carte qui n'en revendiquerait qu'une partie ne prouverait
+    // rien. Première version du test, et elle échouait sur du code juste.
+    const cible = avant.flatMap(g => g.chaines)
+      .filter(c => c.os.length <= SLOTS.length)
+      .sort((a, b) => a.os.length - b.os.length)[0];
+    assert.ok(cible && cible.os.length, 'plus aucune chaîne en plus : le test ne vérifie plus rien');
+
+    // ⚠️ ON ÉTEND LA VRAIE CARTE, ON NE LA REMPLACE PAS. Première version du test : une carte
+    // fabriquée de zéro libérait les seize autres emplacements, et toutes les chaînes s'allongeaient
+    // au lieu que la cible disparaisse. Le test échouait sur du code juste, pour la deuxième fois
+    // dans cette tâche.
+    const carte = { ...inferSkeletonMap(os) };
+    cible.os.forEach((o, i) => { carte[SLOTS[i]] = { bone: i, name: nomDOsDeCle3D(o.cle) }; });
+    const apres = groupesPosablesEnPlus3D({ carte, os, membres: [] }, fr);
+    const restantes = apres.flatMap(g => g.chaines);
+    // Ce qui compte n'est PAS qu'elle rétrécisse, c'est qu'elle ne soit plus là du tout : une
+    // chaîne à zéro os est un titre repliable qui ne contient rien.
+    assert.ok(!restantes.some(c => c.titre === cible.titre),
+      `« ${cible.titre} » figure encore dans la liste alors qu'elle n'a plus un seul os à piloter`);
+    restantes.forEach(c => assert.ok(c.os.length > 0, `chaîne vide : ${c.titre}`));
+    apres.forEach(g => assert.ok(g.chaines.length > 0, `groupe vide : ${g.titre}`));
+  });
+
+  test('RÉGRESSION : un os déjà tenu par un EMPLACEMENT n\'a pas de seconde clé (#389)', () => {
+    // `bras_g` et `os:Left_arm` désignent le même os. Sans la partition, deux curseurs le
+    // piloteraient et s'annuleraient selon un ordre que personne ne contrôle — la panne exacte que
+    // cette fonction existe pour empêcher, réintroduite par l'autre bout.
+    const os = charger('mixamo');
+    const cles = clesARecolter3D({ morphologie: 'humanoide', carte: CARTE, os, membres: [] }, fr);
+    const noms = cles.map(e => e.nom);
+    assert.equal(new Set(noms).size, noms.length, 'un os est récolté deux fois');
+    // L'EMPLACEMENT GAGNE, jamais la chaîne : c'est lui qui porte le libellé humain et la
+    // portabilité d'un rig à l'autre.
+    assert.equal(cles.find(e => e.nom === 'Left_arm').cle, 'bras_g');
   });
 
   test('le bassin est récolté bien qu\'il n\'ait pas de curseur', () => {
@@ -815,6 +874,21 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     assert.ok(acces > 0, 'rolesPourModele a disparu');
     assert.match(RIG.slice(acces, RIG.indexOf('\n}\n', acces)),
       /correspondanceEnregistreeSync\(nomFichier\)[\s\S]*enregistree\.roles/);
+  });
+
+  test('#389 : la FICHE d\'un humanoïde affiche aussi ses chaînes', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE, et c'est la moitié VISIBLE de la tâche : retirer cet
+    // appel laissait la récolte enrichie — donc la capacité de poser — sans aucun curseur pour
+    // s'en servir. Tout aurait marché, et rien n'aurait bougé à l'écran.
+    const RIG = lire('src/rig3d.js');
+    const debut = RIG.indexOf('export function groupesDeCurseurs3D');
+    assert.ok(debut > 0, 'groupesDeCurseurs3D a disparu');
+    const corps = RIG.slice(debut, RIG.indexOf('\n}\n', debut));
+    assert.match(corps, /groupesPosablesEnPlus3D\(\{/,
+      'un humanoïde redevient la seule morphologie à ne pas pouvoir bouger tout son squelette');
+    // L'ORDRE EST LA DÉCISION : les emplacements d'abord, ce sont eux qu'on vient chercher.
+    assert.ok(corps.indexOf('groupesPosables(carte, t)') < corps.indexOf('groupesPosablesEnPlus3D'),
+      'les os en plus passent devant les emplacements, qui portent les libellés humains');
   });
 
   test('#375b : le VOCABULAIRE DE POSE d\'une figure a un seul point de décision', () => {

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.78**
+**Version 1.4.79**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -58,6 +58,10 @@
   serpentin, d'après la forme du squelette et le nom des os. Corrigible d'une liste déroulante ;
   seuls serpentin, radial et arachnide sont sûrs, les autres portent « à confirmer », qui ne bloque
   rien
+- **Toutes les articulations, quelle que soit la morphologie** : un humanoïde montre ses dix-huit
+  emplacements PUIS ses autres chaînes — doigts, torsions, queue de cheval — comme une créature
+  montre les siennes. Mesuré, les os qu'il ne pouvait pas bouger avant : de 12 sur un rig Mixamo à
+  439 sur un rig Unreal
 - **Un seul écran pour toutes les morphologies** : le tableau de correspondance liste des membres
   et des rôles, quel que soit le modèle. Un humanoïde en a dix-huit, un quadrupède treize, un
   centaure dix-sept, et la présentation ne change pas

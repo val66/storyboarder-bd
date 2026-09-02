@@ -109,7 +109,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton gains a "Joint settings" section: three sliders per drivable bone. The bones at the head of the trunk have none: they carry every limb, and Orientation already turns the whole figure.',
-    'On a humanoid the sliders follow the eighteen slots. On any other morphology they follow the CHAINS ticked in the mapping table, under the names you gave them, folded by the bone they hang from: a cerberus\'s three heads each bend on their own.',
+    'A humanoid shows its eighteen slots, THEN its other chains: fingers, twists, ponytail. Other morphologies show the CHAINS ticked in the mapping table, under the names you gave them.',
     'Click a joint point on the preview to unfold its sliders, and the other way round. Axes are the bone\'s own, so which one bends an elbow depends on the file.',
     'The pose library applies to HUMANOIDS, from "Pose" in "Main characteristics", or from the pencil on the preview, which opens the Character editor. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable. A creature is not offered it: "sitting" means nothing for a spider.',
     'The "Model" field makes this Element wear another imported file: the pose is kept and recomputed, the slider tweaks are lost. It also names the file this Element comes from, and warns you if that file is missing.',
@@ -236,7 +236,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par os pilotable. Les os de tête de tronc n\'en ont pas, ils portent tous les membres et l\'Orientation fait déjà tourner la figure entière.',
-    'Sur un humanoïde, les curseurs suivent les dix-huit emplacements. Sur toute autre morphologie ils suivent les CHAÎNES cochées dans le tableau de correspondance, sous le nom que vous leur avez donné : les trois têtes d\'un cerbère se plient chacune de leur côté.',
+    'Un humanoïde montre ses dix-huit emplacements, PUIS ses autres chaînes : doigts, torsions, queue de cheval. Les autres morphologies montrent leurs CHAÎNES cochées dans le tableau de correspondance, sous le nom que vous leur avez donné.',
     'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. Les axes sont ceux de l\'os.',
     'La bibliothèque de poses s\'applique aux HUMANOÏDES, depuis « Position » dans « Caractéristiques principales », ou par le crayon de l\'aperçu, qui ouvre l\'Éditeur de Personnage. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables. Une créature ne se la voit pas proposer : « assis » n\'a pas de sens pour une araignée.',
     'Le champ « Modèle » fait porter un autre fichier à cet Élément : la pose est conservée et recalculée, les retouches des curseurs sont perdues. C\'est aussi lui qui nomme le fichier dont vient cet Élément, et qui vous prévient si ce fichier manque.',

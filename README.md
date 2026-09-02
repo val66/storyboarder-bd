@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.78**
+**Version 1.4.79**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -56,6 +56,9 @@
 - **Proposed morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or
   serpentine, from the skeleton's shape and its bone names. Correctable from a dropdown; only
   serpentine, radial and arachnid are certain, the others carry "to confirm", which blocks nothing
+- **Every joint, whatever the morphology**: a humanoid shows its eighteen slots THEN its other
+  chains — fingers, twists, ponytail — just as a creature shows its own. Measured, the bones it
+  could not move before: from 12 on a Mixamo rig to 439 on an Unreal one
 - **One screen for every morphology**: the mapping table lists limbs and roles whatever the model.
   A humanoid has eighteen, a quadruped thirteen, a centaur seventeen, and the layout does not change
 - **What is certain folds away**: a limb recognised by its bone names stays closed, an uncertain one
