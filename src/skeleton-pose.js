@@ -607,6 +607,31 @@ export function rolesParOs3D({ morphologie, carte, os, membres, roles } = {}, tr
   return parOs;
 }
 
+/**
+ * Les chaînes d'une figure, à plat, telles que le SURVOL les manipule (#392c). Fonction PURE.
+ *
+ * @param groupes la forme rendue par `groupesDeCurseurs3D`
+ * @return `[{ id, titre, cles }]`, `cles` dans l'ordre des os de la chaîne
+ *
+ * ⚠️ L'IDENTIFIANT EST LA PREMIÈRE CLÉ DE LA CHAÎNE, pas un compteur. Un indice se décalerait au
+ * premier changement de morphologie ou de membre coché, et le survol allumerait alors une autre
+ * chaîne que celle qu'on désigne. La première clé, elle, désigne un os : elle est stable tant que la
+ * chaîne existe, et elle disparaît avec elle.
+ *
+ * LE TITRE VIENT DE LA CHAÎNE, jamais du groupe : c'est celui que le panneau droit affiche, et les
+ * deux moitiés de l'écran doivent nommer la même chose de la même façon pour que le survol de l'une
+ * se comprenne dans l'autre.
+ */
+export function chainesAPlat3D(groupes){
+  const sortie = [];
+  (groupes || []).forEach(g => (g.chaines || []).forEach(c => {
+    const cles = (c.os || []).map(o => o.cle).filter(Boolean);
+    if (!cles.length) return;
+    sortie.push({ id: cles[0], titre: c.titre, cles });
+  }));
+  return sortie;
+}
+
 export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {}, traduire){
   if (morphologie !== 'humanoide') {
     // ═══════════════════════════════════════════════════════════════════════════════════════════

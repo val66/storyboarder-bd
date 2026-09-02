@@ -19,6 +19,7 @@
  * Hors de portée, comme partout : le rendu. On vérifie ce qui est écrit, pas ce qui est peint.
  */
 import './helpers/dom-stub.mjs';
+import { declencher } from './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -35,7 +36,7 @@ import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
-import { ecrireAngleDeg, groupesPosables, lireAngleDeg } from '../src/skeleton-pose.js';
+import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D } from '../src/skeleton-pose.js';
 import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
 import { JOINT_GROUPS } from '../src/constants.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
@@ -48,9 +49,10 @@ import {
   PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit, editeurPoseUneCreature3D,
   personaEditorHasChanges, showPersonaEditor, entreeDePoigneesDeCreature3D, focusPersonaEditorHandle,
   specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
-  syncPersonaEditorSliders,
+  syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
 } from '../src/persona-editor.js';
-import { projectPoseHandlePositions3D, pickPoseHandleAt } from '../src/draw.js';
+import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D }
+  from '../src/draw.js';
 import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D } from '../src/utils.js';
 import { tr } from '../src/state.js';
 import { setSkeletonBridge, lireCorrespondances, _viderCacheCorrespondances }
@@ -1621,7 +1623,10 @@ describe('#392b : les poignées d\'une créature', () => {
     const i = EDITEUR_SRC.indexOf('function drawPersonaEditor');
     assert.ok(i > 0, 'drawPersonaEditor a disparu');
     const corps = EDITEUR_SRC.slice(i, EDITEUR_SRC.indexOf('\n}\n', i));
-    assert.match(corps, /editeurPoseUneCreature3D\(\)\s*\n?\s*\?\s*entreeDePoigneesDeCreature3D/,
+    // L'ancre est le nom de la fonction, pas la forme de l'expression : depuis #392c la figure est
+    // enrichie de la chaîne survolée au passage, et épingler « ? entreeDePoignees… » collé au test
+    // aurait fait échouer ce test sur un changement qui ne le concerne pas.
+    assert.match(corps, /editeurPoseUneCreature3D\(\)[\s\S]{0,240}?entreeDePoigneesDeCreature3D\(entree\.skeletonBones\)/,
       'l\'Éditeur pose de nouveau les poignées d\'une créature avec le vocabulaire du Personnage');
     assert.match(corps, /:\s*jointsDepuisOsMappes\(entree\.skeletonBones\)/,
       'un humanoïde importé a perdu ses poignées');
@@ -1988,5 +1993,217 @@ describe('#392b3 : les curseurs du VRAI cerbère portent bien ses rôles', () =>
 
     setSkeletonBridge(null);
     _viderCacheCorrespondances();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392c — LE SURVOL ALLUME UNE CHAÎNE, DES DEUX CÔTÉS DE L'ÉCRAN
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Une créature porte de 45 à 103 articulations pilotables selon le fichier, contre dix-huit au
+// Personnage : toutes montrées en même temps, elles couvrent la figure. Le survol les révèle chaîne
+// par chaîne — et la chaîne est déjà l'unité de travail partout ailleurs, c'est ce que l'écran de
+// correspondance fait cocher et ce qu'une patte EST.
+//
+// ⚠️ LE SURVOL MONTRE, IL NE CHOISIT PAS. Seul le clic sur un point ouvre le panneau sur ses
+// curseurs : un survol qui déplierait des groupes ferait défiler le panneau au moindre passage de
+// souris, et on ne pourrait plus lire ce qu'on vient d'ouvrir.
+describe('#392c : la chaîne sous le curseur', () => {
+  const P = { a: { x: 0, y: 0 }, b: { x: 100, y: 0 }, c: { x: 100, y: 100 },
+    seul: { x: 300, y: 300 } };
+  const CHAINES = [
+    { id: 'a', titre: 'Patte', cles: ['a', 'b', 'c'] },
+    { id: 'seul', titre: 'Tête', cles: ['seul'] },
+  ];
+
+  test('les segments suivent l\'ordre des os', () => {
+    const s = segmentsDeChaine3D(['a', 'b', 'c'], P);
+    assert.equal(s.length, 2);
+    assert.deepEqual([s[0].p1, s[0].p2], [P.a, P.b]);
+  });
+
+  test('une position ABSENTE coupe la chaîne, elle ne la traverse pas', () => {
+    // `positions` porte `null` pour une poignée masquée. Relier ses voisines par-dessus tracerait
+    // un trait qui saute par-dessus une articulation qu'on ne voit pas, et le survol mordrait sur
+    // une bande qui ne correspond à rien à l'écran.
+    const s = segmentsDeChaine3D(['a', 'b', 'c'], { a: P.a, b: null, c: P.c });
+    assert.deepEqual(s, []);
+  });
+
+  test('le survol trouve la chaîne par ses SEGMENTS, pas seulement par ses points', () => {
+    // C'est tout l'intérêt : on vise la patte, pas un point de trois pixels.
+    assert.equal(pickChaineAt(50, 3, CHAINES, P).id, 'a', 'le milieu du segment ne mord pas');
+    assert.equal(pickChaineAt(50, 999, CHAINES, P), null, 'le survol mord à l\'infini');
+  });
+
+  test('⚠️ une chaîne d\'UN SEUL OS reste survolable', () => {
+    // Une tête, une ancre isolée : sans segment, elle serait la seule chaîne impossible à survoler,
+    // ce qui ne s'expliquerait pas depuis l'écran. Son point seul la représente.
+    assert.equal(pickChaineAt(302, 302, CHAINES, P).id, 'seul');
+  });
+
+  test('la PLUS PROCHE gagne, pas la première rencontrée', () => {
+    // Deux chaînes se croisent souvent à l'écran — les pattes d'une araignée vue de face. Prendre
+    // la première ferait dépendre le résultat de l'ordre de construction, que personne ne contrôle.
+    const croisees = [
+      { id: 'loin', cles: ['l1', 'l2'] },
+      { id: 'pres', cles: ['p1', 'p2'] },
+    ];
+    // ⚠️ LES DEUX DOIVENT ÊTRE DANS LE RAYON, sans quoi le test ne compare rien : première version
+    // écrite avec la chaîne lointaine à 20 px, hors du rayon de 11, si bien qu'elle était écartée
+    // d'office. La mutation « la première rencontrée gagne » y SURVIVAIT, faute de concurrence.
+    const pos = { l1: { x: 0, y: 8 }, l2: { x: 100, y: 8 }, p1: { x: 0, y: 2 }, p2: { x: 100, y: 2 } };
+    assert.equal(pickChaineAt(50, 0, croisees, pos).id, 'pres');
+    // Et l'inverse, pour que l'ordre de la liste ne soit pour rien dans le résultat.
+    assert.equal(pickChaineAt(50, 10, croisees, pos).id, 'loin');
+  });
+
+  test('chainesAPlat3D : l\'identifiant est le PREMIER OS, jamais un compteur', () => {
+    // Un indice se décalerait au premier changement de morphologie ou de membre coché, et le survol
+    // allumerait alors une autre chaîne que celle qu'on désigne.
+    const plat = chainesAPlat3D([
+      { titre: 'Ancre', chaines: [
+        { titre: 'Patte L', os: [{ cle: 'hipFL' }, { cle: 'kneeFL' }] },
+        { titre: 'Patte R', os: [{ cle: 'hipFR' }] },
+      ] },
+      { titre: 'Vide', chaines: [{ titre: 'Rien', os: [] }] },
+    ]);
+    assert.deepEqual(plat.map(c => c.id), ['hipFL', 'hipFR']);
+    assert.deepEqual(plat[0].cles, ['hipFL', 'kneeFL']);
+    assert.equal(plat[0].titre, 'Patte L', 'le titre doit être celui que le panneau droit affiche');
+  });
+});
+
+describe('#392c : ce que le survol change à l\'écran', () => {
+  const os = (nom) => { const b = new THREE.Bone(); b.name = nom; return b; };
+
+  test('seules les poignées de la chaîne survolée sont dessinées ET attrapables', () => {
+    // ⚠️ UNE SEULE RÈGLE POUR LES DEUX : `positions` est la carte que consulte le test de clic. Ne
+    // pas y inscrire une poignée la rend invisible ET inerte. Un point qu'on voit et qui ne répond
+    // pas, ou l'inverse, est exactement ce que cette unicité évite.
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 0, 5); camera.updateMatrixWorld(true);
+    const racine = new THREE.Group();
+    const bones = {};
+    ['hipFL', 'kneeFL', 'tail0'].forEach((cle, i) => {
+      bones[cle] = os(cle); bones[cle].position.set(i * 0.2, 0.5, 0); racine.add(bones[cle]);
+    });
+    racine.updateMatrixWorld(true);
+    const figure = entreeDePoigneesDeCreature3D({
+      hipFL: { os: bones.hipFL }, kneeFL: { os: bones.kneeFL }, tail0: { os: bones.tail0 },
+    });
+
+    const toutes = {};
+    projectPoseHandlePositions3D(figure, camera, 400, 300, null, false, toutes);
+    assert.equal(Object.values(toutes).filter(Boolean).length, 3, 'préalable : trois points sans survol');
+
+    const survol = {};
+    figure.chaineSurvolee = ['hipFL', 'kneeFL'];
+    const points = projectPoseHandlePositions3D(figure, camera, 400, 300, null, false, survol);
+    assert.deepEqual(points.map(p => p.def.id).sort(), ['hipFL', 'kneeFL']);
+    assert.equal(survol.tail0, null,
+      'une poignée hors de la chaîne survolée reste dessinée, ou pire, attrapable sans être visible');
+  });
+
+  test('⚠️ mais la SÉLECTION survit au survol d\'une autre chaîne', () => {
+    // Pendant un glisser, la souris balaie forcément d'autres chaînes. Laisser le survol reprendre
+    // la main ferait disparaître la poignée qu'on est en train de tirer, en plein geste.
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 0, 5); camera.updateMatrixWorld(true);
+    const racine = new THREE.Group();
+    const a = os('tail0'); a.position.set(0, 0.5, 0);
+    const b = os('hipFL'); b.position.set(0.3, 0.5, 0);
+    racine.add(a); racine.add(b); racine.updateMatrixWorld(true);
+    const figure = entreeDePoigneesDeCreature3D({ tail0: { os: a }, hipFL: { os: b } });
+    figure.chaineSurvolee = ['hipFL'];
+
+    const positions = {};
+    const points = projectPoseHandlePositions3D(figure, camera, 400, 300, 'tail0', false, positions);
+    assert.deepEqual(points.map(p => p.def.id).sort(), ['hipFL', 'tail0'],
+      'la poignée sélectionnée disparaît dès qu\'on survole une autre chaîne');
+  });
+});
+
+describe('#392c : survoler le TITRE d\'une chaîne l\'allume sur l\'aperçu', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  // Les <summary> du panneau, avec leur texte : c'est sur eux que la souris passe.
+  const titres = (el, out = []) => {
+    (el.children || []).forEach(c => {
+      if (c.tagName === 'SUMMARY') out.push(c);
+      titres(c, out);
+    });
+    return out;
+  };
+
+  test('mouseenter allume, mouseleave éteint, et rien ne se déplie', () => {
+    // ⚠️ TESTABLE SEULEMENT DEPUIS QUE LE STUB RETIENT LES ÉCOUTEURS (#392c) : un `addEventListener`
+    // en no-op ne permettait d'affirmer que l'existence de la ligne, jamais qu'elle fait quelque
+    // chose. Le stub le documentait déjà pour les enfants, les classes et le parent ; c'était le
+    // même piège, une fois de plus.
+    _setModelCacheEntry('creature-survol.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-survol.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.equal(S.personaEditorHoverChain, null, 'préalable : rien n\'est survolé à l\'ouverture');
+
+    const conteneur = document.getElementById('personaEditorJointsContainer');
+    const cibles = titres(conteneur);
+    assert.ok(cibles.length > 0, 'préalable : le panneau porte bien des titres de groupe');
+
+    // Un titre de CHAÎNE porte le survol ; un titre d'ancre, qui en contient plusieurs, n'en
+    // désigne aucune et n'en reçoit pas.
+    // ⚠️ ON JUGE SUR L'ÉTAT, PAS SUR LE NOMBRE D'ÉCOUTEURS APPELÉS. Le rappel de survol redessine,
+    // et le dessin passe par WebGL : il lève, donc `declencher` ne rend jamais son compte. Première
+    // version de ce test écrite ainsi, et elle échouait en annonçant « le survol n'est pas câblé »
+    // alors qu'il l'était parfaitement. Ce que l'on veut savoir est de toute façon « la chaîne
+    // s'est-elle allumée ? », pas « combien de fonctions ont été appelées ».
+    const survoler = (t, type) => { sansDessiner(() => declencher(t, type)); };
+    const avecSurvol = cibles.filter(t => {
+      S.personaEditorHoverChain = null;
+      survoler(t, 'mouseenter');
+      return !!S.personaEditorHoverChain;
+    });
+    assert.ok(avecSurvol.length > 0, 'aucun titre n\'allume de chaîne : le survol n\'est pas câblé');
+    // Et un titre d'ANCRE, qui contient plusieurs chaînes, n'en désigne aucune : il n'allume rien.
+    assert.ok(avecSurvol.length < cibles.length,
+      'tous les titres allument une chaîne, y compris ceux qui en contiennent plusieurs');
+    survoler(avecSurvol[0], 'mouseenter');
+    assert.ok(S.personaEditorHoverChain, 'survoler un titre n\'allume aucune chaîne');
+    const allumee = S.personaEditorHoverChain;
+    assert.ok(clesSurvoleesDeLEditeur3D().includes(allumee),
+      'la chaîne allumée ne contient pas la clé qui la nomme');
+
+    // ⚠️ LE SURVOL NE DÉPLIE RIEN. Un panneau qui s'ouvre au passage de la souris se réorganiserait
+    // sous les yeux pendant qu'on cherche une ligne à lire.
+    const ouverts = [];
+    const compter = (el) => (el.children || []).forEach(c => {
+      if (c.tagName === 'DETAILS' && c.open) ouverts.push(c);
+      compter(c);
+    });
+    compter(conteneur);
+    assert.deepEqual(ouverts, [], 'le survol a déplié un groupe');
+
+    survoler(avecSurvol[0], 'mouseleave');
+    assert.equal(S.personaEditorHoverChain, null, 'quitter le titre laisse la chaîne allumée');
+    assert.equal(clesSurvoleesDeLEditeur3D(), null);
+    hidePersonaEditor();
+  });
+
+  test('survoler la même chaîne deux fois ne redessine pas', () => {
+    // Un mousemove arrive à chaque pixel parcouru : relancer le rendu 3D à chacun ferait tourner
+    // WebGL en continu pour une image identique. C'est ce que dit la valeur de retour.
+    S.personaEditorHoverChain = null;
+    assert.equal(survolerChaineDeLEditeur3D('hipFL'), true);
+    assert.equal(survolerChaineDeLEditeur3D('hipFL'), false, 'le même survol redessine encore');
+    assert.equal(survolerChaineDeLEditeur3D(null), true);
+    assert.equal(survolerChaineDeLEditeur3D(null), false);
   });
 });

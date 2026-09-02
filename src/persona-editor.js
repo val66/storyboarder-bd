@@ -31,14 +31,15 @@ import {
 import {
   applyStyleCanvasFilter3D, cloneJoints, figuresDeLaBibliotheque3D,
   getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
+  groupesDeCurseurs3D,
   resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
-import { memesAngles3D, lireAngleDeg, ecrireAngleDeg } from './skeleton-pose.js';
+import { memesAngles3D, lireAngleDeg, ecrireAngleDeg, chainesAPlat3D } from './skeleton-pose.js';
 import { axeLocalVersMonde } from './skeleton-retarget.js';
 import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
-import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
+import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt, pickChaineAt } from './draw.js';
 import {
   buildSkeletonJointSlidersUI, makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
   refreshPersonaPreview, syncJointSlidersFromDraft, construireCurseursDeSquelette3D,
@@ -832,7 +833,10 @@ export function drawPersonaEditor(){
     if (entree && entree.skeletonBones) {
       drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
         personaEditorDragHint(), true, editeurPoseUneCreature3D()
-          ? entreeDePoigneesDeCreature3D(entree.skeletonBones)
+          // La chaîne survolée voyage AVEC la figure, et non dans un paramètre de plus : c'est une
+          // propriété de ce qu'on dessine, au même titre que la liste des poignées (#392c).
+          ? Object.assign(entreeDePoigneesDeCreature3D(entree.skeletonBones),
+            { chaineSurvolee: clesSurvoleesDeLEditeur3D() })
           : jointsDepuisOsMappes(entree.skeletonBones));
     }
     return;
@@ -918,6 +922,55 @@ function poigneesDeLEditeur3D(){
     ? entreeDePoigneesDeCreature3D(entree.skeletonBones).poignees : null;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// SURVOLER UNE CHAÎNE (#392c)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Une créature porte de 45 à 103 articulations pilotables selon le fichier, contre dix-huit au
+// Personnage : toutes montrées en même temps, elles couvrent la figure. Le survol les révèle CHAÎNE
+// PAR CHAÎNE, et la chaîne est déjà l'unité de travail partout ailleurs — ce que l'écran de
+// correspondance fait cocher, ce que le panneau droit replie, ce qu'une patte EST.
+//
+// ⚠️ LE SURVOL MONTRE, IL NE CHOISIT PAS. Seul le clic sur un point ouvre le panneau sur ses
+// curseurs. Un survol qui déplierait des groupes ferait défiler le panneau au moindre passage de
+// souris, et on ne pourrait plus lire ce qu'on vient d'ouvrir.
+
+/** Les chaînes de la figure affichée, ou `[]`. Même source que les curseurs, jamais une seconde. */
+export function chainesDeLEditeur3D(){
+  const fichier = figureImporteeDeLEditeur();
+  if (!fichier || !editeurPoseUneCreature3D()) return [];
+  return chainesAPlat3D(groupesDeCurseurs3D(fichier, tr).groupes);
+}
+
+/**
+ * Retient la chaîne survolée. Rend `true` si elle a CHANGÉ, ce que l'appelant lit pour ne redessiner
+ * qu'alors : un mousemove arrive à chaque pixel parcouru, et redessiner la figure à chacun ferait
+ * tourner le rendu 3D en continu pour une image identique.
+ *
+ * Séparée du dessin pour la même raison que tout le reste de ce fichier : « quelle chaîne est sous
+ * la souris » est une décision, et elle doit rester vérifiable sans WebGL.
+ */
+export function survolerChaineDeLEditeur3D(id){
+  const suivant = id || null;
+  if (S.personaEditorHoverChain === suivant) return false;
+  S.personaEditorHoverChain = suivant;
+  return true;
+}
+
+/**
+ * Les clés à montrer, ou `null` pour « toutes ». C'est ce que la couche de dessin reçoit.
+ *
+ * ⚠️ RIEN N'EST RESTREINT SANS SURVOL, et c'est un choix, pas un oubli : une figure sans aucun point
+ * n'inviterait à rien, et le premier geste — promener la souris dessus — n'aurait aucune raison
+ * d'être tenté. On montre donc tout tant qu'on ne survole rien, et le survol RÉDUIT.
+ */
+export function clesSurvoleesDeLEditeur3D(){
+  const id = S.personaEditorHoverChain;
+  if (!id) return null;
+  const chaine = chainesDeLEditeur3D().find(c => c.id === id);
+  return chaine ? chaine.cles : null;
+}
+
 // Fix 51 : curseurs du panneau droit.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -974,6 +1027,9 @@ export function buildPersonaEditorJointSlidersUI(){
       auChangement: () => { syncPersonaEditorActionButtons(); drawPersonaEditor(); },
       registreGroupes: personaEditorGroupOf, registreLignes: personaEditorRowsOf,
       registreRefs: personaEditorCreatureRefs,
+      // Le second sens du dialogue (#392c) : survoler le titre d'une chaîne l'allume sur
+      // l'aperçu. Il ne DÉPLIE rien — seul le clic sur un point ouvre les curseurs.
+      auSurvolDeChaine: (id) => { if (survolerChaineDeLEditeur3D(id)) drawPersonaEditor(); },
     });
     return;
   }
@@ -1577,8 +1633,27 @@ export function wirePersonaEditor(){
       if (!S.personaEditorOpen || orbiting) return;
       if (jointDrag) { cnv.style.cursor = 'grabbing'; return; }
       const { px, py } = editorCoords(e);
-      cnv.style.cursor = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie(), poigneesDeLEditeur3D())
-        ? 'pointer' : 'grab';
+      const surUnPoint = pickPoseHandleAt(px, py, personaEditorHandlePos, rayonSaisie(),
+        poigneesDeLEditeur3D());
+      cnv.style.cursor = surUnPoint ? 'pointer' : 'grab';
+      // ⚠️ LE SURVOL SE LIT SUR LA FIGURE, pas seulement dans le menu de droite (#392c). On promène
+      // la souris sur la créature, la chaîne dessous s'allume et ses points apparaissent.
+      //
+      // UN POINT L'EMPORTE SUR SA CHAÎNE : si le curseur est déjà sur une poignée, c'est elle qu'on
+      // vise, et laisser le survol changer de chaîne à ce moment-là ferait disparaître le point sous
+      // le curseur juste avant qu'on ne clique.
+      const chaine = surUnPoint ? null
+        : pickChaineAt(px, py, chainesDeLEditeur3D(), personaEditorHandlePos);
+      // Redessiner SEULEMENT si la chaîne a changé : un mousemove arrive à chaque pixel parcouru, et
+      // relancer le rendu 3D à chacun ferait tourner WebGL en continu pour une image identique.
+      if (survolerChaineDeLEditeur3D(chaine ? chaine.id : (surUnPoint ? S.personaEditorHoverChain : null))) {
+        drawPersonaEditor();
+      }
+    });
+    // Sortir du canevas éteint la chaîne : sans cela elle resterait allumée pendant qu'on travaille
+    // dans le panneau de droite, en désignant une chaîne que la souris a quittée depuis longtemps.
+    cnv.addEventListener('mouseleave', () => {
+      if (S.personaEditorOpen && survolerChaineDeLEditeur3D(null)) drawPersonaEditor();
     });
     window.addEventListener('mousemove', (e) => {
       // Fix 71 (ESSAI) : sur window et non sur le canevas : sortir du cadre en cours de geste ne

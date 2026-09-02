@@ -741,6 +741,7 @@ function clesDuGroupe3D(details){
 // à chaque image, et rebâtir des dizaines d'éléments par image refermerait en plus le groupe ouvert.
 export function construireCurseursDeSquelette3D({
   conteneur, fichier, poseCourante, auChangement, registreGroupes, registreLignes, registreRefs,
+  auSurvolDeChaine,
 } = {}){
   if (!conteneur || !fichier) return 0;
   const { groupes } = groupesDeCurseurs3D(fichier, tr);
@@ -765,11 +766,32 @@ export function construireCurseursDeSquelette3D({
   // doit rester exactement tel qu'avant ; une créature n'en a deux que là où l'ancre porte plusieurs
   // chaînes. « Ancre Bone006 » contenant un unique « droite, 1 os » aurait fait deux clics pour
   // atteindre trois curseurs, et un titre qui ne dit rien de plus que celui du dessus.
+  // Le survol du TITRE d'une chaîne allume la même chaîne sur l'aperçu (#392c). Le second sens du
+  // dialogue : promener la souris sur la liste, et voir sur la figure de quoi on parle. Posé ici et
+  // non dans `ajouterGroupeDeCurseurs3D`, parce que seul cet endroit sait quelle CHAÎNE un bloc
+  // représente — le groupe d'ancre, lui, en contient plusieurs et n'en désigne aucune.
+  //
+  // `auSurvolDeChaine` est optionnel : la fiche ne le passe pas, et rien n'y change.
+  const brancherSurvol = (bloc, chaine) => {
+    if (!auSurvolDeChaine) return;
+    const cles = (chaine.os || []).map(o => o.cle).filter(Boolean);
+    if (!cles.length) return;
+    const titre = bloc.children && bloc.children[0];
+    if (!titre || !titre.addEventListener) return;
+    titre.addEventListener('mouseenter', () => auSurvolDeChaine(cles[0]));
+    titre.addEventListener('mouseleave', () => auSurvolDeChaine(null));
+  };
   groupes.forEach(groupe => {
     const bloc = ajouterGroupeDeCurseurs3D(conteneur, groupe.titre);
-    if (groupe.chaines.length === 1) { remplir(bloc, groupe.chaines[0].os); return; }
+    if (groupe.chaines.length === 1) {
+      brancherSurvol(bloc, groupe.chaines[0]);
+      remplir(bloc, groupe.chaines[0].os);
+      return;
+    }
     groupe.chaines.forEach(chaine => {
-      remplir(ajouterGroupeDeCurseurs3D(bloc, chaine.titre), chaine.os);
+      const sousBloc = ajouterGroupeDeCurseurs3D(bloc, chaine.titre);
+      brancherSurvol(sousBloc, chaine);
+      remplir(sousBloc, chaine.os);
     });
   });
   return groupes.length;

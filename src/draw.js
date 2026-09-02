@@ -1783,11 +1783,21 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
   // La constante reste le défaut : le Personnage et un humanoïde importé ne fournissent pas de
   // liste, et rien ne change pour eux.
   const defs = (entry && entry.poignees) || POSE_HANDLES;
+  // ⚠️ LE SURVOL RESTREINT CE QUI EST VISIBLE, ET C'EST LA MÊME LIGNE QUI DÉCIDE DE L'INERTIE (#392c).
+  // `positions` est la carte que consultent les tests de clic : ne pas y inscrire une poignée la
+  // rend invisible ET inattrapable, sans second mécanisme à tenir en accord avec le premier. Un
+  // point qu'on voit et qui ne répond pas, ou l'inverse, est le défaut que cette règle unique évite.
+  //
+  // Une chaîne survolée l'emporte sur « tout montrer », jamais sur la SÉLECTION : pendant un
+  // glisser, la souris balaie forcément d'autres chaînes, et laisser le survol reprendre la main
+  // ferait disparaître la poignée qu'on est en train de tirer.
+  const survolee = (entry && entry.chaineSurvolee) || null;
   defs.forEach(def => {
     const grp = entry && entry.joints && entry.joints[def.group];
     if (!grp) return;
     const active = selectedId === def.id;
-    if (solo && !active) {
+    const masqueParSurvol = !!survolee && !active && !survolee.includes(def.id);
+    if ((solo && !active) || masqueParSurvol) {
       // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
       // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
       positions[def.id] = null;
@@ -1866,6 +1876,23 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     drawPersonaPickZone(hctx, positions[selectedId],
       personaLimbSegmentScreen3D(selectedId, positions), posePickRadii3D(true));
   }
+  // La chaîne survolée en LÉGÈRE surbrillance, sous les poignées (#392c) : elle situe la chaîne sur
+  // la figure, elle ne la remplace pas. Tracée avant les points pour la même raison que la zone de
+  // prise juste au-dessus — un fond peint après recouvrirait ce qu'il doit accompagner.
+  if (entry && entry.chaineSurvolee) {
+    hctx.save();
+    hctx.strokeStyle = '#3AA0FF';
+    hctx.globalAlpha = 0.35;
+    hctx.lineWidth = 7;
+    hctx.lineCap = 'round';
+    segmentsDeChaine3D(entry.chaineSurvolee, positions).forEach(s => {
+      hctx.beginPath();
+      hctx.moveTo(s.p1.x, s.p1.y);
+      hctx.lineTo(s.p2.x, s.p2.y);
+      hctx.stroke();
+    });
+    hctx.restore();
+  }
   points.forEach(({ pt, active }) => {
     hctx.beginPath();
     // Enlarged points (per user request) to be easier to grab with the mouse;
@@ -1943,6 +1970,65 @@ export function personaLimbSegmentScreen3D(handleId, positions){
   const p1 = (positions || personaHandleScreenPos)[seg.id];
   if (!p1 || !p1.tip) return null;
   return { def, p1, p2: p1.tip };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// SURVOLER UNE CHAÎNE (#392c)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Une créature porte de 45 à 103 articulations pilotables (mesuré sur les huit fixtures), contre
+// dix-huit au Personnage. Les montrer toutes en même temps couvre la figure de points ; les montrer
+// CHAÎNE PAR CHAÎNE, au survol, rend l'araignée maniable sans rien enlever.
+//
+// La chaîne est déjà l'unité de travail partout ailleurs — c'est ce que l'écran de correspondance
+// fait cocher, ce que le panneau droit replie, et ce qu'une patte EST. Rien de neuf à apprendre.
+
+/**
+ * Les segments d'une chaîne à l'écran, dans l'ordre de ses os. Fonction PURE.
+ *
+ * Une position ABSENTE coupe la chaîne au lieu de la traverser : `positions` porte `null` pour une
+ * poignée masquée (cf. la passe de projection), et relier ses voisines par-dessus dessinerait un
+ * trait qui saute par-dessus une articulation qu'on ne voit pas.
+ */
+export function segmentsDeChaine3D(cles, positions){
+  const pos = positions || personaHandleScreenPos;
+  const segments = [];
+  for (let i = 1; i < (cles || []).length; i++) {
+    const a = pos[cles[i - 1]], b = pos[cles[i]];
+    if (a && b) segments.push({ p1: a, p2: b });
+  }
+  return segments;
+}
+
+/**
+ * La chaîne sous le curseur, ou `null`. Fonction PURE.
+ *
+ * ⚠️ UNE CHAÎNE D'UN SEUL OS N'A PAS DE SEGMENT, et c'est le cas d'une tête ou d'une ancre isolée.
+ * Son point seul la représente : sans ce repli, elle serait la seule chaîne impossible à survoler,
+ * ce qui ne s'expliquerait pas depuis l'écran.
+ *
+ * La plus PROCHE gagne, pas la première : deux chaînes se croisent souvent à l'écran (les pattes
+ * d'une araignée vue de face), et prendre la première rencontrée ferait dépendre le résultat de
+ * l'ordre de construction, que personne ne contrôle.
+ */
+export function pickChaineAt(px, py, chaines, positions, rayon = POSE_LIMB_PICK_RADIUS){
+  const pos = positions || personaHandleScreenPos;
+  let best = null, bestD2 = rayon * rayon;
+  (chaines || []).forEach(chaine => {
+    const segments = segmentsDeChaine3D(chaine.cles, pos);
+    if (!segments.length) {
+      const seul = (chaine.cles || []).map(c => pos[c]).find(p => p);
+      if (!seul) return;
+      const d2 = (px - seul.x) * (px - seul.x) + (py - seul.y) * (py - seul.y);
+      if (d2 < bestD2) { bestD2 = d2; best = chaine; }
+      return;
+    }
+    segments.forEach(s => {
+      const d2 = distToSegmentSq(px, py, s.p1.x, s.p1.y, s.p2.x, s.p2.y);
+      if (d2 < bestD2) { bestD2 = d2; best = chaine; }
+    });
+  });
+  return best;
 }
 
 export function pickLimbSegmentAt(px, py, positions, radius = POSE_LIMB_PICK_RADIUS){

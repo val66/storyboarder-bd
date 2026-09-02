@@ -100,8 +100,21 @@ function makeFakeElement(tagName) {
     height: 0,
     clientWidth: 0,
     clientHeight: 0,
-    addEventListener(){},
-    removeEventListener(){},
+    // ⚠️ LES ÉCOUTEURS SONT RETENUS DEPUIS #392c, même raison que les enfants, les classes et le
+    // parent : un `addEventListener` en no-op rendait indémontrable tout ce qui se déclenche au
+    // survol ou au clic d'un élément construit par le code. Le test ne pouvait qu'affirmer que la
+    // ligne existe, jamais qu'elle fait quelque chose.
+    _ecouteurs: {},
+    addEventListener(type, fn){
+      if (typeof fn !== 'function') return;
+      (this._ecouteurs[type] = this._ecouteurs[type] || []).push(fn);
+    },
+    removeEventListener(type, fn){
+      const l = this._ecouteurs[type];
+      if (!l) return;
+      const i = l.indexOf(fn);
+      if (i >= 0) l.splice(i, 1);
+    },
     tagName: String(tagName || 'DIV').toUpperCase(),
     appendChild(child){
       enfants.push(child);
@@ -208,3 +221,16 @@ globalThis.localStorage = globalThis.localStorage || {
   setItem(k, v){ _memStore[k] = String(v); },
   removeItem(k){ delete _memStore[k]; },
 };
+
+/**
+ * Déclenche les écouteurs d'un type sur un élément du stub. Rend le nombre d'écouteurs appelés, ce
+ * qui permet à un test de distinguer « le geste n'a rien fait » de « rien n'écoutait ».
+ *
+ * Ce n'est PAS une propagation : aucun bouillonnement, aucun parent averti. Le stub reste ce qu'il
+ * annonce, de quoi vérifier des décisions, pas un navigateur.
+ */
+export function declencher(el, type, evenement){
+  const l = (el && el._ecouteurs && el._ecouteurs[type]) || [];
+  l.slice().forEach(fn => fn(evenement || { type }));
+  return l.length;
+}

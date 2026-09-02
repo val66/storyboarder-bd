@@ -59,6 +59,9 @@ export const S = {
   // l'édition, partager la sélection ferait que fermer l'éditeur laisserait la modale avec une
   // poignée surlignée que l'utilisateur n'y a jamais choisie.
   personaEditorHandleId: null,
+  // La chaîne d'une créature actuellement SURVOLÉE dans l'Éditeur, par son premier os (#392c).
+  // Elle ne décide de rien : elle montre. Jamais persistée, un survol ne survit pas à la souris.
+  personaEditorHoverChain: null,
   // Fix 72 : INDEX du champ piloté au sein de l'articulation sélectionnée (une charnière double ou
   // une rotule en ont deux). Le glisser n'en bouge qu'un à la fois ; la molette passe de l'un à
   // l'autre. Un index et non une clé de descripteur : les descripteurs sont recalculés à la volée
