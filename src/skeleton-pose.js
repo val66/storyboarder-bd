@@ -64,7 +64,7 @@ import { SLOTS, SLOT_GROUPS, slotLabel, lignesDeCorrespondance3D } from './skele
 // La proposition de rôles vient d'archetype-roles.js, qui n'importe que skeleton-map : aucune
 // boucle. On la RELIT plutôt que de la refaire, comme l'écran de correspondance, pour qu'une pose
 // vise exactement les os que l'utilisateur y voit attribués.
-import { propositionDeRoles3D } from './archetype-roles.js';
+import { propositionDeRoles3D, decomposerRole3D } from './archetype-roles.js';
 // Géométrie pure, sans aucun import de son côté : aucun risque de boucle. On la RÉUTILISE plutôt
 // que d'écrire un second calcul de repère (cf. repereParChaines3D).
 import { repereDuCorps, normaliser } from './skeleton-retarget.js';
@@ -161,7 +161,18 @@ export function normaliserPose(brut){
   // conservés dans le Projet, et l'utilisateur retrouve sa pose s'il rebranche le bon fichier ; la
   // jeter serait perdre du travail pour cause de fichier momentanément absent.
   Object.keys(brut).forEach(cle => {
-    if (!estClePoseOs3D(cle)) return;
+    // ⚠️ LES CLÉS DE RÔLE PASSENT AUSSI, et les avoir oubliées était un défaut SILENCIEUX (#383).
+    // Depuis #375a une pose de créature mémorise des RÔLES — `head`, `hipFL` — à côté de ses noms
+    // d'os. Cette fonction ne gardait que les `os:` et les dix-huit emplacements : mesuré, une pose
+    // `{ head, hipFL, os:Tail1, tete }` en ressortait `{ os:Tail1, tete }`. Chaque pose de créature
+    // perdait donc sa part PORTABLE — les 22 % qui l'appliquent à un autre modèle du même archétype
+    // — au premier enregistrement du Projet, sans un mot.
+    //
+    // Le rôle se vérifie par sa FORME, et c'est cohérent avec la règle du fichier : un emplacement
+    // se vérifie parce que la liste est fermée, un nom d'os ne se vérifie pas faute d'avoir le
+    // `.glb` sous la main, et un rôle se DÉCOMPOSE (cf. decomposerRole3D). Un rôle d'un autre
+    // archétype est de toute façon inerte, comme une clé d'os absente.
+    if (!estClePoseOs3D(cle) && !decomposerRole3D(cle)) return;
     const garde = anglesNonNuls(brut[cle]);
     if (garde) sortie[cle] = garde;
   });
@@ -327,6 +338,24 @@ export function groupesPosablesMembres3D(os, membres, traduire){
     if (chaines.length) groupes.push({ titre: `${t('Anchor', 'Ancre')} ${g.ancreNom}`, chaines });
   });
   return groupes;
+}
+
+/**
+ * Deux poses portent-elles les MÊMES angles ? Fonction PURE.
+ *
+ * ⚠️ ELLE NE COMPARE PAS DEUX JSON. L'ordre des clés d'un dictionnaire dépend de l'ordre où
+ * l'utilisateur a bougé les curseurs : deux brouillons identiques au pixel près donneraient deux
+ * chaînes différentes, et « Appliquer » resterait allumé sur une pose qu'on vient de reposer.
+ *
+ * ⚠️ ELLE PASSE PAR `normaliserPose`, donc par la règle du zéro : un angle remis à 0 doit être
+ * ÉGAL à un angle jamais touché. Sans cela, bouger un curseur puis le ramener laisserait l'écran
+ * croire à une modification, et fermer demanderait de confirmer une perte inexistante.
+ */
+export function memesAngles3D(a, b){
+  const na = normaliserPose(a), nb = normaliserPose(b);
+  const cles = Object.keys(na);
+  if (cles.length !== Object.keys(nb).length) return false;
+  return cles.every(c => nb[c] && POSE_AXES.every(x => (na[c][x] || 0) === (nb[c][x] || 0)));
 }
 
 /**

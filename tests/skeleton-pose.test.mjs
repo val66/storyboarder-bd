@@ -42,7 +42,7 @@ import {
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
   groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
-  poseNonVide3D,
+  poseNonVide3D, memesAngles3D,
 } from '../src/skeleton-pose.js';
 import { SLOTS, inferSkeletonMap } from '../src/skeleton-map.js';
 import { repereDuCorps } from '../src/skeleton-retarget.js';
@@ -821,6 +821,55 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     assert.equal(repereParChaines3D(null, null, fr), null);
   });
 
+  test('RÉGRESSION : une pose de créature GARDE ses rôles à la relecture (#383)', () => {
+    // ⚠️ DÉFAUT SILENCIEUX TROUVÉ EN ÉCRIVANT UN AUTRE TEST, et le plus grave de la séance.
+    // `normaliserPose` ne gardait que les clés `os:` et les dix-huit emplacements. Depuis #375a une
+    // pose de créature mémorise aussi des RÔLES — `head`, `hipFL` — et ils étaient JETÉS.
+    //
+    // Mesuré avant correction : `{ head, hipFL, os:Tail1, tete }` ressortait `{ os:Tail1, tete }`.
+    // Chaque pose de créature perdait donc sa part PORTABLE, les 22 % qui l'appliquent à un autre
+    // modèle du même archétype, au premier enregistrement du Projet — sans message, et sans que
+    // rien ne le laisse voir avant de tenter la pose sur un second modèle.
+    const pose = normaliserPose({
+      head: { x: 0.4, y: 0, z: 0 },
+      hipFL: { x: 0.2, y: 0, z: 0 },
+      'os:Tail1': { x: 0.1, y: 0, z: 0 },
+      tete: { x: 0.3, y: 0, z: 0 },
+    });
+    assert.deepEqual(Object.keys(pose).sort(), ['head', 'hipFL', 'os:Tail1', 'tete']);
+
+    // UNE CLÉ QUI N'EST NI UN OS, NI UN EMPLACEMENT, NI UN RÔLE RESTE ÉCARTÉE : le rôle se vérifie
+    // par sa FORME, comme un emplacement se vérifie contre sa liste fermée.
+    assert.deepEqual(Object.keys(normaliserPose({ inventee: { x: 1, y: 0, z: 0 } })), []);
+    // Et la règle du zéro s'applique aux rôles comme au reste.
+    assert.deepEqual(Object.keys(normaliserPose({ head: { x: 0, y: 0, z: 0 } })), []);
+  });
+
+  test('#383 : memesAngles3D compare les ANGLES, pas les clés ni un JSON', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : mes cas n'opposaient que des jeux de CLÉS différents,
+    // que le simple décompte suffit à départager. La comparaison axe par axe n'était jamais
+    // exercée, et un « toujours vrai » passait — « Appliquer » serait alors resté éteint sur un
+    // curseur bougé.
+    const a = { head: { x: 0.4, y: 0, z: 0 } };
+    assert.equal(memesAngles3D(a, { head: { x: 0.4, y: 0, z: 0 } }), true);
+    assert.equal(memesAngles3D(a, { head: { x: 0.5, y: 0, z: 0 } }), false, 'un angle changé passe inaperçu');
+    assert.equal(memesAngles3D(a, { head: { x: 0.4, y: 0.2, z: 0 } }), false, 'un autre AXE passe inaperçu');
+    assert.equal(memesAngles3D(a, { tail0: { x: 0.4, y: 0, z: 0 } }), false, 'une autre CLÉ passe inaperçue');
+    // L'ORDRE DES CLÉS NE COMPTE PAS : il dépend de l'ordre où l'utilisateur a bougé les curseurs,
+    // et deux brouillons identiques donneraient deux JSON différents.
+    assert.equal(memesAngles3D({ a: { x: 1 }, b: { y: 2 } }, { b: { y: 2 }, a: { x: 1 } }), true);
+    // LA RÈGLE DU ZÉRO : un angle remis à 0 est ÉGAL à un angle jamais touché, sans quoi fermer
+    // demanderait de confirmer une perte inexistante.
+    assert.equal(memesAngles3D({ head: { x: 0, y: 0, z: 0 } }, {}), true);
+    assert.equal(memesAngles3D(null, {}), true);
+    // ⚠️ LE DÉCOMPTE DES CLÉS EST INDISPENSABLE, et son absence a échappé à la première campagne :
+    // la boucle ne parcourt que les clés du PREMIER argument, donc une pose vide serait déclarée
+    // identique à une pose remplie. C'est le cas le plus fréquent qui soit — le tout premier
+    // curseur bougé après l'ouverture — et « Appliquer » serait resté éteint.
+    assert.equal(memesAngles3D({}, { head: { x: 0.4, y: 0, z: 0 } }), false);
+    assert.equal(memesAngles3D({ head: { x: 0.4, y: 0, z: 0 } }, {}), false);
+  });
+
   test('#390 : une pose où RIEN n\'est tourné ne s\'enregistre pas', () => {
     // Elle s'ajouterait à la bibliothèque sous un nom, se proposerait comme les autres, et ne
     // ferait rien : l'utilisateur ne s'en apercevrait qu'en l'appliquant, longtemps après.
@@ -997,19 +1046,31 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     // Trois lecteurs qui trancheraient chacun de leur côté finiraient par diverger : la fiche
     // montrerait les curseurs d'une morphologie pendant que le rig récolterait ceux d'une autre.
     const MODALS = lire('src/modals.js');
-    assert.match(MODALS, /groupesDeCurseurs3D\(obj\.modelFile, tr\)/);
+    // Le point de décision est appelé par le constructeur PARTAGÉ depuis #383, qui reçoit le
+    // fichier en paramètre : la fiche le lui passe, elle ne tranche toujours pas elle-même.
+    assert.match(MODALS, /groupesDeCurseurs3D\(fichier, tr\)/);
+    assert.match(MODALS, /construireCurseursDeSquelette3D\(\{[\s\S]*?fichier: obj\.modelFile/);
     assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
   });
 
-  test('la bibliothèque de poses ne propose que des humanoïdes', () => {
-    // Une pose de la bibliothèque est un geste de corps humain : depuis #374 une créature ne
-    // récolte plus les dix-huit emplacements, « assis » ne trouverait donc aucun os.
+  test('l\'Éditeur propose TOUTES les figures posables (#383)', () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE, et sa raison a disparu avec la cause. Il disait : « une pose de
+    // la bibliothèque est un geste de corps humain, une créature ne récolte plus les dix-huit
+    // emplacements, assis ne trouverait aucun os ». C'était juste tant que l'Éditeur composait une
+    // pose du Personnage et la TRADUISAIT. Depuis #383 il pose la créature dans SON langage — ses
+    // rôles et ses os — et il n'y a plus rien à traduire, donc plus rien à interdire.
+    //
+    // LE FILTRE QUI COMPTE N'A PAS BOUGÉ : la bibliothèque se range par ARCHÉTYPE (#375b), donc un
+    // quadrupède ne se verra jamais proposer « assis ». Interdire la FIGURE était une garde posée
+    // au mauvais endroit.
     const RIG = lire('src/rig3d.js');
     const debut = RIG.indexOf('export function figuresDeLaBibliotheque3D');
     assert.ok(debut > 0, 'figuresDeLaBibliotheque3D a disparu');
-    assert.match(RIG.slice(debut, RIG.indexOf('\n}\n', debut)), /morphologiePourModele\(nom\) === 'humanoide'/);
+    const corps = RIG.slice(debut, RIG.indexOf('\n}\n', debut));
+    assert.doesNotMatch(corps, /=== 'humanoide'/, 'les créatures sont de nouveau exclues de l\'Éditeur');
+    assert.match(corps, /return figuresPosables\(\);/);
     const EDITEUR = lire('src/persona-editor.js');
-    assert.match(EDITEUR, /figuresDeLaBibliotheque3D\(\)/, 'l\'éditeur propose encore les créatures');
+    assert.match(EDITEUR, /figuresDeLaBibliotheque3D\(\)/, 'l\'éditeur n\'utilise plus la liste commune');
     assert.doesNotMatch(EDITEUR, /figuresPosables\(\)/, 'deux listes de figures : elles vont diverger');
   });
 

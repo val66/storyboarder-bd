@@ -43,7 +43,8 @@ import {
   openPersonaEditor, closePersonaEditor, personaEditorTarget, personaEditorInitialJoints,
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
   buildPersonaEditorModelUI, choisirFigureDeLEditeur, orbiteDouvertureEditeur3D,
-  PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit,
+  PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit, editeurPoseUneCreature3D,
+  personaEditorHasChanges,
 } from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
@@ -431,33 +432,101 @@ describe('Le crayon de l\'aperçu : l\'Éditeur au service d\'un modèle import�
       'celle du Personnage doit rester masquée : on ne venait pas d\'elle');
   });
 
-  test('un modèle sans repère de corps : « Appliquer » ne détruit rien', () => {
-    // Même règle qu'au sélecteur : « impossible » n'est pas « remettre à zéro ». Ici en plus,
-    // rendre null empêche la fermeture de l'éditeur, le travail n'est pas perdu en silence.
-    const sansBras = new THREE.Group();
-    const os = (nom, x, y, z) => {
-      const b = new THREE.Bone(); b.name = 'mixamorig:' + nom; b.position.set(x, y, z); return b;
-    };
-    const hips = os('Hips', 0, 0.95, 0), spine = os('Spine', 0, 0.12, 0);
-    const spine1 = os('Spine1', 0, 0.14, 0), neck = os('Neck', 0, 0.16, 0), head = os('Head', 0, 0.10, 0);
-    hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
-    [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
-      const cuisse = os(cote + 'UpLeg', signe * 0.09, -0.05, 0);
-      const jambe = os(cote + 'Leg', 0, -0.42, 0);
-      hips.add(cuisse); cuisse.add(jambe); jambe.add(os(cote + 'Foot', 0, -0.40, 0));
+  test('#383 : le brouillon de l\'Éditeur suit le VOCABULAIRE de la figure', () => {
+    // ⚠️ UNE RÈGLE, PAS DEUX TRAITEMENTS : l'Éditeur pose la figure qu'il a devant lui DANS SA
+    // PROPRE LANGUE. Un humanoïde parle celle du corps, qui se transpose d'un rig à l'autre ; une
+    // créature n'en a pas — ni épaule ni `bras_g`, aucun geste partagé par une araignée et un chien
+    // — et se pose donc par ses rôles et ses os.
+    _setModelCacheEntry('creature-ed.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), {
+      modelFile: 'creature-ed.glb',
+      skeletonPose3d: { 'os:mixamorig:LeftLeg': { x: 0.3, y: 0, z: 0 } },
     });
-    sansBras.add(hips);
-    _setModelCacheEntry('sb2.glb', { scene: sansBras });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    const draft = openPersonaEditor(o, 'objectModal');
+    assert.equal(editeurPoseUneCreature3D(), true, 'ce modèle n\'est pas vu comme une créature');
+    // Le brouillon part de ce que l'Élément PORTE : on ouvre l'Éditeur pour retoucher, pas pour
+    // tout reprendre depuis le repos.
+    assert.deepEqual(draft, o.skeletonPose3d);
+    assert.notEqual(draft, o.skeletonPose3d, 'le brouillon partage l\'objet de l\'Élément');
+    closePersonaEditor();
+  });
 
+  test('RÉGRESSION : changer de figure entre deux VOCABULAIRES repart du repos (#383)', () => {
+    // ⚠️ UN BROUILLON NE SE TRADUIT PAS. Passer d'un humanoïde à une créature en gardant les clés
+    // `bras_g` donnerait un brouillon INERTE : l'écran figé sur une créature au repos pendant que
+    // les curseurs affichent des angles, sans que rien ne le signale.
+    _setModelCacheEntry('creature-sw.glb', { scene: squeletteSansBras() });
+    const o = modele();   // humanoïde
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(editeurPoseUneCreature3D(), false, 'préalable : on part d\'un humanoïde');
+    const avant = S.personaEditorDraft;
+    assert.ok(Object.keys(avant).length, 'préalable : le brouillon humanoïde n\'est pas vide');
+
+    choisirFigureDeLEditeur('creature-sw.glb');
+    assert.notEqual(S.personaEditorDraft, avant, 'le brouillon humanoïde a survécu au changement');
+    assert.equal(editeurPoseUneCreature3D(), true);
+    // Et la ligne de base suit : sans cela « Appliquer » s'allumerait tout seul, en comparant un
+    // brouillon de créature à une référence d'humanoïde.
+    assert.equal(personaEditorHasChanges(), false, '« Appliquer » s\'allume sans qu\'on ait rien fait');
+    closePersonaEditor();
+  });
+
+  test('RÉGRESSION : « Appliquer » voit le travail fait sur une créature (#383)', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE. `poseSliderSignature3D` PARCOURT LES CHAMPS DU PERSONNAGE :
+    // sur un brouillon de créature elle rend la même chaîne quoi qu'on bouge. Le bouton
+    // « Appliquer » serait donc resté ÉTEINT sur un travail bien réel, et fermer l'Éditeur
+    // n'aurait rien demandé avant de le perdre.
+    _setModelCacheEntry('creature-chg.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-chg.glb' });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(personaEditorHasChanges(), false, 'préalable : rien n\'a encore bougé');
+
+    S.personaEditorDraft = { 'os:mixamorig:LeftLeg': { x: 0.7, y: 0, z: 0 } };
+    assert.equal(personaEditorHasChanges(), true, 'le travail fait sur la créature est invisible');
+
+    // ET LA RÈGLE DU ZÉRO : un curseur ramené à 0 redevient « pas de changement », sans quoi fermer
+    // demanderait de confirmer une perte inexistante.
+    S.personaEditorDraft = { 'os:mixamorig:LeftLeg': { x: 0, y: 0, z: 0 } };
+    assert.equal(personaEditorHasChanges(), false);
+    closePersonaEditor();
+  });
+
+  test('#383 : une CRÉATURE s\'applique sans repère de corps, il n\'y a rien à transposer', () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE, et sa raison a disparu avec la cause. Il disait : « un modèle
+    // sans repère de corps ne peut pas recevoir de pose, Appliquer rend null ». C'était juste tant
+    // que l'Éditeur composait une pose du PERSONNAGE et la transposait — sans repère, pas de
+    // transposition.
+    //
+    // Depuis #383 l'Éditeur pose la créature dans SON langage : le brouillon EST son
+    // `skeletonPose3d`, et il s'écrit tel quel. Le repère du corps ne sert qu'à la portabilité
+    // entre modèles, pas à poser celui qu'on a devant soi.
+    //
+    // ⚠️ CE QUI RESTE NON COUVERT, et il vaut mieux l'écrire : la garde `if (!pose) return null` du
+    // chemin HUMANOÏDE existe toujours et plus aucune fixture ne l'atteint. Le squelette « sans
+    // bras » servait à cela, et la reconnaissance ne le classe pas humanoïde. Le cas est réel — un
+    // humanoïde importé dont les clavicules ne sont pas reconnues — mais le corpus ne le produit pas.
+    _setModelCacheEntry('sb2.glb', { scene: squeletteSansBras() });
     const o = Object.assign(modele(), { modelFile: 'sb2.glb' });
     S.tomes = [{ pages: [{ objects: [o] }] }];
     S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
-    const avant = { jambe_g: { x: 0.5, y: 0, z: 0 } };
-    S.modalDraftSkeletonPose = avant;
+    S.modalDraftSkeletonPose = { jambe_g: { x: 0.5, y: 0, z: 0 } };
     openPersonaEditor(o, 'objectModal');
-    setPersonaEditorJointDeg({ key: 'head:h', field: 'headRotY', axis: null, suffix: '' }, 40);
-    assert.equal(applyPersonaEditorToModal(), null);
-    assert.equal(S.modalDraftSkeletonPose, avant);
+
+    const angles = { 'os:mixamorig:LeftLeg': { x: 0.7, y: 0, z: 0 } };
+    S.personaEditorDraft = angles;
+    const r = applyPersonaEditorToModal();
+    assert.ok(r && r.modeleImporte, '« Appliquer » refuse encore une créature');
+    assert.deepEqual(S.modalDraftSkeletonPose, angles, 'la pose de la créature n\'a pas été écrite');
+    assert.notEqual(S.modalDraftSkeletonPose, angles, 'le brouillon est PARTAGÉ, pas copié');
+    // Intention et résultat sont le même objet pour une créature : en garder deux copies les ferait
+    // diverger au premier réglage manuel.
+    assert.equal(S.modalDraftJoints, null);
     closePersonaEditor();
   });
 
@@ -1333,13 +1402,42 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
         `« ${c} » n'atteint pas la figure de l'Éditeur — une pose couchée y resterait debout`));
   });
 
+  test('#383 : les curseurs d\'une créature viennent du constructeur PARTAGÉ', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : rien ne vérifiait que l'Éditeur construit les curseurs
+    // d'une créature. Sans eux, il l'affiche et ne permet plus rien — et c'est l'unique moyen de la
+    // poser, puisque ses poignées de glisser n'existent pas encore.
+    //
+    // LE CONSTRUCTEUR EST CELUI DE LA FICHE. En écrire un second ici aurait donné deux listes de
+    // curseurs pour un même squelette, qui divergent au premier ajustement : la panne la plus
+    // fréquente de ce dépôt, et celle dont `ajouterGroupeDeCurseurs3D` porte déjà la trace,
+    // « recopié cassé une troisième fois ».
+    const i = EDITEUR.indexOf('export function buildPersonaEditorJointSlidersUI');
+    assert.ok(i > 0, 'buildPersonaEditorJointSlidersUI a disparu');
+    const corps = EDITEUR.slice(i, EDITEUR.indexOf('\n}\n', i));
+    assert.match(corps, /if \(editeurPoseUneCreature3D\(\)\) \{[\s\S]*construireCurseursDeSquelette3D\(\{/,
+      'une créature n\'a plus de curseurs dans l\'Éditeur');
+    assert.match(corps, /poseCourante: \(\) => \(S\.personaEditorDraft/,
+      'les curseurs d\'une créature n\'écrivent plus dans le brouillon de l\'Éditeur');
+    // LA BRANCHE SE TERMINE PAR UN `return`, et ce n'est pas un détail de style : sans lui, une
+    // créature recevrait EN PLUS les dix-huit articulations du Personnage, qui ne désignent aucun
+    // de ses os — des curseurs qui ne bougent rien, sous ceux qui la pilotent vraiment.
+    const branche = corps.slice(corps.indexOf('if (editeurPoseUneCreature3D())'));
+    assert.ok(branche.indexOf('return;') < branche.indexOf('JOINT_GROUPS'),
+      'les deux vocabulaires de curseurs se cumulent');
+  });
+
   test('et il les prend sur le BROUILLON, pas sur l\'Élément d\'origine', () => {
     // L'Éditeur compose une pose qui n'est pas encore appliquée : lire l'Élément ferait que tirer un
     // curseur ne changerait rien à l'écran, et que « Réinitialiser » n'aurait aucun effet visible.
     const i = EDITEUR.indexOf('function dessinerModeleDansEditeur');
     const temp = EDITEUR.slice(i, EDITEUR.indexOf('};', i));
-    assert.match(temp, /joints3d:\s*S\.personaEditorDraft/);
+    // #383 : DEUX branches désormais, et l'exigence porte sur les deux — c'est le BROUILLON qui
+    // nourrit l'affichage, qu'il soit transposé (humanoïde) ou pris tel quel (créature).
+    assert.match(temp, /skeletonPose3d: creature \? S\.personaEditorDraft/);
+    assert.match(temp, /poseOsPourModeleImporte\(fichier, S\.personaEditorDraft\)/);
+    assert.match(temp, /joints3d: creature \? null : S\.personaEditorDraft/);
     assert.match(temp, /position:\s*S\.personaEditorPoseKey/);
+    assert.doesNotMatch(temp, /cible\.|target\./, 'l\'affichage lit de nouveau l\'Élément');
   });
 });
 

@@ -233,8 +233,15 @@ describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement'
       assert.ok(debut > 0, `${nom} a disparu`);
       return MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
     };
-    assert.match(bloc('export function buildSkeletonJointSlidersUI'), /ajouterGroupeDeCurseurs3D\(/,
-      'la fiche ne construit plus ses groupes par le chemin qui pose le gestionnaire');
+    // ⚠️ ET IL S'EST CASSÉ UNE SECONDE FOIS, POUR LA MÊME RAISON, en #383 : la construction des
+    // groupes est passée dans `construireCurseursDeSquelette3D`, partagée avec l'Éditeur. La
+    // fenêtre visait encore un emplacement. On suit désormais la CHAÎNE — la fiche appelle le
+    // constructeur partagé, qui appelle la fonction qui pose le gestionnaire — ce qui reste vrai
+    // quel que soit le fichier où chaque maillon atterrit.
+    assert.match(bloc('export function buildSkeletonJointSlidersUI'), /construireCurseursDeSquelette3D\(/,
+      'la fiche ne construit plus ses curseurs par le constructeur partagé');
+    assert.match(bloc('export function construireCurseursDeSquelette3D'), /ajouterGroupeDeCurseurs3D\(/,
+      'le constructeur partagé ne passe plus par le chemin qui pose le gestionnaire');
     const corps = bloc('function ajouterGroupeDeCurseurs3D');
     assert.match(corps, /addEventListener\('toggle'/, 'déplier un groupe ne sélectionne plus rien');
     // La décision elle-même est déléguée à selectionALOuvertureDuGroupe, testée plus bas sur son

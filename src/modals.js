@@ -651,8 +651,14 @@ export function buildSkeletonJointSlidersUI(obj){
   S.selectedSkeletonHandle = null;
   if (!isImportedModel(obj)) { subsection.style.display = 'none'; return; }
 
-  const { groupes } = groupesDeCurseurs3D(obj.modelFile, tr);
-  if (!groupes.length) { subsection.style.display = 'none'; return; }
+  const poses = construireCurseursDeSquelette3D({
+    conteneur: container, fichier: obj.modelFile,
+    // Le brouillon est RÉAFFECTÉ quand il est absent : d'où une fonction, et non l'objet.
+    poseCourante: () => (S.modalDraftSkeletonPose || (S.modalDraftSkeletonPose = {})),
+    auChangement: refreshObjectPreview,
+    registreGroupes: skeletonJointGroupDetailsById, registreLignes: skeletonJointRowsById,
+  });
+  if (!poses) { subsection.style.display = 'none'; return; }
   subsection.style.display = '';
 
   const resume = document.getElementById('objectSkeletonSlidersSummary');
@@ -661,18 +667,6 @@ export function buildSkeletonJointSlidersUI(obj){
   // et tout le reste de cet écran passe déjà par tr().
   const btn = document.getElementById('objectSkeletonMapBtn');
   if (btn) btn.textContent = tr('Mapping table', 'Tableau de correspondance');
-
-  // UN GROUPE À UNE SEULE CHAÎNE N'EN CRÉE PAS UN SECOND. Un humanoïde n'a qu'un niveau de repli et
-  // doit rester exactement tel qu'avant ; une créature n'en a deux que là où l'ancre porte plusieurs
-  // chaînes. « Ancre Bone006 » contenant un unique « droite, 1 os » aurait fait deux clics pour
-  // atteindre trois curseurs, et un titre qui ne dit rien de plus que celui du dessus.
-  groupes.forEach(groupe => {
-    const bloc = ajouterGroupeDeCurseurs3D(container, groupe.titre);
-    if (groupe.chaines.length === 1) { remplirChaineDeCurseurs3D(bloc, groupe.chaines[0].os); return; }
-    groupe.chaines.forEach(chaine => {
-      remplirChaineDeCurseurs3D(ajouterGroupeDeCurseurs3D(bloc, chaine.titre), chaine.os);
-    });
-  });
 }
 
 /** Un `<details>` de groupe, avec sa réciproque « déplier sélectionne le premier point ». */
@@ -718,21 +712,60 @@ function clesDuGroupe3D(details){
 }
 
 /** Les trois curseurs de chaque os d'une chaîne, dans son `<details>`. */
-function remplirChaineDeCurseurs3D(details, osDeLaChaine){
-  osDeLaChaine.forEach(({ cle, label }) => {
-    skeletonJointGroupDetailsById[cle] = details;
-    skeletonJointRowsById[cle] = skeletonJointRowsById[cle] || [];
-    POSE_AXES.forEach(axe => {
-      const initDeg = lireAngleDeg(S.modalDraftSkeletonPose, cle, axe);
-      const ref = makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
-        -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
-          if (!S.modalDraftSkeletonPose) S.modalDraftSkeletonPose = {};
-          ecrireAngleDeg(S.modalDraftSkeletonPose, cle, axe, deg);
-          refreshObjectPreview();
-        });
-      skeletonJointRowsById[cle].push(ref.row);
+/**
+ * Les curseurs d'un squelette importé, pour N'IMPORTE QUEL écran. Rend le nombre de groupes posés.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI ELLE EST PARAMÉTRÉE PLUTÔT QUE RECOPIÉE (#383)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'Éditeur doit désormais montrer les articulations d'une créature, exactement comme la fiche.
+ * Écrire un second constructeur là-bas aurait produit la panne qui revient le plus souvent dans ce
+ * dépôt : deux listes de curseurs pour un même squelette, qui divergent au premier ajustement. Le
+ * précédent est écrit noir sur blanc quinze lignes plus bas, dans `ajouterGroupeDeCurseurs3D` — le
+ * remède du `toggle` asynchrone y a été « recopié cassé une troisième fois ».
+ *
+ * Ce qui change d'un écran à l'autre est donc PASSÉ, jamais deviné :
+ *   — `conteneur`, le nœud qui reçoit les groupes ;
+ *   — `poseCourante()`, qui rend le brouillon À ÉCRIRE — une fonction et non l'objet, parce que les
+ *     deux appelants le RÉAFFECTENT quand il est absent, et qu'une référence capturée pointerait
+ *     alors sur l'ancien ;
+ *   — `auChangement()`, ce qu'il faut redessiner ;
+ *   — les deux registres, qui servent au dialogue entre les curseurs et les points de l'aperçu.
+ */
+export function construireCurseursDeSquelette3D({
+  conteneur, fichier, poseCourante, auChangement, registreGroupes, registreLignes,
+} = {}){
+  if (!conteneur || !fichier) return 0;
+  const { groupes } = groupesDeCurseurs3D(fichier, tr);
+  if (!groupes.length) return 0;
+  const remplir = (details, osDeLaChaine) => {
+    osDeLaChaine.forEach(({ cle, label }) => {
+      if (registreGroupes) registreGroupes[cle] = details;
+      if (registreLignes) registreLignes[cle] = registreLignes[cle] || [];
+      POSE_AXES.forEach(axe => {
+        const initDeg = lireAngleDeg(poseCourante(), cle, axe);
+        const ref = makeAnimalJointRangeRow(details, `${label} ${axe.toUpperCase()}`,
+          -POSE_LIMITE_DEG, POSE_LIMITE_DEG, initDeg, (deg) => {
+            ecrireAngleDeg(poseCourante(), cle, axe, deg);
+            if (auChangement) auChangement();
+          });
+        if (registreLignes) registreLignes[cle].push(ref.row);
+      });
+    });
+  };
+  // UN GROUPE À UNE SEULE CHAÎNE N'EN CRÉE PAS UN SECOND. Un humanoïde n'a qu'un niveau de repli et
+  // doit rester exactement tel qu'avant ; une créature n'en a deux que là où l'ancre porte plusieurs
+  // chaînes. « Ancre Bone006 » contenant un unique « droite, 1 os » aurait fait deux clics pour
+  // atteindre trois curseurs, et un titre qui ne dit rien de plus que celui du dessus.
+  groupes.forEach(groupe => {
+    const bloc = ajouterGroupeDeCurseurs3D(conteneur, groupe.titre);
+    if (groupe.chaines.length === 1) { remplir(bloc, groupe.chaines[0].os); return; }
+    groupe.chaines.forEach(chaine => {
+      remplir(ajouterGroupeDeCurseurs3D(bloc, chaine.titre), chaine.os);
     });
   });
+  return groupes.length;
 }
 
 /**

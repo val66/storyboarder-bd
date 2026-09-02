@@ -13,7 +13,7 @@
 
 import {
   JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
-  POSE_3D, POSE_HANDLES,
+  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -34,12 +34,13 @@ import {
   resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
+import { memesAngles3D } from './skeleton-pose.js';
 import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
 import {
   buildSkeletonJointSlidersUI, makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
-  refreshPersonaPreview, syncJointSlidersFromDraft,
+  refreshPersonaPreview, syncJointSlidersFromDraft, construireCurseursDeSquelette3D,
 } from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
 // sidebar.js n'importe pas persona-editor.js : pas de cycle. `afficherManuelLateral` est nommée
@@ -100,7 +101,10 @@ export function openPersonaEditor(target, fromModal){
   // de la session précédente, pour la même raison que le cadrage juste en dessous : retrouver la
   // figure de quelqu'un d'autre en ouvrant l'éditeur ne s'expliquerait pas.
   S.personaEditorModelFile = isImportedModel(target) ? target.modelFile : null;
-  S.personaEditorDraft = personaEditorInitialJoints(target);
+  // ⚠️ APRÈS `personaEditorModelFile`, ET L'ORDRE EST LA DÉCISION (#383) : le brouillon dépend du
+  // VOCABULAIRE de la figure, que seule cette ligne connaît. Le calculer avant donnerait des
+  // articulations de Personnage à une araignée, c'est-à-dire un brouillon inerte.
+  S.personaEditorDraft = brouillonInitialDeLEditeur3D(target);
   // Cadrage remis à neuf à chaque ouverture : hériter du zoom ou de l'angle de la session
   // précédente ferait apparaître un Personnage hors champ, ou vu de dos, sans que rien ne
   // l'explique. Fix 66, passe par resetPersonaEditorCamera plutôt que de réécrire les mêmes
@@ -339,6 +343,15 @@ export function applyPersonaEditorToModal(){
     // La pose est donc traduite pour la figure RETENUE, et c'est elle que la fiche enregistrera.
     const figure = S.personaEditorModelFile || cible.modelFile;
     S.modalDraftModelFile = figure;
+    // ⚠️ UNE CRÉATURE S'APPLIQUE SANS TRADUCTION (#383), exactement comme depuis la fiche : son
+    // brouillon EST le dictionnaire du squelette. Et son INTENTION est ce même objet, là où un
+    // humanoïde garde le geste du Personnage à côté du résultat — en conserver deux copies pour
+    // une créature les ferait diverger au premier réglage manuel.
+    if (editeurPoseUneCreature3D()) {
+      S.modalDraftJoints = null;
+      S.modalDraftSkeletonPose = cloneJoints(S.personaEditorDraft);
+      return { key: S.personaEditorPoseKey || null, modeleImporte: true };
+    }
     const pose = poseOsPourModeleImporte(figure, S.personaEditorDraft);
     // `null` = ce modèle ne peut pas recevoir de pose. On ne touche à rien et on ne referme pas :
     // écraser ses réglages par un objet vide serait pire que de ne rien faire.
@@ -384,6 +397,13 @@ export function poseKeyStillInLibrary(key){
 export function personaEditorHasChanges(){
   if (!S.personaEditorOpen || !S.personaEditorDraft) return false;
   if (S.personaEditorPoseKey !== S.personaEditorBaselineKey) return true;
+  // ⚠️ `poseSliderSignature3D` PARCOURT LES CHAMPS DU PERSONNAGE : sur un brouillon de créature elle
+  // rend la même chaîne quoi qu'on bouge, et « Appliquer » resterait éteint sur un travail bien
+  // réel (#383). On compare alors les angles eux-mêmes, en passant par la règle du zéro pour qu'un
+  // curseur ramené à 0 redevienne « pas de changement ».
+  if (editeurPoseUneCreature3D()) {
+    return !memesAngles3D(S.personaEditorDraft, S.personaEditorBaseline);
+  }
   return poseSliderSignature3D(S.personaEditorDraft)
       !== poseSliderSignature3D(S.personaEditorBaseline);
 }
@@ -665,9 +685,58 @@ export function buildPersonaEditorModelUI(){
  * — c'est assez d'effets pour un seul geste.
  */
 export function choisirFigureDeLEditeur(fichier){
+  const avant = editeurPoseUneCreature3D();
   S.personaEditorModelFile = fichier || null;
   S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile);
+  // ⚠️ CHANGER DE FIGURE PEUT CHANGER DE VOCABULAIRE, et un brouillon ne se traduit pas (#383).
+  // Passer d'un humanoïde à une araignée garderait des clés `bras_g` qui ne désignent aucun os
+  // d'araignée : le brouillon deviendrait INERTE, l'écran figé sur une créature au repos pendant
+  // que les curseurs affichent des angles. On repart donc du repos de la nouvelle figure.
+  //
+  // Entre deux figures du MÊME vocabulaire, le brouillon SURVIT : c'est tout l'intérêt du
+  // sélecteur, essayer le même geste sur deux modèles.
+  if (editeurPoseUneCreature3D() !== avant) {
+    // Ici l'Éditeur est OUVERT : la cible est joignable par son identifiant, contrairement à
+    // l'instant de l'ouverture.
+    S.personaEditorDraft = brouillonInitialDeLEditeur3D(personaEditorTarget());
+    S.personaEditorBaseline = cloneJoints(S.personaEditorDraft);
+  }
   return S.personaEditorModelFile;
+}
+
+/**
+ * Le brouillon de départ, dans le vocabulaire de la figure COURANTE. Rend toujours un objet.
+ *
+ * Une créature part de ce que l'Élément porte déjà, ses angles d'os, exactement comme un humanoïde
+ * part de ses articulations : on ouvre l'Éditeur pour retoucher, pas pour tout reprendre.
+ */
+export function brouillonInitialDeLEditeur3D(cible){
+  // ⚠️ LA CIBLE EST REÇUE, PAS REDÉRIVÉE. Une première version appelait `personaEditorTarget()`,
+  // qui la retrouve par son identifiant dans la Page courante : à l'ouverture, elle n'y est pas
+  // encore joignable, et le brouillon repartait de « debout » au lieu de la pose de l'Élément.
+  // Un test l'a dit tout de suite, et il avait raison de viser le RÉSULTAT plutôt que le chemin.
+  if (!editeurPoseUneCreature3D()) return personaEditorInitialJoints(cible);
+  return cloneJoints((cible && cible.skeletonPose3d) || {});
+}
+
+/**
+ * L'Éditeur pose-t-il une CRÉATURE ? Point de décision unique de tout le fichier (#383).
+ *
+ * ⚠️ DEUX VOCABULAIRES, ET UNE SEULE RÈGLE POUR LES DÉPARTAGER : l'Éditeur pose la figure qu'il a
+ * devant lui DANS SA PROPRE LANGUE. Le Personnage intégré et un humanoïde importé parlent celle du
+ * corps — `bassin`, `bras_g` — qui se transpose d'un rig à l'autre et rend une pose portable. Une
+ * créature n'a pas de langue de corps : ni épaule ni `bras_g`, aucun geste partagé par une araignée
+ * et un chien. Elle est donc posée par ses ROLES et ses OS, ce que sa pose mémorise déjà (#375a).
+ *
+ * Ce n'est pas deux traitements, c'est une règle appliquée à des figures qui diffèrent réellement.
+ *
+ * Il appelle le point unique du reste de l'application, `squelettePourPose3D` : trois écrans qui
+ * trancheraient chacun de leur côté finiraient par poser dans un vocabulaire et enregistrer dans
+ * l'autre.
+ */
+export function editeurPoseUneCreature3D(){
+  const fichier = figureImporteeDeLEditeur();
+  return !!fichier && squelettePourPose3D(fichier) !== PERSONA_SKELETON_3D;
 }
 
 export function figureImporteeDeLEditeur(){
@@ -685,14 +754,23 @@ export function figureImporteeDeLEditeur(){
 // les deux vues se disputeraient le même cache, et l'une afficherait la pose de l'autre. Le motif a
 // déjà coûté cher plusieurs fois dans ce dépôt (zoom, poignées, caméra).
 function dessinerModeleDansEditeur(cnv, fichier, size){
+  const creature = editeurPoseUneCreature3D();
   const tempObj = {
     id: PERSONA_EDITOR_MODEL_ID,
     type: 'objet3d', objType: 'modele', modelFile: fichier,
-    skeletonPose3d: poseOsPourModeleImporte(fichier, S.personaEditorDraft) || null,
+    // ⚠️ UNE CRÉATURE N'EST PAS TRADUITE (#383) : son brouillon EST déjà son `skeletonPose3d`.
+    // La traduction n'aurait rien à quoi s'accrocher — `EMPLACEMENT_PAR_ARTICULATION` ne connaît ni
+    // `hipFL` ni `os:CERBERUS_Tail` — et rendrait `null`, donc une créature au repos sous des
+    // curseurs qui affichent des angles.
+    skeletonPose3d: creature ? S.personaEditorDraft
+      : (poseOsPourModeleImporte(fichier, S.personaEditorDraft) || null),
     // L'INTENTION, à côté du résultat. Les angles d'os ne portent pas « allongé », c'est une
     // bascule du corps entier. Sans ce champ, l'Éditeur montrerait un modèle debout pendant que
     // le brouillon dit « couché », et le même défaut qu'à l'aperçu de la fiche se rejouerait ici.
-    joints3d: S.personaEditorDraft,
+    //
+    // UNE CRÉATURE N'EN A PAS : intention et résultat sont le même objet, et en donner deux copies
+    // les ferait diverger au premier curseur.
+    joints3d: creature ? null : S.personaEditorDraft,
     position: S.personaEditorPoseKey,
     rotX: 0, rotY: 0, rotZ: 0,
   };
@@ -734,7 +812,12 @@ export function drawPersonaEditor(){
     dessinerModeleDansEditeur(cnv, modele, size);
     // Les poignées se posent sur les OS du modèle, pas sur la silhouette intégrée. Même appel, même
     // carte de positions, même geste de clic derrière : seule la figure qu'on projette change.
-    const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+    // ⚠️ PAS DE POIGNÉES SUR UNE CRÉATURE, ET C'EST DIT PLUTÔT QUE SUBI (#383).
+    // `jointsDepuisOsMappes` remplit une carte `{ nomDeGroupeDuPersonnage: os }` : elle n'a rien à
+    // mettre pour `hipFL`, qui n'est le groupe d'aucune articulation du Personnage. Les poignées
+    // d'une créature sont un chantier à part, et une carte à moitié vide dessinerait des points
+    // pris au hasard sur son squelette. Ses curseurs, eux, la pilotent entièrement.
+    const entree = editeurPoseUneCreature3D() ? null : objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
     if (entree && entree.skeletonBones) {
       drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
         personaEditorDragHint(), true, jointsDepuisOsMappes(entree.skeletonBones));
@@ -800,6 +883,21 @@ export function buildPersonaEditorJointSlidersUI(){
   container.innerHTML = '';
   [personaEditorSliderRefs, personaEditorGroupOf, personaEditorRowsOf]
     .forEach(m => Object.keys(m).forEach(k => delete m[k]));
+  // ⚠️ LES CURSEURS D'UNE CRÉATURE VIENNENT DE SES CHAÎNES, et par le MÊME constructeur que la
+  // fiche (#383). En écrire un second ici aurait donné deux listes de curseurs pour un même
+  // squelette, qui divergent au premier ajustement — la panne la plus fréquente de ce dépôt, et
+  // celle que `construireCurseursDeSquelette3D` existe pour empêcher.
+  //
+  // Les registres de l'Éditeur ne sont PAS passés : ils indexent des articulations du Personnage,
+  // et servent au dialogue avec des poignées qu'une créature n'a pas encore.
+  if (editeurPoseUneCreature3D()) {
+    construireCurseursDeSquelette3D({
+      conteneur: container, fichier: figureImporteeDeLEditeur(),
+      poseCourante: () => (S.personaEditorDraft || (S.personaEditorDraft = {})),
+      auChangement: () => { syncPersonaEditorActionButtons(); drawPersonaEditor(); },
+    });
+    return;
+  }
   JOINT_GROUPS.forEach(g => {
     const details = document.createElement('details');
     details.className = 'joint-group-details';

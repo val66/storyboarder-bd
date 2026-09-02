@@ -3380,8 +3380,19 @@ export function figuresPosables(){
  * et une figure retirée de la liste vaut mieux qu'un geste sans effet. Les poses par morphologie
  * sont la tâche #375.
  */
+/**
+ * Les figures que l'Éditeur peut poser. TOUTES les figures posables depuis #383.
+ *
+ * ⚠️ ELLE FILTRAIT LES HUMANOÏDES, et la raison a disparu. Elle était juste : l'Éditeur composait
+ * une pose du Personnage intégré et la TRADUISAIT, or « assis » n'a rien à traduire vers une
+ * araignée. Depuis #383 l'Éditeur pose la créature dans SON langage — ses rôles et ses os — et il
+ * n'y a plus rien à traduire, donc plus rien à interdire.
+ *
+ * Le filtre qui compte est ailleurs et il n'a pas bougé : la bibliothèque de poses se range par
+ * ARCHÉTYPE (#375b), donc un quadrupède ne se verra jamais proposer « assis ».
+ */
 export function figuresDeLaBibliotheque3D(){
-  return figuresPosables().filter(nom => morphologiePourModele(nom) === 'humanoide');
+  return figuresPosables();
 }
 
 /**
