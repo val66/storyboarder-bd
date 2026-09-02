@@ -987,6 +987,10 @@
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
           <select id="objectPositionSelect"></select>
+          <!-- Archetype sans AUCUNE pose (#391) : un menu vide ne dit ni ce qui manque ni quoi
+               faire. Cette phrase prend sa place, et le selecteur disparait. Son texte est pose par
+               le code, parce qu'il NOMME l'archetype courant. -->
+          <div id="objectPoseEmptyHint" class="modal-field-hint" style="display:none"></div>
           <!-- Ce qu'une pose n'a PAS pu appliquer (#383). Une pose de creature ne porte que ses
                roles vers un autre modele du meme archetype ; sans cette ligne, on chercherait une
                panne la ou il n'y a qu'une difference de squelette. Vide le reste du temps. -->

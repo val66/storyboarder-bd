@@ -261,6 +261,28 @@ describe('Le sélecteur de pose de la fiche', () => {
     assert.equal(S.modalDraftSkeletonPose, avant);
   });
 
+  test('#391 : un archétype sans AUCUNE pose montre une phrase, pas un menu vide', () => {
+    // Le rangement par archétype (#375b) a créé cet état, qui n'existait pas quand toutes les poses
+    // étaient humanoïdes : un quadrupède ouvre sa fiche devant une liste déserte, sans savoir si
+    // c'est une panne, un oubli, ou quelque chose qu'il peut faire lui-même.
+    _setModelCacheEntry('sans-pose.glb', { scene: squeletteSansBras() });
+    const obj = { type: 'objet3d', objType: 'modele', modelFile: 'sans-pose.glb' };
+    // La bibliothèque ne contient que des poses humanoïdes (cf. beforeEach).
+    buildSkeletonPoseFieldUI(obj);
+    const sel = document.getElementById('objectPositionSelect');
+    const hint = document.getElementById('objectPoseEmptyHint');
+    assert.equal(sel.style.display, 'none', 'un menu vide reste affiché');
+    assert.equal(hint.style.display, '', 'rien n\'explique la liste vide');
+    assert.ok(hint.textContent.length > 20, 'l\'indication est vide');
+
+    // Dès qu'une pose de cet archétype existe, le menu reprend sa place et l'indication s'efface.
+    const vocabulaire = squelettePourPose3D('sans-pose.glb');
+    S.poses = [...S.poses, { id: 'p_c', name: 'À l\'affût', skeleton: vocabulaire, joints: { a: { x: 1 } } }];
+    buildSkeletonPoseFieldUI(obj);
+    assert.equal(sel.style.display, '', 'le menu ne revient pas alors qu\'une pose existe');
+    assert.equal(hint.style.display, 'none', 'l\'indication survit à l\'arrivée d\'une pose');
+  });
+
   test('#383 : une pose de CRÉATURE s\'applique telle quelle, sans traduction', () => {
     // ⚠️ LE CŒUR DE #383, et deux mutations y ont échappé faute de ce test. Une pose de créature
     // mémorise des RÔLES et des NOMS D'OS (#375a) : ses clés SONT déjà celles du squelette. Une

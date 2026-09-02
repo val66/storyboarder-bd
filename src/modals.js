@@ -27,7 +27,7 @@ import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
-  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, PERSONA_SKELETON_3D, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, PERSONA_SKELETON_3D, ARCHETYPES_3D, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
@@ -375,11 +375,33 @@ export function remplirSelecteurDePose(select, obj){
   // proposer que des poses de quadrupède — décision de l'utilisateur, contre l'idée de tout montrer
   // avec un avertissement. La fiche ne tranche pas elle-même : elle appelle le point unique, comme
   // elle le fait déjà pour ses curseurs.
-  personaEditorPoseList3D(S.poses, squelettePourPose3D(obj && obj.modelFile)).forEach(entry => {
+  const vocabulaire = squelettePourPose3D(obj && obj.modelFile);
+  const entrees = personaEditorPoseList3D(S.poses, vocabulaire);
+  entrees.forEach(entry => {
     const opt = document.createElement('option');
     opt.value = entry.key; opt.textContent = entry.label;
     select.appendChild(opt);
   });
+  // ⚠️ AUCUNE POSE POUR CET ARCHÉTYPE : on montre une PHRASE, pas un menu vide (#391). Le rangement
+  // par archétype (#375b) a créé cet état, qui n'existait pas quand toutes les poses étaient
+  // humanoïdes : un quadrupède ouvre sa fiche devant une liste déserte, sans savoir si c'est une
+  // panne, un oubli, ou quelque chose qu'il peut faire lui-même.
+  //
+  // ⚠️ LE TEXTE DIT LA VÉRITÉ DU MOMENT. Il désigne le bouton « Enregistrer » de cette fiche, seul
+  // point de création aujourd'hui. Quand l'Éditeur saura poser une créature (#383), ce bouton
+  // disparaît et cette phrase doit renvoyer à l'Éditeur : les deux changent ENSEMBLE, sans quoi
+  // l'indication enverrait vers un écran qui ne sait pas encore recevoir.
+  const indication = document.getElementById('objectPoseEmptyHint');
+  const vide = entrees.length === 0;
+  select.style.display = vide ? 'none' : '';
+  if (indication) {
+    indication.style.display = vide ? '' : 'none';
+    const archetype = ARCHETYPES_3D.find(a => a.cle === vocabulaire);
+    const nom = archetype ? tr(archetype.labelEn, archetype.label) : vocabulaire;
+    indication.textContent = tr(
+      `No ${nom} pose yet. Set its joints below, name it, and save it to create the first one.`,
+      `Aucune pose ${nom} pour l'instant. Réglez ses articulations ci-dessous, nommez-la, et enregistrez-la pour créer la première.`);
+  }
   ensurePoseOptionExists(select, obj);
   select.value = (obj && obj.position) || 'debout';
 }

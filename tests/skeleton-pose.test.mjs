@@ -1086,8 +1086,11 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     // Les trois lecteurs passent par ce point, aucun ne tranche de son côté : trois décisions
     // séparées finiraient par proposer les poses d'une morphologie et les curseurs d'une autre.
     const MODALS = lire('src/modals.js');
-    assert.match(MODALS, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(obj && obj\.modelFile\)\)/,
+    // Le vocabulaire est calculé une fois puis réutilisé — pour la liste ET pour l'indication de
+    // liste vide (#391) — d'où deux lignes au lieu d'un appel imbriqué.
+    assert.match(MODALS, /const vocabulaire = squelettePourPose3D\(obj && obj\.modelFile\);/,
       'la fiche propose de nouveau les mêmes poses à toutes les morphologies');
+    assert.match(MODALS, /personaEditorPoseList3D\(S\.poses, vocabulaire\)/);
     assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
     const EDITEUR = lire('src/persona-editor.js');
     assert.match(EDITEUR, /personaEditorPoseList3D\(S\.poses, squelettePourPose3D\(S\.personaEditorModelFile\)\)/);

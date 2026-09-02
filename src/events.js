@@ -4193,6 +4193,12 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
  * POURQUOI CE BOUTON EST SUR LA FICHE ET NON DANS L'ÉDITEUR
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
+ * ⚠️ CE BOUTON EST UN PONT, PAS UNE DESTINATION. Décision prise avec l'utilisateur : dès que
+ * l'Éditeur saura poser une créature (#383), il DOIT ÊTRE RETIRÉ, et la création de poses n'aura
+ * plus qu'un seul point d'entrée. Deux points d'écriture de la bibliothèque finiraient par diverger
+ * — c'est la panne qui revient le plus souvent dans ce dépôt, et elle serait ici invisible : deux
+ * poses du même nom, composées dans deux écrans, sans que rien ne dise laquelle est à jour.
+ *
  * `savePersonaEditorPose` était le SEUL point d'écriture de la bibliothèque, et il vit dans
  * l'Éditeur, qui n'accepte que des humanoïdes. Une créature pouvait donc recevoir une pose (#383)
  * mais jamais en créer une : la bibliothèque de son archétype restait vide à jamais.
