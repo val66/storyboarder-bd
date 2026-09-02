@@ -315,6 +315,80 @@ Deux autres ont été tuées en corrigeant des tests satisfaits par une ABSENCE 
   donc la comparaison passait. Septième occurrence de ce piège dans ce dépôt ;
 - le bouton figé sur `candidats[0]` : le menu s'ouvrait, se changeait, et n'avait aucun effet.
 
+### 6.2 quinquies Le critère de #386 ne s'ouvrait JAMAIS (#387)
+
+Signalé à l'usage, une journée après la livraison : « j'ai créé une copie de cerberus, quand je
+l'importe le bandeau n'apparaît pas ».
+
+**Mesuré sur le fichier réel**, avant de toucher au code :
+
+| fichier | morphologie | os nommés |
+|---|---|---|
+| `cerberus.glb` | `quadrupede` | **0** |
+| les neuf autres | aucune | **0** |
+
+Le critère de #386 — « chacun des os que l'entrée nomme existe-t-il ici ? » — écartait donc la
+TOTALITÉ du corpus réel. ⚠️ La fréquence de vrais positifs que j'avais déclarée « non mesurée »
+valait **zéro**, et j'aurais pu la mesurer avant de livrer : le fichier était là.
+
+⚠️ **ET C'ÉTAIT LA MÊME PHRASE, DEUX FOIS.** J'avais écrit « une entrée qui ne nomme aucun os
+n'apprend rien ». Le fichier `skeleton-store.js` contient, depuis longtemps, le démenti de la version
+antérieure de cette phrase : « le commentaire que j'avais écrit à l'époque, *une entrée sans os
+n'apprend rien*, était faux ». Une entrée apprend ce que l'utilisateur a **tranché**, et un choix ne
+se mesure pas au nombre d'os qu'il touche. Le cas écarté était le plus utile de tous : une morphologie
+corrigée à la main, sans un seul os touché, c'est-à-dire précisément ce que la reconnaissance
+automatique rate le plus souvent.
+
+**Deux vérifications faites avant de conclure**, pour ne pas corriger au mauvais endroit :
+
+- les deux `.glb` sont **octet pour octet identiques** (même md5), mais l'import ne déduplique que si
+  le NOM correspond aussi. « cerberus - Copie.glb » est donc bien un second fichier : ce n'est pas la
+  déduplication qui privait l'utilisateur du bandeau ;
+- l'écran s'ouvrait bien, l'entrée du nouveau fichier n'existant pas.
+
+**La correction : une empreinte du squelette dans l'entrée.** Sans os nommés, rien dans le fichier ne
+permettait de dire que deux squelettes sont les mêmes ; l'empreinte le dit. Une entrée est désormais
+retenue si son empreinte est celle de ce squelette **ou** si chacun de ses os nommés existe ici — la
+seconde porte restant la seule utilisable pour les entrées écrites avant #387, et couvrant en plus le
+squelette **élargi** d'un réexport.
+
+Et la condition d'utilité porte désormais sur les **décisions** (morphologie, os, rôles, chaînes), non
+plus sur le nombre d'os. `valide` n'en est pas une : il dit « j'ai vu », il n'y a rien à en reprendre.
+
+**Ce qui a été écarté, et pourquoi :**
+
+| piste | pourquoi non |
+|---|---|
+| enregistrer la LISTE des noms d'os | mesuré : 1,1 ko pour le cerbère, **31 ko** pour un rig Unreal à 1126 os, dans un fichier partagé par tous les Projets |
+| proposer toute entrée portant une morphologie, sans vérifier | n'importe quel fichier proposerait sa morphologie à n'importe quel autre |
+| décoder le `.glb` du candidat pour comparer | 34 Mo à lire, de façon asynchrone, dans un écran au rendu synchrone |
+
+**Mesures de la correction :**
+
+| | |
+|---|---|
+| empreintes distinctes sur les 17 fixtures | 17 sur 17 |
+| stable si les os sont réordonnés | oui (les noms sont TRIÉS avant condensation) |
+| change si UN seul nom change | oui |
+| faux positifs, la porte de l'empreinte grande ouverte | 0 sur 17 |
+| corpus réel, avant / après | 0 candidat / 1 candidat |
+
+**Le prix, dit à l'utilisateur avant de commencer** : les entrées existantes n'ont pas d'empreinte. Il
+faut rouvrir et enregistrer **une fois** chaque fichier déjà réglé pour l'amorcer. Ensuite c'est
+automatique.
+
+#### La mutation qui a produit un test de contrat
+
+Remplacer `Math.imul(h, k)` par `h * k` — la multiplication flottante, qui perd ses bits de poids
+faible au-delà de 2^53 — a échappé à la campagne. La mesure a montré pourquoi : sur 10 000 jeux de
+noms voisins, les deux versions donnent 10 000 empreintes distinctes, et utilisent leurs 32 bits.
+La différence n'est donc **pas** dans la qualité du hachage.
+
+Elle est ailleurs, et elle est grave : `49-ebfba2f4` devient `49-58e273f4`. Modifier le calcul, même
+en l'améliorant, rend muettes **toutes les empreintes déjà écrites sur le disque**, et le bandeau
+cesse de s'afficher partout, sans erreur ni message, longtemps après la cause. Le test gèle donc des
+valeurs témoins : il ne vérifie pas que le calcul est bon, il vérifie qu'il ne change pas.
+
 ### 6.2 bis Ouvrir l'écran repart de ce qui est enregistré (#385)
 
 Signalé à l'usage : « je passe le cerbère en quadrupède, j'enregistre, je rouvre, et il est de

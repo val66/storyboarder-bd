@@ -26,6 +26,7 @@ import {
   SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
   correspondancesApplicables3D, osDesignesParEntree3D, repriseDeCorrespondance3D,
+  empreinteDeSquelette3D, libelleCandidatReprise3D,
 } from '../src/skeleton-store.js';
 import { SLOTS, sousTitreCorrespondance3D, cheminDOs3D } from '../src/skeleton-map.js';
 
@@ -352,6 +353,147 @@ describe('Une correspondance peut resservir à un autre fichier (#386)', () => {
   test('un fichier sans os ne reçoit rien, et ne lève pas', () => {
     assert.deepEqual(correspondancesApplicables3D([], { 'x.glb': { os: { tete: 'H' } } }, null), []);
     assert.deepEqual(correspondancesApplicables3D(null, null, null), []);
+  });
+});
+
+describe('L\'empreinte d\'un squelette, pour reprendre sans os nommés (#387)', () => {
+  const RACINE6 = _dossier(_chemin(import.meta.url)) + '/..';
+  const charger6 = (nom) => JSON.parse(
+    _lire(_joindre(RACINE6, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name }));
+  const NOMS = ['araignee', 'cerbere', 'chien', 'dragon', 'kraken', 'mixamo', 'oiseau', 'raptor',
+    'serpent', 'vrm', 'vroid-alt', 'maison', 'centaure', 'centaure1', 'centaure2', 'centaure3', 'unreal'];
+
+  test('LE DÉFAUT MESURÉ : sans empreinte, le corpus réel ne proposait RIEN', () => {
+    // ⚠️ CE TEST DIT POURQUOI #387 EXISTE. Le fichier réel de l'utilisateur portait dix entrées,
+    // ZÉRO os nommé, une seule morphologie corrigée. Le critère de #386, « tous ses os nommés
+    // existent ici », écartait donc la totalité de son corpus : la fréquence de vrais positifs que
+    // j'avais déclarée « non mesurée » valait zéro.
+    const os = charger6('cerbere');
+    const commeAvant = { 'cerberus.glb': { os: {}, valide: true, morphologie: 'quadrupede' } };
+    assert.deepEqual(correspondancesApplicables3D(os, commeAvant, 'cerberus (2).glb'), [],
+      'préalable : sans empreinte, rien n\'est proposé');
+    const avecEmpreinte = { 'cerberus.glb': {
+      ...commeAvant['cerberus.glb'], empreinte: empreinteDeSquelette3D(os),
+    } };
+    const r = correspondancesApplicables3D(os, avecEmpreinte, 'cerberus (2).glb');
+    assert.equal(r.length, 1, 'l\'empreinte n\'ouvre pas la seconde porte');
+    assert.equal(r[0].entree.morphologie, 'quadrupede');
+    assert.equal(r[0].os, 0, 'ce candidat ne nomme AUCUN os, et c\'est le cas ordinaire');
+    assert.equal(r[0].memeSquelette, true);
+  });
+
+  test('elle est STABLE au réordonnancement des os', () => {
+    // Un réexport qui réordonne ses nœuds sans rien changer d'autre doit donner la même empreinte,
+    // sans quoi la fonctionnalité s'éteindrait dans le cas même qu'elle vise.
+    const os = charger6('cerbere');
+    assert.equal(empreinteDeSquelette3D(os.slice().reverse()), empreinteDeSquelette3D(os));
+  });
+
+  test('elle change dès qu\'UN seul nom d\'os change', () => {
+    const os = charger6('cerbere');
+    const modifie = os.map((o, i) => (i === 5 ? { ...o, name: o.name + '_x' } : o));
+    assert.notEqual(empreinteDeSquelette3D(modifie), empreinteDeSquelette3D(os));
+  });
+
+  test('CONTRAT AVEC LE DISQUE : le cerbère vaut « 49-ebfba2f4 », et cette valeur est GELÉE', () => {
+    // ⚠️ CE TEST NE VÉRIFIE PAS QUE LE CALCUL EST BON, mais qu'il ne CHANGE PAS. Une empreinte n'a
+    // de sens qu'en se comparant à celles déjà écrites sur le disque : modifier le calcul, même en
+    // l'améliorant, rendrait muettes toutes les entrées existantes, et le bandeau cesserait de
+    // s'afficher partout, sans erreur, sans message, longtemps après la cause.
+    //
+    // ⚠️ IL EST NÉ D'UNE MUTATION ÉCHAPPÉE. Remplacer `Math.imul(h, k)` par `h * k` — la
+    // multiplication flottante, qui perd les bits de poids faible au-delà de 2^53 — ne changeait
+    // RIEN d'observable : mesuré, 10 000 jeux de noms voisins donnent 10 000 empreintes distinctes
+    // dans les deux cas, et les 32 bits sont utilisés des deux côtés. La différence n'est donc pas
+    // dans la qualité du hachage, elle est ici : `49-ebfba2f4` devient `49-58e273f4`, et tout ce qui
+    // est déjà enregistré ne correspond plus.
+    //
+    // Si ce test tombe après une modification VOLONTAIRE du calcul, la valeur ne se met pas à jour
+    // sans y penser : il faut d'abord décider ce qu'on fait des empreintes déjà écrites.
+    assert.equal(empreinteDeSquelette3D(charger6('cerbere')), '49-ebfba2f4');
+    assert.equal(empreinteDeSquelette3D(charger6('araignee')), '113-f0ccaeb5');
+    assert.equal(empreinteDeSquelette3D([{ id: 1, name: 'Hips' }, { id: 2, name: 'Spine' }]),
+      '2-5dbba71a');
+  });
+
+  test('elle porte le NOMBRE d\'os en clair, pour rester lisible dans le fichier', () => {
+    // Enregistrer la liste des noms aurait été plus lisible et pèse 31 ko sur un rig Unreal à 1126
+    // os, dans un fichier partagé par tous les Projets. Le compte en clair est le compromis.
+    assert.match(empreinteDeSquelette3D(charger6('cerbere')), /^49-[0-9a-f]{8}$/);
+    assert.equal(empreinteDeSquelette3D([]), null);
+    assert.equal(empreinteDeSquelette3D(null), null);
+    assert.equal(empreinteDeSquelette3D([{ id: 1 }, { id: 2, name: '' }]), null);
+  });
+
+  test('MESURE : les dix-sept fixtures ont dix-sept empreintes, et aucune ne s\'attire', () => {
+    const emp = {};
+    NOMS.forEach(n => { emp[n] = empreinteDeSquelette3D(charger6(n)); });
+    assert.equal(new Set(Object.values(emp)).size, NOMS.length, 'deux squelettes partagent une empreinte');
+    // Chaque fixture porte SA propre empreinte et une morphologie : la porte de l'empreinte est donc
+    // grande ouverte, et elle ne doit laisser passer personne d'autre.
+    const entrees = {};
+    NOMS.forEach(n => { entrees[n + '.glb'] = { os: {}, valide: true, morphologie: 'quadrupede', empreinte: emp[n] }; });
+    NOMS.forEach(n => {
+      const r = correspondancesApplicables3D(charger6(n), entrees, n + '.glb');
+      assert.deepEqual(r, [], `${n} attire ${r.map(c => c.fichier).join(', ')}`);
+    });
+  });
+
+  test('une entrée SEULEMENT validée n\'est toujours pas proposée, empreinte ou non', () => {
+    // ⚠️ `valide` DIT « J'AI VU », PAS « J'AI DÉCIDÉ ». Il suffit à mériter une entrée sur le disque,
+    // et il n'y a rien à en reprendre. Les confondre ferait s'afficher le bandeau partout sans rien
+    // promettre : neuf des dix entrées réelles sont dans ce cas.
+    const os = charger6('cerbere');
+    const entrees = { 'x.glb': { os: {}, valide: true, empreinte: empreinteDeSquelette3D(os) } };
+    assert.deepEqual(correspondancesApplicables3D(os, entrees, 'moi.glb'), []);
+  });
+
+  test('une chaîne nommée ou un rôle suffisent, la morphologie n\'est pas obligatoire', () => {
+    const os = charger6('cerbere');
+    const e = empreinteDeSquelette3D(os);
+    const avec = (extra) => correspondancesApplicables3D(
+      os, { 'x.glb': { os: {}, valide: true, empreinte: e, ...extra } }, 'moi.glb').length;
+    assert.equal(avec({ membres: [{ racine: os[3].name, nom: 'Patte' }] }), 1);
+    assert.equal(avec({ roles: { head: os[9].name } }), 1);
+    assert.equal(avec({}), 0);
+  });
+
+  test('l\'empreinte SURVIT à une relecture-réécriture du fichier', () => {
+    // `normaliserFichier` RECONSTRUIT chaque entrée clé par clé : une clé non citée disparaît en
+    // silence au premier cycle. Le défaut serait invisible jusqu'à ce que le bandeau cesse de
+    // s'afficher, longtemps après la cause.
+    const brut = { version: 1, entrees: { 'a.glb': { os: {}, valide: true, morphologie: 'quadrupede', empreinte: '49-abcdef01' } } };
+    assert.equal(normaliserFichier(brut).entrees['a.glb'].empreinte, '49-abcdef01');
+    const sale = { version: 1, entrees: { 'b.glb': { os: {}, valide: true, empreinte: 42 } } };
+    assert.equal(normaliserFichier(sale).entrees['b.glb'].empreinte, undefined,
+      'une empreinte mal formée doit être écartée, pas recopiée');
+  });
+
+  test('elle N\'EST PAS un choix humain : elle ne crée jamais une entrée à elle seule', () => {
+    // Sans cette garde, tout fichier simplement ouvert écrirait une entrée, et le fichier partagé
+    // grossirait d'une ligne par modèle jamais réglé.
+    assert.equal(entreePourFichier({}, { valide: false, empreinte: '49-abcdef01' }), null);
+    assert.equal(entreePourFichier({}, { valide: true, empreinte: '49-abcdef01' }).empreinte, '49-abcdef01');
+  });
+
+  test('une empreinte ABSENTE n\'efface pas celle du disque', () => {
+    // Même règle que les deux vocabulaires (#382) : un appelant qui ne la transmet pas ne doit pas
+    // rendre le fichier muet, ce qu'un chemin d'enregistrement plus ancien ferait sans le dire.
+    const e = entreePourFichier({}, {
+      valide: true, morphologie: 'quadrupede', precedente: { empreinte: '49-abcdef01' },
+    });
+    assert.equal(e.empreinte, '49-abcdef01');
+  });
+
+  test('BOUT EN BOUT : enregistrer écrit l\'empreinte du squelette affiché', async () => {
+    const os = charger6('cerbere');
+    await enregistrerCorrespondance('cerberus.glb', {}, {
+      morphologie: 'quadrupede', humanoide: false, valide: true, osDuFichier: os,
+    });
+    const ecrite = ecrit[ecrit.length - 1].entrees['cerberus.glb'];
+    assert.equal(ecrite.empreinte, empreinteDeSquelette3D(os));
+    assert.equal(ecrite.morphologie, 'quadrupede');
   });
 });
 
@@ -1245,7 +1387,18 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // Le drapeau dit QUEL vocabulaire cet enregistrement réécrit, et donc lequel des deux doit être
     // conservé tel quel (#382). Sans lui, `entreePourFichier` retombe sur son défaut « humanoïde »
     // et une créature efface les emplacements du fichier.
-    assert.match(corps, /humanoide \}\)/, 'le drapeau de vocabulaire n\'est plus transmis');
+    //
+    // ⚠️ CE MOTIF ÉPINGLAIT UNE POSITION, PAS UNE TRANSMISSION. Il cherchait `humanoide })`, donc le
+    // drapeau EN DERNIER dans l'appel : ajouter un argument après lui en #387 a fait échouer un test
+    // que rien n'avait cassé. On vise désormais le drapeau à côté de ce qu'il commande, ce qui reste
+    // vrai quel que soit le nombre d'arguments qui suivent.
+    assert.match(corps, /_skelEcran\.roles, humanoide[,\s}]/,
+      'le drapeau de vocabulaire n\'est plus transmis');
+    // #387 : sans les os, `enregistrerCorrespondance` ne peut pas calculer l'empreinte, et l'entrée
+    // écrite ne pourra être reprise par aucun fichier. Le défaut serait muet : tout marche, et le
+    // bandeau ne s'affiche jamais chez le prochain.
+    assert.match(corps, /osDuFichier: _skelEcran\.os/,
+      'l\'empreinte du squelette ne sera pas enregistrée');
   });
 
   test('RÉGRESSION : « Réinitialiser » efface AUSSI les rôles et les membres', () => {
@@ -1466,10 +1619,25 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
   test('#386 : aucune DATE n\'est affichée, le fichier n\'en garde aucune', () => {
     // « Le plus récent » serait le repère naturel pour choisir entre deux réexports, et l'inventer
     // serait pire que de s'en passer. Le tri se fait sur le nombre d'os nommés.
-    const debut = EV2.indexOf('export function libelleCandidatReprise3D');
-    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    assert.doesNotMatch(corps, /Date|date|horodat/, 'une date est apparue là où rien n\'en garde');
-    assert.match(corps, /c\.os/, 'le nombre d\'os nommés a disparu de l\'option');
+    const libelle = libelleCandidatReprise3D(
+      { fichier: 'cerberus.glb', os: 14, entree: { morphologie: 'quadrupede' } }, tr);
+    assert.equal(libelle, 'cerberus.glb — 14 os nommés, Quadrupède');
+  });
+
+  test('#387 : un candidat sans os nommé n\'annonce pas « 0 », il annonce sa morphologie', () => {
+    // ⚠️ C'EST LE CAS ORDINAIRE, pas un cas limite : dix entrées sur dix dans le fichier réel de
+    // l'utilisateur ne nomment aucun os. « 0 os nommés » ferait passer pour vide l'entrée la plus
+    // utile de toutes, celle qui porte une morphologie corrigée à la main.
+    const morpho = libelleCandidatReprise3D(
+      { fichier: 'cerberus.glb', os: 0, entree: { morphologie: 'quadrupede' } }, tr);
+    assert.equal(morpho, 'cerberus.glb — Quadrupède');
+    assert.doesNotMatch(morpho, /\b0\b/);
+    // Sans morphologie non plus, il reste ses chaînes : on nomme ce qu'on reprend, jamais un compte.
+    assert.equal(libelleCandidatReprise3D({ fichier: 'x.glb', os: 0, entree: {} }, tr),
+      'x.glb — ses chaînes');
+    assert.equal(libelleCandidatReprise3D(
+      { fichier: 'y.glb', os: 14, entree: { morphologie: 'quadrupede' } }, tr),
+    'y.glb — 14 os nommés, Quadrupède');
   });
 
   test('#386 : la légende n\'explique « repris » QUE pendant une reprise', () => {

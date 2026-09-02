@@ -311,6 +311,79 @@ Two others were killed by fixing tests satisfied by an ABSENCE:
   comparison passed. Seventh occurrence of that trap in this repository;
 - the button pinned to `candidats[0]`: the menu opened, changed, and had no effect.
 
+### 6.2 quinquies The #386 criterion NEVER opened (#387)
+
+Reported by the user one day after delivery: "I made a copy of cerberus, and when I import it the
+banner does not show".
+
+**Measured on the real file**, before touching any code:
+
+| file | morphology | named bones |
+|---|---|---|
+| `cerberus.glb` | `quadrupede` | **0** |
+| the other nine | none | **0** |
+
+The #386 criterion — "does every bone the entry names exist here?" — therefore excluded the WHOLE of
+the real corpus. ⚠️ The true-positive frequency I had declared "not measured" was **zero**, and I
+could have measured it before shipping: the file was right there.
+
+⚠️ **AND IT WAS THE SAME SENTENCE, TWICE.** I had written "an entry naming no bone teaches nothing".
+`skeleton-store.js` has long carried the rebuttal of the earlier version of that sentence: "the
+comment I wrote at the time, *an entry with no bones teaches nothing*, was false". An entry teaches
+what the user **decided**, and a decision is not measured by how many bones it touches. The excluded
+case was the most useful of all: a morphology corrected by hand, without a single bone touched —
+precisely what automatic recognition gets wrong most often.
+
+**Two checks made before concluding**, so as not to fix the wrong thing:
+
+- the two `.glb` files are **byte for byte identical** (same md5), but import only deduplicates when
+  the NAME matches too. "cerberus - Copie.glb" is therefore genuinely a second file: deduplication
+  was not what deprived the user of the banner;
+- the screen did open, the new file having no entry.
+
+**The fix: a skeleton fingerprint inside the entry.** With no named bones, nothing in the file could
+say two skeletons were the same; the fingerprint says it. An entry is now kept if its fingerprint is
+this skeleton's **or** if every bone it names exists here — the second door remaining the only one
+usable for entries written before #387, and additionally covering the **widened** skeleton of a
+re-export.
+
+And the usefulness condition now rests on **decisions** (morphology, bones, roles, chains) rather than
+on a bone count. `valide` is not one: it says "I have seen", there is nothing in it to take.
+
+**What was ruled out, and why:**
+
+| option | why not |
+|---|---|
+| store the LIST of bone names | measured: 1.1 kB for the cerberus, **31 kB** for an Unreal rig with 1126 bones, in a file shared by every project |
+| offer any entry carrying a morphology, unchecked | any file would offer its morphology to any other |
+| decode the candidate's `.glb` to compare | 34 MB to read, asynchronously, in a screen whose render is synchronous |
+
+**Measurements of the fix:**
+
+| | |
+|---|---|
+| distinct fingerprints across the 17 fixtures | 17 of 17 |
+| stable when bones are reordered | yes (names are SORTED before digesting) |
+| changes when ONE name changes | yes |
+| false positives, fingerprint door wide open | 0 of 17 |
+| real corpus, before / after | 0 candidates / 1 candidate |
+
+**The price, told to the user before starting**: existing entries have no fingerprint. Each
+already-configured file must be reopened and saved **once** to seed it. After that it is automatic.
+
+#### The mutation that produced a contract test
+
+Replacing `Math.imul(h, k)` with `h * k` — float multiplication, which loses its low bits past 2^53 —
+escaped the campaign. Measurement showed why: across 10,000 sets of near-identical names, both
+versions give 10,000 distinct fingerprints and use all 32 bits. The difference is **not** in hash
+quality.
+
+It lies elsewhere, and it is serious: `49-ebfba2f4` becomes `49-58e273f4`. Changing the computation,
+even improving it, makes **every fingerprint already written to disk** meaningless, and the banner
+stops appearing everywhere, with no error and no message, long after the cause. The test therefore
+freezes witness values: it does not check that the computation is right, it checks that it does not
+change.
+
 ### 6.2 bis Opening the screen starts from what was saved (#385)
 
 Reported through use: "I switch the cerberus to quadruped, I save, I reopen, and it is humanoid

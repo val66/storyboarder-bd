@@ -35,6 +35,7 @@ import {
 import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance, fusionner,
   doitOuvrirCorrespondance, correspondancesApplicables3D, repriseDeCorrespondance3D,
+  libelleCandidatReprise3D,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
@@ -4611,23 +4612,6 @@ function renderReprise(){
 }
 
 /**
- * Ce qu'une option du menu affiche : le fichier, ce qu'il apporte, et sa morphologie. PURE.
- *
- * LES TROIS INFORMATIONS SONT CELLES QUI DÉCIDENT. Le nom seul ne distingue pas deux réexports ; le
- * nombre d'os nommés dit combien de travail est repris ; la morphologie dit dans quel écran on va
- * atterrir, et c'est souvent elle qu'on vient chercher.
- */
-export function libelleCandidatReprise3D(candidat, traduire){
-  const t = traduire || ((en) => en);
-  const c = candidat || {};
-  const morpho = ARCHETYPES_3D.find(a => a.cle === (c.entree || {}).morphologie);
-  // Sans morphologie enregistrée, on n'en INVENTE pas : l'entrée n'en portait pas, et écrire
-  // « humanoïde » par défaut annoncerait un basculement d'écran qui n'aura pas lieu.
-  const suffixe = morpho ? `, ${t(morpho.labelEn, morpho.label)}` : '';
-  return t(`${c.fichier} — ${c.os} named bones${suffixe}`, `${c.fichier} — ${c.os} os nommés${suffixe}`);
-}
-
-/**
  * Reprend la correspondance d'un fichier voisin dans l'écran ouvert. Rien n'est écrit.
  *
  * ⚠️ LA MORPHOLOGIE REPRISE DEVIENT UN CHOIX HUMAIN, `morphologieManuelle` comprise. Sans cela elle
@@ -4804,7 +4788,11 @@ document.getElementById('skeletonMapSave').onclick = async () => {
   const humanoide = _skelEcran.morphologie === 'humanoide';
   const r = await enregistrerCorrespondance(_skelEcran.fichier, humanoide ? _skelEcran.carte : {},
     { morphologie: _skelEcran.morphologieManuelle, membres: _skelEcran.membres,
-      roles: humanoide ? null : _skelEcran.roles, humanoide });
+      roles: humanoide ? null : _skelEcran.roles, humanoide,
+      // Les os SERVENT à calculer l'empreinte du squelette (#387), ils ne sont pas enregistrés.
+      // Sans elle, une entrée qui ne nomme aucun os ne peut être reprise par aucun fichier : c'est
+      // le cas de dix entrées sur dix dans le fichier réel qui a révélé le défaut.
+      osDuFichier: _skelEcran.os });
   // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
   // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
   fermerSkeletonMap(true);

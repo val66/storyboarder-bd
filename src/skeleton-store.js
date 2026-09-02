@@ -74,11 +74,17 @@ export function normaliserFichier(brut){
     // `roles` est un TROISIÈME ajout (tâche #378b), et il vit à CÔTÉ de `os` sans jamais le
     // remplacer. Voir normaliserRoles3D pour la raison, qui n'est pas une commodité.
     const roles = normaliserRoles3D(entree.roles);
+    // `empreinte` est un QUATRIÈME ajout (tâche #387), même règle que les trois autres : la version
+    // du format ne bouge pas, une version antérieure l'ignore. ⚠️ ELLE DOIT ÊTRE RECOPIÉE ICI, et
+    // l'oublier serait invisible : cette fonction RECONSTRUIT l'entrée clé par clé, donc toute clé
+    // non citée disparaît à la première relecture-réécriture, en silence.
+    const empreinte = (typeof entree.empreinte === 'string' && entree.empreinte) ? entree.empreinte : null;
     if (Object.keys(os).length || valide || morphologie || membres.length || Object.keys(roles).length) {
       entrees[fichier] = { os, valide };
       if (morphologie) entrees[fichier].morphologie = morphologie;
       if (membres.length) entrees[fichier].membres = membres;
       if (Object.keys(roles).length) entrees[fichier].roles = roles;
+      if (empreinte) entrees[fichier].empreinte = empreinte;
     }
   });
   return { version: SKELETON_MAP_FORMAT, entrees };
@@ -157,6 +163,61 @@ function normaliserRoles3D(brut){
 }
 
 /**
+ * L'empreinte d'un squelette : « 49-1a2b3c4d ». Fonction PURE, sans dépendance.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI ELLE EXISTE (#387)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * #386 proposait de reprendre la correspondance d'un fichier voisin, à condition que chacun des os
+ * qu'elle NOMME existe ici. ⚠️ MESURÉ SUR LE FICHIER RÉEL DE L'UTILISATEUR, et le résultat est sans
+ * appel : dix entrées, ZÉRO os nommé, une seule morphologie corrigée. Le critère écartait donc tout,
+ * y compris le cas le plus utile — la morphologie corrigée à la main, précisément ce que la
+ * reconnaissance automatique rate le plus souvent.
+ *
+ * ⚠️ J'AVAIS ÉCRIT « une entrée qui ne nomme aucun os n'apprend rien ». C'est la MÊME PHRASE, mot
+ * pour mot, que celle démentie plus haut dans ce fichier à propos de `entreePourFichier` : « une
+ * entrée sans os n'apprend rien », déjà fausse à l'époque, déjà pour la même raison. Une entrée
+ * apprend ce que l'utilisateur a TRANCHÉ, et un choix ne se mesure pas au nombre d'os qu'il touche.
+ *
+ * Sans os nommés, rien dans le fichier ne disait que deux squelettes sont les mêmes. Cette empreinte
+ * le dit.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA FORME EST CHOISIE POUR RESTER LISIBLE, ET MESURÉE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Enregistrer la LISTE des noms aurait été le plus lisible, et c'est mesuré comme intenable : 1,1 ko
+ * pour le cerbère, et 31 ko pour un rig Unreal à 1126 os, dans un fichier partagé par tous les
+ * Projets. On garde donc le NOMBRE d'os en clair — un humain qui ouvre le fichier voit tout de suite
+ * de quoi il parle — suivi d'un condensé des noms.
+ *
+ * LES NOMS SONT TRIÉS AVANT D'ÊTRE CONDENSÉS : un réexport qui réordonne ses nœuds sans rien changer
+ * d'autre doit donner la même empreinte, sans quoi la fonctionnalité s'éteindrait au premier
+ * réexport, c'est-à-dire dans le cas même qu'elle vise.
+ *
+ * FNV-1a, écrit ici plutôt qu'importé : `crypto` n'est pas garanti dans le renderer, et une
+ * dépendance pour huit lignes de décalages coûterait plus cher que ces huit lignes.
+ */
+export function empreinteDeSquelette3D(osDuFichier){
+  const noms = (osDuFichier || [])
+    .map(o => o && o.name)
+    .filter(n => typeof n === 'string' && n)
+    .sort();
+  if (!noms.length) return null;
+  let h = 0x811c9dc5;
+  const texte = noms.join('\n');
+  for (let i = 0; i < texte.length; i++) {
+    h ^= texte.charCodeAt(i);
+    // FNV-1a multiplie par 16777619. `Math.imul` fait la multiplication 32 bits SANS passer par les
+    // flottants, où le produit dépasserait 2^53 et perdrait ses bits de poids faible : ce sont
+    // justement eux qui portent l'information.
+    h = Math.imul(h, 0x01000193);
+  }
+  return `${noms.length}-${(h >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/**
  * Les os qu'une entrée DÉSIGNE par leur nom, tous champs confondus. Fonction PURE.
  *
  * C'est la question qui décide si une correspondance peut resservir ailleurs : une correspondance ne
@@ -170,6 +231,52 @@ export function osDesignesParEntree3D(entree){
   Object.values(e.roles || {}).forEach(n => { if (typeof n === 'string' && n) noms.add(n); });
   (e.membres || []).forEach(m => { if (m && typeof m.racine === 'string' && m.racine) noms.add(m.racine); });
   return noms;
+}
+
+/**
+ * Ce qu'une option du menu de reprise affiche : le fichier, ce qu'il apporte, sa morphologie. PURE.
+ *
+ * LES INFORMATIONS SONT CELLES QUI DÉCIDENT. Le nom seul ne distingue pas deux réexports ; le nombre
+ * d'os nommés dit combien de travail est repris ; la morphologie dit dans quel écran on va atterrir,
+ * et c'est souvent elle qu'on vient chercher.
+ *
+ * ⚠️ ELLE A VÉCU DANS events.js, où elle était INVÉRIFIABLE : un fichier qui touche au DOM ne
+ * s'importe pas dans un test sans monter tout un décor. Un texte destiné à être lu par un humain est
+ * exactement le genre de chose qu'une mutation peut vider sans que rien ne tombe. Elle est ici parce
+ * qu'elle est pure, comme `sousTitreCorrespondance3D` l'est devenue pour la même raison.
+ */
+export function libelleCandidatReprise3D(candidat, traduire){
+  const t = traduire || ((en) => en);
+  const c = candidat || {};
+  const morpho = ARCHETYPES_3D.find(a => a.cle === (c.entree || {}).morphologie);
+  const nom = morpho ? t(morpho.labelEn, morpho.label) : null;
+  // ⚠️ « 0 os nommés » EST LE CAS ORDINAIRE, pas un cas limite (#387) : mesuré, dix entrées sur dix
+  // dans le fichier réel de l'utilisateur ne nomment aucun os, et une seule porte une morphologie.
+  // Annoncer « 0 » ferait passer pour vide ce qui est justement l'entrée la plus utile.
+  if (!c.os) {
+    return nom ? `${c.fichier} — ${nom}`
+      : t(`${c.fichier} — its chains`, `${c.fichier} — ses chaînes`);
+  }
+  // Sans morphologie enregistrée, on n'en INVENTE pas : l'entrée n'en portait pas, et écrire
+  // « humanoïde » par défaut annoncerait un basculement d'écran qui n'aura pas lieu.
+  const suffixe = nom ? `, ${nom}` : '';
+  return t(`${c.fichier} — ${c.os} named bones${suffixe}`, `${c.fichier} — ${c.os} os nommés${suffixe}`);
+}
+
+/**
+ * Cette entrée transmet-elle une DÉCISION de l'utilisateur ? Fonction PURE.
+ *
+ * ⚠️ `valide` N'EN EST PAS UNE, ici. Il dit « j'ai vu cet écran », ce qui suffit à mériter une
+ * entrée sur le disque (cf. entreePourFichier) mais ne se REPREND pas : rien à copier. Confondre
+ * les deux ferait proposer les dix fichiers simplement validés, et le bandeau s'afficherait partout
+ * en ne promettant rien.
+ */
+function apporteQuelqueChose3D(entree){
+  const e = entree || {};
+  return !!(e.morphologie
+    || Object.keys(e.os || {}).length
+    || Object.keys(e.roles || {}).length
+    || (e.membres || []).length);
 }
 
 /**
@@ -192,6 +299,24 @@ export function osDesignesParEntree3D(entree){
  * fichiers qui soient le même squelette. Le risque de faux positif est donc mesuré, la fréquence des
  * vrais positifs ne l'est pas. Cette fonction peut très bien ne se déclencher qu'une fois sur vingt.
  *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * DEUX PORTES, PARCE QUE LA PREMIÈRE NE S'OUVRAIT JAMAIS (#387)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ MESURÉ SUR LE FICHIER RÉEL DE L'UTILISATEUR APRÈS LIVRAISON : dix entrées, ZÉRO os nommé. La
+ * condition ci-dessus écartait donc la totalité de son corpus, et la fréquence de vrais positifs
+ * annoncée comme non mesurée valait en fait zéro. Le cas écarté était le plus utile de tous : une
+ * morphologie corrigée à la main, sans un seul os touché.
+ *
+ * Une entrée est donc retenue si :
+ *   — son EMPREINTE est celle de ce squelette : c'est le même, la question ne se pose plus ; ou
+ *   — chacun des os qu'elle NOMME existe ici, la règle d'origine, qui reste seule utilisable pour
+ *     les entrées écrites avant #387 et couvre en plus le squelette élargi d'un réexport.
+ *
+ * ET elle doit APPORTER quelque chose : une entrée sans morphologie, sans os, sans rôle et sans
+ * chaîne nommée ne transmet aucune décision. La condition porte désormais sur les DÉCISIONS, non
+ * plus sur le nombre d'os, ce qui est la correction du défaut.
+ *
  * ⚠️ RIEN N'EST APPLIQUÉ EN SILENCE. Elle PROPOSE, l'écran affiche, l'utilisateur tranche. Reprendre
  * une correspondance sans le dire serait exactement le genre d'aide dont on ne comprend pas d'où
  * elle vient, et qu'on ne sait pas défaire.
@@ -199,21 +324,28 @@ export function osDesignesParEntree3D(entree){
  * @param osDuFichier la liste d'os neutre du fichier ouvert
  * @param entrees `{ nomDeFichier: entree }`, tout le fichier de correspondances
  * @param sauf le fichier ouvert, à ne pas se proposer à lui-même
- * @returns `[{ fichier, entree, os }]`, la plus riche d'abord
+ * @returns `[{ fichier, entree, os, memeSquelette }]`, la plus riche d'abord
  */
 export function correspondancesApplicables3D(osDuFichier, entrees, sauf){
   const presents = new Set((osDuFichier || [])
     .map(o => o && o.name).filter(n => typeof n === 'string' && n));
   if (!presents.size) return [];
+  const empreinte = empreinteDeSquelette3D(osDuFichier);
   return Object.entries(entrees || {})
     .filter(([fichier]) => fichier !== sauf)
-    .map(([fichier, entree]) => ({ fichier, entree, noms: osDesignesParEntree3D(entree) }))
-    // UNE ENTRÉE QUI NE NOMME AUCUN OS N'APPREND RIEN. Elle existe pourtant : c'est le cas d'un
-    // fichier validé sans correction, le plus fréquent de tous. La proposer ferait miroiter un
-    // travail repris là où il n'y en a jamais eu.
-    .filter(c => c.noms.size > 0 && [...c.noms].every(n => presents.has(n)))
-    .map(c => ({ fichier: c.fichier, entree: c.entree, os: c.noms.size }))
-    .sort((a, b) => b.os - a.os || a.fichier.localeCompare(b.fichier));
+    .map(([fichier, entree]) => ({
+      fichier, entree,
+      noms: osDesignesParEntree3D(entree),
+      memeSquelette: !!(empreinte && entree && entree.empreinte === empreinte),
+    }))
+    .filter(c => apporteQuelqueChose3D(c.entree)
+      && (c.memeSquelette || (c.noms.size > 0 && [...c.noms].every(n => presents.has(n)))))
+    .map(c => ({ fichier: c.fichier, entree: c.entree, os: c.noms.size, memeSquelette: c.memeSquelette }))
+    // LA PLUS RICHE D'ABORD, et à égalité d'os nommés celle dont on SAIT que c'est le même
+    // squelette : elle vaut mieux qu'une entrée simplement compatible.
+    .sort((a, b) => b.os - a.os
+      || (b.memeSquelette ? 1 : 0) - (a.memeSquelette ? 1 : 0)
+      || a.fichier.localeCompare(b.fichier));
 }
 
 /**
@@ -306,7 +438,7 @@ export function morphologieEffective3D(enregistree, osDuFichier, propose){
 
 export function entreePourFichier(carte, {
   valide = false, morphologie = null, membres = null, roles = null,
-  humanoide = true, precedente = null,
+  humanoide = true, precedente = null, empreinte = null,
 } = {}){
   const avant = precedente || {};
   // ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -344,6 +476,18 @@ export function entreePourFichier(carte, {
   // « enregistré » sur chaque fichier jamais touché. L'appelant ne passe donc que ce qui a été
   // choisi à la main.
   if (Object.keys(rolFinal).length) sortie.roles = rolFinal;
+  // L'EMPREINTE N'EST PAS UN CHOIX HUMAIN, et c'est la seule chose écrite ici qui n'en soit pas un
+  // (#387). Elle ne dit pas ce que l'utilisateur veut, elle dit DE QUEL SQUELETTE il parlait : sans
+  // elle, une entrée qui ne nomme aucun os ne peut être proposée à personne, faute de pouvoir
+  // vérifier qu'elle s'applique. Elle ne CRÉE jamais une entrée à elle seule — la condition
+  // ci-dessus ne la compte pas — sans quoi tout fichier seulement ouvert en écrirait une.
+  //
+  // ⚠️ CELLE D'AVANT EST CONSERVÉE À DÉFAUT, même règle que les deux vocabulaires : un appelant qui
+  // ne la transmet pas ne doit pas effacer celle du disque, ce qui rendrait le fichier muet à la
+  // première sauvegarde faite par un chemin plus ancien.
+  const emp = (typeof empreinte === 'string' && empreinte) ? empreinte
+    : ((typeof avant.empreinte === 'string' && avant.empreinte) ? avant.empreinte : null);
+  if (emp) sortie.empreinte = emp;
   return sortie;
 }
 
@@ -439,14 +583,18 @@ export function _viderCacheCorrespondances(){
  */
 export async function enregistrerCorrespondance(fichier, carte, {
   valide = true, morphologie = null, membres = null, roles = null, humanoide = true,
+  osDuFichier = null,
 } = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
   // `precedente` porte l'autre vocabulaire, celui que cet enregistrement ne réécrit pas.
+  // L'empreinte est calculée ICI, à partir des os que l'appelant vient d'afficher (#387) : c'est le
+  // seul instant où l'on tient à la fois le fichier et son squelette décodé.
   const entree = entreePourFichier(carte, {
     valide, morphologie, membres, roles, humanoide, precedente: tout.entrees[fichier],
+    empreinte: empreinteDeSquelette3D(osDuFichier),
   });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`

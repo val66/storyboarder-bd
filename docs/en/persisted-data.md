@@ -102,6 +102,13 @@ Stored next to the `Modeles` folder, keyed by file name. An entry carries:
 | `membres` | the ticked or renamed chains | `[{ racine, nom, retenu }]` |
 | `morphologie` | the selector, when you touch it | an `ARCHETYPES_3D` key |
 | `valide` | "I have seen this screen" | boolean |
+| `empreinte` | saving, from the bones on screen | `"49-ebfba2f4"`, count then digest |
+
+⚠️ **`empreinte` is the only key here that is NOT a human choice.** It does not say what the user
+wants, it says WHICH SKELETON he was talking about, so another file can ask "is this the same one?"
+without decoding a 34 MB `.glb`. It never creates an entry on its own: a file merely opened writes
+nothing. Added in #387, because without it an entry naming no bone could be offered to nobody —
+measured on the real file, ten entries out of ten.
 
 ⚠️ **`roles` does NOT widen `os`, it lives beside it.** An earlier version of the application rereads
 `os` filtering on the eighteen slots: slipping `hipFL` in would not break it, but would make it lose
@@ -119,9 +126,13 @@ and the ten corrections were gone without a word.
 The sentence confused what is **stored** with what is **read**. Writing one does not require erasing
 the other, and keeping it costs a few bytes. Fixed in #382.
 
-`SKELETON_MAP_FORMAT` stays at **1**. This is the third addition after `morphologie` and `membres`,
-and the rule does not change: moving to 2 would make an earlier version REJECT the whole file, whereas
-an unknown key is simply ignored.
+`SKELETON_MAP_FORMAT` stays at **1**. `roles` was the third addition after `morphologie` and
+`membres`, `empreinte` the fourth, and the rule does not change: moving to 2 would make an earlier
+version REJECT the whole file, whereas an unknown key is simply ignored.
+
+⚠️ **Every one of these keys must be named in `normaliserFichier`.** That function REBUILDS each
+entry key by key, so a key it does not cite disappears on the first read-write cycle — silently, and
+long before anyone notices the feature that depended on it has stopped working.
 
 ### `skeletonPose3d` — two kinds of key in one dictionary
 

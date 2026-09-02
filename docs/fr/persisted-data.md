@@ -107,6 +107,13 @@ Rangé à côté du dossier `Modeles`, indexé par nom de fichier. Une entrée p
 | `membres` | les chaînes cochées ou renommées | `[{ racine, nom, retenu }]` |
 | `morphologie` | le sélecteur, quand vous y touchez | une clé d'`ARCHETYPES_3D` |
 | `valide` | « j'ai vu cet écran » | booléen |
+| `empreinte` | l'enregistrement, depuis les os affichés | `"49-ebfba2f4"`, le compte puis un condensé |
+
+⚠️ **`empreinte` est la seule clé d'ici qui NE SOIT PAS un choix humain.** Elle ne dit pas ce que
+l'utilisateur veut, elle dit DE QUEL SQUELETTE il parlait, pour qu'un autre fichier puisse demander
+« est-ce le même ? » sans décoder 34 Mo de `.glb`. Elle ne crée jamais une entrée à elle seule : un
+fichier simplement ouvert n'écrit rien. Ajoutée en #387, parce que sans elle une entrée qui ne nomme
+aucun os ne pouvait être proposée à personne — mesuré sur le fichier réel, dix entrées sur dix.
 
 ⚠️ **`roles` n'élargit PAS `os`, il vit à côté.** Une version antérieure de l'application relit `os`
 en filtrant sur les dix-huit emplacements : y glisser `hipFL` ne la casserait pas, mais lui ferait
@@ -126,9 +133,13 @@ sans un mot.
 La phrase confondait ce qui est **stocké** et ce qui est **lu**. Écrire l'un n'oblige pas à effacer
 l'autre, et le conserver ne coûte que quelques octets. Corrigé en #382.
 
-`SKELETON_MAP_FORMAT` reste à **1**. C'est le troisième ajout après `morphologie` et `membres`, et la
-règle ne change pas : passer à 2 ferait REJETER le fichier entier par une version antérieure, alors
-qu'une clé inconnue est simplement ignorée.
+`SKELETON_MAP_FORMAT` reste à **1**. `roles` était le troisième ajout après `morphologie` et
+`membres`, `empreinte` le quatrième, et la règle ne change pas : passer à 2 ferait REJETER le fichier
+entier par une version antérieure, alors qu'une clé inconnue est simplement ignorée.
+
+⚠️ **Chacune de ces clés doit être NOMMÉE dans `normaliserFichier`.** Cette fonction RECONSTRUIT
+l'entrée clé par clé : une clé qu'elle ne cite pas disparaît au premier cycle lecture-écriture, en
+silence, et bien avant qu'on ne s'aperçoive que la fonctionnalité qui en dépendait s'est éteinte.
 
 ### `skeletonPose3d` — deux sortes de clés dans un seul dictionnaire
 
