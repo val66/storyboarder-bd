@@ -974,6 +974,14 @@ canvas{
 .skeleton-map-membres .modal-section-header { margin: 6px 0; }
 .skeleton-map-list .modal-section-title,
 .skeleton-map-membres .modal-section-title { font-size: 13px; }
+/* ⚠️ REPLIÉE, LE PADDING DOIT REDEVENIR SYMÉTRIQUE, et l'oublier a produit exactement le défaut que
+   `.modal-section.collapsed` corrigeait déjà pour les fiches : signalé à l'usage, « le titre d'une
+   section repliée n'est pas centré verticalement ». Sans contenu sous l'en-tête, les 2px du haut et
+   les 8px du bas se voient directement, et la règle générale (`padding: 10px`) ne s'applique pas,
+   ma règle resserrée ayant la même spécificité tout en venant plus loin dans le fichier.
+   Le nombre de classes est donc porté à trois pour que celle-ci l'emporte à son tour. */
+.skeleton-map-list .modal-section.collapsed,
+.skeleton-map-membres .modal-section.collapsed { padding: 6px 10px; }
 .skeleton-map-ancre { border: 1px solid var(--line); border-radius: 4px; margin-bottom: 6px; }
 .skeleton-map-ancre > summary { cursor: pointer; padding: 5px 8px; font-size: 12.5px;
                                 color: var(--sepia); background: var(--paper-dark); }
@@ -1046,6 +1054,14 @@ canvas{
                        color: var(--sepia); margin-bottom: 10px; overflow: hidden; }
 /* Empilée : UNE légende par ligne, jamais deux. C'est le seul autre état permis. */
 .skeleton-map-legend.empilee { flex-direction: column; gap: 3px; overflow: visible; }
+/* ⚠️ UNE LÉGENDE EST DEUX COLONNES, PAS UN TEXTE QUI SUIT UNE ÉTIQUETTE. Signalé à l'usage : dès
+   que l'explication passait sur deux lignes, la suite repassait SOUS l'étiquette colorée et le bloc
+   perdait son bord gauche commun. En flex, l'étiquette est figée à sa largeur et le texte occupe sa
+   propre colonne : ses lignes suivantes s'alignent alors sur la première.
+   `align-items: baseline` aligne le mot de l'étiquette sur la PREMIÈRE ligne du texte, et non sur
+   le milieu d'un paragraphe qui peut en compter trois. */
+.skeleton-map-legend-item { display: flex; align-items: baseline; gap: 5px; }
+.skeleton-map-legend-item .skeleton-map-origin { flex: 0 0 auto; }
 /* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
    fichier, et la mêler aux légendes la ferait passer pour une catégorie de plus.
    ⚠️ `flex-basis: 100%` NE SUFFIT PLUS À LA SORTIR DE LA LIGNE : il ne fait rien sans `flex-wrap`,
@@ -1054,6 +1070,15 @@ canvas{
    toujours dans un flex enveloppant. */
 .skeleton-map-legend-note { flex-basis: 100%; font-style: italic; opacity: .8; }
 #skeletonMapLegendNote { font-size: 11.5px; color: var(--sepia); margin: -6px 0 10px; }
+/* ⚠️ CETTE CLASSE N'A JAMAIS PORTÉ SA TAILLE : elle l'héritait de `.skeleton-map-legend`, son seul
+   parent jusqu'ici. Sortie de la légende pour vivre sous un titre de section, elle a hérité de la
+   taille de base de la modale et s'est affichée bien trop grosse. Signalé à l'usage. La taille est
+   donc DITE ici plutôt que subie d'un parent qui peut changer.
+   L'écart bas égale l'écart haut, qui vient de la marge basse de l'en-tête de section : le texte
+   se lit comme un préambule de la liste, et non comme une ligne collée à celle qui suit. */
+.skeleton-map-membres .skeleton-map-legend-note {
+  font-size: 11.5px; color: var(--sepia); margin: 0 0 6px;
+}
 /* Écart AUTOUR du bouton « Tableau de correspondance » : autant au-dessus qu'en dessous.
  *
  * MA PREMIÈRE VERSION — une simple `margin-top: 4px` sur le bouton — N'AVAIT AUCUN EFFET, et j'avais

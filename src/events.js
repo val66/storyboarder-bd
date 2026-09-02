@@ -4339,8 +4339,18 @@ function renderSkeletonMapModal(){
   }
   entrees.forEach(([cle, texte]) => {
     const s = document.createElement('span');
-    s.innerHTML = `<span class="skeleton-map-origin origine-${cle}">${cle}</span> `;
-    s.appendChild(document.createTextNode(texte));
+    s.className = 'skeleton-map-legend-item';
+    // ⚠️ L'ÉTIQUETTE ET SON TEXTE SONT DEUX ÉLÉMENTS, ET NON UN TEXTE QUI SUIT UNE ÉTIQUETTE.
+    // Demandé à l'usage : sur plusieurs lignes, la suite repassait SOUS l'étiquette colorée, si
+    // bien que le bloc n'avait plus de bord gauche commun. Deux boîtes côte à côte donnent au
+    // texte sa propre colonne, et ses lignes suivantes s'alignent sur la première.
+    const badge = document.createElement('span');
+    badge.className = `skeleton-map-origin origine-${cle}`;
+    badge.textContent = cle;
+    const mot = document.createElement('span');
+    mot.textContent = texte;
+    s.appendChild(badge);
+    s.appendChild(mot);
     legende.appendChild(s);
   });
   document.getElementById('skeletonMapLegendNote').textContent = tr(

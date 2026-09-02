@@ -1438,6 +1438,58 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(fabrique, /toggleModalSection\(tete\)/, 'le pli est réimplémenté au lieu d\'être réutilisé');
   });
 
+  test('#388 : repliée, une section retrouve un padding SYMÉTRIQUE', () => {
+    // ⚠️ SIGNALÉ À L'USAGE : « le titre d'une section repliée n'est pas centré verticalement ». Le
+    // défaut était DÉJÀ corrigé pour les fiches par `.modal-section.collapsed { padding: 10px }` ;
+    // ma règle resserrée pour cet écran, de même spécificité mais plus loin dans le fichier,
+    // l'écrasait avec un padding 2px en haut et 8px en bas. Sans contenu sous l'en-tête, ces deux
+    // valeurs se voient directement.
+    //
+    // Le test lit les DEUX valeurs verticales et exige qu'elles soient égales : il tiendra quelle
+    // que soit la valeur choisie, alors qu'épingler « 6px » figerait une décision d'apparence.
+    ['skeleton-map-list', 'skeleton-map-membres'].forEach(cls => {
+      const i = CSS2.indexOf(`.${cls} .modal-section.collapsed`);
+      assert.notEqual(i, -1, `.${cls} : rien ne rétablit le padding d'une section repliée`);
+      const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+      const m = /padding:\s*([\d.]+)px\s+([\d.]+)px(?:\s+([\d.]+)px)?/.exec(regle);
+      assert.ok(m, `.${cls} : padding illisible dans « ${regle} »`);
+      const haut = Number(m[1]);
+      const bas = m[3] === undefined ? haut : Number(m[3]);
+      assert.equal(bas, haut, `.${cls} : ${haut}px au-dessus du titre, ${bas}px en dessous`);
+    });
+  });
+
+  test('#388 : une légende est DEUX colonnes, pour que son texte s\'aligne', () => {
+    // Signalé à l'usage : sur plusieurs lignes, l'explication repassait SOUS l'étiquette colorée et
+    // le bloc perdait son bord gauche commun. Un texte qui SUIT une étiquette dans le même flux ne
+    // peut pas faire autrement ; deux boîtes côte à côte donnent au texte sa propre colonne.
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'), EV2.indexOf('function groupeDeMembre'));
+    assert.doesNotMatch(rendu, /createTextNode\(texte\)/,
+      'le texte est de nouveau un nœud libre : il repassera sous l\'étiquette');
+    assert.match(rendu, /className = 'skeleton-map-legend-item'/);
+    const i = CSS2.indexOf('.skeleton-map-legend-item {');
+    assert.notEqual(i, -1, 'la légende n\'a plus de mise en colonnes');
+    const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+    assert.match(regle, /display:\s*flex/);
+    // La ligne de base, et non le centre : le mot de l'étiquette doit s'aligner sur la PREMIÈRE
+    // ligne du texte, pas sur le milieu d'un paragraphe qui peut en compter trois.
+    assert.match(regle, /align-items:\s*baseline/);
+  });
+
+  test('#388 : la note des chaînes DIT sa taille au lieu de l\'hériter', () => {
+    // ⚠️ CETTE CLASSE N'A JAMAIS PORTÉ SA TAILLE : elle la tenait de `.skeleton-map-legend`, son
+    // seul parent jusqu'ici. Sortie de la légende pour vivre sous un titre de section, elle a
+    // hérité de la taille de base de la modale et s'est affichée bien trop grosse. Signalé à
+    // l'usage. Une taille héritée d'un parent qui peut changer n'est pas une taille choisie.
+    const i = CSS2.indexOf('.skeleton-map-membres .skeleton-map-legend-note');
+    assert.notEqual(i, -1, 'la note reprend la taille de base de la modale');
+    const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+    assert.match(regle, /font-size:\s*[\d.]+px/);
+    // Autant d'écart en dessous qu'au-dessus : le texte est le préambule de la liste, pas une ligne
+    // collée à celle qui suit.
+    assert.match(regle, /margin:\s*0 0 [\d.]+px/);
+  });
+
   test('#388 : la modale n\'a qu\'UN ascenseur, pas deux imbriqués', () => {
     // ⚠️ RENVERSEMENT ASSUMÉ. Ce fichier défendait l'inverse : « deux ascenseurs valent mieux qu'un
     // seul qui mélange deux sujets ». Cette phrase raisonnait sur le CONTENU et oubliait le geste :
