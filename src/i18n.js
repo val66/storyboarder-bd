@@ -95,7 +95,6 @@ export const I18N_TEXT = [
   // ajoutant un nœud de texte à un <input>, qui n'affiche pas ses enfants. Trouvé par le test
   // écrit pour le crayon, pas à l'œil.
   ['#personaEditorPoseName', null, null, 'placeholder', 'Pose name', "Nom de la pose"],
-  ['#objectPoseNameInput', null, null, 'placeholder', 'Pose name', "Nom de la pose"],
   ['#personaNameInput', null, null, 'placeholder', 'E.g. character name', "Ex. nom du personnage"],
   ['#objectNameInput', null, null, 'placeholder', 'E.g. object name', "Ex. nom de l'objet"],
   ['#roomNameInput', null, null, 'placeholder', 'E.g. Living room', "Ex. Salon"],
@@ -208,7 +207,6 @@ export const I18N_TRAILING = [
   //    « au Modèle ») et persona-editor.js le pose déjà par tr(). Une entrée ici écraserait ce
   //    choix à chaque changement de langue.
   ['#personaEditorPoseSaveBtn', 'Save', 'Enregistrer'],
-  ['#objectPoseSaveBtn', 'Save', 'Enregistrer'],
   ['#personaEditorPoseRenameBtn', 'Rename', 'Renommer'],
   ['#personaEditorPoseDeleteBtn', 'Delete', 'Supprimer'],
   ['#personaEditorResetBtn', 'Reset pose', 'Réinitialiser la pose'],

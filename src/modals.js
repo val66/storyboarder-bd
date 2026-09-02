@@ -387,10 +387,12 @@ export function remplirSelecteurDePose(select, obj){
   // humanoïdes : un quadrupède ouvre sa fiche devant une liste déserte, sans savoir si c'est une
   // panne, un oubli, ou quelque chose qu'il peut faire lui-même.
   //
-  // ⚠️ LE TEXTE DIT LA VÉRITÉ DU MOMENT. Il désigne le bouton « Enregistrer » de cette fiche, seul
-  // point de création aujourd'hui. Quand l'Éditeur saura poser une créature (#383), ce bouton
-  // disparaît et cette phrase doit renvoyer à l'Éditeur : les deux changent ENSEMBLE, sans quoi
-  // l'indication enverrait vers un écran qui ne sait pas encore recevoir.
+  // ⚠️ LE TEXTE DÉSIGNE L'ÉDITEUR, ET IL A CHANGÉ EN MÊME TEMPS QUE LE BOUTON (#393). Il renvoyait
+  // au « Enregistrer » de cette fiche, seul point de création tant que l'Éditeur ne savait pas poser
+  // une créature. Le pont retiré, la phrase le suit dans le MÊME commit : une indication qui survit
+  // à ce qu'elle désigne envoie l'utilisateur chercher un bouton qui n'existe plus.
+  //
+  // Il nomme le crayon, pas « l'Éditeur » tout court : c'est le geste visible depuis cette fiche.
   const indication = document.getElementById('objectPoseEmptyHint');
   const vide = entrees.length === 0;
   select.style.display = vide ? 'none' : '';
@@ -399,8 +401,8 @@ export function remplirSelecteurDePose(select, obj){
     const archetype = ARCHETYPES_3D.find(a => a.cle === vocabulaire);
     const nom = archetype ? tr(archetype.labelEn, archetype.label) : vocabulaire;
     indication.textContent = tr(
-      `No ${nom} pose yet. Set its joints below, name it, and save it to create the first one.`,
-      `Aucune pose ${nom} pour l'instant. Réglez ses articulations ci-dessous, nommez-la, et enregistrez-la pour créer la première.`);
+      `No ${nom} pose yet. Open the editor with the pencil above to compose the first one.`,
+      `Aucune pose ${nom} pour l'instant. Ouvrez l'éditeur avec le crayon ci-dessus pour composer la première.`);
   }
   ensurePoseOptionExists(select, obj);
   select.value = (obj && obj.position) || 'debout';
@@ -877,21 +879,8 @@ export function buildSkeletonPoseFieldUI(obj){
 
   const etiquette = document.getElementById('objectPoseLabel');
   if (etiquette) etiquette.textContent = tr('Pose', 'Position');
-  // ⚠️ « ENREGISTRER » N'APPARAÎT QUE POUR UNE CRÉATURE (#390), et l'asymétrie a une cause précise,
-  // pas un oubli : la part PORTABLE d'une pose humanoïde vit dans le vocabulaire du Personnage
-  // intégré, que cette fiche ne tient pas — elle n'a que des angles d'OS, propres à ce rig.
-  // Enregistrer ceux-là créerait une pose proposée à tous les humanoïdes et fausse sur chacun des
-  // autres. Une créature n'a pas d'autre vocabulaire que celui-là : ce qu'elle pose est exactement
-  // ce qui s'enregistre, et c'est pourquoi le bouton est ici plutôt que dans l'Éditeur, qui ne sait
-  // pas encore la recevoir.
-  const ligneEnregistrer = document.getElementById('objectPoseSaveRow');
-  if (ligneEnregistrer) {
-    const creature = squelettePourPose3D(S.modalDraftModelFile || obj.modelFile) !== PERSONA_SKELETON_3D;
-    ligneEnregistrer.className = 'skeleton-map-reprise' + (creature ? '' : ' vide');
-    // ⚠️ NI LE LIBELLÉ NI LE PLACEHOLDER NE SONT POSÉS ICI : ils viennent d'i18n.js, comme leurs
-    // jumeaux de l'Éditeur. Les écrire dans le code EN PLUS ferait deux sources pour un même texte,
-    // et un test du dépôt refuse justement tout bouton visible sans entrée i18n.
-  }
+  // La ligne « Enregistrer » qui vivait ici est partie avec le pont (#393) : la fiche APPLIQUE des
+  // poses, l'Éditeur les CRÉE. Un seul point d'écriture de la bibliothèque.
   buildFigureFieldUI(obj);
   // La MÊME fonction que pour un Personnage : même bibliothèque, même option de repli pour une pose
   // disparue, même valeur d'ouverture. Deux remplissages séparés auraient divergé.

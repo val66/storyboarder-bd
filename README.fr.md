@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.86**
+**Version 1.4.87**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -80,8 +80,9 @@
   figure s'y pose dans sa propre langue. Un humanoïde parle celle du corps, qui se transpose d'un
   rig à l'autre ; une araignée n'en a pas, et se pose donc par ses chaînes. Le glisser sur l'aperçu
   reste réservé aux humanoïdes
-- **Créer une pose de créature** : réglez ses curseurs, nommez-la, « Enregistrer » l'ajoute à la
-  bibliothèque de son archétype
+- **Créer une pose** : dans l'Éditeur, et nulle part ailleurs. Réglez les curseurs, nommez-la,
+  « Enregistrer » l'ajoute à la bibliothèque de son archétype. La fiche applique les poses, elle
+  n'en fabrique pas
 - **Les poses se rangent par archétype** : un quadrupède ne se voit proposer que des poses de
   quadrupède. Une pose humanoïde est TRANSPOSÉE au fichier, quelle que soit sa convention d'axes ;
   une pose de créature s'applique telle quelle, ses clés étant déjà celles du squelette. Appliquée

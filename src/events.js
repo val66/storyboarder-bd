@@ -37,7 +37,7 @@ import {
   doitOuvrirCorrespondance, correspondancesApplicables3D, repriseDeCorrespondance3D,
   libelleCandidatReprise3D,
 } from './skeleton-store.js';
-import { normaliserPose, poseNonVide3D } from './skeleton-pose.js';
+import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
@@ -68,7 +68,7 @@ import {
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
   clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
-  personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D, makePose3D, nextDefaultPoseName3D,
+  personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D,
 
   hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
 
@@ -84,7 +84,7 @@ import {
   frameOrthoCameraToBox, ensureObjectRigEntry3D, getWallPanRect2D, wallOpeningRect, personaCameraOrtho3D,
   personaScene3D, getMaxAnisotropy3D,
 
-  modeleImportePosable3D, squelettePourPose3D,
+  modeleImportePosable3D,
 } from './rig3d.js';
 import {
   setScene3DCallbacks, panelAutoDepthPivot3D, panelCamBasis3D, panelDepthToDistance3D,
@@ -101,7 +101,7 @@ import {
   setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, confirmAction, alertAction,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
   openRenameEntityModal, setRenameModelCallback,
-  loadModelRenames, noterRenommageModele, proposerRepointageModeles, setPoseLibrary,
+  loadModelRenames, noterRenommageModele, proposerRepointageModeles,
 } from './io.js';
 import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
@@ -120,7 +120,7 @@ import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
-  buildSkeletonJointSlidersUI, buildSkeletonPoseFieldUI,
+  buildSkeletonJointSlidersUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
   pickSkeletonHandleAt, openSkeletonJointGroupForHandle, closeAllSkeletonJointSliders,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
@@ -4186,67 +4186,24 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   renderModelList();
 };
 
-/**
- * « Enregistrer » la pose courante d'une CRÉATURE dans la bibliothèque (#390).
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * POURQUOI CE BOUTON EST SUR LA FICHE ET NON DANS L'ÉDITEUR
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * ⚠️ CE BOUTON EST UN PONT, PAS UNE DESTINATION. Décision prise avec l'utilisateur : dès que
- * l'Éditeur saura poser une créature (#383), il DOIT ÊTRE RETIRÉ, et la création de poses n'aura
- * plus qu'un seul point d'entrée. Deux points d'écriture de la bibliothèque finiraient par diverger
- * — c'est la panne qui revient le plus souvent dans ce dépôt, et elle serait ici invisible : deux
- * poses du même nom, composées dans deux écrans, sans que rien ne dise laquelle est à jour.
- *
- * `savePersonaEditorPose` était le SEUL point d'écriture de la bibliothèque, et il vit dans
- * l'Éditeur, qui n'accepte que des humanoïdes. Une créature pouvait donc recevoir une pose (#383)
- * mais jamais en créer une : la bibliothèque de son archétype restait vide à jamais.
- *
- * Rendre l'Éditeur capable de poser une créature est la bonne fin (cf. #383), et c'est la
- * réécriture d'un fichier de 1368 lignes soudé au vocabulaire du Personnage. Ce bouton ferme la
- * boucle avec des rouages déjà écrits : la fiche a des curseurs par chaîne depuis #374, ils
- * écrivent déjà `skeletonPose3d`, et c'est exactement ce qu'une pose de créature mémorise.
- *
- * ⚠️ IL N'APPARAÎT PAS POUR UN HUMANOÏDE, et l'asymétrie a une cause, pas un oubli : la part
- * PORTABLE d'une pose humanoïde vit dans le vocabulaire du Personnage intégré, que cette fiche ne
- * tient pas — elle n'a que des angles d'OS, propres à ce rig. Les enregistrer d'ici créerait une
- * pose proposée à tous les humanoïdes et fausse sur chacun des autres.
- *
- * L'ÉTIQUETTE VIENT DU POINT UNIQUE, `squelettePourPose3D` : c'est elle qui rangera la pose dans
- * son archétype, et elle est irrattrapable après coup (cf. #375b).
- */
-const objectPoseSaveBtn = document.getElementById('objectPoseSaveBtn');
-if (objectPoseSaveBtn) objectPoseSaveBtn.onclick = () => {
-  // `S.modalTarget` est l'Élément dont la fiche est ouverte (cf. openObjectModal).
-  const obj = S.modalTarget;
-  if (!obj) return;
-  const figure = S.modalDraftModelFile || obj.modelFile;
-  const vocabulaire = squelettePourPose3D(figure);
-  // Le bouton est masqué pour un humanoïde ; la garde est ici AUSSI, parce qu'un bouton masqué
-  // reste cliquable par un raccourci ou un test, et que la conséquence serait une pose fausse
-  // proposée à tous les humanoïdes.
-  if (vocabulaire === PERSONA_SKELETON_3D) return;
-  const angles = S.modalDraftSkeletonPose;
-  // RIEN DE TOURNÉ, RIEN À ENREGISTRER : une pose qui ne fait rien s'ajouterait sous un nom, se
-  // proposerait comme les autres, et ne se démasquerait qu'à l'application.
-  if (!poseNonVide3D(angles)) {
-    alertAction(tr('Move at least one joint before saving this pose.',
-      'Bougez au moins une articulation avant d\'enregistrer cette pose.'));
-    return;
-  }
-  const champ = document.getElementById('objectPoseNameInput');
-  const pose = makePose3D(newId('pose'),
-    (champ && champ.value.trim()) ? champ.value : nextDefaultPoseName3D(S.poses),
-    angles, vocabulaire);
-  setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), pose]);
-  if (champ) champ.value = '';
-  // La pose qu'on vient d'écrire devient celle de l'Élément : l'enregistrer puis devoir la
-  // rechercher dans la liste serait une demi-action.
-  const sel = document.getElementById('objectPositionSelect');
-  buildSkeletonPoseFieldUI(obj);
-  if (sel) sel.value = pose.id;
-};
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LE PONT D'ENREGISTREMENT DEPUIS LA FICHE A ÉTÉ RETIRÉ (#393)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Il vivait ici, et son commentaire disait déjà ce qui devait lui arriver : « ce bouton est un
+// pont, pas une destination. Dès que l'Éditeur saura poser une créature (#383), il DOIT ÊTRE
+// RETIRÉ ». L'Éditeur le sait, le pont part, et la bibliothèque de poses retrouve UN SEUL point
+// d'écriture, `savePersonaEditorPose`.
+//
+// ⚠️ CE N'EST PAS UNE SIMPLIFICATION DE CONFORT. Deux écrans capables d'écrire la même bibliothèque
+// finissent par diverger, et cette divergence-là aurait été invisible : deux poses du même nom,
+// composées à deux endroits, sans que rien ne dise laquelle est à jour.
+//
+// Ce qu'il faisait de particulier n'est pas perdu : il n'apparaissait que pour une créature, parce
+// que la fiche ne tient que des angles d'OS et qu'enregistrer ceux d'un humanoïde créerait une pose
+// proposée à tous les humanoïdes et fausse sur chacun des autres. L'Éditeur, lui, tient le
+// vocabulaire du CORPS pour un humanoïde et celui des os pour une créature : la garde n'a plus lieu
+// d'être, elle est devenue le fonctionnement normal.
 
 // ─── L'écran de correspondance du squelette ───
 // Le câblage seulement. La reconnaissance (skeleton-map.js), le rangement (skeleton-store.js) et la

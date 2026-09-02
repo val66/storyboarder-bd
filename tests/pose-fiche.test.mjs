@@ -276,6 +276,13 @@ describe('Le sélecteur de pose de la fiche', () => {
     assert.equal(sel.style.display, 'none', 'un menu vide reste affiché');
     assert.equal(hint.style.display, '', 'rien n\'explique la liste vide');
     assert.ok(hint.textContent.length > 20, 'l\'indication est vide');
+    // ⚠️ ELLE DÉSIGNE L'ÉDITEUR, PLUS UN BOUTON DE CETTE FICHE (#393). Elle renvoyait au
+    // « Enregistrer » du pont, retiré depuis : une indication qui survit à ce qu'elle désigne envoie
+    // chercher un bouton qui n'existe plus, et c'est pire qu'une liste vide.
+    assert.match(hint.textContent, /editor|éditeur/i,
+      'l\'indication ne dit pas où composer la première pose');
+    assert.doesNotMatch(hint.textContent, /\bsave\b|enregistr/i,
+      'l\'indication renvoie encore au bouton retiré avec le pont');
 
     // Dès qu'une pose de cet archétype existe, le menu reprend sa place et l'indication s'efface.
     const vocabulaire = squelettePourPose3D('sans-pose.glb');

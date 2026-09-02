@@ -1108,28 +1108,27 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
       'les os en plus passent devant les emplacements, qui portent les libellés humains');
   });
 
-  test('#390 : « Enregistrer » n\'apparaît QUE pour une créature, et se garde deux fois', () => {
-    // ⚠️ L'ASYMÉTRIE A UNE CAUSE, PAS UN OUBLI : la part PORTABLE d'une pose humanoïde vit dans le
-    // vocabulaire du Personnage intégré, que la fiche ne tient pas — elle n'a que des angles d'OS,
-    // propres à ce rig. Les enregistrer d'ici créerait une pose proposée à TOUS les humanoïdes et
-    // fausse sur chacun des autres.
-    const MODALS = lire('src/modals.js');
-    assert.match(MODALS, /objectPoseSaveRow/, 'la ligne d\'enregistrement a disparu de la fiche');
-    assert.match(MODALS, /squelettePourPose3D\(S\.modalDraftModelFile \|\| obj\.modelFile\) !== PERSONA_SKELETON_3D/,
-      'le bouton s\'affiche pour un humanoïde : sa pose serait fausse sur tous les autres rigs');
-
-    // LA GARDE EST AUSSI DANS LE GESTIONNAIRE. Un bouton masqué reste cliquable par un raccourci ou
-    // un test, et la conséquence serait exactement la pose fausse que l'affichage voulait éviter.
-    const EV = lire('src/events.js');
-    const debut = EV.indexOf("objectPoseSaveBtn.onclick");
-    assert.ok(debut > 0, 'le bouton n\'est plus câblé');
-    const corps = EV.slice(debut, EV.indexOf('\n};', debut));
-    assert.match(corps, /if \(vocabulaire === PERSONA_SKELETON_3D\) return;/,
-      'un humanoïde peut de nouveau enregistrer une pose d\'os depuis la fiche');
-    assert.match(corps, /if \(!poseNonVide3D\(angles\)\)/, 'une pose qui ne fait rien peut être enregistrée');
-    // L'étiquette vient du point unique : c'est elle qui rangera la pose dans son archétype, et
-    // elle est irrattrapable après coup (#375b).
-    assert.match(corps, /makePose3D\(newId\('pose'\),[\s\S]*angles, vocabulaire\)/);
+  test('#393 : la bibliothèque de poses n\'a QU\'UN SEUL point d\'écriture', () => {
+    // ⚠️ CE TEST REMPLACE CELUI DU PONT (#390), et l'inverse. L'ancien vérifiait que la fiche savait
+    // enregistrer une pose de créature, en attendant que l'Éditeur en soit capable ; son propre
+    // commentaire annonçait son retrait. L'Éditeur sait (#383), le pont est parti, et ce qui doit
+    // être tenu maintenant est la règle d'origine : UN seul écran écrit la bibliothèque.
+    //
+    // Deux écrans qui l'écrivent divergent, et cette divergence-là serait INVISIBLE : deux poses du
+    // même nom, composées à deux endroits, sans que rien ne dise laquelle est à jour.
+    //
+    // `io.js` est le propriétaire de la bibliothèque — chargement, amorçage, fusion, suppressions —
+    // et n'entre pas dans le compte : il ne COMPOSE pas de pose, il tient le fichier.
+    const ecrivains = ['events.js', 'modals.js', 'rig3d.js', 'sidebar.js', 'scenes.js', 'draw.js',
+      'scene3d.js', 'project-tree.js', 'canvas-tools.js', 'skeleton-pose.js', 'utils.js']
+      .filter(f => /setPoseLibrary\s*\(/.test(lire('src/' + f)));
+    assert.deepEqual(ecrivains, [],
+      `${ecrivains.join(', ')} écrit la bibliothèque de poses : deux poses du même nom finiront par `
+      + 'coexister sans que rien ne dise laquelle est à jour');
+    // Et il existe bel et bien, sans quoi le test ci-dessus serait vrai dans une application qui
+    // n'enregistre plus rien du tout.
+    assert.match(lire('src/persona-editor.js'), /export function savePersonaEditorPose/,
+      'plus personne ne sait créer une pose');
   });
 
   test('#375b : le VOCABULAIRE DE POSE d\'une figure a un seul point de décision', () => {

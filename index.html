@@ -995,16 +995,9 @@
                roles vers un autre modele du meme archetype ; sans cette ligne, on chercherait une
                panne la ou il n'y a qu'une difference de squelette. Vide le reste du temps. -->
           <div class="skeleton-map-legend-note" id="objectPoseNote"></div>
-          <!-- Enregistrer la pose courante dans la bibliotheque (#390). VISIBLE POUR LES CREATURES
-               SEULEMENT, et la raison est precise : la part PORTABLE d'une pose humanoide vit dans
-               le vocabulaire du Personnage integre, que cette fiche ne tient pas. Enregistrer d'ici
-               les angles d'os d'un humanoide creerait une pose proposee a tous les humanoides et
-               fausse sur chacun des autres rigs. Une creature, elle, n'a pas d'autre vocabulaire
-               que celui-la : c'est le meme objet qui se pose et qui s'enregistre. -->
-          <div id="objectPoseSaveRow" class="skeleton-map-reprise vide">
-            <input id="objectPoseNameInput" type="text" placeholder="Nom de la pose" />
-            <button id="objectPoseSaveBtn" type="button" class="skeleton-map-reprise-btn">Enregistrer</button>
-          </div>
+          <!-- La ligne « Enregistrer » (#390) a ete RETIREE ici (#393). C'etait un pont, le temps
+               que l'Editeur sache poser une creature : la fiche APPLIQUE des poses, l'Editeur les
+               CREE, et la bibliotheque n'a plus qu'un seul point d'ecriture. -->
         </div>
         <!-- Modèle importé dont le FICHIER place un ou plusieurs maillages hors du corps (mesuré :
              cf. src/stray-meshes-3d.js). Ils sont masqués par défaut ; cette case les rend. Le champ
