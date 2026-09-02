@@ -435,11 +435,116 @@ describe('Un membre par ligne, et la chaîne qui le tient (#378b)', () => {
     assert.deepEqual(propositionDeRoles3D({}, fr), []);
   });
 
-  test('estSur3D : « nom » et « manuel » seuls sont sûrs', () => {
+  test('estSur3D : « nom », « manuel » et « repris » sont sûrs', () => {
     assert.equal(estSur3D([{ origine: 'nom' }, { origine: 'manuel' }]), true);
     assert.equal(estSur3D([{ origine: 'nom' }, { origine: 'structure' }]), false);
     assert.equal(estSur3D([{ origine: 'vide' }]), false);
     assert.equal(estSur3D([]), true, 'un membre sans rôle n\'a rien à confirmer');
+    // #386 : une correspondance reprise est le MÊME choix humain, fait sur un fichier voisin et
+    // rapatrié par un clic. La compter incertaine rouvrirait tous les membres juste après le geste
+    // censé les régler, et contredirait le sous-titre, qui ne les compte pas « à vérifier ».
+    assert.equal(estSur3D([{ origine: 'repris' }, { origine: 'manuel' }]), true);
+    assert.equal(estSur3D([{ origine: 'repris' }, { origine: 'structure' }]), false);
+  });
+
+  test('#386 : un rôle REPRIS d\'un autre fichier le dit, sur une créature', () => {
+    // L'étiquette est la seule chose que `repris` change : l'os retenu reste celui du choix humain.
+    // Sans ce mot, quatorze lignes annonceraient « votre choix » à quelqu'un qui n'a choisi qu'un
+    // fichier, dans un écran dont la colonne d'origine est tout l'intérêt.
+    const os = charger('cerbere');
+    const nom = os[9].name;
+    const avec = propositionDeRoles3D({
+      os, archetype: 'quadrupede', carte: inferSkeletonMap(os),
+      enregistre: { os: { head: nom }, repris: new Set(['head']) },
+    }, fr).find(m => m.label === 'Tête');
+    const sans = propositionDeRoles3D({
+      os, archetype: 'quadrupede', carte: inferSkeletonMap(os), enregistre: { os: { head: nom } },
+    }, fr).find(m => m.label === 'Tête');
+    assert.equal(avec.roles.find(r => r.cle === 'head').origine, 'repris');
+    assert.equal(sans.roles.find(r => r.cle === 'head').origine, 'manuel');
+    assert.equal(avec.roles.find(r => r.cle === 'head').osNom, nom, 'l\'os retenu a changé');
+  });
+
+  test('#386 : l\'origine du MEMBRE suit celle de ses rôles, « repris » compris', () => {
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : dégrader `repris` au rang de « vide » dans
+    // `pireOrigine3D` ne faisait tomber aucun test. La cause est instructive et vaut d'être écrite :
+    // `membre.origine` fait partie du contrat de cette fonction et les autres origines y sont
+    // vérifiées, mais AUCUN ÉCRAN NE L'AFFICHE aujourd'hui — le repli passe par `estSur3D`, et
+    // l'étiquette des chaînes vient de `lignesDeCorrespondance3D`. On l'épingle comme les autres
+    // plutôt que de laisser un champ public dériver en silence jusqu'à ce que #375 s'en serve.
+    const os = charger('cerbere');
+    const cles = ['head', 'neck'];
+    const choix = {}; cles.forEach((c, i) => { choix[c] = os[9 + i].name; });
+    const tete = propositionDeRoles3D({
+      os, archetype: 'quadrupede', carte: inferSkeletonMap(os),
+      enregistre: { os: choix, repris: new Set(cles) },
+    }, fr).find(m => m.label === 'Tête');
+    assert.ok(tete.roles.every(r => r.origine === 'repris'), 'préalable : tous les rôles repris');
+    assert.equal(tete.origine, 'repris', 'un membre entièrement repris s\'annonce autrement');
+  });
+
+  test('#386 : un membre MIXTE annonce le moins sûr, et « repris » n\'est pas le moins sûr', () => {
+    // ⚠️ IL A FALLU UN MEMBRE MIXTE POUR RENDRE LE RANG OBSERVABLE. Sur un membre entièrement
+    // repris, mettre `repris` au rang de « vide » donne le même résultat que le mettre au rang de
+    // « manuel » : la mutation restait invisible, et le test précédent ne suffisait pas.
+    //
+    // La jambe gauche de mixamo est reconnue « nom, structure, nom ». En reprendre la cuisse ne doit
+    // PAS améliorer l'étiquette du membre : le genou est toujours une déduction, et c'est lui que
+    // l'utilisateur doit aller regarder.
+    const os = charger('mixamo');
+    const carte = inferSkeletonMap(os);
+    assert.equal(carte.jambe_g.origine, 'structure', 'préalable : le genou est une déduction');
+    carte.cuisse_g = { ...carte.cuisse_g, origine: 'manuel' };
+    const jambe = propositionDeRoles3D({
+      os, archetype: 'humanoide', carte, enregistre: { os: {}, repris: new Set(['cuisse_g']) },
+    }, fr).find(m => m.roles.some(r => r.cle === 'cuisse_g'));
+    assert.equal(jambe.roles.find(r => r.cle === 'cuisse_g').origine, 'repris');
+    assert.equal(jambe.origine, 'structure',
+      'une reprise partielle a masqué la ligne qu\'il reste à vérifier');
+  });
+
+  test('#386 : un emplacement REPRIS le dit aussi sur un humanoïde', () => {
+    // Le chemin humanoïde relit `inferSkeletonMap` et non les choix : `repris` doit donc y être lu
+    // sur l'origine de la CARTE, pas sur une clé de choix. Deux chemins, deux gardes.
+    const os = charger('mixamo');
+    const carte = inferSkeletonMap(os);
+    const slot = Object.keys(carte).find(s => carte[s]);
+    carte[slot] = { ...carte[slot], origine: 'manuel' };
+    const lu = (repris) => propositionDeRoles3D({
+      os, archetype: 'humanoide', carte, enregistre: { os: {}, repris },
+    }, fr).flatMap(m => m.roles).find(r => r.cle === slot).origine;
+    assert.equal(lu(new Set([slot])), 'repris');
+    assert.equal(lu(null), 'manuel');
+  });
+
+  test('RÉGRESSION : le chemin humanoïde ne lit PAS `enregistre.os`, il lirait du code mort', () => {
+    // ⚠️ TROUVÉ PAR UNE MUTATION DE #386, ET LE DÉFAUT ÉTAIT PLUS ANCIEN. `depuisLaCarte3D` lisait
+    // `choix[r.cle]` en miroir du chemin des créatures, alors que les choix humains d'un humanoïde
+    // sont DÉJÀ dans la carte, marqués « manuel » par `fusionner` : son appelant passe `os: {}`.
+    // Supprimer cette lecture ne faisait tomber aucun des 2239 tests, ce qui est la définition d'une
+    // ligne invérifiable. Elle est retirée, pas testée.
+    const os = charger('mixamo');
+    const carte = inferSkeletonMap(os);
+    const slot = Object.keys(carte).find(s => carte[s]);
+    const lu = (enregistre) => propositionDeRoles3D({ os, archetype: 'humanoide', carte, enregistre }, fr)
+      .flatMap(m => m.roles).find(r => r.cle === slot);
+    // Un choix passé par ce champ n'a AUCUN effet sur le chemin humanoïde : c'est la carte qui parle.
+    const invente = lu({ os: { [slot]: 'Os_Inexistant' } });
+    assert.equal(invente.osNom, carte[slot].name, 'le chemin humanoïde a recommencé à lire enregistre.os');
+    assert.deepEqual(invente, lu({}), 'passer des choix change le résultat, donc la lecture est revenue');
+  });
+
+  test('#386 : « repris » ne déguise QUE « manuel », jamais une déduction', () => {
+    // Une ligne trouvée par la forme du squelette n'a été reprise de personne. Marquer « repris »
+    // sur elle prêterait à l'utilisateur un choix qu'il n'a pas fait, ailleurs ni ici.
+    const os = charger('mixamo');
+    const carte = inferSkeletonMap(os);
+    const auto = Object.keys(carte).find(s => carte[s] && carte[s].origine !== 'manuel');
+    const r = propositionDeRoles3D({
+      os, archetype: 'humanoide', carte,
+      enregistre: { os: {}, repris: new Set(Object.keys(carte)) },
+    }, fr).flatMap(m => m.roles).find(x => x.cle === auto);
+    assert.notEqual(r.origine, 'repris', `${auto} est déduit, il ne peut pas être « repris »`);
   });
 
   test('les chaînes attribuables portent leur famille, ou null quand le nom ne dit rien', () => {

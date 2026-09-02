@@ -921,7 +921,12 @@ export function sousTitreCorrespondance3D({ fichier, os, proposition, valide } =
   const nb = (os || []).length;
   const roles = (proposition || []).flatMap(m => m.roles || []);
   const remplis = roles.filter(r => r.osNom).length;
-  const aVerifier = roles.filter(r => r.origine !== 'nom' && r.origine !== 'manuel').length;
+  // `repris` COMPTE COMME SÛR, au même titre que `manuel` : c'est un choix humain, fait sur un
+  // fichier voisin et repris à la demande explicite de l'utilisateur. Le compter « à vérifier »
+  // annoncerait quatorze lignes douteuses juste après un geste qui vient de les régler, et
+  // contredirait le repli des membres, qui traite la reprise comme certaine (cf. estSur3D).
+  const sures = new Set(['nom', 'manuel', 'repris']);
+  const aVerifier = roles.filter(r => !sures.has(r.origine)).length;
   const tete = t(`"${fichier}" — ${nb} bones`, `« ${fichier} » — ${nb} os`);
   const compte = t(` · ${remplis} of ${roles.length} assigned`, ` · ${remplis} sur ${roles.length} attribués`);
   if (valide) return tete + compte + t(' · ✓ confirmed', ' · ✓ correspondance validée');
@@ -951,7 +956,7 @@ export function cheminDOs3D(segments, os, max){
   return noms.slice(0, max).join(' › ') + ' › …';
 }
 
-export function lignesDeCorrespondance3D(os, enregistres, traduire){
+export function lignesDeCorrespondance3D(os, enregistres, traduire, repris){
   const t = traduire || ((en) => en);
   const liste = (os || []).filter(o => o && o.id !== undefined);
   const vide = { tronc: null, groupes: [] };
@@ -992,7 +997,12 @@ export function lignesDeCorrespondance3D(os, enregistres, traduire){
       rang: m.rang,
       segments: m.segments,
       nom: (memoire && memoire.nom) || (propose ? propose + suffixe : neutre),
-      origine: (memoire && memoire.nom) ? 'manuel' : (propose ? 'nom' : 'structure'),
+      // `repris` NE CHANGE QUE L'ÉTIQUETTE, jamais le nom retenu : c'est bien un choix humain, fait
+      // sur un autre fichier (cf. repriseDeCorrespondance3D). Le distinguer de « votre choix » dit à
+      // l'utilisateur d'où vient la ligne qu'il lit, ce qui est tout l'objet de cette colonne.
+      origine: (memoire && memoire.nom)
+        ? ((repris && repris.has(racine)) ? 'repris' : 'manuel')
+        : (propose ? 'nom' : 'structure'),
       retenu: memoire ? memoire.retenu !== false : true,
     };
     const cle = m.ancre;

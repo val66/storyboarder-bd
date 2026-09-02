@@ -34,7 +34,7 @@ import {
 } from './skeleton-map.js';
 import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance, fusionner,
-  doitOuvrirCorrespondance,
+  doitOuvrirCorrespondance, correspondancesApplicables3D, repriseDeCorrespondance3D,
 } from './skeleton-store.js';
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
@@ -4252,6 +4252,16 @@ async function openSkeletonMapModal(nomFichier, { pendantImport = false } = {}){
       morphologie: (enregistree && enregistree.morphologie) || archetypeSuggere3D(os).cle,
       morphologieOrigine: (enregistree && enregistree.morphologie) ? 'manuel' : archetypeSuggere3D(os).origine,
       morphologieManuelle: (enregistree && enregistree.morphologie) || null,
+      // Les correspondances d'AUTRES fichiers qui s'appliqueraient ici (#386). Calculées à
+      // l'ouverture et gardées telles quelles : le disque ne bouge pas pendant qu'un écran modal est
+      // ouvert, et les relire à chaque rendu rendrait le rendu asynchrone pour rien.
+      candidats: correspondancesApplicables3D(os, tout.entrees, nomFichier),
+      // Le fichier dont la correspondance a été reprise, et les clés qui en viennent. Purement
+      // D'AFFICHAGE, et vidés à l'enregistrement : une fois écrits, ces choix sont ceux de CE
+      // fichier, et continuer à les dire « repris » désignerait une provenance que le disque a
+      // oubliée.
+      reprisDe: null,
+      repris: new Set(),
       resoudre,
     };
     renderSkeletonMapModal();
@@ -4273,14 +4283,17 @@ function renderSkeletonMapModal(){
   // les curseurs (cf. groupesDeCurseurs3D dans src/rig3d.js). Changer le sélecteur échange les deux
   // sections sous les yeux, ce qui rend la conséquence visible au lieu de la faire deviner.
   const humanoide = _skelEcran.morphologie === 'humanoide';
-  const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr);
+  const lignes = lignesDeCorrespondance3D(os, _skelEcran.membres, tr, _skelEcran.repris);
   // UN SEUL MODÈLE POUR LES DEUX CAS depuis #378b, et c'est l'homogénéité demandée à l'usage :
   // « j'aime beaucoup le rendu pour les humanoïdes, pour les autres archétypes je trouve ça trop
   // différent ». Un humanoïde y relit `inferSkeletonMap`, une créature ses chaînes, mais l'écran ne
   // voit plus la différence : des membres, des rôles, des menus d'os.
   const proposition = propositionDeRoles3D({
     os, archetype: _skelEcran.morphologie, carte,
-    enregistre: { os: humanoide ? {} : _skelEcran.roles, membres: _skelEcran.membres },
+    enregistre: {
+      os: humanoide ? {} : _skelEcran.roles, membres: _skelEcran.membres,
+      repris: _skelEcran.repris,
+    },
   }, tr);
   // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonJointSlidersUI) : deux noms
   // pour une seule chose obligent l'utilisateur à faire le rapprochement lui-même.
@@ -4301,6 +4314,7 @@ function renderSkeletonMapModal(){
     ? tr('Cancel the import', 'Annuler l\'import')
     : tr('Cancel', 'Annuler');
 
+  renderReprise();
   renderMorphologie();
 
   const legende = document.getElementById('skeletonMapLegend');
@@ -4312,9 +4326,17 @@ function renderSkeletonMapModal(){
   // Enregistrer. Le mot essayait de porter une vraie distinction, seules ces lignes-là sont
   // conservées dans le fichier, mais une légende décrit un état, pas un devenir. La distinction
   // est donc dite à part, sous la légende, où elle est vraie tout le temps.
-  [['nom', tr('the bone name confirms it', 'le nom de l\'os le confirme')],
+  //
+  // La quatrième n'apparaît QUE si une reprise est en cours (#386). Une légende qui explique une
+  // étiquette absente de l'écran fait chercher ce qui n'y est pas ; celle-ci arrive avec les lignes
+  // qu'elle décrit, et repart avec elles.
+  const entrees = [['nom', tr('the bone name confirms it', 'le nom de l\'os le confirme')],
     ['structure', tr('deduced from the skeleton\'s shape', 'déduit de la forme du squelette')],
-    ['manuel', tr('you picked this bone', 'vous avez choisi cet os')]].forEach(([cle, texte]) => {
+    ['manuel', tr('you picked this bone', 'vous avez choisi cet os')]];
+  if (_skelEcran.reprisDe) {
+    entrees.push(['repris', tr(`taken from "${_skelEcran.reprisDe}"`, `repris de « ${_skelEcran.reprisDe} »`)]);
+  }
+  entrees.forEach(([cle, texte]) => {
     const s = document.createElement('span');
     s.innerHTML = `<span class="skeleton-map-origin origine-${cle}">${cle}</span> `;
     s.appendChild(document.createTextNode(texte));
@@ -4476,8 +4498,12 @@ function ligneMembre(m, os){
 
   const badge = document.createElement('span');
   badge.className = `skeleton-map-origin origine-${m.origine}`;
+  // « repris » DOIT ÊTRE ÉNUMÉRÉ ICI. Sans son cas, il tomberait dans le dernier `else` et une
+  // chaîne renommée sur un autre fichier s'annoncerait « forme », c'est-à-dire une déduction
+  // automatique : le contraire exact de ce qu'elle est.
   badge.textContent = m.origine === 'manuel' ? tr('yours', 'votre choix')
-    : m.origine === 'nom' ? tr('name', 'nom') : tr('shape', 'forme');
+    : m.origine === 'repris' ? tr('taken', 'repris')
+      : m.origine === 'nom' ? tr('name', 'nom') : tr('shape', 'forme');
   row.appendChild(badge);
 
   const chaine = document.createElement('div');
@@ -4511,6 +4537,122 @@ function noterMembre(racine, champs, { rendre = true } = {}){
   // l'écran à chaque ligne le referait trente fois, et chaque rendu détruit les cases que la
   // boucle en cours est en train de parcourir.
   if (rendre) renderSkeletonMapModal();
+}
+
+/**
+ * Le bandeau « Reprendre la correspondance d'un autre fichier » (#386).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UN BANDEAU, PAS UNE BOÎTE DE DIALOGUE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Cet écran s'ouvre DÉJÀ tout seul pendant un import. En empiler une seconde par-dessus rendrait
+ * l'import interrogatoire, et superposer deux modales est précisément ce qui a coûté le blocage
+ * silencieux documenté sur « Réinitialiser ». Ici, ne rien faire vaut refus : la bonne valeur par
+ * défaut pour une proposition dont la pertinence n'est pas garantie.
+ *
+ * IL EST EN HAUT, AU-DESSUS DE LA MORPHOLOGIE, parce qu'une reprise CHANGE la morphologie. Le
+ * placer plus bas ferait régler à la main un sélecteur que le bouton du dessus allait corriger.
+ *
+ * ⚠️ UN MENU, ET NON UNE LIGNE PAR CANDIDAT. Choix de l'utilisateur, contre ma proposition : le
+ * bandeau garde une hauteur fixe quel que soit le nombre de fichiers réexportés dans le dossier.
+ * Chaque option porte de quoi choisir — nom, nombre d'os nommés, morphologie — et le tri les
+ * présente du plus riche au plus pauvre (cf. correspondancesApplicables3D).
+ *
+ * ⚠️ AUCUNE DATE N'EST AFFICHÉE parce que le fichier des correspondances n'en garde aucune. « Le
+ * plus récent » serait le repère naturel, et l'inventer serait pire que de s'en passer.
+ */
+function renderReprise(){
+  const zone = document.getElementById('skeletonMapReprise');
+  if (!zone) return;
+  zone.innerHTML = '';
+  // APRÈS LA REPRISE, LE BANDEAU RESTE, et il dit ce qui vient de se passer. Le faire disparaître
+  // laisserait un écran entièrement réécrit sans plus rien pour expliquer d'où viennent ses lignes,
+  // une fois qu'on a fait défiler et perdu les étiquettes de vue.
+  if (_skelEcran.reprisDe) {
+    zone.className = 'skeleton-map-reprise reprise-faite';
+    const dit = document.createElement('span');
+    dit.textContent = tr(
+      `Mapping taken from "${_skelEcran.reprisDe}". Nothing is written until you save.`,
+      `Correspondance reprise de « ${_skelEcran.reprisDe} ». Rien n'est écrit tant que vous n'avez pas enregistré.`);
+    zone.appendChild(dit);
+    return;
+  }
+  const candidats = _skelEcran.candidats || [];
+  if (!candidats.length) { zone.className = 'skeleton-map-reprise vide'; return; }
+  zone.className = 'skeleton-map-reprise';
+
+  const dit = document.createElement('span');
+  dit.className = 'skeleton-map-reprise-texte';
+  // Le nombre de fichiers est DIT, même si le menu le montre : c'est ce qui distingue « j'en ai
+  // trouvé un » de « choisissez », et c'est l'information qui décide si on ouvre le menu.
+  dit.textContent = candidats.length === 1
+    ? tr('Another file has this skeleton and is already set up:',
+      'Un autre fichier a ce squelette et est déjà réglé :')
+    : tr(`${candidats.length} other files have this skeleton and are already set up:`,
+      `${candidats.length} autres fichiers ont ce squelette et sont déjà réglés :`);
+  zone.appendChild(dit);
+
+  const sel = document.createElement('select');
+  candidats.forEach((c, i) => {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = libelleCandidatReprise3D(c, tr);
+    sel.appendChild(opt);
+  });
+  zone.appendChild(sel);
+
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.className = 'full-btn';
+  bouton.textContent = tr('Take it', 'Reprendre');
+  bouton.onclick = () => reprendreCorrespondance(candidats[Number(sel.value) || 0]);
+  zone.appendChild(bouton);
+}
+
+/**
+ * Ce qu'une option du menu affiche : le fichier, ce qu'il apporte, et sa morphologie. PURE.
+ *
+ * LES TROIS INFORMATIONS SONT CELLES QUI DÉCIDENT. Le nom seul ne distingue pas deux réexports ; le
+ * nombre d'os nommés dit combien de travail est repris ; la morphologie dit dans quel écran on va
+ * atterrir, et c'est souvent elle qu'on vient chercher.
+ */
+export function libelleCandidatReprise3D(candidat, traduire){
+  const t = traduire || ((en) => en);
+  const c = candidat || {};
+  const morpho = ARCHETYPES_3D.find(a => a.cle === (c.entree || {}).morphologie);
+  // Sans morphologie enregistrée, on n'en INVENTE pas : l'entrée n'en portait pas, et écrire
+  // « humanoïde » par défaut annoncerait un basculement d'écran qui n'aura pas lieu.
+  const suffixe = morpho ? `, ${t(morpho.labelEn, morpho.label)}` : '';
+  return t(`${c.fichier} — ${c.os} named bones${suffixe}`, `${c.fichier} — ${c.os} os nommés${suffixe}`);
+}
+
+/**
+ * Reprend la correspondance d'un fichier voisin dans l'écran ouvert. Rien n'est écrit.
+ *
+ * ⚠️ LA MORPHOLOGIE REPRISE DEVIENT UN CHOIX HUMAIN, `morphologieManuelle` comprise. Sans cela elle
+ * s'afficherait sans partir sur le disque, et le fichier suivant reposerait la même question : très
+ * exactement le défaut de #385, dont la correction est trop récente pour le réintroduire ici.
+ *
+ * L'écran est DÉVALIDÉ, comme après n'importe quelle modification : la correspondance affichée
+ * n'est plus celle qui avait été confirmée.
+ */
+function reprendreCorrespondance(candidat){
+  if (!_skelEcran || !candidat) return;
+  const r = repriseDeCorrespondance3D(candidat.entree, _skelEcran.os,
+    inferSkeletonMap(_skelEcran.os));
+  _skelEcran.carte = r.carte;
+  _skelEcran.roles = r.roles;
+  _skelEcran.membres = r.membres;
+  if (r.morphologie) {
+    _skelEcran.morphologie = r.morphologie;
+    _skelEcran.morphologieManuelle = r.morphologie;
+    _skelEcran.morphologieOrigine = 'repris';
+  }
+  _skelEcran.repris = r.cles;
+  _skelEcran.reprisDe = candidat.fichier;
+  _skelEcran.valide = false;
+  renderSkeletonMapModal();
 }
 
 /**
@@ -4555,9 +4697,14 @@ function renderMorphologie(){
   const badge = document.createElement('span');
   const origine = _skelEcran.morphologieOrigine;
   badge.className = `skeleton-map-origin origine-${origine === 'topologie' ? 'nom' : origine}`;
+  // La morphologie REPRISE porte sa propre étiquette (#386) : c'est le plus souvent elle qu'on
+  // venait chercher, un cerbère proposé humanoïde par la reconnaissance et remis en quadrupède par
+  // le fichier voisin. L'annoncer « votre choix » cacherait le seul endroit où la reprise a
+  // vraiment changé l'écran.
   badge.textContent = origine === 'topologie' ? tr('shape', 'forme')
-    : origine === 'manuel' ? tr('yours', 'votre choix')
-      : tr('to confirm', 'à confirmer');
+    : origine === 'repris' ? tr('taken', 'repris')
+      : origine === 'manuel' ? tr('yours', 'votre choix')
+        : tr('to confirm', 'à confirmer');
   zone.appendChild(badge);
 }
 
@@ -4639,6 +4786,12 @@ document.getElementById('skeletonMapReset').onclick = async () => {
   // les corrections vivent justement là.
   _skelEcran.roles = {};
   _skelEcran.membres = [];
+  // LA REPRISE AUSSI SE DÉFAIT ICI (#386), et c'est le seul moyen de la défaire. Sans ces deux
+  // lignes, le bandeau continuerait d'annoncer une correspondance reprise dont le bouton vient
+  // d'effacer chaque ligne, et les étiquettes « repris » désigneraient des os revenus à
+  // l'automatique : un écran qui décrit un état qu'il n'a plus.
+  _skelEcran.repris = new Set();
+  _skelEcran.reprisDe = null;
   // Repasse en NON validé : c'est tout l'objet du bouton, retrouver l'écran tel qu'il se présente
   // la première fois, lignes signalées comprises.
   _skelEcran.valide = false;

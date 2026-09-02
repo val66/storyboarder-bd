@@ -605,7 +605,9 @@ export function chainesAttribuables3D(os, membresEnregistres, traduire){
  * de la première, c'est-à-dire la faute que ce chantier passe son temps à éviter. L'unification est
  * dans la FORME de l'écran, pas dans la duplication de ce qui marche.
  *
- * @param enregistre `{ os: { role: nomDOs }, membres: [...] }`, les choix humains relus du disque
+ * @param enregistre `{ os: { role: nomDOs }, membres: [...], repris: Set }`, les choix humains relus
+ *                   du disque. `repris` ne change QUE l'étiquette affichée, jamais l'os retenu : il
+ *                   dit lesquels de ces choix viennent d'un fichier voisin (#386).
  * @returns `[{ cle, label, chaine, origine, sur, roles: [{ cle, label, osNom }] }]`
  */
 export function propositionDeRoles3D({ os, archetype, carte, enregistre } = {}, traduire){
@@ -628,27 +630,46 @@ export function propositionDeRoles3D({ os, archetype, carte, enregistre } = {}, 
   return depuisLesChaines3D(membres, chainesAttribuables3D(os, memoire.membres, t), memoire, tronc);
 }
 
-/** Cas humanoïde : on RELIT `inferSkeletonMap`, on ne la refait pas. */
+/**
+ * Cas humanoïde : on RELIT `inferSkeletonMap`, on ne la refait pas.
+ *
+ * ⚠️ CE CHEMIN NE CONSULTE PAS `enregistre.os`, ET C'EST STRUCTUREL. Les choix humains d'un
+ * humanoïde sont déjà DANS la carte, marqués `manuel` par `fusionner` à l'ouverture de l'écran ; son
+ * appelant passe donc `os: {}` (cf. renderSkeletonMapModal). Une première version lisait quand même
+ * `choix[r.cle]` ici, en miroir du chemin des créatures : du code MORT, et il s'est signalé tout
+ * seul, une mutation de #386 l'ayant supprimé sans qu'un seul des 2239 tests ne bronche. Le lire
+ * n'était pas faux, c'était invérifiable, ce qui est pire dans un fichier tenu par des mutations.
+ */
 function depuisLaCarte3D(membres, carte, memoire){
-  const choix = (memoire.os) || {};
+  const repris = memoire.repris || null;
   return membres.map(m => {
     const roles = m.roles.map(r => {
       const e = (carte || {})[r.cle];
-      return { ...r, osNom: choix[r.cle] || (e && e.name) || null, origine: origineDe3D(r.cle, choix, e) };
+      return { ...r, osNom: (e && e.name) || null, origine: origineDe3D(r.cle, e, repris) };
     });
     return { ...m, chaine: null, roles, origine: pireOrigine3D(roles), sur: estSur3D(roles) };
   });
 }
 
-function origineDe3D(cle, choix, entree){
-  if (choix[cle]) return 'manuel';
+/**
+ * L'origine affichée d'un emplacement humanoïde.
+ *
+ * ⚠️ `repris` REMPLACE `manuel`, ET SEULEMENT LUI. Une correspondance reprise d'un fichier voisin
+ * est un choix humain — `fusionner` la marque `manuel`, et c'est ce qui la fait ENREGISTRER (cf.
+ * repriseDeCorrespondance3D). L'étiquette, elle, dit d'où vient la ligne, ce qui est le contrat de
+ * cette colonne : sans ce mot, quatorze lignes annonceraient « votre choix » à quelqu'un qui n'a
+ * choisi qu'un fichier. Une origine automatique n'est jamais reprise, la garde le dit.
+ */
+function origineDe3D(cle, entree, repris){
   if (!entree || entree.bone === undefined) return 'vide';
-  return entree.origine || 'structure';
+  const o = entree.origine || 'structure';
+  return (o === 'manuel' && repris && repris.has(cle)) ? 'repris' : o;
 }
 
 /** Cas créature : on attribue une chaîne par membre, et ses segments prennent les rôles dans l'ordre. */
 function depuisLesChaines3D(membres, chaines, memoire, tronc){
   const choix = (memoire.os) || {};
+  const repris = memoire.repris || null;
   const prises = new Set();
   // LA TÊTE VIENT DU TRONC, PAS D'UNE CHAÎNE, et c'est le seul membre dans ce cas : elle en est
   // l'extrémité, pas une branche. Cf. rolesDuTronc3D pour la mesure qui l'impose.
@@ -727,7 +748,9 @@ function depuisLesChaines3D(membres, chaines, memoire, tronc){
     // chaîne. Prendre le tronc pour le membre entier vidait donc le rôle `head`. Les deux sources ne
     // visent pas le même genre d'os, elles se complètent au lieu de se disputer.
     const roles = m.roles.map((r, i) => {
-      if (choix[r.cle]) return { ...r, osNom: choix[r.cle], origine: 'manuel' };
+      if (choix[r.cle]) {
+        return { ...r, osNom: choix[r.cle], origine: (repris && repris.has(r.cle)) ? 'repris' : 'manuel' };
+      }
       if (surTronc[r.cle]) return { ...r, osNom: surTronc[r.cle].nom, origine: surTronc[r.cle].origine };
       const osNom = chaine ? (chaine.osNoms[i] || null) : null;
       return { ...r, osNom, origine: osNom ? origine : 'vide' };
@@ -751,13 +774,33 @@ function depuisLesChaines3D(membres, chaines, memoire, tronc){
  *
  * « votre choix » COMPTE COMME SÛR : un os choisi à la main est une décision prise, la redemander à
  * chaque ouverture reviendrait à ne pas l'avoir enregistrée.
+ *
+ * « repris » AUSSI, et pour la même raison : c'est le même choix humain, fait sur un fichier voisin
+ * et rapatrié par un geste explicite (#386). Le compter incertain rouvrirait quatorze membres juste
+ * après le clic censé les régler, et contredirait le sous-titre, qui ne les compte pas « à
+ * vérifier ». L'utilisateur garde de quoi douter : le bandeau nomme la source, et chaque ligne
+ * porte son étiquette.
  */
 export function estSur3D(roles){
-  return (roles || []).every(r => r.origine === 'nom' || r.origine === 'manuel');
+  return (roles || []).every(r => r.origine === 'nom' || r.origine === 'manuel' || r.origine === 'repris');
 }
 
-/** L'origine la MOINS sûre parmi les rôles d'un membre : c'est elle que l'étiquette affiche. */
+/**
+ * L'origine la MOINS sûre parmi les rôles d'un membre : c'est elle que l'étiquette affiche.
+ *
+ * ⚠️ LA GRAINE EST LE PREMIER RÔLE, PAS « manuel », et il a fallu une mutation échappée pour le
+ * voir. `repris` est au MÊME RANG que `manuel` — les deux sont un choix humain, et « laquelle est
+ * la pire » n'a pas de réponse — mais avec une graine figée à `manuel`, l'égalité était toujours
+ * tranchée par la graine : un membre ENTIÈREMENT repris s'annonçait « votre choix », et aucune
+ * entrée ne pouvait produire « repris ». Une valeur inatteignable, donc une mutation invisible.
+ *
+ * Pour les quatre origines antérieures, rien ne change : `manuel` étant déjà le rang le plus bas,
+ * partir du premier rôle donne exactement le même résultat que partir de lui.
+ */
 function pireOrigine3D(roles){
-  const rang = { manuel: 0, nom: 1, structure: 2, vide: 3 };
-  return (roles || []).reduce((pire, r) => (rang[r.origine] > rang[pire] ? r.origine : pire), 'manuel');
+  const rang = { manuel: 0, repris: 0, nom: 1, structure: 2, vide: 3 };
+  const liste = roles || [];
+  // Un membre sans rôle n'a rien à confirmer, comme dans `estSur3D` : il est sûr.
+  if (!liste.length) return 'manuel';
+  return liste.reduce((pire, r) => (rang[r.origine] > rang[pire] ? r.origine : pire), liste[0].origine);
 }

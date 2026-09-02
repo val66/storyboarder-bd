@@ -217,6 +217,73 @@ export function correspondancesApplicables3D(osDuFichier, entrees, sauf){
 }
 
 /**
+ * Ce que devient l'écran quand on reprend la correspondance d'un autre fichier. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * TOUT OU RIEN, ET C'EST LE POINT
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Une reprise ligne par ligne existerait, et elle transformerait un raccourci en travail : décider
+ * quatorze fois coûte exactement ce que la reprise prétend économiser. On reprend donc l'entrée
+ * ENTIÈRE — emplacements, rôles, chaînes, morphologie — et l'utilisateur corrige ensuite ce qui ne
+ * lui va pas, avec les mêmes menus que d'habitude. Défaire une reprise, c'est « Réinitialiser ».
+ *
+ * ⚠️ LA MORPHOLOGIE VIENT AVEC, ET C'EST LE PLUS UTILE DU LOT. Le cas qui a fait naître cette
+ * fonction est un cerbère proposé `humanoide` par la reconnaissance, alors que le fichier voisin
+ * porte le `quadrupede` corrigé à la main. C'est aussi pourquoi les candidats ne sont PAS filtrés
+ * sur leur archétype (cf. correspondancesApplicables3D) : filtrer sur une morphologie encore
+ * fausse écarterait le candidat précisément quand il a raison contre l'écran.
+ *
+ * ⚠️ RIEN N'EST ÉCRIT ICI. Cette fonction rend un BROUILLON, comme tout le reste de cet écran ; le
+ * disque n'est touché qu'à « Enregistrer ».
+ *
+ * @param entree l'entrée du fichier voisin, telle qu'elle a été relue
+ * @param osDuFichier les os du fichier OUVERT, `[{ id, name }]`
+ * @param auto ce que rend `inferSkeletonMap` sur ce fichier : les emplacements que la reprise ne
+ *             couvre pas restent proposés, on ne les vide pas
+ * @returns `{ carte, roles, membres, morphologie, cles }`, `cles` étant les emplacements et rôles
+ *          repris, pour que l'écran puisse dire d'où vient chaque ligne.
+ */
+export function repriseDeCorrespondance3D(entree, osDuFichier, auto){
+  const e = entree || {};
+  const osRepris = normaliserRoles3D(e.os);
+  const rolesRepris = normaliserRoles3D(e.roles);
+  // Les os REPRIS sont marqués `manuel` par `fusionner`, et ce n'est pas une approximation : ce
+  // sont bien des choix humains, faits sur le fichier voisin, et `entreePourFichier` n'écrit que
+  // les emplacements marqués ainsi. Les marquer `repris` ici les ferait disparaître à
+  // l'enregistrement — une perte silencieuse, exactement du genre de #382 et #385. L'étiquette
+  // `repris` de l'écran est une information d'AFFICHAGE, tenue à part, dans `cles`.
+  const carte = fusionner(auto, { os: osRepris }, osDuFichier);
+  // Une entrée peut nommer un os que ce fichier n'a plus : `fusionner` retombe alors sur la
+  // proposition automatique pour cet emplacement. La clé ne doit pas se dire « reprise » dans ce
+  // cas, sans quoi l'écran désignerait comme repris un os que personne n'a repris.
+  const cles = new Set();
+  Object.entries(osRepris).forEach(([slot, nom]) => {
+    const v = carte[slot];
+    if (v && v.name === nom) cles.add(slot);
+  });
+  const presents = new Set((osDuFichier || []).map(o => o && o.name).filter(Boolean));
+  const roles = {};
+  Object.entries(rolesRepris).forEach(([cle, nom]) => {
+    if (!presents.has(nom)) return;
+    roles[cle] = nom;
+    cles.add(cle);
+  });
+  // LES CHAÎNES RENOMMÉES COMPTENT AUSSI. Une chaîne dont le nom vient d'ailleurs affiche « votre
+  // choix » si on l'oublie ici, et c'est faux au même titre qu'une ligne de rôle. Seules celles qui
+  // portent un NOM entrent : une chaîne simplement décochée n'a pas d'étiquette à corriger.
+  const membres = normaliserMembres(e.membres);
+  membres.forEach(m => { if (m.nom) cles.add(m.racine); });
+  return {
+    carte,
+    roles,
+    membres,
+    morphologie: MORPHOLOGIES_CONNUES.has(e.morphologie) ? e.morphologie : null,
+    cles,
+  };
+}
+
+/**
  * La morphologie EFFECTIVE d'un fichier : le choix humain s'il existe, sinon le proposé. PURE.
  *
  * MÊME RÈGLE QUE `fusionner` POUR LES EMPLACEMENTS, et elle est ici pour être à côté d'elle : ce

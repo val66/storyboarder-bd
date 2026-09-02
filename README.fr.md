@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.67**
+**Version 1.4.68**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -65,6 +65,10 @@
   incertain s'ouvre. Vous voyez donc ce qui demande une décision sans parcourir le reste
 - **Les membres en trop ne sont pas perdus** : les deux têtes surnuméraires d'un cerbère tombent
   sous « Chaînes sans rôle ». Elles gardent leurs curseurs et n'entrent dans aucune pose
+- **Un réglage se reprend d'un fichier à l'autre** : si un modèle déjà réglé porte le MÊME squelette,
+  un bandeau propose de reprendre sa correspondance, morphologie comprise. Le second cerbère ne
+  refait plus le travail du premier ; les lignes reprises portent l'étiquette « repris », et rien
+  n'est écrit avant « Enregistrer »
 - **Une créature se pose par ses chaînes** : dès que la morphologie n'est pas « humanoïde », les
   curseurs et les points de l'aperçu viennent des chaînes cochées, avec le nom que vous leur avez
   donné, et non des dix-huit emplacements humanoïdes

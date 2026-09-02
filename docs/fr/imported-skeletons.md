@@ -256,6 +256,65 @@ positifs ne l'est pas. Cette proposition peut très bien ne se déclencher qu'un
 
 **Rien n'est appliqué en silence.** Elle propose, l'écran affiche, l'utilisateur tranche.
 
+### 6.2 quater Le rendu de la reprise (#386)
+
+**Un bandeau, pas une boîte de dialogue.** Cet écran s'ouvre DÉJÀ tout seul pendant un import ; en
+empiler une seconde rendrait l'import interrogatoire, et superposer deux modales est ce qui a coûté
+le blocage silencieux documenté en 6.2 bis. Ne rien faire vaut refus, la bonne valeur par défaut
+pour une proposition dont la pertinence n'est pas garantie.
+
+**Il est au-dessus du sélecteur de morphologie**, parce qu'une reprise la CHANGE. Le placer plus bas
+ferait régler à la main un sélecteur que le bouton du dessus allait corriger.
+
+**Un menu, et non une ligne par candidat.** Décision de l'utilisateur contre ma proposition : le
+bandeau garde une hauteur fixe quel que soit le nombre de réexports dans le dossier. J'avais proposé
+une ligne par candidat, plus lisible à trois, ingérable à dix, avec un repli au-delà de trois — un
+seuil que rien ne mesurait.
+
+⚠️ **AUCUNE DATE N'EST AFFICHÉE**, parce que le fichier des correspondances n'en garde aucune.
+« Le plus récent » serait le repère naturel pour choisir entre deux réexports ; l'inventer aurait été
+pire que de s'en passer. Le tri se fait sur le nombre d'os nommés, le plus riche d'abord.
+
+**Tout ou rien.** La reprise emporte les emplacements, les rôles, les chaînes ET la morphologie.
+Reprendre ligne par ligne coûterait exactement ce que la reprise prétend économiser.
+
+⚠️ **LES CANDIDATS NE SONT PAS FILTRÉS SUR LEUR ARCHÉTYPE**, et j'avais proposé l'inverse avant de me
+raviser en l'écrivant. L'archétype du fichier ouvert, à l'instant du bandeau, n'est pas un fait :
+c'est la proposition automatique, et c'est elle qui se trompe. Filtrer dessus masquerait le candidat
+PRÉCISÉMENT dans le cas où il a raison contre l'écran — un cerbère proposé `humanoide` alors que le
+fichier voisin porte le `quadrupede` corrigé à la main.
+
+**Une quatrième étiquette d'origine, `repris`.** Les trois autres disent d'où vient chaque ligne ;
+une correspondance reprise n'est aucune des trois, et la faire passer pour « votre choix » serait un
+mensonge dans un écran construit pour ne pas en faire.
+
+⚠️ **ELLE EST TENUE À PART DES DONNÉES.** `entreePourFichier` n'écrit un emplacement que si son
+origine vaut exactement `manuel` : marquer `repris` DANS la carte aurait fait disparaître toute la
+reprise au premier « Enregistrer », en silence. Les os repris restent donc `manuel`, et les clés
+reprises vivent dans un ensemble séparé, purement d'affichage, vidé par « Réinitialiser ».
+
+**`repris` compte comme SÛR** partout : les membres se replient, et le sous-titre ne les compte pas
+« à vérifier ». Le contraire rouvrirait quatorze membres juste après le clic censé les régler.
+
+#### Ce que la campagne de mutation a trouvé, et qui n'était pas dans le programme
+
+Six mutations sur vingt-neuf ont échappé. Deux ont été tuées en corrigeant le CODE, et les deux
+défauts étaient **antérieurs** à cette tâche :
+
+- `depuisLaCarte3D` lisait `enregistre.os`, alors que les choix humains d'un humanoïde sont déjà
+  dans la carte et que son appelant passe `{}`. Du code MORT, supprimable sans qu'un seul des 2239
+  tests ne bronche. Retiré, pas testé.
+- `pireOrigine3D` partait d'une graine figée à `manuel`. `repris` étant au même rang, l'égalité était
+  toujours tranchée par la graine : un membre entièrement repris s'annonçait « votre choix », et la
+  valeur `repris` était **inatteignable**. La graine est désormais le premier rôle ; pour les quatre
+  origines antérieures, `manuel` étant le rang le plus bas, rien ne change.
+
+Deux autres ont été tuées en corrigeant des tests satisfaits par une ABSENCE :
+
+- une comparaison d'ordre sur `indexOf` — supprimer l'appel rendait -1, inférieur à tout indice,
+  donc la comparaison passait. Septième occurrence de ce piège dans ce dépôt ;
+- le bouton figé sur `candidats[0]` : le menu s'ouvrait, se changeait, et n'avait aucun effet.
+
 ### 6.2 bis Ouvrir l'écran repart de ce qui est enregistré (#385)
 
 Signalé à l'usage : « je passe le cerbère en quadrupède, j'enregistre, je rouvre, et il est de

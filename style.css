@@ -984,6 +984,19 @@ canvas{
                        padding: 6px 8px; background: var(--paper-dark); border-radius: 4px; }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
+/* Le bandeau de reprise (#386). Teinte VIOLETTE, celle de l'étiquette « repris » qu'il va poser sur
+   les lignes : le lien entre le bouton et ce qu'il change se voit alors sans être expliqué.
+   `vide` plutôt qu'un `display:none` général — la classe dit qu'il n'y a rien à proposer, ce qui
+   est un état, là où retirer l'élément du HTML obligerait à le recréer. */
+.skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+                        padding: 6px 8px; border-radius: 4px; font-size: 12.5px;
+                        background: rgba(150,110,200,.12); color: #6a4a9c; }
+.skeleton-map-reprise.vide { display: none; }
+.skeleton-map-reprise select { flex: 1; min-width: 0; }
+.skeleton-map-reprise-texte { white-space: nowrap; }
+/* Après la reprise, le bandeau n'a plus de bouton : il RACONTE. La phrase prend toute la largeur et
+   se laisse couper, là où la version avec menu tenait sur une ligne. */
+.skeleton-map-reprise.reprise-faite { display: block; }
 .skeleton-map-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px;
                        color: var(--sepia); margin-bottom: 10px; }
 /* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
@@ -1054,6 +1067,10 @@ canvas{
 .skeleton-map-origin.origine-structure { background: rgba(224,165,60,.22); color: #a06a10; }
 .skeleton-map-origin.origine-manuel    { background: rgba(90,130,200,.18); color: #4a6ea8; }
 .skeleton-map-origin.origine-vide      { background: rgba(128,128,128,.15); color: var(--ink-soft); }
+/* « repris » : la teinte de « manuel », décalée vers le violet. La parenté est voulue — les deux
+   disent un choix humain, et `entreePourFichier` les écrit de la même façon — mais la nuance dit
+   que la main n'était pas celle qui tient cet écran (#386). */
+.skeleton-map-origin.origine-repris    { background: rgba(150,110,200,.18); color: #7a55b0; }
 .skeleton-map-row.a-verifier { border-color: rgba(224,165,60,.6); background: rgba(224,165,60,.07); }
 /* Correspondance VALIDÉE : les étiquettes restent — elles disent d'où vient chaque os, et c'est
    l'information qui fait l'intérêt de cet écran — mais elles cessent d'alerter. Une ligne orangée

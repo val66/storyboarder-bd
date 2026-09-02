@@ -253,6 +253,64 @@ not. This proposal may well fire once in twenty.
 
 **Nothing is applied silently.** It proposes, the screen shows, the user decides.
 
+### 6.2 quater Rendering the reuse (#386)
+
+**A banner, not a dialog.** This screen ALREADY opens by itself during an import; stacking a second
+one would turn the import into an interrogation, and stacking two modals is what caused the silent
+deadlock documented in 6.2 bis. Doing nothing counts as declining, the right default for a proposal
+whose relevance is not guaranteed.
+
+**It sits above the morphology selector**, because a reuse CHANGES it. Placing it lower would mean
+hand-setting a dropdown the button above was about to correct.
+
+**A menu, not one row per candidate.** The user's decision against my proposal: the banner keeps a
+fixed height whatever the number of re-exports in the folder. I had proposed one row per candidate,
+more readable at three, unmanageable at ten, with a fold beyond three — a threshold nothing measured.
+
+⚠️ **NO DATE IS SHOWN**, because the mapping file keeps none. "Most recent" would be the natural
+cue for choosing between two re-exports; inventing it would have been worse than doing without.
+Sorting is by number of named bones, richest first.
+
+**All or nothing.** The reuse carries the slots, the roles, the chains AND the morphology. Taking it
+row by row would cost exactly what the reuse claims to save.
+
+⚠️ **CANDIDATES ARE NOT FILTERED ON THEIR ARCHETYPE**, and I had proposed the opposite before
+changing my mind while writing it. The open file's archetype, at the moment the banner shows, is not
+a fact: it is the automatic proposal, and that is what gets it wrong. Filtering on it would hide the
+candidate PRECISELY when it is right against the screen — a cerberus proposed `humanoide` while the
+neighbouring file carries the `quadrupede` corrected by hand.
+
+**A fourth origin badge, `repris` ("taken").** The other three say where each row comes from; a
+reused mapping is none of the three, and passing it off as "your choice" would be a lie in a screen
+built not to tell any.
+
+⚠️ **IT IS KEPT SEPARATE FROM THE DATA.** `entreePourFichier` writes a slot only if its origin is
+exactly `manuel`: marking `repris` INSIDE the map would have made the whole reuse vanish on the first
+"Save", silently. Reused bones therefore stay `manuel`, and the reused keys live in a separate set,
+purely for display, cleared by "Reset".
+
+**`repris` counts as CERTAIN** everywhere: limbs fold, and the subtitle does not count them "to
+check". Otherwise fourteen limbs would reopen right after the click meant to settle them.
+
+#### What the mutation campaign found, which was not on the programme
+
+Six mutations out of twenty-nine escaped. Two were killed by fixing the CODE, and both defects
+**predated** this task:
+
+- `depuisLaCarte3D` read `enregistre.os`, although a humanoid's human choices are already in the map
+  and its caller passes `{}`. DEAD code, removable without a single one of the 2239 tests noticing.
+  Removed, not tested.
+- `pireOrigine3D` started from a seed hard-wired to `manuel`. `repris` being at the same rank, the
+  tie was always broken by the seed: a fully reused limb announced itself "your choice", and the
+  value `repris` was **unreachable**. The seed is now the first role; for the four earlier origins,
+  `manuel` being the lowest rank, nothing changes.
+
+Two others were killed by fixing tests satisfied by an ABSENCE:
+
+- an ordering comparison on `indexOf` — removing the call returned -1, lower than any index, so the
+  comparison passed. Seventh occurrence of that trap in this repository;
+- the button pinned to `candidats[0]`: the menu opened, changed, and had no effect.
+
 ### 6.2 bis Opening the screen starts from what was saved (#385)
 
 Reported through use: "I switch the cerberus to quadruped, I save, I reopen, and it is humanoid

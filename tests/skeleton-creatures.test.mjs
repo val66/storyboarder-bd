@@ -1268,6 +1268,27 @@ describe('lignesDeCorrespondance3D : ce que l\'utilisateur a tranché prime', ()
     assert.equal(queue.nom, 'Queue', 'décocher ne change pas le nom proposé');
   });
 
+  test('#386 : une chaîne dont le nom vient d\'un AUTRE fichier le dit', () => {
+    // Sans ce cas, une chaîne renommée sur le fichier voisin s'annoncerait « votre choix » à
+    // quelqu'un qui n'a rien tapé ici. Le nom retenu, lui, ne bouge pas : `repris` n'est qu'une
+    // étiquette.
+    const memoire = [{ racine: 'CERBERUS_L_NECK_1_022', nom: 'Tête du milieu', retenu: true }];
+    const ligneAvec = lignesDeCorrespondance3D(charger('cerbere'), memoire, tr,
+      new Set(['CERBERUS_L_NECK_1_022']))
+      .groupes.flatMap(g => g.membres).find(m => m.racine === 'CERBERUS_L_NECK_1_022');
+    assert.equal(ligneAvec.origine, 'repris');
+    assert.equal(ligneAvec.nom, 'Tête du milieu', 'l\'étiquette ne doit pas toucher au nom');
+  });
+
+  test('#386 : une chaîne NON reprise garde son étiquette, même sous une reprise', () => {
+    // La reprise est partielle par nature : le fichier voisin n'avait pas renommé toutes les
+    // chaînes. Marquer tout l'écran « repris » effacerait la distinction que la colonne existe pour
+    // porter.
+    const r = lignesDeCorrespondance3D(charger('cerbere'), [], tr, new Set(['CERBERUS__Tail_040']));
+    const queue = r.groupes.flatMap(g => g.membres).find(m => m.racine === 'CERBERUS__Tail_040');
+    assert.equal(queue.origine, 'nom', 'un nom PROPOSÉ n\'a été repris de personne');
+  });
+
   test('un squelette vide ou minuscule ne fait rien exploser', () => {
     assert.deepEqual(lignesDeCorrespondance3D([], null, tr), { tronc: null, groupes: [] });
     assert.deepEqual(lignesDeCorrespondance3D(null, null, tr), { tronc: null, groupes: [] });

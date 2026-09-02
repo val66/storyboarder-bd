@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.67**
+**Version 1.4.68**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -62,6 +62,10 @@
   opens. You see what needs a decision without scanning the rest
 - **Extra limbs are not lost**: a cerberus's two supernumerary heads fall under "Chains with no
   role". They keep their sliders and enter no pose
+- **A setup carries over between files**: when a model you have already set up has the SAME
+  skeleton, a banner offers to take its mapping, morphology included. The second cerberus no longer
+  redoes the first one's work; the rows taken this way carry a "taken" badge, and nothing is written
+  before "Save"
 - **A creature is posed through its chains**: as soon as the morphology is not "humanoid", the
   sliders and the preview points come from the ticked chains, under the names you gave them, instead
   of the eighteen humanoid slots

@@ -25,7 +25,7 @@ import {
   lireCorrespondances, enregistrerCorrespondance, oublierCorrespondance, renommerCorrespondance,
   SKELETON_MAP_FORMAT,
   doitOuvrirCorrespondance, correspondanceEnregistreeSync, _viderCacheCorrespondances,
-  correspondancesApplicables3D, osDesignesParEntree3D,
+  correspondancesApplicables3D, osDesignesParEntree3D, repriseDeCorrespondance3D,
 } from '../src/skeleton-store.js';
 import { SLOTS, sousTitreCorrespondance3D, cheminDOs3D } from '../src/skeleton-map.js';
 
@@ -352,6 +352,99 @@ describe('Une correspondance peut resservir à un autre fichier (#386)', () => {
   test('un fichier sans os ne reçoit rien, et ne lève pas', () => {
     assert.deepEqual(correspondancesApplicables3D([], { 'x.glb': { os: { tete: 'H' } } }, null), []);
     assert.deepEqual(correspondancesApplicables3D(null, null, null), []);
+  });
+});
+
+describe('Reprendre une correspondance, c\'est un BROUILLON complet (#386)', () => {
+  const os4 = [{ id: 1, name: 'Head' }, { id: 2, name: 'ArmL' }, { id: 3, name: 'ThighL' }];
+  const RACINE5 = _dossier(_chemin(import.meta.url)) + '/..';
+  const charger4 = (nom) => JSON.parse(
+    _lire(_joindre(RACINE5, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name }));
+
+  test('les quatre vocabulaires viennent ensemble, morphologie comprise', () => {
+    // TOUT OU RIEN, et c'est le point : reprendre ligne par ligne coûterait exactement ce que la
+    // reprise prétend économiser.
+    const r = repriseDeCorrespondance3D({
+      os: { tete: 'Head' }, roles: { hipFL: 'ThighL' },
+      membres: [{ racine: 'ArmL', nom: 'Patte avant gauche', retenu: true }],
+      morphologie: 'quadrupede', valide: true,
+    }, os4, null);
+    assert.equal(r.carte.tete.name, 'Head');
+    assert.deepEqual(r.roles, { hipFL: 'ThighL' });
+    assert.equal(r.membres[0].nom, 'Patte avant gauche');
+    assert.equal(r.morphologie, 'quadrupede');
+  });
+
+  test('RÉGRESSION : les os repris restent marqués « manuel » DANS LA CARTE', () => {
+    // ⚠️ C'EST CE QUI LES FAIT ENREGISTRER. `entreePourFichier` n'écrit un emplacement que si son
+    // origine vaut exactement 'manuel' ; y mettre 'repris' aurait fait disparaître toute la reprise
+    // au premier « Enregistrer », sans un mot. Même famille de perte silencieuse que #382 et #385.
+    const r = repriseDeCorrespondance3D({ os: { tete: 'Head' } }, os4, null);
+    assert.equal(r.carte.tete.origine, 'manuel');
+    const e = entreePourFichier(r.carte, { humanoide: true, valide: true });
+    assert.equal(e.os.tete, 'Head', 'l\'emplacement repris n\'a pas été enregistré');
+  });
+
+  test('l\'étiquette « repris » est tenue À PART, dans les clés', () => {
+    const r = repriseDeCorrespondance3D({
+      os: { tete: 'Head' }, roles: { hipFL: 'ThighL' },
+      membres: [{ racine: 'ArmL', nom: 'Bras', retenu: true }],
+    }, os4, null);
+    assert.deepEqual([...r.cles].sort(), ['ArmL', 'hipFL', 'tete']);
+  });
+
+  test('une chaîne SEULEMENT décochée n\'est pas dite « reprise »', () => {
+    // Elle n'a pas d'étiquette à corriger : son nom reste celui que la reconnaissance propose.
+    const r = repriseDeCorrespondance3D({ membres: [{ racine: 'ArmL', retenu: false }] }, os4, null);
+    assert.equal(r.membres[0].retenu, false);
+    assert.deepEqual([...r.cles], []);
+  });
+
+  test('un os que ce fichier n\'a PLUS n\'est ni repris ni annoncé comme tel', () => {
+    // `fusionner` retombe déjà sur la reconnaissance pour cet emplacement. Le dire « repris » ferait
+    // désigner comme venant d'ailleurs un os que personne n'a repris.
+    const r = repriseDeCorrespondance3D({
+      os: { tete: 'Head', bras_d: 'Disparu' }, roles: { hipFL: 'Disparu' },
+    }, os4, null);
+    assert.equal(r.carte.bras_d, null);
+    assert.deepEqual(r.roles, {}, 'un rôle sur un os absent a été repris');
+    assert.deepEqual([...r.cles], ['tete']);
+  });
+
+  test('les emplacements NON repris gardent la proposition automatique', () => {
+    // Reprendre n'est pas effacer : une entrée qui ne nomme que la tête ne doit pas vider les
+    // dix-sept autres lignes que la reconnaissance venait de remplir.
+    const auto = { cou: { bone: 2, name: 'ArmL', origine: 'structure' } };
+    const r = repriseDeCorrespondance3D({ os: { tete: 'Head' } }, os4, auto);
+    assert.equal(r.carte.cou.name, 'ArmL');
+    assert.equal(r.carte.cou.origine, 'structure');
+  });
+
+  test('une morphologie inconnue n\'est pas reprise, et n\'est pas inventée', () => {
+    assert.equal(repriseDeCorrespondance3D({ morphologie: 'chimère' }, os4, null).morphologie, null);
+    assert.equal(repriseDeCorrespondance3D({}, os4, null).morphologie, null);
+    assert.equal(repriseDeCorrespondance3D(null, os4, null).morphologie, null);
+  });
+
+  test('BOUT EN BOUT : reprendre un cerbère puis enregistrer écrit bien ses rôles', async () => {
+    // Le cas de l'utilisateur, du candidat jusqu'au disque : un second cerbère reprend le premier,
+    // et ce qui part sur le disque est ce que l'écran affichait.
+    const os = charger4('cerbere');
+    const entrees = { 'cerberus.glb': {
+      os: {}, roles: { head: os[9].name, hipFL: os[12].name },
+      morphologie: 'quadrupede', valide: true,
+    } };
+    const candidats = correspondancesApplicables3D(os, entrees, 'cerberus (2).glb');
+    assert.equal(candidats.length, 1);
+    const r = repriseDeCorrespondance3D(candidats[0].entree, os, null);
+    assert.equal(r.morphologie, 'quadrupede');
+    await enregistrerCorrespondance('cerberus (2).glb', {}, {
+      morphologie: r.morphologie, membres: r.membres, roles: r.roles, humanoide: false, valide: true,
+    });
+    const dernier = ecrit[ecrit.length - 1].entrees['cerberus (2).glb'];
+    assert.equal(dernier.morphologie, 'quadrupede');
+    assert.deepEqual(dernier.roles, { head: os[9].name, hipFL: os[12].name });
   });
 });
 
@@ -804,6 +897,19 @@ describe('Une correspondance VALIDÉE cesse d\'alerter, sans perdre sa provenanc
     assert.match(humain, /18 sur 18 attribués/);
     assert.doesNotMatch(humain, /à vérifier/, 'rien à vérifier ne doit rien annoncer');
   });
+
+  test('#386 : une ligne REPRISE ne compte pas « à vérifier »', () => {
+    // Sinon le sous-titre annoncerait quatorze lignes douteuses juste après le clic qui vient de les
+    // régler, et contredirait le repli des membres, qui traite la reprise comme sûre (estSur3D).
+    const proposition = [{ roles: [
+      { cle: 'tete', osNom: 'Head', origine: 'repris' },
+      { cle: 'cou', osNom: 'Neck', origine: 'repris' },
+    ] }];
+    const t = sousTitreCorrespondance3D(
+      { fichier: 'x.glb', os: [{ id: 1 }], proposition, valide: false }, tr);
+    assert.match(t, /2 sur 2 attribués/);
+    assert.doesNotMatch(t, /à vérifier/);
+  });
 });
 
 describe('La légende dit l\'état, pas le devenir', () => {
@@ -1253,5 +1359,129 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // plus probable après une erreur.
     assert.match(CSS2, /\.skeleton-map-membre\.ecarte\s*\{[^}]*opacity/);
     assert.ok(!/\.skeleton-map-membre\.ecarte\s*\{[^}]*display:\s*none/.test(CSS2));
+  });
+
+  test('#386 : les candidats sont calculés à l\'OUVERTURE, pas à chaque rendu', () => {
+    // Le disque ne bouge pas pendant qu'un écran modal est ouvert. Les relire à chaque rendu
+    // rendrait le rendu asynchrone, ce que cet écran ne peut pas se permettre : il est redessiné
+    // depuis des gestionnaires d'événements synchrones.
+    const debut = EV2.indexOf('async function openSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /candidats: correspondancesApplicables3D\(os, tout\.entrees, nomFichier\)/,
+      'la recherche de candidats n\'est plus faite à l\'ouverture');
+    assert.match(corps, /reprisDe: null/);
+  });
+
+  test('#386 : reprendre emporte les QUATRE vocabulaires, morphologie comprise', () => {
+    // La morphologie est le plus utile du lot : le cas qui a fait naître cette fonction est un
+    // cerbère proposé humanoïde alors que le fichier voisin porte le quadrupède corrigé à la main.
+    const debut = EV2.indexOf('function reprendreCorrespondance');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}\n', debut));
+    ['_skelEcran.carte = r.carte', '_skelEcran.roles = r.roles', '_skelEcran.membres = r.membres',
+      '_skelEcran.morphologie = r.morphologie'].forEach(ligne => {
+      assert.ok(corps.includes(ligne), `la reprise ne pose plus « ${ligne} »`);
+    });
+    // ⚠️ SANS `morphologieManuelle`, la morphologie reprise s'afficherait sans partir sur le
+    // disque, et le fichier suivant reposerait la même question : le défaut de #385, réintroduit.
+    assert.ok(corps.includes('_skelEcran.morphologieManuelle = r.morphologie'),
+      'la morphologie reprise ne serait pas enregistrée');
+    assert.ok(corps.includes('_skelEcran.valide = false'), 'une reprise doit dévalider l\'écran');
+    // ⚠️ CES DEUX LIGNES ONT ÉCHAPPÉ À LA PREMIÈRE CAMPAGNE. Les supprimer laissait la reprise
+    // s'appliquer en SILENCE : les bons os, sans une étiquette ni un bandeau pour dire d'où ils
+    // viennent. C'est précisément l'aide dont on ne comprend pas l'origine et qu'on ne sait pas
+    // défaire, que tout cet écran est construit pour ne pas offrir.
+    assert.ok(corps.includes('_skelEcran.repris = r.cles'),
+      'les lignes reprises ne porteraient plus d\'étiquette');
+    assert.ok(corps.includes('_skelEcran.reprisDe = candidat.fichier'),
+      'le bandeau ne nommerait plus le fichier repris');
+  });
+
+  test('#386 : « Réinitialiser » défait AUSSI la reprise', () => {
+    // C'est le seul moyen de la défaire. Sans ces deux lignes, le bandeau continuerait d'annoncer
+    // une correspondance reprise dont le bouton vient d'effacer chaque ligne.
+    const debut = EV2.indexOf("document.getElementById('skeletonMapReset')");
+    const corps = EV2.slice(debut, EV2.indexOf('\n};', debut));
+    assert.match(corps, /_skelEcran\.repris = new Set\(\)/, 'les étiquettes « repris » survivent');
+    assert.match(corps, /_skelEcran\.reprisDe = null/, 'le bandeau survit à la réinitialisation');
+  });
+
+  test('#386 : l\'étiquette « repris » atteint les rôles ET les chaînes', () => {
+    // Deux vues, deux chemins, et les oublier séparément est facile : la proposition de rôles reçoit
+    // `repris` dans son `enregistre`, les lignes de chaînes le reçoivent en quatrième paramètre.
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'),
+      EV2.indexOf('function groupeDeMembre'));
+    assert.match(rendu, /lignesDeCorrespondance3D\(os, _skelEcran\.membres, tr, _skelEcran\.repris\)/,
+      'les chaînes reprises s\'annonceraient « votre choix »');
+    assert.match(rendu, /repris: _skelEcran\.repris/,
+      'les rôles repris s\'annonceraient « votre choix »');
+  });
+
+  test('#386 : la ligne d\'une chaîne ÉNUMÈRE « repris », sans quoi elle dirait « forme »', () => {
+    // Sans son cas, `repris` tombe dans le dernier `else` d'une ternaire en cascade et une chaîne
+    // renommée sur un autre fichier s'annonce comme une déduction automatique : le contraire exact.
+    const debut = EV2.indexOf('function ligneMembre');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.match(corps, /m\.origine === 'repris' \? tr\('taken', 'repris'\)/);
+    const morpho = EV2.slice(EV2.indexOf('function renderMorphologie'),
+      EV2.indexOf('function ligneCorrespondance'));
+    assert.match(morpho, /origine === 'repris' \? tr\('taken', 'repris'\)/,
+      'la morphologie reprise s\'annoncerait « votre choix »');
+  });
+
+  test('#386 : le bandeau est AU-DESSUS de la morphologie, qu\'une reprise change', () => {
+    // Le placer plus bas ferait régler à la main un sélecteur que le bouton du dessus allait
+    // corriger. L'ordre du HTML porte cette décision, et rien d'autre ne la porterait.
+    assert.notEqual(HTML2.indexOf('id="skeletonMapReprise"'), -1, 'le bandeau a disparu du HTML');
+    assert.ok(HTML2.indexOf('id="skeletonMapReprise"') < HTML2.indexOf('id="skeletonMapMorpho"'),
+      'le bandeau de reprise est passé sous le sélecteur de morphologie');
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'),
+      EV2.indexOf('function groupeDeMembre'));
+    // ⚠️ LA PRÉSENCE D'ABORD, L'ORDRE ENSUITE, et l'inverse a laissé passer une mutation. Un
+    // `indexOf` qui ne trouve rien rend -1, et -1 est inférieur à n'importe quel indice : supprimer
+    // l'appel SATISFAISAIT la comparaison d'ordre. Septième fois dans ce dépôt qu'un test se
+    // contente d'une absence.
+    const iReprise = rendu.indexOf('renderReprise()');
+    const iMorpho = rendu.indexOf('renderMorphologie()');
+    assert.notEqual(iReprise, -1, 'le bandeau de reprise n\'est plus dessiné du tout');
+    assert.notEqual(iMorpho, -1, 'la morphologie n\'est plus dessinée du tout');
+    assert.ok(iReprise < iMorpho, 'le bandeau se dessine après le sélecteur qu\'il modifie');
+  });
+
+  test('#386 : un menu, et une hauteur qui ne dépend pas du nombre de fichiers', () => {
+    // Choix de l'utilisateur contre ma proposition d'une ligne par candidat : dix réexports du même
+    // modèle dans un dossier ne doivent pas occuper la moitié de l'écran.
+    const debut = EV2.indexOf('function renderReprise');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}\n', debut));
+    assert.match(corps, /createElement\('select'\)/, 'le menu a été remplacé par autre chose');
+    assert.ok(!/candidats\.forEach\([^)]*\)\s*=>\s*\{[^}]*createElement\('button'\)/.test(corps),
+      'un bouton par candidat ferait grandir le bandeau');
+    // ⚠️ LE BOUTON DOIT LIRE LE MENU, et cette mutation a échappé à la première campagne : figer
+    // `candidats[0]` laisse un menu qui s'ouvre, se change, et n'a aucun effet. Le plus riche
+    // serait toujours appliqué, en silence, y compris quand l'utilisateur en désigne un autre —
+    // un écran qui prétend demander sans écouter.
+    assert.match(corps, /reprendreCorrespondance\(candidats\[Number\(sel\.value\) \|\| 0\]\)/,
+      'le bouton n\'applique plus le candidat choisi dans le menu');
+  });
+
+  test('#386 : aucune DATE n\'est affichée, le fichier n\'en garde aucune', () => {
+    // « Le plus récent » serait le repère naturel pour choisir entre deux réexports, et l'inventer
+    // serait pire que de s'en passer. Le tri se fait sur le nombre d'os nommés.
+    const debut = EV2.indexOf('export function libelleCandidatReprise3D');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    assert.doesNotMatch(corps, /Date|date|horodat/, 'une date est apparue là où rien n\'en garde');
+    assert.match(corps, /c\.os/, 'le nombre d\'os nommés a disparu de l\'option');
+  });
+
+  test('#386 : la légende n\'explique « repris » QUE pendant une reprise', () => {
+    // Une légende qui décrit une étiquette absente de l'écran fait chercher ce qui n'y est pas.
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'),
+      EV2.indexOf('function groupeDeMembre'));
+    assert.match(rendu, /if \(_skelEcran\.reprisDe\) \{\s*\n\s*entrees\.push\(\['repris'/);
+  });
+
+  test('#386 : le bandeau a une teinte À LUI, distincte des trois autres origines', () => {
+    assert.match(CSS2, /\.skeleton-map-origin\.origine-repris\s*\{[^}]*background/);
+    assert.match(CSS2, /\.skeleton-map-reprise\.vide\s*\{[^}]*display:\s*none/,
+      'sans candidat, le bandeau doit disparaître au lieu d\'occuper une ligne vide');
   });
 });

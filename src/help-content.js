@@ -127,6 +127,7 @@ export const HELP_MANUAL_EN = [
     'A limb FOLDS when the application is sure of it, and stays open when it is not. You therefore see at a glance what needs a decision, without scanning rows that are already right.',
     'Chains no role claims, such as a cerberus\'s two extra heads, fall to the bottom of the screen. Untick one to remove its sliders: it stays in the file, it simply cannot be moved. A box at the top of the list ticks or unticks them all.',
     'Clearing a name restores the one the application proposes: that is how to go back. Only your own choices are kept in the file, the rest is recomputed each time.',
+    'A file you have already set up, with the SAME bones, is offered at the top: taking its mapping saves redoing it, morphology included. Rows taken this way say so, and nothing is written before Save.',
   ]},
   { id: 'editeur', title: 'Character editor', paragraphs: [
     'Open the editor with the pencil button in the corner of a character’s 3D preview, or from the "Characters" section of the left menu to compose a pose with no target; in that case there is no "Apply" button.',
@@ -253,6 +254,7 @@ export const HELP_MANUAL_FR = [
     'Un membre se REPLIE quand l\'application est sûre de lui, et reste ouvert quand elle ne l\'est pas. Vous voyez donc d\'un coup d\'œil ce qui demande une décision, sans parcourir des lignes déjà justes.',
     'Les chaînes qu\'aucun rôle ne réclame, comme les deux têtes en trop d\'un cerbère, tombent en bas de l\'écran. Décochez-en une pour retirer ses curseurs : elle reste dans le fichier, elle n\'est simplement plus pilotable. Une case en tête de liste les coche ou les décoche toutes.',
     'Un nom effacé revient à celui que l\'application propose : c\'est la façon de revenir en arrière. Seuls vos choix sont conservés dans le fichier, le reste est recalculé à chaque ouverture.',
+    'Un fichier déjà réglé aux MÊMES os est proposé en haut : le reprendre évite de tout refaire, morphologie comprise. Les lignes reprises le disent, rien n\'est écrit avant Enregistrer.',
   ]},
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [
     "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Personnages » du menu de gauche pour composer une pose sans cible ; dans ce second cas, « Appliquer » est absent.",
