@@ -822,6 +822,21 @@ export function buildSkeletonPoseFieldUI(obj){
 
   const etiquette = document.getElementById('objectPoseLabel');
   if (etiquette) etiquette.textContent = tr('Pose', 'Position');
+  // ⚠️ « ENREGISTRER » N'APPARAÎT QUE POUR UNE CRÉATURE (#390), et l'asymétrie a une cause précise,
+  // pas un oubli : la part PORTABLE d'une pose humanoïde vit dans le vocabulaire du Personnage
+  // intégré, que cette fiche ne tient pas — elle n'a que des angles d'OS, propres à ce rig.
+  // Enregistrer ceux-là créerait une pose proposée à tous les humanoïdes et fausse sur chacun des
+  // autres. Une créature n'a pas d'autre vocabulaire que celui-là : ce qu'elle pose est exactement
+  // ce qui s'enregistre, et c'est pourquoi le bouton est ici plutôt que dans l'Éditeur, qui ne sait
+  // pas encore la recevoir.
+  const ligneEnregistrer = document.getElementById('objectPoseSaveRow');
+  if (ligneEnregistrer) {
+    const creature = squelettePourPose3D(S.modalDraftModelFile || obj.modelFile) !== PERSONA_SKELETON_3D;
+    ligneEnregistrer.className = 'skeleton-map-reprise' + (creature ? '' : ' vide');
+    // ⚠️ NI LE LIBELLÉ NI LE PLACEHOLDER NE SONT POSÉS ICI : ils viennent d'i18n.js, comme leurs
+    // jumeaux de l'Éditeur. Les écrire dans le code EN PLUS ferait deux sources pour un même texte,
+    // et un test du dépôt refuse justement tout bouton visible sans entrée i18n.
+  }
   buildFigureFieldUI(obj);
   // La MÊME fonction que pour un Personnage : même bibliothèque, même option de repli pour une pose
   // disparue, même valeur d'ouverture. Deux remplissages séparés auraient divergé.

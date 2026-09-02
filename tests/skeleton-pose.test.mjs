@@ -42,6 +42,7 @@ import {
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
   groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
+  poseNonVide3D,
 } from '../src/skeleton-pose.js';
 import { SLOTS, inferSkeletonMap } from '../src/skeleton-map.js';
 import { repereDuCorps } from '../src/skeleton-retarget.js';
@@ -820,6 +821,19 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     assert.equal(repereParChaines3D(null, null, fr), null);
   });
 
+  test('#390 : une pose où RIEN n\'est tourné ne s\'enregistre pas', () => {
+    // Elle s'ajouterait à la bibliothèque sous un nom, se proposerait comme les autres, et ne
+    // ferait rien : l'utilisateur ne s'en apercevrait qu'en l'appliquant, longtemps après.
+    assert.equal(poseNonVide3D({ head: { x: 0.4, y: 0, z: 0 } }), true);
+    assert.equal(poseNonVide3D({ head: { x: 0, y: 0, z: 0 } }), false);
+    assert.equal(poseNonVide3D({}), false);
+    assert.equal(poseNonVide3D(null), false);
+    // ⚠️ LA MÊME RÈGLE DU ZÉRO QUE `normaliserPose`, qui jette déjà les angles nuls à la relecture.
+    // Deux définitions de « un angle qui compte » feraient qu'une pose vide à l'enregistrement
+    // serait pleine au rechargement, ou l'inverse.
+    assert.equal(poseNonVide3D({ a: { x: 0, y: 0, z: 0 }, b: { x: 0, y: 0.2, z: 0 } }), true);
+  });
+
   test('#383 : ce qu\'une pose ATTEINT se compte, et se dit quand il en manque', () => {
     // La même pose n'a pas le même effet selon la cible : une pose de créature mémorise des RÔLES,
     // partagés par l'archétype, et des NOMS D'OS, propres au fichier où elle a été composée.
@@ -1031,6 +1045,30 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     // L'ORDRE EST LA DÉCISION : les emplacements d'abord, ce sont eux qu'on vient chercher.
     assert.ok(corps.indexOf('groupesPosables(carte, t)') < corps.indexOf('groupesPosablesEnPlus3D'),
       'les os en plus passent devant les emplacements, qui portent les libellés humains');
+  });
+
+  test('#390 : « Enregistrer » n\'apparaît QUE pour une créature, et se garde deux fois', () => {
+    // ⚠️ L'ASYMÉTRIE A UNE CAUSE, PAS UN OUBLI : la part PORTABLE d'une pose humanoïde vit dans le
+    // vocabulaire du Personnage intégré, que la fiche ne tient pas — elle n'a que des angles d'OS,
+    // propres à ce rig. Les enregistrer d'ici créerait une pose proposée à TOUS les humanoïdes et
+    // fausse sur chacun des autres.
+    const MODALS = lire('src/modals.js');
+    assert.match(MODALS, /objectPoseSaveRow/, 'la ligne d\'enregistrement a disparu de la fiche');
+    assert.match(MODALS, /squelettePourPose3D\(S\.modalDraftModelFile \|\| obj\.modelFile\) !== PERSONA_SKELETON_3D/,
+      'le bouton s\'affiche pour un humanoïde : sa pose serait fausse sur tous les autres rigs');
+
+    // LA GARDE EST AUSSI DANS LE GESTIONNAIRE. Un bouton masqué reste cliquable par un raccourci ou
+    // un test, et la conséquence serait exactement la pose fausse que l'affichage voulait éviter.
+    const EV = lire('src/events.js');
+    const debut = EV.indexOf("objectPoseSaveBtn.onclick");
+    assert.ok(debut > 0, 'le bouton n\'est plus câblé');
+    const corps = EV.slice(debut, EV.indexOf('\n};', debut));
+    assert.match(corps, /if \(vocabulaire === PERSONA_SKELETON_3D\) return;/,
+      'un humanoïde peut de nouveau enregistrer une pose d\'os depuis la fiche');
+    assert.match(corps, /if \(!poseNonVide3D\(angles\)\)/, 'une pose qui ne fait rien peut être enregistrée');
+    // L'étiquette vient du point unique : c'est elle qui rangera la pose dans son archétype, et
+    // elle est irrattrapable après coup (#375b).
+    assert.match(corps, /makePose3D\(newId\('pose'\),[\s\S]*angles, vocabulaire\)/);
   });
 
   test('#375b : le VOCABULAIRE DE POSE d\'une figure a un seul point de décision', () => {

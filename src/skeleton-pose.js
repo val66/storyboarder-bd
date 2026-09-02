@@ -330,6 +330,21 @@ export function groupesPosablesMembres3D(os, membres, traduire){
 }
 
 /**
+ * Y a-t-il quelque chose à enregistrer ? Fonction PURE.
+ *
+ * ⚠️ UNE POSE OÙ RIEN N'EST TOURNÉ EST UN PIÈGE, pas une pose. Elle s'ajouterait à la bibliothèque
+ * sous un nom, se proposerait comme les autres, et ne ferait rien — l'utilisateur ne s'en
+ * apercevrait qu'en l'appliquant, longtemps après l'avoir enregistrée.
+ *
+ * ELLE RÉUTILISE LA RÈGLE DU ZÉRO de `normaliserPose`, qui jette déjà les angles nuls à la
+ * relecture : sans cela, une pose « vide » selon l'enregistrement pourrait être « pleine » selon le
+ * disque, ou l'inverse. Une seule définition de ce qu'est un angle qui compte.
+ */
+export function poseNonVide3D(joints){
+  return Object.values(joints || {}).some(v => !!anglesNonNuls(v));
+}
+
+/**
  * Combien d'articulations d'une pose ATTEIGNENT ce squelette. Fonction PURE.
  *
  * ⚠️ LA MÊME POSE N'A PAS LE MÊME EFFET SELON LA CIBLE, et il faut le dire avant que l'utilisateur
