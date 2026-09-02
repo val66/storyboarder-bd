@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.89**
+**Version 1.4.90**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -79,7 +79,8 @@
 - **Une créature s'ouvre dans l'Éditeur de Personnage**, avec ses articulations à elle : chaque
   figure s'y pose dans sa propre langue. Un humanoïde parle celle du corps, qui se transpose d'un
   rig à l'autre ; une araignée n'en a pas, et se pose donc par ses chaînes. Elle a aussi ses points
-  cliquables, un par os pilotable ; cliquer un point déplie ses curseurs
+  cliquables, un par os pilotable : cliquez pour déplier ses curseurs, glissez pour tourner l'os.
+  Le repère suit l'axe réel de l'os et le segment qu'il entraîne, tous deux mesurés sur le fichier
 - **Créer une pose** : dans l'Éditeur, et nulle part ailleurs. Réglez les curseurs, nommez-la,
   « Enregistrer » l'ajoute à la bibliothèque de son archétype. La fiche applique les poses, elle
   n'en fabrique pas

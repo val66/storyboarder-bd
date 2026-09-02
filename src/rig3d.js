@@ -3238,6 +3238,30 @@ function buildImportedModelRig3D(colorHex, o){
  * correspondance de deux façons finiraient par diverger, et c'est un des travers récurrents de ce
  * dépôt.
  */
+/**
+ * La direction, en monde, de l'os enfant vers lequel celui-ci pointe. `null` s'il n'y en a pas.
+ *
+ * LE PREMIER ENFANT QUI EST UN OS, et pas le premier enfant tout court : un rig accroche volontiers
+ * des maillages, des cibles IK ou des repères aux mêmes nœuds, et l'un d'eux placé au même endroit
+ * donnerait une direction nulle là où un vrai segment existe juste à côté.
+ *
+ * Deux os SUPERPOSÉS rendent `null` plutôt qu'une direction tirée du bruit numérique : c'est le même
+ * choix que `normaliser` dans skeleton-retarget.js, une direction ou rien.
+ *
+ * ⚠️ EXPORTÉE POUR ÊTRE MESURÉE, et c'est la réponse à deux mutations ÉCHAPPÉES : privée, elle
+ * n'était atteignable que par `recolterOsMappes`, qui demande un clone décodé. Ni « le premier
+ * enfant qui est un OS » ni le rejet des os superposés ne faisaient donc échouer quoi que ce soit
+ * quand on les retirait. Une règle que rien ne peut lire n'est pas une règle.
+ */
+export function segmentDeLOs3D(os, positionOs, tampon){
+  const enfant = (os.children || []).find(n => n && n.isBone);
+  if (!enfant) return null;
+  enfant.getWorldPosition(tampon);
+  const d = [tampon.x - positionOs.x, tampon.y - positionOs.y, tampon.z - positionOs.z];
+  const n = Math.hypot(d[0], d[1], d[2]);
+  return n > 1e-9 ? [d[0] / n, d[1] / n, d[2] / n] : null;
+}
+
 function recolterOsMappes(clone, nomFichier){
   const sortie = {};
   if (!clone) return sortie;
@@ -3262,7 +3286,7 @@ function recolterOsMappes(clone, nomFichier){
   // `getWorldQuaternion` appellent eux-mêmes `updateWorldMatrix(true, false)` sur le nœud lu. Une
   // première version en posait un ici ; la campagne de mutation l'a retiré sans qu'aucun test ne
   // bronche, ce qui a mené à la vérification, la ligne ne faisait rien.
-  const qm = new THREE.Quaternion(), pm = new THREE.Vector3();
+  const qm = new THREE.Quaternion(), pm = new THREE.Vector3(), pf = new THREE.Vector3();
   const recolter = (cle, nom) => {
     const os = nom ? parNom.get(nom) : null;
     if (!os) return;
@@ -3272,6 +3296,18 @@ function recolterOsMappes(clone, nomFichier){
     sortie[cle] = {
       os, name: nom, repos: [q.x, q.y, q.z, q.w],
       reposMonde: [qm.x, qm.y, qm.z, qm.w], positionMonde: [pm.x, pm.y, pm.z],
+      // LE SEGMENT QUE CET OS ENTRAÎNE, en monde, au repos, pris ici pour la même raison que les
+      // deux mesures au-dessus (#392b2). C'est le LEVIER du glisser : ce que l'utilisateur juge en
+      // tirant une poignée, c'est l'endroit où le membre PART À L'ÉCRAN, pas l'axe autour duquel il
+      // tourne (conclusion des 14 gestes jugés, cf. le Fix 84 dans utils.js).
+      //
+      // ⚠️ IL REMPLACE UNE CONVENTION QUI N'EST VRAIE QUE DU PERSONNAGE INTÉGRÉ : « les membres
+      // pendent », donc −Y. Une patte d'araignée part de côté, une queue vers l'arrière, un cou vers
+      // le haut. Mesurer vaut mieux que supposer, et la mesure est ici gratuite.
+      //
+      // `null` POUR UN OS SANS ENFANT, et c'est une valeur, pas un oubli : une extrémité n'entraîne
+      // aucun segment. Le glisser retombe alors sur le levier par défaut, comme un os quelconque.
+      segmentMonde: segmentDeLOs3D(os, pm, pf),
     };
   };
 

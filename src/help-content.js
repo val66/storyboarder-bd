@@ -110,7 +110,7 @@ export const HELP_MANUAL_EN = [
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton gains a "Joint settings" section: three sliders per drivable bone. The bones at the head of the trunk have none: they carry every limb, and Orientation already turns the whole figure.',
     'A humanoid shows its eighteen slots, THEN its other chains: fingers, twists, ponytail. Other morphologies show the CHAINS ticked in the mapping table, under the names you gave them.',
-    'Click a joint point on the preview to unfold its sliders, and the other way round. Axes are the bone\'s own, so which one bends an elbow depends on the file. A creature has its own points, one per drivable bone, in the card as in the editor.',
+    'Click a joint point on the preview to unfold its sliders, and the other way round. Axes are the bone\'s own, so which one bends an elbow depends on the file. A creature has its own points, one per drivable bone, and drags like a character.',
     'A creature opens in the editor with ITS own joints: every figure is posed in its own language. Poses are CREATED there and nowhere else: set the sliders, name the pose, and "Save" adds it to its archetype\'s library. The card applies poses, it no longer makes them.',
     'Poses are filed BY ARCHETYPE: a quadruped only sees quadruped poses. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable. Applied to another model of the same archetype, it says what did not land.',
     'The "Model" field makes this Element wear another imported file: the pose is kept and recomputed, the slider tweaks are lost. It also names the file this Element comes from, and warns you if that file is missing.',
@@ -238,7 +238,7 @@ export const HELP_MANUAL_FR = [
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette gagne une section « Réglages des articulations » : trois curseurs par os pilotable. Les os de tête de tronc n\'en ont pas, ils portent tous les membres et l\'Orientation fait déjà tourner la figure entière.',
     'Un humanoïde montre ses dix-huit emplacements, PUIS ses autres chaînes : doigts, torsions, queue de cheval. Les autres morphologies montrent leurs CHAÎNES cochées dans le tableau de correspondance, sous le nom que vous leur avez donné.',
-    'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. Les axes sont ceux de l\'os. Une créature a les siens, un par os pilotable, dans la fiche comme dans l\'Éditeur.',
+    'Cliquez un point d\'articulation sur l\'aperçu pour déplier ses curseurs, et l\'inverse. Les axes sont ceux de l\'os. Une créature a les siens, un par os pilotable, et se glisse comme un Personnage.',
     'Une créature s\'ouvre dans l\'Éditeur avec SES articulations : chaque figure s\'y pose dans sa propre langue. C\'est LÀ que les poses se créent, et nulle part ailleurs : réglez les curseurs, nommez la pose, « Enregistrer » l\'ajoute à sa bibliothèque. La fiche applique les poses, elle n\'en fabrique pas.',
     'Les poses se rangent PAR ARCHÉTYPE : un quadrupède ne voit que des poses de quadrupède. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables. Appliquée à un autre modèle du même archétype, elle dit ce qui n\'a pas atterri.',
     'Le champ « Modèle » fait porter un autre fichier à cet Élément : la pose est conservée et recalculée, les retouches des curseurs sont perdues. Il nomme aussi le fichier de cet Élément, et vous prévient s\'il manque.',

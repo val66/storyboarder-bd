@@ -735,8 +735,12 @@ function clesDuGroupe3D(details){
  *   — `auChangement()`, ce qu'il faut redessiner ;
  *   — les deux registres, qui servent au dialogue entre les curseurs et les points de l'aperçu.
  */
+// `registreRefs` : les curseurs eux-mêmes, indexés `cle:axe`, pour pouvoir REMETTRE une valeur
+// affichée d'accord avec le brouillon sans tout reconstruire (#392b2). La fiche s'en passe : elle
+// rebâtit son panneau quand une pose est appliquée, ce qui est un geste rare. Un glisser, lui, écrit
+// à chaque image, et rebâtir des dizaines d'éléments par image refermerait en plus le groupe ouvert.
 export function construireCurseursDeSquelette3D({
-  conteneur, fichier, poseCourante, auChangement, registreGroupes, registreLignes,
+  conteneur, fichier, poseCourante, auChangement, registreGroupes, registreLignes, registreRefs,
 } = {}){
   if (!conteneur || !fichier) return 0;
   const { groupes } = groupesDeCurseurs3D(fichier, tr);
@@ -753,6 +757,7 @@ export function construireCurseursDeSquelette3D({
             if (auChangement) auChangement();
           });
         if (registreLignes) registreLignes[cle].push(ref.row);
+        if (registreRefs) registreRefs[cle + ':' + axe] = ref;
       });
     });
   };

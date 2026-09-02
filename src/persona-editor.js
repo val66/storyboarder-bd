@@ -24,7 +24,7 @@ import {
   poseSpecRotationAxis3D, poseUsageCount3D, readPoseSliderDeg3D, rememberDismissedPose3D,
   libelleArticulation3D, libelleTable3D,
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
-  writePoseSliderDeg3D,
+  writePoseSliderDeg3D, axeDePose3D, modelAxisVector3D,
 
   orbiteDeFace3D,
 } from './utils.js';
@@ -34,7 +34,8 @@ import {
   resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
-import { memesAngles3D } from './skeleton-pose.js';
+import { memesAngles3D, lireAngleDeg, ecrireAngleDeg } from './skeleton-pose.js';
+import { axeLocalVersMonde } from './skeleton-retarget.js';
 import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt } from './draw.js';
@@ -521,7 +522,7 @@ export function personaEditorPoseLabel(){
 // curseur écrit bien ce champ-là et ne touche à rien d'autre » est exactement ce qu'il faut vérifier.
 export function setPersonaEditorJointDeg(spec, deg){
   if (!S.personaEditorOpen || !S.personaEditorDraft) return null;
-  return writePoseSliderDeg3D(S.personaEditorDraft, spec, deg);
+  return ecrireDegDansLeBrouillon3D(spec, deg);
 }
 
 // Fix 71 (ESSAI) : glisser une poignée pour régler son articulation.
@@ -564,7 +565,7 @@ export function beginPersonaEditorJointDrag(id){
     // Fix 81 : sens du balayage circulaire, figé à l'appui comme tout ce qui décide de la forme du
     // geste. Une même rotation paraît horaire d'un côté du modèle et antihoraire de l'autre.
     sweepSign: circularSweepSign3D(axis, orbit),
-    startDeg: readPoseSliderDeg3D(S.personaEditorDraft, spec),
+    startDeg: lireDegDuBrouillon3D(spec),
     // Fix 79 : état du balayage circulaire. `swept` cumule le tour DÉROULÉ, `sweepAngle` retient
     // l'angle de l'image précédente. null tant qu'on n'a pas eu une position exploitable : le
     // curseur peut très bien démarrer collé au point d'articulation.
@@ -610,7 +611,7 @@ export function applyPersonaEditorJointDrag(session, dx, dy, geste){
   // Fix 73 : la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
   // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
   session.startDeg = pas.startDeg;
-  writePoseSliderDeg3D(S.personaEditorDraft, session.spec, pas.deg);
+  ecrireDegDansLeBrouillon3D(session.spec, pas.deg);
   return pas.deg;
 }
 
@@ -942,6 +943,11 @@ function poigneesDeLEditeur3D(){
 // comme pour la modale. C'est tout l'intérêt du descripteur, ce panneau et celui de la modale ne
 // peuvent pas diverger, puisqu'ils lisent la même liste.
 const personaEditorSliderRefs = {}; // spec.key -> { spec, input, val, row }
+// Les curseurs d'une CRÉATURE, construits par le constructeur partagé et indexés `cle:axe` (#392b2).
+// Un registre à part, et non une fusion avec celui du dessus : les deux vocabulaires n'ont ni les
+// mêmes clés ni la même façon de lire le brouillon, et les mélanger obligerait chaque lecteur à
+// deviner à qui appartient l'entrée qu'il vient de sortir.
+const personaEditorCreatureRefs = {};
 const personaEditorGroupOf = {};    // jointId -> son <details>
 const personaEditorRowsOf = {};     // jointId -> [lignes de curseurs], pour le surlignage
 
@@ -949,7 +955,7 @@ export function buildPersonaEditorJointSlidersUI(){
   const container = document.getElementById('personaEditorJointsContainer');
   if (!container) return;
   container.innerHTML = '';
-  [personaEditorSliderRefs, personaEditorGroupOf, personaEditorRowsOf]
+  [personaEditorSliderRefs, personaEditorCreatureRefs, personaEditorGroupOf, personaEditorRowsOf]
     .forEach(m => Object.keys(m).forEach(k => delete m[k]));
   // ⚠️ LES CURSEURS D'UNE CRÉATURE VIENNENT DE SES CHAÎNES, et par le MÊME constructeur que la
   // fiche (#383). En écrire un second ici aurait donné deux listes de curseurs pour un même
@@ -967,6 +973,7 @@ export function buildPersonaEditorJointSlidersUI(){
       poseCourante: () => (S.personaEditorDraft || (S.personaEditorDraft = {})),
       auChangement: () => { syncPersonaEditorActionButtons(); drawPersonaEditor(); },
       registreGroupes: personaEditorGroupOf, registreLignes: personaEditorRowsOf,
+      registreRefs: personaEditorCreatureRefs,
     });
     return;
   }
@@ -1073,11 +1080,72 @@ export function focusPersonaEditorHandle(id){
   return S.personaEditorHandleId;
 }
 
+/**
+ * Les trois descripteurs de curseur d'un os de créature. Fonction PURE (#392b2).
+ *
+ * @param cle    la clé de pose, un rôle (`hipFL`) ou un os (`os:Tail1`)
+ * @param mesures `{ reposMonde, segmentMonde }`, relevées au repos par la récolte, ou rien
+ *
+ * ⚠️ L'AXE EST CELUI DE L'OS, PAS CELUI DU MONDE. Un os tourne autour de SES axes, et sa rotation
+ * de repos dit où ceux-ci pointent : 106 des 108 os mappés mesurés ont un repos non identitaire,
+ * si bien que supposer les axes du monde aurait fait pointer la flèche à côté sur presque tous.
+ * `axeLocalVersMonde` fait le trajet (#392a).
+ *
+ * ⚠️ ET LE LEVIER EST LE SEGMENT QUE CET OS ENTRAÎNE, mesuré lui aussi. Ce que l'utilisateur juge en
+ * tirant, c'est l'endroit où le membre PART À L'ÉCRAN (cf. Fix 84) ; « les membres pendent » est
+ * une convention du Personnage intégré, fausse d'une patte d'araignée comme d'une queue.
+ *
+ * Sans mesures — os pas encore récolté, extrémité sans enfant — on rend la LETTRE. Le geste retombe
+ * alors exactement sur le comportement du Personnage, qui est approché mais jamais absurde.
+ */
+export function specsDeCreature3D(cle, mesures, traduire){
+  const t = traduire || tr;
+  const suffixes = { x: t(' X', ' X'), y: t(' Y', ' Y'), z: t(' Z', ' Z') };
+  return ['x', 'y', 'z'].map(axe => {
+    const monde = mesures && axeLocalVersMonde(modelAxisVector3D(axe), mesures.reposMonde);
+    return {
+      key: cle + ':' + axe,
+      cle, axe, suffix: suffixes[axe],
+      axis: monde ? axeDePose3D(monde, (mesures && mesures.segmentMonde) || undefined) : axe,
+    };
+  });
+}
+
+// Les mesures de repos d'une clé, prises sur la figure affichée par l'Éditeur. `null` tant que le
+// rig n'a pas été construit, ce qui n'arrive qu'avant le premier rendu.
+function mesuresDeLOsDeLEditeur3D(cle){
+  const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+  return (entree && entree.skeletonBones && entree.skeletonBones[cle]) || null;
+}
+
 // Descripteurs de curseurs d'une articulation, par son id. Passe par POSE_HANDLES plutôt que de
 // mémoriser la liste : c'est poseSliderSpecs3D qui fait autorité sur « quels champs existent ».
+//
+// UNE CRÉATURE A LES SIENS (#392b2), et le point de décision reste l'unique de ce fichier. Sans
+// cette branche, `POSE_HANDLES.find` ne trouvait rien pour `hipFL` et rendait une liste VIDE : la
+// session de glisser ne s'ouvrait pas, si bien que le clic sélectionnait sans jamais traîner.
 export function personaEditorSpecsOf(id){
+  if (!id) return [];
+  if (editeurPoseUneCreature3D()) return specsDeCreature3D(id, mesuresDeLOsDeLEditeur3D(id), tr);
   const def = POSE_HANDLES.find(d => d.id === id);
   return def ? poseSliderSpecs3D(def) : [];
+}
+
+// ⚠️ LES DEUX VOCABULAIRES N'ÉCRIVENT PAS AU MÊME ENDROIT, et le dispatch vit ICI, en un seul point.
+// Une pose du Personnage range ses angles par CHAMP (`lElbow`, `headRotY`), une pose de créature par
+// CLÉ et par AXE. `writePoseSliderDeg3D` écrit d'ailleurs `{ x, z }` en dur : passer une clé de
+// créature par ce chemin aurait perdu le Y à chaque écriture, en silence.
+function lireDegDuBrouillon3D(spec){
+  if (!spec) return 0;
+  return spec.cle ? lireAngleDeg(S.personaEditorDraft, spec.cle, spec.axe)
+    : readPoseSliderDeg3D(S.personaEditorDraft, spec);
+}
+
+function ecrireDegDansLeBrouillon3D(spec, deg){
+  if (!spec) return null;
+  if (!spec.cle) return writePoseSliderDeg3D(S.personaEditorDraft, spec, deg);
+  ecrireAngleDeg(S.personaEditorDraft, spec.cle, spec.axe, deg);
+  return S.personaEditorDraft;
 }
 
 // Le champ actuellement piloté par le glisser, ou null.
@@ -1173,8 +1241,19 @@ export function syncPersonaEditorPoseLabel(){
 // Personnage, lui, aurait déjà changé, deux affichages de la même valeur qui se contredisent.
 export function syncPersonaEditorSliders(){
   if (!S.personaEditorDraft) return;
+  // ⚠️ LES DEUX REGISTRES, ET LE SECOND MANQUAIT AU GLISSER D'UNE CRÉATURE (#392b2). Le panneau
+  // droit n'est PAS reconstruit pendant un geste — cela recréerait des dizaines d'éléments par
+  // image et refermerait le groupe ouvert — donc si personne ne remet les valeurs d'accord avec le
+  // brouillon, les curseurs restent figés pendant que la figure tourne à l'écran.
   Object.values(personaEditorSliderRefs).forEach(ref => {
     const deg = readPoseSliderDeg3D(S.personaEditorDraft, ref.spec);
+    ref.input.value = deg;
+    ref.val.textContent = deg + '°';
+  });
+  Object.keys(personaEditorCreatureRefs).forEach(cleAxe => {
+    const ref = personaEditorCreatureRefs[cleAxe];
+    const i = cleAxe.lastIndexOf(':');
+    const deg = lireAngleDeg(S.personaEditorDraft, cleAxe.slice(0, i), cleAxe.slice(i + 1));
     ref.input.value = deg;
     ref.val.textContent = deg + '°';
   });

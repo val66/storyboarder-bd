@@ -28,13 +28,13 @@ import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
-  repereDuCorpsPourFichier3D, appliquerAllonge3D, squelettePourPose3D,
+  repereDuCorpsPourFichier3D, appliquerAllonge3D, squelettePourPose3D, segmentDeLOs3D,
 } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
-import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
+import { ecrireAngleDeg, groupesPosables, lireAngleDeg } from '../src/skeleton-pose.js';
 import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
 import { JOINT_GROUPS } from '../src/constants.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
@@ -46,9 +46,11 @@ import {
   buildPersonaEditorModelUI, choisirFigureDeLEditeur, orbiteDouvertureEditeur3D,
   PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit, editeurPoseUneCreature3D,
   personaEditorHasChanges, showPersonaEditor, entreeDePoigneesDeCreature3D, focusPersonaEditorHandle,
+  specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
+  syncPersonaEditorSliders,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt } from '../src/draw.js';
-import { posePickRadii3D } from '../src/utils.js';
+import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D } from '../src/utils.js';
 import { tr } from '../src/state.js';
 
 const FICHIER = 'essai-mixamo.glb';
@@ -1722,6 +1724,201 @@ describe('#392b : cliquer un point d\'une créature ouvre le BON groupe', () => 
       'le groupe PARENT reste replié : les curseurs sont dépliés dans un bloc fermé, donc invisibles');
     // Et un seul à la fois : ouvrir sans refermer les autres ferait défiler tout le squelette.
     assert.equal(apres.filter(d => d.prof === 0 && d.ouvert).length, 1);
+    hidePersonaEditor();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392b2 — LE GLISSER D'UNE CRÉATURE : SES DESCRIPTEURS, SON AXE, SON LEVIER
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Les poignées existaient (#392b) et ne servaient qu'à sélectionner : `POSE_HANDLES.find` ne trouve
+// rien pour `hipFL`, la liste de descripteurs ressortait VIDE, et sans descripteur la session de
+// glisser ne s'ouvre pas. Le clic marchait, le glisser ne faisait rien, et rien ne le disait.
+describe('#392b2 : les descripteurs de curseur d\'une créature', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+  const REPOS_IDENTITE = [0, 0, 0, 1];
+  // Quart de tour autour de Z : l'axe X de l'os pointe vers le Y du monde.
+  const REPOS_TOURNE = [0, 0, Math.sin(Math.PI / 4), Math.cos(Math.PI / 4)];
+
+  test('trois axes par clé, et la clé voyage AVEC eux', () => {
+    const specs = specsDeCreature3D('hipFL', null, tr);
+    assert.deepEqual(specs.map(s => s.axe), ['x', 'y', 'z']);
+    assert.deepEqual(specs.map(s => s.key), ['hipFL:x', 'hipFL:y', 'hipFL:z']);
+    specs.forEach(s => assert.equal(s.cle, 'hipFL',
+      'sans la clé, l\'écriture ne sait plus dans quelle entrée du brouillon ranger l\'angle'));
+  });
+
+  test('L\'AXE EST CELUI DE L\'OS, pas celui du monde', () => {
+    // ⚠️ LE CŒUR DE #392a MIS À L'ŒUVRE. Un os tourne autour de SES axes, et son repos dit où ceux-ci
+    // pointent : 106 des 108 os mappés mesurés ont un repos non identitaire. Sous l'hypothèse des
+    // axes du monde, la flèche du guide aurait pointé à côté sur presque tous.
+    const droit = specsDeCreature3D('hipFL', { reposMonde: REPOS_IDENTITE }, tr);
+    assert.deepEqual(modelAxisVector3D(droit[0].axis).map(Math.round), [1, 0, 0]);
+
+    const tourne = specsDeCreature3D('hipFL', { reposMonde: REPOS_TOURNE }, tr);
+    const v = modelAxisVector3D(tourne[0].axis);
+    assert.ok(Math.abs(v[1] - 1) < 1e-9 && Math.abs(v[0]) < 1e-9,
+      `l'axe X d'un os tourné d'un quart de tour doit pointer vers +Y du monde, obtenu ${JSON.stringify(v)}`);
+  });
+
+  test('LE LEVIER EST LE SEGMENT MESURÉ, pas « les membres pendent »', () => {
+    // « −Y » est une convention du Personnage intégré. Une patte d'araignée part de côté, une queue
+    // vers l'arrière : ce que l'utilisateur juge en tirant, c'est l'endroit où le membre PART À
+    // L'ÉCRAN (cf. Fix 84), donc la direction réelle du segment.
+    const specs = specsDeCreature3D('hipFL',
+      { reposMonde: REPOS_IDENTITE, segmentMonde: [0, 0, -1] }, tr);
+    assert.deepEqual(poseJointLeverAxis3D(specs[0].axis), [0, 0, -1]);
+  });
+
+  test('SANS MESURES, on retombe sur la lettre : approché, jamais absurde', () => {
+    // Os pas encore récolté : rendre un axe nul aurait donné une tangente de bruit numérique et un
+    // sens de balayage tiré au sort. La lettre, elle, est exactement le comportement du Personnage.
+    ['x', 'y', 'z'].forEach((axe, i) => {
+      assert.equal(specsDeCreature3D('hipFL', null, tr)[i].axis, axe);
+    });
+    // Et une extrémité sans enfant garde son axe mesuré, avec le levier par défaut.
+    const bout = specsDeCreature3D('tail2', { reposMonde: REPOS_IDENTITE, segmentMonde: null }, tr);
+    assert.deepEqual(poseJointLeverAxis3D(bout[0].axis), [0, -1, 0]);
+    assert.deepEqual(modelAxisVector3D(bout[0].axis).map(Math.round), [1, 0, 0]);
+  });
+
+  test('RÉGRESSION : le glisser écrit les TROIS axes, sans perdre le Y', () => {
+    // ⚠️ `writePoseSliderDeg3D` écrit `{ x, z }` EN DUR : c'est la forme d'une pose du Personnage,
+    // dont aucun champ n'a de Y. Faire passer une clé de créature par ce chemin aurait perdu le Y à
+    // chaque écriture, en silence, et un curseur Y serait revenu à zéro dès qu'on touche un autre.
+    _setModelCacheEntry('creature-glisser.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-glisser.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    const specs = specsDeCreature3D('os:mixamorig:Spine', null, tr);
+    setPersonaEditorJointDeg(specs[0], 10);
+    setPersonaEditorJointDeg(specs[1], 20);
+    setPersonaEditorJointDeg(specs[2], 30);
+    assert.deepEqual(
+      ['x', 'y', 'z'].map(a => lireAngleDeg(S.personaEditorDraft, 'os:mixamorig:Spine', a)),
+      [10, 20, 30]);
+    closePersonaEditor();
+  });
+
+  test('et la SESSION de glisser s\'ouvre enfin sur une clé de créature', () => {
+    // Le défaut de #392b, vu du bout : la liste de descripteurs était vide, donc pas de session,
+    // donc un point qu'on peut prendre et qui ne suit pas la souris.
+    _setModelCacheEntry('creature-session.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-session.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(personaEditorSpecsOf('os:mixamorig:Spine').length, 3,
+      'une clé de créature ne rend aucun descripteur : le glisser ne s\'ouvrira pas');
+
+    const specs = specsDeCreature3D('os:mixamorig:Spine', null, tr);
+    setPersonaEditorJointDeg(specs[0], 12);
+    focusPersonaEditorHandle('os:mixamorig:Spine');
+    const session = beginPersonaEditorJointDrag('os:mixamorig:Spine');
+    assert.ok(session, 'aucune session de glisser sur une créature');
+    assert.equal(session.startDeg, 12, 'la session ne part pas de l\'angle affiché');
+
+    applyPersonaEditorJointDrag(session, 0, 40);
+    const apres = lireAngleDeg(S.personaEditorDraft, 'os:mixamorig:Spine', 'x');
+    assert.notEqual(apres, 12, 'glisser n\'écrit rien dans le brouillon de la créature');
+    closePersonaEditor();
+  });
+});
+
+describe('#392b2 : le SEGMENT qu\'un os entraîne, mesuré au repos', () => {
+  // C'est le levier du glisser. Mesuré une fois, dans le même bloc que la rotation de repos et pour
+  // la même raison : l'objet est encore au repos, seul instant où le monde dit le repos et non la
+  // pose courante.
+  const point = () => new THREE.Vector3();
+  const mesurer = (os) => {
+    const p = point();
+    os.getWorldPosition(p);
+    return segmentDeLOs3D(os, p, point());
+  };
+
+  test('la direction pointe vers l\'os enfant', () => {
+    const racine = new THREE.Group();
+    const hanche = new THREE.Bone(); hanche.name = 'ThighL'; hanche.position.set(0, 1, 0);
+    const genou = new THREE.Bone(); genou.name = 'ShinL'; genou.position.set(0, -0.5, 0);
+    hanche.add(genou); racine.add(hanche); racine.updateMatrixWorld(true);
+    assert.deepEqual(mesurer(hanche).map(n => Math.round(n)), [0, -1, 0]);
+  });
+
+  test('⚠️ le premier enfant qui est un OS, pas le premier enfant (mutation échappée)', () => {
+    // Un rig accroche volontiers des maillages, des cibles IK ou des repères aux mêmes nœuds. L'un
+    // d'eux posé au même endroit que son parent donnerait une direction NULLE — donc le levier par
+    // défaut — là où un vrai segment existe juste à côté.
+    const racine = new THREE.Group();
+    const hanche = new THREE.Bone(); hanche.name = 'ThighL'; hanche.position.set(0, 1, 0);
+    const accessoire = new THREE.Object3D(); accessoire.position.set(3, 0, 0);
+    const genou = new THREE.Bone(); genou.name = 'ShinL'; genou.position.set(0, -0.5, 0);
+    hanche.add(accessoire); hanche.add(genou);
+    racine.add(hanche); racine.updateMatrixWorld(true);
+    assert.deepEqual(mesurer(hanche).map(n => Math.round(n)), [0, -1, 0],
+      'le levier suit un accessoire au lieu du membre');
+  });
+
+  test('⚠️ deux os SUPERPOSÉS rendent null, pas du bruit (mutation échappée)', () => {
+    // Sans la garde, on divise par une longueur nulle : le levier devient NaN, la tangente aussi, et
+    // le glisser n'a plus de direction du tout. Mieux vaut retomber sur le levier par défaut.
+    const racine = new THREE.Group();
+    const a = new THREE.Bone(); a.name = 'A'; a.position.set(0, 1, 0);
+    const b = new THREE.Bone(); b.name = 'B'; b.position.set(0, 0, 0);
+    a.add(b); racine.add(a); racine.updateMatrixWorld(true);
+    assert.equal(mesurer(a), null);
+  });
+
+  test('une extrémité n\'entraîne aucun segment', () => {
+    const racine = new THREE.Group();
+    const bout = new THREE.Bone(); bout.name = 'Tail2'; bout.position.set(0, 1, 0);
+    racine.add(bout); racine.updateMatrixWorld(true);
+    assert.equal(mesurer(bout), null);
+  });
+});
+
+describe('#392b2 : pendant un glisser, les curseurs suivent', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  // Les valeurs AFFICHÉES, lues dans le panneau : c'est ce que l'utilisateur voit, et la seule
+  // chose qui puisse démentir « le curseur suit ».
+  const valeursAffichees = () => {
+    const lire = (el, out = []) => {
+      (el.children || []).forEach(c => {
+        if (c.textContent && /°$/.test(c.textContent)) out.push(c.textContent);
+        lire(c, out);
+      });
+      return out;
+    };
+    return lire(document.getElementById('personaEditorJointsContainer'));
+  };
+
+  test('⚠️ MUTATION ÉCHAPPÉE : sans resynchronisation, ils restent figés', () => {
+    // Le panneau n'est PAS reconstruit pendant un geste — cela recréerait des dizaines d'éléments
+    // par image et refermerait le groupe ouvert. Si personne ne remet les valeurs d'accord avec le
+    // brouillon, la figure tourne à l'écran pendant que les curseurs affichent l'angle d'avant, et
+    // le nombre sous les yeux de l'utilisateur ment jusqu'au prochain clic.
+    _setModelCacheEntry('creature-suivi.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-suivi.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.ok(valeursAffichees().length > 0, 'préalable : le panneau porte bien des curseurs');
+    assert.ok(valeursAffichees().every(v => v === '0°'), 'préalable : tout est à zéro');
+
+    ecrireAngleDeg(S.personaEditorDraft, 'os:mixamorig:Spine', 'y', 37);
+    syncPersonaEditorSliders();
+    assert.ok(valeursAffichees().includes('37°'),
+      'le brouillon a changé, les curseurs affichent encore l\'angle d\'avant');
     hidePersonaEditor();
   });
 });
