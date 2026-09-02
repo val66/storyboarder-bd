@@ -654,7 +654,11 @@ export function buildPersonaEditorModelUI(){
   });
   sel.value = S.personaEditorModelFile || '';
 
-  sel.onchange = () => { choisirFigureDeLEditeur(sel.value); drawPersonaEditor(); };
+  // ⚠️ CHANGER DE FIGURE RESYNCHRONISE TOUT LE PANNEAU, pas seulement le dessin (#383a). Redessiner
+  // seul laissait en place les curseurs ET la liste de poses de la figure PRÉCÉDENTE : choisir une
+  // araignée affichait une araignée pilotée par dix-huit articulations humaines, et proposait des
+  // poses d'humanoïde qu'elle ne sait pas porter. Le vocabulaire avait changé, l'écran non.
+  sel.onchange = () => { choisirFigureDeLEditeur(sel.value); syncPersonaEditorDom(); };
 }
 
 /**
@@ -866,9 +870,24 @@ const personaEditorHandlePos = {};
 
 // Fix 51 : curseurs du panneau droit.
 //
-// Construits UNE FOIS au chargement, comme ceux de la modale : reconstruire tout le panneau à chaque
-// ouverture recréerait des dizaines d'éléments et perdrait au passage les groupes que l'utilisateur
-// avait dépliés. À l'ouverture on ne fait que resynchroniser les valeurs.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// CONSTRUITS À CHAQUE OUVERTURE, PLUS UNE SEULE FOIS AU CHARGEMENT (#383a)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// SIGNALÉ À L'USAGE, et c'est le défaut que #383 a laissé passer en entier : « les articulations
+// dans le menu de droite correspondent à celles d'une humanoïde, même si la créature a un autre
+// archétype ». La branche créature existait bien, juste en dessous, et un test la vérifiait ligne à
+// ligne. Personne ne l'appelait. Ce panneau était construit UNE FOIS à l'import du module, à un
+// instant où aucun éditeur n'est ouvert et où `S.personaEditorModelFile` vaut donc null : la
+// question « est-ce une créature ? » était posée à l'unique moment où la réponse est toujours non,
+// et le résultat gardé pour toute la session.
+//
+// ⚠️ CE QUE CELA APPREND SUR LE TEST QUI DORMAIT À CÔTÉ : vérifier qu'un morceau de code EXISTE ne
+// dit rien de son exécution. Le nouveau test vise donc l'APPEL, dans syncPersonaEditorDom.
+//
+// Reconstruire recrée quelques dizaines d'éléments et referme les groupes que l'utilisateur avait
+// dépliés. C'est le prix, et il est cohérent : l'ouverture remet déjà à neuf le cadrage, la
+// sélection et la pose de départ, précisément pour ne rien hériter d'une session précédente.
 //
 // Aucune branche par type d'articulation ici : poseSliderSpecs3D dit quels curseurs existent, exactement
 // comme pour la modale. C'est tout l'intérêt du descripteur, ce panneau et celui de la modale ne
@@ -937,7 +956,6 @@ export function buildPersonaEditorJointSlidersUI(){
     });
   });
 }
-buildPersonaEditorJointSlidersUI();
 
 // Fix 52 : cliquer une poignée déjà sélectionnée la désélectionne. Sorti du gestionnaire d'événement
 // pour être testable : c'est une règle d'interface, pas du DOM, et elle décide de ce qui est
@@ -1124,6 +1142,10 @@ function syncPersonaEditorDom(){
     buildPersonaEditorModelUI();
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
+    // ⚠️ AVANT LA RESYNCHRONISATION DES VALEURS, ET L'ORDRE EST LA DÉCISION (#383a) : synchroniser
+    // d'abord remplirait les curseurs de la figure précédente, que la ligne suivante remplace.
+    // C'est ici, et non à l'import du module, que l'on sait enfin quelle figure est posée.
+    buildPersonaEditorJointSlidersUI();
     syncPersonaEditorSliders();
     syncPersonaEditorActionButtons();
     drawPersonaEditor();

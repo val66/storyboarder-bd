@@ -35,7 +35,8 @@ import {
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables } from '../src/skeleton-pose.js';
-import { orbiteDeFace3D } from '../src/utils.js';
+import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
+import { JOINT_GROUPS } from '../src/constants.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
@@ -44,7 +45,7 @@ import {
   setPersonaEditorJointDeg, applyPersonaEditorToModal, hidePersonaEditor, figureImporteeDeLEditeur,
   buildPersonaEditorModelUI, choisirFigureDeLEditeur, orbiteDouvertureEditeur3D,
   PERSONA_EDITOR_FRONT_ROT_Y, setPersonaEditorOrbit, editeurPoseUneCreature3D,
-  personaEditorHasChanges,
+  personaEditorHasChanges, showPersonaEditor,
 } from '../src/persona-editor.js';
 import { tr } from '../src/state.js';
 
@@ -1392,6 +1393,9 @@ describe('un modèle couché n\'est pas agrandi', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => {
   const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1', name: 'Ouvrier',
+  });
 
   test('RÉGRESSION : l\'Élément temporaire de l\'Éditeur porte la pose du CORPS', () => {
     const i = EDITEUR.indexOf('function dessinerModeleDansEditeur');
@@ -1403,14 +1407,12 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
   });
 
   test('#383 : les curseurs d\'une créature viennent du constructeur PARTAGÉ', () => {
-    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : rien ne vérifiait que l'Éditeur construit les curseurs
-    // d'une créature. Sans eux, il l'affiche et ne permet plus rien — et c'est l'unique moyen de la
-    // poser, puisque ses poignées de glisser n'existent pas encore.
-    //
     // LE CONSTRUCTEUR EST CELUI DE LA FICHE. En écrire un second ici aurait donné deux listes de
     // curseurs pour un même squelette, qui divergent au premier ajustement : la panne la plus
     // fréquente de ce dépôt, et celle dont `ajouterGroupeDeCurseurs3D` porte déjà la trace,
-    // « recopié cassé une troisième fois ».
+    // « recopié cassé une troisième fois ». C'est le SEUL point que ce test peut viser par le
+    // texte : « quel constructeur » ne se lit pas dans le résultat, les deux produiraient les mêmes
+    // curseurs le premier jour. Ce qu'ils AFFICHENT est vérifié pour de bon juste en dessous.
     const i = EDITEUR.indexOf('export function buildPersonaEditorJointSlidersUI');
     assert.ok(i > 0, 'buildPersonaEditorJointSlidersUI a disparu');
     const corps = EDITEUR.slice(i, EDITEUR.indexOf('\n}\n', i));
@@ -1418,12 +1420,101 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
       'une créature n\'a plus de curseurs dans l\'Éditeur');
     assert.match(corps, /poseCourante: \(\) => \(S\.personaEditorDraft/,
       'les curseurs d\'une créature n\'écrivent plus dans le brouillon de l\'Éditeur');
-    // LA BRANCHE SE TERMINE PAR UN `return`, et ce n'est pas un détail de style : sans lui, une
-    // créature recevrait EN PLUS les dix-huit articulations du Personnage, qui ne désignent aucun
-    // de ses os — des curseurs qui ne bougent rien, sous ceux qui la pilotent vraiment.
-    const branche = corps.slice(corps.indexOf('if (editeurPoseUneCreature3D())'));
-    assert.ok(branche.indexOf('return;') < branche.indexOf('JOINT_GROUPS'),
-      'les deux vocabulaires de curseurs se cumulent');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  // #383a — LE PANNEAU DE DROITE SUIT LA FIGURE, ET ON LE VÉRIFIE SUR SON CONTENU
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // ⚠️ CE QUE LE TEST TEXTUEL CI-DESSUS NE POUVAIT PAS VOIR, ET C'EST TOUTE LA LEÇON DE #383a. Il
+  // vérifiait ligne à ligne que la branche créature existait dans le constructeur. Elle existait.
+  // Elle n'était JAMAIS ATTEINTE : le panneau était construit une seule fois, à l'import du module,
+  // à un instant où aucun éditeur n'est ouvert et où `S.personaEditorModelFile` vaut donc null. La
+  // question « est-ce une créature ? » était posée à l'unique moment où la réponse est toujours
+  // non, et la réponse gardée pour toute la session.
+  //
+  // Les 2301 tests étaient verts. C'est l'utilisateur qui l'a vu : « les articulations dans le menu
+  // de droite correspondent à celles d'une humanoïde ». VÉRIFIER QU'UN MORCEAU DE CODE EXISTE NE
+  // DIT RIEN DE SON EXÉCUTION — huitième variante de la même faute dans ce dépôt.
+  //
+  // Ces deux tests passent donc par les VRAIS points d'entrée, l'ouverture et le sélecteur de
+  // figure, et lisent ce que le panneau CONTIENT.
+
+  // Le dessin est la DERNIÈRE chose que fait syncPersonaEditorDom, et lui seul passe par WebGL,
+  // hors de portée sous Node (cf. l'en-tête du fichier) : tout ce qui s'observe est déjà écrit
+  // quand il échoue. On ne laisse passer QUE cette erreur-là, n'importe quelle autre est un vrai
+  // défaut et doit ressortir.
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  const textesDuPanneau = () => {
+    const lire = (el, out = []) => {
+      if (el.textContent) out.push(el.textContent);
+      (el.children || []).forEach(c => lire(c, out));
+      return out;
+    };
+    return lire(document.getElementById('personaEditorJointsContainer')).join(' | ');
+  };
+  // Les intitulés des six groupes du Personnage, pris à la source plutôt que recopiés : ils
+  // suivraient la langue, et un test qui n'échoue qu'en anglais ne vaut rien.
+  const GROUPES_PERSO = JOINT_GROUPS.map(g => libelleTable3D(g, tr));
+
+  test('#383a : ouvrir sur une créature remplit le panneau avec SES os', () => {
+    _setModelCacheEntry('creature-panneau.glb', { scene: squeletteSansBras() });
+    const o = Object.assign(modele(), { modelFile: 'creature-panneau.glb', skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    const panneau = textesDuPanneau();
+    assert.match(panneau, /mixamorig:Spine/,
+      'le panneau ne nomme aucun os de la créature : elle s\'affiche sans rien pour la poser');
+    GROUPES_PERSO.forEach(nom => assert.ok(!panneau.includes(nom + ' |') && !panneau.endsWith(nom),
+      `« ${nom} » pilote une créature qui n'a pas cette articulation`));
+    hidePersonaEditor();
+  });
+
+  test('#383a : changer de figure refait le panneau, dans les DEUX sens', () => {
+    // Le sélecteur est le second moment où le vocabulaire change, et il souffrait du même mal :
+    // choisir une araignée laissait en place les dix-huit articulations humaines. Le retour au
+    // Personnage compte autant : sans lui, on garderait des curseurs d'os d'araignée pour poser un
+    // corps humain.
+    _setModelCacheEntry('creature-sel.glb', { scene: squeletteSansBras() });
+    const o = modele();   // humanoïde
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.ok(GROUPES_PERSO.every(nom => textesDuPanneau().includes(nom)),
+      'préalable : un humanoïde montre bien les six groupes du Personnage');
+
+    const sel = document.getElementById('personaEditorModelSelect');
+    sel.value = 'creature-sel.glb';
+    sansDessiner(() => sel.onchange());
+    assert.match(textesDuPanneau(), /mixamorig:Spine/,
+      'choisir une créature laisse les articulations de l\'humanoïde en place');
+
+    sel.value = '';
+    sansDessiner(() => sel.onchange());
+    const retour = textesDuPanneau();
+    assert.ok(GROUPES_PERSO.every(nom => retour.includes(nom)),
+      'revenir au Personnage laisse les os de la créature en place');
+    assert.doesNotMatch(retour, /mixamorig:/,
+      'des curseurs d\'os de créature survivent sous ceux du Personnage');
+    hidePersonaEditor();
+  });
+
+  test('#383a : le panneau n\'est plus construit à l\'import du module', () => {
+    // La cause exacte du défaut, et la seule chose que le texte puisse dire ici : un appel au
+    // niveau du module s'exécute avant toute ouverture, donc toujours sur « pas une créature ».
+    assert.doesNotMatch(EDITEUR, /^buildPersonaEditorJointSlidersUI\(\);/m,
+      'le panneau est de nouveau figé sur le vocabulaire du chargement');
+    const i = EDITEUR.indexOf('function syncPersonaEditorDom');
+    const corps = EDITEUR.slice(i, EDITEUR.indexOf('\n}\n', i));
+    assert.match(corps, /buildPersonaEditorJointSlidersUI\(\);[\s\S]*syncPersonaEditorSliders\(\);/,
+      'les curseurs doivent être RECONSTRUITS avant d\'être resynchronisés : dans l\'autre ordre, '
+      + 'on remplit ceux de la figure précédente, que la reconstruction jette aussitôt');
   });
 
   test('et il les prend sur le BROUILLON, pas sur l\'Élément d\'origine', () => {
