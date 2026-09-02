@@ -31,6 +31,7 @@ import { maillagesParNom3D, appliquerVisibiliteEgares3D } from './stray-meshes-3
 import { correspondanceEnregistreeSync, fusionner, morphologieEffective3D } from './skeleton-store.js';
 import {
   orientationFinale, groupesPosables, groupesPosablesMembres3D, clesARecolter3D,
+  rolesParOs3D, nomDOsDeCle3D,
   groupesPosablesEnPlus3D,
 } from './skeleton-pose.js';
 import { repereDuCorps, rotationAllongee3D } from './skeleton-retarget.js';
@@ -3630,7 +3631,26 @@ export function groupesDeCurseurs3D(nomFichier, traduire){
       ],
     };
   }
-  return { morphologie, groupes: groupesPosablesMembres3D(osNeutresDuModele3D(nomFichier), membresPourModele(nomFichier), t) };
+  // ⚠️ LES CURSEURS D'UNE CRÉATURE PORTENT LA CLÉ QUE LA RÉCOLTE LEUR DONNE (#392b3), et ce n'était
+  // pas le cas. `groupesPosablesMembres3D` nomme tous les os sous leur clé `os:` ; la récolte, elle,
+  // applique la partition — un os prend son RÔLE s'il en a un. Les os couverts par un rôle avaient
+  // donc un curseur qui écrivait sous une clé qu'`applySkeletonPose` ne connaît pas, et ne bougeait
+  // RIEN. Mesuré : 13 os sur le cerbère et sur le chien, 17 sur l'araignée — la tête, le cou, le
+  // haut de chaque patte et la queue, c'est-à-dire ce qu'on vient régler en premier.
+  const osNeutres = osNeutresDuModele3D(nomFichier);
+  const membres = membresPourModele(nomFichier);
+  const roleDe = rolesParOs3D({
+    morphologie, carte: correspondancePourModele(nomFichier), os: osNeutres,
+    membres, roles: rolesPourModele(nomFichier),
+  }, t);
+  const groupes = groupesPosablesMembres3D(osNeutres, membres, t);
+  // Seule la CLÉ change, jamais le libellé : c'est le même os, à la même place dans la même chaîne.
+  // Le rôle dit comment la pose voyage vers un autre modèle, pas comment l'os s'appelle.
+  groupes.forEach(g => g.chaines.forEach(c => c.os.forEach(o => {
+    const role = roleDe.get(nomDOsDeCle3D(o.cle));
+    if (role) o.cle = role;
+  })));
+  return { morphologie, groupes };
 }
 
 /**

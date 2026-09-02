@@ -41,6 +41,7 @@ import {
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
+  rolesParOs3D,
   groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
   poseNonVide3D, memesAngles3D,
 } from '../src/skeleton-pose.js';
@@ -1223,3 +1224,90 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
  * faisait TOMBER la branche créature dans la branche humanoïde, ce qui est un autre défaut. M11 fait
  * l'union véritable, chaînes puis emplacements, celle qui donne deux entrées sur le même os.
  */
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392b3 — LES CURSEURS ET LA RÉCOLTE NOMMENT LE MÊME OS DE LA MÊME FAÇON
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ SIGNALÉ À L'USAGE : « lorsque je clique sur certains points d'articulation de cerberus cela
+// n'ouvre rien dans le menu de droite ». Le « certains » était la mesure.
+//
+// La récolte appliquait la partition — un os prend son RÔLE s'il en a un, son nom sinon — pendant
+// que la liste des curseurs nommait TOUS les os sous leur clé `os:`. Le même os portait donc deux
+// clés selon l'écran, et le curseur écrivait sous une clé qu'`applySkeletonPose` ne connaît pas :
+// il ne bougeait RIEN, en silence, depuis #375a.
+//
+// Ce que ce test aurait attrapé le jour même : il compare les deux listes, os par os.
+describe('#392b3 : une seule clé par os, quel que soit l\'écran qui le regarde', () => {
+  const fr = (en, f) => f;
+  const chargerFixture = (nom) => JSON.parse(
+    readFileSync(join(RACINE, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+  const CAS = [['cerbere', 'quadrupede'], ['chien', 'quadrupede'], ['araignee', 'arachnide'],
+    ['dragon', 'bipede_aile'], ['serpent', 'serpentin'], ['kraken', 'radial'],
+    ['raptor', 'bipede_aile'], ['centaure3', 'centaure']];
+
+  const clesDesCurseurs = (osDuFichier, morphologie, membres, roles, carte) => {
+    // La même composition que `groupesDeCurseurs3D` dans rig3d.js, qui ne s'importe pas ici (il
+    // construit des rigs Three). C'est la RÈGLE qu'on vérifie, et elle vit dans skeleton-pose.js.
+    const roleDe = rolesParOs3D({ morphologie, carte, os: osDuFichier, membres, roles }, fr);
+    return groupesPosablesMembres3D(osDuFichier, membres, fr)
+      .flatMap(g => g.chaines.flatMap(c => c.os.map(o => roleDe.get(nomDOsDeCle3D(o.cle)) || o.cle)));
+  };
+
+  CAS.forEach(([nom, morphologie]) => {
+    test(`${nom} : chaque curseur écrit sous une clé RÉCOLTÉE`, () => {
+      // Les conditions du fichier réel de l'utilisateur : aucun membre coché, aucun rôle corrigé à
+      // la main. C'est le cas le plus courant, et c'était celui qui échouait.
+      const osDuFichier = chargerFixture(nom);
+      const carte = inferSkeletonMap(osDuFichier);
+      const recoltees = clesARecolter3D(
+        { morphologie, carte, os: osDuFichier, membres: [], roles: {} }, fr).map(e => e.cle);
+      const curseurs = clesDesCurseurs(osDuFichier, morphologie, [], {}, carte);
+
+      const connues = new Set(recoltees);
+      const orphelins = curseurs.filter(c => !connues.has(c));
+      assert.deepEqual(orphelins, [],
+        `${orphelins.length} curseurs écrivent sous une clé que la récolte ignore : ils ne bougent rien`);
+      // Et la réciproque : une clé récoltée sans curseur est une articulation qu'on ne peut pas
+      // régler, donc une poignée qui n'ouvre rien.
+      const vues = new Set(curseurs);
+      const sansCurseur = recoltees.filter(c => !vues.has(c));
+      assert.deepEqual(sansCurseur, [],
+        `${sansCurseur.length} articulations récoltées n'ont aucun curseur`);
+    });
+  });
+
+  test('⚠️ UN HUMANOÏDE N\'A PAS DE RÔLES, et la garde n\'est pas décorative', () => {
+    // MUTATION ÉCHAPPÉE, puis MESURÉE : sans le renvoi anticipé, `propositionDeRoles3D` répond
+    // volontiers pour l'archétype humanoïde — 18 rôles avec os sur chacune des trois fixtures
+    // humanoïdes du corpus (vrm, maison, unreal). Ces 18 clés auraient REMPLACÉ les dix-huit
+    // emplacements, c'est-à-dire la part PORTABLE d'une pose humanoïde, celle qui atteint un autre
+    // rig. La garde est donc ce qui empêche un humanoïde de se mettre à parler créature.
+    const osDuFichier = chargerFixture('vrm');
+    const carte = inferSkeletonMap(osDuFichier);
+    const sans = rolesParOs3D(
+      { morphologie: 'humanoide', carte, os: osDuFichier, membres: [], roles: {} }, fr);
+    assert.equal(sans.size, 0,
+      'un humanoïde reçoit des clés de rôle : ses dix-huit emplacements ne sont plus la pose');
+    // Et le même appel en quadrupède, lui, répond : sans cette moitié, un renvoi `new Map()` pur et
+    // simple passerait le test ci-dessus.
+    assert.ok(rolesParOs3D(
+      { morphologie: 'quadrupede', carte, os: osDuFichier, membres: [], roles: {} }, fr).size > 0,
+      'la fonction ne rend jamais rien : le test du dessus ne prouve alors rien');
+  });
+
+  test('et les RÔLES sont bien la clé retenue là où il y en a un', () => {
+    // ⚠️ SANS CETTE ASSERTION, LE TEST CI-DESSUS SERAIT VRAI POUR LA MAUVAISE RAISON : deux listes
+    // qui nommeraient toutes les deux les os sous `os:` concorderaient parfaitement, et la part
+    // PORTABLE de la pose — les 22 % que les rôles couvrent — aurait disparu sans bruit.
+    const osDuFichier = chargerFixture('cerbere');
+    const carte = inferSkeletonMap(osDuFichier);
+    const curseurs = clesDesCurseurs(osDuFichier, 'quadrupede', [], {}, carte);
+    const roles = curseurs.filter(c => !String(c).startsWith('os:'));
+    assert.ok(roles.length >= 10,
+      `le cerbère doit garder ses rôles parmi les clés de curseur, obtenu ${roles.length}`);
+    ['head', 'hipFL', 'tail0'].forEach(r => assert.ok(curseurs.includes(r),
+      `« ${r} » n'est plus la clé d'aucun curseur : sa pose ne voyagera plus`));
+  });
+});

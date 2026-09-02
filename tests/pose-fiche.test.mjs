@@ -29,6 +29,7 @@ import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
   repereDuCorpsPourFichier3D, appliquerAllonge3D, squelettePourPose3D, segmentDeLOs3D,
+  groupesDeCurseurs3D,
 } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
@@ -52,6 +53,8 @@ import {
 import { projectPoseHandlePositions3D, pickPoseHandleAt } from '../src/draw.js';
 import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D } from '../src/utils.js';
 import { tr } from '../src/state.js';
+import { setSkeletonBridge, lireCorrespondances, _viderCacheCorrespondances }
+  from '../src/skeleton-store.js';
 
 const FICHIER = 'essai-mixamo.glb';
 
@@ -1920,5 +1923,70 @@ describe('#392b2 : pendant un glisser, les curseurs suivent', () => {
     assert.ok(valeursAffichees().includes('37°'),
       'le brouillon a changé, les curseurs affichent encore l\'angle d\'avant');
     hidePersonaEditor();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392b3 — LE VRAI CERBÈRE, PAR LE VRAI CHEMIN
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ CE QUI MANQUAIT AUX TESTS DE skeleton-pose.test.mjs, ET C'EST UNE LEÇON DÉJÀ APPRISE ICI : ils
+// recomposent la règle eux-mêmes (« la clé de rôle si elle existe, la clé d'os sinon ») et
+// resteraient donc VERTS si `groupesDeCurseurs3D` cessait de l'appliquer. Ils vérifient la règle,
+// pas son application. Celui-ci monte le squelette du cerbère dans le cache et passe par la
+// fonction que la fiche et l'Éditeur appellent réellement.
+//
+// La fixture est le squelette MESURÉ du fichier de l'utilisateur, 49 os. La morphologie est écrite
+// dans le magasin comme il l'a corrigée à la main : c'est exactement sa situation.
+describe('#392b3 : les curseurs du VRAI cerbère portent bien ses rôles', () => {
+  const sceneDepuisFixture = (nom) => {
+    const d = JSON.parse(readFileSync(
+      new URL(`./fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
+    const parId = new Map();
+    d.os.forEach(o => {
+      const b = new THREE.Bone();
+      b.name = o.name;
+      if (o.t) b.position.set(o.t[0], o.t[1], o.t[2]);
+      parId.set(o.i, b);
+    });
+    const enfants = new Set();
+    d.os.forEach(o => (o.children || []).forEach(c => {
+      if (parId.has(c)) { parId.get(o.i).add(parId.get(c)); enfants.add(c); }
+    }));
+    const racine = new THREE.Group();
+    d.os.forEach(o => { if (!enfants.has(o.i)) racine.add(parId.get(o.i)); });
+    racine.updateMatrixWorld(true);
+    return racine;
+  };
+
+  test('treize os passent de leur nom à leur RÔLE, et rien ne double', async () => {
+    clearModelCache();
+    _viderCacheCorrespondances();
+    _setModelCacheEntry('cerberus.glb', { scene: sceneDepuisFixture('cerbere') });
+    setSkeletonBridge({
+      readSkeletonMaps: async () => ({ ok: true, data: { version: 1, entrees: {
+        'cerberus.glb': { os: {}, membres: [], roles: {}, morphologie: 'quadrupede', valide: true },
+      } } }),
+    });
+    await lireCorrespondances();
+
+    const { morphologie, groupes } = groupesDeCurseurs3D('cerberus.glb');
+    assert.equal(morphologie, 'quadrupede', 'préalable : la morphologie corrigée doit être lue');
+    const cles = groupes.flatMap(g => g.chaines.flatMap(c => c.os.map(o => o.cle)));
+
+    const roles = cles.filter(c => !String(c).startsWith('os:'));
+    assert.deepEqual(roles.sort(), ['head', 'hipBL', 'hipBR', 'hipFL', 'hipFR', 'kneeBL', 'kneeBR',
+      'kneeFL', 'kneeFR', 'neck', 'tail0', 'tail1', 'tail2'].sort(),
+      'les articulations qu\'on règle en premier — tête, cou, hanches, genoux, queue — n\'écrivent '
+      + 'pas sous leur rôle : leurs curseurs ne bougent rien et leurs poignées n\'ouvrent rien');
+
+    // ⚠️ ET AUCUN OS N'APPARAÎT DEUX FOIS. C'est la raison d'être de la partition : le même os sous
+    // deux clés ferait réécrire son quaternion deux fois par `applySkeletonPose`, « la dernière clé
+    // parcourue gagne », selon un ordre que personne ne contrôle.
+    assert.equal(new Set(cles).size, cles.length, 'une clé de curseur apparaît deux fois');
+    assert.equal(cles.length, 45, 'le nombre d\'articulations pilotables a changé');
+
+    setSkeletonBridge(null);
+    _viderCacheCorrespondances();
   });
 });

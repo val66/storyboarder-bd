@@ -556,6 +556,42 @@ export function groupesPosablesEnPlus3D({ carte, os, membres } = {}, traduire){
  *
  * @returns `[{ cle, nom }]`, `nom` étant le nom de l'os à retrouver dans le clone
  */
+/**
+ * Quel os porte quelle clé de RÔLE, pour cette figure. Rend une `Map(nomDOs → cleDeRole)`.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'AUTORITÉ UNIQUE DE LA PARTITION (#392b3)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ ELLE EXISTE PARCE QUE DEUX ÉCRANS RÉPONDAIENT DIFFÉREMMENT À LA MÊME QUESTION, et le défaut
+ * était SILENCIEUX. La récolte appliquait la partition — un os prend son rôle s'il en a un, son nom
+ * sinon — pendant que la liste des curseurs, elle, nommait TOUS les os sous leur clé `os:`. Le même
+ * os portait donc deux clés selon l'écran qui le regardait.
+ *
+ * MESURÉ SUR LE CORPUS, les os concernés : 13 sur le cerbère (`head`, `neck`, les quatre hanches,
+ * les quatre genoux, les trois os de queue), 13 sur le chien, 17 sur l'araignée. Autrement dit, sur
+ * un quadrupède, la tête, le cou, le haut de chaque patte et la queue — les articulations qu'on
+ * vient chercher en premier. Leurs curseurs écrivaient sous une clé qu'`applySkeletonPose` ne
+ * connaît pas : ils ne bougeaient RIEN, sans un mot, depuis #375a.
+ *
+ * Le commentaire de `clesARecolter3D` juste en dessous décrivait pourtant exactement ce piège, « cet
+ * os partirait sous `head` ET sous `os:CERBERUS_Head` ». Il le décrivait pour l'écarter d'un côté,
+ * et l'écran d'à côté le faisait.
+ */
+export function rolesParOs3D({ morphologie, carte, os, membres, roles } = {}, traduire){
+  const parOs = new Map();
+  if (!morphologie || morphologie === 'humanoide') return parOs;
+  const proposition = propositionDeRoles3D(
+    { os, archetype: morphologie, carte, enregistre: { os: roles || {}, membres } }, traduire);
+  proposition.forEach(m => m.roles.forEach(r => {
+    // Deux rôles ne peuvent pas viser le même os : le premier rencontré le garde, comme partout
+    // ailleurs dans cet écran.
+    if (!r.osNom || parOs.has(r.osNom)) return;
+    parOs.set(r.osNom, r.cle);
+  }));
+  return parOs;
+}
+
 export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {}, traduire){
   if (morphologie !== 'humanoide') {
     // ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -576,17 +612,11 @@ export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {},
     // le filtre ci-dessous, cet os partirait sous `head` ET sous `os:CERBERUS_Head`, et
     // `applySkeletonPose` réécrirait deux fois son quaternion — « la dernière clé parcourue gagne »,
     // selon un ordre que personne ne contrôle.
-    const proposition = propositionDeRoles3D(
-      { os, archetype: morphologie, carte, enregistre: { os: roles || {}, membres } }, traduire);
-    const prisParRole = new Set();
-    const parRole = [];
-    proposition.forEach(m => m.roles.forEach(r => {
-      // Un rôle sans os n'a rien à récolter, et deux rôles ne peuvent pas viser le même os : le
-      // premier rencontré le garde, comme ailleurs dans cet écran.
-      if (!r.osNom || prisParRole.has(r.osNom)) return;
-      prisParRole.add(r.osNom);
-      parRole.push({ cle: r.cle, nom: r.osNom });
-    }));
+    // La partition vient de `rolesParOs3D`, seule autorité (#392b3) : la liste des curseurs la lit
+    // aussi, et deux calculs séparés donnaient au même os deux clés différentes selon l'écran.
+    const roleDe = rolesParOs3D({ morphologie, carte, os, membres, roles }, traduire);
+    const prisParRole = new Set(roleDe.keys());
+    const parRole = [...roleDe.entries()].map(([nom, cle]) => ({ cle, nom }));
     const parOs = groupesPosablesMembres3D(os, membres, traduire)
       .flatMap(g => g.chaines.flatMap(c => c.os.map(o => ({ cle: o.cle, nom: nomDOsDeCle3D(o.cle) }))))
       .filter(e => !prisParRole.has(e.nom));
