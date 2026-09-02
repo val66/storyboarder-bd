@@ -1411,18 +1411,80 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(corps, /_skelEcran\.membres = \[\]/, 'les membres survivent à la réinitialisation');
   });
 
-  test('un membre se replie quand il est SÛR, et le nom d\'ancre a disparu (#378b)', () => {
-    // ⚠️ CE TEST EXIGEAIT L'INVERSE. Il épinglait le regroupement par ANCRE décidé en #373, c'est
-    // à dire un en-tête « Sur CERBERUS__Spine_03 » : un nom d'os BRUT là où l'écran humanoïde disait
-    // « Bras gauche ». L'ancre est un détail de la décomposition qui avait fui jusqu'à l'affichage,
-    // et c'était le plus voyant de l'écart entre les deux écrans.
+  test('un membre se replie quand il est SÛR, dans la section des fiches (#378b, #388)', () => {
+    // ⚠️ CE TEST A CHANGÉ DEUX FOIS, ET LA RÈGLE QU'IL PROTÈGE N'A JAMAIS BOUGÉ.
+    //
+    // Il exigeait d'abord le regroupement par ANCRE de #373, c'est-à-dire un en-tête « Sur
+    // CERBERUS__Spine_03 » : un nom d'os BRUT là où l'écran humanoïde disait « Bras gauche ».
+    //
+    // Il exigeait ensuite un `<details>` avec `bloc.open`. C'était le MÉCANISME, pas la règle :
+    // demandé à l'usage, les sections de cet écran doivent être celles des fiches Modèle, et
+    // `.modal-section` est réutilisée plutôt qu'imitée. Un `<details>` restylé pour lui ressembler
+    // aurait donné deux composants qui divergent au premier réglage fait d'un seul côté.
+    //
+    // Ce qui reste vérifié, et qui est la vraie décision : LE REPLI SUIT LA CERTITUDE, et l'en-tête
+    // porte le libellé du membre.
     const debut = EV2.indexOf('function groupeDeMembre');
     const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
-    assert.match(corps, /createElement\('details'\)/, 'un membre ne se replie plus');
-    assert.match(corps, /bloc\.open = !membre\.sur/, 'le repli ne suit plus la certitude');
-    assert.match(corps, /tete\.textContent = membre\.label/, 'l\'en-tête n\'est plus le libellé du membre');
+    assert.match(corps, /sectionRepliable3D\(membre\.label, !membre\.sur\)/,
+      'le repli ne suit plus la certitude, ou l\'en-tête n\'est plus le libellé du membre');
     const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'), EV2.indexOf('function ligneMembre'));
     assert.doesNotMatch(rendu, /ancreNom/, 'un nom d\'ancre brut est revenu dans l\'écran');
+    // La section est bien CELLE DES FICHES, y compris son bascule : réimplémenter le pli ici
+    // rouvrirait l'écart que cette tâche vient de fermer.
+    const fabrique = EV2.slice(EV2.indexOf('function sectionRepliable3D'),
+      EV2.indexOf('\n}', EV2.indexOf('function sectionRepliable3D')));
+    assert.match(fabrique, /className = 'modal-section'/);
+    assert.match(fabrique, /toggleModalSection\(tete\)/, 'le pli est réimplémenté au lieu d\'être réutilisé');
+  });
+
+  test('#388 : la modale n\'a qu\'UN ascenseur, pas deux imbriqués', () => {
+    // ⚠️ RENVERSEMENT ASSUMÉ. Ce fichier défendait l'inverse : « deux ascenseurs valent mieux qu'un
+    // seul qui mélange deux sujets ». Cette phrase raisonnait sur le CONTENU et oubliait le geste :
+    // deux zones défilantes empilées dans une troisième font trois cibles pour une molette, dont
+    // deux invisibles tant qu'on ne les survole pas. Signalé à l'usage.
+    ['skeleton-map-list', 'skeleton-map-membres'].forEach(cls => {
+      const i = CSS2.indexOf(`.${cls} {`);
+      assert.notEqual(i, -1, `.${cls} a disparu de la feuille de style`);
+      const regle = CSS2.slice(i, CSS2.indexOf('}', i));
+      assert.doesNotMatch(regle, /overflow-y:\s*auto/, `.${cls} défile encore dans la modale`);
+      assert.doesNotMatch(regle, /max-height/, `.${cls} plafonne encore sa hauteur`);
+    });
+    // Le seul ascenseur est celui de la modale, et il existe toujours.
+    const box = CSS2.slice(CSS2.indexOf('.modal-box{'), CSS2.indexOf('}', CSS2.indexOf('.modal-box{')));
+    assert.match(box, /overflow-y:\s*auto/);
+  });
+
+  test('#388 : la légende se mesure SANS repli, sinon elle mesure autre chose', () => {
+    // Avec `flex-wrap`, `scrollWidth` rend la largeur de la ligne la plus longue, pas celle qu'il
+    // faudrait pour tout mettre côte à côte : la mesure répondrait à une autre question que celle
+    // posée. D'où `nowrap` en CSS, et le retrait de la classe avant de mesurer en JS.
+    // ⚠️ COMMENTAIRES RETIRÉS AVANT DE COMPARER DES POSITIONS. Huitième fois dans ce dépôt qu'un
+    // test est mis en échec par la prose qui l'entoure : le commentaire qui EXPLIQUE pourquoi on
+    // mesure sans repli cite `scrollWidth`, donc le mot apparaissait avant la ligne de code, et la
+    // comparaison d'ordre échouait sur du code juste.
+    const debut = EV2.indexOf('function replierLegendeSiNecessaire3D');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut))
+      .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    const iRetrait = corps.indexOf("classList.remove('empilee')");
+    const iMesure = corps.indexOf('scrollWidth');
+    assert.notEqual(iRetrait, -1, 'la légende n\'est plus dépliée avant d\'être mesurée');
+    assert.notEqual(iMesure, -1, 'la légende n\'est plus mesurée du tout');
+    assert.ok(iRetrait < iMesure,
+      'la mesure est prise alors que la légende est peut-être déjà empilée');
+    const regle = CSS2.slice(CSS2.indexOf('.skeleton-map-legend {'));
+    assert.match(regle.slice(0, regle.indexOf('}')), /flex-wrap:\s*nowrap/);
+    // ⚠️ LA NOTE EST SORTIE DU CONTENEUR MESURÉ. Dedans, elle s'ajoutait à la largeur demandée et la
+    // réponse à « est-ce que ça tient ? » était toujours non. Son ancien `flex-basis: 100%` ne la
+    // sortait de la ligne que grâce au `flex-wrap` qui vient de disparaître.
+    assert.match(HTML2, /id="skeletonMapLegendNote"/);
+    const rendu = EV2.slice(EV2.indexOf('function renderSkeletonMapModal'), EV2.indexOf('function groupeDeMembre'));
+    assert.match(rendu, /getElementById\('skeletonMapLegendNote'\)\.textContent/);
+    // ⚠️ ÉCHAPPÉE À LA PREMIÈRE CAMPAGNE : vérifier le CORPS d'une fonction ne dit rien de son
+    // APPEL. Le supprimer laissait une légende figée sur une seule ligne, donc tronquée par
+    // l'`overflow: hidden` qui rend justement la mesure possible — un défaut muet.
+    assert.match(rendu, /replierLegendeSiNecessaire3D\(legende\)/,
+      'la légende n\'est plus mesurée à l\'affichage : elle restera tronquée');
   });
 
   test('un nom se retient À CHAQUE FRAPPE, pas au `change`', () => {

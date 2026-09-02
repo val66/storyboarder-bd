@@ -117,7 +117,7 @@ import {
   manuelEstAffiche,
 } from './sidebar.js';
 import {
-  toggleModalSection, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
+  toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
   buildSkeletonJointSlidersUI,
@@ -4343,12 +4343,10 @@ function renderSkeletonMapModal(){
     s.appendChild(document.createTextNode(texte));
     legende.appendChild(s);
   });
-  const note = document.createElement('span');
-  note.className = 'skeleton-map-legend-note';
-  note.textContent = tr(
+  document.getElementById('skeletonMapLegendNote').textContent = tr(
     'Only your own choices are kept in the file; the other rows are recomputed each time.',
     'Seuls vos choix sont conservés dans le fichier ; les autres lignes sont recalculées à chaque ouverture.');
-  legende.appendChild(note);
+  replierLegendeSiNecessaire3D(legende);
 
   skeletonMapList.innerHTML = '';
   skeletonMapList.className = 'skeleton-map-list' + (valide ? ' validee' : '');
@@ -4369,15 +4367,67 @@ function renderSkeletonMapModal(){
  * avait fui jusqu'à l'écran.
  */
 function groupeDeMembre(membre, os, humanoide){
-  const bloc = document.createElement('details');
-  bloc.className = 'skeleton-map-membre-groupe';
-  bloc.open = !membre.sur;
-  const tete = document.createElement('summary');
-  tete.className = 'skeleton-map-group';
-  tete.textContent = membre.label;
-  bloc.appendChild(tete);
-  membre.roles.forEach(role => bloc.appendChild(ligneCorrespondance(role, os, humanoide)));
-  return bloc;
+  const bloc = sectionRepliable3D(membre.label, !membre.sur);
+  membre.roles.forEach(role => bloc.corps.appendChild(ligneCorrespondance(role, os, humanoide)));
+  return bloc.section;
+}
+
+/**
+ * La légende tient sur une ligne, ou passe à une légende par ligne. Jamais entre les deux.
+ *
+ * ⚠️ « TOUT SUR UNE LIGNE, OU UNE PAR LIGNE » NE S'EXPRIME PAS EN CSS. Un `flex-wrap` produit ce
+ * qu'on lui demande, c'est-à-dire un repli PARTIEL : deux légendes en haut, la troisième seule en
+ * dessous, alignée sous rien. C'est ce que l'utilisateur a signalé. Aucune combinaison de
+ * `flex-basis` ne rend ce choix global, chaque élément décidant pour lui-même.
+ *
+ * La question « est-ce que ça tient ? » dépend du texte, de la langue, de la police et de la
+ * largeur de la fenêtre. Aucun seuil écrit ici ne serait juste dans les quatre cas à la fois : on
+ * MESURE, une fois, après avoir posé le contenu. `scrollWidth` est la largeur qu'il FAUDRAIT,
+ * `clientWidth` celle qu'on a — la comparaison est la décision, et elle est extraite dans
+ * `legendeDoitSeReplier3D` pour être vérifiable sans navigateur.
+ */
+function replierLegendeSiNecessaire3D(legende){
+  // On mesure SANS repli, sinon `scrollWidth` rend la largeur de la ligne la plus longue et non
+  // celle qu'il faudrait pour tout mettre côte à côte : la mesure répondrait à une autre question.
+  legende.classList.remove('empilee');
+  if (legendeDoitSeReplier3D(legende.scrollWidth, legende.clientWidth)) {
+    legende.classList.add('empilee');
+  }
+}
+
+/**
+ * Une section repliable, celle des fiches Personnage et Objet. Rend `{ section, corps }`.
+ *
+ * ⚠️ ON RÉUTILISE `.modal-section`, ON NE L'IMITE PAS. Demandé à l'usage : « les sections devraient
+ * s'afficher comme celles de la modale des Modèles ». Un `<details>` restylé pour y ressembler
+ * aurait donné deux composants qui se ressemblent aujourd'hui et divergent au premier réglage fait
+ * d'un seul côté — la faute que ce dépôt passe son temps à défaire.
+ *
+ * `toggleModalSection` est la MÊME fonction que celle câblée en dur dans index.html : le pli, le
+ * chevron et leurs transitions sont donc réglés une fois pour toutes les modales.
+ *
+ * @param ouverte l'état initial. Ici il suit la CERTITUDE du membre (cf. estSur3D), pas une
+ *                catégorie : on ouvre ce qui demande une décision.
+ */
+function sectionRepliable3D(titre, ouverte){
+  const section = document.createElement('div');
+  section.className = 'modal-section' + (ouverte ? '' : ' collapsed');
+  const tete = document.createElement('div');
+  tete.className = 'modal-section-header';
+  tete.onclick = () => toggleModalSection(tete);
+  const nom = document.createElement('span');
+  nom.className = 'modal-section-title';
+  nom.textContent = titre;
+  const chevron = document.createElement('span');
+  chevron.className = 'modal-section-caret';
+  chevron.textContent = '▾';
+  tete.appendChild(nom);
+  tete.appendChild(chevron);
+  section.appendChild(tete);
+  const corps = document.createElement('div');
+  corps.className = 'modal-section-body';
+  section.appendChild(corps);
+  return { section, corps };
 }
 
 /**
@@ -4429,18 +4479,23 @@ function renderChainesSansRole(proposition, lignes, os){
 
   if (!restantes.length) { zone.appendChild(troncBloc); return; }
 
-  const titre = document.createElement('div');
-  titre.className = 'skeleton-map-group';
-  titre.textContent = tr(`Chains with no role (${restantes.length})`,
-    `Chaînes sans rôle (${restantes.length})`);
-  zone.appendChild(titre);
+  // LA MÊME SECTION REPLIABLE QUE LES MEMBRES. Elle portait déjà la même classe de titre qu'eux :
+  // n'en convertir qu'une moitié aurait recréé, à l'intérieur d'un seul écran, l'hétérogénéité
+  // qu'on vient de retirer. Ouverte par défaut, ses cases étant ce qu'on vient y faire.
+  //
+  // LE TRONC RESTE EN DEHORS, lui : il n'est pas une chaîne sans rôle, il est la chaîne qu'on ne
+  // peut pas décocher. Le ranger sous ce titre le ferait passer pour un candidat au décochage.
+  const bloc = sectionRepliable3D(tr(`Chains with no role (${restantes.length})`,
+    `Chaînes sans rôle (${restantes.length})`), true);
+  zone.appendChild(bloc.section);
+  const dedans = bloc.corps;
 
   const note = document.createElement('div');
   note.className = 'skeleton-map-legend-note';
   note.textContent = tr(
     'Untick to remove its sliders. The chain stays in the file, it simply cannot be moved.',
     'Décochez pour retirer ses curseurs. La chaîne reste dans le fichier, elle n\'est simplement plus pilotable.');
-  zone.appendChild(note);
+  dedans.appendChild(note);
 
   // TOUT COCHER, TOUT DÉCOCHER. Demandé à l'usage, et le besoin est réel : une araignée porte
   // trente chaînes sans rôle, un rig Unreal plus de deux cents. Les décocher une par une pour n'en
@@ -4471,9 +4526,9 @@ function renderChainesSansRole(proposition, lignes, os){
     : tr(`Untick all (${restantes.length})`, `Tout décocher (${restantes.length})`);
   libTous.onclick = () => coche.click();
   tous.appendChild(libTous);
-  zone.appendChild(tous);
+  dedans.appendChild(tous);
 
-  restantes.forEach(m => zone.appendChild(ligneMembre(m, os)));
+  restantes.forEach(m => dedans.appendChild(ligneMembre(m, os)));
   zone.appendChild(troncBloc);
 }
 

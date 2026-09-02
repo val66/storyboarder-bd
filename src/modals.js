@@ -157,6 +157,30 @@ export function toggleModalSection(headerEl){
   headerEl.parentElement.classList.toggle('collapsed');
 }
 
+/**
+ * Une rangée d'étiquettes doit-elle s'empiler ? Fonction PURE.
+ *
+ * ⚠️ « TOUT SUR UNE LIGNE, OU UNE PAR LIGNE » NE S'EXPRIME PAS EN CSS. Un `flex-wrap` produit un
+ * repli PARTIEL — deux étiquettes en haut, la troisième seule en dessous, alignée sous rien — et
+ * aucune combinaison de `flex-basis` ne rend ce choix global, chaque élément décidant pour lui-même.
+ * Signalé à l'usage sur la légende de l'écran de correspondance.
+ *
+ * La réponse dépend du texte, de la langue, de la police et de la largeur de la fenêtre : aucun
+ * seuil écrit ne serait juste dans les quatre cas à la fois. L'appelant MESURE (`scrollWidth`, la
+ * largeur qu'il faudrait, contre `clientWidth`, celle qu'on a) et cette fonction tranche — ici,
+ * pour rester vérifiable sans navigateur.
+ *
+ * La marge d'UN pixel absorbe les arrondis sub-pixel : à largeur égale, certains rendus donnent un
+ * `scrollWidth` supérieur d'une unité, ce qui empilerait une rangée qui tient.
+ *
+ * Non mesurable — modale fermée, largeurs nulles — vaut « ne rien empiler » : la ligne unique est
+ * l'état qui n'a jamais l'air cassé.
+ */
+export function legendeDoitSeReplier3D(voulue, disponible){
+  if (!disponible || !voulue) return false;
+  return voulue > disponible + 1;
+}
+
 export function resetModalSections(modalBoxEl, clesOuvertes){
   // ⚠️ PAR CLÉ (`data-section`), PLUS PAR TITRE. La comparaison portait sur le texte affiché, et ce
   // texte est TRADUIT (cf. applyI18nModalSectionTitles). En anglais, « Main characteristics » ne

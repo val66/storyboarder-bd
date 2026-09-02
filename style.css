@@ -952,12 +952,28 @@ canvas{
    Dix-huit lignes, groupées par membre. Hauteur bornée puis défilante, pour la même raison que la
    liste des usages : les boutons du bas doivent rester atteignables. */
 .modal-box-large { max-width: 640px; width: 92vw; }
-.skeleton-map-list { max-height: 52vh; overflow-y: auto; margin-bottom: 12px; }
-/* ── Les MEMBRES, sous les dix-huit emplacements ────────────────────────────────────────────────
-   Sa PROPRE hauteur maximale, et non celle de la liste au-dessus : les deux sections se lisent
-   séparément, et un rig à trente chaînes (l'araignée) ne doit pas repousser les emplacements hors
-   de vue. Deux ascenseurs valent mieux qu'un seul qui mélange deux sujets. */
-.skeleton-map-membres { max-height: 34vh; overflow-y: auto; margin-bottom: 12px; }
+/* ⚠️ AUCUN ASCENSEUR ICI : LA MODALE EST LE SEUL À DÉFILER. Demandé à l'usage, et c'est un
+ * renversement de ce que ce fichier défendait — « deux ascenseurs valent mieux qu'un seul qui
+ * mélange deux sujets ». Cette phrase raisonnait sur le CONTENU et oubliait le geste : deux zones
+ * défilantes empilées dans une troisième font trois cibles pour une molette, dont deux invisibles
+ * tant qu'on ne les survole pas. On ne sait plus ce qui va bouger avant d'avoir essayé, et le
+ * contenu d'une zone repliée continue d'occuper sa hauteur réservée.
+ *
+ * Les sections repliables remplacent avantageusement ces hauteurs plafonnées : un rig à trente
+ * chaînes ne repousse plus rien dès qu'on replie ce qu'on ne regarde pas, et c'est un geste
+ * délibéré au lieu d'une contrainte subie. */
+.skeleton-map-list { margin-bottom: 12px; }
+.skeleton-map-membres { margin-bottom: 12px; }
+/* Dans CET écran, les sections sont nombreuses et courtes : un cerbère en a sept. Les marges et le
+   corps de `.modal-section`, réglés pour les trois grandes sections d'une fiche, y donneraient une
+   colonne deux fois trop longue. On resserre, sans toucher au composant lui-même, qui reste réglé
+   pour les fiches. */
+.skeleton-map-list .modal-section,
+.skeleton-map-membres .modal-section { margin: 6px 0; padding: 2px 10px 8px; }
+.skeleton-map-list .modal-section-header,
+.skeleton-map-membres .modal-section-header { margin: 6px 0; }
+.skeleton-map-list .modal-section-title,
+.skeleton-map-membres .modal-section-title { font-size: 13px; }
 .skeleton-map-ancre { border: 1px solid var(--line); border-radius: 4px; margin-bottom: 6px; }
 .skeleton-map-ancre > summary { cursor: pointer; padding: 5px 8px; font-size: 12.5px;
                                 color: var(--sepia); background: var(--paper-dark); }
@@ -1021,11 +1037,23 @@ canvas{
 /* Après la reprise, le bandeau n'a plus ni menu ni bouton : il RACONTE. La phrase prend toute la
    largeur et se laisse couper, là où la version avec menu tenait sur une ligne. */
 .skeleton-map-reprise.reprise-faite { display: block; }
-.skeleton-map-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px;
-                       color: var(--sepia); margin-bottom: 10px; }
+/* ⚠️ `nowrap` PAR DÉFAUT, et c'est ce qui rend la mesure possible. Avec `flex-wrap: wrap`, le repli
+   partiel se produit AVANT qu'on ait pu le constater — deux légendes en haut, la troisième seule en
+   dessous — et `scrollWidth` ne dit plus la largeur qu'il faudrait pour une seule ligne. Sans repli,
+   le contenu déborde, `scrollWidth` mesure ce débordement, et `replierLegendeSiNecessaire3D` tranche
+   (cf. events.js). Le débordement ne se voit jamais : la classe est posée dans le même rendu. */
+.skeleton-map-legend { display: flex; flex-wrap: nowrap; gap: 10px; font-size: 11.5px;
+                       color: var(--sepia); margin-bottom: 10px; overflow: hidden; }
+/* Empilée : UNE légende par ligne, jamais deux. C'est le seul autre état permis. */
+.skeleton-map-legend.empilee { flex-direction: column; gap: 3px; overflow: visible; }
 /* La note occupe sa propre ligne : elle ne décrit pas une étiquette mais le comportement du
-   fichier, et la mêler aux trois légendes la ferait passer pour une quatrième catégorie. */
+   fichier, et la mêler aux légendes la ferait passer pour une catégorie de plus.
+   ⚠️ `flex-basis: 100%` NE SUFFIT PLUS À LA SORTIR DE LA LIGNE : il ne fait rien sans `flex-wrap`,
+   que la légende a perdu pour devenir mesurable. Sous l'écran de correspondance, la note est donc
+   sortie du conteneur ; la propriété reste ici pour les autres emplois de cette classe, qui vivent
+   toujours dans un flex enveloppant. */
 .skeleton-map-legend-note { flex-basis: 100%; font-style: italic; opacity: .8; }
+#skeletonMapLegendNote { font-size: 11.5px; color: var(--sepia); margin: -6px 0 10px; }
 /* Écart AUTOUR du bouton « Tableau de correspondance » : autant au-dessus qu'en dessous.
  *
  * MA PREMIÈRE VERSION — une simple `margin-top: 4px` sur le bouton — N'AVAIT AUCUN EFFET, et j'avais

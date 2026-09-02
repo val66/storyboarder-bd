@@ -16,7 +16,8 @@ import { readFileSync } from 'node:fs';
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
   pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos,
   selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
-  remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert } from '../src/modals.js';
+  remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert,
+  legendeDoitSeReplier3D } from '../src/modals.js';
 import { HELP_MANUAL_FR, HELP_MANUAL_EN } from '../src/help-content.js';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
@@ -551,5 +552,32 @@ describe('resetModalSections : par clé, jamais par titre affiché', () => {
     const corps = i18n.slice(i, i18n.indexOf('\n}', i));
     assert.match(corps, /sec\.dataset\.section/);
     assert.ok(!/forEach\(\(el, i\)/.test(corps), 'plus d\'appariement par rang');
+  });
+});
+
+describe('Une rangée d\'étiquettes : tout sur une ligne, ou une par ligne (#388)', () => {
+  test('elle s\'empile seulement quand elle ne tient pas', () => {
+    // ⚠️ CE CHOIX NE S'EXPRIME PAS EN CSS, et c'est la raison d'être de cette fonction. Un
+    // `flex-wrap` produit un repli PARTIEL — deux étiquettes en haut, la troisième seule en dessous,
+    // alignée sous rien — et aucune combinaison de `flex-basis` ne le rend global, chaque élément
+    // décidant pour lui-même. Signalé à l'usage sur la légende de l'écran de correspondance.
+    assert.equal(legendeDoitSeReplier3D(500, 400), true);
+    assert.equal(legendeDoitSeReplier3D(400, 400), false);
+    assert.equal(legendeDoitSeReplier3D(300, 400), false);
+  });
+
+  test('une marge d\'UN pixel absorbe les arrondis sub-pixel', () => {
+    // Sans elle, une rangée qui tient exactement s'empilerait sur un rendu qui donne un
+    // `scrollWidth` supérieur d'une unité à `clientWidth`.
+    assert.equal(legendeDoitSeReplier3D(401, 400), false, 'la marge sub-pixel a disparu');
+    assert.equal(legendeDoitSeReplier3D(402, 400), true);
+  });
+
+  test('non mesurable vaut « ne rien empiler »', () => {
+    // Modale fermée, largeurs nulles : la ligne unique est l'état qui n'a jamais l'air cassé, là
+    // où empiler par défaut donnerait une colonne d'étiquettes sur un écran qui tient largement.
+    assert.equal(legendeDoitSeReplier3D(0, 0), false);
+    assert.equal(legendeDoitSeReplier3D(500, 0), false);
+    assert.equal(legendeDoitSeReplier3D(0, 400), false);
   });
 });
