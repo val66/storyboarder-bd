@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   normaliser, repereDuCorps, coordonneesDansRepere, vecteurDepuisRepere,
-  axeEquivalent, axeMondeVersLocal, quaternionAxeAngle, deltaPourOs,
+  axeEquivalent, axeMondeVersLocal, axeLocalVersMonde, quaternionAxeAngle, deltaPourOs,
 
   rotationAllongee3D,
 } from '../src/skeleton-retarget.js';
@@ -222,6 +222,61 @@ describe('axeMondeVersLocal : descendre du monde jusqu\'à l\'os', () => {
   test('un repos absent vaut l\'identité, jamais une exception', () => {
     assert.ok(vecteurProche(axeMondeVersLocal([1, 0, 0], null), [1, 0, 0], 1e-12));
     assert.equal(axeMondeVersLocal(null, [0, 0, 0, 1]), null);
+  });
+});
+
+describe('axeLocalVersMonde : remonter de l\'os jusqu\'au monde (#392a)', () => {
+  // ⚠️ LE MIROIR, ET IL SERT À MONTRER, PAS À APPLIQUER. Sa jumelle part d'un geste du corps et
+  // cherche autour de quoi l'os doit tourner ; celle-ci part de l'axe du curseur et cherche où il
+  // pointe à l'écran. Sans elle, le guide d'un os importé serait dessiné en supposant que ses axes
+  // sont ceux du monde — vrai du Personnage intégré, faux de 106 des 108 os mappés mesurés.
+  test('un os au repos non tourné laisse l\'axe inchangé', () => {
+    assert.ok(vecteurProche(axeLocalVersMonde([0, 0, 1], [0, 0, 0, 1]), [0, 0, 1], 1e-12));
+  });
+
+  test('LES DEUX SENS S\'ANNULENT, sur un repos quelconque', () => {
+    // Propriété plutôt qu'exemple, et c'est LA vérification qui compte : une erreur de signe dans
+    // le quaternion donnerait un aller-retour qui ne revient pas. Elle attrape aussi bien une
+    // conjugaison prise à l'envers qu'un produit vectoriel dont les termes sont permutés.
+    const q = quaternionAxeAngle(normaliser([0.3, 0.7, -0.2]), 0.9);
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1], normaliser([0.2, -0.4, 0.9])].forEach(axe => {
+      const aller = axeLocalVersMonde(axe, q);
+      assert.ok(vecteurProche(axeMondeVersLocal(aller, q), axe, 1e-9),
+        `l'aller-retour ne revient pas pour ${JSON.stringify(axe)}`);
+    });
+  });
+
+  test('un quart de tour autour de Z envoie X sur Y', () => {
+    // L'exemple à la main, en plus de la propriété : deux fonctions inverses l'une de l'autre
+    // peuvent très bien se tromper ENSEMBLE, et l'aller-retour ne le verrait pas.
+    const q = quaternionAxeAngle([0, 0, 1], Math.PI / 2);
+    assert.ok(vecteurProche(axeLocalVersMonde([1, 0, 0], q), [0, 1, 0], 1e-9));
+  });
+
+  test('elle rend un vecteur UNITAIRE, même sur une entrée qui ne l\'est pas', () => {
+    const v = axeLocalVersMonde([0, 3, 0], quaternionAxeAngle([1, 0, 0], 0.4));
+    assert.ok(Math.abs(Math.hypot(v[0], v[1], v[2]) - 1) < 1e-9,
+      'un axe non unitaire fausserait tous les seuils du glisser, qui comparent des longueurs');
+  });
+
+  test('⚠️ ni sur un REPOS non unitaire, et c\'est une mutation échappée', () => {
+    // La normalisation FINALE ne se voyait nulle part : la retirer ne faisait rien échouer, parce
+    // que tous les tests passaient des quaternions unitaires, pour lesquels la rotation conserve la
+    // longueur. Or la fonction accepte n'importe quel tableau de quatre nombres.
+    //
+    // Ce que cela coûterait sans elle : un quaternion de norme 2 multiplie l'axe par 4, et TOUS les
+    // seuils du glisser comparent des longueurs de projection (0.35, 0.75). Le geste serait déclaré
+    // « droit » partout, ce qui ne casse rien de visible et ne s'explique pas.
+    const q = quaternionAxeAngle([0, 0, 1], Math.PI / 3).map(n => n * 2);
+    const v = axeLocalVersMonde([1, 0, 0], q);
+    assert.ok(Math.abs(Math.hypot(v[0], v[1], v[2]) - 1) < 1e-9,
+      'un repos non unitaire ressort amplifié, et fausse tous les seuils du glisser');
+  });
+
+  test('un repos absent vaut l\'identité, un axe absent rend null', () => {
+    assert.ok(vecteurProche(axeLocalVersMonde([1, 0, 0], null), [1, 0, 0], 1e-12));
+    assert.equal(axeLocalVersMonde(null, [0, 0, 0, 1]), null);
+    assert.equal(axeLocalVersMonde([0, 0, 0], [0, 0, 0, 1]), null);
   });
 });
 

@@ -16,7 +16,7 @@ import {
   poseSpecRotationAxis3D, projectModelAxisToScreen3D, poseDragIsStraight3D,
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   poseTangentToScreen3D, straightDragDirection3D, POSE_TANGENT_VISIBLE_MIN,
-  poseJointLeverAxis3D, 
+  poseJointLeverAxis3D, axeDePose3D, modelAxisVector3D, circularSweepSign3D,
   POSE_HANDLE_PICK_RADIUS, POSE_HANDLE_PICK_RADIUS_SOLO,
   posePickRadii3D, 
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
@@ -1475,6 +1475,68 @@ describe('straightDragDegrees3D : la direction du glisser suit la vue (Fix 84)',
     const t = poseTangentToScreen3D('y', face);
     assert.ok(Math.hypot(t.x, t.y) > 0.9, 'de face, un pivot déplace visiblement le visage');
     assert.equal(straightDragDirection3D('y', face).source, 'tangente');
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // #392a — UN AXE PEUT ÊTRE UN VECTEUR, ET PORTER SON LEVIER
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // Le Personnage intégré garde ses lettres et ne change EN RIEN : ces tests le vérifient d'abord.
+  // Un os importé, lui, ne tourne pas autour des axes du monde, et son membre ne pend pas : il
+  // passe donc son axe mesuré et le segment qu'il entraîne.
+
+  test('#392a : une lettre et son vecteur donnent EXACTEMENT le même geste', () => {
+    // La garantie qui autorise le reste : le chemin du Personnage intégré n'est pas touché.
+    [face, profil, troisQuarts].forEach(orbite => {
+      [['x', [1, 0, 0]], ['y', [0, 1, 0]], ['z', [0, 0, 1]]].forEach(([lettre, v]) => {
+        // Le levier de la lettre est repris tel quel, sans quoi on comparerait deux gestes
+        // différents et le test serait vrai pour la mauvaise raison.
+        const axe = axeDePose3D(v, poseJointLeverAxis3D(lettre));
+        assert.deepEqual(modelAxisVector3D(axe), modelAxisVector3D(lettre));
+        assert.equal(circularSweepSign3D(axe, orbite), circularSweepSign3D(lettre, orbite));
+        assert.equal(poseDragIsStraight3D(axe, orbite), poseDragIsStraight3D(lettre, orbite));
+        assert.equal(straightDragDirection3D(axe, orbite).source,
+          straightDragDirection3D(lettre, orbite).source);
+      });
+    });
+  });
+
+  test('#392a : un axe OBLIQUE se distingue des trois axes du monde', () => {
+    // ⚠️ CE QUE LE TEST PRÉCÉDENT NE PEUT PAS MONTRER : passer un vecteur qui vaut exactement un
+    // axe du monde reste vrai même si la fonction ignorait le vecteur et retombait sur 'x'. Il faut
+    // donc un axe qu'aucune lettre ne peut produire.
+    const oblique = axeDePose3D([0.6, 0.8, 0], [0, 0, -1]);
+    const p = projectModelAxisToScreen3D(oblique, profil);
+    const px = projectModelAxisToScreen3D('x', profil);
+    assert.ok(Math.abs(p.x - px.x) > 1e-6 || Math.abs(p.y - px.y) > 1e-6,
+      'un axe oblique se projette comme X : le vecteur n\'est pas lu');
+    assert.ok(Math.abs(Math.hypot(p.x, p.y)) > 0, 'la projection est nulle');
+  });
+
+  test('#392a : le LEVIER voyage avec l\'axe, il n\'a pas de paramètre à lui', () => {
+    // Les deux valeurs sont solidaires : le levier décrit le membre que CET axe entraîne. Séparées
+    // en deux paramètres, elles se seraient désolidarisées au premier appel distrait, et le geste
+    // aurait mesuré la tangente d'un autre membre.
+    assert.deepEqual(poseJointLeverAxis3D(axeDePose3D([1, 0, 0], [0, 0, -1])), [0, 0, -1]);
+    // Sans levier fourni, on retombe sur le membre pendant : une valeur définie plutôt qu'une
+    // tangente calculée sur `undefined`.
+    assert.deepEqual(poseJointLeverAxis3D(axeDePose3D([1, 0, 0])), [0, -1, 0]);
+    assert.deepEqual(poseJointLeverAxis3D([1, 0, 0]), [0, -1, 0]);
+    // Et il CHANGE la tangente, sinon le transporter ne servirait à rien.
+    const pendant = poseTangentToScreen3D(axeDePose3D([1, 0, 0], [0, -1, 0]), face);
+    const devant = poseTangentToScreen3D(axeDePose3D([1, 0, 0], [0, 0, -1]), face);
+    assert.ok(Math.abs(pendant.x - devant.x) > 1e-6 || Math.abs(pendant.y - devant.y) > 1e-6,
+      'le levier n\'atteint pas la tangente');
+  });
+
+  test('#392a : un levier PARALLÈLE à l\'axe retombe sur la perpendiculaire', () => {
+    // Le cas dégénéré, et il n'a pas de règle à lui : `axe × levier` vaut zéro, la tangente est
+    // inexploitable, et le repli qui existe déjà pour la flexion vue de face fait le travail. Une
+    // seconde règle de repli aurait fini par diverger de la première.
+    const colineaire = axeDePose3D([0, 1, 0], [0, 1, 0]);
+    const t = poseTangentToScreen3D(colineaire, profil);
+    assert.ok(Math.hypot(t.x, t.y) < 1e-9, 'la tangente d\'un levier colinéaire n\'est pas nulle');
+    assert.equal(straightDragDirection3D(colineaire, profil).source, 'perpendiculaire');
   });
 
   test('RÉGRESSION : de face, la flexion passe par la PERPENDICULAIRE, faute de tangente', () => {

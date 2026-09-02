@@ -195,6 +195,49 @@ export function axeMondeVersLocal(axeMonde, reposMonde){
 }
 
 /**
+ * L'axe MONDE correspondant à un axe du repère LOCAL d'un os. Fonction PURE.
+ *
+ * @param axeLocal  [x, y, z] unitaire, dans le repère de l'os
+ * @param reposMonde quaternion [x, y, z, w] de la rotation de repos de l'os EN MONDE
+ *
+ * ⚠️ LE MIROIR EXACT D'`axeMondeVersLocal`, ET IL MANQUAIT (#392a). Sa jumelle sert à APPLIQUER une
+ * pose : on part d'un geste du corps et on cherche autour de quoi l'os doit tourner. Celle-ci sert
+ * à la MONTRER : on part de l'axe autour duquel l'os tourne — le X, le Y ou le Z de son curseur —
+ * et on cherche où cet axe pointe dans le monde, donc à l'écran.
+ *
+ * Sans elle, dessiner le guide d'un os revenait à supposer que ses axes sont ceux du monde. C'est
+ * vrai du Personnage intégré, dont nous construisons les pivots ; c'est faux d'un os importé, et
+ * pas marginalement : 106 des 108 os mappés mesurés ont une rotation de repos non identitaire
+ * (cf. applySkeletonPose). La flèche aurait donc pointé à côté sur presque tous.
+ *
+ * Rotation d'un vecteur par q, écrite avec la forme à deux produits vectoriels plutôt qu'en
+ * développant q·v·q⁻¹ : c'est la même chose en moins d'occasions de se tromper de signe, et
+ * l'erreur de signe est précisément la faute que sa jumelle a coûté cher à débusquer.
+ *
+ * ⚠️ LA NORMALISATION FINALE N'EST REDONDANTE QUE SI `reposMonde` EST UNITAIRE, et la fonction, elle,
+ * accepte n'importe quel tableau de quatre nombres. Mutation ÉCHAPPÉE à la première campagne : la
+ * retirer ne faisait rien échouer, parce que tous les tests passaient des quaternions unitaires,
+ * pour lesquels la rotation conserve la longueur. Un quaternion de norme 2 multiplie l'axe rendu par
+ * 4, et TOUS les seuils du glisser comparent des longueurs de projection à 0.35 ou 0.75 : le geste
+ * serait déclaré « droit » partout, ce qui ne casse rien de visible et ne s'explique pas.
+ * Sa jumelle normalise de même, ce qui garde la paire comparable.
+ */
+export function axeLocalVersMonde(axeLocal, reposMonde){
+  const a = normaliser(axeLocal);
+  if (!a) return null;
+  const q = Array.isArray(reposMonde) && reposMonde.length === 4 ? reposMonde : [0, 0, 0, 1];
+  const [qx, qy, qz, qw] = q;
+  const tx = 2 * (qy * a[2] - qz * a[1]);
+  const ty = 2 * (qz * a[0] - qx * a[2]);
+  const tz = 2 * (qx * a[1] - qy * a[0]);
+  return normaliser([
+    a[0] + qw * tx + (qy * tz - qz * ty),
+    a[1] + qw * ty + (qz * tx - qx * tz),
+    a[2] + qw * tz + (qx * ty - qy * tx),
+  ]);
+}
+
+/**
  * Le quaternion d'une rotation d'angle `radians` autour d'un axe unitaire. Fonction PURE.
  *
  * Rend l'identité si l'axe est inexploitable : une rotation autour de rien ne doit pas produire un

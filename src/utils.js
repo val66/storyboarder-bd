@@ -272,8 +272,26 @@ export function poseSpecRotationAxis3D(spec){
 //
 // Base de la caméra (cf. orbitCameraPosition3D, qui la place) : droite = (cosY, 0, -sinY),
 // haut = (-sinY·sinX, cosX, -cosY·sinX). L'ordonnée écran croît vers le BAS, d'où le signe.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// UN AXE DE POSE EST UNE LETTRE, UN VECTEUR, OU UN VECTEUR ET SON LEVIER (#392a)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Les trois formes traversent TOUTES les aides du glisser sans qu'aucune signature ne change, et
+// c'est délibéré : ajouter un paramètre `levier` à `poseTangentToScreen3D`, puis le faire suivre par
+// `straightDragDirection3D`, puis par `straightDragDegrees3D`, aurait fait voyager deux valeurs
+// solidaires dans des paramètres séparés. Elles se seraient désolidarisées au premier appel
+// distrait, et le geste aurait alors mesuré la tangente d'un autre membre.
+//
+// — `'x' | 'y' | 'z'` : le Personnage intégré, dont nous construisons les pivots. Rien ne change
+//   pour lui, ni la valeur rendue, ni le levier par défaut.
+// — `[x, y, z]` : un axe MONDE mesuré, celui d'un os importé (cf. axeLocalVersMonde).
+// — `{ axe, levier }` : le même, plus la direction que le membre suit réellement.
+export function axeDePose3D(axe, levier){ return { axe, levier }; }
+
 export function modelAxisVector3D(axis){
-  return axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+  const a = (axis && !Array.isArray(axis) && typeof axis === 'object') ? axis.axe : axis;
+  if (Array.isArray(a)) return [a[0] || 0, a[1] || 0, a[2] || 0];
+  return a === 'y' ? [0, 1, 0] : a === 'z' ? [0, 0, 1] : [1, 0, 0];
 }
 
 // Projection écran d'un vecteur du monde. Extrait de projectModelAxisToScreen3D au Fix 84, qui n'en
@@ -312,7 +330,12 @@ export function modelAxisTowardViewer3D(axis, orbit){
   const rotY = (orbit && orbit.rotY) || 0;
   const cy = Math.cos(rotY), sy = Math.sin(rotY);
   const cx = Math.cos(rotX), sx = Math.sin(rotX);
-  const v = axis === 'y' ? [0, 1, 0] : axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+  // ⚠️ PAR `modelAxisVector3D`, ET C'ÉTAIT UNE TABLE RECOPIÉE (#392a). La même correspondance
+  // lettre → vecteur vivait ici en second exemplaire ; elle est restée juste par chance, personne
+  // n'ayant eu à la modifier. Un axe VECTEUR aurait suffi à les séparer pour de bon : cette
+  // fonction aurait rendu le produit scalaire de l'axe X du monde pour tout os importé, donc un
+  // sens de balayage tiré au sort.
+  const v = modelAxisVector3D(axis);
   // Direction de visée, de la caméra vers le centre (cf. orbitCameraPosition3D, qui la place).
   return v[0] * -(sy * cx) + v[1] * -sx + v[2] * -(cy * cx);
 }
@@ -360,7 +383,21 @@ export function poseDragIsStraight3D(axis, orbit, seuil = POSE_AXIS_VISIBLE_MIN)
 export const POSE_TANGENT_VISIBLE_MIN = 0.75;
 
 // Le membre que l'articulation entraîne, dans le repère du modèle.
+//
+// ⚠️ LES DEUX VALEURS PAR DÉFAUT SONT UNE CONVENTION DU PERSONNAGE INTÉGRÉ, pas une vérité de
+// géométrie (#392a) : ses membres pendent (−Y), et un pivot autour de la verticale ne déplace rien
+// de ce qui est sur son axe, d'où l'avant (−Z). Un os importé ne suit aucune de ces deux règles —
+// une patte d'araignée part de côté, une queue vers l'arrière — et il porte donc SON levier, mesuré
+// sur le segment qu'il entraîne.
+//
+// Un levier PARALLÈLE à l'axe rend une tangente nulle. C'est le cas dégénéré, et il est déjà
+// traité : `straightDragDirection3D` retombe alors sur la perpendiculaire à l'axe. Rien à ajouter
+// ici, et surtout pas une seconde règle de repli qui divergerait de la première.
 export function poseJointLeverAxis3D(axis){
+  if (axis && !Array.isArray(axis) && typeof axis === 'object') {
+    if (Array.isArray(axis.levier)) return [axis.levier[0] || 0, axis.levier[1] || 0, axis.levier[2] || 0];
+    return [0, -1, 0];
+  }
   return axis === 'y' ? [0, 0, -1] : [0, -1, 0];
 }
 
