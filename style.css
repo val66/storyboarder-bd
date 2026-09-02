@@ -1006,9 +1006,20 @@ canvas{
 /* ⚠️ 10px HORIZONTAUX, COMME LE BANDEAU ET LES SECTIONS. Cette ligne était à 8px, seule de son
    espèce : son contenu commençait donc 2px plus à gauche que tout ce qui l'entoure, et l'écart se
    lisait comme un décalage sans être assez grand pour qu'on en devine la cause. Signalé à l'usage,
-   capture à l'appui. Toute ligne ajoutée à cet écran doit reprendre cette valeur. */
+   capture à l'appui. Toute ligne ajoutée à cet écran doit reprendre cette valeur.
+ *
+ * ⚠️ ET SON FOND ÉTAIT INVISIBLE, ce qui explique que le décalage se voyait encore après ce
+ * réglage. Elle portait `background: var(--paper-dark)` — la couleur EXACTE de `.modal-box`, son
+ * parent. Le commentaire d'origine promettait « un fond distinct de la légende juste en dessous » ;
+ * il ne l'a jamais été. Sans boîte visible, ses 10px de retrait n'étaient justifiés par rien : le
+ * texte paraissait simplement flotter plus loin du bord que le contenu encadré qui l'entoure.
+ *
+ * Elle prend donc le fond et la bordure des SECTIONS, devenues l'idiome dominant de cet écran. Une
+ * couleur choisie pour être distincte doit être vérifiable : celle-ci l'est, et un test compare
+ * désormais les deux valeurs au lieu de croire un commentaire. */
 .skeleton-map-morpho { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-                       padding: 6px 10px; background: var(--paper-dark); border-radius: 4px; }
+                       padding: 6px 10px; border-radius: 4px;
+                       background: rgba(0,0,0,.18); border: 1px solid var(--line); }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
 /* Le bandeau de reprise (#386, remis en forme en #387).

@@ -1508,6 +1508,50 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(CSS2.slice(j, CSS2.indexOf('}', j)), /white-space:\s*normal/);
   });
 
+  test('RÉGRESSION : la légende est mesurée sur une modale VISIBLE, et empilée à défaut', () => {
+    // ⚠️ SIGNALÉ À L'USAGE, CAPTURE À L'APPUI : « le texte à droite est rogné et n'est donc plus
+    // visible ». Le rendu MESURE la légende, et il tournait AVANT que la modale ne soit affichée :
+    // sur un élément masqué toute largeur vaut zéro, la mesure ne pouvait rien dire, et la légende
+    // restait sur une ligne unique — donc coupée par son `overflow: hidden`.
+    //
+    // Deux gardes, parce qu'une seule ne suffit pas : l'ordre, pour que la mesure soit possible ;
+    // l'état de départ empilé, pour que son échec ne coûte jamais du texte.
+    const debut = EV2.indexOf('async function openSkeletonMapModal');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}', debut));
+    const iAffiche = corps.indexOf("classList.remove('hidden')");
+    const iRendu = corps.indexOf('renderSkeletonMapModal()');
+    assert.notEqual(iAffiche, -1, 'la modale n\'est plus affichée à l\'ouverture');
+    assert.notEqual(iRendu, -1, 'la modale n\'est plus dessinée à l\'ouverture');
+    assert.ok(iAffiche < iRendu,
+      'le rendu mesure une modale encore masquée : la légende restera rognée');
+    assert.match(HTML2, /class="skeleton-map-legend empilee"/,
+      'la légende ne part plus de l\'état sûr : une mesure impossible la laissera rognée');
+    // La classe est REPOSÉE à chaque rendu, et pas seulement ajoutée : sans quoi une légende dépliée
+    // par une mesure d'hier survivrait à une fenêtre qu'on vient de rétrécir.
+    const mesure = EV2.slice(EV2.indexOf('function replierLegendeSiNecessaire3D'),
+      EV2.indexOf('\n}', EV2.indexOf('function replierLegendeSiNecessaire3D')));
+    assert.match(mesure, /classList\.toggle\('empilee'/);
+  });
+
+  test('#388 : la ligne Morphologie a un fond DISTINCT de celui de la modale', () => {
+    // ⚠️ SON COMMENTAIRE PROMETTAIT « un fond distinct », ET IL NE L'A JAMAIS ÉTÉ : la règle portait
+    // `var(--paper-dark)`, la couleur EXACTE de `.modal-box`, son parent. Sans boîte visible, ses
+    // 10px de retrait n'étaient justifiés par rien, et son contenu paraissait flotter plus loin du
+    // bord que tout ce qui l'entoure. Signalé deux fois à l'usage avant que je ne trouve la cause.
+    //
+    // Une couleur choisie pour être distincte doit être VÉRIFIABLE : on compare les deux valeurs
+    // plutôt que de croire un commentaire.
+    const fond = (selecteur) => {
+      const i = CSS2.indexOf(selecteur);
+      assert.notEqual(i, -1, `${selecteur} a disparu`);
+      const m = /background:\s*([^;]+);/.exec(CSS2.slice(i, CSS2.indexOf('}', i)));
+      assert.ok(m, `${selecteur} : aucun fond déclaré`);
+      return m[1].trim();
+    };
+    assert.notEqual(fond('.skeleton-map-morpho {'), fond('.modal-box{'),
+      'la ligne Morphologie reprend le fond de la modale : sa boîte est invisible');
+  });
+
   test('#388 : les lignes de tête ont toutes le même retrait horizontal', () => {
     // Signalé à l'usage, capture à l'appui : la ligne « Morphologie » était à 8px quand le bandeau
     // et les sections sont à 10px. Deux pixels ne se devinent pas, ils se voient comme un décalage

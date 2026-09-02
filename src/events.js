@@ -4265,8 +4265,13 @@ async function openSkeletonMapModal(nomFichier, { pendantImport = false } = {}){
       repris: new Set(),
       resoudre,
     };
-    renderSkeletonMapModal();
+    // ⚠️ ON AFFICHE AVANT DE DESSINER, ET L'ORDRE INVERSE A COÛTÉ UN DÉFAUT VISIBLE. Le rendu MESURE
+    // la légende (cf. replierLegendeSiNecessaire3D) ; sur une modale encore `hidden`, toute largeur
+    // vaut zéro, la mesure ne peut rien dire, et la légende restait sur une ligne unique — donc
+    // rognée. Rien n'est peint entre ces deux instructions, qui s'exécutent dans la même tâche :
+    // afficher d'abord ne montre aucun contenu périmé, et donne à la mesure de quoi travailler.
     skeletonMapModal.classList.remove('hidden');
+    renderSkeletonMapModal();
   });
 }
 
@@ -4400,9 +4405,12 @@ function replierLegendeSiNecessaire3D(legende){
   // On mesure SANS repli, sinon `scrollWidth` rend la largeur de la ligne la plus longue et non
   // celle qu'il faudrait pour tout mettre côte à côte : la mesure répondrait à une autre question.
   legende.classList.remove('empilee');
-  if (legendeDoitSeReplier3D(legende.scrollWidth, legende.clientWidth)) {
-    legende.classList.add('empilee');
-  }
+  // ⚠️ ON REPOSE LA CLASSE, ON NE SE CONTENTE PAS DE L'AJOUTER. Le sens par défaut est EMPILÉ (cf.
+  // legendeDoitSeReplier3D), donc l'état déplié doit être conquis à chaque rendu : le retirer sans
+  // jamais le remettre laisserait une légende dépliée par une mesure d'hier survivre à une fenêtre
+  // qu'on vient de rétrécir.
+  legende.classList.toggle('empilee',
+    legendeDoitSeReplier3D(legende.scrollWidth, legende.clientWidth));
 }
 
 /**

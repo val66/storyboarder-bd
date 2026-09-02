@@ -573,11 +573,17 @@ describe('Une rangée d\'étiquettes : tout sur une ligne, ou une par ligne (#38
     assert.equal(legendeDoitSeReplier3D(402, 400), true);
   });
 
-  test('non mesurable vaut « ne rien empiler »', () => {
-    // Modale fermée, largeurs nulles : la ligne unique est l'état qui n'a jamais l'air cassé, là
-    // où empiler par défaut donnerait une colonne d'étiquettes sur un écran qui tient largement.
-    assert.equal(legendeDoitSeReplier3D(0, 0), false);
-    assert.equal(legendeDoitSeReplier3D(500, 0), false);
-    assert.equal(legendeDoitSeReplier3D(0, 400), false);
+  test('RÉGRESSION : non mesurable vaut « EMPILER »', () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE, et ma justification était fausse : j'écrivais que « la ligne
+    // unique est l'état qui n'a jamais l'air cassé ». Une capture l'a démenti. Une rangée qui ne
+    // tient pas et qu'on laisse sur une ligne est ROGNÉE, donc illisible ; empilée à tort, elle
+    // reste lisible. Des deux erreurs possibles, une seule détruit du contenu.
+    //
+    // Le cas se produisait vraiment : l'écran de correspondance mesurait sa légende alors que la
+    // modale était encore masquée, donc à largeur nulle. La cause est corrigée, et ce défaut par
+    // défaut fait que la prochaine occasion coûtera une ligne de trop, pas un texte coupé.
+    assert.equal(legendeDoitSeReplier3D(0, 0), true);
+    assert.equal(legendeDoitSeReplier3D(500, 0), true);
+    assert.equal(legendeDoitSeReplier3D(0, 400), true);
   });
 });

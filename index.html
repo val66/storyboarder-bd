@@ -681,7 +681,11 @@
          L'étiquette « à confirmer » n'est PAS bloquante (choix de l'utilisateur) : elle reste
          visible ici et à chaque réouverture, ce qui suffit à retrouver un modèle survolé. -->
     <div class="skeleton-map-morpho" id="skeletonMapMorpho"></div>
-    <div class="skeleton-map-legend" id="skeletonMapLegend"></div>
+    <!-- `empilee` DÈS LE DÉPART : c'est l'état sûr, celui qui ne rogne jamais. Le rendu le retire
+         seulement s'il MESURE que tout tient sur une ligne. Sans cette valeur de départ, une mesure
+         impossible — modale encore masquée, largeurs nulles — laissait la légende sur une ligne
+         unique, donc coupée à droite. Signalé à l'usage. -->
+    <div class="skeleton-map-legend empilee" id="skeletonMapLegend"></div>
     <!-- La note vit HORS de la légende depuis que celle-ci se mesure (elle décrit le comportement du
          fichier, pas une étiquette). Dedans, elle s'ajoutait à la largeur demandée par la ligne des
          étiquettes, et la réponse à « est-ce que ça tient sur une ligne ? » était toujours non. -->

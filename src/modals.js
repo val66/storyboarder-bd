@@ -173,11 +173,18 @@ export function toggleModalSection(headerEl){
  * La marge d'UN pixel absorbe les arrondis sub-pixel : à largeur égale, certains rendus donnent un
  * `scrollWidth` supérieur d'une unité, ce qui empilerait une rangée qui tient.
  *
- * Non mesurable — modale fermée, largeurs nulles — vaut « ne rien empiler » : la ligne unique est
- * l'état qui n'a jamais l'air cassé.
+ * ⚠️ NON MESURABLE VAUT « EMPILER », ET J'AVAIS DÉCIDÉ L'INVERSE. J'écrivais ici que « la ligne
+ * unique est l'état qui n'a jamais l'air cassé ». C'est démenti par une capture : une rangée qui ne
+ * tient pas et qu'on laisse sur une ligne est ROGNÉE, donc illisible, tandis qu'empilée elle reste
+ * lisible même quand elle aurait tenu. Des deux erreurs possibles, une seule détruit du contenu.
+ *
+ * Le cas se produisait vraiment : l'écran de correspondance mesurait sa légende alors que la modale
+ * était encore masquée, donc à largeur nulle, donc jamais empilée. La cause est corrigée, et ce
+ * défaut par défaut fait que la prochaine occasion de ce genre coûtera une ligne de trop, pas un
+ * texte coupé.
  */
 export function legendeDoitSeReplier3D(voulue, disponible){
-  if (!disponible || !voulue) return false;
+  if (!disponible || !voulue) return true;
   return voulue > disponible + 1;
 }
 
