@@ -27,14 +27,14 @@ import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
-  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, PERSONA_SKELETON_3D, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
 import {
   clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
-  personaEditorPoseList3D, poseJointsByKey3D,
+  personaEditorPoseList3D, poseJointsByKey3D, poseCompatible3D,
 
   optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
   libelleAnimal3D, libelleArticulation3D, libelleTable3D,
@@ -52,6 +52,7 @@ import {
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
+  couverturePose3D, messageDeCouverture3D,
 } from './skeleton-pose.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
@@ -830,16 +831,58 @@ export function buildSkeletonPoseFieldUI(obj){
     const joints = poseJointsByKey3D(sel.value, POSE_3D, S.poses);
     if (!joints) return;
     const figure = S.modalDraftModelFile || obj.modelFile;
-    const pose = poseOsPourModeleImporte(figure, joints);
+    // ⚠️ UNE POSE DE CRÉATURE NE SE TRADUIT PAS, ELLE S'APPLIQUE (#383). Ses clés SONT déjà celles
+    // du squelette — des rôles et des noms d'os (#375a) — là où une pose humanoïde parle le
+    // vocabulaire du Personnage intégré et doit être transposée par le repère du corps. Traduire
+    // une pose de créature n'aurait rien à quoi s'accrocher : `EMPLACEMENT_PAR_ARTICULATION` ne
+    // connaît ni `hipFL` ni `os:CERBERUS_Tail`.
+    //
+    // LA FICHE NE TRANCHE PAS ELLE-MÊME : elle demande son vocabulaire au point unique, comme pour
+    // ses curseurs et pour sa liste de poses.
+    const vocabulaire = squelettePourPose3D(figure);
+    // ⚠️ UNE POSE D'UN AUTRE VOCABULAIRE N'EST PAS APPLIQUÉE, et ce cas n'est pas théorique : un
+    // Élément peut citer une pose HUMANOÏDE alors que sa morphologie a été corrigée en quadrupède
+    // depuis. Ses clés — `lElbow`, `torso` — ne désignent aucun os de cette créature ; elles sont
+    // inertes, donc rien ne casserait à l'écran, mais elles remplaceraient les réglages manuels par
+    // un objet qui ne fait rien. C'est la règle que ce champ tient depuis toujours, « mieux vaut un
+    // choix sans effet qu'un modèle remis à zéro sans explication ».
+    //
+    // La MÊME comparaison que la liste (cf. poseCompatible3D) : deux règles séparées finiraient par
+    // proposer une pose que l'application refuse.
+    const posee = (Array.isArray(S.poses) ? S.poses : []).find(p => p && p.id === sel.value);
+    const noteEl = document.getElementById('objectPoseNote');
+    if (posee && !poseCompatible3D(posee, vocabulaire)) {
+      if (noteEl) {
+        noteEl.textContent = tr('This pose was built on another skeleton: none of its joints exist here.',
+          'Cette pose vient d\'un autre squelette : aucune de ses articulations n\'existe ici.');
+      }
+      return;
+    }
+    const humanoide = vocabulaire === PERSONA_SKELETON_3D;
+    const pose = humanoide ? poseOsPourModeleImporte(figure, joints) : joints;
     // `null` = ce modèle ne peut pas recevoir de pose (fichier pas encore décodé, ou repère du corps
     // non dérivable). On ne touche alors à RIEN : mieux vaut un choix sans effet qu'un modèle
     // remis à zéro sans explication.
     if (!pose) return;
+
+    const entree = objectRigCache3D.get(PREVIEW_OBJECT_ID);
+    // ⚠️ SANS OS CONNUS, ON NE JUGE PAS. La fiche peut s'ouvrir avant que l'aperçu n'ait construit
+    // son rig : compter zéro articulation atteinte serait alors une conclusion tirée d'une absence
+    // de mesure, et refuserait une pose parfaitement valide.
+    const couverture = (entree && entree.skeletonBones)
+      ? couverturePose3D(pose, entree.skeletonBones) : null;
+
     // L'INTENTION d'abord : c'est elle qui survivra à un changement de figure, le résultat ensuite.
-    S.modalDraftJoints = cloneJoints(joints);
+    // Pour une créature, intention et résultat sont la MÊME chose : il n'y a pas de traduction dont
+    // l'intention serait la source, et garder les deux ferait diverger deux copies d'un seul objet.
+    S.modalDraftJoints = humanoide ? cloneJoints(joints) : null;
     S.modalDraftSkeletonPose = pose;
     buildSkeletonJointSlidersUI(obj);
     refreshObjectPreview();
+    // CE QUI N'A PAS ATTERRI EST DIT. Une pose composée sur un autre squelette du même archétype
+    // n'apporte que ses rôles : le modèle reste à moitié au repos, et sans un mot on chercherait
+    // une panne là où il n'y a qu'une différence de squelette.
+    if (noteEl) noteEl.textContent = messageDeCouverture3D(couverture, tr) || '';
   };
 }
 

@@ -330,6 +330,43 @@ export function groupesPosablesMembres3D(os, membres, traduire){
 }
 
 /**
+ * Combien d'articulations d'une pose ATTEIGNENT ce squelette. Fonction PURE.
+ *
+ * ⚠️ LA MÊME POSE N'A PAS LE MÊME EFFET SELON LA CIBLE, et il faut le dire avant que l'utilisateur
+ * ne le découvre. Une pose de créature mémorise deux sortes de clés (#375a) : des RÔLES, partagés
+ * par tous les modèles de l'archétype, et des NOMS D'OS, propres au fichier où elle a été composée.
+ * Appliquée à un autre quadrupède, la part des rôles atterrit — mesuré, 22 % des os pilotables — et
+ * le reste est simplement sauté.
+ *
+ * Une clé absente est déjà INERTE : `applySkeletonPose` parcourt les os récoltés, pas la pose. Rien
+ * ne casse donc, mais un modèle à moitié posé sans explication ferait chercher une panne là où il
+ * n'y a qu'une différence de squelette.
+ */
+export function couverturePose3D(pose, osMappes){
+  const cles = Object.keys(pose || {});
+  const atteintes = cles.filter(c => (osMappes || {})[c]).length;
+  return { atteintes, total: cles.length };
+}
+
+/**
+ * La phrase qui dit ce qu'une pose a fait, ou `null` quand elle a tout fait. Fonction PURE.
+ *
+ * ⚠️ ELLE SE TAIT QUAND TOUT ATTERRIT, et c'est le cas ordinaire : une pose appliquée au squelette
+ * sur lequel elle a été composée. Annoncer « 38 sur 38 » à chaque fois apprendrait à ne plus lire
+ * le message, et la fois où il compte passerait inaperçue.
+ */
+export function messageDeCouverture3D(couverture, traduire){
+  const t = traduire || ((en) => en);
+  // ⚠️ `= {}` NE SUFFIT PAS : un paramètre par défaut ne s'applique qu'à `undefined`, jamais à
+  // `null`. L'appelant passe précisément `null` quand il n'a pas pu mesurer — modèle pas encore
+  // décodé — et la déstructuration levait alors une exception au milieu d'un choix de pose.
+  const { atteintes, total } = couverture || {};
+  if (!total || atteintes >= total) return null;
+  return t(`${atteintes} of ${total} joints applied: this pose was built on another skeleton.`,
+    `${atteintes} articulations sur ${total} appliquées : cette pose vient d'un autre squelette.`);
+}
+
+/**
  * Le repère du corps d'une CRÉATURE, dérivé de ses chaînes. Fonction PURE. Rend `null` si le
  * squelette n'a pas de quoi en donner un.
  *

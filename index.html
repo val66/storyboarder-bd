@@ -987,6 +987,10 @@
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
           <select id="objectPositionSelect"></select>
+          <!-- Ce qu'une pose n'a PAS pu appliquer (#383). Une pose de creature ne porte que ses
+               roles vers un autre modele du meme archetype ; sans cette ligne, on chercherait une
+               panne la ou il n'y a qu'une difference de squelette. Vide le reste du temps. -->
+          <div class="skeleton-map-legend-note" id="objectPoseNote"></div>
         </div>
         <!-- Modèle importé dont le FICHIER place un ou plusieurs maillages hors du corps (mesuré :
              cf. src/stray-meshes-3d.js). Ils sont masqués par défaut ; cette case les rend. Le champ

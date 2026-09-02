@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.80**
+**Version 1.4.81**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -72,9 +72,10 @@
 - **A creature is posed through its chains**: as soon as the morphology is not "humanoid", the
   sliders and the preview points come from the ticked chains, under the names you gave them, instead
   of the eighteen humanoid slots
-- **The pose library applies to humanoids**, whatever axis convention the file uses. A creature does
-  not get it: "sitting" means nothing for a spider, and a gesture aimed at random would be worse than
-  a missing one
+- **Poses are filed by archetype**: a quadruped is only offered quadruped poses. A humanoid pose is
+  TRANSPOSED onto the file, whatever axis convention it uses; a creature pose applies as is, its keys
+  already being the skeleton's own. Applied to another model of the same archetype, it says what did
+  not land
 - **Changing figure**: an articulated Element can wear another imported file and keep its pose
 - **Detached parts**: meshes a file places outside the body are hidden, and brought back with a
   checkbox. The file on disk is never modified

@@ -28,7 +28,7 @@ import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
-  repereDuCorpsPourFichier3D, appliquerAllonge3D,
+  repereDuCorpsPourFichier3D, appliquerAllonge3D, squelettePourPose3D,
 } from '../src/rig3d.js';
 import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
@@ -93,6 +93,32 @@ function corrigerNomsCuisses(scene){
 // ⚠️ `type: 'objet3d'` autant que `objType` : isImportedModel exige les DEUX (cf. model-store.js).
 // Un Élément fabriqué sans `type` n'est reconnu par rien, et la fiche se croirait devant une chaise.
 const poseBibliotheque = (id, name, joints) => ({ id, name, skeleton: 'humain', joints });
+
+// Un squelette SANS BRAS : des articulations posables, les jambes, mais aucune paire latérale au
+// niveau des épaules, donc aucune droite dérivable (cf. repereDuCorps). Il sert à DEUX choses
+// depuis #383 — éprouver l'absence de repère, et fournir un squelette que la reconnaissance ne
+// classe PAS humanoïde — d'où cette fabrique plutôt qu'une troisième copie en ligne.
+//
+// La colonne est complète : c'est elle qui permet à la reconnaissance de distinguer le tronc, et
+// donc de savoir que les membres restants sont des jambes. Un tronc tronqué ne reconnaîtrait rien
+// du tout, et les tests passeraient pour la mauvaise raison.
+function squeletteSansBras(){
+  const racine = new THREE.Group();
+  const os = (nom, x, y, z) => {
+    const b = new THREE.Bone(); b.name = 'mixamorig:' + nom; b.position.set(x, y, z); return b;
+  };
+  const hips = os('Hips', 0, 0.95, 0), spine = os('Spine', 0, 0.12, 0);
+  const spine1 = os('Spine1', 0, 0.14, 0), neck = os('Neck', 0, 0.16, 0), head = os('Head', 0, 0.10, 0);
+  hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
+  [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
+    const cuisse = os(cote + 'UpLeg', signe * 0.09, -0.05, 0);
+    const jambe = os(cote + 'Leg', 0, -0.42, 0);
+    const pied = os(cote + 'Foot', 0, -0.40, 0);
+    hips.add(cuisse); cuisse.add(jambe); jambe.add(pied);
+  });
+  racine.add(hips);
+  return racine;
+}
 
 beforeEach(() => {
   clearModelCache();
@@ -221,24 +247,7 @@ describe('Le sélecteur de pose de la fiche', () => {
     // latérale, donc aucune droite dérivable (cf. repereDuCorps). Le champ s'affiche, le choix
     // n'aboutit pas, et le réglage manuel en cours doit survivre intact : mieux vaut un sélecteur
     // sans effet qu'un modèle remis à zéro sans explication.
-    const sansBras = new THREE.Group();
-    const os = (nom, x, y, z) => {
-      const b = new THREE.Bone(); b.name = 'mixamorig:' + nom; b.position.set(x, y, z); return b;
-    };
-    // La colonne est complète : c'est elle qui permet à la reconnaissance de distinguer le tronc,
-    // et donc de savoir que les membres restants sont des jambes. Un tronc tronqué ne reconnaîtrait
-    // rien du tout, et le test passerait pour la mauvaise raison.
-    const hips = os('Hips', 0, 0.95, 0), spine = os('Spine', 0, 0.12, 0);
-    const spine1 = os('Spine1', 0, 0.14, 0), neck = os('Neck', 0, 0.16, 0), head = os('Head', 0, 0.10, 0);
-    hips.add(spine); spine.add(spine1); spine1.add(neck); neck.add(head);
-    [['Left', 1], ['Right', -1]].forEach(([cote, signe]) => {
-      const cuisse = os(cote + 'UpLeg', signe * 0.09, -0.05, 0);
-      const jambe = os(cote + 'Leg', 0, -0.42, 0);
-      const pied = os(cote + 'Foot', 0, -0.40, 0);
-      hips.add(cuisse); cuisse.add(jambe); jambe.add(pied);
-    });
-    sansBras.add(hips);
-    _setModelCacheEntry('sans-bras.glb', { scene: sansBras });
+    _setModelCacheEntry('sans-bras.glb', { scene: squeletteSansBras() });
 
     const obj = { type: 'objet3d', objType: 'modele', modelFile: 'sans-bras.glb' };
     buildSkeletonPoseFieldUI(obj);
@@ -250,6 +259,57 @@ describe('Le sélecteur de pose de la fiche', () => {
     sel.value = 'p_salue';
     sel.onchange();
     assert.equal(S.modalDraftSkeletonPose, avant);
+  });
+
+  test('#383 : une pose de CRÉATURE s\'applique telle quelle, sans traduction', () => {
+    // ⚠️ LE CŒUR DE #383, et deux mutations y ont échappé faute de ce test. Une pose de créature
+    // mémorise des RÔLES et des NOMS D'OS (#375a) : ses clés SONT déjà celles du squelette. Une
+    // pose humanoïde, elle, parle le vocabulaire du Personnage intégré et doit être transposée par
+    // le repère du corps. Traduire une pose de créature n'aurait rien à quoi s'accrocher —
+    // `EMPLACEMENT_PAR_ARTICULATION` ne connaît ni `hipFL` ni `os:CERBERUS_Tail`.
+    //
+    // Le squelette « sans bras » sert ici parce que la reconnaissance NE le classe PAS humanoïde :
+    // c'est exactement la condition qu'on veut éprouver, et elle est obtenue sans inventer un
+    // squelette de plus.
+    const sansBras = squeletteSansBras();
+    _setModelCacheEntry('creature.glb', { scene: sansBras });
+    const vocabulaire = squelettePourPose3D('creature.glb');
+    assert.notEqual(vocabulaire, 'humain', 'ce squelette est classé humanoïde : le test ne prouve rien');
+
+    const angles = { 'os:mixamorig:LeftUpLeg': { x: 0.4, y: 0, z: 0 } };
+    S.poses = [{ id: 'p_creature', name: 'À l\'affût', skeleton: vocabulaire, joints: angles }];
+
+    const obj = { type: 'objet3d', objType: 'modele', modelFile: 'creature.glb' };
+    buildSkeletonPoseFieldUI(obj);
+    const sel = document.getElementById('objectPositionSelect');
+    sel.value = 'p_creature';
+    sel.onchange();
+
+    assert.deepEqual(S.modalDraftSkeletonPose, angles,
+      'la pose a été traduite alors qu\'elle parlait déjà le langage du squelette');
+    // ⚠️ PAS D'INTENTION SÉPARÉE POUR UNE CRÉATURE. Chez un humanoïde, `modalDraftJoints` garde le
+    // geste du Personnage, source de la traduction, et survit à un changement de figure. Une
+    // créature n'a pas de source : intention et résultat sont le MÊME objet, et en garder deux
+    // copies les ferait diverger au premier réglage manuel.
+    assert.equal(S.modalDraftJoints, null);
+  });
+
+  test('#383 : une pose d\'un AUTRE vocabulaire n\'écrase pas les réglages', () => {
+    // Le cas réel : un Élément cite une pose humanoïde, puis sa morphologie est corrigée en
+    // quadrupède dans l'écran de correspondance. Les clés de la pose — `lElbow`, `torso` — ne
+    // désignent alors aucun os de cette créature. Elles sont INERTES, donc rien ne casserait à
+    // l'écran, mais elles remplaceraient les réglages manuels par un objet qui ne fait rien.
+    _setModelCacheEntry('creature2.glb', { scene: squeletteSansBras() });
+    const obj = { type: 'objet3d', objType: 'modele', modelFile: 'creature2.glb' };
+    buildSkeletonPoseFieldUI(obj);
+    const avant = { 'os:mixamorig:LeftLeg': { x: 0.9, y: 0, z: 0 } };
+    S.modalDraftSkeletonPose = avant;
+    const sel = document.getElementById('objectPositionSelect');
+    sel.value = 'p_salue';   // étiquetée « humain » par le beforeEach
+    sel.onchange();
+    assert.equal(S.modalDraftSkeletonPose, avant, 'les réglages manuels ont été remplacés par une pose inerte');
+    // Les deux langues : la langue du stub de test n'est pas ce qu'on vérifie ici.
+    assert.match(document.getElementById('objectPoseNote').textContent, /another skeleton|autre squelette/);
   });
 
   test('une pose introuvable dans la bibliothèque ne touche à rien', () => {

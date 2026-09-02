@@ -41,7 +41,7 @@ import {
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
-  groupesPosablesEnPlus3D, repereParChaines3D,
+  groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
 } from '../src/skeleton-pose.js';
 import { SLOTS, inferSkeletonMap } from '../src/skeleton-map.js';
 import { repereDuCorps } from '../src/skeleton-retarget.js';
@@ -818,6 +818,35 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     assert.equal(repereParChaines3D([], [], fr), null);
     assert.equal(repereParChaines3D([{ id: 1, name: 'seul', t: [0, 0, 0] }], [], fr), null);
     assert.equal(repereParChaines3D(null, null, fr), null);
+  });
+
+  test('#383 : ce qu\'une pose ATTEINT se compte, et se dit quand il en manque', () => {
+    // La même pose n'a pas le même effet selon la cible : une pose de créature mémorise des RÔLES,
+    // partagés par l'archétype, et des NOMS D'OS, propres au fichier où elle a été composée.
+    // Appliquée ailleurs, seule la part des rôles atterrit — mesuré, 22 % des os pilotables.
+    const os = { head: {}, hipFL: {}, 'os:Tail1': {} };
+    assert.deepEqual(couverturePose3D({ head: 1, hipFL: 1, 'os:Tail1': 1 }, os), { atteintes: 3, total: 3 });
+    assert.deepEqual(couverturePose3D({ head: 1, 'os:Ailleurs': 1 }, os), { atteintes: 1, total: 2 });
+    assert.deepEqual(couverturePose3D({}, os), { atteintes: 0, total: 0 });
+    assert.deepEqual(couverturePose3D(null, null), { atteintes: 0, total: 0 });
+  });
+
+  test('#383 : le message SE TAIT quand tout atterrit', () => {
+    // C'est le cas ordinaire — une pose appliquée au squelette sur lequel elle a été composée.
+    // Annoncer « 38 sur 38 » à chaque fois apprendrait à ne plus lire le message, et la fois où il
+    // compte passerait inaperçue.
+    assert.equal(messageDeCouverture3D({ atteintes: 38, total: 38 }, fr), null);
+    assert.equal(messageDeCouverture3D({ atteintes: 0, total: 0 }, fr), null);
+    assert.match(messageDeCouverture3D({ atteintes: 12, total: 38 }, fr), /12 articulations sur 38/);
+    assert.match(messageDeCouverture3D({ atteintes: 12, total: 38 }, (a) => a), /12 of 38 joints/);
+  });
+
+  test('RÉGRESSION : `null` n\'est pas `undefined`, et un défaut de paramètre l\'ignore (#383)', () => {
+    // ⚠️ TROIS TESTS SONT TOMBÉS SUR CE PIÈGE. `messageDeCouverture3D({ ... } = {})` ne remplace que
+    // `undefined` : l'appelant passe précisément `null` quand il n'a PAS PU mesurer — modèle pas
+    // encore décodé — et la déstructuration levait une exception au milieu d'un choix de pose.
+    assert.equal(messageDeCouverture3D(null, fr), null);
+    assert.equal(messageDeCouverture3D(undefined, fr), null);
   });
 
   test('#383a : le SERPENT n\'a pas de repère, et n\'en a pas besoin', () => {

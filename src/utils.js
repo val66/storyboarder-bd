@@ -632,8 +632,25 @@ export function figureRenderSize3D(boxW, boxH, maxPx, dpr = 1){
 // proposée, ce qui est exactement ce qu'on attend d'une suppression.
 export function personaEditorPoseList3D(poses, skeleton){
   return (Array.isArray(poses) ? poses : [])
-    .filter(p => p && p.id && !(skeleton && p.skeleton && p.skeleton !== skeleton))
+    .filter(p => p && p.id && poseCompatible3D(p, skeleton))
     .map(p => ({ key: p.id, label: p.name || p.id }));
+}
+
+/**
+ * Cette pose parle-t-elle le vocabulaire de cette figure ? Fonction PURE.
+ *
+ * ⚠️ EXTRAITE PARCE QUE DEUX ENDROITS EN ONT BESOIN (#383) : la LISTE, qui ne propose que les poses
+ * de l'archétype courant, et l'APPLICATION, qui doit refuser celles qui arriveraient par une autre
+ * porte — une pose que l'Élément citait déjà avant qu'on ne corrige sa morphologie, par exemple.
+ * Écrire la comparaison deux fois aurait donné une liste et un filtre qui divergent, c'est-à-dire
+ * une pose proposée puis refusée, ou l'inverse.
+ *
+ * SANS SQUELETTE DÉCLARÉ, LA POSE PASSE : tolérance envers un fichier bricolé à la main, cohérente
+ * avec `normalizePoses3D` qui ne rejette jamais sur ce critère.
+ */
+export function poseCompatible3D(pose, squelette){
+  const p = pose || {};
+  return !(squelette && p.skeleton && p.skeleton !== squelette);
 }
 
 // Fix 55 : écritures sur la bibliothèque. Toutes RENVOIENT UNE NOUVELLE LISTE au lieu de modifier
