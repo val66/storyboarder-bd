@@ -1652,4 +1652,35 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     assert.match(CSS2, /\.skeleton-map-reprise\.vide\s*\{[^}]*display:\s*none/,
       'sans candidat, le bandeau doit disparaître au lieu d\'occuper une ligne vide');
   });
+
+  test('RÉGRESSION : le bouton du bandeau n\'est PAS un `full-btn` (#387)', () => {
+    // ⚠️ SIGNALÉ À L'USAGE, CAPTURE À L'APPUI : « le bouton reprendre prend trop de place, on ne
+    // voit quasiment pas le menu déroulant au milieu ». `.full-btn` vaut `width: 100%`, ce qui dans
+    // une ligne en flex écrase les voisins ; le menu était réduit à sa flèche.
+    //
+    // Le défaut ne se voit qu'à l'œil — aucun test ne mesure une largeur — d'où cette garde sur la
+    // CLASSE, qui est la cause, plutôt que sur un rendu qu'on ne peut pas calculer ici.
+    const debut = EV2.indexOf('function renderReprise');
+    const corps = EV2.slice(debut, EV2.indexOf('\n}\n', debut));
+    assert.doesNotMatch(corps, /bouton\.className = 'full-btn'/,
+      'le bouton reprend une largeur de 100 % et écrase le menu');
+    assert.match(corps, /bouton\.className = 'skeleton-map-reprise-btn'/);
+    // Les deux voisins du menu sont figés à leur contenu, le menu prend le reste : c'est ce qui
+    // rend la ligne lisible quel que soit le nom du fichier.
+    assert.match(CSS2, /\.skeleton-map-reprise select\s*\{[^}]*flex:\s*1/);
+    assert.match(CSS2, /\.skeleton-map-reprise-btn\s*\{[^}]*width:\s*auto/);
+    assert.match(CSS2, /\.skeleton-map-reprise-texte\s*\{[^}]*flex:\s*0 0 auto/);
+  });
+
+  test('#387 : le bandeau est BLEU, la couleur d\'une information', () => {
+    // Décision de l'utilisateur contre ma première version violette, qui rappelait l'étiquette
+    // « repris » que le bouton allait poser : une couleur doit dire la NATURE de ce qu'on lit, pas
+    // préfigurer une conséquence qu'on ne connaît pas encore.
+    const regle = CSS2.slice(CSS2.indexOf('.skeleton-map-reprise {'));
+    const bloc = regle.slice(0, regle.indexOf('}'));
+    assert.match(bloc, /background:\s*rgba\(90,130,200/, 'le bandeau n\'est plus bleu');
+    // Le texte reste à la couleur ordinaire : coloré sur fond coloré, il faudrait le régler une fois
+    // par thème, et la version violette était déjà trop sombre sur fond sombre.
+    assert.match(bloc, /color:\s*var\(--ink\)/);
+  });
 });

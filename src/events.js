@@ -4585,13 +4585,15 @@ function renderReprise(){
 
   const dit = document.createElement('span');
   dit.className = 'skeleton-map-reprise-texte';
-  // Le nombre de fichiers est DIT, même si le menu le montre : c'est ce qui distingue « j'en ai
-  // trouvé un » de « choisissez », et c'est l'information qui décide si on ouvre le menu.
+  // ⚠️ COURT, PARCE QUE LE MENU EST CE QUI COMPTE. Ma première phrase — « Un autre fichier a ce
+  // squelette et est déjà réglé : » — mangeait la moitié de la ligne pour dire ce que le menu allait
+  // montrer de toute façon. Signalé à l'usage. Il reste l'essentiel : c'est le MÊME squelette, et
+  // quelqu'un l'a déjà réglé. Le nombre n'apparaît qu'au pluriel, là où il aide à décider s'il vaut
+  // la peine d'ouvrir le menu.
   dit.textContent = candidats.length === 1
-    ? tr('Another file has this skeleton and is already set up:',
-      'Un autre fichier a ce squelette et est déjà réglé :')
-    : tr(`${candidats.length} other files have this skeleton and are already set up:`,
-      `${candidats.length} autres fichiers ont ce squelette et sont déjà réglés :`);
+    ? tr('Same skeleton, already set up:', 'Même squelette, déjà réglé :')
+    : tr(`Same skeleton, ${candidats.length} already set up:`,
+      `Même squelette, ${candidats.length} déjà réglés :`);
   zone.appendChild(dit);
 
   const sel = document.createElement('select');
@@ -4605,7 +4607,10 @@ function renderReprise(){
 
   const bouton = document.createElement('button');
   bouton.type = 'button';
-  bouton.className = 'full-btn';
+  // ⚠️ PAS `full-btn`, qui vaut `width: 100%` : dans une ligne en flex il écrasait le menu jusqu'à
+  // n'en laisser que la flèche. Signalé à l'usage, capture à l'appui. Une classe à lui, dimensionnée
+  // sur son texte.
+  bouton.className = 'skeleton-map-reprise-btn';
   bouton.textContent = tr('Take it', 'Reprendre');
   bouton.onclick = () => reprendreCorrespondance(candidats[Number(sel.value) || 0]);
   zone.appendChild(bouton);

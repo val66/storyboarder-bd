@@ -984,18 +984,39 @@ canvas{
                        padding: 6px 8px; background: var(--paper-dark); border-radius: 4px; }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
-/* Le bandeau de reprise (#386). Teinte VIOLETTE, celle de l'étiquette « repris » qu'il va poser sur
-   les lignes : le lien entre le bouton et ce qu'il change se voit alors sans être expliqué.
-   `vide` plutôt qu'un `display:none` général — la classe dit qu'il n'y a rien à proposer, ce qui
-   est un état, là où retirer l'élément du HTML obligerait à le recréer. */
+/* Le bandeau de reprise (#386, remis en forme en #387).
+ *
+ * ⚠️ TEINTE BLEUE, PARCE QUE C'EST UNE INFORMATION. Décision de l'utilisateur, contre ma première
+ * version violette, choisie pour rappeler l'étiquette « repris » que le bouton va poser sur les
+ * lignes. Sa règle est meilleure : la couleur doit dire la NATURE du bandeau à quelqu'un qui le
+ * découvre, pas préfigurer une conséquence qu'il ne connaît pas encore.
+ *
+ * LE TEXTE RESTE EN `--ink`, la couleur ordinaire : seul le fond porte la teinte. Un texte coloré
+ * sur fond coloré doit être réglé deux fois, une par thème, et ma version violette était déjà trop
+ * sombre sur fond sombre. Le liseré gauche suffit à distinguer le bandeau du reste.
+ *
+ * `vide` plutôt qu'un `display:none` général — la classe dit qu'il n'y a rien à proposer, ce qui
+ * est un état, là où retirer l'élément du HTML obligerait à le recréer. */
 .skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-                        padding: 6px 8px; border-radius: 4px; font-size: 12.5px;
-                        background: rgba(150,110,200,.12); color: #6a4a9c; }
+                        padding: 6px 10px; border-radius: 4px; font-size: 12.5px;
+                        background: rgba(90,130,200,.14); color: var(--ink);
+                        border-left: 3px solid rgba(90,130,200,.7); }
 .skeleton-map-reprise.vide { display: none; }
-.skeleton-map-reprise select { flex: 1; min-width: 0; }
-.skeleton-map-reprise-texte { white-space: nowrap; }
-/* Après la reprise, le bandeau n'a plus de bouton : il RACONTE. La phrase prend toute la largeur et
-   se laisse couper, là où la version avec menu tenait sur une ligne. */
+/* ⚠️ LE MENU EST L'ÉLÉMENT QUI DOIT ÊTRE LARGE, et c'est ce que la première version ratait : le
+   bouton portait `.full-btn`, donc `width: 100%`, et il écrasait le menu jusqu'à le réduire à sa
+   flèche. Signalé à l'usage, capture à l'appui. Les deux voisins sont donc figés à leur contenu, et
+   le menu prend tout ce qui reste. */
+.skeleton-map-reprise select { flex: 1 1 auto; min-width: 0; }
+.skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; color: var(--sepia); }
+.skeleton-map-reprise-btn {
+  flex: 0 0 auto; width: auto; margin: 0; padding: 5px 14px;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.skeleton-map-reprise-btn:hover { filter: brightness(1.08); }
+/* Après la reprise, le bandeau n'a plus ni menu ni bouton : il RACONTE. La phrase prend toute la
+   largeur et se laisse couper, là où la version avec menu tenait sur une ligne. */
 .skeleton-map-reprise.reprise-faite { display: block; }
 .skeleton-map-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px;
                        color: var(--sepia); margin-bottom: 10px; }
