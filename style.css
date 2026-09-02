@@ -1017,9 +1017,16 @@ canvas{
  * Elle prend donc le fond et la bordure des SECTIONS, devenues l'idiome dominant de cet écran. Une
  * couleur choisie pour être distincte doit être vérifiable : celle-ci l'est, et un test compare
  * désormais les deux valeurs au lieu de croire un commentaire. */
-.skeleton-map-morpho { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-                       padding: 6px 10px; border-radius: 4px;
-                       background: rgba(0,0,0,.18); border: 1px solid var(--line); }
+/* ⚠️ LA BOÎTE EST PARTAGÉE AVEC LE BANDEAU, ELLE N'EST PLUS RECOPIÉE. Ces deux lignes ont divergé
+ * TROIS FOIS en quelques jours — 8px contre 10px de retrait, un fond invisible d'un côté, une
+ * bordure d'un seul côté — et chaque écart a été signalé à l'usage plutôt que trouvé ici. Deux
+ * règles qui doivent rester identiques et qu'on écrit séparément finissent toujours par différer.
+ * Seul ce qui les DISTINGUE vraiment reste écrit à part : leur fond. */
+.skeleton-map-morpho,
+.skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+                        padding: 9px 10px; border-radius: 4px; font-size: 12.5px;
+                        border: 1px solid var(--line); }
+.skeleton-map-morpho { background: rgba(0,0,0,.18); }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
 /* Le bandeau de reprise (#386, remis en forme en #387).
@@ -1029,26 +1036,31 @@ canvas{
  * lignes. Sa règle est meilleure : la couleur doit dire la NATURE du bandeau à quelqu'un qui le
  * découvre, pas préfigurer une conséquence qu'il ne connaît pas encore.
  *
- * ⚠️ TOUT LE TEXTE EST EN `--ink`, y compris la phrase de gauche. Je l'avais mise en `--sepia`, le
- * gris des libellés secondaires, par réflexe : sur le fond bleu, elle devenait illisible. Signalé à
- * l'usage. Le contraste d'un gris est réglé pour le fond du papier, pas pour une teinte ; sur un
- * fond coloré il faudrait le refaire une fois par thème, et la couleur ordinaire s'en dispense.
+ * ⚠️ SA PHRASE DE GAUCHE EST GRISE, COMME LE LIBELLÉ « Morphologie » JUSTE EN DESSOUS, et cette
+ * couleur a fait l'aller-retour. Elle était grise, l'utilisateur l'a trouvée peu lisible sur le
+ * fond VIOLET d'alors, je l'ai passée à la couleur ordinaire ; le fond est devenu bleu et plus
+ * clair, et il a préféré revenir au gris pour la cohérence. Les deux jugements sont justes, ils ne
+ * portaient simplement pas sur le même fond. Ce qui reste vrai dans les deux cas : ces deux lignes
+ * ouvrent chacune leur rangée par un libellé et doivent se lire comme deux libellés.
  *
  * PAS DE LISERÉ À GAUCHE. J'en avais mis un pour « distinguer le bandeau du reste » : le fond teinté
  * le fait déjà, et un ornement qui ne dit rien de plus est du bruit. Retiré à la demande.
  *
  * `vide` plutôt qu'un `display:none` général — la classe dit qu'il n'y a rien à proposer, ce qui
  * est un état, là où retirer l'élément du HTML obligerait à le recréer. */
-.skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-                        padding: 6px 10px; border-radius: 4px; font-size: 12.5px;
-                        background: rgba(90,130,200,.14); color: var(--ink); }
+.skeleton-map-reprise { background: rgba(90,130,200,.14); color: var(--ink); }
 .skeleton-map-reprise.vide { display: none; }
 /* ⚠️ LE MENU EST L'ÉLÉMENT QUI DOIT ÊTRE LARGE, et c'est ce que la première version ratait : le
    bouton portait `.full-btn`, donc `width: 100%`, et il écrasait le menu jusqu'à le réduire à sa
    flèche. Signalé à l'usage, capture à l'appui. Les deux voisins sont donc figés à leur contenu, et
    le menu prend tout ce qui reste. */
 .skeleton-map-reprise select { flex: 1 1 auto; min-width: 0; }
-.skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; }
+/* ⚠️ LE GRIS DES LIBELLÉS, COMME « Morphologie » JUSTE EN DESSOUS. Décision de l'utilisateur, et
+   elle renverse la mienne : j'étais passé à la couleur ordinaire parce qu'il avait trouvé le gris
+   peu lisible sur le fond violet d'alors. Le fond est bleu et plus clair depuis, et la cohérence
+   l'emporte : ces deux lignes ouvrent chacune leur rangée par un libellé, elles doivent se lire
+   comme deux libellés. */
+.skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; color: var(--sepia); }
 .skeleton-map-reprise-btn {
   flex: 0 0 auto; width: auto; margin: 0; padding: 5px 14px;
   border: 1px solid var(--accent); background: var(--accent); color: #fff;

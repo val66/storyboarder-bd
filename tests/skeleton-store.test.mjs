@@ -1552,21 +1552,36 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
       'la ligne Morphologie reprend le fond de la modale : sa boîte est invisible');
   });
 
-  test('#388 : les lignes de tête ont toutes le même retrait horizontal', () => {
-    // Signalé à l'usage, capture à l'appui : la ligne « Morphologie » était à 8px quand le bandeau
-    // et les sections sont à 10px. Deux pixels ne se devinent pas, ils se voient comme un décalage
-    // dont on ne trouve pas la cause. Le test compare les trois entre elles plutôt que d'épingler
-    // une valeur : il tiendra si vous voulez resserrer ou aérer l'ensemble.
-    const retrait = (selecteur) => {
-      const i = CSS2.indexOf(selecteur);
-      assert.notEqual(i, -1, `${selecteur} a disparu`);
-      const m = /padding:\s*[\d.]+px\s+([\d.]+)px/.exec(CSS2.slice(i, CSS2.indexOf('}', i)));
-      assert.ok(m, `${selecteur} : padding horizontal illisible`);
-      return Number(m[1]);
-    };
-    const bandeau = retrait('.skeleton-map-reprise {');
-    assert.equal(retrait('.skeleton-map-morpho {'), bandeau, 'la ligne Morphologie est décalée');
-    assert.equal(retrait('.skeleton-map-list .modal-section,'), bandeau, 'les sections sont décalées');
+  test('#388 : les deux lignes de tête PARTAGENT leur boîte, elles ne la recopient pas', () => {
+    // ⚠️ CES DEUX LIGNES ONT DIVERGÉ TROIS FOIS EN QUELQUES JOURS, et chaque écart a été signalé à
+    // l'usage plutôt que trouvé ici : 8px contre 10px de retrait, un fond invisible d'un côté, une
+    // bordure d'un seul côté. Deux règles qui doivent rester identiques et qu'on écrit séparément
+    // finissent toujours par différer.
+    //
+    // Le test ne compare donc plus deux valeurs — il exigerait de les tenir à jour toutes les deux —
+    // mais vérifie qu'il n'y en a qu'UNE, partagée. Seul le fond reste écrit à part, parce que
+    // c'est la seule chose qui distingue vraiment ces deux lignes.
+    const i = CSS2.indexOf('.skeleton-map-morpho,\n.skeleton-map-reprise {');
+    assert.notEqual(i, -1, 'la boîte des deux lignes de tête est de nouveau recopiée');
+    const partagee = CSS2.slice(i, CSS2.indexOf('}', i));
+    const m = /padding:\s*([\d.]+)px\s+([\d.]+)px/.exec(partagee);
+    assert.ok(m, `padding illisible dans « ${partagee} »`);
+    // Le retrait horizontal reste celui des sections : c'est lui qui aligne tout le contenu de
+    // l'écran sur un même bord gauche.
+    const j = CSS2.indexOf('.skeleton-map-list .modal-section,');
+    const sections = /padding:\s*[\d.]+px\s+([\d.]+)px/.exec(CSS2.slice(j, CSS2.indexOf('}', j)));
+    assert.equal(Number(m[2]), Number(sections[1]), 'les lignes de tête sont décalées des sections');
+    // Ni l'une ni l'autre ne doit redéclarer ce que la règle partagée porte déjà : le faire
+    // rouvrirait exactement la porte que cette règle vient de fermer.
+    // ⚠️ ON VISE LA RÈGLE PROPRE PAR SON FOND, et non par le seul sélecteur : celui-ci apparaît
+    // aussi dans la règle partagée, qui porte légitimement le padding. Un `indexOf` sur le
+    // sélecteur seul retombait dessus et faisait échouer ce test sur du code juste.
+    ['.skeleton-map-morpho { background', '.skeleton-map-reprise { background'].forEach(sel => {
+      const k = CSS2.indexOf(sel);
+      assert.notEqual(k, -1, `${sel} a disparu`);
+      const propre = CSS2.slice(k, CSS2.indexOf('}', k));
+      assert.doesNotMatch(propre, /padding|border:/, `${sel} redéclare la boîte partagée`);
+    });
   });
 
   test('#388 : la note a autant d\'écart au-dessus qu\'en dessous', () => {
@@ -1920,11 +1935,20 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
     // Décision de l'utilisateur contre ma première version violette, qui rappelait l'étiquette
     // « repris » que le bouton allait poser : une couleur doit dire la NATURE de ce qu'on lit, pas
     // préfigurer une conséquence qu'on ne connaît pas encore.
-    const regle = CSS2.slice(CSS2.indexOf('.skeleton-map-reprise {'));
-    const bloc = regle.slice(0, regle.indexOf('}'));
+    // ⚠️ ON VISE LA RÈGLE QUI PORTE LE FOND, pas la première qui cite le sélecteur : depuis que la
+    // boîte est partagée avec la ligne Morphologie, `.skeleton-map-reprise` apparaît deux fois, et
+    // la première occurrence ne parle plus de couleur du tout.
+    const i = CSS2.indexOf('.skeleton-map-reprise { background');
+    assert.notEqual(i, -1, 'le bandeau n\'a plus de fond à lui');
+    const bloc = CSS2.slice(i, CSS2.indexOf('}', i));
     assert.match(bloc, /background:\s*rgba\(90,130,200/, 'le bandeau n\'est plus bleu');
-    // Le texte reste à la couleur ordinaire : coloré sur fond coloré, il faudrait le régler une fois
-    // par thème, et la version violette était déjà trop sombre sur fond sombre.
-    assert.match(bloc, /color:\s*var\(--ink\)/);
+    // ⚠️ LA PHRASE DE GAUCHE EST GRISE, et cette couleur a fait l'aller-retour. Grise à l'origine,
+    // jugée peu lisible sur le fond VIOLET d'alors, passée à la couleur ordinaire, puis ramenée au
+    // gris une fois le fond devenu bleu et plus clair — pour la cohérence avec le libellé
+    // « Morphologie » juste en dessous. Les deux jugements étaient justes, ils ne portaient pas sur
+    // le même fond.
+    const j = CSS2.indexOf('.skeleton-map-reprise-texte {');
+    assert.match(CSS2.slice(j, CSS2.indexOf('}', j)), /color:\s*var\(--sepia\)/,
+      'la phrase du bandeau ne se lit plus comme le libellé qu\'elle est');
   });
 });
