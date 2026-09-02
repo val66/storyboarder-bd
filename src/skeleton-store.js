@@ -177,7 +177,25 @@ export function morphologieEffective3D(enregistree, osDuFichier, propose){
   return (os.length && propose) ? propose(os) : 'humanoide';
 }
 
-export function entreePourFichier(carte, { valide = false, morphologie = null, membres = null, roles = null } = {}){
+export function entreePourFichier(carte, {
+  valide = false, morphologie = null, membres = null, roles = null,
+  humanoide = true, precedente = null,
+} = {}){
+  const avant = precedente || {};
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // L'AUTRE VOCABULAIRE EST CONSERVÉ TEL QUEL (#382)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // Un humanoïde écrit `os`, une créature écrit `roles` : c'est la morphologie qui dit LEQUEL des
+  // deux est lu, et cette règle-là ne bouge pas. Mais l'écrire n'oblige pas à EFFACER l'autre.
+  //
+  // ⚠️ SIGNALÉ PAR L'UTILISATEUR AVANT QUE ÇA NE LUI COÛTE : corriger dix emplacements en
+  // humanoïde, basculer en quadrupède par curiosité, enregistrer, revenir en humanoïde, et les dix
+  // corrections avaient disparu sans un mot. Le même genre de perte silencieuse que #385.
+  //
+  // ⚠️ LE DRAPEAU EST EXPLICITE, il ne se déduit PAS d'un `os` vide. « Aucun emplacement manuel »
+  // est un état légitime pour un humanoïde, celui de quelqu'un qui vient de tout remettre en
+  // automatique : le déduire ferait ressusciter les choix qu'il vient d'effacer.
   const os = {};
   SLOTS.forEach(slot => {
     const v = (carte || {})[slot];
@@ -186,15 +204,19 @@ export function entreePourFichier(carte, { valide = false, morphologie = null, m
   const m = MORPHOLOGIES_CONNUES.has(morphologie) ? morphologie : null;
   const mem = normaliserMembres(membres);
   const rol = normaliserRoles3D(roles);
-  if (!Object.keys(os).length && !valide && !m && !mem.length && !Object.keys(rol).length) return null;
-  const sortie = { os, valide };
+  const osFinal = humanoide ? os : normaliserRoles3D(avant.os);
+  const rolFinal = humanoide ? normaliserRoles3D(avant.roles) : rol;
+  if (!Object.keys(osFinal).length && !valide && !m && !mem.length && !Object.keys(rolFinal).length) {
+    return null;
+  }
+  const sortie = { os: osFinal, valide };
   if (m) sortie.morphologie = m;
   if (mem.length) sortie.membres = mem;
   // MÊME RÈGLE QUE `os` : seuls les choix HUMAINS sont écrits. Figer l'attribution proposée
   // condamnerait toute amélioration de #379, #381 et de la suite, qui trouveraient un rôle
   // « enregistré » sur chaque fichier jamais touché. L'appelant ne passe donc que ce qui a été
   // choisi à la main.
-  if (Object.keys(rol).length) sortie.roles = rol;
+  if (Object.keys(rolFinal).length) sortie.roles = rolFinal;
   return sortie;
 }
 
@@ -288,12 +310,17 @@ export function _viderCacheCorrespondances(){
  * le moment où l'on a chargé les correspondances et celui où l'on enregistre, une autre fenêtre de
  * l'application a pu en ajouter une. Réécrire ce qu'on avait en mémoire l'effacerait.
  */
-export async function enregistrerCorrespondance(fichier, carte, { valide = true, morphologie = null, membres = null, roles = null } = {}){
+export async function enregistrerCorrespondance(fichier, carte, {
+  valide = true, morphologie = null, membres = null, roles = null, humanoide = true,
+} = {}){
   const p = pont();
   if (!p || !p.writeSkeletonMaps) return { ok: false, error: 'pont indisponible' };
   if (!fichier) return { ok: false, error: 'fichier manquant' };
   const tout = await lireCorrespondances();
-  const entree = entreePourFichier(carte, { valide, morphologie, membres, roles });
+  // `precedente` porte l'autre vocabulaire, celui que cet enregistrement ne réécrit pas.
+  const entree = entreePourFichier(carte, {
+    valide, morphologie, membres, roles, humanoide, precedente: tout.entrees[fichier],
+  });
   // COPIE, ET NON MUTATION DE `tout`. La relecture ci-dessus vient de poser SON résultat dans le
   // cache résident : `tout` et `_enMemoire` désignent alors le MÊME objet. Écrire dans `tout`
   // écrirait donc dans le cache, avant l'écriture disque, et sans moyen de revenir en arrière si

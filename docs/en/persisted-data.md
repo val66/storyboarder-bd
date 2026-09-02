@@ -108,9 +108,16 @@ Stored next to the `Modeles` folder, keyed by file name. An entry carries:
 the key silently on the first rewrite. It would reread the file, drop what it does not know, and save
 it back truncated.
 
-⚠️ **And the two never coexist in one file.** A humanoid writes `os`, a creature writes `roles`, the
-morphology decides. Same rule as #374's bone harvesting, for the same reason: two keys designating
-the same piece of skeleton would end up contradicting each other.
+⚠️ **Only one of the two is READ, but both may be STORED.** The morphology says which: a humanoid
+reads `os`, a creature reads `roles`. No ambiguity on reading, and that is the rule that matters.
+
+⚠️ **I first wrote "the two never coexist in one file", and writing followed that sentence to the
+letter:** saving a creature rewrote `os` as empty. Reported by the user before it cost him anything:
+correct ten slots as a humanoid, switch to quadruped out of curiosity, save, come back to humanoid,
+and the ten corrections were gone without a word.
+
+The sentence confused what is **stored** with what is **read**. Writing one does not require erasing
+the other, and keeping it costs a few bytes. Fixed in #382.
 
 `SKELETON_MAP_FORMAT` stays at **1**. This is the third addition after `morphologie` and `membres`,
 and the rule does not change: moving to 2 would make an earlier version REJECT the whole file, whereas

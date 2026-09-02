@@ -113,9 +113,18 @@ en filtrant sur les dix-huit emplacements : y glisser `hipFL` ne la casserait pa
 perdre la clé en silence à la première réécriture. Elle relirait le fichier, jetterait ce qu'elle ne
 connaît pas, et le réenregistrerait amputé.
 
-⚠️ **Et les deux ne coexistent jamais dans un même fichier.** Un humanoïde écrit `os`, une créature
-écrit `roles`, la morphologie tranche. Même règle que la récolte des os de #374, pour la même
-raison : deux clés désignant le même bout de squelette finiraient par se contredire.
+⚠️ **Un seul des deux est LU, mais les deux peuvent être STOCKÉS.** La morphologie dit lequel :
+un humanoïde lit `os`, une créature lit `roles`. Aucune ambiguïté à la lecture, donc, et c'est cette
+règle-là qui compte.
+
+⚠️ **J'avais d'abord écrit « les deux ne coexistent jamais dans un même fichier », et l'écriture
+suivait cette phrase à la lettre :** enregistrer une créature réécrivait `os` à vide. Signalé par
+l'utilisateur avant que ça ne lui coûte : corriger dix emplacements en humanoïde, basculer en
+quadrupède par curiosité, enregistrer, revenir en humanoïde, et les dix corrections avaient disparu
+sans un mot.
+
+La phrase confondait ce qui est **stocké** et ce qui est **lu**. Écrire l'un n'oblige pas à effacer
+l'autre, et le conserver ne coûte que quelques octets. Corrigé en #382.
 
 `SKELETON_MAP_FORMAT` reste à **1**. C'est le troisième ajout après `morphologie` et `membres`, et la
 règle ne change pas : passer à 2 ferait REJETER le fichier entier par une version antérieure, alors

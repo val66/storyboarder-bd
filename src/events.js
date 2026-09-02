@@ -4651,7 +4651,7 @@ document.getElementById('skeletonMapSave').onclick = async () => {
   const humanoide = _skelEcran.morphologie === 'humanoide';
   const r = await enregistrerCorrespondance(_skelEcran.fichier, humanoide ? _skelEcran.carte : {},
     { morphologie: _skelEcran.morphologieManuelle, membres: _skelEcran.membres,
-      roles: humanoide ? null : _skelEcran.roles });
+      roles: humanoide ? null : _skelEcran.roles, humanoide });
   // L'import se poursuit MÊME si l'écriture a échoué : la correspondance est un confort, l'import
   // est ce que l'utilisateur a demandé. Perdre les deux pour un disque plein serait absurde.
   fermerSkeletonMap(true);

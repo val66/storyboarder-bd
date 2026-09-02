@@ -66,6 +66,38 @@ describe('Les RÔLES d\'un archétype se rangent à côté des emplacements (#37
     assert.deepEqual(lu.entrees['x.glb'].roles, { bon: 'Os_1' });
   });
 
+  test('RÉGRESSION : changer d\'archétype ne détruit plus l\'autre vocabulaire (#382)', () => {
+    // Signalé par l'utilisateur AVANT que ça ne lui coûte : corriger dix emplacements en humanoïde,
+    // basculer en quadrupède par curiosité, enregistrer, revenir en humanoïde, et les dix
+    // corrections avaient disparu sans un mot. Même famille de perte silencieuse que #385.
+    //
+    // La morphologie dit lequel des deux est LU ; elle n'oblige pas à effacer l'autre.
+    const avant = { os: { tete: 'Head', bras_g: 'ArmL' }, valide: true, roles: { head: 'H2' } };
+
+    const creature = entreePourFichier({}, {
+      valide: true, humanoide: false, roles: { hipFL: 'ThighL' }, precedente: avant,
+    });
+    assert.deepEqual(creature.roles, { hipFL: 'ThighL' }, 'les rôles écrits sont ceux du moment');
+    assert.deepEqual(creature.os, { tete: 'Head', bras_g: 'ArmL' },
+      'les emplacements humanoïdes ont été détruits par un enregistrement de créature');
+
+    const humain = entreePourFichier({ tete: { bone: 1, name: 'Head2', origine: 'manuel' } }, {
+      valide: true, humanoide: true, precedente: avant,
+    });
+    assert.deepEqual(humain.os, { tete: 'Head2' });
+    assert.deepEqual(humain.roles, { head: 'H2' },
+      'les rôles ont été détruits par un enregistrement humanoïde');
+  });
+
+  test('RÉGRESSION : le drapeau est EXPLICITE, il ne se déduit pas d\'un `os` vide', () => {
+    // « Aucun emplacement manuel » est un état légitime pour un humanoïde, celui de quelqu'un qui
+    // vient de tout remettre en automatique. Le déduire ferait ressusciter les choix qu'il vient
+    // d'effacer, ce qui est exactement le contraire du service rendu.
+    const avant = { os: { tete: 'Head' }, valide: true };
+    const e = entreePourFichier({}, { valide: true, humanoide: true, precedente: avant });
+    assert.deepEqual(e.os, {}, 'un humanoïde qui efface tout doit voir ses emplacements partir');
+  });
+
   test('un fichier SANS rôles n\'en gagne pas un champ vide', () => {
     // Un humanoïde écrit `os` et rien d'autre : le champ ne doit pas apparaître pour rien, sous
     // peine de faire grossir le fichier d'un objet vide par modèle.
@@ -78,7 +110,9 @@ describe('Les RÔLES d\'un archétype se rangent à côté des emplacements (#37
     // Même règle que `os` et `morphologie` : on n'écrit que le choix HUMAIN. Figer l'attribution
     // proposée condamnerait toute amélioration de #379 et #381, qui trouveraient un rôle
     // « enregistré » sur chaque fichier jamais touché.
-    const e = entreePourFichier({}, { valide: true, roles: { head: 'CERBERUS__Head_09' } });
+    const e = entreePourFichier({}, {
+      valide: true, humanoide: false, roles: { head: 'CERBERUS__Head_09' },
+    });
     assert.deepEqual(e.roles, { head: 'CERBERUS__Head_09' });
     assert.deepEqual(e.os, {}, 'une créature n\'écrit pas d\'emplacements');
   });
@@ -222,6 +256,28 @@ beforeEach(() => {
   setSkeletonBridge({
     readSkeletonMaps: async () => pontRepond,
     writeSkeletonMaps: async (c) => { ecrit.push(JSON.parse(JSON.stringify(c))); return { ok: true }; },
+  });
+});
+
+describe('Enregistrer une créature ne détruit pas le travail humanoïde (#382)', () => {
+  test('BOUT EN BOUT : les emplacements survivent à un enregistrement de créature', () => {
+    // ⚠️ TROU TROUVÉ PAR MUTATION. Mes tests passaient `precedente` À LA MAIN à
+    // `entreePourFichier` : retirer sa transmission depuis `enregistrerCorrespondance` ne faisait
+    // donc échouer personne, alors que c'est le SEUL chemin par lequel l'application l'obtient.
+    // Une garantie vérifiée sur une fonction qu'aucun appelant ne nourrit ne garantit rien.
+    _viderCacheCorrespondances();
+    pontRepond = { ok: true, data: { version: 1, entrees: {
+      'cerberus.glb': { os: { tete: 'Head', bras_g: 'ArmL' }, valide: true },
+    } } };
+    return enregistrerCorrespondance('cerberus.glb', {}, {
+      humanoide: false, morphologie: 'quadrupede', roles: { hipFL: 'ThighL' },
+    }).then(() => {
+      const entree = ecrit[ecrit.length - 1].entrees['cerberus.glb'];
+      assert.deepEqual(entree.os, { tete: 'Head', bras_g: 'ArmL' },
+        'les emplacements humanoïdes ont été écrasés par un enregistrement de créature');
+      assert.deepEqual(entree.roles, { hipFL: 'ThighL' });
+      assert.equal(entree.morphologie, 'quadrupede');
+    });
   });
 });
 
@@ -984,6 +1040,10 @@ describe('L\'écran montre les MEMBRES, pas seulement dix-huit emplacements (#37
       'une créature enverrait sa carte d\'emplacements sur le disque');
     assert.match(corps, /roles: humanoide \? null : _skelEcran\.roles/,
       'un humanoïde enverrait des rôles à côté de ses emplacements');
+    // Le drapeau dit QUEL vocabulaire cet enregistrement réécrit, et donc lequel des deux doit être
+    // conservé tel quel (#382). Sans lui, `entreePourFichier` retombe sur son défaut « humanoïde »
+    // et une créature efface les emplacements du fichier.
+    assert.match(corps, /humanoide \}\)/, 'le drapeau de vocabulaire n\'est plus transmis');
   });
 
   test('RÉGRESSION : « Réinitialiser » efface AUSSI les rôles et les membres', () => {
