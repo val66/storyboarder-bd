@@ -50,7 +50,7 @@ import {
   personaEditorHasChanges, showPersonaEditor, entreeDePoigneesDeCreature3D, focusPersonaEditorHandle,
   specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
-  chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI,
+  chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI, chaineAAllumer3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
   personaLimbSegmentScreen3D } from '../src/draw.js';
@@ -2353,7 +2353,55 @@ describe('#392d : les trois lectures qui doivent viser la carte des OS', () => {
   });
 
   test('et le survol, qui cherchait dans la carte que le survol lui-même vide', () => {
-    assert.match(EDITEUR, /pickChaineAt\(px, py, chainesDeLEditeur3D\(\), personaEditorOsPos\)/,
+    // La lecture est passée dans `chaineAAllumer3D` en #392e, qui la reçoit en paramètre : c'est
+    // donc le POINT D'APPEL qu'on épingle, la fonction étant, elle, vérifiée sur son comportement.
+    assert.match(EDITEUR, /chaineAAllumer3D\(chainesDeLEditeur3D\(\), surUnPoint, px, py, personaEditorOsPos\)/,
       'le survol redevient capricieux : une chaîne allumée éteint les autres');
+  });
+});
+
+describe('#392e : une poignée ALLUME sa chaîne, elle ne l\'annule plus', () => {
+  // ⚠️ LA RÈGLE PRÉCÉDENTE RENDAIT LE SURVOL PRESQUE IMPOSSIBLE À DÉCLENCHER, et l'utilisateur l'a
+  // décrit à la trace : « parfois il met beaucoup de temps, surtout quand je fais apparaître une
+  // chaîne, puis disparaître, puis réapparaître ».
+  //
+  // MESURÉ, C'EST GÉOMÉTRIQUE. Chaîne éteinte, les 45 points d'un cerbère sont tous dessinés et le
+  // rayon de saisie d'une poignée couvre presque toute la figure : il fallait viser un creux entre
+  // deux articulations pour que le survol démarre. Chaîne allumée, seuls ses points restent, les
+  // creux abondent, et le survol repart tout seul — d'où l'impression d'une fois sur deux.
+  const CHAINES = [
+    { id: 'hipFL', cles: ['hipFL', 'kneeFL'] },
+    { id: 'tail0', cles: ['tail0', 'tail1'] },
+  ];
+  const POS = { hipFL: { x: 0, y: 0 }, kneeFL: { x: 100, y: 0 },
+    tail0: { x: 0, y: 200 }, tail1: { x: 100, y: 200 } };
+
+  test('le curseur sur un point allume la chaîne de CE point', () => {
+    assert.equal(chaineAAllumer3D(CHAINES, { id: 'kneeFL' }, 0, 0, POS).id, 'hipFL');
+    assert.equal(chaineAAllumer3D(CHAINES, { id: 'tail1' }, 0, 0, POS).id, 'tail0');
+  });
+
+  test('⚠️ et surtout, il ne l\'ÉTEINT plus', () => {
+    // La règle d'avant rendait `null` dès que le curseur touchait une poignée. Comme les points
+    // couvrent la figure quand aucune chaîne n'est allumée, elle interdisait de commencer.
+    assert.notEqual(chaineAAllumer3D(CHAINES, { id: 'hipFL' }, 0, 0, POS), null,
+      'poser le curseur sur un point éteint la chaîne : le survol ne peut plus démarrer');
+  });
+
+  test('la crainte d\'origine n\'avait pas lieu d\'être : le point reste visible', () => {
+    // On craignait qu'allumer une chaîne ne fasse disparaître le point sous le curseur avant le
+    // clic. Or un point appartient à SA propre chaîne : l'allumer le garde à l'écran.
+    const chaine = chaineAAllumer3D(CHAINES, { id: 'kneeFL' }, 0, 0, POS);
+    assert.ok(chaine.cles.includes('kneeFL'));
+  });
+
+  test('sans poignée sous le curseur, on retombe sur la géométrie', () => {
+    assert.equal(chaineAAllumer3D(CHAINES, null, 50, 2, POS).id, 'hipFL');
+    assert.equal(chaineAAllumer3D(CHAINES, null, 50, 100, POS), null);
+  });
+
+  test('une poignée qui n\'est dans aucune chaîne n\'allume rien, et ne lève pas', () => {
+    assert.equal(chaineAAllumer3D(CHAINES, { id: 'inconnue' }, 0, 0, POS), null);
+    assert.equal(chaineAAllumer3D(null, { id: 'hipFL' }, 0, 0, POS), null);
   });
 });

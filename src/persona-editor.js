@@ -995,6 +995,30 @@ export function survolerChaineDeLEditeur3D(id){
  * n'inviterait à rien, et le premier geste — promener la souris dessus — n'aurait aucune raison
  * d'être tenté. On montre donc tout tant qu'on ne survole rien, et le survol RÉDUIT.
  */
+/**
+ * La chaîne à allumer sous le curseur. Fonction PURE (#392e).
+ *
+ * ⚠️ UNE POIGNÉE ALLUME LA CHAÎNE QUI LA CONTIENT, ELLE NE L'ANNULE PLUS. La première règle disait
+ * « un point l'emporte sur sa chaîne », pour éviter qu'un point ne disparaisse sous le curseur juste
+ * avant qu'on ne clique. Elle rendait le survol presque impossible à déclencher, et l'utilisateur
+ * l'a décrit exactement : « parfois il met beaucoup de temps, surtout quand je fais apparaître une
+ * chaîne, puis disparaître, puis réapparaître. »
+ *
+ * MESURÉ, C'EST GÉOMÉTRIQUE. Chaîne éteinte, les 45 points d'un cerbère sont tous dessinés, et le
+ * rayon de saisie d'une poignée couvre alors presque toute la figure : il fallait viser un creux
+ * entre deux articulations pour que le survol démarre. Chaîne allumée, seuls ses points restent, les
+ * creux abondent, et le survol repart tout seul — d'où l'impression que ça marche une fois sur deux.
+ *
+ * La crainte d'origine n'avait pas lieu d'être : un point appartient à sa propre chaîne, donc
+ * l'allumer le garde visible. Les deux règles voulaient la même chose, une seule y arrive.
+ */
+export function chaineAAllumer3D(chaines, poignee, px, py, positionsDesOs){
+  if (poignee) {
+    return (chaines || []).find(c => (c.cles || []).includes(poignee.id)) || null;
+  }
+  return pickChaineAt(px, py, chaines, positionsDesOs);
+}
+
 export function clesSurvoleesDeLEditeur3D(){
   const id = S.personaEditorHoverChain;
   if (!id) return null;
@@ -1673,19 +1697,13 @@ export function wirePersonaEditor(){
       // ⚠️ LE SURVOL SE LIT SUR LA FIGURE, pas seulement dans le menu de droite (#392c). On promène
       // la souris sur la créature, la chaîne dessous s'allume et ses points apparaissent.
       //
-      // UN POINT L'EMPORTE SUR SA CHAÎNE : si le curseur est déjà sur une poignée, c'est elle qu'on
-      // vise, et laisser le survol changer de chaîne à ce moment-là ferait disparaître le point sous
-      // le curseur juste avant qu'on ne clique.
       // ⚠️ SUR LES POSITIONS DES OS, PAS SUR CELLES DES POIGNÉES (#392d). Une chaîne allumée masque
       // les poignées des autres : les chercher là ne rendait plus rien, et il fallait sortir de la
       // chaîne courante puis attendre une image de plus pour en survoler une autre.
-      const chaine = surUnPoint ? null
-        : pickChaineAt(px, py, chainesDeLEditeur3D(), personaEditorOsPos);
+      const chaine = chaineAAllumer3D(chainesDeLEditeur3D(), surUnPoint, px, py, personaEditorOsPos);
       // Redessiner SEULEMENT si la chaîne a changé : un mousemove arrive à chaque pixel parcouru, et
       // relancer le rendu 3D à chacun ferait tourner WebGL en continu pour une image identique.
-      if (survolerChaineDeLEditeur3D(chaine ? chaine.id : (surUnPoint ? S.personaEditorHoverChain : null))) {
-        drawPersonaEditor();
-      }
+      if (survolerChaineDeLEditeur3D(chaine ? chaine.id : null)) drawPersonaEditor();
     });
     // Sortir du canevas éteint la chaîne : sans cela elle resterait allumée pendant qu'on travaille
     // dans le panneau de droite, en désignant une chaîne que la souris a quittée depuis longtemps.
