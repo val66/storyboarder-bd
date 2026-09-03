@@ -2836,3 +2836,40 @@ describe('#383b : les correspondances enregistrées sont relues au lancement', (
       'le premier rendu se ferait encore sur un cache vide');
   });
 });
+
+describe('#401b5 : « Appliquer » revient à LA FICHE D\'OÙ L\'ON VIENT', () => {
+  // ⚠️ SIGNALÉ À L'USAGE sur un Animal : « son aperçu 3D ne se met pas directement à jour, il faut
+  // cliquer sur l'aperçu ». Le rafraîchissement se choisissait sur le TYPE DE FIGURE
+  // (`res.modeleImporte`), ce qui rangeait l'Animal du côté du Personnage : on rafraîchissait
+  // l'aperçu d'une fiche qui n'est même pas à l'écran. La question n'a jamais été « quelle
+  // figure ? » mais « quel écran est derrière ? ».
+  test('le résultat NOMME la fiche, pour les trois figures', () => {
+    S.modalTarget = { id: 'a1', type: 'objet3d', objType: 'loup', animalJoints3d: {} };
+    openPersonaEditor(S.modalTarget, 'objectModal');
+    const res = applyPersonaEditorToModal();
+    assert.equal(res.fiche, 'objectModal', 'l\'Animal renvoie vers la fiche du Personnage');
+    assert.ok(res.animal, 'et il se sait Animal : il n\'a pas de sélecteur de pose à remplir');
+    closePersonaEditor();
+
+    S.modalTarget = { id: 'e1', type: 'perso', position: 'debout', joints3d: {} };
+    openPersonaEditor(S.modalTarget, 'descModal');
+    assert.equal(applyPersonaEditorToModal().fiche, 'descModal');
+    closePersonaEditor();
+  });
+
+  test('et le gestionnaire choisit SUR CETTE FICHE, pas sur le type de figure', () => {
+    // La suite ne peut pas cliquer ce bouton : `refreshObjectPreview` passe par WebGL, injoignable
+    // sous Node (cf. docs/en/testing-method.md). Ce qui est vérifiable, et ce qui a été faux, c'est
+    // la QUESTION posée par la branche.
+    const src = sourceSansCommentaires(
+      readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8'));
+    const i = src.indexOf('applyBtn.onclick');
+    const corps = src.slice(i, src.indexOf('};', i));
+    assert.match(corps, /fiche === 'objectModal'[\s\S]*refreshObjectPreview\(\)/,
+      'l\'aperçu rafraîchi ne suit plus la fiche d\'où l\'on vient');
+    assert.ok(!/res\.modeleImporte/.test(corps),
+      'le type de figure décide encore : un Animal repassera pour un Personnage');
+    assert.match(corps, /!res\.animal/,
+      'la clé de pose part vers un <select> qu\'un Animal n\'a pas');
+  });
+});

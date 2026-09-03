@@ -17,8 +17,11 @@ import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHan
   pickHandleAt,
   selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
   remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert,
-  legendeDoitSeReplier3D } from '../src/modals.js';
+  legendeDoitSeReplier3D, captureModalSnapshot,
+  BROUILLONS_PAR_FICHE_3D } from '../src/modals.js';
 import { HELP_MANUAL_FR, HELP_MANUAL_EN } from '../src/help-content.js';
+import { S } from '../src/state.js';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -606,5 +609,68 @@ describe('#401a : la fiche du Personnage ne pose plus rien', () => {
     // C'est le seul chemin qui reste vers la pose : le retirer avec les curseurs aurait laissé un
     // Personnage impossible à poser.
     assert.match(HTML, /id="personaEditorOpenBtn"/);
+  });
+});
+
+describe('#401b5 : l\'empreinte d\'une fiche couvre ce qu\'elle ENREGISTRE', () => {
+  // ⚠️ SIGNALÉ À L'USAGE : « je ne peux pas valider les modifications car le bouton Enregistrer ne
+  // passe plus au orange, vu que les changements liés aux articulations se font via l'Éditeur ».
+  // L'empreinte ne lisait que les CHAMPS ; la pose, elle, a déménagé dans un brouillon hors du DOM.
+  const ficheStub = (id) => ({ id, querySelectorAll: () => [] });
+
+  test('un brouillon d\'articulations qui change rend la fiche modifiée', () => {
+    S.modalDraftAnimalJoints = { hipFL: { x: 0 } };
+    const avant = captureModalSnapshot(ficheStub('objectModal'));
+    S.modalDraftAnimalJoints = { hipFL: { x: 0.4 } };
+    assert.notEqual(captureModalSnapshot(ficheStub('objectModal')), avant,
+      'la fiche d\'un Animal se croit inchangée : Enregistrer restera gris');
+  });
+
+  test('et un brouillon INCHANGÉ la laisse propre, quel que soit l\'ordre des clés', () => {
+    // Sans ordre stable, appliquer une pose IDENTIQUE allumerait Enregistrer : le bouton dirait
+    // « il y a quelque chose à écrire » sur un travail nul, et on ne pourrait plus s'y fier.
+    S.modalDraftAnimalJoints = { hipFL: { x: 1 }, head: { y: 2 } };
+    const avant = captureModalSnapshot(ficheStub('objectModal'));
+    S.modalDraftAnimalJoints = { head: { y: 2 }, hipFL: { x: 1 } };
+    assert.equal(captureModalSnapshot(ficheStub('objectModal')), avant);
+  });
+
+  test('LES TROIS FICHES, pas seulement celle des Animaux', () => {
+    // L'Animal a révélé le défaut parce qu'il n'a aucun champ pour trahir le changement. Le
+    // Personnage et le modèle importé s'en tiraient par accident, via leur <select> de pose, et
+    // restaient gris dès que la pose appliquée gardait le même nom.
+    S.modalDraftJoints = { torsoRotX: 0 };
+    const perso = captureModalSnapshot(ficheStub('descModal'));
+    S.modalDraftJoints = { torsoRotX: 0.5 };
+    assert.notEqual(captureModalSnapshot(ficheStub('descModal')), perso, 'fiche du Personnage');
+
+    S.modalDraftSkeletonPose = { 'os:Bone': { x: 0 } };
+    const modele = captureModalSnapshot(ficheStub('objectModal'));
+    S.modalDraftSkeletonPose = { 'os:Bone': { x: 0.5 } };
+    assert.notEqual(captureModalSnapshot(ficheStub('objectModal')), modele, 'fiche d\'un Modèle');
+  });
+
+  test('la table des brouillons couvre CEUX QUE LES DEUX FICHES INITIALISENT', () => {
+    // ⚠️ CE TEST EST LA PROTECTION CONTRE LA RÉCIDIVE. Un brouillon de plus, ajouté à l'ouverture
+    // d'une fiche et oublié dans la table, rejouerait exactement ce défaut sans un test rouge.
+    const src = sourceSansCommentaires(
+      readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+    const brouillonsDe = (fn) => {
+      const i = src.indexOf(`export function ${fn}(`);
+      assert.ok(i > 0, fn);
+      const corps = src.slice(i, src.indexOf('\n}\n', i));
+      return [...new Set((corps.match(/S\.(modalDraft\w+)\s*=/g) || [])
+        .map(m => m.replace(/S\.|\s*=/g, '')))].sort();
+    };
+    assert.deepEqual(brouillonsDe('openObjectModal'),
+      [...BROUILLONS_PAR_FICHE_3D.objectModal].sort(),
+      'un brouillon de la fiche d\'un Objet n\'entre pas dans son empreinte');
+    assert.deepEqual(brouillonsDe('openPersonaModal'),
+      [...BROUILLONS_PAR_FICHE_3D.descModal].sort(),
+      'un brouillon de la fiche du Personnage n\'entre pas dans son empreinte');
+  });
+
+  test('une fiche inconnue ne fabrique aucune empreinte de brouillon', () => {
+    assert.equal(captureModalSnapshot(ficheStub('autreModale')), '');
   });
 });

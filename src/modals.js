@@ -283,6 +283,48 @@ export function getOpenModalEl(){
   return null;
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QU'UNE FICHE ENREGISTRE N'EST PLUS SEULEMENT CE QU'ELLE AFFICHE (#401b5)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * SIGNALÉ À L'USAGE : « je ne peux pas valider les modifications car le bouton Enregistrer ne passe
+ * plus au orange, vu que les changements liés aux articulations se font via l'Éditeur ».
+ *
+ * LA CAUSE, et ce n'est pas une omission mais une hypothèse devenue fausse. `captureModalSnapshot`
+ * lit les CHAMPS de la fiche, et rien d'autre. C'était exact tant que les articulations étaient des
+ * curseurs DANS la fiche : bouger une articulation bougeait un `<input>`, donc l'empreinte. Depuis
+ * que la pose se compose dans l'Éditeur (#394, #401a, #401c), elle vit dans un BROUILLON hors du
+ * DOM, et l'empreinte ne la voit plus. La fiche se croit inchangée alors qu'elle a de quoi écrire.
+ *
+ * LES TROIS FICHES ÉTAIENT ATTEINTES, pas seulement celle des Animaux. C'est l'Animal qui l'a
+ * révélé parce qu'il n'a aucun autre champ pour trahir le changement ; le Personnage et le modèle
+ * importé s'en tiraient par accident, quand la pose appliquée portait un nom différent de la
+ * précédente et faisait bouger leur `<select>` de pose. Appliquer un réglage manuel sous le même
+ * nom les laissait gris eux aussi.
+ *
+ * LA RÈGLE JUSTE : l'empreinte décrit TOUT CE QUE LA FICHE ÉCRIRAIT, champs et brouillons. La table
+ * ci-dessous est donc à tenir avec les brouillons qu'`openPersonaModal` et `openObjectModal`
+ * initialisent ; un test la compare à ce que ces deux fonctions posent, faute de quoi un brouillon
+ * de plus rejouerait ce défaut en silence.
+ */
+export const BROUILLONS_PAR_FICHE_3D = {
+  descModal: ['modalDraftJoints'],
+  objectModal: ['modalDraftAnimalJoints', 'modalDraftSkeletonPose', 'modalDraftJoints',
+    'modalDraftModelFile', 'modalDraftAfficherEgares'],
+};
+
+// Empreinte STABLE d'une valeur de brouillon. Les clés sont triées : `JSON.stringify` conserve
+// l'ordre d'insertion, et deux dictionnaires d'angles identiques écrits dans un ordre différent
+// rendraient la fiche « modifiée » sans qu'un seul angle ait bougé.
+export function empreinteStable3D(valeur){
+  if (valeur === null || valeur === undefined) return 'ø';
+  if (typeof valeur !== 'object') return String(valeur);
+  if (Array.isArray(valeur)) return '[' + valeur.map(empreinteStable3D).join(',') + ']';
+  return '{' + Object.keys(valeur).sort()
+    .map(k => k + ':' + empreinteStable3D(valeur[k])).join(',') + '}';
+}
+
 export function captureModalSnapshot(modalEl){
   if (!modalEl) return '';
   const parts = [];
@@ -290,6 +332,12 @@ export function captureModalSnapshot(modalEl){
     const key = el.id || el.name || '';
     const val = (el.type === 'checkbox' || el.type === 'radio') ? (el.checked ? '1' : '0') : el.value;
     parts.push(key + '=' + val);
+  });
+  // ⚠️ L'EMPREINTE DE RÉFÉRENCE EST PRISE APRÈS L'INITIALISATION DES BROUILLONS, aux deux fiches
+  // (cf. la fin d'openPersonaModal et d'openObjectModal) : sans cela, toute fiche s'ouvrirait
+  // « modifiée », et le bouton Enregistrer ne voudrait plus rien dire.
+  (BROUILLONS_PAR_FICHE_3D[modalEl.id] || []).forEach(nom => {
+    parts.push(nom + '=' + empreinteStable3D(S[nom]));
   });
   return parts.join('|');
 }

@@ -353,7 +353,7 @@ export function applyPersonaEditorToModal(){
   // au premier réglage.
   if (editeurPoseUnAnimal3D()) {
     S.modalDraftAnimalJoints = cloneJoints(S.personaEditorDraft);
-    return { key: S.personaEditorPoseKey || null, animal: true };
+    return { key: S.personaEditorPoseKey || null, animal: true, fiche: S.personaEditorFromModal };
   }
   // DEUX BROUILLONS, PARCE QUE DEUX CORPS. L'éditeur produit toujours la même chose, une pose du
   // Personnage, mais un modèle importé ne sait pas la lire : ses os ne portent ni les mêmes noms
@@ -372,7 +372,7 @@ export function applyPersonaEditorToModal(){
     if (editeurPoseUneCreature3D()) {
       S.modalDraftJoints = null;
       S.modalDraftSkeletonPose = cloneJoints(S.personaEditorDraft);
-      return { key: S.personaEditorPoseKey || null, modeleImporte: true };
+      return { key: S.personaEditorPoseKey || null, modeleImporte: true, fiche: S.personaEditorFromModal };
     }
     const pose = poseOsPourModeleImporte(figure, S.personaEditorDraft);
     // `null` = ce modèle ne peut pas recevoir de pose. On ne touche à rien et on ne referme pas :
@@ -380,10 +380,10 @@ export function applyPersonaEditorToModal(){
     if (!pose) return null;
     S.modalDraftJoints = cloneJoints(S.personaEditorDraft);
     S.modalDraftSkeletonPose = pose;
-    return { key: S.personaEditorPoseKey || null, modeleImporte: true };
+    return { key: S.personaEditorPoseKey || null, modeleImporte: true, fiche: S.personaEditorFromModal };
   }
   S.modalDraftJoints = cloneJoints(S.personaEditorDraft);
-  return { key: S.personaEditorPoseKey || null, modeleImporte: false };
+  return { key: S.personaEditorPoseKey || null, modeleImporte: false, fiche: S.personaEditorFromModal };
 }
 
 // La clé n'est reportée sur le <select> que si la bibliothèque la connaît ENCORE.
@@ -1909,11 +1909,19 @@ export function wirePersonaEditor(){
   if (applyBtn) applyBtn.onclick = () => {
     const res = applyPersonaEditorToModal();
     if (!res) return;
-    // Le <select> à reporter est celui de la fiche d'où l'on vient, deux fiches en portent un.
+    // ⚠️ LA FICHE D'OÙ L'ON VIENT, ET NON LE TYPE DE FIGURE (#401b5). Ces deux choix se lisaient sur
+    // `res.modeleImporte`, ce qui rangeait l'Animal du côté du Personnage : son aperçu ne se
+    // rafraîchissait pas — signalé à l'usage, « il faut cliquer sur l'aperçu pour qu'il se mette à
+    // jour » — et sa clé de pose partait dans le <select> d'une fiche qui n'est même pas ouverte.
+    // La question n'a jamais été « quelle figure ? » mais « quel écran est derrière ? », et cet
+    // écran, l'Éditeur le connaît par son identifiant depuis qu'il sait y revenir.
+    const fiche = res.fiche;
+    // ⚠️ SEULE UNE FICHE QUI PORTE UN SÉLECTEUR DE POSE REÇOIT LA CLÉ. Un Animal n'en a pas : sa
+    // pose n'existe que par ses angles. Écrire la clé ailleurs a déjà donné le défaut ci-dessus.
     const sel = document.getElementById(
-      res.modeleImporte ? 'objectPositionSelect' : 'personaPositionSelect');
+      fiche === 'objectModal' ? 'objectPositionSelect' : 'personaPositionSelect');
     const key = poseKeyStillInLibrary(res.key);
-    if (sel && key) sel.value = key;
+    if (sel && key && !res.animal) sel.value = key;
     hidePersonaEditor();
     // La modale doit MONTRER ce qu'on vient d'appliquer, et son bouton Enregistrer s'activer :
     // sans cela, le travail serait bien dans le brouillon mais invisible, et la modale se croirait
@@ -1922,13 +1930,16 @@ export function wirePersonaEditor(){
     //
     // La fiche d'un Modèle n'a plus de curseurs à reconstruire (#394) : son aperçu suffit, il est
     // désormais le seul endroit où elle montre une pose.
-    if (res.modeleImporte) {
+    if (fiche === 'objectModal') {
       refreshObjectPreview();
     } else {
       // La fiche du Personnage n'a plus de curseurs à reconstruire (#401a) : son aperçu suffit, il
       // est désormais le seul endroit où elle montre une pose.
       refreshPersonaPreview();
     }
+    // ⚠️ APRÈS L'AFFICHAGE, ET L'ORDRE N'EST PAS ANODIN : `recomputeModalDirty` compare l'empreinte
+    // de la fiche, brouillons compris depuis #401b5, et l'aperçu est ce qui donne son sens au
+    // bouton qui vient de s'allumer.
     recomputeModalDirty();
   };
 
