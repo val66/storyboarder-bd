@@ -490,11 +490,19 @@ export function accumulateSweepDegrees3D(sweptDeg, previousAngle, currentAngle){
 // pour que le retour réponde au premier pixel. Le geste reste absolu PARTOUT AILLEURS : le recalage
 // n'a lieu que quand la valeur brute sort de la plage, et il est idempotent. Contrepartie assumée :
 // après avoir écrasé une borne, revenir au point de départ ne rend plus l'angle de départ.
-export function dragJointStep3D(startDeg, deltaDeg){
+export function dragJointStep3D(startDeg, deltaDeg, bornes){
   const delta = deltaDeg || 0;
   const brut = (startDeg || 0) + delta;
-  const deg = clamp(Math.round(brut), POSE_DRAG_DEG_MIN, POSE_DRAG_DEG_MAX);
-  const debordé = brut < POSE_DRAG_DEG_MIN || brut > POSE_DRAG_DEG_MAX;
+  // ⚠️ LES BORNES SONT UN PARAMÈTRE DEPUIS #401b2, et sans elles le glisser d'un ANIMAL ignorait ses
+  // limites. Un os importé tourne librement — nous ne savons pas ce que son fichier autorise — mais
+  // nous construisons les rigs d'Animaux : un genou de loup ne se plie que dans un sens, et son
+  // curseur le sait depuis toujours (min/max dans ANIMAL_JOINT_DEFS). Le glisser, lui, aurait
+  // tranquillement dépassé jusqu'à ±180°, produisant une patte retournée qu'aucun curseur ne
+  // pouvait plus atteindre.
+  const min = (bornes && Number.isFinite(bornes.min)) ? bornes.min : POSE_DRAG_DEG_MIN;
+  const max = (bornes && Number.isFinite(bornes.max)) ? bornes.max : POSE_DRAG_DEG_MAX;
+  const deg = clamp(Math.round(brut), min, max);
+  const debordé = brut < min || brut > max;
   return { deg, startDeg: debordé ? deg - delta : (startDeg || 0) };
 }
 

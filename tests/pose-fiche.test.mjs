@@ -40,7 +40,7 @@ import {
 import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
   from '../src/skeleton-pose.js';
 import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
-import { JOINT_GROUPS } from '../src/constants.js';
+import { JOINT_GROUPS, ANIMAL_JOINT_DEFS } from '../src/constants.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
@@ -54,12 +54,13 @@ import {
   syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
   chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI, chaineAAllumer3D,
   buildPersonaEditorMapButtonUI, editeurPoseUnAnimal3D, vocabulaireDeLEditeur3D, savePersonaEditorPose,
+  entreeDePoigneesDAnimal3D, specDArticulationDAnimal3D,
   clesVisiblesDeLEditeur3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
   personaLimbSegmentScreen3D } from '../src/draw.js';
-import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D, squelettePourAnimal3D }
-  from '../src/utils.js';
+import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D, squelettePourAnimal3D,
+  dragJointStep3D } from '../src/utils.js';
 import { tr } from '../src/state.js';
 import { setSkeletonBridge, lireCorrespondances, _viderCacheCorrespondances }
   from '../src/skeleton-store.js';
@@ -2898,5 +2899,109 @@ describe('#401b : le crayon de la fiche mène l\'Animal à l\'Éditeur', () => {
     _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
     buildSkeletonPoseFieldUI({ type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1' });
     assert.equal(crayon.style.display, '');
+  });
+});
+
+describe('#401b2 : les poignées et le glisser d\'un Animal', () => {
+  const pivots = (objType) => {
+    const map = {};
+    (ANIMAL_JOINT_DEFS[objType] || []).forEach((g, gi) => (g.joints || []).forEach((j, ji) => {
+      const p = new THREE.Group();
+      p.position.set(gi * 0.2, 1 + ji * 0.1, 0);
+      map[j.id] = p;
+    }));
+    const racine = new THREE.Group();
+    Object.values(map).forEach(p => racine.add(p));
+    racine.updateMatrixWorld(true);
+    return map;
+  };
+
+  test('⚠️ ses « chaînes » sont ses GROUPES, et c\'est la seule lecture qui tienne', () => {
+    // Un Animal n'a pas de chaînes d'os découvertes dans un fichier : il a les groupes que NOUS
+    // avons écrits — « Aile gauche », « Patte avant droite ». Ce sont eux que le panneau replie, eux
+    // que le survol allume, et eux qui donnent au membre son segment pour la zone de prise.
+    const f = entreeDePoigneesDAnimal3D('loup', pivots('loup'));
+    assert.equal(f.chaines.length, ANIMAL_JOINT_DEFS.loup.length,
+      'une chaîne par groupe, ni plus ni moins');
+    f.chaines.forEach(c => {
+      assert.ok(c.titre && c.titre.length, 'une chaîne sans titre ne peut pas être survolée');
+      assert.equal(c.id, c.cles[0], 'l\'identifiant doit être le premier os, jamais un compteur');
+    });
+    // Toutes les articulations d'un Animal sont des RÔLES, la mesure l'a établi : elles portent donc
+    // la couleur des parts portables de la pose, sans exception.
+    assert.ok(f.poignees.length > 0);
+    f.poignees.forEach(p => assert.equal(p.role, true, `${p.id} n'est pas marqué comme un rôle`));
+  });
+
+  test('un pivot absent n\'est pas dessiné à l\'origine', () => {
+    // Même règle que pour une créature : un point projeté depuis `undefined` serait attrapable et
+    // relié à un curseur qui ne bouge rien.
+    const partiels = pivots('loup');
+    delete partiels.head;
+    const f = entreeDePoigneesDAnimal3D('loup', partiels);
+    assert.ok(!f.poignees.some(p => p.id === 'head'));
+    assert.equal(f.joints.head, undefined);
+  });
+
+  test('UN SEUL descripteur par articulation, avec SES bornes', () => {
+    const spec = specDArticulationDAnimal3D('loup', 'head');
+    assert.ok(spec, 'la tête du loup n\'a plus de descripteur');
+    assert.equal(spec.cle, 'head');
+    assert.ok(Number.isFinite(spec.min) && Number.isFinite(spec.max), 'les bornes ont disparu');
+    assert.ok(spec.max <= 180 && spec.min >= -180);
+    // ⚠️ L'AXE RESTE UNE LETTRE : un pivot d'Animal, nous l'avons posé nous-mêmes, aligné sur le
+    // monde. Un os importé passe son axe MESURÉ (#392a) parce que son repos est quelconque.
+    assert.equal(typeof spec.axis, 'string');
+    assert.equal(specDArticulationDAnimal3D('loup', 'inconnu'), null);
+  });
+
+  test('⚠️ LE GLISSER RESPECTE LES BORNES DE L\'ARTICULATION', () => {
+    // Sans elles il montait tranquillement à ±180°, produisant une patte retournée qu'aucun curseur
+    // ne pouvait plus rattraper : les curseurs, eux, connaissent ces bornes depuis toujours.
+    const bornes = { min: -46, max: 46 };
+    assert.equal(dragJointStep3D(40, 500, bornes).deg, 46, 'le glisser dépasse la borne haute');
+    assert.equal(dragJointStep3D(-40, -500, bornes).deg, -46, 'le glisser dépasse la borne basse');
+    // Et sans bornes, le comportement d'avant ne change pas d'un degré : un os importé tourne
+    // librement, nous ne savons pas ce que son fichier autorise.
+    assert.equal(dragJointStep3D(0, 500).deg, 180);
+    assert.equal(dragJointStep3D(0, -500).deg, -180);
+  });
+
+  test('et la session de glisser s\'ouvre bien sur un Animal', () => {
+    const o = { type: 'objet3d', objType: 'loup', id: 'a9', animalJoints3d: {} };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(personaEditorSpecsOf('head').length, 1,
+      'la tête du loup ne rend aucun descripteur : le glisser ne s\'ouvrira pas');
+    ecrireAngleDeg(S.personaEditorDraft, 'head', 'x', 10);
+    focusPersonaEditorHandle('head');
+    const session = beginPersonaEditorJointDrag('head');
+    assert.ok(session, 'aucune session de glisser sur un Animal');
+    assert.equal(session.startDeg, 10);
+    applyPersonaEditorJointDrag(session, 0, 40);
+    assert.notEqual(lireAngleDeg(S.personaEditorDraft, 'head', 'x'), 10,
+      'glisser n\'écrit rien dans le brouillon de l\'Animal');
+
+    // ⚠️ ET LES BORNES ARRIVENT JUSQU'AU BOUT, MUTATION ÉCHAPPÉE SANS CETTE MOITIÉ. Le test ne
+    // vérifiait que « la valeur a changé » : retirer les bornes du pas de glisser laissait donc
+    // monter la tête du loup à 180°, et rien ne le disait. Ce qui compte n'est pas que ça bouge,
+    // c'est JUSQU'OÙ.
+    //
+    // ⚠️ LES DEUX BORNES SUR LA MÊME VALEUR, et c'est ce qui manquait à ma première version : je
+    // n'en vérifiais qu'une par sens de glisser, si bien que ±180° les satisfaisait toutes les deux
+    // — trop grand pour le maximum, mais bien au-dessus du minimum, et réciproquement. Une borne
+    // vérifiée seule n'est pas une borne.
+    const spec = specDArticulationDAnimal3D('loup', 'head');
+    const dansLesBornes = (dy) => {
+      applyPersonaEditorJointDrag(session, 0, dy);
+      const v = lireAngleDeg(S.personaEditorDraft, 'head', 'x');
+      assert.ok(v >= spec.min && v <= spec.max,
+        `la tête atteint ${v}° alors que son curseur va de ${spec.min}° à ${spec.max}° : une `
+        + 'articulation retournée qu\'aucun curseur ne peut plus rattraper');
+    };
+    dansLesBornes(4000);
+    dansLesBornes(-8000);
+    closePersonaEditor();
   });
 });

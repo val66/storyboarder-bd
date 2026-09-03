@@ -13,7 +13,7 @@
 
 import {
   JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
-  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, ARCHETYPES_3D, ANIMAL_TYPES,
+  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, ARCHETYPES_3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -22,7 +22,7 @@ import {
   nextDefaultPoseName3D, personaEditorPoseList3D, pointerSweepAngle3D, poseDragIsStraight3D,
   poseJointsByKey3D, posePickRadii3D, poseSliderSignature3D, poseSliderSpecs3D,
   poseSpecRotationAxis3D, poseUsageCount3D, readPoseSliderDeg3D, rememberDismissedPose3D,
-  libelleArticulation3D, libelleTable3D, libelleTypeObjet3D,
+  libelleArticulation3D, libelleTable3D, libelleTypeObjet3D, libelleAnimal3D,
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
   writePoseSliderDeg3D, axeDePose3D, modelAxisVector3D, squelettePourAnimal3D,
 
@@ -658,7 +658,9 @@ export function applyPersonaEditorJointDrag(session, dx, dy, geste){
   const deltaDeg = session.droit
     ? straightDragDegrees3D(session.axis, session.orbit, dx, dy)
     : advancePersonaEditorSweep(session, geste);
-  const pas = dragJointStep3D(session.startDeg, deltaDeg);
+  // Les bornes viennent du DESCRIPTEUR, figé à l'appui comme tout le reste de la session : un
+  // Animal les porte, un os importé n'en a pas et retombe sur ±180°.
+  const pas = dragJointStep3D(session.startDeg, deltaDeg, session.spec);
   // Fix 73 : la session porte l'origine, et l'origine se recale aux bornes. C'est la seule
   // mutation de la session en cours de geste : tout le reste est recalculé depuis le delta total.
   session.startDeg = pas.startDeg;
@@ -924,6 +926,13 @@ export function drawPersonaEditor(){
   // aurait fini par montrer autre chose que ce qu'« Appliquer » écrit.
   if (editeurPoseUnAnimal3D()) {
     dessinerAnimalDansEditeur(cnv, S.personaEditorAnimal, size);
+    const figure = figureAnimalDeLEditeur3D();
+    if (figure) {
+      drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
+        personaEditorDragHint(), true, Object.assign(figure, {
+          clesVisibles: clesVisiblesDeLEditeur3D(), chaineSurvolee: clesSurvoleesDeLEditeur3D(),
+        }), personaEditorOsPos);
+    }
     return;
   }
   const modele = figureImporteeDeLEditeur();
@@ -1037,10 +1046,50 @@ export function entreeDePoigneesDeCreature3D(osMappes){
   return { joints, poignees, osImportes: true };
 }
 
+/**
+ * La figure d'un ANIMAL, telle que la couche de dessin des poignées l'attend (#401b2).
+ *
+ * ⚠️ SES « CHAÎNES » SONT SES GROUPES, et c'est la seule interprétation qui se tienne : un Animal n'a
+ * pas de chaînes d'os découvertes dans un fichier, il a les groupes que NOUS avons écrits — « Aile
+ * gauche », « Patte avant droite ». Ce sont eux que le panneau replie, eux que le survol doit
+ * allumer, et eux qui donnent au membre son segment pour la zone de prise.
+ *
+ * Fonction PURE vis-à-vis de Three : elle ne fait que réindexer les pivots du rig.
+ */
+export function entreeDePoigneesDAnimal3D(objType, pivots){
+  const joints = {};
+  const poignees = [];
+  const chaines = [];
+  (ANIMAL_JOINT_DEFS[objType] || []).forEach(groupe => {
+    const cles = [];
+    (groupe.joints || []).forEach(j => {
+      const pivot = (pivots || {})[j.id];
+      if (!pivot) return;
+      joints[j.id] = pivot;
+      // `role: true` : toutes les articulations d'un Animal en sont, la mesure l'a établi (#401b).
+      // Elles portent donc la couleur des parts portables de la pose, sans exception.
+      poignees.push({ id: j.id, group: j.id, role: true });
+      cles.push(j.id);
+    });
+    if (cles.length) chaines.push({ id: cles[0], titre: libelleAnimal3D(groupe.group, tr), cles });
+  });
+  return { joints, poignees, chaines, osImportes: true };
+}
+
+// La figure d'un Animal, prête à dessiner, ou `null`. Même forme que pour une créature.
+function figureAnimalDeLEditeur3D(){
+  if (!editeurPoseUnAnimal3D()) return null;
+  const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
+  return (entree && entree.animalJoints)
+    ? entreeDePoigneesDAnimal3D(S.personaEditorAnimal, entree.animalJoints) : null;
+}
+
 // Les poignées de la figure COURANTE, pour que le clic interroge la même liste que celle qui a
 // dessiné les points. Rend `null` quand ce sont les dix-huit du Personnage, que la couche de dessin
 // prend alors par défaut : renvoyer POSE_HANDLES ici en ferait une seconde source.
 function poigneesDeLEditeur3D(){
+  const animal = figureAnimalDeLEditeur3D();
+  if (animal) return animal.poignees;
   if (!editeurPoseUneCreature3D()) return null;
   const entree = objectRigCache3D.get(PERSONA_EDITOR_MODEL_ID);
   return (entree && entree.skeletonBones)
@@ -1081,6 +1130,9 @@ export function oublierChainesDeLEditeur3D(){
 }
 
 export function chainesDeLEditeur3D(){
+  // Les « chaînes » d'un Animal sont ses GROUPES : rien à mémoriser, la table les donne d'emblée.
+  const animal = figureAnimalDeLEditeur3D();
+  if (animal) return animal.chaines;
   const fichier = figureImporteeDeLEditeur();
   if (!fichier || !editeurPoseUneCreature3D()) return [];
   if (_chainesMemorisees.fichier !== fichier) {
@@ -1408,8 +1460,38 @@ function mesuresDeLOsDeLEditeur3D(cle){
 // UNE CRÉATURE A LES SIENS (#392b2), et le point de décision reste l'unique de ce fichier. Sans
 // cette branche, `POSE_HANDLES.find` ne trouvait rien pour `hipFL` et rendait une liste VIDE : la
 // session de glisser ne s'ouvrait pas, si bien que le clic sélectionnait sans jamais traîner.
+/**
+ * Le descripteur de curseur d'une articulation d'ANIMAL. Fonction PURE (#401b2).
+ *
+ * ⚠️ UN SEUL, LÀ OÙ UN OS IMPORTÉ EN A TROIS, et ce n'est pas une restriction arbitraire : nous
+ * construisons ces rigs, donc nous savons dans quel sens un genou de loup se plie — et jusqu'où.
+ * `min` et `max` voyagent AVEC le descripteur, pour que le glisser respecte les mêmes bornes que le
+ * curseur ; sans elles il montait tranquillement à ±180°, produisant une patte retournée qu'aucun
+ * curseur ne pouvait plus rattraper.
+ *
+ * L'AXE RESTE UNE LETTRE. Un os importé passe son axe MESURÉ (#392a) parce que son repos est
+ * quelconque ; un pivot d'Animal, nous l'avons posé nous-mêmes, aligné sur le monde — la même
+ * hypothèse que pour le Personnage intégré, et pour la même raison.
+ */
+export function specDArticulationDAnimal3D(objType, id){
+  const groupes = ANIMAL_JOINT_DEFS[objType] || [];
+  for (const g of groupes) {
+    const j = (g.joints || []).find(x => x.id === id);
+    if (!j) continue;
+    return {
+      key: `${id}:${j.axis}`, cle: id, axe: j.axis, axis: j.axis, suffix: '',
+      min: Math.round(j.min * 180 / Math.PI), max: Math.round(j.max * 180 / Math.PI),
+    };
+  }
+  return null;
+}
+
 export function personaEditorSpecsOf(id){
   if (!id) return [];
+  if (editeurPoseUnAnimal3D()) {
+    const spec = specDArticulationDAnimal3D(S.personaEditorAnimal, id);
+    return spec ? [spec] : [];
+  }
   if (editeurPoseUneCreature3D()) return specsDeCreature3D(id, mesuresDeLOsDeLEditeur3D(id), tr);
   const def = POSE_HANDLES.find(d => d.id === id);
   return def ? poseSliderSpecs3D(def) : [];
