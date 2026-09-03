@@ -36,7 +36,7 @@ import {
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
 import { memesAngles3D, lireAngleDeg, ecrireAngleDeg, chainesAPlat3D, poigneesParDefaut3D,
-  estCleDeRole3D } from './skeleton-pose.js';
+  estCleDeRole3D, poseNonVide3D } from './skeleton-pose.js';
 import { axeLocalVersMonde } from './skeleton-retarget.js';
 import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
@@ -284,6 +284,16 @@ export function applyPersonaEditorPose(key){
 // l'enregistrer à l'identique.
 export function savePersonaEditorPose(name){
   if (!S.personaEditorOpen || !S.personaEditorDraft) return null;
+  // ⚠️ UNE POSE OÙ RIEN N'EST TOURNÉ NE S'ENREGISTRE PAS (#402b). La garde existait, sur la fiche
+  // d'un modèle importé ; elle est partie avec le bouton de cette fiche (#393) et personne ne l'a
+  // reprise ici. Elle a donc manqué depuis, et c'est le brouillon d'une créature ou d'un Animal qui
+  // en avait le plus besoin : il naît VIDE, là où celui d'un Personnage part d'une pose existante.
+  //
+  // ELLE EST ICI *AUSSI*, et pas seulement sur l'état du bouton : un bouton éteint reste
+  // atteignable par un raccourci ou un test, et la conséquence serait une pose qui ne fait rien,
+  // proposée comme les autres à tout son archétype. C'est le raisonnement que portait déjà l'ancien
+  // appelant, mot pour mot.
+  if (!poseNonVide3D(S.personaEditorDraft)) return null;
   const pose = makePose3D(newId('pose'),
     (typeof name === 'string' && name.trim()) ? name : nextDefaultPoseName3D(S.poses),
     // ⚠️ LE VOCABULAIRE DE LA FIGURE POSÉE, plus une constante (#375b). Une pose enregistrée sur un
@@ -1655,6 +1665,14 @@ export function syncPersonaEditorActionButtons(){
     const btn = document.getElementById(id);
     if (btn) btn.disabled = !actif;
   });
+  // ⚠️ « ENREGISTRER » NE SUIT PAS LA MÊME QUESTION QUE SES DEUX VOISINS (#402b), et les mettre dans
+  // la même boucle aurait été le raccourci tentant. « Réinitialiser » et « Appliquer » demandent
+  // « qu'est-ce qui a CHANGÉ depuis l'ouverture ? » ; enregistrer une pose demande « y a-t-il quelque
+  // chose à enregistrer ? ». Une pose reprise telle quelle dans la bibliothèque n'a rien changé et
+  // reste parfaitement enregistrable ; un brouillon entièrement à zéro a pu changer, il ne vaut
+  // rien pour autant.
+  const enregistrer = document.getElementById('personaEditorPoseSaveBtn');
+  if (enregistrer) enregistrer.disabled = !poseNonVide3D(S.personaEditorDraft);
 }
 
 export function syncPersonaEditorPoseLabel(){

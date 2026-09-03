@@ -948,6 +948,24 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     assert.equal(poseNonVide3D({ a: { x: 0, y: 0, z: 0 }, b: { x: 0, y: 0.2, z: 0 } }), true);
   });
 
+  test('#402b : elle reconnaît AUSSI la pose PLATE du Personnage', () => {
+    // ⚠️ LE PIÈGE QUE CE TEST GARDE. Cette fonction a été écrite pour la pose IMBRIQUÉE d'un modèle
+    // importé, `{ hipFL: { x: 0.4 } }`. Celle du Personnage est PLATE, `{ torsoRotX: 0.4 }` : sur
+    // elle, la vérification d'axes reçoit un NOMBRE, n'y trouve aucun axe, et aurait déclaré vide
+    // TOUTE pose de Personnage. En rebranchant la garde sur l'Éditeur, qui parle les deux langues,
+    // cela aurait éteint « Enregistrer » pour le Personnage sans un mot d'explication.
+    //
+    // C'est la panne de #383 et de #401b3, une troisième fois : une fonction écrite pour un
+    // vocabulaire, rebranchée sur un écran qui en parle deux.
+    assert.equal(poseNonVide3D({ torsoRotX: 0.4, headRotY: 0 }), true);
+    assert.equal(poseNonVide3D({ torsoRotX: 0, headRotY: 0 }), false);
+    // Et les deux formes MÊLÉES rendent la même réponse : aucune ne masque l'autre.
+    assert.equal(poseNonVide3D({ torsoRotX: 0, hipFL: { x: 0.3 } }), true);
+    assert.equal(poseNonVide3D({ torsoRotX: 0.3, hipFL: { x: 0 } }), true);
+    // Une valeur qui n'est ni un angle ni un dictionnaire d'axes ne compte pas pour un travail fait.
+    assert.equal(poseNonVide3D({ a: NaN, b: null, c: 'debout' }), false);
+  });
+
   test('#383 : ce qu\'une pose ATTEINT se compte, et se dit quand il en manque', () => {
     // La même pose n'a pas le même effet selon la cible : une pose de créature mémorise des RÔLES,
     // partagés par l'archétype, et des NOMS D'OS, propres au fichier où elle a été composée.

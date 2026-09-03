@@ -46,10 +46,9 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // #402b — une GARDE débranchée, pas un oubli. Elle refusait d'enregistrer une pose où rien n'est
-  // tourné ; son seul appelant était le bouton de la fiche, retiré en #393. L'Éditeur ne vérifie
-  // rien : on peut aujourd'hui nommer une pose qui ne fait rien.
-  poseNonVide3D: '#402b',
+  // (#402b est RÉSOLUE : `poseNonVide3D` a retrouvé un appelant, dans l'Éditeur cette fois. C'était
+  // une garde débranchée par #393, pas un oubli, et c'est bien la sortie qu'on attendait de cette
+  // liste : un nom en sort parce qu'on a tranché, pas parce qu'on l'a effacé.)
   // #402c — une INTENTION restée en chemin. Elle donne à une créature un repère de corps dérivé de
   // ses chaînes, avec une validation mesurée sur quatre fixtures, et n'a jamais été branchée. C'est
   // la vraie réponse au repli à zéro d'`orbiteDouvertureEditeur3D` pour une créature sans
@@ -110,10 +109,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle vaut seize au moment où elle est écrite : deux corrections identifiées (#402b, #402c) et
-    // quatorze restes antérieurs au chantier (#402d). Ajouter une ligne ici doit coûter un test
-    // rouge, sans quoi c'est la sortie de secours qui devient le chemin normal.
-    assert.equal(Object.keys(EN_ATTENTE).length, 16,
+    // Elle valait seize, elle vaut quinze : #402b est tranchée. Restent une décision identifiée
+    // (#402c) et quatorze restes antérieurs au chantier (#402d). Ajouter une ligne ici doit coûter
+    // un test rouge, sans quoi c'est la sortie de secours qui devient le chemin normal.
+    assert.equal(Object.keys(EN_ATTENTE).length, 15,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

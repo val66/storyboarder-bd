@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.118**
+**Version 1.4.119**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -127,7 +127,9 @@ Planche ou une Scène quitte l'éditeur.
 - **Clic droit pour orbiter**, molette pour zoomer ; la figure est toujours présentée de face
 - **Choisir la figure** sur laquelle on pose : le Personnage intégré, ou tout modèle importé reconnu
 - **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
-  supprimer, poses de base comprises et restaurables depuis Configuration
+  supprimer, poses de base comprises et restaurables depuis Configuration. « Enregistrer » reste
+  éteint tant qu'aucune articulation n'est tournée : une pose qui ne fait rien se proposerait
+  comme les autres, et ne se découvrirait qu'à l'usage
 - **Un seul bouton pour reporter le travail**, « Appliquer les modifications », le même quelle que
   soit la figure : il renvoie la pose vers la modale d'où l'on vient
 - **Rien n'est écrit** tant que la pose n'est pas appliquée puis la fiche enregistrée

@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.118**
+**Version 1.4.119**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -119,7 +119,8 @@ Page or a Scene leaves the editor.
 - **Right-drag to orbit**, wheel to zoom; the figure is always shown facing front
 - **Choose the figure** you pose on: the built-in character, or any recognised imported model
 - **Pose library shared across every project**: apply, save, rename, delete, built-in poses
-  included and restorable from Settings
+  included and restorable from Settings. Save stays greyed out until a joint is turned: a pose that
+  does nothing would be offered like any other, and would only be found out when applied
 - **One button carries the work back**, "Apply changes", the same one for every figure: it sends
   the pose to the dialog it was opened from
 - **Nothing is committed** until the pose is applied and the dialog saved

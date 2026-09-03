@@ -383,9 +383,25 @@ export function memesAngles3D(a, b){
  * ELLE RÉUTILISE LA RÈGLE DU ZÉRO de `normaliserPose`, qui jette déjà les angles nuls à la
  * relecture : sans cela, une pose « vide » selon l'enregistrement pourrait être « pleine » selon le
  * disque, ou l'inverse. Une seule définition de ce qu'est un angle qui compte.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ELLE PARLE MAINTENANT LES DEUX FORMES DE POSE (#402b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Elle a été écrite pour la fiche d'un modèle importé, dont la pose est IMBRIQUÉE, un dictionnaire
+ * d'axes par os : `{ hipFL: { x: 0.4 } }`. Celle du Personnage intégré est PLATE, un angle par
+ * champ : `{ torsoRotX: 0.4 }`. Sur cette seconde forme, `anglesNonNuls` reçoit un nombre, n'y
+ * trouve aucun axe et rend `null` : la fonction aurait déclaré vide TOUTE pose de Personnage.
+ *
+ * ⚠️ C'EST LA PANNE DE #383, DE #401b3, ET ELLE SERAIT REVENUE ICI : une fonction écrite pour un
+ * vocabulaire, rebranchée sur un écran qui en parle deux. Reconnaître la forme au lieu de la
+ * supposer coûte une ligne ; la supposer aurait éteint « Enregistrer » pour le Personnage, sans un
+ * mot d'explication à l'écran.
  */
 export function poseNonVide3D(joints){
-  return Object.values(joints || {}).some(v => !!anglesNonNuls(v));
+  return Object.values(joints || {}).some(v => (typeof v === 'number'
+    ? (Number.isFinite(v) && v !== 0)
+    : !!anglesNonNuls(v)));
 }
 
 /**

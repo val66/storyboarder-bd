@@ -39,6 +39,7 @@ import {
 } from '../src/events.js';
 // Rapatriées dans modals.js avec les gestionnaires des modales Pièce/Bâtiment.
 import { recomputeBuildWallBox2D, storeRoomGeometry, getRoomOrBuildingScreenBBox } from '../src/modals.js';
+import { ecrireAngleDeg } from '../src/skeleton-pose.js';
 import {
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
   personaEditorInitialJoints, resetPersonaEditorDraft, setPersonaEditorJointDeg,
@@ -52,6 +53,7 @@ import {
   focusPersonaEditorHandle, cyclePersonaEditorSpec, personaEditorActiveSpec,
   PERSONA_EDITOR_ROT_X_MAX,
   clicQuitteLEditeur3D, quitterEditeurSansRetour, CIBLES_NAV_EDITEUR_3D,
+  syncPersonaEditorActionButtons,
 } from '../src/persona-editor.js';
 import { allerALaPlanche } from '../src/project-tree.js';
 import { smoothTracéPath3D, worldPointToPageXY3D, wallOpeningWorldPosOnTracé3D } from '../src/scene3d.js';
@@ -2871,5 +2873,73 @@ describe('#401b5 : « Appliquer » revient à LA FICHE D\'OÙ L\'ON VIENT', () =
       'le type de figure décide encore : un Animal repassera pour un Personnage');
     assert.match(corps, /!res\.animal/,
       'la clé de pose part vers un <select> qu\'un Animal n\'a pas');
+  });
+});
+
+describe('#402b : une pose où RIEN n\'est tourné ne s\'enregistre pas, depuis l\'Éditeur', () => {
+  // ⚠️ LA GARDE EXISTAIT, ET ELLE A DISPARU SANS BRUIT. Elle vivait sur le bouton « Enregistrer » de
+  // la fiche d'un modèle importé (#390) ; #393 a retiré ce bouton, et personne ne l'a reprise dans
+  // l'Éditeur. Elle a donc manqué de #393 à ici, sans qu'aucun test ne rougisse : c'est la trace
+  // laissée par `poseNonVide3D` dans le registre du code mort qui l'a fait retrouver (#402a).
+  const torso = { key: 'torso', field: 'torsoRotX', axis: null, suffix: '' };
+  beforeEach(() => { closePersonaEditor(); S.poses = []; S.modalTarget = null; });
+
+  test('le brouillon VIDE d\'un Animal ne produit aucune pose', () => {
+    // C'est la figure qui en avait le plus besoin : son brouillon naît VIDE, là où celui d'un
+    // Personnage part d'une pose existante et porte déjà des angles.
+    const o = { type: 'objet3d', objType: 'loup', id: 'a1', animalJoints3d: {} };
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(savePersonaEditorPose('Loup au repos'), null,
+      'une pose qui ne fait rien entre dans la bibliothèque, sous un nom, comme les autres');
+    assert.equal(S.poses.length, 0);
+
+    // ET UN SEUL ANGLE SUFFIT À LA RENDRE ENREGISTRABLE : la garde refuse le vide, pas le peu.
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 20);
+    const pose = savePersonaEditorPose('Patte levée');
+    assert.ok(pose && S.poses.length === 1);
+    closePersonaEditor();
+  });
+
+  test('remettre tous les angles à zéro rend le brouillon inenregistrable de nouveau', () => {
+    // La garde lit le brouillon COURANT, elle ne se souvient pas d'un état antérieur : sans quoi
+    // elle laisserait passer une pose vidée après coup.
+    const o = { type: 'objet3d', objType: 'loup', id: 'a2', animalJoints3d: {} };
+    openPersonaEditor(o, 'objectModal');
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 20);
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 0);
+    assert.equal(savePersonaEditorPose('Rien'), null);
+    closePersonaEditor();
+  });
+
+  test('LE BOUTON LE DIT AVANT LE CLIC, et il ne pose pas la même question que ses voisins', () => {
+    // Un refus silencieux serait pire que le défaut : l'utilisateur nomme sa pose, clique, et rien
+    // ne se passe. Le bouton s'éteint donc, comme « Réinitialiser » et « Appliquer ».
+    //
+    // ⚠️ MAIS PAS SUR LA MÊME QUESTION. Les deux voisins demandent « qu'est-ce qui a CHANGÉ depuis
+    // l'ouverture ? » ; celui-ci demande « y a-t-il quelque chose à enregistrer ? ». Les mettre dans
+    // la même boucle était le raccourci tentant, et il aurait éteint « Enregistrer » sur une pose
+    // reprise telle quelle dans la bibliothèque, qui n'a rien changé et vaut pourtant d'être gardée.
+    const bouton = document.getElementById('personaEditorPoseSaveBtn');
+    const appliquer = document.getElementById('personaEditorApplyBtn');
+    const o = { type: 'objet3d', objType: 'loup', id: 'a3', animalJoints3d: {} };
+    openPersonaEditor(o, 'objectModal');
+    syncPersonaEditorActionButtons();
+    assert.equal(bouton.disabled, true, 'brouillon vide : « Enregistrer » reste cliquable');
+
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 20);
+    syncPersonaEditorActionButtons();
+    assert.equal(bouton.disabled, false);
+    closePersonaEditor();
+
+    // LE CAS QUI SÉPARE LES DEUX QUESTIONS : un Personnage rouvert sur une pose déjà composée. Rien
+    // n'a changé depuis l'ouverture, « Appliquer » est donc éteint ; le brouillon porte pourtant de
+    // vrais angles, et rien n'empêche d'en faire une pose de bibliothèque.
+    openPersonaEditor(null);
+    setPersonaEditorJointDeg(torso, 0);
+    syncPersonaEditorActionButtons();
+    assert.equal(appliquer.disabled, true, 'préalable : rien n\'a changé depuis l\'ouverture');
+    assert.equal(bouton.disabled, false,
+      '« Enregistrer » suit « qu\'est-ce qui a changé » au lieu de « y a-t-il quelque chose »');
+    closePersonaEditor();
   });
 });
