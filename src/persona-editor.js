@@ -13,7 +13,7 @@
 
 import {
   JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
-  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, ARCHETYPES_3D,
+  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, ARCHETYPES_3D, ANIMAL_TYPES,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -22,9 +22,9 @@ import {
   nextDefaultPoseName3D, personaEditorPoseList3D, pointerSweepAngle3D, poseDragIsStraight3D,
   poseJointsByKey3D, posePickRadii3D, poseSliderSignature3D, poseSliderSpecs3D,
   poseSpecRotationAxis3D, poseUsageCount3D, readPoseSliderDeg3D, rememberDismissedPose3D,
-  libelleArticulation3D, libelleTable3D,
+  libelleArticulation3D, libelleTable3D, libelleTypeObjet3D,
   renamePose3D, resolvePoseLabel3D, straightDragDegrees3D, straightDragDirection3D, wrapAngle,
-  writePoseSliderDeg3D, axeDePose3D, modelAxisVector3D,
+  writePoseSliderDeg3D, axeDePose3D, modelAxisVector3D, squelettePourAnimal3D,
 
   orbiteDeFace3D,
 } from './utils.js';
@@ -43,7 +43,7 @@ import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt, pickChaineAt } from './draw.js';
 import {
   makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
-  refreshPersonaPreview, construireCurseursDeSquelette3D,
+  refreshPersonaPreview, construireCurseursDeSquelette3D, construireCurseursDAnimal3D,
   selectionALOuvertureDuGroupe,
 } from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
@@ -105,6 +105,10 @@ export function openPersonaEditor(target, fromModal){
   // de la session précédente, pour la même raison que le cadrage juste en dessous : retrouver la
   // figure de quelqu'un d'autre en ouvrant l'éditeur ne s'expliquerait pas.
   S.personaEditorModelFile = isImportedModel(target) ? target.modelFile : null;
+  // ⚠️ UN ANIMAL INTÉGRÉ N'A PAS DE FICHIER (#401b) : nous construisons son rig, il ne peut donc pas
+  // passer par la ligne au-dessus. C'est son `objType` qui le désigne — `loup`, `oiseau` — et il
+  // décide du vocabulaire comme un fichier le ferait.
+  S.personaEditorAnimal = (target && ANIMAL_TYPES.includes(target.objType)) ? target.objType : null;
   // ⚠️ APRÈS `personaEditorModelFile`, ET L'ORDRE EST LA DÉCISION (#383) : le brouillon dépend du
   // VOCABULAIRE de la figure, que seule cette ligne connaît. Le calculer avant donnerait des
   // articulations de Personnage à une araignée, c'est-à-dire un brouillon inerte.
@@ -137,6 +141,7 @@ export function closePersonaEditor(){
   S.personaEditorDraft = null;
   S.personaEditorFromModal = null;
   S.personaEditorModelFile = null;
+  S.personaEditorAnimal = null;
   S.personaEditorHandleId = null;
   S.personaEditorPoseKey = null;
   S.personaEditorBaseline = null;
@@ -291,7 +296,7 @@ export function savePersonaEditorPose(name){
     // nommer le squelette RÉELLEMENT posé. Le brouillon vient des curseurs, qui lisent cette
     // fonction-là ; l'autre lecture aurait étiqueté `quadrupede` une pose composée sur le
     // Personnage intégré, affiché faute de mieux.
-    S.personaEditorDraft, squelettePourPose3D(figureImporteeDeLEditeur()));
+    S.personaEditorDraft, vocabulaireDeLEditeur3D());
   setPoseLibrary([...(Array.isArray(S.poses) ? S.poses : []), pose]);
   S.personaEditorPoseKey = pose.id;
   return pose;
@@ -342,6 +347,14 @@ export function deletePersonaEditorPose(id){
 export function applyPersonaEditorToModal(){
   if (!S.personaEditorOpen || !S.personaEditorDraft || !S.personaEditorFromModal) return null;
   const cible = personaEditorTarget();
+  // ⚠️ UN ANIMAL S'APPLIQUE SANS TRADUCTION (#401b), comme une créature : son brouillon EST le
+  // dictionnaire de ses articulations, aux mêmes clés de rôle. Il n'a pas d'INTENTION à garder à
+  // côté du résultat — les deux sont le même objet, et en conserver deux copies les ferait diverger
+  // au premier réglage.
+  if (editeurPoseUnAnimal3D()) {
+    S.modalDraftAnimalJoints = cloneJoints(S.personaEditorDraft);
+    return { key: S.personaEditorPoseKey || null, animal: true };
+  }
   // DEUX BROUILLONS, PARCE QUE DEUX CORPS. L'éditeur produit toujours la même chose, une pose du
   // Personnage, mais un modèle importé ne sait pas la lire : ses os ne portent ni les mêmes noms
   // ni les mêmes axes. Elle est donc traduite ici (cf. src/pose-bridge.js) et rangée dans le
@@ -759,6 +772,9 @@ export function choisirFigureDeLEditeur(fichier){
  * part de ses articulations : on ouvre l'Éditeur pour retoucher, pas pour tout reprendre.
  */
 export function brouillonInitialDeLEditeur3D(cible){
+  // Un Animal part de ses propres angles, comme une créature part des siens : on ouvre l'Éditeur
+  // pour retoucher, pas pour tout reprendre.
+  if (editeurPoseUnAnimal3D()) return cloneJoints((cible && cible.animalJoints3d) || {});
   // ⚠️ LA CIBLE EST REÇUE, PAS REDÉRIVÉE. Une première version appelait `personaEditorTarget()`,
   // qui la retrouve par son identifiant dans la Page courante : à l'ouverture, elle n'y est pas
   // encore joignable, et le brouillon repartait de « debout » au lieu de la pose de l'Élément.
@@ -787,6 +803,31 @@ export function editeurPoseUneCreature3D(){
   return !!fichier && squelettePourPose3D(fichier) !== PERSONA_SKELETON_3D;
 }
 
+/**
+ * L'Éditeur pose-t-il un ANIMAL intégré ? Second point de décision du fichier (#401b).
+ *
+ * ⚠️ IL NE REMPLACE PAS `editeurPoseUneCreature3D`, IL LE COMPLÈTE, et les deux ne se recouvrent
+ * jamais : un Animal n'a pas de fichier, une créature importée en a un. Ce qu'ils ont en commun est
+ * le VOCABULAIRE — des clés de rôle — d'où `vocabulaireDeLEditeur3D` juste en dessous, qui est le
+ * seul endroit où l'on demande « dans quelle langue pose-t-on ? ».
+ */
+export function editeurPoseUnAnimal3D(){
+  return !!S.personaEditorAnimal;
+}
+
+/**
+ * La langue dans laquelle l'Éditeur pose : `'humain'`, ou un archétype. UN SEUL point de décision.
+ *
+ * Les trois figures y passent : le Personnage intégré et un humanoïde importé parlent le corps, une
+ * créature importée et un animal intégré parlent les rôles de leur archétype. Deux lecteurs qui
+ * trancheraient chacun de leur côté finiraient par proposer les poses d'une famille et enregistrer
+ * dans une autre.
+ */
+export function vocabulaireDeLEditeur3D(){
+  if (editeurPoseUnAnimal3D()) return squelettePourAnimal3D(S.personaEditorAnimal);
+  return squelettePourPose3D(figureImporteeDeLEditeur());
+}
+
 export function figureImporteeDeLEditeur(){
   const fichier = S.personaEditorModelFile;
   if (!fichier) return null;
@@ -801,6 +842,32 @@ export function figureImporteeDeLEditeur(){
 // L'identifiant du rig est PROPRE À L'ÉDITEUR : partager celui de l'aperçu de la fiche ferait que
 // les deux vues se disputeraient le même cache, et l'une afficherait la pose de l'autre. Le motif a
 // déjà coûté cher plusieurs fois dans ce dépôt (zoom, poignées, caméra).
+/**
+ * Rend un ANIMAL intégré dans le canevas de l'Éditeur, à la pose du brouillon (#401b).
+ *
+ * ⚠️ PRESQUE RIEN À ÉCRIRE, ET C'EST LA MESURE QUI L'A DIT : `ensureObjectRigEntry3D` construit déjà
+ * les rigs d'Animaux, et applique déjà `animalJoints3d` à chaque appel. Il suffit de lui présenter
+ * un Élément temporaire portant le brouillon — exactement le procédé du modèle importé, à l'objet
+ * près.
+ */
+function dessinerAnimalDansEditeur(cnv, objType, size){
+  const tempObj = {
+    id: PERSONA_EDITOR_MODEL_ID,
+    type: 'objet3d', objType,
+    animalJoints3d: S.personaEditorDraft,
+    rotX: 0, rotY: 0, rotZ: 0,
+  };
+  const style = resolveStyle3D();
+  const rw = Math.max(1, Math.round(size.w)), rh = Math.max(1, Math.round(size.h));
+  if (cnv.width !== rw || cnv.height !== rh) { cnv.width = rw; cnv.height = rh; }
+  const rendu = renderModelForEditor3D(tempObj, S.personaEditorZoom, S.personaEditorPan, style,
+    { w: rw, h: rh }, { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY });
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+  applyStyleCanvasFilter3D(ctx, style);
+  ctx.drawImage(rendu, 0, 0, rendu.width, rendu.height, 0, 0, cnv.width, cnv.height);
+}
+
 function dessinerModeleDansEditeur(cnv, fichier, size){
   const creature = editeurPoseUneCreature3D();
   const tempObj = {
@@ -855,6 +922,10 @@ export function drawPersonaEditor(){
   // La pose est TRADUITE pour l'affichage, par la même fonction que partout ailleurs : le modèle ne
   // sait pas lire les champs du Personnage. Un second chemin de traduction, propre à l'aperçu,
   // aurait fini par montrer autre chose que ce qu'« Appliquer » écrit.
+  if (editeurPoseUnAnimal3D()) {
+    dessinerAnimalDansEditeur(cnv, S.personaEditorAnimal, size);
+    return;
+  }
   const modele = figureImporteeDeLEditeur();
   if (modele) {
     dessinerModeleDansEditeur(cnv, modele, size);
@@ -1142,6 +1213,26 @@ export function buildPersonaEditorJointSlidersUI(){
   // créature n'a pas encore ». Elle en a. Ils sont indexés par la clé de pose, exactement celle que
   // porte chaque poignée (cf. entreeDePoigneesDeCreature3D), si bien que cliquer un point déplie
   // son groupe et surligne ses trois lignes sans une ligne de code de plus.
+  // ⚠️ UN ANIMAL A SES PROPRES CURSEURS, un axe par articulation avec ses bornes (#401b) : nous
+  // construisons ces rigs, donc nous savons qu'un genou de loup ne se plie que dans un sens.
+  // Par le MÊME constructeur que sa fiche, pour la raison habituelle — deux listes pour un même
+  // animal divergeraient au premier ajustement.
+  if (editeurPoseUnAnimal3D()) {
+    construireCurseursDAnimal3D({
+      conteneur: container, objType: S.personaEditorAnimal,
+      poseCourante: () => (S.personaEditorDraft || (S.personaEditorDraft = {})),
+      auChangement: () => { syncPersonaEditorActionButtons(); drawPersonaEditor(); },
+      registreGroupes: personaEditorGroupOf, registreLignes: personaEditorRowsOf,
+      registreRefs: personaEditorCreatureRefs,
+      auDepliage: (cles) => {
+        const aPrendre = selectionALOuvertureDuGroupe(cles, S.personaEditorHandleId);
+        if (aPrendre === null) return;
+        focusPersonaEditorHandle(aPrendre);
+        drawPersonaEditor();
+      },
+    });
+    return;
+  }
   if (editeurPoseUneCreature3D()) {
     construireCurseursDeSquelette3D({
       conteneur: container, fichier: figureImporteeDeLEditeur(),
@@ -1407,7 +1498,7 @@ export function buildPersonaEditorPosesUI(){
   // un fichier retenu mais absent de la bibliothèque affichait le Personnage intégré sous des poses
   // de créature, inapplicables à ce qui est à l'écran. Deux lectures d'une même question finissent
   // toujours par diverger, c'est le travers le plus fréquent de ce dépôt.
-  personaEditorPoseList3D(S.poses, squelettePourPose3D(figureImporteeDeLEditeur())).forEach(entry => {
+  personaEditorPoseList3D(S.poses, vocabulaireDeLEditeur3D()).forEach(entry => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = entry.label;
@@ -1507,10 +1598,17 @@ function syncPersonaEditorDom(){
   // La FIGURE, pas la cible : l'Éditeur peut changer de modèle en cours de route, et le titre doit
   // suivre ce qui est à l'écran (#396). `morphologiePourModele` est le point de décision unique,
   // celui-là même qui range les poses et construit les curseurs.
+  // ⚠️ TROIS FIGURES, UNE SEULE FORME DE TITRE (#401b). Un Animal n'a pas de fichier : c'est son
+  // NOM d'espèce qui le désigne — « Loup » — et son archétype vient de la table, pas d'une
+  // reconnaissance de squelette. Le reste du titre ne change pas d'un mot.
   const fichierAffiche = figureImporteeDeLEditeur();
+  const animal = S.personaEditorAnimal;
   if (titleEl) {
-    titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang, fichierAffiche,
-      fichierAffiche ? morphologiePourModele(fichierAffiche) : null);
+    titleEl.textContent = animal
+      ? personaEditorTitle3D(personaEditorTarget(), S.appLang, libelleTypeObjet3D(animal, tr),
+        squelettePourAnimal3D(animal))
+      : personaEditorTitle3D(personaEditorTarget(), S.appLang, fichierAffiche,
+        fichierAffiche ? morphologiePourModele(fichierAffiche) : null);
   }
   if (S.personaEditorOpen) {
     buildPersonaEditorModelUI();

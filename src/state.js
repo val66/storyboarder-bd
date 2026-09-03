@@ -62,6 +62,10 @@ export const S = {
   // La chaîne d'une créature actuellement SURVOLÉE dans l'Éditeur, par son premier os (#392c).
   // Elle ne décide de rien : elle montre. Jamais persistée, un survol ne survit pas à la souris.
   personaEditorHoverChain: null,
+  // L'ANIMAL intégré pose dans l'Éditeur (#401b) : son `objType`, ou null. Il ne peut pas passer
+  // par `personaEditorModelFile` — il n'a pas de fichier, nous construisons son rig — et c'est
+  // pourquoi il lui faut son propre champ plutôt qu'une valeur spéciale dans celui-là.
+  personaEditorAnimal: null,
   // Fix 72 : INDEX du champ piloté au sein de l'articulation sélectionnée (une charnière double ou
   // une rotule en ont deux). Le glisser n'en bouge qu'un à la fois ; la molette passe de l'un à
   // l'autre. Un index et non une clé de descripteur : les descripteurs sont recalculés à la volée

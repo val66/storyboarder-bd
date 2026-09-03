@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.111**
+**Version 1.4.112**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -31,7 +31,9 @@
   offers, with feet, so ankle movement is visible. Head and torso have three axes each: nod, turn
   and tilt; bend, twist and side-lean (see **Model editor** below)
 - 🐾 **Animals** with articulated joints (bird, lizard, wolf, griffin, monkey), filed by morphology
-  like imported models. The bird has two articulated legs, hip and knee
+  like imported models. The bird has two articulated legs, hip and knee. They are posed in the
+  editor, and share their pose library with imported creatures of the same archetype: a pose built
+  on the built-in wolf is offered to an imported dog
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)
 - 🌳 **Vegetation** (trees, shrubs, flowers…)

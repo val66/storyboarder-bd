@@ -82,7 +82,7 @@ export const HELP_MANUAL_EN = [
     'Mouse wheel over a selected character or object to move it closer or further away. It looks bigger or smaller, but its real size does not change.',
     'Position X/Y fields in the dialog to place it precisely; disabled if the object is snapped to the ground (Position Y) or to a wall (Position X/Y).',
     'Wall openings snap automatically to neighboring walls.',
-    'An Animal (bird, lizard, wolf, griffin, monkey) carries sliders per joint. The bird now has two articulated legs, hip and knee, like imported birds do: these five rigs follow the same morphologies as the mapping table.',
+    'An Animal (bird, lizard, wolf, griffin, monkey) IS POSED IN THE EDITOR, opened with the pencil on its card. Its pose library is its archetype\'s, shared with imported creatures: a pose built on the built-in wolf is offered to an imported dog.',
     'If ground snapping is disabled, a "Can cross the ground" option appears in the Position section: uncheck it to keep the object above the ground plane.',
   ]},
   { id: 'personnages', title: 'Characters', paragraphs: [
@@ -211,7 +211,7 @@ export const HELP_MANUAL_FR = [
     'Molette de la souris sur un personnage ou un objet sélectionné pour le rapprocher ou l\'éloigner. Il paraît plus grand ou plus petit, mais sa taille réelle ne change pas.',
     "Champs Position X/Y dans la modale pour le placer précisément ; désactivés si l'objet est aimanté au Sol (Position Y) ou à un Mur (Position X/Y).",
     'Les Parois s\'aimantent automatiquement aux Murs voisins.',
-    'Un Animal (oiseau, lézard, loup, griffon, singe) porte des curseurs par articulation. L\'oiseau a désormais deux pattes articulées, hanche et genou, comme les oiseaux importés : ces cinq rigs suivent les mêmes morphologies que le tableau de correspondance.',
+    'Un Animal (oiseau, lézard, loup, griffon, singe) SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche. Sa bibliothèque de poses est celle de son archétype, partagée avec les créatures importées : une pose faite sur le loup intégré est proposée à un chien importé.',
     "Si l'aimantation au Sol est désactivée, une option « Peut traverser le Sol » apparaît dans la section Position : décochez-la pour bloquer l'objet au-dessus du Sol.",
   ]},
   { id: 'personnages', title: 'Personnages', paragraphs: [

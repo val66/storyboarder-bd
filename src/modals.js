@@ -567,67 +567,87 @@ export function closeAllAnimalJointSliders(){
   if (outer) outer.open = false;
 }
 
+/**
+ * Les curseurs d'un ANIMAL intégré, pour N'IMPORTE QUEL écran. Rend le nombre de groupes posés.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * EXTRAIT POUR QUE L'ÉDITEUR S'EN SERVE AUSSI (#401b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Même geste, même raison et MÊME VOCABULAIRE DE PARAMÈTRES que
+ * `construireCurseursDeSquelette3D` : en écrire un second aurait donné deux listes de curseurs pour
+ * un même animal, qui divergent au premier ajustement. C'est la panne la plus fréquente de ce
+ * dépôt, et le commentaire d'`ajouterGroupeDeCurseurs3D` en garde encore la trace.
+ *
+ * Ce qui change d'un écran à l'autre est PASSÉ, jamais deviné :
+ *   — `conteneur`, le noeud qui reçoit les groupes ;
+ *   — `poseCourante()`, qui rend le brouillon À ÉCRIRE — une fonction et non l'objet, parce que les
+ *     appelants le RÉAFFECTENT quand il est absent ;
+ *   — `auChangement`, ce qu'il faut redessiner ;
+ *   — `auDepliage`, ce que « sélectionner » veut dire chez l'appelant.
+ *
+ * ⚠️ UN AXE PAR ARTICULATION, ET SES BORNES PROPRES : c'est la seule vraie différence avec un
+ * squelette importé, dont chaque os a trois axes libres. Nous construisons ces rigs, donc nous
+ * savons qu'un genou de loup ne se plie que dans un sens et jusqu'où.
+ */
+export function construireCurseursDAnimal3D({
+  conteneur, objType, poseCourante, auChangement, registreGroupes, registreLignes, registreRefs,
+  auDepliage,
+} = {}){
+  const defs = ANIMAL_JOINT_DEFS[objType];
+  if (!conteneur || !defs) return 0;
+  defs.forEach(groupDef => {
+    const details = ajouterGroupeDeCurseurs3D(conteneur, libelleAnimal3D(groupDef.group, tr));
+    const ids = groupDef.joints.map(j => j.id);
+    if (registreGroupes) ids.forEach(id => { registreGroupes[id] = details; });
+    if (auDepliage && details.addEventListener) {
+      details.addEventListener('toggle', () => { if (details.open) auDepliage(ids); });
+    }
+    groupDef.joints.forEach(jDef => {
+      if (registreLignes) registreLignes[jDef.id] = registreLignes[jDef.id] || [];
+      const minDeg = Math.round(jDef.min * 180 / Math.PI);
+      const maxDeg = Math.round(jDef.max * 180 / Math.PI);
+      const initDeg = lireAngleDeg(poseCourante(), jDef.id, jDef.axis);
+      const ref = makeAnimalJointRangeRow(details, libelleAnimal3D(jDef.label, tr),
+        minDeg, maxDeg, initDeg, (deg) => {
+          // ⚠️ LA MÊME ÉCRITURE QUE POUR UNE CRÉATURE IMPORTÉE, ET C'EST MESURÉ : les 61
+          // articulations des cinq animaux intégrés sont acceptées telles quelles par
+          // `ecrireAngleDeg` — ce sont toutes des CLÉS DE RÔLE (`head`, `wingL`, `hipFL`), sur les
+          // trois mêmes axes. Un animal est une créature dont nous avons construit les os.
+          ecrireAngleDeg(poseCourante(), jDef.id, jDef.axis, deg);
+          if (auChangement) auChangement();
+        });
+      if (registreRefs) registreRefs[jDef.id] = ref;
+      if (registreLignes) registreLignes[jDef.id].push(ref.row);
+    });
+  });
+  return defs.length;
+}
+
 export function buildAnimalJointSlidersUI(objType){
   const subsection = document.getElementById('objectAnimalJointsSubsection');
   const container  = document.getElementById('objectAnimalSlidersContainer');
   if (!subsection || !container) return;
-
-  // Clear previous state
   container.innerHTML = '';
-  Object.keys(animalJointGroupDetailsById).forEach(id => delete animalJointGroupDetailsById[id]);
-  Object.keys(animalJointRowsById).forEach(id => delete animalJointRowsById[id]);
-  Object.keys(animalJointSliderRefs).forEach(id => delete animalJointSliderRefs[id]);
-
-  const defs = ANIMAL_JOINT_DEFS[objType];
-  if (!defs) { subsection.style.display = 'none'; return; }
-  subsection.style.display = '';
-
-  defs.forEach(groupDef => {
-    const details = document.createElement('details');
-    details.className = 'joint-group-details';
-    const summary = document.createElement('summary');
-    summary.textContent = libelleAnimal3D(groupDef.group, tr);
-    details.appendChild(summary);
-    container.appendChild(details);
-
-    groupDef.joints.forEach(jDef => { animalJointGroupDetailsById[jDef.id] = details; });
-
-    // Expanding a group → selects its first joint in the preview
-    details.addEventListener('toggle', () => {
-      if (!details.open) return;
-      // ⚠️ L'ÉVÉNEMENT `toggle` EST ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà
-      // retombé quand ce gestionnaire s'exécute, et ne protège de rien. La garde est donc un test
-      // d'ÉTAT — « ce groupe contient-il déjà la sélection ? » — qui ne dépend d'aucun ordre
-      // d'arrivée. Le défaut avait été signalé sur les modèles importés, jamais sur les Animaux ;
-      // le motif était identique, donc la panne aussi, et la correction a été reportée ici.
-      // La note d'origine renvoyait à la fonction des modèles importés, retirée depuis (#394).
+  [animalJointGroupDetailsById, animalJointRowsById, animalJointSliderRefs]
+    .forEach(m => Object.keys(m).forEach(k => delete m[k]));
+  const poses = construireCurseursDAnimal3D({
+    conteneur: container, objType,
+    poseCourante: () => (S.modalDraftAnimalJoints || (S.modalDraftAnimalJoints = {})),
+    auChangement: refreshObjectPreview,
+    registreGroupes: animalJointGroupDetailsById, registreLignes: animalJointRowsById,
+    registreRefs: animalJointSliderRefs,
+    // Ce que « sélectionner » veut dire dans CETTE fiche : sa poignée à elle, son aperçu à elle.
+    auDepliage: (ids) => {
       const choisi = S.selectedAnimalHandle && S.selectedAnimalHandle.id;
-      const aPrendre = selectionALOuvertureDuGroupe(groupDef.joints.map(j => j.id), choisi);
+      const aPrendre = selectionALOuvertureDuGroupe(ids, choisi);
       if (aPrendre === null) { highlightAnimalJointRows(choisi); return; }
       S.selectedAnimalHandle = { id: aPrendre };
       highlightAnimalJointRows(aPrendre);
       refreshObjectPreview();
-    });
-
-    groupDef.joints.forEach(jDef => {
-      animalJointRowsById[jDef.id] = animalJointRowsById[jDef.id] || [];
-      const minDeg  = Math.round(jDef.min * 180 / Math.PI);
-      const maxDeg  = Math.round(jDef.max * 180 / Math.PI);
-      const initRad = (S.modalDraftAnimalJoints && S.modalDraftAnimalJoints[jDef.id]
-                       && S.modalDraftAnimalJoints[jDef.id][jDef.axis]) || 0;
-      const initDeg = Math.round(initRad * 180 / Math.PI);
-
-      const ref = makeAnimalJointRangeRow(details, libelleAnimal3D(jDef.label, tr), minDeg, maxDeg, initDeg, (deg) => {
-        const rad = deg * Math.PI / 180;
-        if (!S.modalDraftAnimalJoints) S.modalDraftAnimalJoints = {};
-        if (!S.modalDraftAnimalJoints[jDef.id]) S.modalDraftAnimalJoints[jDef.id] = {};
-        S.modalDraftAnimalJoints[jDef.id][jDef.axis] = rad;
-        refreshObjectPreview();
-      });
-      animalJointSliderRefs[jDef.id] = ref;
-      animalJointRowsById[jDef.id].push(ref.row);
-    });
+    },
   });
+  subsection.style.display = poses ? '' : 'none';
 }
 
 /**
@@ -904,8 +924,13 @@ export function buildSkeletonPoseFieldUI(obj){
   // bibliothèque de poses sur ce modèle, l'un par une liste, l'autre par l'éditeur. Deux conditions
   // séparées auraient fini par diverger, un crayon devant un modèle sans articulations ouvrirait
   // un éditeur dont « Appliquer » ne pourrait rien appliquer.
+  //
+  // ⚠️ UN ANIMAL INTÉGRÉ L'OBTIENT AUSSI (#401b), et c'est ce qui rend son retrait de fiche
+  // possible : il se pose désormais dans l'Éditeur, avec ses articulations à lui. Le champ « Pose »
+  // ci-dessus, lui, ne le concerne pas encore — sa bibliothèque se remplit d'abord.
   const crayon = document.getElementById('objectEditorOpenBtn');
-  if (crayon) crayon.style.display = posable ? '' : 'none';
+  const animal = ANIMAL_TYPES.includes(obj && obj.objType);
+  if (crayon) crayon.style.display = (posable || animal) ? '' : 'none';
   if (!posable) return;
 
   const etiquette = document.getElementById('objectPoseLabel');

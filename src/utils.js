@@ -12,7 +12,8 @@
  */
 
 import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D,
-  OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN, ANIMAL_LABELS_EN, JOINT_LABELS, JOINT_LABELS_EN } from './constants.js';
+  OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN, ANIMAL_LABELS_EN, JOINT_LABELS, JOINT_LABELS_EN,
+  ANIMAL_ARCHETYPES_3D } from './constants.js';
 
 // ══════════════════════════════════════════════════════════════
 // DATA LOOKUPS
@@ -1344,4 +1345,23 @@ export function motDeSuppressionProjet3D(lang){
  */
 export function suppressionProjetConfirmee3D(saisie, lang){
   return String(saisie == null ? '' : saisie).trim() === motDeSuppressionProjet3D(lang);
+}
+
+/**
+ * Le vocabulaire de pose d'un ANIMAL intégré : son archétype. Fonction PURE (#401b).
+ *
+ * ⚠️ LE MÊME QUE CELUI D'UNE CRÉATURE IMPORTÉE, ET C'EST UNE DÉCISION PRISE AVEC L'UTILISATEUR. Un
+ * loup intégré et un labrador importé sont tous deux des quadrupèdes : leurs poses se rangent donc
+ * ensemble, et une pose composée sur l'un est proposée à l'autre.
+ *
+ * MESURÉ, ce qui rend la chose possible : les 61 articulations des cinq animaux intégrés sont
+ * toutes des CLÉS DE RÔLE — `head`, `wingL`, `hipFL` — exactement le vocabulaire portable d'une
+ * créature importée. Cloisonner aurait créé deux vocabulaires qui se ressemblent, le travers que ce
+ * dépôt paie le plus souvent.
+ *
+ * Rend `null` pour ce qui n'est pas un animal intégré : l'appelant retombe alors sur son autre
+ * chemin, celui du fichier importé.
+ */
+export function squelettePourAnimal3D(objType){
+  return ANIMAL_ARCHETYPES_3D[objType] || null;
 }

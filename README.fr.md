@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.111**
+**Version 1.4.112**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -32,7 +32,9 @@
   trois axes chacun : hocher, tourner, pencher ; se plier, se tourner, s'incliner (voir **Éditeur
   de Personnage** plus bas)
 - 🐾 **Animaux** articulés (oiseau, lézard, loup, griffon, singe), rangés par morphologie comme les
-  modèles importés. L'oiseau a deux pattes articulées, hanche et genou
+  modèles importés. L'oiseau a deux pattes articulées, hanche et genou. Ils se posent dans
+  l'Éditeur, et partagent leur bibliothèque de poses avec les créatures importées du même
+  archétype : une pose faite sur le loup intégré est proposée à un chien importé
 - 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
 - 🚗 **Véhicules** (voitures, motos, camions…)
 - 🌳 **Végétation** (arbres, arbustes, fleurs…)

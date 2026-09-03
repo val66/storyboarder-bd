@@ -53,12 +53,13 @@ import {
   specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
   chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI, chaineAAllumer3D,
-  buildPersonaEditorMapButtonUI,
+  buildPersonaEditorMapButtonUI, editeurPoseUnAnimal3D, vocabulaireDeLEditeur3D, savePersonaEditorPose,
   clesVisiblesDeLEditeur3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
   personaLimbSegmentScreen3D } from '../src/draw.js';
-import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D } from '../src/utils.js';
+import { posePickRadii3D, modelAxisVector3D, poseJointLeverAxis3D, squelettePourAnimal3D }
+  from '../src/utils.js';
 import { tr } from '../src/state.js';
 import { setSkeletonBridge, lireCorrespondances, _viderCacheCorrespondances }
   from '../src/skeleton-store.js';
@@ -2781,5 +2782,121 @@ describe('#401a : l\'Éditeur construit toujours ses curseurs, lui', () => {
     assert.ok(textes.filter(t => t === '0°').length >= 10,
       'aucune valeur de curseur : les lignes sont construites sans leur contenu');
     hidePersonaEditor();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #401b — UN ANIMAL INTÉGRÉ EST UNE CRÉATURE DONT NOUS AVONS CONSTRUIT LES OS
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// MESURÉ AVANT DE COMMENCER, et c'est ce qui a rendu la tâche courte : les 61 articulations des cinq
+// animaux intégrés sont TOUTES des clés de rôle — `head`, `wingL`, `hipFL` — sur les trois mêmes
+// axes, et `ecrireAngleDeg` les accepte telles quelles. Le vocabulaire d'un loup intégré et celui
+// d'un labrador importé sont le même.
+describe('#401b : l\'Éditeur pose un Animal intégré', () => {
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  const loup = () => ({ type: 'objet3d', objType: 'loup', id: 'a1', name: 'Croc', animalJoints3d: {} });
+
+  test('le VOCABULAIRE est son archétype, partagé avec les créatures importées', () => {
+    // Décision prise avec l'utilisateur : une pose composée sur le loup intégré est proposée à un
+    // labrador importé, tous deux quadrupèdes. Cloisonner aurait créé deux vocabulaires qui se
+    // ressemblent — le travers que ce dépôt paie le plus souvent.
+    assert.equal(squelettePourAnimal3D('loup'), 'quadrupede');
+    assert.equal(squelettePourAnimal3D('oiseau'), 'bipede_aile');
+    assert.equal(squelettePourAnimal3D('singe'), 'bipede_queue');
+    // Et rien d'autre n'en a un : une chaise n'a pas d'archétype, l'appelant retombe sur le fichier.
+    assert.equal(squelettePourAnimal3D('chaise'), null);
+    assert.equal(squelettePourAnimal3D(undefined), null);
+  });
+
+  test('ouvrir sur un Animal le retient, et le brouillon part de SES angles', () => {
+    const o = Object.assign(loup(), { animalJoints3d: { head: { x: 0.4 } } });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    const draft = openPersonaEditor(o, 'objectModal');
+    assert.equal(editeurPoseUnAnimal3D(), true, 'l\'Animal n\'est pas reconnu');
+    assert.equal(S.personaEditorAnimal, 'loup');
+    // ⚠️ ET LES DEUX POINTS DE DÉCISION NE SE RECOUVRENT JAMAIS : un Animal n'a pas de fichier, une
+    // créature importée en a un. Les confondre ferait chercher un `.glb` qui n'existe pas.
+    assert.equal(editeurPoseUneCreature3D(), false);
+    assert.deepEqual(draft, o.animalJoints3d, 'on ouvre pour retoucher, pas pour tout reprendre');
+    assert.notEqual(draft, o.animalJoints3d, 'le brouillon partage l\'objet de l\'Élément');
+    assert.equal(vocabulaireDeLEditeur3D(), 'quadrupede');
+    closePersonaEditor();
+  });
+
+  test('ses curseurs viennent du constructeur PARTAGÉ, un axe par articulation', () => {
+    const o = loup();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    const conteneur = document.getElementById('personaEditorJointsContainer');
+    const textes = [];
+    const lire = (el) => (el.children || []).forEach(c => { if (c.textContent) textes.push(c.textContent); lire(c); });
+    lire(conteneur);
+    assert.ok(textes.length > 10, `panneau quasi vide : ${textes.length} éléments`);
+    // ⚠️ UN AXE PAR ARTICULATION, pas trois : nous construisons ces rigs, donc nous savons qu'un
+    // genou de loup ne se plie que dans un sens. C'est la seule vraie différence avec un os importé.
+    const valeurs = textes.filter(t => /°$/.test(t));
+    assert.equal(valeurs.length, 13,
+      `le loup a 13 articulations, une ligne chacune — obtenu ${valeurs.length}`);
+    hidePersonaEditor();
+  });
+
+  test('⚠️ « Appliquer » écrit animalJoints3d, sans traduction', () => {
+    // Son brouillon EST le dictionnaire de ses articulations. Il n'a pas d'INTENTION à garder à côté
+    // du résultat — les deux sont le même objet, et en conserver deux copies les ferait diverger.
+    const o = loup();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    ecrireAngleDeg(S.personaEditorDraft, 'head', 'x', 25);
+    const res = applyPersonaEditorToModal();
+    assert.ok(res && res.animal, 'l\'application ne reconnaît pas l\'Animal');
+    assert.equal(lireAngleDeg(S.modalDraftAnimalJoints, 'head', 'x'), 25);
+    assert.notEqual(S.modalDraftAnimalJoints, S.personaEditorDraft,
+      'le brouillon de la fiche partage l\'objet de l\'Éditeur');
+    closePersonaEditor();
+  });
+
+  test('et une pose enregistrée sur lui naît étiquetée QUADRUPÈDE', () => {
+    // C'est ce qui la rend applicable à un labrador importé : l'étiquette est posée à
+    // l'enregistrement, et rien dans une pose ne dit après coup sur quoi elle a été composée.
+    const o = loup();
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    S.poses = [];
+    openPersonaEditor(o, 'objectModal');
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 30);
+    const pose = savePersonaEditorPose('Assis');
+    assert.ok(pose, 'rien n\'a été enregistré');
+    assert.equal(pose.skeleton, 'quadrupede',
+      'la pose naîtrait rangée ailleurs que chez les quadrupèdes, sans recours');
+    closePersonaEditor();
+  });
+});
+
+describe('#401b : le crayon de la fiche mène l\'Animal à l\'Éditeur', () => {
+  test('⚠️ il apparaît pour un Animal, et c\'est ce qui rend son retrait de fiche possible', () => {
+    // MUTATION ÉCHAPPÉE : rien ne vérifiait la visibilité du crayon devant un Animal. Le remettre à
+    // la seule condition des modèles importés ne faisait rien échouer — et un Animal se serait
+    // retrouvé sans aucun chemin vers l'Éditeur, donc impossible à poser dès que #401c retire ses
+    // curseurs de la fiche. C'est l'ordre des trois retraits qui repose là-dessus.
+    const crayon = document.getElementById('objectEditorOpenBtn');
+
+    buildSkeletonPoseFieldUI({ type: 'objet3d', objType: 'loup', id: 'a1' });
+    assert.equal(crayon.style.display, '', 'un Animal n\'a aucun chemin vers l\'Éditeur');
+
+    buildSkeletonPoseFieldUI({ type: 'objet3d', objType: 'chaise', id: 'c1' });
+    assert.equal(crayon.style.display, 'none', 'une chaise n\'a rien à poser');
+
+    // Et un modèle importé posable le garde, évidemment : c'est lui qui l'avait en premier.
+    _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
+    buildSkeletonPoseFieldUI({ type: 'objet3d', objType: 'modele', modelFile: FICHIER, id: 'm1' });
+    assert.equal(crayon.style.display, '');
   });
 });

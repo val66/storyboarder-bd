@@ -5572,9 +5572,14 @@ if (personaEditorOpenBtn) personaEditorOpenBtn.onclick = () => {
 // parce qu'un bouton resté visible par accident ouvrirait un éditeur sans issue.
 const objectEditorOpenBtn = document.getElementById('objectEditorOpenBtn');
 if (objectEditorOpenBtn) objectEditorOpenBtn.onclick = () => {
-  if (!S.modalTarget || !isImportedModel(S.modalTarget)) return;
+  // ⚠️ UN ANIMAL INTÉGRÉ PASSE AUSSI PAR LÀ (#401b) : il se pose désormais dans l'Éditeur, avec ses
+  // articulations à lui. La garde suit donc la même liste que l'affichage du crayon — deux
+  // conditions séparées finiraient par laisser un bouton visible ouvrir un écran qui ne sait rien
+  // en faire.
+  const cible = S.modalTarget;
+  if (!cible || !(isImportedModel(cible) || ANIMAL_TYPES.includes(cible.objType))) return;
   objectModal.classList.add('hidden');
-  showPersonaEditor(S.modalTarget, 'objectModal');
+  showPersonaEditor(cible, 'objectModal');
 };
 descModalCancel.onclick = () => dismissModal(closeDescModal);
 descModal.addEventListener('mousedown', (e) => { if (e.target === descModal) { e.stopPropagation(); dismissModal(closeDescModal); } });
