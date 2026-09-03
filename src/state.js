@@ -169,7 +169,6 @@ export const S = {
   // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
   // l'Élément qu'« Appliquer » alimente. Jamais persisté, un choix de vue, pas une propriété.
   personaEditorModelFile:     null,
-  selectedSkeletonHandle:      null,  // { id: slot } ou null, poignée choisie sur l'aperçu
   modalDirty:                 false,
   modalIsNew:                 false,
   modalSnapshot:              '',

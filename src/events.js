@@ -120,9 +120,8 @@ import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
-  buildSkeletonJointSlidersUI,
+  buildSkeletonMapButtonUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
-  pickSkeletonHandleAt, openSkeletonJointGroupForHandle, closeAllSkeletonJointSliders,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
   recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
@@ -4320,7 +4319,7 @@ function renderSkeletonMapModal(){
       repris: _skelEcran.repris,
     },
   }, tr);
-  // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonJointSlidersUI) : deux noms
+  // Le MÊME libellé que le bouton qui ouvre cet écran (cf. buildSkeletonMapButtonUI) : deux noms
   // pour une seule chose obligent l'utilisateur à faire le rapprochement lui-même.
   document.getElementById('skeletonMapTitle').textContent =
     tr('Mapping table', 'Tableau de correspondance');
@@ -4965,7 +4964,7 @@ document.getElementById('objectSkeletonMapBtn').onclick = async () => {
   if (S.modalTarget !== cible) return;   // la modale a été fermée entre-temps
   disposeObjectRig3D(cible.id);
   disposeObjectRig3D(PREVIEW_OBJECT_ID);
-  buildSkeletonJointSlidersUI(cible);
+  buildSkeletonMapButtonUI(cible);
   refreshObjectPreview();
 };
 
@@ -5609,40 +5608,10 @@ window.addEventListener('keydown', (e) => {
 
 // Converts screen coordinates to canvas pixels (handles object-fit:contain letterboxing).
 
-// Clic sur l'aperçu d'un Modèle importé : sélectionne/désélectionne un point d'articulation.
-//
-// Déclaré AVANT celui des Animaux, et il rend la main tout de suite si l'Élément n'est pas un
-// modèle importé : les deux ne peuvent pas se disputer un clic, puisqu'un Élément est soit l'un
-// soit l'autre (cf. openObjectModal, qui masque le sélecteur de Type pour un modèle importé).
-objectPreview3D.addEventListener('mousedown', (e) => {
-  if (!isImportedModel(S.modalTarget)) return;
-  const { px, py } = getObjectPreviewCanvasCoords(e);
-  const def = pickSkeletonHandleAt(px, py);
-  if (!def) {
-    S.selectedSkeletonHandle = null;
-    closeAllSkeletonJointSliders();
-    refreshObjectPreview();
-    e.preventDefault();
-    return;
-  }
-  // Recliquer le point déjà choisi le désélectionne, même bascule que pour les Personnages.
-  if (S.selectedSkeletonHandle && S.selectedSkeletonHandle.id === def.id) {
-    S.selectedSkeletonHandle = null;
-    closeAllSkeletonJointSliders();
-  } else {
-    S.selectedSkeletonHandle = def;
-    openSkeletonJointGroupForHandle(def.id);
-  }
-  refreshObjectPreview();
-  e.preventDefault();
-});
-
-// Curseur « pointer » au survol d'un point d'articulation d'un Modèle importé.
-objectPreview3D.addEventListener('mousemove', (e) => {
-  if (!isImportedModel(S.modalTarget)) return;
-  const { px, py } = getObjectPreviewCanvasCoords(e);
-  objectPreview3D.style.cursor = pickSkeletonHandleAt(px, py) ? 'pointer' : 'default';
-});
+// ⚠️ LE CLIC ET LE SURVOL DES POINTS D'UN MODÈLE IMPORTÉ ONT ÉTÉ RETIRÉS D'ICI (#394). Poser se
+// fait dans l'Éditeur de Personnage, et nulle part ailleurs : cet aperçu-ci fait quelques centaines
+// de pixels, y viser un point parmi les 45 d'un cerbère n'a jamais été confortable. Les Animaux
+// intégrés gardent les leurs, juste en dessous — ils en ont une dizaine, et pas de second écran.
 
 // Click on the object preview: selects/deselects an animal joint point.
 objectPreview3D.addEventListener('mousedown', (e) => {

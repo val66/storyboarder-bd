@@ -476,18 +476,18 @@ describe('Un seul nom pour « Réglages des articulations »', () => {
   const I18N   = lire('src/i18n.js');
   const MODALS = lire('src/modals.js');
 
-  test('les quatre emplacements de index.html portent le MÊME libellé', () => {
-    // Trois <summary> (Personnage, Animaux, Modèle importé) et le titre du panneau de l'éditeur.
+  test('les emplacements de index.html portent le MÊME libellé', () => {
+    // ⚠️ ILS ÉTAIENT QUATRE, ILS SONT TROIS (#394) : deux <summary> (Personnage, Animaux) et le
+    // titre du panneau de l'éditeur. Celui de la fiche d'un Modèle importé est parti avec ses
+    // curseurs — poser se fait dans l'Éditeur, et nulle part ailleurs.
     const trouves = [...HTML.matchAll(/<(?:summary|h2)[^>]*>([^<]*[Rr]églage[^<]*)</g)].map(m => m[1].trim());
-    assert.ok(trouves.length >= 4, `attendu au moins 4 emplacements, trouvé ${trouves.length}`);
+    assert.ok(trouves.length >= 3, `attendu au moins 3 emplacements, trouvé ${trouves.length}`);
     trouves.forEach(t => assert.equal(t, LIBELLE_FR, `libellé divergent dans index.html : « ${t} »`));
   });
 
-  test('la table i18n et le libellé posé par tr() disent la même chose', () => {
+  test('la table i18n dit la même chose que le HTML', () => {
     assert.match(I18N, new RegExp(`'#personaEditorJointsHeading', '${LIBELLE_EN}', '${LIBELLE_FR}'`),
       'l\'entrée i18n du panneau de l\'éditeur a divergé');
-    assert.match(MODALS, new RegExp(`tr\\('${LIBELLE_EN}', '${LIBELLE_FR}'\\)`),
-      'le libellé posé pour les modèles importés a divergé');
   });
 
   test('RÉGRESSION : aucune trace des anciennes formulations', () => {

@@ -48,11 +48,11 @@ import {
 import {
   cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
   personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
-  modeleImportePosable3D, squelettePourPose3D,
+  modeleImportePosable3D, squelettePourPose3D, osNeutresDuModele3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
-  couverturePose3D, messageDeCouverture3D, poigneesParDefaut3D, estCleDeRole3D,
+  couverturePose3D, messageDeCouverture3D,
 } from './skeleton-pose.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
@@ -596,9 +596,12 @@ export function buildAnimalJointSlidersUI(objType){
     // Expanding a group → selects its first joint in the preview
     details.addEventListener('toggle', () => {
       if (!details.open) return;
-      // Même défaut que pour les squelettes importés : cf. la note détaillée plus bas dans
-      // buildSkeletonJointSlidersUI. Corrigé ici aussi : le motif était identique, donc la panne
-      // aussi, même si personne ne l'avait encore signalée sur les Animaux.
+      // ⚠️ L'ÉVÉNEMENT `toggle` EST ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà
+      // retombé quand ce gestionnaire s'exécute, et ne protège de rien. La garde est donc un test
+      // d'ÉTAT — « ce groupe contient-il déjà la sélection ? » — qui ne dépend d'aucun ordre
+      // d'arrivée. Le défaut avait été signalé sur les modèles importés, jamais sur les Animaux ;
+      // le motif était identique, donc la panne aussi, et la correction a été reportée ici.
+      // La note d'origine renvoyait à la fonction des modèles importés, retirée depuis (#394).
       const choisi = S.selectedAnimalHandle && S.selectedAnimalHandle.id;
       const aPrendre = selectionALOuvertureDuGroupe(groupDef.joints.map(j => j.id), choisi);
       if (aPrendre === null) { highlightAnimalJointRows(choisi); return; }
@@ -642,36 +645,56 @@ export function buildAnimalJointSlidersUI(objType){
  *   — la section entière disparaît s'il n'y a aucun os. Une chaise importée n'a pas
  *     d'articulations, et c'est le cas le plus fréquent.
  */
-export function buildSkeletonJointSlidersUI(obj){
-  const subsection = document.getElementById('objectSkeletonJointsSubsection');
-  const container  = document.getElementById('objectSkeletonSlidersContainer');
-  if (!subsection || !container) return;
-  container.innerHTML = '';
-  Object.keys(skeletonJointGroupDetailsById).forEach(k => delete skeletonJointGroupDetailsById[k]);
-  Object.keys(skeletonJointRowsById).forEach(k => delete skeletonJointRowsById[k]);
-  Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
-  S.selectedSkeletonHandle = null;
-  if (!isImportedModel(obj)) { subsection.style.display = 'none'; return; }
-
-  const poses = construireCurseursDeSquelette3D({
-    conteneur: container, fichier: obj.modelFile,
-    // Le brouillon est RÉAFFECTÉ quand il est absent : d'où une fonction, et non l'objet.
-    poseCourante: () => (S.modalDraftSkeletonPose || (S.modalDraftSkeletonPose = {})),
-    auChangement: refreshObjectPreview,
-    registreGroupes: skeletonJointGroupDetailsById, registreLignes: skeletonJointRowsById,
-  });
-  if (!poses) { subsection.style.display = 'none'; return; }
-  subsection.style.display = '';
-
-  const resume = document.getElementById('objectSkeletonSlidersSummary');
-  if (resume) resume.textContent = tr('Joint settings', 'Réglages des articulations');
-  // Le libellé du bouton est posé ICI, et non en dur dans index.html : l'application est bilingue,
-  // et tout le reste de cet écran passe déjà par tr().
+/**
+ * Le bouton « Tableau de correspondance » de la fiche d'un Modèle importé.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUI VIVAIT ICI A ÉTÉ RETIRÉ (#394)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Cette fonction construisait les curseurs d'articulation de la fiche, et sa cousine dessinait les
+ * points d'articulation sur l'aperçu. Décision de l'utilisateur : POSER SE FAIT DANS L'ÉDITEUR, ET
+ * NULLE PART AILLEURS. L'aperçu de cette fiche fait quelques centaines de pixels ; y viser un point
+ * parmi les 45 d'un cerbère ou les 103 d'une araignée n'a jamais été confortable, et l'Éditeur, lui,
+ * dispose de toute la zone centrale, du survol par chaîne et du glisser.
+ *
+ * C'est le PENDANT de #393, qui avait déjà retiré la création de poses depuis la fiche. La fiche
+ * APPLIQUE une pose et n'en compose plus aucune, à aucun niveau : un seul écran pose, un seul écran
+ * enregistre, et il n'y a plus deux endroits qui écrivent `skeletonPose3d` à la main.
+ *
+ * LE BOUTON, LUI, RESTE, et sa raison n'a pas bougé : c'est en regardant un Élément qu'on s'aperçoit
+ * qu'un bras tourne au mauvais endroit.
+ *
+ * ⚠️ SA CONDITION D'AFFICHAGE CHANGE, ET C'EST UNE CORRECTION. Elle était « le fichier a des chaînes
+ * pilotables », parce que le bouton était accroché aux curseurs. Un fichier dont AUCUNE chaîne n'est
+ * reconnue n'avait donc pas de bouton — c'est-à-dire précisément le cas où l'on veut ouvrir le
+ * tableau de correspondance. La condition est maintenant « le fichier porte des os ».
+ */
+export function buildSkeletonMapButtonUI(obj){
+  const subsection = document.getElementById('objectSkeletonMapSubsection');
+  if (!subsection) return;
+  const aDesOs = isImportedModel(obj) && osNeutresDuModele3D(obj.modelFile).length > 0;
+  subsection.style.display = aDesOs ? '' : 'none';
+  if (!aDesOs) return;
+  // Le libellé est posé ICI, et non en dur dans index.html : l'application est bilingue, et tout le
+  // reste de cet écran passe déjà par tr().
   const btn = document.getElementById('objectSkeletonMapBtn');
   if (btn) btn.textContent = tr('Mapping table', 'Tableau de correspondance');
 }
 
-/** Un `<details>` de groupe, avec sa réciproque « déplier sélectionne le premier point ». */
+/**
+ * Un `<details>` de groupe. Rien de plus.
+ *
+ * ⚠️ IL PORTAIT UN GESTIONNAIRE DE DÉPLIAGE PROPRE À LA FICHE, ET L'ÉDITEUR L'EXÉCUTAIT AUSSI (#394).
+ * Déplier un groupe y écrivait `S.selectedSkeletonHandle` — l'état de la FICHE — puis appelait
+ * `refreshObjectPreview`, qui redessine l'aperçu de la FICHE. Depuis l'Éditeur, cela ne sélectionnait
+ * rien de visible et redessinait un canevas masqué : une fuite d'un écran vers l'autre, silencieuse,
+ * que la fiche n'aurait de toute façon plus aucune raison de porter maintenant qu'elle n'a plus ni
+ * curseurs ni points.
+ *
+ * Ce qui change d'un écran à l'autre est PASSÉ, jamais deviné — la règle est écrite dans l'en-tête
+ * de `construireCurseursDeSquelette3D`, et cette fonction-ci était la seule à ne pas la suivre.
+ */
 function ajouterGroupeDeCurseurs3D(parent, titre){
   const details = document.createElement('details');
   details.className = 'joint-group-details';
@@ -679,38 +702,7 @@ function ajouterGroupeDeCurseurs3D(parent, titre){
   summary.textContent = titre;
   details.appendChild(summary);
   parent.appendChild(details);
-
-  // Réciproque du clic sur l'aperçu : déplier un groupe sélectionne son PREMIER point, pour que
-  // le dialogue aille dans les deux sens, exactement comme pour les Animaux et le Personnage.
-  details.addEventListener('toggle', () => {
-    if (!details.open) return;
-    // LA GARDE EST UN TEST D'ÉTAT, PAS UN DRAPEAU. L'événement `toggle` d'un <details> est émis de
-    // façon ASYNCHRONE : un drapeau posé puis retiré dans la foulée est déjà retombé quand le
-    // gestionnaire s'exécute, et ne protège de rien. Concrètement, cliquer un point sur l'aperçu
-    // dépliait son groupe, dont le toggle différé resélectionnait aussitôt la PREMIÈRE articulation
-    // du groupe, signalé à l'usage : « ça sélectionne le premier groupe de la sous-section plutôt
-    // que le bon ». Se demander « ce groupe contient-il déjà la sélection ? » ne dépend d'aucun
-    // ordre d'arrivée. Le remède était déjà écrit dans persona-editor.js ; il n'avait pas été
-    // reporté ici, et je l'ai recopié cassé une troisième fois.
-    //
-    // LES CLÉS SONT LUES DANS LE DOM, pas dans une liste capturée à la construction : depuis #374 un
-    // groupe d'ancre ne porte pas de curseur lui-même, ses chaînes en portent. Demander « quelles
-    // clés sont sous moi ? » répond juste aux deux niveaux, sans les distinguer.
-    const clefs = clesDuGroupe3D(details);
-    const choisi = S.selectedSkeletonHandle && S.selectedSkeletonHandle.id;
-    const aPrendre = selectionALOuvertureDuGroupe(clefs, choisi);
-    if (aPrendre === null) { highlightSkeletonJointRows(choisi); return; }
-    S.selectedSkeletonHandle = { id: aPrendre };
-    highlightSkeletonJointRows(aPrendre);
-    refreshObjectPreview();
-  });
   return details;
-}
-
-/** Les clés pilotées sous un groupe, dans l'ordre d'affichage. */
-function clesDuGroupe3D(details){
-  return Object.keys(skeletonJointGroupDetailsById)
-    .filter(cle => details.contains(skeletonJointGroupDetailsById[cle]));
 }
 
 /** Les trois curseurs de chaque os d'une chaîne, dans son `<details>`. */
@@ -741,7 +733,7 @@ function clesDuGroupe3D(details){
 // à chaque image, et rebâtir des dizaines d'éléments par image refermerait en plus le groupe ouvert.
 export function construireCurseursDeSquelette3D({
   conteneur, fichier, poseCourante, auChangement, registreGroupes, registreLignes, registreRefs,
-  auSurvolDeChaine,
+  auSurvolDeChaine, auDepliage,
 } = {}){
   if (!conteneur || !fichier) return 0;
   const { groupes } = groupesDeCurseurs3D(fichier, tr);
@@ -772,6 +764,17 @@ export function construireCurseursDeSquelette3D({
   // représente — le groupe d'ancre, lui, en contient plusieurs et n'en désigne aucune.
   //
   // `auSurvolDeChaine` est optionnel : la fiche ne le passe pas, et rien n'y change.
+  // Déplier un groupe sélectionne son PREMIER point, pour que le dialogue entre les deux moitiés de
+  // l'écran aille dans les deux sens. L'écran qui appelle dit ce que « sélectionner » veut dire chez
+  // lui : la fiche n'a plus de points, l'Éditeur en a (#394).
+  const brancherDepliage = (bloc, cles) => {
+    if (!auDepliage || !cles.length || !bloc.addEventListener) return;
+    // ⚠️ AUCUN DRAPEAU, UN TEST D'ÉTAT. L'événement `toggle` est ASYNCHRONE : un drapeau posé puis
+    // retiré dans la foulée est déjà retombé quand le gestionnaire s'exécute. C'est la décision que
+    // porte `selectionALOuvertureDuGroupe`, chez l'appelant, qui se demande « ce groupe contient-il
+    // déjà la sélection ? » — question qui ne dépend d'aucun ordre d'arrivée.
+    bloc.addEventListener('toggle', () => { if (bloc.open) auDepliage(cles); });
+  };
   const brancherSurvol = (bloc, chaine) => {
     if (!auSurvolDeChaine) return;
     const cles = (chaine.os || []).map(o => o.cle).filter(Boolean);
@@ -781,16 +784,22 @@ export function construireCurseursDeSquelette3D({
     titre.addEventListener('mouseenter', () => auSurvolDeChaine(cles[0]));
     titre.addEventListener('mouseleave', () => auSurvolDeChaine(null));
   };
+  const clesDe = (chaine) => (chaine.os || []).map(o => o.cle).filter(Boolean);
   groupes.forEach(groupe => {
     const bloc = ajouterGroupeDeCurseurs3D(conteneur, groupe.titre);
     if (groupe.chaines.length === 1) {
       brancherSurvol(bloc, groupe.chaines[0]);
+      brancherDepliage(bloc, clesDe(groupe.chaines[0]));
       remplir(bloc, groupe.chaines[0].os);
       return;
     }
+    // Le groupe d'ancre porte les clés de TOUTES ses chaînes : déplier « Ancre Hips » doit
+    // sélectionner quelque chose, et ce quelque chose est le premier point qu'il contient.
+    brancherDepliage(bloc, groupe.chaines.flatMap(clesDe));
     groupe.chaines.forEach(chaine => {
       const sousBloc = ajouterGroupeDeCurseurs3D(bloc, chaine.titre);
       brancherSurvol(sousBloc, chaine);
+      brancherDepliage(sousBloc, clesDe(chaine));
       remplir(sousBloc, chaine.os);
     });
   });
@@ -862,9 +871,9 @@ export function buildFigureFieldUI(obj){
     // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null`, figure
     // illisible, laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
     S.modalDraftSkeletonPose = poseOsPourModeleImporte(sel.value, S.modalDraftJoints) || {};
-    // La correspondance change avec le fichier : les curseurs affichés doivent être ceux des os de
-    // la NOUVELLE figure, pas ceux d'avant.
-    buildSkeletonJointSlidersUI(Object.assign({}, obj, { modelFile: sel.value }));
+    // Le tableau de correspondance suit le fichier : c'est celui de la NOUVELLE figure qu'on doit
+    // pouvoir ouvrir, et un fichier sans os n'a pas de bouton du tout.
+    buildSkeletonMapButtonUI(Object.assign({}, obj, { modelFile: sel.value }));
     refreshObjectPreview();
   };
 }
@@ -963,7 +972,6 @@ export function buildSkeletonPoseFieldUI(obj){
     // l'intention serait la source, et garder les deux ferait diverger deux copies d'un seul objet.
     S.modalDraftJoints = humanoide ? cloneJoints(joints) : null;
     S.modalDraftSkeletonPose = pose;
-    buildSkeletonJointSlidersUI(obj);
     refreshObjectPreview();
     // CE QUI N'A PAS ATTERRI EST DIT. Une pose composée sur un autre squelette du même archétype
     // n'apporte que ses rôles : le modèle reste à moitié au repos, et sans un mot on chercherait
@@ -1191,7 +1199,7 @@ export function openObjectModal(obj, isNew){
   // Brouillon comme tout le reste : la case agit sur l'aperçu, l'Élément n'est touché qu'à
   // l'enregistrement.
   S.modalDraftAfficherEgares = !!obj.afficherMaillagesEgares;
-  buildSkeletonJointSlidersUI(obj);
+  buildSkeletonMapButtonUI(obj);
   buildSkeletonPoseFieldUI(obj);
   buildStrayMeshFieldUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['principal', 'apercu']);
@@ -1248,7 +1256,8 @@ export function refreshObjectPreview(){
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
   if (ANIMAL_TYPES.includes(objectTypeSelect.value)) drawAnimalJointHandlesOverlay();
-  if (_estModele) drawSkeletonJointHandlesOverlay();
+  // Un Modèle importé n'a plus de poignées ici (#394) : elles vivent dans l'Éditeur, qui a la place
+  // de les viser. L'aperçu de cette fiche montre la pose, il ne la compose pas.
 }
 
 // [STATE→S] let S.objectPreviewZoom = 1;
@@ -1282,121 +1291,31 @@ export function drawAnimalJointHandlesOverlay(){
   ctx.globalAlpha = 1;
 }
 
-// ---------- Poignées d'articulation d'un Modèle importé ----------
+// ---------- Poignées d'articulation d'un Modèle importé : RETIRÉES (#394) ----------
 //
-// MÊME GESTE QUE POUR LES ANIMAUX ET LES PERSONNAGES, et c'est tout l'objet : cliquer un point de
-// l'aperçu déplie le groupe de curseurs correspondant, et le groupe déplié surligne son point. Rien
-// de neuf à apprendre selon le type d'Élément.
+// Vivaient ici : la carte des positions à l'écran, le tracé des pastilles, le test de clic, et les
+// deux registres qui reliaient un point à ses curseurs. Tout est parti avec les curseurs eux-mêmes :
+// poser se fait dans l'Éditeur de Personnage, et nulle part ailleurs.
 //
-// LA DIFFÉRENCE EST LA SOURCE DES POINTS. Un Animal a des pivots que nous avons construits ; un
-// modèle importé n'a que les os que la correspondance a reconnus. Les poignées sont donc exactement
-// les emplacements PILOTABLES, pas un de plus, pas un de moins. Un point qu'on peut attraper mais
-// qui ne mène à aucun curseur serait le même mensonge qu'un curseur ne pilotant aucun os.
-export const skeletonHandleScreenPos = {};
+// ⚠️ CE QUI A ÉTÉ GARDÉ, ET POURQUOI. Les ANIMAUX intégrés ont toujours leurs points sur cet aperçu,
+// et c'est le même geste pour l'usager, donc la même pastille et le même test de clic. Ce qui
+// disparaît est le vocabulaire des modèles IMPORTÉS, pas le principe.
 
-export function drawSkeletonJointHandlesOverlay(){
-  if (typeof THREE === 'undefined') return;
-  const entry = objectRigCache3D.get(PREVIEW_OBJECT_ID);
-  if (!entry || !entry.skeletonBones) return;
-  const cnv = objectPreview3D;
-  const ctx = cnv.getContext('2d');
-  Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
-  // ⚠️ LES RÔLES D'ABORD ICI AUSSI (#392e), et par la MÊME fonction que l'Éditeur : deux écrans qui
-  // décideraient chacun de leur côté quels points montrer finiraient par ne pas montrer les mêmes.
-  //
-  // CE QUE LA FICHE A EN GUISE DE SURVOL, ELLE L'AVAIT DÉJÀ : déplier un groupe. Les os de la chaîne
-  // ouverte s'ajoutent donc aux rôles, ce qui donne le même geste qu'à côté — on ouvre une patte,
-  // ses points apparaissent — sans inventer de mécanisme. La poignée SÉLECTIONNÉE reste visible en
-  // toutes circonstances, sans quoi choisir une articulation la ferait disparaître.
-  const cles = Object.keys(skeletonJointGroupDetailsById);
-  const parDefaut = poigneesParDefaut3D(cles);
-  const choisie = (S.selectedSkeletonHandle && S.selectedSkeletonHandle.id) || null;
-  const ouverte = (cle) => {
-    const bloc = skeletonJointGroupDetailsById[cle];
-    return !!(bloc && bloc.open);
-  };
-  cles.forEach(slot => {
-    const os = (entry.skeletonBones[slot] || {}).os;
-    if (!os) return;
-    if (parDefaut && !parDefaut.includes(slot) && slot !== choisie && !ouverte(slot)) return;
-    const pt = projectJointToCanvas(os, personaCamera3D, cnv.width, cnv.height);
-    skeletonHandleScreenPos[slot] = pt;
-    dessinerPoignee(ctx, pt, slot === choisie, estCleDeRole3D(slot));
-  });
-  ctx.globalAlpha = 1;
+/** Dessine une pastille d'articulation. Même apparence partout : c'est le même geste pour l'usager. */
+function dessinerPoignee(ctx, pt, active){
+  ctx.beginPath();
+  ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
+  ctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
+  ctx.globalAlpha = 0.92;
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
 }
 
-export function pickSkeletonHandleAt(px, py){
-  return pickHandleAt(skeletonHandleScreenPos, px, py);
-}
-
-export const skeletonJointGroupDetailsById = {};
-export const skeletonJointRowsById = {};
-
-export function highlightSkeletonJointRows(slot){
-  document.querySelectorAll('#objectSkeletonSlidersContainer .joint-slider-row.active').forEach(row => {
-    row.classList.remove('active');
-  });
-  (skeletonJointRowsById[slot] || []).forEach(row => row.classList.add('active'));
-}
-
-/**
- * Les `<details>` qui contiennent celui-là, du plus proche au plus lointain, dans la sous-section.
- *
- * NÉCESSAIRE DEPUIS #374 : les curseurs d'une créature sont repliés à DEUX niveaux, l'ancre puis la
- * chaîne. Sans cette remontée, la règle « on ferme tout sauf le groupe visé » fermait l'ancre qui
- * contient le groupe visé, et cliquer une poignée n'ouvrait donc rien du tout. Le cas humanoïde n'a
- * qu'un niveau et cette fonction lui rend une liste vide, sans branche supplémentaire.
- */
-function ancetresDeGroupe3D(details){
-  const chaine = [];
-  let n = details && details.parentElement;
-  while (n && n.id !== 'objectSkeletonSlidersContainer') {
-    if (n.tagName === 'DETAILS') chaine.push(n);
-    n = n.parentElement;
-  }
-  return chaine;
-}
-
-export function openSkeletonJointGroupForHandle(slot){
-  highlightSkeletonJointRows(slot);
-  const details = skeletonJointGroupDetailsById[slot];
-  const outer = document.getElementById('objectSkeletonSlidersDetails');
-  if (outer && !outer.open) outer.open = true;
-  const aGarder = new Set(details ? [details, ...ancetresDeGroupe3D(details)] : []);
-  // TOUS LES `<details>` DE LA SOUS-SECTION, lus dans le document plutôt que dans la table des
-  // groupes : celle-ci ne retient que le niveau le PLUS PROFOND, celui qui porte les curseurs. Les
-  // ancres n'y figurent pas, et se seraient donc empilées ouvertes, une par poignée cliquée.
-  tousLesGroupesSkeleton3D().forEach(d => { if (!aGarder.has(d) && d.open) d.open = false; });
-  aGarder.forEach(d => { if (!d.open) d.open = true; });
-}
-
-function tousLesGroupesSkeleton3D(){
-  const racine = document.getElementById('objectSkeletonSlidersContainer');
-  return racine ? [...racine.querySelectorAll('details')] : [];
-}
-
-export function closeAllSkeletonJointSliders(){
-  highlightSkeletonJointRows(null);
-  const outer = document.getElementById('objectSkeletonSlidersDetails');
-  tousLesGroupesSkeleton3D().forEach(d => { d.open = false; });
-  if (outer) outer.open = false;
-}
-
-/**
- * Rayon de prise d'une poignée d'articulation, en pixels du canevas.
- *
- * Une seule valeur pour tous les aperçus : Animaux et squelettes importés dessinent la même
- * pastille, elle doit donc s'attraper pareil. Deux constantes auraient dérivé.
- */
 const RAYON_PRISE_POIGNEE = 17;
 
-/**
- * La poignée la plus proche d'un clic, dans une carte `id -> {x, y}`. Rend `null` au-delà du rayon.
- *
- * Partagée par les Animaux et les Modèles importés. La version précédente était écrite deux fois,
- * une occasion de plus, dans ce dépôt, de voir deux copies du même calcul diverger.
- */
+/** La poignée la plus proche du curseur, dans une carte de positions. */
 export function pickHandleAt(positions, px, py){
   let best = null, bestD2 = RAYON_PRISE_POIGNEE * RAYON_PRISE_POIGNEE;
   Object.keys(positions || {}).forEach(id => {
@@ -1407,21 +1326,6 @@ export function pickHandleAt(positions, px, py){
     if (d2 < bestD2) { bestD2 = d2; best = id; }
   });
   return best ? { id: best } : null;
-}
-
-/** Dessine une pastille d'articulation. Même apparence partout : c'est le même geste pour l'usager. */
-function dessinerPoignee(ctx, pt, active, role){
-  ctx.beginPath();
-  ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
-  // ⚠️ MÊMES COULEURS QUE L'ÉDITEUR (#392e) : le bleu plein est un RÔLE, la part portable de la
-  // pose ; le bleu pâle un os quelconque, dont le réglage ne vaut que pour ce fichier. Un Animal et
-  // un humanoïde ne passent pas ce drapeau et gardent exactement la couleur d'avant.
-  ctx.fillStyle = active ? '#E0A53C' : (role === false ? '#9FC9EE' : '#3AA0FF');
-  ctx.globalAlpha = 0.92;
-  ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = '#fff';
-  ctx.stroke();
 }
 
 /**

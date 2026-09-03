@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
-  pickHandleAt, pickSkeletonHandleAt, skeletonHandleScreenPos,
+  pickHandleAt,
   selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
   remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert,
   legendeDoitSeReplier3D } from '../src/modals.js';
@@ -162,7 +162,6 @@ describe('Poignées d\'articulation — une seule prise pour tous les types d\'�
   // désormais commune ; les deux entrées publiques ne font que lui passer leur carte de positions.
   beforeEach(() => {
     Object.keys(animalHandleScreenPos).forEach(k => delete animalHandleScreenPos[k]);
-    Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
   });
 
   test('la poignée la PLUS PROCHE gagne, pas la première rencontrée', () => {
@@ -186,82 +185,60 @@ describe('Poignées d\'articulation — une seule prise pour tous les types d\'�
     assert.equal(pickHandleAt({ a: null }, 0, 0), null);
   });
 
-  test('Animaux et Modèles importés partagent la MÊME prise', () => {
-    // Le test qui casserait si quelqu'un redonnait à l'un des deux sa propre arithmétique.
+  test('le rayon de prise des Animaux est bien celui-là', () => {
+    // ⚠️ CE TEST COMPARAIT LES ANIMAUX AUX MODÈLES IMPORTÉS, qui n'ont plus de poignées sur cette
+    // fiche depuis #394 : poser se fait dans l'Éditeur. Ce qu'il gardait de vrai — une seule
+    // arithmétique de prise, pas deux qui dérivent — vaut toujours, et `pickHandleAt` reste
+    // partagée avec l'Éditeur.
     animalHandleScreenPos.patte = { x: 50, y: 50 };
-    skeletonHandleScreenPos.bras_g = { x: 50, y: 50 };
     const limite = 17;
     assert.deepEqual(pickAnimalHandleAt(50 + limite - 1, 50), { id: 'patte' });
-    assert.deepEqual(pickSkeletonHandleAt(50 + limite - 1, 50), { id: 'bras_g' });
     assert.equal(pickAnimalHandleAt(50 + limite + 1, 50), null);
-    assert.equal(pickSkeletonHandleAt(50 + limite + 1, 50), null);
-  });
-
-  test('les deux cartes sont INDÉPENDANTES', () => {
-    // Un Élément est soit un Animal soit un modèle importé, jamais les deux ; mais les cartes
-    // survivent d'une modale à l'autre. Les confondre ferait cliquer sur le fantôme du précédent.
-    animalHandleScreenPos.patte = { x: 10, y: 10 };
-    assert.equal(pickSkeletonHandleAt(10, 10), null);
   });
 });
 
-describe('Les poignées d\'un Modèle importé suivent les curseurs, exactement', () => {
+describe('#394 : la fiche d\'un Modèle importé ne pose plus rien', () => {
   const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 
-  test('RÉGRESSION : on ne dessine QUE les emplacements qui ont des curseurs', () => {
-    // Un point qu'on peut attraper mais qui ne mène à aucun curseur serait le même mensonge qu'un
-    // curseur ne pilotant aucun os. Le bassin, notamment, n'a plus de curseurs : il ne doit pas non
-    // plus avoir de poignée.
-    const debut = MODALS.indexOf('export function drawSkeletonJointHandlesOverlay');
-    const corps = MODALS.slice(debut, MODALS.indexOf('\n}', debut));
-    assert.ok(debut > 0, 'le dessin des poignées a disparu');
-    assert.match(corps, /Object\.keys\(skeletonJointGroupDetailsById\)/,
-      'les poignées ne suivent plus la liste des groupes de curseurs');
+  // ⚠️ CE BLOC REMPLACE CELUI QUI VÉRIFIAIT LE CONTRAIRE, « les poignées d'un Modèle importé suivent
+  // les curseurs, exactement ». Ces curseurs et ces poignées n'existent plus : décision de
+  // l'utilisateur, l'aperçu de cette fiche fait quelques centaines de pixels et y viser un point
+  // parmi les 45 d'un cerbère n'a jamais été confortable. L'Éditeur a la zone centrale entière, le
+  // survol par chaîne et le glisser.
+  //
+  // C'est le pendant de #393, qui avait déjà retiré la CRÉATION de poses depuis la fiche : elle
+  // applique une pose et n'en compose plus aucune, à aucun niveau.
+
+  test('plus aucun curseur ni point d\'articulation de modèle importé', () => {
+    ['drawSkeletonJointHandlesOverlay', 'pickSkeletonHandleAt', 'skeletonHandleScreenPos',
+      'skeletonJointGroupDetailsById', 'skeletonJointRowsById', 'highlightSkeletonJointRows',
+      'buildSkeletonJointSlidersUI', 'selectedSkeletonHandle'].forEach(nom => {
+      assert.ok(!MODALS.includes(nom),
+        `« ${nom} » est de retour : la fiche s'est remise à poser, et deux écrans qui posent finiront par diverger`);
+    });
   });
 
-  test('RÉGRESSION : déplier un groupe sélectionne son point, et réciproquement', () => {
-    // Le dialogue doit aller dans les deux sens, comme pour le Personnage et les Animaux.
-    //
-    // ⚠️ CE TEST LISAIT `buildSkeletonJointSlidersUI` jusqu'à sa première accolade fermante, et la
-    // tâche #374 l'a cassé en sortant la construction d'un groupe dans sa propre fonction. La
-    // fenêtre était le défaut, pas le déplacement : elle épinglait OÙ le code se trouve alors que
-    // l'exigence porte sur ce qu'il fait. On vérifie donc les deux maillons, le constructeur qui
-    // appelle et la fonction qui pose le gestionnaire, ce qui reste vrai où qu'elle vive.
-    const bloc = (nom) => {
-      const debut = MODALS.indexOf(nom);
-      assert.ok(debut > 0, `${nom} a disparu`);
-      return MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
-    };
-    // ⚠️ ET IL S'EST CASSÉ UNE SECONDE FOIS, POUR LA MÊME RAISON, en #383 : la construction des
-    // groupes est passée dans `construireCurseursDeSquelette3D`, partagée avec l'Éditeur. La
-    // fenêtre visait encore un emplacement. On suit désormais la CHAÎNE — la fiche appelle le
-    // constructeur partagé, qui appelle la fonction qui pose le gestionnaire — ce qui reste vrai
-    // quel que soit le fichier où chaque maillon atterrit.
-    assert.match(bloc('export function buildSkeletonJointSlidersUI'), /construireCurseursDeSquelette3D\(/,
-      'la fiche ne construit plus ses curseurs par le constructeur partagé');
-    assert.match(bloc('export function construireCurseursDeSquelette3D'), /ajouterGroupeDeCurseurs3D\(/,
-      'le constructeur partagé ne passe plus par le chemin qui pose le gestionnaire');
-    const corps = bloc('function ajouterGroupeDeCurseurs3D');
-    assert.match(corps, /addEventListener\('toggle'/, 'déplier un groupe ne sélectionne plus rien');
-    // La décision elle-même est déléguée à selectionALOuvertureDuGroupe, testée plus bas sur son
-    // COMPORTEMENT : ici on vérifie seulement que le gestionnaire la consulte au lieu de trancher.
-    assert.match(corps, /selectionALOuvertureDuGroupe\(/,
-      'le gestionnaire décide de nouveau tout seul : le défaut du drapeau peut revenir');
-    assert.match(corps, /S\.selectedSkeletonHandle = \{ id: aPrendre \}/);
-    assert.match(MODALS, /export function openSkeletonJointGroupForHandle/,
-      'cliquer un point ne déplie plus son groupe');
+  test('mais le TABLEAU DE CORRESPONDANCE reste atteignable depuis la fiche', () => {
+    // Sa raison n'a pas bougé : c'est en regardant un Élément qu'on s'aperçoit qu'un bras tourne au
+    // mauvais endroit. Le retirer avec les curseurs aurait enterré l'écran de correspondance dans
+    // le seul menu de gauche.
+    assert.match(MODALS, /export function buildSkeletonMapButtonUI/,
+      'plus rien ne montre le bouton du tableau de correspondance');
+    assert.match(MODALS, /objectSkeletonMapSubsection/);
+    assert.match(MODALS, /objectSkeletonMapBtn/);
   });
 
-  test('RÉGRESSION : la carte des poignées est vidée quand la fiche change de modèle', () => {
-    // Sans cela, les points du modèle précédent resteraient cliquables sur le nouvel aperçu.
-    const debut = MODALS.indexOf('export function buildSkeletonJointSlidersUI');
-    const corps = MODALS.slice(debut, debut + 700);
-    assert.match(corps, /delete skeletonHandleScreenPos\[k\]/,
-      'les positions du modèle précédent survivent');
+  test('⚠️ et il apparaît dès que le fichier a des OS, pas seulement des chaînes reconnues', () => {
+    // CORRECTION AU PASSAGE. La condition était « le fichier a des chaînes pilotables », parce que
+    // le bouton était accroché aux curseurs : un fichier dont AUCUNE chaîne n'est reconnue n'avait
+    // donc pas de bouton, c'est-à-dire précisément le cas où l'on veut ouvrir ce tableau.
+    const debut = MODALS.indexOf('export function buildSkeletonMapButtonUI');
+    const corps = MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
+    assert.match(corps, /osNeutresDuModele3D\(obj\.modelFile\)\.length > 0/,
+      'le bouton dépend de nouveau des chaînes reconnues, donc absent quand il est le plus utile');
   });
 });
-
 
 describe('Déplier un groupe ne vole pas la sélection : le défaut des trois écrans', () => {
   // SIGNALÉ À L'USAGE sur les modèles importés : « quand je passe d'une sous-section à une autre,
@@ -312,11 +289,19 @@ describe('Déplier un groupe ne vole pas la sélection : le défaut des trois é
       'un drapeau de synchronisation est revenu : il ne protège de rien, cf. l\'en-tête ci-dessus');
   });
 
-  test('les TROIS écrans passent par la même décision', () => {
-    // Corriger un seul des trois, c'était l'état d'avant : une correction connue et non reportée.
+  test('les écrans qui posent passent par la même décision', () => {
+    // Corriger un seul d'entre eux, c'était l'état d'avant : une correction connue et non reportée.
+    //
+    // ⚠️ ILS ÉTAIENT TROIS, ILS SONT DEUX (#394). La fiche d'un Modèle importé n'a plus de curseurs
+    // à déplier : poser se fait dans l'Éditeur. Restent le Personnage et les Animaux, qui ont
+    // chacun les leurs sur leur propre fiche, plus l'Éditeur, qui appelle la décision depuis
+    // persona-editor.js par le rappel `auDepliage`.
     const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
-    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 4,
-      'attendu : la définition + un appel par écran (Personnage, Animaux, Modèle importé)');
+    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 3,
+      'attendu : la définition + un appel par écran restant (Personnage, Animaux)');
+    const editeur = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+    assert.match(editeur, /selectionALOuvertureDuGroupe\(/,
+      'l\'Éditeur décide de nouveau tout seul ce que déplier un groupe sélectionne');
   });
 });
 

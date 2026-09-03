@@ -42,8 +42,9 @@ import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt, pickChaineAt } from './draw.js';
 import {
-  buildSkeletonJointSlidersUI, makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
+  makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
   refreshPersonaPreview, syncJointSlidersFromDraft, construireCurseursDeSquelette3D,
+  selectionALOuvertureDuGroupe,
 } from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
 // sidebar.js n'importe pas persona-editor.js : pas de cycle. `afficherManuelLateral` est nommée
@@ -1116,6 +1117,21 @@ export function buildPersonaEditorJointSlidersUI(){
       // Le second sens du dialogue (#392c) : survoler le titre d'une chaîne l'allume sur
       // l'aperçu. Il ne DÉPLIE rien — seul le clic sur un point ouvre les curseurs.
       auSurvolDeChaine: (id) => { if (survolerChaineDeLEditeur3D(id)) drawPersonaEditor(); },
+      // ⚠️ DÉPLIER UN GROUPE SÉLECTIONNE SON PREMIER POINT, et c'est l'Éditeur qui dit ce que
+      // « sélectionner » veut dire chez lui (#394). Ce rappel vivait dans le constructeur
+      // partagé, où il écrivait `S.selectedSkeletonHandle` — l'état de la FICHE — et redessinait
+      // l'aperçu de la fiche : depuis l'Éditeur, cela ne sélectionnait rien de visible et
+      // redessinait un canevas masqué.
+      //
+      // La DÉCISION reste `selectionALOuvertureDuGroupe`, commune aux écrans : elle se demande
+      // « ce groupe contient-il déjà la sélection ? », question qui ne dépend d'aucun ordre
+      // d'arrivée — l'événement `toggle` étant asynchrone, un drapeau n'y protégerait de rien.
+      auDepliage: (cles) => {
+        const aPrendre = selectionALOuvertureDuGroupe(cles, S.personaEditorHandleId);
+        if (aPrendre === null) return;
+        focusPersonaEditorHandle(aPrendre);
+        drawPersonaEditor();
+      },
     });
     return;
   }
@@ -1593,7 +1609,6 @@ export function wirePersonaEditor(){
   // l'éditeur, ce qui réaffiche la modale (cf. hidePersonaEditor).
   const applyBtn = document.getElementById('personaEditorApplyBtn');
   if (applyBtn) applyBtn.onclick = () => {
-    const cible = personaEditorTarget();
     const res = applyPersonaEditorToModal();
     if (!res) return;
     // Le <select> à reporter est celui de la fiche d'où l'on vient, deux fiches en portent un.
@@ -1603,11 +1618,13 @@ export function wirePersonaEditor(){
     if (sel && key) sel.value = key;
     hidePersonaEditor();
     // La modale doit MONTRER ce qu'on vient d'appliquer, et son bouton Enregistrer s'activer :
-    // sans ces deux appels, le travail serait bien dans le brouillon mais invisible, et la modale
-    // se croirait inchangée. Les deux fiches ont leur propre aperçu et leurs propres curseurs, et
-    // rafraîchir ceux du Personnage depuis un modèle importé ne montrerait rien.
+    // sans cela, le travail serait bien dans le brouillon mais invisible, et la modale se croirait
+    // inchangée. Les deux fiches ont leur propre aperçu, et rafraîchir celui du Personnage depuis un
+    // modèle importé ne montrerait rien.
+    //
+    // La fiche d'un Modèle n'a plus de curseurs à reconstruire (#394) : son aperçu suffit, il est
+    // désormais le seul endroit où elle montre une pose.
     if (res.modeleImporte) {
-      buildSkeletonJointSlidersUI(cible);
       refreshObjectPreview();
     } else {
       refreshPersonaPreview();

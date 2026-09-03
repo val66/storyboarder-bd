@@ -1204,17 +1204,15 @@
           </details>
         </div>
 
-        <!-- Articulations d'un Modèle importé : visible seulement si le fichier porte un squelette
-             RECONNU. Un modèle sans os (chaise, décor) n'affiche rien — un curseur qui ne pilote
-             aucun os serait un mensonge, cf. src/skeleton-pose.js.
-             Le bouton de correspondance vit ici, et non dans la section Modèles du menu de gauche :
-             c'est en regardant un Élément qu'on s'aperçoit qu'un bras tourne au mauvais endroit. -->
-        <div class="modal-subsection" id="objectSkeletonJointsSubsection" style="display:none;">
-          <details class="joint-sliders-details" id="objectSkeletonSlidersDetails">
-            <summary id="objectSkeletonSlidersSummary">Réglages des articulations</summary>
-            <div id="objectSkeletonSlidersContainer"></div>
-            <button type="button" class="danger-btn skeleton-map-open-btn" id="objectSkeletonMapBtn">Tableau de correspondance</button>
-          </details>
+        <!-- Acces au tableau de correspondance, pour un Modele importe qui porte un squelette.
+             ⚠️ LES CURSEURS D'ARTICULATION QUI VIVAIENT ICI ONT ETE RETIRES (#394) : poser se fait
+             dans l'Editeur de Personnage, et nulle part ailleurs. L'apercu de cette fiche est trop
+             petit pour viser un point parmi des dizaines, et deux ecrans de pose finissaient de
+             toute facon par diverger.
+             Le bouton reste dans la FICHE, et non dans la section Modeles du menu de gauche : c'est
+             en regardant un Element qu'on s'apercoit qu'un bras tourne au mauvais endroit. -->
+        <div class="modal-subsection" id="objectSkeletonMapSubsection" style="display:none;">
+          <button type="button" class="danger-btn skeleton-map-open-btn" id="objectSkeletonMapBtn">Tableau de correspondance</button>
         </div>
       </div>
     </div>

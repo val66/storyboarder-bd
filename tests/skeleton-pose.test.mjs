@@ -547,14 +547,18 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
     assert.ok(debut > 0, 'le bouton de correspondance n\'est plus câblé');
     const bloc = EVENTS.slice(debut, debut + 700);
     assert.match(bloc, /disposeObjectRig3D\(/, 'le rig garderait les os d\'avant la correction');
-    assert.match(bloc, /buildSkeletonJointSlidersUI\(/, 'les curseurs ne sont pas reconstruits');
+    // ⚠️ IL N'Y A PLUS DE CURSEURS À RECONSTRUIRE DANS LA FICHE (#394) : poser se fait dans
+    // l'Éditeur. Ce que la correction doit encore atteindre est le RIG — c'est lui qui porte les os
+    // récoltés — et le bouton lui-même, dont la présence dépend du fichier.
+    assert.match(bloc, /buildSkeletonMapButtonUI\(/,
+      'le bouton ne suit plus le fichier après une correction');
     assert.match(bloc, /await openSkeletonMapModal\(/,
       'sans await, on reprendrait la main avant que l\'utilisateur ait tranché');
   });
 
   test('le bouton de correspondance existe dans la fiche, et nulle part ailleurs', () => {
     assert.equal((HTML.match(/id="objectSkeletonMapBtn"/g) || []).length, 1);
-    assert.match(HTML, /id="objectSkeletonJointsSubsection"[^>]*style="display:none;"/,
+    assert.match(HTML, /id="objectSkeletonMapSubsection"[^>]*style="display:none;"/,
       'la section doit être masquée par défaut : la plupart des modèles importés n\'ont pas d\'os');
   });
 });
@@ -1098,10 +1102,11 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
     // Trois lecteurs qui trancheraient chacun de leur côté finiraient par diverger : la fiche
     // montrerait les curseurs d'une morphologie pendant que le rig récolterait ceux d'une autre.
     const MODALS = lire('src/modals.js');
-    // Le point de décision est appelé par le constructeur PARTAGÉ depuis #383, qui reçoit le
-    // fichier en paramètre : la fiche le lui passe, elle ne tranche toujours pas elle-même.
+    // ⚠️ CE N'EST PLUS LA FICHE QUI CONSTRUIT DES CURSEURS (#394), mais le constructeur partagé vit
+    // toujours ici, et c'est LUI qui doit passer par le point de décision unique. L'Éditeur est son
+    // seul appelant, et lui passe le fichier : personne ne tranche « humanoïde ou pas » de son côté.
     assert.match(MODALS, /groupesDeCurseurs3D\(fichier, tr\)/);
-    assert.match(MODALS, /construireCurseursDeSquelette3D\(\{[\s\S]*?fichier: obj\.modelFile/);
+    assert.match(lire('src/persona-editor.js'), /construireCurseursDeSquelette3D\(\{[\s\S]*?fichier: figureImporteeDeLEditeur\(\)/);
     assert.doesNotMatch(MODALS, /morphologiePourModele/, 'la fiche s\'est remise à trancher elle-même');
   });
 

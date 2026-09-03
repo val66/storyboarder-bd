@@ -20,6 +20,7 @@
  */
 import './helpers/dom-stub.mjs';
 import { declencher } from './helpers/dom-stub.mjs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -33,8 +34,8 @@ import {
   groupesDeCurseurs3D,
 } from '../src/rig3d.js';
 import {
-  buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
-  skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
+  buildFigureFieldUI, buildSkeletonPoseFieldUI, remplirSelecteurDePose, buildSkeletonMapButtonUI,
+  buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
   from '../src/skeleton-pose.js';
@@ -233,27 +234,24 @@ describe('Le sélecteur de pose de la fiche', () => {
       'LA POSE REMPLACE : un réglage manuel antérieur ne doit pas survivre, comme pour un Personnage');
   });
 
-  test('les curseurs sont reconstruits, et affichent la pose appliquée', () => {
-    // LA PANNE DE L'ÉTAPE D5, PAR UNE AUTRE PORTE. Sans reconstruction, l'aperçu montrerait la pose
-    // pendant que les curseurs afficheraient encore les angles d'avant : deux vérités à l'écran,
-    // dont une fausse, et rien pour le signaler.
-    const obj = { type: 'objet3d', objType: 'modele', modelFile: FICHIER };
-    S.modalDraftSkeletonPose = {};
-    buildSkeletonPoseFieldUI(obj);
-    buildSkeletonJointSlidersUI(obj);
-    const avant = skeletonJointRowsById.bras_d.map(r => r.children[2].textContent);
-    assert.deepEqual(avant, ['0°', '0°', '0°'], 'au départ les curseurs sont à zéro');
-
-    const sel = document.getElementById('objectPositionSelect');
-    sel.value = 'p_salue';
-    sel.onchange();
-
-    const apres = skeletonJointRowsById.bras_d.map(r => r.children[2].textContent);
-    assert.notDeepEqual(apres, avant,
-      'les curseurs du bras droit affichent encore zéro alors que l\'os a tourné');
-    const degres = apres.map(t => Math.abs(parseInt(t, 10)));
-    assert.ok(Math.max(...degres) > 30,
-      `le plus grand angle affiché est ${Math.max(...degres)}° pour une pose de 1,2 rad`);
+  test('#394 : la fiche n\'a plus de curseurs, et sa pose vit dans l\'aperçu seul', () => {
+    // ⚠️ CE TEST VÉRIFIAIT QUE LES CURSEURS DE LA FICHE SE RECONSTRUISENT ET AFFICHENT LA POSE
+    // APPLIQUÉE. Ces curseurs n'existent plus : poser se fait dans l'Éditeur, et nulle part
+    // ailleurs. Ce qu'il gardait de vrai — « choisir une pose atteint bien les os » — est vérifié
+    // par le test juste au-dessus, sur le brouillon plutôt que sur des lignes de curseurs.
+    //
+    // Ce qui compte désormais, et que rien d'autre ne dit : la fiche ne construit PLUS rien qui
+    // pose. Deux écrans qui composent une pose finiraient par diverger, et cette divergence-là
+    // serait invisible.
+    // COMMENTAIRES RETIRÉS AVANT DE CHERCHER : neuvième fois dans ce dépôt qu'un test est mis en
+    // échec, ou rendu vrai, par la prose qui l'entoure. Un commentaire qui cite l'ancien nom pour
+    // raconter son histoire est légitime ; ce qu'on vérifie est le CODE.
+    const MODALS = sourceSansCommentaires(
+      readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+    assert.ok(!MODALS.includes('buildSkeletonJointSlidersUI'),
+      'la fiche s\'est remise à construire des curseurs d\'articulation');
+    assert.match(MODALS, /export function buildSkeletonMapButtonUI/,
+      'la fiche a perdu l\'accès au tableau de correspondance');
   });
 
   test('un modèle sans repère de corps ne voit pas sa pose écrasée', () => {
@@ -778,7 +776,6 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     const intention = JSON.stringify(S.modalDraftJoints);
     const obj = modele();
     buildSkeletonPoseFieldUI(obj);
-    buildSkeletonJointSlidersUI(obj);
     ecrireAngleDeg(S.modalDraftSkeletonPose, 'bras_d', 'x', 55);
     assert.equal(JSON.stringify(S.modalDraftJoints), intention,
       'les curseurs d\'os ont réécrit la pose du corps');
@@ -2530,18 +2527,14 @@ describe('#392e : l\'Éditeur restreint bien, sur le VRAI cerbère', () => {
   });
 });
 
-describe('#392e : les trois lectures du rendu, épinglées faute de mieux', () => {
-  // Même aveu qu'en #392b et #392d : ces lignes vivent dans le chemin de rendu, qui demande un vrai
+describe('#392e : la lecture du rendu, épinglée faute de mieux', () => {
+  // Même aveu qu'en #392b et #392d : cette ligne vit dans le chemin de rendu, qui demande un vrai
   // canevas et la caméra WebGL. Un test « comportemental » y serait vert sans rien exercer.
-  const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
   const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
-  test('la fiche restreint, et par la MÊME fonction que l\'Éditeur', () => {
-    assert.match(MODALS, /const parDefaut = poigneesParDefaut3D\(cles\);/,
-      'la fiche décide de son côté quels points montrer : les deux écrans finiront par diverger');
-    assert.match(MODALS, /if \(parDefaut && !parDefaut\.includes\(slot\) && slot !== choisie && !ouverte\(slot\)\) return;/,
-      'la fiche montre de nouveau tout, ou masque la poignée sélectionnée');
-  });
+  // ⚠️ LE TEST « LA FICHE RESTREINT AUSSI » A ÉTÉ RETIRÉ AVEC LA FICHE (#394). Elle n'a plus de
+  // points d'articulation du tout : la question « lesquels montrer » ne s'y pose plus. La règle
+  // reste vérifiée là où elle vit encore, l'Éditeur, sur son comportement.
 
   test('⚠️ la SURBRILLANCE suit la chaîne survolée, jamais les clés visibles', () => {
     // Les deux champs se ressemblent et disent des choses différentes. Tracer la surbrillance sur
@@ -2549,5 +2542,69 @@ describe('#392e : les trois lectures du rendu, épinglées faute de mieux', () =
     // traversant le corps, puisque rien ne dit qu'ils se suivent.
     assert.match(EDITEUR, /clesVisibles: clesVisiblesDeLEditeur3D\(\),\s*\n\s*chaineSurvolee: clesSurvoleesDeLEditeur3D\(\),/,
       'la surbrillance et la visibilité lisent la même source : le tracé va relier n\'importe quoi');
+  });
+});
+
+describe('#394 : le bouton du tableau de correspondance, et le dépliage de l\'Éditeur', () => {
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+
+  test('⚠️ le bouton apparaît pour un modèle qui a des os, et pour lui seul', () => {
+    // MUTATION ÉCHAPPÉE : rien ne vérifiait le COMPORTEMENT de cette fonction, seulement sa forme.
+    // Masquer la section en toutes circonstances ne faisait donc rien échouer, et le tableau de
+    // correspondance devenait inatteignable depuis la fiche — le seul endroit d'où l'on pense à
+    // l'ouvrir, puisque c'est en regardant un Élément qu'on voit un bras tourner de travers.
+    _setModelCacheEntry('avec-os.glb', { scene: squeletteSansBras() });
+    const section = document.getElementById('objectSkeletonMapSubsection');
+
+    buildSkeletonMapButtonUI(
+      { type: 'objet3d', objType: 'modele', modelFile: 'avec-os.glb' });
+    assert.equal(section.style.display, '', 'un modèle à squelette doit pouvoir ouvrir le tableau');
+    const btn = document.getElementById('objectSkeletonMapBtn');
+    assert.ok(btn.textContent.length > 0, 'le libellé du bouton n\'est pas posé');
+
+    buildSkeletonMapButtonUI(
+      { type: 'objet3d', objType: 'modele', modelFile: 'jamais-charge.glb' });
+    assert.equal(section.style.display, 'none', 'un fichier sans os offre un tableau vide');
+
+    buildSkeletonMapButtonUI({ type: 'objet3d', objType: 'chaise' });
+    assert.equal(section.style.display, 'none', 'une chaise n\'a pas de squelette à faire correspondre');
+  });
+
+  test('⚠️ déplier un groupe sélectionne son point DANS L\'ÉDITEUR', () => {
+    // MUTATION ÉCHAPPÉE elle aussi : le rappel `auDepliage` est passé par l'Éditeur depuis #394 —
+    // il vivait avant dans le constructeur partagé, où il écrivait l'état de la FICHE. Vider son
+    // corps ne faisait rien échouer, et le dialogue entre les deux moitiés de l'écran repartait à
+    // sens unique : cliquer un point dépliait son groupe, déplier un groupe ne sélectionnait rien.
+    _setModelCacheEntry('creature-depli.glb', { scene: squeletteSansBras() });
+    const o = { type: 'objet3d', objType: 'modele', modelFile: 'creature-depli.glb',
+      id: 'm1', skeletonPose3d: {} };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.equal(S.personaEditorHandleId, null, 'préalable : rien n\'est sélectionné à l\'ouverture');
+
+    const blocs = [];
+    const chercher = (el) => (el.children || []).forEach(c => {
+      if (c.tagName === 'DETAILS') blocs.push(c);
+      chercher(c);
+    });
+    chercher(document.getElementById('personaEditorJointsContainer'));
+    assert.ok(blocs.length > 0, 'préalable : le panneau porte bien des groupes');
+
+    blocs[0].open = true;
+    sansDessiner(() => declencher(blocs[0], 'toggle'));
+    assert.ok(S.personaEditorHandleId, 'déplier un groupe ne sélectionne plus rien');
+
+    // ET IL NE VOLE PAS LA SÉLECTION : rouvrir un groupe qui contient déjà le point choisi ne doit
+    // pas sauter au premier. C'est la décision que porte `selectionALOuvertureDuGroupe`.
+    const choisi = S.personaEditorHandleId;
+    sansDessiner(() => declencher(blocs[0], 'toggle'));
+    assert.equal(S.personaEditorHandleId, choisi,
+      'rouvrir le groupe qui contient déjà la sélection saute au premier point');
+    hidePersonaEditor();
   });
 });
