@@ -2615,3 +2615,44 @@ describe('#394 : le bouton du tableau de correspondance, et le dépliage de l\'�
     hidePersonaEditor();
   });
 });
+
+describe('#396 : le titre suit la FIGURE affichée, pas la cible', () => {
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+
+  test('⚠️ changer de figure change le titre', () => {
+    // L'Éditeur peut changer de modèle en cours de route par son sélecteur. Un titre lu sur la
+    // CIBLE annoncerait alors le modèle précédent pendant qu'on en pose un autre — c'est la règle
+    // de tout cet écran, ce qui est affiché se lit sur la figure affichée.
+    _setModelCacheEntry('creature-titre.glb', { scene: squeletteSansBras() });
+    const o = { type: 'objet3d', objType: 'modele', modelFile: 'creature-titre.glb',
+      id: 'm1', name: 'Aldo' };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+
+    const titre = () => document.getElementById('personaEditorTitle').textContent;
+    assert.match(titre(), /creature-titre/, 'le titre ne nomme pas le fichier posé');
+    assert.ok(!titre().includes('.glb'), 'l\'extension appartient au disque, pas au titre');
+    assert.ok(!titre().includes('Aldo'),
+      'le titre porte le nom de l\'Élément : il annoncerait un réglage individuel');
+
+    // Retour au Personnage intégré PAR LE VRAI CHEMIN, le sélecteur de figure : c'est lui qui
+    // resynchronise l'écran, et le titre en fait partie.
+    buildPersonaEditorModelUI();
+    const sel = document.getElementById('personaEditorModelSelect');
+    sel.value = '';
+    sansDessiner(() => sel.onchange());
+    // ⚠️ AUCUN LIBELLÉ EN DUR : la suite tourne en anglais, et une première version de ce test
+    // cherchait « Personnage ». Ce qui compte est le CHANGEMENT — le fichier n'est plus nommé, et
+    // le nom de l'Élément revient, ce qui est le titre du Personnage intégré.
+    assert.ok(!titre().includes('creature-titre'),
+      'le titre annonce encore un modèle qu\'on ne pose plus');
+    assert.ok(titre().includes('Aldo'),
+      'devant le Personnage intégré, le titre doit redevenir celui de la cible');
+    hidePersonaEditor();
+  });
+});

@@ -1707,6 +1707,56 @@ describe('éditeur de Personnage : titre selon le mode (Fix 64)', () => {
     // « Appliquer » a une raison d'exister.
     assert.notEqual(personaEditorTitle3D(null), personaEditorTitle3D({ name: 'Aldo' }));
   });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // #396 — DEVANT UN MODÈLE, LE TITRE NOMME LE FICHIER ET SON ARCHÉTYPE
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // Demandé à l'usage : « Éditeur de modèle — cerberus (Quadrupède) ». C'est ce que l'écran manipule
+  // désormais — les articulations d'un squelette, la bibliothèque de poses de son archétype, la
+  // correspondance de son fichier — et tout cela vaut pour le FICHIER, pas pour l'Élément.
+
+  test('le fichier et son archétype, dans les deux langues', () => {
+    assert.equal(personaEditorTitle3D({ name: 'Aldo' }, 'fr', 'cerberus.glb', 'quadrupede'),
+      'Éditeur de modèle — cerberus (Quadrupède)');
+    assert.equal(personaEditorTitle3D({ name: 'Aldo' }, 'en', 'cerberus.glb', 'quadrupede'),
+      'Model editor — cerberus (Quadruped)');
+  });
+
+  test('⚠️ le NOM DE L\'ÉLÉMENT ne s\'y invite pas', () => {
+    // Il décrit un Élément ; le titre annonce ce que cet écran RÈGLE, qui vaut pour le fichier
+    // entier. Les mêler ferait croire qu'on pose cet Élément-là.
+    const titre = personaEditorTitle3D({ name: 'Aldo' }, 'fr', 'cerberus.glb', 'quadrupede');
+    assert.ok(!titre.includes('Aldo'));
+    assert.ok(!titre.includes('Personnage'));
+  });
+
+  test('l\'extension disparaît : elle appartient au disque', () => {
+    ['cerberus.glb', 'cerberus.gltf', 'cerberus.GLB'].forEach(f => {
+      assert.match(personaEditorTitle3D(null, 'fr', f, 'quadrupede'),
+        /— cerberus \(Quadrupède\)$/, `extension non retirée pour ${f}`);
+    });
+    // Un point AILLEURS dans le nom survit : « v2.1_cerberus.glb » reste lisible.
+    assert.match(personaEditorTitle3D(null, 'fr', 'v2.1_cerberus.glb', 'quadrupede'),
+      /— v2\.1_cerberus \(/);
+  });
+
+  test('un archétype inconnu ne laisse pas de parenthèse vide', () => {
+    // Un fichier dont la morphologie n'est pas encore décidée, ou une clé venue d'un vieux Projet :
+    // « cerberus () » ferait croire à un libellé tronqué.
+    assert.equal(personaEditorTitle3D(null, 'fr', 'cerberus.glb', null),
+      'Éditeur de modèle — cerberus');
+    assert.equal(personaEditorTitle3D(null, 'fr', 'cerberus.glb', 'inconnu'),
+      'Éditeur de modèle — cerberus');
+  });
+
+  test('sans fichier, le Personnage garde EXACTEMENT son titre', () => {
+    // La garantie qui autorise le reste : rien ne change pour lui, ni en mode autonome ni devant
+    // une cible nommée.
+    assert.match(personaEditorTitle3D(null, 'fr', null, 'quadrupede'), /pose libre/);
+    assert.equal(personaEditorTitle3D({ name: 'Aldo' }, 'fr', '', 'quadrupede'),
+      'Éditeur de Personnage — Aldo');
+  });
 });
 
 describe('éditeur de Personnage : mode autonome complet (Fix 64)', () => {

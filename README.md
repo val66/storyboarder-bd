@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.98**
+**Version 1.4.99**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -105,7 +105,7 @@
 
 A workspace for posing a figure (a character, or an articulated imported model), opened from the
 pencil on a 3D preview, by the **E** key, or standalone from the left menu to build a pose with no
-target in mind. It takes over the central area only: the left menu stays available, and clicking a
+target in mind. Its title names what is being posed: "Model editor — cerberus (Quadruped)". It takes over the central area only: the left menu stays available, and clicking a
 Page or a Scene leaves the editor.
 
 - **Pose by dragging**: grab a joint point and move it; an orange guide shows the expected gesture,

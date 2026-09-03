@@ -131,7 +131,7 @@ export const HELP_MANUAL_EN = [
     'A file you have already set up, with the SAME bones, is offered at the top: taking its mapping saves redoing it, morphology included. Rows taken this way say so, and nothing is written before Save.',
   ]},
   { id: 'editeur', title: 'Character editor', paragraphs: [
-    'Open the editor with the pencil button in the corner of a character’s 3D preview, or from the "Characters" section of the left menu to compose a pose with no target; in that case there is no "Apply" button.',
+    'Open the editor with the pencil button in the corner of a 3D preview, or from the "Characters" section of the left menu to compose a pose with no target; in that case there is no "Apply" button. Its title names the figure posed: the character, or the file and its archetype.',
     'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models included; its orientation in the scene or panel is left untouched.',
     'Click a point to select it: the other points disappear, and the orange area shows where you can click without losing the selection. A creature only shows its archetype\'s joints, in bright blue; hovering a limb, or its chain title, reveals that chain\'s other bones in pale blue.',
     'Hold the left button on a point and drag to adjust the joint. The orange guide shows the expected gesture: a double arrow to drag along its direction, a ring to turn around the point.',

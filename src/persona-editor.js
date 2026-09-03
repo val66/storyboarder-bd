@@ -13,7 +13,7 @@
 
 import {
   JOINT_GROUPS, PERSONA_EDITOR_MODEL_ID, PERSONA_EDITOR_RENDER_MAX_PX,
-  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D,
+  POSE_3D, POSE_HANDLES, PERSONA_SKELETON_3D, ARCHETYPES_3D,
 } from './constants.js';
 import { S, currentPage, newId, tr } from './state.js';
 import {
@@ -31,7 +31,7 @@ import {
 import {
   applyStyleCanvasFilter3D, cloneJoints, figuresDeLaBibliotheque3D,
   getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
-  groupesDeCurseurs3D,
+  groupesDeCurseurs3D, morphologiePourModele,
   resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
@@ -507,8 +507,36 @@ export function resetPersonaEditorCamera(){
   S.personaEditorPan = { x: 0, y: 0 };
 }
 
-export function personaEditorTitle3D(target, lang){
+/**
+ * Le titre de l'Éditeur. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * IL NOMME LA FIGURE POSÉE, PAS L'ÉLÉMENT D'OÙ L'ON VIENT (#396)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Devant un modèle importé : « Éditeur de modèle — cerberus (Quadrupède) ». Le fichier et son
+ * archétype, parce que c'est ce que l'écran manipule désormais — les articulations d'un squelette,
+ * la bibliothèque de poses de son archétype, et la correspondance de son fichier. Tout cela vaut
+ * pour le FICHIER, pas pour l'Élément qui le porte.
+ *
+ * ⚠️ LE FICHIER EST DONC UN PARAMÈTRE, ET NON `target.modelFile` : l'Éditeur peut changer de figure
+ * en cours de route par son sélecteur, et un titre lu sur la cible annoncerait alors le modèle
+ * PRÉCÉDENT pendant qu'on en pose un autre. C'est la même règle que partout ici, ce qui est affiché
+ * se lit sur la figure affichée (cf. figureImporteeDeLEditeur).
+ *
+ * L'extension disparaît : elle appartient au disque, pas à ce que l'utilisateur a nommé.
+ *
+ * Devant le Personnage intégré, rien ne change : il n'a ni fichier ni archétype à annoncer.
+ */
+export function personaEditorTitle3D(target, lang, fichier, archetype){
   const fr = (lang !== 'en');
+  if (fichier) {
+    const base = fr ? 'Éditeur de modèle' : 'Model editor';
+    const nom = String(fichier).replace(/\.(glb|gltf)$/i, '');
+    const def = ARCHETYPES_3D.find(a => a.cle === archetype);
+    const etiquette = def ? (fr ? def.label : def.labelEn) : null;
+    return etiquette ? `${base} — ${nom} (${etiquette})` : `${base} — ${nom}`;
+  }
   if (!target) return fr ? 'Éditeur de Personnage — pose libre' : 'Character editor — free pose';
   const nom = (target.name || '').trim();
   const base = fr ? 'Éditeur de Personnage' : 'Character editor';
@@ -1469,7 +1497,14 @@ function syncPersonaEditorDom(){
   // Fix 64 : le titre dit lequel des deux modes est actif, faute de quoi l'absence d'« Appliquer »
   // resterait inexpliquée. Écrit ici plutôt que dans la table i18n : il dépend de la cible.
   const titleEl = document.getElementById('personaEditorTitle');
-  if (titleEl) titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang);
+  // La FIGURE, pas la cible : l'Éditeur peut changer de modèle en cours de route, et le titre doit
+  // suivre ce qui est à l'écran (#396). `morphologiePourModele` est le point de décision unique,
+  // celui-là même qui range les poses et construit les curseurs.
+  const fichierAffiche = figureImporteeDeLEditeur();
+  if (titleEl) {
+    titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang, fichierAffiche,
+      fichierAffiche ? morphologiePourModele(fichierAffiche) : null);
+  }
   if (S.personaEditorOpen) {
     buildPersonaEditorModelUI();
     buildPersonaEditorMapButtonUI();
