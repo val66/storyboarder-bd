@@ -762,11 +762,28 @@ export function construireCurseursDeSquelette3D({
   };
   const clesDe = (chaine) => (chaine.os || []).map(o => o.cle).filter(Boolean);
   groupes.forEach(groupe => {
-    const bloc = ajouterGroupeDeCurseurs3D(conteneur, groupe.titre);
-    if (groupe.chaines.length === 1) {
-      brancherSurvol(bloc, groupe.chaines[0]);
-      brancherDepliage(bloc, clesDe(groupe.chaines[0]));
-      remplir(bloc, groupe.chaines[0].os);
+    // ⚠️ UN GROUPE À UNE SEULE CHAÎNE PORTE LE TITRE DE SA CHAÎNE (#401a), et non celui du groupe.
+    //
+    // Signalé à l'usage sous la forme d'une question : « pourquoi certains titres sont blancs et
+    // d'autres gris ? » La couleur ne disait pas « ancre » mais « ce bloc contient-il d'autres
+    // blocs ? » — distinction réelle, mais qui entrait en conflit avec les LIBELLÉS : deux choses
+    // appelées toutes deux « Ancre » n'avaient pas le même aspect. Le défaut n'était pas la
+    // couleur, c'était qu'un titre promettait une catégorie là où le bloc est une feuille.
+    //
+    // Le titre suit donc ce que le bloc EST : une chaîne quand il porte des curseurs, une ancre
+    // quand il porte des chaînes. Plus rien ne s'appelle « Ancre » sans en être une, et la couleur
+    // redevient lisible sans qu'on y touche.
+    //
+    // MESURÉ SUR LE CORPUS avant de le faire : « Colonne » ne bouge pas, sa chaîne porte le même
+    // nom. Seules les ancres à chaîne unique changent — « Ancre Bone009_01 » devient
+    // « centre, 1 os » — et le nom de l'os n'est pas perdu pour autant : il est sur les trois
+    // curseurs juste en dessous.
+    const seule = groupe.chaines.length === 1 ? groupe.chaines[0] : null;
+    const bloc = ajouterGroupeDeCurseurs3D(conteneur, seule ? seule.titre : groupe.titre);
+    if (seule) {
+      brancherSurvol(bloc, seule);
+      brancherDepliage(bloc, clesDe(seule));
+      remplir(bloc, seule.os);
       return;
     }
     // ⚠️ UN GROUPE QUI CONTIENT DES CHAÎNES SE DÉCLARE (#400). Sans cette marque, le CSS ne peut pas

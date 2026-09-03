@@ -2658,3 +2658,94 @@ describe('#396 : le titre suit la FIGURE affichée, pas la cible', () => {
     hidePersonaEditor();
   });
 });
+
+describe('#401a : le titre dit ce que le bloc EST', () => {
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  const sceneDepuisFixture = (nom) => {
+    const d = JSON.parse(readFileSync(
+      new URL(`./fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
+    const parId = new Map();
+    d.os.forEach(o => {
+      const b = new THREE.Bone();
+      b.name = o.name;
+      if (o.t) b.position.set(o.t[0], o.t[1], o.t[2]);
+      parId.set(o.i, b);
+    });
+    const enfants = new Set();
+    d.os.forEach(o => (o.children || []).forEach(c => {
+      if (parId.has(c)) { parId.get(o.i).add(parId.get(c)); enfants.add(c); }
+    }));
+    const racine = new THREE.Group();
+    d.os.forEach(o => { if (!enfants.has(o.i)) racine.add(parId.get(o.i)); });
+    racine.updateMatrixWorld(true);
+    return racine;
+  };
+  // Les blocs de premier niveau, avec leur titre et leur nature.
+  const blocsDeTeteName = () => {
+    const conteneur = document.getElementById('personaEditorJointsContainer');
+    return (conteneur.children || [])
+      .filter(c => c.tagName === 'DETAILS')
+      .map(c => ({
+        titre: ((c.children || [])[0] || {}).textContent || '',
+        ancre: c.classList.contains('groupe-ancre'),
+      }));
+  };
+
+  test('⚠️ AUCUN BLOC BLANC NE S\'APPELLE « Ancre », sur l\'araignée', () => {
+    // LA RÈGLE, EN UNE PHRASE : le style dit « ce bloc contient d'autres blocs », le titre doit dire
+    // la même chose. Avant #401a, une ancre à chaîne unique gardait son titre d'ancre tout en
+    // s'affichant comme une feuille — deux « Ancre » côte à côte, de deux couleurs différentes.
+    //
+    // L'araignée est la bonne mesure : dix groupes, dont deux à chaîne unique.
+    clearModelCache();
+    _setModelCacheEntry('araignee.glb', { scene: sceneDepuisFixture('araignee') });
+    const o = { type: 'objet3d', objType: 'modele', modelFile: 'araignee.glb', id: 'm1' };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+
+    const blocs = blocsDeTeteName();
+    assert.ok(blocs.length >= 5, `seulement ${blocs.length} groupes : la fixture n'a pas été lue`);
+    assert.ok(blocs.some(b => b.ancre), 'préalable : l\'araignée doit avoir des ancres à plusieurs chaînes');
+    assert.ok(blocs.some(b => !b.ancre), 'préalable : et des blocs à chaîne unique');
+
+    blocs.filter(b => !b.ancre).forEach(b => assert.ok(!/^Ancre|^Anchor/.test(b.titre),
+      `« ${b.titre} » s'affiche comme une feuille tout en s'appelant une ancre`));
+    // ⚠️ ET LA RÉCIPROQUE, QUI MANQUAIT : un bloc affiché en CATÉGORIE doit s'appeler « Ancre ».
+    // Mutation échappée sans elle — donner à TOUS les groupes le titre de leur première chaîne
+    // passait le test ci-dessus, et les ancres se seraient retrouvées titrées « gauche, 6 os » en
+    // capitales grises, c'est-à-dire le défaut d'origine retourné comme un gant.
+    blocs.filter(b => b.ancre).forEach(b => assert.match(b.titre, /^Ancre|^Anchor/,
+      `« ${b.titre} » s'affiche comme une catégorie sans en porter le nom`));
+    hidePersonaEditor();
+  });
+
+  test('et le TRONC ne bouge pas : sa chaîne porte le même nom', () => {
+    // MESURÉ AVANT DE LE FAIRE, sur les quatre créatures du corpus : le seul titre qui change est
+    // celui des ancres à chaîne unique. Le tronc, lui, s'appelle pareil des deux côtés.
+    clearModelCache();
+    _setModelCacheEntry('araignee-tronc.glb', { scene: sceneDepuisFixture('araignee') });
+    const o = { type: 'objet3d', objType: 'modele', modelFile: 'araignee-tronc.glb', id: 'm2' };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.ok(blocsDeTeteName().some(b => /Colonne|Spine/i.test(b.titre)),
+      'le tronc a perdu son nom en passant au titre de sa chaîne');
+    hidePersonaEditor();
+  });
+
+  test('⚠️ « 1 bones » : porter le libellé en TITRE a révélé un défaut d\'accord', () => {
+    // Il existait depuis l'origine et ne se voyait pas : ce libellé vivait au fond d'une
+    // sous-section repliée. Le mettre en titre de bloc l'a mis en pleine lumière — « centre, 1
+    // bones ». « os » est invariable en français, pas « bone » en anglais.
+    //
+    // Le corps du test vise la SOURCE du libellé, pas l'écran : c'est là que la règle vit.
+    const src = readFileSync(new URL('../src/skeleton-map.js', import.meta.url), 'utf8');
+    assert.match(src, /t\(nb > 1 \? 'bones' : 'bone', 'os'\)/,
+      'l\'anglais ne s\'accorde plus : « 1 bones » est de retour');
+  });
+});

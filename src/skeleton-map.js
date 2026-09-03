@@ -984,7 +984,11 @@ export function lignesDeCorrespondance3D(os, enregistres, traduire, repris){
     // Les ancres étant ordonnées le long du tronc, « gauche, 7 os » sous la troisième ancre se lit
     // comme « la patte gauche du troisième segment », ce qui suffit à taper un nom.
     const cote = m.cote === 'g' ? t('left', 'gauche') : m.cote === 'd' ? t('right', 'droite') : t('centre', 'centre');
-    const neutre = `${cote}, ${m.segments.length} ${t('bones', 'os')}`;
+    // ⚠️ « 1 bones » — L'ANGLAIS S'ACCORDE, LE FRANÇAIS NON (#401a). Le défaut existait depuis
+    // l'origine et ne se voyait pas : ce libellé vivait au fond d'une sous-section repliée. Le
+    // porter en TITRE de bloc l'a mis en pleine lumière. « os » est invariable, l'anglais non.
+    const nb = m.segments.length;
+    const neutre = `${cote}, ${nb} ${t(nb > 1 ? 'bones' : 'bone', 'os')}`;
 
     // LE CÔTÉ EST COLLÉ AU NOM PROPOSÉ, et pas seulement rangé dans un champ. Sans lui, le cerbère
     // affiche deux lignes « Patte » et deux lignes « Tête » strictement identiques : le champ que
