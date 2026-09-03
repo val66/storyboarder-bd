@@ -233,9 +233,15 @@ describe('Ascenseurs : un seul style, pour toute l\'application', () => {
     // doit pouvoir attraper. Un jeton dédié permet de régler les deux thèmes séparément sans
     // toucher aux bordures, et surtout, de ne pas les oublier l'un ou l'autre.
     assert.match(CSS_ASC, /--scroll-thumb\s*:/, 'jeton absent');
-    const clair = CSS_ASC.slice(CSS_ASC.indexOf('body.theme-light{'));
-    assert.match(clair.slice(0, 500), /--scroll-thumb\s*:/, 'le thème clair ne le redéfinit pas');
-    assert.match(clair.slice(0, 500), /--scroll-thumb-hover\s*:/, 'survol non défini en thème clair');
+    // ⚠️ LE BLOC ENTIER, PAS UNE FENÊTRE DE 500 CARACTÈRES. La version précédente en découpait une,
+    // et #398a l'a fait échouer en ajoutant deux jetons de couleur AVANT celui-ci : le test annonçait
+    // « le thème clair ne le redéfinit pas » alors qu'il le redéfinissait trois lignes plus bas.
+    // Une fenêtre arbitraire épingle un ORDRE de déclaration que personne n'a jamais décidé — même
+    // famille de piège que les fenêtres de recherche déjà corrigées dans les tests de modales.
+    const debut = CSS_ASC.indexOf('body.theme-light{');
+    const clair = CSS_ASC.slice(debut, CSS_ASC.indexOf('\n}', debut));
+    assert.match(clair, /--scroll-thumb\s*:/, 'le thème clair ne le redéfinit pas');
+    assert.match(clair, /--scroll-thumb-hover\s*:/, 'survol non défini en thème clair');
   });
 
   test('le curseur n\'utilise aucune couleur en dur', () => {
@@ -403,6 +409,70 @@ describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
     // sur le bouton le plus inoffensif de chaque modale était une invitation à l'erreur.
     assert.ok(!css.includes('danger-btn'), 'le nom qui mentait est revenu dans le CSS');
     assert.ok(!html.includes('danger-btn'), 'le nom qui mentait est revenu dans index.html');
+  });
+
+  test('#398a : le survol d\'un bouton de navigation n\'est PAS orange', () => {
+    // ⚠️ LA MOITIÉ QUI MANQUAIT À LA CONVENTION. Le fond était bien gris, mais le survol virait à
+    // l'orange — la couleur qui annonce « ceci valide ou ajoute ». Un bouton qui ne fait que
+    // refermer un écran promettait donc sous la souris exactement ce que son fond venait de
+    // démentir. Un gris plus clair suffit à dire « c'est cliquable ».
+    const survol = declarationsOuNull('.nav-btn:hover');
+    assert.ok(survol, '.nav-btn:hover n\'est plus défini');
+    assert.doesNotMatch(survol, /--accent/, 'le survol d\'un bouton de navigation redevient orange');
+    assert.match(survol, /--nav-bg-hover/, 'le survol ne se distingue plus du repos');
+  });
+
+  test('#398a : le gris de navigation a son propre jeton, défini dans les DEUX thèmes', () => {
+    // `--white` est la couleur des CHAMPS : un bouton qui la porte se confond avec une zone de
+    // saisie. Et sans redéfinition en thème clair, « plus clair » n'aurait aucun sens sur un fond
+    // déjà pâle — c'est le même besoin lu à l'envers, pas la même valeur.
+    const debut = css.indexOf('body.theme-light{');
+    const clair = css.slice(debut, css.indexOf('\n}', debut));
+    ['--nav-bg', '--nav-bg-hover'].forEach(jeton => {
+      assert.match(css, new RegExp(`${jeton}\\s*:`), `${jeton} absent`);
+      assert.match(clair, new RegExp(`${jeton}\\s*:`), `${jeton} non redéfini en thème clair`);
+    });
+    assert.doesNotMatch(declarationsOuNull('.nav-btn'), /var\(--white\)/,
+      'le bouton de navigation reprend la couleur des champs');
+  });
+
+  test('#398a : dans la modale Projet, c\'est le SURVOL qui dit le rôle', () => {
+    // Décision de l'utilisateur : le fond y reste sombre et uniforme — c'est le premier écran de
+    // l'application, quatre couleurs de fond en auraient fait un arc-en-ciel — et la couleur du
+    // rôle apparaît sous la souris, au moment précis où l'on vise.
+    ['.project-modal-btn.nav-btn:hover', '.project-modal-btn.edit-btn:hover'].forEach(sel =>
+      assert.ok(declarationsOuNull(sel), `${sel} n'est plus défini`));
+    assert.match(declarationsOuNull('.project-modal-btn.edit-btn:hover'), /--warn/,
+      'le survol de « Renommer le projet » n\'est plus jaune');
+    assert.doesNotMatch(declarationsOuNull('.project-modal-btn.nav-btn:hover'), /--accent/,
+      'un bouton qui navigue vire à l\'orange sous la souris');
+    // Et le fond, lui, reste celui de la modale : la combinaison des deux classes est explicite.
+    assert.match(declarationsOuNull('.project-modal-btn.nav-btn'), /background:\s*#3A3B40/,
+      'le fond uniforme de la modale Projet a cédé');
+
+    // ⚠️ MUTATION ÉCHAPPÉE : les règles CSS existaient, mais rien ne vérifiait qu'un bouton les
+    // PORTE. Retirer `nav-btn` de « Charger un projet existant » ne faisait donc rien échouer, et
+    // ce bouton reprenait le survol orange du défaut — celui des actions qui ajoutent.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const roles = {
+      projectModalRename: 'edit-btn',
+      projectModalLoad: 'nav-btn',
+      projectsDirBrowse: 'nav-btn',
+      projectsDirReset: 'nav-btn',
+      quitConfirmDiscard: 'nav-btn',
+    };
+    Object.entries(roles).forEach(([id, classe]) => {
+      const m = html.match(new RegExp(`<button([^>]*)id="${id}"`));
+      assert.ok(m, `bouton ${id} introuvable`);
+      assert.match(m[1], new RegExp(`\\b${classe}\\b`),
+        `${id} ne porte plus son rôle : il reprend le survol orange, celui des actions qui ajoutent`);
+    });
+    // Et ceux qui AJOUTENT gardent le défaut, sans modificateur : c'est ce qui rend la règle lisible.
+    ['projectModalNew', 'projectModalSave', 'restoreBuiltinPosesBtn'].forEach(id => {
+      const m = html.match(new RegExp(`<button([^>]*)id="${id}"`));
+      assert.ok(m && !/nav-btn|edit-btn|delete-btn/.test(m[1]),
+        `${id} ajoute ou valide : il doit garder le survol orange par défaut`);
+    });
   });
 
   test('⚠️ un bouton DÉSACTIVÉ garde la même couleur, quelle que soit sa classe', () => {

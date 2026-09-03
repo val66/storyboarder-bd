@@ -19,6 +19,11 @@
      comme tout le reste ici : le thème Clair les redéfinit sans toucher à une seule règle. */
   --danger:#D9534F;
   --warn:#E8B84B;
+  /* Le gris CLAIR des boutons de navigation. Un jeton dédié plutôt que `--white` : celui-ci est
+     la couleur des CHAMPS, et un bouton qui la porte se confond avec une zone de saisie. Sur fond
+     sombre il faut monter franchement pour qu'un bouton se lise comme un bouton. */
+  --nav-bg:#4A4B52;
+  --nav-bg-hover:#5E5F68;
   --line:#34353A;
   --white:#26272B;
   /* Ascenseurs. Un jeton dédié plutôt que `--line` : sur fond sombre, la couleur d'une bordure est
@@ -41,6 +46,11 @@ body.theme-light{
      valeurs passaient pour des pastels et ne se distinguaient plus l'une de l'autre. */
   --danger:#C9302C;
   --warn:#D9A21B;
+  /* En thème Clair, « plus clair » ne veut plus rien dire : le fond du panneau est déjà pâle.
+     Le bouton se distingue donc en étant légèrement plus SOUTENU que le papier, tout en restant
+     un gris neutre — c'est le même besoin, lu à l'envers. */
+  --nav-bg:#E3DAC6;
+  --nav-bg-hover:#D3C6A8;
   --line:#D9CDB3;
   --white:#FFFFFF;
   --scroll-thumb:#C4B695;
@@ -180,10 +190,14 @@ select, input[type=number]{
   background:var(--line); border-color:var(--line); color:var(--ink-soft);
 }
 .nav-btn{
-  width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--line); background:var(--white); color:var(--ink-soft);
-  border-radius:7px; font-size:12.5px; cursor:pointer;
+  width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--nav-bg); background:var(--nav-bg);
+  color:var(--ink); border-radius:7px; font-size:12.5px; cursor:pointer;
 }
-.nav-btn:hover{ color:var(--accent); border-color:var(--accent); }
+/* ⚠️ LE SURVOL N'EST PLUS ORANGE, et c'est la convention qui l'exige (#398a) : l'orange annonce une
+   action qui valide ou qui ajoute. Le poser au survol d'un bouton qui ne fait que refermer un écran
+   promettait exactement ce que la couleur de fond venait de démentir. Un gris plus clair suffit à
+   dire « c'est cliquable », sans rien annoncer d'autre. */
+.nav-btn:hover{ background:var(--nav-bg-hover); border-color:var(--nav-bg-hover); }
 .nav-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; }
 .project-modal-btn{
   /* Fond toujours sombre (indépendant du thème Clair/Sombre, cf. modale Configuration) : le texte
@@ -192,7 +206,28 @@ select, input[type=number]{
   width:100%; margin-top:6px; padding:8px; border:1px solid var(--line); background:#3A3B40; color:#fff;
   font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
 }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LA MODALE PROJET GARDE SON FOND UNIFORME : C'EST LE SURVOL QUI DIT LE RÔLE (#398a)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   Décision de l'utilisateur, et elle règle une vraie tension. Cette modale est le premier écran de
+   l'application, et ses boutons partagent un fond sombre volontairement indépendant du thème. Y
+   peindre quatre couleurs de fond en aurait fait un arc-en-ciel ; ne rien y faire aurait laissé
+   « Renommer » et « Enregistrer » impossibles à distinguer. Le survol tranche : le fond reste
+   uniforme, et la couleur du rôle apparaît sous la souris, au moment précis où l'on vise.
+
+   Le défaut sans modificateur reste l'ORANGE, celui des boutons qui ajoutent ou valident — Nouveau
+   projet, Enregistrer, Restaurer les poses de base. */
 .project-modal-btn:hover{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.project-modal-btn.nav-btn{
+  /* La combinaison redit le fond sombre de la modale : `.nav-btn` seule le rendrait gris clair, et
+     ce bouton-ci n'est gris qu'AU SURVOL. Les deux classes se rencontrent ici et nulle part
+     ailleurs, d'où une règle explicite plutôt qu'un ordre de déclaration à tenir. */
+  margin-bottom:0; background:#3A3B40; border-color:var(--line); color:#fff;
+}
+.project-modal-btn.nav-btn:hover{ background:var(--nav-bg-hover); border-color:var(--nav-bg-hover); color:var(--ink); }
+.project-modal-btn.edit-btn:hover{ background:var(--warn); border-color:var(--warn); color:#1B1C1F; }
+.project-modal-btn.delete-btn:hover{ background:var(--danger); border-color:var(--danger); color:#fff; }
 
 /* Retour des opérations de fichier dans la modale Projet. Vide par défaut : il n'occupe de la
    place que lorsqu'il a quelque chose à dire (`:empty` → display:none), sinon un blanc

@@ -624,9 +624,9 @@
   <div class="modal-box">
     <button class="modal-close-btn" id="projectModalCornerClose" type="button" title="Fermer">×</button>
     <h3 id="projectModalCurrentName">Projet</h3>
-    <button class="project-modal-btn" id="projectModalRename" type="button">✏️ Renommer le projet</button>
+    <button class="project-modal-btn edit-btn" id="projectModalRename" type="button">✏️ Renommer le projet</button>
     <button class="project-modal-btn" id="projectModalNew" type="button">📄 Nouveau projet</button>
-    <button class="project-modal-btn" id="projectModalLoad" type="button">📂 Charger un projet existant</button>
+    <button class="project-modal-btn nav-btn" id="projectModalLoad" type="button">📂 Charger un projet existant</button>
     <button class="project-modal-btn" id="projectModalSave" type="button">💾 Enregistrer le projet</button>
     <!-- Retour des opérations de fichier : « Enregistré à 14:32 », « Échec de l'enregistrement du
          Projet »… setProjectModalStatus (io.js) l'alimente depuis quatorze endroits. L'élément
@@ -787,8 +787,8 @@
     <label class="modal-field-label">Dossier des Projets</label>
     <p id="projectsDirDisplay" style="font-size:11.5px; color:var(--ink-soft); word-break:break-all; margin:0 0 8px; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white);"></p>
     <div style="display:flex; gap:8px;">
-      <button class="project-modal-btn" id="projectsDirBrowse" type="button" style="margin-top:0; flex:1;">📂 Choisir...</button>
-      <button class="project-modal-btn" id="projectsDirReset" type="button" style="margin-top:0; flex:1;">↺ Réinitialiser</button>
+      <button class="project-modal-btn nav-btn" id="projectsDirBrowse" type="button" style="margin-top:0; flex:1;">📂 Choisir...</button>
+      <button class="project-modal-btn nav-btn" id="projectsDirReset" type="button" style="margin-top:0; flex:1;">↺ Réinitialiser</button>
     </div>
     <label class="modal-field-label" style="margin-top:14px;">Thème de l'interface</label>
     <select id="themeSelect">
@@ -834,7 +834,7 @@
     <h3>Quitter l'application</h3>
     <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Le Projet contient des modifications non enregistrées.</p>
     <button class="full-btn" id="quitConfirmSave" type="button" style="margin-top:0;">💾 Enregistrer et quitter</button>
-    <button class="project-modal-btn" id="quitConfirmDiscard" type="button">🚪 Quitter sans enregistrer</button>
+    <button class="project-modal-btn nav-btn" id="quitConfirmDiscard" type="button">🚪 Quitter sans enregistrer</button>
     <button class="nav-btn" id="quitConfirmCancel" type="button" style="margin-top:6px;">Annuler</button>
   </div>
 </div>
