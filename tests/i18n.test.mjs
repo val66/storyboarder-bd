@@ -626,8 +626,10 @@ describe('Aucun bouton ne reste en français en mode anglais', () => {
 
   // Boutons dont le libellé est posé PAR LE CODE, et qui n'ont donc rien à faire dans les tables.
   const POSES_PAR_LE_CODE = new Set([
-    // Son libellé nomme la cible (« au Personnage » / « au Modèle »), cf. syncPersonaEditorDom.
-    'personaEditorApplyBtn',
+    // ⚠️ CETTE EXEMPTION A DISPARU AVEC SA RAISON (#401b3). `personaEditorApplyBtn` en bénéficiait
+    // parce que son libellé nommait la cible et que le code le posait lui-même ; il est unique pour
+    // les trois figures désormais, et il a rejoint la table comme tous les autres. La liste ne garde
+    // donc plus d'exception du tout — et c'est ce que dit l'assertion ci-dessous.
   ]);
 
   const boutons = [...html.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)]

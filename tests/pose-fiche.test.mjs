@@ -3005,3 +3005,63 @@ describe('#401b2 : les poignées et le glisser d\'un Animal', () => {
     closePersonaEditor();
   });
 });
+
+describe('#401b3 : « Appliquer » voit le travail fait sur un Animal', () => {
+  test('⚠️ SIGNALÉ À L\'USAGE : le bouton ne passait jamais en cliquable', () => {
+    // MOT POUR MOT LA PANNE DE #383, à un vocabulaire près. `poseSliderSignature3D` parcourt les
+    // CHAMPS du Personnage ; le brouillon d'un Animal est rangé par CLÉ. Elle rendait donc la même
+    // chaîne quoi qu'on bouge — « Appliquer » restait éteint sur un travail bien réel, et fermer
+    // l'Éditeur ne demandait même pas de confirmer la perte.
+    //
+    // ⚠️ CE QUE LA MUTATION DE #383 N'AVAIT PAS PU ATTRAPER : elle visait la branche créature, qui
+    // existait. Le cas de l'Animal est arrivé après, et la condition ne l'a pas suivi. La leçon est
+    // que la condition doit suivre le VOCABULAIRE, pas la figure — c'est écrit dans le code.
+    const o = { type: 'objet3d', objType: 'loup', id: 'a2', animalJoints3d: {} };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    openPersonaEditor(o, 'objectModal');
+    assert.equal(personaEditorHasChanges(), false, 'préalable : rien n\'a encore bougé');
+
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 20);
+    assert.equal(personaEditorHasChanges(), true,
+      'le travail fait sur l\'Animal est invisible : « Appliquer » reste éteint');
+
+    // ET LA RÈGLE DU ZÉRO : un curseur ramené à 0 redevient « pas de changement », sans quoi fermer
+    // demanderait de confirmer une perte inexistante.
+    ecrireAngleDeg(S.personaEditorDraft, 'hipFL', 'x', 0);
+    assert.equal(personaEditorHasChanges(), false);
+    closePersonaEditor();
+  });
+
+  test('la condition suit le VOCABULAIRE, pas la figure', () => {
+    // Écrire deux branches identiques pour la créature et l'animal aurait été la troisième occasion
+    // de laisser l'une derrière l'autre — c'est exactement ce qui vient de se produire.
+    const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+    const i = src.indexOf('export function personaEditorHasChanges');
+    const corps = src.slice(i, src.indexOf('\n}\n', i));
+    assert.match(corps, /editeurPoseUneCreature3D\(\) \|\| editeurPoseUnAnimal3D\(\)/,
+      'les deux vocabulaires par clés ne sont plus comparés de la même façon');
+    assert.equal((corps.match(/memesAngles3D/g) || []).length, 1,
+      'deux appels : une branche a été recopiée, et elles divergeront');
+  });
+});
+
+describe('#401b3 : un seul libellé pour « Appliquer »', () => {
+  test('il ne nomme plus la cible, et vit dans la table i18n', () => {
+    // Demandé à l'usage. Il nommait la CIBLE — « au Personnage », « au Modèle » — et il en manquait
+    // donc un troisième pour les Animaux. Or ce que ce bouton fait ne dépend pas de la figure : il
+    // porte le travail de cet écran vers la fiche d'où l'on vient. Nommer la cible obligeait à tenir
+    // une liste qui grandit avec les types d'Éléments.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.match(html, /id="personaEditorApplyBtn"[^>]*>Appliquer les modifications</);
+    const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+    assert.match(i18n, /\['#personaEditorApplyBtn', 'Apply changes', 'Appliquer les modifications'\]/,
+      'le libellé n\'est plus dans la table : il redevient une exception');
+    // ⚠️ ET LE CODE NE LE POSE PLUS : deux sources pour un libellé, c'est celle qui passe en dernier
+    // qui gagne, et le changement de langue ne passe pas au même moment que l'ouverture de l'écran.
+    const src = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.ok(!/applyBtn\.textContent/.test(src),
+      'le code repose le libellé : il écrasera celui de la table au prochain changement de langue');
+  });
+});

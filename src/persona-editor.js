@@ -162,7 +162,7 @@ export function isPersonaEditorOpen(){ return !!S.personaEditorOpen; }
 //      rouvrir (S.personaEditorFromModal). Changer de Page entre-temps la ferait réapparaître
 //      au-dessus d'une Page où son Élément n'est pas.
 //   2. LA CIBLE. personaEditorTarget la cherche par identifiant DANS LA PAGE COURANTE. Après une
-//      navigation, elle est introuvable, et « Appliquer au Personnage » n'a plus rien à appliquer.
+//      navigation, elle est introuvable, et « Appliquer les modifications » n'a plus rien à appliquer.
 //
 // Les deux disparaissent ensemble si l'on ne peut pas être à la fois dans l'éditeur et sur une
 // autre Page : naviguer FERME l'éditeur, et le ferme sans rouvrir la fiche.
@@ -423,7 +423,16 @@ export function personaEditorHasChanges(){
   // rend la même chaîne quoi qu'on bouge, et « Appliquer » resterait éteint sur un travail bien
   // réel (#383). On compare alors les angles eux-mêmes, en passant par la règle du zéro pour qu'un
   // curseur ramené à 0 redevienne « pas de changement ».
-  if (editeurPoseUneCreature3D()) {
+  // ⚠️ UN ANIMAL EST DANS LE MÊME CAS, ET LE DÉFAUT A ÉTÉ SIGNALÉ À L'USAGE (#401b3) : « je ne peux
+  // pas appliquer les modifications quand c'est un animal, le bouton ne passe jamais en cliquable ».
+  // C'est mot pour mot la panne de #383, à un vocabulaire près — son brouillon est rangé par CLÉ,
+  // et `poseSliderSignature3D` ne lit que des champs du Personnage. Elle rendait donc la même chaîne
+  // quoi qu'on bouge, et fermer l'Éditeur ne demandait même pas de confirmer la perte.
+  //
+  // La condition suit le VOCABULAIRE, pas la figure : tout ce qui pose par clés se compare par
+  // angles. Écrire deux branches identiques pour la créature et l'animal aurait été la troisième
+  // occasion de laisser l'une derrière l'autre.
+  if (editeurPoseUneCreature3D() || editeurPoseUnAnimal3D()) {
     return !memesAngles3D(S.personaEditorDraft, S.personaEditorBaseline);
   }
   return poseSliderSignature3D(S.personaEditorDraft)
@@ -1667,12 +1676,13 @@ function syncPersonaEditorDom(){
   const applyBtn = document.getElementById('personaEditorApplyBtn');
   if (applyBtn) {
     applyBtn.style.display = S.personaEditorFromModal ? '' : 'none';
-    // Le libellé nomme la CIBLE. « Appliquer au Personnage » devant un modèle importé ferait
-    // chercher quel Personnage on est en train de modifier. Posé ici, comme le titre juste
-    // au-dessous et pour la même raison : il dépend de la cible, pas seulement de la langue.
-    applyBtn.textContent = isImportedModel(personaEditorTarget())
-      ? tr('Apply to model', 'Appliquer au Modèle')
-      : tr('Apply to character', 'Appliquer au Personnage');
+    // ⚠️ LE LIBELLÉ N'EST PLUS POSÉ ICI (#401b3), il vit dans la table i18n comme tous les autres.
+    // Il nommait la CIBLE — « au Personnage », « au Modèle » — et il en manquait donc un troisième
+    // pour les Animaux. Or ce que ce bouton fait ne dépend pas de la figure : il porte le travail de
+    // cet écran vers la fiche d'où l'on vient. Nommer la cible obligeait à tenir une liste qui
+    // grandit avec les types d'Éléments, et l'oubli d'un cas s'affichait comme le mauvais nom.
+    //
+    // Ce qui reste ici est la seule chose qui dépende vraiment de l'état : sa PRÉSENCE.
   }
   // Fix 64 : le titre dit lequel des deux modes est actif, faute de quoi l'absence d'« Appliquer »
   // resterait inexpliquée. Écrit ici plutôt que dans la table i18n : il dépend de la cible.

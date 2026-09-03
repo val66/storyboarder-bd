@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.113**
+**Version 1.4.114**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -107,8 +107,8 @@
 
 ### Model editor
 
-A workspace for posing a figure (a character, or an articulated imported model), opened from the
-pencil on a 3D preview, by the **E** key, or standalone from the **Editor** section of the left menu
+A workspace for posing a figure (a character, a built-in animal, or an articulated imported model),
+opened from the pencil on a 3D preview, by the **E** key, or standalone from the **Editor** section of the left menu
 to build a pose with no target in mind. Its title names what is being posed, in one form for every
 figure: "Model editor — cerberus (Quadruped)", "Model editor — Character (Humanoid)". It takes over the central area only: the left menu stays available, and clicking a
 Page or a Scene leaves the editor.
@@ -120,6 +120,8 @@ Page or a Scene leaves the editor.
 - **Choose the figure** you pose on: the built-in character, or any recognised imported model
 - **Pose library shared across every project**: apply, save, rename, delete, built-in poses
   included and restorable from Settings
+- **One button carries the work back**, "Apply changes", the same one for every figure: it sends
+  the pose to the dialog it was opened from
 - **Nothing is committed** until the pose is applied and the dialog saved
 
 ### Project & saving

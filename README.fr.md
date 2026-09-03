@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.113**
+**Version 1.4.114**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -114,8 +114,8 @@
 
 ### Éditeur de modèle
 
-Un espace pour poser une figure (un Personnage, ou un Modèle importé articulé), ouvert par le
-crayon d'un aperçu 3D, par la touche **E**, ou seul depuis la section **Éditeur** du menu de gauche
+Un espace pour poser une figure (un Personnage, un Animal intégré, ou un Modèle importé articulé),
+ouvert par le crayon d'un aperçu 3D, par la touche **E**, ou seul depuis la section **Éditeur** du menu de gauche
 pour composer une pose sans cible. Son titre nomme ce qu'on pose, sous une seule forme pour toutes
 les figures : « Éditeur de modèle — cerberus (Quadrupède) », « Éditeur de modèle — Personnage
 (Humanoïde) ». Il occupe la zone centrale seule : le menu de gauche reste disponible, et cliquer une
@@ -128,6 +128,8 @@ Planche ou une Scène quitte l'éditeur.
 - **Choisir la figure** sur laquelle on pose : le Personnage intégré, ou tout modèle importé reconnu
 - **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
   supprimer, poses de base comprises et restaurables depuis Configuration
+- **Un seul bouton pour reporter le travail**, « Appliquer les modifications », le même quelle que
+  soit la figure : il renvoie la pose vers la modale d'où l'on vient
 - **Rien n'est écrit** tant que la pose n'est pas appliquée puis la fiche enregistrée
 
 ### Projet & sauvegarde

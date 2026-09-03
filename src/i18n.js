@@ -203,9 +203,11 @@ export const I18N_TRAILING = [
   ['#ctxDeleteScene', 'Delete this scene', 'Supprimer cette scène'],
   // ── Boutons restés en français en mode anglais, relevés d'un coup : 49 sur 123. Ceux-ci n'ont
   //    pas d'icône interne, leur `textContent` entier est le libellé.
-  //    ⚠️ `personaEditorApplyBtn` n'est PAS ici : son libellé nomme la cible (« au Personnage » /
-  //    « au Modèle ») et persona-editor.js le pose déjà par tr(). Une entrée ici écraserait ce
-  //    choix à chaque changement de langue.
+  //    ⚠️ `personaEditorApplyBtn` EST REVENU ICI (#401b3). Il en était exclu parce que son libellé
+  //    nommait la cible — « au Personnage », « au Modèle » — et que persona-editor.js le posait
+  //    donc lui-même ; une entrée ici l'aurait écrasé à chaque changement de langue. Le libellé est
+  //    désormais unique pour les trois figures, et il n'a plus de raison d'être une exception.
+  ['#personaEditorApplyBtn', 'Apply changes', 'Appliquer les modifications'],
   ['#personaEditorPoseSaveBtn', 'Save', 'Enregistrer'],
   ['#personaEditorPoseRenameBtn', 'Rename', 'Renommer'],
   ['#personaEditorPoseDeleteBtn', 'Delete', 'Supprimer'],
