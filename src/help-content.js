@@ -131,7 +131,7 @@ export const HELP_MANUAL_EN = [
     'A file you have already set up, with the SAME bones, is offered at the top: taking its mapping saves redoing it, morphology included. Rows taken this way say so, and nothing is written before Save.',
   ]},
   { id: 'editeur', title: 'Character editor', paragraphs: [
-    'Open the editor with the pencil button in the corner of a 3D preview, or from the "Characters" section of the left menu to compose a pose with no target; in that case there is no "Apply" button. Its title names the figure posed: the character, or the file and its archetype.',
+    'Open the editor with the pencil button in the corner of a 3D preview, or from the "Editor" section of the left menu to compose a pose with no target; in that case there is no "Apply" button. Its title names the figure posed: the character, or the file and its archetype.',
     'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models included; its orientation in the scene or panel is left untouched.',
     'Click a point to select it: the other points disappear, and the orange area shows where you can click without losing the selection. A creature only shows its archetype\'s joints, in bright blue; hovering a limb, or its chain title, reveals that chain\'s other bones in pale blue.',
     'Hold the left button on a point and drag to adjust the joint. The orange guide shows the expected gesture: a double arrow to drag along its direction, a ring to turn around the point.',
@@ -259,7 +259,7 @@ export const HELP_MANUAL_FR = [
     'Un fichier déjà réglé aux MÊMES os est proposé en haut : le reprendre évite de tout refaire, morphologie comprise. Les lignes reprises le disent, rien n\'est écrit avant Enregistrer.',
   ]},
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [
-    "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Personnages » du menu de gauche pour composer une pose sans cible ; dans ce second cas, « Appliquer » est absent.",
+    "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Éditeur » du menu de gauche pour composer une pose sans cible ; dans ce second cas, « Appliquer » est absent.",
     "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles importés compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
     "Cliquez un point pour le sélectionner : les autres disparaissent, et la zone orange montre où cliquer sans perdre la sélection. Une créature ne montre que les articulations de son archétype, en bleu vif ; survoler un membre, ou le titre de sa chaîne, révèle les autres os de cette chaîne, en bleu pâle.",
     "Maintenez le clic gauche sur un point et glissez pour régler l'articulation. Le repère orange indique le geste attendu : une double flèche pour glisser dans sa direction, un anneau pour tourner autour du point.",

@@ -286,11 +286,11 @@ export const I18N_TRAILING = [
 export const I18N_LEADING = [
   ['#treeTrigger', 'Volumes', 'Tomes'],
   ['#sceneTrigger', 'Scenes', 'Scènes'],
-  ['#personaTrigger', 'Characters', 'Personnages'],
+  ['#personaTrigger', 'Editor', 'Éditeur'],
   ['#modelTrigger', 'Models', 'Modèles'],
   ['#personaPanelHint', 'Compose a pose and save it to your library, shared by all your projects.',
    'Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.'],
-  ['#openPoseEditorBtn', 'Character editor', 'Éditeur de Personnage'],
+  ['#openPoseEditorBtn', 'Model editor', 'Éditeur de modèles'],
   ['#pageMenuHeader .menu-title', 'Page', 'Planche'],
 ];
 

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.99**
+**Version 1.4.100**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -110,8 +110,10 @@
 ### Éditeur de Personnage
 
 Un espace pour poser une figure (un Personnage, ou un Modèle importé articulé), ouvert par le
-crayon d'un aperçu 3D, par la touche **E**, ou seul depuis le menu de gauche pour composer une pose
-sans cible. Son titre nomme ce qu'on pose : « Éditeur de modèle — cerberus (Quadrupède) ». Il occupe la zone centrale seule : le menu de gauche reste disponible, et cliquer une
+crayon d'un aperçu 3D, par la touche **E**, ou seul depuis la section **Éditeur** du menu de gauche
+pour composer une pose sans cible. Son titre nomme ce qu'on pose, sous une seule forme pour toutes
+les figures : « Éditeur de modèle — cerberus (Quadrupède) », « Éditeur de modèle — Personnage
+(Humanoïde) ». Il occupe la zone centrale seule : le menu de gauche reste disponible, et cliquer une
 Planche ou une Scène quitte l'éditeur.
 
 - **Poser au glisser** : attrapez un point d'articulation et déplacez-le ; un repère orange indique

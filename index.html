@@ -155,15 +155,18 @@
         </div>
       </div>
     </div>
-    <!-- Personnages : ouvre l'éditeur SANS cible, sur un Personnage par défaut. Sert à composer et
-         enregistrer des poses pour la bibliothèque, indépendamment de tout Personnage d'une Case —
-         d'où l'absence du bouton « Appliquer » dans ce mode (cf. syncPersonaEditorDom). -->
+    <!-- Editeur : ouvre l'editeur SANS cible, sur le Personnage integre par defaut. Sert a composer
+         et enregistrer des poses pour la bibliotheque, independamment de tout Element d'une Case —
+         d'ou l'absence du bouton « Appliquer » dans ce mode (cf. syncPersonaEditorDom).
+         ⚠️ LA SECTION S'APPELAIT « PERSONNAGES » (#397) : elle ne mene plus a un Personnage mais a
+         un ecran qui pose TOUTE figure articulee, Personnage integre comme modele importe, et qui
+         porte en plus la bibliotheque de poses et le tableau de correspondance. -->
     <div class="side-section">
       <div class="dropdown">
-        <button class="dropdown-trigger" id="personaTrigger">Personnages <span class="caret">▾</span></button>
+        <button class="dropdown-trigger" id="personaTrigger">Éditeur <span class="caret">▾</span></button>
         <div class="dropdown-panel open" id="personaPanel">
           <p class="side-hint" id="personaPanelHint">Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.</p>
-          <button class="full-btn" id="openPoseEditorBtn">Éditeur de Personnage</button>
+          <button class="full-btn" id="openPoseEditorBtn">Éditeur de modèles</button>
         </div>
       </div>
     </div>

@@ -2635,6 +2635,7 @@ describe('#396 : le titre suit la FIGURE affichée, pas la cible', () => {
     sansDessiner(() => showPersonaEditor(o, 'objectModal'));
 
     const titre = () => document.getElementById('personaEditorTitle').textContent;
+    const surLeModele = titre();
     assert.match(titre(), /creature-titre/, 'le titre ne nomme pas le fichier posé');
     assert.ok(!titre().includes('.glb'), 'l\'extension appartient au disque, pas au titre');
     assert.ok(!titre().includes('Aldo'),
@@ -2651,8 +2652,9 @@ describe('#396 : le titre suit la FIGURE affichée, pas la cible', () => {
     // le nom de l'Élément revient, ce qui est le titre du Personnage intégré.
     assert.ok(!titre().includes('creature-titre'),
       'le titre annonce encore un modèle qu\'on ne pose plus');
-    assert.ok(titre().includes('Aldo'),
-      'devant le Personnage intégré, le titre doit redevenir celui de la cible');
+    assert.notEqual(titre(), surLeModele, 'le titre n\'a pas suivi le changement de figure');
+    assert.ok(!titre().includes('Aldo'),
+      'le nom de l\'Élément s\'est réinvité : le titre nomme la FIGURE (#396, #397)');
     hidePersonaEditor();
   });
 });

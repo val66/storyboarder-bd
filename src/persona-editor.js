@@ -530,17 +530,24 @@ export function resetPersonaEditorCamera(){
  */
 export function personaEditorTitle3D(target, lang, fichier, archetype){
   const fr = (lang !== 'en');
-  if (fichier) {
-    const base = fr ? 'Éditeur de modèle' : 'Model editor';
-    const nom = String(fichier).replace(/\.(glb|gltf)$/i, '');
-    const def = ARCHETYPES_3D.find(a => a.cle === archetype);
-    const etiquette = def ? (fr ? def.label : def.labelEn) : null;
-    return etiquette ? `${base} — ${nom} (${etiquette})` : `${base} — ${nom}`;
-  }
-  if (!target) return fr ? 'Éditeur de Personnage — pose libre' : 'Character editor — free pose';
-  const nom = (target.name || '').trim();
-  const base = fr ? 'Éditeur de Personnage' : 'Character editor';
-  return nom ? `${base} — ${nom}` : base;
+  const base = fr ? 'Éditeur de modèle' : 'Model editor';
+  // ⚠️ LE PERSONNAGE INTÉGRÉ EST UNE FIGURE COMME UNE AUTRE (#397), et son titre suit donc la même
+  // forme. Il n'a pas de fichier — nous le construisons — mais il a bien un nom et un archétype :
+  // c'est un humanoïde, celui dont les dix-huit emplacements servent de vocabulaire à tous les
+  // autres. Un titre à part pour lui aurait laissé croire à un écran à part.
+  const nom = fichier ? String(fichier).replace(/\.(glb|gltf)$/i, '') : (fr ? 'Personnage' : 'Character');
+  const def = ARCHETYPES_3D.find(a => a.cle === (fichier ? archetype : 'humanoide'));
+  const etiquette = def ? (fr ? def.label : def.labelEn) : null;
+  const figure = etiquette ? `${nom} (${etiquette})` : nom;
+  // ⚠️ LE MODE AUTONOME RESTE ANNONCÉ, et ce n'est pas une décoration : sans cible, « Appliquer »
+  // est ABSENT du panneau, et le Fix 64 avait ajouté cette mention précisément pour que cette
+  // absence s'explique. La forme change, la raison non — le titre nomme la figure, puis dit dans
+  // quel mode on la pose.
+  //
+  // ⚠️ CE QUI A DISPARU, EN REVANCHE : le nom de l'ÉLÉMENT. « Éditeur de Personnage — Aldo » nommait
+  // la cible ; le titre nomme désormais ce qu'on POSE, et ce qu'on pose vaut pour toutes les
+  // figures du même genre, pas pour Aldo.
+  return target ? `${base} — ${figure}` : `${base} — ${figure}, ${fr ? 'pose libre' : 'free pose'}`;
 }
 
 export function personaEditorPoseLabel(){

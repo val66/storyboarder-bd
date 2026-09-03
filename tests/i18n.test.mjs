@@ -824,3 +824,36 @@ describe('Un bouton-ICÔNE ne doit jamais afficher « null » (#371)', () => {
     });
   });
 });
+
+describe('#397 : la section « Éditeur » du menu de gauche', () => {
+  // Renommée à l'usage : elle s'appelait « Personnages », et son bouton « Éditeur de Personnage ».
+  // Elle ne mène plus à un Personnage mais à un écran qui pose TOUTE figure articulée — Personnage
+  // intégré comme modèle importé — et qui porte en plus la bibliothèque de poses et le tableau de
+  // correspondance.
+  //
+  // ⚠️ MUTATIONS ÉCHAPPÉES : rien n'épinglait ces deux libellés, on pouvait donc les remettre comme
+  // avant sans qu'un test bronche. Ce n'est pas qu'une question de nom choisi : le texte ÉCRIT DANS
+  // index.html est celui qu'on lit avant qu'`applyI18n` ne passe, et s'il diverge de la table, le
+  // libellé change sous les yeux au démarrage.
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  const entree = (id) => {
+    const m = I18N.match(new RegExp(`\\['#${id}', '([^']*)', '([^']*)'\\]`));
+    assert.ok(m, `aucune entrée i18n pour #${id}`);
+    return { en: m[1], fr: m[2] };
+  };
+
+  test('le nom choisi, dans les deux langues', () => {
+    assert.deepEqual(entree('personaTrigger'), { en: 'Editor', fr: 'Éditeur' });
+    assert.deepEqual(entree('openPoseEditorBtn'), { en: 'Model editor', fr: 'Éditeur de modèles' });
+  });
+
+  test('et index.html porte le MÊME texte français', () => {
+    // Sans quoi le libellé changerait au démarrage, le temps qu'applyI18n passe.
+    assert.match(HTML, /id="personaTrigger">Éditeur /,
+      'le déclencheur de section a divergé de sa table');
+    assert.match(HTML, /id="openPoseEditorBtn">Éditeur de modèles</,
+      'le bouton a divergé de sa table');
+  });
+});
