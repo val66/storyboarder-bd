@@ -2696,9 +2696,13 @@ describe('#401a : le titre dit ce que le bloc EST', () => {
   };
 
   test('⚠️ AUCUN BLOC BLANC NE S\'APPELLE « Ancre », sur l\'araignée', () => {
-    // LA RÈGLE, EN UNE PHRASE : le style dit « ce bloc contient d'autres blocs », le titre doit dire
-    // la même chose. Avant #401a, une ancre à chaîne unique gardait son titre d'ancre tout en
-    // s'affichant comme une feuille — deux « Ancre » côte à côte, de deux couleurs différentes.
+    // LA RÈGLE, EN UNE PHRASE : un bloc est titré par ce qu'il EST. Il porte des curseurs, il prend
+    // le nom de sa chaîne ; il porte des chaînes, il prend le nom de son ancre. Avant #401a, une
+    // ancre à chaîne unique gardait son titre d'ancre tout en s'affichant comme une feuille.
+    //
+    // ⚠️ CE TEST A SURVÉCU AU RETRAIT DE LA COULEUR (#401b), et c'est voulu : il n'a jamais porté sur
+    // la teinte mais sur la CLASSE, c'est-à-dire sur la nature du bloc. La couleur était un second
+    // code disant la même chose, elle est partie ; la règle, elle, tient toujours.
     //
     // L'araignée est la bonne mesure : dix groupes, dont deux à chaîne unique.
     clearModelCache();

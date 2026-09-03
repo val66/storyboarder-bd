@@ -765,10 +765,16 @@ canvas{
    ⚠️ UN FOND, PAS UN CADRE, et c'est la raison déjà écrite plus haut : deux bordures à un pixel
    d'écart se lisent comme un défaut d'alignement, pas comme une imbrication. Le fond, lui, dit
    « posé dans » sans jamais longer le cadre du parent. */
-.persona-editor-panel .joint-group-details.groupe-ancre > summary{
-  font-size:11px; font-weight:700; color:var(--ink-soft);
-  text-transform:uppercase; letter-spacing:.05em;
-}
+/* ⚠️ UNE ANCRE N'A PLUS DE COULEUR À ELLE (#401b), et c'est un retrait, pas un oubli. Les capitales
+   grises disaient « ce bloc contient d'autres blocs » — information vraie, mais que le TITRE dit
+   desormais explicitement depuis #401a : un bloc qui porte des curseurs est titre par sa chaine, un
+   bloc qui porte des chaines est titre par son ancre. La garder en double demandait de lire deux
+   fois la meme chose, et la premiere lecture a fait trebucher l'utilisateur.
+   Tous les titres de section sont donc de la meme encre, et la hierarchie se lit sur trois niveaux
+   de clarte : blanc pour une section, `--ink-mid` pour une sous-section, `--ink-soft` pour un
+   attribut. C'est l'IMBRICATION qui dit la structure, plus la couleur.
+   LE FILET SOUS LE TITRE RESTE, lui : il ne colore rien, il SEPARE un titre de ce qu'il contient —
+   et il n'a de sens que pour un bloc qui contient des blocs. */
 .persona-editor-panel .joint-group-details.groupe-ancre[open] > summary{
   padding-bottom:7px; margin-bottom:9px; border-bottom:1px solid var(--line);
 }

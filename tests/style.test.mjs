@@ -528,21 +528,32 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
     assert.match(panneau, /font-size:\s*13px/, 'le panneau a reperdu sa taille propre');
   });
 
-  test('une ANCRE et une CHAÎNE ne se lisent plus pareil', () => {
-    // Signalé sur l'araignée : six chaînes sous une même ancre, avec EXACTEMENT le même titre —
-    // même taille, même graisse, même couleur — séparées par un filet de 1px. Rien ne disait lequel
-    // contenait l'autre. La hiérarchie passe désormais par le TYPE : l'ancre est une étiquette de
-    // catégorie, la chaîne une carte posée dedans.
-    const ancre = declarationsOuNull('.persona-editor-panel .joint-group-details.groupe-ancre > summary');
-    assert.ok(ancre, 'l\'ancre n\'a plus de style propre : les deux niveaux se ressemblent de nouveau');
-    assert.match(ancre, /text-transform:\s*uppercase/);
+  test('#401b : TROIS NIVEAUX DE CLARTÉ, et rien d\'autre pour hiérarchiser', () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE, et la raison a disparu avec la cause. Il demandait des
+    // capitales grises pour l'ancre : elles disaient « ce bloc contient d'autres blocs », ce que le
+    // TITRE dit désormais explicitement (#401a). Deux codes pour une seule information, et c'est le
+    // premier qui a fait trébucher l'utilisateur — « pourquoi certains titres sont blancs et
+    // d'autres gris ? »
+    //
+    // La hiérarchie tient maintenant dans une échelle de clarté, et dans l'imbrication :
+    //   section (blanc) > sous-section (--ink-mid) > attribut (--ink-soft).
+    assert.equal(declarationsOuNull('.persona-editor-panel .joint-group-details.groupe-ancre > summary'), null,
+      'l\'ancre s\'est redonné une couleur à elle : deux codes pour une seule information');
     const chaine = declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details > summary');
-    // La chaîne est un GROUPE DE CURSEURS comme un autre : elle porte donc la même taille que les
-    // groupes de premier niveau. L'ancre, elle, n'est pas un groupe mais une catégorie, d'où ses
-    // capitales plus petites — c'est le TYPE qui hiérarchise, pas la taille seule.
+    assert.match(chaine, /color:\s*var\(--ink-mid\)/, 'la sous-section n\'est plus au deuxième niveau');
     assert.match(chaine, /font-size:\s*13px/, 'le titre d\'une sous-section a rapetissé');
-    assert.match(chaine, /text-transform:\s*none/,
-      'la chaîne reprend les capitales de son ancre : les deux niveaux se confondent');
+    assert.match(declarationsOuNull('.persona-editor-panel .joint-slider-row .joint-slider-label'),
+      /font-size:\s*12px/, 'l\'attribut a changé de taille');
+    assert.match(declarationsOuNull('.joint-slider-row .joint-slider-label'),
+      /color:\s*var\(--ink-soft\)/, 'l\'attribut n\'est plus au troisième niveau');
+  });
+
+  test('⚠️ mais le FILET sous une ancre reste : il sépare, il ne colore pas', () => {
+    // Il n'a de sens que pour un bloc qui CONTIENT des blocs — c'est ce qui reste de la marque
+    // `groupe-ancre` après le retrait de sa couleur, et c'est de la structure, pas du décor.
+    const filet = declarationsOuNull('.persona-editor-panel .joint-group-details.groupe-ancre[open] > summary');
+    assert.ok(filet, 'le titre d\'une ancre ouverte ne se sépare plus de ses chaînes');
+    assert.match(filet, /border-bottom:\s*1px/);
   });
 
   test('⚠️ un FOND pour la chaîne, jamais un second cadre', () => {
