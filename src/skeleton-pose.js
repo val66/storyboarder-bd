@@ -205,10 +205,9 @@ function anglesNonNuls(angles){
   return Object.keys(garde).length ? garde : null;
 }
 
-/** Un Élément porte-t-il une pose ? Vrai seulement si un angle non nul subsiste après normalisation. */
-export function estPosee(pose){
-  return Object.keys(normaliserPose(pose)).length > 0;
-}
+// `estPosee` A ÉTÉ RETIRÉE (#402d) : « cet Élément porte-t-il une pose ? », question que personne ne
+// posait. `poseNonVide3D` répond à la question voisine, « y a-t-il quelque chose à enregistrer ? »,
+// et elle, depuis #402b, a un appelant.
 
 /** L'angle d'un axe, en degrés arrondis, ce qu'un curseur affiche. Absent vaut 0. */
 export function lireAngleDeg(pose, slot, axe){
@@ -729,10 +728,10 @@ export function clesARecolter3D({ morphologie, carte, os, membres, roles } = {},
   return [...emplacements, ...enPlus];
 }
 
-/** Combien d'emplacements sont pilotables : le chiffre que la fiche annonce avant de dérouler. */
-export function nombrePosable(carte){
-  return SLOTS.filter(slot => estPosable(slot) && (carte || {})[slot] && (carte || {})[slot].bone).length;
-}
+// `nombrePosable` A ÉTÉ RETIRÉE (#402d). Son commentaire disait « le chiffre que la fiche annonce
+// avant de dérouler » : cette fiche ne l'a jamais annoncé, la fonction n'a jamais eu d'appelant. Elle
+// partageait ce sort avec `resumeCorrespondance` (#402a), l'autre compteur écrit pour un affichage
+// qui n'est pas venu.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La composition. Vingt lignes, et tout le fichier existe pour elles.

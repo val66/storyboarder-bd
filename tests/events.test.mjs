@@ -38,7 +38,7 @@ import {
   dismissModal,
 } from '../src/events.js';
 // Rapatriées dans modals.js avec les gestionnaires des modales Pièce/Bâtiment.
-import { recomputeBuildWallBox2D, storeRoomGeometry, getRoomOrBuildingScreenBBox } from '../src/modals.js';
+import { recomputeBuildWallBox2D, storeRoomGeometry } from '../src/modals.js';
 import { ecrireAngleDeg } from '../src/skeleton-pose.js';
 import {
   openPersonaEditor, closePersonaEditor, isPersonaEditorOpen, personaEditorTarget,
@@ -420,35 +420,12 @@ describe('storeRoomGeometry : instantané des Murs/Dalles d\'un ensemble de Piè
   });
 });
 
-// ── getRoomOrBuildingScreenBBox ───────────────────────────────────────────────────────────────────
-describe('getRoomOrBuildingScreenBBox : projection écran des 4 coins de la bbox XZ d\'une/plusieurs Pièces', () => {
-  function makePanel() {
-    return { id: 'panel1', x: 0, y: 0, w: 800, h: 600, camRotX: 0, camRotY: 0, camDist: 30, camWx: 0, camWy: 0, camWz: 0 };
-  }
-
-  test('une Pièce rectangulaire : 4 coins projetés dans l\'ordre TL/TR/BR/BL', () => {
-    const panel = makePanel();
-    const page = { w: 800, h: 600, objects: [panel, { pieceId: 'p1', objType: 'dalle', polygon: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 3 }, { x: 0, z: 3 }] }] };
-    const bbox = getRoomOrBuildingScreenBBox(['p1'], page, panel);
-    assert.ok(bbox, 'bbox trouvée');
-    assert.equal(bbox.corners.length, 4);
-    assertClose(bbox.corners[0].sx, 400, 'coin (minX,minZ) projeté (sx)');
-    assertClose(bbox.corners[0].sy, 420, 'coin (minX,minZ) projeté (sy)');
-    assert.deepEqual(bbox.bb, { minX: 0, maxX: 4, minZ: 0, maxZ: 3, w: 4, d: 3, cx: 2, cz: 1.5 });
-  });
-
-  test('aucune Pièce correspondante : null', () => {
-    const panel = makePanel();
-    const page = { w: 800, h: 600, objects: [panel] };
-    assert.equal(getRoomOrBuildingScreenBBox(['pX'], page, panel), null);
-  });
-
-  test('bbox dégénérée (largeur/profondeur quasi nulle) : null', () => {
-    const panel = makePanel();
-    const page = { w: 800, h: 600, objects: [panel, { pieceId: 'p2', objType: 'dalle', polygon: [{ x: 0, z: 0 }, { x: 0, z: 0 }] }] };
-    assert.equal(getRoomOrBuildingScreenBBox(['p2'], page, panel), null);
-  });
-});
+// ---------- « getRoomOrBuildingScreenBBox » : SES TESTS SONT PARTIS AVEC ELLE (#402d) ----------
+//
+// Elle projetait les quatre coins de la boîte MONDE d'une Pièce pour en tirer une boîte écran.
+// `getRoomScreenBBoxFrom2DProjections` (scene3d.js) répond à la même question autrement : elle
+// mesure les projections RÉELLES des membres. Deux calculs d'une même grandeur, sauf que celui-ci
+// n'avait plus d'appelant — la divergence n'a donc jamais eu lieu, cette fois.
 
 // ── wallScreenAxes3D / fracDeltaAlongAxis2D (Fix 26) ──────────────────────────────────────────
 // Cœur du correctif de glisser des Parois : la fraction parcourue doit se mesurer sur l'étendue

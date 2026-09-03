@@ -46,7 +46,7 @@ import {
   signatureDuSquelette3D, archetypeSuggere3D, lignesDeCorrespondance3D, SLOTS,
 } from '../src/skeleton-map.js';
 import {
-  ARCHETYPES_3D, ANIMAL_ARCHETYPES_3D, animauxDeLArchetype3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS,
+  ARCHETYPES_3D, ANIMAL_ARCHETYPES_3D, ANIMAL_TYPES, ANIMAL_JOINT_DEFS,
 } from '../src/constants.js';
 
 /** Le traducteur du dépôt, réduit à ce dont ces tests ont besoin : la version française. */
@@ -67,6 +67,16 @@ const reconnu = (os) => {
   SLOTS.forEach(s => { if (carte[s] && carte[s].bone !== null && carte[s].bone !== undefined) sortie[s] = carte[s].name; });
   return sortie;
 };
+
+// ⚠️ CE REGROUPEMENT VENAIT DE src/constants.js, ET IL EN EST SORTI (#402d). Son en-tête annonçait
+// « laquelle de ces tables sert de modèle d'emplacements est une VRAIE question, elle se posera à
+// l'étape des curseurs » ; cette étape est venue et a répondu autrement (#401b) : un Animal ne prend
+// le modèle de personne, il apporte SES articulations. La question a été dissoute, pas tranchée.
+//
+// Le regroupement reste ICI parce que ce qu'il mesure reste vrai : deux Animaux intégrés partagent
+// la morphologie quadrupède, ce qui est la raison pour laquelle rien, dans l'application, ne doit
+// désigner « l'animal » d'un archétype au singulier.
+const animauxDeLArchetype3D = (cle) => ANIMAL_TYPES.filter(t => ANIMAL_ARCHETYPES_3D[t] === cle);
 
 describe('cerbère : un quadrupède à trois têtes, le pire cas mesuré', () => {
   // 18 emplacements sur 18 remplis, et l'essentiel est FAUX. Ce qui est juste : le bassin, la

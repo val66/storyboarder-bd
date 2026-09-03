@@ -27,7 +27,7 @@ import {
   PERSONA_PREVIEW_BASE_W, PERSONA_PREVIEW_BASE_H,
   PREVIEW_OBJECT_ID, PREVIEW_PERSONA_ID,
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
-  BUILD_SNAP_ANGLE_DEG, PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
+  PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
 } from './constants.js';
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS , nomNumeroteLibre3D} from './utils.js';
@@ -45,9 +45,8 @@ import {
   resolveStyle3D, applyStyleCanvasFilter3D,
   renderPersonaToCanvas3D,
   personaRigCache3D, personaCamera3D,
-  drawPersona3D, drawFace,
+  drawPersona3D,
 } from './rig3d.js';
-export { drawFace };
 import { noDescriptionLabel } from './i18n.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
@@ -414,41 +413,14 @@ export function buildToolCreateWallSegment(panel, page, x1, z1, x2, z2){
   return obj ? obj.id : null;
 }
 
-// Checks whether the segment (fromX,fromZ)→(toX,toZ) is collinear with an existing wall that has an
-// endpoint at (fromX,fromZ) AND that (toX,toZ) is beyond the opposite end (extension).
-// Only searches among walls created BEFORE reaching the snapped vertex (snapWallSegsCount).
-// Returns {seg} if extension is possible, null otherwise.
-// Exported (Step C, unit tests): reads S.buildTool.wallSegs/snapWallSegsCount but mutates
-// nothing, purely additive export, only buildToolClose calls it internally (unchanged).
-export function buildTryExtendWall(fromX, fromZ, toX, toZ){
-  if (!S.buildTool) return null;
-  const dxNew = toX - fromX, dzNew = toZ - fromZ;
-  if (Math.hypot(dxNew, dzNew) < 0.01) return null;
-  const angleNew = Math.atan2(dzNew, dxNew);
-  const snapRad = BUILD_SNAP_ANGLE_DEG * Math.PI / 180;
-  const EPS = 0.002;
-  const count = S.buildTool.snapWallSegsCount; // walls prior to the snap vertex
-  for (const seg of S.buildTool.wallSegs.slice(0, count)) {
-    const atA = Math.hypot(seg.x1 - fromX, seg.z1 - fromZ) < EPS;
-    const atB = Math.hypot(seg.x2 - fromX, seg.z2 - fromZ) < EPS;
-    if (!atA && !atB) continue;
-    // Direction of the wall A→B
-    const wallAngle = Math.atan2(seg.z2 - seg.z1, seg.x2 - seg.x1);
-    let diff = angleNew - wallAngle;
-    while (diff >  Math.PI) diff -= 2 * Math.PI;
-    while (diff < -Math.PI) diff += 2 * Math.PI;
-    if (Math.abs(diff) < snapRad || Math.abs(Math.abs(diff) - Math.PI) < snapRad) {
-      // Collinear : check that toX,toZ is beyond the opposite end from A=(seg.x1,seg.z1)
-      const abx = seg.x2 - seg.x1, abz = seg.z2 - seg.z1;
-      const aqx = toX   - seg.x1, aqz = toZ   - seg.z1;
-      const dot = abx * aqx + abz * aqz;
-      const lenABSq = abx * abx + abz * abz;
-      if (dot > lenABSq) return { seg };
-    }
-  }
-  return null;
-}
-
+// `buildTryExtendWall` A ÉTÉ RETIRÉE (#402d).
+//
+// ⚠️ SON PROPRE COMMENTAIRE NOMMAIT SON APPELANT, « seul buildToolClose l'appelle en interne » : ce
+// n'était plus vrai, et rien ne l'avait signalé. Elle décidait si un nouveau segment PROLONGE un mur
+// existant au lieu d'en créer un second ; l'outil Construire ne lui posait plus la question.
+//
+// Un commentaire qui nomme un appelant vieillit comme n'importe quel code : il faut le vérifier, pas
+// le croire. C'est cette famille de mensonge que tests/code-mort.test.mjs rend maintenant visible.
 // Adds a horizontal Slab (floor or ceiling) : arbitrary polygon in XZ.
 // Stored as objet3d/dalle, invisible in 2D (1×1 px), rendered in 3D via THREE.ShapeGeometry.
 function addSlabElement(panel, page, name, polygon, worldY, pieceId, pieceLabel){
@@ -1299,10 +1271,8 @@ export function drawBubble(c, o){
   }
 }
 
-// Draws the face with a dark outline behind the white, to stay readable
-// regardless of the character's color and even at small scale (3D head or on the page).
-// FIX (pre-existing bug, regression from extraction #155): drawFace moved to rig3d.js
-// (imported from rig3d.js above, re-exported for app.js which imports it from this module).
+// `drawFace` vit dans rig3d.js. Il était RÉEXPORTÉ d'ici « pour app.js » ; ce fichier n'existe plus,
+// le dépôt est passé à src/ modulaire, et personne ne l'importait plus de ce côté (#402d).
 
 // ↳ src/constants.js
 POSE_3D.allonge = Object.assign({}, POSE_3D.debout, { lieFlat: true, rootY: 0 });
@@ -2106,329 +2076,23 @@ export function pickLimbSegmentAt(px, py, positions, radius = POSE_LIMB_PICK_RAD
 // screen coordinates to the canvas's internal coordinates based on THIS sub-rectangle, rather than on the
 // full rect, without this, the pose handles and pan-drag would drift as soon as there was any letterboxing.
 
-// ════════════════════════════════════════════════════════════════════════════════════════════
-// STICK FIGURE (simplified 2D silhouette of a Persona, one pose = one drawStickFigureX function)
-// ════════════════════════════════════════════════════════════════════════════════════════════
-// Conventions common to all the drawStickFigureXxx functions below (not repeated in
-// each one): draw WITHIN the object's box (o.x, o.y, o.w, o.h), head at the top; all
-// coordinates are fractions of o.w/o.h chosen by eye for a readable silhouette, no
-// dedicated comment for each constant, except when the order of the strokes (e.g. "shortened torso"
-// for the sitting position) isn't obvious to read. poseHeadFace() just factors out the drawing
-// of the head, common to several poses.
+// ---------- LA SILHOUETTE 2D D'UN PERSONNAGE : RETIRÉE (#402d) ----------
 //
-// FIX: POSE_RENDERERS used to map each pose to a function NAME (string), resolved via
-// `window[fnName]`, which never resolved (no code assigns these functions to `window`; they
-// are ES module exports, not classic script globals). In practice, drawStickFigure()
-// therefore ALWAYS fell back to drawStickFigureStanding, regardless of the requested pose (cf. the
-// comment still present in rig3d.js, drawPersona3D, which documented this finding). It now maps
-// directly to the functions themselves (the `function` declarations further down in
-// this file are hoisted, so usable here before their textual position), each pose
-// therefore now displays correctly in this fallback. This fallback itself is only used if
-// THREE.js fails to load (a Persona's normal render goes through rig3d.js/scene3d.js, in 3D).
-const POSE_RENDERERS = {
-  allonge: drawStickFigureLying,
-  assis: drawStickFigureSitting,
-  combat: drawStickFigureCombat,
-  course: drawStickFigureCourse,
-  saut: drawStickFigureSaut,
-  vol: drawStickFigureVol,
-  accroupi: drawStickFigureAccroupi,
-  genoux: drawStickFigureGenoux,
-  sort: drawStickFigureSort,
-  arc: drawStickFigureArc,
-  epee_levee: drawStickFigureEpeeLevee,
-  vaincu: drawStickFigureVaincu,
-  meditation: drawStickFigureMeditation,
-  recul: drawStickFigureRecul,
-};
-
-export function drawStickFigure(c, o){
-  const position = o.position || 'debout';
-  const fn = POSE_RENDERERS[position];
-  if (typeof fn === 'function') { fn(c, o); return; }
-  drawStickFigureStanding(c, o);
-}
-
-// Draws the head + face at a given height (fraction of o.h) and prepares the
-// stroke style; returns the coordinates useful for positioning the rest of the body.
-function poseHeadFace(c, o, topFrac){
-  const cx = o.x + o.w / 2;
-  const headR = Math.min(o.w, o.h) * 0.13;
-  const topY = o.y + o.h * topFrac;
-  const headCy = topY + headR;
-  const col = o.color || '#3E5FA8';
-  c.strokeStyle = col; c.fillStyle = col;
-  c.lineWidth = Math.max(2, Math.min(o.w, o.h) * 0.035);
-  c.beginPath(); c.arc(cx, headCy, headR, 0, Math.PI * 2); c.fill();
-  drawFace(c, o, cx, headCy, headR);
-  c.strokeStyle = col; c.fillStyle = col;
-  return { cx, headR, headCy, col };
-}
-
-export function drawStickFigureStanding(c, o){
-  const cx = o.x + o.w / 2;
-  const headR = Math.min(o.w, o.h) * 0.13;
-  const topY = o.y + o.h * 0.12;
-  const col = o.color || '#3E5FA8';
-  c.strokeStyle = col; c.fillStyle = col;
-  c.lineWidth = Math.max(2, Math.min(o.w, o.h) * 0.035);
-  c.beginPath(); c.arc(cx, topY + headR, headR, 0, Math.PI * 2); c.fill();
-  drawFace(c, o, cx, topY + headR, headR);
-  c.strokeStyle = col; c.fillStyle = col;
-  const bodyTop = topY + headR * 2.1;
-  const bodyBottom = o.y + o.h * 0.72;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, bodyBottom); c.stroke();
-  c.beginPath();
-  c.moveTo(cx - o.w * 0.2, bodyTop + (bodyBottom - bodyTop) * 0.35);
-  c.lineTo(cx, bodyTop + (bodyBottom - bodyTop) * 0.12);
-  c.lineTo(cx + o.w * 0.2, bodyTop + (bodyBottom - bodyTop) * 0.35);
-  c.stroke();
-  c.beginPath();
-  c.moveTo(cx - o.w * 0.18, o.y + o.h * 0.92);
-  c.lineTo(cx, bodyBottom);
-  c.lineTo(cx + o.w * 0.18, o.y + o.h * 0.92);
-  c.stroke();
-}
-
-export function drawStickFigureSitting(c, o){
-  const cx = o.x + o.w / 2;
-  const headR = Math.min(o.w, o.h) * 0.13;
-  const topY = o.y + o.h * 0.18;
-  const col = o.color || '#3E5FA8';
-  c.strokeStyle = col; c.fillStyle = col;
-  c.lineWidth = Math.max(2, Math.min(o.w, o.h) * 0.035);
-  c.beginPath(); c.arc(cx, topY + headR, headR, 0, Math.PI * 2); c.fill();
-  drawFace(c, o, cx, topY + headR, headR);
-  c.strokeStyle = col; c.fillStyle = col;
-  const bodyTop = topY + headR * 2.1;
-  const hipY = o.y + o.h * 0.6;
-  // shortened torso
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, hipY); c.stroke();
-  // arms
-  c.beginPath();
-  c.moveTo(cx - o.w * 0.2, bodyTop + (hipY - bodyTop) * 0.5);
-  c.lineTo(cx, bodyTop + (hipY - bodyTop) * 0.15);
-  c.lineTo(cx + o.w * 0.2, bodyTop + (hipY - bodyTop) * 0.5);
-  c.stroke();
-  // horizontal thighs (sitting) then shins going down
-  const kneeX1 = cx - o.w * 0.22, kneeX2 = cx + o.w * 0.22;
-  const footY = o.y + o.h * 0.92;
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(kneeX1, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(kneeX2, hipY); c.stroke();
-  c.beginPath(); c.moveTo(kneeX1, hipY); c.lineTo(kneeX1, footY); c.stroke();
-  c.beginPath(); c.moveTo(kneeX2, hipY); c.lineTo(kneeX2, footY); c.stroke();
-}
-
-export function drawStickFigureLying(c, o){
-  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-  c.save();
-  c.translate(cx, cy);
-  c.rotate(-Math.PI / 2);
-  // virtual figure with width/height swapped, centered at the origin,
-  // drawn standing then rotated to give the "lying down" effect.
-  const virtual = { x: -o.h / 2, y: -o.w / 2, w: o.h, h: o.w, emotion: o.emotion, color: o.color };
-  drawStickFigureStanding(c, virtual);
-  c.restore();
-}
-
-export function drawStickFigureCombat(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.1);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1;
-  const hipY = o.y + h * 0.6;
-  const leanX = w * 0.06;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx + leanX, hipY); c.stroke();
-  // front arm holding the sword
-  c.beginPath(); c.moveTo(cx + leanX * 0.3, bodyTop + (hipY - bodyTop) * 0.15); c.lineTo(cx + w * 0.42, bodyTop - h * 0.02); c.stroke();
-  c.beginPath(); c.moveTo(cx + w * 0.42, bodyTop - h * 0.02); c.lineTo(cx + w * 0.62, bodyTop - h * 0.16); c.stroke();
-  // back arm
-  c.beginPath(); c.moveTo(cx + leanX * 0.3, bodyTop + (hipY - bodyTop) * 0.2); c.lineTo(cx - w * 0.22, bodyTop + (hipY - bodyTop) * 0.5); c.stroke();
-  const footY = o.y + h * 0.92;
-  // bent front leg
-  c.beginPath(); c.moveTo(cx + leanX, hipY); c.lineTo(cx + w * 0.22, hipY + (footY - hipY) * 0.5); c.lineTo(cx + w * 0.3, footY); c.stroke();
-  // straight back leg
-  c.beginPath(); c.moveTo(cx + leanX, hipY); c.lineTo(cx - w * 0.18, footY); c.stroke();
-}
-
-export function drawStickFigureCourse(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.1);
-  const w = o.w, h = o.h;
-  const lean = w * 0.1;
-  const bodyTop = headCy + headR * 1.1;
-  const hipX = cx + lean, hipY = o.y + h * 0.6;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(hipX, hipY); c.stroke();
-  const shoulderY = bodyTop + (hipY - bodyTop) * 0.2;
-  c.beginPath(); c.moveTo(cx + lean * 0.3, shoulderY); c.lineTo(cx + w * 0.3, shoulderY - h * 0.12); c.stroke();
-  c.beginPath(); c.moveTo(cx + lean * 0.3, shoulderY); c.lineTo(cx - w * 0.32, shoulderY + h * 0.08); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(hipX, hipY); c.lineTo(hipX + w * 0.16, hipY + (footY - hipY) * 0.35); c.lineTo(hipX + w * 0.05, footY - h * 0.05); c.stroke();
-  c.beginPath(); c.moveTo(hipX, hipY); c.lineTo(hipX - w * 0.3, footY); c.stroke();
-}
-
-export function drawStickFigureSaut(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.08);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1;
-  const hipY = o.y + h * 0.5;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.15); c.lineTo(cx - w * 0.3, o.y + h * 0.02); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.15); c.lineTo(cx + w * 0.3, o.y + h * 0.02); c.stroke();
-  const kneeY = hipY + h * 0.16;
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx - w * 0.18, kneeY); c.lineTo(cx - w * 0.1, hipY + h * 0.22); c.stroke();
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx + w * 0.18, kneeY); c.lineTo(cx + w * 0.1, hipY + h * 0.22); c.stroke();
-}
-
-export function drawStickFigureVol(c, o){
-  const w = o.w, h = o.h;
-  const col = o.color || '#3E5FA8';
-  const headR = Math.min(w, h) * 0.13;
-  const headCx = o.x + w * 0.28, headCy = o.y + h * 0.22 + headR;
-  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = Math.max(2, Math.min(w, h) * 0.035);
-  c.beginPath(); c.arc(headCx, headCy, headR, 0, Math.PI * 2); c.fill();
-  drawFace(c, o, headCx, headCy, headR);
-  c.strokeStyle = col; c.fillStyle = col;
-  const hipX = o.x + w * 0.62, hipY = o.y + h * 0.62;
-  c.beginPath(); c.moveTo(headCx, headCy + headR * 1.1); c.lineTo(hipX, hipY); c.stroke();
-  // arms stretched forward
-  c.beginPath(); c.moveTo(headCx + w * 0.05, headCy + headR * 1.3); c.lineTo(o.x + w * 0.85, o.y + h * 0.06); c.stroke();
-  // legs stretched backward
-  c.beginPath(); c.moveTo(hipX, hipY); c.lineTo(o.x + w * 0.92, o.y + h * 0.92); c.stroke();
-  // cape
-  c.beginPath();
-  c.moveTo(headCx - w * 0.05, headCy + headR * 0.8);
-  c.lineTo(o.x + w * 0.05, o.y + h * 0.5);
-  c.lineTo(headCx - w * 0.02, headCy + headR * 1.6);
-  c.closePath(); c.fill();
-}
-
-export function drawStickFigureAccroupi(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.32);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1;
-  const hipY = o.y + h * 0.62;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.3); c.lineTo(cx - w * 0.18, hipY + h * 0.05); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.3); c.lineTo(cx + w * 0.18, hipY + h * 0.05); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx - w * 0.22, hipY + h * 0.06); c.lineTo(cx - w * 0.18, footY); c.stroke();
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx + w * 0.22, hipY + h * 0.06); c.lineTo(cx + w * 0.18, footY); c.stroke();
-}
-
-export function drawStickFigureGenoux(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.16);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1;
-  const hipY = o.y + h * 0.62;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.25); c.lineTo(cx + w * 0.18, hipY + h * 0.05); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.25); c.lineTo(cx - w * 0.05, hipY + h * 0.12); c.stroke();
-  const footY = o.y + h * 0.92;
-  // knee on the ground
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx - w * 0.14, footY); c.stroke();
-  // leg raised in front
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx + w * 0.18, hipY + h * 0.1); c.lineTo(cx + w * 0.2, footY); c.stroke();
-}
-
-export function drawStickFigureSort(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.12);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1, bodyBottom = o.y + h * 0.72;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, bodyBottom); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (bodyBottom - bodyTop) * 0.1); c.lineTo(cx - w * 0.32, o.y + h * 0.05); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (bodyBottom - bodyTop) * 0.1); c.lineTo(cx + w * 0.32, o.y + h * 0.05); c.stroke();
-  // sparks at the hands
-  c.beginPath(); c.arc(cx - w * 0.32, o.y + h * 0.05, headR * 0.35, 0, Math.PI * 2); c.stroke();
-  c.beginPath(); c.arc(cx + w * 0.32, o.y + h * 0.05, headR * 0.35, 0, Math.PI * 2); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx - w * 0.22, footY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx + w * 0.22, footY); c.stroke();
-}
-
-export function drawStickFigureArc(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.12);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1, bodyBottom = o.y + h * 0.72;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, bodyBottom); c.stroke();
-  const shoulderY = bodyTop + (bodyBottom - bodyTop) * 0.15;
-  // front arm holding the bow
-  c.beginPath(); c.moveTo(cx, shoulderY); c.lineTo(cx + w * 0.4, shoulderY); c.stroke();
-  c.beginPath(); c.arc(cx + w * 0.4, shoulderY, h * 0.16, -Math.PI * 0.35, Math.PI * 0.35); c.stroke();
-  // back arm pulling the string
-  c.beginPath(); c.moveTo(cx, shoulderY); c.lineTo(cx - w * 0.28, shoulderY - h * 0.02); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx - w * 0.16, footY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx + w * 0.2, footY); c.stroke();
-}
-
-export function drawStickFigureEpeeLevee(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.14);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1, bodyBottom = o.y + h * 0.72;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, bodyBottom); c.stroke();
-  const shoulderY = bodyTop + (bodyBottom - bodyTop) * 0.15;
-  const handY = o.y + h * 0.06;
-  c.beginPath(); c.moveTo(cx - w * 0.12, shoulderY); c.lineTo(cx, handY); c.stroke();
-  c.beginPath(); c.moveTo(cx + w * 0.12, shoulderY); c.lineTo(cx, handY); c.stroke();
-  // blade pointing up
-  c.beginPath(); c.moveTo(cx, handY); c.lineTo(cx, Math.max(o.y, handY - h * 0.18)); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx - w * 0.18, footY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyBottom); c.lineTo(cx + w * 0.18, footY); c.stroke();
-}
-
-export function drawStickFigureVaincu(c, o){
-  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-  c.save();
-  c.translate(cx, cy);
-  c.rotate(-Math.PI / 2);
-  const w = o.h, h = o.w;
-  const col = o.color || '#3E5FA8';
-  const headR = Math.min(w, h) * 0.13;
-  const vx = -w / 2, vy = -h / 2;
-  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = Math.max(2, Math.min(w, h) * 0.035);
-  const headCx = vx + w * 0.5, headCy = vy + h * 0.12 + headR;
-  c.beginPath(); c.arc(headCx, headCy, headR, 0, Math.PI * 2); c.fill();
-  drawFace(c, { emotion: o.emotion }, headCx, headCy, headR);
-  c.strokeStyle = col; c.fillStyle = col;
-  const bodyTop = headCy + headR * 1.1, bodyBottom = vy + h * 0.7;
-  c.beginPath(); c.moveTo(headCx, bodyTop); c.lineTo(headCx, bodyBottom); c.stroke();
-  // spread arms
-  c.beginPath(); c.moveTo(headCx, bodyTop + (bodyBottom - bodyTop) * 0.2); c.lineTo(vx + w * 0.1, bodyTop - h * 0.05); c.stroke();
-  c.beginPath(); c.moveTo(headCx, bodyTop + (bodyBottom - bodyTop) * 0.2); c.lineTo(vx + w * 0.9, bodyTop - h * 0.05); c.stroke();
-  // spread legs
-  c.beginPath(); c.moveTo(headCx, bodyBottom); c.lineTo(vx + w * 0.15, vy + h * 0.95); c.stroke();
-  c.beginPath(); c.moveTo(headCx, bodyBottom); c.lineTo(vx + w * 0.85, vy + h * 0.95); c.stroke();
-  // stun stars
-  c.font = `${Math.max(8, headR * 0.9)}px sans-serif`;
-  c.fillText('✦', headCx - headR * 2.2, headCy - headR * 1.4);
-  c.fillText('✦', headCx + headR * 1.3, headCy - headR * 1.8);
-  c.restore();
-}
-
-export function drawStickFigureMeditation(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.2);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.1;
-  const hipY = o.y + h * 0.58;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.4); c.lineTo(cx - w * 0.16, hipY + h * 0.02); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.4); c.lineTo(cx + w * 0.16, hipY + h * 0.02); c.stroke();
-  const footY = o.y + h * 0.78;
-  c.beginPath(); c.moveTo(cx, hipY); c.lineTo(cx - w * 0.32, footY); c.lineTo(cx + w * 0.32, footY); c.closePath(); c.stroke();
-}
-
-export function drawStickFigureRecul(c, o){
-  const { cx, headCy, headR } = poseHeadFace(c, o, 0.22);
-  const w = o.w, h = o.h;
-  const bodyTop = headCy + headR * 1.05;
-  const hipY = o.y + h * 0.66;
-  c.beginPath(); c.moveTo(cx, bodyTop); c.lineTo(cx - w * 0.04, hipY); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.1); c.lineTo(cx - w * 0.22, headCy - headR * 0.4); c.stroke();
-  c.beginPath(); c.moveTo(cx, bodyTop + (hipY - bodyTop) * 0.1); c.lineTo(cx + w * 0.1, headCy - headR * 0.6); c.stroke();
-  const footY = o.y + h * 0.92;
-  c.beginPath(); c.moveTo(cx - w * 0.04, hipY); c.lineTo(cx - w * 0.22, footY); c.stroke();
-  c.beginPath(); c.moveTo(cx - w * 0.04, hipY); c.lineTo(cx + w * 0.12, footY); c.stroke();
-}
+// Seize fonctions, une par pose, plus leur table d'aiguillage. Un Personnage se rend en 3D depuis
+// rig3d.js/scene3d.js ; ce dessin-ci était le REPLI si THREE.js ne se chargeait pas.
+//
+// ⚠️ CE REPLI NE POUVAIT PLUS ÊTRE ATTEINT, et le code le disait déjà sans que personne en tire la
+// conséquence. `drawPersona3D` (rig3d.js) est le seul endroit qui gère l'absence de THREE, et il ne
+// pouvait PAS appeler ce dessin : draw.js est en aval de rig3d.js dans la chaîne des imports, et
+// l'importer aurait fait un cycle. Son commentaire l'explique, puis dessine à la place une
+// silhouette minimale de quelques lignes. Le repli existait donc en double, et c'est la version
+// atteignable qui a survécu.
+//
+// ⚠️ ET IL ÉTAIT DÉJÀ À MOITIÉ MORT AVANT ÇA : sa table d'aiguillage nommait ses fonctions par
+// CHAÎNE, résolue via `window[nom]`, qui ne résout jamais rien pour des exports de module ES. Quinze
+// poses sur seize n'ont donc jamais été dessinées. Le correctif qui a rendu la table directe est
+// arrivé APRÈS que le repli soit devenu inatteignable : il a réparé un chemin que plus rien
+// n'empruntait.
 
 export function drawSelection(c, o, page){
   c.save();
@@ -2538,21 +2202,9 @@ export function drawSelection(c, o, page){
   c.restore();
 }
 
-export function wrapText(c, text, x, y, maxWidth, lineHeight){
-  const words = text.split(' ');
-  let line = '', yy = y;
-  for (const w of words) {
-    const test = line ? line + ' ' + w : w;
-    if (c.measureText(test).width > maxWidth && line) {
-      c.fillText(line, x, yy); line = w; yy += lineHeight;
-    } else line = test;
-  }
-  if (line) c.fillText(line, x, yy);
-}
-
-// Like wrapText, but returns the array of computed lines instead of drawing them directly,
-// used when the total height of the text block needs to be known before drawing it (e.g.
-// to center it vertically inside a Bubble).
+// `wrapText` A ÉTÉ RETIRÉE (#402d). Elle DESSINAIT un texte en le repliant ; sa jumelle
+// `wrapTextLines`, qui rend les lignes sans les peindre, reste et a des appelants. Deux façons de
+// replier le même texte, c'était deux réglages de largeur à tenir d'accord.
 export function wrapTextLines(c, text, maxWidth){
   const words = text.split(' ');
   const lines = [];
@@ -2567,12 +2219,8 @@ export function wrapTextLines(c, text, maxWidth){
   return lines;
 }
 
-export function drawCanvasOnly(){
-  const page = currentPage();
-  _canvas.width = Math.round(page.w * S.pageRenderScale); _canvas.height = Math.round(page.h * S.pageRenderScale);
-  _applyZoom();
-  drawContent(_ctx, page, S.pageRenderScale, true);
-}
+// `drawCanvasOnly` A ÉTÉ RETIRÉE (#402d) : elle redessinait la page SANS son habillage, et plus
+// personne ne l'appelait. `drawCurrentPage` est le seul chemin de dessin de la page.
 
 // [STATE→S] let S.drawCurrentPageLastRef = null;
 
@@ -2630,7 +2278,8 @@ export function scheduleDrawCurrentPage(){
 // relâchement de la souris, qui clôt un geste et enchaîne souvent sur une lecture d'état.
 export function flushDrawCurrentPage(){ return _planificateurDessin.vider(); }
 
-export function drawPending(){ return _planificateurDessin.enAttente(); }
+// `drawPending` A ÉTÉ RETIRÉE (#402d) : elle exposait l'état interne du planificateur de dessin, et
+// personne ne l'interrogeait, pas même un test. `flushDrawCurrentPage` reste, elle a des appelants.
 
 // ════════════════════════════════════════════════════════════
 // CANVAS RENDER PIPELINE

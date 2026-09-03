@@ -11,7 +11,7 @@
  * Element helpers: getElementDepth
  */
 
-import { FORMATS, STYLES_3D, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D,
+import { FORMATS, EMOTIONS, POSITIONS, POSE_3D, POSE_HANDLES, WALL_PX_PER_UNIT_3D,
   OBJECT_TYPE_LABELS, OBJECT_TYPE_LABELS_EN, ANIMAL_LABELS_EN, JOINT_LABELS, JOINT_LABELS_EN,
   ANIMAL_ARCHETYPES_3D } from './constants.js';
 
@@ -29,11 +29,14 @@ export function pxPerMm(formatKey){
 
 export function getFormat(key){ return FORMATS.find(f => f.key === key); }
 
-export function getStyle3D(key){ return STYLES_3D.find(s => s.key === key) || STYLES_3D[0]; }
+// `getStyle3D` A ÉTÉ RETIRÉE (#402d) : `resolveStyle3D` (rig3d.js) est le chemin vivant, et deux
+// façons de résoudre un style, c'était deux replis à tenir d'accord.
 
 export function getEmotion(key){ return EMOTIONS.find(e => e.key === key) || EMOTIONS[0]; }
 
-export function getPosition(key){ return POSITIONS.find(p => p.key === key) || POSITIONS[0]; }
+// `getPosition` A ÉTÉ RETIRÉE (#402d) : elle rendait l'entrée d'une pose INTÉGRÉE, avec repli sur la
+// première. Les poses viennent maintenant de la bibliothèque, `nameOfPose3D` et
+// `poseJointsByKey3D` les lisent là.
 
 // Fix 44 : the pose key of an Element when that key is NOT one of the built-ins; null otherwise.
 //
@@ -1042,7 +1045,9 @@ export function wrapAngle(a){
   return a - Math.PI;
 }
 
-export function clampAngle(v){ return Math.max(-Math.PI, Math.min(Math.PI, v)); }
+// `clampAngle` A ÉTÉ RETIRÉE (#402d) : elle BORNAIT un angle à ±π, ce qui n'est pas ce qu'on veut
+// d'un angle — deux tours et demi devenaient un demi-tour au lieu de revenir au même point.
+// `wrapAngle`, qui le RAMÈNE dans l'intervalle par tours entiers, est le chemin vivant.
 
 // ══════════════════════════════════════════════════════════════
 // GEOMETRY

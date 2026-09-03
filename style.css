@@ -152,14 +152,9 @@ header span{ font-size:12px; color:var(--ink-soft); }
 .project-name-chevron{ flex:none; font-size:16px; font-weight:700; opacity:.65; }
 #projectNameHeader:hover .project-name-chevron{ opacity:1; }
 
-.tool-btn{
-  display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--line);
-  background:var(--white); border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--ink-soft);
-}
-.tool-btn.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
-.tool-btn:hover:not(.active){ border-color:var(--ink-soft); color:var(--ink); }
-.tool-btn:disabled{ opacity:.5; cursor:default; }
-.side-btn{ width:100%; margin-bottom:6px; }
+/* `.tool-btn` ET `.side-btn` ONT ÉTÉ RETIRÉES (#402d) : les boutons du menu de gauche portent
+   `.full-btn` et `.nav-btn` depuis la convention de couleurs (#398), et plus rien ne posait ces
+   deux classes-ci, ni le HTML ni le JS. */
 
 select, input[type=number]{
   font-family:'Inter',sans-serif; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12.5px; background:var(--white); color:var(--ink);
@@ -272,8 +267,8 @@ select, input[type=number]{
    collerait « Nouvelle scène » à la dernière Scène. Elle ne tombe donc que sur une liste qui
    termine réellement son panneau. */
 .dropdown-panel > *:last-child > *:last-child{ margin-bottom:0; }
-#tomeList{ padding-left:10px; border-left:1px solid var(--line); margin-bottom:8px; }
-.dropdown-item{ margin-bottom:6px; }
+/* `#tomeList` A ÉTÉ RETIRÉ (#402d) : cet identifiant n'existe ni dans le HTML ni dans le JS. */
+/* `.dropdown-item` A ÉTÉ RETIRÉE (#402d) : plus aucun menu ne pose cette classe. */
 
 /* TREE (tomes / pages) */
 .tome-row{
@@ -309,7 +304,7 @@ select, input[type=number]{
 .tome-format label, .tome-pages > label{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:5px; font-weight:700; }
 .tome-format select{ width:100%; }
 
-#colorSwatches{ display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+/* `#colorSwatches` A ÉTÉ RETIRÉ (#402d) : même raison, plus aucun élément ne porte cet identifiant. */
 
 /* MAIN */
 main{ flex:1; display:flex; flex-direction:column; min-width:0; }
@@ -421,10 +416,9 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .perso-row .perso-name-main{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .perso-row .perso-link{ font-size:10.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .perso-row.active .perso-link{ color:var(--accent); opacity:.8; }
-.perso-row .perso-scene-badge{ font-size:10.5px; color:var(--ink-soft); opacity:.75; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.perso-row.active .perso-scene-badge{ color:var(--accent); opacity:.85; }
-.perso-row .perso-edit{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px; padding:2px; }
-.perso-row .perso-edit:hover{ color:var(--accent); }
+/* `.perso-scene-badge` ET `.perso-edit` ONT ÉTÉ RETIRÉES (#402d) : une pastille qui nommait la
+   Scène d'un Personnage dans la liste, et son crayon d'édition. Ni l'une ni l'autre n'est posée
+   nulle part ; la liste construit ses lignes autrement. */
 .side-persos .empty-hint{ font-size:11.5px; }
 
 /* Les Éléments qui ne montrent rien d'eux-mêmes dans la Case (cf. estHorsChamp3D).
@@ -824,6 +818,12 @@ canvas{
    d'écart entre eux. flex:1 1 0 les force à occuper une largeur égale quel que soit leur padding/texte. */
 #descModal .modal-actions, #objectModal .modal-actions,
 #tracéModal .modal-actions, #terrainModal .modal-actions,
+/* ⚠️ CES TROIS RÈGLES NE S'APPLIQUENT À RIEN, ET CE N'EST PAS DU CODE MORT ORDINAIRE (#402d).
+   Les deux modales existent, sous les identifiants `roomModal` et `buildingModal` : ce sont les
+   SÉLECTEURS qui sont restés en français après le renommage. La rangée d'actions de la Pièce et du
+   Bâtiment a donc perdu, sans un mot, l'écart et la répartition égale voulus pour elle.
+   Les corriger CHANGERAIT l'aspect de deux écrans : ce n'est pas un ménage, c'est une décision,
+   et elle revient à l'utilisateur. Les règles restent en l'état jusque-là. */
 #pieceModal .modal-actions, #batimentModal .modal-actions{ gap:16px; }
 #descModal .modal-actions .full-btn, #descModal .modal-actions .nav-btn,
 #objectModal .modal-actions .full-btn, #objectModal .modal-actions .nav-btn,
@@ -1365,17 +1365,13 @@ canvas{
   margin-bottom: 14px;
 }
 
-.modal-readonly-value {
-  margin-bottom: 14px;
-  padding: 6px 8px; border-radius: 4px;
-  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-  font-size: 12px; opacity: .85; word-break: break-all;
-}
+/* `.modal-readonly-value` A ÉTÉ RETIRÉE (#402d) : elle habillait une valeur en lecture seule dans
+   une fiche, le champ « Fichier », fondu dans « Modèle » depuis. Plus rien ne pose cette classe. */
 
 /* Une case à cocher et son libellé, sur une seule ligne cliquable (le <label> englobe les deux, donc
-   le texte coche aussi). Même marge basse de 14 px que `.modal-box select` et `.modal-readonly-value`
-   — cf. le commentaire ci-dessus : dans une fiche, l'écart au-dessus d'un libellé vient de la marge
-   basse du champ qui le précède. */
+   le texte coche aussi). Même marge basse de 14 px que `.modal-box select` — cf. le commentaire
+   ci-dessus : dans une fiche, l'écart au-dessus d'un libellé vient de la marge basse du champ qui
+   le précède. */
 .modal-checkbox-line {
   display: flex; align-items: center; gap: 7px;
   margin-bottom: 6px; cursor: pointer; font-size: 13px;

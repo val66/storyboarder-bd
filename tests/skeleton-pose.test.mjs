@@ -37,8 +37,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  POSE_AXES, POSE_LIMITE_DEG, normaliserPose, estPosee, lireAngleDeg, ecrireAngleDeg,
-  groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
+  POSE_AXES, POSE_LIMITE_DEG, normaliserPose, lireAngleDeg, ecrireAngleDeg,
+  groupesPosables, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
   rolesParOs3D, estCleDeRole3D, poigneesParDefaut3D,
@@ -59,6 +59,18 @@ const CARTE = {
   bras_g: { bone: 'b3', name: 'Left_arm' },
   avantbras_g: { bone: 'b4', name: 'Left_elbow' },
 };
+
+// ⚠️ CES DEUX-LÀ VENAIENT DE src/skeleton-pose.js, ET ELLES EN SONT SORTIES (#402d). Aucune n'a
+// JAMAIS eu d'appelant dans l'application : `estPosee` répondait à « cet Élément porte-t-il une
+// pose ? », `nombrePosable` annonçait « le chiffre que la fiche affiche avant de dérouler », un
+// chiffre que cette fiche n'a jamais affiché.
+//
+// Elles restent ici parce qu'elles ne font qu'ÉNONCER autrement des règles vivantes, celle du zéro
+// de `normaliserPose` et celle de l'os manquant : ce sont ces règles-là que les assertions
+// ci-dessous mesurent, pas les deux enveloppes.
+const estPosee = (pose) => Object.keys(normaliserPose(pose)).length > 0;
+const nombrePosable = (carte) => SLOTS.filter(
+  slot => estPosable(slot) && (carte || {})[slot] && (carte || {})[slot].bone).length;
 
 describe('normaliserPose : relire une pose sans jamais faire échouer une ouverture', () => {
   test('une pose valide traverse intacte', () => {
@@ -1278,6 +1290,9 @@ describe('Un seul endroit décide « humanoïde ou pas » (#374)', () => {
  *   W3 Euler→quaternion : convention ZYX au lieu de XYZ                         ROUGE
  *   W4 quaternion→Euler : signe de Y inversé                                    ROUGE
  *   W5 nombrePosable compte aussi les emplacements sans os                      ROUGE
+ *      (⚠️ cette mutation ne s'applique plus : `nombrePosable` n'avait aucun appelant et a été
+ *      retirée en #402d ; la règle qu'elle énonçait, un emplacement sans `bone` n'est pas
+ *      pilotable, est mesurée depuis ce fichier.)
  *
  * W3 mérite un mot : la convention XYZ n'est pas un détail d'implémentation. C'est celle que
  * `THREE.Euler` applique aux `rotation` du rig intégré ; deux conventions dans la même application

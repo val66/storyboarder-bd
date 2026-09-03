@@ -18,13 +18,11 @@ import {
   distanceCameraPourPremierElement3D,
   estPremierElement3DdeLaCase,
   clampPanelDepth3D,
-  panelApparentPx3D,
   ensureElementUnits3D,
   groundMagnetEligible,
   applyGroundMagnetY,
   clampWorldYAboveGround,
   storeElementWorldCoords,
-  storeElementWxFloor,
   findOwningPanel,
   panelCamBasis3D,
   getCamOrbitWorld,
@@ -80,7 +78,7 @@ beforeEach(() => {
   S.editingSceneId = null;
 });
 
-describe('panelDepthToDistance3D / clampPanelDepth3D / panelApparentPx3D', () => {
+describe('panelDepthToDistance3D / clampPanelDepth3D', () => {
   test('profondeur nulle → distance par défaut de la caméra', () => {
     assertClose(panelDepthToDistance3D(0), PANEL_CAM_DEFAULT_DIST_3D, 'z=0');
   });
@@ -104,15 +102,9 @@ describe('panelDepthToDistance3D / clampPanelDepth3D / panelApparentPx3D', () =>
   test('clampPanelDepth3D plafonne à PANEL_DEPTH_MAX_3D', () => {
     assertClose(clampPanelDepth3D(PANEL_DEPTH_MAX_3D + 1000), PANEL_DEPTH_MAX_3D, 'valeur excessive');
   });
-
-  test('panelApparentPx3D à profondeur nulle : taille apparente = unitsSize × WALL_PX_PER_UNIT_3D', () => {
-    assertClose(panelApparentPx3D(2, 0), 2 * WALL_PX_PER_UNIT_3D, 'z=0, facteur neutre');
-  });
-
-  test('panelApparentPx3D : plus proche de la caméra (z>0) → apparaît plus grand', () => {
-    assertClose(panelApparentPx3D(2, 5), 96, 'agrandi (facteur 30/25=1.2)');
-    assert.ok(panelApparentPx3D(2, 5) > panelApparentPx3D(2, 0));
-  });
+  // ⚠️ `panelApparentPx3D` A ÉTÉ RETIRÉE AVEC SES TESTS (#402d) : elle convertissait une taille en
+  // unités vers des pixels apparents, sans appelant. `ensureElementUnits3D`, testée juste en
+  // dessous, fait le chemin INVERSE et, elle, sert.
 });
 
 describe('ensureElementUnits3D : décodage de la taille apparente (o.w/o.h) en unités monde réelles', () => {
@@ -122,7 +114,7 @@ describe('ensureElementUnits3D : décodage de la taille apparente (o.w/o.h) en u
     assertClose(units.h, 3, 'h');
   });
 
-  test('profondeur non nulle : le facteur d\'échelle en tient compte (round-trip avec panelApparentPx3D)', () => {
+  test('profondeur non nulle : le facteur d\'échelle en tient compte', () => {
     const units = ensureElementUnits3D({ w: 96, h: 48, z: 5 });
     assertClose(units.w, 2, 'w');
     assertClose(units.h, 1, 'h');
@@ -270,14 +262,9 @@ describe('ensureElementWorldPos3D / setElementWorldPos3D / storeElementWorldCoor
     storeElementWorldCoords(o, null);
     assert.equal(o.wxFloor, undefined);
   });
-
-  test('storeElementWxFloor est un alias de storeElementWorldCoords', () => {
-    const panel = { x: 0, y: 0, w: 800, h: 600 };
-    const o = { x: 380, y: 280, w: 40, h: 40, z: 3 };
-    storeElementWxFloor(o, panel);
-    assertClose(o.wxFloor, 0, 'wxFloor');
-    assertClose(o.wzFloor, 3, 'wzFloor');
-  });
+  // ⚠️ `storeElementWxFloor` A ÉTÉ RETIRÉE AVEC SON TEST (#402d) : un alias d'une ligne vers
+  // `storeElementWorldCoords`, sans appelant. Le test ne vérifiait rien d'autre que l'existence de
+  // l'alias. Le CHAMP `wxFloor`, lui, est des données enregistrées et ne bouge pas.
 });
 
 describe('panelCamBasis3D : repère orthonormé de la caméra', () => {

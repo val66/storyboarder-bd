@@ -46,22 +46,15 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // (#402b est RÉSOLUE : `poseNonVide3D` a retrouvé un appelant, dans l'Éditeur cette fois. C'était
-  // une garde débranchée par #393, pas un oubli, et c'est bien la sortie qu'on attendait de cette
-  // liste : un nom en sort parce qu'on a tranché, pas parce qu'on l'a effacé.)
+  // (#402b et #402d sont RÉSOLUES, et de deux façons opposées, ce qui était tout l'objet de cette
+  // liste. #402b : `poseNonVide3D` a retrouvé un APPELANT, c'était une garde débranchée par #393.
+  // #402d : les quatorze autres sont PARTIES, après vérification une par une.)
+  //
   // #402c — une INTENTION restée en chemin. Elle donne à une créature un repère de corps dérivé de
   // ses chaînes, avec une validation mesurée sur quatre fixtures, et n'a jamais été branchée. C'est
   // la vraie réponse au repli à zéro d'`orbiteDouvertureEditeur3D` pour une créature sans
-  // emplacements humanoïdes.
+  // emplacements humanoïdes. La brancher CHANGERAIT un comportement : c'est une décision.
   repereParChaines3D: '#402c',
-  // #402d — antérieurs au chantier des poses, à vérifier un par un avant retrait. Les trois de
-  // draw.js n'ont d'appelant nulle part, pas même dans un test ; les autres n'en ont JAMAIS eu dans
-  // l'application, ils ont été écrits pour une étape qui a pris un autre chemin.
-  drawStickFigure: '#402d', drawCanvasOnly: '#402d', drawPending: '#402d',
-  buildTryExtendWall: '#402d', wrapText: '#402d', getRoomOrBuildingScreenBBox: '#402d',
-  panelApparentPx3D: '#402d', storeElementWxFloor: '#402d', estPosee: '#402d',
-  nombrePosable: '#402d', animauxDeLArchetype3D: '#402d', getStyle3D: '#402d',
-  getPosition: '#402d', clampAngle: '#402d',
 };
 
 function exportsSansAppelant(){
@@ -109,10 +102,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle valait seize, elle vaut quinze : #402b est tranchée. Restent une décision identifiée
-    // (#402c) et quatorze restes antérieurs au chantier (#402d). Ajouter une ligne ici doit coûter
-    // un test rouge, sans quoi c'est la sortie de secours qui devient le chemin normal.
-    assert.equal(Object.keys(EN_ATTENTE).length, 15,
+    // Elle valait seize, elle vaut UN. Ajouter une ligne ici doit coûter un test rouge, sans quoi
+    // la sortie de secours devient le chemin normal — et une liste qui s'allonge finit par ne plus
+    // se lire, ce qui est exactement l'état dont ce fichier est né.
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

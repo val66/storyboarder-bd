@@ -7,8 +7,8 @@ import { readFileSync } from 'node:fs';
 
 import {
   makeFrameScheduler,
-  wrapAngle, clamp, clampAngle, getBBox,
-  pxPerMm, getFormat, getStyle3D, getEmotion, getPosition,
+  wrapAngle, clamp, getBBox,
+  pxPerMm, getFormat, getEmotion,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
   poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, poseSliderSignature3D,
@@ -87,18 +87,16 @@ describe('wrapAngle : ramène un angle dans [-π, π[', () => {
   });
 });
 
-describe('clamp / clampAngle', () => {
+describe('clamp', () => {
   test('clamp borne une valeur dans [min,max]', () => {
     assertClose(clamp(5, 0, 10), 5, 'dans l\'intervalle');
     assertClose(clamp(-5, 0, 10), 0, 'sous le minimum');
     assertClose(clamp(15, 0, 10), 10, 'au-dessus du maximum');
   });
-
-  test('clampAngle borne dans [-π, π] (utilisé pour camRotX ±85°, cf. Phase 10)', () => {
-    assertClose(clampAngle(0), 0);
-    assertClose(clampAngle(Math.PI * 2), Math.PI, 'plafonné à π (pas de wrap, juste un clamp dur)');
-    assertClose(clampAngle(-Math.PI * 2), -Math.PI);
-  });
+  // ⚠️ `clampAngle` A ÉTÉ RETIRÉE AVEC SON TEST (#402d), et son test disait déjà pourquoi elle
+  // n'avait pas d'appelant : « plafonné à π, pas de wrap, juste un clamp dur ». Deux tours ne
+  // doivent pas devenir un demi-tour, ils doivent revenir au même point. C'est `wrapAngle`, testée
+  // juste au-dessus, qui fait ça, et c'est elle que le code appelle.
 });
 
 describe('getBBox', () => {
@@ -130,18 +128,18 @@ describe('getFormat / pxPerMm : Format d\'un Tome et conversion px→mm', () => 
   });
 });
 
-describe('getStyle3D / getEmotion / getPosition : lookups avec repli sur la première entrée', () => {
+// ⚠️ `getStyle3D` ET `getPosition` ONT ÉTÉ RETIRÉES (#402d) : deux des trois recherches de cette
+// famille n'avaient aucun appelant. `resolveStyle3D` (rig3d.js) résout un style, `nameOfPose3D` et
+// `poseJointsByKey3D` lisent une pose dans la BIBLIOTHÈQUE, qui a remplacé la liste figée des poses
+// intégrées. `getEmotion` reste : elle, on l'appelle.
+describe('getEmotion : lookup avec repli sur la première entrée', () => {
   test('clé connue : renvoie l\'entrée correspondante', () => {
-    assert.equal(getStyle3D('simplifie').key, 'simplifie');
     assert.equal(getEmotion('content').key, 'content');
-    assert.equal(getPosition('assis').key, 'assis');
   });
 
   test('clé inconnue ou absente : repli silencieux sur la première entrée de la liste', () => {
-    assert.equal(getStyle3D('nope').key, 'simplifie');
     assert.equal(getEmotion('nope').key, 'neutre');
     assert.equal(getEmotion(undefined).key, 'neutre');
-    assert.equal(getPosition('nope').key, 'debout');
   });
 });
 

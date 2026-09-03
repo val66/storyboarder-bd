@@ -87,10 +87,9 @@ export function clampPanelDepth3D(z){
   return Math.min(z, PANEL_DEPTH_MAX_3D);
 }
 
-export function panelApparentPx3D(unitsSize, z){
-  const dist = panelDepthToDistance3D(z);
-  return unitsSize * WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist);
-}
+// `panelApparentPx3D` A ÉTÉ RETIRÉE (#402d) : elle convertissait une taille en unités vers des
+// pixels apparents à une profondeur donnée. `ensureElementUnits3D`, juste en dessous, fait le même
+// calcul pour ses propres besoins, et c'est elle qui a des appelants.
 
 export function ensureElementUnits3D(o){
   const dist = panelDepthToDistance3D(getElementDepth(o));
@@ -118,7 +117,8 @@ export function storeElementWorldCoords(o, panel) {
   o.wzFloor = getElementDepth(o);  // o.z || 0
 }
 
-export function storeElementWxFloor(o, panel) { storeElementWorldCoords(o, panel); }
+// `storeElementWxFloor` A ÉTÉ RETIRÉE (#402d) : un alias d'une ligne vers `storeElementWorldCoords`,
+// sans appelant. Le CHAMP `wxFloor`, lui, est des données enregistrées et ne bouge pas.
 
 export function setElementWorldPos3D(o, panel, worldX, worldY){
   const dist = panelDepthToDistance3D(getElementDepth(o));

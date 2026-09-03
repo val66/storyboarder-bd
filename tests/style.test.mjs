@@ -286,7 +286,9 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
   // ce qui sépare deux champs, c'est la marge BASSE du champ précédent. Un champ qui n'en porte
   // pas se colle donc au libellé suivant, sans qu'aucune règle ne soit fausse prise seule.
   //
-  //   1re fois : `.modal-readonly-value` (Fichier), contre lequel « Modèle » venait buter ;
+  //   1re fois : `.modal-readonly-value` (Fichier), contre lequel « Modèle » venait buter — cette
+  //              classe a été retirée en #402d, plus rien ne la posait, mais la MORSURE reste vraie
+  //              et c'est elle qui a fait écrire ce test ;
   //   2e fois  : `input[type=number]` (Hauteur), contre lequel « Taille réelle » vient buter,
   //              signalé à l'usage, la règle générique `select, input[type=number]` donnant
   //              bordure, padding et police, mais aucune marge.
@@ -299,7 +301,7 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
   };
 
   test('tout champ pleine largeur d\'une modale porte une marge basse', () => {
-    ['.modal-field-number', '.modal-readonly-value'].forEach(sel => {
+    ['.modal-field-number'].forEach(sel => {
       assert.ok(marge(declarations(sel)) > 0,
         `${sel} sans marge basse : le libellé suivant viendra s'y coller`);
     });
@@ -309,7 +311,7 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
     // La référence, mesurée et non choisie : `.modal-box input[type=text], .modal-box select`.
     const reference = marge(declarations('.modal-box input[type=text], .modal-box select'));
     assert.ok(reference > 0, 'la règle de référence ne porte plus de marge basse');
-    ['.modal-field-number', '.modal-readonly-value'].forEach(sel => {
+    ['.modal-field-number'].forEach(sel => {
       assert.equal(marge(declarations(sel)), reference,
         `${sel} s'écarte de l'espacement des autres champs (${reference} px)`);
     });
@@ -672,10 +674,12 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
     'sidebar.js', 'skeleton-map.js', 'i18n.js', 'help-content.js', 'modal-stack.js']
     .map(f => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8')).join('\n');
 
-  // ⚠️ CES QUATRE-LÀ SONT MORTS AUSSI, et ils sont ANTÉRIEURS au chantier des poses : ils attendent
-  // #402d, où chacun sera vérifié avant d'être retiré. Les exempter les NOMME au lieu de les
-  // laisser se fondre dans la masse, et la liste ne peut que raccourcir.
-  const CONNUS_MORTS = ['tomeList', 'colorSwatches', 'pieceModal', 'batimentModal'];
+  // ⚠️ IL EN RESTE DEUX, ET ILS NE SONT PAS MORTS : LEURS ÉCRANS EXISTENT (#402d). Les modales de
+  // Pièce et de Bâtiment vivent sous `roomModal` et `buildingModal` ; ce sont les SÉLECTEURS qui
+  // sont restés en français après le renommage, et trois règles de mise en page n'atteignent donc
+  // plus personne. Les retarget CHANGERAIT l'aspect de deux écrans : c'est une décision, pas un
+  // ménage, et elle revient à l'utilisateur. `tomeList` et `colorSwatches`, eux, sont partis.
+  const CONNUS_MORTS = ['pieceModal', 'batimentModal'];
 
   test('tout identifiant visé par style.css existe quelque part', () => {
     const ids = [...new Set([...cssNu.matchAll(/#([A-Za-z][\w-]*)/g)].map(m => m[1]))]
@@ -688,11 +692,19 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
       `règles CSS visant un identifiant qui n'existe plus : ${orphelins.join(', ')}`);
   });
 
-  test('RÉGRESSION : les classes retirées en #402a ne reviennent pas', () => {
-    // Elles habillaient la sous-section « Réglages des articulations » des trois fiches et le membre
-    // repliable de l'écran de correspondance. Aucune n'a plus d'élément à habiller.
+  test('RÉGRESSION : les classes retirées ne reviennent pas', () => {
+    // ⚠️ CETTE LISTE EST LE COMPLÉMENT ASSUMÉ DU TEST PRÉCÉDENT, qui ne regarde que les identifiants.
+    // Une classe peut être composée à l'exécution, on ne peut donc pas les vérifier toutes ; celles
+    // qu'on a RETIRÉES, en revanche, on sait qu'elles ne doivent pas revenir, et une mutation qui les
+    // remettait passait au travers avant que cette liste ne les nomme.
+    //
+    // #402a : la sous-section « Réglages des articulations » des trois fiches, et le membre repliable
+    // de l'écran de correspondance. #402d : des habillages antérieurs au chantier, dont plus rien ne
+    // posait le nom, ni le HTML ni le JS.
     ['.joint-sliders-details', '.modal-subsection', '.skeleton-map-open-btn',
-      '.skeleton-map-group', '.skeleton-map-membre-groupe'].forEach(cls => {
+      '.skeleton-map-group', '.skeleton-map-membre-groupe',
+      '.tool-btn', '.side-btn', '.dropdown-item', '.perso-edit', '.perso-scene-badge',
+      '.modal-readonly-value'].forEach(cls => {
       assert.ok(!new RegExp(`^\\s*${cls.replace('.', '\\.')}[\\s,:{[>]`, 'm').test(cssNu),
         `${cls} est de retour dans style.css : une fiche s'est remise à poser, ou la règle est morte`);
     });
@@ -700,7 +712,7 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
 
   test('et la liste des morts CONNUS ne s\'allonge pas en douce', () => {
     // Sans ce test, exempter deviendrait le moyen le plus simple de faire passer le premier.
-    assert.equal(CONNUS_MORTS.length, 4,
-      'un identifiant a été ajouté aux exemptions : c\'est le ménage de #402d qui doit les retirer');
+    assert.equal(CONNUS_MORTS.length, 2,
+      'un identifiant a été ajouté aux exemptions : ces règles-là attendent une décision, pas un ajout');
   });
 });

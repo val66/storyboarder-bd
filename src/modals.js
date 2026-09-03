@@ -43,7 +43,6 @@ import {
   ensureElementUnits3D, ensureElementWorldPos3D,
   findOwningPanel, groundMagnetEligible,
   getCamOrbitWorld, mergedBuildWallRigCache3D, panelCamBasis3D, panelSceneCache3D, slabMeshCache3D,
-  worldToPageXY,
 } from './scene3d.js';
 import {
   cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
@@ -2271,24 +2270,11 @@ export function moveJunctionToWorld(jx, jz, newJx, newJz, buildingRoomIds, page,
 // Projects the 4 corners of a set of Rooms' XZ bbox to screen.
 // Returns [{wx,wz,sx,sy}, ...] (4 entries) or null if the bbox is invalid.
 // Exported for unit tests (tests/events.test.mjs), unchanged behavior.
-export function getRoomOrBuildingScreenBBox(roomIds, page, panel) {
-  const bb = roomIds.length === 1
-    ? getRoomBoundingBoxXZ(roomIds[0], page)
-    : getBuildingBoundingBoxXZ(roomIds, page);
-  if (!bb || bb.w < 0.01 || bb.d < 0.01) return null;
-  const corners = [
-    { wx: bb.minX, wz: bb.minZ },
-    { wx: bb.maxX, wz: bb.minZ },
-    { wx: bb.maxX, wz: bb.maxZ },
-    { wx: bb.minX, wz: bb.maxZ },
-  ];
-  const screenCorners = corners.map(c => {
-    const sc = worldToPageXY(c.wx, c.wz, panel, page);
-    return sc ? { wx: c.wx, wz: c.wz, sx: sc.x, sy: sc.y } : null;
-  });
-  if (screenCorners.some(c => c === null)) return null;
-  return { corners: screenCorners, bb };
-}
+// ⚠️ REMPLACÉE PAR `getRoomScreenBBoxFrom2DProjections` (scene3d.js), ET LA DIFFÉRENCE COMPTE :
+// celle-ci déduisait la boîte écran d'une Pièce de sa boîte en coordonnées MONDE, projetée coin par
+// coin ; l'autre la mesure sur les projections RÉELLES de ses membres. Deux façons de calculer la
+// même grandeur, c'est la panne la plus fréquente de ce dépôt — sauf que celle-ci n'avait plus
+// d'appelant, la divergence n'a donc jamais eu lieu (#402d).
 
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -15,7 +15,6 @@ import {
   detectBuildFaces,
   addRoomWallElement,
   buildToolCreateWallSegment,
-  buildTryExtendWall,
   buildToolClose,
   getRoomBoundingBoxXZ,
   getBuildingBoundingBoxXZ,
@@ -25,7 +24,6 @@ import {
   bubbleEdgePoint,
   getBubbleTailTip,
   distToSegmentSq,
-  wrapText,
   wrapTextLines,
   projectJointToCanvas,
   projectPoseHandlePositions3D,
@@ -238,47 +236,20 @@ describe('getRoomBoundingBoxXZ / getBuildingBoundingBoxXZ : boîtes englobantes 
   });
 });
 
-// ── buildTryExtendWall ───────────────────────────────────────────────────────────────────────
-// NOTE : cette fonction n'est actuellement appelée nulle part ailleurs dans le codebase (recherche
-// exhaustive faite lors de l'écriture de ces tests), code mort à ce jour. On la teste quand même
-// (comportement figé, prête à être branchée), mais le second test ci-dessous documente une
-// asymétrie réelle du code actuel plutôt qu'un comportement idéalisé : la vérification "au-delà de
-// l'extrémité opposée" est TOUJOURS mesurée depuis A=(seg.x1,seg.z1) vers B=(seg.x2,seg.z2), même
-// quand c'est l'extrémité A qui a été détectée comme point de départ (atA), prolonger un mur ancien
-// dans le sens INVERSE (au-delà de A, en s'éloignant de B) ne fonctionne donc pas avec ce code, alors
-// que le prolonger dans le sens direct (au-delà de B) fonctionne correctement.
-describe('buildTryExtendWall : prolongement d\'un mur colinéaire existant', () => {
-  beforeEach(() => {
-    S.buildTool = { wallSegs: [{ id: 'w1', x1: 0, z1: 0, x2: 4, z2: 0 }], snapWallSegsCount: 1 };
-  });
+// ---------- « buildTryExtendWall » : SES TESTS SONT PARTIS AVEC ELLE (#402d) ----------
+//
+// Ils décrivaient le prolongement d'un mur colinéaire dans l'outil Construire. La fonction n'avait
+// plus d'appelant, alors que son propre commentaire en nommait un : « seul buildToolClose l'appelle
+// en interne ». Un commentaire qui nomme un appelant vieillit comme n'importe quel code.
 
-  test('prolongement dans le sens direct (au-delà de B) : détecté', () => {
-    const result = buildTryExtendWall(4, 0, 8, 0);
-    assert.ok(result, 'extension détectée');
-    assert.equal(result.seg.id, 'w1');
-  });
-
-  test('prolongement dans le sens inverse (au-delà de A, en s\'éloignant de B) : NON détecté (asymétrie du code actuel)', () => {
-    assert.equal(buildTryExtendWall(0, 0, -4, 0), null);
-  });
-
-  test('direction non colinéaire (perpendiculaire) : pas d\'extension', () => {
-    assert.equal(buildTryExtendWall(4, 0, 4, 4), null);
-  });
-
-  test('aucune extrémité de mur existant ne correspond au point de départ : pas d\'extension', () => {
-    assert.equal(buildTryExtendWall(10, 10, 14, 10), null);
-  });
-
-  test('segment dégénéré (quasi nul) : pas d\'extension', () => {
-    assert.equal(buildTryExtendWall(4, 0, 4.001, 0), null);
-  });
-
-  test('aucun S.buildTool actif : renvoie null sans planter', () => {
-    S.buildTool = null;
-    assert.equal(buildTryExtendWall(0, 0, 1, 0), null);
-  });
-});
+// ⚠️ ET LES DEUX COMMENTAIRES SE CONTREDISAIENT. Celui de la fonction, dans draw.js, affirmait
+// « seul buildToolClose l'appelle en interne » ; celui qui vivait ICI disait l'inverse, « appelée
+// nulle part ailleurs, code mort à ce jour, on la teste quand même, prête à être branchée ». Deux
+// notes voisines, deux verdicts opposés, et personne pour trancher pendant tout ce temps.
+//
+// Elle est retirée : « prête à être branchée » n'était plus vrai depuis longtemps, et git la garde.
+// Ce que ces tests avaient de précieux — une asymétrie mesurée, le prolongement ne marchait que
+// dans un sens — était la description d'un défaut de code mort.
 
 // ── buildToolClose (test d'intégration) ──────────────────────────────────────────────────────
 describe('buildToolClose : fermeture de la boucle de murs (intégration)', () => {
@@ -449,8 +420,10 @@ describe('distToSegmentSq : distance au carré d\'un point à un segment', () =>
   });
 });
 
-// ── wrapText / wrapTextLines : retour à la ligne du texte de Bulle ──────────────────────────
-describe('wrapTextLines / wrapText : découpage du texte en lignes selon une largeur max', () => {
+// ── wrapTextLines : retour à la ligne du texte de Bulle ──────────────────────────────────────
+// ⚠️ SA JUMELLE `wrapText` A ÉTÉ RETIRÉE (#402d), avec le test qui la suivait : elle DESSINAIT les
+// lignes, celle-ci les MESURE, et seule la seconde avait des appelants.
+describe('wrapTextLines : découpage du texte en lignes selon une largeur max', () => {
   // Utilise le vrai faux contexte 2D du dom-stub (measureText : width = nbCaractères * 6px), via un
   // canvas factice de document.createElement, un simple objet littéral n'a pas de measureText.
   function makeCtx() {
@@ -460,17 +433,6 @@ describe('wrapTextLines / wrapText : découpage du texte en lignes selon une lar
   test('wrapTextLines : coupe le texte en lignes qui tiennent dans maxWidth (mesure factice 6px/caractère)', () => {
     const lines = wrapTextLines(makeCtx(), 'Bonjour le monde', 50);
     assert.deepEqual(lines, ['Bonjour', 'le monde']);
-  });
-
-  test('wrapText : dessine chaque ligne via fillText, à x fixe et y incrémenté de lineHeight', () => {
-    const calls = [];
-    const c = makeCtx();
-    c.fillText = (text, x, y) => calls.push({ text, x, y });
-    wrapText(c, 'Bonjour le monde', 10, 20, 50, 15);
-    assert.deepEqual(calls, [
-      { text: 'Bonjour', x: 10, y: 20 },
-      { text: 'le monde', x: 10, y: 35 },
-    ]);
   });
 });
 

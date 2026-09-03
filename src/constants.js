@@ -1037,6 +1037,11 @@ export const ARCHETYPES_3D = [
  * Choisir laquelle sert de modèle d'emplacements est une VRAIE question, et elle se posera à
  * l'étape des curseurs. La trancher ici, au détour d'un `find`, l'aurait enterrée.
  */
-export function animauxDeLArchetype3D(cle){
-  return ANIMAL_TYPES.filter(t => ANIMAL_ARCHETYPES_3D[t] === cle);
-}
+// ⚠️ `animauxDeLArchetype3D` A ÉTÉ RETIRÉE (#402d), ET SON EN-TÊTE ANNONÇAIT SA PROPRE FIN. Elle
+// rendait tous les Animaux intégrés d'une morphologie, et disait : « choisir laquelle sert de modèle
+// d'emplacements est une VRAIE question, et elle se posera à l'étape des curseurs ».
+//
+// Cette étape est venue, et elle a répondu autrement : un Animal ne prend le modèle de personne, il
+// apporte SES articulations, celles d'`ANIMAL_JOINT_DEFS` (#401b). La question n'avait pas besoin
+// d'être tranchée, elle a été dissoute. La fonction attendait depuis une réponse qui ne viendrait
+// pas.
