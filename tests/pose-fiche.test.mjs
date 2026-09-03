@@ -40,7 +40,8 @@ import {
 import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
   from '../src/skeleton-pose.js';
 import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
-import { JOINT_GROUPS, ANIMAL_JOINT_DEFS } from '../src/constants.js';
+import { JOINT_GROUPS, ANIMAL_JOINT_DEFS, ANIMAL_TYPES } from '../src/constants.js';
+import * as RIG from '../src/rig3d.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 import { box3FromObjectSkinAware3D } from '../src/skinned-box-3d.js';
@@ -56,6 +57,7 @@ import {
   buildPersonaEditorMapButtonUI, editeurPoseUnAnimal3D, vocabulaireDeLEditeur3D, savePersonaEditorPose,
   entreeDePoigneesDAnimal3D, specDArticulationDAnimal3D,
   clesVisiblesDeLEditeur3D,
+  AVANT_DUN_ANIMAL_3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
   personaLimbSegmentScreen3D } from '../src/draw.js';
@@ -1037,7 +1039,7 @@ describe('Éditeur : l\'azimut d\'ouverture suit la figure affichée', () => {
     // importé se présente de face dans une Case : le meilleur pari sans mesure. Le demi-tour, lui,
     // serait le pire, c\'est le défaut qu\'on corrige.
     assert.equal(orbiteDouvertureEditeur3D('jamais-decode.glb'), 0);
-    assert.equal(orbiteDouvertureEditeur3D(FICHIER, null), 0);
+    assert.equal(orbiteDouvertureEditeur3D(FICHIER, null, null), 0);
   });
 
   test('RÉGRESSION : ouvrir l\'Éditeur ÉCRIT cet azimut dans la caméra', () => {
@@ -3063,5 +3065,82 @@ describe('#401b3 : un seul libellé pour « Appliquer »', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
     assert.ok(!/applyBtn\.textContent/.test(src),
       'le code repose le libellé : il écrasera celui de la table au prochain changement de langue');
+  });
+});
+
+describe('#401b4 : un Animal s\'ouvre de FACE dans l\'Éditeur', () => {
+  // ⚠️ SIGNALÉ À L'USAGE : « les animaux quand ils sont ouverts dans l'Éditeur apparaissent de dos
+  // au lieu de face ». Troisième figure, et la MÊME question mal posée : `orbiteDouvertureEditeur3D`
+  // demandait « y a-t-il un fichier ? » pour deviner la convention de devant. Un Animal n'en a pas,
+  // il héritait donc du demi-tour du Personnage.
+  test('LA MESURE : les cinq rigs d\'Animaux ont la tête devant la queue', () => {
+    // Ce test-ci est la RAISON du vecteur, pas seulement sa vérification. Sans lui, `[0, 0, -1]`
+    // serait une valeur plausible ; avec lui, c'est une valeur mesurée sur les cinq constructeurs.
+    const constructeurs = {
+      oiseau: 'buildOiseauRig3D', lezard: 'buildLezardRig3D', loup: 'buildLoupRig3D',
+      griffon: 'buildGriffonRig3D', singe: 'buildSingeRig3D',
+    };
+    assert.deepEqual(Object.keys(constructeurs).sort(), [...ANIMAL_TYPES].sort(),
+      'un Animal a été ajouté sans qu\'on mesure de quel côté il regarde');
+    Object.entries(constructeurs).forEach(([type, fn]) => {
+      const { figureGroup, joints } = RIG[fn](0x888888);
+      figureGroup.updateMatrixWorld(true);
+      const z = id => { const v = new THREE.Vector3(); joints[id].getWorldPosition(v); return v.z; };
+      assert.ok(joints.head && joints.tail0, `${type} : tête et queue sont les deux repères mesurés`);
+      assert.ok(z('head') > z('tail0'),
+        `${type} : la tête est en arrière de la queue, son devant n'est plus vers +Z`);
+    });
+  });
+
+  test('l\'azimut d\'un Animal est nul, celui d\'un modèle importé, pas le demi-tour', () => {
+    assert.equal(orbiteDouvertureEditeur3D(null, 'loup'), 0);
+    assert.notEqual(orbiteDouvertureEditeur3D(null, 'loup'), PERSONA_EDITOR_FRONT_ROT_Y);
+    // ET IL PASSE PAR LA MÊME FORMULE : un second `return` codé en dur donnerait la même valeur
+    // aujourd'hui et divergerait le jour où le sens du signe change.
+    //
+    // ⚠️ MA MUTATION M158 A ÉCHAPPÉ ICI, ET C'EST MON TEST QUI ÉTAIT FAUX : remplacer l'appel par
+    // `return 0` laissait l'égalité ci-dessous vraie, les deux membres valant zéro. Une tautologie
+    // ne mesure rien. La revendication est SUR LA SOURCE — « une seule formule » — elle se vérifie
+    // donc sur la source, comme la branche unique de personaEditorHasChanges (#401b3).
+    assert.equal(orbiteDouvertureEditeur3D(null, 'loup'), orbiteDeFace3D(AVANT_DUN_ANIMAL_3D));
+    const corps = sourceSansCommentaires(
+      readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8'));
+    const fn = corps.slice(corps.indexOf('export function orbiteDouvertureEditeur3D'));
+    assert.match(fn.slice(0, fn.indexOf('\n}')),
+      /if \(objTypeAnimal\) return orbiteDeFace3D\(AVANT_DUN_ANIMAL_3D\);/,
+      'l\'azimut d\'un Animal est redevenu une constante : il ne suivra plus la formule');
+    // ⚠️ AVANT LE TEST DU FICHIER : l'Animal ne doit pas retomber dans la branche du Personnage.
+    ANIMAL_TYPES.forEach(t => assert.equal(orbiteDouvertureEditeur3D(null, t), 0, t));
+  });
+
+  test('RÉGRESSION : ouvrir l\'Éditeur sur un Animal ÉCRIT cet azimut dans la caméra', () => {
+    // Le maillon qui manquait pour le modèle importé manquait aussi ici : la mesure peut être juste
+    // et n'atteindre personne.
+    openPersonaEditor({ type: 'objet3d', objType: 'loup', id: 'a7', animalJoints3d: {} }, null);
+    assert.equal(S.personaEditorCamRotY, 0, 'l\'Animal s\'ouvre de dos');
+    assert.notEqual(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+    closePersonaEditor();
+
+    // ET LE PERSONNAGE GARDE LE SIEN : corriger une figure en retournant une autre serait le même
+    // défaut déplacé, c'est exactement ce qui s'est passé entre le Personnage et les modèles.
+    openPersonaEditor(null, null);
+    assert.equal(S.personaEditorCamRotY, PERSONA_EDITOR_FRONT_ROT_Y);
+    closePersonaEditor();
+  });
+
+  test('CHANGER DE FIGURE pendant qu\'un Animal est posé garde SON azimut', () => {
+    // ⚠️ MA MUTATION M157 A ÉCHAPPÉ : oublier l'Animal dans `choisirFigureDeLEditeur` ne rougissait
+    // rien. La raison est que le sélecteur de figure est MASQUÉ quand la cible est un Animal (cf.
+    // buildPersonaEditorModelUI), donc aucun geste d'écran n'y mène.
+    //
+    // JE NE RETIRE PAS L'ARGUMENT POUR AUTANT, et le raisonnement compte plus que la ligne : « ce
+    // cas ne peut pas arriver ici » est EXACTEMENT le raisonnement qui a produit le défaut, une
+    // fonction qui devinait la figure à l'absence de fichier. Les deux appels posent la même
+    // question de la même façon ; ce test est ce qui le maintient.
+    openPersonaEditor({ type: 'objet3d', objType: 'loup', id: 'a8', animalJoints3d: {} }, null);
+    choisirFigureDeLEditeur('');
+    assert.equal(S.personaEditorCamRotY, 0,
+      'l\'Animal reste à l\'écran mais se retrouve vu de dos');
+    closePersonaEditor();
   });
 });

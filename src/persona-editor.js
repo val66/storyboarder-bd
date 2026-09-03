@@ -476,6 +476,15 @@ export function setPersonaEditorOrbit(rotX, rotY){
 // avait supprimé.
 export const PERSONA_EDITOR_FRONT_ROT_Y = Math.PI;
 
+// Le « devant » d'un Animal intégré, au sens de `repereDuCorps` : ce vecteur POINTE VERS L'ARRIÈRE
+// VISUEL, comme celui d'un fichier (cf. orbiteDeFace3D, utils.js). Les cinq rigs d'Animaux placent
+// leur tête en Z positif et leur queue en Z négatif — mesuré, pas supposé, cf. l'en-tête de
+// orbiteDouvertureEditeur3D — donc leur devant visuel est +Z et ce vecteur est −Z.
+//
+// Écrit comme un VECTEUR et non comme un angle pour que la conversion reste au même endroit pour
+// les trois figures : un jour où le sens du signe changera, il n'y aura toujours qu'une formule.
+export const AVANT_DUN_ANIMAL_3D = [0, 0, -1];
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * L'AZIMUT D'OUVERTURE DÉPEND DE LA FIGURE : il ne peut pas être une constante
@@ -494,6 +503,24 @@ export const PERSONA_EDITOR_FRONT_ROT_Y = Math.PI;
  * Le demi-tour fixe de la caméra est exactement ce qu'il faut au premier, et exactement ce qui
  * retourne le second. Aucune constante ne peut convenir aux deux.
  *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * PUIS UN ANIMAL INTÉGRÉ EST ARRIVÉ, ET C'EST UNE TROISIÈME CONVENTION À RECONNAÎTRE (#401b4)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * SIGNALÉ À L'USAGE À SON TOUR : « les animaux quand ils sont ouverts dans l'Éditeur apparaissent
+ * de dos au lieu de face ». La cause n'est pas un oubli de plus, c'est la MÊME : la question posée
+ * ici était « y a-t-il un fichier ? », et elle servait à deviner la figure. Un Animal intégré n'a
+ * pas de fichier — nous construisons son rig — il tombait donc dans la branche du Personnage et
+ * héritait de son demi-tour, alors que sa convention est celle des modèles importés.
+ *
+ * MESURÉ, sur les cinq constructeurs (cf. tests/rig-geometry.test.mjs) : `head` est devant `tail0`
+ * en Z pour les cinq, écart de +0,04 (singe) à +0,75 (loup). Le devant d'un Animal est donc vers
+ * +Z, comme un modèle importé, et son azimut d'ouverture est nul.
+ *
+ * ⚠️ ET C'EST LA MÊME FORMULE QUI LE DIT, pas un second `return`. `AVANT_DUN_ANIMAL_3D` traverse
+ * `orbiteDeFace3D` comme le repère d'un fichier : un seul endroit connaît le sens du signe, et une
+ * convention nouvelle s'écrit en un vecteur, pas en une branche.
+ *
  * CE QU'ON MESURE PLUTÔT QUE DE LE CHOISIR : le devant du fichier, via son repère de corps. Coder
  * `0` en dur pour les modèles importés marcherait sur les six fichiers d'essai, et laisserait de
  * dos le premier fichier exporté autrement. Deux des six ne sont déjà pas Y-up.
@@ -507,7 +534,10 @@ export const PERSONA_EDITOR_FRONT_ROT_Y = Math.PI;
  * le meilleur pari en l'absence de mesure. Le cas est rare, on n'arrive ici depuis la fiche d'un
  * modèle qu'après l'avoir vu dans son aperçu, donc décodé.
  */
-export function orbiteDouvertureEditeur3D(nomFichier, repereDuFichier){
+export function orbiteDouvertureEditeur3D(nomFichier, objTypeAnimal, repereDuFichier){
+  // ⚠️ AVANT LE TEST DU FICHIER, et l'ordre est la décision : un Animal n'en a pas, la ligne
+  // suivante le rendrait donc au Personnage, c'est-à-dire de dos.
+  if (objTypeAnimal) return orbiteDeFace3D(AVANT_DUN_ANIMAL_3D);
   // Pas de fichier : c'est le Personnage intégré, dont le devant est connu par construction. On ne
   // le mesure pas, son rig n'a pas à être construit pour qu'on sache de quel côté il regarde.
   if (!nomFichier) return PERSONA_EDITOR_FRONT_ROT_Y;
@@ -524,7 +554,10 @@ export function resetPersonaEditorCamera(){
   S.personaEditorCamRotX = 0;
   // ⚠️ CALCULÉ ICI, ET NULLE PART AILLEURS. L'azimut est ensuite MÉMORISÉ : l'utilisateur peut
   // orbiter, et le recalculer à chaque image lui reprendrait la main aussitôt.
-  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile);
+  //
+  // ⚠️ APPELÉ APRÈS `S.personaEditorAnimal` DANS openPersonaEditor, et l'ordre est la décision : la
+  // figure doit être connue avant qu'on demande de quel côté on la regarde.
+  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile, S.personaEditorAnimal);
   S.personaEditorZoom = PERSONA_EDITOR_DEFAULT_ZOOM;
   S.personaEditorPan = { x: 0, y: 0 };
 }
@@ -759,7 +792,10 @@ export function buildPersonaEditorModelUI(){
 export function choisirFigureDeLEditeur(fichier){
   const avant = editeurPoseUneCreature3D();
   S.personaEditorModelFile = fichier || null;
-  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile);
+  // L'Animal passe ici aussi, bien que le sélecteur de figure lui soit masqué (cf.
+  // buildPersonaEditorModelUI) : le calcul n'a pas à savoir quels écrans y mènent, et une seule
+  // façon de demander l'azimut est ce qui évite qu'un des deux appels prenne du retard sur l'autre.
+  S.personaEditorCamRotY = orbiteDouvertureEditeur3D(S.personaEditorModelFile, S.personaEditorAnimal);
   // ⚠️ CHANGER DE FIGURE PEUT CHANGER DE VOCABULAIRE, et un brouillon ne se traduit pas (#383).
   // Passer d'un humanoïde à une araignée garderait des clés `bras_g` qui ne désignent aucun os
   // d'araignée : le brouillon deviendrait INERTE, l'écran figé sur une créature au repos pendant

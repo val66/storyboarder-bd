@@ -133,7 +133,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'editeur', title: 'Model editor', paragraphs: [
     'Open the editor with the pencil button in the corner of a 3D preview, or from the "Editor" section of the left menu to compose a pose with no target; in that case there is no "Apply" button. Its title names the figure posed.',
-    'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models included; its orientation in the scene or panel is left untouched.',
+    'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models and animals included; its orientation in the scene or panel is left untouched.',
     'Click a point to select it: the other points disappear, and the orange area shows where you can click without losing the selection. A creature only shows its archetype\'s joints, in bright blue; hovering a limb, or its chain title, reveals that chain\'s other bones in pale blue.',
     'Hold the left button on a point and drag to adjust the joint. The orange guide shows the expected gesture: a double arrow to drag along its direction, a ring to turn around the point.',
     'Only one field moves at a time, the one highlighted most strongly in the right-hand panel. The scroll wheel switches from one field to the next while a joint is selected; deselect to get the zoom back.',
@@ -262,7 +262,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'editeur', title: 'Éditeur de modèle', paragraphs: [
     "Ouvrez l'éditeur par le bouton crayon dans le coin d'un aperçu 3D, ou par la section « Éditeur » du menu de gauche pour composer une pose sans cible ; dans ce second cas, « Appliquer » est absent. Son titre nomme la figure posée.",
-    "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles importés compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
+    "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles et Animaux compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
     "Cliquez un point pour le sélectionner : les autres disparaissent, et la zone orange montre où cliquer sans le désélectionner. Une créature ne montre que les articulations de son archétype, en bleu vif ; survoler un membre, ou le titre de sa chaîne, révèle les autres os, en bleu pâle.",
     "Maintenez le clic gauche sur un point et glissez pour régler l'articulation. Le repère orange indique le geste attendu : une double flèche pour glisser dans sa direction, un anneau pour tourner autour du point.",
     "Un seul champ bouge à la fois, celui que le panneau de droite surligne le plus. La molette passe d'un champ à l'autre tant qu'une articulation est sélectionnée ; désélectionnez pour retrouver le zoom.",
