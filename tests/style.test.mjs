@@ -483,8 +483,14 @@ describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
     // sa colonne à n'avoir aucun air en haut.
     const hauteFull = /margin-top:\s*6px/.test(declarationsOuNull('.full-btn'));
     assert.ok(hauteFull, 'le bouton orange a perdu sa marge haute : la comparaison ne veut plus rien dire');
-    assert.match(declarationsOuNull('.persona-editor-panel .nav-btn'), /margin-top:\s*6px/,
-      'le bouton gris du panneau est de nouveau collé à ce qui le précède');
+    // ⚠️ LA VALEUR N'EST PAS CELLE DU BOUTON ORANGE, ET C'EST VOULU (#400) : ce bouton est le
+    // DERNIER de sa section, et l'écart qu'on lit au-dessus de lui doit égaler celui qu'on lit en
+    // dessous — le rembourrage de `.side-section`, 14px. Six pixels le laissaient collé au groupe
+    // qui le précède, dans une section qui respire de 14 partout ailleurs.
+    const rembourrage = declarationsOuNull('.side-section');
+    assert.match(rembourrage, /padding:\s*14px/, 'le rembourrage de section a changé : revoir l\'écart');
+    assert.match(declarationsOuNull('.persona-editor-panel .nav-btn'), /margin-top:\s*14px/,
+      'le bouton gris du panneau n\'a plus le même écart en haut qu\'en bas de section');
     // ⚠️ ET LA PORTÉE EST LE PANNEAU, PAS LA CLASSE : ailleurs ces boutons vivent côte à côte dans
     // une rangée d'actions, où une marge haute les décalerait de leur voisin orange, qui n'a pas de
     // marge basse. La même correction appliquée globalement aurait désaligné toutes les modales.
@@ -501,5 +507,56 @@ describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
     assert.ok(eteints, 'la règle des boutons de pose désactivés a disparu');
     assert.match(eteints, /background:\s*var\(--line\)/,
       'un bouton de pose désactivé garde sa couleur vive');
+  });
+});
+
+describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
+  // ⚠️ TOUT CE QUI SUIT EST PORTÉ AU PANNEAU, ET C'EST LA DÉCISION. Les tailles serrées d'origine
+  // ont été choisies pour une MODALE, où la place manque — et les fiches Personnage et Animaux y
+  // sont toujours. L'Éditeur occupe la zone centrale depuis #383 : ce qui était un compromis y est
+  // devenu une contrainte sans cause. Élargir la règle générale aurait rétréci les modales d'autant.
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  test('⚠️ les modales gardent leurs tailles serrées', () => {
+    // La garantie qui autorise le reste. Sans elle, agrandir le panneau agrandirait aussi les
+    // sous-sections des fiches, qui n'ont pas la place.
+    const general = declarationsOuNull('.joint-group-details summary');
+    assert.match(general, /font-size:\s*11\.5px/,
+      'la taille générale a bougé : les modales viennent de grandir avec le panneau');
+    const panneau = declarationsOuNull('.persona-editor-panel .joint-group-details summary');
+    assert.ok(panneau, 'le panneau n\'a plus de taille à lui');
+    assert.match(panneau, /font-size:\s*13px/, 'le panneau a reperdu sa taille propre');
+  });
+
+  test('une ANCRE et une CHAÎNE ne se lisent plus pareil', () => {
+    // Signalé sur l'araignée : six chaînes sous une même ancre, avec EXACTEMENT le même titre —
+    // même taille, même graisse, même couleur — séparées par un filet de 1px. Rien ne disait lequel
+    // contenait l'autre. La hiérarchie passe désormais par le TYPE : l'ancre est une étiquette de
+    // catégorie, la chaîne une carte posée dedans.
+    const ancre = declarationsOuNull('.persona-editor-panel .joint-group-details.groupe-ancre > summary');
+    assert.ok(ancre, 'l\'ancre n\'a plus de style propre : les deux niveaux se ressemblent de nouveau');
+    assert.match(ancre, /text-transform:\s*uppercase/);
+    const chaine = declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details > summary');
+    assert.match(chaine, /text-transform:\s*none/,
+      'la chaîne reprend les capitales de son ancre : les deux niveaux se confondent');
+  });
+
+  test('⚠️ un FOND pour la chaîne, jamais un second cadre', () => {
+    // Raison déjà écrite pour le niveau imbriqué, et elle n'a pas changé : deux bordures à un pixel
+    // d'écart se lisent comme un défaut d'alignement, pas comme une imbrication.
+    const chaine = declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details');
+    assert.match(chaine, /background:\s*rgba/, 'la chaîne n\'a pas de fond : rien ne dit qu\'elle est posée dedans');
+    assert.match(chaine, /border-left:\s*none/, 'le filet vertical est revenu en plus du fond');
+    assert.ok(!/border:\s*1px/.test(chaine), 'un second cadre a été ajouté à un pixel du premier');
+  });
+
+  test('c\'est le CODE qui déclare une ancre, pas un sélecteur devinant', () => {
+    // `:has()` aurait fait deviner au CSS ce que le constructeur SAIT : ce bloc contient-il des
+    // chaînes ? La marque est posée là où la question se tranche, et elle se teste.
+    const modals = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+    assert.match(modals, /bloc\.classList\.add\('groupe-ancre'\)/,
+      'plus rien ne distingue une ancre d\'une chaîne dans le DOM');
+    assert.ok(!/:has\(/.test(css), 'le CSS s\'est mis à deviner la structure');
+    assert.ok(html.length > 0);
   });
 });

@@ -708,6 +708,54 @@ canvas{
 }
 .joint-group-details .joint-slider-row{ margin-left:0; }
 .joint-group-details:not([open]) summary{ margin-bottom:0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LES ARTICULATIONS DANS LE PANNEAU DE L'ÉDITEUR : ELLES ONT LA PLACE (#400)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   ⚠️ TOUT CE BLOC EST PORTÉ AU PANNEAU, ET C'EST LA DÉCISION. Les tailles serrées d'au-dessus ont
+   été choisies pour une MODALE, où la place manque — et les fiches Personnage et Animaux y sont
+   toujours. L'Éditeur, lui, occupe la zone centrale depuis #383 : ce qui était un compromis y est
+   devenu une contrainte sans cause. Élargir la règle générale aurait rétréci les modales d'autant.
+
+   Les groupes respirent, et leur titre se lit à la taille du reste du panneau. */
+.persona-editor-panel .joint-group-details{ padding:10px 12px; margin-bottom:10px; }
+.persona-editor-panel .joint-group-details summary{ font-size:13px; margin-bottom:9px; }
+.persona-editor-panel .joint-group-details summary::after{ font-size:12px; }
+.persona-editor-panel .joint-slider-row{ margin-bottom:7px; }
+.persona-editor-panel .joint-slider-row .joint-slider-label{ font-size:12px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   DEUX NIVEAUX : UNE ANCRE EST UN CONTENANT, UNE CHAÎNE EST UNE LIGNE
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   ⚠️ SIGNALÉ À L'USAGE SUR L'ARAIGNÉE : « les sous-sections sont peu lisibles ». Elle a six chaînes
+   sous une même ancre, et les deux niveaux portaient EXACTEMENT le même titre — même taille, même
+   graisse, même couleur — séparés par un simple filet de 1px. Rien ne disait lequel contenait
+   l'autre ; on lisait sept lignes semblables.
+
+   La hiérarchie passe donc par le TYPE, pas par l'indentation seule. L'ancre devient une étiquette
+   de catégorie — capitales, interlettrage, encre douce, un filet sous elle quand elle est ouverte —
+   et chaque chaîne devient une carte posée à l'intérieur, avec son propre fond.
+
+   ⚠️ UN FOND, PAS UN CADRE, et c'est la raison déjà écrite plus haut : deux bordures à un pixel
+   d'écart se lisent comme un défaut d'alignement, pas comme une imbrication. Le fond, lui, dit
+   « posé dans » sans jamais longer le cadre du parent. */
+.persona-editor-panel .joint-group-details.groupe-ancre > summary{
+  font-size:11px; font-weight:700; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.persona-editor-panel .joint-group-details.groupe-ancre[open] > summary{
+  padding-bottom:7px; margin-bottom:9px; border-bottom:1px solid var(--line);
+}
+.persona-editor-panel .joint-group-details .joint-group-details{
+  border-left:none; background:rgba(0,0,0,.16); border-radius:5px;
+  padding:7px 9px; margin:0 0 6px;
+}
+.persona-editor-panel .joint-group-details .joint-group-details:last-child{ margin-bottom:0; }
+.persona-editor-panel .joint-group-details .joint-group-details > summary{
+  font-size:12px; color:var(--ink); text-transform:none; letter-spacing:0;
+}
 .modal-box h3{
   font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; margin:0; color:var(--ink);
 }
@@ -919,7 +967,7 @@ canvas{
    colonne à n'avoir aucun air en haut.
    Portée au PANNEAU et non à `.nav-btn` : ailleurs, ces boutons vivent côte à côte dans une rangée
    d'actions, et une marge haute les décalerait de leur voisin orange, qui n'en a pas en bas. */
-.persona-editor-panel .nav-btn { width: 100%; margin-top: 6px; }
+.persona-editor-panel .nav-btn { width: 100%; margin-top: 14px; }
 /* Fix 68 — « Pose » et « Réglage fin » sont deux blocs encadrés, pas deux titres dans un flux
    continu. Le cadre est ce qui dit qu'ils sont indépendants : sans lui, la liste des poses se
    lisait comme le préambule des curseurs.

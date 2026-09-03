@@ -769,6 +769,12 @@ export function construireCurseursDeSquelette3D({
       remplir(bloc, groupe.chaines[0].os);
       return;
     }
+    // ⚠️ UN GROUPE QUI CONTIENT DES CHAÎNES SE DÉCLARE (#400). Sans cette marque, le CSS ne peut pas
+    // distinguer une ancre — un CONTENANT — d'une chaîne, et les deux niveaux s'affichaient
+    // exactement pareil : sur une araignée, six chaînes identiques sous un titre identique.
+    // Une classe posée ici plutôt qu'un sélecteur `:has()` : c'est le code qui SAIT lequel des deux
+    // il construit, et cette connaissance se teste.
+    bloc.classList.add('groupe-ancre');
     // Le groupe d'ancre porte les clés de TOUTES ses chaînes : déplier « Ancre Hips » doit
     // sélectionner quelque chose, et ce quelque chose est le premier point qu'il contient.
     brancherDepliage(bloc, groupe.chaines.flatMap(clesDe));
