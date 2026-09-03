@@ -874,7 +874,10 @@ describe('Fix 92 : le segment du membre est mémorisé, jamais reprojeté', () =
   test('RÉGRESSION : le paramètre `canvas` a bien disparu des trois signatures', () => {
     // Il n'existait que pour permettre la reprojection tardive. Le laisser en place inviterait à
     // la refaire ; les tests ci-dessus ne verraient rien tant que personne ne s'en sert.
-    assert.match(src, /export function personaLimbSegmentScreen3D\(handleId, positions\)/);
+    // `chaines` s'ajoute en #392d : une créature n'a pas de LIMB_SEGMENTS, son membre se lit dans
+    // sa chaîne. Comme `defs` plus bas, c'est une liste de descripteurs, pas un canevas, et le
+    // test du dessus vérifie déjà que le CORPS de la fonction ne projette rien.
+    assert.match(src, /export function personaLimbSegmentScreen3D\(handleId, positions, chaines\)/);
     assert.match(src, /export function pickLimbSegmentAt\(px, py, positions, radius/);
     // `defs` s'ajoute en #392b, et il ne rouvre PAS la porte que ce test ferme : c'est une liste de
     // descripteurs, pas un canevas, et rien dans le corps ne projette quoi que ce soit — ce que le

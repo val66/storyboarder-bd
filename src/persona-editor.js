@@ -833,11 +833,14 @@ export function drawPersonaEditor(){
     if (entree && entree.skeletonBones) {
       drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
         personaEditorDragHint(), true, editeurPoseUneCreature3D()
-          // La chaîne survolée voyage AVEC la figure, et non dans un paramètre de plus : c'est une
-          // propriété de ce qu'on dessine, au même titre que la liste des poignées (#392c).
-          ? Object.assign(entreeDePoigneesDeCreature3D(entree.skeletonBones),
-            { chaineSurvolee: clesSurvoleesDeLEditeur3D() })
-          : jointsDepuisOsMappes(entree.skeletonBones));
+          // La chaîne survolée et la liste des chaînes voyagent AVEC la figure, et non dans des
+          // paramètres de plus : ce sont des propriétés de ce qu'on dessine, au même titre que la
+          // liste des poignées (#392c). Les chaînes servent à la zone de prise, qui doit savoir
+          // jusqu'où va le membre d'un os (#392d).
+          ? Object.assign(entreeDePoigneesDeCreature3D(entree.skeletonBones), {
+            chaineSurvolee: clesSurvoleesDeLEditeur3D(), chaines: chainesDeLEditeur3D(),
+          })
+          : jointsDepuisOsMappes(entree.skeletonBones), personaEditorOsPos);
     }
     return;
   }
@@ -874,12 +877,16 @@ export function drawPersonaEditor(){
   // la modale, lui, les garde toutes (il n'appelle pas avec ce drapeau) : on y choisit une
   // articulation, on ne l'y manipule pas au glisser.
   drawPersonaPoseHandlesOverlay(cnv, personaEditorHandlePos, S.personaEditorHandleId,
-    personaEditorDragHint(), true);
+    personaEditorDragHint(), true, undefined, personaEditorOsPos);
 }
 
 // Carte PROPRE à l'éditeur (cf. le commentaire de drawPersonaPoseHandlesOverlay) : la modale garde
 // la sienne, et les deux vues ne se marchent plus dessus.
 const personaEditorHandlePos = {};
+// OÙ SONT LES OS, par opposition à où sont les POIGNÉES (#392d). Les deux diffèrent dès qu'on en
+// masque une, et répondent à deux questions distinctes : « quelle poignée ai-je cliquée ? » se
+// demande à ce qui est dessiné, « quelle chaîne ai-je survolée ? » à la géométrie, toujours là.
+const personaEditorOsPos = {};
 
 /**
  * La figure d'une CRÉATURE, telle que la couche de dessin des poignées l'attend (#392b).
@@ -935,11 +942,35 @@ function poigneesDeLEditeur3D(){
 // curseurs. Un survol qui déplierait des groupes ferait défiler le panneau au moindre passage de
 // souris, et on ne pourrait plus lire ce qu'on vient d'ouvrir.
 
-/** Les chaînes de la figure affichée, ou `[]`. Même source que les curseurs, jamais une seconde. */
+/**
+ * Les chaînes de la figure affichée, ou `[]`. Même source que les curseurs, jamais une seconde.
+ *
+ * ⚠️ MÉMORISÉE PAR FIGURE, ET CE N'EST PAS UNE OPTIMISATION DE CONFORT (#392d). Le survol appelle
+ * ceci à CHAQUE `mousemove`, c'est-à-dire à chaque pixel parcouru. Or `groupesDeCurseurs3D` refait à
+ * chaque appel toute la reconnaissance du squelette — proposition de rôles et découpe en chaînes sur
+ * les 49 os d'un cerbère, les 103 d'une araignée. Signalé à l'usage : « parfois il met beaucoup de
+ * temps à se charger ».
+ *
+ * La clé est le FICHIER, et elle suffit : la morphologie et les membres cochés ne peuvent pas
+ * changer pendant que l'Éditeur est ouvert, il faut en sortir pour atteindre l'écran de
+ * correspondance. Le cache est vidé à chaque construction du panneau, donc à toute ouverture et à
+ * tout changement de figure (cf. buildPersonaEditorJointSlidersUI).
+ */
+let _chainesMemorisees = { fichier: null, chaines: [] };
+
+export function oublierChainesDeLEditeur3D(){
+  _chainesMemorisees = { fichier: null, chaines: [] };
+}
+
 export function chainesDeLEditeur3D(){
   const fichier = figureImporteeDeLEditeur();
   if (!fichier || !editeurPoseUneCreature3D()) return [];
-  return chainesAPlat3D(groupesDeCurseurs3D(fichier, tr).groupes);
+  if (_chainesMemorisees.fichier !== fichier) {
+    _chainesMemorisees = {
+      fichier, chaines: chainesAPlat3D(groupesDeCurseurs3D(fichier, tr).groupes),
+    };
+  }
+  return _chainesMemorisees.chaines;
 }
 
 /**
@@ -1010,6 +1041,9 @@ export function buildPersonaEditorJointSlidersUI(){
   container.innerHTML = '';
   [personaEditorSliderRefs, personaEditorCreatureRefs, personaEditorGroupOf, personaEditorRowsOf]
     .forEach(m => Object.keys(m).forEach(k => delete m[k]));
+  // Le panneau se reconstruit à toute ouverture et à tout changement de figure : c'est exactement
+  // quand la liste des chaînes mémorisée peut être périmée (#392d).
+  oublierChainesDeLEditeur3D();
   // ⚠️ LES CURSEURS D'UNE CRÉATURE VIENNENT DE SES CHAÎNES, et par le MÊME constructeur que la
   // fiche (#383). En écrire un second ici aurait donné deux listes de curseurs pour un même
   // squelette, qui divergent au premier ajustement — la panne la plus fréquente de ce dépôt, et
@@ -1642,8 +1676,11 @@ export function wirePersonaEditor(){
       // UN POINT L'EMPORTE SUR SA CHAÎNE : si le curseur est déjà sur une poignée, c'est elle qu'on
       // vise, et laisser le survol changer de chaîne à ce moment-là ferait disparaître le point sous
       // le curseur juste avant qu'on ne clique.
+      // ⚠️ SUR LES POSITIONS DES OS, PAS SUR CELLES DES POIGNÉES (#392d). Une chaîne allumée masque
+      // les poignées des autres : les chercher là ne rendait plus rien, et il fallait sortir de la
+      // chaîne courante puis attendre une image de plus pour en survoler une autre.
       const chaine = surUnPoint ? null
-        : pickChaineAt(px, py, chainesDeLEditeur3D(), personaEditorHandlePos);
+        : pickChaineAt(px, py, chainesDeLEditeur3D(), personaEditorOsPos);
       // Redessiner SEULEMENT si la chaîne a changé : un mousemove arrive à chaque pixel parcouru, et
       // relancer le rendu 3D à chacun ferait tourner WebGL en continu pour une image identique.
       if (survolerChaineDeLEditeur3D(chaine ? chaine.id : (surUnPoint ? S.personaEditorHoverChain : null))) {

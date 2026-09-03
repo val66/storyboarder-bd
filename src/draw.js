@@ -1771,7 +1771,15 @@ export function drawPersonaDragHint(hctx, pos, hint){
 // WebGL, cf. ensurePersonaScene3D) mais où THREE.PerspectiveCamera, lui, se construit très bien.
 //
 // Renvoie la liste des poignées à dessiner, dans l'ordre de POSE_HANDLES.
-export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selectedId, solo, positionsOut){
+// `positionsDesOs` : OÙ SONT LES OS, par opposition à `positions`, qui dit où sont les POIGNÉES
+// (#392d). Les deux diffèrent dès qu'on en masque une, et ce sont deux questions distinctes :
+//   — « quelle poignée ai-je cliquée ? » se demande à ce qui est DESSINÉ, sans quoi on attraperait
+//     un point invisible ;
+//   — « quelle chaîne ai-je survolée ? » se demande à la GÉOMÉTRIE, qui, elle, est toujours là.
+// Les confondre est ce qui rendait le survol capricieux : une fois une chaîne allumée, les autres
+// n'avaient plus de position, donc plus de segment, donc plus rien à survoler. On ne pouvait quitter
+// une chaîne qu'en sortant de sa bande, et il fallait une image de plus pour en trouver une autre.
+export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selectedId, solo, positionsOut, positionsDesOs){
   const positions = positionsOut || {};
   const points = [];
   // ⚠️ LA LISTE DES POIGNÉES VIENT DE LA FIGURE, PLUS D'UNE CONSTANTE (#392b). POSE_HANDLES décrit
@@ -1801,9 +1809,15 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
       // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
       // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
       positions[def.id] = null;
+      // ⚠️ MAIS L'OS, LUI, EST TOUJOURS LÀ (#392d). Masquer une poignée ne déplace pas le squelette :
+      // sa position sert à savoir quelle CHAÎNE est sous la souris, question qui ne dépend pas de ce
+      // qu'on a choisi d'afficher. Sans cette ligne, allumer une chaîne éteignait la possibilité
+      // d'en survoler une autre.
+      if (positionsDesOs) positionsDesOs[def.id] = projectJointToCanvas(grp, camera, cnvW, cnvH);
       return;
     }
     const pt = projectJointToCanvas(grp, camera, cnvW, cnvH);
+    if (positionsDesOs) positionsDesOs[def.id] = pt;
     // Fix 92 : l'EXTRÉMITÉ du membre est projetée ici, dans la même image et avec la même caméra
     // que la poignée, puis rangée AVEC elle. Auparavant seul le départ du segment était mémorisé et
     // le bout était recalculé au moment du clic : personaLibSegment le reprojetait à la volée avec
@@ -1830,7 +1844,7 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
   return points;
 }
 
-export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive, entryOverride){
+export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive, entryOverride, positionsDesOs){
   if (typeof THREE === 'undefined') return;
   // `entryOverride` : la figure sur laquelle poser les poignées, quand ce n'est pas le rig intégré.
   // L'Éditeur de Personnage peut afficher un MODÈLE IMPORTÉ ; ses articulations sont alors des os,
@@ -1871,10 +1885,13 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   // divergent. La séparation en deux passes le supprime à la racine, il n'y a plus qu'un seul
   // calcul de position par image, et tout le monde en lit le résultat.
   const points = projectPoseHandlePositions3D(entry, personaCamera3D, cnv.width, cnv.height,
-    selectedId, solo, positions);
+    selectedId, solo, positions, positionsDesOs);
   if (solo && positions[selectedId]) {
+    // La zone de prise se trace sur les positions DES OS : le membre d'une créature va d'un os au
+    // suivant, et le suivant peut très bien être masqué par le survol d'une autre chaîne.
     drawPersonaPickZone(hctx, positions[selectedId],
-      personaLimbSegmentScreen3D(selectedId, positions), posePickRadii3D(true));
+      personaLimbSegmentScreen3D(selectedId, positionsDesOs || positions, entry && entry.chaines),
+      posePickRadii3D(true));
   }
   // La chaîne survolée en LÉGÈRE surbrillance, sous les poignées (#392c) : elle situe la chaîne sur
   // la figure, elle ne la remplace pas. Tracée avant les points pour la même raison que la zone de
@@ -1885,7 +1902,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     hctx.globalAlpha = 0.35;
     hctx.lineWidth = 7;
     hctx.lineCap = 'round';
-    segmentsDeChaine3D(entry.chaineSurvolee, positions).forEach(s => {
+    segmentsDeChaine3D(entry.chaineSurvolee, positionsDesOs || positions).forEach(s => {
       hctx.beginPath();
       hctx.moveTo(s.p1.x, s.p1.y);
       hctx.lineTo(s.p2.x, s.p2.y);
@@ -1962,12 +1979,30 @@ export function distToSegmentSq(px, py, ax, ay, bx, by){
 // pas. C'est la bonne réponse, on ne peut pas accepter un clic sur une bande qu'on n'a pas
 // dessinée. Même raison que le `null` des poignées masquées : ne rien enregistrer, c'est rendre
 // inerte, sans second mécanisme à tenir en accord avec le premier.
-export function personaLimbSegmentScreen3D(handleId, positions){
+export function personaLimbSegmentScreen3D(handleId, positions, chaines){
+  // ⚠️ UNE CRÉATURE N'A PAS DE `LIMB_SEGMENTS`, ET N'EN A PAS BESOIN (#392d). Cette table décrit les
+  // sept membres du Personnage intégré ; une clé de créature n'y figure pas, si bien que la zone de
+  // prise orange — celle qui dit « où cliquer sans perdre la sélection » — ne se dessinait PAS sur
+  // une créature. Signalé à l'usage : « au clic sur un point on n'a pas la zone en surbrillance ».
+  //
+  // Le membre d'un os, lui, se lit dans sa CHAÎNE : c'est le segment qui le relie à l'os suivant,
+  // exactement ce que le survol met déjà en surbrillance. Aucune table à tenir, et les deux tracés
+  // ne peuvent pas désigner deux géométries différentes.
+  const pos = positions || personaHandleScreenPos;
   const seg = LIMB_SEGMENTS.find(l => l.id === handleId);
-  if (!seg) return null;
+  if (!seg) {
+    const chaine = (chaines || []).find(c => (c.cles || []).includes(handleId));
+    if (!chaine) return null;
+    const i = chaine.cles.indexOf(handleId);
+    const p1 = pos[handleId], p2 = pos[chaine.cles[i + 1]];
+    // Le DERNIER os d'une chaîne n'entraîne rien : sa poignée garde son disque, ce qui est exact
+    // plutôt qu'approximatif. Même règle que `segmentDeLOs3D` pour le levier du glisser.
+    if (!p1 || !p2) return null;
+    return { def: { id: handleId }, p1, p2 };
+  }
   const def = POSE_HANDLES.find(d => d.id === seg.id);
   if (!def) return null;
-  const p1 = (positions || personaHandleScreenPos)[seg.id];
+  const p1 = pos[seg.id];
   if (!p1 || !p1.tip) return null;
   return { def, p1, p2: p1.tip };
 }
