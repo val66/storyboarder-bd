@@ -37,7 +37,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  inferSkeletonMap, resumeCorrespondance, coteDuNom, normaliserNom, SLOTS,
+  inferSkeletonMap, coteDuNom, normaliserNom, SLOTS,
 } from '../src/skeleton-map.js';
 
 const charger = (nom) => {
@@ -49,6 +49,20 @@ const MAISON = charger('squelette-maison');
 const MIXAMO = charger('squelette-mixamo');
 const VRM    = charger('squelette-vrm');
 const VROID  = charger('squelette-vroid-alt');
+
+// ⚠️ CE COMPTE VENAIT DE src/skeleton-map.js, ET IL EN EST SORTI (#402a). Il y servait un chiffre
+// affiché, « 14 sur 18 », que l'écran de correspondance ne montre plus depuis qu'il détaille une
+// ligne par os (#377) puis un membre par bloc (#378b). Il reste ici parce que ce qu'il mesure reste
+// vrai et vérifiable : combien d'emplacements `inferSkeletonMap` remplit, et combien le sont sur la
+// seule foi de la structure. Un outil de mesure des tests, et non du code que l'application porte.
+const resumeCorrespondance = (carte) => {
+  const valeurs = SLOTS.map(s => (carte || {})[s]);
+  return {
+    total: SLOTS.length,
+    remplis: valeurs.filter(Boolean).length,
+    aVerifier: valeurs.filter(v => v && v.origine === 'structure').length,
+  };
+};
 
 describe('coteDuNom : le nom est fiable pour le CÔTÉ, et pour lui seul', () => {
   test('les trois conventions se reconnaissent', () => {
@@ -299,7 +313,7 @@ describe('inferSkeletonMap : entrées qui ne sont pas des humanoïdes', () => {
   });
 });
 
-describe('resumeCorrespondance : le chiffre affiché à l\'utilisateur', () => {
+describe('la couverture de inferSkeletonMap, emplacement par emplacement', () => {
   test('il compte les emplacements remplis ET ceux à vérifier', () => {
     const r = resumeCorrespondance(inferSkeletonMap(MAISON));
     assert.equal(r.total, 18);

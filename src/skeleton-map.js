@@ -445,15 +445,11 @@ export function inferSkeletonMap(os){
   return carte;
 }
 
-/** Combien d'emplacements sont remplis, et combien le sont sans confirmation par le nom. */
-export function resumeCorrespondance(carte){
-  const valeurs = SLOTS.map(s => (carte || {})[s]);
-  return {
-    total: SLOTS.length,
-    remplis: valeurs.filter(Boolean).length,
-    aVerifier: valeurs.filter(v => v && v.origine === 'structure').length,
-  };
-}
+// `resumeCorrespondance` A ÉTÉ RETIRÉE (#402a). Elle comptait les emplacements remplis pour un
+// CHIFFRE AFFICHÉ dans l'écran de correspondance, « 14 sur 18 ». Cet écran ne l'affiche plus : il
+// montre une ligne par os avec l'origine de chacune (#377), puis un membre par bloc (#378b), ce qui
+// dit la même chose en plus précis. Le compte survit dans tests/skeleton-map.test.mjs, où il sert à
+// mesurer la couverture de `inferSkeletonMap` — c'est un outil de mesure, plus un rendu.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Le squelette vu comme un TRONC et des MEMBRES, sans présupposé de morphologie

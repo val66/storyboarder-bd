@@ -202,7 +202,7 @@ la bibliothèque en place.
 
 ### Phase 2 — Panneau droit : articulations
 
-- **2.1** Réglage fin par curseurs, sur le modèle de `buildAnimalJointSlidersUI`.
+- **2.1** Réglage fin par curseurs, sur le modèle des curseurs d'Animal de l'époque (`buildAnimalJointSlidersUI`, retirée en #401c quand la fiche d'un Animal a cessé de poser ; l'Éditeur les construit désormais avec `construireCurseursDAnimal3D`).
 - **2.2** Poignées cliquables sur le canevas.
 - **2.3** Tout opère sur un brouillon, jamais sur l'objet (implémenté en `S.personaEditorDraft`).
 

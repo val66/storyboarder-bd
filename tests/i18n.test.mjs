@@ -515,65 +515,17 @@ describe('Un seul nom pour « Réglages des articulations »', () => {
 });
 
 
-describe('L\'écart autour de la sous-section des articulations', () => {
-  // DEUX FOIS DE SUITE J'AI ÉCRIT UN CALCUL D'ESPACEMENT EN COMMENTAIRE, et deux fois il était faux
-  // ou inopérant : la première version reposait sur une margin-top absorbée par le collapsing, la
-  // seconde donnait un écart correct déplié mais trop grand replié. Dans les deux cas c'est
-  // l'utilisateur qui l'a vu, pas le commentaire.
-  //
-  // Ce test RELIT les quatre nombres dans style.css et refait l'addition. Il ne prétend pas
-  // remplacer l'œil, le collapsing des marges, lui, ne se déduit pas d'une somme, mais si
-  // quelqu'un change le padding de .modal-subsection ou la marge de .joint-sliders-details
-  // ailleurs, l'égalité promise tombe et le test le dit, au lieu de laisser un commentaire mentir.
-  const CSS = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  const nombre = (motif, nom) => {
-    const m = CSS.match(motif);
-    assert.ok(m, `valeur introuvable dans style.css : ${nom}`);
-    return Number(m[1]);
-  };
-
-  test('replié, l\'écart du bas égale celui du haut', () => {
-    const padSection   = nombre(/\.modal-subsection\{[^}]*padding:\s*(\d+)px/, '.modal-subsection padding');
-    const margeHaut    = nombre(/\.joint-sliders-details\{\s*margin:\s*(\d+)px/, '.joint-sliders-details margin-top');
-    const margeBas     = nombre(/\.joint-sliders-details\{\s*margin:\s*\d+px \d+ (\d+)px/, '.joint-sliders-details margin-bottom');
-    const padReplie    = nombre(/#objectSkeletonSlidersDetails \{ padding-bottom: (\d+)px; \}/, 'padding replié');
-
-    const haut = padSection + margeHaut;
-    const bas  = padReplie + margeBas + padSection;
-    assert.equal(bas, haut,
-      `replié : ${bas} px sous le titre contre ${haut} px au-dessus — cf. la note dans style.css`);
-  });
-
-  test('déplié, le bouton a le même écart au-dessus qu\'en dessous', () => {
-    const padSection = nombre(/\.modal-subsection\{[^}]*padding:\s*(\d+)px/, '.modal-subsection padding');
-    const margeBas   = nombre(/\.joint-sliders-details\{\s*margin:\s*\d+px \d+ (\d+)px/, '.joint-sliders-details margin-bottom');
-    const padConteneur = nombre(/#objectSkeletonSlidersContainer \{ padding-bottom: (\d+)px; \}/, 'padding du conteneur');
-    const padDeplie    = nombre(/#objectSkeletonSlidersDetails\[open\] \{ padding-bottom: (\d+)px; \}/, 'padding déplié');
-
-    const auDessus = padConteneur;   // la marge du dernier groupe est annulée, cf. la règle voisine
-    const enDessous = padDeplie + margeBas + padSection;
-    assert.equal(enDessous, auDessus,
-      `bouton : ${auDessus} px au-dessus contre ${enDessous} px en dessous`);
-  });
-
-  test('RÉGRESSION : replié et déplié n\'ont PAS le même padding', () => {
-    // Le défaut signalé : une seule valeur pour les deux états donnait un bas trop grand une fois
-    // la sous-section refermée, puisque le bouton, qui justifiait l'écart, n'est plus visible.
-    const replie = nombre(/#objectSkeletonSlidersDetails \{ padding-bottom: (\d+)px; \}/, 'padding replié');
-    const deplie = nombre(/#objectSkeletonSlidersDetails\[open\] \{ padding-bottom: (\d+)px; \}/, 'padding déplié');
-    assert.notEqual(replie, deplie,
-      'un seul padding pour les deux états : replié, l\'écart du bas redevient trop grand');
-  });
-
-  test('RÉGRESSION : la marge du dernier groupe est bien annulée', () => {
-    // Sans cela elle se collapse hors du conteneur et l\'écart au-dessus du bouton redevient
-    // indéterminé, c\'est exactement ce qui rendait ma première version inopérante.
-    assert.match(CSS, /#objectSkeletonSlidersContainer > \.joint-group-details:last-child \{ margin-bottom: 0; \}/);
-    assert.match(CSS, /\.skeleton-map-open-btn \{ margin: 0; \}/,
-      'le bouton a retrouvé une marge : elle se collapserait avec le padding du conteneur');
-  });
-});
-
+// ---------- « L'écart autour de la sous-section des articulations » : BLOC RETIRÉ (#402a) ----------
+//
+// Il relisait quatre nombres dans style.css et refaisait l'addition de l'espace autour du bouton
+// « Tableau de correspondance », dans la sous-section des articulations d'un Modèle importé. Le
+// bouton est parti dans l'Éditeur (#395), la sous-section avec les curseurs (#394), et les quatre
+// règles qu'il mesurait n'existent plus (#402a) : il ne gardait plus que du CSS mort.
+//
+// ⚠️ CE QU'IL AVAIT APPRIS EST GARDÉ, dans style.css, à l'endroit du retrait : les marges verticales
+// SE COLLAPSENT, une marge haute contre une marge basse ne fait pas leur somme mais leur maximum.
+// C'est ce piège qui avait rendu une première correction sans effet, deux fois de suite, et il
+// attend le prochain écart réglé à la marge plutôt qu'au rembourrage.
 
 // ── Les raccourcis promis existent-ils ? ──────────────────────────────────────────────────────
 describe('Raccourcis du manuel : aucune touche promise sans écouteur', () => {

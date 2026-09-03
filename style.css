@@ -637,21 +637,9 @@ canvas{
   padding:0; flex-shrink:0; z-index:1;
 }
 .modal-close-btn:hover{ color:var(--accent); border-color:var(--accent); }
-.joint-sliders-details{ margin:4px 0 2px; }
-/* Le triangle natif d'un <summary> s'affiche par défaut à GAUCHE : on le supprime (list-style:none +
-   masquage du marqueur webkit) et on le recrée nous-mêmes à DROITE, sur demande utilisateur, dans le
-   même esprit que le chevron des .modal-section (rotation -90deg quand repliée/fermée). */
-.joint-sliders-details summary{
-  cursor:pointer; font-size:10.5px; font-weight:600; color:var(--ink-soft);
-  text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px;
-  list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
-}
-.joint-sliders-details summary::-webkit-details-marker{ display:none; }
-.joint-sliders-details summary::after{
-  content:'▾'; font-size:15px; line-height:1; color:var(--ink-soft);
-  transition:transform .15s ease; flex-shrink:0; transform:rotate(-90deg);
-}
-.joint-sliders-details[open] summary::after{ transform:rotate(0deg); }
+/* `.joint-sliders-details` A ÉTÉ RETIRÉE (#402a) : c'était le <details> « Réglages des
+   articulations » des trois fiches, parties poser dans l'Éditeur (#394, #401a, #401c). Le panneau
+   de l'Éditeur n'a jamais utilisé cette classe, il porte ses propres sections. */
 .joint-slider-row{
   display:flex; align-items:center; gap:8px; margin-bottom:6px;
   border-radius:5px; padding:2px 4px; margin-left:-4px; margin-right:-4px;
@@ -684,17 +672,14 @@ canvas{
   /* 1 + 3 de liséré = les 4px de padding de base : la ligne ne se décale pas en devenant pilotée. */
   padding-left:1px;
 }
-/* Chaque groupe d'articulations (Bras, Jambes, etc.) reprend désormais le même habillage que les
-   sous-sections (.modal-subsection : fond assombri, bordure, coins arrondis) plutôt qu'un simple
-   filet vertical, pour une apparence plus cohérente avec le reste de la modale. */
+/* Chaque groupe d'articulations (Bras, Jambes, etc.) porte un fond assombri, une bordure et des
+   coins arrondis plutôt qu'un simple filet vertical. ⚠️ CET HABILLAGE ÉTAIT CELUI DE
+   `.modal-subsection`, retirée en #402a : les valeurs sont donc écrites ici, elles ne sont plus
+   héritées d'un modèle. */
 .joint-group-details{
   margin:0 0 8px; background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:6px;
   padding:6px 10px;
 }
-/* Écart dédié entre le titre "Réglages fins des articulations" et son premier groupe : la marge
-   générale du résumé (.joint-sliders-details summary) a été réduite pour compacter la sous-section
-   dans son ensemble, mais on garde ici un espace plus net spécifiquement sous ce titre. */
-#jointSlidersContainer > .joint-group-details:first-child{ margin-top:8px; }
 .joint-group-details summary{
   cursor:pointer; font-size:11.5px; font-weight:600; color:var(--ink); margin-bottom:6px;
   list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -913,14 +898,8 @@ canvas{
 */
 .modal-section.collapsed{ padding:10px; }
 .modal-section.collapsed .modal-section-header{ margin:0; }
-/* Sous-section imbriquée dans une .modal-section (ex. "Réglages fins des articulations" sous
-   Orientation) : même esprit que .modal-section (fond assombri pour la distinguer) mais plus discret
-   et plus clair qu'elle, pour bien marquer qu'elle est imbriquée DANS la section plutôt qu'au même
-   niveau qu'elle. */
-.modal-subsection{
-  background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:6px;
-  margin-top:14px; padding:4px 10px;
-}
+/* `.modal-subsection` A ÉTÉ RETIRÉE (#402a) : sa seule occupante était la sous-section des
+   articulations, dans chacune des trois fiches. Aucune fiche n'imbrique plus de section. */
 .persona-rot-row{ display:flex; gap:10px; margin-top:4px; }
 .persona-rot-col{ flex:1; }
 .persona-rot-col input[type=range]{ width:100%; }
@@ -1306,51 +1285,18 @@ canvas{
 .skeleton-map-membres .skeleton-map-legend-note {
   font-size: 11.5px; color: var(--sepia); margin: 0 0 6px;
 }
-/* Écart AUTOUR du bouton « Tableau de correspondance » : autant au-dessus qu'en dessous.
- *
- * MA PREMIÈRE VERSION — une simple `margin-top: 4px` sur le bouton — N'AVAIT AUCUN EFFET, et j'avais
- * pourtant documenté un calcul en quatre nombres pour la justifier. Les marges verticales SE
- * COLLAPSENT : le conteneur des groupes n'ayant ni padding ni bordure, la marge basse du dernier
- * groupe (8 px) s'en échappe et fusionne avec la marge haute du bouton, en gardant le MAXIMUM des
- * deux. max(8, 4) = 8 : rien ne bougeait. Signalé à l'usage, à juste titre.
- *
- * On n'utilise donc plus que des valeurs qui ne collapsent jamais — padding ici, marges mises à
- * zéro là — pour que l'écart écrit soit exactement l'écart obtenu :
- *   AU-DESSUS : marge du dernier groupe annulée + padding bas du conteneur ...... 10 px
- *   EN DESSOUS : padding bas du <details> (4) + sa marge basse (2) + padding bas
- *                de .modal-subsection (4) ............................................ 10 px */
-#objectSkeletonSlidersContainer > .joint-group-details:last-child { margin-bottom: 0; }
-#objectSkeletonSlidersContainer { padding-bottom: 10px; }
-/* REPLIÉE, la sous-section doit respirer autant en bas qu'en haut — signalé à l'usage. Au-dessus du
-   titre : 4 (padding haut de .modal-subsection) + 4 (marge haute de .joint-sliders-details) = 8 px.
-   En dessous : ce padding + 2 (marge basse du <details>) + 4 (padding bas de la sous-section).
-   D'où 2 px repliée (2+2+4 = 8, l'écart du haut) et 4 px dépliée (4+2+4 = 10, comme au-dessus du
-   bouton). Scopé à cette sous-section : .joint-sliders-details est partagée avec le Personnage et
-   les Animaux, qui n'ont pas de bouton et dont l'espacement convient déjà. */
-#objectSkeletonSlidersDetails { padding-bottom: 2px; }
-#objectSkeletonSlidersDetails[open] { padding-bottom: 4px; }
-.skeleton-map-open-btn { margin: 0; }
-.skeleton-map-group {
-  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-  opacity: .55; margin: 10px 0 4px 2px;
-}
-.skeleton-map-list > .skeleton-map-group:first-child { margin-top: 0; }
-/* #378b — un MEMBRE est un <details> dont le résumé EST l'en-tête de groupe. L'écran humanoïde
-   affichait des titres inertes, celui des créatures des blocs repliables aux titres techniques
-   (« Sur CERBERUS__Spine_03 ») : signalé à l'usage comme trop différents. Un seul objet désormais,
-   qui a l'allure d'un titre et se replie quand son membre est sûr.
-   PAS DE CADRE NI DE FOND : c'est ce qui le fait passer pour le titre plat qu'il remplace. Le
-   chevron seul dit qu'on peut cliquer, et il ne s'affiche que là où il y a quelque chose à replier. */
-.skeleton-map-membre-groupe > summary {
-  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
-}
-.skeleton-map-membre-groupe > summary::-webkit-details-marker { display: none; }
-.skeleton-map-membre-groupe > summary::after {
-  content: '▾'; font-size: 9px; color: var(--ink-soft); transition: transform .15s ease;
-}
-.skeleton-map-membre-groupe:not([open]) > summary::after { transform: rotate(-90deg); }
-/* Replié, l'en-tête n'a plus de lignes en dessous : sa marge basse deviendrait un trou. */
-.skeleton-map-membre-groupe:not([open]) > .skeleton-map-group { margin-bottom: 0; }
+/* LES ÉCARTS DE LA SOUS-SECTION D'UN MODÈLE IMPORTÉ ONT ÉTÉ RETIRÉS (#402a). Ils réglaient au pixel
+   l'espace autour du bouton « Tableau de correspondance » quand il vivait dans la fiche ; il est
+   parti dans l'Éditeur (#395) et la sous-section avec les curseurs (#394). Les trois identifiants
+   qu'ils visaient — #objectSkeletonSlidersContainer, #objectSkeletonSlidersDetails et
+   .skeleton-map-open-btn — n'existent plus nulle part.
+   ⚠️ CE QU'ILS DISAIENT VAUT ENCORE AILLEURS : les marges verticales SE COLLAPSENT, une marge haute
+   posée contre une marge basse ne fait pas leur somme mais leur maximum. C'est ce piège qui avait
+   rendu une première correction sans effet, et il attend le prochain écart réglé à la marge. */
+/* `.skeleton-map-membre-groupe` ET `.skeleton-map-group` ONT ÉTÉ RETIRÉES (#402a). Le membre
+   repliable de #378b, dont le résumé faisait office d'en-tête de groupe, a cédé la place aux
+   sections repliables communes à tout l'écran (#388) : c'est `.modal-section` qui replie, ici comme
+   partout ailleurs, et ces règles n'avaient plus d'élément à habiller. */
 .skeleton-map-row {
   display: flex; align-items: center; gap: 10px; padding: 5px 8px; margin-bottom: 4px;
   border: 1px solid var(--line); border-radius: var(--radius, 6px);

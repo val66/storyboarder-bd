@@ -196,7 +196,7 @@ place.
 
 ### Phase 2 — Right-hand panel: joints
 
-- **2.1** Fine adjustment by sliders, modelled on `buildAnimalJointSlidersUI`.
+- **2.1** Fine adjustment by sliders, modelled on the animal joint sliders of the time (`buildAnimalJointSlidersUI`, removed in #401c when the animal card stopped posing; the editor now builds them with `construireCurseursDAnimal3D`).
 - **2.2** Clickable handles on the canvas.
 - **2.3** Everything operates on a draft, never on the object (implemented as `S.personaEditorDraft`).
 

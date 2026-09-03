@@ -647,3 +647,60 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
     assert.ok(html.length > 0);
   });
 });
+
+describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', () => {
+  /**
+   * CE QUE CE BLOC ATTRAPE, ET POURQUOI IL A FALLU LE CHERCHER À LA MAIN.
+   *
+   * Retirer un écran laisse deux traces : le code, qu'ESLint signale dès qu'il devient inatteignable,
+   * et le CSS, que RIEN ne signale. Une règle visant un identifiant supprimé reste verte pour
+   * toujours. Le ménage de #402a en a trouvé cinq d'un coup, dont trois écrites par moi lors des
+   * retraits eux-mêmes : #jointSlidersContainer (#401a), #objectSkeletonSlidersContainer et
+   * #objectSkeletonSlidersDetails (#394).
+   *
+   * ⚠️ LA VÉRIFICATION PORTE SUR LES IDENTIFIANTS, PAS SUR LES CLASSES, et c'est une limite assumée.
+   * Une classe peut être composée à l'exécution — `origine-${cle}` dans l'écran de correspondance —
+   * donc son nom n'apparaît nulle part en clair et un test la déclarerait morte à tort. Un
+   * identifiant, lui, est toujours écrit en toutes lettres, dans le HTML ou dans un getElementById.
+   */
+  // ⚠️ COMMENTAIRES RETIRÉS, ET LE PREMIER JET NE L'AVAIT PAS FAIT : ce fichier garde des pierres
+  // tombales qui NOMMENT les règles supprimées, « .skeleton-map-open-btn n'existe plus nulle part ».
+  // Les lire comme des sélecteurs faisait échouer le test sur le texte même qui explique le retrait.
+  const cssNu = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const SRC = ['modals.js', 'events.js', 'draw.js', 'persona-editor.js', 'scene3d.js', 'rig3d.js',
+    'sidebar.js', 'skeleton-map.js', 'i18n.js', 'help-content.js', 'modal-stack.js']
+    .map(f => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8')).join('\n');
+
+  // ⚠️ CES QUATRE-LÀ SONT MORTS AUSSI, et ils sont ANTÉRIEURS au chantier des poses : ils attendent
+  // #402d, où chacun sera vérifié avant d'être retiré. Les exempter les NOMME au lieu de les
+  // laisser se fondre dans la masse, et la liste ne peut que raccourcir.
+  const CONNUS_MORTS = ['tomeList', 'colorSwatches', 'pieceModal', 'batimentModal'];
+
+  test('tout identifiant visé par style.css existe quelque part', () => {
+    const ids = [...new Set([...cssNu.matchAll(/#([A-Za-z][\w-]*)/g)].map(m => m[1]))]
+      // `#fff`, `#E8B84B` : des couleurs, pas des sélecteurs.
+      .filter(id => !/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(id))
+      .filter(id => !CONNUS_MORTS.includes(id));
+    const orphelins = ids.filter(id =>
+      !html.includes(`id="${id}"`) && !new RegExp(`['"\`]${id}\\b`).test(SRC));
+    assert.deepEqual(orphelins, [],
+      `règles CSS visant un identifiant qui n'existe plus : ${orphelins.join(', ')}`);
+  });
+
+  test('RÉGRESSION : les classes retirées en #402a ne reviennent pas', () => {
+    // Elles habillaient la sous-section « Réglages des articulations » des trois fiches et le membre
+    // repliable de l'écran de correspondance. Aucune n'a plus d'élément à habiller.
+    ['.joint-sliders-details', '.modal-subsection', '.skeleton-map-open-btn',
+      '.skeleton-map-group', '.skeleton-map-membre-groupe'].forEach(cls => {
+      assert.ok(!new RegExp(`^\\s*${cls.replace('.', '\\.')}[\\s,:{[>]`, 'm').test(cssNu),
+        `${cls} est de retour dans style.css : une fiche s'est remise à poser, ou la règle est morte`);
+    });
+  });
+
+  test('et la liste des morts CONNUS ne s\'allonge pas en douce', () => {
+    // Sans ce test, exempter deviendrait le moyen le plus simple de faire passer le premier.
+    assert.equal(CONNUS_MORTS.length, 4,
+      'un identifiant a été ajouté aux exemptions : c\'est le ménage de #402d qui doit les retirer');
+  });
+});
