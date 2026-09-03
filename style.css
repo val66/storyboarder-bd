@@ -813,24 +813,31 @@ canvas{
    pris sur la boîte d'Annuler, qui paraissait donc plus court qu'Enregistrer, sans qu'aucune règle
    de hauteur ne soit en cause. Corrigé pour TOUTES les modales, pas seulement celle du squelette. */
 .modal-actions .full-btn, .modal-actions .nav-btn{ width:auto; margin:0; }
-/* Modales Personnage/Objet (#descModal/#objectModal) uniquement : Annuler et Enregistrer doivent faire
-   la même taille (jusqu'ici inégale à cause de paddings différents : 8px vs 8px 12px) et avoir plus
-   d'écart entre eux. flex:1 1 0 les force à occuper une largeur égale quel que soit leur padding/texte. */
+/* LES FICHES D'ÉLÉMENT, ET ELLES SEULES : Annuler et Enregistrer y font la même taille et gardent
+   plus d'écart entre eux. `flex:1 1 0` leur impose une largeur égale quels que soient leur
+   rembourrage et leur texte, qui différaient (8px contre 8px 12px). Les modales de service —
+   Projet, Configuration, Aide, correspondance — gardent la rangée serrée à droite : leurs actions
+   ne sont pas un couple symétrique.
+
+   ⚠️ DEUX DE CES SÉLECTEURS NE VISAIENT PLUS RIEN, ET LEURS ÉCRANS EXISTAIENT (#402e). Ils
+   nommaient `#pieceModal` et `#batimentModal` ; ces deux modales vivent sous `roomModal` et
+   `buildingModal` depuis un renommage, et personne n'était revenu ici. La rangée d'actions de la
+   Pièce et du Bâtiment a donc perdu en silence l'écart et la largeur égale voulus pour elle, alors
+   que les quatre autres fiches de la même liste les avaient.
+
+   ⚠️ C'EST UNE ÉNUMÉRATION INCOMPLÈTE, la panne la plus fréquente de ce dépôt, sous une forme que
+   ni ESLint ni un test de rendu n'attrape : un sélecteur qui ne correspond à rien reste vert pour
+   toujours. C'est tests/style.test.mjs, « tout identifiant visé par style.css existe quelque part »,
+   qui les a trouvés (#402a). */
 #descModal .modal-actions, #objectModal .modal-actions,
 #tracéModal .modal-actions, #terrainModal .modal-actions,
-/* ⚠️ CES TROIS RÈGLES NE S'APPLIQUENT À RIEN, ET CE N'EST PAS DU CODE MORT ORDINAIRE (#402d).
-   Les deux modales existent, sous les identifiants `roomModal` et `buildingModal` : ce sont les
-   SÉLECTEURS qui sont restés en français après le renommage. La rangée d'actions de la Pièce et du
-   Bâtiment a donc perdu, sans un mot, l'écart et la répartition égale voulus pour elle.
-   Les corriger CHANGERAIT l'aspect de deux écrans : ce n'est pas un ménage, c'est une décision,
-   et elle revient à l'utilisateur. Les règles restent en l'état jusque-là. */
-#pieceModal .modal-actions, #batimentModal .modal-actions{ gap:16px; }
+#roomModal .modal-actions, #buildingModal .modal-actions{ gap:16px; }
 #descModal .modal-actions .full-btn, #descModal .modal-actions .nav-btn,
 #objectModal .modal-actions .full-btn, #objectModal .modal-actions .nav-btn,
 #tracéModal .modal-actions .full-btn, #tracéModal .modal-actions .nav-btn,
 #terrainModal .modal-actions .full-btn, #terrainModal .modal-actions .nav-btn,
-#pieceModal .modal-actions .full-btn, #pieceModal .modal-actions .nav-btn,
-#batimentModal .modal-actions .full-btn, #batimentModal .modal-actions .nav-btn{ flex:1 1 0; }
+#roomModal .modal-actions .full-btn, #roomModal .modal-actions .nav-btn,
+#buildingModal .modal-actions .full-btn, #buildingModal .modal-actions .nav-btn{ flex:1 1 0; }
 /* État "neutre" du bouton Enregistrer (#descModalSave/#objectModalSave) : tant qu'aucune modification
    n'a été apportée et que l'Élément n'est pas nouvellement créé, il garde le même style discret que
    Annuler plutôt que l'orange (.full-btn), réservé au cas où il y a effectivement quelque chose à

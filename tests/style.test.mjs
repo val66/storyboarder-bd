@@ -674,12 +674,11 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
     'sidebar.js', 'skeleton-map.js', 'i18n.js', 'help-content.js', 'modal-stack.js']
     .map(f => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8')).join('\n');
 
-  // ⚠️ IL EN RESTE DEUX, ET ILS NE SONT PAS MORTS : LEURS ÉCRANS EXISTENT (#402d). Les modales de
-  // Pièce et de Bâtiment vivent sous `roomModal` et `buildingModal` ; ce sont les SÉLECTEURS qui
-  // sont restés en français après le renommage, et trois règles de mise en page n'atteignent donc
-  // plus personne. Les retarget CHANGERAIT l'aspect de deux écrans : c'est une décision, pas un
-  // ménage, et elle revient à l'utilisateur. `tomeList` et `colorSwatches`, eux, sont partis.
-  const CONNUS_MORTS = ['pieceModal', 'batimentModal'];
+  // ⚠️ LA LISTE EST VIDE, ET ELLE DOIT LE RESTER. Elle a compté quatre entrées : deux identifiants
+  // morts, retirés en #402d, et deux sélecteurs qui visaient à côté — `#pieceModal` et
+  // `#batimentModal` pour des modales qui vivent sous `roomModal` et `buildingModal`, recalés en
+  // #402e. Exempter était le moyen de nommer une dette, pas de l'installer.
+  const CONNUS_MORTS = [];
 
   test('tout identifiant visé par style.css existe quelque part', () => {
     const ids = [...new Set([...cssNu.matchAll(/#([A-Za-z][\w-]*)/g)].map(m => m[1]))]
@@ -712,7 +711,7 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
 
   test('et la liste des morts CONNUS ne s\'allonge pas en douce', () => {
     // Sans ce test, exempter deviendrait le moyen le plus simple de faire passer le premier.
-    assert.equal(CONNUS_MORTS.length, 2,
-      'un identifiant a été ajouté aux exemptions : ces règles-là attendent une décision, pas un ajout');
+    assert.equal(CONNUS_MORTS.length, 0,
+      'une exemption est réapparue : le test au-dessus doit rester sans échappatoire');
   });
 });
