@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.95**
+**Version 1.4.96**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -81,10 +81,13 @@
   rig à l'autre ; une araignée n'en a pas, et se pose donc par ses chaînes. Elle a aussi ses points
   cliquables, un par os pilotable : cliquez pour déplier ses curseurs, glissez pour tourner l'os.
   Le repère suit l'axe réel de l'os et le segment qu'il entraîne, tous deux mesurés sur le fichier
-- **Le survol montre une chaîne** : une créature peut porter plus de cent articulations pilotables,
-  alors promenez la souris sur un membre de l'aperçu, ou sur son titre dans le menu de droite, et
-  cette chaîne s'allume avec ses points. Le survol montre seulement ; c'est le clic sur un point qui
-  ouvre ses curseurs
+- **Les articulations de l'archétype d'abord** : une créature peut porter plus de cent os pilotables,
+  alors seuls ceux que son archétype nomme sont montrés — tête, cou, haut de chaque patte, queue :
+  13 sur 45 pour un cerbère, 17 sur 103 pour une araignée. Ce sont aussi la part portable d'une
+  pose, et ils ont leur couleur. Un fichier dont l'archétype n'en nomme aucun garde tous ses points
+- **Le survol montre une chaîne** : promenez la souris sur un membre de l'aperçu, ou sur son titre
+  dans le menu de droite, et cette chaîne s'allume avec tous ses points, les plus pâles compris. Le
+  survol montre seulement ; c'est le clic sur un point qui ouvre ses curseurs
 - **Créer une pose** : dans l'Éditeur, et nulle part ailleurs. Réglez les curseurs, nommez-la,
   « Enregistrer » l'ajoute à la bibliothèque de son archétype. La fiche applique les poses, elle
   n'en fabrique pas

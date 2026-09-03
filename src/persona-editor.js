@@ -35,7 +35,8 @@ import {
   resolveStyle3D, squelettePourPose3D,
 } from './rig3d.js';
 import { jointsDepuisOsMappes } from './pose-bridge.js';
-import { memesAngles3D, lireAngleDeg, ecrireAngleDeg, chainesAPlat3D } from './skeleton-pose.js';
+import { memesAngles3D, lireAngleDeg, ecrireAngleDeg, chainesAPlat3D, poigneesParDefaut3D,
+  estCleDeRole3D } from './skeleton-pose.js';
 import { axeLocalVersMonde } from './skeleton-retarget.js';
 import { renderModelForEditor3D } from './scene3d.js';
 import { isImportedModel } from './model-store.js';
@@ -838,7 +839,14 @@ export function drawPersonaEditor(){
           // liste des poignées (#392c). Les chaînes servent à la zone de prise, qui doit savoir
           // jusqu'où va le membre d'un os (#392d).
           ? Object.assign(entreeDePoigneesDeCreature3D(entree.skeletonBones), {
-            chaineSurvolee: clesSurvoleesDeLEditeur3D(), chaines: chainesDeLEditeur3D(),
+            // ⚠️ DEUX CHAMPS, ET LES CONFONDRE TRACERAIT N'IMPORTE QUOI (#392e). `clesVisibles` dit
+            // ce qu'on montre — la chaîne survolée, ou les rôles ; `chaineSurvolee` dit ce qu'on
+            // met en SURBRILLANCE, et seule une vraie chaîne se relie d'un os au suivant. Les rôles,
+            // eux, ne se suivent pas : une ligne passant de la tête à la queue en traversant le
+            // corps aurait été le résultat.
+            clesVisibles: clesVisiblesDeLEditeur3D(),
+            chaineSurvolee: clesSurvoleesDeLEditeur3D(),
+            chaines: chainesDeLEditeur3D(),
           })
           : jointsDepuisOsMappes(entree.skeletonBones), personaEditorOsPos);
     }
@@ -912,7 +920,10 @@ export function entreeDePoigneesDeCreature3D(osMappes){
     const os = (osMappes[cle] || {}).os;
     if (!os) return;
     joints[cle] = os;
-    poignees.push({ id: cle, group: cle });
+    // `role` : la part PORTABLE de la pose, celle qui s'applique à un autre modèle du même
+    // archétype. La couche de dessin lui donne sa propre couleur (#392e) — ce n'est pas décoratif,
+    // c'est la différence entre un geste qui voyage et un réglage propre à ce fichier.
+    poignees.push({ id: cle, group: cle, role: estCleDeRole3D(cle) });
   });
   // `osImportes` : la couche de dessin s'en sert pour ne PAS calculer d'extrémité de membre à partir
   // d'un décalage exprimé en unités du rig intégré, qui ne veut rien dire sur un os en mètres.
@@ -1024,6 +1035,23 @@ export function clesSurvoleesDeLEditeur3D(){
   if (!id) return null;
   const chaine = chainesDeLEditeur3D().find(c => c.id === id);
   return chaine ? chaine.cles : null;
+}
+
+/**
+ * Les poignées visibles : la chaîne survolée, sinon les RÔLES de l'archétype (#392e).
+ *
+ * ⚠️ CE QUE LE COMMENTAIRE PRÉCÉDENT DISAIT ICI EST DEVENU FAUX, et le voici corrigé : « rien n'est
+ * restreint sans survol, une figure sans aucun point n'inviterait à rien ». La crainte était juste,
+ * la réponse trop large. Montrer les 45 points d'un cerbère invitait surtout à ne rien distinguer,
+ * et le tapis de points empêchait même le survol de démarrer (#392e). Les rôles sont peu nombreux,
+ * ce sont ceux qu'on vient chercher, et il en reste toujours au moins un — sauf sur les archétypes
+ * qui n'en définissent aucun, où `poigneesParDefaut3D` rend « toutes » et où l'ancien comportement
+ * s'applique donc mot pour mot.
+ */
+export function clesVisiblesDeLEditeur3D(){
+  const survolees = clesSurvoleesDeLEditeur3D();
+  if (survolees) return survolees;
+  return poigneesParDefaut3D(chainesDeLEditeur3D().flatMap(c => c.cles));
 }
 
 // Fix 51 : curseurs du panneau droit.

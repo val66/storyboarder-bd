@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.95**
+**Version 1.4.96**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -77,9 +77,13 @@
   none, and is posed through its chains. It gets its own clickable points too, one per drivable
   bone: click one to unfold its sliders, drag it to turn the bone. The guide follows the bone's
   real axis and the segment it drags, both measured on the file
-- **Hovering shows a chain**: a creature can carry over a hundred drivable joints, so pass the mouse
-  over a limb on the preview, or over its title in the right-hand menu, and that chain lights up
-  with its own points. Hovering only shows; clicking a point is what opens its sliders
+- **The archetype's joints first**: a creature can carry over a hundred drivable bones, so only the
+  ones its archetype names are shown — head, neck, top of each leg, tail: 13 out of 45 on a
+  cerberus, 17 out of 103 on a spider. They are also the portable part of a pose, and have their own
+  colour. A file whose archetype names none keeps all its points
+- **Hovering shows a chain**: pass the mouse over a limb on the preview, or over its title in the
+  right-hand menu, and that chain lights up with all its points, the paler ones included. Hovering
+  only shows; clicking a point is what opens its sliders
 - **Creating a pose**: in the editor, and nowhere else. Set the sliders, name it, and "Save" adds
   it to its archetype's library. The card applies poses, it does not make them
 - **Poses are filed by archetype**: a quadruped is only offered quadruped poses. A humanoid pose is

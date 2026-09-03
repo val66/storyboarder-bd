@@ -41,7 +41,7 @@ import {
   groupesPosables, nombrePosable, quaternionDepuisEuler, multiplierQuaternions, orientationFinale,
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
-  rolesParOs3D,
+  rolesParOs3D, estCleDeRole3D, poigneesParDefaut3D,
   groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
   poseNonVide3D, memesAngles3D,
 } from '../src/skeleton-pose.js';
@@ -1360,5 +1360,65 @@ describe('#392b3 : une seule clé par os, quel que soit l\'écran qui le regarde
       `le cerbère doit garder ses rôles parmi les clés de curseur, obtenu ${roles.length}`);
     ['head', 'hipFL', 'tail0'].forEach(r => assert.ok(curseurs.includes(r),
       `« ${r} » n'est plus la clé d'aucun curseur : sa pose ne voyagera plus`));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #392e — LES RÔLES D'ABORD, LE RESTE AU SURVOL
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Demandé à l'usage : « plutôt que d'afficher tous les points, afficher uniquement ceux qui sont
+// directement liés à leur archétype ; au survol on affichera tous ceux de la chaîne survolée. »
+describe('#392e : quelles poignées montrer quand rien n\'est survolé', () => {
+  const fr = (en, f) => f;
+  const chargerFixture = (nom) => JSON.parse(
+    readFileSync(join(RACINE, 'tests', 'fixtures', `squelette-${nom}.json`), 'utf8'),
+  ).os.map(o => ({ id: o.i, name: o.name, children: o.children, t: o.t }));
+
+  test('un rôle se reconnaît à sa FORME, pas à une liste', () => {
+    ['head', 'neck', 'hipFL', 'kneeBR', 'tail0', 'wingL'].forEach(r =>
+      assert.equal(estCleDeRole3D(r), true, `« ${r} » n'est pas vu comme un rôle`));
+    ['os:CERBERUS_Head', 'os:hipFL', 'headband', 'hipFZ', 'bras_g', ''].forEach(c =>
+      assert.equal(estCleDeRole3D(c), false, `« ${c} » est vu comme un rôle`));
+  });
+
+  test('seuls les rôles, quand il y en a', () => {
+    assert.deepEqual(poigneesParDefaut3D(['head', 'os:Spine', 'hipFL', 'os:Tail1']),
+      ['head', 'hipFL']);
+  });
+
+  test('⚠️ AUCUN RÔLE : on montre TOUT, et le serpent le prouve', () => {
+    // MESURÉ : l'archétype serpentin ne définit aucun rôle, 0 sur les 89 os pilotables de la
+    // fixture. « Seulement les rôles » lui laisserait une figure SANS UN SEUL POINT — rien à
+    // cliquer, et rien qui invite même à survoler. `null` veut dire « toutes », et l'ancien
+    // comportement s'applique alors mot pour mot.
+    assert.equal(poigneesParDefaut3D(['os:Spine', 'os:Spine1']), null);
+    assert.equal(poigneesParDefaut3D([]), null);
+    assert.equal(poigneesParDefaut3D(null), null);
+  });
+
+  test('la mesure qui justifie la règle, sur le corpus', () => {
+    // ⚠️ CE TEST EST UNE MESURE, PAS UN SEUIL À TENIR. Il fige les ordres de grandeur qui ont décidé
+    // de la règle : si un jour un archétype gagne des rôles, il faudra le mettre à jour en sachant
+    // pourquoi. Ce qu'il protège vraiment, c'est le cas du serpent, qui est le seul à zéro.
+    const attendu = { cerbere: [45, 13], chien: [52, 13], araignee: [103, 17],
+      dragon: [68, 8], serpent: [89, 0], kraken: [45, 9] };
+    const arch = { cerbere: 'quadrupede', chien: 'quadrupede', araignee: 'arachnide',
+      dragon: 'bipede_aile', serpent: 'serpentin', kraken: 'radial' };
+    Object.keys(attendu).forEach(nom => {
+      const os = chargerFixture(nom);
+      const carte = inferSkeletonMap(os);
+      const cles = clesARecolter3D(
+        { morphologie: arch[nom], carte, os, membres: [], roles: {} }, fr).map(e => e.cle);
+      const roles = poigneesParDefaut3D(cles);
+      assert.deepEqual([cles.length, roles ? roles.length : 0], attendu[nom],
+        `${nom} : la mesure a changé`);
+    });
+    // Et le serpent est bien celui qui déclenche le repli.
+    const serpent = chargerFixture('serpent');
+    assert.equal(poigneesParDefaut3D(clesARecolter3D({ morphologie: 'serpentin',
+      carte: inferSkeletonMap(serpent), os: serpent, membres: [], roles: {} }, fr)
+      .map(e => e.cle)), null,
+    'le serpent doit retomber sur « toutes », sinon il n\'a plus un seul point');
   });
 });

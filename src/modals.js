@@ -52,7 +52,7 @@ import {
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
-  couverturePose3D, messageDeCouverture3D,
+  couverturePose3D, messageDeCouverture3D, poigneesParDefaut3D, estCleDeRole3D,
 } from './skeleton-pose.js';
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
@@ -1301,12 +1301,27 @@ export function drawSkeletonJointHandlesOverlay(){
   const cnv = objectPreview3D;
   const ctx = cnv.getContext('2d');
   Object.keys(skeletonHandleScreenPos).forEach(k => delete skeletonHandleScreenPos[k]);
-  Object.keys(skeletonJointGroupDetailsById).forEach(slot => {
+  // ⚠️ LES RÔLES D'ABORD ICI AUSSI (#392e), et par la MÊME fonction que l'Éditeur : deux écrans qui
+  // décideraient chacun de leur côté quels points montrer finiraient par ne pas montrer les mêmes.
+  //
+  // CE QUE LA FICHE A EN GUISE DE SURVOL, ELLE L'AVAIT DÉJÀ : déplier un groupe. Les os de la chaîne
+  // ouverte s'ajoutent donc aux rôles, ce qui donne le même geste qu'à côté — on ouvre une patte,
+  // ses points apparaissent — sans inventer de mécanisme. La poignée SÉLECTIONNÉE reste visible en
+  // toutes circonstances, sans quoi choisir une articulation la ferait disparaître.
+  const cles = Object.keys(skeletonJointGroupDetailsById);
+  const parDefaut = poigneesParDefaut3D(cles);
+  const choisie = (S.selectedSkeletonHandle && S.selectedSkeletonHandle.id) || null;
+  const ouverte = (cle) => {
+    const bloc = skeletonJointGroupDetailsById[cle];
+    return !!(bloc && bloc.open);
+  };
+  cles.forEach(slot => {
     const os = (entry.skeletonBones[slot] || {}).os;
     if (!os) return;
+    if (parDefaut && !parDefaut.includes(slot) && slot !== choisie && !ouverte(slot)) return;
     const pt = projectJointToCanvas(os, personaCamera3D, cnv.width, cnv.height);
     skeletonHandleScreenPos[slot] = pt;
-    dessinerPoignee(ctx, pt, !!(S.selectedSkeletonHandle && S.selectedSkeletonHandle.id === slot));
+    dessinerPoignee(ctx, pt, slot === choisie, estCleDeRole3D(slot));
   });
   ctx.globalAlpha = 1;
 }
@@ -1395,10 +1410,13 @@ export function pickHandleAt(positions, px, py){
 }
 
 /** Dessine une pastille d'articulation. Même apparence partout : c'est le même geste pour l'usager. */
-function dessinerPoignee(ctx, pt, active){
+function dessinerPoignee(ctx, pt, active, role){
   ctx.beginPath();
   ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
-  ctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
+  // ⚠️ MÊMES COULEURS QUE L'ÉDITEUR (#392e) : le bleu plein est un RÔLE, la part portable de la
+  // pose ; le bleu pâle un os quelconque, dont le réglage ne vaut que pour ce fichier. Un Animal et
+  // un humanoïde ne passent pas ce drapeau et gardent exactement la couleur d'avant.
+  ctx.fillStyle = active ? '#E0A53C' : (role === false ? '#9FC9EE' : '#3AA0FF');
   ctx.globalAlpha = 0.92;
   ctx.fill();
   ctx.lineWidth = 1.5;

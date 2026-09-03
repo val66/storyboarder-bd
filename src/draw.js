@@ -1791,20 +1791,23 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
   // La constante reste le défaut : le Personnage et un humanoïde importé ne fournissent pas de
   // liste, et rien ne change pour eux.
   const defs = (entry && entry.poignees) || POSE_HANDLES;
-  // ⚠️ LE SURVOL RESTREINT CE QUI EST VISIBLE, ET C'EST LA MÊME LIGNE QUI DÉCIDE DE L'INERTIE (#392c).
+  // ⚠️ CE QUI EST VISIBLE EST RESTREINT, ET C'EST LA MÊME LIGNE QUI DÉCIDE DE L'INERTIE (#392c).
   // `positions` est la carte que consultent les tests de clic : ne pas y inscrire une poignée la
   // rend invisible ET inattrapable, sans second mécanisme à tenir en accord avec le premier. Un
   // point qu'on voit et qui ne répond pas, ou l'inverse, est le défaut que cette règle unique évite.
   //
-  // Une chaîne survolée l'emporte sur « tout montrer », jamais sur la SÉLECTION : pendant un
-  // glisser, la souris balaie forcément d'autres chaînes, et laisser le survol reprendre la main
-  // ferait disparaître la poignée qu'on est en train de tirer.
-  const survolee = (entry && entry.chaineSurvolee) || null;
+  // `clesVisibles` porte DEUX états d'un coup (#392e) : la chaîne survolée quand il y en a une, les
+  // rôles de l'archétype sinon. Rien ici n'a à savoir lequel des deux, la question posée est la
+  // même — « cette poignée est-elle à montrer ? ».
+  //
+  // Jamais sur la SÉLECTION, en revanche : pendant un glisser, la souris balaie forcément d'autres
+  // chaînes, et laisser la restriction reprendre la main ferait disparaître la poignée qu'on tire.
+  const visibles = (entry && entry.clesVisibles) || null;
   defs.forEach(def => {
     const grp = entry && entry.joints && entry.joints[def.group];
     if (!grp) return;
     const active = selectedId === def.id;
-    const masqueParSurvol = !!survolee && !active && !survolee.includes(def.id);
+    const masqueParSurvol = !!visibles && !active && !visibles.includes(def.id);
     if ((solo && !active) || masqueParSurvol) {
       // Null et non `delete` : la clé doit rester présente pour qu'une carte gardée d'une image à
       // l'autre ne conserve pas la position d'AVANT la sélection, qui redeviendrait cliquable.
@@ -1910,12 +1913,19 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     });
     hctx.restore();
   }
-  points.forEach(({ pt, active }) => {
+  points.forEach(({ def, pt, active }) => {
     hctx.beginPath();
     // Enlarged points (per user request) to be easier to grab with the mouse;
     // cf. pickPoseHandleAt below, whose detection radius was increased accordingly.
     hctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
-    hctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
+    // ⚠️ UN RÔLE A SA COULEUR, ET CE N'EST PAS DÉCORATIF (#392e). Le bleu plein est la part PORTABLE
+    // de la pose, celle qui s'applique à un autre modèle du même archétype ; le bleu pâle est un os
+    // quelconque, dont le réglage ne vaut que pour ce fichier. Les seconds n'apparaissent qu'au
+    // survol de leur chaîne, et la nuance dit pourquoi ils étaient cachés.
+    //
+    // Le Personnage intégré et un humanoïde importé n'ont pas de rôles : leurs poignées ne portent
+    // pas ce drapeau et gardent exactement la couleur d'avant.
+    hctx.fillStyle = active ? '#E0A53C' : (def && def.role === false ? '#9FC9EE' : '#3AA0FF');
     hctx.globalAlpha = 0.92;
     hctx.fill();
     hctx.lineWidth = 1.5;

@@ -608,6 +608,42 @@ export function rolesParOs3D({ morphologie, carte, os, membres, roles } = {}, tr
 }
 
 /**
+ * Cette clé désigne-t-elle un RÔLE de l'archétype, plutôt qu'un os quelconque ? Fonction PURE.
+ *
+ * Les deux moitiés de la partition (#375a) : un os prend son rôle s'il en a un, son nom sinon. Ce
+ * qui n'est pas préfixé `os:` et se DÉCOMPOSE en segment, côté et rang est un rôle.
+ */
+export function estCleDeRole3D(cle){
+  return !estClePoseOs3D(cle) && !!decomposerRole3D(cle);
+}
+
+/**
+ * Les poignées à montrer quand rien n'est survolé, ou `null` pour « toutes ». Fonction PURE (#392e).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES RÔLES D'ABORD, LE RESTE AU SURVOL
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Demandé à l'usage, et la mesure lui donne raison : une créature porte de 45 à 103 articulations
+ * pilotables, et les montrer toutes couvre la figure de points. Les RÔLES, eux, sont peu nombreux et
+ * ce sont ceux qu'on vient chercher — la tête, le cou, le haut de chaque patte, la queue. Mesuré sur
+ * les fixtures : cerbère 13 sur 45, chien 13 sur 52, araignée 17 sur 103, centaure 16 sur 50,
+ * kraken 9 sur 45, dragon 8 sur 68, raptor 6 sur 63.
+ *
+ * Ce sont aussi la part PORTABLE de la pose, la seule qui s'applique à un autre modèle du même
+ * archétype : les mettre en avant n'est donc pas qu'une question d'encombrement.
+ *
+ * ⚠️ LE SERPENT N'A AUCUN RÔLE, ET C'EST MESURÉ : 0 sur 89 os. L'archétype serpentin n'en définit
+ * pas, et il n'est pas seul dans ce cas (cf. #380). « Seulement les rôles » lui laisserait une
+ * figure SANS UN SEUL POINT, donc rien à cliquer et rien qui invite à survoler. D'où le repli : pas
+ * de rôle sur ce fichier, on montre tout, exactement comme avant.
+ */
+export function poigneesParDefaut3D(cles){
+  const roles = (cles || []).filter(estCleDeRole3D);
+  return roles.length ? roles : null;
+}
+
+/**
  * Les chaînes d'une figure, à plat, telles que le SURVOL les manipule (#392c). Fonction PURE.
  *
  * @param groupes la forme rendue par `groupesDeCurseurs3D`

@@ -36,7 +36,8 @@ import {
   buildFigureFieldUI, buildSkeletonPoseFieldUI, buildSkeletonJointSlidersUI, remplirSelecteurDePose,
   skeletonJointRowsById, buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
-import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D } from '../src/skeleton-pose.js';
+import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
+  from '../src/skeleton-pose.js';
 import { orbiteDeFace3D, libelleTable3D } from '../src/utils.js';
 import { JOINT_GROUPS } from '../src/constants.js';
 import { hauteurDeboutModele3D } from '../src/scene3d.js';
@@ -51,6 +52,7 @@ import {
   specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
   chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI, chaineAAllumer3D,
+  clesVisiblesDeLEditeur3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
   personaLimbSegmentScreen3D } from '../src/draw.js';
@@ -2099,7 +2101,7 @@ describe('#392c : ce que le survol change à l\'écran', () => {
     assert.equal(Object.values(toutes).filter(Boolean).length, 3, 'préalable : trois points sans survol');
 
     const survol = {};
-    figure.chaineSurvolee = ['hipFL', 'kneeFL'];
+    figure.clesVisibles = ['hipFL', 'kneeFL'];
     const points = projectPoseHandlePositions3D(figure, camera, 400, 300, null, false, survol);
     assert.deepEqual(points.map(p => p.def.id).sort(), ['hipFL', 'kneeFL']);
     assert.equal(survol.tail0, null,
@@ -2116,7 +2118,7 @@ describe('#392c : ce que le survol change à l\'écran', () => {
     const b = os('hipFL'); b.position.set(0.3, 0.5, 0);
     racine.add(a); racine.add(b); racine.updateMatrixWorld(true);
     const figure = entreeDePoigneesDeCreature3D({ tail0: { os: a }, hipFL: { os: b } });
-    figure.chaineSurvolee = ['hipFL'];
+    figure.clesVisibles = ['hipFL'];
 
     const positions = {};
     const points = projectPoseHandlePositions3D(figure, camera, 400, 300, 'tail0', false, positions);
@@ -2245,7 +2247,7 @@ describe('#392d : où sont les OS, et où sont les POIGNÉES', () => {
     const figure = entreeDePoigneesDeCreature3D({
       hipFL: { os: bones.hipFL }, kneeFL: { os: bones.kneeFL }, tail0: { os: bones.tail0 },
     });
-    figure.chaineSurvolee = ['hipFL', 'kneeFL'];
+    figure.clesVisibles = ['hipFL', 'kneeFL'];
 
     const poignees = {}, osPos = {};
     projectPoseHandlePositions3D(figure, camera(), 400, 300, null, false, poignees, osPos);
@@ -2403,5 +2405,149 @@ describe('#392e : une poignée ALLUME sa chaîne, elle ne l\'annule plus', () =>
   test('une poignée qui n\'est dans aucune chaîne n\'allume rien, et ne lève pas', () => {
     assert.equal(chaineAAllumer3D(CHAINES, { id: 'inconnue' }, 0, 0, POS), null);
     assert.equal(chaineAAllumer3D(null, { id: 'hipFL' }, 0, 0, POS), null);
+  });
+});
+
+describe('#392e : ce que l\'écran montre par défaut', () => {
+  const os = (nom, x) => {
+    const b = new THREE.Bone();
+    b.name = nom;
+    b.position.set(x, 0.5, 0);
+    return b;
+  };
+  const camera = () => {
+    const c = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    c.position.set(0, 0, 5);
+    c.updateMatrixWorld(true);
+    return c;
+  };
+  const figureDe = (cles) => {
+    const racine = new THREE.Group();
+    const bones = {};
+    cles.forEach((cle, i) => { bones[cle] = os(cle, i * 0.2); racine.add(bones[cle]); });
+    racine.updateMatrixWorld(true);
+    const mappes = {};
+    cles.forEach(cle => { mappes[cle] = { os: bones[cle] }; });
+    return entreeDePoigneesDeCreature3D(mappes);
+  };
+
+  test('chaque poignée sait si elle est un RÔLE', () => {
+    const f = figureDe(['hipFL', 'os:Femur', 'tail0']);
+    assert.deepEqual(f.poignees.map(p => [p.id, p.role]),
+      [['hipFL', true], ['os:Femur', false], ['tail0', true]]);
+  });
+
+  test('par défaut, seuls les rôles sont dessinés ET attrapables', () => {
+    // La même unicité que partout : ne pas inscrire une position rend la poignée invisible et
+    // inerte du même geste. Les os quelconques ne sont donc pas des points fantômes, ils n'existent
+    // pas tant qu'on n'a pas survolé leur chaîne.
+    const f = figureDe(['hipFL', 'os:Femur', 'os:Tibia', 'tail0']);
+    f.clesVisibles = poigneesParDefaut3D(f.poignees.map(p => p.id));
+    const positions = {};
+    const points = projectPoseHandlePositions3D(f, camera(), 400, 300, null, false, positions);
+    assert.deepEqual(points.map(p => p.def.id).sort(), ['hipFL', 'tail0']);
+    assert.equal(positions['os:Femur'], null);
+  });
+
+  test('⚠️ mais une figure SANS RÔLE garde tous ses points', () => {
+    // Le serpent, mesuré à 0 rôle sur 89 os. Sans ce repli, il n'aurait plus rien à cliquer.
+    const f = figureDe(['os:Spine', 'os:Spine1', 'os:Spine2']);
+    f.clesVisibles = poigneesParDefaut3D(f.poignees.map(p => p.id));
+    assert.equal(f.clesVisibles, null, 'préalable : aucun rôle ici');
+    const positions = {};
+    const points = projectPoseHandlePositions3D(f, camera(), 400, 300, null, false, positions);
+    assert.equal(points.length, 3, 'une figure sans rôle se retrouve sans aucun point');
+  });
+});
+
+describe('#392e : l\'Éditeur restreint bien, sur le VRAI cerbère', () => {
+  const modele = () => ({
+    type: 'objet3d', objType: 'modele', modelFile: 'cerberus.glb', id: 'm1', name: 'Cerbère',
+  });
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+  const sceneDepuisFixture = (nom) => {
+    const d = JSON.parse(readFileSync(
+      new URL(`./fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
+    const parId = new Map();
+    d.os.forEach(o => {
+      const b = new THREE.Bone();
+      b.name = o.name;
+      if (o.t) b.position.set(o.t[0], o.t[1], o.t[2]);
+      parId.set(o.i, b);
+    });
+    const enfants = new Set();
+    d.os.forEach(o => (o.children || []).forEach(c => {
+      if (parId.has(c)) { parId.get(o.i).add(parId.get(c)); enfants.add(c); }
+    }));
+    const racine = new THREE.Group();
+    d.os.forEach(o => { if (!enfants.has(o.i)) racine.add(parId.get(o.i)); });
+    racine.updateMatrixWorld(true);
+    return racine;
+  };
+
+  test('13 points au lieu de 45, et la chaîne survolée les remplace', async () => {
+    // ⚠️ MUTATION ÉCHAPPÉE : la restriction par défaut n'était vérifiée que sur des figures
+    // fabriquées à la main. Faire rendre `null` à `clesVisiblesDeLEditeur3D` — donc « toutes » — ne
+    // faisait rien échouer, parce que la fixture `squeletteSansBras` n'a AUCUN rôle et retombe de
+    // toute façon sur « toutes ». Il fallait une figure qui en ait : le vrai cerbère.
+    clearModelCache();
+    _viderCacheCorrespondances();
+    _setModelCacheEntry('cerberus.glb', { scene: sceneDepuisFixture('cerbere') });
+    setSkeletonBridge({
+      readSkeletonMaps: async () => ({ ok: true, data: { version: 1, entrees: {
+        'cerberus.glb': { os: {}, membres: [], roles: {}, morphologie: 'quadrupede', valide: true },
+      } } }),
+    });
+    await lireCorrespondances();
+
+    const o = Object.assign(modele(), { skeletonPose3d: {} });
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+
+    const toutes = chainesDeLEditeur3D().flatMap(c => c.cles);
+    assert.equal(toutes.length, 45, 'préalable : le cerbère a bien 45 articulations pilotables');
+    const visibles = clesVisiblesDeLEditeur3D();
+    assert.equal(visibles.length, 13,
+      'l\'Éditeur montre encore toutes les articulations : le tapis de points est de retour');
+    assert.ok(visibles.every(c => !String(c).startsWith('os:')),
+      'des os quelconques sont montrés par défaut, alors que seuls les rôles devraient l\'être');
+
+    // Et le survol REMPLACE la sélection par défaut, il ne s'y ajoute pas : la chaîne survolée est
+    // ce qu'on regarde, y mêler des rôles d'ailleurs brouillerait le propos.
+    const patte = chainesDeLEditeur3D().find(c => c.cles.length > 2);
+    survolerChaineDeLEditeur3D(patte.id);
+    assert.deepEqual(clesVisiblesDeLEditeur3D(), patte.cles);
+    survolerChaineDeLEditeur3D(null);
+
+    hidePersonaEditor();
+    setSkeletonBridge(null);
+    _viderCacheCorrespondances();
+  });
+});
+
+describe('#392e : les trois lectures du rendu, épinglées faute de mieux', () => {
+  // Même aveu qu'en #392b et #392d : ces lignes vivent dans le chemin de rendu, qui demande un vrai
+  // canevas et la caméra WebGL. Un test « comportemental » y serait vert sans rien exercer.
+  const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+  const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+
+  test('la fiche restreint, et par la MÊME fonction que l\'Éditeur', () => {
+    assert.match(MODALS, /const parDefaut = poigneesParDefaut3D\(cles\);/,
+      'la fiche décide de son côté quels points montrer : les deux écrans finiront par diverger');
+    assert.match(MODALS, /if \(parDefaut && !parDefaut\.includes\(slot\) && slot !== choisie && !ouverte\(slot\)\) return;/,
+      'la fiche montre de nouveau tout, ou masque la poignée sélectionnée');
+  });
+
+  test('⚠️ la SURBRILLANCE suit la chaîne survolée, jamais les clés visibles', () => {
+    // Les deux champs se ressemblent et disent des choses différentes. Tracer la surbrillance sur
+    // les clés visibles relierait les RÔLES entre eux — une ligne allant de la tête à la queue en
+    // traversant le corps, puisque rien ne dit qu'ils se suivent.
+    assert.match(EDITEUR, /clesVisibles: clesVisiblesDeLEditeur3D\(\),\s*\n\s*chaineSurvolee: clesSurvoleesDeLEditeur3D\(\),/,
+      'la surbrillance et la visibilité lisent la même source : le tracé va relier n\'importe quoi');
   });
 });
