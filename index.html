@@ -628,6 +628,11 @@
     <button class="project-modal-btn" id="projectModalNew" type="button">📄 Nouveau projet</button>
     <button class="project-modal-btn nav-btn" id="projectModalLoad" type="button">📂 Charger un projet existant</button>
     <button class="project-modal-btn" id="projectModalSave" type="button">💾 Enregistrer le projet</button>
+    <!-- ⚠️ LA SEULE ACTION DE L'APPLICATION QUI DETRUIT UN FICHIER DE L'UTILISATEUR SANS RECOURS
+         (#399) : pas de corbeille applicative, aucune annulation ne ramene un Projet supprime. Elle
+         passe donc par une modale ou il faut ECRIRE le mot, et son survol est rouge (cf. #398).
+         Masquee tant qu'aucun fichier n'existe : un Projet jamais enregistre n'a rien a supprimer. -->
+    <button class="project-modal-btn delete-btn" id="projectModalDelete" type="button" style="display:none;">🗑 Supprimer le projet</button>
     <!-- Retour des opérations de fichier : « Enregistré à 14:32 », « Échec de l'enregistrement du
          Projet »… setProjectModalStatus (io.js) l'alimente depuis quatorze endroits. L'élément
          MANQUAIT : la fonction cherchait un id absent du document, sa garde `if (el)` absorbait
@@ -648,6 +653,22 @@
     <div class="modal-actions">
       <button class="nav-btn" id="renameProjectCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameProjectConfirm" type="button">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Suppression d'un Projet (#399). Le bouton reste INERTE tant que le mot n'est pas ecrit en
+     toutes lettres et en majuscules : un « Confirmer ? » s'accepte sans lire, recopier un mot
+     demande de le lire, donc de savoir ce qu'on fait. Le mot suit la langue de l'interface, et il
+     est rappele dans la phrase — le demander sans le montrer serait une devinette, pas une garde. -->
+<div class="modal-overlay hidden" id="deleteProjectModal">
+  <div class="modal-box">
+    <h3>Supprimer le projet</h3>
+    <p class="side-hint" id="deleteProjectHint">Cette action est définitive.</p>
+    <input type="text" id="deleteProjectInput" autocomplete="off" style="width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); margin-bottom:14px;">
+    <div class="modal-actions">
+      <button class="nav-btn" id="deleteProjectCancel" type="button">Annuler</button>
+      <button class="full-btn delete-btn" id="deleteProjectConfirm" type="button" disabled>Supprimer</button>
     </div>
   </div>
 </div>

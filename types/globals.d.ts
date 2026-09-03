@@ -51,6 +51,7 @@ interface StoryboarderAPI {
   openProjectDialog(): Promise<{ canceled: boolean; filePath?: string; data?: string }>;
   renameProjectFile(filePath: string, newName: string):
     Promise<{ ok: boolean; error?: string; filePath?: string }>;
+  deleteProjectFile(filePath: string): Promise<{ ok: boolean; error?: string }>;
   getLastProject(): Promise<{ filePath?: string; data?: string } | null>;
   getSettings(): Promise<Record<string, unknown>>;
   setSetting(key: string, value: unknown): Promise<unknown>;

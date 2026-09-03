@@ -193,3 +193,76 @@ describe('Menus contextuels : un menu qui s\'ouvre doit pouvoir se refermer', ()
     });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #399 — SUPPRIMER UN PROJET : LE CÂBLAGE DE LA CÉRÉMONIE
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// La règle de saisie est pure et mesurée dans utils.test.mjs. Ce qui se vérifie ici est ce qu'AUCUN
+// test de fonction ne peut dire : que le bouton existe, qu'il est inerte au départ, que la garde
+// est relue à l'exécution, et que la suppression ne touche à rien d'autre.
+describe('#399 : supprimer un Projet', () => {
+  const io = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  test('le bouton de confirmation naît DÉSACTIVÉ', () => {
+    // Sans cela, la modale s'ouvrirait avec un bouton actif : le mot ne serait plus une garde mais
+    // une formalité qu'on peut sauter en cliquant tout de suite.
+    const m = html.match(/<button[^>]*id="deleteProjectConfirm"[^>]*>/);
+    assert.ok(m, 'le bouton de confirmation a disparu');
+    assert.match(m[0], /\bdisabled\b/, 'le bouton s\'ouvre déjà cliquable');
+    assert.match(m[0], /delete-btn/, 'il ne porte pas la couleur des suppressions');
+  });
+
+  test('⚠️ la garde est RELUE dans le gestionnaire, pas seulement affichée', () => {
+    // Un bouton désactivé reste cliquable par un raccourci ou un test, et la conséquence serait ici
+    // la perte d'un fichier sans que le mot ait jamais été écrit. Même principe que partout dans ce
+    // dépôt : l'affichage n'est pas une garde.
+    const i = io.indexOf('export async function confirmDeleteProject');
+    assert.ok(i > 0, 'la suppression n\'est plus câblée');
+    const corps = io.slice(i, io.indexOf('\n}\n', i));
+    assert.match(corps, /if \(!suppressionProjetConfirmee3D\(/,
+      'la suppression s\'exécute sans revérifier le mot');
+    assert.match(corps, /deleteProjectFile\(/, 'le fichier n\'est plus supprimé');
+  });
+
+  test('⚠️ on repart d\'un Projet VIERGE, sinon le fichier revient tout seul', () => {
+    // Garder à l'écran un Projet dont le fichier n'existe plus laisserait la sauvegarde automatique
+    // le RECRÉER à la première modification : l'utilisateur aurait supprimé un fichier qui
+    // réapparaît, ce qui est pire que de ne pas avoir supprimé.
+    const i = io.indexOf('export async function confirmDeleteProject');
+    const corps = io.slice(i, io.indexOf('\n}\n', i));
+    assert.match(corps, /_demarrerProjetVierge\(\)/, 'l\'écran garde un Projet sans fichier');
+    const ev = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const j = ev.indexOf('setDemarrageProjetVierge(');
+    assert.ok(j > 0, 'le retour au Projet vierge n\'est plus injecté');
+    const bloc = ev.slice(j, ev.indexOf('\n});', j));
+    assert.match(bloc, /stopAutosave\(\)/,
+      'la sauvegarde automatique continue de tourner sur un Projet supprimé');
+    assert.match(bloc, /S\.projectFilePath = null/, 'le chemin du fichier supprimé survit');
+  });
+
+  test('le bouton n\'apparaît que s\'il y a un fichier à supprimer', () => {
+    // Un Projet jamais enregistré n'existe que dans la fenêtre : proposer de le « supprimer »
+    // laisserait croire à une opération sur le disque là où il n'y a rien.
+    const i = io.indexOf('export function openProjectModal');
+    const corps = io.slice(i, io.indexOf('\n}\n', i));
+    assert.match(corps, /S\.projectFilePath \? '' : 'none'/,
+      'le bouton s\'affiche pour un Projet qui n\'a pas de fichier');
+    assert.match(html, /id="projectModalDelete"[^>]*style="display:none;"/,
+      'masqué par défaut, sans quoi il clignote à chaque ouverture');
+  });
+
+  test('⚠️ les MODÈLES et les CORRESPONDANCES ne sont pas emportés', () => {
+    // Ils vivent À CÔTÉ du dossier de Projets, partagés par TOUS les Projets : les supprimer avec
+    // celui-ci amputerait les autres, en silence. Le passe-plat n'efface qu'un fichier nommé.
+    const principal = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+    const i = principal.indexOf("ipcMain.handle('project:delete'");
+    assert.ok(i > 0, 'le canal de suppression a disparu');
+    const corps = principal.slice(i, principal.indexOf('\n});', i));
+    assert.ok(!/Modeles|rmdir|rm\(/.test(corps),
+      'la suppression touche autre chose que le fichier du Projet');
+    assert.match(corps, /setLastProjectPath\(''\)/,
+      'le prochain démarrage rouvrirait le fichier supprimé');
+  });
+});

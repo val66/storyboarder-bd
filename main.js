@@ -133,6 +133,24 @@ ipcMain.handle('project:rename', async (event, oldFilePath, newName) => {
   }
 });
 
+// Suppression du fichier d'un Projet (#399). PASSE-PLAT STRICT : la decision — le mot a ecrire,
+// et le retour a un Projet vierge — vit dans src/, ou elle se teste. Ici on ne fait qu'effacer le
+// fichier nomme, exactement comme `models:delete` efface un `.glb`.
+//
+// `setLastProjectPath('')` EST LA MOITIE QUI COMPTE : sans elle, le prochain demarrage rouvrirait
+// le fichier qu'on vient de supprimer, echouerait en silence et repartirait sur un Projet vierge
+// sans que rien n'explique pourquoi.
+ipcMain.handle('project:delete', async (event, filePath) => {
+  try {
+    await fs.promises.unlink(filePath);
+    const settings = readSettings();
+    if (settings.lastFilePath === filePath) setLastProjectPath('');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('project:open', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {

@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.103**
+**Version 1.4.104**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -121,6 +121,9 @@ Page or a Scene leaves the editor.
 ### Project & saving
 - **JSON** project format, human-readable and versionable
 - Configurable auto-save
+- **Deleting a project** erases its file for good: you must type DELETE in capitals before the
+  button becomes active. Imported models and their mappings are shared by every project and are
+  never touched
 - Export pages as **PNG** or **PDF**
 - Undo, over the last 50 actions
 

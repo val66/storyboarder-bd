@@ -1314,3 +1314,34 @@ export function libelleAnimal3D(labelFr, traduire){
   const en = ANIMAL_LABELS_EN[fr];
   return en ? t(en, fr) : fr;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// SUPPRIMER UN PROJET : LE MOT À ÉCRIRE (#399)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Demandé à l'usage : avant de supprimer un Projet, l'utilisateur doit écrire SUPPRIMER en toutes
+// lettres et en majuscules. C'est la seule action de l'application qui détruit un fichier de
+// l'utilisateur sans recours — un Projet supprimé n'est pas dans une corbeille applicative, et
+// aucune annulation ne le ramènera.
+//
+// ⚠️ LE GESTE DOIT ÊTRE IMPOSSIBLE À FAIRE PAR RÉFLEXE, c'est tout l'objet. Un « Confirmer ? »
+// s'accepte sans lire ; recopier un mot demande de le lire, donc de savoir ce qu'on fait.
+
+/** Le mot exact à écrire, dans la langue de l'interface. Fonction PURE. */
+export function motDeSuppressionProjet3D(lang){
+  return (lang === 'en') ? 'DELETE' : 'SUPPRIMER';
+}
+
+/**
+ * La saisie autorise-t-elle la suppression ? Fonction PURE.
+ *
+ * ⚠️ LA CASSE COMPTE, ET C'EST LE CŒUR DE LA MESURE. « supprimer » ne passe pas : accepter la
+ * minuscule reviendrait à demander un mot de passe en ignorant la moitié du clavier, et le geste
+ * redeviendrait celui qu'on fait sans regarder.
+ *
+ * LES ESPACES DE BORD SONT TOLÉRÉS, eux : un espace collé par un copier-coller n'est pas une
+ * hésitation, et refuser une saisie qui a l'air juste à l'écran serait une énigme.
+ */
+export function suppressionProjetConfirmee3D(saisie, lang){
+  return String(saisie == null ? '' : saisie).trim() === motDeSuppressionProjet3D(lang);
+}

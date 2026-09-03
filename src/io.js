@@ -15,6 +15,7 @@ import {
   ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles, repointerModele3D,
 } from './model-library.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
+import { motDeSuppressionProjet3D, suppressionProjetConfirmee3D } from './utils.js';
 import {
   getElementDepth, repairElementBase3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
@@ -871,6 +872,11 @@ const projectModal = document.getElementById('projectModal');
 export function openProjectModal(){
   document.getElementById('projectModalCurrentName').textContent = S.projectName;
   setProjectModalStatus('');
+  // ⚠️ SUPPRIMER N'APPARAÎT QUE S'IL Y A UN FICHIER À SUPPRIMER (#399). Un Projet jamais enregistré
+  // n'existe que dans cette fenêtre : proposer de le « supprimer » laisserait croire à une opération
+  // sur le disque là où il n'y a rien, et « Nouveau projet » fait déjà ce qu'on cherche.
+  const suppr = document.getElementById('projectModalDelete');
+  if (suppr) suppr.style.display = S.projectFilePath ? '' : 'none';
   projectModal.classList.remove('hidden');
 }
 export function closeProjectModal(){ projectModal.classList.add('hidden'); }
@@ -985,6 +991,88 @@ export async function confirmRenameProject(){
   // propose a .json location if needed.
   await saveProjectFlow();
 }
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// SUPPRIMER UN PROJET (#399)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ LA SEULE ACTION DE L'APPLICATION QUI DÉTRUIT UN FICHIER DE L'UTILISATEUR SANS RECOURS. Pas de
+// corbeille applicative, aucune annulation : le Projet part du disque. D'où la cérémonie demandée —
+// écrire le mot en toutes lettres et en majuscules — et non un « Confirmer ? », qui s'accepte sans
+// lire. Recopier un mot demande de le LIRE, donc de savoir ce qu'on fait.
+//
+// LA RÈGLE DE SAISIE EST PURE ET VIT DANS utils.js (cf. suppressionProjetConfirmee3D) : c'est elle
+// qu'on mesure, ici on ne fait que la suivre.
+//
+// ⚠️ CE QUI N'EST PAS SUPPRIMÉ, ET C'EST DÉLIBÉRÉ : les modèles importés et les correspondances de
+// squelette. Ils vivent À CÔTÉ du dossier de Projets, partagés par TOUS les Projets — les emporter
+// avec celui-ci amputerait les autres, en silence.
+const deleteProjectModal = document.getElementById('deleteProjectModal');
+const deleteProjectInput = document.getElementById('deleteProjectInput');
+const deleteProjectConfirm = document.getElementById('deleteProjectConfirm');
+
+function majEtatSuppression(){
+  deleteProjectConfirm.disabled = !suppressionProjetConfirmee3D(deleteProjectInput.value, S.appLang);
+}
+
+export function openDeleteProjectModal(){
+  deleteProjectInput.value = '';
+  // Le mot est RAPPELÉ dans la phrase : le demander sans le montrer serait une devinette, pas une
+  // garde. Il suit la langue de l'interface, comme le champ qui le vérifie.
+  const mot = motDeSuppressionProjet3D(S.appLang);
+  const hint = document.getElementById('deleteProjectHint');
+  if (hint) {
+    hint.textContent = tr(
+      `"${S.projectName}" will be deleted from disk, for good. Type ${mot} to confirm.`,
+      `« ${S.projectName} » sera supprimé du disque, définitivement. Écrivez ${mot} pour confirmer.`);
+  }
+  deleteProjectInput.placeholder = mot;
+  majEtatSuppression();
+  deleteProjectModal.classList.remove('hidden');
+  // Focus différé, même remède que pour le renommage juste au-dessus : sans lui, le curseur est
+  // visible mais les frappes sont ignorées, par intermittence.
+  setTimeout(() => deleteProjectInput.focus(), 0);
+}
+export function closeDeleteProjectModal(){ deleteProjectModal.classList.add('hidden'); }
+
+/**
+ * Supprime le fichier du Projet courant, puis repart d'un Projet vierge.
+ *
+ * ⚠️ LA GARDE EST RELUE ICI, et ce n'est pas une redondance : le bouton est désactivé, mais un
+ * bouton désactivé reste cliquable par un raccourci ou un test, et la conséquence serait la perte
+ * d'un fichier sans que le mot ait jamais été écrit.
+ */
+export async function confirmDeleteProject(){
+  if (!suppressionProjetConfirmee3D(deleteProjectInput.value, S.appLang)) return;
+  const chemin = S.projectFilePath;
+  if (!chemin || !hasElectronAPI()) { closeDeleteProjectModal(); return; }
+  const res = await window.storyboarderAPI.deleteProjectFile(chemin);
+  closeDeleteProjectModal();
+  if (!res || !res.ok) {
+    setProjectModalStatus(tr('Could not delete the project file.',
+      'Impossible de supprimer le fichier du Projet.'));
+    return;
+  }
+  // ⚠️ ON REPART D'UN PROJET VIERGE, ET IL LE FAUT. Garder à l'écran un Projet dont le fichier
+  // n'existe plus laisserait la sauvegarde automatique le RECRÉER à la première modification —
+  // l'utilisateur aurait supprimé un fichier qui revient tout seul.
+  if (_demarrerProjetVierge) _demarrerProjetVierge();
+  setProjectModalStatus(tr('Project deleted.', 'Projet supprimé.'));
+}
+
+// Le retour au Projet vierge vit dans events.js (il touche l'arbre des Tomes et le rendu) : il est
+// INJECTÉ plutôt qu'importé, io.js étant en amont dans le graphe des modules.
+let _demarrerProjetVierge = null;
+export function setDemarrageProjetVierge(fn){ _demarrerProjetVierge = fn; }
+
+document.getElementById('projectModalDelete').onclick = openDeleteProjectModal;
+document.getElementById('deleteProjectCancel').onclick = closeDeleteProjectModal;
+deleteProjectConfirm.onclick = confirmDeleteProject;
+deleteProjectInput.addEventListener('input', majEtatSuppression);
+deleteProjectInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !deleteProjectConfirm.disabled) { e.preventDefault(); confirmDeleteProject(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeDeleteProjectModal(); }
+});
+
 document.getElementById('projectModalRename').onclick = openRenameProjectModal;
 document.getElementById('renameProjectCancel').onclick = closeRenameProjectModal;
 document.getElementById('renameProjectConfirm').onclick = confirmRenameProject;
@@ -1212,6 +1300,7 @@ window.addEventListener('beforeunload', (e) => {
 // réponse.
 enregistrerFermeture('projectModal', closeProjectModal);
 enregistrerFermeture('renameProjectModal', closeRenameProjectModal);
+enregistrerFermeture('deleteProjectModal', closeDeleteProjectModal);
 enregistrerFermeture('renameEntityModal', closeRenameEntityModal);
 enregistrerFermeture('confirmActionModal', () => settleConfirmAction(false));
 enregistrerFermeture('quitConfirmModal', closeQuitConfirmModal);

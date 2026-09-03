@@ -100,7 +100,8 @@ import {
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners,
 } from './scene3d.js';
 import {
-  setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, confirmAction, alertAction,
+  setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, stopAutosave, confirmAction, alertAction,
+  setDemarrageProjetVierge,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
   openRenameEntityModal, setRenameModelCallback,
   loadModelRenames, noterRenommageModele, proposerRepointageModeles,
@@ -6857,6 +6858,24 @@ function startDefaultProject(){
   S.expandedVolumes.add(t0.id);
   renderAll();
 }
+
+// ⚠️ APRÈS UNE SUPPRESSION, ON REPART D'UN PROJET VIERGE, ET IL LE FAUT (#399). Garder à l'écran un
+// Projet dont le fichier n'existe plus laisserait la sauvegarde automatique le RECRÉER à la
+// première modification : l'utilisateur aurait supprimé un fichier qui revient tout seul.
+//
+// INJECTÉ dans io.js plutôt qu'importé par lui : io.js est en amont dans le graphe des modules, et
+// ce retour touche l'arbre des Tomes et le rendu, qui vivent ici.
+setDemarrageProjetVierge(() => {
+  stopAutosave();
+  S.projectFilePath = null;
+  S.projectFileHandle = null;
+  S.projectName = tr('Project', 'Projet');
+  S.projectDirty = false;
+  S.tomes = [];
+  S.scenes = [];
+  S.expandedVolumes.clear();
+  startDefaultProject();
+});
 
 // When the Electron app starts, automatically reopens the last opened/saved Project (cf.
 // settings.json on the main process side), per user request. If there isn't one (first launch,

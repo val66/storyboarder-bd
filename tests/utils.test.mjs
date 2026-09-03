@@ -17,6 +17,7 @@ import {
   straightDragDegrees3D, POSE_AXIS_VISIBLE_MIN,
   poseTangentToScreen3D, straightDragDirection3D, POSE_TANGENT_VISIBLE_MIN,
   poseJointLeverAxis3D, axeDePose3D, modelAxisVector3D, circularSweepSign3D,
+  motDeSuppressionProjet3D, suppressionProjetConfirmee3D,
   POSE_HANDLE_PICK_RADIUS, POSE_HANDLE_PICK_RADIUS_SOLO,
   posePickRadii3D, 
   pointerSweepAngle3D, accumulateSweepDegrees3D, POSE_SWEEP_MIN_RADIUS,
@@ -2303,5 +2304,44 @@ describe('pageVoisine3D : la Planche voisine, en bouclant', () => {
     assert.equal(pageVoisine3D(5, 2, -42), 1);
     assert.equal(pageVoisine3D(5, 2, 42), 3);
     assert.equal(pageVoisine3D(5, 2, 0), 3);
+  });
+});
+
+describe('#399 : le mot à écrire pour supprimer un Projet', () => {
+  test('le mot suit la langue de l\'interface', () => {
+    assert.equal(motDeSuppressionProjet3D('fr'), 'SUPPRIMER');
+    assert.equal(motDeSuppressionProjet3D('en'), 'DELETE');
+    // Toute autre valeur retombe sur le français, comme partout ailleurs (cf. tr).
+    assert.equal(motDeSuppressionProjet3D(undefined), 'SUPPRIMER');
+  });
+
+  test('⚠️ LA CASSE COMPTE : « supprimer » ne suffit pas', () => {
+    // C'est le cœur de la mesure. Accepter la minuscule reviendrait à demander un mot de passe en
+    // ignorant la moitié du clavier, et le geste redeviendrait celui qu'on fait sans regarder.
+    assert.equal(suppressionProjetConfirmee3D('SUPPRIMER', 'fr'), true);
+    ['supprimer', 'Supprimer', 'SUPPRIMEr', 'SUPRIMER', 'DELETE'].forEach(saisie =>
+      assert.equal(suppressionProjetConfirmee3D(saisie, 'fr'), false,
+        `« ${saisie} » ouvre la suppression`));
+  });
+
+  test('les espaces de bord sont tolérés, eux', () => {
+    // Un espace collé par un copier-coller n'est pas une hésitation, et refuser une saisie qui a
+    // l'air juste à l'écran serait une énigme.
+    ['  SUPPRIMER', 'SUPPRIMER ', ' SUPPRIMER \n'].forEach(saisie =>
+      assert.equal(suppressionProjetConfirmee3D(saisie, 'fr'), true, `« ${saisie} » refusé`));
+    // Mais pas les espaces INTÉRIEURS : « SUPP RIMER » n'est pas le mot.
+    assert.equal(suppressionProjetConfirmee3D('SUPP RIMER', 'fr'), false);
+  });
+
+  test('rien, ou n\'importe quoi, ne supprime pas', () => {
+    [undefined, null, '', '   ', 0, {}].forEach(saisie =>
+      assert.equal(suppressionProjetConfirmee3D(saisie, 'fr'), false));
+  });
+
+  test('et le mot anglais ne vaut qu\'en anglais', () => {
+    // Deux langues, deux mots : accepter les deux partout ferait qu'un utilisateur français
+    // supprimerait en tapant un mot que son écran ne lui a jamais montré.
+    assert.equal(suppressionProjetConfirmee3D('DELETE', 'en'), true);
+    assert.equal(suppressionProjetConfirmee3D('SUPPRIMER', 'en'), false);
   });
 });

@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   writeProjectFile: (filePath, json) => ipcRenderer.invoke('project:write', filePath, json),
   openProjectDialog: () => ipcRenderer.invoke('project:open'),
   renameProjectFile: (filePath, newName) => ipcRenderer.invoke('project:rename', filePath, newName),
+  deleteProjectFile: (filePath) => ipcRenderer.invoke('project:delete', filePath),
   getLastProject: () => ipcRenderer.invoke('project:getLastProject'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
