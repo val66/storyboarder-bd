@@ -22,8 +22,8 @@ const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 // Le sélecteur est ANCRÉ en DÉBUT DE LIGNE (drapeau `m`), et suivi immédiatement de `{`. Deux
 // versions plus naïves ont déjà menti ici, chacune en rendant vert un test qui ne vérifiait plus
 // rien :
-//   — chercher la sous-chaîne `'.danger-btn {'` tombait d'abord sur la FIN de
-//     `.persona-editor-panel .danger-btn {`, donc sur les mauvaises déclarations ;
+//   — chercher la sous-chaîne `'.nav-btn {'` tombait d'abord sur la FIN de
+//     `.persona-editor-panel .nav-btn {`, donc sur les mauvaises déclarations ;
 //   — ancrer sur `}` ou `;` ratait toute règle précédée d'un commentaire, qui se termine par `/`.
 // D'où `declarations`, qui LÈVE quand la règle est introuvable : une comparaison entre deux
 // absences ne doit plus jamais pouvoir passer pour une égalité.
@@ -42,22 +42,22 @@ describe('Fix 69 : hauteurs égales dans la rangée Enregistrer / Renommer / Sup
   // Le piège : dans une ligne flex, `align-items` vaut `stretch` par défaut, et l'étirement porte
   // sur la boîte MARGES COMPRISES. Une marge verticale sur un seul des enfants le rend donc plus
   // court que ses voisins, sans qu'aucune hauteur ne soit déclarée nulle part.
-  const dangerBtn = declarationsOuNull('.danger-btn');
+  const dangerBtn = declarationsOuNull('.nav-btn');
   const rangee = declarationsOuNull('.persona-editor-pose-actions button');
 
   test('les deux règles concernées existent toujours', () => {
-    assert.ok(dangerBtn, '.danger-btn introuvable');
+    assert.ok(dangerBtn, '.nav-btn introuvable');
     assert.ok(rangee, '.persona-editor-pose-actions button introuvable');
   });
 
-  test('RÉGRESSION : la rangée neutralise toute marge verticale héritée de .danger-btn', () => {
-    // Test CONDITIONNEL, et c'est voulu : si un jour .danger-btn cesse de porter une marge
+  test('RÉGRESSION : la rangée neutralise toute marge verticale héritée de .nav-btn', () => {
+    // Test CONDITIONNEL, et c'est voulu : si un jour .nav-btn cesse de porter une marge
     // verticale, la neutralisation devient inutile et ce test cesse de l'exiger, au lieu de figer
     // une ligne de CSS devenue sans objet.
     const apporteUneMarge = /margin(-top|-bottom)?\s*:/.test(dangerBtn);
     if (!apporteUneMarge) return;
     assert.match(rangee, /(^|;|\s)margin\s*:\s*0/,
-      'Supprimer porte .danger-btn (marge verticale) : sans `margin: 0` ici, il est plus court '
+      'Supprimer porte .nav-btn (marge verticale) : sans `margin: 0` ici, il est plus court '
       + 'que Enregistrer et Renommer, car flex étire les enfants marges comprises');
   });
 
@@ -254,11 +254,11 @@ describe('Boutons de modale : même hauteur, quelle que soit la modale', () => {
     // qu'Annuler. C'est EXACTEMENT le Fix 69, qui avait été réglé pour les boutons de l'éditeur de
     // Personnage et laissé tel quel ici, la moitié d'énumération habituelle de ce dépôt.
     //
-    // `.danger-btn` déclare `margin-bottom: 6px`. Dans une ligne flex, `align-items` vaut `stretch`
+    // `.nav-btn` déclare `margin-bottom: 6px`. Dans une ligne flex, `align-items` vaut `stretch`
     // par défaut : chaque bouton est étiré à la hauteur de la ligne MARGES COMPRISES. Ces 6px
     // étaient donc pris sur la boîte d'Annuler, sans qu'aucune règle de hauteur ne soit en cause,
     // et toucher aux hauteurs n'y aurait rien changé.
-    const i = CSS_B.indexOf('.modal-actions .full-btn, .modal-actions .danger-btn{');
+    const i = CSS_B.indexOf('.modal-actions .full-btn, .modal-actions .nav-btn{');
     assert.ok(i > 0, 'la règle des boutons de modale a disparu');
     const regle = CSS_B.slice(i, CSS_B.indexOf('}', i));
     assert.match(regle, /margin:\s*0/, 'seule une marge est neutralisée : les hauteurs divergeront');
@@ -319,5 +319,100 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
       assert.match(m[0], /class="[^"]*\bmodal-field-number\b/,
         `${id} n'a pas la classe qui lui donne sa marge`);
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// #398 — LA COULEUR D'UN BOUTON DIT CE QU'IL FAIT
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Convention posée par l'utilisateur : ORANGE valide ou ajoute, GRIS navigue, ROUGE supprime, JAUNE
+// renomme ou édite. Un bouton désactivé garde la même couleur, le gris foncé, quelle que soit sa
+// classe.
+//
+// ⚠️ CE QU'ON PEUT VÉRIFIER SANS MOTEUR DE RENDU, et rien de plus : qu'un bouton porte la classe qui
+// correspond à ce que son LIBELLÉ annonce. La teinte exacte, elle, n'est pas testée — un test qui
+// recopie une valeur hexadécimale ne fait qu'interdire de la changer (cf. l'en-tête de ce fichier).
+describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  // Les boutons de la famille « plein cadre » seulement : les entrées de menu contextuel et les
+  // ronds d'en-tête ont leur propre langage, et la convention ne les vise pas.
+  const boutons = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
+    .map(m => ({
+      attrs: m[1],
+      classe: (m[1].match(/class="([^"]*)"/) || [, ''])[1],
+      texte: m[2].replace(/<[^>]*>/g, '').trim(),
+    }))
+    .filter(b => /full-btn|nav-btn|pose-(save|rename|delete)/.test(b.classe));
+
+  test('préalable : on a bien attrapé les boutons de cette famille', () => {
+    assert.ok(boutons.length >= 30, `seulement ${boutons.length} boutons trouvés`);
+  });
+
+  test('⚠️ NAVIGUER N\'EST PAS VALIDER : aucun « Annuler » ni « Fermer » en orange', () => {
+    // C'est la moitié de la convention qui se voit le plus : l'orange attire l'oeil vers ce qui
+    // ajoute, et le poser sur un bouton qui ne fait que refermer l'écran envoie chercher une action
+    // là où il n'y en a pas. Deux boutons étaient dans ce cas, « Fermer » du Manuel et
+    // « Éditeur de modèles » du menu de gauche.
+    boutons
+      .filter(b => /^(Annuler|Fermer|Cancel|Close)\b/i.test(b.texte))
+      .forEach(b => assert.ok(!/\bfull-btn\b/.test(b.classe),
+        `« ${b.texte} » est en orange alors qu'il ne fait que naviguer`));
+  });
+
+  test('⚠️ les quatre boutons de NAVIGATION nommés, un par un', () => {
+    // MUTATION ÉCHAPPÉE : le test ci-dessus ne reconnaît la navigation qu'aux libellés « Annuler » et
+    // « Fermer ». « Tableau de correspondance » n'en fait pas partie, et le repasser en orange ne
+    // faisait donc rien échouer — alors que c'est précisément le bouton qui a déclenché toute cette
+    // convention.
+    //
+    // Il n'existe pas de règle générale pour reconnaître « ce bouton ouvre un autre écran » à partir
+    // de son libellé : on épingle donc les cas, avec leur raison. La liste est courte parce que le
+    // reste se déduit du texte.
+    const doitEtreGris = {
+      personaEditorMapBtn: 'ouvre le tableau de correspondance : il navigue, il n\'ajoute rien',
+      openPoseEditorBtn: 'ouvre l\'Éditeur depuis le menu de gauche',
+      helpModalClose: 'referme le Manuel',
+      personaEditorResetBtn: 'défait la pose en cours, il ne valide ni n\'ajoute',
+    };
+    Object.entries(doitEtreGris).forEach(([id, raison]) => {
+      const b = boutons.find(x => x.attrs.includes(`id="${id}"`));
+      assert.ok(b, `bouton ${id} introuvable`);
+      assert.match(b.classe, /\bnav-btn\b/, `${id} doit être gris : il ${raison}`);
+    });
+  });
+
+  test('supprimer est ROUGE, renommer est JAUNE', () => {
+    boutons.filter(b => /^Supprimer\b/i.test(b.texte)).forEach(b =>
+      assert.match(b.classe, /delete-btn|pose-delete/,
+        `« ${b.texte} » ne porte pas la classe des suppressions`));
+    // Les « Renommer » qui VALIDENT une modale de renommage restent orange : ils confirment un
+    // formulaire, ils n'ouvrent pas une édition. Le jaune est pour le bouton qui LANCE l'édition.
+    const lance = boutons.find(b => b.attrs.includes('personaEditorPoseRenameBtn'));
+    assert.ok(lance && /pose-rename/.test(lance.classe),
+      'le bouton qui lance un renommage doit porter la classe des éditions');
+  });
+
+  test('les quatre rôles existent dans le CSS, et le nom qui mentait a disparu', () => {
+    ['.full-btn', '.nav-btn'].forEach(sel =>
+      assert.ok(declarationsOuNull(sel), `${sel} n'est plus défini`));
+    assert.match(css, /\.full-btn\.delete-btn\{/, 'la variante rouge a disparu');
+    assert.match(css, /\.full-btn\.edit-btn\{/, 'la variante jaune a disparu');
+    // ⚠️ `.danger-btn` HABILLAIT TOUS LES « ANNULER » — l'exact contraire d'un danger — et rien ne
+    // l'utilisait pour une suppression. Avec une convention où le rouge veut dire supprimer, ce nom
+    // sur le bouton le plus inoffensif de chaque modale était une invitation à l'erreur.
+    assert.ok(!css.includes('danger-btn'), 'le nom qui mentait est revenu dans le CSS');
+    assert.ok(!html.includes('danger-btn'), 'le nom qui mentait est revenu dans index.html');
+  });
+
+  test('⚠️ un bouton DÉSACTIVÉ garde la même couleur, quelle que soit sa classe', () => {
+    // La seule règle qui traverse les quatre rôles : un bouton éteint ne doit pas annoncer par sa
+    // couleur ce qu'il ne peut pas faire. Sans elle, l'opacité laissait trois teintes différentes.
+    [':disabled.delete-btn', ':disabled.edit-btn'].forEach(part =>
+      assert.ok(css.includes(part), `l'état désactivé de ${part} n'est plus neutralisé`));
+    const eteints = declarationsOuNull('.persona-editor-pose-actions button:disabled');
+    assert.ok(eteints, 'la règle des boutons de pose désactivés a disparu');
+    assert.match(eteints, /background:\s*var\(--line\)/,
+      'un bouton de pose désactivé garde sa couleur vive');
   });
 });

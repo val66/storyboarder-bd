@@ -15,6 +15,10 @@
   --sepia:#83838C;
   --accent:#FF7A45;
   --accent-soft:rgba(255,122,69,.14);
+  /* Les deux couleurs de la convention des boutons (#398). Des jetons plutôt que des littéraux,
+     comme tout le reste ici : le thème Clair les redéfinit sans toucher à une seule règle. */
+  --danger:#D9534F;
+  --warn:#E8B84B;
   --line:#34353A;
   --white:#26272B;
   /* Ascenseurs. Un jeton dédié plutôt que `--line` : sur fond sombre, la couleur d'une bordure est
@@ -33,6 +37,10 @@ body.theme-light{
   --ink-soft:#7A766B;
   --sepia:#8C8678;
   --accent-soft:rgba(255,122,69,.16);
+  /* Un rouge et un jaune un peu plus soutenus qu'en thème Sombre : sur fond clair, les mêmes
+     valeurs passaient pour des pastels et ne se distinguaient plus l'une de l'autre. */
+  --danger:#C9302C;
+  --warn:#D9A21B;
   --line:#D9CDB3;
   --white:#FFFFFF;
   --scroll-thumb:#C4B695;
@@ -137,17 +145,46 @@ header span{ font-size:12px; color:var(--ink-soft); }
 select, input[type=number]{
   font-family:'Inter',sans-serif; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12.5px; background:var(--white); color:var(--ink);
 }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LA COULEUR D'UN BOUTON DIT CE QU'IL FAIT (#398)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   Convention posée par l'utilisateur, et elle vaut pour toute l'application :
+
+     ORANGE  (.full-btn)   valider, ou ajouter quelque chose — Enregistrer, Appliquer, Nouveau tome
+     GRIS    (.nav-btn)    naviguer — Annuler, Fermer, ouvrir un autre écran
+     ROUGE   (.delete-btn) supprimer
+     JAUNE   (.edit-btn)   renommer, éditer
+
+   ⚠️ UN BOUTON DÉSACTIVÉ GARDE LA MÊME COULEUR, quelle que soit sa classe : le gris foncé de
+   `--line`. C'est la seule règle qui traverse les quatre : un bouton éteint ne doit pas annoncer
+   par sa couleur ce qu'il ne peut pas faire.
+
+   ⚠️ `.nav-btn` S'APPELAIT `.nav-btn`, ET CE NOM MENTAIT. Il habillait tous les « Annuler » et
+   tous les « Fermer » de l'application — l'exact contraire d'un danger — et rien ne l'utilisait
+   pour une suppression. Avec une convention où le ROUGE veut dire supprimer, garder ce nom sur le
+   bouton le plus inoffensif de chaque modale aurait été une invitation à l'erreur. Ses styles ne
+   changent pas d'un pixel : seul le nom devient vrai. */
 .full-btn{
   width:100%; margin-top:6px; padding:8px; border:1px solid var(--accent); background:var(--accent); color:#fff;
   font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
 }
 .full-btn:hover{ filter:brightness(1.08); }
 .full-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; filter:none; }
-.danger-btn{
+/* Les trois variantes ne redéfinissent QUE la couleur : la géométrie, la police et l'état désactivé
+   restent ceux de `.full-btn`, qu'elles accompagnent toujours. Un second jeu de padding aurait fini
+   par diverger, et deux boutons voisins n'auraient plus eu la même hauteur. */
+.full-btn.delete-btn{ background:var(--danger); border-color:var(--danger); }
+.full-btn.edit-btn{ background:var(--warn); border-color:var(--warn); color:#1B1C1F; }
+.full-btn:disabled.delete-btn, .full-btn:disabled.edit-btn{
+  background:var(--line); border-color:var(--line); color:var(--ink-soft);
+}
+.nav-btn{
   width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--line); background:var(--white); color:var(--ink-soft);
   border-radius:7px; font-size:12.5px; cursor:pointer;
 }
-.danger-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.nav-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.nav-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; }
 .project-modal-btn{
   /* Fond toujours sombre (indépendant du thème Clair/Sombre, cf. modale Configuration) : le texte
      reste donc en blanc fixe plutôt que var(--ink), qui deviendrait illisible sur fond sombre en thème
@@ -667,23 +704,23 @@ canvas{
 }
 /* `margin: 0`, et non `margin-top: 0`. C'est EXACTEMENT le Fix 69, qui avait été réglé pour les
    boutons de l'éditeur de Personnage et laissé tel quel ici — la moitié d'énumération habituelle.
-   `.danger-btn` déclare `margin-bottom: 6px` ; dans une ligne flex, `align-items` vaut `stretch` par
+   `.nav-btn` déclare `margin-bottom: 6px` ; dans une ligne flex, `align-items` vaut `stretch` par
    défaut, donc chaque bouton est étiré à la hauteur de la ligne MARGES COMPRISES. Ces 6px étaient
    pris sur la boîte d'Annuler, qui paraissait donc plus court qu'Enregistrer, sans qu'aucune règle
    de hauteur ne soit en cause. Corrigé pour TOUTES les modales, pas seulement celle du squelette. */
-.modal-actions .full-btn, .modal-actions .danger-btn{ width:auto; margin:0; }
+.modal-actions .full-btn, .modal-actions .nav-btn{ width:auto; margin:0; }
 /* Modales Personnage/Objet (#descModal/#objectModal) uniquement : Annuler et Enregistrer doivent faire
    la même taille (jusqu'ici inégale à cause de paddings différents : 8px vs 8px 12px) et avoir plus
    d'écart entre eux. flex:1 1 0 les force à occuper une largeur égale quel que soit leur padding/texte. */
 #descModal .modal-actions, #objectModal .modal-actions,
 #tracéModal .modal-actions, #terrainModal .modal-actions,
 #pieceModal .modal-actions, #batimentModal .modal-actions{ gap:16px; }
-#descModal .modal-actions .full-btn, #descModal .modal-actions .danger-btn,
-#objectModal .modal-actions .full-btn, #objectModal .modal-actions .danger-btn,
-#tracéModal .modal-actions .full-btn, #tracéModal .modal-actions .danger-btn,
-#terrainModal .modal-actions .full-btn, #terrainModal .modal-actions .danger-btn,
-#pieceModal .modal-actions .full-btn, #pieceModal .modal-actions .danger-btn,
-#batimentModal .modal-actions .full-btn, #batimentModal .modal-actions .danger-btn{ flex:1 1 0; }
+#descModal .modal-actions .full-btn, #descModal .modal-actions .nav-btn,
+#objectModal .modal-actions .full-btn, #objectModal .modal-actions .nav-btn,
+#tracéModal .modal-actions .full-btn, #tracéModal .modal-actions .nav-btn,
+#terrainModal .modal-actions .full-btn, #terrainModal .modal-actions .nav-btn,
+#pieceModal .modal-actions .full-btn, #pieceModal .modal-actions .nav-btn,
+#batimentModal .modal-actions .full-btn, #batimentModal .modal-actions .nav-btn{ flex:1 1 0; }
 /* État "neutre" du bouton Enregistrer (#descModalSave/#objectModalSave) : tant qu'aucune modification
    n'a été apportée et que l'Élément n'est pas nouvellement créé, il garde le même style discret que
    Annuler plutôt que l'orange (.full-btn), réservé au cas où il y a effectivement quelque chose à
@@ -840,7 +877,7 @@ canvas{
 /* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
    suivantes se collent à elle : elles forment un groupe. */
 .persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
-.persona-editor-panel .danger-btn { width: 100%; }
+.persona-editor-panel .nav-btn { width: 100%; }
 /* Fix 68 — « Pose » et « Réglage fin » sont deux blocs encadrés, pas deux titres dans un flux
    continu. Le cadre est ce qui dit qu'ils sont indépendants : sans lui, la liste des poses se
    lisait comme le préambule des curseurs.
@@ -877,15 +914,31 @@ canvas{
   flex: 1; font-size: 11.5px; padding: 4px 6px; cursor: pointer;
   border: 1px solid var(--line); border-radius: 5px; background: var(--white); color: var(--ink);
   /* Fix 69 — `margin: 0` est ce qui rend les trois boutons de MÊME hauteur, et ce n'est pas
-     cosmétique. Supprimer porte la classe .danger-btn, qui déclare `margin-bottom: 6px`. Dans une
+     cosmétique. Supprimer portait la classe .nav-btn, qui déclare `margin-bottom: 6px`. Dans une
      ligne flex, `align-items` vaut `stretch` par défaut : chaque bouton est étiré à la hauteur de
      la ligne MARGES COMPRISES, donc ces 6px étaient pris sur sa boîte — Supprimer paraissait plus
      court que ses voisins sans qu'aucune règle de hauteur ne soit en cause. Toucher à la hauteur
      ici n'y aurait rien changé. */
   margin: 0;
 }
+/* La convention des couleurs vaut ici aussi (#398), avec la géométrie serrée de cette ligne : ce
+   sont trois boutons côte à côte, pas trois pleines largeurs. Enregistrer AJOUTE une pose à la
+   bibliothèque, Renommer l'ÉDITE, Supprimer la SUPPRIME. */
+.persona-editor-pose-actions .pose-save{
+  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+}
+.persona-editor-pose-actions .pose-rename{
+  background: var(--warn); border-color: var(--warn); color: #1B1C1F; font-weight: 600;
+}
+.persona-editor-pose-actions .pose-delete{
+  background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600;
+}
+/* ⚠️ UN BOUTON DÉSACTIVÉ GARDE LA MÊME COULEUR, quelle que soit sa classe : le gris foncé de
+   `--line`. L'opacité seule ne suffisait plus — appliquée à un fond rouge ou jaune, elle laissait
+   trois teintes différentes, donc trois boutons éteints qui annoncent encore ce qu'ils ne peuvent
+   pas faire. */
 .persona-editor-pose-actions button:disabled {
-  opacity: .45; cursor: default; color: var(--ink-soft);
+  cursor: default; background: var(--line); border-color: var(--line); color: var(--ink-soft);
 }
 .persona-editor-poses button.active {
   background: rgba(224,165,60,.22); border-color: rgba(224,165,60,.6); font-weight: 600;

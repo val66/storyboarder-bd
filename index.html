@@ -87,9 +87,9 @@
         <div class="persona-editor-pose-edit">
           <input id="personaEditorPoseName" type="text" placeholder="Nom de la pose" />
           <div class="persona-editor-pose-actions">
-            <button id="personaEditorPoseSaveBtn" type="button">Enregistrer</button>
-            <button id="personaEditorPoseRenameBtn" type="button">Renommer</button>
-            <button id="personaEditorPoseDeleteBtn" type="button" class="danger-btn">Supprimer</button>
+            <button id="personaEditorPoseSaveBtn" type="button" class="pose-save">Enregistrer</button>
+            <button id="personaEditorPoseRenameBtn" type="button" class="pose-rename">Renommer</button>
+            <button id="personaEditorPoseDeleteBtn" type="button" class="pose-delete">Supprimer</button>
           </div>
         </div>
       </section>
@@ -101,15 +101,15 @@
              FICHIER, donc pour tous les Elements qui le portent, dans tous les Projets. Elle est
              a sa place aupres des articulations qu'elle definit.
              Masque pour le Personnage integre, qui n'a aucun os a faire correspondre. -->
-        <button type="button" class="full-btn" id="personaEditorMapBtn" style="display:none;">Tableau de correspondance</button>
+        <button type="button" class="nav-btn" id="personaEditorMapBtn" style="display:none;">Tableau de correspondance</button>
       </section>
       <!-- Les trois actions de sortie, dans l'ordre où elles se posent : défaire, valider, quitter.
            Réinitialiser et Appliquer sont actifs UNIQUEMENT si la pose a changé depuis l'ouverture
            (cf. personaEditorHasChanges) — sans changement, ils n'auraient rien à faire, et .full-btn
            les grise alors de lui-même. Fermer reste toujours disponible. -->
-      <button id="personaEditorResetBtn" type="button" class="full-btn">Réinitialiser la pose</button>
+      <button id="personaEditorResetBtn" type="button" class="nav-btn">Réinitialiser la pose</button>
       <button id="personaEditorApplyBtn" type="button" class="full-btn">Appliquer au Personnage</button>
-      <button id="personaEditorCloseBtn" type="button" class="danger-btn" style="margin-top:6px;">Fermer</button>
+      <button id="personaEditorCloseBtn" type="button" class="nav-btn" style="margin-top:6px;">Fermer</button>
     </aside>
   </div>
 </div>
@@ -166,7 +166,7 @@
         <button class="dropdown-trigger" id="personaTrigger">Éditeur <span class="caret">▾</span></button>
         <div class="dropdown-panel open" id="personaPanel">
           <p class="side-hint" id="personaPanelHint">Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.</p>
-          <button class="full-btn" id="openPoseEditorBtn">Éditeur de modèles</button>
+          <button class="nav-btn" id="openPoseEditorBtn">Éditeur de modèles</button>
         </div>
       </div>
     </div>
@@ -635,7 +635,7 @@
          nulle part. Trouvé par le contrôle croisé de tests/dom-ids.test.mjs. -->
     <p class="project-modal-status" id="projectModalStatus" role="status" aria-live="polite"></p>
     <div class="modal-actions">
-      <button class="danger-btn" id="projectModalClose" type="button" style="width:100%;">🚪 Fermer l'application</button>
+      <button class="nav-btn" id="projectModalClose" type="button" style="width:100%;">🚪 Fermer l'application</button>
     </div>
   </div>
 </div>
@@ -646,7 +646,7 @@
     <h3>Renommer le projet</h3>
     <input type="text" id="renameProjectInput" style="width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); margin-bottom:14px;">
     <div class="modal-actions">
-      <button class="danger-btn" id="renameProjectCancel" type="button">Annuler</button>
+      <button class="nav-btn" id="renameProjectCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameProjectConfirm" type="button">Renommer</button>
     </div>
   </div>
@@ -663,7 +663,7 @@
     <input type="text" id="renameEntityInput" style="width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); margin-bottom:6px;">
     <p id="renameEntityError" style="margin:0 0 10px; font-size:12px; color:var(--danger, #c0392b); min-height:1.4em;"></p>
     <div class="modal-actions">
-      <button class="danger-btn" id="renameEntityCancel" type="button">Annuler</button>
+      <button class="nav-btn" id="renameEntityCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameEntityConfirm" type="button">Renommer</button>
     </div>
   </div>
@@ -707,8 +707,8 @@
          renommable. Les dix-huit restent au-dessus : ce sont eux qui pilotent le rig aujourd'hui. -->
     <div id="skeletonMapMembres" class="skeleton-map-membres"></div>
     <div class="modal-actions">
-      <button class="danger-btn" id="skeletonMapCancel" type="button">Annuler</button>
-      <button class="danger-btn" id="skeletonMapReset" type="button">Réinitialiser</button>
+      <button class="nav-btn" id="skeletonMapCancel" type="button">Annuler</button>
+      <button class="nav-btn" id="skeletonMapReset" type="button">Réinitialiser</button>
       <button class="full-btn" id="skeletonMapSave" type="button">Enregistrer</button>
     </div>
   </div>
@@ -726,7 +726,7 @@
     <p id="modelUsagesSubtitle" style="margin:0 0 12px; font-size:12.5px; color:var(--sepia);"></p>
     <div id="modelUsagesList" class="model-usages-list"></div>
     <div class="modal-actions">
-      <button class="danger-btn" id="modelUsagesClose" type="button">Fermer</button>
+      <button class="nav-btn" id="modelUsagesClose" type="button">Fermer</button>
     </div>
   </div>
 </div>
@@ -748,7 +748,7 @@
          écrasés et tout se met sur une seule ligne. -->
     <p id="confirmActionMessage" style="margin:0 0 14px; font-size:13.5px; color:var(--ink); line-height:1.4; white-space:pre-line;"></p>
     <div class="modal-actions">
-      <button class="danger-btn" id="confirmActionCancel" type="button">Annuler</button>
+      <button class="nav-btn" id="confirmActionCancel" type="button">Annuler</button>
       <button class="full-btn" id="confirmActionOk" type="button">Confirmer</button>
     </div>
   </div>
@@ -764,7 +764,7 @@
     <h3 id="helpModalTitle"></h3>
     <div id="helpModalBody" class="help-modal-body"></div>
     <div class="modal-actions">
-      <button class="full-btn" id="helpModalClose" type="button">Fermer</button>
+      <button class="nav-btn" id="helpModalClose" type="button">Fermer</button>
     </div>
   </div>
 </div>
@@ -819,7 +819,7 @@
     <button class="project-modal-btn" id="restoreBuiltinPosesBtn" type="button" style="margin-top:0; width:100%;">↺ Restaurer les poses de base</button>
     <p id="restoreBuiltinPosesHint" style="font-size:11.5px; color:var(--ink-soft); margin:6px 0 0;"></p>
     <div class="modal-actions">
-      <button class="danger-btn" id="settingsModalClose" type="button">Fermer</button>
+      <button class="nav-btn" id="settingsModalClose" type="button">Fermer</button>
     </div>
   </div>
 </div>
@@ -835,7 +835,7 @@
     <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Le Projet contient des modifications non enregistrées.</p>
     <button class="full-btn" id="quitConfirmSave" type="button" style="margin-top:0;">💾 Enregistrer et quitter</button>
     <button class="project-modal-btn" id="quitConfirmDiscard" type="button">🚪 Quitter sans enregistrer</button>
-    <button class="danger-btn" id="quitConfirmCancel" type="button" style="margin-top:6px;">Annuler</button>
+    <button class="nav-btn" id="quitConfirmCancel" type="button" style="margin-top:6px;">Annuler</button>
   </div>
 </div>
 
@@ -956,7 +956,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="descModalCancel">Annuler</button>
+      <button class="nav-btn" id="descModalCancel">Annuler</button>
       <button class="full-btn" id="descModalSave">Enregistrer</button>
     </div>
   </div>
@@ -1223,7 +1223,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="objectModalCancel">Annuler</button>
+      <button class="nav-btn" id="objectModalCancel">Annuler</button>
       <button class="full-btn" id="objectModalSave">Enregistrer</button>
     </div>
   </div>
@@ -1321,7 +1321,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="roomModalCancel">Annuler</button>
+      <button class="nav-btn" id="roomModalCancel">Annuler</button>
       <button class="full-btn" id="roomModalSave">Enregistrer</button>
     </div>
   </div>
@@ -1407,7 +1407,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="danger-btn" id="buildingModalCancel">Annuler</button>
+      <button class="nav-btn" id="buildingModalCancel">Annuler</button>
       <button class="full-btn" id="buildingModalSave">Enregistrer</button>
     </div>
   </div>
@@ -1437,7 +1437,7 @@
       </div>
     </div>
     <div class="modal-actions">
-      <button class="danger-btn" id="tracéModalCancel">Annuler</button>
+      <button class="nav-btn" id="tracéModalCancel">Annuler</button>
       <button class="full-btn" id="tracéModalSave">Enregistrer</button>
     </div>
   </div>
@@ -1463,7 +1463,7 @@
       </div>
     </div>
     <div class="modal-actions">
-      <button class="danger-btn" id="terrainModalCancel">Annuler</button>
+      <button class="nav-btn" id="terrainModalCancel">Annuler</button>
       <button class="full-btn" id="terrainModalSave">Enregistrer</button>
     </div>
   </div>
