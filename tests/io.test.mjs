@@ -532,7 +532,7 @@ describe('loadPoseLibrary : bibliothèque vidée volontairement (Fix 57)', () =>
 
 describe('Fix 57 : les deux comportements surprenants, épinglés volontairement', () => {
   // Vérifiés en exécutant le scénario, pas déduits. Ils sont documentés dans
-  // docs/en/character-editor.md comme assumés : ces tests existent pour que quiconque les prendrait
+  // docs/en/model-editor.md comme assumés : ces tests existent pour que quiconque les prendrait
   // pour des bugs trouve l'intention écrite avant de « corriger ».
   test('supprimer une pose, puis rouvrir un projet qui l\'utilise, la fait RÉAPPARAÎTRE', () => {
     // C'est le prix de l'autonomie des fichiers : le projet embarque les poses dont il a besoin, et

@@ -572,7 +572,7 @@ nulle part dans les fichiers :
 | Personnage intégré | −Z | `rotY: Math.PI` à sa création dans une Case (events.js) |
 | Modèle importé | +Z (les six fichiers d'essai) | `rotY: 0` à sa création (model-store.js) |
 
-L'Éditeur de Personnage ouvrait sa caméra sur un demi-tour **fixe**. C'est ce qu'il faut au premier,
+L'Éditeur de modèle ouvrait sa caméra sur un demi-tour **fixe**. C'est ce qu'il faut au premier,
 et c'est exactement ce qui retourne le second : tous les modèles importés s'ouvraient de dos.
 
 **La règle est désormais mesurée** (`orbiteDeFace3D`, utils.js) : l'azimut d'ouverture est celui qui

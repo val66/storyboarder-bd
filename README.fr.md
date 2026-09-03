@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.4.104**
+**Version 1.4.105**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -78,7 +78,7 @@
 - **Une créature se pose par ses chaînes** : dès que la morphologie n'est pas « humanoïde », les
   curseurs et les points de l'aperçu viennent des chaînes cochées, avec le nom que vous leur avez
   donné, et non des dix-huit emplacements humanoïdes
-- **Une créature s'ouvre dans l'Éditeur de Personnage**, avec ses articulations à elle : chaque
+- **Une créature s'ouvre dans l'Éditeur de modèle**, avec ses articulations à elle : chaque
   figure s'y pose dans sa propre langue. Un humanoïde parle celle du corps, qui se transpose d'un
   rig à l'autre ; une araignée n'en a pas, et se pose donc par ses chaînes. Elle a aussi ses points
   cliquables, un par os pilotable : cliquez pour déplier ses curseurs, glissez pour tourner l'os.
@@ -107,7 +107,7 @@
 > membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de quel côté un tel coude
 > devrait plier.
 
-### Éditeur de Personnage
+### Éditeur de modèle
 
 Un espace pour poser une figure (un Personnage, ou un Modèle importé articulé), ouvert par le
 crayon d'un aperçu 3D, par la touche **E**, ou seul depuis la section **Éditeur** du menu de gauche
@@ -219,7 +219,7 @@ storyboarder-bd/
 │   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
 │   ├── stray-meshes-3d.js # Les maillages qu'un fichier place hors du corps, et qu'on masque
 │   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
-│   ├── persona-editor.js # Éditeur de Personnage : vue de pose sur la zone centrale
+│   ├── persona-editor.js # Éditeur de modèle : vue de pose sur la zone centrale
 │   ├── help-content.js # Contenu du manuel d'utilisation intégré
 │   ├── version.js      # Numéro de version, GÉNÉRÉ par tools/bump-version.mjs
 │   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)

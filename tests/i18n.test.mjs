@@ -857,3 +857,39 @@ describe('#397 : la section « Éditeur » du menu de gauche', () => {
       'le bouton a divergé de sa table');
   });
 });
+
+describe('#397a : « Éditeur de Personnage » ne se dit plus nulle part', () => {
+  // L'écran pose TOUTE figure articulée depuis #383 — Personnage intégré comme modèle importé — et
+  // porte en plus la bibliothèque de poses et le tableau de correspondance. Son ancien nom
+  // annonçait un seul type de figure, et il subsistait encore dans le menu du Manuel, dans les
+  // info-bulles des deux crayons, et dans le titre du raccourci E.
+  //
+  // ⚠️ COMMENTAIRES RETIRÉS AVANT DE CHERCHER, dixième fois dans ce dépôt qu'un test bute sur la
+  // prose qui l'entoure. Un commentaire qui cite l'ancien nom pour raconter son histoire est
+  // légitime — plusieurs le font — ; ce qu'on interdit, c'est que l'UTILISATEUR le lise.
+  const sansCommentaires = (txt) => txt
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const sources = ['index.html', 'src/i18n.js', 'src/help-content.js'];
+
+  test('ni en français, ni en anglais, dans ce que l\'utilisateur lit', () => {
+    sources.forEach(rel => {
+      const txt = sansCommentaires(
+        readFileSync(new URL('../' + rel, import.meta.url), 'utf8'));
+      ['Éditeur de Personnage', 'Character editor', 'character editor'].forEach(ancien => {
+        assert.ok(!txt.includes(ancien), `« ${ancien} » subsiste dans ${rel}`);
+      });
+    });
+  });
+
+  test('et le nouveau nom, lui, est bien là', () => {
+    // Sans cette moitié, le test ci-dessus passerait dans une application où l'écran n'a plus de
+    // nom du tout.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.match(html, /id="personaEditorTitle">Éditeur de modèle</);
+    assert.match(html, /help-group-title">Éditeur de modèle</);
+    const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+    assert.equal((i18n.match(/'Model editor', 'Éditeur de modèle'/g) || []).length, 3,
+      'attendu : les deux crayons et le bouton du menu de gauche');
+  });
+});

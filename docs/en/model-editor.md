@@ -1,4 +1,4 @@
-# Character editor — design note
+# Model editor — design note
 
 > Working document, written before implementation. Code comments stay in English (cf. tasks
 > #209–219); this note was originally written in French, the language the decisions were taken in,
@@ -10,7 +10,7 @@
 
 ## Intent
 
-A character editor, with fine joint adjustment, a pose library and emotions. It covers the central
+A model editor, with fine joint adjustment, a pose library and emotions. It covers the central
 area only: the header and the left menu stay usable, and navigating away leaves the editor without
 reopening the dialog it came from (`clicQuitteLEditeur3D`). Two entry points:
 

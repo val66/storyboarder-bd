@@ -44,12 +44,12 @@ export const I18N_TEXT = [
   // table-là ne déstructure que trois éléments et ignore la forme à attribut. L'y laisser rendait
   // l'entrée silencieusement inopérante, l'icône était bien préservée, mais l'infobulle restait
   // figée en français. Constaté par un test, pas à l'œil.
-  ['#personaEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
+  ['#personaEditorOpenBtn', null, null, 'title', 'Model editor', 'Éditeur de modèle'],
   // MÊME FORME, MÊME TABLE, et c'est tout l'enjeu : cette entrée vivait dans I18N_TRAILING, qui ne
   // déstructure que trois éléments ET n'a aucune garde contre `en === null`. `setTrailingText`
   // écrivait donc ' ' + null : le crayon de la fiche d'un Modèle importé affichait « null » à côté
   // de son icône. Signalé à l'usage. Le commentaire ci-dessus redoutait déjà le symétrique.
-  ['#objectEditorOpenBtn', null, null, 'title', 'Character editor', 'Éditeur de Personnage'],
+  ['#objectEditorOpenBtn', null, null, 'title', 'Model editor', 'Éditeur de modèle'],
   ['#helpBtn', null, null, 'title', 'User manual', "Manuel d'utilisation"],
   // Sidebar
   ['#addVolumeBtn', 'New volume', 'Nouveau tome'],

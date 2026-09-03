@@ -1,7 +1,7 @@
 # Pose library — how it works
 
 > **Current behaviour**, not the history of the decisions. The reasoning that led here, including
-> its reversals, is in [character-editor.md](character-editor.md).
+> its reversals, is in [model-editor.md](model-editor.md).
 >
 > Up to date as of Fix 62.
 

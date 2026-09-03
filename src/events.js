@@ -309,7 +309,7 @@ document.addEventListener('mousedown', (e) => {
 // ↳ src/utils.js (clamp)
 
 
-// ---------- Character editor ----------
+// ---------- Model editor ----------
 // Extracted to src/persona-editor.js. Only the wiring stays here, at the exact point where the
 // editor's listener block used to run: an imported module is evaluated BEFORE its importer, so
 // calling wirePersonaEditor() from here, rather than letting the module wire itself on load,
@@ -1507,7 +1507,7 @@ window.addEventListener('keydown', (e) => {
       return;
     }
   }
-  // ── E : ouvrir l'Éditeur de Personnage ────────────────────────────────────────────────────
+  // ── E : ouvrir l'Éditeur de modèle ────────────────────────────────────────────────────
   //
   // CONTEXTUEL, et sans rien inventer : sur une figure posable, il ouvre l'éditeur SUR ELLE, comme
   // le crayon de sa fiche ; sinon en autonome, comme le bouton du menu de gauche. Les deux points
@@ -1571,7 +1571,7 @@ window.addEventListener('keydown', (e) => {
   // voit, et une seconde pression doit le refermer.
   //
   // Passer par le bouton emprunte du même coup tout ce qu'il sait faire, dont la sortie de
-  // l'Éditeur de Personnage, qui recouvre le panneau où le Manuel s'affiche.
+  // l'Éditeur de modèle, qui recouvre le panneau où le Manuel s'affiche.
   if (e.key === 'F1' && !e.altKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
     e.preventDefault();
     document.getElementById('helpBtn').click();
@@ -5622,7 +5622,7 @@ window.addEventListener('keydown', (e) => {
 // Converts screen coordinates to canvas pixels (handles object-fit:contain letterboxing).
 
 // ⚠️ LE CLIC ET LE SURVOL DES POINTS D'UN MODÈLE IMPORTÉ ONT ÉTÉ RETIRÉS D'ICI (#394). Poser se
-// fait dans l'Éditeur de Personnage, et nulle part ailleurs : cet aperçu-ci fait quelques centaines
+// fait dans l'Éditeur de modèle, et nulle part ailleurs : cet aperçu-ci fait quelques centaines
 // de pixels, y viser un point parmi les 45 d'un cerbère n'a jamais été confortable. Les Animaux
 // intégrés gardent les leurs, juste en dessous — ils en ont une dizaine, et pas de second écran.
 

@@ -1267,7 +1267,7 @@ export function drawAnimalJointHandlesOverlay(){
 //
 // Vivaient ici : la carte des positions à l'écran, le tracé des pastilles, le test de clic, et les
 // deux registres qui reliaient un point à ses curseurs. Tout est parti avec les curseurs eux-mêmes :
-// poser se fait dans l'Éditeur de Personnage, et nulle part ailleurs.
+// poser se fait dans l'Éditeur de modèle, et nulle part ailleurs.
 //
 // ⚠️ CE QUI A ÉTÉ GARDÉ, ET POURQUOI. Les ANIMAUX intégrés ont toujours leurs points sur cet aperçu,
 // et c'est le même geste pour l'usager, donc la même pastille et le même test de clic. Ce qui

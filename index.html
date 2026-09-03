@@ -40,13 +40,13 @@
 
 <div class="app">
 
-  <!-- Éditeur de Personnage (cf. openPersonaEditor, persona-editor.js). VIT DANS .app, dont il
+  <!-- Éditeur de modèle (cf. openPersonaEditor, persona-editor.js). VIT DANS .app, dont il
        recouvre la zone centrale — pas la fenêtre : l'en-tête et le menu de gauche restent
        visibles et utilisables, comme pour toute autre vue. La Page ou la Scène dessous reste
        intacte, fermer rend la main à ce qui était là. -->
 <div id="personaEditorOverlay" class="persona-editor hidden">
   <div class="persona-editor-bar">
-    <span class="persona-editor-title" id="personaEditorTitle">Éditeur de Personnage</span>
+    <span class="persona-editor-title" id="personaEditorTitle">Éditeur de modèle</span>
   </div>
   <div class="persona-editor-body">
     <div class="persona-editor-stage">
@@ -427,7 +427,7 @@
           <span class="help-group-title">Tableau de correspondance</span>
         </button>
         <button type="button" class="help-group" data-help="editeur">
-          <span class="help-group-title">Éditeur de Personnage</span>
+          <span class="help-group-title">Éditeur de modèle</span>
         </button>
         <button type="button" class="help-group" data-help="raccourcis">
           <span class="help-group-title">Raccourcis clavier</span>
@@ -959,7 +959,7 @@
                agit SUR cet aperçu, le placer dessus le dit sans qu'un libellé ait à l'expliquer.
                `title` porte le nom complet au survol. -->
           <button id="personaEditorOpenBtn" type="button" class="preview-corner-btn"
-                  title="Éditeur de Personnage" aria-label="Éditeur de Personnage">✏️</button>
+                  title="Éditeur de modèle" aria-label="Éditeur de modèle">✏️</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="personaHidden3dCheckbox"> Invisible dans la scène 3D
@@ -1215,12 +1215,12 @@
       <div class="modal-section-body">
         <div class="persona-preview-wrap">
           <canvas id="objectPreview3D" width="240" height="161"></canvas>
-          <!-- Ouvre l'Éditeur de Personnage sur CE modèle importé, quand il porte des
+          <!-- Ouvre l'Éditeur de modèle sur CE modèle importé, quand il porte des
                articulations reconnues. Même bouton, même coin, même geste que pour un Personnage
                (cf. personaEditorOpenBtn) : deux corps qui se posent pareil doivent s'éditer pareil.
                Masqué pour tout le reste — une chaise n'a rien à poser. -->
           <button id="objectEditorOpenBtn" type="button" class="preview-corner-btn"
-                  style="display:none" title="Éditeur de Personnage" aria-label="Éditeur de Personnage">✏️</button>
+                  style="display:none" title="Éditeur de modèle" aria-label="Éditeur de modèle">✏️</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="objectHidden3dCheckbox"> Invisible dans la scène 3D

@@ -1,4 +1,4 @@
-# Éditeur de Personnage — note de conception
+# Éditeur de modèle — note de conception
 
 > Document de travail, rédigé avant implémentation. Les commentaires de code restent en anglais
 > (cf. tâches #209–219) ; cette note a été rédigée en français, la langue des décisions prises, et

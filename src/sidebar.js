@@ -995,7 +995,7 @@ function updateSidePanelImpl(){
  * Afficher / masquer le Manuel dans le panneau droit.
  *
  * POURQUOI CES DEUX FONCTIONS EXISTENT PLUTÔT QUE DEUX PAIRES D'AFFECTATIONS. Le bouton « ? » est
- * un BASCULEUR : il lit l'état affiché et l'inverse. Or l'Éditeur de Personnage recouvre le panneau
+ * un BASCULEUR : il lit l'état affiché et l'inverse. Or l'Éditeur de modèle recouvre le panneau
  * droit, l'utilisateur qui cliquait « ? » depuis l'éditeur agissait sur un état qu'il ne voyait
  * pas, et refermait le Manuel qu'il croyait ouvrir. La sortie de l'éditeur doit donc pouvoir dire
  * « AFFICHE le Manuel », sans basculer.

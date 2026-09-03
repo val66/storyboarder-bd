@@ -131,7 +131,7 @@ export const HELP_MANUAL_EN = [
     'Clearing a name restores the one the application proposes: that is how to go back. Only your own choices are kept in the file, the rest is recomputed each time.',
     'A file you have already set up, with the SAME bones, is offered at the top: taking its mapping saves redoing it, morphology included. Rows taken this way say so, and nothing is written before Save.',
   ]},
-  { id: 'editeur', title: 'Character editor', paragraphs: [
+  { id: 'editeur', title: 'Model editor', paragraphs: [
     'Open the editor with the pencil button in the corner of a 3D preview, or from the "Editor" section of the left menu to compose a pose with no target; in that case there is no "Apply" button. Its title names the figure posed: the character, or the file and its archetype.',
     'Hold the RIGHT mouse button to orbit around the figure, scroll wheel to zoom. The figure is always shown facing front, imported models included; its orientation in the scene or panel is left untouched.',
     'Click a point to select it: the other points disappear, and the orange area shows where you can click without losing the selection. A creature only shows its archetype\'s joints, in bright blue; hovering a limb, or its chain title, reveals that chain\'s other bones in pale blue.',
@@ -148,7 +148,7 @@ export const HELP_MANUAL_EN = [
     'Enter: open the dialog for the selected Element or panel.',
     'Escape: closes the frontmost dialog, and only that one, opening nothing behind it. With no dialog open, it goes up one level (selects the parent panel if an Element is active).',
     'C: toggle Camera mode on the selected panel.',
-    'E: open the Character editor. On a character or an articulated imported model, it opens that Element\u2019s dialog then the editor, so that \u201cApply\u201d has somewhere to go; with nothing selected, it opens on the built-in character.',
+    'E: open the Model editor. On a character or an articulated imported model, it opens that Element\u2019s dialog then the editor, so that \u201cApply\u201d has somewhere to go; with nothing selected, it opens on the built-in character.',
     'F: centre the panel\u2019s 3D view on the selected Element. A second press returns to the previous framing.',
     'Ctrl+[ / Ctrl+]: previous / next page. It wraps around within the volume, from the last page back to the first.',
     'F1: show or hide the user manual, like the \u201c?\u201d button.',
@@ -260,7 +260,7 @@ export const HELP_MANUAL_FR = [
     'Un nom effacé revient à celui que l\'application propose : c\'est la façon de revenir en arrière. Seuls vos choix sont conservés, le reste est recalculé à chaque ouverture.',
     'Un fichier déjà réglé aux MÊMES os est proposé en haut : le reprendre évite de tout refaire, morphologie comprise. Les lignes reprises le disent, rien n\'est écrit avant Enregistrer.',
   ]},
-  { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [
+  { id: 'editeur', title: 'Éditeur de modèle', paragraphs: [
     "Ouvrez l'éditeur par le bouton crayon dans le coin de l'aperçu 3D d'un Personnage, ou par la section « Éditeur » du menu de gauche pour composer une pose sans cible ; dans ce second cas, « Appliquer » est absent.",
     "Clic DROIT maintenu pour orbiter autour de la figure, molette pour zoomer. La figure est toujours présentée de face, modèles importés compris ; son orientation dans la Scène ou la Case n'est pas modifiée.",
     "Cliquez un point pour le sélectionner : les autres disparaissent, et la zone orange montre où cliquer sans perdre la sélection. Une créature ne montre que les articulations de son archétype, en bleu vif ; survoler un membre, ou le titre de sa chaîne, révèle les autres os de cette chaîne, en bleu pâle.",
@@ -277,7 +277,7 @@ export const HELP_MANUAL_FR = [
     "Entrée : ouvrir la modale de l'Élément ou de la Case sélectionnée.",
     "Échap : ferme la modale du dessus, et elle seule, sans en ouvrir aucune derrière. Sans modale ouverte, remonte au niveau supérieur (sélectionne la Case parente si un Élément est actif).",
     'C : activer/désactiver le mode Caméra sur la Case sélectionnée.',
-    'E : ouvrir l\'Éditeur de Personnage. Sur un Personnage ou un Modèle importé articulé, il ouvre la fiche de l\'Élément puis l\'éditeur, pour qu\'« Appliquer » ait un destinataire ; sans sélection, il ouvre le Personnage intégré.',
+    'E : ouvrir l\'Éditeur de modèle. Sur un Personnage ou un Modèle importé articulé, il ouvre la fiche de l\'Élément puis l\'éditeur, pour qu\'« Appliquer » ait un destinataire ; sans sélection, il ouvre le Personnage intégré.',
     'F : centrer la vue 3D de la Case sur l\'Élément sélectionné. Un second appui revient au cadrage précédent.',
     'Ctrl+[ / Ctrl+] : Planche précédente / suivante. Le parcours boucle dans le Tome, de la dernière Planche à la première.',
     'F1 : afficher ou masquer le Manuel d\'utilisation, comme le bouton « ? ».',

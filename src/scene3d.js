@@ -2974,7 +2974,7 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
 }
 
 /**
- * Rendre un MODÈLE IMPORTÉ dans le canevas de l'Éditeur de Personnage.
+ * Rendre un MODÈLE IMPORTÉ dans le canevas de l'Éditeur de modèle.
  *
  * Pourquoi une fonction de plus plutôt qu'un paramètre de `renderObjectToCanvas3D` : l'éditeur a
  * besoin de trois choses que l'aperçu d'une fiche n'a pas, une taille de rendu imposée (le canevas

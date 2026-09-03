@@ -1,6 +1,6 @@
 /**
  * @file persona-editor.js
- * Character editor: full-screen mode for posing a single Persona.
+ * Model editor: full-screen mode for posing a single Persona.
  *
  * Extracted from events.js, where these ~930 lines lived under a banner that read `STATE` and
  * described none of them. The editor is a domain of its own, its own draft state, its own camera,
@@ -251,7 +251,7 @@ export function resetPersonaEditorDraft(page){
 
 // Fix 54 : applique une pose au brouillon : les angles sont COPIÉS, jamais référencés.
 //
-// C'est la décision structurante de toute la fonctionnalité (cf. docs/en/character-editor.md) : un
+// C'est la décision structurante de toute la fonctionnalité (cf. docs/en/model-editor.md) : un
 // Personnage ne dépend d'aucune pose. Supprimer une pose de la bibliothèque, ou ouvrir le projet sur
 // une machine qui ne l'a pas, ne change l'allure de personne, seule l'étiquette devient
 // « inconnue ». Garder une référence vive ferait exactement l'inverse.
@@ -544,7 +544,7 @@ export function personaEditorTitle3D(target, lang, fichier, archetype){
   // absence s'explique. La forme change, la raison non — le titre nomme la figure, puis dit dans
   // quel mode on la pose.
   //
-  // ⚠️ CE QUI A DISPARU, EN REVANCHE : le nom de l'ÉLÉMENT. « Éditeur de Personnage — Aldo » nommait
+  // ⚠️ CE QUI A DISPARU, EN REVANCHE : le nom de l'ÉLÉMENT. « Éditeur de modèle — Aldo » nommait
   // la cible ; le titre nomme désormais ce qu'on POSE, et ce qu'on pose vaut pour toutes les
   // figures du même genre, pas pour Aldo.
   return target ? `${base} — ${figure}` : `${base} — ${figure}, ${fr ? 'pose libre' : 'free pose'}`;

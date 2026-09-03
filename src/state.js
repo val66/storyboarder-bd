@@ -70,7 +70,7 @@ export const S = {
   personaEditorSpecIndex: 0,
   // Fix 54 : pose de RÉFÉRENCE du brouillon : clé d'une pose intégrée ('assis') ou id d'une pose du
   // projet ('pose1'). Une étiquette, jamais une dépendance : les angles vivent dans le brouillon et
-  // font foi (cf. docs/en/character-editor.md). Bouger un curseur après avoir appliqué une pose ne
+  // font foi (cf. docs/en/model-editor.md). Bouger un curseur après avoir appliqué une pose ne
   // l'efface pas, c'est resolvePoseLabel3D qui en déduit « (modifié) » en comparant les valeurs,
   // ce qui préserve la provenance.
   personaEditorPoseKey: null,
@@ -165,7 +165,7 @@ export const S = {
   // La case « Afficher les morceaux détachés », en brouillon. Concerne les maillages que le FICHIER
   // place hors du corps (cf. src/stray-meshes-3d.js) ; masqués par défaut, d'où `false`.
   modalDraftAfficherEgares:   false,
-  // Quelle FIGURE l'Éditeur de Personnage affiche : `null` = le Personnage intégré, sinon le nom de
+  // Quelle FIGURE l'Éditeur de modèle affiche : `null` = le Personnage intégré, sinon le nom de
   // fichier d'un modèle importé. C'est un mannequin, pas la cible : changer de figure ne change pas
   // l'Élément qu'« Appliquer » alimente. Jamais persisté, un choix de vue, pas une propriété.
   personaEditorModelFile:     null,

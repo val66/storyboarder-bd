@@ -559,7 +559,7 @@ nowhere in the files:
 | Built-in Character | −Z | `rotY: Math.PI` when created in a Panel (events.js) |
 | Imported model | +Z (the six test files) | `rotY: 0` when created (model-store.js) |
 
-The Character editor opened its camera on a **fixed** half-turn. That is what the first one needs,
+The Model editor opened its camera on a **fixed** half-turn. That is what the first one needs,
 and exactly what turns the second one around: every imported model opened showing its back.
 
 **The rule is now measured** (`orbiteDeFace3D`, utils.js): the opening azimuth is the one that puts

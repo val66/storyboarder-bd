@@ -1850,7 +1850,7 @@ export function projectPoseHandlePositions3D(entry, camera, cnvW, cnvH, selected
 export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dragHint, soloActive, entryOverride, positionsDesOs){
   if (typeof THREE === 'undefined') return;
   // `entryOverride` : la figure sur laquelle poser les poignées, quand ce n'est pas le rig intégré.
-  // L'Éditeur de Personnage peut afficher un MODÈLE IMPORTÉ ; ses articulations sont alors des os,
+  // L'Éditeur de modèle peut afficher un MODÈLE IMPORTÉ ; ses articulations sont alors des os,
   // et lire le cache du rig intégré poserait les points sur une silhouette qui n'est pas à l'écran.
   // Un paramètre plutôt qu'une lecture d'état : cette fonction ne doit pas avoir à savoir QUI
   // l'appelle (cf. Fix 92, où le repli implicite sur un canevas global était le même défaut).
