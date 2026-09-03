@@ -586,6 +586,46 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
       'une seconde règle décide du même filet');
   });
 
+  test('⚠️ #400b : un groupe REPLIÉ n\'a pas de marge basse, malgré l\'égalité de spécificité', () => {
+    // LE DÉFAUT LE PLUS INSTRUCTIF DE CETTE SÉRIE, et il a fallu deux signalements pour le voir.
+    // `.joint-group-details:not([open]) summary` et `.persona-editor-panel .joint-group-details
+    // summary` pèsent le MÊME poids — deux classes et un élément chacune — si bien que la seconde,
+    // écrite plus bas, écrasait la première. Un groupe replié gardait donc ses 8px de marge basse :
+    // 8px d'air au-dessus du titre, 16 en dessous.
+    //
+    // Ma première correction n'avait traité que l'état OUVERT (le déséquilibre du bloc, #400a) sans
+    // voir que l'état REPLIÉ avait une cause différente. Deux symptômes identiques, deux causes.
+    const replie = declarationsOuNull('.persona-editor-panel .joint-group-details:not([open]) summary');
+    assert.ok(replie, 'le panneau ne neutralise plus la marge d\'un groupe replié');
+    assert.match(replie, /margin-bottom:\s*0/);
+    // ⚠️ ET L'ORDRE COMPTE : la règle du panneau doit venir APRÈS celle qu'elle corrige, sans quoi
+    // l'égalité de spécificité se retourne et le défaut revient.
+    assert.ok(css.indexOf('.persona-editor-panel .joint-group-details:not([open]) summary')
+      > css.indexOf('.persona-editor-panel .joint-group-details summary{'),
+    'la neutralisation est écrite avant la règle qu\'elle corrige : à poids égal, elle perd');
+  });
+
+  test('#400b : le délimiteur et le titre de sous-section ont leur propre teinte', () => {
+    // Deux jetons, et chacun répond à un besoin que le jeton voisin ne couvrait pas :
+    //   — `--line-strong` : un filet qui SÉPARE doit se voir, là où une bordure de cadre doit se
+    //     faire oublier ; `--line` était trop discret au milieu d'un bloc ;
+    //   — `--ink-mid` : les deux niveaux de titre étaient blancs, seule la taille les distinguait,
+    //     et sur une chaîne repliée elle ne se compare à rien. `--ink-soft` allait trop loin, c'est
+    //     la teinte des étiquettes en capitales.
+    const debut = css.indexOf('body.theme-light{');
+    const clair = css.slice(debut, css.indexOf('\n}', debut));
+    ['--ink-mid', '--line-strong'].forEach(jeton => {
+      assert.match(css, new RegExp(`${jeton}\\s*:`), `${jeton} absent`);
+      assert.match(clair, new RegExp(`${jeton}\\s*:`), `${jeton} non redéfini en thème clair`);
+    });
+    assert.match(
+      declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details + .joint-group-details'),
+      /border-top:\s*1px solid var\(--line-strong\)/, 'le délimiteur est redevenu discret');
+    assert.match(
+      declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details > summary'),
+      /color:\s*var\(--ink-mid\)/, 'les deux niveaux de titre sont de nouveau de la même encre');
+  });
+
   test('c\'est le CODE qui déclare une ancre, pas un sélecteur devinant', () => {
     // `:has()` aurait fait deviner au CSS ce que le constructeur SAIT : ce bloc contient-il des
     // chaînes ? La marque est posée là où la question se tranche, et elle se teste.

@@ -24,6 +24,13 @@
      sombre il faut monter franchement pour qu'un bouton se lise comme un bouton. */
   --nav-bg:#4A4B52;
   --nav-bg-hover:#5E5F68;
+  /* Un cran SOUS l'encre, pour ce qui est lisible sans être le titre principal (#400b).
+     `--ink-soft` etait trop loin : il sert aux etiquettes en capitales, et un titre de
+     sous-section qui la porte se lit comme une legende plutot que comme un titre. */
+  --ink-mid:#C6C6CE;
+  /* Le filet qui SEPARE, plus clair que celui qui ENCADRE : un delimiteur pose au milieu d'un
+     bloc doit se voir, alors qu'une bordure de cadre doit se faire oublier. */
+  --line-strong:#4E4F57;
   --line:#34353A;
   --white:#26272B;
   /* Ascenseurs. Un jeton dédié plutôt que `--line` : sur fond sombre, la couleur d'une bordure est
@@ -51,6 +58,8 @@ body.theme-light{
      un gris neutre — c'est le même besoin, lu à l'envers. */
   --nav-bg:#E3DAC6;
   --nav-bg-hover:#D3C6A8;
+  --ink-mid:#5C584F;
+  --line-strong:#BCAC8A;
   --line:#D9CDB3;
   --white:#FFFFFF;
   --scroll-thumb:#C4B695;
@@ -721,6 +730,14 @@ canvas{
    Les groupes respirent, et leur titre se lit à la taille du reste du panneau. */
 .persona-editor-panel .joint-group-details{ padding:8px 12px; margin-bottom:8px; }
 .persona-editor-panel .joint-group-details summary{ font-size:13px; margin-bottom:8px; }
+/* ⚠️ ÉGALITÉ DE SPÉCIFICITÉ, ET L'ORDRE DU FICHIER TRANCHAIT (#400b). `.joint-group-details:not([open])
+   summary` et `.persona-editor-panel .joint-group-details summary` pèsent le MÊME poids — deux
+   classes et un élément chacune — si bien que la seconde, écrite plus bas, écrasait la première.
+   Un groupe replié gardait donc ses 8px de marge basse : 8px d'air au-dessus du titre, 16 en
+   dessous, et l'oeil lit un titre pousse vers le haut.
+   Signalé DEUX FOIS à l'usage, et ma première correction n'avait traité que l'état OUVERT — le
+   déséquilibre du bloc — sans voir que l'état REPLIÉ avait une cause différente. */
+.persona-editor-panel .joint-group-details:not([open]) summary{ margin-bottom:0; }
 .persona-editor-panel .joint-group-details summary::after{ font-size:12px; }
 .persona-editor-panel .joint-slider-row{ margin-bottom:6px; }
 .persona-editor-panel .joint-slider-row .joint-slider-label{ font-size:12px; }
@@ -765,11 +782,15 @@ canvas{
    Le filet tranche, et il est posé sur le HAUT de chaque carte SAUF LA PREMIÈRE — sous la première,
    il doublerait celui du titre de l'ancre, à quelques pixels de lui. */
 .persona-editor-panel .joint-group-details .joint-group-details + .joint-group-details{
-  border-top:1px solid var(--line); border-top-left-radius:0; border-top-right-radius:0;
+  border-top:1px solid var(--line-strong); border-top-left-radius:0; border-top-right-radius:0;
   padding-top:10px; margin-top:3px;
 }
 .persona-editor-panel .joint-group-details .joint-group-details > summary{
-  font-size:13px; color:var(--ink); text-transform:none; letter-spacing:0;
+  /* ⚠️ UN CRAN SOUS L'ENCRE DU TITRE DE SECTION (#400b). Les deux niveaux etaient blancs : seule la
+     taille les distinguait, et sur une chaine repliee elle ne se compare a rien. `--ink-soft`, lui,
+     serait alle trop loin — c'est la teinte des etiquettes en capitales, et une sous-section qui la
+     porte se lit comme une legende plutot que comme un titre. */
+  font-size:13px; color:var(--ink-mid); text-transform:none; letter-spacing:0;
 }
 .modal-box h3{
   font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; margin:0; color:var(--ink);
