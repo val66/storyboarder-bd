@@ -219,24 +219,17 @@ describe('#394 : la fiche d\'un Modèle importé ne pose plus rien', () => {
     });
   });
 
-  test('mais le TABLEAU DE CORRESPONDANCE reste atteignable depuis la fiche', () => {
-    // Sa raison n'a pas bougé : c'est en regardant un Élément qu'on s'aperçoit qu'un bras tourne au
-    // mauvais endroit. Le retirer avec les curseurs aurait enterré l'écran de correspondance dans
-    // le seul menu de gauche.
-    assert.match(MODALS, /export function buildSkeletonMapButtonUI/,
+  test('#395 : et le TABLEAU DE CORRESPONDANCE a suivi, vers l\'Éditeur', () => {
+    // ⚠️ UNE QUESTION DE PORTÉE, ET C'EST ELLE QUI RANGE LES DEUX ÉCRANS. Cette fiche décrit UN
+    // Élément : sa taille, sa pose, ses morceaux détachés. La correspondance vaut pour le FICHIER —
+    // pour tous les Éléments qui le portent, dans tous les Projets, et elle est même rangée dans un
+    // fichier partagé à côté du dossier Modeles. La montrer ici laissait croire qu'on réglait cet
+    // Élément-là.
+    assert.ok(!MODALS.includes('SkeletonMapBtn'),
+      'le tableau de correspondance est revenu dans la fiche, qui ne décrit qu\'un Élément');
+    const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+    assert.match(EDITEUR, /export function buildPersonaEditorMapButtonUI/,
       'plus rien ne montre le bouton du tableau de correspondance');
-    assert.match(MODALS, /objectSkeletonMapSubsection/);
-    assert.match(MODALS, /objectSkeletonMapBtn/);
-  });
-
-  test('⚠️ et il apparaît dès que le fichier a des OS, pas seulement des chaînes reconnues', () => {
-    // CORRECTION AU PASSAGE. La condition était « le fichier a des chaînes pilotables », parce que
-    // le bouton était accroché aux curseurs : un fichier dont AUCUNE chaîne n'est reconnue n'avait
-    // donc pas de bouton, c'est-à-dire précisément le cas où l'on veut ouvrir ce tableau.
-    const debut = MODALS.indexOf('export function buildSkeletonMapButtonUI');
-    const corps = MODALS.slice(debut, MODALS.indexOf('\n}\n', debut));
-    assert.match(corps, /osNeutresDuModele3D\(obj\.modelFile\)\.length > 0/,
-      'le bouton dépend de nouveau des chaînes reconnues, donc absent quand il est le plus utile');
   });
 });
 
@@ -311,7 +304,9 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
   // libellé. Deux noms pour une seule chose obligent l'utilisateur à faire le rapprochement.
   // ÉCRIT APRÈS UNE MUTATION ÉCHAPPÉE : rien ne liait les deux, on pouvait donc en renommer un seul.
   const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
-  const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
+  // ⚠️ LE BOUTON A DÉMÉNAGÉ VERS L'ÉDITEUR (#395), et l'exigence n'a pas bougé d'un mot : le titre
+  // de l'écran et le bouton qui l'ouvre doivent porter le même libellé, où qu'il vive.
+  const EDITEUR = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
 
   const libelles = (src, ancre) => {
     const i = src.indexOf(ancre);
@@ -323,14 +318,14 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
 
   test('le titre de la modale et le bouton disent la même chose, dans les deux langues', () => {
     const titre  = libelles(EVENTS, "getElementById('skeletonMapTitle')");
-    const bouton = libelles(MODALS, "getElementById('objectSkeletonMapBtn')");
+    const bouton = libelles(EDITEUR, "getElementById('personaEditorMapBtn')");
     assert.deepEqual(titre, bouton,
       'le titre de l\'écran et le bouton qui l\'ouvre portent des libellés différents');
   });
 
   test('et ce libellé est bien celui choisi', () => {
     // Sans ce second test, renommer les DEUX à l'identique passerait, or le nom a été choisi.
-    assert.deepEqual(libelles(MODALS, "getElementById('objectSkeletonMapBtn')"),
+    assert.deepEqual(libelles(EDITEUR, "getElementById('personaEditorMapBtn')"),
       { en: 'Mapping table', fr: 'Tableau de correspondance' });
   });
 });

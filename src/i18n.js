@@ -216,7 +216,7 @@ export const I18N_TRAILING = [
   ['#skeletonMapSave', 'Save', 'Enregistrer'],
   ['#modelUsagesClose', 'Close', 'Fermer'],
   ['#restoreBuiltinPosesBtn', '↺ Restore the built-in poses', '↺ Restaurer les poses de base'],
-  ['#objectSkeletonMapBtn', 'Mapping table', 'Tableau de correspondance'],
+  ['#personaEditorMapBtn', 'Mapping table', 'Tableau de correspondance'],
   ['#buildingModalCancel', 'Cancel', 'Annuler'],
   ['#buildingModalSave', 'Save', 'Enregistrer'],
   ['#tracéModalCancel', 'Cancel', 'Annuler'],

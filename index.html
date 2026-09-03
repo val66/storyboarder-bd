@@ -96,6 +96,12 @@
       <section class="side-section" id="personaEditorJointsSection">
         <h2 id="personaEditorJointsHeading">Réglages des articulations</h2>
         <div id="personaEditorJointsContainer"></div>
+        <!-- Le tableau de correspondance, EN BAS DES ARTICULATIONS et non dans la fiche du Modele
+             (#395). La fiche ne concerne qu'UN Element ; la correspondance, elle, vaut pour le
+             FICHIER, donc pour tous les Elements qui le portent, dans tous les Projets. Elle est
+             a sa place aupres des articulations qu'elle definit.
+             Masque pour le Personnage integre, qui n'a aucun os a faire correspondre. -->
+        <button type="button" class="full-btn" id="personaEditorMapBtn" style="display:none;">Tableau de correspondance</button>
       </section>
       <!-- Les trois actions de sortie, dans l'ordre où elles se posent : défaire, valider, quitter.
            Réinitialiser et Appliquer sont actifs UNIQUEMENT si la pose a changé depuis l'ouverture
@@ -1204,16 +1210,10 @@
           </details>
         </div>
 
-        <!-- Acces au tableau de correspondance, pour un Modele importe qui porte un squelette.
-             ⚠️ LES CURSEURS D'ARTICULATION QUI VIVAIENT ICI ONT ETE RETIRES (#394) : poser se fait
-             dans l'Editeur de Personnage, et nulle part ailleurs. L'apercu de cette fiche est trop
-             petit pour viser un point parmi des dizaines, et deux ecrans de pose finissaient de
-             toute facon par diverger.
-             Le bouton reste dans la FICHE, et non dans la section Modeles du menu de gauche : c'est
-             en regardant un Element qu'on s'apercoit qu'un bras tourne au mauvais endroit. -->
-        <div class="modal-subsection" id="objectSkeletonMapSubsection" style="display:none;">
-          <button type="button" class="danger-btn skeleton-map-open-btn" id="objectSkeletonMapBtn">Tableau de correspondance</button>
-        </div>
+        <!-- ⚠️ LE TABLEAU DE CORRESPONDANCE A QUITTE CETTE FICHE (#395) : il vit maintenant en bas
+             des articulations de l'Editeur. Cette fiche ne concerne qu'UN Element ; la
+             correspondance vaut pour le FICHIER, donc pour tous les Elements qui le portent, dans
+             tous les Projets. -->
       </div>
     </div>
     </div>

@@ -108,7 +108,7 @@ export const HELP_MANUAL_EN = [
     'Its selection box on the Page follows the span of the model\'s own skeleton: a slim figure gets a slim box, not a square one.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
-    'A model with a skeleton IS POSED IN THE EDITOR, opened with the pencil on its card: three sliders per drivable bone. The card itself applies a pose and opens the mapping table; it no longer poses anything, its preview being far too small to aim at a point.',
+    'A model with a skeleton IS POSED IN THE EDITOR, opened with the pencil on its card: three sliders per drivable bone, with the mapping table below them. The card only applies a pose: it describes ONE Element, while the rest holds for the whole file.',
     'A humanoid shows its eighteen slots, THEN its other chains: fingers, twists, ponytail. Other morphologies show the CHAINS ticked in the mapping table, under the names you gave them.',
     'In the editor, click a joint point to unfold its sliders, and the other way round. Axes are the bone\'s own, so which one bends an elbow depends on the file. A creature has its own points, one per drivable bone, and drags like a character.',
     'A creature opens in the editor with ITS own joints: every figure is posed in its own language. Poses are CREATED there and nowhere else: set the sliders, name the pose, and "Save" adds it to its archetype\'s library. The card applies poses, it no longer makes them.',
@@ -119,7 +119,7 @@ export const HELP_MANUAL_EN = [
     '"Show detached parts", in the model\'s card, brings them back. Your file is never modified: the fix belongs in the 3D software it came from.',
   ]},
   { id: 'correspondance', title: 'Mapping table', paragraphs: [
-    'It says which bone in the file plays which role. Open it from an articulated model\'s card, or by right-clicking in the Models section.',
+    'It says which bone in the file plays which role. Open it from the editor, at the bottom of Joint settings, or by right-clicking in the Models section. It holds for the FILE, so for every Element wearing it, in all your projects.',
     'It starts with the MORPHOLOGY: humanoid, quadruped, winged biped, centaur, arachnid, radial, serpentine. Correct it if it is wrong, that is what the dropdown is for.',
     'Only serpentine, radial and arachnid are recognised for certain, their structure looking like nothing else. The others carry "to confirm", which blocks nothing: the model can be used straight away, and the badge stays visible until you decide.',
     'The proposal is mostly wrong when a file names its bones poorly: a quadruped whose FRONT legs are called "arm" is proposed as humanoid, and a model with numbered bones says nothing at all.',
@@ -236,7 +236,7 @@ export const HELP_MANUAL_FR = [
     'Sa boîte de sélection sur la Planche suit l\'envergure du squelette du modèle : une figure élancée reçoit une boîte élancée, pas un carré.',
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
-    'Un modèle porteur d\'un squelette SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche : trois curseurs par os pilotable. La fiche, elle, applique une pose et donne accès au tableau de correspondance ; elle ne pose plus rien, son aperçu est trop petit pour viser un point.',
+    'Un modèle porteur d\'un squelette SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche : trois curseurs par os pilotable, et le tableau de correspondance en dessous. La fiche ne fait qu\'appliquer une pose : elle décrit UN Élément, le reste vaut pour le fichier entier.',
     'Un humanoïde montre ses dix-huit emplacements, PUIS ses autres chaînes : doigts, torsions, queue de cheval. Les autres morphologies montrent leurs CHAÎNES, sous le nom que vous leur avez donné.',
     'Dans l\'Éditeur, cliquez un point d\'articulation pour déplier ses curseurs, et l\'inverse. Les axes sont ceux de l\'os. Une créature a les siens, un par os pilotable, et se glisse comme un Personnage.',
     'Une créature s\'ouvre dans l\'Éditeur avec SES articulations : chaque figure s\'y pose dans sa propre langue. C\'est LÀ que les poses se créent, et nulle part ailleurs : réglez les curseurs, nommez la pose, « Enregistrer » l\'ajoute à sa bibliothèque. La fiche applique les poses, elle n\'en fabrique pas.',
@@ -247,15 +247,15 @@ export const HELP_MANUAL_FR = [
     '« Afficher les morceaux détachés », dans la fiche du modèle, les rend. Votre fichier n\'est jamais modifié : la correction se fait dans le logiciel 3D d\'origine.',
   ]},
   { id: 'correspondance', title: 'Tableau de correspondance', paragraphs: [
-    'Il dit quel os du fichier joue quel rôle. Ouvrez-le depuis la fiche d\'un modèle articulé, ou par un clic droit dans la section Modèles.',
+    'Il dit quel os du fichier joue quel rôle. Ouvrez-le depuis l\'Éditeur, en bas des Réglages des articulations, ou par un clic droit dans la section Modèles. Il vaut pour le FICHIER, donc pour tous les Éléments qui le portent.',
     'Il commence par la MORPHOLOGIE : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial, serpentin. Corrigez-la si elle est fausse, la liste déroulante est là pour ça.',
-    'Seuls serpentin, radial et arachnide se reconnaissent à coup sûr, leur structure ne ressemblant à aucune autre. Les autres portent « à confirmer », qui ne bloque rien : le modèle s\'utilise aussitôt, et l\'étiquette reste visible tant que vous n\'avez pas tranché.',
-    'La proposition se trompe surtout quand le fichier nomme mal ses os : un quadrupède dont les pattes AVANT s\'appellent « bras » est proposé humanoïde, et un modèle aux os numérotés ne dit rien du tout.',
+    'Seuls serpentin, radial et arachnide se reconnaissent à coup sûr, leur structure ne ressemblant à aucune autre. Les autres portent « à confirmer », qui ne bloque rien : le modèle s\'utilise aussitôt.',
+    'La proposition se trompe surtout quand le fichier nomme mal ses os : un quadrupède dont les pattes AVANT s\'appellent « bras » est proposé humanoïde.',
     'Viennent ensuite les emplacements, bassin, tête, bras, jambes. Chaque ligne porte une étiquette qui dit d\'où vient la proposition : le nom de l\'os, la forme du squelette, ou votre choix.',
     'Sur toute AUTRE morphologie, la liste vient de l\'archétype : un quadrupède a une tête, quatre pattes et une queue, un centaure deux bras de plus. Même présentation, mêmes menus, seuls les rôles changent.',
     'Un membre se REPLIE quand l\'application est sûre de lui, et reste ouvert quand elle ne l\'est pas. Vous voyez donc d\'un coup d\'œil ce qui demande une décision, sans parcourir des lignes déjà justes.',
     'Les chaînes qu\'aucun rôle ne réclame, comme les deux têtes en trop d\'un cerbère, tombent en bas de l\'écran. Décochez-en une pour retirer ses curseurs : elle reste dans le fichier, elle n\'est simplement plus pilotable. Une case en tête de liste les coche ou les décoche toutes.',
-    'Un nom effacé revient à celui que l\'application propose : c\'est la façon de revenir en arrière. Seuls vos choix sont conservés dans le fichier, le reste est recalculé à chaque ouverture.',
+    'Un nom effacé revient à celui que l\'application propose : c\'est la façon de revenir en arrière. Seuls vos choix sont conservés, le reste est recalculé à chaque ouverture.',
     'Un fichier déjà réglé aux MÊMES os est proposé en haut : le reprendre évite de tout refaire, morphologie comprise. Les lignes reprises le disent, rien n\'est écrit avant Enregistrer.',
   ]},
   { id: 'editeur', title: 'Éditeur de Personnage', paragraphs: [

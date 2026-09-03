@@ -48,7 +48,7 @@ import {
 import {
   cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
   personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
-  modeleImportePosable3D, squelettePourPose3D, osNeutresDuModele3D,
+  modeleImportePosable3D, squelettePourPose3D,
 } from './rig3d.js';
 import {
   POSE_AXES, POSE_LIMITE_DEG, ecrireAngleDeg, lireAngleDeg,
@@ -645,42 +645,18 @@ export function buildAnimalJointSlidersUI(objType){
  *   — la section entière disparaît s'il n'y a aucun os. Une chaise importée n'a pas
  *     d'articulations, et c'est le cas le plus fréquent.
  */
-/**
- * Le bouton « Tableau de correspondance » de la fiche d'un Modèle importé.
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * CE QUI VIVAIT ICI A ÉTÉ RETIRÉ (#394)
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * Cette fonction construisait les curseurs d'articulation de la fiche, et sa cousine dessinait les
- * points d'articulation sur l'aperçu. Décision de l'utilisateur : POSER SE FAIT DANS L'ÉDITEUR, ET
- * NULLE PART AILLEURS. L'aperçu de cette fiche fait quelques centaines de pixels ; y viser un point
- * parmi les 45 d'un cerbère ou les 103 d'une araignée n'a jamais été confortable, et l'Éditeur, lui,
- * dispose de toute la zone centrale, du survol par chaîne et du glisser.
- *
- * C'est le PENDANT de #393, qui avait déjà retiré la création de poses depuis la fiche. La fiche
- * APPLIQUE une pose et n'en compose plus aucune, à aucun niveau : un seul écran pose, un seul écran
- * enregistre, et il n'y a plus deux endroits qui écrivent `skeletonPose3d` à la main.
- *
- * LE BOUTON, LUI, RESTE, et sa raison n'a pas bougé : c'est en regardant un Élément qu'on s'aperçoit
- * qu'un bras tourne au mauvais endroit.
- *
- * ⚠️ SA CONDITION D'AFFICHAGE CHANGE, ET C'EST UNE CORRECTION. Elle était « le fichier a des chaînes
- * pilotables », parce que le bouton était accroché aux curseurs. Un fichier dont AUCUNE chaîne n'est
- * reconnue n'avait donc pas de bouton — c'est-à-dire précisément le cas où l'on veut ouvrir le
- * tableau de correspondance. La condition est maintenant « le fichier porte des os ».
- */
-export function buildSkeletonMapButtonUI(obj){
-  const subsection = document.getElementById('objectSkeletonMapSubsection');
-  if (!subsection) return;
-  const aDesOs = isImportedModel(obj) && osNeutresDuModele3D(obj.modelFile).length > 0;
-  subsection.style.display = aDesOs ? '' : 'none';
-  if (!aDesOs) return;
-  // Le libellé est posé ICI, et non en dur dans index.html : l'application est bilingue, et tout le
-  // reste de cet écran passe déjà par tr().
-  const btn = document.getElementById('objectSkeletonMapBtn');
-  if (btn) btn.textContent = tr('Mapping table', 'Tableau de correspondance');
-}
+// ⚠️ LE BOUTON « TABLEAU DE CORRESPONDANCE » A QUITTÉ CETTE FICHE (#395), avec la fonction qui le
+// montrait. Il vit maintenant en bas des articulations de l'Éditeur.
+//
+// LA RAISON EST UNE QUESTION DE PORTÉE, et c'est elle qui range les deux écrans. Cette fiche décrit
+// UN Élément : sa taille, sa pose, ses morceaux détachés. La correspondance, elle, vaut pour le
+// FICHIER — donc pour tous les Éléments qui le portent, dans tous les Projets, et elle est même
+// rangée dans un fichier partagé à côté du dossier Modeles. La montrer depuis la fiche laissait
+// croire qu'on réglait cet Élément-là.
+//
+// L'Éditeur est le bon endroit pour la même raison : il gère ce qui vaut pour toute une famille de
+// figures — la bibliothèque de poses, rangée par archétype, et les articulations d'un squelette.
+
 
 /**
  * Un `<details>` de groupe. Rien de plus.
@@ -871,9 +847,6 @@ export function buildFigureFieldUI(obj){
     // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null`, figure
     // illisible, laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
     S.modalDraftSkeletonPose = poseOsPourModeleImporte(sel.value, S.modalDraftJoints) || {};
-    // Le tableau de correspondance suit le fichier : c'est celui de la NOUVELLE figure qu'on doit
-    // pouvoir ouvrir, et un fichier sans os n'a pas de bouton du tout.
-    buildSkeletonMapButtonUI(Object.assign({}, obj, { modelFile: sel.value }));
     refreshObjectPreview();
   };
 }
@@ -1199,7 +1172,6 @@ export function openObjectModal(obj, isNew){
   // Brouillon comme tout le reste : la case agit sur l'aperçu, l'Élément n'est touché qu'à
   // l'enregistrement.
   S.modalDraftAfficherEgares = !!obj.afficherMaillagesEgares;
-  buildSkeletonMapButtonUI(obj);
   buildSkeletonPoseFieldUI(obj);
   buildStrayMeshFieldUI(obj);
   resetModalSections(objectModal.querySelector('.modal-box'), ['principal', 'apercu']);

@@ -58,12 +58,14 @@ import {
   OBJECT_ASPECT_RATIOS, PERSONA_REAL_HEIGHT_M, OBJECT_REAL_HEIGHT_M, ZOOM_MIN, ZOOM_MAX, PAGE_RENDER_SCALE_MAX, CANVAS_WRAP_PADDING, CURSOR_MAP,
   BUBBLE_TAIL_ANGLE_DEFAULT, BUBBLE_TAIL_LEN_DEFAULT, BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT,
   POSE_3D, GROUND_Y_DEFAULT_3D, OBJECT_3D_W, OBJECT_3D_H, ANIMAL_TYPES, WALL_PX_PER_UNIT_3D,
-  CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D, PREVIEW_OBJECT_ID,
+  CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D, PERSONA_EDITOR_MODEL_ID,
   ARCHETYPES_3D,
 } from './constants.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
+  figureImporteeDeLEditeur, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI,
+  syncPersonaEditorSliders, drawPersonaEditor,
 } from './persona-editor.js';
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
 import {
@@ -120,7 +122,6 @@ import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
-  buildSkeletonMapButtonUI,
   closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
@@ -4957,15 +4958,26 @@ async function proposerCorrespondance(nomFichier){
  * presque pas : la reconnaissance automatique redonne souvent les mêmes emplacements, et il n'y
  * avait alors ni morphologie ni chaînes pour rendre la perte évidente.
  */
-document.getElementById('objectSkeletonMapBtn').onclick = async () => {
-  const cible = S.modalTarget;
-  if (!cible || !isImportedModel(cible)) return;
-  await openSkeletonMapModal(cible.modelFile);
-  if (S.modalTarget !== cible) return;   // la modale a été fermée entre-temps
-  disposeObjectRig3D(cible.id);
-  disposeObjectRig3D(PREVIEW_OBJECT_ID);
-  buildSkeletonMapButtonUI(cible);
-  refreshObjectPreview();
+// Le tableau de correspondance, ouvert depuis l'ÉDITEUR (#395) et non plus depuis la fiche : il
+// vaut pour le FICHIER, donc pour tous les Éléments qui le portent, alors que la fiche ne décrit
+// qu'un Élément.
+document.getElementById('personaEditorMapBtn').onclick = async () => {
+  const fichier = figureImporteeDeLEditeur();
+  if (!fichier) return;
+  await openSkeletonMapModal(fichier);
+  // ⚠️ RIEN NE SE REPREND SI L'ÉDITEUR A ÉTÉ QUITTÉ ENTRE-TEMPS, ni si la figure a changé : l'écran
+  // de correspondance est modal, mais rien n'interdit de fermer l'Éditeur derrière lui, et
+  // reconstruire alors un panneau qui n'est plus affiché redessinerait un canevas masqué.
+  if (!isPersonaEditorOpen() || figureImporteeDeLEditeur() !== fichier) return;
+  // ⚠️ TOUT CE QUI DÉPEND DE LA CORRESPONDANCE EST REFAIT, et rien de moins. Corriger change QUELS os
+  // sont pilotables et sous QUELLE clé : le rig porte les os récoltés, le panneau porte leurs
+  // curseurs, et la liste des chaînes du survol est mémorisée. En oublier un laisserait à l'écran
+  // des curseurs qui ne pilotent plus rien, ou un survol qui allume des chaînes disparues.
+  disposeObjectRig3D(PERSONA_EDITOR_MODEL_ID);
+  oublierChainesDeLEditeur3D();
+  buildPersonaEditorJointSlidersUI();
+  syncPersonaEditorSliders();
+  drawPersonaEditor();
 };
 
 // ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───

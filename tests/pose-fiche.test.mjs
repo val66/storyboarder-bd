@@ -34,7 +34,7 @@ import {
   groupesDeCurseurs3D,
 } from '../src/rig3d.js';
 import {
-  buildFigureFieldUI, buildSkeletonPoseFieldUI, remplirSelecteurDePose, buildSkeletonMapButtonUI,
+  buildFigureFieldUI, buildSkeletonPoseFieldUI, remplirSelecteurDePose,
   buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
@@ -53,6 +53,7 @@ import {
   specsDeCreature3D, personaEditorSpecsOf, beginPersonaEditorJointDrag, applyPersonaEditorJointDrag,
   syncPersonaEditorSliders, survolerChaineDeLEditeur3D, clesSurvoleesDeLEditeur3D,
   chainesDeLEditeur3D, oublierChainesDeLEditeur3D, buildPersonaEditorJointSlidersUI, chaineAAllumer3D,
+  buildPersonaEditorMapButtonUI,
   clesVisiblesDeLEditeur3D,
 } from '../src/persona-editor.js';
 import { projectPoseHandlePositions3D, pickPoseHandleAt, pickChaineAt, segmentsDeChaine3D,
@@ -250,8 +251,11 @@ describe('Le sélecteur de pose de la fiche', () => {
       readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
     assert.ok(!MODALS.includes('buildSkeletonJointSlidersUI'),
       'la fiche s\'est remise à construire des curseurs d\'articulation');
-    assert.match(MODALS, /export function buildSkeletonMapButtonUI/,
-      'la fiche a perdu l\'accès au tableau de correspondance');
+    // ⚠️ ET LE TABLEAU DE CORRESPONDANCE A SUIVI (#395) : il vaut pour le FICHIER, pas pour cet
+    // Élément-ci. La fiche ne garde donc que ce qui la concerne vraiment — taille, pose appliquée,
+    // morceaux détachés.
+    assert.ok(!MODALS.includes('SkeletonMapBtn'),
+      'le tableau de correspondance est revenu dans une fiche qui ne décrit qu\'un Élément');
   });
 
   test('un modèle sans repère de corps ne voit pas sa pose écrasée', () => {
@@ -2552,26 +2556,29 @@ describe('#394 : le bouton du tableau de correspondance, et le dépliage de l\'�
     }
   };
 
-  test('⚠️ le bouton apparaît pour un modèle qui a des os, et pour lui seul', () => {
-    // MUTATION ÉCHAPPÉE : rien ne vérifiait le COMPORTEMENT de cette fonction, seulement sa forme.
-    // Masquer la section en toutes circonstances ne faisait donc rien échouer, et le tableau de
-    // correspondance devenait inatteignable depuis la fiche — le seul endroit d'où l'on pense à
-    // l'ouvrir, puisque c'est en regardant un Élément qu'on voit un bras tourner de travers.
+  test('#395 : le bouton n\'apparaît que devant une figure IMPORTÉE', () => {
+    // ⚠️ CE TEST VISAIT LA FICHE (#394) ; le bouton n'y vit plus, il est en bas des articulations de
+    // l'Éditeur. La raison est une question de PORTÉE — la fiche décrit UN Élément, la
+    // correspondance vaut pour le FICHIER, donc pour tous ceux qui le portent, dans tous les
+    // Projets.
+    //
+    // Masqué devant le Personnage intégré : nous construisons ses pivots, il n'a aucun os à faire
+    // correspondre, et le bouton n'y serait pas grisé mais absurde.
     _setModelCacheEntry('avec-os.glb', { scene: squeletteSansBras() });
-    const section = document.getElementById('objectSkeletonMapSubsection');
+    const btn = document.getElementById('personaEditorMapBtn');
 
-    buildSkeletonMapButtonUI(
-      { type: 'objet3d', objType: 'modele', modelFile: 'avec-os.glb' });
-    assert.equal(section.style.display, '', 'un modèle à squelette doit pouvoir ouvrir le tableau');
-    const btn = document.getElementById('objectSkeletonMapBtn');
+    const o = { type: 'objet3d', objType: 'modele', modelFile: 'avec-os.glb', id: 'm1' };
+    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    assert.equal(btn.style.display, '', 'un modèle importé doit pouvoir ouvrir le tableau');
     assert.ok(btn.textContent.length > 0, 'le libellé du bouton n\'est pas posé');
 
-    buildSkeletonMapButtonUI(
-      { type: 'objet3d', objType: 'modele', modelFile: 'jamais-charge.glb' });
-    assert.equal(section.style.display, 'none', 'un fichier sans os offre un tableau vide');
-
-    buildSkeletonMapButtonUI({ type: 'objet3d', objType: 'chaise' });
-    assert.equal(section.style.display, 'none', 'une chaise n\'a pas de squelette à faire correspondre');
+    choisirFigureDeLEditeur('');
+    buildPersonaEditorMapButtonUI();
+    assert.equal(btn.style.display, 'none',
+      'le Personnage intégré n\'a aucun os à faire correspondre');
+    hidePersonaEditor();
   });
 
   test('⚠️ déplier un groupe sélectionne son point DANS L\'ÉDITEUR', () => {

@@ -539,27 +539,36 @@ describe('La fiche : un brouillon, et rien d\'écrit avant Enregistrer', () => {
       'un objet vide serait persisté, et l\'Élément paraîtrait posé à jamais');
   });
 
-  test('RÉGRESSION : corriger la correspondance reconstruit les curseurs ET le rig', () => {
-    // Corriger la correspondance change QUELS emplacements ont un os, et QUEL os chacun désigne.
-    // Sans reconstruction, des curseurs resteraient affichés pour des emplacements devenus vides,
-    // et les autres continueraient de tourner les os d'avant la correction.
-    const debut = EVENTS.indexOf("getElementById('objectSkeletonMapBtn')");
+  test('RÉGRESSION : corriger la correspondance refait TOUT ce qui en dépend', () => {
+    // Corriger change QUELS os sont pilotables et sous QUELLE clé. En oublier un des trois laisserait
+    // à l'écran des curseurs qui ne pilotent plus rien, un rig qui tourne les os d'avant, ou un
+    // survol qui allume des chaînes disparues.
+    //
+    // ⚠️ LE BOUTON A DÉMÉNAGÉ VERS L'ÉDITEUR (#395) : la correspondance vaut pour le FICHIER, donc
+    // pour tous les Éléments qui le portent, alors que la fiche ne décrit qu'un Élément.
+    const debut = EVENTS.indexOf("getElementById('personaEditorMapBtn')");
     assert.ok(debut > 0, 'le bouton de correspondance n\'est plus câblé');
-    const bloc = EVENTS.slice(debut, debut + 700);
-    assert.match(bloc, /disposeObjectRig3D\(/, 'le rig garderait les os d\'avant la correction');
-    // ⚠️ IL N'Y A PLUS DE CURSEURS À RECONSTRUIRE DANS LA FICHE (#394) : poser se fait dans
-    // l'Éditeur. Ce que la correction doit encore atteindre est le RIG — c'est lui qui porte les os
-    // récoltés — et le bouton lui-même, dont la présence dépend du fichier.
-    assert.match(bloc, /buildSkeletonMapButtonUI\(/,
-      'le bouton ne suit plus le fichier après une correction');
+    const bloc = EVENTS.slice(debut, debut + 1400);
+    assert.match(bloc, /disposeObjectRig3D\(PERSONA_EDITOR_MODEL_ID\)/,
+      'le rig de l\'Éditeur garderait les os d\'avant la correction');
+    assert.match(bloc, /oublierChainesDeLEditeur3D\(\)/,
+      'le survol allumerait des chaînes qui n\'existent plus');
+    assert.match(bloc, /buildPersonaEditorJointSlidersUI\(\)/,
+      'les curseurs resteraient ceux d\'avant la correction');
     assert.match(bloc, /await openSkeletonMapModal\(/,
       'sans await, on reprendrait la main avant que l\'utilisateur ait tranché');
+    // ET RIEN NE SE REPREND SI L'ÉDITEUR A ÉTÉ QUITTÉ ENTRE-TEMPS : reconstruire un panneau qui
+    // n'est plus affiché redessinerait un canevas masqué.
+    assert.match(bloc, /if \(!isPersonaEditorOpen\(\)/,
+      'on reconstruit un écran qui a pu être fermé pendant la correction');
   });
 
-  test('le bouton de correspondance existe dans la fiche, et nulle part ailleurs', () => {
-    assert.equal((HTML.match(/id="objectSkeletonMapBtn"/g) || []).length, 1);
-    assert.match(HTML, /id="objectSkeletonMapSubsection"[^>]*style="display:none;"/,
-      'la section doit être masquée par défaut : la plupart des modèles importés n\'ont pas d\'os');
+  test('le bouton de correspondance existe dans l\'Éditeur, et nulle part ailleurs', () => {
+    assert.equal((HTML.match(/id="personaEditorMapBtn"/g) || []).length, 1);
+    assert.ok(!HTML.includes('objectSkeletonMapBtn'),
+      'le bouton est revenu dans la fiche, qui ne décrit pourtant qu\'un Élément');
+    assert.match(HTML, /id="personaEditorMapBtn"[^>]*style="display:none;"/,
+      'masqué par défaut : le Personnage intégré n\'a aucun os à faire correspondre');
   });
 });
 

@@ -1331,6 +1331,35 @@ export function cyclePersonaEditorSpec(delta){
 // bibliothèque du projet précédent.
 const personaEditorPoseBtns = {}; // clé de pose -> <button>
 
+/**
+ * Le bouton « Tableau de correspondance », en bas des articulations de l'Éditeur (#395).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI ICI, ET PLUS DANS LA FICHE DU MODÈLE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * UNE QUESTION DE PORTÉE, et c'est elle qui range les deux écrans. La fiche décrit UN Élément : sa
+ * taille, sa pose, ses morceaux détachés. La correspondance, elle, vaut pour le FICHIER — donc pour
+ * tous les Éléments qui le portent, dans tous les Projets, et elle est même rangée dans un fichier
+ * partagé à côté du dossier Modeles. La montrer depuis la fiche laissait croire qu'on réglait cet
+ * Élément-là.
+ *
+ * L'Éditeur, lui, ne s'occupe que de ce qui vaut pour toute une famille de figures : la bibliothèque
+ * de poses, rangée par archétype, et les articulations d'un squelette. Le tableau y est chez lui, et
+ * juste sous les curseurs qu'il définit.
+ *
+ * MASQUÉ POUR LE PERSONNAGE INTÉGRÉ : nous construisons ses pivots, il n'a aucun os à faire
+ * correspondre. Le bouton n'y serait pas grisé mais absurde.
+ */
+export function buildPersonaEditorMapButtonUI(){
+  // Le libellé est posé ICI, et il doit être LE MÊME que le titre de l'écran qu'il ouvre : deux noms
+  // pour une seule chose obligent l'utilisateur à faire le rapprochement (un test les compare).
+  const btn = document.getElementById('personaEditorMapBtn');
+  if (!btn) return;
+  btn.textContent = tr('Mapping table', 'Tableau de correspondance');
+  btn.style.display = figureImporteeDeLEditeur() ? '' : 'none';
+}
+
 export function buildPersonaEditorPosesUI(){
   const container = document.getElementById('personaEditorPosesContainer');
   if (!container) return;
@@ -1443,6 +1472,7 @@ function syncPersonaEditorDom(){
   if (titleEl) titleEl.textContent = personaEditorTitle3D(personaEditorTarget(), S.appLang);
   if (S.personaEditorOpen) {
     buildPersonaEditorModelUI();
+    buildPersonaEditorMapButtonUI();
     buildPersonaEditorPosesUI();
     syncPersonaEditorPoseLabel();
     // ⚠️ AVANT LA RESYNCHRONISATION DES VALEURS, ET L'ORDRE EST LA DÉCISION (#383a) : synchroniser
