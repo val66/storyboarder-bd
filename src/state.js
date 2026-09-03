@@ -159,7 +159,6 @@ export const S = {
   modalTarget:                null,
   modalDraftJoints:           null,
   modalDraftAnimalJoints:     null,   // { jointId: { x?, y?, z? } } while editing an animal
-  selectedAnimalHandle:       null,   // { id: jointId } or null
   // { slot: { x?, y?, z? } } en radians, pendant l'édition d'un Modèle importé articulé. Brouillon :
   // l'Élément ne reçoit sa pose qu'à l'enregistrement de la modale (cf. src/skeleton-pose.js).
   modalDraftSkeletonPose:     null,

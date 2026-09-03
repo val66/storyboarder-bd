@@ -13,8 +13,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY, pickAnimalHandleAt, animalHandleScreenPos,
-  pickHandleAt,
+import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY,
   selectionALOuvertureDuGroupe, updatePersonaSizeDisplay, updateObjectSizeDisplay,
   remplirChampHauteur3D, openHelpModal, closeHelpModal, rafraichirManuelOuvert,
   legendeDoitSeReplier3D, captureModalSnapshot,
@@ -75,33 +74,12 @@ describe('getPersonaScalePercent : pourcentage de taille affiché dans la modale
   });
 });
 
-// ── pickAnimalHandleAt ────────────────────────────────────────────────────────────────────────
-describe('pickAnimalHandleAt : détecte la poignée d\'articulation animale la plus proche (rayon 17px)', () => {
-  beforeEach(() => {
-    Object.keys(animalHandleScreenPos).forEach(k => delete animalHandleScreenPos[k]);
-  });
-
-  test('point proche d\'une poignée : renvoie son id', () => {
-    animalHandleScreenPos.j1 = { x: 10, y: 10 };
-    animalHandleScreenPos.j2 = { x: 100, y: 100 };
-    assert.deepEqual(pickAnimalHandleAt(12, 11), { id: 'j1' });
-  });
-
-  test('point exactement sur une poignée : renvoie son id', () => {
-    animalHandleScreenPos.j2 = { x: 100, y: 100 };
-    assert.deepEqual(pickAnimalHandleAt(100, 100), { id: 'j2' });
-  });
-
-  test('point hors du rayon de détection de toutes les poignées : null', () => {
-    animalHandleScreenPos.j1 = { x: 10, y: 10 };
-    animalHandleScreenPos.j2 = { x: 100, y: 100 };
-    assert.equal(pickAnimalHandleAt(50, 50), null);
-  });
-
-  test('aucune poignée enregistrée : null', () => {
-    assert.equal(pickAnimalHandleAt(0, 0), null);
-  });
-});
+// ---------- pickAnimalHandleAt : SES TESTS SONT PARTIS AVEC ELLE (#401c) ----------
+//
+// Ils décrivaient la prise d'un point d'articulation SUR L'APERÇU D'UNE FICHE. Cet aperçu ne porte
+// plus de points, ni pour un Animal, ni pour un Modèle importé, ni pour le Personnage. Ce qui est
+// vérifié à leur place vit dans tests/pose-fiche.test.mjs, sur `pickPoseHandleAt`, la prise de
+// l'Éditeur — le seul écran qui pose.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rapatriement des gestionnaires des modales Pièce/Bâtiment.
@@ -157,48 +135,14 @@ describe('Rapatriement des modales Pièce/Bâtiment : la couture tient', () => {
 });
 
 
-describe('Poignées d\'articulation — une seule prise pour tous les types d\'Élément', () => {
-  // CE BLOC EXISTE PARCE QUE LE CODE ÉTAIT SUR LE POINT D'ÊTRE RECOPIÉ. Les Animaux avaient leur
-  // fonction de sélection, les Modèles importés allaient avoir la leur : deux fois la même
-  // arithmétique, donc deux occasions de dériver, un rayon de prise ajusté d'un côté et pas de
-  // l'autre, et le même geste ne répondrait plus pareil selon l'Élément. `pickHandleAt` est
-  // désormais commune ; les deux entrées publiques ne font que lui passer leur carte de positions.
-  beforeEach(() => {
-    Object.keys(animalHandleScreenPos).forEach(k => delete animalHandleScreenPos[k]);
-  });
-
-  test('la poignée la PLUS PROCHE gagne, pas la première rencontrée', () => {
-    // Les points se chevauchent souvent (poignet et main d'un rig dense) : prendre la première de
-    // l'énumération donnerait une sélection qui dépend de l'ordre du squelette, pas du clic.
-    const pos = { loin: { x: 100, y: 100 }, pres: { x: 104, y: 100 } };
-    assert.deepEqual(pickHandleAt(pos, 106, 100), { id: 'pres' });
-    assert.deepEqual(pickHandleAt(pos, 97, 100), { id: 'loin' });
-  });
-
-  test('au-delà du rayon de prise, on ne saisit rien', () => {
-    // Cliquer dans le vide doit DÉSÉLECTIONNER, pas attraper le point le moins lointain.
-    const pos = { a: { x: 100, y: 100 } };
-    assert.equal(pickHandleAt(pos, 130, 100), null);
-    assert.deepEqual(pickHandleAt(pos, 110, 100), { id: 'a' });
-  });
-
-  test('une carte vide, absente ou trouée ne lève pas', () => {
-    assert.equal(pickHandleAt({}, 0, 0), null);
-    assert.equal(pickHandleAt(null, 0, 0), null);
-    assert.equal(pickHandleAt({ a: null }, 0, 0), null);
-  });
-
-  test('le rayon de prise des Animaux est bien celui-là', () => {
-    // ⚠️ CE TEST COMPARAIT LES ANIMAUX AUX MODÈLES IMPORTÉS, qui n'ont plus de poignées sur cette
-    // fiche depuis #394 : poser se fait dans l'Éditeur. Ce qu'il gardait de vrai — une seule
-    // arithmétique de prise, pas deux qui dérivent — vaut toujours, et `pickHandleAt` reste
-    // partagée avec l'Éditeur.
-    animalHandleScreenPos.patte = { x: 50, y: 50 };
-    const limite = 17;
-    assert.deepEqual(pickAnimalHandleAt(50 + limite - 1, 50), { id: 'patte' });
-    assert.equal(pickAnimalHandleAt(50 + limite + 1, 50), null);
-  });
-});
+// ---------- « une seule prise pour tous les types d'Élément » : BLOC RETIRÉ (#401c) ----------
+//
+// ⚠️ ET UNE INEXACTITUDE CORRIGÉE AU PASSAGE, la mienne. Ce bloc affirmait que `pickHandleAt`
+// « reste partagée avec l'Éditeur ». C'était faux depuis #394 : l'Éditeur prend ses poignées avec
+// `pickPoseHandleAt` (draw.js), qui a son propre rayon variable selon qu'une articulation est seule
+// à l'écran (Fix 87). `pickHandleAt` n'avait plus qu'un appelant, `pickAnimalHandleAt`, et disparaît
+// avec lui. Le danger que ce bloc gardait — deux arithmétiques de prise qui dérivent — n'existe plus
+// pour la meilleure des raisons : il n'y en a qu'une.
 
 describe('#394 : la fiche d\'un Modèle importé ne pose plus rien', () => {
   const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8')
@@ -288,13 +232,16 @@ describe('Déplier un groupe ne vole pas la sélection : le défaut des trois é
   test('les écrans qui posent passent par la même décision', () => {
     // Corriger un seul d'entre eux, c'était l'état d'avant : une correction connue et non reportée.
     //
-    // ⚠️ ILS ÉTAIENT TROIS, PUIS DEUX (#394), ILS SONT UN. La fiche d'un Modèle importé, puis celle
-    // du Personnage (#401a), ont perdu leurs curseurs : poser se fait dans l'Éditeur. Ne restent
-    // que les Animaux — jusqu'à #401c — plus l'Éditeur, qui appelle la décision depuis
-    // persona-editor.js par le rappel `auDepliage`.
+    // ⚠️ ILS ÉTAIENT TROIS, ILS SONT UN, ET C'EST L'ÉDITEUR. Les trois fiches ont perdu leurs
+    // curseurs tour à tour, le Modèle importé (#394), le Personnage (#401a), l'Animal (#401c). Il ne
+    // reste dans modals.js que la DÉFINITION de la décision ; le seul écran qui pose l'appelle
+    // depuis persona-editor.js, par le rappel `auDepliage`.
+    //
+    // La décision reste ici, et ce n'est pas un oubli : elle est le voisin dont on copie, et c'est
+    // sa recopie cassée trois fois de suite qui l'a fait extraire (cf. son en-tête).
     const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
-    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 2,
-      'attendu : la définition + le seul écran restant (Animaux)');
+    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 1,
+      'un écran de fiche s\'est remis à décider tout seul ce que déplier un groupe sélectionne');
     const editeur = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
     assert.match(editeur, /selectionALOuvertureDuGroupe\(/,
       'l\'Éditeur décide de nouveau tout seul ce que déplier un groupe sélectionne');
@@ -672,5 +619,61 @@ describe('#401b5 : l\'empreinte d\'une fiche couvre ce qu\'elle ENREGISTRE', () 
 
   test('une fiche inconnue ne fabrique aucune empreinte de brouillon', () => {
     assert.equal(captureModalSnapshot(ficheStub('autreModale')), '');
+  });
+});
+
+describe('#401c : la fiche d\'un Animal ne pose plus rien', () => {
+  const MODALS = sourceSansCommentaires(
+    readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  // Le troisième et dernier retrait. L'ordre n'était pas libre : l'Éditeur devait d'abord savoir
+  // poser un Animal (#401b), sans quoi ce retrait l'aurait rendu impossible à poser.
+
+  test('plus aucun curseur, registre ni point d\'articulation d\'Animal', () => {
+    ['buildAnimalJointSlidersUI', 'highlightAnimalJointRows', 'openAnimalJointGroupForHandle',
+      'closeAllAnimalJointSliders', 'drawAnimalJointHandlesOverlay', 'pickAnimalHandleAt',
+      'animalJointGroupDetailsById', 'animalJointRowsById', 'animalJointSliderRefs',
+      'animalHandleScreenPos', 'selectedAnimalHandle'].forEach(nom => {
+      assert.ok(!MODALS.includes(nom),
+        `« ${nom} » est de retour dans la fiche : elle s'est remise à poser`);
+      assert.ok(!EVENTS.includes(nom),
+        `« ${nom} » est de retour dans le câblage : la fiche s'est remise à poser`);
+    });
+    assert.ok(!HTML.includes('objectAnimalSlidersContainer'), 'la sous-section est revenue');
+    assert.ok(!HTML.includes('objectAnimalJointsSubsection'), 'la sous-section est revenue');
+  });
+
+  test('⚠️ mais `construireCurseursDAnimal3D` reste : c\'est l\'Éditeur qui pose avec', () => {
+    // C'était tout l'objet de #401b, l'extraire pour que le second écran s'en serve. La retirer
+    // avec le reste aurait cassé l'écran qui pose au nom d'un ménage dans celui qui ne pose plus.
+    // Le COMPORTEMENT est vérifié dans pose-fiche.test.mjs, sur le panneau réellement construit.
+    assert.match(MODALS, /export function construireCurseursDAnimal3D/);
+    const editeur = sourceSansCommentaires(
+      readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8'));
+    assert.match(editeur, /construireCurseursDAnimal3D\(/,
+      'plus personne ne construit les curseurs d\'un Animal : il est devenu impossible à poser');
+  });
+
+  test('LE CHEMIN DE LA DONNÉE EST INTACT : le brouillon reste initialisé et enregistré', () => {
+    // ⚠️ CE TEST EST LA VRAIE FRONTIÈRE DU RETRAIT. Ce qui part est un ÉCRAN ; ce qui reste est la
+    // donnée. Emporter le brouillon avec les curseurs aurait fait perdre en silence la pose qui
+    // revient de l'Éditeur — le défaut aurait été invisible jusqu'à la réouverture de la fiche.
+    assert.match(MODALS, /S\.modalDraftAnimalJoints = obj\.animalJoints3d/,
+      'la fiche n\'initialise plus le brouillon : rouvrir un Animal posé le montrerait au repos');
+    assert.match(EVENTS, /S\.modalTarget\.animalJoints3d = \(S\.modalDraftAnimalJoints/,
+      'la fiche n\'enregistre plus la pose d\'un Animal');
+    assert.match(EVENTS, /S\.modalDraftAnimalJoints = \{\};/,
+      'changer le TYPE d\'un Objet ne remet plus le brouillon à neuf : un loup devenu chaise '
+      + 'garderait des clés qui ne désignent aucune de ses articulations');
+  });
+
+  test('et le crayon de l\'aperçu, lui, est toujours là', () => {
+    // Le seul chemin qui reste vers la pose d'un Animal. Le retirer avec les curseurs aurait laissé
+    // un Animal impossible à poser, ce que l'ordre des trois retraits visait précisément à éviter.
+    assert.match(HTML, /id="objectEditorOpenBtn"/);
+    assert.match(EVENTS, /showPersonaEditor\(cible, 'objectModal'\)/);
   });
 });

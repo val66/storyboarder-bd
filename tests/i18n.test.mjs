@@ -481,13 +481,15 @@ describe('Un seul nom pour « Réglages des articulations »', () => {
   const MODALS = lire('src/modals.js');
 
   test('les emplacements de index.html portent le MÊME libellé', () => {
-    // ⚠️ ILS ÉTAIENT QUATRE, ILS SONT DEUX. Le <summary> des Animaux et le titre du panneau de
-    // l'Éditeur. Ceux de la fiche d'un Modèle importé (#394) puis de celle du Personnage (#401a)
-    // sont partis avec leurs curseurs : poser se fait dans l'Éditeur, et nulle part ailleurs. Le
-    // dernier partira avec #401c, et ce test descendra alors à un seul emplacement — ce qui est le
-    // but, un titre pour un écran.
+    // ⚠️ ILS ÉTAIENT QUATRE, IL N'EN RESTE QU'UN : le titre du panneau de l'Éditeur. Ceux des trois
+    // fiches sont partis avec leurs curseurs, le Modèle importé (#394), le Personnage (#401a), puis
+    // l'Animal (#401c). C'était le but annoncé quand ce test attendait « au moins deux » : un titre
+    // pour un écran, donc plus rien à faire diverger.
+    //
+    // ⚠️ L'ÉGALITÉ, ET NON « AU MOINS UN » : un second emplacement qui réapparaîtrait serait une
+    // fiche qui se remet à poser, et c'est exactement ce que ces trois retraits ont défait.
     const trouves = [...HTML.matchAll(/<(?:summary|h2)[^>]*>([^<]*[Rr]églage[^<]*)</g)].map(m => m[1].trim());
-    assert.ok(trouves.length >= 2, `attendu au moins 2 emplacements, trouvé ${trouves.length}`);
+    assert.equal(trouves.length, 1, `attendu le seul titre de l'Éditeur, trouvé ${trouves.length}`);
     trouves.forEach(t => assert.equal(t, LIBELLE_FR, `libellé divergent dans index.html : « ${t} »`));
   });
 

@@ -122,10 +122,10 @@ import {
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
-  openAnimalJointGroupForHandle, closeAllAnimalJointSliders, buildAnimalJointSlidersUI, openObjectModal,
-  closeObjectModal, refreshObjectPreview, pickAnimalHandleAt, getObjectPreviewCanvasCoords,
+  openObjectModal,
+  closeObjectModal, refreshObjectPreview,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
-  animalHandleScreenPos, setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
+  setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
   recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
 
   arrondiCm3D,
@@ -5314,7 +5314,6 @@ const objectModalSave = document.getElementById('objectModalSave');
 const objectModalCancel = document.getElementById('objectModalCancel');
 const objectNameInput = document.getElementById('objectNameInput');
 const objectTypeSelect = document.getElementById('objectTypeSelect');
-const objectPreview3D = document.getElementById('objectPreview3D');
 const objectRotXInput = document.getElementById('objectRotXInput');
 const objectRotYInput = document.getElementById('objectRotYInput');
 const objectRotZInput = document.getElementById('objectRotZInput');
@@ -5346,7 +5345,6 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 // [STATE→S] let S.modalDraftJoints = null;
 // [STATE→S] let S.modalDraftAnimalJoints = null; // { jointId: { x?, y?, z? } } while editing an animal
 // Animal joint-point system on objectPreview3D (identical to the persona system)
-// [STATE→S] let S.selectedAnimalHandle = null;        // { id: jointId } or null
 // (per user request) The Save button of the Persona/Object modals should only turn orange
 // (.full-btn) if there's actually something to save: either the Element was just created
 // (S.modalIsNew, cf. openPersonaModal/openObjectModal called with isNew=true right after
@@ -5626,54 +5624,23 @@ window.addEventListener('keydown', (e) => {
 
 // Converts screen coordinates to canvas pixels (handles object-fit:contain letterboxing).
 
-// ⚠️ LE CLIC ET LE SURVOL DES POINTS D'UN MODÈLE IMPORTÉ ONT ÉTÉ RETIRÉS D'ICI (#394). Poser se
-// fait dans l'Éditeur de modèle, et nulle part ailleurs : cet aperçu-ci fait quelques centaines
-// de pixels, y viser un point parmi les 45 d'un cerbère n'a jamais été confortable. Les Animaux
-// intégrés gardent les leurs, juste en dessous — ils en ont une dizaine, et pas de second écran.
-
-// Click on the object preview: selects/deselects an animal joint point.
-objectPreview3D.addEventListener('mousedown', (e) => {
-  if (!ANIMAL_TYPES.includes(objectTypeSelect.value)) return;
-  const { px, py } = getObjectPreviewCanvasCoords(e);
-  const def = pickAnimalHandleAt(px, py);
-  if (!def) {
-    S.selectedAnimalHandle = null;
-    closeAllAnimalJointSliders();
-    refreshObjectPreview();
-    e.preventDefault();
-    return;
-  }
-  if (S.selectedAnimalHandle && S.selectedAnimalHandle.id === def.id) {
-    S.selectedAnimalHandle = null;
-    closeAllAnimalJointSliders();
-  } else {
-    S.selectedAnimalHandle = def;
-    openAnimalJointGroupForHandle(def.id);
-  }
-  refreshObjectPreview();
-  e.preventDefault();
-});
-
-// "pointer" cursor when hovering over an animal joint point.
-objectPreview3D.addEventListener('mousemove', (e) => {
-  if (!ANIMAL_TYPES.includes(objectTypeSelect.value)) return;
-  const { px, py } = getObjectPreviewCanvasCoords(e);
-  const def = pickAnimalHandleAt(px, py);
-  objectPreview3D.style.cursor = def ? 'pointer' : 'default';
-});
+// ⚠️ LE CLIC ET LE SURVOL DES POINTS D'ARTICULATION ONT ÉTÉ RETIRÉS D'ICI, pour un Modèle importé
+// (#394) puis pour un Animal (#401c). Poser se fait dans l'Éditeur de modèle, et nulle part
+// ailleurs : cet aperçu-ci fait quelques centaines de pixels, y viser un point parmi les 45 d'un
+// cerbère n'a jamais été confortable, et une dizaine sur un loup ne l'était guère plus.
+//
+// L'exception des Animaux tenait à une seule raison, écrite ici même : « pas de second écran ». Ils
+// en ont un depuis #401b. La raison a disparu, l'exception aussi.
 objectTypeSelect.addEventListener('change', () => {
   objectModalTitle.textContent = libelleTypeObjet3D(objectTypeSelect.value, tr) || tr('Object', 'Objet');
   objectDoorField.style.display = (objectTypeSelect.value === 'porte_ouverte') ? '' : 'none';
   objectWindowField.style.display = (objectTypeSelect.value === 'fenetre_ouverte') ? '' : 'none';
   objectTraversantField.style.display = TRAVERSANT_TYPES.includes(objectTypeSelect.value) ? '' : 'none';
   objectGroundMagnetField.style.display = groundMagnetEligible({ type: 'objet3d', objType: objectTypeSelect.value }) ? '' : 'none';
-  // Changing type to/from an animal: rebuild the joint sliders
+  // ⚠️ LE BROUILLON EST REMIS À NEUF, ET C'EST TOUT CE QUI RESTE À FAIRE ICI (#401c) : il n'y a plus
+  // de curseurs à reconstruire. Transformer un loup en chaise doit bien oublier la pose du loup —
+  // ses clés (`hipFL`, `tail0`) ne désignent aucune articulation de chaise.
   S.modalDraftAnimalJoints = {};
-  S.selectedAnimalHandle = null;
-  // Importé de modals.js : il n'était pas dans la liste d'imports, donc changer le TYPE d'un
-  // Objet dans sa modale levait un ReferenceError. Trouvé par ESLint (no-undef).
-  Object.keys(animalHandleScreenPos).forEach(id => delete animalHandleScreenPos[id]);
-  buildAnimalJointSlidersUI(objectTypeSelect.value);
   refreshObjectPreview();
 });
 objectDoorStateSelect.addEventListener('change', () => {

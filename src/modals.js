@@ -47,7 +47,7 @@ import {
 } from './scene3d.js';
 import {
   cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
-  personaCamera3D, personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
+  personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
   modeleImportePosable3D, squelettePourPose3D,
 } from './rig3d.js';
 import {
@@ -57,7 +57,7 @@ import {
 import {
   drawBuildingPreview, drawCurrentPage, drawObjectPreview,
   drawPersonaPreview, drawRoomPreview, getBuildingBoundingBoxXZ, getRoomBoundingBoxXZ,
-  personaPreviewPan, projectJointToCanvas,
+  personaPreviewPan,
 } from './draw.js';
 import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
 import { enregistrerFermeture } from './modal-stack.js';
@@ -269,13 +269,12 @@ export function arrondiCm3D(m){
   return Number.isFinite(Number(m)) ? Math.round(Number(m) * 100) / 100 : '';
 }
 
-export const animalJointGroupDetailsById = {}; // jointId -> its group's <details>
-
-export const animalJointRowsById = {};         // jointId -> [.joint-slider-row, ...]
-
-export const animalJointSliderRefs = {};       // jointId -> { input, val, row }
-
-export const animalHandleScreenPos = {};       // jointId -> { x, y } in canvas pixels
+// ---------- Registres des articulations d'un Animal : RETIRÉS (#401c) ----------
+//
+// Vivaient ici : le groupe <details> de chaque point, ses lignes de curseurs, ses références de
+// curseurs, et la carte de leurs positions à l'écran. Quatre tables tenues à jour par la fiche pour
+// un écran de quelques centaines de pixels. `construireCurseursDAnimal3D` les reçoit toujours en
+// PARAMÈTRES : c'est l'Éditeur qui apporte les siennes désormais.
 
 export function getOpenModalEl(){
   if (descModal && !descModal.classList.contains('hidden')) return descModal;
@@ -590,30 +589,11 @@ export function makeAnimalJointRangeRow(container, labelText, minDeg, maxDeg, in
   return { input, val, row };
 }
 
-export function highlightAnimalJointRows(id){
-  document.querySelectorAll('#objectAnimalSlidersContainer .joint-slider-row.active').forEach(row => {
-    row.classList.remove('active');
-  });
-  (animalJointRowsById[id] || []).forEach(row => row.classList.add('active'));
-}
-
-export function openAnimalJointGroupForHandle(id){
-  highlightAnimalJointRows(id);
-  const details = animalJointGroupDetailsById[id];
-  const outer   = document.getElementById('objectAnimalSlidersDetails');
-  if (outer && !outer.open) outer.open = true;
-  new Set(Object.values(animalJointGroupDetailsById)).forEach(d => {
-    if (d !== details && d.open) d.open = false;
-  });
-  if (details && !details.open) details.open = true;
-}
-
-export function closeAllAnimalJointSliders(){
-  highlightAnimalJointRows(null);
-  const outer = document.getElementById('objectAnimalSlidersDetails');
-  new Set(Object.values(animalJointGroupDetailsById)).forEach(d => { d.open = false; });
-  if (outer) outer.open = false;
-}
+// ---------- Surlignage et dépliage des curseurs d'un Animal : RETIRÉS (#401c) ----------
+//
+// Vivaient ici : le surlignage des lignes d'un point, l'ouverture de son groupe et la fermeture de
+// tous. Ils reliaient une pastille de l'aperçu à des curseurs qui ne sont plus dans cette fiche.
+// L'Éditeur a son propre dépliage, monté sur la même `selectionALOuvertureDuGroupe`.
 
 /**
  * Les curseurs d'un ANIMAL intégré, pour N'IMPORTE QUEL écran. Rend le nombre de groupes posés.
@@ -672,31 +652,11 @@ export function construireCurseursDAnimal3D({
   return defs.length;
 }
 
-export function buildAnimalJointSlidersUI(objType){
-  const subsection = document.getElementById('objectAnimalJointsSubsection');
-  const container  = document.getElementById('objectAnimalSlidersContainer');
-  if (!subsection || !container) return;
-  container.innerHTML = '';
-  [animalJointGroupDetailsById, animalJointRowsById, animalJointSliderRefs]
-    .forEach(m => Object.keys(m).forEach(k => delete m[k]));
-  const poses = construireCurseursDAnimal3D({
-    conteneur: container, objType,
-    poseCourante: () => (S.modalDraftAnimalJoints || (S.modalDraftAnimalJoints = {})),
-    auChangement: refreshObjectPreview,
-    registreGroupes: animalJointGroupDetailsById, registreLignes: animalJointRowsById,
-    registreRefs: animalJointSliderRefs,
-    // Ce que « sélectionner » veut dire dans CETTE fiche : sa poignée à elle, son aperçu à elle.
-    auDepliage: (ids) => {
-      const choisi = S.selectedAnimalHandle && S.selectedAnimalHandle.id;
-      const aPrendre = selectionALOuvertureDuGroupe(ids, choisi);
-      if (aPrendre === null) { highlightAnimalJointRows(choisi); return; }
-      S.selectedAnimalHandle = { id: aPrendre };
-      highlightAnimalJointRows(aPrendre);
-      refreshObjectPreview();
-    },
-  });
-  subsection.style.display = poses ? '' : 'none';
-}
+// ---------- buildAnimalJointSlidersUI : RETIRÉE (#401c) ----------
+//
+// ⚠️ `construireCurseursDAnimal3D` RESTE, ET C'ÉTAIT LE POINT DE TOUT #401b : elle a été extraite
+// précisément pour que l'Éditeur s'en serve. Ce qui disparaît est son branchement SUR CETTE FICHE —
+// le conteneur, les registres, et « sélectionner » au sens de cet aperçu-ci.
 
 /**
  * Les curseurs d'un Modèle importé articulé, trois axes par emplacement reconnu.
@@ -1250,11 +1210,11 @@ export function openObjectModal(obj, isNew){
   // starts from a neutral zoom, framed so the Element is fully visible and centered.
   S.objectPreviewZoom = 1;
   updateObjectSizeDisplay(obj);
-  // Animal joints: initialize the draft from the object, then build the sliders
+  // ⚠️ LE BROUILLON DES ARTICULATIONS D'UN ANIMAL RESTE, SES CURSEURS SONT PARTIS (#401c). C'est
+  // l'Éditeur qui le remplit maintenant, et cette fiche qui l'enregistre : le retrait n'a touché que
+  // l'écran, jamais le chemin de la donnée. Il entre aussi dans l'empreinte de la fiche (#401b5),
+  // faute de quoi le travail revenu de l'Éditeur laisserait « Enregistrer » éteint.
   S.modalDraftAnimalJoints = obj.animalJoints3d ? JSON.parse(JSON.stringify(obj.animalJoints3d)) : {};
-  S.selectedAnimalHandle = null;
-  Object.keys(animalHandleScreenPos).forEach(id => delete animalHandleScreenPos[id]);
-  buildAnimalJointSlidersUI(obj.objType);
   // Même principe pour un squelette importé : on travaille sur une COPIE, et l'Élément n'est touché
   // qu'à l'enregistrement. C'est la règle de toutes les modales de ce dépôt, annuler doit vraiment
   // annuler, y compris après vingt curseurs déplacés.
@@ -1322,9 +1282,9 @@ export function refreshObjectPreview(){
     afficherMaillagesEgares: _estModele ? !!S.modalDraftAfficherEgares : undefined,
     sizePercent: WALL_TYPES.includes(objectTypeSelect.value) ? 100 : Number(objectSizeInput.value),
   });
-  if (ANIMAL_TYPES.includes(objectTypeSelect.value)) drawAnimalJointHandlesOverlay();
-  // Un Modèle importé n'a plus de poignées ici (#394) : elles vivent dans l'Éditeur, qui a la place
-  // de les viser. L'aperçu de cette fiche montre la pose, il ne la compose pas.
+  // Plus AUCUNE poignée sur cet aperçu : ni pour un Modèle importé (#394), ni pour un Animal
+  // (#401c). Elles vivent dans l'Éditeur, qui a la place de les viser. L'aperçu de cette fiche
+  // montre la pose, il ne la compose pas.
 }
 
 // [STATE→S] let S.objectPreviewZoom = 1;
@@ -1342,58 +1302,20 @@ objectPreview3D.addEventListener('wheel', (e) => {
   refreshObjectPreview();
 }, { passive: false });
 
-export function drawAnimalJointHandlesOverlay(){
-  if (typeof THREE === 'undefined') return;
-  const entry = objectRigCache3D.get(PREVIEW_OBJECT_ID);
-  if (!entry || !entry.animalJoints) return;
-  const cnv = objectPreview3D;
-  const ctx = cnv.getContext('2d');
-  Object.keys(animalJointGroupDetailsById).forEach(id => {
-    const pivot = entry.animalJoints[id];
-    if (!pivot) return;
-    const pt = projectJointToCanvas(pivot, personaCamera3D, cnv.width, cnv.height);
-    animalHandleScreenPos[id] = pt;
-    dessinerPoignee(ctx, pt, !!(S.selectedAnimalHandle && S.selectedAnimalHandle.id === id));
-  });
-  ctx.globalAlpha = 1;
-}
 
-// ---------- Poignées d'articulation d'un Modèle importé : RETIRÉES (#394) ----------
+// ---------- Poignées d'articulation SUR LES APERÇUS DE FICHE : RETIRÉES (#394, #401a, #401c) ----------
 //
-// Vivaient ici : la carte des positions à l'écran, le tracé des pastilles, le test de clic, et les
-// deux registres qui reliaient un point à ses curseurs. Tout est parti avec les curseurs eux-mêmes :
-// poser se fait dans l'Éditeur de modèle, et nulle part ailleurs.
+// Vivaient ici : la carte des positions à l'écran, le tracé des pastilles, le rayon de prise et le
+// test de clic, pour un Modèle importé (#394) puis pour un Animal (#401c) ; celles du Personnage
+// sont parties entre les deux (#401a).
 //
-// ⚠️ CE QUI A ÉTÉ GARDÉ, ET POURQUOI. Les ANIMAUX intégrés ont toujours leurs points sur cet aperçu,
-// et c'est le même geste pour l'usager, donc la même pastille et le même test de clic. Ce qui
-// disparaît est le vocabulaire des modèles IMPORTÉS, pas le principe.
+// ⚠️ CE COMMENTAIRE DISAIT « LES ANIMAUX GARDENT LES LEURS », ET C'ÉTAIT VRAI À SA DATE : ils
+// n'avaient pas de second écran. Ils en ont un depuis #401b. La raison de l'exception ayant disparu,
+// l'exception disparaît avec elle : poser se fait dans l'Éditeur, et nulle part ailleurs.
+//
+// `projectJointToCanvas` reste dans draw.js, l'Éditeur projette ses poignées avec.
 
-/** Dessine une pastille d'articulation. Même apparence partout : c'est le même geste pour l'usager. */
-function dessinerPoignee(ctx, pt, active){
-  ctx.beginPath();
-  ctx.arc(pt.x, pt.y, active ? 10 : 8, 0, Math.PI * 2);
-  ctx.fillStyle = active ? '#E0A53C' : '#3AA0FF';
-  ctx.globalAlpha = 0.92;
-  ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = '#fff';
-  ctx.stroke();
-}
 
-const RAYON_PRISE_POIGNEE = 17;
-
-/** La poignée la plus proche du curseur, dans une carte de positions. */
-export function pickHandleAt(positions, px, py){
-  let best = null, bestD2 = RAYON_PRISE_POIGNEE * RAYON_PRISE_POIGNEE;
-  Object.keys(positions || {}).forEach(id => {
-    const pt = positions[id];
-    if (!pt) return;
-    const dx = pt.x - px, dy = pt.y - py;
-    const d2 = dx * dx + dy * dy;
-    if (d2 < bestD2) { bestD2 = d2; best = id; }
-  });
-  return best ? { id: best } : null;
-}
 
 /**
  * Déplier un groupe d'articulations : que faut-il sélectionner ? Fonction PURE.
@@ -1429,27 +1351,13 @@ export function selectionALOuvertureDuGroupe(idsDuGroupe, idChoisi){
   return ids.includes(idChoisi) ? null : ids[0];
 }
 
-export function pickAnimalHandleAt(px, py){
-  return pickHandleAt(animalHandleScreenPos, px, py);
-}
 
-export function getObjectPreviewCanvasCoords(e){
-  const rect = objectPreview3D.getBoundingClientRect();
-  const cw = objectPreview3D.width, ch = objectPreview3D.height;
-  const boxRatio = rect.width / rect.height;
-  const cnvRatio = cw / ch;
-  let dispW = rect.width, dispH = rect.height, offX = 0, offY = 0;
-  if (cnvRatio > boxRatio) {
-    dispH = rect.width / cnvRatio;
-    offY = (rect.height - dispH) / 2;
-  } else {
-    dispW = rect.height * cnvRatio;
-    offX = (rect.width - dispW) / 2;
-  }
-  const px = (e.clientX - rect.left - offX) * (cw / dispW);
-  const py = (e.clientY - rect.top  - offY) * (ch / dispH);
-  return { px, py };
-}
+// ---------- getObjectPreviewCanvasCoords : RETIRÉE (#401c) ----------
+//
+// Elle traduisait la position de la souris en pixels du canevas d'aperçu, en tenant compte des
+// bandes noires de l'`object-fit: contain`. Ses deux seuls appelants étaient le clic et le survol
+// des points d'un Animal, partis avec eux. Sa jumelle `getPersonaPreviewCanvasCoords` reste : le
+// DÉPLACEMENT de la vue s'en sert toujours, et c'est de la caméra, pas de la pose.
 
 export function populateMagnetWallOptions(obj){
   objectMagnetWallSelect.innerHTML = '';
