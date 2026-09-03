@@ -719,11 +719,18 @@ canvas{
    devenu une contrainte sans cause. Élargir la règle générale aurait rétréci les modales d'autant.
 
    Les groupes respirent, et leur titre se lit à la taille du reste du panneau. */
-.persona-editor-panel .joint-group-details{ padding:10px 12px; margin-bottom:10px; }
-.persona-editor-panel .joint-group-details summary{ font-size:13px; margin-bottom:9px; }
+.persona-editor-panel .joint-group-details{ padding:8px 12px; margin-bottom:8px; }
+.persona-editor-panel .joint-group-details summary{ font-size:13px; margin-bottom:8px; }
 .persona-editor-panel .joint-group-details summary::after{ font-size:12px; }
-.persona-editor-panel .joint-slider-row{ margin-bottom:7px; }
+.persona-editor-panel .joint-slider-row{ margin-bottom:6px; }
 .persona-editor-panel .joint-slider-row .joint-slider-label{ font-size:12px; }
+/* ⚠️ LA DERNIÈRE LIGNE NE GARDE PAS SA MARGE, et c'est ce qui RECENTRE le groupe (#400a). Signalé à
+   l'usage : « centrer verticalement le titre des sections ». Le titre était bien centré ; c'est le
+   BLOC qui ne l'était pas — 8px de rembourrage au-dessus contre 8 + 6 de marge résiduelle en
+   dessous, soit presque le double d'air sous le dernier curseur. L'oeil lit ce déséquilibre comme
+   un titre poussé vers le haut. Retirer cette marge règle donc les deux demandes d'un coup : le
+   groupe se recentre ET perd la hauteur qu'il prenait pour rien. */
+.persona-editor-panel .joint-group-details > .joint-slider-row:last-child{ margin-bottom:0; }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    DEUX NIVEAUX : UNE ANCRE EST UN CONTENANT, UNE CHAÎNE EST UNE LIGNE
@@ -750,11 +757,19 @@ canvas{
 }
 .persona-editor-panel .joint-group-details .joint-group-details{
   border-left:none; background:rgba(0,0,0,.16); border-radius:5px;
-  padding:7px 9px; margin:0 0 6px;
+  padding:7px 9px; margin:0 0 7px;
 }
 .persona-editor-panel .joint-group-details .joint-group-details:last-child{ margin-bottom:0; }
+/* ⚠️ UN DÉLIMITEUR ENTRE LES CHAÎNES, demandé à l'usage. Le fond seul ne suffisait pas : six cartes
+   de même teinte séparées par un écart se lisent comme un dégradé de blocs, pas comme une liste.
+   Le filet tranche, et il est posé sur le HAUT de chaque carte SAUF LA PREMIÈRE — sous la première,
+   il doublerait celui du titre de l'ancre, à quelques pixels de lui. */
+.persona-editor-panel .joint-group-details .joint-group-details + .joint-group-details{
+  border-top:1px solid var(--line); border-top-left-radius:0; border-top-right-radius:0;
+  padding-top:10px; margin-top:3px;
+}
 .persona-editor-panel .joint-group-details .joint-group-details > summary{
-  font-size:12px; color:var(--ink); text-transform:none; letter-spacing:0;
+  font-size:13px; color:var(--ink); text-transform:none; letter-spacing:0;
 }
 .modal-box h3{
   font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; margin:0; color:var(--ink);

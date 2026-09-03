@@ -537,6 +537,10 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
     assert.ok(ancre, 'l\'ancre n\'a plus de style propre : les deux niveaux se ressemblent de nouveau');
     assert.match(ancre, /text-transform:\s*uppercase/);
     const chaine = declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details > summary');
+    // La chaîne est un GROUPE DE CURSEURS comme un autre : elle porte donc la même taille que les
+    // groupes de premier niveau. L'ancre, elle, n'est pas un groupe mais une catégorie, d'où ses
+    // capitales plus petites — c'est le TYPE qui hiérarchise, pas la taille seule.
+    assert.match(chaine, /font-size:\s*13px/, 'le titre d\'une sous-section a rapetissé');
     assert.match(chaine, /text-transform:\s*none/,
       'la chaîne reprend les capitales de son ancre : les deux niveaux se confondent');
   });
@@ -548,6 +552,38 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
     assert.match(chaine, /background:\s*rgba/, 'la chaîne n\'a pas de fond : rien ne dit qu\'elle est posée dedans');
     assert.match(chaine, /border-left:\s*none/, 'le filet vertical est revenu en plus du fond');
     assert.ok(!/border:\s*1px/.test(chaine), 'un second cadre a été ajouté à un pixel du premier');
+  });
+
+  test('#400a : le groupe est CENTRÉ, la dernière ligne ne garde pas sa marge', () => {
+    // ⚠️ « Centrer verticalement le titre des sections », signalé à l'usage. Le titre était bien
+    // centré ; c'est le BLOC qui ne l'était pas — 8px de rembourrage au-dessus contre 8 + 6 de marge
+    // résiduelle en dessous, soit presque le double d'air sous le dernier curseur. L'oeil lit ce
+    // déséquilibre comme un titre poussé vers le haut.
+    //
+    // La même ligne règle l'autre demande, « réduire la hauteur » : ce que le groupe perd, il le
+    // prenait pour rien.
+    assert.ok(declarationsOuNull('.persona-editor-panel .joint-group-details > .joint-slider-row:last-child'),
+      'la dernière ligne garde sa marge : le groupe est plus aéré en bas qu\'en haut');
+    assert.match(
+      declarationsOuNull('.persona-editor-panel .joint-group-details > .joint-slider-row:last-child'),
+      /margin-bottom:\s*0/);
+  });
+
+  test('#400a : un DÉLIMITEUR entre les chaînes, sauf avant la première', () => {
+    // Le fond seul ne suffisait pas : six cartes de même teinte séparées par un écart se lisent
+    // comme un dégradé de blocs, pas comme une liste.
+    //
+    // ⚠️ SAUF AVANT LA PREMIÈRE, et c'est la moitié qui compte : sous la première chaîne, le filet
+    // doublerait celui posé sous le titre de l'ancre, à quelques pixels de lui. Le sélecteur `+`
+    // dit exactement cela — « une chaîne qui en suit une autre » — sans liste à tenir.
+    const sep = declarationsOuNull(
+      '.persona-editor-panel .joint-group-details .joint-group-details + .joint-group-details');
+    assert.ok(sep, 'les chaînes ne sont plus séparées');
+    assert.match(sep, /border-top:\s*1px/);
+    // Et le CSS ne s'autorise pas un `:first-child` qui dirait la même chose à l'envers : deux
+    // règles pour une seule intention finissent par se contredire.
+    assert.ok(!/\.joint-group-details:first-child\s*\{[^}]*border-top/.test(css),
+      'une seconde règle décide du même filet');
   });
 
   test('c\'est le CODE qui déclare une ancre, pas un sélecteur devinant', () => {
