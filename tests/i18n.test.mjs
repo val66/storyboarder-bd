@@ -368,10 +368,14 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
       const editeur = table.find(g => g.id === 'editeur');
       assert.ok(perso.paragraphs.length <= 8,
         `${langue} : la section Personnages a ${perso.paragraphs.length} paragraphes, elle redevient un fourre-tout`);
-      perso.paragraphs.forEach((p, i) => {
-        assert.ok(!/dans l'éditeur|in the editor/i.test(p),
-          `${langue} : le paragraphe ${i} de « Personnages » parle de l'éditeur`);
-      });
+      // ⚠️ UN RENVOI EST PERMIS, UNE DOCUMENTATION NON (#401a). La règle interdisait toute mention
+      // de l'éditeur ; écrite contre une absorption de dix paragraphes, elle interdisait du même
+      // coup de dire au lecteur OÙ régler les articulations — devenu la seule réponse utile depuis
+      // que la fiche ne les règle plus. Un paragraphe au plus peut donc y renvoyer, ce qui laisse
+      // le défaut d'origine — la documentation qui déménage ici — tout aussi impossible.
+      const renvois = perso.paragraphs.filter(p => /dans l'éditeur|in the editor/i.test(p));
+      assert.ok(renvois.length <= 1,
+        `${langue} : ${renvois.length} paragraphes de « Personnages » parlent de l'éditeur`);
       assert.ok(editeur.paragraphs.length >= 4,
         `${langue} : la section éditeur ne compte que ${editeur.paragraphs.length} paragraphes`);
     });
@@ -477,11 +481,13 @@ describe('Un seul nom pour « Réglages des articulations »', () => {
   const MODALS = lire('src/modals.js');
 
   test('les emplacements de index.html portent le MÊME libellé', () => {
-    // ⚠️ ILS ÉTAIENT QUATRE, ILS SONT TROIS (#394) : deux <summary> (Personnage, Animaux) et le
-    // titre du panneau de l'éditeur. Celui de la fiche d'un Modèle importé est parti avec ses
-    // curseurs — poser se fait dans l'Éditeur, et nulle part ailleurs.
+    // ⚠️ ILS ÉTAIENT QUATRE, ILS SONT DEUX. Le <summary> des Animaux et le titre du panneau de
+    // l'Éditeur. Ceux de la fiche d'un Modèle importé (#394) puis de celle du Personnage (#401a)
+    // sont partis avec leurs curseurs : poser se fait dans l'Éditeur, et nulle part ailleurs. Le
+    // dernier partira avec #401c, et ce test descendra alors à un seul emplacement — ce qui est le
+    // but, un titre pour un écran.
     const trouves = [...HTML.matchAll(/<(?:summary|h2)[^>]*>([^<]*[Rr]églage[^<]*)</g)].map(m => m[1].trim());
-    assert.ok(trouves.length >= 3, `attendu au moins 3 emplacements, trouvé ${trouves.length}`);
+    assert.ok(trouves.length >= 2, `attendu au moins 2 emplacements, trouvé ${trouves.length}`);
     trouves.forEach(t => assert.equal(t, LIBELLE_FR, `libellé divergent dans index.html : « ${t} »`));
   });
 

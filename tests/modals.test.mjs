@@ -285,13 +285,13 @@ describe('Déplier un groupe ne vole pas la sélection : le défaut des trois é
   test('les écrans qui posent passent par la même décision', () => {
     // Corriger un seul d'entre eux, c'était l'état d'avant : une correction connue et non reportée.
     //
-    // ⚠️ ILS ÉTAIENT TROIS, ILS SONT DEUX (#394). La fiche d'un Modèle importé n'a plus de curseurs
-    // à déplier : poser se fait dans l'Éditeur. Restent le Personnage et les Animaux, qui ont
-    // chacun les leurs sur leur propre fiche, plus l'Éditeur, qui appelle la décision depuis
+    // ⚠️ ILS ÉTAIENT TROIS, PUIS DEUX (#394), ILS SONT UN. La fiche d'un Modèle importé, puis celle
+    // du Personnage (#401a), ont perdu leurs curseurs : poser se fait dans l'Éditeur. Ne restent
+    // que les Animaux — jusqu'à #401c — plus l'Éditeur, qui appelle la décision depuis
     // persona-editor.js par le rappel `auDepliage`.
     const src = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8');
-    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 3,
-      'attendu : la définition + un appel par écran restant (Personnage, Animaux)');
+    assert.equal((src.match(/selectionALOuvertureDuGroupe\(/g) || []).length, 2,
+      'attendu : la définition + le seul écran restant (Animaux)');
     const editeur = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
     assert.match(editeur, /selectionALOuvertureDuGroupe\(/,
       'l\'Éditeur décide de nouveau tout seul ce que déplier un groupe sélectionne');
@@ -572,5 +572,39 @@ describe('Une rangée d\'étiquettes : tout sur une ligne, ou une par ligne (#38
     assert.equal(legendeDoitSeReplier3D(0, 0), true);
     assert.equal(legendeDoitSeReplier3D(500, 0), true);
     assert.equal(legendeDoitSeReplier3D(0, 400), true);
+  });
+});
+
+describe('#401a : la fiche du Personnage ne pose plus rien', () => {
+  const MODALS = readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  // Même décision que pour les Modèles importés (#394), et le même gain : trois fiches réglaient
+  // les articulations de trois façons, avec trois jeux de registres et trois câblages de souris qui
+  // se recopiaient les uns les autres. Le commentaire d'`ajouterGroupeDeCurseurs3D` garde la trace
+  // d'un remède « recopié cassé une troisième fois ».
+
+  test('plus aucun curseur ni point d\'articulation de Personnage', () => {
+    ['buildJointSlidersUI', 'syncJointSlidersFromDraft', 'closeAllJointSliders',
+      'openJointGroupForHandle', 'highlightJointRows', 'jointGroupDetailsById',
+      'jointRowsById', 'jointSliderRefs'].forEach(nom => {
+      assert.ok(!MODALS.includes(nom),
+        `« ${nom} » est de retour : la fiche du Personnage s'est remise à poser`);
+    });
+    assert.ok(!HTML.includes('jointSlidersContainer'), 'la sous-section est revenue dans le HTML');
+  });
+
+  test('⚠️ mais `makeJointRangeRow` reste : l\'Éditeur construit ses curseurs avec', () => {
+    // La retirer aurait cassé l'écran qui pose, au nom d'un ménage dans celui qui ne pose plus.
+    // Le COMPORTEMENT est vérifié dans pose-fiche.test.mjs, sur le panneau réellement construit :
+    // une mutation échappée l'a montré ici, un appel enfermé dans `if (0)` satisfaisait le texte.
+    assert.match(MODALS, /export function makeJointRangeRow/);
+  });
+
+  test('et le crayon de l\'aperçu, lui, est toujours là', () => {
+    // C'est le seul chemin qui reste vers la pose : le retirer avec les curseurs aurait laissé un
+    // Personnage impossible à poser.
+    assert.match(HTML, /id="personaEditorOpenBtn"/);
   });
 });

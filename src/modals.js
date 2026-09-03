@@ -24,20 +24,20 @@ import { S, currentPage, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
 import { modelState, getLoadedModel } from './model-cache.js';
 import {
-  ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, JOINT_GROUPS,
+  ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
   PANEL_CAM_DEFAULT_DIST_3D,
-  POSE_3D, POSE_HANDLES, PREVIEW_OBJECT_ID, PERSONA_SKELETON_3D, ARCHETYPES_3D, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
+  POSE_3D, PREVIEW_OBJECT_ID, PERSONA_SKELETON_3D, ARCHETYPES_3D, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D, TRACÉ_DEFAULTS,
   PERSONA_PREVIEW_MAX_PX,
   TRACÉ_EMOJI, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
 import {
   clamp, getElementDepth, repairElementBase3D, unknownPoseKey3D,
-  poseSliderSpecs3D, readPoseSliderDeg3D, writePoseSliderDeg3D, figureRenderSize3D,
+  figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D, poseCompatible3D,
 
   optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
-  libelleAnimal3D, libelleArticulation3D, libelleTable3D,
+  libelleAnimal3D, libelleTable3D,
 } from './utils.js';
 import {
   ensureElementUnits3D, ensureElementWorldPos3D,
@@ -55,9 +55,9 @@ import {
   couverturePose3D, messageDeCouverture3D,
 } from './skeleton-pose.js';
 import {
-  drawBuildingPreview, drawCurrentPage, drawObjectPreview, drawPersonaPoseHandlesOverlay,
+  drawBuildingPreview, drawCurrentPage, drawObjectPreview,
   drawPersonaPreview, drawRoomPreview, getBuildingBoundingBoxXZ, getRoomBoundingBoxXZ,
-  personaPreviewPan, pickPoseHandleAt, projectJointToCanvas,
+  personaPreviewPan, projectJointToCanvas,
 } from './draw.js';
 import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
 import { enregistrerFermeture } from './modal-stack.js';
@@ -469,7 +469,6 @@ export function openPersonaModal(obj, isNew){
   // collapsed (cf. the two-way preview <-> sub-section sync), rather than keeping the state
   // left by a previous opening (potentially on a different Persona).
   S.selectedPoseHandle = null;
-  closeAllJointSliders();
   descModal.classList.remove('hidden');
   setTimeout(() => personaNameInput.focus(), 0);
   refreshPersonaPreview();
@@ -519,8 +518,8 @@ export function refreshPersonaPreview(){
     rotZ: Number(personaRotZInput.value) * Math.PI / 180,
     sizePercent: Number(personaSizeInput.value),
   });
-  drawPersonaPoseHandlesOverlay(personaPreview3D);
-  syncJointSlidersFromDraft();
+  // ⚠️ PLUS DE POIGNÉES SUR CET APERÇU (#401a) : elles vivent dans l'Éditeur, qui a la place de les
+  // viser. La fonction reste, c'est lui qui l'appelle.
 }
 
 export function makeAnimalJointRangeRow(container, labelText, minDeg, maxDeg, initDeg, onInputDeg){
@@ -1683,10 +1682,6 @@ personaPreview3D.addEventListener('wheel', (e) => {
   refreshPersonaPreview();
 }, { passive: false });
 
-// spec.key (cf. poseSliderSpecs3D) -> { spec, input, val, row }. Un curseur = une entrée, y compris
-// pour les articulations qui en portent deux : c'est le descripteur qui dit lequel pilote quel champ.
-export const jointSliderRefs = {};
-
 export function makeJointRangeRow(container, labelText, onInput){
   const row = document.createElement('div');
   row.className = 'joint-slider-row';
@@ -1710,110 +1705,24 @@ export function makeJointRangeRow(container, labelText, onInput){
 // ↳ src/constants.js
 
 // ---------- SYNC BETWEEN JOINT HANDLES (preview) <-> SUB-SECTIONS (Fine-tuning) ----------
-// jointGroupDetailsById: joint id -> <details> element of the group (Left arm, Right leg, etc.)
-// that contains it, so it can be auto-expanded when that point is selected in the preview.
-// jointRowsById: joint id -> list of .joint-slider-row elements that correspond to it (1 for a
-// simple hinge, 2 for a ball/hinge2 joint), so they can be highlighted along with the joint handle.
-export const jointGroupDetailsById = {};
-export const jointRowsById = {};
-// Le drapeau S.syncingJointGroupOpen a été RETIRÉ : il prétendait éviter la boucle toggle ↔
-// sélection, mais l'événement `toggle` d'un <details> arrive de façon asynchrone et le trouvait
-// toujours retombé. La garde est désormais un test d'état, dans le gestionnaire lui-même.
-
-export function highlightJointRows(id){
-  document.querySelectorAll('#jointSlidersContainer .joint-slider-row.active').forEach(row => {
-    row.classList.remove('active');
-  });
-  (jointRowsById[id] || []).forEach(row => row.classList.add('active'));
-}
-
-// Opens the "Fine-tuning" sub-section that contains the joint handle clicked in the preview
-// (and the "Joint settings" section itself if collapsed), highlights the corresponding
-// row(s), and closes any other sub-section left open (only one group open at a time).
-export function openJointGroupForHandle(id){
-  highlightJointRows(id);
-  const details = jointGroupDetailsById[id];
-  const outer = document.getElementById('jointSlidersDetails');
-  if (outer && !outer.open) outer.open = true;
-  new Set(Object.values(jointGroupDetailsById)).forEach(d => {
-    if (d !== details && d.open) d.open = false;
-  });
-  if (details && !details.open) details.open = true;
-}
-
-// Fully closes "Joint settings" (section + all its sub-sections) and removes the
-// highlighting, when no joint handle is selected in the preview anymore.
-export function closeAllJointSliders(){
-  highlightJointRows(null);
-  const outer = document.getElementById('jointSlidersDetails');
-  new Set(Object.values(jointGroupDetailsById)).forEach(d => { d.open = false; });
-  if (outer) outer.open = false;
-}
-
-
-// ════════════════════════════════════════════════════════════
-// PERSONA POSE EDITOR
-// ════════════════════════════════════════════════════════════
-export function buildJointSlidersUI(){
-  const container = document.getElementById('jointSlidersContainer');
-  if (!container) return;
-  container.innerHTML = '';
-  Object.keys(jointGroupDetailsById).forEach(id => delete jointGroupDetailsById[id]);
-  Object.keys(jointRowsById).forEach(id => delete jointRowsById[id]);
-  JOINT_GROUPS.forEach(g => {
-    const details = document.createElement('details');
-    details.className = 'joint-group-details';
-    const summary = document.createElement('summary');
-    summary.textContent = libelleTable3D(g, tr);
-    details.appendChild(summary);
-    container.appendChild(details);
-    g.ids.forEach(id => { jointGroupDetailsById[id] = details; });
-    // Reciprocal: expanding this sub-section selects in the preview the joint handle it
-    // represents (the first one of its group, per user request, "the right point").
-    details.addEventListener('toggle', () => {
-      if (!details.open) return;
-      // Le commentaire de persona-editor.js désignait NOMMÉMENT ce code comme l'exemple du procédé
-      // qui ne protège de rien (« le procédé employé côté modale »). Il avait été corrigé là-bas et
-      // laissé cassé ici. C'est réparé : test d'état, pas drapeau.
-      const choisi = S.selectedPoseHandle && S.selectedPoseHandle.id;
-      const aPrendre = selectionALOuvertureDuGroupe(g.ids, choisi);
-      if (aPrendre === null) { highlightJointRows(choisi); return; }
-      S.selectedPoseHandle = POSE_HANDLES.find(d => d.id === aPrendre) || null;
-      highlightJointRows(aPrendre);
-      refreshPersonaPreview();
-    });
-  });
-  // Fix 51 : un seul chemin, quel que soit le type d'articulation : poseSliderSpecs3D dit quels
-  // curseurs existent et quel champ chacun pilote, writePoseSliderDeg3D sait les écrire. Les trois
-  // branches qui vivaient ici répétaient cette connaissance, et syncJointSlidersFromDraft plus bas
-  // la répétait une deuxième fois.
-  POSE_HANDLES.forEach(def => {
-    const target = jointGroupDetailsById[def.id] || container;
-    const label = libelleArticulation3D(def.id, tr);
-    (jointRowsById[def.id] = jointRowsById[def.id] || []);
-    poseSliderSpecs3D(def, tr).forEach(spec => {
-      const ref = makeJointRangeRow(target, label + spec.suffix, (deg) => {
-        if (!S.modalDraftJoints) return;
-        writePoseSliderDeg3D(S.modalDraftJoints, spec, deg);
-        refreshPersonaPreview();
-      });
-      jointSliderRefs[spec.key] = { spec, ...ref };
-      jointRowsById[def.id].push(ref.row);
-    });
-  });
-}
-buildJointSlidersUI();
-
-// Keeps the numeric sliders synced with the current pose (including mouse-drag changes).
-export function syncJointSlidersFromDraft(){
-  if (!S.modalDraftJoints) return;
-  Object.values(jointSliderRefs).forEach(ref => {
-    if (!ref || !ref.spec) return;
-    const deg = readPoseSliderDeg3D(S.modalDraftJoints, ref.spec);
-    ref.input.value = deg;
-    ref.val.textContent = deg + '°';
-  });
-}
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LES ARTICULATIONS ONT QUITTÉ LA FICHE DU PERSONNAGE (#401a)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Vivaient ici : les curseurs par articulation, les deux registres qui reliaient un point à ses
+// lignes, l'ouverture d'un groupe au clic sur un point, et la resynchronisation depuis le brouillon.
+//
+// Décision de l'utilisateur, et c'est la même que pour les Modèles importés (#394) : POSER SE FAIT
+// DANS L'ÉDITEUR, ET NULLE PART AILLEURS. Cette fiche décrit UN Personnage — son nom, sa couleur,
+// sa taille, sa pose appliquée ; l'Éditeur pose, enregistre, et range les poses par archétype pour
+// toutes les figures du même genre.
+//
+// ⚠️ L'HOMOGÉNÉITÉ EST LE VRAI GAIN. Trois fiches réglaient les articulations de trois façons, avec
+// trois jeux de registres et trois câblages de souris qui se recopiaient les uns les autres — le
+// commentaire d'`ajouterGroupeDeCurseurs3D` garde la trace d'un remède « recopié cassé une
+// troisième fois ». Il n'y a plus qu'un écran qui pose.
+//
+// `makeJointRangeRow` RESTE : l'Éditeur construit ses curseurs avec, et c'est le même geste.
 
 export function getPersonaPreviewCanvasCoords(e){
   const rect = personaPreview3D.getBoundingClientRect();
@@ -1835,43 +1744,10 @@ export function getPersonaPreviewCanvasCoords(e){
   return { px, py };
 }
 
-personaPreview3D.addEventListener('mousedown', (e) => {
-  if (!S.modalDraftJoints) return;
-  const { px, py } = getPersonaPreviewCanvasCoords(e);
-  const def = pickPoseHandleAt(px, py);
-  if (!def) {
-    // (per user request) Click-drag should no longer move/reframe the 3D model in the
-    // preview: a click in empty space now simply deselects the joint handle, without
-    // triggering a pan-drag anymore (cf. S.draggingPreviewPan, kept below but never
-    // armed again).
-    S.selectedPoseHandle = null;
-    closeAllJointSliders();
-    refreshPersonaPreview();
-    e.preventDefault();
-    return;
-  }
-  // Selects/highlights the clicked point or limb, without changing its pose: only the
-  // "Joint settings" sliders (cf. buildJointSlidersUI) can now change it. Also,
-  // per user request: this click auto-expands the sub-section that contains this point.
-  // Clicking the already-selected point again deselects it (closes everything) instead of reselecting it.
-  if (S.selectedPoseHandle && S.selectedPoseHandle.id === def.id) {
-    S.selectedPoseHandle = null;
-    closeAllJointSliders();
-  } else {
-    S.selectedPoseHandle = def;
-    openJointGroupForHandle(def.id);
-  }
-  refreshPersonaPreview();
-  e.preventDefault();
-});
-// "Pointer" cursor when hovering a joint handle (per user request), to signal that
-// the point is clickable/selectable, "default" everywhere else on the preview.
-personaPreview3D.addEventListener('mousemove', (e) => {
-  if (!S.modalDraftJoints) return;
-  const { px, py } = getPersonaPreviewCanvasCoords(e);
-  const def = pickPoseHandleAt(px, py);
-  personaPreview3D.style.cursor = def ? 'pointer' : 'default';
-});
+// ⚠️ LE CLIC ET LE SURVOL DES POINTS D'ARTICULATION ONT ÉTÉ RETIRÉS D'ICI (#401a), comme pour les
+// Modèles importés en #394 : poser se fait dans l'Éditeur. Cet aperçu-ci montre la pose, il ne la
+// compose plus. Le déplacement de la vue, lui, reste — c'est de la caméra, pas de la pose.
+
 window.addEventListener('mousemove', (e) => {
   if (S.draggingPreviewPan) {
     const { px, py } = getPersonaPreviewCanvasCoords(e);

@@ -2753,3 +2753,33 @@ describe('#401a : le titre dit ce que le bloc EST', () => {
       'l\'anglais ne s\'accorde plus : « 1 bones » est de retour');
   });
 });
+
+describe('#401a : l\'Éditeur construit toujours ses curseurs, lui', () => {
+  const sansDessiner = (f) => {
+    try { f(); } catch (e) {
+      if (!/createElementNS|WebGL/.test(e.message)) throw e;
+    }
+  };
+
+  test('⚠️ un HUMANOÏDE obtient des lignes de curseur complètes', () => {
+    // MUTATION ÉCHAPPÉE : le test jumeau, dans modals.test.mjs, cherchait `makeJointRangeRow(` dans
+    // le source de l'Éditeur. Un appel enfermé dans `if (0)` le satisfaisait — le panneau se serait
+    // construit VIDE, et le seul écran qui pose n'aurait plus rien à bouger.
+    //
+    // Ce que le retrait de #401a rendait justement possible : en nettoyant la fiche, on pouvait
+    // emporter la fabrique de lignes avec, sans qu'aucun test ne bronche.
+    closePersonaEditor();
+    sansDessiner(() => showPersonaEditor(null));
+    const conteneur = document.getElementById('personaEditorJointsContainer');
+    const textes = [];
+    const lire = (el) => (el.children || []).forEach(c => {
+      if (c.textContent) textes.push(c.textContent);
+      lire(c);
+    });
+    lire(conteneur);
+    assert.ok(textes.length > 20, `panneau quasi vide : ${textes.length} éléments`);
+    assert.ok(textes.filter(t => t === '0°').length >= 10,
+      'aucune valeur de curseur : les lignes sont construites sans leur contenu');
+    hidePersonaEditor();
+  });
+});

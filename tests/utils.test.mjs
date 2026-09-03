@@ -408,7 +408,7 @@ describe('poseSliderSpecs3D : combien de curseurs, et lesquels', () => {
   });
 
   test('COUVERTURE : les clés de curseurs sont toutes distinctes', () => {
-    // Les références de curseurs sont stockées dans un objet indexé par cette clé (jointSliderRefs,
+    // Les références de curseurs sont stockées dans un objet indexé par cette clé (les registres de
     // personaEditorSliderRefs) : deux clés identiques et un curseur en écrase silencieusement un
     // autre, qui cesse alors de se resynchroniser.
     const keys = POSE_HANDLES.flatMap(def => poseSliderSpecs3D(def).map(s => s.key));

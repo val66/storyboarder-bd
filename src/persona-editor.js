@@ -43,7 +43,7 @@ import { isImportedModel } from './model-store.js';
 import { drawPersonaPoseHandlesOverlay, drawPersonaPreview, pickPoseHandleAt, pickChaineAt } from './draw.js';
 import {
   makeJointRangeRow, recomputeModalDirty, refreshObjectPreview,
-  refreshPersonaPreview, syncJointSlidersFromDraft, construireCurseursDeSquelette3D,
+  refreshPersonaPreview, construireCurseursDeSquelette3D,
   selectionALOuvertureDuGroupe,
 } from './modals.js';
 import { confirmAction, setDismissedPoses, setPoseLibrary } from './io.js';
@@ -1699,8 +1699,9 @@ export function wirePersonaEditor(){
     if (res.modeleImporte) {
       refreshObjectPreview();
     } else {
+      // La fiche du Personnage n'a plus de curseurs à reconstruire (#401a) : son aperçu suffit, il
+      // est désormais le seul endroit où elle montre une pose.
       refreshPersonaPreview();
-      syncJointSlidersFromDraft();
     }
     recomputeModalDirty();
   };
