@@ -912,7 +912,14 @@ canvas{
 /* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
    suivantes se collent à elle : elles forment un groupe. */
 .persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
-.persona-editor-panel .nav-btn { width: 100%; }
+/* ⚠️ LE MÊME ÉCART VERTICAL QUE SES VOISINS (#398b). `.nav-btn` ne déclare qu'une marge BASSE — elle
+   lui vient des rangées d'actions de modale, où « Annuler » est posé sous un champ — alors que
+   `.full-btn` déclare une marge HAUTE. Dans ce panneau les deux se suivent en colonne : le bouton
+   « Tableau de correspondance » se retrouvait collé aux curseurs au-dessus de lui, seul de sa
+   colonne à n'avoir aucun air en haut.
+   Portée au PANNEAU et non à `.nav-btn` : ailleurs, ces boutons vivent côte à côte dans une rangée
+   d'actions, et une marge haute les décalerait de leur voisin orange, qui n'en a pas en bas. */
+.persona-editor-panel .nav-btn { width: 100%; margin-top: 6px; }
 /* Fix 68 — « Pose » et « Réglage fin » sont deux blocs encadrés, pas deux titres dans un flux
    continu. Le cadre est ce qui dit qu'ils sont indépendants : sans lui, la liste des poses se
    lisait comme le préambule des curseurs.

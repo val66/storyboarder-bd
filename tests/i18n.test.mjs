@@ -846,14 +846,14 @@ describe('#397 : la section « Éditeur » du menu de gauche', () => {
 
   test('le nom choisi, dans les deux langues', () => {
     assert.deepEqual(entree('personaTrigger'), { en: 'Editor', fr: 'Éditeur' });
-    assert.deepEqual(entree('openPoseEditorBtn'), { en: 'Model editor', fr: 'Éditeur de modèles' });
+    assert.deepEqual(entree('openPoseEditorBtn'), { en: 'Model editor', fr: 'Éditeur de modèle' });
   });
 
   test('et index.html porte le MÊME texte français', () => {
     // Sans quoi le libellé changerait au démarrage, le temps qu'applyI18n passe.
     assert.match(HTML, /id="personaTrigger">Éditeur /,
       'le déclencheur de section a divergé de sa table');
-    assert.match(HTML, /id="openPoseEditorBtn">Éditeur de modèles</,
+    assert.match(HTML, /id="openPoseEditorBtn">Éditeur de modèle</,
       'le bouton a divergé de sa table');
   });
 });

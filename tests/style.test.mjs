@@ -359,7 +359,7 @@ describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
     // C'est la moitié de la convention qui se voit le plus : l'orange attire l'oeil vers ce qui
     // ajoute, et le poser sur un bouton qui ne fait que refermer l'écran envoie chercher une action
     // là où il n'y en a pas. Deux boutons étaient dans ce cas, « Fermer » du Manuel et
-    // « Éditeur de modèles » du menu de gauche.
+    // « Éditeur de modèle » du menu de gauche.
     boutons
       .filter(b => /^(Annuler|Fermer|Cancel|Close)\b/i.test(b.texte))
       .forEach(b => assert.ok(!/\bfull-btn\b/.test(b.classe),
@@ -473,6 +473,23 @@ describe('#398 : la classe d\'un bouton correspond à son libellé', () => {
       assert.ok(m && !/nav-btn|edit-btn|delete-btn/.test(m[1]),
         `${id} ajoute ou valide : il doit garder le survol orange par défaut`);
     });
+  });
+
+  test('#398b : dans le panneau de l\'Éditeur, les boutons ont le MÊME écart vertical', () => {
+    // ⚠️ DEUX CLASSES, DEUX MARGES DIFFÉRENTES, ET ELLES SE SUIVENT EN COLONNE. `.nav-btn` ne
+    // déclare qu'une marge BASSE — elle lui vient des rangées d'actions de modale, où « Annuler »
+    // est posé sous un champ — alors que `.full-btn` déclare une marge HAUTE. Dans ce panneau,
+    // « Tableau de correspondance » se retrouvait donc collé aux curseurs au-dessus de lui, seul de
+    // sa colonne à n'avoir aucun air en haut.
+    const hauteFull = /margin-top:\s*6px/.test(declarationsOuNull('.full-btn'));
+    assert.ok(hauteFull, 'le bouton orange a perdu sa marge haute : la comparaison ne veut plus rien dire');
+    assert.match(declarationsOuNull('.persona-editor-panel .nav-btn'), /margin-top:\s*6px/,
+      'le bouton gris du panneau est de nouveau collé à ce qui le précède');
+    // ⚠️ ET LA PORTÉE EST LE PANNEAU, PAS LA CLASSE : ailleurs ces boutons vivent côte à côte dans
+    // une rangée d'actions, où une marge haute les décalerait de leur voisin orange, qui n'a pas de
+    // marge basse. La même correction appliquée globalement aurait désaligné toutes les modales.
+    assert.doesNotMatch(declarationsOuNull('.nav-btn'), /margin-top/,
+      'la marge haute est passée sur la classe : les rangées d\'actions vont se désaligner');
   });
 
   test('⚠️ un bouton DÉSACTIVÉ garde la même couleur, quelle que soit sa classe', () => {

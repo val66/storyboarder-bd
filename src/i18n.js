@@ -290,7 +290,7 @@ export const I18N_LEADING = [
   ['#modelTrigger', 'Models', 'Modèles'],
   ['#personaPanelHint', 'Compose a pose and save it to your library, shared by all your projects.',
    'Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.'],
-  ['#openPoseEditorBtn', 'Model editor', 'Éditeur de modèles'],
+  ['#openPoseEditorBtn', 'Model editor', 'Éditeur de modèle'],
   ['#pageMenuHeader .menu-title', 'Page', 'Planche'],
 ];
 
