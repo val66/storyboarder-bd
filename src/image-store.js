@@ -151,6 +151,48 @@ export function casePorteUneImage3D(o){
   return imageDeLaCase3D(o) !== null;
 }
 
+/**
+ * Cette Case peut-elle RECEVOIR une image ? Fonction PURE.
+ *
+ * Un seul refus, et c'est une décision de l'utilisateur : le canevas d'édition d'une Scène. Une
+ * Scène est un décor 3D réutilisable ; une image n'y a rien à faire (cf. docs/en/panel-images.md,
+ * décision 2).
+ *
+ * ⚠️ UNE CASE QUI AFFICHE UNE SCÈNE CHARGÉE N'EST PAS CONCERNÉE, et ce n'est pas un oubli : rien ne
+ * la marque dans les données. Elle contient simplement les Éléments qu'on y a recopiés, et c'est la
+ * règle générale qui s'applique — on demande confirmation avant de les supprimer.
+ *
+ * `estCanevasDeScene` est PASSÉ plutôt que lu ici : la réponse dépend de `S.editingSceneId`, un
+ * état global que cette fonction n'a pas à connaître pour rester vérifiable.
+ */
+export function caseAccepteUneImage3D(o, estCanevasDeScene){
+  return !!o && o.type === 'panel' && !estCanevasDeScene;
+}
+
+/**
+ * Ce que le menu contextuel d'une Case doit MONTRER. Fonction PURE, et c'est le point de décision
+ * unique de #403c.
+ *
+ * ⚠️ TROIS ÉCRANS POSAIENT LA MÊME QUESTION, ET C'EST EXACTEMENT AINSI QUE LE DÉFAUT DES POSES EST
+ * REVENU TROIS FOIS (cf. docs/en/archetype-poses.md). Le menu contextuel, le panneau de droite et le
+ * dessin ont tous besoin de savoir si une Case porte une image ; ils le demandent ici, ils ne le
+ * recalculent pas.
+ *
+ * `ajouter3D` couvre « Ajouter », « Charger une Scène » et « Importer un Modèle » d'un seul tenant :
+ * ces trois entrées ont exactement la même condition, et les séparer ferait diverger ce qui doit
+ * disparaître ensemble.
+ */
+export function entreesImageDuMenu3D(o, estCanevasDeScene){
+  const porte = casePorteUneImage3D(o);
+  return {
+    // RETIRÉES, pas grisées : décision de l'utilisateur. C'est la section Image du panneau de droite
+    // qui porte l'explication.
+    ajouter3D: !porte,
+    insererImage: !porte && caseAccepteUneImage3D(o, estCanevasDeScene),
+    retirerImage: porte,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Le pont, isolé derrière une indirection pour rester testable
 // ─────────────────────────────────────────────────────────────────────────────

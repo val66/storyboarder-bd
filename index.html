@@ -243,6 +243,16 @@
       <h2 id="sidePersonasTitle">Éléments</h2>
       <div id="sidePersonas" class="side-persos"></div>
     </div>
+    <!-- Section Image : elle REMPLACE Sol et Éléments, elle ne s'y ajoute pas. Une Case porte une
+         image ou de la 3D (cf. docs/en/panel-images.md), et c'est ici que l'exclusivité s'explique
+         à l'utilisateur, puisque le menu contextuel, lui, retire simplement ses entrées. -->
+    <div id="sideImageSection" class="side-section" style="display:none;">
+      <h2 id="sideImageTitle">Image</h2>
+      <div id="sideImageName" class="side-image-name"></div>
+      <p id="sideImageHint" class="side-image-hint"></p>
+      <button id="sideImageChangeBtn" type="button" class="full-btn edit-btn">Changer l'image</button>
+      <button id="sideImageDetachBtn" type="button" class="full-btn delete-btn">Retirer l'image</button>
+    </div>
     <div id="bubbleMenuHeader" class="menu-header" style="display:none;">
       <span></span>
       <span class="menu-title">Bulle</span>
@@ -447,6 +457,10 @@
        d'ouvrir un fichier, alors que « Nouvelle scène » puis cette même entrée y mènent, et par un
        geste qu'on relit. -->
   <button id="ctxImportModel"><span class="ctx-icon">📦</span> Importer un Modèle</button>
+  <!-- Insérer / Retirer : exclusives, jamais visibles ensemble (cf. openPanelContextMenu). Une Case
+       porte une image OU de la 3D, jamais les deux — cf. docs/en/panel-images.md. -->
+  <button id="ctxInsertImage"><span class="ctx-icon">🖼️</span> Insérer une image</button>
+  <button id="ctxRemoveImage"><span class="ctx-icon">🗑</span> Retirer l'image</button>
   <button id="ctxTracerTrigger" class="context-menu-submenu-trigger" style="display:none"><span><span class="ctx-icon">🛣️</span> Tracer</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxZoneTrigger" class="context-menu-submenu-trigger" style="display:none"><span><span class="ctx-icon">🌿</span> Zone</span> <span class="submenu-arrow">▶</span></button>
   <button id="ctxMesure" style="display:none"><span class="ctx-icon">📏</span> Mesure</button>

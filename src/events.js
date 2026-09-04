@@ -41,7 +41,10 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
-import { setImageCacheCallbacks } from './image-cache.js';
+import { setImageCacheCallbacks, preloadImagesFor } from './image-cache.js';
+import {
+  importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
+} from './image-store.js';
 import {
   setModelImportCallbacks, importModelIntoPanel,
 } from './model-import.js';
@@ -3791,8 +3794,16 @@ canvas.addEventListener('contextmenu', (e) => {
   // le contexte. L'import direct en Scène a été retiré : reste un seul geste, qui ne concerne
   // qu'une Case ou un canevas, jamais un Élément.
   const _surCase = hit && hit.type === 'panel';
-  document.getElementById('ctxImportModel').style.display = _surCase ? '' : 'none';
-  ctxLoadSceneTrigger.style.display = isSceneCanvas ? 'none' : '';
+  // ⚠️ UNE CASE À IMAGE PERD SES ENTRÉES 3D, ET ELLES SONT RETIRÉES, PAS GRISÉES (#403c). La
+  // décision vient d'un seul endroit, `entreesImageDuMenu3D` : le menu, le panneau de droite et le
+  // dessin posent la même question, et la reposer chacun de son côté est très exactement ce qui a
+  // fait revenir trois fois le défaut du chantier des poses.
+  const _img = entreesImageDuMenu3D(hit, isSceneCanvas);
+  ctxAddTrigger.style.display = _img.ajouter3D ? '' : 'none';
+  document.getElementById('ctxInsertImage').style.display = _img.insererImage ? '' : 'none';
+  document.getElementById('ctxRemoveImage').style.display = _img.retirerImage ? '' : 'none';
+  document.getElementById('ctxImportModel').style.display = (_surCase && _img.ajouter3D) ? '' : 'none';
+  ctxLoadSceneTrigger.style.display = (isSceneCanvas || !_img.ajouter3D) ? 'none' : '';
   document.getElementById('ctxBringForward').style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxSendBackward').style.display = isSceneCanvas ? 'none' : '';
   panelContextMenu.style.left = `${e.clientX}px`;
@@ -5159,12 +5170,22 @@ document.getElementById('ctxClearPanel').onclick = async () => {
     o.type !== 'panel' &&
     (o.homePanelId === panel.id || (o.type === 'tracé' && o.panelId === panel.id))
   ).length;
-  if (count === 0) { await alertAction(tr('This panel is already empty.', 'Cette Case est déjà vide.')); return; }
-  if (!await confirmAction(tr(
-    `Empty this panel? Its ${count} element(s) will be permanently removed.`,
-    `Vider cette Case ? Ses ${count} élément(s) seront définitivement supprimés.`
-  ))) return;
+  // ⚠️ UNE IMAGE COMPTE COMME UN CONTENU À VIDER (#403c), décision de l'utilisateur. Sans cette
+  // ligne, « Vider la Case » répondrait « déjà vide » à une Case qui affiche un dessin plein écran,
+  // ce qui est le contraire de ce qu'on voit.
+  const _image = imageDeLaCase3D(panel);
+  if (count === 0 && !_image) {
+    await alertAction(tr('This panel is already empty.', 'Cette Case est déjà vide.')); return;
+  }
+  if (!await confirmAction(count === 0
+    ? tr('Remove this panel\'s image? The file itself is not deleted.',
+      'Retirer l\'image de cette Case ? Le fichier, lui, n\'est pas supprimé.')
+    : tr(`Empty this panel? Its ${count} element(s) will be permanently removed.`,
+      `Vider cette Case ? Ses ${count} élément(s) seront définitivement supprimés.`))) return;
   snapshot();
+  // DÉTACHER, PAS EFFACER : deux Cases peuvent porter la même image, et l'une n'a pas à décider pour
+  // l'autre (cf. docs/en/panel-images.md, décision 4). Le fichier reste dans le dossier partagé.
+  if (_image) delete panel[CHAMP_IMAGE_CASE];
   if (panel.cameraMode) exitCameraMode(panel);
   pageData.objects = pageData.objects.filter(o =>
     o.type === 'panel' ||
@@ -5173,6 +5194,94 @@ document.getElementById('ctxClearPanel').onclick = async () => {
   S.selectedId = null; S.selectedRoomId = null;
   drawCurrentPage();
 };
+/**
+ * Poser une image sur une Case : le geste complet, depuis le menu contextuel comme depuis le bouton
+ * « Changer l'image » du panneau de droite.
+ *
+ * ⚠️ LA CONFIRMATION VIENT AVANT LE SÉLECTEUR DE FICHIER, et l'ordre est la décision. Choisir une
+ * image puis apprendre qu'elle supprimera huit Éléments serait une question posée trop tard : on
+ * demande d'abord ce qu'on détruit, on ouvre le sélecteur ensuite.
+ *
+ * ⚠️ ET LA SUPPRESSION DES ÉLÉMENTS REPREND LE FILTRE DE « Vider la Case », `homePanelId` ET
+ * `panelId` : les tracés et les pièces appartiennent à une Case par le second, et un balayage écrit
+ * à part raterait les routes et les murs (cf. docs/en/panel-images.md).
+ */
+async function _poserImageSurCase(panel, { remplace } = {}){
+  if (!panel) return;
+  const pageData = currentPageData();
+  const aSupprimer = pageData.objects.filter(o =>
+    o.type !== 'panel' &&
+    (o.homePanelId === panel.id || (o.type === 'tracé' && o.panelId === panel.id))
+  );
+  if (aSupprimer.length && !await confirmAction(tr(
+    `This panel holds ${aSupprimer.length} element(s). Inserting an image removes them permanently. Continue?`,
+    `Cette Case contient ${aSupprimer.length} Élément(s). Insérer une image les supprime définitivement. Continuer ?`
+  ))) return;
+
+  const r = await importImage();
+  if (!r || r.canceled) return;
+  if (!r.ok) {
+    await alertAction(tr(`Could not insert the image: ${r.error || 'unknown error'}`,
+      `Impossible d'insérer l'image : ${r.error || 'erreur inconnue'}`));
+    return;
+  }
+  snapshot();
+  if (aSupprimer.length) {
+    if (panel.cameraMode) exitCameraMode(panel);
+    const àRetirer = new Set(aSupprimer.map(o => o.id));
+    pageData.objects = pageData.objects.filter(o => !àRetirer.has(o.id));
+  }
+  panel[CHAMP_IMAGE_CASE] = r.name;
+  // Le décodage est asynchrone : sans ce lancement, la Case afficherait son signalement jusqu'au
+  // prochain geste. L'arrivée redéclenche un rendu (cf. setImageCacheCallbacks).
+  preloadImagesFor([panel]);
+  S.selectedId = panel.id; S.selectedRoomId = null;
+  S.projectDirty = true;
+  renderAll();
+  if (remplace) return;
+}
+
+document.getElementById('ctxInsertImage').onclick = async () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  hideContextMenu();
+  await _poserImageSurCase(panel);
+};
+
+/**
+ * Retirer l'image d'une Case : on DÉTACHE, on n'efface pas.
+ *
+ * Deux Cases peuvent porter la même image ; effacer le fichier pour l'une casserait l'autre.
+ * Supprimer du disque est un geste distinct, dans la section Images du menu de gauche (#403d), avec
+ * son propre décompte et sa propre confirmation.
+ */
+async function _retirerImageDeLaCase(panel){
+  if (!panel || !casePorteUneImage3D(panel)) return;
+  if (!await confirmAction(tr('Remove this panel\'s image? The file itself is not deleted.',
+    'Retirer l\'image de cette Case ? Le fichier, lui, n\'est pas supprimé.'))) return;
+  snapshot();
+  delete panel[CHAMP_IMAGE_CASE];
+  S.projectDirty = true;
+  renderAll();
+}
+
+document.getElementById('ctxRemoveImage').onclick = async () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  hideContextMenu();
+  await _retirerImageDeLaCase(panel);
+};
+
+// Les deux boutons de la section Image du panneau de droite : les MÊMES gestes que le menu
+// contextuel, pas une seconde écriture. Deux chemins vers un même acte finissent par ne plus faire
+// la même chose, et c'est la panne la plus fréquente de ce dépôt.
+document.getElementById('sideImageChangeBtn').onclick = async () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  await _poserImageSurCase(panel, { remplace: true });
+};
+document.getElementById('sideImageDetachBtn').onclick = async () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  await _retirerImageDeLaCase(panel);
+};
+
 // Toggles "Camera mode" for the Panel targeted by the right-click (cf. canvas.contextmenu above,
 // which already set S.selectedId = hit.id): now the only condition for displaying the X/Y/Z 3D
 // gizmo (cf. drawPanelAxisGizmo), replacing the old systematic display on all Panels.

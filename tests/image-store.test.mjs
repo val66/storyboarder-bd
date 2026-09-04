@@ -21,6 +21,7 @@ import {
   EXTENSIONS_IMAGE_3D, sanitizeImageName, resolveImageName,
   CHAMP_IMAGE_CASE, imageDeLaCase3D, casePorteUneImage3D,
   setImageBridge, listImages, importImage, readImage, renameImage, deleteImage,
+  caseAccepteUneImage3D, entreesImageDuMenu3D,
 } from '../src/image-store.js';
 import {
   imageState, getLoadedImage, collectImageFiles, preloadImages, _setImageCacheEntry,
@@ -460,5 +461,146 @@ describe('#403b : le câblage, épinglé sur la source faute de pouvoir l\'exéc
     const events = lire('src/events.js');
     assert.match(events, /setImageCacheCallbacks\(\{\s*onChange/,
       'plus personne ne redessine quand une image finit d\'arriver');
+  });
+});
+
+describe('#403c : ce qu\'une Case accepte, et ce que son menu montre', () => {
+  // Fonctions PURES, donc entièrement vérifiables : c'est tout l'intérêt d'avoir sorti la décision
+  // des trois écrans qui la posent.
+
+  test('le canevas d\'édition d\'une Scène refuse l\'image', () => {
+    // Une Scène est un décor 3D réutilisable. Décision de l'utilisateur, et la seule interdiction
+    // de la fonctionnalité.
+    assert.equal(caseAccepteUneImage3D({ type: 'panel' }, false), true);
+    assert.equal(caseAccepteUneImage3D({ type: 'panel' }, true), false);
+  });
+
+  test('⚠️ une Case qui AFFICHE une Scène chargée, elle, accepte', () => {
+    // Et ce n'est pas un oubli : rien ne la marque dans les données. Elle contient les Éléments
+    // qu'on y a recopiés, et c'est la règle générale qui joue — on demande confirmation avant de les
+    // supprimer. `isLockedScenePanel` ne désigne QUE le canevas d'édition.
+    assert.equal(caseAccepteUneImage3D({ type: 'panel', id: 'p1' }, false), true);
+  });
+
+  test('seule une Case accepte une image', () => {
+    assert.equal(caseAccepteUneImage3D({ type: 'bulle' }, false), false);
+    assert.equal(caseAccepteUneImage3D({ type: 'objet3d' }, false), false);
+    assert.equal(caseAccepteUneImage3D(null, false), false);
+  });
+
+  test('une Case SANS image : on peut ajouter de la 3D, ou insérer une image', () => {
+    const m = entreesImageDuMenu3D({ type: 'panel' }, false);
+    assert.deepEqual(m, { ajouter3D: true, insererImage: true, retirerImage: false });
+  });
+
+  test('une Case AVEC image : les trois entrées 3D disparaissent', () => {
+    // RETIRÉES, pas grisées : décision de l'utilisateur. `ajouter3D` couvre « Ajouter », « Charger
+    // une Scène » et « Importer un Modèle » d'un seul tenant — elles ont la même condition, et les
+    // séparer ferait diverger ce qui doit disparaître ensemble.
+    const m = entreesImageDuMenu3D({ type: 'panel', imageFile: 'a.png' }, false);
+    assert.deepEqual(m, { ajouter3D: false, insererImage: false, retirerImage: true });
+  });
+
+  test('sur le canevas d\'une Scène : la 3D reste, l\'image n\'apparaît jamais', () => {
+    const m = entreesImageDuMenu3D({ type: 'panel' }, true);
+    assert.deepEqual(m, { ajouter3D: true, insererImage: false, retirerImage: false });
+  });
+
+  test('RÉGRESSION : insérer et retirer ne sont JAMAIS proposées ensemble', () => {
+    // Les deux entrées vivent côte à côte dans le menu : si les conditions dérivaient, on
+    // proposerait d'insérer une image à une Case qui en porte déjà une, et de retirer celle d'une
+    // Case qui n'en a pas.
+    [[{ type: 'panel' }, false], [{ type: 'panel' }, true],
+      [{ type: 'panel', imageFile: 'a.png' }, false], [{ type: 'panel', imageFile: 'a.png' }, true],
+      [{ type: 'bulle' }, false]].forEach(([o, scene]) => {
+      const m = entreesImageDuMenu3D(o, scene);
+      assert.ok(!(m.insererImage && m.retirerImage), JSON.stringify({ o, scene }));
+    });
+  });
+});
+
+describe('#403c : le câblage des trois écrans, épinglé sur la source', () => {
+  const EVENTS = sourceSansCommentaires(readFileSync(join(RACINE, 'src/events.js'), 'utf8'));
+  const SIDEBAR = sourceSansCommentaires(readFileSync(join(RACINE, 'src/sidebar.js'), 'utf8'));
+
+  test('le menu contextuel lit la décision, il ne la refait pas', () => {
+    // ⚠️ C'EST LA LEÇON DU CHANTIER DES POSES, appliquée avant le défaut plutôt qu'après : trois
+    // écrans posaient la même question, et chacun a fini par y répondre différemment.
+    assert.match(EVENTS, /entreesImageDuMenu3D\(hit, isSceneCanvas\)/,
+      'le menu recalcule ce qu\'une Case accepte au lieu de le demander');
+
+    // ⚠️ MA PREMIÈRE VERSION CHERCHAIT LES NOMS DANS LE FICHIER, et deux mutations lui ont échappé :
+    // retirer la ligne qui masque « Ajouter », et rendre « Importer un Modèle » à sa condition
+    // d'avant. Les identifiants restaient présents ailleurs — déclaration, écouteurs — donc le test
+    // restait vert pendant qu'une Case à image proposait d'y ajouter de la 3D.
+    //
+    // CE QUI SE VÉRIFIE EST QUE LA DÉCISION GOUVERNE L'AFFICHAGE, ligne par ligne.
+    const affichage = (id) => {
+      const i = EVENTS.indexOf(`${id}.style.display =`);
+      assert.ok(i > 0, `${id} ne pilote plus son affichage`);
+      return EVENTS.slice(i, EVENTS.indexOf(';', i));
+    };
+    assert.match(affichage('ctxAddTrigger'), /_img\.ajouter3D/,
+      '« Ajouter » reste proposé sur une Case qui porte une image');
+    assert.match(affichage("getElementById('ctxImportModel')"), /_img\.ajouter3D/,
+      '« Importer un Modèle » reste proposé sur une Case qui porte une image');
+    assert.match(affichage('ctxLoadSceneTrigger'), /_img\.ajouter3D/,
+      '« Charger une Scène » reste proposé sur une Case qui porte une image');
+    assert.match(affichage("getElementById('ctxInsertImage')"), /_img\.insererImage/);
+    assert.match(affichage("getElementById('ctxRemoveImage')"), /_img\.retirerImage/);
+  });
+
+  test('insérer une image DEMANDE avant de supprimer, et demande AVANT le sélecteur', () => {
+    // L'ordre est la décision : choisir une image puis apprendre qu'elle supprimera huit Éléments
+    // serait une question posée trop tard.
+    const i = EVENTS.indexOf('async function _poserImageSurCase');
+    assert.ok(i > 0, 'le geste d\'insertion a disparu');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
+    assert.ok(corps.indexOf('confirmAction') < corps.indexOf('importImage()'),
+      'le sélecteur de fichier s\'ouvre avant la confirmation');
+    // ⚠️ ET LA CONFIRMATION DOIT GOUVERNER, pas seulement précéder : une mutation qui remplaçait sa
+    // condition par `false` laissait l'ordre intact et supprimait les Éléments sans rien demander.
+    // C'est la garde elle-même qui est épinglée, parce que c'est elle qui protège du travail perdu.
+    assert.match(corps, /aSupprimer\.length && !await confirmAction/,
+      'les Éléments sont supprimés sans confirmation');
+    assert.match(corps, /homePanelId === panel\.id \|\| \(o\.type === 'tracé' && o\.panelId === panel\.id\)/,
+      'les tracés et les pièces échappent au balayage : les routes et les murs resteraient');
+  });
+
+  test('retirer l\'image DÉTACHE, et ne touche à aucun fichier', () => {
+    // Deux Cases peuvent porter la même image : effacer pour l'une casserait l'autre. Supprimer du
+    // disque est un geste distinct, dans la section Images (#403d).
+    const i = EVENTS.indexOf('async function _retirerImageDeLaCase');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
+    assert.match(corps, /delete panel\[CHAMP_IMAGE_CASE\]/, 'le détachement a disparu');
+    assert.ok(!/deleteImage|deleteImageFile/.test(corps),
+      'le détachement efface le fichier : une autre Case qui le porte se retrouverait vide');
+  });
+
+  test('les deux chemins vers un même geste sont le MÊME code', () => {
+    // Le menu contextuel et le bouton du panneau de droite font la même chose. Deux écritures
+    // finiraient par ne plus faire la même — la panne la plus fréquente de ce dépôt.
+    ['_poserImageSurCase', '_retirerImageDeLaCase'].forEach(fn => {
+      const appels = (EVENTS.match(new RegExp(fn + '\\(', 'g')) || []).length;
+      assert.ok(appels >= 3, `${fn} : ${appels} occurrence(s), la définition plus deux appels attendus`);
+    });
+  });
+
+  test('« Vider la Case » détache l\'image, et le dit', () => {
+    const i = EVENTS.indexOf("getElementById('ctxClearPanel')");
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n};', i));
+    assert.match(corps, /imageDeLaCase3D\(panel\)/, 'l\'image n\'est plus comptée comme un contenu');
+    assert.match(corps, /delete panel\[CHAMP_IMAGE_CASE\]/, 'l\'image n\'est plus détachée');
+  });
+
+  test('le panneau de droite REMPLACE Sol et Éléments par Image', () => {
+    // Ces deux sections règlent un décor 3D que cette Case n'a pas : les laisser proposerait des
+    // réglages sans effet, ce qui est pire que de ne rien proposer.
+    const i = SIDEBAR.indexOf('casePorteUneImage3D(sel)');
+    assert.ok(i > 0, 'le panneau de droite ne distingue plus une Case à image');
+    const corps = SIDEBAR.slice(i, i + 500);
+    assert.match(corps, /sideImageSection\.style\.display = 'block'/);
+    assert.match(corps, /sideGroundSection\.style\.display = 'none'/, 'la section Sol reste affichée');
+    assert.match(corps, /sidePersonasSection\.style\.display = 'none'/, 'la section Éléments reste affichée');
   });
 });

@@ -70,6 +70,14 @@ export const I18N_TEXT = [
   ['#sideBorderWidthSelect option[value="3.5"]', 'Thick (3.5px)', 'Épaisse (3.5px)'],
   ['label[for="sideBorderColorInput"]', 'Border color', 'Couleur de la bordure'],
   ['#sidePersonasTitle', 'Elements', 'Éléments'],
+  ['#sideImageTitle', 'Image', 'Image'],
+  // ⚠️ CE LIBELLÉ PORTE L'EXPLICATION QUE LE MENU CONTEXTUEL NE DONNE PAS. Là-bas, « Ajouter »,
+  // « Charger une Scène » et « Importer un Modèle » sont RETIRÉS quand la Case porte une image :
+  // rien n'y dit pourquoi. C'est ici que l'exclusivité se lit (cf. docs/en/panel-images.md).
+  ['#sideImageHint', 'This panel shows an image: it holds no 3D Element.',
+    'Cette Case affiche une image : elle ne contient aucun Élément 3D.'],
+  ['#sideImageChangeBtn', 'Change the image', 'Changer l\'image'],
+  ['#sideImageDetachBtn', 'Remove the image', 'Retirer l\'image'],
   // Bulle menu
   ['#bubbleMenuHeader .menu-close-btn', null, null, 'title', 'Close', 'Fermer'],
   ['#sideBubbleAppearanceTitle', 'Bubble appearance', 'Apparence de la Bulle'],
@@ -116,6 +124,8 @@ export const I18N_TRAILING = [
   //    entrées vivent ici et non dans I18N_TEXT : `textContent` effacerait l'icône avec le texte.
   //    Ajoutées après constat que 49 boutons sur 123 restaient en français en mode anglais.
   ['#ctxImportModel', 'Import a model', 'Importer un Modèle'],
+  ['#ctxInsertImage', 'Insert an image', 'Insérer une image'],
+  ['#ctxRemoveImage', 'Remove the image', 'Retirer l\'image'],
   ['#ctxMesure', 'Measure', 'Mesure'],
   ['#ctxSkeletonMap', 'Skeleton mapping…', 'Correspondance du squelette…'],
   ['#ctxRenameModel', 'Rename the file…', 'Renommer le fichier…'],

@@ -59,6 +59,8 @@ export const HELP_MANUAL_EN = [
     'Drag a corner to give it an oblique shape, or a side to move it while keeping it straight (automatic right-angle snapping).',
     'Right-click a panel → "Bring forward"/"Send backward" to change its stacking order relative to the other panels on the page: when panels overlap, the one in front is drawn on top of the others. Its rank is shown in the "Stacking order" section on the right when several panels are present.',
     'Clicking outside the page canvas (in an empty area with no panel or bubble) deselects the active panel.',
+    'Right-click a panel → "Insert an image" to place a drawing or a photo there instead of the 3D scene. A panel cannot have both: its Elements are removed, after confirmation.',
+    'The Image section on the right names the file, changes it or removes it. Removing DETACHES the image from the panel; the file itself, shared by all your projects, is not deleted.',
   ]},
   { id: 'scenes', title: 'Scenes', paragraphs: [
     'Scenes let you compose a reusable 3D set (Walls, Furniture, Characters, Roads, Buildings…) and load it into any Panel of a page.',
@@ -188,6 +190,8 @@ export const HELP_MANUAL_FR = [
     "Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).",
     "Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.",
     "Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.",
+    "Clic droit sur une Case → « Insérer une image » pour y placer un dessin ou une photo à la place de la scène 3D. Une Case ne peut pas avoir les deux : ses Éléments sont supprimés, après confirmation.",
+    "La section Image, à droite, nomme le fichier, le change ou le retire. Retirer DÉTACHE l'image de la Case ; le fichier, partagé par tous vos Projets, n'est pas supprimé.",
   ]},
   { id: 'scenes', title: 'Scènes', paragraphs: [
     'Les Scènes permettent de composer un décor 3D réutilisable (Murs, Mobilier, Personnages, Routes, Bâtiments…) et de le charger dans n\'importe quelle Case d\'une Planche.',

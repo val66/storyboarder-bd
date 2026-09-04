@@ -64,8 +64,8 @@ const EN_ATTENTE = {
   // quand #403d sera close, c'est que la fonctionnalité a été livrée à moitié.
   //
   // #403b en a remboursé deux : `casePorteUneImage3D` décide du dessin et `readImage` alimente le
-  // cache. Il en reste trois, et elles portent le nom de la tâche qui les appellera.
-  importImage: '#403c',
+  // cache. #403c en rembourse une troisième, `importImage`, branchée sur le menu contextuel et sur
+  // le bouton « Changer l'image ». Il en reste deux, toutes deux pour la section Images.
   renameImage: '#403d',
   deleteImage: '#403d',
 };
@@ -115,11 +115,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, et trois depuis que
-    // #403b en a branché deux. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de
-    // secours devient le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce
-    // qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 3,
+    // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
+    // après #403c. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de secours
+    // devient le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce qui est
+    // exactement l'état dont ce fichier est né.
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

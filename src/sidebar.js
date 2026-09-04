@@ -14,6 +14,7 @@
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
+import { casePorteUneImage3D, imageDeLaCase3D } from './image-store.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -74,6 +75,8 @@ const sideBubbleStackSection = document.getElementById('sideBubbleStackSection')
 const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
 const sidePersonasSection = document.getElementById('sidePersonasSection');
+const sideImageSection = document.getElementById('sideImageSection');
+const sideImageName = document.getElementById('sideImageName');
 const sideBubbleAppearanceSection = document.getElementById('sideBubbleAppearanceSection');
 const sideBubbleBorderSection   = document.getElementById('sideBubbleBorderSection');
 const sideDescSection = document.getElementById('sideDescSection');
@@ -837,6 +840,19 @@ function updateSidePanelImpl(){
       sideBorderWidthWrap.style.display = sideBorderToggle.checked ? 'block' : 'none';
       sideBorderSection.style.display = 'block';
     }
+    // ⚠️ UNE CASE À IMAGE REMPLACE Sol ET Éléments PAR Image, elle ne les complète pas (#403c).
+    // Ces deux sections règlent un décor 3D que cette Case n'a pas : les laisser proposerait des
+    // réglages sans effet, ce qui est pire que de ne rien proposer.
+    if (casePorteUneImage3D(sel)) {
+      sideImageName.textContent = imageDeLaCase3D(sel);
+      sideImageSection.style.display = 'block';
+      sideGroundSection.style.display = 'none';
+      sidePersonasSection.style.display = 'none';
+      sideBubbleAppearanceSection.style.display = 'none';
+      sideBubbleBorderSection.style.display = 'none';
+      return;
+    }
+    sideImageSection.style.display = 'none';
     // Ground section : floor plan texture type for this Panel/Scene
     {
       const currentGroundType = sel.groundType || 'herbe';

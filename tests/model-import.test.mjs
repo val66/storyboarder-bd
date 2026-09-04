@@ -441,9 +441,16 @@ describe('Le câblage de l\'import', () => {
     // C'était la raison d'être des deux entrées : « comme Scène » n'a pas de sens dans une Scène.
     // Une fois cette option retirée, la distinction n'a plus lieu d'être, et la conserver aurait
     // laissé deux chemins à tenir d'accord pour un seul geste.
+    // ⚠️ CE TEST ÉPINGLAIT L'EXPRESSION EXACTE, `_surCase ? '' : 'none'`, et #403c a dû la changer :
+    // une Case qui porte une image perd ses entrées 3D. La règle qu'il protège, elle, n'a pas
+    // bougé — l'affichage ne doit pas distinguer une Scène d'une Case — et c'est elle qui est
+    // vérifiée maintenant, plutôt que la façon de l'écrire.
     const bloc = EVENTS.slice(EVENTS.indexOf("ctxImportModel').style.display"));
-    assert.match(bloc.slice(0, 200), /_surCase \? '' : 'none'/,
-      'l\'affichage doit dépendre de la seule Case visée, plus du contexte Scène');
+    const expression = bloc.slice(0, bloc.indexOf(';'));
+    assert.match(expression, /_surCase/,
+      'l\'affichage doit dépendre de la Case visée');
+    assert.ok(!/isSceneCanvas|isLockedScenePanel/.test(expression),
+      'la distinction Scène / Case est revenue : c\'est elle qui justifiait deux entrées');
   });
 
   test('RÉGRESSION : la Case visée est lue AVANT de masquer le menu', () => {
