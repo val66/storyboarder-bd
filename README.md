@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.1**
+**Version 1.5.2**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -46,61 +46,24 @@
 
 ### Imported 3D models
 
-- 📦 **glTF import** (`.glb` / `.gltf`): your models from Blender, Maya or anywhere else, at their
-  real size
-- **Right-click → Import a model**: the same entry in a panel and in a Scene. To make a reusable
-  set out of a file, import it into a Scene
-- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them:
+- 📦 **glTF import** (`.glb` / `.gltf`) at real size, by **right-click → Import a model**, in a panel
+  or in a Scene. Importing into a Scene makes a reusable set out of the file
+- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them,
   by Scenes, in panels, or unused. One click takes you to where a model is used
-- **Renaming or deleting a file** from that section: renaming carries the open project's Elements,
-  its undo history and the skeleton mapping along with it. Opening another project that still refers
-  to the old name offers to update it
-- 🦴 **Articulated models**: a file carrying bones poses like a character, in the editor, with
-  sliders per joint and clickable points in ITS own view, which takes the central area. Its card only
-  applies a pose: what belongs to the FILE — the joints, the mapping screen, the pose library — lives
-  in the editor, because it holds for every Element wearing that file, in every project
-- **Proposed morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or
-  serpentine, from the skeleton's shape and its bone names. Correctable from a dropdown; only
-  serpentine, radial and arachnid are certain, the others carry "to confirm", which blocks nothing
-- **Every joint, whatever the morphology**: a humanoid shows its eighteen slots THEN its other
-  chains — fingers, twists, ponytail — just as a creature shows its own. Measured, the bones it
-  could not move before: from 12 on a Mixamo rig to 439 on an Unreal one
-- **One screen for every morphology**: the mapping table lists limbs and roles whatever the model.
-  A humanoid has eighteen, a quadruped thirteen, a centaur seventeen, and the layout does not change
-- **What is certain folds away**: a limb recognised by its bone names stays closed, an uncertain one
-  opens. You see what needs a decision without scanning the rest
-- **Extra limbs are not lost**: a cerberus's two supernumerary heads fall under "Chains with no
-  role". They keep their sliders and enter no pose
-- **A setup carries over between files**: when a model you have already set up has the SAME
-  skeleton, a banner offers to take its mapping, morphology included. The second cerberus no longer
-  redoes the first one's work; the rows taken this way carry a "taken" badge, and nothing is written
-  before "Save"
-- **A creature is posed through its chains**: as soon as the morphology is not "humanoid", the
-  sliders and the preview points come from the ticked chains, under the names you gave them, instead
-  of the eighteen humanoid slots
-- **A creature opens in the Model editor**, with its own joints: every figure is posed there in
-  its own language. A humanoid speaks the body's, which transposes from rig to rig; a spider has
-  none, and is posed through its chains. It gets its own clickable points too, one per drivable
-  bone: click one to unfold its sliders, drag it to turn the bone. The guide follows the bone's
-  real axis and the segment it drags, both measured on the file
-- **The archetype's joints first**: a creature can carry over a hundred drivable bones, so only the
-  ones its archetype names are shown — head, neck, top of each leg, tail: 13 out of 45 on a
-  cerberus, 17 out of 103 on a spider. They are also the portable part of a pose, and have their own
-  colour. A file whose archetype names none keeps all its points
-- **Hovering shows a chain**: pass the mouse over a limb on the preview, or over its title in the
-  right-hand menu, and that chain lights up with all its points, the paler ones included. Hovering
-  only shows; clicking a point is what opens its sliders
-- **Creating a pose**: in the editor, and nowhere else. Set the sliders, name it, and "Save" adds
-  it to its archetype's library. The card applies poses, it does not make them
-- **Poses are filed by archetype**: a quadruped is only offered quadruped poses. A humanoid pose is
-  TRANSPOSED onto the file, whatever axis convention it uses; a creature pose applies as is, its keys
-  already being the skeleton's own. Applied to another model of the same archetype, it says what did
-  not land
-- **Changing figure**: an articulated Element can wear another imported file and keep its pose
+- **Rename or delete a file** from that section. A rename follows the open project; another project
+  still naming the old file offers to update itself when you open it
+- 🦴 **An articulated file is posed in the [Model editor](#model-editor)**, like a character
+- **Morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or serpentine.
+  Proposed on import, correctable from a dropdown, and marked "to confirm" when the proposal is a
+  guess
+- **Mapping screen**: says which bone plays which role, and lets you correct it. Opened from the
+  editor, or by right-clicking a model in the left-hand menu
+- **Reuse a setup**: on a model whose skeleton you have already mapped, a banner offers to take that
+  mapping over, morphology included
+- **Poses are filed by archetype**: a quadruped is only offered quadruped poses
+- **Change figure**: an articulated Element can wear another imported file and keep its pose
 - **Detached parts**: meshes a file places outside the body are hidden, and brought back with a
   checkbox. The file on disk is never modified
-- 🎥 **Automatic framing**: the first Element dropped into an empty panel sets its camera distance
-  from its own size
 
 > **Not covered yet:** a file holding several objects is imported as a single Element; a straight
 > limb at rest defines no bending plane, so nothing says which way such an elbow should fold.
@@ -118,6 +81,8 @@ Page or a Scene leaves the editor.
 - **A slider per field** for exact values, the wheel switching between them
 - **Right-drag to orbit**, wheel to zoom; the figure is always shown facing front
 - **Choose the figure** you pose on: the built-in character, or any recognised imported model
+- **Hover a limb**, on the figure or on its title in the right-hand panel, to light up its whole
+  chain; clicking a point is what opens its sliders
 - **Pose library shared across every project**: apply, save, rename, delete, built-in poses
   included and restorable from Settings. Save stays greyed out until a joint is turned: a pose that
   does nothing would be offered like any other, and would only be found out when applied

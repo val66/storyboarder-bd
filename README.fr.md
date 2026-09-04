@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.1**
+**Version 1.5.2**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -48,65 +48,27 @@
 
 ### Modèles 3D importés
 
-- 📦 **Import glTF** (`.glb` / `.gltf`) : vos modèles Blender, Maya ou autres, à leur taille réelle
-- **Clic droit → Importer un Modèle** : la même entrée dans une Case et dans une Scène. Pour faire
-  d'un fichier un décor réutilisable, importez-le dans une Scène
+- 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, par **clic droit → Importer un
+  Modèle**, dans une Case comme dans une Scène. Importé dans une Scène, le fichier devient un décor
+  réutilisable
 - 🗂️ **Section Modèles** du menu de gauche : vos fichiers groupés selon l'usage qu'en fait le Projet
-  ouvert : par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
-- **Renommer ou supprimer un fichier** depuis cette section : le renommage entraîne avec lui les
-  Éléments du Projet ouvert, son historique d'annulation et la correspondance de squelette. Ouvrir
-  un autre Projet qui cite encore l'ancien nom propose de le mettre à jour
-- 🦴 **Modèles articulés** : un fichier porteur d'os se pose comme un Personnage, dans l'Éditeur, avec
-  des curseurs par articulation et des points cliquables sur SA vue à lui, qui occupe la zone
-  centrale. Sa fiche ne fait qu'appliquer une pose : ce qui appartient au FICHIER — les articulations, l'écran de correspondance, la
-  bibliothèque de poses — vit dans l'Éditeur, parce que cela vaut pour tous les Éléments qui portent
-  ce fichier, dans tous les Projets
-- **Morphologie proposée** : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial ou
-  serpentin, d'après la forme du squelette et le nom des os. Corrigible d'une liste déroulante ;
-  seuls serpentin, radial et arachnide sont sûrs, les autres portent « à confirmer », qui ne bloque
-  rien
-- **Toutes les articulations, quelle que soit la morphologie** : un humanoïde montre ses dix-huit
-  emplacements PUIS ses autres chaînes — doigts, torsions, queue de cheval — comme une créature
-  montre les siennes. Mesuré, les os qu'il ne pouvait pas bouger avant : de 12 sur un rig Mixamo à
-  439 sur un rig Unreal
-- **Un seul écran pour toutes les morphologies** : le tableau de correspondance liste des membres
-  et des rôles, quel que soit le modèle. Un humanoïde en a dix-huit, un quadrupède treize, un
-  centaure dix-sept, et la présentation ne change pas
-- **Ce qui est sûr se replie** : un membre reconnu par le nom de ses os reste fermé, un membre
-  incertain s'ouvre. Vous voyez donc ce qui demande une décision sans parcourir le reste
-- **Les membres en trop ne sont pas perdus** : les deux têtes surnuméraires d'un cerbère tombent
-  sous « Chaînes sans rôle ». Elles gardent leurs curseurs et n'entrent dans aucune pose
-- **Un réglage se reprend d'un fichier à l'autre** : si un modèle déjà réglé porte le MÊME squelette,
-  un bandeau propose de reprendre sa correspondance, morphologie comprise. Le second cerbère ne
-  refait plus le travail du premier ; les lignes reprises portent l'étiquette « repris », et rien
-  n'est écrit avant « Enregistrer »
-- **Une créature se pose par ses chaînes** : dès que la morphologie n'est pas « humanoïde », les
-  curseurs et les points de l'aperçu viennent des chaînes cochées, avec le nom que vous leur avez
-  donné, et non des dix-huit emplacements humanoïdes
-- **Une créature s'ouvre dans l'Éditeur de modèle**, avec ses articulations à elle : chaque
-  figure s'y pose dans sa propre langue. Un humanoïde parle celle du corps, qui se transpose d'un
-  rig à l'autre ; une araignée n'en a pas, et se pose donc par ses chaînes. Elle a aussi ses points
-  cliquables, un par os pilotable : cliquez pour déplier ses curseurs, glissez pour tourner l'os.
-  Le repère suit l'axe réel de l'os et le segment qu'il entraîne, tous deux mesurés sur le fichier
-- **Les articulations de l'archétype d'abord** : une créature peut porter plus de cent os pilotables,
-  alors seuls ceux que son archétype nomme sont montrés — tête, cou, haut de chaque patte, queue :
-  13 sur 45 pour un cerbère, 17 sur 103 pour une araignée. Ce sont aussi la part portable d'une
-  pose, et ils ont leur couleur. Un fichier dont l'archétype n'en nomme aucun garde tous ses points
-- **Le survol montre une chaîne** : promenez la souris sur un membre de l'aperçu, ou sur son titre
-  dans le menu de droite, et cette chaîne s'allume avec tous ses points, les plus pâles compris. Le
-  survol montre seulement ; c'est le clic sur un point qui ouvre ses curseurs
-- **Créer une pose** : dans l'Éditeur, et nulle part ailleurs. Réglez les curseurs, nommez-la,
-  « Enregistrer » l'ajoute à la bibliothèque de son archétype. La fiche applique les poses, elle
-  n'en fabrique pas
+  ouvert, par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
+- **Renommer ou supprimer un fichier** depuis cette section. Le renommage suit le Projet ouvert ;
+  un autre Projet qui cite encore l'ancien nom propose de se mettre à jour à son ouverture
+- 🦴 **Un fichier articulé se pose dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme un
+  Personnage
+- **Morphologie** : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial ou serpentin.
+  Proposée à l'import, corrigible d'une liste déroulante, et marquée « à confirmer » quand la
+  proposition est un pari
+- **Écran de correspondance** : il dit quel os joue quel rôle, et permet de le corriger. Ouvert
+  depuis l'Éditeur, ou par un clic droit sur un modèle dans le menu de gauche
+- **Reprendre un réglage** : sur un modèle dont vous avez déjà réglé le squelette, un bandeau propose
+  de reprendre cette correspondance, morphologie comprise
 - **Les poses se rangent par archétype** : un quadrupède ne se voit proposer que des poses de
-  quadrupède. Une pose humanoïde est TRANSPOSÉE au fichier, quelle que soit sa convention d'axes ;
-  une pose de créature s'applique telle quelle, ses clés étant déjà celles du squelette. Appliquée
-  à un autre modèle du même archétype, elle dit ce qui n'a pas atterri
+  quadrupède
 - **Changer de figure** : un Élément articulé peut porter un autre fichier importé en gardant sa pose
 - **Morceaux détachés** : les maillages qu'un fichier place hors du corps sont masqués, et
   réaffichables d'une case à cocher. Le fichier sur le disque n'est jamais modifié
-- 🎥 **Cadrage automatique** : le premier Élément posé dans une Case vide y règle la distance de
-  caméra sur sa propre taille
 
 > **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément ; un
 > membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de quel côté un tel coude
@@ -126,6 +88,8 @@ Planche ou une Scène quitte l'éditeur.
 - **Un curseur par champ** pour les valeurs exactes, la molette passant de l'un à l'autre
 - **Clic droit pour orbiter**, molette pour zoomer ; la figure est toujours présentée de face
 - **Choisir la figure** sur laquelle on pose : le Personnage intégré, ou tout modèle importé reconnu
+- **Survoler un membre**, sur la figure ou sur son titre dans le panneau de droite, allume toute sa
+  chaîne ; c'est le clic sur un point qui ouvre ses curseurs
 - **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
   supprimer, poses de base comprises et restaurables depuis Configuration. « Enregistrer » reste
   éteint tant qu'aucune articulation n'est tournée : une pose qui ne fait rien se proposerait
