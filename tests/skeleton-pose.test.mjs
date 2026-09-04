@@ -42,11 +42,10 @@ import {
   estPosable, eulerDepuisQuaternion,
   PREFIXE_OS_3D, clePoseOs3D, estClePoseOs3D, nomDOsDeCle3D, groupesPosablesMembres3D, clesARecolter3D,
   rolesParOs3D, estCleDeRole3D, poigneesParDefaut3D,
-  groupesPosablesEnPlus3D, repereParChaines3D, couverturePose3D, messageDeCouverture3D,
+  groupesPosablesEnPlus3D, couverturePose3D, messageDeCouverture3D,
   poseNonVide3D, memesAngles3D,
 } from '../src/skeleton-pose.js';
 import { SLOTS, inferSkeletonMap } from '../src/skeleton-map.js';
-import { repereDuCorps } from '../src/skeleton-retarget.js';
 import { morphologieEffective3D } from '../src/skeleton-store.js';
 import { applySkeletonPose } from '../src/rig3d.js';
 
@@ -807,96 +806,19 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     cles.slice(4).forEach(e => assert.ok(estClePoseOs3D(e.cle), `clé inattendue : ${e.cle}`));
   });
 
-  test('#383a : une créature a un repère de corps, dérivé de ses chaînes', () => {
-    // Une pose n'est transposable d'un fichier à l'autre que parce qu'elle est exprimée dans le
-    // repère du CORPS : `applySkeletonPose` compose les angles sur le repos PROPRE à chaque
-    // fichier. `repereDuModeleImporte` lit bassin, tête et clavicules — une araignée n'en a aucun.
-    const attendus = ['araignee', 'cerbere', 'chien', 'dragon', 'kraken', 'oiseau', 'raptor', 'centaure'];
-    attendus.forEach(n => {
-      const r = repereParChaines3D(charger(n), [], fr);
-      assert.ok(r, `${n} : aucun repère`);
-      // `repereDuCorps` orthonormalise : on vérifie qu'on hérite bien de sa garantie plutôt que
-      // d'un repère de travers, qui déformerait chaque geste à l'aller-retour.
-      const dot = r.haut[0] * r.droite[0] + r.haut[1] * r.droite[1] + r.haut[2] * r.droite[2];
-      assert.ok(Math.abs(dot) < 1e-9, `${n} : repère non orthogonal (${dot})`);
-    });
-  });
-
-  test('#383a : VALIDATION — la règle retrouve le repère humanoïde CONNU', () => {
-    // ⚠️ LE TEST QUI COMPTE, et c'est une mutation qui l'a exigé : intervertir gauche et droite
-    // laisse un repère parfaitement orthogonal et unitaire, donc indétectable par les vérifications
-    // de forme. Tous les gestes d'une créature seraient simplement MIROIR, en silence.
-    //
-    // La seule vérification sérieuse est donc de confronter la règle des chaînes au repère
-    // humanoïde, mesuré autrement : bassin, tête et clavicules. Écarts relevés — unreal 1,9° sur
-    // le haut et 0,0° sur la droite, maison 5,0° et 0,0°, vrm 10,6° et 20,6°.
-    //
-    // ⚠️ `centaure1` EST EXCLU, et le dire vaut mieux que de l'oublier : son écart est de 56,9°,
-    // parce que sa chaîne de tronc est l'échine du CHEVAL, horizontale, quand le repère humanoïde
-    // suit le torse humain. Pour une chimère, « le tronc » n'a pas de réponse unique. Ce n'est pas
-    // un défaut de la règle, c'est une limite de la notion.
-    //
-    // ⚠️ `mixamo` ET `vroid-alt` SONT ABSENTS : leurs fixtures ne portent aucune position de repos.
-    const angle = (a, b) => Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * 180 / Math.PI;
-    ['maison', 'unreal', 'vrm'].forEach(n => {
-      const os = charger(n);
-      const parId = new Map(os.map(o => [o.id, o]));
-      const carte = inferSkeletonMap(os);
-      const pos = (s) => { const e = carte[s]; const b = e && parId.get(e.bone); return (b && b.t) || null; };
-      const connu = repereDuCorps({
-        bassin: pos('bassin'), tete: pos('tete'),
-        clavicule_g: pos('clavicule_g'), clavicule_d: pos('clavicule_d'),
-        bras_g: pos('bras_g'), bras_d: pos('bras_d'),
-      });
-      assert.ok(connu, `${n} : le repère humanoïde connu a disparu, le test ne compare plus rien`);
-      const parChaines = repereParChaines3D(os, [], fr);
-      assert.ok(parChaines, `${n} : la règle des chaînes ne donne plus de repère`);
-      // 30° : assez large pour le vrm mesuré à 20,6°, assez serré pour qu'un axe inversé (180°) ou
-      // pris de travers ne passe jamais.
-      assert.ok(angle(connu.haut, parChaines.haut) < 30, `${n} : haut à ${angle(connu.haut, parChaines.haut).toFixed(1)}°`);
-      assert.ok(angle(connu.droite, parChaines.droite) < 30, `${n} : droite à ${angle(connu.droite, parChaines.droite).toFixed(1)}° — axe inversé ?`);
-      assert.ok(angle(connu.avant, parChaines.avant) < 30, `${n} : avant à ${angle(connu.avant, parChaines.avant).toFixed(1)}°`);
-    });
-  });
-
-  test('CONTRAT : le repère du cerbère et du dragon est GELÉ (#383a)', () => {
-    // ⚠️ DEUX MUTATIONS ONT ÉCHAPPÉ À TOUT LE RESTE, et la mesure a montré qu'elles n'étaient pas
-    // anodines. La validation contre le repère humanoïde ne porte que sur des humanoïdes ; les
-    // créatures, elles, n'ont aucun repère de référence à qui se comparer.
-    //
-    //   — prendre la DERNIÈRE paire latérale au lieu de la première retourne le dragon de 177,7° :
-    //     tous ses gestes deviennent leur miroir, en silence ;
-    //   — partir du deuxième os du tronc au lieu du premier fait basculer le HAUT du cerbère de
-    //     46,6°, de l'oiseau de 35,2°, du centaure de 34,1°.
-    //
-    // Sur les humanoïdes ces mêmes changements valent 0,0° à 10,5° : ils passaient sous la
-    // tolérance de 30°, qui est juste pour ce qu'elle vérifie et aveugle à ceci.
-    //
-    // On gèle donc deux témoins. Ce test ne dit pas que ces valeurs sont BONNES — rien ne le dit,
-    // faute de vérité de référence pour une créature. Il dit qu'elles ne changent pas sans qu'on
-    // s'en aperçoive, parce qu'en changer déplace toutes les poses de créature déjà enregistrées.
-    const attendu = {
-      cerbere: { haut: [0, 0.7668, 0.6419], droite: [1, 0, 0], avant: [0, 0.6419, -0.7668] },
-      dragon: { haut: [-0.0013, -0.2299, 0.9732], droite: [-1, 0.0003, -0.0013], avant: [0, -0.9732, -0.2299] },
-    };
-    Object.entries(attendu).forEach(([n, axes]) => {
-      const r = repereParChaines3D(charger(n), [], fr);
-      assert.ok(r, `${n} : plus de repère du tout`);
-      ['haut', 'droite', 'avant'].forEach(axe => {
-        axes[axe].forEach((v, i) => assert.ok(Math.abs(r[axe][i] - v) < 5e-4,
-          `${n}.${axe}[${i}] : ${r[axe][i].toFixed(4)} au lieu de ${v}`));
-      });
-    });
-  });
-
-  test('#383a : un squelette sans tronc n\'a pas de repère, il n\'en invente pas', () => {
-    // Aucune fixture ne produit ce cas — elles ont toutes une colonne. Il reste atteignable par un
-    // fichier minuscule, et la réponse doit être « je ne sais pas » : un repère fabriqué de toutes
-    // pièces orienterait chaque geste au hasard, sans que rien ne le signale.
-    assert.equal(repereParChaines3D([], [], fr), null);
-    assert.equal(repereParChaines3D([{ id: 1, name: 'seul', t: [0, 0, 0] }], [], fr), null);
-    assert.equal(repereParChaines3D(null, null, fr), null);
-  });
+  // ---------- LES TESTS DE `repereParChaines3D` SONT PARTIS AVEC ELLE (#402c) ----------
+  //
+  // Ils étaient nombreux et bons : orthogonalité du repère, validation contre le repère humanoïde
+  // connu à moins de 30° sur trois fixtures, deux témoins gelés pour le cerbère et le dragon, un
+  // squelette sans tronc qui n'invente rien, le serpent sans repère, le bruit flottant du raptor.
+  // Ils mesuraient une fonction qui ne pouvait pas tourner dans l'application.
+  //
+  // ⚠️ VOILÀ CE QU'ILS N'ONT JAMAIS VÉRIFIÉ, ET C'EST LA LEÇON. Ils lui passaient `charger(n)`, les
+  // fixtures, qui portent la POSITION de chaque os. La liste que l'application fabrique n'en a pas :
+  // `bonesFromObject3D` ne récolte qu'identifiant, nom et enfants. Mesuré après coup, sur cinq
+  // créatures : avec les positions, un repère ; sans, `null` à chaque fois. Une suite de tests peut
+  // être riche, précise, passée au crible des mutations — et ne rien dire de ce que le code fera en
+  // vrai, parce qu'elle nourrit la fonction avec des données que personne ne lui donnera jamais.
 
   test('RÉGRESSION : une pose de créature GARDE ses rôles à la relecture (#383)', () => {
     // ⚠️ DÉFAUT SILENCIEUX TROUVÉ EN ÉCRIVANT UN AUTRE TEST, et le plus grave de la séance.
@@ -1005,27 +927,6 @@ describe('Un os n\'est récolté que sous une seule clé (#374)', () => {
     // encore décodé — et la déstructuration levait une exception au milieu d'un choix de pose.
     assert.equal(messageDeCouverture3D(null, fr), null);
     assert.equal(messageDeCouverture3D(undefined, fr), null);
-  });
-
-  test('#383a : le SERPENT n\'a pas de repère, et n\'en a pas besoin', () => {
-    // Aucun membre, donc aucune paire latérale. Ce n'est pas un échec à rattraper : l'archétype
-    // serpentin n'a AUCUN rôle, donc rien de portable à transposer d'un serpent à l'autre.
-    assert.equal(repereParChaines3D(charger('serpent'), [], fr), null);
-  });
-
-  test('RÉGRESSION : deux racines séparées par du BRUIT flottant n\'orientent rien (#383a)', () => {
-    // ⚠️ LE CAS QUI M'A COÛTÉ UNE PREMIÈRE VERSION FAUSSE. Les racines des deux pattes du raptor
-    // valent -3,47599e-16 et +3,47599e-16 : elles ne sont pas ÉGALES, mais elles ne définissent
-    // aucune direction pour autant. Un test d'égalité exacte les acceptait, `normaliser` rejetait
-    // le vecteur plus loin, et le raptor se retrouvait sans repère — alors que la paire suivante,
-    // écartée de 1,07, en donnait un parfaitement.
-    //
-    // On demande donc une DIRECTION, pas une différence, et c'est `normaliser` qui en juge.
-    const r = repereParChaines3D(charger('raptor'), [], fr);
-    assert.ok(r, 'le raptor a de nouveau perdu son repère sur du bruit flottant');
-    [r.haut, r.droite, r.avant].forEach(v => {
-      assert.ok(Math.abs(Math.hypot(...v) - 1) < 1e-9, 'un axe du repère n\'est pas unitaire');
-    });
   });
 
   test('#389 : une chaîne entièrement absorbée par les emplacements DISPARAÎT', () => {

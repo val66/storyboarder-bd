@@ -3500,6 +3500,31 @@ export function appliquerAllonge3D(groupe, nomFichier, couche){
  * chemins vers le même repère auraient fini par ne plus rendre le même. `null` couvre indistinctement
  * « pas encore décodé », « fichier introuvable » et « os du tronc non reconnus », l'appelant n'a
  * rien à faire de la nuance, il n'a de toute façon pas de repère.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UNE CRÉATURE N'EN A DÉJÀ PAS, ET C'EST `recolterOsMappes` QUI S'EN CHARGE (#402c)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `repereDuModeleImporte` lit six emplacements : bassin, tête, clavicules, bras. Sur une créature,
+ * `inferSkeletonMap` remplit ces cases avec ce qu'elle trouve — mesuré, chez un cerbère, `tete`
+ * reçoit une patte avant. Un repère bâti là-dessus ne serait pas absent, il serait FAUX.
+ *
+ * ⚠️ CE DANGER EST DÉJÀ ÉCARTÉ, ET PAS ICI : `recolterOsMappes` récolte SELON LE VOCABULAIRE
+ * (cf. clesARecolter3D). Pour une créature, elle rapporte des rôles et des noms d'os, jamais les
+ * dix-huit emplacements ; `repereDuModeleImporte` n'y trouve donc ni bassin ni tête, et rend `null`
+ * sans qu'on ait à le lui demander. Mesuré sur le dragon, le chien et le cerbère.
+ *
+ * ⚠️ J'AI AJOUTÉ ICI UN REFUS EXPLICITE, PUIS JE L'AI RETIRÉ, et la raison mérite d'être écrite.
+ * Je croyais corriger un défaut vivant : ma mesure disait que le dragon s'ouvrait à 92° de son
+ * devant. Elle appliquait `repereDuCorps` directement sur `inferSkeletonMap`, un chemin que
+ * l'application NE PREND PAS. Le garde-fou ne déclenchait donc jamais, et une mutation qui le
+ * supprimait ne faisait rougir aucun test — c'est elle qui a défait mon raisonnement.
+ *
+ * CE QUI RESTE VRAI, et qui n'est pas couvert par ce qui précède : une créature que le classement
+ * PROPOSE humanoïde — le cerbère, le raptor, l'oiseau — reçoit bien un repère bâti sur des
+ * emplacements mal attribués. Mesuré, l'écart au devant réel va de 0° à 9,6° sur le corpus, ce qui
+ * explique que personne ne l'ait jamais signalé. Corriger cela demanderait de ne plus croire la
+ * proposition, ce qui est une autre question, plus grosse, et qui n'a pas de symptôme.
  */
 export function repereDuCorpsPourFichier3D(nomFichier){
   const chargé = nomFichier ? getLoadedModel(nomFichier) : null;

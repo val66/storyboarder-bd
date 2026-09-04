@@ -30,6 +30,7 @@ import { S } from '../src/state.js';
 import { _setModelCacheEntry, clearModelCache } from '../src/model-cache.js';
 import {
   correspondancePourModele, figuresPosables, poseOsPourModeleImporte, buildPropRig3D,
+  morphologiePourModele,
   repereDuCorpsPourFichier3D, appliquerAllonge3D, squelettePourPose3D, segmentDeLOs3D,
   groupesDeCurseurs3D,
 } from '../src/rig3d.js';
@@ -3142,5 +3143,86 @@ describe('#401b4 : un Animal s\'ouvre de FACE dans l\'Éditeur', () => {
     assert.equal(S.personaEditorCamRotY, 0,
       'l\'Animal reste à l\'écran mais se retrouve vu de dos');
     closePersonaEditor();
+  });
+});
+
+describe('#402c : une créature n\'a pas de repère de corps, et c\'est la récolte qui le dit', () => {
+  /**
+   * ⚠️ CE BLOC A REMPLACÉ UNE CORRECTION QUE J'ALLAIS ÉCRIRE POUR RIEN, et la trace vaut mieux que
+   * le silence.
+   *
+   * J'avais mesuré que le repère d'un dragon, calculé sur ses emplacements humanoïdes, pointait à
+   * 92° de son devant réel — le devant étant mesuré indépendamment, par la direction queue → tête
+   * des rôles de son archétype, comme pour les Animaux intégrés (#401b4). J'en ai conclu qu'un
+   * dragon s'ouvrait de travers dans l'Éditeur, et j'ai ajouté un refus explicite.
+   *
+   * MA MESURE APPLIQUAIT `repereDuCorps` À `inferSkeletonMap`, UN CHEMIN QUE L'APPLICATION NE PREND
+   * PAS. Elle passe par `recolterOsMappes`, qui récolte SELON LE VOCABULAIRE : pour une créature,
+   * des rôles et des noms d'os, jamais les dix-huit emplacements. Le repère est donc déjà `null`,
+   * et mon garde-fou ne déclenchait jamais. C'est la mutation qui le supprimait, restée verte, qui
+   * me l'a appris.
+   *
+   * Ce qui suit épingle le mécanisme RÉEL, qui n'était couvert nulle part : c'est la récolte qui
+   * protège, et si elle se remettait à ramasser des emplacements pour une créature, un dragon
+   * s'ouvrirait bel et bien de travers.
+   */
+  const sceneDepuisFixture = (nom) => {
+    const d = JSON.parse(readFileSync(
+      new URL(`./fixtures/squelette-${nom}.json`, import.meta.url), 'utf8'));
+    const parId = new Map();
+    d.os.forEach(o => {
+      const b = new THREE.Bone();
+      b.name = o.name;
+      if (o.t) b.position.set(o.t[0], o.t[1], o.t[2]);
+      parId.set(o.i, b);
+    });
+    const enfants = new Set();
+    d.os.forEach(o => (o.children || []).forEach(c => {
+      if (parId.has(c)) { parId.get(o.i).add(parId.get(c)); enfants.add(c); }
+    }));
+    const racine = new THREE.Group();
+    d.os.forEach(o => { if (!enfants.has(o.i)) racine.add(parId.get(o.i)); });
+    racine.updateMatrixWorld(true);
+    return racine;
+  };
+
+  test('LE PRÉALABLE : les emplacements humanoïdes d\'un dragon SONT remplis', () => {
+    // ⚠️ SANS CETTE ASSERTION DE PRÉSENCE, celle d'absence qui suit ne mesurerait rien : un repère
+    // nul faute d'os ressemble exactement à un repère nul faute de les avoir récoltés. Ici les cases
+    // sont pleines — pleines de n'importe quoi — et c'est bien la récolte qui tranche.
+    clearModelCache();
+    _viderCacheCorrespondances();
+    _setModelCacheEntry('dragon.glb', { scene: sceneDepuisFixture('dragon') });
+    const carte = correspondancePourModele('dragon.glb');
+    ['bassin', 'tete'].forEach(slot => assert.ok(carte[slot] && carte[slot].name,
+      `${slot} n'est plus rempli sur un dragon : ce test ne démontre plus rien`));
+  });
+
+  test('et pourtant le dragon n\'a pas de repère : sa morphologie n\'est pas humanoïde', () => {
+    clearModelCache();
+    _viderCacheCorrespondances();
+    _setModelCacheEntry('dragon.glb', { scene: sceneDepuisFixture('dragon') });
+    assert.notEqual(morphologiePourModele('dragon.glb'), 'humanoide',
+      'préalable : le dragon doit être classé créature, sinon on teste un humanoïde');
+    assert.equal(repereDuCorpsPourFichier3D('dragon.glb'), null,
+      'un repère bâti sur des emplacements mal attribués : le dragon s\'ouvrira de travers');
+  });
+
+  test('un HUMANOÏDE, lui, garde le sien', async () => {
+    // Le contrôle qui empêche de « corriger » en cassant tout : si la récolte cessait de rapporter
+    // les emplacements, plus AUCUN modèle importé ne recevrait de pose.
+    clearModelCache();
+    _viderCacheCorrespondances();
+    _setModelCacheEntry('dragon.glb', { scene: sceneDepuisFixture('dragon') });
+    setSkeletonBridge({
+      readSkeletonMaps: async () => ({ ok: true, data: { version: 1, entrees: {
+        'dragon.glb': { os: {}, membres: [], roles: {}, morphologie: 'humanoide', valide: true },
+      } } }),
+    });
+    await lireCorrespondances();
+    assert.ok(repereDuCorpsPourFichier3D('dragon.glb'),
+      'le même squelette déclaré humanoïde n\'a plus de repère : les poses ne s\'appliquent plus');
+    setSkeletonBridge(null);
+    _viderCacheCorrespondances();
   });
 });

@@ -65,9 +65,9 @@ import { SLOTS, SLOT_GROUPS, slotLabel, lignesDeCorrespondance3D } from './skele
 // boucle. On la RELIT plutôt que de la refaire, comme l'écran de correspondance, pour qu'une pose
 // vise exactement les os que l'utilisateur y voit attribués.
 import { propositionDeRoles3D, decomposerRole3D } from './archetype-roles.js';
-// Géométrie pure, sans aucun import de son côté : aucun risque de boucle. On la RÉUTILISE plutôt
-// que d'écrire un second calcul de repère (cf. repereParChaines3D).
-import { repereDuCorps, normaliser } from './skeleton-retarget.js';
+// ⚠️ `repereDuCorps` ET `normaliser` NE SONT PLUS IMPORTÉS ICI (#402c) : leur seule utilisatrice
+// était `repereParChaines3D`, retirée plus bas. Ce fichier n'a plus de calcul de repère ; il n'en a
+// jamais eu qu'un, et c'était celui qui ne pouvait pas tourner dans l'application.
 
 /**
  * Le préfixe des clés de pose qui désignent un OS et non un emplacement (#374).
@@ -440,100 +440,27 @@ export function messageDeCouverture3D(couverture, traduire){
     `${atteintes} articulations sur ${total} appliquées : cette pose vient d'un autre squelette.`);
 }
 
-/**
- * Le repère du corps d'une CRÉATURE, dérivé de ses chaînes. Fonction PURE. Rend `null` si le
- * squelette n'a pas de quoi en donner un.
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * POURQUOI IL FAUT UN REPÈRE, ET POURQUOI CELUI DES HUMANOÏDES NE SUFFIT PAS
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * Une pose n'est transposable d'un fichier à l'autre que parce qu'elle est exprimée dans le repère
- * du CORPS et non dans les axes bruts des os : `applySkeletonPose` compose les angles enregistrés
- * sur le repos PROPRE à chaque fichier, donc les mêmes angles sur deux rigs différents donnent deux
- * gestes différents. C'est tout l'objet de `deltaPourOs` (skeleton-retarget.js).
- *
- * `repereDuModeleImporte` lit `bassin`, `tete` et les clavicules : une araignée n'en a aucun.
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * ON RÉUTILISE LA GÉOMÉTRIE, ON N'EN ÉCRIT PAS UNE SECONDE
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * Cette fonction n'est qu'un EXTRACTEUR DE POINTS : elle nomme quatre positions et laisse
- * `repereDuCorps` faire le reste, y compris l'orthonormalisation que son commentaire justifie sur
- * mesure. Recopier ce calcul aurait donné deux repères qui divergent au premier ajustement.
- *
- *   — `bassin` et `tete` : les deux bouts de la chaîne de TRONC ;
- *   — `clavicule_g` / `clavicule_d` : la première paire latérale NON DÉGÉNÉRÉE.
- *
- * ⚠️ « NON DÉGÉNÉRÉE » N'EST PAS UNE PRÉCAUTION THÉORIQUE. Mesuré sur le raptor : les racines de ses
- * deux pattes sont au MÊME POINT, à l'écart de 0,0000 — elles partent toutes deux du centre du
- * bassin. Sans avancer le long de la paire, il n'aurait aucun repère. `repereDuCorps` fait déjà
- * exactement ça à sa manière, en repliant des clavicules vers les bras.
- *
- * ⚠️ LE SENS EST « GAUCHE MOINS DROITE », comme `repereDuCorps`. Pris à l'envers, tous les gestes
- * d'une créature seraient inversés — un symptôme parfaitement muet, qu'aucun test de forme
- * n'attraperait.
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * MESURES
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * Sur les neuf créatures du corpus, HUIT donnent un repère. |cos(haut, droite)| vaut 0,000 pour
- * cinq d'entre elles, 0,014 pour le dragon, 0,069 pour l'oiseau, 0,408 pour le centaure.
- *
- * ⚠️ LE SERPENT N'EN A PAS, et c'est correct : aucun membre, donc aucune paire latérale. Il n'a par
- * ailleurs AUCUN rôle (archétype serpentin), donc rien de portable à transposer — le repère lui
- * serait inutile.
- *
- * ⚠️ VALIDATION CONTRE LE REPÈRE HUMANOÏDE CONNU, écart angulaire sur les quatre fixtures qui
- * portent des positions de repos : unreal 1,9°, maison 5,0°, vrm 10,6° — et centaure1 56,9°.
- * Ce dernier n'est pas une erreur de la règle : la chaîne de tronc d'un centaure est l'échine du
- * CHEVAL, horizontale, quand le repère humanoïde suit le torse humain, vertical. Pour une chimère,
- * « le tronc » n'a pas de réponse unique.
- *
- * ⚠️ CE QUE LA MESURE NE COUVRE PAS : `mixamo` et `vroid-alt` ne portent aucune position de repos,
- * la validation repose donc sur quatre humanoïdes et non six.
- */
-export function repereParChaines3D(os, membres, traduire){
-  const parId = new Map((os || []).filter(o => o && o.id !== undefined).map(o => [o.id, o]));
-  const position = (id) => { const b = parId.get(id); return (b && Array.isArray(b.t)) ? b.t : null; };
-  const lignes = lignesDeCorrespondance3D(os, membres, traduire);
-  if (!lignes.tronc) return null;
-
-  const seg = lignes.tronc.segments;
-  const bassin = position(seg[0]);
-  // ⚠️ PAS DE REPLI SI LE BOUT DU TRONC N'A PAS DE POSITION. Une première version remontait la
-  // chaîne jusqu'à en trouver une ; aucune fixture ne l'exigeait, et une mutation qui supprimait
-  // cette boucle n'a fait tomber aucun test. Une branche qu'on ne sait pas atteindre est une
-  // branche qu'on ne sait pas vérifier : `repereDuCorps` rend `null` sur une position manquante,
-  // et « pas de repère » est une réponse honnête, là où un repère bâti sur un autre os serait une
-  // orientation inventée.
-  const tete = position(seg[seg.length - 1]);
-
-  let gauche = null, droite = null;
-  for (const g of lignes.groupes) {
-    const G = g.membres.find(m => m.cote === 'g'), D = g.membres.find(m => m.cote === 'd');
-    if (!G || !D) continue;
-    const n = Math.min(G.segments.length, D.segments.length);
-    for (let k = 0; k < n; k++) {
-      const pg = position(G.segments[k]), pd = position(D.segments[k]);
-      if (!pg || !pd) continue;
-      // ⚠️ ON DEMANDE UNE DIRECTION, PAS UNE DIFFÉRENCE, et confondre les deux m'a coûté le raptor.
-      // Ses deux racines valent -3,47599e-16 et +3,47599e-16 : elles ne sont pas ÉGALES, mais elles
-      // ne définissent aucune direction pour autant. Un test d'égalité exacte les acceptait, puis
-      // `normaliser` rejetait le vecteur plus loin, et la créature se retrouvait sans repère.
-      //
-      // `normaliser` porte déjà ce seuil et le justifie, « deux os CONFONDUS ne définissent aucune
-      // direction » : on le lui laisse au lieu d'écrire une seconde règle à côté.
-      if (normaliser([pg[0] - pd[0], pg[1] - pd[1], pg[2] - pd[2]])) {
-        gauche = pg; droite = pd; break;
-      }
-    }
-    if (gauche) break;
-  }
-  return repereDuCorps({ bassin, tete, clavicule_g: gauche, clavicule_d: droite });
-}
+// ---------- `repereParChaines3D` A ÉTÉ RETIRÉE (#402c) ----------
+//
+// Elle donnait à une créature un repère de corps dérivé de ses CHAÎNES, là où `repereDuCorps` le
+// tire des emplacements d'un humanoïde. Écrite en #383a, validée par une mesure d'écart angulaire
+// sur quatre fixtures — unreal 1,9°, maison 5,0°, vrm 10,6° — elle n'a jamais eu d'appelant.
+//
+// ⚠️ ET ELLE NE POUVAIT PAS EN AVOIR, ce que la mesure a montré et que la lecture ne disait pas.
+// Elle lit les POSITIONS des os, `o.t`. Les fixtures en portent ; la liste que l'application
+// fabrique, elle, n'en a pas : `bonesFromObject3D` ne récolte qu'identifiant, nom et enfants.
+// Branchée telle quelle, elle rendait `null` sur les cinq créatures essayées. Elle fonctionnait
+// dans les tests et nulle part ailleurs.
+//
+// ⚠️ CE QU'ELLE DEVAIT CORRIGER L'A ÉTÉ AUTREMENT, ET POUR MOINS CHER. Le vrai défaut n'était pas
+// l'ABSENCE de repère pour une créature, c'était le repère FAUX qu'on lui fabriquait : mesuré, le
+// dragon s'ouvrait à 92° de son devant parce qu'`inferSkeletonMap` remplit `tete`, `bassin` et les
+// clavicules avec ce qu'elle trouve. `repereDuCorpsPourFichier3D` refuse désormais de rendre un
+// repère humanoïde pour une figure qui n'en est pas une, et l'azimut retombe à zéro — la valeur que
+// la règle des chaînes donnait elle aussi sur toutes les créatures du corpus, à trois degrés près
+// sur l'oiseau.
+//
+// Une intention restée en chemin, dont la destination était déjà atteinte par une autre route.
 
 /**
  * Les os d'un humanoïde qu'aucun EMPLACEMENT ne couvre, groupés comme ceux d'une créature. PURE.

@@ -46,15 +46,16 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // (#402b et #402d sont RÉSOLUES, et de deux façons opposées, ce qui était tout l'objet de cette
-  // liste. #402b : `poseNonVide3D` a retrouvé un APPELANT, c'était une garde débranchée par #393.
-  // #402d : les quatorze autres sont PARTIES, après vérification une par une.)
+  // LA LISTE EST VIDE, et les trois sorties ont pris trois chemins différents — c'était tout l'objet
+  // de ce fichier, qui refuse de confondre « sans appelant » et « à supprimer » :
   //
-  // #402c — une INTENTION restée en chemin. Elle donne à une créature un repère de corps dérivé de
-  // ses chaînes, avec une validation mesurée sur quatre fixtures, et n'a jamais été branchée. C'est
-  // la vraie réponse au repli à zéro d'`orbiteDouvertureEditeur3D` pour une créature sans
-  // emplacements humanoïdes. La brancher CHANGERAIT un comportement : c'est une décision.
-  repereParChaines3D: '#402c',
+  //   #402b — `poseNonVide3D` a retrouvé un APPELANT. C'était une garde débranchée par #393.
+  //   #402c — `repereParChaines3D` est PARTIE, et la mesure a montré qu'elle ne pouvait pas tourner
+  //           dans l'application : elle lit les positions des os, que la liste fabriquée par
+  //           `bonesFromObject3D` ne porte pas. Le défaut qu'elle devait corriger — le dragon
+  //           ouvert à 92° de son devant — l'a été autrement, en refusant un repère humanoïde à
+  //           une figure qui n'en est pas une.
+  //   #402d — les quatorze autres sont PARTIES, vérifiées une par une.
 };
 
 function exportsSansAppelant(){
@@ -102,10 +103,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle valait seize, elle vaut UN. Ajouter une ligne ici doit coûter un test rouge, sans quoi
+    // Elle valait seize, elle vaut ZÉRO. Ajouter une ligne ici doit coûter un test rouge, sans quoi
     // la sortie de secours devient le chemin normal — et une liste qui s'allonge finit par ne plus
     // se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
