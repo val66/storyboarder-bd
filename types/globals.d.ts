@@ -73,6 +73,19 @@ interface StoryboarderAPI {
   // un fichier existant, il échoue et le dit.
   renameModelFile(ancien: string, nouveau: string):
     Promise<{ ok: boolean; name?: string; error?: string }>;
+  // Images de Case. Mêmes formes de réponse que pour les modèles, et pour la même raison : ce sont
+  // les mêmes canaux, à l'extension acceptée près.
+  pickImageFile():
+    Promise<{ canceled: true } | { canceled: false; name?: string; data?: Uint8Array; error?: string }>;
+  writeImageFile(name: string, data: Uint8Array):
+    Promise<{ ok: boolean; name?: string; error?: string }>;
+  readImageFile(name: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }>;
+  listImageFiles(): Promise<string[]>;
+  // ⚠️ EFFACE LE FICHIER, ce que la section Image d'une Case ne fait JAMAIS : elle détache
+  // (cf. docs/en/panel-images.md). Deux Cases peuvent porter la même image.
+  deleteImageFile(name: string): Promise<{ ok: boolean; error?: string }>;
+  renameImageFile(ancien: string, nouveau: string):
+    Promise<{ ok: boolean; name?: string; error?: string }>;
   // Correspondances de squelette : un seul fichier partagé par tous les Projets, à côté du dossier
   // Modeles. `ok: false` couvre l'absence au premier usage comme le fichier illisible — les deux
   // se traitent pareil côté renderer, on repart d'une correspondance vide.

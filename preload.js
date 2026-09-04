@@ -26,6 +26,15 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   listModelFiles: () => ipcRenderer.invoke('models:list'),
   deleteModelFile: (name) => ipcRenderer.invoke('models:delete', name),
   renameModelFile: (ancien, nouveau) => ipcRenderer.invoke('models:rename', ancien, nouveau),
+  // Images de Case, rangées dans <dossier de Projets>/Images. Même partage des rôles que pour les
+  // modèles : le pont fait des entrées-sorties, src/image-store.js décide. Cf. la même exception
+  // documentée dans docs/en/architecture.md, règle n°1.
+  pickImageFile: () => ipcRenderer.invoke('images:pick'),
+  writeImageFile: (name, data) => ipcRenderer.invoke('images:write', name, data),
+  readImageFile: (name) => ipcRenderer.invoke('images:read', name),
+  listImageFiles: () => ipcRenderer.invoke('images:list'),
+  deleteImageFile: (name) => ipcRenderer.invoke('images:delete', name),
+  renameImageFile: (ancien, nouveau) => ipcRenderer.invoke('images:rename', ancien, nouveau),
   readSkeletonMaps: () => ipcRenderer.invoke('skeletons:read'),
   writeSkeletonMaps: (contenu) => ipcRenderer.invoke('skeletons:write', contenu),
   // Flux de confirmation avant de quitter (cf. main.js, événement 'close' intercepté + quitConfirmModal

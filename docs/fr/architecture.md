@@ -15,11 +15,15 @@ réponse est le plus souvent de la faire descendre sous forme de fichier génér
 
 `src/app.js` est un talon d'une ligne qui importe `events.js`, le vrai point d'entrée.
 
-### L'unique exception, et ce qui en fait une
+### L'exception, et ce qui en fait une
 
-Les modèles 3D importés (`models:pick`, `models:write`, `models:read`, `models:list`) sont les seuls
-canaux ouverts pour une fonctionnalité. Le raisonnement, pour que personne n'y voie un précédent
-gratuit :
+⚠️ **Cette section disait « l'unique exception » et ne nommait que les canaux des modèles. C'était
+déjà faux quand elle a été écrite** : `skeletons:read` et `skeletons:write` étaient ouverts, et
+`project:delete` est venu ensuite. #403a ajoute `images:*`. Une liste qu'il faut réécrire à chaque
+fois n'est pas une règle : ce qui suit est le **critère**, et la liste n'en est que l'état actuel.
+
+Un canal peut être ouvert pour une fonctionnalité quand les **quatre** points suivants tiennent. Le
+raisonnement, pour que personne n'y voie un précédent gratuit :
 
 - La règle interdit de mettre de la **logique** applicative dans `main.js`. Sa propre description
   range l'**accès disque** dans les attributions de ce fichier, et écrire un `.glb` est exactement
@@ -32,8 +36,13 @@ gratuit :
   `src/model-store.js` **décide** : nom retenu, collisions, messages. La décision reste testable, et
   `tests/model-store.test.mjs` garde les deux moitiés.
 
-Tout ce qui peut se décider dans `src/` reste dans `src/`. Une exception dont on se sert deux fois
-n'en est plus une.
+État actuel de la liste : `models:*` (modèles 3D importés), `images:*` (images de Case, cf.
+[panel-images.md](panel-images.md)), `skeletons:*` (le fichier de correspondances partagé) et
+`project:delete`.
+
+Tout ce qui peut se décider dans `src/` reste dans `src/`. Le critère est étroit à dessein : dès
+qu'un canal pourrait être remplacé par un fichier généré ou par une décision prise dans `src/`, il
+échoue au deuxième point et n'a rien à faire ici.
 
 ## Règle n°2 — les imports circulaires se cassent par injection de callbacks
 

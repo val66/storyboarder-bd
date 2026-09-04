@@ -20,7 +20,7 @@
 
 import { OBJECT_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D } from './constants.js';
 import { newId } from './state.js';
-import { clamp } from './utils.js';
+import { clamp, memeContenu } from './utils.js';
 
 /** Extension acceptée. `.gltf` est lisible aussi, mais il traîne ses textures en fichiers séparés. */
 const EXTENSION = '.glb';
@@ -126,12 +126,9 @@ export function resolveModelName(souhaité, existants = []){
   }
 }
 
-/** Deux contenus identiques ? Sert à ne pas recopier un modèle déjà importé sous un autre nom. */
-export function memeContenu(a, b){
-  if (!a || !b || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
-}
+// `memeContenu` A DÉMÉNAGÉ DANS utils.js (#403a) : les images en ont besoin pour la même raison que
+// les modèles, ne pas recopier un fichier déjà importé sous un autre nom. Deux copies d'une
+// comparaison d'octets, c'était deux endroits où l'un des deux magasins aurait fini par diverger.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Le pont, isolé derrière une indirection pour rester testable

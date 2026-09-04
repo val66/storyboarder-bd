@@ -358,6 +358,129 @@ ipcMain.handle('models:list', async () => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// IMAGES DE CASE
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// MÊME EXCEPTION, MÊME RÉPARTITION QUE `models:*` (cf. docs/en/architecture.md, règle n°1, et la
+// section « MODÈLES 3D IMPORTÉS » ci-dessus) : écrire un PNG est de l'accès disque, le métier
+// déclaré de ce fichier, et aucun canal existant ne sait le faire — `project:write` écrit une
+// chaîne. ICI on fait des entrées-sorties et on se défend ; c'est src/image-store.js qui DÉCIDE du
+// nom retenu, des collisions et des messages.
+//
+// Les images vivent à côté des modèles, dans le dossier de Projets choisi par l'utilisateur, et
+// pour la même raison : ce qu'il fait pour synchroniser ou sauvegarder ses Projets couvre alors ses
+// images. Un dossier SÉPARÉ de `Modeles`, et non un sous-dossier : `models:list` filtre déjà sur
+// l'extension et refuse tout le reste, y ranger des images obligerait à percer cette garde.
+function getImagesDir() {
+  return path.join(getProjectsDir(), 'Images');
+}
+
+function ensureImagesDir() {
+  try { fs.mkdirSync(getImagesDir(), { recursive: true }); } catch (err) { /* ignore */ }
+}
+
+// ⚠️ QUATRE EXTENSIONS, LÀ OÙ UN MODÈLE N'EN A QU'UNE, et c'est la seule vraie différence entre
+// cette garde et `nomDeModeleAcceptable`. Le reste est identique et le reste volontairement : un
+// process principal ne fait jamais confiance à son renderer, même quand c'est le nôtre, et un nom
+// comme « ../../../Bureau/quelque-chose » écrirait hors du dossier des images.
+//
+// GIF et SVG sont ABSENTS, et c'est une décision, pas un oubli (cf. docs/en/panel-images.md) : un
+// canevas ne joue pas l'animation d'un GIF, et un SVG ne porte aucune taille en pixels.
+function nomDImageAcceptable(name) {
+  if (typeof name !== 'string' || !name) return false;
+  if (name !== path.basename(name)) return false;      // aucun séparateur de chemin
+  if (name.startsWith('.')) return false;              // ni « .. », ni fichier caché
+  return /\.(png|jpe?g|webp)$/i.test(name);
+}
+
+// Choisit une image et rend son contenu SANS l'écrire, comme `models:pick` : c'est le renderer qui
+// décide ensuite du nom retenu (cf. resolveImageName) puis rappelle images:write.
+ipcMain.handle('images:pick', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    defaultPath: getImagesDir(),
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+    properties: ['openFile'],
+  });
+  if (canceled || !filePaths || !filePaths.length) return { canceled: true };
+  try {
+    const data = await fs.promises.readFile(filePaths[0]);
+    return { canceled: false, name: path.basename(filePaths[0]), data: new Uint8Array(data) };
+  } catch (err) {
+    return { canceled: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('images:write', async (event, name, data) => {
+  if (!nomDImageAcceptable(name)) return { ok: false, error: 'nom d\'image refusé' };
+  try {
+    ensureImagesDir();
+    await fs.promises.writeFile(path.join(getImagesDir(), name), Buffer.from(data));
+    return { ok: true, name };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('images:read', async (event, name) => {
+  if (!nomDImageAcceptable(name)) return { ok: false, error: 'nom d\'image refusé' };
+  try {
+    const data = await fs.promises.readFile(path.join(getImagesDir(), name));
+    return { ok: true, data: new Uint8Array(data) };
+  } catch (err) {
+    // Cas nominal, pas une panne : le fichier a été déplacé ou supprimé hors de l'application. La
+    // Case le signale, elle ne se vide SURTOUT pas d'elle-même.
+    return { ok: false, error: String(err) };
+  }
+});
+
+// Suppression d'une image du disque. Le renderer a DÉJÀ confirmé auprès de l'utilisateur.
+//
+// ⚠️ CE N'EST PAS LE GESTE DE LA SECTION IMAGE D'UNE CASE, qui DÉTACHE et ne touche à aucun fichier
+// (cf. docs/en/panel-images.md, décision 4) : deux Cases peuvent porter la même image. Ce canal-ci
+// sert la section Images du menu de gauche, où l'on efface pour de bon.
+ipcMain.handle('images:delete', async (event, name) => {
+  if (!nomDImageAcceptable(name)) return { ok: false, error: 'nom d\'image refusé' };
+  try {
+    await fs.promises.unlink(path.join(getImagesDir(), name));
+    return { ok: true };
+  } catch (err) {
+    // Déjà supprimée à la main hors de l'application : le résultat voulu est atteint.
+    if (err && err.code === 'ENOENT') return { ok: true };
+    return { ok: false, error: String(err) };
+  }
+});
+
+// Renommage sur le disque. LE REFUS D'ÉCRASER EST ICI, PAS SEULEMENT DANS LE RENDERER, pour la même
+// raison que `models:rename` : `fs.rename` écrase silencieusement un fichier existant, et avec lui
+// toutes les Cases de tous les Projets qui le citent.
+ipcMain.handle('images:rename', async (event, ancien, nouveau) => {
+  if (!nomDImageAcceptable(ancien) || !nomDImageAcceptable(nouveau)) {
+    return { ok: false, error: 'nom d\'image refusé' };
+  }
+  const dir = getImagesDir();
+  const src = path.join(dir, ancien);
+  const dst = path.join(dir, nouveau);
+  // Même nom à la casse près sous Windows : voir models:rename, le piège est identique.
+  const memeFichier = src.toLowerCase() === dst.toLowerCase();
+  try {
+    if (!memeFichier && fs.existsSync(dst)) return { ok: false, error: 'une image porte déjà ce nom' };
+    await fs.promises.rename(src, dst);
+    return { ok: true, name: nouveau };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('images:list', async () => {
+  try {
+    return fs.readdirSync(getImagesDir()).filter(nomDImageAcceptable);
+  } catch (err) {
+    return [];   // dossier pas encore créé : aucune image, ce n'est pas une erreur
+  }
+});
+
 // ─── Correspondances de squelette ───
 // Un seul fichier, à CÔTÉ du dossier Modeles et non dedans : ce dossier ne contient que des `.glb`,
 // et models:list y refuse déjà tout le reste. Le mettre à l'intérieur obligerait à percer cette

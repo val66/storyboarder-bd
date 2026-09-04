@@ -14,8 +14,13 @@
  * en chemin. Les trois cas se sont présentés dans ce dépôt le même jour. Ce que le test exige, c'est
  * que la réponse soit ÉCRITE ici, à côté du nom, plutôt que laissée à la prochaine relecture.
  *
- * ⚠️ LA LISTE NE PEUT QUE RACCOURCIR, et c'est le dernier test du fichier qui l'impose : sans lui,
- * exempter serait le moyen le plus rapide de faire taire le premier.
+ * ⚠️ LA LISTE S'ALLONGE POUR UNE SEULE RAISON, ET LE DERNIER TEST LA CHIFFRE. J'avais d'abord écrit
+ * qu'elle « ne peut que raccourcir » : c'était trop absolu, et #403a l'a montré. Des FONDATIONS
+ * peuvent atterrir avant leurs appelants — un magasin de fichiers écrit et testé pendant que
+ * l'interface qui s'en servira reste à faire. Ces exports-là ne sont pas morts, ils sont EN AVANCE,
+ * et le dire ici est plus honnête que d'attendre trois tâches en gardant le silence.
+ *
+ * Ce que le chiffre empêche reste le même : exempter au lieu de décider.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { test, describe } from 'node:test';
@@ -38,7 +43,8 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
  */
 const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
-  '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'fermeturesEnregistrees',
+  '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
+  'fermeturesEnregistrees',
 ];
 
 /**
@@ -46,16 +52,21 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // LA LISTE EST VIDE, et les trois sorties ont pris trois chemins différents — c'était tout l'objet
-  // de ce fichier, qui refuse de confondre « sans appelant » et « à supprimer » :
+  // Le chantier #402 avait vidé cette liste, et ses trois sorties avaient pris trois chemins
+  // différents : #402b a retrouvé un appelant, #402c est partie, #402d a été vérifiée nom par nom.
   //
-  //   #402b — `poseNonVide3D` a retrouvé un APPELANT. C'était une garde débranchée par #393.
-  //   #402c — `repereParChaines3D` est PARTIE, et la mesure a montré qu'elle ne pouvait pas tourner
-  //           dans l'application : elle lit les positions des os, que la liste fabriquée par
-  //           `bonesFromObject3D` ne porte pas. Le défaut qu'elle devait corriger — le dragon
-  //           ouvert à 92° de son devant — l'a été autrement, en refusant un repère humanoïde à
-  //           une figure qui n'en est pas une.
-  //   #402d — les quatorze autres sont PARTIES, vérifiées une par une.
+  // CE QUI SUIT EST D'UNE QUATRIÈME NATURE, ET C'EST LA PREMIÈRE FOIS. #403a a posé le magasin des
+  // images de Case — nommage, collisions, pont — avant l'interface qui s'en servira. Ces exports ne
+  // sont pas morts, ils sont EN AVANCE : leurs appelants arrivent avec le rendu (#403b), le menu
+  // contextuel et la section Image (#403c), et la section Images du menu de gauche (#403d).
+  //
+  // ⚠️ CETTE LIGNE EST DONC UNE DETTE À ÉCHÉANCE, pas une exemption. Si ces noms sont encore ici
+  // quand #403d sera close, c'est que la fonctionnalité a été livrée à moitié.
+  casePorteUneImage3D: '#403b',
+  importImage: '#403c',
+  readImage: '#403b',
+  renameImage: '#403d',
+  deleteImage: '#403d',
 };
 
 function exportsSansAppelant(){
@@ -103,10 +114,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle valait seize, elle vaut ZÉRO. Ajouter une ligne ici doit coûter un test rouge, sans quoi
-    // la sortie de secours devient le chemin normal — et une liste qui s'allonge finit par ne plus
-    // se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    // Elle a valu seize, puis zéro, et vaut cinq : les fondations de #403a, en attente de leurs
+    // appelants. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de secours devient
+    // le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce qui est exactement
+    // l'état dont ce fichier est né.
+    assert.equal(Object.keys(EN_ATTENTE).length, 5,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

@@ -1035,6 +1035,19 @@ export function orbitCameraPosition3D(center, dist, rotX, rotY){
 
 export function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
+/**
+ * Deux suites d'octets identiques ?
+ *
+ * Sert aux deux magasins de fichiers, modèles et images : ne pas recopier sous un second nom un
+ * fichier déjà importé. Ici plutôt que dans l'un des deux, parce qu'une comparaison d'octets
+ * n'appartient ni aux `.glb` ni aux `.png`, et que deux copies auraient fini par diverger (#403a).
+ */
+export function memeContenu(a, b){
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 // Brings an angle (in radians) back into the ]-π, π] range by adding/removing full turns, used
 // for the UNBOUNDED camera rotations in Camera Mode (cf. dragMode 'panelCamRotate'): this keeps
 // the numeric values small even after many turns, without ever limiting the rotation itself

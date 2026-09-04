@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  sanitizeModelName, resolveModelName, memeContenu,
+  sanitizeModelName, resolveModelName,
   setModelBridge, importModel, readModel, listModels,
 } from '../src/model-store.js';
 
@@ -217,14 +217,9 @@ describe('readModel : un modèle introuvable n\'est pas une raison de détruire'
   });
 });
 
-describe('memeContenu', () => {
-  test('distingue vraiment', () => {
-    assert.equal(memeContenu(octets(1, 2), octets(1, 2)), true);
-    assert.equal(memeContenu(octets(1, 2), octets(1, 3)), false, 'même longueur, contenu différent');
-    assert.equal(memeContenu(octets(1, 2), octets(1, 2, 3)), false);
-    assert.equal(memeContenu(null, octets(1)), false);
-  });
-});
+// ⚠️ `memeContenu` EST TESTÉE DANS tests/utils.test.mjs DEPUIS #403a : elle a déménagé dans
+// utils.js, parce que les images en ont besoin comme les modèles. Le bloc qui la vérifiait ici
+// l'a suivie plutôt que d'être recopié.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Le pont Electron, ce que le renderer ne peut pas garantir seul

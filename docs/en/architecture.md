@@ -15,10 +15,15 @@ as a generated file, not to open a channel.
 
 `src/app.js` is a one-line stub that imports `events.js`, the real entry point.
 
-### The one exception, and what makes it one
+### The exception, and what makes one
 
-Imported 3D models (`models:pick`, `models:write`, `models:read`, `models:list`) are the only
-channels opened for a feature. The reasoning, so nobody treats it as a free precedent:
+⚠️ **This section used to say "the one exception", and to name only the model channels. It was
+already false when it was written**: `skeletons:read` and `skeletons:write` were open, and
+`project:delete` came later. #403a adds `images:*`. A list that has to be rewritten every time is not
+a rule, so what follows is the **criterion**, and the list is only its current membership.
+
+A channel may be opened for a feature when **all four** of these hold. The reasoning, so nobody
+treats it as a free precedent:
 
 - The rule forbids putting application **logic** in `main.js`. Its own description lists **disk
   access** among that file's duties, and writing a `.glb` is exactly that: no existing channel can,
@@ -30,8 +35,12 @@ channels opened for a feature. The reasoning, so nobody treats it as a free prec
   **decides**: chosen name, collisions, messages. The decision stays testable;
   `tests/model-store.test.mjs` guards both halves.
 
-Anything that can be decided in `src/` still belongs in `src/`. An exception that gets used twice
-stops being one.
+Current membership: `models:*` (imported 3D models), `images:*` (panel images, see
+[panel-images.md](panel-images.md)), `skeletons:*` (the shared mapping file), and `project:delete`.
+
+Anything that can be decided in `src/` still belongs in `src/`. The criterion is narrow on purpose:
+the moment a channel could be replaced by a generated file or by a decision taken in `src/`, it fails
+the second point and does not belong here.
 
 ## Rule #2 — circular imports are broken by callback injection
 

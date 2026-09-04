@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   makeFrameScheduler,
-  wrapAngle, clamp, getBBox,
+  wrapAngle, clamp, memeContenu, getBBox,
   pxPerMm, getFormat, getEmotion,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
   jointsEqual3D, resolvePoseLabel3D,
@@ -84,6 +84,33 @@ describe('wrapAngle : ramène un angle dans [-π, π[', () => {
     assertClose(wrappedDiff, target - current + 2 * Math.PI, 'chemin court = +2π de correction', 1e-9);
     assert.ok(Math.abs(wrappedDiff) < Math.abs(naiveDiff) / 100,
       'ajustement minime (deux petits centièmes de radian), pas un tour complet');
+  });
+});
+
+describe('memeContenu : deux suites d\'octets identiques ?', () => {
+  // ⚠️ ELLE A DÉMÉNAGÉ DE model-store.js VERS utils.js (#403a), avec ses tests. Les images en ont
+  // besoin pour la même raison que les modèles — ne pas recopier sous un second nom un fichier déjà
+  // importé — et une comparaison d'octets n'appartient ni aux `.glb` ni aux `.png`.
+  const octets = (...v) => new Uint8Array(v);
+
+  test('même longueur et mêmes octets : vrai', () => {
+    assert.equal(memeContenu(octets(1, 2), octets(1, 2)), true);
+  });
+
+  test('un seul octet de différence suffit', () => {
+    assert.equal(memeContenu(octets(1, 2), octets(1, 3)), false, 'même longueur, contenu différent');
+  });
+
+  test('longueurs différentes : faux, sans comparer', () => {
+    assert.equal(memeContenu(octets(1, 2), octets(1, 2, 3)), false);
+  });
+
+  test('une absence n\'est pas une égalité', () => {
+    // Le piège : `null` et `undefined` arrivent quand une lecture a échoué. Les traiter comme un
+    // contenu vide ferait passer un fichier illisible pour un doublon du fichier choisi.
+    assert.equal(memeContenu(null, octets(1)), false);
+    assert.equal(memeContenu(octets(1), undefined), false);
+    assert.equal(memeContenu(null, null), false);
   });
 });
 
