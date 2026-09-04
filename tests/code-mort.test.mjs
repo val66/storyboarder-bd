@@ -44,7 +44,7 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
 const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
-  'fermeturesEnregistrees',
+  '_setImageCacheEntry', 'fermeturesEnregistrees',
 ];
 
 /**
@@ -62,9 +62,10 @@ const EN_ATTENTE = {
   //
   // ⚠️ CETTE LIGNE EST DONC UNE DETTE À ÉCHÉANCE, pas une exemption. Si ces noms sont encore ici
   // quand #403d sera close, c'est que la fonctionnalité a été livrée à moitié.
-  casePorteUneImage3D: '#403b',
+  //
+  // #403b en a remboursé deux : `casePorteUneImage3D` décide du dessin et `readImage` alimente le
+  // cache. Il en reste trois, et elles portent le nom de la tâche qui les appellera.
   importImage: '#403c',
-  readImage: '#403b',
   renameImage: '#403d',
   deleteImage: '#403d',
 };
@@ -114,11 +115,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   });
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
-    // Elle a valu seize, puis zéro, et vaut cinq : les fondations de #403a, en attente de leurs
-    // appelants. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de secours devient
-    // le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce qui est exactement
-    // l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 5,
+    // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, et trois depuis que
+    // #403b en a branché deux. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de
+    // secours devient le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce
+    // qui est exactement l'état dont ce fichier est né.
+    assert.equal(Object.keys(EN_ATTENTE).length, 3,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

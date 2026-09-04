@@ -41,6 +41,7 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
+import { setImageCacheCallbacks } from './image-cache.js';
 import {
   setModelImportCallbacks, importModelIntoPanel,
 } from './model-import.js';
@@ -322,6 +323,8 @@ setCanvasToolsCallbacks({ snapshot });
 // `getMaxAnisotropy` : le filtrage anisotrope des textures dépend du WebGLRenderer (rig3d.js),
 // dont model-cache.js ne doit rien savoir, cf. son en-tête, applyAnisotropy.
 setModelCacheCallbacks({ onChange: () => renderAll(), getMaxAnisotropy: getMaxAnisotropy3D });
+// Une image qui finit d'arriver remplace son signalement par le dessin, sans clic (#403b).
+setImageCacheCallbacks({ onChange: () => renderAll() });
 // L'import pose un point d'annulation et parle à l'utilisateur : les deux lui sont injectés,
 // plutôt qu'importés, pour qu'il ne dépende ni de la pile d'annulation ni des modales.
 // `confirmer` : la question « redimensionner ce modèle manifestement trop grand ? » (cf.

@@ -10,6 +10,7 @@
  * se décide, et pas ce que le système de fichiers fait.
  */
 import './helpers/dom-stub.mjs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -21,6 +22,9 @@ import {
   CHAMP_IMAGE_CASE, imageDeLaCase3D, casePorteUneImage3D,
   setImageBridge, listImages, importImage, readImage, renameImage, deleteImage,
 } from '../src/image-store.js';
+import {
+  imageState, getLoadedImage, collectImageFiles, preloadImages, _setImageCacheEntry,
+} from '../src/image-cache.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const octets = (...v) => new Uint8Array(v);
@@ -339,5 +343,122 @@ describe('Le pont : main.js se défend, il ne fait pas confiance', () => {
     const corps = MAIN.slice(i, MAIN.indexOf('\n});', i));
     assert.match(corps, /fs\.existsSync\(dst\)/, 'le refus d\'écraser a disparu');
     assert.match(corps, /toLowerCase\(\)/, 'un simple changement de casse redevient impossible');
+  });
+});
+
+describe('#403b : le cache des images, et ce que le dessin y lit', () => {
+  // Le décodage réel est hors de portée sous Node : `createImageBitmap` n'existe pas. Ce qui se
+  // vérifie ici est l'ÉTAT, c'est-à-dire ce que le chemin de dessin interroge à chaque image.
+  test('quatre états, et « introuvable » n\'est pas « pas encore là »', async () => {
+    _setImageCacheEntry('a.png', { bitmap: {}, w: 10, h: 10 });
+    _setImageCacheEntry('b.png', 'chargement');
+    _setImageCacheEntry('c.png', 'introuvable');
+    assert.equal(imageState('a.png'), 'prête');
+    assert.equal(imageState('b.png'), 'chargement');
+    assert.equal(imageState('c.png'), 'introuvable');
+    assert.equal(imageState('jamais-demandée.png'), 'absent');
+  });
+
+  test('getLoadedImage ne rend une image QUE lorsqu\'elle est prête', () => {
+    // Le piège : rendre la chaîne 'chargement' comme si c'était une image. `drawImage` recevrait une
+    // chaîne et lèverait au milieu du dessin d'une Planche.
+    _setImageCacheEntry('b.png', 'chargement');
+    _setImageCacheEntry('c.png', 'introuvable');
+    assert.equal(getLoadedImage('b.png'), null);
+    assert.equal(getLoadedImage('c.png'), null);
+    assert.equal(getLoadedImage('absente.png'), null);
+    _setImageCacheEntry('a.png', { bitmap: {}, w: 4, h: 2 });
+    assert.deepEqual(getLoadedImage('a.png'), { bitmap: {}, w: 4, h: 2 });
+  });
+
+  test('collectImageFiles ne compte chaque fichier qu\'UNE fois', async () => {
+    // Dix Cases qui partagent la même image ne doivent la décoder qu'une fois : c'est aussi ce qui
+    // fait qu'elles partagent un seul bitmap en mémoire.
+    const objets = [
+      { type: 'panel', imageFile: 'a.png' },
+      { type: 'panel', imageFile: 'a.png' },
+      { type: 'panel', imageFile: 'b.png' },
+      { type: 'panel' },
+      { type: 'objet3d', imageFile: 'pas-une-case.png' },
+    ];
+    assert.deepEqual(collectImageFiles(objets).sort(), ['a.png', 'b.png']);
+  });
+
+  test('un fichier illisible devient « introuvable », pas une exception', async () => {
+    // ⚠️ CE QUI COMPTE ICI N'EST PAS L'ÉTAT, C'EST QU'AUCUNE EXCEPTION NE SORTE. `preloadImages` est
+    // lancé sans être attendu à l'ouverture d'un Projet : une exception y deviendrait un rejet non
+    // capturé, et le Projet s'ouvrirait à moitié sans que rien ne le dise.
+    setImageBridge({ readImageFile: async () => { throw new Error('disque déconnecté'); } });
+    await preloadImages(['casse.png']);
+    assert.equal(imageState('casse.png'), 'introuvable');
+    setImageBridge(null);
+  });
+
+  test('une image déjà demandée n\'est pas redécodée', async () => {
+    // Sans l'état « chargement », deux appels rapprochés décoderaient deux fois le même fichier ;
+    // sans « introuvable », chaque redessin relancerait une lecture disque vouée à échouer.
+    let lectures = 0;
+    setImageBridge({ readImageFile: async () => { lectures++; return { ok: false }; } });
+    await preloadImages(['x.png']);
+    await preloadImages(['x.png']);
+    assert.equal(lectures, 1, 'le même fichier a été relu');
+    setImageBridge(null);
+  });
+});
+
+describe('#403b : le câblage, épinglé sur la source faute de pouvoir l\'exécuter', () => {
+  /**
+   * ⚠️ DEUX MUTATIONS ONT ÉCHAPPÉ À TOUT LE RESTE, et ce bloc existe pour elles. Les deux portent
+   * sur des APPELS, dans des chemins que la suite ne peut pas parcourir : `disposeAllRigs3D` touche
+   * des caches Three.js, et l'ouverture d'un Projet passe par Electron. Retirer l'un ou l'autre ne
+   * faisait rougir aucun test, alors que les deux se voient à l'usage — l'un tout de suite, l'autre
+   * seulement après quelques Projets.
+   */
+  const lire = (f) => sourceSansCommentaires(readFileSync(join(RACINE, f), 'utf8'));
+
+  test('changer de Projet LIBÈRE les images décodées', () => {
+    // Un `ImageBitmap` tient une image décodée HORS du tas JavaScript : le ramasse-miettes ne la
+    // voit pas comme un poids. Sans cet appel, la mémoire d'un Projet fermé reste occupée, et rien
+    // à l'écran ne le dit — on ne s'en aperçoit qu'après avoir ouvert plusieurs gros Projets.
+    const scene3d = lire('src/scene3d.js');
+    const i = scene3d.indexOf('export function disposeAllRigs3D');
+    assert.ok(i > 0, 'disposeAllRigs3D a disparu');
+    const corps = scene3d.slice(i, scene3d.indexOf('\n}', i));
+    assert.match(corps, /clearImageCache\(\)/,
+      'les images décodées ne sont plus libérées au changement de Projet');
+  });
+
+  test('ouvrir un Projet lance le décodage de ses images', () => {
+    // Sans cet appel, aucune image n'est jamais demandée : chaque Case reste sur « Chargement… »
+    // pour toujours, et le cache ne se remplit qu'au prochain geste qui y touche. Le défaut est
+    // immédiat, visible, et pourtant invisible aux tests : l'ouverture d'un Projet passe par
+    // Electron.
+    // ⚠️ MA PREMIÈRE VERSION CHERCHAIT LE NOM DANS LE FICHIER, et la mutation lui a échappé : io.js
+    // précharge à DEUX endroits — l'ouverture d'un Projet, et le repointage après un renommage de
+    // modèle. Retirer l'appel de l'ouverture laissait l'autre, donc le nom présent, donc le test
+    // vert, pour un défaut immédiat à l'écran.
+    //
+    // LA RÈGLE JUSTE EST L'APPARIEMENT : partout où les modèles sont préchargés, les images le sont
+    // aussi. Elle attrape le retrait de n'importe lequel des deux, et elle dit pourquoi les deux
+    // vont ensemble — ce sont les mêmes fichiers, absents pour les mêmes raisons.
+    const io = lire('src/io.js');
+    const modeles = [...io.matchAll(/preloadModelsFor\(/g)];
+    const images = [...io.matchAll(/preloadImagesFor\(/g)];
+    assert.ok(modeles.length >= 2, `${modeles.length} préchargement(s) de modèles : le test ne regarde plus rien`);
+    assert.equal(images.length, modeles.length,
+      `${modeles.length} préchargement(s) de modèles pour ${images.length} d'images : un chemin ouvre un Projet sans décoder ses images`);
+    modeles.forEach(m => {
+      const suite = io.slice(m.index, m.index + 500);
+      assert.match(suite, /preloadImagesFor\(/,
+        'un préchargement de modèles n\'est pas accompagné de celui des images');
+    });
+  });
+
+  test('l\'arrivée d\'une image redéclenche un rendu', () => {
+    // C'est ce qui remplace le signalement par le dessin sans que l'utilisateur ait à cliquer.
+    // Sans ce rappel, une image décodée n'apparaîtrait qu'au prochain redessin fortuit.
+    const events = lire('src/events.js');
+    assert.match(events, /setImageCacheCallbacks\(\{\s*onChange/,
+      'plus personne ne redessine quand une image finit d\'arriver');
   });
 });

@@ -28,6 +28,7 @@ import { S, currentPage } from './state.js';
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
 // carte graphique, invisibles et cumulatives).
 import { clearModelCache, collectModelFiles, modelCacheSignature } from './model-cache.js';
+import { clearImageCache } from './image-cache.js';
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute, sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
@@ -3019,6 +3020,10 @@ export function disposeAllRigs3D(){
   // Les modèles importés d'abord : leurs géométries sont PARTAGÉES par tous les clones posés dans
   // les Cases, donc elles ne se libèrent qu'ici, à la source, et une seule fois.
   clearModelCache();
+  // Les images des Cases suivent, pour la même raison et avec le même risque : un `ImageBitmap`
+  // tient une image décodée HORS du tas JavaScript. Changer de Projet sans les fermer laisserait la
+  // mémoire de l'ancien occupée, et rien à l'écran ne le dirait (#403b).
+  clearImageCache();
   Array.from(personaRigCache3D.keys()).forEach(disposePersonaRig3D);
   Array.from(objectRigCache3D.keys()).forEach(disposeObjectRig3D);
   Array.from(wallRenderRigCache3D.keys()).forEach(disposeWallRenderRig3D);

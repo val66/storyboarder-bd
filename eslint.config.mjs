@@ -36,6 +36,8 @@ export default [
         setTimeout: 'readonly', clearTimeout: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly',
         Image: 'readonly', FileReader: 'readonly', Blob: 'readonly', URL: 'readonly',
+        // Décodage d'une image de Case hors du fil de dessin (cf. src/image-cache.js, #403b).
+        createImageBitmap: 'readonly',
         performance: 'readonly', alert: 'readonly', devicePixelRatio: 'readonly',
         localStorage: 'readonly', atob: 'readonly', btoa: 'readonly',
         TextEncoder: 'readonly', TextDecoder: 'readonly',

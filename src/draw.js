@@ -48,6 +48,10 @@ import {
   drawPersona3D,
 } from './rig3d.js';
 import { noDescriptionLabel } from './i18n.js';
+// L'image d'une Case : ce qu'elle porte (image-store) et ce qui est décodé (image-cache). Les deux
+// lectures sont SYNCHRONES, seule condition pour vivre dans le chemin de dessin.
+import { imageDeLaCase3D, casePorteUneImage3D } from './image-store.js';
+import { getLoadedImage, imageState } from './image-cache.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -830,7 +834,12 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     // position in page.objects, independent of the internal order (with no visual effect) of its
     // own Elements.
     if (o.type === 'panel') {
-      const hasElements = page.objects.some(x => (x.type === 'perso' || x.type === 'objet3d') && findOwningPanel(x, page) === o);
+      // ⚠️ UNE IMAGE EXCLUT LA 3D, ET C'EST VÉRIFIÉ ICI PLUTÔT QUE SUPPOSÉ (#403b). L'interface
+      // interdit d'ajouter un Élément à une Case qui porte une image (#403c), mais un fichier de
+      // Projet peut porter les deux — édité à la main, ou écrit par une version future. Le dessin ne
+      // peut pas montrer les deux : c'est l'image qui gagne, comme partout ailleurs.
+      const hasElements = !casePorteUneImage3D(o)
+        && page.objects.some(x => (x.type === 'perso' || x.type === 'objet3d') && findOwningPanel(x, page) === o);
       if (!hasElements) {
         drawObject(c, o, page.style3d, page);
         if (exportBadges) drawPanelNumberBadge(c, o);
@@ -1089,6 +1098,93 @@ export function getPanelPoints(o){
   }
 }
 
+/**
+ * Le rectangle SOURCE à prélever dans une image pour qu'elle COUVRE une Case sans se déformer.
+ * Fonction PURE, et c'est ce qui la rend vérifiable : tout le reste du dessin ne l'est pas.
+ *
+ * « Couvrir et centrer », décidé avec l'utilisateur (cf. docs/en/panel-images.md, décision 9) : on
+ * garde les proportions de l'image, on remplit toute la Case, et ce qui dépasse est rogné à parts
+ * égales des deux côtés.
+ *
+ * ⚠️ ON ROGNE LA SOURCE, ON N'AGRANDIT PAS LA DESTINATION. Les deux donnent la même image à
+ * l'écran ; seule la première laisse la découpe au polygone de la Case (cf. dessinerImageDeCase3D)
+ * décider de ce qui est visible. Peindre plus large que la Case en comptant sur le `clip` marcherait
+ * aussi, mais confierait à l'état du contexte ce qui doit être une décision de géométrie.
+ *
+ * Rend `null` quand une dimension est nulle ou absurde : une Case de largeur zéro arrive pendant un
+ * redimensionnement à la souris, et diviser par elle donnerait un `NaN` qui traverserait le dessin
+ * en silence.
+ */
+export function cadreDeRecouvrement3D(caseW, caseH, imgW, imgH){
+  const cw = Number(caseW), ch = Number(caseH), iw = Number(imgW), ih = Number(imgH);
+  if (![cw, ch, iw, ih].every(v => Number.isFinite(v) && v > 0)) return null;
+  // Le rapport de la Case, ramené dans le repère de l'image : c'est lui qui dit quelle dimension
+  // est en trop.
+  const largeurUtile = Math.min(iw, ih * (cw / ch));
+  const hauteurUtile = Math.min(ih, iw * (ch / cw));
+  return {
+    sx: (iw - largeurUtile) / 2,
+    sy: (ih - hauteurUtile) / 2,
+    sw: largeurUtile,
+    sh: hauteurUtile,
+  };
+}
+
+/**
+ * Dessine l'image d'une Case, recadrée, centrée, et DÉCOUPÉE SUR SON POLYGONE.
+ *
+ * ⚠️ SUR `o.pts`, PAS SUR SON RECTANGLE. `getPanelPoints` rend encore des losanges, des trapèzes et
+ * des parallélogrammes pour d'anciens Projets : découper sur la boîte englobante laisserait l'image
+ * déborder des coins d'une Case en losange, là où le rendu 3D, lui, s'arrête au polygone.
+ *
+ * ⚠️ ET ELLE NE DESSINE RIEN QUAND L'IMAGE N'EST PAS LÀ. Le signalement est laissé à l'appelant :
+ * une image qui arrive en retard n'est pas la même chose qu'une image absente, et confondre les deux
+ * ferait clignoter un message d'erreur à chaque ouverture de Projet.
+ */
+function dessinerImageDeCase3D(c, o, pts){
+  const nom = imageDeLaCase3D(o);
+  const image = nom ? getLoadedImage(nom) : null;
+  if (!image) return false;
+  const cadre = cadreDeRecouvrement3D(o.w, o.h, image.w, image.h);
+  if (!cadre) return false;
+  c.save();
+  c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+  c.closePath();
+  c.clip();
+  c.drawImage(image.bitmap, cadre.sx, cadre.sy, cadre.sw, cadre.sh, o.x, o.y, o.w, o.h);
+  c.restore();
+  return true;
+}
+
+/**
+ * Ce qu'on montre quand l'image n'est pas encore là, ou n'y est plus.
+ *
+ * Deux états, deux messages, et les distinguer n'est pas cosmétique : « en cours de chargement »
+ * disparaît tout seul, « introuvable » demande une action. Les confondre ferait passer une ouverture
+ * de Projet normale pour une panne, ou l'inverse.
+ *
+ * Le nom du fichier est écrit tel quel : c'est la seule information avec laquelle l'utilisateur peut
+ * retrouver ce qui manque.
+ */
+function dessinerAbsenceDImage3D(c, o){
+  const nom = imageDeLaCase3D(o);
+  const manquante = imageState(nom) === 'introuvable';
+  c.save();
+  c.fillStyle = manquante ? '#EFE3E1' : '#F1EFEA';
+  c.fillRect(o.x, o.y, o.w, o.h);
+  c.fillStyle = manquante ? '#8A3B2E' : '#8A867E';
+  c.font = '12px system-ui, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  const titre = manquante ? tr('Image not found', 'Image introuvable')
+    : tr('Loading…', 'Chargement…');
+  c.fillText(titre, o.x + o.w / 2, o.y + o.h / 2 - 8, Math.max(10, o.w - 12));
+  if (manquante && nom) c.fillText(nom, o.x + o.w / 2, o.y + o.h / 2 + 10, Math.max(10, o.w - 12));
+  c.restore();
+}
+
 export function drawObject(c, o, styleKey, page){
   switch (o.type) {
     case 'panel': {
@@ -1098,6 +1194,12 @@ export function drawObject(c, o, styleKey, page){
       for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
       c.closePath();
       c.fillStyle = '#fff'; c.fill();
+      // L'IMAGE VIENT ICI, ENTRE LE FOND ET LA BORDURE (#403b), et cet ordre est la décision : le
+      // fond blanc reste sous elle, ce qui donne quelque chose à voir tant qu'elle n'est pas
+      // décodée, et la bordure passe par-dessus, comme sur une Case en 3D.
+      if (casePorteUneImage3D(o)) {
+        if (!dessinerImageDeCase3D(c, o, pts)) dessinerAbsenceDImage3D(c, o);
+      }
       // borderVisible/borderColor (cf. "Border" section of the Panel menu), per user request. A
       // Scene's locked canvas (cf. isLockedScenePanel), however, never has a border
       // drawn, per user request.

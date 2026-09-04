@@ -28,6 +28,7 @@ import {
   projectJointToCanvas,
   projectPoseHandlePositions3D,
   personaLimbSegmentScreen3D,
+  cadreDeRecouvrement3D,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
@@ -852,5 +853,126 @@ describe('Fix 92 : le segment du membre est mémorisé, jamais reprojeté', () =
     // dessinée. Mieux vaut un membre qui ne répond pas qu'un membre qui répond ailleurs.
     assert.equal(personaLimbSegmentScreen3D('lShoulder', { lShoulder: { x: 10, y: 10 } }), null);
     assert.equal(personaLimbSegmentScreen3D('lShoulder', {}), null);
+  });
+});
+
+// ── #403b : l'image d'une Case, recadrée, centrée, découpée ───────────────────────────────────
+describe('cadreDeRecouvrement3D : couvrir la Case sans déformer l\'image', () => {
+  // La seule part VÉRIFIABLE de ce chantier sous Node : le reste est du dessin, hors de portée
+  // (cf. docs/en/testing-method.md). Elle est aussi celle où une erreur ne se voit pas tout de
+  // suite — une image légèrement étirée passe inaperçue jusqu'à ce qu'on y mette un visage.
+
+  test('même proportion que la Case : rien n\'est rogné', () => {
+    const r = cadreDeRecouvrement3D(400, 300, 800, 600);
+    assert.deepEqual(r, { sx: 0, sy: 0, sw: 800, sh: 600 });
+  });
+
+  test('image trop LARGE : on rogne à gauche et à droite, à parts égales', () => {
+    // 1000×500 dans une Case carrée : on garde un carré de 500 centré, donc 250 de chaque côté.
+    const r = cadreDeRecouvrement3D(300, 300, 1000, 500);
+    assert.deepEqual(r, { sx: 250, sy: 0, sw: 500, sh: 500 });
+  });
+
+  test('image trop HAUTE : on rogne en haut et en bas, à parts égales', () => {
+    const r = cadreDeRecouvrement3D(300, 300, 500, 1000);
+    assert.deepEqual(r, { sx: 0, sy: 250, sw: 500, sh: 500 });
+  });
+
+  test('le rapport du cadre prélevé est TOUJOURS celui de la Case', () => {
+    // ⚠️ C'EST LA PROPRIÉTÉ QUI COMPTE, et elle vaut mieux que trois exemples : si le rapport
+    // dérive, l'image est étirée. Une inversion de largeur et de hauteur, la faute la plus facile à
+    // écrire ici, la casse immédiatement.
+    [[400, 300], [300, 400], [1000, 100], [37, 91]].forEach(([cw, ch]) => {
+      [[800, 600], [500, 1000], [123, 77], [2000, 2000]].forEach(([iw, ih]) => {
+        const r = cadreDeRecouvrement3D(cw, ch, iw, ih);
+        assert.ok(r, `${cw}x${ch} sur ${iw}x${ih}`);
+        assert.ok(Math.abs((r.sw / r.sh) - (cw / ch)) < 1e-9,
+          `${cw}x${ch} sur ${iw}x${ih} : rapport ${(r.sw / r.sh).toFixed(4)} au lieu de ${(cw / ch).toFixed(4)}`);
+      });
+    });
+  });
+
+  test('le cadre prélevé reste DANS l\'image, et centré', () => {
+    // Sortir de l'image donnerait des bords transparents ou une exception selon le moteur, pour une
+    // faute qui ne se voit qu'aux extrêmes.
+    [[400, 300], [1000, 100], [37, 91]].forEach(([cw, ch]) => {
+      [[800, 600], [500, 1000], [123, 77]].forEach(([iw, ih]) => {
+        const r = cadreDeRecouvrement3D(cw, ch, iw, ih);
+        assert.ok(r.sx >= 0 && r.sy >= 0, 'le cadre commence hors de l\'image');
+        assert.ok(r.sx + r.sw <= iw + 1e-9 && r.sy + r.sh <= ih + 1e-9,
+          'le cadre dépasse de l\'image');
+        assert.ok(Math.abs(r.sx - (iw - r.sw) / 2) < 1e-9, 'décentré horizontalement');
+        assert.ok(Math.abs(r.sy - (ih - r.sh) / 2) < 1e-9, 'décentré verticalement');
+      });
+    });
+  });
+
+  test('une dimension nulle ou absurde ne donne pas un NaN qui traverse le dessin', () => {
+    // Une Case de largeur zéro arrive PENDANT un redimensionnement à la souris : c'est un état
+    // transitoire normal, pas une donnée corrompue. Diviser par elle produirait un NaN qui se
+    // propagerait dans drawImage sans erreur, et la Case resterait vide sans qu'on sache pourquoi.
+    [[0, 300, 800, 600], [400, 0, 800, 600], [400, 300, 0, 600], [400, 300, 800, 0],
+      [-400, 300, 800, 600], [400, 300, NaN, 600], [400, 300, 800, undefined]]
+      .forEach(args => assert.equal(cadreDeRecouvrement3D(...args), null, JSON.stringify(args)));
+  });
+});
+
+describe('#403b : ce que le chemin de dessin promet, et qu\'aucun rendu ne peut vérifier ici', () => {
+  const DRAW = sourceSansCommentaires(
+    readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+
+  test('une Case à image ne rend JAMAIS de 3D, même si des Éléments traînent', () => {
+    // ⚠️ L'EXCLUSIVITÉ EST VÉRIFIÉE AU DESSIN, PAS SEULEMENT À L'INSERTION. L'interface interdira
+    // d'ajouter un Élément à une Case qui porte une image (#403c), mais un fichier de Projet peut
+    // porter les deux : édité à la main, ou écrit par une version future. Le dessin ne peut pas
+    // montrer les deux, et c'est l'image qui gagne.
+    const i = DRAW.indexOf('const hasElements =');
+    assert.ok(i > 0, 'le calcul de hasElements a disparu');
+    const ligne = DRAW.slice(i, DRAW.indexOf(';', i));
+    assert.match(ligne, /!casePorteUneImage3D\(o\)/,
+      'une Case à image repasse par le rendu 3D : elle montrerait les deux, ou clignoterait');
+  });
+
+  test('l\'image est découpée sur le POLYGONE de la Case, pas sur son rectangle', () => {
+    // `getPanelPoints` rend encore des losanges, des trapèzes et des parallélogrammes pour
+    // d'anciens Projets. Découper sur la boîte englobante laisserait l'image déborder des coins,
+    // là où le rendu 3D, lui, s'arrête au polygone.
+    const i = DRAW.indexOf('function dessinerImageDeCase3D');
+    assert.ok(i > 0, 'le dessin de l\'image a disparu');
+    const corps = DRAW.slice(i, DRAW.indexOf('\n}', i));
+    assert.match(corps, /c\.clip\(\)/, 'plus de découpe : l\'image déborde de la Case');
+    assert.match(corps, /pts\[i\]\.x/, 'la découpe ne suit plus les points de la Case');
+    assert.ok(!/fillRect|rect\(/.test(corps), 'la découpe est redevenue un rectangle');
+  });
+
+  test('le fond reste SOUS l\'image, la bordure PAR-DESSUS', () => {
+    // L'ordre est la décision : le fond donne quelque chose à voir tant que l'image n'est pas
+    // décodée, et la bordure passe au-dessus, comme sur une Case en 3D.
+    const i = DRAW.indexOf("case 'panel': {");
+    const corps = DRAW.slice(i, DRAW.indexOf('break;', i));
+    const fond = corps.indexOf("c.fillStyle = '#fff'");
+    const image = corps.indexOf('casePorteUneImage3D(o)');
+    const bordure = corps.indexOf('borderVisible');
+    assert.ok(fond >= 0 && image > fond && bordure > image,
+      `ordre attendu fond → image → bordure, obtenu ${fond}, ${image}, ${bordure}`);
+  });
+
+  test('une image absente est SIGNALÉE, et « pas encore là » ne se dit pas comme « perdue »', () => {
+    // Confondre les deux ferait passer une ouverture de Projet normale pour une panne : au premier
+    // affichage, TOUTES les images sont encore en cours de décodage.
+    const i = DRAW.indexOf('function dessinerAbsenceDImage3D');
+    assert.ok(i > 0, 'le signalement a disparu : une Case sans image ne dirait plus rien');
+    const corps = DRAW.slice(i, DRAW.indexOf('\n}', i));
+    assert.match(corps, /introuvable/, 'l\'état « introuvable » n\'est plus distingué');
+    assert.match(corps, /Chargement|Loading/, 'l\'attente n\'est plus distinguée de l\'absence');
+  });
+
+  test('RÉGRESSION : le dessin ne lit JAMAIS le disque', () => {
+    // Le chemin de dessin est synchrone et parcouru à chaque image. Une lecture disque au milieu
+    // le bloquerait, et une lecture par image sur un fichier manquant recommencerait à l'infini —
+    // c'est la raison d'être de l'état « introuvable » du cache.
+    assert.ok(!/readImage\(/.test(DRAW), 'draw.js lit le disque : le cache est court-circuité');
+    assert.ok(!/await/.test(DRAW.slice(DRAW.indexOf('function dessinerImageDeCase3D'),
+      DRAW.indexOf('export function drawObject'))), 'une attente s\'est glissée dans le dessin');
   });
 });

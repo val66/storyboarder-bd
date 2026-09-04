@@ -10,6 +10,9 @@
  */
 import { S, tr, createVolume, addPageToVolume } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
+// Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
+// est synchrone, le décodage ne l'est pas (cf. src/image-cache.js).
+import { preloadImagesFor } from './image-cache.js';
 import { sanitizeModelName, listModels } from './model-store.js';
 import {
   ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles, repointerModele3D,
@@ -146,6 +149,7 @@ export async function proposerRepointageModeles(){
   S.projectDirty = true;
   const objets = [...S.tomes, ...S.scenes].flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
   preloadModelsFor(objets);
+  preloadImagesFor(objets);
   if (_renderAll) _renderAll();
   return n;
 }
@@ -633,6 +637,9 @@ export function applyProjectData(data){
   const _tousLesObjets = [...S.tomes, ...S.scenes]
     .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
   preloadModelsFor(_tousLesObjets);
+  // Même montage pour les images : lancé sans être attendu, et leur arrivée redéclenche un rendu.
+  // Une Case dont l'image manque s'ouvre en le SIGNALANT, elle ne se vide pas.
+  preloadImagesFor(_tousLesObjets);
   S.projectDirty = false;
 }
 
