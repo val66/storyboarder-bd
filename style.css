@@ -1096,6 +1096,20 @@ canvas{
 .model-row:not(.model-row-inert):hover { border-color: var(--accent); }
 .model-row-inert { cursor: default; }
 
+/* Bibliothèque d'IMAGES : c'est l'endroit qui est l'action, pas la ligne (cf. renderImageList).
+   Il faut donc que l'endroit ait l'air d'un bouton et que le nom n'en ait pas l'air, sans quoi
+   l'utilisateur cliquerait le titre et croirait à une panne. Même vocabulaire visuel que
+   `.model-usage-target`, en plus compact : le panneau de gauche est étroit. */
+.image-row-where {
+  display: block; width: 100%; text-align: left;
+  margin-top: 3px; padding: 4px 6px;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--white); color: var(--ink-mid);
+  font-family: 'Inter', sans-serif; font-size: 11.5px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.image-row-where:hover { border-color: var(--accent); color: var(--ink); }
+
 /* Liste « Où est utilisé ce modèle ? ». Hauteur bornée puis défilante : un fichier de décor peut
    servir dans trente Cases, et une modale plus haute que la fenêtre mettrait son bouton Fermer
    hors d'atteinte — la seule sortie neutre deviendrait inaccessible. */

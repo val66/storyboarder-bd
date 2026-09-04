@@ -41,16 +41,21 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
-import { setImageCacheCallbacks, preloadImagesFor } from './image-cache.js';
+import { setImageCacheCallbacks, preloadImagesFor, clearImageCache } from './image-cache.js';
 import {
   importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
+  listImages, renameImage, deleteImage, sanitizeImageName,
 } from './image-store.js';
+import {
+  countImageUsages, repointerImage3D, repointerPileImages3D, goToImageUsage,
+  messageSuppressionImage, messageRenommageImage,
+} from './image-library.js';
 import {
   setModelImportCallbacks, importModelIntoPanel,
 } from './model-import.js';
 import { isImportedModel, listModels, renameModel, sanitizeModelName } from './model-store.js';
 import {
-  setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, deleteVolume, deletePage, duplicatePage,
+  setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, renderImageList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 
   allerALaPlanche,
@@ -107,7 +112,7 @@ import {
   setIOCallbacks, hasElectronAPI, applyProjectData, startAutosave, stopAutosave, confirmAction, alertAction,
   setDemarrageProjetVierge,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
-  openRenameEntityModal, setRenameModelCallback,
+  openRenameEntityModal, setRenameModelCallback, setRenameImageCallback,
   loadModelRenames, noterRenommageModele, proposerRepointageModeles,
 } from './io.js';
 import {
@@ -341,7 +346,7 @@ setModelImportCallbacks({
   confirmerImport: (nomFichier) => proposerCorrespondance(nomFichier),
 });
 setProjectTreeCallbacks({
-  openModelContextMenu, openModelUsages,
+  openModelContextMenu, openModelUsages, openImageContextMenu, openImageUsage,
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
 });
@@ -473,6 +478,7 @@ setupDropdown('treeTrigger', 'treePanel');
 setupDropdown('sceneTrigger', 'scenePanel');
 setupDropdown('personaTrigger', 'personaPanel');
 setupDropdown('modelTrigger', 'modelPanel');
+setupDropdown('imageTrigger', 'imagePanel');
 
 // Fix 64 : entrée AUTONOME de l'éditeur : aucune cible, Personnage par défaut. Sert à composer des
 // poses pour la bibliothèque sans passer par un Personnage d'une Case. `fromModal` à false : il n'y
@@ -4201,6 +4207,102 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   renderModelList();
 };
 
+// ─── Bibliothèque d'images : clic GAUCHE sur un endroit → la Case ───
+// Pas de modale de choix, contrairement aux modèles : une Case porte AU PLUS une image, donc chaque
+// endroit affiché EST déjà une destination (cf. l'en-tête de image-library.js). `renderAll` n'est
+// appelé QUE si l'on a bougé : une destination périmée ne doit pas faire clignoter l'écran pour
+// rien. `disableSceneCameraMode` n'est pas facultatif, cf. la note sur setModelUsagesCallbacks.
+function openImageUsage(endroit){
+  if (goToImageUsage(endroit, { quitterScene: disableSceneCameraMode })) renderAll();
+}
+
+// ─── Bibliothèque d'images : clic droit sur une ligne ───
+// Renommage du fichier, suppression du disque. Pas de correspondance de squelette : une image n'a
+// pas d'os. Et pas de « détacher » non plus, qui est le geste de la Case, pas celui du fichier
+// (cf. docs/en/panel-images.md, décision 4).
+const imageContextMenu = document.getElementById('imageContextMenu');
+let _imageCtxFichier = null;
+function openImageContextMenu(e, nomFichier){
+  _imageCtxFichier = nomFichier;
+  hideContextMenu();
+  imageContextMenu.style.left = `${e.clientX}px`;
+  imageContextMenu.style.top  = `${e.clientY}px`;
+  imageContextMenu.classList.remove('hidden');
+  clampFloatingMenu(imageContextMenu);
+}
+document.getElementById('ctxRenameImage').onclick = async () => {
+  const fichier = _imageCtxFichier;
+  imageContextMenu.classList.add('hidden');
+  if (!fichier) return;
+  // Les noms pris sont capturés MAINTENANT et passés à la modale, qui est synchrone et ne peut pas
+  // relire le disque : c'est eux qui grisent le bouton en cas de collision.
+  const pris = await listImages();
+  // Le nom proposé est SANS son extension : la garder mettrait « .png » sous le curseur, et le
+  // premier geste de l'utilisateur serait de l'effacer. `sanitizeImageName` la remet.
+  openRenameEntityModal('image', fichier, fichier.replace(/\.(png|jpe?g|webp)$/i, ''), { pris });
+};
+
+/**
+ * Renomme le fichier image, puis répare ce qui peut l'être ici.
+ *
+ * L'ORDRE COMPTE, et il est le seul possible, exactement comme pour un modèle : le disque D'ABORD,
+ * les références ENSUITE. Repointer les Cases avant de savoir si le renommage a réussi les
+ * laisserait citer un fichier qui n'existe pas, sur un simple refus d'écriture.
+ */
+async function _renommerImage(ancien, nomVoulu){
+  const nouveau = sanitizeImageName(nomVoulu);
+  if (!ancien || !nouveau || nouveau === ancien) return;
+  const usages = countImageUsages(ancien, { tomes: S.tomes });
+  const ok = await confirmAction(messageRenommageImage(ancien, nouveau, usages, tr));
+  if (!ok) return;
+
+  const r = await renameImage(ancien, nouveau);
+  if (!r || !r.ok) {
+    alertAction(r && r.collision
+      ? tr(`An image named "${nouveau}" already exists. Renaming was cancelled, nothing was overwritten.`,
+        `Une image nommée « ${nouveau} » existe déjà. Le renommage est annulé : rien n'a été écrasé.`)
+      : tr(`Could not rename "${ancien}": ${(r && r.error) || 'unknown error'}`,
+        `Impossible de renommer « ${ancien} » : ${(r && r.error) || 'erreur inconnue'}`));
+    return;
+  }
+
+  // Le Projet ouvert suit. `snapshot()` n'est PAS appelé : une annulation restaurerait l'ancien nom
+  // de fichier alors que le disque porte le nouveau, et Ctrl+Z transformerait les Cases en
+  // « Image introuvable » pour une opération qui a réussi. La pile existante est réécrite pour la
+  // même raison : elle cite l'ancien nom dans TOUS ses états.
+  repointerImage3D({ tomes: S.tomes }, ancien, r.name);
+  S.undoStack = repointerPileImages3D(S.undoStack, ancien, r.name);
+  S.projectDirty = true;
+  // Le cache garde l'image décodée sous l'ANCIEN nom : le vider force sa relecture sous le nouveau.
+  clearImageCache();
+  renderAll();
+  renderImageList();
+}
+setRenameImageCallback(_renommerImage);
+
+document.getElementById('ctxDeleteImage').onclick = async () => {
+  const fichier = _imageCtxFichier;
+  imageContextMenu.classList.add('hidden');
+  if (!fichier) return;
+  // Le décompte porte sur le Projet OUVERT : c'est tout ce qu'on peut savoir, et le message le dit.
+  const usages = countImageUsages(fichier, { tomes: S.tomes });
+  const ok = await confirmAction(messageSuppressionImage(fichier, usages, tr));
+  if (!ok) return;
+  const r = await deleteImage(fichier);
+  if (!r || !r.ok) {
+    alertAction(tr(`Could not delete "${fichier}": ${(r && r.error) || 'unknown error'}`,
+      `Impossible de supprimer « ${fichier} » : ${(r && r.error) || 'erreur inconnue'}`));
+    return;
+  }
+  // ⚠️ LES CASES NE SONT PAS VIDÉES, et le message de confirmation l'a annoncé : elles gardent leur
+  // champ et affichent « Image introuvable », donc elles redeviennent normales si le fichier
+  // revient. Vider le cache est ce qui rend ce signalement immédiat ; sans cela l'image supprimée
+  // continuerait de s'afficher jusqu'au prochain changement de Projet, un mensonge à l'écran.
+  clearImageCache();
+  renderAll();
+  renderImageList();
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // LE PONT D'ENREGISTREMENT DEPUIS LA FICHE A ÉTÉ RETIRÉ (#393)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -6821,7 +6923,7 @@ setIOCallbacks(renderAll, applyRenameVolume, applyRenameScene, closeSettingsModa
 // updateSidePanel and renderTree are defined well before this point.
 setI18nCallbacks(updateSidePanel, renderTree);
 // Wire up draw.js callbacks (canvas, ctx, render helpers, avoids circular imports draw→app)
-setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, updateContextualControls, fitZoomToWrap });
+setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, renderImageList, updateContextualControls, fitZoomToWrap });
 // Wire up sidebar.js callbacks (snapshot + modal openers, avoids circular imports
 // sidebar→app; these modals will themselves be extracted into src/modals.js at Step B.13).
 setSidebarCallbacks({ snapshot, openPersonaModal, openObjectModal, openRoomModal, openBuildingModal, openTerrainModal, openTracéModal, restoreSectionCollapseStates });

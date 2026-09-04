@@ -155,6 +155,19 @@
         </div>
       </div>
     </div>
+    <!-- Bibliothèque d'images de Case (fichiers du dossier Images). Jumelle de la section Modèles,
+         et pour la même raison : détacher une image d'une Case ne touche pas au fichier partagé
+         (cf. docs/en/panel-images.md), donc sans cette liste les fichiers devenus inutiles
+         s'accumuleraient sans recours. Chaque endroit est CLIQUABLE : une Case porte au plus une
+         image, donc un endroit est déjà une destination, sans modale de choix. -->
+    <div class="side-section">
+      <div class="dropdown">
+        <button class="dropdown-trigger" id="imageTrigger">Images <span class="caret">▾</span></button>
+        <div class="dropdown-panel open" id="imagePanel">
+          <div id="imageList"></div>
+        </div>
+      </div>
+    </div>
     <!-- Editeur : ouvre l'editeur SANS cible, sur le Personnage integre par defaut. Sert a composer
          et enregistrer des poses pour la bibliotheque, independamment de tout Element d'une Case —
          d'ou l'absence du bouton « Appliquer » dans ce mode (cf. syncPersonaEditorDom).
@@ -415,6 +428,9 @@
         <button type="button" class="help-group" data-help="cases">
           <span class="help-group-title">Cases</span>
         </button>
+        <button type="button" class="help-group" data-help="images">
+          <span class="help-group-title">Images de Case</span>
+        </button>
         <button type="button" class="help-group" data-help="scenes">
           <span class="help-group-title">Scènes</span>
         </button>
@@ -484,6 +500,15 @@
   <button id="ctxSkeletonMap"><span class="ctx-icon">🦴</span> Correspondance du squelette…</button>
   <button id="ctxRenameModel"><span class="ctx-icon">✏️</span> Renommer le fichier…</button>
   <button id="ctxDeleteModel"><span class="ctx-icon">🗑</span> Supprimer du disque</button>
+</div>
+
+<!-- Clic droit sur une ligne de la bibliothèque d'images. Deux gestes seulement, et pas de
+     correspondance de squelette : une image n'a rien à mettre en face d'un os.
+     ⚠️ « Supprimer du disque » n'est PAS le geste de la section Image d'une Case, qui DÉTACHE.
+     Ici le fichier part pour de bon, et le message de confirmation le dit (cf. image-library.js). -->
+<div class="context-menu hidden" id="imageContextMenu">
+  <button id="ctxRenameImage"><span class="ctx-icon">✏️</span> Renommer le fichier…</button>
+  <button id="ctxDeleteImage"><span class="ctx-icon">🗑</span> Supprimer du disque</button>
 </div>
 
 

@@ -17,6 +17,8 @@ import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
 import { listModels } from './model-store.js';
 import { groupModelsByUsage } from './model-library.js';
 import { resolveModelClick } from './model-usages.js';
+import { listImages } from './image-store.js';
+import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal } from './io.js';
 import { renderAll } from './draw.js';
@@ -446,4 +448,84 @@ export async function renderModelList(){
   groupe(tr('Used in Panels', 'Utilisés dans des Cases'),
     g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} ${tr('Element(s)', 'Élément(s)')}`)])));
   groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
+}
+
+/**
+ * La bibliothèque d'images de Case, dans le menu de gauche. Jumelle de `renderModelList`.
+ *
+ * DEUX DIFFÉRENCES AVEC SA JUMELLE, et toutes deux viennent de la même propriété : une Case porte
+ * AU PLUS UNE image.
+ *
+ * 1. Deux groupes au lieu de trois, une image ne pouvant pas vivre dans une Scène (cf. l'en-tête
+ *    de image-library.js).
+ * 2. CE SONT LES ENDROITS QUI SONT CLIQUABLES, pas la ligne. Chez les modèles, un endroit peut
+ *    contenir plusieurs Éléments du même fichier, d'où une modale pour choisir lequel ; ici chaque
+ *    endroit EST une destination, et une modale n'aurait qu'à recopier la liste sous les yeux de
+ *    l'utilisateur. Le nom de fichier reste un titre, ce qu'il a toujours été.
+ */
+export async function renderImageList(){
+  const list = document.getElementById('imageList');
+  if (!list) return;
+  const fichiers = await listImages();
+  const g = groupImagesByUsage(fichiers, { tomes: S.tomes });
+  list.innerHTML = '';
+
+  if (!g.dansCases.length && !g.nonUtilisees.length) {
+    list.innerHTML = `<div class="empty-hint">${tr('No image imported.', 'Aucune image importée.')}</div>`;
+    return;
+  }
+
+  const ligne = (nom, endroits = []) => {
+    const row = document.createElement('div');
+    // `model-row-inert` sur une ligne sans endroit : le curseur dit AVANT le clic qu'il n'y a nulle
+    // part où aller. Les classes sont celles des modèles, la mise en page étant la même ; le CSS
+    // les cite côte à côte plutôt que de dupliquer les règles.
+    row.className = 'tome-row model-row' + (endroits.length ? '' : ' model-row-inert');
+    const n = document.createElement('div');
+    n.className = 'model-row-name';
+    n.textContent = nom;
+    n.title = nom;
+    row.appendChild(n);
+    endroits.forEach(endroit => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'image-row-where';
+      b.textContent = imageUsageLabel(endroit, tr);
+      b.title = b.textContent;
+      // Le DÉPLACEMENT lui-même est injecté, comme `openModelUsages` chez la jumelle : ce module
+      // rend des listes, il ne décide pas de ce que devient l'écran. Ce qui se garde ici, et qui a
+      // déjà mordu ailleurs, c'est que chaque bouton emporte SON endroit et pas celui d'un voisin.
+      b.onclick = (e) => {
+        e.stopPropagation();
+        _cb.openImageUsage(endroit);
+      };
+      row.appendChild(b);
+    });
+    // Une image introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
+    // une Case affiche « Image introuvable ».
+    if (!fichiers.includes(nom)) {
+      const d = document.createElement('div');
+      d.className = 'perso-name-sub perso-name-sub-warn model-row-where';
+      d.textContent = tr('⚠ file not found', '⚠ fichier introuvable');
+      row.appendChild(d);
+    }
+    row.oncontextmenu = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      _cb.openImageContextMenu(e, nom);
+    };
+    return row;
+  };
+
+  const groupe = (titre, lignes) => {
+    if (!lignes.length) return;
+    const t = document.createElement('div');
+    t.className = 'side-group-title';
+    t.textContent = titre;
+    list.appendChild(t);
+    lignes.forEach(l => list.appendChild(l));
+  };
+
+  groupe(tr('Used in Panels', 'Utilisées dans des Cases'),
+    g.dansCases.map(e => ligne(e.nom, e.endroits)));
+  groupe(tr('Unused', 'Non utilisées'), g.nonUtilisees.map(n => ligne(n, [])));
 }

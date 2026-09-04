@@ -40,6 +40,24 @@ deux réponses.
 8. **Le menu de droite** perd Sol et Éléments, et gagne une section Image : le chemin, de quoi le
    changer, et de quoi détacher l'image.
 9. **L'image est recadrée et centrée** : elle couvre la Case en gardant ses proportions.
+10. **Deux groupes dans la section Images, là où les modèles en ont trois.** Un modèle se range par
+    Scènes, dans des Cases, ou inutilisé. Une image ne peut jamais vivre dans une Scène (décision 2,
+    et pendant l'édition d'une Scène toute Case EST son canevas) : un groupe « par Scènes » serait
+    donc toujours vide, et un groupe toujours vide apprend à ne plus lire la section.
+11. **Chaque endroit est cliquable, et il n'y a pas de modale de choix.** Les modèles en ont besoin
+    parce qu'une même Case peut porter plusieurs Éléments du même fichier : l'endroit n'y désigne pas
+    une destination. Une Case porte AU PLUS une image, donc chaque endroit listé EST une
+    destination ; une modale ne ferait que recopier la liste déjà à l'écran. La conséquence est que
+    le bouton est l'ENDROIT, pas la ligne : le nom de fichier reste un titre, et seuls les endroits
+    invitent au clic.
+12. **Supprimer une image du disque ne VIDE PAS les Cases qui s'en servent.** Elles gardent leur
+    champ, affichent « Image introuvable », et redeviennent normales si le fichier revient. La
+    confirmation le dit, chiffre les Cases concernées dans le Projet ouvert, et avoue qu'on ne peut
+    rien vérifier des autres Projets d'ici.
+13. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
+    `noterRenommageModele` propose de réparer un autre Projet à sa prochaine ouverture ; rien
+    d'équivalent n'existe pour les images. C'est un manque, écrit plutôt que tu : renommer une image
+    répare le Projet OUVERT, et rien d'autre.
 
 ## Ce que le code fournit déjà, mesuré avant d'en écrire une ligne
 
@@ -108,4 +126,14 @@ canevas d'une Scène, la confirmation, et la section Image.
 
 **#403d, la section Images du menu de gauche.** La jumelle de la section Modèles : usages, renommage,
 suppression du disque. Elle est la conséquence directe de la décision 4 : sans elle, les images
-détachées s'accumulent dans le dossier partagé sans qu'on puisse les voir ni les retirer.
+détachées s'accumulent dans le dossier partagé sans qu'on puisse les voir ni les retirer. Les
+décisions 10 à 13 y ont été prises. Elle solde aussi la dette ouverte par #403a dans
+`tests/code-mort.test.mjs` : chaque export écrit en avance sur son appelant en a désormais un.
+
+### Ce que la campagne de mutation de #403d a trouvé
+
+Vingt fautes, une échappée, et c'était la troisième de sa famille dans ce dépôt : un test vérifiait
+qu'une ligne INUTILISÉE porte la classe inerte, jamais qu'une ligne utilisée ne la porte PAS. Marquer
+tout le monde le laissait vert pendant que la bibliothèque entière devenait grise et sans réponse.
+Une assertion de présence ne mesure rien sans son contraire en face, parce que ce qui compte n'est pas
+la classe, c'est la DIFFÉRENCE qu'elle établit. Le test manquant a été ajouté, et la mutation rejouée.

@@ -60,16 +60,18 @@ let _updateSidePanel = null;
 let _renderTree = null;
 let _renderSceneList = null;
 let _renderModelList = () => {};
+let _renderImageList = () => {};
 let _updateContextualControls = null;
 let _fitZoomToWrap = null;
 
-export function setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, updateContextualControls, fitZoomToWrap }) {
+export function setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, renderImageList, updateContextualControls, fitZoomToWrap }) {
   _canvas = canvas; _ctx = ctx;
   _applyZoom = applyZoom;
   _updateSidePanel = updateSidePanel;
   _renderTree = renderTree;
   _renderSceneList = renderSceneList;
   _renderModelList = renderModelList || (() => {});
+  _renderImageList = renderImageList || (() => {});
   _updateContextualControls = updateContextualControls;
   _fitZoomToWrap = fitZoomToWrap;
 }
@@ -2393,6 +2395,11 @@ export function renderAll(){
   // du menu de gauche, et celle des modèles est DÉDUITE du Projet (usages), elle doit donc se
   // recalculer quand le Projet change, pas seulement à l'ouverture.
   _renderModelList();
+  // Et la bibliothèque d'images avec elle, pour exactement la même raison : ses groupes
+  // (« utilisées », « non utilisées ») sont DÉDUITS du Projet ouvert. Détacher une image d'une Case
+  // la fait passer d'un groupe à l'autre, et une liste qui ne suivrait pas dirait le contraire de
+  // ce que l'utilisateur vient de faire.
+  _renderImageList();
   _updateContextualControls();
   _fitZoomToWrap();
   drawCurrentPage();

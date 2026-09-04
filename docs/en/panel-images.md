@@ -36,6 +36,22 @@ things doing one job, and every later question would have to be answered twice.
 8. **The right-hand panel** loses Ground and Elements, and gains an Image section: the path, a way to
    change it, and a way to detach it.
 9. **The image is cropped and centred**: it covers the panel, keeping its proportions.
+10. **Two groups in the Images section, where models have three.** A model is filed by Scenes, in
+    Panels, or unused. An image can never live in a Scene (decision 2, and while a Scene is being
+    edited every panel IS its canvas), so a "by Scenes" group would always be empty, and a group that
+    is always empty teaches the reader to stop reading the section.
+11. **Each place is clickable, and there is no chooser dialog.** Models need one because a single
+    panel can hold several Elements of the same file, so a place does not identify a destination. A
+    panel holds AT MOST one image, so each place listed IS a destination; a dialog would only repeat
+    the list already on screen. The consequence is that the button is the PLACE, not the row: the
+    file name stays a title, and only the places carry the affordance of a click.
+12. **Deleting an image from disk does NOT empty the panels that use it.** They keep their field,
+    show "Image not found", and go back to normal if the file comes back. The confirmation says so,
+    including the number of panels concerned in the open project, and admits that other projects
+    cannot be checked from here.
+13. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
+    another project on its next opening; nothing equivalent exists for images. This is a gap, stated
+    rather than hidden: renaming an image repairs the OPEN project and nothing else.
 
 ## What the code already provides, measured before writing any of it
 
@@ -101,4 +117,14 @@ the confirmation, and the Image section.
 
 **#403d, the Images section of the left-hand menu.** The twin of the Models section: usages,
 renaming, deletion from disk. It is the direct consequence of decision 4: without it, detached images
-accumulate in the shared folder with no way to see or remove them.
+accumulate in the shared folder with no way to see or remove them. Decisions 10 to 13 were taken
+here. It also pays the last of the debt opened by #403a in `tests/code-mort.test.mjs`: every export
+written ahead of its caller now has one.
+
+### What the mutation campaign of #403d found
+
+Twenty faults, one escape, and it was the third of its kind in this repository: a test checked that
+an UNUSED row carries the inert class, and never that a used row does NOT. Marking every row inert
+left it green while the whole library went grey and unresponsive. An assertion of presence measures
+nothing without its opposite facing it, because what matters is not the class, it is the DIFFERENCE
+it draws. The missing test was added and the mutation replayed.

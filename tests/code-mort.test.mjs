@@ -52,22 +52,22 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // Le chantier #402 avait vidé cette liste, et ses trois sorties avaient pris trois chemins
-  // différents : #402b a retrouvé un appelant, #402c est partie, #402d a été vérifiée nom par nom.
+  // VIDE, ET LA DETTE DE #403 A ÉTÉ PAYÉE EN ENTIER.
   //
-  // CE QUI SUIT EST D'UNE QUATRIÈME NATURE, ET C'EST LA PREMIÈRE FOIS. #403a a posé le magasin des
-  // images de Case — nommage, collisions, pont — avant l'interface qui s'en servira. Ces exports ne
-  // sont pas morts, ils sont EN AVANCE : leurs appelants arrivent avec le rendu (#403b), le menu
-  // contextuel et la section Image (#403c), et la section Images du menu de gauche (#403d).
+  // Le chantier #402 avait vidé cette liste une première fois, et ses trois sorties avaient pris
+  // trois chemins différents : #402b a retrouvé un appelant, #402c est partie, #402d a été vérifiée
+  // nom par nom.
   //
-  // ⚠️ CETTE LIGNE EST DONC UNE DETTE À ÉCHÉANCE, pas une exemption. Si ces noms sont encore ici
-  // quand #403d sera close, c'est que la fonctionnalité a été livrée à moitié.
+  // #403a y avait inscrit cinq noms d'une QUATRIÈME nature, et c'était la première fois : le
+  // magasin des images de Case — nommage, collisions, pont — a atterri avant l'interface qui s'en
+  // sert. Ces exports n'étaient pas morts, ils étaient EN AVANCE, et l'échéance était écrite à côté
+  // de chaque nom. Elle a été tenue : #403b en a remboursé deux (`casePorteUneImage3D` pour le
+  // dessin, `readImage` pour le cache), #403c une troisième (`importImage`), et #403d les deux
+  // dernières, `renameImage` et `deleteImage`, branchées sur le menu de la bibliothèque d'images.
   //
-  // #403b en a remboursé deux : `casePorteUneImage3D` décide du dessin et `readImage` alimente le
-  // cache. #403c en rembourse une troisième, `importImage`, branchée sur le menu contextuel et sur
-  // le bouton « Changer l'image ». Il en reste deux, toutes deux pour la section Images.
-  renameImage: '#403d',
-  deleteImage: '#403d',
+  // CE QUE CET ÉPISODE APPREND, et qui vaut d'être gardé : une dette à échéance ne tient que si
+  // l'échéance est un NUMÉRO DE TÂCHE, pas une intention. « à brancher plus tard » n'aurait rien
+  // fait échouer le jour où « plus tard » serait passé.
 };
 
 function exportsSansAppelant(){
@@ -116,10 +116,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
     // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
-    // après #403c. Ajouter une ligne doit coûter un test rouge, sans quoi la sortie de secours
-    // devient le chemin normal — et une liste qui s'allonge finit par ne plus se lire, ce qui est
-    // exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    // après #403c, et zéro à nouveau depuis #403d. Ajouter une ligne doit coûter un test rouge,
+    // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
+    // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
