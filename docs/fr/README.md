@@ -39,6 +39,7 @@ régression difficile à retrouver.
 | [model-editor.md](model-editor.md) | Éditeur de modèle : décisions arrêtées et découpage (tâches #229 à #237). |
 | [creature-rigs.md](creature-rigs.md) | Rigs non humanoïdes : corpus, défauts mesurés, hypothèses démenties, archétypes, plan (tâches #358 à #377). |
 | [archetype-roles.md](archetype-roles.md) | Rôles de chaînes : ce qu'une pose peut viser, listes par archétype, décisions arrêtées (tâches #378 et #375). |
+| [archetype-poses.md](archetype-poses.md) | Poses par archétype : les trois vocabulaires, ce qui a été mesuré, ce qui a été infirmé, décisions prises (tâches #375 à #402). |
 
 ---
 

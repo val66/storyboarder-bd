@@ -39,6 +39,7 @@ down.
 | [model-editor.md](model-editor.md) | Model editor: settled decisions and breakdown (tasks #229 to #237). |
 | [creature-rigs.md](creature-rigs.md) | Non-humanoid rigs: corpus, measured defects, disproved hypotheses, archetypes, plan (tasks #358 to #377). |
 | [archetype-roles.md](archetype-roles.md) | Chain roles: what a pose can aim at, lists per archetype, settled decisions (tasks #378 and #375). |
+| [archetype-poses.md](archetype-poses.md) | Archetype poses: the three vocabularies, what was measured, what was disproved, decisions taken (tasks #375 to #402). |
 
 ---
 

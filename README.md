@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.4.122**
+**Version 1.4.123**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -56,9 +56,9 @@
   its undo history and the skeleton mapping along with it. Opening another project that still refers
   to the old name offers to update it
 - 🦴 **Articulated models**: a file carrying bones poses like a character, in the editor, with
-  sliders per joint and clickable points on the preview. Its card only applies a pose: what belongs
-  to the FILE — the joints, the mapping screen, the pose library — lives in the editor, because it
-  holds for every Element wearing that file, in every project
+  sliders per joint and clickable points in ITS own view, which takes the central area. Its card only
+  applies a pose: what belongs to the FILE — the joints, the mapping screen, the pose library — lives
+  in the editor, because it holds for every Element wearing that file, in every project
 - **Proposed morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or
   serpentine, from the skeleton's shape and its bone names. Correctable from a dropdown; only
   serpentine, radial and arachnid are certain, the others carry "to confirm", which blocks nothing
