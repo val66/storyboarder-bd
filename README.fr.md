@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.2**
+**Version 1.5.3**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -13,99 +13,60 @@
 ## ✨ Fonctionnalités
 
 ### Structure narrative
-- Organisation **Tomes → Planches → Cases** avec numérotation automatique
-- Duplication de planches, réorganisation par glisser-déposer
-- Résumés et descriptions par Case
-- Bulles de dialogue avec pointe orientable
+- 📖 Organisation **Tomes → Planches → Cases** avec numérotation automatique
+- 📄 Duplication de planches, réorganisation par glisser-déposer
+- 📝 Résumés et descriptions par Case
+- 💬 Bulles de dialogue avec pointe orientable
 
 ### Scènes 3D
-- **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case : Personnages, Mobilier, Bâtiments, Routes, Végétation, Terrain…
-- Rendu 3D temps réel via **Three.js** (r128)
-- Caméra libre : rotation (glisser), panoramique (clic milieu + glisser ou Ctrl+glisser), zoom vers le curseur, sans restriction de hauteur ; le centre d'orbite se replace sur le sujet visé au début d'une rotation, puis reste strictement fixe pendant tout le glisser ; sensibilité proportionnelle à la distance et à l'inclinaison (le lacet ralentit en plongée/contre-plongée, comme dans Blender ou Maya) ; pitch limité à ±85° pour éviter le basculement de la scène
-- Vue de dessus intégrée pour le placement des éléments
+- 🎬 **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case
+- 🎥 **Caméra libre** dans chaque Case : rotation, panoramique et zoom, sans restriction de hauteur
+- 🗺️ **Vue de dessus** pour le placement des Éléments
+- ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime
 
 ### Éléments disponibles
-- 👤 **Personnages** avec poses, émotions, orientation et articulations — réglées dans l'Éditeur,
-  ouvert par le crayon de l'aperçu : cou, tête, torse,
-  clavicules, épaules, coudes, poignets, hanches, genoux et chevilles, le même corps qu'un squelette
-  importé, avec des pieds, pour que le mouvement des chevilles se voie. La tête et le torse ont
-  trois axes chacun : hocher, tourner, pencher ; se plier, se tourner, s'incliner (voir **Éditeur
-  de Personnage** plus bas)
-- 🐾 **Animaux** articulés (oiseau, lézard, loup, griffon, singe), rangés par morphologie comme les
-  modèles importés. L'oiseau a deux pattes articulées, hanche et genou. Ils se posent dans
-  l'Éditeur, avec curseurs, points cliquables et glisser, et partagent leur bibliothèque de poses
-  avec les créatures importées du même archétype : une pose faite sur le loup intégré est proposée à
-  un chien importé. Le glisser s'arrête aux limites propres de chaque articulation, que le fichier
-  d'un modèle importé, lui, ne déclare jamais
+- 👤 **Personnages** avec poses, émotions, orientation et articulations
+- 🐾 **Animaux** (oiseau, lézard, loup, griffon, singe), qui se posent comme les Personnages
 - 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
 - 🚗 **Véhicules** (voitures, motos, camions…)
 - 🌳 **Végétation** (arbres, arbustes, fleurs…)
 - 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
 - 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
 - 🌿 **Zones de terrain** colorées
-- 📏 **Taille au centimètre** : la hauteur réelle d'un Élément 3D se saisit en mètres
-- ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime : rien n'est conservé tant que vous n'enregistrez pas
+- 📏 **Taille au centimètre** : la hauteur réelle d'un Élément se saisit en mètres
 
 ### Modèles 3D importés
+- 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, dans une Case ou dans une Scène
+- 🗂️ **Section Modèles** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, un clic
+  mène là où un modèle sert
+- ✏️ **Renommer ou supprimer** un fichier importé, les Projets qui s'en servent suivent
+- 🦴 **Les modèles articulés se posent dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme les
+  Personnages
+- 🐉 **Morphologie** proposée à l'import — humanoïde, quadrupède, bipède ailé, centaure, arachnide,
+  radial ou serpentin — et corrigible
+- 🔗 **Écran de correspondance** : quel os joue quel rôle, corrigible membre par membre
+- 📋 **Reprendre une correspondance** déjà faite pour le même squelette
+- 🧩 **Changer de figure** : un Élément articulé peut porter un autre fichier en gardant sa pose
+- 👻 **Morceaux détachés** d'un fichier masqués, réaffichables d'une case à cocher
 
-- 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, par **clic droit → Importer un
-  Modèle**, dans une Case comme dans une Scène. Importé dans une Scène, le fichier devient un décor
-  réutilisable
-- 🗂️ **Section Modèles** du menu de gauche : vos fichiers groupés selon l'usage qu'en fait le Projet
-  ouvert, par des Scènes, dans des Cases, ou inutilisés. Un clic mène là où un modèle sert
-- **Renommer ou supprimer un fichier** depuis cette section. Le renommage suit le Projet ouvert ;
-  un autre Projet qui cite encore l'ancien nom propose de se mettre à jour à son ouverture
-- 🦴 **Un fichier articulé se pose dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme un
-  Personnage
-- **Morphologie** : humanoïde, quadrupède, bipède ailé, centaure, arachnide, radial ou serpentin.
-  Proposée à l'import, corrigible d'une liste déroulante, et marquée « à confirmer » quand la
-  proposition est un pari
-- **Écran de correspondance** : il dit quel os joue quel rôle, et permet de le corriger. Ouvert
-  depuis l'Éditeur, ou par un clic droit sur un modèle dans le menu de gauche
-- **Reprendre un réglage** : sur un modèle dont vous avez déjà réglé le squelette, un bandeau propose
-  de reprendre cette correspondance, morphologie comprise
-- **Les poses se rangent par archétype** : un quadrupède ne se voit proposer que des poses de
-  quadrupède
-- **Changer de figure** : un Élément articulé peut porter un autre fichier importé en gardant sa pose
-- **Morceaux détachés** : les maillages qu'un fichier place hors du corps sont masqués, et
-  réaffichables d'une case à cocher. Le fichier sur le disque n'est jamais modifié
-
-> **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément ; un
-> membre tendu au repos ne définit aucun plan de flexion, donc rien ne dit de quel côté un tel coude
-> devrait plier.
+> **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément.
 
 ### Éditeur de modèle
-
-Un espace pour poser une figure (un Personnage, un Animal intégré, ou un Modèle importé articulé),
-ouvert par le crayon d'un aperçu 3D, par la touche **E**, ou seul depuis la section **Éditeur** du menu de gauche
-pour composer une pose sans cible. Son titre nomme ce qu'on pose, sous une seule forme pour toutes
-les figures : « Éditeur de modèle — cerberus (Quadrupède) », « Éditeur de modèle — Personnage
-(Humanoïde) ». Il occupe la zone centrale seule : le menu de gauche reste disponible, et cliquer une
-Planche ou une Scène quitte l'éditeur.
-
-- **Poser au glisser** : attrapez un point d'articulation et déplacez-le ; un repère orange indique
-  le geste attendu, flèche ou anneau
-- **Un curseur par champ** pour les valeurs exactes, la molette passant de l'un à l'autre
-- **Clic droit pour orbiter**, molette pour zoomer ; la figure est toujours présentée de face
-- **Choisir la figure** sur laquelle on pose : le Personnage intégré, ou tout modèle importé reconnu
-- **Survoler un membre**, sur la figure ou sur son titre dans le panneau de droite, allume toute sa
-  chaîne ; c'est le clic sur un point qui ouvre ses curseurs
-- **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
-  supprimer, poses de base comprises et restaurables depuis Configuration. « Enregistrer » reste
-  éteint tant qu'aucune articulation n'est tournée : une pose qui ne fait rien se proposerait
-  comme les autres, et ne se découvrirait qu'à l'usage
-- **Un seul bouton pour reporter le travail**, « Appliquer les modifications », le même quelle que
-  soit la figure : il renvoie la pose vers la modale d'où l'on vient
-- **Rien n'est écrit** tant que la pose n'est pas appliquée puis la fiche enregistrée
+- 🎯 **Poser n'importe quelle figure** : un Personnage, un Animal, ou un Modèle importé articulé
+- 🖐️ **Poser au glisser** d'un point d'articulation, ou au curseur par axe pour les valeurs exactes
+- 🔦 **Survoler un membre** allume toute sa chaîne
+- 📚 **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
+  supprimer
+- 🗂️ **Poses rangées par archétype** : un quadrupède ne se voit proposer que des poses de quadrupède
+- ✅ **Appliquer les modifications** renvoie la pose vers la fiche de l'Élément ; rien n'est écrit
+  tant que vous n'enregistrez pas
 
 ### Projet & sauvegarde
-- Format de projet **JSON**, lisible et versionnable
-- Sauvegarde automatique configurable
-- **Supprimer un Projet** efface son fichier définitivement : il faut écrire SUPPRIMER en majuscules
-  pour que le bouton s'active. Les modèles importés et leurs correspondances sont partagés par tous
-  vos Projets et ne sont jamais touchés
-- Export des planches en **PNG** ou **PDF**
-- Annuler, sur les 50 dernières actions
+- 💾 Format de projet **JSON**, lisible et versionnable
+- ⏱️ Sauvegarde automatique configurable
+- 🗑️ **Supprimer un Projet**, confirmé en écrivant le mot
+- 🖼️ Export des planches en **PNG** ou **PDF**
+- ↩️ Annulation sur les 50 dernières actions
 
 ---
 

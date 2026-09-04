@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.2**
+**Version 1.5.3**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -13,91 +13,57 @@
 ## ✨ Features
 
 ### Narrative structure
-- **Volume → Page → Panel** organization with automatic numbering
-- Page duplication, drag-and-drop reordering
-- Per-panel summaries and descriptions
-- Speech bubbles with adjustable tails
+- 📖 **Volume → Page → Panel** organization with automatic numbering
+- 📄 Page duplication, drag-and-drop reordering
+- 📝 Per-panel summaries and descriptions
+- 💬 Speech bubbles with adjustable tails
 
 ### 3D Scenes
-- **Reusable scenes**: compose a 3D scene once, load it into any panel: characters, furniture, buildings, roads, vegetation, terrain…
-- Real-time 3D rendering via **Three.js** (r128)
-- Free camera: rotation (drag), pan (middle-click drag or Ctrl+drag), zoom toward cursor, with no height restriction; the orbit centre re-anchors onto whatever is aimed at when a rotation starts, then stays strictly fixed for the whole drag; rotation sensitivity scales with distance and pitch (yaw slows near vertical, preventing loss of control, as in Blender or Maya); pitch clamped to ±85° to avoid scene flip
-- Integrated top-down view for element placement
+- 🎬 **Reusable scenes**: compose a 3D scene once, load it into any panel
+- 🎥 **Free camera** in every panel: rotation, pan and zoom, with no height restriction
+- 🗺️ **Top-down view** for placing elements
+- ↩️ **Cancelling** the dialog of a just-added Element removes it
 
 ### Available elements
-- 👤 **Characters** with poses, emotions, orientation and joint articulation — set in the editor,
-  opened with the pencil on the preview: neck, head, torso,
-  collarbones, shoulders, elbows, wrists, hips, knees and ankles, the same body an imported skeleton
-  offers, with feet, so ankle movement is visible. Head and torso have three axes each: nod, turn
-  and tilt; bend, twist and side-lean (see **Model editor** below)
-- 🐾 **Animals** with articulated joints (bird, lizard, wolf, griffin, monkey), filed by morphology
-  like imported models. The bird has two articulated legs, hip and knee. They are posed in the
-  editor, with sliders, clickable points and dragging, and share their pose library with imported
-  creatures of the same archetype: a pose built on the built-in wolf is offered to an imported dog.
-  Dragging stops at each joint's own limits, which the file of an imported model never declares
+- 👤 **Characters** with poses, emotions, orientation and joints
+- 🐾 **Animals** (bird, lizard, wolf, griffin, monkey), posed like characters
 - 🪑 **Furniture** (tables, chairs, sofas, staircases…)
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)
 - 🌳 **Vegetation** (trees, shrubs, flowers…)
 - 🏠 **Buildings** with rooms, walls, doors and windows
 - 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
 - 🌿 **Terrain zones** with custom colors
-- 📏 **Size to the centimetre**: a 3D Element's real height is typed in metres
-- ↩️ **Cancelling** the dialog of a just-added Element removes it: nothing is committed until you save
+- 📏 **Size to the centimetre**: an Element's real height is typed in metres
 
 ### Imported 3D models
+- 📦 **glTF import** (`.glb` / `.gltf`) at real size, into a panel or into a Scene
+- 🗂️ **Models section**: your files grouped by how the open project uses them, one click to where a
+  model is used
+- ✏️ **Rename or delete** an imported file, projects that use it kept in step
+- 🦴 **Articulated models** are posed in the [Model editor](#model-editor), like characters
+- 🐉 **Morphology** proposed on import — humanoid, quadruped, winged biped, centaur, arachnid, radial
+  or serpentine — and correctable
+- 🔗 **Mapping screen**: which bone plays which role, correctable limb by limb
+- 📋 **Reuse a mapping** already made for the same skeleton
+- 🧩 **Change figure**: an articulated Element can wear another imported file and keep its pose
+- 👻 **Detached parts** of a file are hidden, and brought back with a checkbox
 
-- 📦 **glTF import** (`.glb` / `.gltf`) at real size, by **right-click → Import a model**, in a panel
-  or in a Scene. Importing into a Scene makes a reusable set out of the file
-- 🗂️ **Models section** in the left-hand menu: your files grouped by how the open project uses them,
-  by Scenes, in panels, or unused. One click takes you to where a model is used
-- **Rename or delete a file** from that section. A rename follows the open project; another project
-  still naming the old file offers to update itself when you open it
-- 🦴 **An articulated file is posed in the [Model editor](#model-editor)**, like a character
-- **Morphology**: humanoid, quadruped, winged biped, centaur, arachnid, radial or serpentine.
-  Proposed on import, correctable from a dropdown, and marked "to confirm" when the proposal is a
-  guess
-- **Mapping screen**: says which bone plays which role, and lets you correct it. Opened from the
-  editor, or by right-clicking a model in the left-hand menu
-- **Reuse a setup**: on a model whose skeleton you have already mapped, a banner offers to take that
-  mapping over, morphology included
-- **Poses are filed by archetype**: a quadruped is only offered quadruped poses
-- **Change figure**: an articulated Element can wear another imported file and keep its pose
-- **Detached parts**: meshes a file places outside the body are hidden, and brought back with a
-  checkbox. The file on disk is never modified
-
-> **Not covered yet:** a file holding several objects is imported as a single Element; a straight
-> limb at rest defines no bending plane, so nothing says which way such an elbow should fold.
+> **Not covered yet:** a file holding several objects is imported as a single Element.
 
 ### Model editor
-
-A workspace for posing a figure (a character, a built-in animal, or an articulated imported model),
-opened from the pencil on a 3D preview, by the **E** key, or standalone from the **Editor** section of the left menu
-to build a pose with no target in mind. Its title names what is being posed, in one form for every
-figure: "Model editor — cerberus (Quadruped)", "Model editor — Character (Humanoid)". It takes over the central area only: the left menu stays available, and clicking a
-Page or a Scene leaves the editor.
-
-- **Pose by dragging**: grab a joint point and move it; an orange guide shows the expected gesture,
-  arrow or ring
-- **A slider per field** for exact values, the wheel switching between them
-- **Right-drag to orbit**, wheel to zoom; the figure is always shown facing front
-- **Choose the figure** you pose on: the built-in character, or any recognised imported model
-- **Hover a limb**, on the figure or on its title in the right-hand panel, to light up its whole
-  chain; clicking a point is what opens its sliders
-- **Pose library shared across every project**: apply, save, rename, delete, built-in poses
-  included and restorable from Settings. Save stays greyed out until a joint is turned: a pose that
-  does nothing would be offered like any other, and would only be found out when applied
-- **One button carries the work back**, "Apply changes", the same one for every figure: it sends
-  the pose to the dialog it was opened from
-- **Nothing is committed** until the pose is applied and the dialog saved
+- 🎯 **Pose any figure**: a character, an animal, or an articulated imported model
+- 🖐️ **Pose by dragging** a joint point, or with a slider per axis for exact values
+- 🔦 **Hover a limb** to light up its whole chain
+- 📚 **Pose library shared across every project**: apply, save, rename, delete
+- 🗂️ **Poses filed by archetype**: a quadruped is only offered quadruped poses
+- ✅ **Apply changes** sends the pose back to the Element's dialog; nothing is written until you save
 
 ### Project & saving
-- **JSON** project format, human-readable and versionable
-- Configurable auto-save
-- **Deleting a project** erases its file for good: you must type DELETE in capitals before the
-  button becomes active. Imported models and their mappings are shared by every project and are
-  never touched
-- Export pages as **PNG** or **PDF**
-- Undo, over the last 50 actions
+- 💾 **JSON** project format, human-readable and versionable
+- ⏱️ Configurable auto-save
+- 🗑️ **Delete a project**, confirmed by typing the word
+- 🖼️ Export pages as **PNG** or **PDF**
+- ↩️ Undo, over the last 50 actions
 
 ---
 
