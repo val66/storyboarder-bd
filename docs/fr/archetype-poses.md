@@ -140,9 +140,16 @@ Consignées pour n'être ni rediscutées ni oubliées.
 
 ## Ce qui n'est pas au programme
 
-**Poser un HUMANOÏDE importé par ses os.** On y gagnerait en précision et on y perdrait la
-portabilité : une pose rangée par os n'atteint plus un autre rig. Laissé ouvert, délibérément, à la
-décision de l'utilisateur.
+**REMPLACER les dix-huit emplacements d'un humanoïde par des clés d'os.** Poser un humanoïde
+importé par ses os est FAIT, et ce n'est pas la même chose : #389 lui a rendu tout son squelette, à
+la demande de l'utilisateur — doigts, os de torsion, queue de cheval, mesuré de +12 os pilotables sur
+mixamo à +439 sur unreal. Ce qui reste hors programme est l'échange, pas l'ajout.
+
+L'ordre est d'ailleurs une décision et non une commodité : **les emplacements en tête, les os en
+plus ensuite**. Les premiers portent les libellés humains, « Bras gauche » plutôt que
+`mixamorig:LeftArm`, et la part PORTABLE d'une pose, celle qui atteint un autre rig humanoïde ; les
+seconds ne valent que pour ce fichier, ce qui est déjà le contrat d'une clé `os:`. Les remplacer
+gagnerait en précision et perdrait la portabilité, qui est la raison d'être de la bibliothèque.
 
 **Corriger le repère d'une créature que le classement PROPOSE humanoïde** — cerbère, raptor, oiseau.
 Elle reçoit bien un repère bâti sur des emplacements mal attribués. Mesuré, l'écart au devant réel va

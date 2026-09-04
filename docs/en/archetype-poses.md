@@ -133,8 +133,16 @@ Recorded so they are neither rediscussed nor forgotten.
 
 ## What is not on the programme
 
-**Posing an imported HUMANOID by bone.** It would gain precision and lose portability: a pose keyed
-by bone no longer reaches another rig. Left open, deliberately, for the user to settle.
+**REPLACING a humanoid's eighteen slots with bone keys.** Posing an imported humanoid by bone is
+DONE, and it is not the same thing: #389 gave it back its whole skeleton, at the user's request —
+fingers, twist bones, ponytail, measured from +12 drivable bones on mixamo to +439 on unreal. What
+stays out is the exchange, not the addition.
+
+The order is itself a decision rather than a convenience: **slots first, extra bones after**. The
+former carry the human labels, "Left arm" rather than `mixamorig:LeftArm`, and the PORTABLE part of a
+pose, the part that reaches another humanoid rig; the latter hold only for that file, which is
+already what an `os:` key promises. Swapping them would gain precision and lose portability, which is
+the whole point of the library.
 
 **Correcting the frame of a creature the classifier PROPOSES humanoid** — cerberus, raptor, bird. It
 does receive a frame built on mis-assigned slots. Measured, the error against the real front runs
