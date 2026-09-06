@@ -238,6 +238,33 @@ the paper: 1.17 in the Light theme, reported on a dialog's "Cancel" button. The 
 `--line-strong`, independent of the fill, and `--nav-bg` was deepened (1.17 → 1.59 in Light,
 1.30 → 1.45 in high-contrast light).
 
+### Three line tokens, and why the third earns its place (#409l)
+
+Measured before deciding, against the paper of each normal theme:
+
+| | Dark | Light |
+|---|---|---|
+| `--line` | **1.39** | **1.33** |
+| `--line-strong` | **2.09** | **1.88** |
+
+All four fail the 3:1 that WCAG 1.4.11 asks of a component's boundary, and the worst offender is
+`--line`, which carries the border of every **input field**. A field whose outline sits at 1.33 is a
+field whose edges you cannot see.
+
+But the rule does not cover everything. It targets what is **clicked or typed into**; a panel frame
+or a section separator is outside its scope. `--line` served both indiscriminately: of its 57 uses,
+33 were interactive and 24 decorative. Raising it for all of them would have satisfied the rule and
+stiffened the whole application where nothing was asked.
+
+So the value was **split** rather than arbitrated, which is the lesson of this entire campaign
+applied once more. `--bord-actif` carries interactive boundaries at 3:1 or better; `--line` and
+`--line-strong` keep the decorative work unchanged.
+
+**What is measured is the OUTER neighbour, not the fill.** A field is delimited by its outline
+against the *page*, not against its own white interior: the outside is what says where the component
+stops. Measuring against the fill would have produced a far darker outline than needed, and a
+bristling interface.
+
 ## Breakdown
 
 | Task | Subject |

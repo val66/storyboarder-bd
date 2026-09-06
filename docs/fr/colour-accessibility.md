@@ -248,6 +248,33 @@ fond s'approchait du papier : 1,17 en thème Clair, signalé sur le bouton « An
 La bordure emploie maintenant `--line-strong`, indépendante du remplissage, et `--nav-bg` a été
 soutenu (1,17 → 1,59 en Clair, 1,30 → 1,45 en contraste clair).
 
+### Trois jetons de filet, et pourquoi le troisième mérite sa place (#409l)
+
+Mesuré avant de trancher, contre le papier de chaque thème normal :
+
+| | Sombre | Clair |
+|---|---|---|
+| `--line` | **1,39** | **1,33** |
+| `--line-strong` | **2,09** | **1,88** |
+
+Les quatre échouent au 3:1 que WCAG 1.4.11 demande pour la frontière d'un composant, et le pire est
+`--line`, qui porte la bordure de **tous les champs de saisie**. Un champ dont le contour est à 1,33
+est un champ dont on ne voit pas où il commence.
+
+Mais la règle ne couvre pas tout. Elle vise ce qui se **clique ou se saisit** ; un cadre de panneau
+ou un séparateur de section n'en relève pas. Or `--line` servait indistinctement aux deux : sur ses
+57 emplois, 33 étaient interactifs et 24 décoratifs. Le monter pour tous aurait satisfait la règle et
+raidi toute l'application là où rien n'était demandé.
+
+La valeur a donc été **séparée** plutôt qu'arbitrée, ce qui est la leçon de tout ce chantier
+appliquée une fois de plus. `--bord-actif` porte les frontières interactives à 3:1 ou mieux ;
+`--line` et `--line-strong` gardent le travail décoratif, inchangé.
+
+**Ce qui est mesuré est le voisin EXTÉRIEUR, pas le remplissage.** Un champ est délimité par son
+contour contre la *page*, pas contre son propre fond blanc : c'est l'extérieur qui dit où le
+composant s'arrête. Mesurer contre le remplissage aurait donné un contour bien plus sombre que
+nécessaire, et une interface hérissée.
+
 ## Découpage
 
 | Tâche | Sujet |

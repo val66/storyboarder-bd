@@ -12,6 +12,7 @@
 @import url('./assets/fonts/fonts.css');
 
 :root{
+  --bord-actif:#6E6E77;
   --fond-3d:#CFCBC2;
   --creux:#0E0F12;
   --sur-accent:#FFFFFF;
@@ -43,6 +44,24 @@
   --ink-mid:#C6C6CE;
   /* Le filet qui SEPARE, plus clair que celui qui ENCADRE : un delimiteur pose au milieu d'un
      bloc doit se voir, alors qu'une bordure de cadre doit se faire oublier. */
+  /* ⚠️ TROIS JETONS DE FILET, ET LE TROISIÈME A UNE RAISON D'ÊTRE (#409l).
+       --bord-actif  la frontière de ce qui se CLIQUE ou se SAISIT : champs, boutons, lignes
+                     d'une liste. Tenu à 3:1 contre les deux fonds qui peuvent l'entourer,
+                     `--paper` et `--paper-dark`, comme l'exige WCAG 1.4.11.
+       --line        le filet qui ENCADRE, purement décoratif : cadres de panneau, en-têtes,
+                     séparateurs. La règle ne le vise pas, et le monter raidirait toute
+                     l'application.
+       --line-strong un cran au-dessus de --line, quand un délimiteur posé au milieu d'un bloc
+                     doit se voir.
+
+     Mesuré avant de trancher : contre le papier, `--line` valait 1,39 en Sombre et 1,33 en Clair,
+     `--line-strong` 2,09 et 1,88. Les quatre échouaient, et le pire était `--line`, qui porte les
+     bordures des CHAMPS DE SAISIE. Un champ dont le contour est à 1,33 est un champ dont on ne
+     voit pas où il commence.
+
+     Les monter tous aurait satisfait la règle et changé l'allure des deux thèmes par défaut, y
+     compris là où la règle ne demande rien. C'est encore une valeur pour deux rôles, la faute qui
+     revient dans tout ce chantier ; on l'a séparée plutôt qu'arbitrée. */
   --line-strong:#4E4F57;
   --line:#34353A;
   --white:#26272B;
@@ -56,6 +75,7 @@
    les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
    exclusivement avec ces variables) basculent automatiquement sans aucune autre modification de CSS. */
 body.theme-light{
+  --bord-actif:#807869;
   --fond-3d:#FBF8F2;
   --creux:#D0CABE;
   --sur-accent:#FFFFFF;
@@ -122,6 +142,7 @@ body.theme-light{
    étagées en clarté, pas en teinte. Les séparer vraiment demanderait d'en sortir une de la famille,
    ce qui est une décision d'identité visuelle et non un réglage (cf. docs/en/colour-accessibility.md). */
 body.theme-contraste{
+  --bord-actif:#6B6C76;
   --fond-3d:#E4E1D9;
   --creux:#20202A;
   --paper:#000000;
@@ -148,6 +169,7 @@ body.theme-contraste{
 /* La variante claire. Elle vient APRÈS, et elle est plus spécifique (deux classes contre une), donc
    elle gagne sur le bloc ci-dessus sans avoir à répéter ce qui ne change pas. */
 body.theme-light.theme-contraste{
+  --bord-actif:#858585;
   --fond-3d:#EDEAE2;
   --creux:#DBDBDB;
   --paper:#FFFFFF;
@@ -205,14 +227,14 @@ header h1{
 }
 header span{ font-size:12px; color:var(--ink-soft); }
 .help-round-btn{
-  width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:var(--white);
+  width:32px; height:32px; border-radius:50%; border: 1px solid var(--bord-actif); background:var(--white);
   color:var(--ink-soft); font-size:16px; font-weight:700; line-height:1; cursor:pointer;
   display:flex; align-items:center; justify-content:center; padding:0;
 }
 .help-round-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; }
 .help-round-btn:hover{ color:var(--accent); border-color:var(--accent); }
 .help-round-btn:disabled{ opacity:.4; cursor:default; }
-.help-round-btn:disabled:hover{ color:var(--ink-soft); border-color:var(--line); }
+.help-round-btn:disabled:hover{ color:var(--ink-soft); border-color: var(--bord-actif); }
 /* Bouton Annuler déplacé dans le header (à gauche du bouton "?", cf. <header> plus bas), désormais au
    même style rond que le bouton "?" du Manuel d'utilisation (cf. .help-round-btn) plutôt que le
    .tool-btn générique de la barre latérale. */
@@ -263,7 +285,7 @@ header span{ font-size:12px; color:var(--ink-soft); }
    deux classes-ci, ni le HTML ni le JS. */
 
 select, input[type=number]{
-  font-family:'Inter',sans-serif; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12.5px; background:var(--white); color:var(--ink);
+  font-family:'Inter',sans-serif; border: 1px solid var(--bord-actif); border-radius:6px; padding:5px 6px; font-size:12.5px; background:var(--white); color:var(--ink);
 }
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    LA COULEUR D'UN BOUTON DIT CE QU'IL FAIT (#398)
@@ -290,14 +312,14 @@ select, input[type=number]{
   font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
 }
 .full-btn:hover{ filter:brightness(1.08); }
-.full-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; filter:none; }
+.full-btn:disabled{ background:var(--line); border-color: var(--bord-actif); color:var(--ink-soft); cursor:not-allowed; filter:none; }
 /* Les trois variantes ne redéfinissent QUE la couleur : la géométrie, la police et l'état désactivé
    restent ceux de `.full-btn`, qu'elles accompagnent toujours. Un second jeu de padding aurait fini
    par diverger, et deux boutons voisins n'auraient plus eu la même hauteur. */
 .full-btn.delete-btn{ background:var(--danger); border-color:var(--danger); color:var(--sur-danger); }
 .full-btn.edit-btn{ background:var(--warn); border-color:var(--warn); color:var(--sur-warn); }
 .full-btn:disabled.delete-btn, .full-btn:disabled.edit-btn{
-  background:var(--line); border-color:var(--line); color:var(--ink-soft);
+  background:var(--line); border-color: var(--bord-actif); color:var(--ink-soft);
 }
 .nav-btn{
   /* ⚠️ LA BORDURE EST `--line-strong`, PAS `--nav-bg` (#409h). Elle valait la couleur du fond,
@@ -313,12 +335,12 @@ select, input[type=number]{
    promettait exactement ce que la couleur de fond venait de démentir. Un gris plus clair suffit à
    dire « c'est cliquable », sans rien annoncer d'autre. */
 .nav-btn:hover{ background:var(--nav-bg-hover); border-color:var(--nav-bg-hover); }
-.nav-btn:disabled{ background:var(--line); border-color:var(--line); color:var(--ink-soft); cursor:not-allowed; }
+.nav-btn:disabled{ background:var(--line); border-color: var(--bord-actif); color:var(--ink-soft); cursor:not-allowed; }
 .project-modal-btn{
   /* Fond toujours sombre (indépendant du thème Clair/Sombre, cf. modale Configuration) : le texte
      reste donc en blanc fixe plutôt que var(--ink), qui deviendrait illisible sur fond sombre en thème
      Clair (où var(--ink) est une encre foncée). */
-  width:100%; margin-top:6px; padding:8px; border:1px solid var(--line); background:#3A3B40; color:#fff;
+  width:100%; margin-top:6px; padding:8px; border: 1px solid var(--bord-actif); background:#3A3B40; color:#fff;
   font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
 }
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -338,7 +360,7 @@ select, input[type=number]{
   /* La combinaison redit le fond sombre de la modale : `.nav-btn` seule le rendrait gris clair, et
      ce bouton-ci n'est gris qu'AU SURVOL. Les deux classes se rencontrent ici et nulle part
      ailleurs, d'où une règle explicite plutôt qu'un ordre de déclaration à tenir. */
-  margin-bottom:0; background:#3A3B40; border-color:var(--line); color:#fff;
+  margin-bottom:0; background:#3A3B40; border-color: var(--bord-actif); color:#fff;
 }
 .project-modal-btn.nav-btn:hover{ background:var(--nav-bg-hover); border-color:var(--nav-bg-hover); color:var(--ink); }
 .project-modal-btn.edit-btn:hover{ background:var(--warn); border-color:var(--warn); color:var(--sur-warn); }
@@ -361,7 +383,7 @@ select, input[type=number]{
 .dropdown:last-child{ margin-bottom:0; }
 .dropdown-trigger{
   width:100%; display:flex; justify-content:space-between; align-items:center;
-  padding:9px 11px; border:1px solid var(--line); background:var(--white); border-radius:8px;
+  padding:9px 11px; border: 1px solid var(--bord-actif); background:var(--white); border-radius:8px;
   cursor:pointer; font-size:11.5px; font-weight:600; color:var(--ink); text-transform:uppercase; letter-spacing:.04em;
 }
 .dropdown-trigger:hover{ border-color:var(--ink-soft); }
@@ -384,7 +406,7 @@ select, input[type=number]{
 /* TREE (tomes / pages) */
 .tome-row{
   display:flex; align-items:center; justify-content:space-between; gap:6px;
-  background:var(--white); border:1px solid var(--line); border-left:3px solid var(--ink-soft);
+  background:var(--white); border: 1px solid var(--bord-actif); border-left:3px solid var(--ink-soft);
   padding:8px 10px; margin-bottom:5px; border-radius:7px; cursor:pointer; font-size:12.5px;
 }
 .tome-row.active{ border-left-color:var(--accent); font-weight:700; }
@@ -419,7 +441,7 @@ select, input[type=number]{
 #rightPanel .nav-btn{ margin-top:6px; margin-bottom:0; }
 .page-row{
   padding:7px 9px; margin-bottom:4px; font-size:12px; border-radius:6px; cursor:pointer;
-  color:var(--ink); background:var(--white); border:1px solid var(--line);
+  color:var(--ink); background:var(--white); border: 1px solid var(--bord-actif);
 }
 .page-row:last-of-type{ margin-bottom:0; }
 .page-row:hover:not(.active){ border-color:var(--ink-soft); }
@@ -512,7 +534,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
   grid-column:2; text-align:center; font-size:13px; font-weight:700; color:var(--ink);
 }
 .menu-close-btn{
-  grid-column:3; width:22px; height:22px; border-radius:50%; border:1px solid var(--line); background:var(--white);
+  grid-column:3; width:22px; height:22px; border-radius:50%; border: 1px solid var(--bord-actif); background:var(--white);
   color:var(--ink-soft); font-size:13px; font-weight:700; line-height:1; cursor:pointer;
   display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;
 }
@@ -534,7 +556,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .side-planche-cases{ display:flex; flex-direction:column; gap:6px; }
 .planche-case-row{
   display:flex; align-items:flex-start; gap:8px; padding:7px 9px; border-radius:7px;
-  border:1px solid var(--line); background:var(--white); cursor:grab; font-size:12.5px; color:var(--ink);
+  border: 1px solid var(--bord-actif); background:var(--white); cursor:grab; font-size:12.5px; color:var(--ink);
 }
 .planche-case-row.active{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
 .planche-case-row .planche-case-num{
@@ -552,7 +574,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .side-persos{ display:flex; flex-direction:column; gap:6px; }
 .perso-row{
   display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:7px;
-  border:1px solid var(--line); background:var(--white); cursor:pointer; font-size:12.5px; color:var(--ink);
+  border: 1px solid var(--bord-actif); background:var(--white); cursor:pointer; font-size:12.5px; color:var(--ink);
 }
 .perso-row.active{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
 .perso-row .perso-emoji{ font-size:14px; }
@@ -612,7 +634,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .batiment-group-members.collapsed{ display:none; }
 #sideDescInput{
   width:100%; min-height:220px; resize:vertical; font-family:'Inter',sans-serif; font-size:13px;
-  border:1px solid var(--line); border-radius:8px; padding:9px; background:var(--white); color:var(--ink);
+  border: 1px solid var(--bord-actif); border-radius:8px; padding:9px; background:var(--white); color:var(--ink);
   box-sizing:border-box;
 }
 #sideDescInput:focus{ outline:none; border-color:var(--accent); }
@@ -633,14 +655,14 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 }
 .sol-ground-btn{
   display:flex; align-items:center; gap:5px; padding:5px 7px;
-  border:1px solid var(--line); border-radius:6px; background:var(--white);
+  border: 1px solid var(--bord-actif); border-radius:6px; background:var(--white);
   cursor:pointer; font-size:11px; color:var(--ink); text-align:left; font-weight:500;
 }
 .sol-ground-btn.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .sol-ground-btn:hover:not(.active){ border-color:var(--ink-soft); }
 .sol-ground-swatch{ width:14px; height:14px; border-radius:3px; flex-shrink:0; border:1px solid var(--line); }
 .side-border-color input[type="color"]{
-  width:100%; height:30px; padding:2px; border-radius:6px; border:1px solid var(--line);
+  width:100%; height:30px; padding:2px; border-radius:6px; border: 1px solid var(--bord-actif);
   background:var(--white); cursor:pointer;
 }
 
@@ -807,7 +829,7 @@ canvas{ background:var(--fond-3d); }
    la modale (cf. Projet → demande utilisateur d'un petit bouton plutôt qu'un gros bouton en bas). */
 .modal-close-btn{
   position:absolute; top:12px; right:12px; width:22px; height:22px; border-radius:50%;
-  border:1px solid var(--line); background:var(--white); color:var(--ink-soft); font-size:13px;
+  border: 1px solid var(--bord-actif); background:var(--white); color:var(--ink-soft); font-size:13px;
   font-weight:700; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
   padding:0; flex-shrink:0; z-index:1;
 }
@@ -852,7 +874,7 @@ canvas{ background:var(--fond-3d); }
    `.modal-subsection`, retirée en #402a : les valeurs sont donc écrites ici, elles ne sont plus
    héritées d'un modèle. */
 .joint-group-details{
-  margin:0 0 8px; background:var(--creux); border:1px solid var(--line); border-radius:6px;
+  margin:0 0 8px; background:var(--creux); border: 1px solid var(--bord-actif); border-radius:6px;
   padding:6px 10px;
 }
 .joint-group-details summary{
@@ -872,7 +894,7 @@ canvas{ background:var(--fond-3d); }
    imbrication. Le niveau intérieur n'a donc ni fond ni cadre, seul un filet à gauche dit qu'il est
    contenu. Le repli à un seul niveau, celui de l'humanoïde, ne rencontre jamais cette règle. */
 .joint-group-details .joint-group-details{
-  background:none; border:none; border-radius:0; border-left:1px solid var(--line);
+  background:none; border:none; border-radius:0; border-left: 1px solid var(--bord-actif);
   padding:0 0 0 8px; margin:0 0 4px;
 }
 .joint-group-details .joint-slider-row{ margin-left:0; }
@@ -936,7 +958,7 @@ canvas{ background:var(--fond-3d); }
    LE FILET SOUS LE TITRE RESTE, lui : il ne colore rien, il SEPARE un titre de ce qu'il contient —
    et il n'a de sens que pour un bloc qui contient des blocs. */
 .persona-editor-panel .joint-group-details.groupe-ancre[open] > summary{
-  padding-bottom:7px; margin-bottom:9px; border-bottom:1px solid var(--line);
+  padding-bottom:7px; margin-bottom:9px; border-bottom: 1px solid var(--bord-actif);
 }
 .persona-editor-panel .joint-group-details .joint-group-details{
   border-left:none; background:var(--creux); border-radius:5px;
@@ -963,7 +985,7 @@ canvas{ background:var(--fond-3d); }
 }
 .modal-box textarea{
   width:100%; min-height:120px; font-family:'Inter',sans-serif; font-size:13.5px;
-  border:1px solid var(--line); border-radius:7px; padding:8px; resize:vertical;
+  border: 1px solid var(--bord-actif); border-radius:7px; padding:8px; resize:vertical;
   background:var(--white); color:var(--ink);
 }
 .modal-field-label{
@@ -972,7 +994,7 @@ canvas{ background:var(--fond-3d); }
 }
 .modal-box input[type=text], .modal-box select{
   width:100%; font-family:'Inter',sans-serif; font-size:13.5px;
-  border:1px solid var(--line); border-radius:7px; padding:8px;
+  border: 1px solid var(--bord-actif); border-radius:7px; padding:8px;
   background:var(--white); color:var(--ink); margin-bottom:14px;
 }
 /* Le chevron natif d'un <select> (Genre, Émotion, etc.) colle au bord droit sans tenir compte du
@@ -1024,7 +1046,7 @@ canvas{ background:var(--fond-3d); }
    Annuler plutôt que l'orange (.full-btn), réservé au cas où il y a effectivement quelque chose à
    enregistrer (cf. recomputeModalDirty/updateSaveButtonState). */
 .modal-actions .full-btn.save-btn-neutral{
-  background:var(--white); border-color:var(--line); color:var(--ink-soft); filter:none;
+  background:var(--white); border-color: var(--bord-actif); color:var(--ink-soft); filter:none;
 }
 .modal-actions .full-btn.save-btn-neutral:hover{ color:var(--accent); border-color:var(--accent); }
 /* Sections repliables de la modale Personnage/Objet (sur demande utilisateur : fond assombri pour
@@ -1128,7 +1150,7 @@ canvas{ background:var(--fond-3d); }
   position:absolute; right:6px; bottom:6px; z-index:2;
   width:30px; height:30px; padding:0; line-height:1; font-size:14px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  border:1px solid var(--line); border-radius:7px;
+  border: 1px solid var(--bord-actif); border-radius:7px;
   background:var(--white); color:var(--ink); opacity:.75;
   transition:opacity .12s ease, border-color .12s ease;
 }
@@ -1218,7 +1240,7 @@ canvas{ background:var(--fond-3d); }
 .persona-editor-poses { display: flex; flex-wrap: wrap; gap: 4px; }
 .persona-editor-poses button {
   flex: 0 0 auto; font-size: 11.5px; padding: 4px 8px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 5px;
+  border: 1px solid var(--bord-actif); border-radius: 5px;
   background: var(--white); color: var(--ink);
 }
 .persona-editor-poses button:hover { border-color: var(--ink-soft); }
@@ -1228,12 +1250,12 @@ canvas{ background:var(--fond-3d); }
 .persona-editor-pose-edit { margin-top: 16px; }
 .persona-editor-pose-edit input {
   width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 7px; margin-bottom: 5px;
-  border: 1px solid var(--line); border-radius: 5px; background: var(--white); color: var(--ink);
+  border: 1px solid var(--bord-actif); border-radius: 5px; background: var(--white); color: var(--ink);
 }
 .persona-editor-pose-actions { display: flex; gap: 4px; }
 .persona-editor-pose-actions button {
   flex: 1; font-size: 11.5px; padding: 4px 6px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 5px; background: var(--white); color: var(--ink);
+  border: 1px solid var(--bord-actif); border-radius: 5px; background: var(--white); color: var(--ink);
   /* Fix 69 — `margin: 0` est ce qui rend les trois boutons de MÊME hauteur, et ce n'est pas
      cosmétique. Supprimer portait la classe .nav-btn, qui déclare `margin-bottom: 6px`. Dans une
      ligne flex, `align-items` vaut `stretch` par défaut : chaque bouton est étiré à la hauteur de
@@ -1259,7 +1281,7 @@ canvas{ background:var(--fond-3d); }
    trois teintes différentes, donc trois boutons éteints qui annoncent encore ce qu'ils ne peuvent
    pas faire. */
 .persona-editor-pose-actions button:disabled {
-  cursor: default; background: var(--line); border-color: var(--line); color: var(--ink-soft);
+  cursor: default; background: var(--line); border-color: var(--bord-actif); color: var(--ink-soft);
 }
 .persona-editor-poses button.active {
   background: rgba(224,165,60,.22); border-color: rgba(224,165,60,.6); font-weight: 600;
@@ -1306,7 +1328,7 @@ canvas{ background:var(--fond-3d); }
 .image-row-where {
   display: block; width: 100%; text-align: left;
   margin-top: 3px; padding: 4px 6px;
-  border: 1px solid var(--line); border-radius: 5px;
+  border: 1px solid var(--bord-actif); border-radius: 5px;
   background: var(--white); color: var(--ink-mid);
   font-family: 'Inter', sans-serif; font-size: 11.5px; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1329,7 +1351,7 @@ canvas{ background:var(--fond-3d); }
 .model-usage-target {
   display: block; width: 100%; text-align: left;
   padding: 7px 9px; margin-bottom: 4px;
-  border: 1px solid var(--line); border-radius: 6px;
+  border: 1px solid var(--bord-actif); border-radius: 6px;
   background: var(--white); color: var(--ink);
   font-family: 'Inter', sans-serif; font-size: 12.5px; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1523,7 +1545,7 @@ canvas{ background:var(--fond-3d); }
    partout ailleurs, et ces règles n'avaient plus d'élément à habiller. */
 .skeleton-map-row {
   display: flex; align-items: center; gap: 10px; padding: 5px 8px; margin-bottom: 4px;
-  border: 1px solid var(--line); border-radius: var(--radius, 6px);
+  border: 1px solid var(--bord-actif); border-radius: var(--radius, 6px);
 }
 .skeleton-map-row .skeleton-map-slot { font-size: 12.5px; width: 92px; flex-shrink: 0; color: var(--ink-soft); }
 /* `margin-bottom: 0` n'est pas cosmétique : `.modal-box select` porte 14px de marge basse, faite
@@ -1560,7 +1582,7 @@ canvas{ background:var(--fond-3d); }
    après validation ment sur son état : l'utilisateur a vu, et tranché. Signalé à l'usage.
    La provenance n'est PAS remplacée par « validé » : ce serait perdre la trace de la seule ligne
    sur laquelle il a fallu réfléchir, noyée parmi dix-sept évidences. */
-.skeleton-map-list.validee .skeleton-map-row.a-verifier { border-color: var(--line); background: transparent; }
+.skeleton-map-list.validee .skeleton-map-row.a-verifier { border-color: var(--bord-actif); background: transparent; }
 .skeleton-map-list.validee .skeleton-map-origin.origine-structure {
   background: rgba(128,128,128,.15); color: var(--ink-soft); border-color: transparent;
 }

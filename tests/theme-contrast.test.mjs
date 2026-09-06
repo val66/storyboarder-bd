@@ -199,6 +199,69 @@ describe('Les jetons sémantiques : deux rôles opposés, deux contraintes (#409
   });
 });
 
+describe('La frontière de ce qui se clique (#409l)', () => {
+  /**
+   * WCAG 1.4.11 demande 3:1 pour la FRONTIÈRE d'un composant d'interface contre le fond qui
+   * l'entoure. Mesuré avant de trancher, dans les thèmes normaux : `--line` valait 1,39 en Sombre
+   * et 1,33 en Clair, `--line-strong` 2,09 et 1,88. Les quatre échouaient.
+   *
+   * ⚠️ CE QUI EST MESURÉ EST LE VOISIN EXTÉRIEUR, PAS LE REMPLISSAGE. Un champ est délimité par son
+   * contour contre la PAGE, pas contre son propre fond blanc : c'est l'extérieur qui dit où le
+   * composant s'arrête. Se tromper de voisin aurait conduit à un contour beaucoup plus sombre que
+   * nécessaire, et à une interface hérissée.
+   *
+   * ⚠️ ET `--line` N'EST PAS MONTÉ POUR AUTANT. La règle ne vise pas un cadre de panneau ni un
+   * séparateur de section. Sur ses 57 emplois, 33 étaient interactifs et 24 décoratifs : seuls les
+   * premiers basculent. Encore une valeur pour deux rôles, séparée plutôt qu'arbitrée.
+   */
+  const FONDS = ['paper', 'paper-dark'];
+  const NORMAL = { ...jetonsDuBloc(':root') };
+  const NORMAL_CLAIR = { ...NORMAL, ...jetonsDuBloc('body.theme-light') };
+
+  [['sombre', NORMAL], ['clair', NORMAL_CLAIR], ['contraste sombre', SOMBRE], ['contraste clair', CLAIR]]
+    .forEach(([nom, T]) => {
+      test(`${nom} : la frontière interactive atteint 3:1 sur les deux fonds`, () => {
+        assert.ok(T['bord-actif'], `--bord-actif manque dans la palette ${nom}`);
+        const faibles = FONDS
+          .map(f => [f, contraste3D(T['bord-actif'], T[f])])
+          .filter(([, r]) => r < 3);
+        assert.deepEqual(faibles.map(([f, r]) => `${f} ${r.toFixed(2)}`), []);
+      });
+    });
+
+  test('RÉGRESSION : les champs de saisie portent la NOUVELLE frontière', () => {
+    // Le cas qui a motivé la tâche. Un `select` ou un `input[type=number]` dont le contour vaut
+    // 1,33 contre le papier ne se distingue pas de la page.
+    const i = CSS.indexOf('select, input[type=number]');
+    assert.ok(i > 0, 'la règle des champs est introuvable');
+    const corps = CSS.slice(i, CSS.indexOf('}', i));
+    assert.match(corps, /border\s*:[^;]*var\(--bord-actif\)/,
+      'les champs de saisie ont gardé le filet décoratif');
+  });
+
+  test('… et les cadres DÉCORATIFS ne l\'ont pas prise', () => {
+    // La face qui manque toujours. Un balayage trop large aurait raidi toute l'application, ce que
+    // la règle ne demande nulle part. `.side-section` et `.modal-box` sont des cadres : ils
+    // encadrent, ils ne se cliquent pas.
+    ['.side-section', '.modal-box'].forEach(sel => {
+      const i = CSS.indexOf(`\n${sel}{`);
+      assert.ok(i > 0, `règle ${sel} introuvable`);
+      const corps = CSS.slice(i, CSS.indexOf('}', i));
+      assert.ok(!/var\(--bord-actif\)/.test(corps),
+        `${sel} est décoratif et ne devait pas basculer`);
+    });
+  });
+
+  test('le garde-fou : le jeton est VRAIMENT employé', () => {
+    // Déclaré dans quatre palettes et utilisé nulle part, il satisferait les tests de ratio
+    // ci-dessus sans rien changer à l'écran.
+    const emplois = (CSS.match(/var\(--bord-actif\)/g) || []).length;
+    assert.ok(emplois >= 25, `seulement ${emplois} emplois de --bord-actif`);
+    const restants = (CSS.match(/var\(--line\)/g) || []).length;
+    assert.ok(restants >= 15, `--line n'a plus que ${restants} emplois : le tri a trop pris`);
+  });
+});
+
 describe('Le mécanisme : un modificateur, pas un thème de plus', () => {
   test('les deux classes se CUMULENT', () => {
     // Le cœur de la décision d'architecture. Si le contraste excluait le fond clair, il faudrait
