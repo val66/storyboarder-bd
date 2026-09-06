@@ -17,6 +17,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
+import { perfTemps, perfJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -2425,7 +2426,15 @@ export function wrapTextLines(c, text, maxWidth){
 // ════════════════════════════════════════════════════════════
 // 2D CANVAS DRAWING
 // ════════════════════════════════════════════════════════════
+let _premierDessinFait = false;
 export function drawCurrentPage(){
+  return perfTemps('drawCurrentPage (total)', () => {
+    const r = _drawCurrentPageMesure();
+    if (!_premierDessinFait) { _premierDessinFait = true; perfJalon('PREMIER DESSIN terminé'); }
+    return r;
+  });
+}
+function _drawCurrentPageMesure(){
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
@@ -2435,6 +2444,9 @@ export function drawCurrentPage(){
   const _pageDataRef = currentPageData();
   if (_pageDataRef !== S.drawCurrentPageLastRef) {
     panelSceneCache3D.clear();
+    // ⚠️ C'EST L'HYPOTHÈSE H2 : changer de Planche VIDE le cache 3D, donc chaque Case se
+    // reconstruit. Le jalon date l'événement pour qu'on voie ce qui suit.
+    perfJalon('CHANGEMENT DE PLANCHE (cache 3D vidé)');
     S.drawCurrentPageLastRef = _pageDataRef;
   }
   // Cost of these four phases, measured over 1071 frames: canvas 0.6%, drawContent the bulk,

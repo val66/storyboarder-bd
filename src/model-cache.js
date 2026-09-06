@@ -28,6 +28,7 @@
 
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { readModel } from './model-store.js';
+import { perfTempsAsync, perfJalon, perfFait } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 // cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh), la
 // hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
@@ -146,14 +147,17 @@ function applyAnisotropy(scene){
  */
 export async function preloadModels(noms){
   const àFaire = (noms || []).filter(n => modelState(n) === 'absent');
+  perfFait('modèles demandés', (noms || []).length);
+  perfJalon(`préchargement lancé : ${àFaire.length} modèle(s)`);
   if (!àFaire.length) return;
   àFaire.forEach(n => _cache.set(n, 'chargement'));
   _onChange();
   await Promise.all(àFaire.map(async (nom) => {
     try {
-      const octets = await readModel(nom);
+      const octets = await perfTempsAsync('modèle : lecture disque', () => readModel(nom));
       if (!octets || !octets.length) { _cache.set(nom, 'introuvable'); return; }
-      const gltf = await parseGlb(octets);
+      const gltf = await perfTempsAsync('modèle : analyse GLB', () => parseGlb(octets));
+      perfJalon(`modèle prêt : ${nom}`);
       const scene = gltf && gltf.scene;
       if (!scene) { _cache.set(nom, 'introuvable'); return; }
       // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici,

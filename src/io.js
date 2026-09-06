@@ -10,6 +10,7 @@
  */
 import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
+import { perfJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
 // est synchrone, le décodage ne l'est pas (cf. src/image-cache.js).
 import { preloadImagesFor } from './image-cache.js';
@@ -643,6 +644,7 @@ export function applyProjectData(data){
   // leur arrivée redéclenche un rendu (cf. setModelCacheCallbacks). Le Projet s'ouvre entièrement
   // même si un fichier manque, chaque modèle absent devient une boîte de remplacement, et aucun
   // Élément n'est supprimé (cf. docs/en/persisted-data.md § 5).
+  perfJalon('PROJET APPLIQUÉ (données en mémoire)');
   const _tousLesObjets = [...S.tomes, ...S.scenes]
     .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
   preloadModelsFor(_tousLesObjets);

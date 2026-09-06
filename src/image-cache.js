@@ -23,6 +23,7 @@
  */
 
 import { readImage, imageDeLaCase3D } from './image-store.js';
+import { perfTempsAsync, perfJalon, perfFait } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 
 // nom de fichier → 'chargement' | 'introuvable' | { bitmap, w, h }
 const _cache = new Map();
@@ -94,14 +95,18 @@ async function decoderImage(octets){
  */
 export async function preloadImages(noms){
   const àFaire = (noms || []).filter(n => imageState(n) === 'absent');
+  perfFait('images demandées', (noms || []).length);
+  perfJalon(`préchargement lancé : ${àFaire.length} image(s)`);
   if (!àFaire.length) return;
   àFaire.forEach(n => _cache.set(n, 'chargement'));
   _onChange();
   await Promise.all(àFaire.map(async (nom) => {
     try {
-      const lu = await readImage(nom);
+      const lu = await perfTempsAsync('image : lecture disque', () => readImage(nom));
       if (!lu || !lu.ok || !lu.data || !lu.data.length) { _cache.set(nom, 'introuvable'); return; }
-      const décodée = await decoderImage(lu.data);
+      const décodée = await perfTempsAsync('image : décodage', () => decoderImage(lu.data));
+      if (décodée) perfFait(`${nom}`, `${décodée.w}×${décodée.h}, ${(décodée.w * décodée.h * 4 / 1048576).toFixed(0)} Mo`);
+      perfJalon(`image prête : ${nom}`);
       _cache.set(nom, décodée || 'introuvable');
     } catch {
       _cache.set(nom, 'introuvable');
