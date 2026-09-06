@@ -3976,11 +3976,16 @@ canvas.addEventListener('contextmenu', (e) => {
   // décision vient d'un seul endroit, `entreesImageDuMenu3D` : le menu, le panneau de droite et le
   // dessin posent la même question, et la reposer chacun de son côté est très exactement ce qui a
   // fait revenir trois fois le défaut du chantier des poses.
-  const _img = entreesImageDuMenu3D(hit, isSceneCanvas);
+  // Le décompte des Éléments est fait ICI et PASSÉ : `entreesImageDuMenu3D` reste pure, elle ne
+  // sait pas ce qu'est une Planche. Le critère est celui du balayage qu'elle remplace — ce qui
+  // appartient à la Case, Éléments comme tracés — pour que « ce qui empêche l'image » et « ce que
+  // Vider la Case enlève » désignent exactement la même chose.
+  const _contenu = _surCase && currentPageData().objects.some(o =>
+    o.type !== 'panel' && (o.homePanelId === hit.id || (o.type === 'tracé' && o.panelId === hit.id)));
+  const _img = entreesImageDuMenu3D(hit, isSceneCanvas, _contenu);
   ctxAddTrigger.style.display = _img.ajouter3D ? '' : 'none';
   document.getElementById('ctxInsertImage').style.display = _img.insererImage ? '' : 'none';
   document.getElementById('ctxMoveImage').style.display = _img.deplacerImage ? '' : 'none';
-  document.getElementById('ctxRemoveImage').style.display = _img.retirerImage ? '' : 'none';
   document.getElementById('ctxImportModel').style.display = (_surCase && _img.ajouter3D) ? '' : 'none';
   ctxLoadSceneTrigger.style.display = (isSceneCanvas || !_img.ajouter3D) ? 'none' : '';
   document.getElementById('ctxBringForward').style.display = isSceneCanvas ? 'none' : '';
@@ -5481,18 +5486,23 @@ document.getElementById('ctxClearPanel').onclick = async () => {
  * `panelId` : les tracés et les pièces appartiennent à une Case par le second, et un balayage écrit
  * à part raterait les routes et les murs (cf. docs/en/panel-images.md).
  */
+/**
+ * Poser une image sur une Case.
+ *
+ * ⚠️ IL N'Y A PLUS DE CONFIRMATION « N Éléments seront supprimés », ET C'EST UN CHANGEMENT DE
+ * DÉCISION (#403m, cf. docs/en/panel-images.md, décision 1). L'exclusivité était tenue ICI, en
+ * supprimant ce qui gênait après avoir demandé la permission ; elle est désormais tenue EN AMONT :
+ * « Insérer une image » ne s'affiche plus sur une Case qui contient des Éléments. Pour y mettre une
+ * image, on la vide d'abord.
+ *
+ * Le balayage et sa confirmation sont donc partis avec elle : plus aucun chemin de l'interface ne
+ * les atteignait, et une branche qu'on ne sait pas atteindre est une branche qu'on ne sait pas
+ * vérifier. Un fichier de Projet écrit à la main peut encore porter les deux ; le dessin ignore
+ * déjà ces Éléments (cf. `hasElements` dans draw.js), donc rien ne change à l'écran, ils restent
+ * simplement dans le fichier au lieu d'être effacés sans que personne l'ait demandé.
+ */
 async function _poserImageSurCase(panel, { remplace } = {}){
   if (!panel) return;
-  const pageData = currentPageData();
-  const aSupprimer = pageData.objects.filter(o =>
-    o.type !== 'panel' &&
-    (o.homePanelId === panel.id || (o.type === 'tracé' && o.panelId === panel.id))
-  );
-  if (aSupprimer.length && !await confirmAction(tr(
-    `This panel holds ${aSupprimer.length} element(s). Inserting an image removes them permanently. Continue?`,
-    `Cette Case contient ${aSupprimer.length} Élément(s). Insérer une image les supprime définitivement. Continuer ?`
-  ))) return;
-
   const r = await importImage();
   if (!r || r.canceled) return;
   if (!r.ok) {
@@ -5501,11 +5511,6 @@ async function _poserImageSurCase(panel, { remplace } = {}){
     return;
   }
   snapshot();
-  if (aSupprimer.length) {
-    if (panel.cameraMode) exitCameraMode(panel);
-    const àRetirer = new Set(aSupprimer.map(o => o.id));
-    pageData.objects = pageData.objects.filter(o => !àRetirer.has(o.id));
-  }
   panel[CHAMP_IMAGE_CASE] = r.name;
   // Le décodage est asynchrone : sans ce lancement, la Case afficherait son signalement jusqu'au
   // prochain geste. L'arrivée redéclenche un rendu (cf. setImageCacheCallbacks).
@@ -5542,12 +5547,6 @@ async function _retirerImageDeLaCase(panel){
   S.projectDirty = true;
   renderAll();
 }
-
-document.getElementById('ctxRemoveImage').onclick = async () => {
-  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
-  hideContextMenu();
-  await _retirerImageDeLaCase(panel);
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // DÉPLACER L'IMAGE DANS SA CASE (#403e)

@@ -19,9 +19,16 @@ things doing one job, and every later question would have to be answered twice.
 
 ## What is decided
 
-1. **Exclusive.** A panel holding an image accepts no Element, no loaded Scene and no imported model.
-   A panel already holding Elements accepts an image only after a confirmation that says how many
-   will be deleted.
+1. **Exclusive, and the exclusivity is held UPSTREAM (revised in #403m).** A panel holding an image
+   accepts no Element, no loaded Scene and no imported model. And a panel that already holds
+   Elements no longer offers "Insert an image" at all: to put an image there, empty it first.
+
+   It used to be held afterwards: you inserted, a confirmation announced "these 8 Elements will be
+   deleted", and they were swept away. The gesture is now one step longer and strictly safer — the
+   only way to lose Elements is to ask explicitly to lose them, instead of accepting it in a dialog
+   that interrupts a gesture which was not about them. The confirmation and the sweep went with the
+   old rule: no path reached them any more, and a branch you cannot reach is a branch you cannot
+   check.
 2. **Forbidden on a Scene's canvas.** A Scene is a reusable 3D set; an image has nothing to do there.
 3. **The file is COPIED into a shared folder**, exactly as an imported model is, and a panel keeps
    only its name. Nothing depends on where the file sat on disk when it was picked.
@@ -33,8 +40,12 @@ things doing one job, and every later question would have to be answered twice.
    no pixel size and would have to be given one.
 7. **The context menu drops** "Add", "Load a Scene" and "Import a model" on a panel holding an image.
    Dropped, not greyed: the Image section of the right-hand panel is where the explanation belongs.
+   It also dropped "Remove the image" (#403m): "Empty the panel", two entries further down, already
+   detaches it, so both did the same thing a step apart. The button in the Image section stays,
+   because that is where one goes for the image.
 8. **The right-hand panel** loses Ground and Elements, and gains an Image section: the path, a way to
-   change it, and a way to detach it.
+   change it, and a way to detach it. It carries no explanatory caption (#403m): what a panel holding
+   an image does not offer is already visible in the menus that no longer offer it.
 9. **The image is cropped and centred**: it covers the panel, keeping its proportions.
 10. **Two groups in the Images section, where models have three.** A model is filed by Scenes, in
     Panels, or unused. An image can never live in a Scene (decision 2, and while a Scene is being

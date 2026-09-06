@@ -62,8 +62,8 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'images', title: 'Panel images', paragraphs: [
     'Right-click a panel → "Insert an image" to place a drawing or a photo there instead of the 3D scene. PNG, JPG and WebP are accepted; the image is cropped and centred to fill the panel.',
-    'A panel cannot have both: its Elements are removed, after confirmation, and it no longer offers Elements, Scene loading or model import.',
-    'The Image section on the right names the file, changes it or removes it. Removing DETACHES the image from the panel; the file itself is not deleted.',
+    'A panel cannot have both: one holding Elements is not offered an image, empty it first; one showing an image offers no Elements, no Scene and no model.',
+    'The Image section on the right names the file, changes it or removes it. Removing DETACHES the image; the file itself is not deleted.',
     'Right-click a panel → "Move the image", or the button in the Framing section, to reframe it: drag with the left button. Escape, or a click anywhere outside the panel, ends it. Releasing the button does not: you can adjust several times.',
     'Quicker, without the mode: hold the RIGHT button down on a selected panel and drag. The menu still opens on a right-click that does not move.',
     'The image cannot be pulled past its own edge, so no white band ever appears. The axis that exactly fits the panel has no slack, and does not move.',
@@ -205,8 +205,8 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'images', title: 'Images de Case', paragraphs: [
     "Clic droit sur une Case → « Insérer une image » pour y placer un dessin ou une photo à la place de la scène 3D. PNG, JPG et WebP sont acceptés ; l'image est recadrée et centrée pour remplir la Case.",
-    "Une Case ne peut pas avoir les deux : ses Éléments sont supprimés, après confirmation, et elle n'offre plus ni Éléments, ni chargement de Scène, ni import de modèle.",
-    "La section Image, à droite, nomme le fichier, le change ou le retire. Retirer DÉTACHE l'image de la Case ; le fichier lui-même n'est pas supprimé.",
+    "Une Case ne peut pas avoir les deux : celle qui contient des Éléments ne se voit pas proposer d'image, videz-la d'abord ; celle qui affiche une image n'offre ni Éléments, ni Scène, ni modèle.",
+    "La section Image, à droite, nomme le fichier, le change ou le retire. Retirer DÉTACHE l'image ; le fichier lui-même n'est pas supprimé.",
     "Clic droit sur une Case → « Déplacer l'image », ou le bouton de la section Cadrage : glissez au bouton gauche. Échap, ou un clic hors de la Case, termine ; relâcher le bouton, non.",
     "Plus court, sans passer par le mode : maintenez le bouton DROIT sur une Case sélectionnée et glissez. Un clic droit sans mouvement ouvre toujours le menu.",
     "L'image ne peut pas sortir de son propre bord : aucune bande blanche n'apparaît. L'axe qui tombe juste sur la Case ne bouge pas.",

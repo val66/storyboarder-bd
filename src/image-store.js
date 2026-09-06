@@ -329,15 +329,24 @@ export function caseAccepteUneImage3D(o, estCanevasDeScene){
  * ces trois entrées ont exactement la même condition, et les séparer ferait diverger ce qui doit
  * disparaître ensemble.
  */
-export function entreesImageDuMenu3D(o, estCanevasDeScene){
+export function entreesImageDuMenu3D(o, estCanevasDeScene, contientDesElements){
   const porte = casePorteUneImage3D(o);
   return {
     // RETIRÉES, pas grisées : décision de l'utilisateur. C'est la section Image du panneau de droite
     // qui porte l'explication.
     ajouter3D: !porte,
-    insererImage: !porte && caseAccepteUneImage3D(o, estCanevasDeScene),
-    // Même condition que « Retirer », et l'ordre est celui du menu : déplacer AVANT retirer, parce
-    // que c'est le geste qu'on répète et que retirer est celui qu'on ne veut pas viser par erreur.
+    // ⚠️ UNE CASE QUI CONTIENT DES ÉLÉMENTS N'ACCEPTE PLUS D'IMAGE (#403m), et c'est un CHANGEMENT
+    // de la décision 1. L'exclusivité se tenait après coup, en supprimant les Éléments derrière une
+    // confirmation ; elle se tient maintenant avant, en retirant l'entrée. Pour mettre une image
+    // dans une Case occupée, on la vide d'abord.
+    //
+    // Le geste est plus long d'un pas, et il est plus sûr : la seule façon de perdre des Éléments
+    // est désormais de demander explicitement à les perdre, au lieu de l'accepter dans une modale
+    // qui interrompt un geste dont ce n'était pas le sujet.
+    insererImage: !porte && !contientDesElements && caseAccepteUneImage3D(o, estCanevasDeScene),
+    // Même condition que « Vider la Case », qui détache aussi l'image : « Retirer l'image » a été
+    // retirée du menu contextuel (#403m) parce que les deux faisaient le même geste à un pas l'une
+    // de l'autre. Le bouton de la section Image, lui, reste : c'est là qu'on vient pour l'image.
     deplacerImage: porte,
     retirerImage: porte,
   };

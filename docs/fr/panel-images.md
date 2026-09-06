@@ -21,9 +21,18 @@ deux réponses.
 
 ## Ce qui est décidé
 
-1. **Exclusif.** Une Case portant une image n'accepte ni Élément, ni Scène chargée, ni modèle
-   importé. Une Case portant déjà des Éléments n'accepte une image qu'après une confirmation qui
-   annonce combien seront supprimés.
+1. **Exclusif, et l'exclusivité se tient EN AMONT (révisé en #403m).** Une Case portant une image
+   n'accepte ni Élément, ni Scène chargée, ni modèle importé. Et une Case qui contient déjà des
+   Éléments ne propose plus du tout « Insérer une image » : pour y mettre une image, on la vide
+   d'abord.
+
+   Elle se tenait après coup : on insérait, une confirmation annonçait « ces 8 Éléments vont
+   disparaître », et ils étaient balayés. Le geste est maintenant plus long d'un pas, et
+   franchement plus sûr — la seule façon de perdre des Éléments est de demander explicitement à les
+   perdre, au lieu de l'accepter dans une modale qui interrompt un geste dont ce n'était pas le
+   sujet. La confirmation et le balayage sont partis avec l'ancienne règle : plus aucun chemin ne
+   les atteignait, et une branche qu'on ne sait pas atteindre est une branche qu'on ne sait pas
+   vérifier.
 2. **Interdit sur le canevas d'une Scène.** Une Scène est un décor 3D réutilisable ; une image n'y a
    rien à faire.
 3. **Le fichier est COPIÉ dans un dossier partagé**, exactement comme un modèle importé, et la Case
@@ -36,9 +45,12 @@ deux réponses.
    aucune taille en pixels et à qui il faudrait en imposer une.
 7. **Le menu contextuel retire** « Ajouter », « Charger une Scène » et « Importer un Modèle » sur une
    Case qui porte une image. Retire, et non grise : c'est la section Image du menu de droite qui
-   portera l'explication.
+   portera l'explication. Il a aussi perdu « Retirer l'image » (#403m) : « Vider la Case », deux
+   entrées plus loin, la détache déjà, donc les deux faisaient le même geste à un pas l'un de
+   l'autre. Le bouton de la section Image reste, lui : c'est là qu'on vient pour l'image.
 8. **Le menu de droite** perd Sol et Éléments, et gagne une section Image : le chemin, de quoi le
-   changer, et de quoi détacher l'image.
+   changer, et de quoi détacher l'image. Il ne porte aucune légende explicative (#403m) : ce qu'une
+   Case à image ne propose pas se voit déjà dans les menus qui ne le proposent plus.
 9. **L'image est recadrée et centrée** : elle couvre la Case en gardant ses proportions.
 10. **Deux groupes dans la section Images, là où les modèles en ont trois.** Un modèle se range par
     Scènes, dans des Cases, ou inutilisé. Une image ne peut jamais vivre dans une Scène (décision 2,

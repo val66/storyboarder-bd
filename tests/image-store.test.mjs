@@ -611,11 +611,12 @@ describe('#403c : ce qu\'une Case accepte, et ce que son menu montre', () => {
 describe('#403c : le câblage des trois écrans, épinglé sur la source', () => {
   const EVENTS = sourceSansCommentaires(readFileSync(join(RACINE, 'src/events.js'), 'utf8'));
   const SIDEBAR = sourceSansCommentaires(readFileSync(join(RACINE, 'src/sidebar.js'), 'utf8'));
+  const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
 
   test('le menu contextuel lit la décision, il ne la refait pas', () => {
     // ⚠️ C'EST LA LEÇON DU CHANTIER DES POSES, appliquée avant le défaut plutôt qu'après : trois
     // écrans posaient la même question, et chacun a fini par y répondre différemment.
-    assert.match(EVENTS, /entreesImageDuMenu3D\(hit, isSceneCanvas\)/,
+    assert.match(EVENTS, /entreesImageDuMenu3D\(hit, isSceneCanvas, _contenu\)/,
       'le menu recalcule ce qu\'une Case accepte au lieu de le demander');
 
     // ⚠️ MA PREMIÈRE VERSION CHERCHAIT LES NOMS DANS LE FICHIER, et deux mutations lui ont échappé :
@@ -636,24 +637,44 @@ describe('#403c : le câblage des trois écrans, épinglé sur la source', () =>
     assert.match(affichage('ctxLoadSceneTrigger'), /_img\.ajouter3D/,
       '« Charger une Scène » reste proposé sur une Case qui porte une image');
     assert.match(affichage("getElementById('ctxInsertImage')"), /_img\.insererImage/);
-    assert.match(affichage("getElementById('ctxRemoveImage')"), /_img\.retirerImage/);
+    assert.match(affichage("getElementById('ctxMoveImage')"), /_img\.deplacerImage/);
+    // ⚠️ « Retirer l'image » N'EST PLUS DANS CE MENU (#403m) : « Vider la Case », deux entrées plus
+    // loin, détache déjà l'image et faisait donc le même geste. Le bouton de la section Image reste,
+    // lui : c'est là qu'on vient pour l'image.
+    assert.ok(!/ctxRemoveImage/.test(EVENTS), 'l\'entrée retirée du menu est revenue');
+    assert.ok(!/id="ctxRemoveImage"/.test(HTML), 'le bouton retiré du menu est revenu dans le HTML');
   });
 
-  test('insérer une image DEMANDE avant de supprimer, et demande AVANT le sélecteur', () => {
-    // L'ordre est la décision : choisir une image puis apprendre qu'elle supprimera huit Éléments
-    // serait une question posée trop tard.
+  test('insérer une image NE SUPPRIME PLUS RIEN : l\'exclusivité est tenue en amont (#403m)', () => {
+    // ⚠️ CHANGEMENT DE DÉCISION, ET CE TEST DISAIT L'INVERSE. L'exclusivité se tenait APRÈS coup :
+    // on insérait, on demandait « ces 8 Éléments vont disparaître, continuer ? », on balayait. Elle
+    // se tient maintenant AVANT : l'entrée n'apparaît plus sur une Case occupée, et pour y mettre
+    // une image on la vide d'abord. Le geste est plus long d'un pas, et la seule façon de perdre des
+    // Éléments est désormais de demander explicitement à les perdre.
+    //
+    // La confirmation et le balayage sont partis avec elle : plus aucun chemin ne les atteignait,
+    // et une branche qu'on ne sait pas atteindre est une branche qu'on ne sait pas vérifier.
     const i = EVENTS.indexOf('async function _poserImageSurCase');
     assert.ok(i > 0, 'le geste d\'insertion a disparu');
     const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
-    assert.ok(corps.indexOf('confirmAction') < corps.indexOf('importImage()'),
-      'le sélecteur de fichier s\'ouvre avant la confirmation');
-    // ⚠️ ET LA CONFIRMATION DOIT GOUVERNER, pas seulement précéder : une mutation qui remplaçait sa
-    // condition par `false` laissait l'ordre intact et supprimait les Éléments sans rien demander.
-    // C'est la garde elle-même qui est épinglée, parce que c'est elle qui protège du travail perdu.
-    assert.match(corps, /aSupprimer\.length && !await confirmAction/,
-      'les Éléments sont supprimés sans confirmation');
-    assert.match(corps, /homePanelId === panel\.id \|\| \(o\.type === 'tracé' && o\.panelId === panel\.id\)/,
-      'les tracés et les pièces échappent au balayage : les routes et les murs resteraient');
+    assert.ok(!/confirmAction/.test(corps), 'une confirmation devenue inatteignable est revenue');
+    assert.ok(!/aSupprimer/.test(corps), 'le balayage des Éléments est revenu');
+    // Et c'est bien la DÉCISION qui porte la garde, à un seul endroit.
+    const menu = entreesImageDuMenu3D({ type: 'panel' }, false, true);
+    assert.equal(menu.insererImage, false, 'une Case occupée se voit encore proposer une image');
+    assert.equal(entreesImageDuMenu3D({ type: 'panel' }, false, false).insererImage, true,
+      'une Case vide ne se voit plus proposer d\'image');
+  });
+
+  test('RÉGRESSION : « ce qui empêche l\'image » et « ce que Vider la Case enlève » sont la MÊME chose', () => {
+    // Le critère passé au menu doit rester celui du balayage qu'il remplace : Éléments ET tracés.
+    // S'ils divergeaient, une Case avec une route paraîtrait vide, accepterait une image, et la
+    // route survivrait sous elle sans que rien ne s'affiche.
+    const i = EVENTS.indexOf('const _contenu =');
+    assert.ok(i > 0, 'le décompte du contenu a disparu');
+    const corps = EVENTS.slice(i, EVENTS.indexOf(';', i));
+    assert.match(corps, /o\.type !== 'panel'/);
+    assert.match(corps, /o\.homePanelId === hit\.id \|\| \(o\.type === 'tracé' && o\.panelId === hit\.id\)/);
   });
 
   test('retirer l\'image DÉTACHE, et ne touche à aucun fichier', () => {
@@ -666,13 +687,20 @@ describe('#403c : le câblage des trois écrans, épinglé sur la source', () =>
       'le détachement efface le fichier : une autre Case qui le porte se retrouverait vide');
   });
 
-  test('les deux chemins vers un même geste sont le MÊME code', () => {
+  test('les chemins vers un même geste sont le MÊME code', () => {
     // Le menu contextuel et le bouton du panneau de droite font la même chose. Deux écritures
     // finiraient par ne plus faire la même — la panne la plus fréquente de ce dépôt.
-    ['_poserImageSurCase', '_retirerImageDeLaCase'].forEach(fn => {
-      const appels = (EVENTS.match(new RegExp(fn + '\\(', 'g')) || []).length;
-      assert.ok(appels >= 3, `${fn} : ${appels} occurrence(s), la définition plus deux appels attendus`);
-    });
+    //
+    // ⚠️ LES COMPTES DIFFÈRENT DEPUIS #403m, et c'est voulu. « Insérer une image » garde ses deux
+    // appelants (le menu, et « Changer l'image »). « Retirer l'image » n'en a plus qu'UN : son
+    // entrée du menu contextuel est partie, « Vider la Case » faisant déjà le même geste deux
+    // entrées plus loin. Un seul appelant n'affaiblit pas la règle, il la rend sans objet ; ce qui
+    // compte est qu'il n'existe pas de SECONDE écriture, et c'est ce que le compte exact épingle.
+    const appels = (fn) => (EVENTS.match(new RegExp(fn + '\\(', 'g')) || []).length;
+    assert.ok(appels('_poserImageSurCase') >= 3,
+      `_poserImageSurCase : ${appels('_poserImageSurCase')} occurrence(s), la définition plus deux appels attendus`);
+    assert.equal(appels('_retirerImageDeLaCase'), 2,
+      'le détachement a gagné ou perdu un appelant : la définition plus le bouton de la section Image');
   });
 
   test('« Vider la Case » détache l\'image, et le dit', () => {
