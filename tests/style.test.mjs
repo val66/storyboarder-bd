@@ -852,6 +852,28 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     assert.ok(lum(creuxContraste) > 0, 'un creux à luminance nulle sur du noir pur est invisible');
   });
 
+  test('RÉGRESSION : l\'ombre ne concerne QUE la Planche (#409h)', () => {
+    // Elle visait `canvas` tout court, donc aussi les quatre aperçus 3D des modales. Une ombre
+    // décolle un objet de son plan de travail ; un aperçu est POSÉ DANS un panneau, il n'a rien à
+    // survoler. Signalé à l'usage en thème Clair, où elle se lit comme deux bandes sales.
+    const planche = declarationsOuNull('#board');
+    assert.match(planche, /box-shadow/, 'la Planche a perdu son ombre');
+    const tous = declarationsOuNull('canvas');
+    assert.ok(!/box-shadow/.test(tous),
+      'la règle générale `canvas` porte de nouveau une ombre : elle atteindrait les aperçus');
+    assert.match(tous, /background\s*:\s*#fff/, 'les aperçus ont perdu leur fond blanc');
+  });
+
+  test('RÉGRESSION : un bouton de navigation a un contour indépendant de son fond (#409h)', () => {
+    // Sa bordure valait `--nav-bg`, donc la couleur de son propre remplissage : le bouton n'avait
+    // aucun contour. En thème Clair, fond contre papier à 1,17, il se dissolvait. Signalé à l'usage
+    // sur le bouton « Annuler ».
+    const d = declarationsOuNull('.nav-btn');
+    assert.match(d, /border\s*:\s*1px solid var\(--line-strong\)/);
+    assert.ok(!/border\s*:\s*1px solid var\(--nav-bg\)/.test(d),
+      'la bordure est redevenue la couleur du fond');
+  });
+
   test('les quatre palettes définissent `--creux`', () => {
     // Un jeton absent d'une palette hérite silencieusement de la précédente. Ça peut être juste par
     // accident, et faux au premier ajustement.

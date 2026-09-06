@@ -72,8 +72,8 @@ body.theme-light{
   /* En thème Clair, « plus clair » ne veut plus rien dire : le fond du panneau est déjà pâle.
      Le bouton se distingue donc en étant légèrement plus SOUTENU que le papier, tout en restant
      un gris neutre — c'est le même besoin, lu à l'envers. */
-  --nav-bg:#E3DAC6;
-  --nav-bg-hover:#D3C6A8;
+  --nav-bg:#C9BC9C;
+  --nav-bg-hover:#B8A882;
   --ink-mid:#5C584F;
   --line-strong:#BCAC8A;
   --line:#D9CDB3;
@@ -155,8 +155,8 @@ body.theme-light.theme-contraste{
   --line:#8C8C8C;
   --line-strong:#5A5A5A;
   --white:#FFFFFF;
-  --nav-bg:#E2E2E2;
-  --nav-bg-hover:#CFCFCF;
+  --nav-bg:#D6D6D6;
+  --nav-bg-hover:#BEBEBE;
   --accent:#8F3A00;
   --accent-soft:rgba(143,58,0,.16);
   --danger:#6E0B08;
@@ -296,7 +296,12 @@ select, input[type=number]{
   background:var(--line); border-color:var(--line); color:var(--ink-soft);
 }
 .nav-btn{
-  width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--nav-bg); background:var(--nav-bg);
+  /* ⚠️ LA BORDURE EST `--line-strong`, PAS `--nav-bg` (#409h). Elle valait la couleur du fond,
+     donc le bouton n'avait aucun contour propre : quand son fond s'approchait du papier, il se
+     dissolvait. Mesuré en thème Clair, fond contre papier : 1,17. Signalé à l'usage sur le bouton
+     « Annuler » d'une modale, et la remarque était juste.
+     Un contour indépendant du remplissage tient dans les quatre thèmes (WCAG 1.4.11). */
+  width:100%; margin-bottom:6px; padding:8px 12px; border:1px solid var(--line-strong); background:var(--nav-bg);
   color:var(--ink); border-radius:7px; font-size:12.5px; cursor:pointer;
 }
 /* ⚠️ LE SURVOL N'EST PLUS ORANGE, et c'est la convention qui l'exige (#398a) : l'orange annonce une
@@ -732,9 +737,22 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
 .zoom-indicator{
   position:fixed; top:30px; left:50%; transform:translate(-50%, -50%); z-index:30;
 }
-canvas{
+/* ⚠️ L'OMBRE NE CONCERNE QUE LA PLANCHE, PAS TOUS LES CANEVAS (#409h). Cette règle visait
+   `canvas` tout court : elle s'appliquait donc aussi aux quatre aperçus 3D des modales, où elle
+   n'a aucun rôle. Une ombre sert à décoller un objet de son plan de travail ; un aperçu est POSÉ
+   DANS un panneau, il n'a rien à survoler.
+
+   Signalé à l'usage en thème Clair, où l'ombre ne se lit plus comme une profondeur mais comme deux
+   bandes sales au-dessus et en dessous de l'aperçu. `0 8px 28px` déborde d'une vingtaine de pixels
+   en haut et d'une trentaine en bas : sur un fond sombre on ne les voit pas, sur du beige si.
+
+   Le noir absolu est conservé ICI, et c'est une décision : une ombre simule une lumière occultée,
+   comme le voile des modales (#409g). Elle n'est pas une surface, elle n'a pas à suivre le thème. */
+#board{
   background:#fff; box-shadow:0 8px 28px rgba(0,0,0,.55); cursor:crosshair;
 }
+/* Les autres canevas gardent leur fond blanc, sans ombre : aperçus de modale et éditeur de pose. */
+canvas{ background:#fff; }
 
 /* MODAL */
 /* Voile des modales. Assombri en deux fois sur demande utilisateur, .6 → .78 → .88 : le contenu

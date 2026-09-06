@@ -228,6 +228,26 @@ de 1,00, parce qu'**aucune valeur négative n'existe**. Le jeton, lui, peut alle
 et il le fait : 1,30. Le voile des modales reste noir, et c'est une décision et non un oubli : un
 voile simule une lumière éteinte, il n'est pas une surface.
 
+### Deux de plus, signalées à l'usage (#409h)
+
+**Une ombre là où rien ne flotte.** La règle disait `canvas { box-shadow: 0 8px 28px rgba(0,0,0,.55) }`
+— `canvas` tout court, donc elle atteignait aussi les quatre aperçus 3D des modales. Une ombre
+décolle un objet de son plan de travail ; un aperçu est *posé dans* un panneau et n'a rien à
+survoler. `0 8px 28px` déborde d'une vingtaine de pixels en haut et d'une trentaine en bas :
+invisible sur fond sombre, deux bandes sales sur du beige. Limitée désormais à `#board`, la Planche
+elle-même.
+
+Le noir absolu y **reste**, et c'est une décision : une ombre simule une lumière occultée, comme le
+voile des modales. Ce n'est pas une surface, elle n'a donc pas à suivre le thème. La règle qui se
+dégage de cette campagne : *les surfaces prennent des jetons, les effets de lumière restent
+absolus.*
+
+**Un bouton sans contour propre.** `.nav-btn` portait `border: 1px solid var(--nav-bg)`, c'est-à-dire
+la couleur de son propre remplissage. Il n'avait donc aucun contour, et se dissolvait dès que son
+fond s'approchait du papier : 1,17 en thème Clair, signalé sur le bouton « Annuler » d'une modale.
+La bordure emploie maintenant `--line-strong`, indépendante du remplissage, et `--nav-bg` a été
+soutenu (1,17 → 1,59 en Clair, 1,30 → 1,45 en contraste clair).
+
 ## Découpage
 
 | Tâche | Sujet |

@@ -220,6 +220,24 @@ negative value exists**. The token can go the other way, and does: 1.30. The mod
 black, and that is a decision rather than an oversight: a scrim simulates a light being switched
 off, it is not a surface.
 
+### Two more, reported through use (#409h)
+
+**A shadow where nothing floats.** The rule read `canvas { box-shadow: 0 8px 28px rgba(0,0,0,.55) }`
+— `canvas`, with no qualifier, so it also reached the four 3D previews inside dialogs. A shadow
+lifts an object off its work surface; a preview *sits inside* a panel and has nothing to float over.
+`0 8px 28px` spills about 20px above and 30px below: invisible on a dark background, two dirty bands
+on beige. Now scoped to `#board`, the Page itself.
+
+The absolute black **stays** there, and that is a decision: a shadow simulates occluded light, like
+the modal scrim. It is not a surface, so it has no business following the theme. The rule of thumb
+that came out of this campaign: *surfaces take tokens, light effects stay absolute.*
+
+**A button with no outline of its own.** `.nav-btn` had `border: 1px solid var(--nav-bg)` — the
+colour of its own fill. So it had no outline at all, and dissolved whenever its fill came close to
+the paper: 1.17 in the Light theme, reported on a dialog's "Cancel" button. The border now uses
+`--line-strong`, independent of the fill, and `--nav-bg` was deepened (1.17 → 1.59 in Light,
+1.30 → 1.45 in high-contrast light).
+
 ## Breakdown
 
 | Task | Subject |
