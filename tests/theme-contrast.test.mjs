@@ -262,6 +262,80 @@ describe('La frontière de ce qui se clique (#409l)', () => {
   });
 });
 
+describe('L\'indicateur de focus (#409m)', () => {
+  /**
+   * Signalé à l'usage : la bague de sélection n'épouse pas le contour du champ. Elle n'était
+   * définie NULLE PART : la seule règle de focus de la feuille l'annulait (`outline:none`). Ce
+   * qu'on voyait était la bague du navigateur, dessinée par `outline-style: auto`, dont la forme ne
+   * suit pas le rayon déclaré ici.
+   *
+   * ⚠️ ET ELLE N'EMPLOIE PAS `--accent`. WCAG 2.4.11 demande 3:1 entre l'indicateur et les couleurs
+   * voisines ; `--accent` vaut 6,59 en Sombre mais **2,18 en Clair** contre le papier, et 1,90
+   * contre `--paper-dark`. La bague y aurait été plus discrète que la bordure au repos.
+   */
+  const VOISINS = ['paper', 'paper-dark', 'white'];
+  const NORMAL = jetonsDuBloc(':root');
+  const NORMAL_CLAIR = { ...NORMAL, ...jetonsDuBloc('body.theme-light') };
+
+  [['sombre', NORMAL], ['clair', NORMAL_CLAIR], ['contraste sombre', SOMBRE], ['contraste clair', CLAIR]]
+    .forEach(([nom, T]) => {
+      test(`${nom} : la bague atteint 3:1 contre chacun de ses voisins`, () => {
+        assert.ok(T.focus, `--focus manque dans la palette ${nom}`);
+        const faibles = VOISINS
+          .map(v => [v, contraste3D(T.focus, T[v])])
+          .filter(([, r]) => r < 3);
+        assert.deepEqual(faibles.map(([v, r]) => `${v} ${r.toFixed(2)}`), []);
+      });
+    });
+
+  test('RÉGRESSION : `--accent` n\'aurait PAS suffi, et c\'est pourquoi le jeton existe', () => {
+    // Sans cette vérification, quelqu'un remplacerait un jour --focus par --accent en trouvant
+    // qu'un jeton de plus est superflu. Le chiffre dit pourquoi il ne l'est pas.
+    const r = contraste3D(NORMAL_CLAIR.accent, NORMAL_CLAIR['paper-dark']);
+    assert.ok(r < 3,
+      `--accent est passé à ${r.toFixed(2)} contre paper-dark en thème Clair : le jeton --focus `
+      + 'pourrait être reconsidéré, mais pas supprimé sans mesurer');
+  });
+
+  test('RÉGRESSION : un `outline` explicite, qui épouse le rayon du champ', () => {
+    // `outline-style: auto`, celui du navigateur, ne suit pas le border-radius déclaré. Un outline
+    // explicite, si. C'est toute la remarque d'usage.
+    const i = CSS.indexOf(':focus-visible{');
+    assert.ok(i > 0, 'aucune règle de focus dans la feuille');
+    const corps = CSS.slice(i, CSS.indexOf('}', i));
+    assert.match(corps, /outline\s*:\s*2px solid var\(--focus\)/);
+    assert.match(corps, /outline-offset/, 'sans décalage, la bague colle au bord et se lit mal');
+    assert.ok(!/outline\s*:\s*auto/.test(corps), 'retour à la bague du navigateur');
+  });
+
+  test('RÉGRESSION : plus aucun `outline:none` sur un élément focusable', () => {
+    // Supprimer l'indicateur sans le remplacer laisse quelqu'un au clavier sans savoir où il est.
+    const fautifs = [...CSS.matchAll(/([^{}]*:focus[^{}]*)\{([^}]*outline\s*:\s*none[^}]*)\}/g)]
+      .map(m => m[1].trim());
+    assert.deepEqual(fautifs, [], `l'indicateur de focus est supprimé sur : ${fautifs.join(', ')}`);
+  });
+
+  test('RÉGRESSION : le corps d\'une section ne DÉCOUPE plus son contenu', () => {
+    // Une bague de focus se dessine EN DEHORS du champ. Tant que `.modal-section-body` portait
+    // `overflow:hidden`, aucun style de focus ne pouvait s'afficher entièrement — et la ligne
+    // X/Y/Z, poussée vers le haut par une marge négative, paraissait coupée par le titre.
+    const i = CSS.indexOf('.modal-section-body{');
+    assert.ok(i > 0, 'la règle du corps de section a disparu');
+    const corps = CSS.slice(i, CSS.indexOf('}', i));
+    assert.ok(!/overflow\s*:\s*hidden/.test(corps),
+      'le découpage est revenu : il rognerait les bagues de focus');
+    // Et le repli continue de fonctionner, par l'autre voie.
+    assert.match(CSS, /\.modal-section\.collapsed \.modal-section-body\{ display:none; \}/);
+  });
+
+  test('… et plus aucune ligne ne déborde par une marge négative', () => {
+    // La face qui manque toujours : retirer le découpage sans retirer ce qui débordait aurait
+    // seulement rendu le débordement visible au lieu de le supprimer.
+    assert.ok(!/margin:-\d+px 0 4px/.test(HTML),
+      'une ligne de champs remonte encore hors du corps de sa section');
+  });
+});
+
 describe('Le mécanisme : un modificateur, pas un thème de plus', () => {
   test('les deux classes se CUMULENT', () => {
     // Le cœur de la décision d'architecture. Si le contraste excluait le fond clair, il faudrait

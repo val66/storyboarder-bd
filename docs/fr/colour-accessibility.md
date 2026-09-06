@@ -275,6 +275,34 @@ contour contre la *page*, pas contre son propre fond blanc : c'est l'extérieur 
 composant s'arrête. Mesurer contre le remplissage aurait donné un contour bien plus sombre que
 nécessaire, et une interface hérissée.
 
+### L'indicateur de focus, qui n'était défini nulle part (#409m)
+
+Signalé à l'usage : « le contour de sélection n'épouse pas le contour du champ, ce n'est ni le même
+angle ni la même taille ». Exact, et la raison est que **la feuille ne contenait aucune règle de
+focus** — une seule règle `:focus` existait, et elle *supprimait* l'indicateur (`outline:none`). Ce
+qui s'affichait était la bague du navigateur, dessinée par `outline-style: auto`, dont la forme ne
+suit pas le `border-radius` déclaré. Un `outline` explicite, si.
+
+**Elle n'emploie pas `--accent`, et c'est mesuré.** WCAG 2.4.11 demande 3:1 entre l'indicateur de
+focus et les couleurs voisines. `--accent` vaut 6,59 en thème Sombre mais **2,18 en Clair** contre le
+papier, et 1,90 contre `--paper-dark` : la bague y aurait été *moins* visible que la bordure au
+repos, soit l'exact contraire de son rôle. `--focus` est un jeton à part, à 4,11 au minimum dans les
+quatre thèmes.
+
+`:focus-visible` plutôt que `:focus`, pour qu'un clic à la souris ne bague pas tout ce qu'il touche.
+
+### Et la section qui découpait ses propres champs
+
+Le second signalement avait la même racine. `.modal-section-body` portait un `overflow:hidden` qui ne
+servait plus à rien — le repli se fait par `display:none`, et aucune animation de hauteur n'existe —
+tout en **découpant** ce qui dépassait du corps de la section. La ligne X/Y/Z dépasse, poussée vers
+le haut par un `margin-top` de -2px : les champs paraissaient donc coupés par le titre.
+
+Les deux n'en font qu'un : **une bague de focus se dessine en dehors de son champ, par
+construction.** Tant que ce découpage existait, aucun style de focus n'aurait pu s'afficher
+entièrement. Les deux sont partis : le découpage, et les dix marges négatives qui débordaient dedans.
+Retirer le découpage seul aurait rendu le débordement visible au lieu de le supprimer.
+
 ## Découpage
 
 | Tâche | Sujet |

@@ -12,6 +12,7 @@
 @import url('./assets/fonts/fonts.css');
 
 :root{
+  --focus:#FF9A5C;
   --bord-actif:#6E6E77;
   --fond-3d:#CFCBC2;
   --creux:#0E0F12;
@@ -75,6 +76,7 @@
    les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
    exclusivement avec ces variables) basculent automatiquement sans aucune autre modification de CSS. */
 body.theme-light{
+  --focus:#B4431A;
   --bord-actif:#807869;
   --fond-3d:#FBF8F2;
   --creux:#D0CABE;
@@ -142,6 +144,7 @@ body.theme-light{
    étagées en clarté, pas en teinte. Les séparer vraiment demanderait d'en sortir une de la famille,
    ce qui est une décision d'identité visuelle et non un réglage (cf. docs/en/colour-accessibility.md). */
 body.theme-contraste{
+  --focus:#FFAE72;
   --bord-actif:#6B6C76;
   --fond-3d:#E4E1D9;
   --creux:#20202A;
@@ -169,6 +172,7 @@ body.theme-contraste{
 /* La variante claire. Elle vient APRÈS, et elle est plus spécifique (deux classes contre une), donc
    elle gagne sur le bloc ci-dessus sans avoir à répéter ce qui ne change pas. */
 body.theme-light.theme-contraste{
+  --focus:#7A2E00;
   --bord-actif:#858585;
   --fond-3d:#EDEAE2;
   --creux:#DBDBDB;
@@ -637,7 +641,36 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
   border: 1px solid var(--bord-actif); border-radius:8px; padding:9px; background:var(--white); color:var(--ink);
   box-sizing:border-box;
 }
-#sideDescInput:focus{ outline:none; border-color:var(--accent); }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LE FOCUS, QUI N'ÉTAIT DÉFINI NULLE PART (#409m)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   Signalé à l'usage : « le contour de sélection n'épouse pas le contour du champ, ce n'est ni le
+   même angle ni la même taille ». Exact, et la raison est qu'il n'y avait AUCUNE règle de focus
+   dans cette feuille — une seule, juste en dessous, et elle l'ANNULAIT. La bague affichée était
+   celle du navigateur, dessinée par `outline-style: auto`, dont la forme ne suit pas le rayon
+   déclaré ici.
+
+   Un `outline` explicite, lui, épouse le `border-radius` de l'élément. Le contour colle donc au
+   champ, à un décalage régulier près.
+
+   ⚠️ CE N'EST PAS `--accent`, ET C'EST MESURÉ. WCAG 2.4.11 demande 3:1 entre l'indicateur de focus
+   et les couleurs voisines. `--accent` vaut 6,59 en thème Sombre mais **2,18 en Clair** contre le
+   papier, et 1,90 contre `--paper-dark` : la bague y aurait été plus discrète que la bordure au
+   repos, ce qui est l'inverse de son rôle. `--focus` est un jeton à part, à 4,1 au minimum dans les
+   quatre thèmes.
+
+   `:focus-visible` et non `:focus` : le clavier et la navigation au tabulateur montrent la bague,
+   un simple clic sur un champ ne la montre pas. C'est le comportement que les navigateurs ont
+   adopté, et le reproduire évite de baguer tout ce qu'on touche à la souris. */
+:focus-visible{
+  outline:2px solid var(--focus);
+  outline-offset:2px;
+}
+/* Le champ de description gardait `outline:none`, c'est-à-dire la suppression pure et simple de
+   l'indicateur de focus : personne au clavier ne savait plus où il se trouvait. Il reçoit désormais
+   le traitement commun, plus le changement de bordure qu'il avait déjà. */
+#sideDescInput:focus-visible{ border-color:var(--focus); }
 .side-bulle-tail{
   display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
   margin-bottom:8px; cursor:pointer; user-select:none;
@@ -1096,7 +1129,15 @@ canvas{ background:var(--fond-3d); }
   font-size:17px; line-height:1; color:var(--ink-soft); transition:transform .15s ease; flex-shrink:0;
 }
 .modal-section.collapsed .modal-section-caret{ transform:rotate(-90deg); }
-.modal-section-body{ overflow:hidden; }
+/* ⚠️ PLUS D'`overflow:hidden` ICI (#409m). Il ne servait plus à rien : le repli se fait par
+   `display:none` sur la ligne suivante, et aucune animation de hauteur n'existe. Il DÉCOUPAIT en
+   revanche tout ce qui dépassait du corps de la section, et la ligne X/Y/Z de la modale d'un
+   Élément dépasse, poussée vers le haut par un `margin-top` négatif. Les champs paraissaient donc
+   coupés par le titre de la section. Signalé à l'usage.
+
+   Une bague de focus dépasse elle aussi, par construction : elle se dessine EN DEHORS du champ.
+   Tant que ce découpage existait, aucun style de focus ne pouvait s'afficher entièrement. */
+.modal-section-body{}
 .modal-section.collapsed .modal-section-body{ display:none; }
 /* Repliée, la section n'a plus de contenu sous l'en-tête : sans ce filet, l'espace réservé au-dessus
    de l'en-tête (padding du haut de .modal-section + marge du haut de l'en-tête) reste plus grand que

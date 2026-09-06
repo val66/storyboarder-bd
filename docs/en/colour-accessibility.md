@@ -265,6 +265,34 @@ against the *page*, not against its own white interior: the outside is what says
 stops. Measuring against the fill would have produced a far darker outline than needed, and a
 bristling interface.
 
+### The focus indicator, which was defined nowhere (#409m)
+
+Reported through use: "the selection outline doesn't hug the field, it's neither the same corner nor
+the same size". Exact, and the reason is that **the stylesheet had no focus rule at all** — one
+single `:focus` rule existed, and it *removed* the indicator (`outline:none`). What was on screen was
+the browser's own ring, drawn with `outline-style: auto`, whose shape does not follow the declared
+`border-radius`. An explicit `outline` does.
+
+**It does not use `--accent`, and that is measured.** WCAG 2.4.11 asks for 3:1 between the focus
+indicator and adjacent colours. `--accent` scores 6.59 in the Dark theme but **2.18 in Light**
+against the paper, and 1.90 against `--paper-dark`: the ring would have been *less* visible than the
+resting border, the exact opposite of its job. `--focus` is its own token, at 4.11 minimum across
+the four themes.
+
+`:focus-visible` rather than `:focus`, so that a mouse click does not ring everything it touches.
+
+### And the section that clipped its own fields
+
+The second report had the same root. `.modal-section-body` carried `overflow:hidden`, which served
+nothing — collapsing is done by `display:none`, and no height animation exists — while it **clipped**
+anything overflowing the section body. The X/Y/Z row overflows, pushed upward by a `margin-top` of
+-2px, so the fields looked cut off by the section title.
+
+The two are one problem: **a focus ring is drawn outside its field by construction.** As long as
+that clipping existed, no focus style could have displayed in full. Both were removed: the clip, and
+the ten negative margins that were overflowing into it. Removing only the clip would have made the
+overflow visible instead of removing it.
+
 ## Breakdown
 
 | Task | Subject |
