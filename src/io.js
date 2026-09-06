@@ -10,7 +10,6 @@
  */
 import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
-import { perfJalon, perfCascadeDesactivee } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
 // est synchrone, le décodage ne l'est pas (cf. src/image-cache.js).
 import { preloadImagesFor } from './image-cache.js';
@@ -642,7 +641,6 @@ export function applyProjectData(data){
   // leur arrivée redéclenche un rendu (cf. setModelCacheCallbacks). Le Projet s'ouvre entièrement
   // même si un fichier manque, chaque modèle absent devient une boîte de remplacement, et aucun
   // Élément n'est supprimé (cf. docs/en/persisted-data.md § 5).
-  perfJalon('PROJET APPLIQUÉ (données en mémoire)');
   prechargerEnCascade3D();
   S.projectDirty = false;
 }
@@ -663,12 +661,8 @@ export function applyProjectData(data){
  * remettre en tête ce qu'on regarde maintenant.
  */
 export function prechargerEnCascade3D(){
-  const troisVagues = vaguesDePrechargement3D({ tomes: S.tomes, scenes: S.scenes },
+  const vagues = vaguesDePrechargement3D({ tomes: S.tomes, scenes: S.scenes },
     S.currentTomeIndex, S.currentPageIndex);
-  // SONDE (#406b) : la passe témoin fusionne les trois vagues en une, ce qui reproduit le
-  // comportement d'avant la cascade. Sans point de comparaison, « les 4 modèles de la Planche sont
-  // prêts à 947 ms » ne se compare à rien. Repart avec la sonde.
-  const vagues = perfCascadeDesactivee() ? [troisVagues.flat()] : troisVagues;
   (async () => {
     for (const vague of vagues) {
       if (!vague.length) continue;

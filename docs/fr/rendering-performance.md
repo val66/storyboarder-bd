@@ -199,3 +199,98 @@ problème, le remède est de **borner le cache** — évincer les images des Pla
 l'écran — ce qui ne coûte aucun pixel. Détruire de la donnée à l'import pour économiser un coût
 mesuré à zéro serait le mauvais échange, et il est désormais écrit qu'il a été mesuré plutôt que
 supposé.
+
+---
+
+# Troisième campagne — pourquoi une Planche légère met plus d'une seconde, septembre 2026
+
+Signalé à l'usage : « ouvrir le projet et charger une Planche met plus d'une seconde alors qu'en
+vrai il y a assez peu de choses sur la planche en question ». Deux hypothèses concurrentes, et la
+mesure était là pour les départager, pas pour confirmer celle qu'on préférait.
+
+| | |
+|---|---|
+| H1, les fichiers | Le préchargement reçoit les objets de TOUS les Tomes et de TOUTES les Scènes d'un bloc ; l'analyse GLB s'exécute sur le fil principal, donc une Planche légère attend derrière des fichiers dont elle n'a pas besoin. |
+| H2, les rigs | Changer de Planche vide le cache 3D, donc chaque Case se reconstruit. La note d'août dit déjà que la première frame d'une session construit tous les rigs et coûte plusieurs fois le reste. |
+
+**H2 l'emporte, et largement.** La frame de 986 ms *commence à 1 411 ms* ; le dernier modèle était
+prêt à 1 403 ms. Elle ne l'attendait pas, elle était déclenchée par son arrivée : `preloadModels`
+appelle `_onChange()` une fois après le `Promise.all`, et ce redessin reconstruisait les sept rigs
+de la Planche dans une seule frame bloquante — 329 + 60 + 57 + 68 + 111 + 117 + 242.
+
+## Ce que la chronologie a montré et que les agrégats ne pouvaient pas dire
+
+Des durées disent ce que coûte chaque chose. Elles ne disent pas si la Planche ATTENDAIT. Des
+jalons — des instants, pas des durées — ont répondu directement. Un second ajout a fait nommer aux
+ratés de cache **quel segment de la signature avait changé**, ce qui a séparé le légitime du
+gaspillage :
+
+| cause du raté | verdict |
+|---|---|
+| « état du cache des modèles » | légitime : les modèles sont vraiment arrivés, les rigs doivent vraiment être reconstruits |
+| « échelle de rendu » | gaspillage : aucun contenu n'a changé, seul `S.pageRenderScale` a bougé |
+
+## Trois corrections, et ce que chacune rapporte
+
+**#405c — `fitZoomToWrap` passait par le délai de 150 ms prévu pour la molette.** Toute la Planche
+était rendue à l'ancienne échelle, puis DE NOUVEAU à la nouvelle, l'échelle faisant partie de la
+signature du cache 3D. Ajuster la vue n'est pas un geste : il n'y a rien à regrouper. Poser
+l'échelle sans délai a supprimé une passe complète (35 rendus → 28). Le délai reste là où il gagne
+quelque chose : pendant un zoom à la molette, rendre en pleine résolution à chaque cran coûterait
+cher pour des images que personne ne regarde.
+
+**#405d — un rig reconstruit par frame au lieu des sept.** Le travail est irréductible ; le faire
+d'un bloc était un choix. Une Case au-delà du budget garde son image précédente (périmée d'une
+frame, donc invisible) ou reste à son fond si elle est froide.
+
+| | avant | après |
+|---|---|---|
+| frame la plus longue | **986 ms** | **315 ms** |
+| rendus de Case | 28 | **15** |
+| total du dessin | 1 685 ms | 1 287 ms |
+
+Les rendus ont presque diminué de moitié, ce qui n'était pas prévu : une Case reportée est
+redemandée plus tard avec une signature déjà à jour, donc les états intermédiaires ne sont jamais
+rendus.
+
+**#406b — précharger en trois vagues**, sur demande de l'utilisateur : la Planche affichée, puis le
+reste de son Tome, puis tout le reste. Mesuré sur un Projet synthétique (4 Tomes, 32 Planches, 22
+modèles distincts dont 4 seulement sur la première Planche), contre une passe témoin cascade
+désactivée :
+
+| | témoin (une vague) | cascade |
+|---|---|---|
+| modèles de la Planche prêts | 2 540 ms | **947 ms** |
+| Planche entièrement rendue | 3 193 ms | **1 568 ms** |
+| tous les modèles du Projet | **2 600 ms** | 3 242 ms |
+
+**C'est un ÉCHANGE, pas un gain net**, et la note le dit : le Projet complet finit 642 ms plus tard.
+On obtient ce qu'on regarde deux fois plus tôt, et ce qu'on ne regarde pas une demi-seconde plus
+tard.
+
+Un effet secondaire à consigner : l'analyse GLB est PLUS LENTE en témoin (médiane 1 409 ms contre
+917), et la lecture disque aussi (536 contre 300). Vingt-deux analyses concurrentes se gênent plus
+que quatre puis dix-huit. La cascade ne fait donc pas que réordonner, elle réduit la contention.
+
+## Méthode : trois pièges où cette campagne est tombée
+
+**`perfTempsAsync` mesure le temps ÉCOULÉ autour d'un `await`.** Six analyses qui se chevauchent
+gonflent mutuellement leur durée : un total de 3 875 ms sur six appels n'est pas 3 875 ms de
+travail, tout était fini à 1 308 ms. Ne jamais additionner ces lignes.
+
+**La sonde doit S'ARMER AVANT LE DÉMARRAGE.** Le Projet se charge pendant l'initialisation, bien
+avant qu'on puisse taper dans la console ; une sonde allumée à la main manque précisément ce
+qu'elle doit mesurer. C'est ainsi que la campagne #404 a perdu le temps de décodage. Elle s'arme
+par `localStorage`, et reste éteinte par défaut.
+
+**Un lot de mutations tué par le délai laisse le dépôt muté.** C'est arrivé de nouveau, sur la
+mutation qui fait s'appeler la boucle de dessin elle-même — précisément celle qui bloque la suite.
+Rejouer les mutations une par une quand l'une d'elles peut boucler.
+
+## Ce qui N'A PAS été tranché
+
+L'échelle de rendu change **deux fois** pendant le chargement (`1,5 → 2,571`), et le second
+changement survient après le rendu coûteux, au prix d'une passe complète de plus. Le déclencheur
+est une mise en page qui se stabilise tard — la largeur disponible grandit, donc l'ajustement
+grandit. Il n'a pas été identifié, et #405d l'a rendu non bloquant, ce qui a fait tomber l'intérêt
+de le poursuivre. Écrit tel quel plutôt qu'habillé.
