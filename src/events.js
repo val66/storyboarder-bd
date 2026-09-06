@@ -2591,7 +2591,10 @@ canvas.addEventListener('mousedown', (e) => {
         canvas.style.cursor = 'grabbing';
         return;
       }
+      // Redessin IMMÉDIAT : la suite de ce gestionnaire ne redessine pas sur tous ses chemins, et
+      // sans cela la bordure pointillée resterait à l'écran pour un mode déjà éteint.
       sortirModeDeplacementImage();
+      renderAll();
     }
   }
 
@@ -5521,6 +5524,36 @@ function _caseEnDeplacementDImage(){
   if (!panel || !casePorteUneImage3D(panel)) { sortirModeDeplacementImage(); return null; }
   return panel;
 }
+
+/**
+ * SORTIR DU MODE EN CLIQUANT AILLEURS QUE SUR LE CANEVAS.
+ *
+ * ⚠️ SIGNALÉ À L'USAGE, et le trou n'était pas où je l'avais cherché. Le clic sur le CANEVAS hors
+ * de la Case sortait bien du mode (cf. le gestionnaire `mousedown` du canevas). Mais « en dehors de
+ * la Case » veut aussi dire la marge sombre autour de la Planche, le menu de gauche, le panneau de
+ * droite : autant d'endroits qui ne sont pas le canevas, et que son gestionnaire ne voit donc
+ * JAMAIS. Le mode survivait à tous ces clics, et l'image restait déplaçable.
+ *
+ * Un écouteur sur `document` couvre tout ce qui n'est pas le canevas, d'un seul tenant, plutôt que
+ * d'ajouter un cas à `canvasWrap` puis un autre au panneau droit puis un autre au menu de gauche —
+ * l'énumération que ce dépôt paie cher à chaque fois qu'il la tente.
+ *
+ * LE CANEVAS EST LA SEULE EXCEPTION, et il décide lui-même : c'est le seul endroit où un clic peut
+ * légitimement tomber DANS la Case, donc entamer un déplacement au lieu de finir le mode.
+ *
+ * ⚠️ ORDRE DES ÉVÉNEMENTS, ET C'EST CE QUI REND CET ÉCOUTEUR SÛR. `mousedown` précède `click` :
+ * entrer dans le mode par le menu contextuel ou par le bouton du panneau droit se fait au `click`,
+ * donc APRÈS ce passage-ci, qui n'a alors rien à éteindre. Rentrer dans le mode ne peut pas se
+ * refermer sur soi-même.
+ */
+document.addEventListener('mousedown', (e) => {
+  if (e.target === canvas) return;
+  // La condition est le RETOUR de la sortie, pas une relecture du drapeau. J'avais d'abord écrit
+  // `if (!S.imageMovePanelId) return;` au-dessus : la fonction pose déjà cette question, et une
+  // mutation qui supprimait ma ligne restait verte — deux fois la même garde, dont une seule
+  // vérifiable. Ici le redessin suit ce qui s'est réellement passé, et il n'y a plus qu'une garde.
+  if (sortirModeDeplacementImage()) renderAll();
+});
 
 document.getElementById('ctxMoveImage').onclick = () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');

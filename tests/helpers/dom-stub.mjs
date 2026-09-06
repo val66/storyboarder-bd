@@ -180,8 +180,21 @@ globalThis.document = {
   // events.js, canvasWrap) ne plante pas dès le chargement du module.
   querySelector(){ return makeFakeElement(); },
   querySelectorAll(){ return []; },
-  addEventListener(){},
-  removeEventListener(){},
+  // ⚠️ LE DOCUMENT RETIENT SES ÉCOUTEURS, comme les éléments depuis #392c, et pour la raison que ce
+  // fichier donne déjà plus haut : un `addEventListener` en no-op rend indémontrable tout ce qui se
+  // déclenche au clic. Un défaut signalé à l'usage (sortir du mode de recadrage en cliquant
+  // ailleurs que sur le canevas) ne pouvait pas être couvert tant que celui-ci restait muet.
+  _ecouteurs: {},
+  addEventListener(type, fn){
+    if (typeof fn !== 'function') return;
+    (this._ecouteurs[type] = this._ecouteurs[type] || []).push(fn);
+  },
+  removeEventListener(type, fn){
+    const l = this._ecouteurs[type];
+    if (!l) return;
+    const i = l.indexOf(fn);
+    if (i >= 0) l.splice(i, 1);
+  },
   body: makeFakeElement(),
 };
 

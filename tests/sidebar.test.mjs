@@ -428,6 +428,68 @@ describe('Panneau droit : une section de Case ne survit pas à la désélection'
   });
 });
 
+// ── Sortir du mode de recadrage en cliquant ailleurs ──────────────────────────────────────────
+describe('Recadrage d\'image : un clic hors du canevas ferme le mode', () => {
+  // ⚠️ SIGNALÉ À L'USAGE, et le trou n'était pas où je l'avais cherché. Le clic sur le CANEVAS hors
+  // de la Case sortait bien du mode. Mais « en dehors de la Case » veut aussi dire la marge sombre
+  // autour de la Planche, le menu de gauche et le panneau de droite : autant d'endroits que le
+  // gestionnaire du canevas ne voit jamais. Le mode y survivait, et l'image restait déplaçable.
+  //
+  // Ce test a demandé de faire retenir ses écouteurs au `document` du stub DOM. C'est la même
+  // raison qui les avait fait retenir aux éléments (#392c) : sans cela, on ne peut affirmer que
+  // l'existence d'une ligne, jamais son effet.
+  //
+  // JOURNAL DE MUTATION (suite de celui de #403e, dans draw.test.mjs) :
+  //   U1 l'écouteur du document retiré                                          ROUGE
+  //   U2 le canevas n'est plus excepté                                          ROUGE
+  //   U3 la garde `!S.imageMovePanelId` retirée                    ÉCHAPPÉE, CODE CORRIGÉ
+  //   U4 la sortie ne remet plus le drapeau à null                              ROUGE
+  //
+  // U3 a corrigé le code : ma garde reposait la question que `sortirModeDeplacementImage` pose
+  // déjà, donc deux gardes pour une seule vérifiable. Le redessin suit désormais le RETOUR de la
+  // sortie, et il n'y a plus qu'un seul endroit qui décide.
+  //
+  // ⚠️ UNE ÉCHAPPÉE RESTE (U3b) : rendre le redessin inconditionnel laisse la suite verte. Le seul
+  // dégât est un `renderAll` inutile à chaque clic de l'application, un coût et non un défaut. Le
+  // couvrir demanderait de compter les redessins, une instrumentation fragile pour un tort que
+  // personne ne voit. C'est écrit ici plutôt que corrigé pour de mauvaises raisons.
+  const mousedownsDuDocument = () => (document._ecouteurs && document._ecouteurs.mousedown) || [];
+
+  test('l\'écouteur existe VRAIMENT sur le document', () => {
+    assert.ok(mousedownsDuDocument().length >= 1,
+      'aucun écouteur mousedown sur le document : rien ne ferme le mode hors canevas');
+  });
+
+  test('RÉGRESSION : un clic qui n\'est pas le canevas ferme le mode', () => {
+    S.imageMovePanelId = 'c1';
+    mousedownsDuDocument().forEach(fn => fn({ target: { tagName: 'DIV' } }));
+    assert.equal(S.imageMovePanelId, null,
+      'cliquer hors du canevas laisse le mode actif, et l\'image reste déplaçable');
+  });
+
+  test('RÉGRESSION : un clic SUR le canevas est laissé au canevas', () => {
+    // Le canevas est la seule exception, et il décide lui-même : c'est le seul endroit où un clic
+    // peut tomber DANS la Case, donc entamer un déplacement au lieu de finir le mode. Sans cette
+    // exception, le mode se refermerait au premier clic, y compris celui qui veut recadrer.
+    S.imageMovePanelId = 'c1';
+    // `#board`, et non `#canvas` : c'est l'identifiant réel du canevas dans index.html, et ma
+    // première version se trompait de nœud — donc n'exemptait rien et croyait le prouver.
+    const canvas = document.getElementById('board');
+    mousedownsDuDocument().forEach(fn => fn({ target: canvas }));
+    assert.equal(S.imageMovePanelId, 'c1',
+      'le document ferme le mode avant que le canevas ait pu commencer le déplacement');
+    S.imageMovePanelId = null;
+  });
+
+  test('hors du mode, l\'écouteur ne fait rien', () => {
+    // L'assertion de présence en face des deux absences : sans elle, un écouteur qui ferme tout,
+    // tout le temps, passerait aussi.
+    S.imageMovePanelId = null;
+    mousedownsDuDocument().forEach(fn => fn({ target: { tagName: 'DIV' } }));
+    assert.equal(S.imageMovePanelId, null);
+  });
+});
+
 // ── Le Manuel dans le panneau droit ───────────────────────────────────────────────────────────
 describe('afficherManuelLateral / masquerManuelLateral : l\'action est nommée, pas recopiée', () => {
   // Ces deux fonctions existent parce que le bouton « ? » est un BASCULEUR et que l'Éditeur de
