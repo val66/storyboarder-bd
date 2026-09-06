@@ -23,7 +23,7 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
-import { perfTempsJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
+import { perfTempsJalon, perfJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1678,6 +1678,20 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
   const cached = panelSceneCache3D.get(panel.id);
   if (cached && cached.sig === sig) return cached;
+  // SONDE (#405c) : sur un raté de cache, DIRE QUELLE PART DE LA SIGNATURE A BOUGÉ.
+  //
+  // La mesure a montré 0 % de succès au chargement là où la campagne d'août en relevait 91,4 %,
+  // et deux redessins complets restaient inexpliqués. Deviner lequel des cinq morceaux change,
+  // c'est exactement l'inférence que ce dépôt paie à chaque fois qu'il la tente : on demande donc
+  // au code, morceau par morceau. Les segments sont séparés par « || », dans l'ordre où
+  // computePanelSceneSignature3D les assemble.
+  if (cached) {
+    const NOMS = ['caméra/style/sol', 'Éléments', 'tracés', 'état du cache des modèles', 'échelle de rendu'];
+    const avant = cached.sig.split('||');
+    const apres = sig.split('||');
+    const change = NOMS.filter((_, i) => avant[i] !== apres[i]);
+    perfJalon(`raté de cache — ${change.length ? change.join(' + ') : 'aucun segment ne diffère (?)'}`);
+  }
   return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
 }
 
