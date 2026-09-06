@@ -868,6 +868,45 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     assert.match(tous, /background\s*:/, 'les aperçus ont perdu leur fond');
   });
 
+  test('RÉGRESSION : les trois actions de sortie de l\'Éditeur sont à écart ÉGAL (#409k)', () => {
+    /**
+     * ⚠️ LES MARGES NE FUSIONNENT PAS ENTRE CES BOUTONS. Un `<button>` est `inline-block` par
+     * défaut, et deux marges d'éléments inline-block s'ADDITIONNENT au lieu de se réduire à la plus
+     * grande. C'est toute la différence entre le raisonnement « max(6, 6) = 6, donc c'est égal » et
+     * ce qui s'affichait vraiment : 12px d'un côté, 6px de l'autre.
+     *
+     * L'écart entre deux voisins vaut donc `margin-bottom` du premier PLUS `margin-top` du second,
+     * et c'est ce que ce test calcule. Signalé à l'usage.
+     */
+    const marge = (sel, cote) => {
+      const d = declarationsOuNull(sel);
+      // `0` s'écrit sans unité en CSS, et c'est justement la valeur qu'on pose pour supprimer une
+      // marge : exiger `px` aurait fait échouer le test sur la déclaration même qu'il doit lire.
+      const m = new RegExp(`margin-${cote}\\s*:\\s*(-?\\d+)(?:px)?\\s*;`).exec(d);
+      assert.ok(m, `${sel} ne déclare pas margin-${cote} : l'écart dépendrait d'une autre règle`);
+      return Number(m[1]);
+    };
+    const P = '.persona-editor-panel ';
+    const ecart1 = marge(P + '#personaEditorResetBtn', 'bottom') + marge(P + '#personaEditorApplyBtn', 'top');
+    const ecart2 = marge(P + '#personaEditorApplyBtn', 'bottom') + marge(P + '#personaEditorCloseBtn', 'top');
+    assert.equal(ecart1, ecart2,
+      `Réinitialiser→Appliquer vaut ${ecart1}px et Appliquer→Fermer ${ecart2}px`);
+    assert.ok(ecart1 > 0, 'les trois boutons se toucheraient');
+  });
+
+  test('… et aucune marge en ligne ne les contredit', () => {
+    // La marge de « Fermer » vivait dans un attribut `style` du HTML, hors de portée de toute
+    // règle. Une valeur en ligne gagne sur la feuille de style : la corriger dans le CSS n'aurait
+    // rien changé, et le test précédent aurait été vert pour rien.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    ['personaEditorResetBtn', 'personaEditorApplyBtn', 'personaEditorCloseBtn'].forEach(id => {
+      const m = new RegExp(`<button[^>]*id="${id}"[^>]*>`).exec(html);
+      assert.ok(m, `bouton ${id} introuvable dans index.html`);
+      assert.ok(!/style="[^"]*margin/.test(m[0]),
+        `${id} porte une marge en ligne, qui gagnera sur la feuille de style`);
+    });
+  });
+
   test('RÉGRESSION : le fond des canevas 3D est un jeton, et il reste CLAIR (#409j)', () => {
     // Le moteur efface en transparent : cette déclaration EST ce qu'on voit derrière un Élément.
     // Elle valait `#fff` en dur, donc un rectangle blanc pur au milieu d'une modale sombre.

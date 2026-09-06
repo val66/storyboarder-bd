@@ -1175,9 +1175,22 @@ canvas{ background:var(--fond-3d); }
    50px sur un plein écran, ce qui ne se voit pas. */
 .persona-editor-panel { width: 350px; flex-shrink: 0; overflow-y: auto; padding: 18px 16px;
                         background: var(--paper-dark); border-left: 1px solid var(--line); }
-/* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart, les deux
-   suivantes se collent à elle : elles forment un groupe. */
-.persona-editor-panel #personaEditorResetBtn { margin-top: 16px; }
+/* Les trois actions de sortie, empilées sous les curseurs. Réinitialiser prend l'écart au-dessus,
+   les deux suivantes se collent à elle : elles forment un groupe.
+
+   ⚠️ LES MARGES NE FUSIONNENT PAS ICI, ET C'EST CE QUI A CRÉÉ LE DÉFAUT (#409k). Un `<button>` est
+   `inline-block` par défaut, et deux marges d'éléments inline-block s'ADDITIONNENT au lieu de se
+   réduire à la plus grande. « Réinitialiser » portait la marge basse de `.nav-btn` (6px) et
+   « Appliquer » la marge haute de `.full-btn` (6px) : l'écart valait donc 12px, contre 6px entre
+   « Appliquer » et « Fermer », dont le premier n'a pas de marge basse. Signalé à l'usage, et la
+   remarque était juste au pixel près.
+
+   Les trois écarts sont écrits ICI, explicitement, plutôt que laissés au hasard de ce que chaque
+   classe déclare de son côté : ces boutons viennent de deux familles dont l'une pousse par le haut
+   et l'autre par le bas. Un seul côté porte la marge, donc plus rien ne s'additionne. */
+.persona-editor-panel #personaEditorResetBtn { margin-top: 16px; margin-bottom: 0; }
+.persona-editor-panel #personaEditorApplyBtn { margin-top: 6px; margin-bottom: 0; }
+.persona-editor-panel #personaEditorCloseBtn { margin-top: 6px; margin-bottom: 0; }
 /* ⚠️ LE MÊME ÉCART VERTICAL QUE SES VOISINS (#398b). `.nav-btn` ne déclare qu'une marge BASSE — elle
    lui vient des rangées d'actions de modale, où « Annuler » est posé sous un champ — alors que
    `.full-btn` déclare une marge HAUTE. Dans ce panneau les deux se suivent en colonne : le bouton
