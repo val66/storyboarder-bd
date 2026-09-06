@@ -861,7 +861,37 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     const tous = declarationsOuNull('canvas');
     assert.ok(!/box-shadow/.test(tous),
       'la règle générale `canvas` porte de nouveau une ombre : elle atteindrait les aperçus');
-    assert.match(tous, /background\s*:\s*#fff/, 'les aperçus ont perdu leur fond blanc');
+    // ⚠️ ON VÉRIFIE QU'IL Y A UN FOND, PAS SA VALEUR. Écrit `#fff` deux commits plus tôt, ce test
+    // a bloqué #409j, qui remplaçait justement ce blanc pur par un jeton. Deuxième fois dans ce
+    // chantier qu'un test épingle un MOYEN au lieu d'une intention ; la valeur est tenue par le
+    // test #409j, dont c'est le sujet.
+    assert.match(tous, /background\s*:/, 'les aperçus ont perdu leur fond');
+  });
+
+  test('RÉGRESSION : le fond des canevas 3D est un jeton, et il reste CLAIR (#409j)', () => {
+    // Le moteur efface en transparent : cette déclaration EST ce qu'on voit derrière un Élément.
+    // Elle valait `#fff` en dur, donc un rectangle blanc pur au milieu d'une modale sombre.
+    //
+    // ⚠️ LA CONTRAINTE N'EST PAS « SUIVRE LE THÈME », C'EST « RESTER CLAIR ». Ce n'est pas une
+    // surface d'interface : c'est le fond sur lequel se lit une figure 3D, souvent sombre
+    // elle-même. L'assombrir avec le reste du thème rendrait les Éléments illisibles, ce qui serait
+    // un défaut pire que celui qu'on corrige. Le test refuse donc les deux dérives : le blanc pur,
+    // et le trop sombre.
+    const d = declarationsOuNull('canvas');
+    assert.match(d, /background\s*:\s*var\(--fond-3d\)/, 'le fond des canevas n\'est pas un jeton');
+
+    const lum = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+      .reduce((s, c, k) => s + [0.2126, 0.7152, 0.0722][k]
+        * (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4), 0);
+    const blocs = [':root', 'body.theme-light', 'body.theme-contraste', 'body.theme-light.theme-contraste'];
+    blocs.forEach(b => {
+      const i = css.indexOf(b + '{');
+      assert.ok(i >= 0, `bloc ${b} introuvable`);
+      const m = /--fond-3d\s*:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i, css.indexOf('}', i)));
+      assert.ok(m, `--fond-3d manque dans ${b}`);
+      assert.ok(lum(m[1]) > 0.5, `${b} : --fond-3d à ${m[1]} est trop sombre pour une figure 3D`);
+      assert.notEqual(m[1].toUpperCase(), '#FFFFFF', `${b} : retour au blanc pur`);
+    });
   });
 
   test('RÉGRESSION : un encart arrondi qui contient un canevas doit le DÉCOUPER (#409i)', () => {

@@ -12,6 +12,7 @@
 @import url('./assets/fonts/fonts.css');
 
 :root{
+  --fond-3d:#CFCBC2;
   --creux:#0E0F12;
   --sur-accent:#FFFFFF;
   --sur-danger:#FFFFFF;
@@ -55,6 +56,7 @@
    les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
    exclusivement avec ces variables) basculent automatiquement sans aucune autre modification de CSS. */
 body.theme-light{
+  --fond-3d:#FBF8F2;
   --creux:#D0CABE;
   --sur-accent:#FFFFFF;
   --sur-danger:#FFFFFF;
@@ -120,6 +122,7 @@ body.theme-light{
    étagées en clarté, pas en teinte. Les séparer vraiment demanderait d'en sortir une de la famille,
    ce qui est une décision d'identité visuelle et non un réglage (cf. docs/en/colour-accessibility.md). */
 body.theme-contraste{
+  --fond-3d:#E4E1D9;
   --creux:#20202A;
   --paper:#000000;
   --paper-dark:#0D0D10;
@@ -145,6 +148,7 @@ body.theme-contraste{
 /* La variante claire. Elle vient APRÈS, et elle est plus spécifique (deux classes contre une), donc
    elle gagne sur le bloc ci-dessus sans avoir à répéter ce qui ne change pas. */
 body.theme-light.theme-contraste{
+  --fond-3d:#EDEAE2;
   --creux:#DBDBDB;
   --paper:#FFFFFF;
   --paper-dark:#EDEDED;
@@ -751,8 +755,22 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
 #board{
   background:#fff; box-shadow:0 8px 28px rgba(0,0,0,.55); cursor:crosshair;
 }
-/* Les autres canevas gardent leur fond blanc, sans ombre : aperçus de modale et éditeur de pose. */
-canvas{ background:#fff; }
+/* ⚠️ LE FOND DES CANEVAS 3D N'EST PLUS BLANC PUR (#409j). Le moteur efface en TRANSPARENT
+   (`setClearColor(0x000000, 0)`, cf. rig3d.js) : ce qu'on voit derrière un Élément est donc
+   exactement cette déclaration, et elle valait `#fff` en dur.
+
+   Signalé à l'usage : sur un thème sombre, un rectangle blanc pur au milieu d'une modale est
+   violent. Mesuré, il contrastait à 17 contre le papier du thème Sombre. Le jeton descend à 10,5,
+   ce qui reste franchement clair sans éblouir.
+
+   ⚠️ IL DOIT RESTER CLAIR DANS LES QUATRE THÈMES, et un test le vérifie. Ce n'est pas une surface
+   d'interface qu'on pourrait assombrir avec le reste : c'est le fond sur lequel se lit une figure
+   3D, souvent sombre elle-même. L'inverser rendrait les Éléments illisibles, ce qui serait un
+   défaut bien pire que celui qu'on corrige.
+
+   Trois canevas partagent cette règle et le même besoin : les quatre aperçus de modale, la scène
+   de l'Éditeur de modèle, et le gizmo de caméra du panneau droit. */
+canvas{ background:var(--fond-3d); }
 
 /* MODAL */
 /* Voile des modales. Assombri en deux fois sur demande utilisateur, .6 → .78 → .88 : le contenu
