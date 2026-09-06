@@ -195,6 +195,39 @@ parce que les blocs qu'elles remplissent portent déjà une bordure en jeton, ma
 
 Un jeton suit le thème. Une valeur absolue ne le peut pas, quel que soit le soin mis à la choisir.
 
+### Ce que #409c a raté, et la forme de l'erreur
+
+Deux défauts ont été introduits par les palettes de contraste elles-mêmes, et les deux viennent de
+la même erreur de méthode : **chaque jeton a été mesuré contre le fond, jamais contre les autres.**
+
+**Les jetons sémantiques ont convergé.** `--accent`, `--danger` et `--warn` sont tombés à 36 d'écart
+en vision normale, contre 55 dans le thème Sombre. Poussés vers le sombre pour gagner du contraste
+sur blanc, ils sont devenus presque la même couleur.
+
+**Et les libellés de boutons sont devenus illisibles.** Ces trois jetons servent **deux rôles
+opposés** : texte posé SUR le papier, et fond de bouton SOUS un libellé. #409c n'a honoré que le
+premier. Mesuré, dans un mode nommé « contraste renforcé » : libellé blanc sur le bouton d'action à
+**1,98**, libellé sombre sur le bouton d'avertissement à **2,11**. Sous le seuil AA, donc *moins*
+lisibles que dans les thèmes normaux.
+
+Une valeur ne peut pas satisfaire deux contraintes opposées : il en faut deux. D'où `--sur-accent`,
+`--sur-danger`, `--sur-warn` : le libellé suit le thème lui aussi. Tout est désormais à 7:1 ou
+mieux, et la séparation mutuelle est remontée à 69 et 58.
+
+**Ce qui reste hors d'atteinte, et il faut le nommer.** Ces trois teintes appartiennent à la famille
+rouge-orange-jaune, qui est exactement l'axe que le daltonisme rouge-vert supprime. Un balayage de
+la teinte de 0° à 60° les fait toutes converger vers le même jaune-brun. Seule la *luminosité* les
+sépare encore, et c'est ce qui a guidé les nouvelles valeurs : elles sont étagées en clarté, pas en
+teinte. Les séparer vraiment demanderait d'en sortir une de la famille, ce qui est une décision
+d'identité visuelle et non un réglage.
+
+**Un dernier écho de la même faute.** Les huit superpositions noires employées comme surfaces
+(`rgba(0,0,0,.14)` et voisines) sont devenues un jeton `--creux`. La démonstration la plus nette est
+le contraste sombre : le papier y est `#000000`, donc l'assombrir rend exactement `#000000`, un écart
+de 1,00, parce qu'**aucune valeur négative n'existe**. Le jeton, lui, peut aller dans l'autre sens,
+et il le fait : 1,30. Le voile des modales reste noir, et c'est une décision et non un oubli : un
+voile simule une lumière éteinte, il n'est pas une surface.
+
 ## Découpage
 
 | Tâche | Sujet |

@@ -136,6 +136,69 @@ describe('Contraste renforcé : chaque jeton atteint sa cible', () => {
   });
 });
 
+describe('Les jetons sémantiques : deux rôles opposés, deux contraintes (#409f)', () => {
+  /**
+   * ⚠️ CE BLOC EXISTE PARCE QUE #409c A INTRODUIT UN DÉFAUT, et que le test d'à côté ne pouvait pas
+   * le voir. `colour-signals.test.mjs` ne surveille que les jetons de `draw.js` ; ceux du CSS n'y
+   * étaient pas. Le trou s'est refermé ici.
+   *
+   * `--accent`, `--danger` et `--warn` servent DEUX rôles opposés : couleur de texte posée SUR le
+   * papier, et fond de bouton SOUS un libellé. #409c n'a honoré que le premier. Résultat mesuré,
+   * dans un mode nommé « contraste renforcé » : libellé blanc sur le bouton d'action à **1,98**,
+   * libellé sombre sur le bouton d'avertissement à **2,11**. Sous le seuil AA, donc MOINS lisibles
+   * que dans les thèmes normaux.
+   *
+   * Une valeur ne peut pas satisfaire deux contraintes opposées : il en faut deux. D'où `--sur-*`.
+   */
+  const SEMANTIQUES = ['accent', 'danger', 'warn'];
+
+  [['sombre', SOMBRE], ['clair', CLAIR]].forEach(([nom, T]) => {
+    test(`variante ${nom} : le jeton se lit SUR le papier (7:1)`, () => {
+      const faibles = SEMANTIQUES.map(k => [k, contraste3D(T[k], T.paper)]).filter(([, r]) => r < 7);
+      assert.deepEqual(faibles.map(([k, r]) => `${k} ${r.toFixed(2)}`), []);
+    });
+
+    test(`variante ${nom} : le libellé se lit SUR le bouton (7:1)`, () => {
+      // La contrainte oubliée. Elle tire dans le sens INVERSE de la précédente : éclaircir un fond
+      // pour qu'il ressorte du papier rapproche le libellé blanc écrit dessus.
+      const faibles = SEMANTIQUES
+        .map(k => [k, contraste3D(T[`sur-${k}`], T[k])])
+        .filter(([, r]) => r < 7);
+      assert.deepEqual(faibles.map(([k, r]) => `sur-${k} ${r.toFixed(2)}`), []);
+    });
+  });
+
+  test('RÉGRESSION : les trois jetons restent distincts ENTRE EUX', () => {
+    // Le défaut de #409c en une phrase : chaque jeton avait été optimisé contre le fond, aucun
+    // contre les autres. En les poussant tous vers le sombre pour gagner du contraste, je les avais
+    // fait converger, jusqu'à 36 d'écart en vision normale contre 55 dans le thème Sombre.
+    const distance = (a, b) => Math.hypot(...[0, 2, 4]
+      .map(i => parseInt(a.slice(1 + i, 3 + i), 16) - parseInt(b.slice(1 + i, 3 + i), 16)));
+    [['sombre', SOMBRE], ['clair', CLAIR]].forEach(([nom, T]) => {
+      const paires = [['accent', 'danger'], ['accent', 'warn'], ['danger', 'warn']];
+      paires.forEach(([a, b]) => assert.ok(distance(T[a], T[b]) >= 55,
+        `${nom} : ${a}/${b} à ${distance(T[a], T[b]).toFixed(0)}, sous 55`));
+    });
+  });
+
+  test('les libellés sont des JETONS, pas des couleurs en dur', () => {
+    // Même faute de forme que #409e : `color:#fff` écrit en dur ne peut pas suivre un thème. En
+    // contraste sombre, le bon libellé est NOIR, l'inverse exact de la valeur d'origine.
+    const enDur = [...CSS.matchAll(/background:\s*var\(--(accent|danger|warn)\)[^;}]*;?[^}]*?color:\s*(#[0-9a-fA-F]{3,6})/g)];
+    assert.deepEqual(enDur.map(m => m[0].slice(0, 70)), [],
+      'un bouton coloré garde un libellé écrit en dur');
+    assert.match(CSS, /--sur-accent\s*:/);
+    assert.match(CSS, /--sur-warn\s*:/);
+  });
+
+  test('le garde-fou : les jetons `--sur-*` existent dans les QUATRE palettes', () => {
+    // Un jeton absent d'une palette hérite de la précédente, ce qui peut être juste par accident et
+    // faux au prochain ajustement.
+    [SOMBRE, CLAIR].forEach(T => SEMANTIQUES.forEach(k =>
+      assert.ok(T[`sur-${k}`], `--sur-${k} manque dans une palette de contraste`)));
+  });
+});
+
 describe('Le mécanisme : un modificateur, pas un thème de plus', () => {
   test('les deux classes se CUMULENT', () => {
     // Le cœur de la décision d'architecture. Si le contraste excluait le fond clair, il faudrait

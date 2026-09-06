@@ -187,6 +187,39 @@ tokenised border — but `tests/style.test.mjs` counts them, so their number can
 
 A token follows the theme. An absolute value cannot, however carefully it was chosen.
 
+### What #409c got wrong, and the shape of the mistake
+
+Two defects were introduced by the high-contrast palettes themselves, and both come from the same
+error of method: **each token was measured against the background, never against the others.**
+
+**The semantic tokens converged.** `--accent`, `--danger` and `--warn` fell to 36 apart in normal
+vision, against 55 in the Dark theme. Pushed towards the dark end to gain contrast on white, they
+ended up nearly the same colour.
+
+**And the button labels became unreadable.** These three tokens serve **two opposite roles**: text
+laid *on* the paper, and button background laid *under* a label. #409c honoured only the first.
+Measured, in a mode called "increased contrast": white label on the action button at **1.98**, dark
+label on the warning button at **2.11** — below the AA floor, therefore *less* readable than in the
+normal themes.
+
+One value cannot satisfy two opposite constraints; it takes two. Hence `--sur-accent`,
+`--sur-danger`, `--sur-warn`: the label follows the theme as well. Everything now sits at 7:1 or
+better, and mutual separation is back to 69 and 58.
+
+**What stays out of reach, and it is worth naming.** These three hues belong to the red-orange-yellow
+family, which is exactly the axis red-green colour blindness removes. Sweeping the hue from 0° to
+60° makes them all converge on the same yellow-brown. Only *lightness* still separates them, and
+that is what guided the new values: they are staggered in lightness, not in hue. Separating them
+properly would mean moving one out of the family, which is a visual-identity decision rather than a
+setting.
+
+**A last echo of the same fault.** The eight black overlays used as surfaces (`rgba(0,0,0,.14)` and
+friends) became a `--creux` token. The clearest demonstration is the high-contrast dark theme: paper
+is `#000000` there, so darkening it yields exactly `#000000` — a ratio of 1.00, because **no
+negative value exists**. The token can go the other way, and does: 1.30. The modal scrim stays
+black, and that is a decision rather than an oversight: a scrim simulates a light being switched
+off, it is not a surface.
+
 ## Breakdown
 
 | Task | Subject |

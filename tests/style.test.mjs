@@ -562,7 +562,11 @@ describe('#400 : les articulations dans le panneau de l\'Éditeur', () => {
     // Raison déjà écrite pour le niveau imbriqué, et elle n'a pas changé : deux bordures à un pixel
     // d'écart se lisent comme un défaut d'alignement, pas comme une imbrication.
     const chaine = declarationsOuNull('.persona-editor-panel .joint-group-details .joint-group-details');
-    assert.match(chaine, /background:\s*rgba/, 'la chaîne n\'a pas de fond : rien ne dit qu\'elle est posée dedans');
+    // ⚠️ ON VÉRIFIE QU'IL Y A UN FOND, PAS COMMENT IL EST ÉCRIT. La version d'origine exigeait
+    // `background: rgba`, ce qui épinglait une superposition noire, c'est-à-dire précisément
+    // l'implémentation que #409g a retirée parce qu'elle ne survivait pas au changement de thème.
+    // Un test qui fige un moyen empêche de corriger le moyen ; celui-ci garde l'INTENTION.
+    assert.match(chaine, /background:\s*(rgba|var\(--)/, 'la chaîne n\'a pas de fond : rien ne dit qu\'elle est posée dedans');
     assert.match(chaine, /border-left:\s*none/, 'le filet vertical est revenu en plus du fond');
     assert.ok(!/border:\s*1px/.test(chaine), 'un second cadre a été ajouté à un pixel du premier');
   });
@@ -819,14 +823,43 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     assert.notEqual(jeton(repos), jeton(survol), 'le survol ne se distingue plus du repos');
   });
 
-  test('les superpositions NOIRES restantes sont comptées, et ne peuvent que diminuer', () => {
-    // Elles ne sont pas corrigées : personne ne les a signalées, et les blocs qu'elles remplissent
-    // portent déjà une bordure en jeton. Mais leur nombre est épinglé, pour qu'une nouvelle ne se
-    // glisse pas dans le lot en profitant de l'exemption.
-    const noires = [...sansCommentaires.matchAll(/(background|border)(-color)?\s*:[^;]*rgba\(0,\s*0,\s*0[^;]*;/g)];
-    assert.ok(noires.length <= 9,
-      `${noires.length} superpositions noires : le compte a augmenté, il ne doit que baisser`);
-    assert.ok(noires.length >= 1,
-      'plus aucune : tant mieux, mais ce test ne mesure plus rien et doit être retiré');
+  test('RÉGRESSION : la seule superposition noire restante est le VOILE des modales (#409g)', () => {
+    // Les huit autres sont parties dans le jeton `--creux`. Celle-ci reste, et c'est une décision,
+    // pas un oubli : un voile de modale SIMULE une lumière éteinte, il n'est pas une surface. Il
+    // doit assombrir dans tous les thèmes, y compris clairs, et une valeur absolue est ici la
+    // bonne réponse.
+    const noires = [...sansCommentaires.matchAll(/(background|border)(-color)?\s*:[^;]*rgba\(0,\s*0,\s*0[^;]*;/g)]
+      .map(m => m[0].trim());
+    assert.deepEqual(noires, ['background:rgba(0,0,0,0.88);'],
+      'une superposition noire est réapparue comme surface, ou le voile a changé');
+  });
+
+  test('RÉGRESSION : sur un fond NOIR PUR, un creux doit ÉCLAIRCIR', () => {
+    // La démonstration la plus nette de tout le chantier. En contraste sombre le papier est
+    // #000000 : `rgba(0,0,0,.14)` par-dessus rend exactement #000000, soit un écart de 1,00. Aucune
+    // valeur négative n'existe. Le jeton, lui, peut aller dans l'autre sens, et c'est ce qu'il fait.
+    const val = (bloc, jeton) => {
+      const i = css.indexOf(bloc + '{');
+      assert.ok(i >= 0, `bloc ${bloc} introuvable`);
+      const m = new RegExp(`--${jeton}\\s*:\\s*(#[0-9A-Fa-f]{6})`).exec(css.slice(i, css.indexOf('}', i)));
+      return m && m[1];
+    };
+    const lum = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
+      .reduce((s, c, k) => s + [0.2126, 0.7152, 0.0722][k] * (c / 255 <= 0.04045
+        ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4), 0);
+    const creuxContraste = val('body.theme-contraste', 'creux');
+    assert.ok(creuxContraste, '--creux manque dans la palette de contraste sombre');
+    assert.ok(lum(creuxContraste) > 0, 'un creux à luminance nulle sur du noir pur est invisible');
+  });
+
+  test('les quatre palettes définissent `--creux`', () => {
+    // Un jeton absent d'une palette hérite silencieusement de la précédente. Ça peut être juste par
+    // accident, et faux au premier ajustement.
+    ['body.theme-light', 'body.theme-contraste', 'body.theme-light.theme-contraste'].forEach(b => {
+      const i = css.indexOf(b + '{');
+      assert.ok(i >= 0, `bloc ${b} introuvable`);
+      assert.match(css.slice(i, css.indexOf('}', i)), /--creux\s*:/, `--creux manque dans ${b}`);
+    });
+    assert.match(css.slice(css.indexOf(':root{'), css.indexOf('}', css.indexOf(':root{'))), /--creux\s*:/);
   });
 });

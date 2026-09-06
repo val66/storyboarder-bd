@@ -12,6 +12,10 @@
 @import url('./assets/fonts/fonts.css');
 
 :root{
+  --creux:#0E0F12;
+  --sur-accent:#FFFFFF;
+  --sur-danger:#FFFFFF;
+  --sur-warn:#1B1C1F;
   /* Largeur du menu de gauche. Variable, et non plus un littéral, parce que l'Éditeur de
      Personnage se cale EXACTEMENT à sa droite : deux 260px écrits séparément auraient fini par
      diverger, et l'écart se serait vu comme une bande du panneau qui dépasse. */
@@ -51,6 +55,10 @@
    les mêmes variables sur <body> plutôt que sur :root, pour que tous les composants (déjà construits
    exclusivement avec ces variables) basculent automatiquement sans aucune autre modification de CSS. */
 body.theme-light{
+  --creux:#D0CABE;
+  --sur-accent:#FFFFFF;
+  --sur-danger:#FFFFFF;
+  --sur-warn:#1B1C1F;
   --paper:#F2EBDD;
   --paper-dark:#E7DCC6;
   --ink:#2B2A28;
@@ -92,7 +100,27 @@ body.theme-light{
 
    Ce que ce bloc ne fait PAS : toucher aux couleurs qui dépeignent. La teinte d'une haie ou la
    peau d'un Personnage ne sont pas ici et n'y seront jamais. */
+/* ⚠️ POURQUOI IL EXISTE UN JETON POUR LE LIBELLÉ DU BOUTON (`--sur-*`, #409f).
+   `--accent`, `--danger` et `--warn` servent DEUX rôles opposés : couleur de texte POSÉE SUR le
+   papier, et fond de bouton SOUS un libellé. Les deux contraintes tirent en sens inverse, et la
+   première version de ce bloc n'en a honoré qu'une.
+
+   Résultat mesuré, dans un mode qui s'appelle « contraste renforcé » : le libellé blanc sur le
+   bouton d'action valait 1,98, et le libellé sombre sur le bouton d'avertissement 2,11. Sous le
+   seuil AA de 4,5, donc MOINS lisibles que dans les thèmes normaux. J'avais éclairci les fonds pour
+   qu'ils ressortent du papier, sans regarder ce qui était écrit dessus.
+
+   Une valeur ne peut pas satisfaire deux contraintes opposées : il en faut deux. Le libellé suit
+   donc le thème lui aussi, et tout est à 7:1 ou mieux.
+
+   ⚠️ CE QUI RESTE HORS D'ATTEINTE, et il faut le dire : ces trois teintes appartiennent à la
+   famille rouge-orange-jaune, et c'est exactement l'axe que le daltonisme rouge-vert supprime. Un
+   balayage de la teinte de 0 à 60 degrés les fait toutes converger vers le même jaune-brun. Seule
+   la LUMINOSITÉ les sépare encore, et c'est ce qui a guidé les valeurs ci-dessous : elles sont
+   étagées en clarté, pas en teinte. Les séparer vraiment demanderait d'en sortir une de la famille,
+   ce qui est une décision d'identité visuelle et non un réglage (cf. docs/en/colour-accessibility.md). */
 body.theme-contraste{
+  --creux:#20202A;
   --paper:#000000;
   --paper-dark:#0D0D10;
   --ink:#FFFFFF;
@@ -104,16 +132,20 @@ body.theme-contraste{
   --white:#101014;
   --nav-bg:#33343B;
   --nav-bg-hover:#4A4B54;
-  --accent:#FFA26B;
-  --accent-soft:rgba(255,162,107,.22);
-  --danger:#FF8A85;
-  --warn:#FFD24D;
+  --accent:#FF8C3D;
+  --accent-soft:rgba(255,140,61,.22);
+  --danger:#FF6B7A;
+  --warn:#FFE9A8;
+  --sur-accent:#000000;
+  --sur-danger:#000000;
+  --sur-warn:#000000;
   --scroll-thumb:#8A8B95;
   --scroll-thumb-hover:#B4B5BE;
 }
 /* La variante claire. Elle vient APRÈS, et elle est plus spécifique (deux classes contre une), donc
    elle gagne sur le bloc ci-dessus sans avoir à répéter ce qui ne change pas. */
 body.theme-light.theme-contraste{
+  --creux:#DBDBDB;
   --paper:#FFFFFF;
   --paper-dark:#EDEDED;
   --ink:#000000;
@@ -125,10 +157,13 @@ body.theme-light.theme-contraste{
   --white:#FFFFFF;
   --nav-bg:#E2E2E2;
   --nav-bg-hover:#CFCFCF;
-  --accent:#9A3400;
-  --accent-soft:rgba(154,52,0,.16);
-  --danger:#8E1B17;
-  --warn:#6B4A00;
+  --accent:#8F3A00;
+  --accent-soft:rgba(143,58,0,.16);
+  --danger:#6E0B08;
+  --warn:#3A3E00;
+  --sur-accent:#FFFFFF;
+  --sur-danger:#FFFFFF;
+  --sur-warn:#FFFFFF;
   --scroll-thumb:#7A7A7A;
   --scroll-thumb-hover:#565656;
 }
@@ -210,7 +245,7 @@ header span{ font-size:12px; color:var(--ink-soft); }
   padding:7px 10px; margin-bottom:14px; border:1px solid var(--line); border-radius:8px;
   /* Superpose un voile noir semi-transparent à --paper-dark pour obscurcir le fond indépendamment du
      thème Clair/Sombre (sur demande utilisateur), plutôt qu'une couleur fixe qui ne s'adapterait pas. */
-  background:linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,.16)), var(--paper-dark);
+  background:var(--creux);
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   cursor:pointer; transition:background-color .12s, border-color .12s, color .12s;
 }
@@ -247,7 +282,7 @@ select, input[type=number]{
    bouton le plus inoffensif de chaque modale aurait été une invitation à l'erreur. Ses styles ne
    changent pas d'un pixel : seul le nom devient vrai. */
 .full-btn{
-  width:100%; margin-top:6px; padding:8px; border:1px solid var(--accent); background:var(--accent); color:#fff;
+  width:100%; margin-top:6px; padding:8px; border:1px solid var(--accent); background:var(--accent); color:var(--sur-accent);
   font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; border-radius:7px; cursor:pointer;
 }
 .full-btn:hover{ filter:brightness(1.08); }
@@ -255,8 +290,8 @@ select, input[type=number]{
 /* Les trois variantes ne redéfinissent QUE la couleur : la géométrie, la police et l'état désactivé
    restent ceux de `.full-btn`, qu'elles accompagnent toujours. Un second jeu de padding aurait fini
    par diverger, et deux boutons voisins n'auraient plus eu la même hauteur. */
-.full-btn.delete-btn{ background:var(--danger); border-color:var(--danger); }
-.full-btn.edit-btn{ background:var(--warn); border-color:var(--warn); color:#1B1C1F; }
+.full-btn.delete-btn{ background:var(--danger); border-color:var(--danger); color:var(--sur-danger); }
+.full-btn.edit-btn{ background:var(--warn); border-color:var(--warn); color:var(--sur-warn); }
 .full-btn:disabled.delete-btn, .full-btn:disabled.edit-btn{
   background:var(--line); border-color:var(--line); color:var(--ink-soft);
 }
@@ -289,7 +324,7 @@ select, input[type=number]{
 
    Le défaut sans modificateur reste l'ORANGE, celui des boutons qui ajoutent ou valident — Nouveau
    projet, Enregistrer, Restaurer les poses de base. */
-.project-modal-btn:hover{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.project-modal-btn:hover{ background:var(--accent); border-color:var(--accent); color:var(--sur-accent); }
 .project-modal-btn.nav-btn{
   /* La combinaison redit le fond sombre de la modale : `.nav-btn` seule le rendrait gris clair, et
      ce bouton-ci n'est gris qu'AU SURVOL. Les deux classes se rencontrent ici et nulle part
@@ -297,8 +332,8 @@ select, input[type=number]{
   margin-bottom:0; background:#3A3B40; border-color:var(--line); color:#fff;
 }
 .project-modal-btn.nav-btn:hover{ background:var(--nav-bg-hover); border-color:var(--nav-bg-hover); color:var(--ink); }
-.project-modal-btn.edit-btn:hover{ background:var(--warn); border-color:var(--warn); color:#1B1C1F; }
-.project-modal-btn.delete-btn:hover{ background:var(--danger); border-color:var(--danger); color:#fff; }
+.project-modal-btn.edit-btn:hover{ background:var(--warn); border-color:var(--warn); color:var(--sur-warn); }
+.project-modal-btn.delete-btn:hover{ background:var(--danger); border-color:var(--danger); color:var(--sur-danger); }
 
 /* Retour des opérations de fichier dans la modale Projet. Vide par défaut : il n'occupe de la
    place que lorsqu'il a quelque chose à dire (`:empty` → display:none), sinon un blanc
@@ -594,7 +629,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 }
 .sol-ground-btn.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .sol-ground-btn:hover:not(.active){ border-color:var(--ink-soft); }
-.sol-ground-swatch{ width:14px; height:14px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,.15); }
+.sol-ground-swatch{ width:14px; height:14px; border-radius:3px; flex-shrink:0; border:1px solid var(--line); }
 .side-border-color input[type="color"]{
   width:100%; height:30px; padding:2px; border-radius:6px; border:1px solid var(--line);
   background:var(--white); cursor:pointer;
@@ -781,7 +816,7 @@ canvas{
    `.modal-subsection`, retirée en #402a : les valeurs sont donc écrites ici, elles ne sont plus
    héritées d'un modèle. */
 .joint-group-details{
-  margin:0 0 8px; background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:6px;
+  margin:0 0 8px; background:var(--creux); border:1px solid var(--line); border-radius:6px;
   padding:6px 10px;
 }
 .joint-group-details summary{
@@ -868,7 +903,7 @@ canvas{
   padding-bottom:7px; margin-bottom:9px; border-bottom:1px solid var(--line);
 }
 .persona-editor-panel .joint-group-details .joint-group-details{
-  border-left:none; background:rgba(0,0,0,.16); border-radius:5px;
+  border-left:none; background:var(--creux); border-radius:5px;
   padding:7px 9px; margin:0 0 7px;
 }
 .persona-editor-panel .joint-group-details .joint-group-details:last-child{ margin-bottom:0; }
@@ -961,7 +996,7 @@ canvas{
    utilise un voile noir semi-transparent (plutôt qu'une variable de thème) afin de rester visiblement
    plus sombre que .modal-box aussi bien en thème clair qu'en thème sombre. */
 .modal-section{
-  background:rgba(0,0,0,.18); border:1px solid var(--line); border-radius:8px;
+  background:var(--creux); border:1px solid var(--line); border-radius:8px;
   margin:14px 0; padding:4px 14px 12px;
 }
 .modal-box h3 + .modal-section, .modal-box h3 + .modal-columns{ margin-top:18px; }
@@ -1120,7 +1155,7 @@ canvas{
 .persona-editor-pose-current {
   font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 8px;
   padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
-  background: linear-gradient(rgba(0,0,0,.14), rgba(0,0,0,.14)), var(--paper-dark);
+  background: var(--creux);
 }
 .persona-editor-poses { display: flex; flex-wrap: wrap; gap: 4px; }
 .persona-editor-poses button {
@@ -1153,13 +1188,13 @@ canvas{
    sont trois boutons côte à côte, pas trois pleines largeurs. Enregistrer AJOUTE une pose à la
    bibliothèque, Renommer l'ÉDITE, Supprimer la SUPPRIME. */
 .persona-editor-pose-actions .pose-save{
-  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  background: var(--accent); border-color: var(--accent); color: var(--sur-accent); font-weight: 600;
 }
 .persona-editor-pose-actions .pose-rename{
-  background: var(--warn); border-color: var(--warn); color: #1B1C1F; font-weight: 600;
+  background: var(--warn); border-color: var(--warn); color: var(--sur-warn); font-weight: 600;
 }
 .persona-editor-pose-actions .pose-delete{
-  background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600;
+  background: var(--danger); border-color: var(--danger); color: var(--sur-danger); font-weight: 600;
 }
 /* ⚠️ UN BOUTON DÉSACTIVÉ GARDE LA MÊME COULEUR, quelle que soit sa classe : le gris foncé de
    `--line`. L'opacité seule ne suffisait plus — appliquée à un fond rouge ou jaune, elle laissait
@@ -1321,7 +1356,7 @@ canvas{
 .skeleton-map-reprise { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
                         padding: 9px 10px; border-radius: 4px; font-size: 12.5px;
                         border: 1px solid var(--line); }
-.skeleton-map-morpho { background: rgba(0,0,0,.18); }
+.skeleton-map-morpho { background: var(--creux); }
 .skeleton-map-morpho select { flex: 1; min-width: 0; }
 .skeleton-map-morpho label { font-size: 12.5px; color: var(--sepia); white-space: nowrap; }
 /* Le bandeau de reprise (#386, remis en forme en #387).
@@ -1358,7 +1393,7 @@ canvas{
 .skeleton-map-reprise-texte { flex: 0 0 auto; white-space: nowrap; color: var(--sepia); }
 .skeleton-map-reprise-btn {
   flex: 0 0 auto; width: auto; margin: 0; padding: 5px 14px;
-  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--sur-accent);
   font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px;
   border-radius: 7px; cursor: pointer; white-space: nowrap;
 }
@@ -1500,7 +1535,7 @@ canvas{
    l'utilisateur peut retrouver ce qui manque : il se coupe plutôt que de déborder, et son titre
    complet reste lisible au survol. */
 .side-image-name{
-  font-size:12px; color:var(--ink-mid); background:rgba(0,0,0,.14);
+  font-size:12px; color:var(--ink-mid); background:var(--creux);
   border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin-bottom:8px;
   overflow-wrap:anywhere;
 }
