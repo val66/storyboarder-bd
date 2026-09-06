@@ -117,6 +117,10 @@ export default [
         // `structuredClone` l'est depuis la v17 : les tests de format s'en servent pour repartir
         // d'un projet de référence intact à chaque cas.
         URL: 'readonly', TextEncoder: 'readonly', structuredClone: 'readonly',
+        // `fetch` : globale de Node depuis la v18, et le dépôt exige déjà la v20 (cf. `engines`
+        // dans package.json). Un seul outil s'en sert, tools/fetch-fonts.mjs, et il ne tourne
+        // JAMAIS pendant les tests : son `main()` est gardé par `import.meta.url === argv[1]`.
+        fetch: 'readonly',
         // `Buffer` : globale de Node, utilisée là où l'on manipule des octets bruts — la fabrique
         // du .glb d'essai (tools/make-test-glb.mjs) et le test qui le décode. Volontairement PAS
         // ajoutée aux blocs src/ : un module du renderer qui s'en servirait ne fonctionnerait pas.
