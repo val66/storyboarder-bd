@@ -2241,6 +2241,33 @@ canvas.addEventListener('mousedown', (e) => {
       drawCurrentPage();
       return;
     }
+    // ── Clic droit MAINTENU sur une Case à image : on recadre (#403j) ──
+    //
+    // Un raccourci, pas un mode : le geste dure ce que dure le bouton. Il vient DOUBLER l'entrée
+    // « Déplacer l'image », pour qui trouve le menu trop long quand il n'y a qu'un pixel à
+    // rattraper. Les deux finissent dans le même glisser (`imageAnchor`), donc il ne peut pas y
+    // avoir deux façons de recadrer qui divergent.
+    //
+    // AVANT le panoramique, qui est ce que le clic droit fait partout ailleurs. Les deux conditions
+    // sont celles de la molette, et pour la même raison : la Case doit être sélectionnée, et le
+    // curseur dessus. `S.panMoved` reste posé à false ici, car c'est lui qui empêchera le menu
+    // contextuel de s'ouvrir au relâchement si l'on a bougé (cf. l'écouteur `contextmenu`).
+    {
+      const { x: _rx, y: _ry } = getCoords(e);
+      const _selD = currentPage().objects.find(o => o.id === S.selectedId);
+      if (_selD && _selD.type === 'panel' && casePorteUneImage3D(_selD)
+        && _rx >= _selD.x && _rx <= _selD.x + _selD.w && _ry >= _selD.y && _ry <= _selD.y + _selD.h) {
+        snapshot();
+        S.panMoved = false;
+        S.dragMode = 'imageAnchor';
+        S.dragStart = { x: _rx, y: _ry };
+        // `boutonDroit` sert au `mousemove` : c'est lui qui décidera d'empêcher le menu contextuel
+        // de s'ouvrir au relâchement, et seulement si l'on a vraiment bougé.
+        S.dragOrig = { ancrage: ancrageDeLImage3D(_selD), panelId: _selD.id, boutonDroit: true };
+        canvas.style.cursor = 'grabbing';
+        return;
+      }
+    }
     S.isPanning = true; S.panMoved = false;
     S.panStart = { x: e.clientX, y: e.clientY };
     S.panScrollStart = { left: canvasWrap.scrollLeft, top: canvasWrap.scrollTop };
@@ -2624,7 +2651,7 @@ canvas.addEventListener('mousedown', (e) => {
         snapshot();
         S.dragMode = 'imageAnchor';
         S.dragStart = { x, y };
-        S.dragOrig = { ancrage: ancrageDeLImage3D(enCadrage) };
+        S.dragOrig = { ancrage: ancrageDeLImage3D(enCadrage), panelId: enCadrage.id };
         canvas.style.cursor = 'grabbing';
         return;
       }
@@ -3325,8 +3352,13 @@ window.addEventListener('mousemove', (e) => {
     //
     // La réversibilité vient d'ailleurs, et elle est réelle : `S.dragOrig.ancrage` est relu à chaque
     // mouvement plutôt que cumulé.
-    const panel = _caseEnDeplacementDImage();
-    const image = panel ? getLoadedImage(imageDeLaCase3D(panel)) : null;
+    // ⚠️ LA CIBLE VIENT DE `S.dragOrig`, ET NON PLUS DU MODE (#403j). Le recadrage a désormais DEUX
+    // entrées : le mode « Déplacer l'image », et le clic droit maintenu sur une Case sélectionnée,
+    // qui est un geste passager et n'allume aucun mode. Lire le mode ici aurait rendu la seconde
+    // entrée sans effet, et la faire allumer le mode l'aurait laissé actif après le relâchement.
+    // Le glisser sait ce qu'il déplace parce qu'il l'a noté en commençant.
+    const panel = page.objects.find(o => o.id === S.dragOrig.panelId && o.type === 'panel');
+    const image = (panel && casePorteUneImage3D(panel)) ? getLoadedImage(imageDeLaCase3D(panel)) : null;
     if (panel && image) {
       const cadre = cadreDeRecouvrement3D(panel.w, panel.h, image.w, image.h, null, zoomDeLImage3D(panel));
       const a = ancrageApresGlissement3D(
@@ -3335,6 +3367,13 @@ window.addEventListener('mousemove', (e) => {
       panel[CHAMP_ANCRAGE_X_IMAGE] = a.x;
       panel[CHAMP_ANCRAGE_Y_IMAGE] = a.y;
       S.projectDirty = true;
+      // ⚠️ UN RECADRAGE AU CLIC DROIT NE DOIT PAS OUVRIR LE MENU EN SE TERMINANT. `S.panMoved` est le
+      // drapeau que l'écouteur `contextmenu` consulte déjà pour cela ; son nom parle de panoramique
+      // mais son rôle est exactement celui-là, « on a glissé, donc pas de menu ». Le seuil de 3
+      // pixels est celui du panoramique, repris tel quel : en deçà, c'est un clic, et un clic droit
+      // sans mouvement doit continuer d'ouvrir le menu.
+      if (S.dragOrig.boutonDroit
+        && (Math.abs(x - S.dragStart.x) > 3 || Math.abs(y - S.dragStart.y) > 3)) S.panMoved = true;
     }
   } else if (S.dragMode === 'panelCorner') {
     const obj = page.objects.find(o => o.id === S.selectedId);
@@ -3610,7 +3649,11 @@ window.addEventListener('mouseup', () => {
   // La condition porte sur LE MODE et non sur `S.dragMode`, qui n'en est que la conséquence : Échap
   // pressé pendant que le bouton est enfoncé éteint le mode, et lire le glisser rouvrirait alors une
   // main pour un mode qui n'existe plus.
-  if (S.dragMode === 'imageAnchor' && S.imageMovePanelId) canvas.style.cursor = 'grab';
+  // Le curseur revient à ce que dit l'ÉTAT, pas à ce que disait le geste : dans le mode, la main
+  // ouverte, parce qu'on peut enchaîner ; hors du mode (recadrage au clic droit, qui est passager),
+  // le curseur normal du canevas. Sans cette seconde branche, une main s'attardait sur une Planche
+  // où plus rien n'était saisissable.
+  if (S.dragMode === 'imageAnchor') canvas.style.cursor = S.imageMovePanelId ? 'grab' : 'crosshair';
   S.dragMode = null; S.tempBox = null; S.snapGuide = null;
   // Fin du geste. Un dessin peut être encore PRÉVU par la coalescence du mousemove : le vider le
   // fait exécuter tout de suite et annule le passage programmé, qui ferait double emploi. Sans

@@ -1111,6 +1111,32 @@ describe('ancrageApresGlissement3D : toute l\'arithmétique du recadrage (#403e)
   });
 });
 
+// Source d'events.js lue UNE fois pour les deux blocs qui suivent (#403e et #403f/#403j) : ils
+// parlent du même câblage, et deux instantanés du même fichier finiraient par être lus comme deux
+// choses différentes.
+const EVENTS_CABLAGE = sourceSansCommentaires(
+  readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+/**
+ * Le corps du `mousemove` de recadrage, sans son marqueur d'entrée.
+ *
+ * ⚠️ ÉCHAPPÉE W7 : ma première version tranchait `slice(0, indexOf('} else if'))` sur une chaîne
+ * qui COMMENÇAIT par ce marqueur. L'index valait donc 0, le bloc était VIDE, et l'assertion
+ * « aucun snapshot ici » était vraie de rien du tout. Une assertion qui porte sur une chaîne vide
+ * ne peut pas échouer, et c'est le seul cas où ce fichier s'est menti à lui-même.
+ */
+const corpsDuMousemove = () => {
+  const marqueur = "} else if (S.dragMode === 'imageAnchor')";
+  const i = EVENTS_CABLAGE.indexOf(marqueur);
+  assert.ok(i > 0, 'le mousemove de recadrage a disparu');
+  const apres = EVENTS_CABLAGE.slice(i + marqueur.length);
+  const fin = apres.indexOf('} else if (S.dragMode ===');
+  assert.ok(fin > 0, 'le bloc du mousemove ne se referme pas là où on le croit');
+  const corps = apres.slice(0, fin);
+  assert.ok(corps.includes('ancrageApresGlissement3D'), 'le bloc lu n\'est pas celui du recadrage');
+  return corps;
+};
+
 /**
  * JOURNAL DE MUTATION #403e : vingt-trois fautes, six échappées, deux assumées.
  *
@@ -1177,30 +1203,22 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
   const IO = sourceSansCommentaires(
     readFileSync(new URL('../src/io.js', import.meta.url), 'utf8'));
   const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  /**
-   * Le corps du `mousemove` de recadrage, sans son marqueur d'entrée.
-   *
-   * ⚠️ ÉCHAPPÉE W7 : ma première version tranchait `slice(0, indexOf('} else if'))` sur une chaîne
-   * qui COMMENÇAIT par ce marqueur. L'index valait donc 0, le bloc était VIDE, et l'assertion
-   * « aucun snapshot ici » était vraie de rien du tout. Une assertion qui porte sur une chaîne vide
-   * ne peut pas échouer, et c'est le seul cas où ce fichier s'est menti à lui-même.
-   */
-  const corpsDuMousemove = () => {
-    const marqueur = "} else if (S.dragMode === 'imageAnchor')";
-    const i = EVENTS.indexOf(marqueur);
-    assert.ok(i > 0, 'le mousemove de recadrage a disparu');
-    const apres = EVENTS.slice(i + marqueur.length);
-    const fin = apres.indexOf('} else if (S.dragMode ===');
-    assert.ok(fin > 0, 'le bloc du mousemove ne se referme pas là où on le croit');
-    const corps = apres.slice(0, fin);
-    assert.ok(corps.includes('ancrageApresGlissement3D'), 'le bloc lu n\'est pas celui du recadrage');
-    return corps;
-  };
 
+  /**
+   * Le bloc `mousedown` DU MODE, et pas celui du clic droit.
+   *
+   * ⚠️ L'ANCRE A DÛ CHANGER AVEC #403j. Elle valait `S.dragMode = 'imageAnchor'`, qui désignait
+   * alors un seul endroit ; le recadrage au clic droit en a créé un second, PLUS HAUT dans le
+   * fichier, et la fenêtre est allée se poser dessus. Trois tests se sont mis à parler d'un bloc
+   * qu'ils ne lisaient plus. L'ancre est donc désormais ce qui n'existe qu'ici : la cible tirée de
+   * `enCadrage`, c'est-à-dire du mode.
+   */
   const blocSouris = () => {
-    const i = EVENTS.indexOf("S.dragMode = 'imageAnchor'");
-    assert.ok(i > 0, 'le glisser de recadrage n\'est branché nulle part');
-    return EVENTS.slice(i - 1200, i + 900);
+    const j = EVENTS.indexOf('panelId: enCadrage.id');
+    assert.ok(j > 0, 'le glisser de recadrage du MODE n\'est branché nulle part');
+    const debut = EVENTS.lastIndexOf('const enCadrage = _caseEnDeplacementDImage();', j);
+    assert.ok(debut > 0 && debut < j, 'le bloc du mode ne commence pas là où on le croit');
+    return EVENTS.slice(debut, j + 700);
   };
 
   test('les deux entrées existent, et le menu contextuel les montre ensemble', () => {
@@ -1270,7 +1288,7 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
   test('RÉGRESSION : le recadrage passe AVANT les poignées de la Case', () => {
     // Sinon le geste change de sens selon l\'endroit exact du clic : recadrage au centre,
     // redimensionnement près d\'un bord. C\'est très exactement ce que le mode supprime.
-    assert.ok(EVENTS.indexOf("S.dragMode = 'imageAnchor'") < EVENTS.indexOf("S.dragMode = 'panelCorner'"),
+    assert.ok(EVENTS.indexOf('panelId: enCadrage.id') < EVENTS.indexOf("S.dragMode = 'panelCorner'"),
       'les poignées de coin répondent avant le recadrage');
   });
 
@@ -1279,14 +1297,15 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
     // que j'appuie sur Échap, je peux déplacer l'image ». Relâcher termine UN déplacement, pas le
     // recadrage : on enchaîne les ajustements sans repasser par le menu. Ma campagne a montré
     // qu'aucun test ne le retenait (W21), et c'est pourtant la moitié de la demande.
-    const i = EVENTS.indexOf("if (S.dragMode === 'imageAnchor' && S.imageMovePanelId)");
+    const i = EVENTS.indexOf("if (S.dragMode === 'imageAnchor') canvas.style.cursor");
     assert.ok(i > 0, 'la fin du glisser de recadrage a disparu');
     const bloc = EVENTS.slice(i, i + 400);
     assert.ok(!/sortirModeDeplacementImage/.test(bloc),
       'relâcher le bouton ferme le mode : il faudrait rouvrir le menu à chaque ajustement');
-    // Et la main ne se rouvre que si le MODE est encore là : Échap pendant que le bouton est
-    // enfoncé l'éteint, et un curseur « main » sans mode promet un geste qui ne répondra pas.
-    assert.match(bloc.slice(0, 120), /S\.imageMovePanelId\) canvas\.style\.cursor = 'grab'/);
+    // Et la main ne se rouvre QUE si le mode est encore là. Deux cas la rendraient fausse : Échap
+    // pressé pendant que le bouton est enfoncé, et le recadrage au clic droit, qui n'allume aucun
+    // mode. Dans les deux, un curseur « main » promettrait un geste qui ne répondra pas.
+    assert.match(bloc.slice(0, 140), /S\.imageMovePanelId \? 'grab' : 'crosshair'/);
   });
 
   test('RÉGRESSION : Échap sort du mode', () => {
@@ -1375,6 +1394,29 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
  * annonçaient « la molette n'est plus branchée », et un cinquième PASSAIT par accident, parce que
  * `indexOf(x, -1)` repart de zéro et retrouvait des occurrences sans rapport ailleurs dans le
  * fichier. Une ancre absente ne fait pas échouer proprement : elle fait dériver.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * SUITE #403j : « Déplacer » passe dans Cadrage, et le clic droit maintenu recadre. Six fautes.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ *   Q1 le clic droit recadre sans vérifier la position du curseur         ROUGE
+ *   Q2 le clic droit recadre sans instantané                              ROUGE
+ *   Q3 le menu contextuel s'ouvre après un recadrage à la souris          ROUGE
+ *   Q4 le glisser relit le MODE au lieu de sa propre cible                ROUGE
+ *   Q5 le seuil de 3 px retiré : un clic droit simple n'ouvre plus rien   ROUGE
+ *   Q6 « Déplacer l'image » revient dans la section Image                 ROUGE
+ *
+ * AUCUNE ÉCHAPPÉE, mais le chantier a quand même repris trois de mes tests : les ancres de #403e
+ * pointaient sur `S.dragMode = 'imageAnchor'`, qui ne désignait alors qu'un endroit. Le recadrage au
+ * clic droit en a créé un SECOND, plus haut dans le fichier, et les fenêtres sont allées se poser
+ * dessus. Trois tests se sont mis à parler d'un bloc qu'ils ne lisaient plus, et ils l'ont dit tout
+ * de suite. C'est la quatrième fois de ce chantier qu'une fenêtre de lecture se déplace sous mes
+ * pieds ; celle-ci a été la moins coûteuse, parce que les tests étaient assez précis pour échouer
+ * au lieu de dériver en silence.
+ *
+ * Q5 mérite d'être lu à l'envers des autres : il ne protège pas le recadrage, il protège le MENU.
+ * Sans seuil, un clic droit sans mouvement supprimerait le menu contextuel, et une Case à image
+ * perdrait « Changer l'image » et « Retirer l'image ».
  *
  * T14 RESTE, ET C'EST ASSUMÉ. Écrire la valeur brute du curseur au lieu de la borner ne change
  * aucun comportement : `zoomDeLImage3D` borne à la LECTURE, donc le dessin et « Recentrer » restent
@@ -1592,6 +1634,59 @@ describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
     const corps = blocMolette();
     assert.match(corps, /S\.projectDirty = true/);
     assert.match(corps, /updateSidePanel\(\)/);
+  });
+
+  test('LE CLIC DROIT MAINTENU recadre, sur la Case visée seulement (#403j)', () => {
+    const i = EVENTS.indexOf('boutonDroit: true');
+    assert.ok(i > 0, 'le recadrage au clic droit n\'est branché nulle part');
+    const corps = EVENTS.slice(EVENTS.lastIndexOf('const { x: _rx, y: _ry }', i), i + 200);
+    // Mêmes deux conditions que la molette, et pour la même raison : sans le test de position, un
+    // clic droit n'importe où sur la Planche recadrerait une image à l'autre bout de l'écran.
+    assert.match(corps, /casePorteUneImage3D\(_selD\)/);
+    assert.match(corps, /_rx >= _selD\.x && _rx <= _selD\.x \+ _selD\.w/);
+    assert.match(corps, /_ry >= _selD\.y && _ry <= _selD\.y \+ _selD\.h/);
+    assert.match(corps, /snapshot\(\)/, 'le recadrage au clic droit ne serait pas annulable');
+  });
+
+  test('RÉGRESSION : le clic droit passe AVANT le panoramique', () => {
+    // Le clic droit fait un panoramique partout ailleurs. Le nôtre doit répondre en premier, sinon
+    // la Planche défile au lieu de recadrer.
+    assert.ok(EVENTS.indexOf('boutonDroit: true') < EVENTS.indexOf('S.isPanning = true; S.panMoved = false;'),
+      'le panoramique répond avant le recadrage');
+  });
+
+  test('RÉGRESSION : un clic droit qui a GLISSÉ n\'ouvre pas le menu, un clic simple oui', () => {
+    // ⚠️ SANS CELA, chaque recadrage à la souris se terminerait par un menu contextuel en pleine
+    // figure. `S.panMoved` est le drapeau que l'écouteur `contextmenu` consulte déjà ; on s'y
+    // raccroche plutôt que d'inventer un second mécanisme de suppression.
+    //
+    // Et le seuil compte dans l'autre sens : un clic droit SANS mouvement doit continuer d'ouvrir
+    // le menu, sinon la Case à image perdrait « Changer l'image » et « Retirer l'image ».
+    const corps = corpsDuMousemove();
+    assert.match(corps, /S\.dragOrig\.boutonDroit/,
+      'un glisser au bouton gauche supprimerait le menu contextuel lui aussi');
+    assert.match(corps, /Math\.abs\(x - S\.dragStart\.x\) > 3 \|\| Math\.abs\(y - S\.dragStart\.y\) > 3/);
+    assert.match(corps, /S\.panMoved = true/);
+    assert.match(EVENTS, /if \(S\.panMoved\) \{ S\.panMoved = false; hideContextMenu\(\); return; \}/,
+      'le drapeau sur lequel on s\'appuie n\'est plus consulté par le menu contextuel');
+  });
+
+  test('RÉGRESSION : les DEUX entrées finissent dans le même glisser', () => {
+    // Deux façons de recadrer qui divergeraient donneraient deux résultats différents pour le même
+    // geste. Elles posent le même `dragMode` et la même forme de `dragOrig`, donc le mousemove ne
+    // peut pas les distinguer — sauf pour le menu contextuel, qui est la seule différence assumée.
+    assert.equal((EVENTS.match(/S\.dragMode = 'imageAnchor';/g) || []).length, 2);
+    assert.equal((EVENTS.match(/ancrage: ancrageDeLImage3D\(/g) || []).length, 2);
+    assert.equal((EVENTS.match(/panelId: (enCadrage|_selD)\.id/g) || []).length, 2);
+  });
+
+  test('RÉGRESSION : le glisser lit SA cible, plus le mode', () => {
+    // Le recadrage au clic droit n'allume aucun mode : lire `_caseEnDeplacementDImage()` ici
+    // l'aurait rendu sans effet. Le glisser sait ce qu'il déplace parce qu'il l'a noté en commençant.
+    const corps = corpsDuMousemove();
+    assert.match(corps, /S\.dragOrig\.panelId/);
+    assert.ok(!/_caseEnDeplacementDImage/.test(corps),
+      'le glisser dépend encore du mode : le clic droit serait sans effet');
   });
 
   test('RÉGRESSION : le glisser tient compte du zoom pour calculer le jeu', () => {

@@ -94,7 +94,17 @@ things doing one job, and every later question would have to be answered twice.
     The wheel and the slider share their step and their bounds, so that moving from one to the
     other does not change how the setting feels; and the wheel turns the same way as the Camera's,
     because two identical gestures turning opposite ways in one window are paid for at every use.
-20. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
+20. **Holding the RIGHT button on a selected image panel reframes it, without a mode (#403j).** A
+    shortcut that doubles the "Move the image" entry, for when the menu feels long to catch a stray
+    pixel. Both paths end in the same drag, so two ways of reframing cannot drift apart. Since the
+    right button also opens the context menu, a drag of more than 3 pixels suppresses it, and a
+    right-click that does not move still opens it: a panel with an image must not lose "Change" and
+    "Remove".
+
+    This is also why the drag reads its target from what it recorded when it started, rather than
+    from the mode: the right-button gesture lights no mode, and reading the mode would have made it
+    a no-op.
+21. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
     another project on its next opening; nothing equivalent exists for images. This is a gap, stated
     rather than hidden: renaming an image repairs the OPEN project and nothing else.
 
@@ -163,6 +173,8 @@ the confirmation, and the Image section.
 **#403f, the zoom and the return to the original framing.** Decisions 15 to 18.
 
 **#403i, Framing as its own section, and the mouse wheel.** Decision 19.
+
+**#403j, « Move » joins Framing, and the held right button reframes.** Decision 20.
 
 **#403e, moving the image inside its panel.** Decisions 13 and 14. The arithmetic is a pure
 function (`ancrageApresGlissement3D`), separate from the mouse wiring, because it is the only part

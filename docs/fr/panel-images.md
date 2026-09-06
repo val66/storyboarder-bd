@@ -103,7 +103,16 @@ deux réponses.
     ne change pas la sensation du réglage ; et la molette tourne dans le même sens que celle de la
     Caméra, parce que deux gestes identiques qui tournent en sens contraire dans la même fenêtre se
     paient à chaque usage.
-20. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
+20. **Maintenir le bouton DROIT sur une Case à image sélectionnée la recadre, sans mode (#403j).**
+    Un raccourci qui double l'entrée « Déplacer l'image », pour qui trouve le menu long quand il n'y
+    a qu'un pixel à rattraper. Les deux chemins finissent dans le même glisser, donc deux façons de
+    recadrer ne peuvent pas diverger. Le bouton droit ouvrant aussi le menu contextuel, un glisser
+    de plus de 3 pixels le supprime, et un clic droit sans mouvement continue de l'ouvrir : une Case
+    à image ne doit pas perdre « Changer » et « Retirer ».
+
+    C'est aussi pourquoi le glisser lit sa cible dans ce qu'il a noté en commençant, et non dans le
+    mode : le geste au bouton droit n'allume aucun mode, et lire le mode l'aurait rendu sans effet.
+21. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
     `noterRenommageModele` propose de réparer un autre Projet à sa prochaine ouverture ; rien
     d'équivalent n'existe pour les images. C'est un manque, écrit plutôt que tu : renommer une image
     répare le Projet OUVERT, et rien d'autre.
@@ -176,6 +185,8 @@ canevas d'une Scène, la confirmation, et la section Image.
 **#403f, le zoom et le retour au cadrage d'origine.** Les décisions 15 à 18.
 
 **#403i, Cadrage en section à part, et la molette.** La décision 19.
+
+**#403j, « Déplacer » rejoint Cadrage, et le clic droit maintenu recadre.** La décision 20.
 
 **#403e, déplacer l'image dans sa Case.** Les décisions 13 et 14. L'arithmétique est une fonction
 pure (`ancrageApresGlissement3D`), séparée du câblage de la souris, parce que c'est la seule part qui

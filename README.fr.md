@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.13**
+**Version 1.5.14**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -28,7 +28,7 @@
 - 🖼️ **Insérer une image** dans une Case (PNG, JPG, WebP), recadrée et centrée pour la remplir
 - 🚫 Une Case qui porte une image **n'est plus une scène 3D** : pas d'Éléments, pas de chargement de
   Scène, pas d'import de modèle
-- ✋ **Déplacer l'image** dans sa Case : glissez-la où vous voulez, Échap ou un clic dehors pour finir
+- ✋ **Déplacer l'image** dans sa Case : glissez-la où vous voulez, ou maintenez le clic droit et glissez
 - 🔍 **Zoomer le cadrage** au curseur ou à la molette sur la Case, du cadrage couvrant jusqu'à 4×
 - 🎯 **Recentrer** remet le cadrage d'origine, et n'apparaît qu'une fois que vous l'avez modifié
 - 🔄 **Changer ou retirer** l'image depuis la section Image de la Case, ou par le clic droit
