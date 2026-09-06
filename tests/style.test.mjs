@@ -699,14 +699,48 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
     //
     // #402a : la sous-section « Réglages des articulations » des trois fiches, et le membre repliable
     // de l'écran de correspondance. #402d : des habillages antérieurs au chantier, dont plus rien ne
-    // posait le nom, ni le HTML ni le JS.
+    // posait le nom, ni le HTML ni le JS. #403k : deux des quatre classes qui corrigeaient chacune
+    // de leur côté le retrait de `.tome-format` dans le panneau droit ; la règle est désormais posée
+    // une fois pour tout le panneau, et leur retour signalerait qu'on recommence à rapiécer bloc par
+    // bloc.
     ['.joint-sliders-details', '.modal-subsection', '.skeleton-map-open-btn',
       '.skeleton-map-group', '.skeleton-map-membre-groupe',
       '.tool-btn', '.side-btn', '.dropdown-item', '.perso-edit', '.perso-scene-badge',
-      '.modal-readonly-value'].forEach(cls => {
+      '.modal-readonly-value', '.side-bulle-shape', '.side-bulle-padding'].forEach(cls => {
       assert.ok(!new RegExp(`^\\s*${cls.replace('.', '\\.')}[\\s,:{[>]`, 'm').test(cssNu),
         `${cls} est de retour dans style.css : une fiche s'est remise à poser, ou la règle est morte`);
     });
+  });
+
+  test('LE RYTHME DU PANNEAU DROIT est posé une fois, pas rapiécé bloc par bloc (#403k)', () => {
+    // ⚠️ TROIS ÉCARTS SIGNALÉS À L'USAGE, ET UNE SEULE CAUSE. `.tome-format` vient du menu de
+    // GAUCHE, où son retrait de 9 px le range sous la ligne d'un Tome ; réemployé à droite, ce
+    // retrait n'indente plus rien et décale le bloc. Quatre classes le corrigeaient chacune de leur
+    // côté, donc quatre occasions d'en oublier une — et deux endroits l'avaient été (la section
+    // Caméra, et le Zoom du Cadrage).
+    assert.match(cssNu, /#rightPanel \.tome-format\{\s*margin-left:0;\s*\}/,
+      'le retrait des blocs de réglage redevient l\'affaire de chaque bloc');
+    // Aucune classe ne doit reposer ce correctif : la règle scopée le fait pour tout le panneau.
+    const patchs = [...cssNu.matchAll(/^\.side-[\w-]+\{([^}]*)\}/gm)]
+      .filter(m => /margin-left:\s*0/.test(m[1])).map(m => m[0].split('{')[0]);
+    assert.deepEqual(patchs, [], `ces classes rapiècent encore le retrait : ${patchs.join(', ')}`);
+  });
+
+  test('les deux boutons d\'une section s\'espacent PAREIL (#403k)', () => {
+    // `.full-btn` espace par le HAUT, `.nav-btn` par le BAS : côte à côte, les deux marges tombent
+    // du mauvais côté et l'écart valait ZÉRO entre « Déplacer l'image » et « Recentrer ».
+    assert.match(cssNu, /#rightPanel \.nav-btn\{\s*margin-top:6px;\s*margin-bottom:0;\s*\}/);
+    assert.match(cssNu, /\.full-btn\{[^}]*margin-top:6px/,
+      'le témoin a changé : c\'est sur .full-btn que .nav-btn s\'aligne');
+  });
+
+  test('deux blocs de réglage voisins gardent un écart (#403k)', () => {
+    // `.side-border-color` remettait `margin-bottom:0`, ce qui collait « Épaisseur de la bordure »
+    // à « Couleur de la bordure ». L'écart vient de `.tome-format` ; plus rien ne doit l'annuler.
+    assert.match(cssNu, /\.tome-format,\s*\.tome-pages\{[^}]*margin:0 0 8px 9px/);
+    const borderColor = cssNu.match(/^\.side-border-color\{([^}]*)\}/m);
+    assert.equal(borderColor, null,
+      'une classe annule de nouveau l\'écart entre deux blocs de réglage');
   });
 
   test('et la liste des morts CONNUS ne s\'allonge pas en douce', () => {

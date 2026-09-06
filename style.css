@@ -283,6 +283,29 @@ select, input[type=number]{
   margin:0 0 8px 9px; padding:9px 10px; border-radius:8px;
   background:var(--paper); border:1px solid var(--line);
 }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LE RYTHME DU PANNEAU DROIT, ÉCRIT UNE FOIS
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   `.tome-format` est né dans le menu de GAUCHE, sous la ligne d'un Tome : son retrait de 9 px l'y
+   range sous son parent. Le panneau droit l'a réemployé pour ses blocs de réglage, où ce retrait n'a
+   plus rien à indenter et décale le bloc par rapport au reste de la section.
+
+   ⚠️ QUATRE CLASSES LE CORRIGEAIENT CHACUNE DE SON CÔTÉ : `.side-bulle-shape`,
+   `.side-bulle-padding`, `.side-bulle-font` et `.side-border-color` posaient toutes
+   `margin-left:0`. Quatre corrections du même défaut, donc quatre occasions d'en oublier une — et
+   c'est arrivé : les blocs de la section Caméra n'en portaient aucune, et le curseur de Zoom du
+   Cadrage non plus. Signalé à l'usage : « le margin horizontal est plus important que celui du path
+   de l'image ».
+
+   La règle est donc posée ICI, une fois, pour tout le panneau. Un bloc ajouté demain l'obtient sans
+   rien demander, ce qui est précisément ce que les quatre classes ne savaient pas faire. */
+#rightPanel .tome-format{ margin-left:0; }
+/* Et le bouton secondaire suit l'écart de `.full-btn`, au lieu de porter le sien à l'envers.
+   `.full-btn` espace par le HAUT (margin-top), `.nav-btn` par le BAS : côte à côte, les deux marges
+   tombent du mauvais côté et l'écart entre « Déplacer l'image » et « Recentrer » valait ZÉRO.
+   Signalé à l'usage. Le panneau droit ne contient qu'un seul `.nav-btn`, donc la portée est sûre. */
+#rightPanel .nav-btn{ margin-top:6px; margin-bottom:0; }
 .page-row{
   padding:7px 9px; margin-bottom:4px; font-size:12px; border-radius:6px; cursor:pointer;
   color:var(--ink); background:var(--white); border:1px solid var(--line);
@@ -477,9 +500,7 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
   margin-bottom:8px; cursor:pointer; user-select:none;
 }
 .side-bulle-tail input{ cursor:pointer; }
-.side-bulle-shape{ margin-left:0; }
-.side-bulle-padding{ margin-left:0; }
-.side-bulle-font{ margin-left:0; margin-bottom:12px; }
+.side-bulle-font{ margin-bottom:12px; }
 .side-bulle-font select{ font-size:13px; }
 .side-bulle-appearance{ margin-bottom:8px; }
 .side-bulle-appearance .side-bulle-tail{ margin-left:0; }
@@ -497,7 +518,6 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .sol-ground-btn.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .sol-ground-btn:hover:not(.active){ border-color:var(--ink-soft); }
 .sol-ground-swatch{ width:14px; height:14px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,.15); }
-.side-border-color{ margin-left:0; margin-bottom:0; }
 .side-border-color input[type="color"]{
   width:100%; height:30px; padding:2px; border-radius:6px; border:1px solid var(--line);
   background:var(--white); cursor:pointer;
