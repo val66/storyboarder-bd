@@ -73,6 +73,65 @@ body.theme-light{
   --scroll-thumb:#C4B695;
   --scroll-thumb-hover:#A89870;
 }
+
+/* ── CONTRASTE RENFORCÉ (#409c) ───────────────────────────────────────────────────────────────
+   Un MODIFICATEUR, pas un thème de plus. La classe se cumule avec `theme-light` au lieu de
+   l'exclure : deux réglages qui se combinent donnent quatre rendus, là où quatre entrées dans la
+   liste déroulante en auraient demandé quatre de plus le jour où la palette daltonienne arrive.
+
+   ⚠️ IL TOUCHE PLUS DE MONDE QUE LE DALTONISME, et c'est pour ça qu'il passe en premier : basse
+   vision, presbytie, cataracte débutante, écran médiocre, lumière ambiante forte. Le daltonisme
+   concerne environ 8 % des hommes ; la sensibilité au contraste baisse avec l'âge chez tout le
+   monde (cf. docs/en/colour-accessibility.md).
+
+   LES VALEURS SONT MESURÉES, PAS CHOISIES À L'ŒIL. Chaque jeton de texte atteint au moins 7:1 sur
+   son fond (niveau AAA de WCAG), chaque jeton de bordure au moins 3:1 (critère 1.4.11, les
+   contours d'un composant doivent se voir). Les ratios de départ le justifiaient : en thème Clair,
+   `--ink-soft` était à 3,82 et `--sepia` à 3,05, tous deux SOUS le seuil AA de 4,5 pour du texte
+   courant. Un test rejoue le calcul (cf. tests/theme-contrast.test.mjs).
+
+   Ce que ce bloc ne fait PAS : toucher aux couleurs qui dépeignent. La teinte d'une haie ou la
+   peau d'un Personnage ne sont pas ici et n'y seront jamais. */
+body.theme-contraste{
+  --paper:#000000;
+  --paper-dark:#0D0D10;
+  --ink:#FFFFFF;
+  --ink-mid:#E6E6EA;
+  --ink-soft:#CFCFD6;
+  --sepia:#C2C2CA;
+  --line:#6B6C76;
+  --line-strong:#9B9CA6;
+  --white:#101014;
+  --nav-bg:#33343B;
+  --nav-bg-hover:#4A4B54;
+  --accent:#FFA26B;
+  --accent-soft:rgba(255,162,107,.22);
+  --danger:#FF8A85;
+  --warn:#FFD24D;
+  --scroll-thumb:#8A8B95;
+  --scroll-thumb-hover:#B4B5BE;
+}
+/* La variante claire. Elle vient APRÈS, et elle est plus spécifique (deux classes contre une), donc
+   elle gagne sur le bloc ci-dessus sans avoir à répéter ce qui ne change pas. */
+body.theme-light.theme-contraste{
+  --paper:#FFFFFF;
+  --paper-dark:#EDEDED;
+  --ink:#000000;
+  --ink-mid:#1F1F1F;
+  --ink-soft:#3A3A3A;
+  --sepia:#404040;
+  --line:#8C8C8C;
+  --line-strong:#5A5A5A;
+  --white:#FFFFFF;
+  --nav-bg:#E2E2E2;
+  --nav-bg-hover:#CFCFCF;
+  --accent:#9A3400;
+  --accent-soft:rgba(154,52,0,.16);
+  --danger:#8E1B17;
+  --warn:#6B4A00;
+  --scroll-thumb:#7A7A7A;
+  --scroll-thumb-hover:#565656;
+}
 *{box-sizing:border-box;}
 
 /* ── Ascenseurs, PARTOUT ──────────────────────────────────────────────────────────────────────

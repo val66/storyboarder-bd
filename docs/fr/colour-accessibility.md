@@ -133,9 +133,23 @@ quoi que ce soit à choisir. Elle aide aussi qui regarde un écran en plein sole
 imprimée en noir et blanc. Un feu tricolore est utilisable parce que le rouge est toujours en haut,
 pas grâce à sa nuance.
 
-**2. Un thème contraste renforcé.** Il touche bien plus de monde que le daltonisme : basse vision,
-presbytie, cataracte débutante, écrans médiocres, lumière ambiante forte. La structure en variables
-CSS le rend presque gratuit, un bloc `body.theme-*` de plus.
+**2. Un thème contraste renforcé.** ✅ Fait, #409c. Il touche bien plus de monde que le daltonisme :
+basse vision, presbytie, cataracte débutante, écrans médiocres, lumière ambiante forte.
+
+Livré comme un **modificateur, pas un thème de plus** : une case à cocher qui se combine à Sombre et
+à Clair, plutôt que deux entrées de plus dans la liste déroulante. Quatre entrées auraient suffi
+aujourd'hui, et en auraient demandé quatre autres le jour où la palette daltonienne arrive. Deux
+réglages qui se combinent donnent quatre rendus, et chacun se nomme par ce qu'il fait.
+
+Côté données persistées, la règle du dépôt est respectée sans effort : `theme` garde `dark` et
+`light`, **rien n'est renommé**, et un champ `contrast` est *ajouté*. Un `settings.json` antérieur se
+relit tel quel, simplement sans contraste.
+
+Les valeurs sont mesurées, pas choisies à l'œil. Chaque jeton de texte atteint au moins 7:1 (AAA),
+chaque jeton de bordure au moins 3:1 (WCAG 1.4.11). Les ratios de départ le justifiaient : en thème
+Clair, `--ink-soft` était à 3,82 et `--sepia` à 3,05, **tous deux sous le seuil AA de 4,5** pour du
+texte courant, et aucun des deux n'est décoratif : ils portent les légendes et les libellés de
+section. `tests/theme-contrast.test.mjs` rejoue le calcul sur la feuille de style réelle.
 
 **3. Un thème daltonien unique, réglé sur l'axe rouge-vert.** Couvre bien plus de 99 % des cas.
 
@@ -162,7 +176,7 @@ technique des points 2 et 3, pas la correction du point 1.
 |---|---|
 | #409a | Extraire les couleurs de signal de `draw.js` vers des jetons nommés. Aucun changement visible. Trancher les cinq couleurs mortes de `PALETTE`. |
 | ~~#409b~~ | **Abandonnée.** Les deux paires qu'elle visait sont closes ci-dessus : l'une est un signal que personne ne lit, l'autre passe le seuil. |
-| #409c | Thème contraste renforcé. |
+| ~~#409c~~ | ✅ Fait. Contraste renforcé, en modificateur qui se combine à Sombre et Clair. |
 | #409d | Thème daltonien rouge-vert. |
 
 #409b est abandonnée, donc #409c est l'étape suivante. Elle dépend de #409a et de rien d'autre.

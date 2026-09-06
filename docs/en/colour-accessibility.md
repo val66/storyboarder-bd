@@ -126,9 +126,23 @@ that helps *every* type of colour vision deficiency at once, in *every* theme, w
 user to choose. It also helps someone looking at a screen in bright sunlight, or a page printed in
 black and white. A traffic light is usable because red is always on top, not because of its shade.
 
-**2. A high-contrast theme.** It reaches far more people than colour blindness does: low vision,
-presbyopia, early cataract, poor screens, strong ambient light. The CSS-variable structure makes it
-nearly free, one more `body.theme-*` block.
+**2. A high-contrast theme.** ✅ Done, #409c. It reaches far more people than colour blindness does:
+low vision, presbyopia, early cataract, poor screens, strong ambient light.
+
+Shipped as a **modifier, not a theme**: a checkbox that combines with Dark and Light rather than two
+more entries in the dropdown. Four entries would have been fine today, and would have demanded four
+more the day the colourblind palette lands. Two settings that compose give four results; and each
+one is named after what it does.
+
+The persisted side follows the repository rule without effort: `theme` keeps `dark` and `light`,
+**nothing is renamed**, and a `contrast` field is *added*. An older `settings.json` reads back as-is,
+simply without contrast.
+
+The values were measured, not eyeballed. Every text token reaches at least 7:1 (AAA), every border
+token at least 3:1 (WCAG 1.4.11). The starting ratios justified it: in the Light theme `--ink-soft`
+sat at 3.82 and `--sepia` at 3.05, **both below the AA floor of 4.5** for body text, and neither is
+decorative — they carry captions and section labels. `tests/theme-contrast.test.mjs` replays the
+calculation against the real stylesheet.
 
 **3. A single colourblind theme, tuned to the red-green axis.** Covers well over 99% of cases.
 
@@ -155,7 +169,7 @@ points 2 and 3, not the fix for point 1.
 |---|---|
 | #409a | Extract the signal colours of `draw.js` into named tokens. No visible change. Settle the five dead `PALETTE` colours. |
 | ~~#409b~~ | **Dropped.** Both pairs it targeted were closed above: one is a signal nobody reads, the other passes the threshold. |
-| #409c | High-contrast theme. |
+| ~~#409c~~ | ✅ Done. High contrast, as a modifier that composes with Dark and Light. |
 | #409d | Red-green colourblind theme. |
 
 #409b is dropped, so #409c is the next step. It depends on #409a and on nothing else.

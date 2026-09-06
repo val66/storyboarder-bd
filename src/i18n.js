@@ -343,6 +343,11 @@ export const I18N_MODALS = [
   ['#projectsDirReset', '↺ Reset', '↺ Réinitialiser'],
   ['#themeSelect option[value="dark"]', '🌑 Dark', '🌑 Sombre'],
   ['#themeSelect option[value="light"]', '☀️ Light', '☀️ Clair'],
+  // Contraste renforcé (#409c). Le libellé porte son propre id, `contrastCheckboxLabel`, plutôt
+  // que de passer par l'aide de fin de fichier : celle-ci vise le texte qui SUIT une case à cocher
+  // dans un <label> partagé, et elle réécrirait ici le nœud entier, case comprise.
+  ['#contrastCheckbox', null],
+  ['#contrastCheckboxLabel', 'Increased contrast', 'Contraste renforcé'],
   ['#exportShowPanelBadgesCheckbox', null], // handled via trailing helper below
   ['#exportShowPanelDescriptionsCheckbox', null],
   ['#settingsModalClose', 'Close', 'Fermer'],

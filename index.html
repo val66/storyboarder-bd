@@ -873,6 +873,13 @@
       <option value="dark">🌑 Sombre</option>
       <option value="light">☀️ Clair</option>
     </select>
+    <!-- Contraste renforcé (#409c) : une case à cocher INDÉPENDANTE de la liste ci-dessus, et non
+         deux entrées de plus dedans. Quatre entrées auraient suffi aujourd'hui, mais la palette
+         daltonienne à venir en aurait demandé quatre autres : une base et des modificateurs se
+         combinent au lieu de se multiplier, et chaque réglage se nomme par ce qu'il fait. -->
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:6px 0 8px; cursor:pointer;">
+      <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
+    </label>
     <!-- Section "Langue" (cf. appLang/applyI18n) — sur demande utilisateur : Anglais par défaut, Français
          disponible (langue d'origine de l'application). -->
     <label class="modal-field-label">Langue de l'interface</label>

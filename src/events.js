@@ -7217,6 +7217,7 @@ const settingsModal = document.getElementById('settingsModal');
 const autosaveIntervalSelect = document.getElementById('autosaveIntervalSelect');
 const projectsDirDisplay = document.getElementById('projectsDirDisplay');
 const themeSelect = document.getElementById('themeSelect');
+const contrastCheckbox = document.getElementById('contrastCheckbox');
 const languageSelect = document.getElementById('languageSelect');
 const exportShowPanelBadgesCheckbox = document.getElementById('exportShowPanelBadgesCheckbox');
 const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowPanelDescriptionsCheckbox');
@@ -7236,8 +7237,26 @@ const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowP
 // ════════════════════════════════════════════════════════════
 // SETTINGS & THEME
 // ════════════════════════════════════════════════════════════
-function applyTheme(theme){
-  document.body.classList.toggle('theme-light', theme === 'light');
+/**
+ * Les classes de thème à poser sur `<body>`. Fonction PURE, exportée pour être testable : c'est la
+ * seule décision de tout le mécanisme, le reste n'est que du `classList.toggle`.
+ *
+ * ⚠️ DEUX CLASSES QUI SE CUMULENT, ET NON QUATRE VALEURS EXCLUSIVES (#409c). Le contraste renforcé
+ * est un MODIFICATEUR du fond, pas un fond de plus. Écrit en valeurs exclusives, il aurait fallu
+ * « clair », « sombre », « contraste clair », « contraste sombre », puis quatre de plus le jour où
+ * la palette daltonienne arrive. Deux réglages qui se combinent donnent le même résultat sans que
+ * la liste enfle, et chacun se nomme par ce qu'il fait.
+ *
+ * Tout ce qui n'est pas exactement 'light' est sombre : c'est le comportement d'origine, et il
+ * protège d'un settings.json portant une valeur inconnue.
+ */
+export function classesDeTheme3D(theme, contraste){
+  return { 'theme-light': theme === 'light', 'theme-contraste': contraste === true };
+}
+
+function applyTheme(theme, contraste = S.appContrast){
+  const classes = classesDeTheme3D(theme, contraste);
+  Object.entries(classes).forEach(([nom, actif]) => document.body.classList.toggle(nom, actif));
 }
 // Displays the actual Projects folder (computed on the main process side, cf. getProjectsDir in
 // main.js, since it depends on the executable's path), called each time the modal is opened and
@@ -7253,6 +7272,7 @@ async function refreshProjectsDirDisplay(){
 function openSettingsModal(){
   autosaveIntervalSelect.value = String(S.autosaveIntervalMs);
   themeSelect.value = S.appTheme;
+  contrastCheckbox.checked = S.appContrast;
   languageSelect.value = S.appLang;
   exportShowPanelBadgesCheckbox.checked = S.exportShowPanelBadges;
   exportShowPanelDescriptionsCheckbox.checked = S.exportShowPanelDescriptions;
@@ -7326,6 +7346,14 @@ themeSelect.addEventListener('change', () => {
   applyTheme(S.appTheme);
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('theme', S.appTheme);
 });
+// Contraste renforce (#409c). Reglage SEPARE de la liste ci-dessus, persiste dans son propre champ :
+// `theme` garde ses valeurs 'dark' et 'light' sans renommage, et un settings.json anterieur se relit
+// tel quel, simplement sans contraste.
+contrastCheckbox.addEventListener('change', () => {
+  S.appContrast = contrastCheckbox.checked;
+  applyTheme(S.appTheme, S.appContrast);
+  if (hasElectronAPI()) window.storyboarderAPI.setSetting('contrast', S.appContrast);
+});
 // Immediately toggles the UI language and persists it, per user request. applyI18n() updates all
 // text already displayed on screen (open menus, the Settings modal itself...) without requiring a
 // restart.
@@ -7397,9 +7425,14 @@ async function loadAppSettings(){
     if (settings && typeof settings.autosaveIntervalMs === 'number') {
       S.autosaveIntervalMs = settings.autosaveIntervalMs;
     }
-    if (settings && settings.theme) {
-      S.appTheme = settings.theme;
-      applyTheme(S.appTheme);
+    // Le contraste est lu AVANT d'appliquer le theme, sinon la premiere application se ferait sans
+    // lui et l'interface clignoterait de la version normale a la version contrastee au demarrage.
+    if (settings && typeof settings.contrast === 'boolean') {
+      S.appContrast = settings.contrast;
+    }
+    if (settings && (settings.theme || S.appContrast)) {
+      if (settings.theme) S.appTheme = settings.theme;
+      applyTheme(S.appTheme, S.appContrast);
     }
     if (settings && typeof settings.exportShowPanelBadges === 'boolean') {
       S.exportShowPanelBadges = settings.exportShowPanelBadges;

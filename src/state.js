@@ -256,6 +256,9 @@ export const S = {
   confirmActionResolve:    null,
   quittingConfirmed:       false,
   appTheme:                'dark',
+  // Contraste renforcé (#409c). Un MODIFICATEUR, indépendant de appTheme : les deux se combinent,
+  // ce qui donne quatre rendus avec deux réglages au lieu de quatre entrées dans une liste.
+  appContrast:             false,
   appLang:                 'en',
   exportShowPanelBadges:       true,
   exportShowPanelDescriptions: true,
