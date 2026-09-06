@@ -20,7 +20,7 @@ import { resolveModelClick } from './model-usages.js';
 import { listImages } from './image-store.js';
 import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
-import { alertAction, confirmAction, openRenameEntityModal } from './io.js';
+import { alertAction, confirmAction, openRenameEntityModal, prechargerEnCascade3D } from './io.js';
 import { renderAll } from './draw.js';
 
 // Six upward dependencies, all of them things the left menu TRIGGERS rather than owns: what a
@@ -102,6 +102,14 @@ export function allerALaPlanche(ti, pi){
   S.currentTomeIndex = ti; S.currentPageIndex = pi; S.editingSceneId = null;
   S.selectedId = null; S.selectedRoomId = null;
   S.pageSelected = true;
+  // ⚠️ ON REMET EN TÊTE CE QU'ON REGARDE MAINTENANT (#406b). Le préchargement en cascade sert les
+  // vagues dans l'ordre : sans cette ligne, arriver sur une Planche d'un autre Tome ferait attendre
+  // derrière la vague en cours, c'est-à-dire derrière des fichiers dont cette Planche n'a que faire.
+  // C'est le coût que la cascade CRÉE, et c'est ici qu'il se paie.
+  //
+  // L'appel est idempotent : ce qui est déjà chargé ou en cours est ignoré. Changer de Planche ne
+  // recharge donc rien, il ne fait que réordonner ce qui reste.
+  prechargerEnCascade3D();
   renderAll();
 }
 

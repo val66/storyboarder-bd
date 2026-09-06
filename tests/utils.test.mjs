@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  makeFrameScheduler,
+  makeFrameScheduler, vaguesDePrechargement3D,
   wrapAngle, clamp, memeContenu, getBBox,
   pxPerMm, getFormat, getEmotion,
   getElementDepth, getHandles, repairElementBase3D, unknownPoseKey3D,
@@ -2368,5 +2368,70 @@ describe('#399 : le mot à écrire pour supprimer un Projet', () => {
     // supprimerait en tapant un mot que son écran ne lui a jamais montré.
     assert.equal(suppressionProjetConfirmee3D('DELETE', 'en'), true);
     assert.equal(suppressionProjetConfirmee3D('SUPPRIMER', 'en'), false);
+  });
+});
+
+// ── Les trois vagues de préchargement ─────────────────────────────────────────────────────────
+describe('#406b : vaguesDePrechargement3D, la Planche d\'abord', () => {
+  /**
+   * ⚠️ CE QUE CETTE CASCADE NE FAIT PAS, et il faut le dire avant de la tester : elle ne corrige pas
+   * le gel d'une seconde signalé à l'usage. Celui-là venait de la reconstruction des rigs, mesurée,
+   * et il a été traité en l'étalant (#405d). La cascade sert à autre chose — une Planche définitive
+   * plus tôt sur un GROS Projet, moins de mémoire retenue par des modèles jamais regardés.
+   *
+   * Sur le Projet réel de l'utilisateur, six modèles en tout, elle ne gagnera RIEN : les trois
+   * vagues y chargent les mêmes fichiers. C'est pourquoi un Projet d'essai a été fabriqué (#406a),
+   * où la première Planche n'utilise que 4 des 22 modèles.
+   */
+  const objet = (nom) => ({ id: nom, type: 'objet3d', modelFile: nom });
+  const page = (...noms) => ({ objects: noms.map(objet) });
+  const projet = {
+    tomes: [
+      { pages: [page('a'), page('b'), page('c')] },
+      { pages: [page('d'), page('e')] },
+    ],
+    scenes: [{ pages: [page('s1')] }],
+  };
+  const noms = (v) => v.map(o => o.modelFile);
+
+  test('trois vagues, dans l\'ordre : la Planche, son Tome, tout le reste', () => {
+    const [v1, v2, v3] = vaguesDePrechargement3D(projet, 0, 1);
+    assert.deepEqual(noms(v1), ['b'], 'la Planche affichée n\'est pas servie en premier');
+    assert.deepEqual(noms(v2), ['a', 'c'], 'le reste du Tome n\'est pas la deuxième vague');
+    assert.deepEqual(noms(v3), ['d', 'e', 's1'], 'les autres Tomes et les Scènes ne ferment pas la marche');
+  });
+
+  test('LES SCÈNES FERMENT LA MARCHE, et ce n\'est pas un détail', () => {
+    // Rien de ce qu'elles contiennent n'est visible tant qu'on reste sur une Planche : les servir
+    // plus tôt ferait attendre ce qu'on regarde derrière ce qu'on ne regarde pas.
+    const [, , v3] = vaguesDePrechargement3D(projet, 0, 0);
+    assert.equal(noms(v3).at(-1), 's1');
+  });
+
+  test('RÉGRESSION : aucun objet n\'est perdu, et aucun n\'est servi deux fois', () => {
+    // Un objet oublié ne se chargerait JAMAIS, et sa Case resterait sur sa boîte de remplacement
+    // pour toute la session. Servi deux fois, il ne coûterait rien de plus (le préchargement ignore
+    // ce qui est déjà en cours), mais l'oubli, lui, est un défaut permanent.
+    const tout = vaguesDePrechargement3D(projet, 0, 1).flatMap(noms).sort();
+    assert.deepEqual(tout, ['a', 'b', 'c', 'd', 'e', 's1']);
+  });
+
+  test('un Projet vide, un index hors bornes : trois tableaux, jamais une exception', () => {
+    // Appelée au chargement, donc avant que quoi que ce soit soit garanti. Lever ici empêcherait le
+    // Projet de s'ouvrir, une panne bien pire que l'ordre qu'on cherche à améliorer.
+    [[{}, 0, 0], [undefined, 0, 0], [projet, 9, 9], [{ tomes: [] }, 0, 0]].forEach(args => {
+      const v = vaguesDePrechargement3D(...args);
+      assert.equal(v.length, 3, JSON.stringify(args[1]));
+      v.forEach(x => assert.ok(Array.isArray(x)));
+    });
+  });
+
+  test('hors bornes, tout le Projet reste servi par la dernière vague', () => {
+    // Le cas n'est pas théorique : un Projet dont l'index de Planche pointe au-delà de ce qu'il
+    // contient s'ouvre quand même. Ce qui compte est que rien ne soit perdu.
+    const [v1, v2, v3] = vaguesDePrechargement3D(projet, 9, 0);
+    assert.deepEqual(noms(v1), []);
+    assert.deepEqual(noms(v2), []);
+    assert.deepEqual(noms(v3).sort(), ['a', 'b', 'c', 'd', 'e', 's1']);
   });
 });

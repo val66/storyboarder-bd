@@ -1391,3 +1391,45 @@ export function suppressionProjetConfirmee3D(saisie, lang){
 export function squelettePourAnimal3D(objType){
   return ANIMAL_ARCHETYPES_3D[objType] || null;
 }
+
+/**
+ * Les trois vagues de préchargement : la Planche affichée, puis le reste de son Tome, puis tout le
+ * reste. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI TROIS VAGUES PLUTÔT QU'UN SEUL BLOC
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Le préchargement recevait les objets de TOUS les Tomes et de TOUTES les Scènes d'un coup. Sur un
+ * Projet où la Planche affichée n'utilise qu'une petite part de la bibliothèque, elle attend donc
+ * derrière des fichiers dont elle n'a pas besoin : l'analyse d'un GLB s'exécute sur le fil
+ * principal, et N analyses se le disputent.
+ *
+ * ⚠️ CE QUE CETTE CASCADE N'EST PAS : le remède au gel d'une seconde signalé à l'usage. Celui-là
+ * venait de la reconstruction des rigs, mesurée, et il a été traité en l'étalant (#405d). La
+ * cascade sert à autre chose, et il faut que ce soit écrit pour qu'on ne lui prête pas un mérite
+ * qu'elle n'a pas : une Planche définitive plus tôt sur un GROS Projet, moins de mémoire retenue
+ * par des modèles jamais regardés, moins de fil principal dépensé au démarrage pour ce qu'on ne
+ * verra peut-être pas.
+ *
+ * ⚠️ LE CRITÈRE EST L'APPARTENANCE À LA PLANCHE, PAS LE HORS-CHAMP. `elementHorsChamp3D` projette
+ * un Élément à sa taille réelle, laquelle est lue dans le modèle DÉJÀ CHARGÉ : il ne peut donc pas
+ * décider de ce qu'il faut charger, il a besoin du fichier pour répondre.
+ *
+ * Les Scènes vont dans la dernière vague : elles ne s'affichent que si on les ouvre, et rien de ce
+ * qu'elles contiennent n'est visible tant qu'on reste sur une Planche.
+ *
+ * @returns {Array<Array<object>>} exactement trois tableaux, dans l'ordre de priorité
+ */
+export function vaguesDePrechargement3D({ tomes = [], scenes = [] } = {}, tomeIndex = 0, pageIndex = 0){
+  const tomeCourant = tomes[tomeIndex];
+  const objetsDe = (pg) => (pg && pg.objects) || [];
+  const v1 = objetsDe(tomeCourant && (tomeCourant.pages || [])[pageIndex]);
+  const v2 = ((tomeCourant && tomeCourant.pages) || [])
+    .filter((_, i) => i !== pageIndex).flatMap(objetsDe);
+  const v3 = [
+    ...tomes.filter((_, i) => i !== tomeIndex).flatMap(t => ((t && t.pages) || []).flatMap(objetsDe)),
+    ...(scenes || []).flatMap(sc => ((sc && sc.pages) || []).flatMap(objetsDe)),
+  ];
+  return [v1, v2, v3];
+}

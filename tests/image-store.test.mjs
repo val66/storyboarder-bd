@@ -523,25 +523,26 @@ describe('#403b : le câblage, épinglé sur la source faute de pouvoir l\'exéc
     // pour toujours, et le cache ne se remplit qu'au prochain geste qui y touche. Le défaut est
     // immédiat, visible, et pourtant invisible aux tests : l'ouverture d'un Projet passe par
     // Electron.
-    // ⚠️ MA PREMIÈRE VERSION CHERCHAIT LE NOM DANS LE FICHIER, et la mutation lui a échappé : io.js
-    // précharge à DEUX endroits — l'ouverture d'un Projet, et le repointage après un renommage de
-    // modèle. Retirer l'appel de l'ouverture laissait l'autre, donc le nom présent, donc le test
-    // vert, pour un défaut immédiat à l'écran.
     //
-    // LA RÈGLE JUSTE EST L'APPARIEMENT : partout où les modèles sont préchargés, les images le sont
-    // aussi. Elle attrape le retrait de n'importe lequel des deux, et elle dit pourquoi les deux
-    // vont ensemble — ce sont les mêmes fichiers, absents pour les mêmes raisons.
+    // ⚠️ CE TEST A CHANGÉ DE FORME AVEC #406b, ET C'EST PARCE QUE LE DÉFAUT QU'IL GARDAIT A DISPARU.
+    // Il exigeait « partout où les modèles sont préchargés, les images le sont aussi », règle née
+    // d'une mutation échappée : io.js préchargeait à DEUX endroits, et retirer l'appel de l'un
+    // laissait le nom présent dans l'autre. La cascade supprime la duplication — un seul endroit
+    // précharge, et il sert les deux dans la MÊME vague. L'appariement n'est plus une règle à
+    // vérifier, c'est une propriété de la structure.
+    //
+    // Ce qui se garde désormais : que ce seul endroit existe, qu'il serve les deux ensemble, et que
+    // personne ne précharge à côté de lui.
     const io = lire('src/io.js');
-    const modeles = [...io.matchAll(/preloadModelsFor\(/g)];
-    const images = [...io.matchAll(/preloadImagesFor\(/g)];
-    assert.ok(modeles.length >= 2, `${modeles.length} préchargement(s) de modèles : le test ne regarde plus rien`);
-    assert.equal(images.length, modeles.length,
-      `${modeles.length} préchargement(s) de modèles pour ${images.length} d'images : un chemin ouvre un Projet sans décoder ses images`);
-    modeles.forEach(m => {
-      const suite = io.slice(m.index, m.index + 500);
-      assert.match(suite, /preloadImagesFor\(/,
-        'un préchargement de modèles n\'est pas accompagné de celui des images');
-    });
+    assert.match(io, /await Promise\.all\(\[preloadModelsFor\(vague\), preloadImagesFor\(vague\)\]\)/,
+      'les modèles et les images d\'une vague ne partent plus ensemble');
+    assert.equal((io.match(/preloadModelsFor\(/g) || []).length, 1,
+      'un préchargement de modèles a réapparu hors de la cascade : il contournerait la priorité');
+    assert.equal((io.match(/preloadImagesFor\(/g) || []).length, 1,
+      'un préchargement d\'images a réapparu hors de la cascade');
+    // Et les deux chemins qui ouvraient un Projet passent bien par elle.
+    assert.ok((io.match(/prechargerEnCascade3D\(\)/g) || []).length >= 2,
+      'un chemin ouvre un Projet sans rien précharger du tout');
   });
 
   test('l\'arrivée d\'une image redéclenche un rendu', () => {

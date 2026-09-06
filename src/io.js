@@ -20,7 +20,7 @@ import {
   ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles, repointerModele3D,
 } from './model-library.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
-import { motDeSuppressionProjet3D, suppressionProjetConfirmee3D } from './utils.js';
+import { motDeSuppressionProjet3D, suppressionProjetConfirmee3D, vaguesDePrechargement3D } from './utils.js';
 import {
   getElementDepth, repairElementBase3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
@@ -153,9 +153,7 @@ export async function proposerRepointageModeles(){
   // La pile d'annulation est VIDE à ce stade (applyProjectData vient de la vider) : rien à réécrire,
   // contrairement au renommage lui-même. Le Projet devient « modifié », ce qu'il est.
   S.projectDirty = true;
-  const objets = [...S.tomes, ...S.scenes].flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
-  preloadModelsFor(objets);
-  preloadImagesFor(objets);
+  prechargerEnCascade3D();
   if (_renderAll) _renderAll();
   return n;
 }
@@ -645,13 +643,34 @@ export function applyProjectData(data){
   // même si un fichier manque, chaque modèle absent devient une boîte de remplacement, et aucun
   // Élément n'est supprimé (cf. docs/en/persisted-data.md § 5).
   perfJalon('PROJET APPLIQUÉ (données en mémoire)');
-  const _tousLesObjets = [...S.tomes, ...S.scenes]
-    .flatMap(v => (v.pages || []).flatMap(pg => pg.objects || []));
-  preloadModelsFor(_tousLesObjets);
-  // Même montage pour les images : lancé sans être attendu, et leur arrivée redéclenche un rendu.
-  // Une Case dont l'image manque s'ouvre en le SIGNALANT, elle ne se vide pas.
-  preloadImagesFor(_tousLesObjets);
+  prechargerEnCascade3D();
   S.projectDirty = false;
+}
+
+/**
+ * Précharge en TROIS VAGUES : la Planche affichée, puis le reste de son Tome, puis tout le reste.
+ *
+ * Lancé sans être attendu, comme le préchargement d'un bloc qu'il remplace : le chemin de dessin est
+ * synchrone et ne peut pas patienter. Ce qui change, c'est l'ORDRE — la Planche qu'on regarde ne
+ * partage plus le fil principal avec l'analyse des GLB des autres Tomes.
+ *
+ * ⚠️ LES MODÈLES ET LES IMAGES D'UNE MÊME VAGUE PARTENT ENSEMBLE, et la vague suivante attend les
+ * deux. Servir tous les modèles avant la première image ferait attendre une Case à image derrière
+ * des fichiers 3D qu'elle n'utilise pas, ce qui est exactement le défaut qu'on corrige, à l'envers.
+ *
+ * ⚠️ ET C'EST IDEMPOTENT : `preloadModels`/`preloadImages` ignorent ce qui est déjà chargé ou en
+ * cours. Rappeler cette fonction en changeant de Planche ne recharge donc rien, elle ne fait que
+ * remettre en tête ce qu'on regarde maintenant.
+ */
+export function prechargerEnCascade3D(){
+  const vagues = vaguesDePrechargement3D({ tomes: S.tomes, scenes: S.scenes },
+    S.currentTomeIndex, S.currentPageIndex);
+  (async () => {
+    for (const vague of vagues) {
+      if (!vague.length) continue;
+      await Promise.all([preloadModelsFor(vague), preloadImagesFor(vague)]);
+    }
+  })();
 }
 
 // Heure au format HH:MM. Extraite parce qu'elle était écrite deux fois à l'identique, et que la
