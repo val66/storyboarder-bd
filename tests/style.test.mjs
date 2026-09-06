@@ -864,6 +864,26 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     assert.match(tous, /background\s*:\s*#fff/, 'les aperçus ont perdu leur fond blanc');
   });
 
+  test('RÉGRESSION : un encart arrondi qui contient un canevas doit le DÉCOUPER (#409i)', () => {
+    // Un canevas a toujours des coins CARRÉS, et celui-ci porte un fond blanc sur toute la surface
+    // de son conteneur. Sans découpe, il repeint les quatre angles arrondis par-dessus la bordure :
+    // les côtés droits se voient, les coins non, et ça se lit comme un cadre bâclé. Signalé à
+    // l'usage sur l'aperçu 3D d'une modale.
+    const d = declarationsOuNull('.persona-preview-wrap');
+    assert.match(d, /border-radius\s*:/, 'l\'encart n\'est plus arrondi : ce test n\'a plus d\'objet');
+    assert.match(d, /overflow\s*:\s*hidden/,
+      'l\'encart est arrondi mais ne découpe pas : le canevas ressortira aux angles');
+  });
+
+  test('… et le rayon n\'est écrit QU\'UNE fois', () => {
+    // La face qui manque toujours. Recopier `border-radius` sur le canevas marcherait aussi, et
+    // ferait diverger deux rayons écrits séparément — l'écart se verrait exactement là où il se
+    // voyait déjà.
+    const canevas = declarationsOuNull('.persona-preview-wrap canvas');
+    assert.ok(!/border-radius/.test(canevas),
+      'un second rayon a été posé sur le canevas : il finira par diverger de celui du conteneur');
+  });
+
   test('RÉGRESSION : un bouton de navigation a un contour indépendant de son fond (#409h)', () => {
     // Sa bordure valait `--nav-bg`, donc la couleur de son propre remplissage : le bouton n'avait
     // aucun contour. En thème Clair, fond contre papier à 1,17, il se dissolvait. Signalé à l'usage

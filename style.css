@@ -1076,6 +1076,15 @@ canvas{ background:#fff; }
 .persona-preview-wrap{
   position:relative; margin:10px 0 4px; height:276px;
   background:var(--paper-dark); border:1px solid var(--line); border-radius:8px;
+  /* ⚠️ `overflow:hidden` N'EST PAS UNE PRÉCAUTION, IL EST LE SEUL À DONNER SES COINS À CET ENCART
+     (#409i). Le canevas fait 100 % × 100 % et porte un fond blanc, mais SES coins sont carrés : il
+     repeignait donc les quatre angles arrondis, par-dessus la bordure. Les côtés droits se
+     voyaient, les coins non, ce qui se lit comme un cadre bâclé plutôt que comme un défaut de
+     découpe. Signalé à l'usage, et exact.
+
+     Ici plutôt qu'un `border-radius` recopié sur le canevas : deux rayons écrits séparément
+     finissent par diverger, et l'écart se verrait précisément là où il se voyait déjà. */
+  overflow:hidden;
   /* Centre le canvas (quel que soit son ratio largeur/hauteur propre, cf. personaPreview3D vs
      objectPreview3D qui n'ont pas les mêmes dimensions) au lieu de le laisser épinglé en haut-gauche :
      sans ça, un Élément dont la boîte ne couvre pas tout le canvas (cf. frameCameraToBox, qui cadre en
