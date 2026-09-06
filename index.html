@@ -868,18 +868,30 @@
       <button class="project-modal-btn nav-btn" id="projectsDirBrowse" type="button" style="margin-top:0; flex:1;">📂 Choisir...</button>
       <button class="project-modal-btn nav-btn" id="projectsDirReset" type="button" style="margin-top:0; flex:1;">↺ Réinitialiser</button>
     </div>
-    <label class="modal-field-label" style="margin-top:14px;">Thème de l'interface</label>
-    <select id="themeSelect">
-      <option value="dark">🌑 Sombre</option>
-      <option value="light">☀️ Clair</option>
-    </select>
-    <!-- Contraste renforcé (#409c) : une case à cocher INDÉPENDANTE de la liste ci-dessus, et non
-         deux entrées de plus dedans. Quatre entrées auraient suffi aujourd'hui, mais la palette
-         daltonienne à venir en aurait demandé quatre autres : une base et des modificateurs se
-         combinent au lieu de se multiplier, et chaque réglage se nomme par ce qu'il fait. -->
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:6px 0 8px; cursor:pointer;">
-      <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
-    </label>
+    <!-- Contraste renforcé (#409c) : une case à cocher INDÉPENDANTE de la liste, et non deux
+         entrées de plus dedans. Quatre entrées auraient suffi alors, mais la palette daltonienne
+         envisagée en aurait demandé quatre autres : une base et des modificateurs se combinent au
+         lieu de se multiplier, et chaque réglage se nomme par ce qu'il fait.
+         Posée à DROITE de la liste, sur la même rangée, sur demande utilisateur : les deux règlent
+         la même chose, les séparer verticalement les faisait lire comme deux sujets.
+
+         ⚠️ LE LIBELLÉ RESTE LE FRÈRE PRÉCÉDENT DU <select>, et c'est ce qui dicte cette structure.
+         `I18N_PREV_LABEL` traduit « Thème de l'interface » via `previousElementSibling` : mettre le
+         select en premier enfant d'une rangée aurait laissé ce libellé en français sous une
+         interface anglaise, sans que rien ne le signale. La colonne de gauche préserve le
+         voisinage. -->
+    <div style="display:flex; align-items:flex-end; gap:14px;">
+      <div style="flex:1 1 auto; min-width:0;">
+        <label class="modal-field-label" style="margin-top:14px;">Thème de l'interface</label>
+        <select id="themeSelect" style="width:100%;">
+          <option value="dark">🌑 Sombre</option>
+          <option value="light">☀️ Clair</option>
+        </select>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:0 0 7px; cursor:pointer; white-space:nowrap; flex-shrink:0;">
+        <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
+      </label>
+    </div>
     <!-- Taille de l'interface (#410). Elle ne touche PAS à la Planche, qui garde son propre zoom :
          grossir l'interface ne doit pas grossir le dessin. -->
     <label class="modal-field-label">Taille de l'interface</label>

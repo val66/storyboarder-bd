@@ -451,6 +451,24 @@ describe('Le mécanisme : un modificateur, pas un thème de plus', () => {
 });
 
 describe('Le réglage est branché de bout en bout', () => {
+  test('RÉGRESSION : le libellé du thème reste le FRÈRE PRÉCÉDENT du select (#410b)', () => {
+    // `I18N_PREV_LABEL` traduit « Thème de l'interface » par `previousElementSibling`. En posant la
+    // case « Contraste renforcé » à droite du select (demande d'usage), la tentation était de faire
+    // du select le premier enfant d'une rangée flex : le libellé serait alors resté en français
+    // sous une interface anglaise, sans que rien ne le signale. La colonne de gauche préserve le
+    // voisinage, et ce test le verrouille.
+    const i = HTML.indexOf('<select id="themeSelect"');
+    assert.ok(i > 0, 'le select du thème est introuvable');
+    // Ce qui précède immédiatement la balise, commentaires HTML retirés : ce doit être la FERMETURE
+    // du libellé, et rien d'autre.
+    const avant = HTML.slice(0, i).replace(/<!--[\s\S]*?-->/g, '').trimEnd();
+    assert.ok(avant.endsWith('</label>'),
+      'un élément s\'est glissé entre le libellé et le select : la traduction ne le trouvera plus');
+    const ouverture = avant.lastIndexOf('<label');
+    assert.match(avant.slice(ouverture), /class="modal-field-label"/,
+      'le frère précédent n\'est pas le libellé de champ attendu');
+  });
+
   test('la case à cocher existe et porte un libellé traduisible', () => {
     assert.match(HTML, /id="contrastCheckbox"/);
     assert.match(HTML, /id="contrastCheckboxLabel"/);
