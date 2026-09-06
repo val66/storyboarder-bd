@@ -326,6 +326,16 @@ select, input[type=number]{
 .add-page-btn:hover{ color:var(--accent); border-color:var(--accent); }
 .tome-format label, .tome-pages > label{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:5px; font-weight:700; }
 .tome-format select{ width:100%; }
+/* ⚠️ LA CONTREPARTIE DES SELECTS, ET ELLE N'AVAIT JAMAIS ÉTÉ ÉCRITE. Un `input[type=range]` a une
+   largeur INTRINSÈQUE d'environ 129 px : dans un bloc qui en fait 250, il s'arrêtait à mi-chemin,
+   sans que rien ne le demande. Les SEPT curseurs du panneau droit étaient concernés — Zoom du
+   Cadrage, écart et taille de police des Bulles, sensibilités et rotations de la Caméra — et c'est
+   le premier qui a été signalé.
+
+   La règle vise `.tome-format` et non le panneau : elle vaut pour le bloc de réglage, où qu'il soit,
+   comme celle des selects juste au-dessus. Les curseurs d'articulation de l'Éditeur ne sont pas
+   touchés, ils vivent dans `.joint-slider-row`, une ligne flex où leur largeur est déjà pilotée. */
+.tome-format input[type=range]{ width:100%; }
 
 /* `#colorSwatches` A ÉTÉ RETIRÉ (#402d) : même raison, plus aucun élément ne porte cet identifiant. */
 

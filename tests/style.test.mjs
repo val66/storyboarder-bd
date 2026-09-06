@@ -726,6 +726,17 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
     assert.deepEqual(patchs, [], `ces classes rapiècent encore le retrait : ${patchs.join(', ')}`);
   });
 
+  test('un curseur remplit son bloc, comme un select (#403l)', () => {
+    // ⚠️ MÊME FAMILLE QUE LES TROIS ÉCARTS PRÉCÉDENTS : une règle existait pour un type de commande
+    // et pas pour l'autre. `.tome-format select` valait 100 % depuis toujours ; les
+    // `input[type=range]` restaient à leur largeur intrinsèque, environ 129 px dans un bloc qui en
+    // fait 250. Les sept curseurs du panneau droit s'arrêtaient à mi-chemin.
+    assert.match(cssNu, /\.tome-format input\[type=range\]\{\s*width:100%;\s*\}/,
+      'les curseurs des blocs de réglage ne remplissent plus leur bloc');
+    assert.match(cssNu, /\.tome-format select\{ width:100%; \}/,
+      'le témoin a changé : c\'est sur les selects que les curseurs s\'alignent');
+  });
+
   test('les deux boutons d\'une section s\'espacent PAREIL (#403k)', () => {
     // `.full-btn` espace par le HAUT, `.nav-btn` par le BAS : côte à côte, les deux marges tombent
     // du mauvais côté et l'écart valait ZÉRO entre « Déplacer l'image » et « Recentrer ».
