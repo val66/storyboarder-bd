@@ -31,10 +31,10 @@ roughly 8% of men and 0.5% of women. Tritanopia is about a thousand times rarer.
 for red-green therefore covers the overwhelming majority of cases, and three themes would be two
 too many.
 
-### One confirmed defect
+### The measured collision, and why it was closed without a fix
 
-`draw.js` distinguishes a Character from any other Element in the top-down view **by colour alone**:
-`#f4a340` against `#6fbf73`, at two sites.
+`draw.js` distinguishes a Character from any other Element in the top-down floor plan **by colour
+alone**: `#f4a340` against `#6fbf73`, at two sites.
 
 | Vision | Distance |
 |---|---|
@@ -42,13 +42,33 @@ too many.
 | deuteranopia | 73 |
 | **protanopia** | **54** |
 
-No other cue carries the distinction. This is the one real finding.
+This was first written up as "the one real finding of the campaign", and a task was opened to fix
+it. **That was wrong, and the reasoning that killed it is worth more than the number.**
 
-### One borderline case
+Reading the surrounding code, rather than the colour, turned up three things. The two marks are 4px
+dots in the preview canvas of the Room and Building dialogs. **Nothing anywhere says what the two
+colours mean** — there is no legend, no label, no key. And the distinction drawn is
+`type === 'perso'` against everything else, lumping furniture, vehicles, vegetation and imported
+models into one bucket.
 
-In the model editor, a role point against a non-role point, `#3AA0FF` against `#9FC9EE`. 110 in
-normal vision, **67 in protanopia**. Still separable, but barely, and this is precisely the
-distinction #392e introduced in order to help.
+So in normal vision the distinction is *visible* but not *meaningful*: you have to guess. Fixing the
+colourblind case would have made a signal that communicates nothing to anyone slightly easier to
+see. Then the user, asked directly whether he used those dots, answered that he did not know the
+feature existed.
+
+**A collision in a signal nobody reads is not an accessibility defect.** It is measured, it is real,
+and it has no consequence. The pair stays pinned in `tests/colour-signals.test.mjs` so it cannot
+quietly get worse, and it will be revisited if that preview is ever reworked for its own reasons.
+
+### The borderline case that was not one
+
+In the model editor, a role point against a non-role point, `#3AA0FF` against `#9FC9EE`: 110 in
+normal vision, **67 in protanopia**. This was filed as a "borderline case" — but 67 is **above** the
+threshold this same note sets at 60. It passes. Calling it borderline was rhetoric, not measurement.
+
+Both entries are corrected here rather than rewritten, because the mistake is the instructive part:
+a number below a threshold is not by itself a defect, and a threshold calibrated on one repository
+is not a cliff.
 
 ### Two more pairs, found by the test rather than by the campaign
 
@@ -98,7 +118,10 @@ numbers were shown before the check was done.
 
 Ordered by value, not by what was asked for.
 
-**1. Stop letting colour be the only carrier of meaning** (WCAG 1.4.1). This is the only measure
+**1. Stop letting colour be the only carrier of meaning** (WCAG 1.4.1). This remains the right
+principle, and this campaign found no place in the application where applying it would help anyone:
+the one candidate turned out to be a signal without a legend. Kept at the top of the list because
+the next feature that encodes a state in a hue must not repeat it. This is the only measure
 that helps *every* type of colour vision deficiency at once, in *every* theme, with nothing for the
 user to choose. It also helps someone looking at a screen in bright sunlight, or a page printed in
 black and white. A traffic light is usable because red is always on top, not because of its shade.
@@ -131,11 +154,11 @@ points 2 and 3, not the fix for point 1.
 | Task | Subject |
 |---|---|
 | #409a | Extract the signal colours of `draw.js` into named tokens. No visible change. Settle the five dead `PALETTE` colours. |
-| #409b | The second cue: a distinct shape for Character against Object, and role against non-role by something other than hue. |
+| ~~#409b~~ | **Dropped.** Both pairs it targeted were closed above: one is a signal nobody reads, the other passes the threshold. |
 | #409c | High-contrast theme. |
 | #409d | Red-green colourblind theme. |
 
-#409a and #409b touch the same lines and are done together.
+#409b is dropped, so #409c is the next step. It depends on #409a and on nothing else.
 
 ## How to re-measure
 

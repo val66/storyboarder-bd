@@ -34,10 +34,10 @@ environ 8 % des hommes et 0,5 % des femmes. La tritanopie est mille fois plus ra
 réglée sur l'axe rouge-vert couvre donc l'écrasante majorité des cas, et trois thèmes en feraient
 deux de trop.
 
-### Un défaut confirmé
+### La collision mesurée, et pourquoi elle a été close sans correction
 
-`draw.js` distingue un Personnage de tout autre Élément en vue de dessus **par la seule couleur** :
-`#f4a340` contre `#6fbf73`, à deux endroits.
+`draw.js` distingue un Personnage de tout autre Élément dans le plan en vue de dessus **par la seule
+couleur** : `#f4a340` contre `#6fbf73`, à deux endroits.
 
 | Vision | Écart |
 |---|---|
@@ -45,13 +45,35 @@ deux de trop.
 | deutéranopie | 73 |
 | **protanopie** | **54** |
 
-Aucun autre indice ne porte la distinction. C'est la seule vraie trouvaille.
+Ç'a d'abord été écrit comme « la seule vraie trouvaille de la campagne », et une tâche a été ouverte
+pour la corriger. **C'était faux, et le raisonnement qui l'a tuée vaut mieux que le chiffre.**
 
-### Un cas limite
+Lire le code autour, plutôt que la couleur, a montré trois choses. Les deux marques sont des disques
+de 4 px dans l'aperçu des modales Pièce et Bâtiment. **Rien nulle part ne dit ce que les deux
+couleurs signifient** : pas de légende, pas de libellé. Et la distinction tracée est
+`type === 'perso'` contre tout le reste, ce qui met mobilier, véhicules, végétation et modèles
+importés dans le même sac.
 
-Dans l'éditeur de modèle, un point de rôle contre un point sans rôle, `#3AA0FF` contre `#9FC9EE`.
-110 en vision normale, **67 en protanopie**. Encore séparable, mais de justesse, et c'est exactement
-la distinction que #392e a introduite pour aider.
+En vision normale, la distinction est donc *visible* mais pas *signifiante* : il faut deviner.
+Corriger le cas daltonien aurait rendu un peu plus lisible un signal qui ne communique rien à
+personne. Puis l'utilisateur, interrogé directement sur son usage de ces points, a répondu qu'il
+ignorait l'existence de la fonctionnalité.
+
+**Une collision dans un signal que personne ne lit n'est pas un défaut d'accessibilité.** Elle est
+mesurée, elle est réelle, et elle est sans portée. La paire reste épinglée dans
+`tests/colour-signals.test.mjs` pour qu'elle ne se dégrade pas en silence, et elle sera reprise si
+cet aperçu est un jour retravaillé pour ses propres raisons.
+
+### Le cas limite qui n'en était pas un
+
+Dans l'éditeur de modèle, un point de rôle contre un point sans rôle, `#3AA0FF` contre `#9FC9EE` :
+110 en vision normale, **67 en protanopie**. C'était classé « cas limite », or 67 est **au-dessus**
+du seuil que cette note fixe elle-même à 60. Ça passe. L'appeler limite était de la rhétorique, pas
+de la mesure.
+
+Les deux entrées sont corrigées ici plutôt que réécrites, parce que l'erreur est la partie
+instructive : un chiffre sous un seuil n'est pas un défaut à lui seul, et un seuil calibré sur un
+dépôt n'est pas une falaise.
 
 ### Deux paires de plus, trouvées par le test et non par la campagne
 
@@ -102,7 +124,10 @@ parce que les premiers chiffres ont été montrés avant que la vérification so
 
 Par ordre de valeur, et non par ordre de ce qui a été demandé.
 
-**1. Cesser de faire porter le sens par la couleur seule** (WCAG 1.4.1). C'est la seule mesure qui
+**1. Cesser de faire porter le sens par la couleur seule** (WCAG 1.4.1). Le principe reste juste,
+et cette campagne n'a trouvé dans l'application aucun endroit où l'appliquer aiderait quelqu'un :
+l'unique candidat s'est révélé être un signal sans légende. Gardé en tête de liste pour que la
+prochaine fonctionnalité qui encode un état dans une teinte ne recommence pas. C'est la seule mesure qui
 aide *tous* les types de daltonisme à la fois, dans *tous* les thèmes, sans que l'utilisateur ait
 quoi que ce soit à choisir. Elle aide aussi qui regarde un écran en plein soleil, ou une planche
 imprimée en noir et blanc. Un feu tricolore est utilisable parce que le rouge est toujours en haut,
@@ -136,11 +161,11 @@ technique des points 2 et 3, pas la correction du point 1.
 | Tâche | Sujet |
 |---|---|
 | #409a | Extraire les couleurs de signal de `draw.js` vers des jetons nommés. Aucun changement visible. Trancher les cinq couleurs mortes de `PALETTE`. |
-| #409b | Le second indice : une forme distincte pour Personnage contre Objet, et rôle contre non-rôle autrement que par la teinte. |
+| ~~#409b~~ | **Abandonnée.** Les deux paires qu'elle visait sont closes ci-dessus : l'une est un signal que personne ne lit, l'autre passe le seuil. |
 | #409c | Thème contraste renforcé. |
 | #409d | Thème daltonien rouge-vert. |
 
-#409a et #409b touchent les mêmes lignes et se font ensemble.
+#409b est abandonnée, donc #409c est l'étape suivante. Elle dépend de #409a et de rien d'autre.
 
 ## Comment refaire la mesure
 

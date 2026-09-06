@@ -167,30 +167,38 @@ describe('Faibles en couleur, mais portées par le motif de tirets', () => {
   });
 });
 
-describe('Les deux paires INSUFFISANTES, épinglées telles quelles', () => {
+describe('Mesuré, réel, et sans portée : épinglé quand même', () => {
   /**
-   * ⚠️ CES DEUX TESTS NE DISENT PAS QUE TOUT VA BIEN. Ils épinglent un défaut mesuré, à sa valeur
-   * réelle, pour qu'il ne s'aggrave pas pendant qu'on attend #409b. Les corriger demande un SECOND
-   * INDICE, une forme ou un contour, pas une autre teinte : un thème ne peut que remplacer une
-   * couleur par une autre, il ne peut pas ajouter une information.
+   * ⚠️ CETTE SECTION A CHANGÉ DE SENS, ET C'EST LA PARTIE INSTRUCTIVE.
    *
-   * Le jour où #409b passe, ces deux tests changent de nature : ils vérifieront que le second
-   * indice existe, et la contrainte de teinte pourra se relâcher.
+   * Elle s'appelait « les deux paires INSUFFISANTES », la première était présentée comme LE défaut
+   * du chantier, et une tâche #409b était ouverte pour les corriger. Les deux classements étaient
+   * faux, pour deux raisons différentes.
+   *
+   * La vue de dessus : ce sont deux disques de 4 px dans l'aperçu des modales Pièce et Bâtiment, et
+   * RIEN NULLE PART ne dit ce que les couleurs signifient. Pas de légende, pas de libellé. La
+   * distinction est donc visible mais pas signifiante, même en vision normale. Interrogé sur son
+   * usage, l'utilisateur ignorait l'existence de la fonctionnalité. Une collision dans un signal
+   * que personne ne lit n'est pas un défaut d'accessibilité.
+   *
+   * Le point de rôle : 67, alors que le seuil de ce fichier est à 60. Ça PASSE. L'appeler « cas
+   * limite » était de la rhétorique, pas de la mesure.
+   *
+   * On garde les deux tests. Ils ne dénoncent plus rien, ils VERROUILLENT : ces teintes ne doivent
+   * pas se dégrader en silence, et si l'aperçu est un jour retravaillé pour ses propres raisons, la
+   * question se reposera avec les chiffres sous la main.
    */
-  test('LE DÉFAUT : Personnage contre Élément en vue de dessus', () => {
+  test('vue de dessus : la teinte ne se dégrade pas (mesurée à 54)', () => {
     const normal = ecart(versRVB(SIGNAL_APERCU_PERSO), versRVB(SIGNAL_APERCU_ELEMENT));
     const pire = pireEcart3D(SIGNAL_APERCU_PERSO, SIGNAL_APERCU_ELEMENT);
     assert.ok(normal > 140, `en vision normale l'écart devrait rester large, mesuré ${normal.toFixed(0)}`);
-    assert.ok(pire < 60,
-      'cette paire est censée être le défaut du chantier ; si elle passe le seuil, la note est '
-      + 'périmée et ce test doit être réécrit, pas supprimé');
     assert.ok(pire > 45, `l'écart s'est DÉGRADÉ : ${pire.toFixed(0)}, il valait 54 à la mesure`);
   });
 
-  test('LE CAS LIMITE : point avec rôle contre point sans rôle', () => {
+  test('point avec rôle contre sans rôle : au-dessus du seuil, et ça doit le rester', () => {
     const pire = pireEcart3D(SIGNAL_POSE_ROLE, SIGNAL_POSE_SANS_ROLE);
-    assert.ok(pire > 60, `l'écart s'est DÉGRADÉ : ${pire.toFixed(0)}, il valait 67 à la mesure`);
-    assert.ok(pire < 90, 'si la paire est devenue confortable, la note est périmée');
+    assert.ok(pire >= 60,
+      `${pire.toFixed(0)} : cette paire passait le seuil à 67, elle est passée en dessous`);
   });
 });
 

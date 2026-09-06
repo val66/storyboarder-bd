@@ -150,17 +150,23 @@ export const SIGNAL_CONSTRUIRE_DETACHE = '#2BA84A';
 export const SIGNAL_AIMANTATION = '#2E7D9A';
 // Éditeur de modèle : la poignée saisie, celle qui porte un rôle, celle qui n'en porte pas.
 //
-// ⚠️ CAS LIMITE MESURÉ. Entre SIGNAL_POSE_ROLE et SIGNAL_POSE_SANS_ROLE, l'écart tombe à 67 en
-// protanopie contre 110 en vision normale. Encore séparable, mais de justesse, alors que c'est
-// précisément la distinction que #392e a introduite pour AIDER. À trancher en #409b.
+// Entre SIGNAL_POSE_ROLE et SIGNAL_POSE_SANS_ROLE, l'écart tombe à 67 en protanopie contre 110 en
+// vision normale. Ç'a d'abord été noté comme un « cas limite à trancher », à tort : le seuil retenu
+// par la campagne est 60, donc cette paire PASSE. Un test la verrouille pour qu'elle n'y descende
+// pas, et il n'y a rien d'autre à faire.
 export const SIGNAL_POSE_ACTIVE = '#E0A53C';
 export const SIGNAL_POSE_ROLE = '#3AA0FF';
 export const SIGNAL_POSE_SANS_ROLE = '#9FC9EE';
 // Vue de dessus des modales Pièce et Bâtiment : un Personnage, ou n'importe quel autre Élément.
 //
-// ⚠️ LE DÉFAUT CONFIRMÉ DU CHANTIER, et il ne se corrige pas ici. L'écart passe de 145 en vision
-// normale à 54 en protanopie, et la couleur est le SEUL indice qui porte la distinction. Il faut
-// une forme différente, pas une autre teinte (#409b).
+// ⚠️ COLLISION MESURÉE, VOLONTAIREMENT NON CORRIGÉE, et la raison vaut mieux que le chiffre.
+// L'écart passe de 145 en vision normale à 54 en protanopie, et la couleur est le seul indice.
+// Mais ce sont deux disques de 4 px, et RIEN NULLE PART ne dit ce que les couleurs signifient : pas
+// de légende, pas de libellé. La distinction est visible sans être signifiante, y compris en vision
+// normale, et l'utilisateur interrogé ignorait l'existence de la fonctionnalité. Une collision dans
+// un signal que personne ne lit n'est pas un défaut d'accessibilité (cf.
+// docs/en/colour-accessibility.md). Épinglée dans les tests pour ne pas empirer, à reprendre si cet
+// aperçu est un jour retravaillé pour ses propres raisons.
 export const SIGNAL_APERCU_PERSO = '#f4a340';
 export const SIGNAL_APERCU_ELEMENT = '#6fbf73';
 // Une Case dont l'image est introuvable, ou simplement pas encore décodée.
