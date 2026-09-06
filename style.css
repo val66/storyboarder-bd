@@ -1072,6 +1072,32 @@ canvas{ background:var(--fond-3d); }
   background-repeat:no-repeat; background-position:right 8px center; background-size:10px 6px;
   padding-right:28px;
 }
+/* Une rangée « champ pleine largeur + contrôle court à sa droite » : la liste Thème et la case
+   Contraste renforcé. Elle n'existe QUE pour le centrage, et le centrage se fait sur le CHAMP, pas
+   sur la colonne qui le contient.
+
+   ⚠️ DEUX VERSIONS FAUSSES AVANT CELLE-CI, ET C'EST LA SECONDE QUI JUSTIFIE CETTE CLASSE. J'ai
+   d'abord calé la case à 7px du bas de la colonne : un nombre deviné, faux à l'usage. Je l'ai
+   remplacé par une colonne de droite qui copiait la structure de gauche, cale-libellé compris —
+   sauf qu'elle copiait le LIBELLÉ sans copier la marge basse de 14px que `.modal-box select` porte
+   lui-même. La colonne de gauche mesurait donc 14px de plus que sa liste, et la case se centrait
+   dans cette hauteur-là : 7px trop bas. Le même défaut signalé deux fois, parce que je mesurais la
+   colonne au lieu de mesurer le champ.
+
+   Ici les 14px QUITTENT le champ pour la rangée. Les deux enfants ont une marge verticale nulle,
+   donc `align-self:center` centre la case sur la boîte du champ et sur rien d'autre. Les 14px ne
+   sont pas choisis, ils sont déplacés : l'espace sous la rangée reste celui de tous les autres
+   champs des modales.
+
+   UNE GRILLE, ET NON UN FLEX, parce que l'ordre du DOM doit rester libellé → champ → case : le
+   libellé est traduit par `previousElementSibling` (I18N_PREV_LABEL, cf. docs/en/i18n.md). Un flex
+   aurait obligé à sortir le libellé de la rangée, donc à l'éloigner du champ.
+   Détail : la case est centrée sur la LIGNE du champ uniquement ; la ligne du libellé lui reste
+   vide, elle n'entre pas dans le calcul. */
+.modal-field-row{ display:grid; grid-template-columns:1fr auto; grid-template-areas:"libelle vide" "champ cote"; column-gap:14px; margin-bottom:14px; }
+.modal-field-row > .modal-field-label{ grid-area:libelle; }
+.modal-box .modal-field-row > select{ grid-area:champ; width:100%; margin-bottom:0; }
+.modal-field-row > .modal-field-aside{ grid-area:cote; align-self:center; display:flex; align-items:center; gap:6px; margin:0; font-size:13px; cursor:pointer; white-space:nowrap; }
 .modal-actions{
   display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
 }

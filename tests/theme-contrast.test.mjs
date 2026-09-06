@@ -38,6 +38,18 @@ const CSS = readFileSync(join(RACINE, 'style.css'), 'utf8');
 const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
 const EVENTS = readFileSync(join(RACINE, 'src', 'events.js'), 'utf8');
 
+// Corps d'une règle CSS, commentaires retirés — sinon un mot cité dans un commentaire compterait
+// comme une déclaration, et les commentaires de ce dépôt citent volontiers les propriétés qu'ils
+// expliquent. Le sélecteur est ANCRÉ en début de ligne, sans quoi chercher `.nav-btn` tomberait
+// d'abord sur la fin de `.persona-editor-panel .nav-btn`.
+// Copie assumée de l'aide de tests/style.test.mjs : chaque fichier de test de ce dépôt se lit et
+// s'exécute seul, et une aide partagée entre fichiers de test coûte plus qu'elle ne rend ici.
+function declarationsOuNull(selecteur) {
+  const echappe = selecteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp(`^\\s*${echappe}\\s*\\{([^}]*)\\}`, 'm').exec(CSS);
+  return m ? m[1].replace(/\/\*[\s\S]*?\*\//g, '') : null;
+}
+
 // ── Le calcul de contraste, tel que WCAG le définit ────────────────────────────────────────────
 const versLineaire = (c) => (c /= 255, c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 function luminance(hex) {
@@ -469,23 +481,46 @@ describe('Le réglage est branché de bout en bout', () => {
       'le frère précédent n\'est pas le libellé de champ attendu');
   });
 
-  test('RÉGRESSION : la case est alignée par STRUCTURE, pas par un décalage deviné (#410c)', () => {
-    // Première version : `margin:0 0 7px` sur la case, pour la remonter au milieu de la liste. Un
-    // nombre deviné, et faux à l'usage — elle tombait au ras du bas. Signalé, forcément.
-    //
-    // La colonne de droite copie maintenant la structure de gauche : un cale-libellé de la MÊME
-    // classe, donc de la même hauteur, puis la case qui prend le reste. Elle occupe alors
-    // exactement la hauteur de la liste et s'y centre seule. Rien à recalculer si la police, le
-    // rembourrage ou la taille de l'interface changent.
-    const i = HTML.indexOf('id="contrastCheckbox"');
-    assert.ok(i > 0, 'la case est introuvable');
-    const bloc = HTML.slice(Math.max(0, i - 900), i);
-    assert.match(bloc, /class="modal-field-label"[^>]*visibility:hidden/,
-      'le cale-libellé a disparu : la case retombera au bas de la liste');
-    assert.match(bloc, /aria-hidden="true"/,
-      'le cale-libellé ne dit rien et ne doit pas être annoncé');
-    assert.ok(!/margin:\s*0 0 \d+px/.test(bloc),
-      'un décalage en pixels est revenu : c\'est ce qui était faux');
+  test('RÉGRESSION : la case se centre sur la BOÎTE de la liste, pas sur sa colonne (#410c)', () => {
+    // Deux versions fausses avant celle-ci, et le même symptôme les deux fois : la case trop basse.
+    //   1. `margin:0 0 7px` sur la case — un nombre deviné, donc faux.
+    //   2. une colonne de droite copiant la structure de gauche, cale-libellé compris. Elle copiait
+    //      le LIBELLÉ mais pas la marge basse de 14px que `.modal-box select` porte lui-même : la
+    //      colonne de gauche mesurait 14px de plus que sa liste, et la case se centrait dans cette
+    //      hauteur-là, soit 7px trop bas.
+    // Ce que ce test verrouille n'est donc PAS une structure particulière : c'est que la hauteur
+    // dans laquelle la case se centre soit celle du champ, marge exclue.
+    const rangee = declarationsOuNull('.modal-field-row');
+    assert.ok(rangee, 'la rangée `.modal-field-row` a disparu');
+    assert.match(rangee, /display:\s*grid/, 'la grille est ce qui permet de garder l\'ordre du DOM');
+
+    const champ = declarationsOuNull('.modal-box .modal-field-row > select');
+    assert.ok(champ, 'la neutralisation de la marge du champ a disparu');
+    assert.match(champ, /margin-bottom:\s*0\b/,
+      'le champ a repris sa marge basse : la case se recentrera 7px trop bas, exactement comme avant');
+
+    const cote = declarationsOuNull('.modal-field-row > .modal-field-aside');
+    assert.ok(cote, 'le contrôle de droite n\'a plus de règle');
+    assert.match(cote, /align-self:\s*center/, 'c\'est ce qui centre la case sur la ligne du champ');
+    assert.match(cote, /margin:\s*0\b/, 'un décalage propre à la case est revenu : c\'était le défaut n°1');
+
+    // Les 14px de la rangée ne sont pas CHOISIS, ils sont DÉPLACÉS depuis le champ : l'espace sous
+    // la rangée doit rester celui de tous les autres champs des modales. Le test les compare au
+    // lieu de les figer, pour qu'un futur changement d'espacement global reste possible.
+    const generique = declarationsOuNull('.modal-box input[type=text], .modal-box select');
+    assert.ok(generique, 'la règle générique des champs de modale est introuvable');
+    const marge = (t) => (t.match(/margin-bottom:\s*([\d.]+)px/) || [])[1];
+    assert.equal(marge(rangee), marge(generique),
+      'la rangée ne rend plus l\'espace qu\'elle a pris au champ : elle se décalera des autres champs');
+
+    // Et côté HTML : les deux contrôles sont dans la MÊME rangée. Séparés, il n'y a plus rien à
+    // centrer sur quoi que ce soit.
+    const debut = HTML.indexOf('<div class="modal-field-row"');
+    assert.ok(debut > 0, 'la rangée a disparu du HTML');
+    const bloc = HTML.slice(debut, HTML.indexOf('</div>', debut));
+    assert.ok(bloc.includes('id="themeSelect"') && bloc.includes('id="contrastCheckbox"'),
+      'la liste et la case ne sont plus dans la même rangée');
+    assert.match(bloc, /class="modal-field-aside"/, 'la case n\'est plus le contrôle latéral de la rangée');
   });
 
   test('la case à cocher existe et porte un libellé traduisible', () => {

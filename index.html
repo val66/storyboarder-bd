@@ -878,29 +878,20 @@
          ⚠️ LE LIBELLÉ RESTE LE FRÈRE PRÉCÉDENT DU <select>, et c'est ce qui dicte cette structure.
          `I18N_PREV_LABEL` traduit « Thème de l'interface » via `previousElementSibling` : mettre le
          select en premier enfant d'une rangée aurait laissé ce libellé en français sous une
-         interface anglaise, sans que rien ne le signale. La colonne de gauche préserve le
-         voisinage. -->
-    <div style="display:flex; align-items:stretch; gap:14px;">
-      <div style="flex:1 1 auto; min-width:0;">
-        <label class="modal-field-label" style="margin-top:14px;">Thème de l'interface</label>
-        <select id="themeSelect" style="width:100%;">
-          <option value="dark">🌑 Sombre</option>
-          <option value="light">☀️ Clair</option>
-        </select>
-      </div>
-      <!-- ⚠️ LA COLONNE DE DROITE COPIE LA STRUCTURE DE GAUCHE, elle ne compense pas un décalage.
-           Une première version calait la case à 7px du bas : un nombre deviné, et faux à l'usage,
-           elle tombait au ras de la liste. Ici le cale-libellé reproduit la hauteur EXACTE du
-           libellé de gauche (même classe, même marge), donc la case occupe précisément la hauteur
-           de la liste, et s'y centre toute seule. Aucune valeur à deviner, et ça reste juste si la
-           police, la taille de l'interface ou le rembourrage changent.
-           Le cale-libellé est masqué à la vue ET aux lecteurs d'écran : il ne dit rien. -->
-      <div style="display:flex; flex-direction:column; flex-shrink:0;">
-        <span class="modal-field-label" aria-hidden="true" style="margin-top:14px; visibility:hidden;">&nbsp;</span>
-        <label style="flex:1 1 auto; display:flex; align-items:center; gap:6px; font-size:13px; margin:0; cursor:pointer; white-space:nowrap;">
-          <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
-        </label>
-      </div>
+         interface anglaise, sans que rien ne le signale. D'où une GRILLE, qui place les trois
+         éléments sans toucher à leur ordre dans le DOM (cf. `.modal-field-row` dans style.css).
+
+         Le centrage de la case est porté par le CSS, et il se fait sur la boîte de la liste, pas
+         sur une colonne : deux versions précédentes mesuraient la colonne et tombaient trop bas. -->
+    <div class="modal-field-row" style="margin-top:14px;">
+      <label class="modal-field-label">Thème de l'interface</label>
+      <select id="themeSelect">
+        <option value="dark">🌑 Sombre</option>
+        <option value="light">☀️ Clair</option>
+      </select>
+      <label class="modal-field-aside">
+        <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
+      </label>
     </div>
     <!-- Taille de l'interface (#410). Elle ne touche PAS à la Planche, qui garde son propre zoom :
          grossir l'interface ne doit pas grossir le dessin. -->
