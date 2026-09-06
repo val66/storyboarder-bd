@@ -469,6 +469,25 @@ describe('Le réglage est branché de bout en bout', () => {
       'le frère précédent n\'est pas le libellé de champ attendu');
   });
 
+  test('RÉGRESSION : la case est alignée par STRUCTURE, pas par un décalage deviné (#410c)', () => {
+    // Première version : `margin:0 0 7px` sur la case, pour la remonter au milieu de la liste. Un
+    // nombre deviné, et faux à l'usage — elle tombait au ras du bas. Signalé, forcément.
+    //
+    // La colonne de droite copie maintenant la structure de gauche : un cale-libellé de la MÊME
+    // classe, donc de la même hauteur, puis la case qui prend le reste. Elle occupe alors
+    // exactement la hauteur de la liste et s'y centre seule. Rien à recalculer si la police, le
+    // rembourrage ou la taille de l'interface changent.
+    const i = HTML.indexOf('id="contrastCheckbox"');
+    assert.ok(i > 0, 'la case est introuvable');
+    const bloc = HTML.slice(Math.max(0, i - 900), i);
+    assert.match(bloc, /class="modal-field-label"[^>]*visibility:hidden/,
+      'le cale-libellé a disparu : la case retombera au bas de la liste');
+    assert.match(bloc, /aria-hidden="true"/,
+      'le cale-libellé ne dit rien et ne doit pas être annoncé');
+    assert.ok(!/margin:\s*0 0 \d+px/.test(bloc),
+      'un décalage en pixels est revenu : c\'est ce qui était faux');
+  });
+
   test('la case à cocher existe et porte un libellé traduisible', () => {
     assert.match(HTML, /id="contrastCheckbox"/);
     assert.match(HTML, /id="contrastCheckboxLabel"/);
