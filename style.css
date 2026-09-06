@@ -1,7 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-/* Polices "BD" disponibles pour le texte des Bulles de dialogue (cf. section Texte de l'encart de
-   droite) — une dizaine des polices les plus associées au lettrage de bande dessinée. */
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Permanent+Marker&family=Luckiest+Guy&family=Anton&family=Patrick+Hand&family=Caveat:wght@400;700&family=Fredoka:wght@400;600&family=Bubblegum+Sans&family=Kalam:wght@400;700&display=swap');
+/* Toutes les polices sont EMBARQUÉES dans l'application : Inter pour l'interface, et une dizaine
+   de polices de lettrage pour le texte des Bulles (cf. section Texte de l'encart de droite).
+
+   Ces deux lignes étaient deux @import vers fonts.googleapis.com. Ce qui les a fait partir n'est
+   pas la performance mais la REPRODUCTIBILITÉ : `display=swap` dit au navigateur de ne pas
+   attendre la police, donc hors ligne ou avec un cache vidé, les Bulles retombaient en sans-serif
+   SANS LE DIRE, et une Planche exportée en PNG ne ressemblait pas à la même Planche exportée la
+   veille. Accessoirement, chaque lancement signalait le démarrage à un tiers.
+
+   assets/fonts/ et son contenu sont GÉNÉRÉS par `node tools/fetch-fonts.mjs`. Licences et
+   attributions : assets/fonts/LICENSES.md. */
+@import url('./assets/fonts/fonts.css');
 
 :root{
   /* Largeur du menu de gauche. Variable, et non plus un littéral, parce que l'Éditeur de

@@ -60,7 +60,7 @@
  * Usage :  node tools/fetch-fonts.mjs
  *          node tools/fetch-fonts.mjs --dry-run    (n'écrit rien, dit ce qu'il ferait)
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -155,9 +155,55 @@ export function blocsDeLaCss3D(css) {
  * (`UcCO3FwrK3iLTeHu...woff2`) : il change à chaque révision de la police, ce qui ferait
  * réapparaître dans le diff onze fichiers renommés à chaque exécution du script, sans qu'on puisse
  * dire si le dessin a bougé.
+ *
+ * ⚠️ DEUX FONCTIONS ET NON UN PARAMÈTRE OPTIONNEL, et c'est le test qui l'a imposé. La première
+ * version prenait une graisse en second argument, avec une valeur par défaut. Écrite ainsi, elle
+ * passait dans un `blocs.map(nomDeFichier3D)` où `map` remplit le second argument avec l'INDICE :
+ * le premier fichier héritait de la graisse 0, le second de 1. Un paramètre positionnel optionnel
+ * est un piège dès qu'une fonction peut être passée en référence.
  */
+function slugFamille(famille) {
+  return famille.replace(/[^A-Za-z0-9]/g, '');
+}
+
 export function nomDeFichier3D(bloc) {
-  return `${bloc.famille.replace(/[^A-Za-z0-9]/g, '')}-${bloc.graisse}-${bloc.sousEnsemble}.woff2`;
+  return `${slugFamille(bloc.famille)}-${bloc.graisse}-${bloc.sousEnsemble}.woff2`;
+}
+
+/** Le nom d'un fichier de police VARIABLE : sans graisse, puisqu'il les sert toutes. */
+export function nomDeFichierVariable3D(bloc) {
+  return `${slugFamille(bloc.famille)}-${bloc.sousEnsemble}.woff2`;
+}
+
+/**
+ * ⚠️ TROIS DES ONZE FAMILLES SONT VARIABLES, ET ÇA NE SE VOIT NULLE PART DANS LA CSS.
+ *
+ * Découvert en vérifiant l'intégrité du premier téléchargement : sur 33 fichiers, seuls 23 avaient
+ * un contenu distinct. Inter servait le MÊME octet pour ses quatre graisses, Caveat et Fredoka pour
+ * leurs deux. Ce sont des polices variables : Google renvoie un fichier par sous-ensemble, et c'est
+ * le navigateur qui en instancie la graisse. 526 des 1096 ko téléchargés étaient donc des copies,
+ * soit 47 %.
+ *
+ * Deux raisons de dédoublonner, et la seconde pèse plus que la première. Le poids, d'abord, mais il
+ * est marginal dans un installeur Electron. Surtout : quatre fichiers identiques nommés
+ * `Inter-400`, `Inter-500`, `Inter-600` et `Inter-700` AFFIRMENT quelque chose de faux, à savoir
+ * qu'Inter est livrée en quatre dessins. Et git garde les binaires pour toujours.
+ *
+ * On regroupe par URL SOURCE et non par empreinte du contenu : deux URL identiques sont le même
+ * fichier par construction, là où deux contenus identiques pourraient un jour être une coïncidence
+ * qu'on aurait fusionnée à tort.
+ */
+export function fichiersParUrl3D(blocs) {
+  const parUrl = new Map();
+  for (const b of blocs) {
+    if (!parUrl.has(b.url)) parUrl.set(b.url, []);
+    parUrl.get(b.url).push(b);
+  }
+  const noms = new Map();
+  for (const [url, groupe] of parUrl) {
+    noms.set(url, groupe.length > 1 ? nomDeFichierVariable3D(groupe[0]) : nomDeFichier3D(groupe[0]));
+  }
+  return noms;
 }
 
 /**
@@ -179,7 +225,7 @@ export const AFFICHAGE_POLICE = 'block';
  * s'il rencontre un caractère qui en relève. La réécrire à la main serait la seule façon de la
  * casser.
  */
-export function feuilleLocale3D(blocs) {
+export function feuilleLocale3D(blocs, noms = fichiersParUrl3D(blocs)) {
   const entete = [
     '/* assets/fonts/fonts.css',
     ' *',
@@ -198,11 +244,31 @@ export function feuilleLocale3D(blocs) {
     `  font-style: ${b.style};`,
     `  font-weight: ${b.graisse};`,
     `  font-display: ${AFFICHAGE_POLICE};`,
-    `  src: url(./${nomDeFichier3D(b)}) format('woff2');`,
+    `  src: url(./${noms.get(b.url)}) format('woff2');`,
     `  unicode-range: ${b.plage};`,
     '}',
   ].join('\n')).join('\n\n');
   return `${entete}\n${corps}\n`;
+}
+
+/**
+ * Les `.woff2` présents sur le disque que la nouvelle feuille ne cite plus.
+ *
+ * ⚠️ DÉFAUT RÉEL, TROUVÉ APRÈS COUP. La première version écrivait sans jamais supprimer. Le
+ * dédoublonnage ayant renommé onze fichiers, la seconde exécution a laissé 16 orphelins dans le
+ * dossier : invisibles, jamais chargés, et prêts à partir dans l'installeur et dans l'historique
+ * git, qui ne les rendrait plus jamais.
+ *
+ * C'est la même faute de forme que celle qui revient dans les tests de ce dépôt : agir sur ce qui
+ * doit être là sans jamais regarder ce qui ne doit PLUS y être.
+ *
+ * On ne balaie QUE les `.woff2`, et seulement à la racine du dossier. Les sous-dossiers portent les
+ * licences, et un `rm` un peu large sur un dossier généré est la meilleure façon d'effacer un jour
+ * quelque chose qui ne se régénère pas.
+ */
+export function fichiersPerimes3D(surLeDisque, attendus) {
+  const garder = new Set(attendus);
+  return surLeDisque.filter(f => f.endsWith('.woff2') && !garder.has(f));
 }
 
 /**
@@ -270,20 +336,22 @@ async function main() {
     throw new Error(`familles absentes de la réponse : ${manquantes.join(', ')} — rien n'est écrit`);
   }
 
-  console.log(`${gardes.length} fichiers à récupérer (${SOUS_ENSEMBLES.join(', ')}).`);
+  const noms = fichiersParUrl3D(gardes);
+  console.log(`${gardes.length} blocs @font-face, ${noms.size} fichiers distincts `
+    + `(${SOUS_ENSEMBLES.join(', ')}). ${gardes.length - noms.size} doublon(s) écarté(s).`);
   if (dryRun) {
-    gardes.forEach(b => console.log(`  ${nomDeFichier3D(b)}  ←  ${b.url}`));
+    for (const [url, nom] of noms) console.log(`  ${nom}  ←  ${url}`);
     return;
   }
 
   mkdirSync(DOSSIER, { recursive: true });
   let octets = 0;
-  for (const b of gardes) {
-    const r = await fetch(b.url);
-    if (!r.ok) throw new Error(`${r.status} sur ${b.url}`);
+  for (const [url, nom] of noms) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${r.status} sur ${url}`);
     const buf = Buffer.from(await r.arrayBuffer());
     octets += buf.length;
-    writeFileSync(join(DOSSIER, nomDeFichier3D(b)), buf);
+    writeFileSync(join(DOSSIER, nom), buf);
   }
 
   const fiches = [];
@@ -303,10 +371,16 @@ async function main() {
     });
   }
 
-  writeFileSync(join(DOSSIER, 'fonts.css'), feuilleLocale3D(gardes), 'utf8');
+  // Le ménage APRÈS l'écriture, jamais avant : si le téléchargement échoue en route, on préfère un
+  // dossier qui contient trop plutôt qu'un dossier vidé et pas rempli.
+  const perimes = fichiersPerimes3D(readdirSync(DOSSIER), [...noms.values()]);
+  perimes.forEach(f => unlinkSync(join(DOSSIER, f)));
+  if (perimes.length) console.log(`${perimes.length} fichier(s) périmé(s) supprimé(s).`);
+
+  writeFileSync(join(DOSSIER, 'fonts.css'), feuilleLocale3D(gardes, noms), 'utf8');
   writeFileSync(join(DOSSIER, 'LICENSES.md'), recapitulatifLicences3D(fiches), 'utf8');
 
-  console.log(`\nÉcrit dans assets/fonts/ : ${gardes.length} woff2 (${Math.round(octets / 1024)} ko),`
+  console.log(`\nÉcrit dans assets/fonts/ : ${noms.size} woff2 (${Math.round(octets / 1024)} ko),`
     + ` ${FAMILLES.length} licences, fonts.css, LICENSES.md.`);
   console.log('Étape suivante : remplacer les deux @import de style.css par');
   console.log("  @import url('./assets/fonts/fonts.css');");

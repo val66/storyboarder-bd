@@ -24,6 +24,23 @@ réponse est le plus souvent de la faire descendre sous forme de fichier génér
 
 `src/app.js` est un talon d'une ligne qui importe `events.js`, le vrai point d'entrée.
 
+### Les assets générés, et pourquoi les polices ne sont pas un canal IPC
+
+`assets/fonts/` est **généré**, par `node tools/fetch-fonts.mjs`. Il contient les onze familles de
+polices que l'application affiche, plus leurs licences, et `style.css` l'importe au lieu d'aller
+chercher fonts.googleapis.com.
+
+L'autre voie était de télécharger les polices au premier lancement et de les garder. Elle échoue
+sur le **deuxième** point du critère ci-dessus, qui exige que le remède habituel, faire descendre
+l'information sous forme de fichier généré, soit *inapplicable*. Pour des polices il s'applique
+parfaitement : les octets sont connus d'avance et identiques pour tout le monde. Donc pas de canal
+`fonts:*`, et les polices voyagent dans l'installeur.
+
+Noter que le même critère **accorderait** un canal `fonts:*` pour une police apportée par
+l'utilisateur : des octets choisis à l'exécution que rien ne peut générer à la construction,
+exactement comme `models:*` et `images:*`. Les deux situations n'ont de commun que le mot
+« police ».
+
 ### L'exception, et ce qui en fait une
 
 ⚠️ **Cette section disait « l'unique exception » et ne nommait que les canaux des modèles. C'était

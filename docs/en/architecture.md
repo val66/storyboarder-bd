@@ -23,6 +23,21 @@ as a generated file, not to open a channel.
 
 `src/app.js` is a one-line stub that imports `events.js`, the real entry point.
 
+### Generated assets, and why fonts are not an IPC channel
+
+`assets/fonts/` is **generated**, by `node tools/fetch-fonts.mjs`. It holds the eleven font
+families the application displays, plus their licences, and `style.css` imports it instead of
+reaching for fonts.googleapis.com.
+
+The alternative was to download the fonts at first launch and keep them. It fails the criterion
+above at its **second** point: that remedy demands the "push it down as a generated file" answer be
+*inapplicable*. For fonts it applies perfectly, since the bytes are known in advance and identical
+for everyone. So no `fonts:*` channel, and the fonts ship in the installer.
+
+Note that the same criterion would **grant** a `fonts:*` channel for a font supplied by the user:
+bytes chosen at runtime that nothing can generate at build time, exactly like `models:*` and
+`images:*`. The two situations share only the word "font".
+
 ### The exception, and what makes one
 
 ⚠️ **This section used to say "the one exception", and to name only the model channels. It was

@@ -23,7 +23,12 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname as dirnameFs, join } from 'node:path';
+
+// `dirname` est utilisé ici sur des chemins RELATIFS au dépôt, toujours écrits avec des `/`.
+// Sous Windows, `path.dirname` rend un séparateur `\` : on normalise pour que la comparaison avec
+// les motifs de `build.files`, eux écrits avec des `/`, ne dépende pas du système.
+const dirname = (p) => dirnameFs(p).split('\\').join('/');
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lire = (f) => readFileSync(join(RACINE, f), 'utf8');
@@ -59,6 +64,102 @@ function couvert(chemin, motif){
     .replace(/(?<!\.)\*/g, '[^/]*') + '$');
   return regex.test(chemin);
 }
+
+/**
+ * Les fichiers qu'une feuille de style réclame, en SUIVANT ses `@import`.
+ *
+ * ⚠️ CE BALAYAGE MANQUAIT, ET C'EST LA MÊME PORTE QUE LE DÉFAUT DU 28 JUILLET. Les tests
+ * ci-dessous ne regardaient que les assets cités par `index.html`. Une police citée par
+ * `style.css` pouvait donc ne pas voyager dans l'installeur sans que rien ne le dise, et le
+ * symptôme aurait été le plus discret possible : des Bulles en sans-serif, chez l'utilisateur
+ * seulement, sans erreur ni message.
+ *
+ * Les chemins d'une CSS sont relatifs À ELLE, pas à la racine : `url(./x.woff2)` dans
+ * `assets/fonts/fonts.css` désigne `assets/fonts/x.woff2`. Résoudre depuis la racine aurait produit
+ * une liste de fichiers introuvables et un test rouge pour une mauvaise raison.
+ */
+/**
+ * Une CSS sans ses commentaires.
+ *
+ * ⚠️ INDISPENSABLE ICI, et le test l'a montré tout de suite. `style.css` EXPLIQUE en commentaire
+ * pourquoi ses deux `@import` vers fonts.googleapis.com sont partis, et cite donc le domaine. Sans
+ * ce nettoyage, le test « plus aucune police depuis le réseau » tombait sur sa propre
+ * documentation, et la seule façon de le satisfaire aurait été d'effacer l'explication.
+ *
+ * Un `@import` commenté est inerte : le retirer de l'analyse ne cache rien.
+ */
+const cssSansCommentaires = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+
+function assetsDeLaCss(cheminRelatif, vus = new Set()) {
+  if (vus.has(cheminRelatif)) return [];
+  vus.add(cheminRelatif);
+  const texte = cssSansCommentaires(lire(cheminRelatif));
+  const dossier = dirname(cheminRelatif);
+  const trouves = [];
+  const motifs = [/@import\s+url\(\s*['"]?([^'")]+)['"]?\s*\)/g, /\burl\(\s*['"]?([^'")]+)['"]?\s*\)/g];
+  for (const motif of motifs) {
+    for (const m of texte.matchAll(motif)) {
+      const ref = m[1].trim();
+      if (ref.startsWith('data:') || /^[a-z]+:\/\//i.test(ref)) continue;
+      const resolu = join(dossier, ref).split('\\').join('/').replace(/^\.\//, '');
+      trouves.push(resolu);
+      if (resolu.endsWith('.css')) trouves.push(...assetsDeLaCss(resolu, vus));
+    }
+  }
+  return [...new Set(trouves)];
+}
+
+describe('Installeur : ce que les feuilles de style réclament', () => {
+  const ASSETS_CSS = assetsDeLaCss('style.css');
+
+  test('le garde-fou : le balayage trouve bien la feuille de polices et des .woff2', () => {
+    // Sur une liste vide, les deux tests suivants sont bâtis sur `[].filter(...)` et passent en ne
+    // regardant rien. Deux fois dans ce dépôt une suite est restée verte pour cette raison.
+    assert.ok(ASSETS_CSS.includes('assets/fonts/fonts.css'),
+      'l\'@import de style.css n\'a pas été suivi');
+    assert.ok(ASSETS_CSS.filter(f => f.endsWith('.woff2')).length >= 10,
+      `seulement ${ASSETS_CSS.filter(f => f.endsWith('.woff2')).length} police(s) trouvée(s)`);
+  });
+
+  test('RÉGRESSION : chaque fichier réclamé par une CSS figure dans build.files', () => {
+    const manquants = ASSETS_CSS.filter(a => !MOTIFS.some(m => couvert(a, m)));
+    assert.deepEqual(manquants, [], `réclamé par une feuille de style mais absent de build.files : `
+      + `${manquants.join(', ')} — l'application installée retomberait en sans-serif`);
+  });
+
+  test('… et existe réellement dans le dépôt', () => {
+    // L'autre moitié. Une police citée mais absente du disque ne lève rien : le navigateur passe
+    // simplement à la police suivante de la pile.
+    const introuvables = ASSETS_CSS.filter(a => !existsSync(join(RACINE, a)));
+    assert.deepEqual(introuvables, [], `cités par une CSS mais absents : ${introuvables}`);
+  });
+
+  test('RÉGRESSION : plus aucune police n\'est chargée depuis le réseau', () => {
+    // Le cœur de #408. Un seul `@import` distant qui reviendrait et le rendu redeviendrait
+    // dépendant de la connexion, silencieusement, `display=swap` ne prévenant personne.
+    const feuilles = ['style.css', ...ASSETS_CSS.filter(f => f.endsWith('.css'))];
+    assert.ok(feuilles.length >= 2, 'le balayage ne trouve plus les feuilles à inspecter');
+    feuilles.forEach(f => {
+      assert.ok(!/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(cssSansCommentaires(lire(f))),
+        `${f} charge encore une police depuis le réseau`);
+    });
+    // Et le garde-fou du nettoyage : sans lui, un `@import` distant remis en place passerait
+    // inaperçu si quelqu'un l'entourait de commentaires par mégarde.
+    assert.ok(/fonts\.googleapis\.com/.test(lire('style.css')),
+      'style.css n\'explique plus POURQUOI les polices sont locales : l\'explication a disparu');
+  });
+
+  test('les licences voyagent avec les polices', () => {
+    // L'OFL comme Apache 2.0 l'exigent. Elles ne sont citées par aucune CSS : rien ne les
+    // rattraperait si elles sortaient de la liste de packaging.
+    assert.ok(existsSync(join(RACINE, 'assets', 'fonts', 'LICENSES.md')),
+      'le récapitulatif de licences est absent');
+    assert.ok(MOTIFS.some(m => couvert('assets/fonts/LICENSES.md', m)),
+      'le récapitulatif de licences n\'est pas embarqué');
+    assert.ok(MOTIFS.some(m => couvert('assets/fonts/inter/LICENSE.txt', m)),
+      'les textes de licence ne sont pas embarqués');
+  });
+});
 
 describe('Installeur : tout ce que l\'application charge est embarqué', () => {
   test('RÉGRESSION : chaque asset local d\'index.html figure dans build.files', () => {
@@ -150,6 +251,19 @@ describe('Le garde-fou du garde-fou', () => {
  *   P3 le matcher de motifs rendu toujours vrai                                    ROUGE
  *   P4 l'extraction d'assets rendue stérile (tout ignoré)                          ROUGE
  *   P5 un motif de packaging pointé vers un dossier inexistant                     ROUGE
+ *   P6 le motif « assets » retiré de build.files (#408c)                          ROUGE (2 tests)
+ *   P7 l'@import local de style.css remis vers fonts.googleapis.com               ROUGE (2 tests)
+ *   P8 un fichier .woff2 retiré du dépôt                                          ROUGE
+ *   P9 le suivi des @import coupé, la CSS de polices n'est plus explorée          ROUGE
+ *
+ * P9 garde le GARDE, comme P3 et P4. Sans le suivi des `@import`, le balayage ne verrait que
+ * `style.css` lui-même, ne trouverait aucune police, et les trois tests bâtis sur `[].filter(...)`
+ * passeraient en ne regardant rien. Exactement la forme d'échec silencieux que ce fichier existe
+ * pour empêcher.
+ *
+ * P7 est celle qui compte à l'usage : un `@import` distant qui reviendrait rendrait l'affichage
+ * dépendant du réseau sans le moindre message, `display=swap` se contentant de dessiner en
+ * sans-serif.
  *
  * P1 est la seule qui compte vraiment : elle rejoue à l'identique la situation dans laquelle le
  * dépôt se trouvait depuis deux semaines. Le test passe au rouge, il aurait donc fait son travail

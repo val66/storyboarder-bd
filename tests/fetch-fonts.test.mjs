@@ -27,7 +27,8 @@ import { dirname, join } from 'node:path';
 
 import {
   FAMILLES, SOUS_ENSEMBLES, AFFICHAGE_POLICE,
-  urlCss3D, blocsDeLaCss3D, nomDeFichier3D, feuilleLocale3D, recapitulatifLicences3D,
+  urlCss3D, blocsDeLaCss3D, nomDeFichier3D, fichiersParUrl3D, fichiersPerimes3D, feuilleLocale3D,
+  recapitulatifLicences3D,
 } from '../tools/fetch-fonts.mjs';
 import { BUBBLE_FONT_PRELOAD_LIST } from '../src/help-content.js';
 
@@ -125,6 +126,94 @@ describe('Nommage des fichiers locaux', () => {
   });
 });
 
+describe('Polices variables : un seul fichier pour plusieurs graisses', () => {
+  /**
+   * Trouvé en vérifiant l'intégrité du PREMIER téléchargement réel, pas en écrivant le code : sur
+   * 33 fichiers, 23 contenus distincts. Inter servait le même octet pour ses quatre graisses,
+   * Caveat et Fredoka pour leurs deux. 526 des 1096 ko étaient des copies, soit 47 %.
+   *
+   * Le poids n'est pas l'argument principal, il est marginal dans un installeur Electron. Ce qui
+   * l'est : quatre fichiers identiques nommés `Inter-400` à `Inter-700` AFFIRMENT qu'Inter est
+   * livrée en quatre dessins. C'est faux, et git garde les binaires pour toujours.
+   */
+  const VARIABLE = `/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: url(https://fonts.gstatic.com/s/inter/v20/UNIQUE.woff2) format('woff2');
+  unicode-range: U+0000-00FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  src: url(https://fonts.gstatic.com/s/inter/v20/UNIQUE.woff2) format('woff2');
+  unicode-range: U+0000-00FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Bangers';
+  font-style: normal;
+  font-weight: 400;
+  src: url(https://fonts.gstatic.com/s/bangers/v20/AUTRE.woff2) format('woff2');
+  unicode-range: U+0000-00FF;
+}`;
+  const blocs = blocsDeLaCss3D(VARIABLE);
+
+  test('le garde-fou : trois blocs, deux fichiers', () => {
+    assert.equal(blocs.length, 3);
+    assert.equal(fichiersParUrl3D(blocs).size, 2, 'le dédoublonnage ne compte pas ce qu\'il faut');
+  });
+
+  test('RÉGRESSION : la graisse SORT du nom quand plusieurs la partagent', () => {
+    // Un fichier nommé `Inter-400` mais servant aussi le 700 serait pire que le doublon : il
+    // mentirait sans qu'on puisse s'en apercevoir en lisant le dossier.
+    const noms = fichiersParUrl3D(blocs);
+    assert.equal(noms.get('https://fonts.gstatic.com/s/inter/v20/UNIQUE.woff2'),
+      'Inter-latin.woff2');
+  });
+
+  test('… et elle RESTE quand la famille n\'a qu\'une graisse', () => {
+    // La face qui manquait aux quatre tests fautifs de ce dépôt : montrer que l'instrument sait
+    // aussi voir le cas contraire. Sans elle, retirer la graisse de TOUS les noms passerait.
+    const noms = fichiersParUrl3D(blocs);
+    assert.equal(noms.get('https://fonts.gstatic.com/s/bangers/v20/AUTRE.woff2'),
+      'Bangers-400-latin.woff2');
+  });
+
+  test('les deux @font-face pointent vers le MÊME fichier', () => {
+    // C'est ce que fait la CSS de Google elle-même : deux règles, un fichier, et le navigateur
+    // instancie la graisse. Rien d'exotique.
+    const feuille = feuilleLocale3D(blocs);
+    assert.equal((feuille.match(/url\(\.\/Inter-latin\.woff2\)/g) || []).length, 2);
+    assert.match(feuille, /font-weight: 400;/);
+    assert.match(feuille, /font-weight: 700;/);
+  });
+
+  test('RÉGRESSION : le nommage survit à un passage par `map`', () => {
+    // Défaut RÉEL, trouvé par le test « un nom lisible » ci-dessus. La première version prenait la
+    // graisse en second argument optionnel ; `blocs.map(nomDeFichier3D)` remplissait cet argument
+    // avec l'INDICE du tableau, et les fichiers sortaient nommés `-0`, `-1`, `-2`. Deux fonctions
+    // distinctes plutôt qu'un paramètre positionnel : le piège n'existe plus.
+    assert.deepEqual(blocs.map(nomDeFichier3D),
+      ['Inter-400-latin.woff2', 'Inter-700-latin.woff2', 'Bangers-400-latin.woff2']);
+    assert.equal(nomDeFichier3D.length, 1, 'un second paramètre positionnel rouvrirait le piège');
+  });
+
+  test('le regroupement se fait par URL, pas par contenu', () => {
+    // Deux URL identiques sont le même fichier par construction. Deux CONTENUS identiques
+    // pourraient un jour être une coïncidence, et les fusionner serait une décision qu'on n'a pas
+    // les moyens de prendre ici.
+    const src = readFileSync(join(RACINE, 'tools', 'fetch-fonts.mjs'), 'utf8');
+    const i = src.indexOf('export function fichiersParUrl3D');
+    const corps = src.slice(i, src.indexOf('\n}', i));
+    assert.ok(corps.includes('b.url'), 'le regroupement ne se fait pas sur l\'URL');
+    assert.ok(!/createHash|md5|sha/i.test(corps), 'le regroupement se fait sur une empreinte');
+  });
+});
+
 describe('La feuille locale écrite', () => {
   const blocs = blocsDeLaCss3D(CSS).filter(b => SOUS_ENSEMBLES.includes(b.sousEnsemble));
   const feuille = feuilleLocale3D(blocs);
@@ -162,6 +251,48 @@ describe('La feuille locale écrite', () => {
   test('le garde-fou : la feuille n\'est pas vide', () => {
     assert.equal((feuille.match(/@font-face/g) || []).length, blocs.length);
     assert.ok(blocs.length >= 2, 'la fixture ne fournit plus assez de blocs pour mesurer');
+  });
+});
+
+describe('Le ménage : ce que la feuille ne cite plus', () => {
+  /**
+   * DÉFAUT RÉEL, constaté sur le dossier après la seconde exécution. Le script écrivait sans
+   * jamais supprimer. Le dédoublonnage ayant renommé onze fichiers, 16 orphelins sont restés :
+   * invisibles, jamais chargés, et prêts à partir dans l'installeur ET dans l'historique git, qui
+   * ne les rendrait plus jamais.
+   *
+   * Même faute de forme que celle qui revient dans les tests de ce dépôt : s'occuper de ce qui
+   * doit être là sans jamais regarder ce qui ne doit PLUS y être.
+   */
+  test('RÉGRESSION : un fichier que la feuille ne cite plus est supprimé', () => {
+    const surLeDisque = ['Inter-400-latin.woff2', 'Inter-latin.woff2', 'Bangers-400-latin.woff2'];
+    assert.deepEqual(fichiersPerimes3D(surLeDisque, ['Inter-latin.woff2', 'Bangers-400-latin.woff2']),
+      ['Inter-400-latin.woff2']);
+  });
+
+  test('… et un fichier encore cité NE l\'est pas', () => {
+    // La face qui manque toujours. Une fonction qui rendrait tout le dossier satisfait aussi la
+    // première assertion, et effacerait les polices qu'on vient de télécharger.
+    const surLeDisque = ['Inter-latin.woff2', 'Bangers-400-latin.woff2'];
+    assert.deepEqual(fichiersPerimes3D(surLeDisque, surLeDisque), []);
+  });
+
+  test('on ne touche QU\'aux .woff2', () => {
+    // `fonts.css`, `LICENSES.md` et les dossiers de licences vivent au même endroit. Un balayage
+    // un peu large sur un dossier généré est la meilleure façon d'effacer un jour quelque chose
+    // qui ne se régénère pas.
+    const surLeDisque = ['fonts.css', 'LICENSES.md', 'inter', 'vieux.woff2'];
+    assert.deepEqual(fichiersPerimes3D(surLeDisque, []), ['vieux.woff2']);
+  });
+
+  test('le ménage passe APRÈS l\'écriture, pas avant', () => {
+    // Si le téléchargement échoue en route, mieux vaut un dossier qui contient trop qu'un dossier
+    // vidé et pas rempli. L'ordre est le seul endroit où cette décision existe.
+    const src = readFileSync(join(RACINE, 'tools', 'fetch-fonts.mjs'), 'utf8');
+    const posEcriture = src.indexOf('writeFileSync(join(DOSSIER, nom), buf)');
+    const posMenage = src.indexOf('unlinkSync(join(DOSSIER, f))');
+    assert.ok(posEcriture > 0 && posMenage > 0, 'écriture ou ménage introuvable');
+    assert.ok(posEcriture < posMenage, 'le ménage précède le téléchargement');
   });
 });
 
