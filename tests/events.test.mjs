@@ -2920,3 +2920,61 @@ describe('#402b : une pose où RIEN n\'est tourné ne s\'enregistre pas, depuis 
     closePersonaEditor();
   });
 });
+
+// ── L'échelle de rendu : posée tout de suite, ou attendue ? ────────────────────────────────────
+describe('#405c : ajuster la vue ne fait pas rendre la Planche DEUX fois', () => {
+  /**
+   * ⚠️ MESURÉ, PAS SUPPOSÉ. À l'ouverture d'un Projet, la sonde a relevé sept Cases reconstruites
+   * pour 309 ms, et la signature interrogée segment par segment a répondu « échelle de rendu » :
+   * aucun contenu n'avait changé, seul `S.pageRenderScale` avait bougé. Or il fait partie de la
+   * signature du cache 3D, donc toute la Planche se reconstruit.
+   *
+   * La cause : `fitZoomToWrap` passait par le minuteur de 150 ms prévu pour le zoom à la molette.
+   * On rendait donc à l'ancienne échelle, puis TOUT une seconde fois à la nouvelle.
+   *
+   * Le délai reste là où il gagne quelque chose, et seulement là : pendant un geste de molette,
+   * rendre en pleine résolution à chaque cran coûterait cher pour des images qu'on ne regarde pas.
+   */
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  const corps = (ancre, fin = '\n}') => {
+    const i = SRC.indexOf(ancre);
+    assert.ok(i > 0, `${ancre} : introuvable`);
+    return SRC.slice(i, SRC.indexOf(fin, i));
+  };
+
+  test('RÉGRESSION : fitZoomToWrap pose l\'échelle SANS passer par le minuteur', () => {
+    const f = corps('function fitZoomToWrap()');
+    assert.match(f, /appliquerEchelleIdeale\(\)/,
+      'l\'échelle n\'est plus posée ici : elle le sera après coup, et tout sera rendu deux fois');
+    assert.ok(!/scheduleSharpRender/.test(f),
+      'le minuteur est de retour dans fitZoomToWrap : la Planche se rendra de nouveau deux fois');
+  });
+
+  test('RÉGRESSION : le minuteur RESTE pour le zoom à la molette', () => {
+    // L'assertion de présence en face de l'absence ci-dessus. Supprimer le délai partout ferait
+    // rendre en pleine résolution à chaque cran de molette, ce qui est le défaut inverse.
+    assert.match(SRC, /function scheduleSharpRender\(\)/);
+    const i = SRC.indexOf("canvasWrap.addEventListener('wheel'");
+    assert.ok(i > 0, 'le zoom à la molette a disparu');
+    assert.match(SRC.slice(i, SRC.indexOf('\n}, { passive', i)), /scheduleSharpRender\(\)/,
+      'la molette ne passe plus par le délai : chaque cran rendra en pleine résolution');
+  });
+
+  test('RÉGRESSION : les deux chemins posent l\'échelle par la MÊME fonction', () => {
+    // Deux écritures du même calcul finiraient par diverger, et l'une des deux rendrait à une
+    // échelle que le cache ne reconnaîtrait pas.
+    assert.equal((SRC.match(/appliquerEchelleIdeale\(\)/g) || []).length, 3,
+      'attendu : la définition, l\'appel de fitZoomToWrap, celui du minuteur');
+    assert.match(corps('function appliquerEchelleIdeale()'), /return false;[\s\S]*S\.pageRenderScale = ideal;[\s\S]*return true;/,
+      'la fonction ne dit plus si elle a changé quelque chose : les appelants redessineront pour rien');
+  });
+
+  test('RÉGRESSION : un redimensionnement de fenêtre redessine encore', () => {
+    // `fitZoomToWrap` ne dessine pas : `renderAll` s'en charge juste après, mais le redimensionnement
+    // n'a pas ce dessin derrière lui. Sans l'appel explicite, changer la taille de la fenêtre
+    // laisserait la Planche à son ancienne résolution.
+    assert.match(SRC, /addEventListener\('resize', \(\) => \{ fitZoomToWrap\(\); drawCurrentPage\(\); \}\)/);
+  });
+});

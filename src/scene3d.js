@@ -1689,7 +1689,12 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     const NOMS = ['caméra/style/sol', 'Éléments', 'tracés', 'état du cache des modèles', 'échelle de rendu'];
     const avant = cached.sig.split('||');
     const apres = sig.split('||');
-    const change = NOMS.filter((_, i) => avant[i] !== apres[i]);
+    const change = NOMS.map((nom, i) => {
+      if (avant[i] === apres[i]) return null;
+      // L'échelle est un nombre : le DIRE plutôt que le nommer. « échelle de rendu » ne disait pas
+      // si elle avait bougé une fois ou deux, ni de combien, et c'est précisément la question.
+      return nom === 'échelle de rendu' ? `${nom} (${avant[i]} → ${apres[i]})` : nom;
+    }).filter(Boolean);
     perfJalon(`raté de cache — ${change.length ? change.join(' + ') : 'aucun segment ne diffère (?)'}`);
   }
   return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);

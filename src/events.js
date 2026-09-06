@@ -1931,14 +1931,26 @@ function computeIdealRenderScale(){
   return Math.min(PAGE_RENDER_SCALE_MAX, Math.max(1, S.zoomLevel) * (window.devicePixelRatio || 1));
 }
 // [STATE→S] let S.renderScaleDebounceTimer = null;
+/**
+ * Pose l'échelle de rendu idéale. Rend `true` si elle a changé, donc s'il faut redessiner.
+ *
+ * Extraite du minuteur ci-dessous parce que DEUX appelants la veulent pour des raisons opposées :
+ * le zoom à la molette a besoin d'attendre la fin du geste, `fitZoomToWrap` n'a rien à attendre.
+ */
+function appliquerEchelleIdeale(){
+  const ideal = computeIdealRenderScale();
+  if (Math.abs(ideal - S.pageRenderScale) <= 0.01) return false;
+  S.pageRenderScale = ideal;
+  return true;
+}
+/**
+ * Le rendu net APRÈS le geste. Réservé au zoom à la molette, où le délai est tout l'intérêt : rendre
+ * en pleine résolution à chaque cran coûterait cher pour des images qu'on ne regarde pas.
+ */
 function scheduleSharpRender(){
   clearTimeout(S.renderScaleDebounceTimer);
   S.renderScaleDebounceTimer = setTimeout(() => {
-    const ideal = computeIdealRenderScale();
-    if (Math.abs(ideal - S.pageRenderScale) > 0.01) {
-      S.pageRenderScale = ideal;
-      drawCurrentPage();
-    }
+    if (appliquerEchelleIdeale()) drawCurrentPage();
   }, 150);
 }
 // ↳ src/constants.js
@@ -1950,9 +1962,18 @@ function fitZoomToWrap(){
   const fit = Math.min(availW / page.w, availH / page.h);
   S.zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, fit));
   applyZoom();
-  scheduleSharpRender();
+  // ⚠️ SANS DÉLAI ICI, ET C'EST LA CORRECTION DE #405c. Cette fonction n'est pas un geste : elle
+  // ajuste la vue à la fenêtre, une fois. Passer par le minuteur de 150 ms faisait rendre toute la
+  // Planche à l'ancienne échelle, puis TOUT une seconde fois à la nouvelle, parce que l'échelle
+  // fait partie de la signature du cache 3D. Mesuré à l'ouverture : sept Cases reconstruites pour
+  // 309 ms, sans qu'aucun contenu ait changé.
+  //
+  // `renderAll` appelle cette fonction JUSTE AVANT `drawCurrentPage` : poser l'échelle ici suffit
+  // donc, le dessin qui suit part déjà à la bonne. Le redimensionnement de fenêtre, lui, n'a pas ce
+  // dessin derrière lui, d'où l'appel explicite ci-dessous.
+  appliquerEchelleIdeale();
 }
-window.addEventListener('resize', fitZoomToWrap);
+window.addEventListener('resize', () => { fitZoomToWrap(); drawCurrentPage(); });
 
 // Clicking inside canvasWrap but OUTSIDE the canvas itself (the visible margin around the Page when
 // zoomed out/scrolled) deselects the Page, on user request ("if I click outside this area it
