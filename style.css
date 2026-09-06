@@ -625,16 +625,27 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
 /* Sections du manuel : des BOUTONS, plus des accordéons. Le panneau fait 290 px — y déplier des
    paragraphes donnait des lignes de trois mots et noyait les autres sections. Le contenu s'affiche
    maintenant dans #helpModal ; ici il ne reste que la liste des titres. */
+/* ⚠️ FOND ET BORDURE EN JETONS, ET NON EN SUPERPOSITION BLANCHE (#409e). Ces trois valeurs étaient
+   écrites `rgba(255,255,255,.05)`, `.07` et `.09` : éclaircir un fond. Ça marche sur un thème
+   sombre et CELA NE MARCHE QUE LÀ. Mesuré sur le papier de chaque thème, le contraste de la
+   bordure valait 1,22 en Sombre, et 1,01 en Clair. 1,01, c'est-à-dire rien : la bordure n'était pas
+   discrète, elle était absente, et le contraste renforcé n'y changeait rien (1,00).
+
+   Signalé à l'usage, en thème Clair, sur ces pavés-ci. La même faute vit ailleurs dans ce fichier,
+   dans les deux sens : les superpositions noires disparaissent symétriquement en thème sombre.
+   Un jeton suit le thème, une valeur absolue ne le peut pas. */
 .help-group{
   display:flex; align-items:center; gap:8px; width:100%; text-align:left;
   margin-bottom:8px; padding:10px 12px; border-radius:8px;
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+  background:var(--white); border:1px solid var(--line-strong);
   cursor:pointer; font-family:inherit;
 }
 .help-group:last-child{ margin-bottom:0; }
 /* Le survol est le SEUL signal que ces pavés sont actionnables. Un chevron ›, essayé d'abord, se
-   lisait comme une promesse de dépliement — précisément ce qu'on venait de retirer. */
-.help-group:hover{ background:rgba(255,255,255,.09); border-color:var(--accent); }
+   lisait comme une promesse de dépliement — précisément ce qu'on venait de retirer.
+   `--nav-bg` plutôt qu'un éclaircissement : c'est le jeton qui veut dire « ceci est un bouton »,
+   et il est réglé séparément dans chaque thème pour rester lisible contre le fond des champs. */
+.help-group:hover{ background:var(--nav-bg); border-color:var(--accent); }
 .help-group-title{
   flex:1 1 auto; margin:0;
   font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink);
@@ -654,7 +665,9 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
 #sceneTopDownBtn{
   display:block; width:100%; margin-top:10px;
   font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink);
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:6px;
+  /* Mêmes jetons que .help-group, et pour la même raison (#409e) : ce bouton portait lui aussi une
+     superposition blanche, invisible dès que le fond cesse d'être sombre. */
+  background:var(--white); border:1px solid var(--line-strong); border-radius:6px;
   padding:7px 10px; cursor:pointer; transition:opacity .12s, background .12s, color .12s;
 }
 #sceneTopDownBtn:hover{ opacity:.85; }

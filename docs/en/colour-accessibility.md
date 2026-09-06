@@ -163,6 +163,30 @@ Extraction matters for another reason: `#f4a340` and `#6fbf73` are written insid
 through no CSS variable, so **no theme can reach them**. It is the technical prerequisite for
 points 2 and 3, not the fix for point 1.
 
+### A third door onto the same fault, reported through use
+
+After #409c shipped, the manual's section blocks in the right-hand panel turned out to have no
+visible outline in the Light theme. The cause is the lesson of #409a again, in CSS this time: the
+background and border were written `rgba(255,255,255,.05)` and `.07`, meaning *lighten whatever is
+underneath*. That works on a dark background and only there.
+
+Border contrast against each theme's paper:
+
+| | Dark | Light | High-contrast dark | High-contrast light |
+|---|---|---|---|---|
+| `rgba(255,255,255,.07)` | 1.22 | **1.01** | 1.12 | **1.00** |
+| `rgba(0,0,0,.14)` | **1.04** | 1.37 | **1.00** | 1.38 |
+
+1.01 is not "subtle", it is **absent**. And the worst cell is the last one: the high-contrast
+option, whose whole job this is, changed nothing at all.
+
+The fault runs both ways: black overlays are the exact mirror, fine in Light and gone in
+high-contrast Dark. The white ones are now tokens (`--white`, `--line-strong`, `--nav-bg`). The
+black ones stay for now — nobody has reported them, and the blocks they fill already carry a
+tokenised border — but `tests/style.test.mjs` counts them, so their number can only go down.
+
+A token follows the theme. An absolute value cannot, however carefully it was chosen.
+
 ## Breakdown
 
 | Task | Subject |

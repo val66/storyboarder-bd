@@ -762,3 +762,71 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
       'une exemption est réapparue : le test au-dessus doit rester sans échappatoire');
   });
 });
+
+describe('#409e : une superposition en dur ne suit aucun thème', () => {
+  /**
+   * ═════════════════════════════════════════════════════════════════════════════════════════════
+   * LE DÉFAUT, SIGNALÉ À L'USAGE ET CHIFFRÉ ENSUITE
+   * ═════════════════════════════════════════════════════════════════════════════════════════════
+   *
+   * Les pavés de section du Manuel d'utilisation portaient un fond et une bordure écrits
+   * `rgba(255,255,255,.05)` et `.07` : éclaircir ce qu'il y a dessous. Ça marche sur un fond sombre,
+   * et CELA NE MARCHE QUE LÀ.
+   *
+   * Contraste de la bordure contre le papier de chaque thème, mesuré :
+   *
+   *   Sombre 1,22   |   Clair 1,01   |   Contraste sombre 1,12   |   Contraste clair 1,00
+   *
+   * 1,01, ce n'est pas « discret », c'est ABSENT. Et le pire est la dernière colonne : le contraste
+   * renforcé, dont c'est précisément le métier, n'y changeait rien du tout.
+   *
+   * La faute existe dans les deux sens. Les superpositions NOIRES (`rgba(0,0,0,.14)` et `.18`) sont
+   * le miroir exact : correctes en thème clair (1,37 et 1,52), nulles en contraste sombre (1,00).
+   * Elles restent en place pour l'instant, faute d'avoir été signalées à l'usage, et parce que les
+   * blocs concernés portent déjà une bordure en jeton. Ce test les COMPTE, pour que leur nombre ne
+   * puisse qu'être réduit.
+   *
+   * Un jeton suit le thème. Une valeur absolue ne le peut pas, quel que soit le soin mis à la
+   * choisir. C'est la même leçon que #409a sur les couleurs de dessin, par une troisième porte.
+   */
+  const sansCommentaires = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  test('RÉGRESSION : plus aucun fond ni bordure en blanc translucide', () => {
+    // Ce sont les deux propriétés qui doivent SE VOIR contre le papier. Une ombre portée, elle,
+    // reste légitimement noire quel que soit le thème : elle simule une lumière, pas une surface.
+    const fautifs = [...sansCommentaires.matchAll(/(background|border)(-color)?\s*:[^;]*rgba\(255,\s*255,\s*255[^;]*;/g)]
+      .map(m => m[0].trim());
+    assert.deepEqual(fautifs, [],
+      `superposition blanche employée comme surface : ${fautifs.join(' | ')} — invisible dès que le `
+      + 'fond cesse d\'être sombre');
+  });
+
+  test('les pavés du Manuel emploient bien des jetons', () => {
+    // La face qui manque toujours : vérifier que le remplacement a eu lieu, et pas seulement que
+    // l'ancienne écriture a disparu. Un `background` retiré satisferait le test précédent.
+    const d = declarations('.help-group');
+    assert.match(d, /background\s*:\s*var\(--white\)/);
+    assert.match(d, /border\s*:\s*1px solid var\(--line-strong\)/);
+  });
+
+  test('le survol reste distinct du repos', () => {
+    // Le survol est le seul signal que ces pavés sont actionnables. S'il prenait le même jeton que
+    // le fond au repos, il ne signalerait plus rien, et aucun test de couleur ne le dirait.
+    const repos = declarations('.help-group');
+    const survol = declarations('.help-group:hover');
+    const jeton = (d) => (/background\s*:\s*var\((--[a-z-]+)\)/.exec(d) || [])[1];
+    assert.ok(jeton(repos) && jeton(survol), 'un des deux fonds n\'est pas un jeton');
+    assert.notEqual(jeton(repos), jeton(survol), 'le survol ne se distingue plus du repos');
+  });
+
+  test('les superpositions NOIRES restantes sont comptées, et ne peuvent que diminuer', () => {
+    // Elles ne sont pas corrigées : personne ne les a signalées, et les blocs qu'elles remplissent
+    // portent déjà une bordure en jeton. Mais leur nombre est épinglé, pour qu'une nouvelle ne se
+    // glisse pas dans le lot en profitant de l'exemption.
+    const noires = [...sansCommentaires.matchAll(/(background|border)(-color)?\s*:[^;]*rgba\(0,\s*0,\s*0[^;]*;/g)];
+    assert.ok(noires.length <= 9,
+      `${noires.length} superpositions noires : le compte a augmenté, il ne doit que baisser`);
+    assert.ok(noires.length >= 1,
+      'plus aucune : tant mieux, mais ce test ne mesure plus rien et doit être retiré');
+  });
+});

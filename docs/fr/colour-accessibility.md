@@ -170,6 +170,31 @@ L'extraction compte pour une autre raison : `#f4a340` et `#6fbf73` sont écrits 
 passent par aucune variable CSS, donc **aucun thème ne peut les atteindre**. C'est le préalable
 technique des points 2 et 3, pas la correction du point 1.
 
+### Une troisième porte sur la même faute, signalée à l'usage
+
+Après la livraison de #409c, les pavés de section du Manuel, dans l'encart de droite, se sont
+révélés sans contour visible en thème Clair. La cause est de nouveau la leçon de #409a, en CSS cette
+fois : le fond et la bordure étaient écrits `rgba(255,255,255,.05)` et `.07`, c'est-à-dire
+« éclaircir ce qu'il y a dessous ». Ça marche sur un fond sombre, et seulement là.
+
+Contraste de la bordure contre le papier de chaque thème :
+
+| | Sombre | Clair | Contraste sombre | Contraste clair |
+|---|---|---|---|---|
+| `rgba(255,255,255,.07)` | 1,22 | **1,01** | 1,12 | **1,00** |
+| `rgba(0,0,0,.14)` | **1,04** | 1,37 | **1,00** | 1,38 |
+
+1,01 n'est pas « discret », c'est **absent**. Et la pire case est la dernière : le contraste
+renforcé, dont c'est précisément le métier, n'y changeait rien du tout.
+
+La faute existe dans les deux sens : les superpositions noires sont le miroir exact, correctes en
+Clair et nulles en Contraste sombre. Les blanches sont désormais des jetons (`--white`,
+`--line-strong`, `--nav-bg`). Les noires restent pour l'instant, faute d'avoir été signalées et
+parce que les blocs qu'elles remplissent portent déjà une bordure en jeton, mais
+`tests/style.test.mjs` les compte, pour que leur nombre ne puisse que baisser.
+
+Un jeton suit le thème. Une valeur absolue ne le peut pas, quel que soit le soin mis à la choisir.
+
 ## Découpage
 
 | Tâche | Sujet |
