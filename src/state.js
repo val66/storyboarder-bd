@@ -259,6 +259,11 @@ export const S = {
   // Contraste renforcé (#409c). Un MODIFICATEUR, indépendant de appTheme : les deux se combinent,
   // ce qui donne quatre rendus avec deux réglages au lieu de quatre entrées dans une liste.
   appContrast:             false,
+  // Taille de l'interface (#410) : 'compacte', 'normale', 'grande' ou 'tres-grande'. Le facteur
+  // correspondant vit dans FACTEURS_ECHELLE_UI (events.js), pas ici : ce qui est PERSISTÉ est le
+  // nom du cran, pas le nombre. Un nombre écrit dans settings.json figerait une valeur qu'on ne
+  // pourrait plus ajuster sans réécrire les réglages de tout le monde.
+  appUiScale:              'normale',
   appLang:                 'en',
   exportShowPanelBadges:       true,
   exportShowPanelDescriptions: true,

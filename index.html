@@ -880,6 +880,15 @@
     <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:6px 0 8px; cursor:pointer;">
       <input type="checkbox" id="contrastCheckbox"> <span id="contrastCheckboxLabel">Contraste renforcé</span>
     </label>
+    <!-- Taille de l'interface (#410). Elle ne touche PAS à la Planche, qui garde son propre zoom :
+         grossir l'interface ne doit pas grossir le dessin. -->
+    <label class="modal-field-label">Taille de l'interface</label>
+    <select id="uiScaleSelect">
+      <option value="compacte">Compacte</option>
+      <option value="normale">Normale</option>
+      <option value="grande">Grande</option>
+      <option value="tres-grande">Très grande</option>
+    </select>
     <!-- Section "Langue" (cf. appLang/applyI18n) — sur demande utilisateur : Anglais par défaut, Français
          disponible (langue d'origine de l'application). -->
     <label class="modal-field-label">Langue de l'interface</label>

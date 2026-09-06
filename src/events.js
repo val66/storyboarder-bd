@@ -7218,6 +7218,7 @@ const autosaveIntervalSelect = document.getElementById('autosaveIntervalSelect')
 const projectsDirDisplay = document.getElementById('projectsDirDisplay');
 const themeSelect = document.getElementById('themeSelect');
 const contrastCheckbox = document.getElementById('contrastCheckbox');
+const uiScaleSelect = document.getElementById('uiScaleSelect');
 const languageSelect = document.getElementById('languageSelect');
 const exportShowPanelBadgesCheckbox = document.getElementById('exportShowPanelBadgesCheckbox');
 const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowPanelDescriptionsCheckbox');
@@ -7250,8 +7251,44 @@ const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowP
  * Tout ce qui n'est pas exactement 'light' est sombre : c'est le comportement d'origine, et il
  * protège d'un settings.json portant une valeur inconnue.
  */
+/**
+ * Les quatre crans de taille de l'interface, et leur facteur (#410).
+ *
+ * ⚠️ C'EST LE NOM DU CRAN QUI EST PERSISTÉ, PAS LE NOMBRE. Un facteur écrit dans settings.json
+ * figerait une valeur qu'on ne pourrait plus ajuster sans réécrire les réglages de tout le monde ;
+ * un nom, lui, laisse la table libre d'évoluer. Même raison qui fait que `theme` vaut 'dark' et non
+ * une couleur.
+ *
+ * ⚠️ ET LE CRAN LE PLUS LARGE EST BORNÉ PAR LA GÉOMÉTRIE, pas par le goût. Les deux menus occupent
+ * 540 px ensemble ; à 1,3 ils en prennent 702, ce qui laisse 578 px de Planche dans une fenêtre de
+ * 1280. Au-delà, l'interface mangerait le dessin qu'elle sert à composer.
+ */
+export const FACTEURS_ECHELLE_UI = {
+  compacte: 0.9,
+  normale: 1,
+  grande: 1.15,
+  'tres-grande': 1.3,
+};
+
+/**
+ * Le facteur à appliquer, pour un cran relu de settings.json. Fonction PURE.
+ *
+ * Tout ce qui n'est pas un cran connu retombe sur 1 : un fichier de réglages écrit par une version
+ * ultérieure, ou modifié à la main, ne doit pas rendre l'interface inutilisable.
+ */
+export function facteurEchelleUI3D(cran){
+  return FACTEURS_ECHELLE_UI[cran] || FACTEURS_ECHELLE_UI.normale;
+}
+
 export function classesDeTheme3D(theme, contraste){
   return { 'theme-light': theme === 'light', 'theme-contraste': contraste === true };
+}
+
+// Applique la taille de l'interface. Une variable CSS plutôt qu'une classe par cran : les facteurs
+// sont des NOMBRES, et quatre blocs CSS qui ne changeraient qu'un nombre seraient quatre occasions
+// de les faire diverger de la table ci-dessus.
+function appliquerEchelleUI(cran = S.appUiScale){
+  document.documentElement.style.setProperty('--echelle-ui', String(facteurEchelleUI3D(cran)));
 }
 
 function applyTheme(theme, contraste = S.appContrast){
@@ -7273,6 +7310,7 @@ function openSettingsModal(){
   autosaveIntervalSelect.value = String(S.autosaveIntervalMs);
   themeSelect.value = S.appTheme;
   contrastCheckbox.checked = S.appContrast;
+  uiScaleSelect.value = S.appUiScale;
   languageSelect.value = S.appLang;
   exportShowPanelBadgesCheckbox.checked = S.exportShowPanelBadges;
   exportShowPanelDescriptionsCheckbox.checked = S.exportShowPanelDescriptions;
@@ -7349,6 +7387,13 @@ themeSelect.addEventListener('change', () => {
 // Contraste renforce (#409c). Reglage SEPARE de la liste ci-dessus, persiste dans son propre champ :
 // `theme` garde ses valeurs 'dark' et 'light' sans renommage, et un settings.json anterieur se relit
 // tel quel, simplement sans contraste.
+// Taille de l'interface (#410). Persistée dans son propre champ AJOUTÉ, `uiScale` : aucun réglage
+// existant n'est renommé, et un settings.json antérieur se relit tel quel, en taille normale.
+uiScaleSelect.addEventListener('change', () => {
+  S.appUiScale = uiScaleSelect.value;
+  appliquerEchelleUI(S.appUiScale);
+  if (hasElectronAPI()) window.storyboarderAPI.setSetting('uiScale', S.appUiScale);
+});
 contrastCheckbox.addEventListener('change', () => {
   S.appContrast = contrastCheckbox.checked;
   applyTheme(S.appTheme, S.appContrast);
@@ -7429,6 +7474,12 @@ async function loadAppSettings(){
     // lui et l'interface clignoterait de la version normale a la version contrastee au demarrage.
     if (settings && typeof settings.contrast === 'boolean') {
       S.appContrast = settings.contrast;
+    }
+    // Appliquée AVANT le thème, pour la même raison que le contraste : une interface qui naît en
+    // taille normale puis saute au cran choisi clignote au démarrage.
+    if (settings && settings.uiScale) {
+      S.appUiScale = settings.uiScale;
+      appliquerEchelleUI(S.appUiScale);
     }
     if (settings && (settings.theme || S.appContrast)) {
       if (settings.theme) S.appTheme = settings.theme;

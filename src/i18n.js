@@ -347,6 +347,11 @@ export const I18N_MODALS = [
   // que de passer par l'aide de fin de fichier : celle-ci vise le texte qui SUIT une case à cocher
   // dans un <label> partagé, et elle réécrirait ici le nœud entier, case comprise.
   ['#contrastCheckbox', null],
+  ['#uiScaleSelect', null], // le libellé qui précède est pris en charge par I18N_PREV_LABEL
+  ['#uiScaleSelect option[value="compacte"]', 'Compact', 'Compacte'],
+  ['#uiScaleSelect option[value="normale"]', 'Normal', 'Normale'],
+  ['#uiScaleSelect option[value="grande"]', 'Large', 'Grande'],
+  ['#uiScaleSelect option[value="tres-grande"]', 'Extra large', 'Très grande'],
   ['#contrastCheckboxLabel', 'Increased contrast', 'Contraste renforcé'],
   ['#exportShowPanelBadgesCheckbox', null], // handled via trailing helper below
   ['#exportShowPanelDescriptionsCheckbox', null],
@@ -374,6 +379,7 @@ export const I18N_MODALS = [
 // having to modify the HTML to give each one an id.
 export const I18N_PREV_LABEL = [
   ['themeSelect', 'Interface theme', "Thème de l'interface"],
+  ['uiScaleSelect', 'Interface size', "Taille de l'interface"],
   ['languageSelect', 'Interface language', "Langue de l'interface"],
   ['autosaveIntervalSelect', 'Autosave interval', 'Délai de sauvegarde automatique'],
   ['projectsDirDisplay', 'Projects folder', 'Dossier des Projets'],

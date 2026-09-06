@@ -12,6 +12,8 @@
 @import url('./assets/fonts/fonts.css');
 
 :root{
+  /* Taille de l'interface (#410). 1 = telle qu'elle a toujours été. */
+  --echelle-ui:1;
   --focus:#FF9A5C;
   --bord-actif:#6E6E77;
   --fond-3d:#CFCBC2;
@@ -197,6 +199,37 @@ body.theme-light.theme-contraste{
   --scroll-thumb:#7A7A7A;
   --scroll-thumb-hover:#565656;
 }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   LA TAILLE DE L'INTERFACE (#410)
+   ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+   ⚠️ `zoom`, ET PAS AUTRE CHOSE, PARCE QUE LA MESURE L'IMPOSE. La feuille contient 577 valeurs en
+   pixels, et les attributs `style` du HTML 108 de plus. Les convertir en `calc(var(--echelle) * …)`
+   aurait demandé de toucher près de sept cents endroits, chacun une occasion de se tromper, pour un
+   résultat identique. `zoom` multiplie la totalité d'un sous-arbre, y compris ce que le HTML écrit
+   en ligne.
+
+   ⚠️ LA ZONE DE DESSIN N'EST PAS ZOOMÉE, et c'est une décision, pas un oubli. La Planche a déjà son
+   propre zoom : grossir l'interface ne doit pas grossir le dessin. Ça évite en outre de toucher au
+   chemin d'échelle de rendu (`S.pageRenderScale`, `fitZoomToWrap`), qui a coûté trois campagnes de
+   mesure et dont le comportement dépend finement de `clientWidth` et de `devicePixelRatio`.
+
+   ⚠️ LE VOILE DES MODALES N'EST PAS ZOOMÉ NON PLUS, seulement la boîte. Le voile est
+   `position:fixed; inset:0` : zoomé, son `inset:0` ne couvrirait plus qu'une fraction de la fenêtre,
+   et l'écran resterait visible autour. La boîte, elle, est centrée par le voile ; la zoomer la
+   garde centrée.
+
+   Conséquence assumée : à 1,3, les deux menus occupent 702 px au lieu de 540, ce qui rétrécit
+   d'autant la Planche. C'est ce qui borne le cran le plus large ; au-delà, l'interface mangerait le
+   dessin.
+
+   ⚠️ CETTE RÈGLE TIENT SUR UNE SEULE LIGNE, ET CE N'EST PAS UN CAPRICE DE MISE EN FORME. Écrite sur
+   plusieurs lignes, son dernier sélecteur se retrouve en début de ligne suivi de `{`, et
+   `declarationsOuNull` de tests/style.test.mjs, qui ancre en début de ligne, lisait ALORS CE
+   BLOC-CI au lieu de la vraie règle du panneau. Deux tests sont tombés en rouge sur-le-champ, ce
+   qui est la bonne nouvelle : ils ont fait leur travail. La ligne unique supprime le piège. */
+header, .sidebar, .right-panel, .modal-box, .context-menu, .persona-editor-bar, .persona-editor-panel{ zoom:var(--echelle-ui); }
+
 *{box-sizing:border-box;}
 
 /* ── Ascenseurs, PARTOUT ──────────────────────────────────────────────────────────────────────

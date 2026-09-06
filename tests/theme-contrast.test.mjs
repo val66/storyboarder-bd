@@ -31,7 +31,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { classesDeTheme3D } from '../src/events.js';
+import { classesDeTheme3D, FACTEURS_ECHELLE_UI, facteurEchelleUI3D } from '../src/events.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CSS = readFileSync(join(RACINE, 'style.css'), 'utf8');
@@ -333,6 +333,82 @@ describe('L\'indicateur de focus (#409m)', () => {
     // seulement rendu le débordement visible au lieu de le supprimer.
     assert.ok(!/margin:-\d+px 0 4px/.test(HTML),
       'une ligne de champs remonte encore hors du corps de sa section');
+  });
+});
+
+describe('La taille de l\'interface (#410)', () => {
+  /**
+   * ⚠️ `zoom`, ET PAS `calc()`, PARCE QUE LA MESURE L'IMPOSE. La feuille contient 577 valeurs en
+   * pixels et le HTML 108 de plus dans ses attributs `style`. Les convertir en
+   * `calc(var(--echelle) * …)` aurait demandé près de sept cents modifications, chacune une
+   * occasion de se tromper, pour un résultat identique.
+   *
+   * ⚠️ ET LA ZONE DE DESSIN N'EST PAS ZOOMÉE. La Planche a son propre zoom : grossir l'interface ne
+   * doit pas grossir le dessin. Ça évite aussi de toucher au chemin d'échelle de rendu, dont le
+   * comportement dépend finement de `clientWidth` et de `devicePixelRatio`.
+   */
+  test('les quatre crans, et leurs facteurs', () => {
+    assert.deepEqual(Object.keys(FACTEURS_ECHELLE_UI),
+      ['compacte', 'normale', 'grande', 'tres-grande']);
+    assert.equal(FACTEURS_ECHELLE_UI.normale, 1, 'le cran par défaut doit être NEUTRE');
+  });
+
+  test('les facteurs sont strictement croissants', () => {
+    // Une liste ordonnée dont les valeurs ne le seraient pas ferait qu'un cran « plus grand »
+    // rapetisse. Personne ne relit une table de quatre nombres.
+    const v = Object.values(FACTEURS_ECHELLE_UI);
+    v.slice(1).forEach((x, i) => assert.ok(x > v[i], `${v[i]} → ${x} ne croît pas`));
+  });
+
+  test('RÉGRESSION : un cran inconnu retombe sur 1, il ne casse pas l\'interface', () => {
+    // Un settings.json écrit par une version ultérieure, ou modifié à la main, ne doit pas rendre
+    // l'application inutilisable. `undefined` comme facteur de zoom effacerait tout l'écran.
+    [undefined, null, '', 'énorme', 42, {}].forEach(v =>
+      assert.equal(facteurEchelleUI3D(v), 1, `« ${v} » n'est pas retombé sur 1`));
+  });
+
+  test('le cran le plus large reste borné par la géométrie', () => {
+    // Les deux menus font 540px ensemble. Le facteur maximal décide de ce qu'il reste à la Planche
+    // dans une fenêtre de 1280 : à 1,3 il reste 578px, à 1,6 il n'en resterait plus que 416.
+    const max = Math.max(...Object.values(FACTEURS_ECHELLE_UI));
+    const restant = 1280 - 540 * max;
+    assert.ok(restant >= 550,
+      `au cran le plus large il ne resterait que ${Math.round(restant)}px de Planche`);
+  });
+
+  test('RÉGRESSION : le zoom ne touche NI la zone de dessin NI le voile des modales', () => {
+    // Deux pièges distincts. La zone de dessin a son propre zoom et son propre chemin de rendu.
+    // Le voile est `position:fixed; inset:0` : zoomé, son inset ne couvrirait plus qu'une fraction
+    // de la fenêtre, et l'écran resterait visible autour.
+    const i = CSS.indexOf('zoom:var(--echelle-ui)');
+    assert.ok(i > 0, 'la règle de zoom est introuvable');
+    const debutLigne = CSS.lastIndexOf('\n', i) + 1;
+    const selecteurs = CSS.slice(debutLigne, i);
+    ['canvas-wrap', 'canvas-stack', 'modal-overlay', '#board'].forEach(interdit =>
+      assert.ok(!selecteurs.includes(interdit), `${interdit} ne doit pas être zoomé`));
+    assert.ok(selecteurs.includes('.modal-box'), 'la boîte des modales, elle, doit l\'être');
+  });
+
+  test('RÉGRESSION : le champ persisté est AJOUTÉ, et c\'est le NOM du cran', () => {
+    // Un facteur écrit dans settings.json figerait une valeur qu'on ne pourrait plus ajuster sans
+    // réécrire les réglages de tout le monde. Même raison qui fait que `theme` vaut 'dark' et non
+    // une couleur.
+    assert.ok(EVENTS.includes("setSetting('uiScale', S.appUiScale)"), 'le champ n\'est pas écrit');
+    assert.ok(EVENTS.includes('settings.uiScale'), 'la relecture est absente');
+    assert.ok(EVENTS.includes("setSetting('theme', S.appTheme)"), '`theme` a disparu');
+  });
+
+  test('l\'ouverture de la modale reflète le cran actif', () => {
+    assert.ok(EVENTS.includes('uiScaleSelect.value = S.appUiScale;'));
+  });
+
+  test('les quatre crans sont proposés ET traduits', () => {
+    Object.keys(FACTEURS_ECHELLE_UI).forEach(cran =>
+      assert.ok(HTML.includes(`value="${cran}"`), `le cran ${cran} n'est pas dans la liste`));
+    const i18n = readFileSync(join(RACINE, 'src', 'i18n.js'), 'utf8');
+    Object.keys(FACTEURS_ECHELLE_UI).forEach(cran =>
+      assert.ok(i18n.includes(`#uiScaleSelect option[value="${cran}"]`),
+        `le cran ${cran} n'est pas traduit`));
   });
 });
 
