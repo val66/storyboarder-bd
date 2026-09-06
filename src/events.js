@@ -1954,11 +1954,57 @@ function scheduleSharpRender(){
   }, 150);
 }
 // ↳ src/constants.js
-function fitZoomToWrap(){
+// Une seule reprise en attente à la fois : l'identifiant sert de verrou. Le compteur, lui, borne la
+// CHAÎNE de reprises (cf. le commentaire dans fitZoomToWrap) ; trente frames valent environ une
+// demi-seconde, largement de quoi laisser un agencement se poser, et pas de quoi tourner à vide.
+const REPRISES_AJUSTEMENT_MAX = 30;
+let _repriseAjustementId = null;
+let _reprisesRestantes = REPRISES_AJUSTEMENT_MAX;
+function fitZoomToWrap(depuisReprise = false){
+  // Une demande venue de l'extérieur rouvre le crédit : c'est ce qui empêche la borne de condamner
+  // définitivement l'ajustement après un démarrage difficile.
+  if (!depuisReprise) _reprisesRestantes = REPRISES_AJUSTEMENT_MAX;
   const page = currentPage();
   const availW = canvasWrap.clientWidth - CANVAS_WRAP_PADDING * 2;
   const availH = canvasWrap.clientHeight - CANVAS_WRAP_PADDING * 2;
-  if (availW <= 0 || availH <= 0 || !page.w || !page.h) return;
+  if (availW <= 0 || availH <= 0 || !page.w || !page.h) {
+    // ⚠️ NE PAS RENONCER EN SILENCE (#407a). Cette sortie existe pour de bonnes raisons — la zone
+    // n'est pas encore mesurable, ou aucun Projet n'est chargé et la Planche n'a pas de dimensions —
+    // mais elle ne replanifiait RIEN. `S.zoomLevel` restait donc à sa valeur initiale de 1, et il
+    // fallait qu'un `renderAll` retombe dessus par hasard, plus tard, pour que la vraie valeur soit
+    // enfin calculée.
+    //
+    // Ce n'est pas théorique : la campagne de septembre a mesuré une échelle de rendu qui saute de
+    // 1,5 à 2,571 en pleine séquence de chargement, c'est-à-dire `zoomLevel` passant de sa valeur
+    // par défaut à 12/7. Et comme l'échelle fait partie de la signature du cache 3D, ce saut
+    // reconstruit TOUTES les Cases (cf. docs/en/rendering-performance.md).
+    //
+    // On repasse donc à la frame suivante, mais un NOMBRE BORNÉ de fois.
+    //
+    // ⚠️ MA PREMIÈRE VERSION N'AVAIT PAS DE BORNE, et la suite de tests s'est bloquée à la seconde
+    // même. Je m'étais dit que `requestAnimationFrame` ne s'exécute pas quand la fenêtre est
+    // masquée, donc que la reprise s'endormirait d'elle-même : c'est vrai d'une fenêtre masquée, et
+    // faux d'une zone qui fait zéro pixel pour une autre raison. La reprise tournait alors à chaque
+    // frame, pour toujours.
+    //
+    // La borne n'est donc pas un réglage, c'est une garde contre une boucle sans fin. Elle est
+    // REMISE À ZÉRO à chaque appel venu de l'extérieur (un `renderAll`, un redimensionnement) : on
+    // réessaie brièvement après chaque demande, on ne s'acharne jamais.
+    if (_repriseAjustementId === null && _reprisesRestantes > 0
+      && typeof requestAnimationFrame === 'function') {
+      _reprisesRestantes--;
+      _repriseAjustementId = requestAnimationFrame(() => {
+        _repriseAjustementId = null;
+        const avant = S.pageRenderScale;
+        fitZoomToWrap(true);
+        // Le dessin n'est demandé QUE si l'échelle a bougé : `applyZoom` ne change que la taille CSS
+        // du canevas, ce qui ne demande aucun redessin, et une reprise qui redessine à chaque frame
+        // coûterait plus cher que le défaut qu'elle répare.
+        if (S.pageRenderScale !== avant) drawCurrentPage();
+      });
+    }
+    return;
+  }
   const fit = Math.min(availW / page.w, availH / page.h);
   S.zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, fit));
   applyZoom();

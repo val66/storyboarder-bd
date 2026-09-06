@@ -2945,7 +2945,7 @@ describe('#405c : ajuster la vue ne fait pas rendre la Planche DEUX fois', () =>
   };
 
   test('RÉGRESSION : fitZoomToWrap pose l\'échelle SANS passer par le minuteur', () => {
-    const f = corps('function fitZoomToWrap()');
+    const f = corps('function fitZoomToWrap(');
     assert.match(f, /appliquerEchelleIdeale\(\)/,
       'l\'échelle n\'est plus posée ici : elle le sera après coup, et tout sera rendu deux fois');
     assert.ok(!/scheduleSharpRender/.test(f),
@@ -2969,6 +2969,37 @@ describe('#405c : ajuster la vue ne fait pas rendre la Planche DEUX fois', () =>
       'attendu : la définition, l\'appel de fitZoomToWrap, celui du minuteur');
     assert.match(corps('function appliquerEchelleIdeale()'), /return false;[\s\S]*S\.pageRenderScale = ideal;[\s\S]*return true;/,
       'la fonction ne dit plus si elle a changé quelque chose : les appelants redessineront pour rien');
+  });
+
+  test('#407a : l\'ajustement ne renonce plus en silence', () => {
+    // ⚠️ MESURÉ. L'échelle de rendu saute de 1,5 à 2,571 en pleine séquence de chargement, soit
+    // `zoomLevel` passant de sa valeur initiale de 1 à 12/7. La sortie anticipée existait pour de
+    // bonnes raisons — zone pas encore mesurable, ou Planche sans dimensions avant qu'un Projet ne
+    // soit appliqué — mais elle ne replanifiait RIEN : il fallait qu'un `renderAll` retombe dessus
+    // par hasard. Et comme l'échelle fait partie de la signature du cache 3D, ce saut tardif
+    // reconstruit TOUTES les Cases.
+    const f = corps('function fitZoomToWrap(');
+    assert.match(f, /requestAnimationFrame\(/, 'la sortie anticipée ne replanifie rien');
+    assert.match(f, /if \(S\.pageRenderScale !== avant\) drawCurrentPage\(\);/,
+      'la reprise redessine sans condition, ou ne redessine jamais');
+  });
+
+  test('#407a : la reprise est BORNÉE, et le crédit se rouvre de l\'extérieur', () => {
+    // ⚠️ MA PREMIÈRE VERSION N'AVAIT PAS DE BORNE et la suite s'est bloquée à la seconde même. Je
+    // m'étais dit que `requestAnimationFrame` ne tourne pas quand la fenêtre est masquée, donc que
+    // la reprise s'endormirait seule : vrai d'une fenêtre masquée, FAUX d'une zone à zéro pixel
+    // pour une autre raison. Elle tournait alors à chaque frame, pour toujours.
+    //
+    // La borne n'est pas un réglage, c'est une garde contre une boucle sans fin. Et le crédit se
+    // remet à neuf à chaque appel venu de l'extérieur, sans quoi un démarrage difficile
+    // condamnerait l'ajustement pour toute la session.
+    const f = corps('function fitZoomToWrap(');
+    assert.match(f, /_reprisesRestantes > 0/, 'la chaîne de reprises n\'est plus bornée');
+    assert.match(f, /if \(!depuisReprise\) _reprisesRestantes = REPRISES_AJUSTEMENT_MAX;/,
+      'le crédit ne se rouvre plus : un démarrage difficile condamnerait l\'ajustement');
+    assert.match(f, /fitZoomToWrap\(true\)/,
+      'la reprise se déclare comme telle, sinon elle rouvre son propre crédit et boucle sans fin');
+    assert.match(SRC, /const REPRISES_AJUSTEMENT_MAX = 30;/);
   });
 
   test('RÉGRESSION : un redimensionnement de fenêtre redessine encore', () => {
