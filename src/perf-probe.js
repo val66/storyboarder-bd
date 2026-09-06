@@ -96,7 +96,25 @@ export function perfRapport(){
   });
   console.table(lignes);
   if (_faits.size) console.table([...(_faits.entries())].map(([k, v]) => ({ fait: k, valeur: v })));
-  return `${lignes.length} mesure(s), ${_faits.size} fait(s). Échantillon plafonné à ${PLAFOND_ECHANTILLON} par mesure ; appels et totaux exacts.`;
+
+  // ⚠️ UNE SEULE LIGNE À COPIER, et c'est délibéré. Les tableaux ci-dessus se lisent à l'œil ; ils
+  // ne se TRANSMETTENT pas. Recopier douze nombres à la main, ou les lire sur une capture d'écran,
+  // introduit exactement le genre d'erreur qui fausse une décision sans que personne ne s'en
+  // aperçoive — un 8,30 devenu 3,80 renverse la conclusion et reste plausible.
+  const compact = JSON.stringify({ mesures: lignes, faits: Object.fromEntries(_faits) });
+  console.log('%c▼ COPIEZ LA LIGNE CI-DESSOUS ▼', 'font-weight:bold');
+  console.log(compact);
+  // La copie automatique échoue si la fenêtre n'a pas le focus : on ne compte donc pas dessus, on
+  // l'offre en plus, et on le dit plutôt que de laisser croire que c'est fait.
+  let copie = 'sélectionnez la ligne ci-dessus et copiez-la';
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(compact);
+      copie = 'également copiée dans le presse-papiers (si la fenêtre avait le focus)';
+    }
+  } catch { /* rien : le repli manuel est déjà annoncé */ }
+  return `${lignes.length} mesure(s), ${_faits.size} fait(s) — ${copie}. `
+    + `Échantillon plafonné à ${PLAFOND_ECHANTILLON} par mesure ; appels et totaux exacts.`;
 }
 
 // Exposées sur `window` pour être appelables depuis la console de l'application, qui n'importe pas
