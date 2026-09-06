@@ -151,7 +151,30 @@ Clair, `--ink-soft` était à 3,82 et `--sepia` à 3,05, **tous deux sous le seu
 texte courant, et aucun des deux n'est décoratif : ils portent les légendes et les libellés de
 section. `tests/theme-contrast.test.mjs` rejoue le calcul sur la feuille de style réelle.
 
-**3. Un thème daltonien unique, réglé sur l'axe rouge-vert.** Couvre bien plus de 99 % des cas.
+**3. Un thème daltonien unique, réglé sur l'axe rouge-vert.** ❌ **Écarté**, et le raisonnement
+compte plus que la conclusion, puisque c'était la demande d'origine.
+
+Le mécanisme est réel et il a été mesuré pendant #409f : `--accent`, `--danger` et `--warn`
+appartiennent toutes à la famille rouge-orange-jaune, exactement l'axe que le daltonisme rouge-vert
+supprime. Un balayage de la teinte de 0° à 60° les fait converger vers le même jaune-brun ; en thème
+Sombre, `accent` contre `warn` tombe à **33**. Corriger demande d'en sortir une *de la famille* :
+`--accent` passant au bleu ou au violet, pour que le trio se sépare sur l'axe bleu-jaune, qui
+survit.
+
+Deux choses l'ont écarté.
+
+**Les couleurs ne portent pas le sens.** `tests/style.test.mjs` (#398) établit que c'est le
+*libellé* d'un bouton qui dit ce qu'il fait, et « Supprimer le projet » demande en plus d'écrire un
+mot. Un daltonien perd l'**emphase**, pas l'information. C'est donc un confort, pas la correction
+d'un défaut.
+
+**Et `--accent` est l'orange de marque de l'application.** Il est partout : lignes actives, survols,
+badges, bague de focus. Le passer au bleu dans un mode change l'identité visuelle entière, pas trois
+boutons. Le coût est grand, très visible, et relève d'un jugement qui appartient à l'utilisateur ;
+il a écarté la tâche une fois l'échange posé franchement.
+
+Consigné plutôt qu'abandonné. Le mécanisme est écrit : si la question revient, le travail repartira
+d'une mesure et non d'une intuition.
 
 **4. La taille de l'interface.** Pas un thème mais un réglage, et pour beaucoup de gens il compte
 plus que n'importe quelle palette. Hors périmètre ici, consigné pour ne pas l'oublier.
@@ -310,7 +333,7 @@ Retirer le découpage seul aurait rendu le débordement visible au lieu de le su
 | #409a | Extraire les couleurs de signal de `draw.js` vers des jetons nommés. Aucun changement visible. Trancher les cinq couleurs mortes de `PALETTE`. |
 | ~~#409b~~ | **Abandonnée.** Les deux paires qu'elle visait sont closes ci-dessus : l'une est un signal que personne ne lit, l'autre passe le seuil. |
 | ~~#409c~~ | ✅ Fait. Contraste renforcé, en modificateur qui se combine à Sombre et Clair. |
-| #409d | Thème daltonien rouge-vert. |
+| ~~#409d~~ | ❌ **Écartée.** Mécanisme mesuré et consigné ci-dessus ; le coût porte sur la couleur de marque, et ces couleurs portent l'emphase, pas le sens. |
 
 #409b est abandonnée, donc #409c est l'étape suivante. Elle dépend de #409a et de rien d'autre.
 

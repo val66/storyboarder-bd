@@ -144,7 +144,28 @@ sat at 3.82 and `--sepia` at 3.05, **both below the AA floor of 4.5** for body t
 decorative — they carry captions and section labels. `tests/theme-contrast.test.mjs` replays the
 calculation against the real stylesheet.
 
-**3. A single colourblind theme, tuned to the red-green axis.** Covers well over 99% of cases.
+**3. A single colourblind theme, tuned to the red-green axis.** ❌ **Declined**, and the reasoning
+matters more than the outcome, because this was the original request.
+
+The mechanism is real and was measured during #409f: `--accent`, `--danger` and `--warn` all belong
+to the red-orange-yellow family, exactly the axis red-green deficiency removes. Sweeping the hue
+from 0° to 60° collapses them onto the same yellow-brown; in the Dark theme, `accent` against `warn`
+falls to **33**. Fixing it means moving one of the three *out of the family* — `--accent` turning
+blue or violet, so the trio separates on the blue-yellow axis, which survives.
+
+Two things killed it.
+
+**The colours do not carry the meaning.** `tests/style.test.mjs` (#398) establishes that a button's
+*label* says what it does, and "Delete project" additionally requires typing a word. A colourblind
+user loses the **emphasis**, not the information. That makes it a comfort, not a defect being fixed.
+
+**And `--accent` is the application's brand orange.** It is everywhere: active rows, hovers, badges,
+the focus ring. Turning it blue in one mode changes the visual identity of the whole application,
+not three buttons. The cost is large, visible, and falls on a judgement call — the user's, not
+mine — and he declined it once the trade was stated plainly.
+
+Recorded rather than dropped. The mechanism is written down, so if the question returns, the work
+starts from a measurement instead of an intuition.
 
 **4. Interface scale.** Not a theme but a setting, and for many people it matters more than any
 palette. Out of scope here, recorded so it is not forgotten.
@@ -300,7 +321,7 @@ overflow visible instead of removing it.
 | #409a | Extract the signal colours of `draw.js` into named tokens. No visible change. Settle the five dead `PALETTE` colours. |
 | ~~#409b~~ | **Dropped.** Both pairs it targeted were closed above: one is a signal nobody reads, the other passes the threshold. |
 | ~~#409c~~ | ✅ Done. High contrast, as a modifier that composes with Dark and Light. |
-| #409d | Red-green colourblind theme. |
+| ~~#409d~~ | ❌ **Declined.** Mechanism measured and recorded above; the cost falls on the brand colour, and the colours carry emphasis rather than meaning. |
 
 #409b is dropped, so #409c is the next step. It depends on #409a and on nothing else.
 
