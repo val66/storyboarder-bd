@@ -93,7 +93,17 @@ deux réponses.
 18. **Recentrer SUPPRIME les trois champs au lieu d'y écrire les valeurs par défaut.** Un Projet
     recentré redevient identique, octet pour octet, à un Projet jamais recadré : rien ne distingue
     « remis au centre » de « jamais touché », ce qui est exactement la vérité.
-19. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
+19. **Cadrage est une section à part, sous Image, et la molette est une seconde entrée (#403i).**
+    Demande de l'utilisateur. La molette demande DEUX conditions, et la seconde compte autant que la
+    première : la Case doit être sélectionnée, ET le curseur doit être dessus. Sans la seconde,
+    faire défiler la Planche pendant qu'une Case à image se trouve sélectionnée zoomerait cette
+    image à l'autre bout de l'écran au lieu de faire ce qu'on demande.
+
+    La molette et le curseur partagent leur pas et leurs bornes, pour que passer de l'un à l'autre
+    ne change pas la sensation du réglage ; et la molette tourne dans le même sens que celle de la
+    Caméra, parce que deux gestes identiques qui tournent en sens contraire dans la même fenêtre se
+    paient à chaque usage.
+20. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
     `noterRenommageModele` propose de réparer un autre Projet à sa prochaine ouverture ; rien
     d'équivalent n'existe pour les images. C'est un manque, écrit plutôt que tu : renommer une image
     répare le Projet OUVERT, et rien d'autre.
@@ -164,6 +174,8 @@ chemins de dessin donneraient un export qui montre une Case vide.
 canevas d'une Scène, la confirmation, et la section Image.
 
 **#403f, le zoom et le retour au cadrage d'origine.** Les décisions 15 à 18.
+
+**#403i, Cadrage en section à part, et la molette.** La décision 19.
 
 **#403e, déplacer l'image dans sa Case.** Les décisions 13 et 14. L'arithmétique est une fonction
 pure (`ancrageApresGlissement3D`), séparée du câblage de la souris, parce que c'est la seule part qui

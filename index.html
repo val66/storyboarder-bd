@@ -263,20 +263,24 @@
       <h2 id="sideImageTitle">Image</h2>
       <div id="sideImageName" class="side-image-name"></div>
       <p id="sideImageHint" class="side-image-hint"></p>
-      <!-- CADRAGE, et non « Format » : ce mot désigne déjà le format de papier d'un Tome, dans le
-           menu de gauche, à deux volets d'ici. Deux « Format » qui ne parlent pas de la même chose
-           dans la même fenêtre se paient longtemps. -->
+      <button id="sideImageMoveBtn" type="button" class="full-btn">Déplacer l'image</button>
+      <button id="sideImageChangeBtn" type="button" class="full-btn edit-btn">Changer l'image</button>
+      <button id="sideImageDetachBtn" type="button" class="full-btn delete-btn">Retirer l'image</button>
+    </div>
+    <!-- CADRAGE, section À PART sous Image, et non « Format » : ce dernier mot désigne déjà le
+         format de papier d'un Tome, dans le menu de gauche, à deux volets d'ici. Deux « Format »
+         qui ne parlent pas de la même chose dans la même fenêtre se paient longtemps.
+         Elle apparaît et disparaît AVEC la section Image : sans image, il n'y a rien à cadrer. -->
+    <div id="sideCadrageSection" class="side-section" style="display:none;">
+      <h2 id="sideCadrageTitle">Cadrage</h2>
       <div class="tome-format side-image-zoom">
-        <label for="sideImageZoomInput">Cadrage (zoom <span id="sideImageZoomValue">1,0</span>×)</label>
+        <label for="sideImageZoomInput">Zoom (<span id="sideImageZoomValue">1,0</span>×)</label>
         <input type="range" id="sideImageZoomInput" min="1" max="4" step="0.1" value="1">
       </div>
-      <button id="sideImageMoveBtn" type="button" class="full-btn">Déplacer l'image</button>
       <!-- N'apparaît QUE si le cadrage a été touché : proposer en permanence de défaire ce que
            personne n'a fait occupe une place pour rien, et fait douter d'avoir modifié quelque
            chose sans le vouloir (cf. cadrageParDefaut3D). -->
       <button id="sideImageResetBtn" type="button" class="nav-btn" style="display:none;">Recentrer</button>
-      <button id="sideImageChangeBtn" type="button" class="full-btn edit-btn">Changer l'image</button>
-      <button id="sideImageDetachBtn" type="button" class="full-btn delete-btn">Retirer l'image</button>
     </div>
     <div id="bubbleMenuHeader" class="menu-header" style="display:none;">
       <span></span>

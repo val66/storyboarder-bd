@@ -232,6 +232,25 @@ export const CHAMP_ZOOM_IMAGE = 'imageZoom';
 export const ZOOM_IMAGE_MIN = 1;
 export const ZOOM_IMAGE_MAX = 4;
 
+/**
+ * Le pas du zoom, PARTAGÉ par le curseur et par la molette (#403i).
+ *
+ * Une seule valeur pour les deux commandes : passer de l'une à l'autre ne doit pas changer la
+ * sensation du réglage, et deux pas différents auraient fini par diverger au premier ajustement.
+ * Le `step` du curseur dans index.html en est une copie d'affichage, comme pour les bornes.
+ */
+export const PAS_ZOOM_IMAGE = 0.1;
+
+/**
+ * Le silence qui clôt une salve de molette, en millisecondes.
+ *
+ * ⚠️ C'EST UN DÉLAI DE REGROUPEMENT DE GESTE, PAS UN SEUIL MESURÉ, et la différence doit rester
+ * écrite. Il ne décide de rien de visible : il dit seulement à partir de quand deux coups de
+ * molette comptent pour deux gestes distincts dans la pile d'annulation. Choisi plus long que
+ * l'écart entre deux crans d'une roulette normale, et rien de plus.
+ */
+export const MOLETTE_FIN_DE_SALVE_MS = 500;
+
 /** Ramène un zoom dans [1, 4]. Tout ce qui n'est pas lisible vaut 1, le cadrage couvrant. */
 export function zoomValide3D(v){
   // Mêmes écueils que pour l'ancrage : `Number(null)` et `Number('')` valent 0, qui deviendrait ici

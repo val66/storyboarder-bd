@@ -1349,6 +1349,33 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
  * comparaison de positions restait vraie exactement dans le cas qu'elle prétendait interdire. La
  * leçon tient en une ligne : vérifier la PRÉSENCE avant de vérifier l'ORDRE.
  *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * SUITE #403i : la section Cadrage à part, et la molette. Dix fautes, une échappée.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ *   R1  la molette zoome sans vérifier la position du curseur              ROUGE
+ *   R2  la molette zoome une Case SANS image                               ROUGE
+ *   R3  un instantané à chaque cran de molette                             ROUGE
+ *   R4  la molette écrit un zoom hors bornes                               ROUGE
+ *   R5  le SENS de la molette inversé                                  ÉCHAPPÉE
+ *   R6  pas de `return` : le zoom de Planche s'applique par-dessus         ROUGE
+ *   R7  Cadrage non masquée à la désélection                               ROUGE
+ *   R8  Cadrage jamais affichée                                            ROUGE
+ *   R9  le minuteur de salve jamais annulé                                 ROUGE
+ *   R10 le panneau droit ne suit pas la molette                            ROUGE
+ *
+ * R5 EST LA SEULE QUI COMPTE, et elle est instructive : rien ne disait dans quel sens la roulette
+ * devait tourner. Personne ne l'aurait vu avant de poser la main sur la souris. Ce que le test
+ * garde n'est PAS ma convention, c'est l'ACCORD entre les deux molettes de l'application : roulette
+ * vers l'avant = zoom avant, pour le cadrage comme pour la caméra. Deux gestes identiques qui
+ * tournent en sens contraire dans la même fenêtre se paient à chaque usage.
+ *
+ * UNE ANCRE M'A AUSSI REPRIS AU PASSAGE : j'avais visé une phrase de COMMENTAIRE pour découper le
+ * bloc de la molette, alors que `EVENTS` passe par `sourceSansCommentaires`. Quatre tests
+ * annonçaient « la molette n'est plus branchée », et un cinquième PASSAIT par accident, parce que
+ * `indexOf(x, -1)` repart de zéro et retrouvait des occurrences sans rapport ailleurs dans le
+ * fichier. Une ancre absente ne fait pas échouer proprement : elle fait dériver.
+ *
  * T14 RESTE, ET C'EST ASSUMÉ. Écrire la valeur brute du curseur au lieu de la borner ne change
  * aucun comportement : `zoomDeLImage3D` borne à la LECTURE, donc le dessin et « Recentrer » restent
  * justes. La seule différence est le fichier de Projet, qui porterait une chaîne au lieu d'un
@@ -1367,6 +1394,23 @@ describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
   // gestionnaire contient lui-même `zoomDeLImage3D({ … })` suivi d'un point-virgule : couper à la
   // première occurrence tranchait au MILIEU du corps, et le test annonçait un `S.projectDirty`
   // manquant qui se trouvait deux lignes plus bas. Une fenêtre mal fermée accuse à tort.
+  /**
+   * Le bloc de la molette dans le gestionnaire `wheel`.
+   *
+   * ⚠️ L'ANCRE EST DU CODE, PAS UN COMMENTAIRE. Ma première version visait la phrase « La molette
+   * zoome le cadrage », qui n'existe pas dans `EVENTS` : `sourceSansCommentaires` l'a retirée. Quatre
+   * tests annonçaient donc « la molette n'est plus branchée », et un CINQUIÈME passait par accident,
+   * parce que `indexOf(x, -1)` repart de zéro et retrouvait des occurrences sans rapport ailleurs
+   * dans le fichier. Une ancre absente ne fait pas échouer proprement : elle fait dériver.
+   */
+  const blocMolette = () => {
+    const j = EVENTS.indexOf('S.imageZoomWheelSnapshotTaken');
+    assert.ok(j > 0, 'la molette n\'est plus branchée sur le cadrage');
+    const debut = EVENTS.lastIndexOf("if (sel && sel.type === 'panel'", j);
+    assert.ok(debut > 0 && debut < j, 'le bloc de la molette ne commence pas là où on le croit');
+    return EVENTS.slice(debut, j + 1200);
+  };
+
   const corpsDuGestionnaire = (ancre) => {
     const i = EVENTS.indexOf(ancre);
     assert.ok(i > 0, `${ancre} : introuvable`);
@@ -1376,22 +1420,39 @@ describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
   };
 
 
-  test('les deux commandes existent, dans la section Image', () => {
-    ['sideImageZoomInput', 'sideImageZoomValue', 'sideImageResetBtn'].forEach(id =>
+  test('les deux commandes vivent dans leur PROPRE section, sous Image (#403i)', () => {
+    ['sideCadrageSection', 'sideImageZoomInput', 'sideImageZoomValue', 'sideImageResetBtn'].forEach(id =>
       assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
-    // Dans la section Image, pas à côté : tout porte sur le même fichier.
-    const section = HTML.slice(HTML.indexOf('id="sideImageSection"'));
-    const fin = section.indexOf('</div>', section.indexOf('sideImageResetBtn'));
-    assert.ok(section.slice(0, fin).includes('sideImageZoomInput'));
+    // Demande de l'utilisateur : une section à part, et SOUS la section Image, pas au-dessus.
+    assert.ok(HTML.indexOf('id="sideImageSection"') < HTML.indexOf('id="sideCadrageSection"'),
+      'la section Cadrage passe avant la section Image');
+    // Les deux commandes sont DEDANS, et plus dans la section Image.
+    const cadrage = HTML.slice(HTML.indexOf('id="sideCadrageSection"'));
+    const bloc = cadrage.slice(0, cadrage.indexOf('id="bubbleMenuHeader"'));
+    assert.ok(bloc.includes('sideImageZoomInput') && bloc.includes('sideImageResetBtn'));
+    const image = HTML.slice(HTML.indexOf('id="sideImageSection"'), HTML.indexOf('id="sideCadrageSection"'));
+    assert.ok(!image.includes('sideImageZoomInput'), 'le zoom est resté dans la section Image');
+    assert.ok(!image.includes('sideImageResetBtn'), 'Recentrer est resté dans la section Image');
   });
 
   test('RÉGRESSION : la section s\'appelle CADRAGE, pas « Format »', () => {
     // « Format » désigne déjà le format de papier d'un Tome, dans le menu de gauche, à deux volets
     // d'ici. Deux mots identiques pour deux choses différentes dans la même fenêtre se paient
     // longtemps, et c'est l'utilisateur qui a arbitré après que je l'ai signalé.
-    const label = HTML.slice(HTML.indexOf('for="sideImageZoomInput"'), HTML.indexOf('for="sideImageZoomInput"') + 120);
-    assert.match(label, /Cadrage/);
-    assert.ok(!/Format/.test(label));
+    const titre = HTML.slice(HTML.indexOf('id="sideCadrageTitle"'), HTML.indexOf('id="sideCadrageTitle"') + 60);
+    assert.match(titre, /Cadrage/);
+    assert.ok(!/Format/.test(titre));
+  });
+
+  test('RÉGRESSION : Cadrage apparaît et disparaît AVEC Image', () => {
+    // Sans image, il n'y a rien à cadrer : une section de réglages sans objet est pire que pas de
+    // section du tout. Le témoin est la section Image elle-même, comme sideGroundSection l'est pour
+    // elle (cf. sidebar.test.mjs) : les deux doivent être masquées aux mêmes endroits.
+    const compte = (id) => (SIDEBAR.match(new RegExp(`${id}\\.style\\.display = 'none'`, 'g')) || []).length;
+    assert.ok(compte('sideImageSection') >= 4, 'le témoin a changé : relire ce test avant de le croire');
+    assert.equal(compte('sideCadrageSection'), compte('sideImageSection'),
+      'une branche cache la section Image sans cacher Cadrage : elle restera affichée seule');
+    assert.match(SIDEBAR, /sideImageSection\.style\.display = 'block';\s*sideCadrageSection\.style\.display = 'block';/);
   });
 
   test('RÉGRESSION : les bornes du curseur viennent du CODE', () => {
@@ -1466,6 +1527,71 @@ describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
     const corps = DRAW.slice(i, DRAW.indexOf('\n}', i));
     assert.match(corps, /cadreDeRecouvrement3D\(o\.w, o\.h, image\.w, image\.h, ancrageDeLImage3D\(o\), zoomDeLImage3D\(o\)\)/,
       'le dessin n\'applique pas le cadrage choisi : le réglage serait sans effet à l\'écran');
+  });
+
+  test('LA MOLETTE zoome, et seulement sur la Case visée (#403i)', () => {
+    const corps = blocMolette();
+    // ⚠️ DEUX CONDITIONS, ET LA SECONDE COMPTE AUTANT. Sans le test de position, faire défiler la
+    // Planche pendant qu'une Case à image est sélectionnée zoomerait cette image à l'autre bout de
+    // l'écran, au lieu de faire ce qu'on demande.
+    assert.match(corps, /casePorteUneImage3D\(sel\)/, 'la molette zoomerait une Case sans image');
+    assert.match(corps, /_mx >= sel\.x && _mx <= sel\.x \+ sel\.w/, 'la position du curseur n\'est pas vérifiée');
+    assert.match(corps, /_my >= sel\.y && _my <= sel\.y \+ sel\.h/);
+  });
+
+  test('RÉGRESSION : la molette passe AVANT le mode Caméra, et rend la main', () => {
+    // Une Case à image n'a pas de scène 3D à filmer, donc les deux ne peuvent pas se disputer le
+    // geste ; mais l'ordre doit rester écrit, sinon un lecteur futur y verra un oubli. Le `return`
+    // est ce qui empêche le zoom de Planche de s'appliquer par-dessus.
+    const j = EVENTS.indexOf('S.imageZoomWheelSnapshotTaken');
+    assert.ok(j > 0, 'la molette n\'est plus branchée');
+    const cam = EVENTS.indexOf('sel.cameraMode', j);
+    assert.ok(cam > j, 'le mode Caméra répond avant le cadrage');
+    assert.match(blocMolette(), /return;/, 'sans return, le zoom de Planche s\'appliquerait par-dessus');
+  });
+
+  test('RÉGRESSION : UN SEUL instantané par SALVE de molette', () => {
+    // Une roulette envoie des dizaines d'événements pour un seul geste. Un instantané par cran
+    // remplirait la pile d'annulation, et Ctrl+Z ne reculerait que d'un dixième de zoom à la fois.
+    const corps = blocMolette();
+    assert.match(corps, /if \(!S\.imageZoomWheelSnapshotTaken\) \{ snapshot\(\); S\.imageZoomWheelSnapshotTaken = true; \}/);
+    assert.match(corps, /clearTimeout\(S\.imageZoomWheelTimer\)/,
+      'sans annuler le minuteur précédent, la salve se refermerait au milieu du geste');
+    // `[^)]*` échouait : la fonction passée à setTimeout contient elle-même des parenthèses.
+    assert.match(corps, /S\.imageZoomWheelTimer = setTimeout\([\s\S]*?MOLETTE_FIN_DE_SALVE_MS\)/);
+  });
+
+  test('RÉGRESSION : la molette tourne dans LE MÊME SENS que celle de la Caméra', () => {
+    // ⚠️ ÉCHAPPÉE R5 : inverser le sens laissait tout vert, et personne ne l'aurait vu avant de
+    // poser la main sur la souris. Ce qui se garde ici n'est pas « ma » convention, c'est
+    // l'ACCORD entre les deux molettes de l'application : roulette vers l'avant (`deltaY < 0`) =
+    // zoom avant, des deux côtés. Deux gestes identiques qui tournent en sens contraire dans la
+    // même fenêtre sont une faute que l'utilisateur paie à chaque usage.
+    assert.match(blocMolette(), /e\.deltaY < 0 \? PAS_ZOOM_IMAGE : -PAS_ZOOM_IMAGE/,
+      'la molette du cadrage ne zoome pas vers l\'avant quand on pousse la roulette');
+    // Le témoin : la caméra RÉDUIT sa distance sur `deltaY < 0`, ce qui est aussi un zoom avant.
+    assert.match(EVENTS, /clamp\(oldDist \* \(e\.deltaY < 0 \? 0\.92 : 1\.08\)/,
+      'la convention de référence a changé : relire ce test avant de le croire');
+  });
+
+  test('RÉGRESSION : la molette et le curseur partagent le PAS et le bornage', () => {
+    // Deux commandes pour un même réglage doivent se comporter pareil : un pas différent de chaque
+    // côté ferait changer la sensation du réglage selon la manière d'y toucher.
+    const corps = blocMolette();
+    assert.match(corps, /PAS_ZOOM_IMAGE/);
+    assert.match(corps, /zoomValide3D\(zoomDeLImage3D\(sel\) \+ pas\)/,
+      'la molette écrirait un zoom hors bornes, ou dériverait de son propre état');
+    assert.match(EVENTS, /sideImageZoomInput\.step = String\(PAS_ZOOM_IMAGE\)/,
+      'le curseur garde son propre pas, écrit à la main dans index.html');
+  });
+
+  test('RÉGRESSION : la molette marque le Projet modifié et rafraîchit le panneau', () => {
+    // Le curseur du panneau droit doit montrer la même valeur, et « Recentrer » apparaître dès que
+    // le zoom quitte 1 : deux commandes qui affichent des valeurs différentes pour un même réglage,
+    // c'est le défaut le plus fréquent de ce genre de doublon.
+    const corps = blocMolette();
+    assert.match(corps, /S\.projectDirty = true/);
+    assert.match(corps, /updateSidePanel\(\)/);
   });
 
   test('RÉGRESSION : le glisser tient compte du zoom pour calculer le jeu', () => {

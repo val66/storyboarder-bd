@@ -46,7 +46,8 @@ import {
   importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
   listImages, renameImage, deleteImage, sanitizeImageName,
   ancrageDeLImage3D, CHAMP_ANCRAGE_X_IMAGE, CHAMP_ANCRAGE_Y_IMAGE,
-  zoomDeLImage3D, CHAMP_ZOOM_IMAGE, ZOOM_IMAGE_MIN, ZOOM_IMAGE_MAX, reinitialiserCadrage3D,
+  zoomDeLImage3D, zoomValide3D, CHAMP_ZOOM_IMAGE, ZOOM_IMAGE_MIN, ZOOM_IMAGE_MAX,
+  PAS_ZOOM_IMAGE, MOLETTE_FIN_DE_SALVE_MS, reinitialiserCadrage3D,
 } from './image-store.js';
 import {
   countImageUsages, repointerImage3D, repointerPileImages3D, goToImageUsage,
@@ -1982,6 +1983,41 @@ canvasWrap.addEventListener('wheel', (e) => {
   const selWallMagnet = (sel && sel.type === 'objet3d' && sel.magnetWallId)
     ? page.objects.find(o => o.id === sel.magnetWallId)
     : null;
+
+  // ── La molette zoome le cadrage d'une Case à image (#403i) ──
+  //
+  // AVANT la branche du mode Caméra, et l'ordre n'est pas indifférent : une Case à image n'a pas de
+  // scène 3D à filmer, donc les deux ne peuvent pas se disputer le geste. Le dire ici évite qu'un
+  // futur lecteur croie à un oubli.
+  //
+  // ⚠️ DEUX CONDITIONS, ET LA SECONDE COMPTE AUTANT QUE LA PREMIÈRE : la Case doit être
+  // SÉLECTIONNÉE, et le curseur doit être DESSUS. Sans la seconde, faire défiler la Planche pendant
+  // qu'une Case à image se trouve sélectionnée zoomerait cette image au lieu de faire ce qu'on
+  // demande, à l'autre bout de l'écran.
+  if (sel && sel.type === 'panel' && casePorteUneImage3D(sel)) {
+    const { x: _mx, y: _my } = getCoords(e);
+    if (_mx >= sel.x && _mx <= sel.x + sel.w && _my >= sel.y && _my <= sel.y + sel.h) {
+      // UN SEUL instantané par salve. Une molette envoie des dizaines d'événements pour un seul
+      // geste ; un instantané par cran remplirait la pile d'annulation et Ctrl+Z ne reculerait que
+      // d'un dixième de zoom à la fois. Le compteur se remet à zéro après un silence (cf.
+      // MOLETTE_FIN_DE_SALVE_MS), qui est un délai de REGROUPEMENT DE GESTE, pas un seuil mesuré.
+      if (!S.imageZoomWheelSnapshotTaken) { snapshot(); S.imageZoomWheelSnapshotTaken = true; }
+      clearTimeout(S.imageZoomWheelTimer);
+      S.imageZoomWheelTimer = setTimeout(() => { S.imageZoomWheelSnapshotTaken = false; }, MOLETTE_FIN_DE_SALVE_MS);
+      // Le même pas que le curseur, pour que les deux commandes se comportent pareil : passer de
+      // l'une à l'autre ne doit pas changer la sensation du réglage.
+      const pas = e.deltaY < 0 ? PAS_ZOOM_IMAGE : -PAS_ZOOM_IMAGE;
+      sel[CHAMP_ZOOM_IMAGE] = zoomValide3D(zoomDeLImage3D(sel) + pas);
+      S.projectDirty = true;
+      // Le panneau droit suit : le curseur doit montrer la même valeur, et « Recentrer » apparaître
+      // dès que le zoom quitte 1. Deux commandes pour un même réglage qui affichent des valeurs
+      // différentes, c'est le défaut le plus fréquent de ce genre de doublon.
+      updateSidePanel();
+      scheduleDrawCurrentPage();
+      return;
+    }
+  }
+
   if (sel && sel.type === 'panel' && sel.cameraMode) {
     // In Camera mode (cf. ctxToggleCamera), the scroll wheel moves the Panel's camera forward/back
     // along its CURRENT viewing axis (panel.camRotX/camRotY preserved, cf.
@@ -5578,6 +5614,7 @@ const sideImageZoomValue = document.getElementById('sideImageZoomValue');
 // valeur que le modèle refuse.
 sideImageZoomInput.min = String(ZOOM_IMAGE_MIN);
 sideImageZoomInput.max = String(ZOOM_IMAGE_MAX);
+sideImageZoomInput.step = String(PAS_ZOOM_IMAGE);
 
 /** Le libellé du curseur : « 1,0 » en français, « 1.0 » en anglais, comme partout ailleurs. */
 function _texteDuZoom(z){

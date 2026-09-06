@@ -79,6 +79,7 @@ const sideImageSection = document.getElementById('sideImageSection');
 const sideImageZoomInput = document.getElementById('sideImageZoomInput');
 const sideImageZoomValue = document.getElementById('sideImageZoomValue');
 const sideImageResetBtn  = document.getElementById('sideImageResetBtn');
+const sideCadrageSection = document.getElementById('sideCadrageSection');
 const sideImageName = document.getElementById('sideImageName');
 const sideBubbleAppearanceSection = document.getElementById('sideBubbleAppearanceSection');
 const sideBubbleBorderSection   = document.getElementById('sideBubbleBorderSection');
@@ -747,6 +748,7 @@ function updateSidePanelImpl(){
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
     sideImageSection.style.display = 'none';
+    sideCadrageSection.style.display = 'none';
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';
@@ -858,6 +860,9 @@ function updateSidePanelImpl(){
       // « Recentrer » n'a de sens que s'il a quelque chose à défaire (cf. cadrageParDefaut3D).
       sideImageResetBtn.style.display = cadrageParDefaut3D(sel) ? 'none' : 'block';
       sideImageSection.style.display = 'block';
+      // Cadrage suit Image, toujours : sans image, il n'y a rien à cadrer, et une section de
+      // réglages sans objet est pire que pas de section du tout.
+      sideCadrageSection.style.display = 'block';
       sideGroundSection.style.display = 'none';
       sidePersonasSection.style.display = 'none';
       sideBubbleAppearanceSection.style.display = 'none';
@@ -865,6 +870,7 @@ function updateSidePanelImpl(){
       return;
     }
     sideImageSection.style.display = 'none';
+    sideCadrageSection.style.display = 'none';
     // Ground section : floor plan texture type for this Panel/Scene
     {
       const currentGroundType = sel.groundType || 'herbe';
@@ -929,6 +935,7 @@ function updateSidePanelImpl(){
     // à image laissait cette image annoncée en haut du panneau, au-dessus des réglages de la Bulle.
     // Le rapport utilisateur ne portait que sur le clic hors Planche ; l'invariant en couvre trois.
     sideImageSection.style.display = 'none';
+    sideCadrageSection.style.display = 'none';
     // The Bubble's stacking level relative to the OTHER Bubbles of this Page, same logic
     // as for a Panel (cf. the "panel" branch above), per user request.
     {
@@ -976,6 +983,7 @@ function updateSidePanelImpl(){
     // pas sur ceux où plus rien n'est sélectionné. Elle appartient à la même famille que Sol et
     // Éléments : ce qui les cache doit la cacher, et un test le déduit désormais du source.
     sideImageSection.style.display = 'none';
+    sideCadrageSection.style.display = 'none';
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';

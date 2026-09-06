@@ -112,6 +112,13 @@ export const S = {
   // dispositif que pour les curseurs des Bulles, et pour la même raison : sans lui, un aller-retour
   // de souris remplit la pile d'annulation de cent états dont aucun n'intéresse personne.
   sideImageZoomSnapshotTaken: false,
+  // Le même dispositif pour la molette, avec son minuteur : une roulette envoie des dizaines
+  // d'événements pour un seul geste, et la salve se referme après un silence (cf.
+  // MOLETTE_FIN_DE_SALVE_MS). Deux drapeaux et non un : le curseur et la molette sont deux gestes
+  // distincts, et les confondre ferait qu'un zoom à la molette juste après un zoom au curseur ne
+  // prendrait pas son propre instantané.
+  imageZoomWheelSnapshotTaken: false,
+  imageZoomWheelTimer: null,
 
   // ── Drag & interaction ───────────────────────────────────────────────
   dragMode:    null,

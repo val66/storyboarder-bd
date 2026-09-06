@@ -78,6 +78,7 @@ export const I18N_TEXT = [
     'Cette Case affiche une image : elle ne contient aucun Élément 3D.'],
   ['#sideImageMoveBtn', 'Move the image', 'Déplacer l\'image'],
   ['#sideImageResetBtn', 'Recentre', 'Recentrer'],
+  ['#sideCadrageTitle', 'Framing', 'Cadrage'],
   ['#sideImageChangeBtn', 'Change the image', 'Changer l\'image'],
   ['#sideImageDetachBtn', 'Remove the image', 'Retirer l\'image'],
   // Bulle menu
@@ -479,7 +480,7 @@ export function applyI18n(lang){
   // ni setLeadingText ni setTrailingText ne suffisent seuls.
   const zoomLabel = document.querySelector('label[for="sideImageZoomInput"]');
   if (zoomLabel && zoomLabel.firstChild && zoomLabel.firstChild.nodeType === 3) {
-    zoomLabel.firstChild.textContent = (lang === 'en' ? 'Framing' : 'Cadrage') + ' (' + (lang === 'en' ? 'zoom' : 'zoom') + ' ';
+    zoomLabel.firstChild.textContent = (lang === 'en' ? 'Zoom' : 'Zoom') + ' (';
   }
   applyI18nModalSectionTitles(lang);
   applyI18nHelpManual(lang);

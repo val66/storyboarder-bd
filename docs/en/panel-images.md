@@ -85,7 +85,16 @@ things doing one job, and every later question would have to be answered twice.
 18. **Recentring DELETES the three fields instead of writing the defaults into them.** A recentred
     project becomes byte-for-byte identical to one that was never framed: nothing distinguishes
     "put back to centre" from "never touched", which is exactly the truth.
-19. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
+19. **Framing is its own section, under Image, and the wheel is a second way in (#403i).** User
+    request. The wheel needs TWO conditions, and the second matters as much as the first: the panel
+    must be selected, AND the pointer must be over it. Without the second, scrolling the page while
+    an image panel happens to be selected would zoom that image at the other end of the screen
+    instead of doing what was asked.
+
+    The wheel and the slider share their step and their bounds, so that moving from one to the
+    other does not change how the setting feels; and the wheel turns the same way as the Camera's,
+    because two identical gestures turning opposite ways in one window are paid for at every use.
+20. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
     another project on its next opening; nothing equivalent exists for images. This is a gap, stated
     rather than hidden: renaming an image repairs the OPEN project and nothing else.
 
@@ -152,6 +161,8 @@ export: two drawing paths would mean an export that shows an empty panel.
 the confirmation, and the Image section.
 
 **#403f, the zoom and the return to the original framing.** Decisions 15 to 18.
+
+**#403i, Framing as its own section, and the mouse wheel.** Decision 19.
 
 **#403e, moving the image inside its panel.** Decisions 13 and 14. The arithmetic is a pure
 function (`ancrageApresGlissement3D`), separate from the mouse wiring, because it is the only part
