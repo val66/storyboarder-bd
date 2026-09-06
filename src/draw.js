@@ -38,6 +38,7 @@ import {
   drawPanelScene3D, drawObject3D,
   projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D,
   panelSceneCache3D, panelCamBasis3D, getCamOrbitWorld,
+  commencerFrameLimitee3D, resteDesRendus3D, terminerFrameLimitee3D,
   panelDepthToDistance3D, clampPanelDepth3D,
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners, getWallChildProjectedQuad3D,
   renderObjectToCanvas3D,
@@ -2455,8 +2456,20 @@ function _drawCurrentPageMesure(){
   _canvas.width = Math.round(page.w * S.pageRenderScale);
   _canvas.height = Math.round(page.h * S.pageRenderScale);
   _applyZoom();
+  // ⚠️ LE DESSIN INTERACTIF EST LE SEUL À SE LIMITER (#405d). Une frame ne reconstruit qu'un rig de
+  // Case ; les autres gardent leur image précédente, ou restent à leur fond si elles n'en ont pas.
+  // L'export, lui, n'ouvre pas de frame limitée et rend tout, parce qu'une planche exportée à
+  // laquelle il manque une Case serait un défaut bien pire que le gel qu'on corrige ici.
+  commencerFrameLimitee3D();
   drawContent(_ctx, page, S.pageRenderScale, true);
+  const _reste = resteDesRendus3D();
+  terminerFrameLimitee3D();
   _updateSidePanel();
+  // On redemande un dessin tant qu'il reste des Cases à reconstruire. `scheduleDrawCurrentPage`
+  // coalesce, donc plusieurs demandes dans la même frame n'en produisent qu'une ; et la condition
+  // porte sur ce qui a RÉELLEMENT été remis à plus tard, sans quoi cette ligne se rappellerait
+  // elle-même indéfiniment.
+  if (_reste) scheduleDrawCurrentPage();
 }
 
 

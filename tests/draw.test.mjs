@@ -1698,3 +1698,70 @@ describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
     assert.match(corps, /cadreDeRecouvrement3D\(panel\.w, panel\.h, image\.w, image\.h, null, zoomDeLImage3D\(panel\)\)/);
   });
 });
+
+// ── Étaler la reconstruction des rigs ─────────────────────────────────────────────────────────
+describe('#405d : une frame ne reconstruit qu\'une Case', () => {
+  /**
+   * ⚠️ MESURÉ. À l'ouverture d'un Projet, une SEULE frame reconstruisait les sept rigs de la
+   * Planche — 329 + 60 + 57 + 68 + 111 + 117 + 242, soit 986 ms sans que l'application réponde à
+   * rien. Les ratés de cache disaient tous « état du cache des modèles » : le travail est réel, les
+   * modèles venaient d'arriver. C'est le faire d'un bloc qui est un choix, pas le faire.
+   *
+   * CE QUI N'EST PAS TESTÉ, ET QUI NE PEUT PAS L'ÊTRE ICI : que l'application « paraisse fluide ».
+   * On épingle le mécanisme — un budget par frame, un report, une redemande de dessin — pas une
+   * sensation. Le gain se vérifie à la sonde, pas dans la suite.
+   */
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+  const DRAW_SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+
+  test('le budget est FINI dans le dessin interactif, INFINI ailleurs', () => {
+    // ⚠️ C'EST LA GARANTIE QUI PROTÈGE L'EXPORT. Une planche exportée à laquelle il manque une Case
+    // serait un défaut bien pire que le gel qu'on corrige : l'export ne déclare donc pas de frame
+    // limitée, et la valeur par défaut doit rester l'infini.
+    assert.match(SCENE, /let _budgetRendus3D = Infinity;/,
+      'le budget par défaut n\'est plus infini : un export pourrait sortir une Case vide');
+    assert.match(SCENE, /export function terminerFrameLimitee3D\(\)\{ _budgetRendus3D = Infinity; \}/);
+    // Le dessin interactif ouvre ET referme sa frame : sans la fermeture, le budget resterait fini
+    // pour tout ce qui dessine ensuite, y compris l'export.
+    const i = DRAW_SRC.indexOf('commencerFrameLimitee3D()');
+    assert.ok(i > 0, 'le dessin interactif ne limite plus rien');
+    const corps = DRAW_SRC.slice(i, i + 400);
+    assert.match(corps, /terminerFrameLimitee3D\(\)/, 'la frame limitée n\'est jamais refermée');
+    assert.ok(!/commencerFrameLimitee3D/.test(DRAW_SRC.slice(DRAW_SRC.indexOf('export function exportPage'))),
+      'l\'export ouvre une frame limitée : il pourrait rendre une Case vide');
+  });
+
+  test('RÉGRESSION : le report rend l\'image PRÉCÉDENTE si elle existe', () => {
+    // Une Case déjà rendue garde son image, périmée d'une frame, ce qui ne se voit pas. Rendre
+    // `null` dans ce cas la ferait clignoter à chaque changement d'échelle.
+    assert.match(SCENE, /if \(_budgetRendus3D <= 0\) \{ _rendusDifferes3D = true; return cached \|\| null; \}/);
+  });
+
+  test('RÉGRESSION : un rendu remis à plus tard ne fait pas planter le dessin', () => {
+    // `drawPanelScene3D` déstructure le retour. Sans la garde, un report emporterait TOUT le dessin
+    // de la Planche, pas seulement la Case concernée.
+    const i = SCENE.indexOf('export function drawPanelScene3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.match(corps, /if \(!rendu\) return;/, 'un report lèverait au lieu de sauter la Case');
+    assert.ok(corps.indexOf('if (!rendu) return;') < corps.indexOf('const { canvas: cnv'),
+      'la garde est APRÈS la déstructuration : elle ne protège rien');
+  });
+
+  test('RÉGRESSION : on redemande un dessin, et SEULEMENT s\'il reste à faire', () => {
+    // Sans la condition, cette ligne se rappellerait indéfiniment : un dessin qui en programme un
+    // autre, sans fin, ce qui serait une panne bien pire que le gel.
+    assert.match(DRAW_SRC, /if \(_reste\) scheduleDrawCurrentPage\(\);/);
+    assert.match(DRAW_SRC, /const _reste = resteDesRendus3D\(\);/);
+    // Et l'état est lu AVANT d'être remis à l'infini, sinon on lirait un drapeau déjà effacé.
+    assert.ok(DRAW_SRC.indexOf('const _reste = resteDesRendus3D()') < DRAW_SRC.indexOf('terminerFrameLimitee3D()'));
+  });
+
+  test('le budget vaut UN, et c\'est un choix assumé', () => {
+    // Pas une mesure : c'est la valeur qui minimise le plus long blocage, ce qu'on cherche ici.
+    // Épinglée pour qu'elle ne bouge pas par accident, pas pour prétendre qu'elle est démontrée.
+    assert.match(SCENE, /const RENDUS_3D_PAR_FRAME = 1;/);
+    assert.match(SCENE, /_budgetRendus3D = RENDUS_3D_PAR_FRAME;/);
+  });
+});

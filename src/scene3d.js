@@ -1674,6 +1674,42 @@ function computePanelSceneSignature3D(panel, page, styleKey){
 // hit included: it is the incompressible cost of this path, and measurement put it second overall
 // (16% of the drawing time, 8 calls per frame, one per Panel) behind the WebGL render it protects,
 // which runs less than once per frame thanks to a 91.4% hit rate. See docs/en/rendering-performance.md.
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE BUDGET DE RECONSTRUCTION PAR FRAME (#405d)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * MESURÉ, PAS SUPPOSÉ : à l'ouverture d'un Projet, une SEULE frame reconstruisait les sept rigs de
+ * la Planche — 329 + 60 + 57 + 68 + 111 + 117 + 242, soit 986 ms pendant lesquelles l'application
+ * ne répond à rien. Le travail est irréductible, ces rigs doivent vraiment être construits ; le
+ * faire d'un bloc, en revanche, est un choix.
+ *
+ * On en reconstruit donc UN par frame. Le temps total ne bouge pas, mais la main revient entre
+ * chaque, et les Cases se remplissent l'une après l'autre au lieu de geler une seconde.
+ *
+ * ⚠️ UN, ET C'EST UN CHOIX, PAS UNE MESURE. C'est la valeur qui minimise le plus long blocage, ce
+ * qui est exactement ce qu'on cherche ici ; deux iraient deux fois plus vite au prix de blocages
+ * deux fois plus longs. Si l'usage montre que le remplissage traîne, ce chiffre se change avec une
+ * raison.
+ *
+ * ⚠️ ET LE BUDGET EST INFINI PAR DÉFAUT. L'export d'une Planche doit produire une image COMPLÈTE :
+ * une Case laissée vide parce que le budget était épuisé serait un défaut bien pire que le gel
+ * qu'on corrige. Seul le dessin interactif le limite, en le déclarant frame par frame.
+ */
+const RENDUS_3D_PAR_FRAME = 1;
+let _budgetRendus3D = Infinity;
+let _rendusDifferes3D = false;
+
+/** Ouvre une frame interactive avec un budget fini. L'export n'appelle pas ceci, et garde l'infini. */
+export function commencerFrameLimitee3D(){
+  _budgetRendus3D = RENDUS_3D_PAR_FRAME;
+  _rendusDifferes3D = false;
+}
+/** Des Cases ont-elles été remises à plus tard ? L'appelant redemande alors un dessin. */
+export function resteDesRendus3D(){ return _rendusDifferes3D; }
+/** Rend le budget infini : tout ce qui n'est pas le dessin interactif doit rendre complètement. */
+export function terminerFrameLimitee3D(){ _budgetRendus3D = Infinity; }
+
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
   const cached = panelSceneCache3D.get(panel.id);
@@ -1697,6 +1733,12 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     }).filter(Boolean);
     perfJalon(`raté de cache — ${change.length ? change.join(' + ') : 'aucun segment ne diffère (?)'}`);
   }
+  // Budget épuisé : on REMET À PLUS TARD plutôt que de bloquer. La Case garde son image précédente
+  // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
+  // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
+  // ses modèles. Dans les deux cas, la main revient à l'utilisateur.
+  if (_budgetRendus3D <= 0) { _rendusDifferes3D = true; return cached || null; }
+  _budgetRendus3D--;
   return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
 }
 
@@ -2583,7 +2625,12 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
 export function drawPanelScene3D(c, panel, page, styleKey, scale = 1){
   if (typeof THREE === 'undefined') return;
   const style = resolveStyle3D(styleKey);
-  const { canvas: cnv, rw, rh } = renderPanelScene3D(panel, page, style, scale);
+  const rendu = renderPanelScene3D(panel, page, style, scale);
+  // `null` veut dire « remis à plus tard » (budget de la frame épuisé, et aucune image antérieure).
+  // On ne dessine rien : la Case reste à son fond et à sa bordure, et se remplira à la frame
+  // suivante. Sans cette garde, la déstructuration ci-dessous lèverait et emporterait tout le dessin.
+  if (!rendu) return;
+  const { canvas: cnv, rw, rh } = rendu;
   // Crop (never stretch): the camera (see framePanelCamera3D) always aims at the Panel's OWN
   // center, so that center falls exactly at the center of the rendered bitmap (rw x rh), the
   // rectangle to extract is therefore centered, sized proportionally to panel.w/h relative to page.w/h
