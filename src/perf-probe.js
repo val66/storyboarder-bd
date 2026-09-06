@@ -113,6 +113,43 @@ export function perfTempsJalon(nom, fn){
   }
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'INTERRUPTEUR DE LA CASCADE : servir une passe TÉMOIN, sans priorité
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La passe avec cascade a montré le mécanisme — 4 modèles servis, puis 18 — mais pas le GAIN : sans
+ * point de comparaison, « les 4 sont prêts à 947 ms » ne se compare à rien. On peut l'estimer par
+ * le raisonnement, et l'estimation est précisément ce que cette campagne s'interdit depuis le début.
+ *
+ * Cet interrupteur sert donc UNE passe témoin : les trois vagues sont fusionnées en une, ce qui
+ * reproduit le comportement d'avant #406b. Le même Projet, la même machine, la même session, à une
+ * variable près.
+ *
+ * ⚠️ IL VIT DANS LA SONDE, PAS DANS `io.js`, et c'est délibéré : le code d'application ne doit pas
+ * porter un drapeau qui désactive une fonctionnalité livrée. Il repartira avec la sonde.
+ *
+ * ⚠️ ET IL S'ARME COMME ELLE, par `localStorage` : la cascade s'exécute au chargement du Projet,
+ * donc bien avant qu'on puisse taper dans la console.
+ */
+const CLE_TEMOIN = 'storyboarder.perfCascadeOff';
+let _cascadeDesactivee = false;
+try { _cascadeDesactivee = typeof localStorage !== 'undefined' && localStorage.getItem(CLE_TEMOIN) === '1'; }
+catch { _cascadeDesactivee = false; }
+
+/** Lue par `prechargerEnCascade3D` : vrai = une seule vague, comme avant #406b. */
+export function perfCascadeDesactivee(){ return _cascadeDesactivee; }
+
+/** Bascule pour les prochains démarrages. */
+export function perfCascade(active = true){
+  try { localStorage.setItem(CLE_TEMOIN, active ? '0' : '1'); }
+  catch { return 'impossible d\'écrire dans localStorage'; }
+  return active
+    ? 'cascade RÉTABLIE au prochain démarrage.'
+    : 'cascade DÉSACTIVÉE au prochain démarrage : une seule vague, comme avant #406b. '
+      + 'Fermez et relancez, ouvrez le MÊME Projet, puis perfRapport().';
+}
+
 /** Un fait : une taille, un nombre. Le premier vu gagne, pour garder le contexte du démarrage. */
 export function perfFait(nom, valeur){
   if (_actif && !_faits.has(nom)) _faits.set(nom, valeur);
@@ -160,5 +197,7 @@ export function perfRapport(){
 if (typeof window !== 'undefined') {
   window.perfProbe = perfProbe;
   window.perfRapport = perfRapport;
+  window.perfCascade = perfCascade;
   if (_actif) console.log('%cSonde de mesure ARMÉE (perf-probe.js). perfProbe(false) pour la désarmer.', 'color:#D2691E');
+  if (_cascadeDesactivee) console.log('%cPASSE TÉMOIN : cascade de priorité DÉSACTIVÉE. perfCascade(true) pour la rétablir.', 'color:#B5482A;font-weight:bold');
 }
