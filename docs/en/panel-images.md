@@ -49,7 +49,23 @@ things doing one job, and every later question would have to be answered twice.
     show "Image not found", and go back to normal if the file comes back. The confirmation says so,
     including the number of panels concerned in the open project, and admits that other projects
     cannot be checked from here.
-13. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
+13. **Moving the image inside its panel is a MODE (#403e).** Entered from the right-click menu or
+    the Image section, left in three ways: Escape, a click outside the panel, or losing its object
+    (image detached, panel deleted, another project opened). Releasing the mouse button does NOT
+    leave it: reframing is a series of adjustments, and going back through the menu for each one
+    would make the second adjustment cost more than the first.
+
+    Without a mode, dragging a panel that holds an image would have to choose between moving the
+    panel and reframing the image: two identical gestures for two different effects, which always
+    ends with the wrong one. The mode is marked on screen (dashed outline, hand cursor), because a
+    mode that changes what the mouse does without saying so is indistinguishable from a fault.
+14. **The framing is stored as a FRACTION of the available slack, not as a pixel offset.**
+    `imageAnchorX` / `imageAnchorY`, 0 to 1, 0.5 meaning centred, which is what every project made
+    before #403e keeps. Pixels would have been simpler to write and wrong the next day: the slack
+    depends on the panel's size AND the image's, so the first resize, or the first "Change the
+    image" towards a file of another definition, would leave an offset computed for a geometry that
+    no longer exists. Staying inside [0, 1] IS the guarantee that no white band appears.
+15. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
     another project on its next opening; nothing equivalent exists for images. This is a gap, stated
     rather than hidden: renaming an image repairs the OPEN project and nothing else.
 
@@ -114,6 +130,10 @@ export: two drawing paths would mean an export that shows an empty panel.
 
 **#403c, the interface.** The context menu entry, the three removals, the ban on a Scene's canvas,
 the confirmation, and the Image section.
+
+**#403e, moving the image inside its panel.** Decisions 13 and 14. The arithmetic is a pure
+function (`ancrageApresGlissement3D`), separate from the mouse wiring, because it is the only part
+that can be checked: the rest is a `mousedown` and a `mousemove`.
 
 **#403d, the Images section of the left-hand menu.** The twin of the Models section: usages,
 renaming, deletion from disk. It is the direct consequence of decision 4: without it, detached images

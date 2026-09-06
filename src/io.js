@@ -592,6 +592,10 @@ export function applyProjectData(data){
   // 'mousedown' listener, leaving the camera "stuck" with no explicit user action). So we
   // reset it here exactly as disableSceneCameraMode() does when normally exiting the Scene
   // editor.
+  // Aucun mode d'éditeur ne survit à un changement de Projet. `imageMovePanelId` désigne une Case
+  // du Projet PRÉCÉDENT : le garder ferait pointer le mode vers un identifiant qui, au mieux,
+  // n'existe plus, au pire désigne une autre Case du nouveau Projet.
+  S.imageMovePanelId = null;
   function _resetPanelAnimState(o){
     if (o.type !== 'panel') return;
     o._camAnimating = false;          // unlocks startCamSmoothing after reload

@@ -152,6 +152,66 @@ export function casePorteUneImage3D(o){
 }
 
 /**
+ * Les deux champs AJOUTÉS pour le cadrage. Mêmes précautions que `CHAMP_IMAGE_CASE` : rien n'est
+ * renommé, et leur absence vaut la valeur par défaut, donc tous les Projets d'avant #403e s'ouvrent
+ * exactement comme avant.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UNE FRACTION, ET SURTOUT PAS DES PIXELS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * L'ancrage dit QUELLE PART DU JEU DISPONIBLE est prise à gauche (ou en haut) : 0 colle l'image au
+ * bord gauche, 1 au bord droit, 0,5 la centre — le comportement d'avant, et la valeur par défaut.
+ *
+ * Un décalage en pixels aurait été plus direct à écrire et faux dès le lendemain. Le jeu disponible
+ * dépend de la taille de la Case ET de celle de l'image ; le premier redimensionnement de Case, ou
+ * le premier « Changer l'image » vers un fichier d'une autre définition, aurait laissé un décalage
+ * calculé pour une géométrie qui n'existe plus : soit l'image sort du cadre, soit une bande blanche
+ * apparaît. Une fraction, elle, garde le même cadrage RELATIF quoi qu'il arrive à l'un ou à l'autre.
+ *
+ * C'est aussi ce qui rend le bornage gratuit : rester dans [0, 1] EST la garantie qu'aucune bande
+ * blanche n'apparaît, sans avoir à la vérifier ailleurs.
+ */
+export const CHAMP_ANCRAGE_X_IMAGE = 'imageAnchorX';
+export const CHAMP_ANCRAGE_Y_IMAGE = 'imageAnchorY';
+
+/** Le centre : ce que vaut une Case qui n'a jamais été recadrée, et ce que vaut un champ absent. */
+export const ANCRAGE_CENTRE_IMAGE = 0.5;
+
+/**
+ * Ramène une valeur d'ancrage dans [0, 1]. Tout ce qui n'est pas un nombre utilisable vaut centré.
+ *
+ * ⚠️ `null` ET LA CHAÎNE VIDE SONT ÉCARTÉS AVANT LA CONVERSION, et ce n'est pas une précaution
+ * décorative : `Number(null)` vaut 0, tout comme `Number('')`. Sans ces deux lignes, un champ écrit
+ * `null` dans un fichier de Projet — ce qu'un export, une fusion ou une édition à la main produisent
+ * sans y penser — ne serait pas lu comme « absent, donc centré » mais comme « collé au bord gauche ».
+ * L'image sauterait dans un coin à la réouverture, pour un fichier que personne n'a jugé fautif.
+ *
+ * Mon propre test l'a attrapé : j'avais écrit la garde sur `Number.isFinite` seul, en croyant que
+ * l'absence y tombait toujours. C'est vrai de `undefined`, faux de `null`.
+ */
+export function ancrageValide3D(v){
+  if (v === null || v === undefined || v === '') return ANCRAGE_CENTRE_IMAGE;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return ANCRAGE_CENTRE_IMAGE;
+  return Math.min(1, Math.max(0, n));
+}
+
+/**
+ * L'ancrage d'une Case, toujours utilisable. Fonction PURE.
+ *
+ * ⚠️ ELLE NE REND JAMAIS `null`, et c'est le point : le dessin l'appelle à chaque image, et une
+ * valeur manquante ou aberrante (un Projet écrit à la main, un champ corrompu) doit donner le
+ * cadrage centré, pas une image invisible. Ce qui est lisible est lu, le reste est ramené au centre.
+ */
+export function ancrageDeLImage3D(o){
+  return {
+    x: ancrageValide3D(o && o[CHAMP_ANCRAGE_X_IMAGE]),
+    y: ancrageValide3D(o && o[CHAMP_ANCRAGE_Y_IMAGE]),
+  };
+}
+
+/**
  * Cette Case peut-elle RECEVOIR une image ? Fonction PURE.
  *
  * Un seul refus, et c'est une décision de l'utilisateur : le canevas d'édition d'une Scène. Une
@@ -189,6 +249,9 @@ export function entreesImageDuMenu3D(o, estCanevasDeScene){
     // qui porte l'explication.
     ajouter3D: !porte,
     insererImage: !porte && caseAccepteUneImage3D(o, estCanevasDeScene),
+    // Même condition que « Retirer », et l'ordre est celui du menu : déplacer AVANT retirer, parce
+    // que c'est le geste qu'on répète et que retirer est celui qu'on ne veut pas viser par erreur.
+    deplacerImage: porte,
     retirerImage: porte,
   };
 }

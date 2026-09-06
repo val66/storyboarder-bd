@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.8**
+**Version 1.5.9**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -27,6 +27,7 @@
 ### Panel images
 - 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it
 - 🚫 A panel holding an image is **no longer a 3D scene**: no Elements, no Scene loading, no model import
+- ✋ **Move the image** inside its panel: drag it into place, Escape or a click outside to finish
 - 🔄 **Change or remove** the image from the panel's Image section, or from the right-click menu
 - 🗂️ **Images section**: your files grouped by whether the open project uses them, one click to the
   panel that uses one

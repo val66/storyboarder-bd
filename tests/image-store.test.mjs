@@ -22,6 +22,8 @@ import {
   CHAMP_IMAGE_CASE, imageDeLaCase3D, casePorteUneImage3D,
   setImageBridge, listImages, importImage, readImage, renameImage, deleteImage,
   caseAccepteUneImage3D, entreesImageDuMenu3D,
+  CHAMP_ANCRAGE_X_IMAGE, CHAMP_ANCRAGE_Y_IMAGE, ANCRAGE_CENTRE_IMAGE,
+  ancrageValide3D, ancrageDeLImage3D,
 } from '../src/image-store.js';
 import {
   imageState, getLoadedImage, collectImageFiles, preloadImages, _setImageCacheEntry,
@@ -120,6 +122,41 @@ describe('Le champ d\'une Case', () => {
     assert.equal(CHAMP_IMAGE_CASE, 'imageFile');
     const source = readFileSync(join(RACINE, 'src', 'image-store.js'), 'utf8');
     assert.ok(!/panel\.type\s*=/.test(source), 'le type d\'une Case ne change pas');
+  });
+
+  test('les deux champs de cadrage sont AJOUTÉS eux aussi (#403e)', () => {
+    assert.equal(CHAMP_ANCRAGE_X_IMAGE, 'imageAnchorX');
+    assert.equal(CHAMP_ANCRAGE_Y_IMAGE, 'imageAnchorY');
+    // Le centre est la valeur d'avant #403e : une Case jamais recadrée doit se dessiner exactement
+    // comme elle se dessinait, sans quoi tous les Projets existants changeraient d'aspect.
+    assert.equal(ANCRAGE_CENTRE_IMAGE, 0.5);
+  });
+
+  test('ancrageDeLImage3D rend TOUJOURS un couple utilisable', () => {
+    // Elle est appelée à chaque dessin d'image : rendre null obligerait le chemin de dessin à s'en
+    // garder, et l'oublier ferait disparaître l'image au lieu de la centrer.
+    assert.deepEqual(ancrageDeLImage3D({ imageAnchorX: 0.25, imageAnchorY: 0.75 }), { x: 0.25, y: 0.75 });
+    assert.deepEqual(ancrageDeLImage3D({}), { x: 0.5, y: 0.5 });
+    assert.deepEqual(ancrageDeLImage3D(null), { x: 0.5, y: 0.5 });
+  });
+
+  test('RÉGRESSION : `null` vaut CENTRÉ, et surtout pas « collé à gauche »', () => {
+    // ⚠️ ATTRAPÉ PAR MON PROPRE TEST, ET LA FAUTE ÉTAIT DANS LE CODE. `Number(null)` vaut 0, tout
+    // comme `Number('')` : une garde bâtie sur le seul `Number.isFinite` prend donc `null` pour un
+    // ancrage valide à l'extrême gauche. Un champ écrit `null` par un export, une fusion ou une
+    // édition à la main aurait fait sauter l'image dans un coin à la réouverture, sans que le
+    // fichier paraisse fautif. `undefined`, lui, passait déjà.
+    [null, '', undefined, NaN, 'gauche', {}].forEach(v =>
+      assert.equal(ancrageValide3D(v), 0.5, `${JSON.stringify(v)} devrait valoir centré`));
+  });
+
+  test('ancrageValide3D borne, et c\'est LA garantie « pas de bande blanche »', () => {
+    assert.equal(ancrageValide3D(-3), 0);
+    assert.equal(ancrageValide3D(7), 1);
+    assert.equal(ancrageValide3D(0.42), 0.42);
+    // Une chaîne numérique est acceptée : un JSON relu peut la porter, et la refuser recentrerait
+    // une image que l'utilisateur avait bel et bien cadrée.
+    assert.equal(ancrageValide3D('0.25'), 0.25);
   });
 
   test('imageDeLaCase3D ne répond que pour une Case', () => {
@@ -490,7 +527,7 @@ describe('#403c : ce qu\'une Case accepte, et ce que son menu montre', () => {
 
   test('une Case SANS image : on peut ajouter de la 3D, ou insérer une image', () => {
     const m = entreesImageDuMenu3D({ type: 'panel' }, false);
-    assert.deepEqual(m, { ajouter3D: true, insererImage: true, retirerImage: false });
+    assert.deepEqual(m, { ajouter3D: true, insererImage: true, deplacerImage: false, retirerImage: false });
   });
 
   test('une Case AVEC image : les trois entrées 3D disparaissent', () => {
@@ -498,12 +535,12 @@ describe('#403c : ce qu\'une Case accepte, et ce que son menu montre', () => {
     // une Scène » et « Importer un Modèle » d'un seul tenant — elles ont la même condition, et les
     // séparer ferait diverger ce qui doit disparaître ensemble.
     const m = entreesImageDuMenu3D({ type: 'panel', imageFile: 'a.png' }, false);
-    assert.deepEqual(m, { ajouter3D: false, insererImage: false, retirerImage: true });
+    assert.deepEqual(m, { ajouter3D: false, insererImage: false, deplacerImage: true, retirerImage: true });
   });
 
   test('sur le canevas d\'une Scène : la 3D reste, l\'image n\'apparaît jamais', () => {
     const m = entreesImageDuMenu3D({ type: 'panel' }, true);
-    assert.deepEqual(m, { ajouter3D: true, insererImage: false, retirerImage: false });
+    assert.deepEqual(m, { ajouter3D: true, insererImage: false, deplacerImage: false, retirerImage: false });
   });
 
   test('RÉGRESSION : insérer et retirer ne sont JAMAIS proposées ensemble', () => {

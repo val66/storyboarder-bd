@@ -41,10 +41,11 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
-import { setImageCacheCallbacks, preloadImagesFor, clearImageCache } from './image-cache.js';
+import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
   importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
   listImages, renameImage, deleteImage, sanitizeImageName,
+  ancrageDeLImage3D, CHAMP_ANCRAGE_X_IMAGE, CHAMP_ANCRAGE_Y_IMAGE,
 } from './image-store.js';
 import {
   countImageUsages, repointerImage3D, repointerPileImages3D, goToImageUsage,
@@ -119,6 +120,7 @@ import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
   buildToolClose, getPanelPoints, bubbleTailVisible, getBubbleTailTip, drawCurrentPage, renderAll,
   scheduleDrawCurrentPage, flushDrawCurrentPage, exportPage, exportVolume,
+  cadreDeRecouvrement3D, ancrageApresGlissement3D,
 } from './draw.js';
 import { setI18nCallbacks, applyI18n } from './i18n.js';
 import {
@@ -1400,6 +1402,17 @@ window.addEventListener('keydown', (e) => {
     undo();
     return;
   }
+  // Échap : sort du recadrage d'une image (#403e), et rien d'autre. Il passe AVANT les outils
+  // ci-dessous parce qu'il ne peut pas cohabiter avec eux : entrer dans le mode sélectionne une
+  // Case, ce qu'aucun de ces trois outils ne laisse faire. L'ordre est donc sans conséquence
+  // aujourd'hui, et le placer en tête évite d'avoir à s'en soucier demain.
+  if (e.key === 'Escape' && S.imageMovePanelId) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    sortirModeDeplacementImage();
+    renderAll();
+    return;
+  }
   // Escape: stops the current Measure tool.
   if (e.key === 'Escape' && S.measureTool) {
     e.preventDefault();
@@ -2552,6 +2565,36 @@ canvas.addEventListener('mousedown', (e) => {
     }
   });
 
+  // ── Recadrage d'une image (#403e) ──
+  //
+  // ⚠️ AVANT TOUT LE RESTE, et c'est le point du mode : tant qu'il est actif, un clic DANS la Case
+  // recadre, il ne redimensionne pas et ne déplace pas la Case. Le placer plus bas laisserait les
+  // poignées de coin et de bord répondre les premières, et le geste changerait de sens selon
+  // l'endroit exact du clic — ce que le mode est précisément là pour supprimer.
+  //
+  // Et un clic HORS de la Case en sort, comme demandé, au même titre qu'Échap. La sortie est
+  // traitée ici plutôt que dans un écouteur séparé pour que le clic garde son effet normal : sortir
+  // du mode ne doit pas coûter un clic supplémentaire.
+  {
+    const enCadrage = _caseEnDeplacementDImage();
+    if (enCadrage) {
+      const dedans = x >= enCadrage.x && x <= enCadrage.x + enCadrage.w
+        && y >= enCadrage.y && y <= enCadrage.y + enCadrage.h;
+      if (dedans) {
+        // UN SEUL instantané, au DÉBUT du glisser : Ctrl+Z ramène le cadrage d'avant le geste, et
+        // non trois pixels en arrière. C'est aussi pour cela que l'ancrage de départ est capturé
+        // ici, et que le mousemove le relit au lieu de cumuler des incréments, qui dériveraient.
+        snapshot();
+        S.dragMode = 'imageAnchor';
+        S.dragStart = { x, y };
+        S.dragOrig = { ancrage: ancrageDeLImage3D(enCadrage) };
+        canvas.style.cursor = 'grabbing';
+        return;
+      }
+      sortirModeDeplacementImage();
+    }
+  }
+
   const sel = page.objects.find(o => o.id === S.selectedId);
   // An Element (perso/objet3d) can no longer be selected or resized (handles) from the canvas, but
   // remains draggable if already selected via the "Elements" list in the right-hand menu (cf.
@@ -3229,6 +3272,30 @@ window.addEventListener('mousemove', (e) => {
       obj.x = clamp(S.dragOrig.x + dx, 0, page.w - obj.w);
       obj.y = clamp(S.dragOrig.y + dy, 0, page.h - obj.h);
     }
+  } else if (S.dragMode === 'imageAnchor') {
+    // Le calcul est dans draw.js, pur et testé (`ancrageApresGlissement3D`) ; ici on ne fait que
+    // lui donner ce qu'il demande.
+    //
+    // ⚠️ LE CADRE EST DEMANDÉ SANS ANCRAGE, ET C'EST VOULU. J'avais d'abord passé l'ancrage de
+    // départ, avec un commentaire expliquant que cela rendait le geste réversible : c'était faux, et
+    // une mutation l'a montré en le retirant sans qu'aucun test bronche. Seuls `sw` et `sh` sont
+    // lus ensuite, et ils ne dépendent que des PROPORTIONS ; `sx`/`sy`, les seuls que l'ancrage
+    // déplace, ne servent pas ici. Un argument qui ne change rien est un argument qui laisse croire
+    // qu'il compte, et le commentaire qui le défendait mentait.
+    //
+    // La réversibilité vient d'ailleurs, et elle est réelle : `S.dragOrig.ancrage` est relu à chaque
+    // mouvement plutôt que cumulé.
+    const panel = _caseEnDeplacementDImage();
+    const image = panel ? getLoadedImage(imageDeLaCase3D(panel)) : null;
+    if (panel && image) {
+      const cadre = cadreDeRecouvrement3D(panel.w, panel.h, image.w, image.h);
+      const a = ancrageApresGlissement3D(
+        S.dragOrig.ancrage, { x: x - S.dragStart.x, y: y - S.dragStart.y },
+        cadre, image, panel.w, panel.h);
+      panel[CHAMP_ANCRAGE_X_IMAGE] = a.x;
+      panel[CHAMP_ANCRAGE_Y_IMAGE] = a.y;
+      S.projectDirty = true;
+    }
   } else if (S.dragMode === 'panelCorner') {
     const obj = page.objects.find(o => o.id === S.selectedId);
     const dx = x - S.dragStart.x, dy = y - S.dragStart.y;
@@ -3496,6 +3563,14 @@ window.addEventListener('mouseup', () => {
     const _prPanel = page.objects.find(p => p.id === S.dragOrig?.panelId && p.type === 'panel');
     if (_prPanel) panelSceneCache3D.delete(_prPanel.id);
   }
+  // La main se rouvre, mais LE MODE RESTE : relâcher termine un déplacement, pas le recadrage. On
+  // enchaîne les ajustements sans repasser par le menu, et c'est Échap ou le clic extérieur qui
+  // ferme, comme demandé.
+  //
+  // La condition porte sur LE MODE et non sur `S.dragMode`, qui n'en est que la conséquence : Échap
+  // pressé pendant que le bouton est enfoncé éteint le mode, et lire le glisser rouvrirait alors une
+  // main pour un mode qui n'existe plus.
+  if (S.dragMode === 'imageAnchor' && S.imageMovePanelId) canvas.style.cursor = 'grab';
   S.dragMode = null; S.tempBox = null; S.snapGuide = null;
   // Fin du geste. Un dessin peut être encore PRÉVU par la coalescence du mousemove : le vider le
   // fait exécuter tout de suite et annule le passage programmé, qui ferait double emploi. Sans
@@ -3624,6 +3699,20 @@ canvas.addEventListener('mousemove', (e) => {
   if (S.dragMode) return;
   const { x, y } = getCoords(e);
   const page = currentPage();
+  // Le curseur DIT le mode, et il le dit AVANT tout le reste : en recadrage, la main remplace les
+  // poignées de redimensionnement, parce que ces poignées ne répondent plus (cf. mousedown). Un
+  // curseur qui promet un redimensionnement impossible est pire que pas de curseur du tout.
+  {
+    const enCadrage = _caseEnDeplacementDImage();
+    if (enCadrage) {
+      const dedans = x >= enCadrage.x && x <= enCadrage.x + enCadrage.w
+        && y >= enCadrage.y && y <= enCadrage.y + enCadrage.h;
+      // Hors de la Case, le curseur redevient normal : c'est aussi ce qui signale que cliquer là
+      // sortira du mode.
+      canvas.style.cursor = dedans ? 'grab' : 'crosshair';
+      return;
+    }
+  }
   const sel = page.objects.find(o => o.id === S.selectedId);
   if (sel && sel.type === 'panel' && !isLockedScenePanel(sel)) {
     const i = hitPanelCorner(sel, x, y);
@@ -3807,6 +3896,7 @@ canvas.addEventListener('contextmenu', (e) => {
   const _img = entreesImageDuMenu3D(hit, isSceneCanvas);
   ctxAddTrigger.style.display = _img.ajouter3D ? '' : 'none';
   document.getElementById('ctxInsertImage').style.display = _img.insererImage ? '' : 'none';
+  document.getElementById('ctxMoveImage').style.display = _img.deplacerImage ? '' : 'none';
   document.getElementById('ctxRemoveImage').style.display = _img.retirerImage ? '' : 'none';
   document.getElementById('ctxImportModel').style.display = (_surCase && _img.ajouter3D) ? '' : 'none';
   ctxLoadSceneTrigger.style.display = (isSceneCanvas || !_img.ajouter3D) ? 'none' : '';
@@ -5362,6 +5452,10 @@ async function _retirerImageDeLaCase(panel){
     'Retirer l\'image de cette Case ? Le fichier, lui, n\'est pas supprimé.'))) return;
   snapshot();
   delete panel[CHAMP_IMAGE_CASE];
+  // Le recadrage n'a plus d'objet. Le laisser actif garderait un mode invisible qui détournerait le
+  // prochain glisser sur cette Case (cf. _caseEnDeplacementDImage, qui rattrape aussi les chemins
+  // moins directs : Case supprimée, changement de Planche).
+  sortirModeDeplacementImage();
   S.projectDirty = true;
   renderAll();
 }
@@ -5372,9 +5466,75 @@ document.getElementById('ctxRemoveImage').onclick = async () => {
   await _retirerImageDeLaCase(panel);
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// DÉPLACER L'IMAGE DANS SA CASE (#403e)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// UN MODE, et pas un glisser permanent. Sans mode, tirer sur une Case à image devrait choisir entre
+// déplacer la Case et recadrer son image : deux gestes identiques pour deux effets différents, ce
+// qui se solde toujours par le mauvais des deux. Le mode rend le choix explicite et RÉVERSIBLE : on
+// y entre par le menu, on en sort par Échap ou en cliquant ailleurs.
+//
+// ⚠️ IL DOIT SE VOIR. Un mode invisible qui change ce que fait la souris est indiscernable d'une
+// panne, et c'est l'objection que l'utilisateur a validée avant l'écriture de ce code. La Case
+// recadrée porte donc une bordure (cf. draw.js) et le curseur passe à « main ».
+
+/** Entrer dans le mode. Sans effet si la Case ne porte pas d'image : il n'y aurait rien à bouger. */
+function _entrerModeDeplacementImage(panel){
+  if (!panel || !casePorteUneImage3D(panel)) return;
+  S.imageMovePanelId = panel.id;
+  S.selectedId = panel.id;
+  renderAll();
+}
+
+/**
+ * Sortir du mode. UN SEUL POINT DE SORTIE, appelé par Échap, par le clic extérieur, et par tout ce
+ * qui retire à ce mode son objet (l'image détachée, la Case supprimée, le Projet rechargé).
+ *
+ * Rend `true` si l'on était bien dans ce mode : les appelants qui doivent redessiner s'en servent
+ * pour ne pas le faire quand il n'y avait rien à faire.
+ */
+function sortirModeDeplacementImage(){
+  if (!S.imageMovePanelId) return false;
+  S.imageMovePanelId = null;
+  // Un glisser en cours meurt avec le mode.
+  //
+  // ⚠️ AUCUN TEST NE RETIENT CETTE LIGNE, et je le dis plutôt que de le taire (échappée W22). Ma
+  // justification première — « sans elle le recadrage continuerait après Échap » — était FAUSSE : le
+  // `mousemove` redemande le mode à chaque passage et ne trouve plus rien. Elle ne corrige donc
+  // aucun défaut observable, et c'est pourquoi la supprimer laisse la suite verte.
+  //
+  // Je la garde quand même, et pour une raison qui n'est pas la peur : elle rend l'état COHÉRENT. Un
+  // drapeau de mode éteint pendant qu'un drapeau de glisser reste allumé est exactement le genre de
+  // désaccord qu'on lit un jour d'un seul côté, et ce jour-là c'est un défaut.
+  if (S.dragMode === 'imageAnchor') { S.dragMode = null; S.dragOrig = null; S.dragStart = null; }
+  return true;
+}
+
+/** La Case en cours de recadrage, si elle existe ENCORE et porte ENCORE une image. */
+function _caseEnDeplacementDImage(){
+  if (!S.imageMovePanelId) return null;
+  const panel = currentPageData().objects.find(o => o.id === S.imageMovePanelId && o.type === 'panel');
+  // La Case a pu être supprimée, ou son image détachée, pendant que le mode était actif. On ne
+  // laisse pas un mode survivre à son objet : il resterait actif, invisible, et le prochain glisser
+  // sur la Planche ferait autre chose que ce que l'utilisateur croit.
+  if (!panel || !casePorteUneImage3D(panel)) { sortirModeDeplacementImage(); return null; }
+  return panel;
+}
+
+document.getElementById('ctxMoveImage').onclick = () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  hideContextMenu();
+  _entrerModeDeplacementImage(panel);
+};
+
 // Les deux boutons de la section Image du panneau de droite : les MÊMES gestes que le menu
 // contextuel, pas une seconde écriture. Deux chemins vers un même acte finissent par ne plus faire
 // la même chose, et c'est la panne la plus fréquente de ce dépôt.
+document.getElementById('sideImageMoveBtn').onclick = () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  _entrerModeDeplacementImage(panel);
+};
 document.getElementById('sideImageChangeBtn').onclick = async () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
   await _poserImageSurCase(panel, { remplace: true });

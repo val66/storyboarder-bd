@@ -100,6 +100,15 @@ export const S = {
   // du menu contextuel (cf. events.js, _cibleDuMenu).
   ctxTarget:        null,
 
+  // La Case dont on est en train de recadrer l'image, ou null (#403e).
+  //
+  // ⚠️ DANS `S`, ET NON SUR LA CASE, contrairement à `cameraMode`. Ce n'est pas une hésitation de
+  // style : un mode posé sur l'objet finit dans le fichier de Projet, et il faut ensuite penser à
+  // l'effacer au chargement — ce que `cameraMode` fait justement dans io.js, parce qu'il n'avait pas
+  // le choix (chaque Case a sa propre caméra). Recadrer est exclusif par nature : une seule image à
+  // la fois. L'état tient donc en un identifiant, qui ne peut pas être enregistré par mégarde.
+  imageMovePanelId: null,
+
   // ── Drag & interaction ───────────────────────────────────────────────
   dragMode:    null,
   dragStart:   null,
@@ -307,6 +316,13 @@ export function tr(en, fr) { return S.appLang === 'en' ? en : fr; }
 // Predicate: true if the panel is the full-frame canvas of a Scene being edited.
 // Exported here (read-only access to S.editingSceneId) so draw.js / i18n.js can
 // import it without a dependency on app.js.
+// Cette Case est-elle celle dont on recadre l'image ? Exportée ici, comme isLockedScenePanel et
+// pour la même raison : draw.js doit poser la question sans dépendre de events.js, qui l'importe.
+// Elle rend le MODE visible au dessin ; le mode lui-même reste piloté par events.js.
+export function estCaseEnRecadrage3D(o){
+  return !!S.imageMovePanelId && !!o && o.type === 'panel' && o.id === S.imageMovePanelId;
+}
+
 export function isLockedScenePanel(o){
   return !!S.editingSceneId && !!o && o.type === 'panel';
 }

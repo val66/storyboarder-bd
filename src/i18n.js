@@ -76,6 +76,7 @@ export const I18N_TEXT = [
   // rien n'y dit pourquoi. C'est ici que l'exclusivité se lit (cf. docs/en/panel-images.md).
   ['#sideImageHint', 'This panel shows an image: it holds no 3D Element.',
     'Cette Case affiche une image : elle ne contient aucun Élément 3D.'],
+  ['#sideImageMoveBtn', 'Move the image', 'Déplacer l\'image'],
   ['#sideImageChangeBtn', 'Change the image', 'Changer l\'image'],
   ['#sideImageDetachBtn', 'Remove the image', 'Retirer l\'image'],
   // Bulle menu
@@ -125,6 +126,7 @@ export const I18N_TRAILING = [
   //    Ajoutées après constat que 49 boutons sur 123 restaient en français en mode anglais.
   ['#ctxImportModel', 'Import a model', 'Importer un Modèle'],
   ['#ctxInsertImage', 'Insert an image', 'Insérer une image'],
+  ['#ctxMoveImage', 'Move the image', 'Déplacer l\'image'],
   ['#ctxRemoveImage', 'Remove the image', 'Retirer l\'image'],
   ['#ctxMesure', 'Measure', 'Mesure'],
   ['#ctxSkeletonMap', 'Skeleton mapping…', 'Correspondance du squelette…'],

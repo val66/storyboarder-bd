@@ -54,7 +54,24 @@ deux réponses.
     champ, affichent « Image introuvable », et redeviennent normales si le fichier revient. La
     confirmation le dit, chiffre les Cases concernées dans le Projet ouvert, et avoue qu'on ne peut
     rien vérifier des autres Projets d'ici.
-13. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
+13. **Déplacer l'image dans sa Case est un MODE (#403e).** On y entre par le clic droit ou par la
+    section Image, on en sort de trois façons : Échap, un clic hors de la Case, ou la perte de son
+    objet (image détachée, Case supprimée, autre Projet ouvert). Relâcher le bouton n'en sort PAS :
+    recadrer est une suite d'ajustements, et repasser par le menu à chaque fois ferait coûter au
+    second ajustement plus cher qu'au premier.
+
+    Sans mode, tirer sur une Case à image devrait choisir entre déplacer la Case et recadrer son
+    image : deux gestes identiques pour deux effets différents, ce qui se solde toujours par le
+    mauvais des deux. Le mode se voit à l'écran (bordure pointillée, curseur main), parce qu'un mode
+    qui change ce que fait la souris sans le dire est indiscernable d'une panne.
+14. **Le cadrage est retenu comme une FRACTION du jeu disponible, pas comme un décalage en pixels.**
+    `imageAnchorX` / `imageAnchorY`, de 0 à 1, 0,5 valant centré, ce que gardent tous les Projets
+    faits avant #403e. Des pixels auraient été plus simples à écrire et faux dès le lendemain : le
+    jeu dépend de la taille de la Case ET de celle de l'image, donc le premier redimensionnement, ou
+    le premier « Changer l'image » vers un fichier d'une autre définition, aurait laissé un décalage
+    calculé pour une géométrie qui n'existe plus. Rester dans [0, 1] EST la garantie qu'aucune bande
+    blanche n'apparaît.
+15. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
     `noterRenommageModele` propose de réparer un autre Projet à sa prochaine ouverture ; rien
     d'équivalent n'existe pour les images. C'est un manque, écrit plutôt que tu : renommer une image
     répare le Projet OUVERT, et rien d'autre.
@@ -123,6 +140,10 @@ chemins de dessin donneraient un export qui montre une Case vide.
 
 **#403c, l'interface.** L'entrée du menu contextuel, les trois retraits, l'interdiction sur le
 canevas d'une Scène, la confirmation, et la section Image.
+
+**#403e, déplacer l'image dans sa Case.** Les décisions 13 et 14. L'arithmétique est une fonction
+pure (`ancrageApresGlissement3D`), séparée du câblage de la souris, parce que c'est la seule part qui
+puisse se vérifier : le reste est un `mousedown` et un `mousemove`.
 
 **#403d, la section Images du menu de gauche.** La jumelle de la section Modèles : usages, renommage,
 suppression du disque. Elle est la conséquence directe de la décision 4 : sans elle, les images

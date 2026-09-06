@@ -29,6 +29,7 @@ import {
   projectPoseHandlePositions3D,
   personaLimbSegmentScreen3D,
   cadreDeRecouvrement3D,
+  ancrageApresGlissement3D,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
@@ -907,6 +908,28 @@ describe('cadreDeRecouvrement3D : couvrir la Case sans déformer l\'image', () =
     });
   });
 
+  test('L\'ANCRAGE décide de ce qui est rogné, et son absence vaut centré (#403e)', () => {
+    // 1000×500 dans une Case carrée : 500 de jeu horizontal, rien de vertical.
+    assert.equal(cadreDeRecouvrement3D(300, 300, 1000, 500, { x: 0, y: 0.5 }).sx, 0);
+    assert.equal(cadreDeRecouvrement3D(300, 300, 1000, 500, { x: 1, y: 0.5 }).sx, 500);
+    assert.equal(cadreDeRecouvrement3D(300, 300, 1000, 500, { x: 0.5, y: 0.5 }).sx, 250);
+    // ⚠️ LA COMPATIBILITÉ ASCENDANTE EST ICI, et elle vaut pour tous les Projets d'avant #403e :
+    // sans quatrième argument, la fonction fait exactement ce qu'elle faisait.
+    assert.deepEqual(cadreDeRecouvrement3D(300, 300, 1000, 500),
+      cadreDeRecouvrement3D(300, 300, 1000, 500, { x: 0.5, y: 0.5 }));
+  });
+
+  test('RÉGRESSION : un ancrage hors bornes ne fait pas SORTIR le cadre de l\'image', () => {
+    // C'est LA garantie « pas de bande blanche ». Elle tient au bornage, et le bornage est dans
+    // `ancrageValide3D`, en amont : un appelant qui passerait 3 ou -1 (fichier édité à la main,
+    // version future, calcul fautif) doit être ramené, pas cru sur parole.
+    [-1, 0, 0.5, 1, 3, NaN, undefined, 'gauche'].forEach(v => {
+      const r = cadreDeRecouvrement3D(300, 300, 1000, 500, { x: v, y: v });
+      assert.ok(r.sx >= 0 && r.sx + r.sw <= 1000 + 1e-9, `x=${v} sort de l'image`);
+      assert.ok(r.sy >= 0 && r.sy + r.sh <= 500 + 1e-9, `y=${v} sort de l'image`);
+    });
+  });
+
   test('une dimension nulle ou absurde ne donne pas un NaN qui traverse le dessin', () => {
     // Une Case de largeur zéro arrive PENDANT un redimensionnement à la souris : c'est un état
     // transitoire normal, pas une donnée corrompue. Diviser par elle produirait un NaN qui se
@@ -974,5 +997,286 @@ describe('#403b : ce que le chemin de dessin promet, et qu\'aucun rendu ne peut 
     assert.ok(!/readImage\(/.test(DRAW), 'draw.js lit le disque : le cache est court-circuité');
     assert.ok(!/await/.test(DRAW.slice(DRAW.indexOf('function dessinerImageDeCase3D'),
       DRAW.indexOf('export function drawObject'))), 'une attente s\'est glissée dans le dessin');
+  });
+});
+
+describe('ancrageApresGlissement3D : toute l\'arithmétique du recadrage (#403e)', () => {
+  // Le montage de référence : une image de 1000×500 dans une Case de 300×300. Le cadre prélevé est
+  // un carré de 500, donc 500 pixels d'image de jeu horizontal, et RIEN de vertical.
+  const CADRE = cadreDeRecouvrement3D(300, 300, 1000, 500, { x: 0.5, y: 0.5 });
+  const IMAGE = { w: 1000, h: 500 };
+  const glisser = (ancrage, dx, dy) =>
+    ancrageApresGlissement3D(ancrage, { x: dx, y: dy }, CADRE, IMAGE, 300, 300);
+
+  test('tirer vers la DROITE montre ce qui était à gauche', () => {
+    // ⚠️ LE SIGNE EST LE PIÈGE DE CETTE FONCTION. On déplace la FENÊTRE de prélèvement, pas
+    // l'image : tirer l'image vers la droite revient à prélever plus à gauche, donc l'ancrage
+    // DIMINUE. Écrit à l'envers, le recadrage part dans la direction opposée au geste, ce qui est
+    // désorientant sans jamais planter.
+    assert.ok(glisser({ x: 0.5, y: 0.5 }, 60, 0).x < 0.5);
+    assert.ok(glisser({ x: 0.5, y: 0.5 }, -60, 0).x > 0.5);
+  });
+
+  test('l\'échelle est celle de l\'IMAGE, pas celle de l\'écran', () => {
+    // 60 unités de Planche sur une Case de 300 valent un cinquième du cadre prélevé, soit 100
+    // pixels d'image, sur 500 de jeu : un cinquième du jeu, donc 0,2 d'ancrage.
+    assert.ok(Math.abs(glisser({ x: 0.5, y: 0.5 }, 60, 0).x - 0.3) < 1e-9);
+    // Sans le facteur sw/caseW, le même glisser bougerait autant une vignette qu'une photo de six
+    // mille pixels : la sensibilité changerait avec la définition du fichier.
+    const grande = cadreDeRecouvrement3D(300, 300, 6000, 3000, { x: 0.5, y: 0.5 });
+    const a = ancrageApresGlissement3D({ x: 0.5, y: 0.5 }, { x: 60, y: 0 }, grande,
+      { w: 6000, h: 3000 }, 300, 300);
+    assert.ok(Math.abs(a.x - 0.3) < 1e-9, 'la sensibilité dépend de la définition du fichier');
+  });
+
+  test('RÉGRESSION : l\'axe SANS JEU ne bouge pas, et ne rend pas NaN', () => {
+    // C'est le cas NORMAL, pas un cas limite : à 1×, une des deux dimensions tombe toujours juste.
+    // La division par un jeu nul donnerait un NaN, que `drawImage` avale en silence — l'image
+    // disparaîtrait sans erreur, et le seul symptôme serait une Case vide.
+    // ⚠️ LE DÉPART N'EST PAS 0,5, ET C'EST TOUT L'INTÉRÊT DE CE TEST. Ma première version partait du
+    // centre, et laissait donc passer la suppression de la garde `jeuY > 0` : sans elle le calcul
+    // rend NaN, `ancrageValide3D` ramène NaN au CENTRE, et 0,5 valait justement le départ. Le test
+    // se vérifiait lui-même. Avec 0,2, les deux réponses divergent : la garde CONSERVE l'ancrage,
+    // le repli le RECENTRE, et un axe qui saute au centre dès qu'on effleure l'autre se voit.
+    const r = glisser({ x: 0.5, y: 0.2 }, 0, 80);
+    assert.equal(r.y, 0.2, 'l\'axe sans jeu a bougé, ou a été recentré par le repli');
+    assert.ok(Number.isFinite(r.y));
+  });
+
+  test('RÉGRESSION : on ne peut pas tirer l\'image au-delà de son bord', () => {
+    // Le bornage EST la garantie « pas de bande blanche ». Un glisser démesuré doit s\'arrêter au
+    // bord, pas continuer.
+    assert.equal(glisser({ x: 0.5, y: 0.5 }, 100000, 0).x, 0);
+    assert.equal(glisser({ x: 0.5, y: 0.5 }, -100000, 0).x, 1);
+  });
+
+  test('le point de départ est l\'ancrage DU DÉBUT du glisser', () => {
+    // L\'appelant relit `S.dragOrig.ancrage` à chaque mousemove au lieu de cumuler des
+    // incréments : cumulés, les arrondis dérivent, et revenir au point de départ ne rend pas le
+    // cadrage de départ. Ici, la propriété se vérifie directement.
+    const aller = glisser({ x: 0.5, y: 0.5 }, 60, 0);
+    const retour = glisser({ x: 0.5, y: 0.5 }, 0, 0);
+    assert.equal(retour.x, 0.5, 'un glisser nul doit rendre exactement l\'ancrage de départ');
+    assert.notEqual(aller.x, retour.x);
+  });
+
+  test('une entrée absurde rend l\'ancrage de départ, jamais un NaN', () => {
+    const depart = { x: 0.25, y: 0.75 };
+    [[depart, null, CADRE, IMAGE, 300, 300], [depart, { x: 1, y: 1 }, null, IMAGE, 300, 300],
+      [depart, { x: 1, y: 1 }, CADRE, null, 300, 300], [depart, { x: 1, y: 1 }, CADRE, IMAGE, 0, 300],
+      [depart, { x: 1, y: 1 }, CADRE, IMAGE, 300, NaN]]
+      .forEach(args => assert.deepEqual(ancrageApresGlissement3D(...args), depart, JSON.stringify(args.slice(1))));
+    // Et un ancrage de départ illisible retombe au centre plutôt que de propager sa valeur.
+    assert.deepEqual(ancrageApresGlissement3D(null, { x: 0, y: 0 }, CADRE, IMAGE, 300, 300),
+      { x: 0.5, y: 0.5 });
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION #403e : vingt-trois fautes, six échappées, deux assumées.
+ *
+ *   W1  signe du glissement inversé                                            ROUGE
+ *   W2  facteur d'échelle de l'image oublié                                    ROUGE
+ *   W3  axe sans jeu non protégé (NaN)                                     ÉCHAPPÉE
+ *   W4  l'ancrage ignoré par le cadrage                                        ROUGE
+ *   W5  bornage à [0, 1] retiré                                                ROUGE
+ *   W6  `null` pris pour un ancrage à gauche                                   ROUGE
+ *   W7  un instantané à chaque mousemove                                   ÉCHAPPÉE
+ *   W8  le glisser cumule au lieu de repartir du départ                        ROUGE
+ *   W9  Échap ne sort plus du mode                                             ROUGE
+ *   W10 le clic extérieur ne sort plus                                         ROUGE
+ *   W11 la branche de recadrage débranchée (`null`)                        ÉCHAPPÉE
+ *   W12 détacher l'image laisse le mode actif                                  ROUGE
+ *   W13 le mode survit au changement de Projet                                 ROUGE
+ *   W14 la marque du mode part à l'export                                      ROUGE
+ *   W15 le curseur ne dit plus le mode                                         ROUGE
+ *   W16 les deux entrées ne font pas le même geste                             ROUGE
+ *   W17 on entre dans le mode sur une Case SANS image             ÉCHAPPÉE, ASSUMÉE
+ *   W18 seul l'axe X est écrit                                             ÉCHAPPÉE
+ *   W19 le Projet n'est pas marqué modifié                                 ÉCHAPPÉE
+ *   W20 le cadre du glisser ignore l'ancrage de départ            ÉCHAPPÉE, CODE CORRIGÉ
+ *   W21 relâcher le bouton sort du mode                                    ÉCHAPPÉE
+ *   W22 sortir ne tue pas le glisser en cours                     ÉCHAPPÉE, ASSUMÉE
+ *   W23 l'entrée du menu toujours visible                                      ROUGE
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUE CETTE CAMPAGNE A APPRIS, ET QUI NE SE RÉSUME PAS À « J'AI AJOUTÉ DES TESTS »
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * W20 A CORRIGÉ LE CODE, PAS LE TEST, et c'est la plus instructive. Je passais l'ancrage de départ à
+ * `cadreDeRecouvrement3D` dans le mousemove, avec un commentaire qui expliquait pourquoi c'était
+ * nécessaire. Le retirer n'a rien cassé : seuls `sw` et `sh` sont lus ensuite, et ils ne dépendent
+ * que des proportions. L'argument ne servait à rien, et mon commentaire le défendait quand même. Une
+ * mutation ne dit pas seulement « ce test manque » ; elle dit parfois « cette ligne ne fait rien, et
+ * tu as écrit trois phrases pour la justifier ».
+ *
+ * W3 ET W7 ÉTAIENT DES TESTS QUI SE MENTAIENT. W3 partait d'un ancrage de 0,5, exactement la valeur
+ * vers laquelle le repli ramène un NaN : le test ne pouvait pas distinguer la garde de son absence.
+ * W7 tranchait une chaîne au niveau de son propre marqueur, donc examinait une chaîne VIDE, et une
+ * assertion « ceci n'apparaît pas ici » est toujours vraie de rien.
+ *
+ * W11 EST LA TROISIÈME DE SA FAMILLE DANS CE DÉPÔT (après #403c et #403d) : vérifier qu'un
+ * identifiant APPARAÎT ne dit pas qu'il GOUVERNE. Le remède est le même à chaque fois, épingler la
+ * liaison plutôt que la présence.
+ *
+ * DEUX ÉCHAPPÉES RESTENT, ET ELLES SONT ÉCRITES ICI PLUTÔT QUE MASQUÉES :
+ *
+ *   W17, entrer dans le mode sur une Case sans image. La garde est vraie et utile — sans elle, une
+ *   bordure pointillée s'affiche sur une Case qui n'a rien à recadrer — mais son seul appelant est
+ *   l'interface, et la fonction n'est pas exportée. La rendre testable demanderait d'ouvrir un
+ *   accès qui n'existe que pour le test, ce qui coûte plus que ce défaut ne vaut.
+ *
+ *   W22, le glisser non tué en sortant du mode. Vérifié : elle ne corrige AUCUN défaut observable,
+ *   le mousemove redemandant le mode à chaque passage. Elle est gardée pour la cohérence de l'état,
+ *   et le code le dit désormais franchement au lieu de prétendre l'inverse.
+ */
+describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+  const DRAW_NU = sourceSansCommentaires(
+    readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+  const IO = sourceSansCommentaires(
+    readFileSync(new URL('../src/io.js', import.meta.url), 'utf8'));
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  /**
+   * Le corps du `mousemove` de recadrage, sans son marqueur d'entrée.
+   *
+   * ⚠️ ÉCHAPPÉE W7 : ma première version tranchait `slice(0, indexOf('} else if'))` sur une chaîne
+   * qui COMMENÇAIT par ce marqueur. L'index valait donc 0, le bloc était VIDE, et l'assertion
+   * « aucun snapshot ici » était vraie de rien du tout. Une assertion qui porte sur une chaîne vide
+   * ne peut pas échouer, et c'est le seul cas où ce fichier s'est menti à lui-même.
+   */
+  const corpsDuMousemove = () => {
+    const marqueur = "} else if (S.dragMode === 'imageAnchor')";
+    const i = EVENTS.indexOf(marqueur);
+    assert.ok(i > 0, 'le mousemove de recadrage a disparu');
+    const apres = EVENTS.slice(i + marqueur.length);
+    const fin = apres.indexOf('} else if (S.dragMode ===');
+    assert.ok(fin > 0, 'le bloc du mousemove ne se referme pas là où on le croit');
+    const corps = apres.slice(0, fin);
+    assert.ok(corps.includes('ancrageApresGlissement3D'), 'le bloc lu n\'est pas celui du recadrage');
+    return corps;
+  };
+
+  const blocSouris = () => {
+    const i = EVENTS.indexOf("S.dragMode = 'imageAnchor'");
+    assert.ok(i > 0, 'le glisser de recadrage n\'est branché nulle part');
+    return EVENTS.slice(i - 1200, i + 900);
+  };
+
+  test('les deux entrées existent, et le menu contextuel les montre ensemble', () => {
+    ['ctxMoveImage', 'sideImageMoveBtn'].forEach(id =>
+      assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
+    assert.match(EVENTS, /getElementById\('ctxMoveImage'\)\.style\.display = _img\.deplacerImage/,
+      'l\'entrée du menu ne suit pas la décision de entreesImageDuMenu3D');
+  });
+
+  test('RÉGRESSION : les deux entrées appellent LE MÊME geste', () => {
+    // Deux chemins vers un même acte finissent par ne plus faire la même chose : c\'est la panne la
+    // plus fréquente de ce dépôt, et la section Image porte déjà la même précaution pour
+    // « Changer » et « Retirer ».
+    assert.equal((EVENTS.match(/_entrerModeDeplacementImage\(panel\);/g) || []).length, 2);
+  });
+
+  test('RÉGRESSION : UN SEUL instantané, pris au DÉBUT du glisser', () => {
+    // Un snapshot() par mousemove remplirait la pile d\'annulation de centaines d\'états, et Ctrl+Z
+    // ne reculerait que de quelques pixels à la fois. Il est donc au mousedown, avec la capture de
+    // l\'ancrage de départ.
+    const bloc = blocSouris();
+    assert.ok(bloc.indexOf('snapshot()') < bloc.indexOf("S.dragMode = 'imageAnchor'"),
+      'l\'instantané n\'est pas pris avant d\'entrer dans le glisser');
+    assert.ok(!/snapshot\(\)/.test(corpsDuMousemove()),
+      'un instantané est pris à chaque mouvement de souris');
+  });
+
+  test('RÉGRESSION : le mousemove repart de l\'ancrage DE DÉPART', () => {
+    const corps = corpsDuMousemove();
+    assert.match(corps, /ancrageApresGlissement3D\(\s*S\.dragOrig\.ancrage/,
+      'le glisser cumule des incréments au lieu de repartir du départ, il dérivera');
+    assert.match(corps, /x - S\.dragStart\.x/);
+  });
+
+  test('RÉGRESSION : LES DEUX axes sont écrits, et le Projet est marqué modifié', () => {
+    // Deux échappées de ma campagne (W18, W19), et aucune des deux ne se voit tout de suite.
+    // N'écrire que X laisse le recadrage vertical sans effet : on tire, l'image ne suit pas sur un
+    // axe, et rien n'indique pourquoi. Oublier `projectDirty` est pire : le travail est fait à
+    // l'écran, l'application se croit à jour, et quitter le perd sans prévenir.
+    const corps = corpsDuMousemove();
+    assert.match(corps, /panel\[CHAMP_ANCRAGE_X_IMAGE\] = a\.x/);
+    assert.match(corps, /panel\[CHAMP_ANCRAGE_Y_IMAGE\] = a\.y/);
+    assert.match(corps, /S\.projectDirty = true/);
+  });
+
+  test('RÉGRESSION : la branche est GOUVERNÉE par la décision, pas seulement voisine d\'elle', () => {
+    // ⚠️ ÉCHAPPÉE W11, ET C'EST LA TROISIÈME FOIS DE CETTE FAMILLE DANS CE DÉPÔT (cf. #403c, #403d).
+    // Remplacer `_caseEnDeplacementDImage()` par `null` désactive TOUT le recadrage, et laissait
+    // vertes des assertions qui se contentaient de retrouver `S.dragMode = 'imageAnchor'` dans le
+    // fichier : le texte était toujours là, il ne s'exécutait simplement plus jamais.
+    //
+    // On épingle donc la LIAISON : la variable qui commande la branche vient de la fonction de
+    // décision, et de rien d'autre. La limite est assumée et vaut d'être écrite : ce test lit du
+    // source, il ne simule pas un clic. Ce qui le rend suffisant, c'est que la décision elle-même
+    // (`_caseEnDeplacementDImage`, et sous elle `casePorteUneImage3D`) a ses propres tests.
+    assert.match(blocSouris(), /const enCadrage = _caseEnDeplacementDImage\(\);/,
+      'la branche de recadrage n\'est plus alimentée par la décision');
+  });
+
+  test('RÉGRESSION : le clic HORS de la Case sort du mode, celui DEDANS recadre', () => {
+    const bloc = blocSouris();
+    assert.match(bloc, /dedans/, 'rien ne distingue l\'intérieur de l\'extérieur de la Case');
+    assert.ok(bloc.indexOf("S.dragMode = 'imageAnchor'") < bloc.indexOf('sortirModeDeplacementImage()'),
+      'un clic dans la Case sortirait du mode au lieu de recadrer');
+  });
+
+  test('RÉGRESSION : le recadrage passe AVANT les poignées de la Case', () => {
+    // Sinon le geste change de sens selon l\'endroit exact du clic : recadrage au centre,
+    // redimensionnement près d\'un bord. C\'est très exactement ce que le mode supprime.
+    assert.ok(EVENTS.indexOf("S.dragMode = 'imageAnchor'") < EVENTS.indexOf("S.dragMode = 'panelCorner'"),
+      'les poignées de coin répondent avant le recadrage');
+  });
+
+  test('RÉGRESSION : RELÂCHER ne sort PAS du mode', () => {
+    // ⚠️ EXIGENCE EXPLICITE DE L'UTILISATEUR : « tant que je ne clique pas en dehors de la Case ou
+    // que j'appuie sur Échap, je peux déplacer l'image ». Relâcher termine UN déplacement, pas le
+    // recadrage : on enchaîne les ajustements sans repasser par le menu. Ma campagne a montré
+    // qu'aucun test ne le retenait (W21), et c'est pourtant la moitié de la demande.
+    const i = EVENTS.indexOf("if (S.dragMode === 'imageAnchor' && S.imageMovePanelId)");
+    assert.ok(i > 0, 'la fin du glisser de recadrage a disparu');
+    const bloc = EVENTS.slice(i, i + 400);
+    assert.ok(!/sortirModeDeplacementImage/.test(bloc),
+      'relâcher le bouton ferme le mode : il faudrait rouvrir le menu à chaque ajustement');
+    // Et la main ne se rouvre que si le MODE est encore là : Échap pendant que le bouton est
+    // enfoncé l'éteint, et un curseur « main » sans mode promet un geste qui ne répondra pas.
+    assert.match(bloc.slice(0, 120), /S\.imageMovePanelId\) canvas\.style\.cursor = 'grab'/);
+  });
+
+  test('RÉGRESSION : Échap sort du mode', () => {
+    assert.match(EVENTS, /e\.key === 'Escape' && S\.imageMovePanelId[\s\S]{0,220}sortirModeDeplacementImage\(\)/);
+  });
+
+  test('RÉGRESSION : le mode ne survit ni à l\'image détachée, ni à un autre Projet', () => {
+    // Un mode qui survit à son objet reste actif et INVISIBLE : le prochain glisser fait alors
+    // autre chose que ce que l\'utilisateur croit.
+    const retrait = EVENTS.slice(EVENTS.indexOf('async function _retirerImageDeLaCase'));
+    assert.match(retrait.slice(0, retrait.indexOf('\n}')), /sortirModeDeplacementImage\(\)/,
+      'détacher l\'image laisse le mode actif');
+    assert.match(IO, /S\.imageMovePanelId = null/,
+      'le mode désignerait une Case du Projet précédent');
+  });
+
+  test('RÉGRESSION : la marque du mode ne part PAS à l\'export', () => {
+    // `drawObject` sert aussi l\'export (cf. exportPage) : un état de l\'éditeur dessiné là-bas se
+    // retrouverait sur la planche exportée. Elle vit donc derrière `withSelection`, comme la
+    // sélection elle-même.
+    assert.ok(!/estCaseEnRecadrage3D/.test(DRAW_NU.slice(DRAW_NU.indexOf('export function drawObject('))),
+      'la marque du mode est dessinée dans drawObject, elle sortira à l\'export');
+    assert.match(DRAW_NU, /withSelection && S\.imageMovePanelId/);
+  });
+
+  test('RÉGRESSION : le curseur annonce le mode avant le clic', () => {
+    // Un mode invisible qui change ce que fait la souris est indiscernable d\'une panne.
+    assert.match(EVENTS, /canvas\.style\.cursor = dedans \? 'grab' : 'crosshair'/);
+    assert.match(EVENTS, /canvas\.style\.cursor = 'grabbing'/);
   });
 });

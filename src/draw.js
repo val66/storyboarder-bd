@@ -16,7 +16,7 @@
  * buildSinglePageImagePdf, downloadCanvasAsPdf, exportPage, exportVolume
  */
 
-import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
+import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -50,7 +50,7 @@ import {
 import { noDescriptionLabel } from './i18n.js';
 // L'image d'une Case : ce qu'elle porte (image-store) et ce qui est décodé (image-cache). Les deux
 // lectures sont SYNCHRONES, seule condition pour vivre dans le chemin de dessin.
-import { imageDeLaCase3D, casePorteUneImage3D } from './image-store.js';
+import { imageDeLaCase3D, casePorteUneImage3D, ancrageDeLImage3D, ancrageValide3D } from './image-store.js';
 import { getLoadedImage, imageState } from './image-cache.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
@@ -999,6 +999,28 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     const o = page.objects.find(x => x.id === S.selectedId);
     if (o) drawSelection(c, o, page);
   }
+  // LE MODE DE RECADRAGE SE VOIT (#403e). Sans marque à l'écran, rien ne distingue « je déplace
+  // l'image » de « je déplace la Case », et un glisser qui ne fait pas ce qu'on croit passe pour
+  // une panne. Trait POINTILLÉ, qui ne peut se confondre ni avec la bordure de la Case, que
+  // l'utilisateur choisit, ni avec la sélection, qui a ses poignées.
+  //
+  // ⚠️ ICI, ET SURTOUT PAS DANS `drawObject` : cette fonction est aussi celle de l'export (cf.
+  // exportPage), et un état de l'éditeur n'a rien à faire dans une planche exportée. C'est la
+  // raison pour laquelle la sélection est dessinée ici aussi, derrière le même `withSelection`.
+  if (withSelection && S.imageMovePanelId) {
+    const cadre = page.objects.find(x => estCaseEnRecadrage3D(x));
+    if (cadre) {
+      const pts = cadre.pts || getPanelPoints(cadre);
+      c.save();
+      c.setLineDash([6, 4]); c.lineWidth = 2; c.strokeStyle = '#D2691E'; c.lineJoin = 'round';
+      c.beginPath();
+      c.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+      c.closePath();
+      c.stroke();
+      c.restore();
+    }
+  }
   // Highlight of the WHOLE Room when it's selected as a group (S.selectedRoomId):
   // dashed frames per wall (original behavior) + 4 corner handles on the XZ bbox
   // for resizing (no extra quadrilateral, a single visual selector).
@@ -1104,9 +1126,17 @@ export function getPanelPoints(o){
  * Le rectangle SOURCE à prélever dans une image pour qu'elle COUVRE une Case sans se déformer.
  * Fonction PURE, et c'est ce qui la rend vérifiable : tout le reste du dessin ne l'est pas.
  *
- * « Couvrir et centrer », décidé avec l'utilisateur (cf. docs/en/panel-images.md, décision 9) : on
- * garde les proportions de l'image, on remplit toute la Case, et ce qui dépasse est rogné à parts
- * égales des deux côtés.
+ * « Couvrir », décidé avec l'utilisateur (cf. docs/en/panel-images.md, décision 9) : on garde les
+ * proportions de l'image, on remplit toute la Case, et ce qui dépasse est rogné.
+ *
+ * ⚠️ CE QUI EST ROGNÉ N'EST PLUS FORCÉMENT PRIS À PARTS ÉGALES (#403e). L'ANCRAGE décide de la part
+ * prise à gauche et en haut : 0,5 rogne symétriquement, ce que faisait cette fonction avant d'avoir
+ * un quatrième paramètre, et ce qu'elle fait toujours quand on ne lui en donne pas. 0 colle l'image
+ * au bord gauche, 1 au bord droit.
+ *
+ * ⚠️ ET C'EST LE BORNAGE À [0, 1] QUI INTERDIT LA BANDE BLANCHE, ici et nulle part ailleurs. Le
+ * rectangle prélevé reste entièrement dans l'image pour toute valeur de cet intervalle, et en sort
+ * pour toute valeur en dehors : `ancrageValide3D` est donc la seule garde, et elle est en amont.
  *
  * ⚠️ ON ROGNE LA SOURCE, ON N'AGRANDIT PAS LA DESTINATION. Les deux donnent la même image à
  * l'écran ; seule la première laisse la découpe au polygone de la Case (cf. dessinerImageDeCase3D)
@@ -1117,18 +1147,63 @@ export function getPanelPoints(o){
  * redimensionnement à la souris, et diviser par elle donnerait un `NaN` qui traverserait le dessin
  * en silence.
  */
-export function cadreDeRecouvrement3D(caseW, caseH, imgW, imgH){
+export function cadreDeRecouvrement3D(caseW, caseH, imgW, imgH, ancrage){
   const cw = Number(caseW), ch = Number(caseH), iw = Number(imgW), ih = Number(imgH);
   if (![cw, ch, iw, ih].every(v => Number.isFinite(v) && v > 0)) return null;
   // Le rapport de la Case, ramené dans le repère de l'image : c'est lui qui dit quelle dimension
   // est en trop.
   const largeurUtile = Math.min(iw, ih * (cw / ch));
   const hauteurUtile = Math.min(ih, iw * (ch / cw));
+  const ax = ancrageValide3D(ancrage ? ancrage.x : undefined);
+  const ay = ancrageValide3D(ancrage ? ancrage.y : undefined);
   return {
-    sx: (iw - largeurUtile) / 2,
-    sy: (ih - hauteurUtile) / 2,
+    sx: (iw - largeurUtile) * ax,
+    sy: (ih - hauteurUtile) * ay,
     sw: largeurUtile,
     sh: hauteurUtile,
+  };
+}
+
+/**
+ * L'ancrage qui résulte d'un glisser. Fonction PURE, et c'est TOUTE l'arithmétique du déplacement.
+ *
+ * Elle est ici, séparée du câblage de la souris, parce que c'est la seule partie qui puisse se
+ * vérifier : le reste est un `mousedown` et un `mousemove`.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LE SIGNE EST NÉGATIF
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * On ne déplace pas l'image, on déplace la FENÊTRE qu'on prélève dedans. Tirer l'image vers la
+ * droite revient à prélever plus à GAUCHE. Le signe inversé n'est donc pas une correction empirique
+ * ajoutée jusqu'à ce que ça tombe juste, c'est ce que veut dire « prélever ».
+ *
+ * `sw / caseW` convertit les unités de la Planche en pixels de l'image : sans ce facteur, un glisser
+ * de dix pixels bougerait autant une vignette qu'une photo de six mille pixels de large.
+ *
+ * Un axe SANS JEU (`iw === sw`, la dimension qui tombe juste) ne bouge pas : la division serait par
+ * zéro, et la garde rend l'ancrage inchangé plutôt qu'un `NaN` qui ferait disparaître l'image. C'est
+ * le cas normal à 1× sur un des deux axes, pas un cas limite exotique.
+ *
+ * @param {{x:number,y:number}} ancrage  l'ancrage AU DÉBUT du glisser, jamais l'ancrage courant
+ * @param {{x:number,y:number}} delta    le déplacement de la souris depuis ce début, en unités de Planche
+ * @param {object} cadre                 le rectangle source, tel que rendu par cadreDeRecouvrement3D
+ * @param {{w:number,h:number}} image    les dimensions de l'image décodée
+ * @param {number} caseW
+ * @param {number} caseH
+ */
+export function ancrageApresGlissement3D(ancrage, delta, cadre, image, caseW, caseH){
+  const depart = { x: ancrageValide3D(ancrage && ancrage.x), y: ancrageValide3D(ancrage && ancrage.y) };
+  if (!cadre || !image || !delta) return depart;
+  const cw = Number(caseW), ch = Number(caseH);
+  if (!Number.isFinite(cw) || !Number.isFinite(ch) || cw <= 0 || ch <= 0) return depart;
+  const jeuX = Number(image.w) - cadre.sw;
+  const jeuY = Number(image.h) - cadre.sh;
+  const dx = Number(delta.x) || 0;
+  const dy = Number(delta.y) || 0;
+  return {
+    x: jeuX > 0 ? ancrageValide3D(depart.x - (dx * (cadre.sw / cw)) / jeuX) : depart.x,
+    y: jeuY > 0 ? ancrageValide3D(depart.y - (dy * (cadre.sh / ch)) / jeuY) : depart.y,
   };
 }
 
@@ -1147,7 +1222,7 @@ function dessinerImageDeCase3D(c, o, pts){
   const nom = imageDeLaCase3D(o);
   const image = nom ? getLoadedImage(nom) : null;
   if (!image) return false;
-  const cadre = cadreDeRecouvrement3D(o.w, o.h, image.w, image.h);
+  const cadre = cadreDeRecouvrement3D(o.w, o.h, image.w, image.h, ancrageDeLImage3D(o));
   if (!cadre) return false;
   c.save();
   c.beginPath();
