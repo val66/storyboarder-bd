@@ -25,3 +25,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Fixtures de la campagne de mesure #404 : lourdes, et regenerables (cf. rendering-performance.md).
+essai-*.jpg

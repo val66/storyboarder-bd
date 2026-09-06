@@ -23,6 +23,7 @@
  */
 
 import { readImage, imageDeLaCase3D } from './image-store.js';
+import { perfTempsAsync, perfFait } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 
 // nom de fichier → 'chargement' | 'introuvable' | { bitmap, w, h }
 const _cache = new Map();
@@ -99,9 +100,14 @@ export async function preloadImages(noms){
   _onChange();
   await Promise.all(àFaire.map(async (nom) => {
     try {
-      const lu = await readImage(nom);
+      const lu = await perfTempsAsync('lecture disque', () => readImage(nom));
       if (!lu || !lu.ok || !lu.data || !lu.data.length) { _cache.set(nom, 'introuvable'); return; }
-      const décodée = await decoderImage(lu.data);
+      const décodée = await perfTempsAsync('décodage image', () => decoderImage(lu.data));
+      if (décodée) {
+        perfFait(`${nom} — définition`, `${décodée.w}×${décodée.h}`);
+        perfFait(`${nom} — octets sur disque`, `${(lu.data.length / 1048576).toFixed(1)} Mo`);
+        perfFait(`${nom} — bitmap en mémoire`, `${(décodée.w * décodée.h * 4 / 1048576).toFixed(1)} Mo`);
+      }
       _cache.set(nom, décodée || 'introuvable');
     } catch {
       _cache.set(nom, 'introuvable');

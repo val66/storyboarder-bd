@@ -17,6 +17,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
+import { perfTemps, perfFait } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -1244,7 +1245,12 @@ function dessinerImageDeCase3D(c, o, pts){
   for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
   c.closePath();
   c.clip();
-  c.drawImage(image.bitmap, cadre.sx, cadre.sy, cadre.sw, cadre.sh, o.x, o.y, o.w, o.h);
+  // SONDE (campagne images) : c'est CETTE ligne que la question vise — que coûte le report d'une
+  // grande image dans une petite Case, à chaque redessin. Mesurer la fonction entière y aurait
+  // mélangé la découpe sur le polygone, qui ne dépend pas de la définition du fichier.
+  perfTemps('drawImage d\'une Case', () =>
+    c.drawImage(image.bitmap, cadre.sx, cadre.sy, cadre.sw, cadre.sh, o.x, o.y, o.w, o.h));
+  perfFait('destination à l\'écran', `${Math.round(o.w)}×${Math.round(o.h)} unités de Planche`);
   c.restore();
   return true;
 }
@@ -2421,6 +2427,10 @@ export function wrapTextLines(c, text, maxWidth){
 // 2D CANVAS DRAWING
 // ════════════════════════════════════════════════════════════
 export function drawCurrentPage(){
+  // SONDE : le total par frame, à comparer aux 8,30 ms médians de la campagne d'août 2026.
+  return perfTemps('drawCurrentPage (total)', () => _drawCurrentPageMesure());
+}
+function _drawCurrentPageMesure(){
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
