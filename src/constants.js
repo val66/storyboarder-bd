@@ -88,11 +88,101 @@ export const POSITIONS = [
 
 
 // ── UI colour palette ───────────────────────────────────────────
-export const PALETTE = ['#3E5FA8', '#B5482A', '#3F7D5C', '#7A4FA3', '#C98A2A', '#2E7D9A'];
+//
+// ⚠️ `PALETTE` A ÉTÉ SUPPRIMÉE ICI (#409a), et ce commentaire dit pourquoi plutôt que de laisser la
+// question se reposer. C'était un tableau de six couleurs dont UNE SEULE servait, l'indice 0, via
+// `FIXED_COLOR` juste plus bas. Les cinq autres n'avaient aucun lecteur, ni dans `src/`, ni dans
+// les tests, ni dans `index.html` : restes d'un sélecteur de couleur qui n'a jamais existé.
+//
+// Elles ont failli passer pour un défaut d'accessibilité. La première mesure du chantier #409 a
+// porté sur les six et trouvé des collisions sévères en deutéranopie ; ces chiffres décrivaient du
+// code que personne n'exécute. C'est la vérification des appelants, faite après coup, qui l'a dit.
+// Mesurer une palette dans l'abstrait ne prouve rien : ce qui compte, ce sont les paires que
+// l'utilisateur doit réellement distinguer (cf. docs/en/colour-accessibility.md).
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LES COULEURS QUI SIGNALENT (#409a)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ CE BLOC NE CONTIENT QUE CE QUI SIGNALE UN ÉTAT, JAMAIS CE QUI DÉPEINT UN OBJET, et c'est la
+// distinction qui gouverne tout le chantier (cf. docs/en/colour-accessibility.md).
+//
+// « Sélectionné », « en recadrage », « détaché », « porteur d'un rôle » sont des états de
+// l'interface : un thème a le droit de les repeindre. La peau d'un Personnage, la teinte d'une haie
+// ou la texture d'une herbe REPRÉSENTENT quelque chose : les repeindre rendrait le dessin faux, et
+// elles restent donc où elles sont, dans rig3d.js, scene3d.js et les tables ci-dessus.
+//
+// Le recensement a trouvé 265 occurrences de couleur dans `src/`, dont une quinzaine seulement
+// signalent. C'est cette quinzaine qui est ici.
+//
+// ⚠️ CE BLOC NE CORRIGE RIEN À LUI SEUL, et il ne faut pas le lire comme une amélioration
+// d'accessibilité. Il rend les couleurs ATTEIGNABLES par un thème, ce qu'elles n'étaient pas en
+// étant écrites dans le code de dessin. Ce qui corrige vraiment le défaut mesuré, c'est d'ajouter
+// un SECOND indice à côté de la couleur (#409b) : un thème ne peut que remplacer une couleur par
+// une autre, il ne peut pas ajouter une information.
+
+// Sélection : Case, Pièce, et le rectangle tracé pendant une création.
+export const SIGNAL_SELECTION = '#B5482A';
+// Le liseré clair des poignées de sélection, qui les détache d'un fond quelconque. C'est LUI qui
+// rend une poignée visible sur un dessin sombre, pas la couleur de remplissage.
+export const SIGNAL_SELECTION_LISERE = '#fff';
+// Une Case qui porte une scène 3D : contour pointillé qui suit la rotation de la caméra.
+export const SIGNAL_SELECTION_3D = 'rgba(255,120,0,0.85)';
+// Les poignées de coin d'une Pièce sélectionnée en groupe.
+export const SIGNAL_PIECE_POIGNEE = 'rgba(180, 72, 42, 0.9)';
+// Un Bâtiment sélectionné, et les carrés posés sur ses jonctions de murs.
+export const SIGNAL_BATIMENT = '#C8960C';
+export const SIGNAL_BATIMENT_POIGNEE = 'rgba(200, 150, 12, 0.95)';
+// Le mode « déplacer l'image dans sa Case » (#403e). Sans marque à l'écran, rien ne distingue
+// « je déplace l'image » de « je déplace la Case ».
+export const SIGNAL_RECADRAGE = '#D2691E';
+// Outil Mesure. Le point d'arrivée est PLEIN une fois la mesure figée et CREUX tant qu'elle bouge :
+// ce second indice existait déjà, et il est ce qui rend l'outil lisible sans la couleur.
+export const SIGNAL_MESURE = '#FFD700';
+export const SIGNAL_MESURE_CONTOUR = '#222';
+// Outil Construire : segments posés, points, aperçu.
+export const SIGNAL_CONSTRUIRE = '#3E5FA8';
+export const SIGNAL_CONSTRUIRE_GUIDE = 'rgba(62,95,168,0.5)';
+// Le point d'un tracé qui ne rejoint PAS le précédent. Un état d'erreur douce.
+export const SIGNAL_CONSTRUIRE_DETACHE = '#2BA84A';
+// Les repères d'aimantation, quand un déplacement s'aligne sur un voisin.
+export const SIGNAL_AIMANTATION = '#2E7D9A';
+// Éditeur de modèle : la poignée saisie, celle qui porte un rôle, celle qui n'en porte pas.
+//
+// ⚠️ CAS LIMITE MESURÉ. Entre SIGNAL_POSE_ROLE et SIGNAL_POSE_SANS_ROLE, l'écart tombe à 67 en
+// protanopie contre 110 en vision normale. Encore séparable, mais de justesse, alors que c'est
+// précisément la distinction que #392e a introduite pour AIDER. À trancher en #409b.
+export const SIGNAL_POSE_ACTIVE = '#E0A53C';
+export const SIGNAL_POSE_ROLE = '#3AA0FF';
+export const SIGNAL_POSE_SANS_ROLE = '#9FC9EE';
+// Vue de dessus des modales Pièce et Bâtiment : un Personnage, ou n'importe quel autre Élément.
+//
+// ⚠️ LE DÉFAUT CONFIRMÉ DU CHANTIER, et il ne se corrige pas ici. L'écart passe de 145 en vision
+// normale à 54 en protanopie, et la couleur est le SEUL indice qui porte la distinction. Il faut
+// une forme différente, pas une autre teinte (#409b).
+export const SIGNAL_APERCU_PERSO = '#f4a340';
+export const SIGNAL_APERCU_ELEMENT = '#6fbf73';
+// Une Case dont l'image est introuvable, ou simplement pas encore décodée.
+//
+// Les deux FONDS sont séparés par un écart de 15 en vision normale : ce fond n'a jamais été un
+// signal, et il n'y a donc rien à y corriger. C'est le TEXTE qui porte la distinction, et lui tient
+// à 104 dans le pire cas.
+export const SIGNAL_IMAGE_ABSENTE_FOND = '#EFE3E1';
+export const SIGNAL_IMAGE_ATTENDUE_FOND = '#F1EFEA';
+export const SIGNAL_IMAGE_ABSENTE_TEXTE = '#8A3B2E';
+export const SIGNAL_IMAGE_ATTENDUE_TEXTE = '#8A867E';
 
 export const FIXED_SHAPE = 'rect';
 
-export const FIXED_COLOR = PALETTE[0];
+// La teinte par défaut du corps d'un Personnage ou d'un Objet. Elle DÉPEINT : c'est la couleur de
+// la chose représentée, pas l'état d'une interface, et aucun thème ne doit y toucher.
+//
+// ⚠️ ELLE PARTAGE SA VALEUR AVEC `SIGNAL_CONSTRUIRE` PAR ACCIDENT, les deux valant `#3E5FA8` depuis
+// l'origine. C'est justement ce que l'extraction en jetons sépare : le jour où un thème repeindra
+// l'outil Construire, la couleur par défaut des Personnages ne suivra pas. Deux sens qui partagent
+// une valeur ne sont pas la même chose.
+export const FIXED_COLOR = '#3E5FA8';
 
 
 // ── 3D camera distances ─────────────────────────────────────────

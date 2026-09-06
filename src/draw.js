@@ -28,6 +28,13 @@ import {
   PREVIEW_OBJECT_ID, PREVIEW_PERSONA_ID,
   POSE_HANDLES, LIMB_SEGMENTS, FIXED_COLOR, POSE_3D,
   PANEL_CAM_DEFAULT_DIST_3D, GROUND_CONTACT_EPS_3D,
+  SIGNAL_SELECTION, SIGNAL_SELECTION_LISERE, SIGNAL_SELECTION_3D, SIGNAL_PIECE_POIGNEE,
+  SIGNAL_BATIMENT, SIGNAL_BATIMENT_POIGNEE, SIGNAL_RECADRAGE, SIGNAL_MESURE,
+  SIGNAL_MESURE_CONTOUR, SIGNAL_CONSTRUIRE, SIGNAL_CONSTRUIRE_GUIDE,
+  SIGNAL_CONSTRUIRE_DETACHE, SIGNAL_AIMANTATION, SIGNAL_POSE_ACTIVE, SIGNAL_POSE_ROLE,
+  SIGNAL_POSE_SANS_ROLE, SIGNAL_APERCU_PERSO, SIGNAL_APERCU_ELEMENT,
+  SIGNAL_IMAGE_ABSENTE_FOND, SIGNAL_IMAGE_ATTENDUE_FOND, SIGNAL_IMAGE_ABSENTE_TEXTE,
+  SIGNAL_IMAGE_ATTENDUE_TEXTE,
 } from './constants.js';
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS , nomNumeroteLibre3D} from './utils.js';
@@ -269,7 +276,7 @@ export function drawMeasureToolPreview(c, panel, page) {
   c.save();
 
   // Start dot (filled, yellow)
-  c.fillStyle = '#FFD700'; c.strokeStyle = '#222'; c.lineWidth = 1.5;
+  c.fillStyle = SIGNAL_MESURE; c.strokeStyle = SIGNAL_MESURE_CONTOUR; c.lineWidth = 1.5;
   c.beginPath(); c.arc(startS.x, startS.y, 5, 0, Math.PI * 2); c.fill(); c.stroke();
 
   const endW = S.measureTool.end || S.measureTool.live;
@@ -277,14 +284,14 @@ export function drawMeasureToolPreview(c, panel, page) {
     const endS = worldToPageXY(endW.x, endW.z, panel, page);
     if (endS) {
       // Dashed line
-      c.strokeStyle = '#FFD700'; c.lineWidth = 2; c.setLineDash([6, 4]);
+      c.strokeStyle = SIGNAL_MESURE; c.lineWidth = 2; c.setLineDash([6, 4]);
       c.beginPath(); c.moveTo(startS.x, startS.y); c.lineTo(endS.x, endS.y); c.stroke();
       c.setLineDash([]);
 
       // End dot (filled if the measurement is locked, hollow otherwise)
       const locked = !!S.measureTool.end;
-      c.fillStyle = locked ? '#FFD700' : '#fff';
-      c.strokeStyle = '#222'; c.lineWidth = 1.5;
+      c.fillStyle = locked ? SIGNAL_MESURE : '#fff';
+      c.strokeStyle = SIGNAL_MESURE_CONTOUR; c.lineWidth = 1.5;
       c.beginPath(); c.arc(endS.x, endS.y, 5, 0, Math.PI * 2); c.fill(); c.stroke();
 
       // Distance label at the midpoint of the line
@@ -300,7 +307,7 @@ export function drawMeasureToolPreview(c, panel, page) {
       c.fillStyle = 'rgba(0,0,0,0.72)';
       c.fillRect(mx - tw / 2 - 5, my - 9, tw + 10, 18);
       // Yellow text
-      c.fillStyle = '#FFD700';
+      c.fillStyle = SIGNAL_MESURE;
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(label, mx, my);
     }
@@ -634,7 +641,7 @@ export function drawBuildToolOverlay(c, page){
   // Alignment guides (semi-transparent dashed blue lines)
   const gX = S.buildTool.activeGuideX || [], gZ = S.buildTool.activeGuideZ || [];
   if (gX.length > 0 || gZ.length > 0) {
-    c.strokeStyle = 'rgba(62,95,168,0.5)'; c.lineWidth = 1; c.setLineDash([5, 4]);
+    c.strokeStyle = SIGNAL_CONSTRUIRE_GUIDE; c.lineWidth = 1; c.setLineDash([5, 4]);
     gX.forEach(gx => {
       const sA = toScreen(gx, -60) || toScreen(gx, -20);
       const sB = toScreen(gx,  60) || toScreen(gx,  20);
@@ -650,7 +657,7 @@ export function drawBuildToolOverlay(c, page){
   // Drawn segments (solid blue line) : from wallSegs, not from pts.
   // Correct even after merge/split and in detached mode (no phantom line).
   if (S.buildTool.wallSegs.length > 0) {
-    c.strokeStyle = '#3E5FA8'; c.lineWidth = 2; c.setLineDash([]);
+    c.strokeStyle = SIGNAL_CONSTRUIRE; c.lineWidth = 2; c.setLineDash([]);
     S.buildTool.wallSegs.forEach(seg => {
       const s1 = toScreen(seg.x1, seg.z1), s2 = toScreen(seg.x2, seg.z2);
       if (s1 && s2) { c.beginPath(); c.moveTo(s1.x, s1.y); c.lineTo(s2.x, s2.y); c.stroke(); }
@@ -662,7 +669,7 @@ export function drawBuildToolOverlay(c, page){
     const sPrev = toScreen(S.buildTool.previewPos.x, S.buildTool.previewPos.z);
     if (sLast && sPrev) {
       c.beginPath();
-      c.strokeStyle = '#3E5FA8'; c.lineWidth = 1; c.setLineDash([4, 4]);
+      c.strokeStyle = SIGNAL_CONSTRUIRE; c.lineWidth = 1; c.setLineDash([4, 4]);
       c.moveTo(sLast.x, sLast.y); c.lineTo(sPrev.x, sPrev.y);
       c.stroke(); c.setLineDash([]);
     }
@@ -670,7 +677,7 @@ export function drawBuildToolOverlay(c, page){
     if (S.buildTool.snapped && pts.length >= 2) {
       const sFirst = toScreen(pts[0].x, pts[0].z);
       if (sPrev && sFirst) {
-        c.beginPath(); c.strokeStyle = '#3E5FA8'; c.lineWidth = 1; c.setLineDash([4, 4]);
+        c.beginPath(); c.strokeStyle = SIGNAL_CONSTRUIRE; c.lineWidth = 1; c.setLineDash([4, 4]);
         c.moveTo(sPrev.x, sPrev.y); c.lineTo(sFirst.x, sFirst.y);
         c.stroke(); c.setLineDash([]);
       }
@@ -688,7 +695,7 @@ export function drawBuildToolOverlay(c, page){
       const s = toScreen(wx, wz);
       if (!s) return;
       c.beginPath(); c.arc(s.x, s.y, 4, 0, Math.PI * 2);
-      c.fillStyle = '#3E5FA8'; c.fill();
+      c.fillStyle = SIGNAL_CONSTRUIRE; c.fill();
     };
     if (S.buildTool.wallSegs.length === 0) {
       // No wall yet: just draw the first placed point
@@ -704,7 +711,7 @@ export function drawBuildToolOverlay(c, page){
     const sp = toScreen(pts[S.buildTool.snapPointIdx].x, pts[S.buildTool.snapPointIdx].z);
     if (sp) {
       c.beginPath(); c.arc(sp.x, sp.y, 9, 0, Math.PI * 2);
-      c.strokeStyle = '#3E5FA8'; c.lineWidth = 2; c.setLineDash([]); c.stroke();
+      c.strokeStyle = SIGNAL_CONSTRUIRE; c.lineWidth = 2; c.setLineDash([]); c.stroke();
     }
   }
   // Detached mode: green ring + cross on the hovered target point
@@ -712,8 +719,8 @@ export function drawBuildToolOverlay(c, page){
     const sp = toScreen(S.buildTool.previewPos.x, S.buildTool.previewPos.z);
     if (sp) {
       c.beginPath(); c.arc(sp.x, sp.y, 7, 0, Math.PI * 2);
-      c.strokeStyle = '#2BA84A'; c.lineWidth = 1.5; c.setLineDash([]); c.stroke();
-      c.strokeStyle = '#2BA84A'; c.lineWidth = 1;
+      c.strokeStyle = SIGNAL_CONSTRUIRE_DETACHE; c.lineWidth = 1.5; c.setLineDash([]); c.stroke();
+      c.strokeStyle = SIGNAL_CONSTRUIRE_DETACHE; c.lineWidth = 1;
       c.beginPath(); c.moveTo(sp.x - 3, sp.y); c.lineTo(sp.x + 3, sp.y); c.stroke();
       c.beginPath(); c.moveTo(sp.x, sp.y - 3); c.lineTo(sp.x, sp.y + 3); c.stroke();
     }
@@ -723,7 +730,7 @@ export function drawBuildToolOverlay(c, page){
     const sp = toScreen(S.buildTool.previewPos.x, S.buildTool.previewPos.z);
     if (sp) {
       c.beginPath(); c.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
-      c.fillStyle = '#3E5FA8'; c.fill();
+      c.fillStyle = SIGNAL_CONSTRUIRE; c.fill();
     }
   }
   c.restore();
@@ -926,7 +933,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     } else if (isSelected) {
       // 3D Scene + selected: dashed outline that follows the camera rotation.
       c.setLineDash([5, 3]);
-      c.strokeStyle = 'rgba(255,120,0,0.85)';
+      c.strokeStyle = SIGNAL_SELECTION_3D;
       c.lineWidth = 1.5;
       if (o.tracéType === 'terrain') {
         // Projected world quadrilateral (truly follows the rotation, not just the bbox).
@@ -942,7 +949,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
         }
         // Resize handles (orange squares at the 8 bbox positions).
         c.setLineDash([]);
-        c.fillStyle = 'rgba(255,120,0,0.85)';
+        c.fillStyle = SIGNAL_SELECTION_3D;
         Object.values(getHandles(o)).forEach(([hx, hy]) => {
           c.fillRect(hx - 4, hy - 4, 8, 8);
         });
@@ -953,7 +960,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
         c.stroke();
         // Control points.
         c.setLineDash([]);
-        c.fillStyle = 'rgba(255,120,0,0.85)';
+        c.fillStyle = SIGNAL_SELECTION_3D;
         o.pts.forEach(p => { c.beginPath(); c.arc(p.x, p.y, 3, 0, Math.PI*2); c.fill(); });
       }
       c.setLineDash([]);
@@ -1016,7 +1023,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     if (cadre) {
       const pts = cadre.pts || getPanelPoints(cadre);
       c.save();
-      c.setLineDash([6, 4]); c.lineWidth = 2; c.strokeStyle = '#D2691E'; c.lineJoin = 'round';
+      c.setLineDash([6, 4]); c.lineWidth = 2; c.strokeStyle = SIGNAL_RECADRAGE; c.lineJoin = 'round';
       c.beginPath();
       c.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
@@ -1032,7 +1039,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     const members = page.objects.filter(o => o.pieceId === S.selectedRoomId || o.altPieceId === S.selectedRoomId);
     if (members.length) {
       c.save();
-      c.strokeStyle = '#B5482A'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
+      c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5; c.setLineDash([4, 3]);
       members.forEach(m => {
         if (m.objType === 'dalle') return;
         const mOwner = findOwningPanel(m, page);
@@ -1047,7 +1054,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
       {
         const screenCornersRoom = getRoomScreenBBoxFrom2DProjections(members, page);
         if (screenCornersRoom) {
-          c.fillStyle = 'rgba(180, 72, 42, 0.9)';
+          c.fillStyle = SIGNAL_PIECE_POIGNEE;
           screenCornersRoom.forEach(corner => { c.fillRect(corner.sx - 4, corner.sy - 4, 8, 8); });
         }
       }
@@ -1062,7 +1069,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
       (buildingRoomIds.includes(o.pieceId) || buildingRoomIds.includes(o.altPieceId)) && o.objType !== 'dalle');
     if (buildingWalls.length) {
       c.save();
-      c.strokeStyle = '#C8960C'; c.lineWidth = 2; c.setLineDash([4, 3]);
+      c.strokeStyle = SIGNAL_BATIMENT; c.lineWidth = 2; c.setLineDash([4, 3]);
       buildingWalls.forEach(m => {
         const mOwner = findOwningPanel(m, page);
         if (!mOwner || typeof THREE === 'undefined') return;
@@ -1076,7 +1083,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
       if (selPanelForBuilding) {
         const junctions = getBuildingJunctionCorners(buildingWalls, selPanelForBuilding, page);
         if (junctions) {
-          c.fillStyle = 'rgba(200, 150, 12, 0.95)';
+          c.fillStyle = SIGNAL_BATIMENT_POIGNEE;
           junctions.forEach(j => { c.fillRect(j.sx - 4, j.sy - 4, 8, 8); });
         }
       }
@@ -1085,7 +1092,7 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
   }
   if (S.dragMode === 'create' && S.tempBox) {
     c.save();
-    c.strokeStyle = '#B5482A'; c.lineWidth = 2; c.setLineDash([5, 4]);
+    c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 2; c.setLineDash([5, 4]);
     c.strokeRect(
       S.tempBox.w < 0 ? S.dragStart.x + S.tempBox.w : S.dragStart.x,
       S.tempBox.h < 0 ? S.dragStart.y + S.tempBox.h : S.dragStart.y,
@@ -1095,11 +1102,11 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
   }
   if (S.snapGuide) {
     c.save();
-    c.strokeStyle = '#2E7D9A'; c.lineWidth = 1.5; c.setLineDash([2, 4]);
+    c.strokeStyle = SIGNAL_AIMANTATION; c.lineWidth = 1.5; c.setLineDash([2, 4]);
     if (S.snapGuide.snappedX) { c.beginPath(); c.moveTo(S.snapGuide.x, 0); c.lineTo(S.snapGuide.x, page.h); c.stroke(); }
     if (S.snapGuide.snappedY) { c.beginPath(); c.moveTo(0, S.snapGuide.y); c.lineTo(page.w, S.snapGuide.y); c.stroke(); }
     c.setLineDash([]);
-    c.fillStyle = '#2E7D9A';
+    c.fillStyle = SIGNAL_AIMANTATION;
     c.beginPath(); c.arc(S.snapGuide.x, S.snapGuide.y, 4, 0, Math.PI * 2); c.fill();
     c.restore();
   }
@@ -1269,9 +1276,9 @@ function dessinerAbsenceDImage3D(c, o){
   const nom = imageDeLaCase3D(o);
   const manquante = imageState(nom) === 'introuvable';
   c.save();
-  c.fillStyle = manquante ? '#EFE3E1' : '#F1EFEA';
+  c.fillStyle = manquante ? SIGNAL_IMAGE_ABSENTE_FOND : SIGNAL_IMAGE_ATTENDUE_FOND;
   c.fillRect(o.x, o.y, o.w, o.h);
-  c.fillStyle = manquante ? '#8A3B2E' : '#8A867E';
+  c.fillStyle = manquante ? SIGNAL_IMAGE_ABSENTE_TEXTE : SIGNAL_IMAGE_ATTENDUE_TEXTE;
   c.font = '12px system-ui, sans-serif';
   c.textAlign = 'center';
   c.textBaseline = 'middle';
@@ -1616,7 +1623,7 @@ export function drawRoomPreview(targetCanvas, pieceId, page, showCeiling, liveRo
   elems.forEach(el => {
     ctx.beginPath();
     ctx.arc(sxr(el.wxFloor, el.wzFloor), szr(el.wxFloor, el.wzFloor), dotR, 0, Math.PI * 2);
-    ctx.fillStyle = el.type === 'perso' ? '#f4a340' : '#6fbf73';
+    ctx.fillStyle = el.type === 'perso' ? SIGNAL_APERCU_PERSO : SIGNAL_APERCU_ELEMENT;
     ctx.fill();
   });
 }
@@ -1712,7 +1719,7 @@ export function drawBuildingPreview(targetCanvas, roomIds, page, showCeiling, li
   elems.forEach(el => {
     ctx.beginPath();
     ctx.arc(sxr(el.wxFloor, el.wzFloor), szr(el.wxFloor, el.wzFloor), dotR, 0, Math.PI * 2);
-    ctx.fillStyle = el.type === 'perso' ? '#f4a340' : '#6fbf73';
+    ctx.fillStyle = el.type === 'perso' ? SIGNAL_APERCU_PERSO : SIGNAL_APERCU_ELEMENT;
     ctx.fill();
   });
 }
@@ -1859,8 +1866,8 @@ export function projectJointToCanvas(group, camera, canvasW, canvasH){
 export function drawPersonaPickZone(hctx, pos, segment, radii){
   if (!hctx || !pos || !radii) return false;
   hctx.save();
-  hctx.fillStyle = '#E0A53C';
-  hctx.strokeStyle = '#E0A53C';
+  hctx.fillStyle = SIGNAL_POSE_ACTIVE;
+  hctx.strokeStyle = SIGNAL_POSE_ACTIVE;
   hctx.globalAlpha = 0.16;
   // La bande d'abord : le disque doit rester lisible par-dessus, c'est lui le point d'ancrage.
   if (segment) {
@@ -1889,7 +1896,7 @@ export function drawPersonaPickZone(hctx, pos, segment, radii){
 export function drawPersonaDragHint(hctx, pos, hint){
   if (!hctx || !pos || !hint) return false;
   hctx.save();
-  hctx.strokeStyle = '#E0A53C';
+  hctx.strokeStyle = SIGNAL_POSE_ACTIVE;
   hctx.lineWidth = 2.5;
   hctx.globalAlpha = 0.85;
   if (hint.mode === 'circulaire') {
@@ -2070,7 +2077,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
   // prise juste au-dessus — un fond peint après recouvrirait ce qu'il doit accompagner.
   if (entry && entry.chaineSurvolee) {
     hctx.save();
-    hctx.strokeStyle = '#3AA0FF';
+    hctx.strokeStyle = SIGNAL_POSE_ROLE;
     hctx.globalAlpha = 0.35;
     hctx.lineWidth = 7;
     hctx.lineCap = 'round';
@@ -2094,7 +2101,7 @@ export function drawPersonaPoseHandlesOverlay(canvas, positionsOut, activeId, dr
     //
     // Le Personnage intégré et un humanoïde importé n'ont pas de rôles : leurs poignées ne portent
     // pas ce drapeau et gardent exactement la couleur d'avant.
-    hctx.fillStyle = active ? '#E0A53C' : (def && def.role === false ? '#9FC9EE' : '#3AA0FF');
+    hctx.fillStyle = active ? SIGNAL_POSE_ACTIVE : (def && def.role === false ? SIGNAL_POSE_SANS_ROLE : SIGNAL_POSE_ROLE);
     hctx.globalAlpha = 0.92;
     hctx.fill();
     hctx.lineWidth = 1.5;
@@ -2300,7 +2307,7 @@ export function drawSelection(c, o, page){
     // selection outline (neither the outline nor the handles that follow just below), per
     // user request, consistent with the absence of a drawn border for this same canvas.
     if (!isLockedScenePanel(o)) {
-      c.strokeStyle = '#B5482A'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
+      c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5; c.setLineDash([4, 3]);
       c.beginPath();
       c.moveTo(o.pts[0].x, o.pts[0].y);
       for (let i = 1; i < o.pts.length; i++) c.lineTo(o.pts[i].x, o.pts[i].y);
@@ -2308,9 +2315,9 @@ export function drawSelection(c, o, page){
       c.setLineDash([]);
     }
     if (!isLockedScenePanel(o)) {
-      c.fillStyle = '#B5482A'; c.strokeStyle = '#fff'; c.lineWidth = 1;
+      c.fillStyle = SIGNAL_SELECTION; c.strokeStyle = SIGNAL_SELECTION_LISERE; c.lineWidth = 1;
       o.pts.forEach(p => { c.fillRect(p.x - 5, p.y - 5, 10, 10); c.strokeRect(p.x - 5, p.y - 5, 10, 10); });
-      c.fillStyle = '#fff'; c.strokeStyle = '#B5482A'; c.lineWidth = 1.5;
+      c.fillStyle = SIGNAL_SELECTION_LISERE; c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5;
       for (let i = 0; i < o.pts.length; i++) {
         const p1 = o.pts[i], p2 = o.pts[(i + 1) % o.pts.length];
         const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
@@ -2338,12 +2345,12 @@ export function drawSelection(c, o, page){
     // rectangle's "+6" margin), so the border visibly extends beyond the 3D Model it surrounds.
     const grow = (p) => ({ x: cx + (p.x - cx) * 1.08, y: cy + (p.y - cy) * 1.08 });
     const gtl = grow(quad.tl), gtr = grow(quad.tr), gbr = grow(quad.br), gbl = grow(quad.bl);
-    c.strokeStyle = '#B5482A'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
+    c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5; c.setLineDash([4, 3]);
     c.beginPath();
     c.moveTo(gtl.x, gtl.y); c.lineTo(gtr.x, gtr.y); c.lineTo(gbr.x, gbr.y); c.lineTo(gbl.x, gbl.y);
     c.closePath(); c.stroke();
     c.setLineDash([]);
-    c.fillStyle = '#B5482A'; c.strokeStyle = '#fff'; c.lineWidth = 1;
+    c.fillStyle = SIGNAL_SELECTION; c.strokeStyle = SIGNAL_SELECTION_LISERE; c.lineWidth = 1;
     const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
     const handlePts = [
       quad.tl, quad.tr, quad.bl, quad.br,
@@ -2376,10 +2383,10 @@ export function drawSelection(c, o, page){
         if (ext) { half.x = ext.halfW; half.y = ext.halfH; }
       }
     }
-    c.strokeStyle = '#B5482A'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
+    c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5; c.setLineDash([4, 3]);
     c.strokeRect(cx - half.x - 3, cy - half.y - 3, half.x * 2 + 6, half.y * 2 + 6);
     c.setLineDash([]);
-    c.fillStyle = '#B5482A'; c.strokeStyle = '#fff'; c.lineWidth = 1;
+    c.fillStyle = SIGNAL_SELECTION; c.strokeStyle = SIGNAL_SELECTION_LISERE; c.lineWidth = 1;
     const localHandles = {
       tl: [-half.x, -half.y], tr: [half.x, -half.y], bl: [-half.x, half.y], br: [half.x, half.y],
       t: [0, -half.y], b: [0, half.y], l: [-half.x, 0], r: [half.x, 0],
@@ -2395,7 +2402,7 @@ export function drawSelection(c, o, page){
     // to clearly show that it can be grabbed and moved independently, all around the bubble.
     // (a Bubble is never magnetized to a Wall, so always in the "else" branch above.)
     const tip = getBubbleTailTip(o);
-    c.fillStyle = '#fff'; c.strokeStyle = '#B5482A'; c.lineWidth = 1.5;
+    c.fillStyle = SIGNAL_SELECTION_LISERE; c.strokeStyle = SIGNAL_SELECTION; c.lineWidth = 1.5;
     c.beginPath(); c.arc(tip.x, tip.y, 6, 0, Math.PI * 2); c.fill(); c.stroke();
   }
   c.restore();
