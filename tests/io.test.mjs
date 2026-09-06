@@ -818,3 +818,55 @@ describe('confirmRenameEntity : chaque sorte va à son destinataire', () => {
     assert.deepEqual(recu, []);
   });
 });
+
+describe('Fermeture décidée : la cascade de préchargement s\'arrête (#407c)', () => {
+  const IO_SRC = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
+  const corpsCascade = () => {
+    const i = IO_SRC.indexOf('export function prechargerEnCascade3D');
+    assert.ok(i > 0, 'prechargerEnCascade3D introuvable');
+    const fin = IO_SRC.indexOf('\n}', i);
+    assert.ok(fin > i, 'le corps de la cascade n\'a pas pu être délimité');
+    return IO_SRC.slice(i, fin);
+  };
+
+  test('RÉGRESSION : la garde est DANS la boucle, pas avant', () => {
+    // Placée avant la boucle, elle ne servirait qu'au cas où la fermeture précède le tout premier
+    // décodage, c'est-à-dire presque jamais. Ce qu'on veut couper, c'est une cascade DÉJÀ lancée :
+    // trois vagues qui décodent tout le Projet pour un écran sur le point de disparaître.
+    const corps = corpsCascade();
+    const posBoucle = corps.indexOf('for (const vague of vagues)');
+    const posGarde = corps.indexOf('if (S.quittingConfirmed) return;');
+    assert.ok(posBoucle > 0, 'la boucle sur les vagues a disparu');
+    assert.ok(posGarde > 0, 'la cascade ne consulte pas l\'état de fermeture');
+    assert.ok(posGarde > posBoucle, 'la garde est hors de la boucle : elle ne coupe rien');
+  });
+
+  test('… et AVANT l\'attente, sinon elle arrive trop tard', () => {
+    // Après l'`await`, la garde ne s'appliquerait qu'une fois la vague entièrement décodée : elle
+    // économiserait la vague suivante mais pas celle qui coûte, ce qui est le contraire du but.
+    const corps = corpsCascade();
+    assert.ok(corps.indexOf('if (S.quittingConfirmed) return;')
+      < corps.indexOf('await Promise.all('),
+    'la garde est placée après l\'attente de la vague');
+  });
+
+  test('on ne coupe pas AU MILIEU d\'une vague', () => {
+    // Décision assumée : les décodages déjà lancés vont à leur terme. Leurs promesses sont
+    // attendues ailleurs, et les abandonner en vol laisserait le cache des modèles dans un état
+    // que rien ne décrit. On s'arrête entre deux vagues, ce qui suffit.
+    const corps = corpsCascade();
+    assert.equal((corps.match(/if \(S\.quittingConfirmed\) return;/g) || []).length, 1,
+      'une seule garde, et elle est en tête de tour de boucle');
+  });
+
+  /**
+   * JOURNAL DE MUTATION : deux fautes sur la garde de cascade, deux rouges.
+   *
+   *   C4 la garde retirée                                                         ROUGE (2 tests)
+   *   C5 la garde déplacée APRÈS l'attente de la vague                            ROUGE
+   *
+   * C5 est la faute plausible, celle qu'on commet en rangeant : la garde a l'air mieux placée en
+   * fin de tour, juste avant de repartir. Elle n'économiserait alors que la vague suivante, jamais
+   * celle qui coûte, et le test resterait vert sur la présence de l'identifiant.
+   */
+});

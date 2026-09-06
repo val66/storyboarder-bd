@@ -665,6 +665,11 @@ export function prechargerEnCascade3D(){
     S.currentTomeIndex, S.currentPageIndex);
   (async () => {
     for (const vague of vagues) {
+      // #407c : la décision de fermer peut tomber entre deux vagues. Décoder la suite du Projet
+      // pour un écran qui va disparaître ne sert personne, et laisse tourner du travail lourd
+      // pendant que le renderer se démonte. On s'arrête entre deux vagues et non au milieu d'une :
+      // les décodages déjà lancés doivent se terminer, leurs promesses sont attendues ailleurs.
+      if (S.quittingConfirmed) return;
       if (!vague.length) continue;
       await Promise.all([preloadModelsFor(vague), preloadImagesFor(vague)]);
     }

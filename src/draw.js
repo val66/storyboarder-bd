@@ -2484,7 +2484,31 @@ const _planificateurDessin = makeFrameScheduler(
   (id) => globalThis.cancelAnimationFrame(id),
   () => drawCurrentPage());
 
+// ⚠️ PLUS UNE SEULE FRAME UNE FOIS LA FERMETURE DÉCIDÉE (#407c).
+//
+// Ce que ça arrête : la chaîne de #405d. Le chargement ne fait plus un gros rendu bloquant mais une
+// suite de rendus, un rig de Case par frame, qui se redemande tant qu'il reste des Cases à
+// reconstruire (cf. la fin de drawCurrentPage). Pendant tout le chargement il y a donc presque
+// toujours un rendu WebGL en vol, et quitter à ce moment-là fait mourir le renderer alors que le
+// processus GPU attend encore un lot de commandes. Chromium le signale depuis sa couche C++,
+// « GPU state invalid after WaitForGetOffsetInRange », qu'aucun code JavaScript ne peut attraper.
+//
+// ⚠️ CE N'EST PAS UNE CORRECTION DE CE MESSAGE, et il ne faut pas le lire ainsi. L'ordre du
+// démontage appartient à Chromium : si le canal GPU se ferme pendant la toute dernière frame, le
+// message revient, et cette garde n'y peut rien. Ce qu'elle fait se défend tout seul, sans lui :
+// ne pas travailler pour un écran qui va disparaître.
+//
+// Ici plutôt que dans io.js, où la fermeture se décide : `S.quittingConfirmed` est posé à QUATRE
+// endroits, et io.js n'importe pas draw.js (cf. la règle n°2 d'architecture.md, les imports
+// croisés passent par injection). Une garde à l'arrivée couvre les quatre, et couvrira le
+// cinquième. `drawCurrentPage()` appelé directement n'est PAS touché : c'est la boucle qu'on
+// coupe, pas le dessin.
+//
+// Une frame déjà programmée à l'instant où la décision tombe s'exécutera encore une fois. On ne
+// l'annule pas : la chaîne s'arrêtera à son tour ici, et une frame de plus ne coûte rien face au
+// risque de laisser un canevas à moitié dessiné derrière une modale encore visible.
 export function scheduleDrawCurrentPage(){
+  if (S.quittingConfirmed) return;
   _planificateurDessin.demander();
 }
 

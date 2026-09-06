@@ -30,6 +30,8 @@ import {
   personaLimbSegmentScreen3D,
   cadreDeRecouvrement3D,
   ancrageApresGlissement3D,
+  scheduleDrawCurrentPage,
+  flushDrawCurrentPage,
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D } from '../src/scene3d.js';
@@ -1764,4 +1766,88 @@ describe('#405d : une frame ne reconstruit qu\'une Case', () => {
     assert.match(SCENE, /const RENDUS_3D_PAR_FRAME = 1;/);
     assert.match(SCENE, /_budgetRendus3D = RENDUS_3D_PAR_FRAME;/);
   });
+});
+
+describe('Fermeture décidée : la chaîne de dessin s\'arrête (#407c)', () => {
+  const DRAW_SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+
+  /**
+   * POURQUOI CE BLOC EXISTE. #405d a remplacé le gros rendu bloquant du chargement par une CHAÎNE
+   * de rendus, un rig de Case par frame, qui se redemande tant qu'il en reste. Conséquence non
+   * prévue : pendant tout le chargement il y a presque toujours un rendu WebGL en vol. Quitter à
+   * ce moment-là fait mourir le renderer alors que le processus GPU attend encore ses commandes,
+   * et Chromium l'écrit dans la console depuis sa couche C++.
+   *
+   * ⚠️ CE N'EST PAS UN TEST DE CE MESSAGE, et il ne faut pas le lire ainsi. Le message vient d'une
+   * couche qu'aucun test ne peut atteindre, et l'ordre du démontage appartient à Chromium. Ce qui
+   * est tenu ici est ce qui se défend seul : une fois la fermeture décidée, on ne demande plus une
+   * seule frame.
+   */
+  test('RÉGRESSION : plus aucune frame demandée, et la garde ne fait pas que se taire', () => {
+    // Le garde-fou D'ABORD. Le planificateur coalesce : si une frame était déjà en attente, la
+    // moitié « aucune demande » passerait pour une raison qui n'a rien à voir avec la garde. C'est
+    // exactement le défaut qui est revenu quatre fois dans ce dépôt. `vider()` rend false quand
+    // rien n'est en attente, et n'exécute alors rien.
+    assert.equal(flushDrawCurrentPage(), false,
+      'une frame était déjà en attente : la mesure ne dirait rien');
+
+    const vraiRAF = globalThis.requestAnimationFrame;
+    const etatInitial = S.quittingConfirmed;
+    let demandes = 0;
+    globalThis.requestAnimationFrame = () => { demandes++; return 1234; };
+    try {
+      S.quittingConfirmed = true;
+      scheduleDrawCurrentPage();
+      scheduleDrawCurrentPage();
+      scheduleDrawCurrentPage();
+      assert.equal(demandes, 0, 'la fermeture est décidée et on programme encore des dessins');
+
+      // La face qui manquait aux quatre tests fautifs : prouver que l'instrument mesure. Sans
+      // elle, une garde posée sur `true` en dur passerait aussi.
+      S.quittingConfirmed = false;
+      scheduleDrawCurrentPage();
+      assert.equal(demandes, 1, 'hors fermeture, une demande doit bien programmer une frame');
+    } finally {
+      globalThis.requestAnimationFrame = vraiRAF;
+      S.quittingConfirmed = etatInitial;
+    }
+    // Le planificateur garde ici un identifiant factice. Sans conséquence : le rappel a été
+    // capturé par l'espion et ne s'exécutera jamais, aucun minuteur n'a été armé.
+  });
+
+  test('la garde est à l\'ARRIVÉE, pas chez les appelants', () => {
+    // `S.quittingConfirmed` est posé à quatre endroits d'io.js, et io.js n'importe pas draw.js
+    // (règle n°2 d'architecture.md). Une garde par site aurait été quatre occasions d'en oublier
+    // un, et le cinquième serait passé au travers.
+    const i = DRAW_SRC.indexOf('export function scheduleDrawCurrentPage');
+    assert.ok(i > 0, 'scheduleDrawCurrentPage introuvable');
+    const corps = DRAW_SRC.slice(i, DRAW_SRC.indexOf('\n}', i));
+    assert.match(corps, /if \(S\.quittingConfirmed\) return;/);
+    assert.ok(corps.indexOf('S.quittingConfirmed') < corps.indexOf('demander()'),
+      'la garde est APRÈS la demande : elle ne protège rien');
+  });
+
+  test('`drawCurrentPage()` appelé directement n\'est PAS touché', () => {
+    // On coupe la BOUCLE, pas le dessin. L'export d'une Planche, entre autres, passe par des
+    // appels directs et doit continuer à rendre tout ce qu'on lui demande.
+    const i = DRAW_SRC.indexOf('export function drawCurrentPage');
+    assert.ok(i > 0, 'drawCurrentPage introuvable');
+    const corps = DRAW_SRC.slice(i, DRAW_SRC.indexOf('\nexport function scheduleDrawCurrentPage', i));
+    assert.ok(!/if \(S\.quittingConfirmed\) return;/.test(corps),
+      'une garde de fermeture s\'est glissée dans le dessin lui-même');
+  });
+
+  /**
+   * JOURNAL DE MUTATION : trois fautes sur la garde de dessin, trois rouges.
+   *
+   *   C1 la garde retirée                                                         ROUGE (2 tests)
+   *   C2 la garde déplacée APRÈS `demander()`                                     ROUGE (2 tests)
+   *   C3 la garde rendue toujours vraie (`if (true) return;`)                      ROUGE (2 tests)
+   *
+   * C3 est celle qui justifie la seconde moitié du premier test. Une garde toujours vraie satisfait
+   * « aucune frame n'est demandée » à la perfection, et gèle l'application au passage. C'est la
+   * forme exacte du défaut qui est revenu quatre fois dans ce dépôt : mesurer une absence sans
+   * jamais vérifier que l'instrument sait aussi voir une présence.
+   */
 });
