@@ -191,19 +191,19 @@ export const HELP_MANUAL_FR = [
     "Dépliez un tome dans le menu de gauche pour changer son format : Franco-Belge, Comics US, webtoon vertical ou personnalisé.",
   ]},
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
-    'Clic droit sur un espace vide de la planche, puis « Créer une Bulle de dialogue ».',
+    'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ».',
     'Forme Ovale ou Rectangle, au choix.',
     'Pointe déplaçable, ou masquable si besoin.',
-    'Padding intérieur et police d\'écriture réglables dans « Apparence de la Bulle » et « Texte » à droite.',
+    'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
   ]},
   { id: 'cases', title: 'Cases', paragraphs: [
-    'Clic droit sur un espace vide de la planche, puis « Créer une Case ».',
+    'Clic droit sur un espace vide de la planche, puis « Créer une case ».',
     'Sélectionnez une case pour voir/modifier sa description et la liste de ses Éléments à droite. Ceux qui ne montrent rien d\'eux-mêmes dans la Case sont regroupés en bas de la liste, sous « Hors champ » : ils restent sélectionnables.',
     "Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).",
     "Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.",
     "Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.",
   ]},
-  { id: 'images', title: 'Images de Case', paragraphs: [
+  { id: 'images', title: 'Images de case', paragraphs: [
     "Clic droit sur une Case → « Insérer une image » pour y placer un dessin ou une photo à la place de la scène 3D. PNG, JPG et WebP sont acceptés ; l'image est recadrée et centrée pour remplir la Case.",
     "Une Case ne peut pas avoir les deux : celle qui contient des Éléments ne se voit pas proposer d'image, videz-la d'abord ; celle qui affiche une image n'offre ni Éléments, ni Scène, ni modèle.",
     "La section Image, à droite, nomme le fichier, le change ou le retire. Retirer DÉTACHE l'image ; le fichier lui-même n'est pas supprimé.",
@@ -220,7 +220,7 @@ export const HELP_MANUAL_FR = [
   { id: 'scenes', title: 'Scènes', paragraphs: [
     'Les Scènes permettent de composer un décor 3D réutilisable (Murs, Mobilier, Personnages, Routes, Bâtiments…) et de le charger dans n\'importe quelle Case d\'une Planche.',
     'Créez ou ouvrez une Scène via le menu « Scènes » en haut. L\'éditeur de Scène affiche un canevas plein cadre ; ses Éléments se placent, s\'orientent et se redimensionnent comme dans une Case normale.',
-    'Pour charger une Scène dans une Case : clic droit sur la Case → « Charger une Scène » → choisissez la Scène. Le contenu est copié dans la Case à sa taille réelle (Personnages à 1,75 m, etc.) ; la caméra est automatiquement reculée pour englober l\'ensemble.',
+    'Pour charger une Scène dans une Case : clic droit sur la Case → « Charger une scène » → choisissez la Scène. Le contenu est copié dans la Case à sa taille réelle (Personnages à 1,75 m, etc.) ; la caméra est automatiquement reculée pour englober l\'ensemble.',
     'Après chargement, molette de la souris en mode Caméra pour zoomer sur un détail. Les Personnages et Objets ajoutés ensuite s\'intègrent à la même échelle que le reste de la Scène.',
     'Modifier la Scène source après chargement n\'affecte pas les Cases qui l\'ont déjà intégrée (la copie est indépendante).',
   ]},
@@ -254,7 +254,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'modeles', title: 'Modèles 3D importés', paragraphs: [
     'Importez des modèles faits dans Blender, Maya ou ailleurs, au format glTF (.glb ou .gltf). Ce format garantit l\'unité, le mètre : un modèle arrive à sa taille réelle.',
-    'Clic droit sur une Case ou dans une Scène → « Importer un Modèle » pose le modèle là où vous avez cliqué. Pour faire d\'un fichier un décor réutilisable : créez une Scène, puis importez-y le modèle.',
+    'Clic droit sur une Case ou dans une Scène → « Importer un modèle » pose le modèle là où vous avez cliqué. Pour faire d\'un fichier un décor réutilisable : créez une Scène, puis importez-y le modèle.',
     'Les fichiers sont recopiés dans un dossier « Modeles », à côté de vos projets. Déplacé ou supprimé hors de l\'application, un fichier n\'est plus lisible : ses Éléments deviennent des boîtes « fichier introuvable ».',
     'La section « Modèles » liste les fichiers du disque, groupés selon leur usage dans le Projet ouvert : par des Scènes, dans des Cases, ou non utilisés.',
     'Clic gauche sur un modèle pour aller là où il est utilisé : directement s\'il n\'y a qu\'un endroit, sinon une fenêtre les liste par Scène ou par Case.',

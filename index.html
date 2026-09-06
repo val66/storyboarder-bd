@@ -294,7 +294,7 @@
       <div id="sideBubbleStackLevel" class="dim-chip"></div>
     </div>
     <div id="sideBubbleAppearanceSection" class="side-section" style="display:none;">
-      <h2 id="sideBubbleAppearanceTitle">Apparence de la Bulle</h2>
+      <h2 id="sideBubbleAppearanceTitle">Apparence de la bulle</h2>
       <div id="sideBubbleAppearanceWrap" class="side-bulle-appearance">
         <div id="sideBubbleShapeWrap" class="tome-format">
           <label for="sideBubbleShapeSelect">Forme de la bulle</label>
@@ -447,7 +447,7 @@
           <span class="help-group-title">Cases</span>
         </button>
         <button type="button" class="help-group" data-help="images">
-          <span class="help-group-title">Images de Case</span>
+          <span class="help-group-title">Images de case</span>
         </button>
         <button type="button" class="help-group" data-help="scenes">
           <span class="help-group-title">Scènes</span>
@@ -484,13 +484,13 @@
 
 <div class="context-menu hidden" id="panelContextMenu">
   <button id="ctxAddTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">➕</span> Ajouter</span> <span class="submenu-arrow">▶</span></button>
-  <button id="ctxLoadSceneTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🎬</span> Charger une Scène</span> <span class="submenu-arrow">▶</span></button>
+  <button id="ctxLoadSceneTrigger" class="context-menu-submenu-trigger"><span><span class="ctx-icon">🎬</span> Charger une scène</span> <span class="submenu-arrow">▶</span></button>
   <!-- Import d'un modèle 3D (.glb). UNE SEULE ENTRÉE, la même dans une Case et dans une Scène.
        Un sous-menu proposait auparavant « comme Modèle » / « comme Scène » ; l'import direct en
        Scène a été retiré sur demande utilisateur — il faisait choisir entre deux choses au moment
        d'ouvrir un fichier, alors que « Nouvelle scène » puis cette même entrée y mènent, et par un
        geste qu'on relit. -->
-  <button id="ctxImportModel"><span class="ctx-icon">📦</span> Importer un Modèle</button>
+  <button id="ctxImportModel"><span class="ctx-icon">📦</span> Importer un modèle</button>
   <!-- Insérer / Retirer : exclusives, jamais visibles ensemble (cf. openPanelContextMenu). Une Case
        porte une image OU de la 3D, jamais les deux — cf. docs/en/panel-images.md. -->
   <button id="ctxInsertImage"><span class="ctx-icon">🖼️</span> Insérer une image</button>
@@ -501,10 +501,10 @@
   <button id="ctxToggleCamera"><span class="ctx-icon">🎥</span> Caméra</button>
   <button id="ctxBringForward"><span class="ctx-icon">⬆</span> Avancer</button>
   <button id="ctxSendBackward"><span class="ctx-icon">⬇</span> Reculer</button>
-  <button id="ctxClearPanel"><span class="ctx-icon">🗑</span> Vider la Case</button>
+  <button id="ctxClearPanel"><span class="ctx-icon">🗑</span> Vider la case</button>
 </div>
 
-<!-- Sous-menu "Charger une Scène" : liste dynamique des Scènes existantes (peuplée à l'ouverture, cf.
+<!-- Sous-menu "Charger une scène" : liste dynamique des Scènes existantes (peuplée à l'ouverture, cf.
      openLoadSceneSubmenu), chacune chargeable dans la Case ciblée par le clic droit. -->
 <div class="context-menu hidden" id="loadSceneSubmenu"></div>
 
@@ -556,8 +556,8 @@
 </div>
 
 <div class="context-menu hidden" id="dblclickChoiceMenu">
-  <button id="ctxCreatePanel"><span class="ctx-icon">▭</span> Créer une Case</button>
-  <button id="ctxCreateBubble"><span class="ctx-icon">💬</span> Créer une Bulle de dialogue</button>
+  <button id="ctxCreatePanel"><span class="ctx-icon">▭</span> Créer une case</button>
+  <button id="ctxCreateBubble"><span class="ctx-icon">💬</span> Créer une bulle de dialogue</button>
 </div>
 
 <div class="context-menu hidden" id="vehicleSubmenu">
@@ -597,7 +597,7 @@
 
 <div class="context-menu hidden" id="buildingsSubmenu">
   <button id="ctxAddRoom"><span class="ctx-icon">🧱</span> Ajouter une pièce</button>
-  <button id="ctxBuildMode"><span class="ctx-icon">✏️</span> Construire un Bâtiment</button>
+  <button id="ctxBuildMode"><span class="ctx-icon">✏️</span> Construire un bâtiment</button>
 </div>
 
 <div class="context-menu hidden" id="animauxSubmenu">
@@ -649,7 +649,7 @@
 </div>
 
 <div class="context-menu hidden" id="zoneSubmenu">
-  <button id="ctxZoneTerrain"><span class="ctx-icon">🌿</span> Zone de Terrain</button>
+  <button id="ctxZoneTerrain"><span class="ctx-icon">🌿</span> Zone de terrain</button>
 </div>
 
 <div class="context-menu hidden" id="volumeContextMenu">
@@ -1515,11 +1515,11 @@
   </div>
 </div>
 
-<!-- Modale Zone de Terrain : ouverte par double-clic dans le panneau latéral.
+<!-- Modale Zone de terrain : ouverte par double-clic dans le panneau latéral.
      Permet de renommer, changer le type de sol et le label affiché. -->
 <div class="modal-overlay hidden" id="terrainModal">
   <div class="modal-box" style="max-width:380px;">
-    <h3>🌿 Zone de Terrain</h3>
+    <h3>🌿 Zone de terrain</h3>
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Caractéristiques</span>

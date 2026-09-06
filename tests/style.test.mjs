@@ -706,7 +706,9 @@ describe('#402a : le CSS ne garde pas de règles pour des éléments disparus', 
     ['.joint-sliders-details', '.modal-subsection', '.skeleton-map-open-btn',
       '.skeleton-map-group', '.skeleton-map-membre-groupe',
       '.tool-btn', '.side-btn', '.dropdown-item', '.perso-edit', '.perso-scene-badge',
-      '.modal-readonly-value', '.side-bulle-shape', '.side-bulle-padding'].forEach(cls => {
+      '.modal-readonly-value', '.side-bulle-shape', '.side-bulle-padding',
+      // #403m : la légende de la section Image est partie, sa règle avec elle.
+      '.side-image-hint'].forEach(cls => {
       assert.ok(!new RegExp(`^\\s*${cls.replace('.', '\\.')}[\\s,:{[>]`, 'm').test(cssNu),
         `${cls} est de retour dans style.css : une fiche s'est remise à poser, ou la règle est morte`);
     });

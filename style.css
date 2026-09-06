@@ -1424,7 +1424,6 @@ canvas{
   border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin-bottom:8px;
   overflow-wrap:anywhere;
 }
-.side-image-hint{ font-size:11.5px; color:var(--ink-soft); margin:0 0 10px; }
 
 /* `.modal-readonly-value` A ÉTÉ RETIRÉE (#402d) : elle habillait une valeur en lecture seule dans
    une fiche, le champ « Fichier », fondu dans « Modèle » depuis. Plus rien ne pose cette classe. */

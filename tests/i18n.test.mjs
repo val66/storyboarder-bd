@@ -849,3 +849,79 @@ describe('#397a : « Éditeur de Personnage » ne se dit plus nulle part', () =>
       'attendu : les deux crayons et le bouton du menu de gauche');
   });
 });
+
+// ── La casse des libellés ─────────────────────────────────────────────────────────────────────
+describe('#403n : un libellé porte UNE majuscule, la première', () => {
+  /**
+   * ⚠️ CE TEST DÉDUIT, IL N'ÉNUMÈRE PAS. La règle vient de l'utilisateur : « tous doivent avoir des
+   * majuscules au début mais pas de majuscule ailleurs dans leur label ». Une liste de libellés
+   * corrigés à la main aurait vieilli au premier bouton ajouté ; ici on relit index.html et la table
+   * i18n, et tout nouveau libellé passe sous la même règle sans qu'on ait à y penser.
+   *
+   * L'APPLICATION AVAIT UNE CONVENTION INVERSE, et c'est ce qui rendait le tri nécessaire : elle
+   * capitalisait ses noms de domaine partout, jusque dans les boutons — « Vider la Case »,
+   * « Importer un Modèle », « Charger une Scène ». Cette convention reste vraie dans la PROSE (le
+   * manuel, les messages, la documentation), où « une Case » désigne l'objet et non une boîte ;
+   * elle ne l'est plus dans les libellés, qui sont des ordres courts et se lisent comme des phrases.
+   *
+   * Les exceptions sont des noms propres et des sigles, pas des mots qu'on aime voir en majuscule.
+   */
+  const ACRONYMES = new Set(['3D', 'PNG', 'JPG', 'JPEG', 'WebP', 'PDF', 'JSON', 'Ctrl', 'Maj',
+    'Alt', 'Échap', 'A4', 'A5', 'A3', 'B4']);
+  // Les polices d'écriture proposées pour les Bulles : des noms propres, ils gardent leur casse.
+  const NOMS_PROPRES = new Set(['Bubblegum Sans', 'Comic Neue', 'Luckiest Guy', 'Patrick Hand',
+    'Permanent Marker']);
+  const AVEC_LETTRE = /[A-Za-zÀ-ÿ]/;
+  const nu = (mot) => mot.replace(/^[^A-Za-zÀ-ÿ0-9]+|[^A-Za-zÀ-ÿ0-9]+$/g, '');
+
+  /** Les mots à majuscule qui ne sont PAS le premier mot porteur de lettres. */
+  const majusculesInterieures = (libelle) => {
+    if (NOMS_PROPRES.has(libelle.trim())) return [];
+    const mots = libelle.split(/\s+/).filter(w => AVEC_LETTRE.test(w));
+    return mots.slice(1).map(nu).filter(w =>
+      w && w[0] === w[0].toUpperCase() && w[0] !== w[0].toLowerCase()
+      && !ACRONYMES.has(w) && w !== w.toUpperCase());
+  };
+
+  test('la mesure elle-même sait reconnaître une faute', () => {
+    // ⚠️ SANS CE TEST, LES DEUX SUIVANTS POURRAIENT NE RIEN MESURER. Un détecteur qui ne trouve
+    // jamais rien passe pour un dépôt propre. Ma première version comptait d'ailleurs l'émoji de
+    // tête comme premier mot, et signalait 130 libellés parfaitement corrects.
+    assert.deepEqual(majusculesInterieures('Vider la Case'), ['Case']);
+    assert.deepEqual(majusculesInterieures('🗑 Vider la case'), []);
+    assert.deepEqual(majusculesInterieures('Exporter en PDF'), []);
+    assert.deepEqual(majusculesInterieures('Comic Neue'), []);
+  });
+
+  test('aucun libellé de bouton ou d\'option dans index.html', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const libelles = [];
+    for (const re of [/<button[^>]*>([\s\S]*?)<\/button>/g, /<option[^>]*>([\s\S]*?)<\/option>/g]) {
+      for (const m of html.matchAll(re)) {
+        const t = m[1].replace(/<[^>]+>/g, '').trim();
+        if (t) libelles.push(t);
+      }
+    }
+    assert.ok(libelles.length > 100, `seulement ${libelles.length} libellés relevés : le motif a changé`);
+    const fautifs = libelles.filter(t => majusculesInterieures(t).length)
+      .map(t => `« ${t} » → ${majusculesInterieures(t).join(', ')}`);
+    assert.deepEqual(fautifs, [], 'majuscule au milieu d\'un libellé');
+  });
+
+  test('ni dans les libellés traduits, dans les DEUX langues', () => {
+    // Corriger le HTML sans corriger la table laisserait la faute revenir au premier changement de
+    // langue : c'est elle qui repose les textes.
+    const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+    const fautifs = [];
+    for (const m of i18n.matchAll(/\['(#[^']+)',\s*'((?:[^'\\]|\\.)*)',\s*\n?\s*'((?:[^'\\]|\\.)*)'\]/g)) {
+      // Seuls les LIBELLÉS sont concernés, pas les phrases d'aide : une indication est de la prose,
+      // et la prose garde la convention de domaine (« vos Projets », « une Case »).
+      if (/Hint$|Title$|hint$/.test(m[1])) continue;
+      for (const t of [m[2], m[3]]) {
+        const mauvais = majusculesInterieures(t.replace(/\\'/g, '\''));
+        if (mauvais.length) fautifs.push(`${m[1]} « ${t} » → ${mauvais.join(', ')}`);
+      }
+    }
+    assert.deepEqual(fautifs, [], 'majuscule au milieu d\'un libellé traduit');
+  });
+});

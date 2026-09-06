@@ -72,7 +72,7 @@ export const I18N_TEXT = [
   ['#sidePersonasTitle', 'Elements', 'Éléments'],
   ['#sideImageTitle', 'Image', 'Image'],
   // ⚠️ CE LIBELLÉ PORTE L'EXPLICATION QUE LE MENU CONTEXTUEL NE DONNE PAS. Là-bas, « Ajouter »,
-  // « Charger une Scène » et « Importer un Modèle » sont RETIRÉS quand la Case porte une image :
+  // « Charger une scène » et « Importer un modèle » sont RETIRÉS quand la Case porte une image :
   // rien n'y dit pourquoi. C'est ici que l'exclusivité se lit (cf. docs/en/panel-images.md).
   ['#sideImageMoveBtn', 'Move the image', 'Déplacer l\'image'],
   ['#sideImageResetBtn', 'Recentre', 'Recentrer'],
@@ -81,7 +81,7 @@ export const I18N_TEXT = [
   ['#sideImageDetachBtn', 'Remove the image', 'Retirer l\'image'],
   // Bulle menu
   ['#bubbleMenuHeader .menu-close-btn', null, null, 'title', 'Close', 'Fermer'],
-  ['#sideBubbleAppearanceTitle', 'Bubble appearance', 'Apparence de la Bulle'],
+  ['#sideBubbleAppearanceTitle', 'Bubble appearance', 'Apparence de la bulle'],
   ['label[for="sideBubbleShapeSelect"]', 'Bubble shape', 'Forme de la bulle'],
   ['#sideBubbleShapeSelect option[value="ovale"]', 'Oval', 'Ovale'],
   ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
@@ -124,7 +124,7 @@ export const I18N_TRAILING = [
   // ── Menus contextuels : le libellé SUIT une icône (<span class="ctx-icon">). C'est pourquoi ces
   //    entrées vivent ici et non dans I18N_TEXT : `textContent` effacerait l'icône avec le texte.
   //    Ajoutées après constat que 49 boutons sur 123 restaient en français en mode anglais.
-  ['#ctxImportModel', 'Import a model', 'Importer un Modèle'],
+  ['#ctxImportModel', 'Import a model', 'Importer un modèle'],
   ['#ctxInsertImage', 'Insert an image', 'Insérer une image'],
   ['#ctxMoveImage', 'Move the image', 'Déplacer l\'image'],
   ['#ctxMesure', 'Measure', 'Mesure'],
@@ -133,7 +133,7 @@ export const I18N_TRAILING = [
   ['#ctxDeleteModel', 'Delete from disk', 'Supprimer du disque'],
   ['#ctxRenameImage', 'Rename the file…', 'Renommer le fichier…'],
   ['#ctxDeleteImage', 'Delete from disk', 'Supprimer du disque'],
-  ['#ctxBuildMode', 'Build a building', 'Construire un Bâtiment'],
+  ['#ctxBuildMode', 'Build a building', 'Construire un bâtiment'],
   ['#ctxAddOiseau', 'Bird', 'Oiseau'],
   ['#ctxAddLezard', 'Lizard', 'Lézard'],
   ['#ctxAddLoup', 'Wolf', 'Loup'],
@@ -154,7 +154,7 @@ export const I18N_TRAILING = [
   ['#ctxTracerCloture', 'Fence', 'Clôture'],
   ['#ctxTracerHaie', 'Hedge', 'Haie végétale'],
   ['#ctxTracerBarriere', 'Road barrier', 'Barrière de route'],
-  ['#ctxZoneTerrain', 'Terrain zone', 'Zone de Terrain'],
+  ['#ctxZoneTerrain', 'Terrain zone', 'Zone de terrain'],
   // Déclencheurs de sous-menu : « <span><icône> Texte</span> <flèche> ». On vise le span INTÉRIEUR,
   // celui qui porte l'icône et le texte, sans quoi la flèche ▶ disparaîtrait avec la traduction.
   ['#ctxTracerTrigger > span:first-child', 'Draw', 'Tracer'],
@@ -167,11 +167,11 @@ export const I18N_TRAILING = [
   ['#ctxTracerCheminTrigger > span:first-child', 'Path', 'Chemin'],
   ['#ctxTracerMurTrigger > span:first-child', 'Wall', 'Mur'],
   ['#ctxAddTrigger > span:first-child', 'Add', 'Ajouter'],
-  ['#ctxLoadSceneTrigger > span:first-child', 'Load a Scene', 'Charger une Scène'],
+  ['#ctxLoadSceneTrigger > span:first-child', 'Load a scene', 'Charger une scène'],
   ['#ctxToggleCamera', 'Camera', 'Caméra'],
   ['#ctxBringForward', 'Bring forward', 'Avancer'],
   ['#ctxSendBackward', 'Send backward', 'Reculer'],
-  ['#ctxClearPanel', 'Clear Panel', 'Vider la Case'],
+  ['#ctxClearPanel', 'Clear panel', 'Vider la case'],
   ['#ctxAddPersona', 'Add a character', 'Ajouter un personnage'],
   ['#ctxVehiclesTrigger > span:first-child', 'Vehicles', 'Véhicules'],
   ['#ctxFurnitureTrigger > span:first-child', 'Furniture', 'Mobiliers'],
@@ -181,8 +181,8 @@ export const I18N_TRAILING = [
   ['#ctxBuildingsTrigger > span:first-child', 'Buildings', 'Bâtiments'],
   ['#ctxItemBringForward', 'Bring forward', 'Avancer'],
   ['#ctxItemSendBackward', 'Send backward', 'Reculer'],
-  ['#ctxCreatePanel', 'Create a panel', 'Créer une Case'],
-  ['#ctxCreateBubble', 'Create a speech bubble', 'Créer une Bulle de dialogue'],
+  ['#ctxCreatePanel', 'Create a panel', 'Créer une case'],
+  ['#ctxCreateBubble', 'Create a speech bubble', 'Créer une bulle de dialogue'],
   ['#ctxAddVoiture', 'Add a car', 'Ajouter une voiture'],
   ['#ctxAddVelo', 'Add a bike', 'Ajouter un vélo'],
   ['#ctxAddTable', 'Add a table', 'Ajouter une table'],
