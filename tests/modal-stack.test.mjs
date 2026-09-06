@@ -112,6 +112,29 @@ describe('actionEchap : la décision que la liste de gardes prenait', () => {
     assert.deepEqual(actionEchap({ pile: ['objectModal'], editeurOuvert: true }), { action: 'rien' });
   });
 
+  test('un mode du CANEVAS prend Échap, et le menu Projet ne s\'ouvre pas derrière', () => {
+    // ⚠️ SIGNALÉ À L'USAGE SUR LE RECADRAGE D'IMAGE (#403e) : « Échap quitte bien le mode, mais
+    // j'ai la modale du Projet qui s'ouvre ». Le défaut ne datait PAS du recadrage : Mesure, Tracé
+    // et Construire traitent aussi Échap dans events.js, avec un `stopImmediatePropagation` qui ne
+    // peut rien retenir puisque l'écouteur d'io.js s'exécute en premier. Les trois avaient donc le
+    // même comportement depuis toujours ; le recadrage l'a seulement rendu visible.
+    assert.deepEqual(actionEchap({ pile: [], modeCanevas: true }), { action: 'rien' });
+  });
+
+  test('une modale OUVERTE PAR-DESSUS un mode du canevas se ferme d\'abord', () => {
+    // L'ordre compte : tester le mode avant la pile laisserait la modale à l'écran pendant qu'Échap
+    // arrête un outil qu'on ne voit même pas.
+    assert.deepEqual(actionEchap({ pile: ['objectModal'], modeCanevas: true }),
+      { action: 'fermer', id: 'objectModal' });
+  });
+
+  test('sans mode ni modale, Échap ouvre toujours le menu Projet', () => {
+    // L'assertion de présence en face des deux absences ci-dessus : sans elle, `modeCanevas`
+    // pourrait valoir « toujours vrai » sans que rien ne bronche, et Échap ne ferait plus rien
+    // nulle part.
+    assert.deepEqual(actionEchap({ pile: [], modeCanevas: false }), { action: 'menuProjet' });
+  });
+
   test('sans argument du tout, on ne lève pas', () => {
     assert.deepEqual(actionEchap(), { action: 'menuProjet' });
   });
@@ -222,10 +245,33 @@ describe('COMPLÉTUDE : aucune modale ne peut être oubliée', () => {
     const io = readFileSync(join(RACINE, 'src/io.js'), 'utf8');
     const debut = io.indexOf("if (e.key !== 'Escape') return;");
     assert.ok(debut > 0, 'l\'écouteur Échap principal a disparu');
-    const bloc = io.slice(debut, debut + 600);
+    const bloc = io.slice(debut, debut + 1400);
     assert.doesNotMatch(bloc, /classList\.contains\('hidden'\)/,
       'la décision interroge de nouveau les modales une par une');
     assert.match(bloc, /actionEchap\(/, 'la décision pure n\'est plus consultée');
+    assert.match(bloc, /modeCanevas: modeCanevasActif3D\(\)/,
+      'les outils du canevas ne sont pas consultés : Échap ouvrira le menu Projet derrière eux');
+  });
+
+  test('RÉGRESSION : tout ce qui traite Échap sur le canevas est DÉCLARÉ dans modeCanevasActif3D', () => {
+    // ⚠️ CE TEST DÉDUIT, IL N'ÉNUMÈRE PAS, et c'est ce qui rend acceptable l'énumération de
+    // state.js. Il relève dans events.js chaque garde `e.key === 'Escape' && S.xxx` et exige que
+    // `S.xxx` figure dans le prédicat. Un outil ajouté demain sans cette ligne fera échouer la
+    // suite, au lieu d'ouvrir le menu Projet derrière lui pendant des mois — ce qui est exactement
+    // ce qui vient d'arriver à Mesure, Tracé et Construire.
+    const events = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
+    const state = readFileSync(join(RACINE, 'src/state.js'), 'utf8');
+    const predicat = state.slice(state.indexOf('export function modeCanevasActif3D'));
+    const corps = predicat.slice(0, predicat.indexOf('}'));
+
+    // ⚠️ LA PARENTHÈSE FERMANTE FAIT PARTIE DU MOTIF, et ma première version l'omettait. Sans elle,
+    // le relevé attrapait `S.sideDescTarget?.type === 'bulle'`, qui est le champ de description du
+    // panneau droit : un écouteur posé sur un `<input>`, pas un mode du canevas, et qui n'a donc
+    // rien à faire dans ce prédicat. On ne retient que les drapeaux lus pour leur seule vérité.
+    const drapeaux = [...events.matchAll(/e\.key === 'Escape' && (S\.\w+)\)/g)].map(m => m[1]);
+    assert.ok(drapeaux.length >= 4, `seulement ${drapeaux.length} gardes Échap trouvées : le motif a changé`);
+    [...new Set(drapeaux)].forEach(d => assert.ok(corps.includes(d),
+      `${d} traite Échap sur le canevas mais n'est pas déclaré dans modeCanevasActif3D`));
   });
 });
 

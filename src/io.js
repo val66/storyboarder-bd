@@ -8,7 +8,7 @@
  *   - _applyRenameScene : applies a Scene rename
  *   - _closeSettingsModal : closes the Settings modal (defined in the Settings section)
  */
-import { S, tr, createVolume, addPageToVolume } from './state.js';
+import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
 // est synchrone, le décodage ne l'est pas (cf. src/image-cache.js).
@@ -947,7 +947,15 @@ window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   // L'éditeur de Personnage RECOUVRE l'application sans être une modale (il ne remplace pas ce qui
   // est à l'écran, il le masque) : aucune classe ne peut parler pour lui, seul ce drapeau le peut.
-  const quoi = actionEchap({ pile: pileOuverte(), editeurOuvert: S.personaEditorOpen });
+  // `modeCanevasActif3D` couvre les outils du canevas et le recadrage d'une image : ils traitent
+  // Échap eux-mêmes dans events.js, et leur `stopImmediatePropagation` ne peut rien retenir puisque
+  // CET écouteur-ci s'exécute en premier (cf. l'en-tête de modal-stack.js, et le rapport
+  // utilisateur qui a rouvert la question).
+  const quoi = actionEchap({
+    pile: pileOuverte(),
+    editeurOuvert: S.personaEditorOpen,
+    modeCanevas: modeCanevasActif3D(),
+  });
   if (quoi.action === 'rien') return;
   if (quoi.action === 'fermer') { e.preventDefault(); fermerModaleDuDessus(); return; }
   openProjectModal();

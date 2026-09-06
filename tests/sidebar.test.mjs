@@ -19,6 +19,8 @@ import {
   afficherManuelLateral, masquerManuelLateral, manuelEstAffiche,
 } from '../src/sidebar.js';
 import { S } from '../src/state.js';
+import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
@@ -402,6 +404,29 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
  * Une propriété énoncée dans un commentaire et non épinglée par un test n'est qu'une intention.
  */
 
+
+// ── Les sections propres à une Case disparaissent ENSEMBLE ────────────────────────────────────
+describe('Panneau droit : une section de Case ne survit pas à la désélection', () => {
+  test('RÉGRESSION : ce qui cache Sol cache aussi Image', () => {
+    // ⚠️ SIGNALÉ À L'USAGE (#403e) : après un clic hors de la Planche, le panneau droit passait au
+    // Manuel mais gardait la section « Image » en haut, avec le nom du fichier et ses trois boutons,
+    // au-dessus d'un Manuel qui n'avait rien à voir. Elle n'était masquée que sur le chemin
+    // « Case SANS image » ; les deux autres — mode Caméra, et « rien de sélectionné » — l'avaient
+    // oubliée.
+    //
+    // CE TEST DÉDUIT PLUTÔT QU'IL N'ÉNUMÈRE : `sideGroundSection` est la section jumelle, masquée
+    // depuis toujours dans les trois branches. Exiger le même compte fait de « Sol » le témoin de
+    // « Image », et une quatrième branche ajoutée demain devra les cacher toutes les deux ou
+    // échouer ici. Compter les branches à la main, en revanche, aurait reproduit très exactement le
+    // défaut qu'on corrige.
+    const src = sourceSansCommentaires(
+      readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+    const compte = (id) => (src.match(new RegExp(`${id}\\.style\\.display = 'none'`, 'g')) || []).length;
+    assert.ok(compte('sideGroundSection') >= 3, 'le témoin a changé : relire ce test avant de le croire');
+    assert.equal(compte('sideImageSection'), compte('sideGroundSection'),
+      'une branche cache la section Sol sans cacher la section Image : elle restera affichée');
+  });
+});
 
 // ── Le Manuel dans le panneau droit ───────────────────────────────────────────────────────────
 describe('afficherManuelLateral / masquerManuelLateral : l\'action est nommée, pas recopiée', () => {

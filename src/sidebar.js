@@ -743,6 +743,7 @@ function updateSidePanelImpl(){
     sideBubbleStackSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    sideImageSection.style.display = 'none';
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';
@@ -913,6 +914,10 @@ function updateSidePanelImpl(){
     sideDimsSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    // QUATRIÈME BRANCHE, trouvée par le test et non par moi : sélectionner une Bulle après une Case
+    // à image laissait cette image annoncée en haut du panneau, au-dessus des réglages de la Bulle.
+    // Le rapport utilisateur ne portait que sur le clic hors Planche ; l'invariant en couvre trois.
+    sideImageSection.style.display = 'none';
     // The Bubble's stacking level relative to the OTHER Bubbles of this Page, same logic
     // as for a Panel (cf. the "panel" branch above), per user request.
     {
@@ -955,6 +960,11 @@ function updateSidePanelImpl(){
     sideBubbleStackSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    // ⚠️ SIGNALÉ À L'USAGE : la section Image restait en haut du panneau droit après un clic hors de
+    // la Planche, au-dessus du Manuel. Elle n'était masquée que sur le chemin « Case SANS image »,
+    // pas sur ceux où plus rien n'est sélectionné. Elle appartient à la même famille que Sol et
+    // Éléments : ce qui les cache doit la cacher, et un test le déduit désormais du source.
+    sideImageSection.style.display = 'none';
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';

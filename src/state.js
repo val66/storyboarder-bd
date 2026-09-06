@@ -316,6 +316,23 @@ export function tr(en, fr) { return S.appLang === 'en' ? en : fr; }
 // Predicate: true if the panel is the full-frame canvas of a Scene being edited.
 // Exported here (read-only access to S.editingSceneId) so draw.js / i18n.js can
 // import it without a dependency on app.js.
+/**
+ * Un outil ou un mode du CANEVAS est-il actif ? Lu par io.js pour qu'Échap ne lui passe pas devant.
+ *
+ * ⚠️ C'EST UNE ÉNUMÉRATION, et ce fichier en connaît le prix (cf. modal-stack.js : trois listes
+ * tenues à la main ont menti dans ce dépôt). Deux choses la rendent acceptable ici, et il faut les
+ * deux :
+ *
+ *   — elle est ÉCRITE UNE FOIS, à l'endroit où ces drapeaux vivent déjà, au lieu d'être recopiée
+ *     dans un écouteur d'un autre module qui n'a pas le droit d'importer events.js ;
+ *   — un TEST la DÉDUIT du code : il relève dans events.js toute garde de la forme
+ *     `e.key === 'Escape' && S.xxx` et exige que `S.xxx` figure ici. Un outil ajouté demain sans
+ *     cette ligne fera échouer la suite, au lieu d'ouvrir le menu Projet derrière lui.
+ */
+export function modeCanevasActif3D(){
+  return !!(S.imageMovePanelId || S.measureTool || S.traceTool || S.buildTool);
+}
+
 // Cette Case est-elle celle dont on recadre l'image ? Exportée ici, comme isLockedScenePanel et
 // pour la même raison : draw.js doit poser la question sans dépendre de events.js, qui l'importe.
 // Elle rend le MODE visible au dessin ; le mode lui-même reste piloté par events.js.

@@ -95,11 +95,32 @@ export function depiler(pile, id){
  * personne : s'il y a quelque chose devant, on le ferme ; sinon seulement, Échap ouvre le menu
  * Projet. L'éditeur de Personnage RECOUVRE l'application sans être une modale (cf.
  * S.personaEditorOpen) : aucune classe ne peut parler pour lui, il est donc passé à part.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * `modeCanevas` : LE TROISIÈME CAS, ET IL A ÉTÉ SIGNALÉ À L'USAGE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Rapport utilisateur sur le recadrage d'image (#403e) : « Échap quitte bien le mode, mais j'ai la
+ * modale du Projet qui s'ouvre ». Le diagnostic est écrit noir sur blanc dans l'en-tête de ce
+ * fichier, et il valait déjà pour d'autres : les outils du canevas (Mesure, Tracé, Construire, et
+ * maintenant le recadrage) traitent Échap dans events.js avec `stopImmediatePropagation`, et cet
+ * appel NE PEUT RIEN RETENIR — io.js enregistre son écouteur en premier, puisqu'il est importé en
+ * premier, donc la décision est déjà prise quand events.js reprend la main.
+ *
+ * Les trois outils avaient donc le même défaut que le recadrage, depuis toujours : Échap les
+ * arrêtait ET ouvrait le menu Projet par-dessus. Ce n'est pas le recadrage qui l'a introduit, c'est
+ * lui qui l'a rendu visible.
+ *
+ * Un mode du canevas se traite donc ICI, comme l'éditeur : il réclame Échap, et le prend.
  */
-export function actionEchap({ pile, editeurOuvert } = {}){
+export function actionEchap({ pile, editeurOuvert, modeCanevas } = {}){
   if (editeurOuvert) return { action: 'rien' };
   const dessus = modaleDuDessus(pile);
   if (dessus) return { action: 'fermer', id: dessus };
+  // ⚠️ APRÈS la pile, et non avant : une modale ouverte PAR-DESSUS un outil du canevas doit se
+  // fermer la première. L'ordre inverse laisserait la modale à l'écran pendant qu'Échap arrête un
+  // outil qu'on ne voit même pas.
+  if (modeCanevas) return { action: 'rien' };
   return { action: 'menuProjet' };
 }
 
