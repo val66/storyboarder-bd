@@ -930,6 +930,45 @@ describe('cadreDeRecouvrement3D : couvrir la Case sans déformer l\'image', () =
     });
   });
 
+  test('ZOOMER, C\'EST PRÉLEVER MOINS (#403f)', () => {
+    // 1000×500 dans une Case carrée : le cadre couvrant est un carré de 500. À 2×, on ne prélève
+    // plus qu'un carré de 250, peint sur la même surface, donc agrandi deux fois.
+    const un = cadreDeRecouvrement3D(300, 300, 1000, 500, null, 1);
+    const deux = cadreDeRecouvrement3D(300, 300, 1000, 500, null, 2);
+    assert.equal(deux.sw, un.sw / 2);
+    assert.equal(deux.sh, un.sh / 2);
+    // Le rapport reste celui de la Case : zoomer ne déforme pas.
+    assert.ok(Math.abs((deux.sw / deux.sh) - 1) < 1e-9);
+    // Sans zoom, la fonction fait ce qu'elle faisait : tous les Projets d'avant #403f sont intacts.
+    assert.deepEqual(cadreDeRecouvrement3D(300, 300, 1000, 500),
+      cadreDeRecouvrement3D(300, 300, 1000, 500, null, 1));
+  });
+
+  test('LE ZOOM DÉBLOQUE LE SECOND AXE, et c\'est son vrai rôle', () => {
+    // ⚠️ C'EST LA PROPRIÉTÉ QUI LIE LES DEUX FONCTIONNALITÉS. À 1×, la dimension qui tombe juste n'a
+    // AUCUN jeu : l'image ne se déplace que dans un sens, ce qui surprend. Dès qu'on zoome, les deux
+    // axes en gagnent, et le déplacement devient libre. Le zoom n'est pas un ornement à côté du
+    // recadrage, c'est ce qui le rend complet.
+    const un = cadreDeRecouvrement3D(300, 300, 1000, 500, null, 1);
+    assert.equal(500 - un.sh, 0, 'à 1x, l\'axe qui tombe juste doit être sans jeu');
+    const deux = cadreDeRecouvrement3D(300, 300, 1000, 500, null, 2);
+    assert.ok(500 - deux.sh > 0, 'zoomer doit donner du jeu à l\'axe qui n\'en avait pas');
+  });
+
+  test('le cadre prélevé reste DANS l\'image à tous les zooms et tous les ancrages', () => {
+    // La garantie « pas de bande blanche » doit tenir sur les deux réglages À LA FOIS : c'est leur
+    // combinaison qui est nouvelle, et chacun pris seul ne la démontre pas.
+    [1, 1.5, 2, 4].forEach(z => {
+      [0, 0.5, 1].forEach(a => {
+        [[400, 300], [300, 400], [37, 91]].forEach(([cw, ch]) => {
+          const r = cadreDeRecouvrement3D(cw, ch, 800, 600, { x: a, y: a }, z);
+          assert.ok(r.sx >= -1e-9 && r.sx + r.sw <= 800 + 1e-9, `zoom ${z}, ancrage ${a} : sort en X`);
+          assert.ok(r.sy >= -1e-9 && r.sy + r.sh <= 600 + 1e-9, `zoom ${z}, ancrage ${a} : sort en Y`);
+        });
+      });
+    });
+  });
+
   test('une dimension nulle ou absurde ne donne pas un NaN qui traverse le dessin', () => {
     // Une Case de largeur zéro arrive PENDANT un redimensionnement à la souris : c'est un état
     // transitoire normal, pas une donnée corrompue. Diviser par elle produirait un NaN qui se
@@ -1138,7 +1177,6 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
   const IO = sourceSansCommentaires(
     readFileSync(new URL('../src/io.js', import.meta.url), 'utf8'));
   const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-
   /**
    * Le corps du `mousemove` de recadrage, sans son marqueur d'entrée.
    *
@@ -1278,5 +1316,164 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
     // Un mode invisible qui change ce que fait la souris est indiscernable d\'une panne.
     assert.match(EVENTS, /canvas\.style\.cursor = dedans \? 'grab' : 'crosshair'/);
     assert.match(EVENTS, /canvas\.style\.cursor = 'grabbing'/);
+  });
+});
+/**
+ * JOURNAL DE MUTATION #403f : seize fautes, trois échappées, une assumée.
+ *
+ *   T1  le zoom multiplie au lieu de diviser le cadre source            ROUGE
+ *   T2  le zoom ignoré par le cadrage                                   ROUGE
+ *   T3  plancher du zoom à 0 (l'image ne couvre plus)                   ROUGE
+ *   T4  LE DESSIN ignore le zoom de la Case                         ÉCHAPPÉE
+ *   T5  le glisser ignore le zoom pour calculer le jeu                  ROUGE
+ *   T6  Recentrer écrit les défauts au lieu de supprimer                ROUGE
+ *   T7  le dessin ignore l'ancrage                                      ROUGE
+ *   T8  « Recentrer » affiché en permanence                             ROUGE
+ *   T9  le panneau ne repose pas le curseur en changeant de Case        ROUGE
+ *   T10 un instantané à chaque événement du curseur                     ROUGE
+ *   T11 pas de remise à zéro au relâchement                             ROUGE
+ *   T12 Recentrer sans instantané                                   ÉCHAPPÉE
+ *   T13 Recentrer détache aussi l'image                                 ROUGE
+ *   T14 le zoom écrit sans être borné                       ÉCHAPPÉE, ASSUMÉE
+ *   T15 les bornes du curseur non posées depuis le code                 ROUGE
+ *   T16 l'instantané pris APRÈS la remise à zéro                        ROUGE
+ *
+ * T4 EST LA PLUS GRAVE DE TOUT LE CHANTIER DES IMAGES. Retirer le zoom de l'appel au dessin
+ * laissait TOUT vert : le curseur bougeait, la valeur était écrite, le Projet se marquait modifié,
+ * « Recentrer » apparaissait, et l'image ne changeait pas d'un pixel. Une fonctionnalité entière
+ * invisible, sans un seul test rouge. Le dessin reste hors de portée sous Node, donc c'est l'APPEL
+ * qui est désormais épinglé, avec ses deux réglages.
+ *
+ * T12 EST LE TROISIÈME PIÈGE DE FENÊTRE DE CE CHANTIER, après une chaîne vide (W7) et une coupe
+ * trop courte. Ici : `indexOf` rend -1 quand l'appel a disparu, et -1 est inférieur à tout, donc ma
+ * comparaison de positions restait vraie exactement dans le cas qu'elle prétendait interdire. La
+ * leçon tient en une ligne : vérifier la PRÉSENCE avant de vérifier l'ORDRE.
+ *
+ * T14 RESTE, ET C'EST ASSUMÉ. Écrire la valeur brute du curseur au lieu de la borner ne change
+ * aucun comportement : `zoomDeLImage3D` borne à la LECTURE, donc le dessin et « Recentrer » restent
+ * justes. La seule différence est le fichier de Projet, qui porterait une chaîne au lieu d'un
+ * nombre. Le code garde la normalisation pour cette raison seule, et aucun test ne la retient : la
+ * couvrir demanderait un montage de Projet complet qu'aucun fichier de tests ne possède
+ * aujourd'hui, et j'ai préféré l'écrire ici plutôt que de gonfler la suite pour une cosmétique.
+ */
+describe('#403f : le zoom et le retour au cadrage d\'origine, câblage', () => {
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  // ⚠️ LA COUPE SE FAIT SUR « \\n}); », EN DÉBUT DE LIGNE, ET PAS SUR « }); ». Le corps du
+  // gestionnaire contient lui-même `zoomDeLImage3D({ … })` suivi d'un point-virgule : couper à la
+  // première occurrence tranchait au MILIEU du corps, et le test annonçait un `S.projectDirty`
+  // manquant qui se trouvait deux lignes plus bas. Une fenêtre mal fermée accuse à tort.
+  const corpsDuGestionnaire = (ancre) => {
+    const i = EVENTS.indexOf(ancre);
+    assert.ok(i > 0, `${ancre} : introuvable`);
+    const fin = EVENTS.indexOf('\n});', i);
+    assert.ok(fin > i, `${ancre} : le gestionnaire ne se referme pas là où on le croit`);
+    return EVENTS.slice(i, fin);
+  };
+
+
+  test('les deux commandes existent, dans la section Image', () => {
+    ['sideImageZoomInput', 'sideImageZoomValue', 'sideImageResetBtn'].forEach(id =>
+      assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
+    // Dans la section Image, pas à côté : tout porte sur le même fichier.
+    const section = HTML.slice(HTML.indexOf('id="sideImageSection"'));
+    const fin = section.indexOf('</div>', section.indexOf('sideImageResetBtn'));
+    assert.ok(section.slice(0, fin).includes('sideImageZoomInput'));
+  });
+
+  test('RÉGRESSION : la section s\'appelle CADRAGE, pas « Format »', () => {
+    // « Format » désigne déjà le format de papier d'un Tome, dans le menu de gauche, à deux volets
+    // d'ici. Deux mots identiques pour deux choses différentes dans la même fenêtre se paient
+    // longtemps, et c'est l'utilisateur qui a arbitré après que je l'ai signalé.
+    const label = HTML.slice(HTML.indexOf('for="sideImageZoomInput"'), HTML.indexOf('for="sideImageZoomInput"') + 120);
+    assert.match(label, /Cadrage/);
+    assert.ok(!/Format/.test(label));
+  });
+
+  test('RÉGRESSION : les bornes du curseur viennent du CODE', () => {
+    // Deux sources de vérité pour un intervalle divergent toujours, et ce jour-là le curseur promet
+    // une valeur que `zoomValide3D` refuse. index.html en garde une copie pour l'affichage initial,
+    // mais c'est le code qui pose les bornes réelles.
+    assert.match(EVENTS, /sideImageZoomInput\.min = String\(ZOOM_IMAGE_MIN\)/);
+    assert.match(EVENTS, /sideImageZoomInput\.max = String\(ZOOM_IMAGE_MAX\)/);
+  });
+
+  test('RÉGRESSION : UN SEUL instantané par glissement du curseur', () => {
+    // Un instantané par événement `input` remplirait la pile d'annulation de cent états
+    // intermédiaires, et Ctrl+Z ne reculerait que d'un dixième de zoom à la fois. C'est le
+    // dispositif déjà en place pour les curseurs des Bulles.
+    const corps = corpsDuGestionnaire("sideImageZoomInput.addEventListener('input'");
+    assert.match(corps, /if \(!S\.sideImageZoomSnapshotTaken\) \{ snapshot\(\); S\.sideImageZoomSnapshotTaken = true; \}/);
+    assert.match(EVENTS, /sideImageZoomInput\.addEventListener\('change', \(\) => \{ S\.sideImageZoomSnapshotTaken = false; \}\)/,
+      'sans remise à zéro au relâchement, le deuxième glissement ne serait plus annulable');
+  });
+
+  test('RÉGRESSION : bouger le zoom marque le Projet modifié et rafraîchit le panneau', () => {
+    const corps = corpsDuGestionnaire("sideImageZoomInput.addEventListener('input'");
+    assert.match(corps, /S\.projectDirty = true/, 'le travail serait perdu en quittant');
+    // `updateSidePanel` et pas seulement un redessin : « Recentrer » doit apparaître PENDANT le
+    // glissement, pas au prochain clic ailleurs.
+    assert.match(corps, /updateSidePanel\(\)/);
+  });
+
+  test('RÉGRESSION : « Recentrer » n\'apparaît que s\'il a quelque chose à défaire', () => {
+    assert.match(SIDEBAR, /sideImageResetBtn\.style\.display = cadrageParDefaut3D\(sel\) \? 'none' : 'block'/,
+      'le bouton est affiché en permanence, ou masqué en permanence');
+  });
+
+  test('RÉGRESSION : le panneau lit la CASE, jamais l\'état du curseur', () => {
+    // Sans cela, rouvrir la fiche d'une autre Case montrerait le zoom de la précédente : le curseur
+    // garde sa position tant que personne ne la lui repose.
+    const i = SIDEBAR.indexOf('casePorteUneImage3D(sel)');
+    const corps = SIDEBAR.slice(i, i + SIDEBAR.slice(i).indexOf('return;'));
+    assert.match(corps, /sideImageZoomInput\.value = String\(zoom\)/);
+    assert.match(corps, /zoomDeLImage3D\(sel\)/);
+  });
+
+  test('RÉGRESSION : Recentrer prend un instantané et ne détache pas l\'image', () => {
+    const i = EVENTS.indexOf("getElementById('sideImageResetBtn').onclick");
+    assert.ok(i > 0, 'le bouton Recentrer n\'est branché nulle part');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n};', i));
+    assert.ok(corps.includes('reinitialiserCadrage3D'), 'la fenêtre lue n\'est pas celle du bouton');
+    // ⚠️ LA PRÉSENCE D'ABORD, L'ORDRE ENSUITE, et l'échappée T12 dit pourquoi : `indexOf` rend -1
+    // quand l'appel a disparu, et -1 est inférieur à tout. Une comparaison de positions posée seule
+    // reste donc vraie précisément dans le cas qu'elle prétend interdire. C'est le troisième piège
+    // de fenêtre de ce chantier, après une chaîne vide et une coupe trop courte.
+    assert.ok(corps.includes('snapshot()'), 'le recentrage ne serait pas annulable');
+    assert.ok(corps.indexOf('snapshot()') < corps.indexOf('reinitialiserCadrage3D'),
+      'l\'instantané est pris après la remise à zéro : il capturerait l\'état déjà effacé');
+    assert.ok(!/CHAMP_IMAGE_CASE|imageFile/.test(corps), 'Recentrer touche au fichier de l\'image');
+    // Le marquage suit le RETOUR : recentrer un cadrage déjà d'origine ne modifie rien.
+    assert.match(corps, /if \(reinitialiserCadrage3D\(panel\)\) S\.projectDirty = true/);
+  });
+
+  test('RÉGRESSION : LE DESSIN lit l\'ancrage ET le zoom de la Case', () => {
+    // ⚠️ ÉCHAPPÉE T4, ET C'EST LA PIRE DE CETTE TÂCHE. Retirer `zoomDeLImage3D(o)` de l'appel au
+    // dessin laissait toute la suite verte : le curseur bougeait, la valeur était écrite, le Projet
+    // se marquait modifié, « Recentrer » apparaissait — et l'image ne changeait pas d'un pixel. Une
+    // fonctionnalité entière invisible, sans un seul test rouge.
+    //
+    // Le dessin lui-même reste hors de portée sous Node (cf. docs/en/testing-method.md), donc on
+    // épingle l'APPEL : les deux réglages sont transmis, et personne ne peut en oublier un.
+    const DRAW = sourceSansCommentaires(
+      readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+    const i = DRAW.indexOf('function dessinerImageDeCase3D');
+    assert.ok(i > 0, 'le dessin de l\'image a disparu');
+    const corps = DRAW.slice(i, DRAW.indexOf('\n}', i));
+    assert.match(corps, /cadreDeRecouvrement3D\(o\.w, o\.h, image\.w, image\.h, ancrageDeLImage3D\(o\), zoomDeLImage3D\(o\)\)/,
+      'le dessin n\'applique pas le cadrage choisi : le réglage serait sans effet à l\'écran');
+  });
+
+  test('RÉGRESSION : le glisser tient compte du zoom pour calculer le jeu', () => {
+    // À 2×, le cadre prélevé est deux fois plus petit, donc le jeu deux fois plus grand : ignorer le
+    // zoom ici ferait glisser l'image deux fois trop vite, et buter contre un bord qui n'existe plus.
+    const i = EVENTS.indexOf("} else if (S.dragMode === 'imageAnchor')");
+    assert.ok(i > 0, 'le mousemove de recadrage a disparu');
+    const corps = EVENTS.slice(i, i + 900);
+    assert.match(corps, /cadreDeRecouvrement3D\(panel\.w, panel\.h, image\.w, image\.h, null, zoomDeLImage3D\(panel\)\)/);
   });
 });

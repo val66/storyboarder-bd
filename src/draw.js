@@ -50,7 +50,10 @@ import {
 import { noDescriptionLabel } from './i18n.js';
 // L'image d'une Case : ce qu'elle porte (image-store) et ce qui est décodé (image-cache). Les deux
 // lectures sont SYNCHRONES, seule condition pour vivre dans le chemin de dessin.
-import { imageDeLaCase3D, casePorteUneImage3D, ancrageDeLImage3D, ancrageValide3D } from './image-store.js';
+import {
+  imageDeLaCase3D, casePorteUneImage3D, ancrageDeLImage3D, ancrageValide3D,
+  zoomDeLImage3D, zoomValide3D,
+} from './image-store.js';
 import { getLoadedImage, imageState } from './image-cache.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
@@ -1147,20 +1150,31 @@ export function getPanelPoints(o){
  * redimensionnement à la souris, et diviser par elle donnerait un `NaN` qui traverserait le dessin
  * en silence.
  */
-export function cadreDeRecouvrement3D(caseW, caseH, imgW, imgH, ancrage){
+export function cadreDeRecouvrement3D(caseW, caseH, imgW, imgH, ancrage, zoom){
   const cw = Number(caseW), ch = Number(caseH), iw = Number(imgW), ih = Number(imgH);
   if (![cw, ch, iw, ih].every(v => Number.isFinite(v) && v > 0)) return null;
   // Le rapport de la Case, ramené dans le repère de l'image : c'est lui qui dit quelle dimension
   // est en trop.
   const largeurUtile = Math.min(iw, ih * (cw / ch));
   const hauteurUtile = Math.min(ih, iw * (ch / cw));
+  // ZOOMER, C'EST PRÉLEVER MOINS (#403f). On divise le rectangle source : la même surface de Case
+  // est peinte avec une portion plus petite de l'image, donc agrandie. Multiplier la destination
+  // aurait donné la même image à l'écran, mais aurait rendu `sx`/`sy` sans rapport avec ce qui est
+  // réellement lu, et l'arithmétique du déplacement s'appuie précisément dessus.
+  //
+  // ⚠️ ET C'EST CE QUI DÉBLOQUE LE SECOND AXE. À 1, une des deux dimensions tombe juste et n'a aucun
+  // jeu : l'image ne se déplace que dans un sens. Dès qu'on zoome, les deux en gagnent. Le zoom
+  // n'est donc pas un ornement à côté du déplacement, c'est ce qui le rend libre.
+  const z = zoomValide3D(zoom);
+  const sw = largeurUtile / z;
+  const sh = hauteurUtile / z;
   const ax = ancrageValide3D(ancrage ? ancrage.x : undefined);
   const ay = ancrageValide3D(ancrage ? ancrage.y : undefined);
   return {
-    sx: (iw - largeurUtile) * ax,
-    sy: (ih - hauteurUtile) * ay,
-    sw: largeurUtile,
-    sh: hauteurUtile,
+    sx: (iw - sw) * ax,
+    sy: (ih - sh) * ay,
+    sw,
+    sh,
   };
 }
 
@@ -1222,7 +1236,7 @@ function dessinerImageDeCase3D(c, o, pts){
   const nom = imageDeLaCase3D(o);
   const image = nom ? getLoadedImage(nom) : null;
   if (!image) return false;
-  const cadre = cadreDeRecouvrement3D(o.w, o.h, image.w, image.h, ancrageDeLImage3D(o));
+  const cadre = cadreDeRecouvrement3D(o.w, o.h, image.w, image.h, ancrageDeLImage3D(o), zoomDeLImage3D(o));
   if (!cadre) return false;
   c.save();
   c.beginPath();

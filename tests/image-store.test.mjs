@@ -24,6 +24,8 @@ import {
   caseAccepteUneImage3D, entreesImageDuMenu3D,
   CHAMP_ANCRAGE_X_IMAGE, CHAMP_ANCRAGE_Y_IMAGE, ANCRAGE_CENTRE_IMAGE,
   ancrageValide3D, ancrageDeLImage3D,
+  CHAMP_ZOOM_IMAGE, ZOOM_IMAGE_MIN, ZOOM_IMAGE_MAX, zoomValide3D, zoomDeLImage3D,
+  cadrageParDefaut3D, reinitialiserCadrage3D,
 } from '../src/image-store.js';
 import {
   imageState, getLoadedImage, collectImageFiles, preloadImages, _setImageCacheEntry,
@@ -157,6 +159,56 @@ describe('Le champ d\'une Case', () => {
     // Une chaîne numérique est acceptée : un JSON relu peut la porter, et la refuser recentrerait
     // une image que l'utilisateur avait bel et bien cadrée.
     assert.equal(ancrageValide3D('0.25'), 0.25);
+  });
+
+  test('le zoom est un champ AJOUTÉ, et son plancher est le cadrage couvrant (#403f)', () => {
+    assert.equal(CHAMP_ZOOM_IMAGE, 'imageZoom');
+    // ⚠️ 1 EST LE PLANCHER, ET C'EST LA GARANTIE « PAS DE BANDE BLANCHE » côté zoom. Descendre en
+    // dessous ferait que l'image ne couvre plus la Case : c'est un autre besoin, pas du recadrage.
+    assert.equal(ZOOM_IMAGE_MIN, 1);
+    // Le plafond, lui, N'EST PAS MESURÉ, et le code le dit franchement. Ce test épingle la valeur
+    // pour qu'elle ne bouge pas par accident, pas pour prétendre qu'elle est démontrée.
+    assert.equal(ZOOM_IMAGE_MAX, 4);
+  });
+
+  test('zoomValide3D borne, et rend 1 pour tout ce qui n\'est pas lisible', () => {
+    assert.equal(zoomValide3D(0.2), 1, 'sous le plancher : l\'image ne couvrirait plus la Case');
+    assert.equal(zoomValide3D(99), 4);
+    assert.equal(zoomValide3D(2.5), 2.5);
+    assert.equal(zoomValide3D('1.5'), 1.5, 'un JSON relu peut porter une chaîne');
+    [null, '', undefined, NaN, 'gros', {}].forEach(v =>
+      assert.equal(zoomValide3D(v), 1, `${JSON.stringify(v)} devrait valoir le cadrage couvrant`));
+    assert.equal(zoomDeLImage3D({}), 1);
+    assert.equal(zoomDeLImage3D(null), 1);
+  });
+
+  test('cadrageParDefaut3D : ce qui décide de MONTRER « Recentrer »', () => {
+    // Le bouton n'apparaît que s'il a quelque chose à défaire. Les trois champs comptent, et un
+    // seul suffit à faire sortir du défaut.
+    assert.equal(cadrageParDefaut3D({}), true);
+    assert.equal(cadrageParDefaut3D({ imageAnchorX: 0.5, imageAnchorY: 0.5, imageZoom: 1 }), true,
+      'écrire explicitement les valeurs par défaut ne doit pas compter comme un cadrage');
+    assert.equal(cadrageParDefaut3D({ imageAnchorX: 0.2 }), false);
+    assert.equal(cadrageParDefaut3D({ imageAnchorY: 0.9 }), false);
+    assert.equal(cadrageParDefaut3D({ imageZoom: 2 }), false);
+  });
+
+  test('reinitialiserCadrage3D SUPPRIME les champs au lieu d\'y écrire le défaut', () => {
+    // ⚠️ LA DIFFÉRENCE COMPTE POUR LE FICHIER. Un Projet recentré redevient identique, octet pour
+    // octet, à un Projet jamais recadré : rien ne distingue « remis au centre » de « jamais
+    // touché », ce qui est exactement la vérité.
+    const o = { type: 'panel', imageFile: 'a.png', imageAnchorX: 0.2, imageAnchorY: 0.8, imageZoom: 3 };
+    assert.equal(reinitialiserCadrage3D(o), true);
+    assert.deepEqual(o, { type: 'panel', imageFile: 'a.png' });
+    assert.equal(cadrageParDefaut3D(o), true);
+    // Et l'image N'EST PAS détachée au passage : recentrer recadre, il ne retire rien.
+    assert.equal(o.imageFile, 'a.png');
+  });
+
+  test('reinitialiserCadrage3D rend false quand il n\'y avait rien à défaire', () => {
+    // C'est ce qui évite de marquer le Projet modifié pour un geste sans effet.
+    assert.equal(reinitialiserCadrage3D({ type: 'panel', imageFile: 'a.png' }), false);
+    assert.equal(reinitialiserCadrage3D(null), false);
   });
 
   test('imageDeLaCase3D ne répond que pour une Case', () => {
@@ -635,7 +687,11 @@ describe('#403c : le câblage des trois écrans, épinglé sur la source', () =>
     // réglages sans effet, ce qui est pire que de ne rien proposer.
     const i = SIDEBAR.indexOf('casePorteUneImage3D(sel)');
     assert.ok(i > 0, 'le panneau de droite ne distingue plus une Case à image');
-    const corps = SIDEBAR.slice(i, i + 500);
+    // La fenêtre s'arrête au `return` de cette branche plutôt qu'à un nombre de caractères : la
+    // longueur choisie au jugé avait cessé de couvrir la branche dès que #403f y a ajouté le
+    // rafraîchissement du zoom, et le test échouait pour une raison sans rapport avec ce qu'il
+    // protège.
+    const corps = SIDEBAR.slice(i, i + SIDEBAR.slice(i).indexOf('return;'));
     assert.match(corps, /sideImageSection\.style\.display = 'block'/);
     assert.match(corps, /sideGroundSection\.style\.display = 'none'/, 'la section Sol reste affichée');
     assert.match(corps, /sidePersonasSection\.style\.display = 'none'/, 'la section Éléments reste affichée');

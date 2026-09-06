@@ -77,6 +77,7 @@ export const I18N_TEXT = [
   ['#sideImageHint', 'This panel shows an image: it holds no 3D Element.',
     'Cette Case affiche une image : elle ne contient aucun Élément 3D.'],
   ['#sideImageMoveBtn', 'Move the image', 'Déplacer l\'image'],
+  ['#sideImageResetBtn', 'Recentre', 'Recentrer'],
   ['#sideImageChangeBtn', 'Change the image', 'Changer l\'image'],
   ['#sideImageDetachBtn', 'Remove the image', 'Retirer l\'image'],
   // Bulle menu
@@ -473,6 +474,12 @@ export function applyI18n(lang){
   const bubblePaddingLabel = document.querySelector('label[for="sideBubblePaddingInput"]');
   if (bubblePaddingLabel && bubblePaddingLabel.firstChild && bubblePaddingLabel.firstChild.nodeType === 3) {
     bubblePaddingLabel.firstChild.textContent = (lang === 'en' ? 'Inside padding' : 'Écart intérieur') + ' (';
+  }
+  // Même dispositif pour « Cadrage (zoom N,N×) » : le nombre est un span au milieu du texte, donc
+  // ni setLeadingText ni setTrailingText ne suffisent seuls.
+  const zoomLabel = document.querySelector('label[for="sideImageZoomInput"]');
+  if (zoomLabel && zoomLabel.firstChild && zoomLabel.firstChild.nodeType === 3) {
+    zoomLabel.firstChild.textContent = (lang === 'en' ? 'Framing' : 'Cadrage') + ' (' + (lang === 'en' ? 'zoom' : 'zoom') + ' ';
   }
   applyI18nModalSectionTitles(lang);
   applyI18nHelpManual(lang);

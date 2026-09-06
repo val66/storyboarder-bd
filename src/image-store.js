@@ -212,6 +212,74 @@ export function ancrageDeLImage3D(o){
 }
 
 /**
+ * Le zoom du cadrage (#403f). Champ AJOUTÉ, comme les deux précédents : absent vaut 1.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * POURQUOI LE PLANCHER EST 1 ET NON ZÉRO
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * 1 est le cadrage COUVRANT : l'image remplit exactement la Case. Zoomer vers l'avant ne peut donc
+ * jamais faire apparaître de bande blanche, il ne fait qu'agrandir la matière disponible pour se
+ * déplacer. Descendre SOUS 1 en ferait apparaître, et ce serait un autre besoin — montrer l'image
+ * entière sur un fond — qui n'est plus du recadrage. Décidé avec l'utilisateur.
+ *
+ * ⚠️ LE PLAFOND EST UN CONFORT, PAS UNE MESURE, et il faut que ce soit écrit. 4 n'a été ni mesuré ni
+ * déduit de quoi que ce soit : c'est un cran au-delà duquel personne n'a eu besoin d'aller pendant
+ * la conception. La règle du dépôt est qu'un seuil se mesure ; celui-ci ne l'est pas, et le dire
+ * vaut mieux que lui inventer une justification. S'il gêne à l'usage, il se change avec une raison.
+ */
+export const CHAMP_ZOOM_IMAGE = 'imageZoom';
+export const ZOOM_IMAGE_MIN = 1;
+export const ZOOM_IMAGE_MAX = 4;
+
+/** Ramène un zoom dans [1, 4]. Tout ce qui n'est pas lisible vaut 1, le cadrage couvrant. */
+export function zoomValide3D(v){
+  // Mêmes écueils que pour l'ancrage : `Number(null)` et `Number('')` valent 0, qui deviendrait ici
+  // le plancher, donc un cadrage couvrant — inoffensif par chance, mais on ne compte pas dessus.
+  if (v === null || v === undefined || v === '') return ZOOM_IMAGE_MIN;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return ZOOM_IMAGE_MIN;
+  return Math.min(ZOOM_IMAGE_MAX, Math.max(ZOOM_IMAGE_MIN, n));
+}
+
+/** Le zoom d'une Case, toujours utilisable. Ne rend jamais null, comme `ancrageDeLImage3D`. */
+export function zoomDeLImage3D(o){
+  return zoomValide3D(o && o[CHAMP_ZOOM_IMAGE]);
+}
+
+/**
+ * Le cadrage de cette Case est-il celui d'origine ? Fonction PURE.
+ *
+ * C'est ce qui décide de MONTRER OU NON « Recentrer ». Le bouton n'apparaît que lorsqu'il a quelque
+ * chose à défaire : proposer en permanence de remettre à zéro un cadrage que personne n'a touché
+ * occupe une place pour rien, et fait douter d'avoir modifié quelque chose sans le vouloir.
+ *
+ * C'est aussi la raison pour laquelle il y a un BOUTON et pas un menu déroulant « Centré / Libre » :
+ * la seconde valeur d'un tel menu ne se choisirait jamais, elle n'arriverait que par effet de bord
+ * d'un déplacement ou d'un zoom. Un menu dont une valeur n'est qu'un affichage est un bouton
+ * déguisé, et l'utilisateur a tranché pour le bouton.
+ */
+export function cadrageParDefaut3D(o){
+  const a = ancrageDeLImage3D(o);
+  return a.x === ANCRAGE_CENTRE_IMAGE && a.y === ANCRAGE_CENTRE_IMAGE
+    && zoomDeLImage3D(o) === ZOOM_IMAGE_MIN;
+}
+
+/** Efface les trois champs de cadrage. L'absence VAUT le défaut : rien à écrire, tout à retirer. */
+export function reinitialiserCadrage3D(o){
+  if (!o) return false;
+  // ⚠️ ON SUPPRIME, ON N'ÉCRIT PAS 0,5 ET 1. Un Projet recentré redevient alors identique, octet
+  // pour octet, à un Projet qui n'a jamais été recadré : rien ne distingue « remis au centre » de
+  // « jamais touché », ce qui est exactement la vérité, et évite de faire grossir le fichier avec
+  // des valeurs qui sont déjà la règle.
+  const avant = cadrageParDefaut3D(o);
+  delete o[CHAMP_ANCRAGE_X_IMAGE];
+  delete o[CHAMP_ANCRAGE_Y_IMAGE];
+  delete o[CHAMP_ZOOM_IMAGE];
+  return !avant;
+}
+
+/**
  * Cette Case peut-elle RECEVOIR une image ? Fonction PURE.
  *
  * Un seul refus, et c'est une décision de l'utilisateur : le canevas d'édition d'une Scène. Une

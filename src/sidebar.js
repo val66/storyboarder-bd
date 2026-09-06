@@ -14,7 +14,7 @@
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
-import { casePorteUneImage3D, imageDeLaCase3D } from './image-store.js';
+import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -76,6 +76,9 @@ const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
 const sidePersonasSection = document.getElementById('sidePersonasSection');
 const sideImageSection = document.getElementById('sideImageSection');
+const sideImageZoomInput = document.getElementById('sideImageZoomInput');
+const sideImageZoomValue = document.getElementById('sideImageZoomValue');
+const sideImageResetBtn  = document.getElementById('sideImageResetBtn');
 const sideImageName = document.getElementById('sideImageName');
 const sideBubbleAppearanceSection = document.getElementById('sideBubbleAppearanceSection');
 const sideBubbleBorderSection   = document.getElementById('sideBubbleBorderSection');
@@ -846,6 +849,14 @@ function updateSidePanelImpl(){
     // réglages sans effet, ce qui est pire que de ne rien proposer.
     if (casePorteUneImage3D(sel)) {
       sideImageName.textContent = imageDeLaCase3D(sel);
+      // Le curseur et le bouton lisent la Case, jamais leur propre état : rouvrir la fiche d'une
+      // autre Case doit montrer SON cadrage, pas celui de la précédente.
+      const zoom = zoomDeLImage3D(sel);
+      sideImageZoomInput.value = String(zoom);
+      sideImageZoomValue.textContent = S.appLang === 'en'
+        ? zoom.toFixed(1) : zoom.toFixed(1).replace('.', ',');
+      // « Recentrer » n'a de sens que s'il a quelque chose à défaire (cf. cadrageParDefaut3D).
+      sideImageResetBtn.style.display = cadrageParDefaut3D(sel) ? 'none' : 'block';
       sideImageSection.style.display = 'block';
       sideGroundSection.style.display = 'none';
       sidePersonasSection.style.display = 'none';

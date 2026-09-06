@@ -65,7 +65,27 @@ things doing one job, and every later question would have to be answered twice.
     depends on the panel's size AND the image's, so the first resize, or the first "Change the
     image" towards a file of another definition, would leave an offset computed for a geometry that
     no longer exists. Staying inside [0, 1] IS the guarantee that no white band appears.
-15. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
+15. **The zoom starts at the covering fit and never goes below it (#403f).** 1x is the framing that
+    fills the panel; going under would stop the image from covering it, which is a different need
+    (showing the whole image on a background) and no longer cropping. Zooming in can never produce
+    a white band, only more material to move around.
+
+    The ceiling, 4x, is **a comfort, not a measurement**, and the code says so. It was neither
+    measured nor derived: it is one notch past what anyone needed while designing this. The repo's
+    rule is that thresholds are measured; this one is not, and saying so beats inventing a
+    justification for it.
+16. **The zoom is what makes the move complete.** At 1x exactly, one of the two axes fits the panel
+    and has no slack: the image only moves one way, which surprises. Zooming gives both axes slack.
+17. **A button, not a dropdown, and it hides itself.** The framing mode was first sketched as a
+    "crop center / free" dropdown. Its second value could never be chosen: it would only ever arrive
+    as a side effect of a move or a zoom, which makes it a state readout, not an input, and the only
+    real action left is going back. So: a "Recentre" button, shown only when the framing has been
+    touched. Offering to undo what nobody did takes up room and makes people doubt they changed
+    something by accident.
+18. **Recentring DELETES the three fields instead of writing the defaults into them.** A recentred
+    project becomes byte-for-byte identical to one that was never framed: nothing distinguishes
+    "put back to centre" from "never touched", which is exactly the truth.
+19. **No cross-project rename journal, unlike models.** `noterRenommageModele` offers to repair
     another project on its next opening; nothing equivalent exists for images. This is a gap, stated
     rather than hidden: renaming an image repairs the OPEN project and nothing else.
 
@@ -130,6 +150,8 @@ export: two drawing paths would mean an export that shows an empty panel.
 
 **#403c, the interface.** The context menu entry, the three removals, the ban on a Scene's canvas,
 the confirmation, and the Image section.
+
+**#403f, the zoom and the return to the original framing.** Decisions 15 to 18.
 
 **#403e, moving the image inside its panel.** Decisions 13 and 14. The arithmetic is a pure
 function (`ancrageApresGlissement3D`), separate from the mouse wiring, because it is the only part

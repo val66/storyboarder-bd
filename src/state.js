@@ -108,6 +108,10 @@ export const S = {
   // le choix (chaque Case a sa propre caméra). Recadrer est exclusif par nature : une seule image à
   // la fois. L'état tient donc en un identifiant, qui ne peut pas être enregistré par mégarde.
   imageMovePanelId: null,
+  // Un seul instantané par glissement du curseur de zoom, remis à zéro au relâchement. Même
+  // dispositif que pour les curseurs des Bulles, et pour la même raison : sans lui, un aller-retour
+  // de souris remplit la pile d'annulation de cent états dont aucun n'intéresse personne.
+  sideImageZoomSnapshotTaken: false,
 
   // ── Drag & interaction ───────────────────────────────────────────────
   dragMode:    null,

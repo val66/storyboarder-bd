@@ -71,7 +71,29 @@ deux réponses.
     le premier « Changer l'image » vers un fichier d'une autre définition, aurait laissé un décalage
     calculé pour une géométrie qui n'existe plus. Rester dans [0, 1] EST la garantie qu'aucune bande
     blanche n'apparaît.
-15. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
+15. **Le zoom part du cadrage couvrant et ne descend jamais en dessous (#403f).** 1× est le cadrage
+    qui remplit la Case ; descendre sous cette valeur empêcherait l'image de la couvrir, ce qui est
+    un autre besoin — montrer l'image entière sur un fond — et n'est plus du recadrage. Zoomer vers
+    l'avant ne peut jamais produire de bande blanche, seulement plus de matière à déplacer.
+
+    Le plafond, 4×, est **un confort et non une mesure**, et le code le dit. Il n'a été ni mesuré ni
+    déduit : c'est un cran au-delà de ce dont personne n'a eu besoin pendant la conception. La règle
+    du dépôt est qu'un seuil se mesure ; celui-ci ne l'est pas, et le dire vaut mieux que lui
+    inventer une justification.
+16. **Le zoom est ce qui rend le déplacement complet.** À 1× pile, l'un des deux axes tombe juste et
+    n'a aucun jeu : l'image ne se déplace que dans un sens, ce qui surprend. Zoomer donne du jeu aux
+    deux.
+17. **Un bouton, pas un menu déroulant, et il se masque tout seul.** Le mode de cadrage avait
+    d'abord été esquissé en menu « crop center / pose libre ». Sa seconde valeur ne pouvait jamais
+    être choisie : elle n'arrivait que par effet de bord d'un déplacement ou d'un zoom, ce qui en
+    fait un affichage d'état et non une commande, et la seule action réelle qui restait était le
+    retour en arrière. D'où un bouton « Recentrer », affiché seulement quand le cadrage a été
+    touché. Proposer en permanence de défaire ce que personne n'a fait occupe une place pour rien et
+    fait douter d'avoir modifié quelque chose sans le vouloir.
+18. **Recentrer SUPPRIME les trois champs au lieu d'y écrire les valeurs par défaut.** Un Projet
+    recentré redevient identique, octet pour octet, à un Projet jamais recadré : rien ne distingue
+    « remis au centre » de « jamais touché », ce qui est exactement la vérité.
+19. **Pas de journal de renommage entre Projets, contrairement aux modèles.**
     `noterRenommageModele` propose de réparer un autre Projet à sa prochaine ouverture ; rien
     d'équivalent n'existe pour les images. C'est un manque, écrit plutôt que tu : renommer une image
     répare le Projet OUVERT, et rien d'autre.
@@ -140,6 +162,8 @@ chemins de dessin donneraient un export qui montre une Case vide.
 
 **#403c, l'interface.** L'entrée du menu contextuel, les trois retraits, l'interdiction sur le
 canevas d'une Scène, la confirmation, et la section Image.
+
+**#403f, le zoom et le retour au cadrage d'origine.** Les décisions 15 à 18.
 
 **#403e, déplacer l'image dans sa Case.** Les décisions 13 et 14. L'arithmétique est une fonction
 pure (`ancrageApresGlissement3D`), séparée du câblage de la souris, parce que c'est la seule part qui

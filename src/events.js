@@ -46,6 +46,7 @@ import {
   importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
   listImages, renameImage, deleteImage, sanitizeImageName,
   ancrageDeLImage3D, CHAMP_ANCRAGE_X_IMAGE, CHAMP_ANCRAGE_Y_IMAGE,
+  zoomDeLImage3D, CHAMP_ZOOM_IMAGE, ZOOM_IMAGE_MIN, ZOOM_IMAGE_MAX, reinitialiserCadrage3D,
 } from './image-store.js';
 import {
   countImageUsages, repointerImage3D, repointerPileImages3D, goToImageUsage,
@@ -3291,7 +3292,7 @@ window.addEventListener('mousemove', (e) => {
     const panel = _caseEnDeplacementDImage();
     const image = panel ? getLoadedImage(imageDeLaCase3D(panel)) : null;
     if (panel && image) {
-      const cadre = cadreDeRecouvrement3D(panel.w, panel.h, image.w, image.h);
+      const cadre = cadreDeRecouvrement3D(panel.w, panel.h, image.w, image.h, null, zoomDeLImage3D(panel));
       const a = ancrageApresGlissement3D(
         S.dragOrig.ancrage, { x: x - S.dragStart.x, y: y - S.dragStart.y },
         cadre, image, panel.w, panel.h);
@@ -5568,6 +5569,49 @@ document.getElementById('sideImageMoveBtn').onclick = () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
   _entrerModeDeplacementImage(panel);
 };
+// ─── Le zoom du cadrage, et le retour au cadrage d'origine (#403f) ───
+const sideImageZoomInput = document.getElementById('sideImageZoomInput');
+const sideImageZoomValue = document.getElementById('sideImageZoomValue');
+// LES BORNES VIENNENT DU CODE, pas du HTML. index.html en porte une copie pour que le curseur ait
+// l'air juste avant le premier rendu, mais c'est `zoomValide3D` qui décide vraiment : deux sources
+// de vérité pour un intervalle finissent toujours par diverger, et ce jour-là le curseur promet une
+// valeur que le modèle refuse.
+sideImageZoomInput.min = String(ZOOM_IMAGE_MIN);
+sideImageZoomInput.max = String(ZOOM_IMAGE_MAX);
+
+/** Le libellé du curseur : « 1,0 » en français, « 1.0 » en anglais, comme partout ailleurs. */
+function _texteDuZoom(z){
+  const t = Number(z).toFixed(1);
+  return S.appLang === 'en' ? t : t.replace('.', ',');
+}
+
+// UN SEUL instantané par glissement du curseur, remis à zéro au relâchement (`change`) : c'est le
+// dispositif déjà en place pour les curseurs des Bulles, et il évite qu'un aller-retour de souris
+// remplisse la pile d'annulation de cent états intermédiaires.
+sideImageZoomInput.addEventListener('input', () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  if (!panel || !casePorteUneImage3D(panel)) return;
+  if (!S.sideImageZoomSnapshotTaken) { snapshot(); S.sideImageZoomSnapshotTaken = true; }
+  panel[CHAMP_ZOOM_IMAGE] = zoomDeLImage3D({ [CHAMP_ZOOM_IMAGE]: sideImageZoomInput.value });
+  sideImageZoomValue.textContent = _texteDuZoom(panel[CHAMP_ZOOM_IMAGE]);
+  S.projectDirty = true;
+  // `updateSidePanel` et non `drawCurrentPage` seul : « Recentrer » apparaît dès que le zoom quitte
+  // 1, et il doit le faire pendant le glissement, pas au prochain clic ailleurs.
+  updateSidePanel();
+  drawCurrentPage();
+});
+sideImageZoomInput.addEventListener('change', () => { S.sideImageZoomSnapshotTaken = false; });
+
+document.getElementById('sideImageResetBtn').onclick = () => {
+  const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  if (!panel) return;
+  snapshot();
+  // Rend `false` si le cadrage était déjà celui d'origine : le bouton est alors masqué, donc ce cas
+  // ne devrait pas se produire, et on ne marque pas le Projet modifié pour un geste sans effet.
+  if (reinitialiserCadrage3D(panel)) S.projectDirty = true;
+  renderAll();
+};
+
 document.getElementById('sideImageChangeBtn').onclick = async () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
   await _poserImageSurCase(panel, { remplace: true });
