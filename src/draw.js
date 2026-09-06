@@ -17,7 +17,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
-import { perfTemps, perfJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
+import { perfTempsJalon, perfJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -2428,7 +2428,7 @@ export function wrapTextLines(c, text, maxWidth){
 // ════════════════════════════════════════════════════════════
 let _premierDessinFait = false;
 export function drawCurrentPage(){
-  return perfTemps('drawCurrentPage (total)', () => {
+  return perfTempsJalon('drawCurrentPage (total)', () => {
     const r = _drawCurrentPageMesure();
     if (!_premierDessinFait) { _premierDessinFait = true; perfJalon('PREMIER DESSIN terminé'); }
     return r;

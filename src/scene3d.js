@@ -23,7 +23,7 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
-import { perfTemps } from './perf-probe.js';   // SONDE : à retirer avec la campagne
+import { perfTempsJalon } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1740,7 +1740,7 @@ export function hauteurDeboutModele3D(entry, boxFn){
 }
 
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
-  return perfTemps('Case : rendu 3D (cache manqué)', () =>
+  return perfTempsJalon('Case : rendu 3D (cache manqué)', () =>
     _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig));
 }
 function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){

@@ -64,15 +64,8 @@ export function perfProbe(on = true){
   try { localStorage.setItem(CLE_ARMEMENT, on ? '1' : '0'); }
   catch { return 'impossible d\'écrire dans localStorage : la sonde ne peut pas être armée'; }
   return on
-    ? 'sonde ARMÉE. Rechargez l\'application (Ctrl+R), ouvrez le Projet, changez de Planche, puis perfRapport().'
+    ? 'sonde ARMÉE. FERMEZ et RELANCEZ l\'application (Ctrl+R ne fait rien : le menu est supprimé dans main.js), ouvrez le Projet, changez de Planche, puis perfRapport().'
     : 'sonde désarmée. Elle sera éteinte au prochain démarrage.';
-}
-
-/** Chronomètre un appel. Éteinte, on n'appelle même pas `performance.now()`. */
-export function perfTemps(nom, fn){
-  if (!_actif) return fn();
-  const t = performance.now();
-  try { return fn(); } finally { _noter(nom, performance.now() - t); }
 }
 
 /** La même chose pour un appel asynchrone : lecture disque, décodage, analyse GLB. */
@@ -100,6 +93,26 @@ export function perfJalon(nom){
   if (_actif) _jalons.push({ nom, ms: +(performance.now() - _t0).toFixed(0) });
 }
 
+/**
+ * Chronomètre ET date : la mesure va dans l'agrégat, et un jalon note QUAND elle a eu lieu, avec son
+ * coût.
+ *
+ * ⚠️ C'EST CE QUI RÉPOND À LA QUESTION RESTÉE OUVERTE au premier tour. Les agrégats disaient « 35
+ * rendus de Case pour 1533 ms » sans dire s'ils étaient GROUPÉS dans une seule frame — le premier
+ * dessin à froid d'une Planche, que rien ne peut regrouper — ou ÉTALÉS sur les huit redessins
+ * déclenchés par l'arrivée des fichiers, que coalescer supprimerait. Les deux lectures appellent des
+ * remèdes opposés, et une moyenne ne les distingue pas.
+ */
+export function perfTempsJalon(nom, fn){
+  if (!_actif) return fn();
+  const t = performance.now();
+  try { return fn(); } finally {
+    const ms = performance.now() - t;
+    _noter(nom, ms);
+    _jalons.push({ nom: `${nom} — ${ms.toFixed(0)} ms`, ms: +(performance.now() - _t0).toFixed(0) });
+  }
+}
+
 /** Un fait : une taille, un nombre. Le premier vu gagne, pour garder le contexte du démarrage. */
 export function perfFait(nom, valeur){
   if (_actif && !_faits.has(nom)) _faits.set(nom, valeur);
@@ -112,7 +125,7 @@ function _quantile(tri, q){
 export function perfRapport(){
   if (!_actif) {
     return 'sonde NON ARMÉE pour cette session : rien n\'a été mesuré. '
-      + 'Tapez perfProbe(true), rechargez avec Ctrl+R, puis refaites le geste.';
+      + 'Tapez perfProbe(true), fermez et relancez l\'application, puis refaites le geste.';
   }
   if (!_mesures.size && !_jalons.length) {
     return 'sonde armée, mais AUCUNE mesure : ni chargement ni dessin depuis le démarrage. '
