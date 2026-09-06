@@ -680,7 +680,7 @@ describe('#403c : le câblage des trois écrans, épinglé sur la source', () =>
   test('retirer l\'image DÉTACHE, et ne touche à aucun fichier', () => {
     // Deux Cases peuvent porter la même image : effacer pour l'une casserait l'autre. Supprimer du
     // disque est un geste distinct, dans la section Images (#403d).
-    const i = EVENTS.indexOf('async function _retirerImageDeLaCase');
+    const i = EVENTS.indexOf('function _retirerImageDeLaCase');
     const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
     assert.match(corps, /delete panel\[CHAMP_IMAGE_CASE\]/, 'le détachement a disparu');
     assert.ok(!/deleteImage|deleteImageFile/.test(corps),
@@ -701,6 +701,34 @@ describe('#403c : le câblage des trois écrans, épinglé sur la source', () =>
       `_poserImageSurCase : ${appels('_poserImageSurCase')} occurrence(s), la définition plus deux appels attendus`);
     assert.equal(appels('_retirerImageDeLaCase'), 2,
       'le détachement a gagné ou perdu un appelant : la définition plus le bouton de la section Image');
+  });
+
+  test('ON NE DEMANDE QUE SI L\'ON DÉTRUIT (#403o)', () => {
+    // ⚠️ RIEN N'ÉPINGLAIT CELA, et la suite est restée verte pendant que je retirais deux modales.
+    // La règle vient de l'utilisateur : vider une Case qui ne porte QU'UNE image ne détruit rien —
+    // le fichier reste dans le dossier partagé, on ne fait que détacher. Poser une question pour un
+    // geste réversible et sans perte use la question elle-même : celle qui annonce la suppression de
+    // huit Éléments finit par se cliquer sans être lue.
+    const i = EVENTS.indexOf("getElementById('ctxClearPanel')");
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n};', i));
+    assert.match(corps, /if \(count > 0 && !await confirmAction\(/,
+      'la confirmation ne dépend plus de ce qui est réellement détruit');
+    // L'assertion de présence en face : la confirmation DOIT rester quand des Éléments partent.
+    assert.match(corps, /élément\(s\) seront définitivement supprimés/,
+      'vider une Case pleine d\'Éléments ne demande plus rien');
+    // ⚠️ ET C'EST LE `snapshot()` QUI REND LE SILENCE LÉGITIME. Sans lui, se taire ne serait pas de
+    // la sobriété mais de la négligence : détacher par mégarde deviendrait irréparable.
+    assert.match(corps, /snapshot\(\)/, 'un détachement silencieux ET irréversible');
+  });
+
+  test('les DEUX chemins qui détachent se taisent pareil (#403o)', () => {
+    // « Vider la Case » sur une Case à image et le bouton « Retirer l\'image » font exactement le
+    // même geste, avec la même réversibilité. En faire demander un et pas l\'autre serait la
+    // divergence entre deux chemins vers un même acte que ce dépôt paie régulièrement.
+    const i = EVENTS.indexOf('function _retirerImageDeLaCase');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
+    assert.ok(!/confirmAction/.test(corps), 'un des deux chemins demande encore, l\'autre non');
+    assert.match(corps, /snapshot\(\)/);
   });
 
   test('« Vider la Case » détache l\'image, et le dit', () => {

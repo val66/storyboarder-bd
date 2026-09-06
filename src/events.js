@@ -5457,10 +5457,15 @@ document.getElementById('ctxClearPanel').onclick = async () => {
   if (count === 0 && !_image) {
     await alertAction(tr('This panel is already empty.', 'Cette Case est déjà vide.')); return;
   }
-  if (!await confirmAction(count === 0
-    ? tr('Remove this panel\'s image? The file itself is not deleted.',
-      'Retirer l\'image de cette Case ? Le fichier, lui, n\'est pas supprimé.')
-    : tr(`Empty this panel? Its ${count} element(s) will be permanently removed.`,
+  // ⚠️ ON NE DEMANDE QUE SI L'ON DÉTRUIT. Vider une Case qui ne porte QU'UNE IMAGE ne détruit rien :
+  // le fichier reste dans le dossier partagé, on ne fait que détacher (décision 4). Poser une
+  // question pour un geste réversible et sans perte use la question elle-même — celle qui annonce
+  // la suppression de huit Éléments finit par se cliquer sans être lue.
+  //
+  // Ce qui rend ce silence légitime, et sans quoi il serait de la négligence : le `snapshot()` juste
+  // en dessous. Détacher par mégarde se répare d'un Ctrl+Z, et l'image revient avec son cadrage.
+  if (count > 0 && !await confirmAction(
+    tr(`Empty this panel? Its ${count} element(s) will be permanently removed.`,
       `Vider cette Case ? Ses ${count} élément(s) seront définitivement supprimés.`))) return;
   snapshot();
   // DÉTACHER, PAS EFFACER : deux Cases peuvent porter la même image, et l'une n'a pas à décider pour
@@ -5475,19 +5480,9 @@ document.getElementById('ctxClearPanel').onclick = async () => {
   drawCurrentPage();
 };
 /**
+/**
  * Poser une image sur une Case : le geste complet, depuis le menu contextuel comme depuis le bouton
  * « Changer l'image » du panneau de droite.
- *
- * ⚠️ LA CONFIRMATION VIENT AVANT LE SÉLECTEUR DE FICHIER, et l'ordre est la décision. Choisir une
- * image puis apprendre qu'elle supprimera huit Éléments serait une question posée trop tard : on
- * demande d'abord ce qu'on détruit, on ouvre le sélecteur ensuite.
- *
- * ⚠️ ET LA SUPPRESSION DES ÉLÉMENTS REPREND LE FILTRE DE « Vider la Case », `homePanelId` ET
- * `panelId` : les tracés et les pièces appartiennent à une Case par le second, et un balayage écrit
- * à part raterait les routes et les murs (cf. docs/en/panel-images.md).
- */
-/**
- * Poser une image sur une Case.
  *
  * ⚠️ IL N'Y A PLUS DE CONFIRMATION « N Éléments seront supprimés », ET C'EST UN CHANGEMENT DE
  * DÉCISION (#403m, cf. docs/en/panel-images.md, décision 1). L'exclusivité était tenue ICI, en
@@ -5534,10 +5529,15 @@ document.getElementById('ctxInsertImage').onclick = async () => {
  * Supprimer du disque est un geste distinct, dans la section Images du menu de gauche (#403d), avec
  * son propre décompte et sa propre confirmation.
  */
-async function _retirerImageDeLaCase(panel){
+function _retirerImageDeLaCase(panel){
   if (!panel || !casePorteUneImage3D(panel)) return;
-  if (!await confirmAction(tr('Remove this panel\'s image? The file itself is not deleted.',
-    'Retirer l\'image de cette Case ? Le fichier, lui, n\'est pas supprimé.'))) return;
+  // ⚠️ PAS DE CONFIRMATION NON PLUS ICI, et c'est une question de COHÉRENCE autant que de mesure.
+  // Ce bouton et « Vider la Case » font exactement le même geste sur une Case à image : détacher.
+  // Même effet, même réversibilité. En faire demander un et pas l'autre, c'est le genre de
+  // divergence entre deux chemins vers un même acte qui a coûté cher à ce dépôt.
+  //
+  // Le `snapshot()` est ce qui rend le silence légitime : détacher par mégarde se répare d'un
+  // Ctrl+Z, et l'image revient avec son cadrage. Le fichier, lui, n'a jamais été touché.
   snapshot();
   delete panel[CHAMP_IMAGE_CASE];
   // Le recadrage n'a plus d'objet. Le laisser actif garderait un mode invisible qui détournerait le
@@ -5695,9 +5695,9 @@ document.getElementById('sideImageChangeBtn').onclick = async () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
   await _poserImageSurCase(panel, { remplace: true });
 };
-document.getElementById('sideImageDetachBtn').onclick = async () => {
+document.getElementById('sideImageDetachBtn').onclick = () => {
   const panel = currentPageData().objects.find(o => o.id === S.selectedId && o.type === 'panel');
-  await _retirerImageDeLaCase(panel);
+  _retirerImageDeLaCase(panel);
 };
 
 // Toggles "Camera mode" for the Panel targeted by the right-click (cf. canvas.contextmenu above,

@@ -1315,7 +1315,7 @@ describe('#403e : le mode de recadrage, et ce que le câblage promet', () => {
   test('RÉGRESSION : le mode ne survit ni à l\'image détachée, ni à un autre Projet', () => {
     // Un mode qui survit à son objet reste actif et INVISIBLE : le prochain glisser fait alors
     // autre chose que ce que l\'utilisateur croit.
-    const retrait = EVENTS.slice(EVENTS.indexOf('async function _retirerImageDeLaCase'));
+    const retrait = EVENTS.slice(EVENTS.indexOf('function _retirerImageDeLaCase'));
     assert.match(retrait.slice(0, retrait.indexOf('\n}')), /sortirModeDeplacementImage\(\)/,
       'détacher l\'image laisse le mode actif');
     assert.match(IO, /S\.imageMovePanelId = null/,

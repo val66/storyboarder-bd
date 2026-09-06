@@ -40,7 +40,17 @@ deux réponses.
 4. **« Supprimer l'image » la DÉTACHE**, elle n'efface pas le fichier. Deux Cases peuvent pointer la
    même image ; effacer pour l'une casserait l'autre. Supprimer du disque est un geste distinct et
    explicite, dans la section Images (#403d), exactement comme pour les modèles.
-5. **« Vider la Case » détache l'image** quand c'est tout ce que la Case contient.
+5. **« Vider la Case » détache l'image** quand c'est tout ce que la Case contient, et elle le fait
+   **sans rien demander** (#403o). Rien n'est détruit : le fichier reste dans le dossier partagé.
+   Poser une question pour un geste réversible et sans perte use la question elle-même — celle qui
+   annonce la suppression de huit Éléments finit par se cliquer sans être lue. La confirmation reste
+   exactement là où quelque chose est réellement détruit, et c'est le `snapshot()` qui rend ce
+   silence légitime plutôt que négligent : un détachement par mégarde se répare d'un Ctrl+Z, cadrage
+   compris.
+
+   Le même silence vaut pour le bouton « Retirer l'image », par cohérence : les deux font le même
+   geste avec la même réversibilité, et en faire demander un et pas l'autre serait la divergence
+   entre deux chemins vers un même acte que ce dépôt paie régulièrement.
 6. **PNG, JPG et WebP.** Ni GIF, dont un canevas ne jouera pas l'animation, ni SVG, qui ne porte
    aucune taille en pixels et à qui il faudrait en imposer une.
 7. **Le menu contextuel retire** « Ajouter », « Charger une Scène » et « Importer un Modèle » sur une

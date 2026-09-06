@@ -35,7 +35,16 @@ things doing one job, and every later question would have to be answered twice.
 4. **"Remove the image" DETACHES it**, it does not erase the file. Two panels may point at the same
    image; erasing on behalf of one would break the other. Deleting from disk is a separate, explicit
    gesture, in the Images section (#403d), exactly as it is for models.
-5. **"Empty the panel" detaches the image** when that is all the panel holds.
+5. **"Empty the panel" detaches the image** when that is all the panel holds, and it does so
+   **without asking** (#403o). Nothing is destroyed: the file stays in the shared folder. Asking a
+   question for a reversible, lossless gesture wears the question out — the one that announces the
+   removal of eight Elements ends up being clicked without being read. The confirmation stays
+   exactly where something is actually destroyed, and `snapshot()` is what makes the silence
+   legitimate rather than negligent: a mistaken detach is one Ctrl+Z away, framing included.
+
+   The same silence applies to the "Remove the image" button, for coherence: both do the same
+   gesture with the same reversibility, and having one ask while the other does not is the kind of
+   divergence between two paths to one act that this repository keeps paying for.
 6. **PNG, JPG and WebP.** Not GIF, whose animation a canvas will not play, and not SVG, which carries
    no pixel size and would have to be given one.
 7. **The context menu drops** "Add", "Load a Scene" and "Import a model" on a panel holding an image.
