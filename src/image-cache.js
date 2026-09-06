@@ -23,7 +23,6 @@
  */
 
 import { readImage, imageDeLaCase3D } from './image-store.js';
-import { perfTempsAsync, perfFait } from './perf-probe.js';   // SONDE : à retirer avec la campagne
 
 // nom de fichier → 'chargement' | 'introuvable' | { bitmap, w, h }
 const _cache = new Map();
@@ -100,14 +99,9 @@ export async function preloadImages(noms){
   _onChange();
   await Promise.all(àFaire.map(async (nom) => {
     try {
-      const lu = await perfTempsAsync('lecture disque', () => readImage(nom));
+      const lu = await readImage(nom);
       if (!lu || !lu.ok || !lu.data || !lu.data.length) { _cache.set(nom, 'introuvable'); return; }
-      const décodée = await perfTempsAsync('décodage image', () => decoderImage(lu.data));
-      if (décodée) {
-        perfFait(`${nom} — définition`, `${décodée.w}×${décodée.h}`);
-        perfFait(`${nom} — octets sur disque`, `${(lu.data.length / 1048576).toFixed(1)} Mo`);
-        perfFait(`${nom} — bitmap en mémoire`, `${(décodée.w * décodée.h * 4 / 1048576).toFixed(1)} Mo`);
-      }
+      const décodée = await decoderImage(lu.data);
       _cache.set(nom, décodée || 'introuvable');
     } catch {
       _cache.set(nom, 'introuvable');
@@ -123,6 +117,14 @@ export async function preloadImagesFor(objects){
 
 /**
  * Vide le cache, en libérant les bitmaps.
+ *
+ * ⚠️ C'EST LE SEUL COÛT RÉEL D'UNE GRANDE IMAGE, et il est arithmétique : un bitmap décodé occupe
+ * largeur × hauteur × 4 octets, soit 91,6 Mo pour une 6000×4000. Le cache retient TOUTES les images
+ * du Projet ouvert et ne se vide qu'ici, au changement de Projet : le chiffre croît donc avec le
+ * nombre d'images distinctes, jamais avec le dessin, qui lui a été mesuré à zéro (cf.
+ * docs/en/rendering-performance.md). Si la mémoire devient un jour le problème, c'est ICI qu'est le
+ * remède — évincer les images des Planches hors écran — et non dans un redimensionnement à l'import,
+ * qui détruirait des pixels pour économiser un coût qui n'existe pas.
  *
  * ⚠️ `close()` N'EST PAS FACULTATIF. Un `ImageBitmap` tient une image décodée hors du tas
  * JavaScript ; l'oublier laisserait la mémoire d'un Projet fermé occupée jusqu'à ce que le

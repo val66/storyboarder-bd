@@ -167,11 +167,16 @@ elle ne le retouche pas.
 
 ## Ce qui reste à mesurer
 
-**Le coût d'une grande image.** Une photographie de 6000×4000 redessinée à chaque rafraîchissement
-d'une Planche n'est pas gratuite, et le chiffre est inconnu. La mesure vient d'abord, le remède
-ensuite : le redimensionnement à l'import est le candidat évident, mais un remède choisi avant la
-mesure est un pari. Voir [rendering-performance.md](rendering-performance.md) pour la façon dont le
-chemin de dessin se chronomètre.
+**~~Le coût d'une grande image.~~ MESURÉ, septembre 2026, et la réponse a renversé le plan.**
+Le dessin ne coûte rien de mesurable, et neuf fois plus de pixels n'y change rien ; une Planche
+d'images est un ordre de grandeur moins chère qu'une Planche de 3D. Le redimensionnement à l'import
+est donc **écarté** : il n'aurait rien économisé, et aurait rendu le zoom de #403f visiblement mou.
+Le seul coût réel est la mémoire — 91,6 Mo par image 6000×4000 décodée — et son remède, s'il en faut
+un jour un, est de borner le cache plutôt que de détruire des pixels. Chiffres et méthode dans
+[rendering-performance.md](rendering-performance.md).
+
+Ce qui y reste non mesuré : **le temps de décodage**, que la campagne a manqué parce que la sonde a
+été allumée après l'insertion de l'image.
 
 **Ce que coûte un fichier manquant.** Le fichier peut être renommé ou effacé hors de l'application.
 Les modèles connaissent déjà ce cas ; le comportement doit être aussi visible ici, et la mesure se

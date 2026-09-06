@@ -156,10 +156,16 @@ retouch it.
 
 ## What is left to measure
 
-**The cost of a large image.** A 6000×4000 photograph redrawn on every page refresh is not free, and
-the figure is unknown. The measurement comes first, and the remedy after: resizing at import is the
-obvious candidate, but a remedy chosen before the measurement is a guess.
-See [rendering-performance.md](rendering-performance.md) for how the drawing path is timed.
+**~~The cost of a large image.~~ MEASURED, September 2026, and the answer reversed the plan.**
+Drawing costs nothing measurable, and nine times the pixels changes nothing; a page of images is an
+order of magnitude cheaper than a page of 3D. Resizing at import was therefore **rejected**: it would
+have saved nothing, and it would have made the #403f zoom visibly soft. The only real cost is memory
+— 91.6 MB per decoded 6000×4000 image — and its remedy, if it ever becomes one, is to bound the
+cache rather than to destroy pixels. Figures and method in
+[rendering-performance.md](rendering-performance.md).
+
+What remains unmeasured there: **decode time**, which the campaign missed because the probe was
+switched on after the image was inserted.
 
 **What a missing file costs.** The file may be renamed or deleted outside the application. Models
 already face this; the behaviour has to be as visible here, and the measurement is simply whether the
