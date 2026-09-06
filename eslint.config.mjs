@@ -87,8 +87,10 @@ export default [
     },
   },
   {
-    // Processus principal Electron : Node, pas navigateur. `require` y est légitime.
-    files: ['main.js', 'preload.js'],
+    // Processus principal Electron : Node, pas navigateur. `require` y est légitime. Trois
+    // fichiers et non deux depuis #407b : window-state.js est la décision pure que main.js
+    // applique à la géométrie de la fenêtre, et il est CommonJS comme ses deux voisins.
+    files: ['main.js', 'preload.js', 'window-state.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

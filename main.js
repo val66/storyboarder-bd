@@ -1,6 +1,13 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Géométrie de la fenêtre : la DÉCISION est dans window-state.js, testable sous Node nu, ce
+// fichier-ci n'en fait que l'entrée-sortie (cf. docs/en/architecture.md, règle n°1).
+const {
+  LARGEUR_DEFAUT, HAUTEUR_DEFAUT, LARGEUR_MINI, HAUTEUR_MINI,
+  geometrieRestaurable, etatAEnregistrer,
+} = require('./window-state');
 
 // Dossier "Projets" proposé par défaut pour l'enregistrement/le chargement : situé à côté de
 // l'exécutable installé (donc visible/accessible facilement depuis le dossier d'installation), ou à
@@ -31,6 +38,22 @@ function ensureProjectsDir() {
   try { fs.mkdirSync(getProjectsDir(), { recursive: true }); } catch (err) { /* ignore */ }
 }
 
+// Mémorise la géométrie de la fenêtre dans le même settings.json (champ AJOUTÉ, `windowState` :
+// aucun champ existant n'est renommé). Appelé à la fermeture, le seul moment où l'on est sûr que
+// l'utilisateur a fini de la dimensionner.
+//
+// `getNormalBounds()` et non `getBounds()` : sur une fenêtre maximisée, le second rend les
+// dimensions de l'écran, et la taille restaurée serait perdue pour de bon.
+function enregistrerGeometrieFenetre(win) {
+  try {
+    const etat = etatAEnregistrer(win.getNormalBounds(), win.isMaximized());
+    if (!etat) return;
+    const settings = readSettings();
+    settings.windowState = etat;
+    fs.writeFileSync(settingsFilePath, JSON.stringify(settings), 'utf-8');
+  } catch (err) { /* ignore */ }
+}
+
 function setLastProjectPath(filePath) {
   try {
     const settings = readSettings();
@@ -47,11 +70,21 @@ function setLastProjectPath(filePath) {
 let isQuitting = false;
 
 function createWindow() {
+  // La fenêtre renaît là où l'utilisateur l'avait laissée. Ce n'est pas qu'un confort : elle
+  // naissait à 1280 × 860 et se faisait maximiser à la main juste après, ce qui obligeait le
+  // renderer à recalculer son échelle et à REDESSINER toute la Planche pendant le chargement
+  // (cf. docs/en/rendering-performance.md).
+  //
+  // `screen` n'est interrogeable qu'une fois l'application prête : createWindow n'est appelé que
+  // depuis whenReady et depuis 'activate', donc jamais avant.
+  const enregistre = readSettings().windowState;
+  const restaure = geometrieRestaurable(enregistre, screen.getAllDisplays().map(d => d.workArea),
+    { largeur: LARGEUR_MINI, hauteur: HAUTEUR_MINI });
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 860,
-    minWidth: 900,
-    minHeight: 600,
+    ...(restaure || { width: LARGEUR_DEFAUT, height: HAUTEUR_DEFAUT }),
+    minWidth: LARGEUR_MINI,
+    minHeight: HAUTEUR_MINI,
     backgroundColor: '#F2EBDD',
     webPreferences: {
       nodeIntegration: false,
@@ -65,6 +98,10 @@ function createWindow() {
   // l'application" de la modale Projet via window.close(), etc.) pour laisser le renderer décider quoi
   // faire s'il reste des modifications non enregistrées (cf. quitConfirmModal dans index.html).
   win.on('close', (e) => {
+    // AVANT la garde : la fermeture peut être annulée par l'utilisateur, mais la géométrie du
+    // moment est bonne à prendre dans les deux cas, et c'est le dernier instant où la fenêtre
+    // existe encore.
+    enregistrerGeometrieFenetre(win);
     if (isQuitting) return;
     e.preventDefault();
     win.webContents.send('app:requestQuitConfirmation');
@@ -79,6 +116,11 @@ function createWindow() {
       win.webContents.toggleDevTools();
     }
   });
+
+  // AVANT loadFile, et c'est tout l'intérêt de la tâche : le renderer ne mesure sa zone de dessin
+  // qu'une fois, à la taille définitive. Maximiser après le chargement rendrait la Planche deux
+  // fois, ce qui était exactement la situation d'origine.
+  if (restaure && enregistre.maximized === true) win.maximize();
 
   win.loadFile(path.join(__dirname, 'index.html'));
 }

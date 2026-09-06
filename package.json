@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.5.31",
+  "version": "1.5.32",
   "engines": {
     "node": ">=20"
   },
@@ -35,6 +35,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "window-state.js",
       "index.html",
       "style.css",
       "package.json",

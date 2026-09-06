@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.31**
+**Version 1.5.32**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -75,6 +75,7 @@
 - 🗑️ **Delete a project**, confirmed by typing the word
 - 🖼️ Export pages as **PNG** or **PDF**
 - ↩️ Undo, over the last 50 actions
+- 🪟 The window **reopens where you left it**, size, position and maximised state
 
 ---
 
@@ -131,6 +132,7 @@ storyboarder-bd/
 ├── style.css          # All application styles
 ├── main.js            # Electron main process (window, file dialogs, IPC)
 ├── preload.js         # Electron contextIsolation bridge
+├── window-state.js    # Window geometry remembered between launches (pure decision)
 ├── src/                # Application logic (ES modules)
 │   ├── app.js          # Entry point (just imports events.js)
 │   ├── state.js        # Shared app state + Volume/Page/Panel helpers

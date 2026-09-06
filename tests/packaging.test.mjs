@@ -86,6 +86,21 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
     assert.deepEqual(vides, [], `motifs de packaging sans cible : ${vides.join(', ')}`);
   });
 
+  test('RÉGRESSION : chaque require local du processus principal est embarqué', () => {
+    // Même famille que le défaut de style.css, autre porte d'entrée. `main.js` a cessé d'être seul
+    // en #407b : il require désormais `./window-state.js`. Absent de la liste blanche, ce fichier
+    // ne voyagerait pas, et l'application installée s'arrêterait à la PREMIÈRE ligne de main.js,
+    // avant même d'ouvrir une fenêtre. Panne totale, invisible en développement.
+    const locaux = ['main.js', 'preload.js'].flatMap(f =>
+      [...lire(f).matchAll(/require\(['"]\.\/([^'"]+)['"]\)/g)]
+        .map(m => (m[1].endsWith('.js') ? m[1] : m[1] + '.js')));
+    assert.ok(locaux.length >= 1, 'aucun require local trouvé : le test ne regarde plus rien');
+    const manquants = locaux.filter(f => !MOTIFS.some(m => couvert(f, m)));
+    assert.deepEqual(manquants, [], `require par le processus principal mais absent de build.files : ${manquants}`);
+    const introuvables = locaux.filter(f => !existsSync(join(RACINE, f)));
+    assert.deepEqual(introuvables, [], `require mais absent du dépôt : ${introuvables}`);
+  });
+
   test('le point d\'entrée déclaré par npm est packagé', () => {
     // `main` est ce qu'Electron lance. S'il sortait de la liste, l'application ne démarrerait pas
     // du tout, panne plus visible que le CSS manquant, mais de la même famille.

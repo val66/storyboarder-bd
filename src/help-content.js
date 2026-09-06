@@ -41,6 +41,7 @@ export const HELP_MANUAL_EN = [
     'Once a .json file has been chosen, the Project is saved automatically every minute if it has been modified.',
     "If there are unsaved changes, a confirmation is shown when closing the application (the dialog's text is imposed by the browser).",
     'Loading, saving and autosaving require the Storyboard BD application (launched via its shortcut or executable); they do not work if index.html is opened directly in a regular browser.',
+    'The application reopens at the size and position where you left it, maximised if it was maximised. If the screen it was sitting on is no longer connected, it reopens at its default size.',
   ]},
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
@@ -184,6 +185,7 @@ export const HELP_MANUAL_FR = [
     'Une fois un fichier .json choisi, le Projet est sauvegardé automatiquement chaque minute s\'il a été modifié.',
     "Si des modifications n'ont pas été enregistrées, une confirmation s'affiche à la fermeture de l'application (le texte de cette boîte de dialogue est imposé par le navigateur).",
     "Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboard BD (lancée via son raccourci ou son exécutable) ; ils ne fonctionnent pas si index.html est ouvert directement dans un navigateur classique.",
+    "L'application rouvre à la taille et à la position où vous l'avez laissée, en plein écran si elle y était. Si l'écran qu'elle occupait n'est plus branché, elle rouvre à sa taille par défaut.",
   ]},
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',

@@ -5,8 +5,17 @@
 
 ## Règle n°1 — tout le code applicatif vit dans `src/*.js`
 
-`main.js` et `preload.js` sont les fichiers de processus Electron : fenêtre, accès disque, IPC. **On
-ne les touche jamais pour une fonctionnalité de l'application.**
+`main.js`, `preload.js` et `window-state.js` sont les fichiers de processus Electron : fenêtre,
+accès disque, IPC. **On ne les touche jamais pour une fonctionnalité de l'application.**
+
+`window-state.js` est arrivé avec #407b et mérite un mot, car un troisième fichier à la racine a
+l'air d'une fissure dans la règle sans en être une. La **géométrie** de la fenêtre figure parmi les
+attributions propres du processus principal, dans la phrase ci-dessus : la retenir d'un lancement à
+l'autre ne demande donc aucune exception. Le fichier ne contient que la **décision pure** (cette
+géométrie enregistrée est-elle encore utilisable ? qu'écrit-on en retour ?), afin de se charger sous
+Node nu et d'être testable ; `main.js` garde l'entrée-sortie. Même partage qu'`image-store.js` face
+aux canaux `images:*` : d'un côté le disque et sa défense, de l'autre la décision. Il est en
+CommonJS comme ses deux voisins, et le renderer ne le charge jamais.
 
 Cette règle a une conséquence concrète et non évidente : le renderer ne peut pas lire
 `package.json`, ce qui demanderait un IPC. D'où `src/version.js`, généré par

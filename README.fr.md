@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.31**
+**Version 1.5.32**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -79,6 +79,7 @@
 - 🗑️ **Supprimer un Projet**, confirmé en écrivant le mot
 - 🖼️ Export des planches en **PNG** ou **PDF**
 - ↩️ Annulation sur les 50 dernières actions
+- 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
 
 ---
 
@@ -135,6 +136,7 @@ storyboarder-bd/
 ├── style.css          # Tous les styles de l'application
 ├── main.js            # Processus principal Electron (fenêtre, fichiers, IPC)
 ├── preload.js         # Bridge contextIsolation Electron
+├── window-state.js    # Géométrie de la fenêtre retenue entre deux lancements (décision pure)
 ├── src/                # Logique applicative (modules ES)
 │   ├── app.js          # Point d'entrée (importe simplement events.js)
 │   ├── state.js        # État partagé + fonctions utilitaires Tome/Planche/Case

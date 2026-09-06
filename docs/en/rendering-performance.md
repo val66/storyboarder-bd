@@ -271,9 +271,32 @@ is how campaign #404 lost the decode time. It arms through `localStorage`, and s
 mutation that makes the draw loop call itself — precisely the one that hangs the suite. Replay
 mutations one at a time when one of them can loop.
 
-## What was NOT settled
+## Campaign 4 — the second render scale change, named at last
 
-The render scale changes **twice** during loading (`1.5 → 2.571`), and the second change happens
-after the expensive render, costing a further full pass. The trigger is a layout that settles late
-— the available width grows, so the fit grows. It was not identified, and #405d made it
-non-blocking, which lowered the value of chasing it further. Written down rather than dressed up.
+For three campaigns this note carried an unsettled line: the render scale changes **twice** during
+loading (`1.5 → 2.571`), the second change lands after the expensive render, and it costs a further
+full pass. The trigger was described as "a layout that settles late", which was a guess dressed as
+an observation.
+
+**Arithmetic named it, and no probe was needed.** `canvasWrap.clientHeight` reads at most 791 px on
+the first pass and 1316 px on the second. `main.js` created the window at a hard-coded 1280 × 860,
+and nothing in the code maximises it or restores a previous size. A drawing area cannot be 1316 px
+tall inside an 860 px window. Something grew the window by 500 px, and the only candidate left was
+the user.
+
+It was. The window opened small, and it got maximised by hand a second later. **There was no
+defect.** The run-to-run spread (1 501, 2 306, 3 132 ms to a fully rendered Page) follows from it
+too: the earlier the maximise lands, the more loading work the second render pass collides with.
+
+Two things are worth keeping from this.
+
+**The remedy was not in the renderer.** `fitZoomToWrap` was doing its job correctly both times.
+#407b made the window **remember its geometry** between launches (`window-state.js`, plus a
+`windowState` field in `settings.json`) and maximise **before** `loadFile`, so the renderer measures
+its drawing area once, at the final size. The second pass disappears because the cause disappears,
+not because the symptom was suppressed.
+
+**Two campaigns were spent looking inside the application for something that was outside it.** The
+figures were right the whole time; what was missing was one question to the user. Before modelling
+a mechanism to explain a measurement, check that the measurement is not simply describing what the
+person did.

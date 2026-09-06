@@ -287,10 +287,34 @@ par `localStorage`, et reste éteinte par défaut.
 mutation qui fait s'appeler la boucle de dessin elle-même — précisément celle qui bloque la suite.
 Rejouer les mutations une par une quand l'une d'elles peut boucler.
 
-## Ce qui N'A PAS été tranché
+## Campagne 4 — le second changement d'échelle, enfin nommé
 
-L'échelle de rendu change **deux fois** pendant le chargement (`1,5 → 2,571`), et le second
-changement survient après le rendu coûteux, au prix d'une passe complète de plus. Le déclencheur
-est une mise en page qui se stabilise tard — la largeur disponible grandit, donc l'ajustement
-grandit. Il n'a pas été identifié, et #405d l'a rendu non bloquant, ce qui a fait tomber l'intérêt
-de le poursuivre. Écrit tel quel plutôt qu'habillé.
+Trois campagnes durant, cette note a porté une ligne non tranchée : l'échelle de rendu change
+**deux fois** pendant le chargement (`1,5 → 2,571`), le second changement tombe après le rendu
+coûteux, et il coûte une passe complète de plus. Le déclencheur était décrit comme « une mise en
+page qui se stabilise tard », ce qui était une supposition habillée en observation.
+
+**C'est l'arithmétique qui l'a nommé, et aucune sonde n'a été nécessaire.** `canvasWrap.clientHeight`
+vaut au plus 791 px à la première passe, et 1316 px à la seconde. `main.js` créait la fenêtre à
+1280 × 860 en dur, et rien dans le code ne la maximise ni ne restaure une taille précédente. Une
+zone de dessin ne peut pas faire 1316 px de haut dans une fenêtre de 860. Quelque chose avait fait
+grandir la fenêtre de 500 px, et le seul candidat restant était l'utilisateur.
+
+C'en était un. La fenêtre s'ouvrait petite, et elle était maximisée à la main une seconde plus
+tard. **Il n'y avait aucun défaut.** L'écart entre les passes (1 501, 2 306, 3 132 ms jusqu'à une
+Planche entièrement rendue) en découle aussi : plus la maximisation arrive tôt, plus la seconde
+passe de rendu percute de travail de chargement.
+
+Deux choses méritent d'être gardées.
+
+**Le remède n'était pas dans le renderer.** `fitZoomToWrap` faisait correctement son travail les
+deux fois. #407b a fait en sorte que la fenêtre **retienne sa géométrie** entre deux lancements
+(`window-state.js`, plus un champ `windowState` dans `settings.json`) et qu'elle se maximise
+**avant** `loadFile`, pour que le renderer mesure sa zone de dessin une seule fois, à la taille
+finale. La seconde passe disparaît parce que la cause disparaît, pas parce que le symptôme a été
+étouffé.
+
+**Deux campagnes ont été passées à chercher dans l'application ce qui était en dehors.** Les
+chiffres étaient justes depuis le début ; ce qui manquait, c'était une question à l'utilisateur.
+Avant de modéliser un mécanisme pour expliquer une mesure, vérifier que la mesure ne décrit pas
+simplement ce que la personne a fait.
