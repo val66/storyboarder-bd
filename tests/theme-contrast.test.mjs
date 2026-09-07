@@ -553,10 +553,14 @@ describe('Le réglage est branché de bout en bout', () => {
     for (let v = min; v <= max; v += pas) attendus.push(String(v));
     const i = HTML.indexOf('curseur-gradue-crans');
     assert.ok(i > 0, 'les crans ont disparu du curseur');
-    const crans = [...HTML.slice(i, HTML.indexOf('</div>', i)).matchAll(/<span>(\d+)<\/span>/g)]
-      .map(m => m[1]);
-    assert.deepEqual(crans, attendus,
+    const bloc = HTML.slice(i, HTML.indexOf('</div>', i));
+    const spans = [...bloc.matchAll(/<span style="--i:(\d+)">(\d+)<\/span>/g)];
+    assert.deepEqual(spans.map(m => m[2]), attendus,
       'les crans écrits ne sont plus ceux que le curseur peut atteindre');
+    // Le rang de chaque cran, qui sert à le POSER : il doit suivre l'ordre d'écriture, sinon les
+    // libellés se retrouveraient dans le désordre sur la piste tout en restant justes dans le HTML.
+    assert.deepEqual(spans.map(m => Number(m[1])), attendus.map((_, k) => k),
+      'les rangs `--i` ne suivent plus l\'ordre des crans');
 
     // ⚠️ ET LEUR ALIGNEMENT SE DÉDUIT, IL NE SE DEVINE PAS. Le centre du pouce s'arrête à un
     // demi-pouce de chaque bout de la piste : des crans posés bord à bord mettraient « 0 » et
@@ -565,10 +569,29 @@ describe('Le réglage est branché de bout en bout', () => {
     // C'est exactement la faute de #410c, où j'avais calé une case à « 7px » du bas.
     const crs = declarationsOuNull('.curseur-gradue-crans');
     assert.ok(crs, 'la rangée des crans n\'a plus de règle');
-    assert.match(crs, /padding:[^;]*calc\(var\(--pouce-curseur\)\s*\/\s*2\)/,
-      'le retrait des crans ne suit plus la taille du pouce : « 0 » et « 900 » se décaleront');
-    assert.match(crs, /margin-right:\s*calc\(var\(--valeur-largeur\)\s*\+\s*var\(--valeur-ecart\)\)/,
-      'la rangée ne s\'arrête plus là où la piste s\'arrête');
+    assert.match(crs, /margin:[^;]*calc\(var\(--pouce-curseur\)\s*\/\s*2\)/,
+      'la marge des crans ne suit plus la taille du pouce : « 0 » et « 900 » se décaleront');
+    assert.match(crs, /var\(--valeur-largeur\)\s*\+\s*var\(--valeur-ecart\)/,
+      'la rangée ne s\'arrête plus là où la course du pouce s\'arrête');
+
+    // ⚠️ ET LE DÉFAUT QUI A ÉTÉ SIGNALÉ EN REGARDANT L'ÉCRAN. `space-between` répartit des BOÎTES,
+    // pas des centres de texte : le premier cran collait son bord gauche au départ, le dernier son
+    // bord droit à l'arrivée, et les centres tombaient tous à côté, d'autant plus que le libellé
+    // est large. Chaque cran est donc POSÉ à sa fraction puis recentré dessus.
+    assert.ok(!/justify-content:\s*space-between/.test(crs),
+      'la répartition par boîtes est revenue : les centres se décaleront de nouveau');
+    const cran = declarationsOuNull('.curseur-gradue-crans > span');
+    assert.ok(cran, 'les crans n\'ont plus de règle de position');
+    assert.match(cran, /left:\s*calc\(var\(--i\)\s*\/\s*var\(--crans-moins-un\)\s*\*\s*100%\)/,
+      'un cran n\'est plus posé à sa fraction de la course');
+    assert.match(cran, /transform:\s*translateX\(-50%\)/,
+      'sans le recentrage, la fraction posé le BORD du libellé et non son milieu');
+    // L'échelle et le nombre de crans ne peuvent pas diverger : `--crans-moins-un` doit valoir
+    // exactement le nombre de crans écrits, moins un.
+    const gradue2 = declarationsOuNull('.curseur-gradue');
+    const n = Number(/--crans-moins-un:\s*(\d+)/.exec(gradue2)[1]);
+    assert.equal(n, attendus.length - 1,
+      'le dénominateur ne correspond plus au nombre de crans : ils se tasseront ou déborderont');
     const gradue = declarationsOuNull('.curseur-gradue');
     assert.ok(gradue && /--pouce-curseur:/.test(gradue) && /--valeur-largeur:/.test(gradue),
       'les variables partagées ont disparu : les deux rangées peuvent de nouveau diverger');
