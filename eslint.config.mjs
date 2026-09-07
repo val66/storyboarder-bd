@@ -33,6 +33,8 @@ export default [
         window: 'readonly', document: 'readonly', navigator: 'readonly',
         console: 'readonly', location: 'readonly', globalThis: 'readonly',
         requestAnimationFrame: 'readonly', cancelAnimationFrame: 'readonly',
+        // Le dôme de la Lumière lit les jetons de thème sur document.body (#414e).
+        getComputedStyle: 'readonly',
         setTimeout: 'readonly', clearTimeout: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly',
         Image: 'readonly', FileReader: 'readonly', Blob: 'readonly', URL: 'readonly',

@@ -271,6 +271,11 @@ export const S = {
   // Un seul instantané d'annulation par GESTE sur les deux réglages continus de la Lumière : un
   // sélecteur de couleur et un curseur émettent en continu, et empiler une annulation par nuance
   // survolée noierait l'historique de 50 actions (#414d).
+  // La rotation du dôme est une préférence de VUE, pas une donnée de Projet : elle n'est ni
+  // persistée ni copiée d'une Scène à une Case. Tourner le dôme ne change pas l'éclairage, et une
+  // valeur enregistrée ferait croire l'inverse au premier rechargement (#414e).
+  lightDomeRotation:               0,
+  lightDomeDrag:                   null,
   sideLightColorSnapshotTaken:     false,
   sideLightIntensitySnapshotTaken: false,
   appLang:                 'en',

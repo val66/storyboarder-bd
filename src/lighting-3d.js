@@ -9,9 +9,10 @@
  * Les décisions de conception, et pourquoi elles sont ce qu'elles sont, vivent dans
  * docs/en/lighting.md. Trois d'entre elles gouvernent ce fichier :
  *
- *   1. INACTIF VAUT L'EXISTANT. Une Case sans éclairage rend exactement comme aujourd'hui, où seul
- *      le style graphique éclaire (`applyStyle3DLighting`). C'est ce qui protège les Projets déjà
- *      dessinés, dont aucun ne porte ce champ.
+ *   1. « PAS DE RÉGLAGE » VAUT L'EXISTANT. Une Case sans champ lit le mode Jour, et Jour vaut
+ *      exactement ce que pose `applyStyle3DLighting`. C'est ce qui protège les Projets déjà
+ *      dessinés, dont aucun ne porte ce champ, et c'est aussi ce qui a permis de supprimer la case
+ *      à cocher : ses deux états donnaient la même image (#414h).
  *   2. LE SOLEIL ET L'AMBIANCE BOUGENT ENSEMBLE. Tranché sur un rendu comparatif : le soleil seul
  *      ne peut pas faire la nuit, l'ambiante blanche à 0,75 dominant tout et ne bougeant jamais.
  *   3. LE DÔME EST DE LA GÉOMÉTRIE. Une demi-sphère portant un point est la projection d'une

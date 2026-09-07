@@ -66,8 +66,6 @@ const EN_ATTENTE = {
   // exemption qui ne correspond à rien est pire qu'inutile, elle laisse croire qu'on surveille un
   // export qui n'a jamais eu besoin de l'être. Le garde-fou du fichier a fait exactement son
   // travail.
-  projeterSurDome3D: '#414e — le dôme dessiné et ses deux gestes',
-  directionDepuisDome3D: '#414e — la saisie du point sur le dôme',
   // `lumiereDeCase3D` et `LUMIERE_DEFAUT` ne sont PAS ici : le détecteur les voit appelées à
   // l'intérieur du module, par `definirLumiereDeCase3D` et `copierLumiere3D`. Deuxième fois que ce
   // garde-fou m'évite une exemption qui ne surveille rien.
@@ -138,13 +136,13 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   test('la liste des décisions en attente ne s\'allonge pas', () => {
     // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
     // après #403c, zéro à nouveau depuis #403d, trois avec celles de #414a, cinq avec le champ
-    // persisté de #414b, quatre depuis que #414c a branché `resoudreEclairage3D` sur le rendu, et
-    // trois depuis que #414d a branché l'écriture sur la section. L'échéance de chacune est un
-    // numéro de tâche : il reste le dôme (#414e) et l'héritage (#414f).
+    // persisté de #414b, quatre après #414c, trois après #414d, et une seule depuis que #414e a
+    // branché le dôme. L'échéance de chacune est un numéro de tâche : il ne reste que l'héritage
+    // d'une Scène vers une Case (#414f).
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 3,
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

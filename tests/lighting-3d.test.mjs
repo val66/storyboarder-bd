@@ -455,3 +455,77 @@ describe('#414d : la section du menu de droite', () => {
       'le cache est vidé à la main : les Cases voisines se re-rendraient pour rien');
   });
 });
+
+describe('#414e : le dôme et ses deux gestes', () => {
+  /**
+   * ⚠️ ÉPINGLAGE DE SOURCE, ET LA LIMITE EST DITE FRANCHEMENT. Dessiner un dôme et suivre un glisser
+   * demandent un navigateur : ni le tracé ni le ressenti ne se traversent sous Node. La géométrie,
+   * elle, est testée pour de bon plus haut dans ce fichier — projection, saisie, rotation de vue,
+   * bords. Ne reste ici que le câblage, dont trois points peuvent casser en silence.
+   */
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+  const STATE = sourceSansCommentaires(
+    readFileSync(new URL('../src/state.js', import.meta.url), 'utf8'));
+
+  test('un canevas 2D, pas un second contexte WebGL', () => {
+    // La raison tient en une phrase : ce qui se calcule doit être testable, et une demi-sphère
+    // portant un point est du calcul. Un widget WebGL ne l'aurait jamais été.
+    assert.match(HTML, /<canvas id="sideLightDomeCanvas"/);
+    assert.match(SIDEBAR, /getContext\('2d'\)/);
+    assert.ok(!/sideLightDomeCanvas[\s\S]{0,400}webgl/i.test(SIDEBAR));
+  });
+
+  test('RÉGRESSION : le dessin passe par la projection PURE, il ne refait pas la géométrie', () => {
+    // Une trigonométrie recopiée dans le dessin divergerait de celle du clic, et le point tomberait
+    // à côté du curseur sans qu'aucun test ne le voie.
+    const i = SIDEBAR.indexOf('export function dessinerDomeLumiere3D');
+    assert.ok(i > 0, 'le dessin du dôme a disparu');
+    const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
+    assert.match(corps, /projeterSurDome3D\(/, 'le dessin recalcule la projection dans son coin');
+  });
+
+  test('RÉGRESSION : le clic droit tourne la VUE, sans toucher au Projet', () => {
+    // ⚠️ LA DISTINCTION QUE TOUT LE DÔME REPOSE SUR. Tourner la vue n'est pas un réglage : ni
+    // instantané d'annulation, ni redessin de la Planche, ni écriture. Un `snapshot()` sur ce
+    // chemin remplirait l'historique pour un geste qui ne change rien au Projet.
+    const i = EVENTS.indexOf("if (e.button === 2)");
+    assert.ok(i > 0, 'le clic droit n\'est plus distingué');
+    const corps = EVENTS.slice(i, i + 300);
+    assert.ok(!/snapshot\(\)/.test(corps), 'tourner la vue empile une annulation');
+    assert.match(EVENTS, /S\.lightDomeRotation = S\.lightDomeDrag\.rotation/,
+      'la rotation de vue ne suit plus le glisser');
+  });
+
+  test('RÉGRESSION : la rotation de vue n\'est PAS persistée', () => {
+    // C'est une préférence de regard, pas une donnée de Projet. L'enregistrer ferait croire au
+    // premier rechargement que l'éclairage a changé, alors que seul le point de vue a bougé.
+    assert.match(STATE, /lightDomeRotation:\s*0,/, 'la rotation de vue a quitté l\'état');
+    const p = { id: 'p', type: 'panel' };
+    definirLumiereDeCase3D(p, { mode: 'perso', azimut: 10 });
+    assert.ok(!('lightDomeRotation' in p.lumiere), 'la rotation de vue est entrée dans le Projet');
+    assert.deepEqual(Object.keys(p.lumiere).sort(), Object.keys(LUMIERE_DEFAUT).sort());
+  });
+
+  test('RÉGRESSION : le clic gauche prend UN instantané pour tout le glisser', () => {
+    // Un glisser émet des dizaines d'événements ; un instantané par événement noierait l'historique
+    // de 50 actions. Même motif que la couleur et l'intensité.
+    const i = EVENTS.indexOf("sideLightDomeCanvas.addEventListener('mousedown'");
+    assert.ok(i > 0, 'le dôme n\'écoute plus le clic');
+    const corps = EVENTS.slice(i, i + 700);
+    assert.equal((corps.match(/snapshot\(\)/g) || []).length, 1,
+      'zéro ou plusieurs instantanés pour un seul geste');
+    // Et le déplacement en cours de glisser n'en prend AUCUN : il passe `false`.
+    const j = EVENTS.indexOf('if (S.lightDomeDrag.vue)');
+    assert.match(EVENTS.slice(j, j + 500), /reglerLumiere\(directionDepuisDome3D\([^)]*\), false\)/,
+      'le glisser empile une annulation par pixel parcouru');
+  });
+
+  test('RÉGRESSION : le menu contextuel est neutralisé sur le canevas', () => {
+    // Sans ça, le clic droit ouvrirait le menu du système au lieu de tourner la vue.
+    assert.match(EVENTS, /sideLightDomeCanvas\.addEventListener\('contextmenu'/);
+  });
+});

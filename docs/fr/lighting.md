@@ -83,14 +83,13 @@ sélection, du glisser, de l'appartenance à une Case par `homePanelId`, de l'en
 de cache et de l'annulation. Deux natures, deux rangements, et aucun renommage à craindre : la règle
 du dépôt interdit de renommer une donnée persistée (cf. persisted-data.md).
 
-## Les quatre états de la section
+## Les trois états de la section
 
 | état | ce qui est visible |
 |---|---|
-| décoché | la case seule |
-| coché, Jour | la case, la liste |
-| coché, Nuit | la case, la liste |
-| coché, Personnalisé | la case, la liste, le dôme, la couleur, l'intensité |
+| Jour | la liste |
+| Nuit | la liste |
+| Personnalisé | la liste, le dôme, la couleur, l'intensité |
 
 Le dôme, la couleur et l'intensité n'apparaissent qu'en Personnalisé : en Jour ou en Nuit ils
 afficheraient des valeurs qu'on ne peut pas changer, ce qui se lit comme une panne.

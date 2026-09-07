@@ -12,7 +12,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
-import { lumiereDeCase3D } from './lighting-3d.js';
+import { lumiereDeCase3D, projeterSurDome3D, INCLINAISON_DOME_DEG } from './lighting-3d.js';
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
@@ -77,6 +77,7 @@ const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
 const sideLightSection = document.getElementById('sideLightSection');
 const sideLightCustom = document.getElementById('sideLightCustom');
+const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
 const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
@@ -1200,4 +1201,83 @@ export function rafraichirSectionLumiere(){
   sideLightIntensityRange.value = String(pourcent);
   // L'unité se traduit, comme celle du curseur de mémoire de la Configuration.
   sideLightIntensityValue.textContent = `${pourcent} %`;
+  dessinerDomeLumiere3D(l);
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE DÔME (#414e) : DU DESSIN, ET RIEN QUE DU DESSIN
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Toute la géométrie vient de `projeterSurDome3D` (lighting-3d.js), pure et testée. Ici on ne fait
+ * que tracer, et c'est délibéré : ce qui se calcule doit être testable sous Node, ce qui se dessine
+ * ne le sera jamais.
+ *
+ * ⚠️ LA SILHOUETTE EST UN DEMI-CERCLE POSÉ SUR UNE ELLIPSE, ET CES DEUX FORMES SONT DÉDUITES DE LA
+ * PROJECTION, pas choisies. L'horizon, à élévation nulle, se projette en une ellipse de demi-axes 1
+ * et sin(inclinaison) : c'est la base plate. Le reste de l'hémisphère tient dans le cercle unité :
+ * c'est la coupole. Changer l'inclinaison de vue redessine donc les deux du même coup, sans qu'on
+ * ait rien à réajuster à la main.
+ *
+ * ⚠️ LES COULEURS SE LISENT SUR `document.body`, PAS SUR `documentElement`. Les jetons de thème sont
+ * redéfinis par `body.theme-light` et `body.theme-contraste` (cf. #409c) : les lire sur la racine
+ * rendrait toujours la variante sombre, et le dôme resterait sombre en thème Clair.
+ */
+function jetonDeTheme3D(nom, repli){
+  try {
+    const v = getComputedStyle(document.body).getPropertyValue(nom).trim();
+    return v || repli;
+  } catch { return repli; }
+}
+
+export function dessinerDomeLumiere3D(lumiere){
+  if (!sideLightDomeCanvas || !sideLightDomeCanvas.getContext) return;
+  const ctx = sideLightDomeCanvas.getContext('2d');
+  if (!ctx) return;
+  const w = sideLightDomeCanvas.width, h = sideLightDomeCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const sinP = Math.sin(INCLINAISON_DOME_DEG * Math.PI / 180);
+  const cx = w / 2;
+  const R = Math.min(w / 2 - 8, (h - 12) / (1 + sinP));
+  // Le centre vertical n'est PAS celui du canevas : la coupole monte de R et la base ne descend que
+  // de R × sin(inclinaison). Centrer naïvement laisserait un vide en bas et couperait le sommet.
+  const cy = 6 + R;
+
+  const p = projeterSurDome3D(lumiere.azimut, lumiere.elevation, S.lightDomeRotation || 0);
+  const sx = cx + p.u * R, sy = cy - p.v * R;
+
+  const trait = jetonDeTheme3D('--line-strong', '#8a8f98');
+  const fond = jetonDeTheme3D('--paper-dark', '#2a2c33');
+
+  const dessinerSoleil = (alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = lumiere.couleur; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = trait; ctx.stroke();
+    ctx.restore();
+  };
+
+  // Un soleil DERRIÈRE se dessine avant la coupole, qui le voile ensuite : il reste visible, et sa
+  // position reste lisible. Le faire disparaître donnerait l'impression d'un réglage perdu.
+  if (!p.devant) dessinerSoleil(0.85);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, Math.PI, Math.PI * 2);
+  ctx.ellipse(cx, cy, R, R * sinP, 0, 0, Math.PI);
+  ctx.closePath();
+  ctx.globalAlpha = 0.55; ctx.fillStyle = fond; ctx.fill();
+  ctx.globalAlpha = 1; ctx.lineWidth = 1.5; ctx.strokeStyle = trait; ctx.stroke();
+  ctx.restore();
+
+  // L'arrière de la base en pointillé : c'est ce qui donne le volume, et ce qui dit dans quel sens
+  // la vue est tournée.
+  ctx.save();
+  ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = trait; ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.ellipse(cx, cy, R, R * sinP, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+
+  if (p.devant) dessinerSoleil(1);
 }

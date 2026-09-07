@@ -275,6 +275,14 @@
            afficheraient des valeurs qu'on ne peut pas changer, ce qui se lit comme une panne.
            Le dôme viendra ici même en #414e. -->
       <div id="sideLightCustom" style="display:none;">
+        <!-- Le dôme (#414e). Un canevas 2D, pas un second contexte WebGL : une demi-sphère portant
+             un point est la projection d'une direction, donc du calcul, et le faire en 2D rend la
+             projection et le test de clic testables sous Node (cf. src/lighting-3d.js).
+             `touch-action:none` empêche le geste de devenir un défilement de page en cours de
+             glisser, comme pour le gizmo de la Caméra juste au-dessus. -->
+        <canvas id="sideLightDomeCanvas" width="132" height="112"
+                style="width:132px; height:112px; display:block; margin:0 auto 8px; cursor:crosshair; touch-action:none;"
+                title="Cliquer-glisser : déplacer le soleil. Clic droit glissé : tourner la vue"></canvas>
         <div class="tome-format side-border-color">
           <label id="sideLightColorLabel">Couleur</label>
           <input type="color" id="sideLightColorInput" value="#FFFFFF">

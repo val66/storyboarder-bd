@@ -91,6 +91,12 @@ export const I18N_TEXT = [
   ['#sideCameraSection .side-section:nth-of-type(2) > h2', '3D gizmo', 'Repère 3D'],
   ['#sceneTopDownBtn', '📐 Top-down view', '📐 Vue de dessus'],
   ['#sideCameraGizmoCanvas', null, null, 'title', 'Click and drag to orient the camera', "Cliquer-glisser pour orienter la caméra"],
+  // ⚠️ ICI, ET PAS AILLEURS. Une entrée à ATTRIBUT n'est lue que par I18N_TEXT ; les autres tables
+  // déstructurent `[sel, en, fr]` et l'ignoreraient en silence. C'est exactement le défaut #371, et
+  // c'est son test qui m'a repris quand j'avais rangé celle-ci à côté des libellés de la section.
+  ['#sideLightDomeCanvas', null, null, 'title',
+    'Click and drag: move the sun. Right-drag: rotate the view',
+    'Cliquer-glisser : déplacer le soleil. Clic droit glissé : tourner la vue'],
   ['#sideCameraSection .side-section:nth-of-type(3) > h2', 'Rotation', 'Rotation'],
   ['#sideCameraSection .side-section:nth-of-type(4) > h2', 'Translation', 'Translation'],
   // Description / Bulle text

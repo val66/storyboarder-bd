@@ -40,7 +40,7 @@ import {
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
-import { definirLumiereDeCase3D } from './lighting-3d.js';
+import { definirLumiereDeCase3D, directionDepuisDome3D, INCLINAISON_DOME_DEG } from './lighting-3d.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -6624,6 +6624,7 @@ const pageMenuCloseBtn = document.getElementById('pageMenuCloseBtn');
 const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
+const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
 const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
 const sideBorderColorWrap = document.getElementById('sideBorderColorWrap');
@@ -7084,6 +7085,61 @@ function reglerLumiere(patch, avecSnapshot = true){
 }
 
 sideLightModeSelect.addEventListener('change', () => reglerLumiere({ mode: sideLightModeSelect.value }));
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LES DEUX GESTES DU DÔME (#414e)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Clic gauche : déplacer le SOLEIL. Clic droit : tourner la VUE. La distinction est tout le sujet,
+// et elle est déjà tenue par les fonctions pures : `directionDepuisDome3D` rend l'azimut dans le
+// repère du monde, rotation de vue comprise, donc tourner la vue ne modifie jamais le réglage.
+//
+// ⚠️ LE RAYON SE RECALCULE ICI COMME AU DESSIN, ET C'EST LA SEULE CHOSE QUI POURRAIT DIVERGER. Les
+// deux lisent les mêmes dimensions du canevas et la même inclinaison ; une constante recopiée à la
+// place ferait un dôme dont le clic tomberait à côté du dessin, défaut invisible au code et évident
+// à l'usage.
+function pointDuDome(e){
+  const r = sideLightDomeCanvas.getBoundingClientRect();
+  // Les coordonnées du canevas, pas celles de l'écran : le panneau latéral porte `zoom`, donc un
+  // pixel écran ne vaut pas un pixel de canevas dès que la taille d'interface n'est pas Normale.
+  const ex = (e.clientX - r.left) * (sideLightDomeCanvas.width / r.width);
+  const ey = (e.clientY - r.top) * (sideLightDomeCanvas.height / r.height);
+  const sinP = Math.sin(INCLINAISON_DOME_DEG * Math.PI / 180);
+  const w = sideLightDomeCanvas.width, h = sideLightDomeCanvas.height;
+  const R = Math.min(w / 2 - 8, (h - 12) / (1 + sinP));
+  return { u: (ex - w / 2) / R, v: ((6 + R) - ey) / R };
+}
+
+sideLightDomeCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+sideLightDomeCanvas.addEventListener('mousedown', (e) => {
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'panel') return;
+  e.preventDefault();
+  if (e.button === 2) {
+    S.lightDomeDrag = { vue: true, x: e.clientX, rotation: S.lightDomeRotation || 0 };
+    return;
+  }
+  if (e.button !== 0) return;
+  // Un seul instantané pour tout le glisser, comme pour la couleur et l'intensité : un geste, une
+  // annulation.
+  snapshot();
+  S.lightDomeDrag = { vue: false };
+  const p = pointDuDome(e);
+  reglerLumiere(directionDepuisDome3D(p.u, p.v, S.lightDomeRotation || 0), false);
+});
+window.addEventListener('mousemove', (e) => {
+  if (!S.lightDomeDrag) return;
+  if (S.lightDomeDrag.vue) {
+    // Tourner la VUE ne touche pas au Projet : pas d'instantané, pas de redessin de la Planche, on
+    // se contente de redessiner le dôme.
+    S.lightDomeRotation = S.lightDomeDrag.rotation + (e.clientX - S.lightDomeDrag.x) * 0.6;
+    rafraichirSectionLumiere();
+    return;
+  }
+  const p = pointDuDome(e);
+  reglerLumiere(directionDepuisDome3D(p.u, p.v, S.lightDomeRotation || 0), false);
+});
+window.addEventListener('mouseup', () => { S.lightDomeDrag = null; });
 sideLightColorInput.addEventListener('input', () => {
   // Un seul `snapshot` pour tout le geste : un sélecteur de couleur émet en continu, et empiler une
   // annulation par nuance survolée noierait l'historique de 50 actions.

@@ -80,14 +80,13 @@ through `homePanelId`, entry into the cache signature and undo, all for free. Tw
 homes, and no rename to fear: the repository's rule forbids renaming persisted data (see
 persisted-data.md).
 
-## The four states of the section
+## The three states of the section
 
 | state | what is visible |
 |---|---|
-| unticked | the checkbox alone |
-| ticked, Day | the checkbox, the dropdown |
-| ticked, Night | the checkbox, the dropdown |
-| ticked, Custom | the checkbox, the dropdown, the dome, the colour, the intensity |
+| Day | the dropdown |
+| Night | the dropdown |
+| Custom | the dropdown, the dome, the colour, the intensity |
 
 The dome, the colour and the intensity only appear in Custom: in Day or Night they would show values
 that cannot be changed, which reads as a fault.
