@@ -26,6 +26,17 @@
  * rien casser : `afficherManuelLateral` (sidebar.js) remet `S.selectedId` à null lui-même, parce
  * qu'afficher le Manuel demande de libérer tous les niveaux qui passent devant lui. Il continue
  * donc de désélectionner, par sa propre volonté et non par effet de bord.
+ *
+ * ⚠️ LA BULLE FAISAIT EXCEPTION, ET L'EXCEPTION A ÉTÉ LEVÉE SUR DEMANDE (#419a). Le commentaire
+ * d'origine invoquait une demande explicite : « cliquer en dehors la désélectionne, même si le clic
+ * tombe hors du canevas (menu de gauche, entête, etc.) ». La question a été reposée, la réponse est
+ * d'aligner la Bulle sur le reste. C'est écrit ici pour que personne ne « répare » vers l'ancienne
+ * demande en relisant l'ancien commentaire : elle n'a pas été oubliée, elle a été remplacée.
+ *
+ * ⚠️ ET LE PARAMÈTRE DE TYPE A DISPARU AVEC ELLE. La règle ne dépend plus que de l'endroit cliqué.
+ * Garder un paramètre « au cas où » aurait laissé croire qu'une nature de sélection peut se
+ * comporter autrement, alors que l'uniformité est maintenant STRUCTURELLE et non testée. Le jour où
+ * une exception se justifiera, elle reviendra avec son cas.
  */
 
 /**
@@ -44,21 +55,7 @@ export const ZONES_SANS_DESELECTION = [
 ];
 
 /**
- * ⚠️ UNE EXCEPTION QUI RESTE, ET ELLE EST DÉCLARÉE PLUTÔT QU'ENFOUIE. Pour une Bulle, le
- * commentaire d'origine invoque une demande explicite : « cliquer en dehors la désélectionne, même
- * si le clic tombe hors du canevas (menu de gauche, entête, etc.) ». L'entête y est nommée. Je ne
- * défais pas une demande passée sans qu'elle soit reposée, donc la Bulle garde son comportement, et
- * la divergence est ÉCRITE ici au lieu d'être dispersée dans trois gestionnaires.
- *
- * Si la réponse est d'aligner la Bulle sur le reste, il suffit de vider cette table.
- */
-export const ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT = {
-  bulle: ['entete'],
-};
-
-/**
- * Un clic dans `zone`, avec une sélection de nature `typeSelection`, doit-il désélectionner ?
- * Fonction PURE.
+ * Un clic dans `zone` doit-il désélectionner ? Fonction PURE.
  *
  * `zone` est le nom de la zone la plus spécifique atteinte, ou `'ailleurs'` pour tout le reste :
  * le menu de gauche, la zone vide autour de la Planche, la barre d'état.
@@ -68,8 +65,6 @@ export const ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT = {
  * qui se voit et se signale ; une zone exemptée par erreur donne une sélection qui refuse de
  * partir, ce qui ressemble à une panne.
  */
-export function clicDeselectionne3D(zone, typeSelection){
-  const exceptions = ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT[typeSelection] || [];
-  if (exceptions.includes(zone)) return true;
+export function clicDeselectionne3D(zone){
   return !ZONES_SANS_DESELECTION.includes(zone);
 }

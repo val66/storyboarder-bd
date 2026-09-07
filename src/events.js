@@ -287,7 +287,7 @@ function zoneDuClic3D(cible){
 document.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
   if (!S.editingSceneId) return;
-  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'scene')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target))) return;
   const scene = S.scenes.find(s => s.id === S.editingSceneId);
   if (!scene) return;
   let changed = false;
@@ -301,17 +301,19 @@ document.addEventListener('mousedown', (e) => {
   if (changed) { drawCurrentPage(); updateSidePanel(); }
 });
 
-// Clicking outside a selected speech Bubble deselects it, even if the click falls outside
-// the <canvas> (left-hand menu, header, etc.), per user request. Only the Bubble's right-hand
-// menu (#rightPanel, which then shows its "Text"/"Bubble appearance") remains a legitimate
-// way to act on it without deselecting it; context menus are also excepted (e.g. right-click
-// to reopen a menu on the Bubble itself).
+// Clicking outside a selected speech Bubble deselects it, like any other selection.
+//
+// ⚠️ THIS COMMENT USED TO NAME THE HEADER as a place that deselects, quoting an explicit past
+// request. That request was put again in #419a and the answer was to align the Bubble on
+// everything else: the toolbar acts on the document, it does not leave it. The old wording is
+// replaced rather than kept, so nobody "restores" a behaviour that was deliberately dropped.
+// The zone list lives in src/deselection.js, written once.
 document.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
   const page = currentPage();
   const sel = page.objects.find(o => o.id === S.selectedId);
   if (!sel || sel.type !== 'bulle') return;
-  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'bulle')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target))) return;
   S.selectedId = null; S.selectedRoomId = null;
   drawCurrentPage();
 });
@@ -326,7 +328,7 @@ document.addEventListener('mousedown', (e) => {
   const page = currentPage();
   const sel = page.objects.find(o => o.id === S.selectedId);
   if (!sel || sel.type !== 'panel') return;
-  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'panel')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target))) return;
   exitCameraModeOnDeselect(null); // Fix 15: exit Camera mode on deselect
   S.selectedId = null; S.selectedRoomId = null; S.selectedBuildingKey = null;
   drawCurrentPage();

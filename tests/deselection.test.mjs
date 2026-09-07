@@ -17,9 +17,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import {
-  clicDeselectionne3D, ZONES_SANS_DESELECTION, ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT,
-} from '../src/deselection.js';
+import { clicDeselectionne3D, ZONES_SANS_DESELECTION } from '../src/deselection.js';
 
 const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
 
@@ -28,31 +26,33 @@ describe('#419 : la barre d\'outils AGIT sur le document, elle ne le quitte pas'
     // ⚠️ LE DÉFAUT SIGNALÉ. Ces trois boutons agissent sur ce qui est sélectionné, ou sur le
     // Projet ; appuyer sur Annuler n'est pas « aller voir ailleurs ». L'entête est une barre
     // d'outils, pas une zone de dessin, et elle ne figurait dans aucune des trois listes.
-    assert.equal(clicDeselectionne3D('entete', 'panel'), false);
+    assert.equal(clicDeselectionne3D('entete'), false);
   });
 
-  test('RÉGRESSION : l\'ÉLÉMENT et la Case répondent enfin pareil', () => {
-    // ⚠️ L'INCOHÉRENCE QUI A RÉVÉLÉ LE DÉFAUT. Avec un Élément sélectionné, les mêmes boutons ne
+  test('RÉGRESSION : la règle ne connaît plus la NATURE de la sélection', () => {
+    // ⚠️ L'INCOHÉRENCE QUI A RÉVÉLÉ LE DÉFAUT : avec un Élément sélectionné, les mêmes boutons ne
     // désélectionnaient rien — non par décision, mais parce que le gestionnaire des Cases sortait
     // d'emblée quand la sélection n'en était pas une. Deux comportements opposés pour le même
-    // geste, l'un voulu et l'autre accidentel, et rien pour dire lequel était lequel.
-    assert.equal(clicDeselectionne3D('entete', 'perso'), clicDeselectionne3D('entete', 'panel'));
-    assert.equal(clicDeselectionne3D('entete', 'objet3d'), false);
-    assert.equal(clicDeselectionne3D('entete', 'scene'), false);
+    // geste, l'un voulu et l'autre accidentel.
+    //
+    // L'uniformité est désormais STRUCTURELLE et non vérifiée : la fonction ne reçoit plus de type,
+    // donc elle ne peut plus répondre différemment selon lui. Ce test épingle cette absence, qui
+    // est la garantie elle-même — une signature qui reprendrait un type rouvrirait la divergence.
+    assert.equal(clicDeselectionne3D.length, 1, 'la règle a repris un paramètre de type');
+    const src = readFileSync(new URL('../src/deselection.js', import.meta.url), 'utf8');
+    assert.ok(!/typeSelection|MALGRE_TOUT/.test(src), 'une exception par nature est revenue');
   });
 
   test('les zones qui AGISSENT sur la sélection ne la retirent pas', () => {
     for (const zone of ['canevas', 'panneau-droit', 'menu-contextuel', 'modale-ouverte', 'entete']) {
-      assert.equal(clicDeselectionne3D(zone, 'panel'), false, `« ${zone} » désélectionne`);
+      assert.equal(clicDeselectionne3D(zone), false, `« ${zone} » désélectionne`);
     }
   });
 
   test('cliquer VRAIMENT ailleurs désélectionne toujours', () => {
     // La promesse d'origine, celle qui est dans le manuel : cliquer en dehors de la Planche, dans
     // une zone sans Case ni Bulle, désélectionne. Elle ne doit pas avoir été perdue en chemin.
-    assert.equal(clicDeselectionne3D('ailleurs', 'panel'), true);
-    assert.equal(clicDeselectionne3D('ailleurs', 'bulle'), true);
-    assert.equal(clicDeselectionne3D('ailleurs', 'scene'), true);
+    assert.equal(clicDeselectionne3D('ailleurs'), true);
   });
 
   test('une zone inconnue désélectionne, plutôt que de retenir la sélection', () => {
@@ -60,32 +60,26 @@ describe('#419 : la barre d\'outils AGIT sur le document, elle ne le quitte pas'
     // signale ; une zone exemptée par erreur donne une sélection qui refuse de partir, ce qui
     // ressemble à une panne.
     for (const z of ['menu-de-gauche', '', null, undefined, 42]) {
-      assert.equal(clicDeselectionne3D(z, 'panel'), true, `zone ${String(z)}`);
+      assert.equal(clicDeselectionne3D(z), true, `zone ${String(z)}`);
     }
   });
 });
 
-describe('L\'exception de la Bulle est DÉCLARÉE, pas dispersée', () => {
-  test('la Bulle continue de se désélectionner depuis l\'entête', () => {
-    // ⚠️ ELLE REPOSE SUR UNE DEMANDE PASSÉE EXPLICITE, citée dans le commentaire d'origine :
-    // « cliquer en dehors la désélectionne, même si le clic tombe hors du canevas (menu de gauche,
-    // entête, etc.) ». On ne défait pas une demande sans qu'elle soit reposée. La divergence est
-    // donc écrite à un seul endroit au lieu d'être enfouie dans trois gestionnaires.
-    assert.equal(clicDeselectionne3D('entete', 'bulle'), true);
+describe('#419a : la Bulle est alignée sur le reste', () => {
+  test('RÉGRESSION : Annuler et Enregistrer ne désélectionnent plus une Bulle', () => {
+    // ⚠️ UNE DEMANDE PASSÉE A ÉTÉ LEVÉE PAR UNE NOUVELLE, et c'est écrit pour que personne ne
+    // « répare » vers l'ancienne. Le commentaire d'origine citait : « cliquer en dehors la
+    // désélectionne, même si le clic tombe hors du canevas (menu de gauche, entête, etc.) ». La
+    // question a été reposée, la réponse est d'aligner. L'ancienne formulation a été remplacée
+    // dans events.js plutôt que laissée à côté de la nouvelle règle.
+    assert.equal(clicDeselectionne3D('entete'), false);
   });
 
-  test('et elle ne déborde PAS sur les autres zones', () => {
-    // Une exception qui s'élargirait en silence serait pire que pas d'exception du tout.
-    for (const zone of ['canevas', 'panneau-droit', 'menu-contextuel', 'modale-ouverte']) {
-      assert.equal(clicDeselectionne3D(zone, 'bulle'), false, `« ${zone} » pour une Bulle`);
-    }
-  });
-
-  test('le garde-fou : l\'exception ne concerne QUE la Bulle, et QUE l\'entête', () => {
-    // Le jour où la réponse tombe, il suffit de vider la table. Ce test dit son état actuel, pour
-    // qu'un élargissement ne passe pas inaperçu.
-    assert.deepEqual(Object.keys(ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT), ['bulle']);
-    assert.deepEqual(ZONES_QUI_DESELECTIONNENT_MALGRE_TOUT.bulle, ['entete']);
+  test('RÉGRESSION : l\'ancien commentaire ne subsiste pas à côté de la nouvelle règle', () => {
+    // Deux textes qui se contredisent dans le même fichier, c'est la prochaine « correction » vers
+    // le mauvais côté. Celui-ci nommait l'entête comme une zone qui désélectionne.
+    assert.ok(!/deselects it, even if the click falls outside/.test(EVENTS),
+      'l\'ancien commentaire de la Bulle est resté : il contredit la règle en vigueur');
   });
 
   test('la liste des zones exemptées n\'a pas fondu', () => {
@@ -100,9 +94,8 @@ describe('#419 : le câblage, et la fin des trois copies', () => {
   test('les TROIS gestionnaires passent par la règle partagée', () => {
     // C'était le fond du problème : la même liste recopiée trois fois, et l'entête absente des
     // trois. Un quatrième gestionnaire écrit demain doit passer par là, pas rouvrir une copie.
-    const appels = [...EVENTS.matchAll(/clicDeselectionne3D\(zoneDuClic3D\(e\.target\), '(\w+)'\)/g)]
-      .map(m => m[1]);
-    assert.deepEqual(appels.sort(), ['bulle', 'panel', 'scene']);
+    const appels = [...EVENTS.matchAll(/clicDeselectionne3D\(zoneDuClic3D\(e\.target\)\)/g)];
+    assert.equal(appels.length, 3, `${appels.length} gestionnaires passent par la règle, attendu 3`);
   });
 
   test('RÉGRESSION : plus aucune liste de zones recopiée dans les gestionnaires', () => {
@@ -132,7 +125,7 @@ describe('#419 : le câblage, et la fin des trois copies', () => {
 });
 
 /**
- * JOURNAL DE MUTATION : six fautes réintroduites une à une. Résultats RÉELS :
+ * JOURNAL DE MUTATION (#419) : six fautes réintroduites une à une. Résultats RÉELS :
  *
  *   M1 l'entête ressort de la liste (le défaut signalé, tel quel)                  ROUGE (4 tests)
  *   M2 l'exception de la Bulle s'élargit au panneau droit                          ROUGE (2 tests)
@@ -149,4 +142,18 @@ describe('#419 : le câblage, et la fin des trois copies', () => {
  * L'imbrication des panneaux et la présence d'une modale se lisent dans le DOM, pas sous Node. Les
  * tests de câblage ci-dessus lisent la source ; ils verraient une zone retirée, pas une zone mal
  * détectée.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#419a) : la Bulle alignée, trois fautes de plus.
+ *
+ *   M7 l'exception par nature revient (table + paramètre de type)                       ROUGE
+ *   M8 l'ancien commentaire de la Bulle est remis à côté de la nouvelle règle           ROUGE
+ *   M9 un seul des trois gestionnaires garde un argument de type                        ROUGE
+ *
+ * ⚠️ CE QUE CETTE PETITE CAMPAGNE A CHANGÉ DANS LE CODE. En vidant la table d'exceptions, il
+ * restait une mécanique complète — table, paramètre, recherche — pour zéro exception. Le dépôt a
+ * déjà payé ce genre de généralité spéculative (#402). Le paramètre a donc été retiré : la règle ne
+ * peut PLUS répondre différemment selon la nature de la sélection, ce qui vaut mieux qu'un test qui
+ * vérifierait qu'elle ne le fait pas. M7 épingle cette absence.
  */
