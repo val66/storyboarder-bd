@@ -17,6 +17,7 @@
 - 📄 Duplication de planches, réorganisation par glisser-déposer
 - 📝 Résumés et descriptions par Case
 - 💬 Bulles de dialogue avec pointe orientable
+- 🎨 **Mise en forme** : couleur d'arrière-plan par Planche, bordure de Case et de Bulle réglables (affichage, épaisseur, couleur), dimensions d'une Case affichées en millimètres
 
 ### Scènes 3D
 - 🎬 **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case

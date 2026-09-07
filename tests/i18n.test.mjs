@@ -1026,12 +1026,15 @@ describe('#414g : une section du menu de droite se retrouve dans le manuel', () 
   // Ce sont de VRAIS TROUS, inscrits ici avec un numéro de tâche pour échéance, exactement comme
   // la liste EN_ATTENTE de code-mort.test.mjs — dont #414f vient de montrer qu'elle fonctionne :
   // une dette datée finit par être payée, une intention non.
-  const TROUS = {
-    sidePageBgSection: '#416 — l\'arrière-plan d\'une Planche',
-    sideDimsSection: '#416 — les dimensions d\'une Case',
-    sideBorderSection: '#416 — la bordure d\'une Case',
-    sideBubbleBorderSection: '#416 — la bordure d\'une Bulle',
-  };
+  //
+  // ⚠️ ELLE EST VIDE, ET C'EST #416 QUI L'A VIDÉE. Les quatre trous ouverts par ce test à sa
+  // création — arrière-plan d'une Planche, dimensions et bordure d'une Case, bordure d'une Bulle —
+  // ont été comblés dans les deux langues. Comme la liste EN_ATTENTE de code-mort.test.mjs avant
+  // elle, cette table démontre qu'une dette DATÉE finit par être payée, là où une intention non.
+  //
+  // Elle reste en place, vide : c'est elle qui rend le prochain oubli visible. Y ajouter une ligne
+  // doit coûter un test rouge, sans quoi la sortie de secours devient le chemin normal.
+  const TROUS = {};
 
   // Le titre est lu dans le HTML, pas recopié : une section renommée doit faire échouer ce test,
   // sinon il surveillerait un nom qui n'est plus à l'écran.
@@ -1076,9 +1079,9 @@ describe('#414g : une section du menu de droite se retrouve dans le manuel', () 
   });
 
   test('la liste des trous ne s\'allonge pas', () => {
-    // Elle vaut quatre, et c'est un état de départ, pas un objectif. L'allonger doit coûter un
+    // Elle valait quatre à la création de ce test, et zéro depuis #416. L'allonger doit coûter un
     // test rouge, sans quoi la sortie de secours devient le chemin normal.
-    assert.equal(Object.keys(TROUS).length, 4,
+    assert.equal(Object.keys(TROUS).length, 0,
       'une section de plus a été laissée hors du manuel au lieu d\'y être décrite');
   });
 });

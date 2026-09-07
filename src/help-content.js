@@ -50,12 +50,14 @@ export const HELP_MANUAL_EN = [
     '"New volume" and "Add a page" in the left-hand menu.',
     'Right-click a volume or a page to export it as PNG or delete it.',
     'Expand a volume in the left-hand menu to change its format: Franco-Belge, US comics, vertical webtoon, or custom.',
+    'Select a page to set its "Background" on the right: "Page color" is the colour of the paper under the panels. It belongs to the page, not to the volume, so each page can have its own.',
   ]},
   { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble".',
     'Oval or rectangle shape, your choice.',
     'The tail can be moved, or hidden if not needed.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
+    'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
   ]},
   { id: 'cases', title: 'Panels', paragraphs: [
     'Right-click an empty area of the page, then "Create a panel".',
@@ -63,6 +65,8 @@ export const HELP_MANUAL_EN = [
     'Drag a corner to give it an oblique shape, or a side to move it while keeping it straight (automatic right-angle snapping).',
     'Right-click a panel → "Bring forward"/"Send backward" to change its stacking order relative to the other panels on the page: when panels overlap, the one in front is drawn on top of the others. Its rank is shown in the "Stacking order" section on the right when several panels are present.',
     'Clicking outside the page canvas (in an empty area with no panel or bubble) deselects the active panel.',
+    'The "Dimensions" section gives the length of each side of the panel in millimetres, worked out from the page format. It is read, not typed: a panel is resized by dragging its sides or its corners.',
+    'The "Border" section drives the panel outline: the "Show border" tick, its thickness (Thin, Medium, Thick) and its colour. Unticking leaves the panel with no outline at all.',
   ]},
   { id: 'images', title: 'Panel images', paragraphs: [
     'Right-click a panel → "Insert an image" to place a drawing or a photo there instead of the 3D scene. PNG, JPG and WebP are accepted; the image is cropped and centred to fill the panel.',
@@ -205,12 +209,14 @@ export const HELP_MANUAL_FR = [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',
     "Clic droit sur un tome ou une planche pour l'exporter en PNG ou le supprimer.",
     "Dépliez un tome dans le menu de gauche pour changer son format : Franco-Belge, Comics US, webtoon vertical ou personnalisé.",
+    "Sélectionnez une Planche pour régler son « Arrière-plan » à droite : « Couleur de la Planche » est celle du papier sous les Cases. Elle appartient à la Planche et non au Tome, chacune peut donc avoir la sienne.",
   ]},
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ».',
     'Forme Ovale ou Rectangle, au choix.',
     'Pointe déplaçable, ou masquable si besoin.',
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
+    "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",
   ]},
   { id: 'cases', title: 'Cases', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une case ».',
@@ -218,6 +224,8 @@ export const HELP_MANUAL_FR = [
     "Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).",
     "Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.",
     "Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.",
+    "La section « Dimensions » donne la longueur de chaque côté de la Case en millimètres, calculée d'après le format de la Planche. Elle se lit, elle ne se saisit pas : une Case se redimensionne en faisant glisser ses côtés ou ses coins.",
+    "La section « Bordure » commande le trait de la Case : la coche « Afficher la bordure », son épaisseur (Fine, Moyenne, Épaisse) et sa couleur. Décocher laisse la Case sans aucun contour.",
   ]},
   { id: 'images', title: 'Images de case', paragraphs: [
     "Clic droit sur une Case → « Insérer une image » pour y placer un dessin ou une photo à la place de la scène 3D. PNG, JPG et WebP sont acceptés ; l'image est recadrée et centrée pour remplir la Case.",

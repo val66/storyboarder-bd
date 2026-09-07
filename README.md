@@ -17,6 +17,7 @@
 - 📄 Page duplication, drag-and-drop reordering
 - 📝 Per-panel summaries and descriptions
 - 💬 Speech bubbles with adjustable tails
+- 🎨 **Layout styling**: background colour per page, adjustable panel and bubble borders (display, thickness, colour), panel side lengths shown in millimetres
 
 ### 3D Scenes
 - 🎬 **Reusable scenes**: compose a 3D scene once, load it into any panel
