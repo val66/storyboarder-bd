@@ -1311,11 +1311,21 @@ export function dessinerDomeLumiere3D(lumiere){
   // lettre écrite en dur laisserait un O au milieu d'une interface anglaise, et personne ne le
   // signalerait avant longtemps. Les azimuts, eux, sont dérivés de la caméra par défaut d'une Case
   // (cf. AZIMUTS_CARDINAUX) : ce qui s'éloigne est au nord, ce qui vient vers nous est au sud.
+  //
+  // ⚠️ LES LETTRES PORTENT L'ENCRE PRINCIPALE, PAS `--ink-soft`, ET C'EST UN CHOIX DE RÔLE (#414k).
+  // Demandées « plus foncées », elles ont changé de JETON et non de valeur : `--ink-soft` est la
+  // couleur des légendes, `--ink` celle du texte qu'on lit. Prendre littéralement « plus foncé »
+  // aurait dégradé le thème Sombre, où assombrir c'est se rapprocher du fond. Mesuré sur le papier
+  // du panneau : 5,69 → 13,59 en Sombre, 3,34 → 10,55 en Clair.
+  //
+  // Le NORD a sa propre couleur, par jeton de thème : un seul rouge ne tient pas sur les deux
+  // papiers (cf. le commentaire de `--nord-boussole` dans style.css).
   const LETTRES = { N: tr('N', 'N'), E: tr('E', 'E'), S: tr('S', 'S'), O: tr('W', 'O') };
+  const encre = jetonDeTheme3D('--ink', '#EDEDEF');
+  const encreNord = jetonDeTheme3D('--nord-boussole', '#E85B45');
   ctx.save();
   ctx.font = '600 10px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = jetonDeTheme3D('--ink-soft', '#8a8f98');
   AZIMUTS_CARDINAUX.forEach(({ cle, azimut }) => {
     const q = projeterSurDome3D(azimut, 0, S.lightDomeRotation || 0);
     const bx = cx + q.u * R, by = cy - q.v * R;
@@ -1324,6 +1334,7 @@ export function dessinerDomeLumiere3D(lumiere){
     // Un point cardinal derrière le dôme reste lisible, juste estompé : le faire disparaître ferait
     // croire qu'il n'y en a que deux ou trois.
     ctx.globalAlpha = q.devant ? 1 : 0.4;
+    ctx.fillStyle = cle === 'N' ? encreNord : encre;
     ctx.fillText(LETTRES[cle], bx + (dx / n) * 8, by + (dy / n) * 8);
   });
   ctx.restore();

@@ -36,6 +36,21 @@
      comme tout le reste ici : le thème Clair les redéfinit sans toucher à une seule règle. */
   --danger:#D9534F;
   --warn:#E8B84B;
+  /* ⚠️ LE NORD DU DÔME DE LUMIÈRE (#414k), ET POURQUOI C'EST UN JETON ET NON UN ROUGE ÉCRIT EN DUR.
+     La lettre « N » se distingue des trois autres par sa couleur, sur un fond qui change avec le
+     thème. Un seul rouge ne peut pas y suffire, et c'est mesuré, pas supposé : #E8604A vaut 4,69
+     sur le papier sombre et 2,49 sur le clair, #B8321F l'exact inverse (2,66 et 4,40). Encore une
+     valeur pour deux rôles opposés, la faute qui revient dans tout ce chantier ; on la sépare donc
+     par thème, comme `--sur-*` plus bas.
+
+     Les quatre valeurs sont RÉSOLUES, pas choisies : à teinte et saturation fixées (8°, 78 %), la
+     clarté la plus proche du milieu qui atteint la cible de son thème, soit 4,5 pour les thèmes
+     normaux et 7 pour le contraste renforcé. Un test rejoue le calcul.
+
+     ⚠️ LA COULEUR N'EST PAS SEULE À PORTER LE SENS, et c'est ce qui rend ce rouge acceptable malgré
+     l'axe rouge-vert du daltonisme : le point cardinal est déjà écrit, « N ». Le rouge accélère la
+     lecture, il ne la conditionne pas (cf. docs/en/colour-accessibility.md). */
+  --nord-boussole:#E85B45;
   /* Le gris CLAIR des boutons de navigation. Un jeton dédié plutôt que `--white` : celui-ci est
      la couleur des CHAMPS, et un bouton qui la porte se confond avec une zone de saisie. Sur fond
      sombre il faut monter franchement pour qu'un bouton se lise comme un bouton. */
@@ -95,6 +110,8 @@ body.theme-light{
      valeurs passaient pour des pastels et ne se distinguaient plus l'une de l'autre. */
   --danger:#C9302C;
   --warn:#D9A21B;
+  /* Sur papier clair le rouge du thème Sombre tombe à 2,49 : il faut le foncer, pas l'éclaircir. */
+  --nord-boussole:#B62C16;
   /* En thème Clair, « plus clair » ne veut plus rien dire : le fond du panneau est déjà pâle.
      Le bouton se distingue donc en étant légèrement plus SOUTENU que le papier, tout en restant
      un gris neutre — c'est le même besoin, lu à l'envers. */
@@ -165,6 +182,7 @@ body.theme-contraste{
   --accent-soft:rgba(255,140,61,.22);
   --danger:#FF6B7A;
   --warn:#FFE9A8;
+  --nord-boussole:#EC7B69;
   --sur-accent:#000000;
   --sur-danger:#000000;
   --sur-warn:#000000;
@@ -193,6 +211,7 @@ body.theme-light.theme-contraste{
   --accent-soft:rgba(143,58,0,.16);
   --danger:#6E0B08;
   --warn:#3A3E00;
+  --nord-boussole:#962413;
   --sur-accent:#FFFFFF;
   --sur-danger:#FFFFFF;
   --sur-warn:#FFFFFF;

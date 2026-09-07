@@ -141,6 +141,26 @@ pas un second renderer à côté de celui que #411 vient de mesurer.
 Ce qui reste hors de portée des tests est à écrire dans le fichier de test : le rendu et le ressenti
 du glisser demandent un navigateur.
 
+⚠️ **LES REPÈRES DE LA BASE SONT VENUS D'UN RETOUR D'USAGE, PAS DU PLAN.** Un dôme nu est
+parfaitement symétrique : le tourner ne déplaçait visiblement que le soleil, et quand celui-ci est
+haut, presque rien ne bougeait. Le geste paraissait sans effet. Huit repères puis les quatre lettres
+cardinales, posés à des azimuts fixes du MONDE, rendent la rotation lisible ; les azimuts sont
+**dérivés** de la caméra par défaut d'une Case, pas choisis, sinon le dôme et la Case se
+contrediraient.
+
+⚠️ **LE NORD EST ROUGE PAR UN JETON DE THÈME, ET C'EST LA MESURE QUI L'A IMPOSÉ (#414k).** Aucun
+rouge unique ne tient sur les deux papiers : `#E8604A` vaut 4,69 sur le fond sombre et 2,49 sur le
+clair, `#B8321F` l'exact inverse. Encore une valeur pour deux rôles opposés, le défaut qui revient
+dans tout ce dépôt. `--nord-boussole` est donc défini dans les quatre palettes, à des valeurs
+**résolues** et non choisies : teinte et saturation fixées, la clarté la plus proche du milieu qui
+atteint 4,5 en thème normal et 7 en contraste renforcé. Ce rouge n'est acceptable sur l'axe
+rouge-vert du daltonisme que parce que le point cardinal est déjà **écrit** (cf.
+[colour-accessibility](colour-accessibility.md)).
+
+Les autres lettres portent `--ink` et non `--ink-soft` : demandées « plus foncées », elles ont changé
+de **rôle** plutôt que de valeur, car en thème Sombre assombrir rapproche du fond. Mesuré sur le
+papier du menu de droite : 5,69 → 13,59 en Sombre, 3,34 → 10,55 en Clair.
+
 ## L'héritage Scène vers Case
 
 Charger une Scène dans une Case **copie** son éclairage, exactement comme elle copie ses modèles.

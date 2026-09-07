@@ -663,3 +663,160 @@ describe('#414j : les points cardinaux, et la géométrie partagée', () => {
     }
   });
 });
+
+describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
+  /**
+   * ⚠️ CE QUI RESTE HORS D'ATTEINTE ICI, ET IL FAUT LE DIRE. Ces tests portent sur des JETONS et sur
+   * le code qui les choisit. Ils ne disent rien de la LISIBILITÉ RÉELLE d'un glyphe de 10 px en
+   * graisse 600 posé sur une base d'ellipse : le calcul WCAG suppose du texte plein, et une lettre
+   * aussi petite passe par l'antialiasing, qui rabote le contraste effectif. Cela se juge à l'écran,
+   * pas sous Node.
+   *
+   * ⚠️ ET UNE SECONDE LIMITE, celle que `theme-contrast.test.mjs` s'avoue déjà : un ratio parfait sur
+   * un jeton ne prouve pas qu'il est employé là où on le croit. Le premier test ci-dessous couvre
+   * précisément ce trou pour ces deux jetons-là, en lisant le code du dessin.
+   */
+  const CSS = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+
+  // Copie assumée du calcul de tests/theme-contrast.test.mjs : chaque fichier de test de ce dépôt
+  // se lit et s'exécute seul.
+  const versLineaire = (c) => (c /= 255, c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminance = (hex) => {
+    const h = hex.replace('#', '');
+    const [r, g, b] = [0, 2, 4].map(i => versLineaire(parseInt(h.slice(i, i + 2), 16)));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contraste = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  // ⚠️ LE PIÈGE DE LA FENÊTRE DE LECTURE, quatre fois rencontré dans ce dépôt : on vérifie les deux
+  // bornes AVANT de couper, sinon `indexOf` rendant -1 ferait lire la fin du fichier.
+  function jetonsDuBloc(selecteur) {
+    const debut = CSS.indexOf(`${selecteur}{`);
+    assert.ok(debut >= 0, `bloc « ${selecteur} » introuvable dans style.css`);
+    const fin = CSS.indexOf('}', debut);
+    assert.ok(fin > debut, `bloc « ${selecteur} » non refermé`);
+    return Object.fromEntries([...CSS.slice(debut, fin)
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .matchAll(/--([a-z-]+)\s*:\s*(#[0-9A-Fa-f]{6})\s*;/g)].map(m => [m[1], m[2]]));
+  }
+
+  // Les quatre rendus, reconstitués comme la cascade CSS les compose : chaque variante ne redéfinit
+  // que ce qui change, et hérite du reste.
+  const BASE = jetonsDuBloc(':root');
+  const PALETTES = [
+    ['sombre', BASE, 4.5],
+    ['clair', { ...BASE, ...jetonsDuBloc('body.theme-light') }, 4.5],
+    ['sombre contraste', { ...BASE, ...jetonsDuBloc('body.theme-contraste') }, 7],
+    ['clair contraste', {
+      ...BASE, ...jetonsDuBloc('body.theme-light'),
+      ...jetonsDuBloc('body.theme-contraste'),
+      ...jetonsDuBloc('body.theme-light.theme-contraste'),
+    }, 7],
+  ];
+
+  test('le garde-fou : les quatre palettes ont bien été lues', () => {
+    // Sur des objets vides, toutes les mesures ci-dessous porteraient sur `undefined` et la suite
+    // resterait verte en n'observant rien. C'est déjà arrivé deux fois dans ce dépôt.
+    for (const [nom, T] of PALETTES) {
+      assert.ok(Object.keys(T).length >= 15, `${nom} : ${Object.keys(T).length} jetons lus`);
+      assert.match(T['paper-dark'] || '', /^#[0-9A-Fa-f]{6}$/, `${nom} : pas de --paper-dark`);
+    }
+    const fonds = new Set(PALETTES.map(([, T]) => T['paper-dark']));
+    assert.equal(fonds.size, 4, 'deux palettes partagent le même papier : la lecture est fausse');
+  });
+
+  test('le calcul rend les valeurs connues de WCAG', () => {
+    assert.equal(Math.round(contraste('#000000', '#FFFFFF')), 21);
+    assert.equal(Math.round(contraste('#777777', '#777777')), 1);
+  });
+
+  test('RÉGRESSION : les lettres portent l\'encre PRINCIPALE, pas celle des légendes', () => {
+    // ⚠️ LE JETON EST LE SUJET, PAS LA VALEUR. Demandées « plus foncées », les lettres ont changé de
+    // RÔLE : `--ink-soft` est la couleur des légendes, `--ink` celle du texte qu'on lit. Prendre
+    // « plus foncé » au pied de la lettre aurait dégradé le thème Sombre, où assombrir rapproche du
+    // fond. Ce test se briserait au retour de l'ancien jeton.
+    assert.match(SIDEBAR, /jetonDeTheme3D\('--ink',/, 'les lettres ne prennent plus l\'encre principale');
+    const dessin = SIDEBAR.slice(SIDEBAR.indexOf('export function dessinerDomeLumiere3D'));
+    assert.ok(dessin.length > 500, 'la fonction de dessin n\'a pas été retrouvée');
+    assert.ok(!/--ink-soft/.test(dessin), '`--ink-soft` est revenu dans le dessin du dôme');
+  });
+
+  test('RÉGRESSION : le Nord se distingue des trois autres DANS LE CODE', () => {
+    // Le défaut que ce test attrape : un `fillStyle` posé une fois pour les quatre lettres. Le
+    // rouge existerait alors dans la feuille de style sans jamais atteindre l'écran.
+    assert.match(SIDEBAR, /jetonDeTheme3D\('--nord-boussole',/, 'le jeton du Nord n\'est pas lu');
+    assert.match(SIDEBAR, /cle === 'N' \?/, 'le Nord n\'est plus traité à part');
+    // Et la couleur se pose DANS la boucle : au-dessus, elle vaudrait pour les quatre.
+    const boucle = SIDEBAR.slice(SIDEBAR.indexOf('AZIMUTS_CARDINAUX.forEach'));
+    assert.ok(boucle.length > 100, 'la boucle des cardinaux n\'a pas été retrouvée');
+    assert.match(boucle.slice(0, boucle.indexOf('fillText')), /fillStyle/,
+      'la couleur est choisie hors de la boucle : les quatre lettres seraient identiques');
+  });
+
+  test('le jeton du Nord existe dans les QUATRE palettes', () => {
+    // ⚠️ UN JETON ABSENT NE CASSE RIEN, IL SE TAIT. `getPropertyValue` rend une chaîne vide, le repli
+    // écrit en dur prend la main, et le thème Clair afficherait le rouge du thème Sombre, à 2,49 sur
+    // son papier. Aucune erreur, juste une lettre illisible.
+    for (const [nom, T] of PALETTES) {
+      assert.match(T['nord-boussole'] || '', /^#[0-9A-Fa-f]{6}$/,
+        `${nom} : --nord-boussole n'est pas défini`);
+    }
+  });
+
+  test('chaque rouge atteint la cible de SON thème sur le papier du panneau', () => {
+    // Les lettres se posent sur le fond du menu de droite, `--paper-dark`. Cible AA (4,5) pour les
+    // thèmes normaux, AAA (7) pour le contraste renforcé, comme partout dans ce dépôt.
+    const faibles = PALETTES
+      .map(([nom, T, cible]) => [nom, contraste(T['nord-boussole'], T['paper-dark']), cible])
+      .filter(([, r, cible]) => r < cible);
+    assert.deepEqual(faibles.map(([nom, r, c]) => `${nom} ${r.toFixed(2)} < ${c}`), []);
+  });
+
+  test('les lettres ordinaires aussi, et elles ont GAGNÉ au change', () => {
+    for (const [nom, T, cible] of PALETTES) {
+      const apres = contraste(T.ink, T['paper-dark']);
+      assert.ok(apres >= cible, `${nom} : l'encre est à ${apres.toFixed(2)}, sous ${cible}`);
+      // La raison d'être du changement : l'ancien jeton était plus faible. Le thème clair contrasté
+      // n'a pas de `--ink-soft` propre et hérite du sien, la comparaison reste valable.
+      const avant = contraste(T['ink-soft'], T['paper-dark']);
+      assert.ok(apres > avant, `${nom} : ${avant.toFixed(2)} → ${apres.toFixed(2)}, aucun gain`);
+    }
+  });
+
+  test('RÉGRESSION : un seul rouge n\'aurait pas pu convenir', () => {
+    // ⚠️ C'EST LA MESURE QUI A IMPOSÉ UN JETON, et sans elle on aurait écrit un rouge en dur. Le
+    // meilleur rouge sur papier sombre est le pire sur papier clair, et réciproquement. Si un jour
+    // ce test échoue, c'est que les papiers se sont rapprochés et que la séparation peut tomber.
+    const sombre = PALETTES[0][1], clair = PALETTES[1][1];
+    assert.ok(contraste(sombre['nord-boussole'], clair['paper-dark']) < 4.5,
+      'le rouge du thème Sombre passerait maintenant en Clair');
+    assert.ok(contraste(clair['nord-boussole'], sombre['paper-dark']) < 4.5,
+      'le rouge du thème Clair passerait maintenant en Sombre');
+  });
+
+  test('le Nord reste un ROUGE, et se voit comme différent de l\'encre', () => {
+    // Deux exigences distinctes : que ce soit rouge (le canal rouge domine largement), et que l'œil
+    // le sépare des trois autres lettres. Un « rouge » à 30 unités de l'encre ne se remarquerait pas.
+    const distance = (a, b) => Math.hypot(...[0, 2, 4]
+      .map(i => parseInt(a.slice(1 + i, 3 + i), 16) - parseInt(b.slice(1 + i, 3 + i), 16)));
+    for (const [nom, T] of PALETTES) {
+      const c = T['nord-boussole'];
+      const [r, v, b] = [0, 2, 4].map(i => parseInt(c.slice(1 + i, 3 + i), 16));
+      assert.ok(r > v + 40 && r > b + 40, `${nom} : ${c} n'est pas franchement rouge`);
+      assert.ok(distance(c, T.ink) >= 80,
+        `${nom} : le Nord est à ${distance(c, T.ink).toFixed(0)} de l'encre, trop proche`);
+    }
+  });
+
+  test('la couleur n\'est pas SEULE à porter le sens', () => {
+    // ⚠️ L'AXE ROUGE-VERT EST EXACTEMENT CELUI QUE LE DALTONISME SUPPRIME (cf.
+    // docs/en/colour-accessibility.md). Ce rouge n'est acceptable que parce que le point cardinal
+    // est déjà ÉCRIT : la lettre « N » dit le nord, le rouge ne fait qu'accélérer la lecture.
+    assert.match(SIDEBAR, /N: tr\('N', 'N'\)/, 'la lettre du Nord a disparu : le rouge deviendrait le seul indice');
+  });
+});

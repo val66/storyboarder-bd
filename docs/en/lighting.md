@@ -136,6 +136,25 @@ next to the one #411 has just measured.
 What stays out of reach of the tests must be written in the test file: the rendering and the feel of
 the drag need a browser.
 
+⚠️ **THE BASE MARKS CAME FROM USE, NOT FROM THE PLAN.** A bare dome is perfectly symmetric: rotating
+it visibly moved only the sun, and when the sun is high almost nothing moved. The gesture looked
+inert. Eight marks, then the four cardinal letters, placed at fixed WORLD azimuths, make the rotation
+readable; those azimuths are **derived** from a Panel's default camera, not picked, otherwise the
+dome and the Panel would contradict each other.
+
+⚠️ **NORTH IS RED THROUGH A THEME TOKEN, AND MEASUREMENT FORCED THAT (#414k).** No single red holds
+on both papers: `#E8604A` scores 4.69 on the dark background and 2.49 on the light one, `#B8321F`
+the exact opposite. One value for two opposite roles again, the defect that keeps coming back in
+this repository. `--nord-boussole` is therefore defined in all four palettes, at values that are
+**solved** rather than chosen: hue and saturation fixed, the lightness closest to the middle that
+reaches 4.5 in a normal theme and 7 in enhanced contrast. That red is only acceptable on the
+red-green axis of colour blindness because the cardinal point is already **written** (see
+[colour-accessibility](colour-accessibility.md)).
+
+The other letters carry `--ink` and not `--ink-soft`: asked to be "darker", they changed **role**
+rather than value, because on the Dark theme darkening moves towards the background. Measured on the
+right-hand panel's paper: 5.69 → 13.59 on Dark, 3.34 → 10.55 on Light.
+
 ## Scene to Panel inheritance
 
 Loading a Scene into a Panel **copies** its lighting, exactly as it copies its models. Afterwards the
