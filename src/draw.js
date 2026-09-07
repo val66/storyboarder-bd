@@ -44,7 +44,7 @@ import {
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
   drawPanelScene3D, drawObject3D,
   projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D,
-  panelSceneCache3D, panelCamBasis3D, getCamOrbitWorld,
+  elaguerCacheDeCases3D, panelCamBasis3D, getCamOrbitWorld,
   commencerFrameLimitee3D, resteDesRendus3D, terminerFrameLimitee3D,
   panelDepthToDistance3D, clampPanelDepth3D,
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners, getWallChildProjectedQuad3D,
@@ -2452,11 +2452,16 @@ function _drawCurrentPageMesuree(){
   // page), clearing the cache on every drawCurrentPage() and canceling out any benefit from the cache.
   const _pageDataRef = currentPageData();
   if (_pageDataRef !== S.drawCurrentPageLastRef) {
-    // ⚠️ CHANGER DE PLANCHE RECONSTRUIT TOUT, et c'est mesuré : les sept rigs d'une Planche
-    // coûtaient 986 ms dans une seule frame avant que #405d ne les étale (cf.
-    // docs/en/rendering-performance.md, troisième campagne).
-    panelSceneCache3D.clear();
+    // ⚠️ ON NE VIDE PLUS TOUT (#411i). Le vidage complet n'a jamais été requis pour la justesse :
+    // les identifiants sont uniques dans tout le Projet, et la signature de Case interdit déjà de
+    // réutiliser une image périmée. C'était une politique de mémoire, et elle coûtait un
+    // re-rendu complet à chaque retour, mesuré à ~250 ms (cf. docs/en/rendering-performance.md,
+    // quatrième campagne). La Planche PRÉCÉDENTE est maintenant gardée, parce que la comparer à
+    // celle en cours est un geste courant ; tout le reste est évincé, et ses canevas vidés.
+    const idsPrecedents = S.drawCurrentPageLastRef
+      ? panelsInPage(S.drawCurrentPageLastRef).map(p => p.id) : [];
     S.drawCurrentPageLastRef = _pageDataRef;
+    elaguerCacheDeCases3D(panelsInPage(_pageDataRef).map(p => p.id), idsPrecedents);
     // SONDE #411 : à retirer avec la campagne. Le remplissage COMMENCE ici. C'est la seule mesure
     // qui corresponde à ce qui a été signalé : les Cases qui se rechargent visiblement. Aucune
     // moyenne par Case ne la donne, puisque #405d n'en reconstruit qu'une par frame.

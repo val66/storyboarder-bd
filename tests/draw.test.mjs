@@ -35,7 +35,9 @@ import {
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
-  budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME } from '../src/scene3d.js';
+  budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME,
+  octetsEntreeCache3D, idsCacheAGarder3D, elaguerCacheDeCases3D,
+  panelSceneCache3D, PLANCHES_GARDEES_EN_CACHE } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1811,6 +1813,115 @@ describe('#411h : le budget en temps a été essayé, mesuré, et retiré', () =
     // partir de 1 », c'est une comparaison.
     assert.equal(budgetFrameEpuise3D(1, 3), false);
     assert.equal(budgetFrameEpuise3D(3, 3), true);
+  });
+});
+
+describe('#411i : le cache garde la Planche précédente', () => {
+  /**
+   * POURQUOI CE REMÈDE, ET PAS UN AUTRE. `drawCurrentPage` vidait le cache en entier à chaque
+   * changement de Planche, ce qui n'était pas requis pour la justesse : les identifiants sont
+   * uniques dans tout le Projet et la signature de Case interdit déjà de réutiliser une image
+   * périmée. C'était une politique de mémoire, trop brutale, et elle coûtait ~250 ms à chaque
+   * retour. Deux autres remèdes ont été essayés et retirés avant celui-ci (cf. #411h) : le
+   * remplissage est la SOMME DU TRAVAIL, donc seul « ne pas refaire le travail » pouvait marcher.
+   *
+   * ⚠️ CE QUI N'EST PAS TESTÉ ICI : que la mémoire baisse réellement. Un test sous Node ne mesure
+   * pas des tampons de pixels. On tient la DÉCISION (qui est gardé, qui est évincé) et le GESTE de
+   * libération (le canevas remis à zéro), pas leur effet sur le tas du navigateur.
+   */
+  const entree = (w, h) => ({ canvas: { width: w, height: h }, sig: 'x' });
+  const DRAW_SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+
+  test('un canevas RGBA pèse 4 octets par pixel, et une entrée sans canevas ne pèse rien', () => {
+    assert.equal(octetsEntreeCache3D(entree(100, 200)), 100 * 200 * 4);
+    assert.equal(octetsEntreeCache3D({ canvas: null }), 0);
+    assert.equal(octetsEntreeCache3D(null), 0);
+    assert.equal(octetsEntreeCache3D(entree(0, 200)), 0, 'un canevas déjà vidé ne pèse plus rien');
+  });
+
+  test('la Planche courante est gardée, et la précédente avec elle quand elle tient', () => {
+    const o = new Map([['a', 10], ['b', 10], ['c', 10], ['d', 10]]);
+    const garde = idsCacheAGarder3D(o, ['a', 'b'], ['c', 'd']);
+    assert.deepEqual([...garde].sort(), ['a', 'b', 'c', 'd']);
+  });
+
+  test('tout ce qui n\'est ni courant ni précédent est évincé', () => {
+    // Le point de la borne : sans elle, on retomberait sur « tout garder », soit 312 Mo mesurés sur
+    // « Projet 2 » et aucun plafond pour un Projet plus gros.
+    const o = new Map([['a', 10], ['c', 10], ['vieux', 10]]);
+    const garde = idsCacheAGarder3D(o, ['a'], ['c']);
+    assert.ok(!garde.has('vieux'), 'une Planche d\'avant-hier est restée en mémoire');
+  });
+
+  test('RÉGRESSION : la Planche COURANTE n\'est jamais évincée, même seule au-dessus du plafond', () => {
+    // La jeter reviendrait à re-rendre ce qu'on est en train de regarder : pire que le vidage
+    // complet qu'on remplace. Le plafond gouverne l'historique, pas l'affichage.
+    const o = new Map([['a', 1e9], ['b', 1e9]]);
+    const garde = idsCacheAGarder3D(o, ['a', 'b'], []);
+    assert.deepEqual([...garde].sort(), ['a', 'b']);
+  });
+
+  test('la précédente tombe quand elle ne tient pas dans le plafond', () => {
+    // Plafond = facteur × coût de la courante. Ici la courante pèse 10, le plafond vaut donc 20, et
+    // une précédente de 50 ne peut pas entrer.
+    const o = new Map([['a', 10], ['gros', 50]]);
+    const garde = idsCacheAGarder3D(o, ['a'], ['gros']);
+    assert.deepEqual([...garde], ['a']);
+  });
+
+  test('le plafond se remplit dans l\'ordre, il ne rejette pas tout en bloc', () => {
+    // Courante 10 → plafond 20 → il reste 10 pour l'historique : la première Case de la précédente
+    // entre, la seconde non. Un plafond qui rejetterait toute la Planche précédente dès qu'elle
+    // dépasse gaspillerait la place restante.
+    const o = new Map([['a', 10], ['p1', 6], ['p2', 6]]);
+    const garde = idsCacheAGarder3D(o, ['a'], ['p1', 'p2']);
+    assert.deepEqual([...garde], ['a', 'p1']);
+  });
+
+  test('un identifiant absent du cache ne compte pas comme gardé', () => {
+    // Les Cases d'une Planche jamais rendue sont dans la liste des courants sans être dans le
+    // cache : les compter fausserait le plafond, calculé sur ce qui occupe VRAIMENT la mémoire.
+    const o = new Map([['a', 10]]);
+    assert.deepEqual([...idsCacheAGarder3D(o, ['a', 'jamais-rendue'], [])], ['a']);
+  });
+
+  test('le facteur vaut 2 : la Planche affichée, plus une d\'historique', () => {
+    // Ce n'est pas un nombre choisi, c'est le besoin énoncé : comparer la Planche en cours à la
+    // précédente. S'il tombait à 1, l'historique disparaîtrait et on reviendrait au vidage complet.
+    assert.equal(PLANCHES_GARDEES_EN_CACHE, 2);
+    const o = new Map([['a', 10], ['c', 10]]);
+    assert.ok(!idsCacheAGarder3D(o, ['a'], ['c'], 1).has('c'),
+      'avec un facteur de 1, rien d\'ancien ne doit survivre');
+  });
+
+  test('l\'éviction VIDE le canevas avant de lâcher l\'entrée', () => {
+    // ⚠️ SANS CE GESTE, LE PLAFOND NE SERAIT QU'UN DÉCOMPTE. Retirer l'entrée de la Map ne libère
+    // que la référence JavaScript ; le tampon de pixels vit hors du tas et attendrait le
+    // ramasse-miettes. La mémoire ne suivrait alors pas la promesse affichée par le plafond.
+    panelSceneCache3D.clear();
+    const vieux = entree(100, 100);
+    panelSceneCache3D.set('a', entree(10, 10));
+    panelSceneCache3D.set('vieux', vieux);
+    elaguerCacheDeCases3D(['a'], []);
+    assert.ok(!panelSceneCache3D.has('vieux'), 'l\'entrée périmée est restée');
+    assert.equal(vieux.canvas.width, 0, 'le canevas évincé garde ses pixels');
+    assert.equal(vieux.canvas.height, 0);
+    assert.ok(panelSceneCache3D.has('a'), 'la Planche courante a été évincée');
+    panelSceneCache3D.clear();
+  });
+
+  test('RÉGRESSION : le changement de Planche n\'appelle plus clear() sur le cache', () => {
+    // La ligne qui coûtait le re-rendu complet. Épinglée parce qu'un `clear()` revenu passerait
+    // inaperçu : tout resterait juste, simplement lent, ce qui est le pire genre de régression.
+    const i = DRAW_SRC.indexOf('_pageDataRef !== S.drawCurrentPageLastRef');
+    assert.ok(i > 0, 'la détection de changement de Planche a disparu');
+    const bloc = DRAW_SRC.slice(i, i + 700);
+    assert.ok(!/panelSceneCache3D\.clear\(\)/.test(bloc), 'le vidage complet est revenu');
+    assert.match(bloc, /elaguerCacheDeCases3D\(/, 'plus rien n\'élague : le cache grossirait sans fin');
+    // Et les deux listes sont bien distinctes : passer deux fois la courante garderait tout et
+    // rien, selon le sens de l'erreur.
+    assert.match(bloc, /idsPrecedents/, 'la Planche précédente n\'est plus transmise');
   });
 });
 

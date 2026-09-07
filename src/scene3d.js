@@ -862,6 +862,94 @@ export function ensureNewElementVisibleInPanel3D(obj, panel, page){
 // NEVER retrigger the Three.js render (expensive, and now at the resolution of the entire Page);
 // only the cropping (cf. drawPanelScene3D) depends on it, and that's a cheap 2D operation. Key = panel.id.
 export const panelSceneCache3D = new Map();
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE CACHE GARDE LA PLANCHE PRÉCÉDENTE (#411i)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `drawCurrentPage` VIDAIT ce cache en entier à chaque changement de Planche. Ce n'était pas requis
+ * pour la justesse : les identifiants sont uniques dans tout le Projet (`newId` incrémente un
+ * compteur), et la signature de Case interdit déjà de réutiliser une image périmée. C'était une
+ * politique de mémoire, et elle était trop brutale : revenir sur une Planche re-rendait tout.
+ *
+ * ⚠️ TROIS REMÈDES ONT ÉTÉ ESSAYÉS AVANT CELUI-CI, DEUX ONT ÉTÉ RETIRÉS. Le budget par frame en
+ * temps (#411e/g) groupait bien les Cases, 7 frames devenant 3, sans que la durée bouge d'un
+ * pouce : le remplissage est la SOMME DU TRAVAIL, pas de l'attente. Il ne restait donc qu'à ne pas
+ * refaire le travail. Cf. docs/en/rendering-performance.md, quatrième campagne.
+ *
+ * CE QUE ÇA COÛTE, MESURÉ SUR LES PROJETS RÉELS : une entrée est un canevas à la résolution de la
+ * Planche, soit 5,4 Mo en Comics US à l'échelle 2, jusqu'à 16,7 Mo en Franco-Belge à l'échelle 4.
+ * La Planche la plus chargée de « Projet 2 » porte 9 Cases 3D, donc 48 Mo. Tout garder coûterait
+ * 312 Mo pour ce Projet, sans plafond pour un Projet plus gros : le vidage complet avait donc une
+ * vraie raison, même mal dosée.
+ *
+ * ⚠️ LE FACTEUR 2 N'EST PAS UN NOMBRE CHOISI, C'EST LE BESOIN ÉNONCÉ. « Il arrive souvent qu'on
+ * compare plusieurs Planches, ou qu'on regarde la précédente pour avancer sur celle en cours. » On
+ * garde donc UNE Planche d'historique, et le plafond s'exprime relativement à la Planche courante
+ * plutôt qu'en mégaoctets absolus : le coût d'une Planche dépend du format et de l'échelle de rendu,
+ * un plafond en dur serait juste sur un écran et faux sur un autre. Deux fois ce qu'on accepte déjà
+ * pour la Planche affichée, voilà la promesse, et elle tient quels que soient le format et l'écran.
+ */
+export const PLANCHES_GARDEES_EN_CACHE = 2;
+
+/** Les octets que retient une entrée : un canevas RGBA, donc 4 par pixel. Fonction PURE. */
+export function octetsEntreeCache3D(entree){
+  const c = entree && entree.canvas;
+  if (!c || !c.width || !c.height) return 0;
+  return c.width * c.height * 4;
+}
+
+/**
+ * Les identifiants de Case à GARDER après un changement de Planche. Fonction PURE, donc testable.
+ *
+ * L'ordre compte, et il est explicite : la Planche courante d'abord, la précédente ensuite. Si le
+ * plafond ne permet pas de tout garder, c'est l'historique qui tombe, jamais ce qui est affiché.
+ *
+ * ⚠️ ET LA PLANCHE COURANTE N'EST JAMAIS ÉVINCÉE, MÊME SI ELLE DÉPASSE À ELLE SEULE LE PLAFOND. La
+ * jeter reviendrait à re-rendre ce qu'on est en train de regarder, c'est-à-dire à faire pire que le
+ * vidage complet qu'on remplace. Le plafond gouverne l'historique, pas l'affichage.
+ */
+export function elaguerCacheDeCases3D(idsCourants, idsPrecedents){
+  const octetsParId = new Map();
+  panelSceneCache3D.forEach((entree, id) => octetsParId.set(id, octetsEntreeCache3D(entree)));
+  const garde = idsCacheAGarder3D(octetsParId, idsCourants, idsPrecedents);
+  let gardes = 0, evinces = 0, octetsGardes = 0;
+  panelSceneCache3D.forEach((entree, id) => {
+    if (garde.has(id)) { gardes++; octetsGardes += octetsParId.get(id) || 0; return; }
+    // ⚠️ LE CANEVAS SE VIDE AVANT D'ÊTRE LÂCHÉ. Retirer l'entrée de la Map ne libère que la
+    // référence JavaScript ; le tampon de pixels, lui, vit hors du tas et attend le ramasse-miettes.
+    // Remettre les dimensions à zéro le rend tout de suite. Sans ça, un plafond en octets ne serait
+    // qu'un décompte, et la mémoire ne suivrait pas la promesse qu'il affiche.
+    if (entree && entree.canvas) { entree.canvas.width = 0; entree.canvas.height = 0; }
+    panelSceneCache3D.delete(id);
+    evinces++;
+  });
+  // SONDE #411 : à retirer avec la campagne. Le MÉCANISME observé, pas seulement son effet : sans
+  // ces trois chiffres, un remplissage resté long ne dirait pas si le cache n'a rien gardé ou s'il
+  // a gardé sans que ça serve. C'est la leçon de #411f, payée d'un relevé entier.
+  perfCompteur('Cases gardées au changement de Planche', gardes);
+  perfCompteur('Cases évincées au changement de Planche', evinces);
+  if (perfActive()) perfDuree('Cache retenu après changement', +(octetsGardes / 1048576).toFixed(1), 'Mo');
+}
+
+export function idsCacheAGarder3D(octetsParId, idsCourants, idsPrecedents, facteur = PLANCHES_GARDEES_EN_CACHE){
+  const octets = (id) => octetsParId.get(id) || 0;
+  const courants = (idsCourants || []).filter(id => octetsParId.has(id));
+  const garde = new Set(courants);
+  const coutCourant = courants.reduce((t, id) => t + octets(id), 0);
+  // Le plafond est un MULTIPLE du coût de la Planche affichée : `facteur` planches au total, donc
+  // `facteur - 1` d'historique. Sans Planche courante mesurable (première ouverture), il n'y a rien
+  // à multiplier et rien à garder d'un passé qui n'existe pas encore.
+  const plafond = coutCourant * facteur;
+  let total = coutCourant;
+  (idsPrecedents || []).forEach(id => {
+    if (garde.has(id) || !octetsParId.has(id)) return;
+    if (total + octets(id) > plafond) return;
+    garde.add(id); total += octets(id);
+  });
+  return garde;
+}
 // FIX (pre-existing bug, regression from extraction #158): these 3 caches weren't exported even
 // though events.js uses them directly (cache invalidation after editing from the Room/Building/Trace
 // modals), an immediate ReferenceError, which crashed THESE modals' Save button on every click
