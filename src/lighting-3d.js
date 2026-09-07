@@ -192,3 +192,77 @@ function normaliserAngle(deg){
   return a - 180;
 }
 function couleurValide(c){ return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c); }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE CHAMP PERSISTÉ (#414b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `lumiere` vit sur l'objet `panel`. La Planche verrouillée d'une Scène EST un panel
+ * (`isLockedScenePanel`), donc un seul champ couvre la Case et la Scène, sans second chemin de code
+ * ni second format. La sérialisation le porte gratuitement : `serializeProject` écrit `S.tomes`
+ * entier, un champ ajouté y entre sans qu'on touche à io.js.
+ *
+ * ⚠️ ON N'ÉCRIT RIEN TANT QUE L'UTILISATEUR N'A RIEN RÉGLÉ, et c'est la décision qui compte ici.
+ * Remplir un objet `lumiere` par défaut dans chaque Case à l'ouverture ferait grossir tous les
+ * fichiers de Projet existants au premier enregistrement, pour un contenu qui ne dit rien de plus
+ * que son absence. `lumiereDeCase3D` LIT avec des valeurs par défaut sans jamais écrire ;
+ * `definirLumiereDeCase3D` est le seul à créer le champ, et seulement quand un réglage change.
+ *
+ * ⚠️ ET LES DÉFAUTS DE LECTURE NE SONT PAS CEUX D'UNE CASE ÉCLAIRÉE. `active` vaut faux, donc
+ * `resoudreEclairage3D` rend `{ actif: false }` et le style graphique garde la main : une Case
+ * d'un Projet existant rend EXACTEMENT comme avant. Les autres valeurs ne servent qu'à préremplir
+ * l'interface le jour où on coche la case.
+ */
+export const LUMIERE_DEFAUT = {
+  active: false,
+  mode: 'jour',
+  azimut: SOLEIL_ACTUEL.azimut,
+  elevation: SOLEIL_ACTUEL.elevation,
+  couleur: PRESETS_LUMIERE.jour.couleur,
+  intensite: PRESETS_LUMIERE.jour.intensite,
+};
+
+/** Le réglage d'une Case, défauts compris. NE MODIFIE RIEN. Fonction pure vis-à-vis du panel. */
+export function lumiereDeCase3D(panel){
+  const l = (panel && panel.lumiere) || null;
+  if (!l || typeof l !== 'object') return { ...LUMIERE_DEFAUT };
+  return {
+    active: l.active === true,
+    // Parenthèses explicites : `A || B ? x : y` se lit `(A || B) ? x : y`, ce qui est bien ce qu'on
+    // veut, mais un lecteur pressé y voit l'inverse et un futur remaniement s'y tromperait.
+    mode: (PRESETS_LUMIERE[l.mode] || l.mode === 'perso') ? l.mode : LUMIERE_DEFAUT.mode,
+    azimut: Number.isFinite(Number(l.azimut)) ? Number(l.azimut) : LUMIERE_DEFAUT.azimut,
+    elevation: Number.isFinite(Number(l.elevation)) ? Number(l.elevation) : LUMIERE_DEFAUT.elevation,
+    couleur: typeof l.couleur === 'string' && /^#[0-9A-Fa-f]{6}$/.test(l.couleur)
+      ? l.couleur : LUMIERE_DEFAUT.couleur,
+    intensite: Number.isFinite(Number(l.intensite)) ? Number(l.intensite) : LUMIERE_DEFAUT.intensite,
+  };
+}
+
+/**
+ * Écrit un réglage sur la Case. Le SEUL endroit qui crée le champ.
+ *
+ * Rend `true` si quelque chose a changé, pour que l'appelant sache s'il doit redessiner et marquer
+ * le Projet modifié. Un réglage réécrit à l'identique ne doit ni salir le Projet ni invalider le
+ * cache d'images de Case.
+ */
+export function definirLumiereDeCase3D(panel, patch){
+  if (!panel || !patch || typeof patch !== 'object') return false;
+  const avant = lumiereDeCase3D(panel);
+  const apres = lumiereDeCase3D({ lumiere: { ...avant, ...patch } });
+  const change = Object.keys(LUMIERE_DEFAUT).some(k => avant[k] !== apres[k]);
+  if (change) panel.lumiere = apres;
+  return change;
+}
+
+/**
+ * Une COPIE indépendante, pour l'héritage d'une Scène vers une Case (#414f).
+ *
+ * ⚠️ PAR VALEUR, PAS PAR RÉFÉRENCE. Une affectation laisserait les deux Cases partager le même
+ * objet, et le premier réglage se propagerait à l'autre sans que rien ne le demande. C'est le
+ * défaut que la note annonce et qu'un test refuse.
+ */
+export function copierLumiere3D(source){
+  return source && source.lumiere ? { ...lumiereDeCase3D(source) } : null;
+}

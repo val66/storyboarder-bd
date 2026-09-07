@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import {
   directionSoleil3D, anglesDepuisDirection3D, projeterSurDome3D, directionDepuisDome3D,
   resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, FRACTION_AMBIANTE, AMBIANTE_ACTUELLE,
-  INCLINAISON_DOME_DEG,
+  INCLINAISON_DOME_DEG, LUMIERE_DEFAUT, lumiereDeCase3D, definirLumiereDeCase3D, copierLumiere3D,
 } from '../src/lighting-3d.js';
 
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -232,5 +232,109 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
     assert.ok(nuit.soleil.intensite < jour.soleil.intensite / 2,
       `nuit ${nuit.soleil.intensite} contre jour ${jour.soleil.intensite}`);
     assert.ok(nuit.ambiante.intensite < jour.ambiante.intensite);
+  });
+});
+
+describe('#414b : le champ persisté, et les Projets existants', () => {
+  test('RÉGRESSION : LIRE une Case n\'ÉCRIT rien', () => {
+    // ⚠️ LA DÉCISION QUI PROTÈGE LES FICHIERS EXISTANTS. Remplir un objet `lumiere` par défaut dans
+    // chaque Case à l'ouverture ferait grossir tous les Projets au premier enregistrement, pour un
+    // contenu qui ne dit rien de plus que son absence.
+    const panel = { id: 'p1', type: 'panel' };
+    const avant = JSON.stringify(panel);
+    lumiereDeCase3D(panel);
+    assert.equal(JSON.stringify(panel), avant, 'la lecture a écrit dans la Case');
+    assert.ok(!('lumiere' in panel));
+  });
+
+  test('une Case sans champ lit des défauts qui n\'éclairent PAS', () => {
+    // C'est le maillon qui relie le défaut au rendu : `active` faux, donc `resoudreEclairage3D`
+    // rend `{ actif: false }`, donc le style graphique garde la main, donc l'aspect ne bouge pas.
+    const l = lumiereDeCase3D({ id: 'p1', type: 'panel' });
+    assert.equal(l.active, false);
+    assert.deepEqual(resoudreEclairage3D(l), { actif: false });
+  });
+
+  test('RÉGRESSION : un Projet ENTIER d\'avant la fonctionnalité ressort identique', () => {
+    // La garantie annoncée dans docs/en|fr/lighting.md, vérifiée sur un Projet complet plutôt que
+    // sur une Case isolée : aucune Planche déjà dessinée ne doit changer, ni à l'écran ni sur
+    // disque.
+    const projet = { tomes: [{ pages: [
+      { objects: [{ id: 'a', type: 'panel', x: 0, y: 0, w: 10, h: 10 },
+        { id: 'b', type: 'perso', x: 1, y: 1 }] },
+      { objects: [{ id: 'c', type: 'panel', x: 2, y: 2, w: 5, h: 5 }] },
+    ] }] };
+    const avant = JSON.stringify(projet);
+    projet.tomes.forEach(t => t.pages.forEach(pg => pg.objects.forEach(o => {
+      if (o.type === 'panel') assert.deepEqual(resoudreEclairage3D(lumiereDeCase3D(o)), { actif: false });
+    })));
+    assert.equal(JSON.stringify(projet), avant, 'le Projet a été modifié par une simple lecture');
+  });
+
+  test('écrire ne crée le champ QU\'au premier vrai changement', () => {
+    const panel = { id: 'p1', type: 'panel' };
+    // Réécrire la valeur par défaut ne change rien : le Projet ne doit pas se salir pour ça.
+    assert.equal(definirLumiereDeCase3D(panel, { mode: 'jour' }), false);
+    assert.ok(!('lumiere' in panel), 'un réglage identique a quand même écrit');
+    assert.equal(definirLumiereDeCase3D(panel, { active: true }), true);
+    assert.equal(panel.lumiere.active, true);
+  });
+
+  test('RÉGRESSION : un réglage réécrit à l\'identique rend `false`', () => {
+    // L'appelant s'en sert pour décider s'il redessine et s'il marque le Projet modifié. Rendre
+    // `true` à chaque frappe ferait invalider le cache d'images de Case pour rien, ce que #411
+    // vient de mesurer à ~250 ms le rechargement.
+    const panel = { id: 'p1', type: 'panel' };
+    definirLumiereDeCase3D(panel, { active: true, intensite: 0.4 });
+    assert.equal(definirLumiereDeCase3D(panel, { intensite: 0.4 }), false);
+    assert.equal(definirLumiereDeCase3D(panel, { intensite: 0.41 }), true);
+  });
+
+  test('les valeurs illisibles d\'un fichier édité à la main sont remplacées, pas propagées', () => {
+    const l = lumiereDeCase3D({ lumiere: { active: 'oui', mode: 'crepuscule', azimut: 'nord',
+      elevation: null, couleur: 'bleu', intensite: [] } });
+    assert.equal(l.active, false, 'seul le booléen vrai active l\'éclairage');
+    assert.equal(l.mode, LUMIERE_DEFAUT.mode);
+    assert.equal(l.azimut, LUMIERE_DEFAUT.azimut);
+    assert.equal(l.couleur, LUMIERE_DEFAUT.couleur);
+    assert.ok(Number.isFinite(l.intensite));
+  });
+
+  test('RÉGRESSION : la copie pour l\'héritage est PAR VALEUR', () => {
+    // ⚠️ LE DÉFAUT QUE LA NOTE ANNONCE. Une affectation laisserait la Scène et la Case partager le
+    // même objet, et le premier réglage se propagerait à l'autre sans que rien ne le demande.
+    const scene = { id: 's', type: 'panel' };
+    definirLumiereDeCase3D(scene, { active: true, intensite: 0.3 });
+    // ⚠️ L'IDENTITÉ D'ABORD, ET C'EST UNE MUTATION QUI ME L'A APPRIS. Ma première version ne
+    // vérifiait que le comportement observable, en réglant les deux Cases l'une après l'autre — et
+    // rendre la référence brute passait ce test, parce que `definirLumiereDeCase3D` REMPLACE
+    // l'objet au lieu de le modifier sur place. Deux mécanismes garantissaient la même chose, donc
+    // aucun des deux n'était tenu. On tient donc la copie pour elle-même.
+    const copie = copierLumiere3D(scene);
+    assert.notEqual(copie, scene.lumiere, 'la copie rend la référence de la Scène, pas une copie');
+    const casePanel = { id: 'c', type: 'panel', lumiere: copie };
+    assert.equal(casePanel.lumiere.intensite, 0.3, 'l\'héritage n\'a rien transmis');
+    definirLumiereDeCase3D(casePanel, { intensite: 0.9 });
+    assert.equal(scene.lumiere.intensite, 0.3, 'modifier la Case a modifié la Scène');
+    definirLumiereDeCase3D(scene, { intensite: 0.1 });
+    assert.equal(casePanel.lumiere.intensite, 0.9, 'modifier la Scène a rattrapé la Case');
+  });
+
+  test('et le SETTER remplace l\'objet au lieu de le modifier sur place', () => {
+    // La seconde garantie, distincte de la première : même si quelqu'un partageait un jour une
+    // référence, un réglage n'irait pas écrire dans l'objet d'à côté. Les deux se testent
+    // séparément, sinon l'une masque l'autre.
+    const panel = { id: 'p', type: 'panel' };
+    definirLumiereDeCase3D(panel, { active: true, intensite: 0.2 });
+    const avant = panel.lumiere;
+    definirLumiereDeCase3D(panel, { intensite: 0.8 });
+    assert.notEqual(panel.lumiere, avant, 'l\'objet a été modifié sur place');
+    assert.equal(avant.intensite, 0.2, 'l\'ancien objet a été altéré');
+  });
+
+  test('une Scène sans éclairage ne transmet RIEN', () => {
+    // Sans quoi charger une Scène poserait un champ sur la Case, et le fichier grossirait pour un
+    // réglage que personne n'a demandé.
+    assert.equal(copierLumiere3D({ id: 's', type: 'panel' }), null);
   });
 });
