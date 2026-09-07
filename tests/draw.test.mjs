@@ -35,7 +35,7 @@ import {
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
-  budgetFrameEpuise3D, BUDGET_FRAME_MS } from '../src/scene3d.js';
+  budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1777,76 +1777,41 @@ describe('#405d : une frame ne reconstruit qu\'une Case', () => {
 
 });
 
-describe('#411e/g : le budget est une DURÉE, et elle vient de la réactivité', () => {
+describe('#411h : le budget en temps a été essayé, mesuré, et retiré', () => {
   /**
-   * POURQUOI LE COMPTE A ÉTÉ ABANDONNÉ. #405d fixait « une Case par frame » en le disant lui-même :
-   * « un est un choix, pas une mesure ». L'usage a fourni la mesure (cf.
-   * docs/en/rendering-performance.md, quatrième campagne) : remplissage médian 332 ms sur 8 frames,
-   * rendu 3D médian d'une Case 13 ms, reste de la frame 2,1 ms. Les deux tiers du remplissage sont
-   * de l'attente entre frames. Un compte est aveugle au coût : une Case à 13 ms et une à 296 ms,
-   * mesurées dans le même Projet, consommaient le même budget.
+   * ⚠️ CE BLOC RACONTE UN REMÈDE QUI N'A PAS MARCHÉ, ET C'EST POUR ÇA QU'IL EXISTE. #411e/g
+   * remplaçait le compte par une durée, sur l'idée que les deux tiers d'un remplissage étaient de
+   * l'attente entre frames. Le mécanisme a parfaitement joué (frames par remplissage 7 → 3, Cases
+   * par frame 1 → 3) et la durée n'a pas bougé : 245 ms avant, 289 après, dans le bruit d'un relevé
+   * dont les médianes successives donnaient 332, 284, 245.
    *
-   * ⚠️ CE QUI EST TESTÉ ICI EST LA DÉCISION, PAS LA VITESSE. Aucun test ne peut affirmer que
-   * l'application « paraît plus fluide » : ça se vérifie à la sonde. Ce qui se tient ici, c'est la
-   * fonction pure dont dépend la décision, et surtout ses cas limites.
+   * LE RAISONNEMENT COMPARAIT UNE MÉDIANE À UNE MOYENNE. Une Case vaut 13 ms en médiane et 33 ms en
+   * moyenne, la queue allant jusqu'à 296. Huit Cases à 33 ms font 264 ms, soit exactement le
+   * remplissage observé : il a toujours été la SOMME DU TRAVAIL, jamais de l'attente.
    *
-   * ⚠️ ET LA PREMIÈRE VERSION DE CE BUDGET S'EST TROMPÉE DE REPÈRE (#411g). Elle mesurait la période
-   * de l'écran, obtenait 4 ms au lieu de 16,7 parce que la mesure tombait en plein chargement, et
-   * reproduisait donc « une Case par frame » sous un autre nom. Le relevé l'a montré : Cases rendues
-   * dans la frame, médiane 1. Ce qui contraint n'était de toute façon pas l'écran mais la
-   * réactivité aux clics, dont le seuil est publié et non mesurable depuis le code.
+   * Sans ce bloc, quelqu'un (moi, dans six mois) referait le même calcul et le même remède.
    */
-  test('la première Case passe TOUJOURS, budget dépassé ou non', () => {
-    // ⚠️ LA GARDE QUI ÉVITE UNE BOUCLE INFINIE, et c'est le vrai danger de ce changement. Le budget
-    // est déjà entamé quand la décision se prend : le dessin 2D de la Planche a eu lieu avant, et
-    // sur une Planche lourde il peut à lui seul dépasser la période d'affichage. Sans cette garde,
-    // aucune Case ne se rendrait jamais, `drawCurrentPage` redemanderait un dessin sans fin, et on
-    // aurait un gel PERMANENT au lieu du gel d'une seconde qu'on corrige.
-    assert.equal(budgetFrameEpuise3D(999, 16.7, 0), false, 'la première Case a été refusée');
-    assert.equal(budgetFrameEpuise3D(0, 0, 0), false, 'budget nul : la première Case doit passer');
+  test('le budget est de nouveau UN rendu par frame', () => {
+    assert.equal(RENDUS_3D_PAR_FRAME, 1);
   });
 
-  test('la suivante ne démarre que si le budget reste', () => {
-    assert.equal(budgetFrameEpuise3D(10, 16.7, 1), false, '10 ms sur 16,7 : il reste de la place');
-    assert.equal(budgetFrameEpuise3D(16.7, 16.7, 1), true, 'à l\'égalité, le budget est épuisé');
-    assert.equal(budgetFrameEpuise3D(20, 16.7, 1), true);
-    // Deux Cases à 13 ms : la seconde passe (13 < 16,7), la troisième non (26 > 16,7). C'est
-    // exactement le comportement prédit sur les mesures, écrit ici pour qu'il soit réfutable.
-    assert.equal(budgetFrameEpuise3D(13, 16.7, 1), false);
-    assert.equal(budgetFrameEpuise3D(26, 16.7, 2), true);
+  test('la première Case passe TOUJOURS, quel que soit le budget', () => {
+    // ⚠️ LA GARDE QUI ÉVITE UNE BOUCLE INFINIE. Avec un budget de 1 elle est mécanique, mais elle
+    // doit survivre à un changement de valeur : sans elle, une Planche dont le dessin 2D consomme
+    // déjà la frame ne rendrait jamais aucune Case, et `drawCurrentPage` redemanderait un dessin
+    // sans fin. Un gel permanent au lieu d'un gel d'une seconde.
+    assert.equal(budgetFrameEpuise3D(0, 0), false, 'budget nul : la première Case doit passer');
+    assert.equal(budgetFrameEpuise3D(0), false);
   });
 
-  test('le budget est un seuil de RÉACTIVITÉ, pas la période de l\'écran', () => {
-    // ⚠️ #411e MESURAIT L'ÉCRAN, ET C'ÉTAIT LE MAUVAIS REPÈRE. La mesure relevée : cadence retenue
-    // 4 ms, à partir d'écarts de 103,7 / 111,2 / 136,1 / 3,5 / 2,9. Aucune statistique ne sauve cet
-    // échantillon (minimum 2,9, médiane 103,7, moyenne 71,5, vérité 16,7) : c'est la FENÊTRE de
-    // mesure qui était mauvaise, prise en plein chargement. Et surtout, pendant un remplissage
-    // l'application n'anime rien : ce qui compte est de rendre la main assez souvent pour qu'un
-    // clic soit pris, pas de tenir la cadence d'affichage.
-    //
-    // 50 ms est le seuil de l'API Long Tasks, et le découpage que RAIL recommande pour qu'une
-    // entrée reste traitée en moins de 100 ms. Publié, donc, et pas choisi ici.
-    assert.equal(BUDGET_FRAME_MS, 50);
-    // Le budget doit laisser passer PLUSIEURS Cases au coût mesuré (13 ms médian), sans quoi il
-    // reproduirait « une Case par frame » sous un autre nom, ce qui est exactement ce qui s'est
-    // passé avec 4 ms.
-    assert.ok(BUDGET_FRAME_MS > 3 * 13, 'moins de trois Cases par frame : le budget ne sert à rien');
+  test('la deuxième attend', () => {
+    assert.equal(budgetFrameEpuise3D(1), true);
+    assert.equal(budgetFrameEpuise3D(3), true);
+    // Et la fonction reste juste si le budget change un jour : ce n'est pas « toujours vrai à
+    // partir de 1 », c'est une comparaison.
+    assert.equal(budgetFrameEpuise3D(1, 3), false);
+    assert.equal(budgetFrameEpuise3D(3, 3), true);
   });
-
-  test('au coût mesuré, quatre Cases passent et la cinquième attend', () => {
-    // Le comportement PRÉDIT sur les mesures, écrit pour être réfutable. Case médiane 12,9 ms.
-    const cout = 12.9;
-    let ecoule = 0, rendues = 0;
-    while (!budgetFrameEpuise3D(ecoule, BUDGET_FRAME_MS, rendues)) { ecoule += cout; rendues++; }
-    assert.equal(rendues, 4, `${rendues} Cases par frame, la prédiction en annonçait 4`);
-  });
-
-  test('RÉGRESSION : une Case chère reste seule, comme avant', () => {
-    // La plus chère mesurée dans le Projet réel : 296 ms. Elle doit épuiser le budget à elle seule,
-    // sinon le regroupement transformerait un gel en gel plus long.
-    assert.equal(budgetFrameEpuise3D(296, BUDGET_FRAME_MS, 1), true);
-  });
-
 });
 
 describe('Fermeture décidée : la chaîne de dessin s\'arrête (#407c)', () => {

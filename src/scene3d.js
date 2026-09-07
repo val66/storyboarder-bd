@@ -1723,54 +1723,62 @@ function computePanelSceneSignature3D(panel, page, styleKey){
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * LE BUDGET NE VIENT PAS DE L'ÉCRAN, IL VIENT DE LA RÉACTIVITÉ (#411g)
+ * LE BUDGET EN TEMPS A ÉTÉ ESSAYÉ, MESURÉ, ET RETIRÉ (#411h)
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ⚠️ #411e MESURAIT LA PÉRIODE DE L'ÉCRAN, ET C'ÉTAIT LE MAUVAIS REPÈRE. La mesure a été relevée :
- * cadence retenue 4 ms, à partir d'écarts de 103,7 / 111,2 / 136,1 / 3,5 / 2,9 ms. Aucune
- * statistique ne sauve cet échantillon : le minimum donne 2,9, la médiane 103,7, la moyenne 71,5, et
- * la vérité est 16,7. Le défaut n'est pas le choix du minimum, c'est la FENÊTRE : la mesure a lieu à
- * la première frame limitée, donc en plein chargement, quand les frames sont tantôt manquées
- * (les ~100 ms) tantôt groupées en rafale (les ~3 ms).
+ * #411e/g remplaçait ce compte par une durée, sur le raisonnement suivant : le remplissage médian
+ * valait 332 ms pour 8 frames, le rendu 3D médian d'une Case 13 ms, donc les deux tiers du
+ * remplissage seraient de l'attente entre frames. Grouper les Cases devait diviser la durée.
  *
- * Avec 4 ms, une Case de 13 ms dépassait toujours le budget, et on retombait exactement sur « une
- * Case par frame ». Le relevé le confirme sans détour : Cases rendues dans la frame, médiane 1.
+ * Le mécanisme a parfaitement fonctionné. Les frames par remplissage sont passées de 7 à 3, les
+ * Cases par frame de 1 à 3 pendant les remplissages. Et la durée n'a pas bougé : 245 ms avant,
+ * 289 ms après, dans le bruit d'un relevé à quinze échantillons dont les médianes successives ont
+ * donné 332, 284 et 245. Le remède agit sur ce qu'il visait et n'apporte rien.
  *
- * ET SURTOUT, LA PÉRIODE DE L'ÉCRAN N'EST PAS CE QUI NOUS CONTRAINT. Pendant un remplissage,
- * l'application n'anime rien de fluide : elle pose des Cases. Ce qui compte n'est pas de tenir la
- * cadence d'affichage, c'est de RENDRE LA MAIN assez souvent pour qu'un clic soit pris. Ce
- * seuil-là ne se mesure pas depuis le code, il est publié : au-delà de 50 ms, un travail est une
- * « tâche longue » au sens de l'API Long Tasks, et c'est la durée que RAIL recommande comme
- * découpage pour qu'une entrée reste traitée dans les 100 ms.
+ * ⚠️ POURQUOI LE RAISONNEMENT ÉTAIT FAUX : J'AI COMPARÉ UNE MÉDIANE À UNE MOYENNE. Le rendu d'une
+ * Case vaut 13 ms en MÉDIANE mais 33 ms en MOYENNE, la distribution ayant une longue queue
+ * (jusqu'à 296 ms). Huit Cases à 33 ms font 264 ms, ce qui est exactement le remplissage observé.
+ * Le remplissage a toujours été la SOMME DU TRAVAIL, et l'attente entre frames que je croyais y
+ * lire était un artefact de mes deux statistiques mal appariées.
  *
- * ⚠️ ET JE DOIS CORRIGER CE QUE #411e AFFIRMAIT : « le budget ne peut pas empirer le pire cas ».
- * C'est faux dès que les Cases n'ont pas le même coût. Trois Cases à 13 ms passent (39 ms), puis
- * celle à 296 ms démarre parce que le budget n'était pas encore épuisé : 335 ms au lieu de 296. Le
- * pire cas est donc borné par « budget + Case la plus chère », pas par « Case la plus chère ». Avec
- * 4 ms l'écart était négligeable et l'affirmation passait inaperçue ; avec 50 ms il ne l'est plus.
- * Le remède, si l'usage le réclame, est d'estimer le coût d'une Case avant de la démarrer (son
- * rendu précédent est un bon estimateur), et il n'est pas fait ici : un changement à la fois.
+ * ⚠️ ET LE BUDGET EN TEMPS COÛTAIT QUELQUE CHOSE. Une frame passait de 8,7 ms à 47,5 ms en médiane,
+ * et le pire cas devient « budget + Case la plus chère » au lieu de « Case la plus chère ». On
+ * payait donc en réactivité un gain qui n'existe pas.
+ *
+ * CE QUI RESTE VRAI, ET QUI EST GARDÉ : `_frameLimitee` est un drapeau EXPLICITE, là où la version
+ * d'origine se reposait sur un budget à `Infinity`. L'export ne dépend plus d'une valeur sentinelle
+ * qu'un oubli de remise à zéro aurait pu abîmer en silence.
+ *
+ * ⚠️ ET LE BUDGET RESTE ABSENT PAR DÉFAUT. L'export d'une Planche doit produire une image COMPLÈTE :
+ * une Case laissée vide parce que le budget était épuisé serait un défaut bien pire que le gel
+ * qu'on corrige. Seul le dessin interactif le limite, en le déclarant frame par frame.
  */
-export const BUDGET_FRAME_MS = 50;
+export const RENDUS_3D_PAR_FRAME = 1;
 
-export function budgetFrameEpuise3D(ecouleMs, budgetMs, rendusFaits){
+/**
+ * Peut-on démarrer un rendu de plus dans cette frame ? Fonction PURE, donc testable.
+ *
+ * ⚠️ LE PREMIER RENDU PASSE TOUJOURS. Avec un budget de 1 c'est mécanique, mais la propriété doit
+ * survivre à un changement de valeur : sans elle, une Planche dont le dessin 2D consomme déjà la
+ * frame ne rendrait JAMAIS aucune Case, et `drawCurrentPage` redemanderait un dessin à l'infini
+ * sans jamais progresser. Un gel permanent au lieu d'un gel d'une seconde.
+ */
+export function budgetFrameEpuise3D(rendusFaits, maxRendus = RENDUS_3D_PAR_FRAME){
   if (rendusFaits <= 0) return false;
-  return ecouleMs >= budgetMs;
+  return rendusFaits >= maxRendus;
 }
 
 let _frameLimitee = false;
-let _frameT0 = 0;
 let _rendusDeLaFrame = 0;
 let _rendusDifferes3D = false;
 
 /** Ouvre une frame interactive avec un budget fini. L'export n'appelle pas ceci, et garde l'infini. */
 export function commencerFrameLimitee3D(){
-  // SONDE #411 : à retirer avec la campagne. Le budget effectivement appliqué reste OBSERVÉ, même
-  // maintenant qu'il est une constante. C'est la leçon de #411f : un relevé qui ne montre que
-  // l'effet ne dit pas si le mécanisme a joué, et une constante peut aussi être la mauvaise.
-  perfFait('budget par frame (ms)', BUDGET_FRAME_MS);
+  // SONDE #411 : à retirer avec la campagne. LE MÉCANISME RESTE OBSERVÉ, même redevenu une
+  // constante. C'est la leçon de #411f : un relevé qui ne montre que l'effet ne dit pas si le
+  // mécanisme a joué, et #411g a montré qu'une constante peut elle aussi être la mauvaise.
+  perfFait('rendus de Case par frame (budget)', RENDUS_3D_PAR_FRAME);
   _frameLimitee = true;
-  _frameT0 = performance.now();
   _rendusDeLaFrame = 0;
   _rendusDifferes3D = false;
 }
@@ -1794,7 +1802,7 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
   // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
   // ses modèles. Dans les deux cas, la main revient à l'utilisateur.
-  if (_frameLimitee && budgetFrameEpuise3D(performance.now() - _frameT0, BUDGET_FRAME_MS, _rendusDeLaFrame)) {
+  if (_frameLimitee && budgetFrameEpuise3D(_rendusDeLaFrame)) {
     _rendusDifferes3D = true;
     return cached || null;
   }
