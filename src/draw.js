@@ -17,7 +17,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
-import { perfDuree, perfCompteur, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
+import { perfDuree, perfTemps, perfCompteur, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -2435,6 +2435,15 @@ export function wrapTextLines(c, text, maxWidth){
 // 2D CANVAS DRAWING
 // ════════════════════════════════════════════════════════════
 export function drawCurrentPage(){
+  // SONDE #411d : à retirer avec la campagne. Le relevé de #411c laisse un écart que je ne sais
+  // expliquer que par SOUSTRACTION : 330 ms de remplissage médian pour 7 frames, alors que le rendu
+  // 3D médian d'une Case est de 13 ms. Il resterait donc ~34 ms par frame qui ne sont pas de la 3D.
+  // Soustraire n'est pas mesurer, et changer le budget de #405d sur une soustraction serait refaire
+  // la faute de #404 : bâtir un remède pour une attente qui ne l'attendait pas. Cette ligne mesure
+  // directement ce que coûte une frame entière.
+  return perfTemps('drawCurrentPage (frame entière)', () => _drawCurrentPageMesuree());
+}
+function _drawCurrentPageMesuree(){
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
