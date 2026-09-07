@@ -44,7 +44,7 @@ import {
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
   drawPanelScene3D, drawObject3D,
   projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D,
-  elaguerCacheDeCases3D, panelCamBasis3D, getCamOrbitWorld,
+  elaguerCacheDeCases3D, noterPlancheAffichee3D, panelCamBasis3D, getCamOrbitWorld,
   commencerFrameLimitee3D, resteDesRendus3D, terminerFrameLimitee3D,
   panelDepthToDistance3D, clampPanelDepth3D,
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners, getWallChildProjectedQuad3D,
@@ -2458,10 +2458,9 @@ function _drawCurrentPageMesuree(){
     // re-rendu complet à chaque retour, mesuré à ~250 ms (cf. docs/en/rendering-performance.md,
     // quatrième campagne). La Planche PRÉCÉDENTE est maintenant gardée, parce que la comparer à
     // celle en cours est un geste courant ; tout le reste est évincé, et ses canevas vidés.
-    const idsPrecedents = S.drawCurrentPageLastRef
-      ? panelsInPage(S.drawCurrentPageLastRef).map(p => p.id) : [];
     S.drawCurrentPageLastRef = _pageDataRef;
-    elaguerCacheDeCases3D(panelsInPage(_pageDataRef).map(p => p.id), idsPrecedents);
+    noterPlancheAffichee3D(_pageDataRef.id, panelsInPage(_pageDataRef).map(p => p.id));
+    _elagageADemander = true;
     // SONDE #411 : à retirer avec la campagne. Le remplissage COMMENCE ici. C'est la seule mesure
     // qui corresponde à ce qui a été signalé : les Cases qui se rechargent visiblement. Aucune
     // moyenne par Case ne la donne, puisque #405d n'en reconstruit qu'une par frame.
@@ -2488,6 +2487,11 @@ function _drawCurrentPageMesuree(){
   // coalesce, donc plusieurs demandes dans la même frame n'en produisent qu'une ; et la condition
   // porte sur ce qui a RÉELLEMENT été remis à plus tard, sans quoi cette ligne se rappellerait
   // elle-même indéfiniment.
+  // ⚠️ L'ÉLAGAGE A LIEU ICI, À LA FIN DU REMPLISSAGE, ET PAS AU CHANGEMENT DE PLANCHE. C'est ce qui
+  // avait fait échouer le plafond de #411i : au moment du changement, la Planche qu'on ouvre n'a
+  // encore rien rendu, son coût vaut zéro, et le plafond calculé là-dessus n'avait rien gardé du
+  // tout. Ici tous les octets existent et se mesurent.
+  if (_elagageADemander && !_reste) { _elagageADemander = false; elaguerCacheDeCases3D(); }
   // SONDE #411 : à retirer avec la campagne. Le remplissage se TERMINE à la première frame qui n'a
   // plus rien remis à plus tard. La borne de fin est celle-là et pas « la dernière Case rendue » :
   // une Case rendue peut encore être suivie d'une frame de plus, et c'est cette frame que l'œil
@@ -2503,6 +2507,7 @@ function _drawCurrentPageMesuree(){
   }
   if (_reste) scheduleDrawCurrentPage();
 }
+let _elagageADemander = false;
 // SONDE #411 : à retirer avec la campagne.
 let _sondeRemplissageT0 = 0, _sondeRemplissageFrames = 0;
 

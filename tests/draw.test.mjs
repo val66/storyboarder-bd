@@ -36,8 +36,8 @@ import {
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
   budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME,
-  octetsEntreeCache3D, idsCacheAGarder3D, elaguerCacheDeCases3D,
-  panelSceneCache3D } from '../src/scene3d.js';
+  octetsEntreeCache3D, idsCacheAGarder3D, elaguerCacheDeCases3D, noterPlancheAffichee3D,
+  oublierRecenceDesPlanches3D, panelSceneCache3D, PLAFOND_CACHE_CASES_OCTETS } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1816,22 +1816,30 @@ describe('#411h : le budget en temps a été essayé, mesuré, et retiré', () =
   });
 });
 
-describe('#411i : le cache garde la Planche précédente', () => {
+describe('#411k : le cache garde les dernières Planches, sous un plafond', () => {
   /**
-   * POURQUOI CE REMÈDE, ET PAS UN AUTRE. `drawCurrentPage` vidait le cache en entier à chaque
-   * changement de Planche, ce qui n'était pas requis pour la justesse : les identifiants sont
-   * uniques dans tout le Projet et la signature de Case interdit déjà de réutiliser une image
-   * périmée. C'était une politique de mémoire, trop brutale, et elle coûtait ~250 ms à chaque
-   * retour. Deux autres remèdes ont été essayés et retirés avant celui-ci (cf. #411h) : le
-   * remplissage est la SOMME DU TRAVAIL, donc seul « ne pas refaire le travail » pouvait marcher.
+   * TROIS REMÈDES ONT ÉTÉ ESSAYÉS AVANT CELUI-CI, DEUX ONT ÉTÉ RETIRÉS, ET CE BLOC LES RETIENT.
+   * Le budget par frame en temps (#411e/g) groupait bien les Cases sans que la durée bouge : le
+   * remplissage est la somme du travail, pas de l'attente. Le cache à UNE Planche d'historique
+   * (#411i) ne gardait rien du tout tant qu'il calculait son plafond sur une Planche pas encore
+   * rendue (#411j), puis, une fois réparé, évinçait exactement ce qu'il allait re-rendre dès qu'on
+   * tournait sur trois Planches : 87 évincées, 87 re-rendues, les mêmes.
    *
    * ⚠️ CE QUI N'EST PAS TESTÉ ICI : que la mémoire baisse réellement. Un test sous Node ne mesure
-   * pas des tampons de pixels. On tient la DÉCISION (qui est gardé, qui est évincé) et le GESTE de
-   * libération (le canevas remis à zéro), pas leur effet sur le tas du navigateur.
+   * pas des tampons de pixels. On tient la DÉCISION et le GESTE de libération, pas leur effet.
+   *
+   * ⚠️ ET UNE MUTATION S'ÉCHAPPE, DÉCLARÉE PLUTÔT QUE MASQUÉE. Retirer la ligne qui purge
+   * `_recenceDesPlanches` de ses Planches sans Case en cache laisse toute la suite verte, et je
+   * n'ai pas trouvé de moyen honnête de l'attraper : son absence ne change AUCUN comportement
+   * observable, seulement la taille d'un tableau interne qui grossirait au fil d'une longue
+   * session sur un gros Projet. Exposer la liste juste pour un test créerait une API que le code
+   * n'utilise pas, ce qui est le remède pire que le mal. La ligne reste, son défaut de couverture
+   * est écrit ici.
    */
   const entree = (w, h) => ({ canvas: { width: w, height: h }, sig: 'x' });
   const DRAW_SRC = sourceSansCommentaires(
     readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+  const octets = (paires) => new Map(paires);
 
   test('un canevas RGBA pèse 4 octets par pixel, et une entrée sans canevas ne pèse rien', () => {
     assert.equal(octetsEntreeCache3D(entree(100, 200)), 100 * 200 * 4);
@@ -1840,64 +1848,129 @@ describe('#411i : le cache garde la Planche précédente', () => {
     assert.equal(octetsEntreeCache3D(entree(0, 200)), 0, 'un canevas déjà vidé ne pèse plus rien');
   });
 
-  test('on garde la Planche affichée ET la précédente', () => {
-    assert.deepEqual([...idsCacheAGarder3D(['a', 'b'], ['c', 'd'])].sort(), ['a', 'b', 'c', 'd']);
+  test('RÉGRESSION : trois Planches en rotation tiennent toutes (#411k)', () => {
+    // ⚠️ LE DÉFAUT MESURÉ. Avec une seule Planche d'historique, sur A → B → C → A, celle qu'on
+    // rouvre est toujours celle qu'on vient d'évincer : zéro succès, cas d'école du cache plus
+    // petit que le cycle. Le relevé donnait 87 Cases évincées et 87 re-rendues, les mêmes.
+    const recence = [{ pageId: 'C', ids: ['c'] }, { pageId: 'B', ids: ['b'] }, { pageId: 'A', ids: ['a'] }];
+    const garde = idsCacheAGarder3D(recence, octets([['a', 10], ['b', 10], ['c', 10]]), 100);
+    assert.deepEqual([...garde].sort(), ['a', 'b', 'c'], 'une Planche de la rotation a été évincée');
   });
 
-  test('tout ce qui n\'est ni courant ni précédent est évincé', () => {
-    // Le point de la borne : sans elle on retomberait sur « tout garder », soit 312 Mo mesurés sur
-    // « Projet 2 » et aucun plafond pour un Projet plus gros.
-    assert.ok(!idsCacheAGarder3D(['a'], ['c']).has('vieux'),
-      'une Planche d\'avant-hier est restée en mémoire');
+  test('les plus anciennes tombent en premier quand le plafond est atteint', () => {
+    const recence = [{ pageId: 'C', ids: ['c'] }, { pageId: 'B', ids: ['b'] }, { pageId: 'A', ids: ['a'] }];
+    // Plafond de 25 : C entre d'office, B tient (10), A ne tient plus (30 > 25).
+    const garde = idsCacheAGarder3D(recence, octets([['a', 10], ['b', 10], ['c', 10]]), 25);
+    assert.deepEqual([...garde].sort(), ['b', 'c'], 'ce n\'est pas la plus ancienne qui est tombée');
   });
 
-  test('RÉGRESSION : la Planche COURANTE est gardée alors qu\'elle n\'est PAS ENCORE dans le cache (#411j)', () => {
-    // ⚠️ LE DÉFAUT QUI A COÛTÉ UN RELEVÉ, ET LE COMPTEUR L'A DIT TOUT DE SUITE : zéro Case gardée
-    // sur 75. La première version bornait l'historique à un multiple du coût de la Planche
-    // courante, filtrée sur ce que le cache contenait déjà. Or l'élagage a lieu AVANT que la
-    // nouvelle Planche ne rende quoi que ce soit : son coût valait zéro, le plafond aussi, et plus
-    // rien ne pouvait entrer. Je raisonnais sur une quantité qui n'existe pas encore à l'instant
-    // où je m'en sers.
+  test('RÉGRESSION : la Planche AFFICHÉE entre toujours, plafond ou non', () => {
+    // La jeter reviendrait à re-rendre ce qu'on regarde : pire que le vidage complet qu'on remplace.
+    const recence = [{ pageId: 'A', ids: ['a1', 'a2'] }];
+    const garde = idsCacheAGarder3D(recence, octets([['a1', 1e9], ['a2', 1e9]]), 10);
+    assert.deepEqual([...garde].sort(), ['a1', 'a2']);
+  });
+
+  test('une Planche à moitié trop grosse laisse quand même sa moitié en cache', () => {
+    // Tout-ou-rien gaspillerait la place restante : chaque Case gardée est un rendu épargné.
+    const recence = [{ pageId: 'B', ids: ['b'] }, { pageId: 'A', ids: ['a1', 'a2'] }];
+    const garde = idsCacheAGarder3D(recence, octets([['b', 10], ['a1', 10], ['a2', 10]]), 20);
+    assert.deepEqual([...garde].sort(), ['a1', 'b']);
+  });
+
+  test('RÉGRESSION : une Case pas encore rendue n\'est pas écartée pour autant (#411j)', () => {
+    // Le défaut qui a coûté un relevé : la première version filtrait les identifiants sur ce que le
+    // cache contenait DÉJÀ, alors que la Planche qu'on ouvre n'a encore rien rendu. Coût zéro,
+    // plafond zéro, zéro Case gardée sur 75.
+    const garde = idsCacheAGarder3D([{ pageId: 'A', ids: ['pas-encore'] }], octets([]), 100);
+    assert.ok(garde.has('pas-encore'));
+  });
+
+  test('la récence met la Planche revue en tête, sans la dupliquer', () => {
+    oublierRecenceDesPlanches3D();
+    panelSceneCache3D.clear();
+    panelSceneCache3D.set('a', entree(10, 10));
+    panelSceneCache3D.set('b', entree(10, 10));
+    noterPlancheAffichee3D('A', ['a']);
+    noterPlancheAffichee3D('B', ['b']);
+    noterPlancheAffichee3D('A', ['a']);       // on revient sur A
+    elaguerCacheDeCases3D();
+    assert.ok(panelSceneCache3D.has('a') && panelSceneCache3D.has('b'),
+      'un revoir a fait tomber une Planche au lieu de la remonter');
+    oublierRecenceDesPlanches3D(); panelSceneCache3D.clear();
+  });
+
+  test('RÉGRESSION : une Case supprimée d\'une Planche cesse d\'être retenue', () => {
+    // ⚠️ CE TEST EXISTE PARCE QU'UNE MUTATION EST PASSÉE. J'avais écrit un test « sans doublon » qui
+    // ne prouvait rien : retirer la déduplication de la récence le laissait vert, les deux
+    // versions gardant les mêmes Cases. Le doublon n'est pourtant pas cosmétique. Une entrée
+    // périmée reste en tête de liste avec la composition d'AVANT, si bien qu'une Case supprimée de
+    // la Planche resterait retenue pour toujours, et que la liste grossirait sans fin.
     //
-    // D'où ce test : les identifiants sont pris tels qu'on les donne, sans être confrontés au
-    // contenu du cache.
-    const garde = idsCacheAGarder3D(['pas-encore-rendue'], []);
-    assert.ok(garde.has('pas-encore-rendue'),
-      'la Planche qu\'on vient d\'ouvrir est écartée parce qu\'elle n\'a pas encore rendu');
-  });
-
-  test('des listes vides ne font pas tomber la décision', () => {
-    assert.equal(idsCacheAGarder3D(null, null).size, 0);
-    assert.equal(idsCacheAGarder3D(undefined, ['c']).size, 1);
+    // Le scénario est réel : on supprime une Case, la Planche se redessine, son inscription doit
+    // REMPLACER la précédente et non s'ajouter devant.
+    oublierRecenceDesPlanches3D();
+    panelSceneCache3D.clear();
+    const supprimee = entree(10, 10);
+    panelSceneCache3D.set('a1', entree(10, 10));
+    panelSceneCache3D.set('a2', supprimee);
+    noterPlancheAffichee3D('A', ['a1', 'a2']);
+    noterPlancheAffichee3D('A', ['a1']);          // a2 vient d'être supprimée de la Planche
+    elaguerCacheDeCases3D();
+    assert.ok(panelSceneCache3D.has('a1'), 'la Case restante a été évincée');
+    assert.ok(!panelSceneCache3D.has('a2'),
+      'la Case supprimée est encore retenue : la récence a gardé une composition périmée');
+    assert.equal(supprimee.canvas.width, 0, 'son canevas garde ses pixels');
+    oublierRecenceDesPlanches3D(); panelSceneCache3D.clear();
   });
 
   test('l\'éviction VIDE le canevas avant de lâcher l\'entrée', () => {
     // ⚠️ SANS CE GESTE, LE PLAFOND NE SERAIT QU'UN DÉCOMPTE. Retirer l'entrée de la Map ne libère
     // que la référence JavaScript ; le tampon de pixels vit hors du tas et attendrait le
-    // ramasse-miettes. La mémoire ne suivrait alors pas la promesse affichée par le plafond.
+    // ramasse-miettes. La mémoire ne suivrait pas la promesse affichée par le plafond.
+    oublierRecenceDesPlanches3D();
     panelSceneCache3D.clear();
     const vieux = entree(100, 100);
     panelSceneCache3D.set('a', entree(10, 10));
     panelSceneCache3D.set('vieux', vieux);
-    elaguerCacheDeCases3D(['a'], []);
-    assert.ok(!panelSceneCache3D.has('vieux'), 'l\'entrée périmée est restée');
+    noterPlancheAffichee3D('A', ['a']);   // « vieux » n'appartient à aucune Planche connue
+    elaguerCacheDeCases3D();
+    assert.ok(!panelSceneCache3D.has('vieux'), 'l\'entrée orpheline est restée');
     assert.equal(vieux.canvas.width, 0, 'le canevas évincé garde ses pixels');
     assert.equal(vieux.canvas.height, 0);
-    assert.ok(panelSceneCache3D.has('a'), 'la Planche courante a été évincée');
-    panelSceneCache3D.clear();
+    assert.ok(panelSceneCache3D.has('a'), 'la Planche affichée a été évincée');
+    oublierRecenceDesPlanches3D(); panelSceneCache3D.clear();
   });
 
-  test('RÉGRESSION : le changement de Planche n\'appelle plus clear() sur le cache', () => {
-    // La ligne qui coûtait le re-rendu complet. Épinglée parce qu'un `clear()` revenu passerait
-    // inaperçu : tout resterait juste, simplement lent, ce qui est le pire genre de régression.
+  test('le plafond vaut 200 Mo, et c\'est une DÉCISION, pas une mesure', () => {
+    // Aucune mesure ne dit combien de mémoire une application a le droit de prendre : le chiffre
+    // est une décision. Ce qui est mesuré, c'est ce qu'il ACHÈTE, et il faut le dire exactement.
+    //
+    // ⚠️ 200 Mo NE TIENT PAS TROIS PLANCHES DANS TOUS LES CAS, et c'est ce test qui me l'a appris :
+    // j'avais d'abord écrit `>= 3 × 67 Mo`, il est passé au rouge à 201 contre 200. Une Planche
+    // mesurée coûte 36 à 67 Mo selon sa charge ; trois Planches ORDINAIRES tiennent, trois Planches
+    // au maximum mesuré non, il n'en reste alors que deux. La rotation à trois signalée à l'usage
+    // est donc couverte au coût courant, pas garantie au pire cas.
+    assert.equal(PLAFOND_CACHE_CASES_OCTETS, 200 * 1024 * 1024);
+    assert.ok(PLAFOND_CACHE_CASES_OCTETS >= 3 * 50 * 1024 * 1024,
+      'le plafond ne tient plus trois Planches au coût médian mesuré');
+    assert.ok(PLAFOND_CACHE_CASES_OCTETS >= 2 * 67 * 1024 * 1024,
+      'le plafond ne tient même plus deux Planches au pire coût mesuré : le remède ne sert plus');
+  });
+
+  test('RÉGRESSION : le changement de Planche n\'appelle plus clear(), et l\'élagage attend la FIN', () => {
+    // Deux régressions en une. Un `clear()` revenu passerait inaperçu : tout resterait juste,
+    // simplement lent. Et un élagage ramené au changement de Planche rejouerait #411j, où les
+    // octets n'existaient pas encore.
     const i = DRAW_SRC.indexOf('_pageDataRef !== S.drawCurrentPageLastRef');
     assert.ok(i > 0, 'la détection de changement de Planche a disparu');
     const bloc = DRAW_SRC.slice(i, i + 700);
     assert.ok(!/panelSceneCache3D\.clear\(\)/.test(bloc), 'le vidage complet est revenu');
-    assert.match(bloc, /elaguerCacheDeCases3D\(/, 'plus rien n\'élague : le cache grossirait sans fin');
-    // Et les deux listes sont bien distinctes : passer deux fois la courante garderait tout et
-    // rien, selon le sens de l'erreur.
-    assert.match(bloc, /idsPrecedents/, 'la Planche précédente n\'est plus transmise');
+    assert.ok(!/elaguerCacheDeCases3D\(\)/.test(bloc),
+      'l\'élagage est revenu AVANT le rendu : les octets de la Planche ouverte valent encore zéro');
+    assert.match(bloc, /noterPlancheAffichee3D\(/, 'la récence n\'est plus mise à jour');
+    assert.match(DRAW_SRC, /_elagageADemander && !_reste.*elaguerCacheDeCases3D\(\)/s,
+      'l\'élagage n\'est plus conditionné à la fin du remplissage');
   });
 });
 

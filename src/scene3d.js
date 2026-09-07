@@ -865,35 +865,51 @@ export const panelSceneCache3D = new Map();
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * LE CACHE GARDE LA PLANCHE PRÉCÉDENTE (#411i)
+ * LE CACHE GARDE LES DERNIÈRES PLANCHES VUES, SOUS UN PLAFOND MÉMOIRE (#411k)
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * `drawCurrentPage` VIDAIT ce cache en entier à chaque changement de Planche. Ce n'était pas requis
  * pour la justesse : les identifiants sont uniques dans tout le Projet (`newId` incrémente un
  * compteur), et la signature de Case interdit déjà de réutiliser une image périmée. C'était une
- * politique de mémoire, et elle était trop brutale : revenir sur une Planche re-rendait tout.
+ * politique de mémoire, trop brutale : revenir sur une Planche re-rendait tout, mesuré à ~250 ms.
  *
- * ⚠️ TROIS REMÈDES ONT ÉTÉ ESSAYÉS AVANT CELUI-CI, DEUX ONT ÉTÉ RETIRÉS. Le budget par frame en
- * temps (#411e/g) groupait bien les Cases, 7 frames devenant 3, sans que la durée bouge d'un
- * pouce : le remplissage est la SOMME DU TRAVAIL, pas de l'attente. Il ne restait donc qu'à ne pas
- * refaire le travail. Cf. docs/en/rendering-performance.md, quatrième campagne.
+ * ⚠️ DEUX AUTRES REMÈDES ONT ÉTÉ ESSAYÉS ET RETIRÉS AVANT CELUI-CI. Le budget par frame en temps
+ * (#411e/g) groupait bien les Cases, 7 frames devenant 3, sans que la durée bouge d'un pouce : le
+ * remplissage est la SOMME DU TRAVAIL, pas de l'attente entre frames. Il ne restait donc qu'à ne
+ * pas refaire le travail. Cf. docs/en/rendering-performance.md, quatrième campagne.
  *
- * CE QUE ÇA COÛTE, MESURÉ SUR LES PROJETS RÉELS : une entrée est un canevas à la résolution de la
- * Planche, soit 5,4 Mo en Comics US à l'échelle 2, jusqu'à 16,7 Mo en Franco-Belge à l'échelle 4.
- * La Planche la plus chargée de « Projet 2 » porte 9 Cases 3D, donc 48 Mo. Tout garder coûterait
- * 312 Mo pour ce Projet, sans plafond pour un Projet plus gros : le vidage complet avait donc une
- * vraie raison, même mal dosée.
+ * ⚠️ ET GARDER UNE SEULE PLANCHE D'HISTORIQUE NE SUFFISAIT PAS (#411i, mesuré en #411k). Sur une
+ * rotation A → B → C → A, la Planche sur laquelle on revient est TOUJOURS celle qu'on vient
+ * d'évincer : A part quand on passe de B à C, et c'est A qu'on rouvre ensuite. Le relevé le dit
+ * sans appel, 87 Cases évincées et 87 Cases re-rendues, les mêmes. C'est le cas d'école du cache
+ * plus petit que le cycle, et il donne exactement zéro succès. « Comparer plusieurs Planches »
+ * voulait dire plus de deux ; j'avais traduit « plusieurs » par « une précédente » sans vérifier.
  *
- * UNE PLANCHE D'HISTORIQUE, ET C'EST LE BESOIN ÉNONCÉ, pas un réglage : « il arrive souvent qu'on
- * compare plusieurs Planches, ou qu'on regarde la précédente pour avancer sur celle en cours ». La
- * mémoire est donc bornée à deux Planches, soit ~96 Mo dans le pire cas mesuré à l'échelle 2.
+ * D'OÙ UNE LISTE DE RÉCENCE, ET UN PLAFOND EN OCTETS PLUTÔT QU'UN NOMBRE DE PLANCHES. Le coût d'une
+ * Planche dépend de son format, de sa charge et de l'échelle de rendu : 36 à 67 Mo mesurés sur les
+ * Projets réels, et environ le triple en taille d'interface Très grande, l'octet variant comme le
+ * CARRÉ de l'échelle. Un nombre de Planches serait donc prudent sur un écran et ruineux sur un
+ * autre, là où un plafond en octets garde d'autant plus de Planches qu'elles sont légères.
  *
- * ⚠️ ET IL N'Y A PAS DE PLAFOND EN OCTETS PAR-DESSUS, PARCE QU'IL A ÉTÉ ESSAYÉ ET QU'IL NE MARCHAIT
- * PAS (#411j). Il bornait l'historique à un multiple du coût de la Planche COURANTE, laquelle n'a
- * encore rien rendu au moment de l'élagage : coût zéro, plafond zéro, zéro Case gardée sur 75. Le
- * compteur l'a montré au premier relevé. Et il était superflu de toute façon : « la Planche
- * affichée et la précédente » borne déjà la mémoire à deux Planches, ce qui EST la promesse.
+ * ⚠️ LES 200 Mo SONT UNE DÉCISION, PAS UNE MESURE, ET C'EST ASSUMÉ. Aucune mesure ne dit combien de
+ * mémoire une application a le droit de prendre ; ce qui est mesuré, c'est ce que ce plafond
+ * ACHÈTE : 3 à 5 Planches à l'échelle courante, 1 à 2 au pire cas, donc la rotation de trois
+ * Planches signalée à l'usage. Le chiffre a été choisi sur ces contreparties-là.
  */
+export const PLAFOND_CACHE_CASES_OCTETS = 200 * 1024 * 1024;
+
+// Les Planches vues, la plus récente en tête, avec les Cases qu'elles portent. La liste vit ICI et
+// non dans l'état applicatif : c'est une politique de cache, elle n'est ni persistée ni lue
+// ailleurs, et `disposeAllRigs3D` la remet à zéro en même temps que le cache qu'elle gouverne.
+let _recenceDesPlanches = [];
+
+/** Note qu'une Planche vient d'être affichée. La plus récente passe en tête, sans doublon. */
+export function noterPlancheAffichee3D(pageId, ids){
+  if (!pageId) return;
+  _recenceDesPlanches = [{ pageId, ids: [...(ids || [])] },
+    ..._recenceDesPlanches.filter(p => p.pageId !== pageId)];
+}
+
 /** Les octets que retient une entrée : un canevas RGBA, donc 4 par pixel. Fonction PURE. */
 export function octetsEntreeCache3D(entree){
   const c = entree && entree.canvas;
@@ -902,17 +918,47 @@ export function octetsEntreeCache3D(entree){
 }
 
 /**
- * Élague le cache après un changement de Planche : garde ce qu'il faut, LIBÈRE le reste.
+ * Les identifiants de Case à GARDER, de la plus récente Planche à la plus ancienne, tant que le
+ * plafond le permet. Fonction PURE, donc testable.
  *
- * Les octets ne servent plus à décider (cf. `idsCacheAGarder3D`), seulement à rapporter ce qui est
- * retenu. La mesure reste utile : c'est elle qui dira si la promesse « deux Planches » correspond
- * aux mégaoctets réellement gardés.
+ * ⚠️ LA PLANCHE AFFICHÉE (RANG 0) ENTRE TOUJOURS, plafond ou non. La jeter reviendrait à re-rendre
+ * ce qu'on est en train de regarder, c'est-à-dire à faire pire que le vidage complet qu'on
+ * remplace. Le plafond gouverne l'historique, pas l'affichage.
+ *
+ * ⚠️ ET LE REMPLISSAGE EST PARTIEL, PAS TOUT-OU-RIEN. Une Planche qui ne tient qu'à moitié laisse
+ * quand même la moitié de ses Cases en cache, et c'est autant de rendus épargnés. Refuser la
+ * Planche entière gaspillerait la place restante pour une pureté qui ne sert personne.
  */
-export function elaguerCacheDeCases3D(idsCourants, idsPrecedents){
-  const garde = idsCacheAGarder3D(idsCourants, idsPrecedents);
+export function idsCacheAGarder3D(recence, octetsParId, plafond = PLAFOND_CACHE_CASES_OCTETS){
+  const garde = new Set();
+  let total = 0;
+  (recence || []).forEach((planche, rang) => {
+    (planche.ids || []).forEach(id => {
+      if (garde.has(id)) return;
+      const o = (octetsParId && octetsParId.get(id)) || 0;
+      if (rang > 0 && total + o > plafond) return;
+      garde.add(id); total += o;
+    });
+  });
+  return garde;
+}
+
+/**
+ * Élague le cache : garde les Planches récentes sous le plafond, LIBÈRE le reste.
+ *
+ * ⚠️ APPELÉ À LA FIN DU REMPLISSAGE, ET PAS AU CHANGEMENT DE PLANCHE. C'est ce qui avait fait
+ * échouer le plafond de #411i : au moment du changement, la Planche qu'on ouvre n'a encore RIEN
+ * rendu, son coût vaut zéro, et un plafond calculé là-dessus n'a rien gardé du tout, 0 Case sur 75.
+ * À la fin du remplissage, tous les octets existent et se mesurent. Le prix de ce report est que le
+ * cache peut dépasser le plafond PENDANT un remplissage, d'au plus une Planche.
+ */
+export function elaguerCacheDeCases3D(){
+  const octetsParId = new Map();
+  panelSceneCache3D.forEach((entree, id) => octetsParId.set(id, octetsEntreeCache3D(entree)));
+  const garde = idsCacheAGarder3D(_recenceDesPlanches, octetsParId);
   let gardes = 0, evinces = 0, octetsGardes = 0;
   panelSceneCache3D.forEach((entree, id) => {
-    if (garde.has(id)) { gardes++; octetsGardes += octetsEntreeCache3D(entree); return; }
+    if (garde.has(id)) { gardes++; octetsGardes += octetsParId.get(id) || 0; return; }
     // ⚠️ LE CANEVAS SE VIDE AVANT D'ÊTRE LÂCHÉ. Retirer l'entrée de la Map ne libère que la
     // référence JavaScript ; le tampon de pixels, lui, vit hors du tas et attend le ramasse-miettes.
     // Remettre les dimensions à zéro le rend tout de suite, sans quoi « on évince » serait une
@@ -921,34 +967,19 @@ export function elaguerCacheDeCases3D(idsCourants, idsPrecedents){
     panelSceneCache3D.delete(id);
     evinces++;
   });
+  // Une Planche dont plus aucune Case n'est en cache ne sert qu'à faire grossir la liste : elle en
+  // sort. Sans ça, `_recenceDesPlanches` croîtrait indéfiniment sur un gros Projet.
+  _recenceDesPlanches = _recenceDesPlanches.filter(p => (p.ids || []).some(id => panelSceneCache3D.has(id)));
   // SONDE #411 : à retirer avec la campagne. Le MÉCANISME observé, pas seulement son effet. Ces
-  // trois chiffres ont immédiatement montré que la première version ne gardait RIEN (0 sur 75), là
-  // où un simple « le remplissage n'a pas baissé » aurait laissé le doute. Leçon de #411f.
+  // chiffres ont immédiatement montré que la version #411i ne gardait RIEN (0 sur 75), puis que
+  // #411j évinçait exactement ce qu'elle allait re-rendre (87 et 87). Leçon de #411f.
   perfCompteur('Cases gardées au changement de Planche', gardes);
   perfCompteur('Cases évincées au changement de Planche', evinces);
   if (perfActive()) perfDuree('Cache retenu après changement', +(octetsGardes / 1048576).toFixed(1), 'Mo');
 }
 
-/**
- * Les identifiants de Case à GARDER après un changement de Planche. Fonction PURE, donc testable.
- *
- * ⚠️ IL N'Y A PLUS DE PLAFOND EN OCTETS, ET C'EST UNE CORRECTION (#411j). La première version
- * bornait l'historique à un multiple du coût de la Planche COURANTE. Elle a gardé exactement zéro
- * Case sur 75, et le compteur l'a dit tout de suite : au moment où l'élagage a lieu, la nouvelle
- * Planche n'a encore RIEN rendu. Son coût vaut donc zéro, le plafond aussi, et plus rien ne pouvait
- * entrer. Je raisonnais sur une quantité qui n'existe pas encore à l'instant où je m'en sers.
- *
- * Le plafond était de toute façon superflu : la règle « la Planche affichée et la précédente » borne
- * déjà la mémoire à deux Planches, ce qui EST la promesse. Le multiplicateur ne faisait que
- * réexprimer la même chose, avec une dépendance temporelle en prime.
- *
- * La Planche courante est nommée explicitement plutôt que déduite du cache, précisément parce
- * qu'elle n'y est pas encore : ses Cases seront rendues juste après, et les inscrire ici évite
- * qu'un élagage ultérieur, dans la même frame, ne les balaie au fur et à mesure.
- */
-export function idsCacheAGarder3D(idsCourants, idsPrecedents){
-  return new Set([...(idsCourants || []), ...(idsPrecedents || [])]);
-}
+/** Remet la récence à zéro : appelé avec le vidage des caches, au changement de Projet. */
+export function oublierRecenceDesPlanches3D(){ _recenceDesPlanches = []; }
 
 // FIX (pre-existing bug, regression from extraction #158): these 3 caches weren't exported even
 // though events.js uses them directly (cache invalidation after editing from the Room/Building/Trace
@@ -3299,6 +3330,7 @@ export function disposeAllRigs3D(){
   });
   tracéMeshCache3D.clear();
   panelSceneCache3D.clear();
+  oublierRecenceDesPlanches3D();
 }
 
 // ── Selection / screen bbox helpers (moved from app.js for draw.js) ─
