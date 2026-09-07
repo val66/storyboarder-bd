@@ -24,6 +24,17 @@
 - 🗺️ **Top-down view** for placing elements
 - ↩️ **Cancelling** the dialog of a just-added Element removes it
 
+### Light
+- ☀️ **Three modes** per panel and per scene: Day, Night and Custom
+- 🔒 Day is the **default** and reproduces the original lighting exactly: pages you have already
+  drawn keep their look
+- 🕹️ **Orientation dome** in Custom mode: drag the sun over the vault, hold the right button and
+  drag to turn the view, cardinal marks matching the panel
+- 🎨 **Colour and intensity**: intensity drives the sun and the ambient light together, from full
+  black to the original lighting
+- ↺ **Reset** puts the panel back to Day and to its starting values
+- 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
+
 ### Panel images
 - 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it
 - 🚫 A panel holding an image is **no longer a 3D scene**: no Elements, no Scene loading, no model import

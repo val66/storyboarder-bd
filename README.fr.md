@@ -24,6 +24,17 @@
 - 🗺️ **Vue de dessus** pour le placement des Éléments
 - ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime
 
+### Lumière
+- ☀️ **Trois modes** par Case et par Scène : Jour, Nuit et Personnalisé
+- 🔒 Jour est le **réglage par défaut** et reproduit exactement l'éclairage d'origine : vos Planches
+  déjà dessinées gardent leur aspect
+- 🕹️ **Dôme d'orientation** en mode Personnalisé : glissez le soleil sur la coupole, clic droit
+  glissé pour tourner la vue, repères cardinaux raccord avec la Case
+- 🎨 **Couleur et intensité** : l'intensité pilote le soleil et l'ambiance ensemble, du noir complet
+  à l'éclairage d'origine
+- ↺ **Réinitialiser** ramène la Case au mode Jour et à ses valeurs de départ
+- 🎬 **Une Scène transmet sa lumière** à la Case qui la charge, puis les deux vies sont indépendantes
+
 ### Images de Case
 - 🖼️ **Insérer une image** dans une Case (PNG, JPG, WebP), recadrée et centrée pour la remplir
 - 🚫 Une Case qui porte une image **n'est plus une scène 3D** : pas d'Éléments, pas de chargement de

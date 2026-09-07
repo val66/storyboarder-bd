@@ -1005,3 +1005,80 @@ describe('#413 : un bouton dont l\'action a un raccourci le DIT, et le raccourci
     assert.deepEqual(oublis, [], 'ces raccourcis ne sont pas listés dans les DEUX manuels');
   });
 });
+
+describe('#414g : une section du menu de droite se retrouve dans le manuel', () => {
+  /**
+   * ⚠️ CE TEST EXISTE PARCE QUE LA RÈGLE N'ÉTAIT TENUE QUE PAR L'HABITUDE. Le dépôt impose que tout
+   * changement visible mette à jour les deux README ET le manuel intégré. Rien ne le vérifiait :
+   * le chantier #414 a ajouté une section « Lumière » entière au menu de droite, avec un dôme, un
+   * mode, une couleur, une intensité et un bouton, et la suite est restée verte pendant six
+   * commits sans que le manuel en dise un mot.
+   *
+   * ⚠️ CE QUE CE TEST NE GARANTIT PAS, ET IL FAUT LE DIRE : il vérifie que le TITRE de la section
+   * apparaît quelque part dans le manuel, pas que ce qui en est écrit soit juste, à jour ou utile.
+   * C'est un fil de détente contre l'oubli complet, pas une relecture. Le dépôt connaît déjà ce
+   * piège — épingler qu'un identifiant APPARAÎT au lieu de vérifier qu'il GOUVERNE — et la
+   * différence est assumée ici, faute de mieux : la qualité d'un paragraphe ne se teste pas.
+   */
+
+  // ⚠️ TROIS SECTIONS NE SONT DOCUMENTÉES NULLE PART, ET CE N'EST PAS UNE EXEMPTION DE CONFORT.
+  // Vérifié paragraphe par paragraphe : le manuel ne les décrit ni sous ce nom ni sous un autre.
+  // Ce sont de VRAIS TROUS, inscrits ici avec un numéro de tâche pour échéance, exactement comme
+  // la liste EN_ATTENTE de code-mort.test.mjs — dont #414f vient de montrer qu'elle fonctionne :
+  // une dette datée finit par être payée, une intention non.
+  const TROUS = {
+    sidePageBgSection: '#416 — l\'arrière-plan d\'une Planche',
+    sideDimsSection: '#416 — les dimensions d\'une Case',
+    sideBorderSection: '#416 — la bordure d\'une Case',
+    sideBubbleBorderSection: '#416 — la bordure d\'une Bulle',
+  };
+
+  // Le titre est lu dans le HTML, pas recopié : une section renommée doit faire échouer ce test,
+  // sinon il surveillerait un nom qui n'est plus à l'écran.
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  function sectionsDuMenu() {
+    const re = /<div id="(side[A-Za-z]+Section)"[^>]*class="[^"]*side-section[^>]*>\s*(?:<!--[\s\S]*?-->\s*)*<h2[^>]*>([^<]+)<\/h2>/g;
+    const out = [];
+    let m;
+    while ((m = re.exec(HTML))) out.push({ id: m[1], titre: m[2].trim() });
+    return out;
+  }
+
+  const MANUEL_FR = HELP_MANUAL_FR.map(g => `${g.title} ${g.paragraphs.join(' ')}`).join(' ').toLowerCase();
+
+  test('le garde-fou : les sections sont bien lues dans le HTML', () => {
+    // Sur une liste vide, le test suivant parcourrait le néant et passerait pour toujours. Trois
+    // fois déjà dans ce dépôt une suite est restée verte en n'observant rien.
+    const s = sectionsDuMenu();
+    assert.ok(s.length >= 12, `${s.length} sections lues, le motif ne trouve plus rien`);
+    assert.ok(s.some(x => x.id === 'sideLightSection'), 'la section Lumière n\'est pas vue');
+  });
+
+  test('chaque section du menu de droite est nommée dans le manuel', () => {
+    const absents = sectionsDuMenu()
+      .filter(s => !TROUS[s.id])
+      .filter(s => !MANUEL_FR.includes(s.titre.toLowerCase()));
+    assert.deepEqual(absents.map(s => `${s.id} « ${s.titre} »`), [],
+      'section ajoutée sans une ligne de manuel — ou à inscrire dans TROUS, avec sa tâche');
+  });
+
+  test('chaque trou inscrit en est VRAIMENT un', () => {
+    // La liste survivrait à ce qu'elle excuse : une section documentée entre-temps resterait
+    // exemptée, et la liste finirait par décrire un manuel qui n'existe plus. Même garde que
+    // code-mort.test.mjs, pour la même raison.
+    const ids = new Set(sectionsDuMenu().map(s => s.id));
+    const comblés = sectionsDuMenu()
+      .filter(s => TROUS[s.id] && MANUEL_FR.includes(s.titre.toLowerCase()));
+    assert.deepEqual(comblés.map(s => s.id), [], 'ces sections sont documentées : retirer de TROUS');
+    const fantômes = Object.keys(TROUS).filter(id => !ids.has(id));
+    assert.deepEqual(fantômes, [], 'ces sections n\'existent plus dans le menu de droite');
+  });
+
+  test('la liste des trous ne s\'allonge pas', () => {
+    // Elle vaut quatre, et c'est un état de départ, pas un objectif. L'allonger doit coûter un
+    // test rouge, sans quoi la sortie de secours devient le chemin normal.
+    assert.equal(Object.keys(TROUS).length, 4,
+      'une section de plus a été laissée hors du manuel au lieu d\'y être décrite');
+  });
+});

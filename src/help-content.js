@@ -93,6 +93,13 @@ export const HELP_MANUAL_EN = [
     'The F key centres the panel\u2019s view on the selected Element; a second press returns to the previous framing. In Camera mode, the selected Element becomes the permanent centre of rotation.',
     'Keyboard shortcut C (outside a text field, with a panel selected) to toggle Camera mode. In the Scene editor, the T key switches between perspective and top-down view.',
   ]},
+  { id: 'lumiere', title: 'Light', paragraphs: [
+    'The "Light" section of the right-hand menu drives the sun of the selected Panel. Three modes: Day, Night and Custom. Day is the default, and it is exactly the lighting the application has always had, so a Panel drawn before this feature keeps its look unchanged.',
+    'In Custom, a dome shows where the light comes from. Click and drag on it to move the sun over the vault; hold the right button and drag to turn the view, which changes nothing to the setting. The N, E, S and W marks on the base are those of the Panel: North goes away from you, South comes towards you.',
+    'Still in Custom, the colour and the intensity sit under the dome. Intensity drives the sun and the ambient light together: at 0 % the Panel is black, at 100 % you get the original lighting back. That is what makes Night a real night rather than a merely flatter image.',
+    'The Reset button at the bottom of the section puts the Panel back to Day and to its starting values.',
+    'Lighting is set per Panel, and a Scene’s locked page is a Panel like any other: it has its own Light section. Loading a Scene into a Panel copies its lighting, just as it copies its Elements. The two are independent afterwards, and a Scene left on Day puts the Panel that receives it back on Day.',
+  ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
     'Double-click an object to adjust its rotations and size.',
@@ -240,6 +247,13 @@ export const HELP_MANUAL_FR = [
     'Les flèches directionnelles ou W/A/S/D permettent de translater la caméra latéralement et verticalement (uniquement en mode Caméra, hors champ texte).',
     "La touche F centre la vue de la Case sur l'Élément sélectionné ; un second appui revient au cadrage précédent. En mode Caméra, l'Élément sélectionné devient le centre de rotation permanent.",
     "Raccourci C (hors champ texte, Case sélectionnée) pour basculer en mode Caméra. Dans l'éditeur de Scène, la touche T bascule entre la vue perspective et la vue de dessus.",
+  ]},
+  { id: 'lumiere', title: 'Lumière', paragraphs: [
+    "La section « Lumière » du menu de droite pilote le soleil de la Case sélectionnée. Trois modes : Jour, Nuit et Personnalisé. Jour est le réglage par défaut, et c'est exactement l'éclairage que l'application a toujours eu : une Case dessinée avant cette fonctionnalité garde son aspect inchangé.",
+    "En Personnalisé, un dôme montre d'où vient la lumière. Cliquer-glisser dessus déplace le soleil sur la coupole ; clic droit glissé fait tourner la vue, ce qui ne change rien au réglage. Les repères N, E, S et O de la base sont ceux de la Case : le Nord s'éloigne de vous, le Sud vient vers vous.",
+    "Toujours en Personnalisé, la couleur et l'intensité se règlent sous le dôme. L'intensité pilote le soleil et la lumière ambiante ensemble : à 0 % la Case est noire, à 100 % on retrouve l'éclairage d'origine. C'est ce qui permet à Nuit d'être une vraie nuit, et non une image seulement plus plate.",
+    "Le bouton « Réinitialiser » en bas de la section ramène la Case au mode Jour et à ses valeurs de départ.",
+    "L'éclairage se règle par Case, et la Planche verrouillée d'une Scène est une Case comme une autre : elle a donc sa propre section Lumière. Charger une Scène dans une Case y copie son éclairage, comme elle copie ses Éléments. Les deux sont ensuite indépendants, et une Scène restée en Jour remet en Jour la Case qui la reçoit.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',
