@@ -12,7 +12,8 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
-import { lumiereDeCase3D, projeterSurDome3D, INCLINAISON_DOME_DEG } from './lighting-3d.js';
+import { lumiereDeCase3D, projeterSurDome3D, geometrieDome3D,
+  AZIMUTS_CARDINAUX } from './lighting-3d.js';
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
@@ -1240,12 +1241,9 @@ export function dessinerDomeLumiere3D(lumiere){
   const w = sideLightDomeCanvas.width, h = sideLightDomeCanvas.height;
   ctx.clearRect(0, 0, w, h);
 
-  const sinP = Math.sin(INCLINAISON_DOME_DEG * Math.PI / 180);
-  const cx = w / 2;
-  const R = Math.min(w / 2 - 8, (h - 12) / (1 + sinP));
-  // Le centre vertical n'est PAS celui du canevas : la coupole monte de R et la base ne descend que
-  // de R × sin(inclinaison). Centrer naïvement laisserait un vide en bas et couperait le sommet.
-  const cy = 6 + R;
+  // La géométrie vient de `geometrieDome3D`, PARTAGÉE avec le test de clic : deux copies de la même
+  // formule finiraient par diverger, et le point tomberait à côté du curseur.
+  const { cx, cy, R, sinP } = geometrieDome3D(w, h);
 
   const p = projeterSurDome3D(lumiere.azimut, lumiere.elevation, S.lightDomeRotation || 0);
   const sx = cx + p.u * R, sy = cy - p.v * R;
@@ -1289,13 +1287,14 @@ export function dessinerDomeLumiere3D(lumiere){
   //
   // Celui de l'azimut zéro est plus long : sans un repère distinct des autres, huit traits
   // identiques disent qu'on tourne, mais pas de combien ni dans quel sens.
+  // Les repères INTERMÉDIAIRES, aux azimuts à 45° des cardinaux : ils densifient la graduation sans
+  // ajouter de texte à lire.
   ctx.save();
   ctx.lineWidth = 1.5; ctx.strokeStyle = trait;
-  for (let a = 0; a < 360; a += 45) {
+  for (const a of [45, 135, 225, 315]) {
     const q = projeterSurDome3D(a, 0, S.lightDomeRotation || 0);
     const bx = cx + q.u * R, by = cy - q.v * R;
-    const len = a === 0 ? 7 : 4;
-    ctx.globalAlpha = q.devant ? 0.9 : 0.3;
+    ctx.globalAlpha = q.devant ? 0.8 : 0.25;
     // Le repère pointe vers l'EXTÉRIEUR : la direction du centre vers le point, en pixels d'écran,
     // ramenée à une longueur de 1. En repartant des coordonnées normalisées on obtiendrait une
     // direction juste dans le repère du dôme mais fausse à l'écran, l'ellipse étant aplatie.
@@ -1303,9 +1302,30 @@ export function dessinerDomeLumiere3D(lumiere){
     const n = Math.hypot(dx, dy) || 1;
     ctx.beginPath();
     ctx.moveTo(bx, by);
-    ctx.lineTo(bx + (dx / n) * len, by + (dy / n) * len);
+    ctx.lineTo(bx + (dx / n) * 4, by + (dy / n) * 4);
     ctx.stroke();
   }
+  ctx.restore();
+
+  // ⚠️ LES POINTS CARDINAUX, ET LEUR LETTRE SE TRADUIT. « O » en français, « W » en anglais : une
+  // lettre écrite en dur laisserait un O au milieu d'une interface anglaise, et personne ne le
+  // signalerait avant longtemps. Les azimuts, eux, sont dérivés de la caméra par défaut d'une Case
+  // (cf. AZIMUTS_CARDINAUX) : ce qui s'éloigne est au nord, ce qui vient vers nous est au sud.
+  const LETTRES = { N: tr('N', 'N'), E: tr('E', 'E'), S: tr('S', 'S'), O: tr('W', 'O') };
+  ctx.save();
+  ctx.font = '600 10px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = jetonDeTheme3D('--ink-soft', '#8a8f98');
+  AZIMUTS_CARDINAUX.forEach(({ cle, azimut }) => {
+    const q = projeterSurDome3D(azimut, 0, S.lightDomeRotation || 0);
+    const bx = cx + q.u * R, by = cy - q.v * R;
+    const dx = bx - cx, dy = by - cy;
+    const n = Math.hypot(dx, dy) || 1;
+    // Un point cardinal derrière le dôme reste lisible, juste estompé : le faire disparaître ferait
+    // croire qu'il n'y en a que deux ou trois.
+    ctx.globalAlpha = q.devant ? 1 : 0.4;
+    ctx.fillText(LETTRES[cle], bx + (dx / n) * 8, by + (dy / n) * 8);
+  });
   ctx.restore();
 
   if (p.devant) dessinerSoleil(1);

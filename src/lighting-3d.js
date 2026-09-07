@@ -76,6 +76,53 @@ export function anglesDepuisDirection3D(v){
 export const INCLINAISON_DOME_DEG = 22;
 
 /**
+ * La géométrie du dôme dans un canevas donné. Fonction PURE, et PARTAGÉE (#414j).
+ *
+ * ⚠️ ELLE EXISTE PARCE QUE LE DESSIN ET LE CLIC LA CALCULAIENT CHACUN DE SON CÔTÉ. Deux copies de
+ * la même formule dans deux fichiers différents : le jour où l'une change, le point tombe à côté du
+ * curseur, et rien dans le code ne le signale. C'est le genre de divergence qu'on ne voit qu'à
+ * l'usage, et seulement si on regarde bien.
+ *
+ * Le centre vertical n'est PAS celui du canevas : la coupole monte de R quand la base ne descend
+ * que de R × sin(inclinaison). Centrer naïvement laisserait un vide en bas et couperait le sommet.
+ */
+export const MARGE_DOME_PX = 14;
+
+export function geometrieDome3D(largeur, hauteur){
+  const sinP = Math.sin(INCLINAISON_DOME_DEG * RAD);
+  const l = Math.max(1, Number(largeur) || 0), h = Math.max(1, Number(hauteur) || 0);
+  const R = Math.max(1, Math.min(l / 2 - MARGE_DOME_PX, (h - MARGE_DOME_PX) / (1 + sinP)));
+  return { cx: l / 2, cy: MARGE_DOME_PX / 2 + R, R, sinP };
+}
+
+/**
+ * ⚠️ LES POINTS CARDINAUX SONT DÉRIVÉS DE LA CAMÉRA, PAS CHOISIS. Avec la caméra par défaut d'une
+ * Case (`camRotY = 0`, cf. `panelCamBasis3D`), l'œil est du côté +Z et regarde vers -Z ; la droite
+ * de l'écran est +X. Dans la convention d'azimut du dépôt, direction au sol = (cos a, -sin a) sur
+ * (x, z) :
+ *
+ *   azimut   0° → +X → la DROITE de l'écran        → Est
+ *   azimut  90° → -Z → le FOND de l'écran          → Nord
+ *   azimut 180° → -X → la GAUCHE de l'écran        → Ouest
+ *   azimut -90° → +Z → vers le SPECTATEUR          → Sud
+ *
+ * Autrement dit : ce qui s'éloigne est au nord, ce qui vient vers nous est au sud. C'est la lecture
+ * qu'on a d'une carte posée à plat, et elle tombe juste sur la convention existante sans qu'on ait
+ * eu à la choisir.
+ *
+ * ⚠️ CE N'EST VRAI QU'À LA CAMÉRA PAR DÉFAUT. Faire tourner la Caméra d'une Case ne fait pas tourner
+ * le dôme : les points cardinaux désignent des directions du MONDE, pas de l'écran. C'est une
+ * limite connue, pas un oubli, et le remède éventuel serait d'aligner la vue du dôme sur l'azimut
+ * de la Caméra.
+ */
+export const AZIMUTS_CARDINAUX = [
+  { cle: 'N', azimut: 90 },
+  { cle: 'E', azimut: 0 },
+  { cle: 'S', azimut: -90 },
+  { cle: 'O', azimut: 180 },
+];
+
+/**
  * Où poser le point sur le disque, en coordonnées normalisées [-1, 1]. Fonction PURE.
  *
  * `devant` dit si le soleil est du côté visible. Un soleil derrière le dôme se dessine autrement

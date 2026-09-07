@@ -41,7 +41,7 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
-  INCLINAISON_DOME_DEG } from './lighting-3d.js';
+  geometrieDome3D } from './lighting-3d.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -7096,20 +7096,18 @@ sideLightModeSelect.addEventListener('change', () => reglerLumiere({ mode: sideL
 // et elle est déjà tenue par les fonctions pures : `directionDepuisDome3D` rend l'azimut dans le
 // repère du monde, rotation de vue comprise, donc tourner la vue ne modifie jamais le réglage.
 //
-// ⚠️ LE RAYON SE RECALCULE ICI COMME AU DESSIN, ET C'EST LA SEULE CHOSE QUI POURRAIT DIVERGER. Les
-// deux lisent les mêmes dimensions du canevas et la même inclinaison ; une constante recopiée à la
-// place ferait un dôme dont le clic tomberait à côté du dessin, défaut invisible au code et évident
-// à l'usage.
+// ⚠️ LA GÉOMÉTRIE VIENT DE `geometrieDome3D`, PARTAGÉE AVEC LE DESSIN (#414j). Elle était d'abord
+// recalculée ici, à l'identique : deux copies de la même formule dans deux fichiers, dont l'une
+// aurait fini par changer seule. Le point serait alors tombé à côté du curseur, sans que rien dans
+// le code ne le signale.
 function pointDuDome(e){
   const r = sideLightDomeCanvas.getBoundingClientRect();
   // Les coordonnées du canevas, pas celles de l'écran : le panneau latéral porte `zoom`, donc un
   // pixel écran ne vaut pas un pixel de canevas dès que la taille d'interface n'est pas Normale.
   const ex = (e.clientX - r.left) * (sideLightDomeCanvas.width / r.width);
   const ey = (e.clientY - r.top) * (sideLightDomeCanvas.height / r.height);
-  const sinP = Math.sin(INCLINAISON_DOME_DEG * Math.PI / 180);
-  const w = sideLightDomeCanvas.width, h = sideLightDomeCanvas.height;
-  const R = Math.min(w / 2 - 8, (h - 12) / (1 + sinP));
-  return { u: (ex - w / 2) / R, v: ((6 + R) - ey) / R };
+  const { cx, cy, R } = geometrieDome3D(sideLightDomeCanvas.width, sideLightDomeCanvas.height);
+  return { u: (ex - cx) / R, v: (cy - ey) / R };
 }
 
 sideLightDomeCanvas.addEventListener('contextmenu', (e) => e.preventDefault());

@@ -23,7 +23,7 @@ import {
   directionSoleil3D, anglesDepuisDirection3D, projeterSurDome3D, directionDepuisDome3D,
   resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, CLE_ACTUELLE, AMBIANTE_ACTUELLE,
   INCLINAISON_DOME_DEG, LUMIERE_DEFAUT, lumiereDeCase3D, definirLumiereDeCase3D, copierLumiere3D,
-  effacerLumiereDeCase3D,
+  effacerLumiereDeCase3D, geometrieDome3D, AZIMUTS_CARDINAUX, MARGE_DOME_PX,
 } from '../src/lighting-3d.js';
 
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -551,11 +551,13 @@ describe('#414i : trois retours d\'usage sur le dôme', () => {
     // presque rien ne bougeait. Le geste marchait, il ne se voyait pas.
     const i = SIDEBAR.indexOf('export function dessinerDomeLumiere3D');
     const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
-    assert.match(corps, /for \(let a = 0; a < 360; a \+= 45\)/, 'les repères de base ont disparu');
+    assert.match(corps, /for \(const a of \[45, 135, 225, 315\]\)/, 'les repères de base ont disparu');
     assert.match(corps, /projeterSurDome3D\(a, 0, S\.lightDomeRotation/,
       'les repères ne sont plus posés à des azimuts du MONDE : ils ne tourneraient plus');
-    assert.match(corps, /a === 0 \? 7 : 4/,
-      'sans repère distinct, huit traits identiques ne disent ni de combien ni dans quel sens');
+    // Depuis #414j, ce sont les LETTRES cardinales qui disent de combien et dans quel sens on
+    // tourne ; les quatre traits intermédiaires ne font que densifier la graduation.
+    assert.match(corps, /AZIMUTS_CARDINAUX\.forEach/,
+      'sans repère nommé, la rotation dirait qu\'elle a lieu mais ni de combien ni dans quel sens');
   });
 
   test('« Réinitialiser » SUPPRIME le champ au lieu d\'y écrire des défauts', () => {
@@ -588,5 +590,76 @@ describe('#414i : trois retours d\'usage sur le dôme', () => {
     assert.match(corps, /S\.lightDomeRotation = 0/, 'la vue reste tournée après la remise à zéro');
     assert.match(corps, /if \(change\) drawCurrentPage\(\)/,
       'un clic sans effet redessine quand même la Planche');
+  });
+});
+
+describe('#414j : les points cardinaux, et la géométrie partagée', () => {
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('RÉGRESSION : les cardinaux sont DÉRIVÉS de la caméra, pas choisis', () => {
+    // ⚠️ LE RACCORD AVEC LA CASE TIENT À CE CALCUL. Avec la caméra par défaut (`camRotY = 0`), l'œil
+    // est du côté +Z et regarde vers -Z, la droite de l'écran est +X. Dans la convention du dépôt,
+    // direction au sol = (cos a, -sin a) sur (x, z). Donc : ce qui S'ÉLOIGNE est au nord, ce qui
+    // vient VERS NOUS est au sud, la droite est à l'est. Ces assertions relient les lettres au
+    // monde ; sans elles, la table ne dirait que ce qu'elle dit d'elle-même.
+    const dir = (cle) => {
+      const c = AZIMUTS_CARDINAUX.find(x => x.cle === cle);
+      assert.ok(c, `${cle} a disparu de la table`);
+      return directionSoleil3D(c.azimut, 0);
+    };
+    assert.ok(dir('E').x > 0.99, 'l\'Est doit viser +X, la droite de l\'écran');
+    assert.ok(dir('O').x < -0.99, 'l\'Ouest doit viser -X, la gauche');
+    assert.ok(dir('N').z < -0.99, 'le Nord doit viser -Z, le fond de l\'écran');
+    assert.ok(dir('S').z > 0.99, 'le Sud doit viser +Z, vers le spectateur');
+  });
+
+  test('les quatre cardinaux sont deux à deux opposés', () => {
+    const az = Object.fromEntries(AZIMUTS_CARDINAUX.map(c => [c.cle, c.azimut]));
+    assert.equal(Math.abs(az.N - az.S), 180);
+    assert.equal(Math.abs(az.E - az.O), 180);
+  });
+
+  test('RÉGRESSION : la lettre de l\'Ouest SE TRADUIT', () => {
+    // « O » en français, « W » en anglais. Une lettre écrite en dur laisserait un O au milieu d'une
+    // interface anglaise, et personne ne le signalerait avant longtemps.
+    assert.match(SIDEBAR, /O: tr\('W', 'O'\)/, 'la lettre de l\'Ouest n\'est plus traduite');
+  });
+
+  test('RÉGRESSION : le dessin et le clic partagent UNE seule géométrie', () => {
+    // ⚠️ ILS LA CALCULAIENT CHACUN DE SON CÔTÉ. Deux copies de la même formule dans deux fichiers :
+    // le jour où l'une change, le point tombe à côté du curseur, et rien dans le code ne le dit.
+    assert.match(SIDEBAR, /geometrieDome3D\(w, h\)/, 'le dessin recalcule la géométrie dans son coin');
+    assert.match(EVENTS, /geometrieDome3D\(sideLightDomeCanvas\.width/, 'le clic la recalcule aussi');
+    for (const src of [SIDEBAR, EVENTS]) {
+      assert.ok(!/Math\.min\([^)]*\/ 2 - \d+/.test(src), 'une formule de rayon est revenue en dur');
+    }
+  });
+
+  test('la géométrie tient dans le canevas, et le sommet n\'est pas coupé', () => {
+    // Le centre vertical n'est pas celui du canevas : la coupole monte de R quand la base ne descend
+    // que de R × sin(inclinaison).
+    for (const [w, h] of [[132, 112], [80, 80], [200, 120], [40, 40]]) {
+      const g = geometrieDome3D(w, h);
+      assert.ok(g.R > 0, `rayon nul pour ${w}×${h}`);
+      assert.ok(g.cy - g.R >= 0, `le sommet dépasse en haut pour ${w}×${h}`);
+      assert.ok(g.cy + g.R * g.sinP <= h, `la base dépasse en bas pour ${w}×${h}`);
+      assert.ok(g.cx + g.R <= w, `le dôme dépasse à droite pour ${w}×${h}`);
+    }
+  });
+
+  test('une marge reste pour les lettres cardinales', () => {
+    // Elles se posent à l'extérieur du rayon : sans marge, le « O » sortirait du canevas.
+    const g = geometrieDome3D(132, 112);
+    assert.ok(g.cx + g.R + 8 <= 132, 'la lettre de l\'Est déborderait');
+    assert.ok(MARGE_DOME_PX >= 12, 'la marge ne suffit plus à loger une lettre');
+  });
+
+  test('des dimensions absurdes ne produisent pas un rayon négatif', () => {
+    for (const [w, h] of [[0, 0], [-5, 10], [NaN, 50]]) {
+      assert.ok(geometrieDome3D(w, h).R > 0, `rayon non positif pour ${w}×${h}`);
+    }
   });
 });
