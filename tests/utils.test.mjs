@@ -29,7 +29,7 @@ import {
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
   hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
   orbiteDeFace3D, estHorsChamp3D,
-  pageVoisine3D,
+  pageVoisine3D, positionInfobulle3D,
 } from '../src/utils.js';
 import { POSITIONS, POSE_3D, POSE_HANDLES } from '../src/constants.js';
 
@@ -2433,5 +2433,70 @@ describe('#406b : vaguesDePrechargement3D, la Planche d\'abord', () => {
     assert.deepEqual(noms(v1), []);
     assert.deepEqual(noms(v2), []);
     assert.deepEqual(noms(v3).sort(), ['a', 'b', 'c', 'd', 'e', 's1']);
+  });
+});
+
+describe('#412 : une infobulle qui reste entièrement visible', () => {
+  /**
+   * SIGNALÉ À L'USAGE : l'infobulle de « Configuration », bouton collé au bord droit, s'affichait
+   * COUPÉE. Chromium confine celle de l'attribut `title` à la fenêtre sans jamais la ramener
+   * dedans, et rien en CSS ne l'atteint puisqu'elle n'est pas dans le document.
+   *
+   * ⚠️ CE QUI N'EST PAS TESTÉ ICI : que l'infobulle s'affiche, qu'elle disparaisse au bon moment,
+   * ou qu'elle soit lisible. Ça demande un navigateur. Ce qui se tient, c'est la DÉCISION de
+   * placement, et elle se tient entièrement avec des rectangles.
+   */
+  const vue = { width: 1000, height: 800 };
+  const bulle = { width: 100, height: 20 };
+
+  test('centrée sous la cible quand rien ne l\'en empêche', () => {
+    const p = positionInfobulle3D({ x: 400, y: 100, width: 40, height: 30 }, bulle, vue);
+    assert.equal(p.left, 400 + 20 - 50, 'le centre de l\'infobulle doit tomber sur celui du bouton');
+    assert.equal(p.top, 138);
+    assert.equal(p.dessus, false);
+  });
+
+  test('RÉGRESSION : le bouton du coin droit ne fait plus déborder son infobulle', () => {
+    // Le défaut signalé, dans ses chiffres : centrée, l'infobulle irait de 940 à 1040 pour une vue
+    // qui s'arrête à 1000. Elle est ramenée, donc décalée sous son bouton — lisible décalée vaut
+    // mieux que centrée et coupée.
+    const p = positionInfobulle3D({ x: 970, y: 40, width: 40, height: 30 }, bulle, vue);
+    assert.equal(p.left, 1000 - 100 - 8);
+    assert.ok(p.left + bulle.width <= vue.width, 'elle dépasse encore à droite');
+  });
+
+  test('et le bouton du coin gauche non plus', () => {
+    const p = positionInfobulle3D({ x: 2, y: 40, width: 20, height: 30 }, bulle, vue);
+    assert.equal(p.left, 8, 'elle est coupée à gauche');
+  });
+
+  test('elle bascule AU-DESSUS quand le bas manque', () => {
+    // Un bouton en bas de panneau pousserait sinon son infobulle hors de l'écran.
+    const p = positionInfobulle3D({ x: 400, y: 770, width: 40, height: 25 }, bulle, vue);
+    assert.equal(p.dessus, true);
+    assert.equal(p.top, 770 - 20 - 8);
+    assert.ok(p.top >= 0);
+  });
+
+  test('RÉGRESSION : une infobulle plus large que la vue reste ancrée à GAUCHE', () => {
+    // ⚠️ LE PIÈGE DES BORNES QUI S'INVERSENT. Si `vue.width - bulle.width - marge` passe sous
+    // `marge`, un `Math.min(Math.max(...))` naïf rend une position NÉGATIVE : coupée à gauche pour
+    // éviter d'être coupée à droite, c'est-à-dire le début du texte perdu. On garde le bord
+    // d'entrée, là où commence ce qu'on lit.
+    const large = { width: 1200, height: 20 };
+    const p = positionInfobulle3D({ x: 500, y: 100, width: 40, height: 30 }, large, vue);
+    assert.equal(p.left, 8);
+  });
+
+  test('RÉGRESSION : une infobulle plus haute que la vue reste ancrée en HAUT', () => {
+    const haute = { width: 100, height: 900 };
+    const p = positionInfobulle3D({ x: 400, y: 400, width: 40, height: 30 }, haute, vue);
+    assert.equal(p.top, 8);
+  });
+
+  test('la marge se règle, et zéro colle vraiment au bord', () => {
+    const p = positionInfobulle3D({ x: 990, y: 0, width: 10, height: 10 }, bulle, vue, 0);
+    assert.equal(p.left, 900);
+    assert.equal(p.top, 10);
   });
 });

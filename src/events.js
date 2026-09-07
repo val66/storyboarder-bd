@@ -86,7 +86,7 @@ import {
 
   hauteurBase3D, hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D,
 
-  pageVoisine3D, nomNumeroteLibre3D, libelleTypeObjet3D, libelleTable3D,
+  pageVoisine3D, nomNumeroteLibre3D, libelleTypeObjet3D, libelleTable3D, positionInfobulle3D,
 } from './utils.js';
 import {
   S, currentPageData, currentPage, newId, createVolume, addPageToVolume, tr, isLockedScenePanel,
@@ -7711,3 +7711,86 @@ enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('h
 // vient d'ajouter le SUPPRIME (cf. dismissModal). Un masquage générique le laisserait derrière.
 enregistrerFermeture('descModal', () => dismissModal(closeDescModal));
 enregistrerFermeture('objectModal', () => dismissModal(closeObjectModal));
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// L'INFOBULLE MAISON (#412), PARCE QUE CELLE DU NAVIGATEUR SE FAIT COUPER
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Signalé à l'usage : au survol de « Configuration », bouton collé au bord droit de la fenêtre,
+// l'infobulle s'affichait tronquée. Chromium confine celle de l'attribut `title` à la fenêtre sans
+// jamais la ramener dedans, et rien en CSS n'y change quoi que ce soit : elle n'est pas dans le
+// document.
+//
+// ⚠️ LA DÉLÉGATION EST LE POINT, ET ELLE ÉVITE DE RÉÉCRIRE VINGT-ET-UN APPELS. Quatorze `title` sont
+// écrits dans index.html et sept sont posés par le code (arbre du Projet, chaînes d'os, boutons de
+// section) ; les convertir un par un aurait laissé le prochain revenir au comportement coupé sans
+// que rien ne le signale. Un seul écouteur sur le document les prend tous, y compris ceux qui
+// n'existent pas encore.
+//
+// ⚠️ ET L'ATTRIBUT EST RETIRÉ PUIS REMIS, ce qui est la seule façon de faire taire l'infobulle
+// native : aucune propriété CSS ne la désactive. Il est REMIS parce que `applyI18n` le réécrit à
+// chaque changement de langue et que la table i18n vise `title` ; un attribut supprimé pour de bon
+// laisserait le bouton sans infobulle ET sans nom accessible dès la première traduction.
+let _infobulle = null;
+let _cibleInfobulle = null;
+
+function elementInfobulle(){
+  if (_infobulle) return _infobulle;
+  _infobulle = document.createElement('div');
+  _infobulle.className = 'infobulle';
+  _infobulle.setAttribute('role', 'tooltip');
+  // Posée sur `body`, hors des conteneurs qui portent `zoom: var(--echelle-ui)`. Dedans, ses
+  // coordonnées seraient interprétées dans le repère zoomé alors qu'elles sont mesurées à l'écran.
+  document.body.appendChild(_infobulle);
+  return _infobulle;
+}
+
+function masquerInfobulle(){
+  if (_cibleInfobulle) {
+    // Ne remet le texte QUE si rien ne l'a réécrit entre-temps : un changement de langue pendant le
+    // survol aurait posé la nouvelle traduction, que restaurer l'ancienne effacerait.
+    if (!_cibleInfobulle.el.hasAttribute('title')) _cibleInfobulle.el.setAttribute('title', _cibleInfobulle.texte);
+    _cibleInfobulle = null;
+  }
+  if (_infobulle) _infobulle.classList.remove('visible');
+}
+
+function afficherInfobulle(el){
+  const texte = el.getAttribute('title');
+  if (!texte || !texte.trim()) return;
+  masquerInfobulle();
+  _cibleInfobulle = { el, texte };
+  el.removeAttribute('title');
+  const bulle = elementInfobulle();
+  bulle.textContent = texte;
+  // Rendue visible AVANT d'être mesurée : une boîte masquée n'a pas de dimensions, et la position
+  // se calculerait alors sur une largeur nulle, donc toujours centrée et jamais ramenée.
+  bulle.classList.add('visible');
+  bulle.style.left = '0px'; bulle.style.top = '0px';
+  const p = positionInfobulle3D(el.getBoundingClientRect(), bulle.getBoundingClientRect(),
+    { width: window.innerWidth, height: window.innerHeight });
+  bulle.style.left = `${Math.round(p.left)}px`;
+  bulle.style.top = `${Math.round(p.top)}px`;
+}
+
+// `mouseover`/`mouseout` et non `mouseenter`/`mouseleave` : seuls les premiers remontent, donc un
+// seul écouteur suffit pour tout le document, présent et à venir.
+document.addEventListener('mouseover', (e) => {
+  const el = e.target && e.target.closest && e.target.closest('[title]');
+  if (el) afficherInfobulle(el);
+});
+document.addEventListener('mouseout', (e) => {
+  if (_cibleInfobulle && e.target === _cibleInfobulle.el) masquerInfobulle();
+});
+// Au clavier aussi : un bouton atteint par Tab doit dire ce qu'il fait, et l'infobulle native ne
+// s'affiche jamais au focus.
+document.addEventListener('focusin', (e) => {
+  const el = e.target && e.target.closest && e.target.closest('[title]');
+  if (el) afficherInfobulle(el);
+});
+document.addEventListener('focusout', masquerInfobulle);
+// Un clic ouvre une modale ou un menu : l'infobulle resterait sinon posée par-dessus, orpheline.
+document.addEventListener('mousedown', masquerInfobulle, true);
+document.addEventListener('scroll', masquerInfobulle, true);
+window.addEventListener('resize', masquerInfobulle);

@@ -1433,3 +1433,40 @@ export function vaguesDePrechargement3D({ tomes = [], scenes = [] } = {}, tomeIn
   ];
   return [v1, v2, v3];
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * OÙ POSER UNE INFOBULLE POUR QU'ELLE RESTE ENTIÈREMENT VISIBLE (#412)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * SIGNALÉ À L'USAGE : l'infobulle de « Configuration », bouton collé au bord droit de la fenêtre,
+ * s'affichait COUPÉE. C'est celle du navigateur, posée par l'attribut `title`, et Chromium la
+ * confine à la fenêtre sans jamais la ramener dedans : au bord, elle est simplement tronquée.
+ *
+ * Fonction PURE, et c'est tout l'intérêt : la décision se teste sous Node avec de simples
+ * rectangles, là où le rendu réel demanderait un navigateur.
+ *
+ * TROIS RÈGLES, DANS CET ORDRE.
+ *   1. centrée sous la cible, ce qui est la position attendue et la seule qui n'ait pas à
+ *      s'expliquer ;
+ *   2. ramenée dans la vue si elle en sort, plutôt que centrée à tout prix. Un bouton de coin
+ *      n'aura donc pas son infobulle centrée sous lui, et c'est voulu : lisible décalée vaut mieux
+ *      que centrée et coupée ;
+ *   3. basculée AU-DESSUS s'il n'y a pas la place dessous. Le dernier bouton d'un panneau bas
+ *      pousserait sinon son infobulle hors de l'écran par le bas.
+ *
+ * ⚠️ LES BORNES SONT CALCULÉES POUR NE JAMAIS S'INVERSER. Si l'infobulle est plus large que la vue
+ * — texte long, fenêtre étroite, interface en Très grande — alors `vue.width - bulle.width - marge`
+ * passe SOUS `marge`, et un `Math.min(Math.max(...))` naïf rendrait une position négative,
+ * c'est-à-dire coupée à gauche pour éviter d'être coupée à droite. On garde alors le bord d'entrée,
+ * la marge, où commence le texte qu'on lit.
+ */
+export function positionInfobulle3D(cible, bulle, vue, marge = 8){
+  const borne = (v, max) => Math.min(Math.max(v, marge), Math.max(marge, max));
+  const left = borne(cible.x + cible.width / 2 - bulle.width / 2, vue.width - bulle.width - marge);
+  const sousLaCible = cible.y + cible.height + marge;
+  const dessus = sousLaCible + bulle.height > vue.height - marge;
+  const top = borne(dessus ? cible.y - bulle.height - marge : sousLaCible,
+    vue.height - bulle.height - marge);
+  return { left, top, dessus };
+}

@@ -542,6 +542,26 @@ select, input[type=number]{
 .curseur-gradue-crans{ position:relative; height:1.2em; margin:6px calc(var(--valeur-largeur) + var(--valeur-ecart) + var(--pouce-curseur) / 2) 0 calc(var(--pouce-curseur) / 2); font-size:10px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
 .curseur-gradue-crans > span{ position:absolute; left:calc(var(--i) / var(--crans-moins-un) * 100%); transform:translateX(-50%); }
 
+/* L'infobulle maison (#412). Celle du navigateur se fait couper par le bord de la fenêtre : elle
+   n'est pas dans le document, aucune règle d'ici ne l'atteignait.
+
+   ⚠️ ELLE N'EST PAS ZOOMÉE, ELLE EST MISE À L'ÉCHELLE. `zoom: var(--echelle-ui)` porte sur les
+   conteneurs (header, panneaux, modales) ; l'appliquer ici aussi ferait interpréter dans un repère
+   zoomé des coordonnées mesurées à l'écran, et l'infobulle s'éloignerait de son bouton d'autant
+   plus que l'interface est grande. Sa taille suit donc le réglage par un `calc`, sa position reste
+   en pixels d'écran.
+
+   `pointer-events:none` : posée sous le curseur, elle recevrait sinon le `mouseout` de l'élément
+   qu'elle recouvre, et clignoterait. */
+.infobulle{
+  position:fixed; z-index:9000; pointer-events:none; opacity:0; visibility:hidden;
+  max-width:min(320px, calc(100vw - 32px)); padding:calc(5px * var(--echelle-ui)) calc(9px * var(--echelle-ui));
+  border-radius:6px; border:1px solid var(--line-strong); background:var(--paper); color:var(--ink);
+  font-size:calc(12px * var(--echelle-ui)); line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.28);
+  white-space:normal;
+}
+.infobulle.visible{ opacity:1; visibility:visible; }
+
 /* `#colorSwatches` A ÉTÉ RETIRÉ (#402d) : même raison, plus aucun élément ne porte cet identifiant. */
 
 /* MAIN */

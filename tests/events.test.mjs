@@ -3009,3 +3009,43 @@ describe('#405c : ajuster la vue ne fait pas rendre la Planche DEUX fois', () =>
     assert.match(SRC, /addEventListener\('resize', \(\) => \{ fitZoomToWrap\(\); drawCurrentPage\(\); \}\)/);
   });
 });
+
+describe('#412 : le câblage de l\'infobulle maison', () => {
+  /**
+   * ⚠️ CE BLOC ÉPINGLE DU TEXTE, ET C'EST UNE LIMITE ASSUMÉE. La pose de l'infobulle demande un
+   * vrai moteur de rendu : `getBoundingClientRect` sur des éléments réels, un survol, un focus.
+   * La DÉCISION de placement, elle, est pure et testée pour de bon dans tests/utils.test.mjs
+   * (`positionInfobulle3D`). Ne reste ici que le câblage, dont deux points se sont révélés
+   * capables de casser sans rien faire échouer ailleurs.
+   */
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('RÉGRESSION : l\'attribut `title` est REMIS après le survol', () => {
+    // Le retirer est la seule façon de faire taire l'infobulle native, aucune propriété CSS ne la
+    // désactive. Mais `applyI18n` réécrit `title` à chaque changement de langue et la table i18n
+    // vise cet attribut : ne jamais le remettre laisserait le bouton sans infobulle ET sans nom
+    // accessible dès la première traduction.
+    assert.match(SRC, /removeAttribute\('title'\)/, 'l\'infobulle native n\'est plus neutralisée');
+    assert.match(SRC, /setAttribute\('title', _cibleInfobulle\.texte\)/,
+      'l\'attribut n\'est plus restauré : le bouton perdra son infobulle à la première traduction');
+  });
+
+  test('RÉGRESSION : la restauration ne PIÉTINE pas une traduction arrivée entre-temps', () => {
+    // Changer de langue pendant qu'une infobulle est affichée pose la nouvelle traduction sur
+    // l'élément. La restaurer aveuglément y remettrait l'ancienne, dans l'autre langue.
+    const i = SRC.indexOf('function masquerInfobulle');
+    assert.ok(i > 0, 'la fermeture de l\'infobulle a disparu');
+    assert.match(SRC.slice(i, SRC.indexOf('\n}', i)), /!_cibleInfobulle\.el\.hasAttribute\('title'\)/,
+      'la restauration est inconditionnelle : elle écrasera une traduction plus récente');
+  });
+
+  test('un seul écouteur, DÉLÉGUÉ, et pas un par bouton', () => {
+    // Quatorze `title` vivent dans index.html et sept sont posés par le code. Les câbler un par un
+    // aurait laissé le prochain revenir en silence au comportement coupé.
+    assert.match(SRC, /document\.addEventListener\('mouseover'/,
+      'l\'écoute n\'est plus déléguée : les `title` posés par le code seront oubliés');
+    assert.match(SRC, /document\.addEventListener\('focusin'/,
+      'au clavier, un bouton atteint par Tab ne dira plus ce qu\'il fait');
+  });
+});
