@@ -37,7 +37,7 @@ import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
   budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME,
   octetsEntreeCache3D, idsCacheAGarder3D, elaguerCacheDeCases3D,
-  panelSceneCache3D, PLANCHES_GARDEES_EN_CACHE } from '../src/scene3d.js';
+  panelSceneCache3D } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1840,59 +1840,35 @@ describe('#411i : le cache garde la Planche précédente', () => {
     assert.equal(octetsEntreeCache3D(entree(0, 200)), 0, 'un canevas déjà vidé ne pèse plus rien');
   });
 
-  test('la Planche courante est gardée, et la précédente avec elle quand elle tient', () => {
-    const o = new Map([['a', 10], ['b', 10], ['c', 10], ['d', 10]]);
-    const garde = idsCacheAGarder3D(o, ['a', 'b'], ['c', 'd']);
-    assert.deepEqual([...garde].sort(), ['a', 'b', 'c', 'd']);
+  test('on garde la Planche affichée ET la précédente', () => {
+    assert.deepEqual([...idsCacheAGarder3D(['a', 'b'], ['c', 'd'])].sort(), ['a', 'b', 'c', 'd']);
   });
 
   test('tout ce qui n\'est ni courant ni précédent est évincé', () => {
-    // Le point de la borne : sans elle, on retomberait sur « tout garder », soit 312 Mo mesurés sur
+    // Le point de la borne : sans elle on retomberait sur « tout garder », soit 312 Mo mesurés sur
     // « Projet 2 » et aucun plafond pour un Projet plus gros.
-    const o = new Map([['a', 10], ['c', 10], ['vieux', 10]]);
-    const garde = idsCacheAGarder3D(o, ['a'], ['c']);
-    assert.ok(!garde.has('vieux'), 'une Planche d\'avant-hier est restée en mémoire');
+    assert.ok(!idsCacheAGarder3D(['a'], ['c']).has('vieux'),
+      'une Planche d\'avant-hier est restée en mémoire');
   });
 
-  test('RÉGRESSION : la Planche COURANTE n\'est jamais évincée, même seule au-dessus du plafond', () => {
-    // La jeter reviendrait à re-rendre ce qu'on est en train de regarder : pire que le vidage
-    // complet qu'on remplace. Le plafond gouverne l'historique, pas l'affichage.
-    const o = new Map([['a', 1e9], ['b', 1e9]]);
-    const garde = idsCacheAGarder3D(o, ['a', 'b'], []);
-    assert.deepEqual([...garde].sort(), ['a', 'b']);
+  test('RÉGRESSION : la Planche COURANTE est gardée alors qu\'elle n\'est PAS ENCORE dans le cache (#411j)', () => {
+    // ⚠️ LE DÉFAUT QUI A COÛTÉ UN RELEVÉ, ET LE COMPTEUR L'A DIT TOUT DE SUITE : zéro Case gardée
+    // sur 75. La première version bornait l'historique à un multiple du coût de la Planche
+    // courante, filtrée sur ce que le cache contenait déjà. Or l'élagage a lieu AVANT que la
+    // nouvelle Planche ne rende quoi que ce soit : son coût valait zéro, le plafond aussi, et plus
+    // rien ne pouvait entrer. Je raisonnais sur une quantité qui n'existe pas encore à l'instant
+    // où je m'en sers.
+    //
+    // D'où ce test : les identifiants sont pris tels qu'on les donne, sans être confrontés au
+    // contenu du cache.
+    const garde = idsCacheAGarder3D(['pas-encore-rendue'], []);
+    assert.ok(garde.has('pas-encore-rendue'),
+      'la Planche qu\'on vient d\'ouvrir est écartée parce qu\'elle n\'a pas encore rendu');
   });
 
-  test('la précédente tombe quand elle ne tient pas dans le plafond', () => {
-    // Plafond = facteur × coût de la courante. Ici la courante pèse 10, le plafond vaut donc 20, et
-    // une précédente de 50 ne peut pas entrer.
-    const o = new Map([['a', 10], ['gros', 50]]);
-    const garde = idsCacheAGarder3D(o, ['a'], ['gros']);
-    assert.deepEqual([...garde], ['a']);
-  });
-
-  test('le plafond se remplit dans l\'ordre, il ne rejette pas tout en bloc', () => {
-    // Courante 10 → plafond 20 → il reste 10 pour l'historique : la première Case de la précédente
-    // entre, la seconde non. Un plafond qui rejetterait toute la Planche précédente dès qu'elle
-    // dépasse gaspillerait la place restante.
-    const o = new Map([['a', 10], ['p1', 6], ['p2', 6]]);
-    const garde = idsCacheAGarder3D(o, ['a'], ['p1', 'p2']);
-    assert.deepEqual([...garde], ['a', 'p1']);
-  });
-
-  test('un identifiant absent du cache ne compte pas comme gardé', () => {
-    // Les Cases d'une Planche jamais rendue sont dans la liste des courants sans être dans le
-    // cache : les compter fausserait le plafond, calculé sur ce qui occupe VRAIMENT la mémoire.
-    const o = new Map([['a', 10]]);
-    assert.deepEqual([...idsCacheAGarder3D(o, ['a', 'jamais-rendue'], [])], ['a']);
-  });
-
-  test('le facteur vaut 2 : la Planche affichée, plus une d\'historique', () => {
-    // Ce n'est pas un nombre choisi, c'est le besoin énoncé : comparer la Planche en cours à la
-    // précédente. S'il tombait à 1, l'historique disparaîtrait et on reviendrait au vidage complet.
-    assert.equal(PLANCHES_GARDEES_EN_CACHE, 2);
-    const o = new Map([['a', 10], ['c', 10]]);
-    assert.ok(!idsCacheAGarder3D(o, ['a'], ['c'], 1).has('c'),
-      'avec un facteur de 1, rien d\'ancien ne doit survivre');
+  test('des listes vides ne font pas tomber la décision', () => {
+    assert.equal(idsCacheAGarder3D(null, null).size, 0);
+    assert.equal(idsCacheAGarder3D(undefined, ['c']).size, 1);
   });
 
   test('l\'éviction VIDE le canevas avant de lâcher l\'entrée', () => {
