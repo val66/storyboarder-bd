@@ -122,6 +122,42 @@ export function perfCompteur(nom, n = 1){
 /** L'état d'armement, pour que l'appelant évite un calcul qui ne servirait à rien. */
 export function perfActive(){ return _actif; }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// LE CONTEXTE (#411c), PARCE QUE LE PREMIER JET DE CETTE SONDE NE CONTRÔLAIT RIEN
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// #411b annonçait « le nombre de rigs construits est le CONTRÔLE de la mesure ». Il ne l'était pas :
+// il comptait les rigs construits EN TOUT, sans dire quand. Le relevé a donné 81 rigs de Personnage
+// et 425 d'Objet, un total également compatible avec « tous construits au premier rendu » et avec
+// « certains reconstruits à chaque retour ». Ces deux réponses appellent des remèdes opposés, et le
+// compteur ne les départageait pas. Une mesure qui ne peut pas contredire l'hypothèse qu'elle est
+// censée tester ne vaut rien.
+//
+// Le contexte règle ça : le rendu d'une Case déclare s'il est un premier rendu ou un retour, et les
+// constructions de rigs se rangent dessous. Ce qui tombe HORS d'un rendu de Case (l'aperçu d'une
+// modale, l'Éditeur de modèle) se range sous son propre libellé plutôt que de se mélanger aux
+// autres, car c'est encore une troisième réponse.
+let _contexte = null;
+
+/** Déclare le contexte pendant l'appel, et le restitue ensuite, même si l'appel lève. */
+export function perfContexte(nom, fn){
+  if (!_actif) return fn();
+  const precedent = _contexte;
+  _contexte = nom;
+  try { return fn(); } finally { _contexte = precedent; }
+}
+
+/**
+ * Un compte RANGÉ sous le contexte courant.
+ *
+ * Distinct de `perfCompteur` à dessein : « changements de Planche » n'a pas de contexte et n'en
+ * veut pas. Mélanger les deux mettrait un « (hors rendu de Case) » absurde derrière la moitié des
+ * lignes du rapport.
+ */
+export function perfCompteurContextuel(nom, n = 1){
+  if (_actif) perfCompteur(`${nom} · ${_contexte || 'hors rendu de Case'}`, n);
+}
+
 function _quantile(tri, q){
   return tri.length ? tri[Math.min(tri.length - 1, Math.floor(tri.length * q))] : 0;
 }
@@ -146,13 +182,23 @@ export function perfRapport(){
       max: +Math.max(...tri).toFixed(2),
     };
   });
-  // Un compteur à zéro est une RÉPONSE. On l'affiche donc, au lieu de le laisser absent du tableau,
-  // où son absence se lirait « pas mesuré » au lieu de « jamais arrivé ».
-  const comptes = [...COMPTEURS_ATTENDUS, ..._compteurs.keys()]
+  // Un compteur à zéro est une RÉPONSE, et le rapport doit le dire. Les afficher tous dans le
+  // tableau ferait pourtant 51 lignes dont l'immense majorité à zéro, ce qui noierait les trois qui
+  // décident. Compromis : le tableau ne porte que ce qui a eu lieu, et une ligne à part énumère ce
+  // qui était instrumenté et n'est JAMAIS arrivé. Les deux informations sont là, sans que l'une
+  // rende l'autre illisible.
+  const comptes = [...COMPTEURS_SIMPLES, ..._compteurs.keys()]
     .filter((n, i, t) => t.indexOf(n) === i)
     .map(n => ({ compteur: n, valeur: _compteurs.get(n) || 0 }));
+  const vus = [..._compteurs.keys()];
+  const jamais = CONTEXTES.flatMap(c => Object.keys(CAUSES).map(q => ({ q, c })))
+    .filter(({ q, c }) => !vus.some(k => k.startsWith(`${q} `) && k.endsWith(`· ${c}`)))
+    .map(({ q, c }) => `${q} · ${c}`);
   console.table(lignes);
   console.table(comptes);
+  console.log(jamais.length
+    ? `INSTRUMENTÉS ET JAMAIS DÉCLENCHÉS (c'est une réponse, pas une absence) : ${jamais.join(' | ')}`
+    : 'aucun compteur instrumenté n\'est resté à zéro.');
   const compact = JSON.stringify({ mesures: lignes, compteurs: Object.fromEntries(comptes.map(c => [c.compteur, c.valeur])) });
   console.log('%c▼ COPIEZ LA LIGNE CI-DESSOUS ▼', 'font-weight:bold');
   console.log(compact);
@@ -168,12 +214,30 @@ export function perfRapport(){
 
 // Les compteurs qu'on s'attend à voir. Déclarés ICI, et pas déduits de ce qui est arrivé, pour que
 // « jamais déclenché » se distingue de « jamais instrumenté ».
-const COMPTEURS_ATTENDUS = [
+//
+// ⚠️ LES LIGNES QUI DÉCIDENT SONT CELLES « · retour ». Si elles restent à zéro pendant que les
+// « · 1er rendu » montent, alors les rigs survivent bien au changement de Planche et le retour ne
+// repaie que la passe WebGL. Si elles montent, ma lecture du code était fausse. C'est cette
+// distinction, absente du premier jet, qui justifie #411c.
+//
+// ⚠️ LES SIX CACHES SONT INSTRUMENTÉS, PAS SEULEMENT LES DEUX ÉVIDENTS. Le premier relevé laisse un
+// coût de retour inexpliqué (jusqu'à 305 ms, soit plus du double du pire premier rendu). Si seuls
+// les rigs de Personnage et d'Objet étaient comptés et restaient à zéro, on conclurait « c'est la
+// passe WebGL » alors qu'un mur fusionné, un poteau, une dalle ou un Tracé pourrait se reconstruire
+// sans qu'on le voie. Une hypothèse ne se teste pas en n'observant que ce qu'elle prédit.
+const CONTEXTES = ['1er rendu', 'retour', 'hors rendu de Case'];
+const CAUSES = {
+  'rig de Personnage': ['jamais vu', 'couleur, genre ou style'],
+  'rig d\'Objet': ['jamais vu', 'modèle arrivé', 'dimensions', 'ouvrant', 'hauteur', 'type ou couleur'],
+  'rig de Mur fusionné': ['jamais vu', 'signature'],
+  'poteau de jonction': ['jamais vu', 'signature'],
+  'dalle': ['jamais vu', 'signature'],
+  'Tracé': ['jamais vu', 'signature'],
+};
+const COMPTEURS_SIMPLES = [
   'changements de Planche',
   'Cases rendues (1re fois de la session)',
   'Cases rendues (retour sur la Planche)',
-  'rigs de Personnage CONSTRUITS',
-  'rigs d\'Objet CONSTRUITS',
 ];
 
 if (typeof window !== 'undefined') {

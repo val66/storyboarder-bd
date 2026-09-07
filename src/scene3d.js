@@ -23,7 +23,7 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
-import { perfTemps, perfCompteur, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
+import { perfTemps, perfCompteur, perfCompteurContextuel, perfContexte, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1793,8 +1793,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     _sondeCasesDejaRendues.add(panel.id);
     perfCompteur(retour ? 'Cases rendues (retour sur la Planche)' : 'Cases rendues (1re fois de la session)');
   }
-  return perfTemps(retour ? 'Case : rendu au RETOUR' : 'Case : 1er rendu de la session', () =>
-    _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig));
+  // Le CONTEXTE (#411c) : sans lui, les constructions de rigs se comptaient en vrac et ne pouvaient
+  // pas départager « les rigs survivent au changement de Planche » de son contraire.
+  return perfContexte(retour ? 'retour' : '1er rendu', () =>
+    perfTemps(retour ? 'Case : rendu au RETOUR' : 'Case : 1er rendu de la session', () =>
+      _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig)));
 }
 function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
@@ -2130,6 +2133,7 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const fp = `${color}#${mergedLen.toFixed(4)}`;
     let mEntry = mergedBuildWallRigCache3D.get(key);
     if (!mEntry || mEntry.fp !== fp) {
+      perfCompteurContextuel(`rig de Mur fusionné construit (${!mEntry ? 'jamais vu' : 'signature'})`);
       if (mEntry) {
         mEntry.figureGroup.traverse(ch => { if (ch.isMesh && ch.geometry) ch.geometry.dispose(); });
         personaScene3D.remove(mEntry.figureGroup);
@@ -2177,6 +2181,7 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       const sig = `${j.thick.toFixed(4)}|${j.height.toFixed(4)}|${j.color}|${j.rotY.toFixed(4)}|${j.roomFloatY.toFixed(4)}`;
       let mesh = wallJunctionMeshCache3D.get(key);
       if (!mesh || mesh._sig !== sig) {
+        perfCompteurContextuel(`poteau de jonction construit (${!mesh ? 'jamais vu' : 'signature'})`);
         if (mesh) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); }
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(j.thick, j.height, j.thick),
@@ -2211,6 +2216,7 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
                  + ':ft:' + pieceFloorType + ':po2';
     let mesh = slabMeshCache3D.get(o.id);
     if (!mesh || mesh._sigKey !== sigKey) {
+      perfCompteurContextuel(`dalle construite (${!mesh ? 'jamais vu' : 'signature'})`);
       if (mesh) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); }
       // Build the Shape with negative Z + reversed order, then rotateX(-π/2):
       // - negative Z + rotateX(-π/2): (x, -z_world, 0) → (x, 0, z_world)  ← correct positive Z
@@ -2294,6 +2300,7 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const sigKey = JSON.stringify({ tt: o.tracéType, c: o.color, tt2: o.terrainType, wh: o.wallHeight, world: o.world, holes: _tmHoleSig });
     let entry = tracéMeshCache3D.get(o.id);
     if (!entry || entry.sigKey !== sigKey) {
+      perfCompteurContextuel(`Tracé construit (${!entry ? 'jamais vu' : 'signature'})`);
       // Release the old group if present.
       if (entry) {
         entry.group.traverse(ch => { if (ch.isMesh) { ch.geometry.dispose(); ch.material.dispose(); } });
