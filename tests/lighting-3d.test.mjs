@@ -16,6 +16,8 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   directionSoleil3D, anglesDepuisDirection3D, projeterSurDome3D, directionDepuisDome3D,
@@ -336,5 +338,77 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     // Sans quoi charger une Scène poserait un champ sur la Case, et le fichier grossirait pour un
     // réglage que personne n'a demandé.
     assert.equal(copierLumiere3D({ id: 's', type: 'panel' }), null);
+  });
+});
+
+describe('#414d : la section du menu de droite', () => {
+  /**
+   * ⚠️ ÉPINGLAGE DE SOURCE, ET LA LIMITE EST DITE. Cocher une case, choisir dans une liste et
+   * regarder ce qui apparaît demandent un navigateur. Ce qui se tient ici, ce sont les quatre
+   * décisions de câblage dont chacune casse SANS RIEN CASSER D'AUTRE : un affichage progressif
+   * incohérent, une section qui ne suit pas la sélection, un historique d'annulation noyé, ou un
+   * réglage qui ne redessine pas.
+   */
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+  const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : la case dit « éclairage personnalisé », pas « lumière »', () => {
+    // ⚠️ LE PIÈGE EST DANS LE MOT, PAS DANS LE MÉCANISME. Décocher rend l'éclairage du style
+    // graphique, celui de toujours ; « lumière » seul laisserait croire à une extinction, et on
+    // décocherait en s'attendant au noir. Le noir s'obtient en Personnalisé à intensité nulle.
+    assert.match(HTML, /id="sideLightToggleWrap"[\s\S]{0,200}Éclairage personnalisé/);
+    assert.ok(I18N.includes("'#sideLightToggleWrap', 'Custom lighting', 'Éclairage personnalisé'"),
+      'le libellé de la case n\'est pas traduit dans les deux langues');
+  });
+
+  test('RÉGRESSION : l\'affichage progressif tient en UN seul endroit', () => {
+    // Sans cette règle, chaque écouteur recopierait l'affichage à sa façon et les quatre états
+    // divergeraient, ce qui ne se voit qu'en enchaînant les gestes dans un ordre inhabituel.
+    const i = SIDEBAR.indexOf('export function rafraichirSectionLumiere');
+    assert.ok(i > 0, 'la section n\'a plus d\'endroit unique qui la remplit');
+    const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
+    assert.match(corps, /sideLightBody\.style\.display = l\.active \? 'block' : 'none'/,
+      'le corps ne suit plus la case à cocher');
+    assert.match(corps, /sideLightCustom\.style\.display = \(l\.active && l\.mode === 'perso'\)/,
+      'couleur et intensité ne sont plus réservées au mode Personnalisé');
+    const ailleurs = (EVENTS.match(/sideLightBody\.style\.display/g) || []).length;
+    assert.equal(ailleurs, 0, 'un second endroit décide de l\'affichage : ils divergeront');
+  });
+
+  test('RÉGRESSION : la section se rafraîchit quand la SÉLECTION change', () => {
+    // Sans cet appel, la section montrerait le réglage de la Case précédente, ce qui est pire qu'un
+    // affichage vide : on croirait lire la Case sélectionnée.
+    const i = SIDEBAR.indexOf("sideLightSection.style.display = 'block'");
+    assert.ok(i > 0, 'la section ne s\'affiche plus pour une Case');
+    assert.match(SIDEBAR.slice(i, i + 200), /rafraichirSectionLumiere\(\)/,
+      'la section s\'affiche sans être remplie : elle gardera l\'état de la Case précédente');
+  });
+
+  test('RÉGRESSION : un SEUL instantané d\'annulation par geste continu', () => {
+    // ⚠️ UN SÉLECTEUR DE COULEUR ET UN CURSEUR ÉMETTENT EN CONTINU. Empiler une annulation par
+    // nuance survolée noierait l'historique de 50 actions, et il faudrait cinquante Ctrl+Z pour
+    // défaire un seul geste. Le motif est celui que la Bordure emploie déjà.
+    for (const nom of ['sideLightColorSnapshotTaken', 'sideLightIntensitySnapshotTaken']) {
+      assert.ok(EVENTS.includes(`S.${nom}`), `${nom} a disparu : l'historique va se remplir`);
+      assert.match(EVENTS, new RegExp(`S\\.${nom} = false`),
+        `${nom} n'est jamais remis à faux : le geste suivant ne sera plus annulable`);
+    }
+  });
+
+  test('RÉGRESSION : régler la lumière REDESSINE', () => {
+    // L'éclairage est dans la signature de Case (#414c), donc `drawCurrentPage` suffit. Sans
+    // l'appel, le réglage serait écrit et invisible, ce qui se lit comme une panne.
+    const i = EVENTS.indexOf('function reglerLumiere');
+    assert.ok(i > 0, 'l\'écriture du réglage a disparu');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n}', i));
+    assert.match(corps, /drawCurrentPage\(\)/, 'le réglage n\'est plus suivi d\'un redessin');
+    assert.match(corps, /if \(!definirLumiereDeCase3D\(cible, patch\)\) return;/,
+      'un réglage sans changement redessine quand même, et empile une annulation vide');
+    assert.ok(!/panelSceneCache3D/.test(corps),
+      'le cache est vidé à la main : les Cases voisines se re-rendraient pour rien');
   });
 });

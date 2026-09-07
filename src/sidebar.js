@@ -12,6 +12,7 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, panelsInPage, ensurePanelNumbers, tr } from './state.js';
+import { lumiereDeCase3D } from './lighting-3d.js';
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
@@ -74,6 +75,14 @@ const sideStackSection = document.getElementById('sideStackSection');
 const sideBubbleStackSection = document.getElementById('sideBubbleStackSection');
 const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
+const sideLightSection = document.getElementById('sideLightSection');
+const sideLightToggle = document.getElementById('sideLightToggle');
+const sideLightBody = document.getElementById('sideLightBody');
+const sideLightCustom = document.getElementById('sideLightCustom');
+const sideLightModeSelect = document.getElementById('sideLightModeSelect');
+const sideLightColorInput = document.getElementById('sideLightColorInput');
+const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
+const sideLightIntensityValue = document.getElementById('sideLightIntensityValue');
 const sidePersonasSection = document.getElementById('sidePersonasSection');
 const sideImageSection = document.getElementById('sideImageSection');
 const sideImageZoomInput = document.getElementById('sideImageZoomInput');
@@ -747,6 +756,7 @@ function updateSidePanelImpl(){
     sideBubbleStackSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    sideLightSection.style.display = 'none';
     sideImageSection.style.display = 'none';
     sideCadrageSection.style.display = 'none';
     sidePersonasSection.style.display = 'none';
@@ -864,6 +874,7 @@ function updateSidePanelImpl(){
       // réglages sans objet est pire que pas de section du tout.
       sideCadrageSection.style.display = 'block';
       sideGroundSection.style.display = 'none';
+      sideLightSection.style.display = 'none';
       sidePersonasSection.style.display = 'none';
       sideBubbleAppearanceSection.style.display = 'none';
       sideBubbleBorderSection.style.display = 'none';
@@ -894,6 +905,8 @@ function updateSidePanelImpl(){
         sideGroundGrid.appendChild(btn);
       });
       sideGroundSection.style.display = 'block';
+      sideLightSection.style.display = 'block';
+      rafraichirSectionLumiere();
     }
     renderSidePersonas(sel, page);
     sidePersonas.style.display = 'flex';
@@ -931,6 +944,7 @@ function updateSidePanelImpl(){
     sideDimsSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    sideLightSection.style.display = 'none';
     // QUATRIÈME BRANCHE, trouvée par le test et non par moi : sélectionner une Bulle après une Case
     // à image laissait cette image annoncée en haut du panneau, au-dessus des réglages de la Bulle.
     // Le rapport utilisateur ne portait que sur le clic hors Planche ; l'invariant en couvre trois.
@@ -978,6 +992,7 @@ function updateSidePanelImpl(){
     sideBubbleStackSection.style.display = 'none';
     sideBorderSection.style.display = 'none';
     sideGroundSection.style.display = 'none';
+    sideLightSection.style.display = 'none';
     // ⚠️ SIGNALÉ À L'USAGE : la section Image restait en haut du panneau droit après un clic hors de
     // la Planche, au-dessus du Manuel. Elle n'était masquée que sur le chemin « Case SANS image »,
     // pas sur ceux où plus rien n'est sélectionné. Elle appartient à la même famille que Sol et
@@ -1159,3 +1174,34 @@ export function closeRightPanelMenu(){
   drawCurrentPage();
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA SECTION LUMIÈRE : UN SEUL ENDROIT QUI L'AFFICHE (#414d)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ IL VIT ICI ET NON DANS events.js, ET CE N'EST PAS UN CHOIX DE RANGEMENT. C'est le panneau
+ * latéral qui sait QUAND la sélection change ; events.js importe déjà sidebar.js, et l'inverse
+ * ferait un cycle d'imports (cf. docs/en/architecture.md).
+ *
+ * ⚠️ UN SEUL ENDROIT REMPLIT LA SECTION. Sans cette règle, chaque écouteur finirait par recopier
+ * l'affichage à sa façon, et les quatre états divergeraient les uns des autres — le genre de défaut
+ * qui ne se voit qu'en enchaînant les gestes dans un ordre inhabituel.
+ *
+ * L'affichage progressif est ici, pas dans le CSS : décoché, tout le corps disparaît ; en Jour ou
+ * en Nuit, la couleur et l'intensité disparaissent, parce qu'elles montreraient des valeurs qu'on
+ * ne peut pas changer, ce qui se lit comme une panne.
+ */
+export function rafraichirSectionLumiere(){
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'panel') return;
+  const l = lumiereDeCase3D(cible);
+  sideLightToggle.checked = l.active;
+  sideLightBody.style.display = l.active ? 'block' : 'none';
+  sideLightCustom.style.display = (l.active && l.mode === 'perso') ? 'block' : 'none';
+  sideLightModeSelect.value = l.mode;
+  sideLightColorInput.value = l.couleur;
+  const pourcent = Math.round(l.intensite * 100);
+  sideLightIntensityRange.value = String(pourcent);
+  // L'unité se traduit, comme celle du curseur de mémoire de la Configuration.
+  sideLightIntensityValue.textContent = `${pourcent} %`;
+}

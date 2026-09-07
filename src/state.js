@@ -268,6 +268,11 @@ export const S = {
   // cran nommé : la valeur se compare à des octets mesurés, et un jour où le coût d'une Planche
   // changera, « moyen » aurait voulu dire autre chose sans que personne ne s'en aperçoive.
   appCacheMo:              300,
+  // Un seul instantané d'annulation par GESTE sur les deux réglages continus de la Lumière : un
+  // sélecteur de couleur et un curseur émettent en continu, et empiler une annulation par nuance
+  // survolée noierait l'historique de 50 actions (#414d).
+  sideLightColorSnapshotTaken:     false,
+  sideLightIntensitySnapshotTaken: false,
   appLang:                 'en',
   exportShowPanelBadges:       true,
   exportShowPanelDescriptions: true,

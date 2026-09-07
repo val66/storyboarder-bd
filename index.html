@@ -252,6 +252,50 @@
       <h2>Sol</h2>
       <div id="sideGroundGrid" class="sol-ground-grid"></div>
     </div>
+    <!-- Éclairage de la Case (#414d). Il SUIT le Sol et précède les Éléments : les trois décrivent
+         la scène, du fond vers ce qu'elle contient, et la lumière appartient au décor plus qu'aux
+         objets qu'elle éclaire.
+
+         ⚠️ LA CASE À COCHER DIT « ÉCLAIRAGE PERSONNALISÉ », PAS « LUMIÈRE ». Décocher ne fait pas
+         le noir, ça rend l'éclairage du style graphique, celui de toujours. Le mot « lumière » seul
+         laisserait croire à une extinction, et on décocherait en s'attendant à l'obscurité.
+         Le noir complet s'obtient en Personnalisé à intensité nulle. -->
+    <div id="sideLightSection" class="side-section" style="display:none;">
+      <h2 id="sideLightTitle">Lumière</h2>
+      <label id="sideLightToggleWrap" class="side-bulle-tail">
+        <input type="checkbox" id="sideLightToggle"> Éclairage personnalisé
+      </label>
+      <div id="sideLightBody" style="display:none;">
+        <div class="tome-format">
+          <label id="sideLightModeLabel">Mode</label>
+          <select id="sideLightModeSelect">
+            <option value="jour">Jour</option>
+            <option value="nuit">Nuit</option>
+            <option value="perso">Personnalisé</option>
+          </select>
+        </div>
+        <!-- Couleur et intensité ne paraissent qu'en Personnalisé : sous Jour ou Nuit elles
+             afficheraient des valeurs qu'on ne peut pas changer, ce qui se lit comme une panne.
+             Le dôme viendra ici même en #414e. -->
+        <div id="sideLightCustom" style="display:none;">
+          <div class="tome-format side-border-color">
+            <label id="sideLightColorLabel">Couleur</label>
+            <input type="color" id="sideLightColorInput" value="#FFF4E5">
+          </div>
+          <div class="tome-format">
+            <label id="sideLightIntensityLabel">Intensité</label>
+            <!-- `--valeur-largeur` réduit : l'afficheur n'a jamais plus large que « 100 % » à
+                 montrer, et le panneau latéral est étroit. -->
+            <div class="curseur-gradue" style="--valeur-largeur:44px;">
+              <div class="curseur-gradue-ligne">
+                <input type="range" id="sideLightIntensityRange" min="0" max="100" step="5" value="100">
+                <span id="sideLightIntensityValue">100 %</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="sidePersonasSection" class="side-section" style="display:none;">
       <h2 id="sidePersonasTitle">Éléments</h2>
       <div id="sidePersonas" class="side-persos"></div>

@@ -40,6 +40,7 @@ import {
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
+import { definirLumiereDeCase3D } from './lighting-3d.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -130,7 +131,7 @@ import {
   getRoomConnectedComponents, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
   refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
 
-  manuelEstAffiche,
+  manuelEstAffiche, rafraichirSectionLumiere,
 } from './sidebar.js';
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -6622,6 +6623,10 @@ const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue')
 const pageMenuCloseBtn = document.getElementById('pageMenuCloseBtn');
 const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
+const sideLightToggle = document.getElementById('sideLightToggle');
+const sideLightModeSelect = document.getElementById('sideLightModeSelect');
+const sideLightColorInput = document.getElementById('sideLightColorInput');
+const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
 const sideBorderColorWrap = document.getElementById('sideBorderColorWrap');
 const sideBorderColorInput = document.getElementById('sideBorderColorInput');
 const sideBorderWidthWrap = document.getElementById('sideBorderWidthWrap');
@@ -7063,6 +7068,37 @@ sideBubbleTailToggle.addEventListener('change', () => {
   S.sideDescTarget.tailVisible = sideBubbleTailToggle.checked;
   drawCurrentPage();
 });
+
+// ⚠️ `snapshot()` N'EST PRIS QUE SI QUELQUE CHOSE CHANGE VRAIMENT. `definirLumiereDeCase3D` rend
+// `false` sur un réglage réécrit à l'identique : empiler une annulation pour un geste sans effet
+// obligerait à appuyer deux fois sur Ctrl+Z pour défaire un seul changement.
+function reglerLumiere(patch, avecSnapshot = true){
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'panel') return;
+  if (avecSnapshot) snapshot();
+  if (!definirLumiereDeCase3D(cible, patch)) return;
+  rafraichirSectionLumiere();
+  // La signature de Case porte l'éclairage (#414c), donc `drawCurrentPage` suffit à redessiner :
+  // pas besoin de vider le cache à la main, et le vider ferait re-rendre les Cases voisines pour
+  // rien, ce que #411 vient de mesurer.
+  drawCurrentPage();
+}
+
+sideLightToggle.addEventListener('change', () => reglerLumiere({ active: sideLightToggle.checked }));
+sideLightModeSelect.addEventListener('change', () => reglerLumiere({ mode: sideLightModeSelect.value }));
+sideLightColorInput.addEventListener('input', () => {
+  // Un seul `snapshot` pour tout le geste : un sélecteur de couleur émet en continu, et empiler une
+  // annulation par nuance survolée noierait l'historique de 50 actions.
+  if (!S.sideLightColorSnapshotTaken) { snapshot(); S.sideLightColorSnapshotTaken = true; }
+  reglerLumiere({ couleur: sideLightColorInput.value }, false);
+});
+sideLightColorInput.addEventListener('change', () => { S.sideLightColorSnapshotTaken = false; });
+sideLightIntensityRange.addEventListener('input', () => {
+  // Même raison que pour la couleur : `input` suit le pouce.
+  if (!S.sideLightIntensitySnapshotTaken) { snapshot(); S.sideLightIntensitySnapshotTaken = true; }
+  reglerLumiere({ intensite: Number(sideLightIntensityRange.value) / 100 }, false);
+});
+sideLightIntensityRange.addEventListener('change', () => { S.sideLightIntensitySnapshotTaken = false; });
 
 // "Border" section of the Panel menu (cf. o.borderVisible/o.borderColor), per user request.
 sideBorderToggle.addEventListener('change', () => {
