@@ -1687,28 +1687,119 @@ function computePanelSceneSignature3D(panel, page, styleKey){
  * On en reconstruit donc UN par frame. Le temps total ne bouge pas, mais la main revient entre
  * chaque, et les Cases se remplissent l'une après l'autre au lieu de geler une seconde.
  *
- * ⚠️ UN, ET C'EST UN CHOIX, PAS UNE MESURE. C'est la valeur qui minimise le plus long blocage, ce
- * qui est exactement ce qu'on cherche ici ; deux iraient deux fois plus vite au prix de blocages
- * deux fois plus longs. Si l'usage montre que le remplissage traîne, ce chiffre se change avec une
- * raison.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ET POURQUOI CE N'EST PLUS « UN », MAIS UNE DURÉE (#411e)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Le texte ci-dessus disait lui-même : « UN est un choix, pas une mesure ; si l'usage montre que le
+ * remplissage traîne, ce chiffre se change avec une raison ». L'usage l'a montré, et voici la
+ * raison, mesurée sur un Projet réel (cf. docs/en/rendering-performance.md, quatrième campagne).
+ *
+ *   Remplissage médian après un changement de Planche : 332 ms, sur 8 frames.
+ *   Rendu 3D médian d'une Case : 13 ms. Le reste de la frame (canevas, dessin 2D, panneau
+ *   latéral) : 2,1 ms en moyenne, mesuré et non déduit.
+ *
+ * Huit frames pour 8 × 15 ms de travail : les deux tiers du remplissage sont de l'ATTENTE ENTRE LES
+ * FRAMES, pas du calcul. Le nombre de frames coûte plus cher que ce qu'on y fait.
+ *
+ * ⚠️ LE DÉFAUT DE « UN » EST D'ÊTRE UN COMPTE, ET UN COMPTE EST AVEUGLE AU COÛT. Une Case à 13 ms et
+ * une Case à 296 ms (les deux existent, mesurées dans le même Projet) consomment le même budget. Un
+ * budget en TEMPS laisse les Cases bon marché se grouper et laisse seule celle qui est chère.
+ *
+ * ⚠️ ET IL NE PEUT PAS EMPIRER LE PIRE CAS. Le budget décide seulement de DÉMARRER un rendu de plus,
+ * jamais d'interrompre celui qui est en cours. Le plus long blocage reste donc celui d'une seule
+ * Case, exactement comme avec « un par frame ». C'est la propriété qui rend le changement sûr.
+ *
+ * ⚠️ LA DURÉE EST MESURÉE SUR L'ÉCRAN DE L'UTILISATEUR, pas écrite en dur. Une frame vaut 16,7 ms en
+ * 60 Hz et 8,3 ms en 120 Hz : figer 16,7 ferait tenir deux Cases là où l'écran n'en montre qu'une.
+ * Ce que la machine met dans ce budget, en revanche, ne nous regarde pas : sur un PC rapide il y
+ * rentre trois Cases, sur un PC lent une seule, et on retombe alors exactement sur l'ancien
+ * comportement. Le budget dit ce qu'on PROMET, la machine décide de ce que ça représente.
  *
  * ⚠️ ET LE BUDGET EST INFINI PAR DÉFAUT. L'export d'une Planche doit produire une image COMPLÈTE :
  * une Case laissée vide parce que le budget était épuisé serait un défaut bien pire que le gel
  * qu'on corrige. Seul le dessin interactif le limite, en le déclarant frame par frame.
  */
-const RENDUS_3D_PAR_FRAME = 1;
-let _budgetRendus3D = Infinity;
+
+// Bornes de la cadence retenue, et elles ne sont pas choisies au hasard : 4 ms est la période d'un
+// écran 240 Hz, la plus rapide qui existe chez un particulier, 33 ms celle d'un 30 Hz. Elles
+// existent parce que la MESURE peut mentir : `requestAnimationFrame` est bridé à ~1 Hz quand la
+// fenêtre passe en arrière-plan, et une période de 1000 ms ferait tout reconstruire d'un bloc, soit
+// précisément le gel de 986 ms que #405d a corrigé.
+export const PERIODE_FRAME_MIN_MS = 4, PERIODE_FRAME_MAX_MS = 33;
+export const PERIODE_FRAME_REPLI_MS = 1000 / 60;
+
+/**
+ * La période d'affichage retenue à partir d'écarts observés. Fonction PURE, donc testable.
+ *
+ * LE MINIMUM, ET NON LA MOYENNE. Un écart entre deux frames ne peut qu'être TROP LONG : il l'est dès
+ * qu'une frame est manquée, ce qui arrive précisément quand l'application travaille, c'est-à-dire
+ * pendant la mesure. Il ne peut jamais être trop court. Le minimum est donc l'estimation la moins
+ * polluée de la vraie période, là où une moyenne intègre tous les ratés.
+ */
+export function periodeFrameRetenue3D(ecarts){
+  const valides = (ecarts || []).filter(e => Number.isFinite(e) && e > 0);
+  if (!valides.length) return PERIODE_FRAME_REPLI_MS;
+  return clamp(Math.min(...valides), PERIODE_FRAME_MIN_MS, PERIODE_FRAME_MAX_MS);
+}
+
+/**
+ * Peut-on démarrer un rendu de plus dans cette frame ? Fonction PURE, donc testable.
+ *
+ * ⚠️ LE PREMIER RENDU PASSE TOUJOURS, ET C'EST UNE PROTECTION, PAS UNE FAVEUR. Le budget est déjà
+ * entamé quand on arrive ici : le dessin 2D de la Planche a eu lieu avant. Sur une Planche lourde il
+ * peut à lui seul dépasser la période d'affichage, et sans cette garde AUCUNE Case ne se rendrait
+ * jamais. `drawCurrentPage` redemanderait alors un dessin à l'infini, en boucle, sans jamais
+ * progresser : un gel permanent au lieu d'un gel d'une seconde.
+ */
+export function budgetFrameEpuise3D(ecouleMs, budgetMs, rendusFaits){
+  if (rendusFaits <= 0) return false;
+  return ecouleMs >= budgetMs;
+}
+
+let _periodeFrameMs = PERIODE_FRAME_REPLI_MS;
+let _cadenceMesuree = false;
+let _frameLimitee = false;
+let _frameT0 = 0;
+let _rendusDeLaFrame = 0;
 let _rendusDifferes3D = false;
+
+// La cadence se mesure UNE FOIS, à la première frame limitée, et pas à l'import : au démarrage la
+// fenêtre peut n'être pas encore affichée, et les premiers écarts ne voudraient rien dire.
+function mesurerCadence3D(){
+  if (_cadenceMesuree || typeof requestAnimationFrame !== 'function') return;
+  _cadenceMesuree = true;
+  const ecarts = [];
+  let precedent = 0, tics = 0;
+  const tic = () => {
+    // ⚠️ L'HORLOGE EST LUE ICI, ET NON PRISE DANS L'ARGUMENT DE `requestAnimationFrame`. Un
+    // navigateur passe bien un horodatage, mais rien ne l'oblige : le stub DOM des tests appelle le
+    // callback SANS argument. La première version lisait cet argument, obtenait `undefined`, et
+    // n'accumulait donc jamais d'écart.
+    const t = performance.now();
+    if (precedent) ecarts.push(t - precedent);
+    precedent = t;
+    // ⚠️ ET LA BORNE PORTE SUR LE NOMBRE D'APPELS, PAS SUR LE NOMBRE D'ÉCARTS RETENUS. Bornée sur
+    // les écarts, la boucle ne s'arrêtait jamais dès qu'aucun n'était retenu, et se rechaînait
+    // indéfiniment. Attrapé par la suite de tests, qui a cessé de se terminer.
+    if (++tics < 6) requestAnimationFrame(tic);
+    else _periodeFrameMs = periodeFrameRetenue3D(ecarts);
+  };
+  requestAnimationFrame(tic);
+}
 
 /** Ouvre une frame interactive avec un budget fini. L'export n'appelle pas ceci, et garde l'infini. */
 export function commencerFrameLimitee3D(){
-  _budgetRendus3D = RENDUS_3D_PAR_FRAME;
+  mesurerCadence3D();
+  _frameLimitee = true;
+  _frameT0 = performance.now();
+  _rendusDeLaFrame = 0;
   _rendusDifferes3D = false;
 }
 /** Des Cases ont-elles été remises à plus tard ? L'appelant redemande alors un dessin. */
 export function resteDesRendus3D(){ return _rendusDifferes3D; }
 /** Rend le budget infini : tout ce qui n'est pas le dessin interactif doit rendre complètement. */
-export function terminerFrameLimitee3D(){ _budgetRendus3D = Infinity; }
+export function terminerFrameLimitee3D(){ _frameLimitee = false; }
 
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
@@ -1718,8 +1809,11 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
   // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
   // ses modèles. Dans les deux cas, la main revient à l'utilisateur.
-  if (_budgetRendus3D <= 0) { _rendusDifferes3D = true; return cached || null; }
-  _budgetRendus3D--;
+  if (_frameLimitee && budgetFrameEpuise3D(performance.now() - _frameT0, _periodeFrameMs, _rendusDeLaFrame)) {
+    _rendusDifferes3D = true;
+    return cached || null;
+  }
+  _rendusDeLaFrame++;
   return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
 }
 
