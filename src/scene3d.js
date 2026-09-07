@@ -23,6 +23,9 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
+// L'éclairage réglé sur une Case : la DÉCISION vit dans lighting-3d.js, pure et testée ; ici on ne
+// fait que l'appliquer. Cf. docs/en/lighting.md.
+import { resoudreEclairage3D, lumiereDeCase3D } from './lighting-3d.js';
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -36,7 +39,7 @@ import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 import {
   applyGroundType,
-  applyStyle3DLighting,
+  applyStyle3DLighting, appliquerEclairageDeCase3D,
   applyStyleCanvasFilter3D,
   buildGroundTexture,
   buildWallRig3D,
@@ -1753,6 +1756,13 @@ function computePanelSceneSignature3D(panel, page, styleKey){
   // de remplacement, et le modèle chargé n'apparaîtrait qu'au prochain déplacement, « comme par
   // magie », sans rapport visible avec l'import.
   const modelPart = modelCacheSignature(collectModelFiles(elements));
+  // ⚠️ L'ÉCLAIRAGE ENTRE DANS LA SIGNATURE, SANS QUOI LE RÉGLAGE PARAÎTRAIT SANS EFFET. Une Case
+  // garde son image tant que sa signature ne change pas : un curseur qui ne figure pas ici bougerait
+  // sans rien redessiner. La campagne #411 a payé cet oubli d'un relevé entier.
+  //
+  // On y met le résultat RÉSOLU et non le champ brut : deux réglages qui produisent le même
+  // éclairage (le mode Jour, ou les mêmes valeurs saisies à la main) doivent garder la même image.
+  const lumierePart = JSON.stringify(resoudreEclairage3D(lumiereDeCase3D(panel)));
   const camPart = JSON.stringify({
     style: (styleKey && styleKey.key) || styleKey,
     camDist: panel.camDist, camRotX: panel.camRotX, camRotY: panel.camRotY,
@@ -1779,7 +1789,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id)
       .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world }))
   );
-  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart;
+  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart;
 }
 // Builds/replaces each rig (persona, objet3d, combined Wall+Wall-Openings) owned by this panel at its true
 // 3D position (see ensureElementWorldPos3D/ensureElementUnits3D), hides the rest of the
@@ -1987,7 +1997,11 @@ export function hauteurDeboutModele3D(entry, boxFn){
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
   const style = resolveStyle3D(styleKey);
+  // ⚠️ LE STYLE D'ABORD, LA CASE ENSUITE, ET DANS CET ORDRE. La scène Three.js est PARTAGÉE : les
+  // trois lumières servent à toutes les Cases l'une après l'autre. Reposer les valeurs du style à
+  // chaque rendu est ce qui empêche l'éclairage d'une Case de fuir sur la suivante, qui n'en a pas.
   applyStyle3DLighting(style);
+  appliquerEclairageDeCase3D(resoudreEclairage3D(lumiereDeCase3D(panel)));
   const elements = panelOwnedElements3D(panel, page);
   personaRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   objectRigCache3D.forEach(e => { e.figureGroup.visible = false; });

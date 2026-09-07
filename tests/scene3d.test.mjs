@@ -12,6 +12,7 @@ import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   panelDepthToDistance3D,
@@ -1744,3 +1745,64 @@ describe('scene3d : projections derrière la caméra', () => {
  * Z3 était l'ancien : la garde ne se traverse pas sous Node, faute de caméra. La mutation l'a
  * montré en ne faisant échouer AUCUN test, d'où la lecture de source, qui vaut mieux que rien.
  */
+
+describe('#414c : l\'éclairage d\'une Case, posé au rendu et entré dans la signature', () => {
+  /**
+   * ⚠️ CE BLOC ÉPINGLE DU TEXTE, ET LA RAISON EST LA MÊME QUE POUR LE BLOC PRÉCÉDENT : poser des
+   * lumières dans une scène Three.js et rendre une image ne se traversent pas sous Node, faute de
+   * WebGL. La DÉCISION, elle, est testée pour de bon dans tests/lighting-3d.test.mjs, sur des
+   * angles et des couleurs. Ne reste ici que le câblage, dont trois points peuvent casser en
+   * silence — c'est-à-dire sans qu'aucune image soit fausse, seulement périmée ou contaminée.
+   */
+  const SCENE_SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+  const RIG_SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+
+  test('RÉGRESSION : l\'éclairage entre dans la SIGNATURE de la Case', () => {
+    // ⚠️ L'OUBLI QUE #411 A PAYÉ D'UN RELEVÉ ENTIER. Une Case garde son image tant que sa signature
+    // ne change pas : un réglage absent d'ici bougerait sans rien redessiner, et le curseur
+    // paraîtrait inerte. Rien d'autre ne le signalerait, l'image restant valide, juste périmée.
+    const i = SCENE_SRC.indexOf('function computePanelSceneSignature3D');
+    assert.ok(i > 0, 'la signature de Case a disparu');
+    const corps = SCENE_SRC.slice(i, SCENE_SRC.indexOf('\n}', i));
+    assert.match(corps, /resoudreEclairage3D\(lumiereDeCase3D\(panel\)\)/,
+      'l\'éclairage ne figure plus dans la signature');
+    assert.match(corps, /return .*lumierePart/, 'la part d\'éclairage est calculée mais pas rendue');
+  });
+
+  test('RÉGRESSION : le style est reposé AVANT l\'éclairage de la Case', () => {
+    // ⚠️ LA SCÈNE THREE.JS EST PARTAGÉE. Les trois lumières servent à toutes les Cases l'une après
+    // l'autre : sans la remise aux valeurs du style avant chaque rendu, l'éclairage d'une Case
+    // fuirait sur la suivante, qui n'en a pas. Le défaut ne se verrait qu'en CHANGEANT de Case,
+    // c'est-à-dire loin de la Case qu'on vient de régler.
+    const i = SCENE_SRC.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE_SRC.slice(i, i + 700);
+    const style = corps.indexOf('applyStyle3DLighting(style)');
+    const case3d = corps.indexOf('appliquerEclairageDeCase3D(');
+    assert.ok(style > 0 && case3d > 0, 'un des deux appels a disparu du rendu de Case');
+    assert.ok(style < case3d, 'l\'éclairage de la Case est posé AVANT le style : il sera écrasé');
+  });
+
+  test('RÉGRESSION : un SEUL point d\'application, donc l\'export ne peut pas y échapper', () => {
+    // La garantie est structurelle et non déclarative : l'éclairage est posé dans le rendu de Case
+    // lui-même, par lequel TOUT passe, écran comme export. Un second appel ailleurs signifierait
+    // qu'un chemin a été traité à part, et un chemin traité à part finit par diverger.
+    const appels = (SCENE_SRC.match(/appliquerEclairageDeCase3D\(/g) || []).length;
+    assert.equal(appels, 1, `${appels} points d'application au lieu d'un seul`);
+    assert.ok(!/appliquerEclairageDeCase3D/.test(
+      SCENE_SRC.slice(SCENE_SRC.indexOf('export function renderModelForEditor3D'))),
+    'l\'éditeur de modèle reçoit l\'éclairage d\'une Case : un aperçu de nuit serait inutilisable');
+  });
+
+  test('RÉGRESSION : le remplissage du style n\'est pas touché', () => {
+    // Il appartient au style graphique, comme les aplats et les contours. Une lumière de Case n'a
+    // pas à décider de l'identité graphique du Tome.
+    const i = RIG_SRC.indexOf('export function appliquerEclairageDeCase3D');
+    assert.ok(i > 0, 'l\'application de l\'éclairage a disparu');
+    const corps = RIG_SRC.slice(i, RIG_SRC.indexOf('\n}', i));
+    assert.ok(!/personaFillLight3D/.test(corps), 'la lumière de remplissage du style est écrasée');
+    assert.match(corps, /if \(!personaAmbientLight3D \|\| !eclairage \|\| !eclairage\.actif\) return;/,
+      'un éclairage inactif ne doit RIEN poser : c\'est ce qui laisse les Projets existants intacts');
+  });
+});
