@@ -531,6 +531,38 @@ describe('Le réglage est branché de bout en bout', () => {
       'le libellé n\'est pas traduit dans les deux langues');
   });
 
+  test('#411l : le plafond du cache est branché de bout en bout', () => {
+    assert.ok(EVENTS.includes("setSetting('cacheMo', S.appCacheMo)"),
+      'le réglage n\'est pas écrit : il serait perdu au redémarrage');
+    assert.ok(EVENTS.includes('cacheMoRange.value = String(S.appCacheMo)'),
+      'l\'ouverture de la modale ne reflète pas la valeur réelle');
+    assert.match(HTML, /id="cacheMoRange"/);
+    assert.match(HTML, /id="cacheMoValue"/);
+    const i18n = readFileSync(join(RACINE, 'src', 'i18n.js'), 'utf8');
+    assert.ok(i18n.includes("'#cacheMoLabel', 'Memory for already-seen pages'"),
+      'le libellé du curseur n\'est pas traduit dans les deux langues');
+  });
+
+  test('RÉGRESSION : ZÉRO se relit comme une valeur, pas comme un réglage absent (#411l)', () => {
+    // ⚠️ LE PIÈGE EXACT DE CE RÉGLAGE. Zéro est la borne basse du curseur et il VEUT dire quelque
+    // chose : ne garder que la Planche affichée. Un `if (settings.cacheMo)` le confondrait avec
+    // « pas de réglage enregistré » et rendrait 300 Mo à quelqu'un qui a demandé zéro, sans que
+    // rien à l'écran ne le contredise puisque le curseur, lui, afficherait la valeur relue.
+    assert.ok(EVENTS.includes("typeof settings.cacheMo === 'number'"),
+      'la relecture n\'exige pas un nombre : zéro serait traité comme une absence');
+    assert.ok(!/if \(settings && settings\.cacheMo\)/.test(EVENTS),
+      'le test de vérité est revenu : zéro ne se relira plus');
+  });
+
+  test('RÉGRESSION : baisser le plafond libère TOUT DE SUITE (#411l)', () => {
+    // Sans cet élagage immédiat, le réglage ne ferait rien de visible avant le prochain changement
+    // de Planche : on le croirait sans effet, et on le baisserait encore.
+    const i = EVENTS.indexOf("cacheMoRange.addEventListener('input'");
+    assert.ok(i > 0, 'le curseur n\'écoute plus rien');
+    assert.match(EVENTS.slice(i, i + 600), /elaguerCacheDeCases3D\(\)/,
+      'baisser le plafond ne libère plus la mémoire promise');
+  });
+
   test('RÉGRESSION : le champ persisté est AJOUTÉ, `theme` n\'est pas renommé', () => {
     // La règle du dépôt : on n'renomme jamais une donnée persistée, on ajoute. Un settings.json
     // d'avant #409c se relit donc tel quel, simplement sans contraste.

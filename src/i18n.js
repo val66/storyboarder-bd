@@ -353,6 +353,12 @@ export const I18N_MODALS = [
   ['#uiScaleSelect option[value="grande"]', 'Large', 'Grande'],
   ['#uiScaleSelect option[value="tres-grande"]', 'Extra large', 'Très grande'],
   ['#contrastCheckboxLabel', 'Increased contrast', 'Contraste renforcé'],
+  // Le curseur de mémoire (#411l). Son libellé porte un id PROPRE plutôt que de passer par
+  // I18N_PREV_LABEL : le curseur est enveloppé dans une rangée avec son afficheur de valeur, donc
+  // le libellé n'est pas son `previousElementSibling`, il est celui de la rangée.
+  ['#cacheMoLabel', 'Memory for already-seen pages', 'Mémoire des planches déjà vues'],
+  ['#cacheMoRange', null],   // sa valeur est écrite par le code, unité comprise
+  ['#cacheMoValue', null],
   ['#exportShowPanelBadgesCheckbox', null], // handled via trailing helper below
   ['#exportShowPanelDescriptionsCheckbox', null],
   ['#settingsModalClose', 'Close', 'Fermer'],

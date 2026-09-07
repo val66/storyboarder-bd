@@ -108,7 +108,7 @@ import {
   projectElementCenterToCanvas3D, setElementWorldPos3D, smoothTracéPath3D, tracéPointAtFrac3D,
   wallOpeningWorldPosOnTracé3D, startCamSmoothing, storeElementWorldCoords, useObjectBoxFormat3D,
   distanceCameraPourPremierElement3D, estPremierElement3DdeLaCase,
-  useObjectFormat3D, worldFloorToScreen, worldPointToPageXY3D, panelSceneCache3D, tracéMeshCache3D,
+  useObjectFormat3D, worldFloorToScreen, worldPointToPageXY3D, panelSceneCache3D, elaguerCacheDeCases3D, tracéMeshCache3D,
   getRoomScreenBBoxFrom2DProjections, getBuildingJunctionCorners,
 } from './scene3d.js';
 import {
@@ -7219,6 +7219,8 @@ const projectsDirDisplay = document.getElementById('projectsDirDisplay');
 const themeSelect = document.getElementById('themeSelect');
 const contrastCheckbox = document.getElementById('contrastCheckbox');
 const uiScaleSelect = document.getElementById('uiScaleSelect');
+const cacheMoRange = document.getElementById('cacheMoRange');
+const cacheMoValue = document.getElementById('cacheMoValue');
 const languageSelect = document.getElementById('languageSelect');
 const exportShowPanelBadgesCheckbox = document.getElementById('exportShowPanelBadgesCheckbox');
 const exportShowPanelDescriptionsCheckbox = document.getElementById('exportShowPanelDescriptionsCheckbox');
@@ -7291,6 +7293,13 @@ function appliquerEchelleUI(cran = S.appUiScale){
   document.documentElement.style.setProperty('--echelle-ui', String(facteurEchelleUI3D(cran)));
 }
 
+// L'afficheur du curseur de mémoire (#411l). Un curseur sans sa valeur ne dit pas ce qu'il règle,
+// et l'unité se traduit : « Mo » en français, « MB » en anglais. Écrit par le code, donc, et pas
+// dans index.html, ce qui l'exclut aussi de la table de traduction du DOM.
+function rafraichirValeurCacheMo(){
+  cacheMoValue.textContent = `${S.appCacheMo} ${tr('MB', 'Mo')}`;
+}
+
 function applyTheme(theme, contraste = S.appContrast){
   const classes = classesDeTheme3D(theme, contraste);
   Object.entries(classes).forEach(([nom, actif]) => document.body.classList.toggle(nom, actif));
@@ -7311,6 +7320,8 @@ function openSettingsModal(){
   themeSelect.value = S.appTheme;
   contrastCheckbox.checked = S.appContrast;
   uiScaleSelect.value = S.appUiScale;
+  cacheMoRange.value = String(S.appCacheMo);
+  rafraichirValeurCacheMo();
   languageSelect.value = S.appLang;
   exportShowPanelBadgesCheckbox.checked = S.exportShowPanelBadges;
   exportShowPanelDescriptionsCheckbox.checked = S.exportShowPanelDescriptions;
@@ -7402,6 +7413,18 @@ contrastCheckbox.addEventListener('change', () => {
 // Immediately toggles the UI language and persists it, per user request. applyI18n() updates all
 // text already displayed on screen (open menus, the Settings modal itself...) without requiring a
 // restart.
+// `input` et non `change` : la valeur suit le pouce, sinon l'afficheur ne bouge qu'au relâchement
+// et le curseur paraît cassé pendant tout le geste. L'écriture du réglage suit le même événement,
+// elle ne coûte qu'un message vers le processus principal.
+cacheMoRange.addEventListener('input', () => {
+  S.appCacheMo = Number(cacheMoRange.value);
+  rafraichirValeurCacheMo();
+  if (hasElectronAPI()) window.storyboarderAPI.setSetting('cacheMo', S.appCacheMo);
+  // Baisser le plafond doit LIBÉRER tout de suite, sans quoi le réglage ne ferait rien de visible
+  // avant le prochain changement de Planche, et on le croirait sans effet.
+  elaguerCacheDeCases3D();
+});
+
 languageSelect.addEventListener('change', () => {
   S.appLang = languageSelect.value;
   applyI18n(S.appLang);
@@ -7411,6 +7434,7 @@ languageSelect.addEventListener('change', () => {
   // resterait donc en français sous une interface repassée en anglais, sans que rien à l'écran
   // n'indique qu'il faut la refermer pour en sortir.
   rafraichirManuelOuvert(S.appLang);
+  rafraichirValeurCacheMo();   // l'unité change avec la langue, et la modale est ouverte
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('lang', S.appLang);
 });
 // "Export" section : per user request: these two settings are read by exportPage() at export
@@ -7477,6 +7501,12 @@ async function loadAppSettings(){
     }
     // Appliquée AVANT le thème, pour la même raison que le contraste : une interface qui naît en
     // taille normale puis saute au cran choisi clignote au démarrage.
+    // Le plafond du cache d'images (#411l). Un ancien settings.json n'en porte pas : la valeur par
+    // défaut de state.js s'applique alors, et zéro reste une valeur VALIDE qu'il ne faut pas
+    // confondre avec l'absence de réglage — d'où le test de type plutôt qu'un test de vérité.
+    if (settings && typeof settings.cacheMo === 'number' && settings.cacheMo >= 0) {
+      S.appCacheMo = settings.cacheMo;
+    }
     if (settings && settings.uiScale) {
       S.appUiScale = settings.uiScale;
       appliquerEchelleUI(S.appUiScale);

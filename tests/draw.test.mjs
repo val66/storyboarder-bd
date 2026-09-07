@@ -37,7 +37,8 @@ import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
   budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME,
   octetsEntreeCache3D, idsCacheAGarder3D, elaguerCacheDeCases3D, noterPlancheAffichee3D,
-  oublierRecenceDesPlanches3D, panelSceneCache3D, PLAFOND_CACHE_CASES_OCTETS } from '../src/scene3d.js';
+  oublierRecenceDesPlanches3D, panelSceneCache3D, plafondCacheOctets3D,
+  PLAFOND_CACHE_MO_DEFAUT, PLAFOND_CACHE_MO_MAX } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1942,21 +1943,51 @@ describe('#411k : le cache garde les dernières Planches, sous un plafond', () =
     oublierRecenceDesPlanches3D(); panelSceneCache3D.clear();
   });
 
-  test('le plafond vaut 200 Mo, et c\'est une DÉCISION, pas une mesure', () => {
+  test('le plafond est un RÉGLAGE, et sa valeur par défaut achète trois Planches', () => {
     // Aucune mesure ne dit combien de mémoire une application a le droit de prendre : le chiffre
-    // est une décision. Ce qui est mesuré, c'est ce qu'il ACHÈTE, et il faut le dire exactement.
+    // est une décision. Ce qui est mesuré, c'est ce qu'il ACHÈTE.
     //
-    // ⚠️ 200 Mo NE TIENT PAS TROIS PLANCHES DANS TOUS LES CAS, et c'est ce test qui me l'a appris :
-    // j'avais d'abord écrit `>= 3 × 67 Mo`, il est passé au rouge à 201 contre 200. Une Planche
-    // mesurée coûte 36 à 67 Mo selon sa charge ; trois Planches ORDINAIRES tiennent, trois Planches
-    // au maximum mesuré non, il n'en reste alors que deux. La rotation à trois signalée à l'usage
-    // est donc couverte au coût courant, pas garantie au pire cas.
-    assert.equal(PLAFOND_CACHE_CASES_OCTETS, 200 * 1024 * 1024);
-    assert.ok(PLAFOND_CACHE_CASES_OCTETS >= 3 * 50 * 1024 * 1024,
-      'le plafond ne tient plus trois Planches au coût médian mesuré');
-    assert.ok(PLAFOND_CACHE_CASES_OCTETS >= 2 * 67 * 1024 * 1024,
-      'le plafond ne tient même plus deux Planches au pire coût mesuré : le remède ne sert plus');
+    // ⚠️ 200 Mo AVAIT ÉTÉ ESSAYÉ ET S'EST RETROUVÉ SATURÉ : 195,7 Mo retenus de médiane ET de
+    // maximum, pour trois Planches à ~65 Mo qui tenaient tout juste, donc 28 Cases évincées et 34
+    // re-rendues à chaque tour. 300 Mo laissent la marge d'une Planche.
+    assert.equal(PLAFOND_CACHE_MO_DEFAUT, 300);
+    assert.ok(PLAFOND_CACHE_MO_DEFAUT >= 3 * 65,
+      'la valeur par défaut ne tient plus les trois Planches mesurées à 65 Mo');
   });
+
+  test('RÉGRESSION : zéro est une valeur VALIDE, pas une absence de réglage', () => {
+    // À zéro, seule la Planche affichée reste (rang 0, jamais évincé) : c'est exactement le
+    // comportement d'avant la campagne. Confondre zéro et « non réglé » ramènerait 300 Mo à
+    // quelqu'un qui a demandé de ne rien garder.
+    assert.equal(plafondCacheOctets3D(0), 0);
+    const recence = [{ pageId: 'B', ids: ['b'] }, { pageId: 'A', ids: ['a'] }];
+    const garde = idsCacheAGarder3D(recence, new Map([['a', 10], ['b', 10]]), 0);
+    assert.deepEqual([...garde], ['b'], 'à zéro, seule la Planche affichée doit rester');
+  });
+
+  test('une valeur absurde retombe sur le défaut, et le maximum est borné', () => {
+    // `settings.json` est un fichier que rien n'empêche d'éditer à la main.
+    assert.equal(plafondCacheOctets3D(undefined), PLAFOND_CACHE_MO_DEFAUT * 1024 * 1024);
+    assert.equal(plafondCacheOctets3D('beaucoup'), PLAFOND_CACHE_MO_DEFAUT * 1024 * 1024);
+    assert.equal(plafondCacheOctets3D(-50), PLAFOND_CACHE_MO_DEFAUT * 1024 * 1024);
+    assert.equal(plafondCacheOctets3D(99999), PLAFOND_CACHE_MO_MAX * 1024 * 1024);
+  });
+
+  test('le curseur de la modale couvre exactement les crans annoncés', () => {
+    // Le pas et les bornes vivent dans index.html, seule source de vérité du widget. Ce test relie
+    // les deux : un maximum HTML au-delà du plafond du code promettrait une mémoire que le code
+    // refuserait ensuite en silence.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const i = html.indexOf('id="cacheMoRange"');
+    assert.ok(i > 0, 'le curseur de mémoire a disparu de la modale');
+    const balise = html.slice(html.lastIndexOf('<', i), html.indexOf('>', i));
+    assert.match(balise, /min="0"/, 'la borne basse doit rester zéro : c\'est le « ne rien garder »');
+    assert.match(balise, new RegExp(`max="${PLAFOND_CACHE_MO_MAX}"`),
+      'le curseur promet un maximum que le code ne suivrait pas');
+    assert.match(balise, /step="150"/);
+    assert.match(balise, new RegExp(`value="${PLAFOND_CACHE_MO_DEFAUT}"`));
+  });
+
 
   test('RÉGRESSION : le changement de Planche n\'appelle plus clear(), et l\'élagage attend la FIN', () => {
     // Deux régressions en une. Un `clear()` revenu passerait inaperçu : tout resterait juste,

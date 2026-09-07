@@ -902,6 +902,16 @@
       <option value="grande">Grande</option>
       <option value="tres-grande">Très grande</option>
     </select>
+    <!-- Mémoire du cache d'images de Case (#411l). Un curseur et non une liste : la valeur est un
+         NOMBRE de mégaoctets, ordonné, dont les crans n'ont pas de nom naturel. Sa valeur s'affiche
+         à côté, sans quoi un curseur ne dit pas ce qu'il règle.
+         Le zéro à gauche n'est pas une désactivation à part : la Planche affichée reste toujours en
+         cache, donc zéro rend exactement le comportement d'avant ce réglage. -->
+    <label class="modal-field-label" id="cacheMoLabel">Mémoire des planches déjà vues</label>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <input type="range" id="cacheMoRange" min="0" max="900" step="150" value="300" style="flex:1 1 auto;">
+      <span id="cacheMoValue" style="flex:0 0 auto; min-width:72px; text-align:right; font-size:13px; font-variant-numeric:tabular-nums;">300 Mo</span>
+    </div>
     <!-- Section "Langue" (cf. appLang/applyI18n) — sur demande utilisateur : Anglais par défaut, Français
          disponible (langue d'origine de l'application). -->
     <label class="modal-field-label">Langue de l'interface</label>

@@ -891,12 +891,26 @@ export const panelSceneCache3D = new Map();
  * CARRÉ de l'échelle. Un nombre de Planches serait donc prudent sur un écran et ruineux sur un
  * autre, là où un plafond en octets garde d'autant plus de Planches qu'elles sont légères.
  *
- * ⚠️ LES 200 Mo SONT UNE DÉCISION, PAS UNE MESURE, ET C'EST ASSUMÉ. Aucune mesure ne dit combien de
- * mémoire une application a le droit de prendre ; ce qui est mesuré, c'est ce que ce plafond
- * ACHÈTE : 3 à 5 Planches à l'échelle courante, 1 à 2 au pire cas, donc la rotation de trois
- * Planches signalée à l'usage. Le chiffre a été choisi sur ces contreparties-là.
+ * ⚠️ LE PLAFOND EST UN RÉGLAGE, PAS UNE CONSTANTE (#411l), ET C'EST LA MESURE QUI L'A IMPOSÉ. Fixé
+ * à 200 Mo, il s'est retrouvé SATURÉ : 195,7 Mo retenus de médiane ET de maximum, pour trois
+ * Planches à ~65 Mo. Elles tenaient tout juste, donc chaque changement en poussait quelques Cases
+ * dehors, 28 évincées et 34 re-rendues, un ping-pong résiduel. Or ce qu'il faut dépend de choses
+ * qu'aucune constante ne peut connaître : la charge des Planches, leur format, l'échelle de rendu
+ * (l'octet varie comme son CARRÉ) et la mémoire de la machine. C'est donc à l'utilisateur.
+ *
+ * ⚠️ ET ZÉRO EST UNE VALEUR VALIDE, PAS UNE DÉSACTIVATION BANCALE. À zéro, seule la Planche affichée
+ * reste (rang 0, jamais évincé), c'est-à-dire EXACTEMENT le comportement d'avant cette campagne. La
+ * borne basse du réglage rend donc l'ancien fonctionnement, sans code de repli à maintenir à côté.
  */
-export const PLAFOND_CACHE_CASES_OCTETS = 200 * 1024 * 1024;
+export const PLAFOND_CACHE_MO_DEFAUT = 300;
+export const PLAFOND_CACHE_MO_MAX = 900;
+
+/** Le plafond effectif, en octets, lu sur le réglage. Fonction PURE. */
+export function plafondCacheOctets3D(mo){
+  const n = Number(mo);
+  if (!Number.isFinite(n) || n < 0) return PLAFOND_CACHE_MO_DEFAUT * 1024 * 1024;
+  return Math.min(n, PLAFOND_CACHE_MO_MAX) * 1024 * 1024;
+}
 
 // Les Planches vues, la plus récente en tête, avec les Cases qu'elles portent. La liste vit ICI et
 // non dans l'état applicatif : c'est une politique de cache, elle n'est ni persistée ni lue
@@ -929,7 +943,7 @@ export function octetsEntreeCache3D(entree){
  * quand même la moitié de ses Cases en cache, et c'est autant de rendus épargnés. Refuser la
  * Planche entière gaspillerait la place restante pour une pureté qui ne sert personne.
  */
-export function idsCacheAGarder3D(recence, octetsParId, plafond = PLAFOND_CACHE_CASES_OCTETS){
+export function idsCacheAGarder3D(recence, octetsParId, plafond){
   const garde = new Set();
   let total = 0;
   (recence || []).forEach((planche, rang) => {
@@ -955,7 +969,7 @@ export function idsCacheAGarder3D(recence, octetsParId, plafond = PLAFOND_CACHE_
 export function elaguerCacheDeCases3D(){
   const octetsParId = new Map();
   panelSceneCache3D.forEach((entree, id) => octetsParId.set(id, octetsEntreeCache3D(entree)));
-  const garde = idsCacheAGarder3D(_recenceDesPlanches, octetsParId);
+  const garde = idsCacheAGarder3D(_recenceDesPlanches, octetsParId, plafondCacheOctets3D(S.appCacheMo));
   let gardes = 0, evinces = 0, octetsGardes = 0;
   panelSceneCache3D.forEach((entree, id) => {
     if (garde.has(id)) { gardes++; octetsGardes += octetsParId.get(id) || 0; return; }

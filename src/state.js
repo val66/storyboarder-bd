@@ -264,6 +264,10 @@ export const S = {
   // nom du cran, pas le nombre. Un nombre écrit dans settings.json figerait une valeur qu'on ne
   // pourrait plus ajuster sans réécrire les réglages de tout le monde.
   appUiScale:              'normale',
+  // Mémoire allouée aux images de Case déjà rendues, en mégaoctets (#411l). Un NOMBRE et non un
+  // cran nommé : la valeur se compare à des octets mesurés, et un jour où le coût d'une Planche
+  // changera, « moyen » aurait voulu dire autre chose sans que personne ne s'en aperçoive.
+  appCacheMo:              300,
   appLang:                 'en',
   exportShowPanelBadges:       true,
   exportShowPanelDescriptions: true,
