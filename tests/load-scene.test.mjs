@@ -32,6 +32,7 @@ import { getPanelPoints } from '../src/draw.js';
 import { panelPixelToGroundXZ3D } from '../src/scene3d.js';
 import { settleConfirmAction } from '../src/io.js';
 import { PANEL_CAM_DEFAULT_DIST_3D } from '../src/constants.js';
+import { lumiereDeCase3D, definirLumiereDeCase3D, LUMIERE_DEFAUT } from '../src/lighting-3d.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Montage
@@ -473,7 +474,80 @@ describe('Projection au Sol : une entrée malformée est déclarée comme telle'
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. Le garde-fou
+// 8. L'éclairage suit les modèles (#414f)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Chargement d\'une Scène — l\'éclairage est copié, puis les deux vies se séparent', () => {
+  // Une Scène dont le canevas porte un réglage de lumière. Le champ vit sur la CASE de la Scène,
+  // pas sur la Scène : la Planche verrouillée d'une Scène EST une Case (cf. docs/en/lighting.md),
+  // ce qui évite un second format et un second chemin de code.
+  function scèneÉclairée(lumiere, objets = []){
+    const sc = scèneAvec(objets);
+    sc.pages[0].objects.find(o => o.type === 'panel').lumiere = lumiere;
+    return sc;
+  }
+  const NUIT = { mode: 'nuit', azimut: 115, elevation: 24, couleur: '#8FA6E8', intensite: 0.327 };
+
+  test('la Case reçoit l\'éclairage de la Scène', async () => {
+    await loadSceneIntoPanel(scèneÉclairée(NUIT), cible);
+    assert.deepEqual(lumiereDeCase3D(cible), NUIT);
+  });
+
+  test('RÉGRESSION : la copie est PAR VALEUR, pas une référence partagée', async () => {
+    // ⚠️ LE DÉFAUT QUE CE TEST REFUSE, et il ne se verrait pas tout de suite. Une affectation
+    // laisserait les deux objets pointer le même enregistrement : le premier réglage fait ensuite
+    // sur la Case irait aussi modifier la Scène, et toutes les Cases chargées depuis cette Scène
+    // se mettraient à bouger ensemble. Rien ne lèverait.
+    const scène = scèneÉclairée({ ...NUIT });
+    const caseDeLaScène = scène.pages[0].objects.find(o => o.type === 'panel');
+    await loadSceneIntoPanel(scène, cible);
+    assert.notEqual(cible.lumiere, caseDeLaScène.lumiere, 'les deux Cases partagent le même objet');
+
+    // Et l'indépendance se vérifie DANS LES DEUX SENS, parce que c'est ce qui a été décidé.
+    definirLumiereDeCase3D(cible, { intensite: 0.9 });
+    assert.equal(lumiereDeCase3D(caseDeLaScène).intensite, NUIT.intensite,
+      'régler la Case a modifié la Scène');
+    definirLumiereDeCase3D(caseDeLaScène, { intensite: 0.1 });
+    assert.equal(lumiereDeCase3D(cible).intensite, 0.9,
+      'régler la Scène a rattrapé une Case déjà chargée');
+  });
+
+  test('RÉGRESSION : une Scène SANS réglage efface celui de la Case', async () => {
+    // ⚠️ LA BRANCHE QU'ON OUBLIE, et c'est la moitié de la promesse. Une Scène sans champ
+    // `lumiere` s'affiche en Jour. Si la Case visée était en Nuit et qu'on ne touchait à rien,
+    // elle resterait en Nuit alors que la Scène d'où vient tout son contenu est en plein jour :
+    // le contenu aurait changé, l'ambiance non. « Copier l'éclairage » veut aussi dire copier une
+    // ABSENCE de réglage.
+    definirLumiereDeCase3D(cible, NUIT);
+    assert.ok(cible.lumiere, 'le montage n\'a pas posé de lumière à effacer');
+    await loadSceneIntoPanel(scèneAvec([]), cible);
+    assert.equal(cible.lumiere, undefined, 'la lumière de la Case a survécu à la Scène');
+    assert.deepEqual(lumiereDeCase3D(cible), LUMIERE_DEFAUT);
+  });
+
+  test('RÉGRESSION : c\'est un REMPLACEMENT, pas une fusion', async () => {
+    // La Case part d'un réglage Personnalisé dont AUCUNE valeur ne coïncide avec celle de la
+    // Scène. Si le report se faisait par fusion et que la copie devenait un jour partielle, la
+    // Case garderait des restes de son ancienne lumière, mélangés à ceux de la Scène, et
+    // l'ambiance obtenue n'existerait ni d'un côté ni de l'autre.
+    definirLumiereDeCase3D(cible,
+      { mode: 'perso', azimut: 12, elevation: 7, couleur: '#00FF00', intensite: 0.3 });
+    await loadSceneIntoPanel(scèneÉclairée(NUIT), cible);
+    assert.deepEqual(lumiereDeCase3D(cible), NUIT);
+  });
+
+  test('garde-fou : le montage porte VRAIMENT une lumière différente du défaut', async () => {
+    // Sans cet écart, les trois tests ci-dessus compareraient le défaut au défaut et passeraient
+    // quelle que soit la ligne de code qu'on retire.
+    const caseDeLaScène = scèneÉclairée(NUIT).pages[0].objects.find(o => o.type === 'panel');
+    assert.ok(caseDeLaScène.lumiere, 'la Scène de test n\'a pas de lumière');
+    assert.notDeepEqual(lumiereDeCase3D(caseDeLaScène), LUMIERE_DEFAUT,
+      'la lumière du montage est indiscernable du défaut');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Le garde-fou
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('garde-fou : le montage produit bien ce que les tests croient observer', async () => {
@@ -518,4 +592,17 @@ test('garde-fou : le montage produit bien ce que les tests croient observer', as
  *
  * Règle à retenir : une correction en profondeur, cause + garde-fou, demande un test par couche.
  * Sinon on a deux protections et zéro garantie.
+ *
+ * ── #414f, l'héritage de l'éclairage ───────────────────────────────────────────────────────────
+ *
+ *   M16 `effacerLumiereDeCase3D(panel)` retiré                                          ROUGE
+ *   M17 `definirLumiereDeCase3D(panel, lumiereHeritee)` retiré                          ROUGE
+ *   M18 les deux appels remplacés par `panel.lumiere = scenePanel.lumiere`              ROUGE
+ *   M19 la copie prend `panel` pour source au lieu de `scenePanel`                      ROUGE
+ *   M20 effacer APRÈS avoir posé, au lieu d'avant                                       ROUGE
+ *   M21 le bloc entier retiré (aussi contrôlé contre code-mort.test.mjs)                ROUGE
+ *
+ * M21 mérite un mot : elle fait tomber ce fichier ET `code-mort.test.mjs`, parce que retirer
+ * l'appel rend `copierLumiere3D` orpheline alors que la liste EN_ATTENTE est désormais vide. La
+ * dette de #414a se referme donc par une garantie et pas par une intention.
  */

@@ -217,6 +217,18 @@ pas la Scène, et modifier celle de la Scène ne rattrape pas les Cases déjà c
 même référence, et le premier réglage se propagerait à l'autre sans que rien ne le demande. Un test
 refuse ce cas précis.
 
+⚠️ **ET UNE SCÈNE SANS RÉGLAGE EFFACE CELUI DE LA CASE (#414f).** C'est la moitié de la promesse
+qu'on oublie en l'écrivant. Une Scène sans champ `lumiere` s'affiche en Jour ; si la Case visée était
+en Nuit et qu'on ne touchait à rien, elle resterait en Nuit alors que la Scène d'où vient tout son
+contenu est en plein jour. Le contenu aurait changé, l'ambiance non. « Copier l'éclairage de la
+Scène » veut aussi dire copier son **absence** de réglage.
+
+D'où l'ordre retenu, effacer **puis** poser : quand la Scène porte un réglage, effacer d'abord
+garantit un REMPLACEMENT et non une fusion, car `definirLumiereDeCase3D` applique son argument
+par-dessus l'existant et il suffirait qu'un jour la copie devienne partielle pour que la Case garde
+des restes de son ancienne lumière ; quand la Scène n'en porte pas, effacer est la totalité du
+travail. Un test par branche.
+
 ## Ce qui n'entre PAS dans ce chantier
 
 **Les ombres portées.** Rien n'en projette aujourd'hui. Les activer est une question de performance

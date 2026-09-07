@@ -210,6 +210,18 @@ the Scene's does not catch up with Panels already loaded.
 the first adjustment would propagate to the other with nothing asking for it. A test refuses that
 precise case.
 
+⚠️ **AND A SCENE WITH NO SETTING ERASES THE PANEL'S (#414f).** This is the half of the promise one
+forgets while writing it. A Scene with no `lumiere` field displays as Day; if the target Panel was on
+Night and nothing were touched, it would stay on Night while the Scene all its content comes from is
+in broad daylight. The content would have changed, the mood would not. "Copy the Scene's lighting"
+also means copying its **absence** of a setting.
+
+Hence the order chosen, erase **then** set: when the Scene carries a setting, erasing first
+guarantees a REPLACEMENT rather than a merge, since `definirLumiereDeCase3D` applies its argument on
+top of what is there and it would only take the copy becoming partial one day for the Panel to keep
+remnants of its former light; when the Scene carries none, erasing is the whole job. One test per
+branch.
+
 ## What is NOT in this project
 
 **Cast shadows.** Nothing casts one today. Enabling them is a performance question in its own right,

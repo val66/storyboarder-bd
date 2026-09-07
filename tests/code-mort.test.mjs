@@ -69,7 +69,11 @@ const EN_ATTENTE = {
   // `lumiereDeCase3D` et `LUMIERE_DEFAUT` ne sont PAS ici : le détecteur les voit appelées à
   // l'intérieur du module, par `definirLumiereDeCase3D` et `copierLumiere3D`. Deuxième fois que ce
   // garde-fou m'évite une exemption qui ne surveille rien.
-  copierLumiere3D: '#414f — l\'héritage d\'une Scène vers une Case',
+  //
+  // ⚠️ ET LA LISTE EST DE NOUVEAU VIDE : #414f a payé la dernière échéance. `copierLumiere3D` est
+  // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
+  // La dette de #414a a donc été remboursée en entier, comme celle de #403a avant elle, et pour la
+  // même raison : chaque échéance était un NUMÉRO DE TÂCHE et non une intention.
 
   // VIDE AVANT #414a, ET LA DETTE DE #403 AVAIT ÉTÉ PAYÉE EN ENTIER.
   //
@@ -136,13 +140,13 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
   test('la liste des décisions en attente ne s\'allonge pas', () => {
     // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
     // après #403c, zéro à nouveau depuis #403d, trois avec celles de #414a, cinq avec le champ
-    // persisté de #414b, quatre après #414c, trois après #414d, et une seule depuis que #414e a
-    // branché le dôme. L'échéance de chacune est un numéro de tâche : il ne reste que l'héritage
-    // d'une Scène vers une Case (#414f).
+    // persisté de #414b, quatre après #414c, trois après #414d, une seule depuis que #414e a
+    // branché le dôme, et ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case.
+    // L'échéance de chacune était un numéro de tâche, et toutes ont été tenues.
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

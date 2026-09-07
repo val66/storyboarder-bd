@@ -19,6 +19,9 @@ import {
   WALL_PX_PER_UNIT_3D, WALL_TYPES,
 } from './constants.js';
 import { S, currentPageData, newId, tr } from './state.js';
+import {
+  copierLumiere3D, definirLumiereDeCase3D, effacerLumiereDeCase3D,
+} from './lighting-3d.js';
 import { clampPanelDepth3D, disposeAllRigs3D, panelPixelToGroundXZ3D } from './scene3d.js';
 import { exitCameraMode } from './sidebar.js';
 import { getPanelPoints, renderAll } from './draw.js';
@@ -343,6 +346,29 @@ export async function loadSceneIntoPanel(scene, panel){
   panel.camWy = 0; panel.camWyTarget = 0;
   panel.camWz = 0; panel.camWzTarget = 0;
   delete panel.camOrbitTargetId;
+  // ─── L'éclairage suit les modèles (#414f, cf. docs/en/lighting.md) ───────────────────────────
+  // Charger une Scène dans une Case COPIE son éclairage, exactement comme elle copie ses Éléments.
+  // Ensuite les deux sont indépendants DANS LES DEUX SENS : régler la lumière de la Case ne touche
+  // pas la Scène, et régler celle de la Scène ne rattrape pas les Cases déjà chargées.
+  //
+  // ⚠️ ON EFFACE AVANT DE POSER, ET LES DEUX BRANCHES COMPTENT.
+  //
+  // Quand la Scène porte un réglage, effacer d'abord garantit un REMPLACEMENT et non une fusion :
+  // `definirLumiereDeCase3D` applique son argument par-dessus l'existant, et il suffirait qu'un
+  // jour la copie devienne partielle pour que la Case garde des restes de son ancienne lumière,
+  // sans que rien ne le signale.
+  //
+  // Quand la Scène n'en porte PAS, effacer est la totalité du travail, et c'est le cas qu'on
+  // oublie. Une Scène sans champ `lumiere` s'affiche en Jour ; si la Case visée était en Nuit et
+  // qu'on ne touchait à rien, elle resterait en Nuit alors que la Scène d'où vient son contenu est
+  // en plein jour. « Copier l'éclairage de la Scène » veut aussi dire copier son absence de
+  // réglage.
+  //
+  // Le champ entre dans `computePanelSceneSignature3D` (#414c), donc l'image en cache de la Case
+  // se refait toute seule ; sans cela le réglage aurait été posé sans rien redessiner.
+  effacerLumiereDeCase3D(panel);
+  const lumiereHeritee = copierLumiere3D(scenePanel);
+  if (lumiereHeritee) definirLumiereDeCase3D(panel, lumiereHeritee);
   // Clear all Three.js caches (persona/object/wall rigs, slabs, tracés, 2D image cache):
   // after replacing the Elements (new ids), the old rigs would be invisible but would stay in GPU
   // memory, and some merged cache keys (mergedBuildWallRigCache3D, based on id combinations) could
