@@ -42,6 +42,7 @@ import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
+import { placerMenuFlottant3D } from './ui-scale.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -3963,18 +3964,34 @@ function hideContextMenu(){
   allContextMenus.forEach(m => m.classList.add('hidden'));
 }
 
-// Repositions a floating menu (context menu or "Help" menu) so it stays fully visible: without this,
-// a menu opened near a window edge (e.g. the "?" button for the User Manual, top right) can overflow
-// off-screen and become nearly invisible. The rect is measured AFTER display (classList.remove('hidden'))
-// to know the menu's real width/height.
-function clampFloatingMenu(menu){
-  const margin = 6;
-  const rect = menu.getBoundingClientRect();
-  let left = rect.left, top = rect.top;
-  if (rect.right > window.innerWidth - margin) left -= (rect.right - (window.innerWidth - margin));
-  if (rect.bottom > window.innerHeight - margin) top -= (rect.bottom - (window.innerHeight - margin));
-  if (left < margin) left = margin;
-  if (top < margin) top = margin;
+// Places a floating menu (context menu or "Help" menu) at a screen anchor and keeps it fully
+// visible: without this, a menu opened near a window edge (e.g. the "?" button for the User Manual,
+// top right) can overflow off-screen and become nearly invisible.
+/**
+ * Affiche un menu flottant à une ancre donnée EN PIXELS D'ÉCRAN, et l'y maintient dans la fenêtre.
+ *
+ * ⚠️ ELLE REMPLACE `clampFloatingMenu`, QUI COMPOSAIT UNE DÉRIVE (#417). L'ancienne LISAIT la
+ * position du menu à l'écran et la RÉÉCRIVAIT dans `style.left`, c'est-à-dire dans le repère zoomé
+ * par `--echelle-ui` ; chaque appel remultipliait donc la position par le facteur, même quand
+ * aucun recadrage n'était nécessaire. Mesuré dans Chromium à l'échelle 1,3 : 585 → 761 → 989 →
+ * 1286 → 1671, et au quatrième passage le menu était sorti d'une fenêtre de 1600 px.
+ *
+ * Ici, la position ne dépend QUE de l'ancre, jamais de l'état courant du menu : la composition
+ * devient impossible par construction et non par une division bien placée. Le calcul lui-même est
+ * pur et vit dans src/ui-scale.js (cf. docs/en/ui-scale-coordinates.md).
+ *
+ * Le menu est affiché AVANT d'être mesuré : `getBoundingClientRect` d'un élément `display:none`
+ * rend des zéros, et le recadrage se ferait alors sur une taille nulle.
+ */
+function placerMenu3D(menu, ancreX, ancreY){
+  menu.classList.remove('hidden');
+  const r = menu.getBoundingClientRect();
+  const { left, top } = placerMenuFlottant3D({
+    ancre: { x: ancreX, y: ancreY },
+    taille: { w: r.width, h: r.height },
+    fenetre: { w: window.innerWidth, h: window.innerHeight },
+    echelle: facteurEchelleUI3D(S.appUiScale),
+  });
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
 }
@@ -4014,10 +4031,7 @@ canvas.addEventListener('contextmenu', (e) => {
     // (cf. canvas.dblclick below, which now does nothing on empty space).
     hideContextMenu();
     S.pendingCreatePos = { x, y };
-    dblclickChoiceMenu.style.left = `${e.clientX}px`;
-    dblclickChoiceMenu.style.top = `${e.clientY}px`;
-    dblclickChoiceMenu.classList.remove('hidden');
-    clampFloatingMenu(dblclickChoiceMenu);
+    placerMenu3D(dblclickChoiceMenu, e.clientX, e.clientY);
     return;
   }
   S.selectedId = hit.id; S.selectedRoomId = null;
@@ -4030,10 +4044,7 @@ canvas.addEventListener('contextmenu', (e) => {
   if (hit.type === 'bulle') {
     // A Bubble doesn't have the options specific to a Panel (add perso/vehicle/etc.): only
     // Bring Forward/Send Backward, like for an Element (cf. itemContextMenu).
-    itemContextMenu.style.left = `${e.clientX}px`;
-    itemContextMenu.style.top = `${e.clientY}px`;
-    itemContextMenu.classList.remove('hidden');
-    clampFloatingMenu(itemContextMenu);
+    placerMenu3D(itemContextMenu, e.clientX, e.clientY);
     return;
   }
   // The label reflects the CURRENT state of the targeted Panel (cf. ctxToggleCamera): a checkmark
@@ -4077,10 +4088,7 @@ canvas.addEventListener('contextmenu', (e) => {
   ctxLoadSceneTrigger.style.display = (isSceneCanvas || !_img.ajouter3D) ? 'none' : '';
   document.getElementById('ctxBringForward').style.display = isSceneCanvas ? 'none' : '';
   document.getElementById('ctxSendBackward').style.display = isSceneCanvas ? 'none' : '';
-  panelContextMenu.style.left = `${e.clientX}px`;
-  panelContextMenu.style.top = `${e.clientY}px`;
-  panelContextMenu.classList.remove('hidden');
-  clampFloatingMenu(panelContextMenu);
+  placerMenu3D(panelContextMenu, e.clientX, e.clientY);
 });
 // "Add" submenu: opens to the right of the Panel menu on hover, same mechanism as the category
 // submenus (Vehicles, Furniture, etc.) it now contains.
@@ -4089,10 +4097,7 @@ const ctxAddTrigger = document.getElementById('ctxAddTrigger');
 function openAddSubmenu(){
   clearTimeout(S.addSubmenuCloseTimer);
   const rect = ctxAddTrigger.getBoundingClientRect();
-  addSubmenu.style.left = `${rect.right + 2}px`;
-  addSubmenu.style.top = `${rect.top}px`;
-  addSubmenu.classList.remove('hidden');
-  clampFloatingMenu(addSubmenu);
+  placerMenu3D(addSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseAddSubmenu(){
   clearTimeout(S.addSubmenuCloseTimer);
@@ -4139,10 +4144,7 @@ function openLoadSceneSubmenu(){
   clearTimeout(S.loadSceneSubmenuCloseTimer);
   renderLoadSceneSubmenu();
   const rect = ctxLoadSceneTrigger.getBoundingClientRect();
-  loadSceneSubmenu.style.left = `${rect.right + 2}px`;
-  loadSceneSubmenu.style.top = `${rect.top}px`;
-  loadSceneSubmenu.classList.remove('hidden');
-  clampFloatingMenu(loadSceneSubmenu);
+  placerMenu3D(loadSceneSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseLoadSceneSubmenu(){
   clearTimeout(S.loadSceneSubmenuCloseTimer);
@@ -4194,10 +4196,7 @@ function openAddSubmenuL2(submenu, triggerEl) {
   // Immediate closing of sibling submenus (no delay → no more overlap)
   addSubmenuL2Groups.forEach(g => { if (g.submenu !== submenu) g.submenu.classList.add('hidden'); });
   const rect = triggerEl.getBoundingClientRect();
-  submenu.style.left = `${rect.right + 2}px`;
-  submenu.style.top = `${rect.top}px`;
-  submenu.classList.remove('hidden');
-  clampFloatingMenu(submenu);
+  placerMenu3D(submenu, rect.right + 2, rect.top);
 }
 
 function scheduleCloseAddSubmenuL2() {
@@ -4379,10 +4378,7 @@ let _modelCtxFichier = null;
 function openModelContextMenu(e, nomFichier){
   _modelCtxFichier = nomFichier;
   hideContextMenu();
-  modelContextMenu.style.left = `${e.clientX}px`;
-  modelContextMenu.style.top  = `${e.clientY}px`;
-  modelContextMenu.classList.remove('hidden');
-  clampFloatingMenu(modelContextMenu);
+  placerMenu3D(modelContextMenu, e.clientX, e.clientY);
 }
 document.getElementById('ctxSkeletonMap').onclick = () => {
   const fichier = _modelCtxFichier;
@@ -4490,10 +4486,7 @@ let _imageCtxFichier = null;
 function openImageContextMenu(e, nomFichier){
   _imageCtxFichier = nomFichier;
   hideContextMenu();
-  imageContextMenu.style.left = `${e.clientX}px`;
-  imageContextMenu.style.top  = `${e.clientY}px`;
-  imageContextMenu.classList.remove('hidden');
-  clampFloatingMenu(imageContextMenu);
+  placerMenu3D(imageContextMenu, e.clientX, e.clientY);
 }
 document.getElementById('ctxRenameImage').onclick = async () => {
   const fichier = _imageCtxFichier;
@@ -5415,10 +5408,7 @@ const ctxZoneTrigger   = document.getElementById('ctxZoneTrigger');
 function openTracerSubmenu(){
   clearTimeout(S.tracerSubmenuCloseTimer);
   const rect = ctxTracerTrigger.getBoundingClientRect();
-  tracerSubmenu.style.left = `${rect.right + 2}px`;
-  tracerSubmenu.style.top  = `${rect.top}px`;
-  tracerSubmenu.classList.remove('hidden');
-  clampFloatingMenu(tracerSubmenu);
+  placerMenu3D(tracerSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseTracerSubmenu(){
   clearTimeout(S.tracerSubmenuCloseTimer);
@@ -5442,10 +5432,7 @@ function openCheminsSubmenu(){
   clearTimeout(S.cheminsSubmenuCloseTimer);
   mursTracéSubmenu.classList.add('hidden');
   const rect = ctxTracerCheminTrigger.getBoundingClientRect();
-  cheminsTracéSubmenu.style.left = `${rect.right + 2}px`;
-  cheminsTracéSubmenu.style.top  = `${rect.top}px`;
-  cheminsTracéSubmenu.classList.remove('hidden');
-  clampFloatingMenu(cheminsTracéSubmenu);
+  placerMenu3D(cheminsTracéSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseCheminsSubmenu(){
   clearTimeout(S.cheminsSubmenuCloseTimer);
@@ -5463,10 +5450,7 @@ function openMursTracéSubmenu(){
   clearTimeout(S.mursTracéSubmenuCloseTimer);
   cheminsTracéSubmenu.classList.add('hidden');
   const rect = ctxTracerMurTrigger.getBoundingClientRect();
-  mursTracéSubmenu.style.left = `${rect.right + 2}px`;
-  mursTracéSubmenu.style.top  = `${rect.top}px`;
-  mursTracéSubmenu.classList.remove('hidden');
-  clampFloatingMenu(mursTracéSubmenu);
+  placerMenu3D(mursTracéSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseMursTracéSubmenu(){
   clearTimeout(S.mursTracéSubmenuCloseTimer);
@@ -5484,10 +5468,7 @@ mursTracéSubmenu.addEventListener('mouseleave', scheduleCloseMursTracéSubmenu)
 function openZoneSubmenu(){
   clearTimeout(S.zoneSubmenuCloseTimer);
   const rect = ctxZoneTrigger.getBoundingClientRect();
-  zoneSubmenu.style.left = `${rect.right + 2}px`;
-  zoneSubmenu.style.top  = `${rect.top}px`;
-  zoneSubmenu.classList.remove('hidden');
-  clampFloatingMenu(zoneSubmenu);
+  placerMenu3D(zoneSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseZoneSubmenu(){
   clearTimeout(S.zoneSubmenuCloseTimer);
@@ -5810,26 +5791,17 @@ document.getElementById('ctxItemSendBackward').onclick = () => { sendBackward();
 function openVolumeContextMenu(e, ti){
   S.ctxVolumeTarget = ti;
   hideContextMenu();
-  volumeContextMenu.style.left = `${e.clientX}px`;
-  volumeContextMenu.style.top = `${e.clientY}px`;
-  volumeContextMenu.classList.remove('hidden');
-  clampFloatingMenu(volumeContextMenu);
+  placerMenu3D(volumeContextMenu, e.clientX, e.clientY);
 }
 function openPageContextMenu(e, ti, pi){
   S.ctxPageTarget = { ti, pi };
   hideContextMenu();
-  pageContextMenu.style.left = `${e.clientX}px`;
-  pageContextMenu.style.top = `${e.clientY}px`;
-  pageContextMenu.classList.remove('hidden');
-  clampFloatingMenu(pageContextMenu);
+  placerMenu3D(pageContextMenu, e.clientX, e.clientY);
 }
 function openSceneContextMenu(e, sceneId){
   S.ctxSceneTarget = sceneId;
   hideContextMenu();
-  sceneContextMenu.style.left = `${e.clientX}px`;
-  sceneContextMenu.style.top = `${e.clientY}px`;
-  sceneContextMenu.classList.remove('hidden');
-  clampFloatingMenu(sceneContextMenu);
+  placerMenu3D(sceneContextMenu, e.clientX, e.clientY);
 }
 document.getElementById('ctxRenameScene').onclick = () => {
   if (S.ctxSceneTarget !== null) renameScene(S.ctxSceneTarget);
@@ -5867,10 +5839,7 @@ const ctxExportPageTrigger = document.getElementById('ctxExportPageTrigger');
 function openExportPageSubmenu(){
   clearTimeout(S.exportPageSubmenuCloseTimer);
   const rect = ctxExportPageTrigger.getBoundingClientRect();
-  exportPageSubmenu.style.left = `${rect.right + 2}px`;
-  exportPageSubmenu.style.top = `${rect.top}px`;
-  exportPageSubmenu.classList.remove('hidden');
-  clampFloatingMenu(exportPageSubmenu);
+  placerMenu3D(exportPageSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseExportPageSubmenu(){
   clearTimeout(S.exportPageSubmenuCloseTimer);

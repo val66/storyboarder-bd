@@ -43,6 +43,7 @@ régression difficile à retrouver.
 | [panel-images.md](panel-images.md) | Une image dans une Case à la place d'une scène 3D : décisions arrêtées, ce que le code fournit déjà, ce qui reste à mesurer (tâches #403a à #403d). |
 | [colour-accessibility.md](colour-accessibility.md) | La couleur qui dépeint contre celle qui signale, collisions mesurées par déficience, pourquoi un thème n'est pas le remède principal (tâches #409a à #409d). |
 | [lighting.md](lighting.md) | Éclairage d'une Case et d'une Scène : ce que « désactivé » doit vouloir dire, le modèle de données, pourquoi soleil et ambiance bougent ensemble, le hors-périmètre (tâches #414a à #414g). |
+| [ui-scale-coordinates.md](ui-scale-coordinates.md) | Pixels d'écran contre pixels zoomés : pourquoi `zoom` coupe l'application en deux repères, les 137 px mesurés, pourquoi un recadrage expulsait les menus de l'écran, et la règle qui en découle (tâche #417). |
 
 ---
 

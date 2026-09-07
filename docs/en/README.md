@@ -43,6 +43,7 @@ down.
 | [panel-images.md](panel-images.md) | An image in a panel instead of a 3D scene: settled decisions, what the code already provides, what is left to measure (tasks #403a to #403d). |
 | [colour-accessibility.md](colour-accessibility.md) | Colour that depicts against colour that signals, measured collisions per deficiency, why a theme is not the main remedy (tasks #409a to #409d). |
 | [lighting.md](lighting.md) | Lighting a panel and a Scene: what "off" must mean, the data model, why sun and ambient move together, what is out of scope (tasks #414a to #414g). |
+| [ui-scale-coordinates.md](ui-scale-coordinates.md) | Screen pixels against zoomed pixels: why `zoom` splits the application in two coordinate systems, the 137 px measured, why a clamping function pushed menus off screen, and the rule that follows (task #417). |
 
 ---
 
