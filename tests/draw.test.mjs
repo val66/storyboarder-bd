@@ -1995,7 +1995,14 @@ describe('#411k : le cache garde les dernières Planches, sous un plafond', () =
     // octets n'existaient pas encore.
     const i = DRAW_SRC.indexOf('_pageDataRef !== S.drawCurrentPageLastRef');
     assert.ok(i > 0, 'la détection de changement de Planche a disparu');
-    const bloc = DRAW_SRC.slice(i, i + 700);
+    // ⚠️ LA FENÊTRE S'ARRÊTE À L'ACCOLADE, PAS À UN NOMBRE DE CARACTÈRES. Elle valait « i + 700 »
+    // jusqu'à ce que le retrait de la sonde raccourcisse le fichier : la fenêtre a alors débordé
+    // jusqu'à l'élagage de fin de fonction, et le test a accusé le code d'une faute qu'il n'avait
+    // pas. C'est le piège de la fenêtre de lecture, cinquième fois dans ce dépôt, sous une forme
+    // nouvelle : une borne juste tant que rien ne bouge autour.
+    const fin = DRAW_SRC.indexOf('\n  }', i);
+    assert.ok(fin > i, 'le bloc du changement de Planche n\'est pas refermé');
+    const bloc = DRAW_SRC.slice(i, fin);
     assert.ok(!/panelSceneCache3D\.clear\(\)/.test(bloc), 'le vidage complet est revenu');
     assert.ok(!/elaguerCacheDeCases3D\(\)/.test(bloc),
       'l\'élagage est revenu AVANT le rendu : les octets de la Planche ouverte valent encore zéro');

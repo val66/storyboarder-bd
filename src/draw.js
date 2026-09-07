@@ -17,7 +17,6 @@
  */
 
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
-import { perfDuree, perfTemps, perfCompteur, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
   BUILD_WALL_DEFAULT_HEIGHT, WALL_PX_PER_UNIT_3D,
@@ -2435,15 +2434,6 @@ export function wrapTextLines(c, text, maxWidth){
 // 2D CANVAS DRAWING
 // ════════════════════════════════════════════════════════════
 export function drawCurrentPage(){
-  // SONDE #411d : à retirer avec la campagne. Le relevé de #411c laisse un écart que je ne sais
-  // expliquer que par SOUSTRACTION : 330 ms de remplissage médian pour 7 frames, alors que le rendu
-  // 3D médian d'une Case est de 13 ms. Il resterait donc ~34 ms par frame qui ne sont pas de la 3D.
-  // Soustraire n'est pas mesurer, et changer le budget de #405d sur une soustraction serait refaire
-  // la faute de #404 : bâtir un remède pour une attente qui ne l'attendait pas. Cette ligne mesure
-  // directement ce que coûte une frame entière.
-  return perfTemps('drawCurrentPage (frame entière)', () => _drawCurrentPageMesuree());
-}
-function _drawCurrentPageMesuree(){
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
@@ -2461,12 +2451,6 @@ function _drawCurrentPageMesuree(){
     S.drawCurrentPageLastRef = _pageDataRef;
     noterPlancheAffichee3D(_pageDataRef.id, panelsInPage(_pageDataRef).map(p => p.id));
     _elagageADemander = true;
-    // SONDE #411 : à retirer avec la campagne. Le remplissage COMMENCE ici. C'est la seule mesure
-    // qui corresponde à ce qui a été signalé : les Cases qui se rechargent visiblement. Aucune
-    // moyenne par Case ne la donne, puisque #405d n'en reconstruit qu'une par frame.
-    _sondeRemplissageT0 = perfActive() ? performance.now() : 0;
-    _sondeRemplissageFrames = 0;
-    perfCompteur('changements de Planche');
   }
   // Cost of these four phases, measured over 1071 frames: canvas 0.6%, drawContent the bulk,
   // side panel 7.6%. See docs/en/rendering-performance.md, the audit suspected the canvas
@@ -2492,24 +2476,9 @@ function _drawCurrentPageMesuree(){
   // encore rien rendu, son coût vaut zéro, et le plafond calculé là-dessus n'avait rien gardé du
   // tout. Ici tous les octets existent et se mesurent.
   if (_elagageADemander && !_reste) { _elagageADemander = false; elaguerCacheDeCases3D(); }
-  // SONDE #411 : à retirer avec la campagne. Le remplissage se TERMINE à la première frame qui n'a
-  // plus rien remis à plus tard. La borne de fin est celle-là et pas « la dernière Case rendue » :
-  // une Case rendue peut encore être suivie d'une frame de plus, et c'est cette frame que l'œil
-  // attend. Le compteur de frames accompagne la durée parce que les deux ne disent pas la même
-  // chose : neuf frames à 16 ms sont un remplissage fluide, une seule frame de 150 ms est un gel.
-  if (_sondeRemplissageT0) {
-    _sondeRemplissageFrames++;
-    if (!_reste) {
-      perfDuree('Remplissage complet après changement de Planche', performance.now() - _sondeRemplissageT0, 'ms');
-      perfDuree('Frames par remplissage', _sondeRemplissageFrames, 'frames');
-      _sondeRemplissageT0 = 0;
-    }
-  }
   if (_reste) scheduleDrawCurrentPage();
 }
 let _elagageADemander = false;
-// SONDE #411 : à retirer avec la campagne.
-let _sondeRemplissageT0 = 0, _sondeRemplissageFrames = 0;
 
 
 

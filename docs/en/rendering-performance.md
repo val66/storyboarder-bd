@@ -300,3 +300,107 @@ not because the symptom was suppressed.
 figures were right the whole time; what was missing was one question to the user. Before modelling
 a mechanism to explain a measurement, check that the measurement is not simply describing what the
 person did.
+
+---
+
+# Fifth campaign — why a Page redraws when you come back to it, September 2026
+
+Reported: *"When I move from one Page to another, the panels with Elements visibly reload, even
+though the Page was already loaded. The content cannot have changed."*
+
+It could not, and the application never thought it had. `drawCurrentPage` **emptied**
+`panelSceneCache3D` on every Page change, and #405d then rebuilt one panel per frame. The mechanism
+was plain in the code; what nobody knew was what it **cost**, and without that figure no remedy
+could be judged.
+
+## What a cached panel costs, measured outside the application
+
+One entry is a canvas at the resolution of the whole Page, capped by `PANEL_SCENE_RENDER_MAX_PX`.
+Computed from the real formats and the user's real projects:
+
+| format | 1× | 2× | 3× | 4× |
+|---|---|---|---|---|
+| Franco-Belgian | 1.5 MB | 6.1 MB | 13.7 MB | 16.7 MB |
+| US comics | 1.3 MB | 5.4 MB | 12.1 MB | 14.3 MB |
+| Webtoon | 1.0 MB | 3.9 MB | 8.8 MB | 13.7 MB |
+
+The scale is `zoom × devicePixelRatio`, capped at 4, and **the byte count grows as its square**.
+"Projet 2" holds up to 9 3D panels on one Page: 48 MB at 2×, and the whole project would be 312 MB.
+The full flush had a real reason; it was simply far too blunt.
+
+## What the return actually costs
+
+| measure | value |
+|---|---|
+| refill after a Page change | 245 ms median, 8 frames |
+| one panel, first render | 12.5 ms median, 145 ms max |
+| one panel, on return | 13.1 ms median, **33 ms mean**, 296 ms max |
+| rigs rebuilt across 112 returns | 0, except 14 "model arrived" |
+
+The rigs do survive the Page change: they live in `personaRigCache3D`, keyed by Element id. The 14
+rebuilds all have the one legitimate cause, a `.glb` that finished decoding, and they happen once.
+
+## Two remedies were built, measured, and withdrawn
+
+**A time budget per frame instead of "one panel per frame" (#411e/g).** The reasoning: 332 ms of
+refill for 8 frames against a 13 ms median render, so two thirds of the wait would be *between*
+frames. Grouping cheap panels should halve it. The mechanism worked perfectly — frames per refill
+fell from 7 to 3, panels per frame rose from 1 to 3 — and **the duration did not move**: 245 ms
+before, 289 after, inside the noise of a fifteen-sample run whose successive medians read 332, 284,
+245.
+
+The reasoning compared a **median to a mean**. A panel costs 13 ms at the median but 33 ms on
+average, the tail reaching 296. Eight panels at 33 ms make 264 ms, which is the refill. It was
+always the **sum of the work**; the inter-frame wait was an artefact of two mismatched statistics.
+The same error had already produced a phantom "34 ms of per-frame overhead" where measurement later
+found 2.1 ms.
+
+**And the budget was measured from the wrong thing.** It sampled the display period from
+`requestAnimationFrame` deltas at the first limited frame — mid-load — and got `103.7, 111.2,
+136.1, 3.5, 2.9`. No statistic saves that sample: minimum 2.9, median 103.7, mean 71.5, truth 16.7.
+The window was wrong, not the estimator. It settled on the 4 ms floor, so a 13 ms panel always blew
+it and the code reproduced "one panel per frame" under another name.
+
+The deeper mistake was the anchor. During a refill the application animates nothing; what matters is
+**handing control back often enough for a click to land**, and that threshold is published (50 ms,
+the Long Tasks definition) rather than measurable from the code. The display period looked
+measurable, which is not the same as being the right question.
+
+## What the measurements did support: keep the recent Pages
+
+Emptying the cache was never required for correctness — ids are unique project-wide, and the panel
+signature already refuses a stale image. It was a memory policy. Keeping **one** Page of history
+was not enough: on an A → B → C → A rotation the Page you return to is always the one just evicted.
+The relevé says it without appeal — **87 panels evicted, 87 panels re-rendered, the same ones**. It
+is the textbook cache smaller than the cycle, and it yields exactly zero hits.
+
+A recency list under a **byte ceiling** replaced it. Bytes rather than a Page count, because a Page
+costs 36 to 67 MB depending on its load and roughly triple that at the largest interface size: a
+Page count would be prudent on one screen and ruinous on another.
+
+| ceiling | refill (mean) | frames (mean) | panels re-rendered | retained |
+|---|---|---|---|---|
+| flush everything (before) | 223 ms | 8 | 87 | 0 |
+| 1 Page of history | 229 ms | 8 | 87 | 71 MB |
+| 200 MB | 107 ms | 3.2 | 34 | **195.7 MB, saturated** |
+| 300 MB (shipped) | see below | | | |
+
+200 MB held three Pages with no margin at all, so every change pushed a few panels out. The default
+moved to 300 MB, and the ceiling became a **setting** (0 to 900 MB), because what is needed depends
+on the Page load, the format, the render scale and the machine — none of which a constant can know.
+Zero is a valid value, not a disabled state: the displayed Page is never evicted, so zero reproduces
+exactly the behaviour from before this campaign.
+
+## Two traps, one of them twice
+
+**A relevé that observes only the expected EFFECT cannot diagnose its absence.** #411e measured
+frames per refill and never the panels per frame nor the budget in force. When nothing moved, the
+data could not say whether the grouping had failed to happen or had happened uselessly — opposite
+diagnoses. The next relevé, with the mechanism instrumented, answered in one line. The same lesson
+had already been paid for on the rig counters, which counted rebuilds in total without saying
+**when**, a total equally compatible with "all at first render" and "some on every return".
+
+**Reasoning about a quantity that does not exist yet.** The first byte ceiling bounded history to a
+multiple of the *current* Page's cost, read at the moment of the Page change — before that Page has
+rendered anything. Cost zero, ceiling zero, **0 panels kept out of 75**. Pruning moved to the end of
+the refill, where every byte exists and can be counted.

@@ -23,7 +23,6 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
-import { perfTemps, perfDuree, perfFait, perfCompteur, perfCompteurContextuel, perfContexte, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -970,26 +969,18 @@ export function elaguerCacheDeCases3D(){
   const octetsParId = new Map();
   panelSceneCache3D.forEach((entree, id) => octetsParId.set(id, octetsEntreeCache3D(entree)));
   const garde = idsCacheAGarder3D(_recenceDesPlanches, octetsParId, plafondCacheOctets3D(S.appCacheMo));
-  let gardes = 0, evinces = 0, octetsGardes = 0;
   panelSceneCache3D.forEach((entree, id) => {
-    if (garde.has(id)) { gardes++; octetsGardes += octetsParId.get(id) || 0; return; }
+    if (garde.has(id)) return;
     // ⚠️ LE CANEVAS SE VIDE AVANT D'ÊTRE LÂCHÉ. Retirer l'entrée de la Map ne libère que la
     // référence JavaScript ; le tampon de pixels, lui, vit hors du tas et attend le ramasse-miettes.
     // Remettre les dimensions à zéro le rend tout de suite, sans quoi « on évince » serait une
     // affirmation sur une Map et pas sur la mémoire.
     if (entree && entree.canvas) { entree.canvas.width = 0; entree.canvas.height = 0; }
     panelSceneCache3D.delete(id);
-    evinces++;
   });
   // Une Planche dont plus aucune Case n'est en cache ne sert qu'à faire grossir la liste : elle en
   // sort. Sans ça, `_recenceDesPlanches` croîtrait indéfiniment sur un gros Projet.
   _recenceDesPlanches = _recenceDesPlanches.filter(p => (p.ids || []).some(id => panelSceneCache3D.has(id)));
-  // SONDE #411 : à retirer avec la campagne. Le MÉCANISME observé, pas seulement son effet. Ces
-  // chiffres ont immédiatement montré que la version #411i ne gardait RIEN (0 sur 75), puis que
-  // #411j évinçait exactement ce qu'elle allait re-rendre (87 et 87). Leçon de #411f.
-  perfCompteur('Cases gardées au changement de Planche', gardes);
-  perfCompteur('Cases évincées au changement de Planche', evinces);
-  if (perfActive()) perfDuree('Cache retenu après changement', +(octetsGardes / 1048576).toFixed(1), 'Mo');
 }
 
 /** Remet la récence à zéro : appelé avec le vidage des caches, au changement de Projet. */
@@ -1910,7 +1901,6 @@ export function commencerFrameLimitee3D(){
   // SONDE #411 : à retirer avec la campagne. LE MÉCANISME RESTE OBSERVÉ, même redevenu une
   // constante. C'est la leçon de #411f : un relevé qui ne montre que l'effet ne dit pas si le
   // mécanisme a joué, et #411g a montré qu'une constante peut elle aussi être la mauvaise.
-  perfFait('rendus de Case par frame (budget)', RENDUS_3D_PAR_FRAME);
   _frameLimitee = true;
   _rendusDeLaFrame = 0;
   _rendusDifferes3D = false;
@@ -1918,14 +1908,7 @@ export function commencerFrameLimitee3D(){
 /** Des Cases ont-elles été remises à plus tard ? L'appelant redemande alors un dessin. */
 export function resteDesRendus3D(){ return _rendusDifferes3D; }
 /** Rend le budget infini : tout ce qui n'est pas le dessin interactif doit rendre complètement. */
-export function terminerFrameLimitee3D(){
-  // SONDE #411f : à retirer avec la campagne. LE MÉCANISME, ET NON PLUS SEULEMENT SON EFFET. #411e
-  // prédisait deux Cases par frame et n'observait que les frames par remplissage : quand rien n'a
-  // bougé, je ne pouvais pas dire si le regroupement n'avait pas eu lieu ou s'il avait eu lieu sans
-  // rien changer. Cette ligne répond directement.
-  if (_frameLimitee) perfDuree('Cases rendues dans la frame', _rendusDeLaFrame, 'Cases');
-  _frameLimitee = false;
-}
+export function terminerFrameLimitee3D(){ _frameLimitee = false; }
 
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
@@ -2001,25 +1984,7 @@ export function hauteurDeboutModele3D(entry, boxFn){
   return (Number.isFinite(size.y) && size.y > 0) ? size.y : undefined;
 }
 
-// SONDE #411 : à retirer avec la campagne.
-// La distinction mesurée ici est TOUTE la question : un premier rendu construit les rigs, un rendu
-// de RETOUR ne devrait repayer que la passe WebGL, puisque les rigs vivent dans personaRigCache3D,
-// indexés par id d'Élément, et survivent au vidage de panelSceneCache3D. Confondre les deux dans
-// une seule moyenne noierait précisément l'écart qu'on veut connaître.
-const _sondeCasesDejaRendues = new Set();
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
-  const retour = _sondeCasesDejaRendues.has(panel.id);
-  if (perfActive()) {
-    _sondeCasesDejaRendues.add(panel.id);
-    perfCompteur(retour ? 'Cases rendues (retour sur la Planche)' : 'Cases rendues (1re fois de la session)');
-  }
-  // Le CONTEXTE (#411c) : sans lui, les constructions de rigs se comptaient en vrac et ne pouvaient
-  // pas départager « les rigs survivent au changement de Planche » de son contraire.
-  return perfContexte(retour ? 'retour' : '1er rendu', () =>
-    perfTemps(retour ? 'Case : rendu au RETOUR' : 'Case : 1er rendu de la session', () =>
-      _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig)));
-}
-function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
   const style = resolveStyle3D(styleKey);
   applyStyle3DLighting(style);
@@ -2353,7 +2318,6 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const fp = `${color}#${mergedLen.toFixed(4)}`;
     let mEntry = mergedBuildWallRigCache3D.get(key);
     if (!mEntry || mEntry.fp !== fp) {
-      perfCompteurContextuel(`rig de Mur fusionné construit (${!mEntry ? 'jamais vu' : 'signature'})`);
       if (mEntry) {
         mEntry.figureGroup.traverse(ch => { if (ch.isMesh && ch.geometry) ch.geometry.dispose(); });
         personaScene3D.remove(mEntry.figureGroup);
@@ -2401,7 +2365,6 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       const sig = `${j.thick.toFixed(4)}|${j.height.toFixed(4)}|${j.color}|${j.rotY.toFixed(4)}|${j.roomFloatY.toFixed(4)}`;
       let mesh = wallJunctionMeshCache3D.get(key);
       if (!mesh || mesh._sig !== sig) {
-        perfCompteurContextuel(`poteau de jonction construit (${!mesh ? 'jamais vu' : 'signature'})`);
         if (mesh) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); }
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(j.thick, j.height, j.thick),
@@ -2436,7 +2399,6 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
                  + ':ft:' + pieceFloorType + ':po2';
     let mesh = slabMeshCache3D.get(o.id);
     if (!mesh || mesh._sigKey !== sigKey) {
-      perfCompteurContextuel(`dalle construite (${!mesh ? 'jamais vu' : 'signature'})`);
       if (mesh) { mesh.geometry.dispose(); mesh.material.dispose(); personaScene3D.remove(mesh); }
       // Build the Shape with negative Z + reversed order, then rotateX(-π/2):
       // - negative Z + rotateX(-π/2): (x, -z_world, 0) → (x, 0, z_world)  ← correct positive Z
@@ -2520,7 +2482,6 @@ function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const sigKey = JSON.stringify({ tt: o.tracéType, c: o.color, tt2: o.terrainType, wh: o.wallHeight, world: o.world, holes: _tmHoleSig });
     let entry = tracéMeshCache3D.get(o.id);
     if (!entry || entry.sigKey !== sigKey) {
-      perfCompteurContextuel(`Tracé construit (${!entry ? 'jamais vu' : 'signature'})`);
       // Release the old group if present.
       if (entry) {
         entry.group.traverse(ch => { if (ch.isMesh) { ch.geometry.dispose(); ch.material.dispose(); } });

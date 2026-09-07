@@ -318,3 +318,114 @@ finale. La seconde passe disparaît parce que la cause disparaît, pas parce que
 chiffres étaient justes depuis le début ; ce qui manquait, c'était une question à l'utilisateur.
 Avant de modéliser un mécanisme pour expliquer une mesure, vérifier que la mesure ne décrit pas
 simplement ce que la personne a fait.
+
+---
+
+# Cinquième campagne — pourquoi une Planche se redessine quand on y revient, septembre 2026
+
+Signalé à l'usage : *« Quand je passe d'une Planche à l'autre, les Cases avec des Éléments se
+rechargent visiblement, alors que la Planche a déjà été chargée avant. Le contenu ne peut pas avoir
+changé. »*
+
+Il ne pouvait pas, et l'application n'a jamais cru le contraire. `drawCurrentPage` **vidait**
+`panelSceneCache3D` à chaque changement de Planche, puis #405d en reconstruisait une par frame. Le
+mécanisme était lisible dans le code ; ce que personne ne savait, c'est ce qu'il **coûte**, et sans
+ce chiffre aucun remède ne pouvait être jugé.
+
+## Ce que coûte une Case en cache, mesuré hors application
+
+Une entrée est un canevas à la résolution de la Planche entière, plafonné par
+`PANEL_SCENE_RENDER_MAX_PX`. Calculé sur les formats réels et les Projets réels de l'utilisateur :
+
+| format | 1× | 2× | 3× | 4× |
+|---|---|---|---|---|
+| Franco-Belge | 1,5 Mo | 6,1 Mo | 13,7 Mo | 16,7 Mo |
+| Comics US | 1,3 Mo | 5,4 Mo | 12,1 Mo | 14,3 Mo |
+| Webtoon | 1,0 Mo | 3,9 Mo | 8,8 Mo | 13,7 Mo |
+
+L'échelle vaut `zoom × devicePixelRatio`, plafonnée à 4, et **l'octet varie comme son carré**.
+« Projet 2 » porte jusqu'à 9 Cases 3D sur une Planche : 48 Mo à l'échelle 2, et 312 Mo pour le
+Projet entier. Le vidage complet avait donc une vraie raison ; il était seulement bien trop brutal.
+
+## Ce que coûte réellement le retour
+
+| mesure | valeur |
+|---|---|
+| remplissage après un changement de Planche | 245 ms de médiane, 8 frames |
+| une Case, premier rendu | 12,5 ms de médiane, 145 ms au pire |
+| une Case, au retour | 13,1 ms de médiane, **33 ms de moyenne**, 296 ms au pire |
+| rigs reconstruits sur 112 retours | 0, sauf 14 « modèle arrivé » |
+
+Les rigs survivent bien au changement de Planche : ils vivent dans `personaRigCache3D`, indexés par
+id d'Élément. Les 14 reconstructions ont toutes l'unique cause légitime, un `.glb` qui a fini de se
+décoder, et n'arrivent qu'une fois.
+
+## Deux remèdes ont été construits, mesurés, et retirés
+
+**Un budget en TEMPS par frame au lieu d'« une Case par frame » (#411e/g).** Le raisonnement : 332 ms
+de remplissage pour 8 frames contre un rendu médian de 13 ms, donc les deux tiers de l'attente
+seraient *entre* les frames. Grouper les Cases bon marché devait diviser la durée. Le mécanisme a
+parfaitement joué — frames par remplissage de 7 à 3, Cases par frame de 1 à 3 — et **la durée n'a
+pas bougé** : 245 ms avant, 289 après, dans le bruit d'un relevé à quinze échantillons dont les
+médianes successives donnaient 332, 284, 245.
+
+Le raisonnement comparait une **médiane à une moyenne**. Une Case coûte 13 ms en médiane mais 33 en
+moyenne, la queue allant jusqu'à 296. Huit Cases à 33 ms font 264 ms, soit le remplissage observé.
+Il a toujours été la **somme du travail** ; l'attente entre frames était un artefact de deux
+statistiques mal appariées. La même faute avait déjà produit un fantôme de « 34 ms de frais par
+frame » là où la mesure a ensuite trouvé 2,1 ms.
+
+**Et le budget était mesuré sur la mauvaise chose.** Il échantillonnait la période d'affichage à
+partir des écarts de `requestAnimationFrame`, à la première frame limitée donc en plein chargement,
+et obtenait `103,7 / 111,2 / 136,1 / 3,5 / 2,9`. Aucune statistique ne sauve cet échantillon :
+minimum 2,9, médiane 103,7, moyenne 71,5, vérité 16,7. C'est la fenêtre qui était fausse, pas
+l'estimateur. Il retombait sur le plancher de 4 ms, qu'une Case de 13 ms dépasse toujours, et le
+code reproduisait « une Case par frame » sous un autre nom.
+
+L'erreur de fond était le repère. Pendant un remplissage l'application n'anime rien ; ce qui compte
+est de **rendre la main assez souvent pour qu'un clic soit pris**, et ce seuil-là est publié (50 ms,
+la définition d'une tâche longue) plutôt que mesurable depuis le code. La période de l'écran avait
+l'air mesurable, ce qui n'est pas la même chose qu'être la bonne question.
+
+## Ce que les mesures soutenaient : garder les Planches récentes
+
+Vider le cache n'a jamais été requis pour la justesse — les identifiants sont uniques dans tout le
+Projet, et la signature de Case refuse déjà une image périmée. C'était une politique de mémoire.
+Garder **une** Planche d'historique ne suffisait pas : sur une rotation A → B → C → A, celle qu'on
+rouvre est toujours celle qu'on vient d'évincer. Le relevé le dit sans appel — **87 Cases évincées,
+87 Cases re-rendues, les mêmes**. C'est le cas d'école du cache plus petit que le cycle, et il donne
+exactement zéro succès.
+
+Une liste de récence sous un **plafond en octets** l'a remplacée. En octets plutôt qu'en nombre de
+Planches, parce qu'une Planche coûte 36 à 67 Mo selon sa charge et environ le triple à la plus
+grande taille d'interface : un nombre de Planches serait prudent sur un écran et ruineux sur un
+autre.
+
+| plafond | remplissage (moy.) | frames (moy.) | Cases re-rendues | retenu |
+|---|---|---|---|---|
+| tout vider (avant) | 223 ms | 8 | 87 | 0 |
+| 1 Planche d'historique | 229 ms | 8 | 87 | 71 Mo |
+| 200 Mo | 107 ms | 3,2 | 34 | **195,7 Mo, saturé** |
+| 300 Mo (livré) | voir ci-dessous | | | |
+
+200 Mo tenaient trois Planches sans la moindre marge, donc chaque changement en poussait quelques
+Cases dehors. Le défaut est passé à 300 Mo, et le plafond est devenu un **réglage** (0 à 900 Mo) :
+ce qu'il faut dépend de la charge des Planches, du format, de l'échelle de rendu et de la machine,
+choses qu'aucune constante ne peut connaître. Zéro est une valeur valide et non une désactivation :
+la Planche affichée n'est jamais évincée, donc zéro rend exactement le comportement d'avant cette
+campagne.
+
+## Deux pièges, dont un deux fois
+
+**Un relevé qui n'observe que l'EFFET attendu ne peut pas diagnostiquer son absence.** #411e mesurait
+les frames par remplissage, jamais les Cases par frame ni le budget appliqué. Quand rien n'a bougé,
+les données ne pouvaient pas dire si le regroupement n'avait pas eu lieu ou s'il avait eu lieu sans
+servir — deux diagnostics opposés. Le relevé suivant, mécanisme instrumenté, a répondu en une ligne.
+La leçon avait déjà été payée sur les compteurs de rigs, qui comptaient les reconstructions en tout
+sans dire **quand**, total également compatible avec « toutes au premier rendu » et « certaines à
+chaque retour ».
+
+**Raisonner sur une quantité qui n'existe pas encore.** Le premier plafond bornait l'historique à un
+multiple du coût de la Planche *courante*, lu au moment du changement de Planche, c'est-à-dire avant
+qu'elle ait rendu quoi que ce soit. Coût zéro, plafond zéro, **0 Case gardée sur 75**. L'élagage est
+passé à la fin du remplissage, là où tous les octets existent et se comptent.
