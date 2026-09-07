@@ -43,6 +43,7 @@ import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
+import { delaiFermetureSousMenu3D, sousMenusAFermer3D } from './menu-timing.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -4095,13 +4096,14 @@ canvas.addEventListener('contextmenu', (e) => {
 const ctxAddTrigger = document.getElementById('ctxAddTrigger');
 // [STATE→S] let S.addSubmenuCloseTimer = null;
 function openAddSubmenu(){
+  fermerSousMenusDeCaseSauf3D('addSubmenu');
   clearTimeout(S.addSubmenuCloseTimer);
   const rect = ctxAddTrigger.getBoundingClientRect();
   placerMenu3D(addSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseAddSubmenu(){
   clearTimeout(S.addSubmenuCloseTimer);
-  S.addSubmenuCloseTimer = setTimeout(() => addSubmenu.classList.add('hidden'), 250);
+  S.addSubmenuCloseTimer = setTimeout(() => addSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxAddTrigger.addEventListener('mouseenter', openAddSubmenu);
 ctxAddTrigger.addEventListener('mouseleave', scheduleCloseAddSubmenu);
@@ -4141,6 +4143,7 @@ function renderLoadSceneSubmenu(){
   });
 }
 function openLoadSceneSubmenu(){
+  fermerSousMenusDeCaseSauf3D('loadSceneSubmenu');
   clearTimeout(S.loadSceneSubmenuCloseTimer);
   renderLoadSceneSubmenu();
   const rect = ctxLoadSceneTrigger.getBoundingClientRect();
@@ -4148,7 +4151,7 @@ function openLoadSceneSubmenu(){
 }
 function scheduleCloseLoadSceneSubmenu(){
   clearTimeout(S.loadSceneSubmenuCloseTimer);
-  S.loadSceneSubmenuCloseTimer = setTimeout(() => loadSceneSubmenu.classList.add('hidden'), 250);
+  S.loadSceneSubmenuCloseTimer = setTimeout(() => loadSceneSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxLoadSceneTrigger.addEventListener('mouseenter', openLoadSceneSubmenu);
 ctxLoadSceneTrigger.addEventListener('mouseleave', scheduleCloseLoadSceneSubmenu);
@@ -4201,7 +4204,7 @@ function openAddSubmenuL2(submenu, triggerEl) {
 
 function scheduleCloseAddSubmenuL2() {
   clearTimeout(S.addSubmenuL2CloseTimer);
-  S.addSubmenuL2CloseTimer = setTimeout(closeAllAddSubmenuL2, 250);
+  S.addSubmenuL2CloseTimer = setTimeout(closeAllAddSubmenuL2, delaiFermetureSousMenu3D('sortie'));
 }
 
 addSubmenuL2Groups.forEach(({ trigger, submenu }) => {
@@ -5406,6 +5409,7 @@ const ctxZoneTrigger   = document.getElementById('ctxZoneTrigger');
 
 // [STATE→S] let S.tracerSubmenuCloseTimer = null;
 function openTracerSubmenu(){
+  fermerSousMenusDeCaseSauf3D('tracerSubmenu');
   clearTimeout(S.tracerSubmenuCloseTimer);
   const rect = ctxTracerTrigger.getBoundingClientRect();
   placerMenu3D(tracerSubmenu, rect.right + 2, rect.top);
@@ -5416,7 +5420,7 @@ function scheduleCloseTracerSubmenu(){
     tracerSubmenu.classList.add('hidden');
     cheminsTracéSubmenu.classList.add('hidden');
     mursTracéSubmenu.classList.add('hidden');
-  }, 250);
+  }, delaiFermetureSousMenu3D('sortie'));
 }
 ctxTracerTrigger.addEventListener('mouseenter', openTracerSubmenu);
 ctxTracerTrigger.addEventListener('mouseleave', scheduleCloseTracerSubmenu);
@@ -5436,7 +5440,7 @@ function openCheminsSubmenu(){
 }
 function scheduleCloseCheminsSubmenu(){
   clearTimeout(S.cheminsSubmenuCloseTimer);
-  S.cheminsSubmenuCloseTimer = setTimeout(() => cheminsTracéSubmenu.classList.add('hidden'), 250);
+  S.cheminsSubmenuCloseTimer = setTimeout(() => cheminsTracéSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxTracerCheminTrigger.addEventListener('mouseenter', openCheminsSubmenu);
 ctxTracerCheminTrigger.addEventListener('mouseleave', scheduleCloseCheminsSubmenu);
@@ -5454,7 +5458,7 @@ function openMursTracéSubmenu(){
 }
 function scheduleCloseMursTracéSubmenu(){
   clearTimeout(S.mursTracéSubmenuCloseTimer);
-  S.mursTracéSubmenuCloseTimer = setTimeout(() => mursTracéSubmenu.classList.add('hidden'), 250);
+  S.mursTracéSubmenuCloseTimer = setTimeout(() => mursTracéSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxTracerMurTrigger.addEventListener('mouseenter', openMursTracéSubmenu);
 ctxTracerMurTrigger.addEventListener('mouseleave', scheduleCloseMursTracéSubmenu);
@@ -5466,18 +5470,57 @@ mursTracéSubmenu.addEventListener('mouseleave', scheduleCloseMursTracéSubmenu)
 
 // [STATE→S] let S.zoneSubmenuCloseTimer = null;
 function openZoneSubmenu(){
+  fermerSousMenusDeCaseSauf3D('zoneSubmenu');
   clearTimeout(S.zoneSubmenuCloseTimer);
   const rect = ctxZoneTrigger.getBoundingClientRect();
   placerMenu3D(zoneSubmenu, rect.right + 2, rect.top);
 }
 function scheduleCloseZoneSubmenu(){
   clearTimeout(S.zoneSubmenuCloseTimer);
-  S.zoneSubmenuCloseTimer = setTimeout(() => zoneSubmenu.classList.add('hidden'), 250);
+  S.zoneSubmenuCloseTimer = setTimeout(() => zoneSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxZoneTrigger.addEventListener('mouseenter', openZoneSubmenu);
 ctxZoneTrigger.addEventListener('mouseleave', scheduleCloseZoneSubmenu);
 zoneSubmenu.addEventListener('mouseenter', () => clearTimeout(S.zoneSubmenuCloseTimer));
 zoneSubmenu.addEventListener('mouseleave', scheduleCloseZoneSubmenu);
+
+// ─── Les sous-menus du menu d'une Case se ferment L'UN L'AUTRE (#418) ───────────────────────────
+//
+// ⚠️ CHACUN AVAIT SA MINUTERIE ET IGNORAIT LES AUTRES. Les quatre entrées ci-dessus — Ajouter,
+// Charger une scène, Tracer, Zone — ouvrent leur sous-menu au même bord, à deux hauteurs voisines.
+// Passer de l'une à l'autre laissait donc le premier affiché un quart de seconde par-dessus le
+// second. Signalé à l'usage, et le délai n'était pas en cause : c'est de l'appliquer à un
+// changement d'entrée qui l'était (cf. src/menu-timing.js, docs/en/ui-scale-coordinates.md pour le
+// voisinage).
+//
+// Les DESCENDANTS comptent autant que les frères : masquer « Ajouter » ne masque pas « Véhicules »,
+// qui est un frère dans le document et non un enfant. Un sous-sous-menu resté seul à l'écran est
+// pire que deux menus superposés.
+const GROUPES_SOUS_MENUS_CASE_3D = [
+  { cle: 'addSubmenu',       descendants: addSubmenuL2Groups.map(g => g.submenu.id) },
+  { cle: 'loadSceneSubmenu', descendants: [] },
+  { cle: 'tracerSubmenu',    descendants: ['cheminsTracéSubmenu', 'mursTracéSubmenu'] },
+  { cle: 'zoneSubmenu',      descendants: [] },
+];
+// Les entrées qui PORTENT un sous-menu. Survoler n'importe quelle autre ligne du menu ferme tout.
+const DECLENCHEURS_CASE_3D = ['ctxAddTrigger', 'ctxLoadSceneTrigger', 'ctxTracerTrigger', 'ctxZoneTrigger'];
+
+function fermerSousMenusDeCaseSauf3D(cle){
+  sousMenusAFermer3D(cle, GROUPES_SOUS_MENUS_CASE_3D).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+}
+
+// ⚠️ UN SEUL ÉCOUTEUR DÉLÉGUÉ, PAS UN PAR LIGNE. Le menu d'une Case change de contenu selon ce
+// qu'on vise (cf. les `style.display` du gestionnaire de clic droit) : attacher un écouteur par
+// entrée obligerait à les rebrancher, et la ligne ajoutée demain serait oubliée.
+panelContextMenu.addEventListener('mouseover', (e) => {
+  const declencheur = DECLENCHEURS_CASE_3D.find(id => e.target.closest && e.target.closest(`#${id}`));
+  // Sur une entrée à sous-menu, c'est son propre `mouseenter` qui ouvre et ferme les autres. Ici on
+  // ne traite que le cas « une entrée sans sous-menu » : tout se ferme, sans délai.
+  if (!declencheur) fermerSousMenusDeCaseSauf3D(null);
+});
 
 document.getElementById('ctxTracerRoute').onclick = () => {
   const panel = currentPage().objects.find(o => o.id === S.selectedId && o.type === 'panel');
@@ -5843,7 +5886,7 @@ function openExportPageSubmenu(){
 }
 function scheduleCloseExportPageSubmenu(){
   clearTimeout(S.exportPageSubmenuCloseTimer);
-  S.exportPageSubmenuCloseTimer = setTimeout(() => exportPageSubmenu.classList.add('hidden'), 250);
+  S.exportPageSubmenuCloseTimer = setTimeout(() => exportPageSubmenu.classList.add('hidden'), delaiFermetureSousMenu3D('sortie'));
 }
 ctxExportPageTrigger.addEventListener('mouseenter', openExportPageSubmenu);
 ctxExportPageTrigger.addEventListener('mouseleave', scheduleCloseExportPageSubmenu);
