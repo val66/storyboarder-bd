@@ -26,9 +26,8 @@ Three facts govern this project:
 
 - **the Three.js scene is SHARED** across every Panel, and each Panel is rendered in turn. Per-Panel
   lighting is therefore set before each render, which costs nothing, and not at construction time;
-- **only one style exists**, `simplifie`. The `comics_numerique` branches in rig3d.js are
-  unreachable: no `STYLES_3D` entry carries that key and no project references it. They are not an
-  obstacle here, and removing them is task #415;
+- **only one style exists**, `simplifie`. The `comics_numerique` branches were unreachable, and
+  #415 has since removed them along with the whole alternate rig they carried;
 - **nothing casts a shadow** today.
 
 ## The decision that governs everything: "no setting" means the existing look, exactly

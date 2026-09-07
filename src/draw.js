@@ -50,7 +50,7 @@ import {
   renderObjectToCanvas3D,
 } from './scene3d.js';
 import {
-  resolveStyle3D, applyStyleCanvasFilter3D,
+  resolveStyle3D,
   renderPersonaToCanvas3D,
   personaRigCache3D, personaCamera3D,
   drawPersona3D,
@@ -1768,9 +1768,7 @@ export function drawObjectPreview(targetCanvas, spec){
   const cnv = renderObjectToCanvas3D(tempObj, S.objectPreviewZoom * sizeFactor, style, undefined, scale);
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  applyStyleCanvasFilter3D(pctx, style);
   pctx.drawImage(cnv, 0, 0, cnv.width, cnv.height, 0, 0, targetCanvas.width, targetCanvas.height);
-  pctx.filter = 'none';
 }
 
 // [STATE→S] let S.objectPreviewZoom = 1;
@@ -1824,9 +1822,7 @@ export function drawPersonaPreview(targetCanvas, spec){
   }
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  applyStyleCanvasFilter3D(pctx, style);
   pctx.drawImage(cnv, 0, 0, cnv.width, cnv.height, 0, 0, targetCanvas.width, targetCanvas.height);
-  pctx.filter = 'none';
 }
 
 // ---------- SCROLL WHEEL ON THE MODAL'S 3D PREVIEW: LOCAL ZOOM ONLY ----------

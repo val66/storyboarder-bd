@@ -22,11 +22,11 @@ import {
   cloneJoints,
   getBodyProportions3D,
   resolveStyle3D,
-  applyStyleCanvasFilter3D,
   expandBoxByMeshOnly3D,
   wallChildShapeKey3D,
   disposeGroupGeometries3D,
   buildWindowRig3D,
+  buildPersonaRig3D,
 } from '../src/rig3d.js';
 import { S } from '../src/state.js';
 import { POSE_3D } from '../src/constants.js';
@@ -145,7 +145,7 @@ describe('getBodyProportions3D : silhouette homme/femme', () => {
   });
 });
 
-describe('resolveStyle3D / applyStyleCanvasFilter3D : style graphique 3D', () => {
+describe('resolveStyle3D : style graphique 3D', () => {
   test('styleKey explicite : renvoyé tel quel (pas de repli sur le Tome courant)', () => {
     assert.equal(resolveStyle3D('un_style_quelconque'), 'un_style_quelconque');
   });
@@ -156,16 +156,76 @@ describe('resolveStyle3D / applyStyleCanvasFilter3D : style graphique 3D', () =>
     assert.equal(resolveStyle3D(), 'simplifie');
   });
 
-  test('applyStyleCanvasFilter3D : style "comics_numerique" applique un filtre contraste/saturation', () => {
-    const c = {};
-    applyStyleCanvasFilter3D(c, 'comics_numerique');
-    assert.equal(c.filter, 'contrast(1.12) saturate(1.25)');
+  test('#415 RÉGRESSION : un Projet portant le style DISPARU se rend comme les autres', () => {
+    // ⚠️ `style3d` EST UN CHAMP PERSISTÉ, et un fichier enregistré avant #415 peut encore porter
+    // « comics_numerique ». Il n'y a plus aucune branche pour ce nom : la garantie n'est donc pas
+    // qu'il soit converti, mais qu'il ne change RIEN. On le vérifie sur ce qui dépendait de lui.
+    const rigDisparu = buildPersonaRig3D('#8844aa', 'homme', 'comics_numerique');
+    const rigActuel = buildPersonaRig3D('#8844aa', 'homme', 'simplifie');
+    const compter = (rig) => { let n = 0; rig.figureGroup.traverse(() => { n++; }); return n; };
+    assert.equal(compter(rigDisparu), compter(rigActuel),
+      'le rig alternatif survit : un Projet ancien n\'a pas le même corps qu\'un neuf');
   });
 
-  test('applyStyleCanvasFilter3D : tout autre style → aucun filtre', () => {
-    const c = {};
-    applyStyleCanvasFilter3D(c, 'simplifie');
-    assert.equal(c.filter, 'none');
+  test("#415 RÉGRESSION : l'éclairage de référence n'a plus qu'UNE source", () => {
+    /**
+     * ⚠️ CE TEST VIENT D'UNE MUTATION QUI A ÉCHAPPÉ DEUX FOIS, et c'est la plus instructive de la
+     * campagne. En ramenant l'ambiante de 0,75 à 0,45 — la valeur EXACTE du défaut signalé en
+     * #414d, « en mode Jour les ombres sont trop sombres » — la suite entière restait verte.
+     *
+     * La note de #414 affirme pourtant : « à intensité 1 on retrouve exactement l'éclairage
+     * d'aujourd'hui, et un test l'exige ». C'était vrai de la CONSTANTE `AMBIANTE_ACTUELLE`, et
+     * faux de la lumière réellement posée : les deux valeurs étaient écrites séparément, dans
+     * lighting-3d.js et dans rig3d.js. Deux exemplaires d'une même promesse, donc une promesse qui
+     * ne tenait qu'à ce que personne ne touche au second.
+     *
+     * Importer la constante ne suffisait pas : un littéral pouvait revenir juste à côté. D'où ce
+     * test, qui porte sur la SOURCE parce que `applyStyle3DLighting` manipule des lumières
+     * Three.js créées par un WebGLRenderer, impossible à construire sous Node.
+     */
+    const src = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+    assert.match(src, /import \{ AMBIANTE_ACTUELLE, CLE_ACTUELLE \} from '\.\/lighting-3d\.js'/,
+      "rig3d.js ne partage plus les intensités de référence");
+
+    // Aucune intensité de lumière ne doit être un nombre écrit sur place.
+    const enDur = [...src.matchAll(/(?:AmbientLight|DirectionalLight)\([^)]*,\s*([\d.]+)\s*\)/g)]
+      .concat([...src.matchAll(/persona(?:Ambient|Key)Light3D\.intensity\s*=\s*([\d.]+)/g)]);
+    assert.deepEqual(enDur.map(m => m[0]), [],
+      "une intensité est réécrite en clair : elle peut diverger de la constante sans que rien ne le dise");
+  });
+
+  test("#415 RÉGRESSION : le corps compte 15 maillages, pas un de plus", () => {
+    /**
+     * ⚠️ CE TEST VIENT D'UNE MUTATION QUI A ÉCHAPPÉ. En remettant un capuchon d'articulation — une
+     * des pièces du rig alternatif que #415 vient de retirer — la suite entière restait verte : le
+     * test voisin compare deux styles entre eux, et les deux gagnaient la pièce ensemble.
+     *
+     * Comparer une chose à elle-même ne prouve rien. Le compte est donc ABSOLU, et il est le même
+     * pour les trois morphologies : 15 maillages, mesurés. Les six pièces disparues étaient le
+     * capuchon d'articulation, la ceinture, le col, la calotte de cheveux, les épaulettes et le
+     * bout de chaussure arrondi.
+     *
+     * ⚠️ CE QU'IL COÛTE, ET C'EST VOULU : toute modification légitime du corps le fera échouer. Le
+     * chiffre est un TÉMOIN, pas une limite ; le mettre à jour est le geste normal, l'ignorer ne
+     * doit pas l'être.
+     */
+    for (const genre of ['homme', 'femme', 'enfant']) {
+      const rig = buildPersonaRig3D('#8844aa', genre, 'simplifie');
+      let meshes = 0;
+      rig.figureGroup.traverse(o => { if (o.isMesh) meshes++; });
+      assert.equal(meshes, 15, `${genre} : ${meshes} maillages, une pièce a été ajoutée ou retirée`);
+    }
+  });
+
+  test('#415 RÉGRESSION : la machinerie du style disparu n\'est plus exportée', () => {
+    // Le contour, le dégradé toon et le filtre 2D n'avaient plus qu'un appelant chacun, dans les
+    // branches qu'on vient de retirer. Les laisser exportés aurait laissé croire qu'ils servent.
+    const src = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+    for (const nom of ['ensureOutlineMat3D', 'ensureToonGradientMap3D', 'applyStyleCanvasFilter3D',
+      'addBodyMeshWithOutline3D']) {
+      assert.ok(!src.includes(nom), `« ${nom} » est revenu dans rig3d.js`);
+    }
+    assert.ok(!src.includes('comics_numerique'), 'le nom du style disparu est revenu dans rig3d.js');
   });
 });
 
@@ -461,3 +521,27 @@ describe('CÂBLAGE : logarithmicDepthBuffer (z-fighting au dézoom)', () => {
       'proches (z-fighting) dès que la Scène est dézoomée');
   });
 });
+
+/**
+ * JOURNAL DE MUTATION (#415) : cinq fautes réintroduites une à une. Résultats RÉELS :
+ *
+ *   M1 l'ambiante réelle repasse de 0,75 à 0,45                          **VERT**, puis ROUGE
+ *   M2 la constante partagée dérive à 0,45                               ROUGE (6 tests)
+ *   M3 un capuchon d'articulation est remis dans le rig                  **VERT**, puis ROUGE
+ *   M4 la lumière de remplissage revient                                 ROUGE
+ *   M5 le filtre 2D du style disparu revient                             ROUGE (3 tests)
+ *
+ * ⚠️ M1 EST LA PLUS INSTRUCTIVE DE TOUT LE CHANTIER, et elle a échappé DEUX fois. La valeur 0,45
+ * est exactement celle du défaut signalé en #414d, « en mode Jour les ombres sont trop sombres ».
+ * La note de #414 affirme qu'un test l'exige ; c'était vrai de la CONSTANTE et faux de la lumière
+ * posée, les deux étant écrites séparément. Premier remède : importer la constante dans rig3d.js.
+ * Insuffisant, un littéral pouvait revenir à côté — la mutation a de nouveau échappé. Second
+ * remède, celui qui tient : un test refuse toute intensité écrite en clair dans rig3d.js.
+ *
+ * ⚠️ M3 A ÉCHAPPÉ POUR UNE RAISON DE FORME QUI VAUT D'ÊTRE RETENUE. Le test voisin comparait le rig
+ * de l'ancien style à celui du nouveau ; en remettant une pièce, les DEUX la gagnaient, et l'égalité
+ * tenait toujours. Comparer une chose à elle-même ne prouve rien. Le compte est devenu ABSOLU.
+ *
+ * Les deux échappées disent la même chose sous deux formes : une garantie qui repose sur l'accord
+ * de deux copies ne garantit rien, qu'il s'agisse de deux constantes ou de deux rigs.
+ */

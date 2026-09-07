@@ -1795,13 +1795,15 @@ describe('#414c : l\'éclairage d\'une Case, posé au rendu et entré dans la si
     'l\'éditeur de modèle reçoit l\'éclairage d\'une Case : un aperçu de nuit serait inutilisable');
   });
 
-  test('RÉGRESSION : le remplissage du style n\'est pas touché', () => {
-    // Il appartient au style graphique, comme les aplats et les contours. Une lumière de Case n'a
-    // pas à décider de l'identité graphique du Tome.
+  test('RÉGRESSION : l\'éclairage d\'une Case ne pose QUE l\'ambiante et la clé', () => {
+    // ⚠️ CE TEST GARDAIT UNE TROISIÈME LUMIÈRE QUI N'EXISTE PLUS. Il exigeait que le « remplissage »
+    // ne soit pas touché, au motif qu'il appartenait au style graphique. #415 a montré que seul le
+    // style disparu l'allumait : partout ailleurs il était créé puis remis à zéro. Il a été retiré,
+    // et l'assertion vaut maintenant pour son absence, ce qui est plus fort que pour son intégrité.
     const i = RIG_SRC.indexOf('export function appliquerEclairageDeCase3D');
     assert.ok(i > 0, 'l\'application de l\'éclairage a disparu');
     const corps = RIG_SRC.slice(i, RIG_SRC.indexOf('\n}', i));
-    assert.ok(!/personaFillLight3D/.test(corps), 'la lumière de remplissage du style est écrasée');
+    assert.ok(!/personaFillLight3D/.test(RIG_SRC), 'la lumière de remplissage est revenue');
     assert.match(corps, /if \(!personaAmbientLight3D \|\| !eclairage \|\| !eclairage\.soleil\) return;/,
       'un éclairage mal formé ne doit RIEN poser plutôt que d\'écrire des valeurs indéfinies');
   });

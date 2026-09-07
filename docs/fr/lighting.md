@@ -28,9 +28,8 @@ Trois faits qui gouvernent le chantier :
 - **la scène Three.js est PARTAGÉE** entre toutes les Cases, et chaque Case est rendue à son tour.
   Un éclairage par Case se pose donc avant chaque rendu, ce qui ne coûte rien, et non à la
   construction ;
-- **un seul style existe**, `simplifie`. Les branches `comics_numerique` de rig3d.js sont
-  inatteignables, aucun `STYLES_3D` ne porte cette clé et aucun Projet ne la référence. Elles ne
-  sont donc pas un obstacle ici, et leur retrait est la tâche #415 ;
+- **un seul style existe**, `simplifie`. Les branches `comics_numerique` étaient inatteignables, et
+  #415 les a depuis retirées, avec tout le rig alternatif qu'elles portaient ;
 - **rien ne projette d'ombre** aujourd'hui.
 
 ## La décision qui gouverne tout : « pas de réglage » vaut l'existant, à l'identique

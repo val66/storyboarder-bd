@@ -29,7 +29,7 @@ import {
   orbiteDeFace3D,
 } from './utils.js';
 import {
-  applyStyleCanvasFilter3D, cloneJoints, figuresDeLaBibliotheque3D,
+  cloneJoints, figuresDeLaBibliotheque3D,
   getEffectiveJoints, objectRigCache3D, poseOsPourModeleImporte, repereDuCorpsPourFichier3D,
   groupesDeCurseurs3D, morphologiePourModele,
   resolveStyle3D, squelettePourPose3D,
@@ -921,7 +921,6 @@ function dessinerAnimalDansEditeur(cnv, objType, size){
     { w: rw, h: rh }, { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY });
   const ctx = cnv.getContext('2d');
   ctx.clearRect(0, 0, cnv.width, cnv.height);
-  applyStyleCanvasFilter3D(ctx, style);
   ctx.drawImage(rendu, 0, 0, rendu.width, rendu.height, 0, 0, cnv.width, cnv.height);
 }
 
@@ -953,7 +952,6 @@ function dessinerModeleDansEditeur(cnv, fichier, size){
     { w: rw, h: rh }, { rotX: S.personaEditorCamRotX, rotY: S.personaEditorCamRotY });
   const ctx = cnv.getContext('2d');
   ctx.clearRect(0, 0, cnv.width, cnv.height);
-  applyStyleCanvasFilter3D(ctx, style);
   ctx.drawImage(rendu, 0, 0, rendu.width, rendu.height, 0, 0, cnv.width, cnv.height);
 }
 

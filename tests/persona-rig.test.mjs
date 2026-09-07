@@ -35,7 +35,11 @@ import { SLOTS } from '../src/skeleton-map.js';
 import { POSE_HANDLES, POSE_3D, POSITIONS, JOINT_GROUPS, JOINT_LABELS } from '../src/constants.js';
 import { poseSliderSpecs3D } from '../src/utils.js';
 
-const rigNeuf = () => buildPersonaRig3D('#8844aa', 'homme', 'comics_numerique');
+// ⚠️ CE MONTAGE CONSTRUISAIT LE RIG DU STYLE « Comics numérique », que l'application ne pouvait
+// PAS produire : aucun sélecteur ne l'offrait et aucun Projet ne le portait. La suite mesurait donc
+// une configuration impossible, avec ses capuchons, sa ceinture et son col en plus. #415 a retiré
+// ce style ; le montage passe au seul qui existe.
+const rigNeuf = () => buildPersonaRig3D('#8844aa', 'homme', 'simplifie');
 
 // Signature géométrique du rig : la matrice monde de chaque articulation, arrondie. C'est ce qui
 // change quand une pose s'applique, et ce qui ne doit PAS changer quand elle ne devrait pas.

@@ -17,6 +17,13 @@ import {
   clamp, orbitCameraPosition3D, poseJointsByKey3D
 } from './utils.js';
 import { S, currentVolume, tr } from './state.js';
+// ⚠️ LES INTENSITÉS DE RÉFÉRENCE VIENNENT DE LÀ, ET C'EST #415 QUI L'A IMPOSÉ. Elles étaient
+// écrites en clair ici ET dans lighting-3d.js, soit deux exemplaires de la même promesse : « Jour
+// vaut exactement l'éclairage d'origine » (cf. docs/en/lighting.md). Une mutation l'a montré, en
+// ramenant l'ambiante de 0,75 à 0,45 — la valeur exacte du défaut signalé en #414d — sans qu'aucun
+// test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
+// `lighting-3d.js` n'importe rien : aucun cycle possible.
+import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
@@ -70,19 +77,13 @@ export function addLimb3D(parent, attachY, sideX, len1, len2, radius, mat, style
   parent.add(g1);
   const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.85, radius, len1, 9), mat);
   seg1.position.y = -len1 / 2;
-  addBodyMeshWithOutline3D(g1, seg1, styleKey);
+  g1.add(seg1);
   const g2 = new THREE.Group();
   g2.position.y = -len1;
   g1.add(g2);
   const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.65, radius * 0.85, len2, 9), mat);
   seg2.position.y = -len2 / 2;
-  addBodyMeshWithOutline3D(g2, seg2, styleKey);
-  // Digital comics: joint cap at the elbow/knee (small outlined sphere) to further mark
-  // the joint, like the detailed linework of characters in games such as Hades.
-  if (styleKey === 'comics_numerique') {
-    const jointCap = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.88, 10, 10), mat);
-    addBodyMeshWithOutline3D(g2, jointCap, styleKey, 0.05);
-  }
+  g2.add(seg2);
   const tip = new THREE.Group();
   tip.position.y = -len2;
   g2.add(tip);
@@ -119,11 +120,6 @@ export function getBodyProportions3D(genre){
 export function buildPersonaRig3D(colorHex, genre, styleKey){
   const P = getBodyProportions3D(genre);
   const mat = makeBodyMaterial3D(colorHex || '#3E5FA8', styleKey);
-  // Accent material (collar, belt) and hair material: fixed dark tones, independent of
-  // the color chosen for the persona, so they read as "clothing/accessories" rather than
-  // a simple reuse of the body's hue.
-  const accentMat = makeBodyMaterial3D('#222226', styleKey);
-  const hairMat = makeBodyMaterial3D('#241d18', styleKey);
 
   const root = new THREE.Group();
 
@@ -136,15 +132,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   root.add(torsoGroup);
   const hipMesh = new THREE.Mesh(new THREE.CylinderGeometry(P.waistR, P.hipR, waistY, 10), mat);
   hipMesh.position.y = waistY / 2;
-  addBodyMeshWithOutline3D(torsoGroup, hipMesh, styleKey);
-  // Digital comics: a defined belt at the waist (flat ring in dark accent material),
-  // a costume detail typical of modern comics silhouettes.
-  if (styleKey === 'comics_numerique') {
-    const belt = new THREE.Mesh(new THREE.TorusGeometry(P.waistR * 1.04, 0.02, 8, 16), accentMat);
-    belt.position.y = waistY * 0.98;
-    belt.rotation.x = Math.PI / 2;
-    addBodyMeshWithOutline3D(torsoGroup, belt, styleKey, 0.18);
-  }
+  torsoGroup.add(hipMesh);
   // Bust (upper torso): for the female model, the cylinder's vertices are deformed directly
   // (instead of adding a separate shape on top) so a bulge naturally emerges from the
   // torso's surface, with a continuous transition and no visible seam.
@@ -174,7 +162,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   }
   const chestMesh = new THREE.Mesh(chestGeo, mat);
   chestMesh.position.y = waistY + chestLen / 2;
-  addBodyMeshWithOutline3D(torsoGroup, chestMesh, styleKey);
+  torsoGroup.add(chestMesh);
 
   // Neck (short cylinder) between the torso and the head, to avoid the head looking directly grafted on.
   //
@@ -192,31 +180,14 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   torsoGroup.add(neckGroup);
   const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(P.shoulderR * 0.42, P.shoulderR * 0.46, neckLen, 8), mat);
   neckMesh.position.y = neckLen / 2;
-  addBodyMeshWithOutline3D(neckGroup, neckMesh, styleKey);
-  // Digital comics: a rigid collar at the base of the neck (accent ring), to break up the plain
-  // neck/torso joint and read as clothing rather than a bare silhouette.
-  if (styleKey === 'comics_numerique') {
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(P.shoulderR * 0.5, 0.016, 8, 14), accentMat);
-    collar.position.y = 0.015;
-    collar.rotation.x = Math.PI / 2;
-    addBodyMeshWithOutline3D(neckGroup, collar, styleKey, 0.18);
-  }
-
+  neckGroup.add(neckMesh);
   const headGroup = new THREE.Group();
   headGroup.position.y = neckLen;
   neckGroup.add(headGroup);
   const headR = P.headR;
   const headMesh = new THREE.Mesh(new THREE.SphereGeometry(headR, 20, 20), mat);
   headMesh.position.y = headR;
-  addBodyMeshWithOutline3D(headGroup, headMesh, styleKey, 0.05);
-  // Digital comics: a hair cap (dark spherical cap covering the top of the head),
-  // to break up the "smooth ball" silhouette and get closer to a real drawn character.
-  if (styleKey === 'comics_numerique') {
-    const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(headR * 1.04, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), hairMat);
-    hairMesh.position.y = headR;
-    addBodyMeshWithOutline3D(headGroup, hairMesh, styleKey, 0.06);
-  }
-
+  headGroup.add(headMesh);
   const faceGeo = new THREE.PlaneGeometry(headR * 1.55, headR * 1.55);
   // The face is a flat "sticker" applied onto the head's sphere; its geometry is not
   // curved like the sphere, so at nearly equal distance the depth test made it
@@ -254,18 +225,6 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
   torsoGroup.add(rClavicle);
   const lArm = addLimb3D(lClavicle, 0, -P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
   const rArm = addLimb3D(rClavicle, 0, P.shoulderX, 0.32, 0.28, P.armR, mat, styleKey);
-  // Digital comics: shoulder pads (accent hemispheres placed at the arms' attachment point),
-  // a more "armored"/angular silhouette typical of modern comics characters.
-  //
-  // Portées par la CLAVICULE et non plus par le torse : sans quoi hausser une épaule laisserait sa
-  // protection derrière, flottant à l'ancienne place.
-  if (styleKey === 'comics_numerique') {
-    [[-P.shoulderX, lClavicle], [P.shoulderX, rClavicle]].forEach(([sideX, clavicule]) => {
-      const pad = new THREE.Mesh(new THREE.SphereGeometry(P.armR * 1.35, 10, 8), accentMat);
-      pad.position.set(sideX, 0.02, 0);
-      addBodyMeshWithOutline3D(clavicule, pad, styleKey, 0.06);
-    });
-  }
 
   const hipGroup = new THREE.Group();
   root.add(hipGroup);
@@ -287,18 +246,7 @@ export function buildPersonaRig3D(colorHex, genre, styleKey){
     // comme une vraie cheville, sans quoi le pied tournerait autour de son propre milieu et le
     // talon traverserait le sol dès qu'on lève la pointe.
     pied.position.set(0, -hauteur / 2, -longueur / 2 + P.legR * 0.55);
-    addBodyMeshWithOutline3D(cheville, pied, styleKey);
-    // Comics numérique : une pointe arrondie, pour éviter la chaussure parfaitement
-    // parallélépipédique et rester dans le même vocabulaire que les capsules d'articulation.
-    if (styleKey === 'comics_numerique') {
-      // Rayon EXACTEMENT la demi-épaisseur du pied, centré à sa mi-hauteur : la pointe arrondit le
-      // bout sans dépasser ni au-dessus de la cheville, ni sous la semelle. Une première version au
-      // rayon plus large débordait de 1 cm au-dessus de la cheville, le pied n'était plus tout à
-      // fait suspendu sous elle, ce qu'un test a refusé.
-      const bout = new THREE.Mesh(new THREE.SphereGeometry(hauteur * 0.5, 10, 8), mat);
-      bout.position.set(0, -hauteur / 2, pied.position.z - longueur / 2);
-      addBodyMeshWithOutline3D(cheville, bout, styleKey, 0.05);
-    }
+    cheville.add(pied);
   });
 
   const figureGroup = new THREE.Group();
@@ -1092,12 +1040,19 @@ export function frameOrthoCameraToBox(camera, box, zoom, pan){
   camera.updateProjectionMatrix();
 }
 
-// Lighting for the shared 3D scene, adjustable according to the Volume's graphic Style (see STYLES_3D):
-// "Simplified" keeps the original neutral lighting (white ambient + one white directional),
-// "Digital comics" switches to two-tone lighting (warm key + cool fill) to
-// recreate, via real Three.js lights rather than a 2D filter, the contrasted warm/cool mood
-// of "modern comics" pages.
-let personaAmbientLight3D = null, personaKeyLight3D = null, personaFillLight3D = null;
+// Les trois lumières de la scène 3D partagée. `applyStyle3DLighting` pose l'éclairage neutre du
+// seul style existant : ambiante blanche à 0,75, clé blanche à 0,55 en (1, 2, 2), remplissage
+// éteint. C'est cet éclairage EXACT que le mode « Jour » de #414 reproduit, et un test le tient
+// (cf. docs/en/lighting.md) : le modifier ici change l'aspect de toutes les Cases déjà dessinées.
+//
+// ⚠️ Le paramètre `styleKey` ne sert plus à rien ici depuis #415, et il RESTE : la signature est
+// partagée avec le reste du chemin de style, et le retirer d'un seul maillon donnerait une chaîne
+// d'appels dont un cran ne ressemble plus aux autres.
+// ⚠️ IL Y AVAIT UNE TROISIÈME LUMIÈRE, BLEUE, ET #415 L'A RETIRÉE. Le « remplissage » n'était
+// allumé que par le style « Comics numérique » ; partout ailleurs il était créé, ajouté à la scène,
+// puis remis à zéro à chaque rendu. Une lumière à intensité nulle ne change pas l'image, mais elle
+// occupe une place dans les tableaux d'uniformes du shader et se lisait comme un réglage possible.
+let personaAmbientLight3D = null, personaKeyLight3D = null;
 // Resolves the effective style to apply: if called without an explicit styleKey (the case for modal
 // previews, which always edit an Element of the current Volume), falls back to the active Volume's
 // graphic Style; otherwise (page render/export, which knows the page's owning Volume) uses the
@@ -1110,25 +1065,11 @@ export function resolveStyle3D(styleKey){
   const t = currentVolume();
   return (t && t.style3d) || STYLES_3D[0].key;
 }
-// Slight 2D boost (contrast/saturation) to complement the 3D lighting, to accentuate the
-// "Digital comics" render without a costly per-pixel post-process (halftone would remain to be done later).
-export function applyStyleCanvasFilter3D(c, styleKey){
-  c.filter = (styleKey === 'comics_numerique') ? 'contrast(1.12) saturate(1.25)' : 'none';
-}
 export function applyStyle3DLighting(styleKey){
   if (!personaAmbientLight3D) return;
-  if (styleKey === 'comics_numerique') {
-    personaAmbientLight3D.color.set(0x2b3a55); personaAmbientLight3D.intensity = 0.4;
-    personaKeyLight3D.color.set(0xff9d4d); personaKeyLight3D.intensity = 1.05;
-    personaKeyLight3D.position.set(1.3, 1.8, 1.6);
-    personaFillLight3D.color.set(0x4ab2e0); personaFillLight3D.intensity = 0.6;
-    personaFillLight3D.position.set(-1.6, 0.4, 0.8);
-  } else {
-    personaAmbientLight3D.color.set(0xffffff); personaAmbientLight3D.intensity = 0.75;
-    personaKeyLight3D.color.set(0xffffff); personaKeyLight3D.intensity = 0.55;
-    personaKeyLight3D.position.set(1, 2, 2);
-    personaFillLight3D.intensity = 0;
-  }
+  personaAmbientLight3D.color.set(0xffffff); personaAmbientLight3D.intensity = AMBIANTE_ACTUELLE;
+  personaKeyLight3D.color.set(0xffffff); personaKeyLight3D.intensity = CLE_ACTUELLE;
+  personaKeyLight3D.position.set(1, 2, 2);
 }
 
 /**
@@ -1160,59 +1101,16 @@ export function appliquerEclairageDeCase3D(eclairage){
 }
 
 // ---------- "DIGITAL COMICS" CEL-SHADING ----------
-// Rather than simply tinting the light, the "Digital comics" style changes the material itself
-// (flat stepped shading via MeshToonMaterial + gradient map, instead of a continuous gradient like
-// MeshStandardMaterial) and adds a comic-book-style black outline (the "inverted hull" technique:
-// a slightly enlarged duplicate of each mesh, rendered in solid black and seen from the inside, which
-// visually protrudes from the original silhouette).
-let TOON_GRADIENT_MAP_3D = null;
-export function ensureToonGradientMap3D(){
-  if (TOON_GRADIENT_MAP_3D) return TOON_GRADIENT_MAP_3D;
-  // 4 brightness steps (deep shadow → full light): few enough for a crisp flat-shaded render.
-  const data = new Uint8Array([55, 55, 55, 255, 130, 130, 130, 255, 195, 195, 195, 255, 255, 255, 255, 255]);
-  const tex = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
-  tex.needsUpdate = true;
-  tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
-  TOON_GRADIENT_MAP_3D = tex;
-  return TOON_GRADIENT_MAP_3D;
-}
-let OUTLINE_MAT_3D = null;
-export function ensureOutlineMat3D(){
-  if (!OUTLINE_MAT_3D) OUTLINE_MAT_3D = new THREE.MeshBasicMaterial({ color: 0x14120f, side: THREE.BackSide });
-  return OUTLINE_MAT_3D;
-}
-// "Body" material accounting for the style: MeshToonMaterial (steps + gradient map) in Digital
-// Comics, MeshStandardMaterial (continuous gradient) in Simplified, same call API in both cases.
+// Le matériau des corps. Un seul style existe, mais `styleKey` reste dans la signature : c'est lui
+// qui entre dans la clé du cache de matériaux (cf. `entry.style3d !== style` plus bas), et un Projet
+// enregistré peut encore porter une valeur d'un style disparu.
 export function makeBodyMaterial3D(colorHex, styleKey, opts){
   opts = opts || {};
-  if (styleKey === 'comics_numerique') {
-    return new THREE.MeshToonMaterial({
-      color: colorHex, gradientMap: ensureToonGradientMap3D(),
-      transparent: !!opts.transparent, opacity: opts.opacity != null ? opts.opacity : 1,
-    });
-  }
   return new THREE.MeshStandardMaterial({
     color: colorHex, roughness: opts.roughness != null ? opts.roughness : 0.65, metalness: opts.metalness != null ? opts.metalness : 0.05,
     transparent: !!opts.transparent, opacity: opts.opacity != null ? opts.opacity : 1,
   });
 }
-// Adds a mesh to its parent then, in Digital Comics, gives it its black double-outline
-// (same geometry, just enlarged and seen from the inside), call this for each body part
-// that should be outlined, like the inked silhouettes of a comics page.
-export function addBodyMeshWithOutline3D(parent, mesh, styleKey, thickness){
-  parent.add(mesh);
-  if (styleKey === 'comics_numerique') {
-    const outline = new THREE.Mesh(mesh.geometry, ensureOutlineMat3D());
-    outline.position.copy(mesh.position);
-    outline.rotation.copy(mesh.rotation);
-    const s = 1 + (thickness || 0.07);
-    outline.scale.set(s, s, s);
-    outline.renderOrder = -1;
-    parent.add(outline);
-  }
-  return mesh;
-}
-
 export function ensurePersonaScene3D(){
   if (personaRenderer3D) return;
   personaScene3D = new THREE.Scene();
@@ -1229,14 +1127,11 @@ export function ensurePersonaScene3D(){
   personaCameraOrtho3D = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 2000);
   personaCameraOrtho3D.position.set(0, 0.55, 2.05);
   personaCameraOrtho3D.lookAt(0, 0.55, 0);
-  personaAmbientLight3D = new THREE.AmbientLight(0xffffff, 0.75);
+  personaAmbientLight3D = new THREE.AmbientLight(0xffffff, AMBIANTE_ACTUELLE);
   personaScene3D.add(personaAmbientLight3D);
-  personaKeyLight3D = new THREE.DirectionalLight(0xffffff, 0.55);
+  personaKeyLight3D = new THREE.DirectionalLight(0xffffff, CLE_ACTUELLE);
   personaKeyLight3D.position.set(1, 2, 2);
   personaScene3D.add(personaKeyLight3D);
-  personaFillLight3D = new THREE.DirectionalLight(0x4ab2e0, 0);
-  personaFillLight3D.position.set(-1.6, 0.4, 0.8);
-  personaScene3D.add(personaFillLight3D);
   // logarithmicDepthBuffer : le plan far s'étire avec panel.camDist (cf. framePanelCamera3D,
   // scene3d.js, far = dist + 80, environ) alors que le plan near reste épinglé à 0.01. Au
   // dézoom, ce ratio near/far explose ; un depth-buffer WebGL classique concentre presque toute
@@ -1608,7 +1503,6 @@ export function drawPersona3D(c, o, styleKey){
   const style = resolveStyle3D(styleKey);
   const cnv = renderPersonaToCanvas3D(o, undefined, undefined, style);
   c.save();
-  applyStyleCanvasFilter3D(c, style);
   c.drawImage(cnv, o.x, o.y, o.w, o.h);
   c.restore();
 }

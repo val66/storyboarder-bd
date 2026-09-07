@@ -40,7 +40,6 @@ import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting, appliquerEclairageDeCase3D,
-  applyStyleCanvasFilter3D,
   buildGroundTexture,
   buildWallRig3D,
   disposeObjectRig3D,
@@ -2836,7 +2835,6 @@ export function drawPanelScene3D(c, panel, page, styleKey, scale = 1){
   const cropX = Math.round((rw - cropW) / 2);
   const cropY = Math.round((rh - cropH) / 2);
   c.save();
-  applyStyleCanvasFilter3D(c, style);
   c.drawImage(cnv, cropX, cropY, cropW, cropH, panel.x, panel.y, panel.w, panel.h);
   c.restore();
   // Panels' 3D gizmo in "Camera mode" is no longer drawn on the main canvas: it is now
@@ -3268,7 +3266,6 @@ export function drawObject3D(c, o, styleKey, page){
   const style = resolveStyle3D(styleKey);
   const cnv = renderObjectToCanvas3D(o, undefined, style, page);
   c.save();
-  applyStyleCanvasFilter3D(c, style);
   c.drawImage(cnv, o.x, o.y, o.w, o.h);
   c.restore();
 }
