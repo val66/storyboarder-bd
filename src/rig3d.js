@@ -17,6 +17,7 @@ import {
   clamp, orbitCameraPosition3D, poseJointsByKey3D
 } from './utils.js';
 import { S, currentVolume, tr } from './state.js';
+import { perfCompteur } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
@@ -1474,6 +1475,10 @@ export function ensurePersonaRigEntry3D(o, styleKey){
   let entry = personaRigCache3D.get(o.id);
   if (!entry || entry.color !== color || entry.genre !== genre || entry.style3d !== style) {
     if (entry) personaScene3D.remove(entry.figureGroup);
+    // SONDE #411 : à retirer avec la campagne. Ce compteur est le CONTRÔLE de toute la mesure. Si
+    // les rigs survivaient bien au changement de Planche, il reste à sa valeur du chargement pendant
+    // les allers-retours ; s'il monte, c'est ma lecture du code qui est fausse, et le remède aussi.
+    perfCompteur('rigs de Personnage CONSTRUITS');
     const built = buildPersonaRig3D(color, genre, style);
     // Measure the natural standing height ONCE at creation, to normalize placeRigCentered3D
     // regardless of the current pose (lieFlat rotates the root by 90° → size.y becomes the body's
@@ -4175,6 +4180,8 @@ export function ensureObjectRigEntry3D(o){
   const heightChanged = entry && objType === 'modele' && entry.realHeightFloor !== (o && o.realHeightFloor);
   if (!entry || entry.objType !== objType || entry.color !== color || dimsChanged || doorStateChanged || windowStateChanged || modelChanged || heightChanged) {
     if (entry) personaScene3D.remove(entry.figureGroup);
+    // SONDE #411 : à retirer avec la campagne. Même rôle de contrôle que pour les Personnages.
+    perfCompteur('rigs d\'Objet CONSTRUITS');
     const built = buildPropRig3D(objType, color, o);
     personaScene3D.add(built.figureGroup);
     entry = Object.assign(built, { objType, color, realHeightFloor: o && o.realHeightFloor });

@@ -23,6 +23,7 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
+import { perfTemps, perfCompteur, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1780,8 +1781,20 @@ export function hauteurDeboutModele3D(entry, boxFn){
   return (Number.isFinite(size.y) && size.y > 0) ? size.y : undefined;
 }
 
+// SONDE #411 : à retirer avec la campagne.
+// La distinction mesurée ici est TOUTE la question : un premier rendu construit les rigs, un rendu
+// de RETOUR ne devrait repayer que la passe WebGL, puisque les rigs vivent dans personaRigCache3D,
+// indexés par id d'Élément, et survivent au vidage de panelSceneCache3D. Confondre les deux dans
+// une seule moyenne noierait précisément l'écart qu'on veut connaître.
+const _sondeCasesDejaRendues = new Set();
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
-  return _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
+  const retour = _sondeCasesDejaRendues.has(panel.id);
+  if (perfActive()) {
+    _sondeCasesDejaRendues.add(panel.id);
+    perfCompteur(retour ? 'Cases rendues (retour sur la Planche)' : 'Cases rendues (1re fois de la session)');
+  }
+  return perfTemps(retour ? 'Case : rendu au RETOUR' : 'Case : 1er rendu de la session', () =>
+    _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig));
 }
 function _renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
