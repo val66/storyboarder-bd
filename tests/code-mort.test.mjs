@@ -52,7 +52,25 @@ const SEAUX_DE_TEST = [
  * cela, cette liste redeviendrait le tapis sous lequel on glisse ce qu'on ne veut pas regarder.
  */
 const EN_ATTENTE = {
-  // VIDE, ET LA DETTE DE #403 A ÉTÉ PAYÉE EN ENTIER.
+  // #414a — L'ÉCLAIRAGE : LA DÉCISION EST ARRIVÉE AVANT SON APPLICATION, comme le magasin d'images
+  // de #403a en son temps. Ces exports ne sont pas morts, ils sont EN AVANCE, et chaque échéance
+  // est un NUMÉRO DE TÂCHE : c'est la leçon que #403 a laissée ici même, « à brancher plus tard »
+  // n'aurait rien fait échouer le jour où « plus tard » serait passé.
+  //
+  // La séparation est délibérée : poser des lumières dans une scène Three.js ne se teste pas sous
+  // Node, décider où va le soleil si. Écrire la décision d'abord est ce qui rend cette moitié-là
+  // vérifiable pour de bon.
+  //
+  // ⚠️ TROIS NOMS, PAS DIX. J'en avais inscrit dix, et le détecteur en a refusé sept : les
+  // constantes et les deux fonctions d'angles sont déjà APPELÉES, à l'intérieur du module. Une
+  // exemption qui ne correspond à rien est pire qu'inutile, elle laisse croire qu'on surveille un
+  // export qui n'a jamais eu besoin de l'être. Le garde-fou du fichier a fait exactement son
+  // travail.
+  projeterSurDome3D: '#414e — le dôme dessiné et ses deux gestes',
+  directionDepuisDome3D: '#414e — la saisie du point sur le dôme',
+  resoudreEclairage3D: '#414c — poser les lumières avant chaque rendu de Case',
+
+  // VIDE AVANT #414a, ET LA DETTE DE #403 AVAIT ÉTÉ PAYÉE EN ENTIER.
   //
   // Le chantier #402 avait vidé cette liste une première fois, et ses trois sorties avaient pris
   // trois chemins différents : #402b a retrouvé un appelant, #402c est partie, #402d a été vérifiée
@@ -116,10 +134,12 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
 
   test('la liste des décisions en attente ne s\'allonge pas', () => {
     // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
-    // après #403c, et zéro à nouveau depuis #403d. Ajouter une ligne doit coûter un test rouge,
+    // après #403c, zéro à nouveau depuis #403d, et trois avec celles de #414a — même situation
+    // qu'en #403a, la décision d'éclairage posée avant l'interface et le rendu qui s'en serviront.
+    // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    assert.equal(Object.keys(EN_ATTENTE).length, 3,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
