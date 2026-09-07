@@ -101,9 +101,24 @@ bouge jamais, si bien qu'une scène à 15 % est **plus claire** sur sa face non 
 juste plus plate. L'option 2 traverse réellement le crépuscule et la nuit, et rend le noir complet
 atteignable à 0 %.
 
-⚠️ **La fraction qui lie l'ambiance au soleil vaut 0,6 dans l'illustration, et ce nombre est un
-CHOIX, pas une mesure.** Il est à régler à l'implémentation, sur la Case réelle, et à consigner ici
-avec sa raison. L'écrire tel quel serait exactement la faute que #410c et #411 ont documentée.
+⚠️ **RÉGLÉ À L'USAGE, ET LA PREMIÈRE VERSION ÉTAIT FAUSSE.** L'illustration liait l'ambiance au
+soleil par une fraction de 0,6 ; livrée telle quelle, elle a produit un défaut signalé
+immédiatement : « en mode Jour les ombres sont trop sombres ». Le calcul le confirme, l'ambiante
+tombait à 0,45 au lieu des 0,75 d'aujourd'hui, soit 40 % perdus sur les faces non éclairées, pendant
+que le soleil montait de 0,55 à 1,0. J'avais dérivé la DIRECTION du soleil de l'éclairage existant,
+et pas ses intensités.
+
+Les deux lois sont désormais **ancrées aux deux bouts** :
+
+```
+soleil   = 0,55 × intensité
+ambiante = 0,75 × intensité²
+```
+
+À intensité 1 on retrouve exactement l'éclairage d'aujourd'hui, et un test l'exige — ce qui
+manquait. L'exposant 2 n'est pas choisi mais **résolu** : la nuit validée à l'écran vaut un soleil à
+0,18 et une ambiante à 0,081, et l'exposant qui fait passer la courbe par ce point vaut 1,993. Il se
+lit aussi physiquement, la lumière du ciel décroissant plus vite que le soleil direct.
 
 **Conséquence voulue :** activer l'éclairage en mode Jour ne bouleverse pas la Case. C'est le point
 de départ, à partir duquel on déplace le soleil ou l'on passe en Nuit, pas un saut visuel.

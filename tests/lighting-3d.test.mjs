@@ -21,7 +21,7 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   directionSoleil3D, anglesDepuisDirection3D, projeterSurDome3D, directionDepuisDome3D,
-  resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, FRACTION_AMBIANTE, AMBIANTE_ACTUELLE,
+  resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, CLE_ACTUELLE, AMBIANTE_ACTUELLE,
   INCLINAISON_DOME_DEG, LUMIERE_DEFAUT, lumiereDeCase3D, definirLumiereDeCase3D, copierLumiere3D,
 } from '../src/lighting-3d.js';
 
@@ -184,14 +184,50 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
     assert.deepEqual(resoudreEclairage3D({ active: 1, mode: 'jour' }), { actif: false });
   });
 
-  test('le soleil et l\'ambiance suivent la MÊME intensité et la MÊME couleur', () => {
+  test('RÉGRESSION : « Jour » à pleine intensité EST l\'éclairage d\'aujourd\'hui', () => {
+    // ⚠️ CE TEST MANQUAIT, ET SON ABSENCE A COÛTÉ UN DÉFAUT SIGNALÉ À L'USAGE : « en mode Jour les
+    // ombres sont trop sombres ». J'avais dérivé la DIRECTION du soleil de l'éclairage existant, et
+    // pas ses intensités : l'ambiante tombait à 0,45 au lieu de 0,75, les faces non éclairées
+    // perdaient 40 %, pendant que le soleil montait de 0,55 à 1,0. Le contraste augmentait des deux
+    // côtés à la fois.
+    //
+    // La promesse « activer en mode Jour ne bouleverse pas la Case » était écrite dans la note et
+    // dans le code, mais rien ne la vérifiait. C'est elle qu'on tient ici, aux valeurs près.
+    const r = resoudreEclairage3D({ active: true, mode: 'jour' });
+    assert.ok(proche(r.soleil.intensite, 0.55), `soleil ${r.soleil.intensite} au lieu de 0,55`);
+    assert.ok(proche(r.ambiante.intensite, 0.75), `ambiante ${r.ambiante.intensite} au lieu de 0,75`);
+    assert.equal(r.soleil.couleur, '#FFFFFF', 'un jour teinté rompt la promesse : le style est blanc');
+    assert.equal(r.ambiante.couleur, '#FFFFFF');
+  });
+
+  test('le soleil et l\'ambiance suivent la même couleur, et une intensité liée', () => {
     // C'est l'option 2, tranchée sur rendu : le soleil seul ne peut pas faire la nuit.
     const r = resoudreEclairage3D(perso);
     assert.equal(r.actif, true);
     assert.equal(r.soleil.couleur, '#FF8800');
     assert.equal(r.ambiante.couleur, '#FF8800');
-    assert.equal(r.soleil.intensite, 0.5);
-    assert.ok(proche(r.ambiante.intensite, AMBIANTE_ACTUELLE * 0.5 * FRACTION_AMBIANTE));
+    assert.ok(proche(r.soleil.intensite, CLE_ACTUELLE * 0.5));
+    assert.ok(proche(r.ambiante.intensite, AMBIANTE_ACTUELLE * 0.25));
+  });
+
+  test('l\'ambiante décroît PLUS VITE que le soleil', () => {
+    // C'est ce qui fait la nuit : une pénombre qui s'enfoncerait au même rythme que le soleil
+    // laisserait une scène grise et plate, exactement le défaut de l'option 1 écartée sur rendu.
+    const plein = resoudreEclairage3D({ active: true, mode: 'perso', intensite: 1 });
+    const moitie = resoudreEclairage3D({ active: true, mode: 'perso', intensite: 0.5 });
+    const chuteSoleil = moitie.soleil.intensite / plein.soleil.intensite;
+    const chuteAmbiante = moitie.ambiante.intensite / plein.ambiante.intensite;
+    assert.ok(chuteAmbiante < chuteSoleil,
+      `l'ambiante chute de ${chuteAmbiante} contre ${chuteSoleil} pour le soleil`);
+  });
+
+  test('RÉGRESSION : « Nuit » rend les valeurs validées à l\'écran', () => {
+    // Ces deux nombres ne sont pas choisis ici : ils viennent d'un relevé à l'usage, « le mode nuit
+    // est nickel », et l'intensité du préréglage a été RÉSOLUE pour les redonner. Les épingler
+    // empêche qu'un ajustement du jour déplace la nuit sans qu'on s'en aperçoive.
+    const r = resoudreEclairage3D({ active: true, mode: 'nuit' });
+    assert.ok(proche(r.soleil.intensite, 0.18, 1e-3), `soleil ${r.soleil.intensite}`);
+    assert.ok(proche(r.ambiante.intensite, 0.0803, 1e-3), `ambiante ${r.ambiante.intensite}`);
   });
 
   test('RÉGRESSION : à intensité nulle, TOUT s\'éteint, ambiance comprise', () => {
@@ -207,7 +243,9 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
     // n'auraient pas le même jour.
     const r = resoudreEclairage3D({ ...perso, mode: 'jour' });
     assert.equal(r.soleil.couleur, PRESETS_LUMIERE.jour.couleur);
-    assert.equal(r.soleil.intensite, PRESETS_LUMIERE.jour.intensite);
+    // L'intensité RENDUE est celle de la lumière, pas celle du réglage : le préréglage vaut 1, la
+    // clé vaut 0,55. Comparer les deux confondrait le curseur et la lumière qu'il commande.
+    assert.ok(proche(r.soleil.intensite, CLE_ACTUELLE * PRESETS_LUMIERE.jour.intensite));
   });
 
   test('un mode inconnu retombe sur Jour plutôt que de ne rien éclairer', () => {
@@ -218,7 +256,7 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
 
   test('les valeurs aberrantes sont bornées, pas propagées', () => {
     // `settings` et les Projets sont des fichiers que rien n'empêche d'éditer à la main.
-    assert.equal(resoudreEclairage3D({ ...perso, intensite: 9 }).soleil.intensite, 1);
+    assert.equal(resoudreEclairage3D({ ...perso, intensite: 9 }).soleil.intensite, CLE_ACTUELLE);
     assert.equal(resoudreEclairage3D({ ...perso, intensite: -3 }).soleil.intensite, 0);
     assert.equal(resoudreEclairage3D({ ...perso, intensite: 'beaucoup' }).soleil.intensite, 0);
     assert.equal(resoudreEclairage3D({ ...perso, couleur: 'rouge' }).soleil.couleur,

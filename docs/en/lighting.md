@@ -97,10 +97,23 @@ option 1 (sun only) cannot make night: the white 0.75 ambient dominates and neve
 at 15 % is **brighter** on its unlit side than at 45 %, merely flatter. Option 2 really crosses dusk
 and night, and makes full black reachable at 0 %.
 
-⚠️ **The fraction tying the ambient to the sun is 0.6 in the illustration, and that number is a
-CHOICE, not a measurement.** It is to be settled during implementation, on a real Panel, and
-recorded here with its reason. Shipping it as is would be exactly the mistake #410c and #411
-documented.
+⚠️ **SETTLED IN USE, AND THE FIRST VERSION WAS WRONG.** The illustration tied the ambient to the sun
+through a 0.6 fraction; shipped as is, it produced a defect reported at once: "in Day mode the
+shadows are too dark". The arithmetic confirms it, the ambient fell to 0.45 instead of today's 0.75,
+losing 40 % on unlit faces, while the sun rose from 0.55 to 1.0. I had derived the sun's DIRECTION
+from the existing lighting, and not its intensities.
+
+Both laws are now **anchored at both ends**:
+
+```
+sun     = 0.55 × intensity
+ambient = 0.75 × intensity²
+```
+
+At intensity 1 today's lighting comes back exactly, and a test now demands it — which was missing.
+The exponent 2 is not chosen but **solved**: the night validated on screen is a 0.18 sun and a 0.081
+ambient, and the exponent putting the curve through that point is 1.993. It also reads physically,
+sky light falling off faster than direct sun.
 
 **Intended consequence:** turning lighting on in Day mode does not upend the Panel. It is the
 starting point, from which one moves the sun or switches to Night, not a visual jump.

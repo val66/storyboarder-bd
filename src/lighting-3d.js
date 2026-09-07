@@ -134,21 +134,44 @@ export function directionDepuisDome3D(u, v, rotationVueDeg = 0){
  */
 export const SOLEIL_ACTUEL = { azimut: -63.43, elevation: 41.81 };
 export const PRESETS_LUMIERE = {
-  jour: { azimut: SOLEIL_ACTUEL.azimut, elevation: SOLEIL_ACTUEL.elevation, couleur: '#FFF4E5', intensite: 1 },
-  nuit: { azimut: 115, elevation: 24, couleur: '#8FA6E8', intensite: 0.18 },
+  // ⚠️ BLANC PUR, ET NON UN BLANC CHAUD. « Jour » doit rendre l'éclairage d'aujourd'hui à
+  // l'identique, couleur comprise : `applyStyle3DLighting` pose du blanc. Un jour légèrement chaud
+  // serait plus joli et romprait la promesse ; on le règle en Personnalisé.
+  jour: { azimut: SOLEIL_ACTUEL.azimut, elevation: SOLEIL_ACTUEL.elevation, couleur: '#FFFFFF', intensite: 1 },
+  // 0,327 n'est pas un chiffre rond parce qu'il est DÉRIVÉ : c'est l'intensité qui redonne le
+  // soleil à 0,18 validé à l'écran, une fois passée par `CLE_ACTUELLE`.
+  nuit: { azimut: 115, elevation: 24, couleur: '#8FA6E8', intensite: 0.327 },
 };
 
 /**
- * ⚠️ CETTE FRACTION EST UN CHOIX, PAS UNE MESURE, et elle est écrite ici pour qu'on puisse la
- * corriger en un seul endroit. Elle vaut 0,6 dans le rendu comparatif qui a servi à trancher entre
- * les deux options ; elle doit être jugée sur une vraie Case et consignée dans
- * docs/en/lighting.md avec sa raison. La laisser passer pour mesurée serait la faute que #410c et
- * #411 ont chacune documentée.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * COMMENT L'INTENSITÉ SE RÉPARTIT, ET POURQUOI CE N'EST PLUS UNE FRACTION
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LA PREMIÈRE VERSION ASSOMBRISSAIT LE JOUR, ET C'EST SIGNALÉ À L'USAGE : « les ombres sont trop
+ * sombres ». Le calcul le dit sans détour. L'ambiante valait `0,75 × intensité × 0,6`, soit 0,45 à
+ * pleine intensité au lieu des 0,75 d'aujourd'hui : les faces non éclairées perdaient 40 %. Et le
+ * soleil valait l'intensité elle-même, 1,0 au lieu de 0,55, donc les faces éclairées gagnaient en
+ * même temps. Le contraste montait des deux côtés à la fois.
+ *
+ * J'avais dérivé la DIRECTION du soleil de l'éclairage existant, et pas ses intensités. La promesse
+ * « activer en mode Jour ne bouleverse pas la Case » était donc écrite mais fausse.
+ *
+ * LES DEUX LOIS SONT MAINTENANT ANCRÉES AUX DEUX BOUTS :
+ *   soleil   = CLE_ACTUELLE      × intensité
+ *   ambiante = AMBIANTE_ACTUELLE × intensité²
+ *
+ * À intensité 1, on retrouve EXACTEMENT 0,55 et 0,75, c'est-à-dire l'éclairage d'aujourd'hui. Un
+ * test l'exige, ce qui manquait.
+ *
+ * ⚠️ L'EXPOSANT 2 N'EST PAS CHOISI, IL EST RÉSOLU. La nuit validée à l'écran vaut un soleil à 0,18
+ * et une ambiante à 0,081 ; l'exposant qui fait passer la courbe par ce point vaut 1,993. Deux est
+ * la valeur ronde sur laquelle les mesures tombent, et elle se lit aussi physiquement : la lumière
+ * du ciel décroît plus vite que le soleil direct quand celui-ci descend.
  */
-export const FRACTION_AMBIANTE = 0.6;
-
-/** L'ambiante d'aujourd'hui, celle que l'éclairage inactif laisse en place. */
+export const CLE_ACTUELLE = 0.55;
 export const AMBIANTE_ACTUELLE = 0.75;
+export const EXPOSANT_AMBIANTE = 2;
 
 /**
  * Le réglage d'une Case en valeurs de lumières. Fonction PURE.
@@ -166,15 +189,15 @@ export function resoudreEclairage3D(lumiere){
     actif: true,
     soleil: {
       couleur,
-      intensite,
+      intensite: CLE_ACTUELLE * intensite,
       direction: directionSoleil3D(src.azimut, src.elevation),
     },
     // L'ambiante suit le soleil, en couleur comme en intensité : c'est l'option 2, et c'est elle
-    // qui rend la nuit atteignable. Elle part de l'ambiante actuelle pour qu'à pleine intensité on
-    // retrouve l'éclairage connu, et non un éclaircissement gratuit.
+    // qui rend la nuit atteignable. Elle décroît au CARRÉ pour que la pénombre s'enfonce plus vite
+    // que le soleil, tout en valant exactement l'ambiante d'aujourd'hui à pleine intensité.
     ambiante: {
       couleur,
-      intensite: AMBIANTE_ACTUELLE * intensite * FRACTION_AMBIANTE,
+      intensite: AMBIANTE_ACTUELLE * Math.pow(intensite, EXPOSANT_AMBIANTE),
     },
   };
 }
