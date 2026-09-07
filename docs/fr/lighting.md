@@ -33,20 +33,27 @@ Trois faits qui gouvernent le chantier :
   sont donc pas un obstacle ici, et leur retrait est la tâche #415 ;
 - **rien ne projette d'ombre** aujourd'hui.
 
-## La décision qui gouverne tout : inactif vaut l'existant, à l'identique
+## La décision qui gouverne tout : « pas de réglage » vaut l'existant, à l'identique
 
-Par défaut, dans **toute** Case et **toute** Scène, l'éclairage est **désactivé**, et désactivé
-signifie que la section n'ajoute rien : `applyStyle3DLighting` garde la main et l'aspect est
-exactement celui d'aujourd'hui.
+Par défaut, dans **toute** Case et **toute** Scène, le mode est **Jour**, et Jour vaut exactement ce
+que pose `applyStyle3DLighting` : clé blanche à 0,55 en (1, 2, 2), ambiante blanche à 0,75.
 
 ⚠️ **Ce n'est pas une valeur par défaut de confort, c'est la garantie qui protège les Projets
 existants.** Aucune Case déjà dessinée ne porte de champ d'éclairage ; le jour où la fonctionnalité
 sort, aucune ne doit changer d'aspect. Un test recharge un Projet d'avant la fonctionnalité et
 vérifie qu'il ressort identique.
 
-⚠️ **Et « désactivé » ne veut pas dire « noir ».** Le piège est dans le mot, pas dans le mécanisme :
-on peut décocher en s'attendant à l'obscurité. Le noir complet s'obtient en mode Personnalisé à
-intensité nulle. Le libellé de la case doit lever l'ambiguïté à lui seul.
+⚠️ **UNE CASE À COCHER A EXISTÉ, PUIS S'EST RÉVÉLÉE SANS OBJET (#414h).** Tant que Jour différait de
+l'existant, il fallait un interrupteur pour garantir qu'une Case jamais réglée ne bouge pas. Depuis
+que Jour EST cet éclairage au bit près, décocher et rester sur Jour donnaient la même image :
+signalé à l'usage sous la forme « en décochant on devrait avoir un rendu différent, non ? ». Une
+case dont les deux états sont indiscernables ressemble à une case qui ne marche pas. Le mode dit
+tout à lui seul, et le noir complet s'obtient en Personnalisé à intensité nulle.
+
+⚠️ **Le prix de cette simplification, et il est assumé :** l'éclairage d'une Case s'applique
+toujours, donc un futur style graphique ne pourra plus définir son propre ÉCLAIRAGE, seulement ses
+matières. C'est une source unique de vérité pour la lumière, contre une possibilité qu'aucun style
+existant n'exerce.
 
 ## Le modèle de données
 
@@ -56,11 +63,10 @@ ni deuxième format.
 
 ```js
 lumiere: {
-  active: false,          // décoché par défaut, cf. ci-dessus
   mode: 'jour',           // 'jour' | 'nuit' | 'perso'
-  azimut: 27,             // degrés, direction d'où vient le soleil
-  elevation: 42,          // degrés au-dessus de l'horizon
-  couleur: '#FFF4E5',
+  azimut: -63.43,         // degrés, direction d'où vient le soleil
+  elevation: 41.81,       // degrés au-dessus de l'horizon
+  couleur: '#FFFFFF',
   intensite: 1,           // 0 à 1
 }
 ```

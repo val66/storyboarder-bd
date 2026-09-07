@@ -176,17 +176,22 @@ export const EXPOSANT_AMBIANTE = 2;
 /**
  * Le réglage d'une Case en valeurs de lumières. Fonction PURE.
  *
- * Rend `{ actif: false }` quand la section n'a rien à dire, ce qui est le cas de TOUTE Case d'un
- * Projet existant : l'appelant laisse alors le style graphique éclairer, sans rien changer.
+ * ⚠️ IL N'Y A PLUS D'ÉTAT « INACTIF », ET C'EST UNE SIMPLIFICATION QUE LA CORRECTION PRÉCÉDENTE A
+ * RENDUE POSSIBLE (#414h). Tant que « Jour » différait de l'éclairage existant, il fallait une case
+ * à cocher pour garantir qu'une Case jamais réglée ne change pas d'aspect. Depuis que Jour EST cet
+ * éclairage, au bit près, « pas de réglage » et « Jour » sont indiscernables : la case ne protégeait
+ * plus rien, elle dupliquait un état que le mode exprimait déjà.
+ *
+ * Rien n'est perdu au passage. « Je ne veux pas d'éclairage particulier » se dit en restant sur
+ * Jour, et « je veux le noir » en Personnalisé à intensité nulle.
  */
 export function resoudreEclairage3D(lumiere){
-  if (!lumiere || lumiere.active !== true) return { actif: false };
-  const mode = PRESETS_LUMIERE[lumiere.mode] ? lumiere.mode : (lumiere.mode === 'perso' ? 'perso' : 'jour');
+  const mode = PRESETS_LUMIERE[lumiere && lumiere.mode] ? lumiere.mode
+    : ((lumiere && lumiere.mode) === 'perso' ? 'perso' : 'jour');
   const src = mode === 'perso' ? lumiere : PRESETS_LUMIERE[mode];
   const intensite = clampNombre(Number(src.intensite), 0, 1);
   const couleur = couleurValide(src.couleur) ? src.couleur : PRESETS_LUMIERE.jour.couleur;
   return {
-    actif: true,
     soleil: {
       couleur,
       intensite: CLE_ACTUELLE * intensite,
@@ -232,13 +237,18 @@ function couleurValide(c){ return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.t
  * que son absence. `lumiereDeCase3D` LIT avec des valeurs par défaut sans jamais écrire ;
  * `definirLumiereDeCase3D` est le seul à créer le champ, et seulement quand un réglage change.
  *
- * ⚠️ ET LES DÉFAUTS DE LECTURE NE SONT PAS CEUX D'UNE CASE ÉCLAIRÉE. `active` vaut faux, donc
- * `resoudreEclairage3D` rend `{ actif: false }` et le style graphique garde la main : une Case
- * d'un Projet existant rend EXACTEMENT comme avant. Les autres valeurs ne servent qu'à préremplir
- * l'interface le jour où on coche la case.
+ * ⚠️ ET LE DÉFAUT DE LECTURE EST « JOUR », CE QUI REND L'EXISTANT À L'IDENTIQUE. Jour vaut la clé
+ * blanche à 0,55 en (1, 2, 2) et l'ambiante blanche à 0,75, c'est-à-dire exactement ce que pose
+ * `applyStyle3DLighting` : une Case d'un Projet existant rend donc comme avant, sans qu'aucun champ
+ * ne soit écrit nulle part.
+ *
+ * ⚠️ UN CHAMP `active` PEUT TRAÎNER DANS UN FICHIER, et il est IGNORÉ. La case à cocher a existé le
+ * temps de quelques versions ; un Projet enregistré pendant cette fenêtre peut en porter un. Le
+ * relire ne changerait rien à l'image — `active: false` rendait déjà l'éclairage d'aujourd'hui,
+ * comme Jour — et la règle du dépôt interdit de renommer une donnée persistée, pas d'en cesser la
+ * lecture quand elle ne décide plus de rien.
  */
 export const LUMIERE_DEFAUT = {
-  active: false,
   mode: 'jour',
   azimut: SOLEIL_ACTUEL.azimut,
   elevation: SOLEIL_ACTUEL.elevation,
@@ -251,7 +261,6 @@ export function lumiereDeCase3D(panel){
   const l = (panel && panel.lumiere) || null;
   if (!l || typeof l !== 'object') return { ...LUMIERE_DEFAUT };
   return {
-    active: l.active === true,
     // Parenthèses explicites : `A || B ? x : y` se lit `(A || B) ? x : y`, ce qui est bien ce qu'on
     // veut, mais un lecteur pressé y voit l'inverse et un futur remaniement s'y tromperait.
     mode: (PRESETS_LUMIERE[l.mode] || l.mode === 'perso') ? l.mode : LUMIERE_DEFAUT.mode,

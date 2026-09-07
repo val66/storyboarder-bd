@@ -1802,7 +1802,7 @@ describe('#414c : l\'éclairage d\'une Case, posé au rendu et entré dans la si
     assert.ok(i > 0, 'l\'application de l\'éclairage a disparu');
     const corps = RIG_SRC.slice(i, RIG_SRC.indexOf('\n}', i));
     assert.ok(!/personaFillLight3D/.test(corps), 'la lumière de remplissage du style est écrasée');
-    assert.match(corps, /if \(!personaAmbientLight3D \|\| !eclairage \|\| !eclairage\.actif\) return;/,
-      'un éclairage inactif ne doit RIEN poser : c\'est ce qui laisse les Projets existants intacts');
+    assert.match(corps, /if \(!personaAmbientLight3D \|\| !eclairage \|\| !eclairage\.soleil\) return;/,
+      'un éclairage mal formé ne doit RIEN poser plutôt que d\'écrire des valeurs indéfinies');
   });
 });

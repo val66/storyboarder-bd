@@ -166,22 +166,27 @@ describe('Le dôme : projeter, puis retrouver', () => {
 });
 
 describe('Résoudre un réglage en valeurs de lumières', () => {
-  const perso = { active: true, mode: 'perso', azimut: 10, elevation: 30, couleur: '#FF8800', intensite: 0.5 };
+  const perso = { mode: 'perso', azimut: 10, elevation: 30, couleur: '#FF8800', intensite: 0.5 };
 
-  test('RÉGRESSION : absent ou décoché, la section ne dit RIEN', () => {
-    // ⚠️ LA GARANTIE QUI PROTÈGE LES PROJETS EXISTANTS. Aucune Case déjà dessinée ne porte ce
-    // champ ; toutes doivent continuer d'être éclairées par le seul style graphique. Rendre des
-    // valeurs « par défaut » ici changerait l'aspect de chaque Planche du jour au lendemain.
-    assert.deepEqual(resoudreEclairage3D(undefined), { actif: false });
-    assert.deepEqual(resoudreEclairage3D(null), { actif: false });
-    assert.deepEqual(resoudreEclairage3D({}), { actif: false });
-    assert.deepEqual(resoudreEclairage3D({ active: false, mode: 'nuit' }), { actif: false });
+  test('RÉGRESSION : absent ou vide, on retombe sur Jour, donc sur l\'existant', () => {
+    // ⚠️ LA GARANTIE QUI PROTÈGE LES PROJETS EXISTANTS, DANS SA FORME SIMPLIFIÉE (#414h). Aucune
+    // Case déjà dessinée ne porte ce champ ; toutes doivent rendre comme avant. C'est vrai sans
+    // état « inactif », parce que Jour EST l'éclairage que le style pose déjà.
+    for (const vide of [undefined, null, {}]) {
+      const r = resoudreEclairage3D(vide);
+      assert.ok(proche(r.soleil.intensite, 0.55), `soleil ${r.soleil.intensite} pour ${JSON.stringify(vide)}`);
+      assert.ok(proche(r.ambiante.intensite, 0.75));
+      assert.equal(r.soleil.couleur, '#FFFFFF');
+    }
   });
 
-  test('`active` doit valoir VRAI, pas seulement être vrai-tendant', () => {
-    // Un `1` ou un `'oui'` venus d'un fichier édité à la main ne doivent pas allumer l'éclairage
-    // d'une Case : ce champ est écrit par une case à cocher, il est booléen.
-    assert.deepEqual(resoudreEclairage3D({ active: 1, mode: 'jour' }), { actif: false });
+  test('RÉGRESSION : un `active` resté dans un vieux fichier est IGNORÉ', () => {
+    // La case à cocher a existé le temps de quelques versions ; un Projet enregistré pendant cette
+    // fenêtre peut en porter un. Le lire ne changerait rien à l'image, `active: false` rendant déjà
+    // l'éclairage d'aujourd'hui comme Jour, mais le laisser décider ressusciterait un état mort.
+    const avec = resoudreEclairage3D({ active: false, mode: 'nuit' });
+    const sans = resoudreEclairage3D({ mode: 'nuit' });
+    assert.deepEqual(avec, sans, '`active` décide encore de quelque chose');
   });
 
   test('RÉGRESSION : « Jour » à pleine intensité EST l\'éclairage d\'aujourd\'hui', () => {
@@ -193,7 +198,7 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
     //
     // La promesse « activer en mode Jour ne bouleverse pas la Case » était écrite dans la note et
     // dans le code, mais rien ne la vérifiait. C'est elle qu'on tient ici, aux valeurs près.
-    const r = resoudreEclairage3D({ active: true, mode: 'jour' });
+    const r = resoudreEclairage3D({ mode: 'jour' });
     assert.ok(proche(r.soleil.intensite, 0.55), `soleil ${r.soleil.intensite} au lieu de 0,55`);
     assert.ok(proche(r.ambiante.intensite, 0.75), `ambiante ${r.ambiante.intensite} au lieu de 0,75`);
     assert.equal(r.soleil.couleur, '#FFFFFF', 'un jour teinté rompt la promesse : le style est blanc');
@@ -203,7 +208,6 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
   test('le soleil et l\'ambiance suivent la même couleur, et une intensité liée', () => {
     // C'est l'option 2, tranchée sur rendu : le soleil seul ne peut pas faire la nuit.
     const r = resoudreEclairage3D(perso);
-    assert.equal(r.actif, true);
     assert.equal(r.soleil.couleur, '#FF8800');
     assert.equal(r.ambiante.couleur, '#FF8800');
     assert.ok(proche(r.soleil.intensite, CLE_ACTUELLE * 0.5));
@@ -213,8 +217,8 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
   test('l\'ambiante décroît PLUS VITE que le soleil', () => {
     // C'est ce qui fait la nuit : une pénombre qui s'enfoncerait au même rythme que le soleil
     // laisserait une scène grise et plate, exactement le défaut de l'option 1 écartée sur rendu.
-    const plein = resoudreEclairage3D({ active: true, mode: 'perso', intensite: 1 });
-    const moitie = resoudreEclairage3D({ active: true, mode: 'perso', intensite: 0.5 });
+    const plein = resoudreEclairage3D({ mode: 'perso', intensite: 1 });
+    const moitie = resoudreEclairage3D({ mode: 'perso', intensite: 0.5 });
     const chuteSoleil = moitie.soleil.intensite / plein.soleil.intensite;
     const chuteAmbiante = moitie.ambiante.intensite / plein.ambiante.intensite;
     assert.ok(chuteAmbiante < chuteSoleil,
@@ -225,7 +229,7 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
     // Ces deux nombres ne sont pas choisis ici : ils viennent d'un relevé à l'usage, « le mode nuit
     // est nickel », et l'intensité du préréglage a été RÉSOLUE pour les redonner. Les épingler
     // empêche qu'un ajustement du jour déplace la nuit sans qu'on s'en aperçoive.
-    const r = resoudreEclairage3D({ active: true, mode: 'nuit' });
+    const r = resoudreEclairage3D({ mode: 'nuit' });
     assert.ok(proche(r.soleil.intensite, 0.18, 1e-3), `soleil ${r.soleil.intensite}`);
     assert.ok(proche(r.ambiante.intensite, 0.0803, 1e-3), `ambiante ${r.ambiante.intensite}`);
   });
@@ -249,8 +253,7 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
   });
 
   test('un mode inconnu retombe sur Jour plutôt que de ne rien éclairer', () => {
-    const r = resoudreEclairage3D({ active: true, mode: 'crepuscule' });
-    assert.equal(r.actif, true);
+    const r = resoudreEclairage3D({ mode: 'crepuscule' });
     assert.equal(r.soleil.couleur, PRESETS_LUMIERE.jour.couleur);
   });
 
@@ -267,8 +270,8 @@ describe('Résoudre un réglage en valeurs de lumières', () => {
   test('le garde-fou : la nuit est bien plus sombre que le jour', () => {
     // Un préréglage « Nuit » aussi lumineux que « Jour » serait une étiquette sans contenu. Ce
     // n'est pas une mesure, c'est la seule chose qui donne un sens au nom.
-    const jour = resoudreEclairage3D({ active: true, mode: 'jour' });
-    const nuit = resoudreEclairage3D({ active: true, mode: 'nuit' });
+    const jour = resoudreEclairage3D({ mode: 'jour' });
+    const nuit = resoudreEclairage3D({ mode: 'nuit' });
     assert.ok(nuit.soleil.intensite < jour.soleil.intensite / 2,
       `nuit ${nuit.soleil.intensite} contre jour ${jour.soleil.intensite}`);
     assert.ok(nuit.ambiante.intensite < jour.ambiante.intensite);
@@ -287,12 +290,14 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     assert.ok(!('lumiere' in panel));
   });
 
-  test('une Case sans champ lit des défauts qui n\'éclairent PAS', () => {
-    // C'est le maillon qui relie le défaut au rendu : `active` faux, donc `resoudreEclairage3D`
-    // rend `{ actif: false }`, donc le style graphique garde la main, donc l'aspect ne bouge pas.
+  test('une Case sans champ lit le mode Jour, donc l\'éclairage d\'aujourd\'hui', () => {
+    // Le maillon qui relie le défaut au rendu : Jour vaut la clé à 0,55 et l'ambiante à 0,75,
+    // c'est-à-dire exactement ce que pose `applyStyle3DLighting`.
     const l = lumiereDeCase3D({ id: 'p1', type: 'panel' });
-    assert.equal(l.active, false);
-    assert.deepEqual(resoudreEclairage3D(l), { actif: false });
+    assert.equal(l.mode, 'jour');
+    const r = resoudreEclairage3D(l);
+    assert.ok(proche(r.soleil.intensite, 0.55));
+    assert.ok(proche(r.ambiante.intensite, 0.75));
   });
 
   test('RÉGRESSION : un Projet ENTIER d\'avant la fonctionnalité ressort identique', () => {
@@ -306,7 +311,10 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     ] }] };
     const avant = JSON.stringify(projet);
     projet.tomes.forEach(t => t.pages.forEach(pg => pg.objects.forEach(o => {
-      if (o.type === 'panel') assert.deepEqual(resoudreEclairage3D(lumiereDeCase3D(o)), { actif: false });
+      if (o.type !== 'panel') return;
+      const r = resoudreEclairage3D(lumiereDeCase3D(o));
+      assert.ok(proche(r.soleil.intensite, 0.55) && proche(r.ambiante.intensite, 0.75),
+        'une Planche existante ne rend plus comme avant');
     })));
     assert.equal(JSON.stringify(projet), avant, 'le Projet a été modifié par une simple lecture');
   });
@@ -316,8 +324,8 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     // Réécrire la valeur par défaut ne change rien : le Projet ne doit pas se salir pour ça.
     assert.equal(definirLumiereDeCase3D(panel, { mode: 'jour' }), false);
     assert.ok(!('lumiere' in panel), 'un réglage identique a quand même écrit');
-    assert.equal(definirLumiereDeCase3D(panel, { active: true }), true);
-    assert.equal(panel.lumiere.active, true);
+    assert.equal(definirLumiereDeCase3D(panel, { mode: 'nuit' }), true);
+    assert.equal(panel.lumiere.mode, 'nuit');
   });
 
   test('RÉGRESSION : un réglage réécrit à l\'identique rend `false`', () => {
@@ -325,15 +333,14 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     // `true` à chaque frappe ferait invalider le cache d'images de Case pour rien, ce que #411
     // vient de mesurer à ~250 ms le rechargement.
     const panel = { id: 'p1', type: 'panel' };
-    definirLumiereDeCase3D(panel, { active: true, intensite: 0.4 });
+    definirLumiereDeCase3D(panel, { mode: 'perso', intensite: 0.4 });
     assert.equal(definirLumiereDeCase3D(panel, { intensite: 0.4 }), false);
     assert.equal(definirLumiereDeCase3D(panel, { intensite: 0.41 }), true);
   });
 
   test('les valeurs illisibles d\'un fichier édité à la main sont remplacées, pas propagées', () => {
-    const l = lumiereDeCase3D({ lumiere: { active: 'oui', mode: 'crepuscule', azimut: 'nord',
+    const l = lumiereDeCase3D({ lumiere: { mode: 'crepuscule', azimut: 'nord',
       elevation: null, couleur: 'bleu', intensite: [] } });
-    assert.equal(l.active, false, 'seul le booléen vrai active l\'éclairage');
     assert.equal(l.mode, LUMIERE_DEFAUT.mode);
     assert.equal(l.azimut, LUMIERE_DEFAUT.azimut);
     assert.equal(l.couleur, LUMIERE_DEFAUT.couleur);
@@ -344,7 +351,7 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     // ⚠️ LE DÉFAUT QUE LA NOTE ANNONCE. Une affectation laisserait la Scène et la Case partager le
     // même objet, et le premier réglage se propagerait à l'autre sans que rien ne le demande.
     const scene = { id: 's', type: 'panel' };
-    definirLumiereDeCase3D(scene, { active: true, intensite: 0.3 });
+    definirLumiereDeCase3D(scene, { mode: 'perso', intensite: 0.3 });
     // ⚠️ L'IDENTITÉ D'ABORD, ET C'EST UNE MUTATION QUI ME L'A APPRIS. Ma première version ne
     // vérifiait que le comportement observable, en réglant les deux Cases l'une après l'autre — et
     // rendre la référence brute passait ce test, parce que `definirLumiereDeCase3D` REMPLACE
@@ -365,7 +372,7 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     // référence, un réglage n'irait pas écrire dans l'objet d'à côté. Les deux se testent
     // séparément, sinon l'une masque l'autre.
     const panel = { id: 'p', type: 'panel' };
-    definirLumiereDeCase3D(panel, { active: true, intensite: 0.2 });
+    definirLumiereDeCase3D(panel, { mode: 'perso', intensite: 0.2 });
     const avant = panel.lumiere;
     definirLumiereDeCase3D(panel, { intensite: 0.8 });
     assert.notEqual(panel.lumiere, avant, 'l\'objet a été modifié sur place');
@@ -394,13 +401,13 @@ describe('#414d : la section du menu de droite', () => {
     readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
   const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
 
-  test('RÉGRESSION : la case dit « éclairage personnalisé », pas « lumière »', () => {
-    // ⚠️ LE PIÈGE EST DANS LE MOT, PAS DANS LE MÉCANISME. Décocher rend l'éclairage du style
-    // graphique, celui de toujours ; « lumière » seul laisserait croire à une extinction, et on
-    // décocherait en s'attendant au noir. Le noir s'obtient en Personnalisé à intensité nulle.
-    assert.match(HTML, /id="sideLightToggleWrap"[\s\S]{0,200}Éclairage personnalisé/);
-    assert.ok(I18N.includes("'#sideLightToggleWrap', 'Custom lighting', 'Éclairage personnalisé'"),
-      'le libellé de la case n\'est pas traduit dans les deux langues');
+  test('RÉGRESSION : plus de case à cocher, le mode dit tout (#414h)', () => {
+    // ⚠️ ELLE A EXISTÉ, PUIS S'EST RÉVÉLÉE SANS OBJET. « Jour » EST l'éclairage que le style pose
+    // depuis toujours : décocher et rester sur Jour donnaient la même image au bit près, et une
+    // case dont les deux états sont indiscernables ressemble à une case qui ne marche pas.
+    assert.ok(!HTML.includes('sideLightToggle'), 'la case à cocher est revenue');
+    assert.ok(!I18N.includes('sideLightToggle'), 'sa traduction traîne encore');
+    assert.match(HTML, /id="sideLightModeSelect"/, 'le mode doit rester le premier contrôle');
   });
 
   test('RÉGRESSION : l\'affichage progressif tient en UN seul endroit', () => {
@@ -409,11 +416,9 @@ describe('#414d : la section du menu de droite', () => {
     const i = SIDEBAR.indexOf('export function rafraichirSectionLumiere');
     assert.ok(i > 0, 'la section n\'a plus d\'endroit unique qui la remplit');
     const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
-    assert.match(corps, /sideLightBody\.style\.display = l\.active \? 'block' : 'none'/,
-      'le corps ne suit plus la case à cocher');
-    assert.match(corps, /sideLightCustom\.style\.display = \(l\.active && l\.mode === 'perso'\)/,
+    assert.match(corps, /sideLightCustom\.style\.display = l\.mode === 'perso' \? 'block' : 'none'/,
       'couleur et intensité ne sont plus réservées au mode Personnalisé');
-    const ailleurs = (EVENTS.match(/sideLightBody\.style\.display/g) || []).length;
+    const ailleurs = (EVENTS.match(/sideLightCustom\.style\.display/g) || []).length;
     assert.equal(ailleurs, 0, 'un second endroit décide de l\'affichage : ils divergeront');
   });
 

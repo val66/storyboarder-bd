@@ -6623,7 +6623,6 @@ const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue')
 const pageMenuCloseBtn = document.getElementById('pageMenuCloseBtn');
 const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
-const sideLightToggle = document.getElementById('sideLightToggle');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
 const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
@@ -7084,7 +7083,6 @@ function reglerLumiere(patch, avecSnapshot = true){
   drawCurrentPage();
 }
 
-sideLightToggle.addEventListener('change', () => reglerLumiere({ active: sideLightToggle.checked }));
 sideLightModeSelect.addEventListener('change', () => reglerLumiere({ mode: sideLightModeSelect.value }));
 sideLightColorInput.addEventListener('input', () => {
   // Un seul `snapshot` pour tout le geste : un sélecteur de couleur émet en continu, et empiler une

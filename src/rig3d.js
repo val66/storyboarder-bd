@@ -1134,16 +1134,20 @@ export function applyStyle3DLighting(styleKey){
 /**
  * L'éclairage réglé sur une Case, POSÉ PAR-DESSUS celui du style (#414c).
  *
- * ⚠️ L'APPELANT APPELLE `applyStyle3DLighting` D'ABORD, TOUJOURS, ET C'EST CE QUI REND LA SCÈNE
- * PARTAGÉE SÛRE. Les trois lumières sont uniques et servent à toutes les Cases l'une après l'autre :
- * sans cette remise à l'état du style avant chaque rendu, l'éclairage d'une Case fuirait sur la
- * suivante, qui n'en a pas, et le défaut ne se verrait qu'en changeant de Case.
+ * ⚠️ L'APPELANT APPELLE `applyStyle3DLighting` D'ABORD, TOUJOURS. Les trois lumières sont uniques et
+ * servent à toutes les Cases l'une après l'autre ; cet appel remet le remplissage à l'état du style
+ * et sert de filet si un jour un chemin de rendu oubliait de poser son éclairage.
  *
- * Le remplissage n'est PAS touché : il appartient au style graphique, comme les aplats et les
+ * Le remplissage n'est PAS touché ici : il appartient au style graphique, comme les aplats et les
  * contours, et une lumière de Case n'a pas à décider de l'identité graphique du Tome.
+ *
+ * ⚠️ DEPUIS #414h, TOUTE CASE A UN ÉCLAIRAGE, faute d'état « inactif » : « pas de réglage » vaut
+ * Jour, et Jour est exactement ce que pose le style. La conséquence est à connaître — un futur style
+ * graphique ne pourra plus définir son propre ÉCLAIRAGE, seulement ses matières. C'est le prix d'une
+ * source unique de vérité pour la lumière, et il est assumé.
  */
 export function appliquerEclairageDeCase3D(eclairage){
-  if (!personaAmbientLight3D || !eclairage || !eclairage.actif) return;
+  if (!personaAmbientLight3D || !eclairage || !eclairage.soleil) return;
   personaAmbientLight3D.color.set(eclairage.ambiante.couleur);
   personaAmbientLight3D.intensity = eclairage.ambiante.intensite;
   personaKeyLight3D.color.set(eclairage.soleil.couleur);

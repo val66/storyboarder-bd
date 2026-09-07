@@ -76,8 +76,6 @@ const sideBubbleStackSection = document.getElementById('sideBubbleStackSection')
 const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
 const sideLightSection = document.getElementById('sideLightSection');
-const sideLightToggle = document.getElementById('sideLightToggle');
-const sideLightBody = document.getElementById('sideLightBody');
 const sideLightCustom = document.getElementById('sideLightCustom');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
@@ -1187,17 +1185,15 @@ export function closeRightPanelMenu(){
  * l'affichage à sa façon, et les quatre états divergeraient les uns des autres — le genre de défaut
  * qui ne se voit qu'en enchaînant les gestes dans un ordre inhabituel.
  *
- * L'affichage progressif est ici, pas dans le CSS : décoché, tout le corps disparaît ; en Jour ou
- * en Nuit, la couleur et l'intensité disparaissent, parce qu'elles montreraient des valeurs qu'on
- * ne peut pas changer, ce qui se lit comme une panne.
+ * L'affichage progressif est ici, pas dans le CSS : en Jour ou en Nuit, le dôme, la couleur et
+ * l'intensité disparaissent, parce qu'ils montreraient des valeurs qu'on ne peut pas changer, ce
+ * qui se lit comme une panne.
  */
 export function rafraichirSectionLumiere(){
   const cible = S.sideDescTarget;
   if (!cible || cible.type !== 'panel') return;
   const l = lumiereDeCase3D(cible);
-  sideLightToggle.checked = l.active;
-  sideLightBody.style.display = l.active ? 'block' : 'none';
-  sideLightCustom.style.display = (l.active && l.mode === 'perso') ? 'block' : 'none';
+  sideLightCustom.style.display = l.mode === 'perso' ? 'block' : 'none';
   sideLightModeSelect.value = l.mode;
   sideLightColorInput.value = l.couleur;
   const pourcent = Math.round(l.intensite * 100);

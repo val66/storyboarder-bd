@@ -31,19 +31,26 @@ Three facts govern this project:
   obstacle here, and removing them is task #415;
 - **nothing casts a shadow** today.
 
-## The decision that governs everything: off means the existing look, exactly
+## The decision that governs everything: "no setting" means the existing look, exactly
 
-By default, in **every** Panel and **every** Scene, lighting is **off**, and off means the section
-adds nothing: `applyStyle3DLighting` keeps control and the result is exactly today's.
+By default, in **every** Panel and **every** Scene, the mode is **Day**, and Day is exactly what
+`applyStyle3DLighting` sets: a white key at 0.55 in (1, 2, 2), a white ambient at 0.75.
 
 ⚠️ **This is not a convenience default, it is the guarantee that protects existing projects.** No
 already-drawn Panel carries a lighting field; the day the feature ships, none of them may change
 appearance. A test reloads a project from before the feature and checks that it comes back
 identical.
 
-⚠️ **And "off" does not mean "black".** The trap is in the word, not in the mechanism: one may
-untick it expecting darkness. Full black is reached in Custom mode at zero intensity. The
-checkbox's label must remove the ambiguity on its own.
+⚠️ **A CHECKBOX EXISTED, THEN TURNED OUT TO BE POINTLESS (#414h).** As long as Day differed from the
+existing look, a switch was needed to guarantee that an untouched Panel would not move. Now that Day
+IS that lighting, bit for bit, unticking and staying on Day gave the same image: reported in use as
+"unticking the light should give a different render, shouldn't it?". A checkbox whose two states are
+indistinguishable looks like a checkbox that does not work. The mode says everything on its own, and
+full black is reached in Custom at zero intensity.
+
+⚠️ **The price of that simplification, and it is accepted:** a Panel's lighting always applies, so a
+future graphic style will no longer be able to define its own LIGHTING, only its materials. One
+single source of truth for light, against a possibility no existing style exercises.
 
 ## The data model
 
@@ -53,11 +60,10 @@ path and no second format.
 
 ```js
 lumiere: {
-  active: false,          // unticked by default, see above
   mode: 'jour',           // 'jour' | 'nuit' | 'perso'
-  azimut: 27,             // degrees, the direction the sun comes from
-  elevation: 42,          // degrees above the horizon
-  couleur: '#FFF4E5',
+  azimut: -63.43,         // degrees, the direction the sun comes from
+  elevation: 41.81,       // degrees above the horizon
+  couleur: '#FFFFFF',
   intensite: 1,           // 0 to 1
 }
 ```

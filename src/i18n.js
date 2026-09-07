@@ -299,10 +299,9 @@ export const I18N_TRAILING = [
   ['#objectTypeSelect option[value="autel"]', "✝️ Altar", "✝️ Autel"],
   // Checkbox labels (text = last node after the <input>, inside the <label> wrapper).
   ['#sideBorderToggleWrap', 'Show border', 'Afficher la bordure'],
-  // La section Lumière (#414d). Le libellé de la case dit « éclairage personnalisé » et non
-  // « lumière » : décocher rend l'éclairage du style graphique, pas le noir.
+  // La section Lumière (#414d, simplifiée en #414h : la case à cocher a disparu, « Jour » étant
+  // exactement l'éclairage que le style pose déjà).
   ['#sideLightTitle', 'Light', 'Lumière'],
-  ['#sideLightToggleWrap', 'Custom lighting', 'Éclairage personnalisé'],
   ['#sideLightModeLabel', 'Mode', 'Mode'],
   ['#sideLightModeSelect option[value="jour"]', 'Day', 'Jour'],
   ['#sideLightModeSelect option[value="nuit"]', 'Night', 'Nuit'],
@@ -310,7 +309,6 @@ export const I18N_TRAILING = [
   ['#sideLightColorLabel', 'Colour', 'Couleur'],
   ['#sideLightIntensityLabel', 'Intensity', 'Intensité'],
   ['#sideLightModeSelect', null],
-  ['#sideLightToggle', null],
   ['#sideLightColorInput', null],
   ['#sideLightIntensityRange', null],
   ['#sideLightIntensityValue', null],   // écrit par le code, unité comprise
