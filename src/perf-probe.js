@@ -68,6 +68,7 @@ catch { _actif = false; }
 
 const _mesures = new Map();   // nom → { n, total, ech: number[], unite }
 const _compteurs = new Map(); // nom → entier exact
+const _faits = new Map();     // nom → valeur unique, le premier vu gagne
 
 const PLAFOND_ECHANTILLON = 2000;
 
@@ -122,6 +123,19 @@ export function perfCompteur(nom, n = 1){
 /** L'état d'armement, pour que l'appelant évite un calcul qui ne servirait à rien. */
 export function perfActive(){ return _actif; }
 
+/**
+ * Un FAIT : une valeur unique, ni durée ni compte. Le premier vu gagne.
+ *
+ * ⚠️ AJOUTÉ APRÈS COUP, ET L'OUBLI A COÛTÉ UN RELEVÉ ENTIER (#411f). #411e prédisait deux Cases par
+ * frame à partir d'un budget de 16,7 ms. Le relevé a montré que rien n'avait bougé, et je ne
+ * pouvais pas dire pourquoi : ni la cadence effectivement retenue, ni le nombre de Cases par frame
+ * n'étaient observés. J'avais instrumenté l'EFFET attendu et pas le MÉCANISME, si bien qu'un effet
+ * absent ne disait pas si le mécanisme n'avait pas joué ou s'il avait joué sans servir à rien.
+ */
+export function perfFait(nom, valeur){
+  if (_actif && !_faits.has(nom)) _faits.set(nom, valeur);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // LE CONTEXTE (#411c), PARCE QUE LE PREMIER JET DE CETTE SONDE NE CONTRÔLAIT RIEN
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -167,7 +181,7 @@ export function perfRapport(){
     return 'sonde NON ARMÉE pour cette session : rien n\'a été mesuré. '
       + 'Tapez perfProbe(true), rechargez avec Ctrl+R, puis refaites le geste.';
   }
-  if (!_mesures.size && !_compteurs.size) {
+  if (!_mesures.size && !_compteurs.size && !_faits.size) {
     return 'sonde armée, mais AUCUNE mesure : aucun dessin depuis le démarrage. '
       + 'Ouvrez un Projet et changez de Planche.';
   }
@@ -196,10 +210,15 @@ export function perfRapport(){
     .map(({ q, c }) => `${q} · ${c}`);
   console.table(lignes);
   console.table(comptes);
+  if (_faits.size) console.table([..._faits.entries()].map(([k, v]) => ({ fait: k, valeur: v })));
   console.log(jamais.length
     ? `INSTRUMENTÉS ET JAMAIS DÉCLENCHÉS (c'est une réponse, pas une absence) : ${jamais.join(' | ')}`
     : 'aucun compteur instrumenté n\'est resté à zéro.');
-  const compact = JSON.stringify({ mesures: lignes, compteurs: Object.fromEntries(comptes.map(c => [c.compteur, c.valeur])) });
+  const compact = JSON.stringify({
+    mesures: lignes,
+    compteurs: Object.fromEntries(comptes.map(c => [c.compteur, c.valeur])),
+    faits: Object.fromEntries(_faits),
+  });
   console.log('%c▼ COPIEZ LA LIGNE CI-DESSOUS ▼', 'font-weight:bold');
   console.log(compact);
   let copie = 'sélectionnez la ligne ci-dessus et copiez-la';

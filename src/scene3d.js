@@ -23,7 +23,7 @@ import {
 // from these very defaults, which is why it stayed hidden.
 import { clamp, getElementDepth, wrapAngle, tracéBBox, estHorsChamp3D } from './utils.js';
 import { S, currentPage } from './state.js';
-import { perfTemps, perfCompteur, perfCompteurContextuel, perfContexte, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
+import { perfTemps, perfDuree, perfFait, perfCompteur, perfCompteurContextuel, perfContexte, perfActive } from './perf-probe.js';   // SONDE #411 : à retirer avec la campagne
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1782,8 +1782,14 @@ function mesurerCadence3D(){
     // ⚠️ ET LA BORNE PORTE SUR LE NOMBRE D'APPELS, PAS SUR LE NOMBRE D'ÉCARTS RETENUS. Bornée sur
     // les écarts, la boucle ne s'arrêtait jamais dès qu'aucun n'était retenu, et se rechaînait
     // indéfiniment. Attrapé par la suite de tests, qui a cessé de se terminer.
-    if (++tics < 6) requestAnimationFrame(tic);
-    else _periodeFrameMs = periodeFrameRetenue3D(ecarts);
+    if (++tics < 6) { requestAnimationFrame(tic); return; }
+    _periodeFrameMs = periodeFrameRetenue3D(ecarts);
+    // SONDE #411f : à retirer avec la campagne. LES DEUX FAITS QUI MANQUAIENT AU RELEVÉ DE #411e.
+    // La cadence retenue est ce dont dépend tout le regroupement, et elle n'était observée nulle
+    // part : un relevé sans effet ne pouvait pas dire si le budget valait 16,7 ms ou 4. Les écarts
+    // bruts l'accompagnent parce que la cadence seule ne dit pas si la mesure était saine.
+    perfFait('cadence retenue (ms)', +_periodeFrameMs.toFixed(2));
+    perfFait('écarts observés (ms)', ecarts.map(e => +e.toFixed(1)).join(', '));
   };
   requestAnimationFrame(tic);
 }
@@ -1799,7 +1805,14 @@ export function commencerFrameLimitee3D(){
 /** Des Cases ont-elles été remises à plus tard ? L'appelant redemande alors un dessin. */
 export function resteDesRendus3D(){ return _rendusDifferes3D; }
 /** Rend le budget infini : tout ce qui n'est pas le dessin interactif doit rendre complètement. */
-export function terminerFrameLimitee3D(){ _frameLimitee = false; }
+export function terminerFrameLimitee3D(){
+  // SONDE #411f : à retirer avec la campagne. LE MÉCANISME, ET NON PLUS SEULEMENT SON EFFET. #411e
+  // prédisait deux Cases par frame et n'observait que les frames par remplissage : quand rien n'a
+  // bougé, je ne pouvais pas dire si le regroupement n'avait pas eu lieu ou s'il avait eu lieu sans
+  // rien changer. Cette ligne répond directement.
+  if (_frameLimitee) perfDuree('Cases rendues dans la frame', _rendusDeLaFrame, 'Cases');
+  _frameLimitee = false;
+}
 
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;

@@ -1726,7 +1726,14 @@ describe('#405d : une frame ne reconstruit qu\'une Case', () => {
     // limitée, et hors frame limitée AUCUN report ne doit pouvoir se produire.
     assert.match(SCENE, /let _frameLimitee = false;/,
       'la limitation n\'est plus éteinte par défaut : un export pourrait sortir une Case vide');
-    assert.match(SCENE, /export function terminerFrameLimitee3D\(\)\{ _frameLimitee = false; \}/);
+    // ⚠️ ON TIENT CE QUE LA FONCTION FAIT, PAS COMMENT ELLE EST ÉCRITE. La version précédente de ce
+    // test épinglait la ligne entière, accolades comprises ; ajouter une ligne de sonde dedans l'a
+    // fait rougir alors que rien du comportement n'avait changé. C'est la troisième fois dans ce
+    // dépôt qu'un test épingle le MOYEN au lieu de l'intention.
+    const iFin = SCENE.indexOf('export function terminerFrameLimitee3D');
+    assert.ok(iFin > 0, 'la fermeture de frame limitée a disparu');
+    assert.match(SCENE.slice(iFin, SCENE.indexOf('\n}', iFin)), /_frameLimitee = false;/,
+      'la fermeture ne rend plus la limitation inactive : l\'export resterait bridé');
     // Et le report est conditionné à `_frameLimitee` AVANT toute question de budget : c'est ce `&&`
     // qui rend l'export insensible au chronomètre.
     assert.match(SCENE, /if \(_frameLimitee && budgetFrameEpuise3D\(/,
