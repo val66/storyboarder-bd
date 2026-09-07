@@ -1721,82 +1721,54 @@ function computePanelSceneSignature3D(panel, page, styleKey){
  * qu'on corrige. Seul le dessin interactif le limite, en le déclarant frame par frame.
  */
 
-// Bornes de la cadence retenue, et elles ne sont pas choisies au hasard : 4 ms est la période d'un
-// écran 240 Hz, la plus rapide qui existe chez un particulier, 33 ms celle d'un 30 Hz. Elles
-// existent parce que la MESURE peut mentir : `requestAnimationFrame` est bridé à ~1 Hz quand la
-// fenêtre passe en arrière-plan, et une période de 1000 ms ferait tout reconstruire d'un bloc, soit
-// précisément le gel de 986 ms que #405d a corrigé.
-export const PERIODE_FRAME_MIN_MS = 4, PERIODE_FRAME_MAX_MS = 33;
-export const PERIODE_FRAME_REPLI_MS = 1000 / 60;
-
 /**
- * La période d'affichage retenue à partir d'écarts observés. Fonction PURE, donc testable.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE BUDGET NE VIENT PAS DE L'ÉCRAN, IL VIENT DE LA RÉACTIVITÉ (#411g)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * LE MINIMUM, ET NON LA MOYENNE. Un écart entre deux frames ne peut qu'être TROP LONG : il l'est dès
- * qu'une frame est manquée, ce qui arrive précisément quand l'application travaille, c'est-à-dire
- * pendant la mesure. Il ne peut jamais être trop court. Le minimum est donc l'estimation la moins
- * polluée de la vraie période, là où une moyenne intègre tous les ratés.
+ * ⚠️ #411e MESURAIT LA PÉRIODE DE L'ÉCRAN, ET C'ÉTAIT LE MAUVAIS REPÈRE. La mesure a été relevée :
+ * cadence retenue 4 ms, à partir d'écarts de 103,7 / 111,2 / 136,1 / 3,5 / 2,9 ms. Aucune
+ * statistique ne sauve cet échantillon : le minimum donne 2,9, la médiane 103,7, la moyenne 71,5, et
+ * la vérité est 16,7. Le défaut n'est pas le choix du minimum, c'est la FENÊTRE : la mesure a lieu à
+ * la première frame limitée, donc en plein chargement, quand les frames sont tantôt manquées
+ * (les ~100 ms) tantôt groupées en rafale (les ~3 ms).
+ *
+ * Avec 4 ms, une Case de 13 ms dépassait toujours le budget, et on retombait exactement sur « une
+ * Case par frame ». Le relevé le confirme sans détour : Cases rendues dans la frame, médiane 1.
+ *
+ * ET SURTOUT, LA PÉRIODE DE L'ÉCRAN N'EST PAS CE QUI NOUS CONTRAINT. Pendant un remplissage,
+ * l'application n'anime rien de fluide : elle pose des Cases. Ce qui compte n'est pas de tenir la
+ * cadence d'affichage, c'est de RENDRE LA MAIN assez souvent pour qu'un clic soit pris. Ce
+ * seuil-là ne se mesure pas depuis le code, il est publié : au-delà de 50 ms, un travail est une
+ * « tâche longue » au sens de l'API Long Tasks, et c'est la durée que RAIL recommande comme
+ * découpage pour qu'une entrée reste traitée dans les 100 ms.
+ *
+ * ⚠️ ET JE DOIS CORRIGER CE QUE #411e AFFIRMAIT : « le budget ne peut pas empirer le pire cas ».
+ * C'est faux dès que les Cases n'ont pas le même coût. Trois Cases à 13 ms passent (39 ms), puis
+ * celle à 296 ms démarre parce que le budget n'était pas encore épuisé : 335 ms au lieu de 296. Le
+ * pire cas est donc borné par « budget + Case la plus chère », pas par « Case la plus chère ». Avec
+ * 4 ms l'écart était négligeable et l'affirmation passait inaperçue ; avec 50 ms il ne l'est plus.
+ * Le remède, si l'usage le réclame, est d'estimer le coût d'une Case avant de la démarrer (son
+ * rendu précédent est un bon estimateur), et il n'est pas fait ici : un changement à la fois.
  */
-export function periodeFrameRetenue3D(ecarts){
-  const valides = (ecarts || []).filter(e => Number.isFinite(e) && e > 0);
-  if (!valides.length) return PERIODE_FRAME_REPLI_MS;
-  return clamp(Math.min(...valides), PERIODE_FRAME_MIN_MS, PERIODE_FRAME_MAX_MS);
-}
+export const BUDGET_FRAME_MS = 50;
 
-/**
- * Peut-on démarrer un rendu de plus dans cette frame ? Fonction PURE, donc testable.
- *
- * ⚠️ LE PREMIER RENDU PASSE TOUJOURS, ET C'EST UNE PROTECTION, PAS UNE FAVEUR. Le budget est déjà
- * entamé quand on arrive ici : le dessin 2D de la Planche a eu lieu avant. Sur une Planche lourde il
- * peut à lui seul dépasser la période d'affichage, et sans cette garde AUCUNE Case ne se rendrait
- * jamais. `drawCurrentPage` redemanderait alors un dessin à l'infini, en boucle, sans jamais
- * progresser : un gel permanent au lieu d'un gel d'une seconde.
- */
 export function budgetFrameEpuise3D(ecouleMs, budgetMs, rendusFaits){
   if (rendusFaits <= 0) return false;
   return ecouleMs >= budgetMs;
 }
 
-let _periodeFrameMs = PERIODE_FRAME_REPLI_MS;
-let _cadenceMesuree = false;
 let _frameLimitee = false;
 let _frameT0 = 0;
 let _rendusDeLaFrame = 0;
 let _rendusDifferes3D = false;
 
-// La cadence se mesure UNE FOIS, à la première frame limitée, et pas à l'import : au démarrage la
-// fenêtre peut n'être pas encore affichée, et les premiers écarts ne voudraient rien dire.
-function mesurerCadence3D(){
-  if (_cadenceMesuree || typeof requestAnimationFrame !== 'function') return;
-  _cadenceMesuree = true;
-  const ecarts = [];
-  let precedent = 0, tics = 0;
-  const tic = () => {
-    // ⚠️ L'HORLOGE EST LUE ICI, ET NON PRISE DANS L'ARGUMENT DE `requestAnimationFrame`. Un
-    // navigateur passe bien un horodatage, mais rien ne l'oblige : le stub DOM des tests appelle le
-    // callback SANS argument. La première version lisait cet argument, obtenait `undefined`, et
-    // n'accumulait donc jamais d'écart.
-    const t = performance.now();
-    if (precedent) ecarts.push(t - precedent);
-    precedent = t;
-    // ⚠️ ET LA BORNE PORTE SUR LE NOMBRE D'APPELS, PAS SUR LE NOMBRE D'ÉCARTS RETENUS. Bornée sur
-    // les écarts, la boucle ne s'arrêtait jamais dès qu'aucun n'était retenu, et se rechaînait
-    // indéfiniment. Attrapé par la suite de tests, qui a cessé de se terminer.
-    if (++tics < 6) { requestAnimationFrame(tic); return; }
-    _periodeFrameMs = periodeFrameRetenue3D(ecarts);
-    // SONDE #411f : à retirer avec la campagne. LES DEUX FAITS QUI MANQUAIENT AU RELEVÉ DE #411e.
-    // La cadence retenue est ce dont dépend tout le regroupement, et elle n'était observée nulle
-    // part : un relevé sans effet ne pouvait pas dire si le budget valait 16,7 ms ou 4. Les écarts
-    // bruts l'accompagnent parce que la cadence seule ne dit pas si la mesure était saine.
-    perfFait('cadence retenue (ms)', +_periodeFrameMs.toFixed(2));
-    perfFait('écarts observés (ms)', ecarts.map(e => +e.toFixed(1)).join(', '));
-  };
-  requestAnimationFrame(tic);
-}
-
 /** Ouvre une frame interactive avec un budget fini. L'export n'appelle pas ceci, et garde l'infini. */
 export function commencerFrameLimitee3D(){
-  mesurerCadence3D();
+  // SONDE #411 : à retirer avec la campagne. Le budget effectivement appliqué reste OBSERVÉ, même
+  // maintenant qu'il est une constante. C'est la leçon de #411f : un relevé qui ne montre que
+  // l'effet ne dit pas si le mécanisme a joué, et une constante peut aussi être la mauvaise.
+  perfFait('budget par frame (ms)', BUDGET_FRAME_MS);
   _frameLimitee = true;
   _frameT0 = performance.now();
   _rendusDeLaFrame = 0;
@@ -1822,7 +1794,7 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
   // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
   // ses modèles. Dans les deux cas, la main revient à l'utilisateur.
-  if (_frameLimitee && budgetFrameEpuise3D(performance.now() - _frameT0, _periodeFrameMs, _rendusDeLaFrame)) {
+  if (_frameLimitee && budgetFrameEpuise3D(performance.now() - _frameT0, BUDGET_FRAME_MS, _rendusDeLaFrame)) {
     _rendusDifferes3D = true;
     return cached || null;
   }

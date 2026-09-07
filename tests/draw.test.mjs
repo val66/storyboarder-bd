@@ -35,8 +35,7 @@ import {
 } from '../src/draw.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
-  budgetFrameEpuise3D, periodeFrameRetenue3D,
-  PERIODE_FRAME_MIN_MS, PERIODE_FRAME_MAX_MS, PERIODE_FRAME_REPLI_MS } from '../src/scene3d.js';
+  budgetFrameEpuise3D, BUDGET_FRAME_MS } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_3D,
          POSE_HANDLES } from '../src/constants.js';
 
@@ -1778,9 +1777,7 @@ describe('#405d : une frame ne reconstruit qu\'une Case', () => {
 
 });
 
-describe('#411e : le budget est une DURÉE, plus un compte', () => {
-  const SCENE = sourceSansCommentaires(
-    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+describe('#411e/g : le budget est une DURÉE, et elle vient de la réactivité', () => {
   /**
    * POURQUOI LE COMPTE A ÉTÉ ABANDONNÉ. #405d fixait « une Case par frame » en le disant lui-même :
    * « un est un choix, pas une mesure ». L'usage a fourni la mesure (cf.
@@ -1790,8 +1787,14 @@ describe('#411e : le budget est une DURÉE, plus un compte', () => {
    * mesurées dans le même Projet, consommaient le même budget.
    *
    * ⚠️ CE QUI EST TESTÉ ICI EST LA DÉCISION, PAS LA VITESSE. Aucun test ne peut affirmer que
-   * l'application « paraît plus fluide » : ça se vérifie à la sonde. Ce qui se tient ici, ce sont
-   * les deux fonctions pures dont dépend la décision, et surtout leurs cas limites.
+   * l'application « paraît plus fluide » : ça se vérifie à la sonde. Ce qui se tient ici, c'est la
+   * fonction pure dont dépend la décision, et surtout ses cas limites.
+   *
+   * ⚠️ ET LA PREMIÈRE VERSION DE CE BUDGET S'EST TROMPÉE DE REPÈRE (#411g). Elle mesurait la période
+   * de l'écran, obtenait 4 ms au lieu de 16,7 parce que la mesure tombait en plein chargement, et
+   * reproduisait donc « une Case par frame » sous un autre nom. Le relevé l'a montré : Cases rendues
+   * dans la frame, médiane 1. Ce qui contraint n'était de toute façon pas l'écran mais la
+   * réactivité aux clics, dont le seuil est publié et non mesurable depuis le code.
    */
   test('la première Case passe TOUJOURS, budget dépassé ou non', () => {
     // ⚠️ LA GARDE QUI ÉVITE UNE BOUCLE INFINIE, et c'est le vrai danger de ce changement. Le budget
@@ -1813,62 +1816,37 @@ describe('#411e : le budget est une DURÉE, plus un compte', () => {
     assert.equal(budgetFrameEpuise3D(26, 16.7, 2), true);
   });
 
-  test('la cadence retenue est le MINIMUM des écarts, pas leur moyenne', () => {
-    // Un écart entre deux frames ne peut qu'être TROP LONG : il l'est dès qu'une frame est manquée,
-    // ce qui arrive précisément quand l'application travaille, donc pendant la mesure. Il ne peut
-    // jamais être trop court. Une moyenne intègre tous les ratés ; le minimum est l'estimation la
-    // moins polluée.
-    assert.equal(periodeFrameRetenue3D([16.7, 33.4, 50, 16.8]), 16.7);
-    assert.notEqual(periodeFrameRetenue3D([16.7, 33.4, 50, 16.8]), (16.7 + 33.4 + 50 + 16.8) / 4);
-  });
-
-  test('RÉGRESSION : une fenêtre en arrière-plan ne doit pas ressusciter le gel de 986 ms', () => {
-    // `requestAnimationFrame` est bridé à ~1 Hz quand la fenêtre passe en arrière-plan. Une période
-    // de 1000 ms ferait reconstruire TOUTE la Planche d'un bloc, soit précisément le défaut que
-    // #405d a corrigé. Le plafond existe pour ça, et pas par prudence décorative.
-    assert.equal(periodeFrameRetenue3D([1000, 1001, 998]), PERIODE_FRAME_MAX_MS);
-    // Le plancher protège l'autre bord : un écart aberrant proche de zéro ne doit pas réduire le
-    // budget au point qu'aucune Case ne se groupe plus jamais.
-    assert.equal(periodeFrameRetenue3D([0.2, 0.3]), PERIODE_FRAME_MIN_MS);
-  });
-
-  test('sans mesure exploitable, on retombe sur le repli et non sur zéro', () => {
-    // Un budget de 0 ne serait pas neutre : combiné à la garde de la première Case, il reproduirait
-    // « une Case par frame ». Ce serait l'ancien comportement rétabli en silence.
-    assert.equal(periodeFrameRetenue3D([]), PERIODE_FRAME_REPLI_MS);
-    assert.equal(periodeFrameRetenue3D(null), PERIODE_FRAME_REPLI_MS);
-    assert.equal(periodeFrameRetenue3D([NaN, -5, 0]), PERIODE_FRAME_REPLI_MS);
-    assert.ok(PERIODE_FRAME_REPLI_MS > 0);
-  });
-
-  test('RÉGRESSION : la boucle de mesure est bornée par ses APPELS, pas par ses résultats', () => {
-    // ⚠️ CE TEST EXISTE PARCE QUE LA SUITE S'EST MISE À NE PLUS FINIR. Première version : la boucle
-    // s'arrêtait après 5 ÉCARTS retenus, et lisait l'horodatage dans l'argument de
-    // `requestAnimationFrame`. Le stub DOM appelle le callback sans argument : aucun écart n'était
-    // donc jamais retenu, et la boucle se rechaînait sans fin. Un navigateur passe bien cet
-    // argument, mais rien ne l'oblige, et une boucle dont la sortie dépend de ce qu'elle mesure
-    // n'en a pas vraiment.
+  test('le budget est un seuil de RÉACTIVITÉ, pas la période de l\'écran', () => {
+    // ⚠️ #411e MESURAIT L'ÉCRAN, ET C'ÉTAIT LE MAUVAIS REPÈRE. La mesure relevée : cadence retenue
+    // 4 ms, à partir d'écarts de 103,7 / 111,2 / 136,1 / 3,5 / 2,9. Aucune statistique ne sauve cet
+    // échantillon (minimum 2,9, médiane 103,7, moyenne 71,5, vérité 16,7) : c'est la FENÊTRE de
+    // mesure qui était mauvaise, prise en plein chargement. Et surtout, pendant un remplissage
+    // l'application n'anime rien : ce qui compte est de rendre la main assez souvent pour qu'un
+    // clic soit pris, pas de tenir la cadence d'affichage.
     //
-    // Épinglé sur le TEXTE, faute de mieux : cette boucle vit dans `requestAnimationFrame`, qu'on
-    // ne peut pas piloter ici. C'est une limite du test, et elle est dite plutôt que masquée.
-    const i = SCENE.indexOf('function mesurerCadence3D');
-    assert.ok(i > 0, 'la mesure de cadence a disparu');
-    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
-    assert.match(corps, /\+\+tics < \d+/, 'la sortie de boucle ne compte plus les appels');
-    assert.ok(!/ecarts\.length < \d+/.test(corps),
-      'la sortie de boucle dépend de nouveau de ce qu\'elle mesure : elle peut ne jamais sortir');
-    assert.match(corps, /const t = performance\.now\(\)/,
-      'l\'horloge est de nouveau prise dans l\'argument du callback, qui peut être absent');
+    // 50 ms est le seuil de l'API Long Tasks, et le découpage que RAIL recommande pour qu'une
+    // entrée reste traitée en moins de 100 ms. Publié, donc, et pas choisi ici.
+    assert.equal(BUDGET_FRAME_MS, 50);
+    // Le budget doit laisser passer PLUSIEURS Cases au coût mesuré (13 ms médian), sans quoi il
+    // reproduirait « une Case par frame » sous un autre nom, ce qui est exactement ce qui s'est
+    // passé avec 4 ms.
+    assert.ok(BUDGET_FRAME_MS > 3 * 13, 'moins de trois Cases par frame : le budget ne sert à rien');
   });
 
-  test('les bornes encadrent bien la période d\'un écran réel', () => {
-    // 4 ms est la période d'un 240 Hz, 33 ms celle d'un 30 Hz. Un 60 Hz (16,7) et un 120 Hz (8,3)
-    // doivent donc passer INTACTS : si une borne les rognait, le budget ne serait plus celui de
-    // l'écran de l'utilisateur, ce qui est toute l'idée.
-    assert.equal(periodeFrameRetenue3D([1000 / 60]), 1000 / 60);
-    assert.equal(periodeFrameRetenue3D([1000 / 120]), 1000 / 120);
-    assert.ok(PERIODE_FRAME_MIN_MS < 1000 / 120 && 1000 / 60 < PERIODE_FRAME_MAX_MS);
+  test('au coût mesuré, quatre Cases passent et la cinquième attend', () => {
+    // Le comportement PRÉDIT sur les mesures, écrit pour être réfutable. Case médiane 12,9 ms.
+    const cout = 12.9;
+    let ecoule = 0, rendues = 0;
+    while (!budgetFrameEpuise3D(ecoule, BUDGET_FRAME_MS, rendues)) { ecoule += cout; rendues++; }
+    assert.equal(rendues, 4, `${rendues} Cases par frame, la prédiction en annonçait 4`);
   });
+
+  test('RÉGRESSION : une Case chère reste seule, comme avant', () => {
+    // La plus chère mesurée dans le Projet réel : 296 ms. Elle doit épuiser le budget à elle seule,
+    // sinon le regroupement transformerait un gel en gel plus long.
+    assert.equal(budgetFrameEpuise3D(296, BUDGET_FRAME_MS, 1), true);
+  });
+
 });
 
 describe('Fermeture décidée : la chaîne de dessin s\'arrête (#407c)', () => {
