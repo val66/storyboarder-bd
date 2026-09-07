@@ -1605,6 +1605,24 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Ctrl+, ouvre la Configuration (#413). La virgule est le raccourci de préférences le plus
+  // répandu — VS Code, Chrome, et ⌘, sur macOS depuis toujours — et elle reste une touche directe
+  // en AZERTY comme en QWERTY, donc atteignable sans Maj.
+  //
+  // ⚠️ IL PASSE PAR LE BOUTON, comme F1, et pas par `openSettingsModal()`. Le bouton sait des
+  // choses que la fonction ignore, et un raccourci qui court-circuite finit toujours par diverger
+  // de ce que fait le clic.
+  //
+  // La garde sur la pile de modales évite d'ouvrir la Configuration DERRIÈRE une fiche restée à
+  // l'écran, ce qui est exactement le défaut que le raccourci « E » a documenté avant lui.
+  if (e.key === ',' && (e.ctrlKey || e.metaKey) && !e.altKey
+      && tag !== 'INPUT' && tag !== 'TEXTAREA'
+      && !S.personaEditorOpen && pileOuverte().length === 0) {
+    e.preventDefault();
+    document.getElementById('settingsBtn').click();
+    return;
+  }
+
   // F shortcut: centers the Panel's 3D view on the selected Element (outside Camera mode).
   // Fix 21: replaces the automatic centering on selection, removed to avoid unwanted camera
   // movements. First press → remembers the current position and animates toward the Element.

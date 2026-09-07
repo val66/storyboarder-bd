@@ -925,3 +925,83 @@ describe('#403n : un libellé porte UNE majuscule, la première', () => {
     assert.deepEqual(fautifs, [], 'majuscule au milieu d\'un libellé traduit');
   });
 });
+
+describe('#413 : un bouton dont l\'action a un raccourci le DIT, et le raccourci existe', () => {
+  /**
+   * SIGNALÉ À L'USAGE : « certains raccourcis n'apparaissent pas sur le texte au survol de certains
+   * boutons. Par exemple F1 pour le bouton ?. Il faudrait vérifier pour les autres. »
+   *
+   * ⚠️ LE DÉFAUT N'EST PAS L'OUBLI, C'EST QUE RIEN NE POUVAIT LE VOIR. Un raccourci vit à quatre
+   * endroits : la touche écoutée dans le code, la mention dans le `title` d'index.html, la même
+   * mention dans la table i18n (sinon elle disparaît au changement de langue), et la liste du
+   * manuel. Quatre copies, aucune obligation de se ressembler. F1 était branché, documenté dans le
+   * manuel, et absent du bouton.
+   *
+   * Ce test relie les quatre. Il vérifie AUSSI le sens inverse, qui est le pire : un bouton qui
+   * annonce un raccourci que personne n'écoute. Une promesse fausse coûte plus cher qu'un silence,
+   * l'utilisateur appuie et conclut que l'application est cassée.
+   *
+   * ⚠️ CE QUI N'EST PAS TENU ICI : que la touche fasse ce que le bouton fait. Le test voit que
+   * `F1` est écouté et que le libellé le mentionne, pas que les deux mènent au même endroit.
+   */
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+  const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const IO = readFileSync(new URL('../src/io.js', import.meta.url), 'utf8');
+  const HELP = readFileSync(new URL('../src/help-content.js', import.meta.url), 'utf8');
+
+  // [id du bouton, mention FR, mention EN, écoute attendue dans le code]
+  const RACCOURCIS = [
+    ['undoBtn', 'Ctrl+Z', 'Ctrl+Z', /e\.key\.toLowerCase\(\) === 'z'/],
+    ['headerSaveBtn', 'Ctrl+S', 'Ctrl+S', /e\.key\.toLowerCase\(\) === 's'/],
+    ['helpBtn', 'F1', 'F1', /e\.key === 'F1'/],
+    ['settingsBtn', 'Ctrl+,', 'Ctrl+,', /e\.key === ','/],
+    ['sideCameraCloseBtn', '(C)', '(C)', /e\.key === 'c'/],
+  ];
+
+  test('le garde-fou : la table décrit bien des boutons qui existent', () => {
+    // Une table qui ne viserait plus rien passerait tous les tests suivants sans rien observer.
+    RACCOURCIS.forEach(([id]) => {
+      assert.ok(HTML.includes(`id="${id}"`), `#${id} n'existe plus dans index.html`);
+    });
+    assert.ok(RACCOURCIS.length >= 5, 'la table a fondu');
+  });
+
+  test('la touche est RÉELLEMENT écoutée quelque part', () => {
+    // Le sens qui coûte le plus cher : un bouton qui promet un raccourci que personne n'écoute.
+    const code = EVENTS + IO;
+    const muets = RACCOURCIS.filter(([, , , re]) => !re.test(code)).map(([id]) => id);
+    assert.deepEqual(muets, [], 'ces boutons annoncent un raccourci que rien n\'écoute');
+  });
+
+  test('le `title` d\'index.html porte la mention', () => {
+    const oublis = RACCOURCIS.filter(([id, fr]) => {
+      const i = HTML.indexOf(`id="${id}"`);
+      const balise = HTML.slice(HTML.lastIndexOf('<', i), HTML.indexOf('>', i));
+      const m = /title="([^"]*)"/.exec(balise);
+      return !m || !m[1].includes(fr);
+    }).map(([id]) => id);
+    assert.deepEqual(oublis, [], 'ces boutons ont un raccourci qu\'ils ne disent pas');
+  });
+
+  test('RÉGRESSION : la table i18n la porte AUSSI, dans les deux langues', () => {
+    // Sans elle, la mention disparaît au premier changement de langue : `applyI18n` réécrit le
+    // `title` avec ce que la table contient, et rien d'autre.
+    const oublis = [];
+    RACCOURCIS.forEach(([id, fr, en]) => {
+      const i = I18N.indexOf(`'#${id}'`);
+      if (i < 0) { oublis.push(`${id} (absent de la table)`); return; }
+      const ligne = I18N.slice(i, I18N.indexOf('\n', i));
+      if (!ligne.includes(en)) oublis.push(`${id} (EN)`);
+      if (!ligne.includes(fr)) oublis.push(`${id} (FR)`);
+    });
+    assert.deepEqual(oublis, [], 'ces mentions sauteront au changement de langue');
+  });
+
+  test('le manuel liste le raccourci, dans les deux langues', () => {
+    // La quatrième copie. Un raccourci absent du manuel n'existe que pour qui survole le bouton.
+    const mentions = ['Ctrl+Z', 'Ctrl+S', 'F1', 'Ctrl+,'];
+    const oublis = mentions.filter(m => HELP.split(m).length - 1 < 2);
+    assert.deepEqual(oublis, [], 'ces raccourcis ne sont pas listés dans les DEUX manuels');
+  });
+});

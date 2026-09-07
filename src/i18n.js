@@ -36,7 +36,7 @@ export const I18N_TEXT = [
   // Header
   ['#undoBtn', null, null, 'title', 'Undo (Ctrl+Z)', "Annuler (Ctrl+Z)"],
   ['#headerSaveBtn', null, null, 'title', 'Save project (Ctrl+S)', "Sauvegarder le projet (Ctrl+S)"],
-  ['#settingsBtn', null, null, 'title', 'Settings', 'Configuration'],
+  ['#settingsBtn', null, null, 'title', 'Settings (Ctrl+,)', 'Configuration (Ctrl+,)'],
   // Fix 63 : ce bouton porte une ICÔNE : son libellé traduit va sur `title`, pas sur le texte.
   // Écrire dans textContent remplaçait l'icône par la phrase, qui débordait du bouton de 30px.
   //
@@ -50,7 +50,7 @@ export const I18N_TEXT = [
   // écrivait donc ' ' + null : le crayon de la fiche d'un Modèle importé affichait « null » à côté
   // de son icône. Signalé à l'usage. Le commentaire ci-dessus redoutait déjà le symétrique.
   ['#objectEditorOpenBtn', null, null, 'title', 'Model editor', 'Éditeur de modèle'],
-  ['#helpBtn', null, null, 'title', 'User manual', "Manuel d'utilisation"],
+  ['#helpBtn', null, null, 'title', 'User manual (F1)', "Manuel d'utilisation (F1)"],
   // Sidebar
   ['#addVolumeBtn', 'New volume', 'Nouveau tome'],
   ['#addSceneBtn', 'New scene', 'Nouvelle scène'],
@@ -87,7 +87,7 @@ export const I18N_TEXT = [
   ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // Caméra menu
-  ['#sideCameraCloseBtn', null, null, 'title', 'Exit Camera mode', 'Quitter le mode Caméra'],
+  ['#sideCameraCloseBtn', null, null, 'title', 'Exit Camera mode (C)', 'Quitter le mode Caméra (C)'],
   ['#sideCameraSection .side-section:nth-of-type(2) > h2', '3D gizmo', 'Repère 3D'],
   ['#sceneTopDownBtn', '📐 Top-down view', '📐 Vue de dessus'],
   ['#sideCameraGizmoCanvas', null, null, 'title', 'Click and drag to orient the camera', "Cliquer-glisser pour orienter la caméra"],
@@ -113,6 +113,12 @@ export const I18N_TEXT = [
   ['#terrainLabelInput', null, null, 'placeholder', 'Optional', "Optionnel"],
   // Help menu
   ['#helpMenuHeader .menu-close-btn', null, null, 'title', 'Close', 'Fermer'],
+  // ⚠️ CES DEUX-LÀ N'ÉTAIENT TRADUITS NULLE PART (#413). Leur `title` restait en français sous une
+  // interface anglaise, et l'oubli passait inaperçu tant qu'il valait « Fermer » : le mot est court
+  // et se devine. En y ajoutant la mention du raccourci, il devenait une phrase entière dans la
+  // mauvaise langue.
+  ['#projectModalCornerClose', null, null, 'title', 'Close (Esc)', 'Fermer (Échap)'],
+  ['#settingsModalCornerClose', null, null, 'title', 'Close (Esc)', 'Fermer (Échap)'],
   // Titres simples sans contenu imbriqué dynamique
   ['#bubbleMenuHeader .menu-title', 'Speech bubble', 'Bulle'],
   ['#sideCameraSection > .menu-header .menu-title', 'Camera', 'Caméra'],

@@ -175,6 +175,7 @@ export const HELP_MANUAL_EN = [
     'Delete: delete the selected Element.',
     'Ctrl+Z: undo the last action. The history keeps the last 50.',
     'Ctrl+S: save the project.',
+    'Ctrl+, : open Settings, like the gear button.',
   ]},
 ];
 
@@ -322,6 +323,7 @@ export const HELP_MANUAL_FR = [
     'Suppr : supprimer l\'Élément sélectionné.',
     'Ctrl+Z : annuler la dernière action. L\'historique en garde 50 au maximum.',
     'Ctrl+S : enregistrer le projet.',
+    'Ctrl+, : ouvrir la Configuration, comme le bouton en forme d\'engrenage.',
   ]},
 ];
 

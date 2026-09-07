@@ -28,13 +28,13 @@
   </button>
   <!-- Bouton Configuration (cf. settingsModal), entre Sauvegarder et Manuel d'utilisation — sur demande
        utilisateur : ouvre la modale des réglages de l'Application (ex. délai de sauvegarde automatique). -->
-  <button class="help-round-btn" id="settingsBtn" title="Configuration">
+  <button class="help-round-btn" id="settingsBtn" title="Configuration (Ctrl+,)">
     <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
       <circle cx="12" cy="12" r="3"/>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
     </svg>
   </button>
-  <button class="help-round-btn" id="helpBtn" title="Manuel d'utilisation">?</button>
+  <button class="help-round-btn" id="helpBtn" title="Manuel d'utilisation (F1)">?</button>
 </header>
 
 
@@ -339,7 +339,7 @@
       <div class="menu-header">
         <span></span>
         <span class="menu-title">Caméra</span>
-        <button id="sideCameraCloseBtn" class="menu-close-btn" type="button" title="Quitter le mode Caméra">&times;</button>
+        <button id="sideCameraCloseBtn" class="menu-close-btn" type="button" title="Quitter le mode Caméra (C)">&times;</button>
       </div>
 
       <div class="side-section" id="sideCameraGizmoSection">
@@ -679,7 +679,7 @@
      (ensemble de Tomes/Planches/Cases), sous forme de fichier .json — sur demande utilisateur. -->
 <div class="modal-overlay hidden" id="projectModal">
   <div class="modal-box">
-    <button class="modal-close-btn" id="projectModalCornerClose" type="button" title="Fermer">×</button>
+    <button class="modal-close-btn" id="projectModalCornerClose" type="button" title="Fermer (Échap)">×</button>
     <h3 id="projectModalCurrentName">Projet</h3>
     <button class="project-modal-btn edit-btn" id="projectModalRename" type="button">✏️ Renommer le projet</button>
     <button class="project-modal-btn" id="projectModalNew" type="button">📄 Nouveau projet</button>
@@ -851,7 +851,7 @@
      sauvegarde automatique, dossier des Projets, thème de l'interface — sur demande utilisateur. -->
 <div class="modal-overlay hidden" id="settingsModal">
   <div class="modal-box">
-    <button class="modal-close-btn" id="settingsModalCornerClose" type="button" title="Fermer">×</button>
+    <button class="modal-close-btn" id="settingsModalCornerClose" type="button" title="Fermer (Échap)">×</button>
     <h3>Configuration</h3>
     <label class="modal-field-label">Délai de sauvegarde automatique</label>
     <select id="autosaveIntervalSelect">
