@@ -44,6 +44,7 @@ import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
 import { delaiFermetureSousMenu3D, sousMenusAFermer3D } from './menu-timing.js';
+import { clicDeselectionne3D } from './deselection.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -255,20 +256,38 @@ window.toggleModalSection = toggleModalSection;
 // the already-existing logic for disabling on exiting the x/y/w/h bounds (in the <canvas>'s
 // mousedown) can never trigger for it: there is no "empty area of the Page" outside
 // the locked panel. This global listener therefore covers the real "outside", i.e. outside the
-// <canvas> itself, excepting the Camera menu (sideCameraSection) and the context menus
-// (which contain, e.g., the 🎥 Camera button that toggles this mode), which remain
-// legitimate ways to act on the Scene without "leaving" it.
+// <canvas> itself, excepting the zones that act ON the selection rather than leaving it
+// (right-hand panel, context menus, header, open modal). The list itself now lives in
+// src/deselection.js, written once instead of three times.
+/**
+ * La zone atteinte par un clic, nommée. La DÉCISION, elle, est pure et vit dans src/deselection.js
+ * (cf. docs/en/architecture.md pour le partage habituel entre décision et câblage).
+ *
+ * ⚠️ CETTE FONCTION EXISTE PARCE QUE LA LISTE ÉTAIT ÉCRITE TROIS FOIS (#419), une par nature de
+ * sélection, et que l'entête manquait aux trois. Trois copies d'une règle sont trois occasions de
+ * diverger, et elles avaient divergé.
+ *
+ * ⚠️ LA MODALE PASSE EN PREMIER : c'est un ÉTAT, pas un endroit, et il prime sur l'endroit cliqué.
+ * `mousedown` précède `click` ; sans cette priorité, la sélection serait effacée sous les pieds du
+ * gestionnaire de la modale avant qu'il ait pu s'exécuter.
+ *
+ * `sideCameraSection` n'est pas testée à part : elle est DANS `rightPanel`, vérifié dans le HTML.
+ * La tester séparément laissait croire à une exemption qui n'en était pas une.
+ */
+function zoneDuClic3D(cible){
+  if (document.querySelector('.modal-overlay:not(.hidden)')) return 'modale-ouverte';
+  if (canvas.contains(cible)) return 'canevas';
+  if (rightPanel && rightPanel.contains(cible)) return 'panneau-droit';
+  if (allContextMenus.some(m => m && m.contains(cible))) return 'menu-contextuel';
+  const entete = document.querySelector('header');
+  if (entete && entete.contains(cible)) return 'entete';
+  return 'ailleurs';
+}
+
 document.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
   if (!S.editingSceneId) return;
-  if (canvas.contains(e.target)) return;
-  if (sideCameraSection && sideCameraSection.contains(e.target)) return;
-  if (rightPanel && rightPanel.contains(e.target)) return;
-  if (allContextMenus.some(m => m && m.contains(e.target))) return;
-  // Don't deselect if the click is inside an open modal (objectModal, roomModal,
-  // descModal…): mousedown precedes click, so without this guard the handler would clear S.selectedId before
-  // the modal even had time to close via its onclick.
-  if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'scene')) return;
   const scene = S.scenes.find(s => s.id === S.editingSceneId);
   if (!scene) return;
   let changed = false;
@@ -276,8 +295,8 @@ document.addEventListener('mousedown', (e) => {
   // Clicking outside the Scene's canvas deselects the current Element (or the canvas itself if it
   // is selected as a "panel"), per user request. This deselection is distinct from
   // disabling Camera mode above (which stays handled separately) and only applies to the
-  // Scene being edited (S.editingSceneId), outside legitimate interaction areas (sideCameraSection, rightPanel,
-  // context menus, modals).
+  // Scene being edited (S.editingSceneId), outside the legitimate zones listed in
+  // src/deselection.js.
   if (S.selectedId) { S.selectedId = null; S.selectedRoomId = null; changed = true; }
   if (changed) { drawCurrentPage(); updateSidePanel(); }
 });
@@ -292,10 +311,7 @@ document.addEventListener('mousedown', (e) => {
   const page = currentPage();
   const sel = page.objects.find(o => o.id === S.selectedId);
   if (!sel || sel.type !== 'bulle') return;
-  if (canvas.contains(e.target)) return;
-  if (rightPanel && rightPanel.contains(e.target)) return;
-  if (allContextMenus.some(m => m && m.contains(e.target))) return;
-  if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'bulle')) return;
   S.selectedId = null; S.selectedRoomId = null;
   drawCurrentPage();
 });
@@ -310,12 +326,7 @@ document.addEventListener('mousedown', (e) => {
   const page = currentPage();
   const sel = page.objects.find(o => o.id === S.selectedId);
   if (!sel || sel.type !== 'panel') return;
-  if (canvas.contains(e.target)) return;
-  if (rightPanel && rightPanel.contains(e.target)) return;
-  if (allContextMenus.some(m => m && m.contains(e.target))) return;
-  // Don't deselect if a modal is open (same logic as the Scene listener above, line ~1947):
-  // avoids clearing S.selectedId before the modal's onclick restores state.
-  if (document.querySelector('.modal-overlay:not(.hidden)')) return;
+  if (!clicDeselectionne3D(zoneDuClic3D(e.target), 'panel')) return;
   exitCameraModeOnDeselect(null); // Fix 15: exit Camera mode on deselect
   S.selectedId = null; S.selectedRoomId = null; S.selectedBuildingKey = null;
   drawCurrentPage();
@@ -6649,7 +6660,6 @@ const panelMenuCloseBtn = document.getElementById('panelMenuCloseBtn');
 const bubbleMenuCloseBtn = document.getElementById('bubbleMenuCloseBtn');
 const rightPanel = document.getElementById('rightPanel');
 const helpMenuCloseBtn = document.getElementById('helpMenuCloseBtn');
-const sideCameraSection = document.getElementById('sideCameraSection');
 const sideCameraCloseBtn = document.getElementById('sideCameraCloseBtn');
 const sideCameraGizmoCanvas = document.getElementById('sideCameraGizmoCanvas');
 const camSensRotInput = document.getElementById('camSensRotInput');
