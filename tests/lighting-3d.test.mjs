@@ -23,6 +23,7 @@ import {
   directionSoleil3D, anglesDepuisDirection3D, projeterSurDome3D, directionDepuisDome3D,
   resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, CLE_ACTUELLE, AMBIANTE_ACTUELLE,
   INCLINAISON_DOME_DEG, LUMIERE_DEFAUT, lumiereDeCase3D, definirLumiereDeCase3D, copierLumiere3D,
+  effacerLumiereDeCase3D,
 } from '../src/lighting-3d.js';
 
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -527,5 +528,65 @@ describe('#414e : le dôme et ses deux gestes', () => {
   test('RÉGRESSION : le menu contextuel est neutralisé sur le canevas', () => {
     // Sans ça, le clic droit ouvrirait le menu du système au lieu de tourner la vue.
     assert.match(EVENTS, /sideLightDomeCanvas\.addEventListener\('contextmenu'/);
+  });
+});
+
+describe('#414i : trois retours d\'usage sur le dôme', () => {
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const SIDEBAR = sourceSansCommentaires(
+    readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('RÉGRESSION : la rotation de vue suit le sens du glisser', () => {
+    // Signalé : « la rotation au clic droit va en sens inverse ». Un glisser vers la droite doit
+    // pousser le dôme comme de la main, donc faire tourner le point de vue vers la gauche.
+    assert.match(EVENTS, /S\.lightDomeRotation = S\.lightDomeDrag\.rotation - \(e\.clientX/,
+      'le signe de la rotation est reparti dans l\'autre sens');
+  });
+
+  test('RÉGRESSION : la base porte des repères, sans quoi la rotation ne SE VOIT pas', () => {
+    // ⚠️ SIGNALÉ COMME « ça ne marche qu\'avec le clic gauche ». Un dôme nu est parfaitement
+    // symétrique : le tourner ne déplaçait visiblement que le soleil, et quand celui-ci est haut,
+    // presque rien ne bougeait. Le geste marchait, il ne se voyait pas.
+    const i = SIDEBAR.indexOf('export function dessinerDomeLumiere3D');
+    const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
+    assert.match(corps, /for \(let a = 0; a < 360; a \+= 45\)/, 'les repères de base ont disparu');
+    assert.match(corps, /projeterSurDome3D\(a, 0, S\.lightDomeRotation/,
+      'les repères ne sont plus posés à des azimuts du MONDE : ils ne tourneraient plus');
+    assert.match(corps, /a === 0 \? 7 : 4/,
+      'sans repère distinct, huit traits identiques ne disent ni de combien ni dans quel sens');
+  });
+
+  test('« Réinitialiser » SUPPRIME le champ au lieu d\'y écrire des défauts', () => {
+    // ⚠️ L'ÉTAT DE BASE D'UNE CASE EST DE N'AVOIR AUCUN RÉGLAGE. Écrire `LUMIERE_DEFAUT` donnerait
+    // le même rendu mais laisserait un objet que personne n'a demandé, et le bouton resterait
+    // proposé pour toujours puisque la Case porterait un champ.
+    const panel = { id: 'p', type: 'panel' };
+    assert.equal(effacerLumiereDeCase3D(panel), false, 'rien à effacer ne doit pas se dire « fait »');
+    definirLumiereDeCase3D(panel, { mode: 'nuit' });
+    assert.equal(effacerLumiereDeCase3D(panel), true);
+    assert.ok(!('lumiere' in panel), 'le champ est resté, rempli de valeurs par défaut');
+    // Et la Case revient exactement à l'éclairage d'aujourd'hui.
+    const r = resoudreEclairage3D(lumiereDeCase3D(panel));
+    assert.ok(proche(r.soleil.intensite, 0.55) && proche(r.ambiante.intensite, 0.75));
+  });
+
+  test('le bouton ne paraît que s\'il a quelque chose à défaire', () => {
+    // Même règle que « Recentrer » dans la section Cadrage (#403f) : un bouton toujours visible qui
+    // ne ferait rien la moitié du temps apprendrait à ne pas s'y fier.
+    assert.match(HTML, /id="sideLightResetBtn"[^>]*display:none/);
+    assert.match(SIDEBAR, /sideLightResetBtn\.style\.display = cible\.lumiere \? 'block' : 'none'/);
+  });
+
+  test('RÉGRESSION : réinitialiser remet aussi la VUE d\'aplomb', () => {
+    // La rotation du dôme n'est pas une donnée du Projet, mais laisser la vue de travers après une
+    // remise à zéro donnerait l'impression qu'il reste quelque chose.
+    const i = EVENTS.indexOf("sideLightResetBtn.addEventListener('click'");
+    assert.ok(i > 0, 'le bouton n\'écoute plus rien');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n});', i));
+    assert.match(corps, /S\.lightDomeRotation = 0/, 'la vue reste tournée après la remise à zéro');
+    assert.match(corps, /if \(change\) drawCurrentPage\(\)/,
+      'un clic sans effet redessine quand même la Planche');
   });
 });

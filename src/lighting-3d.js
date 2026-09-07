@@ -290,6 +290,21 @@ export function definirLumiereDeCase3D(panel, patch){
 }
 
 /**
+ * Efface le réglage d'une Case, et rend `true` s'il y avait quelque chose à effacer (#414i).
+ *
+ * ⚠️ ON SUPPRIME LE CHAMP, ON NE LE REMPLIT PAS DE VALEURS PAR DÉFAUT. L'état de base d'une Case
+ * est de n'avoir AUCUN réglage : c'est ce qu'ont toutes les Planches déjà dessinées, et c'est ce
+ * qui garde les fichiers de Projet propres. Écrire `LUMIERE_DEFAUT` donnerait le même rendu mais
+ * laisserait derrière un objet que personne n'a demandé, et le bouton « Réinitialiser » resterait
+ * proposé pour toujours puisque la Case porterait un champ.
+ */
+export function effacerLumiereDeCase3D(panel){
+  if (!panel || !panel.lumiere) return false;
+  delete panel.lumiere;
+  return true;
+}
+
+/**
  * Une COPIE indépendante, pour l'héritage d'une Scène vers une Case (#414f).
  *
  * ⚠️ PAR VALEUR, PAS PAR RÉFÉRENCE. Une affectation laisserait les deux Cases partager le même

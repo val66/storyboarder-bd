@@ -40,7 +40,8 @@ import {
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
-import { definirLumiereDeCase3D, directionDepuisDome3D, INCLINAISON_DOME_DEG } from './lighting-3d.js';
+import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
+  INCLINAISON_DOME_DEG } from './lighting-3d.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -6625,6 +6626,7 @@ const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
 const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
+const sideLightResetBtn = document.getElementById('sideLightResetBtn');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
 const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
 const sideBorderColorWrap = document.getElementById('sideBorderColorWrap');
@@ -7132,7 +7134,11 @@ window.addEventListener('mousemove', (e) => {
   if (S.lightDomeDrag.vue) {
     // Tourner la VUE ne touche pas au Projet : pas d'instantané, pas de redessin de la Planche, on
     // se contente de redessiner le dôme.
-    S.lightDomeRotation = S.lightDomeDrag.rotation + (e.clientX - S.lightDomeDrag.x) * 0.6;
+    // ⚠️ LE SIGNE EST NÉGATIF, ET C'EST UN RETOUR D'USAGE. Un glisser vers la droite doit faire
+    // tourner le dôme comme si on le poussait de la main : le monde part vers la droite, donc le
+    // point de vue tourne vers la gauche. Le signe inverse donnait la sensation d'un dôme qui fuit
+    // le curseur.
+    S.lightDomeRotation = S.lightDomeDrag.rotation - (e.clientX - S.lightDomeDrag.x) * 0.6;
     rafraichirSectionLumiere();
     return;
   }
@@ -7140,6 +7146,19 @@ window.addEventListener('mousemove', (e) => {
   reglerLumiere(directionDepuisDome3D(p.u, p.v, S.lightDomeRotation || 0), false);
 });
 window.addEventListener('mouseup', () => { S.lightDomeDrag = null; });
+
+// « Réinitialiser » remet la Case à son état de base : AUCUN réglage, ce que porte toute Planche
+// jamais touchée. La rotation du dôme repart aussi de zéro — elle n'est pas une donnée du Projet,
+// mais laisser la vue de travers après une remise à zéro donnerait l'impression d'un reste.
+sideLightResetBtn.addEventListener('click', () => {
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'panel') return;
+  snapshot();
+  const change = effacerLumiereDeCase3D(cible);
+  S.lightDomeRotation = 0;
+  rafraichirSectionLumiere();
+  if (change) drawCurrentPage();
+});
 sideLightColorInput.addEventListener('input', () => {
   // Un seul `snapshot` pour tout le geste : un sélecteur de couleur émet en continu, et empiler une
   // annulation par nuance survolée noierait l'historique de 50 actions.

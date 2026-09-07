@@ -314,6 +314,7 @@ export const I18N_TRAILING = [
   ['#sideLightModeSelect option[value="perso"]', 'Custom', 'Personnalisé'],
   ['#sideLightColorLabel', 'Colour', 'Couleur'],
   ['#sideLightIntensityLabel', 'Intensity', 'Intensité'],
+  ['#sideLightResetBtn', '↺ Reset', '↺ Réinitialiser'],
   ['#sideLightModeSelect', null],
   ['#sideLightColorInput', null],
   ['#sideLightIntensityRange', null],

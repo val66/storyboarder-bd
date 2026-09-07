@@ -78,6 +78,7 @@ const sideGroundSection = document.getElementById('sideGroundSection');
 const sideLightSection = document.getElementById('sideLightSection');
 const sideLightCustom = document.getElementById('sideLightCustom');
 const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
+const sideLightResetBtn = document.getElementById('sideLightResetBtn');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
 const sideLightIntensityRange = document.getElementById('sideLightIntensityRange');
@@ -1201,6 +1202,8 @@ export function rafraichirSectionLumiere(){
   sideLightIntensityRange.value = String(pourcent);
   // L'unité se traduit, comme celle du curseur de mémoire de la Configuration.
   sideLightIntensityValue.textContent = `${pourcent} %`;
+  // Il ne paraît que s'il a quelque chose à défaire : une Case sans champ EST déjà à l'état de base.
+  sideLightResetBtn.style.display = cible.lumiere ? 'block' : 'none';
   dessinerDomeLumiere3D(l);
 }
 
@@ -1272,11 +1275,37 @@ export function dessinerDomeLumiere3D(lumiere){
   ctx.globalAlpha = 1; ctx.lineWidth = 1.5; ctx.strokeStyle = trait; ctx.stroke();
   ctx.restore();
 
-  // L'arrière de la base en pointillé : c'est ce qui donne le volume, et ce qui dit dans quel sens
-  // la vue est tournée.
+  // L'arrière de la base en pointillé : c'est ce qui donne le volume.
   ctx.save();
   ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = trait; ctx.globalAlpha = 0.7;
   ctx.beginPath(); ctx.ellipse(cx, cy, R, R * sinP, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+
+  // ⚠️ LES REPÈRES DE LA BASE, ET C'EST UN RETOUR D'USAGE QUI LES A AMENÉS. Un dôme nu est
+  // parfaitement symétrique : le tourner ne déplaçait VISIBLEMENT que le soleil, et quand celui-ci
+  // est haut, presque rien ne bougeait. Le geste paraissait sans effet. Ces huit repères, posés à
+  // des azimuts fixes du MONDE, glissent le long de la base quand la vue tourne : c'est eux qui
+  // rendent la rotation lisible, pas le soleil.
+  //
+  // Celui de l'azimut zéro est plus long : sans un repère distinct des autres, huit traits
+  // identiques disent qu'on tourne, mais pas de combien ni dans quel sens.
+  ctx.save();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = trait;
+  for (let a = 0; a < 360; a += 45) {
+    const q = projeterSurDome3D(a, 0, S.lightDomeRotation || 0);
+    const bx = cx + q.u * R, by = cy - q.v * R;
+    const len = a === 0 ? 7 : 4;
+    ctx.globalAlpha = q.devant ? 0.9 : 0.3;
+    // Le repère pointe vers l'EXTÉRIEUR : la direction du centre vers le point, en pixels d'écran,
+    // ramenée à une longueur de 1. En repartant des coordonnées normalisées on obtiendrait une
+    // direction juste dans le repère du dôme mais fausse à l'écran, l'ellipse étant aplatie.
+    const dx = bx - cx, dy = by - cy;
+    const n = Math.hypot(dx, dy) || 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + (dx / n) * len, by + (dy / n) * len);
+    ctx.stroke();
+  }
   ctx.restore();
 
   if (p.devant) dessinerSoleil(1);
