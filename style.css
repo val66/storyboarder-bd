@@ -933,6 +933,22 @@ button.context-menu-submenu-trigger{ display:flex; align-items:center; justify-c
    Trois canevas partagent cette règle et le même besoin : les quatre aperçus de modale, la scène
    de l'Éditeur de modèle, et le gizmo de caméra du panneau droit. */
 canvas{ background:var(--fond-3d); }
+/* ⚠️ ET UN QUATRIÈME QUI N'A PAS CE BESOIN, ARRIVÉ APRÈS CETTE RÈGLE (#414l). Le dôme de lumière
+   ne montre aucune figure 3D : il dessine un widget, avec les jetons du thème. Il héritait pourtant
+   du fond clair ci-dessus, et le résultat est le défaut qui a été signalé.
+
+   LA MESURE, parce que ce n'était pas une question de goût. Les lettres cardinales portent `--ink`,
+   qui suit le thème ; le fond, lui, ne le suit pas. En thème Sombre l'encre vaut #EDEDEF sur un
+   fond #CFCBC2, soit **1,38**. Le corps du dôme, peint avec `--paper-dark`, tombait de son côté à
+   **1,14** en thème Clair et **1,02** en contraste clair : le dôme y était invisible, un défaut que
+   personne n'avait vu parce qu'il ne se produit pas en thème Sombre.
+
+   ⚠️ ET LA CARTE NE POUVAIT PAS ÊTRE SAUVÉE EN LA FAISANT SUIVRE LE THÈME. Mesurée contre le papier
+   de la section : telle quelle elle vaut 9,82 en Sombre et 14,85 en contraste sombre, d'où le
+   rectangle clair qu'on voyait ; avec un jeton de thème elle serait tombée entre 1,02 et 1,36, donc
+   invisible partout. Une carte n'existe qu'en NE suivant PAS le thème, ce qui est exactement le
+   défaut. Elle disparaît donc, et le dôme se pose sur le papier de sa section. */
+#sideLightDomeCanvas{ background:transparent; }
 
 /* MODAL */
 /* Voile des modales. Assombri en deux fois sur demande utilisateur, .6 → .78 → .88 : le contenu

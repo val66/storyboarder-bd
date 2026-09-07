@@ -158,8 +158,54 @@ rouge-vert du daltonisme que parce que le point cardinal est déjà **écrit** (
 [colour-accessibility](colour-accessibility.md)).
 
 Les autres lettres portent `--ink` et non `--ink-soft` : demandées « plus foncées », elles ont changé
-de **rôle** plutôt que de valeur, car en thème Sombre assombrir rapproche du fond. Mesuré sur le
-papier du menu de droite : 5,69 → 13,59 en Sombre, 3,34 → 10,55 en Clair.
+de **rôle** plutôt que de valeur, car en thème Sombre assombrir rapproche du fond.
+
+⚠️ **ET J'AI MESURÉ CONTRE LE MAUVAIS FOND, DEUX FOIS DE SUITE (#414l).** C'est la faute la plus
+instructive de tout ce chantier, et elle mérite d'être lue avant la prochaine.
+
+**Premier fond faux.** J'ai mesuré les lettres contre `--paper-dark`, le papier du menu de droite,
+alors que `style.css` contient une règle globale `canvas{ background:var(--fond-3d) }` dont le dôme
+héritait. `--fond-3d` est **clair dans les quatre palettes**, et c'est voulu : les Éléments 3D sont
+souvent sombres. Les lettres, elles, portent un jeton qui **suit le thème**. En thème Sombre, encre
+#EDEDEF sur fond #CFCBC2, soit **1,38**. Le réglage censé les rendre plus lisibles les avait rendues
+pires que l'ancien, qui valait 1,73.
+
+**Second fond faux, dans la correction elle-même.** J'ai alors mesuré contre `--paper-dark` en
+croyant que c'était le fond de la section. C'est `--paper` : `.side-section` a sa propre règle. Cette
+fois l'écart jouait en ma faveur et toutes les valeurs tenaient, mais elles tenaient par chance, pas
+par méthode.
+
+**Le même défaut avait une seconde victime, invisible en thème Sombre.** Le corps du dôme, peint
+avec `--paper-dark` sur ce fond clair, valait **1,14** en Clair et **1,02** en contraste clair : le
+dôme y était un contour vide. Personne ne l'avait signalé parce que le défaut ne se produit pas dans
+le thème où l'on travaille.
+
+**La carte ne pouvait pas être sauvée.** Mesurée contre le papier de la section, telle quelle elle
+vaut 9,82 en Sombre et 14,85 en contraste sombre, d'où le rectangle clair qu'on voyait ; avec un
+jeton de thème elle serait tombée entre 1,02 et 1,36, donc invisible dans les quatre palettes. Une
+carte n'existe qu'en **ne suivant pas** le thème, ce qui est exactement le défaut. Elle a donc été
+retirée, après un rendu comparatif des trois variantes dans les quatre palettes.
+
+Ce que ça donne, mesuré sur `--paper` :
+
+| thème | lettres | Nord | contour | corps |
+|---|---|---|---|---|
+| Sombre | 14,57 | 4,88 | 6,10 | 1,07 |
+| Clair | 12,09 | 5,27 | 3,82 | 1,19 |
+| Contraste sombre | 21,00 | 7,60 | 13,55 | 1,12 |
+| Contraste clair | 21,00 | 8,21 | 11,37 | 1,19 |
+
+Le contour passe de `--line-strong` à `--ink-soft` : sur ce fond, le premier tombait à 2,09 en
+Sombre, sous le seuil de 3 que WCAG 1.4.11 demande au contour d'un composant qu'on manipule, et le
+dôme se manipule. Le corps passe de `--paper-dark` à `--creux` et reste **délibérément discret**,
+entre 1,07 et 1,19 : c'est le contour qui porte la forme, le remplissage ne sert qu'à voiler un
+soleil passé derrière la coupole, ce qui se joue en composant sur le disque du soleil et non contre
+le papier. Un test **interdit** à ce remplissage de monter, sans quoi la carte reviendrait.
+
+⚠️ **ET LE TEST, LUI, NE DOIT PLUS ÉCRIRE LE FOND EN DUR.** Il le **déduit** de la feuille de style :
+il vérifie que le dôme déroge bien à la règle globale, puis lit le jeton de fond dans la règle de
+`.side-section`. Un fond posé en dur est précisément ce qui a laissé passer les deux erreurs
+ci-dessus, avec des tests verts qui mesuraient autre chose que ce que l'œil voit.
 
 ## L'héritage Scène vers Case
 

@@ -152,8 +152,53 @@ red-green axis of colour blindness because the cardinal point is already **writt
 [colour-accessibility](colour-accessibility.md)).
 
 The other letters carry `--ink` and not `--ink-soft`: asked to be "darker", they changed **role**
-rather than value, because on the Dark theme darkening moves towards the background. Measured on the
-right-hand panel's paper: 5.69 → 13.59 on Dark, 3.34 → 10.55 on Light.
+rather than value, because on the Dark theme darkening moves towards the background.
+
+⚠️ **AND I MEASURED AGAINST THE WRONG BACKGROUND, TWICE IN A ROW (#414l).** This is the most
+instructive mistake of the whole project, and it deserves reading before the next one.
+
+**First wrong background.** I measured the letters against `--paper-dark`, the right-hand panel's
+paper, while `style.css` carries a global `canvas{ background:var(--fond-3d) }` rule that the dome
+inherited. `--fond-3d` is **light in all four palettes**, deliberately so: 3D Elements are often dark
+themselves. The letters, however, carry a token that **follows the theme**. On the Dark theme that is
+ink #EDEDEF on a #CFCBC2 background, or **1.38**. The change meant to make them more readable had
+made them worse than the previous token, which scored 1.73.
+
+**Second wrong background, inside the fix itself.** I then measured against `--paper-dark`, believing
+it to be the section's background. It is `--paper`: `.side-section` has a rule of its own. This time
+the gap ran in my favour and every value held, but it held by luck, not by method.
+
+**The same defect had a second victim, invisible on the Dark theme.** The dome's body, painted with
+`--paper-dark` on that light background, scored **1.14** on Light and **1.02** on light enhanced
+contrast: the dome there was an empty outline. Nobody had reported it because the defect does not
+occur in the theme one works in.
+
+**The card could not be saved.** Measured against the section's paper, as it stands it scores 9.82 on
+Dark and 14.85 on dark enhanced contrast, hence the light rectangle one could see; made to follow the
+theme it would have fallen between 1.02 and 1.36, invisible in all four palettes. A card only exists
+by **not** following the theme, which is exactly the defect. It was therefore removed, after a
+rendered comparison of the three variants across the four palettes.
+
+The result, measured on `--paper`:
+
+| theme | letters | North | outline | body |
+|---|---|---|---|---|
+| Dark | 14.57 | 4.88 | 6.10 | 1.07 |
+| Light | 12.09 | 5.27 | 3.82 | 1.19 |
+| Dark enhanced | 21.00 | 7.60 | 13.55 | 1.12 |
+| Light enhanced | 21.00 | 8.21 | 11.37 | 1.19 |
+
+The outline moves from `--line-strong` to `--ink-soft`: on this background the former fell to 2.09 on
+Dark, below the 3 that WCAG 1.4.11 requires of the boundary of a component one manipulates, and the
+dome is manipulated. The body moves from `--paper-dark` to `--creux` and stays **deliberately
+faint**, between 1.07 and 1.19: the outline carries the shape, the fill only veils a sun that has
+passed behind the vault, which happens by compositing over the sun's disc and not against the paper.
+A test **forbids** that fill from rising, otherwise the card would come back.
+
+⚠️ **AND THE TEST MUST NO LONGER WRITE THE BACKGROUND DOWN.** It **derives** it from the stylesheet:
+it checks that the dome does opt out of the global rule, then reads the background token from
+`.side-section`'s rule. A hardcoded background is precisely what let both mistakes above through,
+with green tests measuring something other than what the eye sees.
 
 ## Scene to Panel inheritance
 

@@ -719,14 +719,63 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
     }, 7],
   ];
 
+  /**
+   * ⚠️ LE FOND N'EST PAS ÉCRIT ICI, IL EST DÉDUIT DE LA FEUILLE DE STYLE, ET C'EST TOUT L'OBJET DE
+   * #414l. La première version de ces tests posait `--paper-dark` en dur, parce que je croyais
+   * savoir ce qu'il y avait derrière les lettres. C'était faux DEUX FOIS de suite : d'abord la
+   * règle globale `canvas{background:var(--fond-3d)}` peignait le canevas en clair dans les quatre
+   * thèmes, ensuite le papier de la section s'est révélé être `--paper` et non `--paper-dark`.
+   * Les tests étaient verts et mesuraient autre chose que ce que l'œil voit.
+   *
+   * On remonte donc la chaîne comme le navigateur la compose : si le canevas se déclare
+   * transparent, le fond est celui de `.side-section`, et le jeton est LU dans sa règle.
+   */
+  /**
+   * ⚠️ ELLE EST APPELÉE DANS LES TESTS, JAMAIS DANS LE CORPS DU `describe`, ET C'EST UNE MUTATION
+   * QUI L'A IMPOSÉ. Placée au niveau du bloc, son `assert` ne faisait pas échouer un test : il
+   * interrompait l'évaluation du bloc entier. En retirant la dérogation CSS, la suite est passée de
+   * 69 tests à 57, avec ZÉRO échec annoncé. Douze tests avaient disparu et le rapport était vert.
+   *
+   * C'est la troisième fois dans ce dépôt qu'une suite reste verte en n'observant rien, et c'est de
+   * loin la forme la plus dangereuse : l'absence de test ne se voit pas, contrairement à un échec.
+   */
+  let fondMemo;
+  const FOND = () => (fondMemo ??= jetonDuFondDuDome());
+
+  function jetonDuFondDuDome() {
+    const regleCanevas = /^\s*canvas\s*\{([^}]*)\}/m.exec(CSS);
+    assert.ok(regleCanevas, 'la règle globale canvas{} a disparu de style.css');
+    assert.match(regleCanevas[1], /background:\s*var\(--fond-3d\)/,
+      'la règle globale a changé : ce test surveille une dérogation qui n\'a plus d\'objet');
+
+    const derogation = /^\s*#sideLightDomeCanvas\s*\{([^}]*)\}/m.exec(CSS);
+    assert.ok(derogation, '#sideLightDomeCanvas ne déroge plus à la règle globale');
+    assert.match(derogation[1], /background:\s*transparent/,
+      'le dôme reprend un fond opaque : il faut re-mesurer, pas re-lire ce test');
+
+    const section = /^\s*\.side-section\s*\{([^}]*)\}/m.exec(CSS);
+    assert.ok(section, '.side-section introuvable : le dôme est peut-être ailleurs');
+    const m = /background:\s*var\(--([a-z-]+)\)/.exec(section[1]);
+    assert.ok(m, '.side-section n\'a plus de fond en jeton');
+    return m[1];
+  }
+
+  test('#414l : le dôme déroge à la règle globale des canevas', () => {
+    // Le test NOMMÉ de la dérogation. Les autres la consomment à travers FOND() et se briseraient
+    // aussi, mais un échec ici dit tout de suite ce qui manque, au lieu de laisser lire quatre
+    // ratios devenus faux.
+    assert.equal(FOND(), 'paper',
+      'le papier du dôme a changé : les ratios ci-dessous sont à re-mesurer, pas à relire');
+  });
+
   test('le garde-fou : les quatre palettes ont bien été lues', () => {
     // Sur des objets vides, toutes les mesures ci-dessous porteraient sur `undefined` et la suite
     // resterait verte en n'observant rien. C'est déjà arrivé deux fois dans ce dépôt.
     for (const [nom, T] of PALETTES) {
       assert.ok(Object.keys(T).length >= 15, `${nom} : ${Object.keys(T).length} jetons lus`);
-      assert.match(T['paper-dark'] || '', /^#[0-9A-Fa-f]{6}$/, `${nom} : pas de --paper-dark`);
+      assert.match(T[FOND()] || '', /^#[0-9A-Fa-f]{6}$/, `${nom} : pas de --${FOND()}`);
     }
-    const fonds = new Set(PALETTES.map(([, T]) => T['paper-dark']));
+    const fonds = new Set(PALETTES.map(([, T]) => T[FOND()]));
     assert.equal(fonds.size, 4, 'deux palettes partagent le même papier : la lecture est fausse');
   });
 
@@ -740,10 +789,18 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
     // RÔLE : `--ink-soft` est la couleur des légendes, `--ink` celle du texte qu'on lit. Prendre
     // « plus foncé » au pied de la lettre aurait dégradé le thème Sombre, où assombrir rapproche du
     // fond. Ce test se briserait au retour de l'ancien jeton.
-    assert.match(SIDEBAR, /jetonDeTheme3D\('--ink',/, 'les lettres ne prennent plus l\'encre principale');
+    //
+    // ⚠️ CE TEST A ÉTÉ RESSERRÉ EN #414l, ET LA RAISON MÉRITE D'ÊTRE LUE. Il interdisait d'abord
+    // `--ink-soft` dans TOUTE la fonction de dessin, en croyant surveiller la couleur des lettres.
+    // Le jour où le CONTOUR a légitimement pris ce jeton, le test s'est cassé sans qu'aucune lettre
+    // n'ait bougé : il épinglait le MOYEN au lieu de l'intention, la faute (c) du dépôt. Il vise
+    // maintenant la liaison qui porte vraiment la couleur des lettres.
+    assert.match(SIDEBAR, /const encre = jetonDeTheme3D\('--ink',/,
+      'les lettres ne prennent plus l\'encre principale');
     const dessin = SIDEBAR.slice(SIDEBAR.indexOf('export function dessinerDomeLumiere3D'));
     assert.ok(dessin.length > 500, 'la fonction de dessin n\'a pas été retrouvée');
-    assert.ok(!/--ink-soft/.test(dessin), '`--ink-soft` est revenu dans le dessin du dôme');
+    assert.ok(!/const encre = jetonDeTheme3D\('--ink-soft'/.test(dessin),
+      '`--ink-soft` est redevenu la couleur des lettres');
   });
 
   test('RÉGRESSION : le Nord se distingue des trois autres DANS LE CODE', () => {
@@ -769,21 +826,21 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
   });
 
   test('chaque rouge atteint la cible de SON thème sur le papier du panneau', () => {
-    // Les lettres se posent sur le fond du menu de droite, `--paper-dark`. Cible AA (4,5) pour les
-    // thèmes normaux, AAA (7) pour le contraste renforcé, comme partout dans ce dépôt.
+    // Les lettres se posent sur le papier de leur section, DÉDUIT du CSS ci-dessus. Cible AA
+    // (4,5) pour les thèmes normaux, AAA (7) pour le contraste renforcé, comme partout ici.
     const faibles = PALETTES
-      .map(([nom, T, cible]) => [nom, contraste(T['nord-boussole'], T['paper-dark']), cible])
+      .map(([nom, T, cible]) => [nom, contraste(T['nord-boussole'], T[FOND()]), cible])
       .filter(([, r, cible]) => r < cible);
     assert.deepEqual(faibles.map(([nom, r, c]) => `${nom} ${r.toFixed(2)} < ${c}`), []);
   });
 
   test('les lettres ordinaires aussi, et elles ont GAGNÉ au change', () => {
     for (const [nom, T, cible] of PALETTES) {
-      const apres = contraste(T.ink, T['paper-dark']);
+      const apres = contraste(T.ink, T[FOND()]);
       assert.ok(apres >= cible, `${nom} : l'encre est à ${apres.toFixed(2)}, sous ${cible}`);
       // La raison d'être du changement : l'ancien jeton était plus faible. Le thème clair contrasté
       // n'a pas de `--ink-soft` propre et hérite du sien, la comparaison reste valable.
-      const avant = contraste(T['ink-soft'], T['paper-dark']);
+      const avant = contraste(T['ink-soft'], T[FOND()]);
       assert.ok(apres > avant, `${nom} : ${avant.toFixed(2)} → ${apres.toFixed(2)}, aucun gain`);
     }
   });
@@ -793,9 +850,9 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
     // meilleur rouge sur papier sombre est le pire sur papier clair, et réciproquement. Si un jour
     // ce test échoue, c'est que les papiers se sont rapprochés et que la séparation peut tomber.
     const sombre = PALETTES[0][1], clair = PALETTES[1][1];
-    assert.ok(contraste(sombre['nord-boussole'], clair['paper-dark']) < 4.5,
+    assert.ok(contraste(sombre['nord-boussole'], clair[FOND()]) < 4.5,
       'le rouge du thème Sombre passerait maintenant en Clair');
-    assert.ok(contraste(clair['nord-boussole'], sombre['paper-dark']) < 4.5,
+    assert.ok(contraste(clair['nord-boussole'], sombre[FOND()]) < 4.5,
       'le rouge du thème Clair passerait maintenant en Sombre');
   });
 
@@ -810,6 +867,41 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
       assert.ok(r > v + 40 && r > b + 40, `${nom} : ${c} n'est pas franchement rouge`);
       assert.ok(distance(c, T.ink) >= 80,
         `${nom} : le Nord est à ${distance(c, T.ink).toFixed(0)} de l'encre, trop proche`);
+    }
+  });
+
+  test('#414l : le contour du dôme se voit, WCAG 1.4.11', () => {
+    // ⚠️ LE CONTOUR A CHANGÉ DE JETON PARCE QUE LE FOND A CHANGÉ. `--line-strong` tombait à 2,09
+    // sur le papier de la section en thème Sombre, sous le seuil de 3 exigé du contour d'un
+    // composant qu'on manipule, et le dôme SE MANIPULE : c'est lui qu'on glisse.
+    //
+    // Le seuil est 3 dans les quatre thèmes, y compris en contraste renforcé : 1.4.11 ne connaît
+    // pas de niveau AAA, et inventer 7 ici serait inventer une règle.
+    assert.match(SIDEBAR, /const trait = jetonDeTheme3D\('--ink-soft',/,
+      'le contour du dôme ne prend plus --ink-soft');
+    const faibles = PALETTES
+      .map(([nom, T]) => [nom, contraste(T['ink-soft'], T[FOND()])])
+      .filter(([, r]) => r < 3);
+    assert.deepEqual(faibles.map(([nom, r]) => `${nom} ${r.toFixed(2)}`), []);
+  });
+
+  test('#414l : le corps du dôme est DÉLIBÉRÉMENT discret, et on le dit', () => {
+    // ⚠️ CE TEST NE DEMANDE PAS UN CONTRASTE FORT, IL EN INTERDIT UN. Le remplissage ne porte pas
+    // la forme, c'est le contour qui la porte ; sa seule fonction est de voiler un soleil passé
+    // derrière la coupole, ce qui se joue en composant sur le DISQUE du soleil et non contre le
+    // papier. Un remplissage qui monterait ferait réapparaître la carte qu'on vient de retirer.
+    //
+    // La borne haute est donc l'exigence, et la borne basse dit seulement que le jeton existe.
+    assert.match(SIDEBAR, /const fond = jetonDeTheme3D\('--creux',/,
+      'le remplissage du dôme ne prend plus --creux');
+    const composer = (fg, bg, a) => {
+      const [f, b] = [fg, bg].map(h => [0, 2, 4].map(i => parseInt(h.slice(1 + i, 3 + i), 16)));
+      return '#' + f.map((v, i) => Math.round(v * a + b[i] * (1 - a))
+        .toString(16).padStart(2, '0')).join('');
+    };
+    for (const [nom, T] of PALETTES) {
+      const r = contraste(composer(T.creux, T[FOND()], 0.55), T[FOND()]);
+      assert.ok(r < 1.6, `${nom} : le corps est monté à ${r.toFixed(2)}, il redevient une carte`);
     }
   });
 

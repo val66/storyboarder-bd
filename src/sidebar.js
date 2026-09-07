@@ -1248,8 +1248,18 @@ export function dessinerDomeLumiere3D(lumiere){
   const p = projeterSurDome3D(lumiere.azimut, lumiere.elevation, S.lightDomeRotation || 0);
   const sx = cx + p.u * R, sy = cy - p.v * R;
 
-  const trait = jetonDeTheme3D('--line-strong', '#8a8f98');
-  const fond = jetonDeTheme3D('--paper-dark', '#2a2c33');
+  // ⚠️ CES DEUX JETONS ONT CHANGÉ AVEC LE FOND (#414l), ET C'EST LA MESURE QUI LES A CHOISIS. Le
+  // dôme ne se dessine plus sur le papier 3D clair mais sur celui de sa section, `--paper`. Contre
+  // ce fond, `--line-strong` tombait à 2,09 en thème Sombre, sous le seuil de 3 que WCAG 1.4.11
+  // demande au contour d'un composant qu'on manipule ; `--ink-soft` tient 6,10 / 3,82 / 13,55 /
+  // 11,37 dans les quatre palettes.
+  //
+  // Le remplissage passe de `--paper-dark` à `--creux` pour la même raison : sur son ancien fond
+  // clair il valait 1,14 en thème Clair et 1,02 en contraste clair, c'est à dire un dôme sans
+  // corps. Il reste DÉLIBÉRÉMENT discret, entre 1,07 et 1,19 selon le thème : c'est le CONTOUR qui
+  // porte la forme, le remplissage ne sert qu'à voiler un soleil passé derrière la coupole.
+  const trait = jetonDeTheme3D('--ink-soft', '#9A9AA2');
+  const fond = jetonDeTheme3D('--creux', '#0E0F12');
 
   const dessinerSoleil = (alpha) => {
     ctx.save();
