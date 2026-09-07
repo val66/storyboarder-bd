@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.62**
+**Version 1.5.63**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -83,7 +83,7 @@
 - 🔌 **Fonctionne hors ligne**, polices comprises : vos Planches ont le même aspect avec ou sans connexion
 - 🌗 **Thèmes sombre et clair**, plus une option **contraste renforcé** qui se combine aux deux
 - 🔎 **Taille de l'interface** en quatre crans, de Compacte à Très grande — la Planche garde son propre zoom
-- 🧠 **Mémoire des planches déjà vues**, réglable de 0 à 900 Mo : les Planches que vous venez de consulter reviennent instantanément au lieu d'être redessinées
+- 🧠 **Planches en mémoire**, réglable de 0 à 900 Mo : celles que vous venez de consulter reviennent instantanément au lieu d'être redessinées
 
 ---
 

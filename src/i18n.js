@@ -356,7 +356,7 @@ export const I18N_MODALS = [
   // Le curseur de mémoire (#411l). Son libellé porte un id PROPRE plutôt que de passer par
   // I18N_PREV_LABEL : le curseur est enveloppé dans une rangée avec son afficheur de valeur, donc
   // le libellé n'est pas son `previousElementSibling`, il est celui de la rangée.
-  ['#cacheMoLabel', 'Memory for already-seen pages', 'Mémoire des planches déjà vues'],
+  ['#cacheMoLabel', 'Pages kept in memory', 'Planches en mémoire'],
   ['#cacheMoRange', null],   // sa valeur est écrite par le code, unité comprise
   ['#cacheMoValue', null],
   ['#exportShowPanelBadgesCheckbox', null], // handled via trailing helper below

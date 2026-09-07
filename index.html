@@ -907,10 +907,19 @@
          à côté, sans quoi un curseur ne dit pas ce qu'il règle.
          Le zéro à gauche n'est pas une désactivation à part : la Planche affichée reste toujours en
          cache, donc zéro rend exactement le comportement d'avant ce réglage. -->
-    <label class="modal-field-label" id="cacheMoLabel">Mémoire des planches déjà vues</label>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-      <input type="range" id="cacheMoRange" min="0" max="900" step="150" value="300" style="flex:1 1 auto;">
-      <span id="cacheMoValue" style="flex:0 0 auto; min-width:72px; text-align:right; font-size:13px; font-variant-numeric:tabular-nums;">300 Mo</span>
+    <label class="modal-field-label" id="cacheMoLabel">Planches en mémoire</label>
+    <div class="curseur-gradue">
+      <div class="curseur-gradue-ligne">
+        <input type="range" id="cacheMoRange" min="0" max="900" step="150" value="300">
+        <span id="cacheMoValue">300 Mo</span>
+      </div>
+      <!-- Les crans, écrits en clair plutôt que confiés au <datalist> natif : celui-ci ne dessine
+           que de petits traits, et la question posée était de VOIR les niveaux possibles.
+           `aria-hidden` : ce sont les valeurs du curseur, que le lecteur d'écran annonce déjà en
+           parcourant le champ ; les répéter ferait dire deux fois la même chose. -->
+      <div class="curseur-gradue-crans" aria-hidden="true">
+        <span>0</span><span>150</span><span>300</span><span>450</span><span>600</span><span>750</span><span>900</span>
+      </div>
     </div>
     <!-- Section "Langue" (cf. appLang/applyI18n) — sur demande utilisateur : Anglais par défaut, Français
          disponible (langue d'origine de l'application). -->

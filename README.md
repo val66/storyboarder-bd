@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.62**
+**Version 1.5.63**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -79,7 +79,7 @@
 - 🔌 **Works offline**, fonts included: pages look the same with or without a connection
 - 🌗 **Dark and light themes**, plus an **increased-contrast** option that combines with either
 - 🔎 **Interface size** in four steps, from Compact to Extra large — the Page keeps its own zoom
-- 🧠 **Memory for already-seen pages**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
+- 🧠 **Pages kept in memory**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
 
 ---
 

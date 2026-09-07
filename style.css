@@ -507,6 +507,32 @@ select, input[type=number]{
    touchés, ils vivent dans `.joint-slider-row`, une ligne flex où leur largeur est déjà pilotée. */
 .tome-format input[type=range]{ width:100%; }
 
+/* Un curseur GRADUÉ : sa valeur à droite, ses crans écrits dessous (#411m).
+   Demandé à l'usage pour « voir les différents niveaux possibles » : un curseur nu ne dit ni où
+   sont les paliers ni combien il y en a, il faut le promener pour l'apprendre.
+
+   ⚠️ L'ALIGNEMENT DES CRANS SE DÉDUIT DE LA TAILLE DU POUCE, IL NE SE DEVINE PAS. Le centre du
+   pouce ne va jamais jusqu'aux bords de la piste : il s'arrête à un demi-pouce de chaque extrémité.
+   Des crans posés en `space-between` sur toute la largeur mettraient donc « 0 » et « 900 » un
+   demi-pouce trop loin, chacun de son côté. D'où un retrait égal à la MOITIÉ de `--pouce-curseur`,
+   la même variable qui dimensionne le pouce juste en dessous : les deux ne peuvent pas diverger,
+   et changer la taille du pouce réaligne les crans tout seul. C'est la leçon de #410c, où j'avais
+   calé une case à « 7px » du bas et où le nombre s'est révélé faux. Même raison pour la largeur de
+   l'afficheur et l'écart qui le sépare du curseur : la rangée des crans doit s'arrêter là où la
+   piste s'arrête, elle reprend donc les deux MÊMES variables au lieu de les recopier.
+
+   ⚠️ ET LA RÈGLE NE VISE QUE CE COMPOSANT. Habiller `input[type=range]` en général repeindrait les
+   sept curseurs du panneau droit et ceux de l'Éditeur, un changement visuel que je ne peux pas
+   vérifier ici. Ils gardent donc l'apparence native, et cette incohérence est assumée plutôt que
+   corrigée à l'aveugle. */
+.curseur-gradue{ --pouce-curseur:16px; --valeur-largeur:72px; --valeur-ecart:12px; margin-bottom:14px; }
+.curseur-gradue-ligne{ display:flex; align-items:center; gap:var(--valeur-ecart); }
+.curseur-gradue-ligne input[type=range]{ flex:1 1 auto; min-width:0; margin:0; padding:0; appearance:none; -webkit-appearance:none; background:transparent; }
+.curseur-gradue-ligne input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:2px; background:var(--line-strong); }
+.curseur-gradue-ligne input[type=range]::-webkit-slider-thumb{ appearance:none; -webkit-appearance:none; width:var(--pouce-curseur); height:var(--pouce-curseur); border-radius:50%; background:var(--accent); border:2px solid var(--white); box-sizing:border-box; margin-top:calc((4px - var(--pouce-curseur)) / 2); }
+.curseur-gradue-ligne > span{ flex:0 0 auto; min-width:var(--valeur-largeur); text-align:right; font-size:13px; font-variant-numeric:tabular-nums; }
+.curseur-gradue-crans{ display:flex; justify-content:space-between; padding:6px calc(var(--pouce-curseur) / 2) 0; margin-right:calc(var(--valeur-largeur) + var(--valeur-ecart)); font-size:10px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
 /* `#colorSwatches` A ÉTÉ RETIRÉ (#402d) : même raison, plus aucun élément ne porte cet identifiant. */
 
 /* MAIN */

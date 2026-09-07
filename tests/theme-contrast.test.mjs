@@ -539,8 +539,39 @@ describe('Le réglage est branché de bout en bout', () => {
     assert.match(HTML, /id="cacheMoRange"/);
     assert.match(HTML, /id="cacheMoValue"/);
     const i18n = readFileSync(join(RACINE, 'src', 'i18n.js'), 'utf8');
-    assert.ok(i18n.includes("'#cacheMoLabel', 'Memory for already-seen pages'"),
+    assert.ok(i18n.includes("'#cacheMoLabel', 'Pages kept in memory'"),
       'le libellé du curseur n\'est pas traduit dans les deux langues');
+    // Les crans écrits sous le curseur (#411m). Ils doivent COUVRIR les valeurs réellement
+    // atteignables : un cran de plus ou de moins que ce que `step` permet promettrait un palier
+    // qui n'existe pas, ou en cacherait un.
+    const balise = HTML.slice(HTML.lastIndexOf('<', HTML.indexOf('id="cacheMoRange"')),
+      HTML.indexOf('>', HTML.indexOf('id="cacheMoRange"')));
+    const min = Number(/min="(\d+)"/.exec(balise)[1]);
+    const max = Number(/max="(\d+)"/.exec(balise)[1]);
+    const pas = Number(/step="(\d+)"/.exec(balise)[1]);
+    const attendus = [];
+    for (let v = min; v <= max; v += pas) attendus.push(String(v));
+    const i = HTML.indexOf('curseur-gradue-crans');
+    assert.ok(i > 0, 'les crans ont disparu du curseur');
+    const crans = [...HTML.slice(i, HTML.indexOf('</div>', i)).matchAll(/<span>(\d+)<\/span>/g)]
+      .map(m => m[1]);
+    assert.deepEqual(crans, attendus,
+      'les crans écrits ne sont plus ceux que le curseur peut atteindre');
+
+    // ⚠️ ET LEUR ALIGNEMENT SE DÉDUIT, IL NE SE DEVINE PAS. Le centre du pouce s'arrête à un
+    // demi-pouce de chaque bout de la piste : des crans posés bord à bord mettraient « 0 » et
+    // « 900 » chacun un demi-pouce trop loin. Le retrait vaut donc la MOITIÉ de `--pouce-curseur`,
+    // et la rangée s'arrête où la piste s'arrête, en reprenant les variables de l'afficheur.
+    // C'est exactement la faute de #410c, où j'avais calé une case à « 7px » du bas.
+    const crs = declarationsOuNull('.curseur-gradue-crans');
+    assert.ok(crs, 'la rangée des crans n\'a plus de règle');
+    assert.match(crs, /padding:[^;]*calc\(var\(--pouce-curseur\)\s*\/\s*2\)/,
+      'le retrait des crans ne suit plus la taille du pouce : « 0 » et « 900 » se décaleront');
+    assert.match(crs, /margin-right:\s*calc\(var\(--valeur-largeur\)\s*\+\s*var\(--valeur-ecart\)\)/,
+      'la rangée ne s\'arrête plus là où la piste s\'arrête');
+    const gradue = declarationsOuNull('.curseur-gradue');
+    assert.ok(gradue && /--pouce-curseur:/.test(gradue) && /--valeur-largeur:/.test(gradue),
+      'les variables partagées ont disparu : les deux rangées peuvent de nouveau diverger');
   });
 
   test('RÉGRESSION : ZÉRO se relit comme une valeur, pas comme un réglage absent (#411l)', () => {
