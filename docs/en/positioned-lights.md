@@ -54,7 +54,7 @@ A light is an ordinary `objet3d` — `id`, 2D box, `homePanelId`, world coordina
 {
   objType: 'lumiere',
   color: '#FFFFFF',      // the colour OF THE LIGHT
-  intensite: 0.55,
+  intensite: 0.77,       // CLE_ACTUELLE raised by 40%
   portee: 0,             // 0 = no limit, in Three.js terms
   sphereVisible: true,
   realHeightFloor: 0.2,  // the sphere's radius, in metres
@@ -67,9 +67,13 @@ persisted, and already plays exactly that role.
 
 **Defaults are anchored rather than picked**, and where that is impossible it is written down:
 
-- `intensite` is `CLE_ACTUELLE`, the intensity of the scene's key light. An added source first
-  lights the way what already lights does. ⚠️ Still to be judged **on screen**: falloff depends on
-  distance, and "bright enough" cannot be computed;
+- `intensite` is `CLE_ACTUELLE`, the intensity of the scene's key light, **raised by 40%**
+  (`MAJORATION_LUMIERE_POSEE`). An added source first lights the way what already lights does, only
+  brighter. ⚠️ **That factor comes from the eye, not from a computation**: the note said "still to
+  be judged on screen", #420c's rendering made looking possible, and the anchored value turned out
+  too dim. "At least 40%" is a **floor judged acceptable**, not an optimum: if use shows it is still
+  short, that factor goes up, in one place. It stays a FACTOR rather than a value, otherwise the key
+  light and the placed source would drift apart silently (the #415 fault);
 - `portee` is 0, no limit. **An accepted cautious choice**: the dialog that will set it does not
   exist yet, and a finite range picked at random would give lights that illuminate nothing three
   metres away, with no way to correct it;

@@ -53,7 +53,7 @@ Une lumière est un `objet3d` ordinaire — `id`, boîte 2D, `homePanelId`, coor
 {
   objType: 'lumiere',
   color: '#FFFFFF',      // la couleur DE LA LUMIÈRE
-  intensite: 0.55,
+  intensite: 0.77,       // CLE_ACTUELLE majoree de 40 %
   portee: 0,             // 0 = sans limite, au sens de Three.js
   sphereVisible: true,
   realHeightFloor: 0.2,  // le rayon de la sphère, en mètres
@@ -66,9 +66,13 @@ exactement ce rôle.
 
 **Les défauts sont ancrés plutôt que choisis**, et là où ce n'est pas possible, c'est écrit :
 
-- `intensite` vaut `CLE_ACTUELLE`, l'intensité de la lumière clé de la scène. Une source ajoutée
-  éclaire d'abord comme ce qui éclaire déjà. ⚠️ Reste à juger **à l'écran** : l'atténuation dépend
-  de la distance, et « assez lumineux » ne se calcule pas ;
+- `intensite` vaut `CLE_ACTUELLE`, l'intensité de la lumière clé de la scène, **majorée de 40 %**
+  (`MAJORATION_LUMIERE_POSEE`). Une source ajoutée éclaire d'abord comme ce qui éclaire déjà, en
+  plus fort. ⚠️ **Ce facteur vient de l'œil, pas d'un calcul** : la note annonçait « reste à juger à
+  l'écran », le rendu de #420c a permis de regarder, et la valeur ancrée s'est révélée trop faible.
+  « Au moins 40 % » est un **plancher jugé acceptable**, pas un optimum : si l'usage montre que
+  c'est encore court, c'est ce facteur qui monte, à un seul endroit. Il reste un FACTEUR et non une
+  valeur, sans quoi la clé et la source posée dériveraient en silence (la faute de #415) ;
 - `portee` vaut 0, sans limite. **Choix de prudence assumé** : la modale qui la réglera n'existe pas
   encore, et une portée finie posée au hasard donnerait des lumières qui n'éclairent rien à trois
   mètres, sans aucun moyen de le corriger ;

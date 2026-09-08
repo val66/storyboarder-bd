@@ -51,10 +51,10 @@ export function estUneLumiere3D(o){
  *
  * `couleur`   blanc, comme le soleil du mode Jour (cf. PRESETS_LUMIERE dans lighting-3d.js). Une
  *             lumière colorée d'emblée serait un parti pris qu'on n'a pas demandé.
- * `intensite` celle de la lumière CLÉ de la scène, `CLE_ACTUELLE`. Ce n'est pas un nombre tiré au
- *             sort : une source ajoutée éclaire d'abord comme ce qui éclaire déjà, ce qui la rend
- *             visible sans écraser la Case. ⚠️ Reste à juger À L'ÉCRAN : « assez lumineux » ne se
- *             calcule pas, et l'atténuation de Three.js dépend de la distance.
+ * `intensite` celle de la lumière CLÉ de la scène, `CLE_ACTUELLE`, MAJORÉE (cf.
+ *             `MAJORATION_LUMIERE_POSEE` juste en dessous). Ce n'est pas un nombre tiré au sort :
+ *             une source ajoutée éclaire d'abord comme ce qui éclaire déjà, ce qui la rend visible
+ *             sans écraser la Case.
  * `portee`    0, c'est-à-dire SANS LIMITE au sens de Three.js. ⚠️ Et c'est un choix de prudence
  *             assumé : la modale qui réglera la portée n'existe pas encore. Une portée finie posée
  *             au hasard donnerait des lumières qui n'éclairent rien à trois mètres, sans aucun
@@ -70,9 +70,28 @@ export function estUneLumiere3D(o){
  *             revient le plus souvent dans ce dépôt. Le champ garde son sens, c'est le nom de la
  *             lecture qui a changé.
  */
+/**
+ * De combien une source POSÉE dépasse la lumière clé, à réglage identique.
+ *
+ * ⚠️ CE NOMBRE VIENT DE L'ÉCRAN, ET IL NE POUVAIT PAS VENIR D'AILLEURS. Le module annonçait depuis
+ * le premier jour que l'intensité de départ « reste à juger à l'écran », parce que « assez
+ * lumineux » ne se calcule pas. Le rendu de #420c a permis de regarder, et le verdict était que la
+ * source de départ éclairait trop peu. Majoration demandée : au moins 40 %.
+ *
+ * ⚠️ C'EST UN PLANCHER, PAS UNE MESURE FINE, et le dire honnêtement importe : « au moins 40 % »
+ * signifie que 1,4 est le bas de la fourchette jugée acceptable, pas un optimum. Si l'usage montre
+ * que c'est encore court, c'est CE facteur qui monte, à un seul endroit.
+ *
+ * ⚠️ ET IL EST UN FACTEUR, PAS UNE VALEUR. Écrire 0,77 en clair couperait le lien avec
+ * `CLE_ACTUELLE` : la clé et la source posée dériveraient sans que rien ne le dise, ce qui est
+ * exactement la faute de #415, rejouée par la mutation M4 de #420a. Le lien tient, l'écart est
+ * nommé.
+ */
+export const MAJORATION_LUMIERE_POSEE = 1.4;
+
 export const LUMIERE_POSEE_DEFAUT = {
   couleur: '#FFFFFF',
-  intensite: CLE_ACTUELLE,
+  intensite: CLE_ACTUELLE * MAJORATION_LUMIERE_POSEE,
   portee: 0,
   sphereVisible: true,
   diametre: 0.2,

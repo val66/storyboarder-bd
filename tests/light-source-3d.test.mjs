@@ -10,9 +10,14 @@
  * n'existe qu'en un exemplaire.
  *
  * ⚠️ PAS TENU : que la Case soit BIEN éclairée. L'intensité de départ est ancrée sur la lumière clé
- * de la scène, ce qui est un raisonnement, pas une mesure : l'atténuation de Three.js dépend de la
- * distance, et « assez lumineux » se juge à l'œil. C'est écrit dans le module et redit ici plutôt
- * que masqué derrière un test qui aurait l'air de le garantir.
+ * de la scène, ce qui est un raisonnement, pas une mesure : « assez lumineux » se juge à l'œil.
+ * C'est écrit dans le module et redit ici plutôt que masqué derrière un test qui aurait l'air de le
+ * garantir.
+ *
+ * ⚠️ ET LE JUGEMENT A EU LIEU. Une fois #420c capable d'afficher la source, la valeur ancrée s'est
+ * révélée trop faible à l'écran, d'où `MAJORATION_LUMIERE_POSEE`. Ce qui est tenu ici reste donc le
+ * LIEN et le PLANCHER, jamais « c'est joli » : cette partie-là n'appartient pas à une suite de
+ * tests, et prétendre le contraire serait le pire des deux mondes.
  */
 // ⚠️ LE STUB DOM EST REQUIS DEPUIS QUE CE FICHIER IMPORTE `scene3d.js` (#420d) : celui-ci tire
 // GLTFLoader, qui lit un `THREE` global à l'évaluation du module. Rien de plus.
@@ -24,7 +29,7 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
-  champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D,
+  champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D, MAJORATION_LUMIERE_POSEE,
 } from '../src/light-source-3d.js';
 import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
 import { CLE_ACTUELLE } from '../src/lighting-3d.js';
@@ -57,9 +62,17 @@ describe('Le discriminant : ce qui EST une source, et ce qui ne l\'est pas', () 
 });
 
 describe('Les défauts, et ce sur quoi ils sont ancrés', () => {
-  test('l\'intensité de départ EST celle de la lumière clé de la scène', () => {
-    // Une source ajoutée éclaire d'abord comme ce qui éclaire déjà.
-    assert.equal(LUMIERE_POSEE_DEFAUT.intensite, CLE_ACTUELLE);
+  test('l\'intensité de départ est celle de la lumière clé, MAJORÉE', () => {
+    // Une source ajoutée éclaire d'abord comme ce qui éclaire déjà, en plus fort.
+    assert.equal(LUMIERE_POSEE_DEFAUT.intensite, CLE_ACTUELLE * MAJORATION_LUMIERE_POSEE);
+  });
+
+  test('la majoration vaut AU MOINS les 40 % demandés à l\'écran', () => {
+    // ⚠️ CE NOMBRE VIENT DE L'ŒIL, PAS D'UN CALCUL, et le module le dit. Ce test tient le PLANCHER
+    // jugé acceptable, pas la valeur exacte : monter le facteur reste libre, redescendre sous
+    // 1,4 ramènerait la source à ce qui a été jugé trop sombre.
+    assert.ok(MAJORATION_LUMIERE_POSEE >= 1.4,
+      `majoration ${MAJORATION_LUMIERE_POSEE} : la source repasse sous ce qui a été jugé trop faible`);
   });
 
   test('RÉGRESSION : elle est LIÉE à la clé, pas égale à elle par coïncidence', () => {
@@ -77,8 +90,14 @@ describe('Les défauts, et ce sur quoi ils sont ancrés', () => {
     const src = readFileSync(new URL('../src/light-source-3d.js', import.meta.url), 'utf8');
     assert.match(src, /import \{ CLE_ACTUELLE \} from '\.\/lighting-3d\.js'/,
       'le module ne partage plus l\'intensité de référence');
-    assert.match(src, /intensite:\s*CLE_ACTUELLE\s*,/,
+    assert.match(src, /intensite:\s*CLE_ACTUELLE \* MAJORATION_LUMIERE_POSEE\s*,/,
       'l\'intensité par défaut est réécrite en clair : elle peut diverger sans que rien ne le dise');
+    // ⚠️ ET L'ÉCART EST UN FACTEUR NOMMÉ, PAS UN PRODUIT ÉCRIT SUR PLACE. Depuis que #420c a permis
+    // de juger la source à l'écran, l'intensité de départ n'est plus égale à la clé : elle la
+    // majore. Le lien devait survivre à ce changement, sans quoi la majoration l'aurait cassé
+    // exactement comme l'aurait fait le littéral qu'on interdit ici.
+    assert.match(src, /export const MAJORATION_LUMIERE_POSEE = [\d.]+;/,
+      'la majoration n\'est plus une constante nommée : elle redevient un nombre sans raison');
   });
 
   test('la portée par défaut est SANS LIMITE, et c\'est un choix de prudence', () => {
@@ -722,4 +741,22 @@ describe('#420c : le câblage du rendu, un test par couche', () => {
  * ⚠️ M16 MÉRITE D'ÊTRE GARDÉE POUR SA FORME. `buildPropRig3D` retombe SILENCIEUSEMENT sur
  * `buildCarRig3D` quand un `objType` n'a pas de constructeur : la lumière ne levait pas d'erreur,
  * elle apparaissait en voiture. C'est l'état exact du dépôt entre #420b et #420c.
+ */
+
+/**
+ * JOURNAL DE MUTATION (la majoration jugée à l'écran) : deux fautes rejouées.
+ *
+ *   M21 le produit redevient le littéral 0.77                                     ROUGE
+ *   M22 la majoration retombe à 1, la source repasse sous ce qui était trop sombre ROUGE
+ *
+ * ⚠️ M21 EST LA MÊME FAUTE QUE M4 DE #420a, ET C'EST BIEN LA TROISIÈME FOIS. Écrire la valeur
+ * calculée à la place de son expression coupe le lien avec `CLE_ACTUELLE` sans rien changer
+ * aujourd'hui : les deux nombres sont égaux à la seconde où on les écrit, et ne le restent que tant
+ * que personne ne touche à l'autre. Le facteur ne protège de rien s'il ne survit qu'au premier
+ * lecteur pressé.
+ *
+ * ⚠️ M22 TIENT UN PLANCHER, PAS UNE VALEUR, et la nuance est celle d'un jugement d'œil. Le test
+ * accepte que le facteur MONTE — c'est même prévu, « au moins 40 % » est une borne basse — et refuse
+ * qu'il redescende sous ce qui a déjà été regardé et déclaré trop faible. Épingler 1,4 exactement
+ * aurait rendu rouge la prochaine correction légitime.
  */
