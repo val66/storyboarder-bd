@@ -95,7 +95,7 @@ que sa signature ne change pas : déplacer une lumière sans toucher à la signa
 rien. La campagne #411 a payé cet oubli d'un relevé entier, et #414c l'a déjà rencontré pour le
 soleil.
 
-## Les trois exclusions, décidées et non subies
+## Les exclusions, décidées et non subies
 
 Elles viennent d'un échange explicite, et chacune aura son test :
 
@@ -107,6 +107,12 @@ Elles viennent d'un échange explicite, et chacune aura son test :
 3. **Elle n'est pas aimantée au sol.** `groundMagnetEligible` rend vrai pour tout `objet3d` qui
    n'est ni un Mur ni une Paroi ; sans exclusion, une lumière serait collée au plancher, alors que
    l'essentiel d'une source posée est de flotter où on veut.
+4. **Elle sort de la liste des Éléments libres** (#420e). Une source n'a ni taille ni matière : elle
+   éclaire ce que les autres montrent. Mêlée à eux, elle allonge la liste sans répondre à la
+   question qu'on lui pose — « qu'y a-t-il dans cette Case ? ». Elle a donc son bloc, comme les
+   Tracés. **Et par voie de conséquence elle ne va jamais dans « hors champ »** : cette sous-section
+   range ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre en explique une
+   bonne part.
 
 ### ⚠️ Ce que cette troisième exclusion a emporté avec elle
 

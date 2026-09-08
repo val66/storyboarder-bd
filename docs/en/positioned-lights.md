@@ -96,7 +96,7 @@ signature does not change: moving a light without touching the signature would r
 Campaign #411 paid for that omission with a whole measurement round, and #414c already hit it for
 the sun.
 
-## The three exclusions, decided rather than suffered
+## The exclusions, decided rather than suffered
 
 They come from an explicit exchange, and each will have its test:
 
@@ -108,6 +108,11 @@ They come from an explicit exchange, and each will have its test:
 3. **It is not magnetised to the ground.** `groundMagnetEligible` returns true for any `objet3d`
    that is neither a Wall nor a Wall opening; without an exclusion a light would be stuck to the
    floor, when the whole point of a placed source is to float wherever one wants.
+4. **It leaves the free-Elements list** (#420e). A source has neither size nor material: it lights
+   what the others show. Mixed in with them it lengthens the list without ever answering the
+   question that list is asked — "what is in this Panel?". So it gets its own block, like Paths.
+   **And as a consequence it never goes into "Off-frame"**: that sub-section holds what relates to
+   no pixel of the image, whereas a light outside the frame explains a good part of it.
 
 ### ⚠️ What that third exclusion took with it
 

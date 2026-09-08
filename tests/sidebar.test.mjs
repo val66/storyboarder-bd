@@ -360,6 +360,107 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
       `un échec de décision a relégué l'Élément — classes : ${classes.join(', ')}`);
   });
 
+  // ── #420e : les Lumières ont leur propre bloc ────────────────────────────────────────────────
+  const uneLumiere = (id, nom) => ({
+    id, name: nom, type: 'objet3d', objType: 'lumiere', homePanelId: 'p1',
+    x: 10, y: 10, w: 20, h: 20,
+  });
+
+  test('une Lumière quitte la liste principale pour un bloc à elle', () => {
+    // ⚠️ ELLE Y ÉTAIT, MÊLÉE AUX AUTRES, parce qu'un `objet3d` sans `pieceId` est un « Élément
+    // libre ». Le rangement demandé est celui des Tracés : présente, sélectionnable, mais pas
+    // comptée parmi ce qu'on compose.
+    page.objects.push(uneLumiere('l1', 'Lampe'));
+    renderSidePersonas(panel, page, () => false);
+    const t = textes(conteneur());
+    assert.ok(t.includes('Lampe'), 'la Lumière a disparu de la liste');
+    assert.equal(lignes(conteneur()).length, 4, 'les trois Personnages et la Lumière');
+    // Elle vient APRÈS les trois autres, dans un bloc séparé.
+    const noms = lignes(conteneur()).map(texteProfond);
+    assert.equal(noms.length - 1, noms.findIndex(n => n.includes('Lampe')),
+      `la Lumière n'est pas en fin de liste : ${noms.join(' | ')}`);
+  });
+
+  test('un séparateur annonce le bloc, et il n\'apparaît PAS sans lumière', () => {
+    const separateurs = () => (conteneur().children || [])
+      .filter(c => !(c.className || '') && /border-top/.test((c.style || {}).cssText || '')).length;
+    renderSidePersonas(panel, page, () => false);
+    const sansLumiere = separateurs();
+    page.objects.push(uneLumiere('l1', 'Lampe'));
+    renderSidePersonas(panel, page, () => false);
+    assert.equal(separateurs(), sansLumiere + 1, 'le bloc des Lumières n\'est pas détaché');
+  });
+
+  test('une Case qui ne contient QU\'une lumière n\'affiche pas « aucun Élément »', () => {
+    // Sans séparateur ni voisin, mais le bloc doit exister : c'est le seul moyen de retrouver la
+    // source qu'on vient d'ajouter.
+    page.objects = [panel, uneLumiere('l1', 'Lampe')];
+    renderSidePersonas(panel, page, () => false);
+    assert.equal(lignes(conteneur()).length, 1);
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    assert.ok(!classes.some(c => c.includes('empty-hint')),
+      `« aucun Élément » s'affiche alors qu'une Lumière est là — classes : ${classes.join(', ')}`);
+  });
+
+  test('LA DÉCISION : une Lumière hors cadre NE VA PAS dans « hors champ »', () => {
+    // ⚠️ ELLE ÉCLAIRE TOUJOURS LA CASE, et c'est ce qui la distingue d'un Élément sorti du cadre.
+    // Le bloc « hors champ » range ce qui ne se rapporte à aucun pixel de l'image ; une source hors
+    // cadre en explique au contraire une bonne partie. La reléguer là dirait le contraire de ce qui
+    // se passe, et la ferait changer de bloc au gré de la caméra.
+    page.objects.push(uneLumiere('l1', 'Lampe'));
+    renderSidePersonas(panel, page, () => true); // TOUT est déclaré hors champ
+    const enfants = conteneur().children || [];
+    const bloc = enfants.find(c => (c.className || '').includes('side-hors-champ')
+      && !(c.className || '').includes('titre'));
+    assert.ok(bloc, 'le bloc hors champ a disparu');
+    assert.ok(!texteProfond(bloc).includes('Lampe'), 'la Lumière a été reléguée hors champ');
+    const titre = enfants.find(c => (c.className || '').includes('side-hors-champ-titre'));
+    assert.match(titre.textContent, /\(3\)/, 'la Lumière est comptée parmi les hors-champ');
+  });
+
+  test('RÉGRESSION : le bloc « hors champ » reste APRÈS les Lumières', () => {
+    // La règle posée en #347 ne bouge pas : ce qui ne se voit pas conclut la liste, quel que soit
+    // le nombre de blocs qu'on ajoute avant.
+    page.objects.push(uneLumiere('l1', 'Lampe'));
+    renderSidePersonas(panel, page, (p) => p.id === 'a');
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    assert.ok((classes[classes.length - 1] || '').includes('side-hors-champ'),
+      `le bloc doit conclure la liste — classes : ${classes.join(', ')}`);
+  });
+
+  test('sans nom, une Lumière s\'appelle « Lumière », pas « Objet »', () => {
+    // Trois lignes « Objet » sous un séparateur ne diraient plus rien. Le repli générique reste
+    // celui de tous les autres Objets, il n'est levé QUE pour ce bloc.
+    page.objects = [panel, uneLumiere('l1', undefined)];
+    renderSidePersonas(panel, page, () => false);
+    const t = textes(conteneur());
+    assert.ok(/Lumière|Light/.test(t), `le repli générique est resté : « ${t} »`);
+    assert.ok(!t.includes('Objet'), `« Objet » pour une Lumière : « ${t} »`);
+  });
+
+  test('RÉGRESSION : un double-clic sur une Lumière n\'ouvre AUCUNE fiche', () => {
+    /**
+     * ⚠️ CE TEST VIENT D'UNE MUTATION QUI A ÉCHAPPÉ (Z5). En rendant la garde au double-clic, la
+     * modale des Objets s'ouvrait pour une source : elle y réglerait un type, une taille et une
+     * matière, dont aucun ne veut dire quoi que ce soit ici. C'est la décision de #420b — « aucune
+     * modale à la création » — qui cessait de valoir dès qu'on passait par la liste.
+     *
+     * ⚠️ ÉPINGLÉ SUR LA SOURCE, ET C'EST ASSUMÉ, comme pour #420b. Le gestionnaire de clic appelle
+     * `drawCurrentPage`, donc toute la pile de dessin : vérifié empiriquement, l'invoquer sous Node
+     * lève avant même d'atteindre la ligne des modales. Un test qui ne peut pas atteindre ce qu'il
+     * mesure ne mesure rien.
+     *
+     * On lit donc le CODE, commentaires retirés, et on exige que la garde soit dans l'expression
+     * MÊME qui ouvre la modale : à côté, elle pourrait être n'importe quoi.
+     */
+    const src = sourceSansCommentaires(
+      readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
+    const appels = [...src.matchAll(/[^\n]*_openObjectModal\(p\)[^\n]*/g)].map(m => m[0]);
+    assert.equal(appels.length, 1, `${appels.length} ouvertures de la fiche Objet au lieu d'une`);
+    assert.match(appels[0], /!estUneLumiere3D\(p\)/,
+      `la fiche des Objets s'ouvre pour une Lumière : « ${appels[0].trim()} »`);
+  });
+
   test('le défaut n\'est pas « tout le monde est visible »', () => {
     // Garde-fou : un prédicat par défaut renvoyant toujours false rendrait les tests ci-dessus
     // verts tout en désactivant la fonctionnalité dans l'application. On vérifie donc que le
@@ -402,6 +503,27 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
  * PRINCIPALE, puisque c'est précisément la visibilité qu'on n'a pas su établir.
  *
  * Une propriété énoncée dans un commentaire et non épinglée par un test n'est qu'une intention.
+ */
+
+/**
+ * JOURNAL DE MUTATION : le bloc des Lumières (#420e). Cinq fautes rejouées, UNE ÉCHAPPÉE CORRIGÉE.
+ *
+ *   Z1 la Lumière reste un « Élément libre » : plus de bloc du tout        ROUGE (×3)
+ *   Z2 le bloc n'est plus détaché par un séparateur                        ROUGE
+ *   Z3 les Lumières passent APRÈS le bloc « hors champ »                   ROUGE
+ *   Z4 le repli générique revient : la ligne s'appelle « Objet »           ROUGE
+ *   Z5 le double-clic ouvre la fiche des Objets                            VERT → ROUGE
+ *
+ * ⚠️ Z1 FAIT TOMBER TROIS TESTS, dont celui de la relégation hors champ, et c'est la preuve que les
+ * deux décisions n'en font qu'une : sortir la Lumière des « Éléments libres » lui donne son bloc ET
+ * l'empêche d'être rangée parmi les invisibles. Une source hors cadre éclaire toujours la Case ;
+ * elle n'a rien à faire dans la section de ce qui ne se rapporte à aucun pixel.
+ *
+ * ⚠️ Z5 S'EST ÉCHAPPÉE, TROISIÈME FOIS EN TROIS JOURS SUR LA MÊME FRONTIÈRE. Après M9 (#420d) et
+ * M19 (#420c) : une décision juste, un fil coupé, et rien de rouge. Ici le fil était le double-clic
+ * de la liste, par lequel la décision de #420b — « aucune modale pour une Lumière » — cessait de
+ * valoir. Le test ajouté lit la source, faute de pouvoir exécuter le gestionnaire de clic sous
+ * Node, mais il exige la garde DANS l'expression qui ouvre la modale, et non quelque part à côté.
  */
 
 

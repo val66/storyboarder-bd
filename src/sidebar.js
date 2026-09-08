@@ -22,7 +22,8 @@ import {
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
   WALL_TYPES,
 } from './constants.js';
-import { clamp, getEmotion, libelleTable3D, pxPerMm } from './utils.js';
+import { clamp, getEmotion, libelleTable3D, libelleTypeObjet3D, pxPerMm } from './utils.js';
+import { estUneLumiere3D } from './light-source-3d.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
@@ -221,7 +222,13 @@ export function renderSideElementRow(p, panel, page){
   nameSpan.className = 'perso-name';
   const nameMainSpan = document.createElement('span');
   nameMainSpan.className = 'perso-name-main';
-  nameMainSpan.textContent = p.name || (p.type === 'perso' ? 'Personnage' : 'Objet');
+  // ⚠️ « OBJET » EST LE REPLI DE TOUS LES OBJETS, ET IL RESTE. Une lumière fait exception parce
+  // qu'elle vit dans un bloc à elle : trois lignes « Objet » sous un séparateur ne diraient plus
+  // rien du tout, alors que dans la liste principale le voisinage et l'emoji suffisent. Étendre le
+  // vrai libellé à TOUS les types serait un autre chantier, et un changement que personne n'a
+  // demandé.
+  nameMainSpan.textContent = p.name || (p.type === 'perso' ? 'Personnage'
+    : (estUneLumiere3D(p) ? libelleTypeObjet3D(p.objType, tr) : 'Objet'));
   nameSpan.appendChild(nameMainSpan);
   // Modèle importé : dire son état sur la ligne. Un modèle qui n'arrive pas doit se voir ICI, à
   // côté de son nom, la boîte de remplacement dans la Case dit qu'il manque quelque chose, elle ne
@@ -279,7 +286,12 @@ export function renderSideElementRow(p, panel, page){
       if (p.type === 'objet3d' && WALL_TYPES.includes(p.objType)) S.lastWallId = p.id;
       centerSceneCameraOnElement(panel, p);
       drawCurrentPage();
-      if (p.type === 'perso') _openPersonaModal(p); else _openObjectModal(p);
+      // ⚠️ UNE LUMIÈRE N'OUVRE AUCUNE FICHE, et c'est la décision de #420b portée jusqu'ici. La
+      // modale des Objets réglerait un type, une taille et une matière : rien de tout cela ne veut
+      // dire quoi que ce soit pour une source. La sienne viendra ; en attendant, le double-clic
+      // sélectionne, comme le premier clic, plutôt que d'ouvrir un écran qui parle d'autre chose.
+      if (p.type === 'perso') _openPersonaModal(p);
+      else if (!estUneLumiere3D(p)) _openObjectModal(p);
     } else if (S.selectedId === p.id) {
       // A single click (outside the double-click window) on the already-selected Element deselects it
       // and selects its Panel instead, so the right-hand menu stays visible (the Panel's).
@@ -546,7 +558,17 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   // ⚠️ LES ÉLÉMENTS LIBRES SEULEMENT. Ni les Pièces/Bâtiments, reléguer un GROUPE entier parce
   // que ses murs sortent du cadre dirait autre chose que ce qu'on veut dire, ni les Tracés, qui
   // ont déjà leur propre bloc. Décidé avec l'utilisateur ; à rouvrir à l'usage, pas avant.
-  const freeElements = list.filter(p => !p.pieceId);
+  // ⚠️ LES LUMIÈRES SORTENT D'ICI, ET C'EST LEUR QUATRIÈME EXCLUSION VOULUE (#420e). Une source
+  // posée n'est pas un Élément qu'on compose : elle n'a ni taille ni matière, elle éclaire ce que
+  // les autres montrent. Mêlée à eux, elle allongeait la liste sans jamais répondre à la question
+  // qu'on lui pose (« qu'y a-t-il dans cette Case ? »). Elle a donc son bloc, comme les Tracés.
+  //
+  // ⚠️ ET ELLE NE VA JAMAIS DANS « HORS CHAMP », par voie de conséquence : cette sous-section range
+  // ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre éclaire toujours la
+  // Case. La reléguer là dirait le contraire de ce qui se passe, et la ferait changer de bloc au
+  // gré de la caméra. Son propre bloc joue déjà le rôle « on la retrouve ici ».
+  const lumieres = list.filter(estUneLumiere3D);
+  const freeElements = list.filter(p => !p.pieceId && !estUneLumiere3D(p));
   // UNE SEULE passe : deux `filter` appelleraient la décision deux fois par Élément, donc
   // projetteraient chacun deux fois. Deux calculs de la même chose, c'est déjà un de trop.
   //
@@ -598,6 +620,20 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
       sidePersonas.appendChild(sep);
     }
     panelTracés.forEach(t => sidePersonas.appendChild(renderTracéSideRow(t, panel, page)));
+  }
+
+  // Les sources de lumière posées, dans leur propre bloc (#420e).
+  //
+  // ⚠️ LES MÊMES LIGNES QUE LES ÉLÉMENTS, ET C'EST DÉLIBÉRÉ. `renderTracéSideRow` a déjà recopié
+  // une fois la mécanique du clic — mousedown plutôt que click, double-clic détecté à la
+  // milliseconde, second clic qui désélectionne. Une TROISIÈME copie de cette mécanique serait la
+  // faute la plus chère de ce dépôt. Seul le RANGEMENT change ici ; le comportement d'une ligne
+  // reste celui de `renderSideElementRow`, qui sait déjà qu'une lumière n'ouvre pas de fiche.
+  if (lumieres.length > 0) {
+    if (list.length > lumieres.length || renderedRoomIds.size > 0 || panelTracés.length > 0) {
+      sidePersonas.appendChild(separateur());
+    }
+    lumieres.forEach(l => sidePersonas.appendChild(renderSideElementRow(l, panel, page)));
   }
 
   // ⚠️ TOUT EN BAS, APRÈS LES TRACÉS, demandé après un premier essai où ce bloc s'intercalait
