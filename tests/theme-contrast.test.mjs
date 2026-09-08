@@ -274,6 +274,74 @@ describe('La frontière de ce qui se clique (#409l)', () => {
   });
 });
 
+describe('Le filet entre deux blocs de la liste des Éléments (#420e)', () => {
+  /**
+   * Signalé à l'usage : « on voit mal les délimiteurs entre chaque section ». Mesuré avant de
+   * corriger, et le chiffre explique tout : le filet valait `--line` à 35 % d'OPACITÉ, ce qui,
+   * composé sur le papier, donne 1,11 en Sombre et 1,10 en Clair. Autrement dit rien.
+   *
+   * ⚠️ ET C'EST L'OPACITÉ QUI L'AVAIT CACHÉ. Lire la feuille de style montrait `var(--line)`, un
+   * jeton mesuré ailleurs à 1,39 : la valeur réellement affichée n'apparaissait dans aucun test,
+   * parce qu'aucun ne composait la couleur. Une couleur transparente ne se mesure pas en lisant
+   * son nom. L'opacité est donc retirée plutôt que remontée.
+   */
+  const NORMAL = { ...jetonsDuBloc(':root') };
+  const NORMAL_CLAIR = { ...NORMAL, ...jetonsDuBloc('body.theme-light') };
+  const PALETTES = [['sombre', NORMAL], ['clair', NORMAL_CLAIR],
+    ['contraste sombre', SOMBRE], ['contraste clair', CLAIR]];
+
+  // ⚠️ LE JETON EST DÉRIVÉ DE LA RÈGLE, PAS RECOPIÉ. Deux fois dans ce dépôt j'ai mesuré contre le
+  // mauvais fond en le devinant. Ici on lit ce que la règle emploie VRAIMENT, et le fond qui
+  // l'entoure est celui de `.side-section`, où cette liste vit.
+  const REGLE = declarationsOuNull('.side-liste-sep');
+  const jetonDuFilet = () => (REGLE.match(/border-top:[^;]*var\(--([a-z-]+)\)/) || [])[1];
+  const jetonDuFond = () => {
+    const s = declarationsOuNull('.side-section');
+    return (s.match(/background\s*:\s*var\(--([a-z-]+)\)/) || [])[1];
+  };
+
+  test('l\'instrument : la règle et son fond ont bien été lus', () => {
+    // Sans ce garde-fou, une règle renommée rendrait `undefined`, et toutes les mesures suivantes
+    // compareraient du néant à du néant en restant vertes.
+    assert.ok(REGLE, '.side-liste-sep a disparu de la feuille de style');
+    assert.ok(jetonDuFilet(), `aucun jeton de couleur dans « ${REGLE.trim()} »`);
+    assert.ok(jetonDuFond(), 'le fond de .side-section n\'est plus un jeton');
+  });
+
+  test('AUCUNE OPACITÉ : la couleur affichée est celle qu\'on lit', () => {
+    // ⚠️ LA VRAIE CAUSE, et la seule assertion qui l'empêche de revenir. Remonter le jeton sans
+    // retirer l'opacité aurait laissé le défaut intact et le test de ratio ci-dessous vert.
+    assert.ok(!/opacity/.test(REGLE),
+      `le filet est de nouveau composé, sa couleur réelle échappe à la mesure : « ${REGLE.trim()} »`);
+  });
+
+  PALETTES.forEach(([nom, T]) => {
+    test(`${nom} : le filet reste plus visible que l'ancien (1,11)`, () => {
+      // ⚠️ UN PLANCHER, PAS UNE CIBLE WCAG. La règle 1.4.11 vise ce qui se CLIQUE, or un séparateur
+      // ne se clique pas : lui imposer 3:1 reviendrait à lui donner `--bord-actif`, donc à remettre
+      // deux rôles sur une valeur, la faute que ce chantier a passé son temps à défaire.
+      //
+      // Ce que le test tient est la CORRECTION : 1,7 est en dessous des 1,88 mesurés dans le pire
+      // thème (Clair) et bien au-dessus des 1,10 d'avant. Redescendre ramènerait ce qui a été
+      // signalé illisible ; monter reste libre.
+      const r = contraste3D(T[jetonDuFilet()], T[jetonDuFond()]);
+      assert.ok(r >= 1.7, `${nom} : filet à ${r.toFixed(2)} contre le fond de la section`);
+    });
+  });
+
+  test('le garde-fou : le filet est VRAIMENT posé par le code', () => {
+    // Une règle CSS parfaite que personne n'applique satisferait tout ce qui précède sans rien
+    // changer à l'écran.
+    const SIDEBAR = readFileSync(join(RACINE, 'src', 'sidebar.js'), 'utf8');
+    assert.match(SIDEBAR, /className = 'side-liste-sep'/,
+      'la liste des Éléments ne pose plus ce filet');
+    // ⚠️ ET IL N'EN RESTE QU'UNE DÉFINITION. Le filet des Tracés était écrit en clair, à côté de
+    // l'aide partagée : deux exemplaires d'une couleur, dont un seul aurait été corrigé.
+    assert.ok(!/border-top:1px solid var\(--line\)/.test(SIDEBAR),
+      'un filet reste écrit en dur dans sidebar.js, il ne suivra pas la feuille de style');
+  });
+});
+
 describe('L\'indicateur de focus (#409m)', () => {
   /**
    * Signalé à l'usage : la bague de sélection n'épouse pas le contour du champ. Elle n'était

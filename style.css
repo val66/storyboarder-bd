@@ -683,6 +683,25 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .planche-case-row.drag-over-top{ box-shadow: 0 -3px 0 0 var(--accent); }
 .planche-case-row.drag-over-bottom{ box-shadow: 0 3px 0 0 var(--accent); }
 .side-persos{ display:flex; flex-direction:column; gap:6px; }
+/* Le filet entre deux blocs de la liste des Éléments (Lumières, Pièces, Éléments, Tracés,
+   Hors champ).
+
+   ⚠️ IL ÉTAIT PRESQUE INVISIBLE, ET C'EST MESURÉ. Il valait `--line` à 35 % d'opacité, ce qui
+   revient, une fois composé sur le papier, à un contraste de 1,11 en Sombre et 1,10 en Clair —
+   autrement dit rien. Signalé à l'usage : « on voit mal les délimiteurs entre chaque section ».
+
+   Le jeton `--line-strong` existe exactement pour ce cas, et son commentaire le dit mot pour mot :
+   « un cran au-dessus de --line, quand un délimiteur posé au milieu d'un bloc doit se voir ».
+   Mesuré à pleine opacité contre `--paper` : 2,09 en Sombre, 1,88 en Clair, 7,70 et 6,90 dans les
+   deux thèmes Contraste renforcé. Le filet est donc environ deux fois plus lisible qu'avant.
+
+   ⚠️ ET PAS `--bord-actif`, qui monterait à 3,4. Ce jeton-là porte la frontière de ce qui se CLIQUE
+   (#409l) et il est tenu à 3:1 pour cette raison ; l'emprunter pour une décoration remettrait deux
+   rôles sur une même valeur, la faute que ce dépôt paie le plus souvent.
+
+   L'opacité est retirée plutôt que remontée : une couleur composée ne se mesure pas en lisant la
+   feuille de style, ce qui est précisément ce qui avait laissé passer 1,11. */
+.side-liste-sep{ border-top:1px solid var(--line-strong); margin:4px 2px; }
 .perso-row{
   display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:7px;
   border: 1px solid var(--bord-actif); background:var(--white); cursor:pointer; font-size:12.5px; color:var(--ink);

@@ -392,6 +392,64 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
 
   const renderedRoomIds = new Set();
 
+  /**
+   * Le filet qui SÉPARE deux blocs de cette liste. À appeler EN TÊTE de chaque bloc non vide.
+   *
+   * ⚠️ IL DÉCIDE LUI-MÊME S'IL A LIEU D'ÊTRE, et c'est ce qui a changé. Chacun des quatre blocs
+   * portait sa propre condition « y a-t-il quelque chose avant moi ? », réécrite à sa façon et
+   * mise à jour à la main : quatre copies d'une seule question, qui ne s'accordaient que tant que
+   * personne n'ajoutait de bloc. En ajouter un cinquième (les Lumières) a suffi à les faire
+   * diverger, et ma première version doublait le filet dans un cas.
+   *
+   * La question se pose donc une fois, au seul endroit qui connaît vraiment la réponse : le
+   * conteneur. Rien avant lui, pas de filet.
+   *
+   * ⚠️ ET IL NE SE GARDE PAS DES DOUBLONS, PARCE QU'IL NE PEUT PAS EN PRODUIRE. J'avais ajouté
+   * « et pas deux filets de suite » ; une mutation a montré que retirer cette clause ne faisait
+   * rien échouer, pour la meilleure des raisons : chaque appel est à l'intérieur d'un `if (bloc
+   * non vide)`, donc un filet est toujours suivi de lignes. Une garde qu'aucun chemin n'atteint
+   * n'est pas une sécurité, c'est un décor qui laisse croire qu'on surveille quelque chose. La
+   * propriété, elle, reste tenue par un test sur la liste assemblée.
+   */
+  const separer = () => {
+    const enfants = sidePersonas.children || [];
+    if (enfants.length === 0) return;
+    const sep = document.createElement('div');
+    sep.className = 'side-liste-sep';
+    sidePersonas.appendChild(sep);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════
+  // LES LUMIÈRES, TOUT EN HAUT ET DANS LEUR PROPRE BLOC (#420e)
+  // ═══════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // ⚠️ QUATRIÈME EXCLUSION VOULUE. Une source posée n'est pas un Élément qu'on compose : elle n'a
+  // ni taille ni matière, elle éclaire ce que les autres montrent. Mêlée à eux, elle allongeait la
+  // liste sans jamais répondre à la question qu'on lui pose (« qu'y a-t-il dans cette Case ? »).
+  //
+  // ⚠️ ET ELLE NE VA JAMAIS DANS « HORS CHAMP », par voie de conséquence : cette sous-section range
+  // ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre éclaire toujours la
+  // Case. La reléguer là dirait le contraire de ce qui se passe, et la ferait changer de bloc au
+  // gré de la caméra. Son propre bloc joue déjà le rôle « on la retrouve ici ».
+  //
+  // ⚠️ EN TÊTE, ET C'EST DEMANDÉ. Un premier essai la posait après les Tracés, par symétrie avec
+  // eux ; à l'usage, une source est ce qu'on cherche EN PREMIER quand on ouvre la liste, et la
+  // faire descendre au gré du nombre d'Éléments la rendait introuvable. Une position fixe se
+  // retient, une position relative se cherche.
+  //
+  // ⚠️ LES MÊMES LIGNES QUE LES ÉLÉMENTS, ET C'EST DÉLIBÉRÉ. `renderTracéSideRow` a déjà recopié
+  // une fois la mécanique du clic — mousedown plutôt que click, double-clic détecté à la
+  // milliseconde, second clic qui désélectionne. Une TROISIÈME copie serait la faute la plus chère
+  // de ce dépôt. Seul le RANGEMENT change ; le comportement d'une ligne reste celui de
+  // `renderSideElementRow`, qui sait déjà qu'une lumière n'ouvre pas de fiche.
+  const lumieres = list.filter(estUneLumiere3D);
+  if (lumieres.length > 0) {
+    // En tête : `separer()` ne trouve rien avant lui et ne pose donc aucun filet ici.
+    separer();
+    lumieres.forEach(l => sidePersonas.appendChild(renderSideElementRow(l, panel, page)));
+  }
+
+
   // ── Helper: builds a Room's expandable header + its members block.
   // A Wall belonging to a Room is grouped under a "🧱 <pieceLabel>" header:
   // single click = select the whole Room, double-click = open the Room modal,
@@ -558,16 +616,6 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   // ⚠️ LES ÉLÉMENTS LIBRES SEULEMENT. Ni les Pièces/Bâtiments, reléguer un GROUPE entier parce
   // que ses murs sortent du cadre dirait autre chose que ce qu'on veut dire, ni les Tracés, qui
   // ont déjà leur propre bloc. Décidé avec l'utilisateur ; à rouvrir à l'usage, pas avant.
-  // ⚠️ LES LUMIÈRES SORTENT D'ICI, ET C'EST LEUR QUATRIÈME EXCLUSION VOULUE (#420e). Une source
-  // posée n'est pas un Élément qu'on compose : elle n'a ni taille ni matière, elle éclaire ce que
-  // les autres montrent. Mêlée à eux, elle allongeait la liste sans jamais répondre à la question
-  // qu'on lui pose (« qu'y a-t-il dans cette Case ? »). Elle a donc son bloc, comme les Tracés.
-  //
-  // ⚠️ ET ELLE NE VA JAMAIS DANS « HORS CHAMP », par voie de conséquence : cette sous-section range
-  // ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre éclaire toujours la
-  // Case. La reléguer là dirait le contraire de ce qui se passe, et la ferait changer de bloc au
-  // gré de la caméra. Son propre bloc joue déjà le rôle « on la retrouve ici ».
-  const lumieres = list.filter(estUneLumiere3D);
   const freeElements = list.filter(p => !p.pieceId && !estUneLumiere3D(p));
   // UNE SEULE passe : deux `filter` appelleraient la décision deux fois par Élément, donc
   // projetteraient chacun deux fois. Deux calculs de la même chose, c'est déjà un de trop.
@@ -601,48 +649,23 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     }
     (hors ? horsChamp : dansLeCadre).push(p);
   });
-  const separateur = () => {
-    const sep = document.createElement('div');
-    sep.style.cssText = 'border-top:1px solid var(--line); margin:4px 2px; opacity:.35;';
-    return sep;
-  };
   if (dansLeCadre.length > 0) {
-    if (renderedRoomIds.size > 0) sidePersonas.appendChild(separateur());
+    separer();
     dansLeCadre.forEach(p => sidePersonas.appendChild(renderSideElementRow(p, panel, page)));
   }
 
   // Tracés (Roads, Dirt paths, Terrain Zones) associated with this panel.
   if (panelTracés.length > 0) {
-    if (list.length > 0 || renderedRoomIds.size > 0) {
-      // Visual separator between 3D Elements and 2D Tracés.
-      const sep = document.createElement('div');
-      sep.style.cssText = 'border-top:1px solid var(--line); margin:4px 2px; opacity:.35;';
-      sidePersonas.appendChild(sep);
-    }
+    // Visual separator between 3D Elements and 2D Tracés.
+    separer();
     panelTracés.forEach(t => sidePersonas.appendChild(renderTracéSideRow(t, panel, page)));
-  }
-
-  // Les sources de lumière posées, dans leur propre bloc (#420e).
-  //
-  // ⚠️ LES MÊMES LIGNES QUE LES ÉLÉMENTS, ET C'EST DÉLIBÉRÉ. `renderTracéSideRow` a déjà recopié
-  // une fois la mécanique du clic — mousedown plutôt que click, double-clic détecté à la
-  // milliseconde, second clic qui désélectionne. Une TROISIÈME copie de cette mécanique serait la
-  // faute la plus chère de ce dépôt. Seul le RANGEMENT change ici ; le comportement d'une ligne
-  // reste celui de `renderSideElementRow`, qui sait déjà qu'une lumière n'ouvre pas de fiche.
-  if (lumieres.length > 0) {
-    if (list.length > lumieres.length || renderedRoomIds.size > 0 || panelTracés.length > 0) {
-      sidePersonas.appendChild(separateur());
-    }
-    lumieres.forEach(l => sidePersonas.appendChild(renderSideElementRow(l, panel, page)));
   }
 
   // ⚠️ TOUT EN BAS, APRÈS LES TRACÉS, demandé après un premier essai où ce bloc s'intercalait
   // entre les Éléments libres et les Tracés. Ce qui ne se voit pas doit venir après TOUT ce qui se
   // voit, sans quoi la sous-section coupe la liste en deux au lieu de la conclure.
   if (horsChamp.length > 0) {
-    if (renderedRoomIds.size > 0 || dansLeCadre.length > 0 || panelTracés.length > 0) {
-      sidePersonas.appendChild(separateur());
-    }
+    separer();
     const titre = document.createElement('div');
     titre.className = 'side-hors-champ-titre';
     // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien

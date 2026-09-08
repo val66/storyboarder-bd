@@ -366,29 +366,60 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
     x: 10, y: 10, w: 20, h: 20,
   });
 
-  test('une Lumière quitte la liste principale pour un bloc à elle', () => {
+  const separateurs = (racine = conteneur()) =>
+    (racine.children || []).filter(c => (c.className || '').includes('side-liste-sep'));
+
+  test('une Lumière quitte la liste principale pour un bloc EN TÊTE', () => {
     // ⚠️ ELLE Y ÉTAIT, MÊLÉE AUX AUTRES, parce qu'un `objet3d` sans `pieceId` est un « Élément
-    // libre ». Le rangement demandé est celui des Tracés : présente, sélectionnable, mais pas
-    // comptée parmi ce qu'on compose.
+    // libre ». Elle a maintenant son bloc, présente et sélectionnable, mais pas comptée parmi ce
+    // qu'on compose.
+    //
+    // ⚠️ ET EN TÊTE, PAS EN QUEUE. Un premier essai la posait après les Tracés, par symétrie avec
+    // eux ; demandé à l'usage : une source est ce qu'on cherche EN PREMIER, et la faire descendre
+    // au gré du nombre d'Éléments la rendait introuvable. Une position fixe se retient.
     page.objects.push(uneLumiere('l1', 'Lampe'));
     renderSidePersonas(panel, page, () => false);
-    const t = textes(conteneur());
-    assert.ok(t.includes('Lampe'), 'la Lumière a disparu de la liste');
-    assert.equal(lignes(conteneur()).length, 4, 'les trois Personnages et la Lumière');
-    // Elle vient APRÈS les trois autres, dans un bloc séparé.
     const noms = lignes(conteneur()).map(texteProfond);
-    assert.equal(noms.length - 1, noms.findIndex(n => n.includes('Lampe')),
-      `la Lumière n'est pas en fin de liste : ${noms.join(' | ')}`);
+    assert.equal(noms.length, 4, 'les trois Personnages et la Lumière');
+    assert.ok(noms[0].includes('Lampe'), `la Lumière n'ouvre pas la liste : ${noms.join(' | ')}`);
   });
 
-  test('un séparateur annonce le bloc, et il n\'apparaît PAS sans lumière', () => {
-    const separateurs = () => (conteneur().children || [])
-      .filter(c => !(c.className || '') && /border-top/.test((c.style || {}).cssText || '')).length;
+  test('un séparateur détache le bloc, et il n\'apparaît PAS sans lumière', () => {
     renderSidePersonas(panel, page, () => false);
-    const sansLumiere = separateurs();
+    const sansLumiere = separateurs().length;
     page.objects.push(uneLumiere('l1', 'Lampe'));
     renderSidePersonas(panel, page, () => false);
-    assert.equal(separateurs(), sansLumiere + 1, 'le bloc des Lumières n\'est pas détaché');
+    assert.equal(separateurs().length, sansLumiere + 1, 'le bloc des Lumières n\'est pas détaché');
+  });
+
+  test('UN SEUL filet entre deux blocs, jamais deux de suite', () => {
+    // ⚠️ CE TEST VIENT D'UN DÉFAUT QUE J'AI ÉCRIT PUIS RETIRÉ. Chacun des blocs portait sa propre
+    // condition « y a-t-il quelque chose avant moi ? » : quatre copies d'une même question, qui ne
+    // s'accordaient que tant que personne n'ajoutait de bloc. En ajouter un cinquième a suffi à les
+    // faire diverger, et un cas donnait deux filets collés.
+    //
+    // ⚠️ IL PORTE SUR LA LISTE ASSEMBLÉE, PAS SUR UNE GARDE. `separer()` avait d'abord une clause
+    // « et pas deux de suite » ; une mutation a montré qu'aucun chemin ne l'atteignait, chaque
+    // appel étant déjà à l'intérieur d'un `if (bloc non vide)`. La clause est partie ; la propriété
+    // reste vérifiée ici, où elle continue de valoir quel que soit le nombre de blocs.
+    //
+    // On prend le cas qui avait produit le doublon : des Lumières, puis RIEN d'autre que du
+    // hors-champ.
+    page.objects.push(uneLumiere('l1', 'Lampe'));
+    renderSidePersonas(panel, page, (p) => p.type === 'perso');
+    const classes = (conteneur().children || []).map(c => c.className || '');
+    for (let i = 1; i < classes.length; i++) {
+      assert.ok(!(classes[i].includes('side-liste-sep') && classes[i - 1].includes('side-liste-sep')),
+        `deux filets de suite — classes : ${classes.join(', ')}`);
+    }
+    assert.equal(separateurs().length, 1, `un seul filet attendu — ${classes.join(', ')}`);
+  });
+
+  test('aucun filet ne PEND en tête ni en queue de liste', () => {
+    // Un filet sans rien avant lui n'est pas un séparateur, c'est un trait.
+    page.objects = [panel, uneLumiere('l1', 'Lampe')];
+    renderSidePersonas(panel, page, () => false);
+    assert.equal(separateurs().length, 0, 'une liste d\'un seul bloc n\'a rien à séparer');
   });
 
   test('une Case qui ne contient QU\'une lumière n\'affiche pas « aucun Élément »', () => {
@@ -524,6 +555,33 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
  * de la liste, par lequel la décision de #420b — « aucune modale pour une Lumière » — cessait de
  * valoir. Le test ajouté lit la source, faute de pouvoir exécuter le gestionnaire de clic sous
  * Node, mais il exige la garde DANS l'expression qui ouvre la modale, et non quelque part à côté.
+ */
+
+/**
+ * JOURNAL DE MUTATION : les Lumières en tête, et le filet qu'on ne voyait pas.
+ *
+ *   W1 les Lumières redescendent sous les Tracés                          ROUGE
+ *   W2 le filet revient au jeton faible (`--line`)                        ROUGE (×2)
+ *   W3 l'opacité revient : le jeton est fort mais la couleur composée     ROUGE
+ *   W4 la clause « pas deux filets de suite » est retirée                 ÉCHAPPÉE → CODE RETIRÉ
+ *   W5 le filet ne demande plus s'il a quelque chose à séparer            ROUGE (×2)
+ *   W6 le filet redevient un style écrit en dur dans le JS                ROUGE (×3)
+ *
+ * ⚠️ W4 EST LA PLUS INSTRUCTIVE, ET LA RÉPONSE N'A PAS ÉTÉ D'AJOUTER UN TEST. La clause était
+ * INATTEIGNABLE : chaque appel à `separer()` est déjà à l'intérieur d'un `if (bloc non vide)`, donc
+ * un filet est toujours suivi de lignes, et aucun chemin ne pouvait en poser deux. Écrire un test
+ * pour une branche morte aurait donné l'illusion d'une garde là où il n'y avait qu'un décor. C'est
+ * le code qui a bougé, comme la discipline de ce dépôt l'exige quand une mutation s'échappe par
+ * redondance.
+ *
+ * ⚠️ ET MA PREMIÈRE VERSION DE W5 ÉTAIT TROP FAIBLE : elle réécrivait la garde d'une autre façon
+ * qui retournait quand même sur un conteneur vide. Une mutation qui ne change pas le comportement
+ * ne prouve rien sur les tests ; refaite pour retirer vraiment la question, elle est rouge.
+ *
+ * ⚠️ W3 MÉRITE D'ÊTRE GARDÉE POUR CE QU'ELLE DIT DU DÉFAUT D'ORIGINE. Le filet était `--line` à
+ * 35 % : la feuille de style montrait un jeton mesuré ailleurs à 1,39, et la couleur RÉELLEMENT
+ * affichée valait 1,11. Remonter le jeton sans retirer l'opacité aurait laissé le défaut intact.
+ * Une couleur composée ne se mesure pas en lisant son nom.
  */
 
 

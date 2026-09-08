@@ -112,7 +112,9 @@ Elles viennent d'un échange explicite, et chacune aura son test :
    question qu'on lui pose — « qu'y a-t-il dans cette Case ? ». Elle a donc son bloc, comme les
    Tracés. **Et par voie de conséquence elle ne va jamais dans « hors champ »** : cette sous-section
    range ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre en explique une
-   bonne part.
+   bonne part. Son bloc est **en tête de liste**, position fixe : demandé à l'usage, une
+   source est ce qu'on cherche en premier, et la faire descendre au gré du nombre d'Éléments la
+   rendait introuvable.
 
 ### ⚠️ Ce que cette troisième exclusion a emporté avec elle
 
