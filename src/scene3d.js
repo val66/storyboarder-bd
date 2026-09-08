@@ -26,7 +26,7 @@ import { S, currentPage } from './state.js';
 // L'éclairage réglé sur une Case : la DÉCISION vit dans lighting-3d.js, pure et testée ; ici on ne
 // fait que l'appliquer. Cf. docs/en/lighting.md.
 import { resoudreEclairage3D, lumiereDeCase3D } from './lighting-3d.js';
-import { estUneLumiere3D } from './light-source-3d.js';
+import { estUneLumiere3D, planLumieresPosees3D, reglagesLumierePosee3D } from './light-source-3d.js';
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -1040,6 +1040,46 @@ export function oublierRecenceDesPlanches3D(){ _recenceDesPlanches = []; }
 export const slabMeshCache3D = new Map();
 // Cache of THREE.Mesh meshes for Traces (Roads, Paths, Zones) projected onto the Ground.
 export const tracéMeshCache3D = new Map();
+
+/**
+ * Les `THREE.PointLight` des sources posées, une par Élément (#420c).
+ *
+ * ⚠️ UN CACHE, PARCE QU'UNE LUMIÈRE NEUVE FAIT RECOMPILER LES SHADERS. Ajouter ou retirer une
+ * source de la scène invalide les programmes de tous les matériaux qui la reçoivent ; le faire à
+ * chaque rendu de Case coûterait bien plus cher que le rendu lui-même. On les crée une fois et on
+ * les éteint, comme le dépôt le fait déjà pour les rigs et les dalles.
+ */
+export const lumierePoseeCache3D = new Map();
+
+/**
+ * Exécute le plan de `planLumieresPosees3D`. La DÉCISION vit dans light-source-3d.js, vérifiable
+ * sous Node ; il ne reste ici que les gestes Three.js, qui ne le sont pas.
+ *
+ * ⚠️ ÉTEINDRE D'ABORD, ALLUMER ENSUITE, et l'ordre est celui du plan. Une lumière de la Case
+ * précédente laissée allumée éclairerait celle-ci, qui n'en a pas, et le défaut serait attribué à
+ * n'importe quoi sauf à sa cause (cf. docs/en/positioned-lights.md).
+ */
+function appliquerLumieresPosees3D(plan, positions){
+  plan.aEteindre.forEach(id => {
+    const l = lumierePoseeCache3D.get(id);
+    if (l) l.visible = false;
+  });
+  plan.aAllumer.forEach(p => {
+    let l = lumierePoseeCache3D.get(p.id);
+    if (!l) {
+      l = new THREE.PointLight();
+      personaScene3D.add(l);
+      lumierePoseeCache3D.set(p.id, l);
+    }
+    l.color.set(p.couleur);
+    l.intensity = p.intensite;
+    // 0 vaut « sans atténuation par la distance » chez Three.js, ce qui est le défaut du module.
+    l.distance = p.portee;
+    const pos = positions.get(p.id);
+    if (pos) l.position.set(pos.x, pos.y, pos.z);
+    l.visible = true;
+  });
+}
 
 // Converts a 2D panel pixel (page-space) into world XZ coordinates on the Ground plane
 // (Y = GROUND_Y_DEFAULT_3D) by casting a perspective ray from the Panel's camera toward this plane.
@@ -2235,6 +2275,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       return box.isEmpty() ? new THREE.Box3().setFromObject(entry.figureGroup) : box;
     };
   }
+  // Les positions monde des sources posées, RELEVÉES au passage plutôt que recalculées après coup.
+  // Le point où la `PointLight` doit se trouver est exactement celui où la sphère est dessinée : le
+  // recalculer donnerait une seconde copie de la même décision, et deux copies finissent toujours
+  // par diverger (cf. le saut de 116 px de #420d, né de cette faute).
+  const _posLumieres3D = new Map();
   elements.forEach((o, idx) => {
     if (o.objType === 'dalle') return; // rendered separately below (THREE.ShapeGeometry)
     if (mergedWallCovered.has(o.id)) return; // rendered via a merged group (below)
@@ -2346,6 +2391,13 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       entry.figureGroup.updateMatrixWorld(true);
     }
     entry.figureGroup.visible = !(o.hidden3d);
+    if (estUneLumiere3D(o)) {
+      _posLumieres3D.set(o.id, { x: wx, y: wy, z });
+      // ⚠️ MASQUER LA SPHÈRE N'ÉTEINT PAS LA LUMIÈRE, et c'est tout l'intérêt du réglage : on veut
+      // pouvoir éclairer une Case sans qu'une bille blanche flotte au milieu du dessin. Ce qui
+      // éteint, c'est `hidden3d`, décidé dans planLumieresPosees3D.
+      if (!reglagesLumierePosee3D(o).sphereVisible) entry.figureGroup.visible = false;
+    }
     // Wall/Wall-Opening case: the selection (red frame, handles) is computed by the Phase 1 code
     // (getWallChildProjectedQuad3D) via a SEPARATE rig obtained through ensureObjectRigEntry3D(o), different
     // from the one used here for the actual render (ensureWallRenderEntry3D). This "selection" rig would
@@ -2365,6 +2417,9 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       selEntry.figureGroup.visible = false;
     }
   });
+  // Les sources posées de CETTE Case, allumées, et toutes les autres éteintes. Voir le plan pur et
+  // sa raison d'être dans light-source-3d.js : la scène Three.js est partagée entre les Cases.
+  appliquerLumieresPosees3D(planLumieresPosees3D(lumierePoseeCache3D.keys(), elements), _posLumieres3D);
   // Render merged wall groups: a single BoxGeometry per colinear chain.
   // Positioned directly in real units (no placeRigCentered3D) since buildWallRig3D
   // is called with the physical dimensions → scale=1 is correct for the perspective camera.
@@ -3357,6 +3412,12 @@ export function disposeAllRigs3D(){
     if (personaScene3D) personaScene3D.remove(e.group);
   });
   tracéMeshCache3D.clear();
+  // Les sources posées, pour la raison qui vaut pour les dalles et les tracés : sans ce retrait,
+  // chaque changement de Projet laisserait des `PointLight` orphelines dans la scène partagée. Une
+  // lumière n'a ni géométrie ni matériau à libérer, mais elle occupe une place dans les tableaux
+  // d'uniformes de TOUS les shaders : la laisser coûterait à chaque rendu du Projet suivant.
+  lumierePoseeCache3D.forEach(l => { if (personaScene3D) personaScene3D.remove(l); });
+  lumierePoseeCache3D.clear();
   panelSceneCache3D.clear();
   oublierRecenceDesPlanches3D();
 }

@@ -24,6 +24,7 @@ import { S, currentVolume, tr } from './state.js';
 // test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
 // `lighting-3d.js` n'importe rien : aucun cycle possible.
 import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
+import { OBJ_TYPE_LUMIERE } from './light-source-3d.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
@@ -3622,6 +3623,43 @@ export function applySkeletonPose(osMappes, pose){
   }
 }
 
+/**
+ * La sphère d'une source de lumière posée (#420c).
+ *
+ * ⚠️ UN MATÉRIAU NON ÉCLAIRÉ, ET C'EST LE SEUL DE TOUT CE FICHIER. Partout ailleurs le maillage
+ * REÇOIT la lumière ; ici il EST la lumière. Une sphère en `MeshStandardMaterial` s'assombrirait
+ * avec la Case : on aurait une ampoule noire au centre de la clarté qu'elle produit, ce qui se lit
+ * comme une panne. `MeshBasicMaterial` ignore l'éclairage, donc la sphère garde sa couleur quoi
+ * qu'il arrive autour.
+ *
+ * ⚠️ ET LE HALO DÉFINIT LA TAILLE, PAS LE CŒUR. `placeRigCentered3D` déduit son échelle de la
+ * hauteur de la boîte englobante : le rayon extérieur vaut donc 0,5 pour que la hauteur naturelle
+ * fasse exactement 1, et que l'échelle appliquée soit le DIAMÈTRE voulu (cf. `realHeightFloor`,
+ * 0,2 m par défaut). Un cœur à 0,5 et un halo par-dessus feraient une sphère plus grosse que la
+ * valeur affichée, sans que rien ne le dise.
+ *
+ * Les deux matériaux sont propres à ce rig, contrairement aux matériaux partagés du fichier : la
+ * couleur appartient à l'Élément, et `ensureObjectRigEntry3D` reconstruit le rig quand elle change.
+ */
+export function buildLumiereRig3D(colorHex){
+  const group = new THREE.Group();
+  const couleur = new THREE.Color(colorHex || '#FFFFFF');
+  const coeur = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 16, 12),
+    new THREE.MeshBasicMaterial({ color: couleur })
+  );
+  group.add(coeur);
+  // Le halo. `depthWrite: false` l'empêche de masquer ce qui est derrière lui dans le tampon de
+  // profondeur : sans cela, une sphère translucide découpe un trou dans les Éléments qu'elle
+  // recouvre, un artefact classique du rendu transparent.
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 16, 12),
+    new THREE.MeshBasicMaterial({ color: couleur, transparent: true, opacity: 0.22, depthWrite: false })
+  );
+  group.add(halo);
+  return group;
+}
+
 const PROP_RIG_BUILDERS_3D = {
   modele: buildImportedModelRig3D,
   voiture: buildCarRig3D, velo: buildBikeRig3D, table: buildTableRig3D, chaise: buildChairRig3D,
@@ -3637,6 +3675,7 @@ const PROP_RIG_BUILDERS_3D = {
   lampadaire: buildLampadaireRig3D, panneau_signalisation: buildPanneauSignalisationRig3D,
   tombe: buildTombeRig3D, pierre_tombale: buildPierreTombaleRig3D, caveau: buildCaveauRig3D,
   banc_eglise: buildBancEgliseRig3D, autel: buildAutelRig3D,
+  [OBJ_TYPE_LUMIERE]: buildLumiereRig3D,
 };
 
 // ↳ src/constants.js

@@ -124,6 +124,18 @@ all of them.
 to, besides what it announces? This is the repository's most frequent fault, one value serving two
 opposite roles.
 
+### What rendering cost, and what it cost nothing
+
+**Nothing was added to the Panel signature, because nothing was missing from it.**
+`computePanelSceneSignature3D` clones the WHOLE Element: a light's colour, intensity, range, sphere
+visibility and position already enter it. Writing a "lights" part beside that would have made TWO
+copies of one decision. A test holds the two links that free ride depends on: the signature starts
+from `panelOwnedElements3D`, and it clones rather than enumerates.
+
+⚠️ **AND `buildPropRig3D` FALLS BACK SILENTLY ON THE CAR.** An `objType` with no builder raises
+nothing there: between #420b and #420c, a light therefore showed up as a car. The builder is now
+registered in the table, and a test counts the rig's meshes.
+
 ## The sphere is NOT an editing gizmo
 
 ⚠️ **AND THAT IS THE USER'S DECISION, NOT A DESIGN OVERSIGHT.** An earlier draft of this note
@@ -156,3 +168,4 @@ right, to be handled with measurements.
 | #420d | move a Light like an Element |
 | #420e | a separate block in the Elements list |
 | #420f | measure the cost of one, three and eight lights |
+| #420g | closure: README, built-in manual, on-screen check |

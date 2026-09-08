@@ -123,6 +123,18 @@ les Éléments et qui vaut désormais pour tous.
 porte, en plus de ce qu'il annonce ? C'est la faute la plus fréquente de ce dépôt, une valeur qui
 sert deux rôles opposés.
 
+### Ce que le rendu a coûté, et ce qu'il n'a rien coûté
+
+**Rien n'a été ajouté à la signature de la Case, parce que rien n'y manquait.**
+`computePanelSceneSignature3D` clone l'Élément ENTIER : couleur, intensité, portée, visibilité de
+la sphère et position d'une lumière y entrent déjà. Écrire une part « lumières » à côté aurait fait
+DEUX exemplaires d'une même décision. Un test tient les deux maillons dont dépend cette gratuité :
+la signature part de `panelOwnedElements3D`, et elle clone plutôt qu'elle n'énumère.
+
+⚠️ **ET `buildPropRig3D` RETOMBE SILENCIEUSEMENT SUR LA VOITURE.** Un `objType` sans constructeur
+n'y lève rien : entre #420b et #420c, une lumière apparaissait donc en voiture. Le constructeur est
+maintenant inscrit dans la table, et un test compte les maillages du rig.
+
 ## La sphère n'est PAS un repère d'édition
 
 ⚠️ **ET C'EST UNE DÉCISION DE L'UTILISATEUR, PAS UN DÉFAUT DE CONCEPTION.** Une première version de
@@ -157,3 +169,4 @@ de #411 : 13 ms médians par rendu de Case, 296 ms au pire.
 | #420d | déplacer une Lumière comme un Élément |
 | #420e | bloc séparé dans la liste des Éléments |
 | #420f | mesurer le coût d'une, trois et huit lumières |
+| #420g | clôture : README, aide intégrée, vérification à l'écran |

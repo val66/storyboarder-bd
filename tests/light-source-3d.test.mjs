@@ -24,8 +24,9 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
-  champsLumierePosee3D, eclairagePosee3D,
+  champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D,
 } from '../src/light-source-3d.js';
+import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
 import { CLE_ACTUELLE } from '../src/lighting-3d.js';
 import { clampWorldYAboveGround, groundMagnetEligible } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D } from '../src/constants.js';
@@ -476,6 +477,193 @@ describe('#420d : le sol ARRÊTE une Lumière, même s\'il ne l\'ATTIRE pas', ()
  * qu'une seconde copie renaisse, d'un côté comme de l'autre.
  */
 
+describe('#420c : le plan des lumières, ou comment une Case n\'éclaire pas la suivante', () => {
+  /**
+   * ⚠️ LA SCÈNE THREE.JS EST PARTAGÉE ENTRE TOUTES LES CASES, et c'est le piège que la note du
+   * chantier annonce depuis le premier jour. Les Cases se dessinent l'une après l'autre dans la
+   * MÊME scène : une `PointLight` laissée allumée éclaire la suivante, qui n'en a pas.
+   *
+   * Ce défaut-là serait particulièrement méchant. Il ne se voit pas sur la Case qu'on règle, mais
+   * sur une AUTRE, et rien ne relie la clarté inexpliquée de celle-ci à la lumière posée dans
+   * celle-là. Le dépôt a déjà payé cette figure pour le soleil (#414c).
+   *
+   * « Tout éteindre puis rallumer » ne se vérifie pas sous Node, le PLAN si. C'est pourquoi la
+   * décision est une fonction pure, et les tests ci-dessous portent sur elle.
+   */
+  const cache = (...ids) => ids;
+
+  test('LA PROPRIÉTÉ QUI COMPTE : tout id du cache sort du plan EXACTEMENT une fois', () => {
+    // ⚠️ C'EST ELLE QUI INTERDIT LA FUITE, et aucun autre test de ce bloc ne la remplace. Un id qui
+    // n'apparaîtrait ni dans les allumées ni dans les éteintes est, mot pour mot, une lumière
+    // laissée allumée sur la Case suivante.
+    const l1 = uneLumiere({ id: 'a' }), l2 = uneLumiere({ id: 'b' });
+    const plan = planLumieresPosees3D(cache('a', 'b', 'c', 'd'), [l1, l2, { type: 'perso', id: 'p' }]);
+    const sorties = plan.aAllumer.map(p => p.id).concat(plan.aEteindre).sort();
+    assert.deepEqual(sorties, ['a', 'b', 'c', 'd'], 'un id du cache n\'est ni allumé ni éteint');
+  });
+
+  test('LE PIÈGE : la lumière d\'une AUTRE Case est éteinte', () => {
+    const plan = planLumieresPosees3D(cache('ailleurs'), [uneLumiere({ id: 'ici' })]);
+    assert.deepEqual(plan.aEteindre, ['ailleurs'], 'la lumière de la Case précédente reste allumée');
+    assert.deepEqual(plan.aAllumer.map(p => p.id), ['ici']);
+  });
+
+  test('une lumière jamais vue s\'allume, même absente du cache', () => {
+    // Le premier rendu après « Ajouter → Lumière » : sans cela, la source n'éclairerait qu'à partir
+    // du deuxième dessin, ce qui se lirait comme une commande qui ne fait rien.
+    const plan = planLumieresPosees3D(cache(), [uneLumiere({ id: 'neuve' })]);
+    assert.deepEqual(plan.aAllumer.map(p => p.id), ['neuve']);
+  });
+
+  test('ce qui n\'est pas une lumière n\'allume rien', () => {
+    const plan = planLumieresPosees3D(cache(), [
+      { type: 'perso', id: 'p' },
+      { type: 'objet3d', objType: 'chaise', id: 'c' },
+      { type: 'perso', objType: 'lumiere', id: 'faux' }, // le demi-discriminant
+    ]);
+    assert.deepEqual(plan.aAllumer, []);
+  });
+
+  test('`hidden3d` ÉTEINT, et c\'est une décision', () => {
+    // Masquer un Élément en 3D veut dire « fais comme s'il n'était pas là ». Une lumière masquée qui
+    // continuerait d'éclairer serait introuvable : on chercherait la source d'une clarté que rien
+    // ne montre.
+    const plan = planLumieresPosees3D(cache('l1'), [uneLumiere({ id: 'l1', hidden3d: true })]);
+    assert.deepEqual(plan.aAllumer, []);
+    assert.deepEqual(plan.aEteindre, ['l1'], 'une lumière masquée doit être éteinte, pas oubliée');
+  });
+
+  test('`sphereVisible: false` N\'ÉTEINT PAS : on masque l\'ampoule, pas la lumière', () => {
+    // ⚠️ LES DEUX CHAMPS NE DISENT PAS LA MÊME CHOSE, et les confondre viderait le réglage de son
+    // sens : il existe précisément pour éclairer une Case sans qu'une bille flotte au milieu du
+    // dessin.
+    const plan = planLumieresPosees3D(cache('l1'), [uneLumiere({ id: 'l1', sphereVisible: false })]);
+    assert.deepEqual(plan.aAllumer.map(p => p.id), ['l1']);
+  });
+
+  test('le plan porte ce que le moteur doit poser, défauts compris', () => {
+    const plan = planLumieresPosees3D(cache(), [uneLumiere({ id: 'l1', color: '#FF8800', intensite: 2 })]);
+    assert.deepEqual(plan.aAllumer[0], {
+      id: 'l1', couleur: '#FF8800', intensite: 2, portee: LUMIERE_POSEE_DEFAUT.portee,
+    });
+  });
+});
+
+describe('#420c : la sphère, et pourquoi elle n\'est pas éclairée', () => {
+  test('DEUX maillages, et tous deux NON ÉCLAIRÉS', () => {
+    // ⚠️ LE SEUL MATÉRIAU NON ÉCLAIRÉ DU DÉPÔT, ET C'EST LA DÉCISION. Partout ailleurs le maillage
+    // REÇOIT la lumière ; ici il EST la lumière. En `MeshStandardMaterial`, la sphère s'assombrirait
+    // avec la Case : une ampoule noire au centre de la clarté qu'elle produit, ce qui se lit comme
+    // une panne et non comme un réglage.
+    const rig = buildLumiereRig3D('#FF8800');
+    const materiaux = [];
+    rig.traverse(o => { if (o.isMesh) materiaux.push(o.material); });
+    assert.equal(materiaux.length, 2, 'le cœur et son halo');
+    for (const m of materiaux) {
+      assert.equal(m.type, 'MeshBasicMaterial', 'la sphère s\'assombrira avec la Case');
+      assert.equal('#' + m.color.getHexString().toUpperCase(), '#FF8800',
+        'la sphère ne porte pas la couleur de la lumière');
+    }
+  });
+
+  test('LA HAUTEUR NATURELLE VAUT EXACTEMENT 1, donc l\'échelle appliquée EST le diamètre', () => {
+    // ⚠️ CE N'EST PAS UNE COÏNCIDENCE MAIS LE CONTRAT AVEC `placeRigCentered3D`, qui déduit son
+    // facteur de `realHeightFloor / hauteurNaturelle`. Un halo construit plus grand que 0,5
+    // donnerait une sphère plus grosse que la valeur affichée, sans que rien ne le dise.
+    const box = new THREE.Box3().setFromObject(buildLumiereRig3D('#FFFFFF'));
+    const taille = new THREE.Vector3(); box.getSize(taille);
+    assert.equal(taille.y, 1, 'l\'échelle ne vaut plus le diamètre demandé');
+    assert.equal(taille.x, 1); assert.equal(taille.z, 1);
+  });
+
+  test('RÉGRESSION : une Lumière n\'est PAS rendue comme une VOITURE', () => {
+    // ⚠️ LE REPLI DE `buildPropRig3D` EST SILENCIEUX : un `objType` sans constructeur retombe sur
+    // `buildCarRig3D`. C'est exactement ce qui se passait avant #420c, et c'est le genre de défaut
+    // qui ne lève rien — on obtient une voiture, pas une erreur.
+    const rig = buildPropRig3D(OBJ_TYPE_LUMIERE, '#FFFFFF', uneLumiere()).figureGroup;
+    let meshes = 0;
+    rig.traverse(o => { if (o.isMesh) meshes++; });
+    assert.equal(meshes, 2, 'le constructeur de lumière n\'est plus branché sur son objType');
+  });
+});
+
+describe('#420c : le câblage du rendu, un test par couche', () => {
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+
+  test('LE CACHE ENTIER passe au plan, sinon rien ne s\'éteint', () => {
+    // ⚠️ LA MUTATION ÉVIDENTE EST DE N'ENVOYER QUE LES LUMIÈRES DE CETTE CASE. `aEteindre` serait
+    // alors toujours vide, la propriété de partition tiendrait toujours dans la couche pure, et la
+    // fuite reviendrait intacte. C'est le plan qui a besoin de voir TOUT le cache.
+    assert.match(SCENE, /planLumieresPosees3D\(lumierePoseeCache3D\.keys\(\), elements\)/,
+      'le plan ne voit plus tout le cache : les lumières des autres Cases resteront allumées');
+  });
+
+  test('UN SEUL point d\'application, donc l\'export ne peut pas y échapper', () => {
+    // Même garantie structurelle que pour l'éclairage de Case (#414c) : elle est posée dans le
+    // rendu par lequel TOUT passe, écran comme export. Un second appel ailleurs signifierait qu'un
+    // chemin a été traité à part, et un chemin traité à part finit par diverger.
+    const appels = (SCENE.match(/appliquerLumieresPosees3D\(/g) || []).length;
+    assert.equal(appels, 2, `${appels} occurrences au lieu de la définition et de son unique appel`);
+  });
+
+  test('la position vient du placement, elle n\'est pas recalculée', () => {
+    // ⚠️ LA FAUTE DE #420d, ÉVITÉE D'AVANCE. Le saut de 116 px venait de deux formules pour une même
+    // question. La `PointLight` doit être là où la sphère est DESSINÉE : on relève wx/wy/z au
+    // passage, et l'exécution ne connaît que cette table.
+    assert.match(SCENE, /_posLumieres3D\.set\(o\.id, \{ x: wx, y: wy, z \}\)/,
+      'la position relevée n\'est plus celle du placement');
+    const i = SCENE.indexOf('function appliquerLumieresPosees3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.match(corps, /positions\.get\(p\.id\)/, 'l\'exécution ne lit plus la table des positions');
+    assert.ok(!/ensureElementWorldPos3D/.test(corps),
+      'une seconde projection monde est apparue dans l\'exécution');
+  });
+
+  test('`sphereVisible` masque la SPHÈRE, et le rendu l\'applique', () => {
+    // ⚠️ CE TEST VIENT D'UNE MUTATION QUI A ÉCHAPPÉ (M19). J'avais retiré la ligne de masquage du
+    // rendu : la couche pure restait juste — le plan garde bien la lumière allumée — et le champ
+    // n'avait plus AUCUN effet à l'écran. Vert de bout en bout, pour un réglage devenu inerte.
+    //
+    // C'est encore « un test par couche » : la décision est vérifiée ailleurs, celle-ci vérifie
+    // qu'elle atteint la sphère. Et l'assertion suivante est la moitié qui compte : le masquage
+    // porte sur le GROUPE du rig, jamais sur la lumière.
+    const i = SCENE.indexOf('if (estUneLumiere3D(o)) {');
+    assert.ok(i > 0, 'le traitement des lumières a disparu du placement');
+    const bloc = SCENE.slice(i, SCENE.indexOf('\n    }', i));
+    assert.match(bloc, /reglagesLumierePosee3D\(o\)\.sphereVisible.*figureGroup\.visible = false/s,
+      'le réglage de visibilité de la sphère n\'a plus d\'effet à l\'écran');
+    assert.ok(!/intensity|PointLight/.test(bloc),
+      'le masquage de la sphère touche à la lumière : le réglage éteindrait au lieu de masquer');
+  });
+
+  test('le cache est VIDÉ au changement de Projet', () => {
+    // Sans cela, chaque Projet ouvert laisserait ses `PointLight` dans la scène partagée. Elles
+    // n'ont ni géométrie ni matériau à libérer, mais elles occupent une place dans les tableaux
+    // d'uniformes de TOUS les shaders : la note du chantier rappelle qu'ajouter une source fait
+    // recompiler.
+    assert.match(SCENE, /lumierePoseeCache3D\.forEach\(l => \{ if \(personaScene3D\) personaScene3D\.remove\(l\); \}\)/,
+      'les lumières du Projet précédent restent dans la scène');
+    assert.match(SCENE, /lumierePoseeCache3D\.clear\(\)/, 'le cache n\'est pas vidé');
+  });
+
+  test('LA SIGNATURE : une lumière déplacée ou réglée redessine la Case', () => {
+    // ⚠️ L'OUBLI QUE #411 A PAYÉ D'UN RELEVÉ ENTIER, et que #414c a rencontré pour le soleil. Une
+    // Case garde son image tant que sa signature ne change pas.
+    //
+    // ⚠️ ET RIEN N'A ÉTÉ AJOUTÉ, PARCE QUE RIEN NE MANQUAIT : la signature clone l'Élément ENTIER,
+    // donc couleur, intensité, portée et position d'une lumière y entrent déjà. Écrire une part
+    // « lumières » à côté aurait fait DEUX exemplaires d'une même décision, la faute la plus chère
+    // de ce dépôt. Ce test tient donc les deux maillons dont dépend cette gratuité.
+    const i = SCENE.indexOf('function computePanelSceneSignature3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.match(corps, /panelOwnedElements3D\(panel, page\)/,
+      'la signature ne part plus des Éléments de la Case');
+    assert.match(corps, /Object\.assign\(\{\}, o, \{ x: wp\.x, y: wp\.y \}\)/,
+      'la signature énumère maintenant des champs : ceux d\'une lumière en sortiront en silence');
+  });
+});
+
 /**
  * JOURNAL DE MUTATION (#420d, la garde du sol) : cinq fautes rejouées, UNE ÉCHAPPÉE CORRIGÉE.
  *
@@ -502,4 +690,36 @@ describe('#420d : le sol ARRÊTE une Lumière, même s\'il ne l\'ATTIRE pas', ()
  * campagne a tourné trois mutations contre un fichier revenu à l'état d'avant le correctif, ce qui
  * rendait des rouges parfaitement trompeurs. On sauvegarde le fichier corrigé et on restaure la
  * copie.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#420c, le rendu) : dix fautes rejouées, UNE ÉCHAPPÉE CORRIGÉE.
+ *
+ *   M10 le plan n'éteint plus rien (la fuite entre Cases, telle quelle)           ROUGE (×3)
+ *   M11 `hidden3d` n'éteint plus                                                  ROUGE
+ *   M12 `sphereVisible: false` éteint la lumière                                  ROUGE
+ *   M13 le rendu n'envoie au plan que les lumières de CETTE Case                  ROUGE
+ *   M14 la sphère repasse en matériau éclairé                                     ROUGE
+ *   M15 le halo passe à 0,6 : la hauteur naturelle n'est plus 1                   ROUGE
+ *   M16 le constructeur est débranché : la lumière redevient une VOITURE          ROUGE
+ *   M17 le cache n'est plus vidé au changement de Projet                          ROUGE
+ *   M18 la signature énumère des champs au lieu de cloner l'Élément               ROUGE
+ *   M19 le rendu n'applique plus `sphereVisible`                                  VERT → ROUGE
+ *   M20 la position de la lumière est recalculée au lieu d'être relevée           ROUGE
+ *
+ * ⚠️ M13 EST CELLE QUI COMPTE, et elle est plus subtile que M10. Elle laisse la couche pure
+ * PARFAITEMENT juste : la propriété de partition tient toujours, puisque le plan répartit
+ * fidèlement ce qu'on lui donne. Mais on ne lui donne plus que les lumières de la Case courante,
+ * donc `aEteindre` est toujours vide, et la fuite revient intacte. Une décision juste nourrie d'une
+ * entrée tronquée : c'est le défaut que le seul test pur ne peut pas voir.
+ *
+ * ⚠️ M19 S'EST ÉCHAPPÉE, ET POUR LA MÊME RAISON QUE M9 LA VEILLE : la couche pure gardait raison
+ * pendant que le fil était coupé. Retirer la ligne de masquage laissait `sphereVisible` sans AUCUN
+ * effet à l'écran, et rien ne devenait rouge. Deux fois en deux jours sur la frontière pur/câblage,
+ * ce qui dit assez que la leçon de #417 n'est pas acquise : elle demande un test à chaque fois, pas
+ * seulement quand on y pense.
+ *
+ * ⚠️ M16 MÉRITE D'ÊTRE GARDÉE POUR SA FORME. `buildPropRig3D` retombe SILENCIEUSEMENT sur
+ * `buildCarRig3D` quand un `objType` n'a pas de constructeur : la lumière ne levait pas d'erreur,
+ * elle apparaissait en voiture. C'est l'état exact du dépôt entre #420b et #420c.
  */

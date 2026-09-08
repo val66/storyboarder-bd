@@ -149,3 +149,36 @@ export function eclairagePosee3D(o){
   const r = reglagesLumierePosee3D(o);
   return { couleur: r.couleur, intensite: r.intensite, portee: r.portee };
 }
+
+/**
+ * Ce que le rendu doit faire des lampes EN CACHE, pour la Case qu'il dessine. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LA SCÈNE THREE.JS EST PARTAGÉE ENTRE TOUTES LES CASES, ET C'EST LE PIÈGE QUE LA NOTE ANNONCE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Les Cases se dessinent l'une après l'autre dans la MÊME scène. Une `PointLight` laissée allumée
+ * éclairerait la Case suivante, qui n'en a pas, et le défaut serait attribué à n'importe quoi sauf
+ * à sa cause. Le dépôt tient déjà ce protocole pour le soleil : `renderPanelSceneUncached3D` repose
+ * les lumières du style à chaque rendu, avec exactement ce commentaire.
+ *
+ * ⚠️ « TOUT ÉTEINDRE PUIS RALLUMER » NE SE VÉRIFIE PAS SOUS NODE, MAIS LE PLAN, SI. C'est la raison
+ * d'être de cette fonction : elle décide, la couche Three.js exécute. Sans elle, la garantie
+ * reposerait sur la lecture d'une boucle de rendu qu'aucun test ne peut faire tourner.
+ *
+ * LA PROPRIÉTÉ QUI COMPTE, et son test : **tout id du cache sort du plan exactement une fois**,
+ * allumé ou éteint. Un id qui n'apparaîtrait nulle part est précisément une lumière qui fuit.
+ *
+ * ⚠️ `hidden3d` ÉTEINT, `sphereVisible` NON, et les deux ne disent pas la même chose. Masquer un
+ * Élément en 3D veut dire « fais comme s'il n'était pas là » : une lumière masquée qui continuerait
+ * d'éclairer serait introuvable, on chercherait la source d'une clarté que rien ne montre.
+ * `sphereVisible` ne parle QUE de la petite sphère : on éteint l'ampoule visible, pas la lumière.
+ */
+export function planLumieresPosees3D(idsEnCache, elementsDeLaCase){
+  const aAllumer = (elementsDeLaCase || [])
+    .filter(o => estUneLumiere3D(o) && !o.hidden3d)
+    .map(o => Object.assign({ id: o.id }, eclairagePosee3D(o)));
+  const allumes = new Set(aAllumer.map(p => p.id));
+  const aEteindre = Array.from(idsEnCache || []).filter(id => !allumes.has(id));
+  return { aAllumer, aEteindre };
+}
