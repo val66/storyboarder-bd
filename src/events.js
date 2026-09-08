@@ -45,6 +45,7 @@ import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
 import { placerMenuFlottant3D } from './ui-scale.js';
 import { delaiFermetureSousMenu3D, sousMenusAFermer3D } from './menu-timing.js';
 import { clicDeselectionne3D } from './deselection.js';
+import { champsLumierePosee3D, estUneLumiere3D, OBJ_TYPE_LUMIERE } from './light-source-3d.js';
 import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
@@ -1204,7 +1205,13 @@ function addObjectToPanel(panel, objType){
   // Exception for a Wall/Corner Wall (cf. WALL_TYPES): its default WIDTH represents its LENGTH (very
   // variable in real life, with no "typical" value), so we keep the old Panel-relative calibration
   // for it; only its height now follows the real scale (cf. OBJECT_REAL_HEIGHT_M.mur).
-  const realH = OBJECT_REAL_HEIGHT_M[objType] || (PERSONA_REAL_HEIGHT_M * 0.6);
+  // ⚠️ LA TAILLE D'UNE LUMIÈRE NE VIENT PAS DE `OBJECT_REAL_HEIGHT_M`, et c'est délibéré. L'y
+  // inscrire aurait fait DEUX valeurs pour une seule décision, à côté de celle de
+  // `champsLumierePosee3D`. Deux copies qui s'accordent aujourd'hui, c'est la faute que #415 puis
+  // #420a ont chacune payée d'une mutation échappée.
+  const realH = objType === OBJ_TYPE_LUMIERE
+    ? champsLumierePosee3D().realHeightFloor
+    : (OBJECT_REAL_HEIGHT_M[objType] || (PERSONA_REAL_HEIGHT_M * 0.6));
   // Phase 3: always real size. migratePanelWorldCoords guarantees that existing elements are also
   // at real size → no mismatch with newly added ones.
   const h = clamp(realH * WALL_PX_PER_UNIT_3D, 2, page.h * 0.95);
@@ -1223,6 +1230,10 @@ function addObjectToPanel(panel, objType){
   };
   // realHeightFloor: real size in meters, source of truth for the 3D renderer (Phase 3).
   if (!WALL_TYPES.includes(objType)) obj.realHeightFloor = realH;
+  // Une source de lumière : la forme commune ci-dessus, plus ce qui n'appartient qu'à elle
+  // (couleur, intensité, portée, visibilité de la sphère). Cf. src/light-source-3d.js et
+  // docs/en/positioned-lights.md.
+  if (objType === OBJ_TYPE_LUMIERE) Object.assign(obj, champsLumierePosee3D());
   // magnetGround: true by default for any Object3D other than Wall/Opening (cf.
   // groundMagnetEligible), a Wall has no notion of "resting on the ground", an Opening already
   // magnetizes to its Wall (cf. below).
@@ -1274,7 +1285,11 @@ function addObjectToPanel(panel, objType){
   S.selectedId = obj.id; S.selectedRoomId = null;
   finaliserCreationDansCase3D(obj, panel, page);
   drawCurrentPage();
-  openObjectModal(obj, true);
+  // ⚠️ PAS DE MODALE POUR UNE LUMIÈRE, ET C'EST VOULU (#420b). Celle des Objets règle des rotations
+  // et une taille, qui ne veulent rien dire pour une source ; la sienne viendra avec ses propres
+  // champs. Ouvrir la mauvaise modale serait pire que n'en ouvrir aucune : « Annuler » y supprime
+  // l'Élément qu'on vient d'ajouter, et on aurait offert ce piège sans rien donner d'utile.
+  if (!estUneLumiere3D(obj)) openObjectModal(obj, true);
 }
 // ---------- Buildings: Room (hollow cube made of 6 simple Walls) ----------
 // [DRAW→draw.js] addRoomWallElement → imported from draw.js (cf. import above, FIX for the Build tool).
@@ -4127,6 +4142,12 @@ document.getElementById('ctxAddPersona').onclick = () => {
   const panel = page.objects.find(o => o.id === S.selectedId && o.type === 'panel');
   hideContextMenu();
   if (panel) addPersonaToPanel(panel);
+};
+document.getElementById('ctxAddLumiere').onclick = () => {
+  const page = currentPage();
+  const panel = page.objects.find(o => o.id === S.selectedId && o.type === 'panel');
+  hideContextMenu();
+  if (panel) addObjectToPanel(panel, OBJ_TYPE_LUMIERE);
 };
 // "Load a Scene" submenu: same hover mechanism as the other submenus, but its content is rebuilt
 // on every opening (cf. renderLoadSceneSubmenu) since the list of Scenes can change between two

@@ -257,6 +257,7 @@ export const MAX_UNDO = 50;
 // Reuses getPersonaScalePercent/applyPersonaSizePercent (generic: only depend on
 // o.w/o.h/o.baseW/o.baseH, not on the type) for percentage-based resizing.
 export const OBJECT_TYPE_LABELS = {
+  lumiere: 'Lumière',
   voiture: 'Voiture', velo: 'Vélo',
   table: 'Table', chaise: 'Chaise', etagere: 'Étagère', armoire: 'Armoire',
   canape: 'Canapé', bureau: 'Bureau', lit: 'Lit',
@@ -283,6 +284,7 @@ export const OBJECT_TYPE_LABELS = {
 // ⚠️ CES MOTS SONT AUSSI CEUX DU SÉLECTEUR DE TYPE (cf. I18N_TEXT, #objectTypeSelect) et du menu
 // contextuel (#ctxAdd…). Le même objet ne doit pas porter deux noms anglais selon l'écran.
 export const OBJECT_TYPE_LABELS_EN = {
+  lumiere: 'Light',
   voiture: 'Car', velo: 'Bicycle',
   table: 'Table', chaise: 'Chair', etagere: 'Shelf', armoire: 'Wardrobe',
   canape: 'Sofa', bureau: 'Desk', lit: 'Bed',
@@ -442,6 +444,7 @@ export const ROOM_FLOOR_TYPE_IDS = ['neutre', 'carrelage', 'plancher', 'marbre',
 
 // Icon for each Element type, reusing the same emoji as in the "add" context menu.
 export const OBJECT_TYPE_EMOJI = {
+  lumiere: '💡',
   voiture: '🚗', velo: '🚲',
   table: '🍽️', chaise: '🪑', etagere: '📚', armoire: '🚪', canape: '🛋️', bureau: '🗄️', lit: '🛏️',
   fenetre_ouverte: '🪟', porte_ouverte: '🚪',

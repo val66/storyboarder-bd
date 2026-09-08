@@ -26,6 +26,7 @@ import { S, currentPage } from './state.js';
 // L'éclairage réglé sur une Case : la DÉCISION vit dans lighting-3d.js, pure et testée ; ici on ne
 // fait que l'appliquer. Cf. docs/en/lighting.md.
 import { resoudreEclairage3D, lumiereDeCase3D } from './lighting-3d.js';
+import { estUneLumiere3D } from './light-source-3d.js';
 // Cache des modèles importés. Deux usages ici, et un seul est évident : la SIGNATURE de Case doit
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
@@ -137,6 +138,12 @@ export function setElementWorldPos3D(o, panel, worldX, worldY){
 
 export function groundMagnetEligible(o){
   if (!o) return false;
+  // ⚠️ UNE LUMIÈRE FLOTTE, ET C'EST LA PREMIÈRE DES EXCLUSIONS VOULUES (#420b). Sans cette ligne
+  // elle serait aimantée au sol comme tout `objet3d` qui n'est ni un Mur ni une Paroi, alors que
+  // l'essentiel d'une source posée est de se placer À LA HAUTEUR qu'on veut. Elle est écrite ici
+  // plutôt que dans les champs de création : l'aimantation se REDEMANDE à chaque déplacement, et
+  // une lumière créée sans le drapeau se le verrait reposer au premier glisser.
+  if (estUneLumiere3D(o)) return false;
   if (o.type === 'perso') return true;
   if (o.type === 'objet3d' && !WALL_TYPES.includes(o.objType) && !WALL_OPENING_MAGNET_TYPES.includes(o.objType)) return true;
   return false;
@@ -286,7 +293,18 @@ export function distanceCameraPourPremierElement3D(hauteurM){
  */
 export function estPremierElement3DdeLaCase(obj, panel, page){
   if (!obj || !panel || !page) return false;
-  return panelOwnedElements3D(panel, page).every(o => o === obj || o.id === obj.id);
+  // ⚠️ UNE LUMIÈRE NE DÉCLENCHE PAS LE RECADRAGE, deuxième exclusion voulue (#420b). Ce test sert
+  // à zoomer la Case sur son tout premier Élément ; poser une lumière dans une Case vide n'a rien
+  // à cadrer, et reculer la caméra pour une sphère de 20 cm déplacerait la composition sous les
+  // yeux de quelqu'un qui n'a demandé qu'une source.
+  //
+  // L'exclusion est ICI et non dans `panelOwnedElements3D` : cette fonction-là alimente aussi la
+  // signature de cache, où les lumières doivent au contraire entrer (#420c). Une seule liste, deux
+  // usages opposés — le genre de valeur à deux rôles que ce dépôt a déjà payé cher.
+  if (estUneLumiere3D(obj)) return false;
+  return panelOwnedElements3D(panel, page)
+    .filter(o => !estUneLumiere3D(o))
+    .every(o => o === obj || o.id === obj.id);
 }
 
 function panelOwnedElements3D(panel, page){

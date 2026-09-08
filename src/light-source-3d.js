@@ -61,15 +61,21 @@ export function estUneLumiere3D(o){
  *             moyen de le corriger, ce qui se lirait comme une panne plutôt que comme un réglage.
  * `sphereVisible` vrai. Une lumière dont la sphère est masquée d'emblée n'affiche RIEN à l'ajout :
  *             on aurait cliqué « Ajouter → Lumière » pour voir une Case inchangée.
- * `rayon`     0,2 m, environ une tête (un Personnage fait 1,75 m). Assez gros pour se saisir, assez
+ * `diametre`  0,2 m, environ une tête (un Personnage fait 1,75 m). Assez gros pour se saisir, assez
  *             petit pour ne pas masquer ce qu'il éclaire. ⚠️ Choisi, pas dérivé.
+ *
+ *             ⚠️ ET C'EST UN DIAMÈTRE, PAS UN RAYON, parce qu'il est lu dans `realHeightFloor`, le
+ *             champ qui signifie « hauteur réelle en mètres » pour TOUS les Éléments. La première
+ *             version l'appelait `rayon` : deux sens pour un même champ, ce qui est la faute qui
+ *             revient le plus souvent dans ce dépôt. Le champ garde son sens, c'est le nom de la
+ *             lecture qui a changé.
  */
 export const LUMIERE_POSEE_DEFAUT = {
   couleur: '#FFFFFF',
   intensite: CLE_ACTUELLE,
   portee: 0,
   sphereVisible: true,
-  rayon: 0.2,
+  diametre: 0.2,
 };
 
 /**
@@ -106,7 +112,7 @@ export function reglagesLumierePosee3D(o){
     intensite: Math.max(0, nombreFini(o.intensite, d.intensite)),
     portee: Math.max(0, nombreFini(o.portee, d.portee)),
     sphereVisible: o.sphereVisible === undefined ? d.sphereVisible : !!o.sphereVisible,
-    rayon: Math.max(0.01, nombreFini(o.realHeightFloor, d.rayon)),
+    diametre: Math.max(0.01, nombreFini(o.realHeightFloor, d.diametre)),
   };
 }
 
@@ -129,7 +135,7 @@ export function champsLumierePosee3D(){
     intensite: d.intensite,
     portee: d.portee,
     sphereVisible: d.sphereVisible,
-    realHeightFloor: d.rayon,
+    realHeightFloor: d.diametre,
   };
 }
 

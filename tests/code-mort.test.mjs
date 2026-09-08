@@ -77,7 +77,8 @@ const EN_ATTENTE = {
   // `estUneLumiere3D`, `OBJ_TYPE_LUMIERE` et `LUMIERE_POSEE_DEFAUT` ne sont PAS ici : le détecteur
   // les voit appelés à l'intérieur du module. Troisième fois que ce garde-fou évite une exemption
   // qui ne surveillerait rien.
-  champsLumierePosee3D: '#420b — la création depuis « Ajouter → Lumière »',
+  // `champsLumierePosee3D` a quitté cette liste : #420b l'appelle depuis `addObjectToPanel`, où
+  // elle pose les champs propres à une source sur la forme commune des `objet3d`. Échéance tenue.
   eclairagePosee3D: '#420c — le rendu : la sphère, le cache de lumières, la signature',
 
   //
@@ -153,12 +154,12 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // après #403c, zéro à nouveau depuis #403d, trois avec celles de #414a, cinq avec le champ
     // persisté de #414b, quatre après #414c, trois après #414d, une seule depuis que #414e a
     // branché le dôme, ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case, et
-    // DEUX depuis les fondations de #420a. L'échéance de chacune est un numéro de tâche, et toutes
-    // celles arrivées à terme ont été tenues.
+    // DEUX depuis les fondations de #420a, UNE depuis que #420b a branché la création. L'échéance
+    // de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été tenues.
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

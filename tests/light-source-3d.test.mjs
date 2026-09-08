@@ -108,7 +108,7 @@ describe('La lecture est NON DESTRUCTIVE, comme celle du soleil d\'une Case', ()
       color: '#FF8800', intensite: 2.5, portee: 12, sphereVisible: false, realHeightFloor: 0.5,
     }));
     assert.deepEqual(r, {
-      couleur: '#FF8800', intensite: 2.5, portee: 12, sphereVisible: false, rayon: 0.5,
+      couleur: '#FF8800', intensite: 2.5, portee: 12, sphereVisible: false, diametre: 0.5,
     });
   });
 
@@ -130,13 +130,13 @@ describe('La lecture est NON DESTRUCTIVE, comme celle du soleil d\'une Case', ()
 
   test('les valeurs absurdes sont bornées, jamais rendues telles quelles', () => {
     // Une intensité négative éclairerait « en creux » chez Three.js, une portée négative n'a pas de
-    // sens, un rayon nul rendrait la sphère insaisissable.
+    // sens, un diamètre nul rendrait la sphère insaisissable.
     const r = reglagesLumierePosee3D(uneLumiere({
       intensite: -3, portee: -10, realHeightFloor: 0,
     }));
     assert.equal(r.intensite, 0);
     assert.equal(r.portee, 0);
-    assert.ok(r.rayon > 0, 'un rayon nul rend la sphère impossible à attraper');
+    assert.ok(r.diametre > 0, 'un diamètre nul rend la sphère impossible à attraper');
     // ⚠️ CE BLOC A TROUVÉ UN VRAI DÉFAUT. `Number(null)` vaut 0, comme `Number('')` et `Number([])` :
     // la première version du garde-fou les acceptait tous comme des nombres valides, si bien qu'un
     // champ `intensite: null` ÉTEIGNAIT la lumière au lieu de retomber sur son défaut. Un fichier
@@ -155,7 +155,7 @@ describe('La lecture est NON DESTRUCTIVE, comme celle du soleil d\'une Case', ()
     // Plutôt que de lever : un appelant qui se trompe d'Élément doit obtenir une valeur sûre, pas
     // une exception au milieu d'un rendu.
     const r = reglagesLumierePosee3D({ type: 'perso' });
-    assert.deepEqual(r, { ...LUMIERE_POSEE_DEFAUT, rayon: LUMIERE_POSEE_DEFAUT.rayon });
+    assert.deepEqual(r, { ...LUMIERE_POSEE_DEFAUT });
   });
 });
 
@@ -186,7 +186,7 @@ describe('Ce qu\'on donne au moteur', () => {
       intensite: LUMIERE_POSEE_DEFAUT.intensite,
       portee: LUMIERE_POSEE_DEFAUT.portee,
       sphereVisible: LUMIERE_POSEE_DEFAUT.sphereVisible,
-      rayon: LUMIERE_POSEE_DEFAUT.rayon,
+      diametre: LUMIERE_POSEE_DEFAUT.diametre,
     });
   });
 });
@@ -213,4 +213,115 @@ describe('Ce qu\'on donne au moteur', () => {
  * fichier de test a TROUVÉ pendant son écriture. `Number(null)` vaut 0, donc un champ
  * `intensite: null` — banal dans un JSON retouché à la main — éteignait la lumière au lieu de
  * retomber sur son défaut. Le code a été corrigé, pas le test.
+ */
+
+describe('#420b : la création depuis « Ajouter → Lumière »', () => {
+  /**
+   * ⚠️ ÉPINGLÉ SUR LA SOURCE, ET C'EST ASSUMÉ. `addObjectToPanel` lit la Planche courante, pousse
+   * dans le document et ouvre des modales : elle ne s'exécute pas sous Node. La leçon de #417 est
+   * appliquée d'emblée — la couche pure ne suffit pas, il faut au moins vérifier que le câblage
+   * l'appelle, sinon une décision parfaite reste débranchée sans que rien ne le dise.
+   */
+  const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  test('l\'entrée existe dans le sous-menu Ajouter, et elle est traduite', () => {
+    assert.match(HTML, /id="ctxAddLumiere"/, 'l\'entrée de menu a disparu');
+    // Le libellé vit dans I18N_TRAILING, pas dans I18N_TEXT : `textContent` effacerait l'icône.
+    const trailing = I18N.slice(I18N.indexOf('export const I18N_TRAILING'));
+    assert.match(trailing, /\['#ctxAddLumiere', 'Add a light', 'Ajouter une lumière'\]/,
+      'le libellé n\'est pas dans la table qui préserve l\'icône');
+  });
+
+  test('RÉGRESSION : l\'emoji n\'est PAS dans le libellé traduit', () => {
+    // Il vient du `<span class="ctx-icon">` du HTML. L'écrire aussi dans la traduction le
+    // doublerait à chaque changement de langue, et le défaut ne se verrait qu'en anglais.
+    const ligne = I18N.split('\n').find(l => l.includes("'#ctxAddLumiere'"));
+    assert.ok(ligne && !/💡/.test(ligne), `l'emoji est en double : ${ligne}`);
+  });
+
+  test('le clic passe par la création commune des Objets', () => {
+    // Tout l'intérêt du choix `objet3d` : la boîte 2D, le nom unique, l'annulation et les
+    // coordonnées monde viennent de là, sans être réécrits pour une lumière.
+    const i = EVENTS.indexOf("getElementById('ctxAddLumiere').onclick");
+    assert.ok(i > 0, 'le clic n\'est pas branché');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('};', i));
+    assert.match(corps, /addObjectToPanel\(panel, OBJ_TYPE_LUMIERE\)/);
+  });
+
+  test('RÉGRESSION : la taille n\'est PAS écrite une seconde fois dans les constantes', () => {
+    // ⚠️ L'y inscrire aurait fait deux valeurs pour une décision, à côté de celle de
+    // `champsLumierePosee3D`. C'est la faute que #415 puis #420a ont chacune payée d'une mutation
+    // échappée : deux copies qui s'accordent aujourd'hui ne prouvent que leur accord du jour.
+    const CONST = readFileSync(new URL('../src/constants.js', import.meta.url), 'utf8');
+    const i = CONST.indexOf('OBJECT_REAL_HEIGHT_M');
+    const table = CONST.slice(i, CONST.indexOf('};', i));
+    assert.ok(!/\blumiere\s*:/.test(table),
+      'la hauteur d\'une lumière est réécrite dans OBJECT_REAL_HEIGHT_M');
+    assert.match(EVENTS, /champsLumierePosee3D\(\)\.realHeightFloor/,
+      'la taille ne vient plus de la source unique');
+  });
+
+  test('RÉGRESSION : aucune modale ne s\'ouvre pour une lumière', () => {
+    // ⚠️ CELLE DES OBJETS SERAIT PIRE QUE RIEN. Elle règle des rotations et une taille, qui ne
+    // veulent rien dire pour une source, et son bouton « Annuler » SUPPRIME l'Élément qu'on vient
+    // d'ajouter (cf. le comportement documenté dans le manuel). On aurait offert ce piège sans
+    // rien donner d'utile.
+    assert.match(EVENTS, /if \(!estUneLumiere3D\(obj\)\) openObjectModal\(obj, true\);/,
+      'la modale des Objets s\'ouvre encore sur une lumière');
+  });
+
+  test('EXCLUSION 1 : une lumière n\'est pas aimantée au sol', () => {
+    // Sans quoi elle serait collée au plancher, alors que l'essentiel d'une source posée est de se
+    // placer à la hauteur qu'on veut.
+    const i = SCENE.indexOf('export function groundMagnetEligible');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.match(corps, /if \(estUneLumiere3D\(o\)\) return false;/);
+    // Et AVANT la branche qui accepte tous les objet3d, sinon la garde ne sert à rien.
+    assert.ok(corps.indexOf('estUneLumiere3D') < corps.indexOf("o.type === 'objet3d'"),
+      'la garde arrive après la branche qui accepte déjà la lumière');
+  });
+
+  test('EXCLUSION 2 : une lumière ne déclenche pas le recadrage de la Case', () => {
+    // Poser une source dans une Case vide n'a rien à cadrer : reculer la caméra pour une sphère de
+    // 20 cm déplacerait la composition sous les yeux de quelqu'un qui n'a demandé qu'une lumière.
+    const i = SCENE.indexOf('export function estPremierElement3DdeLaCase');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.match(corps, /if \(estUneLumiere3D\(obj\)\) return false;/,
+      'une lumière compte encore comme premier Élément');
+    assert.match(corps, /\.filter\(o => !estUneLumiere3D\(o\)\)/,
+      'une lumière déjà posée empêche le recadrage du premier VRAI Élément');
+  });
+
+  test('RÉGRESSION : l\'exclusion n\'a PAS été posée dans panelOwnedElements3D', () => {
+    // ⚠️ LA MÊME LISTE SERT À DEUX USAGES OPPOSÉS. `panelOwnedElements3D` alimente le recadrage ET
+    // la signature de cache ; les lumières doivent SORTIR du premier et ENTRER dans la seconde
+    // (#420c). Les exclure à la source aurait figé l'image d'une Case dont on déplace une lumière.
+    const i = SCENE.indexOf('function panelOwnedElements3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i));
+    assert.ok(!/estUneLumiere3D/.test(corps),
+      'les lumières sont exclues trop tôt : elles n\'entreront jamais dans la signature de cache');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#420b) : six fautes réintroduites une à une. Résultats RÉELS :
+ *
+ *   M1 la lumière redevient aimantée au sol                                         ROUGE
+ *   M2 le recadrage se déclenche sur une lumière                                    ROUGE
+ *   M3 l'exclusion est posée dans `panelOwnedElements3D`, trop tôt                  ROUGE
+ *   M4 la modale des Objets s'ouvre sur une lumière                                 ROUGE
+ *   M5 la taille est réécrite dans OBJECT_REAL_HEIGHT_M                             ROUGE
+ *   M6 l'emoji revient dans le libellé traduit                                      ROUGE (2 tests)
+ *
+ * ⚠️ M3 EST CELLE QUI COMPTE, et elle n'est pas évidente à lire. Exclure les lumières dans
+ * `panelOwnedElements3D` PARAÎT plus propre : une seule garde au lieu de deux. Mais cette liste
+ * alimente à la fois le recadrage, dont les lumières doivent sortir, et la signature de cache, où
+ * elles doivent entrer (#420c). Les exclure à la source figerait l'image d'une Case dont on déplace
+ * une lumière, et le défaut serait attribué au cache plutôt qu'à cette ligne.
+ *
+ * Une liste, deux usages opposés : c'est la « valeur à deux rôles » que ce dépôt a déjà payée en
+ * #409f et en #414k. Le test l'épingle pour que la simplification apparente ne passe pas.
  */

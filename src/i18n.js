@@ -185,6 +185,7 @@ export const I18N_TRAILING = [
   ['#ctxSendBackward', 'Send backward', 'Reculer'],
   ['#ctxClearPanel', 'Clear panel', 'Vider la case'],
   ['#ctxAddPersona', 'Add a character', 'Ajouter un personnage'],
+  ['#ctxAddLumiere', 'Add a light', 'Ajouter une lumière'],
   ['#ctxVehiclesTrigger > span:first-child', 'Vehicles', 'Véhicules'],
   ['#ctxFurnitureTrigger > span:first-child', 'Furniture', 'Mobiliers'],
   ['#ctxWallOpeningTrigger > span:first-child', 'Wall openings', 'Parois'],
