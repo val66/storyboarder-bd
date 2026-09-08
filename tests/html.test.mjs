@@ -140,6 +140,21 @@ describe('index.html : l\'ordre voulu des champs', () => {
     avant('id="personaEditorPoseSection"', 'id="personaEditorJointsSection"', 'panneau de l\'éditeur');
   });
 
+  test('dans le menu d\'une Case, Lumière précède Sol, et les deux précèdent Éléments', () => {
+    /**
+     * ⚠️ CET ORDRE A CHANGÉ, ET LE PREMIER SE DÉFENDAIT AUSSI BIEN. La Lumière suivait le Sol, au
+     * motif écrit dans le HTML que « les trois décrivent la scène, du fond vers ce qu'elle
+     * contient ». Le récit se tenait ; l'usage l'a démenti. On règle la lumière à chaque passage,
+     * la matière du sol une fois par Case : ce qu'on touche souvent doit se trouver en premier.
+     *
+     * ⚠️ ET IL NE VIVAIT QUE DANS L'ORDRE DES BALISES. Rien ne l'épinglait : déplacer un bloc au
+     * cours d'une autre tâche n'aurait rien fait échouer, et ne se serait vu qu'à l'écran, plus
+     * tard, sans qu'on relie le désordre à son auteur.
+     */
+    avant('id="sideLightSection"', 'id="sideGroundSection"', 'menu de droite d\'une Case');
+    avant('id="sideGroundSection"', 'id="sidePersonasSection"', 'menu de droite d\'une Case');
+  });
+
   test('chaque champ Hauteur garde son libellé pour frère PRÉCÉDENT', () => {
     // L'i18n retrouve le libellé d'un champ par `input.previousElementSibling` (cf. src/i18n.js).
     // Glisser un élément entre les deux ne casse rien de visible : le libellé cesse simplement
@@ -167,6 +182,17 @@ describe('index.html : l\'ordre voulu des champs', () => {
  *   O4 la fiche Personnage ne remplit plus son champ Hauteur           ÉCHAPPÉE → puis ROUGE
  *   O5 la fiche Objet ne remplit plus le sien                          ROUGE
  *   O6 la hauteur affichée dérivée du CURSEUR au lieu de l'Élément     ROUGE
+ *
+ * JOURNAL DE MUTATION : l'ordre des sections du menu de droite.
+ *
+ *   V1 la Lumière repasse SOUS le Sol (l'ordre d'avant, tel quel)      ROUGE
+ *   V2 le Sol remonte au-dessus de la Lumière, par l'autre bout        ROUGE
+ *   V3 les Éléments remontent avant la Lumière et le Sol              ROUGE
+ *
+ * ⚠️ V2 EST CELLE QUI COMPTE. Un ordre relatif se casse des DEUX CÔTÉS : déplacer A sous B et
+ * remonter B au-dessus de A donnent le même écran, et un test qui n'épingle qu'un seul des deux
+ * gestes laisse passer l'autre. Les trois mutations bougent un bloc différent, et la même
+ * assertion les attrape, ce qui est le signe qu'elle porte sur la RELATION et non sur une position.
  *
  * O4 EST LA LEÇON. Un ordre de champs se garde par un test de structure, c'est ce que fait ce
  * fichier. Mais le CÂBLAGE, lui, ne se voit pas dans le HTML : le champ Personnage était en place,

@@ -248,13 +248,17 @@
         <input type="color" id="sideBorderColorInput" value="#23242a">
       </div>
     </div>
-    <div id="sideGroundSection" class="side-section" style="display:none;">
-      <h2>Sol</h2>
-      <div id="sideGroundGrid" class="sol-ground-grid"></div>
-    </div>
-    <!-- Éclairage de la Case (#414d). Il SUIT le Sol et précède les Éléments : les trois décrivent
-         la scène, du fond vers ce qu'elle contient, et la lumière appartient au décor plus qu'aux
-         objets qu'elle éclaire.
+    <!-- Éclairage de la Case (#414d). Il PRÉCÈDE le Sol.
+
+         ⚠️ IL LE SUIVAIT, ET LE COMMENTAIRE D'ORIGINE JUSTIFIAIT CET ORDRE-LÀ : « les trois décrivent
+         la scène, du fond vers ce qu'elle contient ». Le raisonnement se tenait, et l'usage l'a
+         démenti. On règle la lumière bien plus souvent que la matière du sol, qu'on choisit une fois
+         par Case ; ce qui se touche à chaque passage doit se trouver en premier. La fréquence
+         d'usage l'emporte sur la cohérence du récit.
+
+         ⚠️ ET L'ORDRE EST TENU PAR UN TEST, DÉSORMAIS. Il ne vivait que dans l'ordre des balises :
+         déplacer un bloc pendant une autre tâche n'aurait rien fait échouer, et ne se serait vu à
+         l'écran que bien plus tard.
 
          ⚠️ PAS DE CASE À COCHER (#414h). Elle a existé, puis s'est révélée sans objet : « Jour » EST
          l'éclairage que le style pose depuis toujours, donc décocher et rester sur Jour donnaient la
@@ -303,6 +307,10 @@
            Cadrage (#403f). Un bouton toujours visible qui ne ferait rien la moitié du temps
            apprendrait à ne pas s'y fier. -->
       <button id="sideLightResetBtn" class="nav-btn" type="button" style="display:none; width:100%;">↺ Réinitialiser</button>
+    </div>
+    <div id="sideGroundSection" class="side-section" style="display:none;">
+      <h2>Sol</h2>
+      <div id="sideGroundGrid" class="sol-ground-grid"></div>
     </div>
     <div id="sidePersonasSection" class="side-section" style="display:none;">
       <h2 id="sidePersonasTitle">Éléments</h2>
