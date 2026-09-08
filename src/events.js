@@ -3191,17 +3191,42 @@ window.addEventListener('mousemove', (e) => {
         const realW = _rhf5 !== null
                     ? realH * (S.dragOrig.h > 0 ? S.dragOrig.w / S.dragOrig.h : 1)
                     : S.dragOrig.w / factorOld;
-        const origCx = S.dragOrig.x + S.dragOrig.w / 2, origCy = S.dragOrig.y + S.dragOrig.h / 2;
+        const origCx = S.dragOrig.x + S.dragOrig.w / 2;
         // worldX0: wxFloor is the source of truth for X (Phase 5). Re-deriving from o.x would give
         // worldX0 = s * wxFloor after Phase 2/3, causing a position jump on the first drag.
         const worldX0 = (typeof S.dragOrig.wxFloor === 'number') ? S.dragOrig.wxFloor
                       : (origCx - panelCx) / factorOld;
-        // worldY0: initial world Y center. For ground-level Elements (the vast majority):
-        // GROUND_Y_DEFAULT_3D + realH/2. applyGroundMagnetY corrects o.y at render time for
-        // magnetized ones, so the approximation (floating elements) has no visible impact.
-        const worldY0 = _rhf5 !== null
-                      ? (GROUND_Y_DEFAULT_3D + realH / 2)
-                      : -(origCy - panelCy) / factorOld;
+        // worldY0 : le Y monde de départ du glisser.
+        //
+        // ⚠️ CE CALCUL SUPPOSAIT L'ÉLÉMENT POSÉ AU SOL, ET LE COMMENTAIRE D'ORIGINE L'ASSUMAIT :
+        // « l'approximation (Éléments flottants) n'a pas d'impact visible ». Elle n'en avait pas
+        // TANT QU'AUCUN ÉLÉMENT NE FLOTTAIT : tout ce qui portait un `realHeightFloor` était aussi
+        // aimanté au sol, donc l'hypothèse était exacte par accident.
+        //
+        // La première source de lumière (#420) est le premier Élément qui porte une hauteur réelle
+        // ET flotte. Signalé à l'usage : « quand j'amorce le mouvement la lumière change subitement
+        // de position, comme si elle se téléportait ». Mesuré : le glisser la croyait à Y = -2,9
+        // (le sol), le rendu la dessinait à Y = 0 (le centre de la Case). 2,9 unités monde, soit
+        // 116 px au facteur de 40 px/unité. Le premier `mousemove` la faisait tomber au sol.
+        //
+        // ⚠️ LE GLISSER DOIT PARTIR D'OÙ LE RENDU DESSINE, et la règle du rendu est écrite une fois
+        // (cf. scene3d.js) : `wyFloor` s'il existe, sinon la projection de la boîte 2D. On la
+        // reflète ici au lieu d'en inventer une troisième. Le cas « au sol » reste en tête pour
+        // que RIEN ne change pour les Éléments aimantés, qui étaient les seuls jusqu'ici — et sa
+        // condition est celle du rendu, `groundMagnetEligible(o) && o.magnetGround !== false`, pas
+        // une approximation de plus.
+        // ⚠️ LA BRANCHE « AU SOL » A ÉTÉ RETIRÉE, ET PAS SEULEMENT PARCE QU'ELLE ÉTAIT REDONDANTE.
+        // `applyGroundMagnetY` écrit `o.y = panelCy - targetWorldY * factor - o.h / 2` : la
+        // projection ci-dessous en est donc l'IDENTITÉ EXACTE, elle redonne `targetWorldY`. Or
+        // `targetWorldY` vaut `GROUND_Y + hauteur/2 + GROUND_CONTACT_EPS_3D`, et l'ancienne branche
+        // oubliait l'epsilon. Elle était donc, pour TOUS les Éléments et depuis toujours, fausse de
+        // 0,01 unité monde — 0,4 px. Invisible, mais c'est la projection qui est juste.
+        //
+        // Il ne reste qu'une règle, celle du rendu : `wyFloor` s'il existe, sinon la projection de
+        // la boîte 2D. Deux copies d'une même décision sont ce que ce dépôt paie le plus souvent.
+        const worldY0 = Number.isFinite(S.dragOrig.wyFloor)
+                      ? S.dragOrig.wyFloor
+                      : ensureElementWorldPos3D(S.dragOrig, panel).y;
         // An earlier version, reserved for the top-down view, always intersected the ray with a
         // HORIZONTAL plane (Y fixed); we now use the plane perpendicular to the Camera's CURRENT
         // viewing axis (basis.backward, cf. panelCamBasis3D), passing through the Element's starting

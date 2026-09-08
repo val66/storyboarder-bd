@@ -325,3 +325,66 @@ describe('#420b : la création depuis « Ajouter → Lumière »', () => {
  * Une liste, deux usages opposés : c'est la « valeur à deux rôles » que ce dépôt a déjà payée en
  * #409f et en #414k. Le test l'épingle pour que la simplification apparente ne passe pas.
  */
+
+describe('#420d : le glisser part d\'où le rendu DESSINE', () => {
+  /**
+   * ⚠️ CE BLOC VIENT D'UN DÉFAUT SIGNALÉ À L'USAGE : « quand j'amorce le mouvement la lumière
+   * change subitement de position, comme si elle se téléportait avant de suivre le curseur ».
+   *
+   * LA CAUSE, MESURÉE. Le glisser calculait son Y monde de départ en SUPPOSANT l'Élément posé au
+   * sol, `GROUND_Y_DEFAULT_3D + hauteur/2`. Le commentaire d'origine assumait l'approximation :
+   * « les Éléments flottants n'ont pas d'impact visible ». Elle n'en avait pas TANT QU'AUCUN
+   * ÉLÉMENT NE FLOTTAIT — tout ce qui portait une hauteur réelle était aussi aimanté au sol, donc
+   * l'hypothèse était exacte par accident. Une source de lumière est le premier Élément qui porte
+   * une hauteur réelle ET flotte : le glisser la croyait à Y = -2,9, le rendu la dessinait à
+   * Y = 0. Écart de 2,9 unités monde, soit 116 px.
+   *
+   * ⚠️ ET LA CORRECTION N'A PAS ÉTÉ D'ALIGNER DEUX COPIES. La branche « au sol » n'était pas
+   * seulement redondante avec la projection de la boîte 2D : elle était FAUSSE. `applyGroundMagnetY`
+   * écrit `o.y = panelCy - targetWorldY * factor - o.h/2`, donc la projection en est l'identité
+   * exacte et redonne `targetWorldY` — lequel inclut `GROUND_CONTACT_EPS_3D`, que la branche
+   * oubliait. Elle se trompait donc de 0,01 unité monde pour TOUS les Éléments, depuis toujours.
+   * Elle a été retirée : il ne reste qu'une règle, celle du rendu.
+   */
+  const EVENTS = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+  const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : le glisser n\'invente plus un Y « au sol »', () => {
+    const i = EVENTS.indexOf('const worldY0 =');
+    assert.ok(i > 0, 'le calcul du Y de départ a disparu');
+    const expr = EVENTS.slice(i, EVENTS.indexOf(';', i));
+    assert.ok(!/GROUND_Y_DEFAULT_3D/.test(expr),
+      'le glisser suppose de nouveau l\'Élément posé au sol : une lumière se téléportera');
+    assert.match(expr, /S\.dragOrig\.wyFloor/, 'le Y stocké n\'est plus prioritaire');
+    assert.match(expr, /ensureElementWorldPos3D\(S\.dragOrig, panel\)\.y/,
+      'le repli ne passe plus par la projection partagée avec le rendu');
+  });
+
+  test('RÉGRESSION : glisser et rendu appliquent la MÊME règle', () => {
+    // ⚠️ C'EST LA GARANTIE, et elle est structurelle : les deux expressions passent par
+    // `ensureElementWorldPos3D`, une seule implémentation. Aligner deux formules recopiées aurait
+    // rendu le même résultat aujourd'hui et rouvert l'écart au premier changement de l'une.
+    const iRendu = SCENE.indexOf('posY = o.wyFloor !== undefined');
+    assert.ok(iRendu > 0, 'la règle du rendu a changé de forme : re-vérifier le glisser');
+    const ligneRendu = SCENE.slice(iRendu, SCENE.indexOf('\n', iRendu));
+    assert.match(ligneRendu, /_ep\.y/, 'le rendu ne retombe plus sur la projection 2D');
+    // Et la projection, elle, n'existe qu'à un endroit.
+    const definitions = [...SCENE.matchAll(/export function ensureElementWorldPos3D/g)];
+    assert.equal(definitions.length, 1, 'la projection monde a été dupliquée');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#420d, le saut au démarrage du glisser) : quatre fautes rejouées.
+ *
+ *   M1 la branche « au sol » revient (le défaut signalé, tel quel)                  ROUGE
+ *   M2 le `wyFloor` stocké n'est plus prioritaire                                   ROUGE
+ *   M3 le glisser recopie la formule au lieu d'appeler la projection partagée       ROUGE
+ *   M4 la projection monde est dupliquée dans scene3d.js                            ROUGE
+ *
+ * ⚠️ M3 ET M4 SONT LES DEUX QUI COMPTENT, et elles ne visent pas le défaut : elles visent sa
+ * CAUSE. Le saut de 116 px venait de deux formules pour une seule question — « où cet Élément
+ * est-il, verticalement ? » — qui s'accordaient tant qu'aucun Élément ne flottait. Aligner les
+ * deux copies aurait fait disparaître le symptôme et laissé la cause. Ces deux mutations refusent
+ * qu'une seconde copie renaisse, d'un côté comme de l'autre.
+ */
