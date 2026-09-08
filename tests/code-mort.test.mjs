@@ -69,8 +69,19 @@ const EN_ATTENTE = {
   // `lumiereDeCase3D` et `LUMIERE_DEFAUT` ne sont PAS ici : le détecteur les voit appelées à
   // l'intérieur du module, par `definirLumiereDeCase3D` et `copierLumiere3D`. Deuxième fois que ce
   // garde-fou m'évite une exemption qui ne surveille rien.
+  // #420a — LES SOURCES POSÉES : MÊME FIGURE, MÊME RAISON. La décision arrive encore avant son
+  // application, et pour le motif qui l'a déjà justifié deux fois : décider ce qu'est une lumière,
+  // ce qu'elle vaut par défaut et ce qu'on en donne au moteur se teste sous Node ; poser une
+  // `PointLight` dans une scène Three.js, non. Chaque échéance est un NUMÉRO DE TÂCHE.
   //
-  // ⚠️ ET LA LISTE EST DE NOUVEAU VIDE : #414f a payé la dernière échéance. `copierLumiere3D` est
+  // `estUneLumiere3D`, `OBJ_TYPE_LUMIERE` et `LUMIERE_POSEE_DEFAUT` ne sont PAS ici : le détecteur
+  // les voit appelés à l'intérieur du module. Troisième fois que ce garde-fou évite une exemption
+  // qui ne surveillerait rien.
+  champsLumierePosee3D: '#420b — la création depuis « Ajouter → Lumière »',
+  eclairagePosee3D: '#420c — le rendu : la sphère, le cache de lumières, la signature',
+
+  //
+  // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
   // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
   // La dette de #414a a donc été remboursée en entier, comme celle de #403a avant elle, et pour la
   // même raison : chaque échéance était un NUMÉRO DE TÂCHE et non une intention.
@@ -141,12 +152,13 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Elle a valu seize, puis zéro, puis cinq avec les fondations de #403a, trois après #403b, deux
     // après #403c, zéro à nouveau depuis #403d, trois avec celles de #414a, cinq avec le champ
     // persisté de #414b, quatre après #414c, trois après #414d, une seule depuis que #414e a
-    // branché le dôme, et ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case.
-    // L'échéance de chacune était un numéro de tâche, et toutes ont été tenues.
+    // branché le dôme, ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case, et
+    // DEUX depuis les fondations de #420a. L'échéance de chacune est un numéro de tâche, et toutes
+    // celles arrivées à terme ont été tenues.
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
