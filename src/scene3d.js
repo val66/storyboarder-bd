@@ -165,10 +165,34 @@ export function applyGroundMagnetY(o, panel){
   o.y = cy - o.h / 2;
 }
 
+/**
+ * Le Y monde, ramené au-dessus du sol quand le sol ARRÊTE cet Élément.
+ *
+ * ⚠️ « CE QUE LE SOL ATTIRE » ET « CE QUE LE SOL ARRÊTE » SONT DEUX QUESTIONS, ET UN SEUL PRÉDICAT
+ * RÉPONDAIT AUX DEUX. La première ligne demandait `groundMagnetEligible`, ce qui a tenu tant que les
+ * deux ensembles coïncidaient : tout ce qui pouvait être aimanté était aussi retenu, tout le reste
+ * (Murs, Parois) traversait sans que personne s'en plaigne.
+ *
+ * La première source de lumière a séparé les deux. #420b l'a exclue de l'aimantation pour qu'elle
+ * flotte à la hauteur voulue, et cette exclusion a emporté la garde avec elle, EN SILENCE : on
+ * pouvait glisser une lumière sous le plancher. Signalé à l'usage, pas par un test.
+ *
+ * C'est la faute qui revient le plus souvent dans ce dépôt, une valeur qui sert deux rôles
+ * opposés (cf. docs/en/positioned-lights.md). Les deux questions se posent donc séparément ici, et
+ * ajouter un Élément à l'une n'engage plus l'autre.
+ *
+ * `traverseGround` passe en premier : l'autorisation explicite vaut pour TOUS les Éléments, y
+ * compris une lumière, et c'est le réglage que l'utilisateur a demandé pour elle.
+ */
 export function clampWorldYAboveGround(o, worldY, realH) {
-  if (!groundMagnetEligible(o)) return worldY;
-  if (o.magnetGround !== false) return worldY; // magnetized, applyGroundMagnetY handles it
+  if (!o) return worldY;
   if (o.traverseGround) return worldY;         // explicit authorization
+  // Une lumière n'est pas AIMANTÉE au sol (#420b) mais elle en est ARRÊTÉE (#420d).
+  const retenuParLeSol = estUneLumiere3D(o)
+    ? true
+    // magnetized: applyGroundMagnetY handles it, the clamp has nothing to say
+    : (groundMagnetEligible(o) && o.magnetGround === false);
+  if (!retenuParLeSol) return worldY;
   return Math.max(worldY, GROUND_Y_DEFAULT_3D + realH / 2);
 }
 

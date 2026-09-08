@@ -104,6 +104,25 @@ Elles viennent d'un échange explicite, et chacune aura son test :
    n'est ni un Mur ni une Paroi ; sans exclusion, une lumière serait collée au plancher, alors que
    l'essentiel d'une source posée est de flotter où on veut.
 
+### ⚠️ Ce que cette troisième exclusion a emporté avec elle
+
+**Le sol ATTIRE, et le sol ARRÊTE : deux questions, et `groundMagnetEligible` répondait aux deux.**
+Il ouvrait aussi `clampWorldYAboveGround`, la garde qui empêche un Élément désaimanté de passer
+sous le plancher. L'accord tenait tant que les deux ensembles coïncidaient : tout ce qui pouvait
+être aimanté était aussi retenu.
+
+Exclure la lumière de l'aimantation l'a donc exclue de la GARDE, **en silence**. On pouvait la
+glisser sous le sol, et rien n'est devenu rouge : une garde qui cesse de s'appliquer ne casse rien,
+elle arrête de protéger. Signalé à l'usage, comme le saut de 116 px avant lui.
+
+Les deux questions se posent maintenant séparément, et la règle décidée est :
+**une lumière ne passe pas sous le sol**, sauf `traverseGround`, l'option qui existait déjà pour
+les Éléments et qui vaut désormais pour tous.
+
+⚠️ **ET CHAQUE EXCLUSION QUI RESTE À ÉCRIRE POSE LA MÊME QUESTION** : de quoi ce prédicat est-il la
+porte, en plus de ce qu'il annonce ? C'est la faute la plus fréquente de ce dépôt, une valeur qui
+sert deux rôles opposés.
+
 ## La sphère n'est PAS un repère d'édition
 
 ⚠️ **ET C'EST UNE DÉCISION DE L'UTILISATEUR, PAS UN DÉFAUT DE CONCEPTION.** Une première version de

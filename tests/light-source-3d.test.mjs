@@ -14,15 +14,21 @@
  * distance, et « assez lumineux » se juge à l'œil. C'est écrit dans le module et redit ici plutôt
  * que masqué derrière un test qui aurait l'air de le garantir.
  */
+// ⚠️ LE STUB DOM EST REQUIS DEPUIS QUE CE FICHIER IMPORTE `scene3d.js` (#420d) : celui-ci tire
+// GLTFLoader, qui lit un `THREE` global à l'évaluation du module. Rien de plus.
+import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
   champsLumierePosee3D, eclairagePosee3D,
 } from '../src/light-source-3d.js';
 import { CLE_ACTUELLE } from '../src/lighting-3d.js';
+import { clampWorldYAboveGround, groundMagnetEligible } from '../src/scene3d.js';
+import { GROUND_Y_DEFAULT_3D } from '../src/constants.js';
 
 const uneLumiere = (extra = {}) => ({ id: 'l1', type: 'objet3d', objType: 'lumiere', ...extra });
 
@@ -374,6 +380,87 @@ describe('#420d : le glisser part d\'où le rendu DESSINE', () => {
   });
 });
 
+describe('#420d : le sol ARRÊTE une Lumière, même s\'il ne l\'ATTIRE pas', () => {
+  /**
+   * ⚠️ DEUX QUESTIONS, UN SEUL PRÉDICAT : LA FAUTE QUI REVIENT LE PLUS SOUVENT ICI.
+   * « Ce que le sol ATTIRE » et « ce que le sol ARRÊTE » étaient répondues par le même
+   * `groundMagnetEligible`, ce qui a tenu tant que les deux ensembles coïncidaient.
+   *
+   * #420b a exclu la lumière de l'aimantation pour qu'elle flotte à la hauteur voulue — et cette
+   * exclusion a emporté la GARDE avec elle, en silence. On pouvait glisser une source sous le
+   * plancher. Rien n'est devenu rouge : une garde qui cesse de s'appliquer ne casse rien, elle
+   * arrête simplement de protéger.
+   *
+   * La décision de l'utilisateur : « Une lumière ne peut passer sous le sol de base, après on peut
+   * laisser une option comme pour les Éléments pour autoriser cela. » C'est `traverseGround`, qui
+   * existe déjà et vaut maintenant pour TOUS les Éléments.
+   */
+  const AU_SOL = (diametre) => GROUND_Y_DEFAULT_3D + diametre / 2;
+
+  test('LE DÉFAUT : une lumière glissée vers le bas s\'arrête au sol', () => {
+    const l = uneLumiere({ realHeightFloor: LUMIERE_POSEE_DEFAUT.diametre });
+    const y = clampWorldYAboveGround(l, -999, LUMIERE_POSEE_DEFAUT.diametre);
+    assert.equal(y, AU_SOL(LUMIERE_POSEE_DEFAUT.diametre),
+      'la sphère traverse le plancher au lieu de s\'y poser');
+  });
+
+  test('la sphère se POSE sur le sol, elle ne s\'y enfonce pas jusqu\'au centre', () => {
+    // Le clamp borne le CENTRE de la sphère : la moitié du diamètre est ce qui la met au contact.
+    // Sans elle, une sphère de 2 m aurait sa moitié inférieure sous le plancher.
+    const y = clampWorldYAboveGround(uneLumiere(), -999, 2);
+    assert.equal(y - GROUND_Y_DEFAULT_3D, 1, 'le rayon manque, la sphère est à demi enterrée');
+  });
+
+  test('L\'OPTION : `traverseGround` rend le sol franchissable, comme pour un Élément', () => {
+    assert.equal(clampWorldYAboveGround(uneLumiere({ traverseGround: true }), -999, 0.2), -999,
+      'l\'autorisation explicite ne vaut pas pour une lumière');
+  });
+
+  test('une lumière déjà en l\'air n\'est jamais REMONTÉE par la garde', () => {
+    // Une garde qui déplace ce qui va bien serait pire que pas de garde : la hauteur choisie est
+    // tout l'intérêt d'une source posée.
+    const enLair = GROUND_Y_DEFAULT_3D + 4;
+    assert.equal(clampWorldYAboveGround(uneLumiere(), enLair, 0.2), enLair, 'hauteur choisie perdue');
+  });
+
+  test('LA SÉPARATION, mesurée sur le même objet : pas attirée, mais arrêtée', () => {
+    // ⚠️ C'EST CE TEST QUI TIENT LA CORRECTION. Les deux réponses portent sur la MÊME lumière et
+    // doivent diverger : si un jour l'une redevient la garde de l'autre, l'une des deux cède ici.
+    const l = uneLumiere();
+    assert.equal(groundMagnetEligible(l), false, 'la lumière est redevenue aimantée au sol');
+    assert.notEqual(clampWorldYAboveGround(l, -999, 0.2), -999,
+      'l\'exclusion de l\'aimantation emporte de nouveau la garde du sol');
+  });
+
+  test('RÉGRESSION : rien ne change pour les Éléments qui existaient avant', () => {
+    // Aimanté : `applyGroundMagnetY` s'en charge, le clamp n'a rien à dire.
+    assert.equal(clampWorldYAboveGround({ type: 'perso' }, -999, 1.8), -999, 'Personnage aimanté');
+    // Désaimanté sans autorisation : retenu, comme avant.
+    assert.equal(clampWorldYAboveGround({ type: 'perso', magnetGround: false }, -999, 1.8),
+      GROUND_Y_DEFAULT_3D + 0.9, 'Personnage désaimanté');
+    // Structurel : un Mur n'a jamais été concerné.
+    assert.equal(clampWorldYAboveGround({ type: 'objet3d', objType: 'mur', magnetGround: false }, -999, 3),
+      -999, 'Mur');
+  });
+
+  test('LE CÂBLAGE : le glisser passe toujours par la garde, avec la hauteur RÉELLE', () => {
+    // ⚠️ UN TEST PAR COUCHE. Les six tests ci-dessus ne disent rien du fait que le glisser appelle
+    // encore cette fonction : la couche pure peut être juste pendant que le fil est coupé.
+    //
+    // ⚠️ ET IL LIT LE CODE, PAS LE FICHIER. Ma mutation M9 a mis un `//` devant l'appel : le test
+    // est resté VERT, parce qu'il cherchait une phrase et qu'un appel commenté reste une phrase.
+    // C'est la faute que ce dépôt paie le plus souvent — un test qui vérifie qu'un identifiant
+    // APPARAÎT au lieu de vérifier qu'il GOUVERNE — et `sourceSansCommentaires` existe pour ça.
+    const EVENTS = sourceSansCommentaires(
+      readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+    assert.match(EVENTS, /worldY = clampWorldYAboveGround\(obj, worldY, realH\)/,
+      'le glisser 3D n\'applique plus la garde du sol');
+    // `realH` vient de `realHeightFloor` quand il existe, donc du diamètre pour une lumière.
+    assert.match(EVENTS, /const realH = _rhf5 !== null \? _rhf5 : S\.dragOrig\.h \/ factorOld/,
+      'la hauteur réelle du glisser a changé de source : re-vérifier le contact au sol');
+  });
+});
+
 /**
  * JOURNAL DE MUTATION (#420d, le saut au démarrage du glisser) : quatre fautes rejouées.
  *
@@ -387,4 +474,32 @@ describe('#420d : le glisser part d\'où le rendu DESSINE', () => {
  * est-il, verticalement ? » — qui s'accordaient tant qu'aucun Élément ne flottait. Aligner les
  * deux copies aurait fait disparaître le symptôme et laissé la cause. Ces deux mutations refusent
  * qu'une seconde copie renaisse, d'un côté comme de l'autre.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#420d, la garde du sol) : cinq fautes rejouées, UNE ÉCHAPPÉE CORRIGÉE.
+ *
+ *   M5 la garde redemande `groundMagnetEligible` en entrée (le défaut, tel quel)      ROUGE (×3)
+ *   M6 `traverseGround` cesse de valoir pour une lumière                              ROUGE
+ *   M7 le clamp oublie la demi-hauteur (sphère à demi enterrée)                       ROUGE (×4)
+ *   M8 le clamp ÉCRASE au lieu de borner (une lumière en l'air retombe au sol)        ROUGE (×2)
+ *   M9 le glisser n'appelle plus la garde                                             VERT → ROUGE
+ *
+ * ⚠️ M9 S'EST ÉCHAPPÉE, ET C'ÉTAIT LA FAUTE MAISON. J'avais mis un `//` devant l'appel : la couche
+ * pure restait juste, le fil était coupé, et le test de câblage est resté VERT parce qu'il
+ * cherchait une PHRASE dans le fichier. Un appel commenté est encore une phrase. C'est exactement
+ * « le test vérifie qu'un identifiant APPARAÎT au lieu de vérifier qu'il GOUVERNE », et le dépôt a
+ * déjà l'outil qui l'évite, `sourceSansCommentaires`. Le test le lit maintenant, et la mutation
+ * rejouée est rouge.
+ *
+ * ⚠️ M5 EST LA MUTATION DE RÉFÉRENCE : elle réécrit le défaut signalé, mot pour mot. Elle fait
+ * tomber trois tests, dont celui qui mesure les deux réponses sur la MÊME lumière. C'est lui qui
+ * tient la séparation entre « ce que le sol attire » et « ce que le sol arrête » ; les autres ne
+ * feraient que constater une valeur.
+ *
+ * ⚠️ ET UNE PRÉCAUTION DE MÉTHODE, APPRISE À MES DÉPENS PENDANT CETTE CAMPAGNE : revenir d'une
+ * mutation par `git checkout` efface aussi la CORRECTION quand elle n'est pas encore commise. La
+ * campagne a tourné trois mutations contre un fichier revenu à l'état d'avant le correctif, ce qui
+ * rendait des rouges parfaitement trompeurs. On sauvegarde le fichier corrigé et on restaure la
+ * copie.
  */

@@ -105,6 +105,25 @@ They come from an explicit exchange, and each will have its test:
    that is neither a Wall nor a Wall opening; without an exclusion a light would be stuck to the
    floor, when the whole point of a placed source is to float wherever one wants.
 
+### ⚠️ What that third exclusion took with it
+
+**The ground ATTRACTS, and the ground STOPS: two questions, and `groundMagnetEligible` answered
+both.** It also gated `clampWorldYAboveGround`, the guard that keeps a demagnetised Element from
+sinking below the floor. The agreement held as long as the two sets coincided: everything that
+could be magnetised was also held back.
+
+Excluding a light from magnetism therefore excluded it from the GUARD, **silently**. It could be
+dragged under the floor, and nothing turned red: a guard that stops applying breaks nothing, it
+merely stops protecting. Reported from use, like the 116 px jump before it.
+
+The two questions are now asked separately, and the decided rule is: **a light does not go below the
+ground**, unless `traverseGround`, the option that already existed for Elements and now holds for
+all of them.
+
+⚠️ **AND EVERY REMAINING EXCLUSION RAISES THE SAME QUESTION**: what else is this predicate the gate
+to, besides what it announces? This is the repository's most frequent fault, one value serving two
+opposite roles.
+
 ## The sphere is NOT an editing gizmo
 
 ⚠️ **AND THAT IS THE USER'S DECISION, NOT A DESIGN OVERSIGHT.** An earlier draft of this note
