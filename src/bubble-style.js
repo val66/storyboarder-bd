@@ -139,7 +139,105 @@ export function amplitudeTrembleBulle(o, largeurTrait){
   if (regulariteTraitBulle(o) !== TRAIT_TREMBLE) return 0;
   const w = Number(largeurTrait);
   const l = Number.isFinite(w) && w > 0 ? w : 1;
-  return l * 0.6;
+  // ⚠️ UNE PART FIXE, PLUS UNE PART PROPORTIONNELLE, ET LES DEUX ONT ÉTÉ MESURÉES À L'ŒIL.
+  // La première version valait `l * 0.6`, purement proportionnelle. À l'épaisseur par défaut de
+  // 2,25 px cela faisait 1,35 px d'ondulation, c'est-à-dire rien de visible : cocher « tremblé »
+  // ne changeait rien à l'écran, et un réglage qui ne fait rien est pire qu'un réglage absent.
+  // La part fixe garantit que le tremblement se voit au filet fin ; la part proportionnelle garde
+  // l'ondulation lisible sous un trait épais, où 2 px disparaîtraient dans l'épaisseur.
+  return 1.2 + l * 0.5;
+}
+
+/**
+ * Une graine stable tirée de l'identifiant de la Bulle. Fonction PURE.
+ *
+ * ⚠️ SANS ELLE, UNE BULLE TREMBLÉE SCINTILLERAIT. `Math.random()` au moment de dessiner donnerait un
+ * contour différent à chaque rendu, donc à chaque déplacement de la caméra, à chaque frappe au
+ * clavier, à chaque redessin de la Planche. Le tremblé serait une animation permanente et non un
+ * style. La même Bulle doit trembler de la même façon aussi longtemps qu'elle existe, et c'est son
+ * `id` — déjà unique et déjà persisté — qui le garantit.
+ */
+export function graineTrembleBulle(o){
+  const cle = String((o && o.id) || '');
+  let h = 2166136261;
+  for (let i = 0; i < cle.length; i++) {
+    h ^= cle.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  // `>>> 0` ramène dans les entiers positifs : une graine négative donnerait des décalages
+  // asymétriques, tremblés vers l'extérieur d'un côté et vers l'intérieur de l'autre.
+  return h >>> 0;
+}
+
+/**
+ * Les décalages à ajouter aux points du TRACÉ, deux par point. Fonction PURE.
+ *
+ * ⚠️ C'EST LA SEULE FORME SOUS LAQUELLE LE TREMBLÉ EXISTE. draw.js les ajoute aux coordonnées au
+ * moment d'émettre le chemin ; `bubbleEdgePoint` n'en sait rien et continue de rendre le contour
+ * exact, ce qui garde la queue accrochée et la poignée de glisser au bon endroit.
+ *
+ * Rend un tableau vide quand la Bulle est nette : l'appelant n'a alors aucun décalage à appliquer,
+ * et peut emprunter le chemin de tracé d'origine sans rien recalculer. C'est ce qui protège les
+ * Bulles existantes d'un arrondi qui les déplacerait d'un demi-pixel.
+ */
+export function decalagesTrembleBulle(o, largeurTrait, nombreDePoints){
+  const amplitude = amplitudeTrembleBulle(o, largeurTrait);
+  const n = Math.max(0, Math.floor(Number(nombreDePoints) || 0));
+  if (amplitude === 0 || n === 0) return [];
+  const graine = graineTrembleBulle(o);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    // Deux tirages décorrélés par point : un même bruit sur x et y ferait glisser tous les points
+    // le long de la diagonale, ce qui se lit comme une ombre portée, pas comme un tremblement.
+    out[i] = {
+      dx: bruitLisse(graine, i / n, 0) * amplitude,
+      dy: bruitLisse(graine, i / n, 1000) * amplitude,
+    };
+  }
+  return out;
+}
+
+/**
+ * Nombre de points de contrôle du bruit, sur un tour complet.
+ *
+ * ⚠️ CE CHIFFRE A ÉTÉ CHOISI EN REGARDANT, PAS EN RAISONNANT. La première version tirait un bruit
+ * INDÉPENDANT à chaque point du tracé. Les tests étaient tous verts — le contour changeait bien,
+ * il était bien stable, il différait bien d'une Bulle à l'autre — et le rendu montrait une pomme de
+ * terre : du bruit blanc à haute fréquence, pas une ligne tracée à la main. Une main qui tremble
+ * produit des ondulations LARGES, une dizaine sur un tour, pas soixante-douze.
+ */
+const POINTS_DE_CONTROLE_TREMBLE = 9;
+
+/**
+ * Bruit lisse et cyclique, sur [0, 1[ → [-1, 1]. Interne.
+ *
+ * Cyclique parce que le contour d'une Bulle est une boucle : un bruit qui ne se refermerait pas
+ * laisserait une marche visible à l'endroit exact où le tracé se referme.
+ */
+function bruitLisse(graine, t, decalage){
+  const k = POINTS_DE_CONTROLE_TREMBLE;
+  // ⚠️ `t` VIENT TOUJOURS DE `i / n` AVEC `i < n`, DONC DE [0, 1[. Une première version ramenait
+  // `t` dans cet intervalle par un double modulo « au cas où ». La campagne de mutation l'a montré
+  // ÉQUIVALENT : le remplacer par `t * k` ne faisait tomber aucun test, et pour cause, aucun appel
+  // ne sort de l'intervalle. Une garde qu'aucun chemin n'atteint ne protège rien et laisse croire
+  // le contraire. C'est le `% k` ci-dessous, lui, qui referme la boucle.
+  const x = t * k;
+  const i = Math.floor(x);
+  const f = x - i;
+  const a = melange(graine + decalage + (i % k)) * 2 - 1;
+  const b = melange(graine + decalage + ((i + 1) % k)) * 2 - 1;
+  // Interpolation en cosinus : pente nulle aux points de contrôle, donc aucun angle visible là où
+  // deux segments de bruit se rejoignent. Une interpolation linéaire laisserait un polygone.
+  const u = (1 - Math.cos(f * Math.PI)) / 2;
+  return a * (1 - u) + b * u;
+}
+
+/** Mélangeur entier → [0, 1[. Interne : personne d'autre n'a besoin de ce détail. */
+function melange(x){
+  let h = Math.imul(x ^ (x >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
 }
 
 /**

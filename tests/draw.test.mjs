@@ -23,6 +23,7 @@ import {
   bubbleShapeOf,
   bubbleEdgePoint,
   getBubbleTailTip,
+  drawBubble,
   distToSegmentSq,
   wrapTextLines,
   projectJointToCanvas,
@@ -2094,4 +2095,147 @@ describe('Fermeture décidée : la chaîne de dessin s\'arrête (#407c)', () => 
    * forme exacte du défaut qui est revenu quatre fois dans ce dépôt : mesurer une absence sans
    * jamais vérifier que l'instrument sait aussi voir une présence.
    */
+});
+
+// ── #425b — L'APPARENCE D'UNE BULLE ARRIVE-T-ELLE VRAIMENT SUR LE CANEVAS ? ──────────────────────
+
+/**
+ * Un faux contexte 2D qui n'affiche rien et note tout.
+ *
+ * ⚠️ POURQUOI UN ENREGISTREUR PLUTÔT QU'UNE LECTURE DE SOURCE. Le chantier précédent a laissé une
+ * leçon chère (#420c, mutation M19) : une couche pure parfaite pendant que le réglage reste inerte.
+ * Un test qui cherche `setLineDash` dans le texte de draw.js verrait l'appel même placé derrière un
+ * `if (false)`. Celui-ci appelle `drawBubble` pour de bon et regarde ce qui est arrivé au contexte.
+ */
+function contexteEnregistreur(){
+  const journal = [];
+  const note = (nom) => (...args) => { journal.push({ nom, args }); };
+  const c = {
+    journal,
+    save: note('save'), restore: note('restore'),
+    beginPath: note('beginPath'), closePath: note('closePath'),
+    moveTo: note('moveTo'), lineTo: note('lineTo'), rect: note('rect'), ellipse: note('ellipse'),
+    setLineDash: note('setLineDash'),
+    measureText: (t) => ({ width: String(t).length * 6 }),
+    fillText: note('fillText'),
+  };
+  // Les propriétés, elles, se notent à l'écriture : c'est l'ordre entre `globalAlpha = x` et
+  // `fill()` qui dit si l'opacité porte sur le fond ou déborde sur le trait.
+  for (const prop of ['globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineJoin', 'font',
+                      'textAlign', 'textBaseline']) {
+    let v;
+    Object.defineProperty(c, prop, {
+      get: () => v,
+      set: (nv) => { v = nv; journal.push({ nom: 'set:' + prop, args: [nv] }); },
+    });
+  }
+  c.fill = () => journal.push({ nom: 'fill', args: [], alpha: c.globalAlpha });
+  c.stroke = () => journal.push({ nom: 'stroke', args: [], alpha: c.globalAlpha, dash: c.__dash });
+  const vraiSetLineDash = c.setLineDash;
+  c.setLineDash = (d) => { c.__dash = d; vraiSetLineDash(d); };
+  return c;
+}
+
+const dessiner = (o) => {
+  const c = contexteEnregistreur();
+  drawBubble(c, Object.assign({ id: 'b1', type: 'bulle', x: 0, y: 0, w: 120, h: 60 }, o));
+  return c.journal;
+};
+const appels = (j, nom) => j.filter(e => e.nom === nom);
+
+describe('#425b — l’apparence décidée atteint réellement le canevas', () => {
+  test('RÉGRESSION : une Bulle sans les champs de #425a dessine comme avant', () => {
+    // ⚠️ LA GARANTIE, CÔTÉ DESSIN CETTE FOIS. tests/bubble-style.test.mjs prouve que la DÉCISION est
+    // celle d'avant ; il ne dit rien de ce que le canevas reçoit. Ici : opacité pleine au moment du
+    // remplissage, aucun motif, et le chemin d'origine — `ellipse`, pas une suite de `lineTo`.
+    const j = dessiner({ description: '' });
+    assert.equal(appels(j, 'fill')[0].alpha, 1);
+    assert.equal(appels(j, 'ellipse').length, 1, 'le contour net doit rester tracé par c.ellipse');
+    const dash = appels(j, 'setLineDash');
+    assert.ok(dash.length === 0 || dash[0].args[0].length === 0, 'aucun motif ne doit être posé');
+  });
+
+  test('l’opacité porte sur le REMPLISSAGE, et elle est retombée avant le trait', () => {
+    // ⚠️ MUTATION VISÉE : laisser `globalAlpha` en place après le fill. Le contour pâlirait avec le
+    // fond, et « poser une voix sur l'image » deviendrait « effacer la bulle » — les deux rôles
+    // opposés que #425a a séparés.
+    const j = dessiner({ bulleFillOpacity: 0.25 });
+    assert.equal(appels(j, 'fill')[0].alpha, 0.25, 'le fond doit recevoir l’opacité demandée');
+    assert.equal(appels(j, 'stroke')[0].alpha, 1, 'le trait doit être revenu à l’opacité pleine');
+  });
+
+  test('le texte n’hérite JAMAIS de l’opacité du fond', () => {
+    // Le texte est dessiné hors du save()/restore() du contour : un globalAlpha oublié le suivrait
+    // jusque-là, et une bulle à 10 % deviendrait illisible au lieu d'être translucide.
+    const j = dessiner({ bulleFillOpacity: 0.1, description: 'Bonjour' });
+    const iTexte = j.findIndex(e => e.nom === 'fillText');
+    assert.ok(iTexte > 0, 'le texte doit être dessiné');
+    const dernierAlpha = j.slice(0, iTexte).filter(e => e.nom === 'set:globalAlpha').pop();
+    assert.equal(dernierAlpha.args[0], 1, 'globalAlpha doit valoir 1 quand le texte est écrit');
+  });
+
+  test('le motif du trait est POSÉ sur le contexte, pas seulement calculé', () => {
+    const j = dessiner({ bulleBorderDash: 'pointille' });
+    const dash = appels(j, 'setLineDash');
+    assert.ok(dash.length >= 1, 'setLineDash doit être appelé');
+    assert.ok(dash[0].args[0].length === 2, `motif reçu : ${JSON.stringify(dash[0].args[0])}`);
+    assert.equal(appels(j, 'stroke')[0].dash.length, 2, 'le motif doit être en place AU stroke');
+  });
+
+  test('le motif suit l’épaisseur choisie dans le menu', () => {
+    const fin = dessiner({ bulleBorderDash: 'tirets', bulleBorderWidth: 1 });
+    const epais = dessiner({ bulleBorderDash: 'tirets', bulleBorderWidth: 6 });
+    const l = (j) => appels(j, 'setLineDash')[0].args[0][0];
+    assert.ok(l(epais) > l(fin), `${l(epais)} devrait dépasser ${l(fin)}`);
+  });
+
+  test('⚠️ UNE SEULE ÉPAISSEUR : celle POSÉE est celle qui dimensionne le motif', () => {
+    // ⚠️ MUTATION N12, ÉCHAPPÉE PUIS RATTRAPÉE. Remplacer `c.lineWidth = largeurTrait` par une
+    // constante laissait tous les tests au vert : le motif continuait d'être calculé sur l'épaisseur
+    // demandée, pendant que le trait était dessiné à une autre. Deux copies d'une même valeur qui ne
+    // concordaient que par accident — exactement ce que la factorisation de #425b voulait éviter, et
+    // que rien ne retenait.
+    for (const w of [1, 2.25, 3.5, 6]) {
+      const j = dessiner({ bulleBorderDash: 'tirets', bulleBorderWidth: w });
+      const pose = j.filter(e => e.nom === 'set:lineWidth').pop();
+      assert.equal(pose.args[0], w, `épaisseur posée ${pose.args[0]} au lieu de ${w}`);
+      // Et le lien entre les deux : le motif vaut trois fois l'épaisseur, la même.
+      assert.equal(appels(j, 'setLineDash')[0].args[0][0], w * 3);
+    }
+  });
+
+  test('bordure masquée : aucun trait, et le fond garde son opacité', () => {
+    const j = dessiner({ bulleBorderVisible: false, bulleFillOpacity: 0.4 });
+    assert.equal(appels(j, 'stroke').length, 0);
+    assert.equal(appels(j, 'fill')[0].alpha, 0.4);
+  });
+
+  test('⚠️ LE TREMBLÉ CHANGE LE TRACÉ, ET SEULEMENT LE TRACÉ', () => {
+    // La contrainte annoncée en #425a, vérifiée ici sur les deux couches à la fois : le chemin passe
+    // d'un `ellipse` unique à une suite de segments, PENDANT QUE `bubbleEdgePoint` rend toujours le
+    // même point. Si le tremblé se mettait à déplacer le contour, la queue et le hit-test le
+    // suivraient sans qu'aucun test de géométrie ne bronche.
+    const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w: 120, h: 60, bulleBorderRegularity: 'tremble' };
+    const j = dessiner(o);
+    assert.equal(appels(j, 'ellipse').length, 0, 'un contour tremblé ne peut pas être une ellipse exacte');
+    assert.ok(appels(j, 'lineTo').length > 20, 'il doit être échantillonné en segments');
+    const net = bubbleEdgePoint({ x: 0, y: 0, w: 120, h: 60 }, 0.7);
+    const tremblant = bubbleEdgePoint(o, 0.7);
+    assert.deepEqual(tremblant, net, 'bubbleEdgePoint doit ignorer le tremblement');
+  });
+
+  test('le tremblé est STABLE : deux rendus de la même Bulle donnent le même chemin', () => {
+    // Un tirage au hasard à chaque dessin ferait scintiller la Bulle à chaque redessin de la Planche.
+    const o = { bulleBorderRegularity: 'tremble' };
+    const a = appels(dessiner(o), 'lineTo').map(e => e.args.join(','));
+    const b = appels(dessiner(o), 'lineTo').map(e => e.args.join(','));
+    assert.deepEqual(a, b);
+  });
+
+  test('deux Bulles différentes ne tremblent pas de la même façon', () => {
+    // Sinon le tremblé serait un décalage global, et deux bulles voisines se répondraient en écho.
+    const a = appels(dessiner({ id: 'b1', bulleBorderRegularity: 'tremble' }), 'lineTo').map(e => e.args.join(','));
+    const b = appels(dessiner({ id: 'b2', bulleBorderRegularity: 'tremble' }), 'lineTo').map(e => e.args.join(','));
+    assert.notDeepEqual(a, b);
+  });
 });

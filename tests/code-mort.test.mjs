@@ -164,7 +164,12 @@ const EN_ATTENTE = {
   // par #425c, qui pose ces champs dans la fiche du menu de droite, exactement comme
   // `champsLumierePosee3D` l'a été par #420b. Échéance : #425c.
   champsApparenceBulle: '#425c — la fiche pose ces champs, comme #420b l’a fait pour une Lumière',
-  apparenceBulle: '#425b — drawBubble lit ces valeurs pour poser fond, motif et tremblement',
+  // `apparenceBulle` a quitté cette liste : #425b l'appelle depuis `drawBubble`, qui pose l'opacité
+  // sur le remplissage et le motif sur le trait. Échéance tenue, la première du chantier.
+  //
+  // `decalagesTrembleBulle` et `graineTrembleBulle` ne sont PAS entrées ici : la première est
+  // appelée par `drawBubble`, la seconde à l'intérieur du module. Sixième fois que ce garde-fou
+  // évite une exemption qui ne surveillerait rien.
 
   // ⚠️ UN NOM DE PLUS A FAILLI ENTRER ICI, ET IL VALAIT MIEUX LE SUPPRIMER.
   // `apparenceBulleEstCelleDOrigine` était un prédicat « cette Bulle a-t-elle l'aspect d'avant le
@@ -236,6 +241,8 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues — SIX dettes ouvertes, SIX soldées en entier.
     // nouveau depuis que #420c a branché le rendu, et DEUX depuis les fondations de #425a.
+    // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, et UNE
+    // depuis que #425b a branché le dessin.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues.
     //
@@ -247,7 +254,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

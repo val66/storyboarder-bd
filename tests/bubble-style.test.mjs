@@ -26,7 +26,8 @@ import {
   BULLE_OPACITE_DEFAUT,
   TRAIT_PLEIN, TRAIT_POINTILLE, TRAIT_TIRETS, TRAIT_NET, TRAIT_TREMBLE,
   champsApparenceBulle, opaciteRemplissageBulle, motifTraitBulle, regulariteTraitBulle,
-  tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle,
+  tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
+  graineTrembleBulle,
 } from '../src/bubble-style.js';
 
 /**
@@ -212,5 +213,60 @@ describe('Le regroupement compose, il ne recalcule pas', () => {
         assert.equal(a.tremble, amplitudeTrembleBulle(o, w));
       }
     }
+  });
+});
+
+describe('Les décalages du tremblé : une main, pas du bruit blanc', () => {
+  const tremblee = { id: 'b1', bulleBorderRegularity: TRAIT_TREMBLE };
+  const N = 72;
+
+  test('nette : aucun décalage, donc l’appelant garde son tracé d’origine', () => {
+    assert.deepEqual(decalagesTrembleBulle({ id: 'b1' }, 2.25, N), []);
+    assert.deepEqual(decalagesTrembleBulle(tremblee, 2.25, 0), []);
+  });
+
+  test('⚠️ LE BRUIT EST LISSE, et c’est le rendu qui l’a exigé', () => {
+    // ⚠️ MUTATION N13, ÉCHAPPÉE PUIS RATTRAPÉE. La première version tirait un décalage INDÉPENDANT
+    // par point. Tous les tests passaient — le contour changeait, restait stable, différait d'une
+    // Bulle à l'autre — et le rendu montrait une pomme de terre. Une main qui tremble fait des
+    // ondulations larges ; du bruit blanc fait des bosses. Ce qui distingue les deux se mesure :
+    // l'écart entre deux points VOISINS doit rester petit devant l'amplitude.
+    const d = decalagesTrembleBulle(tremblee, 2.25, N);
+    const amplitude = amplitudeTrembleBulle(tremblee, 2.25);
+    let pire = 0;
+    for (let i = 1; i < d.length; i++) {
+      pire = Math.max(pire, Math.abs(d[i].dx - d[i - 1].dx), Math.abs(d[i].dy - d[i - 1].dy));
+    }
+    assert.ok(pire < amplitude * 0.35,
+      `écart maximal entre voisins ${pire.toFixed(3)}, pour une amplitude de ${amplitude.toFixed(3)}`);
+  });
+
+  test('⚠️ ET IL SE REFERME : le contour est une boucle', () => {
+    // ⚠️ MUTATION N14, ÉCHAPPÉE PUIS RATTRAPÉE. Un bruit qui ne boucle pas laisse une MARCHE à
+    // l'endroit exact où le tracé se referme — un défaut visible, sur toutes les Bulles tremblées,
+    // toujours au même endroit, et qu'aucune assertion de stabilité ou d'amplitude ne voit.
+    const d = decalagesTrembleBulle(tremblee, 2.25, N);
+    const amplitude = amplitudeTrembleBulle(tremblee, 2.25);
+    const saut = Math.max(Math.abs(d[d.length - 1].dx - d[0].dx), Math.abs(d[d.length - 1].dy - d[0].dy));
+    assert.ok(saut < amplitude * 0.35, `marche de ${saut.toFixed(3)} à la fermeture`);
+  });
+
+  test('l’amplitude demandée est réellement atteinte, sinon le tremblé serait cosmétique', () => {
+    // L'autre bord du même intervalle : un bruit tellement lisse qu'il ne s'écarte jamais ne
+    // tremblerait pas non plus. Les deux assertions se tiennent par les deux bouts.
+    const d = decalagesTrembleBulle(tremblee, 2.25, N);
+    const amplitude = amplitudeTrembleBulle(tremblee, 2.25);
+    const max = Math.max(...d.map(p => Math.max(Math.abs(p.dx), Math.abs(p.dy))));
+    assert.ok(max > amplitude * 0.5, `écart maximal ${max.toFixed(3)} pour ${amplitude.toFixed(3)}`);
+    assert.ok(max <= amplitude + 1e-9, 'aucun point ne doit dépasser l’amplitude annoncée');
+  });
+
+  test('la graine ne dépend que de l’identifiant, et deux identifiants diffèrent', () => {
+    assert.equal(graineTrembleBulle({ id: 'b1', x: 0 }), graineTrembleBulle({ id: 'b1', x: 999 }));
+    assert.notEqual(graineTrembleBulle({ id: 'b1' }), graineTrembleBulle({ id: 'b2' }));
+    // Une Bulle sans id ne doit pas faire tomber le dessin : elle tremble, faute de mieux, comme
+    // toutes les autres sans id.
+    assert.equal(typeof graineTrembleBulle({}), 'number');
+    assert.ok(Number.isFinite(graineTrembleBulle(null)));
   });
 });

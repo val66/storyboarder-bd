@@ -63,6 +63,10 @@ import {
   zoomDeLImage3D, zoomValide3D,
 } from './image-store.js';
 import { getLoadedImage, imageState } from './image-cache.js';
+// L'apparence d'une Bulle : opacité du fond, motif et régularité du trait. Décidée dans un module
+// pur (#425a), appliquée ici. Les décalages du tremblé s'ajoutent au TRACÉ, jamais au contour rendu
+// par `bubbleEdgePoint` — d'où la queue et le hit-test qui restent d'aplomb.
+import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1371,6 +1375,30 @@ export function getBubbleTailTip(o){
   return { x: cx + (edge.x - cx) * (1 + len), y: cy + (edge.y - cy) * (1 + len) };
 }
 
+/**
+ * Remplit puis cerne le chemin déjà construit d'une Bulle. Les deux branches de forme le faisaient
+ * chacune de leur côté, avec les mêmes trois valeurs par défaut écrites deux fois ; #425b y ajoute
+ * l'opacité et le motif, et deux copies de plus auraient fini par diverger.
+ *
+ * ⚠️ L'OPACITÉ EST POSÉE PUIS REMISE À 1 AVANT LE TRAIT, et ce n'est pas une précaution de style.
+ * `globalAlpha` s'applique à TOUT ce qui suit. Laissé en place, il ferait pâlir le contour et —
+ * plus loin, hors de ce `save()` — le texte. Le réglage deviendrait « effacer la bulle » au lieu de
+ * « poser une voix sur l'image », et l'utilisateur n'aurait plus aucun moyen d'obtenir un fond
+ * transparent sous un trait franc, qui est exactement ce que fait Jungle Juice.
+ */
+function remplirEtCernerBulle3D(c, o, app, largeurTrait){
+  c.globalAlpha = app.opacite;
+  c.fillStyle = o.bulleColor || '#fff';
+  c.fill();
+  c.globalAlpha = 1;
+  if (o.bulleBorderVisible === false) return;
+  c.lineJoin = 'round';
+  c.setLineDash(app.tirets);
+  c.lineWidth = largeurTrait;
+  c.strokeStyle = o.bulleBorderColor || '#23242A';
+  c.stroke();
+}
+
 // Draws a speech Bubble: Oval or Rectangle shape (as chosen, via the right-hand panel) +
 // small triangular tail (whose position around the bubble is adjustable by the user via
 // o.tailAngle/o.tailLen), with the text (description) displayed directly inside.
@@ -1378,6 +1406,29 @@ export function drawBubble(c, o){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const rx = Math.max(1, o.w / 2), ry = Math.max(1, o.h / 2);
   const isRect = bubbleShapeOf(o) === 'rect';
+  // L'épaisseur était lue deux fois, une par branche, avec le même défaut écrit deux fois. Elle sert
+  // désormais aussi à dimensionner le motif et le tremblement : une seule lecture, sinon les trois
+  // pourraient un jour parler d'épaisseurs différentes.
+  const largeurTrait = o.bulleBorderWidth || 2.25;
+  const app = apparenceBulle(o, largeurTrait);
+  // ⚠️ LE TREMBLÉ EST UN DÉTOUR DE TRACÉ, ET IL NE PREND QUE SI ON LE DEMANDE. Une Bulle nette
+  // emprunte exactement le chemin d'avant #425b — `c.ellipse`, `c.rect` — et non une version
+  // échantillonnée « avec des décalages nuls », qui la déplacerait d'un arrondi.
+  const tremble = app.tremble > 0;
+  // Le contour échantillonné, seulement quand il tremble. `bubbleEdgePoint` reste la source du
+  // contour EXACT : la queue s'y accroche et le hit-test l'interroge, tous deux ignorant ces points.
+  const POINTS_TREMBLE = 72;
+  const pointsTrembles = (depuis, jusqu) => {
+    const dec = decalagesTrembleBulle(o, largeurTrait, POINTS_TREMBLE);
+    const pts = [];
+    for (let i = 0; i <= POINTS_TREMBLE; i++) {
+      const t = i / POINTS_TREMBLE;
+      const p = bubbleEdgePoint(o, depuis + (jusqu - depuis) * t);
+      const d = dec[i % dec.length] || { dx: 0, dy: 0 };
+      pts.push({ x: p.x + d.dx, y: p.y + d.dy });
+    }
+    return pts;
+  };
   c.save();
   if (isRect) {
     // Rectangle: same continuous-outline technique as for the oval (cf. else branch), but
@@ -1409,17 +1460,18 @@ export function drawBubble(c, o){
       c.moveTo(base1.x, base1.y);
       c.lineTo(tip.x, tip.y);
       c.lineTo(base2.x, base2.y);
-      for (const p of ordered) c.lineTo(p.x, p.y);
+      if (tremble) for (const p of pointsTrembles(angleBase2, angleBase1 + Math.PI * 2)) c.lineTo(p.x, p.y);
+      else for (const p of ordered) c.lineTo(p.x, p.y);
+    } else if (tremble) {
+      const pts = pointsTrembles(0, Math.PI * 2);
+      c.moveTo(pts[0].x, pts[0].y);
+      for (const p of pts.slice(1)) c.lineTo(p.x, p.y);
     } else {
       // Tail hidden: simple full rectangle, no tail or notch.
       c.rect(o.x, o.y, o.w, o.h);
     }
     c.closePath();
-    c.fillStyle = o.bulleColor || '#fff'; c.fill();
-    if (o.bulleBorderVisible !== false) {
-      c.lineJoin = 'round';
-      c.lineWidth = o.bulleBorderWidth || 2.25; c.strokeStyle = o.bulleBorderColor || '#23242A'; c.stroke();
-    }
+    remplirEtCernerBulle3D(c, o, app, largeurTrait);
   } else {
     c.beginPath();
     if (bubbleTailVisible(o)) {
@@ -1435,17 +1487,18 @@ export function drawBubble(c, o){
       c.moveTo(base1.x, base1.y);
       c.lineTo(tip.x, tip.y);
       c.lineTo(base2.x, base2.y);
-      c.ellipse(cx, cy, rx, ry, 0, angleBase2, angleBase1 + Math.PI * 2, false);
+      if (tremble) for (const p of pointsTrembles(angleBase2, angleBase1 + Math.PI * 2)) c.lineTo(p.x, p.y);
+      else c.ellipse(cx, cy, rx, ry, 0, angleBase2, angleBase1 + Math.PI * 2, false);
+    } else if (tremble) {
+      const pts = pointsTrembles(0, Math.PI * 2);
+      c.moveTo(pts[0].x, pts[0].y);
+      for (const p of pts.slice(1)) c.lineTo(p.x, p.y);
     } else {
       // Tail hidden: simple full ellipse, no tail or notch.
       c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     }
     c.closePath();
-    c.fillStyle = o.bulleColor || '#fff'; c.fill();
-    if (o.bulleBorderVisible !== false) {
-      c.lineJoin = 'round';
-      c.lineWidth = o.bulleBorderWidth || 2.25; c.strokeStyle = o.bulleBorderColor || '#23242A'; c.stroke();
-    }
+    remplirEtCernerBulle3D(c, o, app, largeurTrait);
   }
   c.restore();
 
