@@ -89,6 +89,15 @@ export const I18N_TEXT = [
   ['#sideBubbleShapeSelect option[value="ovale"]', 'Oval', 'Ovale'],
   ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
+  // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
+  // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.
+  ['label[for="sideBubbleBorderDashSelect"]', 'Stroke pattern', 'Motif du trait'],
+  ['#sideBubbleBorderDashSelect option[value="plein"]', 'Solid', 'Plein'],
+  ['#sideBubbleBorderDashSelect option[value="pointille"]', 'Dotted', 'Pointillé'],
+  ['#sideBubbleBorderDashSelect option[value="tirets"]', 'Dashed', 'Tirets'],
+  ['label[for="sideBubbleBorderRegularitySelect"]', 'Stroke regularity', 'Régularité du trait'],
+  ['#sideBubbleBorderRegularitySelect option[value="net"]', 'Clean', 'Net'],
+  ['#sideBubbleBorderRegularitySelect option[value="tremble"]', 'Wobbly', 'Tremblé'],
   // Caméra menu
   ['#sideCameraCloseBtn', null, null, 'title', 'Exit Camera mode (C)', 'Quitter le mode Caméra (C)'],
   ['#sideCameraSection .side-section:nth-of-type(2) > h2', '3D gizmo', 'Repère 3D'],
@@ -545,6 +554,11 @@ export function applyI18n(lang){
   const bubblePaddingLabel = document.querySelector('label[for="sideBubblePaddingInput"]');
   if (bubblePaddingLabel && bubblePaddingLabel.firstChild && bubblePaddingLabel.firstChild.nodeType === 3) {
     bubblePaddingLabel.firstChild.textContent = (lang === 'en' ? 'Inside padding' : 'Écart intérieur') + ' (';
+  }
+  // Même dispositif pour « Opacité du fond (NN%) » (#425c) : le nombre est un span au milieu.
+  const bubbleOpacityLabel = document.querySelector('label[for="sideBubbleFillOpacityInput"]');
+  if (bubbleOpacityLabel && bubbleOpacityLabel.firstChild && bubbleOpacityLabel.firstChild.nodeType === 3) {
+    bubbleOpacityLabel.firstChild.textContent = (lang === 'en' ? 'Fill opacity' : 'Opacité du fond') + ' (';
   }
   // Même dispositif pour « Cadrage (zoom N,N×) » : le nombre est un span au milieu du texte, donc
   // ni setLeadingText ni setTrailingText ne suffisent seuls.

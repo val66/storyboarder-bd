@@ -58,6 +58,8 @@ export const HELP_MANUAL_EN = [
     'The tail can be moved, or hidden if not needed.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
     'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
+    'The stroke also has a pattern — Solid, Dotted, Dashed — and a regularity: Clean or Wobbly, for a hand-drawn outline. Hiding the border hides all four settings.',
+    'Fill opacity, under "Bubble appearance", affects the fill only: the stroke and the text keep their density. At 0%, only the outline and the text remain.',
   ]},
   { id: 'cases', title: 'Panels', paragraphs: [
     'Right-click an empty area of the page, then "Create a panel".',
@@ -253,6 +255,8 @@ export const HELP_MANUAL_FR = [
     'Pointe déplaçable, ou masquable si besoin.',
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
     "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",
+    "Le trait se règle aussi en motif — Plein, Pointillé, Tirets — et en régularité : Net ou Tremblé, pour un contour tracé à la main. Masquer la bordure masque les quatre réglages.",
+    "L'opacité du fond, sous « Apparence de la bulle », ne touche que le remplissage : le trait et le texte gardent leur densité. À 0 %, seuls le contour et le texte subsistent.",
   ]},
   { id: 'cases', title: 'Cases', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une case ».',

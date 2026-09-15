@@ -399,6 +399,13 @@
           <label for="sideBubbleBgColorInput">Couleur du fond</label>
           <input type="color" id="sideBubbleBgColorInput" value="#ffffff">
         </div>
+        <!-- L'opacité vit ici, avec la couleur du fond, et NON dans la section Bordure : elle ne
+             porte que sur le remplissage (cf. docs/en/bubble-styles.md). La ranger sous « Bordure »
+             ferait croire qu'elle pâlit aussi le trait, ce que #425b interdit explicitement. -->
+        <div id="sideBubbleFillOpacityWrap" class="tome-format">
+          <label for="sideBubbleFillOpacityInput">Opacité du fond (<span id="sideBubbleFillOpacityValue">100</span>%)</label>
+          <input type="range" id="sideBubbleFillOpacityInput" min="0" max="100" step="1" value="100">
+        </div>
       </div>
     </div>
     <div id="sideBubbleBorderSection" class="side-section" style="display:none;">
@@ -418,6 +425,21 @@
       <div id="sideBubbleBorderColorWrap" class="tome-format side-border-color">
         <label for="sideBubbleBorderColorInput">Couleur de la bordure</label>
         <input type="color" id="sideBubbleBorderColorInput" value="#23242a">
+      </div>
+      <div id="sideBubbleBorderDashWrap" class="tome-format side-border-color">
+        <label for="sideBubbleBorderDashSelect">Motif du trait</label>
+        <select id="sideBubbleBorderDashSelect">
+          <option value="plein" selected>Plein</option>
+          <option value="pointille">Pointillé</option>
+          <option value="tirets">Tirets</option>
+        </select>
+      </div>
+      <div id="sideBubbleBorderRegularityWrap" class="tome-format side-border-color">
+        <label for="sideBubbleBorderRegularitySelect">Régularité du trait</label>
+        <select id="sideBubbleBorderRegularitySelect">
+          <option value="net" selected>Net</option>
+          <option value="tremble">Tremblé</option>
+        </select>
       </div>
     </div>
     <div id="sideCameraSection" style="display:none;">

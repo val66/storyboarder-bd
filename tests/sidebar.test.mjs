@@ -17,8 +17,9 @@ import {
   elementsInPanel,
   renderSidePersonas,
   afficherManuelLateral, masquerManuelLateral, manuelEstAffiche,
+  majAffichageReglagesTraitBulle3D, updateSidePanel,
 } from '../src/sidebar.js';
-import { S } from '../src/state.js';
+import { S, currentPage } from '../src/state.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
@@ -761,5 +762,111 @@ describe('manuelEstAffiche : la question est posée au DOM, pas aux drapeaux', (
     section().style.display = 'none';
     S.selectedId = null; S.pageSelected = false; S.helpPanelDismissed = false;
     assert.equal(manuelEstAffiche(), false);
+  });
+});
+
+// ── #425c — LES RÉGLAGES DE TRAIT D'UNE BULLE ───────────────────────────────────────────────────
+
+describe('#425c — masquer la bordure masque ce qui ne règle QUE le trait', () => {
+  const bloc = (id) => document.getElementById(id);
+  const TRAIT = ['sideBubbleBorderWidthWrap', 'sideBubbleBorderColorWrap',
+                 'sideBubbleBorderDashWrap', 'sideBubbleBorderRegularityWrap'];
+
+  test('les quatre blocs de trait suivent la case à cocher, ensemble', () => {
+    // ⚠️ LA LISTE VIVAIT EN DOUBLE avant #425c — une copie dans la bascule d'events.js, une autre
+    // dans le rafraîchissement de la fiche — et ce chantier y ajoutait deux entrées à chacune. Le
+    // test vise la fonction unique, pour qu'un cinquième réglage ne puisse pas n'être ajouté qu'à
+    // une des deux moitiés.
+    majAffichageReglagesTraitBulle3D(false);
+    TRAIT.forEach(id => assert.equal(bloc(id).style.display, 'none', `${id} devrait être masqué`));
+    majAffichageReglagesTraitBulle3D(true);
+    TRAIT.forEach(id => assert.equal(bloc(id).style.display, 'block', `${id} devrait être visible`));
+  });
+
+  test('⚠️ L’OPACITÉ DU FOND N’EN FAIT PAS PARTIE : elle ne règle pas le trait', () => {
+    // Une Bulle sans bordure reste une Bulle dont le fond se règle. Ranger l'opacité avec les
+    // réglages de trait la ferait disparaître au moment précis où elle devient le seul moyen de
+    // distinguer deux bulles — le cas de Jungle Juice, sans filet, relevé dans le corpus.
+    const avant = bloc('sideBubbleFillOpacityWrap').style.display;
+    majAffichageReglagesTraitBulle3D(false);
+    assert.equal(bloc('sideBubbleFillOpacityWrap').style.display, avant,
+      'le bloc d’opacité ne doit pas bouger avec la bordure');
+  });
+});
+
+describe('#425c — les valeurs des menus SONT les valeurs persistées', () => {
+  const HTML = sourceSansCommentaires(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
+  const STYLE = sourceSansCommentaires(readFileSync(new URL('../src/bubble-style.js', import.meta.url), 'utf8'));
+
+  test('aucune traduction entre le menu et le fichier enregistré', () => {
+    // ⚠️ UNE VALEUR D'OPTION EST UNE DONNÉE PERSISTÉE. Une faute de frappe dans un `value` ne
+    // ferait rien planter : `motifTraitBulle` retombe sur le trait plein, et l'utilisateur verrait
+    // simplement un réglage sans effet — le défaut le plus coûteux à diagnostiquer. Les chaînes
+    // sont donc confrontées à celles que le module déclare.
+    const constantes = Object.fromEntries(
+      [...STYLE.matchAll(/export const (TRAIT_\w+) = '([^']+)';/g)].map(m => [m[1], m[2]]));
+    for (const nom of ['TRAIT_PLEIN', 'TRAIT_POINTILLE', 'TRAIT_TIRETS', 'TRAIT_NET', 'TRAIT_TREMBLE']) {
+      assert.ok(constantes[nom], `${nom} introuvable dans bubble-style.js`);
+      assert.ok(HTML.includes(`value="${constantes[nom]}"`),
+        `aucune option ne porte la valeur « ${constantes[nom] }» de ${nom}`);
+    }
+  });
+
+  test('les deux sélecteurs n’offrent QUE des valeurs connues du module', () => {
+    // L'autre sens : une option en trop — « ondulé », « tireté » — serait enregistrée telle quelle
+    // et silencieusement ignorée au dessin.
+    const connues = new Set([...STYLE.matchAll(/export const TRAIT_\w+ = '([^']+)';/g)].map(m => m[1]));
+    for (const id of ['sideBubbleBorderDashSelect', 'sideBubbleBorderRegularitySelect']) {
+      const i = HTML.indexOf(`id="${id}"`);
+      assert.ok(i > 0, `${id} introuvable`);
+      const bloc = HTML.slice(i, HTML.indexOf('</select>', i));
+      [...bloc.matchAll(/value="([^"]+)"/g)].forEach(m => assert.ok(connues.has(m[1]),
+        `${id} propose « ${m[1]} », que bubble-style.js ne connaît pas`));
+    }
+  });
+});
+
+describe('#425c — la fiche montre ce que le dessin applique, et la création pose les champs', () => {
+  const nouvelleBulle = () => {
+    // On passe par le VRAI chemin de création — l'entrée « Créer une bulle de dialogue » du menu
+    // contextuel — plutôt que de fabriquer un objet à la main : c'est le seul moyen de vérifier
+    // que les champs d'apparence sont bien posés là où l'application les pose.
+    S.pendingCreatePos = { x: 200, y: 200 };
+    document.getElementById('ctxCreateBubble').onclick();
+    const page = currentPage();
+    return page.objects[page.objects.length - 1];
+  };
+
+  test('⚠️ UNE BULLE NEUVE PORTE LES CHAMPS D’APPARENCE', () => {
+    // ⚠️ MUTATION P7, ÉCHAPPÉE PUIS RATTRAPÉE. Retirer `champsApparenceBulle()` de la création ne
+    // faisait tomber aucun test : les résolveurs ont des défauts, donc le DESSIN restait correct.
+    // Ce qui cassait, c'est la fiche — un curseur d'opacité sans champ à lire — et, plus tard, les
+    // styles enregistrés, qui copieraient un objet auquel il manque trois clés.
+    const b = nouvelleBulle();
+    assert.equal(b.type, 'bulle');
+    for (const champ of ['bulleFillOpacity', 'bulleBorderDash', 'bulleBorderRegularity']) {
+      assert.ok(Object.prototype.hasOwnProperty.call(b, champ), `champ « ${champ} » absent`);
+    }
+  });
+
+  test('⚠️ LE CURSEUR MONTRE LA VALEUR RÉSOLUE, PAS LE CHAMP BRUT', () => {
+    // ⚠️ MUTATION P4, ÉCHAPPÉE PUIS RATTRAPÉE. Lire `sel.bulleFillOpacity || 1` dans la fiche donne
+    // 100 % pour un fond volontairement invisible, pendant que le dessin, lui, applique bien 0. La
+    // fiche mentirait sur l'état réel de la Bulle — et l'utilisateur, en relâchant le curseur,
+    // écraserait son propre réglage. C'est le piège du test de vérité, une seconde fois.
+    const b = nouvelleBulle();
+    b.bulleFillOpacity = 0;
+    S.selectedId = b.id;
+    updateSidePanel();
+    assert.equal(String(document.getElementById('sideBubbleFillOpacityValue').textContent), '0');
+    assert.equal(String(document.getElementById('sideBubbleFillOpacityInput').value), '0');
+  });
+
+  test('et une Bulle sans le champ affiche 100 %, pas une case vide', () => {
+    const b = nouvelleBulle();
+    delete b.bulleFillOpacity;
+    S.selectedId = b.id;
+    updateSidePanel();
+    assert.equal(String(document.getElementById('sideBubbleFillOpacityValue').textContent), '100');
   });
 });

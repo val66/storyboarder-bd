@@ -160,12 +160,11 @@ const EN_ATTENTE = {
   // revient, et toujours pour le même motif : résoudre une opacité, un motif de trait et une
   // amplitude se teste sous Node ; ce que `drawBubble` en fait sur un canevas, non.
   //
-  // `champsApparenceBulle` est la liste des champs du chantier, à UN SEUL endroit. Elle sera appelée
-  // par #425c, qui pose ces champs dans la fiche du menu de droite, exactement comme
-  // `champsLumierePosee3D` l'a été par #420b. Échéance : #425c.
-  champsApparenceBulle: '#425c — la fiche pose ces champs, comme #420b l’a fait pour une Lumière',
   // `apparenceBulle` a quitté cette liste : #425b l'appelle depuis `drawBubble`, qui pose l'opacité
-  // sur le remplissage et le motif sur le trait. Échéance tenue, la première du chantier.
+  // sur le remplissage et le motif sur le trait. `champsApparenceBulle` l'a quittée à son tour :
+  // #425c l'appelle à la création d'une Bulle, pour que la liste des champs n'existe qu'à un seul
+  // endroit. La dette de #425a est donc remboursée EN ENTIER, comme celles de #403a, #414a et #420a
+  // avant elle, et toujours pour la même raison : chaque échéance était un NUMÉRO DE TÂCHE.
   //
   // `decalagesTrembleBulle` et `graineTrembleBulle` ne sont PAS entrées ici : la première est
   // appelée par `drawBubble`, la seconde à l'intérieur du module. Sixième fois que ce garde-fou
@@ -243,6 +242,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // nouveau depuis que #420c a branché le rendu, et DEUX depuis les fondations de #425a.
     // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, et UNE
     // depuis que #425b a branché le dessin.
+    // que #425b a branché le dessin, et ZÉRO depuis que #425c a branché la fiche.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues.
     //
@@ -254,7 +254,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

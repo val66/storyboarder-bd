@@ -17,6 +17,7 @@ import { lumiereDeCase3D, projeterSurDome3D, geometrieDome3D,
 import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
+import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -124,10 +125,36 @@ const sideBubbleBorderWidthSelect= document.getElementById('sideBubbleBorderWidt
 const sideBubbleBorderColorInput = document.getElementById('sideBubbleBorderColorInput');
 const sideBubbleBorderWidthWrap  = document.getElementById('sideBubbleBorderWidthWrap');
 const sideBubbleBorderColorWrap  = document.getElementById('sideBubbleBorderColorWrap');
+const sideBubbleBorderDashWrap   = document.getElementById('sideBubbleBorderDashWrap');
+const sideBubbleBorderDashSelect = document.getElementById('sideBubbleBorderDashSelect');
+const sideBubbleBorderRegularityWrap   = document.getElementById('sideBubbleBorderRegularityWrap');
+const sideBubbleBorderRegularitySelect = document.getElementById('sideBubbleBorderRegularitySelect');
+const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacityInput');
+const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
 const sideBubbleTailToggle = document.getElementById('sideBubbleTailToggle');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
+/**
+ * Montre ou cache d'un bloc les réglages qui ne pilotent QUE le trait.
+ *
+ * ⚠️ QUATRE BLOCS, UNE SEULE DÉCISION. Épaisseur, couleur, motif et régularité n'ont aucun sens
+ * quand la bordure est masquée : les laisser visibles proposerait de régler un trait qui ne sera
+ * pas dessiné. La liste vivait en double — une copie dans la bascule d'events.js, une autre dans le
+ * rafraîchissement de la fiche — et #425c en ajoutait deux entrées à chacune. Deux copies d'une
+ * même décision ne concordent que le jour où on les écrit.
+ *
+ * ⚠️ L'OPACITÉ DU FOND N'EST PAS DANS LA LISTE, et c'est le point. Elle porte sur le remplissage,
+ * pas sur le trait : une Bulle sans bordure reste une Bulle dont le fond se règle.
+ */
+export function majAffichageReglagesTraitBulle3D(bordureVisible){
+  const v = bordureVisible ? 'block' : 'none';
+  for (const bloc of [sideBubbleBorderWidthWrap, sideBubbleBorderColorWrap,
+                      sideBubbleBorderDashWrap, sideBubbleBorderRegularityWrap]) {
+    if (bloc) bloc.style.display = v;
+  }
+}
+
 const rightPanel = document.getElementById('rightPanel');
 const camSensRotInput = document.getElementById('camSensRotInput');
 const camSensRotValue = document.getElementById('camSensRotValue');
@@ -1035,8 +1062,15 @@ function updateSidePanelImpl(){
     sideBubbleBorderToggle.checked = sel.bulleBorderVisible !== false;
     sideBubbleBorderWidthSelect.value = sel.bulleBorderWidth || 2.25;
     sideBubbleBorderColorInput.value  = sel.bulleBorderColor  || '#23242a';
-    sideBubbleBorderWidthWrap.style.display  = sideBubbleBorderToggle.checked ? 'block' : 'none';
-    sideBubbleBorderColorWrap.style.display  = sideBubbleBorderToggle.checked ? 'block' : 'none';
+    sideBubbleBorderDashSelect.value = sel.bulleBorderDash || TRAIT_PLEIN;
+    sideBubbleBorderRegularitySelect.value = sel.bulleBorderRegularity || TRAIT_NET;
+    // Ratio persisté, pourcentage affiché : la conversion se fait ici et dans l'écouteur, nulle
+    // part ailleurs. Et `opaciteRemplissageBulle` est interrogée plutôt que le champ brut, pour que
+    // la fiche montre EXACTEMENT ce que le dessin applique — y compris quand la valeur est absente.
+    const opacitePct = Math.round(opaciteRemplissageBulle(sel) * 100);
+    sideBubbleFillOpacityInput.value = opacitePct;
+    sideBubbleFillOpacityValue.textContent = opacitePct;
+    majAffichageReglagesTraitBulle3D(sideBubbleBorderToggle.checked);
     sideBubbleTailToggle.checked = sel.tailVisible !== false;
     sideBubbleShapeSelect.value = sel.bulleShape === 'rect' ? 'rect' : 'ovale';
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);

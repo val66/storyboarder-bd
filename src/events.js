@@ -79,6 +79,7 @@ import {
   CHILD_DESIGN_SIZE_3D, PERSONA_SKELETON_3D, PERSONA_EDITOR_MODEL_ID,
   ARCHETYPES_3D,
 } from './constants.js';
+import { champsApparenceBulle } from './bubble-style.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -137,6 +138,7 @@ import {
   refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
 
   manuelEstAffiche, rafraichirSectionLumiere,
+  majAffichageReglagesTraitBulle3D,
 } from './sidebar.js';
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -6725,7 +6727,9 @@ document.getElementById('ctxCreateBubble').onclick = () => {
   const bw = 170, bh = 100;
   const bx = clamp(x - bw / 2, 0, page.w - bw);
   const by = clamp(y - bh / 2, 0, page.h - bh);
-  const obj = { id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: 'ovale', bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT };
+  // Les champs d'apparence de #425a sont posés par leur module, pas recopiés ici : une seconde
+  // liste des mêmes valeurs par défaut finirait par s'écarter de celle que le dessin consulte.
+  const obj = Object.assign({ id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: 'ovale', bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT }, champsApparenceBulle());
   page.objects.push(obj);
   S.selectedId = obj.id; S.selectedRoomId = null;
   drawCurrentPage();
@@ -7326,17 +7330,14 @@ sideBorderColorInput.addEventListener('change', () => { S.sideBorderColorSnapsho
 
 // "Border" section of the Bubble menu
 const sideBubbleBorderToggle     = document.getElementById('sideBubbleBorderToggle');
-const sideBubbleBorderWidthWrap  = document.getElementById('sideBubbleBorderWidthWrap');
 const sideBubbleBorderWidthSelect= document.getElementById('sideBubbleBorderWidthSelect');
-const sideBubbleBorderColorWrap  = document.getElementById('sideBubbleBorderColorWrap');
 const sideBubbleBorderColorInput = document.getElementById('sideBubbleBorderColorInput');
 
 sideBubbleBorderToggle.addEventListener('change', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
   snapshot();
   S.sideDescTarget.bulleBorderVisible = sideBubbleBorderToggle.checked;
-  sideBubbleBorderWidthWrap.style.display  = sideBubbleBorderToggle.checked ? 'block' : 'none';
-  sideBubbleBorderColorWrap.style.display  = sideBubbleBorderToggle.checked ? 'block' : 'none';
+  majAffichageReglagesTraitBulle3D(sideBubbleBorderToggle.checked);
   drawCurrentPage();
 });
 // [STATE→S] let S.sideBubbleBorderWidthSnapshotTaken = false;
@@ -7354,6 +7355,44 @@ sideBubbleBorderColorInput.addEventListener('input', () => {
   drawCurrentPage();
 });
 sideBubbleBorderColorInput.addEventListener('change', () => { S.sideBubbleBorderColorSnapshotTaken = false; });
+
+// Motif et régularité du trait (#425c). Deux sélecteurs, deux champs, et AUCUNE conversion ici :
+// les valeurs des `<option>` sont exactement les chaînes persistées de bubble-style.js. Traduire
+// « Pointillé » en `pointille` à cet endroit ferait une seconde table de correspondance, dont rien
+// ne garantirait qu'elle reste d'accord avec la première.
+const sideBubbleBorderDashSelect = document.getElementById('sideBubbleBorderDashSelect');
+const sideBubbleBorderRegularitySelect = document.getElementById('sideBubbleBorderRegularitySelect');
+
+sideBubbleBorderDashSelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  S.sideDescTarget.bulleBorderDash = sideBubbleBorderDashSelect.value;
+  drawCurrentPage();
+});
+sideBubbleBorderRegularitySelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  S.sideDescTarget.bulleBorderRegularity = sideBubbleBorderRegularitySelect.value;
+  drawCurrentPage();
+});
+
+// Opacité du fond (#425c). Curseur en POURCENTS à l'écran, ratio dans la donnée : un pourcentage
+// persisté obligerait chaque lecteur à diviser, et le premier qui oublierait obtiendrait une bulle
+// cent fois trop opaque — c'est-à-dire opaque, donc un défaut muet.
+const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacityInput');
+const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
+// [STATE→S] let S.sideBubbleFillOpacitySnapshotTaken = false;
+sideBubbleFillOpacityInput.addEventListener('input', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  // Un glisser continu ne doit produire QU'UNE entrée d'annulation, comme pour les couleurs et
+  // l'écart intérieur : sans cela, revenir en arrière une fois ne défait qu'un pixel de curseur.
+  if (!S.sideBubbleFillOpacitySnapshotTaken) { snapshot(); S.sideBubbleFillOpacitySnapshotTaken = true; }
+  const pct = parseInt(sideBubbleFillOpacityInput.value, 10);
+  sideBubbleFillOpacityValue.textContent = pct;
+  S.sideDescTarget.bulleFillOpacity = pct / 100;
+  drawCurrentPage();
+});
+sideBubbleFillOpacityInput.addEventListener('change', () => { S.sideBubbleFillOpacitySnapshotTaken = false; });
 
 // Bubble colors: background + text
 const sideBubbleBgColorInput   = document.getElementById('sideBubbleBgColorInput');
