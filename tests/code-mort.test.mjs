@@ -155,6 +155,26 @@ const EN_ATTENTE = {
   // CE QUE CET ÉPISODE APPREND, et qui vaut d'être gardé : une dette à échéance ne tient que si
   // l'échéance est un NUMÉRO DE TÂCHE, pas une intention. « à brancher plus tard » n'aurait rien
   // fait échouer le jour où « plus tard » serait passé.
+
+  // #425a — L'APPARENCE D'UNE BULLE : LA DÉCISION AVANT SON DESSIN. Quatrième fois que cette figure
+  // revient, et toujours pour le même motif : résoudre une opacité, un motif de trait et une
+  // amplitude se teste sous Node ; ce que `drawBubble` en fait sur un canevas, non.
+  //
+  // `champsApparenceBulle` est la liste des champs du chantier, à UN SEUL endroit. Elle sera appelée
+  // par #425c, qui pose ces champs dans la fiche du menu de droite, exactement comme
+  // `champsLumierePosee3D` l'a été par #420b. Échéance : #425c.
+  champsApparenceBulle: '#425c — la fiche pose ces champs, comme #420b l’a fait pour une Lumière',
+  apparenceBulle: '#425b — drawBubble lit ces valeurs pour poser fond, motif et tremblement',
+
+  // ⚠️ UN NOM DE PLUS A FAILLI ENTRER ICI, ET IL VALAIT MIEUX LE SUPPRIMER.
+  // `apparenceBulleEstCelleDOrigine` était un prédicat « cette Bulle a-t-elle l'aspect d'avant le
+  // chantier ». Il n'aurait JAMAIS eu d'appelant dans l'application : il n'existait que pour un
+  // test, et il redisait en un second endroit ce que ce test assertait déjà — au point qu'il a
+  // fallu un test supplémentaire pour l'empêcher de répondre toujours vrai.
+  //
+  // Une exemption l'aurait gardé en vie sous couvert de surveillance. C'est la cinquième fois que
+  // ce garde-fou fait mieux que signaler du code mort : il a posé la question « à quoi sert cet
+  // export ? », et la réponse honnête était « à rien que le test ne fasse mieux lui-même ».
 };
 
 function exportsSansAppelant(){
@@ -215,6 +235,9 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // nouveau depuis que #422d a branché l'ombre d'une source posée.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues — SIX dettes ouvertes, SIX soldées en entier.
+    // nouveau depuis que #420c a branché le rendu, et DEUX depuis les fondations de #425a.
+    // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
+    // tenues.
     //
     // ⚠️ UN TROISIÈME NOM A ÉTÉ ÉCARTÉ PLUTÔT QU'INSCRIT, et c'est l'usage le plus utile qu'on ait
     // fait de ce fichier. `apparenceBulleEstCelleDOrigine` n'aurait jamais eu d'appelant dans
@@ -224,7 +247,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
