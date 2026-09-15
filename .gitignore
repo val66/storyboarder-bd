@@ -31,3 +31,12 @@ essai-*.jpg
 
 # Projet d essai de #406a : genere par script, lourd en references, sans interet en historique.
 Projets/essai-volumineux.json
+
+# Matériel de travail de l'atlas des Bulles (#424, #425). Reproductions de planches
+# publiées, photographiées pour étude : elles servent de référence locale au chantier,
+# elles n'ont pas à être redistribuées dans le dépôt. Voir docs/fr/bubble-styles.md,
+# section « Ce que chaque forme doit reproduire », qui en consigne le contenu par écrit.
+atlas-sources/
+atlas-des-bulles-v2.html
+atlas-des-bulles-methode.html
+atlas-des-bulles-corrections.md

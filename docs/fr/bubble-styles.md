@@ -201,8 +201,33 @@ larges et inégales reliées par des **côtés concaves**. Ce qui m'a fait tourn
 la même chose — juger une forme sur une vue d'ensemble au lieu de zoomer une fois.
 
 ⚠️ **CE QUE ÇA IMPOSE AU CHANTIER.** Aucune valeur de l'axe **forme** ne doit entrer dans le code sans
-un fragment de planche en regard. Les fragments sont conservés dans `atlas-sources/`, avec leur
-provenance dans `manifeste.json`.
+un fragment de planche en regard.
+
+Ces fragments sont des reproductions de planches publiées, photographiées pour étude. Ils **ne sont
+pas dans le dépôt** — `.gitignore` les écarte délibérément — et vivent en local dans
+`atlas-sources/`, avec leur provenance dans `manifeste.json`. La section suivante existe pour cette
+raison : elle consigne par écrit ce que chaque fragment établit, afin que le chantier reste
+reprenable à partir du seul dépôt.
+
+## Ce que chaque forme doit reproduire
+
+Relevé au zoom, fragment par fragment. La colonne **piège** dit ce qui a déjà été dessiné de travers
+au moins une fois.
+
+| forme | œuvre | géométrie | piège |
+|---|---|---|---|
+| ellipse | Eleceed, Jungle Juice | ellipse rigoureusement géométrique, trait d'épaisseur constante, **souvent sans queue** — posée sur l'intervalle blanc entre deux cases, la position remplace la queue | la décrire comme « tracée à main levée » ; c'est l'erreur d'origine de l'atlas |
+| rectangle net | Imperium | **aucun filet**, angles vifs, lettrage carré en capitales serrées | lui dessiner une bordure |
+| octogone à coins coupés | Geste des Chevaliers Dragons | très **plat et large**, ocre, coins chanfreinés asymétriques, sans queue, capitales manuscrites brunes | le dessiner comme un octogone régulier |
+| rectangle arrondi | Blacksad | coins très arrondis, **blanc cassé sans contour visible**, queue triangulaire courte ; le récitatif est un rectangle à angles vifs **gris-vert pâle**, cerné d'un filet fin | l'appeler « crème » ou « sépia » : il tire vers le vert de lichen |
+| étoile / cri | Eleceed, Mutafukaz | pointes inégales, texte en capitales grasses ; la surface inscriptible est **très inférieure** à la boîte englobante | centrer le texte dans la boîte englobante le fait sortir par les pointes |
+| dents de scie | corpus comics et manga | c'est le **contour entier** qui se hérisse, pas la queue | le confondre avec la queue en éclair, qui est l'autre solution au même problème |
+| écu à côtés concaves | Okko | cinq à huit **pointes larges et inégales**, reliées par des côtés qui **se creusent vers l'intérieur** en arcs concaves ; **pointe basse allongée faisant office de queue** ; contour gris épais, remplissage crème, ombre portée douce | trois descriptions fausses à ce jour : « hexagone à bords droits », « festonné », « segments parfaitement droits » |
+| couronne d'épines | Croquemitaine | pointes rayonnantes tout autour, **aucune queue** | lui ajouter une queue par symétrie avec les autres |
+| bande à coins arrondis | Croquemitaine | petite bande gris-bleu, **coins doux et arrondis** comme un ruban adhésif, texte entre guillemets, légèrement inclinée | « bords déchirés » : la légende interne du document d'origine disait « ruban adhésif », et elle avait raison |
+| parchemin à bords irréguliers | La Licorne | rectangle aux bords à peine irréguliers, **aucun filet, aucune queue** ; le même objet porte le récit ET la parole, seul le **ton** change — récit teinté fondu dans la page, parole plus claire et détachée avec une ombre portée | l'aplat uniforme : le dispositif EST le rapport de valeur entre le cartouche et son fond, très contrasté et marbré |
+| tache d'encre | Lecteur omniscient | masse amorphe, **cœur opaque et bords translucides** laissant passer le fond, mouchetis dont la taille **et** l'opacité décroissent avec la distance, quelques filaments ; lettrage manuscrit blanc penché | la dessiner en noir plat : il n'y a pas de remplissage distinct d'un contour, **le bord EST l'effet** |
+| couronne rayonnante | Eleceed, Lecteur omniscient | ellipse **parfaitement lisse**, **sans contour lissé propre** — la frontière est faite par les bases des traits ; frange de traits très fins, longueurs peu homogènes, épaisseur de la couronne **variable selon l'angle** | lui tracer une ellipse pleine par-dessus la frange ; la source n'en a pas |
 
 ## Le corpus, et son statut
 

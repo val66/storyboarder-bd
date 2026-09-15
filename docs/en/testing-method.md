@@ -71,6 +71,18 @@ assert.ok(overhang <= 0.012, …);
   through `ensurePersonaScene3D()`: `renderPanelScene3D`, `projectElementCenterToCanvas3D`,
   `panelDragRayOnPlane`…
 - **Event wiring.** The listeners themselves are not tested; their logic is, once extracted.
+- **What a drawing looks like.** A test can check that a path is closed, that a colour comes from a
+  token, that a geometry is the one computed. It cannot tell you that a text overflows its bubble,
+  nor that a shape does not resemble its source.
+
+⚠️ **AND THAT LAST POINT HAS A MEASURED COST.** On project #425, eleven drawings had text spilling
+out of its shape, and three shapes did not resemble the page they were taken from. No test flagged
+them, because no test could. They were found by **rendering the drawings to images and looking at
+them**, then fixed over four passes.
+
+The rule that follows: when a function's output is a picture, verification means **producing the
+picture and opening it**. The rest of the suite says the code does what it was asked; it never says
+the right thing was asked.
 
 The header of each test file details its own exclusions. Keep them up to date: a stale exclusion
 suggests a coverage that does not exist.

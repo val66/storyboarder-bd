@@ -194,8 +194,32 @@ joined by **concave sides**. What kept me going in circles is always the same th
 from an overall view instead of zooming in once.
 
 ⚠️ **WHAT THIS IMPOSES ON THE PROJECT.** No value of the **shape** axis enters the code without a
-fragment of a page beside it. The fragments are kept in `atlas-sources/`, with their provenance in
-`manifeste.json`.
+fragment of a page beside it.
+
+Those fragments are reproductions of published pages, photographed for study. They are **not in the
+repository** — `.gitignore` deliberately keeps them out — and live locally in `atlas-sources/`, with
+their provenance in `manifeste.json`. The next section exists for that reason: it records in writing
+what each fragment establishes, so the project stays resumable from the repository alone.
+
+## What each shape must reproduce
+
+Surveyed at full zoom, fragment by fragment. The **trap** column says what has already been drawn
+wrong at least once.
+
+| shape | work | geometry | trap |
+|---|---|---|---|
+| ellipse | Eleceed, Jungle Juice | strictly geometric ellipse, stroke of constant width, **often with no tail** — set on the white gap between two panels, position replaces the tail | describing it as "freehand-drawn"; that is the atlas's original error |
+| plain rectangle | Imperium | **no stroke at all**, sharp corners, squared lettering in tight capitals | giving it a border |
+| chamfered octagon | Geste des Chevaliers Dragons | very **flat and wide**, ochre, asymmetric chamfers, no tail, brown handwritten capitals | drawing it as a regular octagon |
+| rounded rectangle | Blacksad | very round corners, **off-white with no visible outline**, short triangular tail; the caption box is a sharp-cornered **pale grey-green** rectangle with a thin stroke | calling it "cream" or "sepia": it leans towards lichen green |
+| star / shout | Eleceed, Mutafukaz | unequal points, text in bold capitals; the writable area is **far smaller** than the bounding box | centring the text in the bounding box pushes it out through the points |
+| sawtooth outline | comics and manga corpus | it is the **whole outline** that bristles, not the tail | confusing it with the lightning tail, which is the other answer to the same problem |
+| concave-sided shield | Okko | five to eight **wide, unequal points**, joined by sides that **bow inward** in concave arcs; **elongated bottom point acting as the tail**; thick grey outline, cream fill, soft drop shadow | three wrong descriptions so far: "straight-edged hexagon", "scalloped", "perfectly straight segments" |
+| thorn crown | Croquemitaine | points radiating all around, **no tail** | adding a tail by symmetry with the others |
+| round-cornered strip | Croquemitaine | small grey-blue strip, **soft rounded corners** like adhesive tape, text in quotation marks, slightly tilted | "torn edges": the original document's own caption said "adhesive tape", and it was right |
+| ragged-edged parchment | La Licorne | rectangle with barely irregular edges, **no stroke, no tail**; the same object carries narration AND speech, only the **tone** changes — narration tinted and blended into the page, speech lighter and detached with a drop shadow | the flat fill: the device IS the value relation between the box and its background, which is heavily contrasted and mottled |
+| ink splat | Omniscient Reader | amorphous mass, **opaque core and translucent edges** letting the background through, speckling whose size **and** opacity decrease with distance, a few filaments; slanted white handwritten lettering | drawing it flat black: there is no fill distinct from an outline, **the edge IS the effect** |
+| radiating crown | Eleceed, Omniscient Reader | **perfectly smooth** ellipse, with **no outline of its own** — the boundary is formed by the bases of the strokes; fringe of very fine strokes, unevenly long, crown thickness **varying with angle** | drawing a solid ellipse over the fringe; the source has none |
 
 ## The corpus, and its status
 

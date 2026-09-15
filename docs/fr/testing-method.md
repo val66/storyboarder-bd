@@ -75,6 +75,18 @@ assert.ok(debord <= 0.012, …);
   `projectElementCenterToCanvas3D`, `panelDragRayOnPlane`…
 - **Le câblage des événements.** Les écouteurs eux-mêmes ne sont pas testés ; leur logique l'est,
   une fois extraite.
+- **Ce à quoi un dessin ressemble.** Un test peut vérifier qu'un chemin est fermé, qu'une couleur
+  vient bien d'un jeton, qu'une géométrie est celle qu'on a calculée. Il ne peut pas dire qu'un
+  texte sort de sa bulle, ni qu'une forme ne ressemble pas à sa source.
+
+⚠️ **ET CE DERNIER POINT A UN COÛT MESURÉ.** Sur le chantier #425, onze dessins avaient du texte qui
+débordait de sa forme, et trois formes ne ressemblaient pas à la planche dont elles étaient tirées.
+Aucun test ne les a signalés, parce qu'aucun test ne pouvait. Ils ont été trouvés en **rendant les
+dessins en image et en les regardant**, puis corrigés en quatre passes.
+
+La règle qui en sort : quand la sortie d'une fonction est une image, la vérification est de
+**produire l'image et de l'ouvrir**. Le reste de la suite dit que le code fait ce qu'on lui a
+demandé ; elle ne dit jamais qu'on lui a demandé la bonne chose.
 
 L'en-tête de chaque fichier de test détaille ses propres exclusions. Les tenir à jour : une exclusion
 périmée fait croire à une couverture qui n'existe pas.
