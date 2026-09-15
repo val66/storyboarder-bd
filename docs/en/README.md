@@ -45,6 +45,7 @@ down.
 | [lighting.md](lighting.md) | Lighting a panel and a Scene: what "off" must mean, the data model, why sun and ambient move together, what is out of scope (tasks #414a to #414g). |
 | [positioned-lights.md](positioned-lights.md) | Light sources placed in a Scene: why a light is an `objet3d` and not a new type (70 sites measured), the persisted fields, the shared-scene leak, the four intended exclusions (task #420). |
 | [cast-shadows.md](cast-shadows.md) | Cast shadows: what the sun costs (1.0 ms) and what eight casting sources cost (3.9 ms), the 2,004 ms of compiling that ruled the latter out, and why a shadow spread over the 12,000-unit Ground changes 0.00% of the pixels (task #422). |
+| [bubble-styles.md](bubble-styles.md) | The graphic vocabulary of Bubbles: the six axes a bubble is made of, why the same shape carries different meanings across works (the lightning tail measured on four), why the thought cloud has vanished from all twelve surveyed, and the three-level corpus status (task #424). |
 | [ui-scale-coordinates.md](ui-scale-coordinates.md) | Screen pixels against zoomed pixels: why `zoom` splits the application in two coordinate systems, the 137 px measured, why a clamping function pushed menus off screen, and the rule that follows (task #417). |
 
 ---

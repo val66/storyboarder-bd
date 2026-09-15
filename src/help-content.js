@@ -112,6 +112,12 @@ export const HELP_MANUAL_EN = [
   // prochain ajout : il n'y a plus de gras à élaguer sans perdre du comportement. Ce qu'il ne faut
   // toujours pas faire est monter le seuil, qui existe pour que le manuel reste un manuel.
   // Cf. docs/en/positioned-lights.md pour ce que ces sources sont.
+  // ⚠️ CETTE SECTION EST PRESQUE PLEINE : 1852 caractères sur 2000 en français, mesurés, depuis que
+  // les sources posées (#420g) s'y sont ajoutées au soleil. La fiche de réglage d'une source reste
+  // à écrire, et elle ne rentrera pas ici. Deux issues, dans cet ordre : ÉLAGUER la prose existante,
+  // ce que la règle du manuel demande explicitement, ou SÉPARER le soleil des sources posées en deux
+  // sections. Ce qu'il ne faut pas faire est monter le seuil : il existe pour que le manuel reste un
+  // manuel. Cf. docs/en/positioned-lights.md pour ce que ces sources sont.
   { id: 'lumiere', title: 'Light', paragraphs: [
     'The "Light" section of the right-hand menu drives the sun of the selected Panel. Three modes: Day, Night and Custom. Day is the default, and it is the application’s original lighting.',
     'In Custom, a dome shows where the light comes from. Click and drag on it to move the sun over the vault; hold the right button and drag to turn the view, which changes nothing to the setting. The N, E, S and W marks on the base are those of the Panel: North goes away from you, South comes towards you.',
@@ -130,6 +136,9 @@ export const HELP_MANUAL_EN = [
     'That box starts unticked because a source\u2019s shadow is costly: it is rendered six times per frame, once per direction. Ticking a fourth one may freeze the application for a second, the first time. The sun\u2019s shadow is nearly free.',
     'Shadows carry to four times the distance of what the Panel is aimed at, which covers a back wall or a street. Pulling back coarsens them in steps, so they stay still while you zoom rather than crawling.',
     'Paths, roads and terrain zones receive shadows but never cast any: they are flat drawings laid on the ground.',
+    'Lighting is set per Panel, and a Scene’s locked page is a Panel like any other: it has its own Light section. Loading a Scene into a Panel copies its lighting, just as it copies its Elements. The two are independent afterwards, and a Scene left on Day puts the Panel that receives it back on Day.',
+    'Right-click a Panel → "Add" → "Light" places a source in the Scene. A glowing sphere appears and lights the Panel, on top of the sun. You move it like any Element: the mouse for height and width, the wheel for depth.',
+    'Unlike other Elements, a source is not snapped to the ground: it floats at whatever height you want. It still does not go below the ground. It sits at the top of the Elements list, in a block of its own. Its settings dialog, colour, intensity and range, is still to come.',
   ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
@@ -301,6 +310,9 @@ export const HELP_MANUAL_FR = [
     "Cette case part décochée parce que l'ombre d'une source coûte cher : elle est rendue six fois par image, une par direction. En cocher une quatrième peut figer l'application une seconde, la première fois. L'ombre du soleil est quasi gratuite.",
     "Les ombres portent jusqu'à quatre fois la distance de ce que la Case regarde, ce qui couvre un mur de fond ou une rue. Reculer les rend plus grossières par paliers, de sorte qu'elles restent immobiles pendant qu'on zoome au lieu de ramper.",
     "Les Chemins, Routes et Zones de terrain reçoivent les ombres mais n'en projettent jamais : ce sont des dessins plats posés sur le sol.",
+    "L'éclairage se règle par Case, et la Planche verrouillée d'une Scène est une Case comme une autre : elle a donc sa propre section Lumière. Charger une Scène dans une Case y copie son éclairage, comme elle copie ses Éléments. Les deux sont ensuite indépendants, et une Scène restée en Jour remet en Jour la Case qui la reçoit.",
+    "Clic droit sur une Case → « Ajouter » → « Lumière » pose une source dans la Scène. Une sphère lumineuse apparaît et éclaire la Case, en plus du soleil. On la déplace comme un Élément : la souris pour la hauteur et la largeur, la molette pour la profondeur.",
+    "Contrairement aux autres Éléments, une source n'est pas aimantée au sol : elle flotte à la hauteur voulue. Elle ne passe pas sous le sol pour autant. Elle figure en tête de la liste des Éléments, dans un bloc à elle. Sa fiche de réglage, couleur, intensité et portée, reste à venir.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',
