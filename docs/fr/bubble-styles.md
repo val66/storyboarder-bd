@@ -52,7 +52,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 |---|---|
 | **forme** | ellipse, rectangle arrondi, rectangle net, octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
 | **trait** | épaisseur, motif de pointillés, régularité (net ou tremblé), couleur |
-| **remplissage** | couleur, opacité, texture |
+| **remplissage** | couleur, opacité, **texture** (aucune, bords fondus, vieux papier) |
 | **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, **aucune** |
 | **texte** | police, casse, graisse, italique, couleur, manuscrit |
 | **ornement** | note de musique, guillemets, crochets |
@@ -340,6 +340,63 @@ aux menus déroulants — une leçon apprise à moitié ne protège de rien.
 La fiche interroge désormais les mêmes fonctions que le dessin en lecture, et valide par le registre
 en écriture, pour la forme comme pour la queue.
 
+## L'axe TEXTURE : une pile de couches, et des taches
+
+Une texture rend **deux** choses, et la plupart n'en emploient qu'une : des **couches** — le chemin
+de la Bulle rapproché de son centre par un facteur, peint d'une couleur et d'une opacité — et des
+**taches**, des disques libres posés en coordonnées normalisées.
+
+⚠️ **POURQUOI DES COUCHES ET NON UN DÉGRADÉ DE CANEVAS.** Un dégradé est radial ou linéaire ; une
+forme est quelconque. Calé sur la boîte englobante — la seule chose qu'un dégradé sache viser — le
+fondu devient **inégal autour du périmètre** : l'étoile perd ses pointes, qui touchent la boîte,
+pendant que ses creux restent opaques ; la bande se dissout par ses deux bouts seulement. C'est
+juste pour la tache d'encre, qui remplit à peu près sa boîte, et faux partout ailleurs. Un rendu
+comparatif l'a montré avant qu'une ligne soit écrite.
+
+⚠️ **ET IL A FALLU LES DEUX SORTES, APRÈS QUATRE RENDUS RATÉS.** Une couche est le contour mis à
+l'échelle : une boucle fermée, qui **entoure toujours le centre**. Elle ne peut donc jamais être une
+tache localisée. Les tentatives l'ont établi sans appel — des couches concentriques ondulées ont
+donné un oignon coupé, des couches en secteur un nœud papillon.
+
+| ce qui a été essayé | ce que ça donnait |
+|---|---|
+| couches concentriques à rayon ondulé | des anneaux : un oignon coupé |
+| couches en secteur angulaire | des pétales convergeant au centre : un nœud papillon |
+| taches posées dans l'encart inscriptible | des taches **hors** de l'ovale — l'encart de l'ovale et du rectangle EST la boîte entière, décision de compatibilité assumée plus haut |
+| taches seules, sans liseré | une marbrure si pâle qu'on ne la voyait pas : les taches n'atteignent jamais le bord, là où un papier se salit le plus |
+
+La version retenue : un **liseré** — le contour entier dans une teinte terre, puis la couleur choisie
+ramenée vers le centre avec un bord qui ondule — et des taches par-dessus.
+
+⚠️ **LES TACHES TIENNENT SANS DÉCOUPE, PAR CALCUL.** Le débordement du cadre de Case vient d'être
+figé : une Bulle ne se peint **jamais** sous découpe. Une texture qui aurait eu besoin d'un `clip()`
+aurait forcé à desserrer cette règle une étape après l'avoir écrite. La garantie tient en une ligne :
+la forme étant étoilée, la plus grande ellipse **inscrite** est entièrement dedans, et une tache
+posée dedans — `distance + rayon ≤ 1` — y reste.
+
+⚠️ **L'OPACITÉ DE LA BULLE MULTIPLIE LA TEXTURE, elle ne la remplace pas.** Sans cette règle, deux
+commandes agiraient sur la même chose et l'une des deux deviendrait inopérante sans qu'on sache
+laquelle — le défaut qui a mordu quatre fois dans ce chantier. À 0 %, une Bulle marbrée disparaît
+entièrement, marbrure comprise.
+
+⚠️ **ET UNE TEXTURE NE REÇOIT AUCUNE GÉOMÉTRIE :** ni la forme, ni la taille, ni le nombre de points
+du contour. Une couronne d'épines peut donc être marbrée et une tache d'encre rester en aplat.
+
+### Ce que la texture coûte
+
+Mesuré sur la construction des chemins, 40 Bulles × 500 passages, hors rastérisation — le coût réel
+est donc **supérieur** à ces chiffres :
+
+| forme | aucune | bords fondus | vieux papier |
+|---|---|---|---|
+| ovale | 1,3 µs | 69,5 µs | 45,7 µs |
+| tache d'encre | 24,5 µs | 237,4 µs | 92,2 µs |
+
+⚠️ **LE DÉFAUT NE COÛTE RIEN DE PLUS**, et c'est ce qui compte pour l'existant : sans texture, le
+remplissage reste une seule couche, identique à ce qu'il était. Mais une Planche chargée de Bulles
+aux bords fondus change la donne par rapport à la campagne qui avait conclu qu'aucun cache n'était
+nécessaire. À reprendre avec l'observation du chargement.
+
 ## Ce que la tache d'encre n'a PAS encore
 
 ⚠️ **LA SILHOUETTE EST LIVRÉE, LA TACHE NE L'EST PAS.** Le relevé est formel : « il n'y a pas de
@@ -357,7 +414,7 @@ Trois questions de rattachement restent **ouvertes**, et sont notées ici sans �
 
 | ce qui manque | où cela ira, probablement | ce qui n'est pas décidé |
 |---|---|---|
-| les textures de remplissage | un menu dans la section **Apparence** | — |
+| ~~les textures de remplissage~~ | **fait** : menu « Texture du fond », section Apparence | — |
 | le mouchetis | section **Bordure** ? | est-ce un motif du trait, au même titre que les pointillés, ou un attribut à part entière ? |
 | les bords translucides | section **Bordure** | à quel attribut le raccorder |
 

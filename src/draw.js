@@ -73,6 +73,7 @@ import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
+import { couchesDeTextureBulle } from './bubble-texture.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1470,17 +1471,73 @@ export function reglagesQueueVersLePoint3D(o, x, y){
  * « poser une voix sur l'image », et l'utilisateur n'aurait plus aucun moyen d'obtenir un fond
  * transparent sous un trait franc, qui est exactement ce que fait Jungle Juice.
  */
-function remplirEtCernerBulle3D(c, o, app, largeurTrait){
-  c.globalAlpha = app.opacite;
-  c.fillStyle = o.bulleColor || '#fff';
-  c.fill();
+function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
+  // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
+  // compte qu'UNE — le chemin tel quel, la couleur choisie, l'opacité choisie — et le résultat est
+  // exactement celui d'avant, au pixel près. C'est ce qui protège les Bulles enregistrées.
+  //
+  // ⚠️ ET CHAQUE COUCHE RECONSTRUIT SON CHEMIN, elle ne réutilise pas celui qui est déjà là. Une
+  // couche est le chemin rapproché du centre : la mettre à l'échelle avec `c.scale` déplacerait
+  // aussi le trait, et surtout empêcherait le facteur de varier avec l'angle, dont la marbrure du
+  // vieux papier a besoin.
+  const { couches } = couchesDeTextureBulle(o, { couleur: o.bulleColor || '#fff', opacite: app.opacite });
+  couches.forEach((couche, i) => {
+    if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
+    c.globalAlpha = couche.alpha;
+    c.fillStyle = couche.couleur;
+    c.fill();
+  });
+  // ⚠️ LES TACHES SE POSENT DANS LA ZONE INSCRIPTIBLE, ce qui les garde DANS la Bulle sans aucune
+  // découpe. C'est la même zone que celle du texte : une forme la déclare précisément parce qu'elle
+  // sait ce qui tient chez elle. Sans cela il aurait fallu un `clip()`, et #425k vient de figer
+  // qu'une Bulle ne se peint jamais sous découpe.
   c.globalAlpha = 1;
+  // Le trait se pose sur le CONTOUR VRAI, pas sur la dernière couche peinte.
+  if (couches.length > 1 || couches[0].facteur) { c.beginPath(); construireChemin(null); c.closePath(); }
   if (o.bulleBorderVisible === false) return;
   c.lineJoin = 'round';
   c.setLineDash(app.tirets);
   c.lineWidth = largeurTrait;
   c.strokeStyle = o.bulleBorderColor || '#23242A';
   c.stroke();
+}
+
+/**
+ * Les taches d'une texture — les auréoles du vieux papier — posées DANS la Bulle.
+ *
+ * ⚠️ ELLES TIENNENT PAR CALCUL, PAS PAR DÉCOUPE, et ce n'est pas un détail d'implémentation. #425k
+ * vient de figer qu'une Bulle ne se peint JAMAIS sous découpe ; une texture qui aurait eu besoin
+ * d'un `clip()` pour ne pas déborder aurait forcé à desserrer cette règle une étape après l'avoir
+ * écrite. La garantie tient en une ligne : la forme étant étoilée, l'ellipse de rayon `fInt` — le
+ * plus petit rayon NORMALISÉ du contour — est entièrement dedans, donc une tache posée dedans aussi.
+ *
+ * ⚠️ L'ENCART INSCRIPTIBLE NE CONVENAIT PAS, essayé d'abord et démenti par le rendu. L'ovale et le
+ * rectangle déclarent la boîte ENTIÈRE comme zone inscriptible — décision de compatibilité de
+ * #425e, écrite noir sur blanc dans le registre — si bien que des taches posées vers ses coins
+ * sortaient franchement de l'ovale.
+ *
+ * ⚠️ ET ELLES NE SE RÉPÈTENT PAS DANS CHAQUE ROND D'UNE CHAÎNE. Elles vivaient d'abord dans
+ * `remplirEtCernerBulle3D`, qui sert AUSSI à peindre les disques détachés d'une queue en chaîne :
+ * chaque rond se serait couvert des auréoles de la Bulle entière, à l'échelle du rond.
+ */
+function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
+  const { taches } = couchesDeTextureBulle(o, { couleur: o.bulleColor || '#fff', opacite: app.opacite });
+  if (!taches || !taches.length) return;
+  let fInt = 1;
+  if (sommets) for (const p of sommets) fInt = Math.min(fInt, Math.hypot((p.x - cx) / rx, (p.y - cy) / ry));
+  const arx = rx * fInt, ary = ry * fInt, rayon = Math.min(arx, ary);
+  c.save();
+  for (const t of taches) {
+    const r = Math.max(0.5, t.r * rayon);
+    c.beginPath();
+    c.ellipse(cx + t.x * arx, cy + t.y * ary, r, r, 0, 0, Math.PI * 2);
+    c.closePath();
+    c.globalAlpha = t.alpha;
+    c.fillStyle = t.couleur;
+    c.fill();
+  }
+  c.globalAlpha = 1;
+  c.restore();
 }
 
 // Draws a speech Bubble: Oval or Rectangle shape (as chosen, via the right-hand panel) +
@@ -1517,10 +1574,17 @@ export function drawBubble(c, o){
   // ici jusqu'à #425e disaient déjà cela, mais en le codant en dur pour deux formes.
   const sommets = pointsDuContourBulle(o);
   /** Émet le contour entre deux angles, en respectant tremblement et sommets. */
-  const emettreContour = (depuis, jusqu) => {
-    if (tremble) { for (const p of pointsTrembles(depuis, jusqu)) c.lineTo(p.x, p.y); return; }
-    if (sommets) { for (const p of sommetsEntreAngles3D(o, sommets, depuis, jusqu)) c.lineTo(p.x, p.y); return; }
-    c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false);
+  const emettreContour = (depuis, jusqu, facteur) => {
+    const pose = (p) => { const q = versCouche(facteur, p.x, p.y); c.lineTo(q.x, q.y); };
+    if (tremble) { for (const p of pointsTrembles(depuis, jusqu)) pose(p); return; }
+    if (sommets) { for (const p of sommetsEntreAngles3D(o, sommets, depuis, jusqu)) pose(p); return; }
+    // ⚠️ MÊME RAISON QUE PLUS BAS : un arc d'ellipse ne survit pas à un facteur qui varie.
+    if (!facteur) { c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false); return; }
+    const N = 64;
+    for (let i = 0; i <= N; i++) {
+      const a = depuis + (jusqu - depuis) * i / N;
+      pose({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
+    }
   };
   // La queue : son tracé vient du registre de src/bubble-tail.js, et il est de deux natures.
   //
@@ -1536,18 +1600,34 @@ export function drawBubble(c, o){
   const traceQueue = queueVisible
     ? traceContinuDeLaQueue(oQueue, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
     : null;
-  c.save();
-  c.beginPath();
+  /**
+   * Rapproche un point du centre selon le facteur de la couche, lu à l'ANGLE de ce point.
+   *
+   * ⚠️ À L'ANGLE, ET NON AU RANG DU POINT : les points de la QUEUE ne viennent pas du contour et
+   * n'ont pas de rang dedans. Indexer sur le contour aurait laissé la queue pleinement opaque
+   * pendant que le corps s'estompe.
+   */
+  const versCouche = (facteur, x, y) => {
+    if (!facteur) return { x, y };
+    const t = ((Math.atan2(y - cy, x - cx) / (Math.PI * 2)) % 1 + 1) % 1;
+    const f = facteur(t);
+    return { x: cx + (x - cx) * f, y: cy + (y - cy) * f };
+  };
+
+  /** Construit le chemin de la Bulle, éventuellement rapproché du centre. `facteur` peut être nul. */
+  const construireChemin = (facteur) => {
+  const dep = (x, y) => { const p = versCouche(facteur, x, y); c.moveTo(p.x, p.y); };
+  const vers = (x, y) => { const p = versCouche(facteur, x, y); c.lineTo(p.x, p.y); };
   if (queueVisible && traceQueue) {
     const base1 = bubbleEdgePoint(o, angleBase1);
     const base2 = bubbleEdgePoint(o, angleBase2);
     // Contour continu et unique : on suit le périmètre SAUF l'arc entre base1 et base2, juste sous
     // la queue, remplacé par le tracé de la queue. Aucun trait ne traverse alors l'intérieur de la
     // Bulle à la base de la queue.
-    c.moveTo(base1.x, base1.y);
-    for (const p of traceQueue) c.lineTo(p.x, p.y);
-    c.lineTo(base2.x, base2.y);
-    emettreContour(angleBase2, angleBase1 + Math.PI * 2);
+    dep(base1.x, base1.y);
+    for (const p of traceQueue) vers(p.x, p.y);
+    vers(base2.x, base2.y);
+    emettreContour(angleBase2, angleBase1 + Math.PI * 2, facteur);
   } else if (tremble || sommets) {
     // Sans queue : le périmètre entier, d'un tour complet. Le premier point est posé à la main,
     // `emettreContour` n'émettant que des `lineTo`.
@@ -1564,14 +1644,31 @@ export function drawBubble(c, o){
     // en la regardant — voir docs/en/testing-method.md, § « Ce qui est hors de portée ».
     const parcours = tremble ? pointsTrembles(0, Math.PI * 2)
                              : sommetsEntreAngles3D(o, sommets, 0, Math.PI * 2);
-    c.moveTo(parcours[0].x, parcours[0].y);
-    emettreContour(0, Math.PI * 2);
+    dep(parcours[0].x, parcours[0].y);
+    emettreContour(0, Math.PI * 2, facteur);
   } else {
     // Ovale sans queue ni tremblement : l'ellipse exacte, en un appel, comme avant #425.
-    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    //
+    // ⚠️ UNE COUCHE DE TEXTURE, ELLE, DOIT ÊTRE ÉCHANTILLONNÉE. `c.ellipse` ne sait tracer qu'une
+    // ellipse ; un facteur qui varie avec l'angle n'en est plus une. L'ovale SANS texture continue
+    // de passer par l'appel exact — c'est la garantie de non-régression — et seules ses couches
+    // supplémentaires sont approchées par des segments.
+    if (!facteur) { c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); }
+    else {
+      const N = 96;
+      for (let i = 0; i <= N; i++) {
+        const a = Math.PI * 2 * i / N;
+        (i ? vers : dep)(cx + rx * Math.cos(a), cy + ry * Math.sin(a));
+      }
+    }
   }
+  };
+  c.save();
+  c.beginPath();
+  construireChemin(null);
   c.closePath();
-  remplirEtCernerBulle3D(c, o, app, largeurTrait);
+  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin);
+  peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets);
 
   // ⚠️ LES RONDS SE DESSINENT APRÈS, ET CHACUN DANS SON PROPRE CHEMIN. Les mettre dans le chemin de
   // la Bulle les ferait remplir par la règle de non-zéro avec elle : là où un rond chevaucherait le
@@ -1579,10 +1676,14 @@ export function drawBubble(c, o){
   // Bulle, ce qui est bien ce que montre le relevé.
   if (queueVisible && !traceQueue) {
     for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
+      const cheminRond = (f) => {
+        const r = f ? rond.r * f(0) : rond.r;   // un disque n'a pas d'angle propre : facteur au repos
+        c.ellipse(rond.x, rond.y, r, r, 0, 0, Math.PI * 2);
+      };
       c.beginPath();
-      c.ellipse(rond.x, rond.y, rond.r, rond.r, 0, 0, Math.PI * 2);
+      cheminRond(null);
       c.closePath();
-      remplirEtCernerBulle3D(c, o, app, largeurTrait);
+      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond);
     }
   }
   c.restore();

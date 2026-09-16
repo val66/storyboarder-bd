@@ -19,6 +19,7 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
+import { textureDeLaBulle } from './bubble-texture.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -133,6 +134,7 @@ const sideBubbleBorderRegularitySelect = document.getElementById('sideBubbleBord
 const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacityInput');
 const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
+const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -1082,6 +1084,7 @@ function updateSidePanelImpl(){
     // brut. `queueEffectiveDeLaBulle` arbitre le choix explicite, l'ancien `tailVisible` et le
     // défaut de la forme — la fiche montre donc « Aucune » sur un écu neuf, comme le dessin.
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
+    sideBubbleTextureSelect.value = textureDeLaBulle(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;

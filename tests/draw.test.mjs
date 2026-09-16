@@ -2833,3 +2833,103 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     }
   });
 });
+
+describe('#425m — la texture du remplissage atteint le canevas', () => {
+  const bulle = (o) => Object.assign({ id: 'b13', type: 'bulle', x: 0, y: 0, w: 200, h: 100,
+    description: '', bulleColor: '#E8D9B0' }, o);
+
+  test('⚠️ RÉGRESSION : sans texture, le remplissage est EXACTEMENT celui d’avant', () => {
+    // Un seul `fill`, à l'opacité demandée, et le contour toujours tracé par `c.ellipse` pour un
+    // ovale net. Toute couche supplémentaire se verrait ici.
+    const j = dessiner(bulle({ bulleShape: 'ovale', tailVisible: false }));
+    assert.equal(appels(j, 'fill').length, 1, 'une seule couche sans texture');
+    assert.equal(appels(j, 'fill')[0].alpha, 1);
+    assert.equal(appels(j, 'ellipse').length, 1, 'l’ovale net doit rester tracé par c.ellipse');
+    const opaque = dessiner(bulle({ bulleShape: 'ovale', bulleFillOpacity: 0.25, tailVisible: false }));
+    assert.equal(appels(opaque, 'fill')[0].alpha, 0.25);
+  });
+
+  test('⚠️ LES BORDS FONDUS EMPILENT DES COUCHES, et le trait reste sur le VRAI contour', () => {
+    // ⚠️ MUTATION VISÉE : cerner la dernière couche peinte au lieu du contour. Le trait suivrait
+    // alors la plus petite couche, très à l'intérieur de la Bulle, et la bordure se décollerait du
+    // bord — ce qu'aucun compte de `fill` ne verrait.
+    const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'fondus', tailVisible: false }));
+    assert.ok(appels(j, 'fill').length > 4, `${appels(j, 'fill').length} couches seulement`);
+    // Les alphas vont du presque rien à l'opaque : c'est le fondu.
+    const alphas = appels(j, 'fill').map(e => e.alpha);
+    assert.ok(alphas[0] < 0.2 && alphas[alphas.length - 1] === 1,
+      `alphas de ${alphas[0]} à ${alphas[alphas.length - 1]}`);
+    // Le trait est posé une fois, et sur le VRAI contour.
+    assert.equal(appels(j, 'stroke').length, 1);
+    // ⚠️ IL FAUT MESURER LE CHEMIN RÉELLEMENT CERNÉ, ET LA PREMIÈRE VERSION NE LE FAISAIT PAS. Elle
+    // prenait l'étendue de TOUS les `lineTo` du dessin — donc celle de la couche la plus extérieure,
+    // vraie quoi qu'il arrive. La mutation qui cerne la dernière couche peinte, minuscule et au
+    // centre, passait au vert. On rejoue donc le journal en suivant les `beginPath` pour isoler le
+    // chemin en cours au moment du `stroke`.
+    const etendueCernee = (journal) => {
+      let courant = [], vu = null;
+      for (const e of journal) {
+        if (e.nom === 'beginPath') courant = [];
+        else if (e.nom === 'lineTo' || e.nom === 'moveTo') courant.push(e.args);
+        else if (e.nom === 'stroke' && courant.length) {
+          vu = Math.max(...courant.map(([x, y]) => Math.hypot(x - 100, y - 50)));
+        }
+      }
+      return vu;
+    };
+    const cerne = etendueCernee(j);
+    assert.ok(cerne !== null, 'aucun chemin identifié au moment du trait');
+    assert.ok(cerne > 100, `le contour cerné n’atteint que ${cerne.toFixed(1)} : le trait s’est décollé du bord`);
+  });
+
+  test('⚠️ LE VIEUX PAPIER POSE SES TACHES SANS AUCUNE DÉCOUPE, et dans la Bulle', () => {
+    // ⚠️ LA RÈGLE DE #425k EST EN JEU : une Bulle ne se peint jamais sous découpe. La texture s'y
+    // plie en calculant la plus grande ellipse inscrite plutôt qu'en découpant.
+    for (const forme of ['ovale', 'rect', 'etoile', 'ecu', 'epines', 'tache']) {
+      const c = contexteEnregistreur();
+      let decoupes = 0;
+      c.clip = () => { decoupes++; };
+      drawBubble(c, bulle({ bulleShape: forme, bulleTexture: 'papier', tailVisible: false }));
+      assert.equal(decoupes, 0, `${forme} : ${decoupes} découpe(s) posée(s) pour la texture`);
+      // ⚠️ IL FAUT ÉCARTER LES ELLIPSES QUI NE SONT PAS DES TACHES, et deux essais ont échoué avant
+      // celui-ci. Un ovale trace son CONTOUR par `c.ellipse` : le test y voyait une tache géante et
+      // échouait sur du code correct. Compter les ellipses d'un dessin SANS texture pour les
+      // soustraire ne suffisait pas non plus — une Bulle texturée reconstruit son chemin une fois
+      // de plus, pour poser le trait sur le vrai contour.
+      //
+      // Le critère juste est une PROPRIÉTÉ de la tache, pas son rang : une tache est un CERCLE,
+      // `c.ellipse(x, y, r, r, …)`. La Bulle d'essai fait 200 × 100, donc son contour ovale n'en
+      // est pas un — les deux ne peuvent pas être confondus.
+      const ronds = appels(c.journal, 'ellipse').map(e => e.args).filter(a => a[2] === a[3]);
+      assert.ok(ronds.length > 10, `${forme} : ${ronds.length} disques de marbrure`);
+      for (const [x, y, r] of ronds) {
+        assert.ok(x - r >= -1e-6 && x + r <= 200 + 1e-6 && y - r >= -1e-6 && y + r <= 100 + 1e-6,
+          `${forme} : une tache sort de la Bulle — ${x.toFixed(1)},${y.toFixed(1)} r=${r.toFixed(1)}`);
+      }
+    }
+  });
+
+  test('⚠️ ET LA MARBRURE NE SE RÉPÈTE PAS DANS CHAQUE ROND D’UNE CHAÎNE', () => {
+    // ⚠️ DÉFAUT ÉVITÉ DE JUSTESSE. Les taches vivaient d'abord dans `remplirEtCernerBulle3D`, qui
+    // sert AUSSI à peindre les disques détachés d'une queue en chaîne : chaque rond se serait
+    // couvert des auréoles de la Bulle entière, à son échelle.
+    // ⚠️ LA MESURE PORTE SUR LES TACHES, PAS SUR LES ELLIPSES — seconde assertion fausse, et son
+    // échec instruit. Je comptais « trois ellipses de plus » ; il y en a NEUF, parce que chaque
+    // rond reçoit aussi le liseré du vieux papier, ce qui est juste : un maillon de chaîne sur une
+    // Bulle en parchemin doit être en parchemin lui aussi. Ce qui ne doit pas se répéter, c'est la
+    // MARBRURE, reconnaissable à son opacité propre.
+    const sans = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailVisible: false }));
+    const avec = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailShape: 'ronds',
+      tailVisible: true }));
+    const marbrures = (j) => appels(j, 'fill').filter(e => e.alpha > 0 && e.alpha < 0.2).length;
+    assert.ok(marbrures(sans) > 10, `${marbrures(sans)} taches sur la Bulle seule`);
+    assert.equal(marbrures(avec), marbrures(sans),
+      'la marbrure ne doit pas être repeinte dans chaque rond de la chaîne');
+  });
+
+  test('l’opacité de la Bulle éteint la texture entière', () => {
+    const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', bulleFillOpacity: 0,
+      tailVisible: false }));
+    appels(j, 'fill').forEach((e, i) => assert.equal(e.alpha, 0, `peinture ${i} à ${e.alpha}`));
+  });
+});

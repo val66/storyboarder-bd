@@ -82,6 +82,7 @@ import {
 import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle } from './bubble-tail.js';
+import { textureDeLaBulle } from './bubble-texture.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -6745,6 +6746,7 @@ const sideBubbleFontSizeInput = document.getElementById('sideBubbleFontSizeInput
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
+const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -7189,6 +7191,15 @@ sideDescInput.addEventListener('keydown', (e) => {
     e.stopImmediatePropagation();
     sideDescInput.blur();
   }
+});
+
+sideBubbleTextureSelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  // Validé par le registre, comme la forme et la queue : une option ajoutée au menu sans entrée au
+  // registre lève ICI, au moment du choix, et non plus tard au dessin.
+  S.sideDescTarget.bulleTexture = textureDeLaBulle({ bulleTexture: sideBubbleTextureSelect.value });
+  drawCurrentPage();
 });
 
 sideBubbleTailShapeSelect.addEventListener('change', () => {

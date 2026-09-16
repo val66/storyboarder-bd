@@ -111,6 +111,12 @@ export const I18N_TEXT = [
   // « Aucune » est une valeur de l'axe, pas une absence de réglage — elle a remplacé la case à
   // cocher « Afficher la pointe », qui disait la même chose une seconde fois.
   ['#sideBubbleTailShapeSelect option[value="aucune"]', 'None', 'Aucune'],
+  // #425m — l'axe TEXTURE. Indépendant de la forme : une couronne d'épines peut être marbrée, et
+  // la tache d'encre rester en aplat.
+  ['label[for="sideBubbleTextureSelect"]', 'Fill texture', 'Texture du fond'],
+  ['#sideBubbleTextureSelect option[value="aucune"]', 'None', 'Aucune'],
+  ['#sideBubbleTextureSelect option[value="fondus"]', 'Faded edges', 'Bords fondus'],
+  ['#sideBubbleTextureSelect option[value="papier"]', 'Aged paper', 'Vieux papier'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

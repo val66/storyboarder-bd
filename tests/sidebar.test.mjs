@@ -23,6 +23,7 @@ import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 import { queuesConnues } from '../src/bubble-tail.js';
+import { texturesConnues } from '../src/bubble-texture.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
@@ -952,6 +953,22 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       select.value = 'triangle';          // on brouille la fiche…
       updateSidePanel();                  // …et on vérifie qu'elle relit l'objet, pas elle-même
       assert.equal(select.value, queue, `la fiche affiche « ${select.value} » pour « ${queue} »`);
+    }
+  });
+
+  test('⚠️ #425m : CHOISIR UNE TEXTURE LA POSE VRAIMENT, et la fiche la relit', () => {
+    // Les deux sens, comme pour la forme et la queue. Ce chantier a perdu l'un ou l'autre trois
+    // fois : une fiche qui affiche correctement et un menu qui n'écrit rien sont compatibles.
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const select = document.getElementById('sideBubbleTextureSelect');
+    for (const texture of texturesConnues()) {
+      select.value = texture;
+      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
+      assert.equal(b.bulleTexture, texture, `choisir « ${texture} » a posé « ${b.bulleTexture} »`);
+      select.value = 'fondus';            // on brouille la fiche…
+      updateSidePanel();                  // …et on vérifie qu'elle relit l'objet
+      assert.equal(select.value, texture, `la fiche affiche « ${select.value} » pour « ${texture} »`);
     }
   });
 

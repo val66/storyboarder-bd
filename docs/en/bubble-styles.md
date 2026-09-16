@@ -50,7 +50,7 @@ A Bubble is a free combination of seven axes. None implies the others.
 |---|---|
 | **shape** | ellipse, rounded rectangle, plain rectangle, chamfered octagon, concave-sided shield, bumpy, faceted polygon, star, thorn crown, round-cornered strip, ragged-edged parchment, ink splat, none |
 | **stroke** | width, dash pattern, regularity (clean or wobbly), colour |
-| **fill** | colour, opacity, texture |
+| **fill** | colour, opacity, **texture** (none, faded edges, aged paper) |
 | **tail** | triangle, lightning, chain of shrinking circles, curved hairline, none |
 | **text** | font, case, weight, italic, colour, handwriting |
 | **ornament** | musical note, quotation marks, square brackets |
@@ -329,6 +329,61 @@ halves protects nothing.
 The panel now queries the same functions the drawing does when reading, and validates through the
 registry when writing, for the shape as for the tail.
 
+## The TEXTURE axis: a stack of layers, and stains
+
+A texture returns **two** things, and most use only one: **layers** — the Bubble's path drawn closer
+to its centre by a factor, painted with a colour and an opacity — and **stains**, free discs placed
+in normalised coordinates.
+
+⚠️ **WHY LAYERS AND NOT A CANVAS GRADIENT.** A gradient is radial or linear; a shape is arbitrary.
+Anchored on the bounding box — the only thing a gradient can aim at — the fade becomes **uneven
+around the perimeter**: the star loses its tips, which touch the box, while its valleys stay opaque;
+the strip dissolves at its two ends only. That is right for the ink splat, which roughly fills its
+box, and wrong everywhere else. A comparative render showed this before a line was written.
+
+⚠️ **AND BOTH KINDS WERE NEEDED, AFTER FOUR FAILED RENDERS.** A layer is the outline scaled: a closed
+loop, which **always encloses the centre**. It can therefore never be a localised stain. The attempts
+settled it:
+
+| what was tried | what it looked like |
+|---|---|
+| concentric layers with a wavering radius | rings: a sliced onion |
+| layers restricted to an angular sector | petals converging at the centre: a bow tie |
+| stains placed in the writable inner box | stains **outside** the oval — the oval's and rectangle's inner box IS the whole frame, the compatibility decision recorded above |
+| stains alone, with no rim | mottling so pale it was invisible: stains never reach the edge, which is where paper stains most |
+
+The version kept: a **rim** — the whole outline in an earth tint, then the chosen colour pulled
+towards the centre with a wavering edge — and stains on top.
+
+⚠️ **THE STAINS STAY INSIDE BY COMPUTATION, NOT BY CLIPPING.** Overflowing the Panel frame was just
+frozen: a Bubble is **never** painted under a clip. A texture needing `clip()` would have forced that
+rule open one step after it was written. The guarantee is one line: the shape being star-shaped, the
+largest **inscribed** ellipse lies entirely inside, and a stain placed in it — `distance + radius ≤ 1`
+— stays there.
+
+⚠️ **THE BUBBLE'S OPACITY MULTIPLIES THE TEXTURE, it does not replace it.** Without that rule two
+controls would act on the same thing and one of them would become inoperative without anyone knowing
+which — the defect that bit four times in this project. At 0%, a mottled Bubble disappears entirely,
+mottling included.
+
+⚠️ **AND A TEXTURE RECEIVES NO GEOMETRY:** not the shape, not the size, not the outline's point
+count. A crown of thorns can therefore be mottled, and an ink splat stay flat.
+
+### What the texture costs
+
+Measured on path construction, 40 Bubbles × 500 passes, excluding rasterisation — so the real cost
+is **higher** than these figures:
+
+| shape | none | faded edges | aged paper |
+|---|---|---|---|
+| oval | 1.3 µs | 69.5 µs | 45.7 µs |
+| ink splat | 24.5 µs | 237.4 µs | 92.2 µs |
+
+⚠️ **THE DEFAULT COSTS NOTHING EXTRA**, which is what matters for existing work: with no texture the
+fill stays a single layer, identical to what it was. But a Page loaded with faded-edge Bubbles
+changes the picture drawn by the campaign that concluded no cache was needed. To be revisited with
+the load-time observation.
+
 ## What the ink splat does NOT have yet
 
 ⚠️ **THE SILHOUETTE SHIPS, THE SPLAT DOES NOT.** The survey is unambiguous: "there is no fill
@@ -345,7 +400,7 @@ Three questions of placement remain **open**, and are recorded here without bein
 
 | what is missing | where it will probably go | what is undecided |
 |---|---|---|
-| fill textures | a dropdown in the **Appearance** section | — |
+| ~~fill textures~~ | **done**: "Fill texture" dropdown, Appearance section | — |
 | the speckle | **Border** section? | is it a stroke pattern, like the dashes, or an attribute of its own? |
 | translucent edges | **Border** section | which attribute to attach it to |
 
