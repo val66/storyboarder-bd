@@ -71,7 +71,8 @@ import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
-import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT } from './bubble-tail.js';
+import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
+         queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1343,20 +1344,36 @@ export function drawObject(c, o, styleKey, page){
 // ↳ src/constants.js
 // ↳ src/constants.js
 
-// Une Bulle montre sa queue si l'utilisateur l'a demandé ; à défaut, c'est la FORME qui décide.
+/**
+ * LA queue d'une Bulle, une fois tout arbitré : le choix de l'utilisateur, l'héritage d'avant, le
+ * défaut de la forme. Rend toujours une clé du registre, « aucune » comprise.
+ *
+ * ⚠️ TROIS SOURCES, UN SEUL ENDROIT POUR LES DÉPARTAGER. Le dessin, la fiche et le glisser ont
+ * besoin de la MÊME réponse ; ce chantier a déjà payé quatre fois le prix de deux copies d'une même
+ * décision, et celle-ci en a trois entrées. L'ordre ci-dessous est la décision, écrite une fois.
+ *
+ * ⚠️ `tailVisible` EST UN CHAMP D'AVANT #425h, ET ON CONTINUE DE LE LIRE POUR TOUJOURS. L'interface
+ * ne l'écrit plus — la case à cocher a été remplacée par l'entrée « Aucune » de la liste, sur
+ * demande, parce qu'une case et une liste qui disent la même chose finissent par se contredire.
+ * Mais des Projets enregistrés le portent, et une Bulle sans queue doit le rester.
+ */
+export function queueEffectiveDeLaBulle(o){
+  // 1. Un choix explicite l'emporte sur tout, y compris « aucune ».
+  if (o && o.tailShape != null && o.tailShape !== '') return queueDeLaBulle(o);
+  // 2. L'ancien champ, pour les Projets d'avant.
+  if (o && o.tailVisible === false) return QUEUE_AUCUNE;
+  if (o && o.tailVisible === true) return QUEUE_DEFAUT;
+  // 3. Sinon la forme décide — l'écu porte déjà sa pointe, la couronne d'épines ne désigne personne.
+  return queueParDefautBulle(o) ? QUEUE_DEFAUT : QUEUE_AUCUNE;
+}
+
+// Une Bulle montre-t-elle une queue ? Simple relecture de la décision ci-dessus.
 //
-// ⚠️ LE DÉFAUT A CESSÉ D'ÊTRE « TOUJOURS VRAI » EN #425f, ET DEUX FORMES L'ONT EXIGÉ. L'écu d'Okko
-// porte une pointe basse allongée qui FAIT déjà office de queue ; la couronne d'épines de
-// Croquemitaine dit une voix intérieure, qui ne sort d'aucune bouche. Leur coller en plus le
-// triangle ordinaire donnait, dans un cas, deux queues contradictoires, et dans l'autre un
-// dispositif que le relevé ne montre nulle part.
-//
-// ⚠️ ET LE CHAMP RESTE SOUVERAIN, `!= null` ET NON `!== false`. Quelqu'un qui décoche puis recoche
-// la queue d'un écu doit la revoir : son `tailVisible === true` doit l'emporter sur le défaut de la
-// forme. Avec `!== false`, ce `true` explicite serait retombé sur le défaut, et la case cochée
-// n'aurait plus rien fait — un réglage inopérant indiscernable d'un réglage appliqué.
+// ⚠️ CE N'EST PLUS UN CHAMP MAIS UNE CONSÉQUENCE, depuis que « aucune » est une valeur de l'axe
+// queue. Garder en plus un booléen indépendant aurait fait exactement ce que l'utilisateur a
+// signalé dans la fiche : deux commandes pour un même réglage, dont l'une peut contredire l'autre.
 export function bubbleTailVisible(o){
-  return o.tailVisible != null ? o.tailVisible !== false : queueParDefautBulle(o);
+  return queueEffectiveDeLaBulle(o) !== QUEUE_AUCUNE;
 }
 
 // `bubbleShapeOf` a été RETIRÉ par #425e. Il rendait « ovale » pour toute valeur autre que
@@ -1510,12 +1527,14 @@ export function drawBubble(c, o){
   // ⚠️ `traceContinu` RENDANT `null` N'EST PAS « PAS DE QUEUE » : c'est une queue DÉTACHÉE, dont le
   // contour doit se refermer entièrement. Confondre les deux ferait disparaître la chaîne de ronds
   // au lieu de la dessiner à part.
-  const queueVisible = bubbleTailVisible(o);
+  const queue = queueEffectiveDeLaBulle(o);
+  const queueVisible = queue !== QUEUE_AUCUNE;
+  const oQueue = { tailShape: queue };   // la clé déjà arbitrée, pour ne pas la résoudre deux fois
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
   const angleBase1 = theta - QUEUE_ECARTEMENT, angleBase2 = theta + QUEUE_ECARTEMENT;
   const pointeQueue = queueVisible ? getBubbleTailTip(o) : null;
   const traceQueue = queueVisible
-    ? traceContinuDeLaQueue(o, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
+    ? traceContinuDeLaQueue(oQueue, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
     : null;
   c.save();
   c.beginPath();
@@ -1559,7 +1578,7 @@ export function drawBubble(c, o){
   // contour, le remplissage se percerait. Séparés, chacun est un disque plein et cerné comme la
   // Bulle, ce qui est bien ce que montre le relevé.
   if (queueVisible && !traceQueue) {
-    for (const rond of elementsDetachesDeLaQueue(o, bubbleEdgePoint(o, theta), pointeQueue)) {
+    for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
       c.beginPath();
       c.ellipse(rond.x, rond.y, rond.r, rond.r, 0, 0, Math.PI * 2);
       c.closePath();

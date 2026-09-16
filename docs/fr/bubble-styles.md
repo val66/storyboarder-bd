@@ -53,7 +53,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 | **forme** | ellipse, rectangle arrondi, rectangle net, octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
 | **trait** | épaisseur, motif de pointillés, régularité (net ou tremblé), couleur |
 | **remplissage** | couleur, opacité, texture |
-| **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, aucune |
+| **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, **aucune** |
 | **texte** | police, casse, graisse, italique, couleur, manuscrit |
 | **ornement** | note de musique, guillemets, crochets |
 | **couche ajoutée** | couronne rayonnante, mouchetis d'encre, débordement du cadre de Case, aucune |
@@ -168,6 +168,22 @@ qu'un trait traverse l'intérieur de la Bulle. La chaîne de ronds, elle, est fa
 **séparés** : le contour se referme entièrement, et les ronds se dessinent ensuite, chacun dans son
 propre chemin — les mettre dans celui de la Bulle percerait son remplissage là où un rond chevauche
 le contour.
+
+⚠️ **« AUCUNE » EST UNE VALEUR DE L'AXE, PAS UNE ABSENCE DE RÉGLAGE.** Le relevé la compte comme les
+autres : la Geste des Chevaliers Dragons, La Licorne, une ellipse posée sur l'intervalle blanc entre
+deux Cases — ne pas avoir de queue est un choix de lettrage. La fiche a donc **une seule liste**, et
+non une liste plus une case à cocher : signalé à l'usage, et c'est la quatrième fois que ce chantier
+bute sur deux commandes pour un même réglage. L'ancien champ `tailVisible` n'est plus écrit mais
+**reste lu pour toujours**, sans quoi toutes les Bulles enregistrées sans queue se réveilleraient
+avec une pointe.
+
+Trois sources doivent donc être départagées, et l'ordre est écrit à un seul endroit :
+
+| priorité | source | ce qu'elle dit |
+|---|---|---|
+| 1 | `tailShape` | le choix explicite de l'utilisateur, « aucune » comprise |
+| 2 | `tailVisible` | l'héritage des Projets d'avant |
+| 3 | la forme | l'écu porte déjà sa pointe, la couronne d'épines ne désigne personne |
 
 ⚠️ **ET `traceContinu` RENDANT « RIEN » N'EST PAS « PAS DE QUEUE ».** C'est une queue détachée.
 Confondre les deux fait disparaître la chaîne au lieu de la dessiner à part, et le contour reste par
@@ -373,6 +389,24 @@ diagonale.
 
 ⚠️ **CONSÉQUENCE ASSUMÉE, À ROUVRIR UN JOUR :** sur une forme qui ne remplit pas sa boîte — la bande
 n'occupe que 62 % de sa hauteur — la queue par défaut est courte. Il faut la tirer pour l'allonger.
+
+## L'éclair était accroché à un moignon
+
+⚠️ **TROISIÈME ÉCRITURE FAUSSE DE CETTE QUEUE, ET LA TROISIÈME TROUVÉE EN REGARDANT.** Signalée à
+l'usage : « on dirait que l'éclair est accroché à une autre queue ». Deux causes cumulées, dont
+aucune n'était visible dans les tests, qui comptaient des points et vérifiaient que la pointe était
+atteinte :
+
+| cause | mesure |
+|---|---|
+| **le côté** : le chemin partait de la base située à −0,75 de l'axe et son premier point de queue était à **+0,14** — il traversait, puis retraversait avant l'autre base | le contour se croisait deux fois, ce qui se lit comme un moignon |
+| **la largeur de départ** : la bande naissait à 55 % de l'ouverture | ses deux bords quittaient les bases en biais, formant un petit « V » |
+
+Le côté de départ ne peut pas être supposé : il se **mesure**, la première base n'étant pas toujours
+du même côté de la normale selon l'angle de la queue. Et une queue doit naître **à fleur** de son
+ouverture — largeur égale à l'écart des bases, décalage latéral nul — puis s'en écarter.
+
+Les deux propriétés sont désormais éprouvées sur les neuf formes.
 
 ## Le corpus, et son statut
 

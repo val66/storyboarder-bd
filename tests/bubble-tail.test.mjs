@@ -20,7 +20,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  QUEUE_TRIANGLE, QUEUE_ECLAIR, QUEUE_CHEVEU, QUEUE_RONDS, QUEUE_DEFAUT, QUEUE_ECARTEMENT,
+  QUEUE_TRIANGLE, QUEUE_ECLAIR, QUEUE_CHEVEU, QUEUE_RONDS, QUEUE_AUCUNE, QUEUE_DEFAUT,
+  QUEUE_ECARTEMENT,
   queuesConnues, queueDeLaBulle, traceContinuDeLaQueue, elementsDetachesDeLaQueue,
 } from '../src/bubble-tail.js';
 import { formesConnues, pointDuContourBulle } from '../src/bubble-shape.js';
@@ -95,16 +96,23 @@ describe('⚠️ L’INDÉPENDANCE DES AXES, éprouvée sur le PRODUIT des deux 
     // ajoutée demain entre dans ce test sans que personne y pense. C'est la leçon de #425f, où une
     // liste écrite à la main avait laissé deux formes traverser tout le contrat sans être éprouvées.
     const formes = formesConnues(), queues = queuesConnues();
-    assert.ok(formes.length >= 9 && queues.length >= 4, `${formes.length} × ${queues.length}`);
+    assert.ok(formes.length >= 9 && queues.length >= 5, `${formes.length} × ${queues.length}`);
     for (const forme of formes) {
       for (const queue of queues) {
         const o = Object.assign({}, BULLE, { bulleShape: forme, tailShape: queue });
         const { base1, base2, bord, pointe } = ancrages(o);
         const trace = traceContinuDeLaQueue(o, base1, pointe, base2);
         const detaches = elementsDetachesDeLaQueue(o, bord, pointe);
-        // Exactement l'un des deux, jamais les deux ni aucun : une queue est soit dans le contour,
-        // soit à côté. « Aucun des deux » serait une queue invisible, silencieusement absente.
+        // ⚠️ EXACTEMENT L'UN DES DEUX — SAUF « AUCUNE », QUI EST NOMMÉE PLUTÔT QUE LA RÈGLE
+        // ASSOUPLIE. Une queue est soit dans le contour, soit à côté ; « aucun des deux » serait
+        // une queue silencieusement absente, ce qui est précisément le défaut à attraper. La seule
+        // entrée légitimement vide est « aucune », et l'écrire ici garde la règle entière pour les
+        // autres au lieu de la remplacer par « au plus un ».
         const dansLeContour = trace !== null, aCote = detaches.length > 0;
+        if (queue === QUEUE_AUCUNE) {
+          assert.ok(!dansLeContour && !aCote, `${forme} + aucune : quelque chose a été tracé`);
+          continue;
+        }
         assert.ok(dansLeContour !== aCote,
           `${forme} + ${queue} : trace=${dansLeContour}, détachés=${aCote}`);
         const tous = dansLeContour ? trace : detaches;
@@ -169,6 +177,48 @@ describe('Chaque queue fait ce qui la distingue', () => {
       `la ligne moyenne reste du même côté : ${ecarts.map(e => e.toFixed(2)).join(', ')}`);
     // Et le repère : le triangle, lui, n'a pas de ligne moyenne qui s'écarte.
     assert.equal(traceContinuDeLaQueue(avec(QUEUE_TRIANGLE), base1, pointe, base2).length, 1);
+  });
+
+  test('⚠️ L’ÉCLAIR NE TRAVERSE PAS SON OUVERTURE, et il en part À FLEUR', () => {
+    // ⚠️ DÉFAUT SIGNALÉ À L'USAGE : « on dirait que l'éclair est accroché à une autre queue ». Deux
+    // causes cumulées, et aucun test ne voyait ni l'une ni l'autre.
+    //
+    //   — LE CÔTÉ. Le chemin partait de `base1`, à −0,75 de l'axe, et son premier point de queue
+    //     était à +0,14 : il traversait d'emblée, puis retraversait avant `base2`. Le contour se
+    //     croisait deux fois, ce qui se lit comme un moignon auquel l'éclair serait accroché.
+    //   — LA LARGEUR DE DÉPART. La bande naissait à 55 % de l'ouverture : ses deux bords quittaient
+    //     les bases en biais, formant un petit « V ».
+    //
+    // Les deux se mesurent sur le côté signé des points par rapport à l'axe de la queue. Le test
+    // porte sur TOUTES les formes, le côté de `base1` n'étant pas le même selon l'angle de la queue.
+    for (const forme of formesConnues()) {
+      const o = Object.assign({}, BULLE, { bulleShape: forme, tailShape: QUEUE_ECLAIR });
+      const a = ancrages(o);
+      const pts = traceContinuDeLaQueue(o, a.base1, a.pointe, a.base2);
+      const mx = (a.base1.x + a.base2.x) / 2, my = (a.base1.y + a.base2.y) / 2;
+      const ax = a.pointe.x - mx, ay = a.pointe.y - my, L = Math.hypot(ax, ay);
+      const nx = -ay / L, ny = ax / L;
+      const cote = (p) => ((p.x - mx) * nx + (p.y - my) * ny) / L;
+      const c1 = cote(a.base1), c2 = cote(a.base2);
+      const i = pts.findIndex(p => p.x === a.pointe.x && p.y === a.pointe.y);
+      // L'aller reste du côté de base1, le retour du côté de base2 : aucune traversée.
+      pts.slice(0, i).forEach((p, k) => assert.ok(Math.sign(cote(p)) === Math.sign(c1),
+        `${forme} : le point ${k} de l’aller est passé de l’autre côté (${cote(p).toFixed(2)} pour une base à ${c1.toFixed(2)})`));
+      pts.slice(i + 1).forEach((p, k) => assert.ok(Math.sign(cote(p)) === Math.sign(c2),
+        `${forme} : le point ${k} du retour est passé de l’autre côté`));
+      // ⚠️ ET LA BANDE NAÎT À FLEUR — mesuré sur sa LARGEUR, pas sur la position de son premier
+      // point. Première écriture fausse de cette assertion : elle exigeait que le premier point
+      // reste près de sa base, et échouait sur du code correct, parce que le premier coude du
+      // zigzag déplace légitimement ce point vers l'axe. Ce qui fait le « V » signalé n'est pas le
+      // coude, c'est une bande PLUS ÉTROITE que son ouverture dès le départ.
+      //
+      // La largeur au premier coude vaut donc l'ouverture moins ce que le fuselage a déjà mangé :
+      // (1 − t) à t = 1/4, soit les trois quarts. Une bande née à 55 % n'y arriverait pas.
+      const ouverture = Math.abs(c1 - c2);
+      const largeur1 = Math.abs(cote(pts[0]) - cote(pts[pts.length - 1]));
+      assert.ok(largeur1 > ouverture * 0.6,
+        `${forme} : largeur ${largeur1.toFixed(2)} pour une ouverture de ${ouverture.toFixed(2)} — la bande part en biais`);
+    }
   });
 
   test('⚠️ LE CHEVEU PENCHE : ses deux bords bombent du même côté de l’AXE DE LA QUEUE', () => {
@@ -241,6 +291,7 @@ describe('Chaque queue fait ce qui la distingue', () => {
     // Les deux réglages existants doivent gouverner les quatre tracés, sans quoi l'un d'eux serait
     // un dessin figé déguisé en queue.
     for (const queue of queuesConnues()) {
+      if (queue === QUEUE_AUCUNE) continue;   // rien à allonger : elle ne trace rien, par définition
       const o = avec(queue);
       const loin = { x: pointe.x + (pointe.x - bord.x) * 2, y: pointe.y + (pointe.y - bord.y) * 2 };
       const proche = traceContinuDeLaQueue(o, base1, pointe, base2)

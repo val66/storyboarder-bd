@@ -2783,12 +2783,38 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
       'et cerné comme elle');
   });
 
-  test('⚠️ UNE QUEUE CACHÉE NE DESSINE AUCUN ROND', () => {
-    // `tailVisible` gouverne les quatre tracés, pas seulement les continus : une chaîne qui
-    // survivrait au décochage serait un réglage inopérant de plus.
-    const cachee = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailVisible: false }));
-    const sans = dessiner(bulle({ bulleShape: 'rect', tailVisible: false }));
-    assert.equal(appels(cachee, 'ellipse').length, appels(sans, 'ellipse').length);
+  test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {
+    // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU. Il vérifiait qu'un `tailVisible: false` effaçait
+    // une chaîne de ronds ; « Aucune » est désormais une valeur de la liste, et c'est elle qui
+    // porte ce sens. Le test dit la même chose dans le vocabulaire actuel.
+    const aucune = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }));
+    const ronds = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds' }));
+    assert.equal(appels(aucune, 'ellipse').length, 0, '« aucune » ne doit dessiner aucun disque');
+    assert.equal(appels(ronds, 'ellipse').length, 3, 'le repère : la chaîne, elle, en dessine trois');
+    // Et le contour se referme bien, comme pour toute queue détachée.
+    assert.ok(appels(aucune, 'fill').length === 1, 'une seule Bulle remplie, sans rien autour');
+  });
+
+  test('⚠️ COMPATIBILITÉ : un Projet d’avant, avec `tailVisible`, garde son comportement', () => {
+    // ⚠️ LE CHAMP N'EST PLUS ÉCRIT, IL EST ENCORE LU — POUR TOUJOURS. L'interface ne propose plus de
+    // case à cocher, mais des Projets enregistrés portent `tailVisible: false`, et une Bulle sans
+    // queue doit le rester. Sans cette lecture, toutes ces Bulles se réveilleraient avec une queue.
+    const sansQueue = dessiner(bulle({ bulleShape: 'rect', tailVisible: false }));
+    const aucune = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }));
+    assert.deepEqual(appels(sansQueue, 'lineTo').map(e => e.args),
+                     appels(aucune, 'lineTo').map(e => e.args));
+    // Et le « oui » explicite d'avant vaut toujours le triangle, même sur une forme qui n’en veut pas.
+    const ecuAvecQueue = dessiner(bulle({ bulleShape: 'ecu', tailVisible: true }));
+    const ecuTriangle = dessiner(bulle({ bulleShape: 'ecu', tailShape: 'triangle' }));
+    assert.deepEqual(appels(ecuAvecQueue, 'lineTo').map(e => e.args),
+                     appels(ecuTriangle, 'lineTo').map(e => e.args));
+  });
+
+  test('⚠️ ET UN CHOIX EXPLICITE L’EMPORTE SUR L’ANCIEN CHAMP', () => {
+    // L'ordre compte : `tailShape` est plus récent et plus précis. Un fichier qui porterait les deux
+    // — écrit pendant la brève fenêtre où les deux réglages coexistaient — doit suivre la liste.
+    const j = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailVisible: false }));
+    assert.equal(appels(j, 'ellipse').length, 3, 'la chaîne demandée doit être dessinée');
   });
 
   test('l’INDÉPENDANCE, vue du canevas : les 36 couples se dessinent', () => {

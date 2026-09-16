@@ -164,6 +164,21 @@ stroke from crossing the inside of the Bubble. The chain of circles is made of *
 the outline closes fully, and the circles are drawn afterwards, each in its own path — putting them
 in the Bubble's path would punch a hole in its fill wherever a circle overlaps the outline.
 
+⚠️ **"NONE" IS A VALUE OF THE AXIS, NOT A MISSING SETTING.** The survey counts it like the others:
+the Geste des Chevaliers Dragons, La Licorne, an ellipse placed in the white gutter between two
+Panels — having no tail is a lettering choice. The panel therefore has **one list**, not a list plus
+a checkbox: reported in use, and it is the fourth time this project has run into two controls for
+one setting. The old `tailVisible` field is no longer written but **is still read, forever**, or
+every saved tail-less Bubble would wake up with a tail.
+
+Three sources must be arbitrated, and the order is written in exactly one place:
+
+| priority | source | what it says |
+|---|---|---|
+| 1 | `tailShape` | the user's explicit choice, "none" included |
+| 2 | `tailVisible` | inheritance from earlier Projects |
+| 3 | the shape | the shield already carries its point, the crown of thorns points at nobody |
+
 ⚠️ **AND A CONTINUOUS TRACE RETURNING "NOTHING" IS NOT "NO TAIL".** It is a detached tail. Confusing
 the two makes the chain vanish instead of being drawn alongside, and the outline stays otherwise
 correct: nothing else notices.
@@ -360,6 +375,23 @@ triangle. On a strip that produced a diagonal splinter.
 
 ⚠️ **ACCEPTED CONSEQUENCE, TO BE REOPENED ONE DAY:** on a shape that does not fill its box — a strip
 occupies only 62% of its height — the default tail is short. It has to be dragged out.
+
+## The lightning was hooked onto a stump
+
+⚠️ **THIRD WRONG VERSION OF THIS TAIL, AND THE THIRD FOUND BY LOOKING.** Reported in use: "it looks
+like the lightning is hooked onto another tail". Two compounding causes, neither visible to the
+tests, which counted points and checked that the tip was reached:
+
+| cause | what it produced |
+|---|---|
+| **the side**: the path started from the base at −0.75 of the axis and its first tail point was at **+0.14** — it crossed over, then crossed back before the other base | the outline self-intersected twice, which reads as a stump |
+| **the starting width**: the band was born at 55% of the opening | its two edges left the bases at an angle, forming a small "V" |
+
+The starting side cannot be assumed: it is **measured**, since the first base is not always on the
+same side of the normal depending on the tail's angle. And a tail must be born **flush** with its
+opening — width equal to the gap between the bases, zero lateral offset — and only then depart.
+
+Both properties are now tested across all nine shapes.
 
 ## The corpus, and its status
 

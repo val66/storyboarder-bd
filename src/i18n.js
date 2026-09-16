@@ -103,11 +103,14 @@ export const I18N_TEXT = [
   ['#sideBubbleShapeSelect option[value="tache"]', 'Ink splat', "Tache d'encre"],
   // #425h — l'axe QUEUE. Indépendant de la forme : les quatre tracés sont offerts quelle que soit
   // la silhouette choisie, et un test croise les neuf formes avec les quatre queues.
-  ['label[for="sideBubbleTailShapeSelect"]', 'Tail shape', 'Tracé de la pointe'],
+  ['label[for="sideBubbleTailShapeSelect"]', 'Bubble tail', 'Pointe de la bulle'],
   ['#sideBubbleTailShapeSelect option[value="triangle"]', 'Triangle', 'Triangle'],
   ['#sideBubbleTailShapeSelect option[value="eclair"]', 'Lightning', 'Éclair'],
   ['#sideBubbleTailShapeSelect option[value="cheveu"]', 'Curved wisp', 'Cheveu courbe'],
   ['#sideBubbleTailShapeSelect option[value="ronds"]', 'Chain of circles', 'Chaîne de ronds'],
+  // « Aucune » est une valeur de l'axe, pas une absence de réglage — elle a remplacé la case à
+  // cocher « Afficher la pointe », qui disait la même chose une seconde fois.
+  ['#sideBubbleTailShapeSelect option[value="aucune"]', 'None', 'Aucune'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.
@@ -353,7 +356,6 @@ export const I18N_TRAILING = [
   ['#sideLightColorInput', null],
   ['#sideLightIntensityRange', null],
   ['#sideLightIntensityValue', null],   // écrit par le code, unité comprise
-  ['#sideBubbleTailWrap', 'Show bubble tail', 'Afficher la pointe de la bulle'],
 ];
 
 // "Leading" text of a dropdown button ("Volumes <span class='caret'>▾</span>"): only the

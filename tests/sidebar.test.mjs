@@ -955,25 +955,34 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
-  test('⚠️ #425f : LA CASE « AFFICHER LA POINTE » SUIT LE DESSIN, y compris pour les formes sans queue', () => {
-    // Même famille de défaut, côté queue. La case lisait `tailVisible !== false`, ce que le dessin
-    // ne fait plus depuis #425f : un écu se dessine sans queue, et la case restait cochée. Elle
-    // interroge désormais `bubbleTailVisible`, la fonction que le dessin appelle lui-même.
+  test('⚠️ LA LISTE DE LA POINTE MONTRE CE QUE LE DESSIN FAIT, défaut de la forme compris', () => {
+    // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU, sur signalement : « plutôt que de garder la
+    // coche, on peut la supprimer et ajouter Aucune aux options ». Deux commandes pour un même
+    // réglage finissent toujours par se contredire — c'est la quatrième fois que ce chantier le
+    // constate, après les trois copies périmées de la forme.
+    //
+    // Ce que la fiche doit montrer n'est donc plus « la case est-elle cochée » mais LA QUEUE
+    // EFFECTIVE : choix explicite s'il y en a un, sinon le défaut de la forme.
     const b = nouvelleBulle();
+    delete b.tailShape;
     delete b.tailVisible;
     const vu = (forme) => {
       b.bulleShape = forme; S.selectedId = b.id; updateSidePanel();
-      return document.getElementById('sideBubbleTailToggle').checked;
+      return document.getElementById('sideBubbleTailShapeSelect').value;
     };
-    assert.equal(vu('etoile'), true, 'une étoile montre sa queue');
-    assert.equal(vu('ecu'), false, 'un écu n’en a pas');
-    assert.equal(vu('epines'), false, 'une couronne d’épines non plus');
-    // Et un choix explicite reprend la main, dans les deux sens.
-    b.tailVisible = true;
-    assert.equal(vu('ecu'), true, 'une queue demandée doit être cochée');
+    assert.equal(vu('etoile'), 'triangle', 'une étoile naît avec sa pointe triangulaire');
+    assert.equal(vu('ecu'), 'aucune', 'un écu porte déjà sa pointe basse');
+    assert.equal(vu('epines'), 'aucune', 'une couronne d’épines ne désigne personne');
+    assert.equal(vu('bande'), 'aucune', 'une bande est un récitatif');
+    // Un choix explicite reprend la main, et la fiche le montre.
+    b.tailShape = 'eclair';
+    assert.equal(vu('ecu'), 'eclair', 'un éclair demandé sur un écu doit s’afficher');
+    // Et l'ancien champ reste lu, pour les Projets enregistrés avant la liste.
+    delete b.tailShape;
     b.tailVisible = false;
-    assert.equal(vu('etoile'), false);
+    assert.equal(vu('etoile'), 'aucune', 'un ancien « sans pointe » doit s’afficher « Aucune »');
   });
+
 });
 
 describe('#425h — le GESTE de glisser la queue, exécuté pour de bon', () => {
