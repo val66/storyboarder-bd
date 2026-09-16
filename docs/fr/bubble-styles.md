@@ -228,7 +228,8 @@ au moins une fois.
 | forme | œuvre | géométrie | piège |
 |---|---|---|---|
 | ellipse | Eleceed, Jungle Juice | ellipse rigoureusement géométrique, trait d'épaisseur constante, **souvent sans queue** — posée sur l'intervalle blanc entre deux cases, la position remplace la queue | la décrire comme « tracée à main levée » ; c'est l'erreur d'origine de l'atlas |
-| rectangle net | Imperium | **aucun filet**, angles vifs, lettrage carré en capitales serrées | lui dessiner une bordure |
+| rectangle arrondi | Blacksad, corpus courant | coins **arrondis**, rayon proportionnel au plus petit demi-axe ; c'est le rectangle que la fiche propose, celui du dialogue ordinaire | lui laisser des angles vifs, ce qu'il avait jusqu'à #425f |
+| rectangle net | Imperium | **aucun filet**, angles vifs, lettrage carré en capitales serrées | lui dessiner une bordure ; **il n'est pas encore au registre** — le « rectangle » de la fiche est désormais l'arrondi, et la variante à angles vifs reste à ajouter |
 | octogone à coins coupés | Geste des Chevaliers Dragons | très **plat et large**, ocre, coins chanfreinés asymétriques, sans queue, capitales manuscrites brunes | le dessiner comme un octogone régulier |
 | rectangle arrondi | Blacksad | coins très arrondis, **blanc cassé sans contour visible**, queue triangulaire courte ; le récitatif est un rectangle à angles vifs **gris-vert pâle**, cerné d'un filet fin | l'appeler « crème » ou « sépia » : il tire vers le vert de lichen |
 | étoile / cri | Eleceed, Mutafukaz | pointes inégales, texte en capitales grasses ; la surface inscriptible est **très inférieure** à la boîte englobante | centrer le texte dans la boîte englobante le fait sortir par les pointes |
@@ -255,11 +256,27 @@ et rien d'autre ne bouge. Pour l'ovale et le rectangle, dont l'encart est la bo�
 ne mord que si le texte est plus haut que la Bulle — un cas déjà illisible, qui débordait avant par
 le haut **et** par le bas. **Aucun texte qui tenait ne s'est déplacé**, ce qu'un test fige.
 
-Une troisième anomalie a été trouvée en branchant la fiche, et relève de la même famille : le menu
-de la forme affichait « Ovale » pour toute Bulle qui n'était pas un rectangle — un vestige de
-l'époque où il n'y avait que deux formes. **Deux copies d'une même décision**, d'accord le jour où
-elles ont été écrites, divergentes dès que l'une a évolué. La fiche interroge désormais les mêmes
-fonctions que le dessin, pour la forme comme pour la queue.
+Deux autres anomalies relèvent de la même famille, **la même décision périmée recopiée trois fois**,
+du temps où il n'existait que deux formes :
+
+| copie | ce qu'elle faisait | comment elle est tombée |
+|---|---|---|
+| la fiche, en LECTURE | affichait « Ovale » pour toute Bulle qui n'était pas un rectangle | trouvée en branchant la fiche |
+| la fiche, en ÉCRITURE | **repliait le choix de l'utilisateur sur « ovale »** : choisir « Étoile » ou « Écu » n'avait aucun effet | **signalée par l'utilisateur**, après tout le chantier |
+| la création d'une Bulle | écrivait la chaîne `'ovale'` à la main plutôt que `FORME_DEFAUT` | trouvée en cherchant les deux autres |
+
+⚠️ **ET LA SECONDE EST LA PLUS GRAVE DES TROIS.** La première MENTAIT sur l'état ; la seconde
+EMPÊCHAIT l'état d'exister. Un réglage inopérant, indiscernable d'un réglage appliqué — exactement
+ce que le registre refuse par ailleurs en levant sur une clé inconnue.
+
+⚠️ **POURQUOI AUCUN TEST NE L'A VUE : toute la suite interrogeait la LECTURE, jamais l'ÉCRITURE.**
+Les tests appelaient `updateSidePanel()`, qui remplit la fiche, et vérifiaient ce qu'elle affiche.
+Une fiche qui affiche correctement et un menu qui n'écrit rien sont parfaitement compatibles. La
+leçon « appeler le vrai gestionnaire » avait été tirée pour le bouton de création, et pas appliquée
+aux menus déroulants — une leçon apprise à moitié ne protège de rien.
+
+La fiche interroge désormais les mêmes fonctions que le dessin en lecture, et valide par le registre
+en écriture, pour la forme comme pour la queue.
 
 ## Le corpus, et son statut
 

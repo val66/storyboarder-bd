@@ -333,6 +333,46 @@ describe('⚠️ LA QUEUE PAR DÉFAUT EST UNE PROPRIÉTÉ DE LA FORME, depuis #4
   });
 });
 
+describe('⚠️ LE RECTANGLE A DES COINS ARRONDIS, depuis #425f', () => {
+  test('le coin de la boîte n’est PAS sur le contour, et les côtés le sont toujours', () => {
+    // ⚠️ DEMANDÉ APRÈS AVOIR REGARDÉ L'APPLICATION. Le corpus tient les deux rectangles : Blacksad
+    // a des « coins très arrondis », Imperium des angles vifs. Celui que la fiche propose sert au
+    // dialogue ordinaire, et c'est l'arrondi.
+    //
+    // La mesure ne compte pas les points — un arrondi peut être échantillonné de mille façons.
+    // Elle regarde la géométrie : dans la direction du coin de la boîte, le contour doit être
+    // NETTEMENT plus près du centre que ce coin, alors qu'au milieu d'un côté il doit tomber
+    // exactement dessus. Un rectangle à angles vifs échoue la première, un ovale la seconde.
+    for (const g of GABARITS) {
+      const o = avecForme(g, FORME_RECT);
+      const c = centre(o), rx = o.w / 2, ry = o.h / 2;
+      const coin = pointDuContourBulle(o, Math.atan2(ry, rx));
+      // ⚠️ LE SEUIL EST MESURÉ, PAS CHOISI À VUE : 0,946 sur le gabarit ordinaire, 0,975 sur le très
+      // plat — un rectangle très large n'a de place que pour un petit arrondi, puisque le rayon
+      // suit le PLUS PETIT demi-axe. Un rectangle à angles vifs rendrait exactement 1.
+      const rapport = Math.hypot(coin.x - c.x, coin.y - c.y) / Math.hypot(rx, ry);
+      assert.ok(rapport < 0.99,
+        `${g.nom} : rapport ${rapport.toFixed(4)} — le contour atteint le coin, les angles sont restés vifs`);
+      // Et les côtés, eux, touchent toujours le bord : l'arrondi ne doit pas avoir rétréci la Bulle.
+      const droite = pointDuContourBulle(o, 0), bas = pointDuContourBulle(o, Math.PI / 2);
+      assert.ok(Math.abs(droite.x - (c.x + rx)) < 1e-6, `${g.nom} : le côté droit s’est rétracté`);
+      assert.ok(Math.abs(bas.y - (c.y + ry)) < 1e-6, `${g.nom} : le côté bas s’est rétracté`);
+    }
+  });
+
+  test('⚠️ L’ARRONDI EST UNE FRACTION DE LA TAILLE, pas un rayon en pixels', () => {
+    // Même raison que le chanfrein de l'octogone : un rayon fixe disparaîtrait sur une grande Bulle
+    // et mangerait entièrement une petite. Deux Bulles homothétiques ont donc le MÊME profil.
+    const profil = (w, h) => {
+      const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w, h, bulleShape: FORME_RECT };
+      const c = { x: w / 2, y: h / 2 };
+      const p = pointDuContourBulle(o, Math.atan2(h / 2, w / 2));
+      return (Math.hypot(p.x - c.x, p.y - c.y) / Math.hypot(w / 2, h / 2)).toFixed(4);
+    };
+    assert.equal(profil(100, 50), profil(300, 150));
+  });
+});
+
 describe('⚠️ L’AUDIT : la suite a-t-elle VRAIMENT éprouvé chaque forme ?', () => {
   test('chaque forme du registre a passé tout le contrat, et les cas particuliers leur cas', () => {
     // ⚠️ CE TEST NE VÉRIFIE PAS LE CODE, IL VÉRIFIE LA SUITE — et c'est pour cela qu'il existe. Il

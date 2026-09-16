@@ -104,13 +104,39 @@ function pointSurSommets(o, theta, sommets){
   return pointOvale(o, theta);
 }
 
-/** Les quatre coins d'un rectangle, dans l'ordre trigonométrique. */
+/**
+ * Le rectangle, à coins ARRONDIS.
+ *
+ * ⚠️ IL ÉTAIT À ANGLES VIFS, ET C'EST LE RELEVÉ QUI A TRANCHÉ. Le corpus tient les deux : Blacksad
+ * a des « coins très arrondis », Imperium des angles vifs. Le rectangle offert par la fiche est
+ * celui qu'on emploie pour du dialogue ordinaire, et c'est l'arrondi ; le rectangle NET d'Imperium
+ * reste une forme à part entière, qui n'est pas encore au registre — voir #425g.
+ *
+ * ⚠️ ET L'ARRONDI EST UNE FRACTION DU PLUS PETIT DEMI-AXE, comme le chanfrein de l'octogone. Un
+ * rayon en pixels fixes disparaîtrait sur une grande Bulle et mangerait entièrement une petite.
+ */
+const RECT_ARRONDI = 0.30;   // rayon du coin, en fraction du plus petit demi-axe
+const RECT_PAR_COIN = 5;     // points d'échantillonnage par coin
+
 function sommetsRect(o){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
-  return [
-    { x: cx + rx, y: cy + ry }, { x: cx - rx, y: cy + ry },
-    { x: cx - rx, y: cy - ry }, { x: cx + rx, y: cy - ry },
+  const r = Math.min(rx, ry) * RECT_ARRONDI;
+  // Les quatre coins, dans l'ordre trigonométrique, chacun donné par son centre de courbure et
+  // l'angle de départ de son quart de cercle.
+  const COINS = [
+    [cx + rx - r, cy + ry - r, 0],                  // bas droit
+    [cx - rx + r, cy + ry - r, Math.PI / 2],        // bas gauche
+    [cx - rx + r, cy - ry + r, Math.PI],            // haut gauche
+    [cx + rx - r, cy - ry + r, -Math.PI / 2],       // haut droit
   ];
+  const out = [];
+  for (const [ox, oy, depart] of COINS) {
+    for (let k = 0; k <= RECT_PAR_COIN; k++) {
+      const a = depart + (Math.PI / 2) * (k / RECT_PAR_COIN);
+      out.push({ x: ox + r * Math.cos(a), y: oy + r * Math.sin(a) });
+    }
+  }
+  return out;
 }
 
 /**

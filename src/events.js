@@ -80,6 +80,7 @@ import {
   ARCHETYPES_3D,
 } from './constants.js';
 import { champsApparenceBulle } from './bubble-style.js';
+import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -6729,7 +6730,7 @@ document.getElementById('ctxCreateBubble').onclick = () => {
   const by = clamp(y - bh / 2, 0, page.h - bh);
   // Les champs d'apparence de #425a sont posés par leur module, pas recopiés ici : une seconde
   // liste des mêmes valeurs par défaut finirait par s'écarter de celle que le dessin consulte.
-  const obj = Object.assign({ id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: 'ovale', bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT }, champsApparenceBulle());
+  const obj = Object.assign({ id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: FORME_DEFAUT, bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT }, champsApparenceBulle());
   page.objects.push(obj);
   S.selectedId = obj.id; S.selectedRoomId = null;
   drawCurrentPage();
@@ -7423,7 +7424,20 @@ sideBorderWidthSelect.addEventListener('change', () => {
 sideBubbleShapeSelect.addEventListener('change', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
   snapshot();
-  S.sideDescTarget.bulleShape = sideBubbleShapeSelect.value === 'rect' ? 'rect' : 'ovale';
+  // ⚠️ LA VALEUR CHOISIE EST ÉCRITE TELLE QUELLE, APRÈS VALIDATION PAR LE REGISTRE. Cette ligne
+  // repliait TOUT ce qui n'était pas « rect » sur « ovale » : depuis #425e le menu offrait cinq
+  // formes, puis sept, et choisir « Étoile » ou « Écu » n'avait STRICTEMENT AUCUN EFFET. Le réglage
+  // était inopérant, indiscernable d'un réglage appliqué — le défaut exact que le registre refuse
+  // par ailleurs en levant sur une clé inconnue.
+  //
+  // ⚠️ TROISIÈME COPIE DE LA MÊME DÉCISION PÉRIMÉE, et la plus coûteuse. La fiche en portait une
+  // (corrigée en #425f, elle AFFICHAIT « Ovale » à tort) ; celle-ci ÉCRIT « ovale » à tort, ce qui
+  // est bien pire : la première mentait sur l'état, la seconde empêchait l'état d'exister. Elles
+  // étaient d'accord le jour où elles ont été écrites, du temps où il n'y avait que deux formes.
+  //
+  // `formeDeLaBulle` valide plutôt qu'un simple passe-plat : une option ajoutée au menu sans entrée
+  // dans le registre lève ici, au moment du choix, et non plus tard au dessin.
+  S.sideDescTarget.bulleShape = formeDeLaBulle({ bulleShape: sideBubbleShapeSelect.value });
   drawCurrentPage();
 });
 

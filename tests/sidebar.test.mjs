@@ -906,6 +906,34 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
+  test('⚠️ CHOISIR UNE FORME DANS LE MENU LA POSE VRAIMENT SUR LA BULLE', () => {
+    // ⚠️ DÉFAUT SIGNALÉ PAR L'UTILISATEUR, ET C'EST LE PLUS GRAVE DE CE CHANTIER : depuis #425e, le
+    // menu offrait cinq formes puis sept, et choisir autre chose qu'« Ovale » ou « Rectangle »
+    // n'avait STRICTEMENT AUCUN EFFET. L'écouteur écrivait
+    // `value === 'rect' ? 'rect' : 'ovale'`, vestige de l'époque à deux formes.
+    //
+    // ⚠️ POURQUOI AUCUN TEST NE L'A VU : toute la suite de #425c à #425f interrogeait la LECTURE —
+    // `updateSidePanel()`, qui remplit la fiche — et jamais l'ÉCRITURE. Une fiche qui affiche
+    // correctement et un menu qui n'écrit rien sont parfaitement compatibles. C'est la leçon P4/P7
+    // de #425c, « appeler le vrai gestionnaire », appliquée à moitié : je l'avais appliquée au
+    // bouton de création et pas aux menus déroulants.
+    //
+    // Le test déclenche donc l'écouteur RÉEL, pour CHAQUE forme du registre lue dans le module.
+    const FORMES = sourceSansCommentaires(readFileSync(new URL('../src/bubble-shape.js', import.meta.url), 'utf8'));
+    const connues = [...FORMES.matchAll(/export const FORME_\w+ = '([^']+)';/g)].map(m => m[1]);
+    assert.ok(connues.length >= 7, `${connues.length} formes lues dans le registre`);
+
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const select = document.getElementById('sideBubbleShapeSelect');
+    for (const forme of connues) {
+      select.value = forme;
+      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
+      assert.equal(b.bulleShape, forme,
+        `choisir « ${forme} » a posé « ${b.bulleShape} » sur la Bulle`);
+    }
+  });
+
   test('⚠️ #425f : LA CASE « AFFICHER LA POINTE » SUIT LE DESSIN, y compris pour les formes sans queue', () => {
     // Même famille de défaut, côté queue. La case lisait `tailVisible !== false`, ce que le dessin
     // ne fait plus depuis #425f : un écu se dessine sans queue, et la case restait cochée. Elle

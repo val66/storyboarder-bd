@@ -247,11 +247,27 @@ nothing else moves. For the oval and the rectangle, whose inner box is the whole
 only bites when the text is taller than the Bubble itself — an already unreadable case, which used
 to overflow at the top **and** the bottom. **No text that fitted has moved**, and a test freezes that.
 
-A third anomaly surfaced while wiring the panel, and belongs to the same family: the shape dropdown
-displayed "Oval" for any Bubble that was not a rectangle — a leftover from when there were only two
-shapes. **Two copies of one decision**, in agreement the day they were written, divergent as soon as
-one of them evolved. The panel now queries the same functions the drawing does, for the shape as for
-the tail.
+Two further anomalies belong to the same family, **one stale decision copied three times**, from
+when only two shapes existed:
+
+| copy | what it did | how it fell |
+|---|---|---|
+| the panel, READING | displayed "Oval" for any Bubble that was not a rectangle | found while wiring the panel |
+| the panel, WRITING | **collapsed the user's choice onto "oval"**: picking "Star" or "Shield" had no effect at all | **reported by the user**, after the whole project |
+| Bubble creation | wrote the literal `'ovale'` by hand instead of `FORME_DEFAUT` | found while hunting the other two |
+
+⚠️ **AND THE SECOND IS THE WORST OF THE THREE.** The first LIED about the state; the second
+PREVENTED the state from existing. An inoperative setting, indistinguishable from an applied one —
+exactly what the registry refuses elsewhere by throwing on an unknown key.
+
+⚠️ **WHY NO TEST SAW IT: the whole suite queried READING, never WRITING.** The tests called
+`updateSidePanel()`, which fills the panel, and checked what it displays. A panel that displays
+correctly and a dropdown that writes nothing are perfectly compatible. The "call the real handler"
+lesson had been learnt for the create button and not applied to the dropdowns — a lesson learnt by
+halves protects nothing.
+
+The panel now queries the same functions the drawing does when reading, and validates through the
+registry when writing, for the shape as for the tail.
 
 ## The corpus, and its status
 
