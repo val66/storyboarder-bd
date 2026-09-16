@@ -408,6 +408,36 @@ ouverture — largeur égale à l'écart des bases, décalage latéral nul — p
 
 Les deux propriétés sont désormais éprouvées sur les neuf formes.
 
+## Le débordement du cadre de Case : deux règles, tenues par accident
+
+Le relevé montre, chez Lecteur omniscient, une Bulle en tache d'encre posée **à cheval** sur le bord
+de la Case et le blanc inter-cases : le débordement fait partie du dispositif, il n'en est pas un
+défaut.
+
+⚠️ **LA TÂCHE ANNONÇAIT L'INVERSE, ET ELLE AVAIT TORT.** Elle affirmait que les Bulles étaient
+découpées au rectangle de leur Case et prévoyait un booléen pour autoriser le débordement.
+Vérification faite avant d'écrire une ligne, en instrumentant `clip`/`save`/`restore` sur une Planche
+portant deux Cases et une Bulle à cheval : **aucune découpe**, nulle part, ni à l'écran ni à
+l'export — qui passe par le même `drawContent`. Le booléen aurait « autorisé » ce qui l'est déjà, et
+l'aurait retiré dans l'autre sens.
+
+Deux règles rendent ce dispositif possible, et aucune n'était écrite :
+
+| règle | statut avant | ce qui la cassait sans bruit |
+|---|---|---|
+| une Bulle n'est **jamais découpée** par une Case | accidentelle — personne n'avait mis de `clip()` là où **cinq** autres chemins de dessin en ont un | ajouter un découpage « par symétrie avec l'image de Case » |
+| les Bulles passent **devant toutes les Cases**, quel que soit leur empilement | décidée et écrite en commentaire, **jamais testée** | fondre la passe séparée des Bulles dans la boucle générale des objets |
+
+⚠️ **ET LA SIGNATURE DU TEST D'ORDRE A DÛ ÊTRE AFFINÉE.** La première version notait le nom des
+appels : « fill stroke fill stroke fill stroke ». Deux Cases et une Bulle produisent exactement
+cette suite **quel que soit leur ordre**, si bien que la mutation qui fait peindre la Bulle dans
+l'ordre de `page.objects` — donc parfois sous une Case — passait au vert. Chaque peinture est
+désormais notée avec sa **couleur**, et la Bulle d'essai en porte deux que rien d'autre n'emploie.
+
+⚠️ **UNE LIMITE SUBSISTE, D'UNE AUTRE NATURE :** la toile d'export fait exactement la taille de la
+Planche. Ce qui sort de la **Planche** est donc coupé — mais cela n'a rien à voir avec le cadre de
+la Case, et c'est vrai de tout objet.
+
 ## Le corpus, et son statut
 
 Deux niveaux, parce qu'ils ne se valent pas et que les confondre a déjà produit des erreurs.

@@ -393,6 +393,35 @@ opening — width equal to the gap between the bases, zero lateral offset — an
 
 Both properties are now tested across all nine shapes.
 
+## Overflowing the Panel frame: two rules, held by accident
+
+The survey shows, in Lecteur omniscient, an ink-splat Bubble placed **astride** the Panel's edge and
+the white gutter: the overflow is part of the device, not a defect in it.
+
+⚠️ **THE TASK CLAIMED THE OPPOSITE, AND IT WAS WRONG.** It stated that Bubbles were clipped to their
+Panel's rectangle and planned a boolean to permit the overflow. Checked before writing a line, by
+instrumenting `clip`/`save`/`restore` on a Page holding two Panels and a Bubble astride the edge:
+**no clipping**, anywhere, neither on screen nor on export — which goes through the same
+`drawContent`. The boolean would have "permitted" what is already permitted, and removed it the
+other way round.
+
+Two rules make the device possible, and neither was written down:
+
+| rule | status before | what broke it silently |
+|---|---|---|
+| a Bubble is **never clipped** by a Panel | accidental — nobody had put a `clip()` where **five** other drawing paths have one | adding clipping "by symmetry with the Panel image" |
+| Bubbles are drawn **in front of every Panel**, whatever their stacking | decided and written in a comment, **never tested** | folding the Bubbles' separate pass into the general object loop |
+
+⚠️ **AND THE ORDER TEST'S SIGNATURE HAD TO BE SHARPENED.** The first version recorded call names:
+"fill stroke fill stroke fill stroke". Two Panels and a Bubble produce exactly that sequence
+**whatever their order**, so the mutation that paints the Bubble in `page.objects` order — hence
+sometimes under a Panel — stayed green. Every paint now records its **colour**, and the test Bubble
+carries two that nothing else uses.
+
+⚠️ **ONE LIMIT REMAINS, OF A DIFFERENT KIND:** the export canvas is exactly the size of the Page. So
+anything outside the **Page** is cut — but that has nothing to do with the Panel frame, and it is
+true of every object.
+
 ## The corpus, and its status
 
 Two levels, because they are not equivalent and conflating them has already produced errors.
