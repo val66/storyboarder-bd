@@ -70,7 +70,7 @@ import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
-         queueParDefautBulle } from './bubble-shape.js';
+         queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1395,12 +1395,50 @@ function sommetsEntreAngles3D(o, sommets, depuis, jusqu){
 
 // Computes the position of a Bubble's tail tip, in page-space, from its stored angle/length
 // (o.tailAngle/o.tailLen), used for drawing AND for the click/drag hit-test.
+//
+// ⚠️ `tailLen` SE COMPTE EN FRACTION DU RAYON DU CONTOUR, pas du demi-axe de la Bulle. 0,45 veut
+// dire « 45 % plus loin du centre que ne l'est le bord, dans cette direction ». C'est ce que ce
+// calcul fait depuis toujours, et #425h l'a confirmé plutôt que changé : l'autre lecture — en
+// fraction de la boîte — donnait une portée constante quelle que soit la forme, mais déplaçait la
+// queue de toutes les Bulles rectangulaires déjà dessinées, et surtout mélangeait deux repères dans
+// un même triangle, la BASE restant sur le contour pendant que la POINTE serait passée sur
+// l'ellipse. Les queues sortaient de travers ; le rendu comparatif l'a montré sans appel.
 export function getBubbleTailTip(o){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
   const len = o.tailLen != null ? o.tailLen : BUBBLE_TAIL_LEN_DEFAULT;
   const edge = bubbleEdgePoint(o, theta);
   return { x: cx + (edge.x - cx) * (1 + len), y: cy + (edge.y - cy) * (1 + len) };
+}
+
+/**
+ * L'INVERSE de `getBubbleTailTip` : quels `tailAngle` / `tailLen` mettent la pointe sur ce point ?
+ *
+ * ⚠️ CETTE FONCTION EXISTE PARCE QUE LE GLISSER LE REFAISAIT À SA FAÇON, ET SE TROMPAIT DEUX FOIS.
+ * `events.js` posait `tailAngle = atan2(ny, nx)` sur des coordonnées NORMALISÉES par rx/ry, et
+ * `tailLen = hypot(nx, ny) − 1`, c'est-à-dire une longueur comptée en rayons de l'ELLIPSE de la
+ * boîte. Or le dessin interroge le CONTOUR, avec un angle polaire pour toute forme qui n'est pas
+ * l'ovale. Les deux lectures ne coïncident que pour l'ovale — et la queue ne suivait donc pas le
+ * curseur dès qu'on changeait de forme : 48 px d'écart sur un rectangle, 57 sur un écu, 77 sur une
+ * bande, mesurés sur une Bulle de 200 × 80.
+ *
+ * ⚠️ QUATRIÈME « DEUX COPIES D'UNE MÊME DÉCISION » DE CE CHANTIER, et la seule qui ait survécu à
+ * #425e sans se voir : les trois autres portaient sur la FORME, celle-ci sur la QUEUE, que personne
+ * ne pensait à rouvrir en ajoutant des formes. Le remède est le même — une seule fonction, et un
+ * test d'aller-retour qui exige que la pointe retombe sur le point demandé, pour les neuf formes.
+ */
+export function reglagesQueueVersLePoint3D(o, x, y){
+  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+  const dx = x - cx, dy = y - cy;
+  const theta = angleDuContourBulle(o, dx, dy);
+  const bord = pointDuContourBulle(o, theta);
+  const rayonDuBord = Math.hypot(bord.x - cx, bord.y - cy);
+  // Un rayon nul est impossible — `rx3D`/`ry3D` plancheront à 1 — mais une division par zéro
+  // écrirait NaN dans un champ PERSISTÉ, qui survivrait à la session et empoisonnerait le dessin.
+  const len = rayonDuBord > 0 ? Math.hypot(dx, dy) / rayonDuBord - 1 : 0;
+  // Bornes d'origine : en deçà de −0,92 la pointe traverserait le centre, au-delà de 1,8 la queue
+  // mangerait la Case. Une queue négative rentre dans la Bulle, ce qui est un usage réel.
+  return { tailAngle: theta, tailLen: clamp(len, -0.92, 1.8) };
 }
 
 /**

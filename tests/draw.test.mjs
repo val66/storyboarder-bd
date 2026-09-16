@@ -22,6 +22,7 @@ import {
   bubbleTailVisible,
   bubbleEdgePoint,
   getBubbleTailTip,
+  reglagesQueueVersLePoint3D,
   drawBubble,
   distToSegmentSq,
   wrapTextLines,
@@ -49,7 +50,7 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // test croyait vérifier un appel, il vérifiait une phrase. C'est le pire état pour un test : vert,
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
-import { pointDuContourBulle } from '../src/bubble-shape.js';
+import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 export { sourceSansCommentaires };
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -2667,5 +2668,73 @@ describe('#425g — les deux contours GÉNÉRÉS atteignent le canevas', () => {
     assert.equal(avecQueue({ bulleShape: 'bande', tailVisible: true }), true);
     assert.equal(avecQueue({ bulleShape: 'tache', tailVisible: true }), true);
     assert.equal(avecQueue({ bulleShape: 'rect', tailVisible: false }), false);
+  });
+});
+
+describe('#425h — poser la queue et la calculer sont deux faces d’une même décision', () => {
+  test('⚠️ ALLER-RETOUR : la pointe retombe EXACTEMENT sous le curseur, pour les neuf formes', () => {
+    // ⚠️ LE DÉFAUT QUE CE TEST AURAIT ATTRAPÉ, ET QU'AUCUN N'ATTRAPAIT. `events.js` calculait
+    // `tailAngle` et `tailLen` à sa façon — atan2 sur des coordonnées NORMALISÉES par rx/ry, et une
+    // longueur comptée en rayons de l'ELLIPSE — pendant que `getBubbleTailTip` interrogeait le
+    // CONTOUR avec un angle polaire. Les deux ne coïncident QUE pour l'ovale.
+    //
+    // Conséquence à l'usage : on tirait la queue quelque part, elle apparaissait ailleurs. Mesuré
+    // sur une Bulle de 200 × 80 : 48 px d'écart sur un rectangle, 57 sur un écu, 77 sur une bande.
+    // Toute la suite était verte, parce qu'elle éprouvait `getBubbleTailTip` seul — cohérent avec
+    // lui-même — et le glisser seul — cohérent avec lui-même aussi.
+    //
+    // La formulation juste n'est ni « l'angle est bon » ni « la longueur est bonne », c'est
+    // l'ALLER-RETOUR : depuis un point, en déduire les réglages, redessiner, retrouver le point.
+    for (const forme of formesConnues()) {
+      for (const [w, h] of [[200, 80], [300, 40], [60, 220]]) {
+        const o = { id: 'b1', type: 'bulle', x: 10, y: 20, w, h, bulleShape: forme };
+        const cx = o.x + w / 2, cy = o.y + h / 2;
+        for (const a of [0.3, 1.2, 1.85, 2.9, 4.4, 5.6]) {
+          // Un curseur posé à une fois et demie le rayon du contour, dans la direction `a`.
+          const bord = pointDuContourBulle(o, a);
+          const cible = { x: cx + (bord.x - cx) * 1.5, y: cy + (bord.y - cy) * 1.5 };
+          const regles = reglagesQueueVersLePoint3D(o, cible.x, cible.y);
+          const pointe = getBubbleTailTip(Object.assign({}, o, regles));
+          assert.ok(Math.hypot(pointe.x - cible.x, pointe.y - cible.y) < 1e-6,
+            `${forme} ${w}×${h} @${a} : pointe en ${pointe.x.toFixed(1)},${pointe.y.toFixed(1)} `
+            + `pour un curseur en ${cible.x.toFixed(1)},${cible.y.toFixed(1)}`);
+        }
+      }
+    }
+  });
+
+  test('⚠️ ET DEPUIS UN POINT QUELCONQUE, pas seulement depuis un point né du contour', () => {
+    // ⚠️ SANS CE SECOND TEST, LE PREMIER SE MORD LA QUEUE. Il construit sa cible EN PARTANT du
+    // contour, donc dans une direction que le contour atteint par construction. Un curseur réel est
+    // n'importe où : c'est là que l'inversion de l'angle doit vraiment fonctionner.
+    for (const forme of formesConnues()) {
+      const o = { id: 'b7', type: 'bulle', x: 0, y: 0, w: 200, h: 80, bulleShape: forme };
+      for (const [dx, dy] of [[130, 17], [-40, 90], [7, -120], [-150, -33], [1, 200]]) {
+        const cible = { x: 100 + dx, y: 40 + dy };
+        const regles = reglagesQueueVersLePoint3D(o, cible.x, cible.y);
+        const pointe = getBubbleTailTip(Object.assign({}, o, regles));
+        // La longueur peut être bornée (queue très longue) : on exige alors au moins la DIRECTION.
+        const ang = (p) => Math.atan2(p.y - 40, p.x - 100);
+        let ecart = ang(pointe) - ang(cible);
+        ecart = Math.atan2(Math.sin(ecart), Math.cos(ecart));
+        assert.ok(Math.abs(ecart) < 1e-9,
+          `${forme} : la pointe part à ${(ecart * 180 / Math.PI).toFixed(1)}° du curseur`);
+        if (regles.tailLen > -0.92 && regles.tailLen < 1.8) {
+          assert.ok(Math.hypot(pointe.x - cible.x, pointe.y - cible.y) < 1e-6,
+            `${forme} : longueur non bornée, la pointe devrait tomber sur le curseur`);
+        }
+      }
+    }
+  });
+
+  test('les bornes de longueur sont conservées, y compris la queue rentrante', () => {
+    // Une queue négative rentre DANS la Bulle : c'est un usage réel, pas un accident, et la borne
+    // basse existait avant #425h. La refaire disparaître en déménageant le calcul aurait retiré une
+    // possibilité sans que personne le demande.
+    const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 80 };
+    assert.equal(reglagesQueueVersLePoint3D(o, 100, 40).tailLen, -0.92, 'curseur AU centre : borné bas');
+    assert.equal(reglagesQueueVersLePoint3D(o, 9000, 40).tailLen, 1.8, 'curseur très loin : borné haut');
+    const dedans = reglagesQueueVersLePoint3D(o, 140, 40).tailLen;
+    assert.ok(dedans < 0 && dedans > -0.92, `curseur dans la Bulle : ${dedans} devrait être négatif`);
   });
 });

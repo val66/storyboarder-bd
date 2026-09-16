@@ -198,9 +198,28 @@ globalThis.document = {
   body: makeFakeElement(),
 };
 
+// ⚠️ LA FENÊTRE RETIENT SES ÉCOUTEURS DEPUIS #425h, troisième fois que ce fichier apprend la même
+// leçon — après les éléments (#392c) et le document. Un `addEventListener` en no-op rend
+// indémontrable tout ce qui se déclenche au GESTE : les glissers d'events.js sont posés sur
+// `window`, et aucun test ne pouvait donc en exécuter un seul.
+//
+// Ce que cela coûtait : le glisser de la queue d'une Bulle calculait son angle et sa longueur À SA
+// FAÇON, en désaccord avec le dessin, et la queue n'atterrissait pas sous le curseur — jusqu'à
+// 77 px d'écart. Les tests censés couvrir ce geste CHERCHAIENT DES CHAÎNES dans le texte source
+// d'events.js, ce qui vérifie qu'une ligne existe et jamais qu'elle fait quelque chose de juste.
+// C'est la famille de piège que docs/en/testing-method.md nomme en premier.
 globalThis.window = globalThis.window || {
-  addEventListener(){},
-  removeEventListener(){},
+  _ecouteurs: {},
+  addEventListener(type, fn){
+    if (typeof fn !== 'function') return;
+    (this._ecouteurs[type] = this._ecouteurs[type] || []).push(fn);
+  },
+  removeEventListener(type, fn){
+    const l = this._ecouteurs[type];
+    if (!l) return;
+    const i = l.indexOf(fn);
+    if (i >= 0) l.splice(i, 1);
+  },
   devicePixelRatio: 1,
   innerWidth: 1920,
   innerHeight: 1080,

@@ -20,6 +20,8 @@ import {
   majAffichageReglagesTraitBulle3D, updateSidePanel,
 } from '../src/sidebar.js';
 import { S, currentPage } from '../src/state.js';
+import { getBubbleTailTip } from '../src/draw.js';
+import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
@@ -952,5 +954,54 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     assert.equal(vu('ecu'), true, 'une queue demandée doit être cochée');
     b.tailVisible = false;
     assert.equal(vu('etoile'), false);
+  });
+});
+
+describe('#425h — le GESTE de glisser la queue, exécuté pour de bon', () => {
+  /**
+   * ⚠️ CE BLOC EXISTE PARCE QUE LA MUTATION S'EST ÉCHAPPÉE. Un test d'aller-retour sur
+   * `reglagesQueueVersLePoint3D` — la fonction pure — était vert, et le restait quand on remettait
+   * dans events.js le calcul fautif qu'elle remplace : la fonction était juste, personne ne
+   * vérifiait qu'elle est APPELÉE. C'est mot pour mot la leçon des menus déroulants, deux étapes
+   * plus tôt : « une fiche qui affiche correctement et un menu qui n'écrit rien sont parfaitement
+   * compatibles ».
+   *
+   * ⚠️ ET LE GESTE N'ÉTAIT PAS EXÉCUTABLE AVANT : les glissers sont posés sur `window`, dont le
+   * stub jetait les écouteurs. Les tests du glisser se contentaient donc de CHERCHER DES CHAÎNES
+   * dans le texte source d'events.js. Le stub les retient désormais.
+   */
+  const glisserLaQueueVers = (bulle, x, y) => {
+    S.selectedId = bulle.id;
+    S.dragMode = 'bubbleTail';
+    S.dragStart = { x, y };
+    // getCoords convertit des coordonnées d'écran en coordonnées de Planche via la taille CSS
+    // mesurée du canevas. On la fait coïncider avec la Planche pour que la conversion soit
+    // l'identité, et que le test parle en coordonnées de Planche.
+    const page = currentPage();
+    const canvas = document.getElementById('canvas');
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: page.w, height: page.h });
+    (window._ecouteurs.mousemove || []).forEach(fn => fn({ clientX: x, clientY: y, buttons: 1 }));
+    S.dragMode = null;
+  };
+
+  test('⚠️ ON TIRE LA QUEUE QUELQUE PART, ELLE Y VA — pour les neuf formes', () => {
+    const page = currentPage();
+    for (const forme of formesConnues()) {
+      S.pendingCreatePos = { x: 300, y: 300 };
+      document.getElementById('ctxCreateBubble').onclick();
+      const b = page.objects[page.objects.length - 1];
+      b.bulleShape = forme;
+      const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      for (const a of [0.7, 2.3, 4.1]) {
+        // Une cible à une fois et demie le rayon du contour : dans les bornes, donc atteignable.
+        const bord = pointDuContourBulle(b, a);
+        const cible = { x: cx + (bord.x - cx) * 1.5, y: cy + (bord.y - cy) * 1.5 };
+        glisserLaQueueVers(b, cible.x, cible.y);
+        const pointe = getBubbleTailTip(b);
+        assert.ok(Math.hypot(pointe.x - cible.x, pointe.y - cible.y) < 1e-6,
+          `${forme} : lâchée en ${cible.x.toFixed(1)},${cible.y.toFixed(1)}, `
+          + `la pointe est en ${pointe.x.toFixed(1)},${pointe.y.toFixed(1)}`);
+      }
+    }
   });
 });

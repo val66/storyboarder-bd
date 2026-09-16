@@ -130,7 +130,7 @@ import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
   buildToolClose, getPanelPoints, bubbleTailVisible, getBubbleTailTip, drawCurrentPage, renderAll,
   scheduleDrawCurrentPage, flushDrawCurrentPage, exportPage, exportVolume,
-  cadreDeRecouvrement3D, ancrageApresGlissement3D,
+  cadreDeRecouvrement3D, ancrageApresGlissement3D, reglagesQueueVersLePoint3D,
 } from './draw.js';
 import { setI18nCallbacks, applyI18n } from './i18n.js';
 import {
@@ -3609,17 +3609,16 @@ window.addEventListener('mousemove', (e) => {
       }
     }
   } else if (S.dragMode === 'bubbleTail') {
-    // The tail freely follows the cursor all around the bubble: we recompute its angle and
-    // length (normalized by rx/ry, so consistent even for a very oval bubble) on every mouse
-    // movement, rather than freezing a delta relative to a starting position.
+    // La queue suit librement le curseur tout autour de la Bulle : on recalcule son angle et sa
+    // longueur à chaque déplacement, plutôt que de figer un écart relatif à une position de départ.
+    //
+    // ⚠️ LE CALCUL A DÉMÉNAGÉ DANS draw.js EN #425h, ET CE N'ÉTAIT PAS UN RANGEMENT. Il vivait ici,
+    // écrit contre l'ELLIPSE de la boîte, pendant que le dessin interrogeait le CONTOUR : la pointe
+    // n'atterrissait pas sous le curseur dès que la forme n'était pas un ovale — jusqu'à 77 px
+    // d'écart. Poser la pointe et la calculer sont désormais deux faces d'une même fonction, et un
+    // test d'aller-retour l'exige pour les neuf formes.
     const obj = page.objects.find(o => o.id === S.selectedId);
-    const cx = obj.x + obj.w / 2, cy = obj.y + obj.h / 2;
-    const rx = Math.max(1, obj.w / 2), ry = Math.max(1, obj.h / 2);
-    const nx = (x - cx) / rx, ny = (y - cy) / ry;
-    obj.tailAngle = Math.atan2(ny, nx);
-    // tailLen can be negative: the tail can then go back inside the bubble (close to the center)
-    // rather than being forced to stay outside its outline.
-    obj.tailLen = clamp(Math.hypot(nx, ny) - 1, -0.92, 1.8);
+    Object.assign(obj, reglagesQueueVersLePoint3D(obj, x, y));
   } else if (S.dragMode === 'create') {
     S.tempBox.w = x - S.dragStart.x; S.tempBox.h = y - S.dragStart.y;
   } else if (S.dragMode === 'panelCamRotate') {

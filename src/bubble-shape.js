@@ -27,12 +27,26 @@
  *   2. `pointsDuContour(o)` — les points du contour, ou `null` si le contour est lisse (l'ovale).
  *   3. `encartInterieur(o)` — la zone réellement inscriptible.
  *   4. `queueParDefaut(o)` — une Bulle de cette forme naît-elle avec une queue ?
+ *   5. `angleVersLePoint(o, dx, dy)` — l'INVERSE de la première : quel `theta` vise cette direction ?
  *
  * ⚠️ LA DEUXIÈME S'APPELAIT `sommets`, ET LE NOM MENTAIT DÈS #425f. L'écu d'Okko a des côtés
  * CONCAVES : entre deux pointes, le contour n'est pas un segment mais un arc, rendu par une suite
  * de points rapprochés. Aucun d'eux n'est un sommet. Le tracé, lui, n'a pas changé d'une ligne — il
  * relie les points qu'on lui donne — ce qui confirme que la bonne unité du contrat était le POINT
  * et non le sommet.
+ *
+ * ⚠️ LA CINQUIÈME EST ARRIVÉE AVEC #425h, ET ELLE RÉPARE UN DÉFAUT PLUTÔT QU'ELLE N'AJOUTE UNE
+ * POSSIBILITÉ. Le glisser de la queue doit faire le chemin inverse du dessin : l'utilisateur pose un
+ * point, il faut en déduire le `theta` à enregistrer. Faute de cette fonction, `events.js` calculait
+ * l'angle À SA FAÇON — `atan2` sur des coordonnées NORMALISÉES par rx/ry — pendant que le dessin
+ * interrogeait le contour avec un angle POLAIRE. Les deux ne coïncident que pour l'ovale, dont le
+ * `theta` est justement paramétrique. Sur toute autre forme, la queue ne suivait pas le curseur :
+ * jusqu'à 77 px d'écart sur une Bulle de 200 × 80, mesurés.
+ *
+ * ⚠️ ET CE N'EST PAS UN DÉTAIL DE MISE EN ŒUVRE QU'ON POURRAIT DEVINER DEHORS. Que `theta` soit
+ * polaire ou paramétrique est une propriété de CHAQUE forme — l'invariant noté dès #425e, « θ a deux
+ * sens selon la forme ». Laisser un appelant en décider, c'était une seconde copie de cette
+ * décision, et elle a divergé dès la troisième forme.
  *
  * ⚠️ LA QUATRIÈME EST ARRIVÉE AVEC #425f, PARCE QUE DEUX FORMES L'ONT EXIGÉE. L'écu porte une
  * pointe basse allongée qui FAIT OFFICE de queue ; la couronne d'épines de Croquemitaine n'en a
@@ -74,6 +88,27 @@ const cx3D = (o) => o.x + o.w / 2;
 const cy3D = (o) => o.y + o.h / 2;
 const rx3D = (o) => Math.max(1, o.w / 2);
 const ry3D = (o) => Math.max(1, o.h / 2);
+
+/**
+ * L'angle qui vise une direction, pour une forme dont `theta` est POLAIRE. C'est le cas de toutes
+ * les formes à points : `pointSurSommets` part du centre dans la direction `(cos θ, sin θ)`, en
+ * pixels de page. L'inverse est donc l'`atan2` direct.
+ */
+function anglePolaire(o, dx, dy){
+  return Math.atan2(dy, dx);
+}
+
+/**
+ * L'angle qui vise une direction, pour l'ellipse, dont `theta` est le PARAMÈTRE et non un angle.
+ *
+ * ⚠️ LES DEUX NE COÏNCIDENT QUE SUR UN CERCLE, et c'est la raison d'être de cette fonction. Le point
+ * de paramètre θ est `(rx cos θ, ry sin θ)` : sa direction vue du centre vaut `atan2(ry sin θ,
+ * rx cos θ)`, qui n'est θ que si `rx == ry`. Pour viser une direction, il faut donc normaliser
+ * AVANT l'atan2 — exactement l'inverse de ce que fait le point.
+ */
+function angleParametrique(o, dx, dy){
+  return Math.atan2(dy / ry3D(o), dx / rx3D(o));
+}
 
 /** Le point du contour d'une ellipse, dans la direction `theta`. */
 function pointOvale(o, theta){
@@ -405,6 +440,8 @@ const REGISTRE = {
     // quand la Bulle tremble). C'est le seul cas où `sommets` rend `null`, et draw.js s'en sert.
     pointDuContour: (o, theta) => pointOvale(o, theta),
     pointsDuContour: () => null,
+    // La seule forme paramétrique du registre — et c'est elle que l'ancien glisser supposait partout.
+    angleVersLePoint: angleParametrique,
     queueParDefaut: () => true,
     // ⚠️ LA BOÎTE ENTIÈRE, ET C'EST UNE DÉCISION DE COMPATIBILITÉ, PAS UN OUBLI. Le rectangle
     // inscrit dans une ellipse ne mesure que 0,71 de ses demi-axes, et c'est ce que j'avais écrit
@@ -420,18 +457,21 @@ const REGISTRE = {
   [FORME_RECT]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsRect(o)),
     pointsDuContour: sommetsRect,
+    angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
     encartInterieur: (o) => encartDepuisFraction(o, 1, 1),
   },
   [FORME_OCTOGONE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsOctogone(o)),
     pointsDuContour: sommetsOctogone,
+    angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
     encartInterieur: (o) => encartDepuisFraction(o, 1 - CHANFREIN / 2, 1 - CHANFREIN / 2),
   },
   [FORME_ETOILE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX)),
     pointsDuContour: (o) => sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX),
+    angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
     // ⚠️ L'ENCART EST LARGE ET BAS, PAS CARRÉ, ET C'EST LE RENDU QUI L'A IMPOSÉ. Avec un encart
     // carré, la contrainte « le coin reste dans le contour » impose un facteur sous `creux / √2` :
@@ -447,6 +487,7 @@ const REGISTRE = {
   [FORME_DENTS]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX)),
     pointsDuContour: (o) => sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX),
+    angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
     // Même raisonnement que pour l'étoile, avec le creux plus doux des dents de scie.
     encartInterieur: (o) => encartDepuisFraction(o, 0.78, 0.36),
@@ -454,6 +495,7 @@ const REGISTRE = {
   [FORME_ECU]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, pointsEcu(o)),
     pointsDuContour: pointsEcu,
+    angleVersLePoint: anglePolaire,
     // ⚠️ FAUX PARCE QUE LA POINTE BASSE EST DÉJÀ LA QUEUE. Ajouter par-dessus le triangle ordinaire
     // donnerait deux queues qui se contredisent, et le relevé n'en montre jamais qu'une.
     queueParDefaut: () => false,
@@ -467,6 +509,7 @@ const REGISTRE = {
   [FORME_EPINES]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX)),
     pointsDuContour: (o) => sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX),
+    angleVersLePoint: anglePolaire,
     // ⚠️ FAUX POUR LA RAISON INVERSE DE L'ÉCU : il n'y a personne à désigner.
     queueParDefaut: () => false,
     // Même raisonnement que l'étoile : large et bas plutôt que carré. À 0,58 de large, « Bonjour ! »
@@ -477,6 +520,7 @@ const REGISTRE = {
   [FORME_BANDE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsBande(o)),
     pointsDuContour: sommetsBande,
+    angleVersLePoint: anglePolaire,
     // ⚠️ SANS QUEUE, ET C'EST CE QUI EN FAIT UN RÉCITATIF. Le relevé la montre pour une voix qui
     // commente, entre guillemets, et non pour quelqu'un qui parle dans la Case.
     queueParDefaut: () => false,
@@ -490,6 +534,7 @@ const REGISTRE = {
   [FORME_TACHE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsTache(o)),
     pointsDuContour: sommetsTache,
+    angleVersLePoint: anglePolaire,
     // L'atlas la range en PENSÉE : elle ne sort de la bouche de personne.
     queueParDefaut: () => false,
     // ⚠️ AJUSTÉ À CETTE TACHE-CI, pas à une tache moyenne. Voir `encartAjusteAuContour` : une
@@ -551,6 +596,17 @@ export function pointsDuContourBulle(o){
  */
 export function queueParDefautBulle(o){
   return formeOuLever(o).queueParDefaut(o);
+}
+
+/**
+ * Le `theta` qui vise la direction `(dx, dy)` depuis le centre. Fonction PURE.
+ *
+ * ⚠️ C'EST L'INVERSE EXACT DE `pointDuContourBulle`, et les tests l'éprouvent comme tel : partir
+ * d'une direction, en déduire l'angle, redemander le point — il doit retomber dans la direction de
+ * départ, pour les neuf formes.
+ */
+export function angleDuContourBulle(o, dx, dy){
+  return formeOuLever(o).angleVersLePoint(o, dx, dy);
 }
 
 /** La zone réellement inscriptible. Fonction PURE. */
