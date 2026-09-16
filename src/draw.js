@@ -5,7 +5,7 @@
  *
  * Exported functions: getPanelPoints, drawTracé, drawTraceToolPreview,
  * drawMeasureToolPreview, drawBuildToolOverlay, drawPanelNumberBadge,
- * drawContent, drawObject, bubbleTailVisible, bubbleShapeOf, bubbleEdgePoint,
+ * drawContent, drawObject, bubbleTailVisible, bubbleEdgePoint,
  * getBubbleTailTip, drawBubble, drawFace, syncPreviewCanvasRes,
  * getRoomBoundingBoxXZ, getBuildingBoundingBoxXZ, detectBuildFaces, buildTryExtendWall,
  * drawRoomPreview, drawBuildingPreview, drawObjectPreview, drawPersonaPreview,
@@ -67,6 +67,9 @@ import { getLoadedImage, imageState } from './image-cache.js';
 // pur (#425a), appliquée ici. Les décalages du tremblé s'ajoutent au TRACÉ, jamais au contour rendu
 // par `bubbleEdgePoint` — d'où la queue et le hit-test qui restent d'aplomb.
 import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
+// Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
+// exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
+import { pointDuContourBulle, sommetsDuContourBulle, encartInterieurBulle } from './bubble-shape.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1344,25 +1347,39 @@ export function bubbleTailVisible(o){
   return o.tailVisible !== false;
 }
 
-// The shape of a Bubble's body: 'ovale' (default) or 'rect'.
-export function bubbleShapeOf(o){
-  return o.bulleShape === 'rect' ? 'rect' : 'ovale';
+// `bubbleShapeOf` a été RETIRÉ par #425e. Il rendait « ovale » pour toute valeur autre que
+// « rect » — un repli qui convenait à deux formes, et qui avec douze rendrait un réglage inopérant
+// indiscernable d'un réglage correct. `formeDeLaBulle` le remplace et LÈVE sur une clé inconnue.
+// Il n'a pas été gardé comme synonyme : un second nom pour la même chose se serait mis à diverger
+// le jour où l'un des deux aurait reçu une correction.
+
+/**
+ * Le point du contour dans la direction `theta`, délégué au registre.
+ *
+ * ⚠️ TROIS CHOSES EN DÉPENDENT, et c'est pour cela que ce point reste EXACT quoi qu'il arrive au
+ * tracé : l'ancrage de la queue, le hit-test de son glisser, et le parcours du périmètre. Le tremblé
+ * de #425b perturbe le TRACÉ et ne passe jamais par ici.
+ */
+export function bubbleEdgePoint(o, theta){
+  return pointDuContourBulle(o, theta);
 }
 
-// Point located on the bubble's outline, in the "theta" direction from its center, parameterized
-// by the ellipse for the Oval shape, and by ray intersection for the Rectangle shape. Lets
-// getBubbleTailTip and the tail drawing stay generic regardless of the shape.
-export function bubbleEdgePoint(o, theta){
+/**
+ * Émet le contour d'une forme À SOMMETS entre deux angles, dans l'ordre du périmètre.
+ *
+ * ⚠️ C'EST L'ALGORITHME QUI ÉTAIT ÉCRIT DANS LA BRANCHE « RECTANGLE » DE `drawBubble`, rendu
+ * générique. Il tient à une propriété que le registre impose à toute forme : un rayon parti du
+ * centre rencontre le contour exactement une fois, donc l'angle ordonne le périmètre. Le laisser à
+ * chaque forme aurait recopié ces douze lignes autant de fois qu'il y a de formes.
+ */
+function sommetsEntreAngles3D(o, sommets, depuis, jusqu){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-  const rx = Math.max(1, o.w / 2), ry = Math.max(1, o.h / 2);
-  if (bubbleShapeOf(o) === 'rect') {
-    const dx = Math.cos(theta), dy = Math.sin(theta);
-    const tx = dx !== 0 ? rx / Math.abs(dx) : Infinity;
-    const ty = dy !== 0 ? ry / Math.abs(dy) : Infinity;
-    const t = Math.min(tx, ty);
-    return { x: cx + dx * t, y: cy + dy * t };
-  }
-  return { x: cx + rx * Math.cos(theta), y: cy + ry * Math.sin(theta) };
+  const norm = (a) => { let d = a - depuis; while (d < 0) d += Math.PI * 2; return d; };
+  const portee = jusqu - depuis;
+  return sommets
+    .map(p => ({ x: p.x, y: p.y, d: norm(Math.atan2(p.y - cy, p.x - cx)) }))
+    .filter(p => p.d > 0 && p.d < portee)
+    .sort((a, b) => a.d - b.d);
 }
 
 // Computes the position of a Bubble's tail tip, in page-space, from its stored angle/length
@@ -1405,7 +1422,6 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait){
 export function drawBubble(c, o){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const rx = Math.max(1, o.w / 2), ry = Math.max(1, o.h / 2);
-  const isRect = bubbleShapeOf(o) === 'rect';
   // L'épaisseur était lue deux fois, une par branche, avec le même défaut écrit deux fois. Elle sert
   // désormais aussi à dimensionner le motif et le tremblement : une seule lecture, sinon les trois
   // pourraient un jour parler d'épaisseurs différentes.
@@ -1429,77 +1445,44 @@ export function drawBubble(c, o){
     }
     return pts;
   };
+  // Les sommets de la forme, ou `null` quand le contour est lisse (l'ovale). C'est ce seul
+  // renseignement qui décide du tracé : les deux branches « rectangle » et « ovale » qui vivaient
+  // ici jusqu'à #425e disaient déjà cela, mais en le codant en dur pour deux formes.
+  const sommets = sommetsDuContourBulle(o);
+  /** Émet le contour entre deux angles, en respectant tremblement et sommets. */
+  const emettreContour = (depuis, jusqu) => {
+    if (tremble) { for (const p of pointsTrembles(depuis, jusqu)) c.lineTo(p.x, p.y); return; }
+    if (sommets) { for (const p of sommetsEntreAngles3D(o, sommets, depuis, jusqu)) c.lineTo(p.x, p.y); return; }
+    c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false);
+  };
   c.save();
-  if (isRect) {
-    // Rectangle: same continuous-outline technique as for the oval (cf. else branch), but
-    // replacing the arc with a traversal of the rectangle's corners, this way the small edge segment
-    // between base1 and base2 (under the tail) is never traced, and no line stays visible there.
-    c.beginPath();
-    if (bubbleTailVisible(o)) {
-      const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
-      const spread = 0.22;
-      const angleBase1 = theta - spread, angleBase2 = theta + spread;
-      const base1 = bubbleEdgePoint(o, angleBase1);
-      const base2 = bubbleEdgePoint(o, angleBase2);
-      const tip = getBubbleTailTip(o);
-      // The 4 corners, with their angle (from the center), since bubbleEdgePoint(o, theta) is an
-      // increasing bijection from the angle to the rectangle's outline (centered convex shape), these
-      // angles give the same cyclic order as the real traversal of the perimeter.
-      const corners = [
-        { x: cx + rx, y: cy + ry },
-        { x: cx - rx, y: cy + ry },
-        { x: cx - rx, y: cy - ry },
-        { x: cx + rx, y: cy - ry },
-      ].map(p => ({ x: p.x, y: p.y, angle: Math.atan2(p.y - cy, p.x - cx) }));
-      const norm = (a) => { let d = a - angleBase2; while (d < 0) d += Math.PI * 2; return d; };
-      const spanEnd = (angleBase1 + Math.PI * 2) - angleBase2;
-      const ordered = corners
-        .map(p => ({ x: p.x, y: p.y, d: norm(p.angle) }))
-        .filter(p => p.d > 0 && p.d < spanEnd)
-        .sort((a, b) => a.d - b.d);
-      c.moveTo(base1.x, base1.y);
-      c.lineTo(tip.x, tip.y);
-      c.lineTo(base2.x, base2.y);
-      if (tremble) for (const p of pointsTrembles(angleBase2, angleBase1 + Math.PI * 2)) c.lineTo(p.x, p.y);
-      else for (const p of ordered) c.lineTo(p.x, p.y);
-    } else if (tremble) {
-      const pts = pointsTrembles(0, Math.PI * 2);
-      c.moveTo(pts[0].x, pts[0].y);
-      for (const p of pts.slice(1)) c.lineTo(p.x, p.y);
-    } else {
-      // Tail hidden: simple full rectangle, no tail or notch.
-      c.rect(o.x, o.y, o.w, o.h);
-    }
-    c.closePath();
-    remplirEtCernerBulle3D(c, o, app, largeurTrait);
+  c.beginPath();
+  if (bubbleTailVisible(o)) {
+    const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
+    const spread = 0.22; // écart angulaire entre les deux points de base de la queue
+    const angleBase1 = theta - spread, angleBase2 = theta + spread;
+    const base1 = bubbleEdgePoint(o, angleBase1);
+    const base2 = bubbleEdgePoint(o, angleBase2);
+    const tip = getBubbleTailTip(o);
+    // Contour continu et unique : on suit le périmètre SAUF l'arc entre base1 et base2, juste sous
+    // la queue, remplacé par les deux segments qui vont à sa pointe. Aucun trait ne traverse alors
+    // l'intérieur de la Bulle à la base de la queue.
+    c.moveTo(base1.x, base1.y);
+    c.lineTo(tip.x, tip.y);
+    c.lineTo(base2.x, base2.y);
+    emettreContour(angleBase2, angleBase1 + Math.PI * 2);
+  } else if (tremble || sommets) {
+    // Sans queue : le périmètre entier, d'un tour complet. Le premier point est posé à la main,
+    // `emettreContour` n'émettant que des `lineTo`.
+    const depart = tremble ? pointsTrembles(0, Math.PI * 2)[0] : sommets[0];
+    c.moveTo(depart.x, depart.y);
+    emettreContour(0, Math.PI * 2);
   } else {
-    c.beginPath();
-    if (bubbleTailVisible(o)) {
-      const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
-      const spread = 0.22; // angular gap between the tail's two base points, on the ellipse
-      const angleBase1 = theta - spread, angleBase2 = theta + spread;
-      const base1 = bubbleEdgePoint(o, angleBase1);
-      const base2 = bubbleEdgePoint(o, angleBase2);
-      const tip = getBubbleTailTip(o);
-      // Single continuous outline: we follow the ellipse all the way around EXCEPT the small arc between
-      // base1 and base2 (just under the tail), replaced by the two segments toward the tail, this way
-      // no line crosses the inside of the bubble at the base of the tail.
-      c.moveTo(base1.x, base1.y);
-      c.lineTo(tip.x, tip.y);
-      c.lineTo(base2.x, base2.y);
-      if (tremble) for (const p of pointsTrembles(angleBase2, angleBase1 + Math.PI * 2)) c.lineTo(p.x, p.y);
-      else c.ellipse(cx, cy, rx, ry, 0, angleBase2, angleBase1 + Math.PI * 2, false);
-    } else if (tremble) {
-      const pts = pointsTrembles(0, Math.PI * 2);
-      c.moveTo(pts[0].x, pts[0].y);
-      for (const p of pts.slice(1)) c.lineTo(p.x, p.y);
-    } else {
-      // Tail hidden: simple full ellipse, no tail or notch.
-      c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    }
-    c.closePath();
-    remplirEtCernerBulle3D(c, o, app, largeurTrait);
+    // Ovale sans queue ni tremblement : l'ellipse exacte, en un appel, comme avant #425.
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   }
+  c.closePath();
+  remplirEtCernerBulle3D(c, o, app, largeurTrait);
   c.restore();
 
   if (o.description) {
@@ -1513,17 +1496,35 @@ export function drawBubble(c, o){
     const fontFallback = BUBBLE_FONT_FALLBACK[fontFamily] || 'Comic Sans MS';
     c.font = `${fontSize}px "${fontFamily}", "${fontFallback}", sans-serif`;
     const paddingRatio = o.bullePadding != null ? o.bullePadding : BUBBLE_PADDING_DEFAULT;
-    const padX = o.w * paddingRatio;
+    // ⚠️ LE TEXTE SUIT LA FORME, PAS LA BOÎTE ENGLOBANTE (#425e). Sur une étoile, la boîte
+    // englobante est très supérieure à la surface utile : y couper les lignes les fait dépasser
+    // entre deux branches. L'écart intérieur choisi par l'utilisateur se mesure donc DEPUIS l'encart
+    // que la forme déclare inscriptible, et non depuis `o.w`.
+    const encart = encartInterieurBulle(o);
+    const padX = encart.w * paddingRatio;
     const lineHeight = Math.round(fontSize * 1.2);
-    const lines = wrapTextLines(c, o.description, o.w - padX * 2);
+    const lines = wrapTextLines(c, o.description, encart.w - padX * 2);
     // Text centered horizontally (per line, around cx) and vertically (the whole block of
     // lines is centered around cy), rather than aligned to the top left.
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     const totalHeight = lines.length * lineHeight;
-    let yy = cy - totalHeight / 2 + lineHeight / 2;
+    // Centré sur l'encart, et non sur la boîte.
+    //
+    // ⚠️ MUTATION ÉQUIVALENTE À CE JOUR, ET IL FAUT LE DIRE. Remplacer `ecx`/`ecy` par `cx`/`cy` ne
+    // fait tomber aucun test, et c'est exact : les cinq formes de #425e ont un encart CENTRÉ, donc
+    // les deux expressions donnent le même point. Écrire un test qui l'attraperait demanderait une
+    // forme dissymétrique, qui n'existe pas encore — le contrefaire reviendrait à tester le code
+    // plutôt que le comportement.
+    //
+    // La première forme dissymétrique sera l'écu d'Okko, en #425f : sa pointe basse allonge la
+    // Bulle vers le bas sans que la zone inscriptible suive. Ce jour-là, cette ligne cessera d'être
+    // équivalente, et le test du contrat qui exige un encart centré devra être desserré EN
+    // CONNAISSANCE DE CAUSE.
+    const ecx = encart.x + encart.w / 2, ecy = encart.y + encart.h / 2;
+    let yy = ecy - totalHeight / 2 + lineHeight / 2;
     for (const line of lines) {
-      c.fillText(line, cx, yy);
+      c.fillText(line, ecx, yy);
       yy += lineHeight;
     }
     c.restore();

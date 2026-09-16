@@ -88,6 +88,11 @@ export const I18N_TEXT = [
   ['label[for="sideBubbleShapeSelect"]', 'Bubble shape', 'Forme de la bulle'],
   ['#sideBubbleShapeSelect option[value="ovale"]', 'Oval', 'Ovale'],
   ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
+  // #425e — les formes du registre. Les libellés traduisent ce qu'on VOIT ; la valeur persistée,
+  // elle, ne change pas de langue.
+  ['#sideBubbleShapeSelect option[value="octogone"]', 'Chamfered octagon', 'Octogone à coins coupés'],
+  ['#sideBubbleShapeSelect option[value="etoile"]', 'Star (shout)', 'Étoile (cri)'],
+  ['#sideBubbleShapeSelect option[value="dents"]', 'Sawtooth', 'Dents de scie'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

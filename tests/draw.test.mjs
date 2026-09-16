@@ -20,7 +20,6 @@ import {
   getBuildingBoundingBoxXZ,
   getPanelPoints,
   bubbleTailVisible,
-  bubbleShapeOf,
   bubbleEdgePoint,
   getBubbleTailTip,
   drawBubble,
@@ -368,16 +367,13 @@ describe('getPanelPoints : sommets d\'une Case selon sa forme', () => {
   });
 });
 
-// ── Bulles (bubbleTailVisible / bubbleShapeOf / bubbleEdgePoint / getBubbleTailTip) ─────────────────
-describe('bubbleTailVisible / bubbleShapeOf : propriétés simples d\'une Bulle', () => {
+// ── Bulles (bubbleTailVisible / bubbleEdgePoint / getBubbleTailTip) ─────────────────────────────
+// La forme elle-même a déménagé dans src/bubble-shape.js (#425e) : son registre, son contrat et son
+// échec bruyant sur clé inconnue sont éprouvés dans tests/bubble-shape.test.mjs.
+describe('bubbleTailVisible : propriété simple d\'une Bulle', () => {
   test('bubbleTailVisible : true par défaut, false si tailVisible === false explicitement', () => {
     assert.equal(bubbleTailVisible({}), true);
     assert.equal(bubbleTailVisible({ tailVisible: false }), false);
-  });
-
-  test('bubbleShapeOf : "ovale" par défaut, sinon la forme explicite', () => {
-    assert.equal(bubbleShapeOf({}), 'ovale');
-    assert.equal(bubbleShapeOf({ bulleShape: 'rect' }), 'rect');
   });
 });
 
@@ -2144,6 +2140,31 @@ const dessiner = (o) => {
 const appels = (j, nom) => j.filter(e => e.nom === nom);
 
 describe('#425b — l’apparence décidée atteint réellement le canevas', () => {
+  test('⚠️ RÉGRESSION #425e : le TEXTE d’une Bulle ovale se coupe au même endroit qu’avant', () => {
+    // ⚠️ CE TEST EXISTE PARCE QUE LE DÉFAUT EST PASSÉ. #425e a fait mesurer l'écart intérieur depuis
+    // l'encart déclaré par la forme, au lieu de `o.w` — nécessaire pour l'étoile, dont la boîte
+    // englobante est bien plus grande que la surface utile. Mais l'ovale déclarait d'abord un encart
+    // réduit à 0,68 : la largeur utile d'une Bulle ovale passait de 0,60 à 0,41 de sa largeur, et
+    // TOUTES les Bulles déjà écrites se remettaient à couper leurs lignes plus tôt.
+    //
+    // Aucun test ne l'a vu : la suite vérifiait des contours, des opacités, des motifs — jamais où
+    // le texte va à la ligne. C'est le rendu qui l'a montré, « Bonjour ! » coupé en deux. La mesure
+    // ci-dessous est celle d'avant #425e : la largeur de coupe vaut la largeur de la Bulle moins
+    // deux fois l'écart intérieur, calculé sur `o.w`.
+    const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 90,
+      description: 'un texte assez long pour être coupé en plusieurs lignes distinctes', bullePadding: 0.2 };
+    const lignes = (bulle) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle);
+      return appels(c.journal, 'fillText').length;
+    };
+    // Repère : avec la règle d'origine — largeur utile = o.w × (1 − 2 × 0,2) = 120 px — et une
+    // mesure de 6 px par caractère dans le faux contexte, ce texte tient en un nombre de lignes
+    // qu'on fige ici. Toute réduction de l'encart de l'ovale l'augmenterait.
+    assert.equal(lignes(o), 4, 'le nombre de lignes d’une Bulle ovale a changé');
+    assert.equal(lignes({ ...o, bulleShape: 'rect' }), 4, 'idem pour le rectangle');
+  });
+
   test('RÉGRESSION : une Bulle sans les champs de #425a dessine comme avant', () => {
     // ⚠️ LA GARANTIE, CÔTÉ DESSIN CETTE FOIS. tests/bubble-style.test.mjs prouve que la DÉCISION est
     // celle d'avant ; il ne dit rien de ce que le canevas reçoit. Ici : opacité pleine au moment du
@@ -2237,5 +2258,103 @@ describe('#425b — l’apparence décidée atteint réellement le canevas', () 
     const a = appels(dessiner({ id: 'b1', bulleBorderRegularity: 'tremble' }), 'lineTo').map(e => e.args.join(','));
     const b = appels(dessiner({ id: 'b2', bulleBorderRegularity: 'tremble' }), 'lineTo').map(e => e.args.join(','));
     assert.notDeepEqual(a, b);
+  });
+});
+
+describe('#425e — les formes atteignent réellement le canevas', () => {
+  const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+
+  test('⚠️ UNE FORME À SOMMETS EST TRACÉE PAR SES SOMMETS, pas par une ellipse', () => {
+    // ⚠️ MUTATIONS Q10 ET Q13, ÉCHAPPÉES PUIS RATTRAPÉES. La suite éprouvait le CONTRAT des formes —
+    // contour exact, sommets ordonnés, encart — et le câblage de l'opacité et du motif. Personne ne
+    // dessinait une forme polygonale pour regarder ce qui sortait. Retirer la branche « sommets » du
+    // tracé, ou cesser de les trier, laissait tout au vert.
+    for (const forme of ['rect', 'octogone', 'etoile', 'dents']) {
+      const j = dessiner({ bulleShape: forme, description: '' });
+      assert.equal(appels(j, 'ellipse').length, 0, `${forme} ne doit pas passer par c.ellipse`);
+      assert.ok(pts(j).length >= 4, `${forme} : ${pts(j).length} segments`);
+    }
+    // Et l'ovale, lui, continue de passer par l'ellipse exacte.
+    assert.equal(appels(dessiner({ description: '' }), 'ellipse').length, 1);
+  });
+
+  test('les sommets émis se suivent dans l’ordre du périmètre', () => {
+    // Un tri retiré ferait se replier le contour sur lui-même : la Bulle se dessinerait avec un
+    // nœud, sans qu'aucune assertion de géométrie ne le voie.
+    for (const forme of ['octogone', 'etoile', 'dents']) {
+      const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w: 120, h: 60, bulleShape: forme, description: '' };
+      const j = dessiner(o);
+      const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+      // ⚠️ MESURÉ DEPUIS LE DÉBUT DE L'ARC, et la première version ne l'était pas. Elle comparait
+      // chaque sommet au PRÉCÉDENT en ramenant les écarts négatifs dans [0, 2π[ : un recul s'y lisait
+      // comme une grande avance, et la mutation qui retire le tri passait au vert. L'algorithme
+      // ordonne les sommets par leur angle RELATIF au début de l'arc ; c'est donc cela qu'il faut
+      // vérifier, et non des écarts de proche en proche.
+      //
+      // ⚠️ ANCRÉ SUR LE DÉBUT DE L'ARC, ET C'EST LA TROISIÈME ÉCRITURE DE CE TEST. La deuxième
+      // mesurait les angles relatifs au PREMIER SOMMET ÉMIS : toute rotation de la séquence lui
+      // paraissait donc parfaitement croissante, et la mutation qui retire le tri passait encore.
+      // Mesuré, le contour non trié sortait dans l'ordre 19,8° → 30,2° → 149,8° au lieu de partir
+      // de 149,8° : une séquence croissante, mais qui ne commence pas où l'arc commence — donc un
+      // trait qui traverse la Bulle depuis la base de la queue.
+      //
+      // Le chemin est : `moveTo(base1)`, `lineTo(pointe)`, `lineTo(base2)`, puis les sommets. Le
+      // repère est donc `base2`, le début réel de l'arc, et non le premier sommet venu.
+      const tous = pts(j);
+      const base2 = tous[1];
+      const depart = Math.atan2(base2[1] - cy, base2[0] - cx);
+      const rel = tous.slice(2).map(([x, y]) => {
+        let d = Math.atan2(y - cy, x - cx) - depart;
+        while (d < -1e-9) d += Math.PI * 2;
+        return d;
+      });
+      for (let i = 1; i < rel.length; i++) {
+        assert.ok(rel[i] > rel[i - 1] - 1e-9,
+          `${forme} : sommet ${i} à ${rel[i].toFixed(3)} rad après un sommet à ${rel[i - 1].toFixed(3)}`);
+      }
+    }
+  });
+
+  test('⚠️ CHAQUE FORME A UNE IDENTITÉ, pas seulement un contrat', () => {
+    // ⚠️ MUTATIONS Q7 ET Q8, ÉCHAPPÉES PUIS RATTRAPÉES. Les tests du registre vérifient des
+    // INVARIANTS — forme étoilée, sommets ordonnés, encart contenu — qu'une forme dégénérée
+    // satisfait parfaitement. Une étoile dont toutes les pointes ont la même longueur est un
+    // polygone régulier : elle passe tous les invariants, et ce n'est plus une étoile.
+    const rayons = (forme, w, h) => {
+      const o = { id: 'b1', type: 'bulle', x: 0, y: 0, w, h, bulleShape: forme, description: '',
+        tailVisible: false };
+      const cx = w / 2, cy = h / 2;
+      return pts(dessiner(o)).map(([x, y]) => Math.hypot((x - cx) / (w / 2), (y - cy) / (h / 2)));
+    };
+    for (const [forme, ecartMin] of [['etoile', 1.25], ['dents', 1.08]]) {
+      const r = rayons(forme, 200, 100);
+      const rapport = Math.max(...r) / Math.min(...r);
+      assert.ok(rapport > ecartMin,
+        `${forme} : pointes et creux dans un rapport de ${rapport.toFixed(2)}, la forme s’est aplatie`);
+    }
+    // Le chanfrein de l'octogone suit la taille : deux Bulles homothétiques ont le MÊME profil.
+    const petit = rayons('octogone', 100, 50), grand = rayons('octogone', 300, 150);
+    const profil = (r) => (Math.max(...r) / Math.min(...r)).toFixed(3);
+    assert.equal(profil(petit), profil(grand),
+      'le chanfrein de l’octogone doit être une fraction de la taille, pas une valeur fixe');
+  });
+
+  test('⚠️ LE TEXTE SE COUPE SUR L’ENCART DE LA FORME, pas sur la boîte englobante', () => {
+    // ⚠️ MUTATION Q11, ÉCHAPPÉE PUIS RATTRAPÉE. Revenir à `o.w` laissait tout au vert : le texte
+    // sortait simplement par les pointes de l'étoile, ce qu'aucune assertion ne regardait. Ici, une
+    // étoile et un rectangle de MÊME taille doivent couper leur texte différemment, puisque leurs
+    // encarts diffèrent.
+    const texte = 'un texte assez long pour être coupé en plusieurs lignes distinctes';
+    const n = (forme) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, { id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 100, description: texte,
+        bullePadding: 0.2, bulleShape: forme });
+      return appels(c.journal, 'fillText').length;
+    };
+    // ⚠️ ET LE NOMBRE EST FIGÉ, PAS SEULEMENT COMPARÉ. La première version se contentait de
+    // « l'étoile coupe plus que le rectangle » — vrai AVANT comme APRÈS la mutation, qui rendait la
+    // largeur de coupe encore plus petite. Une inégalité que le défaut respecte ne prouve rien.
+    assert.equal(n('rect'), 4, 'rectangle : largeur de coupe 200 − 2×40 = 120 px');
+    assert.equal(n('etoile'), 7, 'étoile : largeur de coupe 120 − 2×24 = 72 px');
   });
 });

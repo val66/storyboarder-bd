@@ -7465,7 +7465,7 @@ sideBubbleFontSizeInput.addEventListener('change', () => { S.sideBubbleFontSizeS
 // ════════════════════════════════════════════════════════════
 // DRAWING → src/draw.js
 // drawPanelNumberBadge, drawContent, getPanelPoints, drawObject,
-// bubbleTailVisible, bubbleShapeOf, bubbleEdgePoint, getBubbleTailTip,
+// bubbleTailVisible, bubbleEdgePoint, getBubbleTailTip,
 // drawBubble, drawFace, syncPreviewCanvasRes,
 // drawRoomPreview, drawBuildingPreview, drawObjectPreview, drawPersonaPreview,
 // personaHandleScreenPos, projectJointToCanvas, drawPersonaPoseHandlesOverlay,

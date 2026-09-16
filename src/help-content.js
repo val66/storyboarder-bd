@@ -54,7 +54,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble".',
-    'Oval or rectangle shape, your choice.',
+    'Five shapes: Oval, Rectangle, Chamfered octagon, Star (shout), Sawtooth. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
     'The tail can be moved, or hidden if not needed.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
     'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
@@ -251,7 +251,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ».',
-    'Forme Ovale ou Rectangle, au choix.',
+    'Cinq formes : Ovale, Rectangle, Octogone à coins coupés, Étoile (cri), Dents de scie. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
     'Pointe déplaçable, ou masquable si besoin.',
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
     "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",

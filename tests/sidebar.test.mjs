@@ -812,6 +812,21 @@ describe('#425c — les valeurs des menus SONT les valeurs persistées', () => {
     }
   });
 
+  test('⚠️ LE MENU DES FORMES N’OFFRE QUE DES FORMES DU REGISTRE', () => {
+    // Une valeur d'option absente du registre ne retomberait PAS en silence sur l'ovale depuis
+    // #425e : elle lèverait au premier dessin. Le défaut serait donc bruyant — mais il serait
+    // bruyant chez l'utilisateur, à l'exécution, et pas ici. Le test le rattrape avant.
+    const FORMES = sourceSansCommentaires(readFileSync(new URL('../src/bubble-shape.js', import.meta.url), 'utf8'));
+    const connues = new Set([...FORMES.matchAll(/export const FORME_\w+ = '([^']+)';/g)].map(m => m[1]));
+    const i = HTML.indexOf('id="sideBubbleShapeSelect"');
+    assert.ok(i > 0, 'sideBubbleShapeSelect introuvable');
+    const bloc = HTML.slice(i, HTML.indexOf('</select>', i));
+    const offertes = [...bloc.matchAll(/value="([^"]+)"/g)].map(m => m[1]);
+    offertes.forEach(v => assert.ok(connues.has(v), `le menu propose « ${v} », inconnue du registre`));
+    // Et l'inverse : une forme enregistrée que la fiche n'offrirait pas serait inatteignable.
+    connues.forEach(f => assert.ok(offertes.includes(f), `la forme « ${f} » n’est offerte nulle part`));
+  });
+
   test('les deux sélecteurs n’offrent QUE des valeurs connues du module', () => {
     // L'autre sens : une option en trop — « ondulé », « tireté » — serait enregistrée telle quelle
     // et silencieusement ignorée au dessin.
