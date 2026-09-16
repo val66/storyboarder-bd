@@ -739,3 +739,84 @@ Quatrième instrument à valider avant de croire un chiffre, après `gl.finish()
 rien, `readPixels` sur le tampon d'affichage qui mesure le moniteur, et la boîte étirée au Sol qui
 coûtait plein tarif pour 0,00 % d'effet. La règle tient : **on vérifie d'abord que l'instrument sait
 voir une présence, ensuite seulement on lit ce qu'il dit.**
+# Sixième campagne — ce que coûte une Bulle, septembre 2026
+
+Chantier #425d. Les Bulles ont gagné trois réglages d'apparence (#425a à #425c), et deux d'entre eux
+changent la façon dont le contour est tracé. Avant d'ouvrir les **contours générés** de #425g — la
+tache d'encre, dont le bord EST l'effet — il fallait savoir si un tel contour peut être recalculé à
+chaque image, ou s'il demande un cache.
+
+## Méthode, et ce qu'elle ne mesure pas
+
+`drawBubble` est appelée hors application, sur un contexte 2D qui compte les appels sans rien
+rastériser. Chaque configuration est chauffée sur 2 000 appels, puis mesurée sur 60 échantillons de
+40 Bulles ; la médiane est rapportée.
+
+⚠️ **CE N'EST DONC QUE LA MOITIÉ DU COÛT, ET C'EST DÉLIBÉRÉ.** Ce qui est mesuré : le travail
+JavaScript — construction du chemin, bruit du tremblé, calcul du motif. Ce qui ne l'est PAS : la
+rastérisation. Un remplissage à 30 % d'opacité et un trait en pointillés coûtent au compositeur du
+navigateur, pas à ce code, et aucun chiffre ci-dessous ne le dit.
+
+La mesure garde quand même sa valeur pour la décision qu'elle sert : si la moitié JavaScript était
+déjà chère, la question du cache serait tranchée sans avoir à discuter du reste.
+
+## Ce que coûte chaque configuration
+
+40 Bulles par Planche, ce qui est généreux : une planche de bande dessinée en porte plutôt dix à
+trente.
+
+| configuration | opérations canevas / Bulle | µs / Bulle | 40 Bulles |
+|---|---|---|---|
+| nette, comme avant #425 | 25 | 3,6 | 0,14 ms |
+| fond à 30 % | 25 | 4,5 | 0,18 ms |
+| trait pointillé | 25 | 3,4 | 0,14 ms |
+| contour tremblé | 97 | 13,6 | 0,54 ms |
+| tremblé + pointillé + 30 % | 97 | 11,0 | 0,44 ms |
+| rectangle tremblé | 97 | 17,1 | 0,68 ms |
+
+**Le tremblé coûte quatre fois une Bulle nette**, en temps comme en nombre d'appels : une ellipse
+tracée par `c.ellipse` devient 73 segments. C'est un gros écart relatif pour un effet discret, et il
+valait d'être su avant de généraliser l'échantillonnage à toutes les formes de #425e.
+
+**Le rectangle tremblé est le plus cher des six**, parce que `bubbleEdgePoint` fait plus de travail
+par échantillon sur un rectangle — une intersection de rayon — que sur une ellipse, où c'est un
+cosinus.
+
+**L'opacité et le pointillé sont gratuits côté JavaScript.** Ils ne changent ni le nombre d'appels ni
+le chemin ; leur coût, s'il existe, est entièrement de l'autre côté.
+
+## La projection qui décide de #425g
+
+La tache d'encre n'a pas encore de code. Ce qui suit mesure la **structure** qu'elle aurait, telle
+qu'elle a été dessinée pour l'atlas : des masses superposées en arcs quadratiques, plus un mouchetis.
+
+| variante | opérations canevas / Bulle | µs / Bulle | 40 Bulles |
+|---|---|---|---|
+| maigre — 2 masses, 24 segments, 60 points | 178 | 5,1 | 0,21 ms |
+| telle que dessinée pour l'atlas — 4, 36, 160 | 482 | 14,8 | 0,59 ms |
+| riche — 6 masses, 48 segments, 300 points | 914 | 37,4 | 1,50 ms |
+
+## Verdict : pas de cache, et la raison est chiffrée
+
+Les repères de la campagne #411 : une Case coûte **13 ms de médiane** à rendre, 296 ms au pire, et le
+budget d'une image à 60 Hz est de **16,7 ms**.
+
+Quarante taches d'encre dans leur variante riche coûtent **1,50 ms**, soit **9 % d'une seule image**
+et **un neuvième d'une seule Case**. Dans la variante retenue pour l'atlas, 0,59 ms. Mettre cela en
+cache reviendrait à ajouter un cache, ses clés, son invalidation et ses bogues d'invalidation pour
+économiser un dixième de ce que coûte une Case parmi neuf.
+
+**La tache d'encre sera donc recalculée à chaque image, et #425g n'a pas de cache à construire.**
+
+⚠️ **CE QUI FERAIT CHANGER CE VERDICT.** Deux choses, et il faut les nommer pour que la prochaine
+personne sache quoi remesurer : (1) si la rastérisation de 482 appels par Bulle s'avérait chère dans
+le navigateur — non mesuré ici, mesurable seulement dans l'application ; (2) si une Planche portait
+beaucoup plus de 40 Bulles, le coût étant strictement linéaire. Rien dans les Projets de
+l'utilisateur ne s'en approche aujourd'hui.
+
+## Refaire la mesure
+
+Les deux sondes sont jetables et n'ont pas été conservées : elles appellent `drawBubble` sur un
+contexte compteur, et reproduisent la structure de la tache d'encre avec le même générateur de bruit
+que `bubble-style.js`. Les reconstruire prend dix minutes ; les garder dans le dépôt aurait figé une
+mesure dont le seul intérêt était la décision qu'elle a servie.
