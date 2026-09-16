@@ -145,6 +145,34 @@ Bulle** ; la bande, un contour qui dépend de l'**allongement**, parce que son i
 déclarent donc un rapport **visé**, que le registre rabote à ce qui tient réellement dans ce
 contour-ci. Le calcul est exact et coûte quatre divisions, la forme étant étoilée.
 
+## Le contrat d'une QUEUE, et l'indépendance qu'il protège
+
+⚠️ **AUCUNE FORME N'IMPOSE SA QUEUE, AUCUNE QUEUE N'EXIGE SA FORME.** Le relevé l'établit à lui
+seul : Imperium pose un éclair sur une ellipse lisse, Okko en pose un sur un écu à côtés concaves,
+la Geste des Chevaliers Dragons montre un octogone sans queue du tout. Lier les deux axes — ne
+serait-ce qu'en donnant à une forme le droit de « corriger » la queue qu'on lui demande — rendrait
+deux de ces trois planches impossibles à reproduire.
+
+Le test correspondant parcourt le **produit** des deux registres, lus dans les modules et jamais
+recopiés : neuf formes × quatre queues. Et il vérifie les **deux** moitiés de l'indépendance, parce
+que la première seule ne suffit pas :
+
+| ce qui est vérifié | ce que ça interdit |
+|---|---|
+| les 36 couples se dessinent | qu'une combinaison refuse de se tracer |
+| à ancrages égaux, le tracé d'une queue est le même quelle que soit la forme | qu'une queue lise `o.bulleShape` pour « s'adapter » — le couplage, écrit en douce |
+
+⚠️ **DEUX SORTES DE QUEUES, ET LA DIFFÉRENCE EST TOPOLOGIQUE.** Le triangle, l'éclair et le cheveu
+remplacent l'arc du contour situé sous la queue : le chemin reste d'un seul tenant, ce qui évite
+qu'un trait traverse l'intérieur de la Bulle. La chaîne de ronds, elle, est faite de disques
+**séparés** : le contour se referme entièrement, et les ronds se dessinent ensuite, chacun dans son
+propre chemin — les mettre dans celui de la Bulle percerait son remplissage là où un rond chevauche
+le contour.
+
+⚠️ **ET `traceContinu` RENDANT « RIEN » N'EST PAS « PAS DE QUEUE ».** C'est une queue détachée.
+Confondre les deux fait disparaître la chaîne au lieu de la dessiner à part, et le contour reste par
+ailleurs correct : rien d'autre ne le voit.
+
 ## Les styles enregistrés : une copie, jamais une référence
 
 Une Bulle stocke une **copie** des valeurs du style, pas un renvoi vers lui. La raison est un
@@ -316,6 +344,35 @@ Trois questions de rattachement restent **ouvertes**, et sont notées ici sans �
 | les textures de remplissage | un menu dans la section **Apparence** | — |
 | le mouchetis | section **Bordure** ? | est-ce un motif du trait, au même titre que les pointillés, ou un attribut à part entière ? |
 | les bords translucides | section **Bordure** | à quel attribut le raccorder |
+
+## La queue ne suivait pas le curseur
+
+⚠️ **DÉFAUT TROUVÉ EN PRÉPARANT L'AXE QUEUE, PRÉSENT DEPUIS QU'IL EXISTE PLUS DE DEUX FORMES.** Le
+glisser et le dessin n'étaient d'accord ni sur ce que veut dire `tailLen`, ni sur ce que veut dire
+`tailAngle` :
+
+- le glisser écrivait l'angle par un `atan2` sur des coordonnées **normalisées** par les demi-axes,
+  et la longueur en rayons de l'**ellipse** de la boîte ;
+- le dessin interroge le **contour**, avec un angle **polaire** pour toute forme qui n'est pas
+  l'ovale.
+
+Les deux ne coïncident que pour l'ovale, dont le `theta` est justement paramétrique. Écart mesuré
+entre le point lâché et la pointe dessinée, sur une Bulle de 200 × 80 : **48 px** sur un rectangle,
+**57** sur un écu, **77** sur une bande.
+
+Le contrat d'une forme gagne donc une cinquième fonction, `angleVersLePoint`, inverse exacte de
+`edgePoint`. Que `theta` soit polaire ou paramétrique est une propriété de **chaque forme** —
+l'invariant posé dès le registre — et la laisser deviner au-dehors était la copie fautive.
+
+⚠️ **LE CHOIX DE GARDER `tailLen` RELATIF AU CONTOUR A ÉTÉ TRANCHÉ SUR IMAGE.** Le compter en
+fraction de la boîte donnerait une portée constante quelle que soit la forme, ce qui est séduisant.
+Mais la queue de toutes les Bulles rectangulaires enregistrées se déplaçait de 23 px, et surtout les
+queues sortaient **de travers** : la base reste sur le contour pendant que la pointe passerait sur
+l'ellipse, soit deux repères dans un même triangle. Sur une bande, cela donnait une écharde
+diagonale.
+
+⚠️ **CONSÉQUENCE ASSUMÉE, À ROUVRIR UN JOUR :** sur une forme qui ne remplit pas sa boîte — la bande
+n'occupe que 62 % de sa hauteur — la queue par défaut est courte. Il faut la tirer pour l'allonger.
 
 ## Le corpus, et son statut
 

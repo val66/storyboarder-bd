@@ -81,6 +81,7 @@ import {
 } from './constants.js';
 import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
+import { QUEUE_DEFAUT, queueDeLaBulle } from './bubble-tail.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -6729,7 +6730,7 @@ document.getElementById('ctxCreateBubble').onclick = () => {
   const by = clamp(y - bh / 2, 0, page.h - bh);
   // Les champs d'apparence de #425a sont posés par leur module, pas recopiés ici : une seconde
   // liste des mêmes valeurs par défaut finirait par s'écarter de celle que le dessin consulte.
-  const obj = Object.assign({ id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: FORME_DEFAUT, bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT }, champsApparenceBulle());
+  const obj = Object.assign({ id: newId(), type: 'bulle', x: bx, y: by, w: bw, h: bh, description: '', tailAngle: BUBBLE_TAIL_ANGLE_DEFAULT, tailLen: BUBBLE_TAIL_LEN_DEFAULT, bulleShape: FORME_DEFAUT, tailShape: QUEUE_DEFAUT, bullePadding: BUBBLE_PADDING_DEFAULT, bulleFont: BUBBLE_FONT_DEFAULT }, champsApparenceBulle());
   page.objects.push(obj);
   S.selectedId = obj.id; S.selectedRoomId = null;
   drawCurrentPage();
@@ -6744,6 +6745,7 @@ const sideBubbleFontSizeInput = document.getElementById('sideBubbleFontSizeInput
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailToggle = document.getElementById('sideBubbleTailToggle');
+const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -7188,6 +7190,15 @@ sideDescInput.addEventListener('keydown', (e) => {
     e.stopImmediatePropagation();
     sideDescInput.blur();
   }
+});
+
+sideBubbleTailShapeSelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  // Validé par le registre, comme la forme : une option ajoutée au menu sans entrée au registre
+  // lève ICI, au moment du choix, et non plus tard au dessin.
+  S.sideDescTarget.tailShape = queueDeLaBulle({ tailShape: sideBubbleTailShapeSelect.value });
+  drawCurrentPage();
 });
 
 sideBubbleTailToggle.addEventListener('change', () => {

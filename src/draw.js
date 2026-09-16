@@ -71,6 +71,7 @@ import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
+import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT } from './bubble-tail.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1504,20 +1505,28 @@ export function drawBubble(c, o){
     if (sommets) { for (const p of sommetsEntreAngles3D(o, sommets, depuis, jusqu)) c.lineTo(p.x, p.y); return; }
     c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false);
   };
+  // La queue : son tracé vient du registre de src/bubble-tail.js, et il est de deux natures.
+  //
+  // ⚠️ `traceContinu` RENDANT `null` N'EST PAS « PAS DE QUEUE » : c'est une queue DÉTACHÉE, dont le
+  // contour doit se refermer entièrement. Confondre les deux ferait disparaître la chaîne de ronds
+  // au lieu de la dessiner à part.
+  const queueVisible = bubbleTailVisible(o);
+  const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
+  const angleBase1 = theta - QUEUE_ECARTEMENT, angleBase2 = theta + QUEUE_ECARTEMENT;
+  const pointeQueue = queueVisible ? getBubbleTailTip(o) : null;
+  const traceQueue = queueVisible
+    ? traceContinuDeLaQueue(o, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
+    : null;
   c.save();
   c.beginPath();
-  if (bubbleTailVisible(o)) {
-    const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
-    const spread = 0.22; // écart angulaire entre les deux points de base de la queue
-    const angleBase1 = theta - spread, angleBase2 = theta + spread;
+  if (queueVisible && traceQueue) {
     const base1 = bubbleEdgePoint(o, angleBase1);
     const base2 = bubbleEdgePoint(o, angleBase2);
-    const tip = getBubbleTailTip(o);
     // Contour continu et unique : on suit le périmètre SAUF l'arc entre base1 et base2, juste sous
-    // la queue, remplacé par les deux segments qui vont à sa pointe. Aucun trait ne traverse alors
-    // l'intérieur de la Bulle à la base de la queue.
+    // la queue, remplacé par le tracé de la queue. Aucun trait ne traverse alors l'intérieur de la
+    // Bulle à la base de la queue.
     c.moveTo(base1.x, base1.y);
-    c.lineTo(tip.x, tip.y);
+    for (const p of traceQueue) c.lineTo(p.x, p.y);
     c.lineTo(base2.x, base2.y);
     emettreContour(angleBase2, angleBase1 + Math.PI * 2);
   } else if (tremble || sommets) {
@@ -1544,6 +1553,19 @@ export function drawBubble(c, o){
   }
   c.closePath();
   remplirEtCernerBulle3D(c, o, app, largeurTrait);
+
+  // ⚠️ LES RONDS SE DESSINENT APRÈS, ET CHACUN DANS SON PROPRE CHEMIN. Les mettre dans le chemin de
+  // la Bulle les ferait remplir par la règle de non-zéro avec elle : là où un rond chevaucherait le
+  // contour, le remplissage se percerait. Séparés, chacun est un disque plein et cerné comme la
+  // Bulle, ce qui est bien ce que montre le relevé.
+  if (queueVisible && !traceQueue) {
+    for (const rond of elementsDetachesDeLaQueue(o, bubbleEdgePoint(o, theta), pointeQueue)) {
+      c.beginPath();
+      c.ellipse(rond.x, rond.y, rond.r, rond.r, 0, 0, Math.PI * 2);
+      c.closePath();
+      remplirEtCernerBulle3D(c, o, app, largeurTrait);
+    }
+  }
   c.restore();
 
   if (o.description) {

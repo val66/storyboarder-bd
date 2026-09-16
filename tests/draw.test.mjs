@@ -2738,3 +2738,72 @@ describe('#425h — poser la queue et la calculer sont deux faces d’une même 
     assert.ok(dedans < 0 && dedans > -0.92, `curseur dans la Bulle : ${dedans} devrait être négatif`);
   });
 });
+
+describe('#425h — les quatre queues atteignent réellement le canevas', () => {
+  const bulle = (o) => Object.assign({ id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 100,
+    description: '', tailVisible: true }, o);
+  const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+
+  test('⚠️ RÉGRESSION : une Bulle d’avant #425h dessine sa queue AU PIXEL PRÈS comme avant', () => {
+    // Le tracé était `moveTo(base1) ; lineTo(pointe) ; lineTo(base2)` suivi du contour. Sortir la
+    // queue dans un registre ne devait rien déplacer pour les Bulles déjà enregistrées.
+    const sansChamp = dessiner(bulle({ bulleShape: 'ovale' }));
+    const triangle = dessiner(bulle({ bulleShape: 'ovale', tailShape: 'triangle' }));
+    assert.deepEqual(pts(sansChamp), pts(triangle));
+    assert.deepEqual(appels(sansChamp, 'moveTo').map(e => e.args),
+                     appels(triangle, 'moveTo').map(e => e.args));
+  });
+
+  test('⚠️ LES TROIS QUEUES CONTINUES ALLONGENT LE CHEMIN, la chaîne de ronds ne le touche pas', () => {
+    // ⚠️ MUTATION VISÉE : traiter `traceContinu === null` comme « pas de queue ». La chaîne
+    // disparaîtrait au lieu de se dessiner à côté, et le contour — qui doit alors se refermer —
+    // serait par ailleurs correct : rien d'autre ne le verrait.
+    const n = (q) => pts(dessiner(bulle({ tailShape: q }))).length;
+    const sansQueue = pts(dessiner(bulle({ tailVisible: false }))).length;
+    assert.ok(n('eclair') > n('triangle'), 'l’éclair doit ajouter des segments');
+    assert.ok(n('cheveu') > n('triangle'), 'le cheveu aussi');
+    // La chaîne laisse le contour intact : autant de segments que sans queue du tout.
+    assert.equal(n('ronds'), sansQueue, 'le contour doit se refermer entièrement sous une chaîne');
+  });
+
+  test('⚠️ ET LA CHAÎNE EST BIEN DESSINÉE, dans des chemins SÉPARÉS et remplis comme la Bulle', () => {
+    // Le test précédent, seul, serait satisfait par une chaîne qui ne se dessine pas du tout. Ici on
+    // exige les disques : trois ellipses de plus qu'une Bulle sans queue, chacune dans son propre
+    // `beginPath` — les mettre dans le chemin de la Bulle percerait son remplissage là où un rond
+    // chevauche le contour.
+    const avec = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds' }));
+    const sans = dessiner(bulle({ bulleShape: 'rect', tailVisible: false }));
+    const ellipses = appels(avec, 'ellipse').length - appels(sans, 'ellipse').length;
+    assert.equal(ellipses, 3, `${ellipses} disques dessinés au lieu de 3`);
+    assert.equal(appels(avec, 'beginPath').length - appels(sans, 'beginPath').length, 3,
+      'chaque rond doit ouvrir son propre chemin');
+    assert.equal(appels(avec, 'fill').length - appels(sans, 'fill').length, 3,
+      'chaque rond doit être rempli comme la Bulle');
+    assert.equal(appels(avec, 'stroke').length - appels(sans, 'stroke').length, 3,
+      'et cerné comme elle');
+  });
+
+  test('⚠️ UNE QUEUE CACHÉE NE DESSINE AUCUN ROND', () => {
+    // `tailVisible` gouverne les quatre tracés, pas seulement les continus : une chaîne qui
+    // survivrait au décochage serait un réglage inopérant de plus.
+    const cachee = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailVisible: false }));
+    const sans = dessiner(bulle({ bulleShape: 'rect', tailVisible: false }));
+    assert.equal(appels(cachee, 'ellipse').length, appels(sans, 'ellipse').length);
+  });
+
+  test('l’INDÉPENDANCE, vue du canevas : les 36 couples se dessinent', () => {
+    // Le contrôle pur vit dans tests/bubble-tail.test.mjs. Celui-ci vérifie la même chose à travers
+    // `drawBubble`, parce qu'une combinaison peut être calculable et refuser de se tracer — par
+    // exemple si le contour et la queue se contredisaient sur l'ouverture.
+    for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'dents', 'ecu', 'epines', 'bande', 'tache']) {
+      for (const queue of ['triangle', 'eclair', 'cheveu', 'ronds']) {
+        const j = dessiner(bulle({ bulleShape: forme, tailShape: queue }));
+        assert.ok(appels(j, 'fill').length >= 1, `${forme} + ${queue} : rien n’a été rempli`);
+        for (const e of j) for (const a of e.args) {
+          if (typeof a === 'number') assert.ok(Number.isFinite(a),
+            `${forme} + ${queue} : ${e.nom} a reçu ${a}`);
+        }
+      }
+    }
+  });
+});

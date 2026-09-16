@@ -141,6 +141,33 @@ box's corner escaped the outline by up to **16%**. These two shapes therefore de
 ratio, which the registry trims down to what actually fits inside this particular outline. The
 computation is exact and costs four divisions, the shape being star-shaped.
 
+## The contract a TAIL must honour, and the independence it protects
+
+⚠️ **NO SHAPE IMPOSES ITS TAIL, NO TAIL REQUIRES ITS SHAPE.** The survey establishes this on its
+own: Imperium puts a lightning on a smooth ellipse, Okko puts one on a concave-sided shield, and the
+Geste des Chevaliers Dragons shows an octagon with no tail at all. Tying the two axes together —
+even by letting a shape "correct" the tail it is asked for — would make two of those three pages
+impossible to reproduce.
+
+The matching test walks the **product** of the two registries, read from the modules and never
+copied: nine shapes × four tails. And it checks **both** halves of independence, because the first
+alone is not enough:
+
+| what is checked | what it forbids |
+|---|---|
+| all 36 pairs draw | that any combination refuses to trace |
+| given equal anchors, a tail's trace is the same whatever the shape | that a tail read `o.bulleShape` to "adapt" — coupling, written on the quiet |
+
+⚠️ **TWO KINDS OF TAIL, AND THE DIFFERENCE IS TOPOLOGICAL.** The triangle, the lightning and the
+wisp replace the arc of outline under the tail: the path stays in one piece, which is what keeps a
+stroke from crossing the inside of the Bubble. The chain of circles is made of **separate** discs:
+the outline closes fully, and the circles are drawn afterwards, each in its own path — putting them
+in the Bubble's path would punch a hole in its fill wherever a circle overlaps the outline.
+
+⚠️ **AND A CONTINUOUS TRACE RETURNING "NOTHING" IS NOT "NO TAIL".** It is a detached tail. Confusing
+the two makes the chain vanish instead of being drawn alongside, and the outline stays otherwise
+correct: nothing else notices.
+
 ## Saved styles: a copy, never a reference
 
 A Bubble stores a **copy** of the style's values, not a pointer to it. The reason is an ordinary
@@ -306,6 +333,33 @@ Three questions of placement remain **open**, and are recorded here without bein
 | fill textures | a dropdown in the **Appearance** section | — |
 | the speckle | **Border** section? | is it a stroke pattern, like the dashes, or an attribute of its own? |
 | translucent edges | **Border** section | which attribute to attach it to |
+
+## The tail did not follow the cursor
+
+⚠️ **DEFECT FOUND WHILE PREPARING THE TAIL AXIS, PRESENT EVER SINCE THERE WERE MORE THAN TWO
+SHAPES.** The drag and the drawing agreed neither on what `tailLen` means nor on what `tailAngle`
+means:
+
+- the drag wrote the angle as an `atan2` on coordinates **normalised** by the half-axes, and the
+  length in radii of the bounding **ellipse**;
+- the drawing queries the **outline**, with a **polar** angle for every shape but the oval.
+
+The two coincide only for the oval, whose `theta` is precisely parametric. Measured gap between the
+point released and the tip drawn, on a 200 × 80 Bubble: **48 px** on a rectangle, **57** on a
+shield, **77** on a strip.
+
+A shape's contract therefore gains a fifth function, `angleToPoint`, the exact inverse of
+`edgePoint`. Whether `theta` is polar or parametric is a property of **each shape** — the invariant
+stated when the registry was created — and letting it be guessed outside was the faulty copy.
+
+⚠️ **KEEPING `tailLen` RELATIVE TO THE OUTLINE WAS DECIDED ON A PICTURE.** Counting it as a fraction
+of the bounding box would give a constant reach whatever the shape, which is appealing. But the tail
+of every saved rectangular Bubble moved by 23 px, and above all the tails came out **lopsided**: the
+base stays on the outline while the tip would move onto the ellipse — two frames of reference in one
+triangle. On a strip that produced a diagonal splinter.
+
+⚠️ **ACCEPTED CONSEQUENCE, TO BE REOPENED ONE DAY:** on a shape that does not fill its box — a strip
+occupies only 62% of its height — the default tail is short. It has to be dragged out.
 
 ## The corpus, and its status
 

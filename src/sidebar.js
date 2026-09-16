@@ -19,6 +19,7 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
+import { queueDeLaBulle } from './bubble-tail.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -133,6 +134,7 @@ const sideBubbleBorderRegularitySelect = document.getElementById('sideBubbleBord
 const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacityInput');
 const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
 const sideBubbleTailToggle = document.getElementById('sideBubbleTailToggle');
+const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -1079,6 +1081,9 @@ function updateSidePanelImpl(){
     // « ovale » pour une Bulle en étoile. Une fiche qui ment sur ce qui est dessiné est pire qu'une
     // fiche vide : on croit lire l'état, on lit une opinion périmée.
     sideBubbleTailToggle.checked = bubbleTailVisible(sel);
+    // Même règle que pour la forme : la fiche INTERROGE le registre plutôt que de relire le champ
+    // brut. C'est ce qui manquait aux trois copies périmées de #425f et #425g.
+    sideBubbleTailShapeSelect.value = queueDeLaBulle(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;

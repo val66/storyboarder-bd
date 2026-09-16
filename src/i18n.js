@@ -101,6 +101,13 @@ export const I18N_TEXT = [
   // n'existe pas encore : sa silhouette est juste, son remplissage ne l'est pas.
   ['#sideBubbleShapeSelect option[value="bande"]', 'Strip / tape', 'Bande / ruban'],
   ['#sideBubbleShapeSelect option[value="tache"]', 'Ink splat', "Tache d'encre"],
+  // #425h — l'axe QUEUE. Indépendant de la forme : les quatre tracés sont offerts quelle que soit
+  // la silhouette choisie, et un test croise les neuf formes avec les quatre queues.
+  ['label[for="sideBubbleTailShapeSelect"]', 'Tail shape', 'Tracé de la pointe'],
+  ['#sideBubbleTailShapeSelect option[value="triangle"]', 'Triangle', 'Triangle'],
+  ['#sideBubbleTailShapeSelect option[value="eclair"]', 'Lightning', 'Éclair'],
+  ['#sideBubbleTailShapeSelect option[value="cheveu"]', 'Curved wisp', 'Cheveu courbe'],
+  ['#sideBubbleTailShapeSelect option[value="ronds"]', 'Chain of circles', 'Chaîne de ronds'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

@@ -22,6 +22,7 @@ import {
 import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
+import { queuesConnues } from '../src/bubble-tail.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
@@ -933,6 +934,24 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
       assert.equal(b.bulleShape, forme,
         `choisir « ${forme} » a posé « ${b.bulleShape} » sur la Bulle`);
+    }
+  });
+
+  test('⚠️ #425h : CHOISIR UN TRACÉ DE QUEUE LE POSE VRAIMENT, et la fiche le relit', () => {
+    // ⚠️ LES DEUX SENS, PARCE QUE LE CHANTIER A DÉJÀ PERDU LES DEUX. La fiche affichait une forme
+    // périmée (#425f) et le menu n'écrivait rien (#425g) : ce sont deux défauts distincts, et un
+    // test qui n'en couvre qu'un laisse l'autre passer. On écrit par le VRAI écouteur, puis on
+    // relit par `updateSidePanel`.
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const select = document.getElementById('sideBubbleTailShapeSelect');
+    for (const queue of queuesConnues()) {
+      select.value = queue;
+      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
+      assert.equal(b.tailShape, queue, `choisir « ${queue} » a posé « ${b.tailShape} »`);
+      select.value = 'triangle';          // on brouille la fiche…
+      updateSidePanel();                  // …et on vérifie qu'elle relit l'objet, pas elle-même
+      assert.equal(select.value, queue, `la fiche affiche « ${select.value} » pour « ${queue} »`);
     }
   });
 
