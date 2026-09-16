@@ -93,13 +93,24 @@ distinguent deux registres sans toucher ni au contour ni à la queue :
 dépendent** : l'ancrage de la queue, le hit-test du glisser de sa pointe, et l'astuce du tracé
 continu qui saute l'arc situé sous la queue pour qu'aucun trait ne traverse l'intérieur de la Bulle.
 
-Une forme fournit donc **trois fonctions**, jamais moins :
+Une forme fournit donc **quatre fonctions**, jamais moins :
 
 | fonction | ce qu'elle rend | ce qui casse si elle manque |
 |---|---|---|
 | `edgePoint(o, theta)` | le point du contour dans la direction `theta` | la queue s'accroche dans le vide, la poignée de glisser décroche |
-| `path(c, o, sauterArcSousLaQueue)` | le tracé, avec ou sans l'échancrure de la queue | un trait traverse l'intérieur à la base de la queue |
+| `pointsDuContour(o)` | les points du contour, ou `null` si la forme est lisse | un trait traverse l'intérieur à la base de la queue |
 | `encartInterieur(o)` | la zone réellement inscriptible | le texte sort des pointes |
+| `queueParDefaut(o)` | une Bulle de cette forme naît-elle avec une queue ? | l'écu porte deux queues qui se contredisent, la couronne d'épines en porte une que le relevé ne montre nulle part |
+
+⚠️ **LA DEUXIÈME S'APPELAIT `sommets`, ET LE NOM MENTAIT DÈS LA PREMIÈRE FORME À CÔTÉS COURBES.**
+Entre deux pointes de l'écu, le contour n'est pas un segment mais un arc, rendu par une suite de
+points rapprochés dont aucun n'est un sommet. Le tracé, lui, n'a pas changé d'une ligne — il relie
+les points qu'on lui donne —, ce qui confirme que la bonne unité du contrat était le **point**.
+
+⚠️ **ET LA QUATRIÈME NE DÉCIDE QUE DU DÉFAUT.** Le champ `tailVisible` de l'utilisateur, dès qu'il
+existe, l'emporte : quelqu'un qui coche « Afficher la pointe » sur un écu doit la voir apparaître.
+Le piège est d'écrire `tailVisible !== false` au lieu de `tailVisible != null` — un « oui » explicite
+retomberait alors sur le défaut de la forme, et la case cochée ne ferait plus rien.
 
 ⚠️ **UNE FORME INCONNUE DOIT ÉCHOUER BRUYAMMENT.** `buildPropRig3D` retombe en silence sur
 `buildCarRig3D` quand il ne reconnaît pas un `objType` : une faute de frappe y produit une voiture au
@@ -222,12 +233,33 @@ au moins une fois.
 | rectangle arrondi | Blacksad | coins très arrondis, **blanc cassé sans contour visible**, queue triangulaire courte ; le récitatif est un rectangle à angles vifs **gris-vert pâle**, cerné d'un filet fin | l'appeler « crème » ou « sépia » : il tire vers le vert de lichen |
 | étoile / cri | Eleceed, Mutafukaz | pointes inégales, texte en capitales grasses ; la surface inscriptible est **très inférieure** à la boîte englobante | centrer le texte dans la boîte englobante le fait sortir par les pointes |
 | dents de scie | corpus comics et manga | c'est le **contour entier** qui se hérisse, pas la queue | le confondre avec la queue en éclair, qui est l'autre solution au même problème |
-| écu à côtés concaves | Okko | cinq à huit **pointes larges et inégales**, reliées par des côtés qui **se creusent vers l'intérieur** en arcs concaves ; **pointe basse allongée faisant office de queue** ; contour gris épais, remplissage crème, ombre portée douce | trois descriptions fausses à ce jour : « hexagone à bords droits », « festonné », « segments parfaitement droits » |
+| écu à côtés concaves | Okko | **haut large et presque droit**, deux épaules à mi-hauteur, puis deux longs côtés qui **se creusent vers l'intérieur** jusqu'à une **pointe basse allongée faisant office de queue** ; contour gris épais, remplissage crème, ombre portée douce | quatre descriptions fausses à ce jour : « hexagone à bords droits », « festonné », « segments parfaitement droits », et une rosace à huit lobes obtenue en le décrivant **en polaire** (un angle plus une fraction de rayon) au lieu de coordonnées |
 | couronne d'épines | Croquemitaine | pointes rayonnantes tout autour, **aucune queue** | lui ajouter une queue par symétrie avec les autres |
 | bande à coins arrondis | Croquemitaine | petite bande gris-bleu, **coins doux et arrondis** comme un ruban adhésif, texte entre guillemets, légèrement inclinée | « bords déchirés » : la légende interne du document d'origine disait « ruban adhésif », et elle avait raison |
 | parchemin à bords irréguliers | La Licorne | rectangle aux bords à peine irréguliers, **aucun filet, aucune queue** ; le même objet porte le récit ET la parole, seul le **ton** change — récit teinté fondu dans la page, parole plus claire et détachée avec une ombre portée | l'aplat uniforme : le dispositif EST le rapport de valeur entre le cartouche et son fond, très contrasté et marbré |
 | tache d'encre | Lecteur omniscient | masse amorphe, **cœur opaque et bords translucides** laissant passer le fond, mouchetis dont la taille **et** l'opacité décroissent avec la distance, quelques filaments ; lettrage manuscrit blanc penché | la dessiner en noir plat : il n'y a pas de remplissage distinct d'un contour, **le bord EST l'effet** |
 | couronne rayonnante | Eleceed, Lecteur omniscient | ellipse **parfaitement lisse**, **sans contour lissé propre** — la frontière est faite par les bases des traits ; frange de traits très fins, longueurs peu homogènes, épaisseur de la couronne **variable selon l'angle** | lui tracer une ellipse pleine par-dessus la frange ; la source n'en a pas |
+
+## Ce que seul le rendu a montré
+
+⚠️ **DEUX DÉFAUTS DE CE CHANTIER N'ONT ÉTÉ TROUVÉS QU'EN PRODUISANT L'IMAGE ET EN LA REGARDANT.**
+Voir `docs/en/testing-method.md`, § « Ce qui est hors de portée ». Les deux étaient au vert.
+
+| défaut | pourquoi aucun test ne le voyait | depuis quand |
+|---|---|---|
+| une corde traversait la Bulle en diagonale | le tracé sans queue posait son premier point avec `sommets[0]`, alors que l'émetteur commence à l'angle 0. Pour l'octogone, l'étoile et les dents, les deux coïncidaient **par hasard** ; l'écu, dont la première pointe est en haut à droite, a révélé l'écart | le registre de formes, deux étapes plus tôt |
+| le texte sortait par le **haut** de la Bulle | un bloc plus haut que l'encart, centré dessus, déborde des deux côtés. Tant que les encarts étaient centrés cela restait symétrique et discret ; l'encart **remonté** de l'écu a envoyé la première ligne dans le décor | l'écart intérieur mesuré depuis l'encart |
+
+La correction du second est bornée exprès : le bloc ne peut plus commencer plus haut que l'encart,
+et rien d'autre ne bouge. Pour l'ovale et le rectangle, dont l'encart est la boîte entière, la butée
+ne mord que si le texte est plus haut que la Bulle — un cas déjà illisible, qui débordait avant par
+le haut **et** par le bas. **Aucun texte qui tenait ne s'est déplacé**, ce qu'un test fige.
+
+Une troisième anomalie a été trouvée en branchant la fiche, et relève de la même famille : le menu
+de la forme affichait « Ovale » pour toute Bulle qui n'était pas un rectangle — un vestige de
+l'époque où il n'y avait que deux formes. **Deux copies d'une même décision**, d'accord le jour où
+elles ont été écrites, divergentes dès que l'une a évolué. La fiche interroge désormais les mêmes
+fonctions que le dessin, pour la forme comme pour la queue.
 
 ## Le corpus, et son statut
 

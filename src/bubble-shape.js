@@ -24,8 +24,21 @@
  * DÉCLARE donc ses sommets, et le tracé reste unique dans draw.js.
  *
  *   1. `pointDuContour(o, theta)` — le point du contour dans la direction `theta`, EXACT.
- *   2. `sommets(o)` — les sommets, ou `null` si le contour est lisse (l'ovale).
+ *   2. `pointsDuContour(o)` — les points du contour, ou `null` si le contour est lisse (l'ovale).
  *   3. `encartInterieur(o)` — la zone réellement inscriptible.
+ *   4. `queueParDefaut(o)` — une Bulle de cette forme naît-elle avec une queue ?
+ *
+ * ⚠️ LA DEUXIÈME S'APPELAIT `sommets`, ET LE NOM MENTAIT DÈS #425f. L'écu d'Okko a des côtés
+ * CONCAVES : entre deux pointes, le contour n'est pas un segment mais un arc, rendu par une suite
+ * de points rapprochés. Aucun d'eux n'est un sommet. Le tracé, lui, n'a pas changé d'une ligne — il
+ * relie les points qu'on lui donne — ce qui confirme que la bonne unité du contrat était le POINT
+ * et non le sommet.
+ *
+ * ⚠️ LA QUATRIÈME EST ARRIVÉE AVEC #425f, PARCE QUE DEUX FORMES L'ONT EXIGÉE. L'écu porte une
+ * pointe basse allongée qui FAIT OFFICE de queue ; la couronne d'épines de Croquemitaine n'en a
+ * aucune, jamais. Leur ajouter par-dessus la queue triangulaire ordinaire donnerait, dans un cas,
+ * deux queues qui se contredisent, et dans l'autre un dispositif que le relevé ne montre nulle part.
+ * Le champ `tailVisible` de l'utilisateur reste souverain : la forme ne décide que du DÉFAUT.
  *
  * ⚠️ TOUTE FORME EST ÉTOILÉE PAR RAPPORT À SON CENTRE, ET CE N'EST PAS NÉGOCIABLE. Un rayon partant
  * du centre doit rencontrer le contour EXACTEMENT une fois : c'est ce qui rend `pointDuContour`
@@ -43,6 +56,8 @@ export const FORME_RECT = 'rect';
 export const FORME_OCTOGONE = 'octogone';
 export const FORME_ETOILE = 'etoile';
 export const FORME_DENTS = 'dents';
+export const FORME_ECU = 'ecu';
+export const FORME_EPINES = 'epines';
 
 /**
  * ⚠️ LA FORME PAR DÉFAUT EST L'OVALE, ET C'EST CE QUI PROTÈGE L'EXISTANT. Aucune Bulle enregistrée
@@ -89,7 +104,7 @@ function pointSurSommets(o, theta, sommets){
   return pointOvale(o, theta);
 }
 
-/** Les sommets d'un rectangle, dans l'ordre trigonométrique. */
+/** Les quatre coins d'un rectangle, dans l'ordre trigonométrique. */
 function sommetsRect(o){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
   return [
@@ -149,6 +164,72 @@ const ETOILE_POINTES = 11, ETOILE_CREUX = 0.72;
 const DENTS_POINTES = 26, DENTS_CREUX = 0.88;
 
 /**
+ * L'écu d'Okko : des pointes larges et INÉGALES, reliées par des côtés qui se CREUSENT.
+ *
+ * ⚠️ TROIS DESCRIPTIONS ONT PRÉCÉDÉ CELLE-CI, ET DEUX ÉTAIENT DE MOI. Le relevé d'origine annonçait
+ * « hexagone à bords droits » ; j'ai corrigé en « festonné » ; j'ai rétracté en « segments
+ * parfaitement droits ». Un zoom à taille réelle a tranché : les côtés SONT concaves — ma première
+ * correction avait raison — mais les pointes sont peu nombreuses et massives, ce qui n'est ni un
+ * feston ni un hexagone. La cause des trois erreurs est la même : j'ai jugé la forme sur une vue
+ * d'ensemble au lieu de zoomer une fois.
+ *
+ * ⚠️ ET C'EST LA PREMIÈRE FORME DISSYMÉTRIQUE DU REGISTRE. Sa pointe basse va deux fois plus loin
+ * que ses voisines, et c'est ELLE qui tient lieu de queue — d'où `queueParDefaut` à faux. Deux
+ * conséquences que #425e avait annoncées et qu'il faut tenir ici : l'encart inscriptible REMONTE,
+ * sinon le texte descend dans la pointe ; et le test du contrat qui exigeait un encart centré doit
+ * être desserré, ce qui a été fait en nommant l'écu, pas en retirant la vérification.
+ */
+const ECU_POINTES = [
+  // ⚠️ DES COORDONNÉES, ET NON UN ANGLE PLUS UNE FRACTION DE RAYON — la première écriture faisait
+  // l'inverse et rendait une rosace à huit lobes, que le rendu a montrée sans appel. Un écu ne se
+  // décrit pas en polaire : ce qui le fait lire, c'est un HAUT LARGE ET PRESQUE DROIT, puis deux
+  // longs côtés qui descendent en se creusant vers une pointe basse. En coordonnées normalisées —
+  // (0, 0) au centre, y vers le BAS — cela s'écrit directement.
+  //
+  // Six pointes seulement, « peu nombreuses et massives » comme sur la planche. Les deux épaules
+  // sont à mi-hauteur : c'est l'écart entre elles et la pointe basse qui donne la silhouette.
+  [ 0.95, -0.82],   // coin haut droit
+  [ 1.00, -0.02],   // épaule droite
+  [ 0.00,  1.00],   // LA POINTE BASSE, qui tient lieu de queue
+  [-1.00, -0.02],   // épaule gauche
+  [-0.95, -0.82],   // coin haut gauche
+  [ 0.00, -0.98],   // sommet du haut, à peine saillant : le bord haut reste droit
+];
+const ECU_CREUX = 0.18;      // de combien le point de contrôle est tiré vers le centre
+const ECU_PAR_COTE = 9;      // points d'échantillonnage par côté concave
+
+function pointsEcu(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  const tips = ECU_POINTES.map(([fx, fy]) => ({ x: cx + rx * fx, y: cy + ry * fy }));
+  const out = [];
+  for (let i = 0; i < tips.length; i++) {
+    const a = tips[i], b = tips[(i + 1) % tips.length];
+    out.push(a);
+    // Le côté est un arc quadratique dont le point de contrôle est tiré VERS le centre : c'est ce
+    // qui le creuse. On l'ÉCHANTILLONNE, et c'est ce qui permet à cette forme d'entrer dans le
+    // registre sans rien changer ailleurs : le tracé de draw.js relie des points, `pointSurSommets`
+    // coupe des segments, et ni l'un ni l'autre n'a besoin de savoir que la courbe existe.
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const ctrlx = mx + (cx - mx) * ECU_CREUX, ctrly = my + (cy - my) * ECU_CREUX;
+    for (let k = 1; k < ECU_PAR_COTE; k++) {
+      const t = k / ECU_PAR_COTE, u = 1 - t;
+      out.push({ x: u * u * a.x + 2 * u * t * ctrlx + t * t * b.x,
+                 y: u * u * a.y + 2 * u * t * ctrly + t * t * b.y });
+    }
+  }
+  return out;
+}
+
+/**
+ * La couronne d'épines de Croquemitaine : des pointes rayonnantes tout autour, SANS AUCUNE QUEUE.
+ *
+ * Elle se distingue de l'étoile du cri par la densité et par le creux, mais surtout par l'usage : le
+ * relevé la montre pour une voix intérieure, qui ne sort de la bouche de personne. C'est
+ * exactement pour cela qu'elle naît sans queue — il n'y a pas de locuteur à désigner.
+ */
+const EPINES_POINTES = 17, EPINES_CREUX = 0.70;
+
+/**
  * L'encart inscriptible, en fraction des demi-axes.
  *
  * ⚠️ SANS CELA LE TEXTE SORT PAR LES POINTES. La boîte englobante d'une étoile est très supérieure à
@@ -156,10 +237,10 @@ const DENTS_POINTES = 26, DENTS_CREUX = 0.88;
  * défaut tombé onze fois sur les dessins de l'atlas, et il ne se voit dans aucun test — seulement à
  * l'écran.
  */
-function encartDepuisFraction(o, fx, fy){
+function encartDepuisFraction(o, fx, fy, dy = 0){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
   const w = rx * fx * 2, h = ry * fy * 2;
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+  return { x: cx - w / 2, y: cy + ry * dy - h / 2, w, h };
 }
 
 const REGISTRE = {
@@ -167,7 +248,8 @@ const REGISTRE = {
     // Le contour lisse : aucun sommet, le tracé passe par `c.ellipse` (ou par un échantillonnage
     // quand la Bulle tremble). C'est le seul cas où `sommets` rend `null`, et draw.js s'en sert.
     pointDuContour: (o, theta) => pointOvale(o, theta),
-    sommets: () => null,
+    pointsDuContour: () => null,
+    queueParDefaut: () => true,
     // ⚠️ LA BOÎTE ENTIÈRE, ET C'EST UNE DÉCISION DE COMPATIBILITÉ, PAS UN OUBLI. Le rectangle
     // inscrit dans une ellipse ne mesure que 0,71 de ses demi-axes, et c'est ce que j'avais écrit
     // d'abord. Le rendu a montré la conséquence : l'écart intérieur choisi par l'utilisateur
@@ -181,17 +263,20 @@ const REGISTRE = {
   },
   [FORME_RECT]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsRect(o)),
-    sommets: sommetsRect,
+    pointsDuContour: sommetsRect,
+    queueParDefaut: () => true,
     encartInterieur: (o) => encartDepuisFraction(o, 1, 1),
   },
   [FORME_OCTOGONE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsOctogone(o)),
-    sommets: sommetsOctogone,
+    pointsDuContour: sommetsOctogone,
+    queueParDefaut: () => true,
     encartInterieur: (o) => encartDepuisFraction(o, 1 - CHANFREIN / 2, 1 - CHANFREIN / 2),
   },
   [FORME_ETOILE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX)),
-    sommets: (o) => sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX),
+    pointsDuContour: (o) => sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX),
+    queueParDefaut: () => true,
     // ⚠️ L'ENCART EST LARGE ET BAS, PAS CARRÉ, ET C'EST LE RENDU QUI L'A IMPOSÉ. Avec un encart
     // carré, la contrainte « le coin reste dans le contour » impose un facteur sous `creux / √2` :
     // 0,51 au mieux, soit 53 px de large sur une Bulle ordinaire — et « Bonjour ! » se coupait en
@@ -205,9 +290,33 @@ const REGISTRE = {
   },
   [FORME_DENTS]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX)),
-    sommets: (o) => sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX),
+    pointsDuContour: (o) => sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX),
+    queueParDefaut: () => true,
     // Même raisonnement que pour l'étoile, avec le creux plus doux des dents de scie.
     encartInterieur: (o) => encartDepuisFraction(o, 0.78, 0.36),
+  },
+  [FORME_ECU]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, pointsEcu(o)),
+    pointsDuContour: pointsEcu,
+    // ⚠️ FAUX PARCE QUE LA POINTE BASSE EST DÉJÀ LA QUEUE. Ajouter par-dessus le triangle ordinaire
+    // donnerait deux queues qui se contredisent, et le relevé n'en montre jamais qu'une.
+    queueParDefaut: () => false,
+    // Remonté de 0,20 demi-hauteur : la pointe basse occupe le bas de la boîte, et un encart centré
+    // y ferait descendre la dernière ligne.
+    // ⚠️ REMONTÉ ET LARGE, ET LES DEUX CHIFFRES VIENNENT DU RENDU. La surface utile d'un écu est le
+    // haut : les deux longs côtés se rejoignent en pointe sous le centre. Avec l'encart centré des
+    // autres formes, « vivant de cette ville » sortait par le bas de la pointe.
+    encartInterieur: (o) => encartDepuisFraction(o, 0.74, 0.40, -0.28),
+  },
+  [FORME_EPINES]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX)),
+    pointsDuContour: (o) => sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX),
+    // ⚠️ FAUX POUR LA RAISON INVERSE DE L'ÉCU : il n'y a personne à désigner.
+    queueParDefaut: () => false,
+    // Même raisonnement que l'étoile : large et bas plutôt que carré. À 0,58 de large, « Bonjour ! »
+    // se coupait encore en deux lignes, le défaut exact qui avait fait remonter le creux de
+    // l'étoile en #425e.
+    encartInterieur: (o) => encartDepuisFraction(o, 0.66, 0.30),
   },
 };
 
@@ -250,8 +359,19 @@ export function pointDuContourBulle(o, theta){
 }
 
 /** Les sommets du contour, ou `null` si la forme est lisse. Fonction PURE. */
-export function sommetsDuContourBulle(o){
-  return formeOuLever(o).sommets(o);
+export function pointsDuContourBulle(o){
+  return formeOuLever(o).pointsDuContour(o);
+}
+
+/**
+ * Une Bulle de cette forme naît-elle avec une queue ? Fonction PURE.
+ *
+ * ⚠️ CE N'EST QU'UN DÉFAUT, ET LA DISTINCTION EST TOUT. Le champ `tailVisible` de l'utilisateur,
+ * dès qu'il existe, l'emporte : quelqu'un qui décoche puis recoche la queue d'un écu doit la
+ * revoir. La forme ne répond qu'à la question « à la création, sans rien dire ».
+ */
+export function queueParDefautBulle(o){
+  return formeOuLever(o).queueParDefaut(o);
 }
 
 /** La zone réellement inscriptible. Fonction PURE. */

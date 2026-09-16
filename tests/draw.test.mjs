@@ -375,6 +375,21 @@ describe('bubbleTailVisible : propriété simple d\'une Bulle', () => {
     assert.equal(bubbleTailVisible({}), true);
     assert.equal(bubbleTailVisible({ tailVisible: false }), false);
   });
+
+  test('⚠️ #425f : SANS CHAMP, C’EST LA FORME QUI DÉCIDE — mais le champ garde le dernier mot', () => {
+    // ⚠️ LE PIÈGE EST DANS `!= null` PLUTÔT QUE `!== false`, ET IL EST INVISIBLE À L'ŒIL. Avec
+    // `o.tailVisible !== false ? … : défaut`, un `tailVisible: true` explicite retomberait sur le
+    // défaut de la forme : quelqu'un qui coche « Afficher la pointe » sur un écu verrait la case
+    // rester cochée sans que rien n'apparaisse. Un réglage inopérant indiscernable d'un réglage
+    // appliqué — exactement ce que le registre refuse par ailleurs.
+    assert.equal(bubbleTailVisible({ bulleShape: 'ecu' }), false, 'l’écu naît sans queue');
+    assert.equal(bubbleTailVisible({ bulleShape: 'epines' }), false, 'la couronne naît sans queue');
+    assert.equal(bubbleTailVisible({ bulleShape: 'etoile' }), true);
+    assert.equal(bubbleTailVisible({ bulleShape: 'ecu', tailVisible: true }), true,
+      'un « oui » explicite doit l’emporter sur le défaut de la forme');
+    assert.equal(bubbleTailVisible({ bulleShape: 'etoile', tailVisible: false }), false,
+      'un « non » explicite doit l’emporter aussi');
+  });
 });
 
 describe('bubbleEdgePoint : point sur le contour d\'une Bulle selon un angle', () => {
@@ -2356,5 +2371,187 @@ describe('#425e — les formes atteignent réellement le canevas', () => {
     // largeur de coupe encore plus petite. Une inégalité que le défaut respecte ne prouve rien.
     assert.equal(n('rect'), 4, 'rectangle : largeur de coupe 200 − 2×40 = 120 px');
     assert.equal(n('etoile'), 7, 'étoile : largeur de coupe 120 − 2×24 = 72 px');
+  });
+});
+
+describe('#425f — l’écu dissymétrique et la couronne d’épines', () => {
+  const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+  const bulle = (o) => Object.assign({ id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 100 }, o);
+
+  test('⚠️ LES CÔTÉS DE L’ÉCU SONT CREUX, et pas seulement en théorie', () => {
+    // ⚠️ CE QUE TROIS DESCRIPTIONS SUCCESSIVES ONT MANQUÉ. La concavité est LA propriété qui
+    // distingue l'écu d'un polygone à pointes inégales ; si le point de contrôle cessait d'être
+    // tiré vers le centre, la silhouette deviendrait convexe et rien d'autre ne le verrait — ni le
+    // contrat (une forme convexe est parfaitement étoilée), ni le compte de segments.
+    //
+    // Mesure sans stride ni constante recopiée : on compte les points RENTRANTS, plus près du
+    // centre que le milieu de leurs deux voisins. Sur un polygone convexe il n'y en a aucun ; sur
+    // une forme à pointes alternées, exactement la moitié — un creux sur deux points. Seule une
+    // forme dont les CÔTÉS eux-mêmes se creusent dépasse nettement la moitié.
+    const rentrants = (forme) => {
+      const p = pts(dessiner(bulle({ bulleShape: forme, description: '', tailVisible: false })));
+      const cx = 100, cy = 50;
+      const r = ([x, y]) => Math.hypot((x - cx) / 100, (y - cy) / 50);
+      let n = 0;
+      for (let i = 0; i < p.length; i++) {
+        const a = p[(i - 1 + p.length) % p.length], b = p[(i + 1) % p.length];
+        if (r(p[i]) < r([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]) - 1e-9) n++;
+      }
+      return n / p.length;
+    };
+    assert.ok(rentrants('ecu') > 0.75,
+      `écu : ${(rentrants('ecu') * 100).toFixed(0)} % de points rentrants, la forme s’est arrondie`);
+    // ⚠️ ET LES DEUX REPÈRES, SANS QUOI LE SEUIL NE VOUDRAIT RIEN DIRE. L'octogone est convexe :
+    // aucun point rentrant. L'étoile alterne pointes et creux : exactement la moitié. La mesure
+    // sépare donc bien « côtés creux » de « pointes alternées », qui est la confusion à éviter.
+    assert.equal(rentrants('octogone'), 0, 'l’octogone est convexe');
+    // ⚠️ « ENVIRON LA MOITIÉ » ET NON « EXACTEMENT », PARCE QUE LA SÉQUENCE ÉMISE EST TOURNÉE. Le
+    // tracé commence là où l'arc commence, pas sur une pointe : le couple qui referme la boucle
+    // n'est donc pas un vrai voisinage, et fait varier le compte d'un point. C'est mesuré, pas
+    // supposé — l'étoile rend 52 %. L'écart avec les 86 % de l'écu reste sans ambiguïté.
+    assert.ok(Math.abs(rentrants('etoile') - 0.5) < 0.06,
+      `étoile : ${(rentrants('etoile') * 100).toFixed(0)} % au lieu d’un creux sur deux`);
+  });
+
+  test('⚠️ SA POINTE BASSE DESCEND SEULE, toutes les autres restant à mi-hauteur', () => {
+    // C'est elle qui tient lieu de queue ; si les longueurs s'égalisaient, l'écu deviendrait une
+    // rosace et perdrait son sens en même temps que sa forme. La mesure est celle qui distingue un
+    // écu d'un losange : UN SEUL point descend franchement, et il est au milieu.
+    const p = pts(dessiner(bulle({ bulleShape: 'ecu', description: '', tailVisible: false })));
+    const cy = 50, demi = 50;
+    const bas = p.filter(([, y]) => y - cy > demi * 0.55);
+    assert.ok(bas.length > 0, 'aucun point ne descend sous la mi-hauteur basse');
+    // Tous les points bas sont groupés autour du milieu horizontal : c'est UNE pointe, pas deux.
+    const xs = bas.map(([x]) => x);
+    assert.ok(Math.max(...xs) - Math.min(...xs) < 200 * 0.5,
+      `les points bas s’étalent sur ${(Math.max(...xs) - Math.min(...xs)).toFixed(0)} px : ce n’est plus une pointe`);
+    assert.ok(Math.abs((Math.max(...xs) + Math.min(...xs)) / 2 - 100) < 200 * 0.08,
+      'la pointe basse doit être centrée horizontalement');
+    // Et elle descend jusqu'au bord de la boîte, là où les épaules restent vers la mi-hauteur.
+    assert.ok(Math.max(...p.map(([, y]) => y)) > cy + demi * 0.9, 'la pointe n’atteint pas le bas');
+  });
+
+  test('⚠️ L’ÉCU ÉCRIT SON TEXTE DANS L’ENCART REMONTÉ, pas au centre de la boîte', () => {
+    // ⚠️ LA MUTATION Q12, ANNONCÉE EN #425e ET REJOUÉE ICI. Pendant tout #425e, remplacer `ecx`/
+    // `ecy` par `cx`/`cy` dans le centrage du texte était une mutation ÉQUIVALENTE : les cinq
+    // formes avaient un encart centré, les deux expressions donnaient le même point. La dette a
+    // été écrite dans src/draw.js avec la date de son échéance ; elle échoit aujourd'hui.
+    //
+    // Sur un écu, l'encart remonte de 0,20 demi-hauteur. Une ligne unique doit donc être écrite
+    // NETTEMENT au-dessus du centre de la boîte — et la mutation la ramènerait pile au centre.
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'ecu', description: 'Oui', tailVisible: false }));
+    const lignes = appels(c.journal, 'fillText');
+    assert.equal(lignes.length, 1, 'une seule ligne attendue');
+    const y = lignes[0].args[2];
+    assert.ok(y < 50 - 100 / 2 * 0.15,
+      `le texte est écrit à y=${y} : il devrait être remonté, le centre de la boîte est à 50`);
+    // Et le repère négatif : sur une forme symétrique, la même Bulle écrit bien au centre. Sans
+    // cela, « remonter le texte partout » satisferait l'assertion précédente.
+    const c2 = contexteEnregistreur();
+    drawBubble(c2, bulle({ bulleShape: 'etoile', description: 'Oui' }));
+    assert.equal(appels(c2.journal, 'fillText')[0].args[2], 50,
+      'une forme symétrique doit continuer d’écrire au centre');
+  });
+
+  test('la couronne d’épines se hérisse plus dru que l’étoile du cri', () => {
+    // Les deux formes partagent leur construction ; ce qui les sépare est un réglage. Sans ce test,
+    // aligner les deux jeux de constantes « pour simplifier » ne casserait rien.
+    const n = (forme) => pts(dessiner(bulle({ bulleShape: forme, description: '', tailVisible: false }))).length;
+    assert.ok(n('epines') > n('etoile') * 1.3,
+      `couronne ${n('epines')} segments, étoile ${n('etoile')} : la couronne s’est éclaircie`);
+  });
+
+  test('⚠️ LES DEUX FORMES ARRIVENT SANS QUEUE AU CANEVAS, pas seulement dans la décision', () => {
+    // ⚠️ SINON `queueParDefautBulle` SERAIT UNE OPINION SANS EFFET — la faute exacte de la mutation
+    // M19 de #420c : une couche pure parfaite pendant que le réglage reste inerte.
+    //
+    // ⚠️ ET LE CRITÈRE N'EST PAS LE NOMBRE DE SEGMENTS, PREMIÈRE ÉCRITURE FAUSSE DE CE TEST. La
+    // queue REMPLACE l'arc qu'elle recouvre par deux segments : selon la forme, le tracé peut en
+    // compter autant, plus ou moins. Ce qui distingue vraiment une Bulle à queue est qu'un point du
+    // tracé SORT du contour — la pointe, par construction plus loin que le bord.
+    // ⚠️ LE CRITÈRE EST LA BOÎTE, PAS UN RAYON NORMALISÉ — première écriture fausse. Mesurer
+    // `hypot((x−cx)/rx, (y−cy)/ry) > 1` revient à comparer au cercle unité, que les COINS d'une
+    // forme dépassent légitimement : l'écu, dont les pointes hautes sont à (±0,95 ; −0,82), y
+    // atteint 1,26 sans porter la moindre queue. Toutes les formes tiennent en revanche dans leur
+    // boîte — le contrat l'exige —, et la pointe d'une queue en sort par construction.
+    const sort = (o) => {
+      const p = pts(dessiner(bulle(Object.assign({ description: '' }, o))));
+      return p.some(([x, y]) => x < -1 || x > 201 || y < -1 || y > 101);
+    };
+    assert.equal(sort({ bulleShape: 'ecu' }), false, 'l’écu ne doit pas naître avec une queue');
+    assert.equal(sort({ bulleShape: 'epines' }), false, 'la couronne non plus');
+    // Le repère : l'étoile, de même construction, la dessine. Si le branchement sautait, les trois
+    // se comporteraient pareil et le test resterait vert sans rien prouver.
+    assert.equal(sort({ bulleShape: 'etoile' }), true, 'l’étoile, elle, naît avec sa queue');
+    // Et le champ garde le dernier mot, dans les deux sens.
+    assert.equal(sort({ bulleShape: 'ecu', tailVisible: true }), true,
+      'une queue demandée explicitement sur un écu doit être tracée');
+    assert.equal(sort({ bulleShape: 'etoile', tailVisible: false }), false);
+  });
+});
+
+describe('#425f — les deux défauts que SEUL le rendu a montrés', () => {
+  const bulle = (o) => Object.assign({ id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 100 }, o);
+
+  test('⚠️ AUCUN TRAIT NE TRAVERSE LA BULLE : le tracé part d’où l’émetteur commence', () => {
+    // ⚠️ DÉFAUT PRÉSENT DEPUIS #425e, INVISIBLE AUX TESTS, VU EN UN COUP D'ŒIL SUR L'IMAGE. La
+    // branche « sans queue » posait son premier point avec `moveTo(sommets[0])`, puis laissait
+    // `emettreContour(0, 2π)` émettre les points TRIÉS PAR ANGLE à partir de 0. Pour l'octogone,
+    // l'étoile et les dents, `sommets[0]` tombe par hasard à l'angle 0 : les deux coïncidaient.
+    // L'écu déclare sa première pointe en haut à droite, à −40° : le chemin partait de là et
+    // sautait d'un trait droit au premier point après l'angle 0 — une corde en travers de la
+    // Bulle, longue de la moitié de sa largeur.
+    //
+    // ⚠️ LA PREMIÈRE MESURE ESSAYÉE ÉTAIT FAUSSE, ET SON ÉCHEC INSTRUIT. Elle bornait la distance
+    // entre deux points consécutifs, en supposant la corde « longue ». Mesurée, la corde de l'écu
+    // ne fait que 45 px — tandis que le plus grand pas LÉGITIME, le long côté de l'octogone, en
+    // fait 172. Aucun seuil ne sépare les deux : la longueur n'était pas la bonne grandeur.
+    //
+    // Ce qui définit vraiment le défaut est exact et sans seuil : le point posé par `moveTo` doit
+    // être CELUI D'OÙ le contour part, donc le premier `lineTo`. S'ils diffèrent, le chemin
+    // commence par un segment qui ne fait partie d'aucun contour — quelle qu'en soit la longueur.
+    for (const forme of ['octogone', 'etoile', 'dents', 'ecu', 'epines']) {
+      const j = dessiner(bulle({ bulleShape: forme, description: '', tailVisible: false }));
+      const depart = appels(j, 'moveTo');
+      assert.equal(depart.length, 1, `${forme} : ${depart.length} moveTo, le chemin doit être d’un seul tenant`);
+      const premier = appels(j, 'lineTo')[0].args;
+      assert.deepEqual(depart[0].args, premier,
+        `${forme} : le tracé part de ${JSON.stringify(depart[0].args)} mais le contour de ${JSON.stringify(premier)} — un segment traverse la Bulle`);
+    }
+    // Et le repère : AVEC une queue, les deux diffèrent VOLONTAIREMENT — le chemin part d'une base
+    // de la queue et file vers sa pointe. Sans cette vérification, remplacer l'assertion ci-dessus
+    // par « toujours vrai » passerait inaperçu.
+    const q = dessiner(bulle({ bulleShape: 'etoile', description: '', tailVisible: true }));
+    assert.notDeepEqual(appels(q, 'moveTo')[0].args, appels(q, 'lineTo')[0].args);
+  });
+
+  test('⚠️ UN BLOC PLUS HAUT QUE L’ENCART NE SORT PAS PAR LE HAUT', () => {
+    // ⚠️ SECOND DÉFAUT VU À L'IMAGE. Le bloc de texte est centré sur l'encart ; plus haut que lui,
+    // il dépasse des deux côtés. Tant que les encarts étaient centrés cela restait symétrique et
+    // discret — sur l'écu, dont l'encart est remonté, « Tu ne » se retrouvait AU-DESSUS du bord
+    // haut de la Bulle, écrit dans le décor.
+    const long = 'Tu ne sortiras pas vivant de cette ville, et tu le sais depuis le début.';
+    const premiereLigne = (champs) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle(Object.assign({ description: long }, champs)));
+      const f = appels(c.journal, 'fillText');
+      assert.ok(f.length >= 4, `il faut un texte plus haut que l’encart : ${f.length} lignes`);
+      return f[0].args[2];
+    };
+    assert.ok(premiereLigne({ bulleShape: 'ecu' }) > 0,
+      'la première ligne d’un écu ne doit pas être écrite au-dessus de la Bulle');
+
+    // ⚠️ ET LA BUTÉE NE DOIT PAS DÉPLACER LE TEXTE QUI TENAIT DÉJÀ, ce qui est la moitié du travail.
+    // Un texte court reste centré sur l'encart, exactement comme avant : sinon la correction
+    // aurait descendu le texte de toutes les Bulles du Projet pour régler le cas d'une seule.
+    const courtY = (forme) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle({ bulleShape: forme, description: 'Oui' }));
+      return appels(c.journal, 'fillText')[0].args[2];
+    };
+    assert.equal(courtY('ovale'), 50, 'un texte court reste centré dans un ovale');
+    assert.equal(courtY('etoile'), 50, 'et dans une étoile');
+    assert.ok(courtY('ecu') < 50 - 10, 'et il reste remonté dans un écu');
   });
 });

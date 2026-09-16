@@ -22,9 +22,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_DEFAUT,
-  formesConnues, formeDeLaBulle,
-  pointDuContourBulle, sommetsDuContourBulle, encartInterieurBulle,
+  FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES,
+  FORME_DEFAUT, formesConnues, formeDeLaBulle,
+  pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
 } from '../src/bubble-shape.js';
 
 /** Trois gabarits, dont un très plat et un très haut : les formes ne doivent pas supposer un carré. */
@@ -36,6 +36,30 @@ const GABARITS = [
 const avecForme = (g, forme) => Object.assign({ id: 'b1', type: 'bulle' }, g, { bulleShape: forme });
 const centre = (o) => ({ x: o.x + o.w / 2, y: o.y + o.h / 2 });
 const ANGLES = Array.from({ length: 72 }, (_, i) => -Math.PI + (i + 0.37) * (2 * Math.PI / 72));
+
+/**
+ * ⚠️ LE TÉMOIN : CE QUI A RÉELLEMENT ÉTÉ VÉRIFIÉ, ET SUR QUELLE FORME.
+ *
+ * ⚠️ IL EXISTE PARCE QUE DEUX MUTATIONS DE #425f SE SONT ÉCHAPPÉES, ET TOUTES DEUX VISAIENT CE
+ * FICHIER-CI PLUTÔT QUE LE CODE. Remplacer `formesConnues()` par la liste figée d'avant #425f fait
+ * passer la suite de 3124 à 3112 tests, tous verts : douze vérifications disparaissent sans un
+ * bruit. Et transformer la garde `if (forme === FORME_ECU) return;` en `return;` sec rend le test
+ * du centrage vide pour TOUTES les formes, également au vert.
+ *
+ * Un test qui ne vérifie plus rien est indiscernable d'un test qui passe — c'est la même faute que
+ * « un test qui assure qu'un identifiant APPARAÎT plutôt qu'il GOUVERNE », vue ailleurs dans ce
+ * dépôt. La parade est celle de tests/code-mort.test.mjs : compter ce qui a été fait, et faire
+ * échouer le compte plutôt que d'espérer que personne ne rétrécisse la liste.
+ *
+ * Chaque test du contrat dépose son nom ICI, après ses assertions — donc seulement s'il est allé
+ * jusqu'au bout. L'audit final, à la fin du fichier, exige que chaque forme du registre les ait
+ * tous déposés.
+ */
+const TEMOIN = new Map();
+const atteste = (forme, quoi) => {
+  if (!TEMOIN.has(forme)) TEMOIN.set(forme, new Set());
+  TEMOIN.get(forme).add(quoi);
+};
 
 describe('LA GARANTIE : les Bulles existantes ne changent pas de forme', () => {
   test('RÉGRESSION : sans champ, ou avec « ovale »/« rect », le contour est celui d’avant', () => {
@@ -84,27 +108,33 @@ describe('⚠️ UNE FORME INCONNUE LÈVE, elle ne retombe pas sur l’ovale', (
     }
   });
 
-  test('les trois fonctions du contrat lèvent, pas seulement la résolution', () => {
+  test('les QUATRE fonctions du contrat lèvent, pas seulement la résolution', () => {
     // Sinon une forme inconnue traverserait le dessin et n'échouerait qu'au hit-test, loin de sa
-    // cause.
+    // cause. `queueParDefautBulle` a rejoint la liste en #425f : c'est la fonction appelée le plus
+    // tôt de toutes — à la CRÉATION d'une Bulle — donc celle où une clé fautive doit crier.
     const o = { bulleShape: 'triangle', x: 0, y: 0, w: 10, h: 10 };
     assert.throws(() => pointDuContourBulle(o, 0), /inconnue/);
-    assert.throws(() => sommetsDuContourBulle(o), /inconnue/);
+    assert.throws(() => pointsDuContourBulle(o), /inconnue/);
     assert.throws(() => encartInterieurBulle(o), /inconnue/);
+    assert.throws(() => queueParDefautBulle(o), /inconnue/);
   });
 });
 
 describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
-  test('cinq formes sont enregistrées, et les constantes les nomment toutes', () => {
+  test('sept formes sont enregistrées, et les constantes les nomment toutes', () => {
     // Si une constante exportée cessait de correspondre à une entrée du registre, la fiche
     // proposerait une valeur que le dessin refuserait.
     const connues = formesConnues();
-    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS]
+    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES]
       .forEach(f => assert.ok(connues.includes(f), `« ${f} » absente du registre`));
-    assert.equal(connues.length, 5);
+    assert.equal(connues.length, 7);
   });
 
-  for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'dents']) {
+  // ⚠️ LA BOUCLE LIT LE REGISTRE, ELLE NE RECOPIE PLUS UNE LISTE. Elle recopiait `['ovale', 'rect',
+  // …]`, ce que l'en-tête de ce fichier affirmait pourtant déjà être faux : une forme ajoutée sans
+  // penser à l'inscrire ici serait passée à travers TOUT le contrat, et c'est exactement ce qui
+  // serait arrivé aux deux formes de #425f.
+  for (const forme of formesConnues()) {
     describe(`forme « ${forme} »`, () => {
       test('⚠️ θ PARCOURT LE PÉRIMÈTRE DANS L’ORDRE, une seule fois par tour', () => {
         // ⚠️ CE TEST A ÉTÉ ÉCRIT FAUX D'ABORD, ET L'ERREUR VAUT D'ÊTRE GARDÉE. Il exigeait que le
@@ -151,6 +181,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
           assert.ok(Math.abs(cumul - 2 * Math.PI) < 1e-6,
             `${forme}/${g.nom} : ${cumul.toFixed(4)} rad parcourus au lieu de 2π`);
         }
+        atteste(forme, 'theta-ordonne');
       });
 
       test('les sommets, quand il y en a, sont ordonnés par angle et tous sur le contour', () => {
@@ -159,7 +190,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
         // lui-même à cet endroit, et la Bulle se dessinerait avec un nœud.
         for (const g of GABARITS) {
           const o = avecForme(g, forme);
-          const s = sommetsDuContourBulle(o);
+          const s = pointsDuContourBulle(o);
           if (s === null) { assert.equal(forme, 'ovale', 'seul l’ovale est lisse'); continue; }
           assert.ok(s.length >= 4, `${forme} : ${s.length} sommets`);
           const c = centre(o);
@@ -178,6 +209,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
               `${forme}/${g.nom} sommet ${i} : contour en ${JSON.stringify(q)} au lieu de ${JSON.stringify(p)}`);
           });
         }
+        atteste(forme, 'points-ordonnes');
       });
 
       test('l’encart inscriptible tient DANS le contour, et n’est pas vide', () => {
@@ -200,6 +232,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
                    && Math.abs(e.y - o.y) < 1e-9 && Math.abs(e.h - o.h) < 1e-9,
               `${forme}/${g.nom} : l’encart doit rester la boîte entière (compatibilité)`);
           }
+          atteste(forme, 'encart-dans-contour');
           return;
         }
         for (const g of GABARITS) {
@@ -216,6 +249,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
               `${forme}/${g.nom} : coin d’encart à ${dCoin.toFixed(1)} du centre, contour à ${dBord.toFixed(1)}`);
           }
         }
+        atteste(forme, 'encart-dans-contour');
       });
 
       test('l’encart d’une forme à pointes est PLUS LARGE QUE HAUT', () => {
@@ -232,12 +266,19 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
           assert.ok(e.w / o.w > e.h / o.h * 1.3,
             `${forme}/${g.nom} : encart ${e.w.toFixed(0)}×${e.h.toFixed(0)} trop proche du carré`);
         }
+        atteste(forme, 'encart-large');
       });
 
       test('l’encart est centré sur la Bulle tant que la forme l’est', () => {
-        // Les cinq formes de #425e sont symétriques ; la première à ne pas l'être sera l'écu
-        // d'Okko, en #425f, et ce test devra alors être desserré EN CONNAISSANCE DE CAUSE plutôt
-        // que par surprise.
+        // ⚠️ DESSERRÉ EN #425f, EN CONNAISSANCE DE CAUSE — #425e avait annoncé le jour et la raison.
+        // L'écu est la première forme dissymétrique du registre : sa pointe basse descend jusqu'au
+        // bord de la boîte, et un encart centré y ferait descendre la dernière ligne de texte.
+        //
+        // ⚠️ ET L'EXEMPTION NE DÉSARME PAS LA VÉRIFICATION, ELLE LA REMPLACE PAR UNE PLUS FORTE.
+        // Le test qui suit exige de l'écu ce qu'on attend VRAIMENT de lui : centré en x — la forme
+        // l'est — et REMONTÉ en y. Sortir une forme d'un contrat sans rien mettre à la place, c'est
+        // se donner le droit de tout casser du côté exempté.
+        if (forme === FORME_ECU) return;
         for (const g of GABARITS) {
           const o = avecForme(g, forme);
           const e = encartInterieurBulle(o);
@@ -245,9 +286,78 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
           assert.ok(Math.abs(e.x + e.w / 2 - c.x) < 1e-9 && Math.abs(e.y + e.h / 2 - c.y) < 1e-9,
             `${forme}/${g.nom} : encart décentré`);
         }
+        atteste(forme, 'encart-centre');
+      });
+
+      test('⚠️ L’ÉCU, LUI, A SON ENCART REMONTÉ — et sa pointe basse reste libre', () => {
+        if (forme !== FORME_ECU) return;
+        for (const g of GABARITS) {
+          const o = avecForme(g, forme);
+          const e = encartInterieurBulle(o);
+          const c = centre(o);
+          // Centré horizontalement : la dissymétrie de l'écu est verticale, et seulement verticale.
+          assert.ok(Math.abs(e.x + e.w / 2 - c.x) < 1e-9, `${g.nom} : encart décentré en x`);
+          // Remonté d'au moins un dixième de la demi-hauteur. Un simple « ≠ centré » laisserait
+          // passer un encart DESCENDU, qui serait le contraire de ce qu'il faut.
+          assert.ok(e.y + e.h / 2 < c.y - o.h / 2 * 0.10,
+            `${g.nom} : encart à ${(e.y + e.h / 2 - c.y).toFixed(1)} du centre, pas assez remonté`);
+          // Et le bas de l'encart laisse la pointe entièrement libre.
+          const pointe = pointDuContourBulle(o, Math.PI / 2);
+          assert.ok(e.y + e.h < c.y + (pointe.y - c.y) * 0.62,
+            `${g.nom} : le texte descend dans la pointe (bas d’encart ${(e.y + e.h).toFixed(1)}, pointe ${pointe.y.toFixed(1)})`);
+        }
+        atteste(forme, 'encart-remonte');
       });
     });
   }
+});
+
+describe('⚠️ LA QUEUE PAR DÉFAUT EST UNE PROPRIÉTÉ DE LA FORME, depuis #425f', () => {
+  test('cinq formes naissent avec une queue, deux sans — et lesquelles n’est pas arbitraire', () => {
+    // ⚠️ CE TEST NOMME LES DEUX EXCEPTIONS AU LIEU DE COMPTER. Un test qui dirait « exactement deux
+    // formes rendent faux » resterait vert si on échangeait l'écu et l'octogone, ce qui est
+    // précisément la faute qu'il doit attraper.
+    for (const f of [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS]) {
+      assert.equal(queueParDefautBulle({ bulleShape: f }), true, `« ${f} » devrait naître avec sa queue`);
+    }
+    // L'écu porte déjà sa pointe basse ; la couronne d'épines dit une voix qui ne sort d'aucune
+    // bouche. Deux raisons opposées, un même résultat.
+    assert.equal(queueParDefautBulle({ bulleShape: FORME_ECU }), false);
+    assert.equal(queueParDefautBulle({ bulleShape: FORME_EPINES }), false);
+  });
+
+  test('RÉGRESSION : une Bulle d’avant #425f, sans forme ni champ, garde sa queue', () => {
+    assert.equal(queueParDefautBulle({}), true);
+    assert.equal(queueParDefautBulle({ bulleShape: '' }), true);
+    assert.equal(queueParDefautBulle({ bulleShape: null }), true);
+  });
+});
+
+describe('⚠️ L’AUDIT : la suite a-t-elle VRAIMENT éprouvé chaque forme ?', () => {
+  test('chaque forme du registre a passé tout le contrat, et les cas particuliers leur cas', () => {
+    // ⚠️ CE TEST NE VÉRIFIE PAS LE CODE, IL VÉRIFIE LA SUITE — et c'est pour cela qu'il existe. Il
+    // échoue si quelqu'un remplace `formesConnues()` par une liste écrite à la main, si une garde
+    // `return` avale un test, ou si une forme est ajoutée au registre sans être éprouvée. Sans lui,
+    // ces trois accidents laissent tout au vert.
+    const GENERIQUES = ['theta-ordonne', 'points-ordonnes', 'encart-dans-contour'];
+    for (const forme of formesConnues()) {
+      const vu = TEMOIN.get(forme) || new Set();
+      for (const quoi of GENERIQUES) {
+        assert.ok(vu.has(quoi), `« ${forme} » n’a jamais passé « ${quoi} » : le contrat ne la couvre pas`);
+      }
+      // Le centrage de l'encart : centré pour toutes SAUF l'écu, qui doit être remonté. Chaque forme
+      // doit donc avoir attesté l'un OU l'autre — jamais aucun des deux, ce qui serait le signe
+      // d'une garde qui a tout avalé.
+      const centre = vu.has('encart-centre'), remonte = vu.has('encart-remonte');
+      assert.ok(centre !== remonte,
+        `« ${forme} » : encart-centre=${centre}, encart-remonte=${remonte} — il en faut exactement un`);
+    }
+    assert.ok((TEMOIN.get(FORME_ECU) || new Set()).has('encart-remonte'),
+      'l’écu est exempté du centrage : la vérification de remplacement doit avoir tourné');
+    for (const f of [FORME_ETOILE, FORME_DENTS]) {
+      assert.ok(TEMOIN.get(f).has('encart-large'), `« ${f} » : l’encart large et bas n’a pas été vérifié`);
+    }
+  });
 });
 
 describe('Les formes ne supposent pas un carré', () => {

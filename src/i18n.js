@@ -93,6 +93,10 @@ export const I18N_TEXT = [
   ['#sideBubbleShapeSelect option[value="octogone"]', 'Chamfered octagon', 'Octogone à coins coupés'],
   ['#sideBubbleShapeSelect option[value="etoile"]', 'Star (shout)', 'Étoile (cri)'],
   ['#sideBubbleShapeSelect option[value="dents"]', 'Sawtooth', 'Dents de scie'],
+  // #425f — les deux formes qui naissent SANS queue. Le libellé ne le dit pas, et c'est voulu : la
+  // case « Afficher la pointe » se décoche toute seule à la création, ce qui se voit à l'écran.
+  ['#sideBubbleShapeSelect option[value="ecu"]', 'Concave-sided escutcheon', 'Écu à côtés concaves'],
+  ['#sideBubbleShapeSelect option[value="epines"]', 'Crown of thorns', "Couronne d'épines"],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

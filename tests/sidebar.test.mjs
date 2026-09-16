@@ -884,4 +884,45 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     updateSidePanel();
     assert.equal(String(document.getElementById('sideBubbleFillOpacityValue').textContent), '100');
   });
+
+  test('⚠️ #425f : LA FICHE MONTRE LA VRAIE FORME, et pas « ovale » par défaut', () => {
+    // ⚠️ DÉFAUT TROUVÉ EN BRANCHANT #425f, ET PASSÉ INAPERÇU PENDANT TOUT #425e. La fiche écrivait
+    // `sel.bulleShape === 'rect' ? 'rect' : 'ovale'` — un vestige de l'époque où il n'y avait que
+    // deux formes. Depuis #425e le menu en offre cinq, mais sélectionner « Étoile » puis
+    // rouvrir la fiche affichait « Ovale » : la Bulle était en étoile à l'écran et le menu
+    // prétendait le contraire.
+    //
+    // ⚠️ ET C'EST LE DÉFAUT « DEUX COPIES D'UNE MÊME DÉCISION » DANS SA FORME LA PLUS COÛTEUSE : les
+    // deux copies étaient d'accord le jour où elles ont été écrites, et ont divergé sans bruit
+    // quand l'une des deux a évolué. Le correctif n'est pas de recopier la bonne liste, c'est
+    // d'interroger `formeDeLaBulle` — la même fonction que le dessin.
+    const b = nouvelleBulle();
+    for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'dents', 'ecu', 'epines']) {
+      b.bulleShape = forme;
+      S.selectedId = b.id;
+      updateSidePanel();
+      assert.equal(document.getElementById('sideBubbleShapeSelect').value, forme,
+        `la fiche affiche « ${document.getElementById('sideBubbleShapeSelect').value} » pour une Bulle « ${forme} »`);
+    }
+  });
+
+  test('⚠️ #425f : LA CASE « AFFICHER LA POINTE » SUIT LE DESSIN, y compris pour les formes sans queue', () => {
+    // Même famille de défaut, côté queue. La case lisait `tailVisible !== false`, ce que le dessin
+    // ne fait plus depuis #425f : un écu se dessine sans queue, et la case restait cochée. Elle
+    // interroge désormais `bubbleTailVisible`, la fonction que le dessin appelle lui-même.
+    const b = nouvelleBulle();
+    delete b.tailVisible;
+    const vu = (forme) => {
+      b.bulleShape = forme; S.selectedId = b.id; updateSidePanel();
+      return document.getElementById('sideBubbleTailToggle').checked;
+    };
+    assert.equal(vu('etoile'), true, 'une étoile montre sa queue');
+    assert.equal(vu('ecu'), false, 'un écu n’en a pas');
+    assert.equal(vu('epines'), false, 'une couronne d’épines non plus');
+    // Et un choix explicite reprend la main, dans les deux sens.
+    b.tailVisible = true;
+    assert.equal(vu('ecu'), true, 'une queue demandée doit être cochée');
+    b.tailVisible = false;
+    assert.equal(vu('etoile'), false);
+  });
 });

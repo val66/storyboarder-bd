@@ -91,13 +91,24 @@ separate two registers without touching either outline or tail:
 on it**: the tail's anchoring, the hit-test for dragging its tip, and the continuous-path trick that
 skips the arc under the tail so no stroke crosses the inside of the Bubble.
 
-A shape therefore supplies **three functions**, never fewer:
+A shape therefore supplies **four functions**, never fewer:
 
 | function | what it returns | what breaks without it |
 |---|---|---|
 | `edgePoint(o, theta)` | the outline point in direction `theta` | the tail anchors to nothing, the drag handle desyncs |
-| `path(c, o, skipArcUnderTail)` | the trace, with or without the tail notch | a stroke crosses the inside at the tail's base |
+| `outlinePoints(o)` | the outline's points, or `null` if the shape is smooth | a stroke crosses the inside at the tail's base |
 | `innerBox(o)` | the genuinely writable area | the text spills out of the points |
+| `tailByDefault(o)` | is a Bubble of this shape born with a tail? | the shield carries two tails that contradict each other, the crown of thorns carries one the survey shows nowhere |
+
+⚠️ **THE SECOND ONE WAS CALLED `vertices`, AND THE NAME LIED AS SOON AS A SHAPE HAD CURVED SIDES.**
+Between two of the shield's points, the outline is not a segment but an arc, rendered as a run of
+closely spaced points, none of which is a vertex. The tracer itself did not change by one line — it
+joins the points it is given — which confirms that the contract's right unit was the **point**.
+
+⚠️ **AND THE FOURTH ONE ONLY DECIDES THE DEFAULT.** The user's `tailVisible` field, once it exists,
+wins: someone who ticks "Show tail" on a shield must see it appear. The trap is writing
+`tailVisible !== false` instead of `tailVisible != null` — an explicit "yes" would then fall back on
+the shape's default, and the ticked box would do nothing at all.
 
 ⚠️ **AN UNKNOWN SHAPE MUST FAIL LOUDLY.** `buildPropRig3D` silently falls back to `buildCarRig3D`
 when it does not recognise an `objType`: a typo there produces a car instead of an error. The shape
@@ -214,12 +225,33 @@ wrong at least once.
 | rounded rectangle | Blacksad | very round corners, **off-white with no visible outline**, short triangular tail; the caption box is a sharp-cornered **pale grey-green** rectangle with a thin stroke | calling it "cream" or "sepia": it leans towards lichen green |
 | star / shout | Eleceed, Mutafukaz | unequal points, text in bold capitals; the writable area is **far smaller** than the bounding box | centring the text in the bounding box pushes it out through the points |
 | sawtooth outline | comics and manga corpus | it is the **whole outline** that bristles, not the tail | confusing it with the lightning tail, which is the other answer to the same problem |
-| concave-sided shield | Okko | five to eight **wide, unequal points**, joined by sides that **bow inward** in concave arcs; **elongated bottom point acting as the tail**; thick grey outline, cream fill, soft drop shadow | three wrong descriptions so far: "straight-edged hexagon", "scalloped", "perfectly straight segments" |
+| concave-sided shield | Okko | a **wide, almost straight top**, two shoulders at mid-height, then two long sides that **bow inward** down to an **elongated bottom point acting as the tail**; thick grey outline, cream fill, soft drop shadow | four wrong descriptions so far: "straight-edged hexagon", "scalloped", "perfectly straight segments", and an eight-lobed rosette obtained by describing it **in polar terms** (an angle plus a fraction of the radius) instead of coordinates |
 | thorn crown | Croquemitaine | points radiating all around, **no tail** | adding a tail by symmetry with the others |
 | round-cornered strip | Croquemitaine | small grey-blue strip, **soft rounded corners** like adhesive tape, text in quotation marks, slightly tilted | "torn edges": the original document's own caption said "adhesive tape", and it was right |
 | ragged-edged parchment | La Licorne | rectangle with barely irregular edges, **no stroke, no tail**; the same object carries narration AND speech, only the **tone** changes — narration tinted and blended into the page, speech lighter and detached with a drop shadow | the flat fill: the device IS the value relation between the box and its background, which is heavily contrasted and mottled |
 | ink splat | Omniscient Reader | amorphous mass, **opaque core and translucent edges** letting the background through, speckling whose size **and** opacity decrease with distance, a few filaments; slanted white handwritten lettering | drawing it flat black: there is no fill distinct from an outline, **the edge IS the effect** |
 | radiating crown | Eleceed, Omniscient Reader | **perfectly smooth** ellipse, with **no outline of its own** — the boundary is formed by the bases of the strokes; fringe of very fine strokes, unevenly long, crown thickness **varying with angle** | drawing a solid ellipse over the fringe; the source has none |
+
+## What only the render showed
+
+⚠️ **TWO OF THIS PROJECT'S DEFECTS WERE FOUND ONLY BY PRODUCING THE PICTURE AND LOOKING AT IT.**
+See `docs/en/testing-method.md`, § "What is out of reach". Both were green.
+
+| defect | why no test saw it | present since |
+|---|---|---|
+| a chord crossed the Bubble diagonally | the tail-less tracer laid its first point with `vertices[0]`, while the emitter starts at angle 0. For the octagon, the star and the sawtooth the two coincided **by accident**; the shield, whose first point is at the top right, exposed the gap | the shape registry, two steps earlier |
+| the text spilled out of the **top** | a block taller than the inner box, centred on it, overflows both ends. While inner boxes were centred this stayed symmetric and discreet; the shield's **raised** inner box sent the first line into the artwork | inside padding measured from the inner box |
+
+The second fix is deliberately bounded: the block can no longer start higher than the inner box, and
+nothing else moves. For the oval and the rectangle, whose inner box is the whole frame, the stop
+only bites when the text is taller than the Bubble itself — an already unreadable case, which used
+to overflow at the top **and** the bottom. **No text that fitted has moved**, and a test freezes that.
+
+A third anomaly surfaced while wiring the panel, and belongs to the same family: the shape dropdown
+displayed "Oval" for any Bubble that was not a rectangle — a leftover from when there were only two
+shapes. **Two copies of one decision**, in agreement the day they were written, divergent as soon as
+one of them evolved. The panel now queries the same functions the drawing does, for the shape as for
+the tail.
 
 ## The corpus, and its status
 

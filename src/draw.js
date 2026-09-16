@@ -69,7 +69,8 @@ import { getLoadedImage, imageState } from './image-cache.js';
 import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
-import { pointDuContourBulle, sommetsDuContourBulle, encartInterieurBulle } from './bubble-shape.js';
+import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
+         queueParDefautBulle } from './bubble-shape.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1341,10 +1342,20 @@ export function drawObject(c, o, styleKey, page){
 // ↳ src/constants.js
 // ↳ src/constants.js
 
-// A Bubble shows its tail by default (tailVisible absent or true); the user can
-// hide it via the checkbox in the right-hand panel.
+// Une Bulle montre sa queue si l'utilisateur l'a demandé ; à défaut, c'est la FORME qui décide.
+//
+// ⚠️ LE DÉFAUT A CESSÉ D'ÊTRE « TOUJOURS VRAI » EN #425f, ET DEUX FORMES L'ONT EXIGÉ. L'écu d'Okko
+// porte une pointe basse allongée qui FAIT déjà office de queue ; la couronne d'épines de
+// Croquemitaine dit une voix intérieure, qui ne sort d'aucune bouche. Leur coller en plus le
+// triangle ordinaire donnait, dans un cas, deux queues contradictoires, et dans l'autre un
+// dispositif que le relevé ne montre nulle part.
+//
+// ⚠️ ET LE CHAMP RESTE SOUVERAIN, `!= null` ET NON `!== false`. Quelqu'un qui décoche puis recoche
+// la queue d'un écu doit la revoir : son `tailVisible === true` doit l'emporter sur le défaut de la
+// forme. Avec `!== false`, ce `true` explicite serait retombé sur le défaut, et la case cochée
+// n'aurait plus rien fait — un réglage inopérant indiscernable d'un réglage appliqué.
 export function bubbleTailVisible(o){
-  return o.tailVisible !== false;
+  return o.tailVisible != null ? o.tailVisible !== false : queueParDefautBulle(o);
 }
 
 // `bubbleShapeOf` a été RETIRÉ par #425e. Il rendait « ovale » pour toute valeur autre que
@@ -1448,7 +1459,7 @@ export function drawBubble(c, o){
   // Les sommets de la forme, ou `null` quand le contour est lisse (l'ovale). C'est ce seul
   // renseignement qui décide du tracé : les deux branches « rectangle » et « ovale » qui vivaient
   // ici jusqu'à #425e disaient déjà cela, mais en le codant en dur pour deux formes.
-  const sommets = sommetsDuContourBulle(o);
+  const sommets = pointsDuContourBulle(o);
   /** Émet le contour entre deux angles, en respectant tremblement et sommets. */
   const emettreContour = (depuis, jusqu) => {
     if (tremble) { for (const p of pointsTrembles(depuis, jusqu)) c.lineTo(p.x, p.y); return; }
@@ -1474,8 +1485,20 @@ export function drawBubble(c, o){
   } else if (tremble || sommets) {
     // Sans queue : le périmètre entier, d'un tour complet. Le premier point est posé à la main,
     // `emettreContour` n'émettant que des `lineTo`.
-    const depart = tremble ? pointsTrembles(0, Math.PI * 2)[0] : sommets[0];
-    c.moveTo(depart.x, depart.y);
+    //
+    // ⚠️ LE POINT DE DÉPART VIENT DE L'ÉMETTEUR LUI-MÊME, ET NON DE `sommets[0]`. C'était
+    // `sommets[0]`, et ce défaut a traversé tout #425e sans qu'un seul test le voie : pour
+    // l'octogone, l'étoile et les dents, `sommets[0]` se trouve PAR HASARD à l'angle 0, donc
+    // exactement là où `emettreContour(0, 2π)` commence, et les deux coïncidaient.
+    //
+    // L'écu, lui, déclare sa première pointe à -145°. Le chemin partait donc de cette pointe puis
+    // sautait d'un trait droit jusqu'au premier point situé après l'angle 0 : une corde qui
+    // traversait la Bulle en diagonale, bien visible au rendu et invisible à la suite de tests,
+    // qui comptait des segments sans regarder d'où ils partaient. Trouvé en produisant l'image et
+    // en la regardant — voir docs/en/testing-method.md, § « Ce qui est hors de portée ».
+    const parcours = tremble ? pointsTrembles(0, Math.PI * 2)
+                             : sommetsEntreAngles3D(o, sommets, 0, Math.PI * 2);
+    c.moveTo(parcours[0].x, parcours[0].y);
     emettreContour(0, Math.PI * 2);
   } else {
     // Ovale sans queue ni tremblement : l'ellipse exacte, en un appel, comme avant #425.
@@ -1511,18 +1534,39 @@ export function drawBubble(c, o){
     const totalHeight = lines.length * lineHeight;
     // Centré sur l'encart, et non sur la boîte.
     //
-    // ⚠️ MUTATION ÉQUIVALENTE À CE JOUR, ET IL FAUT LE DIRE. Remplacer `ecx`/`ecy` par `cx`/`cy` ne
-    // fait tomber aucun test, et c'est exact : les cinq formes de #425e ont un encart CENTRÉ, donc
-    // les deux expressions donnent le même point. Écrire un test qui l'attraperait demanderait une
-    // forme dissymétrique, qui n'existe pas encore — le contrefaire reviendrait à tester le code
-    // plutôt que le comportement.
+    // ⚠️ CETTE LIGNE A ÉTÉ UNE MUTATION ÉQUIVALENTE PENDANT TOUT #425e, ET ELLE A CESSÉ DE L'ÊTRE
+    // EN #425f. Remplacer `ecx`/`ecy` par `cx`/`cy` ne faisait tomber aucun test, pour une raison
+    // exacte : les cinq formes de #425e avaient un encart CENTRÉ, donc les deux expressions
+    // donnaient le même point. Plutôt que de contrefaire une forme pour tester le code, la dette a
+    // été ÉCRITE ICI avec la date de son échéance.
     //
-    // La première forme dissymétrique sera l'écu d'Okko, en #425f : sa pointe basse allonge la
-    // Bulle vers le bas sans que la zone inscriptible suive. Ce jour-là, cette ligne cessera d'être
-    // équivalente, et le test du contrat qui exige un encart centré devra être desserré EN
-    // CONNAISSANCE DE CAUSE.
+    // L'échéance est arrivée avec l'écu d'Okko : sa pointe basse allonge la Bulle vers le bas sans
+    // que la zone inscriptible suive, donc son encart est REMONTÉ. La mutation a été rejouée le
+    // jour même, et la MOITIÉ VERTICALE mord désormais : remplacer `ecy` par `cy` fait tomber
+    // « l'écu écrit son texte DANS l'encart remonté », dans tests/draw.test.mjs. Rien de tout cela
+    // n'aurait été retrouvé sans la note.
+    //
+    // ⚠️ LA MOITIÉ HORIZONTALE, ELLE, RESTE ÉQUIVALENTE — ET POUR UNE RAISON PLUS SOLIDE QU'AVANT.
+    // Remplacer `ecx` par `cx` ne fait toujours tomber aucun test. Ce n'était d'abord qu'une
+    // coïncidence entre cinq formes ; c'est maintenant une propriété GARANTIE : le contrat, dans
+    // tests/bubble-shape.test.mjs, exige de chaque forme — y compris de l'écu, exempté du seul
+    // centrage vertical — que son encart soit centré en x. Tant que cette exigence tient, les deux
+    // expressions désignent le même nombre, et aucun test ne peut les distinguer sans être
+    // contrefait. Le jour où une forme sera dissymétrique HORIZONTALEMENT — la bande / ruban de
+    // #425g est la candidate —, il faudra desserrer ce morceau du contrat et rejouer la mutation,
+    // exactement comme aujourd'hui.
     const ecx = encart.x + encart.w / 2, ecy = encart.y + encart.h / 2;
-    let yy = ecy - totalHeight / 2 + lineHeight / 2;
+    // ⚠️ LE BLOC NE PEUT PAS COMMENCER PLUS HAUT QUE L'ENCART, ET C'EST LE RENDU DE #425f QUI L'A
+    // IMPOSÉ. Un bloc plus HAUT que l'encart, centré dessus, dépasse des deux côtés. Tant que les
+    // encarts étaient centrés, cela restait symétrique et discret ; sur l'écu, dont l'encart est
+    // remonté, « Tu ne » se retrouvait au-dessus du bord haut de la Bulle, dans le décor.
+    //
+    // ⚠️ ET LA BUTÉE NE DÉPLACE AUCUN TEXTE EXISTANT, ce qui est la raison de la comparer à
+    // `encart.y` plutôt qu'à une marge inventée. Pour l'ovale et le rectangle, l'encart EST la
+    // boîte entière : la butée ne mord que si le texte est plus haut que la Bulle elle-même — un
+    // cas déjà illisible, où le texte débordait avant par le haut ET par le bas, et ne déborde
+    // plus que par le bas. Pour toutes les autres formes, le texte tenait déjà.
+    let yy = Math.max(ecy - totalHeight / 2, encart.y) + lineHeight / 2;
     for (const line of lines) {
       c.fillText(line, ecx, yy);
       yy += lineHeight;

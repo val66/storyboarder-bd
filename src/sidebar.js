@@ -18,6 +18,7 @@ import { isImportedModel } from './model-store.js';
 import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
+import { formeDeLaBulle } from './bubble-shape.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -31,7 +32,7 @@ import {
 
   elementHorsChamp3D,
 } from './scene3d.js';
-import { getPanelPoints, drawCurrentPage } from './draw.js';
+import { getPanelPoints, drawCurrentPage, bubbleTailVisible } from './draw.js';
 import { stackRankLabel, noDescriptionLabel } from './i18n.js';
 
 // ── Callbacks injected by app.js (avoids circular imports sidebar→app) ─────────────────────
@@ -1071,8 +1072,14 @@ function updateSidePanelImpl(){
     sideBubbleFillOpacityInput.value = opacitePct;
     sideBubbleFillOpacityValue.textContent = opacitePct;
     majAffichageReglagesTraitBulle3D(sideBubbleBorderToggle.checked);
-    sideBubbleTailToggle.checked = sel.tailVisible !== false;
-    sideBubbleShapeSelect.value = sel.bulleShape === 'rect' ? 'rect' : 'ovale';
+    // ⚠️ LES DEUX LIGNES SUIVANTES INTERROGENT LE DESSIN, ELLES NE REFONT PAS SON RAISONNEMENT.
+    // Elles le refaisaient, et les deux copies avaient fini par diverger : la case « queue » lisait
+    // `tailVisible !== false` alors que le dessin consulte désormais la forme, et le menu déroulant
+    // repliait TOUT ce qui n'était pas « rect » sur « ovale » — vestige d'avant #425e, qui affichait
+    // « ovale » pour une Bulle en étoile. Une fiche qui ment sur ce qui est dessiné est pire qu'une
+    // fiche vide : on croit lire l'état, on lit une opinion périmée.
+    sideBubbleTailToggle.checked = bubbleTailVisible(sel);
+    sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;
     sideBubblePaddingValue.textContent = paddingPct;
