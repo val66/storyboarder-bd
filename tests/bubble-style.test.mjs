@@ -225,6 +225,28 @@ describe('Les décalages du tremblé : une main, pas du bruit blanc', () => {
     assert.deepEqual(decalagesTrembleBulle(tremblee, 2.25, 0), []);
   });
 
+  test('⚠️ RÉGRESSION #425g : LE TREMBLÉ N’A PAS BOUGÉ D’UN MILLIÈME EN DÉMÉNAGEANT', () => {
+    // ⚠️ LE BRUIT A QUITTÉ CE MODULE POUR src/cyclic-noise.js, parce que la tache d'encre de #425g
+    // en avait besoin elle aussi. Un déménagement n'est jamais neutre par décret : le nombre de
+    // points de contrôle est devenu un PARAMÈTRE, et il suffisait de le passer une fois de travers
+    // — 8 au lieu de 9, ou l'ordre des arguments inversé — pour que tous les tremblés du corpus
+    // changent de forme sans qu'aucune assertion qualitative ne s'en aperçoive : elles vérifient
+    // que le bruit est lisse, borné et cyclique, ce qu'un AUTRE bruit serait tout autant.
+    //
+    // Les huit couples ci-dessous ont été relevés AVANT le déménagement. Ils ne prouvent rien sur
+    // la qualité du tremblé — les autres tests s'en chargent — et tout sur son identité.
+    const attendu = [
+      [-1.137543, -0.695093], [-2.004750, 0.515443], [-1.714377, 1.978070], [-0.669186, 0.201269],
+      [0.659971, -0.401270], [-0.997301, -0.141044], [-1.695149, -0.138338], [-1.226474, -0.999005],
+    ];
+    const d = decalagesTrembleBulle({ id: 'b1', bulleBorderRegularity: 'tremble' }, 2.25, 8);
+    assert.equal(d.length, attendu.length);
+    d.forEach((p, i) => {
+      assert.ok(Math.abs(p.dx - attendu[i][0]) < 1e-6 && Math.abs(p.dy - attendu[i][1]) < 1e-6,
+        `point ${i} : ${p.dx.toFixed(6)},${p.dy.toFixed(6)} au lieu de ${attendu[i].join(',')}`);
+    });
+  });
+
   test('⚠️ LE BRUIT EST LISSE, et c’est le rendu qui l’a exigé', () => {
     // ⚠️ MUTATION N13, ÉCHAPPÉE PUIS RATTRAPÉE. La première version tirait un décalage INDÉPENDANT
     // par point. Tous les tests passaient — le contour changeait, restait stable, différait d'une

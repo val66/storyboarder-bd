@@ -49,6 +49,7 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // test croyait vérifier un appel, il vérifiait une phrase. C'est le pire état pour un test : vert,
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
+import { pointDuContourBulle } from '../src/bubble-shape.js';
 export { sourceSansCommentaires };
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -2470,14 +2471,13 @@ describe('#425f — l’écu dissymétrique et la couronne d’épines', () => {
     // queue REMPLACE l'arc qu'elle recouvre par deux segments : selon la forme, le tracé peut en
     // compter autant, plus ou moins. Ce qui distingue vraiment une Bulle à queue est qu'un point du
     // tracé SORT du contour — la pointe, par construction plus loin que le bord.
-    // ⚠️ LE CRITÈRE EST LA BOÎTE, PAS UN RAYON NORMALISÉ — première écriture fausse. Mesurer
-    // `hypot((x−cx)/rx, (y−cy)/ry) > 1` revient à comparer au cercle unité, que les COINS d'une
-    // forme dépassent légitimement : l'écu, dont les pointes hautes sont à (±0,95 ; −0,82), y
-    // atteint 1,26 sans porter la moindre queue. Toutes les formes tiennent en revanche dans leur
-    // boîte — le contrat l'exige —, et la pointe d'une queue en sort par construction.
+    // ⚠️ LE CRITÈRE A ÉTÉ FAUX DEUX FOIS — voir `queueDepasseLeContour`, plus bas, qui porte
+    // l'explication. Il a d'abord comparé à un rayon normalisé, que les coins d'une forme
+    // dépassent légitimement ; puis à la boîte de la Bulle, ce qui marche pour l'écu et l'étoile,
+    // qui la remplissent, et échoue pour la bande de #425g, qui ne la remplit pas.
     const sort = (o) => {
-      const p = pts(dessiner(bulle(Object.assign({ description: '' }, o))));
-      return p.some(([x, y]) => x < -1 || x > 201 || y < -1 || y > 101);
+      const b = bulle(Object.assign({ description: '' }, o));
+      return queueDepasseLeContour(b, dessiner(b));
     };
     assert.equal(sort({ bulleShape: 'ecu' }), false, 'l’écu ne doit pas naître avec une queue');
     assert.equal(sort({ bulleShape: 'epines' }), false, 'la couronne non plus');
@@ -2553,5 +2553,119 @@ describe('#425f — les deux défauts que SEUL le rendu a montrés', () => {
     assert.equal(courtY('ovale'), 50, 'un texte court reste centré dans un ovale');
     assert.equal(courtY('etoile'), 50, 'et dans une étoile');
     assert.ok(courtY('ecu') < 50 - 10, 'et il reste remonté dans un écu');
+  });
+});
+
+/**
+ * ⚠️ « UNE QUEUE EST DESSINÉE » SE MESURE CONTRE LE CONTOUR, PAS CONTRE LA BOÎTE — et il a fallu
+ * deux écritures fausses pour arriver là.
+ *
+ *   1. Le rayon normalisé `hypot((x−cx)/rx, (y−cy)/ry) > 1` : faux, parce que les COINS d'une forme
+ *      dépassent légitimement le cercle unité. L'écu y atteint 1,26 sans porter la moindre queue.
+ *   2. La sortie de la boîte : faux aussi, et c'est #425g qui l'a montré. La pointe est calculée
+ *      depuis le CENTRE — `centre + (bord − centre) × 1,45` —, donc une forme qui ne remplit pas sa
+ *      boîte produit une queue qui n'en sort pas. La bande n'occupe que 62 % de sa hauteur : sa
+ *      pointe tombe à 93 sur une Bulle haute de 100, bien à l'intérieur, alors que la queue EST
+ *      dessinée et sort bel et bien de la bande.
+ *
+ * La seule formulation vraie pour toute forme : un point du tracé est plus loin du centre que LE
+ * CONTOUR DANS SA PROPRE DIRECTION. C'est aussi, au passage, une observation à reverser dans #425h
+ * — sur une forme qui ne remplit pas sa boîte, la queue par défaut est un moignon.
+ */
+function queueDepasseLeContour(o, journal){
+  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+  return journal.filter(e => e.nom === 'lineTo').some(e => {
+    const [x, y] = e.args;
+    const bord = pointDuContourBulle(o, Math.atan2(y - cy, x - cx));
+    return Math.hypot(x - cx, y - cy) > Math.hypot(bord.x - cx, bord.y - cy) * 1.02;
+  });
+}
+
+describe('#425g — les deux contours GÉNÉRÉS atteignent le canevas', () => {
+  const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+  const bulle = (o) => Object.assign({ id: 'b1', type: 'bulle', x: 0, y: 0, w: 200, h: 100 }, o);
+  const contour = (o) => pts(dessiner(bulle(Object.assign({ description: '', tailVisible: false }, o))));
+
+  test('⚠️ LA TACHE EST STABLE POUR UNE BULLE ET DIFFÉRENTE D’UNE BULLE À L’AUTRE', () => {
+    // ⚠️ LES DEUX MOITIÉS SONT INDISPENSABLES, ET CHACUNE SEULE EST SATISFAITE PAR UN DÉFAUT. Un
+    // contour tiré au hasard à chaque dessin passerait la seconde : la Bulle frétillerait à chaque
+    // rafraîchissement, et surtout la planche imprimée ne serait pas celle qu'on a validée. Un
+    // contour figé, sans graine, passerait la première : la « masse amorphe » serait un galet
+    // unique recopié partout, ce qui est le contraire d'une tache.
+    const ecrit = (id) => contour({ bulleShape: 'tache', id }).map(p => p.join()).join(' ');
+    assert.equal(ecrit('b13'), ecrit('b13'), 'la même Bulle doit se redessiner à l’identique');
+    assert.notEqual(ecrit('b13'), ecrit('zz9'), 'deux Bulles doivent avoir deux taches');
+  });
+
+  test('⚠️ ELLE EST AMORPHE : ni cercle, ni forme à pointes régulières', () => {
+    // ⚠️ CE QUE LES INVARIANTS NE DISENT PAS. Un cercle parfait est étoilé, tient dans sa boîte,
+    // ordonne θ — il passe tout le contrat, et ce n'est pas une tache. Il faut donc mesurer ce qui
+    // FAIT la tache : un rayon qui varie franchement, et qui varie IRRÉGULIÈREMENT.
+    const rayons = (id) => contour({ bulleShape: 'tache', id })
+      .map(([x, y]) => Math.hypot((x - 100) / 100, (y - 50) / 50));
+    for (const id of ['b13', 'zz9', 'q42']) {
+      const r = rayons(id);
+      const ecart = Math.max(...r) / Math.min(...r);
+      assert.ok(ecart > 1.15, `${id} : rayons dans un rapport de ${ecart.toFixed(2)}, la tache s’est arrondie`);
+      // Et l'irrégularité : les écarts entre lobes successifs ne doivent pas être tous égaux, ce
+      // qui serait une étoile. On compare les distances entre maxima locaux.
+      const sommets = [];
+      for (let i = 0; i < r.length; i++) {
+        const a = r[(i - 1 + r.length) % r.length], b = r[(i + 1) % r.length];
+        if (r[i] > a && r[i] >= b) sommets.push(i);
+      }
+      assert.ok(sommets.length >= 3, `${id} : ${sommets.length} lobes seulement`);
+      const pas = sommets.map((v, i) => (v - sommets[(i - 1 + sommets.length) % sommets.length] + r.length) % r.length);
+      assert.ok(new Set(pas).size > 1, `${id} : lobes régulièrement espacés — c’est une étoile, pas une tache`);
+    }
+  });
+
+  test('⚠️ LA BANDE EST PENCHÉE, et c’est ce qui la distingue du rectangle arrondi', () => {
+    // ⚠️ SANS CE TEST, LES DEUX FORMES CONVERGERAIENT SANS BRUIT. La bande EST un rectangle à coins
+    // arrondis ; seule l'inclinaison la rend reconnaissable. Quelqu'un qui « simplifierait » en
+    // retirant le cisaillement obtiendrait deux entrées du registre dessinant presque la même
+    // chose, et rien n'échouerait.
+    //
+    // Mesure : le bord haut de la bande descend d'un bout à l'autre. On compare l'ordonnée minimale
+    // du tiers gauche du tracé à celle du tiers droit.
+    const p = contour({ bulleShape: 'bande' });
+    const hautGauche = Math.min(...p.filter(([x]) => x < 70).map(([, y]) => y));
+    const hautDroit = Math.min(...p.filter(([x]) => x > 130).map(([, y]) => y));
+    assert.ok(hautDroit - hautGauche > 100 * 0.15,
+      `dénivelé de ${(hautDroit - hautGauche).toFixed(1)} px : la bande est plate`);
+    // Le repère : le rectangle arrondi, lui, est horizontal.
+    const r = contour({ bulleShape: 'rect' });
+    const rg = Math.min(...r.filter(([x]) => x < 70).map(([, y]) => y));
+    const rd = Math.min(...r.filter(([x]) => x > 130).map(([, y]) => y));
+    assert.ok(Math.abs(rd - rg) < 1e-6, 'le rectangle ne doit pas s’être mis à pencher');
+  });
+
+  test('la bande occupe toute la largeur, et reste dans la boîte malgré le penché', () => {
+    // Le cisaillement a été choisi CONTRE la rotation précisément pour cela : une bande tournée
+    // devrait rétrécir pour rentrer dans sa boîte, et d'autant plus qu'elle est allongée.
+    for (const [w, h] of [[200, 100], [300, 40], [60, 220]]) {
+      const p = pts(dessiner({ id: 'b1', type: 'bulle', x: 0, y: 0, w, h,
+        bulleShape: 'bande', description: '', tailVisible: false }));
+      const xs = p.map(([x]) => x), ys = p.map(([, y]) => y);
+      assert.ok(Math.min(...xs) < w * 0.02 && Math.max(...xs) > w * 0.98,
+        `${w}×${h} : la bande n’occupe pas toute la largeur`);
+      assert.ok(Math.min(...ys) >= -1e-6 && Math.max(...ys) <= h + 1e-6,
+        `${w}×${h} : la bande sort de sa boîte`);
+    }
+  });
+
+  test('les deux naissent SANS QUEUE, et le champ garde le dernier mot', () => {
+    const avecQueue = (champs) => {
+      const o = bulle(Object.assign({ description: '' }, champs));
+      return queueDepasseLeContour(o, dessiner(o));
+    };
+    assert.equal(avecQueue({ bulleShape: 'bande' }), false, 'la bande est un récitatif, sans queue');
+    assert.equal(avecQueue({ bulleShape: 'tache' }), false, 'la tache est une pensée, sans queue');
+    // Le repère, sans quoi le test resterait vert même si plus AUCUNE forme n'avait de queue.
+    assert.equal(avecQueue({ bulleShape: 'rect' }), true, 'le rectangle, lui, naît avec sa queue');
+    // Et le champ l'emporte, dans les deux sens.
+    assert.equal(avecQueue({ bulleShape: 'bande', tailVisible: true }), true);
+    assert.equal(avecQueue({ bulleShape: 'tache', tailVisible: true }), true);
+    assert.equal(avecQueue({ bulleShape: 'rect', tailVisible: false }), false);
   });
 });

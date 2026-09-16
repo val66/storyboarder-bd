@@ -118,10 +118,28 @@ registry must not repeat that choice — an unknown shape throws, it does not dr
 larger than the writable area: centring text in it pushes the text out through the points. The
 existing inside padding (`bullePadding`) is now measured from `innerBox`, not from `o.w`/`o.h`.
 
-**Generated outlines are a case apart.** The ink splat and the strip are not polygonal: their
-silhouette comes from a run of irregular arcs. Their `edgePoint` can only be an **approximation**,
-and that must be said rather than left to look exact. Their seed must be stable, or the Bubble
-changes shape on every render.
+**Generated outlines are a case apart**, and #425g corrected this section on two counts.
+
+⚠️ **THEIR `edgePoint` IS NOT AN APPROXIMATION: IT IS EXACT.** This note claimed the opposite,
+assuming a silhouette made of irregular arcs that would have to be intersected approximately. The
+implementation took the other road — the one already used for the shield's curved sides:
+**sampling** the curve into closely spaced points. The rendered outline IS the polyline through
+those points, so intersecting a ray with it is exact, exactly as for an octagon. The prediction was
+pessimistic; better to say so than to leave a stale warning standing.
+
+⚠️ **THEIR SEED MUST BE STABLE**, or the Bubble changes shape on every render — and worse, the
+printed page is not the one approved on screen. It is derived from the Bubble's identifier, in
+`src/cyclic-noise.js`, a module created so that the stroke's wobble and the splat's silhouette share
+**one** noise rather than two copies.
+
+⚠️ **AND THEIR WRITABLE AREA CANNOT BE A FIXED FRACTION.** This is the real difficulty of generated
+outlines, and it had not been foreseen. The other eight shapes have the same outline for every
+Bubble: measure the room once, write it down, done. The splat has an outline **per Bubble**; the
+strip, one that depends on the **aspect ratio**, because its tilt displaces `y` in proportion to the
+height. A fraction tuned on one case spills out of the other — measured over 4,000 seeds, the inner
+box's corner escaped the outline by up to **16%**. These two shapes therefore declare a **target**
+ratio, which the registry trims down to what actually fits inside this particular outline. The
+computation is exact and costs four divisions, the shape being star-shaped.
 
 ## Saved styles: a copy, never a reference
 
@@ -268,6 +286,26 @@ halves protects nothing.
 
 The panel now queries the same functions the drawing does when reading, and validates through the
 registry when writing, for the shape as for the tail.
+
+## What the ink splat does NOT have yet
+
+⚠️ **THE SILHOUETTE SHIPS, THE SPLAT DOES NOT.** The survey is unambiguous: "there is no fill
+distinct from an outline, **the edge IS the effect**" — opaque core, translucent edges letting the
+background through, speckle whose size **and** opacity decay with distance, a few filaments.
+Offered today, the splat renders a **flat area**, which is precisely the trap its own entry names.
+
+This is deliberate, and it follows from the rule this note itself lays down: **no axis implies
+another**. Texture belongs to fill, speckle to the added layer. Folding them into the shape, so that
+one shape looks right sooner, would unpick the axis that holds everything else together — and would
+forbid, say, a speckled crown of thorns.
+
+Three questions of placement remain **open**, and are recorded here without being settled:
+
+| what is missing | where it will probably go | what is undecided |
+|---|---|---|
+| fill textures | a dropdown in the **Appearance** section | — |
+| the speckle | **Border** section? | is it a stroke pattern, like the dashes, or an attribute of its own? |
+| translucent edges | **Border** section | which attribute to attach it to |
 
 ## The corpus, and its status
 

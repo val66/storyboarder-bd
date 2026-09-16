@@ -97,6 +97,10 @@ export const I18N_TEXT = [
   // case « Afficher la pointe » se décoche toute seule à la création, ce qui se voit à l'écran.
   ['#sideBubbleShapeSelect option[value="ecu"]', 'Concave-sided escutcheon', 'Écu à côtés concaves'],
   ['#sideBubbleShapeSelect option[value="epines"]', 'Crown of thorns', "Couronne d'épines"],
+  // #425g — les deux contours GÉNÉRÉS. La tache est volontairement offerte alors que sa texture
+  // n'existe pas encore : sa silhouette est juste, son remplissage ne l'est pas.
+  ['#sideBubbleShapeSelect option[value="bande"]', 'Strip / tape', 'Bande / ruban'],
+  ['#sideBubbleShapeSelect option[value="tache"]', 'Ink splat', "Tache d'encre"],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

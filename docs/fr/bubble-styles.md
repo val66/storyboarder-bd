@@ -122,10 +122,28 @@ très supérieure à la surface inscriptible : y centrer le texte le fait sortir
 L'écart intérieur existant (`bullePadding`) se mesure désormais depuis `encartInterieur`, pas depuis
 `o.w`/`o.h`.
 
-**Les contours générés sont un cas à part.** La tache d'encre et le ruban ne sont pas polygonaux :
-leur silhouette est produite par une suite d'arcs irréguliers. Leur `edgePoint` ne peut être
-qu'**approché**, et il faut le dire plutôt que laisser croire qu'il est exact. Leur graine doit être
-stable, sinon la Bulle change de forme à chaque rendu.
+**Les contours générés sont un cas à part**, et #425g a corrigé cette section sur deux points.
+
+⚠️ **LEUR `edgePoint` N'EST PAS APPROCHÉ : IL EST EXACT.** Cette note annonçait le contraire, en
+supposant une silhouette faite d'arcs irréguliers qu'il aurait fallu intersecter approximativement.
+La mise en œuvre a pris l'autre voie — celle déjà employée pour les côtés courbes de l'écu :
+**échantillonner** la courbe en points rapprochés. Le contour rendu EST donc la ligne brisée qui
+passe par ces points, et l'intersection d'un rayon avec elle est exacte, au même titre que pour un
+octogone. La prévision était pessimiste ; mieux vaut le dire que laisser une mise en garde périmée.
+
+⚠️ **LEUR GRAINE DOIT ÊTRE STABLE**, sinon la Bulle change de forme à chaque rendu — et surtout la
+planche imprimée n'est pas celle qu'on a validée à l'écran. Elle est tirée de l'identifiant de la
+Bulle, dans `src/cyclic-noise.js`, module créé pour que le tremblé du trait et la silhouette de la
+tache partagent **un seul** bruit plutôt que deux copies.
+
+⚠️ **ET LEUR ZONE INSCRIPTIBLE NE PEUT PAS ÊTRE UNE FRACTION FIXE.** C'est la vraie difficulté des
+contours générés, et elle n'avait pas été prévue. Les huit autres formes ont le même contour pour
+toutes les Bulles : on mesure la place une fois, on l'écrit. La tache, elle, a un contour **par
+Bulle** ; la bande, un contour qui dépend de l'**allongement**, parce que son inclinaison déplace
+`y` proportionnellement à la hauteur. Une fraction réglée sur un cas sort de l'autre — mesuré sur
+4 000 graines, le coin de l'encart sortait jusqu'à **16 %** au-delà du contour. Ces deux formes
+déclarent donc un rapport **visé**, que le registre rabote à ce qui tient réellement dans ce
+contour-ci. Le calcul est exact et coûte quatre divisions, la forme étant étoilée.
 
 ## Les styles enregistrés : une copie, jamais une référence
 
@@ -277,6 +295,27 @@ aux menus déroulants — une leçon apprise à moitié ne protège de rien.
 
 La fiche interroge désormais les mêmes fonctions que le dessin en lecture, et valide par le registre
 en écriture, pour la forme comme pour la queue.
+
+## Ce que la tache d'encre n'a PAS encore
+
+⚠️ **LA SILHOUETTE EST LIVRÉE, LA TACHE NE L'EST PAS.** Le relevé est formel : « il n'y a pas de
+remplissage distinct d'un contour, **le bord EST l'effet** » — cœur opaque, bords translucides
+laissant passer le fond, mouchetis dont la taille **et** l'opacité décroissent avec la distance,
+quelques filaments. Offerte aujourd'hui, la tache rend un **aplat**, c'est-à-dire exactement le
+piège que sa propre fiche nomme.
+
+C'est assumé, et c'est une conséquence de la règle que cette note pose elle-même : **aucun axe n'en
+implique un autre**. La texture relève du remplissage, le mouchetis de la couche ajoutée. Les faire
+entrer dans la forme, pour qu'une seule forme soit belle plus tôt, reviendrait à dénouer l'axe qui
+tient tout le reste — et interdirait, par exemple, une couronne d'épines mouchetée.
+
+Trois questions de rattachement restent **ouvertes**, et sont notées ici sans être tranchées :
+
+| ce qui manque | où cela ira, probablement | ce qui n'est pas décidé |
+|---|---|---|
+| les textures de remplissage | un menu dans la section **Apparence** | — |
+| le mouchetis | section **Bordure** ? | est-ce un motif du trait, au même titre que les pointillés, ou un attribut à part entière ? |
+| les bords translucides | section **Bordure** | à quel attribut le raccorder |
 
 ## Le corpus, et son statut
 

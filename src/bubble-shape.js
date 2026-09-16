@@ -58,6 +58,8 @@ export const FORME_ETOILE = 'etoile';
 export const FORME_DENTS = 'dents';
 export const FORME_ECU = 'ecu';
 export const FORME_EPINES = 'epines';
+export const FORME_TACHE = 'tache';
+export const FORME_BANDE = 'bande';
 
 /**
  * ⚠️ LA FORME PAR DÉFAUT EST L'OVALE, ET C'EST CE QUI PROTÈGE L'EXISTANT. Aucune Bulle enregistrée
@@ -65,6 +67,8 @@ export const FORME_EPINES = 'epines';
  * exactement comme avant.
  */
 export const FORME_DEFAUT = FORME_OVALE;
+
+import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
 
 const cx3D = (o) => o.x + o.w / 2;
 const cy3D = (o) => o.y + o.h / 2;
@@ -118,23 +122,105 @@ function pointSurSommets(o, theta, sommets){
 const RECT_ARRONDI = 0.30;   // rayon du coin, en fraction du plus petit demi-axe
 const RECT_PAR_COIN = 5;     // points d'échantillonnage par coin
 
-function sommetsRect(o){
-  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
-  const r = Math.min(rx, ry) * RECT_ARRONDI;
-  // Les quatre coins, dans l'ordre trigonométrique, chacun donné par son centre de courbure et
-  // l'angle de départ de son quart de cercle.
+/**
+ * Un rectangle à coins arrondis, échantillonné, dans l'ordre trigonométrique. Interne.
+ *
+ * ⚠️ PARTAGÉ PAR LE RECTANGLE ET LA BANDE, ET C'EST VOULU. La bande de Croquemitaine EST un
+ * rectangle à coins très arrondis, penché : lui recopier cette boucle aurait fait une seconde copie
+ * de la même construction, à corriger deux fois le jour où l'échantillonnage changera.
+ */
+function coinsArrondis(cx, cy, hx, hy, r, parCoin){
   const COINS = [
-    [cx + rx - r, cy + ry - r, 0],                  // bas droit
-    [cx - rx + r, cy + ry - r, Math.PI / 2],        // bas gauche
-    [cx - rx + r, cy - ry + r, Math.PI],            // haut gauche
-    [cx + rx - r, cy - ry + r, -Math.PI / 2],       // haut droit
+    [cx + hx - r, cy + hy - r, 0],                  // bas droit
+    [cx - hx + r, cy + hy - r, Math.PI / 2],        // bas gauche
+    [cx - hx + r, cy - hy + r, Math.PI],            // haut gauche
+    [cx + hx - r, cy - hy + r, -Math.PI / 2],       // haut droit
   ];
   const out = [];
   for (const [ox, oy, depart] of COINS) {
-    for (let k = 0; k <= RECT_PAR_COIN; k++) {
-      const a = depart + (Math.PI / 2) * (k / RECT_PAR_COIN);
+    for (let k = 0; k <= parCoin; k++) {
+      const a = depart + (Math.PI / 2) * (k / parCoin);
       out.push({ x: ox + r * Math.cos(a), y: oy + r * Math.sin(a) });
     }
+  }
+  return out;
+}
+
+function sommetsRect(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  return coinsArrondis(cx, cy, rx, ry, Math.min(rx, ry) * RECT_ARRONDI, RECT_PAR_COIN);
+}
+
+/**
+ * La bande de Croquemitaine : un ruban adhésif posé de travers.
+ *
+ * ⚠️ « RUBAN ADHÉSIF », PAS « BORDS DÉCHIRÉS ». La légende interne du document d'origine le disait,
+ * et le relevé lui a donné raison : les coins sont DOUX ET ARRONDIS. Un bord déchiré aurait fait de
+ * cette bande une variante du parchemin, alors qu'elle en est l'opposé — l'un est un fragment
+ * arraché, l'autre un objet manufacturé qu'on a collé sur l'image.
+ *
+ * ⚠️ ET CE QUI LA DISTINGUE DU RECTANGLE ARRONDI EST L'INCLINAISON, pas le rayon des coins. Sans
+ * elle, deux entrées du registre dessineraient presque la même chose — et c'est précisément le
+ * genre de doublon que #425y devra trancher. Le penché la rend reconnaissable en un coup d'œil.
+ *
+ * ⚠️ L'INCLINAISON EST UN CISAILLEMENT, PAS UNE ROTATION, et la raison est géométrique. Une
+ * rotation fait sortir les coins de la boîte de la Bulle : il faudrait rétrécir la bande pour l'y
+ * faire rentrer, et le rétrécissement dépendrait de l'allongement — une bande très large et très
+ * plate perdrait un tiers de sa taille. Le cisaillement, lui, ne déplace que `y`, d'une quantité
+ * bornée par construction : la bande occupe toujours toute la largeur, et la pente se lit d'autant
+ * plus douce que la Bulle est longue, ce qui est exactement le comportement d'un vrai ruban.
+ */
+const BANDE_HAUTEUR = 0.62;   // demi-hauteur de la bande, en fraction de celle de la Bulle
+const BANDE_ARRONDI = 0.45;   // rayon des coins, en fraction du plus petit demi-axe de la bande
+const BANDE_PENTE = 0.30;     // dénivelé d'un bout à l'autre, en fraction de la demi-hauteur
+const BANDE_PAR_COIN = 5;
+
+function sommetsBande(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  const hy = ry * BANDE_HAUTEUR;
+  const pts = coinsArrondis(cx, cy, rx, hy, Math.min(rx, hy) * BANDE_ARRONDI, BANDE_PAR_COIN);
+  // Le cisaillement. `hy + BANDE_PENTE * ry ≤ ry` garantit que la bande reste dans la boîte, ce
+  // que le contrat vérifie sur les trois gabarits.
+  return pts.map(p => ({ x: p.x, y: p.y + BANDE_PENTE * ry * (p.x - cx) / rx }));
+}
+
+/**
+ * La tache d'encre du Lecteur omniscient : une masse amorphe, stable d'un rendu à l'autre.
+ *
+ * ⚠️ CE QUI EST LIVRÉ ICI N'EST QUE LA SILHOUETTE, ET CELA NE SUFFIT PAS À FAIRE UNE TACHE. Le
+ * relevé est formel : « il n'y a pas de remplissage distinct d'un contour, LE BORD EST L'EFFET » —
+ * cœur opaque, bords translucides laissant passer le fond, mouchetis dont la taille ET l'opacité
+ * décroissent avec la distance. Rien de tout cela n'est une question de forme : la texture relève
+ * de l'axe REMPLISSAGE, le mouchetis de l'axe COUCHE AJOUTÉE, et les mêler ici reviendrait à faire
+ * dépendre un axe d'un autre, ce que la note interdit.
+ *
+ * Tant que ces deux axes n'existent pas, cette forme rend donc un aplat — c'est-à-dire exactement
+ * le piège que le relevé nomme. C'est assumé et borné : voir les tâches ouvertes à cet effet.
+ *
+ * ⚠️ DEUX OCTAVES, PAS UNE. Un seul bruit à basse fréquence donne un galet ; un seul à haute
+ * fréquence donne la pomme de terre de #425b. Une tache d'encre a quelques GRANDS lobes, et par
+ *-dessus une irrégularité fine — la superposition des deux échelles est ce qui la rend crédible.
+ */
+const TACHE_POINTS = 96;          // échantillons sur le tour
+const TACHE_LOBES = 5;            // points de contrôle de l'octave basse : les grands lobes
+const TACHE_GRAIN = 17;           // points de contrôle de l'octave haute : l'irrégularité fine
+const TACHE_PART_GRAIN = 0.45;    // poids de l'octave haute dans le mélange
+const TACHE_CREUX = 0.40;         // de combien le rayon peut se creuser sous le bord de la boîte
+
+function sommetsTache(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  const graine = graineDeLObjet(o);
+  const out = new Array(TACHE_POINTS);
+  for (let i = 0; i < TACHE_POINTS; i++) {
+    const t = i / TACHE_POINTS;
+    const b = bruitCyclique(graine, t, 0, TACHE_LOBES);
+    const h = bruitCyclique(graine, t, 7000, TACHE_GRAIN);
+    const melange = b * (1 - TACHE_PART_GRAIN) + h * TACHE_PART_GRAIN;   // dans [-1, 1]
+    // ⚠️ LE RAYON NE DÉPASSE JAMAIS 1, et c'est ce qui garde la tache dans sa boîte. On ne
+    // module pas AUTOUR de 1 — ce qui déborderait une fois sur deux — mais EN DESSOUS.
+    const r = 1 - TACHE_CREUX * (1 - melange) / 2;
+    const a = 2 * Math.PI * t;
+    out[i] = { x: cx + rx * r * Math.cos(a), y: cy + ry * r * Math.sin(a) };
   }
   return out;
 }
@@ -263,6 +349,50 @@ const EPINES_POINTES = 17, EPINES_CREUX = 0.70;
  * défaut tombé onze fois sur les dessins de l'atlas, et il ne se voit dans aucun test — seulement à
  * l'écran.
  */
+/**
+ * L'encart d'une forme GÉNÉRÉE : la plus grande boîte de ce rapport qui tienne dans CE contour-ci.
+ *
+ * ⚠️ UNE FRACTION FIXE NE PEUT PAS MARCHER POUR UNE FORME QUI DÉPEND DE SA GRAINE. Les huit
+ * premières formes du registre ont un contour identique pour toutes les Bulles : on mesure une fois
+ * la place disponible, on l'écrit, c'est fini. La tache d'encre, elle, a un contour DIFFÉRENT par
+ * Bulle — c'est sa raison d'être. Une fraction réglée sur une tache déborde de la suivante.
+ *
+ * ⚠️ ET LE DÉFAUT EXISTAIT VRAIMENT, mesuré sur 4 000 graines : le coin de l'encart sortait jusqu'à
+ * 16 % au-delà du contour. Le test du contrat ne pouvait pas le voir — il n'éprouve qu'UN
+ * identifiant, `b1`, ce qui suffit pour une forme déterministe et ne prouve rien pour une forme
+ * tirée. Le contrat balaie désormais les graines, pour toutes les formes.
+ *
+ * La mesure est exacte et ne coûte rien : la forme étant étoilée, un coin d'encart est dedans si et
+ * seulement s'il est plus près du centre que le contour DANS SA PROPRE DIRECTION, et cette
+ * direction ne change pas quand on met la boîte à l'échelle. Le plus grand facteur admissible est
+ * donc le minimum des quatre rapports — une division par coin, et le contour construit UNE fois.
+ */
+function encartAjusteAuContour(o, fx, fy, pts){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  const demiX = rx * fx, demiY = ry * fy;
+  let facteur = 1;
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const qx = sx * demiX, qy = sy * demiY;
+    const bord = pointSurSommets(o, Math.atan2(qy, qx), pts);
+    const dBord = Math.hypot(bord.x - cx, bord.y - cy);
+    const dCoin = Math.hypot(qx, qy);
+    if (dCoin > 0) facteur = Math.min(facteur, dBord / dCoin);
+  }
+  // La marge d'un pour cent absorbe l'erreur de la corde : le contour tracé relie les points
+  // échantillonnés par des SEGMENTS, qui passent légèrement en deçà de la courbe idéale.
+  const f = facteur * 0.99;
+  const w = demiX * f * 2, h = demiY * f * 2;
+  return { x: cx - w / 2, y: cy - h / 2, w, h };
+}
+
+/**
+ * ⚠️ ET POURQUOI LES SEPT AUTRES FORMES GARDENT UNE FRACTION FIXE. L'ajustement ci-dessus ne peut
+ * que RÉTRÉCIR : il part de 1 et prend des minima. L'appliquer partout ne ferait donc gagner de
+ * place à personne, raboterait d'un pour cent des valeurs choisies à l'œil sur le rendu, et
+ * remplacerait des chiffres qu'un test fige par un calcul — c'est-à-dire déplacerait le texte de
+ * Bulles existantes pour uniformiser un mécanisme. Il est réservé aux formes dont la place utile
+ * dépend vraiment de la Bulle : la tache par sa graine, la bande par son allongement.
+ */
 function encartDepuisFraction(o, fx, fy, dy = 0){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
   const w = rx * fx * 2, h = ry * fy * 2;
@@ -343,6 +473,29 @@ const REGISTRE = {
     // se coupait encore en deux lignes, le défaut exact qui avait fait remonter le creux de
     // l'étoile en #425e.
     encartInterieur: (o) => encartDepuisFraction(o, 0.66, 0.30),
+  },
+  [FORME_BANDE]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsBande(o)),
+    pointsDuContour: sommetsBande,
+    // ⚠️ SANS QUEUE, ET C'EST CE QUI EN FAIT UN RÉCITATIF. Le relevé la montre pour une voix qui
+    // commente, entre guillemets, et non pour quelqu'un qui parle dans la Case.
+    queueParDefaut: () => false,
+    // ⚠️ AJUSTÉ, COMME LA TACHE, ET POUR UNE RAISON VOISINE : la place utile d'une bande dépend de
+    // l'ALLONGEMENT de la Bulle. Le cisaillement déplace `y` proportionnellement à `ry`, donc sur
+    // une Bulle étroite et haute il emporte la bande bien plus loin, en pixels, que sur une Bulle
+    // large et plate. Une fraction fixe réglée sur l'une sort de l'autre — c'est arrivé, sur le
+    // gabarit très haut du contrat.
+    encartInterieur: (o) => encartAjusteAuContour(o, 0.86, 0.34, sommetsBande(o)),
+  },
+  [FORME_TACHE]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsTache(o)),
+    pointsDuContour: sommetsTache,
+    // L'atlas la range en PENSÉE : elle ne sort de la bouche de personne.
+    queueParDefaut: () => false,
+    // ⚠️ AJUSTÉ À CETTE TACHE-CI, pas à une tache moyenne. Voir `encartAjusteAuContour` : une
+    // fraction fixe débordait jusqu'à 16 % sur certaines graines. Le rapport 0,62 × 0,34 reste le
+    // rapport VISÉ — large et bas, comme pour l'étoile — et le facteur le rabote au besoin.
+    encartInterieur: (o) => encartAjusteAuContour(o, 0.62, 0.34, sommetsTache(o)),
   },
 };
 

@@ -46,6 +46,8 @@
  * Faire porter une seule valeur sur le fond ET sur le trait serait exactement le défaut d'une valeur
  * qui sert deux rôles opposés. `tests/bubble-style.test.mjs` l'interdit explicitement.
  */
+import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
+
 export const BULLE_OPACITE_DEFAUT = 1;
 
 /** Motifs de trait relevés dans le corpus. PERSISTÉS : ces chaînes ne changeront plus. */
@@ -158,15 +160,12 @@ export function amplitudeTrembleBulle(o, largeurTrait){
  * `id` — déjà unique et déjà persisté — qui le garantit.
  */
 export function graineTrembleBulle(o){
-  const cle = String((o && o.id) || '');
-  let h = 2166136261;
-  for (let i = 0; i < cle.length; i++) {
-    h ^= cle.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  // `>>> 0` ramène dans les entiers positifs : une graine négative donnerait des décalages
-  // asymétriques, tremblés vers l'extérieur d'un côté et vers l'intérieur de l'autre.
-  return h >>> 0;
+  // ⚠️ DÉLÉGUÉ À src/cyclic-noise.js EN #425g, et volontairement conservé comme nom. Le tremblé
+  // n'est plus seul à vouloir une graine stable : la tache d'encre en veut une aussi. La décision
+  // — « la graine vient de l'identifiant » — est donc descendue dans la primitive, et il n'en
+  // reste qu'UNE. Ce nom-ci reste l'entrée du vocabulaire du trait, pour que les appelants de
+  // bubble-style n'aient pas à connaître un second module.
+  return graineDeLObjet(o);
 }
 
 /**
@@ -190,8 +189,8 @@ export function decalagesTrembleBulle(o, largeurTrait, nombreDePoints){
     // Deux tirages décorrélés par point : un même bruit sur x et y ferait glisser tous les points
     // le long de la diagonale, ce qui se lit comme une ombre portée, pas comme un tremblement.
     out[i] = {
-      dx: bruitLisse(graine, i / n, 0) * amplitude,
-      dy: bruitLisse(graine, i / n, 1000) * amplitude,
+      dx: bruitCyclique(graine, i / n, 0, POINTS_DE_CONTROLE_TREMBLE) * amplitude,
+      dy: bruitCyclique(graine, i / n, 1000, POINTS_DE_CONTROLE_TREMBLE) * amplitude,
     };
   }
   return out;
@@ -207,38 +206,6 @@ export function decalagesTrembleBulle(o, largeurTrait, nombreDePoints){
  * produit des ondulations LARGES, une dizaine sur un tour, pas soixante-douze.
  */
 const POINTS_DE_CONTROLE_TREMBLE = 9;
-
-/**
- * Bruit lisse et cyclique, sur [0, 1[ → [-1, 1]. Interne.
- *
- * Cyclique parce que le contour d'une Bulle est une boucle : un bruit qui ne se refermerait pas
- * laisserait une marche visible à l'endroit exact où le tracé se referme.
- */
-function bruitLisse(graine, t, decalage){
-  const k = POINTS_DE_CONTROLE_TREMBLE;
-  // ⚠️ `t` VIENT TOUJOURS DE `i / n` AVEC `i < n`, DONC DE [0, 1[. Une première version ramenait
-  // `t` dans cet intervalle par un double modulo « au cas où ». La campagne de mutation l'a montré
-  // ÉQUIVALENT : le remplacer par `t * k` ne faisait tomber aucun test, et pour cause, aucun appel
-  // ne sort de l'intervalle. Une garde qu'aucun chemin n'atteint ne protège rien et laisse croire
-  // le contraire. C'est le `% k` ci-dessous, lui, qui referme la boucle.
-  const x = t * k;
-  const i = Math.floor(x);
-  const f = x - i;
-  const a = melange(graine + decalage + (i % k)) * 2 - 1;
-  const b = melange(graine + decalage + ((i + 1) % k)) * 2 - 1;
-  // Interpolation en cosinus : pente nulle aux points de contrôle, donc aucun angle visible là où
-  // deux segments de bruit se rejoignent. Une interpolation linéaire laisserait un polygone.
-  const u = (1 - Math.cos(f * Math.PI)) / 2;
-  return a * (1 - u) + b * u;
-}
-
-/** Mélangeur entier → [0, 1[. Interne : personne d'autre n'a besoin de ce détail. */
-function melange(x){
-  let h = Math.imul(x ^ (x >>> 16), 2246822507);
-  h = Math.imul(h ^ (h >>> 13), 3266489909);
-  h ^= h >>> 16;
-  return (h >>> 0) / 4294967296;
-}
 
 /**
  * Le regroupement dont draw.js a besoin, en un appel. Fonction PURE.

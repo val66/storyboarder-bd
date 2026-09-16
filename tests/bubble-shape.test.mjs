@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 
 import {
   FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES,
-  FORME_DEFAUT, formesConnues, formeDeLaBulle,
+  FORME_BANDE, FORME_TACHE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
   pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
 } from '../src/bubble-shape.js';
 
@@ -121,13 +121,14 @@ describe('⚠️ UNE FORME INCONNUE LÈVE, elle ne retombe pas sur l’ovale', (
 });
 
 describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
-  test('sept formes sont enregistrées, et les constantes les nomment toutes', () => {
+  test('neuf formes sont enregistrées, et les constantes les nomment toutes', () => {
     // Si une constante exportée cessait de correspondre à une entrée du registre, la fiche
     // proposerait une valeur que le dessin refuserait.
     const connues = formesConnues();
-    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES]
+    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES,
+      FORME_BANDE, FORME_TACHE]
       .forEach(f => assert.ok(connues.includes(f), `« ${f} » absente du registre`));
-    assert.equal(connues.length, 7);
+    assert.equal(connues.length, 9);
   });
 
   // ⚠️ LA BOUCLE LIT LE REGISTRE, ELLE NE RECOPIE PLUS UNE LISTE. Elle recopiait `['ovale', 'rect',
@@ -330,6 +331,51 @@ describe('⚠️ LA QUEUE PAR DÉFAUT EST UNE PROPRIÉTÉ DE LA FORME, depuis #4
     assert.equal(queueParDefautBulle({}), true);
     assert.equal(queueParDefautBulle({ bulleShape: '' }), true);
     assert.equal(queueParDefautBulle({ bulleShape: null }), true);
+  });
+});
+
+describe('⚠️ LE CONTRAT TIENT-IL POUR TOUTES LES GRAINES ? (#425g)', () => {
+  test('l’encart reste dans le contour sur 200 identifiants, pas seulement sur « b1 »', () => {
+    // ⚠️ CE TEST EXISTE PARCE QUE LE CONTRAT AVAIT UN TROU QUE LA PREMIÈRE FORME GÉNÉRÉE A OUVERT.
+    // Tout le reste de ce fichier éprouve les formes sur UN identifiant, `b1`. C'est suffisant tant
+    // que le contour ne dépend pas de la Bulle — les huit premières formes rendent le même dessin
+    // pour tout le monde. La tache d'encre, elle, tire son contour de sa GRAINE : la vérifier sur
+    // `b1` ne dit rien des autres.
+    //
+    // ⚠️ ET LE DÉFAUT ÉTAIT RÉEL, PAS THÉORIQUE. Avec une fraction fixe, mesuré sur 4 000 graines,
+    // le coin de l'encart sortait jusqu'à 16 % au-delà du contour — du texte écrit hors de la
+    // tache, sur une Bulle au hasard, sans que rien n'échoue.
+    //
+    // Le balayage porte sur TOUTES les formes, pas seulement les générées : ainsi la prochaine
+    // forme tirée sera couverte sans que personne pense à l'inscrire ici.
+    for (const forme of formesConnues()) {
+      if (forme === FORME_OVALE || forme === FORME_RECT) continue;   // encart = boîte entière, exempté plus haut
+      for (let n = 0; n < 200; n++) {
+        const g = GABARITS[n % GABARITS.length];
+        const o = Object.assign(avecForme(g, forme), { id: 'graine' + n });
+        const e = encartInterieurBulle(o);
+        assert.ok(e.w > 0 && e.h > 0, `${forme}/graine${n} : encart vide`);
+        const c = centre(o);
+        for (const [qx, qy] of [[e.x, e.y], [e.x + e.w, e.y], [e.x, e.y + e.h], [e.x + e.w, e.y + e.h]]) {
+          const bord = pointDuContourBulle(o, Math.atan2(qy - c.y, qx - c.x));
+          assert.ok(Math.hypot(qx - c.x, qy - c.y) <= Math.hypot(bord.x - c.x, bord.y - c.y) + 1e-6,
+            `${forme}/graine${n} : le coin de l’encart sort du contour`);
+        }
+      }
+    }
+  });
+
+  test('⚠️ ET LA TACHE CHANGE VRAIMENT AVEC LA GRAINE, tout en restant stable pour une Bulle', () => {
+    // Les deux moitiés comptent autant. Un contour qui ne bougerait pas d'une Bulle à l'autre ferait
+    // de la « masse amorphe » un galet unique répété ; un contour qui bougerait d'un rendu à
+    // l'autre ferait frétiller la Bulle, et surtout l'impression ne serait pas ce qu'on a validé.
+    const g = GABARITS[0];
+    const dessin = (id) => pointsDuContourBulle(Object.assign(avecForme(g, FORME_TACHE), { id }))
+      .map(p => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(' ');
+    assert.equal(dessin('b13'), dessin('b13'), 'deux appels pour la même Bulle doivent rendre le même contour');
+    const vus = new Set();
+    for (let n = 0; n < 40; n++) vus.add(dessin('graine' + n));
+    assert.equal(vus.size, 40, `${vus.size} contours distincts sur 40 graines`);
   });
 });
 
