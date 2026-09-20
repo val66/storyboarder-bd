@@ -893,3 +893,184 @@ describe('⚠️ « 0 » NE SE LIT PAS TOUT SEUL : l’indice de portée est là
  * lise bien. Ces deux-là appartiennent à #421z, et #420c a déjà montré qu'une valeur correctement
  * dérivée peut être franchement mauvaise à l'écran.
  */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES SECTIONS HÉRITÉES, APPLIQUÉES DEPUIS LA TABLE (#421c)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Tenu : que la disposition passe APRÈS les bascules par type, qu'elle ne touche rien sur les
+ * autres Éléments, que chaque masquage emporte son étiquette, et que le libellé de taille survive à
+ * un changement de langue.
+ *
+ * ⚠️ PAS TENU : que la fiche d'une Lumière soit BELLE une fois amputée de trois sections. Ces tests
+ * lisent du code et du HTML ; ils ne savent pas si ce qui reste se tient à l'écran. #421z regarde.
+ */
+describe('⚠️ LA DISPOSITION PASSE EN DERNIER, ET NE TOUCHE QUE LES LUMIÈRES (#421c)', () => {
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+
+  test('⚠️ APPLIQUÉE APRÈS LES BASCULES PAR TYPE, sinon elle se fait contredire en silence', () => {
+    // `openObjectModal` porte une trentaine de `style.display` par type, et plusieurs visent les
+    // mêmes champs : `remplirChampHauteur3D` masque la hauteur, `buildFigureFieldUI` montre le
+    // Modèle. Décider AVANT elles reviendrait à se faire réécrire selon l'ordre du fichier — un
+    // défaut qui ne se voit qu'à l'écran, sur un seul type d'Élément.
+    const i = SRC.indexOf('export function openObjectModal');
+    assert.ok(i > 0, '`openObjectModal` est introuvable');
+    const corps = SRC.slice(i);
+    const posDisposition = corps.indexOf('appliquerDispositionFicheLumiere3D(obj)');
+    assert.ok(posDisposition > 0, 'la disposition n’est plus appliquée à l’ouverture');
+    for (const bascule of ['buildSkeletonPoseFieldUI(obj)', 'buildStrayMeshFieldUI(obj)',
+                           'remplirSectionLuminosite3D(obj)']) {
+      const p = corps.indexOf(bascule);
+      assert.ok(p > 0 && p < posDisposition,
+        `« ${bascule} » passe APRÈS la disposition : elle la réécrirait`);
+    }
+  });
+
+  test('⚠️ ELLE SORT SANS RIEN ÉCRIRE POUR TOUT CE QUI N’EST PAS UNE SOURCE', () => {
+    // Le défaut symétrique, et il serait bien pire : un `else` qui « remettrait les champs » se
+    // substituerait aux trente bascules existantes sans connaître leurs raisons, et une chaise
+    // retrouverait des champs de Mur.
+    const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    assert.ok(i > 0, 'la fonction est introuvable');
+    const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
+    assert.match(corps, /if \(!estUneLumiere3D\(obj\)\) return;/,
+      'la sortie anticipée a disparu : la disposition s’appliquerait à tous les Éléments');
+    assert.ok(!/\belse\s*\{/.test(corps.slice(corps.indexOf('estUneLumiere3D'))),
+      'un `else` remettrait des champs sans connaître les raisons qui les avaient masqués');
+  });
+
+  test('⚠️ UNE SECTION INCONNUE DE LA TABLE N’EST PAS MASQUÉE EN SILENCE', () => {
+    // `undefined` n'est pas `false`. Une section ajoutée sans décision pour une Lumière doit rester
+    // telle quelle et être signalée AU ROUGE par le test de coïncidence de #421a — pas disparaître
+    // de l'écran sans que personne ne l'ait voulu.
+    const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
+    assert.match(corps, /verdict === false/, 'le masquage doit exiger un `false` explicite');
+    assert.match(corps, /verdict === true/, 'l’affichage doit exiger un `true` explicite');
+  });
+
+  test('⚠️ CHAQUE MASQUAGE EMPORTE SON ÉTIQUETTE', () => {
+    // Faute déjà commise dans ce dépôt : seul le <select> du Type était masqué pour un modèle
+    // importé, et « TYPE » restait affiché au-dessus de rien. Les étiquettes n'ont pas d'id, elles
+    // sont le frère PRÉCÉDENT de leur champ — convention que l'i18n suit déjà.
+    const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
+    assert.match(corps, /previousElementSibling/, 'l’étiquette ne suit plus son champ');
+    assert.match(corps, /classList\.contains\('modal-field-label'\)/,
+      'sans ce filtre, on masquerait le frère précédent quel qu’il soit');
+  });
+});
+
+describe('⚠️ LE LIBELLÉ DE TAILLE SURVIT À UN CHANGEMENT DE LANGUE (#421c)', () => {
+  const I18N = sourceSansCommentaires(
+    readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8'));
+
+  test('⚠️ `applyI18n` REPOSE LE LIBELLÉ D’UNE LUMIÈRE, qu’elle vient de réécrire', () => {
+    // ⚠️ DÉFAUT RÉEL, TROUVÉ EN CONSTRUISANT. `I18N_PREV_LABEL` pose « Hauteur (m) » sur
+    // l'étiquette de `objectHeightInput` sans savoir quel Élément la fiche montre. Changer de langue
+    // avec une fiche de Lumière ouverte rendait donc l'étiquette FAUSSE — elle annonçait une hauteur
+    // pour un diamètre de sphère — jusqu'à la prochaine réouverture de la fiche.
+    const i = I18N.indexOf('export function applyI18n');
+    assert.ok(i > 0);
+    const corps = I18N.slice(i, I18N.indexOf('\n}\n', i));
+    const posBoucle = corps.indexOf('I18N_PREV_LABEL.forEach');
+    const posReprise = corps.indexOf('LIBELLE_TAILLE_LUMIERE');
+    assert.ok(posBoucle > 0, 'la boucle des étiquettes a disparu');
+    assert.ok(posReprise > posBoucle,
+      'le libellé d’une Lumière n’est pas reposé APRÈS la boucle qui vient de l’écraser');
+  });
+
+  test('⚠️ ET LE SIGNAL EST LA SECTION VISIBLE, pas un second « est-ce une Lumière »', () => {
+    // La section « Luminosité » n'est montrée que pour une source, par la table de #421a. S'en
+    // servir ici réutilise un état existant ; un second test pourrait le contredire, et c'est la
+    // faute la plus fréquente de ce dépôt — deux décisions sur la même chose.
+    const i = I18N.indexOf('export function applyI18n');
+    const corps = I18N.slice(i, I18N.indexOf('\n}\n', i));
+    assert.match(corps, /data-section="luminosite"/,
+      'la reprise du libellé ne s’appuie plus sur la visibilité de la section');
+    assert.ok(!/estUneLumiere3D/.test(corps),
+      'i18n.js refait un test « est-ce une Lumière » au lieu de lire l’état déjà posé');
+  });
+});
+
+describe('⚠️ LA SPHÈRE N’EST PAS LA LUMIÈRE : deux cases, deux sens (#421c)', () => {
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const EV = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('les deux cases coexistent dans l’Aperçu, et disent des choses différentes', () => {
+    // #420f l'a mesuré : `hidden3d` retire la source du COMPTE des lumières, donc du shader, et
+    // c'est le seul réglage qui économise quoi que ce soit. `sphereVisible` ne masque que la bille.
+    // Les confondre rendrait introuvable la clarté d'une lumière qu'on croit éteinte.
+    assert.ok(HTML.includes('id="objectHidden3dCheckbox"'));
+    assert.ok(HTML.includes('id="objectSphereVisibleCheckbox"'));
+    const deb = HTML.indexOf('data-section="apercu"');
+    const fin = HTML.indexOf('data-section="luminosite"', deb);
+    assert.ok(deb > 0 && fin > deb, 'les bornes de la section Aperçu sont introuvables');
+    const apercu = HTML.slice(deb, fin);
+    assert.ok(apercu.includes('id="objectSphereVisibleCheckbox"'),
+      'la case de la sphère n’est pas dans l’Aperçu : elle décrit pourtant ce qu’on y voit');
+  });
+
+  test('⚠️ SON ENVELOPPE EST UN <div>, et ce n’est pas cosmétique', () => {
+    // Un <label style="display:flex"> réaffiché par `style.display = ''` retombe en `inline` : il
+    // perd son alignement et son espacement, silencieusement. Toutes les autres enveloppes du
+    // dépôt sont des <div> pour cette raison ; celle-ci a été corrigée avant d'être livrée.
+    const m = HTML.match(/<(\w+) id="objectSphereVisibleField"/);
+    assert.ok(m, 'l’enveloppe de la case a disparu');
+    assert.equal(m[1], 'div',
+      `l’enveloppe est un <${m[1]}> : réaffichée par style.display = '' elle perdrait sa mise en page`);
+  });
+
+  test('et elle est enregistrée, sous la même garde que les trois autres réglages', () => {
+    assert.match(EV, /S\.modalTarget\.sphereVisible = objectSphereVisibleCheckbox\.checked/,
+      'la visibilité de la sphère n’est pas enregistrée : le champ resterait mort');
+    const i = EV.indexOf('if (estUneLumiere3D(S.modalTarget))');
+    const j = EV.indexOf('S.modalTarget.sphereVisible = objectSphereVisibleCheckbox.checked');
+    assert.ok(i > 0 && j > i, 'l’écriture de sphereVisible sort de la garde `estUneLumiere3D`');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#421c, les sections héritées) : huit fautes rejouées.
+ *
+ *   M49 la disposition passe AVANT les bascules par type                    ROUGE
+ *   M50 la sortie anticipée disparaît (elle s'applique à tout)              ROUGE
+ *   M51 une section inconnue de la table est masquée en silence             ROUGE
+ *   M52 l'étiquette ne suit plus son champ                                  ROUGE
+ *   M53 le libellé n'est pas reposé au changement de langue                 ROUGE (×2)
+ *   M54 `sphereVisible` n'est plus enregistré                               ROUGE
+ *   M55 l'enveloppe de la case de sphère redevient un `<label>`             ROUGE (×3)
+ *   M56 le curseur de pourcentage réapparaît, doublon de la hauteur         ROUGE
+ *
+ * ⚠️ M49 EST LA MUTATION D'ORDRE, ET ELLE NE CASSE RIEN D'ÉVIDENT. La disposition appliquée trop
+ * tôt se fait réécrire par `remplirChampHauteur3D` ou `buildFigureFieldUI`, en silence, et le
+ * symptôme dépend du type d'Élément ouvert juste avant. Une faute d'ORDRE ne se lit pas dans le
+ * code : les deux versions se ressemblent trait pour trait.
+ *
+ * ⚠️ M50 EST LA PLUS DANGEREUSE DU LOT. Sans la sortie anticipée, la disposition d'une Lumière
+ * s'applique à TOUS les Éléments : une chaise perd son Orientation, un Mur perd ses champs. Elle
+ * casse tout, tout de suite — donc elle serait vue. C'est M49, qui ne casse presque rien, qui aurait
+ * survécu des mois.
+ *
+ * ⚠️ M53 EST UN DÉFAUT RÉEL TROUVÉ EN CONSTRUISANT, pas une faute inventée après coup. La boucle
+ * `I18N_PREV_LABEL` pose « Hauteur (m) » sans savoir quel Élément la fiche montre : changer de
+ * langue avec une fiche de Lumière ouverte annonçait une hauteur pour un diamètre de sphère,
+ * jusqu'à la prochaine réouverture. Le correctif repose le libellé APRÈS la boucle, et se fie à la
+ * visibilité de la section « Luminosité » plutôt qu'à un second « est-ce une Lumière ».
+ *
+ * ⚠️ M55 EST UNE FAUTE DE CSS QUI SE LIT COMME UNE FAUTE DE GOÛT. Un `<label style="display:flex">`
+ * réaffiché par `style.display = ''` retombe en `inline` et perd alignement et espacement, sans
+ * qu'aucune erreur ne soit levée. Toutes les autres enveloppes du dépôt sont des `<div>` ; celle-ci
+ * l'est devenue avant d'être livrée, et le test dit pourquoi.
+ *
+ * ⚠️ M56 RAPPELLE POURQUOI UNE ENVELOPPE A DÛ ÊTRE CRÉÉE. Le curseur, son étiquette « Taille
+ * réelle » et son afficheur « 100 % » sont TROIS éléments pour UNE donnée : masquer le seul
+ * `<input>` laissait les deux autres flotter au-dessus de rien. C'est « TYPE affiché au-dessus de
+ * rien » rejoué d'un cran, et c'est la table de #421a qui l'a rendu visible.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la fiche amputée de trois sections se tienne
+ * encore à l'écran. #421z regarde.
+ */

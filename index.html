@@ -1313,10 +1313,17 @@
             <label class="modal-field-label" id="objectHeightLabel">Hauteur (m)</label>
             <input type="number" id="objectHeightInput" class="modal-field-number" step="0.01">
           </div>
-          <label class="modal-field-label">Taille réelle</label>
-          <div style="display:flex; align-items:center; gap:8px; margin:0 0 4px;">
-            <input type="range" id="objectSizeInput" min="10" max="400" step="5" style="flex:1;">
-            <span id="objectSizeValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">100%</span>
+          <!-- ⚠️ ENVELOPPE AJOUTÉE EN #421c, ET ELLE RÉPARE UN ORPHELIN. Le curseur, son étiquette et
+               son afficheur sont TROIS éléments pour UNE donnée : masquer le seul <input> laissait
+               « Taille réelle » et « 100 % » flotter au-dessus de rien. Une Lumière règle son
+               diamètre en mètres (cf. objectHeightField juste au-dessus), pas en pourcentage d'une
+               sphère de référence. -->
+          <div id="objectSizePercentField">
+            <label class="modal-field-label">Taille réelle</label>
+            <div style="display:flex; align-items:center; gap:8px; margin:0 0 4px;">
+              <input type="range" id="objectSizeInput" min="10" max="400" step="5" style="flex:1;">
+              <span id="objectSizeValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">100%</span>
+            </div>
           </div>
         </div>
         <div id="objectTraversantField" style="display:none;">
@@ -1395,6 +1402,17 @@
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:8px 0 0; cursor:pointer;">
           <input type="checkbox" id="objectHidden3dCheckbox"> Invisible dans la scène 3D
         </label>
+        <!-- ⚠️ PROPRE AUX LUMIÈRES, ET ELLE NE DIT PAS LA MÊME CHOSE QUE CELLE DU DESSUS (#421c).
+             « Invisible dans la scène 3D » ÉTEINT la source — c'est `hidden3d`, le seul interrupteur
+             qui retire vraiment la lumière du calcul (mesuré en #420f). Celle-ci ne parle QUE de la
+             petite bille blanche : on masque l'ampoule, pas la lumière. Sa place est ici, dans
+             l'Aperçu, parce qu'elle décrit ce qu'on voit et non ce qui éclaire.
+             Masquée pour tout le reste, comme la section « Luminosité ». -->
+        <div id="objectSphereVisibleField" style="display:none;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:6px 0 0; cursor:pointer;">
+            <input type="checkbox" id="objectSphereVisibleCheckbox"> Afficher la sphère de la Lumière
+          </label>
+        </div>
 
         <!-- ⚠️ LES REGLAGES D'ARTICULATION ONT QUITTE CETTE FICHE (#401c), apres ceux d'un Modele
              importe (#394) et ceux du Personnage (#401a). Les trois fiches decrivent UN Element ;

@@ -6034,6 +6034,7 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 const objectLightColorInput = document.getElementById('objectLightColorInput');
 const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
 const objectLightRangeInput = document.getElementById('objectLightRangeInput');
+const objectSphereVisibleCheckbox = document.getElementById('objectSphereVisibleCheckbox');
 // [STATE→S] let S.modalTarget = null;
 // [STATE→S] let S.modalDraftJoints = null;
 // [STATE→S] let S.modalDraftAnimalJoints = null; // { jointId: { x?, y?, z? } } while editing an animal
@@ -6460,6 +6461,10 @@ objectModalSave.onclick = () => {
       S.modalTarget.color = objectLightColorInput.value;
       S.modalTarget.intensite = Number(objectLightIntensityRange.value) / 100;
       S.modalTarget.portee = Math.max(0, Number(objectLightRangeInput.value) || 0);
+      // ⚠️ LA SPHÈRE N'EST PAS LA LUMIÈRE. Cette case masque la bille blanche ; `hidden3d`, juste
+      // au-dessus, éteint la source. Les confondre rendrait introuvable la clarté d'une lumière
+      // qu'on croit éteinte — ou laisserait une bille flotter dans un dessin fini.
+      S.modalTarget.sphereVisible = objectSphereVisibleCheckbox.checked;
     }
     // Captured BEFORE any Wall mutation (rotation and/or size, right after): the relative fraction
     // of each magnetized Element within its Wall/side rectangle as it still existed at the moment

@@ -114,6 +114,8 @@ const objectLightColorInput = document.getElementById('objectLightColorInput');
 const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
 const objectLightIntensityValue = document.getElementById('objectLightIntensityValue');
 const objectLightRangeInput = document.getElementById('objectLightRangeInput');
+// La visibilité de la sphère d'une Lumière, dans la section Aperçu 3D (#421c).
+const objectSphereVisibleCheckbox = document.getElementById('objectSphereVisibleCheckbox');
 const objectHeightField = document.getElementById('objectHeightField');
 const personaHeightField = document.getElementById('personaHeightField');
 const personaHeightInput = document.getElementById('personaHeightInput');
@@ -274,6 +276,69 @@ export function remplirSectionLuminosite3D(obj){
   objectLightIntensityRange.value = String(Math.round(r.intensite * 100));
   objectLightIntensityValue.textContent = objectLightIntensityRange.value + ' %';
   objectLightRangeInput.value = String(r.portee);
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * APPLIQUER LA DISPOSITION D'UNE LUMIÈRE AUX SECTIONS HÉRITÉES (#421c)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ ELLE PASSE EN DERNIER, ET L'ORDRE EST TOUT. `openObjectModal` porte une trentaine de bascules
+ * par type d'Objet, et plusieurs touchent les mêmes champs — `remplirChampHauteur3D` masque le
+ * champ de hauteur, `buildFigureFieldUI` montre celui du Modèle. Appliquer la disposition AVANT
+ * elles reviendrait à décider puis se faire contredire, en silence, selon l'ordre d'écriture du
+ * fichier. Elle passe donc après tout le monde et a le dernier mot.
+ *
+ * ⚠️ ET ELLE NE TOUCHE RIEN SUR LES AUTRES ÉLÉMENTS. Un `else` qui « remettrait les champs » se
+ * substituerait à la trentaine de bascules existantes, dont il ne connaît pas les raisons : la
+ * chaise retrouverait des champs de Mur. Pour tout ce qui n'est pas une source, cette fonction sort
+ * sans rien avoir écrit.
+ *
+ * ⚠️ CHAQUE MASQUAGE EMPORTE SON ÉTIQUETTE, et c'est une faute que ce dépôt a déjà commise : seul
+ * le `<select>` du Type était masqué pour un modèle importé, et « TYPE » restait affiché au-dessus
+ * de rien. Les étiquettes du dépôt n'ont pas d'id — elles sont le frère PRÉCÉDENT de leur champ,
+ * convention que l'i18n suit déjà — donc on masque la paire.
+ */
+export function appliquerDispositionFicheLumiere3D(obj){
+  if (!estUneLumiere3D(obj)) return;
+  const d = dispositionFicheLumiere3D();
+  const boite = objectModal.querySelector('.modal-box');
+  if (!boite) return;
+
+  boite.querySelectorAll('.modal-section[data-section]').forEach(sec => {
+    const verdict = d.sections[sec.dataset.section];
+    // ⚠️ `undefined` N'EST PAS `false`. Une section que la table ne connaît pas est une section
+    // ajoutée sans décision pour une Lumière : la masquer en silence la ferait disparaître sans
+    // que personne ne l'ait voulu. On la laisse telle quelle, et c'est le test de coïncidence de
+    // #421a qui signale l'oubli — au rouge, pas à l'écran.
+    if (verdict === false) sec.style.display = 'none';
+    else if (verdict === true) sec.style.display = '';
+  });
+
+  Object.entries(d.champs).forEach(([id, montre]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = montre ? '' : 'none';
+    // L'étiquette suit son champ. Un `<label class="modal-field-label">` juste avant est une
+    // étiquette ; un `<div>` ou un autre champ ne l'est pas, et on n'y touche pas.
+    const etiquette = el.previousElementSibling;
+    if (etiquette && etiquette.classList && etiquette.classList.contains('modal-field-label')) {
+      etiquette.style.display = montre ? '' : 'none';
+    }
+  });
+
+  // Le champ de hauteur DIT autre chose ici : pour une source, `realHeightFloor` est le diamètre de
+  // la sphère. Les deux langues viennent du module, source unique partagée avec `applyI18n` (cf.
+  // LIBELLE_TAILLE_LUMIERE).
+  const etiquetteHauteur = document.getElementById('objectHeightLabel');
+  if (etiquetteHauteur) {
+    etiquetteHauteur.textContent = tr(d.libelleTaille.en, d.libelleTaille.fr);
+  }
+
+  // La visibilité de la sphère, dans l'Aperçu : elle parle du repère visible, pas de la lumière.
+  if (objectSphereVisibleCheckbox) {
+    objectSphereVisibleCheckbox.checked = reglagesLumierePosee3D(obj).sphereVisible;
+  }
 }
 
 /** L'afficheur du curseur d'intensité, pendant qu'on le tire. */
@@ -1278,6 +1343,10 @@ export function openObjectModal(obj, isNew){
   buildSkeletonPoseFieldUI(obj);
   buildStrayMeshFieldUI(obj);
   remplirSectionLuminosite3D(obj);
+  // ⚠️ EN DERNIER, APRÈS TOUTES LES BASCULES PAR TYPE. Voir la note de la fonction : appliquer la
+  // disposition plus haut la ferait contredire par `remplirChampHauteur3D` ou `buildFigureFieldUI`,
+  // en silence, selon l'ordre d'écriture de cette fonction.
+  appliquerDispositionFicheLumiere3D(obj);
   // ⚠️ LES SECTIONS OUVERTES D'EMBLÉE DIFFÈRENT POUR UNE LUMIÈRE, et pas par coquetterie : sur une
   // source, « Aperçu 3D » ne montre qu'une bille, tandis que les trois réglages qui justifient
   // l'existence de cette fiche vivent dans « Luminosité ». Ouvrir l'aperçu et replier la luminosité

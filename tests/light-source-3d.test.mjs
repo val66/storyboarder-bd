@@ -945,7 +945,7 @@ describe('⚠️ LA FICHE D’UNE LUMIÈRE COUVRE TOUTE LA MODALE, ET RIEN QUE L
   }
 
   /** Les cinq commandes nues que la table nomme une par une, faute d'enveloppe qui les groupe. */
-  const COMMANDES_NUES = ['objectNameInput', 'objectTypeSelect', 'objectSizeInput',
+  const COMMANDES_NUES = ['objectNameInput', 'objectTypeSelect',
                           'objectPreview3D', 'objectEditorOpenBtn', 'objectHidden3dCheckbox'];
 
   test('⚠️ CHAQUE SECTION ET CHAQUE CHAMP DE LA MODALE SORT D’ICI EXACTEMENT UNE FOIS', () => {
@@ -1018,12 +1018,33 @@ describe('Ce que la fiche d’une Lumière montre, et ce qu’elle masque', () =
     const c = dispositionFicheLumiere3D().champs;
     assert.equal(c.objectSizeField, true, 'l’enveloppe porte la hauteur, elle doit rester');
     assert.equal(c.objectHeightField, true);
-    assert.equal(c.objectSizeInput, false);
-    // Et le libellé est une CLÉ d'i18n, pas une phrase : une phrase en clair ici serait une seconde
-    // source, française seulement.
-    assert.match(LIBELLE_TAILLE_LUMIERE, /^[a-zA-Z][a-zA-Z0-9]*$/,
-      `« ${LIBELLE_TAILLE_LUMIERE} » n’est pas une clé d’i18n`);
-    assert.ok(!/\s/.test(LIBELLE_TAILLE_LUMIERE), 'le libellé est écrit en clair au lieu d’une clé');
+    // ⚠️ C'EST L'ENVELOPPE DU POURCENTAGE QUI EST MASQUÉE, PAS LE SEUL CURSEUR, et #421c a dû la
+    // créer pour cela : le curseur, son étiquette « Taille réelle » et son afficheur « 100 % » sont
+    // TROIS éléments pour UNE donnée. Masquer le seul <input> laissait les deux autres flotter
+    // au-dessus de rien — la faute du « TYPE » affiché au-dessus de rien, rejouée d'un cran.
+    assert.equal(c.objectSizePercentField, false);
+    // ⚠️ CE TEST A ÉTÉ CORRIGÉ EN MÊME TEMPS QUE CE QU'IL VÉRIFIAIT. Il exigeait que le libellé soit
+    // « une clé d'i18n » — et validait donc la FORME d'une chaîne qui ne désignait rien, ce dépôt
+    // n'ayant aucune table de clés. Un test qui vérifie la forme d'une valeur sans jamais vérifier
+    // qu'elle SERT est la variante la plus discrète de « le test vérifie qu'un identifiant apparaît
+    // au lieu de vérifier qu'il gouverne ».
+    //
+    // Ce qui compte vraiment est que le libellé porte SES DEUX LANGUES à un seul endroit : deux
+    // lecteurs s'en servent — l'ouverture de la fiche, et `applyI18n` si la langue change pendant
+    // qu'elle est ouverte — et des phrases écrites aux deux endroits divergeraient.
+    assert.equal(typeof LIBELLE_TAILLE_LUMIERE, 'object',
+      'le libellé doit porter ses deux langues, pas une clé qui ne désigne rien');
+    for (const langue of ['en', 'fr']) {
+      assert.equal(typeof LIBELLE_TAILLE_LUMIERE[langue], 'string',
+        `le libellé n’a pas de version « ${langue} »`);
+      assert.ok(LIBELLE_TAILLE_LUMIERE[langue].length > 3,
+        `la version « ${langue} » du libellé est vide ou dérisoire`);
+    }
+    assert.notEqual(LIBELLE_TAILLE_LUMIERE.en, LIBELLE_TAILLE_LUMIERE.fr,
+      'les deux langues disent la même chaîne : l’une des deux n’a pas été traduite');
+    // Et il parle bien d'un DIAMÈTRE : le module s'est déjà trompé de nom une fois sur ce champ.
+    assert.match(LIBELLE_TAILLE_LUMIERE.fr, /[Dd]iamètre/);
+    assert.match(LIBELLE_TAILLE_LUMIERE.en, /[Dd]iameter/);
   });
 
   test('⚠️ AUCUNE COMMANDE MORTE : l’aimant du Sol est masqué parce qu’il ne commanderait rien', () => {

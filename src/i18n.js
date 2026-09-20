@@ -12,6 +12,9 @@
 import { S } from './state.js';
 import { HELP_MANUAL_EN, HELP_MANUAL_FR } from './help-content.js';
 import { updateLastSavedIndicator } from './io.js';
+// Les deux langues du libellé de taille d'une Lumière vivent avec la Lumière, source unique
+// partagée avec `openObjectModal` (#421c).
+import { LIBELLE_TAILLE_LUMIERE } from './light-source-3d.js';
 
 // ── Callbacks injected by app.js ─────────────────────────────────────────────
 let _updateSidePanel = null;
@@ -510,6 +513,9 @@ export function applyI18n(lang){
   // which has no id of its own, so we target the checkbox's parent rather than a direct selector).
   const badgesCb = document.getElementById('exportShowPanelBadgesCheckbox');
   if (badgesCb) setTrailingText(badgesCb.parentElement, 'Show panel number badges', 'Afficher le badge numéro sur les Cases', lang);
+  // La case de la sphère d'une Lumière : son texte suit l'input, dans le <label> parent (#421c).
+  const sphereCb = document.getElementById('objectSphereVisibleCheckbox');
+  if (sphereCb) setTrailingText(sphereCb.parentElement, 'Show the Light\'s sphere', 'Afficher la sphère de la Lumière', lang);
   const descCb = document.getElementById('exportShowPanelDescriptionsCheckbox');
   if (descCb) setTrailingText(descCb.parentElement, 'Show panel descriptions below the page', 'Afficher la description des Cases sous la Planche', lang);
   const groundCbPersona = document.getElementById('personaGroundMagnetCheckbox');
@@ -535,6 +541,20 @@ export function applyI18n(lang){
   }
   applyI18nModalSectionTitles(lang);
   applyI18nHelpManual(lang);
+  // ⚠️ LE LIBELLÉ DE HAUTEUR DIT AUTRE CHOSE SUR UNE LUMIÈRE, ET LA BOUCLE CI-DESSUS VIENT DE LE
+  // RÉÉCRIRE (#421c). `I18N_PREV_LABEL` pose « Hauteur (m) » sur l'étiquette de `objectHeightInput`
+  // sans savoir quel Élément la fiche montre ; sur une source, ce champ est le DIAMÈTRE DE LA
+  // SPHÈRE. Changer de langue avec une fiche de Lumière ouverte aurait donc rendu l'étiquette
+  // fausse, en silence, jusqu'à la prochaine réouverture.
+  //
+  // ⚠️ LE SIGNAL EST LA SECTION « Luminosité » VISIBLE, et non un second test « est-ce une
+  // Lumière ». Cette section n'est montrée que pour une source, par la table de #421a : s'en servir
+  // ici réutilise un état existant au lieu d'en créer un qui pourrait le contredire.
+  const sectionLum = document.querySelector('#objectModal [data-section="luminosite"]');
+  const etiquetteHauteur = document.getElementById('objectHeightLabel');
+  if (sectionLum && etiquetteHauteur && sectionLum.style.display !== 'none') {
+    etiquetteHauteur.textContent = LIBELLE_TAILLE_LUMIERE[lang === 'en' ? 'en' : 'fr'];
+  }
   refreshDynamicI18nTexts(lang);
 }
 

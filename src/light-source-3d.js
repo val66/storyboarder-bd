@@ -307,6 +307,7 @@ export const CHAMPS_FICHE_LUMIERE = {
   objectWindowAngleField: false,
   objectSizeField: true,           // l'enveloppe reste : elle porte la hauteur, ci-dessous
   objectHeightField: true,         // → « Diamètre de la sphère (m) »
+  objectSizePercentField: false,   // le pourcentage, doublon de la hauteur : cf. ci-dessus
   objectTraversantField: false,    // propriété d'une ouverture dans un Mur
   objectLinkedField: false,        // l'Élément hôte d'une ouverture
   // — Position —
@@ -317,20 +318,29 @@ export const CHAMPS_FICHE_LUMIERE = {
   // — Commandes nues —
   objectNameInput: true,           // une source se nomme comme tout Élément
   objectTypeSelect: false,         // on ne transforme pas une Lumière en chaise
-  objectSizeInput: false,          // le pourcentage, doublon de la hauteur : cf. ci-dessus
   objectPreview3D: true,           // l'aperçu montre la sphère, sa couleur et sa taille
   objectEditorOpenBtn: false,      // le crayon mène à l'Éditeur : rien à poser
   objectHidden3dCheckbox: true,    // le seul vrai interrupteur, cf. ci-dessus
+  objectSphereVisibleField: true,  // la bille, pas la lumière — cf. le commentaire du HTML
 };
 
 /**
- * Le libellé que prend le champ de hauteur sur une Lumière.
+ * Le libellé que prend le champ de hauteur sur une Lumière — LES DEUX LANGUES, à UN seul endroit.
  *
- * ⚠️ UNE CLÉ, PAS UNE PHRASE. Les libellés vivent dans i18n.js, et écrire « Diamètre de la sphère »
- * en clair ici en ferait une seconde source, française seulement, qui dériverait de l'autre au
- * premier ajustement de formulation.
+ * ⚠️ PREMIÈRE VERSION CORRIGÉE EN #421c : elle rendait la chaîne `'lightSphereDiameter'`, présentée
+ * comme « une clé d'i18n ». Ce dépôt N'A PAS de table de clés — `tr(en, fr)` prend les deux chaînes
+ * en argument, et les tables de i18n.js associent un SÉLECTEUR à ses deux textes. La clé ne
+ * désignait donc rien, et le test qui la validait ne vérifiait que sa forme.
+ *
+ * ⚠️ ET IL FAUT UNE SOURCE UNIQUE, PARCE QU'IL Y A DEUX LECTEURS. `openObjectModal` pose le libellé
+ * à l'ouverture de la fiche ; `applyI18n` doit le reposer si la langue change pendant qu'elle est
+ * ouverte, sans quoi une Lumière réafficherait « Hauteur (m) » pour un diamètre de sphère. Écrire
+ * les phrases aux deux endroits les ferait diverger au premier ajustement de formulation.
  */
-export const LIBELLE_TAILLE_LUMIERE = 'lightSphereDiameter';
+export const LIBELLE_TAILLE_LUMIERE = {
+  en: 'Sphere diameter (m)',
+  fr: 'Diamètre de la sphère (m)',
+};
 
 /**
  * La disposition complète de la fiche d'une Lumière. Fonction PURE, sans DOM.
