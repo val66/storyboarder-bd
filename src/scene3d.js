@@ -1044,10 +1044,23 @@ export const tracéMeshCache3D = new Map();
 /**
  * Les `THREE.PointLight` des sources posées, une par Élément (#420c).
  *
- * ⚠️ UN CACHE, PARCE QU'UNE LUMIÈRE NEUVE FAIT RECOMPILER LES SHADERS. Ajouter ou retirer une
- * source de la scène invalide les programmes de tous les matériaux qui la reçoivent ; le faire à
- * chaque rendu de Case coûterait bien plus cher que le rendu lui-même. On les crée une fois et on
- * les éteint, comme le dépôt le fait déjà pour les rigs et les dalles.
+ * ⚠️ CE CACHE N'ÉVITE PAS LA RECOMPILATION DES SHADERS, ET LA VERSION PRÉCÉDENTE DE CE COMMENTAIRE
+ * L'AFFIRMAIT (#420f). `WebGLRenderer.projectObject` commence par `if (object.visible === false)
+ * return;` : une `PointLight` éteinte n'entre PAS dans `lights.state`, exactement comme si on
+ * l'avait retirée de la scène. Éteindre et retirer donnent le même nombre de lumières, donc la même
+ * clé de programme, donc la même recompilation. Le raisonnement était faux ; la mesure l'a montré.
+ *
+ * CE QUE LE CACHE ÉVITE VRAIMENT, et qui suffit à le justifier : allouer une `PointLight` et la
+ * greffer dans la scène partagée à chaque rendu de Case, avec le nettoyage qui va avec. C'est le
+ * même motif que les rigs et les dalles, pour la même raison, mais pas pour celle qui était écrite.
+ *
+ * ⚠️ ET LA RECOMPILATION, ELLE, EST BORNÉE PAR AILLEURS. Elle est payée UNE FOIS par NOMBRE de
+ * lumières rencontré dans la session — environ 30 ms par lumière, 252 ms à huit —, parce que chaque
+ * matériau retient ses programmes par clé et que `acquireProgram` en tient une seconde table à
+ * l'échelle du renderer. Revenir à un nombre déjà rencontré coûte 0,2 ms. Bouger une lumière, ou
+ * changer sa couleur, ne recompile rien du tout : seul le NOMBRE entre dans la clé.
+ *
+ * Chiffres et méthode : docs/en/rendering-performance.md, septième campagne.
  */
 export const lumierePoseeCache3D = new Map();
 

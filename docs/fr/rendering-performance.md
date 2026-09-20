@@ -429,3 +429,199 @@ chaque retour ».
 multiple du coût de la Planche *courante*, lu au moment du changement de Planche, c'est-à-dire avant
 qu'elle ait rendu quoi que ce soit. Coût zéro, plafond zéro, **0 Case gardée sur 75**. L'élagage est
 passé à la fin du remplissage, là où tous les octets existent et se comptent.
+
+---
+
+# Septième campagne — ce que coûtent une, trois et huit lumières, septembre 2026
+
+Chantier #420f. La note des sources positionnées portait depuis le premier jour une phrase non
+vérifiée : « chaque lumière ajoutée fait recompiler les shaders ». Elle est vraie, et elle ne dit
+pas ce qu'il fallait savoir. Le plafond devait être **mesuré avant d'être décidé**, et c'est ce que
+cette campagne a fait.
+
+## L'instrument, et les trois fois où il a menti
+
+Le rendu d'une Case est du WebGL : ni Node ni une sonde 2D ne peuvent en dire quoi que ce soit. La
+mesure a donc tourné dans un vrai navigateur, sur le vrai GPU, avec **le three.js du dépôt** — la
+copie servie par le CDN a été vérifiée identique au fichier local, même SHA-256
+(`9274bbce…`), même révision r128. La scène reproduit une Case : 52 maillages et 14 matériaux, ce
+que donnent deux Personnages et quatre Objets construits par les constructeurs du dépôt, plus le
+Sol (`PlaneGeometry(_, _, 100, 100)`, `DoubleSide`), soit 20 624 triangles, rendus en 1400 × 1980 —
+le plafond de `PANEL_SCENE_RENDER_MAX_PX`. Le renderer reçoit les mêmes options que
+`personaRenderer3D` : `antialias`, `logarithmicDepthBuffer`, `preserveDrawingBuffer`.
+
+⚠️ **TROIS INSTRUMENTS SUCCESSIFS ONT DONNÉ DES CHIFFRES FAUX, ET LE TROISIÈME A ÉTÉ DÉMASQUÉ PAR UN
+TÉMOIN, PAS PAR L'INTUITION.** Le détail vaut d'être gardé, parce que les trois pièges sont
+génériques et qu'aucun ne se voit dans le résultat.
+
+| instrument | ce qu'il annonçait | pourquoi c'était faux |
+|---|---|---|
+| `gl.finish()` | 0,2 ms quel que soit le nombre de lumières | ne synchronise rien à travers le processus GPU de Chromium : on mesurait l'envoi des commandes, pas leur exécution |
+| `readPixels` sur le tampon d'affichage | 16,7 ms quel que soit le nombre de lumières | attend la présentation à l'écran : on mesurait la période du moniteur, exactement le piège de la cinquième campagne |
+| `readPixels` sur une cible hors écran | — | tient |
+
+Le témoin qui a tranché : la même scène remplacée par **quarante plans pleine vue** empilés, et la
+taille passée de 1400 × 1980 à 4000 × 4000. Seize fois plus de fragments doivent se voir. Sous
+`gl.finish()` le chiffre ne bougeait pas d'un dixième de milliseconde — verdict immédiat. Sous la
+cible hors écran, il passe de 16,7 à 32 ms en montant à 64 lumières, et les mesures de la Case
+réelle se divisent par quatre quand on divise la surface par quatre. **Un instrument qui ne sait pas
+voir une présence ne peut pas mesurer une absence**, et c'est la quatrième fois que ce dépôt le
+paie.
+
+## Le coût par image : il n'y en a pas
+
+Rendu d'une Case, médiane sur 30 images, cible hors écran :
+
+| lumières posées | 350 × 495 | 700 × 990 | 1400 × 1980 |
+|---|---|---|---|
+| 0 | 0,7 ms | 0,7 ms | **0,7 ms** |
+| 8 | 0,7 ms | 0,7 ms | **0,9 ms** |
+| 16 | 0,7 ms | 0,8 ms | 1,2 ms |
+| 24 | 0,7 ms | 0,9 ms | 1,6 ms |
+| 32 | 0,7 ms | 0,9 ms | 1,8 ms |
+| 48 | 0,9 ms | 1,2 ms | 2,3 ms |
+
+**Huit sources coûtent 0,2 ms de plus qu'aucune**, à pleine résolution. Le repère de la cinquième
+campagne est de 13 ms de médiane pour rendre une Case : huit lumières en consomment **1,5 %**. Même
+trente-deux n'ajoutent qu'une milliseconde. Le coût croît bien avec la surface, ce qui est la
+signature d'un travail par fragment réel et non d'un artefact, mais il part de si bas que la
+croissance ne rencontre jamais le budget.
+
+⚠️ **UNE VALEUR À 64 LUMIÈRES A ÉTÉ ÉCARTÉE** : 16,7 ms à pleine résolution, soit exactement la
+période de l'écran, alors que les deux tailles inférieures donnent 0,9 et 1,4 ms. Un point qui vaut
+précisément la période du moniteur après qu'on a déjà été piégé deux fois par elle n'est pas une
+mesure. Il n'est pas expliqué, et il n'est pas utilisé.
+
+## Le vrai coût : la première rencontre d'un nombre
+
+C'est ici que la phrase non vérifiée devient un chiffre. Chaque **nombre de lumières** rencontré
+pour la première fois fait compiler les programmes GLSL de la Case. Mesuré en rendant la scène avec
+des matériaux neufs à chaque essai — un `define` unique force une compilation froide, sans quoi le
+cache de programmes de Chromium répond à la place du GPU :
+
+| lumières | min | médiane | max |
+|---|---|---|---|
+| 0 | 15,6 ms | **17,0 ms** | 104,6 ms |
+| 1 | 16,5 ms | **116,7 ms** | 166,7 ms |
+| 2 | 116,6 ms | 116,8 ms | 134,7 ms |
+| 3 | 133,2 ms | **150,2 ms** | 198,5 ms |
+| 4 | 151,5 ms | 167,1 ms | 198,9 ms |
+| 6 | 199,9 ms | 200,2 ms | 250,4 ms |
+| 8 | 233,2 ms | **251,9 ms** | 283,7 ms |
+
+Les durées sont **quantifiées par la période de l'écran** — la compilation a lieu dans le processus
+GPU et le blocage ne retombe pas toujours sur le rendu qui l'a demandée. La distribution entière est
+donc donnée plutôt qu'une médiane seule, et la lecture honnête porte sur la tendance : **environ
+30 ms par lumière**, une compilation à vide coûtant déjà 17 ms.
+
+## Pourquoi ce coût est payé UNE fois, et non à chaque image
+
+Trois mécanismes de three.js r128, lus dans la source et vérifiés par la mesure :
+
+1. `lights.state.version` ne change **que** si le nombre de lumières change (`WebGLLights.setup`,
+   comparaison de hachage). Bouger une lumière, changer sa couleur ou son intensité ne recompile
+   rien.
+2. Seuls les matériaux **éclairés** repassent par `getProgram` (`materialNeedsLights`). Un
+   `MeshBasicMaterial` garde son programme.
+3. Chaque matériau retient une **table de ses programmes par clé**, et `acquireProgram` en tient une
+   seconde à l'échelle du renderer. Un nombre déjà rencontré est donc gratuit, et un rig qui arrive
+   en cours de session ne recompile rien.
+
+Les trois se mesurent. Revenir sur un nombre déjà rencontré : **0,4 ms**. Un rig neuf ajouté à la
+scène alors que les anciens vivent encore : **0,5 ms**, et le compte de programmes ne bouge pas.
+Alterner trois Cases à 0, 3 et 8 lumières coûte 1,4 ms contre 0,8 ms pour trois Cases au même
+nombre, soit **0,2 ms par changement de nombre** — le prix du `useProgram` et du renvoi des
+uniformes, pas d'une compilation.
+
+⚠️ **ET LES PROGRAMMES MEURENT AVEC LES MATÉRIAUX.** `releaseProgram` supprime un programme dès que
+plus aucun matériau ne s'en sert : détruire les matériaux d'une Case puis en recréer d'identiques
+coûte **66,7 ms**, mesuré. Le dépôt ne détruit les matériaux qu'au **changement de Projet**, ce qui
+est exactement le bon moment ; c'est une contrainte à ne pas piétiner en croyant faire du ménage.
+
+## Ce qui borne le coût : deux programmes, pas cinquante
+
+La compilation ne coûte cher qu'une fois par nombre parce qu'une Case n'a que **deux programmes
+distincts**, et ce chiffre ne dépend pas du nombre d'Éléments. Compté sous Node sur les
+constructeurs de rig du dépôt :
+
+| contenu | instances de matériau | programmes distincts |
+|---|---|---|
+| les 39 constructeurs de rig + 2 Personnages, sans le Sol | 49 | **1** |
+| 2 Personnages + 4 Objets + le Sol | 14 | **2** |
+| les 39 constructeurs de rig + 2 Personnages + le Sol | 50 | **2** |
+
+**Tout le mobilier du dépôt tient donc dans UNE seule clé**, et le Sol en ajoute une seconde à lui
+tout seul : il est `DoubleSide`, ce que rien d'autre n'est. Un
+modèle `.glb` importé en ajoute un troisième, parce qu'il arrive en `SkinnedMesh` — `skinning` entre
+dans la clé — et davantage s'il porte des textures.
+
+C'est donc une propriété à **tenir** : un réglage par Élément qui entrerait dans la clé de programme
+— un ombrage à facettes, une face double, une carte — multiplierait d'un coup le coût de chaque
+nouveau nombre de lumières, et rien ne le signalerait. `tests/light-source-3d.test.mjs` la fige.
+
+## La moitié JavaScript, pour mémoire
+
+Mesurée sous Node, même protocole que la sixième campagne : chauffe puis médiane sur 60
+échantillons.
+
+| lumières | `planLumieresPosees3D` | part ajoutée à la signature de Case |
+|---|---|---|
+| 0 | 0,105 µs | — |
+| 1 | 0,357 µs | +1,0 µs |
+| 3 | 0,759 µs | +3,1 µs |
+| 8 | 1,659 µs | +8,1 µs |
+| 32 | 6,261 µs | — |
+
+Huit lumières sur huit Cases coûtent **0,013 ms par image** au plan, et environ 0,065 ms à la
+signature. Strictement linéaire, et sans commune mesure avec le reste. Une lumière pèse dans la
+signature comme n'importe quel Élément, un peu plus parce que son JSON est plus long : 213
+caractères contre 152 pour un Personnage.
+
+## Verdict : le plafond est de huit, et ce n'est pas pour la vitesse d'affichage
+
+Consigné pour que la raison ne se perde pas, car elle n'est pas celle qu'on attendait.
+
+**Aucun plafond n'est justifié par le coût par image.** Huit sources ajoutent 0,2 ms à une Case qui
+en coûte 13 ; trente-deux en ajoutent une. Si la question avait été « est-ce que ça rame », la
+réponse serait « posez-en autant que vous voulez ».
+
+**Ce qui justifie un plafond est le à-coup.** Chaque clic qui amène un nombre de lumières jamais
+rencontré fige l'application de 120 à 250 ms, une fois. Les repères du dépôt sont le pire rendu de
+Case déjà observé, **296 ms**, et un remplissage de Planche à 245 ms. Huit lumières tiennent sous ce
+pire cas ; douze donnent 334 ms et seize 417 ms, au-dessus de tout ce que l'application produit
+aujourd'hui.
+
+**Huit est donc le plus grand nombre dont la première rencontre reste dans ce que l'application se
+permet déjà.** Le chiffre du découpage de #420 était une supposition ; la mesure tombe dessus, ce
+qui est une coïncidence et mérite d'être dit comme telle.
+
+⚠️ **ET LE REMÈDE, SI CE PLAFOND GÊNE UN JOUR, N'EST PAS DE LE MONTER MAIS DE PRÉCHAUFFER.** Rien
+n'oblige à découvrir un nombre de lumières au moment où l'utilisateur clique : les programmes
+peuvent se compiler à l'avance, au repos, comme le dépôt étale déjà la construction des rigs
+(#405d). Le plafond répond au à-coup, et le à-coup a un autre remède que l'interdiction.
+
+## Ce que cette campagne lègue aux ombres portées
+
+#422 était bloquée par celle-ci. Elle est débloquée, avec trois choses sues :
+
+1. `numPointLightShadows` entre dans la clé de programme **à côté** de `numPointLights`. Activer les
+   ombres ne double pas le coût de compilation, il ouvre un **second axe** de nombres à rencontrer.
+2. Une ombre de source ponctuelle est une carte **cubique** : six passes de profondeur par lumière
+   et par image. C'est un coût par image, celui-là, et il n'a rien à voir avec les 0,2 ms
+   ci-dessus — il faudra le mesurer pour lui-même.
+3. Le budget est connu : une Case coûte 13 ms de médiane et l'image 16,7 ms. C'est contre cela que
+   les six passes se jugeront.
+
+## Refaire la mesure de septembre 2026
+
+La sonde WebGL est jetable et n'a pas été conservée, comme les précédentes. Ce dont elle a besoin,
+et pourquoi :
+
+- **une cible de rendu hors écran**, jamais le tampon d'affichage, sinon on mesure le moniteur ;
+- **`readPixels` après chaque rendu**, car `gl.finish()` ne synchronise rien sous ANGLE ;
+- **un `define` unique par essai**, sans quoi le cache de programmes de Chromium répond à la place
+  du GPU et la deuxième mesure d'un même nombre ne mesure plus rien ;
+- **des matériaux gardés en vie**, sinon `releaseProgram` détruit les programmes et l'essai suivant
+  paie une compilation qu'on croyait acquise ;
+- **un témoin qui doit BOUGER** — quarante plans pleine vue, quatre fois plus de pixels — vérifié
+  avant de croire le moindre chiffre.

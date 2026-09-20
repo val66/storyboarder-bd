@@ -404,3 +404,192 @@ had already been paid for on the rig counters, which counted rebuilds in total w
 multiple of the *current* Page's cost, read at the moment of the Page change — before that Page has
 rendered anything. Cost zero, ceiling zero, **0 panels kept out of 75**. Pruning moved to the end of
 the refill, where every byte exists and can be counted.
+
+---
+
+# Seventh campaign — what one, three and eight lights cost, September 2026
+
+Task #420f. From day one the positioned-lights note carried an unverified sentence: "every light
+added recompiles the shaders". It is true, and it does not say what needed to be known. The ceiling
+was to be **measured before being decided**, and that is what this campaign did.
+
+## The instrument, and the three times it lied
+
+Rendering a Panel is WebGL: neither Node nor a 2D counting probe can say anything about it. The
+measurement therefore ran in a real browser, on the real GPU, with **the repository's own
+three.js** — the copy served by the CDN was verified identical to the local file, same SHA-256
+(`9274bbce…`), same revision r128. The scene reproduces a Panel: 52 meshes and 14 materials, which
+is what two Personas and four Objects built by the repository's own constructors give, plus the
+Ground (`PlaneGeometry(_, _, 100, 100)`, `DoubleSide`), that is 20,624 triangles, rendered at
+1400 × 1980 — the `PANEL_SCENE_RENDER_MAX_PX` cap. The renderer gets the same options as
+`personaRenderer3D`: `antialias`, `logarithmicDepthBuffer`, `preserveDrawingBuffer`.
+
+⚠️ **THREE SUCCESSIVE INSTRUMENTS PRODUCED FALSE NUMBERS, AND THE THIRD WAS UNMASKED BY A WITNESS,
+NOT BY INTUITION.** The detail is worth keeping, because all three traps are generic and none of
+them shows up in the result.
+
+| instrument | what it claimed | why it was false |
+|---|---|---|
+| `gl.finish()` | 0.2 ms whatever the number of lights | synchronises nothing across Chromium's GPU process: we were measuring command submission, not execution |
+| `readPixels` on the display buffer | 16.7 ms whatever the number of lights | waits for presentation on screen: we were measuring the monitor's period, exactly the fifth campaign's trap |
+| `readPixels` on an off-screen target | — | holds |
+
+The witness that settled it: the same scene replaced by **forty full-view planes** stacked, and the
+size raised from 1400 × 1980 to 4000 × 4000. Sixteen times as many fragments must show. Under
+`gl.finish()` the figure did not move by a tenth of a millisecond — immediate verdict. Under the
+off-screen target it goes from 16.7 to 32 ms when rising to 64 lights, and the real Panel's
+measurements divide by four when the area is divided by four. **An instrument that cannot see a
+presence cannot measure an absence**, and this is the fourth time this repository has paid for it.
+
+## The per-frame cost: there isn't one
+
+Rendering one Panel, median over 30 frames, off-screen target:
+
+| positioned lights | 350 × 495 | 700 × 990 | 1400 × 1980 |
+|---|---|---|---|
+| 0 | 0.7 ms | 0.7 ms | **0.7 ms** |
+| 8 | 0.7 ms | 0.7 ms | **0.9 ms** |
+| 16 | 0.7 ms | 0.8 ms | 1.2 ms |
+| 24 | 0.7 ms | 0.9 ms | 1.6 ms |
+| 32 | 0.7 ms | 0.9 ms | 1.8 ms |
+| 48 | 0.9 ms | 1.2 ms | 2.3 ms |
+
+**Eight sources cost 0.2 ms more than none**, at full resolution. The fifth campaign's reference is
+13 ms median to render one Panel: eight lights consume **1.5%** of it. Even thirty-two add only one
+millisecond. The cost does grow with area, which is the signature of real per-fragment work rather
+than an artefact, but it starts so low that the growth never meets the budget.
+
+⚠️ **A 64-LIGHT VALUE WAS DISCARDED**: 16.7 ms at full resolution, exactly the screen's period,
+while the two smaller sizes give 0.9 and 1.4 ms. A point that equals the monitor's period precisely,
+after being trapped by it twice already, is not a measurement. It is not explained, and it is not
+used.
+
+## The real cost: the first encounter with a number
+
+This is where the unverified sentence becomes a figure. Every **number of lights** met for the first
+time makes the Panel's GLSL programs compile. Measured by rendering the scene with fresh materials
+on each trial — a unique `define` forces a cold compile, without which Chromium's program cache
+answers instead of the GPU:
+
+| lights | min | median | max |
+|---|---|---|---|
+| 0 | 15.6 ms | **17.0 ms** | 104.6 ms |
+| 1 | 16.5 ms | **116.7 ms** | 166.7 ms |
+| 2 | 116.6 ms | 116.8 ms | 134.7 ms |
+| 3 | 133.2 ms | **150.2 ms** | 198.5 ms |
+| 4 | 151.5 ms | 167.1 ms | 198.9 ms |
+| 6 | 199.9 ms | 200.2 ms | 250.4 ms |
+| 8 | 233.2 ms | **251.9 ms** | 283.7 ms |
+
+The durations are **quantised by the screen's period** — compilation happens in the GPU process and
+the stall does not always land on the render that asked for it. The whole distribution is therefore
+given rather than a median alone, and the honest reading is of the trend: **about 30 ms per light**,
+an empty compile already costing 17 ms.
+
+## Why this cost is paid ONCE, and not every frame
+
+Three three.js r128 mechanisms, read in the source and confirmed by measurement:
+
+1. `lights.state.version` changes **only** if the number of lights changes (`WebGLLights.setup`,
+   hash comparison). Moving a light, changing its colour or its intensity recompiles nothing.
+2. Only **lit** materials go back through `getProgram` (`materialNeedsLights`). A
+   `MeshBasicMaterial` keeps its program.
+3. Each material holds a **table of its programs by key**, and `acquireProgram` holds a second one
+   at renderer scope. A number already met is therefore free, and a rig arriving mid-session
+   recompiles nothing.
+
+All three are measurable. Returning to a number already met: **0.4 ms**. A fresh rig added to the
+scene while the old ones are still alive: **0.5 ms**, and the program count does not move.
+Alternating three Panels at 0, 3 and 8 lights costs 1.4 ms against 0.8 ms for three Panels at the
+same number, that is **0.2 ms per change of number** — the price of `useProgram` and of re-sending
+the uniforms, not of a compile.
+
+⚠️ **AND PROGRAMS DIE WITH THEIR MATERIALS.** `releaseProgram` deletes a program as soon as no
+material uses it any more: destroying a Panel's materials then recreating identical ones costs
+**66.7 ms**, measured. The repository destroys materials only on a **Project change**, which is
+exactly the right moment; it is a constraint not to be trampled while believing one is tidying up.
+
+## What bounds the cost: two programs, not fifty
+
+Compiling is expensive only once per number because a Panel has only **two distinct programs**, and
+that figure does not depend on the number of Elements. Counted under Node on the repository's rig
+constructors:
+
+| content | material instances | distinct programs |
+|---|---|---|
+| all 39 rig constructors + 2 Personas, without the Ground | 49 | **1** |
+| 2 Personas + 4 Objects + the Ground | 14 | **2** |
+| all 39 rig constructors + 2 Personas + the Ground | 50 | **2** |
+
+**All the repository's furniture therefore fits in ONE key**, and the Ground adds a second all by
+itself: it is `DoubleSide`, which nothing else is. An imported
+`.glb` model adds a third, because it arrives as a `SkinnedMesh` — `skinning` enters the key — and
+more if it carries textures.
+
+This is therefore a property to **hold**: a per-Element setting that entered the program key — flat
+shading, a double face, a map — would at a stroke multiply the cost of every new number of lights,
+and nothing would report it. `tests/light-source-3d.test.mjs` freezes it.
+
+## The JavaScript half, for the record
+
+Measured under Node, same protocol as the sixth campaign: warm-up then median over 60 samples.
+
+| lights | `planLumieresPosees3D` | share added to the Panel signature |
+|---|---|---|
+| 0 | 0.105 µs | — |
+| 1 | 0.357 µs | +1.0 µs |
+| 3 | 0.759 µs | +3.1 µs |
+| 8 | 1.659 µs | +8.1 µs |
+| 32 | 6.261 µs | — |
+
+Eight lights on eight Panels cost **0.013 ms per frame** for the plan, and about 0.065 ms for the
+signature. Strictly linear, and out of all proportion with the rest. A light weighs in the signature
+like any other Element, slightly more because its JSON is longer: 213 characters against 152 for a
+Persona.
+
+## Verdict: the ceiling is eight, and it is not about display speed
+
+Recorded so the reason is not lost, because it is not the one expected.
+
+**No ceiling is justified by the per-frame cost.** Eight sources add 0.2 ms to a Panel costing 13;
+thirty-two add one. If the question had been "does it lag", the answer would be "put in as many as
+you like".
+
+**What justifies a ceiling is the stall.** Every click bringing a number of lights never met before
+freezes the application for 120 to 250 ms, once. The repository's reference points are the worst
+Panel render already observed, **296 ms**, and a Page fill at 245 ms. Eight lights stay under that
+worst case; twelve give 334 ms and sixteen 417 ms, above anything the application produces today.
+
+**Eight is therefore the largest number whose first encounter stays within what the application
+already allows itself.** The figure in #420's breakdown was a guess; the measurement lands on it,
+which is a coincidence and deserves to be said as one.
+
+⚠️ **AND THE REMEDY, IF THIS CEILING EVER CHAFES, IS NOT TO RAISE IT BUT TO PRE-WARM.** Nothing
+forces a number of lights to be discovered at the moment the user clicks: the programs can be
+compiled ahead of time, while idle, just as the repository already spreads rig construction (#405d).
+The ceiling answers the stall, and the stall has a remedy other than prohibition.
+
+## What this campaign leaves to cast shadows
+
+#422 was blocked by this one. It is unblocked, with three things known:
+
+1. `numPointLightShadows` enters the program key **alongside** `numPointLights`. Enabling shadows
+   does not double the compile cost, it opens a **second axis** of numbers to be met.
+2. A point-source shadow is a **cube** map: six depth passes per light per frame. That one *is* a
+   per-frame cost, and it has nothing to do with the 0.2 ms above — it will have to be measured for
+   itself.
+3. The budget is known: a Panel costs 13 ms median and a frame is 16.7 ms. That is what the six
+   passes will be judged against.
+
+## Redoing the September 2026 measurement
+
+The WebGL probe is throwaway and was not kept, like the previous ones. What it needs, and why:
+
+- **an off-screen render target**, never the display buffer, or you measure the monitor;
+- **`readPixels` after each render**, because `gl.finish()` synchronises nothing under ANGLE;
+- **a unique `define` per trial**, without which Chromium's program cache answers instead of the GPU
+  and the second measurement of a given number measures nothing at all;
+- **materials kept alive**, otherwise `releaseProgram` destroys the programs and the next trial pays
+  for a compile believed to be already banked;
+- **a witness that must MOVE** — forty full-view planes, four times the pixels — verified before
+  believing a single figure.

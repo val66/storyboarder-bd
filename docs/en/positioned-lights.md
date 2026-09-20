@@ -165,9 +165,22 @@ as nothing can be corrected, a light that lights too much beats a light that lig
 **Cast shadows.** Nothing casts one today, and enabling them is a performance question in its own
 right, to be handled with measurements.
 
-**A cap on the number of sources.** Every added light makes the shaders recompile. The cost will be
-**measured** at 0, 1, 3 and 8 sources before any ceiling is decided — not invented. The markers from
-#411: 13 ms median per Panel render, 296 ms worst case.
+**A cap on the number of sources — MEASURED, and not where it was being looked for (#420f).** The
+sentence above was true and was looking the wrong way. The per-frame cost is **nil**: eight sources
+add 0.2 ms to a Panel costing 13, and thirty-two add a single one. What costs is the FIRST ENCOUNTER
+with a number of lights — about **30 ms per light**, 252 ms at eight, paid once per number per
+session, because `numPointLights` enters the GLSL program key. Moving a light or changing its colour
+recompiles nothing.
+
+**The ceiling of eight is therefore justified by the stall, not by display speed**, which is an
+entirely different reason from the one imagined. Eight is the largest number whose first encounter
+(252 ms) stays under the worst stall the application already allows itself — 296 ms for one Panel
+render, recorded in #411. Twelve would cost 334 ms, sixteen 417 ms. And if this ceiling ever chafes,
+the remedy is not to raise it but to **pre-compile while idle**, just as #405d already spreads rig
+construction.
+
+Figures, instrument, and the three instruments that lied before the right one:
+[performance note](rendering-performance.md), seventh campaign.
 
 ## Breakdown
 
@@ -178,5 +191,5 @@ right, to be handled with measurements.
 | #420c | rendering: sphere, light cache, signature |
 | #420d | move a Light like an Element |
 | #420e | a separate block in the Elements list |
-| #420f | measure the cost of one, three and eight lights |
+| #420f | measure the cost of one, three and eight lights — **done**, ceiling of eight |
 | #420g | closure: README, built-in manual, on-screen check |

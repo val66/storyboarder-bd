@@ -32,6 +32,7 @@ import {
   champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D, MAJORATION_LUMIERE_POSEE,
 } from '../src/light-source-3d.js';
 import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
+import * as R from '../src/rig3d.js';
 import { CLE_ACTUELLE } from '../src/lighting-3d.js';
 import { clampWorldYAboveGround, groundMagnetEligible } from '../src/scene3d.js';
 import { GROUND_Y_DEFAULT_3D } from '../src/constants.js';
@@ -684,6 +685,136 @@ describe('#420c : le câblage du rendu, un test par couche', () => {
 });
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUI BORNE LE COÛT D'UNE LUMIÈRE (#420f)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LA CAMPAGNE DE MESURE A TROUVÉ QUE LE COÛT D'UNE LUMIÈRE N'EST PAS OÙ LA NOTE LE DISAIT. Rendre
+ * une Case à huit sources coûte 0,2 ms de plus qu'à zéro — rien, contre les 13 ms d'une Case. Ce qui
+ * coûte, c'est la PREMIÈRE RENCONTRE d'un nombre de lumières : environ 30 ms par lumière, 252 ms à
+ * huit, payés une seule fois, parce que `numPointLights` entre dans la clé du programme GLSL et que
+ * chaque matériau ÉCLAIRÉ de la scène doit alors en obtenir un neuf.
+ *
+ * ⚠️ ET CE COÛT EST BORNÉ PAR UNE PROPRIÉTÉ QUE RIEN NE PROTÉGEAIT : une Case n'a que DEUX
+ * programmes distincts, quel que soit le nombre d'Éléments qu'elle porte. Cinquante instances de
+ * matériau, deux clés — l'une pour le Sol, `DoubleSide`, l'autre pour tout le reste. Le prix d'un
+ * nouveau nombre de lumières est donc « deux compilations », et non « une par Élément ».
+ *
+ * CE QUE CE TEST REFUSE, et c'est le point : qu'un réglage PAR ÉLÉMENT entre un jour dans la clé de
+ * programme. Un ombrage à facettes par Objet, une face double par Objet, une carte sur un rig — et
+ * le coût de chaque nouveau nombre de lumières se multiplie par le nombre de variantes, d'un seul
+ * coup, sans qu'aucune ligne ne l'annonce. C'est le genre de dérive qui ne se voit qu'à l'usage et
+ * qu'on attribue alors à la fonctionnalité qu'on vient d'ajouter.
+ *
+ * ⚠️ CE QUI EST HORS DE PORTÉE ICI : le temps de compilation lui-même, qui demande un vrai GPU.
+ * Ce test compte des CLÉS, pas des millisecondes. Les millisecondes sont dans
+ * docs/en/rendering-performance.md, septième campagne, avec l'instrument qui les a produites — et
+ * les trois instruments qui ont menti avant lui.
+ */
+describe('⚠️ LE PRIX D\'UN NOMBRE DE LUMIÈRES NE DÉPEND PAS DU NOMBRE D\'ÉLÉMENTS', () => {
+  /**
+   * La part de `WebGLPrograms.getProgramCacheKey` (three.js r128) qui dépend du MATÉRIAU.
+   *
+   * Les champs de niveau renderer — précision, encodage de sortie, `toneMapping`, le nombre de
+   * lumières justement — sont les mêmes pour tous les matériaux d'une même scène : ils ne séparent
+   * rien et n'ont donc pas à être reproduits. Ce qui reste est exactement ce qui peut FAIRE DIVERGER
+   * deux matériaux d'une même Case.
+   */
+  const cleDeProgramme = (m, obj) => [
+    m.type,
+    ...['map', 'matcap', 'envMap', 'lightMap', 'aoMap', 'emissiveMap', 'bumpMap', 'normalMap',
+        'clearcoatMap', 'clearcoatRoughnessMap', 'clearcoatNormalMap', 'displacementMap',
+        'specularMap', 'roughnessMap', 'metalnessMap', 'gradientMap', 'alphaMap', 'transmissionMap',
+       ].map(k => (m[k] ? 1 : 0)),
+    m.combine, m.vertexColors, m.vertexTangents ? 1 : 0, m.flatShading ? 1 : 0,
+    obj && obj.isSkinnedMesh ? 1 : 0, m.morphTargets ? 1 : 0, m.morphNormals ? 1 : 0,
+    m.premultipliedAlpha ? 1 : 0, m.alphaTest, m.side, m.depthPacking || 0,
+    m.dithering ? 1 : 0, m.sheen ? 1 : 0,
+  ].join('|');
+
+  /** Les matériaux qui reçoivent la lumière — les seuls que `materialNeedsLights` fait recompiler. */
+  const ECLAIRES = new Set(['MeshStandardMaterial', 'MeshPhysicalMaterial', 'MeshLambertMaterial',
+                            'MeshPhongMaterial', 'MeshToonMaterial', 'ShadowMaterial']);
+
+  const groupeDe = (r) => (r && r.isObject3D) ? r : (r && (r.group || r.figureGroup)) || null;
+
+  function recolter(groupe, cles, instances){
+    if (!groupe) return;
+    groupe.traverse(ch => {
+      if (!ch.isMesh && !ch.isSkinnedMesh) return;
+      for (const m of (Array.isArray(ch.material) ? ch.material : [ch.material])) {
+        if (!m) continue;
+        instances.add(m);
+        if (ECLAIRES.has(m.type)) cles.add(cleDeProgramme(m, ch));
+      }
+    });
+  }
+
+  /** Tous les constructeurs de rig du dépôt, découverts plutôt qu'énumérés à la main. */
+  function toutLeMobilier(){
+    const cles = new Set(), instances = new Set();
+    for (const genre of ['homme', 'femme']) recolter(groupeDe(R.buildPersonaRig3D('#cccccc', genre, 'bd')), cles, instances);
+    let batis = 0;
+    for (const nom of Object.keys(R)) {
+      if (!/^build.*Rig3D$/.test(nom) || typeof R[nom] !== 'function') continue;
+      let g = null;
+      try { g = groupeDe(R[nom]('#888888')); } catch { continue; }  // signature différente : hors sujet
+      if (!g) continue;
+      recolter(g, cles, instances);
+      batis++;
+    }
+    return { cles, instances, batis };
+  }
+
+  test('⚠️ TOUS LES RIGS DU DÉPÔT RÉUNIS NE FONT QU’UN SEUL PROGRAMME', () => {
+    const { cles, instances, batis } = toutLeMobilier();
+    // Le témoin d'abord : sans lui, « une clé » serait aussi le résultat d'une récolte qui ne
+    // récolte rien, et c'est la faute que ce dépôt a payée quatre fois.
+    assert.ok(batis >= 20, `seulement ${batis} constructeurs bâtis — la récolte a-t-elle eu lieu ?`);
+    assert.ok(instances.size >= 30,
+      `${instances.size} instances de matériau : trop peu pour que le test dise quoi que ce soit`);
+    assert.equal(cles.size, 1,
+      `${instances.size} instances de matériau donnent ${cles.size} programmes au lieu d’un seul. ` +
+      `Chaque nombre de lumières jamais rencontré coûtera désormais ${cles.size + 1} compilations ` +
+      `au lieu de 2. Les clés : ${[...cles].join('  //  ')}`);
+  });
+
+  test('⚠️ ET AJOUTER DES ÉLÉMENTS N’EN AJOUTE PAS : c’est cela, « borné »', () => {
+    // Une Case modeste et la totalité du mobilier doivent donner le MÊME compte. Un test qui ne
+    // mesurerait que le total ne distinguerait pas « deux programmes » de « deux par hasard, sur
+    // ces six Éléments-là ».
+    const petite = new Set(), instPetite = new Set();
+    recolter(groupeDe(R.buildPersonaRig3D('#cccccc', 'homme', 'bd')), petite, instPetite);
+    recolter(groupeDe(R.buildTableRig3D('#888888')), petite, instPetite);
+    const { cles: grande, instances: instGrande } = toutLeMobilier();
+    assert.ok(instGrande.size > instPetite.size * 2,
+      'les deux récoltes doivent vraiment différer en nombre de matériaux, sinon on ne compare rien');
+    assert.equal(grande.size, petite.size,
+      `${instPetite.size} matériaux donnent ${petite.size} programmes, ${instGrande.size} en donnent ` +
+      `${grande.size} : le coût de compilation n’est plus borné`);
+  });
+
+  test('⚠️ LE SOL EST LA SECONDE CLÉ, et c’est sa FACE DOUBLE qui la crée', () => {
+    // ⚠️ LE SOL NE PEUT PAS ÊTRE RÉCOLTÉ COMME LES RIGS : il naît dans `initPersonaScene3D`, qui
+    // réclame un `WebGLRenderer` et n'existe donc pas sous Node. C'est pourtant lui qui fait passer
+    // la Case de UN programme à DEUX, et la note le chiffre ainsi. On tient le champ responsable par
+    // la source, faute de pouvoir tenir l'objet.
+    //
+    // Quelqu'un qui passerait tous les rigs en `DoubleSide` « pour uniformiser » ferait retomber la
+    // Case à une seule clé — ce qui serait un GAIN, et doit se lire comme un changement décidé
+    // plutôt que se découvrir six mois plus tard.
+    const source = sourceSansCommentaires(readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+    assert.match(source, /groundMesh3D = new THREE\.Mesh\([\s\S]{0,400}?side: THREE\.DoubleSide/,
+      'le Sol n’est plus DoubleSide : le compte de programmes a changé, et la note avec');
+    // Et le témoin de l'instrument : la même recherche doit ÉCHOUER sur une source où le champ n'est
+    // pas là, sans quoi une expression trop permissive validerait n'importe quoi.
+    assert.doesNotMatch(source.replace(/side: THREE\.DoubleSide/g, 'side: THREE.FrontSide'),
+      /groundMesh3D = new THREE\.Mesh\([\s\S]{0,400}?side: THREE\.DoubleSide/,
+      'l’expression trouve DoubleSide même quand il n’y est pas : elle ne prouve rien');
+  });
+});
+
+/**
  * JOURNAL DE MUTATION (#420d, la garde du sol) : cinq fautes rejouées, UNE ÉCHAPPÉE CORRIGÉE.
  *
  *   M5 la garde redemande `groundMagnetEligible` en entrée (le défaut, tel quel)      ROUGE (×3)
@@ -759,4 +890,30 @@ describe('#420c : le câblage du rendu, un test par couche', () => {
  * accepte que le facteur MONTE — c'est même prévu, « au moins 40 % » est une borne basse — et refuse
  * qu'il redescende sous ce qui a déjà été regardé et déclaré trop faible. Épingler 1,4 exactement
  * aurait rendu rouge la prochaine correction légitime.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#420f, ce qui borne le coût de compilation) : cinq fautes rejouées.
+ *
+ *   M23 un rig passe en ombrage à facettes                                        ROUGE
+ *   M24 un rig passe en face double                                               ROUGE
+ *   M25 le Sol cesse d'être `DoubleSide`                                          ROUGE
+ *   M26 la récolte de matériaux ne récolte plus rien                              ROUGE (×2)
+ *   M27 plus aucun type de matériau ne compte comme éclairé                       ROUGE
+ *
+ * ⚠️ M23 ET M24 SONT LA FAUTE QUE CE BLOC EXISTE POUR ATTRAPER, et elles sont toutes deux
+ * INOFFENSIVES À L'ŒIL. Un ombrage à facettes sur un rig, une face double sur un autre : l'image ne
+ * change presque pas, aucun test de géométrie ne bronche, et le prix de chaque nouveau nombre de
+ * lumières vient de doubler. C'est précisément le genre de coût qu'on découvre six mois plus tard et
+ * qu'on attribue alors à la dernière fonctionnalité livrée.
+ *
+ * ⚠️ M26 ET M27 SONT DES TÉMOINS, PAS DES DÉFAUTS PLAUSIBLES, et elles sont là pour la raison que
+ * ce dépôt a payée quatre fois : un test qui compte des clés est vrai par construction si la récolte
+ * est vide. Elles vérifient que l'instrument sait voir une PRÉSENCE avant qu'on le croie sur une
+ * absence. M27 est la plus instructive des deux — elle laisse la récolte intacte et ne coupe que la
+ * reconnaissance des matériaux éclairés, ce qui est exactement ce qu'un renommage de classe ferait.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : le temps de compilation. Il vit dans le pilote du GPU,
+ * pas dans ce dépôt. Les millisecondes sont dans docs/en/rendering-performance.md, septième
+ * campagne, avec les trois instruments qui ont menti avant le bon.
  */

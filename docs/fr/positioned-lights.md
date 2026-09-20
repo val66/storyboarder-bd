@@ -167,9 +167,22 @@ qui n'éclaire rien.
 **Les ombres portées.** Rien n'en projette aujourd'hui, et les activer est une question de
 performance à part entière, à traiter avec des mesures.
 
-**Une limite au nombre de sources.** Chaque lumière ajoutée fait recompiler les shaders. Le coût
-sera **mesuré** à 0, 1, 3 et 8 sources avant qu'un plafond soit décidé — pas inventé. Les repères
-de #411 : 13 ms médians par rendu de Case, 296 ms au pire.
+**Une limite au nombre de sources — MESURÉE, et pas où on la cherchait (#420f).** La phrase
+ci-dessus disait vrai et regardait à côté. Le coût par image est **nul** : huit sources ajoutent
+0,2 ms à une Case qui en coûte 13, et trente-deux en ajoutent une seule. Ce qui coûte, c'est la
+PREMIÈRE RENCONTRE d'un nombre de lumières — environ **30 ms par lumière**, 252 ms à huit, payés une
+seule fois par nombre et par session, parce que `numPointLights` entre dans la clé du programme
+GLSL. Bouger une lumière ou changer sa couleur ne recompile rien.
+
+**Le plafond de huit est donc justifié par le à-coup, pas par la vitesse d'affichage**, et c'est une
+raison entièrement différente de celle qu'on imaginait. Huit est le plus grand nombre dont la
+première rencontre (252 ms) reste sous le pire à-coup que l'application se permet déjà — 296 ms pour
+le rendu d'une Case, relevé en #411. Douze coûteraient 334 ms, seize 417 ms. Et si ce plafond gêne
+un jour, le remède n'est pas de le monter mais de **précompiler au repos**, comme #405d étale déjà
+la construction des rigs.
+
+Chiffres, instrument, et les trois instruments qui ont menti avant le bon :
+[note de performance](rendering-performance.md), septième campagne.
 
 ## Découpage
 
@@ -180,5 +193,5 @@ de #411 : 13 ms médians par rendu de Case, 296 ms au pire.
 | #420c | le rendu : sphère, cache de lumières, signature |
 | #420d | déplacer une Lumière comme un Élément |
 | #420e | bloc séparé dans la liste des Éléments |
-| #420f | mesurer le coût d'une, trois et huit lumières |
+| #420f | mesurer le coût d'une, trois et huit lumières — **fait**, plafond à huit |
 | #420g | clôture : README, aide intégrée, vérification à l'écran |
