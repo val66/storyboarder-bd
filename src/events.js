@@ -140,6 +140,7 @@ import {
 } from './sidebar.js';
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
+  updateLightIntensityDisplay3D,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openObjectModal,
   closeObjectModal, refreshObjectPreview,
@@ -6029,6 +6030,10 @@ const objectTraversantField = document.getElementById('objectTraversantField');
 const objectGroundMagnetField = document.getElementById('objectGroundMagnetField');
 const objectGroundMagnetCheckbox = document.getElementById('objectGroundMagnetCheckbox');
 const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox');
+// Les trois commandes de la section « Luminosité » (#421b), lues à l'enregistrement.
+const objectLightColorInput = document.getElementById('objectLightColorInput');
+const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
+const objectLightRangeInput = document.getElementById('objectLightRangeInput');
 // [STATE→S] let S.modalTarget = null;
 // [STATE→S] let S.modalDraftJoints = null;
 // [STATE→S] let S.modalDraftAnimalJoints = null; // { jointId: { x?, y?, z? } } while editing an animal
@@ -6443,6 +6448,19 @@ objectModalSave.onclick = () => {
       S.modalTarget.traverseGround = !objectGroundMagnetCheckbox.checked && document.getElementById('objectTraverseGroundCheckbox').checked;
     }
     S.modalTarget.hidden3d = objectHidden3dCheckbox.checked;
+    // ⚠️ LES TROIS RÉGLAGES D'UNE SOURCE, ET SEULEMENT POUR UNE SOURCE (#421b). Hors de cette
+    // garde, `color` serait réécrit depuis un champ MASQUÉ pour tous les autres Éléments — la faute
+    // exacte que `objectTypeSelect` a déjà commise, un <select> caché dont la `.value` valait
+    // « voiture » et transformait les modèles importés au premier Enregistrer.
+    //
+    // ⚠️ ET L'INTENSITÉ REVIENT D'UN POURCENTAGE : 100 % vaut 1,0, l'échelle du soleil, pour que les
+    // deux réglages se comparent. La portée est en mètres, 0 signifiant « sans limite » au sens de
+    // Three.js — pas « éteinte », cf. la mesure de #420f.
+    if (estUneLumiere3D(S.modalTarget)) {
+      S.modalTarget.color = objectLightColorInput.value;
+      S.modalTarget.intensite = Number(objectLightIntensityRange.value) / 100;
+      S.modalTarget.portee = Math.max(0, Number(objectLightRangeInput.value) || 0);
+    }
     // Captured BEFORE any Wall mutation (rotation and/or size, right after): the relative fraction
     // of each magnetized Element within its Wall/side rectangle as it still existed at the moment
     // of saving (cf. wallChildFraction). Needed to correctly reposition afterward, once both the
@@ -6609,6 +6627,11 @@ objectModal.addEventListener('mousedown', (e) => { if (e.target === objectModal)
 // recomputeModalDirty/updateSaveButtonState, same logic as for #descModal above).
 objectModal.addEventListener('input', recomputeModalDirty);
 objectModal.addEventListener('change', recomputeModalDirty);
+// L'afficheur du curseur d'intensité suit le geste. Délégué sur la modale comme le reste : un
+// écouteur posé sur le curseur lui-même s'ajouterait à chaque ouverture de fiche.
+objectModal.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'objectLightIntensityRange') updateLightIntensityDisplay3D();
+});
 window.addEventListener('keydown', (e) => {
   if (!objectModal.classList.contains('hidden')) {
     // Échap : cf. la note sur descModal plus haut, un seul arbitre, dans io.js.

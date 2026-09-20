@@ -403,6 +403,12 @@ export const I18N_MODALS = [
   ['#descModalSave', 'Save', 'Enregistrer'],
   ['#objectModalCancel', 'Cancel', 'Annuler'],
   ['#objectModalSave', 'Save', 'Enregistrer'],
+  // ⚠️ L'INDICE SOUS LA PORTÉE SE TRADUIT, ET IL LE FAUT : il ne décore pas, il corrige une lecture
+  // fausse. Un « 0 » dans un champ numérique se lit « éteinte » ; ici il veut dire « sans limite »,
+  // l'exact contraire (cf. #420f, mesuré). Le laisser en français seulement rendrait la fiche
+  // trompeuse dans l'autre langue, pas seulement incomplète.
+  ['#objectLightRangeHint', '0 = unlimited. Beyond the range, the light no longer carries at all.',
+   '0 = sans limite. Au-delà de la portée, la lumière ne porte plus du tout.'],
   ['#roomModalCancel', 'Cancel', 'Annuler'],
   ['#roomModalSave', 'Save', 'Enregistrer'],
 ];
@@ -427,6 +433,10 @@ export const I18N_PREV_LABEL = [
   ['personaRotXInput', 'Tilt', 'Inclinaison'],
   ['personaRotZInput', 'Roll', 'Roulis'],
   ['objectNameInput', 'Name', 'Nom'],
+  // Les trois réglages de la section « Luminosité » d'une Lumière (#421b).
+  ['objectLightColorInput', 'Colour', 'Couleur'],
+  ['objectLightIntensityRange', 'Intensity', 'Intensité'],
+  ['objectLightRangeInput', 'Range', 'Portée'],
   ['objectTypeSelect', 'Type', 'Type'],
   ['objectMagnetWallSelect', 'Linked wall', 'Mur lié'],
   ['objectWallFaceSelect', 'Corner wall face', 'Face du mur en coin'],
@@ -542,6 +552,9 @@ export function applyI18nModalSectionTitles(lang){
     orientation: ['Orientation', 'Orientation'],
     modele:      ['3D model', 'Modèle 3D'],
     apercu:      ['3D preview', 'Aperçu 3D'],
+    // Propre aux Lumières (#421b) : la section n'existe dans la modale que pour une source, mais
+    // son titre se traduit comme les autres — la table des titres ne sait pas qui est affiché.
+    luminosite:  ['Brightness', 'Luminosité'],
   };
   document.querySelectorAll('#descModal .modal-section, #objectModal .modal-section').forEach(sec => {
     const paire = titres[sec.dataset.section];

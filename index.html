@@ -1406,6 +1406,47 @@
              tous les Projets. -->
       </div>
     </div>
+
+    <!-- ⚠️ SECTION PROPRE AUX LUMIÈRES, MASQUÉE POUR TOUT LE RESTE (#421b). Elle n'apparaît que si
+         `dispositionFicheLumiere3D` le dit (cf. openObjectModal) : c'est cette table-là qui décide,
+         et elle seule, sinon la visibilité de la section aurait deux sources qui ne s'accorderaient
+         que le premier jour.
+         Sa place est sous l'Aperçu 3D, à la demande de l'utilisateur : on règle ce qu'on voit juste
+         au-dessus. -->
+    <div class="modal-section" data-section="luminosite" style="display:none">
+      <div class="modal-section-header" onclick="toggleModalSection(this)">
+        <span class="modal-section-title">Luminosité</span>
+        <span class="modal-section-caret">▾</span>
+      </div>
+      <div class="modal-section-body">
+        <!-- La couleur vit dans `color`, le champ de TOUS les objet3d — pas dans un champ à part.
+             Deux champs de couleur sur le même Élément seraient une invitation à diverger
+             (cf. light-source-3d.js). -->
+        <label class="modal-field-label">Couleur</label>
+        <input type="color" id="objectLightColorInput" value="#FFFFFF">
+
+        <!-- ⚠️ LE PAS EST DE 1, ET CE N'EST PAS UN DÉTAIL DE CONFORT. L'intensité de départ vaut
+             `CLE_ACTUELLE × MAJORATION_LUMIERE_POSEE` = 0,77, soit 77 %. Avec un pas de 5 — celui
+             du curseur du soleil — le navigateur ramènerait 77 à 75 À L'OUVERTURE : ouvrir la fiche
+             puis enregistrer sans rien toucher aurait assombri la source. Une commande qui modifie
+             la valeur qu'elle prétend afficher est le pire des défauts, on ne peut pas le voir.
+             L'échelle est celle du soleil — 100 % = intensité 1,0 — pour que les deux réglages se
+             comparent. Le maximum de 200 % reste À JUGER À L'ÉCRAN (#421z) : rien ne le dérive. -->
+        <label class="modal-field-label">Intensité</label>
+        <div style="display:flex; align-items:center; gap:8px; margin:0 0 4px;">
+          <input type="range" id="objectLightIntensityRange" min="0" max="200" step="1" value="77" style="flex:1;">
+          <span id="objectLightIntensityValue" style="font-size:13px; opacity:.85; width:42px; text-align:right; flex-shrink:0;">77 %</span>
+        </div>
+
+        <!-- ⚠️ ZÉRO VEUT DIRE « SANS LIMITE », ET IL FAUT LE DIRE : un champ numérique à 0 se lit
+             spontanément comme « éteinte ». Dans Three.js, une portée nulle rend un facteur
+             d'atténuation de 1,0 à TOUTE distance — mesuré en #420f, une source à 900 m éclaire
+             aussi fort qu'à un mètre. C'est l'inverse de ce que « 0 » suggère. -->
+        <label class="modal-field-label">Portée</label>
+        <input type="number" id="objectLightRangeInput" class="modal-field-number" min="0" step="0.1" value="0">
+        <div class="modal-field-hint" id="objectLightRangeHint">0 = sans limite. Au-delà de la portée, la lumière ne porte plus du tout.</div>
+      </div>
+    </div>
     </div>
     </div>
 

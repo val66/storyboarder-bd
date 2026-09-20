@@ -95,9 +95,13 @@ const EN_ATTENTE = {
   // aurait voulu dire brancher d'abord à la main, donc avoir déjà la liste — et une liste tenue à
   // la main est précisément ce que ce mécanisme remplace.
   //
-  // ÉCHÉANCE : #421c, qui applique la disposition dans `openObjectModal`. Un NUMÉRO DE TÂCHE, comme
-  // les quatre fois précédentes.
-  dispositionFicheLumiere3D: '#421c — appliquer la disposition dans openObjectModal',
+  // ÉCHÉANCE TENUE, ET EN AVANCE : #421b appelle `dispositionFicheLumiere3D` depuis
+  // `remplirSectionLuminosite3D`, pour décider si la section « Luminosité » s'affiche. L'échéance
+  // était #421c ; elle est tombée une tâche plus tôt, parce qu'afficher la section demandait déjà
+  // la table — et la faire décider par un `if` local aurait été la seconde source que #421a existe
+  // pour éviter. La dette de #421a est donc remboursée EN ENTIER, comme celles de #403a, #414a,
+  // #420a et #425a avant elle, et toujours pour la même raison : l'échéance était un NUMÉRO DE
+  // TÂCHE et non une intention.
   // `SECTIONS_FICHE_LUMIERE`, `CHAMPS_FICHE_LUMIERE` et `LIBELLE_TAILLE_LUMIERE` ne sont PAS ici :
   // le détecteur les voit appelées à l'intérieur du module, par `dispositionFicheLumiere3D`.
   // Quatrième fois que ce garde-fou évite des exemptions qui ne surveilleraient rien.
@@ -177,8 +181,9 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // branché le dôme, ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case, et
     // DEUX depuis les fondations de #420a, UNE depuis que #420b a branché la création, ZÉRO à
     // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, UNE depuis
-    // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, et UNE depuis que
-    // #421a a posé la disposition de la fiche d'une Lumière — échéance #421c.
+    // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, UNE depuis que #421a
+    // a posé la disposition de la fiche d'une Lumière, et ZÉRO à nouveau depuis que #421b l'a
+    // branchée — une tâche plus tôt que l'échéance inscrite.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues.
     //
@@ -190,7 +195,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

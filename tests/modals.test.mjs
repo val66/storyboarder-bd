@@ -20,6 +20,7 @@ import { getPersonaScalePercent, rotYToSliderDeg, sliderDegToRotY,
   BROUILLONS_PAR_FICHE_3D } from '../src/modals.js';
 import { HELP_MANUAL_FR, HELP_MANUAL_EN } from '../src/help-content.js';
 import { S } from '../src/state.js';
+import { LUMIERE_POSEE_DEFAUT } from '../src/light-source-3d.js';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
 function assertClose(actual, expected, msg, eps = 1e-9) {
@@ -476,9 +477,21 @@ describe('resetModalSections : par clé, jamais par titre affiché', () => {
   test('LE POINT QUI COMPTE : les clés demandées existent dans le HTML', () => {
     // Une clé mal orthographiée serait SILENCIEUSE : la section resterait simplement repliée, ce
     // qui est précisément le symptôme qu'on vient de corriger.
+    //
+    // ⚠️ LE RELEVÉ A ÉTÉ RENFORCÉ, ET C'EST UNE FAUTE RÉELLE QUI L'A DEMANDÉ (#421b). Il lisait
+    // `resetModalSections(X, ['a', 'b'])` avec un motif qui exigeait la liste JUSTE après la
+    // virgule. Un appel écrit avec un ternaire — `… ? ['a','b'] : ['a','c']` — n'était alors plus vu
+    // du tout, et ses clés cessaient d'être vérifiées EN SILENCE. Un relevé qui ne voit plus ce
+    // qu'il surveille ne signale rien : il devient vert pour la pire des raisons, et c'est la faute
+    // que ce dépôt a payée quatre fois.
+    //
+    // On lit donc l'APPEL ENTIER, jusqu'à sa parenthèse fermante, et toutes les listes qu'il
+    // contient. Le compte minimal ci-dessous est le témoin : si le motif cessait de mordre, il
+    // tomberait au lieu de passer.
     const clesHtml = new Set([...html.matchAll(/data-section="([^"]+)"/g)].map(m => m[1]));
-    const demandees = [...src.matchAll(/resetModalSections\([^,]+, \[([^\]]+)\]/g)]
-      .flatMap(m => m[1].split(',').map(s => s.trim().replace(/^'|'$/g, '')));
+    const demandees = [...src.matchAll(/resetModalSections\([\s\S]{0,240}?\);/g)]
+      .flatMap(appel => [...appel[0].matchAll(/\[([^\]]+)\]/g)]
+        .flatMap(liste => liste[1].split(',').map(c => c.trim().replace(/^'|'$/g, ''))));
     assert.ok(demandees.length >= 4, `seulement ${demandees.length} clé(s) relevée(s)`);
     demandees.forEach(c => assert.ok(clesHtml.has(c), `clé demandée mais absente du HTML : « ${c} »`));
   });
@@ -677,3 +690,206 @@ describe('#401c : la fiche d\'un Animal ne pose plus rien', () => {
     assert.match(EVENTS, /showPersonaEditor\(cible, 'objectModal'\)/);
   });
 });
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA SECTION « LUMINOSITÉ » D'UNE LUMIÈRE (#421b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Tenu : que le curseur d'intensité ne puisse pas trahir la valeur qu'il affiche, que les trois
+ * réglages ne soient écrits QUE pour une source, et que l'affichage de la section vienne de la
+ * table de #421a et non d'un second test posé ici.
+ *
+ * ⚠️ PAS TENU : que la section soit LISIBLE, ni que la plage de l'intensité ou celle de la portée
+ * soient les bonnes. Le maximum de 200 % est posé, pas dérivé ; il se juge à l'écran, et c'est
+ * #421z qui le fera — comme #420c a dû juger à l'écran une intensité de départ pourtant
+ * correctement dérivée, et la trouver trop faible.
+ */
+describe('⚠️ LE CURSEUR D’INTENSITÉ NE PEUT PAS TRAHIR LA VALEUR QU’IL AFFICHE (#421b)', () => {
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  /** Les attributs du curseur d'intensité, lus dans index.html. */
+  function curseurIntensite(){
+    const m = HTML.match(/<input type="range" id="objectLightIntensityRange"([^>]*)>/);
+    assert.ok(m, 'le curseur d’intensité est introuvable dans index.html');
+    const attr = (nom) => {
+      const a = m[1].match(new RegExp(nom + '="([^"]+)"'));
+      assert.ok(a, `le curseur n’a pas d’attribut « ${nom} »`);
+      return Number(a[1]);
+    };
+    return { min: attr('min'), max: attr('max'), step: attr('step') };
+  }
+
+  test('⚠️ LE PAS DIVISE LA VALEUR DE DÉPART, sinon ouvrir la fiche ASSOMBRIT la source', () => {
+    // ⚠️ DÉFAUT ÉVITÉ DE JUSTESSE, ET IL AURAIT ÉTÉ INVISIBLE. Le premier jet reprenait le pas de 5
+    // du curseur du soleil. L'intensité de départ vaut `CLE_ACTUELLE × MAJORATION_LUMIERE_POSEE`
+    // = 0,77, soit 77 % : le navigateur aurait ramené 77 à 75 À L'OUVERTURE, et enregistrer sans
+    // rien toucher aurait assombri la lumière. Une commande qui modifie la valeur qu'elle prétend
+    // afficher ne se voit pas — on cherche la cause partout sauf dans le pas d'un curseur.
+    //
+    // Ce test ne fige PAS « pas = 1 » : il fige la RELATION. Si la majoration change un jour, ou si
+    // quelqu'un veut un pas plus large, c'est la compatibilité des deux qui doit être vérifiée.
+    const { min, max, step } = curseurIntensite();
+    const pourcentDefaut = LUMIERE_POSEE_DEFAUT.intensite * 100;
+    assert.ok(pourcentDefaut >= min && pourcentDefaut <= max,
+      `l’intensité de départ (${pourcentDefaut} %) sort de la plage ${min}–${max} du curseur`);
+    const crans = (pourcentDefaut - min) / step;
+    assert.ok(Math.abs(crans - Math.round(crans)) < 1e-9,
+      `l’intensité de départ vaut ${pourcentDefaut} %, que le pas de ${step} ne peut pas atteindre : ` +
+      `ouvrir la fiche puis enregistrer changerait la lumière sans que personne l’ait demandé`);
+  });
+
+  test('⚠️ L’ÉCHELLE EST CELLE DU SOLEIL : 100 % veut dire 1,0 des deux côtés', () => {
+    // Deux réglages d'éclairage sur le même écran doivent se comparer. Une échelle où 100 %
+    // vaudrait « l'intensité de départ » rendrait « 100 % » ambigu selon la lumière regardée.
+    const { min } = curseurIntensite();
+    assert.equal(min, 0, 'zéro doit rester atteignable : c’est une lumière éteinte à l’œil');
+    const SRC = sourceSansCommentaires(readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+    assert.match(SRC, /objectLightIntensityRange\.value = String\(Math\.round\(r\.intensite \* 100\)\)/,
+      'la lecture ne convertit plus une intensité en pourcentage de 1,0');
+    const EV = sourceSansCommentaires(readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+    assert.match(EV, /intensite = Number\(objectLightIntensityRange\.value\) \/ 100/,
+      'l’écriture ne refait plus le chemin inverse : les deux sens doivent rester symétriques');
+  });
+});
+
+describe('⚠️ LES TROIS RÉGLAGES NE SONT ÉCRITS QUE POUR UNE SOURCE (#421b)', () => {
+  const EV = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('⚠️ L’ÉCRITURE EST SOUS GARDE, sinon un champ MASQUÉ commanderait tous les Éléments', () => {
+    // ⚠️ LA FAUTE A DÉJÀ ÉTÉ COMMISE DANS CETTE MÊME FONCTION, avec `objectTypeSelect` : un <select>
+    // masqué dont la `.value` valait « voiture », et qui transformait un modèle importé en voiture
+    // au premier Enregistrer, y compris pour un simple changement de nom. Ici le champ masqué
+    // porterait « #FFFFFF » et repeindrait en blanc la couleur de chaque Objet enregistré.
+    const i = EV.indexOf('objectModalSave.onclick');
+    assert.ok(i > 0, 'le gestionnaire d’enregistrement est introuvable');
+    const corps = EV.slice(i, i + 6000);
+    const ligne = corps.match(/[^\n]*S\.modalTarget\.color = objectLightColorInput\.value[^\n]*/);
+    assert.ok(ligne, 'la couleur d’une Lumière n’est plus écrite à l’enregistrement');
+    // La garde ne doit pas être « à côté » mais AU-DESSUS, dans le bloc qui contient l'écriture.
+    const avant = corps.slice(0, corps.indexOf(ligne[0]));
+    const gardeLaPlusProche = avant.lastIndexOf('if (estUneLumiere3D(S.modalTarget))');
+    const accoladeFermante = avant.lastIndexOf('\n    }');
+    assert.ok(gardeLaPlusProche > accoladeFermante,
+      'les réglages de Lumière sont écrits HORS de la garde `estUneLumiere3D` : ' +
+      'ils s’appliqueraient à tous les Éléments, depuis des champs masqués');
+  });
+
+  test('⚠️ ET LES TROIS SONT BIEN LÀ : aucun réglage ne reste inatteignable', () => {
+    // #421 existe parce que quatre champs étaient persistés et appliqués sans que rien ne permette
+    // de les changer. En oublier un ici reproduirait exactement le défaut qu'on répare.
+    for (const ecriture of [/S\.modalTarget\.color = objectLightColorInput\.value/,
+                            /S\.modalTarget\.intensite = /,
+                            /S\.modalTarget\.portee = /]) {
+      assert.match(EV, ecriture, `réglage non enregistré : ${ecriture}`);
+    }
+    // ⚠️ LA PORTÉE EST BORNÉE À ZÉRO PAR LE BAS. Une portée négative n'a pas de sens, et
+    // `reglagesLumierePosee3D` la ramènerait à 0 en lecture — donc « sans limite », l'inverse de ce
+    // qu'aurait voulu dire une valeur négative saisie par erreur.
+    assert.match(EV, /portee = Math\.max\(0, Number\(objectLightRangeInput\.value\) \|\| 0\)/,
+      'la portée n’est plus bornée : une valeur négative deviendrait « sans limite »');
+  });
+});
+
+describe('⚠️ L’AFFICHAGE DE LA SECTION VIENT DE LA TABLE, PAS D’UN SECOND TEST (#421b)', () => {
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  test('la section n’apparaît que si `dispositionFicheLumiere3D` le dit', () => {
+    // Deux décisions sur la même chose finissent par se contredire, et l'une des deux devient
+    // inopérante sans qu'on sache laquelle : c'est le défaut le plus fréquent de ce dépôt. #421a
+    // existe pour être l'autorité ; s'en passer ici lui retirerait son objet.
+    const i = SRC.indexOf('export function remplirSectionLuminosite3D');
+    assert.ok(i > 0, '`remplirSectionLuminosite3D` est introuvable');
+    const corps = SRC.slice(i, SRC.indexOf('\n}', i));
+    assert.match(corps, /dispositionFicheLumiere3D\(\)/,
+      'la visibilité de la section ne consulte plus la table de #421a');
+    assert.match(corps, /disposition\.sections\.luminosite/,
+      'la table est consultée mais sa réponse n’est pas lue');
+  });
+
+  test('⚠️ ET ELLE EST MASQUÉE DANS LE HTML : une Lumière la montre, personne d’autre', () => {
+    // Le défaut symétrique : une section livrée visible afficherait « Luminosité » sur une chaise
+    // jusqu'à ce que `remplirSectionLuminosite3D` passe — donc visible le temps d'une image, et
+    // visible pour toujours si quelqu'un contournait cette fonction un jour.
+    const m = HTML.match(/<div class="modal-section" data-section="luminosite"([^>]*)>/);
+    assert.ok(m, 'la section « luminosite » est introuvable dans index.html');
+    assert.match(m[1], /style="display:none"/,
+      'la section n’est pas masquée par défaut : elle s’afficherait sur tous les Éléments');
+  });
+
+  test('les trois commandes vivent DANS la section, pas à côté', () => {
+    const deb = HTML.indexOf('data-section="luminosite"');
+    const fin = HTML.indexOf('<div class="modal-actions">', deb);
+    assert.ok(deb > 0 && fin > deb, 'les bornes de la section sont introuvables');
+    const corps = HTML.slice(deb, fin);
+    ['objectLightColorInput', 'objectLightIntensityRange', 'objectLightRangeInput']
+      .forEach(id => assert.ok(corps.includes(`id="${id}"`),
+        `« ${id} » n’est pas dans la section « Luminosité »`));
+  });
+});
+
+describe('⚠️ « 0 » NE SE LIT PAS TOUT SEUL : l’indice de portée est là, et traduit (#421b)', () => {
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+
+  test('l’indice existe et dit ce que « 0 » veut dire', () => {
+    // ⚠️ CE N'EST PAS UNE DÉCORATION, C'EST UNE CORRECTION DE LECTURE. Un « 0 » dans un champ
+    // numérique se lit spontanément « éteinte ». Dans Three.js, une portée nulle rend un facteur
+    // d'atténuation de 1,0 à TOUTE distance : c'est « sans limite », l'exact contraire. Mesuré en
+    // #420f — une source à 900 m derrière la caméra éclaire aussi fort qu'à un mètre.
+    const m = HTML.match(/id="objectLightRangeHint"[^>]*>([^<]+)</);
+    assert.ok(m, 'l’indice sous le champ de portée a disparu');
+    assert.match(m[1], /sans limite/i, `l’indice ne dit plus ce que « 0 » signifie : « ${m[1]} »`);
+  });
+
+  test('⚠️ ET IL EST TRADUIT : sinon la fiche anglaise devient TROMPEUSE, pas seulement incomplète', () => {
+    assert.match(I18N, /'#objectLightRangeHint',\s*'[^']*unlimited/,
+      'l’indice de portée n’a pas d’entrée anglaise : « 0 » se lirait « éteinte » en anglais');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#421b, la section « Luminosité ») : onze fautes rejouées.
+ *
+ *   M38 le pas du curseur repasse à 5                                       ROUGE
+ *   M39 la plage du curseur n'atteint plus 77 %                             ROUGE
+ *   M40 l'écriture des réglages sort de la garde `estUneLumiere3D`          ROUGE
+ *   M41 la portée n'est plus bornée à zéro                                  ROUGE
+ *   M42 l'intensité n'est plus enregistrée                                  ROUGE (×2)
+ *   M43 la visibilité de la section cesse de consulter la table de #421a    ROUGE
+ *   M44 la section est livrée VISIBLE dans index.html                       ROUGE
+ *   M45 une clé de section mal orthographiée (« luminosit »)                ROUGE
+ *   M46 l'indice cesse de dire ce que « 0 » veut dire                       ROUGE
+ *   M47 la traduction anglaise de l'indice dit l'INVERSE                    ROUGE
+ *   M48 la table de #421a refuse la section « Luminosité »                  ROUGE
+ *
+ * ⚠️ M38 N'EST PAS UNE MUTATION INVENTÉE : C'EST LE PREMIER JET DE CE CHANTIER. Le curseur reprenait
+ * le pas de 5 du soleil, et l'intensité de départ vaut 77 % — le navigateur l'aurait ramenée à 75 à
+ * l'OUVERTURE de la fiche. Ouvrir puis enregistrer sans rien toucher aurait assombri la source, et
+ * rien à l'écran n'aurait relié l'un à l'autre. Le test ne fige pas « pas = 1 » mais la RELATION
+ * entre le pas et la valeur de départ : si la majoration change, c'est leur compatibilité qui est
+ * revérifiée, pas un littéral.
+ *
+ * ⚠️ M40 EST LA FAUTE MAISON DE CETTE FONCTION, REJOUÉE. `objectTypeSelect` l'a déjà commise : un
+ * champ MASQUÉ dont la `.value` était lue pour tout le monde, transformant les modèles importés en
+ * voiture au premier Enregistrer. Ici le champ masqué porterait « #FFFFFF » et repeindrait en blanc
+ * la couleur de chaque Objet enregistré.
+ *
+ * ⚠️ M45 A TROUVÉ UN TROU DANS UN TEST EXISTANT, ET C'EST LE PLUS INSTRUCTIF DU LOT. Le relevé des
+ * clés de `resetModalSections` exigeait la liste JUSTE après la virgule ; mon premier code passait
+ * par un ternaire, et l'appel n'était alors PLUS VU DU TOUT — ses clés cessaient d'être vérifiées en
+ * silence, et une clé mal orthographiée aurait simplement laissé la section repliée. Le relevé lit
+ * maintenant l'appel entier. Une mutation qui ne casse rien parce que l'instrument ne la voit plus
+ * est le pire résultat possible d'une campagne ; celle-ci a été rejouée APRÈS correction.
+ *
+ * ⚠️ M47 MÉRITE D'ÊTRE GARDÉE POUR CE QU'ELLE COÛTE. Une traduction absente rend une fiche
+ * incomplète ; une traduction qui dit « 0 = off » la rend TROMPEUSE, et dans la langue que son
+ * auteur ne relit pas. La mesure de #420f dit l'exact contraire : portée nulle = sans limite.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que 200 % soit le bon maximum, ni que la section se
+ * lise bien. Ces deux-là appartiennent à #421z, et #420c a déjà montré qu'une valeur correctement
+ * dérivée peut être franchement mauvaise à l'écran.
+ */

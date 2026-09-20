@@ -60,6 +60,7 @@ import {
 } from './draw.js';
 import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
 import { enregistrerFermeture } from './modal-stack.js';
+import { estUneLumiere3D, reglagesLumierePosee3D, dispositionFicheLumiere3D } from './light-source-3d.js';
 
 // No callback to inject: none of the functions moved here call snapshot() or any modal not yet
 // extracted (openTracéModal/openTerrainModal are already in this module). wallOpeningRotationForWall
@@ -108,6 +109,11 @@ const objectRotZInput = document.getElementById('objectRotZInput');
 const objectSizeField = document.getElementById('objectSizeField');
 const objectSizeInput = document.getElementById('objectSizeInput');
 const objectSizeValue = document.getElementById('objectSizeValue');
+// Les trois commandes de la section « Luminosité » d'une Lumière (#421b), plus son afficheur.
+const objectLightColorInput = document.getElementById('objectLightColorInput');
+const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
+const objectLightIntensityValue = document.getElementById('objectLightIntensityValue');
+const objectLightRangeInput = document.getElementById('objectLightRangeInput');
 const objectHeightField = document.getElementById('objectHeightField');
 const personaHeightField = document.getElementById('personaHeightField');
 const personaHeightInput = document.getElementById('personaHeightInput');
@@ -232,6 +238,49 @@ export function updateObjectSizeDisplay(o){
   objectSizeInput.value = getPersonaScalePercent(o);
   objectSizeValue.textContent = objectSizeInput.value + '%';
   updateObjectHeightField(o);
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA SECTION « LUMINOSITÉ » D'UNE LUMIÈRE (#421b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LA VISIBILITÉ DE LA SECTION VIENT DE `dispositionFicheLumiere3D`, PAS D'UN TEST LOCAL. Écrire
+ * ici `if (estUneLumiere3D(obj))` pour l'afficher ferait une SECONDE décision à côté de la table de
+ * #421a, et les deux ne s'accorderaient que le premier jour. La table décide, cette fonction
+ * exécute — la même séparation que `planLumieresPosees3D` et sa couche Three.js.
+ *
+ * ⚠️ L'INTENSITÉ EST UN POURCENTAGE DE 1,0, comme le curseur du soleil, pour que les deux réglages
+ * se comparent : 100 % ici et 100 % là-bas veulent dire la même chose. La source posée démarre donc
+ * à 77 %, ce qui est `CLE_ACTUELLE × MAJORATION_LUMIERE_POSEE` et non un chiffre choisi.
+ *
+ * ⚠️ ET L'ARRONDI EST FAIT À L'AFFICHAGE, JAMAIS SUR LA DONNÉE. `Math.round` ne sert qu'à poser une
+ * valeur entière dans un `<input type="range">` de pas 1 ; l'Élément garde son intensité telle
+ * quelle tant que l'utilisateur ne touche pas au curseur. La faute inverse — dériver la donnée de la
+ * commande — est celle que `updateObjectSizeDisplay` documente juste au-dessus : un Élément à 1,83 m
+ * qui s'affiche à 1,84 m et finit par y être vraiment.
+ */
+export function remplirSectionLuminosite3D(obj){
+  const section = objectModal.querySelector('[data-section="luminosite"]');
+  if (!section) return;
+  const disposition = dispositionFicheLumiere3D();
+  const montrer = estUneLumiere3D(obj) && disposition.sections.luminosite;
+  section.style.display = montrer ? '' : 'none';
+  if (!montrer) return;
+  // Les défauts sont ceux du module, pas des littéraux recopiés ici : une source dont le champ
+  // manque doit afficher ce que le rendu lui applique réellement.
+  const r = reglagesLumierePosee3D(obj);
+  objectLightColorInput.value = r.couleur;
+  objectLightIntensityRange.value = String(Math.round(r.intensite * 100));
+  objectLightIntensityValue.textContent = objectLightIntensityRange.value + ' %';
+  objectLightRangeInput.value = String(r.portee);
+}
+
+/** L'afficheur du curseur d'intensité, pendant qu'on le tire. */
+export function updateLightIntensityDisplay3D(){
+  if (objectLightIntensityValue && objectLightIntensityRange) {
+    objectLightIntensityValue.textContent = objectLightIntensityRange.value + ' %';
+  }
 }
 
 /**
@@ -1228,7 +1277,20 @@ export function openObjectModal(obj, isNew){
   S.modalDraftAfficherEgares = !!obj.afficherMaillagesEgares;
   buildSkeletonPoseFieldUI(obj);
   buildStrayMeshFieldUI(obj);
-  resetModalSections(objectModal.querySelector('.modal-box'), ['principal', 'apercu']);
+  remplirSectionLuminosite3D(obj);
+  // ⚠️ LES SECTIONS OUVERTES D'EMBLÉE DIFFÈRENT POUR UNE LUMIÈRE, et pas par coquetterie : sur une
+  // source, « Aperçu 3D » ne montre qu'une bille, tandis que les trois réglages qui justifient
+  // l'existence de cette fiche vivent dans « Luminosité ». Ouvrir l'aperçu et replier la luminosité
+  // demanderait un clic pour atteindre la seule chose qu'on est venu changer.
+  //
+  // ⚠️ DEUX APPELS PLUTÔT QU'UN TERNAIRE, ET C'EST UN TEST QUI L'A DEMANDÉ. `modals.test.mjs` relève
+  // les clés passées à `resetModalSections` et vérifie qu'elles existent dans le HTML — une clé mal
+  // orthographiée est SILENCIEUSE, la section reste simplement repliée. Un ternaire cachait la
+  // seconde liste à ce relevé. Le relevé a été renforcé dans la foulée, mais la forme lisible reste
+  // celle-ci : deux appels, deux listes, rien à démêler.
+  const boite = objectModal.querySelector('.modal-box');
+  if (estUneLumiere3D(obj)) resetModalSections(boite, ['principal', 'luminosite']);
+  else resetModalSections(boite, ['principal', 'apercu']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
   refreshObjectPreview();

@@ -962,12 +962,13 @@ describe('⚠️ LA FICHE D’UNE LUMIÈRE COUVRE TOUTE LA MODALE, ET RIEN QUE L
     assert.ok(sectionsHtml.size >= 4, `${sectionsHtml.size} sections extraites de index.html`);
     assert.ok(champsHtml.size >= 10, `${champsHtml.size} champs extraits de index.html`);
 
-    // « luminosite » n'existe pas encore dans index.html : elle arrive en #421b. C'est la table qui
-    // décide, pas l'inverse — on l'écarte donc de la comparaison, nommément, plutôt que de relâcher
-    // le test.
+    // ⚠️ « luminosite » A ÉTÉ EXCLUE DE CETTE COMPARAISON LE TEMPS D'UNE TÂCHE, et l'exclusion est
+    // partie avec sa raison : la table la nommait avant que index.html la porte, parce que c'est la
+    // table qui décide. #421b a ajouté la section, l'écart s'est refermé, et la comparaison est
+    // redevenue totale. Une exclusion nommée se rembourse ; une comparaison relâchée, jamais.
     const sectionsAttendues = new Set(Object.keys(SECTIONS_FICHE_LUMIERE));
-    assert.ok(sectionsAttendues.delete('luminosite'),
-      'la section « luminosite » doit figurer dans la table : c’est elle que #421b ajoutera');
+    assert.ok(sectionsAttendues.has('luminosite'),
+      'la section « luminosite » a disparu de la table');
 
     assert.deepEqual([...sectionsAttendues].sort(), [...sectionsHtml].sort(),
       'les sections de la table et celles de index.html ne coïncident plus');
