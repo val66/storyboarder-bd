@@ -464,6 +464,67 @@ while the two smaller sizes give 0.9 and 1.4 ms. A point that equals the monitor
 after being trapped by it twice already, is not a measurement. It is not explained, and it is not
 used.
 
+## What does NOT reduce that cost, and why culling is impossible today
+
+The question raised on reading the figures above: is a light that is off-camera, or at low
+intensity, computed all the same? **Yes, in full**, and both halves of the answer deserve writing
+down because they govern what can be optimised later.
+
+**In the source.** `projectObject` sends a light straight to `pushLight`: the frustum test
+(`_frustum.intersectsObject`) applies only to meshes and sprites, never to lights. And the fragment
+shader's loop carries `#pragma unroll_loop_start`, so it is unrolled at compile time, with no branch
+and no early exit. The `directLight.visible` flag does exist, but it gates ONLY the shadow
+lookup — which does not exist here yet. `RE_Direct`, the actual lighting computation, is called
+unconditionally.
+
+**And in measurement**, on a deliberately fragment-hungry scene — forty full-view planes, where the
+gap shows; at a real Panel's load it is 0.2 ms and drowns:
+
+| | ms |
+|---|---|
+| no lights (low witness, repeated at the end of the series: 2.0) | **2.5** |
+| 8 normal, in view | 6.2 |
+| 8 at strictly zero intensity | 5.5 |
+| 8 at 900 m **behind** the camera | 5.2 |
+| 8 with a range of 1 cm | 4.8 |
+
+The four variants sit together, and all of them cost two to three times the witness. **Only the
+NUMBER counts**: lowering an intensity, moving a source away or shortening its range recovers almost
+nothing. What is genuinely free is `visible = false` — the switch `planLumieresPosees3D` already
+throws for other Panels' lights, and that `hidden3d` throws for the user.
+
+⚠️ **CULLING WOULD BE EXACT, THOUGH, AND IT IS OUR OWN DEFAULT THAT FORBIDS IT.** Two gaps can be
+proven rather than estimated: zero intensity gives `vec3(0)` to the bit, and beyond the range the
+attenuation is EXACTLY zero. But look at the last line of the formula:
+
+```glsl
+if ( cutoffDistance > 0.0 && decayExponent > 0.0 ) {
+    return pow( saturate( -lightDistance / cutoffDistance + 1.0 ), decayExponent );
+}
+return 1.0;
+```
+
+When `cutoffDistance` is zero, the function returns `1.0`: **no attenuation, at any distance**. And
+`LUMIERE_POSEE_DEFAUT.portee` is 0, with nothing yet able to change it. All our sources therefore
+light the entire universe at full strength — which is literally what the "900 m behind the camera"
+row shows, costing not only full price but lighting at full power. There is no sphere of influence to
+test, so no position can ever disqualify a light.
+
+**Consequence for #421**: exposing the range is not a comfort setting, it is the precondition of any
+culling. The module accepts `portee: 0` "out of caution, as long as the modal does not exist"; that
+caution has a cost nobody knew about, it closes the only available door.
+
+⚠️ **AND A TRAP TO NAME BEFORE STARTING: CULLING CHANGES THE NUMBER, AND IT IS THE NUMBER THAT
+COSTS.** A Panel brought down to 5 lights and its neighbour to 6 make the application meet MORE
+distinct numbers, each paying its own compile. We would save 0.2 ms per frame to spend several
+hundred milliseconds in stalls. The risk stays bounded — at most nine numbers under the ceiling of
+eight — but it counts as a cost, it is not assumed free.
+
+**Verdict: no culling today.** The maximum gain is 0.2 ms on a Panel costing 13, which is #425d's
+situation word for word. What would overturn this verdict is #422: six depth passes per light per
+frame are a real cost, and an infinite-range light casting a shadow makes no sense anyway — a shadow
+camera needs a far plane.
+
 ## The real cost: the first encounter with a number
 
 This is where the unverified sentence becomes a figure. Every **number of lights** met for the first

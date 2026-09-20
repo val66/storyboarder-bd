@@ -59,6 +59,22 @@ export function estUneLumiere3D(o){
  *             assumé : la modale qui réglera la portée n'existe pas encore. Une portée finie posée
  *             au hasard donnerait des lumières qui n'éclairent rien à trois mètres, sans aucun
  *             moyen de le corriger, ce qui se lirait comme une panne plutôt que comme un réglage.
+ *
+ *             ⚠️ CE CHOIX TIENT TOUJOURS, MAIS IL A UN COÛT QU'ON IGNORAIT EN LE FAISANT (#420f).
+ *             « Sans limite » ne veut pas dire « très loin » : dans le shader,
+ *             `punctualLightIntensityToIrradianceFactor` rend littéralement `1.0` quand la portée
+ *             vaut 0, donc AUCUNE atténuation, à AUCUNE distance. Une source à 900 mètres derrière
+ *             la caméra éclaire aussi fort qu'une source à un mètre — mesuré, pas déduit.
+ *
+ *             Conséquence : il n'existe aucune sphère d'influence, donc aucune position ne peut
+ *             prouver qu'une lumière ne sert à rien, donc AUCUN ÉLAGAGE N'EST POSSIBLE. Et c'est le
+ *             seul levier qui existe, puisque le shader ne branche jamais : seul `visible = false`,
+ *             c'est-à-dire le retrait du COMPTE, économise quoi que ce soit.
+ *
+ *             Exposer la portée en #421 n'est donc pas un réglage de confort, c'est la condition
+ *             préalable de toute optimisation — et #422 la rendra nécessaire, une caméra d'ombre
+ *             ayant besoin d'un plan éloigné. Voir docs/en/rendering-performance.md, septième
+ *             campagne, § « Ce qui ne réduit PAS ce coût ».
  * `sphereVisible` vrai. Une lumière dont la sphère est masquée d'emblée n'affiche RIEN à l'ajout :
  *             on aurait cliqué « Ajouter → Lumière » pour voir une Case inchangée.
  * `diametre`  0,2 m, environ une tête (un Personnage fait 1,75 m). Assez gros pour se saisir, assez

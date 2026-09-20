@@ -492,6 +492,68 @@ période de l'écran, alors que les deux tailles inférieures donnent 0,9 et 1,4
 précisément la période du moniteur après qu'on a déjà été piégé deux fois par elle n'est pas une
 mesure. Il n'est pas expliqué, et il n'est pas utilisé.
 
+## Ce qui ne réduit PAS ce coût, et pourquoi l'élagage est aujourd'hui impossible
+
+Question posée à la lecture des chiffres ci-dessus : une lumière hors-champ, ou à faible intensité,
+est-elle tout de même calculée ? **Oui, intégralement**, et les deux moitiés de la réponse méritent
+d'être écrites parce qu'elles gouvernent ce qu'on pourra optimiser plus tard.
+
+**Dans la source.** `projectObject` envoie une lumière directement en `pushLight` : le test de
+frustum (`_frustum.intersectsObject`) ne s'applique qu'aux maillages et aux sprites, jamais aux
+lumières. Et la boucle du fragment shader porte `#pragma unroll_loop_start`, donc elle est déroulée à
+la compilation, sans branche ni sortie anticipée. Le drapeau `directLight.visible` existe bien, mais
+il ne conditionne QUE la recherche d'ombre — qui n'existe pas encore ici. `RE_Direct`, le vrai calcul
+d'éclairement, est appelé sans condition.
+
+**Et à la mesure**, sur une scène volontairement gourmande en fragments — quarante plans pleine vue,
+là où l'écart se voit ; à la charge d'une Case réelle il vaut 0,2 ms et se noie :
+
+| | ms |
+|---|---|
+| aucune lumière (témoin bas, repris en fin de série : 2,0) | **2,5** |
+| 8 normales, dans le champ | 6,2 |
+| 8 à intensité strictement nulle | 5,5 |
+| 8 à 900 m **derrière** la caméra | 5,2 |
+| 8 avec une portée de 1 cm | 4,8 |
+
+Les quatre variantes se tiennent, et toutes coûtent deux à trois fois le témoin. **Seul le NOMBRE
+compte** : baisser une intensité, éloigner une source ou raccourcir sa portée ne récupère
+quasiment rien. Ce qui est réellement gratuit, c'est `visible = false` — l'interrupteur que
+`planLumieresPosees3D` actionne déjà pour les lumières des autres Cases, et que `hidden3d` actionne
+pour l'utilisateur.
+
+⚠️ **L'ÉLAGAGE SERAIT POURTANT EXACT, ET C'EST NOTRE PROPRE DÉFAUT QUI L'INTERDIT.** Deux écarts se
+prouvent plutôt qu'ils ne s'estiment : une intensité nulle donne `vec3(0)` au bit près, et au-delà de
+la portée l'atténuation vaut EXACTEMENT zéro. Mais regarde la dernière ligne de la formule :
+
+```glsl
+if ( cutoffDistance > 0.0 && decayExponent > 0.0 ) {
+    return pow( saturate( -lightDistance / cutoffDistance + 1.0 ), decayExponent );
+}
+return 1.0;
+```
+
+Quand `cutoffDistance` vaut zéro, la fonction rend `1.0` : **aucune atténuation, à aucune distance**.
+Or `LUMIERE_POSEE_DEFAUT.portee` vaut 0, et rien ne permet encore de le changer. Toutes nos sources
+éclairent donc l'univers entier à pleine force — c'est littéralement ce que montre la ligne « à 900 m
+derrière la caméra », qui ne coûte pas seulement le plein tarif mais éclaire à pleine puissance. Il
+n'existe aucune sphère d'influence à tester, donc aucune position ne peut disqualifier une lumière.
+
+**Conséquence pour #421** : exposer la portée n'est pas un réglage de confort, c'est la condition
+préalable de tout élagage. Le module assume `portee: 0` « par prudence, tant que la modale n'existe
+pas » ; cette prudence a un coût qu'on ignorait, elle ferme la seule porte disponible.
+
+⚠️ **ET UN PIÈGE À NOMMER AVANT DE SE LANCER : ÉLAGUER CHANGE LE NOMBRE, ET C'EST LE NOMBRE QUI
+COÛTE.** Une Case ramenée à 5 lumières et sa voisine à 6 font rencontrer à l'application PLUS de
+nombres distincts, chacun payant sa compilation. On économiserait 0,2 ms par image pour dépenser
+quelques centaines de millisecondes en à-coups. Le risque reste borné — au plus neuf nombres sous le
+plafond de huit — mais il se compte comme un coût, il ne se suppose pas gratuit.
+
+**Verdict : pas d'élagage aujourd'hui.** Le gain maximal est de 0,2 ms sur une Case qui en coûte 13,
+c'est-à-dire la situation de #425d mot pour mot. Ce qui renverserait ce verdict est #422 : six passes
+de profondeur par lumière et par image sont un coût réel, et une lumière à portée infinie qui
+projette une ombre n'a de toute façon pas de sens — une caméra d'ombre a besoin d'un plan éloigné.
+
 ## Le vrai coût : la première rencontre d'un nombre
 
 C'est ici que la phrase non vérifiée devient un chiffre. Chaque **nombre de lumières** rencontré
