@@ -20,6 +20,7 @@ import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
 import { textureDeLaBulle, couleurImposeeParLaTexture } from './bubble-texture.js';
+import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -135,6 +136,7 @@ const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacit
 const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
+const sideBubbleParticuleSelect = document.getElementById('sideBubbleParticuleSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -1100,6 +1102,7 @@ function updateSidePanelImpl(){
     // défaut de la forme — la fiche montre donc « Aucune » sur un écu neuf, comme le dessin.
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
+    sideBubbleParticuleSelect.value = particuleDeLaBulle(sel);
     majAffichageCouleurDeFondBulle3D(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);

@@ -83,6 +83,7 @@ import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle } from './bubble-texture.js';
+import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -6747,6 +6748,7 @@ const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
+const sideBubbleParticuleSelect = document.getElementById('sideBubbleParticuleSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -7191,6 +7193,14 @@ sideDescInput.addEventListener('keydown', (e) => {
     e.stopImmediatePropagation();
     sideDescInput.blur();
   }
+});
+
+sideBubbleParticuleSelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  // Validé par le registre, comme la forme, la queue et la texture.
+  S.sideDescTarget.bulleParticule = particuleDeLaBulle({ bulleParticule: sideBubbleParticuleSelect.value });
+  drawCurrentPage();
 });
 
 sideBubbleTextureSelect.addEventListener('change', () => {

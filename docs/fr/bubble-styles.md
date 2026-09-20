@@ -56,7 +56,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 | **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, **aucune** |
 | **texte** | police, casse, graisse, italique, couleur, manuscrit |
 | **ornement** | note de musique, guillemets, crochets |
-| **couche ajoutée** | couronne rayonnante, mouchetis d'encre, débordement du cadre de Case, aucune |
+| **couche ajoutée** | couronne rayonnante, **particules** (tache, flamme, aucune), débordement du cadre de Case |
 
 ⚠️ **POURQUOI UN SEPTIÈME AXE, ET PAS DEUX FORMES DE PLUS.** La couronne rayonnante n'est pas un
 contour : le contour reste une **ellipse parfaitement lisse**, et c'est une frange de traits fins
@@ -523,6 +523,65 @@ désormais notée avec sa **couleur**, et la Bulle d'essai en porte deux que rie
 ⚠️ **UNE LIMITE SUBSISTE, D'UNE AUTRE NATURE :** la toile d'export fait exactement la taille de la
 Planche. Ce qui sort de la **Planche** est donc coupé — mais cela n'a rien à voir avec le cadre de
 la Case, et c'est vrai de tout objet.
+
+## L'axe PARTICULE : une nuée, pas un motif de trait
+
+⚠️ **LE RATTACHEMENT A ÉTÉ DÉBATTU AVANT D'ÊTRE CODÉ.** Le mouchetis d'encre aurait pu passer pour
+un motif de bordure, au même titre que les pointillés. C'est faux : un motif de trait est une
+propriété d'**une ligne**, alors qu'une particule est une nuée répartie en **deux dimensions** autour
+du bord. Les loger sur le même attribut aurait interdit « tremblé **et** moucheté », combinaison que
+le relevé montre chez Lecteur omniscient.
+
+⚠️ **ET UNE PARTICULE N'EST PAS UNE TACHE DE TEXTURE**, malgré la ressemblance. Les taches du vieux
+papier sont **confinées** dans la Bulle, par calcul et sans découpe. Une particule se pose **à cheval
+sur le bord** — le mouchetis entoure la masse d'encre au lieu de la remplir. Rien ne s'y oppose : le
+débordement du cadre de Case est figé, donc une particule qui sort est cohérente avec une tache
+d'encre posée sur le blanc inter-cases.
+
+⚠️ **LES DEUX DÉCROISSANCES SONT IMPOSÉES PAR LE RELEVÉ** — « des points dont la taille **et**
+l'opacité décroissent avec la distance ». N'en faire décroître qu'une donne soit de gros points
+fantômes au loin, soit des points minuscules mais francs : dans les deux cas la projection ne se lit
+pas.
+
+⚠️ **« FLAMME » N'A AUCUNE SOURCE DANS LE CORPUS.** Les douze œuvres examinées ne montrent pas de
+Bulle enflammée. C'est un ajout demandé, assumé comme tel, et il ne doit jamais être présenté comme
+relevé.
+
+### Ce que trois rendus ont corrigé, et l'instrument qui mentait
+
+| version | ce qu'on voyait | la cause |
+|---|---|---|
+| langues d'un pixel | des poussières invisibles | `taille` est une fraction du **plus petit** demi-axe : sur une Bulle 210 × 80, une valeur réglée sur un carré donne 1 px |
+| langues couchées | des flaques de part et d'autre du sommet | allongées **le long du rayon** : sur une ellipse aplatie, la direction radiale près du sommet est presque horizontale |
+| langues toujours horizontales | aucun changement malgré la correction | **la sonde de rendu ignorait la rotation** passée à `ellipse` |
+
+⚠️ **LA TROISIÈME LIGNE EST LA PLUS INSTRUCTIVE.** J'ai corrigé deux fois sur la foi d'une image
+produite par un instrument infidèle, et l'une de ces corrections n'était fondée sur rien. Regarder le
+rendu ne suffit pas : encore faut-il vérifier que l'appareil qui le produit ne laisse pas tomber un
+paramètre en route. La correction retenue — langues orientées vers le haut, légèrement évasées — a
+été **revérifiée** une fois la sonde réparée, par comparaison côte à côte avec la variante radiale.
+
+⚠️ **L'ÉTALEMENT RESTE SOUS UN QUART DE TOUR, ET C'EST UN INVARIANT.** Au-delà, une langue pendrait
+**sous** la Bulle ; le feu monte. Le test l'énonce ainsi plutôt que par un seuil deviné — et c'est le
+code qui a été resserré pour lui laisser de la marge, non le test assoupli.
+
+### Ce que les particules coûtent
+
+Construction des chemins, 40 Bulles × 400 passages, hors rastérisation :
+
+| forme | aucune | tache | flamme |
+|---|---|---|---|
+| ovale | 1,6 µs | 6,1 µs | 4,2 µs |
+| tache d'encre | 23,5 µs | **346,1 µs** | **299,6 µs** |
+
+⚠️ **L'ÉCART ENTRE LES DEUX LIGNES N'EST PAS DÛ AUX PARTICULES, ET LE DIAGNOSTIC COMPTE PLUS QUE LE
+CHIFFRE.** Sur un ovale, le point du contour se calcule en une formule : trente particules coûtent
+4 µs. Sur une tache d'encre, chaque particule demande son point de contour, et **le contour entier
+est reconstruit à chaque fois** — quatre-vingt-seize points, trente-quatre fois. C'est un défaut
+d'appel, pas un coût inhérent, et il se corrigerait en construisant le contour une seule fois.
+
+Ce n'est pas fait ici : la correction touche la frontière entre le dessin et le registre des formes,
+et mérite d'être traitée avec l'observation du chargement plutôt qu'en fin d'étape. Reversé tel quel.
 
 ## Le corpus, et son statut
 

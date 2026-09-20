@@ -75,6 +75,7 @@ import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
 import { couchesDeTextureBulle, couleurImposeeParLaTexture,
          couleurTexteParDefautDeLaTexture } from './bubble-texture.js';
+import { particulesDeLaBulle } from './bubble-particle.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1557,6 +1558,55 @@ function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
   c.restore();
 }
 
+/**
+ * Les particules semées autour d'une Bulle — le mouchetis d'encre, les langues de flamme.
+ *
+ * ⚠️ ELLES SE POSENT À CHEVAL SUR LE BORD, dedans ET dehors, et c'est ce qui les distingue des
+ * taches d'une texture, confinées à l'intérieur. Le relevé est clair : le mouchetis ENTOURE la masse
+ * d'encre au lieu de la remplir. Rien ne s'y oppose — #425k a figé qu'une Bulle n'est jamais
+ * découpée par sa Case, donc une particule qui déborde est cohérente avec une tache d'encre posée à
+ * cheval sur le blanc inter-cases.
+ *
+ * ⚠️ LEUR RAYON EST RELATIF AU CONTOUR, PAS À LA BOÎTE. C'est ce qui les fait suivre une étoile ou un
+ * écu comme un ovale : à angle donné, on part du point du contour et on s'en éloigne. Calées sur la
+ * boîte, elles se seraient massées dans les creux d'une étoile et auraient décollé de ses pointes —
+ * le défaut exact que le rendu comparatif des textures avait montré pour les dégradés.
+ *
+ * ⚠️ ET ELLES PRENNENT LA COULEUR DU TRAIT, SINON CELLE DU FOND. De l'encre projetée est l'encre qui
+ * a tracé la Bulle. La retombée sur le fond couvre le cas du relevé : la tache d'encre du Lecteur
+ * omniscient n'a PAS de contour distinct, et son mouchetis est noir comme elle. Prendre le fond
+ * d'abord aurait rendu invisibles les particules d'une Bulle blanche, ce qui se lit comme un réglage
+ * en panne.
+ */
+function peindreLesParticules3D(c, o, app, cx, cy, rx, ry){
+  const encre = o.bulleBorderVisible === false
+    ? couleurDeFondBulle3D(o)
+    : (o.bulleBorderColor || '#23242A');
+  const particules = particulesDeLaBulle(o, { couleur: encre, opacite: app.opacite });
+  if (!particules.length) return;
+  const demiAxe = Math.min(rx, ry);
+  c.save();
+  for (const p of particules) {
+    const bord = bubbleEdgePoint(o, p.angle * Math.PI * 2);
+    const x = cx + (bord.x - cx) * p.rayonRelatif;
+    const y = cy + (bord.y - cy) * p.rayonRelatif + (p.decalageVertical || 0) * demiAxe;
+    const r = Math.max(0.4, p.taille * demiAxe);
+    // ⚠️ L'ORIENTATION SUIT LE RAYON PAR DÉFAUT, mais une particule peut la fixer en absolu — et la
+    // flamme le fait. Allongée le long du rayon, une langue posée près du sommet d'une Bulle LARGE
+    // part à l'horizontale, la direction radiale y étant loin d'être verticale sur une ellipse
+    // aplatie : le feu s'étalait en flaques au lieu de monter.
+    const orientation = p.orientation != null ? p.orientation : Math.atan2(y - cy, x - cx);
+    c.beginPath();
+    c.ellipse(x, y, r * (p.allongement || 1), r, orientation, 0, Math.PI * 2);
+    c.closePath();
+    c.globalAlpha = p.alpha;
+    c.fillStyle = p.couleur;
+    c.fill();
+  }
+  c.globalAlpha = 1;
+  c.restore();
+}
+
 // Draws a speech Bubble: Oval or Rectangle shape (as chosen, via the right-hand panel) +
 // small triangular tail (whose position around the bubble is adjustable by the user via
 // o.tailAngle/o.tailLen), with the text (description) displayed directly inside.
@@ -1686,6 +1736,9 @@ export function drawBubble(c, o){
   c.closePath();
   remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin);
   peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets);
+  // ⚠️ APRÈS LA BULLE ET SES TACHES, MAIS AVANT LE TEXTE. Des particules peintes par-dessus le
+  // lettrage le mangeraient ; peintes avant le remplissage, elles disparaîtraient dessous.
+  peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
 
   // ⚠️ LES RONDS SE DESSINENT APRÈS, ET CHACUN DANS SON PROPRE CHEMIN. Les mettre dans le chemin de
   // la Bulle les ferait remplir par la règle de non-zéro avec elle : là où un rond chevaucherait le

@@ -505,6 +505,62 @@ carries two that nothing else uses.
 anything outside the **Page** is cut — but that has nothing to do with the Panel frame, and it is
 true of every object.
 
+## The PARTICLE axis: a cloud, not a stroke pattern
+
+⚠️ **THE ATTACHMENT WAS DEBATED BEFORE BEING CODED.** The ink speckle could have passed for a border
+pattern, like the dashes. It is not: a stroke pattern is a property of **one line**, whereas a
+particle is a cloud spread in **two dimensions** around the edge. Putting them on the same attribute
+would have forbidden "wobbly **and** speckled", a combination the survey shows in Lecteur omniscient.
+
+⚠️ **AND A PARTICLE IS NOT A TEXTURE STAIN**, despite the resemblance. Aged-paper stains are
+**confined** inside the Bubble, by computation and without clipping. A particle sits **astride the
+edge** — the speckle surrounds the ink mass rather than filling it. Nothing stands in the way: Panel
+overflow is frozen, so a particle that escapes is consistent with an ink splat laid on the gutter.
+
+⚠️ **BOTH DECAYS ARE IMPOSED BY THE SURVEY** — "dots whose size **and** opacity decay with
+distance". Decaying only one gives either large ghost dots far out, or tiny but crisp ones: in both
+cases the spatter does not read.
+
+⚠️ **"FLAME" HAS NO SOURCE IN THE CORPUS.** The twelve works examined show no burning Bubble. It is
+a requested addition, owned as such, and must never be presented as surveyed.
+
+### What three renders corrected, and the instrument that lied
+
+| version | what was seen | the cause |
+|---|---|---|
+| one-pixel tongues | invisible specks | `size` is a fraction of the **smaller** half-axis: on a 210 × 80 Bubble, a value tuned on a square gives 1 px |
+| flat tongues | puddles either side of the top | elongated **along the radius**: on a flattened ellipse the radial direction near the top is nearly horizontal |
+| still-horizontal tongues | no change despite the fix | **the render probe ignored the rotation** passed to `ellipse` |
+
+⚠️ **THE THIRD ROW IS THE INSTRUCTIVE ONE.** I corrected twice on the strength of an image produced
+by an unfaithful instrument, and one of those corrections rested on nothing. Looking at the render
+is not enough: one must also check that the apparatus producing it does not silently drop a
+parameter. The fix kept — tongues pointing up, slightly splayed — was **re-verified** once the probe
+was repaired, by side-by-side comparison with the radial variant.
+
+⚠️ **THE SPREAD STAYS UNDER A QUARTER TURN, AND THAT IS AN INVARIANT.** Beyond it a tongue would
+hang **below** the Bubble; fire rises. The test states it that way rather than with a guessed
+threshold — and it is the code that was tightened to leave margin, not the test loosened.
+
+### What particles cost
+
+Path construction, 40 Bubbles × 400 passes, excluding rasterisation:
+
+| shape | none | spatter | flame |
+|---|---|---|---|
+| oval | 1.6 µs | 6.1 µs | 4.2 µs |
+| ink splat | 23.5 µs | **346.1 µs** | **299.6 µs** |
+
+⚠️ **THE GAP BETWEEN THE TWO ROWS IS NOT THE PARTICLES' DOING, AND THE DIAGNOSIS MATTERS MORE THAN
+THE FIGURE.** On an oval the outline point is one formula: thirty particles cost 4 µs. On an ink
+splat each particle asks for its outline point, and **the whole outline is rebuilt every time** —
+ninety-six points, thirty-four times. That is a call-site defect, not an inherent cost, and it would
+be fixed by building the outline once.
+
+It is not done here: the fix touches the boundary between the drawing and the shape registry, and
+deserves to be handled with the load-time observation rather than at the tail of a step. Recorded
+as is.
+
 ## The corpus, and its status
 
 Two levels, because they are not equivalent and conflating them has already produced errors.

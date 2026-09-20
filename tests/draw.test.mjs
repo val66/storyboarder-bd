@@ -2982,3 +2982,64 @@ describe('#425m bis — la texture porte la couleur du fond', () => {
       bulleTextColor: '#ff00ff' }), '#ff00ff');
   });
 });
+
+describe('#425p — les particules atteignent le canevas', () => {
+  const bulle = (o) => Object.assign({ id: 'b13', type: 'bulle', x: 0, y: 0, w: 200, h: 100,
+    description: '', bulleColor: '#ffffff', tailVisible: false }, o);
+  // Une particule est un CERCLE ou une ellipse à part, dessinée après la Bulle. Sur une Bulle
+  // 200 × 100, le contour ovale n'est pas un cercle : les deux ne se confondent pas.
+  const semis = (j) => appels(j, 'ellipse').map(e => e.args).filter(a => a[2] !== 100 || a[3] !== 50);
+
+  test('⚠️ RÉGRESSION : sans particule, RIEN ne s’ajoute au dessin', () => {
+    const sans = dessiner(bulle({ bulleShape: 'ovale' }));
+    assert.equal(semis(sans).length, 0, 'une Bulle sans particule ne doit rien semer');
+  });
+
+  test('⚠️ LES DEUX SEMIS ARRIVENT, et ils débordent VOLONTAIREMENT de la Bulle', () => {
+    // ⚠️ C'EST CE QUI LES SÉPARE DES TACHES D'UNE TEXTURE, confinées à l'intérieur. Le relevé montre
+    // un mouchetis qui ENTOURE la masse d'encre ; #425k ayant figé qu'une Bulle n'est jamais
+    // découpée par sa Case, une particule qui sort est cohérente avec le reste.
+    for (const p of ['tache', 'flamme']) {
+      const j = dessiner(bulle({ bulleShape: 'ovale', bulleParticule: p }));
+      const s = semis(j);
+      assert.ok(s.length > 20, `${p} : ${s.length} particules seulement`);
+      const dehors = s.filter(([x, y]) => Math.hypot((x - 100) / 100, (y - 50) / 50) > 1).length;
+      assert.ok(dehors > s.length * 0.7, `${p} : ${dehors} particules dehors sur ${s.length}`);
+    }
+  });
+
+  test('⚠️ ET ELLES SE POSENT SUR LE CONTOUR RÉEL, pas sur la boîte', () => {
+    // ⚠️ LE DÉFAUT ÉVITÉ : calées sur la boîte, les particules se seraient massées dans les creux
+    // d'une étoile et auraient décollé de ses pointes — exactement ce que le rendu comparatif des
+    // textures avait montré pour un dégradé radial.
+    //
+    // Mesure : sur une étoile, les particules les plus éloignées du centre doivent se trouver dans
+    // les directions des POINTES, pas réparties au hasard. On compare donc leur distance au centre
+    // à celle du contour dans leur propre direction.
+    const o = bulle({ bulleShape: 'etoile', bulleParticule: 'tache' });
+    const s = semis(dessiner(o));
+    let horsSujet = 0;
+    for (const [x, y] of s) {
+      const bord = pointDuContourBulle(o, Math.atan2(y - 50, x - 100));
+      const rapport = Math.hypot(x - 100, y - 50) / Math.hypot(bord.x - 100, bord.y - 50);
+      // Chaque particule reste dans la fourchette annoncée autour de SON point de contour.
+      if (rapport < 0.85 || rapport > 1.5) horsSujet++;
+    }
+    assert.equal(horsSujet, 0, `${horsSujet} particules hors de la couronne du contour`);
+  });
+
+  test('⚠️ ELLES NE SE RÉPÈTENT PAS DANS CHAQUE ROND D’UNE CHAÎNE', () => {
+    // Même piège que la marbrure du vieux papier : le semis appartient à la Bulle, pas à chacun de
+    // ses maillons de queue.
+    const sans = dessiner(bulle({ bulleShape: 'rect', bulleParticule: 'tache' }));
+    const avec = dessiner(bulle({ bulleShape: 'rect', bulleParticule: 'tache',
+      tailShape: 'ronds', tailVisible: true }));
+    assert.equal(appels(avec, 'ellipse').length - appels(sans, 'ellipse').length, 3,
+      'seuls les trois ronds de la chaîne doivent s’ajouter');
+  });
+
+  test('l’opacité de la Bulle éteint le semis entier', () => {
+    const j = dessiner(bulle({ bulleShape: 'ovale', bulleParticule: 'flamme', bulleFillOpacity: 0 }));
+    appels(j, 'fill').forEach((e, i) => assert.equal(e.alpha, 0, `peinture ${i} à ${e.alpha}`));
+  });
+});
