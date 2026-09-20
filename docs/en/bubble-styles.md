@@ -50,7 +50,7 @@ A Bubble is a free combination of seven axes. None implies the others.
 |---|---|
 | **shape** | ellipse, rounded rectangle, plain rectangle, chamfered octagon, concave-sided shield, bumpy, faceted polygon, star, thorn crown, round-cornered strip, ragged-edged parchment, ink splat, none |
 | **stroke** | width, dash pattern, regularity (clean or wobbly), colour |
-| **fill** | colour, opacity, **texture** (none, faded edges, aged paper) |
+| **fill** | colour, opacity, **texture** (none, dark ink, aged paper) |
 | **tail** | triangle, lightning, chain of shrinking circles, curved hairline, none |
 | **text** | font, case, weight, italic, colour, handwriting |
 | **ornament** | musical note, quotation marks, square brackets |
@@ -368,6 +368,34 @@ mottling included.
 
 ⚠️ **AND A TEXTURE RECEIVES NO GEOMETRY:** not the shape, not the size, not the outline's point
 count. A crown of thorns can therefore be mottled, and an ink splat stay flat.
+
+### ⚠️ A TEXTURE CARRIES ITS OWN FILL COLOUR
+
+Reported in use, and rightly so: aged paper is not "a colour of your choice, slightly stained", it
+is **parchment**; the Lecteur omniscient ink splat is **black**, with white lettering. Letting the
+picker rule under a texture that tints produced blue parchments and pink ink splats, which the
+survey shows nowhere.
+
+| texture | imposed fill | default text |
+|---|---|---|
+| none | — *the user chooses* | — |
+| dark ink | ink black | light |
+| aged paper | cream parchment | dark brown |
+
+⚠️ **AND "NONE" IS NOT "WHITE" BUT "THE USER DECIDES".** Confusing the two would make the colour
+picker inoperative for everyone. It is the only entry where it rules anything — and the panel
+**hides** the field under the others rather than leaving a dead control: a visible, inoperative
+setting is worse than no setting at all, a defect met four times in this project in other guises.
+
+⚠️ **THE TEXT COLOUR IS ONLY A DEFAULT, never a constraint** — the same device as a shape's
+default tail. Without it, dark ink would keep the charcoal text of every other Bubble, hence black
+on black, and the texture would be unusable as shipped. The user's field, once it exists, always
+wins.
+
+⚠️ **THE PERSISTED KEY FOR DARK INK REMAINS `fondus`**, although the label changed. The original
+name described only the edge; the colour is now part of it. But the registry **throws** on an
+unknown key, and renaming it would make a Project saved in between fail loudly on open. A label may
+lie without consequence, a persisted key may not.
 
 ### What the texture costs
 

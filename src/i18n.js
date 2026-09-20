@@ -115,7 +115,9 @@ export const I18N_TEXT = [
   // la tache d'encre rester en aplat.
   ['label[for="sideBubbleTextureSelect"]', 'Fill texture', 'Texture du fond'],
   ['#sideBubbleTextureSelect option[value="aucune"]', 'None', 'Aucune'],
-  ['#sideBubbleTextureSelect option[value="fondus"]', 'Faded edges', 'Bords fondus'],
+  // La clé persistée reste « fondus » : un registre lève sur une clé inconnue, et la renommer
+  // ferait échouer l'ouverture d'un Projet déjà enregistré. Seul le libellé change.
+  ['#sideBubbleTextureSelect option[value="fondus"]', 'Dark ink', 'Encre sombre'],
   ['#sideBubbleTextureSelect option[value="papier"]', 'Aged paper', 'Vieux papier'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur

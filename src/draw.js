@@ -73,7 +73,8 @@ import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
-import { couchesDeTextureBulle } from './bubble-texture.js';
+import { couchesDeTextureBulle, couleurImposeeParLaTexture,
+         couleurTexteParDefautDeLaTexture } from './bubble-texture.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1471,6 +1472,22 @@ export function reglagesQueueVersLePoint3D(o, x, y){
  * « poser une voix sur l'image », et l'utilisateur n'aurait plus aucun moyen d'obtenir un fond
  * transparent sous un trait franc, qui est exactement ce que fait Jungle Juice.
  */
+/**
+ * La couleur de fond effective d'une Bulle : celle que la texture IMPOSE, sinon celle qu'on a choisie.
+ *
+ * ⚠️ UNE TEXTURE PORTE SA COULEUR, ET C'EST UN RETOUR D'USAGE. Un vieux papier n'est pas « une
+ * couleur au choix, un peu tachée » : c'est du parchemin. La tache d'encre du Lecteur omniscient est
+ * NOIRE, avec un lettrage blanc. Laisser le sélecteur commander sous une texture qui teinte donnait
+ * des parchemins bleus et des taches d'encre roses, que le relevé ne montre nulle part.
+ *
+ * ⚠️ « AUCUNE » RESTE LE CAS OÙ LA COULEUR EST LIBRE, et c'est ce qui rend le sélecteur honnête :
+ * il commande quelque chose exactement quand il est offert. La fiche masque d'ailleurs le champ
+ * sous les autres textures, plutôt que de le laisser visible et inopérant.
+ */
+function couleurDeFondBulle3D(o){
+  return couleurImposeeParLaTexture(o) || o.bulleColor || '#fff';
+}
+
 function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
   // compte qu'UNE — le chemin tel quel, la couleur choisie, l'opacité choisie — et le résultat est
@@ -1480,7 +1497,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   // couche est le chemin rapproché du centre : la mettre à l'échelle avec `c.scale` déplacerait
   // aussi le trait, et surtout empêcherait le facteur de varier avec l'angle, dont la marbrure du
   // vieux papier a besoin.
-  const { couches } = couchesDeTextureBulle(o, { couleur: o.bulleColor || '#fff', opacite: app.opacite });
+  const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondBulle3D(o), opacite: app.opacite });
   couches.forEach((couche, i) => {
     if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
     c.globalAlpha = couche.alpha;
@@ -1521,7 +1538,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
  * chaque rond se serait couvert des auréoles de la Bulle entière, à l'échelle du rond.
  */
 function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
-  const { taches } = couchesDeTextureBulle(o, { couleur: o.bulleColor || '#fff', opacite: app.opacite });
+  const { taches } = couchesDeTextureBulle(o, { couleur: couleurDeFondBulle3D(o), opacite: app.opacite });
   if (!taches || !taches.length) return;
   let fInt = 1;
   if (sommets) for (const p of sommets) fInt = Math.min(fInt, Math.hypot((p.x - cx) / rx, (p.y - cy) / ry));
@@ -1690,7 +1707,11 @@ export function drawBubble(c, o){
 
   if (o.description) {
     c.save();
-    c.fillStyle = o.bulleTextColor || '#23242A';
+    // ⚠️ LA TEXTURE NE DONNE QU'UN DÉFAUT DE COULEUR DE TEXTE, jamais une contrainte — même
+    // dispositif que la queue par défaut d'une forme. Sans lui, une encre sombre garderait le texte
+    // anthracite des autres Bulles, donc noir sur noir, et la texture serait inutilisable telle
+    // quelle. Le champ de l'utilisateur, dès qu'il existe, l'emporte toujours.
+    c.fillStyle = o.bulleTextColor || couleurTexteParDefautDeLaTexture(o) || '#23242A';
     // User-adjustable scale (cf. sideBubbleFontSizeInput, "Text size") on top of the
     // auto-computed size based on the bubble's size.
     const fontScale = o.bulleFontScale != null ? o.bulleFontScale : 1;

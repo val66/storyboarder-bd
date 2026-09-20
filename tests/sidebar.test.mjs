@@ -972,6 +972,32 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
+  test('⚠️ LA COULEUR DU FOND N’EST OFFERTE QUE QUAND ELLE COMMANDE QUELQUE CHOSE', () => {
+    // ⚠️ UN RÉGLAGE VISIBLE ET INOPÉRANT EST PIRE QUE PAS DE RÉGLAGE DU TOUT. C'est le défaut que
+    // ce chantier a rencontré quatre fois sous d'autres formes : on croit agir, rien ne bouge, et
+    // rien ne dit pourquoi. Sous une texture qui IMPOSE sa couleur, le champ est masqué.
+    //
+    // Le test passe par le VRAI écouteur, puis par `updateSidePanel` : les deux chemins doivent
+    // mettre la fiche à jour, sinon le champ réapparaîtrait en rouvrant le panneau.
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const select = document.getElementById('sideBubbleTextureSelect');
+    const wrap = document.getElementById('sideBubbleBgColorWrap');
+    const choisir = (t) => {
+      select.value = t;
+      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
+      return wrap.style.display;
+    };
+    assert.equal(choisir('aucune'), 'block', 'sans texture, la couleur est libre');
+    assert.equal(choisir('papier'), 'none', 'sous un parchemin, la couleur est imposée');
+    assert.equal(choisir('fondus'), 'none', 'sous une encre sombre aussi');
+    assert.equal(choisir('aucune'), 'block', 'et elle revient quand on retire la texture');
+    // Et la relecture du panneau dit la même chose.
+    b.bulleTexture = 'papier';
+    updateSidePanel();
+    assert.equal(wrap.style.display, 'none', 'la fiche rouverte doit masquer le champ aussi');
+  });
+
   test('⚠️ LA LISTE DE LA POINTE MONTRE CE QUE LE DESSIN FAIT, défaut de la forme compris', () => {
     // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU, sur signalement : « plutôt que de garder la
     // coche, on peut la supprimer et ajouter Aucune aux options ». Deux commandes pour un même

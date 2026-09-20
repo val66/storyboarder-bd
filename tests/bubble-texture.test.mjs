@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import {
   TEXTURE_AUCUNE, TEXTURE_FONDUS, TEXTURE_PAPIER, TEXTURE_DEFAUT,
   texturesConnues, textureDeLaBulle, couchesDeTextureBulle,
+  couleurImposeeParLaTexture, couleurTexteParDefautDeLaTexture,
 } from '../src/bubble-texture.js';
 
 const rendu = (texture, ctx) => couchesDeTextureBulle(
@@ -42,6 +43,54 @@ describe('LA GARANTIE : une Bulle sans texture se remplit comme avant', () => {
     assert.equal(r.couches[0].facteur, null, 'le chemin doit être pris tel quel');
     assert.equal(r.couches[0].couleur, '#abcdef');
     assert.equal(r.couches[0].alpha, 0.4);
+  });
+});
+
+describe('⚠️ UNE TEXTURE IMPOSE SA COULEUR, sauf « aucune »', () => {
+  test('« aucune » laisse le choix, les deux autres l’imposent', () => {
+    // ⚠️ `null` N'EST PAS « BLANC », c'est « l'utilisateur décide ». Les confondre rendrait le
+    // sélecteur de couleur inopérant pour tout le monde, ou le ferait commander sous une texture
+    // qui le contredit — un parchemin bleu, une tache d'encre rose, que le relevé ne montre nulle
+    // part.
+    assert.equal(couleurImposeeParLaTexture({}), null);
+    assert.equal(couleurImposeeParLaTexture({ bulleTexture: TEXTURE_AUCUNE }), null);
+    for (const t of [TEXTURE_FONDUS, TEXTURE_PAPIER]) {
+      const c = couleurImposeeParLaTexture({ bulleTexture: t });
+      assert.ok(/^#[0-9a-fA-F]{6}$/.test(c), `« ${t} » impose « ${c} », qui n’est pas une couleur`);
+    }
+  });
+
+  test('⚠️ ET L’ENCRE EST SOMBRE, LE PARCHEMIN CLAIR ET CHAUD — pas l’inverse', () => {
+    // Un test qui se contenterait de « une couleur est imposée » resterait vert si on les
+    // échangeait. Ce qui compte est ce que le relevé montre : une masse d'encre NOIRE chez Lecteur
+    // omniscient, un parchemin crème chez La Licorne.
+    const lum = (h) => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+    const encre = couleurImposeeParLaTexture({ bulleTexture: TEXTURE_FONDUS });
+    const papier = couleurImposeeParLaTexture({ bulleTexture: TEXTURE_PAPIER });
+    assert.ok(lum(encre) < 0.2, `l’encre est à ${lum(encre).toFixed(2)} de luminosité`);
+    assert.ok(lum(papier) > 0.7, `le parchemin est à ${lum(papier).toFixed(2)}`);
+    const [pr, , pb] = [1, 3, 5].map(i => parseInt(papier.slice(i, i + 2), 16));
+    assert.ok(pr > pb + 30, 'le parchemin doit être chaud, pas un gris clair');
+  });
+
+  test('⚠️ LA COULEUR DE TEXTE N’EST QU’UN DÉFAUT, et il existe là où il est nécessaire', () => {
+    // Sans lui, une encre sombre garderait le texte anthracite des autres Bulles : noir sur noir.
+    // La texture ne dit que « à défaut » — le champ de l'utilisateur l'emporte, ce que le dessin
+    // vérifie de son côté.
+    assert.equal(couleurTexteParDefautDeLaTexture({}), null,
+      '« aucune » ne doit rien imposer au texte non plus');
+    const surEncre = couleurTexteParDefautDeLaTexture({ bulleTexture: TEXTURE_FONDUS });
+    const surPapier = couleurTexteParDefautDeLaTexture({ bulleTexture: TEXTURE_PAPIER });
+    const lum = (h) => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+    // Le texte doit CONTRASTER avec le fond que la même texture impose : c'est la seule chose qui
+    // rende la texture utilisable telle quelle.
+    for (const [texture, texte] of [[TEXTURE_FONDUS, surEncre], [TEXTURE_PAPIER, surPapier]]) {
+      const fond = couleurImposeeParLaTexture({ bulleTexture: texture });
+      assert.ok(Math.abs(lum(texte) - lum(fond)) > 0.5,
+        `${texture} : texte ${texte} sur fond ${fond}, contraste insuffisant`);
+    }
   });
 });
 

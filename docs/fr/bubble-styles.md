@@ -52,7 +52,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 |---|---|
 | **forme** | ellipse, rectangle arrondi, rectangle net, octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
 | **trait** | épaisseur, motif de pointillés, régularité (net ou tremblé), couleur |
-| **remplissage** | couleur, opacité, **texture** (aucune, bords fondus, vieux papier) |
+| **remplissage** | couleur, opacité, **texture** (aucune, encre sombre, vieux papier) |
 | **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, **aucune** |
 | **texte** | police, casse, graisse, italique, couleur, manuscrit |
 | **ornement** | note de musique, guillemets, crochets |
@@ -381,6 +381,35 @@ entièrement, marbrure comprise.
 
 ⚠️ **ET UNE TEXTURE NE REÇOIT AUCUNE GÉOMÉTRIE :** ni la forme, ni la taille, ni le nombre de points
 du contour. Une couronne d'épines peut donc être marbrée et une tache d'encre rester en aplat.
+
+### ⚠️ UNE TEXTURE PORTE SA PROPRE COULEUR DE FOND
+
+Signalé à l'usage, et c'est juste : un vieux papier n'est pas « une couleur au choix, un peu
+tachée », c'est du **parchemin** ; la tache d'encre du Lecteur omniscient est **noire**, avec un
+lettrage blanc. Laisser le sélecteur commander sous une texture qui teinte donnait des parchemins
+bleus et des taches d'encre roses, que le relevé ne montre nulle part.
+
+| texture | fond imposé | texte par défaut |
+|---|---|---|
+| aucune | — *l'utilisateur choisit* | — |
+| encre sombre | noir d'encre | clair |
+| vieux papier | parchemin crème | brun sombre |
+
+⚠️ **ET « AUCUNE » N'EST PAS « BLANC » MAIS « L'UTILISATEUR DÉCIDE ».** Les confondre rendrait le
+sélecteur de couleur inopérant pour tout le monde. C'est la seule entrée où il commande quelque
+chose — et la fiche **masque** le champ sous les autres, plutôt que de laisser un bouton mort : un
+réglage visible et inopérant est pire que pas de réglage du tout, défaut rencontré quatre fois dans
+ce chantier sous d'autres formes.
+
+⚠️ **LA COULEUR DU TEXTE N'EST QU'UN DÉFAUT, jamais une contrainte** — même dispositif que la queue
+par défaut d'une forme. Sans lui, une encre sombre garderait le texte anthracite des autres Bulles,
+donc noir sur noir, et la texture serait inutilisable telle quelle. Le champ de l'utilisateur, dès
+qu'il existe, l'emporte toujours.
+
+⚠️ **LA CLÉ PERSISTÉE DE L'ENCRE SOMBRE RESTE `fondus`**, alors que le libellé a changé. Le nom
+d'origine ne décrivait que le bord ; la couleur en fait désormais partie. Mais le registre **lève**
+sur une clé inconnue, et renommer la clé ferait échouer bruyamment l'ouverture d'un Projet
+enregistré entre-temps. Un libellé peut mentir sans conséquence, une clé persistée non.
 
 ### Ce que la texture coûte
 

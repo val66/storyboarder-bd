@@ -5,6 +5,13 @@
  * UNE TEXTURE EST UNE PILE DE COUCHES, ET C'EST TOUT
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
+ * ⚠️ UNE TEXTURE IMPOSE SA COULEUR DE FOND, SAUF « AUCUNE ». Demandé à l'usage, et c'est juste : un
+ * vieux papier n'est pas « une couleur au choix, un peu tachée », c'est du parchemin ; la tache
+ * d'encre du Lecteur omniscient est NOIRE, avec un lettrage blanc. Laisser l'utilisateur régler la
+ * couleur sous une texture qui la teinte donnait des résultats que le relevé ne montre nulle part —
+ * un parchemin bleu, une tache d'encre rose. « Aucune » reste le cas où la couleur est libre, et
+ * c'est là que le sélecteur de couleur a un sens.
+ *
  * Une texture rend DEUX choses, et la plupart n'en emploient qu'une :
  *
  *   1. `couches` — le chemin de la Bulle ramené vers son centre par un facteur, éventuellement
@@ -106,7 +113,14 @@ function teinte(couleur, t){
 // ── Les trois textures ──────────────────────────────────────────────────────────────────────────
 
 /**
- * Les bords fondus du Lecteur omniscient : cœur opaque, bord translucide laissant passer le fond.
+ * L'encre sombre du Lecteur omniscient : une masse NOIRE au cœur opaque, dont le bord translucide
+ * laisse passer le fond, et qui porte un lettrage clair.
+ *
+ * ⚠️ LA CLÉ PERSISTÉE RESTE `fondus`, ALORS QUE LE LIBELLÉ DIT « ENCRE SOMBRE ». Le nom d'origine ne
+ * décrivait que le bord ; la couleur en fait désormais partie. Mais un registre LÈVE sur une clé
+ * inconnue — c'est la politique de tout ce chantier — et renommer la clé ferait échouer bruyamment
+ * l'ouverture d'un Projet enregistré entre-temps. Le libellé peut mentir sans conséquence, une clé
+ * persistée non.
  *
  * ⚠️ LE PROFIL RESTE PLAT JUSQU'À MI-CHEMIN. Un fondu qui commencerait au centre donnerait un halo,
  * pas une tache : le relevé décrit un CŒUR OPAQUE et un bord qui s'éteint, pas un dégradé continu.
@@ -123,6 +137,13 @@ function couchesFondus(o, ctx){
   }
   return { couches: out, taches: [] };
 }
+
+/**
+ * ⚠️ LA COULEUR DU TEXTE EST UN DÉFAUT, PAS UNE CONTRAINTE — même dispositif que la queue par défaut
+ * d'une forme. Une encre sombre garderait sinon le texte anthracite des autres Bulles, donc noir sur
+ * noir : la texture serait inutilisable telle quelle. Le champ `bulleTextColor` de l'utilisateur
+ * l'emporte toujours ; la texture ne dit que « à défaut ».
+ */
 
 /**
  * Le vieux papier de La Licorne : un cartouche marbré, crème et ocre, taché de plus sombre.
@@ -180,9 +201,21 @@ const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
     rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }], taches: [] }),
+    // ⚠️ AUCUNE COULEUR IMPOSÉE, ET C'EST TOUT L'INTÉRÊT DE CETTE ENTRÉE : c'est le seul cas où le
+    // sélecteur « Couleur du fond » commande vraiment quelque chose.
+    couleurImposee: null,
+    couleurTexteParDefaut: null,
   },
-  [TEXTURE_FONDUS]: { rendu: couchesFondus },
-  [TEXTURE_PAPIER]: { rendu: couchesPapier },
+  [TEXTURE_FONDUS]: {
+    rendu: couchesFondus,
+    couleurImposee: '#1B1B1F',        // le noir d'encre du relevé, pas un gris
+    couleurTexteParDefaut: '#FFFFFF', // lettrage clair, comme sur la planche
+  },
+  [TEXTURE_PAPIER]: {
+    rendu: couchesPapier,
+    couleurImposee: '#E3D2A8',        // le parchemin de La Licorne
+    couleurTexteParDefaut: '#3A2B18',
+  },
 };
 
 /** Les clés enregistrées, pour la fiche et pour les tests. */
@@ -204,6 +237,21 @@ export function textureDeLaBulle(o){
     throw new Error(`Texture de Bulle inconnue : « ${v} ». Textures enregistrées : ${texturesConnues().join(', ')}.`);
   }
   return v;
+}
+
+/**
+ * La couleur de fond qu'une texture IMPOSE, ou `null` si elle laisse le choix. Fonction PURE.
+ *
+ * ⚠️ `null` N'EST PAS « BLANC », c'est « l'utilisateur décide ». Les deux se confondraient dans un
+ * appelant distrait, et le sélecteur de couleur deviendrait inopérant pour tout le monde.
+ */
+export function couleurImposeeParLaTexture(o){
+  return REGISTRE[textureDeLaBulle(o)].couleurImposee;
+}
+
+/** La couleur de texte qu'une texture suggère À DÉFAUT, ou `null`. Fonction PURE. */
+export function couleurTexteParDefautDeLaTexture(o){
+  return REGISTRE[textureDeLaBulle(o)].couleurTexteParDefaut;
 }
 
 /**

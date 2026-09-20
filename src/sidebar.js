@@ -19,7 +19,7 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
-import { textureDeLaBulle } from './bubble-texture.js';
+import { textureDeLaBulle, couleurImposeeParLaTexture } from './bubble-texture.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -156,6 +156,21 @@ export function majAffichageReglagesTraitBulle3D(bordureVisible){
                       sideBubbleBorderDashWrap, sideBubbleBorderRegularityWrap]) {
     if (bloc) bloc.style.display = v;
   }
+}
+
+const sideBubbleBgColorWrap = document.getElementById('sideBubbleBgColorWrap');
+
+/**
+ * Le sélecteur « Couleur du fond » n'est offert que lorsqu'il commande quelque chose.
+ *
+ * ⚠️ UN RÉGLAGE VISIBLE ET INOPÉRANT EST PIRE QUE PAS DE RÉGLAGE DU TOUT — c'est le défaut que ce
+ * chantier a rencontré quatre fois sous d'autres formes : on croit agir, rien ne bouge, et rien ne
+ * dit pourquoi. Sous une texture qui IMPOSE sa couleur — le parchemin, l'encre sombre — le champ
+ * n'aurait aucun effet ; on le masque plutôt que de laisser l'utilisateur tourner un bouton mort.
+ */
+export function majAffichageCouleurDeFondBulle3D(bulle){
+  if (!sideBubbleBgColorWrap) return;
+  sideBubbleBgColorWrap.style.display = couleurImposeeParLaTexture(bulle) ? 'none' : 'block';
 }
 
 const rightPanel = document.getElementById('rightPanel');
@@ -1085,6 +1100,7 @@ function updateSidePanelImpl(){
     // défaut de la forme — la fiche montre donc « Aucune » sur un écu neuf, comme le dessin.
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
+    majAffichageCouleurDeFondBulle3D(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;

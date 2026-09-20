@@ -2933,3 +2933,52 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
     appels(j, 'fill').forEach((e, i) => assert.equal(e.alpha, 0, `peinture ${i} à ${e.alpha}`));
   });
 });
+
+describe('#425m bis — la texture porte la couleur du fond', () => {
+  const bulle = (o) => Object.assign({ id: 'b13', type: 'bulle', x: 0, y: 0, w: 200, h: 100,
+    description: 'Bonjour', bulleColor: '#00ff00', tailVisible: false }, o);
+  const styleDeLaPlusGrandeCouche = (j) => {
+    // La première peinture est la couche la plus extérieure : c'est elle qui donne le ton.
+    const set = j.filter(e => e.nom === 'set:fillStyle');
+    return set.length ? set[0].args[0] : null;
+  };
+
+  test('⚠️ SANS TEXTURE, LA COULEUR CHOISIE COMMANDE — et c’est le seul cas', () => {
+    const j = dessiner(bulle({ bulleShape: 'rect' }));
+    assert.equal(styleDeLaPlusGrandeCouche(j), '#00ff00');
+  });
+
+  test('⚠️ AVEC UNE TEXTURE, LA COULEUR CHOISIE EST IGNORÉE, et ce n’est pas un oubli', () => {
+    // ⚠️ DEMANDÉ À L'USAGE, ET LA FICHE MASQUE LE CHAMP EN CONSÉQUENCE. Un vieux papier n'est pas
+    // « une couleur au choix, un peu tachée » : c'est du parchemin. Laisser le sélecteur commander
+    // donnait des parchemins verts, que le relevé ne montre nulle part.
+    for (const texture of ['fondus', 'papier']) {
+      const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: texture }));
+      const vu = styleDeLaPlusGrandeCouche(j);
+      assert.notEqual(vu, '#00ff00', `« ${texture} » a laissé passer la couleur choisie`);
+      assert.ok(/^#[0-9a-fA-F]{6}$/.test(vu), `« ${texture} » peint avec « ${vu} »`);
+    }
+  });
+
+  test('⚠️ LE TEXTE SUIT LA TEXTURE PAR DÉFAUT, mais le choix de l’utilisateur l’emporte', () => {
+    // ⚠️ SANS CE DÉFAUT, L'ENCRE SOMBRE SERAIT INUTILISABLE : du texte anthracite sur du noir.
+    // ⚠️ ET SANS LA SECONDE MOITIÉ, la texture ÉCRASERAIT un choix explicite — c'est la différence
+    // entre un défaut et une contrainte, la même que pour la queue par défaut d'une forme.
+    const couleurDuTexte = (champs) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle(champs));
+      const iTexte = c.journal.findIndex(e => e.nom === 'fillText');
+      assert.ok(iTexte > 0, 'le texte doit être dessiné');
+      return c.journal.slice(0, iTexte).filter(e => e.nom === 'set:fillStyle').pop().args[0];
+    };
+    // Sans texture : le noir anthracite d'origine.
+    assert.equal(couleurDuTexte({ bulleShape: 'rect' }), '#23242A');
+    // Sur l'encre sombre : un texte clair, sinon illisible.
+    const surEncre = couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'fondus' });
+    assert.notEqual(surEncre, '#23242A', 'le texte doit changer sur une encre sombre');
+    // Et un choix explicite l'emporte, sur les deux.
+    assert.equal(couleurDuTexte({ bulleShape: 'rect', bulleTextColor: '#ff00ff' }), '#ff00ff');
+    assert.equal(couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'fondus',
+      bulleTextColor: '#ff00ff' }), '#ff00ff');
+  });
+});
