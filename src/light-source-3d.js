@@ -217,3 +217,136 @@ export function planLumieresPosees3D(idsEnCache, elementsDeLaCase){
   const aEteindre = Array.from(idsEnCache || []).filter(id => !allumes.has(id));
   return { aAllumer, aEteindre };
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * CE QUE LA FICHE D'UNE LUMIÈRE MONTRE ET CE QU'ELLE MASQUE (#421a)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La fiche d'une Lumière EST celle des Éléments, `objectModal`, augmentée d'une section
+ * « Luminosité » et amputée de ce qui ne veut rien dire pour une source. C'est un choix de
+ * l'utilisateur, et le dépôt a déjà le mécanisme : un Mur appartenant à une Pièce masque ses
+ * sections Position et Orientation et affiche un mot à leur place. `openObjectModal` porte une
+ * trentaine de bascules du même genre.
+ *
+ * ⚠️ POURQUOI UNE FONCTION PURE PLUTÔT QU'UNE SUITE DE `style.display` DANS `openObjectModal`. La
+ * modale ne s'ouvre pas sous Node — elle touche le DOM, le dessin, le brouillon. Une décision
+ * enfouie dans ses trois cents lignes ne serait vérifiable que par lecture. Ici elle se teste, et
+ * c'est la même discipline que `planLumieresPosees3D` : la décision d'un côté, les gestes de
+ * l'autre.
+ *
+ * ⚠️ LA PROPRIÉTÉ QUI COMPTE, ET C'EST ELLE QUI JUSTIFIE LA FORME : **tout élément à bascule de la
+ * modale sort d'ici EXACTEMENT UNE FOIS**, montré ou masqué. Un champ absent de cette table est
+ * précisément celui qui restera visible par accident sur une Lumière — le « Type » proposant de
+ * transformer une source en voiture, la « Pose » d'une sphère, la « Face du Mur » d'une lampe. Le
+ * test ne se contente pas de vérifier les valeurs : il RELIT index.html et exige que les deux
+ * ensembles coïncident. Ajouter un champ à la modale sans décider de son sort pour une Lumière fait
+ * rougir la suite.
+ *
+ * C'est l'énumération incomplète, deuxième classe de défaut la plus fréquente de ce dépôt, et la
+ * seule parade qui tienne dans le temps est de la rendre mécanique.
+ *
+ * ⚠️ CE QUI EST HORS DE PORTÉE ICI : que la fiche soit LISIBLE. Cette table dit ce qui s'affiche,
+ * pas si l'ensemble se tient à l'écran. Le jugement d'œil appartient à #421z, comme l'intensité de
+ * départ a dû être jugée à l'écran en #420c après avoir été « correctement » dérivée.
+ */
+
+/**
+ * Les sections de `objectModal`, et leur sort pour une Lumière.
+ *
+ * ⚠️ « ORIENTATION » EST MASQUÉE, ET C'EST LA SEULE DES QUATRE. Une source ponctuelle n'a aucune
+ * orientation : trois curseurs de rotation sans le moindre effet seraient un piège, du genre qu'on
+ * manipule dix secondes avant de conclure que l'application est cassée.
+ *
+ * « Luminosité » n'existe pas encore dans index.html — elle arrive en #421b. Elle figure ici parce
+ * que c'est cette table qui décide, et non l'inverse : le test de coïncidence la réclamera.
+ */
+export const SECTIONS_FICHE_LUMIERE = {
+  principal: true,
+  position: true,
+  orientation: false,
+  apercu: true,
+  luminosite: true,
+};
+
+/**
+ * Les champs et commandes à bascule de `objectModal`, et leur sort pour une Lumière.
+ *
+ * Les entrées en `…Field` sont les enveloppes que porte déjà index.html ; les cinq dernières sont
+ * des commandes nues, nommées une par une parce qu'aucune enveloppe ne les regroupe.
+ *
+ * ⚠️ `objectHeightField` EST MONTRÉ ALORS QUE `objectSizeInput` NE L'EST PAS, et ce n'est pas une
+ * hésitation. Les deux commandent la MÊME donnée, `realHeightFloor` : l'un en mètres, l'autre en
+ * pourcentage d'une hauteur naturelle. Pour une Lumière cette donnée est le DIAMÈTRE de la sphère,
+ * une grandeur qu'on pense en centimètres et pas en « 140 % d'une sphère de référence ». On garde
+ * donc celui qui se lit, et le libellé change (cf. `LIBELLE_TAILLE_LUMIERE`).
+ *
+ * ⚠️ ET C'EST UN DIAMÈTRE, PAS UN RAYON. Le module s'est déjà trompé de nom une fois sur ce champ.
+ *
+ * ⚠️ `objectHidden3dCheckbox` EST MONTRÉ, ET C'EST LE SEUL VRAI INTERRUPTEUR. #420f l'a mesuré : une
+ * lumière à intensité nulle est calculée intégralement et coûte le même prix qu'une lumière allumée.
+ * Seul `hidden3d` la retire du compte. Masquer cette case pour « simplifier » retirerait la seule
+ * commande qui économise quelque chose.
+ *
+ * ⚠️ `objectGroundMagnetField` EST MASQUÉ PARCE QUE LA COMMANDE SERAIT MORTE. `groundMagnetEligible`
+ * exclut déjà les lumières (#420d) : la case cocherait sans rien commander. Une commande qui ne
+ * commande rien est pire qu'une commande absente, on la croit en panne.
+ */
+export const CHAMPS_FICHE_LUMIERE = {
+  // — Caractéristiques principales —
+  objectFigureField: false,        // le modèle .glb : une source n'en porte aucun
+  objectPoseField: false,          // la pose : une sphère n'en a pas
+  objectStrayMeshField: false,     // les maillages parasites d'un modèle importé
+  objectMagnetWallField: false,    // les quatre champs de Mur et d'ouverture, sans objet ici
+  objectWallFaceField: false,
+  objectWallSideField: false,
+  objectWallSizeField: false,
+  objectDoorField: false,
+  objectDoorAngleField: false,
+  objectWindowField: false,
+  objectWindowAngleField: false,
+  objectSizeField: true,           // l'enveloppe reste : elle porte la hauteur, ci-dessous
+  objectHeightField: true,         // → « Diamètre de la sphère (m) »
+  objectTraversantField: false,    // propriété d'une ouverture dans un Mur
+  objectLinkedField: false,        // l'Élément hôte d'une ouverture
+  // — Position —
+  objectPosField: true,            // X / Y / Z : une source se place, c'est tout son intérêt
+  objectGroundMagnetField: false,  // commande morte, cf. ci-dessus
+  objectTraverseGroundField: false,// nichée dans l'aimant, elle disparaît avec lui
+  objectDepthField: true,          // la profondeur fait partie du placement
+  // — Commandes nues —
+  objectNameInput: true,           // une source se nomme comme tout Élément
+  objectTypeSelect: false,         // on ne transforme pas une Lumière en chaise
+  objectSizeInput: false,          // le pourcentage, doublon de la hauteur : cf. ci-dessus
+  objectPreview3D: true,           // l'aperçu montre la sphère, sa couleur et sa taille
+  objectEditorOpenBtn: false,      // le crayon mène à l'Éditeur : rien à poser
+  objectHidden3dCheckbox: true,    // le seul vrai interrupteur, cf. ci-dessus
+};
+
+/**
+ * Le libellé que prend le champ de hauteur sur une Lumière.
+ *
+ * ⚠️ UNE CLÉ, PAS UNE PHRASE. Les libellés vivent dans i18n.js, et écrire « Diamètre de la sphère »
+ * en clair ici en ferait une seconde source, française seulement, qui dériverait de l'autre au
+ * premier ajustement de formulation.
+ */
+export const LIBELLE_TAILLE_LUMIERE = 'lightSphereDiameter';
+
+/**
+ * La disposition complète de la fiche d'une Lumière. Fonction PURE, sans DOM.
+ *
+ * ⚠️ ELLE NE PREND AUCUN ARGUMENT, ET C'EST VOLONTAIRE. Rien ne varie d'une source à l'autre :
+ * toutes montrent et masquent la même chose. Accepter un objet pour l'ignorer laisserait croire
+ * qu'un réglage pourrait changer la disposition, et le premier lecteur pressé chercherait où.
+ *
+ * Elle rend des COPIES : les tables ci-dessus sont la référence, et un appelant qui les modifierait
+ * — fût-ce par mégarde, en cochant une case dans un objet qu'il croit à lui — changerait la fiche
+ * de toutes les Lumières pour le reste de la session.
+ */
+export function dispositionFicheLumiere3D(){
+  return {
+    sections: { ...SECTIONS_FICHE_LUMIERE },
+    champs: { ...CHAMPS_FICHE_LUMIERE },
+    libelleTaille: LIBELLE_TAILLE_LUMIERE,
+  };
+}

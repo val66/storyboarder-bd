@@ -30,6 +30,7 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
   champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D, MAJORATION_LUMIERE_POSEE,
+  dispositionFicheLumiere3D, SECTIONS_FICHE_LUMIERE, CHAMPS_FICHE_LUMIERE, LIBELLE_TAILLE_LUMIERE,
 } from '../src/light-source-3d.js';
 import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
 import * as R from '../src/rig3d.js';
@@ -916,4 +917,184 @@ describe('⚠️ LE PRIX D\'UN NOMBRE DE LUMIÈRES NE DÉPEND PAS DU NOMBRE D\'�
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : le temps de compilation. Il vit dans le pilote du GPU,
  * pas dans ce dépôt. Les millisecondes sont dans docs/en/rendering-performance.md, septième
  * campagne, avec les trois instruments qui ont menti avant le bon.
+ */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA DISPOSITION DE LA FICHE D'UNE LUMIÈRE (#421a)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Tenu : que la table couvre EXACTEMENT les éléments à bascule de `objectModal`, ni plus ni moins,
+ * et que les décisions qui ont une raison écrite soient bien celles-là.
+ *
+ * ⚠️ PAS TENU : que la fiche soit LISIBLE. Ces tests disent ce qui s'affiche ; ils ne disent rien de
+ * ce que ça donne à l'œil, ni si l'ordre des sections se tient. Ce jugement appartient à #421z, et
+ * le dépôt sait ce qu'il en coûte de le confondre : l'intensité de départ de #420a était
+ * correctement dérivée et s'est révélée trop faible dès qu'on a pu la regarder.
+ */
+describe('⚠️ LA FICHE D’UNE LUMIÈRE COUVRE TOUTE LA MODALE, ET RIEN QUE LA MODALE', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  /** Le corps de `objectModal`, du marqueur d'ouverture à la modale suivante. */
+  function corpsDeLaModaleObjet(){
+    const debut = html.indexOf('<div class="modal-overlay hidden" id="objectModal">');
+    assert.ok(debut > 0, '`objectModal` est introuvable dans index.html');
+    const fin = html.indexOf('<div class="modal-overlay hidden" id="roomModal">', debut);
+    assert.ok(fin > debut, 'la modale Pièce, qui borne la modale Objet, est introuvable');
+    return html.slice(debut, fin);
+  }
+
+  /** Les cinq commandes nues que la table nomme une par une, faute d'enveloppe qui les groupe. */
+  const COMMANDES_NUES = ['objectNameInput', 'objectTypeSelect', 'objectSizeInput',
+                          'objectPreview3D', 'objectEditorOpenBtn', 'objectHidden3dCheckbox'];
+
+  test('⚠️ CHAQUE SECTION ET CHAQUE CHAMP DE LA MODALE SORT D’ICI EXACTEMENT UNE FOIS', () => {
+    // ⚠️ C'EST LE TEST QUI JUSTIFIE TOUTE LA FORME DE LA TABLE, et il est MÉCANIQUE à dessein.
+    // L'énumération incomplète est la deuxième classe de défaut de ce dépôt ; une liste tenue à la
+    // main se désynchronise au premier champ ajouté, et le symptôme serait un « Type » proposant de
+    // transformer une source en voiture — visible seulement si quelqu'un ouvre la fiche.
+    const corps = corpsDeLaModaleObjet();
+    const sectionsHtml = new Set([...corps.matchAll(/data-section="([a-z]+)"/g)].map(m => m[1]));
+    const champsHtml = new Set([...corps.matchAll(/id="(object[A-Za-z0-9]*Field)"/g)].map(m => m[1]));
+
+    // Le témoin d'abord : une extraction vide rendrait les comparaisons ci-dessous vraies pour la
+    // pire des raisons.
+    assert.ok(sectionsHtml.size >= 4, `${sectionsHtml.size} sections extraites de index.html`);
+    assert.ok(champsHtml.size >= 10, `${champsHtml.size} champs extraits de index.html`);
+
+    // « luminosite » n'existe pas encore dans index.html : elle arrive en #421b. C'est la table qui
+    // décide, pas l'inverse — on l'écarte donc de la comparaison, nommément, plutôt que de relâcher
+    // le test.
+    const sectionsAttendues = new Set(Object.keys(SECTIONS_FICHE_LUMIERE));
+    assert.ok(sectionsAttendues.delete('luminosite'),
+      'la section « luminosite » doit figurer dans la table : c’est elle que #421b ajoutera');
+
+    assert.deepEqual([...sectionsAttendues].sort(), [...sectionsHtml].sort(),
+      'les sections de la table et celles de index.html ne coïncident plus');
+
+    const champsAttendus = new Set(Object.keys(CHAMPS_FICHE_LUMIERE));
+    COMMANDES_NUES.forEach(c => assert.ok(champsAttendus.delete(c),
+      `« ${c} » est annoncée comme commande nue mais ne figure pas dans la table`));
+    assert.deepEqual([...champsAttendus].sort(), [...champsHtml].sort(),
+      'les champs de la table et ceux de index.html ne coïncident plus — un champ ajouté à la ' +
+      'modale sans décision pour une Lumière restera visible sur une source');
+  });
+
+  test('⚠️ ET LES COMMANDES NUES EXISTENT VRAIMENT DANS LA MODALE', () => {
+    // Sans ceci, une commande renommée dans index.html laisserait dans la table une entrée qui ne
+    // désigne plus rien : la décision serait prise, et sans effet. C'est « le test vérifie qu'un
+    // identifiant APPARAÎT au lieu de vérifier qu'il GOUVERNE », vu à l'envers.
+    const corps = corpsDeLaModaleObjet();
+    COMMANDES_NUES.forEach(c => assert.ok(corps.includes(`id="${c}"`),
+      `« ${c} » est décidée dans la table mais n’existe pas dans objectModal`));
+  });
+});
+
+describe('Ce que la fiche d’une Lumière montre, et ce qu’elle masque', () => {
+  test('⚠️ « ORIENTATION » EST LA SEULE SECTION MASQUÉE', () => {
+    // Une source ponctuelle n'a aucune orientation. Trois curseurs sans effet seraient un piège —
+    // on les manipule dix secondes avant de conclure que l'application est cassée. Les trois autres
+    // sections doivent rester : masquer Position reviendrait à retirer tout l'intérêt d'une source
+    // POSÉE.
+    const d = dispositionFicheLumiere3D();
+    const masquees = Object.entries(d.sections).filter(([, v]) => !v).map(([k]) => k);
+    assert.deepEqual(masquees, ['orientation'],
+      `sections masquées : ${masquees.join(', ') || 'aucune'}`);
+  });
+
+  test('⚠️ LE SEUL VRAI INTERRUPTEUR RESTE ATTEIGNABLE', () => {
+    // #420f, mesuré : une lumière à intensité nulle est calculée intégralement et coûte le même
+    // prix qu'une lumière allumée (5,5 ms contre 6,2, pour 2,5 sans lumière du tout). Seul
+    // `hidden3d` la retire du compte des lumières, donc du shader. Masquer cette case pour
+    // « simplifier la fiche » retirerait la seule commande qui économise quoi que ce soit.
+    assert.equal(dispositionFicheLumiere3D().champs.objectHidden3dCheckbox, true);
+  });
+
+  test('⚠️ UNE SEULE DES DEUX COMMANDES DE TAILLE, et c’est celle qui se lit en mètres', () => {
+    // Les deux écrivent `realHeightFloor`. En garder deux ferait deux vues d'une même donnée sur le
+    // même écran, ce que ce dépôt a déjà payé ailleurs ; et le pourcentage ne veut rien dire pour un
+    // diamètre de sphère, qu'on pense en centimètres.
+    const c = dispositionFicheLumiere3D().champs;
+    assert.equal(c.objectSizeField, true, 'l’enveloppe porte la hauteur, elle doit rester');
+    assert.equal(c.objectHeightField, true);
+    assert.equal(c.objectSizeInput, false);
+    // Et le libellé est une CLÉ d'i18n, pas une phrase : une phrase en clair ici serait une seconde
+    // source, française seulement.
+    assert.match(LIBELLE_TAILLE_LUMIERE, /^[a-zA-Z][a-zA-Z0-9]*$/,
+      `« ${LIBELLE_TAILLE_LUMIERE} » n’est pas une clé d’i18n`);
+    assert.ok(!/\s/.test(LIBELLE_TAILLE_LUMIERE), 'le libellé est écrit en clair au lieu d’une clé');
+  });
+
+  test('⚠️ AUCUNE COMMANDE MORTE : l’aimant du Sol est masqué parce qu’il ne commanderait rien', () => {
+    // `groundMagnetEligible` exclut déjà les lumières (#420d) — et un test de ce fichier le tient.
+    // Une case à cocher qui coche sans rien commander est pire qu'une case absente : on la croit en
+    // panne, et on cherche le défaut ailleurs.
+    const c = dispositionFicheLumiere3D().champs;
+    assert.equal(groundMagnetEligible({ type: 'objet3d', objType: OBJ_TYPE_LUMIERE }), false,
+      'prémisse rompue : le Sol aimante désormais les lumières, la décision ci-dessous est à revoir');
+    assert.equal(c.objectGroundMagnetField, false);
+    assert.equal(c.objectTraverseGroundField, false, 'nichée dans l’aimant, elle disparaît avec lui');
+  });
+
+  test('⚠️ RIEN DE CE QUI PARLE D’UN AUTRE TYPE D’ÉLÉMENT NE SUBSISTE', () => {
+    // Le défaut que ce chantier existe pour éviter, et que le test de sidebar.js décrivait déjà :
+    // « elle y réglerait un type, une taille et une matière, dont aucun ne veut dire quoi que ce
+    // soit ici ».
+    const c = dispositionFicheLumiere3D().champs;
+    for (const mort of ['objectTypeSelect', 'objectFigureField', 'objectPoseField',
+                        'objectStrayMeshField', 'objectMagnetWallField', 'objectWallFaceField',
+                        'objectWallSideField', 'objectWallSizeField', 'objectDoorField',
+                        'objectDoorAngleField', 'objectWindowField', 'objectWindowAngleField',
+                        'objectTraversantField', 'objectLinkedField', 'objectEditorOpenBtn']) {
+      assert.equal(c[mort], false, `« ${mort} » resterait visible sur une Lumière`);
+    }
+  });
+
+  test('⚠️ LA TABLE RENDUE EST UNE COPIE : la modifier ne change pas les Lumières suivantes', () => {
+    // Sans copie, un appelant qui écrirait dans l'objet qu'il croit à lui changerait la fiche de
+    // toutes les Lumières pour le reste de la session — et le défaut se manifesterait très loin de
+    // sa cause.
+    const a = dispositionFicheLumiere3D();
+    a.champs.objectTypeSelect = true;
+    a.sections.orientation = true;
+    const b = dispositionFicheLumiere3D();
+    assert.equal(b.champs.objectTypeSelect, false, 'la table des champs est partagée');
+    assert.equal(b.sections.orientation, false, 'la table des sections est partagée');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#421a, la disposition de la fiche) : dix fautes rejouées.
+ *
+ *   M28 une entrée disparaît de la table                                    ROUGE (×3)
+ *   M29 une entrée en trop dans la table                                    ROUGE
+ *   M30 « Orientation » redevient visible                                   ROUGE (×2)
+ *   M31 `objectHidden3dCheckbox` masqué                                     ROUGE
+ *   M32 les DEUX commandes de taille affichées                              ROUGE
+ *   M33 l'aimant du Sol, commande morte, revient                            ROUGE
+ *   M34 la disposition est rendue par RÉFÉRENCE                             ROUGE
+ *   M35 le libellé écrit en clair au lieu d'une clé d'i18n                  ROUGE
+ *   M36 un champ AJOUTÉ à index.html, sans décision pour une Lumière        ROUGE
+ *   M37 l'extraction de la modale ne rend rien                              ROUGE (×2)
+ *
+ * ⚠️ M36 EST LA MUTATION POUR LAQUELLE CE FICHIER EXISTE, et c'est la seule qui ne touche PAS le
+ * code testé : elle ajoute un `<div id="objectNouveauField">` à index.html et ne dit rien à la
+ * table. C'est exactement ce que fera la prochaine personne qui enrichit la modale des Éléments, et
+ * sans ce test la conséquence serait un champ de Mur ou de porte affiché sur une source — visible
+ * seulement si quelqu'un ouvre la fiche, et attribué à n'importe quoi sauf à sa cause. L'énumération
+ * incomplète ne se surveille pas à la main, elle se rend mécanique.
+ *
+ * ⚠️ M34 MÉRITE D'ÊTRE GARDÉE POUR SA DISCRÉTION. Rendre les tables elles-mêmes au lieu d'une copie
+ * ne casse rien le jour où on l'écrit : la fiche s'affiche correctement, et tous les autres tests
+ * restent verts. Le défaut n'apparaît qu'après qu'un appelant a écrit dans l'objet qu'il croyait à
+ * lui, et il se manifeste alors sur une AUTRE Lumière, très loin de sa cause.
+ *
+ * ⚠️ M37 EST LE TÉMOIN, et il n'est pas décoratif : tout ce fichier compare des ensembles extraits
+ * de index.html. Une extraction vide rendrait les comparaisons vraies pour la pire des raisons, et
+ * c'est la faute que ce dépôt a payée quatre fois — mesurer une absence sans vérifier que
+ * l'instrument sait voir une présence.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la fiche soit lisible. Cette table dit ce qui
+ * s'affiche, pas ce que ça donne à l'œil. Le jugement appartient à #421z — et #420c a déjà montré
+ * qu'une valeur correctement dérivée peut être franchement mauvaise à l'écran.
  */

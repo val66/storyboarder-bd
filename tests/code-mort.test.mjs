@@ -84,6 +84,24 @@ const EN_ATTENTE = {
   // remboursée EN ENTIER, comme celles de #403a et #414a avant elle, et pour la même raison :
   // chaque échéance était un NUMÉRO DE TÂCHE et non une intention.
 
+  // #421a — LA FICHE D'UNE LUMIÈRE : LA DÉCISION AVANT SES `style.display`. Cinquième fois que
+  // cette figure revient, et le motif n'a pas changé d'un mot : `openObjectModal` ne s'ouvre pas
+  // sous Node — elle touche le DOM, le dessin, le brouillon — tandis que décider quels champs une
+  // source montre et lesquels elle masque se teste parfaitement.
+  //
+  // Ce que cette décision-ci achète en plus, et qui justifie de l'écrire en avance : son test RELIT
+  // index.html et exige que la table et la modale couvrent le même ensemble. Un champ ajouté à la
+  // modale sans décision pour une Lumière fait rougir la suite. Écrire cela APRÈS le branchement
+  // aurait voulu dire brancher d'abord à la main, donc avoir déjà la liste — et une liste tenue à
+  // la main est précisément ce que ce mécanisme remplace.
+  //
+  // ÉCHÉANCE : #421c, qui applique la disposition dans `openObjectModal`. Un NUMÉRO DE TÂCHE, comme
+  // les quatre fois précédentes.
+  dispositionFicheLumiere3D: '#421c — appliquer la disposition dans openObjectModal',
+  // `SECTIONS_FICHE_LUMIERE`, `CHAMPS_FICHE_LUMIERE` et `LIBELLE_TAILLE_LUMIERE` ne sont PAS ici :
+  // le détecteur les voit appelées à l'intérieur du module, par `dispositionFicheLumiere3D`.
+  // Quatrième fois que ce garde-fou évite des exemptions qui ne surveilleraient rien.
+
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
   // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
@@ -157,13 +175,22 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // après #403c, zéro à nouveau depuis #403d, trois avec celles de #414a, cinq avec le champ
     // persisté de #414b, quatre après #414c, trois après #414d, une seule depuis que #414e a
     // branché le dôme, ZÉRO depuis que #414f a branché l'héritage d'une Scène vers une Case, et
-    // DEUX depuis les fondations de #420a, UNE depuis que #420b a branché la création, et ZÉRO à
-    // nouveau depuis que #420c a branché le rendu. L'échéance de chacune est un numéro de tâche, et
-    // toutes celles arrivées à terme ont été tenues.
+    // DEUX depuis les fondations de #420a, UNE depuis que #420b a branché la création, ZÉRO à
+    // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, UNE depuis
+    // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, et UNE depuis que
+    // #421a a posé la disposition de la fiche d'une Lumière — échéance #421c.
+    // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
+    // tenues.
+    //
+    // ⚠️ UN TROISIÈME NOM A ÉTÉ ÉCARTÉ PLUTÔT QU'INSCRIT, et c'est l'usage le plus utile qu'on ait
+    // fait de ce fichier. `apparenceBulleEstCelleDOrigine` n'aurait jamais eu d'appelant dans
+    // l'application : il n'existait que pour un test, qui assertait déjà la même chose sans lui.
+    // La question posée ici — « à quoi sert cet export ? » — a donné « à rien », et le code est
+    // parti au lieu d'entrer en liste.
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
