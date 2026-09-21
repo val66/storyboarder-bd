@@ -131,6 +131,13 @@ Allumer les ombres est donc un geste explicite, dans la section Lumière du menu
 cherche ; le coût refusé était que toutes les Planches finies de l'utilisateur changent sans qu'il
 l'ait demandé.
 
+⚠️ **ET ELLE A LA FORME D'UNE BASCULE, pas celle d'un champ à valeur** (#422j, signalé à l'usage).
+La première version employait l'enveloppe des champs à valeur — libellé en capitales au-dessus,
+commande encadrée en dessous —, ce qui est juste pour un menu ou une couleur et donnait ici un cadre
+presque vide avec une petite case perdue dedans. Elle emploie désormais la même enveloppe que
+« Afficher la bordure » : case d'abord, texte à sa suite, sur une ligne. Rien n'était cassé, et
+pourtant la commande ne se lisait pas comme ce qu'elle est.
+
 ⚠️ **ELLE EST HORS DU BLOC « PERSONNALISÉ », et c'est un choix.** Le mode gouverne la LUMIÈRE —
 direction, couleur, intensité ; les ombres sont un axe indépendant, qu'on doit pouvoir allumer sur
 une Case en Jour comme en Nuit. La réserver au Personnalisé aurait obligé à quitter un préset pour

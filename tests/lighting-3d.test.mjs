@@ -456,8 +456,31 @@ describe('#414d : la section du menu de droite', () => {
     assert.ok(iCase > 0 && iCustom > 0, 'la case des ombres ou le bloc Personnalisé a disparu');
     assert.ok(iCase < iCustom,
       'la case des ombres est passée dans le bloc Personnalisé : elle disparaîtrait en Jour et en Nuit');
-    assert.match(I18N, /sideLightShadowsLabel/,
+    assert.match(I18N, /sideLightShadowsWrap/,
       'son libellé n’est plus traduit : il resterait en français dans l’interface anglaise');
+    // ⚠️ ET SA FORME EST CELLE DES AUTRES BASCULES DU PANNEAU (#422j), signalé à l'usage. La
+    // version précédente employait `tome-format`, l'enveloppe des champs à VALEUR — libellé en
+    // capitales au-dessus, commande encadrée dessous. Posée sur une case à cocher, elle donnait un
+    // cadre presque vide avec une petite case perdue dedans. `side-bulle-tail` est l'enveloppe des
+    // BASCULES, celle qu'emploie déjà « Afficher la bordure ».
+    //
+    // ⚠️ ET LA VÉRIFICATION EST UNE COMPARAISON, PAS UNE CLASSE RECOPIÉE : on relève la forme
+    // employée par `sideBorderToggle`, la bascule que l'utilisateur a désignée comme référence, et
+    // on exige la même. Le jour où cette forme change, les deux changent ensemble ou le test parle.
+    const formeDe = (id) => {
+      const i = HTML.indexOf(`id="${id}"`);
+      assert.ok(i > 0, `${id} est introuvable`);
+      const ouvrant = HTML.lastIndexOf('<label', i);
+      const m = HTML.slice(ouvrant, i).match(/class="([^"]*)"/);
+      return m ? m[1] : null;
+    };
+    assert.equal(formeDe('sideLightShadowsCheckbox'), formeDe('sideBorderToggle'),
+      'la case des ombres n’a plus la forme de « Afficher la bordure »');
+    // Et le texte SUIT la case, comme pour toute bascule : l'inverse rendrait la ligne illisible.
+    const iWrap = HTML.indexOf('id="sideLightShadowsWrap"');
+    const bloc = HTML.slice(iWrap, HTML.indexOf('</label>', iWrap));
+    assert.ok(bloc.indexOf('<input') < bloc.indexOf('Ombres portées'),
+      'le texte précède la case : ce n’est plus la forme d’une bascule');
   });
 
   test('⚠️ LES OMBRES SE RÈGLENT ICI, ET LE GESTE EST ANNULABLE ET REDESSINE (#422e)', () => {
@@ -1164,4 +1187,26 @@ describe('⚠️ LE RÉGLAGE TRAVERSE LES QUATRE CHEMINS DE L’ÉCLAIRAGE (#422
  *
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la case soit au bon endroit à l'œil, ni que l'ombre
  * obtenue soit belle. #422z regarde.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422j, la forme de la case des ombres) : quatre fautes rejouées.
+ *
+ *   M163 retour au cadre des champs à valeur — la forme signalée         ROUGE
+ *   M164 le texte précède la case                                        ROUGE
+ *   M165 une autre classe que celle de « Afficher la bordure »           ROUGE
+ *   M166 le libellé n'est plus traduit                                   ROUGE
+ *
+ * ⚠️ LE DÉFAUT ÉTAIT UNE ENVELOPPE PRISE POUR UNE AUTRE. `tome-format` habille les champs à VALEUR
+ * — un libellé en capitales au-dessus, la commande encadrée en dessous. C'est juste pour un menu ou
+ * un sélecteur de couleur ; posé sur une case à cocher, cela donnait un cadre presque vide avec une
+ * petite case perdue dedans, sans rapport avec les autres bascules du même panneau. Rien n'était
+ * cassé, et pourtant la commande ne se lisait pas comme ce qu'elle est.
+ *
+ * ⚠️ ET LE TEST COMPARE PLUTÔT QU'IL NE RECOPIE. Écrire `assert.match(HTML, /side-bulle-tail/)`
+ * aurait figé un nom de classe ; on relève la forme employée par `sideBorderToggle` — la bascule
+ * que l'utilisateur a désignée comme référence — et on exige la même. Le jour où cette forme
+ * change, les deux changent ensemble ou le test parle. C'est la même discipline que le seuil de
+ * #422f confronté aux hauteurs réelles des rubans : une valeur vérifiée CONTRE le code plutôt que
+ * recopiée À CÔTÉ de lui.
  */

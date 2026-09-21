@@ -290,10 +290,16 @@
            toujours, donc décocher ne changeait pas un pixel —, et une case dont on ne voit pas
            l'effet ressemble à une case qui ne marche pas. Celle-ci change l'image, et un test de
            régression garde l'ancien nom interdit pour que les deux ne se confondent jamais. -->
-      <div class="tome-format" style="align-items:center;">
-        <label id="sideLightShadowsLabel" for="sideLightShadowsCheckbox">Ombres portées</label>
-        <input type="checkbox" id="sideLightShadowsCheckbox">
-      </div>
+      <!-- ⚠️ MÊME FORME QUE « AFFICHER LA BORDURE », ET C'EST UN RETOUR D'USAGE (#422j). La version
+           précédente employait `tome-format`, l'enveloppe des champs à VALEUR — un libellé en
+           capitales au-dessus, la commande dans un cadre en dessous. C'est juste pour un menu ou une
+           couleur ; posé sur une case à cocher, cela donnait un cadre presque vide avec une petite
+           case perdue dedans, sans rapport avec les autres bascules du même panneau.
+           `side-bulle-tail` est l'enveloppe des BASCULES : case d'abord, texte à sa suite, sur une
+           ligne. Elle sert déjà à « Afficher la bordure », deux sections plus haut. -->
+      <label id="sideLightShadowsWrap" class="side-bulle-tail">
+        <input type="checkbox" id="sideLightShadowsCheckbox"> Ombres portées
+      </label>
       <!-- Couleur et intensité ne paraissent qu'en Personnalisé : sous Jour ou Nuit elles
            afficheraient des valeurs qu'on ne peut pas changer, ce qui se lit comme une panne.
            Le dôme viendra ici même en #414e. -->

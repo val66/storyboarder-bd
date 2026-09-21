@@ -129,6 +129,12 @@ Turning shadows on is therefore an explicit act, in the Light section of the rig
 "Cast shadows" checkbox, added in #422e. The accepted cost is that the feature is only visible if you
 look for it; the refused cost was that all the user's finished pages change without being asked.
 
+⚠️ **AND IT HAS A TOGGLE'S SHAPE, not a valued field's** (#422j, reported in use). The first
+version used the valued-field wrapper — a capitalised label above, the control boxed below — which
+is right for a menu or a colour and here gave an almost empty box with a small checkbox lost inside
+it. It now uses the same wrapper as "Show border": checkbox first, text after it, on one line.
+Nothing was broken, and yet the control did not read as what it is.
+
 ⚠️ **IT SITS OUTSIDE THE "CUSTOM" BLOCK, and that is a choice.** The mode governs the LIGHT —
 direction, colour, intensity; shadows are an independent axis, which must be switchable on a Panel in
 Day as well as in Night. Reserving it for Custom would have forced the user out of a preset just to

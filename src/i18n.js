@@ -313,7 +313,7 @@ export const I18N_TRAILING = [
   // exactement l'éclairage que le style pose déjà).
   ['#sideLightTitle', 'Light', 'Lumière'],
   ['#sideLightModeLabel', 'Mode', 'Mode'],
-  ['#sideLightShadowsLabel', 'Cast shadows', 'Ombres portées'],
+  ['#sideLightShadowsWrap', 'Cast shadows', 'Ombres portées'],
   ['#sideLightModeSelect option[value="jour"]', 'Day', 'Jour'],
   ['#sideLightModeSelect option[value="nuit"]', 'Night', 'Nuit'],
   ['#sideLightModeSelect option[value="perso"]', 'Custom', 'Personnalisé'],
