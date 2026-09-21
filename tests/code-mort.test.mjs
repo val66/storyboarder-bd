@@ -117,9 +117,13 @@ const EN_ATTENTE = {
   // entre dans ce calcul. Écrire cela après le branchement aurait voulu dire brancher d'abord avec
   // la tentation intacte.
   //
-  // ÉCHÉANCES, et ce sont des NUMÉROS DE TÂCHE :
+  // ÉCHÉANCE TENUE : `ombreSoleilSeraVisible3D` a quitté cette liste, #422c l'appelle depuis
+  // `appliquerOmbresDeCase3D` — on n'allume pas six passes de profondeur pour une image que la
+  // taille du texel rendrait de toute façon inchangée. `boiteOmbreSoleil3D` et
+  // `champVisibleDeCase3D` n'y ont jamais figuré : le détecteur les voit appelées dans le module.
+  //
+  // ÉCHÉANCE RESTANTE, et c'est un NUMÉRO DE TÂCHE :
   cameraOmbreSource3D: '#422d — la case « projette une ombre » dans la fiche d\'une Lumière',
-  ombreSoleilSeraVisible3D: '#422c — ne pas payer six passes pour une image inchangée',
   // `champVisibleDeCase3D`, `boiteOmbreSoleil3D` et les constantes ne sont PAS ici : le détecteur
   // les voit appelées à l'intérieur du module. Cinquième fois que ce garde-fou évite des exemptions
   // qui ne surveilleraient rien.
@@ -202,7 +206,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, UNE depuis que #421a
     // a posé la disposition de la fiche d'une Lumière, ZÉRO à nouveau depuis que #421b l'a
     // branchée — une tâche plus tôt que l'échéance inscrite —, et DEUX depuis les fondations de
-    // #422a, échéances #422c et #422d.
+    // #422a — échéances #422c et #422d —, et UNE depuis que #422c a branché la visibilité.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues.
     //
@@ -214,7 +218,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

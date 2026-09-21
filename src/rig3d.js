@@ -24,6 +24,7 @@ import { S, currentVolume, tr } from './state.js';
 // test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
 // `lighting-3d.js` n'importe rien : aucun cycle possible.
 import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
+import { boiteOmbreSoleil3D, ombreSoleilSeraVisible3D } from './shadows-3d.js';
 import {
   OBJ_TYPE_LUMIERE, HALO_OPACITE_REF, NOM_HALO_LUMIERE, opaciteHaloLumiere3D, estUneLumiere3D,
 } from './light-source-3d.js';
@@ -1103,6 +1104,94 @@ export function appliquerEclairageDeCase3D(eclairage){
   personaKeyLight3D.position.set(d.x * 3, d.y * 3, d.z * 3);
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES OMBRES PORTÉES D'UNE CASE (#422c)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ REPOSÉES À CHAQUE RENDU, POUR LA RAISON QUI VAUT DÉJÀ POUR L'ÉCLAIRAGE. La scène Three.js est
+ * PARTAGÉE entre toutes les Cases : une ombre laissée allumée s'appliquerait à la Case suivante, qui
+ * n'en veut pas, et le défaut serait attribué à n'importe quoi sauf à sa cause. C'est exactement le
+ * protocole d'`appliquerEclairageDeCase3D` juste au-dessus, et celui des sources posées de #420c.
+ *
+ * ⚠️ `shadowMap.enabled` EST UNE PROPRIÉTÉ DU RENDERER, PAS DE LA SCÈNE, et elle entre dans la clé
+ * de programme (`shadowMapEnabled`). Une Planche qui mêle des Cases ombrées et des Cases sans ombre
+ * fait donc basculer ce drapeau d'un rendu à l'autre, et chaque bascule vers une combinaison inédite
+ * compile. C'est mesuré (#422) : 153 ms pour le soleil seul, une fois. La note le dit, et c'est le
+ * prix accepté de « réglable par Case ».
+ *
+ * ⚠️ ET ON NE PAIE PAS SIX PASSES POUR UNE IMAGE INCHANGÉE. Reculer assez la caméra étale la carte
+ * d'ombre jusqu'à ce qu'un texel dépasse ce qui projette : l'ombre disparaît, exactement comme la
+ * version étirée au Sol que #422 a mesurée à 0,00 % de pixels changés. `ombreSoleilSeraVisible3D`
+ * tranche, et on ne l'allume pas dans ce cas.
+ */
+export function appliquerOmbresDeCase3D(panel, page, eclairage){
+  if (!personaRenderer3D || !personaKeyLight3D) return false;
+  const voulues = !!(eclairage && eclairage.ombresPortees);
+  const visibles = voulues && ombreSoleilSeraVisible3D(panel, page);
+  personaRenderer3D.shadowMap.enabled = visibles;
+  personaKeyLight3D.castShadow = visibles;
+  if (visibles) {
+    marquerProjectionDOmbre3D();
+    const b = boiteOmbreSoleil3D(panel, page);
+    const c = personaKeyLight3D.shadow.camera;
+    c.left = -b.rayon; c.right = b.rayon; c.top = b.rayon; c.bottom = -b.rayon;
+    c.near = b.near; c.far = b.far;
+    c.updateProjectionMatrix();
+    // ⚠️ CHANGER `mapSize` APRÈS COUP NE SUFFIT PAS : Three.js garde la cible de rendu déjà allouée.
+    // Il faut la libérer pour qu'il en refasse une à la bonne taille, sinon la résolution demandée
+    // est ignorée en silence — le genre de réglage qui a l'air posé et ne l'est pas.
+    if (personaKeyLight3D.shadow.mapSize.width !== b.resolution) {
+      personaKeyLight3D.shadow.mapSize.set(b.resolution, b.resolution);
+      if (personaKeyLight3D.shadow.map) {
+        personaKeyLight3D.shadow.map.dispose();
+        personaKeyLight3D.shadow.map = null;
+      }
+    }
+  }
+  return visibles;
+}
+
+/**
+ * Qui projette et qui reçoit, dans toute la scène.
+ *
+ * ⚠️ UNE RÈGLE, PAS UNE LISTE DE SITES À MARQUER. Poser ces drapeaux à la construction de chaque rig
+ * aurait voulu dire les poser à une dizaine d'endroits — Personnages, Objets, Murs, Murs fusionnés,
+ * dalles, jonctions, tracés — et en oublier un. C'est l'énumération tenue à la main, la deuxième
+ * famille de défauts de ce dépôt, et rig3d.js la documente déjà sur `buildPropRig3D` : « on
+ * l'enlève plutôt que d'y ajouter une ligne, sinon le prochain champ retombera dans le même trou ».
+ * Un parcours, un seul endroit, et un rig neuf est couvert sans qu'on y pense.
+ *
+ * ⚠️ LA RÈGLE : UN MATÉRIAU QUI NE REÇOIT PAS LA LUMIÈRE NE PROJETTE PAS D'OMBRE. Un
+ * `MeshBasicMaterial` ignore l'éclairage par construction — il décrit un REPÈRE ou un dessin, pas
+ * un corps posé dans la scène. Les trois du dépôt le confirment : le visage d'un Personnage, qui
+ * est un autocollant plat sur la sphère de la tête (laquelle projette déjà), et les deux sphères
+ * d'une Lumière. Faire jeter une ombre à la bille d'une source ferait apparaître dans le dessin la
+ * trace d'une chose qui n'existe pas dans la fiction.
+ *
+ * ⚠️ ET LE SOL EST ÉPARGNÉ : il reçoit, et lui seul décide de ce qu'il fait (cf. sa construction).
+ * Le mettre à `castShadow` ne ferait qu'occuper la carte d'ombre avec 12 000 unités de plan.
+ *
+ * ⚠️ APPELÉ SEULEMENT QUAND LES OMBRES SONT ALLUMÉES. Ces drapeaux ne coûtent rien quand
+ * `shadowMap.enabled` est faux, et ils ne figurent dans aucune clé de programme : un parcours par
+ * rendu de Case ombrée est négligeable devant les 13 ms qu'elle coûte, et il ne s'exécute pas du
+ * tout sur une Case sans ombre.
+ */
+export function marquerProjectionDOmbre3D(){
+  if (!personaScene3D) return 0;
+  let marques = 0;
+  personaScene3D.traverse(ch => {
+    if (!ch.isMesh && !ch.isSkinnedMesh) return;
+    if (ch === groundMesh3D) return;
+    const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+    const recoitLaLumiere = mats.some(m => m && m.isMaterial && !m.isMeshBasicMaterial);
+    ch.castShadow = recoitLaLumiere;
+    ch.receiveShadow = recoitLaLumiere;
+    if (recoitLaLumiere) marques++;
+  });
+  return marques;
+}
+
 // ---------- "DIGITAL COMICS" CEL-SHADING ----------
 // Le matériau des corps. Un seul style existe, mais `styleKey` reste dans la signature : c'est lui
 // qui entre dans la clé du cache de matériaux (cf. `entry.style3d !== style` plus bas), et un Projet
@@ -1157,6 +1246,16 @@ export function ensurePersonaScene3D(){
     new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, 100, 100),
     new THREE.MeshStandardMaterial({ color: GROUND_COLOR_DEFAULT_3D, roughness: 0.95, metalness: 0, side: THREE.DoubleSide })
   );
+  // ⚠️ LE SOL REÇOIT, ET IL NE PROJETTE PAS (#422c). Il reçoit parce que c'est lui qui rend une
+  // ombre LISIBLE — sans lui, une ombre portée n'aurait nulle part où se poser. Il ne projette pas
+  // parce qu'un plan de 12 000 unités dans la carte d'ombre ne ferait qu'y occuper de la place.
+  //
+  // ⚠️ ET « UN PLAN DE 12 000 UNITÉS REÇOIT-IL PROPREMENT ? » A ÉTÉ MESURÉ, PAS SUPPOSÉ. La note de
+  // #422 refusait de l'inférer, et la crainte était fondée : une surface aussi vaste est le terrain
+  // classique de l'acné d'ombre, ces moucheture qu'une précision de profondeur insuffisante sème
+  // partout. Relevé : 1,49 % de pixels changés, dont 0,000 % LOIN du projeteur. Aucune acné, et le
+  // nombre de segments du plan n'y change rien — recevoir se décide par fragment.
+  groundMesh3D.receiveShadow = true;
   groundMesh3D.rotation.x = -Math.PI / 2; // perpendicular to the Y axis (XZ plane, horizontal)
   groundMesh3D.position.set(0, GROUND_Y_DEFAULT_3D, 0);
   groundMesh3D.visible = false;

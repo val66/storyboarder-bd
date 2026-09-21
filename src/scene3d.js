@@ -40,7 +40,7 @@ import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 import {
   applyGroundType,
-  applyStyle3DLighting, appliquerEclairageDeCase3D,
+  applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D,
   buildGroundTexture,
   buildWallRig3D,
   disposeObjectRig3D,
@@ -2095,7 +2095,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // trois lumières servent à toutes les Cases l'une après l'autre. Reposer les valeurs du style à
   // chaque rendu est ce qui empêche l'éclairage d'une Case de fuir sur la suivante, qui n'en a pas.
   applyStyle3DLighting(style);
-  appliquerEclairageDeCase3D(resoudreEclairage3D(lumiereDeCase3D(panel)));
+  const _eclairage = resoudreEclairage3D(lumiereDeCase3D(panel));
+  appliquerEclairageDeCase3D(_eclairage);
+  // Les ombres suivent l'éclairage, et pour la MÊME raison : la scène est partagée, donc une ombre
+  // laissée allumée s'appliquerait à la Case suivante (#422c).
+  appliquerOmbresDeCase3D(panel, page, _eclairage);
   const elements = panelOwnedElements3D(panel, page);
   personaRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   objectRigCache3D.forEach(e => { e.figureGroup.visible = false; });

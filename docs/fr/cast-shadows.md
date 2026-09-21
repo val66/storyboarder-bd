@@ -130,13 +130,17 @@ ombre » devra donc soit exiger une portée finie, soit en dériver une. C'est l
 exposée en #421 cesse d'être un confort pour devenir une nécessité technique, comme #420f l'avait
 prévu.
 
-**Le Sol reçoit-il ?** Il est `DoubleSide` et couvre tout : c'est lui qui rend une ombre lisible. Mais
-`receiveShadow` sur un plan de 12 000 unités à 100 × 100 segments mérite d'être vérifié plutôt que
-supposé.
+**~~Le Sol reçoit-il ?~~ VÉRIFIÉ EN #422c, ET IL REÇOIT PROPREMENT.** La crainte était fondée : une
+surface de 12 000 unités est le terrain classique de l'acné d'ombre, ces mouchetures qu'une précision
+de profondeur insuffisante sème partout. Relevé, en comptant les pixels changés et surtout OÙ :
+**1,49 %** de l'image, dont **0,000 %** loin du projeteur. Aucune acné. Et le nombre de segments du
+plan n'y change rien — 4 × 4 et 100 × 100 donnent le même chiffre au centième près, recevoir se
+décidant par fragment.
 
-**Ce que l'export en fait.** L'export passe par le même `drawContent`, donc par le même rendu : les
-ombres devraient y être sans travail supplémentaire. « Devraient » est une inférence, et #425k a
-montré ce qu'elles valent — à vérifier.
+**~~Ce que l'export en fait.~~ VÉRIFIÉ EN #422c, ET L'INFÉRENCE ÉTAIT JUSTE.** `exportPage` appelle
+bien `drawContent`, le même que l'écran : les ombres y seront sans travail supplémentaire. Cette fois
+l'inférence tombait juste — mais #425k avait démenti exactement le même raisonnement sur les Bulles,
+et c'est pour cela qu'elle a été vérifiée plutôt que crue. Un test la tient désormais.
 
 ## Ce qui n'est PAS dans ce chantier
 

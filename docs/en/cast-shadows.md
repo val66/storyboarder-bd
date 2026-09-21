@@ -129,13 +129,17 @@ known distance (`camDist`) and framing: they will give the starting point.
 require a finite range or derive one. This is where the range exposed in #421 stops being a comfort
 and becomes a technical necessity, as #420f predicted.
 
-**Does the Ground receive?** It is `DoubleSide` and covers everything: it is what makes a shadow
-legible. But `receiveShadow` on a 12,000-unit plane at 100 × 100 segments deserves to be verified
-rather than assumed.
+**~~Does the Ground receive?~~ VERIFIED IN #422c, AND IT RECEIVES CLEANLY.** The worry was founded:
+a 12,000-unit surface is the classic ground for shadow acne, the speckling that insufficient depth
+precision sows everywhere. Measured, by counting the changed pixels and above all WHERE: **1.49%** of
+the image, of which **0.000%** far from the caster. No acne. And the plane's segment count makes no
+difference — 4 × 4 and 100 × 100 give the same figure to the hundredth, receiving being decided per
+fragment.
 
-**What export does with them.** Export goes through the same `drawContent`, hence the same render:
-shadows should be there with no extra work. "Should" is an inference, and #425k showed what those are
-worth — to be verified.
+**~~What export does with them.~~ VERIFIED IN #422c, AND THE INFERENCE WAS RIGHT.** `exportPage` does
+call `drawContent`, the same one the screen uses: shadows will be there with no extra work. This time
+the inference held — but #425k had disproved exactly the same reasoning about Bubbles, which is why
+it was verified rather than believed. A test now holds it.
 
 ## What is NOT in this task
 

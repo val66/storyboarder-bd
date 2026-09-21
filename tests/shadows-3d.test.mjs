@@ -17,6 +17,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   champVisibleDeCase3D, boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D,
@@ -300,4 +301,175 @@ describe('Les résolutions sont des puissances de deux, et la source est la moin
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la marge de 1,5 soit la bonne, ni que l'ombre soit
  * belle. #422z regarde — et #420c a déjà montré qu'une valeur correctement dérivée peut être
  * franchement mauvaise à l'œil.
+ */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE RENDU : CE QUI S'ALLUME, CE QUI PROJETTE, CE QUI REÇOIT (#422c)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ ÉPINGLÉ SUR LA SOURCE, ET C'EST ASSUMÉ. `appliquerOmbresDeCase3D` touche un `WebGLRenderer`,
+ * qui n'existe pas sous Node — c'est la moitié que #422a a séparée exprès. Ce qui se vérifie ici est
+ * donc le CÂBLAGE : que la décision soit consultée, que l'ordre soit le bon, et que les règles
+ * écrites dans les commentaires soient bien celles que le code applique.
+ *
+ * ⚠️ PAS TENU : que l'ombre apparaisse. Ça se mesure dans un vrai navigateur — et ça l'a été, en
+ * #422 puis ici même pour le Sol. Les chiffres sont dans docs/en/cast-shadows.md.
+ */
+describe('⚠️ LES OMBRES SE REPOSENT À CHAQUE RENDU : la scène est PARTAGÉE (#422c)', () => {
+  const RIG = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+
+  test('⚠️ LE RENDU D’UNE CASE LES APPLIQUE, APRÈS L’ÉCLAIRAGE', () => {
+    // ⚠️ MÊME PIÈGE QUE L'ÉCLAIRAGE ET QUE LES SOURCES POSÉES, TROISIÈME FOIS. Les Cases se
+    // dessinent l'une après l'autre dans la MÊME scène : une ombre laissée allumée s'appliquerait à
+    // la suivante, qui n'en veut pas, et le défaut serait attribué à n'importe quoi sauf à sa cause.
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    assert.ok(i > 0, 'le rendu de Case est introuvable');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}', i + 2000));
+    const posEclairage = corps.indexOf('appliquerEclairageDeCase3D(');
+    const posOmbres = corps.indexOf('appliquerOmbresDeCase3D(');
+    assert.ok(posOmbres > 0, 'les ombres ne sont plus appliquées au rendu d’une Case');
+    assert.ok(posOmbres > posEclairage,
+      'les ombres passent avant l’éclairage : elles liraient des valeurs qui vont changer');
+  });
+
+  test('⚠️ ET ELLES SE POSENT DANS LES DEUX SENS : `enabled` est écrit sans condition', () => {
+    // ⚠️ LE DÉFAUT SYMÉTRIQUE, ET C'EST EXACTEMENT CELUI DE #421h, UN ÉTAGE PLUS BAS. Écrire
+    // `if (voulues) renderer.shadowMap.enabled = true;` allumerait sans jamais éteindre : la
+    // première Case ombrée contaminerait toutes les suivantes de la Planche. Un état que personne
+    // d'autre ne réécrit doit être posé dans les deux branches.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    assert.ok(i > 0);
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /shadowMap\.enabled = visibles;/,
+      'le drapeau n’est plus posé inconditionnellement : une Case ombrée contaminerait la suivante');
+    assert.match(corps, /castShadow = visibles;/,
+      'le soleil garde son ombre d’une Case à l’autre');
+  });
+
+  test('⚠️ ON NE PAIE PAS SIX PASSES POUR UNE IMAGE INCHANGÉE', () => {
+    // L'échéance de #422a, tenue ici. Reculer assez la caméra étale la carte d'ombre jusqu'à ce
+    // qu'un texte dépasse ce qui projette : l'ombre disparaît, exactement comme la version étirée
+    // au Sol mesurée à 0,00 % de pixels changés. Autant ne pas l'allumer.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /ombreSoleilSeraVisible3D\(panel, page\)/,
+      'les ombres s’allument sans vérifier qu’on les verra');
+  });
+
+  test('⚠️ LA CARTE CHANGE VRAIMENT DE TAILLE : `mapSize` seul ne suffit pas', () => {
+    // ⚠️ PIÈGE DE THREE.JS, ET IL EST SILENCIEUX. Modifier `mapSize` après qu'une cible de rendu a
+    // été allouée ne réalloue rien : la résolution demandée est ignorée, et le réglage a l'air posé
+    // sans l'être. Il faut libérer la carte pour que Three.js en refasse une.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /shadow\.map\.dispose\(\)/,
+      'la carte d’ombre n’est pas libérée : la résolution demandée sera ignorée en silence');
+    assert.match(corps, /shadow\.map = null/);
+  });
+});
+
+describe('⚠️ QUI PROJETTE EST UNE RÈGLE, PAS UNE LISTE DE SITES (#422c)', () => {
+  const RIG = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+
+  test('⚠️ UN MATÉRIAU QUI NE REÇOIT PAS LA LUMIÈRE NE PROJETTE PAS D’OMBRE', () => {
+    // ⚠️ POURQUOI UNE RÈGLE. Poser ces drapeaux à la construction aurait voulu dire les poser à une
+    // dizaine d'endroits — Personnages, Objets, Murs, Murs fusionnés, dalles, jonctions, tracés — et
+    // en oublier un. C'est l'énumération tenue à la main, la deuxième famille de défauts de ce
+    // dépôt, que `buildPropRig3D` documente déjà quelques lignes plus haut.
+    //
+    // La règle couvre les trois `MeshBasicMaterial` du dépôt sans les nommer : le visage d'un
+    // Personnage — un autocollant plat sur la sphère de la tête, qui projette déjà — et les deux
+    // sphères d'une Lumière. Faire jeter une ombre à la bille d'une source ferait apparaître dans le
+    // dessin la trace d'une chose qui n'existe pas dans la fiction.
+    const i = RIG.indexOf('export function marquerProjectionDOmbre3D');
+    assert.ok(i > 0, 'la règle de projection est introuvable');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /isMeshBasicMaterial/,
+      'la règle ne s’appuie plus sur le matériau : il faudra une liste, et elle sera incomplète');
+    assert.match(corps, /personaScene3D\.traverse/,
+      'la règle ne parcourt plus la scène : un rig neuf ne sera pas couvert');
+    // Et aucune énumération de types ne doit être revenue par la fenêtre.
+    assert.ok(!/objType|WALL_TYPES|estUneLumiere3D/.test(corps),
+      'la règle énumère à nouveau des types : le prochain rig sera oublié');
+  });
+
+  test('⚠️ LE SOL EST ÉPARGNÉ PAR LA RÈGLE, et il reçoit par sa propre construction', () => {
+    // Il reçoit parce que c'est lui qui rend une ombre LISIBLE. Il ne projette pas parce qu'un plan
+    // de 12 000 unités n'occuperait que de la place dans la carte d'ombre.
+    const i = RIG.indexOf('export function marquerProjectionDOmbre3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /ch === groundMesh3D/, 'le Sol n’est plus épargné par le parcours');
+    assert.match(RIG, /groundMesh3D\.receiveShadow = true/,
+      'le Sol ne reçoit plus : une ombre portée n’aurait nulle part où se poser');
+    assert.ok(!/groundMesh3D\.castShadow = true/.test(RIG),
+      'le Sol projette : 12 000 unités de plan dans la carte d’ombre');
+  });
+
+  test('⚠️ ET LE MARQUAGE NE TOURNE QUE QUAND LES OMBRES SONT ALLUMÉES', () => {
+    // Un parcours de la scène par rendu est négligeable devant les 13 ms d'une Case — mais il n'a
+    // aucune raison de tourner sur une Case sans ombre, c'est-à-dire sur toutes celles d'un Projet
+    // qui n'a jamais touché au réglage.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    const posGarde = corps.indexOf('if (visibles) {');
+    const posMarquage = corps.indexOf('marquerProjectionDOmbre3D()');
+    assert.ok(posGarde > 0 && posMarquage > posGarde,
+      'le marquage tourne même sans ombre : un parcours de scène pour rien, à chaque Case');
+  });
+});
+
+describe('⚠️ L’EXPORT SUIT, ET CE N’EST PLUS UNE INFÉRENCE (#422c)', () => {
+  test('il passe par le même `drawContent` que l’écran', () => {
+    // ⚠️ LA NOTE DE #422 REFUSAIT DE L'INFÉRER, et elle avait raison de s'en méfier : « l'export
+    // passe par le même chemin » est exactement le genre de raisonnement que #425k a démenti sur
+    // les Bulles. Vérifié plutôt que cru — et cette fois l'inférence était juste.
+    const DRAW = sourceSansCommentaires(
+      readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
+    const i = DRAW.indexOf('export function exportPage');
+    assert.ok(i > 0, '`exportPage` est introuvable');
+    const corps = DRAW.slice(i, DRAW.indexOf('\nexport ', i + 10));
+    assert.match(corps, /drawContent\(/,
+      'l’export ne passe plus par drawContent : les ombres pourraient ne pas y être');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#422c, le rendu des ombres) : huit fautes rejouées.
+ *
+ *   M102 les ombres s'allument sans jamais s'éteindre                       ROUGE
+ *   M103 six passes payées pour une image inchangée                         ROUGE
+ *   M104 la résolution demandée est ignorée en silence                      ROUGE
+ *   M105 la bille d'une Lumière projette une ombre                          ROUGE
+ *   M106 le Sol entre dans la carte d'ombre                                 ROUGE
+ *   M107 le Sol ne reçoit plus : une ombre sans support                     ROUGE
+ *   M108 le marquage tourne même sans ombre                                 ROUGE
+ *   M109 le rendu n'applique plus les ombres                                ROUGE
+ *
+ * ⚠️ M102 EST LA FAUTE DE #421h, REJOUÉE UN ÉTAGE PLUS BAS. Écrire
+ * `if (voulues) shadowMap.enabled = true;` allume sans jamais éteindre : la première Case ombrée
+ * d'une Planche contaminerait toutes les suivantes, et le défaut se lirait comme « les ombres
+ * apparaissent au hasard ». Un état que personne d'autre ne réécrit doit être posé DANS LES DEUX
+ * BRANCHES — c'est la troisième fois que cette règle sert dans ce dépôt.
+ *
+ * ⚠️ M104 EST UN PIÈGE DE THREE.JS, ET IL EST MUET. Modifier `mapSize` après qu'une cible de rendu a
+ * été allouée ne réalloue rien : la résolution demandée est ignorée, et le réglage a l'air posé sans
+ * l'être. On ne peut pas le lire dans le code de l'appelant, seulement le savoir.
+ *
+ * ⚠️ M105 DIT CE QUE LA RÈGLE PROTÈGE. Elle ne parle pas de types mais de MATÉRIAUX : un
+ * `MeshBasicMaterial` ignore l'éclairage, donc décrit un repère ou un dessin, pas un corps posé dans
+ * la scène. Sans elle il aurait fallu énumérer les sites de création — dix endroits, et le prochain
+ * rig oublié. La mutation fait projeter la bille d'une source : la trace, dans le dessin, d'une
+ * chose qui n'existe pas dans la fiction.
+ *
+ * ⚠️ ET DEUX INFÉRENCES QUE LA NOTE DE #422 REFUSAIT DE CROIRE ONT ÉTÉ VÉRIFIÉES ICI, avec deux
+ * issues opposées en nature mais une seule leçon. Le Sol de 12 000 unités reçoit PROPREMENT —
+ * 1,49 % de pixels changés, 0,000 % loin du projeteur, aucune acné — et l'export suit bien, puisque
+ * `exportPage` appelle le même `drawContent`. Les deux inférences tombaient juste. #425k avait
+ * démenti exactement le même raisonnement sur les Bulles : c'est pour cela qu'on vérifie, et le fait
+ * qu'elles aient eu raison cette fois ne rend pas la vérification inutile.
  */
