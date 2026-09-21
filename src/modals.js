@@ -1386,12 +1386,27 @@ export function refreshObjectPreview(){
   // montrerait alors une voiture à la place du fichier importé. On lit le vrai objType de
   // l'Élément, et on transmet modelFile pour que buildImportedModelRig3D retrouve le bon modèle.
   const _estModele = isImportedModel(S.modalTarget);
+  // ⚠️ LE <select> DU TYPE NE FAIT AUTORITÉ QUE TANT QU'IL EST AFFICHÉ, et c'est la règle GÉNÉRALE
+  // dont le cas du modèle importé n'était qu'une instance (#421e). Un `<select>` masqué garde la
+  // valeur de son PREMIER <option> — « voiture » —, si bien que l'aperçu d'une Lumière montrait une
+  // voiture. Signalé à l'usage, et c'est le masquage de #421c qui a réveillé le défaut : la
+  // fonction se protégeait nommément du modèle importé, pas de ce qui viendrait ensuite.
+  //
+  // Lire la VISIBILITÉ plutôt que d'énumérer les types se maintient tout seul : le jour où un
+  // troisième type masquera ce sélecteur, l'aperçu suivra sans qu'on ait à y penser. C'est le même
+  // raisonnement que la section « Luminosité », dont la visibilité sert déjà de signal à l'i18n.
+  const _typeGouvernePar = (objectTypeSelect && objectTypeSelect.style.display !== 'none')
+    ? objectTypeSelect.value : (S.modalTarget.objType || 'voiture');
   drawObjectPreview(objectPreview3D, {
-    objType: _estModele ? 'modele' : objectTypeSelect.value,
+    objType: _typeGouvernePar,
     // La figure du BROUILLON : changer de Modèle doit se voir avant d'enregistrer. ⚠️ Aucun test ne
     // couvre cette ligne, l'aperçu passe par WebGL, injoignable sous Node (cf. docs/en/testing-method.md).
     modelFile: _estModele ? (S.modalDraftModelFile || S.modalTarget.modelFile) : undefined,
-    color: S.modalTarget.color,
+    // ⚠️ LA COULEUR DU BROUILLON POUR UNE LUMIÈRE. Sa couleur EST son réglage principal : l'aperçu
+    // doit la montrer AVANT d'enregistrer, comme il montre déjà la pose du brouillon. Lire
+    // `S.modalTarget.color` revenait à peindre avec la valeur d'avant le réglage, et l'aperçu
+    // paraissait mort. Signalé à l'usage.
+    color: estUneLumiere3D(S.modalTarget) ? objectLightColorInput.value : S.modalTarget.color,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,
     rotY: Number(objectRotYInput.value) * Math.PI / 180,
     rotZ: Number(objectRotZInput.value) * Math.PI / 180,

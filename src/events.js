@@ -6639,7 +6639,11 @@ objectModal.addEventListener('change', recomputeModalDirty);
 // L'afficheur du curseur d'intensité suit le geste. Délégué sur la modale comme le reste : un
 // écouteur posé sur le curseur lui-même s'ajouterait à chaque ouverture de fiche.
 objectModal.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'objectLightIntensityRange') updateLightIntensityDisplay3D();
+  if (!e.target) return;
+  if (e.target.id === 'objectLightIntensityRange') updateLightIntensityDisplay3D();
+  // La couleur d'une Lumière se voit dans l'aperçu : il doit suivre le brouillon, pas l'Élément
+  // enregistré (#421e, signalé à l'usage).
+  if (e.target.id === 'objectLightColorInput') refreshObjectPreview();
 });
 window.addEventListener('keydown', (e) => {
   if (!objectModal.classList.contains('hidden')) {

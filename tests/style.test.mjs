@@ -300,21 +300,76 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
     return m ? Number(m[1]) : null;
   };
 
-  test('tout champ pleine largeur d\'une modale porte une marge basse', () => {
-    ['.modal-field-number'].forEach(sel => {
-      assert.ok(marge(declarations(sel)) > 0,
-        `${sel} sans marge basse : le libellé suivant viendra s'y coller`);
-    });
+  /**
+   * ⚠️ TROISIÈME MORSURE, ET LA LISTE TENUE À LA MAIN EN EST LA CAUSE (#421e). Ce test énumérait
+   * `['.modal-field-number']`, un seul nom, écrit le jour de la deuxième morsure. La troisième est
+   * arrivée par `input[type=color]` — la pastille de couleur de la section « Luminosité » — que
+   * cette liste ne pouvait pas connaître, et « INTENSITÉ » est venu se coller dessus. Signalé à
+   * l'usage, comme les deux fois précédentes.
+   *
+   * On ne rallonge donc pas la liste : on la SUPPRIME. Les champs concernés se reconnaissent à ce
+   * qui les définit — une règle de `style.css` qui donne `width:100%` à un champ de modale — et la
+   * règle suivante ne pourra pas échapper à l'énumération parce que personne n'aura pensé à elle.
+   * Même remède qu'en #421a pour les champs d'une fiche et qu'en #421d pour les chemins
+   * d'ouverture : une énumération qui se maintient toute seule.
+   */
+  function champsPleineLargeurDeModale(){
+    // ⚠️ LE SÉLECTEUR SE LIT APRÈS AVOIR RETIRÉ LE COMMENTAIRE QUI LE PRÉCÈDE. Sans cela, une règle
+    // documentée — et dans ce fichier elles le sont toutes — voit son commentaire happé dans la
+    // capture, et aucun filtre sur le début du sélecteur ne la reconnaît. La règle de la pastille
+    // de couleur a échappé au relevé exactement ainsi, la première fois qu'il a tourné.
+    const regles = [...css.matchAll(/^\s*([^{}\n][^{}]*)\{([^}]*)\}/gm)]
+      .map(m => ({
+        selecteur: m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim(),
+        corps: m[2].replace(/\/\*[\s\S]*?\*\//g, ''),
+      }))
+      .filter(r => /^(\.modal-box |\.modal-field-)/.test(r.selecteur))
+      .filter(r => /width\s*:\s*100%/.test(r.corps))
+      // Un conteneur n'est pas un champ : il n'a ni bordure ni fond à lui, et rien ne vient s'y
+      // coller. On ne retient que ce qui se saisit.
+      .filter(r => /input|select|textarea/.test(r.selecteur) || /border\s*:/.test(r.corps));
+    return regles;
+  }
+
+  /**
+   * ⚠️ L'ÉCART VIENT DU CHAMP **OU DE SA RANGÉE**, et l'oublier rendait ce relevé faux. Un champ
+   * placé dans une `.modal-field-row` met délibérément `margin-bottom: 0` : c'est la rangée qui
+   * porte les 14 px, une seule fois, pour le libellé ET le champ qu'elle dispose en grille. Exiger
+   * la marge du champ lui-même aurait signalé un défaut là où la disposition est juste — et la
+   * « correction » aurait doublé l'écart.
+   *
+   * L'invariant se dit donc en une phrase : après tout champ pleine largeur d'une modale, il y a
+   * l'espacement commun, qu'il vienne de lui ou de la rangée qui le contient.
+   */
+  const margeEffective = (r) => (/\.modal-field-row\s*>/.test(r.selecteur)
+    ? marge(declarations('.modal-field-row'))
+    : marge(r.corps));
+
+  test('tout champ pleine largeur d\'une modale est suivi d\'un espacement', () => {
+    const champs = champsPleineLargeurDeModale();
+    // Le témoin : une énumération vide rendrait l'assertion vraie pour la pire des raisons, et
+    // c'est exactement ce qui a laissé passer les trois morsures.
+    assert.ok(champs.length >= 3,
+      `${champs.length} champ(s) pleine largeur relevé(s) dans style.css, au moins 3 attendus`);
+    champs.forEach(r => assert.ok(margeEffective(r) > 0,
+      `« ${r.selecteur} » : rien ne le sépare du libellé suivant, qui viendra s'y coller`));
   });
 
-  test('et ils portent TOUS LA MÊME, celle des champs texte', () => {
+  test('et c\'est TOUJOURS LE MÊME, celui des champs texte', () => {
     // La référence, mesurée et non choisie : `.modal-box input[type=text], .modal-box select`.
     const reference = marge(declarations('.modal-box input[type=text], .modal-box select'));
     assert.ok(reference > 0, 'la règle de référence ne porte plus de marge basse');
-    ['.modal-field-number'].forEach(sel => {
-      assert.equal(marge(declarations(sel)), reference,
-        `${sel} s'écarte de l'espacement des autres champs (${reference} px)`);
-    });
+    champsPleineLargeurDeModale().forEach(r => assert.equal(margeEffective(r), reference,
+      `« ${r.selecteur} » s'écarte de l'espacement des autres champs (${reference} px)`));
+  });
+
+  test('⚠️ ET LA PASTILLE DE COULEUR EST BIEN DANS LE RELEVÉ, pas seulement conforme', () => {
+    // Sans cette vérification, un filtre trop étroit pourrait l'écarter du relevé et le test
+    // précédent redeviendrait vert sans rien surveiller — la faute qui a permis les trois morsures,
+    // rejouée un étage plus haut.
+    const sels = champsPleineLargeurDeModale().map(r => r.selecteur);
+    assert.ok(sels.some(s => /input\[type=color\]/.test(s)),
+      `la pastille de couleur n'est pas relevée comme champ pleine largeur : ${sels.join(' | ')}`);
   });
 
   test('la classe du champ Hauteur est bien celle que porte le HTML', () => {
@@ -974,3 +1029,39 @@ describe('#409e : une superposition en dur ne suit aucun thème', () => {
     assert.match(css.slice(css.indexOf(':root{'), css.indexOf('}', css.indexOf(':root{'))), /--creux\s*:/);
   });
 });
+
+/**
+ * JOURNAL DE MUTATION (#421e, les retours d'usage sur la fiche d'une Lumière) : sept fautes.
+ *
+ *   M61 l'aperçu relit le <select> masqué, et remontre une voiture           ROUGE
+ *   M62 le critère redevient une ÉNUMÉRATION de types                        ROUGE (×2)
+ *   M63 l'aperçu repeint la couleur enregistrée, pas celle du brouillon      ROUGE
+ *   M64 le changement de couleur ne redessine plus l'aperçu                   ROUGE
+ *   M65 la pastille de couleur perd sa marge basse                            ROUGE (×2)
+ *   M66 la pastille cesse d'être pleine largeur                               ROUGE
+ *   M67 le <textarea> reperd sa marge : le quatrième piège rouvert            ROUGE (×2)
+ *
+ * ⚠️ M62 EST LA MUTATION QUI DIT POURQUOI LE CORRECTIF A CETTE FORME. Elle remplace « le sélecteur
+ * gouverne tant qu'il est affiché » par « si c'est un modèle OU une Lumière » — ce qui marche
+ * AUJOURD'HUI et rien de plus. C'est littéralement l'état du code avant #421e, à un type près : la
+ * fonction se protégeait nommément du modèle importé, et le type suivant à masquer ce sélecteur a
+ * remontré une voiture. Une protection écrite pour un cas ne protège pas du suivant.
+ *
+ * ⚠️ M67 ROUVRE UN PIÈGE QUI A DÉJÀ MORDU TROIS FOIS, et qu'aucune de ces trois fois n'avait
+ * refermé : « Modèle » collé au cadre Fichier, « Taille réelle » collée au champ Hauteur, puis
+ * « INTENSITÉ » collée à la pastille de couleur. Les deux premières corrections ont allongé une
+ * liste tenue à la main ; la troisième l'a supprimée au profit d'un relevé mécanique. Le
+ * <textarea> — seul champ pleine largeur de modale qui n'avait encore aucune marge — a été trouvé
+ * PAR ce relevé, et non par un utilisateur.
+ *
+ * ⚠️ ET UNE ERREUR RÉELLE A ÉTÉ ATTRAPÉE PAR UN TEST PENDANT L'ÉCRITURE, pas par une mutation : la
+ * correction de la couleur avait atterri dans `refreshPersonaPreview` au lieu de
+ * `refreshObjectPreview`, les deux fonctions posant la même ligne `color:`. Elle était inoffensive
+ * — un Personnage n'est jamais une Lumière — et n'aurait donc jamais rien cassé, tout en laissant
+ * le vrai défaut intact et une ligne incompréhensible dans la mauvaise fonction.
+ *
+ * ⚠️ LA SONDE ELLE-MÊME A DÛ ÊTRE RÉPARÉE POUR LE VOIR. L'idiome du fichier, `indexOf('\n}')`,
+ * découpait `refreshObjectPreview` EN PLEIN MILIEU : deux assertions passaient et la troisième
+ * échouait sur une ligne pourtant présente. Une sonde qui ne voit qu'une partie de ce qu'elle
+ * mesure ne mesure pas ce qu'elle annonce — son vert ne vaut pas plus que son rouge.
+ */

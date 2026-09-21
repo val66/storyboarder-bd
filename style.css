@@ -1158,10 +1158,17 @@ canvas{ background:var(--fond-3d); }
 .modal-box h3{
   font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; margin:0; color:var(--ink);
 }
+/* ⚠️ LA MARGE BASSE EST AJOUTÉE ALORS QUE CETTE RÈGLE NE VISE RIEN AUJOURD'HUI (#421e), et c'est
+   délibéré. Le seul <textarea> de l'application, la description d'une Case, vit désormais dans le
+   panneau latéral : plus aucune modale n'en porte. Mais la règle, elle, est restée — et elle était
+   le SEUL champ pleine largeur de modale sans marge basse, donc le prochain piège tout prêt. Dans
+   ces fiches, l'écart au-dessus d'un libellé vient de la marge basse du champ qui précède ; un
+   <textarea> réintroduit dans une modale aurait fait mordre ce défaut une quatrième fois.
+   14 px, comme tous ses voisins : la valeur n'est pas choisie, elle est celle des autres champs. */
 .modal-box textarea{
   width:100%; min-height:120px; font-family:'Inter',sans-serif; font-size:13.5px;
   border: 1px solid var(--bord-actif); border-radius:7px; padding:8px; resize:vertical;
-  background:var(--white); color:var(--ink);
+  background:var(--white); color:var(--ink); margin-bottom:14px;
 }
 .modal-field-label{
   display:block; font-size:10.5px; font-weight:600; color:var(--ink-soft);
@@ -1172,6 +1179,20 @@ canvas{ background:var(--fond-3d); }
   border: 1px solid var(--bord-actif); border-radius:7px; padding:8px;
   background:var(--white); color:var(--ink); margin-bottom:14px;
 }
+/* ⚠️ LE SÉLECTEUR DE COULEUR D'UNE MODALE N'ÉTAIT COUVERT PAR AUCUNE RÈGLE (#421e), et les deux
+   défauts signalés à l'usage n'en faisaient qu'un : la pastille restait à sa taille native, minuscule
+   et alignée à gauche, ET sans marge basse — si bien que le libellé suivant, « INTENSITÉ », venait
+   se coller dessus. La règle au-dessus ne vise que `input[type=text]` et `select` ; le type `color`
+   n'existait nulle part dans la fiche avant la section « Luminosité ».
+   Mêmes bordure, rayon et marge basse que les autres champs : une couleur se choisit dans une
+   modale comme on y saisit un nom, la commande n'a pas à être plus discrète que les autres.
+   `padding` réduit et non nul : à zéro, le carré de couleur touche la bordure et l'avale. */
+.modal-box input[type=color]{
+  width:100%; height:34px; display:block;
+  border: 1px solid var(--bord-actif); border-radius:7px; padding:3px;
+  background:var(--white); margin-bottom:14px; cursor:pointer;
+}
+
 /* Le chevron natif d'un <select> (Genre, Émotion, etc.) colle au bord droit sans tenir compte du
    padding (rendu par le moteur du navigateur, indépendant de la boîte de contenu) : on le remplace
    par un chevron custom positionné au même retrait (8px) que le padding intérieur gauche du texte. */

@@ -1074,3 +1074,76 @@ describe('⚠️ LA SPHÈRE N’EST PAS LA LUMIÈRE : deux cases, deux sens (#42
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la fiche amputée de trois sections se tienne
  * encore à l'écran. #421z regarde.
  */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'APERÇU 3D D'UNE LUMIÈRE (#421e) — quatre retours d'usage sur la fiche
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LE PREMIER EST UNE FAUTE QUE J'AI RÉVEILLÉE. L'aperçu d'une Lumière montrait UNE VOITURE.
+ * `refreshObjectPreview` lisait `objectTypeSelect.value` — et #421c venait de masquer ce sélecteur
+ * pour les sources. Un `<select>` masqué garde la valeur de son PREMIER `<option>`, « voiture ».
+ *
+ * Le dépôt connaissait déjà ce piège : la fonction s'en protégeait NOMMÉMENT pour le modèle
+ * importé, avec un commentaire qui le décrit mot pour mot. Une protection écrite pour un cas ne
+ * protège pas du suivant ; c'est la raison de lire la VISIBILITÉ du sélecteur plutôt que
+ * d'énumérer les types qui le masquent.
+ */
+describe('⚠️ L’APERÇU SUIT LE TYPE RÉEL, PAS UN <select> MASQUÉ (#421e)', () => {
+  const SRC = sourceSansCommentaires(
+    readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+
+  /**
+   * ⚠️ LE CORPS SE LIT JUSQU'À LA FONCTION SUIVANTE, PAS JUSQU'AU PREMIER `\n}`. L'idiome habituel
+   * de ce fichier suffit pour une fonction courte ; `refreshObjectPreview` en dépasse, et la
+   * découpe tombait EN PLEIN MILIEU. Deux assertions passaient, la troisième échouait sur une
+   * ligne pourtant présente : une sonde qui ne voit qu'une partie de ce qu'elle mesure ne mesure
+   * pas ce qu'elle annonce, et son verdict vert ne vaudrait pas plus que son rouge.
+   */
+  function corpsDe(nom){
+    const i = SRC.indexOf(`export function ${nom}`);
+    assert.ok(i > 0, `« ${nom} » est introuvable dans modals.js`);
+    const suivante = SRC.indexOf('\nexport ', i + 10);
+    const corps = SRC.slice(i, suivante > 0 ? suivante : undefined);
+    // Le témoin : une découpe dégénérée rendrait muettes toutes les assertions qui suivent.
+    assert.ok(corps.length > 200, `corps de « ${nom} » suspect : ${corps.length} caractères`);
+    return corps;
+  }
+
+  test('⚠️ LE <select> NE FAIT AUTORITÉ QUE TANT QU’IL EST AFFICHÉ', () => {
+    const corps = corpsDe('refreshObjectPreview');
+    assert.match(corps, /objectTypeSelect\.style\.display !== 'none'/,
+      'le type de l’aperçu se lit sans vérifier que le sélecteur gouverne encore');
+    assert.match(corps, /S\.modalTarget\.objType/,
+      'le repli ne lit plus le type réel de l’Élément');
+  });
+
+  test('⚠️ ET LE CRITÈRE EST LA VISIBILITÉ, pas une liste de types à tenir à jour', () => {
+    // Une énumération — « si c'est un modèle OU une Lumière » — aurait à être complétée à chaque
+    // type qui masque le sélecteur, et le prochain oubli redonnerait une voiture. Lire la
+    // visibilité se maintient tout seul.
+    const corps = corpsDe('refreshObjectPreview');
+    const ligne = corps.match(/[^\n]*_typeGouvernePar[^\n]*=[^\n]*/);
+    assert.ok(ligne, 'la décision de type a disparu');
+    assert.ok(!/estUneLumiere3D/.test(ligne[0]),
+      `le type de l’aperçu énumère à nouveau les cas : « ${ligne[0].trim()} »`);
+  });
+
+  test('⚠️ LA COULEUR MONTRÉE EST CELLE DU BROUILLON, pas celle de l’Élément enregistré', () => {
+    // Signalé à l'usage : « changer les valeurs ne change pas l'aperçu ». La couleur EST le réglage
+    // principal d'une source ; l'aperçu doit la montrer avant d'enregistrer, comme il montre déjà
+    // la pose du brouillon.
+    const corps = corpsDe('refreshObjectPreview');
+    assert.match(corps, /color: estUneLumiere3D\(S\.modalTarget\) \? objectLightColorInput\.value/,
+      'l’aperçu peint la couleur enregistrée, donc celle d’AVANT le réglage en cours');
+  });
+
+  test('et l’aperçu se rafraîchit quand la couleur change', () => {
+    const EV = sourceSansCommentaires(
+      readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+    const i = EV.indexOf("e.target.id === 'objectLightColorInput'");
+    assert.ok(i > 0, 'rien n’écoute le changement de couleur d’une Lumière');
+    assert.match(EV.slice(i, i + 120), /refreshObjectPreview\(\)/,
+      'le changement de couleur ne redessine pas l’aperçu');
+  });
+});
