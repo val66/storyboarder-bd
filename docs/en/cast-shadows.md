@@ -101,6 +101,23 @@ than #420f's stall, and more surprising for that reason.
 The remedy, should it chafe, is the one #420f already named: **pre-compile while idle** rather than
 discovering a configuration at the moment the user clicks.
 
+### Two switches, and they are hierarchical (#422d)
+
+The Panel decides that there ARE shadows; the source decides whether IT takes part. The "casts a
+shadow" checkbox lives in the "Brightness" section of a Light's dialog, **below the range**, on
+which it technically depends.
+
+⚠️ **TICKED ON A PANEL WITHOUT SHADOWS, IT DOES NOTHING**, and a hint below it says so. A setting
+that produces no visible effect and does not explain why reads as a breakage: that is #420f's
+lesson, where a range of 0 meant "unlimited" and not "off" with no label saying so.
+
+⚠️ **AND THE TWO RENDER FLAGS ARE NOT THE SAME ONE.** `shadowMap.enabled` belongs to the renderer —
+there are shadows in this Panel — and `castShadow` to each light — it takes part. #422c wrote the
+same value into both, which held while the sun was the only caster. A sun judged invisible — camera
+pulled back far enough that a texel exceeds what casts — would then have switched off the renderer,
+hence ALL shadows, including those ticked source by source. The renderer's flag now follows BOTH
+casters.
+
 ### By default: off, and set per Panel
 
 Settled by the user, and it is the repository's rule applied as-is: **"no setting" equals what exists
@@ -124,10 +141,22 @@ precise size will be judged on screen, like a source's starting intensity in #42
 cuts the shadows of Elements near the edge; too wide, it makes them blurry. A Panel's camera has a
 known distance (`camDist`) and framing: they will give the starting point.
 
-**The range of a casting source.** A shadow camera needs a finite far plane. A source with zero range
-— "unlimited", #420a's default — has none. Ticking "casts a shadow" will therefore have to either
-require a finite range or derive one. This is where the range exposed in #421 stops being a comfort
-and becomes a technical necessity, as #420f predicted.
+**~~The range of a casting source.~~ SETTLED IN #422d: DERIVE, DO NOT REQUIRE.** A shadow camera
+needs a finite far plane, and a source with zero range — "unlimited", #420a's default — has none.
+Both ways were open; derivation was chosen. Requiring a finite range would have made a checkbox a
+setting that IMPOSES another, and refusing to tick until a field is filled is a closed door whose
+reason cannot be read. A source without a range therefore only shadows what is IN the Panel's field.
+
+⚠️ **AND THREE.JS WAS ALREADY GOING THE SAME WAY, unknown to us**, verified in its code:
+`PointLightShadow.updateMatrices` does `const far = light.distance || camera.far`. When the range is
+finite it imposes it anyway; our far plane only serves the "unlimited" case, exactly the one the
+derivation covers. Both halves land on the same value — not a redundancy, but the only grip we have
+on that case.
+
+**What the derivation costs, and it must be said**: an Element further away than the field will not
+cast. That is consistent — its shadow is not visible either — but it would stop being so if the
+camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
+signature; it has done so since #414c.
 
 **~~Does the Ground receive?~~ VERIFIED IN #422c, AND IT RECEIVES CLEANLY.** The worry was founded:
 a 12,000-unit surface is the classic ground for shadow acne, the speckling that insufficient depth

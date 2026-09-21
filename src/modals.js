@@ -117,6 +117,7 @@ const objectLightColorInput = document.getElementById('objectLightColorInput');
 const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
 const objectLightIntensityValue = document.getElementById('objectLightIntensityValue');
 const objectLightRangeInput = document.getElementById('objectLightRangeInput');
+const objectLightShadowCheckbox = document.getElementById('objectLightShadowCheckbox');
 // La visibilité de la sphère d'une Lumière, dans la section Aperçu 3D (#421c).
 const objectSphereVisibleCheckbox = document.getElementById('objectSphereVisibleCheckbox');
 const objectHeightField = document.getElementById('objectHeightField');
@@ -279,6 +280,9 @@ export function remplirSectionLuminosite3D(obj){
   objectLightIntensityRange.value = String(Math.round(r.intensite * 100));
   objectLightIntensityValue.textContent = objectLightIntensityRange.value + ' %';
   objectLightRangeInput.value = String(r.portee);
+  // ⚠️ RIEN N'EST DÉCIDÉ ICI SUR LA VISIBILITÉ DE CETTE CASE, pour la même raison que les trois
+  // au-dessus : la disposition en est seule propriétaire (#421h).
+  objectLightShadowCheckbox.checked = !!r.projetteOmbre;
 }
 
 /**

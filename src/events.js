@@ -6038,6 +6038,7 @@ const objectHidden3dCheckbox = document.getElementById('objectHidden3dCheckbox')
 const objectLightColorInput = document.getElementById('objectLightColorInput');
 const objectLightIntensityRange = document.getElementById('objectLightIntensityRange');
 const objectLightRangeInput = document.getElementById('objectLightRangeInput');
+const objectLightShadowCheckbox = document.getElementById('objectLightShadowCheckbox');
 const objectSphereVisibleCheckbox = document.getElementById('objectSphereVisibleCheckbox');
 // [STATE→S] let S.modalTarget = null;
 // [STATE→S] let S.modalDraftJoints = null;
@@ -6469,6 +6470,11 @@ objectModalSave.onclick = () => {
       S.modalTarget.color = objectLightColorInput.value;
       S.modalTarget.intensite = Number(objectLightIntensityRange.value) / 100;
       S.modalTarget.portee = Math.max(0, Number(objectLightRangeInput.value) || 0);
+      // ⚠️ LE SECOND DES DEUX INTERRUPTEURS, ET ILS SONT HIÉRARCHIQUES (#422d) : la Case décide
+      // qu'il Y A des ombres, cette case décide si CETTE source y participe. Cochée sur une Case
+      // dont les ombres sont éteintes, elle ne fait donc rien — l'indice sous la case le dit, parce
+      // qu'un réglage qui ne produit rien sans explication se lit comme une panne.
+      S.modalTarget.projetteOmbre = objectLightShadowCheckbox.checked;
       // ⚠️ LA SPHÈRE N'EST PAS LA LUMIÈRE. Cette case masque la bille blanche ; `hidden3d`, juste
       // au-dessus, éteint la source. Les confondre rendrait introuvable la clarté d'une lumière
       // qu'on croit éteinte — ou laisserait une bille flotter dans un dessin fini.

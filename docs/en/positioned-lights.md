@@ -57,6 +57,7 @@ A light is an ordinary `objet3d` — `id`, 2D box, `homePanelId`, world coordina
   intensite: 0.77,       // CLE_ACTUELLE raised by 40%
   portee: 0,             // 0 = no limit, in Three.js terms
   sphereVisible: true,
+  projetteOmbre: false,  // #422d — unticked: six cube passes are not paid for unasked
   realHeightFloor: 0.2,  // the sphere's radius, in metres
 }
 ```
@@ -78,7 +79,16 @@ persisted, and already plays exactly that role.
   exist yet, and a finite range picked at random would give lights that illuminate nothing three
   metres away, with no way to correct it;
 - `sphereVisible` is true, otherwise "Add → Light" would show **nothing**;
+- `projetteOmbre` is **false**, and the measured price decided it (#422d): a point light's shadow is
+  a CUBE map — six depth passes per light per frame, and **2,004 ms** of compilation on first
+  meeting eight casting sources. The cost is paid only by whoever asks for it, source by source;
 - the 0.2 m radius, roughly a head, is **chosen** and not derived.
+
+⚠️ **AND `portee` CHANGED NATURE WITH #422d**, without changing value. It was a comfort; for a
+casting source it becomes the **far plane of its shadow camera**. At zero range — "unlimited" —
+there is no natural distance at which to stop the map, and one is then derived from the Panel's
+visible field: such a source only shadows what is on screen. `cameraOmbreSource3D` settles it, and
+says so rather than keeping quiet.
 
 ## The trap that governs rendering
 

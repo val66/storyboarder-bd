@@ -56,6 +56,7 @@ Une lumière est un `objet3d` ordinaire — `id`, boîte 2D, `homePanelId`, coor
   intensite: 0.77,       // CLE_ACTUELLE majoree de 40 %
   portee: 0,             // 0 = sans limite, au sens de Three.js
   sphereVisible: true,
+  projetteOmbre: false,  // #422d — décoché : six passes cubiques ne se paient pas sans demande
   realHeightFloor: 0.2,  // le rayon de la sphère, en mètres
 }
 ```
@@ -77,7 +78,17 @@ exactement ce rôle.
   encore, et une portée finie posée au hasard donnerait des lumières qui n'éclairent rien à trois
   mètres, sans aucun moyen de le corriger ;
 - `sphereVisible` est vrai, sinon « Ajouter → Lumière » n'afficherait **rien** ;
+- `projetteOmbre` est **faux**, et c'est le prix mesuré qui l'a décidé (#422d) : l'ombre d'une
+  source ponctuelle est une carte CUBIQUE — six passes de profondeur par lumière et par image, et
+  **2 004 ms** de compilation à la première rencontre de huit sources qui projettent. Le coût n'est
+  payé que par qui le réclame, source par source ;
 - le rayon de 0,2 m, environ une tête, est **choisi** et non dérivé.
+
+⚠️ **ET `portee` A CHANGÉ DE NATURE AVEC #422d**, sans changer de valeur. Elle était un confort ;
+elle devient, pour une source qui projette, le **plan éloigné de sa caméra d'ombre**. À portée
+nulle — « sans limite » —, il n'existe aucune distance naturelle où arrêter la carte, et elle est
+alors dérivée du champ visible de la Case : une telle source n'ombre que ce qu'on voit. C'est
+`cameraOmbreSource3D` qui tranche, et elle le dit plutôt que de le taire.
 
 ## Le piège qui gouverne le rendu
 

@@ -27,6 +27,7 @@ import {
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PERSONA_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D, GROUND_PLANE_SIZE_3D,
 } from '../src/constants.js';
+import { CHAMPS_FICHE_LUMIERE } from '../src/light-source-3d.js';
 
 /** Une Planche au format Franco-Belge, à l'échelle de rendu habituelle. */
 const PAGE = { w: 1240, h: 1754 };
@@ -344,10 +345,31 @@ describe('⚠️ LES OMBRES SE REPOSENT À CHAQUE RENDU : la scène est PARTAGÉ
     const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
     assert.ok(i > 0);
     const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
-    assert.match(corps, /shadowMap\.enabled = visibles;/,
+    assert.match(corps, /shadowMap\.enabled = rendues;/,
       'le drapeau n’est plus posé inconditionnellement : une Case ombrée contaminerait la suivante');
-    assert.match(corps, /castShadow = visibles;/,
+    assert.match(corps, /castShadow = soleil;/,
       'le soleil garde son ombre d’une Case à l’autre');
+  });
+
+  test('⚠️ ET LES DEUX DRAPEAUX NE SONT PAS LE MÊME : un soleil invisible n’éteint pas les sources', () => {
+    // ⚠️ LE DÉFAUT QUE #422d A FAILLI LAISSER PASSER. #422c écrivait la MÊME valeur dans les deux,
+    // ce qui se tenait tant que le soleil était seul à projeter. Depuis qu'une source posée peut
+    // projeter, un soleil jugé invisible — caméra assez reculée pour qu'un texel dépasse ce qui
+    // projette — aurait éteint le renderer, donc TOUTES les ombres, y compris celles que
+    // l'utilisateur venait de cocher source par source. Un réglage sans effet et sans message.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.ok(!/shadowMap\.enabled = soleil/.test(corps),
+      'le renderer suit le soleil : une Case éclairée par la seule source cochée n’aurait aucune ombre');
+    assert.match(corps, /const rendues = soleil \|\| sources;/,
+      'le drapeau du renderer ne consulte plus les deux projeteurs');
+    // ⚠️ ET LE COMPTE DES SOURCES SORT DU PLAN, PAS D'UN SECOND FILTRAGE. Refiltrer `elements` ici
+    // serait la deuxième copie d'une décision, la famille de défauts que #415 puis #420a ont chacune
+    // payée d'une mutation échappée. Le plan est celui que `appliquerLumieresPosees3D` exécute.
+    assert.match(corps, /plan\.aAllumer[\s\S]*?\.some\(p => p && p\.projetteOmbre\)/,
+      'le compte des sources qui projettent ne vient plus du plan : une seconde copie de la décision');
+    assert.ok(!/estUneLumiere3D|hidden3d/.test(corps),
+      'la fonction refiltre les Éléments : deux copies d’un même raisonnement, qui s’accordent aujourd’hui');
   });
 
   test('⚠️ ON NE PAIE PAS SIX PASSES POUR UNE IMAGE INCHANGÉE', () => {
@@ -416,10 +438,12 @@ describe('⚠️ QUI PROJETTE EST UNE RÈGLE, PAS UNE LISTE DE SITES (#422c)', (
     // qui n'a jamais touché au réglage.
     const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
     const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
-    const posGarde = corps.indexOf('if (visibles) {');
-    const posMarquage = corps.indexOf('marquerProjectionDOmbre3D()');
-    assert.ok(posGarde > 0 && posMarquage > posGarde,
-      'le marquage tourne même sans ombre : un parcours de scène pour rien, à chaque Case');
+    //
+    // ⚠️ ET IL SUIT LE RENDERER, PAS LE SOLEIL (#422d). Une Case où seule une source posée projette
+    // a tout autant besoin de savoir qui jette une ombre : le brancher sur `soleil` aurait laissé
+    // les `castShadow` de la scène dans l'état où la Case PRÉCÉDENTE les avait mis.
+    assert.match(corps, /if \(rendues\) marquerProjectionDOmbre3D\(\);/,
+      'le marquage tourne même sans ombre, ou ne tourne pas quand seule une source projette');
   });
 });
 
@@ -435,6 +459,210 @@ describe('⚠️ L’EXPORT SUIT, ET CE N’EST PLUS UNE INFÉRENCE (#422c)', ()
     const corps = DRAW.slice(i, DRAW.indexOf('\nexport ', i + 10));
     assert.match(corps, /drawContent\(/,
       'l’export ne passe plus par drawContent : les ombres pourraient ne pas y être');
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'OMBRE D'UNE SOURCE POSÉE : DEUX INTERRUPTEURS HIÉRARCHIQUES (#422d)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La Case décide qu'il Y A des ombres ; la source décide si ELLE y participe. C'est le choix de
+ * l'utilisateur devant les chiffres de #422 : une carte d'ombre de source est CUBIQUE — six passes
+ * de profondeur par lumière et par image, 3,9 ms à huit sources, 2 004 ms de compilation à la
+ * première rencontre. Personne ne paie ça sans l'avoir demandé.
+ *
+ * ⚠️ ÉPINGLÉ SUR LA SOURCE ici encore : `appliquerOmbreSourcePosee3D` touche une `PointLight`, qui
+ * n'existe pas sous Node. Ce qui se vérifie est le CÂBLAGE — que la décision pure soit consultée,
+ * que les deux interrupteurs soient bien en série, et que l'état soit écrit dans les deux sens.
+ */
+describe('⚠️ UNE SOURCE NE PROJETTE QUE SI LA CASE ET ELLE LE VEULENT (#422d)', () => {
+  const RIG = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+  const corpsSource = (() => {
+    const i = RIG.indexOf('export function appliquerOmbreSourcePosee3D');
+    assert.ok(i > 0, 'l’ombre d’une source posée est introuvable');
+    return RIG.slice(i, RIG.indexOf('\n}\n', i));
+  })();
+
+  test('⚠️ LES DEUX INTERRUPTEURS SONT EN SÉRIE, ET AUCUN NE SUFFIT SEUL', () => {
+    // Cocher la case d'une source sur une Case dont les ombres sont éteintes ne doit RIEN allumer :
+    // c'est l'exigence qui justifie l'indice affiché sous la case dans la fiche. Et réciproquement,
+    // allumer les ombres d'une Case ne doit pas faire projeter les sources qui n'ont rien demandé —
+    // ce serait les 2 004 ms de compilation imposées à qui a seulement voulu l'ombre du soleil.
+    assert.match(corpsSource, /ombresDeLaCase && !!projette/,
+      'un seul des deux interrupteurs commande : le second réglage est sans effet ou sans garde');
+  });
+
+  test('⚠️ ET `castShadow` EST ÉCRIT DANS LES DEUX SENS : le cache de sources est PARTAGÉ', () => {
+    // ⚠️ QUATRIÈME FOIS QUE CE DÉFAUT EST REJOUÉ DANS CE DÉPÔT, et la troisième dans ce seul
+    // chantier — #421h sur la disposition de la fiche, #422c sur le drapeau du renderer, ici sur
+    // une `PointLight`. Le cache `lumierePoseeCache3D` sert toutes les Cases l'une après l'autre :
+    // une lumière laissée à `castShadow` vrai projetterait dans la Case suivante, qui ne l'a pas
+    // demandé, et l'ombre y apparaîtrait sans cause lisible.
+    //
+    // ⚠️ ET CE QUI SE VÉRIFIE EST LA NATURE DU RETOUR, PAS SON ABSENCE — la leçon de #421h, où
+    // quatre mutations sur six ont échappé parce que l'assertion regardait des POSITIONS RELATIVES
+    // qu'un `return` ajouté ne dérange pas. Un garde de NULLITÉ peut précéder l'écriture : sans
+    // lumière il n'y a rien à éteindre. Un garde qui consulte les RÉGLAGES, lui, la saute.
+    const i = corpsSource.indexOf('lumiere.castShadow =');
+    assert.ok(i > 0, 'le drapeau de la source n’est plus posé');
+    const avant = corpsSource.slice(corpsSource.indexOf('{'), i);
+    const retours = avant.split('\n').filter(l => /\breturn\b/.test(l)).map(l => l.trim());
+    retours.forEach(l => {
+      assert.ok(!/projette|ombresDeLaCase|portee|champ/.test(l),
+        `un retour conditionné aux réglages précède l’écriture (${l}) : la source garderait `
+        + 'l’ombre de la Case précédente');
+    });
+  });
+
+  test('⚠️ LA CAMÉRA VIENT DE LA DÉCISION PURE, PAS D’UN CALCUL REFAIT ICI', () => {
+    // C'est la dette de #422a, et la dernière : `cameraOmbreSource3D` existait sans appelant, avec
+    // une échéance écrite en NUMÉRO DE TÂCHE. Elle est payée ici.
+    assert.match(corpsSource, /cameraOmbreSource3D\(portee, champ\)/,
+      'la caméra d’ombre d’une source est recalculée sur place : la décision pure ne sert plus');
+    assert.ok(!/Math\.(hypot|max|min)/.test(corpsSource),
+      'un calcul de cadrage est revenu dans la couche Three.js, où il ne se teste pas');
+  });
+
+  test('⚠️ `near` ET `far` SONT TOUS DEUX POSÉS, et `far` est un filet assumé', () => {
+    // ⚠️ CE QUE THREE.JS FAIT DANS NOTRE DOS, vérifié dans node_modules/three/build/three.js :
+    // `PointLightShadow.updateMatrices` fait `const far = light.distance || camera.far`. Quand la
+    // portée est finie, Three.js l'impose de toute façon ; notre `far` ne sert que dans l'autre
+    // cas — la portée nulle, « sans limite », où `cameraOmbreSource3D` en dérive un du champ
+    // visible de la Case. Les deux moitiés tombent donc sur la même valeur : ce n'est pas une
+    // redondance, c'est la seule prise qu'on ait sur le cas « sans limite ».
+    assert.match(corpsSource, /cam\.near = c\.near/, 'le plan proche n’est plus posé');
+    assert.match(corpsSource, /cam\.far = c\.far/,
+      'le plan éloigné n’est plus posé : une source SANS portée n’aurait aucune caméra d’ombre valide');
+    assert.match(corpsSource, /cam\.updateProjectionMatrix\(\)/,
+      'la projection n’est pas recalculée : les plans posés sont ignorés en silence');
+  });
+
+  test('⚠️ ET LA CARTE CHANGE VRAIMENT DE TAILLE, même piège muet que pour le soleil', () => {
+    assert.match(corpsSource, /shadow\.map\.dispose\(\)/,
+      'la carte d’ombre n’est pas libérée : la résolution demandée sera ignorée en silence');
+    assert.match(corpsSource, /shadow\.map = null/);
+  });
+
+  test('⚠️ LE RENDU LA BRANCHE, et sur le MÊME plan que celui qu’il exécute', () => {
+    // ⚠️ LA COPIE QUI S'ACCORDE AUJOURD'HUI, refusée une fois de plus. Le drapeau du renderer a
+    // besoin de savoir si une source projette AVANT que les lumières soient posées ; refiltrer
+    // `elements` une seconde fois aurait donné deux listes qui divergeraient au premier changement.
+    // Un plan est PUR : le construire tôt ne coûte rien et ne décide de rien.
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    const posPlan = corps.indexOf('const _planLumieres = planLumieresPosees3D(');
+    const posOmbres = corps.indexOf('appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres)');
+    assert.ok(posPlan > 0, 'le plan des sources n’est plus construit une seule fois');
+    assert.ok(posOmbres > posPlan,
+      'les ombres se posent avant le plan : elles ne peuvent pas savoir si une source projette');
+    assert.equal(corps.split('planLumieresPosees3D(').length - 1, 1,
+      'le plan est construit deux fois : deux listes qui divergeront au premier changement');
+    assert.match(corps, /appliquerLumieresPosees3D\(_planLumieres, _posLumieres3D, _ombresDeLaCase,/,
+      'l’exécution ne reçoit plus le verdict de la Case : les sources projetteraient toujours, ou jamais');
+    assert.match(corps, /champVisibleDeCase3D\(panel, page\)/,
+      'le champ visible n’est plus transmis : une source SANS portée perdrait son plan éloigné');
+  });
+
+  test('⚠️ ET L’EXÉCUTION S’EN SERT : recevoir un argument n’est pas l’employer (M118)', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ LA MUTATION QUI A ÉCHAPPÉ, ET C'ÉTAIT LA PLUS GROSSE DE LA CAMPAGNE
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Retirer PUREMENT ET SIMPLEMENT l'appel à `appliquerOmbreSourcePosee3D` — donc rendre la case
+    // « projette une ombre » entièrement décorative — laissait la suite VERTE. Douze autres
+    // mutations rougissaient, y compris des déplacements d'une ligne ; celle qui supprimait la
+    // fonctionnalité passait.
+    //
+    // La raison est la famille de défauts que ce dépôt nomme déjà : **un test qui vérifie qu'un
+    // identifiant APPARAÎT et non qu'il GOUVERNE**. J'avais vérifié que le plan arrive, que le
+    // verdict de la Case arrive, que le champ visible arrive — trois arrivées, et pas une seule
+    // consommation. Un argument reçu et jeté satisfait toutes ces assertions.
+    //
+    // La parade tient en une règle, et elle a des dents au-delà de cette mutation : **aucun
+    // paramètre de l'exécution ne reste inemployé**. Elle attrape l'appel supprimé (deux paramètres
+    // deviennent orphelins) comme l'argument oublié dans l'appel.
+    const j = SCENE.indexOf('function appliquerLumieresPosees3D(');
+    assert.ok(j > 0, 'l’exécution du plan des sources est introuvable');
+    const sig = SCENE.slice(SCENE.indexOf('(', j) + 1, SCENE.indexOf(')', j));
+    const params = sig.split(',').map(t => t.trim()).filter(Boolean);
+    assert.ok(params.length >= 4,
+      'l’exécution a perdu des paramètres : le verdict de la Case ou le champ visible ne lui parvient plus');
+    const corpsExec = SCENE.slice(SCENE.indexOf('{', j), SCENE.indexOf('\n}\n', j));
+    params.forEach(nom => {
+      // Le premier emploi d'un paramètre est dans le corps, pas dans sa propre déclaration.
+      assert.ok(new RegExp('\\b' + nom + '\\b').test(corpsExec),
+        `le paramètre « ${nom} » est reçu et jamais employé : quelque chose a cessé d’être branché`);
+    });
+    assert.match(corpsExec, /appliquerOmbreSourcePosee3D\(l, p\.portee, p\.projetteOmbre, ombresDeLaCase, champVisible\)/,
+      'les sources ne reçoivent plus leur ombre : la case « projette une ombre » est décorative');
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LA CASE DANS LA FICHE (#422d)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈRE (#422d)', () => {
+  const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const MODALS = sourceSansCommentaires(
+    readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+  const EVENTS = sourceSansCommentaires(
+    readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+
+  test('⚠️ ELLE VIT DANS « LUMINOSITÉ », SOUS LA PORTÉE DONT ELLE DÉPEND', () => {
+    // Sous la portée, et ce n'est pas un hasard de mise en page : c'est elle qui donne le plan
+    // éloigné de la caméra d'ombre quand elle est finie. Les lire dans l'ordre inverse ferait
+    // découvrir la contrainte après coup.
+    const iSection = HTML.indexOf('data-section="luminosite"');
+    assert.ok(iSection > 0, 'la section Luminosité est introuvable');
+    const iPortee = HTML.indexOf('objectLightRangeInput', iSection);
+    const iOmbre = HTML.indexOf('objectLightShadowCheckbox', iSection);
+    assert.ok(iOmbre > iPortee, 'la case précède la portée dont elle dépend');
+  });
+
+  test('⚠️ ET SON INDICE DIT POURQUOI ELLE PEUT NE RIEN FAIRE', () => {
+    // ⚠️ SANS CE MOT, COCHER SANS RIEN VOIR SE LIT COMME UNE PANNE. Le premier interrupteur est
+    // ailleurs — dans la section Lumière de la Case —, et rien dans la fiche ne le laisse deviner.
+    // Le dépôt a déjà payé ce genre de silence : #420f a mesuré qu'une portée de 0 signifie « sans
+    // limite » et non « éteinte », ce qu'aucune étiquette ne disait.
+    assert.match(HTML, /id="objectLightShadowHint"/,
+      'la case n’a plus d’indice : un réglage sans effet visible et sans explication');
+    const I18N = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
+    assert.match(I18N, /#objectLightShadowHint/,
+      'l’indice n’est plus traduit : il resterait en français dans l’interface anglaise');
+    assert.match(I18N, /'Casts a shadow', 'Projette une ombre'/,
+      'le libellé de la case n’est plus traduit');
+  });
+
+  test('⚠️ LUE À L’OUVERTURE, ÉCRITE À L’ENREGISTREMENT, ET SOUS LA GARDE DE TYPE', () => {
+    // ⚠️ LA GARDE EST CELLE DE #421b, ET #421g A MONTRÉ CE QU'ELLE COÛTE QUAND ELLE MANQUE : hors
+    // d'elle, un champ MASQUÉ serait relu pour TOUS les Éléments et écraserait leur donnée. Ici ce
+    // serait `projetteOmbre: false` posé sur chaque voiture au premier Enregistrer — invisible,
+    // puisque rien ne lit ce champ sur une voiture, jusqu'au jour où quelque chose le lirait.
+    assert.match(MODALS, /objectLightShadowCheckbox\.checked = !!r\.projetteOmbre/,
+      'la case ne montre plus l’état enregistré : elle s’ouvrirait toujours décochée');
+    const i = EVENTS.indexOf('objectModalSave.onclick');
+    const corps = EVENTS.slice(i, EVENTS.indexOf('\n};', i));
+    const iGarde = corps.indexOf('if (estUneLumiere3D(S.modalTarget)) {');
+    const iEcriture = corps.indexOf('S.modalTarget.projetteOmbre =');
+    assert.ok(iGarde > 0 && iEcriture > iGarde,
+      'la case est enregistrée hors de la garde de type : elle écrirait sur tous les Éléments');
+    assert.ok(iEcriture < corps.indexOf('\n    }', iGarde),
+      'l’écriture est sortie du bloc de la garde');
+  });
+
+  test('⚠️ ET SON CHAMP SORT DE LA TABLE DE DISPOSITION, comme tout champ à bascule', () => {
+    // La propriété de #421a : tout élément à bascule de la modale sort de la table EXACTEMENT une
+    // fois. Un champ absent est précisément celui qui restera visible par accident sur une voiture.
+    // Le test de coïncidence de light-source-3d.test.mjs le tient mécaniquement ; on vérifie ici
+    // que l'entrée existe et qu'elle est bien MONTRÉE.
+    assert.equal(CHAMPS_FICHE_LUMIERE.objectLightShadowField, true,
+      'la case « projette une ombre » est masquée sur la fiche d’une Lumière');
   });
 });
 
@@ -472,4 +700,61 @@ describe('⚠️ L’EXPORT SUIT, ET CE N’EST PLUS UNE INFÉRENCE (#422c)', ()
  * `exportPage` appelle le même `drawContent`. Les deux inférences tombaient juste. #425k avait
  * démenti exactement le même raisonnement sur les Bulles : c'est pour cela qu'on vérifie, et le fait
  * qu'elles aient eu raison cette fois ne rend pas la vérification inutile.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422d, l'ombre d'une source posée) : quatorze fautes rejouées.
+ *
+ *   M110 la case de la source suffit : la Case ne commande plus rien       ROUGE
+ *   M111 toute source projette dès que la Case a des ombres                ROUGE
+ *   M112 la source garde son ombre de la Case précédente                   ROUGE
+ *   M113 une source SANS portée perd son plan éloigné                      ROUGE
+ *   M114 les plans posés sont ignorés en silence                           ROUGE
+ *   M115 la résolution demandée est ignorée en silence                     ROUGE
+ *   M116 un soleil invisible éteint les ombres des sources cochées         ROUGE
+ *   M117 le marquage ignore une Case où seule une source projette          ROUGE
+ *   M118 les sources ne projettent JAMAIS : la case est décorative    ⚠️ ÉCHAPPÉE, puis ROUGE
+ *   M119 le verdict de la Case est ignoré : les sources projettent toujours ROUGE
+ *   M120 la fiche s'ouvre toujours décochée                                ROUGE
+ *   M121 l'enregistrement perd la case : cocher ne sert à rien             ROUGE
+ *   M122 la case est masquée sur la fiche : réglage introuvable            ROUGE
+ *   M123 le champ visible est jeté dans l'appel                            ROUGE
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ M118 A ÉCHAPPÉ, ET C'ÉTAIT LA PLUS GROSSE MUTATION DE LA CAMPAGNE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Retirer purement et simplement l'appel à `appliquerOmbreSourcePosee3D` — donc rendre la case
+ * « projette une ombre » entièrement DÉCORATIVE, la fonctionnalité de cette tâche supprimée —
+ * laissait la suite verte. Treize autres mutations rougissaient, y compris des déplacements d'une
+ * seule ligne. Celle qui enlevait tout passait.
+ *
+ * ⚠️ LA RAISON EST UNE FAMILLE DE DÉFAUTS QUE CE DÉPÔT NOMME DÉJÀ : un test qui vérifie qu'un
+ * identifiant APPARAÎT et non qu'il GOUVERNE. J'avais vérifié que le plan ARRIVE à
+ * `appliquerOmbresDeCase3D`, que le verdict de la Case ARRIVE à `appliquerLumieresPosees3D`, que le
+ * champ visible ARRIVE aussi. Trois arrivées, pas une seule consommation — et un argument reçu puis
+ * jeté satisfait les trois.
+ *
+ * ⚠️ ET LA PARADE N'EST PAS « UNE ASSERTION DE PLUS », c'est une RÈGLE : aucun paramètre de
+ * l'exécution ne reste inemployé. Elle a des dents au-delà de la mutation qui l'a provoquée —
+ * M123, ajoutée après coup, remplace le champ visible par `null` dans l'appel, et rougit aussi.
+ * Une assertion écrite pour UNE mutation ne protège que d'elle ; une règle couvre ce qu'on n'a pas
+ * pensé à muter. C'est la leçon de #421h, où quatre mutations sur six avaient échappé pour avoir
+ * vérifié des POSITIONS RELATIVES plutôt que des propriétés.
+ *
+ * ⚠️ M110 ET M111 TIENNENT LES DEUX INTERRUPTEURS SÉPARÉMENT, et il fallait les deux. M110 laisse
+ * la source décider seule : une Case sans ombres en aurait, au prix mesuré de six passes cubiques.
+ * M111 laisse la Case décider seule : cocher « ombres portées » imposerait 2 004 ms de compilation
+ * à qui ne voulait que l'ombre du soleil. Une seule des deux mutations aurait laissé croire que la
+ * hiérarchie tient.
+ *
+ * ⚠️ M116 EST LE DÉFAUT QUE LA REFONTE DE #422c A ÉVITÉ DE JUSTESSE. `shadowMap.enabled` et
+ * `castShadow` recevaient la même valeur tant que le soleil était seul à projeter. Un soleil jugé
+ * invisible — caméra assez reculée pour qu'un texel dépasse ce qui projette — aurait alors éteint
+ * le renderer, donc TOUTES les ombres, y compris celles cochées source par source. Le réglage
+ * aurait été sans effet, sans le moindre message. Deux drapeaux de portées différentes ne peuvent
+ * pas partager une valeur « parce qu'aujourd'hui elle coïncide ».
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que l'ombre d'une source soit BELLE, ni que la portée
+ * dérivée du champ visible soit la bonne quand la portée vaut « sans limite ». #422z regarde.
  */

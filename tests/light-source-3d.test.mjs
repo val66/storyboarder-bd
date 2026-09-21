@@ -136,7 +136,11 @@ describe('La lecture est NON DESTRUCTIVE, comme celle du soleil d\'une Case', ()
     const r = reglagesLumierePosee3D(uneLumiere({
       color: '#FF8800', intensite: 2.5, portee: 12, sphereVisible: false, realHeightFloor: 0.5,
     }));
-    assert.deepEqual(r, {
+    // ⚠️ CE QU'ON ATTEND SE DÉRIVE DU DÉFAUT (#422d). Recopier la forme entière du réglage fait
+    // rougir ce test à chaque champ ajouté, sur du code parfaitement juste — c'est arrivé en #422b
+    // à `load-scene.test.mjs`, et ici trois fois d'un coup. Ce qui est vrai, et le restera : les
+    // valeurs posées sont rendues telles quelles, et le RESTE vaut son défaut.
+    assert.deepEqual(r, { ...LUMIERE_POSEE_DEFAUT,
       couleur: '#FF8800', intensite: 2.5, portee: 12, sphereVisible: false, diametre: 0.5,
     });
   });
@@ -194,7 +198,18 @@ describe('Ce qu\'on donne au moteur', () => {
     // de rendu connaît. La visibilité de la sphère non plus : elle décrit le repère, pas la
     // lumière.
     const e = eclairagePosee3D(uneLumiere({ color: '#00FF00', intensite: 3, portee: 7 }));
-    assert.deepEqual(e, { couleur: '#00FF00', intensite: 3, portee: 7 });
+    assert.deepEqual(e, {
+      couleur: '#00FF00', intensite: 3, portee: 7,
+      // ⚠️ `projetteOmbre` Y EST, ET C'EST BIEN UNE PROPRIÉTÉ DE LA LUMIÈRE (#422d) : c'est elle qui
+      // décide si CETTE source participe aux ombres de sa Case. Le rendu en a besoin ; la
+      // visibilité de la sphère, qui décrit le repère, reste dehors.
+      projetteOmbre: LUMIERE_POSEE_DEFAUT.projetteOmbre,
+    });
+    // Et ce qui n'a rien à y faire n'y est toujours pas.
+    for (const dehors of ['sphereVisible', 'diametre', 'x', 'y', 'wx']) {
+      assert.ok(!Object.prototype.hasOwnProperty.call(e, dehors),
+        `« ${dehors} » n'est pas une propriété de la lumière`);
+    }
   });
 
   test('les champs d\'une lumière neuve n\'incluent PAS l\'aimantation au sol', () => {
@@ -210,13 +225,12 @@ describe('Ce qu\'on donne au moteur', () => {
     // Un champ oublié à la création se lirait sur son défaut, et le défaut serait invisible tant
     // que personne ne l'ouvrirait dans une modale. On vérifie que création et lecture s'accordent.
     const neuf = { id: 'x', type: 'objet3d', ...champsLumierePosee3D() };
-    assert.deepEqual(reglagesLumierePosee3D(neuf), {
-      couleur: LUMIERE_POSEE_DEFAUT.couleur,
-      intensite: LUMIERE_POSEE_DEFAUT.intensite,
-      portee: LUMIERE_POSEE_DEFAUT.portee,
-      sphereVisible: LUMIERE_POSEE_DEFAUT.sphereVisible,
-      diametre: LUMIERE_POSEE_DEFAUT.diametre,
-    });
+    // ⚠️ DÉRIVÉ, PAS RECOPIÉ CHAMP PAR CHAMP. La version précédente énumérait les cinq clés à la
+    // main : le sixième champ l'a fait rougir alors que création et lecture s'accordaient
+    // parfaitement. Comparer au défaut ENTIER dit la même chose et survit au septième.
+    assert.deepEqual(reglagesLumierePosee3D(neuf), { ...LUMIERE_POSEE_DEFAUT });
+    // Le témoin : le défaut n'est pas vide, sinon l'égalité ci-dessus ne vérifierait rien.
+    assert.ok(Object.keys(LUMIERE_POSEE_DEFAUT).length >= 5);
   });
 });
 
@@ -589,10 +603,17 @@ describe('#420c : le plan des lumières, ou comment une Case n\'éclaire pas la 
   });
 
   test('le plan porte ce que le moteur doit poser, défauts compris', () => {
-    const plan = planLumieresPosees3D(cache(), [uneLumiere({ id: 'l1', color: '#FF8800', intensite: 2 })]);
-    assert.deepEqual(plan.aAllumer[0], {
-      id: 'l1', couleur: '#FF8800', intensite: 2, portee: LUMIERE_POSEE_DEFAUT.portee,
-    });
+    // ⚠️ DÉRIVÉ DE L'ÉCLAIRAGE, PAS RECOPIÉ (#422d). Le plan porte l'identifiant PLUS ce que
+    // `eclairagePosee3D` retient de la lumière : énumérer ces champs ici en ferait une seconde
+    // liste, qui rougirait au premier ajout sur du code juste — ce qui vient d'arriver trois fois
+    // dans ce fichier avec `projetteOmbre`.
+    const lumiere = uneLumiere({ id: 'l1', color: '#FF8800', intensite: 2 });
+    const plan = planLumieresPosees3D(cache(), [lumiere]);
+    assert.deepEqual(plan.aAllumer[0], { id: 'l1', ...eclairagePosee3D(lumiere) });
+    // Le témoin : l'éclairage porte bien quelque chose, et l'identifiant n'en vient pas.
+    assert.ok(Object.keys(eclairagePosee3D(lumiere)).length >= 3);
+    assert.ok(!Object.prototype.hasOwnProperty.call(eclairagePosee3D(lumiere), 'id'),
+      'l\'identifiant viendrait de l\'éclairage : le plan ne dirait plus QUI allumer');
   });
 });
 

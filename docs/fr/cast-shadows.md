@@ -101,6 +101,24 @@ moins prévisible que l'à-coup de #420f, et à ce titre plus surprenant.
 Le remède, s'il gêne, est celui que #420f nommait déjà : **précompiler au repos** plutôt que de
 découvrir une configuration au moment où l'utilisateur clique.
 
+### Deux interrupteurs, et ils sont hiérarchiques (#422d)
+
+La Case décide qu'il Y A des ombres ; la source décide si ELLE y participe. La case « projette une
+ombre » vit dans la section « Luminosité » de la fiche d'une Lumière, **sous la portée**, dont elle
+dépend techniquement.
+
+⚠️ **COCHÉE SUR UNE CASE SANS OMBRES, ELLE NE FAIT RIEN**, et un indice sous elle le dit. Un réglage
+qui ne produit aucun effet visible et n'explique pas pourquoi se lit comme une panne : c'est la
+leçon de #420f, où une portée de 0 signifiait « sans limite » et non « éteinte » sans qu'aucune
+étiquette ne le dise.
+
+⚠️ **ET LES DEUX DRAPEAUX DU RENDU NE SONT PAS LE MÊME.** `shadowMap.enabled` appartient au
+renderer — il y a des ombres dans cette Case —, `castShadow` à chaque lumière — elle y participe.
+#422c leur écrivait la même valeur, ce qui se tenait tant que le soleil était seul à projeter. Un
+soleil jugé invisible — caméra assez reculée pour qu'un texel dépasse ce qui projette — aurait alors
+éteint le renderer, donc TOUTES les ombres, y compris celles cochées source par source. Le drapeau
+du renderer suit désormais les DEUX projeteurs.
+
 ### Par défaut : éteintes, et réglées par Case
 
 Tranché par l'utilisateur, et c'est la règle du dépôt appliquée telle quelle : **« pas de réglage »
@@ -124,11 +142,23 @@ taille précise se jugera à l'écran, comme l'intensité de départ d'une sourc
 serrée coupe les ombres des Éléments proches du bord ; trop large, elle les rend floues. La caméra
 d'une Case a une distance (`camDist`) et un cadrage connus : ils donneront le point de départ.
 
-**La portée d'une source qui projette.** Une caméra d'ombre a besoin d'un plan éloigné fini. Une
-source à portée nulle — « sans limite », le défaut de #420a — n'en a pas. Cocher « projette une
-ombre » devra donc soit exiger une portée finie, soit en dériver une. C'est le point où la portée
-exposée en #421 cesse d'être un confort pour devenir une nécessité technique, comme #420f l'avait
-prévu.
+**~~La portée d'une source qui projette.~~ TRANCHÉ EN #422d : DÉRIVER, PAS EXIGER.** Une caméra
+d'ombre a besoin d'un plan éloigné fini, et une source à portée nulle — « sans limite », le défaut
+de #420a — n'en a pas. Les deux issues étaient ouvertes ; c'est la dérivation qui a été retenue.
+Exiger une portée finie aurait fait d'une case à cocher un réglage qui en IMPOSE un autre, et
+refuser de cocher tant qu'un champ n'est pas rempli est une porte close dont la raison ne se lit
+pas. Une source sans portée n'ombre donc que ce qui est DANS le champ de la Case.
+
+⚠️ **ET THREE.JS ALLAIT DANS LE MÊME SENS SANS QU'ON LE SACHE**, vérifié dans son code :
+`PointLightShadow.updateMatrices` fait `const far = light.distance || camera.far`. Quand la portée
+est finie, il l'impose de toute façon ; notre plan éloigné ne sert que dans le cas « sans limite »,
+exactement celui que la dérivation couvre. Les deux moitiés tombent sur la même valeur — ce n'est
+pas une redondance, c'est la seule prise qu'on ait sur ce cas.
+
+**Ce que la dérivation coûte, et il faut le dire** : un Élément plus loin que le champ ne projettera
+pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserait de l'être si la caméra
+reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
+était déjà depuis #414c.
 
 **~~Le Sol reçoit-il ?~~ VÉRIFIÉ EN #422c, ET IL REÇOIT PROPREMENT.** La crainte était fondée : une
 surface de 12 000 unités est le terrain classique de l'acné d'ombre, ces mouchetures qu'une précision

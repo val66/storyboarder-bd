@@ -111,6 +111,12 @@ export const LUMIERE_POSEE_DEFAUT = {
   portee: 0,
   sphereVisible: true,
   diametre: 0.2,
+  // ⚠️ DÉCOCHÉE, ET C'EST LE PRIX MESURÉ QUI L'A DÉCIDÉ (#422d). Une ombre de source ponctuelle est
+  // une carte CUBIQUE : six passes de profondeur par lumière et par image. Huit sources qui
+  // projettent coûtent 3,9 ms là où huit sources sans ombre en coûtent 0,9 — et surtout 2 004 ms à
+  // la première rencontre de cette configuration, sept fois le pire à-coup que l'application se
+  // permet. Le coût n'est donc payé que par qui le demande, source par source.
+  projetteOmbre: false,
 };
 
 /**
@@ -147,6 +153,7 @@ export function reglagesLumierePosee3D(o){
     intensite: Math.max(0, nombreFini(o.intensite, d.intensite)),
     portee: Math.max(0, nombreFini(o.portee, d.portee)),
     sphereVisible: o.sphereVisible === undefined ? d.sphereVisible : !!o.sphereVisible,
+    projetteOmbre: o.projetteOmbre === undefined ? d.projetteOmbre : !!o.projetteOmbre,
     diametre: Math.max(0.01, nombreFini(o.realHeightFloor, d.diametre)),
   };
 }
@@ -170,6 +177,7 @@ export function champsLumierePosee3D(){
     intensite: d.intensite,
     portee: d.portee,
     sphereVisible: d.sphereVisible,
+    projetteOmbre: d.projetteOmbre,
     realHeightFloor: d.diametre,
   };
 }
@@ -182,7 +190,7 @@ export function champsLumierePosee3D(){
  */
 export function eclairagePosee3D(o){
   const r = reglagesLumierePosee3D(o);
-  return { couleur: r.couleur, intensite: r.intensite, portee: r.portee };
+  return { couleur: r.couleur, intensite: r.intensite, portee: r.portee, projetteOmbre: r.projetteOmbre };
 }
 
 /**
@@ -308,6 +316,7 @@ export const CHAMPS_FICHE_LUMIERE = {
   objectSizeField: true,           // l'enveloppe reste : elle porte la hauteur, ci-dessous
   objectHeightField: true,         // → « Diamètre de la sphère (m) »
   objectSizePercentField: false,   // le pourcentage, doublon de la hauteur : cf. ci-dessus
+  objectLightShadowField: true,    // « Projette une ombre » (#422d), sous la portée dont elle dépend
   objectTraversantField: false,    // propriété d'une ouverture dans un Mur
   objectLinkedField: false,        // l'Élément hôte d'une ouverture
   // — Position —

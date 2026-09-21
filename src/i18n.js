@@ -412,6 +412,12 @@ export const I18N_MODALS = [
   // trompeuse dans l'autre langue, pas seulement incomplète.
   ['#objectLightRangeHint', '0 = unlimited. Beyond the range, the light no longer carries at all.',
    '0 = sans limite. Au-delà de la portée, la lumière ne porte plus du tout.'],
+  // ⚠️ CET INDICE DIT POURQUOI LA CASE PEUT NE RIEN FAIRE (#422d). Deux interrupteurs
+  // hiérarchiques : la Case décide qu'il Y A des ombres, la source décide si ELLE y participe.
+  // Sans ce mot, cocher sans rien voir se lirait comme une panne.
+  ['#objectLightShadowHint',
+   'No effect while cast shadows are off in the Panel\u2019s Light section.',
+   'Sans effet tant que les ombres portées sont éteintes dans la section Lumière de la Case.'],
   ['#roomModalCancel', 'Cancel', 'Annuler'],
   ['#roomModalSave', 'Save', 'Enregistrer'],
 ];
@@ -516,6 +522,9 @@ export function applyI18n(lang){
   // which has no id of its own, so we target the checkbox's parent rather than a direct selector).
   const badgesCb = document.getElementById('exportShowPanelBadgesCheckbox');
   if (badgesCb) setTrailingText(badgesCb.parentElement, 'Show panel number badges', 'Afficher le badge numéro sur les Cases', lang);
+  // La case « projette une ombre » d'une Lumière (#422d), et son indice.
+  const ombreCb = document.getElementById('objectLightShadowCheckbox');
+  if (ombreCb) setTrailingText(ombreCb.parentElement, 'Casts a shadow', 'Projette une ombre', lang);
   // La case de la sphère d'une Lumière : son texte suit l'input, dans le <label> parent (#421c).
   const sphereCb = document.getElementById('objectSphereVisibleCheckbox');
   if (sphereCb) setTrailingText(sphereCb.parentElement, 'Show the Light\'s sphere', 'Afficher la sphère de la Lumière', lang);

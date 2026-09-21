@@ -24,7 +24,7 @@ import { S, currentVolume, tr } from './state.js';
 // test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
 // `lighting-3d.js` n'importe rien : aucun cycle possible.
 import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
-import { boiteOmbreSoleil3D, ombreSoleilSeraVisible3D } from './shadows-3d.js';
+import { boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D } from './shadows-3d.js';
 import {
   OBJ_TYPE_LUMIERE, HALO_OPACITE_REF, NOM_HALO_LUMIERE, opaciteHaloLumiere3D, estUneLumiere3D,
 } from './light-source-3d.js';
@@ -1123,16 +1123,40 @@ export function appliquerEclairageDeCase3D(eclairage){
  * ⚠️ ET ON NE PAIE PAS SIX PASSES POUR UNE IMAGE INCHANGÉE. Reculer assez la caméra étale la carte
  * d'ombre jusqu'à ce qu'un texel dépasse ce qui projette : l'ombre disparaît, exactement comme la
  * version étirée au Sol que #422 a mesurée à 0,00 % de pixels changés. `ombreSoleilSeraVisible3D`
- * tranche, et on ne l'allume pas dans ce cas.
+ * tranche, et le SOLEIL ne s'allume pas dans ce cas.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ DEUX DRAPEAUX, DEUX PORTÉES, ET LES CONFONDRE A FAILLI COÛTER #422d
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * `shadowMap.enabled` appartient au RENDERER : il dit qu'il y a des ombres dans cette Case.
+ * `castShadow` appartient à CHAQUE lumière : il dit qu'elle y participe. La version de #422c
+ * écrivait la même valeur dans les deux, ce qui se tenait tant que le soleil était seul à projeter.
+ * Depuis #422d une source posée peut projeter aussi, et un soleil invisible — caméra trop reculée —
+ * aurait alors éteint le renderer, donc TOUTES les ombres, y compris celles que l'utilisateur vient
+ * de cocher source par source. Le réglage aurait été sans effet, sans le moindre message.
+ *
+ * Le drapeau du renderer suit donc le PLAN : il est allumé si le soleil projette ou si au moins une
+ * source le fait. Compté ici, sur `plan.aAllumer`, et pas refiltré ailleurs — c'est le même plan
+ * que `appliquerLumieresPosees3D` exécute, pas une seconde copie du même raisonnement.
+ *
+ * ⚠️ ET UN PLAN VIDE NE COÛTE RIEN : aucune lumière à `castShadow` vrai, donc aucune passe de
+ * profondeur, quel que soit ce drapeau. Ce qu'on économise en l'éteignant est la CLÉ DE PROGRAMME —
+ * `shadowMapEnabled` y entre —, c'est-à-dire une compilation de plus dans la session.
  */
-export function appliquerOmbresDeCase3D(panel, page, eclairage){
+export function appliquerOmbresDeCase3D(panel, page, eclairage, plan){
   if (!personaRenderer3D || !personaKeyLight3D) return false;
   const voulues = !!(eclairage && eclairage.ombresPortees);
-  const visibles = voulues && ombreSoleilSeraVisible3D(panel, page);
-  personaRenderer3D.shadowMap.enabled = visibles;
-  personaKeyLight3D.castShadow = visibles;
-  if (visibles) {
-    marquerProjectionDOmbre3D();
+  const soleil = voulues && ombreSoleilSeraVisible3D(panel, page);
+  const sources = voulues
+    && (plan && Array.isArray(plan.aAllumer) ? plan.aAllumer : []).some(p => p && p.projetteOmbre);
+  const rendues = soleil || sources;
+  personaRenderer3D.shadowMap.enabled = rendues;
+  personaKeyLight3D.castShadow = soleil;
+  // ⚠️ LE MARQUAGE SUIT LE RENDERER, PAS LE SOLEIL. Une Case où seule une source posée projette a
+  // tout autant besoin de savoir qui jette une ombre et qui n'en jette pas.
+  if (rendues) marquerProjectionDOmbre3D();
+  if (soleil) {
     const b = boiteOmbreSoleil3D(panel, page);
     const c = personaKeyLight3D.shadow.camera;
     c.left = -b.rayon; c.right = b.rayon; c.top = b.rayon; c.bottom = -b.rayon;
@@ -1149,7 +1173,54 @@ export function appliquerOmbresDeCase3D(panel, page, eclairage){
       }
     }
   }
-  return visibles;
+  return rendues;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * L'OMBRE D'UNE SOURCE POSÉE (#422d)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ DEUX INTERRUPTEURS HIÉRARCHIQUES, ET C'EST LE CHOIX DE L'UTILISATEUR DEVANT LES CHIFFRES. La
+ * Case décide qu'il Y A des ombres ; la source décide si ELLE y participe. Le prix mesuré en #422
+ * explique la hiérarchie : une carte d'ombre de source est CUBIQUE — six passes de profondeur par
+ * lumière et par image, 3,9 ms à huit sources, et 2 004 ms de compilation la première fois qu'une
+ * telle configuration est rencontrée. Personne ne paie ça sans l'avoir demandé.
+ *
+ * ⚠️ LE PLAN NE SUFFIT PAS À DÉCIDER : `ombresDeLaCase` est le premier interrupteur, et il vient du
+ * réglage de Case, pas de la source. Cochée sur une Case dont les ombres sont éteintes, la case de
+ * la fiche ne fait donc rien — l'indice sous elle le dit, parce qu'un réglage sans effet visible et
+ * sans explication se lit comme une panne.
+ *
+ * ⚠️ `near` EST À NOUS, `far` EST UN FILET. `PointLightShadow.updateMatrices` fait
+ * `const far = light.distance || camera.far` : quand la portée est finie, Three.js l'impose de
+ * toute façon, et notre `far` ne sert que dans l'autre cas — celui d'une portée nulle, « sans
+ * limite », où il n'existe aucun plan éloigné naturel et où `cameraOmbreSource3D` en dérive un du
+ * champ visible de la Case. Les deux moitiés se rejoignent donc exactement sur la même valeur ; ce
+ * n'est pas une redondance, c'est la seule prise que nous ayons sur le cas « sans limite ».
+ */
+export function appliquerOmbreSourcePosee3D(lumiere, portee, projette, ombresDeLaCase, champ){
+  if (!lumiere) return false;
+  const projetteVraiment = !!ombresDeLaCase && !!projette;
+  // ⚠️ ÉCRIT DANS LES DEUX SENS, comme le drapeau du renderer et pour la même raison : le cache de
+  // sources est PARTAGÉ entre les Cases (#420c). Une lumière laissée à `castShadow` vrai projetterait
+  // dans la Case suivante, qui ne l'a pas demandé.
+  lumiere.castShadow = projetteVraiment;
+  if (!projetteVraiment) return false;
+  const c = cameraOmbreSource3D(portee, champ);
+  const cam = lumiere.shadow.camera;
+  cam.near = c.near;
+  cam.far = c.far;
+  cam.updateProjectionMatrix();
+  // Même piège silencieux que pour le soleil : `mapSize` seul ne réalloue pas la cible déjà faite.
+  if (lumiere.shadow.mapSize.width !== c.resolution) {
+    lumiere.shadow.mapSize.set(c.resolution, c.resolution);
+    if (lumiere.shadow.map) {
+      lumiere.shadow.map.dispose();
+      lumiere.shadow.map = null;
+    }
+  }
+  return true;
 }
 
 /**

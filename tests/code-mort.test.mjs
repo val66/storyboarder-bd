@@ -122,11 +122,16 @@ const EN_ATTENTE = {
   // taille du texel rendrait de toute façon inchangée. `boiteOmbreSoleil3D` et
   // `champVisibleDeCase3D` n'y ont jamais figuré : le détecteur les voit appelées dans le module.
   //
-  // ÉCHÉANCE RESTANTE, et c'est un NUMÉRO DE TÂCHE :
-  cameraOmbreSource3D: '#422d — la case « projette une ombre » dans la fiche d\'une Lumière',
-  // `champVisibleDeCase3D`, `boiteOmbreSoleil3D` et les constantes ne sont PAS ici : le détecteur
-  // les voit appelées à l'intérieur du module. Cinquième fois que ce garde-fou évite des exemptions
-  // qui ne surveilleraient rien.
+  // ÉCHÉANCE TENUE, ET LA DETTE DE #422a EST DONC SOLDÉE EN ENTIER. `cameraOmbreSource3D` a quitté
+  // cette liste à son tour : #422d l'appelle depuis `appliquerOmbreSourcePosee3D`, pour la source
+  // que l'utilisateur a cochée. Sixième figure, sixième dette payée jusqu'au bout — #403a, #414a,
+  // #420a, #425a, #421a, #422a —, et toujours pour la même raison : l'échéance était un NUMÉRO DE
+  // TÂCHE et non une intention. Une échéance formulée en intention (« quand on en aura besoin »)
+  // n'arrive jamais.
+  //
+  // `champVisibleDeCase3D`, `boiteOmbreSoleil3D` et les constantes n'y ont jamais figuré : le
+  // détecteur les voit appelées à l'intérieur du module. Cinquième fois que ce garde-fou évite des
+  // exemptions qui ne surveilleraient rien.
 
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
@@ -206,9 +211,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, UNE depuis que #421a
     // a posé la disposition de la fiche d'une Lumière, ZÉRO à nouveau depuis que #421b l'a
     // branchée — une tâche plus tôt que l'échéance inscrite —, et DEUX depuis les fondations de
-    // #422a — échéances #422c et #422d —, et UNE depuis que #422c a branché la visibilité.
+    // #422a — échéances #422c et #422d —, UNE depuis que #422c a branché la visibilité, et ZÉRO à
+    // nouveau depuis que #422d a branché l'ombre d'une source posée.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
-    // tenues.
+    // tenues — SIX dettes ouvertes, SIX soldées en entier.
     //
     // ⚠️ UN TROISIÈME NOM A ÉTÉ ÉCARTÉ PLUTÔT QU'INSCRIT, et c'est l'usage le plus utile qu'on ait
     // fait de ce fichier. `apparenceBulleEstCelleDOrigine` n'aurait jamais eu d'appelant dans
@@ -218,7 +224,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

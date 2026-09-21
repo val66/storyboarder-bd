@@ -38,9 +38,11 @@ import { clearImageCache } from './image-cache.js';
 // 2D divergent de ce que le GPU affiche réellement.
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
+// Le champ visible d'une Case : il sert de plan éloigné à l'ombre d'une source SANS portée (#422d).
+import { champVisibleDeCase3D } from './shadows-3d.js';
 import {
   applyGroundType,
-  applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D,
+  applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D, appliquerOmbreSourcePosee3D,
   buildGroundTexture,
   buildWallRig3D,
   disposeObjectRig3D,
@@ -1072,7 +1074,7 @@ export const lumierePoseeCache3D = new Map();
  * précédente laissée allumée éclairerait celle-ci, qui n'en a pas, et le défaut serait attribué à
  * n'importe quoi sauf à sa cause (cf. docs/en/positioned-lights.md).
  */
-function appliquerLumieresPosees3D(plan, positions){
+function appliquerLumieresPosees3D(plan, positions, ombresDeLaCase, champVisible){
   plan.aEteindre.forEach(id => {
     const l = lumierePoseeCache3D.get(id);
     if (l) l.visible = false;
@@ -1090,6 +1092,9 @@ function appliquerLumieresPosees3D(plan, positions){
     l.distance = p.portee;
     const pos = positions.get(p.id);
     if (pos) l.position.set(pos.x, pos.y, pos.z);
+    // Le second interrupteur, et sa caméra d'ombre : la décision est dans shadows-3d.js, les gestes
+    // Three.js dans rig3d.js. Voir la note d'`appliquerOmbreSourcePosee3D` pour les deux niveaux.
+    appliquerOmbreSourcePosee3D(l, p.portee, p.projetteOmbre, ombresDeLaCase, champVisible);
     l.visible = true;
   });
 }
@@ -2097,10 +2102,15 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   applyStyle3DLighting(style);
   const _eclairage = resoudreEclairage3D(lumiereDeCase3D(panel));
   appliquerEclairageDeCase3D(_eclairage);
+  const elements = panelOwnedElements3D(panel, page);
+  // ⚠️ LE PLAN DES SOURCES EST FAIT ICI, ET PAS PLUS BAS OÙ IL S'EXÉCUTE (#422d). Les ombres ont
+  // besoin de savoir si une source projette AVANT de poser le drapeau du renderer ; le faire deux
+  // fois, ou refiltrer `elements` une seconde fois, serait la copie qui ne s'accorde qu'aujourd'hui.
+  // Un plan est pur : le construire tôt ne coûte rien et ne décide de rien.
+  const _planLumieres = planLumieresPosees3D(lumierePoseeCache3D.keys(), elements);
   // Les ombres suivent l'éclairage, et pour la MÊME raison : la scène est partagée, donc une ombre
   // laissée allumée s'appliquerait à la Case suivante (#422c).
-  appliquerOmbresDeCase3D(panel, page, _eclairage);
-  const elements = panelOwnedElements3D(panel, page);
+  const _ombresDeLaCase = appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres);
   personaRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   objectRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   wallRenderRigCache3D.forEach(e => { e.figureGroup.visible = false; });
@@ -2436,7 +2446,8 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   });
   // Les sources posées de CETTE Case, allumées, et toutes les autres éteintes. Voir le plan pur et
   // sa raison d'être dans light-source-3d.js : la scène Three.js est partagée entre les Cases.
-  appliquerLumieresPosees3D(planLumieresPosees3D(lumierePoseeCache3D.keys(), elements), _posLumieres3D);
+  appliquerLumieresPosees3D(_planLumieres, _posLumieres3D, _ombresDeLaCase,
+    champVisibleDeCase3D(panel, page));
   // Render merged wall groups: a single BoxGeometry per colinear chain.
   // Positioned directly in real units (no placeRigCentered3D) since buildWallRig3D
   // is called with the physical dimensions → scale=1 is correct for the perspective camera.
