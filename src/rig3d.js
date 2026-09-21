@@ -24,7 +24,9 @@ import { S, currentVolume, tr } from './state.js';
 // test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
 // `lighting-3d.js` n'importe rien : aucun cycle possible.
 import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
-import { boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D } from './shadows-3d.js';
+import {
+  boiteOmbreSoleil3D, cameraOmbreSource3D, estUnDessinAuSol3D, ombreSoleilSeraVisible3D,
+} from './shadows-3d.js';
 import {
   OBJ_TYPE_LUMIERE, HALO_OPACITE_REF, NOM_HALO_LUMIERE, opaciteHaloLumiere3D, estUneLumiere3D,
 } from './light-source-3d.js';
@@ -1243,11 +1245,31 @@ export function appliquerOmbreSourcePosee3D(lumiere, portee, projette, ombresDeL
  * ⚠️ ET LE SOL EST ÉPARGNÉ : il reçoit, et lui seul décide de ce qu'il fait (cf. sa construction).
  * Le mettre à `castShadow` ne ferait qu'occuper la carte d'ombre avec 12 000 unités de plan.
  *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ SECONDE RÈGLE (#422f) : RECEVOIR ET PROJETER NE SONT PLUS LE MÊME DRAPEAU
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : les chemins étaient rayés de bandes. Un Tracé est un ruban PLAT posé sept
+ * millimètres au-dessus du Sol, avec un matériau éclairé — donc, sous la seule règle ci-dessus, un
+ * projeteur. Il s'ombrait lui-même : la carte d'ombre ne sépare pas deux surfaces distantes de sept
+ * millimètres quand son texel en couvre trente-neuf.
+ *
+ * ⚠️ ET C'EST POURQUOI LES DEUX DRAPEAUX SE SÉPARENT ICI. Un dessin posé au sol DOIT recevoir — une
+ * ombre d'arbre qui s'arrêterait net au bord d'une allée serait pire que pas d'ombre du tout — et
+ * ne doit PAS projeter. Les écrire ensemble était commode tant que rien n'était plat.
+ *
+ * La seconde règle reste GÉOMÉTRIQUE, et c'est non négociable : nommer `tracé` ou `terrain`
+ * rouvrirait l'énumération que la première règle existe pour fermer. Le critère est dans
+ * `estUnDessinAuSol3D` (shadows-3d.js, donc testable sous Node) : **ce qui n'a rien au-dessus du
+ * sol n'a rien pour porter une ombre ailleurs**.
+ *
  * ⚠️ APPELÉ SEULEMENT QUAND LES OMBRES SONT ALLUMÉES. Ces drapeaux ne coûtent rien quand
  * `shadowMap.enabled` est faux, et ils ne figurent dans aucune clé de programme : un parcours par
  * rendu de Case ombrée est négligeable devant les 13 ms qu'elle coûte, et il ne s'exécute pas du
  * tout sur une Case sans ombre.
  */
+const _boiteProjeteur3D = new THREE.Box3();
+
 export function marquerProjectionDOmbre3D(){
   if (!personaScene3D) return 0;
   let marques = 0;
@@ -1256,8 +1278,14 @@ export function marquerProjectionDOmbre3D(){
     if (ch === groundMesh3D) return;
     const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
     const recoitLaLumiere = mats.some(m => m && m.isMaterial && !m.isMeshBasicMaterial);
-    ch.castShadow = recoitLaLumiere;
     ch.receiveShadow = recoitLaLumiere;
+    // ⚠️ LE POINT LE PLUS HAUT DANS LE MONDE, pas la position de l'objet : un ruban est posé à
+    // l'origine de son groupe, et c'est sa géométrie transformée qui dit où il est réellement.
+    // La boîte est réutilisée d'un maillage à l'autre — un parcours de scène par rendu ombré n'a
+    // pas à allouer cinquante objets.
+    _boiteProjeteur3D.setFromObject(ch);
+    const auSol = estUnDessinAuSol3D(_boiteProjeteur3D.max.y);
+    ch.castShadow = recoitLaLumiere && !auSol;
     if (recoitLaLumiere) marques++;
   });
   return marques;

@@ -173,6 +173,39 @@ cast. That is consistent — its shadow is not visible either — but it would s
 camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
 signature; it has done so since #414c.
 
+### ⚠️ What lies flush with the ground does not cast (#422f, reported in use)
+
+The paths came back striped with bands. The cause was in #422c's rule — "a material that receives
+light casts a shadow" — which was right but INCOMPLETE. A Trace is a flat ribbon laid **seven
+millimetres** above the Ground with a lit material: it therefore cast onto the Ground seven
+millimetres below.
+
+**And a shadow map cannot separate two surfaces seven millimetres apart.** At the default framing a
+texel covers **39 mm** — five times the gap to resolve:
+
+| camDist | box radius | texel size |
+|---|---|---|
+| 3 | 4.03 | 3.9 mm |
+| 6 | 8.06 | 7.9 mm |
+| **30 (default)** | **40.28** | **39.3 mm** |
+| 80 | 107.40 | 104.9 mm |
+
+This is not a bias to tune: it is a measurement asked of an instrument whose graduation is coarser
+than the quantity measured.
+
+**The second rule, and it stays geometric**: *what has nothing above the ground has nothing with
+which to cast a shadow elsewhere*. An object whose highest point is flush with the ground could only
+cast beneath itself, onto the very surface it is indistinguishable from. It loses no shadow — it had
+none to give.
+
+⚠️ **AND THE TWO FLAGS PART COMPANY HERE.** A drawing on the ground must RECEIVE — a tree's shadow
+stopping dead at the edge of a path would be worse than no shadow at all — and must not CAST.
+Writing them together was convenient only while nothing was flat.
+
+⚠️ **AND THE CRITERION READS THE TOP, NOT THE BASE.** A hedge sits 2 cm off the ground, like a
+ribbon, but its top is a metre higher. Reading the base would have removed the shadow of everything
+that RESTS on the ground, which is nearly everything.
+
 **~~Does the Ground receive?~~ VERIFIED IN #422c, AND IT RECEIVES CLEANLY.** The worry was founded:
 a 12,000-unit surface is the classic ground for shadow acne, the speckling that insufficient depth
 precision sows everywhere. Measured, by counting the changed pixels and above all WHERE: **1.49%** of

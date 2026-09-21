@@ -35,6 +35,12 @@
 
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PERSONA_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D,
+  // ⚠️ L'ALTITUDE DU SOL, ET ELLE SEULE (#422f). Sa TAILLE — `GROUND_PLANE_SIZE_3D`, 12 000 unités —
+  // n'entre nulle part ici, et un test l'interdit nommément dans les deux fonctions de cadrage :
+  // #422 a mesuré qu'une boîte étirée jusqu'à elle change 0,00 % des pixels. Une altitude n'est pas
+  // une étendue ; celle-ci ne sert qu'à dire ce qui affleure le sol, et jamais à dimensionner quoi
+  // que ce soit.
+  GROUND_Y_DEFAULT_3D,
 } from './constants.js';
 
 /**
@@ -178,6 +184,49 @@ export function cameraOmbreSource3D(portee, champVisible){
 export const TAILLE_TEXEL_MAX = PERSONA_REAL_HEIGHT_M / 8;
 
 /** L'ombre du soleil sera-t-elle VISIBLE pour cette Case ? Fonction PURE. */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UN DESSIN POSÉ SUR LE SOL N'EST PAS UN CORPS (#422f)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ SIGNALÉ À L'USAGE : les chemins étaient rayés de bandes. La cause est exacte et elle était
+ * dans ma règle de #422c. Un Tracé — chemin, route, terrain — est un ruban PLAT posé à
+ * `GROUND_Y_DEFAULT_3D + 0,007`, soit **sept millimètres** au-dessus du Sol, avec un
+ * `MeshStandardMaterial`. Ma règle disait « un matériau qui reçoit la lumière projette une ombre » :
+ * le ruban projetait donc, sur le Sol situé sept millimètres dessous.
+ *
+ * ⚠️ ET LA CARTE D'OMBRE NE PEUT PAS SÉPARER DEUX SURFACES DISTANTES DE SEPT MILLIMÈTRES. Au
+ * `camDist` par défaut de 30, un texel couvre **39 mm** — cinq fois l'écart à résoudre. La
+ * quantification de profondeur tombe tantôt au-dessus, tantôt au-dessous du ruban : ce sont les
+ * bandes. Ce n'est pas un réglage de biais à ajuster, c'est une mesure qu'on demande à un
+ * instrument dont la graduation est plus grosse que la grandeur mesurée.
+ *
+ * ⚠️ LA RÈGLE RESTE GÉOMÉTRIQUE, PAS UNE LISTE DE TYPES, et c'est non négociable : #422c a écarté
+ * l'énumération des sites de création parce qu'il y en avait une dizaine et qu'on en oublie
+ * toujours un. Nommer ici `tracé`, `terrain` et `route` rouvrirait exactement ce trou.
+ *
+ * LE CRITÈRE : **ce qui n'a rien AU-DESSUS du sol n'a rien pour porter une ombre ailleurs.** Un
+ * objet dont le point le plus haut affleure le sol ne peut projeter que sous lui-même, c'est à dire
+ * sur la surface même dont il est indiscernable. Il ne perd donc aucune ombre — il n'en avait
+ * aucune à donner — et cesse de produire du bruit.
+ *
+ * ⚠️ ET CE CRITÈRE COUVRE LE SOL LUI-MÊME, qui était jusqu'ici épargné par son NOM. Le nom reste,
+ * comme court-circuit : calculer la boîte englobante d'un plan de 12 000 unités à chaque rendu pour
+ * retrouver une conclusion connue d'avance serait payer pour rien. Mais la règle tient sans lui.
+ *
+ * ⚠️ CE QUE LE SEUIL NE DOIT PAS ATTRAPER : une dalle funéraire posée à plat, un seuil, une marche.
+ * Ces objets ont une ÉPAISSEUR — ils dépassent —, et leur ombre, si rase soit-elle, est celle d'un
+ * corps. Deux centimètres les laissent tous passer et ne retiennent que ce qui est rigoureusement
+ * plat : les Tracés sont à 5 et 7 millimètres, les marquages routiers à 10.
+ */
+export const EPAISSEUR_MIN_PROJETEUR = 0.02;
+
+export function estUnDessinAuSol3D(hautMonde){
+  const y = Number(hautMonde);
+  if (!Number.isFinite(y)) return false;
+  return y <= GROUND_Y_DEFAULT_3D + EPAISSEUR_MIN_PROJETEUR;
+}
+
 export function ombreSoleilSeraVisible3D(panel, page){
   return boiteOmbreSoleil3D(panel, page).tailleTexel <= TAILLE_TEXEL_MAX;
 }

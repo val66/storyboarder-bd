@@ -177,6 +177,39 @@ pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserai
 reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
 était déjà depuis #414c.
 
+### ⚠️ Ce qui affleure le sol ne projette pas (#422f, signalé à l'usage)
+
+Les chemins sont revenus rayés de bandes. La cause était dans la règle de #422c — « un matériau qui
+reçoit la lumière projette une ombre » — et elle était juste mais INCOMPLÈTE. Un Tracé est un ruban
+plat posé **sept millimètres** au-dessus du Sol, avec un matériau éclairé : il projetait donc sur le
+Sol situé sept millimètres dessous.
+
+**Et la carte d'ombre ne peut pas séparer deux surfaces distantes de sept millimètres.** Au cadrage
+par défaut, un texel couvre **39 mm** — cinq fois l'écart à résoudre :
+
+| camDist | rayon de la boîte | taille d'un texel |
+|---|---|---|
+| 3 | 4,03 | 3,9 mm |
+| 6 | 8,06 | 7,9 mm |
+| **30 (défaut)** | **40,28** | **39,3 mm** |
+| 80 | 107,40 | 104,9 mm |
+
+Ce n'est pas un biais à ajuster : c'est une mesure demandée à un instrument dont la graduation est
+plus grosse que la grandeur mesurée.
+
+**La seconde règle, et elle reste géométrique** : *ce qui n'a rien au-dessus du sol n'a rien pour
+porter une ombre ailleurs*. Un objet dont le point le plus haut affleure le sol ne pourrait projeter
+que sous lui-même, sur la surface dont il est indiscernable. Il ne perd donc aucune ombre — il n'en
+avait aucune à donner.
+
+⚠️ **ET LES DEUX DRAPEAUX SE SÉPARENT ICI.** Un dessin au sol doit RECEVOIR — une ombre d'arbre qui
+s'arrêterait net au bord d'une allée serait pire que pas d'ombre du tout — et ne doit pas PROJETER.
+Les écrire ensemble était commode tant que rien n'était plat.
+
+⚠️ **ET LE CRITÈRE LIT LE SOMMET, PAS LA BASE.** Une haie est posée à 2 cm du sol, comme un ruban,
+mais son sommet est un mètre plus haut. Lire la base aurait supprimé l'ombre de tout ce qui REPOSE
+par terre, c'est à dire de presque tout.
+
 **~~Le Sol reçoit-il ?~~ VÉRIFIÉ EN #422c, ET IL REÇOIT PROPREMENT.** La crainte était fondée : une
 surface de 12 000 unités est le terrain classique de l'acné d'ombre, ces mouchetures qu'une précision
 de profondeur insuffisante sème partout. Relevé, en comptant les pixels changés et surtout OÙ :

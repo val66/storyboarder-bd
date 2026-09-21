@@ -22,10 +22,11 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 import {
   champVisibleDeCase3D, boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D,
   MARGE_BOITE_OMBRE, RESOLUTION_OMBRE_SOLEIL, RESOLUTION_OMBRE_SOURCE, NEAR_OMBRE_SOURCE,
-  TAILLE_TEXEL_MAX,
+  TAILLE_TEXEL_MAX, estUnDessinAuSol3D, EPAISSEUR_MIN_PROJETEUR,
 } from '../src/shadows-3d.js';
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PERSONA_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D, GROUND_PLANE_SIZE_3D,
+  GROUND_Y_DEFAULT_3D,
 } from '../src/constants.js';
 import { CHAMPS_FICHE_LUMIERE } from '../src/light-source-3d.js';
 
@@ -46,7 +47,22 @@ describe('⚠️ LE SOL N’ENTRE DANS AUCUN CALCUL, et c’est la mesure qui l�
       .filter(l => !/^\s*\/\//.test(l)).join('\n');
     assert.ok(!/GROUND_PLANE_SIZE_3D/.test(corps),
       'la taille du Sol est entrée dans la décision : l’ombre redeviendra invisible');
-    assert.ok(!/GROUND/.test(corps), 'une grandeur du Sol est entrée dans la décision');
+    // ⚠️ L'INTERDICTION PORTE SUR LES DEUX FONCTIONS DE CADRAGE, ET NON SUR TOUT LE MODULE (#422f).
+    // La version précédente refusait la sous-chaîne `GROUND` n'importe où : elle confondait
+    // l'ÉTENDUE du Sol — les 12 000 unités, la faute mesurée — avec son ALTITUDE, qui est une tout
+    // autre grandeur et que #422f a dû importer pour dire ce qui affleure le sol. Interdire un
+    // préfixe plutôt qu'une propriété, c'est bloquer les usages légitimes qu'on n'avait pas prévus ;
+    // c'est la faute de forme que le test de `sideLightToggle` venait de payer en #422e.
+    ['champVisibleDeCase3D', 'boiteOmbreSoleil3D'].forEach(nom => {
+      const i = corps.indexOf(`export function ${nom}(`);
+      assert.ok(i > 0, `${nom} est introuvable`);
+      const fn = corps.slice(i, corps.indexOf('\n}', i));
+      assert.ok(!/GROUND/.test(fn), `une grandeur du Sol est entrée dans ${nom}`);
+    });
+    // ⚠️ ET LE NOMBRE LUI-MÊME EST BANNI DE TOUT LE MODULE, écrit en toutes lettres comme en
+    // séparateurs : recopier 12000 plutôt que d'importer la constante contournerait tout ce qui
+    // précède, et c'est précisément ce qu'un remaniement pressé ferait.
+    assert.ok(!/12[_\s]?000\b/.test(corps), 'la taille du Sol est recopiée à la main');
     // Le témoin : la constante existe bien et vaut bien ce qu'on croit, sinon l'assertion ci-dessus
     // serait vraie pour la pire des raisons — un nom qui ne désigne plus rien.
     assert.equal(GROUND_PLANE_SIZE_3D, 12000,
@@ -703,6 +719,97 @@ describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈ
  */
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * UN DESSIN POSÉ SUR LE SOL N'EST PAS UN CORPS (#422f)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ SIGNALÉ À L'USAGE, et le défaut était dans ma règle de #422c. Les chemins étaient rayés de
+ * bandes : un Tracé est un ruban PLAT posé sept millimètres au-dessus du Sol avec un matériau
+ * éclairé, donc un projeteur sous la seule règle du matériau — et la carte d'ombre ne sépare pas
+ * deux surfaces distantes de sept millimètres quand son texel en couvre trente-neuf.
+ */
+describe('⚠️ CE QUI AFFLEURE LE SOL REÇOIT MAIS NE PROJETTE PAS (#422f)', () => {
+  const RIG = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+  const SCENE = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+
+  test('⚠️ LE SEUIL COUVRE TOUS LES RUBANS QUE L’APPLICATION CONSTRUIT VRAIMENT', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ LE SEUIL EST CONFRONTÉ AU CODE, PAS RECOPIÉ À CÔTÉ DE LUI
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Écrire `assert.equal(EPAISSEUR_MIN_PROJETEUR, 0.02)` n'aurait rien vérifié du tout : ç'aurait
+    // été la constante comparée à elle-même. Ce qui doit être vrai, c'est que le seuil COUVRE les
+    // hauteurs auxquelles l'application pose réellement ses rubans plats — et ces hauteurs sont
+    // lues dans scene3d.js, aux sites d'appel des deux constructeurs qui produisent du plat.
+    //
+    // Conséquence voulue : poser demain un nouveau ruban plus haut que le seuil fait rougir ce
+    // test, et le moiré est signalé AVANT d'apparaître à l'écran plutôt qu'après.
+    const hauteurs = [];
+    for (const m of SCENE.matchAll(/buildTrac.(?:Route|Dash)Geometry3D\s*\(([\s\S]{0,300}?)\)/g)) {
+      for (const y of m[1].matchAll(/GROUND_Y_DEFAULT_3D\s*\+\s*([0-9.]+)/g)) {
+        hauteurs.push(Number(y[1]));
+      }
+    }
+    // Les deux constructeurs portent aussi un défaut interne, quand l'appelant ne donne pas de Y.
+    for (const m of SCENE.matchAll(/yOff[\s\S]{0,60}?GROUND_Y_DEFAULT_3D\s*\+\s*([0-9.]+)/g)) {
+      hauteurs.push(Number(m[1]));
+    }
+    // TÉMOIN : le relevé voit quelque chose. Sans lui, un motif devenu faux déclarerait la
+    // conformité pour la pire des raisons — n'avoir rien trouvé à vérifier. C'est nommément l'une
+    // des familles de défauts de ce dépôt : mesurer une absence sans vérifier que l'instrument
+    // sait voir une présence.
+    assert.ok(hauteurs.length >= 3,
+      `le relevé des rubans plats ne trouve que ${hauteurs.length} hauteur(s) : le motif ne lit plus le code`);
+    hauteurs.forEach(h => {
+      assert.ok(estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D + h),
+        `un ruban plat posé à ${h * 1000} mm du Sol projette encore : c’est le moiré signalé à l’usage`);
+    });
+  });
+
+  test('⚠️ ET LE SEUIL NE MANGE PAS LES CORPS : il lit le SOMMET, pas la base', () => {
+    // ⚠️ LA DISTINCTION QUI SAUVE LA RÈGLE. Une haie est posée à `GROUND_Y + 0,02` — pile sur le
+    // seuil — mais c'est sa BASE. Son sommet est un mètre plus haut, et elle projette. Tester la
+    // position de l'objet, ou sa base, aurait supprimé l'ombre de tout ce qui est posé par terre,
+    // c'est à dire de presque tout.
+    assert.ok(!estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D + 0.02 + 1.0), 'une haie a cessé de projeter');
+    assert.ok(!estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D + 0.15),
+      'une dalle funéraire de 15 cm a cessé de projeter');
+    assert.ok(!estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D + PERSONA_REAL_HEIGHT_M),
+      'un Personnage a cessé de projeter');
+    // Et la frontière est franche des deux côtés.
+    assert.ok(estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D),
+      'une surface exactement au niveau du Sol projette encore');
+    assert.ok(!estUnDessinAuSol3D(GROUND_Y_DEFAULT_3D + EPAISSEUR_MIN_PROJETEUR * 2),
+      'le seuil déborde : le double de l’épaisseur retenue est encore pris pour un dessin');
+    // Une valeur qui n'est pas un nombre ne doit pas éteindre une ombre en silence.
+    assert.equal(estUnDessinAuSol3D(undefined), false);
+    assert.equal(estUnDessinAuSol3D(NaN), false);
+  });
+
+  test('⚠️ RECEVOIR ET PROJETER NE SONT PLUS LE MÊME DRAPEAU', () => {
+    // ⚠️ UN DESSIN AU SOL DOIT RECEVOIR. Une ombre d'arbre qui s'arrêterait net au bord d'une allée
+    // serait pire que pas d'ombre du tout — elle se lirait comme un trou dans le dessin. Les deux
+    // drapeaux s'écrivaient ensemble tant que rien n'était plat ; ils se séparent ici.
+    const i = RIG.indexOf('export function marquerProjectionDOmbre3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /receiveShadow = recoitLaLumiere;/,
+      'un dessin au sol ne reçoit plus : les ombres s’arrêteraient net au bord des allées');
+    assert.match(corps, /castShadow = recoitLaLumiere && !auSol;/,
+      'la seconde règle n’est plus appliquée, ou les deux drapeaux ont été recollés');
+    assert.match(corps, /estUnDessinAuSol3D\(/,
+      'le critère est recalculé sur place au lieu de venir de la décision pure');
+    // ⚠️ ET C'EST LE SOMMET DANS LE MONDE QUI EST LU, pas la position de l'objet : un ruban est posé
+    // à l'origine de son groupe, et seule sa géométrie transformée dit où il est réellement.
+    assert.match(corps, /setFromObject\(ch\)[\s\S]{0,120}?\.max\.y/,
+      'la règle lit autre chose que le sommet réel : la position d’un groupe ne dit pas où est le ruban');
+    // La règle reste géométrique : aucune énumération de types n'est revenue par la fenêtre.
+    assert.ok(!/objType|WALL_TYPES|trac|terrain/i.test(corps),
+      'la règle énumère à nouveau des types : le prochain ruban plat sera oublié');
+  });
+});
+
+/**
  * JOURNAL DE MUTATION (#422d, l'ombre d'une source posée) : quatorze fautes rejouées.
  *
  *   M110 la case de la source suffit : la Case ne commande plus rien       ROUGE
@@ -757,4 +864,47 @@ describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈ
  *
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que l'ombre d'une source soit BELLE, ni que la portée
  * dérivée du champ visible soit la bonne quand la portée vaut « sans limite ». #422z regarde.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422f, ce qui affleure le sol) : huit fautes rejouées.
+ *
+ *   M131 le moiré revient : un ruban plat projette sur le Sol              ROUGE
+ *   M132 les ombres s'arrêtent net au bord des allées                      ROUGE
+ *   M133 la position du groupe lue au lieu du sommet réel                  ROUGE
+ *   M134 la base lue au lieu du sommet                                     ROUGE
+ *   M135 le seuil passe sous les rubans                                    ROUGE
+ *   M136 le seuil déborde : une marche de 30 cm cesse de projeter          ROUGE
+ *   M137 une surface pile au niveau du Sol projette encore                 ROUGE
+ *   M138 une hauteur illisible éteint l'ombre en silence                   ROUGE
+ *
+ * ⚠️ CE CHANTIER EST NÉ D'UN DÉFAUT SIGNALÉ À L'USAGE, et la cause était dans ma propre règle de
+ * #422c : « un matériau qui reçoit la lumière projette une ombre ». Elle était bonne contre
+ * l'énumération de types — elle l'est toujours — et aveugle à une seconde question qu'elle ne
+ * posait pas : un matériau éclairé peut décrire un DESSIN plutôt qu'un corps, s'il est plat et
+ * posé par terre. Une règle juste peut être incomplète, et c'est l'écran qui l'a dit.
+ *
+ * ⚠️ M133 ET M134 SONT LA MÊME ERREUR À DEUX PROFONDEURS, et il fallait les deux. Lire
+ * `ch.position.y` semble naturel : c'est faux, un ruban est posé à l'origine de son groupe et sa
+ * géométrie porte seule sa vraie hauteur. Lire `min.y` semble prudent : c'est pire, tout ce qui
+ * REPOSE sur le sol — Personnages, arbres, pierres tombales — a sa base au sol et cesserait de
+ * projeter. Seul le SOMMET distingue un corps d'un dessin.
+ *
+ * ⚠️ M135 ET M136 ENCADRENT LE SEUIL PAR LE HAUT ET PAR LE BAS, et c'est ce qui le rend autre chose
+ * qu'un nombre écrit au hasard. En dessous il laisse repasser les rubans — le moiré revient ; au
+ * dessus il mange les corps bas. Entre les deux, il n'y a rien à régler.
+ *
+ * ⚠️ ET LE SEUIL EST CONFRONTÉ AU CODE PLUTÔT QUE RECOPIÉ. Le test relève dans scene3d.js les
+ * hauteurs auxquelles l'application pose RÉELLEMENT ses rubans plats, aux sites d'appel des deux
+ * constructeurs qui en produisent, et exige que le seuil les couvre toutes. `assert.equal(seuil,
+ * 0.02)` aurait comparé la constante à elle-même. Conséquence voulue : poser demain un ruban plus
+ * haut que le seuil fait rougir la suite, et le moiré est signalé AVANT d'apparaître à l'écran.
+ *
+ * ⚠️ UN TEST DE #422a A DÛ ÊTRE RESSERRÉ, troisième faute de forme de la même famille en trois
+ * tâches. Il refusait la sous-chaîne `GROUND` dans TOUT le module, pour garder fermée l'erreur des
+ * 12 000 unités du Sol — et confondait ainsi l'ÉTENDUE du Sol, la faute mesurée, avec son
+ * ALTITUDE, qu'il a bien fallu importer ici. L'interdiction porte désormais sur les deux fonctions
+ * de CADRAGE, où elle a un sens, plus un bannissement du nombre lui-même dans tout le module.
+ * Interdire un préfixe plutôt qu'une propriété bloque les usages légitimes qu'on n'avait pas
+ * prévus : c'est exactement ce que le test de `sideLightToggle` avait payé une tâche plus tôt.
  */
