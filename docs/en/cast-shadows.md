@@ -179,6 +179,43 @@ cast. That is consistent — its shadow is not visible either — but it would s
 camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
 signature; it has done so since #414c.
 
+### ⚠️ Shadows leaked onto previews (#422k, found by reading)
+
+The fifth occurrence of the shared-scene trap in this task, after the renderer flag (#422c), a
+dialog's layout (#421h), a source's `castShadow` (#422d) and the sun's target (#422g). Previews —
+a Persona's dialog, an Object's, a Wall's, and the model Editor — share the renderer and the scene
+with Panel rendering, but never call `appliquerOmbresDeCase3D`. After a shadowed Panel they
+inherited its entire shadow state, including a camera framed on THAT Panel, a hundred units away.
+
+**And it was not just a cost.** Measured on a realistic, multi-mesh preview:
+
+| | value |
+|---|---|
+| pixels changed by the leak | **1.83%** |
+| pixels changed by a correctly framed shadow (witness) | 0.635% |
+| extra time | +0.374 ms per preview |
+
+The leak changes **three times more** pixels than a legitimate shadow, which tells you its nature: a
+shadow map framed elsewhere does not give a displaced shadow, it gives NOISE — the depth comparison
+is made against unrelated values. It was grime on the very Element being examined.
+
+⚠️ **AND A FIRST PROBE CONCLUDED "0%", WRONGLY.** It showed only ONE isolated mesh, the degenerate
+case where nothing receives anything's shadow. The witness — a second surface — changed everything.
+A fifth instrument to validate before believing a figure.
+
+**The guarantee was inverted, and a mutation demanded it.** The first fix had each preview switch
+shadows off, through their common entry point. A mutation removing ONE of the two calls in a
+function that contains two — a Wall branch, an Object branch — slipped through: the test saw the
+other and concluded all was well. At the fourth occurrence of "presence checked instead of
+governance" in this task, the lesson is no longer to write a finer test: **the guarantee itself was
+wrong**, since it rested on "every path remembers to call".
+
+The resting state of shadows is therefore OFF, and Panel rendering — the only thing that wants
+them — switches them on for itself and puts them back on the way out. A preview no longer needs to
+know anything about shadows, and a fifth preview path written tomorrow will be correct without
+anyone thinking about it. It is exactly the idiom Panel rendering already uses for its background,
+two lines further down.
+
 ### ⚠️ "After a restart the Panel renders with no shadow" (#422i, reported in use)
 
 The setting was saved, read back and applied — and the image had no shadow. **The cause is an order,

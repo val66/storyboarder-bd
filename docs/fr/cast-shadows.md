@@ -184,6 +184,44 @@ pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserai
 reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
 était déjà depuis #414c.
 
+### ⚠️ Les ombres fuyaient sur les aperçus (#422k, trouvé en lisant)
+
+Cinquième occurrence du piège de la scène partagée dans ce chantier, après le drapeau du renderer
+(#422c), la disposition d'une fiche (#421h), le `castShadow` d'une source (#422d) et la cible du
+soleil (#422g). Les aperçus — fiche d'un Personnage, d'un Objet, d'un Mur, et l'Éditeur de modèle —
+partagent le renderer et la scène avec le rendu des Cases, mais n'appellent jamais
+`appliquerOmbresDeCase3D`. Après une Case ombrée, ils héritaient de tout son état d'ombre, caméra
+cadrée sur CETTE Case comprise, à cent unités de là.
+
+**Et ce n'était pas qu'un coût.** Mesuré sur un aperçu réaliste, à plusieurs maillages :
+
+| | valeur |
+|---|---|
+| pixels changés par la fuite | **1,83 %** |
+| pixels changés par une ombre correctement cadrée (témoin) | 0,635 % |
+| surcoût en temps | +0,374 ms par aperçu |
+
+La fuite change **trois fois plus** de pixels qu'une ombre légitime, ce qui en dit la nature : une
+carte d'ombre cadrée ailleurs ne donne pas une ombre décalée, elle donne du BRUIT — la comparaison
+de profondeur porte sur des valeurs sans rapport. C'étaient des salissures sur l'Élément examiné.
+
+⚠️ **ET UNE PREMIÈRE SONDE A CONCLU « 0 % », À TORT.** Elle ne montrait qu'UN maillage isolé, cas
+dégénéré où rien ne reçoit l'ombre de rien. Le témoin — une seconde surface — a tout changé. Cinquième
+instrument à valider avant de croire un chiffre.
+
+**La garantie a été inversée, et c'est une mutation qui l'a exigé.** La première correction faisait
+éteindre les ombres par chaque aperçu, via leur point de passage commun. Une mutation retirant UN
+des deux appels d'une fonction qui en contient deux — une branche Mur, une branche Objet — est
+passée : le test voyait l'autre et concluait que tout allait bien. À la quatrième occurrence de
+« présence vérifiée à la place de gouvernance » dans ce chantier, la leçon n'est plus d'écrire un
+test plus fin : **la garantie elle-même était mauvaise**, puisqu'elle reposait sur « tous les
+chemins pensent à appeler ».
+
+L'état de repos des ombres est donc ÉTEINT, et le rendu d'une Case — seul à les vouloir — les
+allume pour lui puis les repose en partant. Un aperçu n'a plus rien à savoir des ombres, et un
+cinquième chemin d'aperçu écrit demain sera correct sans qu'on y pense. C'est exactement l'idiome
+que le rendu d'une Case emploie déjà pour son fond, deux lignes plus loin.
+
 ### ⚠️ « Au redémarrage, la Case s'affiche sans ombre » (#422i, signalé à l'usage)
 
 Le réglage était enregistré, relu et appliqué — et l'image n'avait pas d'ombre. **La cause est un

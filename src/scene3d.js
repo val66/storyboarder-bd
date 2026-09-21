@@ -43,7 +43,7 @@ import { champVisibleDeCase3D } from './shadows-3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D, appliquerOmbreSourcePosee3D,
-  marquerProjectionDOmbre3D,
+  marquerProjectionDOmbre3D, reposerOmbresPartagees3D,
   buildGroundTexture,
   buildWallRig3D,
   disposeObjectRig3D,
@@ -2935,6 +2935,11 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   personaScene3D.background = new THREE.Color(0xffffff);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   personaScene3D.background = null;
+  // ⚠️ ET LES OMBRES REPARTENT ÉTEINTES, pour la MÊME raison que le fond juste au-dessus (#422k) :
+  // le renderer est partagé, et ce qui suit — l'aperçu d'une fiche, l'Éditeur — n'a rien demandé.
+  // C'est le rendu de Case qui les veut, c'est donc lui qui les allume et lui qui les repose ; un
+  // aperçu n'a rien à savoir des ombres, et le prochain chemin d'aperçu sera correct sans effort.
+  reposerOmbresPartagees3D();
   // Immediate removal of the orbit group (sphere + axes) after rendering.
   if (_orbitGroup3D) {
     personaScene3D.remove(_orbitGroup3D);

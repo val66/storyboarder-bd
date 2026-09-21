@@ -4049,6 +4049,52 @@ export function showOnlyFigure3D(kind, id){
   if (groundMesh3D) groundMesh3D.visible = false;
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES OMBRES SONT RENDUES À LEUR ÉTAT DE REPOS APRÈS LE RENDU D'UNE CASE (#422k)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ CINQUIÈME OCCURRENCE DU PIÈGE DE LA SCÈNE PARTAGÉE DANS CE SEUL CHANTIER, après le drapeau du
+ * renderer (#422c), la disposition d'une fiche (#421h), le `castShadow` d'une source (#422d) et la
+ * cible du soleil (#422g). Le motif est toujours le même : **un état que personne ne repose reste
+ * celui du dernier qui l'a posé.**
+ *
+ * Les aperçus partagent `personaRenderer3D` et `personaScene3D` avec le rendu des Cases, mais
+ * n'appellent jamais `appliquerOmbresDeCase3D`. Après une Case ombrée, ils héritaient donc de
+ * `shadowMap.enabled` vrai, du `castShadow` du soleil et de sa caméra d'ombre cadrée sur CETTE
+ * Case — à cent unités de là.
+ *
+ * ⚠️ ET CE N'ÉTAIT PAS QU'UN COÛT : MESURÉ, 1,83 % DES PIXELS D'UN APERÇU. Une carte d'ombre cadrée
+ * ailleurs ne donne pas une ombre décalée, elle donne du BRUIT : la comparaison de profondeur porte
+ * sur des valeurs sans rapport. Le témoin le dit — une ombre correctement cadrée n'aurait changé que
+ * 0,635 % des pixels, trois fois moins. Ce qu'on voyait n'était donc pas une ombre de trop mais des
+ * salissures sur l'Élément qu'on examine. Coût en prime : 0,374 ms par aperçu.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ ET C'EST CELUI QUI ALLUME QUI ÉTEINT, PAS CHAQUE APERÇU — UNE MUTATION L'A EXIGÉ
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La première version appelait cette fonction depuis `showOnlyFigure3D`, le point par lequel les
+ * quatre chemins d'aperçu passent. C'était correct et FRAGILE : la mutation M171, qui retirait un
+ * seul des deux `showOnlyFigure3D` d'une fonction qui en contient deux — une branche Mur, une
+ * branche Objet —, a ÉCHAPPÉ. Mon test voyait l'autre appel et concluait que tout allait bien.
+ * Encore la présence vérifiée à la place de la gouvernance, et une garantie qui reposait sur « tous
+ * les chemins pensent à appeler ».
+ *
+ * La garantie est donc INVERSÉE : l'état de repos des ombres est ÉTEINT, et le rendu d'une Case —
+ * seul à les vouloir — les allume pour lui puis les repose en partant. Un aperçu n'a plus rien à
+ * savoir des ombres, et un CINQUIÈME chemin d'aperçu écrit demain sera correct sans qu'on y pense.
+ *
+ * ⚠️ C'EST EXACTEMENT L'IDIOME QUE LE RENDU D'UNE CASE EMPLOIE DÉJÀ POUR SON FOND, deux lignes plus
+ * loin : il force un fond blanc juste pour son rendu, puis le remet à `null` « so as not to affect
+ * other uses of the renderer ». La même raison, le même geste, au même endroit.
+ */
+export function reposerOmbresPartagees3D(){
+  if (personaRenderer3D) personaRenderer3D.shadowMap.enabled = false;
+  if (personaKeyLight3D) personaKeyLight3D.castShadow = false;
+  return true;
+}
+
 // ↳ src/constants.js
 
 export const wallRenderRigCache3D = new Map(); // wall id -> { figureGroup, fingerprint }

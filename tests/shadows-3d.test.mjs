@@ -771,6 +771,89 @@ describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈ
 });
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES OMBRES REPARTENT ÉTEINTES APRÈS LE RENDU D'UNE CASE (#422k)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Cinquième occurrence du piège de la scène partagée dans ce chantier. Les aperçus partagent le
+ * renderer et la scène avec le rendu des Cases mais n'appellent jamais `appliquerOmbresDeCase3D` :
+ * après une Case ombrée, ils héritaient de tout son état d'ombre, caméra cadrée sur CETTE Case
+ * comprise. Mesuré : 1,83 % des pixels d'un aperçu, contre 0,635 % pour une ombre correctement
+ * cadrée — ce n'était pas une ombre de trop, c'était du bruit.
+ */
+describe('⚠️ LES OMBRES REPARTENT ÉTEINTES APRÈS UNE CASE (#422k)', () => {
+  const RIG = sourceSansCommentaires(
+    readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+
+  test('⚠️ CELUI QUI ALLUME EST CELUI QUI ÉTEINT, et aucun aperçu n’a rien à savoir', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ UNE MUTATION A IMPOSÉ D'INVERSER LA GARANTIE, ET C'EST LA LEÇON DE CETTE TÂCHE
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Première version : chaque aperçu éteignait les ombres, via `showOnlyFigure3D`, le point par
+    // lequel les quatre chemins connus passent. C'était correct et FRAGILE. La mutation M171
+    // retirait UN des deux `showOnlyFigure3D` d'une fonction qui en contient deux — une branche
+    // Mur, une branche Objet — et a ÉCHAPPÉ : mon test voyait l'autre appel et concluait que tout
+    // allait bien. Encore la PRÉSENCE vérifiée à la place de la GOUVERNANCE, quatrième fois dans ce
+    // chantier après M118, M158 et M160.
+    //
+    // La parade n'est pas un test plus fin : c'est une garantie qui ne repose pas sur « tous les
+    // chemins pensent à appeler ». L'état de repos des ombres est ÉTEINT ; le rendu d'une Case,
+    // seul à les vouloir, les allume pour lui puis les repose en partant. Un cinquième chemin
+    // d'aperçu écrit demain sera correct sans qu'on y pense.
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    const posRendu = corps.indexOf('personaRenderer3D.render(');
+    const posRepos = corps.indexOf('reposerOmbresPartagees3D()');
+    assert.ok(posRepos > 0, 'le rendu d’une Case ne repose plus les ombres : elles fuiront sur les aperçus');
+    assert.ok(posRepos > posRendu,
+      'les ombres sont reposées AVANT le rendu de la Case : elle n’aurait aucune ombre');
+    // ⚠️ ET C'EST L'IDIOME DU FOND, qui règle le même problème deux lignes plus haut : une valeur
+    // forcée pour ce rendu seulement, puis remise, « so as not to affect other uses of the
+    // renderer ». Les deux doivent rester voisines, sinon la raison de l'une se perd.
+    const posFond = corps.indexOf('personaScene3D.background = null');
+    assert.ok(posFond > 0 && Math.abs(posRepos - posFond) < 400,
+      'la remise à zéro des ombres s’est éloignée de celle du fond : même raison, même endroit');
+  });
+
+  test('⚠️ ET L’ÉTAT DE REPOS ÉTEINT LES DEUX DRAPEAUX', () => {
+    // Le renderer ET le soleil, comme partout dans ce chantier : `shadowMap.enabled` dit qu'il y a
+    // des ombres, `castShadow` qu'une lumière y participe. N'en éteindre qu'un laisserait l'autre
+    // parler pour la Case précédente.
+    const j = RIG.indexOf('export function reposerOmbresPartagees3D');
+    assert.ok(j > 0, 'l’état de repos des ombres est introuvable');
+    const corps = RIG.slice(j, RIG.indexOf('\n}\n', j));
+    assert.match(corps, /shadowMap\.enabled = false/, 'le renderer garde ses ombres allumées');
+    assert.match(corps, /personaKeyLight3D\.castShadow = false/, 'le soleil garde son ombre');
+  });
+
+  test('⚠️ ET UNE CASE OMBRÉE LES RALLUME : le repos ne doit pas être définitif', () => {
+    // ⚠️ LE DÉFAUT SYMÉTRIQUE, celui que ce chantier a rencontré quatre fois. Éteindre sans que
+    // personne ne rallume ferait disparaître les ombres de TOUTES les Cases — et se lirait comme
+    // « les ombres partent au hasard ». La garantie vient d'`appliquerOmbresDeCase3D`, qui écrit
+    // les deux drapeaux SANS CONDITION à chaque rendu de Case.
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /shadowMap\.enabled = rendues;/,
+      'plus rien ne rallume les ombres : les reposer les éteindrait pour toujours');
+    assert.match(corps, /castShadow = soleil;/,
+      'plus rien ne rallume l’ombre du soleil après un aperçu');
+  });
+
+  test('⚠️ ET AUCUN APERÇU N’A BESOIN DE CONNAÎTRE LES OMBRES', () => {
+    // La propriété qui dit que l'inversion a bien eu lieu : hors du rendu d'une Case, plus aucun
+    // chemin ne touche aux drapeaux d'ombre. S'il fallait de nouveau y penser quelque part, c'est
+    // que la garantie serait redevenue « tous les chemins pensent à appeler ».
+    const i = RIG.indexOf('export function showOnlyFigure3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.ok(!/shadowMap|castShadow|OmbresPartagees/.test(corps),
+      'un aperçu manipule à nouveau les ombres : la garantie repose de nouveau sur chaque chemin');
+  });
+});
+
+/**
  * JOURNAL DE MUTATION (#422c, le rendu des ombres) : huit fautes rejouées.
  *
  *   M102 les ombres s'allument sans jamais s'éteindre                       ROUGE
@@ -1508,4 +1591,46 @@ describe('⚠️ CE QUI AFFLEURE LE SOL REÇOIT MAIS NE PROJETTE PAS (#422f)', (
  * la scène est complète, pas quand on pense à l'écrire.** Ce dépôt construit ses rigs
  * paresseusement (#405d) ; toute passe globale posée avant ces constructions travaille sur une
  * scène partielle, en silence et sans erreur.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422k, les ombres reposées après une Case) : six fautes rejouées.
+ *
+ *   M167 le rendu d'une Case ne repose plus les ombres — LE DÉFAUT      ROUGE
+ *   M168 le renderer garde ses ombres allumées                          ROUGE
+ *   M169 le soleil garde son ombre d'une Case à l'aperçu                ROUGE
+ *   M170 le repos ALLUME au lieu d'éteindre                             ROUGE
+ *   M171 le repos AVANT le rendu : la Case perd ses ombres              ROUGE
+ *   M172 une branche d'aperçu sans `showOnlyFigure3D`     HORS SUJET depuis l'inversion → #428
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ M172 A ÉCHAPPÉ À LA PREMIÈRE VERSION, ET C'EST ELLE QUI A CHANGÉ LA CONCEPTION
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La première version faisait éteindre les ombres par `showOnlyFigure3D`, le point par lequel les
+ * quatre chemins d'aperçu passent. C'était correct et FRAGILE. M172 retirait UN des deux
+ * `showOnlyFigure3D` d'une fonction qui en contient deux — une branche Mur, une branche Objet — et
+ * passait : mon test voyait l'autre appel et concluait que tout allait bien.
+ *
+ * Encore la PRÉSENCE vérifiée à la place de la GOUVERNANCE, quatrième fois dans ce chantier après
+ * M118 (#422d), M158 (#422h) et M160 (#422i). À la quatrième, la leçon n'est plus « écrire un test
+ * plus fin » : c'est que **la garantie elle-même était mauvaise**. Elle reposait sur « tous les
+ * chemins pensent à appeler », ce qu'aucun test ne peut tenir sans énumérer les chemins — et
+ * l'énumération tenue à la main est la deuxième famille de défauts de ce dépôt.
+ *
+ * LA GARANTIE A DONC ÉTÉ INVERSÉE : l'état de repos des ombres est ÉTEINT, et le rendu d'une Case —
+ * seul à les vouloir — les allume pour lui puis les repose en partant. Un aperçu n'a plus rien à
+ * savoir des ombres, et un CINQUIÈME chemin d'aperçu écrit demain sera correct sans qu'on y pense.
+ * C'est l'idiome que le rendu d'une Case emploie déjà pour son fond, deux lignes plus loin.
+ *
+ * ⚠️ ET M172 EST DEVENUE HORS SUJET, ce qui est le signe que l'inversion a fonctionné : retirer ce
+ * `showOnlyFigure3D` ne touche plus aux ombres du tout. Ce qu'elle casse encore est l'ISOLATION de
+ * l'aperçu — le décor apparaîtrait derrière l'Élément, le défaut que « Fix 63 » a corrigé —, et
+ * rien ne la tient. Consigné en #428 plutôt que couvert ici par un test faible : la propriété juste
+ * est « tout rendu hors Case est DOMINÉ par un `showOnlyFigure3D` », c'est-à-dire que toutes les
+ * branches y mènent, ce qu'une recherche de sous-chaîne ne sait pas dire.
+ *
+ * ⚠️ ET M171 TIENT L'ORDRE, qui est la moitié facile à casser en déplaçant une ligne : reposer les
+ * ombres AVANT le rendu les retire de la Case elle-même. Le défaut serait « les ombres ne marchent
+ * jamais », donc immédiatement visible — mais il ne coûte qu'un copier-coller malheureux.
  */
