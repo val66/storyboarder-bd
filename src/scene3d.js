@@ -43,6 +43,7 @@ import { champVisibleDeCase3D } from './shadows-3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D, appliquerOmbreSourcePosee3D,
+  marquerProjectionDOmbre3D,
   buildGroundTexture,
   buildWallRig3D,
   disposeObjectRig3D,
@@ -2925,6 +2926,12 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // lets you see the Elements of the Panels below it"). So an opaque background (white, like an empty
   // Panel, see drawObject) is forced just for THIS render, then removed immediately after so as not to
   // affect other uses of the renderer.
+  // ⚠️ ICI, ET PAS PLUS HAUT AVEC LE RESTE DES OMBRES (#422i). Ce parcours pose `castShadow` sur
+  // toute la scène ; il doit donc tourner quand la scène est COMPLÈTE. Les rigs de la Case viennent
+  // d'être construits à la demande, quelques centaines de lignes au-dessus : appelé en tête du
+  // rendu — ce qu'il faisait —, il manquait tout rig créé pendant CE rendu, c'est à dire tous au
+  // premier affichage d'une Case. L'image sans ombre partait ensuite dans le cache.
+  if (_ombresDeLaCase) marquerProjectionDOmbre3D();
   personaScene3D.background = new THREE.Color(0xffffff);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   personaScene3D.background = null;

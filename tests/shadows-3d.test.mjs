@@ -502,18 +502,52 @@ describe('⚠️ QUI PROJETTE EST UNE RÈGLE, PAS UNE LISTE DE SITES (#422c)', (
       'le Sol projette : 12 000 unités de plan dans la carte d’ombre');
   });
 
-  test('⚠️ ET LE MARQUAGE NE TOURNE QUE QUAND LES OMBRES SONT ALLUMÉES', () => {
-    // Un parcours de la scène par rendu est négligeable devant les 13 ms d'une Case — mais il n'a
-    // aucune raison de tourner sur une Case sans ombre, c'est-à-dire sur toutes celles d'un Projet
-    // qui n'a jamais touché au réglage.
-    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
-    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+  test('⚠️ LE MARQUAGE TOURNE QUAND LA SCÈNE EST COMPLÈTE, PAS AVANT (#422i)', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ LE DÉFAUT SIGNALÉ À L'USAGE : « AU REDÉMARRAGE, LA CASE S'AFFICHE SANS OMBRE »
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
     //
-    // ⚠️ ET IL SUIT LE RENDERER, PAS LE SOLEIL (#422d). Une Case où seule une source posée projette
-    // a tout autant besoin de savoir qui jette une ombre : le brancher sur `soleil` aurait laissé
-    // les `castShadow` de la scène dans l'état où la Case PRÉCÉDENTE les avait mis.
-    assert.match(corps, /if \(rendues\) marquerProjectionDOmbre3D\(\);/,
-      'le marquage tourne même sans ombre, ou ne tourne pas quand seule une source projette');
+    // Le réglage était enregistré, relu et appliqué ; l'image n'avait pas d'ombre. La cause est un
+    // ORDRE. Le parcours qui pose `castShadow` vivait dans `appliquerOmbresDeCase3D`, appelée en
+    // TÊTE du rendu ; les rigs de la Case sont construits à la demande, trois cents lignes plus
+    // bas. Tout rig créé pendant CE rendu arrivait après le parcours, avec le `castShadow` faux par
+    // défaut de Three.js.
+    //
+    // ⚠️ ET LE CACHE FIGEAIT LE RÉSULTAT. En session, cocher la case redessine une Case dont les
+    // rigs existent déjà : tout marche. À froid, la PREMIÈRE image d'une Case construit ses rigs,
+    // donc les manque tous — et cette image sans ombre part dans le cache, où rien ne la remet en
+    // cause puisque la signature n'a pas bougé. Un défaut d'ordre doublé d'un cache qui le fige.
+    //
+    // ⚠️ L'ANCIEN TEST NE POUVAIT PAS L'ATTRAPER : il vérifiait que le marquage suit une GARDE, ce
+    // qui était vrai et restait vrai. La propriété qui manquait est une propriété d'ORDRE, et elle
+    // ne se lit pas dans la fonction — elle se lit chez l'appelant. C'est la même leçon que M118 et
+    // que M158 : ce qui compte n'est pas qu'un appel existe, mais QUAND et COMMENT il gouverne.
+    assert.ok(!/marquerProjectionDOmbre3D\(\)/.test(RIG.slice(
+      RIG.indexOf('export function appliquerOmbresDeCase3D'),
+      RIG.indexOf('\n}\n', RIG.indexOf('export function appliquerOmbresDeCase3D')))),
+    'le marquage est revenu en tête du rendu : il manquera les rigs construits pendant ce rendu');
+
+    const SCENE = sourceSansCommentaires(
+      readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    const posMarquage = corps.indexOf('marquerProjectionDOmbre3D()');
+    const posRendu = corps.indexOf('personaRenderer3D.render(');
+    assert.ok(posMarquage > 0, 'le marquage n’est plus appelé : plus rien ne projette');
+    assert.ok(posRendu > posMarquage, 'le marquage tourne APRÈS le rendu : sans effet sur l’image');
+    // ⚠️ LA PROPRIÉTÉ QUI AURAIT ATTRAPÉ LE DÉFAUT : le marquage est APRÈS la dernière construction
+    // de rig. C'est elle, et pas la présence de l'appel, qui garantit une scène complète.
+    for (const bat of ['ensurePersonaRigEntry3D(', 'ensureObjectRigEntry3D(']) {
+      const dernier = corps.lastIndexOf(bat);
+      assert.ok(dernier > 0, `${bat} est introuvable dans le rendu d’une Case`);
+      assert.ok(posMarquage > dernier,
+        `le marquage précède le dernier \`${bat}\` : les rigs construits pendant ce rendu ne ` +
+        'projetteront pas, et l’image sans ombre partira dans le cache');
+    }
+    // Et il ne tourne toujours QUE sur une Case ombrée : un parcours de scène n'a aucune raison de
+    // s'exécuter sur toutes les Cases d'un Projet qui n'a jamais touché au réglage.
+    assert.match(corps, /if \(_ombresDeLaCase\) marquerProjectionDOmbre3D\(\);/,
+      'le marquage tourne même sans ombre : un parcours de scène pour rien, à chaque Case');
   });
 });
 
@@ -1432,4 +1466,46 @@ describe('⚠️ CE QUI AFFLEURE LE SOL REÇOIT MAIS NE PROJETTE PAS (#422f)', (
  * Une constante « à régler plus tard » remplacée par une grandeur dérivée d'une exigence énonçable
  * est la meilleure issue possible ; c'est aussi un rappel qu'un nombre qu'on n'arrive pas à
  * justifier signale souvent une forme mal choisie, pas un réglage manquant.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422i, le marquage et la scène complète) : quatre fautes rejouées.
+ *
+ *   M159 plus aucun marquage : rien ne projette jamais                    ROUGE
+ *   M160 le marquage remis en tête du rendu — LE DÉFAUT SIGNALÉ           ROUGE
+ *   M161 le parcours tourne sur toutes les Cases, même sans ombre         ROUGE
+ *   M162 le marquage tourne APRÈS le rendu : sans effet sur l'image       ROUGE
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ M160 EST LE DÉFAUT LUI-MÊME, ET C'EST LA MUTATION QUI COMPTE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Elle remet l'appel exactement où il était : en tête du rendu, sous la même garde, correctement
+ * écrit. Rien n'y paraît faux à la lecture — et les ombres disparaissent au premier affichage de
+ * chaque Case. C'est ce qui rend ce défaut instructif : il n'y avait AUCUNE erreur dans la
+ * fonction, seulement dans le moment où on l'appelait.
+ *
+ * ⚠️ L'ANCIEN TEST NE POUVAIT PAS L'ATTRAPER, et il faut comprendre pourquoi plutôt que s'en
+ * excuser. Il vérifiait `if (rendues) marquerProjectionDOmbre3D();` — que le marquage suit bien une
+ * garde. C'était vrai, ça l'est resté, et ça ne dit rien du moment. La propriété manquante était
+ * une propriété d'ORDRE, et elle ne se lit pas DANS la fonction : elle se lit chez l'appelant,
+ * relativement à des constructions qui vivent trois cents lignes plus loin.
+ *
+ * C'est la troisième fois de ce chantier — après M118 (#422d) et M158 (#422h) — qu'une mutation
+ * passe parce qu'un test vérifiait la PRÉSENCE d'un appel plutôt que sa GOUVERNANCE. Les trois
+ * avaient l'air couvertes. Le test porte désormais sur la seule chose qui compte : **le marquage
+ * est après le dernier `ensure…RigEntry3D` et avant le rendu.**
+ *
+ * ⚠️ ET LE CACHE A DOUBLÉ LE DÉFAUT, ce qui explique la forme du signalement (« au redémarrage »,
+ * pas « toujours »). En session, cocher la case redessine une Case dont les rigs existent déjà du
+ * rendu précédent : tout marche, et on conclut que le réglage fonctionne. À froid, la première
+ * image d'une Case CONSTRUIT ses rigs, donc les manque tous — et cette image sans ombre entre dans
+ * le cache d'images de Case, où rien ne la remet en cause puisque la signature n'a pas bougé.
+ * Un défaut d'ordre que le cache rend permanent se lit comme « le réglage ne tient pas au
+ * redémarrage », c'est à dire comme un défaut de PERSISTANCE — à l'autre bout de l'application.
+ *
+ * ⚠️ LA RÈGLE GÉNÉRALE, et elle dépasse les ombres : **un parcours de scène doit s'exécuter quand
+ * la scène est complète, pas quand on pense à l'écrire.** Ce dépôt construit ses rigs
+ * paresseusement (#405d) ; toute passe globale posée avant ces constructions travaille sur une
+ * scène partielle, en silence et sans erreur.
  */

@@ -177,6 +177,32 @@ pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserai
 reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
 était déjà depuis #414c.
 
+### ⚠️ « Au redémarrage, la Case s'affiche sans ombre » (#422i, signalé à l'usage)
+
+Le réglage était enregistré, relu et appliqué — et l'image n'avait pas d'ombre. **La cause est un
+ordre, pas une erreur de calcul.**
+
+`marquerProjectionDOmbre3D`, qui pose `castShadow` sur toute la scène, était appelé en TÊTE du
+rendu, depuis `appliquerOmbresDeCase3D`. Or les rigs d'une Case sont construits À LA DEMANDE, trois
+cents lignes plus bas. Tout rig créé pendant CE rendu arrivait donc après le parcours, avec le
+`castShadow` faux par défaut de Three.js. Il ne projetait pas.
+
+⚠️ **ET LE CACHE A DOUBLÉ LE DÉFAUT**, ce qui explique pourquoi il ne se voyait qu'à froid :
+
+- **en session**, cocher la case redessine une Case dont les rigs existent déjà du rendu
+  précédent : le parcours les trouve, tout marche, et on conclut que le réglage fonctionne ;
+- **au démarrage**, la PREMIÈRE image d'une Case construit ses rigs, donc les manque tous — et cette
+  image sans ombre entre dans le cache d'images de Case, où rien ne la remet en cause puisque la
+  signature n'a pas bougé.
+
+Un défaut d'ordre que le cache rend permanent se lit comme « le réglage ne tient pas au
+redémarrage », c'est à dire comme un défaut de PERSISTANCE, à l'autre bout de l'application.
+
+**La règle qui en sort dépasse les ombres** : *un parcours de scène doit s'exécuter quand la scène
+est complète, pas quand on pense à l'écrire*. Ce dépôt construit ses rigs paresseusement (#405d) ;
+toute passe globale posée avant ces constructions travaille sur une scène partielle, en silence et
+sans lever la moindre erreur.
+
 ### ⚠️ « Le mur du fond perd son ombre selon le zoom » (#422h, signalé à l'usage)
 
 **Un champ mesuré à une seule profondeur.** `champVisibleDeCase3D` donne la section du tronc de

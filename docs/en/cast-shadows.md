@@ -173,6 +173,32 @@ cast. That is consistent — its shadow is not visible either — but it would s
 camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
 signature; it has done so since #414c.
 
+### ⚠️ "After a restart the Panel renders with no shadow" (#422i, reported in use)
+
+The setting was saved, read back and applied — and the image had no shadow. **The cause is an order,
+not a calculation error.**
+
+`marquerProjectionDOmbre3D`, which sets `castShadow` across the whole scene, was called at the HEAD
+of the render, from `appliquerOmbresDeCase3D`. But a Panel's rigs are built ON DEMAND, three hundred
+lines below. Any rig created during THIS render therefore arrived after the pass, with Three.js's
+default `castShadow` of false. It did not cast.
+
+⚠️ **AND THE CACHE DOUBLED THE FAULT**, which is why it only showed from cold:
+
+- **within a session**, ticking the box redraws a Panel whose rigs already exist from the previous
+  render: the pass finds them, everything works, and one concludes the setting functions;
+- **at startup**, a Panel's FIRST image builds its rigs, therefore misses them all — and that
+  shadowless image enters the Panel image cache, where nothing challenges it since the signature has
+  not moved.
+
+An ordering fault that a cache makes permanent reads as "the setting doesn't hold across restarts",
+that is, as a PERSISTENCE fault, at the other end of the application.
+
+**The rule that comes out of it reaches beyond shadows**: *a scene traversal must run when the scene
+is complete, not when you happen to write it*. This repository builds its rigs lazily (#405d); any
+global pass placed before those constructions works on a partial scene, silently and without raising
+anything.
+
 ### ⚠️ "The back wall loses its shadow depending on zoom" (#422h, reported in use)
 
 **A field measured at a single depth.** `champVisibleDeCase3D` gives the view frustum's cross-section

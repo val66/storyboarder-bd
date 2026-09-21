@@ -1162,9 +1162,11 @@ export function appliquerOmbresDeCase3D(panel, page, eclairage, plan, avant){
   const rendues = soleil || sources;
   personaRenderer3D.shadowMap.enabled = rendues;
   personaKeyLight3D.castShadow = soleil;
-  // ⚠️ LE MARQUAGE SUIT LE RENDERER, PAS LE SOLEIL. Une Case où seule une source posée projette a
-  // tout autant besoin de savoir qui jette une ombre et qui n'en jette pas.
-  if (rendues) marquerProjectionDOmbre3D();
+  // ⚠️ LE MARQUAGE N'EST PLUS ICI, ET C'EST UN DÉFAUT SIGNALÉ À L'USAGE QUI L'A DÉPLACÉ (#422i).
+  // Il parcourait la scène AVANT que les rigs de la Case soient construits — ils le sont trois cents
+  // lignes plus bas, par `ensurePersonaRigEntry3D` et `ensureObjectRigEntry3D` —, si bien que tout
+  // rig créé PENDANT ce rendu gardait `castShadow` à faux. Il vit désormais chez l'appelant, juste
+  // avant le rendu, quand toute la scène existe. Voir la note de `marquerProjectionDOmbre3D`.
   if (soleil) {
     const b = boiteOmbreSoleil3D(panel, page, eclairage.soleil.direction, avant);
     // ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -1298,6 +1300,30 @@ export function appliquerOmbreSourcePosee3D(lumiere, portee, projette, ombresDeL
  * `shadowMap.enabled` est faux, et ils ne figurent dans aucune clé de programme : un parcours par
  * rendu de Case ombrée est négligeable devant les 13 ms qu'elle coûte, et il ne s'exécute pas du
  * tout sur une Case sans ombre.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ ET IL S'APPELLE JUSTE AVANT LE RENDU, PAS AU MOMENT DE POSER LES OMBRES (#422i)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : « au redémarrage, une Case dont les ombres sont cochées s'affiche sans
+ * ombre ». Le réglage était bien enregistré, bien relu, bien appliqué — et l'image n'avait pas
+ * d'ombre.
+ *
+ * La cause est un ORDRE. Ce parcours vivait dans `appliquerOmbresDeCase3D`, appelée en tête du
+ * rendu ; les rigs de la Case, eux, sont construits trois cents lignes plus bas, à la demande. Un
+ * rig créé PENDANT ce rendu arrivait donc après le parcours, avec le `castShadow` faux par défaut
+ * de Three.js. Il ne projetait pas.
+ *
+ * ⚠️ ET C'EST POURQUOI LE DÉFAUT NE SE VOYAIT QU'À FROID. En session, cocher la case redessine une
+ * Case dont les rigs existent déjà — le parcours les trouve, tout marche. Au démarrage, la PREMIÈRE
+ * image d'une Case construit ses rigs, donc les manque tous ; et cette image sans ombre part dans
+ * le cache d'images de Case, où rien ne la remet en cause puisque la signature n'a pas bougé. Un
+ * défaut d'ordre, doublé d'un cache qui le fige : il se lit comme « le réglage ne tient pas ».
+ *
+ * ⚠️ LA RÈGLE QUI EN SORT, et elle vaut au-delà de ce cas : **un parcours de scène doit s'exécuter
+ * quand la scène est complète, pas quand on décide de le faire.** Le dépôt construit ses rigs
+ * paresseusement ; toute passe globale posée avant ces constructions travaille sur une scène
+ * partielle, en silence.
  */
 const _boiteProjeteur3D = new THREE.Box3();
 
