@@ -13,6 +13,83 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.6.0
+
+**La lumière devient une chose qu'on règle, et les corps se mettent à porter une ombre.** Jusqu'ici
+une Case était éclairée d'une seule façon, celle que le style posait depuis toujours. Elle a
+désormais un soleil qu'on oriente, des sources qu'on pose dans la Scène, et — c'est le gros morceau —
+des ombres portées.
+
+Tout a été mesuré avant d'être décidé, sur le vrai GPU, avec un instrument vérifié à chaque fois
+avant d'être cru. Il a menti cinq fois.
+
+### Ce qui change pour vous
+
+**Le soleil d'une Case** se règle dans la section Lumière du menu de droite : trois modes — Jour,
+Nuit, Personnalisé. Jour est le défaut et reproduit exactement l'éclairage d'avant, au pixel près :
+une Planche déjà dessinée ne bouge pas. En Personnalisé, un dôme montre d'où vient la lumière ;
+cliquer-glisser déplace le soleil, clic droit glissé tourne la vue sans rien changer au réglage. La
+couleur et l'intensité vivent sous le dôme, et « Réinitialiser » ramène la Case à l'état de base.
+
+**Une Scène transmet son éclairage** à la Case qui la charge, comme ses Éléments ; les deux vivent
+ensuite indépendamment.
+
+**Des sources de lumière se posent dans une Scène** — clic droit → Ajouter → Lumière. Une sphère
+lumineuse apparaît et éclaire la Case en plus du soleil. Elle se déplace comme un Élément, flotte à
+la hauteur voulue sans passer sous le sol, et occupe un bloc à elle en tête de la liste des Éléments.
+Sa fiche règle sa couleur, son intensité et sa portée ; son halo suit l'intensité, si bien qu'un
+coup d'œil sur une Planche dit quelle source est forte. Deux cases à ne pas confondre : « Invisible
+dans la scène 3D » éteint la source, « Afficher la sphère » ne masque que la bille.
+
+**Les ombres portées**, enfin, s'allument par Case. Éteintes par défaut — toutes les Planches déjà
+finies gardent leur aspect. Elles fonctionnent par deux interrupteurs hiérarchiques : la Case décide
+qu'il Y A des ombres, chaque lumière décide si elle y participe. Le soleil y participe toujours ;
+une source posée seulement si on le lui demande, source par source, parce que son ombre coûte six
+fois le prix des autres. Les Chemins, Routes et Terrains reçoivent les ombres mais n'en projettent
+jamais : ce sont des dessins plats posés sur le sol.
+
+Le manuel intégré a gagné une section « Ombres portées » à lui.
+
+### Sous le capot
+
+**Cinq campagnes de mesure**, dans un vrai navigateur sur le vrai GPU, avec le three.js du dépôt
+vérifié identique par son empreinte. Ce qu'elles ont donné : une source coûte 30 ms de compilation
+la première fois, huit sources 252 ms ; l'ombre du soleil est quasi gratuite, huit sources qui
+projettent coûtent 2 004 ms à la première rencontre — c'est ce chiffre qui a décidé du réglage par
+source. Et la résolution d'une carte d'ombre est GRATUITE en temps : 1024, 2048, 4096 et 8192
+rendent dans le même bruit, parce que le prix est une passe de profondeur sur la géométrie et non du
+remplissage. Seule la mémoire l'arrête.
+
+⚠️ **L'instrument a menti cinq fois**, et c'est le fil de ce cycle. `gl.finish()` ne synchronise
+rien sous ANGLE ; `readPixels` sur le tampon d'affichage mesure le moniteur ; une boîte d'ombre
+étirée au Sol coûte plein tarif pour 0,00 % de pixels changés ; basculer `shadowMap.enabled` change
+le shader et n'est pas un A/B neutre ; et une sonde qui ne montre qu'un maillage isolé conclut « 0 %
+» là où il y en a 1,83. La règle qui en sort tient en une phrase : **on vérifie d'abord que
+l'instrument sait voir une présence, ensuite seulement on lit ce qu'il dit.**
+
+**Quatre défauts signalés à l'usage**, tous d'une même famille. Un moiré sur les chemins — un ruban
+plat sept millimètres au-dessus du Sol s'ombrait lui-même, la carte ne sachant pas séparer deux
+surfaces si proches. Des ombres qui rampaient au zoom — la boîte suivait la caméra en continu, donc
+la grille de texels se redessinait à chaque cran. Un mur de fond qui perdait son ombre — le champ
+visible était mesuré à une seule profondeur alors qu'un tronc de vision s'élargit derrière. Et des
+ombres absentes au redémarrage — non pas un défaut de persistance, mais un parcours de scène qui
+tournait avant que les rigs existent, et un cache qui figeait le résultat.
+
+⚠️ **Quatre mutations ont échappé, toutes pour la même raison** : un test vérifiait qu'un appel
+EXISTE plutôt qu'il GOUVERNE. À la quatrième, la leçon a cessé d'être « écrire un test plus fin » :
+la garantie elle-même était mauvaise, puisqu'elle reposait sur « tous les chemins pensent à
+appeler ». Elle a été inversée — l'état de repos des ombres est éteint, et seul le rendu d'une Case
+les allume puis les repose.
+
+Deux constantes choisies à la main ont disparu en cours de route, remplacées par des grandeurs
+dérivées d'une exigence énonçable. Une mutation équivalente a fait SUPPRIMER du code plutôt
+qu'ajouter un test : un garde-fou dont on peut démontrer qu'il ne se déclenche jamais fait croire à
+un danger.
+
+La suite compte 3 146 tests.
+
+---
+
 ## v1.5.0
 
 **Tout ce qui a des os se pose, et se pose au même endroit.** La v1.4.0 avait appris à l'application
