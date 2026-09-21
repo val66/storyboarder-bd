@@ -1407,6 +1407,10 @@ export function refreshObjectPreview(){
     // `S.modalTarget.color` revenait à peindre avec la valeur d'avant le réglage, et l'aperçu
     // paraissait mort. Signalé à l'usage.
     color: estUneLumiere3D(S.modalTarget) ? objectLightColorInput.value : S.modalTarget.color,
+    // Et son intensité, qui commande l'opacité du halo (#421f). Le brouillon là aussi : les deux
+    // réglages visibles de la sphère doivent bouger ensemble sous le curseur.
+    intensite: estUneLumiere3D(S.modalTarget)
+      ? Number(objectLightIntensityRange.value) / 100 : undefined,
     rotX: Number(objectRotXInput.value) * Math.PI / 180,
     rotY: Number(objectRotYInput.value) * Math.PI / 180,
     rotZ: Number(objectRotZInput.value) * Math.PI / 180,

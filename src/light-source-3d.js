@@ -360,3 +360,62 @@ export function dispositionFicheLumiere3D(){
     libelleTaille: LIBELLE_TAILLE_LUMIERE,
   };
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE HALO REFLÈTE L'INTENSITÉ (#421f)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Demandé à l'usage : les curseurs de la fiche ne changeaient rien à l'aperçu. Pour la couleur
+ * c'était un défaut ; pour l'intensité, NON — et c'est ce qui rend cette décision intéressante. La
+ * sphère est un repère en `MeshBasicMaterial` : elle ne reçoit aucune lumière, donc son aspect ne
+ * dépendait de l'intensité NI dans l'aperçu NI dans les Cases. L'aperçu ne mentait pas, il disait
+ * la vérité d'un repère purement décoratif.
+ *
+ * Le choix retenu est donc de rendre la bille INFORMATIVE plutôt que de faire semblant : son halo
+ * suit l'intensité, dans l'aperçu ET dans les Cases. Une seule vérité, et d'un coup d'œil sur une
+ * Planche on voit quelle source est forte.
+ *
+ * ⚠️ L'OPACITÉ, ET SURTOUT PAS LE RAYON, ET LA RAISON N'EST PAS ESTHÉTIQUE. Un rig est NORMALISÉ à
+ * `realHeightFloor` au moment du rendu — `placeRigCentered3D` le met à l'échelle d'après sa boîte
+ * englobante. Faire grossir le halo ferait donc RÉTRÉCIR le cœur d'autant, pour garder le diamètre
+ * demandé : monter l'intensité aurait visuellement diminué la source, l'exact contraire de ce qu'on
+ * veut dire. Et le champ « Diamètre de la sphère » cesserait de désigner quoi que ce soit de stable.
+ *
+ * ⚠️ ET L'ANCRAGE EST L'EXISTANT, PAS UN NOMBRE CHOISI. À l'intensité de départ, la formule rend
+ * EXACTEMENT l'opacité d'aujourd'hui : aucune Lumière déjà posée ne change d'aspect. C'est la
+ * discipline de `CLE_ACTUELLE` et de `MAJORATION_LUMIERE_POSEE` — on part de ce qui existe, et on
+ * nomme l'écart.
+ */
+
+/** L'opacité du halo telle qu'elle était avant #421f, et le point d'ancrage de la loi. */
+export const HALO_OPACITE_REF = 0.22;
+
+/**
+ * Le plafond. ⚠️ CHOISI, PAS DÉRIVÉ, et il ne mord qu'au-delà du curseur : à 200 % — le maximum de
+ * la fiche — la loi rend 0,571. Il protège d'une intensité entrée à la main dans un fichier de
+ * Projet, pas de l'usage normal. Un halo complètement opaque cesserait d'être un halo.
+ */
+export const HALO_OPACITE_MAX = 0.6;
+
+/**
+ * L'opacité du halo d'une source, d'après son intensité. Fonction PURE.
+ *
+ * ⚠️ ZÉRO EST UNE RÉPONSE VALIDE, et c'est voulu : une source à intensité nulle n'éclaire rien, son
+ * halo disparaît. Le CŒUR de la sphère, lui, reste — sans quoi la Lumière deviendrait introuvable
+ * dans la Case, et on ne pourrait plus la saisir pour la remonter.
+ */
+export function opaciteHaloLumiere3D(o){
+  const intensite = reglagesLumierePosee3D(o).intensite;
+  const proportion = intensite / LUMIERE_POSEE_DEFAUT.intensite;
+  return Math.min(HALO_OPACITE_MAX, Math.max(0, HALO_OPACITE_REF * proportion));
+}
+
+/**
+ * Le nom du maillage de halo dans le rig d'une Lumière.
+ *
+ * ⚠️ UN NOM PLUTÔT QU'UN RANG. Le retrouver par `children[1]` marcherait aujourd'hui et casserait
+ * en silence le jour où le rig gagnerait un troisième maillage : le halo d'une autre pièce suivrait
+ * l'intensité, ou plus rien ne la suivrait. Three.js indexe par nom, autant s'en servir.
+ */
+export const NOM_HALO_LUMIERE = 'haloLumiere';

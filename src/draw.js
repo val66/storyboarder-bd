@@ -1757,6 +1757,9 @@ export function drawObjectPreview(targetCanvas, spec){
     // Idem : la case « morceaux détachés » était transmise par l'appelant et s'arrêtait ici. Cocher
     // ne changeait donc rien à l'aperçu, le champ mourait dans cette énumération.
     afficherMaillagesEgares: spec.afficherMaillagesEgares,
+    // L'intensité d'une Lumière : c'est elle qui donne son opacité au halo (#421f). Transmise comme
+    // le reste du brouillon, pour que tirer le curseur se voie avant d'enregistrer.
+    intensite: spec.intensite,
   };
   const style = resolveStyle3D();
   // (#86) Real Size (%) doesn't affect the rig's own geometry (the preview stays framed on its

@@ -31,6 +31,7 @@ import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
   champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D, MAJORATION_LUMIERE_POSEE,
   dispositionFicheLumiere3D, SECTIONS_FICHE_LUMIERE, CHAMPS_FICHE_LUMIERE, LIBELLE_TAILLE_LUMIERE,
+  opaciteHaloLumiere3D, HALO_OPACITE_REF, HALO_OPACITE_MAX,
 } from '../src/light-source-3d.js';
 import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
 import * as R from '../src/rig3d.js';
@@ -1169,4 +1170,145 @@ describe('Ce que la fiche d’une Lumière montre, et ce qu’elle masque', () =
  * détail. Elles avaient une bonne raison — la fiche parlait d'un type, d'une taille et d'une
  * matière — et #421c l'a supprimée. Une garde dont la raison a disparu ne se garde pas « au cas
  * où » : elle se retire, et son test change de sens.
+ */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE HALO REFLÈTE L'INTENSITÉ (#421f)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Tenu : que l'aspect d'aujourd'hui soit rendu à l'identique à l'intensité de départ, que la loi
+ * soit monotone et bornée, et que le RAYON ne bouge pas.
+ *
+ * ⚠️ PAS TENU : que le résultat soit joli, ni qu'on distingue vraiment une source à 60 % d'une à
+ * 90 % en regardant une Planche. Ce jugement appartient à #421z.
+ */
+describe('⚠️ LE HALO SUIT L’INTENSITÉ, ET L’EXISTANT NE BOUGE PAS (#421f)', () => {
+  const lum = (intensite) => ({ id: 'l1', type: 'objet3d', objType: OBJ_TYPE_LUMIERE, intensite });
+
+  test('⚠️ À L’INTENSITÉ DE DÉPART, L’OPACITÉ EST EXACTEMENT CELLE D’AVANT', () => {
+    // ⚠️ C'EST LA PROMESSE QUI PROTÈGE LES PROJETS DÉJÀ DESSINÉS, et c'est la discipline de
+    // `CLE_ACTUELLE` : on ancre sur l'existant, on ne choisit pas un nombre. Une Lumière posée avant
+    // ce chantier doit rendre au bit près ce qu'elle rendait — sans quoi le halo « informatif »
+    // aurait repeint toutes les Planches de l'utilisateur pour un réglage qu'il n'a pas touché.
+    //
+    // Et l'absence de champ compte autant : une Lumière enregistrée n'en porte aucun.
+    assert.ok(Math.abs(opaciteHaloLumiere3D(lum(LUMIERE_POSEE_DEFAUT.intensite)) - HALO_OPACITE_REF) < 1e-12);
+    assert.ok(Math.abs(opaciteHaloLumiere3D({ id: 'l', type: 'objet3d', objType: OBJ_TYPE_LUMIERE }) - HALO_OPACITE_REF) < 1e-12,
+      'une Lumière sans champ `intensite` ne rend plus l’aspect d’origine');
+  });
+
+  test('⚠️ LA LOI EST MONOTONE : plus d’intensité, plus de halo', () => {
+    // Un test qui se contenterait de « l'opacité dépend de l'intensité » resterait vert si la loi
+    // était INVERSÉE — et une source montée à 200 % aurait alors le halo le plus pâle.
+    const echelle = [0, 0.2, 0.5, 0.77, 1, 1.5, 2];
+    const opacites = echelle.map(i => opaciteHaloLumiere3D(lum(i)));
+    for (let k = 1; k < opacites.length; k++) {
+      assert.ok(opacites[k] >= opacites[k - 1],
+        `à ${echelle[k]} le halo est plus pâle qu’à ${echelle[k - 1]} : ${opacites[k]} < ${opacites[k - 1]}`);
+    }
+    assert.ok(opacites[opacites.length - 1] > opacites[0],
+      'la loi est plate : le halo ne dit rien de l’intensité');
+  });
+
+  test('⚠️ ZÉRO ÉTEINT LE HALO, et rien ne descend sous zéro', () => {
+    assert.equal(opaciteHaloLumiere3D(lum(0)), 0);
+    // Une intensité négative n'a pas de sens ; `reglagesLumierePosee3D` la borne déjà à zéro en
+    // lecture, et une opacité négative ferait un rendu indéfini plutôt qu'une erreur.
+    assert.equal(opaciteHaloLumiere3D(lum(-5)), 0);
+  });
+
+  test('⚠️ ET LE PLAFOND NE MORD PAS DANS LA PLAGE DE LA FICHE', () => {
+    // Le curseur monte à 200 %. Si le plafond coupait avant, les derniers crans ne changeraient
+    // plus rien à l'écran — une commande qui ne commande plus, le défaut que ce chantier a déjà
+    // refusé pour l'aimant du Sol.
+    assert.ok(opaciteHaloLumiere3D(lum(2)) < HALO_OPACITE_MAX,
+      `le plafond (${HALO_OPACITE_MAX}) coupe avant 200 %, les derniers crans seraient morts`);
+    // Mais il protège bien d'une valeur entrée à la main dans un fichier de Projet.
+    assert.equal(opaciteHaloLumiere3D(lum(1000)), HALO_OPACITE_MAX);
+  });
+});
+
+describe('⚠️ LE RAYON DU HALO NE BOUGE PAS, et c’est la normalisation qui l’impose (#421f)', () => {
+  const RIG = readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8');
+
+  test('⚠️ SEULE L’OPACITÉ EST RÉGLÉE APRÈS COUP, jamais une géométrie', () => {
+    // ⚠️ LE PIÈGE QUE CE TEST GARDE FERMÉ. Un rig est normalisé à `realHeightFloor` au rendu :
+    // `placeRigCentered3D` le met à l'échelle d'après sa boîte englobante. Faire grossir le halo
+    // ferait donc RÉTRÉCIR le cœur d'autant — monter l'intensité aurait visuellement diminué la
+    // source, et le champ « Diamètre de la sphère » n'aurait plus désigné rien de stable.
+    const i = RIG.indexOf('if (estUneLumiere3D(o))');
+    assert.ok(i > 0, 'le halo n’est plus réglé dans ensureObjectRigEntry3D');
+    const bloc = RIG.slice(i, i + 400);
+    assert.match(bloc, /material\.opacity = opaciteHaloLumiere3D\(o\)/);
+    assert.ok(!/\.(scale|geometry)\b/.test(bloc),
+      'la géométrie du halo est touchée : la normalisation fera rétrécir le cœur en retour');
+  });
+
+  test('⚠️ LE HALO SE RETROUVE PAR SON NOM, pas par son rang parmi les enfants', () => {
+    // `children[1]` marcherait aujourd'hui et casserait en silence au troisième maillage : le halo
+    // d'une autre pièce suivrait l'intensité, ou plus rien ne la suivrait.
+    assert.ok(RIG.includes('halo.name = NOM_HALO_LUMIERE'),
+      'le halo n’est plus nommé : il ne sera plus retrouvable');
+    assert.match(RIG, /getObjectByName\(NOM_HALO_LUMIERE\)/);
+    assert.ok(!/children\[\s*1\s*\]/.test(RIG.slice(RIG.indexOf('buildLumiereRig3D'), RIG.indexOf('buildLumiereRig3D') + 1200)),
+      'le halo est retrouvé par son rang');
+  });
+
+  test('⚠️ ET IL EST POSÉ À CHAQUE RENDU, pas à la construction du rig', () => {
+    // Une opacité est une propriété de MATÉRIAU : la faire entrer dans la clé du cache de rigs
+    // aurait allongé d'un cran une énumération que rig3d.js documente lui-même comme sa deuxième
+    // famille de défauts récurrents. C'est le traitement des angles d'articulation et des poses
+    // d'os, pour la même raison : tirer un curseur doit se voir sans rien reconstruire.
+    const i = RIG.indexOf('export function ensureObjectRigEntry3D(o){');
+    const suite = RIG.indexOf('\nexport function ', i + 10);
+    const bloc = RIG.slice(i, suite > 0 ? suite : RIG.length);
+    const posRebuild = bloc.indexOf('objectRigCache3D.set(o.id, entry)');
+    const posHalo = bloc.indexOf('opaciteHaloLumiere3D(o)');
+    assert.ok(posRebuild > 0 && posHalo > posRebuild,
+      'le halo est réglé DANS la reconstruction : il ne suivrait plus le curseur une fois le rig en cache');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#421f, le halo reflète l'intensité) : sept fautes rejouées.
+ *
+ *   M68 le halo cesse de suivre l'intensité                                 ROUGE (×3)
+ *   M69 la loi est INVERSÉE (plus d'intensité, moins de halo)               ROUGE (×3)
+ *   M70 l'ancrage sur l'existant est rompu                                  ROUGE
+ *   M71 le plafond coupe avant 200 %                                        ROUGE
+ *   M72 le RAYON du halo bouge aussi                                        ROUGE
+ *   M73 le halo n'est plus nommé                                            ROUGE
+ *   M74 l'intensité n'atteint plus l'aperçu                                 ROUGE
+ *
+ * ⚠️ M70 EST LA PLUS IMPORTANTE, ET LA PLUS DISCRÈTE. Elle change l'opacité de référence, donc
+ * l'aspect de TOUTES les Lumières déjà posées — sans qu'aucun réglage ait été touché par personne.
+ * Le chantier entier tient sur cette promesse : à l'intensité de départ, le halo rend exactement ce
+ * qu'il rendait. C'est la discipline de `CLE_ACTUELLE` et de `MAJORATION_LUMIERE_POSEE`, et c'est ce
+ * qui distingue « rendre la bille informative » de « repeindre les Planches de l'utilisateur ».
+ *
+ * ⚠️ M69 EST CELLE QU'UN TEST PARESSEUX N'AURAIT PAS VUE. Une assertion du genre « l'opacité dépend
+ * de l'intensité » reste vraie quand la loi est retournée : une source à 200 % aurait alors le halo
+ * le plus PÂLE. Il faut vérifier le SENS, pas la dépendance.
+ *
+ * ⚠️ M72 GARDE FERMÉ UN PIÈGE QUI NE SE DEVINE PAS. Un rig est normalisé à `realHeightFloor` au
+ * rendu, d'après sa boîte englobante : faire grossir le halo fait RÉTRÉCIR le cœur d'autant, pour
+ * tenir le diamètre demandé. Monter l'intensité aurait donc visuellement DIMINUÉ la source, et le
+ * champ « Diamètre de la sphère » aurait cessé de désigner quoi que ce soit de stable. C'est la
+ * raison pour laquelle seule l'opacité bouge — une raison de mécanique, pas de goût.
+ *
+ * ⚠️ M74 RAPPELLE QUE L'APERÇU ET LA CASE SE NOURRISSENT DE DEUX CHEMINS. Le rig est commun, mais
+ * l'aperçu reconstruit un Élément temporaire champ par champ : un champ oublié là est un aperçu qui
+ * ment. C'est la troisième famille de défauts de ce dépôt, et `model-import.test.mjs` la surveille
+ * en DÉRIVANT la liste — il a fallu lui déclarer `intensite` comme lecture indirecte, exactement
+ * comme `joints3d` avant elle.
+ *
+ * ⚠️ ET UN TÉMOIN EXISTANT A DÛ ÊTRE RÉPARÉ POUR QUE CETTE CAMPAGNE SOIT LISIBLE. Il lisait
+ * `ensureObjectRigEntry3D` sur une fenêtre FIXE de 4000 caractères, là où le test qu'il garantit lit
+ * jusqu'à l'`export` suivant : les deux mesuraient des blocs différents, et l'ajout du halo a fait
+ * déborder le plus court. Un témoin qui ne regarde pas exactement ce qu'il atteste finit par échouer
+ * sur du code juste — ou, bien pire, par se taire sur du code faux.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : qu'on distingue vraiment une source à 60 % d'une à 90 %
+ * en regardant une Planche. #421z regarde.
  */

@@ -6640,7 +6640,12 @@ objectModal.addEventListener('change', recomputeModalDirty);
 // écouteur posé sur le curseur lui-même s'ajouterait à chaque ouverture de fiche.
 objectModal.addEventListener('input', (e) => {
   if (!e.target) return;
-  if (e.target.id === 'objectLightIntensityRange') updateLightIntensityDisplay3D();
+  if (e.target.id === 'objectLightIntensityRange') {
+    updateLightIntensityDisplay3D();
+    // Le halo suit l'intensité (#421f) : l'aperçu doit bouger sous le curseur, pas à
+    // l'enregistrement.
+    refreshObjectPreview();
+  }
   // La couleur d'une Lumière se voit dans l'aperçu : il doit suivre le brouillon, pas l'Élément
   // enregistré (#421e, signalé à l'usage).
   if (e.target.id === 'objectLightColorInput') refreshObjectPreview();

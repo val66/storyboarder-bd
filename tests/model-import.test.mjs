@@ -627,6 +627,11 @@ describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', ()
     // `o.joints3d` puis `o.position`. Une dérivation naïve aurait donc déclaré le champ absent du
     // rig et validé son absence de l'aperçu. On les ajoute donc explicitement, en le disant.
     if (/getEffectiveJoints\(o\)/.test(bloc)) { lus.add('joints3d'); lus.add('position'); }
+    // Même chose pour le halo d'une Lumière (#421f) : le rig appelle `opaciteHaloLumiere3D(o)`, qui
+    // passe par `reglagesLumierePosee3D` pour lire `o.intensite`. Aucune lecture directe à dériver,
+    // et pourtant l'aperçu serait faux sans ce champ — le halo y resterait à sa valeur de
+    // référence pendant que la Case, elle, suivrait le curseur.
+    if (/opaciteHaloLumiere3D\(o\)/.test(bloc)) lus.add('intensite');
 
     const j = DRAW.indexOf('export function drawObjectPreview');
     const temp = DRAW.slice(j, DRAW.indexOf('};', j));
@@ -639,8 +644,15 @@ describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', ()
   test('le garde-fou : la dérivation trouve VRAIMENT des champs', () => {
     // Sans lui, une expression régulière cassée rendrait un ensemble vide et le test précédent
     // serait vert en ne comparant rien, le piège classique de la propriété vérifiée sur le néant.
+    //
+    // ⚠️ LA FENÊTRE ÉTAIT FIXE — 4000 CARACTÈRES — ET ELLE A FINI PAR TRONQUER LA FONCTION (#421f).
+    // Le test précédent, lui, lit jusqu'à l'`export` suivant ; les deux mesuraient donc des blocs
+    // DIFFÉRENTS, et le garde-fou a déclaré absent un champ que le vrai test voyait très bien. Un
+    // témoin qui ne regarde pas exactement ce qu'il atteste ne garantit rien : il finit par
+    // échouer sur du code juste, ou pire, par se taire sur du code faux. Même borne des deux côtés.
     const i = RIG.indexOf('export function ensureObjectRigEntry3D(o){');
-    const bloc = RIG.slice(i, i + 4000);
+    const suite = RIG.indexOf('\nexport function ', i + 10);
+    const bloc = RIG.slice(i, suite > 0 ? suite : RIG.length);
     const lus = new Set([...bloc.matchAll(/\bo\s*(?:&&\s*o)?\.([A-Za-z][A-Za-z0-9_]*)/g)]
       .map(m => m[1]));
     assert.ok(lus.size >= 8, `${lus.size} champ(s) dérivé(s) seulement`);

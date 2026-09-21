@@ -24,7 +24,9 @@ import { S, currentVolume, tr } from './state.js';
 // test ne bronche : ils tenaient la CONSTANTE, pas la lumière posée. Il n'y a plus qu'une source.
 // `lighting-3d.js` n'importe rien : aucun cycle possible.
 import { AMBIANTE_ACTUELLE, CLE_ACTUELLE } from './lighting-3d.js';
-import { OBJ_TYPE_LUMIERE } from './light-source-3d.js';
+import {
+  OBJ_TYPE_LUMIERE, HALO_OPACITE_REF, NOM_HALO_LUMIERE, opaciteHaloLumiere3D, estUneLumiere3D,
+} from './light-source-3d.js';
 // Cache des modèles importés : LECTURE SYNCHRONE seulement (cf. model-cache.js). Le décodage a eu
 // lieu à l'ouverture du Projet ; ce module ne fait jamais attendre le chemin de dessin.
 import { getLoadedModel, loadedModelNames, modelState } from './model-cache.js';
@@ -3654,8 +3656,19 @@ export function buildLumiereRig3D(colorHex){
   // recouvre, un artefact classique du rendu transparent.
   const halo = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 16, 12),
-    new THREE.MeshBasicMaterial({ color: couleur, transparent: true, opacity: 0.22, depthWrite: false })
+    new THREE.MeshBasicMaterial({
+      color: couleur, transparent: true, opacity: HALO_OPACITE_REF, depthWrite: false,
+    })
   );
+  // ⚠️ NOMMÉ, PARCE QUE SON OPACITÉ SE RÈGLE APRÈS COUP (#421f). Le halo suit l'intensité de la
+  // source, et ce réglage est posé à CHAQUE rendu par `ensureObjectRigEntry3D` plutôt qu'à la
+  // construction : c'est une propriété de matériau, elle ne justifie pas de reconstruire un rig, et
+  // c'est déjà l'idiome du dépôt pour les angles d'articulation et les poses d'os.
+  //
+  // L'opacité posée ici est celle de RÉFÉRENCE. Elle ne survit qu'à l'instant qui sépare la
+  // construction du premier rendu ; la laisser juste évite qu'un chemin qui oublierait d'appliquer
+  // l'intensité rende un halo invisible plutôt qu'un halo normal.
+  halo.name = NOM_HALO_LUMIERE;
   group.add(halo);
   return group;
 }
@@ -4144,6 +4157,19 @@ export function ensureObjectRigEntry3D(o){
   // Apply animal joint angles (always, to reflect pose changes)
   if (entry.animalJoints) {
     applyAnimalJointAngles(entry.animalJoints, o.animalJoints3d || {});
+  }
+  // ⚠️ LE HALO D'UNE LUMIÈRE SUIT SON INTENSITÉ, ET IL EST POSÉ ICI, À CHAQUE APPEL (#421f). Une
+  // opacité est une propriété de MATÉRIAU : elle ne justifie pas de reconstruire un rig, et la
+  // faire entrer dans la clé du cache aurait allongé d'un cran une énumération que ce fichier
+  // documente déjà comme sa deuxième famille de défauts récurrents. C'est exactement le traitement
+  // que reçoivent les angles d'articulation et les poses d'os, juste en dessous, et pour la même
+  // raison : tirer un curseur doit se voir sans re-décoder quoi que ce soit.
+  //
+  // Un seul point d'application couvre les DEUX rendus : l'aperçu de la fiche et la Case passent
+  // tous deux par cette fonction. Deux endroits auraient fini par ne plus dire la même chose.
+  if (estUneLumiere3D(o)) {
+    const halo = entry.figureGroup && entry.figureGroup.getObjectByName(NOM_HALO_LUMIERE);
+    if (halo && halo.material) halo.material.opacity = opaciteHaloLumiere3D(o);
   }
   // Idem pour un squelette importé : à chaque appel, pour que le curseur se voie sans reconstruire
   // le rig. Le reclonage reste réservé aux changements de fichier, d'état ou de hauteur : poser un
