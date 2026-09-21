@@ -469,27 +469,36 @@ describe('liste des Éléments : les invisibles rangés en bas', () => {
     assert.ok(!t.includes('Objet'), `« Objet » pour une Lumière : « ${t} »`);
   });
 
-  test('RÉGRESSION : un double-clic sur une Lumière n\'ouvre AUCUNE fiche', () => {
+  test('⚠️ UN DOUBLE-CLIC SUR UNE LUMIÈRE OUVRE SA FICHE, COMME POUR TOUT ÉLÉMENT (#421d)', () => {
     /**
-     * ⚠️ CE TEST VIENT D'UNE MUTATION QUI A ÉCHAPPÉ (Z5). En rendant la garde au double-clic, la
-     * modale des Objets s'ouvrait pour une source : elle y réglerait un type, une taille et une
-     * matière, dont aucun ne veut dire quoi que ce soit ici. C'est la décision de #420b — « aucune
-     * modale à la création » — qui cessait de valoir dès qu'on passait par la liste.
+     * ⚠️ CE TEST A ÉTÉ RETOURNÉ, ET SON HISTOIRE VAUT D'ÊTRE GARDÉE EN ENTIER.
      *
-     * ⚠️ ÉPINGLÉ SUR LA SOURCE, ET C'EST ASSUMÉ, comme pour #420b. Le gestionnaire de clic appelle
-     * `drawCurrentPage`, donc toute la pile de dessin : vérifié empiriquement, l'invoquer sous Node
-     * lève avant même d'atteindre la ligne des modales. Un test qui ne peut pas atteindre ce qu'il
-     * mesure ne mesure rien.
+     * Il est né d'une mutation échappée (Z5) et exigeait l'INVERSE : qu'aucune fiche ne s'ouvre
+     * pour une source, parce que la modale des Objets y aurait réglé un type, une taille et une
+     * matière. C'était juste — jusqu'à #421c, qui a donné à la Lumière ses propres champs et retiré
+     * tout ce qui parlait d'un autre type d'Élément. La raison a cessé d'être vraie, donc la règle
+     * change ; le test change de sens plutôt que de disparaître, pour que le renversement laisse
+     * une trace.
      *
-     * On lit donc le CODE, commentaires retirés, et on exige que la garde soit dans l'expression
-     * MÊME qui ouvre la modale : à côté, elle pourrait être n'importe quoi.
+     * ⚠️ ET IL PORTAIT LUI-MÊME UN ANGLE MORT, QUE #421d A TROUVÉ. Il surveillait UN site
+     * d'ouverture — celui de ce fichier — et déclarait donc « aucune fiche ne s'ouvre » alors que
+     * la touche ENTRÉE (cf. events.js) en ouvrait une depuis toujours, `openObjectModal` acceptant
+     * tout `objet3d` et une Lumière en étant un. Un test qui surveille un chemin ne dit rien des
+     * autres, et l'affirmation qu'il portait était fausse sans que rien ne rougisse. Les trois
+     * chemins sont maintenant énumérés dans light-source-3d.test.mjs.
+     *
+     * ⚠️ ÉPINGLÉ SUR LA SOURCE, ET C'EST TOUJOURS ASSUMÉ. Le gestionnaire de clic appelle
+     * `drawCurrentPage`, donc toute la pile de dessin : l'invoquer sous Node lève avant d'atteindre
+     * la ligne des modales. Un test qui ne peut pas atteindre ce qu'il mesure ne mesure rien.
      */
     const src = sourceSansCommentaires(
       readFileSync(new URL('../src/sidebar.js', import.meta.url), 'utf8'));
     const appels = [...src.matchAll(/[^\n]*_openObjectModal\(p\)[^\n]*/g)].map(m => m[0]);
     assert.equal(appels.length, 1, `${appels.length} ouvertures de la fiche Objet au lieu d'une`);
-    assert.match(appels[0], /!estUneLumiere3D\(p\)/,
-      `la fiche des Objets s'ouvre pour une Lumière : « ${appels[0].trim()} »`);
+    assert.ok(!/estUneLumiere3D/.test(appels[0]),
+      `la fiche ne s'ouvre toujours pas pour une Lumière : « ${appels[0].trim()} »`);
+    // Et le témoin : l'expression relevée est bien CELLE qui ouvre, pas une ligne voisine.
+    assert.match(appels[0], /_openObjectModal\(p\)/);
   });
 
   test('le défaut n\'est pas « tout le monde est visible »', () => {

@@ -286,12 +286,15 @@ export function renderSideElementRow(p, panel, page){
       if (p.type === 'objet3d' && WALL_TYPES.includes(p.objType)) S.lastWallId = p.id;
       centerSceneCameraOnElement(panel, p);
       drawCurrentPage();
-      // ⚠️ UNE LUMIÈRE N'OUVRE AUCUNE FICHE, et c'est la décision de #420b portée jusqu'ici. La
-      // modale des Objets réglerait un type, une taille et une matière : rien de tout cela ne veut
-      // dire quoi que ce soit pour une source. La sienne viendra ; en attendant, le double-clic
-      // sélectionne, comme le premier clic, plutôt que d'ouvrir un écran qui parle d'autre chose.
+      // ⚠️ UNE LUMIÈRE OUVRE SA FICHE ICI AUSSI (#421d). La garde de #420b tenait tant que la modale
+      // parlait d'un type, d'une taille et d'une matière ; #421c lui a donné ses propres champs.
+      //
+      // ⚠️ ET CETTE GARDE N'A JAMAIS COUVERT QUE DEUX CHEMINS SUR TROIS. La touche Entrée sur
+      // l'Élément sélectionné (cf. events.js) ouvre `openObjectModal` pour tout `objet3d`, et une
+      // Lumière EN EST UN : la fiche s'ouvrait donc déjà par là, sans que personne ne le sache.
+      // Lever la garde ne crée pas un chemin, elle en aligne deux sur un troisième qui existait.
       if (p.type === 'perso') _openPersonaModal(p);
-      else if (!estUneLumiere3D(p)) _openObjectModal(p);
+      else _openObjectModal(p);
     } else if (S.selectedId === p.id) {
       // A single click (outside the double-click window) on the already-selected Element deselects it
       // and selects its Panel instead, so the right-hand menu stays visible (the Panel's).

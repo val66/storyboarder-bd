@@ -292,13 +292,38 @@ describe('#420b : la création depuis « Ajouter → Lumière »', () => {
       'la taille ne vient plus de la source unique');
   });
 
-  test('RÉGRESSION : aucune modale ne s\'ouvre pour une lumière', () => {
-    // ⚠️ CELLE DES OBJETS SERAIT PIRE QUE RIEN. Elle règle des rotations et une taille, qui ne
-    // veulent rien dire pour une source, et son bouton « Annuler » SUPPRIME l'Élément qu'on vient
-    // d'ajouter (cf. le comportement documenté dans le manuel). On aurait offert ce piège sans
-    // rien donner d'utile.
-    assert.match(EVENTS, /if \(!estUneLumiere3D\(obj\)\) openObjectModal\(obj, true\);/,
-      'la modale des Objets s\'ouvre encore sur une lumière');
+  test('⚠️ LA FICHE S\'OUVRE À LA CRÉATION, COMME POUR TOUT ÉLÉMENT (#421d)', () => {
+    // ⚠️ CE TEST A ÉTÉ RETOURNÉ, PAS SUPPRIMÉ. Il exigeait l'inverse — « aucune modale ne s'ouvre
+    // pour une lumière » — et il avait raison tant que la fiche parlait de rotations, de taille et
+    // de matière. #421c lui a donné ses propres champs ; la raison a cessé d'être vraie, donc la
+    // règle change, et la trace de son renversement reste ici plutôt que de disparaître avec elle.
+    //
+    // L'autre motif de la garde valait d'être pesé : ouverte avec `isNew`, « Annuler » SUPPRIME
+    // l'Élément qu'on vient d'ajouter. Ce n'est pas une exception, c'est ce que fait déjà toute
+    // fiche d'Élément — et une règle commune vaut mieux qu'une exception à retenir.
+    assert.match(EVENTS, /\n  openObjectModal\(obj, true\);/,
+      'la fiche ne s\'ouvre plus à la création');
+    assert.ok(!/if \(!estUneLumiere3D\(obj\)\) openObjectModal/.test(EVENTS),
+      'la garde de #420b est encore là : une Lumière n\'ouvrirait pas sa fiche');
+  });
+
+  test('⚠️ LES TROIS CHEMINS D\'OUVERTURE SE COMPORTENT PAREIL, et il y en a bien TROIS', () => {
+    // ⚠️ C'EST LE TROU QUE #421d A TROUVÉ, ET IL VENAIT D'UN TEST QUI NE REGARDAIT QU'UN CHEMIN.
+    // La garde de #420b était posée à la création et sur le double-clic de la liste ; la touche
+    // ENTRÉE sur l'Élément sélectionné, elle, appelait `openObjectModal` pour tout `objet3d` — et
+    // une Lumière en est un. La fiche s'ouvrait donc déjà par là, avec son sélecteur de Type
+    // proposant « voiture », pendant que le test de sidebar.js déclarait le contraire.
+    //
+    // Un test qui surveille UN site d'ouverture ne dit rien des autres. Celui-ci les énumère, et
+    // exige qu'aucun ne porte de garde propre aux Lumières : trois chemins, un seul comportement.
+    const sites = [...EVENTS.matchAll(/[^\n]*openObjectModal\([^)]*\)[^\n]*/g)]
+      .map(m => m[0].trim())
+      .filter(l => !l.startsWith('//') && !/^(export |import |const |\*)/.test(l));
+    // Le témoin : si le relevé cessait de mordre, l'assertion suivante serait vraie pour rien.
+    assert.ok(sites.length >= 3,
+      `${sites.length} site(s) d'ouverture relevé(s) dans events.js, au moins 3 attendus`);
+    sites.forEach(l => assert.ok(!/estUneLumiere3D/.test(l),
+      `un chemin d'ouverture garde une exception pour les Lumières : « ${l} »`));
   });
 
   test('EXCLUSION 1 : une lumière n\'est pas aimantée au sol', () => {
@@ -1119,4 +1144,29 @@ describe('Ce que la fiche d’une Lumière montre, et ce qu’elle masque', () =
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la fiche soit lisible. Cette table dit ce qui
  * s'affiche, pas ce que ça donne à l'œil. Le jugement appartient à #421z — et #420c a déjà montré
  * qu'une valeur correctement dérivée peut être franchement mauvaise à l'écran.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#421d, les trois chemins d'ouverture) : quatre fautes rejouées.
+ *
+ *   M57 la garde de création revient                                        ROUGE (×2)
+ *   M58 la garde du double-clic revient                                     ROUGE
+ *   M59 une garde apparaît sur le chemin ENTRÉE                             ROUGE
+ *   M60 le relevé des sites d'ouverture ne mord plus                        ROUGE (témoin)
+ *
+ * ⚠️ M59 EST LA RAISON D'ÊTRE DE CETTE TÂCHE, ET L'ANCIEN JEU DE TESTS NE L'AURAIT PAS VUE. Elle
+ * pose une exception pour les Lumières sur le chemin de la touche Entrée — exactement le site que
+ * personne ne surveillait. Avant #421d, deux tests affirmaient « aucune fiche ne s'ouvre pour une
+ * Lumière » en ne regardant que la création et le double-clic ; l'affirmation était FAUSSE depuis
+ * le début, la fiche s'ouvrant par Entrée, et rien ne rougissait. Le relevé énumère maintenant les
+ * sites au lieu d'en épingler un.
+ *
+ * ⚠️ M60 EST LE TÉMOIN DE CE RELEVÉ, et il n'est pas décoratif : une énumération qui ne trouve plus
+ * rien rend l'assertion « aucun site ne porte de garde » vraie pour la pire des raisons. C'est
+ * précisément la forme du défaut que M59 exploite, un étage plus bas.
+ *
+ * ⚠️ M57 ET M58 SONT LES DEUX GARDES LEVÉES, rejouées pour que leur retour soit un échec et non un
+ * détail. Elles avaient une bonne raison — la fiche parlait d'un type, d'une taille et d'une
+ * matière — et #421c l'a supprimée. Une garde dont la raison a disparu ne se garde pas « au cas
+ * où » : elle se retire, et son test change de sens.
  */

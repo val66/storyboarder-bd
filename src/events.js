@@ -1286,11 +1286,15 @@ function addObjectToPanel(panel, objType){
   S.selectedId = obj.id; S.selectedRoomId = null;
   finaliserCreationDansCase3D(obj, panel, page);
   drawCurrentPage();
-  // ⚠️ PAS DE MODALE POUR UNE LUMIÈRE, ET C'EST VOULU (#420b). Celle des Objets règle des rotations
-  // et une taille, qui ne veulent rien dire pour une source ; la sienne viendra avec ses propres
-  // champs. Ouvrir la mauvaise modale serait pire que n'en ouvrir aucune : « Annuler » y supprime
-  // l'Élément qu'on vient d'ajouter, et on aurait offert ce piège sans rien donner d'utile.
-  if (!estUneLumiere3D(obj)) openObjectModal(obj, true);
+  // ⚠️ UNE LUMIÈRE OUVRE SA FICHE COMME TOUT ÉLÉMENT (#421d), ET CETTE LIGNE A PORTÉ L'INVERSE.
+  // #420b la gardait, avec une raison qui a cessé d'être vraie : « celle des Objets règle des
+  // rotations et une taille, qui ne veulent rien dire pour une source ». Depuis #421c, la fiche
+  // d'une Lumière n'a plus ni rotations ni pourcentage, et porte ses trois réglages à elle.
+  //
+  // La conséquence à connaître est celle de TOUS les Éléments, pas une exception : ouverte avec
+  // `isNew`, « Annuler » supprime ce qu'on vient d'ajouter. C'était l'autre motif de la garde ;
+  // c'est aujourd'hui la règle commune, et une règle commune vaut mieux qu'une exception à retenir.
+  openObjectModal(obj, true);
 }
 // ---------- Buildings: Room (hollow cube made of 6 simple Walls) ----------
 // [DRAW→draw.js] addRoomWallElement → imported from draw.js (cf. import above, FIX for the Build tool).
