@@ -23,6 +23,7 @@ import {
   champVisibleDeCase3D, boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D,
   MARGE_BOITE_OMBRE, RESOLUTION_OMBRE_SOLEIL, RESOLUTION_OMBRE_SOURCE, NEAR_OMBRE_SOURCE,
   TAILLE_TEXEL_MAX, estUnDessinAuSol3D, EPAISSEUR_MIN_PROJETEUR,
+  PALIER_RAYON_OMBRE, repereOmbreSoleil3D, centreAccrocheOmbre3D,
 } from '../src/shadows-3d.js';
 import {
   PANEL_CAM_DEFAULT_DIST_3D, PERSONA_REAL_HEIGHT_M, WALL_PX_PER_UNIT_3D, GROUND_PLANE_SIZE_3D,
@@ -74,8 +75,15 @@ describe('⚠️ LE SOL N’ENTRE DANS AUCUN CALCUL, et c’est la mesure qui l�
     // la boîte doit être SANS COMMUNE MESURE avec le Sol. Une régression qui la ferait grossir
     // jusqu'à lui échouerait ici même si elle n'écrivait jamais son nom.
     const b = boiteOmbreSoleil3D({ camDist: PANEL_CAM_DEFAULT_DIST_3D }, PAGE);
-    assert.ok(2 * b.rayon < GROUND_PLANE_SIZE_3D / 100,
-      `la boîte fait ${(2 * b.rayon).toFixed(0)} unités pour un Sol de ${GROUND_PLANE_SIZE_3D}`);
+    // ⚠️ LA GRANDEUR JUGÉE EST LE RAYON BRUT, celui que la dérivation produit. Depuis #422g le rayon
+    // effectif est ARRONDI au palier supérieur pour stabiliser la grille de texels : c'est une
+    // décision d'affichage posée par-dessus, qui peut le doubler, et la confondre avec la dérivation
+    // rendrait ce test sensible à un réglage qui n'a rien à voir avec le Sol.
+    assert.ok(2 * b.rayonBrut < GROUND_PLANE_SIZE_3D / 100,
+      `la boîte dérivée fait ${(2 * b.rayonBrut).toFixed(0)} unités pour un Sol de ${GROUND_PLANE_SIZE_3D}`);
+    // Et l'arrondi ne peut pas la faire dériver vers le Sol : il est borné par un palier.
+    assert.ok(2 * b.rayon < GROUND_PLANE_SIZE_3D / 50,
+      `l’arrondi a emporté la boîte à ${(2 * b.rayon).toFixed(0)} unités`);
   });
 });
 
@@ -137,9 +145,17 @@ describe('⚠️ LA BOÎTE COUVRE LE CHAMP QUEL QUE SOIT L’AZIMUT DU SOLEIL', 
       const c = champVisibleDeCase3D({ camDist }, PAGE);
       const b = boiteOmbreSoleil3D({ camDist }, PAGE);
       const attendu = Math.hypot(c.demiLargeur, c.demiHauteur) * MARGE_BOITE_OMBRE;
-      assert.ok(Math.abs(b.rayon - attendu) < 1e-9,
-        `à camDist ${camDist}, le rayon vaut ${b.rayon} au lieu de ${attendu} : ` +
+      assert.ok(Math.abs(b.rayonBrut - attendu) < 1e-9,
+        `à camDist ${camDist}, le rayon dérivé vaut ${b.rayonBrut} au lieu de ${attendu} : ` +
         'il ne se dérive plus de la diagonale, donc des coins sortiront de la boîte à certains azimuts');
+      // ⚠️ ET L'ARRONDI DE #422g NE RÉTRÉCIT JAMAIS LA BOÎTE. Arrondir vers le bas la ferait passer
+      // SOUS le champ visible, et les ombres seraient coupées près des bords — un défaut pire que
+      // le rampement qu'on corrige, et qui ne se verrait que sur certaines Cases.
+      assert.ok(b.rayon >= b.rayonBrut,
+        `à camDist ${camDist}, l’arrondi rétrécit la boîte : les ombres seront coupées aux bords`);
+      // Et son coût est BORNÉ : au plus un palier, donc au plus un doublement du texel.
+      assert.ok(b.rayon < b.rayonBrut * PALIER_RAYON_OMBRE,
+        `à camDist ${camDist}, l’arrondi coûte plus d’un palier : la finesse chute pour rien`);
     }
     // Et le témoin de la formule elle-même, sur une Planche volontairement DÉSÉQUILIBRÉE : c'est là
     // que « la diagonale » et « le plus grand côté » cessent de se ressembler.
@@ -198,9 +214,19 @@ describe('⚠️ UNE OMBRE QUI NE SE VOIT PAS NE DOIT PAS SE PAYER', () => {
     // que respecté. Une assertion de marge, pas seulement de passage.
     const b = boiteOmbreSoleil3D({ camDist: PANEL_CAM_DEFAULT_DIST_3D }, PAGE);
     assert.ok(ombreSoleilSeraVisible3D({ camDist: PANEL_CAM_DEFAULT_DIST_3D }, PAGE));
-    assert.ok(b.tailleTexel < TAILLE_TEXEL_MAX / 4,
-      `au cadrage par défaut le texel vaut ${b.tailleTexel.toFixed(3)}, trop près du seuil ` +
-      `${TAILLE_TEXEL_MAX.toFixed(3)} : la moindre marge en plus ferait disparaître l’ombre`);
+    // ⚠️ LA MARGE EST EXPRIMÉE EN PALIERS, PAS EN QUART ARBITRAIRE (#422g). Ce qui la consomme
+    // désormais, c'est l'arrondi du rayon, qui se compte en doublements : la dire « en quarts »
+    // laissait croire à un réglage continu.
+    //
+    // ⚠️ ET ELLE A BEL ET BIEN DIMINUÉ. Elle valait plus de quatre avant #422g, elle vaut 3,5 —
+    // l'arrondi a mangé la différence, et c'est le prix ANNONCÉ de la stabilité. L'exigence tenue
+    // est qu'un palier de plus ne ferait toujours pas disparaître l'ombre : c'est la marge utile,
+    // celle qui dit ce qui arriverait si le cadrage bougeait d'un cran.
+    assert.ok(b.tailleTexel * PALIER_RAYON_OMBRE < TAILLE_TEXEL_MAX,
+      `au cadrage par défaut le texel vaut ${b.tailleTexel.toFixed(3)}, à moins d’un palier du seuil ` +
+      `${TAILLE_TEXEL_MAX.toFixed(3)} : le cadran suivant ferait disparaître l’ombre`);
+    assert.ok(TAILLE_TEXEL_MAX / b.tailleTexel > 3,
+      `il ne reste que ${(TAILLE_TEXEL_MAX / b.tailleTexel).toFixed(1)} fois de marge au cadrage par défaut`);
   });
 
   test('⚠️ ET ELLE CESSE DE L’ÊTRE EN RECULANT ASSEZ : la limite est nommée, pas subie', () => {
@@ -720,6 +746,160 @@ describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈ
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * « LES OMBRES BOUGENT QUAND JE ZOOME » (#422g, signalé à l'usage)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Deux fautes distinctes, et la seconde était invisible tant que la première durait.
+ */
+describe('⚠️ LA BOÎTE SE POSE SUR CE QUE LA CASE REGARDE (#422g)', () => {
+  const PAGE_G = { w: 1240, h: 1754 };
+  const SOLEIL = { x: 0.4, y: 0.8, z: 0.45 };
+
+  test('⚠️ LE CENTRE SUIT L’ORBITE DE LA CASE, ET PAS L’ORIGINE DU MONDE', () => {
+    // ⚠️ LA FAUTE SIGNALÉE. `DirectionalLight.target` vaut l'ORIGINE par défaut chez Three.js, et
+    // n'était jamais déplacé : la boîte couvrait un disque autour de (0, 0, 0) pendant que la Case
+    // regardait ailleurs. La note de #422 disait pourtant « cadrée sur ce que la Case regarde » —
+    // la TAILLE avait été implémentée, la POSITION oubliée.
+    const loin = boiteOmbreSoleil3D(
+      { camDist: 30, _orbitCx: 120, _orbitCy: 0, _orbitCz: -80 }, PAGE_G, SOLEIL);
+    assert.ok(Math.hypot(loin.centre.x, loin.centre.z) > 100,
+      'le centre est resté près de l’origine : une Case qui regarde ailleurs n’aura aucune ombre');
+    // TÉMOIN : deux Cases qui regardent des points DIFFÉRENTS ont des centres différents. Sans lui,
+    // une constante quelconque satisferait l'assertion ci-dessus.
+    const ailleurs = boiteOmbreSoleil3D(
+      { camDist: 30, _orbitCx: -60, _orbitCy: 0, _orbitCz: 200 }, PAGE_G, SOLEIL);
+    assert.notEqual(loin.centre.x, ailleurs.centre.x, 'le centre ne dépend pas de la Case');
+  });
+
+  test('⚠️ ET LE CENTRE EST UN MULTIPLE ENTIER DE TEXEL, DANS LE REPÈRE DE LA LUMIÈRE', () => {
+    // ⚠️ C'EST L'ACCROCHAGE QUI STABILISE, et il doit se faire dans le repère de la CARTE. Arrondir
+    // sur les axes du monde laisserait la grille glisser en biais dès que le soleil n'est pas dans
+    // un plan d'axe, et l'accrochage ne servirait à rien.
+    const b = boiteOmbreSoleil3D(
+      { camDist: 30, _orbitCx: 12.3456, _orbitCy: 1.2345, _orbitCz: -7.7777 }, PAGE_G, SOLEIL);
+    const r = repereOmbreSoleil3D(SOLEIL);
+    const c = b.centre;
+    for (const [nom, axe] of [['u', r.x], ['v', r.y]]) {
+      const proj = c.x * axe.x + c.y * axe.y + c.z * axe.z;
+      const reste = Math.abs(proj / b.tailleTexel - Math.round(proj / b.tailleTexel));
+      assert.ok(reste < 1e-6,
+        `le centre n’est pas accroché sur l’axe ${nom} (reste ${reste}) : la grille glissera`);
+    }
+    // TÉMOIN : le centre brut, lui, ne tombait PAS sur la grille — sinon l'accrochage serait
+    // vérifié par une coïncidence et non par son effet.
+    const brut = 12.3456 * r.x.x + 1.2345 * r.x.y + (-7.7777) * r.x.z;
+    assert.ok(Math.abs(brut / b.tailleTexel - Math.round(brut / b.tailleTexel)) > 1e-6,
+      'le témoin tombait déjà sur la grille : ce test ne prouve rien');
+  });
+
+  test('⚠️ LE REPÈRE EST ORTHONORMÉ, ET SON AXE Z EST LA DIRECTION DU SOLEIL', () => {
+    // Il reproduit ce que fait `DirectionalLightShadow` : caméra en `light.position`, regardant
+    // `light.target`, `up` valant (0, 1, 0). Un repère qui dériverait de celui-là accrocherait sur
+    // une grille différente de celle où la carte est réellement rendue.
+    for (const d of [SOLEIL, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: -0.3, y: 0.2, z: -0.9 }]) {
+      const r = repereOmbreSoleil3D(d);
+      [r.x, r.y, r.z].forEach((a, i) => {
+        assert.ok(Math.abs(Math.hypot(a.x, a.y, a.z) - 1) < 1e-9, `l’axe ${i} n’est pas unitaire`);
+      });
+      const dot = (p, q) => p.x * q.x + p.y * q.y + p.z * q.z;
+      assert.ok(Math.abs(dot(r.x, r.y)) < 1e-9, 'x et y ne sont pas orthogonaux');
+      assert.ok(Math.abs(dot(r.x, r.z)) < 1e-9, 'x et z ne sont pas orthogonaux');
+      assert.ok(Math.abs(dot(r.y, r.z)) < 1e-9, 'y et z ne sont pas orthogonaux');
+    }
+    // ⚠️ LE CAS DÉGÉNÉRÉ : soleil au zénith, la direction est colinéaire à `up` et le produit
+    // vectoriel est nul. Sans repli, tous les axes deviendraient NaN et le centre partirait avec.
+    const zenith = repereOmbreSoleil3D({ x: 0, y: 1, z: 0 });
+    assert.ok(Number.isFinite(zenith.x.x) && Number.isFinite(zenith.y.y),
+      'le soleil au zénith produit un repère illisible');
+    const cz = centreAccrocheOmbre3D({ _orbitCx: 5, _orbitCy: 0, _orbitCz: 5 }, { x: 0, y: 1, z: 0 }, 0.5);
+    assert.ok(Number.isFinite(cz.x) && Number.isFinite(cz.z),
+      'le soleil au zénith envoie le centre de la boîte à NaN');
+  });
+
+  test('⚠️ ZOOMER DANS UN MÊME PALIER NE CHANGE RIEN DU TOUT', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ C'EST LA PROPRIÉTÉ QUE L'UTILISATEUR A DEMANDÉE, ET ELLE SE VÉRIFIE EN UNE LIGNE
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // La taille du texel valait `2 × rayon / résolution` avec un rayon CONTINU : elle changeait à
+    // chaque cran de molette, de 3,9 mm tout près à 105 mm très reculé. Une ombre étant quantifiée
+    // sur cette grille, changer le pas de la grille redessine tous les contours — c'est cela qui
+    // rampait, sans qu'aucune lumière ait bougé.
+    const panel = (camDist) => ({ camDist, _orbitCx: 12.34, _orbitCy: 0, _orbitCz: -7.77 });
+    const ref = boiteOmbreSoleil3D(panel(28), PAGE_G, SOLEIL);
+    for (const d of [29, 30, 33, 40, 45]) {
+      const b = boiteOmbreSoleil3D(panel(d), PAGE_G, SOLEIL);
+      assert.equal(b.rayon, ref.rayon, `le rayon bouge entre camDist 28 et ${d}`);
+      assert.equal(b.tailleTexel, ref.tailleTexel, `le texel bouge entre camDist 28 et ${d}`);
+      assert.equal(b.centre.x, ref.centre.x, `le centre bouge entre camDist 28 et ${d}`);
+      assert.equal(b.centre.z, ref.centre.z, `le centre bouge entre camDist 28 et ${d}`);
+    }
+    // TÉMOIN : le rayon DÉRIVÉ, lui, bouge bel et bien sur cette plage. Sans lui, un rayon devenu
+    // constant par erreur — une boîte qui ne suivrait plus du tout le cadrage — passerait ce test
+    // avec les félicitations. C'est nommément l'une des familles de défauts de ce dépôt : mesurer
+    // une absence sans vérifier que l'instrument sait voir une présence.
+    assert.ok(boiteOmbreSoleil3D(panel(45), PAGE_G, SOLEIL).rayonBrut
+      > ref.rayonBrut * 1.5, 'le témoin ne bouge plus : le test ne prouve plus rien');
+    // Et au palier SUIVANT, la boîte change bien — sinon elle aurait cessé de suivre le cadrage.
+    assert.ok(boiteOmbreSoleil3D(panel(120), PAGE_G, SOLEIL).rayon > ref.rayon,
+      'la boîte ne suit plus le cadrage : très dézoomé, l’ombre ne couvrirait qu’un coin');
+  });
+
+  test('⚠️ LA CAMÉRA D’OMBRE EST HORS DU VOLUME QU’ELLE REGARDE', () => {
+    // ⚠️ TROISIÈME FAUTE, TROUVÉE EN CORRIGEANT LES DEUX AUTRES. La lumière était posée à 3 unités
+    // du centre quand le rayon peut valoir 64 : la caméra se trouvait DANS la boîte, et tout ce
+    // qui était derrière elle tombait au-delà du plan proche — donc ne projetait pas. Le défaut
+    // était masqué tant que la boîte restait petite.
+    for (const camDist of [3, 30, 120]) {
+      const b = boiteOmbreSoleil3D({ camDist, _orbitCx: 0, _orbitCy: 0, _orbitCz: 0 }, PAGE_G, SOLEIL);
+      assert.ok(b.distanceCamera >= b.rayon,
+        `à camDist ${camDist}, la caméra est DANS la boîte : la moitié des projeteurs est derrière le plan proche`);
+      assert.ok(b.distanceCamera + b.rayon <= b.far,
+        `à camDist ${camDist}, le fond de la boîte dépasse le plan éloigné : les projeteurs lointains sont coupés`);
+    }
+  });
+
+  test('⚠️ ET LE RENDU POSE LES DEUX, POSITION ET CIBLE, EN BLOC', () => {
+    const RIG = sourceSansCommentaires(
+      readFileSync(new URL('../src/rig3d.js', import.meta.url), 'utf8'));
+    const i = RIG.indexOf('export function appliquerOmbresDeCase3D');
+    const corps = RIG.slice(i, RIG.indexOf('\n}\n', i));
+    assert.match(corps, /target\.position\.set\(b\.centre\.x, b\.centre\.y, b\.centre\.z\)/,
+      'la cible du soleil n’est plus déplacée : la boîte retourne à l’origine du monde');
+    // ⚠️ ET LA CIBLE DOIT ÊTRE REMISE À JOUR À LA MAIN : elle n'est PAS dans le graphe de la scène,
+    // donc personne ne recalcule sa matrice monde. Sans cet appel, Three.js lit celle de la Case
+    // précédente et la boîte traîne d'une Case à l'autre.
+    assert.match(corps, /target\.updateMatrixWorld\(\)/,
+      'la cible n’est pas remise à jour : Three.js lira celle de la Case précédente');
+    assert.match(corps, /position\.set\(\s*b\.centre\.x \+ d\.x \* b\.distanceCamera/,
+      'la lumière n’est plus replacée avec sa cible : la direction du soleil deviendrait fausse');
+    // ⚠️ ET LA REMISE À ZÉRO VIT DANS L'ÉCLAIRAGE, QUI PASSE SUR TOUTE CASE. Une Case SANS ombre
+    // n'exécute pas le bloc ci-dessus : si personne ne reposait la cible, elle hériterait de celle
+    // de la Case ombrée d'avant et sa LUMIÈRE pointerait ailleurs — pas seulement son ombre.
+    const j = RIG.indexOf('export function appliquerEclairageDeCase3D');
+    const corpsEcl = RIG.slice(j, RIG.indexOf('\n}\n', j));
+    assert.match(corpsEcl, /target\.position\.set\(0, 0, 0\)/,
+      'la cible du soleil n’est pas reposée à chaque Case : une Case sans ombre héritera de la précédente');
+  });
+
+  test('⚠️ ET LA CAMÉRA EST CADRÉE AVANT QUE LES OMBRES LA LISENT', () => {
+    // `framePanelCamera3D` est le SEUL endroit qui résout le centre d'orbite — cible explicite du
+    // menu Caméra, Élément sélectionné, orbite libre — et il l'écrit dans `_orbitCx/Cy/Cz`. Il
+    // avait lieu sept cents lignes plus bas que les ombres : elles auraient lu le centre du rendu
+    // PRÉCÉDENT, ou rien du tout sur une Case neuve.
+    const SCENE = sourceSansCommentaires(
+      readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    const posCadrage = corps.indexOf('framePanelCamera3D(');
+    const posOmbres = corps.indexOf('appliquerOmbresDeCase3D(');
+    assert.ok(posCadrage > 0 && posOmbres > posCadrage,
+      'les ombres lisent le centre d’orbite avant qu’il soit résolu : elles suivront le rendu précédent');
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * UN DESSIN POSÉ SUR LE SOL N'EST PAS UN CORPS (#422f)
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
@@ -907,4 +1087,67 @@ describe('⚠️ CE QUI AFFLEURE LE SOL REÇOIT MAIS NE PROJETTE PAS (#422f)', (
  * de CADRAGE, où elle a un sens, plus un bannissement du nombre lui-même dans tout le module.
  * Interdire un préfixe plutôt qu'une propriété bloque les usages légitimes qu'on n'avait pas
  * prévus : c'est exactement ce que le test de `sideLightToggle` avait payé une tâche plus tôt.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422g, la boîte posée et accrochée) : dix fautes rejouées.
+ *
+ *   M139 la boîte retourne à l'origine du monde                           ROUGE
+ *   M140 la cible traîne d'une Case à l'autre                             ROUGE
+ *   M141 une Case sans ombre hérite de la cible de la précédente          ROUGE
+ *   M142 arrondi vers le bas : les ombres sont coupées aux bords          ROUGE
+ *   M143 pas d'accrochage : les ombres rampent au zoom                    ROUGE
+ *   M144 le centre n'est plus accroché : la grille glisse                 ROUGE
+ *   M145 le repère ignore la direction du soleil                          ROUGE
+ *   M146 soleil au zénith : le centre part à NaN                          ROUGE
+ *   M147 la caméra est DANS la boîte                                      ROUGE
+ *   M148 les ombres lisent le centre d'orbite du rendu précédent          ROUGE
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ M139 EST LA MOITIÉ DE CONSIGNE QUE J'AVAIS LUE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * La note de #422 disait, en toutes lettres et en gras : « la boîte devra être CADRÉE SUR CE QUE LA
+ * CASE REGARDE ». J'ai implémenté la TAILLE et oublié la POSITION — et `DirectionalLight.target`
+ * valant l'origine par défaut, la boîte est restée autour de (0, 0, 0) pendant deux tâches. Une
+ * consigne écrite ne protège de rien si on n'en relit que la moitié ; ce qui l'aurait attrapée,
+ * c'est un test sur la POSITION, et il n'y en avait aucun.
+ *
+ * ⚠️ M141 EST LE PIÈGE DE LA SCÈNE PARTAGÉE, QUATRIÈME FOIS DANS CE SEUL CHANTIER — après le
+ * drapeau du renderer (#422c), la disposition de la fiche (#421h) et le `castShadow` d'une source
+ * (#422d). Et c'est la plus grave des quatre : une Case SANS ombre n'exécute pas le bloc qui pose
+ * la cible, donc elle hériterait de celle de la Case ombrée d'avant — et sa LUMIÈRE pointerait
+ * ailleurs, pas seulement son ombre. Un état que personne ne repose doit être reposé par quelqu'un
+ * qui passe TOUJOURS.
+ *
+ * ⚠️ M142 ET M143 TIENNENT L'ACCROCHAGE PAR SES DEUX RISQUES OPPOSÉS. Sans accrochage, les ombres
+ * rampent — le défaut signalé. Avec un accrochage vers le BAS, la boîte passe sous le champ visible
+ * et les ombres sont COUPÉES près des bords : un défaut pire, et qui ne se verrait que sur
+ * certaines Cases. Une seule des deux mutations aurait laissé croire que l'arrondi est bon.
+ *
+ * ⚠️ M145 EST CELLE QU'ON N'ÉCRIT QUE SI ON A COMPRIS POURQUOI. Accrocher sur les axes du MONDE
+ * paraît équivalent et ne l'est pas : la grille de texels est celle de la CARTE, orientée par la
+ * direction du soleil. Arrondir ailleurs laisse la grille glisser en biais, et l'accrochage ne sert
+ * plus à rien dès que le soleil n'est pas dans un plan d'axe — c'est à dire presque toujours.
+ *
+ * ⚠️ M147 EST UNE TROISIÈME FAUTE, TROUVÉE EN CORRIGEANT LES DEUX AUTRES. La lumière était posée à
+ * trois unités du centre quand le rayon peut valoir 64 : la caméra d'ombre se trouvait DANS le
+ * volume qu'elle regarde, et tout ce qui était derrière elle tombait au-delà du plan proche — donc
+ * ne projetait pas. Le défaut était masqué par le premier : une boîte plantée à l'origine ne
+ * contenait de toute façon presque rien.
+ *
+ * ⚠️ ET TROIS TESTS DE #422a ONT DÛ ÊTRE RÉÉCRITS, sans qu'aucun ne soit faux. Ils mesuraient le
+ * rayon DÉRIVÉ à une époque où c'était le seul ; depuis, une décision d'affichage — l'arrondi — se
+ * pose par-dessus. Ils portent désormais sur `rayonBrut`, ce qui rend la dérivation testée pour
+ * elle-même, et l'arrondi est tenu séparément par ses deux bornes : jamais plus petit que la
+ * dérivation, jamais plus d'un palier au-dessus.
+ *
+ * ⚠️ ET LA MARGE DE VISIBILITÉ A BAISSÉ, ce qui est écrit plutôt que masqué : elle valait plus de
+ * quatre avant #422g, elle vaut 3,5. L'arrondi a mangé la différence, et c'est le prix ANNONCÉ de
+ * la stabilité. L'exigence tenue est devenue « un palier de plus ne ferait toujours pas disparaître
+ * l'ombre », ce qui se dit dans l'unité où la marge se consomme désormais.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que l'échange finesse contre stabilité soit le bon à
+ * l'œil. #422z regarde — et il reste une option non mesurée, relever la résolution du soleil de
+ * 2048 à 4096 pour rendre ce que l'arrondi a pris.
  */

@@ -1104,6 +1104,13 @@ export function appliquerEclairageDeCase3D(eclairage){
   // code voisin en montre un de longueur 3 ferait douter le prochain lecteur pour rien.
   const d = eclairage.soleil.direction;
   personaKeyLight3D.position.set(d.x * 3, d.y * 3, d.z * 3);
+  // ⚠️ LA CIBLE EST REMISE À L'ORIGINE POUR TOUTE CASE (#422g), et c'est indispensable depuis que
+  // les ombres la déplacent. Une Case ombrée l'ancre sur ce qu'elle regarde ; sans cette remise à
+  // zéro, la Case SUIVANTE — sans ombre, donc sans personne pour la reposer — garderait cette cible
+  // et sa lumière pointerait ailleurs. La DIRECTION serait fausse, pas seulement l'ombre : c'est le
+  // piège de la scène partagée, qui a déjà valu trois règles à ce chantier.
+  personaKeyLight3D.target.position.set(0, 0, 0);
+  personaKeyLight3D.target.updateMatrixWorld();
 }
 
 /**
@@ -1159,7 +1166,31 @@ export function appliquerOmbresDeCase3D(panel, page, eclairage, plan){
   // tout autant besoin de savoir qui jette une ombre et qui n'en jette pas.
   if (rendues) marquerProjectionDOmbre3D();
   if (soleil) {
-    const b = boiteOmbreSoleil3D(panel, page);
+    const b = boiteOmbreSoleil3D(panel, page, eclairage.soleil.direction);
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ LA BOÎTE SE POSE SUR CE QUE LA CASE REGARDE (#422g)
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Signalé à l'usage : « les ombres bougent quand je zoome ». Une `DirectionalLightShadow` place
+    // sa caméra en `light.position` et la fait regarder `light.target` — dont le défaut, chez
+    // Three.js, est l'ORIGINE DU MONDE. `target` n'était jamais déplacé : la boîte couvrait donc un
+    // disque autour de (0, 0, 0), pendant que la Case regarde ailleurs.
+    //
+    // ⚠️ ET LE `target` DOIT ÊTRE REMIS À JOUR À LA MAIN. Il n'est pas dans le graphe de la scène :
+    // sans cet appel, Three.js lirait sa `matrixWorld` de la Case PRÉCÉDENTE, et la boîte
+    // traînerait d'une Case à l'autre. C'est le piège habituel de `DirectionalLight.target`.
+    //
+    // ⚠️ LA DIRECTION N'EST PAS TOUCHÉE : on déplace le couple position/cible EN BLOC, l'écart des
+    // deux reste `direction × distance`. `appliquerEclairageDeCase3D` les a reposés juste avant
+    // pour toutes les Cases, cible à l'origine comprise — c'est ce qui garantit qu'une Case SANS
+    // ombre ne garde pas la cible de la précédente et n'en hérite pas une direction fausse.
+    const d = eclairage.soleil.direction;
+    personaKeyLight3D.target.position.set(b.centre.x, b.centre.y, b.centre.z);
+    personaKeyLight3D.target.updateMatrixWorld();
+    personaKeyLight3D.position.set(
+      b.centre.x + d.x * b.distanceCamera,
+      b.centre.y + d.y * b.distanceCamera,
+      b.centre.z + d.z * b.distanceCamera);
     const c = personaKeyLight3D.shadow.camera;
     c.left = -b.rayon; c.right = b.rayon; c.top = b.rayon; c.bottom = -b.rayon;
     c.near = b.near; c.far = b.far;

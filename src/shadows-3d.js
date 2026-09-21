@@ -106,18 +106,144 @@ export const RESOLUTION_OMBRE_SOLEIL = 2048;
  * ⚠️ ET LE SOL N'ENTRE PAS DANS CE CALCUL. C'est la mesure de #422 : une boîte à l'échelle du Sol
  * rend une ombre invisible. Un test refuse que `GROUND_PLANE_SIZE_3D` apparaisse dans ce fichier.
  */
-export function boiteOmbreSoleil3D(panel, page){
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES DEUX CORRECTIONS DE #422g, SIGNALÉES À L'USAGE : « LES OMBRES BOUGENT QUAND JE ZOOME »
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ PREMIÈRE FAUTE : LA BOÎTE ÉTAIT CENTRÉE SUR L'ORIGINE DU MONDE. `boiteOmbreSoleil3D` ne
+ * rendait qu'un RAYON, et `personaKeyLight3D.target` n'était jamais déplacé — il vaut l'origine par
+ * défaut chez Three.js. La boîte couvrait donc un disque autour du point (0, 0, 0), pendant que la
+ * Case, elle, regarde `panel._orbitCx/Cy/Cz`, que les flèches, la molette et le ré-ancrage
+ * automatique déplacent librement.
+ *
+ * La note de #422 disait pourtant, en toutes lettres : « la boîte devra être CADRÉE SUR CE QUE LA
+ * CASE REGARDE ». J'avais implémenté la TAILLE et oublié la POSITION. Une consigne écrite ne
+ * protège de rien si on n'en relit que la moitié.
+ *
+ * ⚠️ SECONDE FAUTE : LE RAYON SUIVAIT `camDist` EN CONTINU. La taille d'un texel valant
+ * `2 × rayon / résolution`, elle changeait à chaque cran de molette — de 3,9 mm tout près à 105 mm
+ * très reculé. Or une ombre est QUANTIFIÉE sur cette grille : changer le pas de la grille redessine
+ * tous les contours. C'est cela que l'utilisateur voyait ramper, et aucune lumière n'avait bougé.
+ *
+ * ⚠️ LA PARADE EST CELLE DES MOTEURS TEMPS RÉEL, et l'utilisateur l'a choisie devant les options :
+ * **accrocher la grille au lieu de la laisser glisser.**
+ *
+ *   1. le rayon est arrondi au PALIER supérieur, par doublements. La taille du texel devient donc
+ *      constante sur toute une plage de zoom, et les ombres ne bougent plus du tout tant qu'on
+ *      reste dans le palier ;
+ *   2. le centre est arrondi à un multiple entier de texel, DANS LE REPÈRE DE LA LUMIÈRE et non
+ *      selon les axes du monde. C'est ce qui fait que déplacer la caméra fait glisser la grille
+ *      d'un nombre ENTIER de texels : chaque ombre retombe exactement sur les mêmes texels
+ *      qu'avant, au lieu de se re-quantifier.
+ *
+ * ⚠️ CE QUE L'ACCROCHAGE COÛTE, ET IL FAUT LE DIRE : arrondir au doublement supérieur peut doubler
+ * la taille du texel dans le pire cas — une boîte de rayon 40,28 devient 64. On échange donc de la
+ * finesse, au plus d'un facteur deux, contre de la STABILITÉ. C'est le bon échange ici : une ombre
+ * un peu plus grossière se regarde, une ombre qui rampe se remarque. Relever la résolution du
+ * soleil pour compenser serait tentant — #422 a mesuré que 1024 et 2048 coûtent le même temps —
+ * mais 4096 n'a PAS été mesuré, et étendre une mesure au-delà de ce qu'elle couvre est précisément
+ * ce que ce dépôt refuse. À juger à l'écran en #422z.
+ */
+
+/** Le pas d'accrochage du rayon. 2 = doublements. */
+export const PALIER_RAYON_OMBRE = 2;
+
+/**
+ * Le repère de la caméra d'ombre du soleil, déduit de la direction. PURE.
+ *
+ * ⚠️ IL REPRODUIT CE QUE FAIT THREE.JS, et c'est pour cela qu'il est ici plutôt qu'approximé. Une
+ * `DirectionalLightShadow` place sa caméra en `light.position`, la fait regarder `light.target`, et
+ * son `up` vaut (0, 1, 0). L'axe Z de cette caméra va donc de la cible vers la lumière — c'est la
+ * direction du soleil —, et les deux autres s'en déduisent. Accrocher le centre sur les axes du
+ * MONDE au lieu de ceux-ci laisserait la grille glisser en biais, et l'accrochage ne servirait à
+ * rien dès que le soleil n'est pas dans un plan d'axe.
+ *
+ * ⚠️ LE CAS DÉGÉNÉRÉ EST TRAITÉ : soleil au zénith, la direction est colinéaire à `up` et le
+ * produit vectoriel est nul. Un axe de repli est alors pris, comme `lookAt` le ferait.
+ */
+export function repereOmbreSoleil3D(direction){
+  const d = direction || {};
+  let zx = Number(d.x) || 0, zy = Number(d.y) || 0, zz = Number(d.z) || 0;
+  const n = Math.hypot(zx, zy, zz);
+  if (!(n > 0)) { zx = 0; zy = 1; zz = 0; }
+  else { zx /= n; zy /= n; zz /= n; }
+  // up × z, avec up = (0, 1, 0) : (1·zz − 0·zy, 0·zx − 0·zz, 0·zy − 1·zx) = (zz, 0, −zx).
+  let xx = zz, xy = 0, xz = -zx;
+  const nx = Math.hypot(xx, xy, xz);
+  if (nx < 1e-6) { xx = 1; xy = 0; xz = 0; }   // soleil au zénith : repli sur l'axe X du monde
+  else { xx /= nx; xy /= nx; xz /= nx; }
+  // y = z × x, unitaire par construction puisque z et x le sont et sont orthogonaux.
+  return {
+    x: { x: xx, y: xy, z: xz },
+    y: { x: zy * xz - zz * xy, y: zz * xx - zx * xz, z: zx * xy - zy * xx },
+    z: { x: zx, y: zy, z: zz },
+  };
+}
+
+export function boiteOmbreSoleil3D(panel, page, direction){
   const champ = champVisibleDeCase3D(panel, page);
-  const rayon = Math.hypot(champ.demiLargeur, champ.demiHauteur) * MARGE_BOITE_OMBRE;
+  const rayonBrut = Math.hypot(champ.demiLargeur, champ.demiHauteur) * MARGE_BOITE_OMBRE;
+  // ⚠️ AU PALIER SUPÉRIEUR, JAMAIS À L'INFÉRIEUR. Arrondir vers le bas rétrécirait la boîte sous le
+  // champ visible, et les ombres seraient COUPÉES près des bords — un défaut bien pire que celui
+  // qu'on corrige, et qui ne se verrait que sur certaines Cases.
+  const rayon = Math.pow(PALIER_RAYON_OMBRE,
+    Math.ceil(Math.log(Math.max(rayonBrut, 1e-6)) / Math.log(PALIER_RAYON_OMBRE)));
+  const tailleTexel = (2 * rayon) / RESOLUTION_OMBRE_SOLEIL;
+  const centre = centreAccrocheOmbre3D(panel, direction, tailleTexel);
   return {
     rayon,
+    rayonBrut,
+    centre,
     // Le soleil est DIRECTIONNEL : sa caméra d'ombre n'a pas de position propre, elle est posée à
     // `rayon` du centre le long de la direction de la lumière. La profondeur couvre donc l'aller et
     // le retour, plus la hauteur de ce qui peut projeter.
     near: 0,
     far: 2 * rayon + PERSONA_REAL_HEIGHT_M,
+    // ⚠️ ET LA CAMÉRA DOIT ÊTRE ASSEZ LOIN POUR ÊTRE HORS DU VOLUME, troisième faute trouvée en
+    // corrigeant les deux autres. Elle était posée à 3 unités du centre quand le rayon peut valoir
+    // 64 : elle se trouvait DANS la boîte, et tout ce qui était derrière elle tombait au-delà du
+    // plan proche — donc ne projetait pas. Le défaut était invisible tant que la boîte était petite.
+    //
+    // La profondeur vue depuis la caméra couvre [k − rayon, k + rayon] ; il faut k ≥ rayon pour
+    // rester devant `near: 0`, et k ≤ rayon + hauteur pour tenir sous `far`. La moitié de la
+    // hauteur place la caméra au milieu de cet intervalle.
+    distanceCamera: rayon + PERSONA_REAL_HEIGHT_M / 2,
     resolution: RESOLUTION_OMBRE_SOLEIL,
-    tailleTexel: (2 * rayon) / RESOLUTION_OMBRE_SOLEIL,
+    tailleTexel,
+  };
+}
+
+/**
+ * Le centre de la boîte : ce que la Case REGARDE, arrondi à un multiple entier de texel. PURE.
+ *
+ * ⚠️ `_orbitCx/Cy/Cz` EST LE CENTRE D'ORBITE RÉSOLU, écrit par `framePanelCamera3D` juste avant le
+ * rendu. Il est lu plutôt que recalculé, et ce n'est pas de la paresse : la résolution de ce centre
+ * a trois cas en cascade — cible explicite du menu Caméra, Élément sélectionné, orbite libre — et
+ * en refaire une copie ici serait la deuxième version d'un raisonnement, celle qui s'accorde avec
+ * la première le premier jour seulement. Le dépôt a déjà nommé ce piège (« Fix 12.7 »), et la
+ * sphère du repère d'orbite lit déjà ce même champ pour la même raison.
+ */
+export function centreAccrocheOmbre3D(panel, direction, tailleTexel){
+  const cx = Number(panel && panel._orbitCx) || 0;
+  const cy = Number(panel && panel._orbitCy) || 0;
+  const cz = Number(panel && panel._orbitCz) || 0;
+  const t = Number(tailleTexel);
+  if (!Number.isFinite(t) || t <= 0) return { x: cx, y: cy, z: cz };
+  const r = repereOmbreSoleil3D(direction);
+  // Les coordonnées du centre dans le repère de la lumière.
+  const u = cx * r.x.x + cy * r.x.y + cz * r.x.z;
+  const v = cx * r.y.x + cy * r.y.y + cz * r.y.z;
+  const w = cx * r.z.x + cy * r.z.y + cz * r.z.z;
+  // ⚠️ SEULS LES DEUX AXES DU PLAN DE LA CARTE SONT ARRONDIS. La profondeur `w` ne se quantifie pas
+  // sur cette grille — elle vit dans le tampon de profondeur, pas dans les texels — et l'arrondir
+  // ferait sauter la boîte d'avant en arrière sans rien stabiliser.
+  const us = Math.round(u / t) * t;
+  const vs = Math.round(v / t) * t;
+  return {
+    x: r.x.x * us + r.y.x * vs + r.z.x * w,
+    y: r.x.y * us + r.y.y * vs + r.z.y * w,
+    z: r.x.z * us + r.y.z * vs + r.z.z * w,
   };
 }
 

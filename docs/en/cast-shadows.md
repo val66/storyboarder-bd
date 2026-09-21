@@ -173,6 +173,49 @@ cast. That is consistent — its shadow is not visible either — but it would s
 camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
 signature; it has done so since #414c.
 
+### ⚠️ "The shadows move when I zoom" (#422g, reported in use)
+
+Three faults, two of which masked each other.
+
+**1. The box was centred on the world origin.** A `DirectionalLightShadow` places its camera at
+`light.position` and has it look at `light.target` — whose Three.js default is the origin. `target`
+was never moved: the box therefore covered a disc around (0, 0, 0) while the Panel looks at
+`_orbitCx/Cy/Cz`, which the arrow keys, the wheel and auto re-anchoring move freely.
+
+⚠️ **And this note already said so**, in as many words: "the shadow box will have to be **framed on
+what the Panel looks at**". The SIZE was implemented, the POSITION forgotten. A written instruction
+protects nothing if only half of it is read back.
+
+**2. The radius followed `camDist` continuously**, so the texel size changed at every wheel notch. A
+shadow being QUANTIZED on that grid, changing the grid's pitch redraws every contour: that is what
+was crawling, with no light having moved.
+
+The remedy is the real-time engines': **snap the grid instead of letting it slide.** The radius is
+rounded up to the next step by doublings, and the centre to a whole number of texels — in the
+LIGHT's frame, not along world axes, otherwise the grid would slide diagonally as soon as the sun is
+off an axis plane.
+
+| camDist | derived radius | snapped radius | texel |
+|---|---|---|---|
+| 28 | 37.59 | **64** | 62.5 mm |
+| 30 | 40.28 | **64** | 62.5 mm |
+| 45 | 60.41 | **64** | 62.5 mm |
+| 60 | 80.55 | **128** | 125 mm |
+
+Zooming from 28 to 45 therefore changes **nothing at all**: same radius, same texel, same centre.
+
+⚠️ **What snapping costs, and it must be said**: rounding up to the next doubling can double the
+texel size. Fineness is traded, by at most a factor of two, for stability. A slightly coarser shadow
+is looked at; a crawling shadow is noticed. The visibility margin went from over 4 to 3.5 — the
+announced price. Raising the sun's resolution from 2048 to 4096 would give back what was taken, but
+**4096 was not measured**, and extending a measurement beyond what it covers is precisely what this
+repository refuses. To be judged in #422z.
+
+**3. The shadow camera was INSIDE the volume it looks at.** A third fault, found while fixing the
+other two: the light sat three units from the centre when the radius can be 64. Everything behind it
+fell beyond the near plane and therefore did not cast. The fault was masked by the first — a box
+planted at the origin contained almost nothing anyway.
+
 ### ⚠️ What lies flush with the ground does not cast (#422f, reported in use)
 
 The paths came back striped with bands. The cause was in #422c's rule — "a material that receives

@@ -177,6 +177,50 @@ pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserai
 reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
 était déjà depuis #414c.
 
+### ⚠️ « Les ombres bougent quand je zoome » (#422g, signalé à l'usage)
+
+Trois fautes, dont deux se masquaient l'une l'autre.
+
+**1. La boîte était centrée sur l'origine du monde.** Une `DirectionalLightShadow` place sa caméra
+en `light.position` et la fait regarder `light.target` — dont le défaut, chez Three.js, est
+l'origine. `target` n'était jamais déplacé : la boîte couvrait donc un disque autour de (0, 0, 0)
+pendant que la Case regarde `_orbitCx/Cy/Cz`, que les flèches, la molette et le ré-ancrage
+automatique déplacent librement.
+
+⚠️ **Et cette note le disait déjà**, en toutes lettres : « la boîte devra être CADRÉE SUR CE QUE LA
+CASE REGARDE ». La TAILLE avait été implémentée, la POSITION oubliée. Une consigne écrite ne protège
+de rien si on n'en relit que la moitié.
+
+**2. Le rayon suivait `camDist` en continu**, donc la taille du texte changeait à chaque cran de
+molette. Une ombre étant QUANTIFIÉE sur cette grille, changer le pas de la grille redessine tous les
+contours : c'est cela qui rampait, sans qu'aucune lumière ait bougé.
+
+La parade est celle des moteurs temps réel : **accrocher la grille au lieu de la laisser glisser.**
+Le rayon est arrondi au palier supérieur par doublements, et le centre à un multiple entier de
+texel — dans le repère de la LUMIÈRE, pas selon les axes du monde, sans quoi la grille glisserait en
+biais dès que le soleil n'est pas dans un plan d'axe.
+
+| camDist | rayon dérivé | rayon accroché | texel |
+|---|---|---|---|
+| 28 | 37,59 | **64** | 62,5 mm |
+| 30 | 40,28 | **64** | 62,5 mm |
+| 45 | 60,41 | **64** | 62,5 mm |
+| 60 | 80,55 | **128** | 125 mm |
+
+Zoomer de 28 à 45 ne change donc **plus rien du tout** : même rayon, même texel, même centre.
+
+⚠️ **Ce que l'accrochage coûte, et il faut le dire** : arrondir au doublement supérieur peut doubler
+la taille du texel. On échange de la finesse, au plus d'un facteur deux, contre de la stabilité. Une
+ombre un peu plus grossière se regarde ; une ombre qui rampe se remarque. La marge de visibilité est
+passée de plus de 4 à 3,5 — c'est le prix annoncé. Relever la résolution du soleil de 2048 à 4096
+rendrait ce qui a été pris, mais **4096 n'a pas été mesuré**, et étendre une mesure au-delà de ce
+qu'elle couvre est précisément ce que ce dépôt refuse. À juger en #422z.
+
+**3. La caméra d'ombre était DANS le volume qu'elle regarde.** Troisième faute, trouvée en corrigeant
+les deux autres : la lumière était posée à trois unités du centre quand le rayon peut valoir 64. Tout
+ce qui se trouvait derrière elle tombait au-delà du plan proche, donc ne projetait pas. Le défaut
+était masqué par le premier — une boîte plantée à l'origine ne contenait de toute façon presque rien.
+
 ### ⚠️ Ce qui affleure le sol ne projette pas (#422f, signalé à l'usage)
 
 Les chemins sont revenus rayés de bandes. La cause était dans la règle de #422c — « un matériau qui

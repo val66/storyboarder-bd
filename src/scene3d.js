@@ -2095,6 +2095,17 @@ export function hauteurDeboutModele3D(entry, boxFn){
 
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ensurePersonaScene3D();
+  // ⚠️ LA CAMÉRA EST CADRÉE D'ABORD, ET C'EST #422g QUI L'A EXIGÉ. `framePanelCamera3D` est le seul
+  // endroit qui RÉSOUT le centre d'orbite — cible explicite du menu Caméra, Élément sélectionné, ou
+  // orbite libre — et il l'écrit dans `panel._orbitCx/Cy/Cz`. La boîte d'ombre a besoin de ce centre
+  // pour se poser sur ce que la Case regarde ; le cadrage avait lieu sept cents lignes plus bas, si
+  // bien qu'elle aurait lu le centre du rendu PRÉCÉDENT, ou rien du tout sur une Case neuve.
+  //
+  // ⚠️ ET C'EST UN APPEL DE PLUS, PAS UNE COPIE DE MOINS. Recalculer ici la cascade à trois cas
+  // aurait été la seconde version d'un raisonnement — celle qui s'accorde avec la première le
+  // premier jour seulement. `framePanelCamera3D` est idempotente ; le dépôt l'appelle déjà
+  // plusieurs fois par rendu.
+  framePanelCamera3D(personaCamera3D, panel, page);
   const style = resolveStyle3D(styleKey);
   // ⚠️ LE STYLE D'ABORD, LA CASE ENSUITE, ET DANS CET ORDRE. La scène Three.js est PARTAGÉE : les
   // trois lumières servent à toutes les Cases l'une après l'autre. Reposer les valeurs du style à
