@@ -106,6 +106,24 @@ const EN_ATTENTE = {
   // le détecteur les voit appelées à l'intérieur du module, par `dispositionFicheLumiere3D`.
   // Quatrième fois que ce garde-fou évite des exemptions qui ne surveilleraient rien.
 
+  // #422a — LES OMBRES PORTÉES : LA DÉCISION AVANT SA CAMÉRA. Sixième fois que cette figure revient,
+  // après #403a, #414a, #420a, #425a et #421a, et le motif est toujours le même : poser une caméra
+  // d'ombre dans une scène Three.js ne se teste pas sous Node, calculer OÙ elle regarde et JUSQU'OÙ,
+  // si.
+  //
+  // Ce que la décision achète en plus ici, et qui justifie de l'écrire en avance : #422 a MESURÉ
+  // qu'une boîte d'ombre étirée aux 12 000 unités du Sol change 0,00 % des pixels — l'ombre
+  // disparaît, au prix complet des passes. Un test refuse désormais que la moindre grandeur du Sol
+  // entre dans ce calcul. Écrire cela après le branchement aurait voulu dire brancher d'abord avec
+  // la tentation intacte.
+  //
+  // ÉCHÉANCES, et ce sont des NUMÉROS DE TÂCHE :
+  cameraOmbreSource3D: '#422d — la case « projette une ombre » dans la fiche d\'une Lumière',
+  ombreSoleilSeraVisible3D: '#422c — ne pas payer six passes pour une image inchangée',
+  // `champVisibleDeCase3D`, `boiteOmbreSoleil3D` et les constantes ne sont PAS ici : le détecteur
+  // les voit appelées à l'intérieur du module. Cinquième fois que ce garde-fou évite des exemptions
+  // qui ne surveilleraient rien.
+
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
   // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
@@ -182,8 +200,9 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // DEUX depuis les fondations de #420a, UNE depuis que #420b a branché la création, ZÉRO à
     // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, UNE depuis
     // que #425b a branché le dessin, ZÉRO depuis que #425c a branché la fiche, UNE depuis que #421a
-    // a posé la disposition de la fiche d'une Lumière, et ZÉRO à nouveau depuis que #421b l'a
-    // branchée — une tâche plus tôt que l'échéance inscrite.
+    // a posé la disposition de la fiche d'une Lumière, ZÉRO à nouveau depuis que #421b l'a
+    // branchée — une tâche plus tôt que l'échéance inscrite —, et DEUX depuis les fondations de
+    // #422a, échéances #422c et #422d.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues.
     //
@@ -195,7 +214,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
