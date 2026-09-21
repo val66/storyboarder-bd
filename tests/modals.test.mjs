@@ -797,17 +797,21 @@ describe('⚠️ L’AFFICHAGE DE LA SECTION VIENT DE LA TABLE, PAS D’UN SECON
     readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
   const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
-  test('la section n’apparaît que si `dispositionFicheLumiere3D` le dit', () => {
-    // Deux décisions sur la même chose finissent par se contredire, et l'une des deux devient
-    // inopérante sans qu'on sache laquelle : c'est le défaut le plus fréquent de ce dépôt. #421a
-    // existe pour être l'autorité ; s'en passer ici lui retirerait son objet.
+  test('⚠️ UN SEUL PROPRIÉTAIRE POUR LA VISIBILITÉ, et ce n’est pas le remplissage (#421h)', () => {
+    // ⚠️ IL Y EN A EU DEUX, ET ÇA S'EST PAYÉ. `remplirSectionLuminosite3D` posait la visibilité, et
+    // `appliquerDispositionFicheLumiere3D` la posait aussi — la faute que ce chantier refuse
+    // partout ailleurs. La visibilité appartient désormais à la disposition, seule ; il ne reste
+    // ici que le remplissage des trois commandes.
     const i = SRC.indexOf('export function remplirSectionLuminosite3D');
     assert.ok(i > 0, '`remplirSectionLuminosite3D` est introuvable');
     const corps = SRC.slice(i, SRC.indexOf('\n}', i));
-    assert.match(corps, /dispositionFicheLumiere3D\(\)/,
-      'la visibilité de la section ne consulte plus la table de #421a');
-    assert.match(corps, /disposition\.sections\.luminosite/,
-      'la table est consultée mais sa réponse n’est pas lue');
+    assert.ok(!/style\.display/.test(corps),
+      'le remplissage décide à nouveau de la visibilité : deux propriétaires pour un même état');
+    // Et l'autorité, elle, consulte bien la table de #421a.
+    const j = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    const dispo = SRC.slice(j, SRC.indexOf('\n}\n', j));
+    assert.match(dispo, /dispositionFicheLumiere3D\(\)/,
+      'la disposition ne consulte plus la table de #421a');
   });
 
   test('⚠️ ET ELLE EST MASQUÉE DANS LE HTML : une Lumière la montre, personne d’autre', () => {
@@ -848,6 +852,21 @@ describe('⚠️ « 0 » NE SE LIT PAS TOUT SEUL : l’indice de portée est là
   test('⚠️ ET IL EST TRADUIT : sinon la fiche anglaise devient TROMPEUSE, pas seulement incomplète', () => {
     assert.match(I18N, /'#objectLightRangeHint',\s*'[^']*unlimited/,
       'l’indice de portée n’a pas d’entrée anglaise : « 0 » se lirait « éteinte » en anglais');
+  });
+
+  test('⚠️ ET LE LIBELLÉ PORTE SON UNITÉ, dans les deux langues (#421h)', () => {
+    // Mutation M85, échappée au premier tour. Signalé à l'usage : « 8,1 » ne dit pas s'il s'agit de
+    // mètres, de centimètres ou d'unités de scène — et une portée se saisit justement en regardant
+    // une distance dans la Case. Les deux autres champs de mesure de cette fiche portent la leur,
+    // « Hauteur (m) » et « Diamètre de la sphère (m) » : celui-ci ne peut pas y échapper.
+    const entree = I18N.match(/\['objectLightRangeInput',\s*'([^']*)',\s*'([^']*)'\]/);
+    assert.ok(entree, 'le libellé de portée a disparu de la table d’i18n');
+    assert.match(entree[1], /\(m\)/, `l’unité manque en anglais : « ${entree[1]} »`);
+    assert.match(entree[2], /\(m\)/, `l’unité manque en français : « ${entree[2]} »`);
+    // Et le HTML doit dire la même chose que la table, sinon la fiche s'ouvre sans unité jusqu'au
+    // premier changement de langue.
+    assert.match(HTML, /<label class="modal-field-label">Portée \(m\)<\/label>/,
+      'le libellé du HTML ne porte pas l’unité que la table annonce');
   });
 });
 
@@ -928,17 +947,91 @@ describe('⚠️ LA DISPOSITION PASSE EN DERNIER, ET NE TOUCHE QUE LES LUMIÈRES
     }
   });
 
-  test('⚠️ ELLE SORT SANS RIEN ÉCRIRE POUR TOUT CE QUI N’EST PAS UNE SOURCE', () => {
-    // Le défaut symétrique, et il serait bien pire : un `else` qui « remettrait les champs » se
+  test('⚠️ ELLE NE TOUCHE LES CHAMPS PARTAGÉS QUE POUR UNE SOURCE', () => {
+    // Le défaut symétrique, et il serait bien pire : « remettre » les champs partagés se
     // substituerait aux trente bascules existantes sans connaître leurs raisons, et une chaise
-    // retrouverait des champs de Mur.
+    // retrouverait des champs de Mur. La sortie anticipée reste donc — mais APRÈS ce que la
+    // disposition possède en propre (cf. le test suivant).
     const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
     assert.ok(i > 0, 'la fonction est introuvable');
     const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
-    assert.match(corps, /if \(!estUneLumiere3D\(obj\)\) return;/,
-      'la sortie anticipée a disparu : la disposition s’appliquerait à tous les Éléments');
-    assert.ok(!/\belse\s*\{/.test(corps.slice(corps.indexOf('estUneLumiere3D'))),
-      'un `else` remettrait des champs sans connaître les raisons qui les avaient masqués');
+    assert.match(corps, /if \(!estLumiere\) return;/,
+      'les champs partagés seraient réécrits pour tous les Éléments');
+    const posSortie = corps.indexOf('if (!estLumiere) return;');
+    assert.ok(corps.indexOf('Object.entries(d.champs)') > posSortie,
+      'la boucle des champs partagés passe AVANT la sortie : elle s’appliquerait à une chaise');
+  });
+
+  test('⚠️ MAIS CE QU’ELLE POSSÈDE EN PROPRE, ELLE LE POSE DANS LES DEUX CAS (#421h)', () => {
+    // ⚠️ LA FAUTE SIGNALÉE À L'USAGE. La disposition était à sens unique : elle sortait sans rien
+    // écrire pour un Élément ordinaire, et laissait derrière elle tout ce qu'elle avait posé pour
+    // la Lumière précédente. « Afficher la sphère de la Lumière » apparaissait sur une chaise, et
+    // la section Orientation avait disparu de TOUTES les fiches.
+    //
+    // Un état que personne d'autre ne réécrit DOIT être posé dans les deux branches, sinon il fuit
+    // d'une fiche à la suivante. C'est la règle, et elle vaut au-delà de ce cas.
+    const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
+    const posSortie = corps.indexOf('if (!estLumiere) return;');
+    assert.ok(posSortie > 0);
+    const POSSEDE = ['CHAMPS_PROPRES_A_LA_LUMIERE.forEach',
+                     'querySelectorAll(\'.modal-section[data-section]\')',
+                     'objectHeightLabel'];
+    for (const possede of POSSEDE) {
+      const p = corps.indexOf(possede);
+      assert.ok(p > 0 && p < posSortie,
+        `« ${possede} » passe APRÈS la sortie : son état fuirait sur la fiche suivante`);
+    }
+
+    // ⚠️ ET AUCUN RETOUR CONDITIONNÉ À « EST-CE UNE LUMIÈRE » NE PEUT LES PRÉCÉDER. Ce test-ci a
+    // été ajouté parce que la mutation M80 lui a ÉCHAPPÉ : remettre un
+    // `if (!estUneLumiere3D(obj)) return;` tout en haut restaure le défaut exactement, sans
+    // déranger une seule des positions RELATIVES vérifiées ci-dessus. Une propriété d'ordre ne
+    // protège pas d'une sortie ajoutée avant tout l'ordre.
+    //
+    // `if (!boite) return;` reste permis : il ne dit pas « ce n'est pas une Lumière », il dit
+    // « il n'y a pas de fiche », et alors il n'y a rien à défaire non plus.
+    const dernierPossede = Math.max(...POSSEDE.map(x => corps.indexOf(x)));
+    const sortiesDeLumiere = [...corps.matchAll(/[^\n]*return;[^\n]*/g)]
+      .filter(m => /estLumiere|estUneLumiere3D/.test(m[0]))
+      .filter(m => m.index < dernierPossede);
+    assert.deepEqual(sortiesDeLumiere.map(m => m[0].trim()), [],
+      'une sortie « ce n’est pas une Lumière » précède ce que la disposition possède : '
+      + 'son état fuirait à nouveau sur la fiche suivante');
+  });
+
+  test('⚠️ LE LIBELLÉ REMIS VIENT DE LA TABLE D’I18N, jamais d’une phrase recopiée (#421h)', () => {
+    // Mutation M82, échappée au premier tour : recopier « Hauteur (m) » ici marche le jour où on
+    // l'écrit, puis dérive au premier ajustement de formulation — en anglais d'abord, personne ne
+    // relisant les deux langues en même temps. La table est déjà l'autorité pour ce libellé.
+    const i = SRC.indexOf('export function appliquerDispositionFicheLumiere3D');
+    const corps = SRC.slice(i, SRC.indexOf('\n}\n', i));
+    assert.match(corps, /libelleDeChampI18n3D\('objectHeightInput'\)/,
+      'le libellé de hauteur est remis depuis autre chose que la table d’i18n');
+    // Et le témoin : la fonction de lecture doit vraiment lire la table, pas rendre une constante.
+    const j = SRC.indexOf('export function libelleDeChampI18n3D');
+    assert.ok(j > 0, '`libelleDeChampI18n3D` est introuvable');
+    assert.match(SRC.slice(j, SRC.indexOf('\n}', j)), /I18N_PREV_LABEL\.find/,
+      'la lecture du libellé ne consulte plus la table');
+  });
+
+  test('⚠️ ET PERSONNE D’AUTRE N’ÉCRIT CE QU’ELLE POSSÈDE — c’est ce qui rend la règle vraie', () => {
+    // La partition ne tient que si elle décrit le dépôt. Si une autre fonction se mettait à poser
+    // le `display` d'une `.modal-section`, il y aurait de nouveau deux propriétaires, et la
+    // disposition ne serait plus l'autorité qu'on croit.
+    const TOUS = ['src/modals.js', 'src/events.js', 'src/sidebar.js', 'src/draw.js', 'src/app.js']
+      .map(f => {
+        try { return sourceSansCommentaires(readFileSync(new URL('../' + f, import.meta.url), 'utf8')); }
+        catch { return ''; }
+      }).join('\n');
+    const ecrituresDeSection = [...TOUS.matchAll(/[^\n]*\.modal-section[^\n]*style\.display[^\n]*/g)]
+      .map(m => m[0].trim())
+      .filter(l => !/appliquerDispositionFicheLumiere3D/.test(l));
+    assert.equal(ecrituresDeSection.length, 0,
+      `une autre fonction écrit le display d'une section : ${ecrituresDeSection.join(' | ')}`);
+    // Le témoin : la disposition, elle, l'écrit bien — sinon l'assertion ci-dessus ne dirait rien.
+    assert.match(SRC, /sec\.style\.display = 'none'/,
+      'plus personne n’écrit le display d’une section : le relevé ci-dessus est vide pour rien');
   });
 
   test('⚠️ UNE SECTION INCONNUE DE LA TABLE N’EST PAS MASQUÉE EN SILENCE', () => {
@@ -1174,3 +1267,35 @@ describe('⚠️ L’APERÇU SUIT LE TYPE RÉEL, PAS UN <select> MASQUÉ (#421e)
       'le changement de couleur ne redessine pas l’aperçu');
   });
 });
+
+/**
+ * JOURNAL DE MUTATION (#421h, la fuite d'état d'une fiche à la suivante) : six fautes rejouées,
+ * QUATRE ÉCHAPPÉES AU PREMIER TOUR.
+ *
+ *   M80 la disposition redevient à SENS UNIQUE — le défaut signalé     VERT → ROUGE
+ *   M81 la case de la sphère n'est plus défaite                        ROUGE
+ *   M82 le libellé restauré est recopié en dur                         VERT → ROUGE
+ *   M83 la rangée de curseur revient à 4 px                            ROUGE
+ *   M84 le curseur reprend la marge par défaut du navigateur           VERT → ROUGE
+ *   M85 l'unité disparaît du libellé de portée                         VERT → ROUGE
+ *
+ * ⚠️ M80 EST LA PLUS INSTRUCTIVE DE TOUT CE CHANTIER, PARCE QU'ELLE A SURVÉCU À DES TESTS ÉCRITS
+ * EXPRÈS POUR ELLE. J'avais vérifié que ce que la disposition possède est écrit AVANT sa sortie —
+ * trois positions relatives, toutes justes. Remettre un `if (!estUneLumiere3D(obj)) return;` tout
+ * en haut restaure le défaut à l'identique SANS déranger une seule de ces positions : l'ordre
+ * interne reste parfait, il n'est simplement plus jamais atteint.
+ *
+ * Une propriété d'ORDRE ne protège pas d'une sortie placée avant tout l'ordre. Le test ajouté
+ * n'interroge plus les positions mais les SORTIES : aucun `return` conditionné à « est-ce une
+ * Lumière » ne peut précéder ce que la fonction possède. `if (!boite) return;` reste permis — il ne
+ * dit pas « ce n'est pas une Lumière », il dit « il n'y a pas de fiche ».
+ *
+ * ⚠️ M82, M84 ET M85 ONT ÉCHAPPÉ POUR UNE MÊME RAISON PLUS BANALE : je n'avais rien écrit sur elles.
+ * Le libellé remis, la marge par défaut d'un `input[type=range]`, l'unité d'un champ de mesure —
+ * trois corrections livrées sans test, donc trois régressions possibles sans rouge. Une campagne
+ * qui ne trouve que ce qu'on a déjà couvert ne sert à rien ; celle-ci a rendu quatre trous sur six.
+ *
+ * ⚠️ M84 MÉRITE D'ÊTRE GARDÉE POUR SA NATURE : la marge fautive n'était écrite NULLE PART. Elle
+ * vient de l'agent utilisateur, et c'est précisément pour cela qu'on ne la voit pas en relisant le
+ * CSS. Une marge qu'on n'a pas écrite est quand même une marge.
+ */

@@ -60,7 +60,10 @@ import {
 } from './draw.js';
 import { getLinkedElementName, getRoomConnectedComponents } from './sidebar.js';
 import { enregistrerFermeture } from './modal-stack.js';
-import { estUneLumiere3D, reglagesLumierePosee3D, dispositionFicheLumiere3D } from './light-source-3d.js';
+import {
+  estUneLumiere3D, reglagesLumierePosee3D, dispositionFicheLumiere3D, CHAMPS_PROPRES_A_LA_LUMIERE,
+} from './light-source-3d.js';
+import { I18N_PREV_LABEL } from './i18n.js';
 
 // No callback to inject: none of the functions moved here call snapshot() or any modal not yet
 // extracted (openTracéModal/openTerrainModal are already in this module). wallOpeningRotationForWall
@@ -263,12 +266,12 @@ export function updateObjectSizeDisplay(o){
  * qui s'affiche à 1,84 m et finit par y être vraiment.
  */
 export function remplirSectionLuminosite3D(obj){
-  const section = objectModal.querySelector('[data-section="luminosite"]');
-  if (!section) return;
-  const disposition = dispositionFicheLumiere3D();
-  const montrer = estUneLumiere3D(obj) && disposition.sections.luminosite;
-  section.style.display = montrer ? '' : 'none';
-  if (!montrer) return;
+  // ⚠️ CETTE FONCTION NE DÉCIDE PLUS DE LA VISIBILITÉ (#421h). Elle la posait, et
+  // `appliquerDispositionFicheLumiere3D` la posait aussi : deux propriétaires pour un même état,
+  // la faute que ce chantier a passé son temps à refuser ailleurs. La visibilité appartient
+  // désormais à la disposition, seule, qui l'écrit pour TOUS les Éléments ; il ne reste ici que le
+  // remplissage des trois commandes.
+  if (!estUneLumiere3D(obj)) return;
   // Les défauts sont ceux du module, pas des littéraux recopiés ici : une source dont le champ
   // manque doit afficher ce que le rendu lui applique réellement.
   const r = reglagesLumierePosee3D(obj);
@@ -332,13 +335,21 @@ export function typeGouvernantLaFiche3D(o){
  * convention que l'i18n suit déjà — donc on masque la paire.
  */
 export function appliquerDispositionFicheLumiere3D(obj){
-  if (!estUneLumiere3D(obj)) return;
-  const d = dispositionFicheLumiere3D();
   const boite = objectModal.querySelector('.modal-box');
   if (!boite) return;
+  const estLumiere = estUneLumiere3D(obj);
+  const d = dispositionFicheLumiere3D();
 
+  // ── Les SECTIONS : propriété exclusive de cette fonction ──────────────────────────────────────
+  // ⚠️ RIEN D'AUTRE DANS LE DÉPÔT N'ÉCRIT LE `display` D'UNE `.modal-section` — vérifié, et un test
+  // le tient. Elle doit donc les poser dans les DEUX cas : masquer Orientation pour une Lumière
+  // sans la remontrer ensuite l'a fait disparaître de TOUTES les fiches, signalé à l'usage.
   boite.querySelectorAll('.modal-section[data-section]').forEach(sec => {
-    const verdict = d.sections[sec.dataset.section];
+    const verdict = estLumiere
+      ? d.sections[sec.dataset.section]
+      // Pour tout le reste : l'état de base d'une fiche, c'est-à-dire tout visible SAUF la section
+      // « Luminosité », qui n'appartient qu'aux sources.
+      : sec.dataset.section !== 'luminosite';
     // ⚠️ `undefined` N'EST PAS `false`. Une section que la table ne connaît pas est une section
     // ajoutée sans décision pour une Lumière : la masquer en silence la ferait disparaître sans
     // que personne ne l'ait voulu. On la laisse telle quelle, et c'est le test de coïncidence de
@@ -347,7 +358,30 @@ export function appliquerDispositionFicheLumiere3D(obj){
     else if (verdict === true) sec.style.display = '';
   });
 
+  // ── Les champs PROPRES : personne d'autre ne les écrit, donc ils se défont ici ────────────────
+  CHAMPS_PROPRES_A_LA_LUMIERE.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (estLumiere && d.champs[id]) ? '' : 'none';
+  });
+
+  // Le champ de hauteur DIT autre chose sur une source : `realHeightFloor` y est le diamètre de la
+  // sphère. Le libellé se REMET pour les autres Éléments, sinon une chaise afficherait « Diamètre
+  // de la sphère » — même fuite d'état que ci-dessus, sur un texte plutôt qu'un affichage.
+  const etiquetteHauteur = document.getElementById('objectHeightLabel');
+  if (etiquetteHauteur) {
+    etiquetteHauteur.textContent = estLumiere
+      ? tr(d.libelleTaille.en, d.libelleTaille.fr)
+      : libelleDeChampI18n3D('objectHeightInput');
+  }
+
+  // ── Les champs PARTAGÉS : on ne les touche QUE pour une Lumière ───────────────────────────────
+  // ⚠️ PAS D'`else` ICI, ET C'EST LA MOITIÉ QUI RESTE À SENS UNIQUE, À DESSEIN. Les trente bascules
+  // par type de `openObjectModal` les réécrivent à chaque ouverture ; les « remettre » d'ici
+  // reviendrait à se substituer à elles sans connaître leurs raisons, et une chaise retrouverait
+  // des champs de Mur.
+  if (!estLumiere) return;
   Object.entries(d.champs).forEach(([id, montre]) => {
+    if (CHAMPS_PROPRES_A_LA_LUMIERE.includes(id)) return;
     const el = document.getElementById(id);
     if (!el) return;
     el.style.display = montre ? '' : 'none';
@@ -359,18 +393,22 @@ export function appliquerDispositionFicheLumiere3D(obj){
     }
   });
 
-  // Le champ de hauteur DIT autre chose ici : pour une source, `realHeightFloor` est le diamètre de
-  // la sphère. Les deux langues viennent du module, source unique partagée avec `applyI18n` (cf.
-  // LIBELLE_TAILLE_LUMIERE).
-  const etiquetteHauteur = document.getElementById('objectHeightLabel');
-  if (etiquetteHauteur) {
-    etiquetteHauteur.textContent = tr(d.libelleTaille.en, d.libelleTaille.fr);
-  }
-
-  // La visibilité de la sphère, dans l'Aperçu : elle parle du repère visible, pas de la lumière.
   if (objectSphereVisibleCheckbox) {
     objectSphereVisibleCheckbox.checked = reglagesLumierePosee3D(obj).sphereVisible;
   }
+}
+
+/**
+ * Le libellé d'un champ, dans la langue courante, LU DANS LA TABLE D'I18N.
+ *
+ * ⚠️ RECOPIER « Hauteur (m) » ICI AURAIT FAIT UNE SECONDE SOURCE, et elle aurait dérivé au premier
+ * ajustement de formulation — en anglais d'abord, personne ne relisant les deux langues en même
+ * temps. La table est déjà l'autorité pour ce libellé ; on la relit plutôt que de la doubler.
+ */
+export function libelleDeChampI18n3D(idDuChamp){
+  const entree = I18N_PREV_LABEL.find(e => e[0] === idDuChamp);
+  if (!entree) return '';
+  return tr(entree[1], entree[2]);
 }
 
 /** L'afficheur du curseur d'intensité, pendant qu'on le tire. */

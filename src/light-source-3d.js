@@ -337,6 +337,31 @@ export const CHAMPS_FICHE_LUMIERE = {
  * ouverte, sans quoi une Lumière réafficherait « Hauteur (m) » pour un diamètre de sphère. Écrire
  * les phrases aux deux endroits les ferait diverger au premier ajustement de formulation.
  */
+/**
+ * ⚠️ CE QUE LA DISPOSITION POSSÈDE EN PROPRE, ET DOIT DONC DÉFAIRE (#421h).
+ *
+ * LA FAUTE, SIGNALÉE À L'USAGE : la disposition était à SENS UNIQUE. Elle sortait sans rien écrire
+ * pour un Élément qui n'est pas une source — ce qui protégeait bien les trente bascules par type de
+ * `openObjectModal`, comme voulu — mais laissait derrière elle tout ce qu'elle avait posé pour la
+ * Lumière précédente. Ouvrir une Lumière puis une chaise montrait « Afficher la sphère de la
+ * Lumière » sur la chaise, et la section Orientation avait disparu de TOUTES les fiches.
+ *
+ * ⚠️ LA PARTITION EST LA CLÉ, et c'est elle qui rend la correction sûre. Un `else` qui remettrait
+ * tout serait la faute inverse, et pire : il se substituerait aux trente bascules sans connaître
+ * leurs raisons, et une chaise retrouverait des champs de Mur. Chaque champ appartient donc à UN
+ * propriétaire, et un seul :
+ *
+ *   — PROPRE à la disposition : personne d'autre ne l'écrit jamais. Elle doit donc le poser dans
+ *     LES DEUX cas, sinon son état fuit d'une fiche à la suivante ;
+ *   — PARTAGÉ avec `openObjectModal` : les bascules par type le réécrivent à chaque ouverture. La
+ *     disposition ne le touche QUE pour une Lumière, et le laisse tranquille sinon.
+ *
+ * Un test vérifie cette partition contre la source de `openObjectModal` : un champ déclaré partagé
+ * que la fiche n'écrirait plus deviendrait un champ orphelin, et le défaut reviendrait à
+ * l'identique.
+ */
+export const CHAMPS_PROPRES_A_LA_LUMIERE = ['objectSphereVisibleField'];
+
 export const LIBELLE_TAILLE_LUMIERE = {
   en: 'Sphere diameter (m)',
   fr: 'Diamètre de la sphère (m)',

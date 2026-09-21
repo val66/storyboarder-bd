@@ -439,7 +439,10 @@ export const I18N_PREV_LABEL = [
   // Les trois réglages de la section « Luminosité » d'une Lumière (#421b).
   ['objectLightColorInput', 'Colour', 'Couleur'],
   ['objectLightIntensityRange', 'Intensity', 'Intensité'],
-  ['objectLightRangeInput', 'Range', 'Portée'],
+  // ⚠️ L'UNITÉ FAIT PARTIE DU LIBELLÉ, comme pour « Hauteur (m) » et « Diamètre de la sphère (m) ».
+  // Sans elle, « 8,1 » ne dit pas s'il s'agit de mètres, de centimètres ou d'unités de scène — et
+  // une portée se saisit justement en regardant une distance dans la Case. Signalé à l'usage.
+  ['objectLightRangeInput', 'Range (m)', 'Portée (m)'],
   ['objectTypeSelect', 'Type', 'Type'],
   ['objectMagnetWallSelect', 'Linked wall', 'Mur lié'],
   ['objectWallFaceSelect', 'Corner wall face', 'Face du mur en coin'],

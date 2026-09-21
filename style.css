@@ -1841,6 +1841,30 @@ canvas{ background:var(--fond-3d); }
   margin-bottom: 14px;
 }
 
+/* ⚠️ UNE RANGÉE DE CURSEUR EST UN CHAMP, ET ELLE NE SE COMPORTAIT PAS COMME TEL (#421h). Un curseur
+   et son afficheur — « 77 % », « 100% » — sont DEUX éléments pour UNE donnée : il faut donc une
+   enveloppe, et cette enveloppe était écrite en style en ligne, avec `margin:0 0 4px`. Deux
+   conséquences signalées à l'usage, dans la même section :
+
+     — l'écart SOUS la rangée valait 4 px au lieu des 14 px de tous les autres champs, si bien que
+       le libellé suivant paraissait collé ;
+     — le curseur portait la marge par défaut que le navigateur donne à `input[type=range]`, ce qui
+       décalait le trait vers le bas et faisait paraître l'écart AU-DESSUS plus grand que partout
+       ailleurs.
+
+   Une classe plutôt qu'un style en ligne, pour que les deux rangées de ce dépôt — l'intensité d'une
+   Lumière et la taille réelle d'un Élément — soient réglées au même endroit, et pour que le relevé
+   mécanique de style.test.mjs la voie comme un champ pleine largeur parmi les autres. */
+.modal-field-curseur {
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.modal-field-curseur input[type=range] { flex: 1; margin: 0; }
+.modal-field-curseur .modal-field-valeur {
+  font-size: 13px; opacity: .85; width: 42px; text-align: right; flex-shrink: 0;
+}
+
 /* La section Image d'une Case (#403c). Le nom du fichier est la seule information avec laquelle
    l'utilisateur peut retrouver ce qui manque : il se coupe plutôt que de déborder, et son titre
    complet reste lisible au survol. */

@@ -325,9 +325,14 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
       }))
       .filter(r => /^(\.modal-box |\.modal-field-)/.test(r.selecteur))
       .filter(r => /width\s*:\s*100%/.test(r.corps))
-      // Un conteneur n'est pas un champ : il n'a ni bordure ni fond à lui, et rien ne vient s'y
-      // coller. On ne retient que ce qui se saisit.
-      .filter(r => /input|select|textarea/.test(r.selecteur) || /border\s*:/.test(r.corps));
+      // Ce qui compte n'est pas « être une commande » mais « PORTER L'ESPACEMENT ». Une rangée de
+      // curseur (#421h) est une enveloppe sans bordure ni fond : elle n'en est pas moins le champ
+      // que le libellé suivant vient toucher, puisque le curseur et son afficheur sont deux
+      // éléments pour une donnée. Les classes `.modal-field-*` sont nommées pour ce rôle ; on les
+      // retient donc, avec tout ce qui se saisit directement.
+      .filter(r => /^\.modal-field-/.test(r.selecteur)
+        || /input|select|textarea/.test(r.selecteur)
+        || /border\s*:/.test(r.corps));
     return regles;
   }
 
@@ -361,6 +366,17 @@ describe('l\'espacement entre champs d\'une modale vient du champ qui PRÉCÈDE'
     assert.ok(reference > 0, 'la règle de référence ne porte plus de marge basse');
     champsPleineLargeurDeModale().forEach(r => assert.equal(margeEffective(r), reference,
       `« ${r.selecteur} » s'écarte de l'espacement des autres champs (${reference} px)`));
+  });
+
+  test('⚠️ UN CURSEUR NE GARDE PAS LA MARGE QUE LE NAVIGATEUR LUI DONNE (#421h)', () => {
+    // Mutation M84, échappée au premier tour. `input[type=range]` reçoit une marge par défaut de
+    // l'agent utilisateur ; dans une rangée flex, elle décale le trait vers le bas et fait paraître
+    // l'écart AU-DESSUS du curseur plus grand que celui de tous les autres champs. Signalé à
+    // l'usage — « entre Intensité et le slider il semble y avoir plus d'écart que pour les autres
+    // couples ». Une marge qu'on n'a pas écrite est quand même une marge.
+    const corps = declarations('.modal-field-curseur input[type=range]');
+    assert.match(corps, /margin\s*:\s*0/,
+      'le curseur garde la marge par défaut du navigateur : son libellé paraîtra plus éloigné');
   });
 
   test('⚠️ ET LA PASTILLE DE COULEUR EST BIEN DANS LE RELEVÉ, pas seulement conforme', () => {
