@@ -380,6 +380,24 @@ describe('#414b : le champ persisté, et les Projets existants', () => {
     assert.equal(avant.intensite, 0.2, 'l\'ancien objet a été altéré');
   });
 
+  test('⚠️ ET L’HÉRITAGE PORTE TOUT LE RÉGLAGE, sans liste à tenir à jour (#422e)', () => {
+    // ⚠️ LA VÉRIFICATION EST DÉRIVÉE, PAS RECOPIÉE, et c'est la leçon que ce chantier a payée deux
+    // fois — `load-scene.test.mjs` en #422b, quatre tests de `light-source-3d.test.mjs` en #422d.
+    // Une attente qui recopie la forme d'un enregistrement rougit sur du code CORRECT dès qu'un
+    // champ s'ajoute. En partant des clés de `LUMIERE_DEFAUT`, un champ ajouté demain est couvert
+    // sans qu'on y pense — et s'il n'est pas transmis, ce test rougit pour la bonne raison.
+    const scene = { id: 's', type: 'panel' };
+    definirLumiereDeCase3D(scene, { mode: 'nuit', ombresPortees: true });
+    const copie = copierLumiere3D(scene);
+    Object.keys(LUMIERE_DEFAUT).forEach(k => {
+      assert.equal(copie[k], scene.lumiere[k], `l’héritage a perdu « ${k} »`);
+    });
+    // TÉMOIN : le réglage transmis n'est PAS le défaut, sinon l'égalité ci-dessus serait vraie
+    // pour une copie qui ne transmettrait rien du tout.
+    assert.notEqual(copie.ombresPortees, LUMIERE_DEFAUT.ombresPortees,
+      'le témoin est retombé sur le défaut : l’égalité ci-dessus ne prouve plus rien');
+  });
+
   test('une Scène sans éclairage ne transmet RIEN', () => {
     // Sans quoi charger une Scène poserait un champ sur la Case, et le fichier grossirait pour un
     // réglage que personne n'a demandé.
@@ -406,9 +424,60 @@ describe('#414d : la section du menu de droite', () => {
     // ⚠️ ELLE A EXISTÉ, PUIS S'EST RÉVÉLÉE SANS OBJET. « Jour » EST l'éclairage que le style pose
     // depuis toujours : décocher et rester sur Jour donnaient la même image au bit près, et une
     // case dont les deux états sont indiscernables ressemble à une case qui ne marche pas.
-    assert.ok(!HTML.includes('sideLightToggle'), 'la case à cocher est revenue');
-    assert.ok(!I18N.includes('sideLightToggle'), 'sa traduction traîne encore');
+    //
+    // ⚠️ LE CONTRÔLE PORTE SUR L'ÉLÉMENT, PAS SUR LA CHAÎNE OÙ QU'ELLE SOIT (#422e). La version
+    // précédente cherchait `sideLightToggle` n'importe où dans le fichier, commentaires compris :
+    // elle interdisait donc au dépôt d'EXPLIQUER pourquoi cette case est partie, et le premier
+    // commentaire qui la nommait faisait rougir la suite. Un test ne doit pas se payer du silence
+    // de la documentation — c'est même l'inverse de ce que ce dépôt cherche.
+    assert.ok(!/id="sideLightToggle"/.test(HTML), 'la case à cocher est revenue');
+    assert.ok(!/['"#]sideLightToggle/.test(I18N), 'sa traduction traîne encore');
     assert.match(HTML, /id="sideLightModeSelect"/, 'le mode doit rester le premier contrôle');
+    // TÉMOIN : le contrôle sait voir une présence. Sans lui, une expression mal écrite déclarerait
+    // l'absence pour toujours — « mesurer une absence sans vérifier que l'instrument voit une
+    // présence » est nommément l'une des familles de défauts de ce dépôt.
+    assert.ok(/id="sideLightShadowsCheckbox"/.test(HTML),
+      'le témoin a disparu : le contrôle d’absence ci-dessus ne prouve plus rien');
+  });
+
+  test('⚠️ ET LA CASE DES OMBRES N’EST PAS SON RETOUR : ses deux états se VOIENT (#422e)', () => {
+    // ⚠️ POURQUOI L'UNE EST LÉGITIME ET L'AUTRE NON, puisque les deux sont des cases à cocher dans
+    // la même section. `sideLightToggle` avait deux états INDISCERNABLES : « Jour » EST l'éclairage
+    // que le style pose depuis toujours, donc décocher ne changeait pas un pixel, et une case dont
+    // on ne voit pas l'effet ressemble à une case qui ne marche pas. Les ombres, elles, changent
+    // l'image — #422 l'a mesuré : 1,54 % des pixels pour la seule ombre du soleil.
+    //
+    // ⚠️ ET ELLE EST HORS DE `sideLightCustom`, ce qui est le point testable de ce choix. Le mode
+    // gouverne la LUMIÈRE ; les ombres sont un axe indépendant, qu'on doit pouvoir allumer sur une
+    // Case en Jour comme en Nuit. La réserver au Personnalisé aurait obligé à quitter un préset
+    // pour obtenir une ombre.
+    const iCase = HTML.indexOf('id="sideLightShadowsCheckbox"');
+    const iCustom = HTML.indexOf('id="sideLightCustom"');
+    assert.ok(iCase > 0 && iCustom > 0, 'la case des ombres ou le bloc Personnalisé a disparu');
+    assert.ok(iCase < iCustom,
+      'la case des ombres est passée dans le bloc Personnalisé : elle disparaîtrait en Jour et en Nuit');
+    assert.match(I18N, /sideLightShadowsLabel/,
+      'son libellé n’est plus traduit : il resterait en français dans l’interface anglaise');
+  });
+
+  test('⚠️ LES OMBRES SE RÈGLENT ICI, ET LE GESTE EST ANNULABLE ET REDESSINE (#422e)', () => {
+    // ⚠️ LE PREMIER DES DEUX INTERRUPTEURS, celui sans lequel tout #422 restait inatteignable :
+    // `ombresPortees` était persisté (#422b), lu par le rendu (#422c) et réglable par source
+    // (#422d) sans qu'aucune commande ne permette de l'allumer.
+    assert.match(EVENTS, /sideLightShadowsCheckbox\.addEventListener\('change'/,
+      'la case des ombres n’est plus écoutée : elle serait décorative');
+    assert.match(EVENTS, /reglerLumiere\(\{ ombresPortees: sideLightShadowsCheckbox\.checked \}\)/,
+      'la case n’écrit plus le réglage, ou en écrit un autre');
+    // ⚠️ ET ELLE PASSE PAR `reglerLumiere`, comme les quatre autres commandes. C'est lui qui prend
+    // l'instantané d'annulation, écrit par `definirLumiereDeCase3D` et redessine. L'écrire à la
+    // main ici serait la deuxième copie d'un protocole en quatre temps, dont un oubli serait muet.
+    assert.ok(!/sideLightShadowsCheckbox[\s\S]{0,400}?(snapshot\(\)|drawCurrentPage\(\)|panel\.lumiere)/
+      .test(EVENTS), 'la case court-circuite `reglerLumiere` : le protocole est recopié');
+    // ⚠️ PAS DE GARDE D'INSTANTANÉ ICI, ET C'EST UNE DÉCISION. Une case émet UNE fois par clic, là
+    // où un sélecteur de couleur et un curseur émettent en continu : le motif des deux voisins n'a
+    // rien à protéger, et le poser quand même donnerait à croire qu'il faut partout.
+    assert.ok(!EVENTS.includes('sideLightShadowsSnapshotTaken'),
+      'une garde d’instantané a été posée sur une commande qui n’émet qu’une fois');
   });
 
   test('RÉGRESSION : l\'affichage progressif tient en UN seul endroit', () => {
@@ -419,6 +488,13 @@ describe('#414d : la section du menu de droite', () => {
     const corps = SIDEBAR.slice(i, SIDEBAR.indexOf('\n}', i));
     assert.match(corps, /sideLightCustom\.style\.display = l\.mode === 'perso' \? 'block' : 'none'/,
       'couleur et intensité ne sont plus réservées au mode Personnalisé');
+    // ⚠️ ET LA CASE DES OMBRES SE REMPLIT DANS CE MÊME ENDROIT UNIQUE (#422e). Sans cette ligne,
+    // elle montrerait l'état de la Case PRÉCÉDENTE, ce qui est pire qu'une case vide : on croirait
+    // lire la Case sélectionnée. C'est le défaut que #421h a payé sur la fiche d'un Élément.
+    assert.match(corps, /sideLightShadowsCheckbox\.checked = l\.ombresPortees/,
+      'la case des ombres ne suit plus la sélection : elle gardera l’état de la Case précédente');
+    const ailleursOmbres = (EVENTS.match(/sideLightShadowsCheckbox\.checked =/g) || []).length;
+    assert.equal(ailleursOmbres, 0, 'un second endroit remplit la case : ils divergeront');
     const ailleurs = (EVENTS.match(/sideLightCustom\.style\.display/g) || []).length;
     assert.equal(ailleurs, 0, 'un second endroit décide de l\'affichage : ils divergeront');
   });
@@ -1050,4 +1126,42 @@ describe('⚠️ LE RÉGLAGE TRAVERSE LES QUATRE CHEMINS DE L’ÉCLAIRAGE (#422
  * cessé d'être complet le jour où un champ s'est ajouté. Il attend désormais
  * `{ ...LUMIERE_DEFAUT, ...NUIT }` : ce qui est vrai, et le restera, c'est que la Case reçoit les
  * réglages de la Scène, DÉFAUTS COMPRIS. Troisième fois que l'énumération tenue à la main mord.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422e, la case des ombres dans le menu de droite) : sept fautes rejouées.
+ *
+ *   M124 la case n'éteint jamais : l'état ne suit pas le clic              ROUGE
+ *   M125 la case est décorative : les ombres restent inatteignables        ROUGE
+ *   M126 la case garde l'état de la Case précédente                        ROUGE
+ *   M127 la case s'ouvre toujours décochée                                 ROUGE
+ *   M128 la commande a disparu de l'interface                              ROUGE
+ *   M129 l'héritage Scène→Case perd tout sauf le mode                      ROUGE
+ *   M130 le libellé reste en français dans l'interface anglaise            ROUGE
+ *
+ * ⚠️ M125 EST LA MUTATION QUI COMPTE, et elle vient tout droit de M118 — celle qui avait ÉCHAPPÉ en
+ * #422d, où retirer l'appel qui donne son ombre à une source laissait la suite verte. La leçon a
+ * été appliquée AVANT d'écrire les tests cette fois : on vérifie que la commande GOUVERNE, pas
+ * qu'elle existe. Une case écoutée mais dont le résultat ne va nulle part satisfait « la case
+ * existe » et échoue à « la case règle ».
+ *
+ * ⚠️ M126 ET M127 SONT LE MÊME DÉFAUT VU DES DEUX CÔTÉS, et le premier est le plus vicieux : une
+ * case jamais remplie garde l'état de la Case PRÉCÉDEMMENT sélectionnée. C'est pire qu'une case
+ * vide — on croit lire la Case qu'on regarde. C'est exactement ce que #421h a payé sur la fiche
+ * d'un Élément, où l'état d'une Lumière fuyait sur la fiche suivante.
+ *
+ * ⚠️ M129 TIENT L'HÉRITAGE SANS ÉNUMÉRER, et la forme du test est le point. Il ne recopie pas la
+ * liste des champs transmis : il parcourt les clés de `LUMIERE_DEFAUT`. Un champ ajouté demain est
+ * couvert sans qu'on y pense — et une attente recopiée aurait rougi sur du code CORRECT au moment
+ * de l'ajout, ce qui est arrivé quatre fois en #422d et une fois en #422b.
+ *
+ * ⚠️ ET UN TEST DE #414h A DÛ ÊTRE RÉÉCRIT, pour une faute de forme instructive. Il cherchait la
+ * chaîne `sideLightToggle` N'IMPORTE OÙ dans index.html, commentaires compris, pour garantir que la
+ * case retirée en #414h n'était pas revenue. Il interdisait donc au dépôt d'EXPLIQUER pourquoi elle
+ * était partie : le premier commentaire qui la nommait faisait rougir la suite. Il porte désormais
+ * sur l'ÉLÉMENT — `id="sideLightToggle"` —, avec un témoin qui vérifie qu'il sait encore voir une
+ * présence. Un test ne doit pas se payer du silence de la documentation.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que la case soit au bon endroit à l'œil, ni que l'ombre
+ * obtenue soit belle. #422z regarde.
  */

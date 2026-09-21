@@ -125,9 +125,24 @@ today**. A Panel drawn before this task keeps its look to the pixel, just as #41
 exactly the lighting from before #414, and #421f's halo renders exactly the opacity from before
 #421f.
 
-Turning shadows on is therefore an explicit act, in the Light section of the right-hand menu. The
-accepted cost is that the feature is only visible if you look for it; the refused cost was that all
-the user's finished pages change without being asked.
+Turning shadows on is therefore an explicit act, in the Light section of the right-hand menu — the
+"Cast shadows" checkbox, added in #422e. The accepted cost is that the feature is only visible if you
+look for it; the refused cost was that all the user's finished pages change without being asked.
+
+⚠️ **IT SITS OUTSIDE THE "CUSTOM" BLOCK, and that is a choice.** The mode governs the LIGHT —
+direction, colour, intensity; shadows are an independent axis, which must be switchable on a Panel in
+Day as well as in Night. Reserving it for Custom would have forced the user out of a preset just to
+get a shadow.
+
+⚠️ **AND IT IS NOT THE RETURN OF THE CHECKBOX #414h REMOVED**, though the two look alike. That one
+had two INDISTINGUISHABLE states — "Day" IS the lighting the style has always applied, so unticking
+changed not one pixel — and a checkbox whose effect cannot be seen looks like a checkbox that does
+not work. This one changes 1.54% of the pixels for the sun's shadow alone, measured above. A
+regression test keeps the old name forbidden so the two are never confused.
+
+The setting follows the Scene-to-Panel inheritance like the other four, with no extra code:
+`copierLumiere3D` passes the whole setting on, and a test walks it key by key rather than recopying
+it.
 
 ⚠️ **THE "ON FOR NEW PANELS ONLY" OPTION WAS RULED OUT**, and the reason is worth keeping: the
 default would then have depended on the DATE of creation. Two Panels identical on screen would not

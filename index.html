@@ -275,6 +275,25 @@
           <option value="perso">Personnalisé</option>
         </select>
       </div>
+      <!-- ⚠️ LES OMBRES PORTÉES (#422e) : LE PREMIER DES DEUX INTERRUPTEURS, celui qui rend la
+           fonctionnalité atteignable. `ombresPortees` est persisté par Case depuis #422b, lu par
+           le rendu depuis #422c, réglable par source depuis #422d — et jusqu'ici rien ne permettait
+           de l'allumer.
+
+           ⚠️ ELLE EST HORS DE `sideLightCustom`, ET C'EST DÉLIBÉRÉ. Le mode gouverne la LUMIÈRE —
+           direction, couleur, intensité — ; les ombres sont un axe indépendant, qu'on veut pouvoir
+           allumer sur une Case en Jour comme en Nuit. La réserver au mode Personnalisé aurait
+           obligé à quitter un préset pour obtenir une ombre.
+
+           ⚠️ ET CE N'EST PAS LE RETOUR DE `sideLightToggle`, la case que #414h a retirée. Celle-là
+           avait deux états INDISCERNABLES — « Jour » EST l'éclairage que le style pose depuis
+           toujours, donc décocher ne changeait pas un pixel —, et une case dont on ne voit pas
+           l'effet ressemble à une case qui ne marche pas. Celle-ci change l'image, et un test de
+           régression garde l'ancien nom interdit pour que les deux ne se confondent jamais. -->
+      <div class="tome-format" style="align-items:center;">
+        <label id="sideLightShadowsLabel" for="sideLightShadowsCheckbox">Ombres portées</label>
+        <input type="checkbox" id="sideLightShadowsCheckbox">
+      </div>
       <!-- Couleur et intensité ne paraissent qu'en Personnalisé : sous Jour ou Nuit elles
            afficheraient des valeurs qu'on ne peut pas changer, ce qui se lit comme une panne.
            Le dôme viendra ici même en #414e. -->

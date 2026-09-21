@@ -6747,6 +6747,7 @@ const pageMenuCloseBtn = document.getElementById('pageMenuCloseBtn');
 const sidePageBgColorInput = document.getElementById('sidePageBgColorInput');
 const sideBorderToggle = document.getElementById('sideBorderToggle');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
+const sideLightShadowsCheckbox = document.getElementById('sideLightShadowsCheckbox');
 const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
 const sideLightResetBtn = document.getElementById('sideLightResetBtn');
 const sideLightColorInput = document.getElementById('sideLightColorInput');
@@ -7208,6 +7209,18 @@ function reglerLumiere(patch, avecSnapshot = true){
 }
 
 sideLightModeSelect.addEventListener('change', () => reglerLumiere({ mode: sideLightModeSelect.value }));
+// ⚠️ UN SEUL GESTE, UN SEUL INSTANTANÉ, ET PAS DE `sideLightShadowsSnapshotTaken` (#422e). Une case
+// à cocher émet UNE fois par clic, là où un sélecteur de couleur ou un curseur émettent en continu :
+// le motif de garde des deux voisins n'a rien à protéger ici, et le poser quand même donnerait à
+// croire qu'il est nécessaire partout.
+//
+// ⚠️ ET LE PRIX EST PAYÉ AU CLIC, PAS PLUS TARD. Allumer les ombres d'une Case peut la faire
+// compiler ses programmes GLSL pour une combinaison inédite — 153 ms pour le soleil seul, mesuré en
+// #422. C'est un à-coup visible, et il est ATTENDU : il suit immédiatement un geste explicite de
+// l'utilisateur, ce qui est exactement la condition sous laquelle #420f jugeait un à-coup
+// acceptable.
+sideLightShadowsCheckbox.addEventListener('change',
+  () => reglerLumiere({ ombresPortees: sideLightShadowsCheckbox.checked }));
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // LES DEUX GESTES DU DÔME (#414e)

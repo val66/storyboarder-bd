@@ -79,6 +79,7 @@ const sideBorderSection = document.getElementById('sideBorderSection');
 const sideGroundSection = document.getElementById('sideGroundSection');
 const sideLightSection = document.getElementById('sideLightSection');
 const sideLightCustom = document.getElementById('sideLightCustom');
+const sideLightShadowsCheckbox = document.getElementById('sideLightShadowsCheckbox');
 const sideLightDomeCanvas = document.getElementById('sideLightDomeCanvas');
 const sideLightResetBtn = document.getElementById('sideLightResetBtn');
 const sideLightModeSelect = document.getElementById('sideLightModeSelect');
@@ -1259,6 +1260,9 @@ export function rafraichirSectionLumiere(){
   if (!cible || cible.type !== 'panel') return;
   const l = lumiereDeCase3D(cible);
   sideLightCustom.style.display = l.mode === 'perso' ? 'block' : 'none';
+  // ⚠️ HORS DE L'AFFICHAGE PROGRESSIF : les ombres sont un axe indépendant du mode (#422e). Une
+  // Case en Jour doit pouvoir en avoir sans passer en Personnalisé.
+  sideLightShadowsCheckbox.checked = l.ombresPortees;
   sideLightModeSelect.value = l.mode;
   sideLightColorInput.value = l.couleur;
   const pourcent = Math.round(l.intensite * 100);

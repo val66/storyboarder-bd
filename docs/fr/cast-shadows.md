@@ -126,9 +126,26 @@ vaut l'existant**. Une Case dessinée avant ce chantier garde son aspect au pixe
 Jour de #414 rend exactement l'éclairage d'avant #414, et comme le halo de #421f rend exactement
 l'opacité d'avant #421f.
 
-Allumer les ombres est donc un geste explicite, dans la section Lumière du menu de droite. Le coût
-assumé est que la fonctionnalité ne se voit que si on la cherche ; le coût refusé était que toutes
-les Planches finies de l'utilisateur changent sans qu'il l'ait demandé.
+Allumer les ombres est donc un geste explicite, dans la section Lumière du menu de droite — la case
+« Ombres portées », posée en #422e. Le coût assumé est que la fonctionnalité ne se voit que si on la
+cherche ; le coût refusé était que toutes les Planches finies de l'utilisateur changent sans qu'il
+l'ait demandé.
+
+⚠️ **ELLE EST HORS DU BLOC « PERSONNALISÉ », et c'est un choix.** Le mode gouverne la LUMIÈRE —
+direction, couleur, intensité ; les ombres sont un axe indépendant, qu'on doit pouvoir allumer sur
+une Case en Jour comme en Nuit. La réserver au Personnalisé aurait obligé à quitter un préset pour
+obtenir une ombre.
+
+⚠️ **ET CE N'EST PAS LE RETOUR DE LA CASE QUE #414h A RETIRÉE**, bien que les deux se ressemblent.
+Celle-là avait deux états INDISCERNABLES — « Jour » EST l'éclairage que le style pose depuis
+toujours, donc décocher ne changeait pas un pixel —, et une case dont on ne voit pas l'effet
+ressemble à une case qui ne marche pas. Celle-ci change 1,54 % des pixels pour la seule ombre du
+soleil, mesuré plus haut. Un test de régression garde l'ancien nom interdit pour que les deux ne se
+confondent jamais.
+
+Le réglage suit l'héritage d'une Scène vers ses Cases comme les quatre autres, sans code
+supplémentaire : `copierLumiere3D` transmet le réglage entier, et un test le parcourt clé par clé
+plutôt que de le recopier.
 
 ⚠️ **L'OPTION « ALLUMÉES SUR LES CASES NEUVES SEULEMENT » A ÉTÉ ÉCARTÉE**, et la raison mérite
 d'être gardée : le défaut aurait alors dépendu de la DATE de création. Deux Cases identiques à
