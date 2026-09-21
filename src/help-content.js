@@ -114,12 +114,6 @@ export const HELP_MANUAL_EN = [
   // prochain ajout : il n'y a plus de gras à élaguer sans perdre du comportement. Ce qu'il ne faut
   // toujours pas faire est monter le seuil, qui existe pour que le manuel reste un manuel.
   // Cf. docs/en/positioned-lights.md pour ce que ces sources sont.
-  // ⚠️ CETTE SECTION EST PRESQUE PLEINE : 1852 caractères sur 2000 en français, mesurés, depuis que
-  // les sources posées (#420g) s'y sont ajoutées au soleil. La fiche de réglage d'une source reste
-  // à écrire, et elle ne rentrera pas ici. Deux issues, dans cet ordre : ÉLAGUER la prose existante,
-  // ce que la règle du manuel demande explicitement, ou SÉPARER le soleil des sources posées en deux
-  // sections. Ce qu'il ne faut pas faire est monter le seuil : il existe pour que le manuel reste un
-  // manuel. Cf. docs/en/positioned-lights.md pour ce que ces sources sont.
   { id: 'lumiere', title: 'Light', paragraphs: [
     'The "Light" section of the right-hand menu drives the sun of the selected Panel. Three modes: Day, Night and Custom. Day is the default, and it is the application’s original lighting.',
     'In Custom, a dome shows where the light comes from. Click and drag on it to move the sun over the vault; hold the right button and drag to turn the view, which changes nothing to the setting. The N, E, S and W marks on the base are those of the Panel: North goes away from you, South comes towards you.',

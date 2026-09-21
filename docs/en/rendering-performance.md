@@ -407,6 +407,87 @@ the refill, where every byte exists and can be counted.
 
 ---
 
+# Sixth campaign — what a Bubble costs, September 2026
+
+Project #425d. Bubbles gained three appearance settings (#425a to #425c), and two of them change the
+way the outline is traced. Before opening the **generated outlines** of #425g — the ink splat, whose
+edge IS the effect — we needed to know whether such an outline can be recomputed on every frame, or
+whether it needs a cache.
+
+## Method, and what it does not measure
+
+`drawBubble` is called outside the application, on a 2D context that counts calls and rasterises
+nothing. Each configuration is warmed over 2,000 calls, then measured over 60 samples of 40 Bubbles;
+the median is reported.
+
+⚠️ **THIS IS THEREFORE ONLY HALF THE COST, AND DELIBERATELY SO.** What is measured: the JavaScript
+work — path construction, wobble noise, pattern computation. What is NOT: rasterisation. A fill at
+30% opacity and a dotted stroke cost the browser's compositor, not this code, and no figure below
+says anything about it.
+
+The measurement keeps its value for the decision it serves: had the JavaScript half already been
+expensive, the cache question would be settled without discussing the rest.
+
+## What each configuration costs
+
+40 Bubbles per Page, which is generous: a comics page carries ten to thirty.
+
+| configuration | canvas operations / Bubble | µs / Bubble | 40 Bubbles |
+|---|---|---|---|
+| clean, as before #425 | 25 | 3.6 | 0.14 ms |
+| fill at 30% | 25 | 4.5 | 0.18 ms |
+| dotted stroke | 25 | 3.4 | 0.14 ms |
+| wobbly outline | 97 | 13.6 | 0.54 ms |
+| wobbly + dotted + 30% | 97 | 11.0 | 0.44 ms |
+| wobbly rectangle | 97 | 17.1 | 0.68 ms |
+
+**A wobble costs four times a clean Bubble**, in time as in call count: an ellipse traced by
+`c.ellipse` becomes 73 segments. That is a large relative gap for a discreet effect, and it was worth
+knowing before generalising sampling to every shape of #425e.
+
+**The wobbly rectangle is the dearest of the six**, because `bubbleEdgePoint` does more work per
+sample on a rectangle — a ray intersection — than on an ellipse, where it is a cosine.
+
+**Opacity and dashes are free on the JavaScript side.** They change neither the call count nor the
+path; their cost, if any, lies entirely on the other side.
+
+## The projection that decides #425g
+
+The ink splat has no code yet. What follows measures the **structure** it would have, as drawn for
+the atlas: superposed masses in quadratic arcs, plus speckling.
+
+| variant | canvas operations / Bubble | µs / Bubble | 40 Bubbles |
+|---|---|---|---|
+| lean — 2 masses, 24 segments, 60 specks | 178 | 5.1 | 0.21 ms |
+| as drawn for the atlas — 4, 36, 160 | 482 | 14.8 | 0.59 ms |
+| rich — 6 masses, 48 segments, 300 specks | 914 | 37.4 | 1.50 ms |
+
+## Verdict: no cache, and the reason is a number
+
+The markers from campaign #411: a Panel costs **13 ms median** to render, 296 ms at worst, and the
+budget for one frame at 60 Hz is **16.7 ms**.
+
+Forty ink splats in their rich variant cost **1.50 ms**, that is **9% of a single frame** and **one
+ninth of a single Panel**. In the variant chosen for the atlas, 0.59 ms. Caching that would mean
+adding a cache, its keys, its invalidation and its invalidation bugs to save one tenth of what one
+Panel out of nine costs.
+
+**The ink splat will therefore be recomputed on every frame, and #425g has no cache to build.**
+
+⚠️ **WHAT WOULD CHANGE THIS VERDICT.** Two things, named so the next person knows what to re-measure:
+(1) if rasterising 482 calls per Bubble turned out to be expensive in the browser — not measured
+here, measurable only inside the application; (2) if a Page carried far more than 40 Bubbles, the
+cost being strictly linear. Nothing in the user's Projects comes close today.
+
+## Redoing the measurement
+
+Both probes are throwaway and were not kept: they call `drawBubble` on a counting context, and
+reproduce the ink splat's structure with the same noise generator as `bubble-style.js`. Rebuilding
+them takes ten minutes; keeping them in the repository would have frozen a measurement whose only
+value was the decision it served.
+
+---
+
 # Seventh campaign — what one, three and eight lights cost, September 2026
 
 Task #420f. From day one the positioned-lights note carried an unverified sentence: "every light
@@ -703,81 +784,3 @@ A fourth instrument to validate before believing a figure, after `gl.finish()` w
 nothing, `readPixels` on the display buffer which measures the monitor, and the ground-stretched box
 which cost full price for 0.00% of effect. The rule holds: **first check that the instrument can see
 a presence, only then read what it says.**
-# Sixth campaign — what a Bubble costs, September 2026
-
-Project #425d. Bubbles gained three appearance settings (#425a to #425c), and two of them change the
-way the outline is traced. Before opening the **generated outlines** of #425g — the ink splat, whose
-edge IS the effect — we needed to know whether such an outline can be recomputed on every frame, or
-whether it needs a cache.
-
-## Method, and what it does not measure
-
-`drawBubble` is called outside the application, on a 2D context that counts calls and rasterises
-nothing. Each configuration is warmed over 2,000 calls, then measured over 60 samples of 40 Bubbles;
-the median is reported.
-
-⚠️ **THIS IS THEREFORE ONLY HALF THE COST, AND DELIBERATELY SO.** What is measured: the JavaScript
-work — path construction, wobble noise, pattern computation. What is NOT: rasterisation. A fill at
-30% opacity and a dotted stroke cost the browser's compositor, not this code, and no figure below
-says anything about it.
-
-The measurement keeps its value for the decision it serves: had the JavaScript half already been
-expensive, the cache question would be settled without discussing the rest.
-
-## What each configuration costs
-
-40 Bubbles per Page, which is generous: a comics page carries ten to thirty.
-
-| configuration | canvas operations / Bubble | µs / Bubble | 40 Bubbles |
-|---|---|---|---|
-| clean, as before #425 | 25 | 3.6 | 0.14 ms |
-| fill at 30% | 25 | 4.5 | 0.18 ms |
-| dotted stroke | 25 | 3.4 | 0.14 ms |
-| wobbly outline | 97 | 13.6 | 0.54 ms |
-| wobbly + dotted + 30% | 97 | 11.0 | 0.44 ms |
-| wobbly rectangle | 97 | 17.1 | 0.68 ms |
-
-**A wobble costs four times a clean Bubble**, in time as in call count: an ellipse traced by
-`c.ellipse` becomes 73 segments. That is a large relative gap for a discreet effect, and it was worth
-knowing before generalising sampling to every shape of #425e.
-
-**The wobbly rectangle is the dearest of the six**, because `bubbleEdgePoint` does more work per
-sample on a rectangle — a ray intersection — than on an ellipse, where it is a cosine.
-
-**Opacity and dashes are free on the JavaScript side.** They change neither the call count nor the
-path; their cost, if any, lies entirely on the other side.
-
-## The projection that decides #425g
-
-The ink splat has no code yet. What follows measures the **structure** it would have, as drawn for
-the atlas: superposed masses in quadratic arcs, plus speckling.
-
-| variant | canvas operations / Bubble | µs / Bubble | 40 Bubbles |
-|---|---|---|---|
-| lean — 2 masses, 24 segments, 60 specks | 178 | 5.1 | 0.21 ms |
-| as drawn for the atlas — 4, 36, 160 | 482 | 14.8 | 0.59 ms |
-| rich — 6 masses, 48 segments, 300 specks | 914 | 37.4 | 1.50 ms |
-
-## Verdict: no cache, and the reason is a number
-
-The markers from campaign #411: a Panel costs **13 ms median** to render, 296 ms at worst, and the
-budget for one frame at 60 Hz is **16.7 ms**.
-
-Forty ink splats in their rich variant cost **1.50 ms**, that is **9% of a single frame** and **one
-ninth of a single Panel**. In the variant chosen for the atlas, 0.59 ms. Caching that would mean
-adding a cache, its keys, its invalidation and its invalidation bugs to save one tenth of what one
-Panel out of nine costs.
-
-**The ink splat will therefore be recomputed on every frame, and #425g has no cache to build.**
-
-⚠️ **WHAT WOULD CHANGE THIS VERDICT.** Two things, named so the next person knows what to re-measure:
-(1) if rasterising 482 calls per Bubble turned out to be expensive in the browser — not measured
-here, measurable only inside the application; (2) if a Page carried far more than 40 Bubbles, the
-cost being strictly linear. Nothing in the user's Projects comes close today.
-
-## Redoing the measurement
-
-Both probes are throwaway and were not kept: they call `drawBubble` on a counting context, and
-reproduce the ink splat's structure with the same noise generator as `bubble-style.js`. Rebuilding
-them takes ten minutes; keeping them in the repository would have frozen a measurement whose only
-value was the decision it served.

@@ -239,12 +239,6 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // nouveau depuis que #422d a branché l'ombre d'une source posée.
     // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
     // tenues — SIX dettes ouvertes, SIX soldées en entier.
-    // nouveau depuis que #420c a branché le rendu, et DEUX depuis les fondations de #425a.
-    // nouveau depuis que #420c a branché le rendu, DEUX depuis les fondations de #425a, et UNE
-    // depuis que #425b a branché le dessin.
-    // que #425b a branché le dessin, et ZÉRO depuis que #425c a branché la fiche.
-    // L'échéance de chacune est un numéro de tâche, et toutes celles arrivées à terme ont été
-    // tenues.
     //
     // ⚠️ UN TROISIÈME NOM A ÉTÉ ÉCARTÉ PLUTÔT QU'INSCRIT, et c'est l'usage le plus utile qu'on ait
     // fait de ce fichier. `apparenceBulleEstCelleDOrigine` n'aurait jamais eu d'appelant dans
