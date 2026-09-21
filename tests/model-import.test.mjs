@@ -632,6 +632,12 @@ describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', ()
     // et pourtant l'aperçu serait faux sans ce champ — le halo y resterait à sa valeur de
     // référence pendant que la Case, elle, suivrait le curseur.
     if (/opaciteHaloLumiere3D\(o\)/.test(bloc)) lus.add('intensite');
+    // ⚠️ ET `estUneLumiere3D(o)` LIT SES DEUX MOITIÉS, `type` ET `objType` (#421i). Le garde-fou ne
+    // déclarait que `intensite`, si bien que `type` — absent de l'Élément temporaire depuis
+    // toujours — n'a jamais été réclamé. Résultat : la Case appliquait le halo, l'aperçu non, et
+    // aucun test ne le disait. Une lecture indirecte non déclarée est un trou dans la dérivation,
+    // pas une exception tolérée.
+    if (/estUneLumiere3D\(o\)/.test(bloc)) { lus.add('type'); lus.add('objType'); }
 
     const j = DRAW.indexOf('export function drawObjectPreview');
     const temp = DRAW.slice(j, DRAW.indexOf('};', j));
@@ -669,3 +675,30 @@ describe('l\'aperçu de la fiche reçoit ce que le rig lit sur un Élément', ()
       assert.match(temp, new RegExp(`\\b${c}\\s*:`), `${c} ne parvient plus à l'aperçu`));
   });
 });
+
+/**
+ * JOURNAL DE MUTATION (#421i, le halo immobile dans l'aperçu) : une faute, et c'est le défaut.
+ *
+ *   M86 le champ `type` disparaît de l'Élément temporaire de l'aperçu        VERT → ROUGE
+ *
+ * ⚠️ M86 EST LE DÉFAUT LIVRÉ, ET IL A SURVÉCU À UN BLOC ÉCRIT EXPRÈS POUR L'ATTRAPER. Ce fichier
+ * existe pour une seule raison : l'aperçu fabrique un Élément temporaire CHAMP PAR CHAMP, et cette
+ * énumération prend du retard à chaque champ que le rig se met à lire. Elle avait déjà perdu
+ * `maillagesEgares`, `afficherMaillagesEgares` et `joints3d`.
+ *
+ * Elle a perdu `type` — sauf que celui-ci n'a jamais été là. Il ne servait à rien tant que le rig
+ * ne lisait que `objType` ; l'arrivée du halo (#421f) l'a rendu nécessaire, puisque
+ * `estUneLumiere3D` exige SES DEUX MOITIÉS. La Case voyait une source, l'aperçu voyait un objet
+ * quelconque, et tirer le curseur d'intensité ne changeait rien à l'écran. Signalé à l'usage.
+ *
+ * ⚠️ POURQUOI LA DÉRIVATION NE L'A PAS RÉCLAMÉ : `estUneLumiere3D(o)` est une lecture INDIRECTE,
+ * invisible à un relevé qui cherche `o.quelquechose` dans le corps du rig. J'avais déclaré
+ * `intensite` — la lecture indirecte que j'avais en tête — et pas le discriminant lui-même. Une
+ * lecture indirecte non déclarée est un TROU dans la dérivation, pas une exception tolérée : le
+ * garde-fou paraît complet, et il ne l'est que pour ce qu'on a pensé à lui dire.
+ *
+ * ⚠️ ET L'IRONIE MÉRITE D'ÊTRE GARDÉE. Ce discriminant teste ses deux moitiés pour empêcher qu'un
+ * autre `type` portant le même `objType` passe pour une Lumière — une lumière fantôme. Ici il a
+ * produit la faute EXACTEMENT INVERSE, une vraie Lumière non reconnue, parce que la moitié
+ * manquante était du côté de qui pose la question.
+ */

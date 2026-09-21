@@ -1729,6 +1729,16 @@ export function drawObjectPreview(targetCanvas, spec){
   if (typeof THREE === 'undefined') return;
   const tempObj = {
     id: PREVIEW_OBJECT_ID,
+    // ⚠️ LE `type`, ET IL MANQUAIT (#421i). Il n'avait jamais servi tant que le rig ne lisait que
+    // `objType` — jusqu'à ce que le halo d'une Lumière arrive (#421f) : `estUneLumiere3D` exige
+    // SES DEUX MOITIÉS, `type` ET `objType`, et l'Élément temporaire n'en portait qu'une. La Case
+    // voyait donc une source, l'aperçu voyait un objet quelconque, et l'intensité ne changeait rien
+    // à l'écran. Signalé à l'usage.
+    //
+    // L'ironie vaut d'être notée : ce discriminant à deux moitiés existe pour empêcher qu'un autre
+    // `type` portant le même `objType` passe pour une Lumière. Ici il a produit la faute inverse —
+    // une vraie Lumière non reconnue — parce que la moitié manquante était du côté de qui demande.
+    type: 'objet3d',
     objType: spec.objType || 'voiture',
     // Modèle importé : buildImportedModelRig3D lit modelFile pour retrouver le fichier décodé dans
     // le cache (cf. model-cache.js), sans lui, l'aperçu tombe sur sa boîte de remplacement.
