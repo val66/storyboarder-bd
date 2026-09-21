@@ -67,30 +67,63 @@ export function champVisibleDeCase3D(panel, page){
 }
 
 /**
- * De combien la boîte d'ombre dépasse le champ visible.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * JUSQU'OÙ L'OMBRE PORTE, EN PROFONDEUR (#422h, signalé à l'usage)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ⚠️ CHOISI, PAS DÉRIVÉ, et il faut que ce soit écrit. Un Élément HORS du champ peut projeter DANS
- * le champ — un Mur posé à gauche jette son ombre vers la droite —, donc la boîte doit être plus
- * large que ce qu'on voit. Mais de combien dépend de ce qu'on met autour, et aucune formule ne le
- * sait : trop serré, les ombres se coupent net au bord de la Case ; trop large, chaque texel couvre
- * plus de terrain et l'ombre se brouille.
+ * ⚠️ LE DÉFAUT : « LE MUR DU FOND PERD SON OMBRE SELON LE ZOOM ». `champVisibleDeCase3D` donne le
+ * champ à UNE profondeur — celle du centre d'orbite — alors qu'un tronc de vision S'ÉLARGIT derrière
+ * elle. Un Élément deux fois plus loin est vu dans une section deux fois plus large, et tombait donc
+ * hors d'une boîte taillée sur la section du milieu. Relevé : la couverture réelle valait environ
+ * DEUX fois la profondeur du centre d'orbite, et comme le rayon saute par paliers, cette limite se
+ * déplaçait au zoom — d'où « selon le zoom ».
  *
- * 1,5 est un point de départ à juger À L'ÉCRAN (#422z), comme l'intensité de départ d'une source
- * l'a été en #420c — et celle-là était « correctement dérivée » avant de se révéler trop faible.
+ * ⚠️ ET CETTE COUVERTURE N'AVAIT ÉTÉ DÉCIDÉE PAR PERSONNE. Elle tombait de la marge de 1,5, qui
+ * servait à tout autre chose. Une grandeur qui gouverne ce qu'on voit doit être choisie, pas être le
+ * résidu d'un calcul voisin.
+ *
+ * LA COUVERTURE EST DONC NOMMÉE, et c'est l'utilisateur qui l'a fixée devant les chiffres : quatre
+ * fois la profondeur du centre d'orbite. Au cadrage par défaut, cela porte l'ombre à 120 unités —
+ * de quoi contenir un mur de fond, un décor, une rue.
  */
-export const MARGE_BOITE_OMBRE = 1.5;
+export const PROFONDEUR_OMBRE_CAMDIST = 4;
+
+/**
+ * ⚠️ `MARGE_BOITE_OMBRE` A DISPARU EN #422h, ET C'EST UNE SIMPLIFICATION, PAS UN OUBLI.
+ *
+ * Elle valait 1,5 et couvrait deux besoins à la fois : qu'un projeteur hors champ porte DANS le
+ * champ, et que la boîte — alignée sur le SOLEIL, donc pivotante — ne laisse aucun coin dehors quel
+ * que soit l'azimut. La sphère englobante du tronc de vision répond aux deux par construction :
+ * **une sphère n'a pas d'orientation**, et elle contient tout ce que la caméra voit jusqu'à la
+ * profondeur retenue, coins compris.
+ *
+ * #422z devait la juger à l'écran. Il n'y a plus rien à juger : le nombre choisi à la main a été
+ * remplacé par une grandeur dérivée d'une exigence énonçable. C'est la meilleure issue possible
+ * pour une constante « à régler plus tard ».
+ */
 
 /**
  * La RÉSOLUTION de la carte d'ombre du soleil.
  *
- * ⚠️ 2048 PLUTÔT QUE 1024, ET C'EST GRATUIT — MESURÉ. Les deux donnent le même temps de rendu
- * (0,9 contre 1,0 ms, dans le bruit) : doubler la finesse ne se paie pas ici. On s'attend à arbitrer
- * entre qualité et vitesse, et il n'y a rien à arbitrer, donc on prend la meilleure.
+ * ⚠️ 4096, ET LA RÉSOLUTION EST GRATUITE EN TEMPS — MESURÉ, #422h. Sur le vrai GPU, la même scène
+ * rend en 2,88 / 2,80 / 2,76 / 2,80 ms à 1024, 2048, 4096 et 8192 : les quatre sont dans le bruit,
+ * et l'ombre elle-même ne coûte que 0,65 ms (2,14 ms sans). Le prix d'une carte d'ombre
+ * directionnelle est UNE PASSE DE PROFONDEUR SUR LA GÉOMÉTRIE, pas du remplissage — le nombre de
+ * texels n'y entre pas.
+ *
+ * ⚠️ CE QUE LA RÉSOLUTION COÛTE VRAIMENT, C'EST DE LA MÉMOIRE, et c'est la seule raison de s'arrêter
+ * là : 4 / 16 / 64 / 256 Mo. 8192 aurait donné deux fois plus de netteté pour le même temps, et
+ * 256 Mo de mémoire vidéo pour la seule ombre du soleil. 64 Mo est le point où le rapport se
+ * retourne.
+ *
+ * ⚠️ ET ELLE N'ENTRE DANS AUCUNE CLÉ DE PROGRAMME — vérifié dans le code de Three.js : ce sont
+ * `shadowMapEnabled` et les NOMBRES de lumières qui y entrent, pas `mapSize`. Monter la résolution
+ * n'ajoute donc aucun axe de compilation, contrairement à ce que #422 a mesuré pour les sources.
  *
  * ⚠️ CE N'EST PAS UN RÉGLAGE, ET ÇA NE DOIT PAS LE DEVENIR. Exposer un curseur qui ne change rien au
- * prix et peu à l'œil ajouterait une commande sans décision derrière.
+ * prix ajouterait une commande sans décision derrière.
  */
-export const RESOLUTION_OMBRE_SOLEIL = 2048;
+export const RESOLUTION_OMBRE_SOLEIL = 4096;
 
 /**
  * La boîte orthographique de l'ombre du soleil, pour une Case. Fonction PURE.
@@ -181,20 +214,71 @@ export function repereOmbreSoleil3D(direction){
   };
 }
 
-export function boiteOmbreSoleil3D(panel, page, direction){
+/**
+ * La sphère englobante du TRONC DE VISION, de la caméra jusqu'à la profondeur d'ombre. PURE.
+ *
+ * ⚠️ UNE SPHÈRE, ET C'EST ELLE QUI REND LA MARGE INUTILE. La boîte d'ombre est alignée sur le
+ * SOLEIL : la faire pivoter au-dessus de la Case sortait des coins de la couverture, et
+ * `MARGE_BOITE_OMBRE` existait pour cela. Une sphère n'a pas d'orientation — la même sphère contient
+ * le tronc quel que soit l'azimut. Le besoin a disparu avec la forme, pas avec une décision.
+ *
+ * ⚠️ ET SON CENTRE N'EST PAS LE CENTRE D'ORBITE. Le tronc s'élargit vers le fond : son centre de
+ * gravité géométrique est PLUS LOIN que la moitié. Le placer au centre d'orbite — ce que faisait
+ * #422g — demandait un rayon bien plus grand pour la même couverture, donc des texels plus gros
+ * pour rien. La profondeur optimale est classique : `F·(1 + tan²l + tan²h) / 2`, bornée par `F`.
+ *
+ * `decalage` est cette profondeur, comptée le long de l'axe de vue depuis la CAMÉRA ; l'appelant
+ * la convertit en position monde, parce que lui seul connaît l'axe.
+ */
+export function sphereTroncDeVision3D(panel, page){
   const champ = champVisibleDeCase3D(panel, page);
-  const rayonBrut = Math.hypot(champ.demiLargeur, champ.demiHauteur) * MARGE_BOITE_OMBRE;
+  const dist = Math.max(0.01, Number(panel && panel.camDist) || PANEL_CAM_DEFAULT_DIST_3D);
+  // Les tangentes des demi-angles : le champ à la profondeur `dist`, divisé par `dist`.
+  const tl = champ.demiLargeur / dist;
+  const th = champ.demiHauteur / dist;
+  const k2 = tl * tl + th * th;
+  const F = dist * PROFONDEUR_OMBRE_CAMDIST;
+  // ⚠️ BORNÉ PAR `F` : au-delà d'un demi-angle de 45°, l'optimum sortirait derrière le plan du fond,
+  // et la sphère cesserait de contenir le tronc. Le cas n'arrive pas au cadrage du dépôt, mais une
+  // formule qui ne tient que sur les valeurs d'aujourd'hui est exactement ce qu'on évite ici.
+  const decalage = Math.min(F, F * (1 + k2) / 2);
+  // ⚠️ LE RAYON EST CELUI DU COIN DU FOND, ET LE COIN DE TÊTE N'A PAS À ÊTRE TESTÉ — c'est
+  // démontrable, et une campagne de mutation a exigé qu'on le démontre plutôt que de s'en protéger.
+  // Une première version écrivait `Math.max(decalage, coinDuFond)`, pour garantir que la CAMÉRA
+  // elle-même (profondeur 0, à distance `decalage` du centre) reste dans la sphère. Ce garde-fou
+  // n'a jamais pu servir :
+  //
+  //   • branche non bornée, `decalage = F(1+k²)/2`. Alors
+  //     coinDuFond = F·√(k² + ((1−k²)/2)²) = F·√((1+k²)²/4) = F(1+k²)/2 = decalage. Égalité EXACTE ;
+  //   • branche bornée, `decalage = F`, ce qui n'arrive que si k² ≥ 1. Alors
+  //     coinDuFond = F·√k² ≥ F = decalage.
+  //
+  // Le premier argument du `max` ne pouvait donc jamais être choisi. Un garde-fou qui ne peut pas
+  // se déclencher n'est pas une sécurité : c'est une ligne qui fait croire à un danger et coûte au
+  // prochain lecteur le temps de chercher quand elle sert. Il est retiré, et l'identité qui le rend
+  // inutile est TENUE PAR UN TEST — si `decalage` change un jour, c'est le test qui le dira.
+  const rayon = Math.hypot(F * Math.sqrt(k2), F - decalage);
+  return { decalage, rayon, profondeur: F };
+}
+
+export function boiteOmbreSoleil3D(panel, page, direction, avant){
+  const tronc = sphereTroncDeVision3D(panel, page);
+  const rayonBrut = tronc.rayon;
   // ⚠️ AU PALIER SUPÉRIEUR, JAMAIS À L'INFÉRIEUR. Arrondir vers le bas rétrécirait la boîte sous le
   // champ visible, et les ombres seraient COUPÉES près des bords — un défaut bien pire que celui
   // qu'on corrige, et qui ne se verrait que sur certaines Cases.
   const rayon = Math.pow(PALIER_RAYON_OMBRE,
     Math.ceil(Math.log(Math.max(rayonBrut, 1e-6)) / Math.log(PALIER_RAYON_OMBRE)));
   const tailleTexel = (2 * rayon) / RESOLUTION_OMBRE_SOLEIL;
-  const centre = centreAccrocheOmbre3D(panel, direction, tailleTexel);
+  const centre = centreAccrocheOmbre3D(panel, direction, tailleTexel, avant, tronc.decalage);
   return {
     rayon,
     rayonBrut,
     centre,
+    // La profondeur du centre de la sphère le long de l'axe de vue, depuis la caméra : l'appelant
+    // en fait un point monde. Reproduite ici pour que `centreAccrocheOmbre3D` reste vérifiable.
+    decalage: tronc.decalage,
+    profondeur: tronc.profondeur,
     // Le soleil est DIRECTIONNEL : sa caméra d'ombre n'a pas de position propre, elle est posée à
     // `rayon` du centre le long de la direction de la lumière. La profondeur couvre donc l'aller et
     // le retour, plus la hauteur de ce qui peut projeter.
@@ -224,10 +308,22 @@ export function boiteOmbreSoleil3D(panel, page, direction){
  * la première le premier jour seulement. Le dépôt a déjà nommé ce piège (« Fix 12.7 »), et la
  * sphère du repère d'orbite lit déjà ce même champ pour la même raison.
  */
-export function centreAccrocheOmbre3D(panel, direction, tailleTexel){
-  const cx = Number(panel && panel._orbitCx) || 0;
-  const cy = Number(panel && panel._orbitCy) || 0;
-  const cz = Number(panel && panel._orbitCz) || 0;
+export function centreAccrocheOmbre3D(panel, direction, tailleTexel, avant, decalage){
+  const dist = Math.max(0.01, Number(panel && panel.camDist) || PANEL_CAM_DEFAULT_DIST_3D);
+  // ⚠️ LE CENTRE DE LA SPHÈRE EST PLUS LOIN QUE LE CENTRE D'ORBITE (#422h), parce qu'un tronc de
+  // vision s'élargit vers le fond. `_orbitCx/Cy/Cz` est à la profondeur `camDist` sur l'axe de vue ;
+  // la sphère est à `decalage`. On avance donc de la différence, le long de cet axe.
+  //
+  // ⚠️ ET L'AXE EST DONNÉ, PAS DEVINÉ. Il vient de `panelCamBasis3D`, qui vit dans la couche qui
+  // connaît la caméra ; le recalculer ici serait la seconde copie d'une formule de cadrage, la faute
+  // la plus fréquente de ce dépôt. Sans axe, on reste sur le centre d'orbite — la couverture du
+  // fond est alors moindre, mais rien n'est faux, et un test tient que l'axe est bien transmis.
+  const a = avant || {};
+  const ax = Number(a.x) || 0, ay = Number(a.y) || 0, az = Number(a.z) || 0;
+  const avance = (Number.isFinite(Number(decalage)) ? Number(decalage) : dist) - dist;
+  const cx = (Number(panel && panel._orbitCx) || 0) + ax * avance;
+  const cy = (Number(panel && panel._orbitCy) || 0) + ay * avance;
+  const cz = (Number(panel && panel._orbitCz) || 0) + az * avance;
   const t = Number(tailleTexel);
   if (!Number.isFinite(t) || t <= 0) return { x: cx, y: cy, z: cz };
   const r = repereOmbreSoleil3D(direction);

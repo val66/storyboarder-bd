@@ -173,6 +173,56 @@ cast. That is consistent — its shadow is not visible either — but it would s
 camera pulled back without the Panel being re-rendered. `camDist` therefore enters the Panel
 signature; it has done so since #414c.
 
+### ⚠️ "The back wall loses its shadow depending on zoom" (#422h, reported in use)
+
+**A field measured at a single depth.** `champVisibleDeCase3D` gives the view frustum's cross-section
+at the orbit centre; the frustum itself widens behind it. An Element twice as far is seen in a
+cross-section twice as wide, and fell outside a box cut to the middle section. Measured real
+coverage: **about twice** the orbit depth — and since the radius jumps in steps, that limit moved
+with the zoom.
+
+⚠️ **And nobody had decided that coverage**: it fell out of `MARGE_BOITE_OMBRE`, which served an
+entirely different purpose. A quantity that governs what you see must not be the residue of a
+neighbouring calculation. It is now `PROFONDEUR_OMBRE_CAMDIST` and equals **4**, chosen in front of
+the measurements.
+
+The box is framed on the view frustum's **bounding sphere**, centred not at the orbit centre but at
+the frustum's geometric centroid — further out, since a frustum widens toward the back. Placing it
+at the orbit centre required a much larger radius for the same coverage.
+
+#### Resolution is free in time — eighth campaign
+
+Measured on the real GPU, same rig as #422: a 52-mesh scene, off-screen render target, `readPixels`,
+witness verified.
+
+| | ms | texel | memory |
+|---|---|---|---|
+| shadow off | 2.14 | — | — |
+| 1024 map | 2.88 | 125 mm | 4 MB |
+| 2048 map | 2.80 | 62 mm | 16 MB |
+| **4096 map** | **2.76** | **31 mm** | **64 MB** |
+| 8192 map | 2.80 | 16 mm | 256 MB |
+
+**All four are within the noise.** A directional shadow map's price is ONE DEPTH PASS OVER THE
+GEOMETRY, not fill: the texel count does not enter it. This extends #422's result (1024 = 2048) and
+explains why. What stops the climb is **memory**.
+
+The quadrupled coverage is therefore paid for by resolution, not by sharpness: at the default
+framing the texel stays at 62 mm, as before #422h.
+
+⚠️ **AND THE INSTRUMENT LIED A FOURTH TIME.** The first reading reported 92.57% of pixels changed,
+**identical at every resolution** — which was the tell. Toggling `renderer.shadowMap.enabled` changes
+the SHADER: it is not a neutral A/B, and the whole image shifts by a few levels. The right A/B is
+`light.castShadow`, with the map enabled on both sides: 2.33% of pixels, decreasing with resolution
+(2.33 → 1.86 → 1.65 → 1.57%), which is the shadow tightening. A fourth instrument to validate before
+believing a figure, after `gl.finish()`, `readPixels` on the display buffer, and the ground-stretched
+box.
+
+⚠️ **`MARGE_BOITE_OMBRE` IS GONE**, closing a #422a debt. It was 1.5, hand-picked, and #422z was to
+judge it on screen. The sphere answers both of its needs by construction: **a sphere has no
+orientation**, and it contains everything visible. A number one cannot justify often signals a badly
+chosen shape, not a missing setting.
+
 ### ⚠️ "The shadows move when I zoom" (#422g, reported in use)
 
 Three faults, two of which masked each other.

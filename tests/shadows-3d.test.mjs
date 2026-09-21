@@ -21,7 +21,8 @@ import { sourceSansCommentaires } from './helpers/source.mjs';
 
 import {
   champVisibleDeCase3D, boiteOmbreSoleil3D, cameraOmbreSource3D, ombreSoleilSeraVisible3D,
-  MARGE_BOITE_OMBRE, RESOLUTION_OMBRE_SOLEIL, RESOLUTION_OMBRE_SOURCE, NEAR_OMBRE_SOURCE,
+  RESOLUTION_OMBRE_SOLEIL, RESOLUTION_OMBRE_SOURCE, NEAR_OMBRE_SOURCE,
+  sphereTroncDeVision3D, PROFONDEUR_OMBRE_CAMDIST,
   TAILLE_TEXEL_MAX, estUnDessinAuSol3D, EPAISSEUR_MIN_PROJETEUR,
   PALIER_RAYON_OMBRE, repereOmbreSoleil3D, centreAccrocheOmbre3D,
 } from '../src/shadows-3d.js';
@@ -79,11 +80,16 @@ describe('⚠️ LE SOL N’ENTRE DANS AUCUN CALCUL, et c’est la mesure qui l�
     // effectif est ARRONDI au palier supérieur pour stabiliser la grille de texels : c'est une
     // décision d'affichage posée par-dessus, qui peut le doubler, et la confondre avec la dérivation
     // rendrait ce test sensible à un réglage qui n'a rien à voir avec le Sol.
-    assert.ok(2 * b.rayonBrut < GROUND_PLANE_SIZE_3D / 100,
+    assert.ok(2 * b.rayonBrut < GROUND_PLANE_SIZE_3D / 20,
       `la boîte dérivée fait ${(2 * b.rayonBrut).toFixed(0)} unités pour un Sol de ${GROUND_PLANE_SIZE_3D}`);
-    // Et l'arrondi ne peut pas la faire dériver vers le Sol : il est borné par un palier.
-    assert.ok(2 * b.rayon < GROUND_PLANE_SIZE_3D / 50,
-      `l’arrondi a emporté la boîte à ${(2 * b.rayon).toFixed(0)} unités`);
+    // ⚠️ ET LA PREUVE QUI NE DÉPEND D'AUCUN SEUIL CHOISI : le rayon est proportionnel à `camDist`,
+    // donc à la CAMÉRA, et pas à une grandeur du décor. Une boîte reprise sur le Sol serait
+    // CONSTANTE — c'est la signature que ce test attrape, et aucune fraction arbitraire ne la
+    // remplace. La borne ci-dessus ne garde plus que l'ordre de grandeur.
+    const r1 = boiteOmbreSoleil3D({ camDist: 20 }, PAGE).rayonBrut;
+    const r2 = boiteOmbreSoleil3D({ camDist: 40 }, PAGE).rayonBrut;
+    assert.ok(Math.abs(r2 / r1 - 2) < 1e-9,
+      `doubler camDist change le rayon d’un facteur ${(r2 / r1).toFixed(3)} : il ne suit plus la caméra`);
   });
 });
 
@@ -132,22 +138,35 @@ describe('⚠️ LA BOÎTE COUVRE LE CHAMP QUEL QUE SOIT L’AZIMUT DU SOLEIL', 
     // ombres y seraient tronquées. Un défaut qui n'apparaît que sous certains réglages est le pire
     // genre — on le prend pour un hasard.
     //
-    // Le rayon du disque qui contient le rectangle ne dépend, lui, d'aucune orientation.
+    // ⚠️ DEPUIS #422h C'EST UNE SPHÈRE, ET L'EXIGENCE S'ÉNONCE MIEUX : elle doit CONTENIR les huit
+    // coins du tronc de vision. C'est la propriété dont l'ancienne « demi-diagonale × marge » était
+    // une approximation à une seule profondeur — celle qui a coûté le défaut du mur du fond.
+    //
     // ⚠️ ET ON VÉRIFIE LA RÈGLE, PAS UNE DE SES CONSÉQUENCES CHIFFRÉES. Première version : « le
     // rayon est au moins la demi-diagonale ». La mutation M90 — remplacer la diagonale par le plus
     // grand des deux demi-côtés — y a ÉCHAPPÉ, parce que la marge de 1,5 suffisait à couvrir
-    // l'écart sur une Planche de ce format. Le défaut existait bel et bien ; il ne se serait
-    // manifesté que sur une Planche plus carrée, ou après qu'on ait resserré la marge.
-    //
-    // Une assertion qui ne mesure qu'un SEUIL laisse passer tout ce qu'un réglage voisin suffit à
-    // compenser. On exige donc l'égalité : le rayon EST la demi-diagonale, à la marge près.
+    // l'écart sur une Planche de ce format. Une assertion qui ne mesure qu'un SEUIL laisse passer
+    // tout ce qu'un réglage voisin suffit à compenser. On énumère donc les coins.
     for (const camDist of [12, 30, 120]) {
       const c = champVisibleDeCase3D({ camDist }, PAGE);
       const b = boiteOmbreSoleil3D({ camDist }, PAGE);
-      const attendu = Math.hypot(c.demiLargeur, c.demiHauteur) * MARGE_BOITE_OMBRE;
-      assert.ok(Math.abs(b.rayonBrut - attendu) < 1e-9,
-        `à camDist ${camDist}, le rayon dérivé vaut ${b.rayonBrut} au lieu de ${attendu} : ` +
-        'il ne se dérive plus de la diagonale, donc des coins sortiront de la boîte à certains azimuts');
+      const t = sphereTroncDeVision3D({ camDist }, PAGE);
+      const tl = c.demiLargeur / camDist, th = c.demiHauteur / camDist;
+      // Les coins, en repère caméra : profondeur 0 (la caméra) et profondeur F (le fond).
+      for (const prof of [0, t.profondeur]) {
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+          const d3 = Math.hypot(prof * tl * sx, prof * th * sy, prof - t.decalage);
+          assert.ok(d3 <= b.rayonBrut + 1e-9,
+            `à camDist ${camDist}, un coin du tronc à la profondeur ${prof.toFixed(0)} est HORS de ` +
+            `la sphère (${d3.toFixed(2)} > ${b.rayonBrut.toFixed(2)}) : son ombre sera coupée`);
+        }
+      }
+      // ⚠️ ET ELLE N'EST PAS PLUS GRANDE QUE NÉCESSAIRE : le rayon touche le coin du fond. Sans
+      // cette égalité, une sphère démesurée passerait le test ci-dessus en brouillant toutes les
+      // ombres — c'est la même faute que M90, dans l'autre sens.
+      const coinFond = Math.hypot(t.profondeur * tl, t.profondeur * th, t.profondeur - t.decalage);
+      assert.ok(Math.abs(b.rayonBrut - Math.max(coinFond, t.decalage)) < 1e-9,
+        `à camDist ${camDist}, la sphère est plus grande que le tronc : les texels grossissent pour rien`);
       // ⚠️ ET L'ARRONDI DE #422g NE RÉTRÉCIT JAMAIS LA BOÎTE. Arrondir vers le bas la ferait passer
       // SOUS le champ visible, et les ombres seraient coupées près des bords — un défaut pire que
       // le rampement qu'on corrige, et qui ne se verrait que sur certaines Cases.
@@ -162,18 +181,27 @@ describe('⚠️ LA BOÎTE COUVRE LE CHAMP QUEL QUE SOIT L’AZIMUT DU SOLEIL', 
     const large = { w: 3000, h: 1000 };
     const cl = champVisibleDeCase3D({ camDist: 30 }, large);
     const bl = boiteOmbreSoleil3D({ camDist: 30 }, large);
-    assert.ok(bl.rayon > Math.max(cl.demiLargeur, cl.demiHauteur) * MARGE_BOITE_OMBRE,
-      'sur une Planche très large, la boîte se contente du plus grand côté et coupe les coins');
+    assert.ok(bl.rayonBrut > Math.max(cl.demiLargeur, cl.demiHauteur),
+      'sur une Planche très large, la sphère se contente du plus grand côté et coupe les coins');
   });
 
-  test('⚠️ ET LA MARGE EST SUPÉRIEURE À 1 : un Élément hors champ projette DANS le champ', () => {
+  test('⚠️ UN ÉLÉMENT HORS CHAMP PROJETTE DANS LE CHAMP, et la sphère le contient', () => {
     // Un Mur posé à gauche jette son ombre vers la droite. Une boîte collée au champ visible le
     // laisserait dehors, et son ombre disparaîtrait alors qu'on la verrait dans la réalité.
-    assert.ok(MARGE_BOITE_OMBRE > 1,
-      'la boîte ne dépasse plus le champ : les projeteurs hors cadre seront ignorés');
+    //
+    // ⚠️ `MARGE_BOITE_OMBRE` A DISPARU EN #422h, ET CE TEST DIT POURQUOI IL N'EN FAUT PLUS. La marge
+    // de 1,5 couvrait ce besoin à la main ; la sphère du tronc le couvre par construction, puisqu'un
+    // tronc contient tout ce qui est visible jusqu'à quatre fois la profondeur d'orbite — donc
+    // largement de quoi loger un projeteur hors cadre.
     const c = champVisibleDeCase3D({ camDist: 30 }, PAGE);
     const b = boiteOmbreSoleil3D({ camDist: 30 }, PAGE);
-    assert.ok(b.rayon > Math.hypot(c.demiLargeur, c.demiHauteur));
+    assert.ok(b.rayonBrut > Math.hypot(c.demiLargeur, c.demiHauteur) * 1.5,
+      'la sphère ne dépasse plus le champ d’orbite : les projeteurs hors cadre seront ignorés');
+    const SRC = readFileSync(new URL('../src/shadows-3d.js', import.meta.url), 'utf8');
+    const corps = SRC.replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+      .filter(l => !/^\s*\/\//.test(l)).join('\n');
+    assert.ok(!/MARGE_BOITE_OMBRE/.test(corps),
+      'la marge choisie à la main est revenue : la sphère la rend inutile');
   });
 
   test('la boîte grandit avec la distance de caméra', () => {
@@ -597,7 +625,7 @@ describe('⚠️ UNE SOURCE NE PROJETTE QUE SI LA CASE ET ELLE LE VEULENT (#422d
     const i = SCENE.indexOf('function renderPanelSceneUncached3D');
     const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
     const posPlan = corps.indexOf('const _planLumieres = planLumieresPosees3D(');
-    const posOmbres = corps.indexOf('appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres)');
+    const posOmbres = corps.indexOf('appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres');
     assert.ok(posPlan > 0, 'le plan des sources n’est plus construit une seule fois');
     assert.ok(posOmbres > posPlan,
       'les ombres se posent avant le plan : elles ne peuvent pas savoir si une source projette');
@@ -746,6 +774,199 @@ describe('⚠️ « PROJETTE UNE OMBRE » SE RÈGLE DANS LA FICHE D’UNE LUMIÈ
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * « LE MUR DU FOND PERD SON OMBRE SELON LE ZOOM » (#422h, signalé à l'usage)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LA FAUTE : UN CHAMP MESURÉ À UNE SEULE PROFONDEUR. `champVisibleDeCase3D` donne la section du
+ * tronc de vision au centre d'orbite ; le tronc, lui, s'ÉLARGIT derrière. Un Élément deux fois plus
+ * loin est vu dans une section deux fois plus large et tombait hors d'une boîte taillée sur la
+ * section du milieu. Couverture réelle relevée : environ deux fois la profondeur d'orbite — et
+ * comme le rayon saute par paliers, cette limite se déplaçait au zoom.
+ *
+ * ⚠️ ET PERSONNE N'AVAIT DÉCIDÉ DE CETTE COUVERTURE. Elle tombait de `MARGE_BOITE_OMBRE`, qui
+ * servait à tout autre chose. Une grandeur qui gouverne ce qu'on voit ne doit pas être le résidu
+ * d'un calcul voisin : elle s'appelle désormais `PROFONDEUR_OMBRE_CAMDIST` et vaut 4, choisi par
+ * l'utilisateur devant les mesures.
+ */
+const SOLEIL_H = { x: 0.4, y: 0.8, z: 0.45 };
+
+describe('⚠️ L’OMBRE PORTE JUSQU’AU FOND DU TRONC DE VISION (#422h)', () => {
+  const PAGE_H = { w: 1240, h: 1754 };
+
+  test('⚠️ LA SPHÈRE CONTIENT LE TRONC JUSQU’À LA PROFONDEUR DÉCIDÉE', () => {
+    // C'est l'exigence entière, et elle s'énonce sans aucun nombre choisi : tout point VISIBLE
+    // jusqu'à `PROFONDEUR_OMBRE_CAMDIST × camDist` est dans la sphère, donc projette.
+    for (const camDist of [5, 30, 90]) {
+      const c = champVisibleDeCase3D({ camDist }, PAGE_H);
+      const t = sphereTroncDeVision3D({ camDist }, PAGE_H);
+      assert.ok(Math.abs(t.profondeur - camDist * PROFONDEUR_OMBRE_CAMDIST) < 1e-9,
+        `à camDist ${camDist}, la portée en profondeur n’est plus celle qui a été décidée`);
+      const tl = c.demiLargeur / camDist, th = c.demiHauteur / camDist;
+      // Un balayage de profondeurs, pas seulement les deux extrémités : une sphère mal centrée
+      // peut contenir les deux bouts et laisser sortir le milieu.
+      for (let f = 0; f <= 1.0001; f += 0.1) {
+        const prof = t.profondeur * f;
+        const d = Math.hypot(prof * tl, prof * th, prof - t.decalage);
+        assert.ok(d <= t.rayon + 1e-9,
+          `à camDist ${camDist}, un coin visible à la profondeur ${prof.toFixed(1)} sort de la sphère`);
+      }
+    }
+  });
+
+  test('⚠️ LA CAMÉRA EST DANS LA SPHÈRE SANS QU’ON AIT À LE DEMANDER (mutation équivalente)', () => {
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ UNE MUTATION A ÉCHAPPÉ, ET LA BONNE RÉPONSE A ÉTÉ DE SUPPRIMER DU CODE
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // M152 retirait le `Math.max(decalage, …)` qui garantissait que la caméra elle-même — à
+    // distance `decalage` du centre — reste dans la sphère. Aucun test ne rougissait. Le réflexe
+    // aurait été d'écrire une assertion de plus ; c'était le mauvais réflexe, parce que la mutation
+    // était ÉQUIVALENTE : le premier argument du `max` ne pouvait jamais être choisi (la preuve est
+    // dans `sphereTroncDeVision3D`). Un garde-fou qui ne peut pas se déclencher fait croire à un
+    // danger et coûte au lecteur le temps de chercher quand il sert. Il est parti.
+    //
+    // Ce test tient l'IDENTITÉ qui le rend inutile, sur des formats de Planche des deux côtés de la
+    // frontière k² = 1 : si quelqu'un change `decalage`, c'est ici que ça se verra, et le garde-fou
+    // redeviendra peut-être nécessaire. C'est la deuxième fois que ce fichier écarte du code plutôt
+    // que de l'exempter — cf. `apparenceBulleEstCelleDOrigine` dans code-mort.test.mjs.
+    for (const page of [{ w: 1240, h: 1754 }, { w: 1754, h: 1240 }, { w: 3000, h: 1000 },
+      { w: 1000, h: 1000 }]) {
+      const camDist = 30;
+      const c = champVisibleDeCase3D({ camDist }, page);
+      const t = sphereTroncDeVision3D({ camDist }, page);
+      // La caméra, à la profondeur 0, est à `decalage` du centre.
+      assert.ok(t.decalage <= t.rayon + 1e-9,
+        `sur ${page.w}×${page.h}, la caméra SORT de la sphère : le garde-fou retiré redevient nécessaire`);
+      // Et le témoin : le rayon EST bien le coin du fond, pas autre chose.
+      const tl = c.demiLargeur / camDist, th = c.demiHauteur / camDist;
+      const coin = Math.hypot(t.profondeur * Math.hypot(tl, th), t.profondeur - t.decalage);
+      assert.ok(Math.abs(t.rayon - coin) < 1e-9,
+        `sur ${page.w}×${page.h}, le rayon n’est plus celui du coin du fond`);
+    }
+  });
+
+  test('⚠️ ET LA COUVERTURE A VRAIMENT AUGMENTÉ : le mur du fond rentre', () => {
+    // ⚠️ LE TÉMOIN DU DÉFAUT SIGNALÉ, chiffré. Un mur à trois fois la profondeur d'orbite sortait
+    // de l'ancienne boîte — dérivée de la demi-diagonale × 1,5, soit un rayon de 40,3 au cadrage
+    // par défaut. Il doit désormais rentrer. Sans cette assertion, la correction pourrait être
+    // annulée par un réglage voisin sans que rien ne le dise.
+    const camDist = 30;
+    const c = champVisibleDeCase3D({ camDist }, PAGE_H);
+    const t = sphereTroncDeVision3D({ camDist }, PAGE_H);
+    const profMur = camDist * 3;
+    // L'ANCIENNE boîte : centrée au centre d'orbite, donc à la profondeur `camDist`, rayon
+    // demi-diagonale × 1,5. La NOUVELLE : centrée à `decalage`, rayon de la sphère du tronc.
+    const ancienRayon = Math.hypot(c.demiLargeur, c.demiHauteur) * 1.5;
+    const ancienneDistance = Math.abs(profMur - camDist);
+    const nouvelleDistance = Math.abs(profMur - t.decalage);
+    assert.ok(ancienneDistance > ancienRayon,
+      'le témoin ne reproduit plus le défaut : ce mur rentrait déjà dans l’ancienne boîte');
+    assert.ok(nouvelleDistance <= t.rayon,
+      `un mur à trois fois la profondeur d’orbite sort encore de la sphère ` +
+      `(${nouvelleDistance.toFixed(1)} > ${t.rayon.toFixed(1)})`);
+  });
+
+  test('⚠️ LE CENTRE EST PLUS LOIN QUE LE CENTRE D’ORBITE, et il suit l’axe de vue', () => {
+    // ⚠️ UN TRONC S'ÉLARGIT VERS LE FOND, donc son centre de gravité géométrique n'est pas au
+    // milieu. Le placer au centre d'orbite — ce que faisait #422g — exigeait un rayon bien plus
+    // grand pour la même couverture, donc des texels plus gros pour rien.
+    const t = sphereTroncDeVision3D({ camDist: 30 }, PAGE_H);
+    assert.ok(t.decalage > 30, 'le centre de la sphère est resté au centre d’orbite');
+    assert.ok(t.decalage <= t.profondeur, 'le centre est passé derrière le fond du tronc');
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // ⚠️ DEUX MUTATIONS ONT ÉCHAPPÉ ICI, ET C'ÉTAIT LA MÊME FAUTE DE TEST
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Première version : deux axes OPPOSÉS donnent deux centres distincts. Elle vérifiait que l'axe
+    // est EMPLOYÉ, pas qu'il l'est CORRECTEMENT — c'est la famille de défauts que ce dépôt nomme
+    // « un test qui assure qu'un identifiant apparaît plutôt qu'il gouverne », et elle a laissé
+    // passer deux mutations :
+    //
+    //   M156 ignorer la composante X de l'axe — mon axe témoin valait (0, 0, ±1), donc sa
+    //        composante X était nulle et la mutation ne changeait rien. Le témoin n'exerçait pas
+    //        ce qu'il prétendait couvrir ;
+    //   M158 INVERSER l'axe — deux centres restent distincts quand l'un part en arrière. La sphère
+    //        se serait posée DERRIÈRE la caméra, et plus rien n'aurait eu d'ombre.
+    //
+    // La propriété juste s'énonce en une phrase : le centre est en AVANT du centre d'orbite, le
+    // long de l'axe, exactement de `decalage − camDist`. Elle fixe le signe, la direction et la
+    // grandeur d'un coup — et l'axe témoin a désormais ses trois composantes non nulles.
+    const avant = (() => { const n = Math.hypot(0.3, -0.5, -0.81);
+      return { x: 0.3 / n, y: -0.5 / n, z: -0.81 / n }; })();
+    const p = { camDist: 30, _orbitCx: 4, _orbitCy: -2, _orbitCz: 11 };
+    const b = boiteOmbreSoleil3D(p, PAGE_H, SOLEIL_H, avant);
+    const attendu = b.decalage - p.camDist;
+    assert.ok(attendu > 0, 'le témoin est nul : la sphère ne se déplace pas, ce test ne prouve rien');
+    // Le déplacement réel, projeté sur l'axe. L'accrochage au texel le brouille de moins d'un texel.
+    const dx = b.centre.x - p._orbitCx, dy = b.centre.y - p._orbitCy, dz = b.centre.z - p._orbitCz;
+    const leLong = dx * avant.x + dy * avant.y + dz * avant.z;
+    assert.ok(Math.abs(leLong - attendu) <= b.tailleTexel * 2,
+      `le centre avance de ${leLong.toFixed(2)} au lieu de ${attendu.toFixed(2)} : ` +
+      'l’axe est ignoré, inversé, ou amputé d’une composante');
+    // Et il ne dérive PAS perpendiculairement à l'axe, au-delà de l'accrochage.
+    const perp = Math.hypot(dx - leLong * avant.x, dy - leLong * avant.y, dz - leLong * avant.z);
+    assert.ok(perp <= b.tailleTexel * 2,
+      `le centre dérive de ${perp.toFixed(2)} hors de l’axe de vue`);
+    // ⚠️ ET CHAQUE COMPOSANTE DE L'AXE COMPTE : en amputer une déplace le centre. Le test
+    // ci-dessus le tient déjà, celui-ci le dit à la mutation qui avait échappé.
+    for (const mort of ['x', 'y', 'z']) {
+      const ampute = { ...avant, [mort]: 0 };
+      const bm = boiteOmbreSoleil3D(p, PAGE_H, SOLEIL_H, ampute);
+      assert.ok(Math.abs(bm.centre[mort] - b.centre[mort]) > b.tailleTexel,
+        `amputer la composante ${mort} de l’axe ne change rien : elle n’est pas employée`);
+    }
+    // ⚠️ ET L'AXE VIENT DE LA COUCHE QUI CONNAÎT LA CAMÉRA, transmis et non recalculé : une seconde
+    // copie d'une formule de cadrage est la faute la plus fréquente de ce dépôt.
+    const SCENE = sourceSansCommentaires(
+      readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    assert.match(corps, /panelCamBasis3D\(panel\)/,
+      'l’axe de vue n’est plus pris sur la base de caméra');
+    assert.match(corps, /appliquerOmbresDeCase3D\([^)]*_avantCam\)/,
+      'l’axe de vue n’est plus transmis aux ombres');
+    // ⚠️ ET LE SENS EST TENU ICI, PARCE QU'IL NE PEUT L'ÊTRE NULLE PART AILLEURS (M158). La
+    // mutation qui INVERSE l'axe a échappé à tous les tests de fonction pure : ceux-ci reçoivent
+    // l'axe déjà construit, et un axe inversé leur paraît aussi valide qu'un autre. Le signe naît
+    // dans scene3d.js et n'existe que là.
+    //
+    // ⚠️ `backward` VA DU CENTRE D'ORBITE VERS LA CAMÉRA — la caméra est à `orbite + backward·dist`.
+    // L'axe de vue est donc son OPPOSÉ. Sans les trois signes, la sphère d'ombre se poserait
+    // DERRIÈRE la caméra et plus rien n'aurait d'ombre : un défaut total, pas une dégradation.
+    const mAvant = corps.match(/_avantCam\s*=\s*\{([^}]*)\}/);
+    assert.ok(mAvant, 'l’axe de vue n’est plus construit');
+    ['x', 'y', 'z'].forEach(c => {
+      assert.match(mAvant[1], new RegExp(`${c}:\\s*-\\s*_baseCam\\.backward\\.${c}`),
+        `la composante ${c} de l’axe de vue n’est plus l’opposé de \`backward\` : ` +
+        'la sphère d’ombre se pose derrière la caméra');
+    });
+    const SRC = sourceSansCommentaires(
+      readFileSync(new URL('../src/shadows-3d.js', import.meta.url), 'utf8'));
+    assert.ok(!/camRotX|camRotY/.test(SRC),
+      'la décision pure recalcule la base de caméra : deux copies d’une formule de cadrage');
+  });
+
+  test('⚠️ LA CARTE EST À 4096, ET LA MESURE DIT QUE C’EST GRATUIT EN TEMPS', () => {
+    // ⚠️ MESURÉ SUR LE VRAI GPU (#422h) : 2,88 / 2,80 / 2,76 / 2,80 ms à 1024, 2048, 4096, 8192 —
+    // les quatre dans le bruit, l'ombre elle-même ne coûtant que 0,65 ms. Le prix d'une carte
+    // d'ombre directionnelle est UNE PASSE DE PROFONDEUR SUR LA GÉOMÉTRIE, pas du remplissage.
+    //
+    // ⚠️ CE QUI ARRÊTE LA MONTÉE, C'EST LA MÉMOIRE : 4 / 16 / 64 / 256 Mo. 8192 donnait deux fois
+    // plus de netteté pour le même temps et 256 Mo de mémoire vidéo — le rapport s'y retourne.
+    assert.equal(RESOLUTION_OMBRE_SOLEIL, 4096);
+    assert.ok((RESOLUTION_OMBRE_SOLEIL ** 2 * 4) / 1048576 <= 64,
+      'la carte dépasse 64 Mo : le coût cesse d’être du temps pour devenir de la mémoire');
+    // Et la netteté au cadrage par défaut est au moins celle d'avant #422h, malgré une couverture
+    // quadruplée : c'est exactement ce que la montée à 4096 a acheté.
+    const b = boiteOmbreSoleil3D({ camDist: 30 }, PAGE_H, SOLEIL_H, { x: 0, y: 0, z: -1 });
+    assert.ok(b.tailleTexel <= 0.0625 + 1e-9,
+      `le texel vaut ${(b.tailleTexel * 1000).toFixed(1)} mm : la couverture a été payée en netteté`);
+  });
+});
+
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * « LES OMBRES BOUGENT QUAND JE ZOOME » (#422g, signalé à l'usage)
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
@@ -825,20 +1046,22 @@ describe('⚠️ LA BOÎTE SE POSE SUR CE QUE LA CASE REGARDE (#422g)', () => {
     // chaque cran de molette, de 3,9 mm tout près à 105 mm très reculé. Une ombre étant quantifiée
     // sur cette grille, changer le pas de la grille redessine tous les contours — c'est cela qui
     // rampait, sans qu'aucune lumière ait bougé.
+    // ⚠️ LES BORNES DU PALIER ONT CHANGÉ AVEC LA COUVERTURE (#422h) : le rayon a quadruplé de
+    // profondeur, donc le doublement tombe ailleurs sur l'échelle de `camDist`. Ce qui est tenu
+    // reste le même — dans un palier, RIEN ne bouge — et les bornes sont recalculées plutôt que
+    // recopiées : le témoin plus bas exige que le rayon dérivé, lui, bouge sur la plage choisie.
     const panel = (camDist) => ({ camDist, _orbitCx: 12.34, _orbitCy: 0, _orbitCz: -7.77 });
-    const ref = boiteOmbreSoleil3D(panel(28), PAGE_G, SOLEIL);
-    for (const d of [29, 30, 33, 40, 45]) {
+    const ref = boiteOmbreSoleil3D(panel(20), PAGE_G, SOLEIL);
+    for (const d of [21, 24, 28, 30, 34]) {
       const b = boiteOmbreSoleil3D(panel(d), PAGE_G, SOLEIL);
-      assert.equal(b.rayon, ref.rayon, `le rayon bouge entre camDist 28 et ${d}`);
-      assert.equal(b.tailleTexel, ref.tailleTexel, `le texel bouge entre camDist 28 et ${d}`);
-      assert.equal(b.centre.x, ref.centre.x, `le centre bouge entre camDist 28 et ${d}`);
-      assert.equal(b.centre.z, ref.centre.z, `le centre bouge entre camDist 28 et ${d}`);
+      assert.equal(b.rayon, ref.rayon, `le rayon bouge entre camDist 20 et ${d}`);
+      assert.equal(b.tailleTexel, ref.tailleTexel, `le texel bouge entre camDist 20 et ${d}`);
     }
     // TÉMOIN : le rayon DÉRIVÉ, lui, bouge bel et bien sur cette plage. Sans lui, un rayon devenu
     // constant par erreur — une boîte qui ne suivrait plus du tout le cadrage — passerait ce test
     // avec les félicitations. C'est nommément l'une des familles de défauts de ce dépôt : mesurer
     // une absence sans vérifier que l'instrument sait voir une présence.
-    assert.ok(boiteOmbreSoleil3D(panel(45), PAGE_G, SOLEIL).rayonBrut
+    assert.ok(boiteOmbreSoleil3D(panel(34), PAGE_G, SOLEIL).rayonBrut
       > ref.rayonBrut * 1.5, 'le témoin ne bouge plus : le test ne prouve plus rien');
     // Et au palier SUIVANT, la boîte change bien — sinon elle aurait cessé de suivre le cadrage.
     assert.ok(boiteOmbreSoleil3D(panel(120), PAGE_G, SOLEIL).rayon > ref.rayon,
@@ -1150,4 +1373,63 @@ describe('⚠️ CE QUI AFFLEURE LE SOL REÇOIT MAIS NE PROJETTE PAS (#422f)', (
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que l'échange finesse contre stabilité soit le bon à
  * l'œil. #422z regarde — et il reste une option non mesurée, relever la résolution du soleil de
  * 2048 à 4096 pour rendre ce que l'arrondi a pris.
+ */
+
+/**
+ * JOURNAL DE MUTATION (#422h, le tronc de vision et la carte à 4096) : dix fautes rejouées.
+ *
+ *   M149 la couverture retombe : le mur du fond reperd son ombre         ROUGE
+ *   M150 le centre au milieu du tronc : le fond sort                     ROUGE
+ *   M151 le centre reste au centre d'orbite                              ROUGE
+ *   M152 le garde-fou du coin de tête retiré             ⚠️ ÉQUIVALENTE — code supprimé
+ *   M153 la largeur oubliée : les coins latéraux sortent                 ROUGE
+ *   M154 retour à 2048 : la couverture payée en netteté                  ROUGE
+ *   M155 montée à 8192 : 256 Mo pour la seule ombre du soleil            ROUGE
+ *   M156 la composante X de l'axe ignorée                  ⚠️ ÉCHAPPÉE, puis ROUGE
+ *   M157 l'axe de vue n'est plus transmis                                ROUGE
+ *   M158 l'axe INVERSÉ : la sphère part derrière la caméra ⚠️ ÉCHAPPÉE, puis ROUGE
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ M152 ÉTAIT ÉQUIVALENTE, ET LA BONNE RÉPONSE A ÉTÉ DE SUPPRIMER DU CODE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Elle retirait un `Math.max` censé garantir que la caméra elle-même reste dans la sphère. Aucun
+ * test ne rougissait, et le réflexe aurait été d'écrire une assertion de plus. C'était le mauvais
+ * réflexe : la démonstration (dans `sphereTroncDeVision3D`) montre que le premier argument du `max`
+ * ne pouvait JAMAIS être choisi, dans aucune des deux branches. Un garde-fou qui ne peut pas se
+ * déclencher n'est pas une sécurité — il fait croire à un danger et coûte au prochain lecteur le
+ * temps de chercher quand il sert.
+ *
+ * Le code est parti, et l'IDENTITÉ qui le rend inutile est tenue par un test, sur quatre formats de
+ * Planche répartis des deux côtés de la frontière k² = 1. Deuxième fois que ce dépôt écarte du code
+ * plutôt que de l'exempter — cf. `apparenceBulleEstCelleDOrigine`.
+ *
+ * ⚠️ M156 ET M158 ONT ÉCHAPPÉ POUR LA MÊME FAUTE DE TEST, et c'est la famille que ce dépôt nomme :
+ * une assertion qui vérifie qu'un identifiant APPARAÎT plutôt qu'il GOUVERNE. Mon témoin comparait
+ * deux axes OPPOSÉS et exigeait des centres distincts — ce qui vérifie que l'axe est EMPLOYÉ, pas
+ * qu'il l'est correctement.
+ *
+ *   M156 amputait la composante X. Mon axe témoin valait (0, 0, ±1) : sa composante X était nulle,
+ *        donc la mutation ne changeait rien. Le témoin n'exerçait pas ce qu'il prétendait couvrir ;
+ *   M158 INVERSAIT l'axe. Deux centres restent distincts quand l'un part en arrière — la sphère se
+ *        serait posée DERRIÈRE la caméra, et plus RIEN n'aurait eu d'ombre. Un défaut total.
+ *
+ * La parade est une propriété et non une assertion de plus : le centre est en AVANT du centre
+ * d'orbite, le long de l'axe, exactement de `decalage − camDist`. Elle fixe le signe, la direction
+ * et la grandeur d'un coup. Plus un test par composante, et — pour M158, dont le signe NAÎT dans
+ * scene3d.js et n'existe nulle part ailleurs — un contrôle sur les trois signes à l'endroit où ils
+ * sont écrits. C'est la troisième fois de ce chantier qu'une mutation échappe faute d'avoir vérifié
+ * la GOUVERNANCE plutôt que la présence ; après M118 (#422d), la leçon commence à se voir.
+ *
+ * ⚠️ M154 ET M155 ENCADRENT LA RÉSOLUTION PAR SES DEUX COÛTS OPPOSÉS. En dessous, la couverture
+ * quadruplée se paierait en netteté — exactement le flou signalé à l'usage. Au dessus, le temps ne
+ * bouge toujours pas (mesuré : 2,80 ms à 8192) mais la mémoire passe à 256 Mo pour la seule ombre
+ * du soleil. Une seule des deux mutations aurait laissé croire que 4096 est arbitraire.
+ *
+ * ⚠️ ET `MARGE_BOITE_OMBRE` A DISPARU, ce qui ferme une dette de #422a. Elle valait 1,5, elle était
+ * choisie à la main, et #422z devait la juger à l'écran. La sphère du tronc répond à ses deux
+ * besoins par construction — une sphère n'a pas d'orientation, et elle contient tout le visible.
+ * Une constante « à régler plus tard » remplacée par une grandeur dérivée d'une exigence énonçable
+ * est la meilleure issue possible ; c'est aussi un rappel qu'un nombre qu'on n'arrive pas à
+ * justifier signale souvent une forme mal choisie, pas un réglage manquant.
  */

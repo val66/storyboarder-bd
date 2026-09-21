@@ -654,3 +654,52 @@ The WebGL probe is throwaway and was not kept, like the previous ones. What it n
   for a compile believed to be already banked;
 - **a witness that must MOVE** — forty full-view planes, four times the pixels — verified before
   believing a single figure.
+
+
+# Eighth campaign — what a shadow's fineness costs, September 2026
+
+Task #422h, triggered by two contradictory reports from use: "the back wall loses its shadow
+depending on zoom" and "the shadows sometimes lack sharpness". Covering more makes things blurrier:
+we needed to know whether resolution could pay the difference.
+
+Same instrument as the seventh: real browser, real GPU, three.js r128 verified SHA-256-identical to
+the repository's copy, a 52-mesh scene with a 12,000-unit Ground and a back wall, an off-screen
+render target, `readPixels` to synchronise.
+
+| | ms | texel | memory | pixels changed |
+|---|---|---|---|---|
+| shadow off | 2.14 | — | — | — |
+| 1024 map | 2.88 | 125 mm | 4 MB | 2.33% |
+| 2048 map | 2.80 | 62 mm | 16 MB | 1.86% |
+| **4096 map** | **2.76** | **31 mm** | **64 MB** | **1.65%** |
+| 8192 map | 2.80 | 16 mm | 256 MB | 1.57% |
+| radius 128, 4096 map | 2.51 | 62 mm | 64 MB | 1.86% |
+
+**A directional shadow map's resolution is free in time.** All four readings are within the noise,
+and the shadow itself costs only 0.65 ms. The reason is structural: the price is ONE DEPTH PASS OVER
+THE GEOMETRY — 52 meshes — not fill. The texel count does not enter that expense. This extends the
+seventh campaign's result (1024 = 2048) and, more importantly, EXPLAINS it: it was not a coincidence
+of two points, it is a property.
+
+**What stops the climb is memory**, and that quadruples at every step: 4, 16, 64, 256 MB. 8192 gave
+twice the sharpness for the same time and a quarter of a gigabyte of video memory for the sun's
+shadow alone. 64 MB is where the ratio turns.
+
+**And the last row is what settled the task**: doubling the radius AND doubling the resolution gives
+exactly the same texel and exactly the same pixel count. Covering four times the depth therefore
+costs NOTHING to the eye, provided the resolution is paid. The two contradictory reports reconciled.
+
+## ⚠️ The fourth instrument to lie
+
+The first reading reported **92.57% of pixels changed, identical at every resolution**. That identity
+is what raised suspicion: a real shadow changes a pixel count that varies with fineness.
+
+The fault: the reference image was taken with `renderer.shadowMap.enabled = false`. But that flag
+enters the PROGRAM KEY — it changes the compiled shader, and the whole image shifts by a few levels.
+**It is not a neutral A/B.** The right A/B is `light.castShadow`, with the map enabled on both sides:
+2.33% of pixels, decreasing with resolution, which is the shadow tightening rather than bleeding.
+
+A fourth instrument to validate before believing a figure, after `gl.finish()` which synchronises
+nothing, `readPixels` on the display buffer which measures the monitor, and the ground-stretched box
+which cost full price for 0.00% of effect. The rule holds: **first check that the instrument can see
+a presence, only then read what it says.**

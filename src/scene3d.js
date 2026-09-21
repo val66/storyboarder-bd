@@ -2121,7 +2121,13 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   const _planLumieres = planLumieresPosees3D(lumierePoseeCache3D.keys(), elements);
   // Les ombres suivent l'éclairage, et pour la MÊME raison : la scène est partagée, donc une ombre
   // laissée allumée s'appliquerait à la Case suivante (#422c).
-  const _ombresDeLaCase = appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres);
+  // ⚠️ L'AXE DE VUE EST TRANSMIS, PAS RECALCULÉ DANS shadows-3d.js (#422h). La sphère d'ombre est
+  // centrée plus loin que le centre d'orbite — un tronc de vision s'élargit vers le fond —, et
+  // avancer le long de cet axe demande de le connaître. `panelCamBasis3D` est le seul endroit qui
+  // le donne ; en refaire une copie serait la faute la plus fréquente de ce dépôt.
+  const _baseCam = panelCamBasis3D(panel);
+  const _avantCam = { x: -_baseCam.backward.x, y: -_baseCam.backward.y, z: -_baseCam.backward.z };
+  const _ombresDeLaCase = appliquerOmbresDeCase3D(panel, page, _eclairage, _planLumieres, _avantCam);
   personaRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   objectRigCache3D.forEach(e => { e.figureGroup.visible = false; });
   wallRenderRigCache3D.forEach(e => { e.figureGroup.visible = false; });

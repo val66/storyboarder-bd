@@ -1153,7 +1153,7 @@ export function appliquerEclairageDeCase3D(eclairage){
  * profondeur, quel que soit ce drapeau. Ce qu'on économise en l'éteignant est la CLÉ DE PROGRAMME —
  * `shadowMapEnabled` y entre —, c'est-à-dire une compilation de plus dans la session.
  */
-export function appliquerOmbresDeCase3D(panel, page, eclairage, plan){
+export function appliquerOmbresDeCase3D(panel, page, eclairage, plan, avant){
   if (!personaRenderer3D || !personaKeyLight3D) return false;
   const voulues = !!(eclairage && eclairage.ombresPortees);
   const soleil = voulues && ombreSoleilSeraVisible3D(panel, page);
@@ -1166,7 +1166,7 @@ export function appliquerOmbresDeCase3D(panel, page, eclairage, plan){
   // tout autant besoin de savoir qui jette une ombre et qui n'en jette pas.
   if (rendues) marquerProjectionDOmbre3D();
   if (soleil) {
-    const b = boiteOmbreSoleil3D(panel, page, eclairage.soleil.direction);
+    const b = boiteOmbreSoleil3D(panel, page, eclairage.soleil.direction, avant);
     // ═══════════════════════════════════════════════════════════════════════════════════════════
     // ⚠️ LA BOÎTE SE POSE SUR CE QUE LA CASE REGARDE (#422g)
     // ═══════════════════════════════════════════════════════════════════════════════════════════

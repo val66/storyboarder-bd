@@ -687,3 +687,55 @@ et pourquoi :
   paie une compilation qu'on croyait acquise ;
 - **un témoin qui doit BOUGER** — quarante plans pleine vue, quatre fois plus de pixels — vérifié
   avant de croire le moindre chiffre.
+
+
+# Huitième campagne — ce que coûte la finesse d'une ombre, septembre 2026
+
+Chantier #422h, déclenché par deux retours d'usage contradictoires : « le mur du fond perd son ombre
+selon le zoom » et « les ombres manquent parfois de netteté ». Couvrir plus rend plus flou : il
+fallait savoir si la résolution pouvait payer la différence.
+
+Même instrument que la septième : vrai navigateur, vrai GPU, three.js r128 vérifié identique au
+dépôt par son empreinte SHA-256, scène de 52 maillages avec un Sol de 12 000 unités et un mur de
+fond, cible de rendu hors écran, `readPixels` pour synchroniser.
+
+| | ms | texel | mémoire | pixels changés |
+|---|---|---|---|---|
+| ombre éteinte | 2,14 | — | — | — |
+| carte 1024 | 2,88 | 125 mm | 4 Mo | 2,33 % |
+| carte 2048 | 2,80 | 62 mm | 16 Mo | 1,86 % |
+| **carte 4096** | **2,76** | **31 mm** | **64 Mo** | **1,65 %** |
+| carte 8192 | 2,80 | 16 mm | 256 Mo | 1,57 % |
+| rayon 128, carte 4096 | 2,51 | 62 mm | 64 Mo | 1,86 % |
+
+**La résolution d'une carte d'ombre directionnelle est gratuite en temps.** Les quatre mesures sont
+dans le bruit, et l'ombre elle-même ne coûte que 0,65 ms. La raison est structurelle : le prix est
+UNE PASSE DE PROFONDEUR SUR LA GÉOMÉTRIE — 52 maillages —, pas du remplissage. Le nombre de texels
+n'entre pas dans cette dépense. Cela étend le résultat de la septième campagne (1024 = 2048) et,
+surtout, l'EXPLIQUE : ce n'était pas une coïncidence de deux points, c'est une propriété.
+
+**Ce qui arrête la montée, c'est la mémoire**, et elle, elle quadruple à chaque pas : 4, 16, 64,
+256 Mo. 8192 donnait deux fois plus de netteté pour le même temps et un quart de gigaoctet de
+mémoire vidéo pour la seule ombre du soleil. 64 Mo est le point où le rapport se retourne.
+
+**Et la dernière ligne est celle qui a tranché le chantier** : doubler le rayon ET doubler la
+résolution donne exactement le même texel et exactement le même nombre de pixels changés. Couvrir
+quatre fois plus de profondeur ne coûte donc RIEN à l'œil, à condition de payer la résolution. Les
+deux retours contradictoires se réconciliaient.
+
+## ⚠️ Le quatrième instrument à mentir
+
+Le premier relevé annonçait **92,57 % de pixels changés, identiques à toutes les résolutions**.
+C'est cette identité qui a éveillé le soupçon : une vraie ombre change un nombre de pixels qui varie
+avec la finesse.
+
+La faute : l'image de référence était prise avec `renderer.shadowMap.enabled = false`. Or ce drapeau
+entre dans la CLÉ DE PROGRAMME — il change le shader compilé, et l'image entière se déplace de
+quelques niveaux. **Ce n'est pas un A/B neutre.** Le bon A/B est `light.castShadow`, carte activée
+des deux côtés : 2,33 % de pixels, décroissant avec la résolution, ce qui est l'ombre qui se
+resserre au lieu de baver.
+
+Quatrième instrument à valider avant de croire un chiffre, après `gl.finish()` qui ne synchronise
+rien, `readPixels` sur le tampon d'affichage qui mesure le moniteur, et la boîte étirée au Sol qui
+coûtait plein tarif pour 0,00 % d'effet. La règle tient : **on vérifie d'abord que l'instrument sait
+voir une présence, ensuite seulement on lit ce qu'il dit.**

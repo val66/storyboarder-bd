@@ -177,6 +177,56 @@ pas. C'est cohérent — on ne voit pas non plus son ombre — mais ça cesserai
 reculait sans que la Case soit re-rendue. `camDist` entre donc dans la signature de Case ; elle y
 était déjà depuis #414c.
 
+### ⚠️ « Le mur du fond perd son ombre selon le zoom » (#422h, signalé à l'usage)
+
+**Un champ mesuré à une seule profondeur.** `champVisibleDeCase3D` donne la section du tronc de
+vision au centre d'orbite ; le tronc, lui, s'élargit derrière. Un Élément deux fois plus loin est vu
+dans une section deux fois plus large et tombait hors d'une boîte taillée sur la section du milieu.
+Couverture réelle relevée : **environ deux fois** la profondeur d'orbite — et comme le rayon saute
+par paliers, cette limite se déplaçait au zoom.
+
+⚠️ **Et personne n'avait décidé de cette couverture** : elle tombait de `MARGE_BOITE_OMBRE`, qui
+servait à tout autre chose. Une grandeur qui gouverne ce qu'on voit ne doit pas être le résidu d'un
+calcul voisin. Elle s'appelle désormais `PROFONDEUR_OMBRE_CAMDIST` et vaut **4**, choisi devant les
+mesures.
+
+La boîte se cadre sur la **sphère englobante du tronc de vision**, centrée non pas au centre d'orbite
+mais au centre de gravité géométrique du tronc — plus loin, puisqu'un tronc s'élargit vers le fond.
+Le placer au centre d'orbite exigeait un rayon bien plus grand pour la même couverture.
+
+#### La résolution est gratuite en temps — huitième campagne
+
+Mesuré sur le vrai GPU, même dispositif que #422 : scène de 52 maillages, cible de rendu hors écran,
+`readPixels`, témoin vérifié.
+
+| | ms | texel | mémoire |
+|---|---|---|---|
+| ombre éteinte | 2,14 | — | — |
+| carte 1024 | 2,88 | 125 mm | 4 Mo |
+| carte 2048 | 2,80 | 62 mm | 16 Mo |
+| **carte 4096** | **2,76** | **31 mm** | **64 Mo** |
+| carte 8192 | 2,80 | 16 mm | 256 Mo |
+
+**Les quatre sont dans le bruit.** Le prix d'une carte d'ombre directionnelle est UNE PASSE DE
+PROFONDEUR SUR LA GÉOMÉTRIE, pas du remplissage : le nombre de texels n'y entre pas. Cela étend le
+résultat de #422 (1024 = 2048) et explique pourquoi. Ce qui arrête la montée, c'est la **mémoire**.
+
+La couverture quadruplée est donc payée par la résolution, pas par la netteté : au cadrage par
+défaut le texel reste à 62 mm, comme avant #422h.
+
+⚠️ **ET L'INSTRUMENT A MENTI UNE QUATRIÈME FOIS.** Le premier relevé annonçait 92,57 % de pixels
+changés, **identiques à toutes les résolutions** — ce qui était le signe. Basculer
+`renderer.shadowMap.enabled` change le SHADER : ce n'est pas un A/B neutre, et l'image entière se
+déplace de quelques niveaux. Le bon A/B est `light.castShadow`, carte activée des deux côtés :
+2,33 % de pixels, décroissant avec la résolution (2,33 → 1,86 → 1,65 → 1,57 %), ce qui est l'ombre
+qui se resserre. Quatrième instrument à valider avant de croire un chiffre, après `gl.finish()`,
+`readPixels` sur le tampon d'affichage et la boîte étirée au Sol.
+
+⚠️ **`MARGE_BOITE_OMBRE` A DISPARU**, et c'est une dette de #422a qui se ferme. Elle valait 1,5,
+choisie à la main, et #422z devait la juger à l'écran. La sphère répond à ses deux besoins par
+construction : **une sphère n'a pas d'orientation**, et elle contient tout le visible. Un nombre
+qu'on n'arrive pas à justifier signale souvent une forme mal choisie, pas un réglage manquant.
+
 ### ⚠️ « Les ombres bougent quand je zoome » (#422g, signalé à l'usage)
 
 Trois fautes, dont deux se masquaient l'une l'autre.
