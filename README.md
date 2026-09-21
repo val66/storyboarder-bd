@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.112**
+**Version 1.5.113**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -35,6 +35,17 @@
   black to the original lighting
 - ↺ **Reset** puts the panel back to Day and to its starting values
 - 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
+- 💡 **Placed light sources**: right-click → Add → Light drops a glowing sphere that lights the
+  panel on top of the sun
+- 🖱️ **Moved like any Element**: mouse for height and width, wheel for depth
+- 🎈 **It floats** at whatever height you want, unsnapped from the ground, but never goes below it
+- 📋 **Its own block** at the top of the Elements list, the way paths have theirs
+- 🎛️ **Its settings dialog** on double-click: colour, intensity and range in the "Brightness"
+  section, under the 3D preview
+- ♾️ **A range of 0 means "unlimited"** — beyond a finite range, the light no longer carries at all
+- 🫧 **The halo follows the intensity**: one glance at a page tells you which source is strong
+- 🔌 **Two checkboxes not to be confused**: "Invisible in the 3D scene" turns the source off,
+  whereas "Show the sphere" only hides the marker and leaves the light shining
 
 ### Panel images
 - 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it

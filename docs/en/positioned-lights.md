@@ -158,9 +158,10 @@ One persisted field, `sphereVisible`, read by the renderer like any other.
 
 ## What is NOT in this project
 
-**The settings dialog.** Colour, intensity, range and sphere visibility are fields from now on, but
-the screen that sets them comes later. That is what justifies the unlimited default range: as long
-as nothing can be corrected, a light that lights too much beats a light that lights nothing.
+**The settings dialog — SHIPPED SINCE, in #421.** All four fields are settable: the Element dialog
+opens on double-click, gaining a "Brightness" section and losing everything that means nothing for a
+source. The default range stays 0, "unlimited", because changing it would alter the look of already
+saved Projects — but it is now reachable, which was the precondition for any culling (cf. #420f).
 
 **Cast shadows.** Nothing casts one today, and enabling them is a performance question in its own
 right, to be handled with measurements.

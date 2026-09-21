@@ -97,12 +97,30 @@ export const HELP_MANUAL_EN = [
     'The F key centres the panel\u2019s view on the selected Element; a second press returns to the previous framing. In Camera mode, the selected Element becomes the permanent centre of rotation.',
     'Keyboard shortcut C (outside a text field, with a panel selected) to toggle Camera mode. In the Scene editor, the T key switches between perspective and top-down view.',
   ]},
+  // ⚠️ CETTE SECTION EST PLEINE À 94 % : 1870 caractères sur 2000 en français, mesurés. La dette
+  // annoncée en #420g a été payée en #421z, par la première des deux issues prévues — ÉLAGUER la
+  // prose existante — et sans toucher au seuil.
+  //
+  // CE QUI EST PARTI, ET LE CRITÈRE QUI A SERVI : trois passages qui JUSTIFIAIENT au lieu de
+  // DÉCRIRE. « c'est exactement l'éclairage que l'application a toujours eu, une Case dessinée avant
+  // garde son aspect » rassurait sur une migration ; « c'est ce qui permet à Nuit d'être une vraie
+  // nuit » défendait un choix de conception. Ces phrases ont leur place dans docs/, pas dans un
+  // manuel : le lecteur d'ici cherche à FAIRE quelque chose. Aucun comportement n'a été retiré.
+  //
+  // ⚠️ ET IL RESTE 130 CARACTÈRES. La seconde issue — SÉPARER le soleil des sources posées en deux
+  // sections — n'a pas été employée, elle reste disponible, et c'est elle qu'il faudra prendre au
+  // prochain ajout : il n'y a plus de gras à élaguer sans perdre du comportement. Ce qu'il ne faut
+  // toujours pas faire est monter le seuil, qui existe pour que le manuel reste un manuel.
+  // Cf. docs/en/positioned-lights.md pour ce que ces sources sont.
   { id: 'lumiere', title: 'Light', paragraphs: [
-    'The "Light" section of the right-hand menu drives the sun of the selected Panel. Three modes: Day, Night and Custom. Day is the default, and it is exactly the lighting the application has always had, so a Panel drawn before this feature keeps its look unchanged.',
+    'The "Light" section of the right-hand menu drives the sun of the selected Panel. Three modes: Day, Night and Custom. Day is the default, and it is the application’s original lighting.',
     'In Custom, a dome shows where the light comes from. Click and drag on it to move the sun over the vault; hold the right button and drag to turn the view, which changes nothing to the setting. The N, E, S and W marks on the base are those of the Panel: North goes away from you, South comes towards you.',
-    'Still in Custom, the colour and the intensity sit under the dome. Intensity drives the sun and the ambient light together: at 0 % the Panel is black, at 100 % you get the original lighting back. That is what makes Night a real night rather than a merely flatter image.',
+    'Still in Custom, the colour and the intensity sit under the dome. Intensity drives the sun and the ambient light together: at 0 % the Panel is black, at 100 % you get the original lighting back.',
     'The Reset button at the bottom of the section puts the Panel back to Day and to its starting values.',
-    'Lighting is set per Panel, and a Scene’s locked page is a Panel like any other: it has its own Light section. Loading a Scene into a Panel copies its lighting, just as it copies its Elements. The two are independent afterwards, and a Scene left on Day puts the Panel that receives it back on Day.',
+    'Lighting is set per Panel, and a Scene’s locked page is one: it has its own Light section. Loading a Scene into a Panel copies its lighting, just as its Elements; the two are independent afterwards.',
+    'Right-click a Panel → "Add" → "Light" places a source in the Scene. A glowing sphere appears and lights the Panel, on top of the sun. You move it like any Element: the mouse for height and width, the wheel for depth.',
+    'Unlike other Elements, a source is not snapped to the ground: it floats at whatever height you want, without going below it. It sits at the top of the Elements list, in a block of its own.',
+    'Double-click a source to open its dialog, where the "Brightness" section sets its colour, intensity and range. A range of 0 means "unlimited"; beyond a finite range, the light no longer carries at all. In the 3D preview, "Invisible in the 3D scene" turns the source off, whereas "Show the sphere" only hides the marker and leaves the light shining.',
   ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
@@ -257,11 +275,14 @@ export const HELP_MANUAL_FR = [
     "Raccourci C (hors champ texte, Case sélectionnée) pour basculer en mode Caméra. Dans l'éditeur de Scène, la touche T bascule entre la vue perspective et la vue de dessus.",
   ]},
   { id: 'lumiere', title: 'Lumière', paragraphs: [
-    "La section « Lumière » du menu de droite pilote le soleil de la Case sélectionnée. Trois modes : Jour, Nuit et Personnalisé. Jour est le réglage par défaut, et c'est exactement l'éclairage que l'application a toujours eu : une Case dessinée avant cette fonctionnalité garde son aspect inchangé.",
+    "La section « Lumière » du menu de droite pilote le soleil de la Case sélectionnée. Trois modes : Jour, Nuit et Personnalisé. Jour est le réglage par défaut, et c'est l'éclairage d'origine de l'application.",
     "En Personnalisé, un dôme montre d'où vient la lumière. Cliquer-glisser dessus déplace le soleil sur la coupole ; clic droit glissé fait tourner la vue, ce qui ne change rien au réglage. Les repères N, E, S et O de la base sont ceux de la Case : le Nord s'éloigne de vous, le Sud vient vers vous.",
-    "Toujours en Personnalisé, la couleur et l'intensité se règlent sous le dôme. L'intensité pilote le soleil et la lumière ambiante ensemble : à 0 % la Case est noire, à 100 % on retrouve l'éclairage d'origine. C'est ce qui permet à Nuit d'être une vraie nuit, et non une image seulement plus plate.",
+    "Toujours en Personnalisé, la couleur et l'intensité se règlent sous le dôme. L'intensité pilote le soleil et la lumière ambiante ensemble : à 0 % la Case est noire, à 100 % on retrouve l'éclairage d'origine.",
     "Le bouton « Réinitialiser » en bas de la section ramène la Case au mode Jour et à ses valeurs de départ.",
-    "L'éclairage se règle par Case, et la Planche verrouillée d'une Scène est une Case comme une autre : elle a donc sa propre section Lumière. Charger une Scène dans une Case y copie son éclairage, comme elle copie ses Éléments. Les deux sont ensuite indépendants, et une Scène restée en Jour remet en Jour la Case qui la reçoit.",
+    "L'éclairage se règle par Case, et la Planche verrouillée d'une Scène en est une : elle a sa propre section Lumière. Charger une Scène dans une Case y copie son éclairage, comme ses Éléments ; les deux sont ensuite indépendants.",
+    "Clic droit sur une Case → « Ajouter » → « Lumière » pose une source dans la Scène. Une sphère lumineuse apparaît et éclaire la Case, en plus du soleil. On la déplace comme un Élément : la souris pour la hauteur et la largeur, la molette pour la profondeur.",
+    "Contrairement aux autres Éléments, une source n'est pas aimantée au sol : elle flotte à la hauteur voulue, sans passer dessous. Elle figure en tête de la liste des Éléments, dans un bloc à elle.",
+    "Double-cliquer sur une source ouvre sa fiche, où la section « Luminosité » règle sa couleur, son intensité et sa portée. Une portée de 0 vaut « sans limite » ; au-delà d'une portée finie, la lumière ne porte plus du tout. Dans l'Aperçu 3D, « Invisible dans la scène 3D » éteint la source, tandis qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',

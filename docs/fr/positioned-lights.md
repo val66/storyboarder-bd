@@ -159,10 +159,11 @@ distinguer. Un champ persisté, `sphereVisible`, lu par le rendu comme n'importe
 
 ## Ce qui n'est PAS dans ce chantier
 
-**La modale de réglage.** Couleur, intensité, portée et visibilité de la sphère sont des champs dès
-maintenant, mais l'écran qui les règle vient après. C'est ce qui justifie la portée sans limite par
-défaut : tant qu'on ne peut rien corriger, mieux vaut une lumière qui éclaire trop qu'une lumière
-qui n'éclaire rien.
+**La modale de réglage — LIVRÉE DEPUIS, en #421.** Les quatre champs sont réglables : la fiche des
+Éléments s'ouvre au double-clic, augmentée d'une section « Luminosité » et amputée de ce qui ne veut
+rien dire pour une source. La portée par défaut reste 0, « sans limite », parce que la changer
+modifierait l'aspect des Projets déjà enregistrés — mais elle est désormais atteignable, ce qui était
+la condition de tout élagage (cf. #420f).
 
 **Les ombres portées.** Rien n'en projette aujourd'hui, et les activer est une question de
 performance à part entière, à traiter avec des mesures.

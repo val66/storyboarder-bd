@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.112**
+**Version 1.5.113**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -35,6 +35,20 @@
   à l'éclairage d'origine
 - ↺ **Réinitialiser** ramène la Case au mode Jour et à ses valeurs de départ
 - 🎬 **Une Scène transmet sa lumière** à la Case qui la charge, puis les deux vies sont indépendantes
+- 💡 **Sources de lumière posées** : clic droit → Ajouter → Lumière pose une sphère lumineuse qui
+  éclaire la Case, en plus du soleil
+- 🖱️ **Déplacée comme un Élément** : la souris pour la hauteur et la largeur, la molette pour la
+  profondeur
+- 🎈 **Elle flotte** à la hauteur voulue, libérée de l'aimantation au sol, mais ne passe jamais
+  dessous
+- 📋 **Son propre bloc** en tête de la liste des Éléments, comme les Tracés ont le leur
+- 🎛️ **Sa fiche de réglage** au double-clic : couleur, intensité et portée dans la section
+  « Luminosité », sous l'aperçu 3D
+- ♾️ **Une portée de 0 vaut « sans limite »** — au-delà d'une portée finie, la lumière ne porte
+  plus du tout
+- 🫧 **Le halo suit l'intensité** : d'un coup d'œil sur une Planche, on voit quelle source est forte
+- 🔌 **Deux cases à ne pas confondre** : « Invisible dans la scène 3D » éteint la source, tandis
+  qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer
 
 ### Images de Case
 - 🖼️ **Insérer une image** dans une Case (PNG, JPG, WebP), recadrée et centrée pour la remplir
