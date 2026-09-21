@@ -912,3 +912,142 @@ describe('#414k : l\'encre des cardinaux, et le Nord en rouge', () => {
     assert.match(SIDEBAR, /N: tr\('N', 'N'\)/, 'la lettre du Nord a disparu : le rouge deviendrait le seul indice');
   });
 });
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES OMBRES PORTÉES, CHAMP PERSISTÉ PAR CASE (#422b)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Tenu : qu'aucune Case déjà dessinée ne gagne d'ombre, que le réglage traverse la lecture,
+ * l'écriture, la copie depuis une Scène et l'effacement, et qu'il ENTRE dans le résolu — donc dans
+ * la signature de Case.
+ *
+ * ⚠️ PAS TENU : que l'ombre soit belle, ni qu'elle apparaisse vraiment à l'écran. Ce module décide,
+ * scene3d.js exécute (#422c), et l'œil tranche (#422z).
+ */
+describe('⚠️ AUCUNE CASE DÉJÀ DESSINÉE NE GAGNE D’OMBRE (#422b)', () => {
+  test('⚠️ SANS CHAMP, LES OMBRES SONT ÉTEINTES — la promesse tenue depuis #414', () => {
+    // ⚠️ C'EST LA GARANTIE CENTRALE DE CE CHANTIER, et elle a été TRANCHÉE PAR L'UTILISATEUR contre
+    // l'option « allumées partout », qui aurait été plus juste visuellement. Une scène 3D sans ombre
+    // flotte — mais toutes les Planches déjà finies auraient changé d'aspect sans qu'on l'ait
+    // demandé, et c'est exactement ce que le mode Jour de #414 et l'ancrage du halo de #421f
+    // refusent depuis le début.
+    for (const vide of [undefined, null, {}, { mode: 'nuit' }, { mode: 'perso', intensite: 0.4 }]) {
+      assert.equal(resoudreEclairage3D(vide).ombresPortees, false,
+        `« ${JSON.stringify(vide)} » projette une ombre sans que rien ne l’ait demandé`);
+    }
+    assert.equal(LUMIERE_DEFAUT.ombresPortees, false);
+    assert.equal(lumiereDeCase3D({}).ombresPortees, false);
+    assert.equal(lumiereDeCase3D({ lumiere: { mode: 'nuit' } }).ombresPortees, false);
+  });
+
+  test('⚠️ ET LE RÉGLAGE APPARTIENT À LA CASE, PAS AU MODE', () => {
+    // ⚠️ LE PIÈGE QUE CE TEST GARDE FERMÉ. `resoudreEclairage3D` lit ses valeurs sur `src`, qui vaut
+    // le PRESET en mode Jour ou Nuit — et un preset ne porte pas d'ombres. Lire le champ par ce
+    // chemin aurait rendu la case à cocher inopérante dès qu'on quitte Personnalisé : elle
+    // marcherait, puis cesserait de marcher en changeant de mode, sans qu'aucune erreur ne soit
+    // levée. Le genre de défaut qu'on attribue à tout sauf à sa cause.
+    for (const mode of ['jour', 'nuit', 'perso']) {
+      assert.equal(resoudreEclairage3D({ mode, ombresPortees: true }).ombresPortees, true,
+        `en mode « ${mode} », la case à cocher ne commande plus rien`);
+    }
+  });
+
+  test('⚠️ IL ENTRE DANS LE RÉSOLU, donc dans la signature de Case', () => {
+    // ⚠️ SANS CELA LE RÉGLAGE PARAÎTRAIT SANS EFFET. La signature sérialise le RÉSOLU, exprès :
+    // deux réglages qui produisent le même éclairage gardent la même image. Allumer les ombres
+    // CHANGE l'image ; un champ resté hors du résolu laisserait la Case afficher sa vignette
+    // d'avant. La campagne #411 a déjà payé cet oubli d'un relevé entier.
+    const sans = JSON.stringify(resoudreEclairage3D({ mode: 'jour' }));
+    const avec = JSON.stringify(resoudreEclairage3D({ mode: 'jour', ombresPortees: true }));
+    assert.notEqual(sans, avec,
+      'allumer les ombres ne change pas la signature : la Case gardera son image d’avant');
+  });
+
+  test('un booléen se lit par sa présence, et rien ne lève', () => {
+    // Un fichier édité à la main peut porter n'importe quoi. Le défaut ne doit pas être une erreur,
+    // et `undefined` seul vaut « non réglé ».
+    assert.equal(lumiereDeCase3D({ lumiere: { ombresPortees: undefined } }).ombresPortees, false);
+    for (const vrai of [true, 1, 'true', 'false', {}]) {
+      assert.equal(lumiereDeCase3D({ lumiere: { ombresPortees: vrai } }).ombresPortees, true,
+        `« ${String(vrai)} » devrait allumer les ombres`);
+    }
+    for (const faux of [false, 0, '', null]) {
+      assert.equal(lumiereDeCase3D({ lumiere: { ombresPortees: faux } }).ombresPortees, false,
+        `« ${String(faux)} » devrait les laisser éteintes`);
+    }
+  });
+});
+
+describe('⚠️ LE RÉGLAGE TRAVERSE LES QUATRE CHEMINS DE L’ÉCLAIRAGE (#422b)', () => {
+  test('⚠️ ÉCRIRE : `definirLumiereDeCase3D` le voit changer', () => {
+    // ⚠️ IL NE SUFFIT PAS QU'IL S'ÉCRIVE, IL FAUT QUE LE CHANGEMENT SOIT DÉTECTÉ. Cette fonction
+    // rend `true` quand quelque chose a bougé, et c'est ce qui décide de redessiner ET de marquer
+    // le Projet modifié. Un champ absent de sa comparaison s'écrirait sans que rien ne se redessine,
+    // et serait perdu à la fermeture sans avertissement.
+    const panel = {};
+    assert.equal(definirLumiereDeCase3D(panel, { ombresPortees: true }), true,
+      'allumer les ombres n’est pas vu comme un changement');
+    assert.equal(panel.lumiere.ombresPortees, true);
+    assert.equal(definirLumiereDeCase3D(panel, { ombresPortees: true }), false,
+      'réécrire la même valeur salit le Projet pour rien');
+    assert.equal(definirLumiereDeCase3D(panel, { ombresPortees: false }), true);
+  });
+
+  test('⚠️ COPIER : une Scène transmet ses ombres à la Case qui la charge', () => {
+    // L'éclairage d'une Scène passe dans la Case, et les ombres en font partie : c'est le bénéfice
+    // d'avoir logé le champ DANS `lumiere` plutôt qu'à côté. Un champ voisin aurait demandé une
+    // seconde copie, qu'on aurait oubliée — c'est la troisième famille de défauts du dépôt.
+    const scene = { lumiere: { mode: 'nuit', ombresPortees: true } };
+    const copie = copierLumiere3D(scene);
+    assert.equal(copie.ombresPortees, true, 'les ombres ne suivent pas la Scène');
+    // Et par VALEUR : modifier la copie ne doit pas toucher la Scène.
+    copie.ombresPortees = false;
+    assert.equal(lumiereDeCase3D(scene).ombresPortees, true, 'la copie partage l’objet de la Scène');
+  });
+
+  test('⚠️ EFFACER : « Réinitialiser » éteint les ombres avec le reste', () => {
+    // `effacerLumiereDeCase3D` supprime le champ entier plutôt que d'y écrire des défauts : les
+    // ombres s'éteignent donc du même geste, et le fichier de Projet ne garde rien.
+    const panel = { lumiere: { mode: 'perso', ombresPortees: true } };
+    assert.equal(effacerLumiereDeCase3D(panel), true);
+    assert.equal(panel.lumiere, undefined, 'le champ devrait avoir disparu, pas être rempli');
+    assert.equal(lumiereDeCase3D(panel).ombresPortees, false);
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#422b, le champ persisté des ombres) : quatre fautes rejouées.
+ *
+ *   M98  les ombres sont allumées par défaut                               ROUGE (×4)
+ *   M99  le champ se lit sur le MODE (`src`) au lieu de la Case            ROUGE (×2)
+ *   M100 le champ sort du résolu, la signature devient aveugle             ROUGE (×3)
+ *   M101 la lecture ignore le champ : copie et effacement deviennent muets ROUGE (×8)
+ *
+ * ⚠️ M98 EST LA PROMESSE DU DÉPÔT, REJOUÉE. Elle allume les ombres partout — ce qui serait plus
+ * juste visuellement, une scène 3D sans ombre flotte — et change du même coup l'aspect de TOUTES les
+ * Planches déjà finies. L'utilisateur a tranché contre, et pour la raison qui tient ce dépôt depuis
+ * #414 : « pas de réglage » vaut l'existant.
+ *
+ * ⚠️ M99 EST LA PLUS SOURNOISE DES QUATRE. Lire le champ sur `src` marche parfaitement… en mode
+ * Personnalisé. `src` vaut le PRESET en Jour et en Nuit, et un preset ne porte pas d'ombres : la
+ * case à cocher commanderait, puis cesserait de commander en changeant de mode, sans qu'aucune
+ * erreur ne soit levée. Un réglage qui marche une fois sur deux se met sur le compte de tout sauf de
+ * sa cause.
+ *
+ * ⚠️ M100 NE CASSE RIEN D'APPARENT, ET C'EST TOUT LE PROBLÈME. Le champ s'écrit, se lit, se copie —
+ * et la Case garde la vignette qu'elle avait avant, parce que sa signature n'a pas bougé. Le réglage
+ * paraît sans effet. La campagne #411 a payé cet oubli d'un relevé entier ; il est ici rejoué en une
+ * ligne.
+ *
+ * ⚠️ M101 FAIT TOMBER HUIT TESTS, ET C'EST LE BÉNÉFICE D'AVOIR LOGÉ LE CHAMP DANS `lumiere`. Lecture,
+ * écriture, copie depuis une Scène et effacement passent tous par le même endroit : un seul retrait
+ * les casse tous les quatre d'un coup, au lieu de laisser trois chemins marcher et un quatrième
+ * mentir.
+ *
+ * ⚠️ ET UN TEST VOISIN A DÛ ÊTRE CORRIGÉ, pour une faute de forme instructive. `load-scene.test.mjs`
+ * comparait la lecture au littéral `NUIT` — un enregistrement d'éclairage écrit à la main, qui a
+ * cessé d'être complet le jour où un champ s'est ajouté. Il attend désormais
+ * `{ ...LUMIERE_DEFAUT, ...NUIT }` : ce qui est vrai, et le restera, c'est que la Case reçoit les
+ * réglages de la Scène, DÉFAUTS COMPRIS. Troisième fois que l'énumération tenue à la main mord.
+ */

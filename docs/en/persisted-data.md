@@ -47,6 +47,18 @@ the centimetre.
 
 **A Panel's camera**: `camWx`, `camWy`, `camWz`, `camDist`, `camRotX`, `camRotY`.
 
+**A Panel's lighting** (`lumiere`): `mode`, `azimut`, `elevation`, `couleur`, `intensite`,
+`ombresPortees`.
+
+⚠️ `ombresPortees` (#422b) lives INSIDE `lumiere` rather than beside it, and that is what makes a
+Scene hand its shadows to the Panel that loads it, and "Reset" turn them off, with no second copy to
+write — and to forget. Its default is `false`, so a Panel drawn before #422 keeps its look with no
+shadow at all: the same promise as #414's Day mode.
+
+⚠️ An `active` field may linger in a file written during the few versions the checkbox existed. It
+is READ BY NOTHING and decides nothing (cf. `lighting-3d.js`): the rule forbids renaming a persisted
+name, not ceasing to read one that no longer decides anything.
+
 Some of these names are French, others English, a few are clumsy (`batimentNames` survived the
 Bâtiment → Building rename). **That does not matter.** A persisted field name is not naming, it is
 a format identifier.

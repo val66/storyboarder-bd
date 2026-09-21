@@ -252,6 +252,16 @@ export function resoudreEclairage3D(lumiere){
       couleur,
       intensite: AMBIANTE_ACTUELLE * Math.pow(intensite, EXPOSANT_AMBIANTE),
     },
+    // ⚠️ LES OMBRES ENTRENT DANS LE RÉSOLU, ET PAS À CÔTÉ (#422b). La signature de Case sérialise
+    // CE résultat, et elle le fait exprès : deux réglages qui produisent le même éclairage doivent
+    // garder la même image. Allumer les ombres CHANGE l'image ; un champ resté hors du résolu
+    // laisserait donc la Case afficher son ancienne vignette, et le réglage paraîtrait sans effet —
+    // c'est exactement l'oubli que la campagne #411 a payé d'un relevé entier.
+    //
+    // ⚠️ ET IL SE LIT SUR LE RÉGLAGE BRUT, PAS SUR `src`. `src` vaut le PRESET en mode Jour ou Nuit,
+    // et les presets ne portent pas d'ombres : passer par lui rendrait la case à cocher inopérante
+    // dès qu'on quitte Personnalisé. Le champ appartient à la Case, pas au mode.
+    ombresPortees: !!(lumiere && lumiere.ombresPortees),
   };
 }
 
@@ -298,6 +308,15 @@ function couleurValide(c){ return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.t
  */
 export const LUMIERE_DEFAUT = {
   mode: 'jour',
+  // ⚠️ ÉTEINTES, ET C'EST LA PROMESSE DU DÉPÔT (#422b). Aucune Case déjà dessinée ne porte ce champ :
+  // toutes doivent continuer de rendre exactement comme avant, sans la moindre ombre. C'est la même
+  // discipline que « Jour EST l'éclairage d'aujourd'hui » juste au-dessus, et que l'ancrage du halo
+  // en #421f — on part de l'existant, et on nomme l'écart.
+  //
+  // ⚠️ L'OPTION « ALLUMÉES SUR LES CASES NEUVES SEULEMENT » A ÉTÉ ÉCARTÉE PAR L'UTILISATEUR, et la
+  // raison mérite de rester ici : le défaut aurait alors dépendu de la DATE de création. Deux Cases
+  // identiques à l'écran n'auraient pas eu le même réglage, et rien n'aurait pu l'expliquer.
+  ombresPortees: false,
   azimut: SOLEIL_ACTUEL.azimut,
   elevation: SOLEIL_ACTUEL.elevation,
   couleur: PRESETS_LUMIERE.jour.couleur,
@@ -317,6 +336,9 @@ export function lumiereDeCase3D(panel){
     couleur: typeof l.couleur === 'string' && /^#[0-9A-Fa-f]{6}$/.test(l.couleur)
       ? l.couleur : LUMIERE_DEFAUT.couleur,
     intensite: Number.isFinite(Number(l.intensite)) ? Number(l.intensite) : LUMIERE_DEFAUT.intensite,
+    // Un booléen se lit par sa présence : `undefined` vaut le défaut, tout le reste se coerce. Un
+    // fichier édité à la main qui porterait `"true"` doit allumer les ombres, pas lever.
+    ombresPortees: l.ombresPortees === undefined ? LUMIERE_DEFAUT.ombresPortees : !!l.ombresPortees,
   };
 }
 

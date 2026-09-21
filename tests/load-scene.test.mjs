@@ -487,10 +487,21 @@ describe('Chargement d\'une Scène — l\'éclairage est copié, puis les deux v
     return sc;
   }
   const NUIT = { mode: 'nuit', azimut: 115, elevation: 24, couleur: '#8FA6E8', intensite: 0.327 };
+  /**
+   * ⚠️ CE QU'ON ATTEND SE DÉRIVE DU DÉFAUT, IL NE SE RECOPIE PAS (#422b). La première version
+   * comparait la lecture au littéral `NUIT` — et ce littéral a cessé d'être un enregistrement
+   * complet le jour où l'éclairage a gagné un champ de plus, `ombresPortees`. Le test rougissait
+   * alors que le code était juste.
+   *
+   * Ce qui est vrai, et le restera : la Case reçoit les réglages de la Scène, DÉFAUTS COMPRIS pour
+   * ce que la Scène ne dit pas. C'est encore l'énumération tenue à la main, en plus discret —
+   * troisième fois qu'elle mord dans ce dépôt.
+   */
+  const attendu = (source) => ({ ...LUMIERE_DEFAUT, ...source });
 
   test('la Case reçoit l\'éclairage de la Scène', async () => {
     await loadSceneIntoPanel(scèneÉclairée(NUIT), cible);
-    assert.deepEqual(lumiereDeCase3D(cible), NUIT);
+    assert.deepEqual(lumiereDeCase3D(cible), attendu(NUIT));
   });
 
   test('RÉGRESSION : la copie est PAR VALEUR, pas une référence partagée', async () => {
@@ -533,7 +544,7 @@ describe('Chargement d\'une Scène — l\'éclairage est copié, puis les deux v
     definirLumiereDeCase3D(cible,
       { mode: 'perso', azimut: 12, elevation: 7, couleur: '#00FF00', intensite: 0.3 });
     await loadSceneIntoPanel(scèneÉclairée(NUIT), cible);
-    assert.deepEqual(lumiereDeCase3D(cible), NUIT);
+    assert.deepEqual(lumiereDeCase3D(cible), attendu(NUIT));
   });
 
   test('garde-fou : le montage porte VRAIMENT une lumière différente du défaut', async () => {
