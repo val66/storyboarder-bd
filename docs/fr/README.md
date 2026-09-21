@@ -43,7 +43,9 @@ régression difficile à retrouver.
 | [panel-images.md](panel-images.md) | Une image dans une Case à la place d'une scène 3D : décisions arrêtées, ce que le code fournit déjà, ce qui reste à mesurer (tâches #403a à #403d). |
 | [colour-accessibility.md](colour-accessibility.md) | La couleur qui dépeint contre celle qui signale, collisions mesurées par déficience, pourquoi un thème n'est pas le remède principal (tâches #409a à #409d). |
 | [lighting.md](lighting.md) | Éclairage d'une Case et d'une Scène : ce que « désactivé » doit vouloir dire, le modèle de données, pourquoi soleil et ambiance bougent ensemble, le hors-périmètre (tâches #414a à #414g). |
-| [positioned-lights.md](positioned-lights.md) | Les sources de lumière posées dans une Scène : pourquoi une lumière est un `objet3d` et non un type neuf (70 sites mesurés), les champs persistés, la fuite de la scène partagée, les trois exclusions voulues (tâche #420). |
+| [positioned-lights.md](positioned-lights.md) | Les sources de lumière posées dans une Scène : pourquoi une lumière est un `objet3d` et non un type neuf (70 sites mesurés), les champs persistés, la fuite de la scène partagée, les quatre exclusions voulues (tâche #420). |
+| [cast-shadows.md](cast-shadows.md) | Les ombres portées : ce que coûtent le soleil (1,0 ms) et huit sources qui projettent (3,9 ms), les 2 004 ms de compilation qui ont écarté la seconde, et pourquoi une ombre étalée sur le Sol de 12 000 unités change 0,00 % des pixels (tâche #422). |
+| [bubble-styles.md](bubble-styles.md) | Le vocabulaire graphique des Bulles : les six axes dont une bulle est faite, pourquoi une même forme ne porte pas le même sens selon l'œuvre (la queue en éclair, mesurée sur quatre), pourquoi le nuage de pensée a disparu des douze œuvres relevées, et le statut du corpus en trois niveaux (tâche #424). |
 | [ui-scale-coordinates.md](ui-scale-coordinates.md) | Pixels d'écran contre pixels zoomés : pourquoi `zoom` coupe l'application en deux repères, les 137 px mesurés, pourquoi un recadrage expulsait les menus de l'écran, et la règle qui en découle (tâche #417). |
 
 ---
