@@ -159,6 +159,19 @@ d'être gardée : le défaut aurait alors dépendu de la DATE de création. Deux
 l'écran n'auraient pas eu le même réglage, et rien dans l'interface ne l'aurait expliqué. Le dépôt a
 déjà refusé ce genre d'état à deux vitesses.
 
+## Clôture (#422z)
+
+Le manuel a gagné une section « Ombres portées » à lui, et le README un bloc. **C'est le plafond de
+2 000 caractères par section du manuel qui l'a décidé** : les paragraphes sur les ombres, ajoutés à
+la section « Lumière », l'ont portée de 1 863 à 3 347 caractères et la suite a rougi. La tentation
+était de lever le plafond ; la bonne réponse était d'admettre que cette section couvrait déjà trois
+sujets — le mode et le dôme, les sources posées, les ombres — et que le troisième méritait son
+propre bouton. C'est exactement ce qu'un tel garde-fou existe pour provoquer.
+
+**Ce qui n'a PAS été fait, et pourquoi** : la marge de 1,5 que cette tâche devait juger à l'écran a
+disparu en #422h, la sphère du tronc de vision la rendant inutile. Aucune vérification visuelle
+n'était donc plus due de ce côté.
+
 ## Ce qui reste à trancher en construisant
 
 **Le cadrage exact de la boîte d'ombre.** On sait qu'elle doit suivre la Case et non le Sol ; sa

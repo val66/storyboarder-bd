@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.126**
+**Version 1.5.127**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -46,6 +46,18 @@
 - 🫧 **The halo follows the intensity**: one glance at a page tells you which source is strong
 - 🔌 **Two checkboxes not to be confused**: "Invisible in the 3D scene" turns the source off,
   whereas "Show the sphere" only hides the marker and leaves the light shining
+
+### Cast shadows
+- 🌑 **Cast shadows** per panel: Elements cast onto the ground and onto each other
+- 🔒 **Off by default** — pages you have already drawn keep their look to the pixel
+- 🎚️ **Two hierarchical switches**: the panel decides that there *are* shadows, each light decides
+  whether it takes part. The sun always does
+- 💡 **A placed source casts only if asked**, source by source, via "Casts a shadow" in its dialog —
+  unticked by default, because a point light's shadow is rendered six times per frame
+- 🧭 **Shadows carry four times as far** as what the panel is aimed at: a back wall stays covered
+- 🧊 **They hold still while you zoom**: the shadow grid snaps in steps instead of sliding, so edges
+  stop crawling when the camera moves
+- 🛣️ **Paths, roads and terrain receive but never cast**: they are flat drawings laid on the ground
 
 ### Panel images
 - 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it

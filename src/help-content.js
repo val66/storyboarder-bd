@@ -122,6 +122,15 @@ export const HELP_MANUAL_EN = [
     'Unlike other Elements, a source is not snapped to the ground: it floats at whatever height you want, without going below it. It sits at the top of the Elements list, in a block of its own.',
     'Double-click a source to open its dialog, where the "Brightness" section sets its colour, intensity and range. A range of 0 means "unlimited"; beyond a finite range, the light no longer carries at all. In the 3D preview, "Invisible in the 3D scene" turns the source off, whereas "Show the sphere" only hides the marker and leaves the light shining.',
   ]},
+  { id: 'ombres', title: 'Cast shadows', paragraphs: [
+    'The "Cast shadows" box, in the Light section of the right-hand menu, makes a Panel\u2019s Elements cast shadows on the ground and on each other.',
+    'It is off by default: every page you have already drawn keeps its look to the pixel. Turning shadows on is an explicit act, panel by panel.',
+    'Two switches, and they are hierarchical: the Panel decides that there ARE shadows, each light decides whether it takes part. The sun always takes part.',
+    'A placed source takes part only if "Casts a shadow" is ticked in its own dialog. Ticked on a Panel whose shadows are off, that box does nothing \u2014 a hint below it says so.',
+    'That box starts unticked because a source\u2019s shadow is costly: it is rendered six times per frame, once per direction. Ticking a fourth one may freeze the application for a second, the first time. The sun\u2019s shadow is nearly free.',
+    'Shadows carry to four times the distance of what the Panel is aimed at, which covers a back wall or a street. Pulling back coarsens them in steps, so they stay still while you zoom rather than crawling.',
+    'Paths, roads and terrain zones receive shadows but never cast any: they are flat drawings laid on the ground.',
+  ]},
   { id: 'objets', title: 'Objects & scenery', paragraphs: [
     'Right-click a panel → "Add" groups all the categories: Vehicles, Furniture, Wall openings, Walls, Plants or Buildings.',
     'Double-click an object to adjust its rotations and size.',
@@ -283,6 +292,15 @@ export const HELP_MANUAL_FR = [
     "Clic droit sur une Case → « Ajouter » → « Lumière » pose une source dans la Scène. Une sphère lumineuse apparaît et éclaire la Case, en plus du soleil. On la déplace comme un Élément : la souris pour la hauteur et la largeur, la molette pour la profondeur.",
     "Contrairement aux autres Éléments, une source n'est pas aimantée au sol : elle flotte à la hauteur voulue, sans passer dessous. Elle figure en tête de la liste des Éléments, dans un bloc à elle.",
     "Double-cliquer sur une source ouvre sa fiche, où la section « Luminosité » règle sa couleur, son intensité et sa portée. Une portée de 0 vaut « sans limite » ; au-delà d'une portée finie, la lumière ne porte plus du tout. Dans l'Aperçu 3D, « Invisible dans la scène 3D » éteint la source, tandis qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer.",
+  ]},
+  { id: 'ombres', title: 'Ombres portées', paragraphs: [
+    "La case « Ombres portées », dans la section Lumière du menu de droite, fait projeter des ombres aux Éléments d'une Case, sur le sol et les uns sur les autres.",
+    "Elle est éteinte par défaut : toutes les Planches déjà dessinées gardent leur aspect au pixel près. Allumer les ombres est un geste explicite, Case par Case.",
+    "Deux interrupteurs, et ils sont hiérarchiques : la Case décide qu'il Y A des ombres, chaque lumière décide si ELLE y participe. Le soleil y participe toujours.",
+    "Une source posée n'y participe que si « Projette une ombre » est cochée dans sa propre fiche. Cochée sur une Case dont les ombres sont éteintes, elle ne fait rien — un indice sous elle le dit.",
+    "Cette case part décochée parce que l'ombre d'une source coûte cher : elle est rendue six fois par image, une par direction. En cocher une quatrième peut figer l'application une seconde, la première fois. L'ombre du soleil est quasi gratuite.",
+    "Les ombres portent jusqu'à quatre fois la distance de ce que la Case regarde, ce qui couvre un mur de fond ou une rue. Reculer les rend plus grossières par paliers, de sorte qu'elles restent immobiles pendant qu'on zoome au lieu de ramper.",
+    "Les Chemins, Routes et Zones de terrain reçoivent les ombres mais n'en projettent jamais : ce sont des dessins plats posés sur le sol.",
   ]},
   { id: 'objets', title: 'Objets & décor', paragraphs: [
     'Clic droit sur une case → « Ajouter » regroupe toutes les catégories : Véhicules, Mobiliers, Parois, Murs, Plantes ou Bâtiments.',

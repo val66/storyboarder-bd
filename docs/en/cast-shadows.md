@@ -155,6 +155,19 @@ default would then have depended on the DATE of creation. Two Panels identical o
 have had the same setting, and nothing in the interface would have explained it. The repository has
 already refused that kind of two-speed state.
 
+## Closing (#422z)
+
+The manual gained a "Cast shadows" section of its own, and the README a block. **The manual's
+2,000-character-per-section cap is what decided it**: the shadow paragraphs, added to the "Light"
+section, took it from 1,863 to 3,347 characters and the suite went red. The temptation was to raise
+the cap; the right answer was to admit that section already covered three subjects — the mode and
+the dome, placed sources, shadows — and that the third deserved a button of its own. That is exactly
+what such a guard exists to provoke.
+
+**What was NOT done, and why**: the 1.5 margin this task was to judge on screen disappeared in
+#422h, the view-frustum sphere having made it unnecessary. No visual check was owed on that side any
+more.
+
 ## What remains to be settled while building
 
 **The exact framing of the shadow box.** We know it must follow the Panel and not the Ground; its

@@ -334,6 +334,31 @@ describe('Manuel d\'utilisation — le HTML et les tables ne peuvent plus diverg
   // l'écart au-dessus d'un libellé est la marge BASSE du champ qui le précède, et tous les champs
   // pleine largeur doivent s'accorder sur la même.
 
+  test('⚠️ LES OMBRES ONT LEUR PROPRE SECTION, et c’est le plafond qui l’a voulu (#422z)', () => {
+    // ⚠️ LE GARDE-FOU A FAIT SON TRAVAIL. Les paragraphes sur les ombres ont d'abord été ajoutés à
+    // la section « Lumière », qui est passée de 1863 à 3347 caractères — au-delà du plafond de
+    // 2000, et la suite a rougi. La tentation était de lever le plafond ; la bonne réponse était
+    // d'admettre que la section couvrait déjà trois sujets (le mode et le dôme, les sources posées,
+    // et maintenant les ombres) et que le troisième méritait son propre bouton.
+    //
+    // C'est exactement ce que ce plafond existe pour provoquer : il ne dit pas qu'un paragraphe est
+    // mauvais, il signale qu'une section a cessé d'être lisible d'un coup d'œil.
+    const fr = HELP_MANUAL_FR.find(g => g.id === 'ombres');
+    const en = HELP_MANUAL_EN.find(g => g.id === 'ombres');
+    assert.ok(fr && en, 'la section « Ombres portées » du manuel a disparu');
+    assert.ok(clesHtml.includes('ombres'), 'son bouton a disparu d’index.html');
+    // ⚠️ ET ELLE DIT LES DEUX INTERRUPTEURS, qui sont ce qu'un lecteur ne peut pas deviner : cocher
+    // « Projette une ombre » sur une Case sans ombres ne fait rien, et sans cette phrase le manuel
+    // laisserait le lecteur conclure à une panne — la raison même de l'indice affiché sous la case.
+    [fr, en].forEach(g => {
+      const texte = g.paragraphs.join(' ');
+      assert.match(texte, /Projette une ombre|Casts a shadow/,
+        `« ${g.title} » ne dit pas comment une source posée participe`);
+      assert.match(texte, /défaut|default/,
+        `« ${g.title} » ne dit pas que les ombres sont éteintes par défaut`);
+    });
+  });
+
   test('le manuel reste un MANUEL : paragraphes et sections bornés', () => {
     // « Cela doit expliquer les actions possibles, pas la logique interne », la section Éditeur
     // avait dérivé vers 4707 caractères d'explications de fonctionnement.
