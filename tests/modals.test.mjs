@@ -1105,28 +1105,55 @@ describe('⚠️ L’APERÇU SUIT LE TYPE RÉEL, PAS UN <select> MASQUÉ (#421e)
     assert.ok(i > 0, `« ${nom} » est introuvable dans modals.js`);
     const suivante = SRC.indexOf('\nexport ', i + 10);
     const corps = SRC.slice(i, suivante > 0 ? suivante : undefined);
-    // Le témoin : une découpe dégénérée rendrait muettes toutes les assertions qui suivent.
-    assert.ok(corps.length > 200, `corps de « ${nom} » suspect : ${corps.length} caractères`);
+    // ⚠️ LE TÉMOIN EST STRUCTUREL, PAS UN SEUIL DE LONGUEUR. La première version exigeait plus de
+    // 200 caractères — calibré sur la fonction qui l'avait motivée — et a déclaré « suspecte » une
+    // fonction courte parfaitement bien découpée. Un témoin réglé sur un cas particulier finit par
+    // refuser du code juste, ce qui est la façon la plus sûre de se faire désactiver.
+    //
+    // Ce qu'il faut vraiment vérifier : que la tranche COMMENCE à la déclaration demandée, qu'elle
+    // contient un corps, et qu'elle ne soit pas le fichier entier.
+    assert.ok(corps.startsWith(`export function ${nom}`),
+      `la découpe de « ${nom} » ne commence pas à sa déclaration`);
+    assert.ok(corps.includes('}'), `la découpe de « ${nom} » ne contient aucun corps`);
+    assert.ok(corps.length < SRC.length, `la découpe de « ${nom} » a pris tout le fichier`);
     return corps;
   }
 
   test('⚠️ LE <select> NE FAIT AUTORITÉ QUE TANT QU’IL EST AFFICHÉ', () => {
-    const corps = corpsDe('refreshObjectPreview');
+    const corps = corpsDe('typeGouvernantLaFiche3D');
     assert.match(corps, /objectTypeSelect\.style\.display !== 'none'/,
-      'le type de l’aperçu se lit sans vérifier que le sélecteur gouverne encore');
-    assert.match(corps, /S\.modalTarget\.objType/,
-      'le repli ne lit plus le type réel de l’Élément');
+      'le type se lit sans vérifier que le sélecteur gouverne encore');
+    assert.match(corps, /o\.objType/, 'le repli ne lit plus le type réel de l’Élément');
   });
 
   test('⚠️ ET LE CRITÈRE EST LA VISIBILITÉ, pas une liste de types à tenir à jour', () => {
     // Une énumération — « si c'est un modèle OU une Lumière » — aurait à être complétée à chaque
     // type qui masque le sélecteur, et le prochain oubli redonnerait une voiture. Lire la
     // visibilité se maintient tout seul.
-    const corps = corpsDe('refreshObjectPreview');
-    const ligne = corps.match(/[^\n]*_typeGouvernePar[^\n]*=[^\n]*/);
-    assert.ok(ligne, 'la décision de type a disparu');
-    assert.ok(!/estUneLumiere3D/.test(ligne[0]),
-      `le type de l’aperçu énumère à nouveau les cas : « ${ligne[0].trim()} »`);
+    const corps = corpsDe('typeGouvernantLaFiche3D');
+    assert.ok(!/estUneLumiere3D|isImportedModel/.test(corps),
+      `la décision de type énumère à nouveau les cas : « ${corps.trim()} »`);
+  });
+
+  test('⚠️ ET LES DEUX LECTEURS PASSENT PAR ELLE — c’est tout l’objet de #421g', () => {
+    // ⚠️ LA RÈGLE A DÛ ÊTRE EXTRAITE PARCE QU'ELLE MANQUAIT AU SECOND LECTEUR. #421e l'avait écrite
+    // DANS l'aperçu ; l'ENREGISTREMENT, lui, gardait sa propre garde — « sauf un modèle importé » —
+    // et transformait donc une Lumière en voiture DANS LE FICHIER DE PROJET. Deux copies d'un même
+    // raisonnement ne s'accordent que le premier jour, et celles-ci ne se sont jamais accordées.
+    const EV = sourceSansCommentaires(
+      readFileSync(new URL('../src/events.js', import.meta.url), 'utf8'));
+    assert.match(EV, /S\.modalTarget\.objType = typeGouvernantLaFiche3D\(S\.modalTarget\)/,
+      'l’enregistrement ne passe plus par la règle commune : il peut réécrire un objType faux');
+    assert.ok(!/isImportedModel\(S\.modalTarget\)\) S\.modalTarget\.objType/.test(EV),
+      'l’ancienne garde nommée est revenue à l’enregistrement');
+    const SRC = sourceSansCommentaires(
+      readFileSync(new URL('../src/modals.js', import.meta.url), 'utf8'));
+    assert.match(SRC, /objType: typeGouvernantLaFiche3D\(S\.modalTarget\)/,
+      'l’aperçu ne passe plus par la règle commune');
+    // Le témoin : personne ne doit lire `objectTypeSelect.value` pour en TIRER un objType ailleurs.
+    const lectures = [...EV.matchAll(/[^\n]*objType\s*=\s*objectTypeSelect\.value[^\n]*/g)];
+    assert.equal(lectures.length, 0,
+      `un objType est encore tiré directement du sélecteur : ${lectures.map(m => m[0].trim()).join(' | ')}`);
   });
 
   test('⚠️ LA COULEUR MONTRÉE EST CELLE DU BROUILLON, pas celle de l’Élément enregistré', () => {

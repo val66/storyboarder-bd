@@ -280,6 +280,38 @@ export function remplirSectionLuminosite3D(obj){
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * QUEL TYPE LA FICHE COMMANDE-T-ELLE VRAIMENT ? (#421g)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ UN `<select>` MASQUÉ GARDE LA VALEUR DE SON PREMIER `<option>`, « voiture ». Lire
+ * `objectTypeSelect.value` sans se demander s'il gouverne encore a donc produit DEUX défauts
+ * distincts, à deux semaines d'intervalle sur le même chantier :
+ *
+ *   #421e — l'APERÇU d'une Lumière montrait une voiture ;
+ *   #421g — l'ENREGISTREMENT d'une Lumière la TRANSFORMAIT en voiture, dans le fichier de Projet.
+ *
+ * Le second est d'une autre gravité : il détruit une donnée persistée. Une source enregistrée
+ * devenait une voiture pour toujours, et ses champs `intensite`, `portee` et `sphereVisible`
+ * survivaient dans le fichier sans que plus rien ne les lise.
+ *
+ * ⚠️ ET LE DÉPÔT S'ÉTAIT DÉJÀ PROTÉGÉ DEUX FOIS, NOMMÉMENT, DE CE MÊME PIÈGE : une fois dans
+ * l'aperçu et une fois à l'enregistrement, toutes deux pour le modèle importé, toutes deux avec un
+ * commentaire qui décrit le mécanisme mot pour mot. Une protection écrite pour UN cas ne protège
+ * pas du suivant ; c'est le type suivant à masquer ce sélecteur qui l'a montré.
+ *
+ * La règle est donc posée UNE fois, ici, et lue partout : **le sélecteur ne fait autorité que tant
+ * qu'il est affiché.** Elle ne demande aucune liste à tenir à jour — le jour où un quatrième type
+ * masquera ce champ, il sera couvert sans qu'on y pense. C'est déjà le critère que l'enregistrement
+ * emploie pour la hauteur (« quand son champ est là »), et celui que l'i18n emploie pour savoir si
+ * la fiche montre une Lumière.
+ */
+export function typeGouvernantLaFiche3D(o){
+  if (objectTypeSelect && objectTypeSelect.style.display !== 'none') return objectTypeSelect.value;
+  return (o && o.objType) || 'voiture';
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * APPLIQUER LA DISPOSITION D'UNE LUMIÈRE AUX SECTIONS HÉRITÉES (#421c)
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
@@ -1386,19 +1418,8 @@ export function refreshObjectPreview(){
   // montrerait alors une voiture à la place du fichier importé. On lit le vrai objType de
   // l'Élément, et on transmet modelFile pour que buildImportedModelRig3D retrouve le bon modèle.
   const _estModele = isImportedModel(S.modalTarget);
-  // ⚠️ LE <select> DU TYPE NE FAIT AUTORITÉ QUE TANT QU'IL EST AFFICHÉ, et c'est la règle GÉNÉRALE
-  // dont le cas du modèle importé n'était qu'une instance (#421e). Un `<select>` masqué garde la
-  // valeur de son PREMIER <option> — « voiture » —, si bien que l'aperçu d'une Lumière montrait une
-  // voiture. Signalé à l'usage, et c'est le masquage de #421c qui a réveillé le défaut : la
-  // fonction se protégeait nommément du modèle importé, pas de ce qui viendrait ensuite.
-  //
-  // Lire la VISIBILITÉ plutôt que d'énumérer les types se maintient tout seul : le jour où un
-  // troisième type masquera ce sélecteur, l'aperçu suivra sans qu'on ait à y penser. C'est le même
-  // raisonnement que la section « Luminosité », dont la visibilité sert déjà de signal à l'i18n.
-  const _typeGouvernePar = (objectTypeSelect && objectTypeSelect.style.display !== 'none')
-    ? objectTypeSelect.value : (S.modalTarget.objType || 'voiture');
   drawObjectPreview(objectPreview3D, {
-    objType: _typeGouvernePar,
+    objType: typeGouvernantLaFiche3D(S.modalTarget),
     // La figure du BROUILLON : changer de Modèle doit se voir avant d'enregistrer. ⚠️ Aucun test ne
     // couvre cette ligne, l'aperçu passe par WebGL, injoignable sous Node (cf. docs/en/testing-method.md).
     modelFile: _estModele ? (S.modalDraftModelFile || S.modalTarget.modelFile) : undefined,

@@ -419,3 +419,39 @@ export function opaciteHaloLumiere3D(o){
  * l'intensité, ou plus rien ne la suivrait. Three.js indexe par nom, autant s'en servir.
  */
 export const NOM_HALO_LUMIERE = 'haloLumiere';
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * RÉPARER UNE LUMIÈRE CHANGÉE EN VOITURE (#421g)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ UNE VERSION LIVRÉE A DÉTRUIT DE LA DONNÉE, ET IL FAUT LA RENDRE. `objectModalSave` écrivait
+ * `objType = objectTypeSelect.value` en n'épargnant que le modèle importé ; le sélecteur étant
+ * masqué pour une source depuis #421c, enregistrer une Lumière écrivait « voiture » — la valeur du
+ * premier `<option>` — dans le fichier de Projet. La cause est corrigée en amont, mais les Projets
+ * déjà enregistrés portent des voitures qui étaient des Lumières.
+ *
+ * ⚠️ LE CRITÈRE NE PEUT PAS ÊTRE « C'EST UNE VOITURE », il doit être SÛR dans les deux sens. Une
+ * vraie voiture ne porte JAMAIS `intensite`, `portee` ni `sphereVisible` : ces trois champs
+ * n'existent que sur une source (cf. `champsLumierePosee3D`). Leur présence sur un `objType`
+ * « voiture » n'a donc qu'une explication, et aucune voiture légitime ne peut être prise pour une
+ * Lumière.
+ *
+ * ⚠️ ET ON NE RÉPARE QUE « voiture », PAS N'IMPORTE QUEL TYPE. Le défaut écrivait toujours la même
+ * valeur, celle du premier `<option>`. Accepter un autre type reviendrait à deviner : quelqu'un
+ * pourrait avoir de bonnes raisons d'avoir des champs surnuméraires sur un Élément, et transformer
+ * sa chaise en Lumière serait une seconde destruction, commise par la réparation elle-même.
+ *
+ * ⚠️ CE QUE LA RÉPARATION NE REND PAS : rien. Les trois réglages ont survécu à l'accident — le
+ * défaut n'écrasait que `objType` —, donc rendre le discriminant suffit à retrouver la source
+ * telle qu'elle était, couleur et intensité comprises.
+ */
+export function reparerLumiereChangeeEnVoiture3D(o){
+  if (!o || o.type !== 'objet3d' || o.objType !== 'voiture') return false;
+  const porteUnChampDeLumiere = o.intensite !== undefined
+    || o.portee !== undefined
+    || o.sphereVisible !== undefined;
+  if (!porteUnChampDeLumiere) return false;
+  o.objType = OBJ_TYPE_LUMIERE;
+  return true;
+}

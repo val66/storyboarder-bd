@@ -31,7 +31,7 @@ import {
   OBJ_TYPE_LUMIERE, LUMIERE_POSEE_DEFAUT, estUneLumiere3D, reglagesLumierePosee3D,
   champsLumierePosee3D, eclairagePosee3D, planLumieresPosees3D, MAJORATION_LUMIERE_POSEE,
   dispositionFicheLumiere3D, SECTIONS_FICHE_LUMIERE, CHAMPS_FICHE_LUMIERE, LIBELLE_TAILLE_LUMIERE,
-  opaciteHaloLumiere3D, HALO_OPACITE_REF, HALO_OPACITE_MAX,
+  opaciteHaloLumiere3D, HALO_OPACITE_REF, HALO_OPACITE_MAX, reparerLumiereChangeeEnVoiture3D,
 } from '../src/light-source-3d.js';
 import { buildLumiereRig3D, buildPropRig3D } from '../src/rig3d.js';
 import * as R from '../src/rig3d.js';
@@ -1311,4 +1311,120 @@ describe('⚠️ LE RAYON DU HALO NE BOUGE PAS, et c’est la normalisation qui 
  *
  * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : qu'on distingue vraiment une source à 60 % d'une à 90 %
  * en regardant une Planche. #421z regarde.
+ */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * RÉPARER UNE LUMIÈRE CHANGÉE EN VOITURE (#421g)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ UNE VERSION LIVRÉE A DÉTRUIT DE LA DONNÉE. `objectModalSave` écrivait
+ * `objType = objectTypeSelect.value` en n'épargnant que le modèle importé ; le sélecteur étant
+ * masqué pour une source depuis #421c, enregistrer une Lumière gravait « voiture » dans le fichier
+ * de Projet. La cause est corrigée en amont — mais les Projets déjà enregistrés portent des
+ * voitures qui étaient des Lumières, et une correction qui ne rend pas la donnée n'est qu'une
+ * moitié de correction.
+ *
+ * ⚠️ CE QUI SE TESTE DANS LES DEUX SENS, ET C'EST LE POINT : une réparation trop large est une
+ * SECONDE destruction, commise par le remède. Ces tests exigent autant qu'elle répare ce qu'il faut
+ * que qu'elle laisse tranquille tout le reste.
+ */
+describe('⚠️ LA RÉPARATION REND LA DONNÉE, ET NE TOUCHE À RIEN D’AUTRE (#421g)', () => {
+  const voitureAccidentee = (extra) => ({
+    id: 'x', type: 'objet3d', objType: 'voiture', color: '#FFE9C4', ...extra,
+  });
+
+  test('une voiture portant un champ de Lumière redevient une Lumière', () => {
+    // Les trois champs valent chacun preuve : le défaut n'écrasait QUE `objType`, donc n'importe
+    // lequel des trois a survécu à l'accident.
+    for (const champ of [{ intensite: 0.9 }, { portee: 4 }, { sphereVisible: false }]) {
+      const o = voitureAccidentee(champ);
+      assert.equal(reparerLumiereChangeeEnVoiture3D(o), true,
+        `une voiture portant ${JSON.stringify(champ)} n’est pas réparée`);
+      assert.equal(o.objType, OBJ_TYPE_LUMIERE);
+      assert.equal(estUneLumiere3D(o), true, 'réparée, elle doit être reconnue comme une source');
+    }
+  });
+
+  test('⚠️ ET SES RÉGLAGES SONT RETROUVÉS INTACTS : rien n’avait été perdu qu’objType', () => {
+    const o = voitureAccidentee({ intensite: 1.4, portee: 3.5, sphereVisible: false, color: '#FF0000' });
+    reparerLumiereChangeeEnVoiture3D(o);
+    const r = reglagesLumierePosee3D(o);
+    assert.equal(r.intensite, 1.4);
+    assert.equal(r.portee, 3.5);
+    assert.equal(r.sphereVisible, false);
+    assert.equal(r.couleur, '#FF0000');
+  });
+
+  test('⚠️ UNE VRAIE VOITURE N’EST JAMAIS PRISE POUR UNE LUMIÈRE', () => {
+    // Le critère doit être sûr dans les DEUX sens : ces trois champs n'existent que sur une source
+    // (cf. `champsLumierePosee3D`), aucune voiture légitime n’en porte.
+    const vraie = voitureAccidentee({});
+    assert.equal(reparerLumiereChangeeEnVoiture3D(vraie), false);
+    assert.equal(vraie.objType, 'voiture', 'une voiture sans champ de Lumière a été convertie');
+  });
+
+  test('⚠️ ET AUCUN AUTRE TYPE N’EST CONVERTI, même s’il porte ces champs', () => {
+    // Le défaut écrivait TOUJOURS « voiture », la valeur du premier <option>. Accepter un autre
+    // type reviendrait à deviner — et transformer la chaise de quelqu'un en Lumière serait une
+    // seconde destruction, commise cette fois par la réparation.
+    for (const objType of ['chaise', 'table', 'modele', 'mur']) {
+      const o = { id: 'x', type: 'objet3d', objType, intensite: 0.9, portee: 2 };
+      assert.equal(reparerLumiereChangeeEnVoiture3D(o), false, `« ${objType} » a été converti`);
+      assert.equal(o.objType, objType);
+    }
+    // Ni un Personnage, ni une Bulle, ni une Case : le discriminant tient ses DEUX moitiés.
+    for (const type of ['perso', 'bulle', 'panel']) {
+      const o = { id: 'x', type, objType: 'voiture', intensite: 0.9 };
+      assert.equal(reparerLumiereChangeeEnVoiture3D(o), false, `un « ${type} » a été converti`);
+    }
+  });
+
+  test('⚠️ UNE LUMIÈRE SAINE N’EST PAS « RÉPARÉE » : la fonction est idempotente', () => {
+    const o = { id: 'x', type: 'objet3d', objType: OBJ_TYPE_LUMIERE, intensite: 0.9 };
+    assert.equal(reparerLumiereChangeeEnVoiture3D(o), false,
+      'une source déjà saine est signalée comme réparée, le Projet se marquerait modifié pour rien');
+    assert.equal(reparerLumiereChangeeEnVoiture3D(o), false);
+  });
+
+  test('⚠️ ET ELLE EST BRANCHÉE AU CHARGEMENT, sinon elle ne répare rien du tout', () => {
+    // Une décision pure sans appelant ne corrige aucun Projet. Elle passe là où vivent les autres
+    // migrations de lecture, pour que la donnée soit saine dès l'ouverture plutôt qu'au premier
+    // rendu qui la trouverait bizarre.
+    const IO = sourceSansCommentaires(
+      readFileSync(new URL('../src/io.js', import.meta.url), 'utf8'));
+    assert.match(IO, /reparerLumiereChangeeEnVoiture3D\(o\)/,
+      'la réparation n’est appelée nulle part au chargement d’un Projet');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#421g, la Lumière changée en voiture) : cinq fautes rejouées.
+ *
+ *   M75 l'ancienne garde nommée revient à l'enregistrement — LE BUG LIVRÉ      ROUGE
+ *   M76 la règle commune cesse de tester la visibilité du sélecteur            ROUGE
+ *   M77 la réparation convertit TOUTE voiture                                  ROUGE
+ *   M78 la réparation convertit n'importe quel type                            ROUGE (×2)
+ *   M79 la réparation n'est plus branchée au chargement                        ROUGE
+ *
+ * ⚠️ M75 EST LE DÉFAUT TEL QU'IL A ÉTÉ LIVRÉ, remis à l'identique. Il mérite d'être gardé pour ce
+ * qu'il enseigne : le dépôt s'était DÉJÀ protégé deux fois de ce piège — dans l'aperçu et à
+ * l'enregistrement — et les deux fois NOMMÉMENT, pour le modèle importé, avec un commentaire qui
+ * décrivait le mécanisme mot pour mot. #421e a corrigé le premier des deux sites, en écrivant la
+ * bonne règle mais SUR PLACE. Le second a gardé sa garde nommée, et a détruit de la donnée
+ * persistée trois commits plus tard.
+ *
+ * La leçon n'est pas « il fallait y penser » : c'est qu'une règle écrite deux fois n'est pas une
+ * règle. Elle vit maintenant dans `typeGouvernantLaFiche3D`, et un test exige que les DEUX lecteurs
+ * y passent, plus un témoin qui refuse qu'un `objType` soit tiré ailleurs du sélecteur.
+ *
+ * ⚠️ M77 ET M78 SONT LE REMÈDE RETOURNÉ CONTRE LUI-MÊME. Une réparation trop large est une SECONDE
+ * destruction, commise par la correction : M77 change toutes les voitures du Projet en Lumières,
+ * M78 y ajoute les chaises, les Murs et les Personnages. C'est pour cela que le critère exige les
+ * DEUX moitiés — le type exact que le défaut écrivait, et un champ qu'aucune voiture ne porte.
+ *
+ * ⚠️ M79 EST LA MUTATION QUI NE CASSE RIEN D'APPARENT. La fonction reste juste, ses six tests
+ * restent verts, et plus aucun Projet n'est réparé. Une décision pure sans appelant ne corrige rien
+ * — c'est exactement ce que `code-mort.test.mjs` surveille un étage plus haut, et ici c'est le test
+ * de câblage qui le tient.
  */

@@ -143,7 +143,7 @@ import {
   updateLightIntensityDisplay3D,
   sliderDegToRotY, openPersonaModal, closeDescModal, refreshPersonaPreview,
   openObjectModal,
-  closeObjectModal, refreshObjectPreview,
+  closeObjectModal, refreshObjectPreview, typeGouvernantLaFiche3D,
   updateWallFaceFieldForSelectedWall, openRoomModal, openBuildingModal, openTracéModal, openTerrainModal,
   setModalsCallbacks, applyRoomScaleFixed, moveJunctionToWorld,
   recomputeBuildWallBox2D, storeRoomGeometry, ecrireChoixEgares,
@@ -6441,11 +6441,15 @@ objectModalSave.onclick = () => {
   if (S.modalTarget) {
     snapshot();
     S.modalTarget.name = objectNameInput.value;
-    // Un modèle importé n'a pas d'entrée dans objectTypeSelect (cf. modals.js, sélecteur masqué) :
-    // lui assigner objType = objectTypeSelect.value écraserait 'modele' par la valeur par défaut du
-    // <select> (« voiture »), perdant le lien avec modelFile et faisant tourner l'Élément en voiture
-    // dès le premier Enregistrer, y compris juste pour changer sa taille ou son nom.
-    if (!isImportedModel(S.modalTarget)) S.modalTarget.objType = objectTypeSelect.value;
+    // ⚠️ CETTE LIGNE A DÉTRUIT DES DONNÉES, ET SA GARDE ÉTAIT ÉCRITE POUR UN SEUL CAS (#421g). Un
+    // `<select>` masqué garde la valeur de son premier `<option>`, « voiture » : la version
+    // précédente n'excluait que le modèle importé, si bien qu'enregistrer une LUMIÈRE — dont #421c
+    // masque le sélecteur — la transformait en voiture DANS LE FICHIER DE PROJET. Signalé à l'usage.
+    //
+    // La question n'est pas « quel type faut-il épargner » mais « le sélecteur commande-t-il
+    // encore ». Elle est tranchée à un seul endroit, `typeGouvernantLaFiche3D`, partagé avec
+    // l'aperçu : deux copies du même raisonnement ne s'accordent que le premier jour.
+    S.modalTarget.objType = typeGouvernantLaFiche3D(S.modalTarget);
     // Ground Magnetism: only saves the checkbox for an eligible Element (cf. groundMagnetEligible
     // — excludes Walls/Wall Openings, for which the field is hidden and thus meaningless).
     if (groundMagnetEligible(S.modalTarget)) {

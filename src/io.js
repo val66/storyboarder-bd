@@ -20,6 +20,7 @@ import {
 } from './model-library.js';
 import { disposeAllRigs3D, findOwningPanel, ensureElementWorldPos3D, panelDepthToDistance3D } from './scene3d.js';
 import { motDeSuppressionProjet3D, suppressionProjetConfirmee3D, vaguesDePrechargement3D } from './utils.js';
+import { reparerLumiereChangeeEnVoiture3D } from './light-source-3d.js';
 import {
   getElementDepth, repairElementBase3D,
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D,
@@ -392,6 +393,10 @@ export function migrateElementWxFloor(){
       // Repaired eagerly here so the data is sound as soon as the project is read, the lazy
       // calls in getPersonaScalePercent/applyPersonaSizePercent remain as a safety net.
       if (!WALL_TYPES.includes(o.objType)) repairElementBase3D(o);
+      // #421g : une Lumière enregistrée par une version qui écrivait « voiture » dans son `objType`.
+      // Réparée ici, avec les autres migrations de chargement, pour que la donnée soit saine dès la
+      // lecture du Projet plutôt qu'au premier rendu qui la trouverait bizarre.
+      reparerLumiereChangeeEnVoiture3D(o);
     });
   });
 }
