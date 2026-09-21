@@ -814,6 +814,32 @@ describe('⚠️ L’AFFICHAGE DE LA SECTION VIENT DE LA TABLE, PAS D’UN SECON
       'la disposition ne consulte plus la table de #421a');
   });
 
+  test('⚠️ LA FICHE D’UNE LUMIÈRE S’OUVRE SUR SES TROIS SECTIONS UTILES (#421z)', () => {
+    // ⚠️ CE TEST VIENT D'UNE MUTATION ÉCHAPPÉE (M87), ET D'UN REVIREMENT. #421b repliait
+    // « Aperçu 3D » pour une source, avec une raison écrite : « l'aperçu ne montre qu'une bille ».
+    // Depuis #421f, le halo de cette bille suit l'intensité — l'aperçu montre le réglage qu'on est
+    // en train de faire, juste au-dessus du curseur qui le fait. Signalé à l'usage, et la raison de
+    // le replier avait disparu avec ce qu'elle décrivait.
+    //
+    // Sans ce test, rien ne distinguait le choix d'un oubli : la mutation qui repliait de nouveau
+    // l'aperçu laissait toute la suite verte. Un arbitrage rendu à l'usage doit être tenu, sinon il
+    // se défait au premier remaniement et personne ne saura qu'il avait été pris.
+    const appels = [...SRC.matchAll(/resetModalSections\([^;]*?\[([^\]]+)\]\)/g)]
+      .map(m => m[1].split(',').map(c => c.trim().replace(/^'|'$/g, '')));
+    assert.ok(appels.length >= 2, `${appels.length} appel(s) relevé(s), au moins 2 attendus`);
+    const pourLumiere = appels.find(l => l.includes('luminosite'));
+    assert.ok(pourLumiere, 'aucun appel n’ouvre la section « Luminosité » : la fiche s’ouvrirait repliée');
+    for (const attendue of ['principal', 'apercu', 'luminosite']) {
+      assert.ok(pourLumiere.includes(attendue),
+        `« ${attendue} » ne s’ouvre plus d’emblée sur une Lumière : ${pourLumiere.join(', ')}`);
+    }
+    // Et le témoin : l'autre appel, celui des Éléments ordinaires, n'ouvre PAS « Luminosité » —
+    // sans quoi le relevé confondrait les deux et ne vérifierait rien.
+    const pourLeReste = appels.find(l => !l.includes('luminosite'));
+    assert.ok(pourLeReste && !pourLeReste.includes('luminosite'),
+      'les deux appels se ressemblent : le relevé ne distingue plus la fiche d’une Lumière');
+  });
+
   test('⚠️ ET ELLE EST MASQUÉE DANS LE HTML : une Lumière la montre, personne d’autre', () => {
     // Le défaut symétrique : une section livrée visible afficherait « Luminosité » sur une chaise
     // jusqu'à ce que `remplirSectionLuminosite3D` passe — donc visible le temps d'une image, et

@@ -1417,10 +1417,15 @@ export function openObjectModal(obj, isNew){
   // disposition plus haut la ferait contredire par `remplirChampHauteur3D` ou `buildFigureFieldUI`,
   // en silence, selon l'ordre d'écriture de cette fonction.
   appliquerDispositionFicheLumiere3D(obj);
-  // ⚠️ LES SECTIONS OUVERTES D'EMBLÉE DIFFÈRENT POUR UNE LUMIÈRE, et pas par coquetterie : sur une
-  // source, « Aperçu 3D » ne montre qu'une bille, tandis que les trois réglages qui justifient
-  // l'existence de cette fiche vivent dans « Luminosité ». Ouvrir l'aperçu et replier la luminosité
-  // demanderait un clic pour atteindre la seule chose qu'on est venu changer.
+  // ⚠️ LES SECTIONS OUVERTES D'EMBLÉE DIFFÈRENT POUR UNE LUMIÈRE : « Luminosité » s'ajoute, parce
+  // que les trois réglages qui justifient l'existence de cette fiche y vivent, et qu'il serait
+  // absurde de demander un clic pour atteindre la seule chose qu'on est venu changer.
+  //
+  // ⚠️ MAIS « APERÇU 3D » RESTE OUVERTE, ET C'EST UN REVIREMENT ASSUMÉ (#421z). #421b la repliait,
+  // avec une raison écrite : « sur une source, l'aperçu ne montre qu'une bille ». C'était vrai
+  // alors. Depuis #421f, le halo de cette bille suit l'intensité : l'aperçu montre le réglage
+  // qu'on est en train de faire, juste au-dessus du curseur qui le fait. La raison de le replier a
+  // disparu avec ce qu'elle décrivait. Signalé à l'usage.
   //
   // ⚠️ DEUX APPELS PLUTÔT QU'UN TERNAIRE, ET C'EST UN TEST QUI L'A DEMANDÉ. `modals.test.mjs` relève
   // les clés passées à `resetModalSections` et vérifie qu'elles existent dans le HTML — une clé mal
@@ -1428,7 +1433,7 @@ export function openObjectModal(obj, isNew){
   // seconde liste à ce relevé. Le relevé a été renforcé dans la foulée, mais la forme lisible reste
   // celle-ci : deux appels, deux listes, rien à démêler.
   const boite = objectModal.querySelector('.modal-box');
-  if (estUneLumiere3D(obj)) resetModalSections(boite, ['principal', 'luminosite']);
+  if (estUneLumiere3D(obj)) resetModalSections(boite, ['principal', 'apercu', 'luminosite']);
   else resetModalSections(boite, ['principal', 'apercu']);
   objectModal.classList.remove('hidden');
   setTimeout(() => objectNameInput.focus(), 0);
