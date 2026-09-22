@@ -142,7 +142,17 @@ export const GRAIN_NEUTRE = 128;
 export const FORCE_GRAIN = 1;
 
 /**
- * Une teinte habillée d'une valeur de grain. Fonction PURE, et c'est elle qui définit le rendu.
+ * De combien une valeur de grain décale les trois canaux d'une teinte. Fonction PURE, et c'est
+ * elle qui définit le rendu d'une texture image.
+ *
+ * `rvb` est le triplet 0-255 de la teinte, tel que `rvbDeCouleur3D` le rend.
+ *
+ * ⚠️ NUMÉRIQUE ET NON EN CHAÎNES, PARCE QU'ELLE TOURNE 262 144 FOIS PAR TEINTE. Il a existé ici une
+ * `teinteHabilleeDuGrain3D` qui prenait et rendait du `#rrggbb` : plus agréable à lire, mais aucun
+ * appelant dans l'application, qui compose ses motifs pixel par pixel. Elle est partie plutôt que
+ * d'entrer dans la liste d'attente de `tests/code-mort.test.mjs` — deux portes pour une règle,
+ * dont une seule franchie, c'est une copie qui n'attend que de diverger. Les tests la recomposent
+ * localement à partir d'ici.
  *
  * ⚠️ ADDITIF ET NON MULTIPLICATIF, ET C'EST UNE CORRECTION MESURÉE. Le premier mélange multipliait
  * la teinte par `grain / 128`. Deux défauts, tous deux constatés : le grain s'écrasait — contraste
@@ -164,14 +174,19 @@ export const FORCE_GRAIN = 1;
  * assumé : sur une teinte très claire ou très sombre, le grain se COMPRIME au lieu de virer. Un
  * papier presque blanc ne montre plus que ses creux — ce qui, pour du relief, se défend.
  */
-export function teinteHabilleeDuGrain3D(couleur, valeurGrain){
-  const rvb = versRVB(couleur);
-  if (!rvb) return couleur;
+export function ecartDuGrain3D(rvb, valeurGrain){
   const brut = (Number(valeurGrain) - GRAIN_NEUTRE) * FORCE_GRAIN;
-  if (!Number.isFinite(brut)) return couleur;
-  const marge = Math.min(...rvb.map(c => brut >= 0 ? 255 - c : c));
-  const ecart = Math.sign(brut) * Math.min(Math.abs(brut), marge);
-  return versHex(rvb.map(c => c + ecart));
+  if (!Number.isFinite(brut)) return 0;
+  // Sans spread ni fermeture : cette fonction tourne une fois par pixel de chaque tuile.
+  const marge = brut >= 0
+    ? Math.min(255 - rvb[0], 255 - rvb[1], 255 - rvb[2])
+    : Math.min(rvb[0], rvb[1], rvb[2]);
+  return (brut >= 0 ? 1 : -1) * Math.min(Math.abs(brut), marge);
+}
+
+/** `#rgb` ou `#rrggbb` → `[r, v, b]`, ou `null` si on ne sait pas lire. Fonction PURE. */
+export function rvbDeCouleur3D(couleur){
+  return versRVB(couleur);
 }
 
 // ── Les trois textures ──────────────────────────────────────────────────────────────────────────

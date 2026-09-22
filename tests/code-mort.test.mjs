@@ -45,6 +45,10 @@ const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
   '_setImageCacheEntry', 'fermeturesEnregistrees',
+  // #431b2 — `bubble-grain.js` garde deux Map de module : les grains chargés et les motifs
+  // composés. Sans ces deux seaux, aucun test ne pourrait ni repartir d'un état propre entre deux
+  // cas, ni injecter un grain sans réseau — donc aucun ne pourrait tenir l'éviction du cache.
+  '_viderGrains3D', '_setGrain3D',
 ];
 
 /**
@@ -144,10 +148,23 @@ const EN_ATTENTE = {
   // pour un détail d'implémentation ; mesurée, elle s'est révélée être ce qui empêche un parchemin
   // de virer à l'orange dans ses reliefs. La version « naturelle à écrire » avait le défaut.
   //
-  // ÉCHÉANCE : #431b2, qui précharge les grains au démarrage — comme #408a l'a fait pour les
-  // polices — et résout `motif` en motif de canevas au moment de peindre.
-  teinteHabilleeDuGrain3D: '#431b2',
-  grainsAPrecharger3D: '#431b2',
+  // ÉCHÉANCE TENUE, ET LA DETTE DE #431b1 EST SOLDÉE EN ENTIER — dans la même séance, le délai le
+  // plus court qu'ait connu cette liste. `grainsAPrecharger3D` est appelée par `events.js` au
+  // démarrage ; `ecartDuGrain3D` l'est par `bubble-grain.js`, qui compose chaque motif pixel par
+  // pixel. Septième figure, septième dette payée jusqu'au bout — #403a, #414a, #420a, #425a,
+  // #421a, #422a, #431b1 —, et toujours pour la même raison : l'échéance était un NUMÉRO DE TÂCHE.
+  //
+  // ⚠️ ET UN TROISIÈME NOM EST PARTI PLUTÔT QUE D'ENTRER ICI, exactement comme
+  // `apparenceBulleEstCelleDOrigine` en son temps. `teinteHabilleeDuGrain3D` exprimait la même
+  // règle que `ecartDuGrain3D`, en chaînes hexadécimales : agréable à lire dans un test, mais
+  // l'application n'appelait QUE la version numérique — composer 262 144 pixels en passant par du
+  // texte n'aurait aucun sens. Deux portes pour une règle, dont une seule franchie.
+  //
+  // La question que pose ce fichier — « à quoi sert cet export ? » — a donc donné « à rendre mes
+  // tests lisibles », ce qui n'est pas une raison de livrer du code. La composition est devenue
+  // une aide LOCALE au fichier de test : la règle reste à un seul endroit, les tests se lisent
+  // toujours, et rien de mort n'est exporté. Deuxième fois que cette liste fait partir du code au
+  // lieu de l'accueillir.
 
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
@@ -265,11 +282,10 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
     //
-    // 2 depuis #431b1, après être retombé à 0 en #422d. Les deux exports attendent #431b2 : voir la
-    // raison et l'échéance en haut de ce fichier. Ce chiffre se modifie À LA MAIN, et c'est tout
-    // l'intérêt — la ligne qu'on vient d'écrire a coûté une seconde ligne, ici, qu'on ne peut pas
-    // écrire sans avoir lu ce paragraphe.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    // Remonté à 2 en #431b1, redescendu à 0 en #431b2 — dans la même séance. Ce chiffre se modifie
+    // À LA MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne
+    // ici, qu'on ne peut pas écrire sans avoir lu ce paragraphe.
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

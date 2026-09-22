@@ -22,9 +22,24 @@ import {
   texturesConnues, textureDeLaBulle, couchesDeTextureBulle,
   couleurImposeeParLaTexture, couleurTexteParDefautDeLaTexture,
   teinteParDefautDeLaTexture, couleurDeFondDeLaBulle3D,
-  grainsAPrecharger3D, teinteHabilleeDuGrain3D, GRAIN_NEUTRE, FORCE_GRAIN,
+  grainsAPrecharger3D, ecartDuGrain3D, rvbDeCouleur3D, GRAIN_NEUTRE, FORCE_GRAIN,
 } from '../src/bubble-texture.js';
 import { GRIS_NEUTRE } from '../tools/bake-textures.mjs';
+
+/**
+ * ⚠️ LA COMPOSITION EN CHAÎNES VIT ICI, ET PAS DANS `src/`. Elle a d'abord été un export, puis
+ * `tests/code-mort.test.mjs` a posé sa question — « à quoi sert cet export ? » — et la réponse
+ * était « à rendre ces tests lisibles ». L'application, elle, compose ses motifs pixel par pixel
+ * et n'appelle que `ecartDuGrain3D`. Une aide de test n'a rien à faire dans le code livré : la
+ * règle reste à un seul endroit, et ce raccourci la recompose sans la redire.
+ */
+const teinteHabilleeDuGrain3D = (couleur, valeurGrain) => {
+  const rvb = rvbDeCouleur3D(couleur);
+  if (!rvb) return couleur;
+  const ecart = ecartDuGrain3D(rvb, valeurGrain);
+  return '#' + rvb.map(c => Math.max(0, Math.min(255, Math.round(c + ecart)))
+    .toString(16).padStart(2, '0')).join('');
+};
 
 const rendu = (texture, ctx) => couchesDeTextureBulle(
   { id: 'b13', bulleTexture: texture },
@@ -273,9 +288,11 @@ describe('teinteHabilleeDuGrain3D — le grain habille la teinte, il ne la color
     assert.ok(lum(teinteHabilleeDuGrain3D('#000000', 200)) > 0);
   });
 
-  test('une valeur de grain illisible ne produit pas de NaN', () => {
-    assert.equal(teinteHabilleeDuGrain3D('#C9A779', NaN), '#C9A779');
-    assert.equal(teinteHabilleeDuGrain3D('#C9A779', 'bleu'), '#C9A779');
+  test('une valeur de grain illisible ne décale rien', () => {
+    const neutre = teinteHabilleeDuGrain3D('#C9A779', GRAIN_NEUTRE);
+    assert.equal(teinteHabilleeDuGrain3D('#C9A779', NaN), neutre);
+    assert.equal(teinteHabilleeDuGrain3D('#C9A779', 'bleu'), neutre);
+    assert.equal(ecartDuGrain3D([201, 167, 121], NaN), 0);
   });
 
   /**

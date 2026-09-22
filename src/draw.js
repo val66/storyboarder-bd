@@ -76,6 +76,7 @@ import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
 import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
          couleurTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particulesDeLaBulle } from './bubble-particle.js';
+import { motifDuGrain3D } from './bubble-grain.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1499,7 +1500,13 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   couches.forEach((couche, i) => {
     if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
     c.globalAlpha = couche.alpha;
-    c.fillStyle = couche.couleur;
+    // ⚠️ LE REPLI SUR L'APLAT N'EST PAS SILENCIEUX, ET CE N'EST PAS LA MÊME CHOSE QUE DE SE TAIRE.
+    // Un grain absent — non encore chargé, ou jamais cuit — ne peut pas faire échouer la peinture
+    // d'une planche entière. Mais `motifDuGrain3D` le signale en console une fois, et la couleur de
+    // repli est la TEINTE de la couche : une Bulle privée de grain reste du parchemin, elle perd
+    // son relief, pas son identité. C'est ce qui manquait au préchargement des polices de #408a,
+    // où une famille absente redevenait `sans-serif` sans que rien ne le dise.
+    c.fillStyle = (couche.motif && motifDuGrain3D(c, couche.motif, couche.couleur)) || couche.couleur;
     c.fill();
   });
   // ⚠️ LES TACHES SE POSENT DANS LA ZONE INSCRIPTIBLE, ce qui les garde DANS la Bulle sans aucune

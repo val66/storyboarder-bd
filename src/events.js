@@ -91,6 +91,8 @@ import {
   syncPersonaEditorSliders, drawPersonaEditor,
 } from './persona-editor.js';
 import { BUBBLE_FONT_PRELOAD_LIST } from './help-content.js';
+import { grainsAPrecharger3D } from './bubble-texture.js';
+import { prechargerGrains3D } from './bubble-grain.js';
 import {
   clamp, wrapAngle, getBBox, tracéBBox, getElementDepth, repairElementBase3D,
   personaEditorPoseList3D, poseJointsByKey3D, nameOfPose3D,
@@ -7950,6 +7952,14 @@ if (window.document && document.fonts && document.fonts.load) {
   Promise.all(BUBBLE_FONT_PRELOAD_LIST.map(f => document.fonts.load(`16px "${f}"`).catch(() => {})))
     .then(() => drawCurrentPage());
 }
+
+// ↳ src/bubble-grain.js — MÊME FIGURE QUE LES POLICES JUSTE AU-DESSUS, et pour la même raison : le
+// dessin est synchrone, le chargement ne l'est pas. On précharge, puis on redessine une fois prêt.
+//
+// ⚠️ LA LISTE EST DÉDUITE DU REGISTRE DES TEXTURES, jamais écrite ici. Une énumération tenue en
+// parallèle se périme au premier grain ajouté — et le manque serait muet, puisqu'une couleur de
+// repli existe. `grainsAPrecharger3D` interroge les textures elles-mêmes.
+if (window.document) prechargerGrains3D(grainsAPrecharger3D(), drawCurrentPage);
 
 // ── Collapsible sections of the right-hand menu ────────────────────────────────────────────────────
 // The collapsed state is saved in localStorage under the key:
