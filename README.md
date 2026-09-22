@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.132**
+**Version 1.5.133**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -27,50 +27,20 @@
 
 ### Light
 - ☀️ **Three modes** per panel and per scene: Day, Night and Custom
-- 🔒 Day is the **default** and reproduces the original lighting exactly: pages you have already
-  drawn keep their look
-- 🕹️ **Orientation dome** in Custom mode: drag the sun over the vault, hold the right button and
-  drag to turn the view, cardinal marks matching the panel
-- 🎨 **Colour and intensity**: intensity drives the sun and the ambient light together, from full
-  black to the original lighting
-- 🌤️ **The background follows the mode**: light blue in Day, night blue in Night, the light's
-  colour darkened by its intensity in Custom — nothing to set
-- ↺ **Reset** puts the panel back to Day and to its starting values
+- 🔒 Day is the **default** and reproduces the original lighting exactly
+- 🕹️ **Orientation dome** in Custom mode, with colour and intensity, from full black to full day
+- 🌤️ **The background follows the mode**: light blue by day, night blue by night
 - 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
-- 💡 **Placed light sources**: right-click → Add → Light drops a glowing sphere that lights the
-  panel on top of the sun
-- 🖱️ **Moved like any Element**: mouse for height and width, wheel for depth
-- 🎈 **It floats** at whatever height you want, unsnapped from the ground, but never goes below it
-- 📋 **Its own block** at the top of the Elements list, the way paths have theirs
-- 🎛️ **Its settings dialog** on double-click: colour, intensity and range in the "Brightness"
-  section, under the 3D preview
-- ♾️ **A range of 0 means "unlimited"** — beyond a finite range, the light no longer carries at all
-- 🫧 **The halo follows the intensity**: one glance at a page tells you which source is strong
-- 🔌 **Two checkboxes not to be confused**: "Invisible in the 3D scene" turns the source off,
-  whereas "Show the sphere" only hides the marker and leaves the light shining
-
-### Cast shadows
-- 🌑 **Cast shadows** per panel: Elements cast onto the ground and onto each other
-- 🔒 **Off by default** — pages you have already drawn keep their look to the pixel
-- 🎚️ **Two hierarchical switches**: the panel decides that there *are* shadows, each light decides
-  whether it takes part. The sun always does
-- 💡 **A placed source casts only if asked**, source by source, via "Casts a shadow" in its dialog —
-  unticked by default, because a point light's shadow is rendered six times per frame
-- 🧭 **Shadows carry four times as far** as what the panel is aimed at: a back wall stays covered
-- 🧊 **They hold still while you zoom**: the shadow grid snaps in steps instead of sliding, so edges
-  stop crawling when the camera moves
-- 🛣️ **Paths, roads and terrain receive but never cast**: they are flat drawings laid on the ground
+- 💡 **Placed light sources**: a glowing sphere lighting the panel on top of the sun, moved like any
+  Element
+- 🌑 **Cast shadows** per panel, off by default: the sun always casts, a placed source only if asked
 
 ### Panel images
 - 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it
-- 🚫 A panel holding an image is **no longer a 3D scene**: no Elements, no Scene loading, no model import
-- ✋ **Move the image** inside its panel: drag it into place, or just hold the right button and drag
-- 🔍 **Zoom the framing** with a slider or the mouse wheel over the panel, from the covering fit up to 4×
-- 🎯 **Recentre** puts the framing back to its original state, and only shows up once you've changed it
-- 🔄 **Change or remove** the image from the panel's Image section, or from the right-click menu
-- 🗂️ **Images section**: your files grouped by whether the open project uses them, one click to the
-  panel that uses one
-- ✏️ **Rename or delete** an image file, panels of the open project kept in step
+- 🚫 A panel holding an image is **no longer a 3D scene**: no Elements, no Scene, no model import
+- ✋ **Move and zoom the framing** inside the panel, up to 4×
+- 🗂️ **Images section**: your files grouped by whether the open project uses them, renaming and
+  deletion kept in step
 
 ### Available elements
 - 👤 **Characters** with poses, emotions, orientation and joints

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.5.132**
+**Version 1.5.133**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -27,40 +27,23 @@
 
 ### Lumière
 - ☀️ **Trois modes** par Case et par Scène : Jour, Nuit et Personnalisé
-- 🔒 Jour est le **réglage par défaut** et reproduit exactement l'éclairage d'origine : vos Planches
-  déjà dessinées gardent leur aspect
-- 🕹️ **Dôme d'orientation** en mode Personnalisé : glissez le soleil sur la coupole, clic droit
-  glissé pour tourner la vue, repères cardinaux raccord avec la Case
-- 🎨 **Couleur et intensité** : l'intensité pilote le soleil et l'ambiance ensemble, du noir complet
-  à l'éclairage d'origine
-- ↺ **Réinitialiser** ramène la Case au mode Jour et à ses valeurs de départ
+- 🔒 Jour est le **réglage par défaut** et reproduit exactement l'éclairage d'origine
+- 🕹️ **Dôme d'orientation** en mode Personnalisé, avec couleur et intensité, du noir complet au
+  plein jour
+- 🌤️ **Le fond suit le mode** : bleu clair de jour, bleu nuit la nuit
 - 🎬 **Une Scène transmet sa lumière** à la Case qui la charge, puis les deux vies sont indépendantes
-- 💡 **Sources de lumière posées** : clic droit → Ajouter → Lumière pose une sphère lumineuse qui
-  éclaire la Case, en plus du soleil
-- 🖱️ **Déplacée comme un Élément** : la souris pour la hauteur et la largeur, la molette pour la
-  profondeur
-- 🎈 **Elle flotte** à la hauteur voulue, libérée de l'aimantation au sol, mais ne passe jamais
-  dessous
-- 📋 **Son propre bloc** en tête de la liste des Éléments, comme les Tracés ont le leur
-- 🎛️ **Sa fiche de réglage** au double-clic : couleur, intensité et portée dans la section
-  « Luminosité », sous l'aperçu 3D
-- ♾️ **Une portée de 0 vaut « sans limite »** — au-delà d'une portée finie, la lumière ne porte
-  plus du tout
-- 🫧 **Le halo suit l'intensité** : d'un coup d'œil sur une Planche, on voit quelle source est forte
-- 🔌 **Deux cases à ne pas confondre** : « Invisible dans la scène 3D » éteint la source, tandis
-  qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer
+- 💡 **Sources de lumière posées** : une sphère lumineuse qui éclaire la Case en plus du soleil,
+  déplacée comme un Élément
+- 🌑 **Ombres portées** par Case, éteintes par défaut : le soleil projette toujours, une source
+  posée seulement si on le lui demande
 
 ### Images de Case
 - 🖼️ **Insérer une image** dans une Case (PNG, JPG, WebP), recadrée et centrée pour la remplir
-- 🚫 Une Case qui porte une image **n'est plus une scène 3D** : pas d'Éléments, pas de chargement de
-  Scène, pas d'import de modèle
-- ✋ **Déplacer l'image** dans sa Case : glissez-la où vous voulez, ou maintenez le clic droit et glissez
-- 🔍 **Zoomer le cadrage** au curseur ou à la molette sur la Case, du cadrage couvrant jusqu'à 4×
-- 🎯 **Recentrer** remet le cadrage d'origine, et n'apparaît qu'une fois que vous l'avez modifié
-- 🔄 **Changer ou retirer** l'image depuis la section Image de la Case, ou par le clic droit
-- 🗂️ **Section Images** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, un clic
-  mène à la Case qui s'en sert
-- ✏️ **Renommer ou supprimer** un fichier image, les Cases du Projet ouvert suivent
+- 🚫 Une Case qui porte une image **n'est plus une scène 3D** : pas d'Éléments, pas de Scène, pas
+  d'import de modèle
+- ✋ **Déplacer et zoomer le cadrage** dans la Case, jusqu'à 4×
+- 🗂️ **Section Images** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, renommage
+  et suppression suivis
 
 ### Éléments disponibles
 - 👤 **Personnages** avec poses, émotions, orientation et articulations
