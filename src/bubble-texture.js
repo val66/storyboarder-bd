@@ -301,8 +301,11 @@ const REGISTRE = {
      * inopérant, ce que ce chantier refuse depuis #425m.
      */
     couleurImposee: null,
-    // La moyenne de l'albédo de Paper005, c'est-à-dire la couleur qu'a vraiment ce papier-là.
-    teinteParDefaut: '#C9A779',
+    // ⚠️ RELEVÉE PAR LE CUISEUR, PAS CHOISIE. C'est la moyenne de l'albédo de Paper005 : la couleur
+    // qu'a vraiment ce papier-là, telle que `npm run bake-textures -- papier-froisse` la rapporte.
+    // Je l'avais d'abord écrite de mémoire, à une unité près par canal, avant la première cuisson
+    // réelle — invisible à l'œil, mais c'était une valeur inventée là où une valeur mesurée existe.
+    teinteParDefaut: '#C8A678',
     couleurTexteParDefaut: '#3A2B18',
   },
 };

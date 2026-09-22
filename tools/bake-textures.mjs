@@ -17,9 +17,25 @@
  * ⚠️ CE QU'IL PRODUIT N'EST PAS UNE PHOTO, C'EST UN GRAIN EN NIVEAUX DE GRIS. Le choix vient de
  * l'utilisateur : une texture doit s'afficher avec sa couleur naturelle par défaut, mais rester
  * TEINTABLE si on le décide. On stocke donc le relief, monochrome, et la teinte vit dans le
- * registre sous forme de chaîne. Conséquence heureuse : un fichier trois fois plus léger qu'un
- * RGB, et le sélecteur « Couleur du fond » qui retrouve un sens — aujourd'hui, choisir une
- * texture le désactive.
+ * registre sous forme de chaîne — d'où le sélecteur « Couleur du fond » qui retrouve un sens.
+ *
+ * ⚠️ ET LE GRAIN EST ÉCRIT SANS PERTE, CONTRE TOUTE TENTATION D'ÉCONOMIE. Mesuré sur le papier
+ * froissé, à qualité décroissante :
+ *
+ *   format                poids   contraste   raccord
+ *   PNG                  255 Ko        6,40      1,02
+ *   JPEG q95             106 Ko        6,74      1,01
+ *   JPEG q90              70 Ko        6,21      1,12
+ *   JPEG q85              54 Ko        5,79      1,22   ← le « gain » que je visais
+ *
+ * Les deux colonnes qui se dégradent sont exactement celles que cet outil existe pour tenir. Le
+ * raccord se défait pour une raison de fond, et non par malchance : un encodeur JPEG IGNORE que
+ * l'image se carrelle, donc ses blocs de bord travaillent sans le contexte qui les prolonge. Un
+ * grain compressé se répète en trahissant ses coutures — précisément le défaut qu'on traque.
+ *
+ * ⚠️ J'AI ANNONCÉ 54 Ko PENDANT TOUT #431a, ET C'ÉTAIT UN CHIFFRE DE JPEG POUR UN FICHIER PNG. Je
+ * l'avais mesuré à l'époque où le format n'était pas tranché, puis répété sans le revérifier une
+ * fois le PNG écrit. Le vrai poids est ici.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * ⚠️ LA CARTE DE COULEUR NE SERT PAS AU GRAIN, ET C'EST CONTRE-INTUITIF
@@ -92,8 +108,9 @@ import { dirname, join, basename } from 'node:path';
  * L'écart est du bruit. Quadrupler la résolution n'achète donc rien en grain.
  *
  * Ce qui a décidé, c'est la RÉPÉTITION : une tuile plus grande se répète moins souvent sur une
- * Bulle, et c'est le motif qui se répète — pas le grain — qui trahit une texture. 512² en JPEG
- * pèse 54 Ko, contre 14 Ko à 256² et 221 Ko à 1024².
+ * Bulle, et c'est le motif qui se répète — pas le grain — qui trahit une texture. Le poids arbitre
+ * ensuite : 65 Ko à 256², 255 Ko à 512², 1006 Ko à 1024². Quadrupler paie une répétition moins
+ * fréquente ; le faire deux fois ne paie plus rien.
  */
 export const TAILLE_GRAIN = 512;
 
@@ -350,10 +367,12 @@ async function chargerCarte(chemin){
   const img = nativeImage.createFromPath(chemin);
   if (img.isEmpty()) throw new Error(`carte illisible : ${chemin}`);
   const redim = img.resize({ width: TAILLE_GRAIN, height: TAILLE_GRAIN, quality: 'best' });
-  // ⚠️ getBitmap() REND DU BGRA, PAS DU RGBA. Inverser les deux donnerait une teinte par défaut
+  // ⚠️ toBitmap() REND DU BGRA, PAS DU RGBA. Inverser les deux donnerait une teinte par défaut
   // fausse — un parchemin ocre reviendrait bleuté — et un ombrage dont la pente X serait celle
-  // du canal bleu. Le genre d'erreur qui produit une image plausible et fausse.
-  const bgra = redim.getBitmap();
+  // du canal bleu. Le genre d'erreur qui produit une image plausible et fausse. La première
+  // cuisson réelle l'a confirmé sans ambiguïté : elle rend #C8A678, un ocre. À l'envers, on
+  // aurait lu #78A6C8, un bleu.
+  const bgra = redim.toBitmap();
   const rgba = Buffer.alloc(bgra.length);
   for (let i = 0; i < bgra.length; i += 4) {
     rgba[i] = bgra[i + 2]; rgba[i + 1] = bgra[i + 1]; rgba[i + 2] = bgra[i]; rgba[i + 3] = bgra[i + 3];
