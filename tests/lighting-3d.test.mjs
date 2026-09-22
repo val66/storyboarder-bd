@@ -24,6 +24,7 @@ import {
   resoudreEclairage3D, PRESETS_LUMIERE, SOLEIL_ACTUEL, CLE_ACTUELLE, AMBIANTE_ACTUELLE,
   INCLINAISON_DOME_DEG, LUMIERE_DEFAUT, lumiereDeCase3D, definirLumiereDeCase3D, copierLumiere3D,
   effacerLumiereDeCase3D, geometrieDome3D, AZIMUTS_CARDINAUX, MARGE_DOME_PX,
+  couleurCielDeCase3D, CIEL_JOUR, CIEL_NUIT,
 } from '../src/lighting-3d.js';
 
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -1209,4 +1210,124 @@ describe('⚠️ LE RÉGLAGE TRAVERSE LES QUATRE CHEMINS DE L’ÉCLAIRAGE (#422
  * change, les deux changent ensemble ou le test parle. C'est la même discipline que le seuil de
  * #422f confronté aux hauteurs réelles des rubans : une valeur vérifiée CONTRE le code plutôt que
  * recopiée À CÔTÉ de lui.
+ */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE CIEL D'UNE CASE (#429, signalé à l'usage)
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * « Le fond d'une Scène ou d'une Case reste blanc malgré qu'il fasse jour ou nuit. » Le blanc
+ * venait d'une opacité forcée — sans elle les pixels au-dessus de l'horizon laissent voir la Case
+ * dessinée derrière — et personne n'avait décidé que cette opacité était un CIEL.
+ */
+describe('⚠️ LE CIEL SUIT L’ÉCLAIRAGE (#429)', () => {
+  const SCENE = sourceSansCommentaires(
+    readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8'));
+
+  test('⚠️ JOUR ET NUIT PORTENT LEUR CIEL, et ce ne sont ni le blanc ni le noir', () => {
+    // ⚠️ LE CIEL N'EST PAS LA COULEUR DE LA LUMIÈRE, et c'est le point qui a demandé une décision.
+    // Jour éclaire en BLANC et Nuit en BLEUTÉ : dériver le ciel de la lumière aurait donné un ciel
+    // blanc le jour — donc le défaut signalé, intact — et un ciel clair la nuit. Les deux presets
+    // sont des ambiances complètes, leur ciel est NOMMÉ.
+    assert.equal(couleurCielDeCase3D('jour', '#FFFFFF', 1), CIEL_JOUR);
+    assert.equal(couleurCielDeCase3D('nuit', '#8FA6E8', 0.327), CIEL_NUIT);
+    assert.notEqual(CIEL_JOUR.toLowerCase(), '#ffffff',
+      'le ciel de Jour est resté blanc : le défaut signalé est intact');
+    assert.notEqual(CIEL_NUIT.toLowerCase(), '#000000',
+      'le ciel de Nuit est un NOIR : l’utilisateur a corrigé sa demande en « bleu nuit »');
+    // Et le ciel de Nuit est bel et bien SOMBRE, celui de Jour CLAIR — sinon les deux constantes
+    // pourraient être n'importe quoi et ces égalités ne diraient rien.
+    const clarte = (c) => [1, 3, 5].reduce((n, i) => n + parseInt(c.slice(i, i + 2), 16), 0) / 3;
+    assert.ok(clarte(CIEL_JOUR) > 150, `le ciel de Jour n’est pas clair (${clarte(CIEL_JOUR)})`);
+    assert.ok(clarte(CIEL_NUIT) < 60, `le ciel de Nuit n’est pas sombre (${clarte(CIEL_NUIT)})`);
+    // ⚠️ ET LE BLEU EST UN BLEU : le canal bleu domine, sinon « bleu ciel » et « bleu nuit » ne
+    // seraient que des noms. Un test qui vérifie une constante sans vérifier ce qu'elle DÉSIGNE
+    // laisse passer une couleur changée par erreur.
+    for (const [nom, c] of [['jour', CIEL_JOUR], ['nuit', CIEL_NUIT]]) {
+      const [r, , b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+      assert.ok(b > r, `le ciel de ${nom} n’est plus bleu (R ${r} ≥ B ${b})`);
+    }
+  });
+
+  test('⚠️ EN PERSONNALISÉ IL SE DÉRIVE, SANS RÉGLAGE DE PLUS', () => {
+    // L'utilisateur a refusé une commande supplémentaire : le ciel vient donc de la couleur de la
+    // lumière, assombrie par son intensité — le même geste que subit la scène elle-même.
+    assert.equal(couleurCielDeCase3D('perso', '#FF8800', 1), '#ff8800');
+    assert.equal(couleurCielDeCase3D('perso', '#FF8800', 0.5), '#804400');
+    assert.equal(couleurCielDeCase3D('perso', '#FFFFFF', 0), '#000000',
+      'à intensité nulle le ciel n’est pas noir : « je veux le noir » cesse d’être atteignable');
+    // ⚠️ LA CONSÉQUENCE ASSUMÉE, ÉPINGLÉE POUR QU'ON NE LA PRENNE PAS POUR UN DÉFAUT : un
+    // Personnalisé blanc à pleine intensité redonne le fond blanc d'avant, là où Jour — dont la
+    // lumière est blanche aussi — donne du bleu. C'est le prix de « pas de commande en plus ».
+    assert.equal(couleurCielDeCase3D('perso', '#FFFFFF', 1), '#ffffff');
+    // Une couleur illisible ne doit pas produire un ciel illisible.
+    assert.match(couleurCielDeCase3D('perso', 'pas une couleur', 1), /^#[0-9a-f]{6}$/);
+    assert.match(couleurCielDeCase3D('perso', '#FF8800', NaN), /^#[0-9a-f]{6}$/);
+  });
+
+  test('⚠️ LE CIEL ENTRE DANS LE RÉSOLU, donc dans la signature de Case', () => {
+    // ⚠️ SANS CELA LE RÉGLAGE SERAIT SANS EFFET VISIBLE. Une Case garde son image tant que sa
+    // signature ne bouge pas ; la signature sérialise le RÉSOLU. Un ciel calculé à côté laisserait
+    // la vignette d'avant, et changer de mode paraîtrait ne rien faire — l'oubli que la campagne
+    // #411 a payé d'un relevé entier, et que #422b a rencontré pour les ombres.
+    const ciel = (l) => resoudreEclairage3D(l).ciel;
+    assert.equal(ciel({ mode: 'jour' }), CIEL_JOUR);
+    assert.equal(ciel({ mode: 'nuit' }), CIEL_NUIT);
+    assert.notEqual(ciel({ mode: 'jour' }), ciel({ mode: 'nuit' }));
+    // Le TÉMOIN qui compte : deux modes produisent deux RÉSOLUS différents, donc deux signatures.
+    assert.notEqual(JSON.stringify(resoudreEclairage3D({ mode: 'jour' })),
+      JSON.stringify(resoudreEclairage3D({ mode: 'nuit' })));
+    // Et une Case sans aucun réglage a le ciel de Jour, comme elle a l’éclairage de Jour.
+    assert.equal(ciel(undefined), CIEL_JOUR);
+  });
+
+  test('⚠️ LE RENDU LE POSE, ET REPOSE LE FOND EN PARTANT', () => {
+    const i = SCENE.indexOf('function renderPanelSceneUncached3D');
+    const corps = SCENE.slice(i, SCENE.indexOf('\n}\n', i));
+    assert.match(corps, /background = new THREE\.Color\(_eclairage\.ciel\)/,
+      'le fond ne suit plus l’éclairage, ou il est recalculé sur place au lieu de venir du résolu');
+    assert.ok(!/background = new THREE\.Color\(0x/.test(corps),
+      'une couleur de fond en dur est revenue');
+    // ⚠️ ET IL REPART À `null`, pour la raison de toujours : le renderer est PARTAGÉ avec les
+    // aperçus, qui veulent un fond transparent. C'est le même protocole que les ombres de #422k.
+    const posPose = corps.indexOf('background = new THREE.Color(_eclairage.ciel)');
+    const posRepos = corps.indexOf('background = null');
+    assert.ok(posRepos > posPose,
+      'le fond n’est plus remis à null après le rendu : les aperçus hériteraient du ciel');
+  });
+});
+
+/**
+ * JOURNAL DE MUTATION (#429, le ciel d'une Case) : huit fautes rejouées.
+ *
+ *   M177 le fond redevient blanc en dur — LE DÉFAUT SIGNALÉ                ROUGE
+ *   M178 le ciel quitte le résolu : la Case garde sa vignette              ROUGE
+ *   M179 le ciel de Jour redevient blanc                                   ROUGE
+ *   M180 le ciel de Nuit devient noir                                      ROUGE
+ *   M181 le « bleu nuit » n'est plus bleu                                  ROUGE
+ *   M182 la Nuit prend le ciel du Jour                                     ROUGE
+ *   M183 le Personnalisé ignore l'intensité                                ROUGE
+ *   M184 le fond n'est plus remis à null : le ciel fuit sur les aperçus    ROUGE
+ *
+ * ⚠️ M178 EST LA FAUTE QUI NE SE VOIT PAS, et c'est la troisième fois que ce dépôt la rejoue après
+ * #411 et #422b. Le ciel s'écrirait, se lirait, se peindrait — et la Case garderait la vignette
+ * qu'elle avait, parce que sa signature n'aurait pas bougé. Le réglage paraîtrait sans effet, et on
+ * chercherait le défaut du côté du rendu, là où il serait du côté du cache.
+ *
+ * ⚠️ M180 ET M181 TIENNENT LE « BLEU NUIT » PAR SES DEUX MOITIÉS. L'utilisateur avait d'abord
+ * demandé du NOIR, puis corrigé en « bleu nuit (sombre) » — et la correction compte : un noir pur
+ * écraserait la silhouette des Éléments sombres contre le fond. M180 rejoue le noir, M181 garde la
+ * clarté mais fait virer la teinte. Une seule des deux aurait laissé croire que la constante est
+ * tenue.
+ *
+ * ⚠️ M184 EST CELLE QUI A CONTAMINÉ SA PROPRE CAMPAGNE, et cela méritait d'être écrit. Un premier
+ * passage du harnais a dépassé son délai PENDANT cet essai, laissant la mutation en place : les
+ * trois suivantes ont donc été jugées sur une source déjà mutée, et leurs rouges ne prouvaient
+ * rien. Rejouées sur une base saine, elles rougissent toutes — mais le harnais a été corrigé pour
+ * restaurer la source à chaque pas plutôt qu'à la fin. **Un instrument qui peut mourir en cours de
+ * route doit laisser le patient intact**, c'est la même exigence que celle qu'on applique au code.
+ *
+ * ⚠️ CE QUE LA CAMPAGNE NE PEUT PAS MUTER : que ce bleu-là soit le bon bleu. Les deux constantes
+ * sont des points de départ à juger à l'écran, comme l'intensité d'une source en #420c.
  */

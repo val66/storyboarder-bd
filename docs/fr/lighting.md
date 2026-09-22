@@ -228,6 +228,43 @@ par-dessus l'existant et il suffirait qu'un jour la copie devienne partielle pou
 des restes de son ancienne lumière ; quand la Scène n'en porte pas, effacer est la totalité du
 travail. Un test par branche.
 
+## Le ciel d'une Case (#429, signalé à l'usage)
+
+« Le fond d'une Scène ou d'une Case reste blanc malgré qu'il fasse jour ou nuit. »
+
+Le blanc ne venait d'aucune décision sur le ciel. Le rendu force une couleur **opaque** le temps de
+son image, sans quoi les pixels au-dessus de l'horizon laissent voir la Case dessinée derrière — un
+retour d'usage antérieur. Le blanc avait été pris parce qu'une Case vide est blanche.
+
+| mode | ciel |
+|---|---|
+| Jour | bleu clair, `#AFCBE3` |
+| Nuit | bleu **nuit**, `#131D33` |
+| Personnalisé | la couleur de la lumière, assombrie par son intensité |
+
+⚠️ **JOUR ET NUIT PORTENT LEUR CIEL, LE PERSONNALISÉ LE DÉRIVE.** Les deux presets sont des
+ambiances complètes : leur ciel est nommé, pas calculé — d'autant que Jour éclaire en BLANC, si bien
+que dériver le ciel de la lumière aurait laissé le défaut intact.
+
+⚠️ **ET IL N'Y A PAS DE RÉGLAGE DE PLUS**, à la demande expresse de l'utilisateur. La conséquence
+est assumée : un Personnalisé blanc à pleine intensité redonne le fond blanc d'avant, là où Jour —
+lumière blanche lui aussi — donne du bleu. Deux réglages voisins, deux ciels différents. C'est le
+prix d'une commande en moins, et il a été pesé : Jour et Nuit sont des ambiances toutes faites, le
+Personnalisé est une matière qu'on tient soi-même.
+
+⚠️ **ET LA NUIT N'EST PAS NOIRE.** L'utilisateur avait écrit « noir », puis corrigé en « bleu nuit
+(sombre) ». C'est la bonne version : un noir pur écraserait la silhouette des Éléments sombres
+contre le fond, et la nuit d'une bande dessinée est presque toujours bleue.
+
+⚠️ **CELA CHANGE L'ASPECT DES PLANCHES DÉJÀ DESSINÉES**, ce que ce dépôt refuse d'habitude. La règle
+« pas de réglage vaut l'existant » a tenu #414, #421f et #422b ; elle est écartée ici en
+connaissance de cause, parce que c'est précisément le changement demandé. Une règle qu'on enfreint
+sans le dire est un défaut ; une règle qu'on enfreint en le nommant est une décision.
+
+Le ciel entre dans l'éclairage **résolu**, donc dans la signature de Case : changer de mode
+redessine. Un ciel calculé à côté aurait laissé les vignettes d'avant, et le réglage aurait paru
+sans effet — l'oubli que la campagne #411 a payé d'un relevé entier.
+
 ## Ce qui n'entre PAS dans ce chantier
 
 **Les ombres portées.** Rien n'en projette aujourd'hui. Les activer est une question de performance

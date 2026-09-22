@@ -233,6 +233,66 @@ export const EXPOSANT_AMBIANTE = 2;
  * Rien n'est perdu au passage. « Je ne veux pas d'éclairage particulier » se dit en restant sur
  * Jour, et « je veux le noir » en Personnalisé à intensité nulle.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE CIEL D'UNE CASE (#429) — SIGNALÉ À L'USAGE : « le fond reste blanc, jour comme nuit »
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Le fond d'une Case était blanc en dur, et il l'était pour une raison qui n'a rien à voir avec le
+ * ciel : le rendu force une couleur OPAQUE le temps de son image, sans quoi les pixels transparents
+ * au-dessus de l'horizon laissent voir la Case dessinée juste derrière (retour d'usage antérieur,
+ * cf. `renderPanelSceneUncached3D`). Le blanc avait été pris parce qu'une Case vide est blanche.
+ * Personne n'avait décidé que c'était un CIEL.
+ *
+ * ⚠️ JOUR ET NUIT PORTENT LEUR CIEL, LE PERSONNALISÉ LE DÉRIVE, et c'est le choix de l'utilisateur.
+ * Les deux presets sont des ambiances complètes : leur ciel est nommé, pas calculé. En Personnalisé
+ * il n'y a pas de réglage de plus — l'utilisateur a explicitement refusé une commande
+ * supplémentaire —, donc le ciel vient de la couleur de la lumière, assombrie par son intensité.
+ *
+ * ⚠️ LA CONSÉQUENCE ASSUMÉE : un Personnalisé en blanc à 100 % redonne le fond blanc d'aujourd'hui,
+ * là où Jour — dont la lumière est blanche elle aussi — donne du bleu. Deux réglages voisins, deux
+ * ciels différents. C'est le prix de « pas de commande en plus », et il a été pesé : Jour et Nuit
+ * sont des ambiances toutes faites, le Personnalisé est une matière brute qu'on tient soi-même.
+ *
+ * ⚠️ ET CELA CHANGE L'ASPECT DES PLANCHES DÉJÀ DESSINÉES, ce que ce dépôt refuse d'habitude. La
+ * règle « pas de réglage vaut l'existant » a tenu #414, #421f et #422b ; elle est écartée ICI, en
+ * connaissance de cause, parce que c'est précisément le changement demandé. Une règle qu'on
+ * enfreint sans le dire est un défaut ; une règle qu'on enfreint en le nommant est une décision.
+ */
+
+/** Le ciel de Jour : un bleu clair, franc sans être saturé. À juger à l'écran. */
+export const CIEL_JOUR = '#AFCBE3';
+
+/**
+ * Le ciel de Nuit : un bleu NUIT, pas du noir.
+ *
+ * ⚠️ L'UTILISATEUR A CORRIGÉ SA PROPRE DEMANDE EN COURS DE ROUTE — il avait d'abord écrit « noir »,
+ * puis « bleu nuit (sombre) ». C'est la bonne version : un noir pur écraserait la silhouette des
+ * Éléments sombres contre le fond, et la nuit d'une bande dessinée est presque toujours bleue.
+ */
+export const CIEL_NUIT = '#131D33';
+
+/**
+ * Le ciel d'une Case, d'après son éclairage RÉSOLU. Fonction PURE.
+ *
+ * ⚠️ L'INTENSITÉ MULTIPLIE LE CANAL, elle ne mélange pas vers le noir par une autre voie : c'est le
+ * même geste que subit la lumière elle-même, donc le ciel s'éteint au même rythme que la scène. À
+ * intensité nulle, un Personnalisé rend un fond noir — ce qui est exactement ce que « je veux le
+ * noir » veut dire, et que la note de `resoudreEclairage3D` annonce déjà comme le chemin pour
+ * l'obtenir.
+ */
+export function couleurCielDeCase3D(mode, couleur, intensite){
+  if (mode === 'jour') return CIEL_JOUR;
+  if (mode === 'nuit') return CIEL_NUIT;
+  const c = couleurValide(couleur) ? couleur : PRESETS_LUMIERE.jour.couleur;
+  const k = clampNombre(Number(intensite), 0, 1);
+  const canal = (i) => {
+    const v = Math.round(parseInt(c.slice(1 + i * 2, 3 + i * 2), 16) * k);
+    return Math.min(255, Math.max(0, v)).toString(16).padStart(2, '0');
+  };
+  return '#' + canal(0) + canal(1) + canal(2);
+}
+
 export function resoudreEclairage3D(lumiere){
   const mode = PRESETS_LUMIERE[lumiere && lumiere.mode] ? lumiere.mode
     : ((lumiere && lumiere.mode) === 'perso' ? 'perso' : 'jour');
@@ -262,6 +322,15 @@ export function resoudreEclairage3D(lumiere){
     // et les presets ne portent pas d'ombres : passer par lui rendrait la case à cocher inopérante
     // dès qu'on quitte Personnalisé. Le champ appartient à la Case, pas au mode.
     ombresPortees: !!(lumiere && lumiere.ombresPortees),
+    // ⚠️ LE CIEL ENTRE DANS LE RÉSOLU, POUR LA MÊME RAISON QUE LES OMBRES (#422b) : la signature de
+    // Case sérialise CE résultat. Un ciel calculé à côté laisserait les Cases afficher leur
+    // ancienne vignette, et le changement de mode paraîtrait sans effet sur le fond — l'oubli que
+    // la campagne #411 a payé d'un relevé entier.
+    //
+    // ⚠️ ET IL SE DÉRIVE DU MODE, DE LA COULEUR ET DE L'INTENSITÉ DÉJÀ RÉSOLUS ici même, pas des
+    // champs bruts : `src` vaut le preset en Jour et en Nuit, et c'est bien ce qu'on veut — leur
+    // ciel est celui de l'ambiance, pas celui d'un réglage que l'utilisateur n'a pas touché.
+    ciel: couleurCielDeCase3D(mode, couleur, intensite),
   };
 }
 

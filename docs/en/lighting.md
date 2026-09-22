@@ -221,6 +221,39 @@ top of what is there and it would only take the copy becoming partial one day fo
 remnants of its former light; when the Scene carries none, erasing is the whole job. One test per
 branch.
 
+## A Panel's sky (#429, reported in use)
+
+"A Scene's or a Panel's background stays white whether it is day or night."
+
+The white came from no decision about the sky at all. Rendering forces an **opaque** colour for the
+duration of its frame, without which the pixels above the horizon let the Panel drawn behind show
+through — an earlier report. White had been picked because an empty Panel is white.
+
+| mode | sky |
+|---|---|
+| Day | light blue, `#AFCBE3` |
+| Night | **night** blue, `#131D33` |
+| Custom | the light's colour, darkened by its intensity |
+
+⚠️ **DAY AND NIGHT CARRY THEIR SKY, CUSTOM DERIVES IT.** Both presets are complete moods: their sky
+is named, not computed — all the more so since Day lights in WHITE, so deriving the sky from the
+light would have left the fault intact.
+
+⚠️ **AND THERE IS NO EXTRA SETTING**, at the user's express request. The consequence is accepted: a
+Custom white at full intensity gives back the old white background, where Day — white light too —
+gives blue. Two neighbouring settings, two different skies. That is the price of one control fewer.
+
+⚠️ **AND NIGHT IS NOT BLACK.** The user wrote "black", then corrected it to "night blue (dark)".
+That is the right version: pure black would flatten dark Elements' silhouettes against the
+background, and a comic's night is almost always blue.
+
+⚠️ **THIS CHANGES THE LOOK OF PAGES ALREADY DRAWN**, which this repository normally refuses. The
+rule "no setting equals what exists" held for #414, #421f and #422b; it is set aside here knowingly,
+because that is precisely the change asked for. A rule broken silently is a fault; a rule broken and
+named is a decision.
+
+The sky enters the **resolved** lighting, therefore the Panel signature: changing mode redraws.
+
 ## What is NOT in this project
 
 **Cast shadows.** Nothing casts one today. Enabling them is a performance question in its own right,

@@ -2932,7 +2932,15 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // rendu — ce qu'il faisait —, il manquait tout rig créé pendant CE rendu, c'est à dire tous au
   // premier affichage d'une Case. L'image sans ombre partait ensuite dans le cache.
   if (_ombresDeLaCase) marquerProjectionDOmbre3D();
-  personaScene3D.background = new THREE.Color(0xffffff);
+  // ⚠️ LE FOND EST UN CIEL DEPUIS #429, ET IL L'EST AVEC LA MÊME LIGNE. L'opacité forcée reste
+  // indispensable pour la raison écrite au-dessus — sans elle les pixels au-dessus de l'horizon
+  // laissent voir la Case dessinée derrière. Ce qui change est seulement la COULEUR : le blanc
+  // était pris parce qu'une Case vide est blanche, et personne n'avait décidé que c'était un ciel.
+  //
+  // ⚠️ IL VIENT DU RÉSOLU, PAS D'UN CALCUL ICI. `_eclairage.ciel` est déjà dans la signature de
+  // Case, donc changer de mode redessine ; le recalculer sur place serait la seconde copie d'une
+  // décision, et la signature ne la verrait pas passer.
+  personaScene3D.background = new THREE.Color(_eclairage.ciel);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   personaScene3D.background = null;
   // ⚠️ ET LES OMBRES REPARTENT ÉTEINTES, pour la MÊME raison que le fond juste au-dessus (#422k) :

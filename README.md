@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.5.130**
+**Version 1.5.131**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -33,6 +33,8 @@
   drag to turn the view, cardinal marks matching the panel
 - 🎨 **Colour and intensity**: intensity drives the sun and the ambient light together, from full
   black to the original lighting
+- 🌤️ **The background follows the mode**: light blue in Day, night blue in Night, the light's
+  colour darkened by its intensity in Custom — nothing to set
 - ↺ **Reset** puts the panel back to Day and to its starting values
 - 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
 - 💡 **Placed light sources**: right-click → Add → Light drops a glowing sphere that lights the
