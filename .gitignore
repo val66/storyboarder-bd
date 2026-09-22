@@ -37,6 +37,21 @@ Projets/essai-volumineux.json
 # elles n'ont pas à être redistribuées dans le dépôt. Voir docs/fr/bubble-styles.md,
 # section « Ce que chaque forme doit reproduire », qui en consigne le contenu par écrit.
 atlas-sources/
+# Cartes PBR sources des textures (#431). MÊME RAISON QUE L'ATLAS CI-DESSUS, appliquée à
+# autre chose : ce sont de la MATIÈRE PREMIÈRE, pas un produit. Un jeu 4K pèse 20 à 50 Mo —
+# quatre matières d'essai en ont mis 150 dans le dossier — alors que ce que l'application
+# charge est un grain 512² en niveaux de gris, de 54 Ko, VERSIONNÉ lui.
+#
+# ⚠️ ET CE GRAIN EST REPRODUCTIBLE : la recette vit dans tools/bake-textures.mjs, avec sa
+# cible de contraste et sa direction de lumière. Perdre les sources ne perd donc rien qu'un
+# nouveau téléchargement ne rende — perdre la recette, si.
+#
+# ⚠️ UN SEUL DOSSIER D'ENTRÉE, ET C'EST DÉLIBÉRÉ. Il a un instant existé un `candidats/` à côté
+# de `sources/`, sans que la frontière entre les deux soit dicible. Deux dossiers dont on ne sait
+# pas lequel fait foi valent moins qu'un seul : le cuiseur lit `sources/<identifiant>/`, et
+# l'identifiant est celui de la texture dans l'application, pas celui de la banque.
+assets/textures/sources/
+
 atlas-des-bulles-v2.html
 atlas-des-bulles-methode.html
 atlas-des-bulles-corrections.md
