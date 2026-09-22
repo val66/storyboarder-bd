@@ -73,7 +73,7 @@ import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
-import { couchesDeTextureBulle, couleurImposeeParLaTexture,
+import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
          couleurTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particulesDeLaBulle } from './bubble-particle.js';
 
@@ -1476,18 +1476,15 @@ export function reglagesQueueVersLePoint3D(o, x, y){
 /**
  * La couleur de fond effective d'une Bulle : celle que la texture IMPOSE, sinon celle qu'on a choisie.
  *
- * ⚠️ UNE TEXTURE PORTE SA COULEUR, ET C'EST UN RETOUR D'USAGE. Un vieux papier n'est pas « une
- * couleur au choix, un peu tachée » : c'est du parchemin. La tache d'encre du Lecteur omniscient est
- * NOIRE, avec un lettrage blanc. Laisser le sélecteur commander sous une texture qui teinte donnait
- * des parchemins bleus et des taches d'encre roses, que le relevé ne montre nulle part.
+ * ⚠️ UNE TEXTURE PEUT PORTER SA COULEUR, ET C'EST UN RETOUR D'USAGE. La tache d'encre du Lecteur
+ * omniscient est NOIRE, avec un lettrage blanc. Laisser le sélecteur commander sous une texture qui
+ * teinte donnait des taches d'encre roses, que le relevé ne montre nulle part.
  *
- * ⚠️ « AUCUNE » RESTE LE CAS OÙ LA COULEUR EST LIBRE, et c'est ce qui rend le sélecteur honnête :
- * il commande quelque chose exactement quand il est offert. La fiche masque d'ailleurs le champ
- * sous les autres textures, plutôt que de le laisser visible et inopérant.
+ * ⚠️ LA RÈGLE ELLE-MÊME A DÉMÉNAGÉ DANS `bubble-texture.js`. Elle tenait ici en deux termes ; #431b
+ * lui en ajoute un troisième — la teinte SUGGÉRÉE d'un grain photographié, qui se laisse remplacer.
+ * Une règle de couleur à trois termes écrite dans un fichier de dessin aurait été intestable, et le
+ * troisième endroit du dépôt où la même décision se serait redite à la main.
  */
-function couleurDeFondBulle3D(o){
-  return couleurImposeeParLaTexture(o) || o.bulleColor || '#fff';
-}
 
 function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
@@ -1498,7 +1495,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   // couche est le chemin rapproché du centre : la mettre à l'échelle avec `c.scale` déplacerait
   // aussi le trait, et surtout empêcherait le facteur de varier avec l'angle, dont la marbrure du
   // vieux papier a besoin.
-  const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondBulle3D(o), opacite: app.opacite });
+  const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
   couches.forEach((couche, i) => {
     if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
     c.globalAlpha = couche.alpha;
@@ -1539,7 +1536,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
  * chaque rond se serait couvert des auréoles de la Bulle entière, à l'échelle du rond.
  */
 function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
-  const { taches } = couchesDeTextureBulle(o, { couleur: couleurDeFondBulle3D(o), opacite: app.opacite });
+  const { taches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
   if (!taches || !taches.length) return;
   let fInt = 1;
   if (sommets) for (const p of sommets) fInt = Math.min(fInt, Math.hypot((p.x - cx) / rx, (p.y - cy) / ry));
@@ -1580,7 +1577,7 @@ function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
  */
 function peindreLesParticules3D(c, o, app, cx, cy, rx, ry){
   const encre = o.bulleBorderVisible === false
-    ? couleurDeFondBulle3D(o)
+    ? couleurDeFondDeLaBulle3D(o)
     : (o.bulleBorderColor || '#23242A');
   const particules = particulesDeLaBulle(o, { couleur: encre, opacite: app.opacite });
   if (!particules.length) return;

@@ -110,6 +110,70 @@ function teinte(couleur, t){
   return versHex(rvb.map((v, i) => v + (cible[i] - v) * Math.abs(t)));
 }
 
+// ── Les grains, et la façon dont une teinte les habille ─────────────────────────────────────────
+
+/**
+ * Un GRAIN est une image en niveaux de gris, carrelable, cuite par `tools/bake-textures.mjs` depuis
+ * un jeu de cartes PBR. Cette constante en nomme le fichier, sans jamais le charger.
+ *
+ * ⚠️ CE MODULE NE CONNAÎT QUE DES NOMS, ET C'EST LA CONDITION DE SA PURETÉ. Charger une image est
+ * asynchrone ; décider quoi peindre ne l'est pas. Une couche porte donc la CLÉ d'un grain, et c'est
+ * `draw.js` qui la résout en motif — le même partage que partout ailleurs dans ce chantier.
+ */
+export const GRAIN_PAPIER = 'papier-froisse';
+
+/**
+ * Le gris qui ne change rien : un grain vaut 128 là où la matière est plate.
+ *
+ * ⚠️ CUIT DANS L'IMAGE PAR LE CUISEUR, qui centre son grain sur cette valeur après avoir soustrait
+ * la moyenne du relief. Les deux nombres doivent rester d'accord, faute de quoi toutes les textures
+ * s'assombriraient ou s'éclairciraient d'un bloc sans que rien ne le signale.
+ */
+export const GRAIN_NEUTRE = 128;
+
+/**
+ * De combien l'écart du grain se reporte sur la teinte. 1 = tel que cuit.
+ *
+ * ⚠️ « Force 1 me parait bien » — jugé à l'œil sur planche, après que le cuiseur a ramené toutes les
+ * matières au même contraste local de 6,4. C'est justement parce que le grain arrive NORMALISÉ qu'un
+ * facteur unique peut valoir pour toutes : avant normalisation, la même force donnait 6,43 sur un
+ * papier froissé et 33,41 sur un papier lisse.
+ */
+export const FORCE_GRAIN = 1;
+
+/**
+ * Une teinte habillée d'une valeur de grain. Fonction PURE, et c'est elle qui définit le rendu.
+ *
+ * ⚠️ ADDITIF ET NON MULTIPLICATIF, ET C'EST UNE CORRECTION MESURÉE. Le premier mélange multipliait
+ * la teinte par `grain / 128`. Deux défauts, tous deux constatés : le grain s'écrasait — contraste
+ * 2,60 contre 6,03 au déplacement d'origine — et surtout le report cessait d'être le même sur les
+ * trois canaux. Un canal déjà haut sature avant les autres, donc la TEINTE VIRE dans les clairs :
+ * sur le parchemin #C9A779, le rouge plafonnait quand le bleu avait encore de la marge, et les
+ * reliefs tournaient à l'orange.
+ *
+ * Reporter le MÊME écart sur les trois canaux conserve la distance entre eux, donc la teinte : un
+ * pli éclaire ou assombrit le parchemin sans jamais le colorer.
+ *
+ * ⚠️ ET L'ÉCART EST BORNÉ AVANT D'ÊTRE APPLIQUÉ, PAS APRÈS — sans quoi le défaut revient par la
+ * porte du bornage. Borner chaque canal à [0, 255] après coup fait saturer le canal le plus haut
+ * AVANT les autres : sur le parchemin #C9A779 à grain 200, le rouge plafonne à 255 quand le vert
+ * et le bleu ont encore de la marge, l'écart rouge-vert tombe de 34 à 16, et le relief tourne à
+ * l'orange. C'est très exactement ce qu'on reprochait au mélange multiplicatif.
+ *
+ * On limite donc l'écart à ce que le canal le plus exposé peut encaisser. Le coût est réel et
+ * assumé : sur une teinte très claire ou très sombre, le grain se COMPRIME au lieu de virer. Un
+ * papier presque blanc ne montre plus que ses creux — ce qui, pour du relief, se défend.
+ */
+export function teinteHabilleeDuGrain3D(couleur, valeurGrain){
+  const rvb = versRVB(couleur);
+  if (!rvb) return couleur;
+  const brut = (Number(valeurGrain) - GRAIN_NEUTRE) * FORCE_GRAIN;
+  if (!Number.isFinite(brut)) return couleur;
+  const marge = Math.min(...rvb.map(c => brut >= 0 ? 255 - c : c));
+  const ecart = Math.sign(brut) * Math.min(Math.abs(brut), marge);
+  return versHex(rvb.map(c => c + ecart));
+}
+
 // ── Les trois textures ──────────────────────────────────────────────────────────────────────────
 
 /**
@@ -186,10 +250,15 @@ function couchesPapier(o, ctx){
   // papier se salit — le pourtour d'un cartouche de La Licorne est nettement plus brun que son
   // milieu. Deux couches suffisent : le contour entier dans une teinte terre, puis la couleur
   // choisie ramenée un peu vers le centre. Il en reste un liseré sale tout autour.
+  //
+  // ⚠️ LES DEUX COUCHES PORTENT LE GRAIN, PAS SEULEMENT CELLE DU CŒUR. Le liseré sale fait deux à
+  // trois pixels de large : laissé en aplat sous un cœur grainé, il se lit comme un jonc de
+  // plastique posé autour du papier. Le motif étant carrelé dans le repère de la page, il traverse
+  // la frontière des deux couches sans raccord visible.
   const couches = [
-    { facteur: null, couleur: teinte(ctx.couleur, -0.42), alpha: ctx.opacite },
+    { facteur: null, motif: GRAIN_PAPIER, couleur: teinte(ctx.couleur, -0.42), alpha: ctx.opacite },
     { facteur: (t) => 0.88 + bruitCyclique(graine, t, 4242, 5) * 0.06,
-      couleur: ctx.couleur, alpha: ctx.opacite },
+      motif: GRAIN_PAPIER, couleur: ctx.couleur, alpha: ctx.opacite },
   ];
   return { couches, taches };
 }
@@ -201,19 +270,39 @@ const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
     rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }], taches: [] }),
-    // ⚠️ AUCUNE COULEUR IMPOSÉE, ET C'EST TOUT L'INTÉRÊT DE CETTE ENTRÉE : c'est le seul cas où le
-    // sélecteur « Couleur du fond » commande vraiment quelque chose.
+    // ⚠️ AUCUNE COULEUR IMPOSÉE : le sélecteur « Couleur du fond » commande, sans suggestion.
     couleurImposee: null,
+    teinteParDefaut: null,
     couleurTexteParDefaut: null,
   },
   [TEXTURE_FONDUS]: {
     rendu: couchesFondus,
     couleurImposee: '#1B1B1F',        // le noir d'encre du relevé, pas un gris
+    teinteParDefaut: null,
     couleurTexteParDefaut: '#FFFFFF', // lettrage clair, comme sur la planche
   },
   [TEXTURE_PAPIER]: {
     rendu: couchesPapier,
-    couleurImposee: '#E3D2A8',        // le parchemin de La Licorne
+    /**
+     * ⚠️ IMPOSÉE → SUGGÉRÉE, ET C'EST UN CHANGEMENT DÉLIBÉRÉ DE COMPORTEMENT. Cette entrée imposait
+     * `#E3D2A8` et masquait le sélecteur, parce qu'un parchemin dessiné à la main n'est pas « une
+     * couleur au choix, un peu tachée ». Un grain PHOTOGRAPHIÉ renverse l'argument : la matière
+     * tient désormais dans le relief, qui est monochrome, et la couleur redevient libre sans que le
+     * papier cesse d'être du papier. C'est la raison pour laquelle on cuit un grain en niveaux de
+     * gris plutôt que de stocker l'image en couleur.
+     *
+     * ⚠️ ET UNE BULLE DÉJÀ DESSINÉE PEUT CHANGER D'ASPECT. `bulleColor` n'est écrit que si
+     * l'utilisateur touche au sélecteur : une Bulle qui n'a jamais eu de couleur garde donc son
+     * parchemin, à la teinte près. Mais une Bulle à qui une couleur avait été donnée AVANT le choix
+     * du papier portait cette valeur en dormance, masquée par la couleur imposée — elle va
+     * maintenant la reprendre. C'est la seconde entorse assumée à « pas de réglage vaut l'existant »
+     * après #429, et elle est le prix exact de ce qui a été demandé : que le sélecteur redevienne
+     * actif. Le cas contraire — garder la couleur imposée — rendrait le sélecteur visible et
+     * inopérant, ce que ce chantier refuse depuis #425m.
+     */
+    couleurImposee: null,
+    // La moyenne de l'albédo de Paper005, c'est-à-dire la couleur qu'a vraiment ce papier-là.
+    teinteParDefaut: '#C9A779',
     couleurTexteParDefaut: '#3A2B18',
   },
 };
@@ -252,6 +341,63 @@ export function couleurImposeeParLaTexture(o){
 /** La couleur de texte qu'une texture suggère À DÉFAUT, ou `null`. Fonction PURE. */
 export function couleurTexteParDefautDeLaTexture(o){
   return REGISTRE[textureDeLaBulle(o)].couleurTexteParDefaut;
+}
+
+/**
+ * La teinte qu'une texture SUGGÈRE, ou `null`. Fonction PURE.
+ *
+ * ⚠️ SUGGÉRER N'EST PAS IMPOSER, ET LES DEUX NE DOIVENT PAS SE CONFONDRE. Une couleur imposée
+ * MASQUE le sélecteur ; une teinte suggérée le laisse visible et ne sert que tant que l'utilisateur
+ * n'a rien choisi. Les fondre en un seul champ rendrait indicible la différence entre « cette
+ * texture ne se colore pas » et « cette texture a une couleur d'origine ».
+ */
+export function teinteParDefautDeLaTexture(o){
+  return REGISTRE[textureDeLaBulle(o)].teinteParDefaut;
+}
+
+/**
+ * La couleur de fond d'une Bulle, toutes règles appliquées. Fonction PURE.
+ *
+ * ⚠️ L'ORDRE DES TROIS TERMES EST LA RÈGLE ELLE-MÊME. Une couleur IMPOSÉE passe avant tout, y
+ * compris avant un choix de l'utilisateur, parce que son sélecteur est masqué : le laisser gagner
+ * donnerait une tache d'encre rose sans qu'aucune commande visible ne l'explique. Le CHOIX vient
+ * ensuite, sinon le sélecteur serait décoratif. La SUGGESTION ferme la marche : c'est ce qu'on voit
+ * tant qu'on n'a rien demandé.
+ *
+ * ⚠️ CETTE DÉCISION VIVAIT DANS `draw.js`, où elle n'était pas testable. Elle n'y avait que deux
+ * termes ; en ajouter un troisième dans un fichier de dessin aurait été le troisième endroit du
+ * dépôt où une règle de couleur se serait écrite à la main.
+ */
+export function couleurDeFondDeLaBulle3D(o){
+  return couleurImposeeParLaTexture(o)
+    || (o && o.bulleColor)
+    || teinteParDefautDeLaTexture(o)
+    || '#fff';
+}
+
+/**
+ * Les grains que l'application doit précharger, déduits du registre. Fonction PURE.
+ *
+ * ⚠️ DÉDUITE, JAMAIS ÉCRITE À LA MAIN. Une liste de préchargement tenue en parallèle du registre
+ * est une énumération qui se périme : on ajoute une texture, on oublie la liste, et le grain
+ * manque au premier dessin — sans rien dire, puisqu'une couleur de repli existe. Ce dépôt a déjà
+ * payé ce défaut plusieurs fois.
+ *
+ * On interroge donc chaque texture avec un contexte factice, et on récolte les `motif` rencontrés.
+ *
+ * ⚠️ LES CLÉS SE PASSENT EN PARAMÈTRE, ET CE N'EST PAS UNE COMMODITÉ DE TEST. Sans ce paramètre,
+ * aucune assertion ne pouvait distinguer cette dérivation d'un `return ['papier-froisse']` écrit
+ * en dur : avec un seul grain au registre, les deux rendent la même chose AUJOURD'HUI. En pouvant
+ * demander les grains d'un SOUS-ENSEMBLE, on interroge la propriété qui distingue vraiment les
+ * deux — une texture sans grain doit rendre une liste vide.
+ */
+export function grainsAPrecharger3D(cles = texturesConnues()){
+  const vus = new Set();
+  for (const cle of cles) {
+    const { couches } = couchesDeTextureBulle({ bulleTexture: cle }, { couleur: '#808080', opacite: 1 });
+    for (const couche of couches) if (couche.motif) vus.add(couche.motif);
+  }
+  return [...vus];
 }
 
 /**

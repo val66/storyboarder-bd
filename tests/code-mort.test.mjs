@@ -133,6 +133,22 @@ const EN_ATTENTE = {
   // détecteur les voit appelées à l'intérieur du module. Cinquième fois que ce garde-fou évite des
   // exemptions qui ne surveilleraient rien.
 
+  // #431b1 — LE GRAIN D'UNE TEXTURE : LA DÉCISION AVANT SON `createPattern`. Septième fois que
+  // cette figure revient, après #403a, #414a, #420a, #425a, #421a et #422a, et le motif est
+  // toujours celui-là : CHARGER une image et fabriquer un motif de canevas ne se teste pas sous
+  // Node, DÉCIDER quel grain une texture réclame et de quelle couleur il habille son fond, si.
+  //
+  // Ce que la séparation achète en plus ici, et qui justifie d'écrire la décision en avance : la
+  // règle du mélange — reporter le même écart sur les trois canaux, et borner l'ÉCART plutôt que
+  // chaque canal — n'a de sens que testée. Écrite directement dans le dessin, elle serait passée
+  // pour un détail d'implémentation ; mesurée, elle s'est révélée être ce qui empêche un parchemin
+  // de virer à l'orange dans ses reliefs. La version « naturelle à écrire » avait le défaut.
+  //
+  // ÉCHÉANCE : #431b2, qui précharge les grains au démarrage — comme #408a l'a fait pour les
+  // polices — et résout `motif` en motif de canevas au moment de peindre.
+  teinteHabilleeDuGrain3D: '#431b2',
+  grainsAPrecharger3D: '#431b2',
+
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
   // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
@@ -248,7 +264,12 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // Ajouter une ligne doit coûter un test rouge,
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    //
+    // 2 depuis #431b1, après être retombé à 0 en #422d. Les deux exports attendent #431b2 : voir la
+    // raison et l'échéance en haut de ce fichier. Ce chiffre se modifie À LA MAIN, et c'est tout
+    // l'intérêt — la ligne qu'on vient d'écrire a coûté une seconde ligne, ici, qu'on ne peut pas
+    // écrire sans avoir lu ce paragraphe.
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

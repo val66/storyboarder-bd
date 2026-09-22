@@ -19,7 +19,8 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
-import { textureDeLaBulle, couleurImposeeParLaTexture } from './bubble-texture.js';
+import { textureDeLaBulle, couleurImposeeParLaTexture,
+         teinteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
@@ -167,8 +168,12 @@ const sideBubbleBgColorWrap = document.getElementById('sideBubbleBgColorWrap');
  *
  * ⚠️ UN RÉGLAGE VISIBLE ET INOPÉRANT EST PIRE QUE PAS DE RÉGLAGE DU TOUT — c'est le défaut que ce
  * chantier a rencontré quatre fois sous d'autres formes : on croit agir, rien ne bouge, et rien ne
- * dit pourquoi. Sous une texture qui IMPOSE sa couleur — le parchemin, l'encre sombre — le champ
- * n'aurait aucun effet ; on le masque plutôt que de laisser l'utilisateur tourner un bouton mort.
+ * dit pourquoi. Sous une texture qui IMPOSE sa couleur — l'encre sombre — le champ n'aurait aucun
+ * effet ; on le masque plutôt que de laisser l'utilisateur tourner un bouton mort.
+ *
+ * ⚠️ LE PARCHEMIN N'EST PLUS DE CEUX-LÀ DEPUIS #431b. Son grain est photographié et monochrome, si
+ * bien que la couleur redevient libre : le champ réapparaît, et il commande. C'est la raison
+ * d'être de la distinction entre couleur IMPOSÉE et teinte SUGGÉRÉE.
  */
 export function majAffichageCouleurDeFondBulle3D(bulle){
   if (!sideBubbleBgColorWrap) return;
@@ -1108,7 +1113,11 @@ function updateSidePanelImpl(){
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;
     sideBubblePaddingValue.textContent = paddingPct;
-    document.getElementById('sideBubbleBgColorInput').value   = sel.bulleColor     || '#ffffff';
+    // ⚠️ LE SÉLECTEUR MONTRE LA TEINTE SUGGÉRÉE TANT QU'AUCUNE N'A ÉTÉ CHOISIE. Afficher un blanc
+    // par défaut sous un parchemin ocre ferait mentir la pastille : l'utilisateur lirait « blanc »
+    // en regardant du beige, et le moindre passage sur le champ écrirait ce blanc pour de bon.
+    document.getElementById('sideBubbleBgColorInput').value =
+      sel.bulleColor || teinteParDefautDeLaTexture(sel) || '#ffffff';
     document.getElementById('sideBubbleTextColorInput').value = sel.bulleTextColor || '#23242a';
   } else {
     S.sideDescTarget = null;

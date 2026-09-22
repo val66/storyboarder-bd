@@ -100,6 +100,18 @@ export const TAILLE_GRAIN = 512;
 /** Le contraste local visé. C'est le papier froissé validé à l'œil, devenu la référence. */
 export const CONTRASTE_CIBLE = 6.4;
 
+/**
+ * Le gris sur lequel le grain est centré : la valeur qui, à l'affichage, ne change rien.
+ *
+ * ⚠️ CE NOMBRE EST UN CONTRAT AVEC `src/bubble-texture.js`, QUI NE PEUT PAS L'IMPORTER. Ce module
+ * ouvre des fichiers ; le code de l'application tourne dans un navigateur. Les deux constantes
+ * vivent donc séparément — c'est exactement « deux copies d'une même décision, d'accord seulement
+ * aujourd'hui », la famille de défauts que ce dépôt nomme. Un test les compare, faute de pouvoir
+ * les fondre : sans lui, un décalage assombrirait ou éclaircirait toutes les textures d'un bloc,
+ * uniformément, donc invisiblement.
+ */
+export const GRIS_NEUTRE = 128;
+
 /** Part du terme directionnel dans le mélange, le reste venant du relief brut. */
 export const PART_OMBRAGE = 0.30;
 
@@ -277,12 +289,12 @@ export function grainNormalise3D(relief, normaleRgba, taille, cible = CONTRASTE_
   // Le contraste du mélange AVANT gain, pour en déduire le gain. Recentré sur 128 : la mesure
   // porte sur des écarts entre voisins, donc le décalage n'y change rien, mais on reste homogène.
   const centre = new Float64Array(n);
-  for (let i = 0; i < n; i++) centre[i] = 128 + brut[i];
+  for (let i = 0; i < n; i++) centre[i] = GRIS_NEUTRE + brut[i];
   const c0 = contrasteLocal3D(centre, taille);
   const gain = cible / Math.max(c0, 1e-6);
   const grain = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
-    grain[i] = Math.max(0, Math.min(255, Math.round(128 + brut[i] * gain)));
+    grain[i] = Math.max(0, Math.min(255, Math.round(GRIS_NEUTRE + brut[i] * gain)));
   }
   return { grain, gain, contraste: contrasteLocal3D(grain, taille) };
 }

@@ -23,7 +23,7 @@ import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 import { queuesConnues } from '../src/bubble-tail.js';
-import { texturesConnues } from '../src/bubble-texture.js';
+import { texturesConnues, teinteParDefautDeLaTexture } from '../src/bubble-texture.js';
 import { particulesConnues } from '../src/bubble-particle.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
@@ -1006,13 +1006,48 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       return wrap.style.display;
     };
     assert.equal(choisir('aucune'), 'block', 'sans texture, la couleur est libre');
-    assert.equal(choisir('papier'), 'none', 'sous un parchemin, la couleur est imposée');
-    assert.equal(choisir('fondus'), 'none', 'sous une encre sombre aussi');
-    assert.equal(choisir('aucune'), 'block', 'et elle revient quand on retire la texture');
+    assert.equal(choisir('fondus'), 'none', 'sous une encre sombre, la couleur est imposée');
+    // ⚠️ LE PARCHEMIN A CHANGÉ DE CAMP EN #431b. Son grain est PHOTOGRAPHIÉ et monochrome : la
+    // matière vit dans le relief, donc la couleur redevient libre sans que le papier cesse d'être
+    // du papier. Le champ réapparaît — et il commande, ce qui est tout l'objet de la distinction
+    // entre couleur IMPOSÉE et teinte SUGGÉRÉE.
+    assert.equal(choisir('papier'), 'block', 'le papier suggère sa teinte, il ne l’impose plus');
+    assert.equal(choisir('aucune'), 'block', 'et elle reste libre quand on retire la texture');
     // Et la relecture du panneau dit la même chose.
-    b.bulleTexture = 'papier';
+    b.bulleTexture = 'fondus';
     updateSidePanel();
     assert.equal(wrap.style.display, 'none', 'la fiche rouverte doit masquer le champ aussi');
+  });
+
+  /**
+   * ⚠️ LA PASTILLE DOIT MONTRER CE QU'ON VOIT, PAS UN BLANC DE CONVENTION. Sous un parchemin dont
+   * aucune couleur n'a été choisie, le champ affichait `#ffffff` alors que la Bulle est ocre :
+   * l'utilisateur lisait « blanc » en regardant du beige, et le moindre passage sur le sélecteur
+   * aurait écrit ce blanc pour de bon. Un instrument qui ment est le défaut que ce chantier a
+   * rencontré le plus souvent.
+   */
+  test('⚠️ LA PASTILLE DE COULEUR AFFICHE LA TEINTE SUGGÉRÉE tant que rien n’a été choisi', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const champ = document.getElementById('sideBubbleBgColorInput');
+
+    b.bulleTexture = 'papier';
+    delete b.bulleColor;
+    updateSidePanel();
+    const suggeree = teinteParDefautDeLaTexture(b);
+    assert.equal(champ.value.toLowerCase(), suggeree.toLowerCase(),
+      'la pastille doit montrer la teinte du parchemin, pas du blanc');
+
+    // Et un choix explicite l'emporte, sinon le sélecteur serait décoratif.
+    b.bulleColor = '#3366ff';
+    updateSidePanel();
+    assert.equal(champ.value.toLowerCase(), '#3366ff');
+
+    // Sans texture ni choix, le blanc d'avant.
+    b.bulleTexture = 'aucune';
+    delete b.bulleColor;
+    updateSidePanel();
+    assert.equal(champ.value.toLowerCase(), '#ffffff');
   });
 
   test('⚠️ LA LISTE DE LA POINTE MONTRE CE QUE LE DESSIN FAIT, défaut de la forme compris', () => {
