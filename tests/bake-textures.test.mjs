@@ -57,6 +57,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   TAILLE_GRAIN, CONTRASTE_CIBLE, PART_OMBRAGE, AMPLI_NORMALE, DIRECTION_LUMIERE,
@@ -491,6 +492,55 @@ describe('nomDuGrain3D — un identifiant devient un fichier', () => {
   test('pas de tiret en tête ni en queue', () => {
     assert.equal(nomDuGrain3D('  toile de jean  '), 'toile-de-jean.png');
     assert.equal(nomDuGrain3D('__carton__'), 'carton.png');
+  });
+});
+
+describe('⚠️ L’OUTIL DOIT RENDRE LA MAIN, et rien sous Node ne peut le prouver', () => {
+  /**
+   * ⚠️ CE TEST LIT LA SOURCE, ET C'EST UN AVEU AUTANT QU'UNE GARDE. Le cuiseur tourne sous
+   * `electron`, qui est une APPLICATION : sa boucle d'événements attend des fenêtres et des
+   * signaux, indéfiniment. Les autres outils de `tools/` tournent sous node, qui s'arrête quand il
+   * n'a plus rien à faire — d'où le piège, invisible par analogie.
+   *
+   * Le défaut a été SIGNALÉ PAR L'USAGE, après que j'ai déclaré l'outil « validé de bout en bout »
+   * sur la foi de son rapport. Il écrivait son PNG, imprimait ses six lignes de mesures, et
+   * laissait le terminal pendu. J'avais vérifié qu'il IMPRIME, jamais qu'il SE TERMINE : un
+   * rapport complet ressemble beaucoup à une fin normale.
+   *
+   * Ce qu'on tient ici est exactement ce qui a manqué — LES DEUX ISSUES de `main()`, le succès
+   * comme l'échec. Un outil qui rend la main après une cuisson réussie mais reste pendu sur un
+   * dossier introuvable aurait le même défaut, la moitié du temps.
+   *
+   * ⚠️ PAS TENU : que la sortie fonctionne. Seul un vrai lancement le dit, et c'est ce qui l'a
+   * dit. Voir docs/en/testing-method.md, § « Ce qui est hors de portée ».
+   */
+  test('les deux issues de main() passent par la sortie explicite', () => {
+    const source = readFileSync(new URL('../tools/bake-textures.mjs', import.meta.url), 'utf8');
+    const garde = source.slice(source.indexOf('if (import.meta.url === pathToFileURL'));
+    assert.ok(garde.length > 0, 'la garde de point d’entrée a disparu');
+
+    const sorties = garde.match(/rendreLaMain\(/g) || [];
+    assert.ok(sorties.length >= 2,
+      `${sorties.length} sortie(s) dans la garde : le succès ET l’échec doivent rendre la main`);
+    // Et les deux codes de retour existent : sortir 0 sur une erreur ferait passer un échec pour
+    // une réussite auprès de tout ce qui enchaînerait sur cet outil.
+    assert.ok(/rendreLaMain\(0\)/.test(garde), 'le succès doit sortir en 0');
+    assert.ok(/rendreLaMain\(1\)/.test(garde), 'l’échec doit sortir en 1');
+  });
+
+  /**
+   * ⚠️ VIDER `stdout` AVANT DE COUPER. Sous Windows, une sortie REDIRIGÉE — vers un fichier, ou
+   * dans un tube — s'écrit de façon asynchrone. `app.exit()` aussitôt tronquerait les dernières
+   * lignes, et le premier à s'en apercevoir serait celui qui journalise une cuisson au lieu de la
+   * lire, c'est-à-dire personne, pendant longtemps.
+   */
+  test('la sortie attend que stdout soit vidé', () => {
+    const source = readFileSync(new URL('../tools/bake-textures.mjs', import.meta.url), 'utf8');
+    const corps = source.slice(source.indexOf('async function rendreLaMain'));
+    const vidage = corps.indexOf('process.stdout.write');
+    const coupure = corps.indexOf('app.exit');
+    assert.ok(vidage >= 0, 'rien ne vide stdout avant de couper');
+    assert.ok(vidage < coupure, 'stdout est vidé APRÈS la coupure : trop tard');
   });
 });
 

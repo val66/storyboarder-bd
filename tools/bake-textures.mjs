@@ -451,6 +451,32 @@ async function main(){
 }
 
 /**
+ * Rendre la main, ce qu'un script Electron ne fait PAS tout seul.
+ *
+ * ⚠️ LES AUTRES OUTILS DE `tools/` TOURNENT SOUS NODE, QUI S'ARRÊTE QUAND IL N'A PLUS RIEN À FAIRE.
+ * Electron, lui, est une APPLICATION : démarrer un script sous `electron` ouvre une boucle
+ * d'événements qui attend des fenêtres et des signaux, indéfiniment. Sans sortie explicite, le
+ * cuiseur écrivait son PNG, imprimait son rapport complet… et laissait le terminal pendu.
+ *
+ * ⚠️ ET JE L'AI DÉCLARÉ « VALIDÉ DE BOUT EN BOUT » SUR LA FOI DE CE RAPPORT. Le signalement est
+ * venu de l'usage. J'avais vérifié que l'outil IMPRIME, jamais qu'il SE TERMINE — la même erreur
+ * de mesure que ce dépôt nomme ailleurs : constater une présence en croyant mesurer une absence.
+ * Un rapport complet ressemble beaucoup à une fin normale.
+ *
+ * ⚠️ ON VIDE `stdout` AVANT DE COUPER. Sous Windows, une sortie REDIRIGÉE — vers un fichier, ou
+ * dans un tube — est écrite de façon asynchrone. Couper aussitôt tronquerait les dernières lignes,
+ * et le premier à s'en apercevoir serait celui qui journalise une cuisson plutôt que de la lire.
+ */
+async function rendreLaMain(code){
+  await new Promise(r => process.stdout.write('', r));
+  try {
+    const { app } = await import('electron');
+    if (app && typeof app.exit === 'function') { app.exit(code); return; }
+  } catch { /* hors Electron : la sortie ordinaire suffit */ }
+  process.exit(code);
+}
+
+/**
  * La garde de `fetch-fonts.mjs` et de `bump-version.mjs` : importer ce module ne déclenche rien.
  *
  * ⚠️ `pathToFileURL` ET NON UNE CONCATÉNATION. Trois variantes de cette garde cohabitent dans
@@ -459,5 +485,8 @@ async function main(){
  * se lancerait pas, et ne dirait pas pourquoi. `tools/make-test-glb.mjs` porte encore cette forme.
  */
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
-  main().catch(e => { console.error(e.message); process.exit(1); });
+  main().then(
+    () => rendreLaMain(0),
+    (e) => { console.error(e.message); return rendreLaMain(1); },
+  );
 }
