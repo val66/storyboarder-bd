@@ -260,8 +260,18 @@ export const EXPOSANT_AMBIANTE = 2;
  * enfreint sans le dire est un défaut ; une règle qu'on enfreint en le nommant est une décision.
  */
 
-/** Le ciel de Jour : un bleu clair, franc sans être saturé. À juger à l'écran. */
-export const CIEL_JOUR = '#AFCBE3';
+/**
+ * Le ciel de Jour.
+ *
+ * ⚠️ REPRIS À L'ŒIL APRÈS UN PREMIER ESSAI : « trop bleu gris ». Le premier choix, `#AFCBE3`, ne
+ * tenait que 48 % de saturation — assez pour un gris bleuté, pas pour un ciel. Celui-ci en tient
+ * 80 % à clarté comparable : c'est la SATURATION qui manquait, pas la luminosité.
+ *
+ * C'est le troisième réglage de ce chantier qu'aucun calcul ne pouvait trancher, après l'intensité
+ * de départ d'une source (#420c) et la marge de la boîte d'ombre. Un nombre dérivé « correctement »
+ * peut être franchement mauvais à l'œil.
+ */
+export const CIEL_JOUR = '#8FCEF3';
 
 /**
  * Le ciel de Nuit : un bleu NUIT, pas du noir.
