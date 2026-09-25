@@ -37,20 +37,20 @@ import { ecartDuGrain3D, rvbDeCouleur3D } from './bubble-texture.js';
 const DOSSIER_GRAINS = 'assets/textures/';
 
 /**
- * Combien de motifs composés on garde.
+ * Combien de tuiles composées on garde.
  *
- * ⚠️ CHACUN PÈSE UNE TUILE ENTIÈRE, SOIT 1 Mo EN MÉMOIRE VIVE (512 × 512 × 4 octets) — et non les
+ * ⚠️ CHACUNE PÈSE UNE TUILE ENTIÈRE, SOIT 1 Mo EN MÉMOIRE VIVE (512 × 512 × 4 octets) — et non les
  * 255 Ko du fichier, qui est compressé. Le cache est indexé par (grain, teinte) : un utilisateur
- * qui promène le sélecteur de couleur en fabriquerait un par nuance traversée. Huit couvre
+ * qui promène le sélecteur de couleur en fabriquerait une par nuance traversée. Huit couvre
  * largement l'usage réel — une planche emploie deux ou trois teintes — et plafonne à 8 Mo.
  */
-const MOTIFS_MAX = 8;
+const TUILES_MAX = 8;
 
 /** Les grains chargés, par clé. Rempli par `prechargerGrains3D`, lu par le dessin. */
 const _grains = new Map();
 
-/** Les motifs composés, par `clé|teinte`. Une Map tient son ordre d'insertion : le premier sort. */
-const _motifs = new Map();
+/** Les tuiles composées, par `clé|teinte`. Une Map tient son ordre d'insertion : le premier sort. */
+const _tuiles = new Map();
 
 /** Les grains déjà signalés manquants, pour n'encombrer la console qu'une fois chacun. */
 const _signales = new Set();
@@ -110,8 +110,29 @@ export async function prechargerGrains3D(cles, apresChargement){
  *
  * En composant hors écran, le motif rendu est OPAQUE et ordinaire : `fill()` n'a plus rien de
  * particulier à savoir.
+ *
+ * ⚠️ ET C'EST LA TUILE QUI EST MISE EN CACHE, PAS LE MOTIF — une correction, pas un détail. La
+ * première version gardait le `CanvasPattern`. Deux ennuis, et le second est le plus grave :
+ *
+ *   1. un motif porte son état. Le même objet servait à toutes les Bulles de même teinte, si bien
+ *      que le calage de l'une valait pour les autres, dans un ordre dépendant du dessin ;
+ *   2. un motif est LIÉ AU CONTEXTE QUI L'A CRÉÉ. Or ce dépôt peint ses Bulles sur plusieurs
+ *      canevas — la planche, les aperçus, l'export. Un objet fabriqué pour l'un et réemployé sur
+ *      l'autre, c'est très exactement la famille de fuites qui a mordu cinq fois dans #422.
+ *
+ * Ce qui coûte, c'est la COMPOSITION : un passage sur 262 144 pixels. `createPattern` ne fait que
+ * référencer un canevas déjà prêt. On garde donc la tuile, partageable sans risque, et chaque
+ * peinture fabrique son propre motif — sans état commun, et valide sur son contexte.
  */
-export function motifDuGrain3D(ctx, cle, couleur){
+export function motifDuGrain3D(ctx, cle, couleur, ancre){
+  const tuile = tuileTeintee(cle, couleur);
+  if (!tuile) return null;
+  const motif = ctx.createPattern(tuile, 'repeat');
+  return motif ? ancrer(motif, ancre) : null;
+}
+
+/** La tuile composée pour ce couple, depuis le cache ou fraîchement peinte. */
+function tuileTeintee(cle, couleur){
   const img = _grains.get(cle);
   if (!img) {
     if (!_signales.has(cle)) {
@@ -126,11 +147,11 @@ export function motifDuGrain3D(ctx, cle, couleur){
   if (!rvb) return null;
 
   const index = cle + '|' + couleur;
-  const garde = _motifs.get(index);
+  const garde = _tuiles.get(index);
   if (garde) {
-    // Remis en fin de file : ce sont les teintes DORMANTES qu'on veut évincer, pas les vivantes.
-    _motifs.delete(index);
-    _motifs.set(index, garde);
+    // Remise en fin de file : ce sont les teintes DORMANTES qu'on veut évincer, pas les vivantes.
+    _tuiles.delete(index);
+    _tuiles.set(index, garde);
     return garde;
   }
 
@@ -148,19 +169,45 @@ export function motifDuGrain3D(ctx, cle, couleur){
   }
   tc.putImageData(données, 0, 0);
 
-  const motif = ctx.createPattern(tuile, 'repeat');
-  if (!motif) return null;
-  _motifs.set(index, motif);
-  if (_motifs.size > MOTIFS_MAX) _motifs.delete(_motifs.keys().next().value);
+  _tuiles.set(index, tuile);
+  if (_tuiles.size > TUILES_MAX) _tuiles.delete(_tuiles.keys().next().value);
+  return tuile;
+}
+
+/**
+ * Cale le motif sur un point du dessin plutôt que sur l'origine du repère.
+ *
+ * ⚠️ UN MOTIF DE CANEVAS EST CALÉ SUR L'ORIGINE, ET C'EST LE DÉFAUT QUE ÇA A PRODUIT. `fill()`
+ * échantillonne la tuile en fonction de la position ABSOLUE de chaque pixel, pas de la forme qu'on
+ * remplit. Déplacer une Bulle la promène donc au-dessus d'un motif immobile : le grain visible
+ * CHANGE à chaque déplacement, comme une fenêtre qu'on ferait glisser sur un papier peint. Signalé
+ * à l'usage, et c'est bien une faute — une feuille de papier découpée emporte son grain avec elle.
+ *
+ * Translater le motif jusqu'à l'ancre attache la tuile à la Bulle : le même pixel de grain reste
+ * sous le même point de la forme, où qu'elle aille et quel que soit le zoom.
+ *
+ * ⚠️ LE MOTIF EST NEUF À CHAQUE PEINTURE, DONC LE CALAGE NE FUIT PAS. C'est la tuile qui est mise
+ * en cache, pas le motif — voir `motifDuGrain3D`. Un `CanvasPattern` porte son état : partagé, le
+ * calage d'une Bulle vaudrait pour les suivantes, dans un ordre dépendant du dessin.
+ *
+ * ⚠️ `DOMMatrix` PEUT MANQUER — sous Node, et sur de vieux moteurs. Sans lui on rend le motif tel
+ * quel : le grain reviendra au défaut d'avant, visuellement imparfait mais jamais absent. C'est le
+ * seul repli de ce module qui ne mérite pas d'avertissement, parce qu'il ne cache aucune erreur.
+ */
+function ancrer(motif, ancre){
+  if (!ancre || typeof globalThis.DOMMatrix === "undefined" || typeof motif.setTransform !== 'function') {
+    return motif;
+  }
+  motif.setTransform(new globalThis.DOMMatrix().translate(ancre.x, ancre.y));
   return motif;
 }
 
 /** Pour les tests et le rechargement : tout oublier. */
 export function _viderGrains3D(){
-  _grains.clear(); _motifs.clear(); _signales.clear();
+  _grains.clear(); _tuiles.clear(); _signales.clear();
 }
 
 /** Pour les tests : injecter un grain sans passer par le réseau. */
 export function _setGrain3D(cle, img){
-  _grains.set(cle, img); _motifs.clear();
+  _grains.set(cle, img); _tuiles.clear();
 }

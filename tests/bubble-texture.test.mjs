@@ -57,7 +57,6 @@ describe('LA GARANTIE : une Bulle sans texture se remplit comme avant', () => {
 
     const r = rendu(undefined, { couleur: '#abcdef', opacite: 0.4 });
     assert.equal(r.couches.length, 1);
-    assert.equal(r.taches.length, 0);
     assert.equal(r.couches[0].facteur, null, 'le chemin doit être pris tel quel');
     assert.equal(r.couches[0].couleur, '#abcdef');
     assert.equal(r.couches[0].alpha, 0.4);
@@ -333,7 +332,7 @@ describe('⚠️ L’OPACITÉ DE LA BULLE MULTIPLIE LA TEXTURE, elle ne la rempl
     // resterait visible par ses taches : le curseur deviendrait inopérant sans qu'on sache pourquoi.
     for (const t of texturesConnues()) {
       const r = rendu(t, { opacite: 0 });
-      [...r.couches, ...r.taches].forEach((e, i) =>
+      r.couches.forEach((e, i) =>
         assert.equal(e.alpha, 0, `${t} : l’élément ${i} reste à ${e.alpha} pour une opacité nulle`));
     }
   });
@@ -343,7 +342,7 @@ describe('⚠️ L’OPACITÉ DE LA BULLE MULTIPLIE LA TEXTURE, elle ne la rempl
     // « alpha ≤ opacité » serait satisfait par une texture qui ignorerait le curseur à 0,5.
     for (const t of texturesConnues()) {
       const plein = rendu(t, { opacite: 1 }), demi = rendu(t, { opacite: 0.5 });
-      const alphas = (r) => [...r.couches, ...r.taches].map(e => e.alpha);
+      const alphas = (r) => r.couches.map(e => e.alpha);
       const a1 = alphas(plein), a2 = alphas(demi);
       assert.equal(a1.length, a2.length, `${t} : le nombre d’éléments ne doit pas dépendre de l’opacité`);
       a1.forEach((a, i) => assert.ok(Math.abs(a / 2 - a2[i]) < 1e-9,
@@ -359,8 +358,8 @@ describe('⚠️ UNE TEXTURE NE CONNAÎT RIEN DE LA FORME', () => {
     // `o.bulleShape` « pour s'adapter » pour que la combinatoire des sept axes s'effondre. La
     // texture ne reçoit d'ailleurs aucune géométrie : ce test vérifie qu'elle n'en cherche pas.
     const decrire = (r) => JSON.stringify({
-      couches: r.couches.map(c => [c.couleur, c.alpha, c.facteur ? c.facteur(0.3).toFixed(6) : null]),
-      taches: r.taches.map(t => [t.couleur, t.alpha, t.x.toFixed(6), t.y.toFixed(6), t.r.toFixed(6)]),
+      couches: r.couches.map(c => [c.couleur, c.alpha, c.motif || null,
+        c.facteur ? c.facteur(0.3).toFixed(6) : null]),
     });
     for (const texture of texturesConnues()) {
       const reference = decrire(couchesDeTextureBulle(
@@ -374,34 +373,21 @@ describe('⚠️ UNE TEXTURE NE CONNAÎT RIEN DE LA FORME', () => {
     }
   });
 
-  test('mais elle DÉPEND de la Bulle : deux identifiants, deux marbrures', () => {
-    // L'autre moitié. Une marbrure identique partout serait un motif imprimé, pas un vieillissement.
-    const marbrure = (id) => JSON.stringify(couchesDeTextureBulle(
-      { id, bulleTexture: TEXTURE_PAPIER }, { couleur: '#E8D9B0', opacite: 1 }).taches);
-    assert.equal(marbrure('b13'), marbrure('b13'), 'la même Bulle doit se remarbrer à l’identique');
-    assert.notEqual(marbrure('b13'), marbrure('zz9'), 'deux Bulles doivent différer');
-  });
-});
-
-describe('⚠️ LES TACHES TIENNENT DANS LE DISQUE UNITÉ, rayon compris', () => {
-  test('distance au centre + rayon ≤ 1, sur mille graines', () => {
-    // ⚠️ C'EST CE QUI REMPLACE UNE DÉCOUPE. #425k vient de figer qu'une Bulle ne se peint jamais
-    // sous découpe ; le dessin ramène ces coordonnées dans la plus grande ellipse INSCRITE dans la
-    // forme, et cette inégalité est la garantie qu'une tache n'en sort pas.
-    //
-    // ⚠️ UNE PREMIÈRE VERSION LES POSAIT DANS L'ENCART INSCRIPTIBLE, ce qui semblait équivalent et
-    // ne l'était pas : l'ovale et le rectangle déclarent la BOÎTE ENTIÈRE comme encart, décision de
-    // compatibilité de #425e. Des taches posées vers ses coins sortaient franchement de l'ovale, et
-    // c'est le rendu qui l'a montré.
-    for (let n = 0; n < 1000; n++) {
-      const { taches } = couchesDeTextureBulle(
-        { id: 'graine' + n, bulleTexture: TEXTURE_PAPIER }, { couleur: '#E8D9B0', opacite: 1 });
-      for (const t of taches) {
-        assert.ok(Math.hypot(t.x, t.y) + t.r <= 1 + 1e-9,
-          `graine${n} : tache à ${Math.hypot(t.x, t.y).toFixed(3)} du centre, rayon ${t.r.toFixed(3)}`);
-        assert.ok(t.r > 0, `graine${n} : tache de rayon nul`);
-      }
-    }
+  /**
+   * ⚠️ L'AUTRE MOITIÉ : UNE TEXTURE DÉPEND DE SA BULLE. Un liseré identique partout serait un motif
+   * imprimé, pas un vieillissement. Ce test portait sur les auréoles ; #431b3 les a retirées, et
+   * c'est l'ONDULATION DU LISERÉ qui porte désormais seule cette propriété — elle vient de la même
+   * graine, tirée de l'identifiant de la Bulle.
+   */
+  test('mais elle DÉPEND de la Bulle : deux identifiants, deux liserés', () => {
+    const ondulation = (id) => {
+      const { couches } = couchesDeTextureBulle(
+        { id, bulleTexture: TEXTURE_PAPIER }, { couleur: '#E8D9B0', opacite: 1 });
+      const coeur = couches.find(c => c.facteur);
+      return JSON.stringify([0, 0.17, 0.41, 0.83].map(t => coeur.facteur(t).toFixed(9)));
+    };
+    assert.equal(ondulation('b13'), ondulation('b13'), 'la même Bulle doit se redessiner à l’identique');
+    assert.notEqual(ondulation('b13'), ondulation('zz9'), 'deux Bulles doivent différer');
   });
 });
 

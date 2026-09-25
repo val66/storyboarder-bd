@@ -24,10 +24,23 @@ import {
   motifDuGrain3D, prechargerGrains3D, _viderGrains3D, _setGrain3D,
 } from '../src/bubble-grain.js';
 
-/** Un contexte qui rend un motif DISTINCT à chaque appel : sans quoi l'identité ne dirait rien. */
+/**
+ * Un contexte qui NOTE la tuile qu'on lui donne et rend un motif neuf à chaque fois.
+ *
+ * ⚠️ C'EST LA TUILE QU'IL FAUT OBSERVER, PAS LE MOTIF, depuis que le cache garde la première et
+ * fabrique le second à chaque peinture. Comparer des motifs ne dirait plus rien : ils diffèrent par
+ * construction. La tuile, elle, est l'objet coûteux — celui qu'on ne veut pas recomposer.
+ */
 function ctxTemoin(){
-  let n = 0;
-  return { createPattern: () => ({ motif: ++n }) };
+  const tuiles = [];
+  return { tuiles, createPattern: (t) => { tuiles.push(t); return { setTransform(){} }; } };
+}
+
+/** La tuile employée pour ce couple, ou `null` si le motif n'a pas pu être fabriqué. */
+function tuilePour(c, cle, couleur){
+  const avant = c.tuiles.length;
+  const m = motifDuGrain3D(c, cle, couleur);
+  return m ? c.tuiles[avant] : null;
 }
 
 const GRAIN = { width: 4, height: 4 };
@@ -80,16 +93,29 @@ describe('le cache de motifs', () => {
    */
   test('la même teinte ne se compose qu’une fois', () => {
     const c = ctxTemoin();
-    const a = motifDuGrain3D(c, 'papier-froisse', '#C8A678');
-    const b = motifDuGrain3D(c, 'papier-froisse', '#C8A678');
-    assert.ok(a, 'le grain injecté doit donner un motif');
-    assert.equal(a, b, 'le motif a été recomposé alors qu’il était en cache');
+    const a = tuilePour(c, 'papier-froisse', '#C8A678');
+    const b = tuilePour(c, 'papier-froisse', '#C8A678');
+    assert.ok(a, 'le grain injecté doit donner une tuile');
+    assert.equal(a, b, 'la tuile a été recomposée alors qu’elle était en cache');
   });
 
-  test('deux teintes donnent deux motifs — le cache est indexé par la paire', () => {
+  /**
+   * ⚠️ LE MOTIF, LUI, EST NEUF À CHAQUE PEINTURE — ET C'EST VOULU. Un `CanvasPattern` porte son
+   * calage et reste lié au contexte qui l'a créé. Ce dépôt peint ses Bulles sur plusieurs canevas
+   * (planche, aperçus, export) : partager l'objet entre eux, c'est la famille de fuites qui a mordu
+   * cinq fois dans #422. Seule la tuile — la part coûteuse — se partage.
+   */
+  test('mais le motif est refait, pour ne rien partager entre canevas', () => {
     const c = ctxTemoin();
-    const ocre = motifDuGrain3D(c, 'papier-froisse', '#C8A678');
-    const bleu = motifDuGrain3D(c, 'papier-froisse', '#3366FF');
+    const a = motifDuGrain3D(c, 'papier-froisse', '#C8A678');
+    const b = motifDuGrain3D(c, 'papier-froisse', '#C8A678');
+    assert.notEqual(a, b, 'le même objet motif sert deux peintures : son état fuit');
+  });
+
+  test('deux teintes donnent deux tuiles — le cache est indexé par la paire', () => {
+    const c = ctxTemoin();
+    const ocre = tuilePour(c, 'papier-froisse', '#C8A678');
+    const bleu = tuilePour(c, 'papier-froisse', '#3366FF');
     assert.notEqual(ocre, bleu, 'la teinte doit entrer dans la clé du cache');
   });
 
@@ -100,11 +126,11 @@ describe('le cache de motifs', () => {
    */
   test('le cache plafonne', () => {
     const c = ctxTemoin();
-    const premiere = motifDuGrain3D(c, 'papier-froisse', '#000001');
+    const premiere = tuilePour(c, 'papier-froisse', '#000001');
     for (let i = 2; i <= 12; i++) {
-      motifDuGrain3D(c, 'papier-froisse', '#0000' + String(i).padStart(2, '0'));
+      tuilePour(c, 'papier-froisse', '#0000' + String(i).padStart(2, '0'));
     }
-    assert.notEqual(motifDuGrain3D(c, 'papier-froisse', '#000001'), premiere,
+    assert.notEqual(tuilePour(c, 'papier-froisse', '#000001'), premiere,
       'douze teintes tiennent dans le cache : il grandit sans fin');
   });
 
@@ -122,17 +148,17 @@ describe('le cache de motifs', () => {
     const c = ctxTemoin();
     const teinte = (i) => '#0000' + String(i).padStart(2, '0');
     // Huit teintes : le cache est plein, sans rien avoir évincé.
-    const doyenne = motifDuGrain3D(c, 'papier-froisse', teinte(1));
-    for (let i = 2; i <= 8; i++) motifDuGrain3D(c, 'papier-froisse', teinte(i));
+    const doyenne = tuilePour(c, 'papier-froisse', teinte(1));
+    for (let i = 2; i <= 8; i++) tuilePour(c, 'papier-froisse', teinte(i));
 
     // On se ressert de la plus ancienne : elle redevient la plus fraîchement utilisée.
-    assert.equal(motifDuGrain3D(c, 'papier-froisse', teinte(1)), doyenne,
+    assert.equal(tuilePour(c, 'papier-froisse', teinte(1)), doyenne,
       'la fixture suppose que les huit tiennent : sinon ce test ne prouve rien');
 
     // Une neuvième entre, donc une seule place doit se libérer.
-    motifDuGrain3D(c, 'papier-froisse', teinte(9));
+    tuilePour(c, 'papier-froisse', teinte(9));
 
-    assert.equal(motifDuGrain3D(c, 'papier-froisse', teinte(1)), doyenne,
+    assert.equal(tuilePour(c, 'papier-froisse', teinte(1)), doyenne,
       'la teinte qu’on vient d’employer a été évincée : le cache sort le PREMIER ENTRÉ');
   });
 

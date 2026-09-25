@@ -34,6 +34,7 @@ import {
   scheduleDrawCurrentPage,
   flushDrawCurrentPage,
 } from '../src/draw.js';
+import { _viderGrains3D, _setGrain3D } from '../src/bubble-grain.js';
 import { S, currentPage } from '../src/state.js';
 import { buildWallJunctions3D, isJunctionWall3D,
   budgetFrameEpuise3D, RENDUS_3D_PAR_FRAME,
@@ -2882,49 +2883,76 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
     assert.ok(cerne > 100, `le contour cerné n’atteint que ${cerne.toFixed(1)} : le trait s’est décollé du bord`);
   });
 
-  test('⚠️ LE VIEUX PAPIER POSE SES TACHES SANS AUCUNE DÉCOUPE, et dans la Bulle', () => {
-    // ⚠️ LA RÈGLE DE #425k EST EN JEU : une Bulle ne se peint jamais sous découpe. La texture s'y
-    // plie en calculant la plus grande ellipse inscrite plutôt qu'en découpant.
-    for (const forme of ['ovale', 'rect', 'etoile', 'ecu', 'epines', 'tache']) {
-      const c = contexteEnregistreur();
-      let decoupes = 0;
-      c.clip = () => { decoupes++; };
-      drawBubble(c, bulle({ bulleShape: forme, bulleTexture: 'papier', tailVisible: false }));
-      assert.equal(decoupes, 0, `${forme} : ${decoupes} découpe(s) posée(s) pour la texture`);
-      // ⚠️ IL FAUT ÉCARTER LES ELLIPSES QUI NE SONT PAS DES TACHES, et deux essais ont échoué avant
-      // celui-ci. Un ovale trace son CONTOUR par `c.ellipse` : le test y voyait une tache géante et
-      // échouait sur du code correct. Compter les ellipses d'un dessin SANS texture pour les
-      // soustraire ne suffisait pas non plus — une Bulle texturée reconstruit son chemin une fois
-      // de plus, pour poser le trait sur le vrai contour.
-      //
-      // Le critère juste est une PROPRIÉTÉ de la tache, pas son rang : une tache est un CERCLE,
-      // `c.ellipse(x, y, r, r, …)`. La Bulle d'essai fait 200 × 100, donc son contour ovale n'en
-      // est pas un — les deux ne peuvent pas être confondus.
-      const ronds = appels(c.journal, 'ellipse').map(e => e.args).filter(a => a[2] === a[3]);
-      assert.ok(ronds.length > 10, `${forme} : ${ronds.length} disques de marbrure`);
-      for (const [x, y, r] of ronds) {
-        assert.ok(x - r >= -1e-6 && x + r <= 200 + 1e-6 && y - r >= -1e-6 && y + r <= 100 + 1e-6,
-          `${forme} : une tache sort de la Bulle — ${x.toFixed(1)},${y.toFixed(1)} r=${r.toFixed(1)}`);
-      }
+  /**
+   * ⚠️ UN MOTIF DE CANEVAS EST CALÉ SUR L'ORIGINE DU REPÈRE, PAS SUR LA FORME QU'ON REMPLIT. Sans
+   * ancrage, déplacer une Bulle la promène au-dessus d'un motif immobile : le grain visible CHANGE
+   * à chaque déplacement, comme une fenêtre qu'on ferait glisser sur un papier peint. Signalé à
+   * l'usage — une feuille de papier découpée emporte son grain avec elle.
+   *
+   * ⚠️ ET CE TEST POSE SES PROPRES LEURRES DE `DOMMatrix` ET DE MOTIF. L'ancrage n'existe que si le
+   * moteur sait composer une matrice ; sous Node il n'y en a pas, et le module retombe alors sur un
+   * motif non ancré — un repli volontaire et bénin, mais qui rendrait ce test aveugle. Le leurre
+   * est donc ce qui lui permet d'échouer.
+   */
+  test('⚠️ LE MOTIF SUIT LA BULLE : deux positions, deux ancrages', () => {
+    const anciens = [globalThis.DOMMatrix, globalThis.Image];
+    globalThis.DOMMatrix = class { translate(x, y){ return { x, y }; } };
+    _viderGrains3D();
+    _setGrain3D('papier-froisse', { width: 4, height: 4 });
+    try {
+      const ancrages = (bx, by) => {
+        const vus = [];
+        const c = contexteEnregistreur();
+        c.createPattern = () => ({ setTransform: (m) => vus.push(m) });
+        drawBubble(c, bulle({ x: bx, y: by, bulleShape: 'rect', bulleTexture: 'papier',
+          tailVisible: false }));
+        return vus;
+      };
+      const a = ancrages(0, 0);
+      assert.ok(a.length >= 2, `${a.length} ancrage(s) : les deux couches doivent être ancrées`);
+      // Tous les ancrages d'une même Bulle visent le même point : c'est UN morceau de papier.
+      assert.ok(a.every(m => m.x === a[0].x && m.y === a[0].y), 'les couches ne partagent pas l’ancre');
+
+      // ⚠️ LES DEUX AXES SÉPARÉMENT, ET C'EST UNE RÉCIDIVE RÉPARÉE. Un premier témoin ne déplaçait
+      // la Bulle qu'en X : ancrer sur le seul X passait au vert. C'est mot pour mot la faute de
+      // M156/M158 en #422h, où l'axe témoin était (0, 0, ±1) et laissait la composante X sans
+      // épreuve. Un déplacement oblique ne suffirait pas non plus — il ne dirait pas LEQUEL des
+      // deux a bougé.
+      const enX = ancrages(300, 0), enY = ancrages(0, 170);
+      assert.equal(enX[0].x - a[0].x, 300, 'l’ancre ne suit pas la Bulle en X');
+      assert.equal(enX[0].y - a[0].y, 0, 'l’ancre a bougé en Y sans raison');
+      assert.equal(enY[0].y - a[0].y, 170, 'l’ancre ne suit pas la Bulle en Y');
+      assert.equal(enY[0].x - a[0].x, 0, 'l’ancre a bougé en X sans raison');
+    } finally {
+      [globalThis.DOMMatrix, globalThis.Image] = anciens;
+      _viderGrains3D();
     }
   });
 
-  test('⚠️ ET LA MARBRURE NE SE RÉPÈTE PAS DANS CHAQUE ROND D’UNE CHAÎNE', () => {
-    // ⚠️ DÉFAUT ÉVITÉ DE JUSTESSE. Les taches vivaient d'abord dans `remplirEtCernerBulle3D`, qui
-    // sert AUSSI à peindre les disques détachés d'une queue en chaîne : chaque rond se serait
-    // couvert des auréoles de la Bulle entière, à son échelle.
-    // ⚠️ LA MESURE PORTE SUR LES TACHES, PAS SUR LES ELLIPSES — seconde assertion fausse, et son
-    // échec instruit. Je comptais « trois ellipses de plus » ; il y en a NEUF, parce que chaque
-    // rond reçoit aussi le liseré du vieux papier, ce qui est juste : un maillon de chaîne sur une
-    // Bulle en parchemin doit être en parchemin lui aussi. Ce qui ne doit pas se répéter, c'est la
-    // MARBRURE, reconnaissable à son opacité propre.
-    const sans = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailVisible: false }));
-    const avec = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailShape: 'ronds',
-      tailVisible: true }));
-    const marbrures = (j) => appels(j, 'fill').filter(e => e.alpha > 0 && e.alpha < 0.2).length;
-    assert.ok(marbrures(sans) > 10, `${marbrures(sans)} taches sur la Bulle seule`);
-    assert.equal(marbrures(avec), marbrures(sans),
-      'la marbrure ne doit pas être repeinte dans chaque rond de la chaîne');
+  /**
+   * ⚠️ LES RONDS DÉTACHÉS D'UNE CHAÎNE SONT DU MÊME PAPIER QUE LEUR BULLE. Ils passent par la même
+   * fonction de remplissage, qui reçoit l'ancre de la BULLE et non la leur : le grain doit s'y
+   * prolonger sans rupture. Leur donner leur propre ancre recollerait un morceau de papier neuf sur
+   * chaque maillon — visible au premier coup d'œil sur une chaîne de trois ronds.
+   */
+  test('⚠️ ET LES RONDS D’UNE CHAÎNE PARTAGENT L’ANCRE DE LEUR BULLE', () => {
+    const anciens = globalThis.DOMMatrix;
+    globalThis.DOMMatrix = class { translate(x, y){ return { x, y }; } };
+    _viderGrains3D();
+    _setGrain3D('papier-froisse', { width: 4, height: 4 });
+    try {
+      const vus = [];
+      const c = contexteEnregistreur();
+      c.createPattern = () => ({ setTransform: (m) => vus.push(m) });
+      drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailShape: 'ronds',
+        tailVisible: true }));
+      assert.ok(vus.length > 2, `${vus.length} ancrages : la chaîne doit en ajouter`);
+      assert.ok(vus.every(m => m.x === vus[0].x && m.y === vus[0].y),
+        'un rond de la chaîne a reçu sa propre ancre : le papier se recolle à chaque maillon');
+    } finally {
+      globalThis.DOMMatrix = anciens;
+      _viderGrains3D();
+    }
   });
 
   test('l’opacité de la Bulle éteint la texture entière', () => {

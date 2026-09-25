@@ -5,30 +5,26 @@
  * UNE TEXTURE EST UNE PILE DE COUCHES, ET C'EST TOUT
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ⚠️ UNE TEXTURE IMPOSE SA COULEUR DE FOND, SAUF « AUCUNE ». Demandé à l'usage, et c'est juste : un
- * vieux papier n'est pas « une couleur au choix, un peu tachée », c'est du parchemin ; la tache
- * d'encre du Lecteur omniscient est NOIRE, avec un lettrage blanc. Laisser l'utilisateur régler la
- * couleur sous une texture qui la teinte donnait des résultats que le relevé ne montre nulle part —
- * un parchemin bleu, une tache d'encre rose. « Aucune » reste le cas où la couleur est libre, et
- * c'est là que le sélecteur de couleur a un sens.
+ * ⚠️ UNE TEXTURE PEUT IMPOSER SA COULEUR, OU SEULEMENT LA SUGGÉRER, ET LES DEUX DIFFÈRENT. La tache
+ * d'encre du Lecteur omniscient est NOIRE, avec un lettrage blanc : elle IMPOSE, et la fiche masque
+ * alors le sélecteur plutôt que de laisser tourner un bouton mort. Le vieux papier, lui, ne fait que
+ * SUGGÉRER depuis #431b : son grain est photographié, donc monochrome, donc la couleur redevient
+ * libre sans que le papier cesse d'être du papier.
  *
- * Une texture rend DEUX choses, et la plupart n'en emploient qu'une :
+ * Une texture rend une chose : `couches` — le chemin de la Bulle ramené vers son centre par un
+ * facteur, éventuellement variable selon l'ANGLE, peint d'une couleur, d'une opacité, et
+ * éventuellement habillé d'un GRAIN que la couche se contente de NOMMER.
  *
- *   1. `couches` — le chemin de la Bulle ramené vers son centre par un facteur, éventuellement
- *      variable selon l'ANGLE, peint d'une couleur et d'une opacité.
- *   2. `taches` — des disques libres, posés en coordonnées NORMALISÉES dans le DISQUE UNITÉ.
+ * ⚠️ IL A EXISTÉ UN SECOND AXE, `taches`, ET IL EST PARTI EN #431b3. Des disques libres posés en
+ * coordonnées normalisées : il avait fallu deux rendus ratés pour comprendre qu'une couche ne peut
+ * pas en tenir lieu — une couche est le contour mis à l'échelle, donc une boucle fermée qui ENTOURE
+ * toujours le centre, jamais une tache localisée. Des couches concentriques ondulantes avaient donné
+ * un oignon coupé, des couches en secteur un nœud papillon.
  *
- * ⚠️ IL A FALLU LES DEUX, ET DEUX RENDUS RATÉS POUR LE COMPRENDRE. Une couche est le contour mis à
- * l'échelle : c'est une boucle fermée qui ENTOURE toujours le centre. Elle ne peut donc jamais être
- * une tache localisée. Les deux tentatives l'ont montré sans appel — des couches concentriques dont
- * le rayon ondulait ont donné un oignon coupé, et des couches en secteur ont donné un nœud
- * papillon. Une tache de vieux papier n'entoure rien : il fallait un second type d'élément.
- *
- * ⚠️ ET LES TACHES SONT DONNÉES EN COORDONNÉES NORMALISÉES, avec `hypot(x, y) + r ≤ 1`. Le dessin
- * les ramène dans la plus grande ellipse INSCRITE dans la forme, ce qui garantit qu'elles restent
- * dans la Bulle SANS AUCUNE DÉCOUPE — #425k vient de figer qu'une Bulle ne se peint jamais sous
- * découpe, et une texture qui aurait eu besoin de `clip()` aurait forcé à desserrer cette règle une
- * étape après l'avoir écrite. La texture, elle, ne reçoit toujours aucune géométrie.
+ * La leçon reste vraie ; c'est le BESOIN qui a disparu, deux fois plutôt qu'une. Un grain
+ * photographié porte déjà la matière, et #425n a tranché que les taches relèvent de l'axe PARTICULE
+ * — où l'utilisateur les demande explicitement. Garder des auréoles cachées dans le remplissage,
+ * c'était une seconde source de taches que personne ne commandait.
  *
  * ⚠️ LE FACTEUR DÉPEND DE L'ANGLE, PAS DU RANG DU POINT, et la première écriture faisait l'inverse.
  * Un facteur indexé sur les points du CONTOUR ne sait rien dire de la QUEUE, dont les points ne
@@ -56,7 +52,7 @@
  * doit pouvoir être marbrée, et la tache d'encre rester utilisable en aplat. Aucune texture ne lit
  * `o.bulleShape` : elle ne reçoit que la couleur et l’opacité, jamais la moindre géométrie.
  */
-import { bruitCyclique, graineDeLObjet, melangeEntier } from './cyclic-noise.js';
+import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
 
 /** Les trois valeurs de l'axe texture. « Aucune » est un choix, pas une absence de réglage. */
 export const TEXTURE_AUCUNE = 'aucune';
@@ -214,7 +210,7 @@ function couchesFondus(o, ctx){
     const a = f <= FONDUS_PLEIN ? 1 : Math.max(0, 1 - (f - FONDUS_PLEIN) / (1 - FONDUS_PLEIN));
     out.push({ facteur: () => f, couleur: ctx.couleur, alpha: a * ctx.opacite });
   }
-  return { couches: out, taches: [] };
+  return { couches: out };
 }
 
 /**
@@ -225,46 +221,33 @@ function couchesFondus(o, ctx){
  */
 
 /**
- * Le vieux papier de La Licorne : un cartouche marbré, crème et ocre, taché de plus sombre.
+ * Le vieux papier : un grain photographié, teinté, avec un pourtour plus sale que son cœur.
  *
- * ⚠️ DES TACHES, PAS DES COUCHES — voir l'en-tête du module : deux rendus ratés ont établi qu'une
- * couche entoure toujours le centre et ne peut donc pas faire une marbrure.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LES AURÉOLES PROCÉDURALES ONT ÉTÉ RETIRÉES EN #431b3, ET POUR DEUX RAISONS CUMULÉES
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ⚠️ CHAQUE TACHE EST UN EMPILEMENT DE DISQUES CONCENTRIQUES, et c'est ce qui lui donne un bord
- * doux. Un disque net se lit comme une pastille collée ; une auréole d'humidité n'a pas d'arête.
- * C'est le dessin qui les peint, sans rien savoir de ce qu'ils représentent.
+ * Cette texture posait 22 auréoles, chacune faite de 4 disques concentriques pour lui donner un
+ * bord doux. Elles avaient un sens tant que le remplissage était entièrement dessiné : sans elles,
+ * un cartouche n'était qu'un aplat un peu marbré.
  *
- * ⚠️ LA GRAINE VIENT DE LA BULLE, comme le contour de la tache d'encre. Un tirage à chaque rendu
- * ferait frémir le cartouche, et l'impression ne serait pas ce qu'on a validé à l'écran.
+ * Un grain PHOTOGRAPHIÉ rend ce travail inutile — la matière est dans l'image — et signalé à
+ * l'usage, l'empilement des deux chargeait le rendu.
+ *
+ * ⚠️ ET SURTOUT ELLES FAISAIENT DOUBLON AVEC UN AXE DÉJÀ TRANCHÉ. #425n a décidé que les taches
+ * relevaient de l'axe PARTICULE, que #425p a construit : l'utilisateur y choisit « tache »,
+ * « flamme » ou « aucune ». Garder des auréoles cachées dans le remplissage, c'était une seconde
+ * source de taches que personne ne commandait — deux commandes pour un même effet, qui finissent
+ * toujours par se contredire. Qui veut des auréoles les demande maintenant par la fiche.
+ *
+ * Avec elles part tout l'axe `taches` du contrat, qu'aucune texture ne peuplait plus.
  */
-const PAPIER_TACHES = 22;         // nombre d'auréoles
-const PAPIER_ANNEAUX = 4;         // disques concentriques par auréole, pour un bord doux
-const PAPIER_TEINTE = 0.34;       // écart de teinte maximal d'une auréole au fond
-
 function couchesPapier(o, ctx){
   const graine = graineDeLObjet(o);
-  const taches = [];
-  for (let k = 0; k < PAPIER_TACHES; k++) {
-    // Posées en coordonnées normalisées dans la zone inscriptible : le dessin les y ramène, et
-    // elles ne peuvent donc pas sortir de la Bulle.
-    // Tirage dans le disque unité, rayon compris : `distance + rayon ≤ 1`.
-    const r = 0.10 + tirage(graine, k, 2) * 0.30;
-    const ang = tirage(graine, k, 0) * Math.PI * 2;
-    const d = Math.sqrt(tirage(graine, k, 1)) * (1 - r);
-    const x = Math.cos(ang) * d, y = Math.sin(ang) * d;
-    const sens = tirage(graine, k, 3) < 0.6 ? -1 : 1;   // plus sombre le plus souvent
-    const force = PAPIER_TEINTE * (0.3 + 0.7 * tirage(graine, k, 4));
-    const couleur = teinte(ctx.couleur, sens * force);
-    for (let j = 0; j < PAPIER_ANNEAUX; j++) {
-      taches.push({ x, y, r: r * (1 - j / PAPIER_ANNEAUX),
-                    couleur, alpha: 0.11 * ctx.opacite });
-    }
-  }
-  // ⚠️ LE BORD EST PLUS SALE QUE LE CŒUR, et les taches seules ne pouvaient pas le dire : posées
-  // dans l'ellipse INSCRITE, elles n'atteignent jamais le contour. Or c'est précisément là qu'un
-  // papier se salit — le pourtour d'un cartouche de La Licorne est nettement plus brun que son
-  // milieu. Deux couches suffisent : le contour entier dans une teinte terre, puis la couleur
-  // choisie ramenée un peu vers le centre. Il en reste un liseré sale tout autour.
+  // ⚠️ LE BORD EST PLUS SALE QUE LE CŒUR, et c'est ce qui reste du relevé de La Licorne : le
+  // pourtour d'un cartouche y est nettement plus brun que son milieu. Deux couches suffisent — le
+  // contour entier dans une teinte terre, puis la couleur choisie ramenée un peu vers le centre.
+  // Il en reste un liseré sale tout autour.
   //
   // ⚠️ LES DEUX COUCHES PORTENT LE GRAIN, PAS SEULEMENT CELLE DU CŒUR. Le liseré sale fait deux à
   // trois pixels de large : laissé en aplat sous un cœur grainé, il se lit comme un jonc de
@@ -275,16 +258,13 @@ function couchesPapier(o, ctx){
     { facteur: (t) => 0.88 + bruitCyclique(graine, t, 4242, 5) * 0.06,
       motif: GRAIN_PAPIER, couleur: ctx.couleur, alpha: ctx.opacite },
   ];
-  return { couches, taches };
+  return { couches };
 }
-
-/** Un tirage stable dans [0, 1[ pour l'élément `k`, canal `c`. */
-const tirage = (graine, k, c) => melangeEntier(graine + k * 131 + c * 7919);
 
 const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
-    rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }], taches: [] }),
+    rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }] }),
     // ⚠️ AUCUNE COULEUR IMPOSÉE : le sélecteur « Couleur du fond » commande, sans suggestion.
     couleurImposee: null,
     teinteParDefaut: null,

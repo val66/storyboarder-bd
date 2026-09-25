@@ -1487,7 +1487,17 @@ export function reglagesQueueVersLePoint3D(o, x, y){
  * troisième endroit du dépôt où la même décision se serait redite à la main.
  */
 
-function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
+/**
+ * ⚠️ `ancre` EST LE CENTRE DE LA BULLE, ET IL N'EST PAS DÉCORATIF. Un motif de canevas est calé sur
+ * l'ORIGINE DU REPÈRE, pas sur la forme qu'on remplit : sans ancrage, déplacer une Bulle la fait
+ * glisser au-dessus d'un motif immobile, comme une fenêtre qu'on promène sur un papier peint. Le
+ * grain changeait donc à chaque déplacement, ce qui a été signalé à l'usage — une feuille de papier
+ * découpée emporte son grain avec elle.
+ *
+ * Les ronds détachés d'une queue en chaîne reçoivent l'ancre de LEUR BULLE, pas la leur : ils sont
+ * du même morceau de papier, et le motif doit s'y prolonger sans rupture.
+ */
+function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre){
   // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
   // compte qu'UNE — le chemin tel quel, la couleur choisie, l'opacité choisie — et le résultat est
   // exactement celui d'avant, au pixel près. C'est ce qui protège les Bulles enregistrées.
@@ -1506,7 +1516,8 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
     // repli est la TEINTE de la couche : une Bulle privée de grain reste du parchemin, elle perd
     // son relief, pas son identité. C'est ce qui manquait au préchargement des polices de #408a,
     // où une famille absente redevenait `sans-serif` sans que rien ne le dise.
-    c.fillStyle = (couche.motif && motifDuGrain3D(c, couche.motif, couche.couleur)) || couche.couleur;
+    c.fillStyle = (couche.motif && motifDuGrain3D(c, couche.motif, couche.couleur, ancre))
+      || couche.couleur;
     c.fill();
   });
   // ⚠️ LES TACHES SE POSENT DANS LA ZONE INSCRIPTIBLE, ce qui les garde DANS la Bulle sans aucune
@@ -1522,44 +1533,6 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin){
   c.lineWidth = largeurTrait;
   c.strokeStyle = o.bulleBorderColor || '#23242A';
   c.stroke();
-}
-
-/**
- * Les taches d'une texture — les auréoles du vieux papier — posées DANS la Bulle.
- *
- * ⚠️ ELLES TIENNENT PAR CALCUL, PAS PAR DÉCOUPE, et ce n'est pas un détail d'implémentation. #425k
- * vient de figer qu'une Bulle ne se peint JAMAIS sous découpe ; une texture qui aurait eu besoin
- * d'un `clip()` pour ne pas déborder aurait forcé à desserrer cette règle une étape après l'avoir
- * écrite. La garantie tient en une ligne : la forme étant étoilée, l'ellipse de rayon `fInt` — le
- * plus petit rayon NORMALISÉ du contour — est entièrement dedans, donc une tache posée dedans aussi.
- *
- * ⚠️ L'ENCART INSCRIPTIBLE NE CONVENAIT PAS, essayé d'abord et démenti par le rendu. L'ovale et le
- * rectangle déclarent la boîte ENTIÈRE comme zone inscriptible — décision de compatibilité de
- * #425e, écrite noir sur blanc dans le registre — si bien que des taches posées vers ses coins
- * sortaient franchement de l'ovale.
- *
- * ⚠️ ET ELLES NE SE RÉPÈTENT PAS DANS CHAQUE ROND D'UNE CHAÎNE. Elles vivaient d'abord dans
- * `remplirEtCernerBulle3D`, qui sert AUSSI à peindre les disques détachés d'une queue en chaîne :
- * chaque rond se serait couvert des auréoles de la Bulle entière, à l'échelle du rond.
- */
-function peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets){
-  const { taches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
-  if (!taches || !taches.length) return;
-  let fInt = 1;
-  if (sommets) for (const p of sommets) fInt = Math.min(fInt, Math.hypot((p.x - cx) / rx, (p.y - cy) / ry));
-  const arx = rx * fInt, ary = ry * fInt, rayon = Math.min(arx, ary);
-  c.save();
-  for (const t of taches) {
-    const r = Math.max(0.5, t.r * rayon);
-    c.beginPath();
-    c.ellipse(cx + t.x * arx, cy + t.y * ary, r, r, 0, 0, Math.PI * 2);
-    c.closePath();
-    c.globalAlpha = t.alpha;
-    c.fillStyle = t.couleur;
-    c.fill();
-  }
-  c.globalAlpha = 1;
-  c.restore();
 }
 
 /**
@@ -1738,8 +1711,7 @@ export function drawBubble(c, o){
   c.beginPath();
   construireChemin(null);
   c.closePath();
-  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin);
-  peindreLesTachesDeTexture3D(c, o, app, cx, cy, rx, ry, sommets);
+  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy });
   // ⚠️ APRÈS LA BULLE ET SES TACHES, MAIS AVANT LE TEXTE. Des particules peintes par-dessus le
   // lettrage le mangeraient ; peintes avant le remplissage, elles disparaîtraient dessous.
   peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
@@ -1757,7 +1729,7 @@ export function drawBubble(c, o){
       c.beginPath();
       cheminRond(null);
       c.closePath();
-      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond);
+      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond, { x: cx, y: cy });
     }
   }
   c.restore();
