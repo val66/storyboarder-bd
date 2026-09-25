@@ -2132,6 +2132,11 @@ function contexteEnregistreur(){
     setLineDash: note('setLineDash'),
     measureText: (t) => ({ width: String(t).length * 6 }),
     fillText: note('fillText'),
+    // ⚠️ NOTÉ AVEC SON STYLE ET SON ÉPAISSEUR, comme `fill` et `stroke`. Le cerne des lettres (#432)
+    // ne se juge pas au nombre d'appels : ce qui compte est avec QUOI il est tracé, et dans quel
+    // ordre par rapport au remplissage.
+    strokeText: (...args) => journal.push({ nom: 'strokeText', args,
+      style: c.strokeStyle, lineWidth: c.lineWidth, lineJoin: c.lineJoin }),
   };
   // Les propriétés, elles, se notent à l'écriture : c'est l'ordre entre `globalAlpha = x` et
   // `fill()` qui dit si l'opacité porte sur le fond ou déborde sur le trait.
@@ -3032,13 +3037,117 @@ describe('#425m bis — la texture porte la couleur du fond', () => {
     };
     // Sans texture : le noir anthracite d'origine.
     assert.equal(couleurDuTexte({ bulleShape: 'rect' }), '#23242A');
-    // Sur l'encre sombre : un texte clair, sinon illisible.
-    const surEncre = couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'fondus' });
-    assert.notEqual(surEncre, '#23242A', 'le texte doit changer sur une encre sombre');
+    // Sur la nuit étoilée : un texte clair, sinon illisible.
+    const surNuit = couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' });
+    assert.notEqual(surNuit, '#23242A', 'le texte doit changer sur une matière sombre');
     // Et un choix explicite l'emporte, sur les deux.
     assert.equal(couleurDuTexte({ bulleShape: 'rect', bulleTextColor: '#ff00ff' }), '#ff00ff');
-    assert.equal(couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'fondus',
+    assert.equal(couleurDuTexte({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',
       bulleTextColor: '#ff00ff' }), '#ff00ff');
+  });
+
+  /**
+   * ⚠️ « PAS DE CONTOUR » EST L'ÉTAT DE TOUTE BULLE DÉJÀ ÉCRITE, et c'est ce test qui l'y tient. Un
+   * cerne posé d'office épaissirait le lettrage de tout le dépôt : « pas de réglage vaut
+   * l'existant » l'interdit. Les trois matières qui en reçoivent un sont NÉES avec ce chantier.
+   */
+  test('⚠️ RÉGRESSION : sans texture, aucun contour n’est tracé', () => {
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect' }));
+    assert.equal(appels(c.journal, 'fillText').length > 0, true, 'le texte doit être dessiné');
+    assert.deepEqual(appels(c.journal, 'strokeText'), [],
+      'un cerne est apparu sur une Bulle qui n’en demandait pas');
+  });
+
+  test('et le vieux papier non plus : son grain est doux, le texte s’y lit', () => {
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'papier' }));
+    assert.deepEqual(appels(c.journal, 'strokeText'), []);
+  });
+
+  /**
+   * ⚠️ LES TROIS MATIÈRES CHARGÉES LE REÇOIVENT, et c'est la réponse au signalement : sur de la
+   * glace craquelée, aucune couleur unique ne sauve le lettrage, parce que c'est le contraste
+   * LOCAL qui manque et non le contraste moyen.
+   */
+  test('⚠️ LES MATIÈRES CHARGÉES CERNENT LEUR LETTRAGE', () => {
+    for (const texture of ['glace', 'lave', 'nuit-etoile']) {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: texture }));
+      const cernes = appels(c.journal, 'strokeText');
+      assert.ok(cernes.length > 0, `« ${texture} » ne cerne pas son texte`);
+      assert.equal(cernes.length, appels(c.journal, 'fillText').length,
+        `« ${texture} » : une ligne sur deux seulement est cernée`);
+    }
+  });
+
+  /**
+   * ⚠️ LE CERNE SE POSE AVANT LE REMPLISSAGE, ET L'ORDRE EST LE SUJET. Un trait de canevas est
+   * CENTRÉ sur le chemin : la moitié de son épaisseur mord vers l'intérieur de la lettre. Cerné
+   * APRÈS, il rongerait les pleins et les déliés, et une police de bande dessinée y perdrait son
+   * caractère. Aucun compte d'appels ne verrait la différence — seul leur ORDRE la dit.
+   */
+  test('⚠️ CHAQUE LIGNE EST CERNÉE AVANT D’ÊTRE REMPLIE', () => {
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' }));
+    const sequence = c.journal
+      .filter(e => e.nom === 'strokeText' || e.nom === 'fillText')
+      .map(e => [e.nom, e.args[1]]);   // le nom et l'ordonnée de la ligne
+    assert.ok(sequence.length >= 2);
+    for (let i = 0; i < sequence.length; i += 2) {
+      assert.equal(sequence[i][0], 'strokeText', `ligne ${i / 2} : remplie avant d’être cernée`);
+      assert.equal(sequence[i + 1][0], 'fillText');
+      assert.equal(sequence[i][1], sequence[i + 1][1], 'le cerne et le remplissage se décalent');
+    }
+  });
+
+  /**
+   * ⚠️ UN RACCORD EN POINTE FAIT JAILLIR DES ÉPINES aux angles aigus dès que l'épaisseur grandit —
+   * le « A » et le « W » en produisent de spectaculaires. La bordure de la Bulle prend la même
+   * précaution, pour la même raison.
+   *
+   * ⚠️ ET L'ÉPAISSEUR SUIT LA POLICE. Une valeur en pixels serait juste à une taille et fausse à
+   * toutes les autres ; le test le vérifie en changeant la taille du texte, pas en relisant une
+   * constante — c'est la différence entre tenir une valeur et tenir une PROPORTION.
+   */
+  test('⚠️ LE CERNE EST ARRONDI, et son épaisseur suit la taille du texte', () => {
+    const cerne = (champs) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle(Object.assign({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' }, champs)));
+      return appels(c.journal, 'strokeText')[0];
+    };
+    const petit = cerne({ bulleFontScale: 1 });
+    const grand = cerne({ bulleFontScale: 3 });
+    assert.ok(grand.lineWidth > petit.lineWidth * 2,
+      `épaisseur figée : ${petit.lineWidth} puis ${grand.lineWidth} pour un texte trois fois plus grand`);
+
+    // ⚠️ LIRE `lineJoin` AU MOMENT DU CERNE NE PROUVAIT RIEN, et la mutation l'a montré : la
+    // BORDURE de la Bulle le pose déjà en rond, bien avant le texte. Mon assertion constatait une
+    // valeur qu'elle n'avait pas fait naître — l'instrument voyait une présence dont il n'était pas
+    // la cause. Il faut donc vérifier que le TEXTE la pose LUI-MÊME, après le dernier trait de la
+    // Bulle : sans cela, il dépendrait d'un réglage laissé par un voisin.
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' }));
+    const iTrait = c.journal.map(e => e.nom).lastIndexOf('stroke');
+    const iCerne = c.journal.findIndex(e => e.nom === 'strokeText');
+    assert.ok(iTrait >= 0 && iCerne > iTrait, 'la fixture suppose un trait de Bulle avant le texte');
+    const pose = c.journal.slice(iTrait + 1, iCerne).filter(e => e.nom === 'set:lineJoin');
+    assert.ok(pose.length > 0,
+      'le texte hérite du lineJoin de la bordure : une épine apparaîtra le jour où elle changera');
+    assert.equal(pose.pop().args[0], 'round',
+      'un raccord en pointe ferait des épines sur les A et les W');
+  });
+
+  test('⚠️ ET UN CHOIX EXPLICITE L’EMPORTE, comme pour toutes les autres couleurs', () => {
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',
+      bulleTextOutlineColor: '#ff00ff' }));
+    assert.equal(appels(c.journal, 'strokeText')[0].style, '#ff00ff');
+    // Et il fait apparaître un cerne là où la texture n'en suggérait aucun.
+    const d = contexteEnregistreur();
+    drawBubble(d, bulle({ bulleShape: 'rect', bulleTextOutlineColor: '#ff00ff' }));
+    assert.ok(appels(d.journal, 'strokeText').length > 0,
+      'un contour choisi à la main doit s’appliquer même sans texture');
   });
 });
 

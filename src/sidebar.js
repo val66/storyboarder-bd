@@ -19,7 +19,9 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
-import { textureDeLaBulle, teinteParDefautDeLaTexture } from './bubble-texture.js';
+import { textureDeLaBulle, teinteParDefautDeLaTexture,
+         couleurTexteParDefautDeLaTexture,
+         couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
@@ -1030,6 +1032,7 @@ function updateSidePanelImpl(){
     sideBubbleFontWrap.style.display = 'block';
     sideBubbleFontSelect.value = sel.bulleFont || BUBBLE_FONT_DEFAULT;
     document.getElementById('sideBubbleTextColorWrap').style.display = 'block';
+    document.getElementById('sideBubbleTextOutlineColorWrap').style.display = 'block';
     sideBubbleFontSizeWrap.style.display = 'block';
     const fontSizePct = Math.round((sel.bulleFontScale != null ? sel.bulleFontScale : 1) * 100);
     sideBubbleFontSizeInput.value = fontSizePct;
@@ -1098,13 +1101,20 @@ function updateSidePanelImpl(){
     // en regardant du beige, et le moindre passage sur le champ écrirait ce blanc pour de bon.
     document.getElementById('sideBubbleBgColorInput').value =
       sel.bulleColor || teinteParDefautDeLaTexture(sel) || '#ffffff';
-    document.getElementById('sideBubbleTextColorInput').value = sel.bulleTextColor || '#23242a';
+    document.getElementById('sideBubbleTextColorInput').value =
+      sel.bulleTextColor || couleurTexteParDefautDeLaTexture(sel) || '#23242a';
+    // ⚠️ MÊME EXIGENCE QUE POUR LE FOND : la pastille montre ce qu'on VOIT. Un contour absent
+    // s'affiche sur le noir d'encre, qui est ce qu'on obtiendrait en l'activant — pas sur une
+    // couleur arbitraire qui ferait croire à un réglage qui n'existe pas.
+    document.getElementById('sideBubbleTextOutlineColorInput').value =
+      sel.bulleTextOutlineColor || couleurContourTexteParDefautDeLaTexture(sel) || '#1b1b1f';
   } else {
     S.sideDescTarget = null;
     descEmptyHint.style.display = 'block';
     sideDescInput.style.display = 'none';
     sideBubbleFontWrap.style.display = 'none';
     document.getElementById('sideBubbleTextColorWrap').style.display = 'none';
+    document.getElementById('sideBubbleTextOutlineColorWrap').style.display = 'none';
     sideBubbleFontSizeWrap.style.display = 'none';
     sideDimsSection.style.display = 'none';
     sideStackSection.style.display = 'none';

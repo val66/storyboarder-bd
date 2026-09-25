@@ -74,7 +74,17 @@ import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
 import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
-         couleurTexteParDefautDeLaTexture } from './bubble-texture.js';
+         couleurTexteParDefautDeLaTexture,
+         couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
+
+/**
+ * L'épaisseur du cerne des lettres, en fraction de la taille de police.
+ *
+ * ⚠️ UNE FRACTION ET NON DES PIXELS : une valeur absolue serait juste à une taille de texte et
+ * fausse à toutes les autres, alors que le rapport tient de 11 px à 200. 0,16 donne un cerne franc
+ * sans épaissir la lettre — au-delà, les contre-formes d'un « e » ou d'un « a » se referment.
+ */
+const EPAISSEUR_CONTOUR_TEXTE = 0.16;
 import { particulesDeLaBulle } from './bubble-particle.js';
 import { motifDuGrain3D } from './bubble-grain.js';
 
@@ -1796,8 +1806,32 @@ export function drawBubble(c, o){
     // boîte entière : la butée ne mord que si le texte est plus haut que la Bulle elle-même — un
     // cas déjà illisible, où le texte débordait avant par le haut ET par le bas, et ne déborde
     // plus que par le bas. Pour toutes les autres formes, le texte tenait déjà.
+    /**
+     * ⚠️ LE CONTOUR SE POSE AVANT LE REMPLISSAGE, ET L'ORDRE N'EST PAS UN DÉTAIL. Un trait de
+     * canevas est CENTRÉ sur le chemin : la moitié de son épaisseur mord vers l'intérieur de la
+     * lettre. Cerner après avoir rempli rongerait donc les pleins et les déliés, et une police de
+     * bande dessinée — dont c'est tout le caractère — y perdrait sa forme. Peint d'abord, il
+     * disparaît sous le remplissage partout où la lettre est pleine, et ne dépasse qu'au-dehors.
+     *
+     * ⚠️ `lineJoin` EN ROND, PAS EN POINTE. Un raccord en pointe fait jaillir des ÉPINES aux angles
+     * aigus dès que l'épaisseur grandit — le « A » et le « W » en produisent de spectaculaires. La
+     * bordure de la Bulle elle-même prend la même précaution, pour la même raison.
+     *
+     * ⚠️ ET L'ÉPAISSEUR SE DÉDUIT DE LA POLICE, SANS NOUVEAU RÉGLAGE. Une valeur en pixels serait
+     * juste à une taille de texte et fausse à toutes les autres, alors que le rapport, lui, tient
+     * de 11 px à 200. Un réglage de plus dans une fiche qui en compte déjà beaucoup devrait
+     * s'acheter par un besoin, et il n'y en a pas.
+     */
+    const contour = o.bulleTextOutlineColor || couleurContourTexteParDefautDeLaTexture(o);
+    if (contour) {
+      c.strokeStyle = contour;
+      c.lineWidth = Math.max(1, fontSize * EPAISSEUR_CONTOUR_TEXTE);
+      c.lineJoin = 'round';
+      c.miterLimit = 2;
+    }
     let yy = Math.max(ecy - totalHeight / 2, encart.y) + lineHeight / 2;
     for (const line of lines) {
+      if (contour) c.strokeText(line, ecx, yy);
       c.fillText(line, ecx, yy);
       yy += lineHeight;
     }

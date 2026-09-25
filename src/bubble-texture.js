@@ -114,6 +114,15 @@ const TERRE = [0x6B, 0x4E, 0x2E];
 const CREME = [0xFA, 0xF2, 0xDE];
 
 /**
+ * Le cerne des lettres sur les matières chargées.
+ *
+ * ⚠️ LE MÊME NOIR D'ENCRE QUE CELUI DU RELEVÉ, pas un noir pur. #425b l'avait choisi pour la masse
+ * du Lecteur omniscient, et la raison vaut ici : un `#000` absolu se voit comme un trait de logiciel
+ * au milieu d'un dessin, là où une encre légèrement bleutée se pose comme de l'encre.
+ */
+const CONTOUR_SOMBRE = '#1B1B1F';
+
+/**
  * Éclaircit (`t > 0`) ou fonce (`t < 0`) une couleur, et rend la couleur d'origine si on ne sait
  * pas la lire.
  *
@@ -393,6 +402,7 @@ const REGISTRE = {
     // Aucune suggestion : le sélecteur commande seul, sur un blanc par défaut.
     teinteParDefaut: null,
     couleurTexteParDefaut: null,
+    couleurContourTexteParDefaut: null,
   },
   /**
    * ⚠️ LES TROIS TEINTES SONT RELEVÉES PAR LE CUISEUR, PAS CHOISIES. Chacune est la moyenne de
@@ -411,16 +421,19 @@ const REGISTRE = {
     // Le vrai remède est un CONTOUR de texte, mais c'est #432 — pas une raison de laisser celle-ci
     // difficile à lire en attendant.
     couleurTexteParDefaut: '#FFFFFF',
+    couleurContourTexteParDefaut: CONTOUR_SOMBRE,
   },
   [TEXTURE_LAVE]: {
     rendu: couchesDUneMatiere(GRAIN_LAVE),
     teinteParDefaut: '#AC452F',
     couleurTexteParDefaut: '#FFFFFF',
+    couleurContourTexteParDefaut: CONTOUR_SOMBRE,
   },
   [TEXTURE_NUIT]: {
     rendu: couchesDUneMatiere(GRAIN_NUIT),
     teinteParDefaut: '#1D242A',
     couleurTexteParDefaut: '#FFFFFF',
+    couleurContourTexteParDefaut: CONTOUR_SOMBRE,
   },
   [TEXTURE_PAPIER]: {
     rendu: couchesPapier,
@@ -454,6 +467,10 @@ const REGISTRE = {
     // réelle — invisible à l'œil, mais c'était une valeur inventée là où une valeur mesurée existe.
     teinteParDefaut: '#C8A678',
     couleurTexteParDefaut: '#3A2B18',
+    // ⚠️ PAS DE CONTOUR SUR LE PARCHEMIN, ET C'EST UNE ABSENCE RAISONNÉE. Son grain est doux — 6,4
+    // de contraste, sans craquelure ni fissure — et un lettrage brun s'y lit d'un bout à l'autre.
+    // Cerner du texte qui n'en a pas besoin l'épaissit et le durcit pour rien.
+    couleurContourTexteParDefaut: null,
   },
 };
 
@@ -476,7 +493,8 @@ const REGISTRE = {
  * instantané avant de toucher quoi que ce soit. C'est la seule chose qui distingue « rendre la main
  * à la matière » de « perdre son travail ».
  */
-export const CHAMPS_RENDUS_PAR_LA_TEXTURE = ['bulleColor', 'bulleTextColor'];
+export const CHAMPS_RENDUS_PAR_LA_TEXTURE =
+  ['bulleColor', 'bulleTextColor', 'bulleTextOutlineColor'];
 
 /** Les clés enregistrées, pour la fiche et pour les tests. */
 export function texturesConnues(){
@@ -506,6 +524,24 @@ export function textureDeLaBulle(o){
 /** La couleur de texte qu'une texture suggère À DÉFAUT, ou `null`. Fonction PURE. */
 export function couleurTexteParDefautDeLaTexture(o){
   return REGISTRE[textureDeLaBulle(o)].couleurTexteParDefaut;
+}
+
+/**
+ * La couleur de CONTOUR du texte qu'une texture suggère à défaut, ou `null` pour aucun contour.
+ *
+ * ⚠️ `null` VEUT DIRE « PAS DE CONTOUR », PAS « CONTOUR BLANC ». Les deux se confondraient dans un
+ * appelant distrait, et toutes les Bulles du dépôt gagneraient un liseré clair que personne n'a
+ * demandé. C'est la même distinction que pour la teinte suggérée, et elle se paie de la même façon
+ * quand on l'oublie.
+ *
+ * ⚠️ ET C'EST CE QUI PROTÈGE L'EXISTANT. Un contour posé d'office épaissirait le lettrage de toute
+ * Bulle déjà écrite : « pas de réglage vaut l'existant » l'interdit. Les trois matières qui en
+ * reçoivent un — glace, lave, nuit — sont NÉES avec ce chantier, donc aucune Bulle ancienne ne les
+ * porte. La seule exception est une Bulle migrée depuis « Encre sombre », qui a déjà changé
+ * d'aspect en #430 et pour laquelle c'était le sens même du remplacement.
+ */
+export function couleurContourTexteParDefautDeLaTexture(o){
+  return REGISTRE[textureDeLaBulle(o)].couleurContourTexteParDefaut;
 }
 
 /**

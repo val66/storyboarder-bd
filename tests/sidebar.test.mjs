@@ -1041,6 +1041,12 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     // étoilée — noir sur noir, exactement le défaut que #430 venait de corriger pour la glace.
     assert.equal(b.bulleTextColor, undefined,
       'le lettrage sombre a survécu au passage sur la nuit : il y sera illisible');
+    // ⚠️ ET LE CERNE AUSSI (#432). Un contour choisi pour une matière n'a aucune raison de valoir
+    // pour la suivante : gardé, il empêcherait la nouvelle de proposer le sien.
+    b.bulleTextOutlineColor = '#00FF00';
+    choisir('papier');
+    assert.equal(b.bulleTextOutlineColor, undefined,
+      'le contour a survécu au changement de matière');
   });
 
   /**

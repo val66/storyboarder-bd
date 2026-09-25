@@ -151,6 +151,14 @@ export const I18N_TEXT = [
   // Description / Bulle text
   ['#sideDescTitle', 'Description', 'Description'],
   ['label[for="sideBubbleFontSelect"]', 'Font', "Police d'écriture"],
+  // ⚠️ « COULEUR DU TEXTE » N'ÉTAIT PAS TRADUITE, et ce manque est antérieur à #432 — trouvé en
+  // cherchant où poser sa voisine. Le champ restait en français en mode anglais, sans que rien ne
+  // le signale : cette table n'est vérifiée par aucun inventaire de l'interface.
+  ['label[for="sideBubbleTextColorInput"]', 'Text colour', 'Couleur du texte'],
+  // #432 — le CERNE des lettres, distinct de leur couleur. Sur une matière chargée — glace
+  // craquelée, coulée de lave — un lettrage sans cerne se perd par endroits, et aucune couleur
+  // unique ne le sauve : c'est le contraste LOCAL qui manque, pas le contraste moyen.
+  ['label[for="sideBubbleTextOutlineColorInput"]', 'Outline colour', 'Couleur de contour'],
   ['#descEmptyHint', 'Select a panel to view or edit its description.', 'Sélectionnez une case pour voir ou modifier sa description.'],
   ['#sideDescInput', null, null, 'placeholder', 'Describe what happens in this panel...', "Décrivez ce qui se passe dans cette case..."],
   // LES HUIT AUTRES ESPACES RÉSERVÉS, rapatriés ici depuis I18N_TRAILING (#371). Ils y étaient

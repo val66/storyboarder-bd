@@ -7434,9 +7434,10 @@ sideBubbleFillOpacityInput.addEventListener('input', () => {
 });
 sideBubbleFillOpacityInput.addEventListener('change', () => { S.sideBubbleFillOpacitySnapshotTaken = false; });
 
-// Bubble colors: background + text
+// Bubble colors: background + text + text outline
 const sideBubbleBgColorInput   = document.getElementById('sideBubbleBgColorInput');
 const sideBubbleTextColorInput = document.getElementById('sideBubbleTextColorInput');
+const sideBubbleTextOutlineColorInput = document.getElementById('sideBubbleTextOutlineColorInput');
 // [STATE→S] let S.sideBubbleBgSnapshotTaken = false, S.sideBubbleTextSnapshotTaken = false;
 sideBubbleBgColorInput.addEventListener('input', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
@@ -7452,6 +7453,19 @@ sideBubbleTextColorInput.addEventListener('input', () => {
   drawCurrentPage();
 });
 sideBubbleTextColorInput.addEventListener('change', () => { S.sideBubbleTextSnapshotTaken = false; });
+// ⚠️ UN INSTANTANÉ PAR GESTE, PAS PAR PIXEL, et c'est le motif de tous ses voisins. Un sélecteur de
+// couleur émet un `input` à CHAQUE nuance traversée : prendre un instantané à chacun remplirait la
+// pile d'annulation de centaines d'états, et « annuler » ne reviendrait plus à la couleur d'avant
+// mais à la nuance d'à côté. Le drapeau retombe au `change`, quand le sélecteur se referme.
+sideBubbleTextOutlineColorInput.addEventListener('input', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  if (!S.sideBubbleTextOutlineSnapshotTaken) { snapshot(); S.sideBubbleTextOutlineSnapshotTaken = true; }
+  S.sideDescTarget.bulleTextOutlineColor = sideBubbleTextOutlineColorInput.value;
+  drawCurrentPage();
+});
+sideBubbleTextOutlineColorInput.addEventListener('change', () => {
+  S.sideBubbleTextOutlineSnapshotTaken = false;
+});
 
 sideBorderWidthSelect.addEventListener('change', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'panel') return;
