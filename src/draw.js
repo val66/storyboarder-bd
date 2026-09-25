@@ -1817,21 +1817,32 @@ export function drawBubble(c, o){
      * aigus dès que l'épaisseur grandit — le « A » et le « W » en produisent de spectaculaires. La
      * bordure de la Bulle elle-même prend la même précaution, pour la même raison.
      *
-     * ⚠️ ET L'ÉPAISSEUR SE DÉDUIT DE LA POLICE, SANS NOUVEAU RÉGLAGE. Une valeur en pixels serait
-     * juste à une taille de texte et fausse à toutes les autres, alors que le rapport, lui, tient
-     * de 11 px à 200. Un réglage de plus dans une fiche qui en compte déjà beaucoup devrait
-     * s'acheter par un besoin, et il n'y en a pas.
+     * ⚠️ L'ÉPAISSEUR SE DÉDUIT DE LA POLICE, PUIS SE RÈGLE. La part fixe d'abord : une valeur en
+     * pixels serait juste à une taille de texte et fausse à toutes les autres, alors que le
+     * rapport tient de 11 px à 200. C'est la BASE, et le réglage la multiplie.
+     *
+     * ⚠️ J'AVAIS ÉCRIT ICI QU'UN RÉGLAGE « DEVRAIT S'ACHETER PAR UN BESOIN, ET QU'IL N'Y EN AVAIT
+     * PAS ». Le besoin est venu par l'usage, une tâche plus tard. Le raisonnement n'était pas faux
+     * — un réglage de plus reste un coût —, il était prématuré : je concluais sur une absence de
+     * demande que rien ne garantissait durable.
+     *
+     * ⚠️ ET ZÉRO EST LA SEULE FAÇON DE RETIRER UN CONTOUR, ce qui n'est pas une seconde commande
+     * pour un même effet mais la commande MANQUANTE. Un sélecteur de couleur ne sait pas dire
+     * « aucune » : sans cette butée basse, un contour choisi une fois ne pouvait plus jamais
+     * disparaître, et le réglage aurait été un piège plutôt qu'un choix.
      */
     const contour = o.bulleTextOutlineColor || couleurContourTexteParDefautDeLaTexture(o);
-    if (contour) {
+    const forceContour = o.bulleTextOutlineScale != null ? o.bulleTextOutlineScale : 1;
+    const cerne = contour && forceContour > 0;
+    if (cerne) {
       c.strokeStyle = contour;
-      c.lineWidth = Math.max(1, fontSize * EPAISSEUR_CONTOUR_TEXTE);
+      c.lineWidth = Math.max(0.5, fontSize * EPAISSEUR_CONTOUR_TEXTE * forceContour);
       c.lineJoin = 'round';
       c.miterLimit = 2;
     }
     let yy = Math.max(ecy - totalHeight / 2, encart.y) + lineHeight / 2;
     for (const line of lines) {
-      if (contour) c.strokeText(line, ecx, yy);
+      if (cerne) c.strokeText(line, ecx, yy);
       c.fillText(line, ecx, yy);
       yy += lineHeight;
     }

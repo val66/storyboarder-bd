@@ -1050,6 +1050,37 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
   });
 
   /**
+   * ⚠️ AUCUN TEST NE TRAVERSAIT L'ÉCOUTEUR DU CURSEUR, et deux mutations l'ont montré : ne rien
+   * écrire, ou écrire le POURCENTAGE au lieu du facteur, laissaient la suite verte. Le dessin était
+   * éprouvé, la fiche aussi, et le fil entre les deux ne l'était pas.
+   *
+   * ⚠️ LE FACTEUR, PAS LE POURCENTAGE. Un 250 stocké tel quel donnerait un cerne deux cent cinquante
+   * fois trop épais — la lettre entière disparaîtrait sous son trait. Le champ persisté suit la même
+   * convention que `bulleFontScale`, son voisin immédiat.
+   */
+  test('⚠️ LE CURSEUR DE TAILLE DU CONTOUR ÉCRIT UN FACTEUR, et la fiche le relit', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const curseur = document.getElementById('sideBubbleTextOutlineWidthInput');
+    const valeur = document.getElementById('sideBubbleTextOutlineWidthValue');
+
+    curseur.value = '250';
+    (curseur._ecouteurs.input || []).forEach(fn => fn({ target: curseur }));
+    assert.equal(b.bulleTextOutlineScale, 2.5, 'le curseur n’écrit pas un facteur');
+    assert.equal(valeur.textContent, 250, 'le libellé ne suit pas le curseur');
+
+    curseur.value = '0';
+    (curseur._ecouteurs.input || []).forEach(fn => fn({ target: curseur }));
+    assert.equal(b.bulleTextOutlineScale, 0, 'la butée basse doit pouvoir être atteinte');
+
+    // Et la fiche rouverte repose le curseur là où la Bulle l'avait laissé.
+    b.bulleTextOutlineScale = 1.75;
+    updateSidePanel();
+    assert.equal(Number(curseur.value), 175);
+    assert.equal(valeur.textContent, 175);
+  });
+
+  /**
    * ⚠️ LA PASTILLE DOIT MONTRER CE QU'ON VOIT, PAS UN BLANC DE CONVENTION. Sous un parchemin dont
    * aucune couleur n'a été choisie, le champ affichait `#ffffff` alors que la Bulle est ocre :
    * l'utilisateur lisait « blanc » en regardant du beige, et le moindre passage sur le sélecteur

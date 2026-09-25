@@ -6746,6 +6746,8 @@ document.getElementById('ctxCreateBubble').onclick = () => {
 // ---------- DESCRIPTION PANEL (right-hand side) ----------
 const sideBubbleFontSelect = document.getElementById('sideBubbleFontSelect');
 const sideBubbleFontSizeInput = document.getElementById('sideBubbleFontSizeInput');
+const sideBubbleTextOutlineWidthInput = document.getElementById('sideBubbleTextOutlineWidthInput');
+const sideBubbleTextOutlineWidthValue = document.getElementById('sideBubbleTextOutlineWidthValue');
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
@@ -7528,6 +7530,20 @@ sideBubbleFontSizeInput.addEventListener('input', () => {
   drawCurrentPage();
 });
 sideBubbleFontSizeInput.addEventListener('change', () => { S.sideBubbleFontSizeSnapshotTaken = false; });
+
+sideBubbleTextOutlineWidthInput.addEventListener('input', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  if (!S.sideBubbleTextOutlineWidthSnapshotTaken) {
+    snapshot(); S.sideBubbleTextOutlineWidthSnapshotTaken = true;
+  }
+  const pct = parseInt(sideBubbleTextOutlineWidthInput.value, 10);
+  sideBubbleTextOutlineWidthValue.textContent = pct;
+  S.sideDescTarget.bulleTextOutlineScale = pct / 100;
+  drawCurrentPage();
+});
+sideBubbleTextOutlineWidthInput.addEventListener('change', () => {
+  S.sideBubbleTextOutlineWidthSnapshotTaken = false;
+});
 
 // ════════════════════════════════════════════════════════════
 // DRAWING → src/draw.js

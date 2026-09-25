@@ -190,6 +190,11 @@ export const I18N_TEXT = [
 // Texte composé d'une icône + libellé (ex. boutons de menu contextuel "<span class='ctx-icon'>➕</span>
 // Ajouter") : on ne touche qu'au texte qui suit l'icône, jamais à l'icône elle-même.
 export const I18N_TRAILING = [
+  // La fermeture des deux libellés à pourcentage — cf. I18N_LEADING. Identique dans les deux
+  // langues, mais il faut la poser : sans elle, le nœud de texte final garderait « %) » collé au
+  // chiffre par le rendu initial, ce qui marche par accident et casserait au premier remaniement.
+  ['label[for="sideBubbleFontSizeInput"]', '%)', '%)'],
+  ['label[for="sideBubbleTextOutlineWidthInput"]', '%)', '%)'],
   // ── Menus contextuels : le libellé SUIT une icône (<span class="ctx-icon">). C'est pourquoi ces
   //    entrées vivent ici et non dans I18N_TEXT : `textContent` effacerait l'icône avec le texte.
   //    Ajoutées après constat que 49 boutons sur 123 restaient en français en mode anglais.
@@ -392,6 +397,15 @@ export const I18N_LEADING = [
    'Composez une pose et enregistrez-la dans votre bibliothèque, partagée par tous vos Projets.'],
   ['#openPoseEditorBtn', 'Model editor', 'Éditeur de modèle'],
   ['#pageMenuHeader .menu-title', 'Page', 'Planche'],
+  // ⚠️ DEUX LIBELLÉS À POURCENTAGE, ET ILS NE POUVAIENT PAS PASSER PAR I18N_TEXT. Ils encadrent un
+  // `<span>` que le code réécrit à chaque mouvement du curseur : `textContent` l'effacerait avec le
+  // reste, et le chiffre disparaîtrait à la première bascule de langue.
+  //
+  // ⚠️ « TAILLE DU TEXTE » N'ÉTAIT DONC TRADUITE NULLE PART, et ce manque est antérieur à #432 —
+  // trouvé en cherchant où déclarer sa voisine. Le champ restait en français en mode anglais, sans
+  // que rien ne le signale : cette table n'est vérifiée par aucun inventaire de l'interface.
+  ['label[for="sideBubbleFontSizeInput"]', 'Text size (', 'Taille du texte ('],
+  ['label[for="sideBubbleTextOutlineWidthInput"]', 'Outline size (', 'Taille du contour ('],
 ];
 
 // Generic modals + Settings + User manual.

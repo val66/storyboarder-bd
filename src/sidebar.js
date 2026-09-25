@@ -124,6 +124,9 @@ const sideStackLevel = document.getElementById('sideStackLevel');
 const sideBubbleStackLevel = document.getElementById('sideBubbleStackLevel');
 const sideBubbleFontSelect = document.getElementById('sideBubbleFontSelect');
 const sideBubbleFontSizeInput = document.getElementById('sideBubbleFontSizeInput');
+const sideBubbleTextOutlineWidthInput = document.getElementById('sideBubbleTextOutlineWidthInput');
+const sideBubbleTextOutlineWidthValue = document.getElementById('sideBubbleTextOutlineWidthValue');
+const sideBubbleTextOutlineWidthWrap = document.getElementById('sideBubbleTextOutlineWidthWrap');
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
 const sideBubbleBorderToggle     = document.getElementById('sideBubbleBorderToggle');
 const sideBubbleBorderWidthSelect= document.getElementById('sideBubbleBorderWidthSelect');
@@ -1037,6 +1040,11 @@ function updateSidePanelImpl(){
     const fontSizePct = Math.round((sel.bulleFontScale != null ? sel.bulleFontScale : 1) * 100);
     sideBubbleFontSizeInput.value = fontSizePct;
     sideBubbleFontSizeValue.textContent = fontSizePct;
+    sideBubbleTextOutlineWidthWrap.style.display = 'block';
+    const contourPct = Math.round(
+      (sel.bulleTextOutlineScale != null ? sel.bulleTextOutlineScale : 1) * 100);
+    sideBubbleTextOutlineWidthInput.value = contourPct;
+    sideBubbleTextOutlineWidthValue.textContent = contourPct;
     descEmptyHint.style.display = 'none';
     sideDescInput.style.display = 'block';
     sideDescSection.style.display = 'block';
@@ -1115,6 +1123,7 @@ function updateSidePanelImpl(){
     sideBubbleFontWrap.style.display = 'none';
     document.getElementById('sideBubbleTextColorWrap').style.display = 'none';
     document.getElementById('sideBubbleTextOutlineColorWrap').style.display = 'none';
+    sideBubbleTextOutlineWidthWrap.style.display = 'none';
     sideBubbleFontSizeWrap.style.display = 'none';
     sideDimsSection.style.display = 'none';
     sideStackSection.style.display = 'none';

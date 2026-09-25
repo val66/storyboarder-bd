@@ -3138,6 +3138,57 @@ describe('#425m bis — la texture porte la couleur du fond', () => {
       'un raccord en pointe ferait des épines sur les A et les W');
   });
 
+  /**
+   * ⚠️ ZÉRO EST LA COMMANDE MANQUANTE, PAS UNE SECONDE COMMANDE. Un sélecteur de couleur ne sait
+   * pas dire « aucune » : sans cette butée basse, un contour choisi une fois ne pouvait plus jamais
+   * disparaître. Le réglage aurait été un piège plutôt qu'un choix — et c'est un défaut que j'avais
+   * livré en #432 sans le voir.
+   */
+  test('⚠️ UNE TAILLE DE CONTOUR NULLE RETIRE LE CERNE', () => {
+    const c = contexteEnregistreur();
+    drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',
+      bulleTextOutlineScale: 0 }));
+    assert.ok(appels(c.journal, 'fillText').length > 0, 'le texte doit rester dessiné');
+    assert.deepEqual(appels(c.journal, 'strokeText'), [],
+      'le cerne survit à une taille nulle : on ne peut plus l’enlever');
+  });
+
+  test('et la taille multiplie l’épaisseur déduite de la police', () => {
+    const epaisseur = (echelle) => {
+      const c = contexteEnregistreur();
+      drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',
+        bulleTextOutlineScale: echelle }));
+      return appels(c.journal, 'strokeText')[0].lineWidth;
+    };
+    // ⚠️ ON COMPARE DES RAPPORTS, PAS DES VALEURS : l'épaisseur de base dépend de la taille de
+    // police, qui dépend de la Bulle. Figer un nombre ici casserait au premier changement de
+    // fixture, sans rien dire de plus.
+    const base = epaisseur(1);
+    assert.ok(Math.abs(epaisseur(2) - base * 2) < 0.01, `${epaisseur(2)} au lieu de ${base * 2}`);
+    assert.ok(Math.abs(epaisseur(0.5) - base * 0.5) < 0.01);
+
+    // ⚠️ ET LA PROPORTION TIENT AUSSI DANS LE BAS DE LA COURSE, ce qui est le seul endroit où un
+    // plancher trop haut se verrait. Relevé le plancher à 1 px et le curseur cesse de répondre
+    // entre 20 % et 40 % : deux réglages différents rendraient le même trait, et l'utilisateur
+    // croirait tourner un bouton mort. C'est le défaut que ce chantier traque depuis #425m.
+    assert.ok(Math.abs(epaisseur(0.25) - base * 0.25) < 0.01,
+      `${epaisseur(0.25)} au lieu de ${base * 0.25} : le plancher écrase les contours fins`);
+    assert.ok(epaisseur(0.25) < epaisseur(0.5), 'le curseur ne répond plus dans le bas de sa course');
+  });
+
+  /**
+   * ⚠️ ET « PAS DE RÉGLAGE » VAUT L'EXISTANT, ICI COMME AILLEURS. Une Bulle enregistrée avant
+   * #432 bis n'a pas de champ d'échelle : elle doit cerner exactement comme la veille.
+   */
+  test('RÉGRESSION : sans échelle, l’épaisseur est celle d’avant le réglage', () => {
+    const avec = contexteEnregistreur(), sans = contexteEnregistreur();
+    drawBubble(avec, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',
+      bulleTextOutlineScale: 1 }));
+    drawBubble(sans, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' }));
+    assert.equal(appels(sans.journal, 'strokeText')[0].lineWidth,
+      appels(avec.journal, 'strokeText')[0].lineWidth);
+  });
+
   test('⚠️ ET UN CHOIX EXPLICITE L’EMPORTE, comme pour toutes les autres couleurs', () => {
     const c = contexteEnregistreur();
     drawBubble(c, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile',

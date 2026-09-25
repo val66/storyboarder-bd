@@ -241,6 +241,7 @@ export const S = {
   sideBubbleBorderColorSnapshotTaken: false,
   sideBubbleBgSnapshotTaken:          false,
   sideBubbleTextOutlineSnapshotTaken: false,
+  sideBubbleTextOutlineWidthSnapshotTaken: false,
   sideBubbleTextSnapshotTaken:        false,
   sideBubblePaddingSnapshotTaken:     false,
   sideBubbleFontSizeSnapshotTaken:    false,
