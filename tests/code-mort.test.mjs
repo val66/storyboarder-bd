@@ -166,6 +166,25 @@ const EN_ATTENTE = {
   // toujours, et rien de mort n'est exporté. Deuxième fois que cette liste fait partir du code au
   // lieu de l'accueillir.
 
+  // #426a — LES BULLES FUSIONNÉES : LA DÉCISION AVANT LE GESTE. Huitième fois que cette figure
+  // revient, après #403a, #414a, #420a, #425a, #421a, #422a et #431b1. Le motif ne change pas :
+  // décider si deux contours se touchent, si les deux Bulles l'ont demandé, et ce qu'une fusion
+  // transporte se teste sous Node ; suivre une souris, poser une confirmation et repeindre un
+  // contour unique, non.
+  //
+  // Ce que la décision achète ici en plus, et qui justifie de l'écrire en avance : la liste des
+  // champs TRANSPORTÉS est définie par EXCLUSION, et son test exige qu'un axe graphique inconnu se
+  // transporte quand même. Écrite après le geste, elle aurait été une énumération — la forme, la
+  // couleur, la bordure… — qui se périme en silence au premier axe ajouté. Ce chantier en a ajouté
+  // sept en quelques tâches.
+  //
+  // ÉCHÉANCES : #426b pour `FUSIONNABLE_DEFAUT`, que la case à cocher posera ; #426d pour
+  // `fusionPossible3D`, que le geste interrogera au relâchement ; #426e pour
+  // `instantaneDeFusion3D`, que le bouton « Séparer » rendra.
+  FUSIONNABLE_DEFAUT: '#426b',
+  fusionPossible3D: '#426d',
+  instantaneDeFusion3D: '#426e',
+
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
   // appelée par `loadSceneIntoPanel`, l'éclairage d'une Scène passe dans la Case qu'on charge.
@@ -282,10 +301,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // sans quoi la sortie de secours devient le chemin normal, et une liste qui s'allonge finit par
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
     //
-    // Remonté à 2 en #431b1, redescendu à 0 en #431b2 — dans la même séance. Ce chiffre se modifie
-    // À LA MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne
-    // ici, qu'on ne peut pas écrire sans avoir lu ce paragraphe.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    // Remonté à 2 en #431b1, redescendu à 0 en #431b2 — dans la même séance —, remonté à 3 en
+    // #426a, le temps que le geste et la fiche rejoignent la décision. Ce chiffre se modifie À LA
+    // MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne ici,
+    // qu'on ne peut pas écrire sans avoir lu ce paragraphe.
+    assert.equal(Object.keys(EN_ATTENTE).length, 3,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
