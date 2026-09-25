@@ -65,6 +65,7 @@ import {
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, nomDuGrain3D,
+  natureDeLaTexture3D, natureDuNom3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
 
 const T = 64;
@@ -599,6 +600,102 @@ describe('grainNormalise3D sans normale — le régime image', () => {
     const a = grainNormalise3D(sombre, null, T).grain;
     const b = grainNormalise3D(clair, null, T).grain;
     for (let i = 0; i < a.length; i++) assert.ok(Math.abs(a[i] - b[i]) <= 1, `pixel ${i}`);
+  });
+});
+
+describe('natureDeLaTexture3D — où vit la structure', () => {
+  /**
+   * ⚠️ LES CHIFFRES SONT CEUX DES SEPT MATIÈRES TÉLÉCHARGÉES, mesurés avant d'écrire le seuil. Ils
+   * figurent ici parce qu'une constante placée « au milieu » ne veut rien dire sans les deux bornes
+   * qu'elle sépare.
+   *
+   *   matière          albédo  relief  rapport
+   *   papier fin         2,11   18,90     0,11
+   *   papier froissé     1,11    3,43     0,32
+   *   carton             2,45    5,82     0,42
+   *   nuit étoilée       4,45    4,45     1,00   ← même fichier des deux côtés, par construction
+   *   glace              6,52    6,22     1,05
+   *   lave               4,70    2,64     1,78
+   *   toile de jean     26,48   14,36     1,84
+   */
+  test('le relief l’emporte sur les papiers et le carton', () => {
+    assert.equal(natureDeLaTexture3D(1.11, 3.43), 'gris');
+    assert.equal(natureDeLaTexture3D(2.11, 18.90), 'gris');
+    assert.equal(natureDeLaTexture3D(2.45, 5.82), 'gris');
+  });
+
+  test('la couleur l’emporte sur la lave et la toile de jean', () => {
+    assert.equal(natureDeLaTexture3D(4.70, 2.64), 'couleur');
+    assert.equal(natureDeLaTexture3D(26.48, 14.36), 'couleur');
+  });
+
+  /**
+   * ⚠️ J'AVAIS ANNONCÉ QUE LA GLACE BASCULERAIT, ET LA MESURE DIT NON. Son albédo et son relief
+   * portent autant de structure l'un que l'autre — 6,52 contre 6,22, soit 1,05. C'est le cas
+   * exactement litigieux, et c'est pour lui que la marge existe : les départager reviendrait à
+   * tirer à pile ou face sur du bruit, et la nature de la texture changerait d'une version de la
+   * source à l'autre.
+   */
+  test('une quasi-égalité reste au GRIS, le régime historique', () => {
+    assert.equal(natureDeLaTexture3D(6.52, 6.22), 'gris');
+    assert.equal(natureDeLaTexture3D(4.45, 4.45), 'gris', 'une IMAGE se compare à elle-même');
+    assert.equal(natureDeLaTexture3D(10, 10), 'gris');
+  });
+
+  /**
+   * ⚠️ LE SEUIL TOMBE DANS L'ÉCART MESURÉ, et ce test l'y tient. Sans lui, la marge pourrait valoir
+   * n'importe quoi entre 1,06 et 1,77 sans qu'aucune assertion ne bronche — c'est la faute qui a
+   * laissé passer M6 en #431a, où je tenais le sens d'une comparaison et pas sa valeur.
+   */
+  test('la marge sépare la glace de la lave', () => {
+    assert.ok(MARGE_NATURE > 1.05, `${MARGE_NATURE} ferait basculer la glace`);
+    assert.ok(MARGE_NATURE < 1.78, `${MARGE_NATURE} retiendrait la lave en gris`);
+  });
+
+  test('une mesure illisible retombe sur le gris, sans lever', () => {
+    assert.equal(natureDeLaTexture3D(NaN, 3), 'gris');
+    assert.equal(natureDeLaTexture3D(3, 0), 'gris', 'un relief nul ne doit pas diviser par zéro');
+    assert.equal(natureDeLaTexture3D(0, 0), 'gris');
+  });
+});
+
+describe('⚠️ LA NATURE VOYAGE DANS LE NOM DU FICHIER', () => {
+  /**
+   * ⚠️ POURQUOI LE NOM ET NON LE REGISTRE. Le dessin doit savoir s'il compose par ÉCART — même
+   * décalage sur les trois canaux, qui préserve la teinte — ou par RAPPORT. Les deux règles sont
+   * incompatibles : appliquer le rapport à un grain gris ramènerait le mélange multiplicatif que
+   * #431b1 a mesuré et rejeté. Déclarer la nature dans le registre en ferait une valeur à tenir
+   * d'accord avec un fichier, donc à périmer — la famille de défauts la plus fréquente ici. Portée
+   * par le nom, elle a une source unique : changer de nature RENOMME, et le registre ne peut pas
+   * ne pas suivre.
+   */
+  test('le nom porte la nature, et se relit', () => {
+    assert.equal(nomDuGrain3D('lave', 'couleur'), 'lave.couleur.png');
+    assert.equal(nomDuGrain3D('papier-froisse', 'gris'), 'papier-froisse.png');
+    assert.equal(nomDuGrain3D('papier-froisse'), 'papier-froisse.png', 'le gris est le défaut');
+  });
+
+  test('aller-retour : ce que le cuiseur nomme, le dessin le relit', () => {
+    for (const nature of ['gris', 'couleur']) {
+      assert.equal(natureDuNom3D(nomDuGrain3D('essai', nature)), nature);
+    }
+  });
+
+  /**
+   * ⚠️ UN NOM QUI CONTIENT « couleur » AILLEURS QU'À LA FIN N'EST PAS UNE TEXTURE COULEUR. Sans
+   * cette précision, une matière nommée « couleur-de-pierre » basculerait de régime par accident
+   * de vocabulaire, et le mélange multiplicatif reviendrait sans que rien ne le demande.
+   */
+  test('seul le suffixe compte, pas le mot où qu’il soit', () => {
+    assert.equal(natureDuNom3D('couleur-de-pierre.png'), 'gris');
+    assert.equal(natureDuNom3D('pierre-couleur-chaude.png'), 'gris');
+    assert.equal(natureDuNom3D('pierre.couleur.png'), 'couleur');
+    assert.equal(natureDuNom3D('pierre.couleur'), 'couleur', 'le registre cite parfois sans .png');
+  });
+
+  test('un nom vide ou absent ne casse pas', () => {
+    assert.equal(natureDuNom3D(''), 'gris');
+    assert.equal(natureDuNom3D(null), 'gris');
   });
 });
 

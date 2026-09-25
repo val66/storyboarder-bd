@@ -415,9 +415,74 @@ export function regimeDeCuisson3D(fichiers){
       : 'aucune image dans ce dossier' };
 }
 
-/** Le nom du fichier produit, dérivé de l'identifiant de la matière. */
-export function nomDuGrain3D(id){
-  return String(id).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.png';
+/**
+ * Où vit la structure d'une texture : dans sa COULEUR, ou dans son RELIEF ? Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LA QUESTION QUI A OUVERT #433, ET LA MESURE QUI Y RÉPOND
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : « pour la lave, plusieurs couleurs étaient utilisées, le rendu final avec une
+ * seule appauvrit beaucoup ». Mesuré, c'est vrai, et c'est PROPRE À LA LAVE. On relève, le long de
+ * la luminance de l'albédo, de combien la teinte varie :
+ *
+ *   matière          variation de teinte   saturation du décile sombre → clair
+ *   papier froissé                   0,3                         80 → 80
+ *   glace                            3,5                         28 → 18
+ *   nuit étoilée                     3,9                         29 →  8
+ *   lave                            18,7                        71 → 170
+ *
+ * La croûte de lave est un brun désaturé, ses fissures un orange vif : la saturation PLUS QUE
+ * DOUBLE. Un grain monochrome teinté d'une seule couleur ne peut pas le rendre, par construction.
+ *
+ * ⚠️ ET LA PREMIÈRE RÉPARATION QUE J'AI ESSAYÉE NE MARCHAIT PAS. J'avais généralisé le mélange en
+ * faisant croître la chroma avec le grain — un paramètre de plus, mesurable. Rendu côte à côte : la
+ * différence était invisible. Deux raisons, et la seconde est la vraie. D'abord le grain, normalisé
+ * à 6,4 de contraste, reste serré autour du gris neutre, donc le facteur ne variait que de quelques
+ * pour cent. Surtout, la structure que l'œil cherche dans la lave N'EST PAS DANS LE DÉPLACEMENT :
+ * celui-ci décrit un écoulement, une sorte de fil du bois, pendant que la couleur raconte la croûte
+ * et les fissures. Aucun réglage appliqué au grain ne pouvait restituer une information absente.
+ *
+ * ⚠️ LE CRITÈRE EST DONC : QUELLE CARTE PORTE LE PLUS DE STRUCTURE. On compare leurs contrastes
+ * locaux, la mesure qui a déjà servi à écarter l'albédo en #431a — et qui donne ici la réponse
+ * INVERSE pour certaines matières, ce qui est précisément l'intérêt de mesurer plutôt que de
+ * supposer. Le papier avait 2,24 contre 5,95 : son relief est dans le déplacement. Une lave fait
+ * l'inverse.
+ *
+ * ⚠️ ON EXIGE UNE MARGE, PAS UNE SIMPLE INÉGALITÉ. Deux cartes à 5,90 et 5,95 ne disent rien : les
+ * départager reviendrait à tirer à pile ou face sur du bruit, et la nature d'une texture changerait
+ * d'une version de la source à l'autre. Sous la marge, on reste sur le GRIS, qui est le régime
+ * historique et le plus léger.
+ */
+export const MARGE_NATURE = 1.4;
+
+export function natureDeLaTexture3D(contrasteAlbedo, contrasteRelief){
+  const a = Number(contrasteAlbedo), r = Number(contrasteRelief);
+  if (!Number.isFinite(a) || !Number.isFinite(r) || r <= 0) return 'gris';
+  return a > r * MARGE_NATURE ? 'couleur' : 'gris';
+}
+
+/**
+ * Le nom du fichier produit, dérivé de l'identifiant et de la NATURE de la texture.
+ *
+ * ⚠️ LA NATURE VIT DANS LE NOM, ET C'EST CE QUI ÉVITE UNE SECONDE SOURCE. Le dessin doit savoir
+ * s'il compose par ÉCART — même décalage sur les trois canaux, qui préserve la teinte — ou par
+ * RAPPORT — l'image multipliée par teinte/moyenne, qui préserve les couleurs de la photo. Les deux
+ * règles sont incompatibles : appliquer le rapport à un grain gris ramènerait le mélange
+ * multiplicatif que #431b1 a mesuré et rejeté.
+ *
+ * Le déclarer dans le registre en ferait une valeur à tenir d'accord avec un fichier, donc à
+ * périmer. Le porter dans le nom du fichier fait que le cuiseur, seul à décider, est aussi seul à
+ * nommer : changer de nature RENOMME le fichier, et le registre ne peut pas ne pas suivre.
+ */
+export function nomDuGrain3D(id, nature = 'gris'){
+  const base = String(id).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return nature === 'couleur' ? base + '.couleur.png' : base + '.png';
+}
+
+/** La nature que porte un nom de motif, tel que le registre le cite. Fonction PURE. */
+export function natureDuNom3D(nom){
+  return /\.couleur(\.png)?$/i.test(String(nom || '')) ? 'couleur' : 'gris';
 }
 
 // ── La moitié IMPURE : elle décode, elle écrit, et elle ne se teste pas ────────────────────────
@@ -466,6 +531,14 @@ function grisDepuisRgba(rgba){
   return g;
 }
 
+/** Écrit un RGBA tel quel : c'est le chemin des textures COULEUR, où l'albédo est le produit. */
+async function ecrireImagePng(rgba, taille, chemin){
+  const { nativeImage } = await import('electron');
+  const opaque = Buffer.from(rgba);
+  for (let i = 3; i < opaque.length; i += 4) opaque[i] = 255;
+  writeFileSync(chemin, nativeImage.createFromBuffer(opaque, { width: taille, height: taille }).toPNG());
+}
+
 async function ecrireGrainPng(grain, taille, chemin){
   const { nativeImage } = await import('electron');
   const rgba = Buffer.alloc(taille * taille * 4);
@@ -501,17 +574,30 @@ async function main(){
   // déformé ma première planche de comparaison, signalée à l'époque.
   const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief)));
   const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale)) : null;
+  const albedoRgba = cartes.albedo ? await chargerCarte(join(dossier, cartes.albedo)) : null;
+  const teinte = albedoRgba ? teinteDominante3D(albedoRgba) : '#FFFFFF';
+
+  // ⚠️ LA NATURE SE MESURE SUR LES CARTES D'ORIGINE, PAS SUR LE GRAIN. Le grain est normalisé à
+  // 6,4 par construction : le comparer à quoi que ce soit ne dirait rien. Ce qu'on veut savoir est
+  // laquelle des deux cartes SOURCES porte le plus de structure.
+  const contrasteRelief = contrasteLocal3D(relief, TAILLE_GRAIN);
+  const contrasteAlbedo = albedoRgba
+    ? contrasteLocal3D(grisDepuisRgba(albedoRgba), TAILLE_GRAIN) : 0;
+  const nature = natureDeLaTexture3D(contrasteAlbedo, contrasteRelief);
+
+  // Le grain sert au régime GRIS, et sa luminance sert de support aux mesures dans les deux cas :
+  // couture et motif se jugent sur ce qui se répète, indépendamment de la couleur.
   const { grain, gain, contraste } = grainNormalise3D(relief, normale, TAILLE_GRAIN);
-  const couture = coutureCarrelage3D(grain, TAILLE_GRAIN);
-  // Mesuré sur le GRAIN et non sur le relief : c'est le grain qui est livré, et le rapport y est
-  // plus tranché (0,126 contre 0,241) que sur les cartes d'origine (0,16 contre 0,26).
-  const tuile = partAEchelleDeTuile3D(grain, TAILLE_GRAIN);
-  const teinte = cartes.albedo
-    ? teinteDominante3D(await chargerCarte(join(dossier, cartes.albedo))) : '#FFFFFF';
+  const mesure = nature === 'couleur' ? grisDepuisRgba(albedoRgba) : grain;
+  const couture = coutureCarrelage3D(mesure, TAILLE_GRAIN);
+  // Mesuré sur ce qui est LIVRÉ et non sur les cartes d'origine : le rapport y est plus tranché
+  // (0,126 contre 0,241) que sur le déplacement (0,16 contre 0,26).
+  const tuile = partAEchelleDeTuile3D(mesure, TAILLE_GRAIN);
 
   mkdirSync(SORTIE, { recursive: true });
-  const sortie = join(SORTIE, nomDuGrain3D(id));
-  await ecrireGrainPng(grain, TAILLE_GRAIN, sortie);
+  const sortie = join(SORTIE, nomDuGrain3D(id, nature));
+  if (nature === 'couleur') await ecrireImagePng(albedoRgba, TAILLE_GRAIN, sortie);
+  else await ecrireGrainPng(grain, TAILLE_GRAIN, sortie);
 
   console.log(`${id} → ${basename(sortie)}`);
   // ⚠️ LE RÉGIME EST IMPRIMÉ, JAMAIS DEVINÉ EN SILENCE. Une matière cuite par erreur en image
@@ -523,7 +609,16 @@ async function main(){
   console.log(`  relief    ${cartes.relief}`);
   if (cartes.normale) console.log(`  normale   ${cartes.normale}`);
   console.log(`  teinte    ${teinte}${cartes.albedo ? '' : '  (aucun albédo : blanc par défaut)'}`);
-  console.log(`  gain      ${gain.toFixed(2)}   contraste ${contraste.toFixed(2)} / ${CONTRASTE_CIBLE}`);
+  // ⚠️ LA NATURE ET SA MESURE SONT IMPRIMÉES ENSEMBLE. Le verdict seul ne se relit pas : c'est le
+  // RAPPORT qui dit s'il était franc ou de justesse, donc s'il vaut la peine d'être discuté.
+  console.log(`  nature    ${nature.toUpperCase()}  — albédo ${contrasteAlbedo.toFixed(2)} contre `
+    + `relief ${contrasteRelief.toFixed(2)}, rapport ${(contrasteAlbedo / Math.max(contrasteRelief, 1e-6)).toFixed(2)}`
+    + ` (bascule au-delà de ${MARGE_NATURE})`);
+  if (nature === 'couleur') {
+    console.log('            → l\'albédo est livré TEL QUEL, la teinte agira en rapport');
+  } else {
+    console.log(`  gain      ${gain.toFixed(2)}   contraste ${contraste.toFixed(2)} / ${CONTRASTE_CIBLE}`);
+  }
   console.log(`  couture   ${couture.toFixed(2)}   (1,0 = raccord invisible)`);
   console.log(`  tuile     ${tuile.part.toFixed(3)}   (part du contraste à l'échelle de la tuile)`);
   if (tuile.suspect) {
