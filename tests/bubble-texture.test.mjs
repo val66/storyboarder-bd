@@ -23,6 +23,7 @@ import {
   couleurTexteParDefautDeLaTexture,
   teinteParDefautDeLaTexture, couleurDeFondDeLaBulle3D,
   grainsAPrecharger3D, ecartDuGrain3D, rvbDeCouleur3D, GRAIN_NEUTRE, FORCE_GRAIN,
+  appliquerTeinteAuMotif3D, natureDuNom3D,
 } from '../src/bubble-texture.js';
 import { GRIS_NEUTRE } from '../tools/bake-textures.mjs';
 
@@ -144,6 +145,196 @@ describe('⚠️ UNE TEXTURE SUGGÈRE SA COULEUR, elle ne l’impose plus', () =
       assert.ok(Math.abs(lum(texte) - lum(fond)) > 0.4,
         `${texture} : texte ${texte} sur fond ${fond}, contraste insuffisant`);
     }
+  });
+});
+
+describe('appliquerTeinteAuMotif3D — deux règles, et elles ne se confondent pas', () => {
+  /** Un motif RGBA à plat, depuis une liste de couleurs. */
+  const motif = (couleurs) => {
+    const px = new Uint8ClampedArray(couleurs.length * 4);
+    couleurs.forEach((c, i) => { px[i * 4] = c[0]; px[i * 4 + 1] = c[1]; px[i * 4 + 2] = c[2]; });
+    return px;
+  };
+  const lire = (px) => { const out = [];
+    for (let i = 0; i < px.length; i += 4) out.push([px[i], px[i + 1], px[i + 2]]);
+    return out; };
+
+  /**
+   * ⚠️ LA PROPRIÉTÉ QUI REND LE RÉGIME COULEUR HONNÊTE : à la teinte d'origine, le rapport vaut
+   * exactement 1, donc la matière s'affiche telle qu'elle a été photographiée. Sans elle, une Bulle
+   * à laquelle personne n'a rien demandé montrerait déjà une image altérée.
+   */
+  test('COULEUR : à la teinte d’origine, l’image est rendue intacte', () => {
+    const pixels = [[180, 60, 30], [40, 20, 15], [220, 140, 60], [90, 45, 25]];
+    const moy = [0, 1, 2].map(c => Math.round(pixels.reduce((s, p) => s + p[c], 0) / pixels.length));
+    const px = motif(pixels);
+    appliquerTeinteAuMotif3D(px, moy, 'couleur');
+    lire(px).forEach((v, i) => v.forEach((c, j) =>
+      assert.ok(Math.abs(c - pixels[i][j]) <= 1, `pixel ${i} canal ${j} : ${c} au lieu de ${pixels[i][j]}`)));
+  });
+
+  /**
+   * ⚠️ ET CE QU'IL PRÉSERVE QUAND ON TEINTE : les rapports ENTRE pixels. C'est ce qui distingue une
+   * lave bleue — croûte sombre, fissures vives, mais bleues — d'un aplat bleu vaguement bruité.
+   */
+  test('COULEUR : teinter conserve les rapports entre pixels', () => {
+    const pixels = [[200, 100, 50], [100, 50, 25]];
+    const px = motif(pixels);
+    appliquerTeinteAuMotif3D(px, [60, 90, 180], 'couleur');
+    const [a, b] = lire(px);
+    // Le second pixel valait la moitié du premier sur chaque canal : il doit le rester.
+    [0, 1, 2].forEach(c => assert.ok(Math.abs(a[c] / 2 - b[c]) <= 1.5,
+      `canal ${c} : ${b[c]} au lieu de ${a[c] / 2}`));
+  });
+
+  /**
+   * ⚠️ LA PROPRIÉTÉ QUI DÉFINIT VRAIMENT CE RÉGIME, ET QUE J'AVAIS MANQUÉE : après teinture, la
+   * moyenne de l'image EST la teinte demandée. C'est ce qui donne un sens au sélecteur — on ne
+   * demande pas « un peu plus bleu », on demande une couleur, et on l'obtient en moyenne.
+   *
+   * Mes premières assertions ne portaient que sur des rapports entre pixels, qu'un facteur UNIQUE
+   * appliqué aux trois canaux préserve tout aussi bien. La mutation l'a montré : un seul `kr` pour
+   * R, V et B passait au vert, alors qu'elle rend une image dont la teinte n'a rien à voir avec
+   * celle demandée.
+   */
+  test('COULEUR : la moyenne de l’image devient la teinte demandée', () => {
+    const pixels = [[180, 60, 30], [40, 20, 15], [220, 140, 60], [90, 45, 25]];
+    // ⚠️ DES TEINTES QUI NE FONT PAS SATURER, et la restriction est le sujet du test suivant.
+    for (const teinte of [[80, 60, 45], [120, 110, 100], [60, 90, 120]]) {
+      const px = motif(pixels);
+      appliquerTeinteAuMotif3D(px, teinte, 'couleur');
+      const vus = lire(px);
+      [0, 1, 2].forEach(c => {
+        const moy = vus.reduce((s, p) => s + p[c], 0) / vus.length;
+        assert.ok(Math.abs(moy - teinte[c]) <= 1.5,
+          `teinte ${teinte} : canal ${c} rend ${moy.toFixed(1)} au lieu de ${teinte[c]}`);
+      });
+    }
+  });
+
+  /**
+   * ⚠️ ET CETTE PROPRIÉTÉ A UNE LIMITE, QUE LE TEST PRÉCÉDENT M'A FAIT DÉCOUVRIR EN ÉCHOUANT. Elle
+   * ne tient que tant que rien ne sature. Demander un bleu franc sur une image dont le canal bleu
+   * est très bas exige un facteur de cinq ou six : les hautes lumières plafonnent à 255, et la
+   * moyenne reste en deçà de ce qu'on demandait.
+   *
+   * C'est inhérent au rapport, pas réparable sans changer de règle : ramener la moyenne de force
+   * voudrait dire assombrir le reste, donc écraser le contraste qu'on cherche à préserver. Ce qu'on
+   * tient ici est la garantie honnête — le plafonnement ne peut que RAPPROCHER du blanc, jamais
+   * faire reboucler vers le noir, ce qui serait un artefact visible et absurde.
+   */
+  test('COULEUR : sous saturation, la moyenne reste en deçà mais rien ne reboucle', () => {
+    const pixels = [[180, 60, 30], [40, 20, 15], [220, 140, 60], [90, 45, 25]];
+    const px = motif(pixels);
+    appliquerTeinteAuMotif3D(px, [60, 90, 180], 'couleur');
+    const vus = lire(px);
+    const moyB = vus.reduce((s, p) => s + p[2], 0) / vus.length;
+    assert.ok(moyB < 180, 'la fixture devait saturer : sinon ce test ne prouve rien');
+    // Chaque pixel a bien MONTÉ en bleu, aucun n'est retombé.
+    vus.forEach((p, i) => assert.ok(p[2] >= pixels[i][2],
+      `pixel ${i} : le bleu est passé de ${pixels[i][2]} à ${p[2]}`));
+  });
+
+  /**
+   * ⚠️ ET LE BORNAGE EXISTE. Une teinte claire sur une image qui porte déjà des hautes lumières
+   * fait dépasser 255 ; sans bornage explicite, l'écriture dans un `Uint8ClampedArray` sauverait
+   * la mise ici et pas ailleurs. Ce test pousse volontairement au-delà.
+   */
+  test('COULEUR : les hautes lumières plafonnent au lieu de déborder', () => {
+    const px = motif([[250, 250, 250], [10, 10, 10]]);
+    appliquerTeinteAuMotif3D(px, [240, 240, 240], 'couleur');
+    lire(px).forEach((p, i) => p.forEach((c, j) =>
+      assert.ok(c >= 0 && c <= 255, `pixel ${i} canal ${j} : ${c}`)));
+    assert.equal(lire(px)[0][0], 255, 'la haute lumière devait plafonner, pas reboucler');
+  });
+
+  /**
+   * ⚠️ LE TEST PRÉCÉDENT NE PROUVAIT RIEN, ET C'EST LE MIROIR EXACT DE M18 EN #431a. Là-bas je
+   * vérifiais des bornes sur un `Uint8Array`, qui REBOUCLE à l'écriture : l'assertion ne pouvait
+   * pas échouer. Ici la fixture est un `Uint8ClampedArray` — celui que rend `getImageData` — qui
+   * BORNE à l'écriture : l'assertion ne peut pas échouer non plus, et retirer le `Math.min` du code
+   * laissait la suite verte.
+   *
+   * Deux conteneurs opposés, la même cécité. La parade est de ne pas dépendre du conteneur : une
+   * fonction pure qui n'est correcte qu'avec un certain type de tableau porte une exigence tacite,
+   * et une exigence tacite finit toujours par être violée par un appelant de bonne foi.
+   */
+  test('et le bornage est dans la RÈGLE, pas dans le tableau qu’on lui passe', () => {
+    // Un tableau ordinaire : il n'écrête rien, donc il laisse voir ce que la règle produit.
+    const nu = [250, 250, 250, 0, 10, 10, 10, 0];
+    appliquerTeinteAuMotif3D(nu, [240, 240, 240], 'couleur');
+    nu.forEach((c, i) => assert.ok(c >= 0 && c <= 255,
+      `indice ${i} : ${c} — la règle compte sur le tableau pour borner à sa place`));
+  });
+
+  /**
+   * ⚠️ LE TEST QUI EMPÊCHE LES DEUX RÈGLES DE SE CONFONDRE. Appliquer l'écart à une image couleur
+   * l'APLATIT — c'est le défaut signalé sur la lave ; appliquer le rapport à un grain gris ramène
+   * le mélange multiplicatif rejeté en #431b1. Sur la même entrée, les deux doivent diverger.
+   */
+  test('les deux régimes ne rendent pas la même chose', () => {
+    const pixels = [[200, 100, 50], [80, 120, 200]];
+    const parRapport = motif(pixels), parEcart = motif(pixels);
+    appliquerTeinteAuMotif3D(parRapport, [120, 80, 60], 'couleur');
+    appliquerTeinteAuMotif3D(parEcart, [120, 80, 60], 'gris');
+    assert.notDeepEqual(lire(parRapport), lire(parEcart));
+  });
+
+  /**
+   * ⚠️ ET TOUT CE QUI N'EST PAS « couleur » EST DU GRIS. Une nature mal orthographiée ne doit pas
+   * faire basculer vers le rapport : c'est le régime historique qui doit gagner en cas de doute,
+   * parce qu'il est celui de toutes les textures déjà livrées.
+   */
+  test('GRIS : le même écart sur les trois canaux, quoi qu’on passe d’autre', () => {
+    // ⚠️ ON COMPARE LES VALEURS, PAS LEURS ÉCARTS. Mes premières assertions ne regardaient que les
+    // différences entre canaux — or sur un pixel gris, le régime COULEUR les préserve lui aussi,
+    // par coïncidence arithmétique. Basculer le défaut vers le rapport passait donc au vert.
+    const attendu = lire(motif([[200, 200, 200]]).map(() => 0) && (() => {
+      const p = motif([[200, 200, 200]]);
+      appliquerTeinteAuMotif3D(p, [180, 120, 60], 'gris');
+      return p;
+    })())[0];
+    for (const nature of [undefined, '', 'COULEUR', 'autre']) {
+      const px = motif([[200, 200, 200]]);
+      appliquerTeinteAuMotif3D(px, [180, 120, 60], nature);
+      assert.deepEqual(lire(px)[0], attendu,
+        `« ${nature} » n’a pas été traité comme du gris : ${lire(px)[0]} au lieu de ${attendu}`);
+    }
+    // Et le gris fait bien ce qu'il annonce : la teinte décalée d'un même écart.
+    assert.equal(attendu[0] - attendu[1], 60);
+    assert.ok(attendu[0] > 180, `l’écart n’a pas été appliqué : ${attendu}`);
+  });
+
+  test('l’alpha est forcé à l’opacité dans les deux régimes', () => {
+    for (const nature of ['gris', 'couleur']) {
+      const px = motif([[100, 100, 100]]);
+      appliquerTeinteAuMotif3D(px, [120, 80, 60], nature);
+      assert.equal(px[3], 255, `« ${nature} » laisse un motif translucide`);
+    }
+  });
+
+  /**
+   * ⚠️ LA NATURE SE LIT DANS LE NOM, ET SEUL LE SUFFIXE COMPTE. Sans cette précision, une matière
+   * nommée « couleur-de-pierre » basculerait de régime par accident de vocabulaire.
+   */
+  test('la nature se lit au suffixe du nom, pas au mot', () => {
+    assert.equal(natureDuNom3D('lave.couleur'), 'couleur');
+    assert.equal(natureDuNom3D('lave.couleur.png'), 'couleur');
+    assert.equal(natureDuNom3D('papier-froisse'), 'gris');
+    assert.equal(natureDuNom3D('couleur-de-pierre.png'), 'gris');
+    assert.equal(natureDuNom3D(null), 'gris');
+  });
+
+  test('et la lave est la seule matière livrée en couleur', () => {
+    const naturesParGrain = new Map();
+    for (const cle of texturesConnues()) {
+      for (const c of rendu(cle).couches) {
+        if (c.motif) naturesParGrain.set(c.motif, natureDuNom3D(c.motif));
+      }
+    }
+    const couleurs = [...naturesParGrain].filter(([, n]) => n === 'couleur').map(([g]) => g);
+    assert.deepEqual(couleurs, ['lave.couleur'],
+      `mesuré en #433a : seul l’albédo de la lave porte plus de structure que son relief`);
   });
 });
 

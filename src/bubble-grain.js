@@ -31,7 +31,7 @@
  * grain, et il retombe sur la teinte, pas sur du blanc. Une Bulle privée de grain reste du
  * parchemin : elle perd son relief, pas son identité.
  */
-import { ecartDuGrain3D, rvbDeCouleur3D } from './bubble-texture.js';
+import { rvbDeCouleur3D, natureDuNom3D, appliquerTeinteAuMotif3D } from './bubble-texture.js';
 
 /** Où vivent les grains cuits par `tools/bake-textures.mjs`. */
 const DOSSIER_GRAINS = 'assets/textures/';
@@ -161,12 +161,10 @@ function tuileTeintee(cle, couleur){
   tc.drawImage(img, 0, 0);
   const données = tc.getImageData(0, 0, tuile.width, tuile.height);
   const px = données.data;
-  for (let i = 0; i < px.length; i += 4) {
-    // Le grain est gris : ses trois canaux sont égaux, un seul suffit à le lire.
-    const ecart = ecartDuGrain3D(rvb, px[i]);
-    px[i] = rvb[0] + ecart; px[i + 1] = rvb[1] + ecart; px[i + 2] = rvb[2] + ecart;
-    px[i + 3] = 255;
-  }
+  // ⚠️ LA RÈGLE DE COMPOSITION VIT DANS `bubble-texture.js`, AVEC LES AUTRES DÉCISIONS. Ici on ne
+  // fait que lui donner les pixels : quelle couleur produit un motif est une question qui se
+  // mesure et s'éprouve, pas un détail de canevas.
+  appliquerTeinteAuMotif3D(px, rvb, natureDuNom3D(cle));
   tc.putImageData(données, 0, 0);
 
   _tuiles.set(index, tuile);

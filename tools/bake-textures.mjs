@@ -98,6 +98,7 @@ import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 
+
 // ── Réglages, tous mesurés ou choisis à l'œil, jamais devinés ─────────────────────────────────
 
 /**
@@ -474,16 +475,16 @@ export function natureDeLaTexture3D(contrasteAlbedo, contrasteRelief){
  * Le déclarer dans le registre en ferait une valeur à tenir d'accord avec un fichier, donc à
  * périmer. Le porter dans le nom du fichier fait que le cuiseur, seul à décider, est aussi seul à
  * nommer : changer de nature RENOMME le fichier, et le registre ne peut pas ne pas suivre.
+ *
+ * ⚠️ LA RELECTURE VIT AILLEURS, dans `src/bubble-texture.js` : c'est le DESSIN qui en a besoin, et
+ * il ne peut pas importer un module qui ouvre des fichiers. Ce fichier-ci ne fait qu'écrire des
+ * noms ; il n'en relit aucun.
  */
 export function nomDuGrain3D(id, nature = 'gris'){
   const base = String(id).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return nature === 'couleur' ? base + '.couleur.png' : base + '.png';
 }
 
-/** La nature que porte un nom de motif, tel que le registre le cite. Fonction PURE. */
-export function natureDuNom3D(nom){
-  return /\.couleur(\.png)?$/i.test(String(nom || '')) ? 'couleur' : 'gris';
-}
 
 // ── La moitié IMPURE : elle décode, elle écrit, et elle ne se teste pas ────────────────────────
 
@@ -531,22 +532,35 @@ function grisDepuisRgba(rgba){
   return g;
 }
 
-/** Écrit un RGBA tel quel : c'est le chemin des textures COULEUR, où l'albédo est le produit. */
+/**
+ * Écrit un RGBA. C'est le chemin des textures COULEUR, où l'albédo est le produit.
+ *
+ * ⚠️ `createFromBuffer` ATTEND DU BGRA, COMME `toBitmap` EN REND. La symétrie est logique et je l'ai
+ * manquée : `chargerCarte` reconvertit en RGBA pour que le reste du fichier raisonne en clair, donc
+ * il faut RE-inverser avant d'écrire. Le défaut a vécu dans `ecrireGrainPng` depuis #431a sans
+ * jamais se voir — un grain est gris, R = G = B, l'inversion n'y change rien. La première texture
+ * en couleur l'a révélé au premier coup d'œil : la lave est sortie BLEUE, #2D43AB au lieu de
+ * #AC442E, les mêmes octets à l'envers.
+ *
+ * C'est le cas d'école d'un défaut que seule une donnée plus riche peut faire apparaître, et la
+ * raison pour laquelle les deux écritures partagent désormais cette fonction : un seul endroit sait
+ * dans quel ordre le moteur veut ses octets.
+ */
 async function ecrireImagePng(rgba, taille, chemin){
   const { nativeImage } = await import('electron');
-  const opaque = Buffer.from(rgba);
-  for (let i = 3; i < opaque.length; i += 4) opaque[i] = 255;
-  writeFileSync(chemin, nativeImage.createFromBuffer(opaque, { width: taille, height: taille }).toPNG());
+  const bgra = Buffer.alloc(rgba.length);
+  for (let i = 0; i < rgba.length; i += 4) {
+    bgra[i] = rgba[i + 2]; bgra[i + 1] = rgba[i + 1]; bgra[i + 2] = rgba[i]; bgra[i + 3] = 255;
+  }
+  writeFileSync(chemin, nativeImage.createFromBuffer(bgra, { width: taille, height: taille }).toPNG());
 }
 
 async function ecrireGrainPng(grain, taille, chemin){
-  const { nativeImage } = await import('electron');
   const rgba = Buffer.alloc(taille * taille * 4);
   for (let i = 0; i < taille * taille; i++) {
     rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = grain[i]; rgba[i * 4 + 3] = 255;
   }
-  const img = nativeImage.createFromBuffer(rgba, { width: taille, height: taille });
-  writeFileSync(chemin, img.toPNG());
+  await ecrireImagePng(rgba, taille, chemin);
 }
 
 async function main(){

@@ -65,8 +65,9 @@ import {
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, nomDuGrain3D,
-  natureDeLaTexture3D, natureDuNom3D, MARGE_NATURE,
+  natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
+import { natureDuNom3D } from '../src/bubble-texture.js';
 
 const T = 64;
 

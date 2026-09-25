@@ -142,8 +142,35 @@ function teinte(couleur, t){
  */
 export const GRAIN_PAPIER = 'papier-froisse';
 export const GRAIN_GLACE = 'glace';
-export const GRAIN_LAVE = 'lave';
 export const GRAIN_NUIT = 'nuit-etoile';
+
+/**
+ * ⚠️ LE SUFFIXE N'EST PAS DÉCORATIF : IL DIT COMMENT COMPOSER. Mesuré en #433a, l'albédo de la lave
+ * porte 1,78 fois plus de structure que son déplacement — sa croûte et ses fissures sont une
+ * affaire de COULEUR, pas de relief. Elle est donc livrée en couleur, et se teinte par RAPPORT au
+ * lieu de l'écart additif des grains gris.
+ *
+ * Le nom est la seule source de cette information, et c'est délibéré : le cuiseur, seul à décider,
+ * est aussi seul à nommer. Si une nouvelle version de la source faisait basculer la mesure, le
+ * fichier changerait de nom et cette constante devrait suivre — impossible de l'oublier en silence.
+ */
+export const GRAIN_LAVE = 'lave.couleur';
+
+/**
+ * La nature d'un motif, lue dans son nom : `gris` ou `couleur`. Fonction PURE.
+ *
+ * ⚠️ SEUL LE SUFFIXE COMPTE, PAS LE MOT OÙ QU'IL SOIT. Sans cette précision, une matière nommée
+ * « couleur-de-pierre » basculerait de régime par accident de vocabulaire, et le mélange
+ * multiplicatif reviendrait sans que rien ne le demande.
+ *
+ * ⚠️ ET CETTE FONCTION VIT ICI PLUTÔT QUE DANS LE CUISEUR, alors que c'est lui qui nomme. Le
+ * dessin en a besoin et ne peut pas importer un module qui ouvre des fichiers ; le cuiseur, lui,
+ * peut importer celui-ci, qui est pur. La maison partageable est donc celle-ci — sans quoi la
+ * règle existerait en deux copies, d'accord seulement aujourd'hui.
+ */
+export function natureDuNom3D(nom){
+  return /\.couleur(\.png)?$/i.test(String(nom || '')) ? 'couleur' : 'gris';
+}
 
 /**
  * Le gris qui ne change rien : un grain vaut 128 là où la matière est plate.
@@ -205,6 +232,76 @@ export function ecartDuGrain3D(rvb, valeurGrain){
     ? Math.min(255 - rvb[0], 255 - rvb[1], 255 - rvb[2])
     : Math.min(rvb[0], rvb[1], rvb[2]);
   return (brut >= 0 ? 1 : -1) * Math.min(Math.abs(brut), marge);
+}
+
+/**
+ * Régime GRIS : la teinte reçoit le même ÉCART sur ses trois canaux.
+ *
+ * Le grain ne porte aucune couleur, seulement du relief. Reporter le même écart partout conserve la
+ * distance entre les canaux, donc la teinte : un pli éclaire ou assombrit sans jamais colorer. La
+ * règle et son bornage vivent dans `bubble-texture.js`, mesurés et éprouvés là-bas.
+ */
+function teinterParEcart(px, rvb){
+  for (let i = 0; i < px.length; i += 4) {
+    // Le grain est gris : ses trois canaux sont égaux, un seul suffit à le lire.
+    const ecart = ecartDuGrain3D(rvb, px[i]);
+    px[i] = rvb[0] + ecart; px[i + 1] = rvb[1] + ecart; px[i + 2] = rvb[2] + ecart;
+    px[i + 3] = 255;
+  }
+}
+
+/**
+ * Régime COULEUR : l'image garde ses couleurs, et la teinte agit en RAPPORT.
+ *
+ * ⚠️ POURQUOI UN RAPPORT ET NON UN ÉCART. Une lave n'est pas une couleur unique plus ou moins
+ * claire : sa croûte est un brun désaturé, ses fissures un orange vif, et c'est cette VARIATION qui
+ * la rend reconnaissable — mesurée à 18,7 contre 0,3 pour le papier. L'écart additif l'aplatit par
+ * construction, puisqu'il déplace les trois canaux ensemble. Le rapport, lui, préserve les
+ * distances RELATIVES entre canaux, donc les couleurs de la photographie.
+ *
+ * ⚠️ ET À LA TEINTE D'ORIGINE, LE RAPPORT VAUT EXACTEMENT 1. C'est ce qui rend ce régime honnête :
+ * une Bulle à laquelle on n'a rien demandé montre la matière telle qu'elle a été photographiée, au
+ * pixel près. Choisir une couleur la décale ensuite, sans casser sa structure — une lave bleue
+ * garde ses fissures et sa croûte.
+ *
+ * ⚠️ LE MÉLANGE MULTIPLICATIF AVAIT POURTANT ÉTÉ REJETÉ EN #431b1, ET CE N'EST PAS UNE
+ * CONTRADICTION. Là-bas on multipliait un GRAIN GRIS par une teinte : la multiplication écrasait le
+ * relief (contraste 2,60 contre 6,03) et faisait virer la teinte dans les clairs, puisque chaque
+ * canal saturait à son tour. Ici on multiplie une IMAGE COULEUR par un rapport centré sur sa propre
+ * moyenne — l'opération est neutre au repos, et ce qu'elle préserve est exactement ce que l'autre
+ * détruisait. Même opérateur, deux situations opposées.
+ */
+function teinterParRapport(px, rvb){
+  // La moyenne de l'image, pour que le rapport soit l'identité à la teinte d'origine.
+  let r = 0, v = 0, b = 0;
+  const n = px.length / 4;
+  for (let i = 0; i < px.length; i += 4) { r += px[i]; v += px[i + 1]; b += px[i + 2]; }
+  const kr = rvb[0] / Math.max(r / n, 1e-6);
+  const kv = rvb[1] / Math.max(v / n, 1e-6);
+  const kb = rvb[2] / Math.max(b / n, 1e-6);
+  for (let i = 0; i < px.length; i += 4) {
+    px[i] = Math.min(255, px[i] * kr);
+    px[i + 1] = Math.min(255, px[i + 1] * kv);
+    px[i + 2] = Math.min(255, px[i + 2] * kb);
+    px[i + 3] = 255;
+  }
+}
+
+/**
+ * Habille un motif entier de la teinte choisie, selon sa NATURE. Fonction PURE.
+ *
+ * `px` est un RGBA à plat, modifié sur place — c'est ce que rend `getImageData`, et le recopier
+ * pour la forme coûterait un mégaoctet par tuile sans rien apporter.
+ *
+ * ⚠️ DEUX RÈGLES INCOMPATIBLES, ET UN SEUL ENDROIT QUI CHOISIT. Appliquer le rapport à un grain
+ * gris ramènerait le mélange multiplicatif mesuré et rejeté en #431b1 ; appliquer l'écart à une
+ * image couleur l'aplatirait, ce qui est justement le défaut signalé sur la lave. Laisser le dessin
+ * trancher aurait mis cette décision hors de portée des tests.
+ */
+export function appliquerTeinteAuMotif3D(px, rvb, nature){
+  if (nature === 'couleur') teinterParRapport(px, rvb);
+  else teinterParEcart(px, rvb);
+  return px;
 }
 
 /** `#rgb` ou `#rrggbb` → `[r, v, b]`, ou `null` si on ne sait pas lire. Fonction PURE. */
