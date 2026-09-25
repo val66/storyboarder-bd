@@ -2895,11 +2895,13 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
    * motif non ancré — un repli volontaire et bénin, mais qui rendrait ce test aveugle. Le leurre
    * est donc ce qui lui permet d'échouer.
    */
+  const GRAIN = { width: 64, height: 64 };
+
   test('⚠️ LE MOTIF SUIT LA BULLE : deux positions, deux ancrages', () => {
     const anciens = [globalThis.DOMMatrix, globalThis.Image];
     globalThis.DOMMatrix = class { translate(x, y){ return { x, y }; } };
     _viderGrains3D();
-    _setGrain3D('papier-froisse', { width: 4, height: 4 });
+    _setGrain3D('papier-froisse', GRAIN);
     try {
       const ancrages = (bx, by) => {
         const vus = [];
@@ -2911,6 +2913,21 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
       };
       const a = ancrages(0, 0);
       assert.ok(a.length >= 2, `${a.length} ancrage(s) : les deux couches doivent être ancrées`);
+
+      /**
+       * ⚠️ LA TUILE EST CENTRÉE SUR LA BULLE, SON COIN N'Y EST PAS POSÉ. Translater du centre tout
+       * court amène l'ORIGINE de la tuile au milieu de la Bulle, donc ses bords y passent : un
+       * raccord horizontal et un vertical coupaient chaque Bulle en deux, toujours au même endroit.
+       * Signalé sur la nuit étoilée, dont la couture vaut 2,32.
+       *
+       * ⚠️ ET LE TEST DE DÉPLACEMENT CI-DESSOUS NE POUVAIT PAS LE VOIR : il compare deux positions,
+       * et un décalage constant s'y soustrait. Il faut regarder la valeur ABSOLUE de l'ancre par
+       * rapport au centre — encore une assertion sur des écarts là où il fallait une valeur.
+       */
+      const centre = { x: 200 / 2, y: 100 / 2 };   // la Bulle d'essai fait 200 × 100 en (0, 0)
+      assert.equal(a[0].x, centre.x - GRAIN.width / 2,
+        'le coin de la tuile tombe sur la Bulle : son raccord la traversera');
+      assert.equal(a[0].y, centre.y - GRAIN.height / 2);
       // Tous les ancrages d'une même Bulle visent le même point : c'est UN morceau de papier.
       assert.ok(a.every(m => m.x === a[0].x && m.y === a[0].y), 'les couches ne partagent pas l’ancre');
 
@@ -2940,7 +2957,7 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
     const anciens = globalThis.DOMMatrix;
     globalThis.DOMMatrix = class { translate(x, y){ return { x, y }; } };
     _viderGrains3D();
-    _setGrain3D('papier-froisse', { width: 4, height: 4 });
+    _setGrain3D('papier-froisse', GRAIN);
     try {
       const vus = [];
       const c = contexteEnregistreur();

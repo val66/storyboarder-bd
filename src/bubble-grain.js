@@ -128,7 +128,7 @@ export function motifDuGrain3D(ctx, cle, couleur, ancre){
   const tuile = tuileTeintee(cle, couleur);
   if (!tuile) return null;
   const motif = ctx.createPattern(tuile, 'repeat');
-  return motif ? ancrer(motif, ancre) : null;
+  return motif ? ancrer(motif, ancre, tuile.width, tuile.height) : null;
 }
 
 /** La tuile composée pour ce couple, depuis le cache ou fraîchement peinte. */
@@ -184,6 +184,20 @@ function tuileTeintee(cle, couleur){
  * Translater le motif jusqu'à l'ancre attache la tuile à la Bulle : le même pixel de grain reste
  * sous le même point de la forme, où qu'elle aille et quel que soit le zoom.
  *
+ * ⚠️ ON CENTRE LA TUILE SUR L'ANCRE, ON N'Y POSE PAS SON COIN — ET LA PREMIÈRE VERSION FAISAIT
+ * L'ERREUR. Translater de `(cx, cy)` amène l'ORIGINE de la tuile au centre de la Bulle, donc ses
+ * bords y passent : un raccord horizontal et un vertical traversaient le milieu de CHAQUE Bulle,
+ * toujours au même endroit. Invisible sur une matière qui se raccorde bien — la lave est à 1,01 —
+ * et flagrante sur la nuit étoilée, mesurée à 2,32 : une bande nette coupait la Bulle en deux.
+ *
+ * En reculant d'une demi-tuile, les raccords tombent à ±256 du centre. Toute Bulle plus petite que
+ * la tuile n'en voit alors aucun, quelle que soit la qualité du carrelage.
+ *
+ * ⚠️ CE QUE CELA NE RÉPARE PAS : une Bulle PLUS GRANDE que 512 montrera toujours le raccord de la
+ * nuit étoilée. Le carrelage d'une panoramique équirectangulaire n'est pas rattrapable par un
+ * calage — c'est ce que la mesure de couture annonçait, et le cuiseur le dit désormais à la
+ * cuisson plutôt que de laisser le rendu le découvrir.
+ *
  * ⚠️ LE MOTIF EST NEUF À CHAQUE PEINTURE, DONC LE CALAGE NE FUIT PAS. C'est la tuile qui est mise
  * en cache, pas le motif — voir `motifDuGrain3D`. Un `CanvasPattern` porte son état : partagé, le
  * calage d'une Bulle vaudrait pour les suivantes, dans un ordre dépendant du dessin.
@@ -192,11 +206,12 @@ function tuileTeintee(cle, couleur){
  * quel : le grain reviendra au défaut d'avant, visuellement imparfait mais jamais absent. C'est le
  * seul repli de ce module qui ne mérite pas d'avertissement, parce qu'il ne cache aucune erreur.
  */
-function ancrer(motif, ancre){
+function ancrer(motif, ancre, largeur, hauteur){
   if (!ancre || typeof globalThis.DOMMatrix === "undefined" || typeof motif.setTransform !== 'function') {
     return motif;
   }
-  motif.setTransform(new globalThis.DOMMatrix().translate(ancre.x, ancre.y));
+  motif.setTransform(new globalThis.DOMMatrix()
+    .translate(ancre.x - (largeur || 0) / 2, ancre.y - (hauteur || 0) / 2));
   return motif;
 }
 

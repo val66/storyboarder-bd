@@ -161,6 +161,19 @@ export const DIRECTION_LUMIERE = { x: -0.55, y: -0.55, z: 0.63 };
  */
 export const PART_TUILE_SUSPECTE = 0.18;
 
+/**
+ * Au-delà de ce rapport, le raccord de la tuile se voit et la texture ne se carrelle pas.
+ *
+ * ⚠️ CE SEUIL N'EXISTAIT PAS, ET LA NUIT ÉTOILÉE A MONTRÉ CE QU'IL COÛTE. Sa couture valait 2,32 —
+ * mesurée, imprimée, et laissée sans verdict. Le rendu a fini par le donner : une bande nette
+ * coupait chaque Bulle. Mesurer sans conclure, c'est produire un chiffre que personne ne lit.
+ *
+ * Relevé sur les matières cuites : 1,01 pour la lave, 1,02 pour le papier froissé, 1,21 pour la
+ * glace, 2,32 pour la nuit. 1,5 sépare franchement les trois qui se carrellent de celle qui ne se
+ * carrelle pas — une équirectangulaire recadrée n'a aucune raison de boucler.
+ */
+export const COUTURE_SUSPECTE = 1.5;
+
 /** Le côté du damier d'échantillonnage : 8 blocs, donc des pavés de 64 pixels à 512². */
 export const BLOCS_ECHELLE_TUILE = 8;
 
@@ -634,6 +647,11 @@ async function main(){
     console.log(`  gain      ${gain.toFixed(2)}   contraste ${contraste.toFixed(2)} / ${CONTRASTE_CIBLE}`);
   }
   console.log(`  couture   ${couture.toFixed(2)}   (1,0 = raccord invisible)`);
+  if (couture > COUTURE_SUSPECTE) {
+    console.warn(`  ⚠️  ${couture.toFixed(2)} > ${COUTURE_SUSPECTE} : cette texture NE SE CARRELLE PAS.`);
+    console.warn(`      Le dessin centre la tuile sur la Bulle, donc rien ne se voit tant qu'une`);
+    console.warn(`      Bulle reste plus petite que ${TAILLE_GRAIN} px. Au-delà, le raccord apparaîtra.`);
+  }
   console.log(`  tuile     ${tuile.part.toFixed(3)}   (part du contraste à l'échelle de la tuile)`);
   if (tuile.suspect) {
     console.warn(`  ⚠️  ${tuile.part.toFixed(3)} > ${PART_TUILE_SUSPECTE} : taches ou impressions ?`);

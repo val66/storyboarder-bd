@@ -61,7 +61,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   TAILLE_GRAIN, CONTRASTE_CIBLE, PART_OMBRAGE, AMPLI_NORMALE, DIRECTION_LUMIERE,
-  PART_TUILE_SUSPECTE, BLOCS_ECHELLE_TUILE,
+  PART_TUILE_SUSPECTE, BLOCS_ECHELLE_TUILE, COUTURE_SUSPECTE,
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, nomDuGrain3D,
@@ -168,6 +168,20 @@ describe('coutureCarrelage3D — le raccord rapporté au reste', () => {
       + k * 0.3 * Math.cos((2 * Math.PI * 4 * y) / T));
     const a = coutureCarrelage3D(f(30), T), b = coutureCarrelage3D(f(60), T);
     assert.ok(Math.abs(a - b) < 0.05, `${a} vs ${b}`);
+  });
+
+  /**
+   * ⚠️ LA MESURE EXISTAIT, LE VERDICT MANQUAIT — ET LE RENDU A FINI PAR LE DONNER. La couture de la
+   * nuit étoilée valait 2,32 : mesurée, imprimée, et laissée sans conclusion. Une bande nette a fini
+   * par couper chaque Bulle à l'écran. Mesurer sans conclure, c'est produire un chiffre que personne
+   * ne lit.
+   *
+   * Relevé sur les matières cuites : lave 1,01, papier froissé 1,02, glace 1,21, nuit 2,32. Le seuil
+   * tombe dans l'écart, comme celui de la part à l'échelle de la tuile.
+   */
+  test('le seuil sépare les matières qui se carrellent de celle qui ne se carrelle pas', () => {
+    assert.ok(COUTURE_SUSPECTE > 1.21, `${COUTURE_SUSPECTE} signalerait la glace, qui se carrelle`);
+    assert.ok(COUTURE_SUSPECTE < 2.32, `${COUTURE_SUSPECTE} laisserait passer la nuit étoilée`);
   });
 
   test('un aplat n\'a pas de raccord mesurable, et ne divise pas par zéro', () => {
