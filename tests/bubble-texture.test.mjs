@@ -18,9 +18,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  TEXTURE_AUCUNE, TEXTURE_FONDUS, TEXTURE_PAPIER, TEXTURE_DEFAUT,
+  TEXTURE_AUCUNE, TEXTURE_PAPIER, TEXTURE_GLACE, TEXTURE_LAVE, TEXTURE_NUIT, TEXTURE_DEFAUT,
   texturesConnues, textureDeLaBulle, couchesDeTextureBulle,
-  couleurImposeeParLaTexture, couleurTexteParDefautDeLaTexture,
+  couleurTexteParDefautDeLaTexture,
   teinteParDefautDeLaTexture, couleurDeFondDeLaBulle3D,
   grainsAPrecharger3D, ecartDuGrain3D, rvbDeCouleur3D, GRAIN_NEUTRE, FORCE_GRAIN,
 } from '../src/bubble-texture.js';
@@ -66,69 +66,120 @@ describe('LA GARANTIE : une Bulle sans texture se remplit comme avant', () => {
 const lum = (h) => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
 
-describe('⚠️ IMPOSER et SUGGÉRER sont deux choses, et le dessin les distingue', () => {
+describe('⚠️ UNE TEXTURE SUGGÈRE SA COULEUR, elle ne l’impose plus', () => {
   /**
-   * ⚠️ `null` N'EST PAS « BLANC », c'est « l'utilisateur décide ». Les confondre rendrait le
-   * sélecteur de couleur inopérant, ou le ferait commander sous une texture qui le contredit.
+   * ⚠️ LE MÉCANISME DE COULEUR IMPOSÉE A DISPARU EN #430, ET CE TEST GARDE LA TRACE DU POURQUOI.
+   * Il a existé une `couleurImposeeParLaTexture` qui MASQUAIT le sélecteur : une tache d'encre est
+   * noire, un parchemin est du parchemin, et laisser régler leur couleur donnait des taches roses.
+   *
+   * Les grains photographiés ont retiré l'argument un par un — la matière vit dans le relief, qui
+   * est monochrome — jusqu'à ce que plus aucune texture n'impose quoi que ce soit. Le champ était
+   * devenu toujours nul, le sélecteur ne se masquait plus jamais, et une machinerie qu'aucun cas
+   * n'emprunte n'est pas une réserve pour l'avenir : c'est du code mort qui a l'air vivant.
    */
-  test('seule l’encre impose ; le papier suggère et laisse le sélecteur agir', () => {
-    assert.equal(couleurImposeeParLaTexture({}), null);
-    assert.equal(couleurImposeeParLaTexture({ bulleTexture: TEXTURE_AUCUNE }), null);
-
-    const encre = couleurImposeeParLaTexture({ bulleTexture: TEXTURE_FONDUS });
-    assert.ok(/^#[0-9a-fA-F]{6}$/.test(encre), `l’encre impose « ${encre} »`);
-
-    // ⚠️ LE PAPIER A CHANGÉ DE CAMP EN #431b, et c'est le point de toute l'étape : son grain est
-    // photographié, donc monochrome, donc la couleur redevient libre.
-    assert.equal(couleurImposeeParLaTexture({ bulleTexture: TEXTURE_PAPIER }), null,
-      'le papier ne doit plus imposer, sinon le sélecteur reste masqué');
-    const suggeree = teinteParDefautDeLaTexture({ bulleTexture: TEXTURE_PAPIER });
-    assert.ok(/^#[0-9a-fA-F]{6}$/.test(suggeree), `le papier suggère « ${suggeree} »`);
+  test('aucune texture ne masque le sélecteur : toutes le laissent commander', () => {
+    for (const t of texturesConnues()) {
+      assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: t, bulleColor: '#ff00ff' }), '#ff00ff',
+        `« ${t} » ne laisse pas le sélecteur commander`);
+    }
   });
 
   /**
    * ⚠️ L'ORDRE DES TROIS TERMES EST LA RÈGLE, et chacun doit pouvoir l'emporter à son rang. Un
-   * test qui se contenterait de lire chaque champ séparément laisserait passer n'importe quelle
-   * permutation de la chaîne de repli.
+   * test qui lirait chaque champ séparément laisserait passer n'importe quelle permutation.
    */
-  test('imposée > choisie > suggérée > blanc', () => {
-    // L'imposée gagne même contre un choix, parce que son sélecteur est masqué.
-    assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_FONDUS, bulleColor: '#ff00ff' }),
-      couleurImposeeParLaTexture({ bulleTexture: TEXTURE_FONDUS }));
-    // Le choix gagne contre la suggestion, sinon le sélecteur serait décoratif.
-    assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_PAPIER, bulleColor: '#ff00ff' }),
-      '#ff00ff');
-    // La suggestion sert quand rien n'a été choisi.
-    assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_PAPIER }),
-      teinteParDefautDeLaTexture({ bulleTexture: TEXTURE_PAPIER }));
-    // Et sans rien du tout, le blanc d'avant.
+  test('choisie > suggérée > blanc', () => {
+    assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_NUIT, bulleColor: '#ff00ff' }),
+      '#ff00ff', 'le choix doit l’emporter, sinon le sélecteur serait décoratif');
+    assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_NUIT }),
+      teinteParDefautDeLaTexture({ bulleTexture: TEXTURE_NUIT }));
     assert.equal(couleurDeFondDeLaBulle3D({}), '#fff');
     assert.equal(couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_AUCUNE, bulleColor: '#abcdef' }),
       '#abcdef');
   });
 
-  test('⚠️ L’ENCRE EST SOMBRE, LE PARCHEMIN CLAIR ET CHAUD — pas l’inverse', () => {
-    // Un test qui se contenterait de « une couleur existe » resterait vert si on les échangeait.
-    const encre = couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_FONDUS });
-    const papier = couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_PAPIER });
-    assert.ok(lum(encre) < 0.2, `l’encre est à ${lum(encre).toFixed(2)} de luminosité`);
-    assert.ok(lum(papier) > 0.55, `le parchemin est à ${lum(papier).toFixed(2)}`);
-    const [pr, , pb] = [1, 3, 5].map(i => parseInt(papier.slice(i, i + 2), 16));
-    assert.ok(pr > pb + 30, 'le parchemin doit être chaud, pas un gris clair');
+  test('« aucune » ne suggère rien, les autres oui', () => {
+    assert.equal(teinteParDefautDeLaTexture({ bulleTexture: TEXTURE_AUCUNE }), null);
+    for (const t of texturesConnues().filter(t => t !== TEXTURE_AUCUNE)) {
+      const c = teinteParDefautDeLaTexture({ bulleTexture: t });
+      assert.ok(/^#[0-9a-fA-F]{6}$/.test(c), `« ${t} » suggère « ${c} », qui n’est pas une couleur`);
+    }
   });
 
-  test('⚠️ LA COULEUR DE TEXTE N’EST QU’UN DÉFAUT, et il existe là où il est nécessaire', () => {
-    // Sans lui, une encre sombre garderait le texte anthracite des autres Bulles : noir sur noir.
+  /**
+   * ⚠️ LA NUIT EST SOMBRE, LE PARCHEMIN CLAIR ET CHAUD — pas l'inverse. Un test qui se contenterait
+   * de « une couleur existe » resterait vert si on les échangeait.
+   */
+  test('chaque matière a la couleur de ce qu’elle représente', () => {
+    const nuit = couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_NUIT });
+    const papier = couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_PAPIER });
+    const lave = couleurDeFondDeLaBulle3D({ bulleTexture: TEXTURE_LAVE });
+    assert.ok(lum(nuit) < 0.2, `la nuit est à ${lum(nuit).toFixed(2)} de luminosité`);
+    assert.ok(lum(papier) > 0.55, `le parchemin est à ${lum(papier).toFixed(2)}`);
+    const chaud = (h) => { const [r, , b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+      return r - b; };
+    assert.ok(chaud(papier) > 30, 'le parchemin doit être chaud, pas un gris clair');
+    assert.ok(chaud(lave) > 60, `la lave doit tirer franchement vers le rouge (${lave})`);
+  });
+
+  /**
+   * ⚠️ LE BLANC SUR LA GLACE EST UN RETOUR D'USAGE, PAS UN CALCUL. Le contraste moyen d'un texte
+   * sombre sur `#627B70` est acceptable — le test générique ci-dessous le laisserait passer. Mais
+   * la glace porte des craquelures presque NOIRES, et le lettrage s'y perdait par endroits : une
+   * moyenne ne dit rien de ce qui se passe sous un trait de quelques pixels.
+   *
+   * C'est pourquoi ce cas est figé à part. Le vrai remède est un contour de texte (#432) ; en
+   * attendant, le blanc tient sur toute la surface.
+   */
+  test('la glace porte un lettrage BLANC, jugé à l’écran', () => {
+    assert.equal(couleurTexteParDefautDeLaTexture({ bulleTexture: TEXTURE_GLACE }), '#FFFFFF');
+  });
+
+  test('⚠️ LA COULEUR DE TEXTE N’EST QU’UN DÉFAUT, et il contraste avec ce que la texture produit', () => {
     assert.equal(couleurTexteParDefautDeLaTexture({}), null,
       '« aucune » ne doit rien imposer au texte non plus');
-    // Le texte doit CONTRASTER avec le fond que la même texture PRODUIT — imposé ou suggéré. C'est
-    // la seule chose qui rende une texture utilisable telle quelle, sans réglage.
-    for (const texture of [TEXTURE_FONDUS, TEXTURE_PAPIER]) {
+    for (const texture of texturesConnues().filter(t => t !== TEXTURE_AUCUNE)) {
       const texte = couleurTexteParDefautDeLaTexture({ bulleTexture: texture });
       const fond = couleurDeFondDeLaBulle3D({ bulleTexture: texture });
       assert.ok(Math.abs(lum(texte) - lum(fond)) > 0.4,
         `${texture} : texte ${texte} sur fond ${fond}, contraste insuffisant`);
     }
+  });
+});
+
+describe('⚠️ UNE CLÉ RENOMMÉE MIGRE, une clé inventée lève', () => {
+  /**
+   * ⚠️ C'EST CE QUI REND UN RENOMMAGE SÛR, ET CE MODULE AVAIT ÉCRIT LE CONTRAIRE. Il soutenait
+   * qu'une clé persistée ne se renomme pas, un registre levant sur l'inconnu — juste, et incomplet.
+   * Sans la table d'alias, tout Projet employant « Encre sombre » refuserait de s'ouvrir.
+   */
+  test('« fondus » se lit comme la nuit étoilée', () => {
+    assert.equal(textureDeLaBulle({ bulleTexture: 'fondus' }), TEXTURE_NUIT);
+  });
+
+  /**
+   * ⚠️ ET LA MIGRATION NE DOIT PAS AVOIR DESSERRÉ LE REFUS. C'est le risque exact d'une table
+   * d'alias : on ajoute une issue, et l'issue avale aussi les cas qu'on voulait voir échouer. Une
+   * clé inventée reste une faute, et elle continue de lever.
+   */
+  test('une clé inconnue lève toujours, et nomme les clés valides', () => {
+    assert.throws(() => textureDeLaBulle({ bulleTexture: 'marbre' }), /marbre/);
+    assert.throws(() => textureDeLaBulle({ bulleTexture: 'marbre' }),
+      new RegExp(TEXTURE_NUIT));
+  });
+
+  test('un champ absent reste le défaut, il n’est pas migré', () => {
+    assert.equal(textureDeLaBulle({}), TEXTURE_DEFAUT);
+    assert.equal(textureDeLaBulle({ bulleTexture: '' }), TEXTURE_DEFAUT);
+  });
+
+  /**
+   * ⚠️ ET L'ANCIENNE CLÉ NE REVIENT PAS AU REGISTRE. Si `fondus` y figurait encore, l'alias ne
+   * servirait à rien et deux clés désigneraient la même texture — la « seconde source » que ce
+   * chantier traque depuis #425n.
+   */
+  test('« fondus » n’est plus une texture enregistrée', () => {
+    assert.ok(!texturesConnues().includes('fondus'));
   });
 });
 
@@ -162,6 +213,51 @@ describe('⚠️ LE GRAIN SE NOMME, IL NE SE CHARGE PAS', () => {
 
   test('« aucune » ne nomme aucun grain', () => {
     for (const c of rendu(TEXTURE_AUCUNE).couches) assert.equal(c.motif, undefined);
+  });
+
+  /**
+   * ⚠️ MES TROIS ÉCHAPPÉES DE #430 TENAIENT TOUTES AU MÊME TROU : les tests de grain ci-dessus
+   * n'éprouvaient que le VIEUX PAPIER. Une matière sans grain, deux matières partageant le même, ou
+   * une matière peinte en double passaient au vert — parce qu'aucune assertion ne regardait glace,
+   * lave ni nuit. Un témoin qui ne couvre qu'un cas ne couvre qu'un cas, et c'est la troisième fois
+   * que ce chantier le réapprend, après l'axe témoin de #422h et celui de #431b3.
+   */
+  test('TOUTE texture autre qu’« aucune » porte un grain', () => {
+    for (const cle of texturesConnues().filter(c => c !== TEXTURE_AUCUNE)) {
+      const graines = rendu(cle).couches.filter(c => c.motif);
+      assert.ok(graines.length > 0, `« ${cle} » ne nomme aucun grain : elle serait un aplat`);
+    }
+  });
+
+  /**
+   * ⚠️ DEUX MATIÈRES NE PARTAGENT PAS UN GRAIN. Ce serait la « seconde copie d'une décision » sous
+   * sa forme la plus bête : deux entrées de menu qui peignent la même chose, et un utilisateur qui
+   * choisit « Lave » en obtenant de la glace. Rien dans le rendu ne l'expliquerait.
+   */
+  test('chaque matière nomme SON grain, et pas celui d’une autre', () => {
+    const vus = new Map();
+    for (const cle of texturesConnues().filter(c => c !== TEXTURE_AUCUNE)) {
+      for (const g of new Set(rendu(cle).couches.map(c => c.motif).filter(Boolean))) {
+        assert.ok(!vus.has(g), `« ${cle} » et « ${vus.get(g)} » peignent toutes deux « ${g} »`);
+        vus.set(g, cle);
+      }
+    }
+    assert.ok(vus.size >= 4, `${vus.size} grains distincts : la fixture ne prouve plus rien`);
+  });
+
+  /**
+   * ⚠️ AUCUNE COUCHE NE RÉPÈTE UNE AUTRE. Une pile qui peint deux fois exactement la même chose est
+   * soit une étourderie, soit un `fill` payé pour rien — et sous une opacité partielle, la seconde
+   * couche ASSOMBRIT la première sans qu'aucun réglage ne le demande. Le vieux papier a bien deux
+   * couches, mais elles diffèrent : l'une est le liseré sale, l'autre le cœur.
+   */
+  test('aucune couche ne répète exactement une autre', () => {
+    for (const cle of texturesConnues()) {
+      const empreintes = rendu(cle).couches.map(c =>
+        JSON.stringify([c.motif || null, c.couleur, c.alpha, c.facteur ? c.facteur(0.31) : null]));
+      assert.equal(new Set(empreintes).size, empreintes.length,
+        `« ${cle} » peint deux fois la même couche`);
+    }
   });
 
   /**
@@ -392,24 +488,6 @@ describe('⚠️ UNE TEXTURE NE CONNAÎT RIEN DE LA FORME', () => {
 });
 
 describe('Chaque texture fait ce qui la distingue', () => {
-  test('⚠️ LES BORDS FONDUS S’ÉTEIGNENT VERS L’EXTÉRIEUR, avec un CŒUR opaque', () => {
-    // Deux propriétés, et la seconde compte autant : un fondu qui commencerait au centre donnerait
-    // un halo, pas une tache. Le relevé décrit un cœur opaque et un bord qui s'éteint.
-    const r = rendu(TEXTURE_FONDUS);
-    assert.ok(r.couches.length > 4, `${r.couches.length} couches seulement`);
-    // Les couches sont données de l'extérieur vers l'intérieur : facteur décroissant, alpha croissant.
-    for (let i = 1; i < r.couches.length; i++) {
-      assert.ok(r.couches[i].facteur(0) < r.couches[i - 1].facteur(0),
-        `couche ${i} : le facteur ne décroît pas`);
-      assert.ok(r.couches[i].alpha >= r.couches[i - 1].alpha,
-        `couche ${i} : l’alpha ne croît pas`);
-    }
-    assert.ok(r.couches[0].alpha < 0.2, 'le bord extérieur doit être presque transparent');
-    assert.equal(r.couches[r.couches.length - 1].alpha, 1, 'le cœur doit être opaque');
-    // Le facteur ne dépend pas de l'angle : un fondu est uniforme tout autour.
-    assert.equal(r.couches[2].facteur(0.1), r.couches[2].facteur(0.7));
-  });
-
   test('⚠️ LE VIEUX PAPIER A UN LISERÉ PLUS SALE QUE SON CŒUR', () => {
     // ⚠️ AJOUTÉ APRÈS QUATRE RENDUS RATÉS. Les taches, posées dans l'ellipse inscrite, n'atteignent
     // JAMAIS le contour — or c'est là qu'un papier se salit le plus. Sans ce liseré, la marbrure

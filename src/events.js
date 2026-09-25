@@ -144,7 +144,7 @@ import {
   refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
 
   manuelEstAffiche, rafraichirSectionLumiere,
-  majAffichageCouleurDeFondBulle3D, majAffichageReglagesTraitBulle3D,
+  majAffichageReglagesTraitBulle3D,
 } from './sidebar.js';
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -7211,9 +7211,10 @@ sideBubbleTextureSelect.addEventListener('change', () => {
   // Validé par le registre, comme la forme et la queue : une option ajoutée au menu sans entrée au
   // registre lève ICI, au moment du choix, et non plus tard au dessin.
   S.sideDescTarget.bulleTexture = textureDeLaBulle({ bulleTexture: sideBubbleTextureSelect.value });
-  // La couleur de fond n'est offerte que sous « Aucune » : la fiche doit suivre le choix tout de
-  // suite, sans attendre une réouverture du panneau.
-  majAffichageCouleurDeFondBulle3D(S.sideDescTarget);
+  // ⚠️ LE CHAMP « COULEUR DU FOND » NE SE MASQUE PLUS (#430) : plus aucune texture n'impose sa
+  // couleur, elles la suggèrent. La fiche relit quand même sa pastille au changement de texture,
+  // pour montrer la teinte suggérée par la nouvelle plutôt que celle de l'ancienne.
+  updateSidePanel();
   drawCurrentPage();
 });
 

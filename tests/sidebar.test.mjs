@@ -989,36 +989,16 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
-  test('⚠️ LA COULEUR DU FOND N’EST OFFERTE QUE QUAND ELLE COMMANDE QUELQUE CHOSE', () => {
-    // ⚠️ UN RÉGLAGE VISIBLE ET INOPÉRANT EST PIRE QUE PAS DE RÉGLAGE DU TOUT. C'est le défaut que
-    // ce chantier a rencontré quatre fois sous d'autres formes : on croit agir, rien ne bouge, et
-    // rien ne dit pourquoi. Sous une texture qui IMPOSE sa couleur, le champ est masqué.
-    //
-    // Le test passe par le VRAI écouteur, puis par `updateSidePanel` : les deux chemins doivent
-    // mettre la fiche à jour, sinon le champ réapparaîtrait en rouvrant le panneau.
-    const b = nouvelleBulle();
-    S.selectedId = b.id;
-    const select = document.getElementById('sideBubbleTextureSelect');
-    const wrap = document.getElementById('sideBubbleBgColorWrap');
-    const choisir = (t) => {
-      select.value = t;
-      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
-      return wrap.style.display;
-    };
-    assert.equal(choisir('aucune'), 'block', 'sans texture, la couleur est libre');
-    assert.equal(choisir('fondus'), 'none', 'sous une encre sombre, la couleur est imposée');
-    // ⚠️ LE PARCHEMIN A CHANGÉ DE CAMP EN #431b. Son grain est PHOTOGRAPHIÉ et monochrome : la
-    // matière vit dans le relief, donc la couleur redevient libre sans que le papier cesse d'être
-    // du papier. Le champ réapparaît — et il commande, ce qui est tout l'objet de la distinction
-    // entre couleur IMPOSÉE et teinte SUGGÉRÉE.
-    assert.equal(choisir('papier'), 'block', 'le papier suggère sa teinte, il ne l’impose plus');
-    assert.equal(choisir('aucune'), 'block', 'et elle reste libre quand on retire la texture');
-    // Et la relecture du panneau dit la même chose.
-    b.bulleTexture = 'fondus';
-    updateSidePanel();
-    assert.equal(wrap.style.display, 'none', 'la fiche rouverte doit masquer le champ aussi');
-  });
-
+  /**
+   * ⚠️ CE TEST TENAIT L'INVERSE, ET SA DISPARITION EST LE POINT. Il vérifiait que le champ
+   * « Couleur du fond » se MASQUE sous une texture qui impose sa couleur — un réglage visible et
+   * inopérant étant pire que pas de réglage du tout.
+   *
+   * #431b a retiré cet argument au parchemin, #430 à l'encre sombre, et il n'est plus resté aucune
+   * texture qui impose quoi que ce soit : le mécanisme entier est parti avec elles. Le champ est
+   * désormais TOUJOURS offert, et il commande toujours. Ce qu'on tient à sa place est ce qui reste
+   * vrai — que la pastille ne mente pas sur la couleur qu'on voit.
+   */
   /**
    * ⚠️ LA PASTILLE DOIT MONTRER CE QU'ON VOIT, PAS UN BLANC DE CONVENTION. Sous un parchemin dont
    * aucune couleur n'a été choisie, le champ affichait `#ffffff` alors que la Bulle est ocre :

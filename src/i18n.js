@@ -115,10 +115,10 @@ export const I18N_TEXT = [
   // la tache d'encre rester en aplat.
   ['label[for="sideBubbleTextureSelect"]', 'Fill texture', 'Texture du fond'],
   ['#sideBubbleTextureSelect option[value="aucune"]', 'None', 'Aucune'],
-  // La clé persistée reste « fondus » : un registre lève sur une clé inconnue, et la renommer
-  // ferait échouer l'ouverture d'un Projet déjà enregistré. Seul le libellé change.
-  ['#sideBubbleTextureSelect option[value="fondus"]', 'Dark ink', 'Encre sombre'],
   ['#sideBubbleTextureSelect option[value="papier"]', 'Aged paper', 'Vieux papier'],
+  ['#sideBubbleTextureSelect option[value="glace"]', 'Ice', 'Glace'],
+  ['#sideBubbleTextureSelect option[value="lave"]', 'Lava', 'Lave'],
+  ['#sideBubbleTextureSelect option[value="nuit-etoile"]', 'Starry night', 'Nuit étoilée'],
   // #425p — l'axe PARTICULE, semé AUTOUR du bord. Distinct du motif de trait : un motif est une
   // propriété d'une ligne, une particule une nuée en deux dimensions.
   ['label[for="sideBubbleParticuleSelect"]', 'Particles', 'Particule'],

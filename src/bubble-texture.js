@@ -54,10 +54,34 @@
  */
 import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
 
-/** Les trois valeurs de l'axe texture. « Aucune » est un choix, pas une absence de réglage. */
+/** Les valeurs de l'axe texture. « Aucune » est un choix, pas une absence de réglage. */
 export const TEXTURE_AUCUNE = 'aucune';
-export const TEXTURE_FONDUS = 'fondus';
 export const TEXTURE_PAPIER = 'papier';
+export const TEXTURE_GLACE = 'glace';
+export const TEXTURE_LAVE = 'lave';
+export const TEXTURE_NUIT = 'nuit-etoile';
+
+/**
+ * Les clés persistées qui ont changé de nom, et ce qu'elles valent désormais.
+ *
+ * ⚠️ SANS CETTE TABLE, RENOMMER UNE CLÉ SERAIT INTERDIT — et ce module l'avait écrit noir sur
+ * blanc. Un registre LÈVE sur une clé inconnue, c'est la politique de tout le chantier ; renommer
+ * `fondus` ferait donc échouer bruyamment l'ouverture de tout Projet qui l'emploie. Le raisonnement
+ * était juste et il lui manquait une issue : un alias n'est pas un repli silencieux, c'est une
+ * DÉCISION ÉCRITE, qui dit exactement ce que devient l'ancienne valeur.
+ *
+ * ⚠️ ET LA MIGRATION SE FAIT À LA LECTURE, PAS PAR UNE PASSE AU CHARGEMENT. `textureDeLaBulle` est
+ * le seul point par lequel tout le monde passe — dessin, fiche, tests. Une passe séparée devrait
+ * parcourir Tomes, Planches, Cases et Éléments, et aurait à être rejouée pour tout Projet importé
+ * plus tard, collé, ou restauré. Ici, une valeur ancienne est simplement LUE comme la nouvelle, et
+ * elle se réécrit d'elle-même au premier enregistrement qui suit une modification.
+ */
+const ALIAS_TEXTURE = {
+  // #430 — « Encre sombre » a cédé la place à la nuit étoilée, qui tient le même rôle graphique :
+  // un fond sombre, un lettrage clair. Les Bulles concernées changent d'aspect, et c'est le sens
+  // même d'un remplacement.
+  fondus: TEXTURE_NUIT,
+};
 
 /**
  * ⚠️ « AUCUNE » EST LE DÉFAUT, ET C'EST CE QUI PROTÈGE L'EXISTANT. Toute Bulle enregistrée avant
@@ -117,6 +141,9 @@ function teinte(couleur, t){
  * `draw.js` qui la résout en motif — le même partage que partout ailleurs dans ce chantier.
  */
 export const GRAIN_PAPIER = 'papier-froisse';
+export const GRAIN_GLACE = 'glace';
+export const GRAIN_LAVE = 'lave';
+export const GRAIN_NUIT = 'nuit-etoile';
 
 /**
  * Le gris qui ne change rien : un grain vaut 128 là où la matière est plate.
@@ -185,40 +212,41 @@ export function rvbDeCouleur3D(couleur){
   return versRVB(couleur);
 }
 
-// ── Les trois textures ──────────────────────────────────────────────────────────────────────────
+// ── Les textures ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * L'encre sombre du Lecteur omniscient : une masse NOIRE au cœur opaque, dont le bord translucide
- * laisse passer le fond, et qui porte un lettrage clair.
+ * ⚠️ « ENCRE SOMBRE » A ÉTÉ RETIRÉE EN #430, ET CE N'EST PAS UN ÉLAGAGE MAIS UN REMPLACEMENT.
  *
- * ⚠️ LA CLÉ PERSISTÉE RESTE `fondus`, ALORS QUE LE LIBELLÉ DIT « ENCRE SOMBRE ». Le nom d'origine ne
- * décrivait que le bord ; la couleur en fait désormais partie. Mais un registre LÈVE sur une clé
- * inconnue — c'est la politique de tout ce chantier — et renommer la clé ferait échouer bruyamment
- * l'ouverture d'un Projet enregistré entre-temps. Le libellé peut mentir sans conséquence, une clé
- * persistée non.
+ * Elle empilait quatorze copies rétrécies du contour, opaques jusqu'à 55 % du rayon puis s'éteignant
+ * vers le bord : la masse d'encre du Lecteur omniscient, relevée sur planche et validée en #425b.
+ * Le dispositif marchait ; c'est le RÉSULTAT qui ne satisfaisait pas à l'usage, et #430 existait
+ * pour le revoir. Il a été tranché autrement — non pas en corrigeant le fondu, mais en lui
+ * substituant trois matières photographiées, dont une nuit étoilée qui tient le même rôle
+ * graphique : un fond sombre, un lettrage clair.
  *
- * ⚠️ LE PROFIL RESTE PLAT JUSQU'À MI-CHEMIN. Un fondu qui commencerait au centre donnerait un halo,
- * pas une tache : le relevé décrit un CŒUR OPAQUE et un bord qui s'éteint, pas un dégradé continu.
+ * Ce qui est perdu est nommé ici pour que la perte soit délibérée : le bord TRANSLUCIDE, qui
+ * laissait voir la Case derrière la Bulle. Aucune des trois nouvelles ne le fait — elles sont
+ * opaques. Si ce dispositif revient un jour, il reviendra comme un axe à lui, pas caché dans une
+ * texture : c'est la leçon que #425n avait déjà tirée pour les taches.
+ *
+ * ⚠️ ET LA CLÉ `fondus` NE DISPARAÎT PAS, ELLE MIGRE. Voir `ALIAS_TEXTURE` plus bas. Le commentaire
+ * qui vivait ici soutenait qu'une clé persistée ne se renomme pas, un registre levant sur
+ * l'inconnu. C'était juste, et incomplet : il n'envisageait pas la table d'alias, qui est
+ * précisément ce qui rend un renommage sûr.
  */
-const FONDUS_COUCHES = 14;
-const FONDUS_PLEIN = 0.55;   // fraction du rayon qui reste totalement opaque
-
-function couchesFondus(o, ctx){
-  const out = [];
-  for (let k = FONDUS_COUCHES; k >= 1; k--) {
-    const f = k / FONDUS_COUCHES;
-    const a = f <= FONDUS_PLEIN ? 1 : Math.max(0, 1 - (f - FONDUS_PLEIN) / (1 - FONDUS_PLEIN));
-    out.push({ facteur: () => f, couleur: ctx.couleur, alpha: a * ctx.opacite });
-  }
-  return { couches: out };
-}
 
 /**
- * ⚠️ LA COULEUR DU TEXTE EST UN DÉFAUT, PAS UNE CONTRAINTE — même dispositif que la queue par défaut
- * d'une forme. Une encre sombre garderait sinon le texte anthracite des autres Bulles, donc noir sur
- * noir : la texture serait inutilisable telle quelle. Le champ `bulleTextColor` de l'utilisateur
- * l'emporte toujours ; la texture ne dit que « à défaut ».
+ * Une matière photographiée, sans autre structure que son grain. La forme la plus simple du
+ * contrat : une couche, le contour entier, la teinte habillée du grain.
+ *
+ * ⚠️ PAS DE LISERÉ NI DE COUCHE SUPPLÉMENTAIRE, ET C'EST DÉLIBÉRÉ. Le vieux papier en porte un
+ * parce qu'un cartouche ancien se salit par les bords — c'est un fait observé sur planche, pas une
+ * recette générale. De la glace, une coulée de lave ou un ciel n'ont aucune raison d'être plus
+ * sombres au pourtour. Ajouter le liseré « pour faire pareil » aurait été décorer sans motif.
  */
+const couchesDUneMatiere = (grain) => (o, ctx) => ({
+  couches: [{ facteur: null, motif: grain, couleur: ctx.couleur, alpha: ctx.opacite }],
+});
 
 /**
  * Le vieux papier : un grain photographié, teinté, avec un pourtour plus sale que son cœur.
@@ -265,16 +293,37 @@ const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
     rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }] }),
-    // ⚠️ AUCUNE COULEUR IMPOSÉE : le sélecteur « Couleur du fond » commande, sans suggestion.
-    couleurImposee: null,
+    // Aucune suggestion : le sélecteur commande seul, sur un blanc par défaut.
     teinteParDefaut: null,
     couleurTexteParDefaut: null,
   },
-  [TEXTURE_FONDUS]: {
-    rendu: couchesFondus,
-    couleurImposee: '#1B1B1F',        // le noir d'encre du relevé, pas un gris
-    teinteParDefaut: null,
-    couleurTexteParDefaut: '#FFFFFF', // lettrage clair, comme sur la planche
+  /**
+   * ⚠️ LES TROIS TEINTES SONT RELEVÉES PAR LE CUISEUR, PAS CHOISIES. Chacune est la moyenne de
+   * l'albédo de sa matière : la couleur qu'elle a vraiment. Pour la nuit étoilée, qui est une
+   * IMAGE et non une matière, c'est la moyenne de l'image elle-même.
+   *
+   * ⚠️ ET AUCUNE N'IMPOSE SA COULEUR. C'est la conséquence directe de ce qui a été décidé en #431b
+   * pour le parchemin : un grain photographié est monochrome, la matière vit dans le relief, donc
+   * la couleur reste libre. Une lave bleue est une décision de l'utilisateur, pas un accident.
+   */
+  [TEXTURE_GLACE]: {
+    rendu: couchesDUneMatiere(GRAIN_GLACE),
+    teinteParDefaut: '#627B70',
+    // ⚠️ BLANC, ET C'EST UN RETOUR D'USAGE. Un lettrage sombre passait sous les craquelures, qui
+    // sont presque noires : le texte s'y perdait par endroits. Le blanc tient sur toute la surface.
+    // Le vrai remède est un CONTOUR de texte, mais c'est #432 — pas une raison de laisser celle-ci
+    // difficile à lire en attendant.
+    couleurTexteParDefaut: '#FFFFFF',
+  },
+  [TEXTURE_LAVE]: {
+    rendu: couchesDUneMatiere(GRAIN_LAVE),
+    teinteParDefaut: '#AC452F',
+    couleurTexteParDefaut: '#FFFFFF',
+  },
+  [TEXTURE_NUIT]: {
+    rendu: couchesDUneMatiere(GRAIN_NUIT),
+    teinteParDefaut: '#1D242A',
+    couleurTexteParDefaut: '#FFFFFF',
   },
   [TEXTURE_PAPIER]: {
     rendu: couchesPapier,
@@ -294,8 +343,14 @@ const REGISTRE = {
      * après #429, et elle est le prix exact de ce qui a été demandé : que le sélecteur redevienne
      * actif. Le cas contraire — garder la couleur imposée — rendrait le sélecteur visible et
      * inopérant, ce que ce chantier refuse depuis #425m.
+     *
+     * ⚠️ ET LE MÉCANISME LUI-MÊME A DISPARU EN #430. Le parchemin fut la dernière texture à imposer
+     * sa couleur ; « Encre sombre » l'a suivi, remplacé par des matières photographiées. Plus
+     * aucune n'imposait rien : `couleurImposee` était devenu un champ toujours nul, et le sélecteur
+     * ne se masquait plus jamais. Une machinerie qu'aucun cas n'emprunte n'est pas une réserve pour
+     * l'avenir, c'est du code mort qui a l'air vivant. Il ne reste qu'un concept, la teinte
+     * SUGGÉRÉE, et le sélecteur commande toujours.
      */
-    couleurImposee: null,
     // ⚠️ RELEVÉE PAR LE CUISEUR, PAS CHOISIE. C'est la moyenne de l'albédo de Paper005 : la couleur
     // qu'a vraiment ce papier-là, telle que `npm run bake-textures -- papier-froisse` la rapporte.
     // Je l'avais d'abord écrite de mémoire, à une unité près par canal, avant la première cuisson
@@ -320,20 +375,14 @@ export function texturesConnues(){
 export function textureDeLaBulle(o){
   const v = o && o.bulleTexture;
   if (v == null || v === '') return TEXTURE_DEFAUT;
+  // ⚠️ L'ALIAS PASSE AVANT LE REFUS, ET APRÈS LE DÉFAUT. Avant, sinon une clé renommée lèverait
+  // comme une clé inventée — or ce n'est pas la même faute : l'une est un Projet d'hier, l'autre un
+  // fichier abîmé. Après le défaut, parce qu'un champ absent n'est pas une valeur à migrer.
+  if (Object.prototype.hasOwnProperty.call(ALIAS_TEXTURE, v)) return ALIAS_TEXTURE[v];
   if (!Object.prototype.hasOwnProperty.call(REGISTRE, v)) {
     throw new Error(`Texture de Bulle inconnue : « ${v} ». Textures enregistrées : ${texturesConnues().join(', ')}.`);
   }
   return v;
-}
-
-/**
- * La couleur de fond qu'une texture IMPOSE, ou `null` si elle laisse le choix. Fonction PURE.
- *
- * ⚠️ `null` N'EST PAS « BLANC », c'est « l'utilisateur décide ». Les deux se confondraient dans un
- * appelant distrait, et le sélecteur de couleur deviendrait inopérant pour tout le monde.
- */
-export function couleurImposeeParLaTexture(o){
-  return REGISTRE[textureDeLaBulle(o)].couleurImposee;
 }
 
 /** La couleur de texte qu'une texture suggère À DÉFAUT, ou `null`. Fonction PURE. */
@@ -367,10 +416,7 @@ export function teinteParDefautDeLaTexture(o){
  * dépôt où une règle de couleur se serait écrite à la main.
  */
 export function couleurDeFondDeLaBulle3D(o){
-  return couleurImposeeParLaTexture(o)
-    || (o && o.bulleColor)
-    || teinteParDefautDeLaTexture(o)
-    || '#fff';
+  return (o && o.bulleColor) || teinteParDefautDeLaTexture(o) || '#fff';
 }
 
 /**

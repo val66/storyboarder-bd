@@ -19,8 +19,7 @@ import { modelState } from './model-cache.js';
 import { casePorteUneImage3D, imageDeLaCase3D, zoomDeLImage3D, cadrageParDefaut3D } from './image-store.js';
 import { TRAIT_PLEIN, TRAIT_NET, opaciteRemplissageBulle } from './bubble-style.js';
 import { formeDeLaBulle } from './bubble-shape.js';
-import { textureDeLaBulle, couleurImposeeParLaTexture,
-         teinteParDefautDeLaTexture } from './bubble-texture.js';
+import { textureDeLaBulle, teinteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
@@ -161,24 +160,6 @@ export function majAffichageReglagesTraitBulle3D(bordureVisible){
   }
 }
 
-const sideBubbleBgColorWrap = document.getElementById('sideBubbleBgColorWrap');
-
-/**
- * Le sélecteur « Couleur du fond » n'est offert que lorsqu'il commande quelque chose.
- *
- * ⚠️ UN RÉGLAGE VISIBLE ET INOPÉRANT EST PIRE QUE PAS DE RÉGLAGE DU TOUT — c'est le défaut que ce
- * chantier a rencontré quatre fois sous d'autres formes : on croit agir, rien ne bouge, et rien ne
- * dit pourquoi. Sous une texture qui IMPOSE sa couleur — l'encre sombre — le champ n'aurait aucun
- * effet ; on le masque plutôt que de laisser l'utilisateur tourner un bouton mort.
- *
- * ⚠️ LE PARCHEMIN N'EST PLUS DE CEUX-LÀ DEPUIS #431b. Son grain est photographié et monochrome, si
- * bien que la couleur redevient libre : le champ réapparaît, et il commande. C'est la raison
- * d'être de la distinction entre couleur IMPOSÉE et teinte SUGGÉRÉE.
- */
-export function majAffichageCouleurDeFondBulle3D(bulle){
-  if (!sideBubbleBgColorWrap) return;
-  sideBubbleBgColorWrap.style.display = couleurImposeeParLaTexture(bulle) ? 'none' : 'block';
-}
 
 const rightPanel = document.getElementById('rightPanel');
 const camSensRotInput = document.getElementById('camSensRotInput');
@@ -1108,7 +1089,6 @@ function updateSidePanelImpl(){
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
     sideBubbleParticuleSelect.value = particuleDeLaBulle(sel);
-    majAffichageCouleurDeFondBulle3D(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;

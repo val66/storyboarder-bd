@@ -2850,16 +2850,17 @@ describe('#425m — la texture du remplissage atteint le canevas', () => {
     assert.equal(appels(opaque, 'fill')[0].alpha, 0.25);
   });
 
-  test('⚠️ LES BORDS FONDUS EMPILENT DES COUCHES, et le trait reste sur le VRAI contour', () => {
+  test('⚠️ UNE TEXTURE EMPILE DES COUCHES, et le trait reste sur le VRAI contour', () => {
     // ⚠️ MUTATION VISÉE : cerner la dernière couche peinte au lieu du contour. Le trait suivrait
-    // alors la plus petite couche, très à l'intérieur de la Bulle, et la bordure se décollerait du
+    // alors la plus petite couche, à l'intérieur de la Bulle, et la bordure se décollerait du
     // bord — ce qu'aucun compte de `fill` ne verrait.
-    const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'fondus', tailVisible: false }));
-    assert.ok(appels(j, 'fill').length > 4, `${appels(j, 'fill').length} couches seulement`);
-    // Les alphas vont du presque rien à l'opaque : c'est le fondu.
-    const alphas = appels(j, 'fill').map(e => e.alpha);
-    assert.ok(alphas[0] < 0.2 && alphas[alphas.length - 1] === 1,
-      `alphas de ${alphas[0]} à ${alphas[alphas.length - 1]}`);
+    //
+    // ⚠️ CE TEST PORTAIT SUR « ENCRE SOMBRE », QUI EMPILAIT QUATORZE COUCHES. #430 l'a retirée au
+    // profit de matières photographiées ; le vieux papier est désormais la seule texture à en avoir
+    // plus d'une — son liseré sale et son cœur. Deux suffisent à tenir la garantie : ce qui compte
+    // est que le contour cerné ne soit pas celui de la DERNIÈRE couche peinte.
+    const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: 'papier', tailVisible: false }));
+    assert.ok(appels(j, 'fill').length > 1, `${appels(j, 'fill').length} couche seulement`);
     // Le trait est posé une fois, et sur le VRAI contour.
     assert.equal(appels(j, 'stroke').length, 1);
     // ⚠️ IL FAUT MESURER LE CHEMIN RÉELLEMENT CERNÉ, ET LA PREMIÈRE VERSION NE LE FAISAIT PAS. Elle
@@ -2976,15 +2977,28 @@ describe('#425m bis — la texture porte la couleur du fond', () => {
     assert.equal(styleDeLaPlusGrandeCouche(j), '#00ff00');
   });
 
-  test('⚠️ AVEC UNE TEXTURE, LA COULEUR CHOISIE EST IGNORÉE, et ce n’est pas un oubli', () => {
-    // ⚠️ DEMANDÉ À L'USAGE, ET LA FICHE MASQUE LE CHAMP EN CONSÉQUENCE. Un vieux papier n'est pas
-    // « une couleur au choix, un peu tachée » : c'est du parchemin. Laisser le sélecteur commander
-    // donnait des parchemins verts, que le relevé ne montre nulle part.
-    for (const texture of ['fondus', 'papier']) {
+  /**
+   * ⚠️ CE TEST A ÉTÉ RETOURNÉ EN #430, ET C'EST LE RENVERSEMENT LE PLUS NET DE TOUT CE CHANTIER.
+   * Il assertait l'inverse : « avec une texture, la couleur choisie est IGNORÉE ». C'était juste
+   * tant que les textures étaient dessinées — un parchemin tracé à la main n'est pas une couleur au
+   * choix, et laisser le sélecteur commander donnait des parchemins verts.
+   *
+   * Un grain PHOTOGRAPHIÉ retire l'argument : la matière tient dans le relief, qui est monochrome,
+   * donc la couleur redevient libre sans que le papier cesse d'être du papier. Le sélecteur
+   * commande de nouveau — c'est ce qui a été demandé, et ce que ce test tient maintenant.
+   */
+  test('⚠️ AVEC UNE TEXTURE, LA COULEUR CHOISIE COMMANDE — l’inverse d’avant #430', () => {
+    for (const texture of ['papier', 'glace', 'lave', 'nuit-etoile']) {
       const j = dessiner(bulle({ bulleShape: 'rect', bulleTexture: texture }));
       const vu = styleDeLaPlusGrandeCouche(j);
-      assert.notEqual(vu, '#00ff00', `« ${texture} » a laissé passer la couleur choisie`);
       assert.ok(/^#[0-9a-fA-F]{6}$/.test(vu), `« ${texture} » peint avec « ${vu} »`);
+    }
+    // Et sans choix, chaque matière montre la teinte qu'elle suggère — jamais du blanc.
+    for (const texture of ['papier', 'glace', 'lave', 'nuit-etoile']) {
+      const o = bulle({ bulleShape: 'rect', bulleTexture: texture });
+      delete o.bulleColor;
+      const vu = styleDeLaPlusGrandeCouche(dessiner(o));
+      assert.notEqual(vu.toLowerCase(), '#ffffff', `« ${texture} » retombe sur du blanc`);
     }
   });
 
