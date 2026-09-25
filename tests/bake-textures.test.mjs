@@ -64,7 +64,7 @@ import {
   PART_TUILE_SUSPECTE, BLOCS_ECHELLE_TUILE,
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
-  classerCartes3D, nomDuGrain3D,
+  classerCartes3D, regimeDeCuisson3D, nomDuGrain3D,
 } from '../tools/bake-textures.mjs';
 
 const T = 64;
@@ -483,6 +483,125 @@ describe('classerCartes3D — deux banques, deux nommages', () => {
   });
 });
 
+describe('regimeDeCuisson3D — une MATIÈRE, une IMAGE, ou un refus', () => {
+  const AMBIENTCG = ['Ice002_1K-JPG_Color.jpg', 'Ice002_1K-JPG_Displacement.jpg',
+    'Ice002_1K-JPG_NormalGL.jpg', 'Ice002_1K-JPG_Roughness.jpg'];
+
+  test('relief et normale : une matière', () => {
+    const r = regimeDeCuisson3D(AMBIENTCG);
+    assert.equal(r.regime, 'matiere');
+    assert.equal(r.refus, null);
+    assert.equal(r.relief, 'Ice002_1K-JPG_Displacement.jpg');
+    assert.equal(r.normale, 'Ice002_1K-JPG_NormalGL.jpg');
+    assert.equal(r.albedo, 'Ice002_1K-JPG_Color.jpg');
+  });
+
+  /**
+   * ⚠️ UNE SEULE IMAGE EST UN MOTIF, PAS UNE SURFACE. Un ciel étoilé n'a pas de relief à
+   * reconstruire : il EST déjà le motif, et sa luminance en tient lieu. Elle sert aussi de source
+   * pour la teinte, puisqu'il n'y a pas d'albédo distinct.
+   */
+  test('une seule image, sans aucune carte : un motif', () => {
+    const r = regimeDeCuisson3D(['NightSkyHDRI012_1K_TONEMAPPED.jpg']);
+    assert.equal(r.regime, 'image');
+    assert.equal(r.refus, null);
+    assert.equal(r.relief, 'NightSkyHDRI012_1K_TONEMAPPED.jpg');
+    assert.equal(r.normale, null, 'une image n’a pas de normale à inventer');
+    assert.equal(r.albedo, 'NightSkyHDRI012_1K_TONEMAPPED.jpg', 'la teinte vient de l’image même');
+  });
+
+  /**
+   * ⚠️ LE TEST QUI EMPÊCHE LE RÉGIME IMAGE D'ÊTRE UN REPLI SILENCIEUX, ET C'EST LE PLUS IMPORTANT
+   * DE CE BLOC. Un déplacement dont la normale manque est un téléchargement incomplet. Se rabattre
+   * sur le régime image produirait un grain plausible et appauvri de 30 % — la part du terme
+   * directionnel — sans que rien ne le dise. C'est la première famille de défauts que ce dépôt
+   * nomme, et la raison pour laquelle l'entrée en régime image exige l'ABSENCE des deux cartes.
+   */
+  test('un relief SANS sa normale est un refus, pas une image', () => {
+    const r = regimeDeCuisson3D(['Ice002_Displacement.jpg']);
+    assert.equal(r.regime, null, 'une matière amputée ne doit pas passer pour un motif');
+    assert.ok(/normales/i.test(r.refus), `le refus doit nommer la carte manquante : ${r.refus}`);
+  });
+
+  test('une normale SANS relief est un refus, et se plaint de l’autre carte', () => {
+    const r = regimeDeCuisson3D(['Ice002_NormalGL.jpg']);
+    assert.equal(r.regime, null);
+    assert.ok(/déplacement|occlusion/i.test(r.refus), `${r.refus}`);
+  });
+
+  /**
+   * ⚠️ LES DEUX REFUS NE DOIVENT PAS DIRE LA MÊME CHOSE. Un message unique pour « il manque une
+   * carte » laisserait chercher la mauvaise : on ouvrirait le dossier en quête d'un déplacement
+   * qui est déjà là. Ce test tient la DISTINCTION, qu'un test par cas ne verrait pas.
+   */
+  test('et les deux refus ne se confondent pas', () => {
+    const sansNormale = regimeDeCuisson3D(['Ice002_Displacement.jpg']).refus;
+    const sansRelief = regimeDeCuisson3D(['Ice002_NormalGL.jpg']).refus;
+    assert.notEqual(sansNormale, sansRelief);
+  });
+
+  /**
+   * ⚠️ PLUSIEURS IMAGES NON CLASSÉES, ET RIEN NE DIT LAQUELLE EST LE MOTIF. Prendre la première
+   * venue serait deviner — et l'ordre de `readdir` n'est pas une décision.
+   */
+  test('deux images inconnues : on refuse en les nommant', () => {
+    const r = regimeDeCuisson3D(['avant.jpg', 'apres.jpg']);
+    assert.equal(r.regime, null);
+    assert.ok(r.refus.includes('avant.jpg') && r.refus.includes('apres.jpg'), r.refus);
+  });
+
+  test('un dossier vide le dit', () => {
+    const r = regimeDeCuisson3D([]);
+    assert.equal(r.regime, null);
+    assert.ok(/aucune image/i.test(r.refus), r.refus);
+  });
+
+  /**
+   * ⚠️ LA RUGOSITÉ NE DOIT PAS FAIRE BASCULER LE COMPTE. Elle accompagne tout téléchargement
+   * ambientCG sans être une carte utile ici : si elle passait pour une image quelconque, un
+   * dossier « déplacement + rugosité » paraîtrait contenir deux motifs au lieu d'une matière
+   * amputée, et le refus parlerait du mauvais problème.
+   */
+  test('une matière amputée reste une matière amputée, rugosité comprise', () => {
+    const r = regimeDeCuisson3D(['Ice002_Displacement.jpg', 'Ice002_Roughness.jpg']);
+    assert.ok(/normales/i.test(r.refus), `${r.refus}`);
+  });
+});
+
+describe('grainNormalise3D sans normale — le régime image', () => {
+  const tirage = bruit(21);
+  const RELIEF = carte(T, () => tirage() * 255);
+
+  test('une image seule produit un grain, et il atteint la cible', () => {
+    const r = grainNormalise3D(RELIEF, null, T);
+    assert.ok(Math.abs(r.contraste - CONTRASTE_CIBLE) < 0.6, `${r.contraste}`);
+  });
+
+  /**
+   * ⚠️ LE TERME DIRECTIONNEL DISPARAÎT, IL N'EST PAS APPROCHÉ. Le remplacer par une constante — ou
+   * par une normale plate — laisserait `PART_OMBRAGE` amputer le relief de 30 % pour rien. Avec une
+   * normale plate, l'ombrage est constant : il ne contribue à AUCUN contraste, mais il écrase bien
+   * le relief du même facteur. Les deux grains diffèrent donc, et c'est mesurable.
+   */
+  test('ce n’est pas la même chose qu’une normale plate', () => {
+    const sans = grainNormalise3D(RELIEF, null, T);
+    const plate = grainNormalise3D(RELIEF, NORMALE_PLATE, T);
+    // Les deux atteignent la cible — le gain compense —, donc le contraste ne les distingue pas…
+    assert.ok(Math.abs(sans.contraste - plate.contraste) < 0.6);
+    // …mais le gain, si : une normale plate dilue le relief de PART_OMBRAGE, qu'il faut rattraper.
+    assert.ok(plate.gain > sans.gain * 1.2,
+      `gains ${sans.gain.toFixed(3)} et ${plate.gain.toFixed(3)} : la part d’ombrage ne joue pas`);
+  });
+
+  test('le relief reste recentré, sans normale comme avec', () => {
+    const sombre = carte(T, (x, y) => RELIEF[y * T + x] * 0.25);
+    const clair = carte(T, (x, y) => RELIEF[y * T + x] * 0.25 + 180);
+    const a = grainNormalise3D(sombre, null, T).grain;
+    const b = grainNormalise3D(clair, null, T).grain;
+    for (let i = 0; i < a.length; i++) assert.ok(Math.abs(a[i] - b[i]) <= 1, `pixel ${i}`);
+  });
+});
+
 describe('nomDuGrain3D — un identifiant devient un fichier', () => {
   test('minuscules, tirets, extension', () => {
     assert.equal(nomDuGrain3D('Papier Froissé'), 'papier-froiss.png');
@@ -534,6 +653,27 @@ describe('⚠️ L’OUTIL DOIT RENDRE LA MAIN, et rien sous Node ne peut le pro
    * lignes, et le premier à s'en apercevoir serait celui qui journalise une cuisson au lieu de la
    * lire, c'est-à-dire personne, pendant longtemps.
    */
+  /**
+   * ⚠️ RECADRER AU CARRÉ AVANT DE RÉDUIRE, ET NON L'INVERSE. Les cartes d'une matière sont carrées,
+   * donc l'ordre n'y change rien — mais une panoramique de ciel fait 2:1, et la ramener directement
+   * en 512² l'écraserait du double en largeur. C'est l'erreur exacte qui avait déformé ma première
+   * planche de comparaison, et qu'on m'avait signalée : `resize((300,160))` sur une image carrée.
+   *
+   * Le tort ne se verrait pas dans les mesures : une image écrasée garde un contraste local
+   * honorable, une couture correcte, une part de tuile plausible. Il ne se voit qu'à l'œil, sur la
+   * matière — et seulement sur celles qui ne sont pas carrées, donc rarement.
+   */
+  test('le recadrage carré précède la réduction', () => {
+    const source = readFileSync(new URL('../tools/bake-textures.mjs', import.meta.url), 'utf8');
+    const corps = source.slice(source.indexOf('async function chargerCarte'),
+      source.indexOf('function grisDepuisRgba'));
+    const recadre = corps.indexOf('.crop(');
+    const reduit = corps.indexOf('.resize(');
+    assert.ok(recadre >= 0, 'rien ne recadre : une panoramique serait écrasée');
+    assert.ok(reduit >= 0, 'plus de réduction à 512² ?');
+    assert.ok(recadre < reduit, 'on recadre APRÈS avoir réduit : l’écrasement a déjà eu lieu');
+  });
+
   test('la sortie attend que stdout soit vidé', () => {
     const source = readFileSync(new URL('../tools/bake-textures.mjs', import.meta.url), 'utf8');
     const corps = source.slice(source.indexOf('async function rendreLaMain'));

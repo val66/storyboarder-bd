@@ -292,16 +292,33 @@ export function ombrageDepuisNormale3D(normaleRgba, taille, ampli = AMPLI_NORMAL
  * `relief` est une carte en niveaux de gris — déplacement ou occlusion ambiante, cf. l'en-tête.
  * Rend le grain en octets, plus le gain qu'il a fallu et le contraste atteint : ces deux nombres
  * sont ce qu'on regarde pour savoir si une matière se comporte normalement.
+ *
+ * ⚠️ `normaleRgba` PEUT ÊTRE `null`, ET C'EST UN SECOND RÉGIME, PAS UNE TOLÉRANCE. Une MATIÈRE est
+ * photographiée sous plusieurs cartes : son relief se reconstruit, et l'éclairage qu'on en déduit
+ * fait la moitié de ce qui la rend lisible. Une IMAGE — un ciel étoilé, par exemple — n'a pas de
+ * surface du tout : elle EST déjà le motif, et sa luminance tient lieu de relief. Lui inventer une
+ * normale n'aurait aucun sens ; refuser de la cuire non plus.
+ *
+ * Le terme directionnel disparaît alors, au lieu d'être approché : `brut` se réduit au relief
+ * recentré. C'est exactement ce qui a été mesuré sur NightSkyHDRI012 avant d'écrire ces lignes —
+ * gain 1,44, contraste 6,39 — et le rendu a montré des étoiles blanches sur un fond de nuit.
+ *
+ * ⚠️ CE QUI EMPÊCHE CE RÉGIME D'ÊTRE UN REPLI SILENCIEUX vit dans `main()`, pas ici : on n'y entre
+ * que lorsqu'il n'y a NI relief NI normale — une seule image. Un déplacement SANS sa normale reste
+ * un téléchargement incomplet, donc un refus. Sans cette condition, une carte oubliée produirait un
+ * grain plausible et appauvri, et personne ne saurait qu'il manquait quelque chose.
  */
 export function grainNormalise3D(relief, normaleRgba, taille, cible = CONTRASTE_CIBLE){
   const n = taille * taille;
   let somme = 0;
   for (let i = 0; i < n; i++) somme += relief[i];
   const moyenne = somme / n;
-  const ombrage = ombrageDepuisNormale3D(normaleRgba, taille);
+  const ombrage = normaleRgba ? ombrageDepuisNormale3D(normaleRgba, taille) : null;
   const brut = new Float64Array(n);
   for (let i = 0; i < n; i++) {
-    brut[i] = (1 - PART_OMBRAGE) * (relief[i] - moyenne) + PART_OMBRAGE * ombrage[i];
+    brut[i] = ombrage
+      ? (1 - PART_OMBRAGE) * (relief[i] - moyenne) + PART_OMBRAGE * ombrage[i]
+      : relief[i] - moyenne;
   }
   // Le contraste du mélange AVANT gain, pour en déduire le gain. Recentré sur 128 : la mesure
   // porte sur des écarts entre voisins, donc le décalage n'y change rien, mais on reste homogène.
@@ -348,6 +365,56 @@ export function classerCartes3D(noms){
   };
 }
 
+/**
+ * Comment cuire ce dossier : en MATIÈRE, en IMAGE, ou pas du tout. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ DEUX RÉGIMES, ET LA FRONTIÈRE ENTRE EUX EST TOUT L'ENJEU
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Une MATIÈRE est une surface photographiée sous plusieurs cartes : relief, normale, couleur. Son
+ * grain se reconstruit, et l'éclairage déduit de la normale fait 30 % de ce qui le rend lisible.
+ *
+ * Une IMAGE n'a pas de surface : un ciel étoilé EST déjà le motif. Sa luminance tient lieu de
+ * relief, et il n'y a pas de normale à inventer. Mesuré sur NightSkyHDRI012 : gain 1,44, contraste
+ * 6,39, des étoiles blanches sur un fond de nuit.
+ *
+ * ⚠️ LA CONDITION D'ENTRÉE EN RÉGIME IMAGE EST CE QUI L'EMPÊCHE D'ÊTRE UN REPLI SILENCIEUX. On n'y
+ * entre que s'il n'y a NI relief NI normale, et qu'UNE SEULE image. Les deux moitiés comptent :
+ *
+ *   - un déplacement SANS sa normale est un téléchargement incomplet. Se rabattre sur le régime
+ *     image produirait un grain plausible et appauvri, de 30 % exactement, sans que rien ne le
+ *     dise. C'est la première famille de défauts que ce dépôt nomme ;
+ *   - plusieurs images non classées, et on ne sait pas laquelle est le motif. Prendre la première
+ *     venue serait deviner. On refuse en les nommant toutes.
+ */
+export function regimeDeCuisson3D(fichiers){
+  const cartes = classerCartes3D(fichiers);
+  if (cartes.relief && cartes.normale) {
+    return { regime: 'matiere', ...cartes, refus: null };
+  }
+  // ⚠️ L'ORDRE DE CES DEUX REFUS COMPTE : une normale sans relief se plaint du relief manquant, un
+  // relief sans normale se plaint de la normale. Un message unique pour les deux cas laisserait
+  // chercher la mauvaise carte.
+  if (cartes.relief) {
+    return { regime: null, ...cartes,
+      refus: 'un relief est là mais pas de carte de normales en convention OpenGL — '
+        + 'téléchargement incomplet ? (NormalDX ne convient pas : il inverserait le relief)' };
+  }
+  if (cartes.normale) {
+    return { regime: null, ...cartes,
+      refus: 'une normale est là mais ni déplacement ni occlusion ambiante' };
+  }
+  if (fichiers.length === 1) {
+    return { regime: 'image', relief: fichiers[0], normale: null, albedo: fichiers[0], refus: null };
+  }
+  return { regime: null, ...cartes,
+    refus: fichiers.length
+      ? `${fichiers.length} images sans carte reconnaissable, et rien ne dit laquelle est le motif : `
+        + fichiers.join(', ')
+      : 'aucune image dans ce dossier' };
+}
+
 /** Le nom du fichier produit, dérivé de l'identifiant de la matière. */
 export function nomDuGrain3D(id){
   return String(id).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.png';
@@ -366,7 +433,17 @@ async function chargerCarte(chemin){
   const { nativeImage } = await import('electron');
   const img = nativeImage.createFromPath(chemin);
   if (img.isEmpty()) throw new Error(`carte illisible : ${chemin}`);
-  const redim = img.resize({ width: TAILLE_GRAIN, height: TAILLE_GRAIN, quality: 'best' });
+  // ⚠️ RECADRER AU CARRÉ AVANT DE RÉDUIRE, ET NON L'INVERSE. Les cartes d'une matière sont carrées,
+  // mais une panoramique de ciel fait 2:1 : la ramener directement en 512² l'écraserait du double
+  // en largeur. C'est l'erreur exacte qui avait déformé ma première planche de comparaison, et
+  // qu'on m'avait signalée. On prend donc le carré CENTRAL, qui est aussi, sur une équirectangulaire,
+  // la bande la moins étirée par la projection.
+  const { width, height } = img.getSize();
+  const cote = Math.min(width, height);
+  const carre = (width === height) ? img
+    : img.crop({ x: Math.floor((width - cote) / 2), y: Math.floor((height - cote) / 2),
+                 width: cote, height: cote });
+  const redim = carre.resize({ width: TAILLE_GRAIN, height: TAILLE_GRAIN, quality: 'best' });
   // ⚠️ toBitmap() REND DU BGRA, PAS DU RGBA. Inverser les deux donnerait une teinte par défaut
   // fausse — un parchemin ocre reviendrait bleuté — et un ombrage dont la pente X serait celle
   // du canal bleu. Le genre d'erreur qui produit une image plausible et fausse. La première
@@ -412,18 +489,18 @@ async function main(){
   const dossier = join(SOURCES, id);
   if (!existsSync(dossier)) throw new Error(`dossier introuvable : ${dossier}`);
   const fichiers = readdirSync(dossier).filter(f => /\.(jpe?g|png)$/i.test(f));
-  const cartes = classerCartes3D(fichiers);
+  const cartes = regimeDeCuisson3D(fichiers);
 
-  // ⚠️ ON REFUSE, ON NE SE RABAT PAS. Sans relief, la seule normale donnerait un grain pauvre et
-  // surtout SILENCIEUX : rien ne dirait que la matière manquait. Le dépôt paie assez cher les
-  // replis silencieux pour ne pas en ajouter un ici.
-  if (!cartes.relief) {
-    throw new Error(`${id} : ni déplacement ni occlusion ambiante parmi ${fichiers.join(', ')}`);
-  }
-  if (!cartes.normale) throw new Error(`${id} : pas de carte de normales en convention OpenGL`);
+  // ⚠️ ON REFUSE, ON NE SE RABAT PAS. Le régime « image » existe pour les textures qui n'ont pas de
+  // surface ; il ne doit jamais rattraper une matière à qui il manque une carte. La distinction
+  // vit dans `regimeDeCuisson3D`, et le message dit quelle carte chercher.
+  if (cartes.refus) throw new Error(`${id} : ${cartes.refus}`);
 
+  // ⚠️ RECADRÉ AU CARRÉ AVANT TOUT, et ce n'est pas cosmétique. Une panoramique fait 2:1 ; la
+  // redimensionner en 512² l'écraserait du double dans un sens. C'est l'erreur exacte qui avait
+  // déformé ma première planche de comparaison, signalée à l'époque.
   const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief)));
-  const normale = await chargerCarte(join(dossier, cartes.normale));
+  const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale)) : null;
   const { grain, gain, contraste } = grainNormalise3D(relief, normale, TAILLE_GRAIN);
   const couture = coutureCarrelage3D(grain, TAILLE_GRAIN);
   // Mesuré sur le GRAIN et non sur le relief : c'est le grain qui est livré, et le rapport y est
@@ -437,8 +514,14 @@ async function main(){
   await ecrireGrainPng(grain, TAILLE_GRAIN, sortie);
 
   console.log(`${id} → ${basename(sortie)}`);
+  // ⚠️ LE RÉGIME EST IMPRIMÉ, JAMAIS DEVINÉ EN SILENCE. Une matière cuite par erreur en image
+  // perdrait 30 % de son grain — le terme directionnel — sans rien changer d'autre. Le seul moyen
+  // de s'en apercevoir est de le lire ici.
+  console.log(`  régime    ${cartes.regime === 'image'
+    ? 'IMAGE — la luminance tient lieu de relief, pas de terme directionnel'
+    : 'matière — relief + normale'}`);
   console.log(`  relief    ${cartes.relief}`);
-  console.log(`  normale   ${cartes.normale}`);
+  if (cartes.normale) console.log(`  normale   ${cartes.normale}`);
   console.log(`  teinte    ${teinte}${cartes.albedo ? '' : '  (aucun albédo : blanc par défaut)'}`);
   console.log(`  gain      ${gain.toFixed(2)}   contraste ${contraste.toFixed(2)} / ${CONTRASTE_CIBLE}`);
   console.log(`  couture   ${couture.toFixed(2)}   (1,0 = raccord invisible)`);
