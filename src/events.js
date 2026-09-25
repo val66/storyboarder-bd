@@ -82,7 +82,7 @@ import {
 import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle } from './bubble-tail.js';
-import { textureDeLaBulle } from './bubble-texture.js';
+import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
@@ -7211,9 +7211,13 @@ sideBubbleTextureSelect.addEventListener('change', () => {
   // Validé par le registre, comme la forme et la queue : une option ajoutée au menu sans entrée au
   // registre lève ICI, au moment du choix, et non plus tard au dessin.
   S.sideDescTarget.bulleTexture = textureDeLaBulle({ bulleTexture: sideBubbleTextureSelect.value });
-  // ⚠️ LE CHAMP « COULEUR DU FOND » NE SE MASQUE PLUS (#430) : plus aucune texture n'impose sa
-  // couleur, elles la suggèrent. La fiche relit quand même sa pastille au changement de texture,
-  // pour montrer la teinte suggérée par la nouvelle plutôt que celle de l'ancienne.
+  // ⚠️ CHANGER DE MATIÈRE REND LA MAIN À LA MATIÈRE. Les couleurs choisies sont effacées, donc les
+  // défauts de la nouvelle texture reprennent : on choisit une lave pour la VOIR, pas pour la
+  // découvrir en ocre. C'est la seule exception à « choisi > suggéré », et le `snapshot()`
+  // ci-dessus la rend annulable — c'est ce qui la distingue d'une perte.
+  for (const champ of CHAMPS_RENDUS_PAR_LA_TEXTURE) delete S.sideDescTarget[champ];
+  // Le champ « Couleur du fond » ne se masque plus (#430) ; la fiche relit ses pastilles pour
+  // montrer les teintes de la nouvelle matière plutôt que celles de l'ancienne.
   updateSidePanel();
   drawCurrentPage();
 });

@@ -360,6 +360,27 @@ const REGISTRE = {
   },
 };
 
+/**
+ * Les champs qu'un changement de texture REND à la nouvelle matière.
+ *
+ * ⚠️ CHANGER DE TEXTURE EFFACE DEUX CHOIX EXPLICITES, ET C'EST UNE DÉCISION, PAS UN EFFET DE BORD.
+ * La règle ordinaire est « choisi > suggéré » : une couleur donnée à la main survit à tout. Le
+ * changement de texture en est la seule exception, demandée à l'usage, et pour une raison nette —
+ * sans elle, passer du parchemin à la lave garderait l'ocre, et il faudrait rouvrir le sélecteur
+ * pour découvrir à quoi la lave ressemble. On choisit une matière pour la voir.
+ *
+ * ⚠️ LA COULEUR DU TEXTE SUIT, ET CE N'EST PAS UNE EXTENSION GRATUITE. Elle a le même dispositif de
+ * défaut par texture, et le laisser en arrière produirait exactement le défaut que #430 vient de
+ * corriger pour la glace : un lettrage sombre choisi sur du parchemin resterait sur une nuit
+ * étoilée, donc noir sur noir. Effacer l'un sans l'autre rendrait la Bulle illisible par un geste
+ * qui ne portait pas sur le texte.
+ *
+ * ⚠️ CE QUI REND CETTE DESTRUCTION ACCEPTABLE est qu'elle est ANNULABLE : le gestionnaire prend un
+ * instantané avant de toucher quoi que ce soit. C'est la seule chose qui distingue « rendre la main
+ * à la matière » de « perdre son travail ».
+ */
+export const CHAMPS_RENDUS_PAR_LA_TEXTURE = ['bulleColor', 'bulleTextColor'];
+
 /** Les clés enregistrées, pour la fiche et pour les tests. */
 export function texturesConnues(){
   return Object.keys(REGISTRE);

@@ -23,7 +23,8 @@ import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 import { queuesConnues } from '../src/bubble-tail.js';
-import { texturesConnues, teinteParDefautDeLaTexture } from '../src/bubble-texture.js';
+import { texturesConnues, teinteParDefautDeLaTexture,
+         couleurDeFondDeLaBulle3D } from '../src/bubble-texture.js';
 import { particulesConnues } from '../src/bubble-particle.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
@@ -999,6 +1000,49 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
    * désormais TOUJOURS offert, et il commande toujours. Ce qu'on tient à sa place est ce qui reste
    * vrai — que la pastille ne mente pas sur la couleur qu'on voit.
    */
+  /**
+   * ⚠️ CHANGER DE MATIÈRE REND LA MAIN À LA MATIÈRE, et c'est la SEULE exception à « choisi >
+   * suggéré ». Demandée à l'usage : sans elle, passer du parchemin à la lave garderait l'ocre, et
+   * il faudrait rouvrir le sélecteur pour découvrir à quoi la lave ressemble. On choisit une
+   * matière pour la voir.
+   *
+   * ⚠️ CE TEST PORTE SUR L'EFFET, PAS SUR LA LISTE. Vérifier que `CHAMPS_RENDUS_PAR_LA_TEXTURE`
+   * contient deux noms ne dirait rien : c'est le défaut « un test qui asserte qu'un identifiant
+   * APPARAÎT plutôt qu'il GOUVERNE », que ce chantier a rencontré quatre fois. On regarde donc ce
+   * que la Bulle VAUT après le geste, par les mêmes accesseurs que le dessin.
+   *
+   * ⚠️ UN MUTANT ÉQUIVALENT A ÉTÉ CONSIGNÉ PLUTÔT QUE TUÉ. Effacer les couleurs AVANT de poser la
+   * nouvelle texture, au lieu d'après, laisse la suite verte — et c'est juste : l'effacement ne lit
+   * pas la texture, et la pose de la texture ne lit pas les couleurs. L'état final est le même dans
+   * les deux ordres. Tordre une assertion pour distinguer deux chemins indiscernables aurait
+   * fabriqué un test qui protège une coïncidence d'écriture. Même verdict que M152 en #422g, à une
+   * différence près : là-bas il y avait du code à supprimer, ici il n'y a rien à faire.
+   */
+  test('⚠️ CHANGER DE TEXTURE REPREND LES DEUX COULEURS de la nouvelle matière', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const select = document.getElementById('sideBubbleTextureSelect');
+    const choisir = (t) => {
+      select.value = t;
+      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
+    };
+
+    choisir('papier');
+    // L'utilisateur règle les deux couleurs à la main, sur le parchemin.
+    b.bulleColor = '#3366FF';
+    b.bulleTextColor = '#101010';
+    assert.equal(couleurDeFondDeLaBulle3D(b), '#3366FF', 'le choix doit tenir tant qu’on ne change rien');
+
+    choisir('nuit-etoile');
+    assert.equal(couleurDeFondDeLaBulle3D(b),
+      teinteParDefautDeLaTexture({ bulleTexture: 'nuit-etoile' }),
+      'le fond est resté sur l’ancien choix : on ne voit pas la nouvelle matière');
+    // ⚠️ ET LE TEXTE SUIT. Le laisser en arrière donnerait un lettrage à #101010 sur une nuit
+    // étoilée — noir sur noir, exactement le défaut que #430 venait de corriger pour la glace.
+    assert.equal(b.bulleTextColor, undefined,
+      'le lettrage sombre a survécu au passage sur la nuit : il y sera illisible');
+  });
+
   /**
    * ⚠️ LA PASTILLE DOIT MONTRER CE QU'ON VOIT, PAS UN BLANC DE CONVENTION. Sous un parchemin dont
    * aucune couleur n'a été choisie, le champ affichait `#ffffff` alors que la Bulle est ocre :
