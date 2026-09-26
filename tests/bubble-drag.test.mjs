@@ -22,7 +22,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { S, currentPage } from '../src/state.js';
-import { lobeAuContactDuGroupe3D } from '../src/bubble-merge.js';
+import { lobeAuContactDuGroupe3D, partDeSoudure3D, PART_SOUDURE_MINIMALE } from '../src/bubble-merge.js';
 
 const nouvelleBulle = () => {
   S.pendingCreatePos = { x: 200, y: 200 };
@@ -149,6 +149,52 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     assert.equal(mobile.bulleShape, 'etoile', 'la forme n’a pas été appliquée');
     assert.equal(lobeAuContactDuGroupe3D(mobile, [ancre]), true,
       'le changement de forme a laissé un écart, et rouvert la porte de sortie');
+  });
+
+  /**
+   * ⚠️ LA BUTÉE S'ARRÊTE SUR UNE SOUDURE, PAS SUR UN BAISER. Deux ovales tangents se touchent en un
+   * point : c'est là que la butée s'arrêtait, et le résultat se lisait comme un écart. La pointe
+   * d'une des Bulles franchissait ce point et masquait le défaut — l'utilisateur l'a vu en la
+   * retirant, ce qui explique pourquoi le rapport parlait de la pointe alors qu'elle n'y est pour
+   * rien : elle ne touche NI au contour NI au contact, elle les cachait seulement.
+   */
+  test('⚠️ LA BUTÉE LAISSE UNE VRAIE SOUDURE, PAS DEUX CONTOURS ACCOLÉS', () => {
+    mobile.tailShape = 'aucune';               // la pointe ne masque plus rien
+    bouger(900, 100);
+    const part = partDeSoudure3D(mobile, ancre);
+    assert.ok(part >= PART_SOUDURE_MINIMALE,
+      `les deux lobes ne se recouvrent que de ${(part * 100).toFixed(1)} % : ils sont accolés, pas soudés`);
+  });
+
+  /**
+   * ⚠️ LA FUSION SE PROPOSE AU CONTACT, MAIS ELLE SE CONCLUT EN SOUDANT. Deux contours qui se
+   * frôlent sont le bon moment pour poser la question ; ils ne font pas une Bulle pour autant.
+   * Sans ce rapprochement final, l'utilisateur accepte une fusion et récolte deux contours accolés
+   * qu'il devra corriger à la main — exactement ce qu'il a rapporté.
+   *
+   * ⚠️ ET CE TEST TRAVERSE LA CONFIRMATION, que #426d n'avait jamais éprouvée. La modale rend une
+   * promesse dont le résolveur vit dans `S.confirmActionResolve` : on répond « oui » comme
+   * l'utilisateur le ferait, au lieu de contourner le seul endroit où le geste peut être annulé.
+   */
+  test('⚠️ ACCEPTER LA FUSION SOUDE LES DEUX LOBES', async () => {
+    delete ancre.bulleGroupe; delete mobile.bulleGroupe;
+    ancre.bulleFusionnable = true; mobile.bulleFusionnable = true;
+    ancre.x = 100; ancre.y = 100;
+    mobile.x = 269; mobile.y = 100;            // tangentes : elles se frôlent, sans plus
+    assert.ok(partDeSoudure3D(mobile, ancre) < PART_SOUDURE_MINIMALE,
+      'la fixture doit partir d’un simple frôlement');
+
+    S.selectedId = mobile.id;
+    S.apercuFusion = [mobile, ancre];
+    for (const fn of window._ecouteurs.mouseup || []) fn({ clientX: 0, clientY: 0, button: 0 });
+    assert.equal(typeof S.confirmActionResolve, 'function', 'aucune confirmation n’a été demandée');
+    S.confirmActionResolve(true);
+    await new Promise((r) => setTimeout(r, 0));
+
+    assert.ok(mobile.bulleGroupe, 'la fusion n’a pas eu lieu');
+    const part = partDeSoudure3D(mobile, ancre);
+    assert.ok(part >= PART_SOUDURE_MINIMALE,
+      `fusionnées mais recouvertes de ${(part * 100).toFixed(1)} % : deux contours accolés, pas une Bulle`);
   });
 
   test('une Bulle SANS groupe reste libre d’aller où elle veut', () => {

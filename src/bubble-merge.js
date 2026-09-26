@@ -341,9 +341,64 @@ export const PAS_DE_DICHOTOMIE_CONTACT = 14;
  * rejoignent autrement. Celle-ci autorise en échange qu'un groupe se range en deux paquets qui se
  * touchent chacun de leur côté ; ils restent un seul groupe, et « Séparer » les défait toujours.
  */
+/**
+ * La part du contour des deux Bulles qui tombe à l'intérieur de l'autre. Fonction PURE.
+ *
+ * ⚠️ « SE TOUCHER » NE SUFFIT PAS À FAIRE UNE SOUDURE, ET LA MESURE LE DIT. Deux ovales tangents se
+ * touchent en UN point : la butée s'y arrêtait, et le résultat se lisait comme un écart. La pointe
+ * d'une des Bulles franchissait ce baiser et masquait le défaut ; l'utilisateur l'a vu en la
+ * retirant. Relevé sur la Bulle par défaut (170 × 100), part du périmètre selon le chevauchement :
+ *
+ *      0 px → 1,0 %      2 px → 5,2 %      10 px → 11,5 %      30 px → 21,9 %
+ *      1 px → 3,1 %      5 px → 9,4 %      20 px → 17,7 %      50 px → 28,1 %
+ *
+ * ⚠️ LA MESURE COMPTE LES DEUX CONTOURS, ET NON UN SEUL. Une petite Bulle posée sur une grande y
+ * noie tout son contour pendant que la grande n'en donne presque rien : ne regarder qu'un sens
+ * ferait dépendre le verdict de l'ordre des arguments, et deux lobes se souderaient ou non selon
+ * lequel on déplace.
+ */
+export function partDeSoudure3D(a, b, echantillons = ECHANTILLONS_CONTACT){
+  if (!a || !b) return 0;
+  let dedans = 0;
+  for (let i = 0; i < echantillons; i++) {
+    const theta = (Math.PI * 2 * i) / echantillons;
+    const pa = pointDuContourBulle(a, theta);
+    if (pointDansLaBulle3D(b, pa.x, pa.y)) dedans++;
+    const pb = pointDuContourBulle(b, theta);
+    if (pointDansLaBulle3D(a, pb.x, pb.y)) dedans++;
+  }
+  return dedans / (2 * echantillons);
+}
+
+/**
+ * Le recouvrement en deçà duquel deux lobes ne forment plus une Bulle unique.
+ *
+ * ⚠️ 9 %, ET C'EST MESURÉ, PAS CHOISI. Sur la Bulle par défaut, cela vaut environ 5 px de
+ * chevauchement (cf. le relevé ci-dessus) : plus que les deux traits de 2 px que la soudure doit
+ * avaler pour que l'étranglement se lise comme une taille et non comme deux contours accolés. Une
+ * part du PÉRIMÈTRE plutôt qu'une distance en pixels, pour qu'une grande Bulle exige une soudure à
+ * sa mesure.
+ */
+export const PART_SOUDURE_MINIMALE = 0.09;
+
+/**
+ * Ce lobe est-il soudé à au moins un de ses voisins ? Fonction PURE.
+ *
+ * ⚠️ « AU MOINS UN », ET NON « LE GROUPE RESTE D'UN SEUL TENANT ». Tranché par l'utilisateur. La
+ * règle plus stricte — aucun lobe ne coupe la chaîne, même indirectement — interdirait d'écarter le
+ * lobe du MILIEU d'un chapelet de trois, ce qui est un geste légitime tant que les deux bouts se
+ * rejoignent autrement. Celle-ci autorise en échange qu'un groupe se range en deux paquets soudés
+ * chacun de leur côté ; ils restent un seul groupe, et « Séparer » les défait toujours.
+ *
+ * ⚠️ ET C'EST LA SOUDURE QUI COMPTE, PAS LE CONTACT. `bullesEnContact3D` reste la question du
+ * MOMENT OÙ L'ON PROPOSE une fusion — dès que les contours se frôlent, ce qui est le bon moment
+ * pour poser la question. Une fois fusionnés, les lobes doivent tenir ensemble, ce qui est plus
+ * exigeant : deux Bulles tangentes forment une paire de contours accolés, pas une Bulle.
+ */
 export function lobeAuContactDuGroupe3D(lobe, voisins){
   for (const voisin of voisins || []) {
-    if (voisin && voisin.id !== (lobe && lobe.id) && bullesEnContact3D(lobe, voisin)) return true;
+    if (voisin && voisin.id !== (lobe && lobe.id)
+        && partDeSoudure3D(lobe, voisin) >= PART_SOUDURE_MINIMALE) return true;
   }
   return false;
 }

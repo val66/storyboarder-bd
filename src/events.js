@@ -6781,6 +6781,12 @@ async function demanderLaFusion3D(source, candidate){
   const lobes = [...new Set([...lobesDe(source), ...lobesDe(candidate)])];
   const idGroupe = newId();
   remplacerLesLobes3D(page, fusionner3D(lobes, source, idGroupe));
+  // ⚠️ LA FUSION SE PROPOSE AU CONTACT, MAIS ELLE SE CONCLUT EN SOUDANT. Deux contours qui se
+  // frôlent sont le bon moment pour poser la question ; ils ne font pas une Bulle pour autant —
+  // deux ovales tangents se touchent en un point, et le résultat se lit comme deux contours
+  // accolés. On rapproche donc la Bulle déplacée du plus petit déplacement qui donne une vraie
+  // soudure, plutôt que de laisser à l'utilisateur un résultat qu'il devra corriger à la main.
+  recollerLeLobe3D(page.objects.find(o => o.id === source.id));
   // `drawCurrentPage()` refait déjà la fiche (cf. draw.js, quatrième phase) : pas de
   // `updateSidePanel()` ici, il la referait une seconde fois.
   drawCurrentPage();
