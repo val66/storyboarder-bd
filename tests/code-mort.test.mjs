@@ -49,6 +49,10 @@ const SEAUX_DE_TEST = [
   // composés. Sans ces deux seaux, aucun test ne pourrait ni repartir d'un état propre entre deux
   // cas, ni injecter un grain sans réseau — donc aucun ne pourrait tenir l'éviction du cache.
   '_viderGrains3D', '_setGrain3D',
+  // #426i — la fiche se souvient des zones de texte qu'elle a posées, pour ne pas les recréer sous
+  // le curseur à chaque redessin. Cette mémoire est de module ; sans ce seau, un test ne pourrait
+  // pas repartir d'un état propre, et les cas se contamineraient dans l'ordre où ils tournent.
+  '_oublierZonesDeLobes3D',
 ];
 
 /**

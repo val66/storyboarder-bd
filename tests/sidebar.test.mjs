@@ -17,7 +17,7 @@ import {
   elementsInPanel,
   renderSidePersonas,
   afficherManuelLateral, masquerManuelLateral, manuelEstAffiche,
-  majAffichageReglagesTraitBulle3D, updateSidePanel,
+  majAffichageReglagesTraitBulle3D, updateSidePanel, _oublierZonesDeLobes3D,
 } from '../src/sidebar.js';
 import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
@@ -1383,6 +1383,114 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
    * comme intuable ; elle a été retirée plutôt qu'entourée d'un test contrefait — même décision
    * qu'en #426d pour M3, et qu'en #422g pour M152.
    */
+
+  /**
+   * ⚠️ LA FICHE SE REFAIT À CHAQUE REDESSIN, ET TAPER DÉCLENCHE UN REDESSIN. `drawCurrentPage`
+   * appelle `updateSidePanel` sans condition (cf. draw.js, quatrième phase). Reconstruire la liste
+   * des zones à chaque passage détruisait donc la zone SOUS LE CURSEUR dès la première lettre : le
+   * champ perdait le focus, et il devenait impossible d'écrire dans une Bulle fusionnée. Rapporté
+   * à l'usage.
+   *
+   * Le test compare les IDENTITÉS des éléments, seule chose qui distingue « rafraîchi » de
+   * « reconstruit ». Une assertion sur les valeurs affichées serait vraie dans les deux cas — et
+   * c'est précisément pourquoi les six tests de #426e n'ont rien vu.
+   */
+  test('⚠️ LES ZONES SURVIVENT À UN REDESSIN, ELLES NE SONT PAS RECONSTRUITES', () => {
+    _oublierZonesDeLobes3D();
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gVivant'; b.bulleGroupe = 'gVivant';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const liste = document.getElementById('sideBubbleLobesWrap');
+    const avant = descendants(liste, 'TEXTAREA');
+    assert.equal(avant.length, 2, 'la fixture doit isoler exactement deux lobes');
+
+    updateSidePanel();
+    updateSidePanel();
+    const apres = descendants(liste, 'TEXTAREA');
+    assert.equal(apres.length, 2);
+    assert.ok(apres[0] === avant[0] && apres[1] === avant[1],
+      'les zones ont été recréées : le curseur de l’utilisateur est tombé avec les anciennes');
+  });
+
+  /**
+   * ⚠️ MAIS UN GROUPE DIFFÉRENT REFAIT BIEN LA LISTE. C'est l'autre moitié, et sans elle la
+   * correction serait pire que le défaut : sélectionner une autre Bulle fusionnée montrerait les
+   * zones de la PRÉCÉDENTE, et chaque frappe irait dans une réplique qui n'est plus à l'écran.
+   */
+  test('⚠️ UN AUTRE GROUPE REFAIT LES ZONES, MÊME S’IL A AUTANT DE LOBES', () => {
+    // ⚠️ LES QUATRE BULLES SONT CRÉÉES D'ABORD, ET C'EST INDISPENSABLE. Créer une Bulle sélectionne
+    // la nouvelle venue et redessine : la fiche passe alors par la branche « pas de groupe », qui
+    // vide sa mémoire. En intercalant les créations, on n'éprouve plus le changement de groupe mais
+    // une mémoire déjà remise à zéro — et une comparaison réduite au NOMBRE de lobes survivait.
+    _oublierZonesDeLobes3D();
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    const c = nouvelleBulle(); const d = nouvelleBulle();
+    a.bulleGroupe = 'gUn'; b.bulleGroupe = 'gUn';
+    c.bulleGroupe = 'gDeux'; d.bulleGroupe = 'gDeux';
+
+    S.selectedId = a.id;
+    updateSidePanel();
+    const premieres = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA');
+    assert.equal(premieres.length, 2);
+
+    S.selectedId = c.id;
+    updateSidePanel();
+    const secondes = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA');
+    assert.ok(secondes[0] !== premieres[0],
+      'les zones de l’autre groupe sont restées : on écrirait dans la mauvaise Bulle');
+  });
+
+  /**
+   * ⚠️ ET LA MÉMOIRE S'OUBLIE QUAND LA LISTE DISPARAÎT. Sélectionner une Bulle seule VIDE la liste
+   * dans le DOM. Si la mémoire gardait les identifiants, revenir sur le même groupe se croirait
+   * déjà affiché et ne reconstruirait rien : la section resterait VIDE, sans zone de texte du tout.
+   * Un défaut muet — aucune erreur, juste un panneau où il manque ce qu'on est venu chercher.
+   */
+  test('⚠️ REVENIR SUR UN GROUPE APRÈS UNE BULLE SEULE REPOSE SES ZONES', () => {
+    _oublierZonesDeLobes3D();
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    const seule = nouvelleBulle();
+    a.bulleGroupe = 'gRetour'; b.bulleGroupe = 'gRetour';
+
+    S.selectedId = a.id;
+    updateSidePanel();
+    assert.equal(descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA').length, 2);
+
+    S.selectedId = seule.id;
+    updateSidePanel();
+    S.selectedId = a.id;
+    updateSidePanel();
+    assert.equal(descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA').length, 2,
+      'la section est revenue vide : la mémoire croyait les zones encore à l’écran');
+  });
+
+  /**
+   * ⚠️ ET LA ZONE QUI A LE FOCUS N'EST PAS RÉÉCRITE. Y reposer la même valeur replace le curseur à
+   * la fin du texte : corriger une faute au milieu d'une réplique deviendrait impossible. Le
+   * symptôme serait plus sournois que celui qu'on corrige ici — on écrit, mais pas où l'on veut.
+   * Les AUTRES zones sont rafraîchies, parce qu'une annulation peut avoir changé leur texte.
+   */
+  test('⚠️ LA ZONE AU FOCUS N’EST PAS RÉÉCRITE, LES AUTRES LE SONT', () => {
+    _oublierZonesDeLobes3D();
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gFocus'; b.bulleGroupe = 'gFocus';
+    a.description = 'A'; b.description = 'B';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const zones = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA');
+
+    document.activeElement = zones[0];
+    zones[0].value = 'en cours de frappe';       // ce que l'utilisateur est en train d'écrire
+    b.description = 'changé par une annulation';
+    updateSidePanel();
+
+    assert.equal(zones[0].value, 'en cours de frappe',
+      'la zone au focus a été réécrite : le curseur saute à la fin du texte');
+    assert.equal(zones[1].value, 'changé par une annulation',
+      'les autres zones ne suivent plus le modèle');
+    document.activeElement = null;
+  });
 
   test('une Bulle seule garde sa zone unique, et aucun bouton Séparer', () => {
     const b = nouvelleBulle();

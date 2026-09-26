@@ -122,6 +122,21 @@ const sideBubbleSeparerWrap = document.getElementById('sideBubbleSeparerWrap');
  * du lobe sélectionné — celle d'en haut et la sienne dans la liste —, qui se contrediraient au
  * premier caractère. C'est le défaut que ce chantier traque depuis #425m.
  */
+// ⚠️ LES ZONES DÉJÀ À L'ÉCRAN, ET POURQUOI IL FAUT S'EN SOUVENIR. La fiche se refait à CHAQUE
+// redessin — `drawCurrentPage` appelle `updateSidePanel` sans condition —, et taper dans une zone
+// déclenche un redessin. Reconstruire la liste à chaque passage détruisait donc la zone SOUS LE
+// CURSEUR dès la première lettre : le champ perdait le focus, et il devenait impossible d'écrire
+// dans une Bulle fusionnée. Rapporté à l'usage.
+//
+// On retient ce qui est affiché — les identifiants des lobes, dans l'ordre — pour ne reconstruire
+// que lorsque le GROUPE a changé. Tant qu'il est le même, les zones restent en place et on se
+// contente de rafraîchir leur contenu.
+let _lobesAffiches3D = [];
+let _zonesAffichees3D = [];
+
+/** Pour les tests : oublier ce que la fiche croit avoir affiché. */
+export function _oublierZonesDeLobes3D(){ _lobesAffiches3D = []; _zonesAffichees3D = []; }
+
 function majZonesDeTexteDesLobes3D(sel){
   const groupe = groupeDeLaBulle3D(sel);
   const page = currentPageData();
@@ -131,12 +146,30 @@ function majZonesDeTexteDesLobes3D(sel){
   if (lobes.length < 2) {
     sideBubbleLobesWrap.style.display = 'none';
     sideBubbleLobesWrap.textContent = '';
+    _lobesAffiches3D = []; _zonesAffichees3D = [];
     sideDescInput.style.display = 'block';
     return;
   }
   sideDescInput.style.display = 'none';
   sideBubbleLobesWrap.style.display = 'block';
+
+  const ids = lobes.map(l => l.id);
+  if (ids.length === _lobesAffiches3D.length && ids.every((id, i) => id === _lobesAffiches3D[i])) {
+    // ⚠️ ON NE RÉÉCRIT PAS LA ZONE QUI A LE FOCUS. Y reposer la même valeur replace le curseur à la
+    // fin du texte : corriger une faute au milieu d'une réplique deviendrait impossible, et le
+    // symptôme serait plus sournois que celui qu'on vient de corriger — on écrit, mais pas où l'on
+    // veut. Les AUTRES zones sont rafraîchies, parce qu'une annulation peut avoir changé leur texte.
+    const focus = typeof document !== 'undefined' ? document.activeElement : null;
+    lobes.forEach((lobe, i) => {
+      const zone = _zonesAffichees3D[i];
+      if (zone && zone !== focus) zone.value = lobe.description || '';
+    });
+    return;
+  }
+
   sideBubbleLobesWrap.textContent = '';
+  _lobesAffiches3D = ids;
+  _zonesAffichees3D = [];
   lobes.forEach((lobe, i) => {
     // ⚠️ UN ENCART PAR LOBE, ET C'EST CELUI DE TOUT LE PANNEAU. `.tome-format` est le bloc de
     // réglage du menu de droite : le reprendre donne à ces zones le même cadre, le même fond et le
@@ -167,6 +200,7 @@ function majZonesDeTexteDesLobes3D(sel){
     encart.appendChild(etiquette);
     encart.appendChild(zone);
     sideBubbleLobesWrap.appendChild(encart);
+    _zonesAffichees3D.push(zone);
   });
 }
 const sideBubbleFontWrap = document.getElementById('sideBubbleFontWrap');
