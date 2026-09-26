@@ -85,7 +85,7 @@ import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
-  positionAuContactDuGroupe3D,
+  etatAuContactDuGroupe3D,
 } from './bubble-merge.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
@@ -3518,13 +3518,7 @@ window.addEventListener('mousemove', (e) => {
       // ⚠️ LE DÉPART EST CELUI DU GLISSEMENT, ET NON LA POSITION COURANTE. Repartir de la position
       // courante ferait du geste une marche à cliquet : chaque mouvement gagnerait sa petite butée
       // sur la précédente, et le lobe finirait par s'éloigner indéfiniment, un pixel à la fois.
-      const groupe = obj.type === 'bulle' ? groupeDeLaBulle3D(obj) : null;
-      const retenue = groupe
-        ? positionAuContactDuGroupe3D(
-            obj,
-            page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe),
-            S.dragOrig, vise)
-        : vise;
+      const retenue = etatDuLobeRetenu3D(page, obj, vise);
       obj.x = retenue.x;
       obj.y = retenue.y;
     }
@@ -3592,7 +3586,11 @@ window.addEventListener('mousemove', (e) => {
   } else if (S.dragMode === 'resize') {
     const obj = page.objects.find(o => o.id === S.selectedId);
     const dx = x - S.dragStart.x, dy = y - S.dragStart.y;
-    const r = applyResize(S.dragOrig, S.dragHandle, dx, dy, page);
+    // ⚠️ LE REDIMENSIONNEMENT EST BRIDÉ COMME LE DÉPLACEMENT (#426f bis). C'est l'autre chemin qui
+    // écrit la géométrie d'une Bulle, et il était libre : rétrécir un lobe le décollait de son
+    // voisin sans que rien ne l'arrête, alors que la contrainte paraissait posée. Rapporté à
+    // l'usage, capture à l'appui.
+    const r = etatDuLobeRetenu3D(page, obj, applyResize(S.dragOrig, S.dragHandle, dx, dy, page));
     obj.x = r.x; obj.y = r.y; obj.w = r.w; obj.h = r.h;
   } else if (S.dragMode === 'terrainResize') {
     // Resizing a Terrain Zone: applyResize on the screen bbox, then computeTracéWorld3D to
@@ -6797,6 +6795,27 @@ async function demanderLaFusion3D(source, candidate){
  * explicitement retiré. Les deux chemins passent par ici : la même faute s'y est glissée deux fois,
  * une fois par sens, et la première n'a été vue qu'à l'écran.
  */
+/**
+ * L'état que la Planche accepte pour ce lobe : celui demandé, ou la butée qui garde le contact.
+ *
+ * ⚠️ UN SEUL POINT DE PASSAGE POUR TOUS LES GESTES QUI DÉPLACENT OU REDIMENSIONNENT UNE BULLE. La
+ * première version bridait le seul déplacement, et le redimensionnement — écrit vingt lignes plus
+ * bas, par un autre chemin — décollait tranquillement un lobe de son voisin. Deux appels valent
+ * mieux que deux règles : un troisième geste n'aura qu'à passer par ici.
+ *
+ * ⚠️ ET LE DÉPART EST CELUI DU GLISSEMENT, JAMAIS L'ÉTAT COURANT. Repartir de l'état courant ferait
+ * du geste une marche à cliquet : chaque mouvement gagnerait sa petite butée sur le précédent, et
+ * maintenir la souris au loin éloignerait le lobe indéfiniment, un pixel à la fois.
+ */
+function etatDuLobeRetenu3D(page, obj, vise){
+  const groupe = obj && obj.type === 'bulle' ? groupeDeLaBulle3D(obj) : null;
+  if (!groupe) return vise;
+  return etatAuContactDuGroupe3D(
+    obj,
+    page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe),
+    S.dragOrig, vise);
+}
+
 function remplacerLesLobes3D(page, lobes){
   for (const lobe of lobes) {
     const cible = page.objects.find(o => o.id === lobe.id);

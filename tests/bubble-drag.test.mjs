@@ -38,6 +38,11 @@ const bouger = (versX, versY) => {
 
 describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () => {
   let ancre, mobile;
+  // ⚠️ UN GROUPE NEUF À CHAQUE TEST. Les Bulles d'un test survivent dans la Planche : réutiliser le
+  // même identifiant les ferait toutes rejoindre le groupe courant, et un lobe abandonné par le
+  // test précédent tiendrait lieu de voisin. Le contact serait alors vrai pour une raison qui n'a
+  // rien à voir avec ce qu'on mesure — et il l'a été, une fois, avant cette ligne.
+  let numero = 0;
 
   beforeEach(() => {
     S.zoomLevel = 1;
@@ -46,7 +51,8 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     mobile = nouvelleBulle();
     ancre.x = 100; ancre.y = 100;
     mobile.x = 250; mobile.y = 100;            // largeur 170 : les deux se chevauchent
-    ancre.bulleGroupe = 'gGeste'; mobile.bulleGroupe = 'gGeste';
+    const groupe = `gGeste${++numero}`;
+    ancre.bulleGroupe = groupe; mobile.bulleGroupe = groupe;
     S.selectedId = mobile.id;
     S.dragMode = 'move';
     S.dragStart = { x: 0, y: 0 };
@@ -80,6 +86,47 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     bouger(900, 100);
     assert.equal(mobile.x, premiere,
       `la butée a avancé de ${mobile.x - premiere} : maintenir la souris éloignerait le lobe sans fin`);
+  });
+
+  /**
+   * ⚠️ LE REDIMENSIONNEMENT EST L'AUTRE CHEMIN QUI ÉCRIT LA GÉOMÉTRIE, ET IL ÉTAIT LIBRE. Rapporté
+   * à l'usage, capture à l'appui, alors que la contrainte paraissait posée : le déplacement était
+   * bridé, la poignée de redimensionnement ne l'était pas. Un test qui ne regarde qu'un seul geste
+   * déclare tenue une règle qui ne l'est qu'à moitié — et c'est ce que le précédent faisait.
+   */
+  test('⚠️ LA POIGNÉE DE REDIMENSIONNEMENT EST BRIDÉE ELLE AUSSI', () => {
+    S.dragMode = 'resize';
+    S.dragHandle = 'l';                        // le bord GAUCHE, celui qui éloigne du voisin
+    S.dragOrig = { x: mobile.x, y: mobile.y, w: mobile.w, h: mobile.h, type: 'bulle' };
+    bouger(600, 0);                            // on tire le bord gauche très loin vers la droite
+
+    assert.ok(mobile.w < 170, 'le lobe n’a pas rétréci du tout : ce n’est pas une butée');
+    assert.ok(mobile.x > 250, 'le bord gauche n’a pas avancé');
+    assert.equal(lobeAuContactDuGroupe3D(mobile, [ancre]), true,
+      'le lobe s’est décollé de son groupe en rétrécissant');
+  });
+
+  /**
+   * ⚠️ LE DÉPART EST CELUI DU GLISSEMENT, ET LE TORT NE SE VOIT QU'EN CHANGEANT DE DIRECTION. Un
+   * aller-retour dans le même axe revient au même point quelle que soit l'origine de l'interpolation
+   * — c'est pourquoi le test de la marche à cliquet, plus haut, laissait passer la faute. Il faut un
+   * SECOND mouvement dans une AUTRE direction : interpoler depuis la butée du premier n'explore alors
+   * plus le même segment, et le lobe atterrit ailleurs.
+   */
+  test('⚠️ UN CHANGEMENT DE DIRECTION REPART DU DÉBUT DU GLISSEMENT', () => {
+    bouger(600, 0);                            // vers la droite, jusqu'à la butée
+    bouger(0, 600);                            // puis franchement vers le bas
+    const depuisLeDebut = { x: mobile.x, y: mobile.y };
+
+    // Le même geste, rejoué d'un seul coup depuis la position de départ : si l'interpolation partait
+    // vraiment du début du glissement, les deux doivent coïncider.
+    mobile.x = 250; mobile.y = 100;
+    S.dragOrig = { x: 250, y: 100 };
+    bouger(0, 600);
+    assert.equal(mobile.x.toFixed(3), depuisLeDebut.x.toFixed(3),
+      'le second mouvement est reparti de la butée du premier, pas du début du glissement');
+    assert.equal(mobile.y.toFixed(3), depuisLeDebut.y.toFixed(3),
+      'le second mouvement est reparti de la butée du premier, pas du début du glissement');
   });
 
   test('une Bulle SANS groupe reste libre d’aller où elle veut', () => {

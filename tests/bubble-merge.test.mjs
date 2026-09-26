@@ -20,7 +20,7 @@ import {
   bulleEstFusionnable3D, pointDansLaBulle3D, bullesEnContact3D, groupeDeLaBulle3D,
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
   CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
-  lobeAuContactDuGroupe3D, positionAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
+  lobeAuContactDuGroupe3D, etatAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
 } from '../src/bubble-merge.js';
 import { formesConnues } from '../src/bubble-shape.js';
 
@@ -620,13 +620,13 @@ describe('lobeAuContactDuGroupe3D — la règle de voisinage', () => {
   });
 });
 
-describe('positionAuContactDuGroupe3D — la butée', () => {
+describe('etatAuContactDuGroupe3D — la butée', () => {
   const voisin = bulle({ id: 'ancre', x: 0, y: 0 });
   const lobe = bulle({ id: 'mobile', x: 150, y: 0 });
 
   test('une position qui garde le contact est rendue telle quelle', () => {
     const vise = { x: 160, y: 0 };
-    assert.deepEqual(positionAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, vise), vise);
+    assert.deepEqual(etatAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, vise), vise);
   });
 
   /**
@@ -638,7 +638,7 @@ describe('positionAuContactDuGroupe3D — la butée', () => {
   test('⚠️ UNE POSITION QUI ROMPT LE CONTACT EST RAMENÉE À UNE POSITION QUI TOUCHE', () => {
     const depart = { x: 150, y: 0 };
     const vise = { x: 900, y: 0 };
-    const retenue = positionAuContactDuGroupe3D(lobe, [voisin], depart, vise);
+    const retenue = etatAuContactDuGroupe3D(lobe, [voisin], depart, vise);
 
     assert.ok(retenue.x > depart.x, 'le lobe n’a pas avancé du tout : la butée est le départ');
     assert.ok(retenue.x < vise.x, 'le lobe est allé jusqu’au bout : rien ne l’a retenu');
@@ -649,7 +649,7 @@ describe('positionAuContactDuGroupe3D — la butée', () => {
   test('⚠️ ET ELLE SERRE LA LIMITE D’ASSEZ PRÈS POUR QUE L’ŒIL NE VOIE PAS DE JEU', () => {
     // Un cran de plus dans la même direction doit rompre le contact : sans cela, la butée pourrait
     // s'arrêter n'importe où en deçà et le test précédent resterait vert.
-    const retenue = positionAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, { x: 900, y: 0 });
+    const retenue = etatAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, { x: 900, y: 0 });
     const unPasDePlus = Object.assign({}, lobe, { x: retenue.x + 1, y: retenue.y });
     assert.equal(lobeAuContactDuGroupe3D(unPasDePlus, [voisin]), false,
       `butée à ${retenue.x}, mais un pixel plus loin touche encore : le jeu est visible`);
@@ -665,13 +665,64 @@ describe('positionAuContactDuGroupe3D — la butée', () => {
     const detache = bulle({ id: 'detache', x: 800, y: 800 });
     const vise = { x: 300, y: 300 };
     assert.deepEqual(
-      positionAuContactDuGroupe3D(detache, [voisin], { x: 800, y: 800 }, vise), vise,
+      etatAuContactDuGroupe3D(detache, [voisin], { x: 800, y: 800 }, vise), vise,
       'un lobe détaché a été figé sur place : il ne peut plus jamais revenir');
+  });
+
+  /**
+   * ⚠️ LA MÊME BUTÉE VAUT POUR UN RECTANGLE, ET C'EST TOUT L'INTÉRÊT D'UNE SEULE FONCTION. Le
+   * redimensionnement écrit `x`, `y`, `w` et `h` par un autre chemin que le déplacement : c'est par
+   * là qu'un lobe se décollait de son voisin alors que la contrainte paraissait posée. Une seconde
+   * fonction pour les rectangles aurait donné deux copies d'une même règle, qui ne s'accordent que
+   * le jour où on les écrit.
+   */
+  test('⚠️ UN RÉTRÉCISSEMENT QUI ROMPRAIT LE CONTACT EST RETENU LUI AUSSI', () => {
+    // On tire la poignée GAUCHE vers la droite : le bord gauche avance et la largeur fond, ce qui
+    // est le geste qui décolle vraiment le lobe. Tirer le bord DROIT vers la gauche ne le décollerait
+    // jamais — le bord gauche resterait dans le voisin —, et un test bâti là-dessus serait vert
+    // quoi que fasse la butée.
+    const depart = { x: 150, y: 0, w: 200, h: 100 };
+    const vise = { x: 400, y: 0, w: 10, h: 100 };
+    const retenu = etatAuContactDuGroupe3D(lobe, [voisin], depart, vise);
+
+    assert.ok(retenu.w < depart.w, 'le lobe n’a pas rétréci du tout : la butée est le départ');
+    assert.ok(retenu.w > vise.w, 'le lobe a rétréci jusqu’au bout : rien ne l’a retenu');
+    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, lobe, retenu), [voisin]), true,
+      'la taille retenue ne touche plus : la butée est posée dans le vide');
+  });
+
+  test('un rétrécissement qui garde le contact passe tel quel', () => {
+    const depart = { x: 150, y: 0, w: 200, h: 100 };
+    const vise = { x: 160, y: 0, w: 190, h: 100 };
+    assert.deepEqual(etatAuContactDuGroupe3D(lobe, [voisin], depart, vise), vise);
+  });
+
+  /**
+   * ⚠️ UNE CLÉ QUE LE DÉPART NE PORTE PAS EST RENDUE TELLE QUELLE. Elle ne peut pas être
+   * interpolée — il n'y a rien d'où partir —, et la laisser tomber rendrait un état AMPUTÉ que
+   * l'appelant écrirait tel quel dans la Planche : une Bulle sans largeur. Le cas n'est pas
+   * théorique, c'est ce qui arriverait à tout geste dont l'état de départ est plus pauvre que
+   * l'état visé.
+   */
+  test('⚠️ UNE CLÉ ABSENTE DU DÉPART SURVIT INTACTE, ET LA SONDE LA PREND EN COMPTE', () => {
+    // La sonde doit essayer les positions avec la taille VISÉE, pas avec l'ancienne : une Bulle de
+    // 12 px de large touche beaucoup moins loin qu'une de 200. Juger le contact sur une forme qui
+    // ne sera pas dessinée pose la butée trop loin, et l'état rendu ne touche plus — un défaut qui
+    // se voit à l'écran mais qu'aucune assertion sur les seules coordonnées ne peut attraper.
+    const large = bulle({ id: 'ancre2', x: 0, y: 0, w: 200, h: 200 });
+    const mobile = bulle({ id: 'mob2', x: 0, y: 150, w: 200, h: 200 });
+    const vise = { x: 0, y: 900, w: 12 };
+    const retenu = etatAuContactDuGroupe3D(mobile, [large], { x: 0, y: 150 }, vise);
+
+    assert.equal(retenu.w, 12, 'la largeur a disparu de l’état rendu');
+    assert.ok(retenu.y < vise.y, 'rien n’a retenu le lobe');
+    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, mobile, retenu), [large]), true,
+      'la butée a été posée en jugeant une Bulle plus large que celle qui sera dessinée');
   });
 
   test('sans voisin, rien ne retient le lobe', () => {
     const vise = { x: 500, y: 500 };
-    assert.deepEqual(positionAuContactDuGroupe3D(lobe, [], { x: 150, y: 0 }, vise), vise);
+    assert.deepEqual(etatAuContactDuGroupe3D(lobe, [], { x: 150, y: 0 }, vise), vise);
   });
 
   test('le nombre de pas est celui annoncé, et il est fini', () => {

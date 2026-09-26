@@ -349,9 +349,20 @@ export function lobeAuContactDuGroupe3D(lobe, voisins){
 }
 
 /**
- * La position la plus proche de celle visée qui garde le lobe au contact de son groupe. PURE.
+ * L'état le plus proche de celui visé qui garde le lobe au contact de son groupe. PURE.
  *
- * ⚠️ ELLE REND TOUJOURS UNE POSITION AU CONTACT, SANS SUPPOSER QUE LE CONTACT SOIT MONOTONE. La
+ * `depart` et `vise` décrivent le lobe : `{x, y}` pour un déplacement, `{x, y, w, h}` pour un
+ * redimensionnement. Toute clé numérique présente dans `vise` est interpolée.
+ *
+ * ⚠️ UNE SEULE DÉCISION POUR LES DEUX GESTES, ET CE N'EST PAS DE L'ÉLÉGANCE. La première version ne
+ * bridait que le DÉPLACEMENT ; le redimensionnement écrit `x`, `y`, `w` et `h` par un autre chemin,
+ * et rétrécir un lobe le décollait donc de son voisin — rapporté à l'usage, capture à l'appui,
+ * alors que la contrainte paraissait posée. Écrire une seconde fonction pour les rectangles aurait
+ * donné deux copies d'une même règle, qui ne s'accordent que le jour où on les écrit : c'est la
+ * faute retrouvée en #426 entre la fusion et la séparation, une semaine après l'avoir tuée d'un
+ * côté. Un troisième geste qui écrirait la géométrie d'un lobe n'aura, lui, qu'à appeler ceci.
+ *
+ * ⚠️ ELLE REND TOUJOURS UN ÉTAT AU CONTACT, SANS SUPPOSER QUE LE CONTACT SOIT MONOTONE. La
  * dichotomie tient deux bornes : `bas`, dont on a VÉRIFIÉ qu'elle touche, et `haut`, dont on a
  * vérifié qu'elle ne touche pas. Elle ne rend jamais que `bas`. Un contour en croissant peut très
  * bien quitter puis retrouver le contact le long d'un même glissement ; la borne rendue reste
@@ -359,20 +370,30 @@ export function lobeAuContactDuGroupe3D(lobe, voisins){
  * un balayage, pour une différence qu'aucun œil ne verrait.
  *
  * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE BRIDE RIEN. Le cas existe — un Projet écrit à la main, un
- * groupe hérité d'une version antérieure — et le brider l'emprisonnerait : sans position valide de
+ * groupe hérité d'une version antérieure — et le brider l'emprisonnerait : sans état valide de
  * référence, la butée serait le point de départ lui-même, et le lobe ne pourrait plus jamais
- * bouger. Mieux vaut le laisser libre que le figer pour une faute qu'il n'a pas commise.
+ * bouger ni changer de taille. Mieux vaut le laisser libre que le figer pour une faute qu'il n'a
+ * pas commise.
  */
-export function positionAuContactDuGroupe3D(lobe, voisins, depart, vise){
-  const touche = (p) => lobeAuContactDuGroupe3D(Object.assign({}, lobe, { x: p.x, y: p.y }), voisins);
-  if (touche(vise)) return { x: vise.x, y: vise.y };
-  if (!touche(depart)) return { x: vise.x, y: vise.y };
+export function etatAuContactDuGroupe3D(lobe, voisins, depart, vise){
+  const cles = Object.keys(vise || {}).filter(
+    c => Number.isFinite(Number(vise[c])) && Number.isFinite(Number(depart && depart[c])));
+  const a = (t) => {
+    const etat = {};
+    for (const c of cles) etat[c] = depart[c] + (vise[c] - depart[c]) * t;
+    return Object.assign({}, lobe, vise, etat);
+  };
+  const touche = (etat) => lobeAuContactDuGroupe3D(etat, voisins);
+
+  if (touche(a(1))) return Object.assign({}, vise);
+  if (!touche(a(0))) return Object.assign({}, vise);
 
   let bas = 0, haut = 1;
   for (let i = 0; i < PAS_DE_DICHOTOMIE_CONTACT; i++) {
     const milieu = (bas + haut) / 2;
-    const p = { x: depart.x + (vise.x - depart.x) * milieu, y: depart.y + (vise.y - depart.y) * milieu };
-    if (touche(p)) bas = milieu; else haut = milieu;
+    if (touche(a(milieu))) bas = milieu; else haut = milieu;
   }
-  return { x: depart.x + (vise.x - depart.x) * bas, y: depart.y + (vise.y - depart.y) * bas };
+  const retenu = Object.assign({}, vise);
+  for (const c of cles) retenu[c] = depart[c] + (vise[c] - depart[c]) * bas;
+  return retenu;
 }
