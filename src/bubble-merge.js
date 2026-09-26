@@ -369,11 +369,19 @@ export function lobeAuContactDuGroupe3D(lobe, voisins){
  * valide, elle n'est simplement pas garantie d'être LA dernière. Affirmer le contraire demanderait
  * un balayage, pour une différence qu'aucun œil ne verrait.
  *
- * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE BRIDE RIEN. Le cas existe — un Projet écrit à la main, un
- * groupe hérité d'une version antérieure — et le brider l'emprisonnerait : sans état valide de
- * référence, la butée serait le point de départ lui-même, et le lobe ne pourrait plus jamais
- * bouger ni changer de taille. Mieux vaut le laisser libre que le figer pour une faute qu'il n'a
- * pas commise.
+ * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE LIBÈRE PAS LE LOBE : IL L'OBLIGE À SE RAPPROCHER. Première
+ * version : « hors contact au départ, alors aucune contrainte ». C'était une porte de sortie, et
+ * elle s'est ouverte toute seule. Il suffisait de changer la FORME d'un lobe depuis la fiche — un
+ * chemin qui n'est ni le déplacement ni le redimensionnement — pour que les deux contours se
+ * décollent ; à partir de là, tout glissement repartait d'un état hors contact, et la Bulle était
+ * libre à jamais. Rapporté à l'usage : « si je change la forme de la bulle c'est pire, je peux
+ * désormais la bouger sans contrainte ».
+ *
+ * La règle qui remplace la porte ne demande pas de position valide de référence, et c'est ce qui la
+ * rend sûre : un lobe détaché peut bouger, mais jamais S'ÉLOIGNER. Il reste libre de revenir, se
+ * recolle dès qu'il touche, et retrouve alors la butée ordinaire. Un Projet écrit à la main ou
+ * hérité d'une version antérieure n'est donc pas figé — l'inquiétude qui avait fait écrire la
+ * porte —, il est seulement empêché d'empirer.
  */
 export function etatAuContactDuGroupe3D(lobe, voisins, depart, vise){
   const cles = Object.keys(vise || {}).filter(
@@ -386,7 +394,11 @@ export function etatAuContactDuGroupe3D(lobe, voisins, depart, vise){
   const touche = (etat) => lobeAuContactDuGroupe3D(etat, voisins);
 
   if (touche(a(1))) return Object.assign({}, vise);
-  if (!touche(a(0))) return Object.assign({}, vise);
+  if (!touche(a(0))) {
+    return ecartAuGroupe3D(a(1), voisins) <= ecartAuGroupe3D(a(0), voisins)
+      ? Object.assign({}, vise)
+      : Object.assign({}, vise, depart);
+  }
 
   let bas = 0, haut = 1;
   for (let i = 0; i < PAS_DE_DICHOTOMIE_CONTACT; i++) {
@@ -396,4 +408,75 @@ export function etatAuContactDuGroupe3D(lobe, voisins, depart, vise){
   const retenu = Object.assign({}, vise);
   for (const c of cles) retenu[c] = depart[c] + (vise[c] - depart[c]) * bas;
   return retenu;
+}
+
+/**
+ * La distance du centre du lobe au centre de son voisin le plus proche. Fonction PURE.
+ *
+ * ⚠️ UNE MESURE GROSSIÈRE, ET ELLE SUFFIT. Elle ne sert qu'à répondre à « ce geste éloigne-t-il, ou
+ * rapproche-t-il ? » pour un lobe DÉJÀ détaché. Une vraie distance entre contours coûterait un
+ * balayage à chaque mouvement de souris pour départager des cas que personne ne distingue à l'œil.
+ * Sans voisin, la distance est infinie : rien ne rapproche ni n'éloigne.
+ */
+export function ecartAuGroupe3D(lobe, voisins){
+  let mini = Infinity;
+  for (const voisin of voisins || []) {
+    if (!voisin || voisin.id === (lobe && lobe.id)) continue;
+    const dx = (lobe.x + lobe.w / 2) - (voisin.x + voisin.w / 2);
+    const dy = (lobe.y + lobe.h / 2) - (voisin.y + voisin.h / 2);
+    mini = Math.min(mini, Math.hypot(dx, dy));
+  }
+  return mini;
+}
+
+/**
+ * Ramène un lobe détaché au contact de son groupe, en le glissant vers son voisin le plus proche.
+ * Fonction PURE : elle rend une position, elle n'écrit rien.
+ *
+ * ⚠️ ELLE RÉPARE CE QU'UN CHANGEMENT DE FORME VIENT DE CASSER. Changer la forme d'un lobe change
+ * son contour, donc son contact : passer d'un rectangle à une étoile rétrécit la silhouette d'un
+ * tiers, et les deux Bulles se décollent sans que personne ne les ait déplacées. Le geste ne peut
+ * pas être refusé — l'utilisateur a le droit de choisir la forme qu'il veut —, donc c'est la
+ * POSITION qui cède.
+ *
+ * ⚠️ LA CIBLE EST LE CENTRE DU VOISIN, ET NON UN POINT DE SON CONTOUR. Elle n'a pas à être proche :
+ * elle doit seulement GARANTIR le contact, pour que la dichotomie ait une borne haute valide. Deux
+ * Bulles de centres confondus se touchent quelle que soit leur forme, ce que le registre garantit
+ * en exigeant des contours étoilés autour de leur centre (#425e). La dichotomie rend ensuite le
+ * PLUS PETIT déplacement qui suffit, donc le lobe bouge le moins possible.
+ */
+export function rapprocherDuGroupe3D(lobe, voisins){
+  const depart = { x: lobe.x, y: lobe.y };
+  if (lobeAuContactDuGroupe3D(lobe, voisins)) return depart;
+
+  let plusProche = null, mini = Infinity;
+  for (const voisin of voisins || []) {
+    if (!voisin || voisin.id === lobe.id) continue;
+    const e = ecartAuGroupe3D(lobe, [voisin]);
+    if (e < mini) { mini = e; plusProche = voisin; }
+  }
+  if (!plusProche) return depart;
+
+  const cible = {
+    x: plusProche.x + plusProche.w / 2 - lobe.w / 2,
+    y: plusProche.y + plusProche.h / 2 - lobe.h / 2,
+  };
+  const touche = (t) => lobeAuContactDuGroupe3D(Object.assign({}, lobe, {
+    x: depart.x + (cible.x - depart.x) * t,
+    y: depart.y + (cible.y - depart.y) * t,
+  }), voisins);
+  // ⚠️ AUCUNE GARDE SUR « ET SI LE CENTRE DU VOISIN NE SUFFISAIT PAS ». Elle y était, et la
+  // campagne l'a déclarée intuable : le registre de formes garantit un contour ÉTOILÉ autour du
+  // centre, à distance strictement positive dans toutes les directions (contrat figé par
+  // tests/bubble-shape.test.mjs, « la boucle se referme »). Deux contours de centres confondus se
+  // coupent donc toujours. Une garde qu'aucun test ne peut atteindre est une garde que personne ne
+  // maintient ; si le contrat du registre tombe un jour, c'est LUI qui doit rougir, pas ceci.
+  //
+  // On cherche le PLUS PETIT rapprochement qui suffit : `haut` touche toujours, `bas` jamais.
+  let bas = 0, haut = 1;
+  for (let i = 0; i < PAS_DE_DICHOTOMIE_CONTACT; i++) {
+    const milieu = (bas + haut) / 2;
+    if (touche(milieu)) haut = milieu; else bas = milieu;
+  }
+  return { x: depart.x + (cible.x - depart.x) * haut, y: depart.y + (cible.y - depart.y) * haut };
 }

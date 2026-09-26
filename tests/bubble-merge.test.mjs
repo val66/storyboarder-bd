@@ -21,6 +21,7 @@ import {
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
   CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
   lobeAuContactDuGroupe3D, etatAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
+  rapprocherDuGroupe3D, ecartAuGroupe3D,
 } from '../src/bubble-merge.js';
 import { formesConnues } from '../src/bubble-shape.js';
 
@@ -656,12 +657,17 @@ describe('etatAuContactDuGroupe3D — la butée', () => {
   });
 
   /**
-   * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE BRIDE RIEN. Sans position valide de référence, la butée
-   * serait le point de départ lui-même : le lobe serait emprisonné là où il se trouve, pour une
-   * faute qu'il n'a pas commise — un Projet écrit à la main, un groupe hérité d'une version
-   * antérieure. C'est la garde qu'on oublie, et elle ne se voit que le jour où elle manque.
+   * ⚠️ UN LOBE DÉTACHÉ PEUT REVENIR, MAIS JAMAIS S'ÉLOIGNER. La première version disait « hors
+   * contact au départ, alors aucune contrainte » : une porte de sortie, qui s'est ouverte toute
+   * seule. Il suffisait de changer la FORME d'un lobe — un chemin qui n'est ni le déplacement ni le
+   * redimensionnement — pour que les contours se décollent ; à partir de là tout glissement
+   * repartait d'un état hors contact, et la Bulle était libre à jamais. Rapporté à l'usage.
+   *
+   * Les deux moitiés comptent, et c'est tout l'équilibre de la règle : le figer sur place serait la
+   * faute inverse, celle que la porte voulait éviter — un Projet écrit à la main ou hérité d'une
+   * version antérieure ne doit pas devenir inutilisable.
    */
-  test('⚠️ UN LOBE DÉJÀ DÉTACHÉ RESTE LIBRE DE SES MOUVEMENTS', () => {
+  test('⚠️ UN LOBE DÉTACHÉ PEUT SE RAPPROCHER…', () => {
     const detache = bulle({ id: 'detache', x: 800, y: 800 });
     const vise = { x: 300, y: 300 };
     assert.deepEqual(
@@ -669,55 +675,12 @@ describe('etatAuContactDuGroupe3D — la butée', () => {
       'un lobe détaché a été figé sur place : il ne peut plus jamais revenir');
   });
 
-  /**
-   * ⚠️ LA MÊME BUTÉE VAUT POUR UN RECTANGLE, ET C'EST TOUT L'INTÉRÊT D'UNE SEULE FONCTION. Le
-   * redimensionnement écrit `x`, `y`, `w` et `h` par un autre chemin que le déplacement : c'est par
-   * là qu'un lobe se décollait de son voisin alors que la contrainte paraissait posée. Une seconde
-   * fonction pour les rectangles aurait donné deux copies d'une même règle, qui ne s'accordent que
-   * le jour où on les écrit.
-   */
-  test('⚠️ UN RÉTRÉCISSEMENT QUI ROMPRAIT LE CONTACT EST RETENU LUI AUSSI', () => {
-    // On tire la poignée GAUCHE vers la droite : le bord gauche avance et la largeur fond, ce qui
-    // est le geste qui décolle vraiment le lobe. Tirer le bord DROIT vers la gauche ne le décollerait
-    // jamais — le bord gauche resterait dans le voisin —, et un test bâti là-dessus serait vert
-    // quoi que fasse la butée.
-    const depart = { x: 150, y: 0, w: 200, h: 100 };
-    const vise = { x: 400, y: 0, w: 10, h: 100 };
-    const retenu = etatAuContactDuGroupe3D(lobe, [voisin], depart, vise);
-
-    assert.ok(retenu.w < depart.w, 'le lobe n’a pas rétréci du tout : la butée est le départ');
-    assert.ok(retenu.w > vise.w, 'le lobe a rétréci jusqu’au bout : rien ne l’a retenu');
-    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, lobe, retenu), [voisin]), true,
-      'la taille retenue ne touche plus : la butée est posée dans le vide');
-  });
-
-  test('un rétrécissement qui garde le contact passe tel quel', () => {
-    const depart = { x: 150, y: 0, w: 200, h: 100 };
-    const vise = { x: 160, y: 0, w: 190, h: 100 };
-    assert.deepEqual(etatAuContactDuGroupe3D(lobe, [voisin], depart, vise), vise);
-  });
-
-  /**
-   * ⚠️ UNE CLÉ QUE LE DÉPART NE PORTE PAS EST RENDUE TELLE QUELLE. Elle ne peut pas être
-   * interpolée — il n'y a rien d'où partir —, et la laisser tomber rendrait un état AMPUTÉ que
-   * l'appelant écrirait tel quel dans la Planche : une Bulle sans largeur. Le cas n'est pas
-   * théorique, c'est ce qui arriverait à tout geste dont l'état de départ est plus pauvre que
-   * l'état visé.
-   */
-  test('⚠️ UNE CLÉ ABSENTE DU DÉPART SURVIT INTACTE, ET LA SONDE LA PREND EN COMPTE', () => {
-    // La sonde doit essayer les positions avec la taille VISÉE, pas avec l'ancienne : une Bulle de
-    // 12 px de large touche beaucoup moins loin qu'une de 200. Juger le contact sur une forme qui
-    // ne sera pas dessinée pose la butée trop loin, et l'état rendu ne touche plus — un défaut qui
-    // se voit à l'écran mais qu'aucune assertion sur les seules coordonnées ne peut attraper.
-    const large = bulle({ id: 'ancre2', x: 0, y: 0, w: 200, h: 200 });
-    const mobile = bulle({ id: 'mob2', x: 0, y: 150, w: 200, h: 200 });
-    const vise = { x: 0, y: 900, w: 12 };
-    const retenu = etatAuContactDuGroupe3D(mobile, [large], { x: 0, y: 150 }, vise);
-
-    assert.equal(retenu.w, 12, 'la largeur a disparu de l’état rendu');
-    assert.ok(retenu.y < vise.y, 'rien n’a retenu le lobe');
-    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, mobile, retenu), [large]), true,
-      'la butée a été posée en jugeant une Bulle plus large que celle qui sera dessinée');
+  test('⚠️ … MAIS UN LOBE DÉTACHÉ NE PEUT PAS S’ÉLOIGNER DAVANTAGE', () => {
+    const detache = bulle({ id: 'detache', x: 800, y: 800 });
+    const depart = { x: 800, y: 800 };
+    const retenu = etatAuContactDuGroupe3D(detache, [voisin], depart, { x: 1500, y: 1500 });
+    assert.deepEqual(retenu, depart,
+      'la porte de sortie est rouverte : un lobe décollé redevient libre pour toujours');
   });
 
   test('sans voisin, rien ne retient le lobe', () => {
@@ -727,5 +690,45 @@ describe('etatAuContactDuGroupe3D — la butée', () => {
 
   test('le nombre de pas est celui annoncé, et il est fini', () => {
     assert.ok(Number.isInteger(PAS_DE_DICHOTOMIE_CONTACT) && PAS_DE_DICHOTOMIE_CONTACT > 0);
+  });
+});
+
+describe('rapprocherDuGroupe3D — recoller un lobe qu’un changement de forme a détaché', () => {
+  const voisin = bulle({ id: 'ancre', x: 0, y: 0, w: 200, h: 200 });
+
+  test('un lobe déjà au contact ne bouge pas d’un pixel', () => {
+    const colle = bulle({ id: 'colle', x: 150, y: 0, w: 200, h: 200 });
+    assert.deepEqual(rapprocherDuGroupe3D(colle, [voisin]), { x: 150, y: 0 });
+  });
+
+  /**
+   * ⚠️ IL BOUGE LE MOINS POSSIBLE, ET IL TOUCHE VRAIMENT. Les deux moitiés comptent : une
+   * implémentation qui poserait le lobe SUR son voisin satisferait « il touche » à la perfection et
+   * détruirait la mise en page. Une qui ne bougerait presque pas satisferait « le moins possible »
+   * et laisserait l'écart que l'utilisateur a signalé.
+   */
+  test('⚠️ UN LOBE DÉTACHÉ REVIENT AU CONTACT, PAR LE PLUS PETIT DÉPLACEMENT', () => {
+    const detache = bulle({ id: 'detache', x: 500, y: 0, w: 200, h: 200 });
+    const pos = rapprocherDuGroupe3D(detache, [voisin]);
+    const recolle = Object.assign({}, detache, pos);
+
+    assert.equal(lobeAuContactDuGroupe3D(recolle, [voisin]), true, 'le lobe ne touche toujours pas');
+    assert.ok(pos.x < 500, 'le lobe ne s’est pas rapproché');
+    // Un cheveu plus loin dans le sens d'où il vient, et il ne touche plus : le rapprochement est
+    // le plus petit qui suffise, et non un saut jusqu'au voisin.
+    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, recolle, { x: pos.x + 1 }), [voisin]),
+      false, `recollé à ${pos.x}, mais un pixel plus loin touchait déjà : le lobe a sauté trop loin`);
+  });
+
+  test('sans voisin, le lobe reste où il est', () => {
+    const seul = bulle({ id: 'seul', x: 500, y: 0 });
+    assert.deepEqual(rapprocherDuGroupe3D(seul, []), { x: 500, y: 0 });
+    assert.deepEqual(rapprocherDuGroupe3D(seul, [seul]), { x: 500, y: 0 });
+  });
+
+  test('ecartAuGroupe3D : sans voisin, la distance est infinie', () => {
+    const seul = bulle({ id: 'seul', x: 500, y: 0 });
+    assert.equal(ecartAuGroupe3D(seul, []), Infinity);
+    assert.equal(ecartAuGroupe3D(seul, [seul]), Infinity, 'le lobe se compte lui-même');
   });
 });

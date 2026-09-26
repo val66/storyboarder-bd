@@ -129,6 +129,28 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
       'le second mouvement est reparti de la butée du premier, pas du début du glissement');
   });
 
+  /**
+   * ⚠️ CHANGER LA FORME EST UN TROISIÈME CHEMIN, ET IL NE PASSE PAS PAR LA SOURIS. Passer d'un
+   * rectangle à une étoile rétrécit la silhouette d'un tiers : les deux Bulles se décollent sans
+   * que personne ne les ait bougées. Pire, l'écart rouvrait la porte de sortie de la décision pure
+   * — « hors contact au départ, alors aucune contrainte » — et la Bulle redevenait libre à jamais.
+   * Rapporté à l'usage : « si je change la forme de la bulle c'est pire ».
+   */
+  test('⚠️ CHANGER LA FORME RECOLLE LE LOBE AU LIEU DE LE LIBÉRER', () => {
+    mobile.bulleShape = 'rect'; ancre.bulleShape = 'rect';
+    mobile.x = 265; mobile.y = 100;            // au contact, en rectangles
+    assert.equal(lobeAuContactDuGroupe3D(mobile, [ancre]), true, 'la fixture doit partir au contact');
+
+    S.sideDescTarget = mobile;
+    const menu = document.getElementById('sideBubbleShapeSelect');
+    menu.value = 'etoile';
+    (menu._ecouteurs.change || []).forEach(fn => fn({ target: menu }));
+
+    assert.equal(mobile.bulleShape, 'etoile', 'la forme n’a pas été appliquée');
+    assert.equal(lobeAuContactDuGroupe3D(mobile, [ancre]), true,
+      'le changement de forme a laissé un écart, et rouvert la porte de sortie');
+  });
+
   test('une Bulle SANS groupe reste libre d’aller où elle veut', () => {
     delete mobile.bulleGroupe; delete ancre.bulleGroupe;
     bouger(900, 100);

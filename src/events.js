@@ -85,7 +85,7 @@ import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
-  etatAuContactDuGroupe3D,
+  etatAuContactDuGroupe3D, rapprocherDuGroupe3D,
 } from './bubble-merge.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
@@ -6816,6 +6816,30 @@ function etatDuLobeRetenu3D(page, obj, vise){
     S.dragOrig, vise);
 }
 
+/**
+ * Ramène un lobe au contact de son groupe après un changement qui a pu l'en détacher.
+ *
+ * ⚠️ CHANGER LA FORME D'UN LOBE CHANGE SON CONTOUR, DONC SON CONTACT, ET CE CHEMIN N'EST NI LE
+ * DÉPLACEMENT NI LE REDIMENSIONNEMENT. Passer d'un rectangle à une étoile rétrécit la silhouette
+ * d'un tiers : les deux Bulles se décollent sans que personne ne les ait bougées, et l'écart reste
+ * à l'écran. Le geste ne peut pas être refusé — choisir une forme est un droit —, donc c'est la
+ * position qui cède, du plus petit déplacement qui suffise.
+ *
+ * ⚠️ ET CE N'EST PAS LE SEUL FILET. Une liste de « réglages qui touchent à la géométrie », tenue à
+ * la main dans un fichier de 45 écritures sur une Bulle, se périmerait au premier réglage ajouté —
+ * la famille de défauts que ce dépôt a nommée « énumération qui vieillit ». Le second filet est
+ * dans la décision pure : un lobe détaché peut bouger, mais jamais s'éloigner. Un réglage oublié
+ * ici laisse donc un écart visible, jamais un groupe qui se disperse.
+ */
+function recollerLeLobe3D(lobe){
+  const page = currentPageData();
+  const groupe = lobe && lobe.type === 'bulle' ? groupeDeLaBulle3D(lobe) : null;
+  if (!groupe || !page) return;
+  const voisins = page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe);
+  const pos = rapprocherDuGroupe3D(lobe, voisins);
+  lobe.x = pos.x; lobe.y = pos.y;
+}
+
 function remplacerLesLobes3D(page, lobes){
   for (const lobe of lobes) {
     const cible = page.objects.find(o => o.id === lobe.id);
@@ -7650,6 +7674,7 @@ sideBubbleShapeSelect.addEventListener('change', () => {
   // `formeDeLaBulle` valide plutôt qu'un simple passe-plat : une option ajoutée au menu sans entrée
   // dans le registre lève ici, au moment du choix, et non plus tard au dessin.
   S.sideDescTarget.bulleShape = formeDeLaBulle({ bulleShape: sideBubbleShapeSelect.value });
+  recollerLeLobe3D(S.sideDescTarget);
   drawCurrentPage();
 });
 
