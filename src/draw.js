@@ -87,6 +87,7 @@ import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
 const EPAISSEUR_CONTOUR_TEXTE = 0.16;
 import { particulesDeLaBulle } from './bubble-particle.js';
 import { motifDuGrain3D } from './bubble-grain.js';
+import { groupeDeLaBulle3D } from './bubble-merge.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
 let _canvas = null, _ctx = null;
@@ -1134,6 +1135,34 @@ export function drawContent(c, page, scale, withSelection, exportBadges){
     c.beginPath(); c.arc(S.snapGuide.x, S.snapGuide.y, 4, 0, Math.PI * 2); c.fill();
     c.restore();
   }
+  /**
+   * ⚠️ L'APERÇU DE FUSION SE POSE APRÈS LES BULLES, et c'est la seule place possible : il doit
+   * cerner deux formes déjà peintes. Il ne montre PAS le résultat — une fusion déjà dessinée avant
+   * qu'on l'ait acceptée ferait croire qu'elle est faite, et le relâchement n'aurait plus rien à
+   * confirmer. Il dit seulement « ces deux-là vont se réunir ».
+   *
+   * ⚠️ ET IL NE S'ALLUME QUE SI LA FUSION EST RÉELLEMENT POSSIBLE. Annoncer un contact entre deux
+   * Bulles dont une seule est cochée ferait attendre une confirmation qui ne viendrait jamais —
+   * c'est la question « rien ne se passe quand je les rapproche » à laquelle `fusionPossible3D`
+   * répond en nommant la condition manquante.
+   */
+  if (S.apercuFusion && S.apercuFusion.length === 2) {
+    c.save();
+    c.strokeStyle = SIGNAL_AIMANTATION;
+    c.lineWidth = 2.5;
+    c.setLineDash([6, 5]);
+    for (const lobe of S.apercuFusion) {
+      c.beginPath();
+      const n = 72;
+      for (let i = 0; i <= n; i++) {
+        const p = bubbleEdgePoint(lobe, (Math.PI * 2 * i) / n);
+        if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y);
+      }
+      c.closePath();
+      c.stroke();
+    }
+    c.restore();
+  }
   // Overlay of the "Build a Building" tool (drawn segments + segment in progress + points)
   if (S.buildTool) drawBuildToolOverlay(c, page);
   c.restore();
@@ -1346,7 +1375,22 @@ export function drawObject(c, o, styleKey, page){
       break;
     }
     case 'bulle': {
-      drawBubble(c, o);
+      /**
+       * ⚠️ UN GROUPE SE PEINT EN UNE FOIS, AU TOUR DE SON DERNIER LOBE. La répartition ordinaire —
+       * un objet, un appel — ne peut pas produire une fusion : elle peindrait chaque lobe complet,
+       * frontière comprise. Le groupe attend donc que TOUS ses lobes soient passés, puis se peint
+       * d'un bloc. Les autres tours ne dessinent rien.
+       *
+       * ⚠️ AU DERNIER ET NON AU PREMIER, parce que le groupe est UN objet : il doit se poser
+       * au-dessus de tout ce qui s'intercale entre ses lobes, pas en dessous. C'est aussi ce que dit
+       * la spécification — la Bulle la plus en avant sert de support.
+       */
+      const groupe = groupeDeLaBulle3D(o);
+      if (!groupe) { drawBubble(c, o); break; }
+      const lobes = (page && page.objects ? page.objects : [])
+        .filter(x => x && x.type === 'bulle' && groupeDeLaBulle3D(x) === groupe);
+      if (lobes.length && lobes[lobes.length - 1] !== o) break;
+      drawBubbleGroupe(c, lobes);
       break;
     }
   }

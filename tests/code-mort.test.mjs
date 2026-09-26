@@ -178,27 +178,21 @@ const EN_ATTENTE = {
   // couleur, la bordure… — qui se périme en silence au premier axe ajouté. Ce chantier en a ajouté
   // sept en quelques tâches.
   //
-  // ÉCHÉANCES : #426d pour `fusionPossible3D`, que le geste interrogera au relâchement ; #426e
-  // pour `instantaneDeFusion3D`, que le bouton « Séparer » rendra.
+  // ⚠️ ET `instantaneDeFusion3D` N'AURAIT JAMAIS DÛ Y FIGURER. Je l'y avais inscrite avec une
+  // échéance en #426e, pour le bouton « Séparer ». Le détecteur l'a refusée : `fusionner3D`
+  // l'appelle à l'intérieur du module, depuis #426d. Une exemption qui ne correspond à rien
+  // laisse croire qu'on surveille un export qui n'en a jamais eu besoin — sixième fois que ce
+  // garde-fou m'évite exactement cela.
+  //
+  // ÉCHÉANCES TENUES, ET LA DETTE DE #426a EST SOLDÉE EN ENTIER. `fusionPossible3D` a quitté cette liste, `candidateDeFusion3D` l'appelle
+  // pour décider ce que le glissement s'apprête à réunir ; `drawBubbleGroupe` aussi, la page
+  // peignant désormais les groupes d'un bloc au tour de leur dernier lobe.
   //
   // ÉCHÉANCE TENUE : `FUSIONNABLE_DEFAUT` a quitté cette liste en #426b — non pas parce que la case
   // à cocher l'appelle, mais parce que `bulleEstFusionnable3D` le fait désormais. Je l'avais
   // d'abord écrite avec un `!!(o && o.bulleFusionnable)`, qui donnait le même résultat tout en
   // laissant la constante décorative : le défaut aurait été DIT à un endroit et FAIT à un autre.
   // Le détecteur a posé la bonne question, et la réponse était de brancher, pas d'exempter.
-  fusionPossible3D: '#426d',
-  // #426c — le rendu d'un groupe existe avant que quiconque forme un groupe. C'est la seule façon
-  // de l'éprouver : l'ORDRE des passes — tous les traits, tous les fonds, tous les textes — est ce
-  // qui efface la frontière interne, et aucun compte d'appels ne le dit. Écrit après le geste, il
-  // aurait fallu fusionner à la main pour vérifier chaque correction.
-  //
-  // ⚠️ ET CETTE AVANCE A DÉJÀ PAYÉ : le test d'ordre a trouvé que le lettrage du premier lobe
-  // passait AVANT le remplissage du second, qui le recouvrait partout où les deux se chevauchent —
-  // c'est-à-dire exactement là où la fusion se voit. La troisième passe est née de cet échec.
-  //
-  // ÉCHÉANCE : #426d, où la page peindra les groupes au lieu des Bulles isolées.
-  drawBubbleGroupe: '#426d',
-  instantaneDeFusion3D: '#426e',
 
   //
   // ⚠️ ET LA LISTE A ÉTÉ VIDE ENTRE-TEMPS : #414f a payé la dernière échéance. `copierLumiere3D` est
@@ -317,11 +311,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
     //
     // Remonté à 2 en #431b1, redescendu à 0 en #431b2 — dans la même séance —, remonté à 3 en
-    // #426a, redescendu à 2 en #426b, remonté à 3 en #426c, le temps que le geste et la fiche rejoignent la
+    // #426a, redescendu à 2 en #426b, remonté à 3 en #426c, retombé à 0 en #426d, le temps que le geste et la fiche rejoignent la
     // décision. Ce chiffre se modifie À LA
     // MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne ici,
     // qu'on ne peut pas écrire sans avoir lu ce paragraphe.
-    assert.equal(Object.keys(EN_ATTENTE).length, 3,
+    assert.equal(Object.keys(EN_ATTENTE).length, 0,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

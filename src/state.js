@@ -242,6 +242,12 @@ export const S = {
   sideBubbleBgSnapshotTaken:          false,
   sideBubbleTextOutlineSnapshotTaken: false,
   sideBubbleTextOutlineWidthSnapshotTaken: false,
+  // #426d — les deux lobes que le glissement en cours s'apprête à réunir, ou null.
+  apercuFusion:      null,
+  // Les paires dont la fusion a été REFUSÉE, sous la forme « idA|idB » triée. Oubliée dès que le
+  // contact cesse : sans cet oubli, deux Bulles refusées une fois ne pourraient plus jamais
+  // fusionner. Sans la mémoire, la question reviendrait à chaque mouvement de souris.
+  fusionsRefusees:   new Set(),
   sideBubbleTextSnapshotTaken:        false,
   sideBubblePaddingSnapshotTaken:     false,
   sideBubbleFontSizeSnapshotTaken:    false,

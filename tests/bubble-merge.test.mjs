@@ -19,7 +19,7 @@ import {
   FUSIONNABLE_DEFAUT, ECHANTILLONS_CONTACT,
   bulleEstFusionnable3D, pointDansLaBulle3D, bullesEnContact3D, groupeDeLaBulle3D,
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
-  CHAMPS_PROPRES_AU_LOBE,
+  CHAMPS_PROPRES_AU_LOBE, fusionner3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
 } from '../src/bubble-merge.js';
 import { formesConnues } from '../src/bubble-shape.js';
 
@@ -295,5 +295,170 @@ describe('instantaneDeFusion3D — ce qu’un lobe garde pour redevenir lui-mêm
     const memo = instantaneDeFusion3D(bulle({ bulleColor: '#123456', bulleShape: 'etoile' }));
     assert.equal(memo.bulleColor, '#123456');
     assert.equal(memo.bulleShape, 'etoile');
+  });
+});
+
+describe('fusionner3D — ce que le groupe devient', () => {
+  const a = () => bulle({ id: 'a', bulleColor: '#AAAAAA', bulleShape: 'ovale', description: 'un' });
+  const b = () => bulle({ id: 'b', bulleColor: '#BBBBBB', bulleShape: 'etoile', description: 'deux' });
+
+  test('les deux lobes prennent l’apparence de la source et le même groupe', () => {
+    const [x, y] = fusionner3D([a(), b()], a(), 'g1');
+    assert.equal(x.bulleColor, '#AAAAAA');
+    assert.equal(y.bulleColor, '#AAAAAA', 'le second lobe n’a pas pris la couleur de la source');
+    assert.equal(y.bulleShape, 'ovale');
+    assert.equal(x.bulleGroupe, 'g1');
+    assert.equal(y.bulleGroupe, 'g1');
+  });
+
+  /**
+   * ⚠️ DEUX ZONES DE TEXTE, PAS UNE : c'est tout le sens de la fusion telle qu'elle a été demandée.
+   * Une fusion unifie l'apparence, jamais la parole.
+   */
+  test('chaque lobe garde son texte', () => {
+    const [x, y] = fusionner3D([a(), b()], a(), 'g1');
+    assert.equal(x.description, 'un');
+    assert.equal(y.description, 'deux');
+  });
+
+  test('et sa géométrie', () => {
+    const grand = bulle({ id: 'b', x: 300, y: 40, w: 90, h: 55 });
+    const [, y] = fusionner3D([a(), grand], a(), 'g1');
+    assert.deepEqual([y.x, y.y, y.w, y.h], [300, 40, 90, 55]);
+  });
+
+  /**
+   * ⚠️ LA MÉMOIRE EST PRISE AVANT L'ÉCRASEMENT, sans quoi elle enregistrerait l'apparence de la
+   * source — et « séparer » rendrait à chaque lobe le style de l'autre, ce qui ne défait rien.
+   */
+  test('chaque lobe mémorise ce qu’il était AVANT', () => {
+    const [x, y] = fusionner3D([a(), b()], a(), 'g1');
+    assert.equal(x.bulleAvantFusion.bulleColor, '#AAAAAA');
+    assert.equal(y.bulleAvantFusion.bulleColor, '#BBBBBB',
+      'la mémoire a été prise après l’écrasement : elle ne défait rien');
+    assert.equal(y.bulleAvantFusion.bulleShape, 'etoile');
+  });
+
+  /**
+   * ⚠️ ET LA PLUS ANCIENNE MÉMOIRE GAGNE. Un lobe déjà fusionné porte l'instantané de SA première
+   * fusion : le garder fait que « séparer » ramène à l'état d'origine. Autrement, une chaîne de
+   * trois fusions demanderait trois séparations pour revenir au point de départ — ce qu'aucune
+   * interface n'annonce, et que personne n'attend d'un bouton unique.
+   */
+  test('une seconde fusion ne remplace pas la mémoire de la première', () => {
+    const premiers = fusionner3D([a(), b()], a(), 'g1');
+    const seconds = fusionner3D(premiers, bulle({ id: 'c', bulleColor: '#CCCCCC' }), 'g2');
+    assert.equal(seconds[1].bulleColor, '#CCCCCC', 'la seconde fusion doit bien imposer son style');
+    assert.equal(seconds[1].bulleAvantFusion.bulleColor, '#BBBBBB',
+      'la mémoire d’origine a été écrasée : on ne peut plus revenir au point de départ');
+  });
+
+  test('la source peut être extérieure au groupe', () => {
+    const dehors = bulle({ id: 'z', bulleColor: '#0F0F0F' });
+    const [x, y] = fusionner3D([a(), b()], dehors, 'g1');
+    assert.equal(x.bulleColor, '#0F0F0F');
+    assert.equal(y.bulleColor, '#0F0F0F');
+  });
+
+  /**
+   * ⚠️ PURE : LES OBJETS D'ORIGINE NE BOUGENT PAS. Le dessin garde des références sur les Bulles ;
+   * les muter en place ferait changer la planche avant que l'utilisateur ait confirmé quoi que ce
+   * soit, et un refus n'aurait plus rien à annuler.
+   */
+  test('elle ne modifie pas les lobes qu’on lui donne', () => {
+    const original = a();
+    fusionner3D([original, b()], b(), 'g1');
+    assert.equal(original.bulleColor, '#AAAAAA');
+    assert.equal(original.bulleGroupe, undefined);
+    assert.equal(original.bulleAvantFusion, undefined);
+  });
+});
+
+describe('⚠️ UN REFUS SE MÉMORISE, PUIS S’OUBLIE', () => {
+  /**
+   * ⚠️ LES DEUX MOITIÉS SONT INDISPENSABLES, ET ELLES S'OPPOSENT. Sans la mémoire, la question
+   * reviendrait à chaque mouvement de souris — la façon la plus sûre de rendre une confirmation
+   * haïssable. Sans l'oubli, deux Bulles refusées une fois ne pourraient PLUS JAMAIS fusionner, et
+   * rien à l'écran ne l'expliquerait : la case resterait cochée des deux côtés, les contours se
+   * toucheraient, et il ne se passerait rien.
+   */
+  test('la clé d’une paire ne dépend pas de l’ordre', () => {
+    const a = bulle({ id: 'a' }), b = bulle({ id: 'b' });
+    assert.equal(clePaire3D(a, b), clePaire3D(b, a),
+      'refuser en glissant A sur B puis B sur A poserait deux fois la question');
+  });
+
+  test('une paire refusée n’est plus proposée', () => {
+    const a = bulle({ id: 'a' }), b = bulle({ id: 'b', x: 10 });
+    assert.equal(candidateDeFusion3D(a, [a, b], new Set()), b);
+    assert.equal(candidateDeFusion3D(a, [a, b], new Set([clePaire3D(a, b)])), null);
+  });
+
+  test('et le refus s’oublie dès que le contact cesse', () => {
+    const a = bulle({ id: 'a' }), colle = bulle({ id: 'b', x: 10 }), loin = bulle({ id: 'b', x: 900 });
+    const refus = new Set([clePaire3D(a, colle)]);
+    assert.deepEqual(refusPerimes3D(refus, [a, colle]), [],
+      'un refus s’oublie alors que les Bulles se touchent encore : la question reviendra aussitôt');
+    assert.deepEqual(refusPerimes3D(refus, [a, loin]), [clePaire3D(a, colle)]);
+  });
+
+  test('un refus portant sur une Bulle supprimée s’oublie aussi', () => {
+    const a = bulle({ id: 'a' }), b = bulle({ id: 'b', x: 10 });
+    assert.deepEqual(refusPerimes3D(new Set([clePaire3D(a, b)]), [a]), [clePaire3D(a, b)]);
+  });
+});
+
+describe('candidateDeFusion3D — qui l’on s’apprête à rejoindre', () => {
+  test('aucune candidate si rien ne se touche', () => {
+    const a = bulle({ id: 'a' });
+    assert.equal(candidateDeFusion3D(a, [a, bulle({ id: 'b', x: 900 })], new Set()), null);
+  });
+
+  test('ni si l’autre n’est pas fusionnable', () => {
+    const a = bulle({ id: 'a' });
+    const b = bulle({ id: 'b', x: 10, bulleFusionnable: false });
+    assert.equal(candidateDeFusion3D(a, [a, b], new Set()), null);
+  });
+
+  /**
+   * ⚠️ ON NE SE PROPOSE PAS SOI-MÊME, et l'oubli de ce cas est classique : la Bulle qu'on déplace
+   * est DANS la liste qu'on parcourt. Sans la garde, elle se fusionnerait avec elle-même au premier
+   * mouvement.
+   */
+  test('et jamais avec soi-même', () => {
+    const a = bulle({ id: 'a' });
+    assert.equal(candidateDeFusion3D(a, [a], new Set()), null);
+  });
+
+  /**
+   * ⚠️ UN OBJET QUI N'EST PAS UNE BULLE EST ÉCARTÉ PAR SON TYPE, ET NON PAR CHANCE. Sans la
+   * garde, un Personnage irait jusqu'à `fusionPossible3D`, qui le refuserait — mais parce qu'il
+   * ne porte pas la case, ce qui n'est pas la raison. La géométrie des Bulles serait pourtant
+   * interrogée au passage sur un objet qui n'en a pas.
+   *
+   * La fixture porte donc le champ, ce qu'un fichier de Projet abîmé peut très bien contenir :
+   * c'est le seul moyen de distinguer les deux refus.
+   */
+  test('les objets qui ne sont pas des Bulles sont écartés par leur TYPE', () => {
+    const a = bulle({ id: 'a' });
+    const perso = { id: 'p', type: 'perso', x: 10, y: 0, w: 200, h: 100,
+      bulleFusionnable: true };
+    assert.equal(candidateDeFusion3D(a, [a, perso], new Set()), null,
+      'un Personnage portant le champ a été proposé à la fusion');
+  });
+
+  /**
+   * ⚠️ UN MUTANT ÉQUIVALENT CONSIGNÉ : prendre la mémoire APRÈS le transport, au lieu d'avant,
+   * laisse la suite verte — et c'est juste. `transport` ne contient JAMAIS `bulleAvantFusion`,
+   * qui est propre au lobe : l'ordre des deux `Object.assign` ne peut donc rien changer, et
+   * `instantaneDeFusion3D` lit de toute façon le lobe d'origine, pas le résultat.
+   *
+   * Tordre une assertion pour distinguer deux écritures indiscernables fabriquerait un test qui
+   * protège une coïncidence de mise en page. Même verdict que M152 en #422g.
+   */
+
+  test('une liste absente ne lève pas', () => {
+    assert.equal(candidateDeFusion3D(bulle({}), null, new Set()), null);
+    assert.equal(candidateDeFusion3D(null, [], new Set()), null);
   });
 });

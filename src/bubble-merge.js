@@ -196,3 +196,88 @@ export function champsTransportesParLaFusion3D(source){
 export function instantaneDeFusion3D(lobe){
   return champsTransportesParLaFusion3D(lobe);
 }
+
+/**
+ * Fusionne des lobes en un groupe. Fonction PURE : elle rend de NOUVEAUX objets.
+ *
+ * ⚠️ LA MÉMOIRE SE PREND AVANT L'ÉCRASEMENT, ET LA PLUS ANCIENNE GAGNE. Un lobe déjà fusionné
+ * porte l'instantané de SA première fusion : le garder fait que « séparer » ramène à l'état
+ * d'origine, et non à l'apparence du groupe précédent. Autrement, une chaîne de trois fusions
+ * demanderait trois séparations pour revenir au point de départ, ce qu'aucune interface n'annonce.
+ *
+ * ⚠️ ET `source` N'EST PAS FORCÉMENT DANS `lobes` — c'est même le cas courant. La Bulle qui impose
+ * son style est celle qu'on tient en main ; elle peut appartenir à l'un des groupes qu'on réunit,
+ * ou n'être qu'un lobe parmi d'autres. On lit son apparence sans se demander d'où elle vient.
+ */
+export function fusionner3D(lobes, source, idGroupe){
+  const transport = champsTransportesParLaFusion3D(source);
+  return lobes.map(lobe => Object.assign(
+    {},
+    lobe,
+    { bulleAvantFusion: lobe.bulleAvantFusion || instantaneDeFusion3D(lobe) },
+    transport,
+    { bulleGroupe: idGroupe },
+  ));
+}
+
+/**
+ * La clé d'une paire, indépendante de l'ordre. Fonction PURE.
+ *
+ * ⚠️ TRIÉE, SANS QUOI LE REFUS NE SE RETROUVE PAS. On refuse en glissant A sur B, et la fois
+ * suivante on glisse B sur A : sans tri, ce serait deux paires différentes et la question
+ * reviendrait alors même qu'on vient d'y répondre.
+ */
+export function clePaire3D(a, b){
+  return [String(a && a.id), String(b && b.id)].sort().join('|');
+}
+
+/**
+ * La Bulle que `o` s'apprête à rejoindre, ou `null`. Fonction PURE.
+ *
+ * ⚠️ ON REND LA PREMIÈRE TROUVÉE, ET C'EST UN CHOIX. Une Bulle lâchée au milieu de trois autres
+ * pourrait en toucher plusieurs ; poser trois confirmations d'affilée serait insupportable, et en
+ * choisir une « au mieux » demanderait un critère que rien ne fonde. La première venue est
+ * arbitraire mais PRÉVISIBLE — l'ordre de la planche —, et il reste à l'utilisateur de refaire le
+ * geste pour la suivante.
+ *
+ * ⚠️ ET LES REFUS SONT ÉCARTÉS ICI, PAS AU MOMENT DE DEMANDER. Les écarter plus tard ferait
+ * clignoter l'aperçu sur une paire dont on sait déjà qu'on ne demandera rien.
+ */
+export function candidateDeFusion3D(o, objets, refusees){
+  if (!o || !Array.isArray(objets)) return null;
+  for (const autre of objets) {
+    // ⚠️ LE TYPE SE VÉRIFIE ICI, PAS AILLEURS. `fusionPossible3D` refuserait un Personnage parce
+    // qu'il ne porte pas la case — donc pour la mauvaise raison, et seulement par chance. La
+    // géométrie des Bulles serait pourtant interrogée au passage, sur un objet qui n'en a pas.
+    //
+    // ⚠️ EN REVANCHE « PAS SOI-MÊME » A QUITTÉ CETTE LIGNE. `fusionPossible3D` le dit déjà, et
+    // le redire ici faisait survivre une mutation : deux gardes pour une condition, dont aucune
+    // n'était éprouvée seule. Même verdict qu'au test des centres de #426a.
+    if (!autre || autre.type !== 'bulle') continue;
+    if (refusees && refusees.has(clePaire3D(o, autre))) continue;
+    if (fusionPossible3D(o, autre).possible) return autre;
+  }
+  return null;
+}
+
+/**
+ * Les clés de refus à OUBLIER, parce que les deux Bulles ne se touchent plus. Fonction PURE.
+ *
+ * ⚠️ SANS CET OUBLI, UN REFUS SERAIT DÉFINITIF. Deux Bulles refusées une fois ne pourraient plus
+ * jamais fusionner, et rien à l'écran n'expliquerait pourquoi — la case resterait cochée des deux
+ * côtés, les contours se toucheraient, et il ne se passerait rien. C'est le symétrique exact de la
+ * mémoire : l'une empêche la question de revenir à chaque mouvement, l'autre l'empêche de
+ * disparaître pour toujours.
+ */
+export function refusPerimes3D(refusees, objets){
+  const out = [];
+  if (!refusees) return out;
+  const parId = new Map();
+  for (const o of objets || []) if (o && o.type === 'bulle') parId.set(String(o.id), o);
+  for (const cle of refusees) {
+    const [ida, idb] = String(cle).split('|');
+    const a = parId.get(ida), b = parId.get(idb);
+    if (!a || !b || !bullesEnContact3D(a, b)) out.push(cle);
+  }
+  return out;
+}

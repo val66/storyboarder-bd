@@ -83,6 +83,9 @@ import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
+import {
+  candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, groupeDeLaBulle3D,
+} from './bubble-merge.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
@@ -3155,6 +3158,17 @@ window.addEventListener('mousemove', (e) => {
 
   if (S.dragMode === 'move') {
     const obj = page.objects.find(o => o.id === S.selectedId);
+    // ⚠️ L'APERÇU SE CALCULE À CHAQUE MOUVEMENT, ET SES REFUS S'OUBLIENT ICI. Les deux vont
+    // ensemble : sans l'oubli, une paire refusée une fois resterait muette pour toujours ; sans le
+    // recalcul, l'aperçu s'attarderait sur une paire qui ne se touche plus. L'endroit est le même
+    // parce que la question est la même — qui touche qui, maintenant.
+    if (obj && obj.type === 'bulle') {
+      for (const perime of refusPerimes3D(S.fusionsRefusees, page.objects)) {
+        S.fusionsRefusees.delete(perime);
+      }
+      const candidate = candidateDeFusion3D(obj, page.objects, S.fusionsRefusees);
+      S.apercuFusion = candidate ? [obj, candidate] : null;
+    }
     const dx = x - S.dragStart.x, dy = y - S.dragStart.y;
     if (obj.pts && obj.type !== 'tracé') {
       obj.pts = S.dragOrig.pts.map(p => ({ x: clamp(p.x + dx, 0, page.w), y: clamp(p.y + dy, 0, page.h) }));
@@ -3808,7 +3822,13 @@ window.addEventListener('mouseup', () => {
   // le curseur normal du canevas. Sans cette seconde branche, une main s'attardait sur une Planche
   // où plus rien n'était saisissable.
   if (S.dragMode === 'imageAnchor') canvas.style.cursor = S.imageMovePanelId ? 'grab' : 'crosshair';
+  // ⚠️ LA CONFIRMATION ARRIVE AU RELÂCHEMENT, JAMAIS PENDANT. Poser une question à chaque
+  // mouvement rendrait le glissement impraticable ; l'aperçu suffit à annoncer ce qui va être
+  // demandé. On lit la paire AVANT de vider l'état du geste, qui est réinitialisé juste après.
+  const fusionProposee = S.apercuFusion;
+  S.apercuFusion = null;
   S.dragMode = null; S.tempBox = null; S.snapGuide = null;
+  if (fusionProposee) demanderLaFusion3D(fusionProposee[0], fusionProposee[1]);
   // Fin du geste. Un dessin peut être encore PRÉVU par la coalescence du mousemove : le vider le
   // fait exécuter tout de suite et annule le passage programmé, qui ferait double emploi. Sans
   // ça, on dessinerait deux fois, et surtout, la suite du code lirait un canevas en retard d'une
@@ -6704,6 +6724,51 @@ canvas.addEventListener('dblclick', (e) => {
 
 // ↳ src/constants.js
 
+
+/**
+ * Propose la fusion, et l'applique si elle est acceptée.
+ *
+ * ⚠️ UN REFUS LAISSE LES BULLES OÙ ELLES SONT, et ne défait pas le déplacement. Le refus porte sur
+ * la FUSION, pas sur le geste : quelqu'un peut vouloir poser deux Bulles au contact sans les
+ * réunir, et c'est même la seule façon de le faire. La paire est mémorisée pour que la question ne
+ * revienne pas au prochain mouvement, et cette mémoire s'oublie dès que le contact cesse.
+ *
+ * ⚠️ ET C'EST LA BULLE SÉLECTIONNÉE QUI IMPOSE SON STYLE, pas celle de devant. Demandé à l'usage :
+ * la Bulle qu'on tient en main est celle qu'on regarde, donc celle dont on attend l'apparence.
+ * L'ordre d'affichage continue de décider laquelle sert de support au groupe — deux questions
+ * distinctes, que confondre ferait dépendre le résultat d'un `z` invisible.
+ *
+ * ⚠️ ELLE VIT ICI, LOIN DES ÉCOUTEURS, ET PAS PAR GOÛT DU RANGEMENT. Posée entre le `mousemove` et
+ * le `mouseup`, son `drawCurrentPage()` était compté comme un redessin DIRECT sous `mousemove` par
+ * le garde-fou de #405 — qui découpe le fichier par régions. L'attribution était approximative,
+ * l'avertissement juste : une fonction plantée au milieu d'une suite d'écouteurs se lit comme leur
+ * appartenant, pour un humain comme pour un test.
+ */
+async function demanderLaFusion3D(source, candidate){
+  const ok = await confirmAction(
+    tr('Réunir ces deux Bulles en une seule ? Leur apparence sera celle de la Bulle déplacée, et chacune gardera son texte.',
+       'Merge these two Bubbles into one? They will take the appearance of the Bubble you moved, and each keeps its own text.'),
+    tr('Fusionner les Bulles', 'Merge bubbles'));
+  if (!ok) { S.fusionsRefusees.add(clePaire3D(source, candidate)); return; }
+  const page = currentPageData();
+  if (!page) return;
+  snapshot();
+  // ⚠️ TOUS LES LOBES DES DEUX GROUPES, PAS SEULEMENT LES DEUX BULLES. Chacune peut déjà être
+  // fusionnée : ne réunir que celles qui se touchent laisserait les autres derrière, avec
+  // l'ancienne apparence et l'ancien groupe — une fusion qui coupe un groupe en deux.
+  const lobesDe = (o) => {
+    const g = groupeDeLaBulle3D(o);
+    return g ? page.objects.filter(x => x.type === 'bulle' && groupeDeLaBulle3D(x) === g) : [o];
+  };
+  const lobes = [...new Set([...lobesDe(source), ...lobesDe(candidate)])];
+  const idGroupe = newId();
+  for (const fusionne of fusionner3D(lobes, source, idGroupe)) {
+    const cible = page.objects.find(o => o.id === fusionne.id);
+    if (cible) Object.assign(cible, fusionne);
+  }
+  drawCurrentPage();
+  updateSidePanel();
+}
 
 document.getElementById('ctxCreatePanel').onclick = () => {
   hideContextMenu();
