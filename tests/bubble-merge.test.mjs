@@ -302,6 +302,35 @@ describe('fusionner3D — ce que le groupe devient', () => {
   const a = () => bulle({ id: 'a', bulleColor: '#AAAAAA', bulleShape: 'ovale', description: 'un' });
   const b = () => bulle({ id: 'b', bulleColor: '#BBBBBB', bulleShape: 'etoile', description: 'deux' });
 
+  /**
+   * ⚠️ UN RÉGLAGE QUE LA SOURCE N'A PAS S'EFFACE CHEZ L'AUTRE. Défaut rapporté à l'usage : fusionner
+   * une Bulle laissée au fond par défaut — donc SANS `bulleColor` — avec une Bulle colorée donnait
+   * un lobe blanc et un lobe coloré, alors que la confirmation venait d'annoncer « leur apparence
+   * sera celle de la Bulle déplacée ».
+   *
+   * La cause est de la famille que ce dépôt connaît le mieux : `Object.keys(source)` ne voit que
+   * les champs PRÉSENTS, et une absence ne se transporte pas toute seule. Pour la fusion, l'absence
+   * EST le réglage — c'est elle qui dit « blanc par défaut ». Le tort reste invisible tant que la
+   * source porte une valeur pour tout, c'est-à-dire la plupart du temps, ce qui explique qu'aucun
+   * des quarante-sept tests de cette suite ne l'ait vu.
+   */
+  test('⚠️ UN CHAMP ABSENT CHEZ LA SOURCE S’EFFACE CHEZ L’AUTRE LOBE', () => {
+    const nue = bulle({ id: 'nue', description: 'un' });              // aucun bulleColor : blanc par défaut
+    const peinte = bulle({ id: 'peinte', bulleColor: '#2244FF', bulleTextColor: '#FFFFFF', description: 'deux' });
+
+    const [fNue, fPeinte] = fusionner3D([nue, peinte], nue, 'g');
+    assert.equal('bulleColor' in fPeinte, false,
+      'le fond de l’autre lobe a survécu : un lobe blanc et un lobe bleu pour une seule Bulle');
+    assert.equal('bulleTextColor' in fPeinte, false,
+      'la couleur du texte de l’autre lobe a survécu');
+    assert.equal('bulleColor' in fNue, false, 'la source ne s’est pas inventé un fond');
+
+    // Et la séparation rend ce que l'effacement avait pris.
+    const [, sPeinte] = separer3D([fNue, fPeinte]);
+    assert.equal(sPeinte.bulleColor, '#2244FF', 'la séparation n’a pas rendu le fond d’avant');
+    assert.equal(sPeinte.bulleTextColor, '#FFFFFF');
+  });
+
   test('les deux lobes prennent l’apparence de la source et le même groupe', () => {
     const [x, y] = fusionner3D([a(), b()], a(), 'g1');
     assert.equal(x.bulleColor, '#AAAAAA');

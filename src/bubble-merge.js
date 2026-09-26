@@ -211,13 +211,24 @@ export function instantaneDeFusion3D(lobe){
  */
 export function fusionner3D(lobes, source, idGroupe){
   const transport = champsTransportesParLaFusion3D(source);
-  return lobes.map(lobe => Object.assign(
-    {},
-    lobe,
-    { bulleAvantFusion: lobe.bulleAvantFusion || instantaneDeFusion3D(lobe) },
-    transport,
-    { bulleGroupe: idGroupe },
-  ));
+  return lobes.map(lobe => {
+    const fusionne = Object.assign(
+      {},
+      lobe,
+      { bulleAvantFusion: lobe.bulleAvantFusion || instantaneDeFusion3D(lobe) },
+      transport,
+      { bulleGroupe: idGroupe },
+    );
+    // ⚠️ L'ABSENCE DE RÉGLAGE EST ELLE AUSSI UN RÉGLAGE, ET ELLE SE TRANSPORTE. Un champ que la
+    // source ne porte PAS ne figure pas dans `transport`, et le champ de l'autre lobe survivait
+    // alors intact : fusionner une Bulle laissée au fond par défaut avec une Bulle bleue donnait
+    // un lobe blanc et un lobe bleu, pour un geste dont tout annonçait le contraire. Le tort est
+    // invisible tant que la source a une valeur pour tout, donc invisible la plupart du temps.
+    for (const cle of Object.keys(champsTransportesParLaFusion3D(lobe))) {
+      if (!(cle in transport)) delete fusionne[cle];
+    }
+    return fusionne;
+  });
 }
 
 /**

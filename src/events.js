@@ -6762,12 +6762,28 @@ async function demanderLaFusion3D(source, candidate){
   };
   const lobes = [...new Set([...lobesDe(source), ...lobesDe(candidate)])];
   const idGroupe = newId();
-  for (const fusionne of fusionner3D(lobes, source, idGroupe)) {
-    const cible = page.objects.find(o => o.id === fusionne.id);
-    if (cible) Object.assign(cible, fusionne);
-  }
+  remplacerLesLobes3D(page, fusionner3D(lobes, source, idGroupe));
+  // `drawCurrentPage()` refait déjà la fiche (cf. draw.js, quatrième phase) : pas de
+  // `updateSidePanel()` ici, il la referait une seconde fois.
   drawCurrentPage();
-  updateSidePanel();
+}
+
+/**
+ * Écrit dans la Planche ce qu'une décision de fusion ou de séparation a rendu.
+ *
+ * ⚠️ ON REMPLACE LE CONTENU DE L'OBJET, ON NE LE FUSIONNE PAS. `Object.assign` seul laisserait en
+ * place les champs que la décision vient d'EFFACER — le `bulleGroupe` d'une séparation, un réglage
+ * que la source de la fusion ne porte pas —, et l'objet garderait un état que la fonction pure a
+ * explicitement retiré. Les deux chemins passent par ici : la même faute s'y est glissée deux fois,
+ * une fois par sens, et la première n'a été vue qu'à l'écran.
+ */
+function remplacerLesLobes3D(page, lobes){
+  for (const lobe of lobes) {
+    const cible = page.objects.find(o => o.id === lobe.id);
+    if (!cible) continue;
+    for (const cle of Object.keys(cible)) delete cible[cle];
+    Object.assign(cible, lobe);
+  }
 }
 
 /**
@@ -6786,13 +6802,7 @@ document.getElementById('sideBubbleSeparerBtn').onclick = () => {
   if (!groupe || !page) return;
   snapshot();
   const lobes = page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe);
-  for (const separe of separer3D(lobes)) {
-    const cible = page.objects.find(o => o.id === separe.id);
-    // ⚠️ ON REMPLACE LE CONTENU, ON NE FUSIONNE PAS LES OBJETS. `Object.assign` laisserait en place
-    // les champs que la séparation vient d'effacer — `bulleGroupe` en tête —, et le groupe
-    // survivrait à sa propre dissolution.
-    if (cible) { for (const cle of Object.keys(cible)) delete cible[cle]; Object.assign(cible, separe); }
-  }
+  remplacerLesLobes3D(page, separer3D(lobes));
   // ⚠️ PAS DE `updateSidePanel()` ICI : `drawCurrentPage()` le fait déjà, inconditionnellement (cf.
   // draw.js, quatrième phase). La ligne existait, et la campagne de #426e a montré qu'aucun test ne
   // pouvait la tuer — pour la bonne raison : elle refaisait la fiche une seconde fois.
