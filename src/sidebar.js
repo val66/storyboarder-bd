@@ -23,6 +23,7 @@ import { textureDeLaBulle, teinteParDefautDeLaTexture,
          couleurTexteParDefautDeLaTexture,
          couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
+import { bulleEstFusionnable3D } from './bubble-merge.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -1100,6 +1101,11 @@ function updateSidePanelImpl(){
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
     sideBubbleParticuleSelect.value = particuleDeLaBulle(sel);
+    // ⚠️ ON RELIT PAR L'ACCESSEUR, PAS PAR LE CHAMP. Une Bulle enregistrée avant #426b n'a pas de
+    // champ du tout : `sel.bulleFusionnable` vaudrait `undefined`, que la case afficherait comme
+    // décochée — juste par accident. `bulleEstFusionnable3D` le dit, lui, et continuera de le dire
+    // si le défaut change un jour.
+    document.getElementById('sideBubbleFusionnableToggle').checked = bulleEstFusionnable3D(sel);
     sideBubbleShapeSelect.value = formeDeLaBulle(sel);
     const paddingPct = Math.round((sel.bullePadding != null ? sel.bullePadding : BUBBLE_PADDING_DEFAULT) * 100);
     sideBubblePaddingInput.value = paddingPct;

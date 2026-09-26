@@ -42,6 +42,36 @@ describe('LA GARANTIE : aucune Bulle enregistrée ne fusionne toute seule', () =
     assert.equal(bulleEstFusionnable3D(null), false);
   });
 
+  /**
+   * ⚠️ TROIS MUTANTS ÉQUIVALENTS CONSIGNÉS ICI, ET ILS N'EN FONT QU'UN. Remplacer
+   * `return FUSIONNABLE_DEFAUT` par `return false`, écrire `FUSIONNABLE_DEFAUT || !!v`, ou lire
+   * `!!sel.bulleFusionnable` dans la fiche au lieu de l'accesseur : les trois laissent la suite
+   * verte, et c'est JUSTE. La constante vaut `false`, exactement ce que l'alternative codée en dur
+   * produit — aucune observation extérieure ne peut distinguer les deux.
+   *
+   * C'est la même impossibilité que `GRIS_NEUTRE` en #431b1, résolue là-bas en comparant DEUX
+   * sources. Ici il n'y en a qu'une : rien à comparer. Ajouter un paramètre de défaut à
+   * `bulleEstFusionnable3D` les tuerait, au prix d'une API que personne n'appellerait autrement —
+   * un test qui protège une contorsion écrite pour lui.
+   *
+   * L'indirection reste la bonne écriture : le jour où le défaut changerait, un seul endroit
+   * bougerait. Ce que la campagne dit, c'est qu'on ne peut pas le PROUVER tant qu'il ne change pas.
+   * Le test ci-dessous fige donc la valeur, ce qui attrape le seul changement observable.
+   */
+
+  /**
+   * ⚠️ ET C'EST LA CONSTANTE QUI GOUVERNE, pas une valeur réécrite dans l'accesseur. Sans ce test,
+   * `FUSIONNABLE_DEFAUT` pourrait valoir n'importe quoi sans qu'aucune assertion ne bronche : le
+   * défaut serait dit à deux endroits et fait à un seul. On vérifie donc que le champ ABSENT rend
+   * exactement la constante, quelle qu'elle soit.
+   */
+  test('un champ absent rend la constante elle-même', () => {
+    assert.equal(bulleEstFusionnable3D({}), FUSIONNABLE_DEFAUT);
+    // Et une valeur EXPLICITE l'emporte sur le défaut, dans les deux sens.
+    assert.equal(bulleEstFusionnable3D({ bulleFusionnable: true }), true);
+    assert.equal(bulleEstFusionnable3D({ bulleFusionnable: false }), false);
+  });
+
   test('deux Bulles superposées ne fusionnent pas si l’une ne le demande pas', () => {
     const a = bulle({ id: 'a' });
     const b = bulle({ id: 'b', x: 10 });

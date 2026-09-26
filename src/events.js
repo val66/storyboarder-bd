@@ -7207,6 +7207,20 @@ sideBubbleParticuleSelect.addEventListener('change', () => {
   drawCurrentPage();
 });
 
+/**
+ * ⚠️ LA CASE S'ÉCRIT TELLE QUELLE, SANS PASSER PAR UN REGISTRE. Ses voisines — forme, queue,
+ * texture, particule — valident leur valeur parce qu'une option ajoutée au menu sans entrée au
+ * registre doit lever ICI, au moment du choix, plutôt que plus tard au dessin. Un booléen n'a pas
+ * de registre : il n'existe aucune troisième valeur à refuser.
+ */
+const sideBubbleFusionnableToggle = document.getElementById('sideBubbleFusionnableToggle');
+sideBubbleFusionnableToggle.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  S.sideDescTarget.bulleFusionnable = sideBubbleFusionnableToggle.checked;
+  drawCurrentPage();
+});
+
 sideBubbleTextureSelect.addEventListener('change', () => {
   if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
   snapshot();

@@ -368,6 +368,13 @@ export const I18N_TRAILING = [
   ['#objectTypeSelect option[value="autel"]', "✝️ Altar", "✝️ Autel"],
   // Checkbox labels (text = last node after the <input>, inside the <label> wrapper).
   ['#sideBorderToggleWrap', 'Show border', 'Afficher la bordure'],
+  // ⚠️ LA CASE DE LA BULLE N'ÉTAIT PAS TRADUITE, seule celle de la Case l'était — deux libellés
+  // identiques, un seul déclaré. Manque antérieur à #426b, trouvé en cherchant où ranger la
+  // voisine : un `textContent` effacerait l'<input>, donc ces entrées vivent ICI et nulle part
+  // ailleurs, et j'avais d'abord posé la mienne dans I18N_TEXT.
+  ['#sideBulleBorderToggleWrap', 'Show border', 'Afficher la bordure'],
+  // #426b — la case qui AUTORISE la fusion, et qu'il faut cocher des DEUX côtés.
+  ['#sideBubbleFusionnableWrap', 'Mergeable bubble', 'Bulle fusionnable'],
   // La section Lumière (#414d, simplifiée en #414h : la case à cocher a disparu, « Jour » étant
   // exactement l'éclairage que le style pose déjà).
   ['#sideLightTitle', 'Light', 'Lumière'],

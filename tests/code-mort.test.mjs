@@ -178,10 +178,14 @@ const EN_ATTENTE = {
   // couleur, la bordure… — qui se périme en silence au premier axe ajouté. Ce chantier en a ajouté
   // sept en quelques tâches.
   //
-  // ÉCHÉANCES : #426b pour `FUSIONNABLE_DEFAUT`, que la case à cocher posera ; #426d pour
-  // `fusionPossible3D`, que le geste interrogera au relâchement ; #426e pour
-  // `instantaneDeFusion3D`, que le bouton « Séparer » rendra.
-  FUSIONNABLE_DEFAUT: '#426b',
+  // ÉCHÉANCES : #426d pour `fusionPossible3D`, que le geste interrogera au relâchement ; #426e
+  // pour `instantaneDeFusion3D`, que le bouton « Séparer » rendra.
+  //
+  // ÉCHÉANCE TENUE : `FUSIONNABLE_DEFAUT` a quitté cette liste en #426b — non pas parce que la case
+  // à cocher l'appelle, mais parce que `bulleEstFusionnable3D` le fait désormais. Je l'avais
+  // d'abord écrite avec un `!!(o && o.bulleFusionnable)`, qui donnait le même résultat tout en
+  // laissant la constante décorative : le défaut aurait été DIT à un endroit et FAIT à un autre.
+  // Le détecteur a posé la bonne question, et la réponse était de brancher, pas d'exempter.
   fusionPossible3D: '#426d',
   instantaneDeFusion3D: '#426e',
 
@@ -302,10 +306,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // ne plus se lire, ce qui est exactement l'état dont ce fichier est né.
     //
     // Remonté à 2 en #431b1, redescendu à 0 en #431b2 — dans la même séance —, remonté à 3 en
-    // #426a, le temps que le geste et la fiche rejoignent la décision. Ce chiffre se modifie À LA
+    // #426a puis redescendu à 2 en #426b, le temps que le geste et la fiche rejoignent la
+    // décision. Ce chiffre se modifie À LA
     // MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne ici,
     // qu'on ne peut pas écrire sans avoir lu ce paragraphe.
-    assert.equal(Object.keys(EN_ATTENTE).length, 3,
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

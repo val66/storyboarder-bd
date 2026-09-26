@@ -1081,6 +1081,51 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
   });
 
   /**
+   * ⚠️ LA CASE EST DÉCOCHÉE POUR TOUTE BULLE ENREGISTRÉE, et c'est ce qui protège l'existant. Des
+   * Bulles se chevauchent dans presque toutes les planches — c'est la façon ordinaire de serrer un
+   * dialogue. Cochée par défaut, elle en aurait soudé partout dès la première ouverture.
+   *
+   * ⚠️ ET LE TEST TRAVERSE L'ÉCOUTEUR, pas seulement le champ. C'est la leçon de #432 bis, où deux
+   * mutations du câblage ont survécu parce que le dessin était éprouvé, la fiche aussi, et le fil
+   * entre les deux jamais.
+   */
+  test('⚠️ « BULLE FUSIONNABLE » : décochée par défaut, et le fil va dans les deux sens', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const coche = document.getElementById('sideBubbleFusionnableToggle');
+
+    updateSidePanel();
+    assert.equal(coche.checked, false, 'une Bulle neuve ne doit pas être fusionnable');
+    assert.equal(b.bulleFusionnable, undefined, 'rien ne doit être écrit tant qu’on ne coche pas');
+
+    /**
+     * ⚠️ UN POINT D'ANNULATION AVANT DE TOUCHER AU PROJET, et aucun test ne le tenait. Retirer le
+     * `snapshot()` laissait la suite verte : la case fonctionnait, et seul Ctrl+Z aurait révélé la
+     * perte — bien plus tard, sur un geste que l'utilisateur croyait réversible.
+     *
+     * ⚠️ ET C'EST LA PILE QU'ON OBSERVE, PAS L'APPEL. Compter les appels à `snapshot` exigerait de
+     * l'espionner ; regarder `S.undoStack` grandir dit la seule chose qui compte — qu'un retour en
+     * arrière est possible.
+     */
+    const avant = S.undoStack.length;
+    coche.checked = true;
+    (coche._ecouteurs.change || []).forEach(fn => fn({ target: coche }));
+    assert.equal(b.bulleFusionnable, true, 'cocher n’écrit rien dans la Bulle');
+    assert.equal(S.undoStack.length, avant + 1,
+      'aucun point d’annulation posé : le geste sera irréversible');
+
+    coche.checked = false;
+    (coche._ecouteurs.change || []).forEach(fn => fn({ target: coche }));
+    assert.equal(b.bulleFusionnable, false, 'décocher doit écrire false, pas effacer le champ');
+
+    // Et la fiche rouverte relit l'état de la Bulle, pas celui laissé dans le DOM.
+    b.bulleFusionnable = true;
+    coche.checked = false;
+    updateSidePanel();
+    assert.equal(coche.checked, true, 'la fiche ne relit pas la Bulle');
+  });
+
+  /**
    * ⚠️ LA PASTILLE DOIT MONTRER CE QU'ON VOIT, PAS UN BLANC DE CONVENTION. Sous un parchemin dont
    * aucune couleur n'a été choisie, le champ affichait `#ffffff` alors que la Bulle est ocre :
    * l'utilisateur lisait « blanc » en regardant du beige, et le moindre passage sur le sélecteur

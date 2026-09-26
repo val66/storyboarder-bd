@@ -41,9 +41,18 @@ export const FUSIONNABLE_DEFAUT = false;
  */
 export const ECHANTILLONS_CONTACT = 96;
 
-/** Une Bulle accepte-t-elle de fusionner ? Fonction PURE. */
+/**
+ * Une Bulle accepte-t-elle de fusionner ? Fonction PURE.
+ *
+ * ⚠️ LE DÉFAUT EST RENDU PAR LA CONSTANTE, PAS RÉÉCRIT ICI. Un `!!(o && o.bulleFusionnable)` aurait
+ * donné le même résultat aujourd'hui tout en laissant `FUSIONNABLE_DEFAUT` décoratif : deux endroits
+ * diraient le défaut, un seul le ferait. Le jour où l'on voudrait changer d'avis, la constante
+ * mentirait sans qu'aucun test ne bronche — c'est la « seconde source » que ce dépôt traque.
+ */
 export function bulleEstFusionnable3D(o){
-  return !!(o && o.bulleFusionnable);
+  const v = o && o.bulleFusionnable;
+  if (v == null) return FUSIONNABLE_DEFAUT;
+  return !!v;
 }
 
 /**

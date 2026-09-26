@@ -438,6 +438,15 @@
           <label for="sideBubbleFillOpacityInput">Opacité du fond (<span id="sideBubbleFillOpacityValue">100</span>%)</label>
           <input type="range" id="sideBubbleFillOpacityInput" min="0" max="100" step="1" value="100">
         </div>
+        <!-- #426b — LA FUSION SE DEMANDE, ELLE NE S'IMPOSE PAS. Des Bulles se chevauchent dans
+             presque toutes les planches : c'est la façon ordinaire de serrer un dialogue. Cochée
+             par défaut, cette case aurait soudé des Bulles dans tous les Projets existants dès la
+             première ouverture. Elle est donc décochée, et il faut la cocher DEUX fois — une par
+             Bulle — pour qu'une fusion devienne possible.
+             La forme visuelle est celle d'« Afficher la bordure », jugée à l'écran en #422j. -->
+        <label id="sideBubbleFusionnableWrap" class="side-bulle-tail">
+          <input type="checkbox" id="sideBubbleFusionnableToggle"> Bulle fusionnable
+        </label>
       </div>
     </div>
     <div id="sideBubbleBorderSection" class="side-section" style="display:none;">
