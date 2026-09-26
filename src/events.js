@@ -85,6 +85,7 @@ import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
+  positionAuContactDuGroupe3D,
 } from './bubble-merge.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
@@ -3505,8 +3506,27 @@ window.addEventListener('mousemove', (e) => {
         }
       }
     } else {
-      obj.x = clamp(S.dragOrig.x + dx, 0, page.w - obj.w);
-      obj.y = clamp(S.dragOrig.y + dy, 0, page.h - obj.h);
+      const vise = {
+        x: clamp(S.dragOrig.x + dx, 0, page.w - obj.w),
+        y: clamp(S.dragOrig.y + dy, 0, page.h - obj.h),
+      };
+      // ⚠️ UN LOBE FUSIONNÉ BOUGE, MAIS NE QUITTE PAS SON GROUPE (#426f). Il suit la souris jusqu'à
+      // la dernière position où il touche encore un voisin, puis s'y arrête pendant que la souris
+      // continue : la butée se VOIT, au lieu d'un déplacement qui se fige sans explication. Le seul
+      // moyen de l'éloigner pour de bon est « Séparer les bulles », dans le menu de droite.
+      //
+      // ⚠️ LE DÉPART EST CELUI DU GLISSEMENT, ET NON LA POSITION COURANTE. Repartir de la position
+      // courante ferait du geste une marche à cliquet : chaque mouvement gagnerait sa petite butée
+      // sur la précédente, et le lobe finirait par s'éloigner indéfiniment, un pixel à la fois.
+      const groupe = obj.type === 'bulle' ? groupeDeLaBulle3D(obj) : null;
+      const retenue = groupe
+        ? positionAuContactDuGroupe3D(
+            obj,
+            page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe),
+            S.dragOrig, vise)
+        : vise;
+      obj.x = retenue.x;
+      obj.y = retenue.y;
     }
   } else if (S.dragMode === 'imageAnchor') {
     // Le calcul est dans draw.js, pur et testé (`ancrageApresGlissement3D`) ; ici on ne fait que

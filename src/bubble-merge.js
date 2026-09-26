@@ -322,3 +322,57 @@ export function separer3D(lobes){
     return out;
   });
 }
+
+/**
+ * Combien de fois la recherche coupe l'intervalle en deux. Chaque pas divise par deux la distance
+ * restante : à 14 pas, la butée est posée à moins d'un millième de la longueur du glissement, soit
+ * une fraction de pixel pour tout geste réel. Le coût est de 14 essais de contact par mouvement de
+ * souris, et seulement lorsque la position demandée est REFUSÉE — un glissement qui reste au
+ * contact n'en paie aucun.
+ */
+export const PAS_DE_DICHOTOMIE_CONTACT = 14;
+
+/**
+ * Ce lobe touche-t-il au moins un de ses voisins ? Fonction PURE.
+ *
+ * ⚠️ « AU MOINS UN », ET NON « LE GROUPE RESTE D'UN SEUL TENANT ». Tranché par l'utilisateur. La
+ * règle plus stricte — aucun lobe ne coupe la chaîne, même indirectement — interdirait d'écarter le
+ * lobe du MILIEU d'un chapelet de trois, ce qui est un geste légitime tant que les deux bouts se
+ * rejoignent autrement. Celle-ci autorise en échange qu'un groupe se range en deux paquets qui se
+ * touchent chacun de leur côté ; ils restent un seul groupe, et « Séparer » les défait toujours.
+ */
+export function lobeAuContactDuGroupe3D(lobe, voisins){
+  for (const voisin of voisins || []) {
+    if (voisin && voisin.id !== (lobe && lobe.id) && bullesEnContact3D(lobe, voisin)) return true;
+  }
+  return false;
+}
+
+/**
+ * La position la plus proche de celle visée qui garde le lobe au contact de son groupe. PURE.
+ *
+ * ⚠️ ELLE REND TOUJOURS UNE POSITION AU CONTACT, SANS SUPPOSER QUE LE CONTACT SOIT MONOTONE. La
+ * dichotomie tient deux bornes : `bas`, dont on a VÉRIFIÉ qu'elle touche, et `haut`, dont on a
+ * vérifié qu'elle ne touche pas. Elle ne rend jamais que `bas`. Un contour en croissant peut très
+ * bien quitter puis retrouver le contact le long d'un même glissement ; la borne rendue reste
+ * valide, elle n'est simplement pas garantie d'être LA dernière. Affirmer le contraire demanderait
+ * un balayage, pour une différence qu'aucun œil ne verrait.
+ *
+ * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE BRIDE RIEN. Le cas existe — un Projet écrit à la main, un
+ * groupe hérité d'une version antérieure — et le brider l'emprisonnerait : sans position valide de
+ * référence, la butée serait le point de départ lui-même, et le lobe ne pourrait plus jamais
+ * bouger. Mieux vaut le laisser libre que le figer pour une faute qu'il n'a pas commise.
+ */
+export function positionAuContactDuGroupe3D(lobe, voisins, depart, vise){
+  const touche = (p) => lobeAuContactDuGroupe3D(Object.assign({}, lobe, { x: p.x, y: p.y }), voisins);
+  if (touche(vise)) return { x: vise.x, y: vise.y };
+  if (!touche(depart)) return { x: vise.x, y: vise.y };
+
+  let bas = 0, haut = 1;
+  for (let i = 0; i < PAS_DE_DICHOTOMIE_CONTACT; i++) {
+    const milieu = (bas + haut) / 2;
+    const p = { x: depart.x + (vise.x - depart.x) * milieu, y: depart.y + (vise.y - depart.y) * milieu };
+    if (touche(p)) bas = milieu; else haut = milieu;
+  }
+  return { x: depart.x + (vise.x - depart.x) * bas, y: depart.y + (vise.y - depart.y) * bas };
+}

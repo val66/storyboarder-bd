@@ -20,6 +20,7 @@ import {
   bulleEstFusionnable3D, pointDansLaBulle3D, bullesEnContact3D, groupeDeLaBulle3D,
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
   CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
+  lobeAuContactDuGroupe3D, positionAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
 } from '../src/bubble-merge.js';
 import { formesConnues } from '../src/bubble-shape.js';
 
@@ -571,5 +572,109 @@ describe('separer3D — chaque lobe redevient ce qu’il était', () => {
     const apres = separer3D(fusionner3D(avant.map(o => Object.assign({}, o)), a(), 'g1'));
     avant.forEach((o, i) => assert.deepEqual(apres[i], o,
       `le lobe ${i} n’est pas revenu à son état de départ`));
+  });
+});
+
+// ── #426f — UN LOBE BOUGE, MAIS NE QUITTE PAS SON GROUPE ─────────────────────────────────────────
+
+describe('lobeAuContactDuGroupe3D — la règle de voisinage', () => {
+  test('un lobe qui touche un voisin est au contact', () => {
+    const a = bulle({ id: 'a', x: 0, y: 0 });
+    const b = bulle({ id: 'b', x: 150, y: 0 });         // chevauche a (largeur 200)
+    assert.equal(lobeAuContactDuGroupe3D(a, [b]), true);
+  });
+
+  test('un lobe posé au loin ne touche personne', () => {
+    const a = bulle({ id: 'a', x: 0, y: 0 });
+    const b = bulle({ id: 'b', x: 900, y: 900 });
+    assert.equal(lobeAuContactDuGroupe3D(a, [b]), false);
+  });
+
+  /**
+   * ⚠️ UN LOBE NE SE TIENT PAS COMPAGNIE À LUI-MÊME. Le groupe passé à la fonction contient le lobe
+   * qu'on déplace — c'est le plus commode côté application, qui filtre la Planche par identifiant
+   * de groupe et n'a pas à retirer la Bulle courante. Sans cette exclusion, TOUT lobe serait
+   * éternellement « au contact », la butée ne se déclencherait jamais, et la contrainte serait
+   * inerte tout en paraissant posée : un contrôle visible et inopérant, de la même famille que la
+   * case à cocher de #425m.
+   */
+  test('⚠️ IL S’EXCLUT LUI-MÊME DE SES PROPRES VOISINS', () => {
+    const a = bulle({ id: 'a', x: 0, y: 0 });
+    const loin = bulle({ id: 'loin', x: 900, y: 900 });
+    assert.equal(lobeAuContactDuGroupe3D(a, [a, loin]), false,
+      'le lobe se compte lui-même : la butée ne se déclenchera jamais');
+  });
+
+  test('avec trois lobes, un seul voisin suffit', () => {
+    // Tranché par l'utilisateur : « chaque lobe touche au moins un autre », et non « le groupe
+    // reste d'un seul tenant ». Ici b touche a, et ne touche pas c : c'est assez.
+    const a = bulle({ id: 'a', x: 0, y: 0 });
+    const b = bulle({ id: 'b', x: 150, y: 0 });
+    const c = bulle({ id: 'c', x: 800, y: 0 });
+    assert.equal(lobeAuContactDuGroupe3D(b, [a, c]), true);
+    // ⚠️ ET LE VOISIN QUI TOUCHE PEUT ÊTRE N'IMPORTE LEQUEL. Avec le seul ordre ci-dessus, une
+    // fonction qui ne regarderait que le PREMIER voisin passerait — la Planche les rend dans son
+    // ordre d'empilement, que l'utilisateur ne voit pas et ne contrôle pas.
+    assert.equal(lobeAuContactDuGroupe3D(b, [c, a]), true,
+      'seul le premier voisin est consulté : le contact dépend de l’ordre d’empilement');
+  });
+});
+
+describe('positionAuContactDuGroupe3D — la butée', () => {
+  const voisin = bulle({ id: 'ancre', x: 0, y: 0 });
+  const lobe = bulle({ id: 'mobile', x: 150, y: 0 });
+
+  test('une position qui garde le contact est rendue telle quelle', () => {
+    const vise = { x: 160, y: 0 };
+    assert.deepEqual(positionAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, vise), vise);
+  });
+
+  /**
+   * ⚠️ LA BUTÉE EST AU CONTACT, ET PAS SEULEMENT « QUELQUE PART ENTRE LES DEUX ». Une dichotomie
+   * bâclée — celle qui rend le MILIEU de l'intervalle, ou la borne haute — passerait un test qui se
+   * contenterait de vérifier que le lobe n'est pas allé jusqu'au bout. Les deux moitiés comptent :
+   * le lobe doit avoir AVANCÉ, et la position rendue doit RÉELLEMENT toucher.
+   */
+  test('⚠️ UNE POSITION QUI ROMPT LE CONTACT EST RAMENÉE À UNE POSITION QUI TOUCHE', () => {
+    const depart = { x: 150, y: 0 };
+    const vise = { x: 900, y: 0 };
+    const retenue = positionAuContactDuGroupe3D(lobe, [voisin], depart, vise);
+
+    assert.ok(retenue.x > depart.x, 'le lobe n’a pas avancé du tout : la butée est le départ');
+    assert.ok(retenue.x < vise.x, 'le lobe est allé jusqu’au bout : rien ne l’a retenu');
+    assert.equal(lobeAuContactDuGroupe3D(Object.assign({}, lobe, retenue), [voisin]), true,
+      'la position rendue ne touche pas : la butée est posée dans le vide');
+  });
+
+  test('⚠️ ET ELLE SERRE LA LIMITE D’ASSEZ PRÈS POUR QUE L’ŒIL NE VOIE PAS DE JEU', () => {
+    // Un cran de plus dans la même direction doit rompre le contact : sans cela, la butée pourrait
+    // s'arrêter n'importe où en deçà et le test précédent resterait vert.
+    const retenue = positionAuContactDuGroupe3D(lobe, [voisin], { x: 150, y: 0 }, { x: 900, y: 0 });
+    const unPasDePlus = Object.assign({}, lobe, { x: retenue.x + 1, y: retenue.y });
+    assert.equal(lobeAuContactDuGroupe3D(unPasDePlus, [voisin]), false,
+      `butée à ${retenue.x}, mais un pixel plus loin touche encore : le jeu est visible`);
+  });
+
+  /**
+   * ⚠️ UN DÉPART DÉJÀ HORS CONTACT NE BRIDE RIEN. Sans position valide de référence, la butée
+   * serait le point de départ lui-même : le lobe serait emprisonné là où il se trouve, pour une
+   * faute qu'il n'a pas commise — un Projet écrit à la main, un groupe hérité d'une version
+   * antérieure. C'est la garde qu'on oublie, et elle ne se voit que le jour où elle manque.
+   */
+  test('⚠️ UN LOBE DÉJÀ DÉTACHÉ RESTE LIBRE DE SES MOUVEMENTS', () => {
+    const detache = bulle({ id: 'detache', x: 800, y: 800 });
+    const vise = { x: 300, y: 300 };
+    assert.deepEqual(
+      positionAuContactDuGroupe3D(detache, [voisin], { x: 800, y: 800 }, vise), vise,
+      'un lobe détaché a été figé sur place : il ne peut plus jamais revenir');
+  });
+
+  test('sans voisin, rien ne retient le lobe', () => {
+    const vise = { x: 500, y: 500 };
+    assert.deepEqual(positionAuContactDuGroupe3D(lobe, [], { x: 150, y: 0 }, vise), vise);
+  });
+
+  test('le nombre de pas est celui annoncé, et il est fini', () => {
+    assert.ok(Number.isInteger(PAS_DE_DICHOTOMIE_CONTACT) && PAS_DE_DICHOTOMIE_CONTACT > 0);
   });
 });
