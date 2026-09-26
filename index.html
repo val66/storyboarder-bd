@@ -356,7 +356,7 @@
          Elle apparaît et disparaît AVEC la section Image : sans image, il n'y a rien à cadrer. -->
     <div id="sideCadrageSection" class="side-section" style="display:none;">
       <h2 id="sideCadrageTitle">Cadrage</h2>
-      <div class="tome-format side-image-zoom">
+      <div class="tome-format">
         <label for="sideImageZoomInput">Zoom (<span id="sideImageZoomValue">1,0</span>×)</label>
         <input type="range" id="sideImageZoomInput" min="1" max="4" step="0.1" value="1">
       </div>
@@ -447,6 +447,16 @@
         <label id="sideBubbleFusionnableWrap" class="side-bulle-tail">
           <input type="checkbox" id="sideBubbleFusionnableToggle"> Bulle fusionnable
         </label>
+        <!-- ⚠️ SOUS LA CASE QUI L'A RENDU POSSIBLE, ET SANS SECTION À LUI. Il vivait dans la
+             section Texte, dans son propre encart : un bloc de réglage pour un seul bouton, loin du
+             réglage dont il défait l'effet. Demandé à l'usage. La classe `side-action-btn` qu'il
+             portait n'existait dans AUCUNE feuille — il s'affichait donc avec le bouton nu du
+             navigateur, ce qui est la forme la plus discrète que puisse prendre une règle qui
+             manque. `.full-btn` est celle de la convention (#398) : orange pour agir. Le ROUGE y
+             veut dire SUPPRIMER, et séparer ne supprime rien. -->
+        <div id="sideBubbleSeparerWrap" style="display:none;">
+          <button id="sideBubbleSeparerBtn" class="full-btn">Séparer les bulles</button>
+        </div>
       </div>
     </div>
     <div id="sideBubbleBorderSection" class="side-section" style="display:none;">
@@ -578,9 +588,6 @@
            chaque Bulle réunie garde sa réplique. Les zones sont engendrées par la fiche, parce que
            leur nombre suit le groupe et qu'aucun HTML figé ne peut l'annoncer. -->
       <div id="sideBubbleLobesWrap" style="display:none;"></div>
-      <div id="sideBubbleSeparerWrap" class="tome-format" style="display:none;">
-        <button id="sideBubbleSeparerBtn" class="side-action-btn">Séparer les bulles</button>
-      </div>
     </div>
     <div id="helpMenuHeader" class="menu-header" style="display:none;">
       <span></span>
@@ -1146,7 +1153,7 @@
     <h3 id="descModalTitle">Personnage</h3>
 
     <div class="modal-columns">
-    <div class="modal-col modal-col-left">
+    <div class="modal-col">
     <div class="modal-section" data-section="principal">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Caractéristiques principales</span>
@@ -1226,7 +1233,7 @@
     </div>
     </div>
 
-    <div class="modal-col modal-col-right">
+    <div class="modal-col">
     <div class="modal-section" data-section="modele">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Modèle 3D</span>
@@ -1267,7 +1274,7 @@
     <h3 id="objectModalTitle">Objet</h3>
 
     <div class="modal-columns">
-    <div class="modal-col modal-col-left">
+    <div class="modal-col">
     <div class="modal-section" data-section="principal">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Caractéristiques principales</span>
@@ -1492,7 +1499,7 @@
     </div>
     </div>
 
-    <div class="modal-col modal-col-right">
+    <div class="modal-col">
     <div class="modal-section" data-section="apercu">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Aperçu 3D</span>
@@ -1603,7 +1610,7 @@
     <h3 id="roomModalTitle">🧱 Pièce</h3>
 
     <div class="modal-columns">
-    <div class="modal-col modal-col-left">
+    <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Caractéristiques principales</span>
@@ -1669,7 +1676,7 @@
     </div>
     </div>
 
-    <div class="modal-col modal-col-right">
+    <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Aperçu 3D</span>
@@ -1699,7 +1706,7 @@
     <h3 id="buildingModalTitle">🏠 Bâtiment</h3>
 
     <div class="modal-columns">
-    <div class="modal-col modal-col-left">
+    <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Caractéristiques principales</span>
@@ -1755,7 +1762,7 @@
     </div>
     </div>
 
-    <div class="modal-col modal-col-right">
+    <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
         <span class="modal-section-title">Aperçu 3D</span>

@@ -99,6 +99,64 @@ describe('Fix 70 : le panneau de l\'éditeur ne diverge pas de l\'encart de droi
   });
 });
 
+/**
+ * ⚠️ UNE CLASSE QUE PERSONNE NE DÉCLARE EST UNE RÈGLE QUI MANQUE, ET RIEN NE LE DIT. Trouvé en
+ * #426e ter : le bouton « Séparer les bulles » portait `side-action-btn`, qui n'existait dans
+ * AUCUNE feuille. Il s'affichait donc avec le bouton nu du navigateur — pas d'erreur, pas de trace
+ * en console, juste un élément qui ne ressemble pas au reste. C'est la forme la plus discrète que
+ * puisse prendre un défaut d'interface, et c'est l'utilisateur qui l'a vu, pas la suite.
+ *
+ * Le balayage a trouvé trois autres classes orphelines, sans CSS ni JS : `modal-col-left`,
+ * `modal-col-right` et `side-image-zoom`. Elles ont été retirées du HTML plutôt qu'exemptées : une
+ * classe qui ne fait rien annonce une intention qui n'existe pas.
+ *
+ * ⚠️ LA LISTE D'EXEMPTION EST TENUE À LA MAIN, DÉLIBÉRÉMENT. Une classe posée d'avance pour un
+ * chantier à venir s'y inscrit avec sa raison ; y ajouter une ligne doit coûter un geste conscient,
+ * sans quoi le garde-fou se remplirait de lui-même jusqu'à ne plus rien garder — la leçon du
+ * détecteur de code mort, transposée à la feuille de style.
+ */
+describe('#426e ter — aucune classe du HTML n\'est orpheline', () => {
+  const htmlClasses = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const EN_ATTENTE_CSS = {};
+
+  test('toute classe posée dans index.html est déclarée par la feuille ou lue par le code', () => {
+    const sansCommentaires = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const declarees = new Set([...sansCommentaires.matchAll(/\.([A-Za-z][\w-]*)/g)].map(m => m[1]));
+    const js = ['sidebar', 'events', 'draw', 'modals', 'project-tree', 'persona-editor']
+      .map(n => readFileSync(new URL(`../src/${n}.js`, import.meta.url), 'utf8')).join('\n');
+
+    const orphelines = new Set();
+    for (const m of htmlClasses.matchAll(/\bclass="([^"]+)"/g)) {
+      for (const classe of m[1].split(/\s+/)) {
+        if (!classe || declarees.has(classe) || EN_ATTENTE_CSS[classe]) continue;
+        // Une classe peut n'exister que comme POIGNÉE pour le code : elle n'est alors pas orpheline.
+        if (js.includes(classe)) continue;
+        orphelines.add(classe);
+      }
+    }
+    assert.deepEqual([...orphelines], [],
+      'classes que ni la feuille ni le code ne connaissent : ' + [...orphelines].join(', ')
+      + '. Déclarez la règle, retirez la classe, ou inscrivez-la avec sa raison dans EN_ATTENTE_CSS.');
+  });
+});
+
+describe('#426e ter — « Séparer » vit sous la case qui l\'a rendu possible', () => {
+  const page = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  test('RÉGRESSION : le bouton suit « Bulle fusionnable », dans la section Apparence', () => {
+    // Il avait sa propre section, dans le menu Texte : un bloc de réglage pour un seul bouton, loin
+    // du réglage dont il défait l'effet. Les trois repères sont pris dans l'ordre du document, ce
+    // qui est exactement la question posée — « en dessous », et « avant la section suivante ».
+    const fusionnable = page.indexOf('id="sideBubbleFusionnableWrap"');
+    const separer = page.indexOf('id="sideBubbleSeparerWrap"');
+    const sectionSuivante = page.indexOf('id="sideBubbleBorderSection"');
+    assert.ok(fusionnable > 0 && separer > 0 && sectionSuivante > 0, 'repère introuvable');
+    assert.ok(separer > fusionnable, '« Séparer » est remonté au-dessus de « Bulle fusionnable »');
+    assert.ok(separer < sectionSuivante,
+      '« Séparer » a quitté la section Apparence : il est reparti vivre ailleurs');
+  });
+});
+
 describe('#426e bis — le champ de texte d\'une Bulle est habillé par une CLASSE', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
