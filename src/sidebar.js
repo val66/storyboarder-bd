@@ -23,7 +23,7 @@ import { textureDeLaBulle, teinteParDefautDeLaTexture,
          couleurTexteParDefautDeLaTexture,
          couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
-import { bulleEstFusionnable3D } from './bubble-merge.js';
+import { bulleEstFusionnable3D, groupeDeLaBulle3D } from './bubble-merge.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
   BUBBLE_PADDING_DEFAULT, BUBBLE_FONT_DEFAULT, GROUND_TYPE_DEFS,
@@ -107,6 +107,60 @@ const sideHelpSection = document.getElementById('sideHelpSection');
 const sideCameraSection = document.getElementById('sideCameraSection');
 const sideDescTitle = document.getElementById('sideDescTitle');
 const sideDescInput = document.getElementById('sideDescInput');
+const sideBubbleLobesWrap = document.getElementById('sideBubbleLobesWrap');
+const sideBubbleSeparerWrap = document.getElementById('sideBubbleSeparerWrap');
+
+/**
+ * Une zone de saisie par LOBE quand la Bulle est fusionnée, la zone unique sinon.
+ *
+ * ⚠️ LES ZONES SONT ENGENDRÉES, PAS DÉCLARÉES DANS index.html. Leur nombre suit le groupe, qu'aucun
+ * HTML figé ne peut annoncer — et un groupe peut en compter trois, le modèle l'autorisant depuis
+ * #426a. Poser deux zones « parce que c'est le cas courant » aurait fait une fiche muette sur la
+ * troisième réplique.
+ *
+ * ⚠️ ET LA ZONE UNIQUE DISPARAÎT ALORS. La laisser visible donnerait DEUX commandes pour le texte
+ * du lobe sélectionné — celle d'en haut et la sienne dans la liste —, qui se contrediraient au
+ * premier caractère. C'est le défaut que ce chantier traque depuis #425m.
+ */
+function majZonesDeTexteDesLobes3D(sel){
+  const groupe = groupeDeLaBulle3D(sel);
+  const page = currentPageData();
+  const lobes = groupe && page
+    ? page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe) : [];
+  sideBubbleSeparerWrap.style.display = lobes.length ? 'block' : 'none';
+  if (lobes.length < 2) {
+    sideBubbleLobesWrap.style.display = 'none';
+    sideBubbleLobesWrap.textContent = '';
+    sideDescInput.style.display = 'block';
+    return;
+  }
+  sideDescInput.style.display = 'none';
+  sideBubbleLobesWrap.style.display = 'block';
+  sideBubbleLobesWrap.textContent = '';
+  lobes.forEach((lobe, i) => {
+    const etiquette = document.createElement('label');
+    etiquette.textContent = tr(`Text ${i + 1}`, `Texte ${i + 1}`);
+    const zone = document.createElement('textarea');
+    zone.value = lobe.description || '';
+    // ⚠️ L'ÉCOUTEUR TIENT SON LOBE PAR FERMETURE, ET NON PAR INDICE. Un indice se périmerait dès
+    // qu'on sépare le groupe ou qu'on supprime une Bulle : la frappe irait alors dans la mauvaise
+    // réplique, sans que rien ne le signale.
+    zone.addEventListener('input', () => {
+      // ⚠️ UN INSTANTANÉ PAR SAISIE, PAS PAR TOUCHE. Le drapeau retombe au `change`, quand la zone
+      // perd le focus : sans lui, taper une réplique de trente caractères remplirait la pile
+      // d'annulation de trente états et « annuler » reculerait d'une lettre.
+      if (!S.sideBubbleLobeSnapshotTaken) {
+        if (_snapshot) _snapshot();
+        S.sideBubbleLobeSnapshotTaken = true;
+      }
+      lobe.description = zone.value;
+      drawCurrentPage();
+    });
+    zone.addEventListener('change', () => { S.sideBubbleLobeSnapshotTaken = false; });
+    sideBubbleLobesWrap.appendChild(etiquette);
+    sideBubbleLobesWrap.appendChild(zone);
+  });
+}
 const sideBubbleFontWrap = document.getElementById('sideBubbleFontWrap');
 const sideBubbleFontSizeWrap = document.getElementById('sideBubbleFontSizeWrap');
 const descEmptyHint = document.getElementById('descEmptyHint');
@@ -1048,6 +1102,11 @@ function updateSidePanelImpl(){
     sideBubbleTextOutlineWidthValue.textContent = contourPct;
     descEmptyHint.style.display = 'none';
     sideDescInput.style.display = 'block';
+    // ⚠️ APRÈS L'AFFICHAGE DE LA ZONE UNIQUE, ET NON AVANT. Posée plus haut, cette ligne était
+    // défaite deux lignes plus bas : la zone unique revenait, et une Bulle fusionnée offrait DEUX
+    // commandes pour le même texte. Le test l'a vu ; à l'œil, il aurait fallu taper dans l'une
+    // pour voir l'autre ne pas suivre.
+    majZonesDeTexteDesLobes3D(sel);
     sideDescSection.style.display = 'block';
     sideHelpSection.style.display = 'none';
     sideDimsSection.style.display = 'none';

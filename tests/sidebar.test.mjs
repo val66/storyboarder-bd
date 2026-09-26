@@ -26,6 +26,7 @@ import { queuesConnues } from '../src/bubble-tail.js';
 import { texturesConnues, teinteParDefautDeLaTexture,
          couleurDeFondDeLaBulle3D } from '../src/bubble-texture.js';
 import { particulesConnues } from '../src/bubble-particle.js';
+import { fusionner3D } from '../src/bubble-merge.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
@@ -1067,7 +1068,11 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     curseur.value = '250';
     (curseur._ecouteurs.input || []).forEach(fn => fn({ target: curseur }));
     assert.equal(b.bulleTextOutlineScale, 2.5, 'le curseur n’écrit pas un facteur');
-    assert.equal(valeur.textContent, 250, 'le libellé ne suit pas le curseur');
+    // ⚠️ COMPARÉ EN CHAÎNE, comme un navigateur le rend. L'assertion passait auparavant contre un
+    // NOMBRE, parce que le leurre gardait `textContent` en simple propriété : elle était vraie ici
+    // et fausse en vrai. Corriger le leurre l'a révélée — un test qui passe pour la mauvaise raison
+    // ne dit rien de l'application.
+    assert.equal(String(valeur.textContent), '250', 'le libellé ne suit pas le curseur');
 
     curseur.value = '0';
     (curseur._ecouteurs.input || []).forEach(fn => fn({ target: curseur }));
@@ -1077,7 +1082,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     b.bulleTextOutlineScale = 1.75;
     updateSidePanel();
     assert.equal(Number(curseur.value), 175);
-    assert.equal(valeur.textContent, 175);
+    assert.equal(String(valeur.textContent), '175');
   });
 
   /**
@@ -1123,6 +1128,240 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     coche.checked = false;
     updateSidePanel();
     assert.equal(coche.checked, true, 'la fiche ne relit pas la Bulle');
+  });
+
+  /**
+   * ⚠️ UNE ZONE DE TEXTE PAR LOBE, ET LA ZONE UNIQUE DISPARAÎT. La laisser visible donnerait DEUX
+   * commandes pour le texte du lobe sélectionné — celle d'en haut et la sienne dans la liste —,
+   * qui se contrediraient au premier caractère. C'est le défaut que ce chantier traque depuis
+   * #425m, et il se glisse ici tout seul si on ajoute sans retirer.
+   */
+  test('⚠️ UNE BULLE FUSIONNÉE OUVRE UNE ZONE PAR LOBE, et ferme la zone unique', () => {
+    // ⚠️ UN GROUPE PROPRE À CE TEST. Les Bulles des tests précédents survivent dans la Planche :
+    // réutiliser « g1 » leur ferait rejoindre ce groupe, et les zones ne seraient plus deux.
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gZones'; b.bulleGroupe = 'gZones';
+    a.description = 'PREMIER'; b.description = 'SECOND';
+    S.selectedId = a.id;
+    updateSidePanel();
+
+    const liste = document.getElementById('sideBubbleLobesWrap');
+    const zones = liste.children.filter(n => n.tagName === 'TEXTAREA');
+    assert.equal(zones.length, 2, `${zones.length} zone(s) pour deux lobes`);
+    assert.deepEqual(zones.map(z => z.value), ['PREMIER', 'SECOND']);
+    assert.equal(document.getElementById('sideDescInput').style.display, 'none',
+      'la zone unique est restée : deux commandes pour un même texte');
+    assert.equal(document.getElementById('sideBubbleSeparerWrap').style.display, 'block');
+  });
+
+  /**
+   * ⚠️ CHAQUE ZONE ÉCRIT DANS SON LOBE, ET LE TIENT PAR FERMETURE. Un indice se périmerait dès
+   * qu'on sépare le groupe ou qu'on supprime une Bulle : la frappe irait alors dans la mauvaise
+   * réplique, sans que rien ne le signale.
+   */
+  test('⚠️ ET CHAQUE ZONE ÉCRIT DANS SON PROPRE LOBE', () => {
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gFrappe'; b.bulleGroupe = 'gFrappe';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const zones = document.getElementById('sideBubbleLobesWrap').children
+      .filter(n => n.tagName === 'TEXTAREA');
+    assert.equal(zones.length, 2, 'la fixture doit isoler exactement deux lobes');
+
+    S.sideBubbleLobeSnapshotTaken = false;
+    S.undoStack.length = 0;   // cf. le test du plafond MAX_UNDO plus bas
+    const avant = S.undoStack.length;
+    zones[1].value = 'écrit dans le second';
+    (zones[1]._ecouteurs.input || []).forEach(fn => fn({ target: zones[1] }));
+    assert.equal(b.description, 'écrit dans le second');
+    assert.equal(a.description, '', 'la frappe est allée dans la mauvaise réplique');
+    assert.equal(S.undoStack.length, avant + 1, 'aucun point d’annulation pour une saisie');
+  });
+
+  test('⚠️ LES ZONES SONT NUMÉROTÉES À PARTIR DE 1', () => {
+    // Un décalage d'un cran donnerait « Texte 0 » : l'étiquette dit alors au lecteur un rang que
+    // rien d'autre dans l'application n'emploie, et l'erreur ne se voit sur AUCUNE donnée.
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gNum'; b.bulleGroupe = 'gNum';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const etiquettes = document.getElementById('sideBubbleLobesWrap').children
+      .filter(n => n.tagName === 'LABEL').map(n => n.textContent);
+    // On lit le RANG, pas la phrase : la suite tourne en anglais, et figer « Texte » ici ferait
+    // échouer le test pour une raison qui n'a rien à voir avec la numérotation.
+    assert.deepEqual(etiquettes.map(t => String(t).trim().split(/\s+/).pop()), ['1', '2'],
+      `étiquettes obtenues : ${JSON.stringify(etiquettes)}`);
+  });
+
+  /**
+   * ⚠️ UN GROUPE RÉDUIT À UN SEUL LOBE N'OUVRE PAS DE LISTE. Cela arrive pour de vrai : supprimer
+   * l'une des deux Bulles d'un groupe laisse l'autre avec son `bulleGroupe`. Une liste d'UNE zone
+   * remplacerait alors la zone unique par sa copie — même texte, deux commandes — et le seuil qui
+   * l'interdit (« au moins deux ») est exactement ce qu'aucun autre test ne regarde : une Bulle
+   * SANS groupe donne zéro lobe, et satisfait aussi bien un seuil faux.
+   */
+  test('⚠️ UN GROUPE D’UN SEUL LOBE GARDE LA ZONE UNIQUE', () => {
+    const seule = nouvelleBulle();
+    seule.bulleGroupe = 'gOrphelin';
+    S.selectedId = seule.id;
+    updateSidePanel();
+    assert.equal(document.getElementById('sideBubbleLobesWrap').style.display, 'none');
+    assert.equal(document.getElementById('sideDescInput').style.display, 'block');
+  });
+
+  /**
+   * ⚠️ UN POINT D'ANNULATION PAR SAISIE, PAS PAR TOUCHE, ET LE DRAPEAU RETOMBE. Sans le drapeau,
+   * taper trente caractères empile trente états et « annuler » recule d'une lettre. Sans le `change`
+   * qui le fait retomber, le tort est l'inverse et pire : la PREMIÈRE saisie est la seule jamais
+   * mémorisée, et tout ce qu'on écrit ensuite devient inannulable. Les deux moitiés se tiennent, il
+   * faut donc les regarder toutes les deux dans le même test.
+   */
+  test('⚠️ LA SAISIE N’EMPILE QU’UN SEUL POINT D’ANNULATION, et le suivant en a un aussi', () => {
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gPile'; b.bulleGroupe = 'gPile';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const zone = document.getElementById('sideBubbleLobesWrap').children
+      .filter(n => n.tagName === 'TEXTAREA')[0];
+    // Le drapeau est de l'état d'application, et rien ne le remet à zéro entre deux tests : dans le
+    // navigateur c'est le `change` du `blur` qui s'en charge, et il n'y a pas de blur sous Node.
+    S.sideBubbleLobeSnapshotTaken = false;
+    // ⚠️ ON REPART D'UNE PILE VIDE. `snapshot()` plafonne à MAX_UNDO et évince par le bas : près du
+    // plafond, la longueur ne bouge plus d'un push, et le test mesurerait le plafond au lieu du
+    // nombre de points d'annulation.
+    S.undoStack.length = 0;
+    const frappe = (txt) => {
+      zone.value = txt;
+      (zone._ecouteurs.input || []).forEach(fn => fn({ target: zone }));
+    };
+
+    const avant = S.undoStack.length;
+    frappe('a'); frappe('ab'); frappe('abc');
+    assert.equal(S.undoStack.length, avant + 1,
+      'trois touches ont empilé trois états : « annuler » reculerait d’une lettre');
+
+    (zone._ecouteurs.change || []).forEach(fn => fn({ target: zone }));
+    frappe('abc, puis la suite');
+    assert.equal(S.undoStack.length, avant + 2,
+      'le drapeau ne retombe pas : la deuxième saisie est devenue inannulable');
+  });
+
+  /**
+   * ⚠️ LA FRAPPE REDESSINE. Sans cela le texte tapé n'apparaît qu'au prochain geste qui redessine
+   * pour une autre raison : l'utilisateur écrit dans le vide. On l'observe par l'état que
+   * `drawCurrentPage` pose lui-même, et non en comptant les appels.
+   */
+  test('⚠️ LA FRAPPE DANS UNE ZONE DE LOBE REDESSINE LA PLANCHE', () => {
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleGroupe = 'gPeint'; b.bulleGroupe = 'gPeint';
+    S.selectedId = a.id;
+    updateSidePanel();
+    const zone = document.getElementById('sideBubbleLobesWrap').children
+      .filter(n => n.tagName === 'TEXTAREA')[0];
+
+    S.drawCurrentPageLastRef = null;
+    zone.value = 'visible tout de suite';
+    (zone._ecouteurs.input || []).forEach(fn => fn({ target: zone }));
+    assert.ok(S.drawCurrentPageLastRef, 'la Planche n’a pas été redessinée après la frappe');
+  });
+
+  /**
+   * ⚠️ « SÉPARER » DISSOUT LE GROUPE ET REND À CHAQUE LOBE SON INSTANTANÉ, EN UN SEUL POINT
+   * D'ANNULATION. Trois torts distincts se cachent dans ces quatre lignes, et chacun laisse le
+   * bouton d'apparence fonctionnelle :
+   *   — fusionner les objets au lieu de remplacer leur contenu laisse `bulleGroupe` en place, et le
+   *     groupe survit à sa propre dissolution : les Bulles se redessinent soudées ;
+   *   — sans `snapshot()`, la séparation est un geste qu'aucun Ctrl+Z ne défait, alors que
+   *     l'utilisateur a demandé les DEUX chemins ;
+   *   — sans redessin de la fiche, les deux zones de texte restent ouvertes pour une Bulle qui n'a
+   *     plus de lobe voisin, et la commande d'en haut reste cachée : plus aucun moyen de la taper.
+   */
+  test('⚠️ SÉPARER DISSOUT LE GROUPE, REND LE STYLE D’AVANT, ET S’ANNULE', () => {
+    const a = nouvelleBulle(); const b = nouvelleBulle();
+    a.bulleColor = '#111111'; b.bulleColor = '#eeeeee';
+    a.description = 'A'; b.description = 'B';
+    // On passe par la VRAIE fusion : c'est elle qui pose `bulleAvantFusion`, et un instantané écrit
+    // à la main ne prouverait rien sur ce que la séparation rend.
+    for (const fusionne of fusionner3D([a, b], a, 'gSepare')) {
+      const cible = currentPage().objects.find(o => o.id === fusionne.id);
+      for (const cle of Object.keys(cible)) delete cible[cle];
+      Object.assign(cible, fusionne);
+    }
+    const lobeA = currentPage().objects.find(o => o.description === 'A');
+    const lobeB = currentPage().objects.find(o => o.description === 'B');
+    assert.equal(lobeB.bulleColor, '#111111', 'la fusion n’a pas imposé le style du support');
+
+    S.selectedId = lobeA.id;
+    updateSidePanel();
+    S.undoStack.length = 0;
+    document.getElementById('sideBubbleSeparerBtn').onclick();
+
+    assert.equal(lobeA.bulleGroupe, undefined, 'le groupe a survécu à sa propre dissolution');
+    assert.equal(lobeB.bulleGroupe, undefined, 'le groupe a survécu à sa propre dissolution');
+    assert.equal(lobeB.bulleColor, '#eeeeee', 'le style d’avant la fusion n’a pas été rendu');
+    assert.equal(lobeB.bulleAvantFusion, undefined, 'la mémoire de fusion est restée collée au lobe');
+    assert.equal(S.undoStack.length, 1, 'la séparation n’est pas annulable');
+    // La fiche s'est refaite : une Bulle redevenue seule retrouve sa zone unique.
+    assert.equal(document.getElementById('sideDescInput').style.display, 'block',
+      'la fiche n’a pas été refaite : deux zones pour une Bulle qui n’a plus de voisine');
+  });
+
+  test('⚠️ SÉPARER NE FAIT RIEN SUR UNE BULLE SANS GROUPE', () => {
+    // La garde ne se voit sur aucune donnée — séparer une Bulle sans groupe la laisse telle quelle —
+    // mais elle empile un point d'annulation pour un geste qui n'a rien changé : « annuler » ne
+    // ferait alors plus rien du tout, une fois, sans explication.
+    const seule = nouvelleBulle();
+    S.selectedId = seule.id;
+    updateSidePanel();
+    S.undoStack.length = 0;
+    document.getElementById('sideBubbleSeparerBtn').onclick();
+    assert.equal(S.undoStack.length, 0,
+      'un point d’annulation a été empilé pour un geste sans effet');
+  });
+
+  /**
+   * JOURNAL DE MUTATION — #426e. Dix-neuf fautes semées sur `separer3D`, sur les zones de texte par
+   * lobe et sur le bouton « Séparer » ; dix-sept rouges, deux consignées.
+   *
+   *   M1  `if (memoire)` rendu toujours vrai                                            ROUGE
+   *   M2  `delete out.bulleGroupe` retiré                                               ROUGE
+   *   M3  `delete out.bulleAvantFusion` retiré                                          ROUGE
+   *   M4  l'effacement des champs transportés retiré                                    ROUGE
+   *   M5  `(lobes || [])` réduit à `lobes`                                              ROUGE
+   *   M6  le seuil « au moins deux lobes » abaissé à un                                 ROUGE
+   *   M7  le bouton « Séparer » rendu toujours visible                                  ROUGE
+   *   M8  les zones numérotées à partir de 0                                            ROUGE
+   *   M9  le garde-fou d'instantané retiré (un point par touche)                        ROUGE
+   *   M10 les zones ouvertes vides au lieu du texte du lobe                             ROUGE
+   *   M11 `lobe` remplacé par `lobes[i]` dans la fermeture                          CONSIGNÉE
+   *   M12 le redessin après la frappe retiré                                            ROUGE
+   *   M13 la zone unique laissée visible                                                ROUGE
+   *   M14 `Object.assign` sans effacer les clés de la cible                             ROUGE
+   *   M15 `snapshot()` retiré du bouton                                                 ROUGE
+   *   M16 la garde « pas de groupe » réduite à « pas de Planche »                       ROUGE
+   *   M17 le filtre sur le groupe retiré (tous les lobes de la Planche)                 ROUGE
+   *   M18 `updateSidePanel()` retiré du bouton                              CONSIGNÉE puis SUPPRIMÉE
+   *   M19 le `change` qui fait retomber le drapeau retiré                               ROUGE
+   *
+   * M11 EST STRICTEMENT ÉQUIVALENTE, avec preuve. `lobes` est un `const` capturé par la même
+   * fermeture que `lobe`, et `lobe` VIENT de `lobes.forEach` : `lobes[i] === lobe` à tout instant, le
+   * tableau n'étant jamais réécrit. Aucun test ne peut distinguer les deux, et en contrefaire un
+   * n'apprendrait rien. Le commentaire du code dit pourquoi la fermeture est malgré tout la bonne
+   * écriture : elle survit à un `lobes` qui, lui, se périmerait.
+   *
+   * M18 N'ÉTAIT PAS ÉQUIVALENTE PAR HASARD : `drawCurrentPage()` appelle `updateSidePanel()`
+   * lui-même, sans condition. La ligne faisait donc la fiche deux fois. La campagne l'a désignée
+   * comme intuable ; elle a été retirée plutôt qu'entourée d'un test contrefait — même décision
+   * qu'en #426d pour M3, et qu'en #422g pour M152.
+   */
+
+  test('une Bulle seule garde sa zone unique, et aucun bouton Séparer', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    updateSidePanel();
+    assert.equal(document.getElementById('sideBubbleLobesWrap').style.display, 'none');
+    assert.equal(document.getElementById('sideDescInput').style.display, 'block');
+    assert.equal(document.getElementById('sideBubbleSeparerWrap').style.display, 'none');
   });
 
   /**

@@ -281,3 +281,33 @@ export function refusPerimes3D(refusees, objets){
   }
   return out;
 }
+
+/**
+ * Défait une fusion : chaque lobe redevient ce qu'il était. Fonction PURE.
+ *
+ * ⚠️ ON EFFACE TOUS LES CHAMPS GRAPHIQUES AVANT DE RENDRE LA MÉMOIRE, et non l'inverse. Un simple
+ * `Object.assign(lobe, memoire)` laisserait en place les axes réglés APRÈS la fusion : une Bulle à
+ * qui on a donné une texture une fois fusionnée la garderait en se séparant, alors que la mémoire
+ * ne la mentionne pas. « Séparer » veut dire revenir à AVANT, pas « repeindre par-dessus ».
+ *
+ * ⚠️ ET LA GÉOMÉTRIE NE BOUGE PAS. L'instantané n'en contient aucune — voir `instantaneDeFusion3D`
+ * — précisément pour que les lobes restent là où l'utilisateur les a laissés. Séparer un groupe
+ * qu'on a déplacé ne doit pas le renvoyer à sa position d'il y a dix minutes.
+ *
+ * ⚠️ UN LOBE SANS MÉMOIRE SE CONTENTE DE QUITTER SON GROUPE. Le cas existe : un fichier de Projet
+ * édité à la main, ou une version future qui poserait un groupe autrement. Effacer son apparence
+ * sans rien avoir à remettre le laisserait nu, ce qui serait pire que de ne rien défaire.
+ */
+export function separer3D(lobes){
+  return (lobes || []).map(lobe => {
+    const memoire = lobe && lobe.bulleAvantFusion;
+    const out = Object.assign({}, lobe);
+    if (memoire) {
+      for (const cle of Object.keys(champsTransportesParLaFusion3D(lobe))) delete out[cle];
+      Object.assign(out, memoire);
+    }
+    delete out.bulleGroupe;
+    delete out.bulleAvantFusion;
+    return out;
+  });
+}

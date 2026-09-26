@@ -95,7 +95,13 @@ function makeFakeElement(tagName) {
     _innerHTML: '',
     get innerHTML(){ return this._innerHTML; },
     set innerHTML(v){ this._innerHTML = String(v); enfants.length = 0; },
-    textContent: '',
+    // ⚠️ `textContent` VIDE LES ENFANTS, comme dans un navigateur. Laissé en simple propriété, il
+    // divergeait en silence : du code qui efface une liste par `textContent = ''` aurait vu ses
+    // enfants s'accumuler ICI et disparaître EN VRAI — ou l'inverse. Un leurre qui ne ment pas sur
+    // ce point précis est ce qui distingue un test d'une mise en scène.
+    _textContent: '',
+    get textContent(){ return this._textContent; },
+    set textContent(v){ this._textContent = String(v == null ? '' : v); enfants.length = 0; },
     width: 0,
     height: 0,
     clientWidth: 0,

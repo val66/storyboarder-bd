@@ -19,7 +19,7 @@ import {
   FUSIONNABLE_DEFAUT, ECHANTILLONS_CONTACT,
   bulleEstFusionnable3D, pointDansLaBulle3D, bullesEnContact3D, groupeDeLaBulle3D,
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
-  CHAMPS_PROPRES_AU_LOBE, fusionner3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
+  CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
 } from '../src/bubble-merge.js';
 import { formesConnues } from '../src/bubble-shape.js';
 
@@ -460,5 +460,87 @@ describe('candidateDeFusion3D — qui l’on s’apprête à rejoindre', () => {
   test('une liste absente ne lève pas', () => {
     assert.equal(candidateDeFusion3D(bulle({}), null, new Set()), null);
     assert.equal(candidateDeFusion3D(null, [], new Set()), null);
+  });
+});
+
+describe('separer3D — chaque lobe redevient ce qu’il était', () => {
+  const a = () => bulle({ id: 'a', bulleColor: '#AAAAAA', bulleShape: 'ovale', description: 'un' });
+  const b = () => bulle({ id: 'b', bulleColor: '#BBBBBB', bulleShape: 'etoile', description: 'deux' });
+
+  test('les réglages d’origine reviennent, et le groupe disparaît', () => {
+    const [, y] = separer3D(fusionner3D([a(), b()], a(), 'g1'));
+    assert.equal(y.bulleColor, '#BBBBBB');
+    assert.equal(y.bulleShape, 'etoile');
+    assert.equal(y.bulleGroupe, undefined);
+    assert.equal(y.bulleAvantFusion, undefined, 'la mémoire doit partir avec le groupe');
+  });
+
+  test('et le texte de chaque lobe n’a jamais bougé', () => {
+    const [x, y] = separer3D(fusionner3D([a(), b()], a(), 'g1'));
+    assert.equal(x.description, 'un');
+    assert.equal(y.description, 'deux');
+  });
+
+  /**
+   * ⚠️ LA GÉOMÉTRIE RESTE OÙ ELLE EST. Séparer un groupe qu'on a déplacé après l'avoir fusionné ne
+   * doit pas renvoyer les lobes à leur position d'il y a dix minutes. C'est pour cela que
+   * l'instantané n'enregistre aucune coordonnée.
+   */
+  test('la position d’après la fusion est conservée', () => {
+    const fusionnes = fusionner3D([a(), b()], a(), 'g1');
+    fusionnes.forEach(l => { l.x += 500; l.y += 300; });
+    const separes = separer3D(fusionnes);
+    assert.equal(separes[0].x, 500);
+    assert.equal(separes[1].y, 300);
+  });
+
+  /**
+   * ⚠️ LE TEST QUI A IMPOSÉ D'EFFACER AVANT DE RENDRE. Un simple `Object.assign(lobe, memoire)`
+   * laisserait en place les axes réglés APRÈS la fusion : une Bulle à qui on donne une texture une
+   * fois fusionnée la garderait en se séparant, alors que la mémoire n'en dit rien. « Séparer »
+   * veut dire revenir à AVANT, pas repeindre par-dessus.
+   */
+  test('un axe réglé APRÈS la fusion disparaît aussi', () => {
+    const fusionnes = fusionner3D([a(), b()], a(), 'g1');
+    fusionnes.forEach(l => { l.bulleTexture = 'lave'; });
+    const separes = separer3D(fusionnes);
+    assert.equal(separes[1].bulleTexture, undefined,
+      'la texture posée après la fusion a survécu à la séparation');
+    assert.equal(separes[1].bulleColor, '#BBBBBB');
+  });
+
+  /**
+   * ⚠️ UN LOBE SANS MÉMOIRE SE CONTENTE DE QUITTER SON GROUPE. Le cas existe — un fichier édité à
+   * la main. Effacer son apparence sans rien avoir à remettre le laisserait NU, ce qui serait pire
+   * que de ne rien défaire.
+   */
+  test('un lobe sans mémoire garde son apparence et quitte le groupe', () => {
+    const orphelin = bulle({ id: 'z', bulleGroupe: 'g9', bulleColor: '#123456' });
+    const [out] = separer3D([orphelin]);
+    assert.equal(out.bulleColor, '#123456');
+    assert.equal(out.bulleGroupe, undefined);
+  });
+
+  test('elle ne modifie pas les lobes qu’on lui donne', () => {
+    const fusionnes = fusionner3D([a(), b()], a(), 'g1');
+    separer3D(fusionnes);
+    assert.equal(fusionnes[1].bulleGroupe, 'g1');
+    assert.ok(fusionnes[1].bulleAvantFusion);
+  });
+
+  test('une liste vide ou absente ne lève pas', () => {
+    assert.deepEqual(separer3D([]), []);
+    assert.deepEqual(separer3D(null), []);
+  });
+
+  /**
+   * ⚠️ FUSIONNER PUIS SÉPARER REND L'ÉTAT DE DÉPART, aux champs de fusion près. C'est la propriété
+   * que le bouton promet, et la seule façon de la tenir sans énumérer ce qui se transporte.
+   */
+  test('aller-retour : l’apparence revient exactement', () => {
+    const avant = [a(), b()];
+    const apres = separer3D(fusionner3D(avant.map(o => Object.assign({}, o)), a(), 'g1'));
+    avant.forEach((o, i) => assert.deepEqual(apres[i], o,
+      `le lobe ${i} n’est pas revenu à son état de départ`));
   });
 });

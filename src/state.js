@@ -248,6 +248,7 @@ export const S = {
   // contact cesse : sans cet oubli, deux Bulles refusées une fois ne pourraient plus jamais
   // fusionner. Sans la mémoire, la question reviendrait à chaque mouvement de souris.
   fusionsRefusees:   new Set(),
+  sideBubbleLobeSnapshotTaken: false,
   sideBubbleTextSnapshotTaken:        false,
   sideBubblePaddingSnapshotTaken:     false,
   sideBubbleFontSizeSnapshotTaken:    false,

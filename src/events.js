@@ -84,7 +84,7 @@ import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
-  candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, groupeDeLaBulle3D,
+  candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
 } from './bubble-merge.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
 import {
@@ -6769,6 +6769,35 @@ async function demanderLaFusion3D(source, candidate){
   drawCurrentPage();
   updateSidePanel();
 }
+
+/**
+ * Défait une fusion depuis la fiche.
+ *
+ * ⚠️ « SÉPARER » ET NON « ANNULER », ET LES DEUX COEXISTENT SANS SE CONTREDIRE. Ctrl+Z défait le
+ * DERNIER geste ; ce bouton défait LA FUSION, quel que soit son âge et ce qu'on a fait depuis. Ils
+ * rendent le même résultat quand on sépare juste après avoir fusionné, ce qui est le cas courant —
+ * c'est d'ailleurs pour cela que la mémoire de fusion enregistre l'état d'AVANT et ne se met jamais
+ * à jour.
+ */
+document.getElementById('sideBubbleSeparerBtn').onclick = () => {
+  const sel = S.sideDescTarget;
+  const groupe = groupeDeLaBulle3D(sel);
+  const page = currentPageData();
+  if (!groupe || !page) return;
+  snapshot();
+  const lobes = page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe);
+  for (const separe of separer3D(lobes)) {
+    const cible = page.objects.find(o => o.id === separe.id);
+    // ⚠️ ON REMPLACE LE CONTENU, ON NE FUSIONNE PAS LES OBJETS. `Object.assign` laisserait en place
+    // les champs que la séparation vient d'effacer — `bulleGroupe` en tête —, et le groupe
+    // survivrait à sa propre dissolution.
+    if (cible) { for (const cle of Object.keys(cible)) delete cible[cle]; Object.assign(cible, separe); }
+  }
+  // ⚠️ PAS DE `updateSidePanel()` ICI : `drawCurrentPage()` le fait déjà, inconditionnellement (cf.
+  // draw.js, quatrième phase). La ligne existait, et la campagne de #426e a montré qu'aucun test ne
+  // pouvait la tuer — pour la bonne raison : elle refaisait la fiche une seconde fois.
+  drawCurrentPage();
+};
 
 document.getElementById('ctxCreatePanel').onclick = () => {
   hideContextMenu();

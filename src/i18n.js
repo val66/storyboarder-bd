@@ -151,6 +151,9 @@ export const I18N_TEXT = [
   // Description / Bulle text
   ['#sideDescTitle', 'Description', 'Description'],
   ['label[for="sideBubbleFontSelect"]', 'Font', "Police d'écriture"],
+  // #426e — le bouton qui défait une fusion. « Séparer », et non « Annuler » : Ctrl+Z annule le
+  // dernier geste, celui-ci défait une fusion quel que soit l'âge de celle-ci.
+  ['#sideBubbleSeparerBtn', 'Split the bubbles', 'Séparer les bulles'],
   // ⚠️ « COULEUR DU TEXTE » N'ÉTAIT PAS TRADUITE, et ce manque est antérieur à #432 — trouvé en
   // cherchant où poser sa voisine. Le champ restait en français en mode anglais, sans que rien ne
   // le signale : cette table n'est vérifiée par aucun inventaire de l'interface.
