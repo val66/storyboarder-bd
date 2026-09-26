@@ -30,6 +30,23 @@ import { fusionner3D } from '../src/bubble-merge.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
 
+/**
+ * Les descendants d'un nœud portant la balise demandée, à n'importe quelle profondeur.
+ *
+ * ⚠️ PAS `querySelectorAll`, QUI REND TOUJOURS `[]` DANS LE STUB. Un test qui l'emploierait ici ne
+ * mesurerait rien et serait vert par construction — la famille de piège que ce dépôt a rencontrée
+ * le plus souvent. Les zones de texte des lobes vivent désormais chacune dans son encart, donc
+ * elles ne sont plus des enfants DIRECTS de la liste.
+ */
+function descendants(racine, balise) {
+  const out = [];
+  for (const enfant of racine.children || []) {
+    if (enfant.tagName === balise) out.push(enfant);
+    out.push(...descendants(enfant, balise));
+  }
+  return out;
+}
+
 function assertClose(actual, expected, msg, eps = 1e-6) {
   assert.ok(Math.abs(actual - expected) < eps,
     `${msg} — attendu ≈ ${expected}, obtenu ${actual}`);
@@ -1146,12 +1163,27 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     updateSidePanel();
 
     const liste = document.getElementById('sideBubbleLobesWrap');
-    const zones = liste.children.filter(n => n.tagName === 'TEXTAREA');
+    const zones = descendants(liste, 'TEXTAREA');
     assert.equal(zones.length, 2, `${zones.length} zone(s) pour deux lobes`);
     assert.deepEqual(zones.map(z => z.value), ['PREMIER', 'SECOND']);
     assert.equal(document.getElementById('sideDescInput').style.display, 'none',
       'la zone unique est restée : deux commandes pour un même texte');
     assert.equal(document.getElementById('sideBubbleSeparerWrap').style.display, 'block');
+
+    // ⚠️ CHAQUE ZONE EST HABILLÉE COMME LA ZONE UNIQUE, ET DANS SON PROPRE ENCART. Sans classe, une
+    // zone engendrée n'hérite d'aucune règle : ni largeur, ni cadre, et l'étiquette coule à côté du
+    // champ. Le nom est écrit ici parce que le stub ne lit pas index.html et ne connaît donc AUCUN
+    // attribut venu du HTML ; la chaîne est refermée ailleurs — tests/style.test.mjs tient les deux
+    // autres maillons, que la feuille déclare ce nom et que le champ unique le porte.
+    const classeAttendue = 'side-desc-input';
+    for (const z of zones) {
+      assert.ok(String(z.className).split(/\s+/).includes(classeAttendue),
+        `zone sans la mise en forme du champ unique (« ${z.className} »)`);
+    }
+    for (const encart of liste.children) {
+      assert.ok(String(encart.className).split(/\s+/).includes('tome-format'),
+        'les zones ne sont pas rangées dans le bloc de réglage du panneau');
+    }
   });
 
   /**
@@ -1164,8 +1196,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     a.bulleGroupe = 'gFrappe'; b.bulleGroupe = 'gFrappe';
     S.selectedId = a.id;
     updateSidePanel();
-    const zones = document.getElementById('sideBubbleLobesWrap').children
-      .filter(n => n.tagName === 'TEXTAREA');
+    const zones = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA');
     assert.equal(zones.length, 2, 'la fixture doit isoler exactement deux lobes');
 
     S.sideBubbleLobeSnapshotTaken = false;
@@ -1185,8 +1216,8 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     a.bulleGroupe = 'gNum'; b.bulleGroupe = 'gNum';
     S.selectedId = a.id;
     updateSidePanel();
-    const etiquettes = document.getElementById('sideBubbleLobesWrap').children
-      .filter(n => n.tagName === 'LABEL').map(n => n.textContent);
+    const etiquettes = descendants(document.getElementById('sideBubbleLobesWrap'), 'LABEL')
+      .map(n => n.textContent);
     // On lit le RANG, pas la phrase : la suite tourne en anglais, et figer « Texte » ici ferait
     // échouer le test pour une raison qui n'a rien à voir avec la numérotation.
     assert.deepEqual(etiquettes.map(t => String(t).trim().split(/\s+/).pop()), ['1', '2'],
@@ -1221,8 +1252,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     a.bulleGroupe = 'gPile'; b.bulleGroupe = 'gPile';
     S.selectedId = a.id;
     updateSidePanel();
-    const zone = document.getElementById('sideBubbleLobesWrap').children
-      .filter(n => n.tagName === 'TEXTAREA')[0];
+    const zone = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA')[0];
     // Le drapeau est de l'état d'application, et rien ne le remet à zéro entre deux tests : dans le
     // navigateur c'est le `change` du `blur` qui s'en charge, et il n'y a pas de blur sous Node.
     S.sideBubbleLobeSnapshotTaken = false;
@@ -1256,8 +1286,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     a.bulleGroupe = 'gPeint'; b.bulleGroupe = 'gPeint';
     S.selectedId = a.id;
     updateSidePanel();
-    const zone = document.getElementById('sideBubbleLobesWrap').children
-      .filter(n => n.tagName === 'TEXTAREA')[0];
+    const zone = descendants(document.getElementById('sideBubbleLobesWrap'), 'TEXTAREA')[0];
 
     S.drawCurrentPageLastRef = null;
     zone.value = 'visible tout de suite';

@@ -99,6 +99,30 @@ describe('Fix 70 : le panneau de l\'éditeur ne diverge pas de l\'encart de droi
   });
 });
 
+describe('#426e bis — le champ de texte d\'une Bulle est habillé par une CLASSE', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  /**
+   * ⚠️ UNE RÈGLE PAR IDENTIFIANT NE PEUT PAS SERVIR UN ÉLÉMENT CRÉÉ EN JAVASCRIPT. Signalé à
+   * l'usage : les zones de texte des lobes d'une Bulle fusionnée n'héritaient ni de largeur, ni
+   * d'encadré, et les étiquettes coulaient à côté des champs. La cause tient en un caractère :
+   * `#sideDescInput` au lieu d'une classe. Rien dans une feuille de style ne signale ce tort, et
+   * rien ne l'aurait signalé la prochaine fois.
+   */
+  test('la règle existe et vise une classe, pas l\'identifiant du champ unique', () => {
+    assert.ok(declarationsOuNull('.side-desc-input'),
+      '.side-desc-input introuvable : une zone engendrée n’hérite d’aucune mise en forme');
+    assert.equal(declarationsOuNull('#sideDescInput'), null,
+      'la règle est revenue sur l’identifiant : les zones des lobes redeviendront nues');
+  });
+
+  test('RÉGRESSION : le champ unique du HTML porte bien cette classe', () => {
+    const balise = (/<textarea[^>]*id="sideDescInput"[^>]*>/.exec(html) || [])[0] || '';
+    assert.match(balise, /class="[^"]*\bside-desc-input\b/,
+      'la classe a quitté le champ unique : la règle ne s’applique plus à personne');
+  });
+});
+
 describe('Fix 72 (ESSAI) : le champ piloté se distingue des autres champs de l\'articulation', () => {
   const active = declarations('.joint-slider-row.active');
   const driven = declarationsOuNull('.joint-slider-row.active.driven');

@@ -138,9 +138,16 @@ function majZonesDeTexteDesLobes3D(sel){
   sideBubbleLobesWrap.style.display = 'block';
   sideBubbleLobesWrap.textContent = '';
   lobes.forEach((lobe, i) => {
+    // ⚠️ UN ENCART PAR LOBE, ET C'EST CELUI DE TOUT LE PANNEAU. `.tome-format` est le bloc de
+    // réglage du menu de droite : le reprendre donne à ces zones le même cadre, le même fond et le
+    // même rythme que les sections au-dessus, sans une sixième déclinaison des mêmes valeurs. Son
+    // `label` est déjà composé en capitales fines par la feuille, comme « TAILLE DU CONTOUR ».
+    const encart = document.createElement('div');
+    encart.className = 'tome-format side-lobe';
     const etiquette = document.createElement('label');
     etiquette.textContent = tr(`Text ${i + 1}`, `Texte ${i + 1}`);
     const zone = document.createElement('textarea');
+    zone.className = 'side-desc-input';
     zone.value = lobe.description || '';
     // ⚠️ L'ÉCOUTEUR TIENT SON LOBE PAR FERMETURE, ET NON PAR INDICE. Un indice se périmerait dès
     // qu'on sépare le groupe ou qu'on supprime une Bulle : la frappe irait alors dans la mauvaise
@@ -157,8 +164,9 @@ function majZonesDeTexteDesLobes3D(sel){
       drawCurrentPage();
     });
     zone.addEventListener('change', () => { S.sideBubbleLobeSnapshotTaken = false; });
-    sideBubbleLobesWrap.appendChild(etiquette);
-    sideBubbleLobesWrap.appendChild(zone);
+    encart.appendChild(etiquette);
+    encart.appendChild(zone);
+    sideBubbleLobesWrap.appendChild(encart);
   });
 }
 const sideBubbleFontWrap = document.getElementById('sideBubbleFontWrap');

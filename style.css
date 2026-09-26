@@ -762,7 +762,13 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
   border-left:2px solid var(--line); margin-top:2px;
 }
 .batiment-group-members.collapsed{ display:none; }
-#sideDescInput{
+/* ⚠️ UNE CLASSE, PAS UN IDENTIFIANT (#426e bis). Cette règle ne visait que `#sideDescInput`, si
+   bien que les zones ENGENDRÉES pour les lobes d'une Bulle fusionnée n'héritaient de rien : ni
+   largeur, ni encadré, ni retour à la ligne — les étiquettes coulaient à côté des champs. Signalé
+   à l'usage, « très moche », et c'est exact. Une règle par identifiant ne peut pas servir un
+   élément créé en JavaScript ; une classe, si. Même leçon que les quatre `margin-left:0` un peu
+   plus haut : la règle se pose une fois, à l'endroit qui vaut pour tous ses usages. */
+.side-desc-input{
   width:100%; min-height:220px; resize:vertical; font-family:'Inter',sans-serif; font-size:13px;
   border: 1px solid var(--bord-actif); border-radius:8px; padding:9px; background:var(--white); color:var(--ink);
   box-sizing:border-box;
@@ -796,7 +802,12 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 /* Le champ de description gardait `outline:none`, c'est-à-dire la suppression pure et simple de
    l'indicateur de focus : personne au clavier ne savait plus où il se trouvait. Il reçoit désormais
    le traitement commun, plus le changement de bordure qu'il avait déjà. */
-#sideDescInput:focus-visible{ border-color:var(--focus); }
+.side-desc-input:focus-visible{ border-color:var(--focus); }
+/* Les zones d'une Bulle fusionnée sont plus courtes : à 220 px chacune, deux lobes chassent le
+   bouton « Séparer » hors de l'écran et obligent à faire défiler pour un geste qui répond à ce
+   qu'on vient de lire. La hauteur reste tirable, comme celle de la zone unique. */
+.side-lobe .side-desc-input{ min-height:96px; }
+.side-lobe{ margin-bottom:8px; }
 .side-bulle-tail{
   display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
   margin-bottom:8px; cursor:pointer; user-select:none;
