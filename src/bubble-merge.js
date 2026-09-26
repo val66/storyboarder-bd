@@ -342,59 +342,104 @@ export const PAS_DE_DICHOTOMIE_CONTACT = 14;
  * touchent chacun de leur côté ; ils restent un seul groupe, et « Séparer » les défait toujours.
  */
 /**
- * De combien de pixels les deux Bulles s'interpénètrent, le long de la ligne de leurs centres.
- * Fonction PURE. Négatif si elles sont séparées : c'est alors l'écart.
+ * Les points où les deux contours SE CROISENT, et la largeur de l'étranglement qu'ils forment.
+ * Fonction PURE. Rend `0` si les contours ne se croisent pas, `Infinity` si l'un est entièrement
+ * dans l'autre.
  *
- * ⚠️ UNE PROFONDEUR EN PIXELS, ET NON UNE PART DU PÉRIMÈTRE. La première version comptait les
- * points du contour de l'un tombant dans l'autre — une mesure que la DENSITÉ D'ÉCHANTILLONNAGE
- * gouverne autant que la géométrie. Les points d'une ellipse sont serrés au bout du grand axe et
- * clairsemés sur le flanc : le même seuil de 9 % valait alors, mesuré,
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * DEUX INSTRUMENTS FAUX AVANT CELUI-CI, ET LA MÊME ERREUR LES DEUX FOIS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- *     ovale, contact horizontal → 4,75 px        rectangle → 0 px
- *     ovale, contact VERTICAL   → 0 px           étoile    → 42 px
+ * Le premier comptait les points du contour de l'un tombant dans l'autre. Une mesure que la
+ * DENSITÉ D'ÉCHANTILLONNAGE gouverne autant que la géométrie : les points d'une ellipse sont
+ * serrés au bout du grand axe et clairsemés sur le flanc, si bien qu'un même seuil valait 4,75 px
+ * de chevauchement horizontalement, ZÉRO verticalement, et 42 px pour une étoile.
  *
- * Deux Bulles empilées se déclaraient soudées sans se recouvrir DU TOUT, et une étoile exigeait un
- * enfoncement de 42 px. C'est ce « parfois » que l'utilisateur voyait, et aucun réglage du seuil ne
- * pouvait le corriger : l'instrument mesurait la mauvaise chose. Celui-ci ne dépend ni de la forme
- * ni de la direction, et il coûte DEUX interrogations de contour au lieu de cent quatre-vingt-douze.
+ * Le second — le mien aussi — interrogeait les deux contours le long de la DROITE DES CENTRES, et
+ * additionnait les deux rayons moins l'écart. Une seule mesure, sur un seul axe : juste tant que
+ * les Bulles sont posées côte à côte, aveugle dès qu'elles sont décalées en diagonale ou que la
+ * forme présente un creux dans cette direction précise. J'avais remplacé un instrument biaisé par
+ * un instrument borgne, et l'utilisateur a vu que c'était pire.
  *
- * ⚠️ ELLE N'EST EXACTE QUE PARCE QUE LES CONTOURS SONT ÉTOILÉS autour de leur centre — contrat du
- * registre, figé par tests/bubble-shape.test.mjs. Interroger le contour dans UNE direction suffit
- * alors à connaître son étendue dans cette direction.
+ * Les deux fois, j'ai mesuré une grandeur COMMODE au lieu de celle qui se voit. Ce qui se voit,
+ * c'est que les deux contours SE COUPENT en deux points et que la distance entre ces deux points
+ * est la largeur de la taille. C'est cela, et rien d'autre, qu'il fallait calculer.
+ *
+ * ⚠️ LES CROISEMENTS SE TROUVENT PAR CHANGEMENT DE CÔTÉ, PAS PAR RÉSOLUTION D'ÉQUATION. On parcourt
+ * le contour de A et on note où l'on entre dans B et où l'on en sort. Chaque changement est encadré
+ * par deux échantillons voisins, et une dichotomie sur l'angle le resserre jusqu'au sous-pixel.
+ * C'est exact pour toute forme du registre, sans une ligne par forme — et le prix est de N tests
+ * d'appartenance, que l'ancienne version payait déjà.
  */
-export function profondeurDeSoudure3D(a, b){
-  if (!a || !b) return -Infinity;
-  const ca = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
-  const cb = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-  const dx = cb.x - ca.x, dy = cb.y - ca.y;
-  const d = Math.hypot(dx, dy);
-  if (d === 0) return Infinity;            // centres confondus : recouvrement total
-  // ⚠️ L'ANGLE OPPOSÉ EST RAMENÉ DANS LE TOUR, ET CE N'EST PAS DE LA COQUETTERIE. `atan2` rend un
-  // angle dans ]-π, π] ; lui ajouter π peut donner 2π, et toutes les formes du registre ne traitent
-  // pas 2π comme 0 — l'étoile, entre autres, y place une pointe au lieu d'un creux. Sans ce
-  // repliement, la profondeur CHANGEAIT SELON L'ORDRE DES ARGUMENTS sur les formes dissymétriques,
-  // et deux lobes se soudaient ou non selon lequel des deux on déplaçait. Trouvé par le test qui
-  // compare les deux sens, écrit pour tuer une autre mutation.
-  const dansLeTour = (t) => { const u = t % (Math.PI * 2); return u < 0 ? u + Math.PI * 2 : u; };
-  const versB = dansLeTour(Math.atan2(dy, dx));
-  const bordA = pointDuContourBulle(a, versB);
-  const bordB = pointDuContourBulle(b, dansLeTour(versB + Math.PI));
-  const rA = Math.hypot(bordA.x - ca.x, bordA.y - ca.y);
-  const rB = Math.hypot(bordB.x - cb.x, bordB.y - cb.y);
-  return rA + rB - d;
+export function largeurDeSoudure3D(a, b, echantillons = ECHANTILLONS_CONTACT){
+  if (!a || !b) return 0;
+  const pas = (Math.PI * 2) / echantillons;
+
+  // ⚠️ ON PARCOURT LES DEUX CONTOURS, PAS SEULEMENT LE PREMIER. Les pointes d'une couronne d'épines
+  // sont plus fines que le pas d'échantillonnage : marcher le contour de A y rate des croisements
+  // que marcher celui de B trouve, et réciproquement. Avec un seul parcours, la même paire de
+  // Bulles mesurait 59,8 px dans un sens et 43,3 px dans l'autre — donc se soudait ou non selon
+  // lequel des deux lobes on déplaçait. Réunir les deux parcours rend la mesure symétrique par
+  // construction, et non par espoir.
+  const croisementsDe = (un, autre) => {
+    const surUn = (t) => pointDuContourBulle(un, t);
+    const dedans = [];
+    for (let i = 0; i < echantillons; i++) {
+      const p = surUn(pas * i);
+      dedans.push(pointDansLaBulle3D(autre, p.x, p.y));
+    }
+    if (dedans.every(v => !v)) return { points: [], tousDedans: false };
+    if (dedans.every(v => v)) return { points: [], tousDedans: true };
+
+    // ⚠️ LA DICHOTOMIE RESTE ENTRE LES DEUX ÉCHANTILLONS VOISINS, jamais au-delà. Une première
+    // version ramenait les bornes dans [0, 2π[ puis ajoutait un tour quand elles semblaient
+    // inversées : pour une SORTIE, cela faisait parcourir tout le reste du cercle au lieu du petit
+    // intervalle, et les deux croisements convergeaient vers le même point — la taille mesurée
+    // valait 0,1 px pour deux Bulles enfoncées de 60 px l'une dans l'autre.
+    const points = [];
+    for (let i = 0; i < echantillons; i++) {
+      if (dedans[i] === dedans[(i + 1) % echantillons]) continue;
+      let bas = pas * i, haut = pas * (i + 1);
+      const dedansEnBas = dedans[i];
+      for (let k = 0; k < 12; k++) {
+        const m = (bas + haut) / 2;
+        const p = surUn(m % (Math.PI * 2));
+        if (pointDansLaBulle3D(autre, p.x, p.y) === dedansEnBas) bas = m; else haut = m;
+      }
+      points.push(surUn(((bas + haut) / 2) % (Math.PI * 2)));
+    }
+    return { points, tousDedans: false };
+  };
+
+  const deA = croisementsDe(a, b);
+  const deB = croisementsDe(b, a);
+  if (deA.tousDedans || deB.tousDedans) return Infinity;
+  const points = deA.points.concat(deB.points);
+
+  // ⚠️ ON GARDE LA PLUS GRANDE TAILLE, PAS LA PREMIÈRE. Deux contours dentelés peuvent se couper en
+  // quatre points ou plus — deux pointes d'étoile qui se croisent. C'est la plus large des
+  // jonctions qui décide si l'ensemble se lit comme une seule Bulle.
+  let large = 0;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      large = Math.max(large, Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y));
+    }
+  }
+  return large;
 }
 
 /**
- * La part de la plus petite dimension du plus petit lobe que la soudure doit atteindre.
+ * La largeur d'étranglement exigée, en pixels : une part de la plus petite dimension du plus petit
+ * lobe.
  *
- * ⚠️ UNE PROPORTION, ET NON UNE DISTANCE FIXE. Sur la Bulle par défaut (170 × 100) cela vaut 8 px :
- * de quoi avaler les deux traits de 2 px que l'étranglement doit faire disparaître, et assez pour
- * que la taille se lise. Une distance fixe donnerait une soudure ridicule sur une grande Bulle et
- * dévorerait une petite.
+ * ⚠️ UNE PROPORTION, ET NON UNE DISTANCE FIXE. Sur la Bulle par défaut (170 × 100) cela vaut 30 px,
+ * soit une taille franche — deux contours tangents se croisent sur 0 px, et il en faut nettement
+ * plus pour que l'œil lise une Bulle unique plutôt que deux contours accolés. Une distance fixe
+ * donnerait un étranglement ridicule sur une grande Bulle et dévorerait une petite.
  */
-export const PART_SOUDURE_MINIMALE = 0.08;
+export const PART_SOUDURE_MINIMALE = 0.30;
 
-/** La profondeur de soudure exigée entre ces deux lobes, en pixels. Fonction PURE. */
+/** La largeur d'étranglement exigée entre ces deux lobes, en pixels. Fonction PURE. */
 export function soudureExigee3D(a, b){
   const cote = Math.min(a.w, a.h, b.w, b.h);
   return cote * PART_SOUDURE_MINIMALE;
@@ -402,7 +447,7 @@ export function soudureExigee3D(a, b){
 
 /** Ces deux lobes forment-ils une seule Bulle ? Fonction PURE. */
 export function bullesSoudees3D(a, b){
-  return profondeurDeSoudure3D(a, b) >= soudureExigee3D(a, b);
+  return largeurDeSoudure3D(a, b) >= soudureExigee3D(a, b);
 }
 
 export function lobeAuContactDuGroupe3D(lobe, voisins){

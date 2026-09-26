@@ -21,10 +21,10 @@ import {
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
   CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
   lobeAuContactDuGroupe3D, etatAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
-  rapprocherDuGroupe3D, ecartAuGroupe3D, profondeurDeSoudure3D, soudureExigee3D,
+  rapprocherDuGroupe3D, ecartAuGroupe3D, largeurDeSoudure3D, soudureExigee3D,
   bullesSoudees3D, PART_SOUDURE_MINIMALE,
 } from '../src/bubble-merge.js';
-import { formesConnues, pointDuContourBulle } from '../src/bubble-shape.js';
+import { formesConnues } from '../src/bubble-shape.js';
 
 /** Une Bulle fusionnable, posée où on veut. */
 const bulle = (o) => Object.assign({
@@ -734,43 +734,54 @@ describe('rapprocherDuGroupe3D — recoller un lobe qu’un changement de forme 
   });
 });
 
-describe('profondeurDeSoudure3D — « se toucher » ne suffit pas à faire une Bulle', () => {
+describe('largeurDeSoudure3D — la largeur de l’étranglement, là où les contours se croisent', () => {
   const ovale = (id, x, y = 0) => bulle({ id, x, y, w: 170, h: 100 });
 
-  test('elle vaut le chevauchement réel, en pixels', () => {
-    assert.equal(profondeurDeSoudure3D(ovale('a', 0), ovale('b', 170)), 0, 'tangence : zéro');
-    assert.equal(Math.round(profondeurDeSoudure3D(ovale('a', 0), ovale('b', 160))), 10);
-    assert.equal(Math.round(profondeurDeSoudure3D(ovale('a', 0), ovale('b', 200))), -30,
-      'séparées : la profondeur devient l’écart, compté négativement');
+  /**
+   * ═════════════════════════════════════════════════════════════════════════════════════════════
+   * DEUX INSTRUMENTS FAUX AVANT CELUI-CI, ET LA MÊME ERREUR LES DEUX FOIS
+   * ═════════════════════════════════════════════════════════════════════════════════════════════
+   *
+   * Le premier comptait les points du contour de l'un tombant dans l'autre : la DENSITÉ
+   * D'ÉCHANTILLONNAGE y pesait autant que la géométrie, et un même seuil valait 4,75 px de
+   * chevauchement horizontalement, ZÉRO verticalement, 42 px pour une étoile.
+   *
+   * Le second interrogeait les deux contours le long de la DROITE DES CENTRES : une seule mesure,
+   * sur un seul axe, aveugle dès que les Bulles sont décalées en diagonale ou que la forme présente
+   * un creux dans cette direction. Un instrument biaisé remplacé par un instrument borgne.
+   *
+   * Les deux fois, la grandeur mesurée était COMMODE et non celle qui se voit. Ce qui se voit, ce
+   * sont les deux points où les contours SE COUPENT, et la distance entre eux.
+   */
+  test('⚠️ LA TAILLE CROÎT AVEC L’ENFONCEMENT, ET PART DE ZÉRO À LA TANGENCE', () => {
+    const mesures = [0, 2, 5, 10, 20, 40].map(ch => largeurDeSoudure3D(ovale('a', 0), ovale('b', 170 - ch)));
+    assert.ok(mesures[0] < 0.01,
+      `deux contours tangents par la pointe forment une taille NULLE, pas ${mesures[0]}`);
+    for (let i = 1; i < mesures.length; i++) {
+      assert.ok(mesures[i] > mesures[i - 1],
+        `la mesure n’est pas monotone : ${JSON.stringify(mesures.map(m => Math.round(m)))}`);
+    }
   });
 
   /**
-   * ⚠️ LE PREMIER INSTRUMENT MESURAIT LA MAUVAISE CHOSE, ET AUCUN RÉGLAGE DU SEUIL N'AURAIT PU LE
-   * RATTRAPER. Il comptait les points du contour de l'un tombant dans l'autre : une mesure que la
-   * DENSITÉ D'ÉCHANTILLONNAGE gouverne autant que la géométrie. Les points d'une ellipse sont
-   * serrés au bout du grand axe et clairsemés sur le flanc, si bien que le même seuil de 9 %
-   * exigeait 4,75 px de chevauchement pour un contact horizontal, ZÉRO pour un contact vertical, et
-   * 42 px pour une étoile. C'est ce « parfois » que l'utilisateur voyait.
-   *
-   * Ce test est la garantie qui manquait : la même exigence, quelle que soit la direction.
+   * ⚠️ LA DICHOTOMIE RESTE ENTRE DEUX ÉCHANTILLONS VOISINS. La première version ramenait les
+   * bornes dans [0, 2π[ puis ajoutait un tour quand elles semblaient inversées : pour une SORTIE
+   * du voisin, cela faisait parcourir tout le reste du cercle au lieu du petit intervalle, et les
+   * deux croisements convergeaient vers le même point. La taille mesurée valait alors 0,1 px pour
+   * deux Bulles enfoncées de 60 px l'une dans l'autre — un instrument qui rend toujours zéro passe
+   * tous les tests qui vérifient « moins que le seuil ».
    */
-  test('⚠️ LA MÊME EXIGENCE DANS TOUTES LES DIRECTIONS, ET POUR TOUTES LES FORMES', () => {
-    const premierChevauchementSoude = (forme, direction) => {
-      for (let ch = 0; ch <= 120; ch += 0.25) {
-        const a = Object.assign(ovale('a', 0), { bulleShape: forme });
-        const b = Object.assign(
-          direction === 'h' ? ovale('b', 170 - ch) : ovale('b', 0, 100 - ch),
-          { bulleShape: forme });
-        if (bullesSoudees3D(a, b)) return ch;
-      }
-      return null;
-    };
-    for (const forme of ['ovale', 'rect']) {
-      const h = premierChevauchementSoude(forme, 'h');
-      const v = premierChevauchementSoude(forme, 'v');
-      assert.equal(h, v, `${forme} : soudé à ${h} px horizontalement mais ${v} px verticalement`);
-      assert.equal(h, 8, `${forme} : soudure atteinte à ${h} px, attendu 8`);
-    }
+  test('⚠️ UN ENFONCEMENT FRANC DONNE UNE TAILLE FRANCHE', () => {
+    const taille = largeurDeSoudure3D(ovale('a', 0), ovale('b', 110));   // 60 px d'enfoncement
+    assert.ok(taille > 60, `taille de ${taille.toFixed(1)} px pour 60 px d’enfoncement`);
+  });
+
+  test('un contour entièrement contenu dans l’autre n’a pas de croisement du tout', () => {
+    const grande = bulle({ id: 'g', x: 0, y: 0, w: 400, h: 300 });
+    const dedans = bulle({ id: 'd', x: 170, y: 130, w: 60, h: 40 });
+    assert.equal(largeurDeSoudure3D(dedans, grande), Infinity);
+    assert.equal(largeurDeSoudure3D(ovale('a', 0), ovale('b', 900)), 0, 'éloignées : aucune taille');
+    assert.equal(largeurDeSoudure3D(null, ovale('b', 0)), 0);
   });
 
   test('l’exigence suit la taille de la plus petite des deux Bulles', () => {
@@ -782,36 +793,32 @@ describe('profondeurDeSoudure3D — « se toucher » ne suffit pas à faire une 
   });
 
   /**
-   * ⚠️ CHAQUE CONTOUR EST INTERROGÉ VERS L'AUTRE, ET LES DEUX DIRECTIONS SONT OPPOSÉES. Interroger
-   * les deux dans le MÊME sens donne le bon résultat sur toute forme symétrique — l'ovale, le
-   * rectangle — et le mauvais sur les autres. Trois formes du registre sont franchement
-   * dissymétriques le long de l'axe horizontal : l'étoile (85 contre 61 px), la couronne d'épines
-   * (85 contre 59) et la tache d'encre (58 contre 64). Deux mutations ont survécu à ce test tant
-   * qu'il n'employait que des ovales : une mesure de recouvrement qui dépend de l'ordre des
-   * arguments ferait souder deux lobes ou non selon lequel on déplace.
+   * ⚠️ DEUX CONTOURS SE CROISENT INDÉPENDAMMENT DE L'ORDRE OÙ ON LES REGARDE. La mesure parcourt
+   * pourtant le contour du PREMIER argument : si les croisements n'étaient pas de vrais points
+   * d'intersection, le résultat changerait de sens en sens, et deux lobes se souderaient ou non
+   * selon lequel on déplace. Éprouvé sur les formes dissymétriques du registre, où les deux
+   * parcours n'ont rien de commun.
    */
   test('⚠️ ELLE NE DÉPEND PAS DE L’ORDRE DES ARGUMENTS, MÊME SUR UNE FORME DISSYMÉTRIQUE', () => {
-    const grande = bulle({ id: 'g', x: 0, y: 0, w: 400, h: 300 });
-    const petite = bulle({ id: 'p', x: 380, y: 140, w: 60, h: 40 });
-    assert.equal(profondeurDeSoudure3D(grande, petite), profondeurDeSoudure3D(petite, grande));
-    assert.equal(bullesSoudees3D(grande, petite), bullesSoudees3D(petite, grande));
-
-    for (const forme of ['etoile', 'epines', 'tache']) {
+    for (const forme of ['ovale', 'etoile', 'epines', 'tache', 'ecu']) {
       const a = bulle({ id: 'a', x: 0, y: 0, w: 170, h: 100, bulleShape: forme });
-      const b = bulle({ id: 'b', x: 120, y: 0, w: 170, h: 100, bulleShape: forme });
-      assert.equal(profondeurDeSoudure3D(a, b), profondeurDeSoudure3D(b, a),
-        `${forme} : la profondeur change selon l’ordre des arguments`);
-      // Et elle dit la vérité : le contour de A vers B, plus celui de B vers A, moins l'écart des
-      // centres. Recalculé ici depuis le registre, sans repasser par la fonction sous test.
-      const rayon = (o, t) => {
-        const c = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
-        const p = pointDuContourBulle(o, t);
-        return Math.hypot(p.x - c.x, p.y - c.y);
-      };
-      const attendu = rayon(a, 0) + rayon(b, Math.PI) - 120;
-      assert.ok(Math.abs(profondeurDeSoudure3D(a, b) - attendu) < 1e-9,
-        `${forme} : ${profondeurDeSoudure3D(a, b)} au lieu de ${attendu}`);
+      const b = bulle({ id: 'b', x: 120, y: 20, w: 170, h: 100, bulleShape: forme });
+      const ab = largeurDeSoudure3D(a, b), ba = largeurDeSoudure3D(b, a);
+      assert.ok(Math.abs(ab - ba) < 1.5,
+        `${forme} : ${ab.toFixed(1)} px dans un sens, ${ba.toFixed(1)} px dans l’autre`);
     }
+  });
+
+  /**
+   * ⚠️ LA FUSION SE PROPOSE AU CONTACT, ELLE SE TIENT À LA SOUDURE — deux questions, deux seuils.
+   * Les confondre rendrait l'un des deux inutile : proposer la fusion seulement une fois soudées
+   * ferait rater le moment où l'utilisateur l'attend, et tenir le groupe au simple contact laisse
+   * les contours accolés que ce chantier a mis quatre reprises à corriger.
+   */
+  test('⚠️ LA TANGENCE DÉCLENCHE LA PROPOSITION MAIS PAS LA TENUE', () => {
+    const a = ovale('a', 0), b = ovale('b', 170);
+    assert.equal(bullesEnContact3D(a, b), true, 'la proposition doit venir dès le frôlement');
+    assert.equal(lobeAuContactDuGroupe3D(b, [a]), false, 'des contours tangents tiennent lieu de soudure');
   });
 
   test('des centres confondus sont soudés quelle que soit la forme', () => {
@@ -821,17 +828,5 @@ describe('profondeurDeSoudure3D — « se toucher » ne suffit pas à faire une 
       const b = Object.assign(ovale('b', 0), { bulleShape: forme });
       assert.equal(bullesSoudees3D(a, b), true, `${forme} : centres confondus, pas soudées`);
     }
-  });
-
-  /**
-   * ⚠️ LA FUSION SE PROPOSE AU CONTACT, ELLE SE TIENT À LA SOUDURE — deux questions, deux seuils.
-   * Les confondre rendrait l'un des deux inutile : proposer la fusion seulement une fois soudées
-   * ferait rater le moment où l'utilisateur l'attend, et tenir le groupe au simple contact laisse
-   * les contours accolés que ce chantier vient de corriger.
-   */
-  test('⚠️ LA TANGENCE DÉCLENCHE LA PROPOSITION MAIS PAS LA TENUE', () => {
-    const a = ovale('a', 0), b = ovale('b', 170);
-    assert.equal(bullesEnContact3D(a, b), true, 'la proposition doit venir dès le frôlement');
-    assert.equal(lobeAuContactDuGroupe3D(b, [a]), false, 'des contours tangents tiennent lieu de soudure');
   });
 });

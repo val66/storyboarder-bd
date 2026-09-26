@@ -22,7 +22,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { S, currentPage } from '../src/state.js';
-import { lobeAuContactDuGroupe3D, profondeurDeSoudure3D, soudureExigee3D } from '../src/bubble-merge.js';
+import { lobeAuContactDuGroupe3D, largeurDeSoudure3D, soudureExigee3D } from '../src/bubble-merge.js';
 
 const nouvelleBulle = () => {
   S.pendingCreatePos = { x: 200, y: 200 };
@@ -161,9 +161,9 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
   test('⚠️ LA BUTÉE LAISSE UNE VRAIE SOUDURE, PAS DEUX CONTOURS ACCOLÉS', () => {
     mobile.tailShape = 'aucune';               // la pointe ne masque plus rien
     bouger(900, 100);
-    const profondeur = profondeurDeSoudure3D(mobile, ancre);
-    assert.ok(profondeur >= soudureExigee3D(mobile, ancre),
-      `les deux lobes ne se recouvrent que de ${profondeur.toFixed(1)} px : accolés, pas soudés`);
+    const taille = largeurDeSoudure3D(mobile, ancre);
+    assert.ok(taille >= soudureExigee3D(mobile, ancre),
+      `les deux lobes ne se étranglement de ${taille.toFixed(1)} px : accolés, pas soudés`);
   });
 
   /**
@@ -181,7 +181,7 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     ancre.bulleFusionnable = true; mobile.bulleFusionnable = true;
     ancre.x = 100; ancre.y = 100;
     mobile.x = 269; mobile.y = 100;            // tangentes : elles se frôlent, sans plus
-    assert.ok(profondeurDeSoudure3D(mobile, ancre) < soudureExigee3D(mobile, ancre),
+    assert.ok(largeurDeSoudure3D(mobile, ancre) < soudureExigee3D(mobile, ancre),
       'la fixture doit partir d’un simple frôlement');
 
     S.selectedId = mobile.id;
@@ -192,9 +192,9 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     await new Promise((r) => setTimeout(r, 0));
 
     assert.ok(mobile.bulleGroupe, 'la fusion n’a pas eu lieu');
-    const profondeur = profondeurDeSoudure3D(mobile, ancre);
-    assert.ok(profondeur >= soudureExigee3D(mobile, ancre),
-      `fusionnées mais recouvertes de ${profondeur.toFixed(1)} px : deux contours accolés, pas une Bulle`);
+    const taille = largeurDeSoudure3D(mobile, ancre);
+    assert.ok(taille >= soudureExigee3D(mobile, ancre),
+      `fusionnées mais étranglement de ${taille.toFixed(1)} px : deux contours accolés, pas une Bulle`);
   });
 
   test('une Bulle SANS groupe reste libre d’aller où elle veut', () => {
