@@ -24,7 +24,7 @@ import {
   rapprocherDuGroupe3D, ecartAuGroupe3D, largeurDeSoudure3D, soudureExigee3D,
   bullesSoudees3D, PART_SOUDURE_MINIMALE,
 } from '../src/bubble-merge.js';
-import { formesConnues } from '../src/bubble-shape.js';
+import { formesConnues, pointsDuContourBulle } from '../src/bubble-shape.js';
 
 /** Une Bulle fusionnable, posée où on veut. */
 const bulle = (o) => Object.assign({
@@ -731,6 +731,87 @@ describe('rapprocherDuGroupe3D — recoller un lobe qu’un changement de forme 
     const seul = bulle({ id: 'seul', x: 500, y: 0 });
     assert.equal(ecartAuGroupe3D(seul, []), Infinity);
     assert.equal(ecartAuGroupe3D(seul, [seul]), Infinity, 'le lobe se compte lui-même');
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE PRÉDICAT SOUS TOUT LE RESTE, JUGÉ PAR UN CALCUL INDÉPENDANT
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ `pointDansLaBulle3D` A ÉTÉ FAUX POUR L'OVALE DEPUIS #426a, ET LA SUITE ENTIÈRE EST RESTÉE
+ * VERTE. Il interrogeait le contour à l'angle `atan2(dy, dx)`. Or pour l'ellipse — la forme PAR
+ * DÉFAUT, donc le cas le plus courant — `pointDuContourBulle(o, θ)` rend le point de PARAMÈTRE θ,
+ * dont l'angle polaire est différent : sur une ellipse 640 × 288, un paramètre de 1,03 rad vise
+ * une direction de 0,64 rad. On comparait donc une distance au rayon du contour dans une AUTRE
+ * direction. Mesuré : un point situé 30 px SOUS une ellipse était déclaré dedans.
+ *
+ * Quatre rapports d'utilisateur en découlent, et j'ai changé trois fois d'instrument de mesure
+ * au-dessus de ce prédicat faux au lieu de vérifier le prédicat. Les tests qui l'entouraient ne
+ * l'employaient que sur les quatre axes, où parameter et angle polaire coïncident — exactement les
+ * directions où la faute est invisible.
+ *
+ * ⚠️ LE JUGE EST ÉCRIT ICI, SANS RIEN EMPRUNTER AU CODE TESTÉ. Pour l'ellipse, le critère
+ * analytique ; pour les formes polygonales, un lancer de rayon en parité sur les sommets que le
+ * registre déclare. Réutiliser `pointDuContourBulle` pour juger `pointDansLaBulle3D` aurait
+ * reproduit la même erreur des deux côtés et déclaré l'accord parfait.
+ */
+describe('pointDansLaBulle3D — le prédicat, jugé par une géométrie écrite à part', () => {
+  const dansEllipse = (o, x, y) => {
+    const u = (x - (o.x + o.w / 2)) / (o.w / 2);
+    const v = (y - (o.y + o.h / 2)) / (o.h / 2);
+    return { verdict: u * u + v * v <= 1, marge: Math.abs(Math.hypot(u, v) - 1) * Math.min(o.w, o.h) / 2 };
+  };
+
+  const dansPolygone = (sommets, x, y) => {
+    let dedans = false, mini = Infinity;
+    for (let i = 0, j = sommets.length - 1; i < sommets.length; j = i++) {
+      const a = sommets[i], b = sommets[j];
+      if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) dedans = !dedans;
+      // Distance au segment, pour écarter les points collés au bord.
+      const vx = b.x - a.x, vy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / (vx * vx + vy * vy || 1)));
+      mini = Math.min(mini, Math.hypot(x - (a.x + t * vx), y - (a.y + t * vy)));
+    }
+    return { verdict: dedans, marge: mini };
+  };
+
+  test('⚠️ IL DIT LA VÉRITÉ SUR TOUT LE PLAN, ET POUR TOUTES LES FORMES', () => {
+    const o = { id: 'b', type: 'bulle', x: 40, y: 30, w: 640, h: 288 };
+    const fautes = {};
+    for (const forme of formesConnues()) {
+      const b = Object.assign({}, o, { bulleShape: forme });
+      const sommets = pointsDuContourBulle(b);
+      let testes = 0, rates = 0, pire = null;
+      for (let x = -60; x <= 760; x += 11) {
+        for (let y = -60; y <= 420; y += 7) {
+          const juge = sommets ? dansPolygone(sommets, x, y) : dansEllipse(b, x, y);
+          if (juge.marge < 2) continue;         // bande d'incertitude le long du contour
+          testes++;
+          if (pointDansLaBulle3D(b, x, y) !== juge.verdict) {
+            rates++;
+            if (!pire || juge.marge > pire.marge) pire = { x, y, marge: juge.marge, attendu: juge.verdict };
+          }
+        }
+      }
+      assert.ok(testes > 2000, `${forme} : seulement ${testes} points jugés`);
+      if (rates) fautes[forme] = { rates, sur: testes, pire };
+    }
+    assert.deepEqual(fautes, {},
+      'le prédicat se trompe : ' + JSON.stringify(fautes, null, 2));
+  });
+
+  /**
+   * ⚠️ ET LE CAS EXACT DU RAPPORT, FIGÉ. Un point 30 px SOUS une ellipse était déclaré dedans, ce
+   * qui faisait proposer la fusion à deux Bulles séparées par un écart bien visible.
+   */
+  test('⚠️ UN POINT SOUS UNE ELLIPSE N’EST PAS DEDANS', () => {
+    const ovale = { id: 'o', type: 'bulle', x: 60, y: 22, w: 640, h: 288, bulleShape: 'ovale' };
+    assert.equal(pointDansLaBulle3D(ovale, 484, 340), false,
+      'un point 30 px sous l’ellipse est déclaré à l’intérieur');
+    const rect = { id: 'r', type: 'bulle', x: 370, y: 340, w: 630, h: 268, bulleShape: 'rect' };
+    assert.equal(bullesEnContact3D(ovale, rect), false,
+      'la fusion est proposée à deux Bulles qui ne se touchent pas');
   });
 });
 

@@ -26,7 +26,7 @@
  * fusion automatique les aurait toutes soudées à l'ouverture du Projet. « Pas de réglage vaut
  * l'existant » l'interdit, et ici le réglage doit être demandé DEUX fois : par chacune des Bulles.
  */
-import { pointDuContourBulle } from './bubble-shape.js';
+import { pointDuContourBulle, angleDuContourBulle } from './bubble-shape.js';
 
 /** Le défaut de l'axe FUSION. Décoché : une Bulle ne fusionne que si on le lui demande. */
 export const FUSIONNABLE_DEFAUT = false;
@@ -69,8 +69,26 @@ export function bulleEstFusionnable3D(o){
 export function pointDansLaBulle3D(o, x, y){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const dx = x - cx, dy = y - cy;
-  if (dx === 0 && dy === 0) return true;
-  const bord = pointDuContourBulle(o, Math.atan2(dy, dx));
+  // ⚠️ PAS DE CAS PARTICULIER POUR LE CENTRE. Il y en avait un, et la campagne l'a déclaré
+  // intuable : au centre, `d2` vaut 0, et `b2` est strictement positif puisque le registre garantit
+  // un contour à distance non nulle dans toutes les directions (tests/bubble-shape.test.mjs). La
+  // comparaison rend donc `true` d'elle-même. Une garde qu'aucun test ne peut atteindre est une
+  // garde que personne ne maintient.
+  // ⚠️ `atan2` N'EST PAS LE θ DU CONTOUR, ET C'EST LA FAUTE D'ORIGINE DE TOUT CE CHANTIER. Pour
+  // l'ovale — la forme par défaut, donc le cas le plus courant — `pointDuContourBulle(o, θ)` rend
+  // le point de PARAMÈTRE θ, dont l'angle POLAIRE est différent : sur une ellipse 640 × 288, un
+  // paramètre de 1,03 rad vise une direction de 0,64 rad. On comparait donc la distance du point
+  // au rayon du contour dans une AUTRE direction, et le verdict était faux partout sauf sur les
+  // quatre axes. Mesuré : un point situé 30 px SOUS une ellipse était déclaré dedans.
+  //
+  // Cette seule ligne explique les quatre rapports successifs de l'utilisateur — la fusion
+  // proposée alors qu'un écart reste visible, et les lobes qu'on écarte jusqu'à ce que les
+  // contours ne se touchent plus. J'ai changé trois fois d'instrument de mesure au-dessus d'un
+  // prédicat faux, au lieu de vérifier le prédicat.
+  //
+  // `angleDuContourBulle` est l'inverse déclaré par le registre (#425h) : elle rend le θ qui VISE
+  // cette direction. Pour les formes polygonales c'est l'angle polaire, donc rien ne change.
+  const bord = pointDuContourBulle(o, angleDuContourBulle(o, dx, dy));
   // Comparaison au CARRÉ : une racine de plus par échantillon, et elle ne changerait aucun verdict.
   const d2 = dx * dx + dy * dy;
   const b2 = (bord.x - cx) * (bord.x - cx) + (bord.y - cy) * (bord.y - cy);
