@@ -1507,7 +1507,58 @@ export function reglagesQueueVersLePoint3D(o, x, y){
  * Les ronds détachés d'une queue en chaîne reçoivent l'ancre de LEUR BULLE, pas la leur : ils sont
  * du même morceau de papier, et le motif doit s'y prolonger sans rupture.
  */
-function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre){
+/**
+ * Les trois PHASES de peinture d'une Bulle.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ UNE BULLE SEULE SE PEINT EN UN PASSAGE, UN GROUPE FUSIONNÉ EN TROIS
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Pour qu'un groupe se lise comme UNE Bulle, la frontière entre deux lobes doit disparaître. La
+ * seule façon d'y arriver au canevas est d'inverser l'ordre habituel :
+ *
+ *   1. on CERNE tous les lobes, d'un trait DEUX FOIS trop épais ;
+ *   2. on REMPLIT tous les lobes ;
+ *   3. on pose le DÉCOR et le TEXTE de tous les lobes.
+ *
+ * ⚠️ LA TROISIÈME PASSE N'ÉTAIT PAS DANS MON PREMIER JET, et un test l'a exigée. Je laissais le
+ * texte se peindre avec le fond de son propre lobe : celui du premier lobe passait donc AVANT le
+ * remplissage du second, qui le recouvrait partout où les deux se chevauchent. Le lettrage
+ * disparaissait exactement là où la fusion se produit. Même raisonnement que pour les traits, une
+ * couche plus haut.
+ *
+ * Chaque remplissage recouvre alors les traits qui tombent chez lui — donc toutes les frontières
+ * internes, qui sont par définition à l'intérieur d'un autre lobe. Le contour EXTÉRIEUR, lui, n'est
+ * dans aucun lobe : seule sa moitié intérieure est recouverte, et il reste à l'épaisseur voulue.
+ * C'est pour cela que le trait est doublé, et non par excès de zèle.
+ *
+ * ⚠️ CE PROCÉDÉ EXIGE UN REMPLISSAGE OPAQUE, et c'est une limite qu'on documente au lieu de
+ * l'interdire. Sous une opacité partielle, le remplissage ne couvre pas le trait interne : la
+ * frontière reste visible en transparence. Interdire la fusion dans ce cas serait une restriction
+ * que rien n'annonce au moment où l'on coche la case — un défaut visible se juge et se corrige, une
+ * interdiction invisible s'endure.
+ *
+ * ⚠️ ET UNE BULLE SEULE GARDE EXACTEMENT SON ANCIEN CHEMIN. `PHASE_TOUT` remplit puis cerne, dans
+ * cet ordre, avec l'épaisseur simple : au pixel près ce que faisait #425b. Faire passer toutes les
+ * Bulles par le procédé en deux temps aurait été plus uniforme et aurait modifié chaque planche
+ * déjà dessinée, pour rien.
+ */
+export const PHASE_TOUT = 'tout';
+export const PHASE_TRAIT = 'trait';
+export const PHASE_FOND = 'fond';
+export const PHASE_TEXTE = 'texte';
+
+/**
+ * De combien on épaissit le trait pendant la phase TRAIT d'un groupe.
+ *
+ * ⚠️ DEUX, ET CE N'EST PAS UN RÉGLAGE. Un trait de canevas est CENTRÉ sur le chemin : le
+ * remplissage qui suit en mange exactement la moitié. Doubler restitue l'épaisseur demandée — toute
+ * autre valeur rendrait la bordure d'un groupe différente de celle d'une Bulle seule, sans que rien
+ * ne l'explique.
+ */
+const EPAISSEUR_TRAIT_GROUPE = 2;
+
+function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre, phase = PHASE_TOUT){
   // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
   // compte qu'UNE — le chemin tel quel, la couleur choisie, l'opacité choisie — et le résultat est
   // exactement celui d'avant, au pixel près. C'est ce qui protège les Bulles enregistrées.
@@ -1517,7 +1568,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   // aussi le trait, et surtout empêcherait le facteur de varier avec l'angle, dont la marbrure du
   // vieux papier a besoin.
   const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
-  couches.forEach((couche, i) => {
+  if (phase === PHASE_TOUT || phase === PHASE_FOND) couches.forEach((couche, i) => {
     if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
     c.globalAlpha = couche.alpha;
     // ⚠️ LE REPLI SUR L'APLAT N'EST PAS SILENCIEUX, ET CE N'EST PAS LA MÊME CHOSE QUE DE SE TAIRE.
@@ -1535,12 +1586,15 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   // sait ce qui tient chez elle. Sans cela il aurait fallu un `clip()`, et #425k vient de figer
   // qu'une Bulle ne se peint jamais sous découpe.
   c.globalAlpha = 1;
+  if (phase === PHASE_FOND || phase === PHASE_TEXTE) return;
   // Le trait se pose sur le CONTOUR VRAI, pas sur la dernière couche peinte.
-  if (couches.length > 1 || couches[0].facteur) { c.beginPath(); construireChemin(null); c.closePath(); }
+  if (couches.length > 1 || couches[0].facteur || phase === PHASE_TRAIT) {
+    c.beginPath(); construireChemin(null); c.closePath();
+  }
   if (o.bulleBorderVisible === false) return;
   c.lineJoin = 'round';
   c.setLineDash(app.tirets);
-  c.lineWidth = largeurTrait;
+  c.lineWidth = largeurTrait * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
   c.strokeStyle = o.bulleBorderColor || '#23242A';
   c.stroke();
 }
@@ -1597,7 +1651,39 @@ function peindreLesParticules3D(c, o, app, cx, cy, rx, ry){
 // Draws a speech Bubble: Oval or Rectangle shape (as chosen, via the right-hand panel) +
 // small triangular tail (whose position around the bubble is adjustable by the user via
 // o.tailAngle/o.tailLen), with the text (description) displayed directly inside.
-export function drawBubble(c, o){
+/**
+ * Peint un groupe de Bulles fusionnées comme une seule.
+ *
+ * ⚠️ L'ORDRE EST TOUT, ET IL EST L'INVERSE DE L'INTUITION. On cerne AVANT de remplir : chaque
+ * remplissage recouvre alors les traits qui tombent chez lui, donc toutes les frontières internes —
+ * qui sont par définition à l'intérieur d'un autre lobe. Peindre lobe par lobe, chacun complet,
+ * laisserait au contraire chaque frontière visible, et le groupe ressemblerait à deux Bulles
+ * posées l'une sur l'autre : exactement ce qu'on cherche à ne plus voir.
+ *
+ * ⚠️ ET CHAQUE PASSE VA JUSQU'AU BOUT AVANT LA SUIVANTE. Faire « trait puis fond » lobe par lobe
+ * reviendrait au même défaut : le fond du premier lobe serait posé avant le trait du second, donc
+ * ne pourrait pas l'effacer. C'est l'ordre GLOBAL qui compte, pas l'ordre local.
+ *
+ * ⚠️ UN GROUPE D'UN SEUL LOBE PASSE PAR LE CHEMIN ORDINAIRE. Un lobe isolé n'a aucune frontière
+ * interne à effacer, et le procédé en deux temps donnerait un trait très légèrement différent —
+ * doublé puis à demi recouvert au lieu d'être tracé net. Le cas se produit dès qu'on sépare un
+ * groupe de trois en laissant un lobe seul.
+ */
+export function drawBubbleGroupe(c, lobes){
+  if (!Array.isArray(lobes) || lobes.length === 0) return;
+  if (lobes.length === 1) { drawBubble(c, lobes[0]); return; }
+  for (const lobe of lobes) drawBubble(c, lobe, PHASE_TRAIT);
+  for (const lobe of lobes) drawBubble(c, lobe, PHASE_FOND);
+  for (const lobe of lobes) drawBubble(c, lobe, PHASE_TEXTE);
+}
+
+/**
+ * ⚠️ `phase` NE SERT QU'AUX GROUPES FUSIONNÉS, et son défaut préserve l'existant au pixel près. Une
+ * Bulle seule se peint en un passage — remplissages puis trait — exactement comme avant #426c. Un
+ * groupe appelle cette fonction TROIS fois par lobe : les traits d'abord, les fonds ensuite, le
+ * décor et le texte en dernier. Voir `PHASE_TOUT` pour la raison.
+ */
+export function drawBubble(c, o, phase = PHASE_TOUT){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const rx = Math.max(1, o.w / 2), ry = Math.max(1, o.h / 2);
   // L'épaisseur était lue deux fois, une par branche, avec le même défaut écrit deux fois. Elle sert
@@ -1721,10 +1807,15 @@ export function drawBubble(c, o){
   c.beginPath();
   construireChemin(null);
   c.closePath();
-  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy });
+  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy }, phase);
   // ⚠️ APRÈS LA BULLE ET SES TACHES, MAIS AVANT LE TEXTE. Des particules peintes par-dessus le
   // lettrage le mangeraient ; peintes avant le remplissage, elles disparaîtraient dessous.
-  peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
+  // ⚠️ LE DÉCOR ATTEND QUE TOUS LES FONDS SOIENT POSÉS, ET C'EST UNE PASSE À PART. Peintes avec le
+  // fond de leur propre lobe, les particules du premier disparaîtraient sous le remplissage du
+  // second. Un test l'a montré pour le lettrage, et la raison vaut mot pour mot ici.
+  if (phase === PHASE_TOUT || phase === PHASE_TEXTE) {
+    peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
+  }
 
   // ⚠️ LES RONDS SE DESSINENT APRÈS, ET CHACUN DANS SON PROPRE CHEMIN. Les mettre dans le chemin de
   // la Bulle les ferait remplir par la règle de non-zéro avec elle : là où un rond chevaucherait le
@@ -1739,12 +1830,12 @@ export function drawBubble(c, o){
       c.beginPath();
       cheminRond(null);
       c.closePath();
-      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond, { x: cx, y: cy });
+      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond, { x: cx, y: cy }, phase);
     }
   }
   c.restore();
 
-  if (o.description) {
+  if (o.description && (phase === PHASE_TOUT || phase === PHASE_TEXTE)) {
     c.save();
     // ⚠️ LA TEXTURE NE DONNE QU'UN DÉFAUT DE COULEUR DE TEXTE, jamais une contrainte — même
     // dispositif que la queue par défaut d'une forme. Sans lui, une encre sombre garderait le texte

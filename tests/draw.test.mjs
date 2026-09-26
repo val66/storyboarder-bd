@@ -33,6 +33,7 @@ import {
   ancrageApresGlissement3D,
   scheduleDrawCurrentPage,
   flushDrawCurrentPage,
+  drawBubbleGroupe,
 } from '../src/draw.js';
 import { _viderGrains3D, _setGrain3D } from '../src/bubble-grain.js';
 import { S, currentPage } from '../src/state.js';
@@ -3187,6 +3188,88 @@ describe('#425m bis — la texture porte la couleur du fond', () => {
     drawBubble(sans, bulle({ bulleShape: 'rect', bulleTexture: 'nuit-etoile' }));
     assert.equal(appels(sans.journal, 'strokeText')[0].lineWidth,
       appels(avec.journal, 'strokeText')[0].lineWidth);
+  });
+
+  /**
+   * ⚠️ TOUS LES TRAITS AVANT TOUS LES FONDS, ET C'EST LA SEULE CHOSE QUI EFFACE LA FRONTIÈRE. Un
+   * remplissage recouvre les traits qui tombent chez lui : les frontières internes, qui sont par
+   * définition à l'intérieur d'un autre lobe, disparaissent. Peindre lobe par lobe — trait puis
+   * fond, puis le lobe suivant — laisserait le fond du premier posé AVANT le trait du second, donc
+   * incapable de l'effacer. C'est l'ordre GLOBAL qui compte, et aucun compte d'appels ne le dit.
+   */
+  test('⚠️ UN GROUPE CERNE TOUT, PUIS REMPLIT TOUT', () => {
+    const c = contexteEnregistreur();
+    const a = bulle({ id: 'a', bulleShape: 'rect', tailVisible: false });
+    const b = bulle({ id: 'b', x: 150, bulleShape: 'rect', tailVisible: false });
+    drawBubbleGroupe(c, [a, b]);
+    const sequence = c.journal.filter(e => e.nom === 'stroke' || e.nom === 'fill').map(e => e.nom);
+    assert.ok(sequence.length >= 4, `${sequence.length} peintures pour deux lobes`);
+    const dernierTrait = sequence.lastIndexOf('stroke');
+    const premierFond = sequence.indexOf('fill');
+    assert.ok(dernierTrait < premierFond,
+      'un fond a été posé avant le dernier trait : la frontière interne restera visible');
+  });
+
+  /**
+   * ⚠️ LE TRAIT EST DOUBLÉ PENDANT LA PHASE DE CERNE, et ce n'est pas un excès de zèle. Un trait de
+   * canevas est CENTRÉ sur le chemin : le remplissage qui suit en mange exactement la moitié. Sans
+   * le doublement, la bordure d'un groupe serait deux fois plus fine que celle d'une Bulle seule,
+   * et rien à l'écran ne dirait pourquoi.
+   */
+  test('⚠️ ET LE TRAIT DU GROUPE EST DOUBLÉ pour survivre au remplissage', () => {
+    const seul = contexteEnregistreur();
+    drawBubble(seul, bulle({ id: 'a', bulleShape: 'rect', tailVisible: false }));
+    const groupe = contexteEnregistreur();
+    drawBubbleGroupe(groupe, [
+      bulle({ id: 'a', bulleShape: 'rect', tailVisible: false }),
+      bulle({ id: 'b', x: 150, bulleShape: 'rect', tailVisible: false })]);
+    const epaisseurAu = (j) => {
+      const i = j.findIndex(e => e.nom === 'stroke');
+      return j.slice(0, i).filter(e => e.nom === 'set:lineWidth').pop().args[0];
+    };
+    assert.equal(epaisseurAu(groupe.journal), epaisseurAu(seul.journal) * 2,
+      'la bordure du groupe sera deux fois trop fine une fois les fonds posés');
+  });
+
+  /**
+   * ⚠️ UN GROUPE D'UN SEUL LOBE REPASSE PAR LE CHEMIN ORDINAIRE. Il n'a aucune frontière à effacer,
+   * et le procédé en deux temps lui donnerait un trait très légèrement différent — doublé puis à
+   * demi recouvert au lieu d'être tracé net. Le cas arrive dès qu'on sépare un groupe de trois en
+   * laissant un lobe seul.
+   */
+  test('un lobe seul se peint exactement comme une Bulle ordinaire', () => {
+    const seul = contexteEnregistreur(), groupe = contexteEnregistreur();
+    const o = () => bulle({ id: 'a', bulleShape: 'rect', tailVisible: false });
+    drawBubble(seul, o());
+    drawBubbleGroupe(groupe, [o()]);
+    assert.deepEqual(groupe.journal.map(e => e.nom), seul.journal.map(e => e.nom));
+  });
+
+  test('un groupe vide ou absent ne peint rien et ne lève pas', () => {
+    for (const lobes of [[], null, undefined]) {
+      const c = contexteEnregistreur();
+      drawBubbleGroupe(c, lobes);
+      assert.equal(c.journal.length, 0);
+    }
+  });
+
+  /**
+   * ⚠️ LE TEXTE ET LE DÉCOR ATTENDENT LA PHASE DE FOND. Des particules peintes pendant le cerne
+   * disparaîtraient sous le remplissage du lobe voisin ; un lettrage aussi. Chaque lobe garde
+   * pourtant SON texte — c'est tout le sens de « deux zones au lieu d'une ».
+   */
+  test('⚠️ CHAQUE LOBE GARDE SON TEXTE, et il survit aux remplissages', () => {
+    const c = contexteEnregistreur();
+    drawBubbleGroupe(c, [
+      bulle({ id: 'a', bulleShape: 'rect', tailVisible: false, description: 'PREMIER' }),
+      bulle({ id: 'b', x: 150, bulleShape: 'rect', tailVisible: false, description: 'SECOND' })]);
+    const textes = appels(c.journal, 'fillText').map(e => e.args[0]);
+    assert.ok(textes.some(t => String(t).includes('PREMIER')), 'le premier lobe a perdu son texte');
+    assert.ok(textes.some(t => String(t).includes('SECOND')), 'le second lobe a perdu son texte');
+    // Et aucun texte n'a été peint avant le dernier fond, qui l'aurait recouvert.
+    const noms = c.journal.map(e => e.nom);
+    assert.ok(noms.lastIndexOf('fill') < noms.indexOf('fillText'),
+      'un lettrage a été posé avant un remplissage : il sera recouvert');
   });
 
   test('⚠️ ET UN CHOIX EXPLICITE L’EMPORTE, comme pour toutes les autres couleurs', () => {
