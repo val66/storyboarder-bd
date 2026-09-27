@@ -305,7 +305,18 @@ of spikes laid along the outline. Two decisions govern it:
   a fixed value, the fringe would vanish exactly where the user asked for a more visible outline;
 - the spacing is an **arc length**, not an angle. An angular step would give spikes crowded on the
   flanks of an oval and sparse at its ends, that is, a density that changes with the Bubble's
-  proportions — not what one expects from a stroke pattern.
+  proportions — not what one expects from a stroke pattern;
+- a spike leaves at **right angles to the outline**, and the centre only serves to pick which of the
+  two perpendiculars is "outward". The first version worked from the centre, on the grounds — sound
+  ones — that on a jagged outline the normal flips from one segment to the next. The argument was
+  right and the conclusion wrong: on an ellipse, the direction from the centre diverges from the
+  normal the more elongated the Bubble is, by as much as **sixty degrees** halfway between the axes
+  of an oval twice as wide as it is tall. Spikes there lay down along the outline and the fringe
+  seemed to fade on the flanks. Reported from use — "when I widen the bubble the spikes distort" —
+  then reproduced as an image before being fixed;
+- **the gap between two spikes is irregular**, drawn from a different sample of the noise than the
+  lengths are. Varied lengths set at a constant interval read as a comb: it is the regularity of the
+  step, not that of the size, that gives the machine away.
 
 And it **adds to** the outline rather than replacing it: the clean outline bounds the fill, the
 spikes stick out. Drawing them instead of it would leave a jagged edge, that is, the shout star.

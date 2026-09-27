@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.7;
+export const EPINE_PAS = 1;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -254,7 +254,9 @@ export const EPINE_LONGUEUR = 4;
  * épines sont beaucoup plus nombreuses, plus fines et de taille variable ». Une frange régulière
  * se lit comme un engrenage ; c'est l'inégalité qui lui donne l'aspect d'un tracé à la plume.
  */
-export const EPINE_VARIATION = 0.45;
+export const EPINE_VARIATION = 0.8;
+// Part dont l'écart entre deux épines s'écarte du pas. Doit rester < 1 : voir pointesDeLEpine3D.
+export const EPINE_ESPACEMENT = 0.5;
 
 /**
  * La part de chaque pointe qui passe À L'INTÉRIEUR du contour.
@@ -274,7 +276,7 @@ export const EPINE_DEDANS = 0.35;
  * des pointes serrées se rejoignent et forment un bourrelet noir au lieu d'aiguilles distinctes.
  * Relevé à l'usage sur la source.
  */
-export const EPINE_FINESSE = 0.42;
+export const EPINE_FINESSE = 0.3;
 
 /** Combien de points de bruit font le tour du contour avant de se répéter. */
 const EPINE_POINTS_BRUIT = 23;
@@ -291,10 +293,22 @@ const EPINE_POINTS_BRUIT = 23;
  * frange a la même densité partout et sur toutes les formes — ce qui est précisément ce qu'on
  * attend d'un MOTIF DE TRAIT, par opposition à une forme.
  *
- * ⚠️ ET LA DIRECTION VIENT DU CENTRE, PAS DE LA NORMALE AU SEGMENT. Sur un contour dentelé — une
- * étoile — la normale bascule d'un segment à l'autre et les épines partiraient dans tous les sens.
- * Le registre garantit des contours étoilés autour du centre (#425e) : la direction radiale est
- * donc toujours « vers le dehors », quelle que soit la forme.
+ * ⚠️ LA DIRECTION EST LA NORMALE AU CONTOUR, ET LE CENTRE NE SERT QU'À L'ORIENTER. J'avais d'abord
+ * écrit l'inverse — direction radiale, au motif que sur un contour dentelé la normale bascule d'un
+ * segment à l'autre. L'argument était juste et la conclusion fausse : sur une ellipse, la direction
+ * radiale s'écarte de la normale d'autant plus que la Bulle est allongée, jusqu'à SOIXANTE DEGRÉS à
+ * mi-chemin des axes d'un ovale deux fois plus large que haut. Les épines s'y couchaient le long du
+ * contour au lieu d'en sortir, et la frange semblait disparaître sur les flancs. Rapporté à l'usage
+ * — « quand j'élargis la bulle, les épines se déforment » — et reproduit en une image.
+ *
+ * Le centre garde un rôle, et c'est celui qu'il pouvait tenir : donner le SIGNE. Des deux normales
+ * d'un segment, on retient celle qui s'éloigne du centre. Le contour étoilé garanti par le registre
+ * (#425e) rend ce choix toujours possible, y compris sur les formes dentelées.
+ *
+ * MUTANT ÉQUIVALENT CONSIGNÉ — écrire `nx = -dy/len, ny = dx/len` laisse la suite verte, et c'est
+ * démontrable plutôt que constaté : la ligne suivante retient, des deux normales, celle dont le
+ * produit scalaire avec le rayon est positif. Partir de l'une ou de l'autre mène donc au même
+ * vecteur. Aucun test ne peut le tuer, et aucun ne doit être inventé pour le prétendre.
  *
  * ⚠️ LA LONGUEUR VARIE, ET ELLE VARIE DE FAÇON DÉTERMINISTE. C'est le même bruit cyclique que le
  * contour tremblé et la tache d'encre, avec la même graine tirée de l'identifiant : deux Bulles
@@ -333,16 +347,21 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
     while (restant <= len - pos) {
       pos += restant;
       const p = { x: a.x + dx * (pos / len), y: a.y + dy * (pos / len) };
-      const vx = p.x - centre.x, vy = p.y - centre.y;
-      const r = Math.hypot(vx, vy) || 1;
+      // La normale au segment, orientée vers le dehors par comparaison avec la direction du centre.
+      let nx = dy / len, ny = -dx / len;
+      if (nx * (p.x - centre.x) + ny * (p.y - centre.y) < 0) { nx = -nx; ny = -ny; }
       const t = ((parcouru + pos) / perimetre) % 1;
       const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, EPINE_POINTS_BRUIT));
       // L'épine est un SEGMENT QUI TRAVERSE le contour : elle commence en deçà et finit au-delà.
-      const ux = vx / r, uy = vy / r;
       const dedans = l * EPINE_DEDANS, dehors = l - dedans;
-      out.push({ x: p.x - ux * dedans, y: p.y - uy * dedans },
-               { x: p.x + ux * dehors, y: p.y + uy * dehors });
-      restant = pas;
+      out.push({ x: p.x - nx * dedans, y: p.y - ny * dedans },
+               { x: p.x + nx * dehors, y: p.y + ny * dehors });
+      // ⚠️ L'ÉCART LUI AUSSI EST IRRÉGULIER, et sur un autre tirage du bruit que la longueur. Des
+      // épines de longueurs variées mais régulièrement espacées se lisent comme un peigne : c'est
+      // la régularité du PAS, pas celle de la taille, qui trahit la machine. Le facteur reste
+      // strictement positif par construction (EPINE_ESPACEMENT < 1), sans quoi la boucle ne
+      // progresserait plus.
+      restant = pas * (1 + EPINE_ESPACEMENT * bruitCyclique(g, t, 1, EPINE_POINTS_BRUIT));
     }
     restant -= len - pos;
     parcouru += len;

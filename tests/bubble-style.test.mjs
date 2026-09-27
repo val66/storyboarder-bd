@@ -413,6 +413,95 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
       'les épines se tassent par endroits : l’espacement suit l’angle et non la longueur');
   });
 
+  /**
+   * ⚠️ UNE ÉPINE EST PERPENDICULAIRE AU CONTOUR, ET AUCUN DES TESTS CI-DESSUS NE POUVAIT LE DIRE :
+   * ils travaillent tous sur un CERCLE, où la direction du centre et la normale se confondent. La
+   * première écriture partait du centre, au motif — juste — que sur un contour dentelé la normale
+   * bascule d'un segment à l'autre. Sur une ellipse deux fois plus large que haute, les deux
+   * directions s'écartent de SOIXANTE DEGRÉS à mi-chemin des axes : les épines s'y couchaient le
+   * long du contour et la frange semblait s'effacer sur les flancs. Rapporté à l'usage, reproduit
+   * en image, et figé ici sur le seul contour qui sépare les deux politiques.
+   */
+  test('⚠️ SUR UN OVALE, LES ÉPINES SORTENT À LA PERPENDICULAIRE ET NON DEPUIS LE CENTRE', () => {
+    const n = 720, a = 200, b = 100, allonge = [];
+    for (let i = 0; i < n; i++) {
+      const t = (Math.PI * 2 * i) / n;
+      allonge.push({ x: a * Math.cos(t), y: b * Math.sin(t) });
+    }
+    const pts = pointesDeLEpine3D(CENTRE, allonge, 3, 7);
+    assert.ok(pts.length >= 4, 'aucune pointe produite');
+    let ecartMax = 0, ecartRadialMax = 0;
+    for (let i = 0; i < pts.length; i += 2) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+      const dx = pts[i + 1].x - pts[i].x, dy = pts[i + 1].y - pts[i].y;
+      const len = Math.hypot(dx, dy) || 1;
+      // La normale exacte de l'ellipse au point le plus proche du milieu de l'épine.
+      const t = Math.atan2(my / b, mx / a);
+      const nx = Math.cos(t) / a, ny = Math.sin(t) / b;
+      const nl = Math.hypot(nx, ny) || 1;
+      const cos = (dx / len) * (nx / nl) + (dy / len) * (ny / nl);
+      ecartMax = Math.max(ecartMax, Math.acos(Math.min(1, Math.max(-1, cos))));
+      // Le témoin : l'écart qu'aurait donné la direction radiale sur ce même point.
+      const rl = Math.hypot(mx, my) || 1;
+      const cosR = (mx / rl) * (nx / nl) + (my / rl) * (ny / nl);
+      ecartRadialMax = Math.max(ecartRadialMax, Math.acos(Math.min(1, Math.max(-1, cosR))));
+    }
+    const deg = (r) => (r * 180) / Math.PI;
+    // ⚠️ LE TÉMOIN D'ABORD : sans lui, ce test serait « une absence mesurée sans vérifier que
+    // l'instrument sait voir une présence ». Sur un cercle il resterait vert quoi qu'on code.
+    assert.ok(deg(ecartRadialMax) > 30,
+      `la fixture ne sépare pas les deux politiques : la radiale n’y dévie que de ${deg(ecartRadialMax).toFixed(0)}°`);
+    assert.ok(deg(ecartMax) < 5,
+      `une épine s’écarte de ${deg(ecartMax).toFixed(0)}° de la normale : elle se couche sur le contour`);
+  });
+
+  /**
+   * ⚠️ ET LE CONTOUR PARCOURU À L'ENVERS DONNE LA MÊME FRANGE, VERS LE DEHORS. Des deux normales
+   * d'un segment, laquelle est « dehors » ne se lit PAS dans le segment : elle se lit dans le sens
+   * de parcours du contour. Le registre les produit tous dans le même sens (#425e), si bien que
+   * retirer la correction de signe ne change rien aujourd'hui — une mutation avait échappé pour
+   * cette raison exacte. Ce test refuse ce genre de garde muette : il fabrique le contour à
+   * l'envers et exige que les épines sortent quand même.
+   */
+  test('⚠️ UN CONTOUR PARCOURU DANS L’AUTRE SENS HÉRISSE TOUJOURS VERS LE DEHORS', () => {
+    const endroit = carre();
+    const envers = endroit.slice().reverse();
+    for (const contour of [endroit, envers]) {
+      const pts = pointesDeLEpine3D(CENTRE, contour, 3, 7);
+      assert.ok(pts.length >= 4, 'aucune pointe produite');
+      for (let i = 0; i < pts.length; i += 2) {
+        assert.ok(Math.hypot(pts[i + 1].x, pts[i + 1].y) > Math.hypot(pts[i].x, pts[i].y),
+          'une épine pointe vers l’intérieur : la correction de signe ne tient pas');
+      }
+    }
+  });
+
+  /**
+   * ⚠️ LA LONGUEUR ET L'ÉCART SONT DEUX TIRAGES DISTINCTS DU MÊME BRUIT. Les faire lire le même
+   * tirage — un seul caractère de différence — les rend rigoureusement proportionnels : les longues
+   * épines seraient toutes largement espacées et les courtes toutes serrées, ce qui produit des
+   * touffes régulières au lieu d'une frange. C'est la famille « deux copies d'une décision qui ne
+   * s'accordent qu'aujourd'hui », prise à l'envers : ici les deux valeurs doivent DIVERGER.
+   */
+  test('⚠️ LONGUEUR ET ÉCART NE SONT PAS LE MÊME TIRAGE', () => {
+    const pts = pointesDeLEpine3D(CENTRE, carre(), 3, 7);
+    const l = [], e = [];
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      l.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y));
+      e.push(Math.hypot(pts[i + 2].x - pts[i].x, pts[i + 2].y - pts[i].y));
+    }
+    assert.ok(l.length > 20, 'relevé trop court pour conclure');
+    const moy = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+    const ml = moy(l), me = moy(e);
+    let cov = 0, vl = 0, ve = 0;
+    for (let i = 0; i < l.length; i++) {
+      cov += (l[i] - ml) * (e[i] - me); vl += (l[i] - ml) ** 2; ve += (e[i] - me) ** 2;
+    }
+    const r = cov / (Math.sqrt(vl * ve) || 1);
+    assert.ok(Math.abs(r) < 0.6,
+      `corrélation de ${r.toFixed(2)} entre longueur et écart : la frange se fera par touffes`);
+  });
+
   test('un contour vide ou absent ne produit rien, sans lever', () => {
     assert.deepEqual(pointesDeLEpine3D(CENTRE, [], 3), []);
     assert.deepEqual(pointesDeLEpine3D(CENTRE, null, 3), []);

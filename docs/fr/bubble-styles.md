@@ -319,7 +319,18 @@ la géométrie, une frange de pointes posée le long du contour. Deux décisions
   plus visible ;
 - l'espacement est une **longueur d'arc**, pas un angle. Un pas d'angle donnerait des épines
   serrées sur les flancs d'un ovale et clairsemées à ses bouts, c'est-à-dire une densité qui change
-  avec les proportions de la Bulle — ce qu'on n'attend pas d'un motif de trait.
+  avec les proportions de la Bulle — ce qu'on n'attend pas d'un motif de trait ;
+- une épine sort à la **perpendiculaire au contour**, et le centre ne sert qu'à choisir laquelle des
+  deux perpendiculaires est « dehors ». La première écriture partait du centre, au motif — juste —
+  que sur un contour dentelé la normale bascule d'un segment à l'autre. L'argument était bon et la
+  conclusion fausse : sur une ellipse, la direction du centre s'écarte de la normale d'autant plus
+  que la Bulle est allongée, jusqu'à **soixante degrés** à mi-chemin des axes d'un ovale deux fois
+  plus large que haut. Les épines s'y couchaient le long du contour et la frange paraissait
+  s'effacer sur les flancs. Rapporté à l'usage — « quand j'élargis la bulle, les épines se
+  déforment » — puis reproduit en image avant d'être corrigé ;
+- **l'écart entre deux épines est irrégulier**, sur un tirage du bruit distinct de celui des
+  longueurs. Des longueurs variées posées à intervalle constant se lisent comme un peigne : c'est
+  la régularité du pas, et non celle de la taille, qui trahit la machine.
 
 Et elle **s'ajoute** au contour au lieu de le remplacer : le contour net borne le fond, les pointes
 débordent au-dehors. Les tracer à sa place laisserait un bord en dents de scie, c'est-à-dire

@@ -3390,12 +3390,48 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    *
    * La borne est posée sous cette valeur, avec la marge qu'exige un test de densité : elle garde
    * la frange dense sans figer un chiffre que le prochain réglage d'aspect ferait rougir pour rien.
+   *
+   * ⚠️ QUATRIÈME VALEUR, ET LA SEULE DES QUATRE À N'AVOIR RIEN CHANGÉ AU RÉGLAGE. Les 205 pointes
+   * ci-dessus ont été jugées sur une planche où les épines des FLANCS étaient invisibles : elles
+   * partaient du centre au lieu de la normale et se couchaient sur le contour. La direction
+   * corrigée, les mêmes 205 pointes se voyaient toutes, et la frange devenait un bourrelet. Le pas
+   * a donc été desserré pour retrouver la densité VUE — 189 pointes qui se voient valent mieux que
+   * 205 dont deux cinquièmes se cachaient. Le seuil descend avec lui, et cette note existe pour que
+   * personne ne le relise comme un relâchement de l'exigence.
    */
-  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS DEUX CENTS POINTES', () => {
+  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS CENT CINQUANTE POINTES', () => {
     const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
     // Deux points tracés par pointe, plus le contour lui-même.
-    assert.ok(p.length / 2 > 200,
+    assert.ok(p.length / 2 > 150,
       `${Math.round(p.length / 2)} pointes sur un périmètre de 431 px : la frange est clairsemée`);
+  });
+
+  /**
+   * ⚠️ ET L'ÉCART ENTRE DEUX POINTES EST IRRÉGULIER. Ce test est né d'une fixture qui affirmait le
+   * contraire : elle supposait que deux Bulles portaient le MÊME nombre de pointes, ce qui n'est
+   * vrai que si le pas est constant. Des longueurs variées sur un pas régulier se lisent comme un
+   * peigne — c'est la régularité de l'écart, et non celle de la taille, qui trahit la machine.
+   *
+   * Le relevé porte sur les bases des pointes, prises deux par deux : leur écart doit varier
+   * franchement. Un pas constant donnerait un écart-type quasi nul.
+   */
+  test('⚠️ L’ÉCART ENTRE DEUX POINTES VARIE', () => {
+    const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
+    // Les points de la frange viennent après ceux du contour ; on ne garde que les paires finales.
+    const bases = [];
+    for (let i = 0; i + 1 < p.length; i += 2) {
+      bases.push({ x: (p[i][0] + p[i + 1][0]) / 2, y: (p[i][1] + p[i + 1][1]) / 2 });
+    }
+    const ecarts = [];
+    for (let i = 1; i < bases.length; i++) {
+      const d = Math.hypot(bases[i].x - bases[i - 1].x, bases[i].y - bases[i - 1].y);
+      if (d > 0 && d < 20) ecarts.push(d);   // au-delà : le saut du contour vers la frange
+    }
+    assert.ok(ecarts.length > 50, `${ecarts.length} écarts relevés : le relevé ne mesure rien`);
+    const moy = ecarts.reduce((a, b) => a + b, 0) / ecarts.length;
+    const et = Math.sqrt(ecarts.reduce((a, b) => a + (b - moy) ** 2, 0) / ecarts.length);
+    assert.ok(et > moy * 0.15,
+      `écart moyen ${moy.toFixed(2)} px, écart-type ${et.toFixed(2)} : la frange est un peigne`);
   });
 
   /**
@@ -3407,7 +3443,12 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
   test('⚠️ LA FRANGE DÉPEND DE LA BULLE, PAS D’UNE GRAINE FIGÉE', () => {
     const a = pts(dessiner(nue({ id: 'aa', bulleBorderDash: 'epine' })));
     const b = pts(dessiner(nue({ id: 'zz', bulleBorderDash: 'epine' })));
-    assert.equal(a.length, b.length, 'la fixture suppose deux franges de même densité');
+    // ⚠️ LES DEUX FRANGES N'ONT MÊME PLUS LE MÊME NOMBRE DE POINTES. Cette fixture exigeait d'abord
+    // `a.length === b.length`, du temps où seule la LONGUEUR des épines dépendait de la graine ;
+    // l'écart en dépend désormais aussi, et l'égalité est devenue fausse par construction. On
+    // garde d'elle ce qu'elle voulait vraiment dire : deux franges de densité comparable.
+    assert.ok(Math.abs(a.length - b.length) < a.length * 0.25,
+      'les deux franges n’ont pas des densités comparables : la fixture ne compare plus rien');
     assert.notDeepEqual(a, b, 'toutes les Bulles d’une Planche portent la même frange');
   });
 
