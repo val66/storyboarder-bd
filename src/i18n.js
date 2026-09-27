@@ -249,6 +249,7 @@ export const I18N_TRAILING = [
   ['#ctxBringForward', 'Bring forward', 'Avancer'],
   ['#ctxSendBackward', 'Send backward', 'Reculer'],
   ['#ctxClearPanel', 'Clear panel', 'Vider la case'],
+  ['#ctxItemDelete', 'Delete bubble', 'Supprimer la bulle'],
   ['#ctxAddPersona', 'Add a character', 'Ajouter un personnage'],
   ['#ctxAddLumiere', 'Add a light', 'Ajouter une lumière'],
   ['#ctxVehiclesTrigger > span:first-child', 'Vehicles', 'Véhicules'],

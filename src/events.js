@@ -6920,6 +6920,21 @@ document.getElementById('sideBubbleSeparerBtn').onclick = () => {
   drawCurrentPage();
 };
 
+/**
+ * ⚠️ LE MENU CONTEXTUEL N'A PAS SA PROPRE SUPPRESSION : IL APPELLE CELLE DE LA TOUCHE SUPPR. Elle
+ * porte déjà tout ce qu'une suppression doit faire — la question quand un groupe de Bulles est
+ * rompu, l'instantané pris APRÈS la réponse, la séparation des survivants, la resélection de la
+ * Case d'accueil. Réécrire ne serait-ce qu'une de ces quatre choses ici donnerait deux gestes du
+ * même nom qui ne font pas la même chose, et c'est la faute que ce chantier a payée trois fois.
+ *
+ * ⚠️ ET LA CIBLE EST BIEN CELLE DU CLIC DROIT : l'écouteur `contextmenu` pose `S.selectedId` avant
+ * d'ouvrir le menu. Sans cela, on supprimerait la Bulle sélectionnée AVANT le clic droit.
+ */
+document.getElementById('ctxItemDelete').onclick = () => {
+  hideContextMenu();
+  supprimerLaSelection3D();
+};
+
 document.getElementById('ctxCreatePanel').onclick = () => {
   hideContextMenu();
   if (!S.pendingCreatePos) return;

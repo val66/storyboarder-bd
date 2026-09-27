@@ -325,6 +325,27 @@ describe('#426j — supprimer un lobe dissout son groupe, après confirmation', 
     page.objects = page.objects.filter(o => o.id !== caseHote.id && o.id !== dedans.id);
   });
 
+  /**
+   * ⚠️ LE MENU CONTEXTUEL SUPPRIME PAR LE MÊME CHEMIN QUE LA TOUCHE SUPPR, et ce test existe pour
+   * l'exiger. Un second geste du même nom qui oublierait la question, l'instantané ou la séparation
+   * des survivants serait la faute que ce chantier a payée trois fois — entre la fusion et la
+   * séparation, entre le déplacement et le redimensionnement, entre les deux prétendus chemins de
+   * suppression. On ne vérifie donc pas qu'il « supprime » : on vérifie qu'il fait TOUT.
+   */
+  test('⚠️ « SUPPRIMER LA BULLE » DU MENU CONTEXTUEL FAIT LE GESTE ENTIER', async () => {
+    S.selectedId = a.id;
+    S.undoStack.length = 0;
+    document.getElementById('ctxItemDelete').onclick();
+    await repondre(true);
+
+    const page = currentPageData();
+    assert.equal(page.objects.some(o => o.id === a.id), false, 'la Bulle n’a pas été supprimée');
+    const survivant = page.objects.find(o => o.id === b.id);
+    assert.equal(survivant.bulleGroupe, undefined, 'le groupe a survécu : la question n’a rien suivi');
+    assert.equal(survivant.bulleColor, '#eeeeee', 'le style d’avant la fusion n’a pas été rendu');
+    assert.equal(S.undoStack.length, 1, 'ce chemin n’empile pas le même point d’annulation');
+  });
+
   test('⚠️ SUPPRIMER UNE BULLE SANS GROUPE NE POSE AUCUNE QUESTION', async () => {
     const seule = nouvelleBulle();
     S.selectedId = seule.id;

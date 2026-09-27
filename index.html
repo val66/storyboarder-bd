@@ -736,6 +736,11 @@
 <div class="context-menu hidden" id="itemContextMenu">
   <button id="ctxItemBringForward"><span class="ctx-icon">⬆</span> Avancer</button>
   <button id="ctxItemSendBackward"><span class="ctx-icon">⬇</span> Reculer</button>
+  <!-- #426k — SUPPRIMER SANS PASSER PAR LE CLAVIER. La touche Suppr était le seul chemin, ce qui
+       oblige à savoir qu'elle existe et à avoir la Bulle sélectionnée. Demandé à l'usage. Ce menu
+       n'est ouvert que pour une Bulle (cf. l'écouteur `contextmenu`), malgré ce que son nom
+       laisse croire. -->
+  <button id="ctxItemDelete"><span class="ctx-icon">🗑</span> Supprimer la bulle</button>
 </div>
 
 <div class="context-menu hidden" id="dblclickChoiceMenu">
