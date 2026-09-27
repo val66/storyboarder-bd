@@ -67,7 +67,8 @@ import { getLoadedImage, imageState } from './image-cache.js';
 // pur (#425a), appliquée ici. Les décalages du tremblé s'ajoutent au TRACÉ, jamais au contour rendu
 // par `bubbleEdgePoint` — d'où la queue et le hit-test qui restent d'aplomb.
 import { apparenceBulle, decalagesTrembleBulle,
-         motifTraitBulle, TRAIT_EPINE, pointesDeLEpine3D } from './bubble-style.js';
+         motifTraitBulle, TRAIT_EPINE, pointesDeLEpine3D, EPINE_FINESSE,
+         graineTrembleBulle } from './bubble-style.js';
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
@@ -1656,13 +1657,23 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   // au-dehors. Les tracer à la place du contour laisserait un bord en dents de scie, ce qui est
   // l'étoile du cri — une FORME, et précisément celle dont #425y vient de retirer les doublons.
   if (motifTraitBulle(o) === TRAIT_EPINE) {
+    // ⚠️ UN NOMBRE DE POINTS FIXE SUFFIT, ET C'EST MESURÉ. J'avais d'abord fait varier
+    // l'échantillonnage avec la taille, par crainte qu'une grande Bulle ne pose plusieurs pointes
+    // sur une même corde et ne donne une frange facettée. La campagne a déclaré ce raffinement
+    // INTUABLE, et le calcul dit pourquoi : sur une Bulle de 800 × 400, ces points laissent des
+    // cordes de 8 px sur un rayon de 400, dont la flèche vaut 0,02 px. La complexité corrigeait un
+    // défaut qui n'existe pas. Le test de la grande Bulle reste, lui, et tient la propriété.
     const contour = [];
     for (let i = 0; i < POINTS_EPINE; i++) {
       contour.push(bubbleEdgePoint(o, (Math.PI * 2 * i) / POINTS_EPINE));
     }
     const centre = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
-    const pointes = pointesDeLEpine3D(centre, contour, largeurTrait);
+    const pointes = pointesDeLEpine3D(centre, contour, largeurTrait, graineTrembleBulle(o));
     if (pointes.length) {
+      // ⚠️ LA FRANGE EST TRACÉE PLUS FIN QUE LE CONTOUR, et c'est ce qui la fait lire comme une
+      // frange. À la même épaisseur, des pointes serrées se rejoignent et forment un bourrelet noir
+      // au lieu d'aiguilles distinctes — relevé à l'usage : « plus fines ».
+      c.lineWidth = largeurTrait * EPINE_FINESSE * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
       c.beginPath();
       pointes.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
       c.closePath();

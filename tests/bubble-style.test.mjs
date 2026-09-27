@@ -28,7 +28,7 @@ import {
   champsApparenceBulle, opaciteRemplissageBulle, motifTraitBulle, regulariteTraitBulle,
   tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
   graineTrembleBulle,
-  pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, TRAIT_EPINE,
+  pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, EPINE_VARIATION, TRAIT_EPINE,
 } from '../src/bubble-style.js';
 
 /**
@@ -314,17 +314,53 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     assert.ok(tiretsTraitBulle({ bulleBorderDash: 'tirets' }, 3).length > 0);
   });
 
-  test('les pointes sortent VERS L’EXTÉRIEUR, et de la longueur annoncée', () => {
-    const pts = pointesDeLEpine3D(CENTRE, carre(), 4);
+  const longueurs = (pts) => {
+    const out = [];
+    for (let i = 0; i < pts.length; i += 2) {
+      out.push(Math.hypot(pts[i + 1].x, pts[i + 1].y) - Math.hypot(pts[i].x, pts[i].y));
+    }
+    return out;
+  };
+
+  test('les pointes sortent VERS L’EXTÉRIEUR, et restent dans la plage annoncée', () => {
+    const pts = pointesDeLEpine3D(CENTRE, carre(), 4, 7);
     assert.ok(pts.length >= 4, 'aucune pointe produite');
-    // Les points alternent : base sur le contour, pointe au-dehors.
+    const nominal = 4 * EPINE_LONGUEUR;
     for (let i = 0; i < pts.length; i += 2) {
       const base = Math.hypot(pts[i].x, pts[i].y);
-      const pointe = Math.hypot(pts[i + 1].x, pts[i + 1].y);
       assert.ok(Math.abs(base - 50) < 0.5, `base à ${base.toFixed(1)} du centre, contour à 50`);
-      assert.ok(Math.abs(pointe - base - 4 * EPINE_LONGUEUR) < 0.5,
-        `pointe longue de ${(pointe - base).toFixed(1)} px, attendu ${4 * EPINE_LONGUEUR}`);
     }
+    for (const l of longueurs(pts)) {
+      assert.ok(l > 0, `une pointe rentre vers l’intérieur (${l.toFixed(1)} px)`);
+      assert.ok(Math.abs(l - nominal) <= nominal * EPINE_VARIATION + 0.01,
+        `pointe de ${l.toFixed(1)} px, hors de la plage ${nominal} ± ${(nominal * EPINE_VARIATION).toFixed(1)}`);
+    }
+  });
+
+  /**
+   * ⚠️ LES LONGUEURS VARIENT, ET C'EST DEMANDÉ. Relevé à l'usage sur la source : « les épines sont
+   * beaucoup plus nombreuses, plus fines et de taille variable ». Une frange régulière se lit comme
+   * un engrenage ; l'inégalité lui donne l'aspect d'un tracé à la plume.
+   */
+  test('⚠️ LES POINTES N’ONT PAS TOUTES LA MÊME LONGUEUR', () => {
+    const l = longueurs(pointesDeLEpine3D(CENTRE, carre(), 3, 7));
+    const ecart = Math.max(...l) / Math.min(...l);
+    assert.ok(ecart > 1.5, `longueurs dans un rapport de ${ecart.toFixed(2)} : la frange est régulière`);
+  });
+
+  /**
+   * ⚠️ MAIS LA VARIATION EST DÉTERMINISTE. La Planche se redessine des dizaines de fois par seconde
+   * pendant un glissement : un `Math.random()` ici ferait frémir la frange en continu. C'est le même
+   * bruit cyclique que le contour tremblé et la tache d'encre, avec la même graine tirée de
+   * l'identifiant — deux Bulles diffèrent, une Bulle donnée se redessine à l'identique.
+   */
+  test('⚠️ ET ELLE EST DÉTERMINISTE : même graine, même frange ; graine différente, autre frange', () => {
+    assert.deepEqual(pointesDeLEpine3D(CENTRE, carre(), 3, 7),
+                     pointesDeLEpine3D(CENTRE, carre(), 3, 7),
+      'la frange change d’une image à l’autre : elle frémirait sans fin');
+    assert.notDeepEqual(pointesDeLEpine3D(CENTRE, carre(), 3, 7),
+                        pointesDeLEpine3D(CENTRE, carre(), 3, 99),
+      'deux Bulles différentes portent exactement la même frange');
   });
 
   /**
@@ -333,12 +369,13 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
    * contour plus visible.
    */
   test('⚠️ UN TRAIT DEUX FOIS PLUS ÉPAIS DONNE DEUX FOIS MOINS D’ÉPINES, DEUX FOIS PLUS LONGUES', () => {
-    const fin = pointesDeLEpine3D(CENTRE, carre(), 2);
-    const gras = pointesDeLEpine3D(CENTRE, carre(), 4);
+    const fin = pointesDeLEpine3D(CENTRE, carre(), 2, 7);
+    const gras = pointesDeLEpine3D(CENTRE, carre(), 4, 7);
     assert.ok(fin.length > gras.length * 1.8,
       `${fin.length / 2} pointes à 2 px contre ${gras.length / 2} à 4 px : l’espacement ne suit pas`);
-    const longueur = (pts) => Math.hypot(pts[1].x, pts[1].y) - Math.hypot(pts[0].x, pts[0].y);
-    assert.ok(Math.abs(longueur(gras) - 2 * longueur(fin)) < 0.5,
+    // La longueur MOYENNE suit l'épaisseur : chaque pointe varie, leur moyenne non.
+    const moyenne = (pts) => longueurs(pts).reduce((a, b) => a + b, 0) / (pts.length / 2);
+    assert.ok(Math.abs(moyenne(gras) - 2 * moyenne(fin)) < 0.5,
       'la longueur des pointes ne suit pas l’épaisseur');
   });
 

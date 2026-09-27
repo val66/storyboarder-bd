@@ -3345,6 +3345,92 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
     assert.ok(dedans.length > 10, 'plus aucun point dans la boîte : le contour a été remplacé');
   });
 
+  /**
+   * ⚠️ LA FRANGE EST TRACÉE PLUS FIN QUE LE CONTOUR, et c'est ce qui la fait lire comme une frange.
+   * À la même épaisseur, des pointes serrées se rejoignent et forment un bourrelet noir au lieu
+   * d'aiguilles distinctes — relevé à l'usage. Le test lit la DERNIÈRE épaisseur posée sur le
+   * contexte, celle de la frange, et la compare à celle d'une Bulle à trait plein.
+   */
+  test('⚠️ LA FRANGE EST PLUS FINE QUE LE CONTOUR', () => {
+    const derniereEpaisseur = (o) => {
+      const j = dessiner(o);
+      const w = j.filter(e => e.nom === 'set:lineWidth');
+      return w.length ? w[w.length - 1].args[0] : null;
+    };
+    const contour = derniereEpaisseur(nue({ bulleBorderDash: 'plein' }));
+    const frange = derniereEpaisseur(nue({ bulleBorderDash: 'epine' }));
+    assert.ok(frange !== null && contour !== null, 'épaisseur non observable');
+    assert.ok(frange < contour * 0.8,
+      `frange à ${frange}, contour à ${contour} : les pointes feront un bourrelet`);
+  });
+
+  /**
+   * ⚠️ LA DENSITÉ NE DOIT PAS SE DILUER SUR UNE GRANDE BULLE. Le contour est échantillonné selon la
+   * taille : à nombre de points fixe, une grande Bulle aurait des segments plus longs que le pas
+   * des épines, plusieurs pointes tomberaient sur une même corde, et la frange se lirait facettée.
+   */
+  test('⚠️ UNE BULLE DEUX FOIS PLUS GRANDE PORTE ENVIRON DEUX FOIS PLUS D’ÉPINES', () => {
+    const n = (w, h) => pts(dessiner(nue({ bulleBorderDash: 'epine', w, h }))).length;
+    const petite = n(200, 100), grande = n(400, 200);
+    assert.ok(grande > petite * 1.6,
+      `${petite} points pour 200×100, ${grande} pour 400×200 : la frange s’est diluée`);
+  });
+
+  /**
+   * ⚠️ LA FRANGE EST DENSE, ET C'EST UNE MESURE ABSOLUE. Les tests voisins comparent deux épaisseurs
+   * ou deux tailles : un espacement multiplié par quatre les laisse tous verts, puisque le RAPPORT
+   * ne change pas. Relevé à l'usage sur la source : « beaucoup plus nombreuses ». Sur la Bulle de
+   * référence, le périmètre avoisine 480 px ; à moins de cent pointes, la frange se clairseme.
+   */
+  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS CENT POINTES', () => {
+    const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
+    // Deux points tracés par pointe, plus le contour lui-même.
+    assert.ok(p.length / 2 > 100,
+      `${Math.round(p.length / 2)} pointes sur un périmètre de ~480 px : la frange est clairsemée`);
+  });
+
+  /**
+   * ⚠️ DEUX BULLES DIFFÉRENTES PORTENT DES FRANGES DIFFÉRENTES. La graine vient de l'identifiant,
+   * comme pour le contour tremblé et la tache d'encre. Passer une graine constante donnerait à
+   * toute une Planche la même frange, répétée à l'identique — ce qui se voit immédiatement et
+   * qu'aucun test sur une seule Bulle ne peut attraper.
+   */
+  test('⚠️ LA FRANGE DÉPEND DE LA BULLE, PAS D’UNE GRAINE FIGÉE', () => {
+    const a = pts(dessiner(nue({ id: 'aa', bulleBorderDash: 'epine' })));
+    const b = pts(dessiner(nue({ id: 'zz', bulleBorderDash: 'epine' })));
+    assert.equal(a.length, b.length, 'la fixture suppose deux franges de même densité');
+    assert.notDeepEqual(a, b, 'toutes les Bulles d’une Planche portent la même frange');
+  });
+
+  /**
+   * ⚠️ LES POINTES PARTENT DU CONTOUR, MÊME SUR UNE GRANDE BULLE. Le contour est échantillonné selon
+   * la taille : à nombre de points fixe, une grande Bulle aurait des segments plus longs que le pas
+   * des épines, et les bases tomberaient sur des CORDES, en deçà de la courbe. La frange se lirait
+   * facettée — un défaut que ni le nombre de pointes ni leur longueur ne révèlent.
+   */
+  test('⚠️ SUR UNE GRANDE BULLE, LES BASES RESTENT SUR LA COURBE', () => {
+    const grande = nue({ bulleBorderDash: 'epine', w: 800, h: 400 });
+    const p = pts(dessiner(grande));
+    const cx = 400, cy = 200;
+    // ⚠️ LES BASES SONT RECONNUES PAR CE QUI LES SUIT, ET NON PAR LEUR PARITÉ. Le tracé contient
+    // d'abord le contour, puis la frange : compter une entrée sur deux depuis le début tombe sur la
+    // mauvaise parité dès que le contour a un nombre impair de points, et le test mesurait alors
+    // des sommets de contour en les prenant pour des bases. Une base est suivie d'un point
+    // NETTEMENT plus loin du centre — sa pointe.
+    const rayon = ([x, y]) => Math.hypot(x - cx, y - cy);
+    const ecarts = [];
+    for (let i = 0; i < p.length - 1; i++) {
+      if (rayon(p[i + 1]) - rayon(p[i]) < 4) continue;
+      const [x, y] = p[i];
+      const a = Math.atan2((y - cy) / 200, (x - cx) / 400);
+      const bord = bubbleEdgePoint(grande, a);
+      ecarts.push(Math.abs(Math.hypot(x - cx, y - cy) - Math.hypot(bord.x - cx, bord.y - cy)));
+    }
+    assert.ok(ecarts.length > 100, `${ecarts.length} bases reconnues : le repère ne voit plus rien`);
+    const pire = Math.max(...ecarts);
+    assert.ok(pire < 2, `une base s’écarte de ${pire.toFixed(1)} px du contour : la frange est facettée`);
+  });
+
   test('les trois autres motifs ne tracent aucune frange', () => {
     // Le repère négatif, sans quoi « beaucoup de points » pourrait venir d'ailleurs.
     for (const motif of ['plein', 'pointille', 'tirets']) {

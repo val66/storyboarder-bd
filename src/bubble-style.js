@@ -233,8 +233,29 @@ export function apparenceBulle(o, largeurTrait){
  * 4 px sur un filet fin deviennent une frange imperceptible sous un trait de 6 px — le motif
  * disparaîtrait précisément là où l'utilisateur a demandé un contour plus visible.
  */
-export const EPINE_PAS = 2.2;
-export const EPINE_LONGUEUR = 3.5;
+export const EPINE_PAS = 0.9;
+export const EPINE_LONGUEUR = 4;
+
+/**
+ * De combien la longueur d'une pointe s'écarte de la moyenne, en fraction de celle-ci.
+ *
+ * ⚠️ 0,45 : LES POINTES VONT DONC DU SIMPLE AU TRIPLE. Relevé à l'usage sur la source — « les
+ * épines sont beaucoup plus nombreuses, plus fines et de taille variable ». Une frange régulière
+ * se lit comme un engrenage ; c'est l'inégalité qui lui donne l'aspect d'un tracé à la plume.
+ */
+export const EPINE_VARIATION = 0.45;
+
+/**
+ * L'épaisseur de la frange, en fraction de celle du contour.
+ *
+ * ⚠️ PLUS FIN QUE LE CONTOUR, ET C'EST CE QUI LA FAIT LIRE COMME UNE FRANGE. À la même épaisseur,
+ * des pointes serrées se rejoignent et forment un bourrelet noir au lieu d'aiguilles distinctes.
+ * Relevé à l'usage sur la source.
+ */
+export const EPINE_FINESSE = 0.42;
+
+/** Combien de points de bruit font le tour du contour avant de se répéter. */
+const EPINE_POINTS_BRUIT = 23;
 
 /**
  * Les points d'une frange d'épines posée le long d'un contour. Fonction PURE.
@@ -252,19 +273,35 @@ export const EPINE_LONGUEUR = 3.5;
  * étoile — la normale bascule d'un segment à l'autre et les épines partiraient dans tous les sens.
  * Le registre garantit des contours étoilés autour du centre (#425e) : la direction radiale est
  * donc toujours « vers le dehors », quelle que soit la forme.
+ *
+ * ⚠️ LA LONGUEUR VARIE, ET ELLE VARIE DE FAÇON DÉTERMINISTE. C'est le même bruit cyclique que le
+ * contour tremblé et la tache d'encre, avec la même graine tirée de l'identifiant : deux Bulles
+ * différentes n'ont pas la même frange, mais une Bulle donnée se redessine à l'identique. Un
+ * `Math.random()` ici ferait frémir la frange à chaque image — la Planche se redessine des
+ * dizaines de fois par seconde pendant un glissement.
  */
-export function pointesDeLEpine3D(centre, contour, largeurTrait){
+export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
   const pts = Array.isArray(contour) ? contour : [];
   if (pts.length < 2 || !centre) return [];
   const w = Number(largeurTrait) > 0 ? Number(largeurTrait) : 1;
   const pas = w * EPINE_PAS, longueur = w * EPINE_LONGUEUR;
+  const g = Number.isFinite(Number(graine)) ? Number(graine) : 0;
+
+  // La longueur totale sert à donner au bruit une abscisse dans [0, 1[ qui BOUCLE : sans elle, la
+  // dernière épine et la première seraient voisines sur le contour et étrangères dans le bruit.
+  let perimetre = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    perimetre += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  if (perimetre === 0) return [];
 
   const out = [];
   // ⚠️ LA DISTANCE RESTANT À PARCOURIR SE REPORTE D'UN SEGMENT À L'AUTRE, et une première écriture
   // s'y est trompée : elle recalculait le reliquat par un modulo au lieu de le décompter, si bien
   // qu'il divergeait et qu'une seule épine sortait de tout le contour. Un contour échantillonné
   // finement a des segments BIEN PLUS COURTS que le pas — c'est le cas normal, pas le cas limite.
-  let restant = 0;
+  let restant = 0, parcouru = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -276,10 +313,13 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait){
       const p = { x: a.x + dx * (pos / len), y: a.y + dy * (pos / len) };
       const vx = p.x - centre.x, vy = p.y - centre.y;
       const r = Math.hypot(vx, vy) || 1;
-      out.push(p, { x: p.x + (vx / r) * longueur, y: p.y + (vy / r) * longueur });
+      const t = ((parcouru + pos) / perimetre) % 1;
+      const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, EPINE_POINTS_BRUIT));
+      out.push(p, { x: p.x + (vx / r) * l, y: p.y + (vy / r) * l });
       restant = pas;
     }
     restant -= len - pos;
+    parcouru += len;
   }
   return out;
 }
