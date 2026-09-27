@@ -3300,3 +3300,57 @@ describe('#425p — les particules atteignent le canevas', () => {
     appels(j, 'fill').forEach((e, i) => assert.equal(e.alpha, 0, `peinture ${i} à ${e.alpha}`));
   });
 });
+
+describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
+  const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+  const nue = (extra) => Object.assign({
+    id: 'e1', type: 'bulle', x: 0, y: 0, w: 200, h: 100, description: '',
+    bulleShape: 'ovale', tailVisible: false, bulleBorderWidth: 3,
+  }, extra);
+
+  /**
+   * ⚠️ SANS CE TEST, LE MOTIF SERAIT UNE OPINION SANS EFFET — la faute de la mutation M19 de #420c,
+   * rencontrée trois fois dans ce chantier : une décision pure juste, et un réglage inerte.
+   *
+   * Le critère est le nombre de points TRACÉS : la frange en ajoute des centaines au contour. Une
+   * assertion sur la seule présence d'un `stroke` serait vraie pour un trait plein.
+   */
+  test('⚠️ UNE BULLE ÉPINEUSE TRACE BEAUCOUP PLUS DE POINTS QU’UNE BULLE PLEINE', () => {
+    const points = (o) => pts(dessiner(o)).length;
+    const plein = points(nue({ bulleBorderDash: 'plein' }));
+    const epine = points(nue({ bulleBorderDash: 'epine' }));
+    assert.ok(epine > plein * 2,
+      `épine ${epine} points, plein ${plein} : la frange n’a pas été tracée`);
+
+    // ⚠️ ET LE CHEMIN EST PEINT, PAS SEULEMENT CONSTRUIT. Compter les points laissait passer la
+    // mutation qui retire le `stroke` final : la frange existait dans le contexte et n'arrivait
+    // jamais sur le canevas — « visible mais inopérant », sous sa forme la plus littérale.
+    const traits = (o) => appels(dessiner(o), 'stroke').length;
+    assert.equal(traits(nue({ bulleBorderDash: 'epine' })),
+      traits(nue({ bulleBorderDash: 'plein' })) + 1,
+      'la frange est construite mais jamais peinte');
+  });
+
+  /**
+   * ⚠️ ET ELLE S'AJOUTE AU CONTOUR, ELLE NE LE REMPLACE PAS. Le relevé montre une frange AUTOUR
+   * d'un contour qui reste net : c'est lui qui borne le fond. La tracer à la place laisserait un
+   * bord en dents de scie, c'est-à-dire l'étoile du cri — une FORME, et précisément celle dont ce
+   * chantier vient de retirer les doublons.
+   */
+  test('⚠️ LES POINTES SORTENT DE LA BOÎTE, LE CONTOUR Y RESTE', () => {
+    const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
+    const dehors = p.filter(([x, y]) => x < -1 || x > 201 || y < -1 || y > 101);
+    assert.ok(dehors.length > 10, `${dehors.length} points hors de la boîte : la frange ne dépasse pas`);
+    const dedans = p.filter(([x, y]) => x >= -1 && x <= 201 && y >= -1 && y <= 101);
+    assert.ok(dedans.length > 10, 'plus aucun point dans la boîte : le contour a été remplacé');
+  });
+
+  test('les trois autres motifs ne tracent aucune frange', () => {
+    // Le repère négatif, sans quoi « beaucoup de points » pourrait venir d'ailleurs.
+    for (const motif of ['plein', 'pointille', 'tirets']) {
+      const p = pts(dessiner(nue({ bulleBorderDash: motif })));
+      const dehors = p.filter(([x, y]) => x < -1 || x > 201 || y < -1 || y > 101);
+      assert.equal(dehors.length, 0, `« ${motif} » fait sortir ${dehors.length} points de la boîte`);
+    }
+  });
+});

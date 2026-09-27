@@ -66,7 +66,8 @@ import { getLoadedImage, imageState } from './image-cache.js';
 // L'apparence d'une Bulle : opacité du fond, motif et régularité du trait. Décidée dans un module
 // pur (#425a), appliquée ici. Les décalages du tremblé s'ajoutent au TRACÉ, jamais au contour rendu
 // par `bubbleEdgePoint` — d'où la queue et le hit-test qui restent d'aplomb.
-import { apparenceBulle, decalagesTrembleBulle } from './bubble-style.js';
+import { apparenceBulle, decalagesTrembleBulle,
+         motifTraitBulle, TRAIT_EPINE, pointesDeLEpine3D } from './bubble-style.js';
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
@@ -85,6 +86,15 @@ import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
  * sans épaissir la lettre — au-delà, les contre-formes d'un « e » ou d'un « a » se referment.
  */
 const EPAISSEUR_CONTOUR_TEXTE = 0.16;
+
+/**
+ * Combien de points échantillonnent le contour pour y poser la frange d'épines (#425y).
+ *
+ * ⚠️ C'EST UN ÉCHANTILLONNAGE DU CONTOUR, PAS LE NOMBRE D'ÉPINES. Celui-ci est fixé par le PAS en
+ * épaisseurs de trait (cf. `pointesDeLEpine3D`) : ces points servent seulement à ce que la
+ * polyligne suive d'assez près une courbe, y compris sur une grande Bulle.
+ */
+const POINTS_EPINE = 240;
 import { particulesDeLaBulle } from './bubble-particle.js';
 import { motifDuGrain3D, nouvelleImage3D } from './bubble-grain.js';
 import { groupeDeLaBulle3D } from './bubble-merge.js';
@@ -1641,6 +1651,24 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   c.lineWidth = largeurTrait * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
   c.strokeStyle = o.bulleBorderColor || '#23242A';
   c.stroke();
+  // ⚠️ L'ÉPINE S'AJOUTE AU CONTOUR, ELLE NE LE REMPLACE PAS. Le relevé montre une frange de pointes
+  // AUTOUR d'un contour qui reste net : c'est lui qui borne le fond, et les pointes débordent
+  // au-dehors. Les tracer à la place du contour laisserait un bord en dents de scie, ce qui est
+  // l'étoile du cri — une FORME, et précisément celle dont #425y vient de retirer les doublons.
+  if (motifTraitBulle(o) === TRAIT_EPINE) {
+    const contour = [];
+    for (let i = 0; i < POINTS_EPINE; i++) {
+      contour.push(bubbleEdgePoint(o, (Math.PI * 2 * i) / POINTS_EPINE));
+    }
+    const centre = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    const pointes = pointesDeLEpine3D(centre, contour, largeurTrait);
+    if (pointes.length) {
+      c.beginPath();
+      pointes.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+      c.closePath();
+      c.stroke();
+    }
+  }
 }
 
 /**

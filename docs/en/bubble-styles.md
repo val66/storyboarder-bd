@@ -284,6 +284,32 @@ The Bubbles concerned change appearance, and that is what a removal means. The "
 what exists" rule protects those that asked for nothing; it can do nothing for those whose requested
 setting no longer exists.
 
+## One more shape, and a reclassification (#425y)
+
+**The straight-sided oval** joins the registry: the bubble drawn with a ruler, a dozen unequal
+segments instead of a curve. The sides are unequal **without any randomness** — the vertices sit on
+the ellipse at a constant PARAMETER step, and such a step covers a lot of length near the ends of
+the major axis and little on the flanks. On a square box they become equal again. The shape is
+therefore deterministic, unlike the ink blot which seeds itself from the Bubble's id: copying a
+Bubble does not deform it.
+
+⚠️ **AND THE BRISTLING RETURNS AS A STROKE PATTERN, NOT AS A SHAPE.** The crown of thorns was a
+shape, hence an exclusive choice: a bristling rectangle was impossible. "Thorns" joins Solid, Dotted
+and Dashed in the Border section, and applies to **any** shape. This is the same reclassification
+#425n performed for the speckle — recognising that a graphic trait belonged on the wrong axis.
+
+It is not a dash pattern for all that: it is not set with a dash array but with geometry, a fringe
+of spikes laid along the outline. Two decisions govern it:
+
+- spacing and length are measured **in stroke widths**, like the dashes and for the same reason — at
+  a fixed value, the fringe would vanish exactly where the user asked for a more visible outline;
+- the spacing is an **arc length**, not an angle. An angular step would give spikes crowded on the
+  flanks of an oval and sparse at its ends, that is, a density that changes with the Bubble's
+  proportions — not what one expects from a stroke pattern.
+
+And it **adds to** the outline rather than replacing it: the clean outline bounds the fill, the
+spikes stick out. Drawing them instead of it would leave a jagged edge, that is, the shout star.
+
 ## What the revision corrected, including in my own work
 
 After this note, every entry in the survey was set **against the fragment of the page** it claimed to

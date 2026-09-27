@@ -28,6 +28,7 @@ import {
   champsApparenceBulle, opaciteRemplissageBulle, motifTraitBulle, regulariteTraitBulle,
   tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
   graineTrembleBulle,
+  pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, TRAIT_EPINE,
 } from '../src/bubble-style.js';
 
 /**
@@ -290,5 +291,82 @@ describe('Les décalages du tremblé : une main, pas du bruit blanc', () => {
     // toutes les autres sans id.
     assert.equal(typeof graineTrembleBulle({}), 'number');
     assert.ok(Number.isFinite(graineTrembleBulle(null)));
+  });
+});
+
+describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#425y)', () => {
+  // Un carré de 100 px de côté, centré : les distances au centre s'y lisent à vue d'œil.
+  const CENTRE = { x: 0, y: 0 };
+  const carre = (n = 400) => {
+    const p = [];
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n;
+      p.push({ x: 50 * Math.cos(a), y: 50 * Math.sin(a) });
+    }
+    return p;
+  };
+
+  test('⚠️ IL NE POSE AUCUN TIRET : ce n’est pas un pointillé', () => {
+    // Rendre un motif de tirets ici ferait en plus POINTILLER la frange, ce qui n'est demandé
+    // nulle part et se verrait comme un contour rongé.
+    assert.deepEqual(tiretsTraitBulle({ bulleBorderDash: TRAIT_EPINE }, 3), []);
+    // Le repère : les deux autres motifs, eux, en posent.
+    assert.ok(tiretsTraitBulle({ bulleBorderDash: 'tirets' }, 3).length > 0);
+  });
+
+  test('les pointes sortent VERS L’EXTÉRIEUR, et de la longueur annoncée', () => {
+    const pts = pointesDeLEpine3D(CENTRE, carre(), 4);
+    assert.ok(pts.length >= 4, 'aucune pointe produite');
+    // Les points alternent : base sur le contour, pointe au-dehors.
+    for (let i = 0; i < pts.length; i += 2) {
+      const base = Math.hypot(pts[i].x, pts[i].y);
+      const pointe = Math.hypot(pts[i + 1].x, pts[i + 1].y);
+      assert.ok(Math.abs(base - 50) < 0.5, `base à ${base.toFixed(1)} du centre, contour à 50`);
+      assert.ok(Math.abs(pointe - base - 4 * EPINE_LONGUEUR) < 0.5,
+        `pointe longue de ${(pointe - base).toFixed(1)} px, attendu ${4 * EPINE_LONGUEUR}`);
+    }
+  });
+
+  /**
+   * ⚠️ LE MOTIF SE MESURE EN ÉPAISSEURS DE TRAIT, comme les tirets et pour la même raison : à
+   * valeur fixe en pixels, la frange disparaîtrait précisément là où l'utilisateur a demandé un
+   * contour plus visible.
+   */
+  test('⚠️ UN TRAIT DEUX FOIS PLUS ÉPAIS DONNE DEUX FOIS MOINS D’ÉPINES, DEUX FOIS PLUS LONGUES', () => {
+    const fin = pointesDeLEpine3D(CENTRE, carre(), 2);
+    const gras = pointesDeLEpine3D(CENTRE, carre(), 4);
+    assert.ok(fin.length > gras.length * 1.8,
+      `${fin.length / 2} pointes à 2 px contre ${gras.length / 2} à 4 px : l’espacement ne suit pas`);
+    const longueur = (pts) => Math.hypot(pts[1].x, pts[1].y) - Math.hypot(pts[0].x, pts[0].y);
+    assert.ok(Math.abs(longueur(gras) - 2 * longueur(fin)) < 0.5,
+      'la longueur des pointes ne suit pas l’épaisseur');
+  });
+
+  /**
+   * ⚠️ L'ESPACEMENT EST UNE LONGUEUR D'ARC, PAS UN ANGLE. Un pas d'angle donnerait des épines
+   * serrées sur les flancs d'un ovale et clairsemées à ses bouts : la densité changerait avec les
+   * proportions de la Bulle, ce qu'on n'attend pas d'un MOTIF DE TRAIT. On le mesure sur un contour
+   * très allongé, où les deux politiques divergent franchement.
+   */
+  test('⚠️ LA DENSITÉ EST LA MÊME PARTOUT SUR UN CONTOUR ALLONGÉ', () => {
+    const allonge = [];
+    const n = 720;
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n;
+      allonge.push({ x: 200 * Math.cos(a), y: 40 * Math.sin(a) });
+    }
+    const pts = pointesDeLEpine3D(CENTRE, allonge, 3);
+    const bases = pts.filter((_, i) => i % 2 === 0);
+    const ecarts = bases.slice(1).map((p, i) =>
+      Math.hypot(p.x - bases[i].x, p.y - bases[i].y));
+    const dedans = ecarts.filter(e => e < 3 * EPINE_PAS * 2.5);
+    assert.ok(dedans.length > ecarts.length * 0.95,
+      'les épines se tassent par endroits : l’espacement suit l’angle et non la longueur');
+  });
+
+  test('un contour vide ou absent ne produit rien, sans lever', () => {
+    assert.deepEqual(pointesDeLEpine3D(CENTRE, [], 3), []);
+    assert.deepEqual(pointesDeLEpine3D(CENTRE, null, 3), []);
+    assert.deepEqual(pointesDeLEpine3D(null, carre(), 3), []);
   });
 });

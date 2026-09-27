@@ -54,12 +54,13 @@ export const BULLE_OPACITE_DEFAUT = 1;
 export const TRAIT_PLEIN = 'plein';
 export const TRAIT_POINTILLE = 'pointille';
 export const TRAIT_TIRETS = 'tirets';
+export const TRAIT_EPINE = 'epine';
 
 /** Régularité du trait. PERSISTÉES, même raison. */
 export const TRAIT_NET = 'net';
 export const TRAIT_TREMBLE = 'tremble';
 
-const MOTIFS = new Set([TRAIT_PLEIN, TRAIT_POINTILLE, TRAIT_TIRETS]);
+const MOTIFS = new Set([TRAIT_PLEIN, TRAIT_POINTILLE, TRAIT_TIRETS, TRAIT_EPINE]);
 const REGULARITES = new Set([TRAIT_NET, TRAIT_TREMBLE]);
 
 /**
@@ -119,7 +120,10 @@ export function regulariteTraitBulle(o){
  */
 export function tiretsTraitBulle(o, largeurTrait){
   const motif = motifTraitBulle(o);
-  if (motif === TRAIT_PLEIN) return [];
+  // ⚠️ L'ÉPINE N'EST PAS UN POINTILLÉ, ET N'A DONC AUCUN TIRET. Elle ne se règle pas avec
+  // `setLineDash` mais avec de la GÉOMÉTRIE : des pointes rayonnantes posées le long du contour
+  // (cf. `pointesDeLEpine3D`). Rendre un motif de tirets ici la ferait en plus pointiller.
+  if (motif === TRAIT_PLEIN || motif === TRAIT_EPINE) return [];
   const w = Number(largeurTrait);
   const l = Number.isFinite(w) && w > 0 ? w : 1;
   // Le chuchotement du corpus : des points ronds nettement espacés, pas des tirets serrés.
@@ -220,4 +224,62 @@ export function apparenceBulle(o, largeurTrait){
     tirets: tiretsTraitBulle(o, largeurTrait),
     tremble: amplitudeTrembleBulle(o, largeurTrait),
   };
+}
+
+/**
+ * L'espacement des pointes et leur longueur, en ÉPAISSEURS DE TRAIT.
+ *
+ * ⚠️ MÊME RÈGLE QUE LES TIRETS, ET POUR LA MÊME RAISON. À valeur fixe en pixels, des pointes de
+ * 4 px sur un filet fin deviennent une frange imperceptible sous un trait de 6 px — le motif
+ * disparaîtrait précisément là où l'utilisateur a demandé un contour plus visible.
+ */
+export const EPINE_PAS = 2.2;
+export const EPINE_LONGUEUR = 3.5;
+
+/**
+ * Les points d'une frange d'épines posée le long d'un contour. Fonction PURE.
+ *
+ * Rend une polyligne en dents de scie : un point sur le contour, sa pointe poussée vers l'extérieur,
+ * le point suivant, sa pointe, et ainsi de suite. `centre` donne la direction « vers l'extérieur ».
+ *
+ * ⚠️ LE CONTOUR EST RÉÉCHANTILLONNÉ À LONGUEUR CONSTANTE, PAS À ANGLE CONSTANT. Un pas d'angle
+ * donnerait des épines serrées sur les flancs d'un ovale et clairsemées à ses bouts, c'est-à-dire
+ * une densité qui change avec la forme et avec les proportions de la Bulle. À pas de longueur, la
+ * frange a la même densité partout et sur toutes les formes — ce qui est précisément ce qu'on
+ * attend d'un MOTIF DE TRAIT, par opposition à une forme.
+ *
+ * ⚠️ ET LA DIRECTION VIENT DU CENTRE, PAS DE LA NORMALE AU SEGMENT. Sur un contour dentelé — une
+ * étoile — la normale bascule d'un segment à l'autre et les épines partiraient dans tous les sens.
+ * Le registre garantit des contours étoilés autour du centre (#425e) : la direction radiale est
+ * donc toujours « vers le dehors », quelle que soit la forme.
+ */
+export function pointesDeLEpine3D(centre, contour, largeurTrait){
+  const pts = Array.isArray(contour) ? contour : [];
+  if (pts.length < 2 || !centre) return [];
+  const w = Number(largeurTrait) > 0 ? Number(largeurTrait) : 1;
+  const pas = w * EPINE_PAS, longueur = w * EPINE_LONGUEUR;
+
+  const out = [];
+  // ⚠️ LA DISTANCE RESTANT À PARCOURIR SE REPORTE D'UN SEGMENT À L'AUTRE, et une première écriture
+  // s'y est trompée : elle recalculait le reliquat par un modulo au lieu de le décompter, si bien
+  // qu'il divergeait et qu'une seule épine sortait de tout le contour. Un contour échantillonné
+  // finement a des segments BIEN PLUS COURTS que le pas — c'est le cas normal, pas le cas limite.
+  let restant = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len === 0) continue;
+    let pos = 0;
+    while (restant <= len - pos) {
+      pos += restant;
+      const p = { x: a.x + dx * (pos / len), y: a.y + dy * (pos / len) };
+      const vx = p.x - centre.x, vy = p.y - centre.y;
+      const r = Math.hypot(vx, vy) || 1;
+      out.push(p, { x: p.x + (vx / r) * longueur, y: p.y + (vy / r) * longueur });
+      restant = pas;
+    }
+    restant -= len - pos;
+  }
+  return out;
 }

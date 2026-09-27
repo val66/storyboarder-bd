@@ -296,6 +296,35 @@ Les Bulles concernées changent d'aspect, et c'est le sens même d'un retrait. L
 réglage vaut l'existant » protège celles qui n'ont rien demandé ; elle ne peut rien pour celles dont
 le réglage demandé n'existe plus.
 
+## Une forme de plus, et une reclassification (#425y)
+
+**L'ovale à côtés droits** entre au registre : la bulle tracée à la règle, une dizaine de segments
+inégaux au lieu d'une courbe. Les côtés sont inégaux **sans aucun bruit aléatoire** — les sommets
+sont posés sur l'ellipse à pas de PARAMÈTRE constant, et un tel pas parcourt beaucoup de longueur
+près des bouts du grand axe et peu sur les flancs. Sur une boîte carrée, ils redeviennent égaux. La
+forme est donc déterministe, contrairement à la tache d'encre qui tire sa graine de l'identifiant
+de la Bulle : copier une Bulle ne la déforme pas.
+
+⚠️ **ET LE HÉRISSEMENT REVIENT COMME MOTIF DE TRAIT, PAS COMME FORME.** La couronne d'épines était
+une forme, donc un choix exclusif : on ne pouvait pas avoir un rectangle hérissé. « Épines » rejoint
+Plein, Pointillé et Tirets dans la section Bordure, et s'applique à **n'importe quelle** forme.
+C'est la même reclassification que #425n a opérée pour le mouchetis — reconnaître qu'un trait
+graphique appartenait au mauvais axe.
+
+Elle n'est pas un pointillé pour autant : elle ne se règle pas avec un motif de tirets mais avec de
+la géométrie, une frange de pointes posée le long du contour. Deux décisions la gouvernent :
+
+- l'espacement et la longueur se mesurent **en épaisseurs de trait**, comme les tirets et pour la
+  même raison — à valeur fixe, la frange disparaîtrait là où l'utilisateur a demandé un contour
+  plus visible ;
+- l'espacement est une **longueur d'arc**, pas un angle. Un pas d'angle donnerait des épines
+  serrées sur les flancs d'un ovale et clairsemées à ses bouts, c'est-à-dire une densité qui change
+  avec les proportions de la Bulle — ce qu'on n'attend pas d'un motif de trait.
+
+Et elle **s'ajoute** au contour au lieu de le remplacer : le contour net borne le fond, les pointes
+débordent au-dehors. Les tracer à sa place laisserait un bord en dents de scie, c'est-à-dire
+l'étoile du cri.
+
 ## Ce que la révision a corrigé, y compris chez moi
 
 Après cette note, chaque fiche du relevé a été mise **en regard du fragment de planche** dont elle

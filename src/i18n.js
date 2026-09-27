@@ -130,6 +130,7 @@ export const I18N_TEXT = [
   ['#sideBubbleBorderDashSelect option[value="plein"]', 'Solid', 'Plein'],
   ['#sideBubbleBorderDashSelect option[value="pointille"]', 'Dotted', 'Pointillé'],
   ['#sideBubbleBorderDashSelect option[value="tirets"]', 'Dashed', 'Tirets'],
+  ['#sideBubbleBorderDashSelect option[value="epine"]', 'Thorns', 'Épines'],
   ['label[for="sideBubbleBorderRegularitySelect"]', 'Stroke regularity', 'Régularité du trait'],
   ['#sideBubbleBorderRegularitySelect option[value="net"]', 'Clean', 'Net'],
   ['#sideBubbleBorderRegularitySelect option[value="tremble"]', 'Wobbly', 'Tremblé'],
