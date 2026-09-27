@@ -28,22 +28,43 @@ const ENCRE = 30;
 
 export function toile(w, h, s = SURECHANTILLONNAGE) {
   const W = w * s, H = h * s;
-  const px = new Float64Array(W * H).fill(255);
-  const pose = (x, y) => {
+  /**
+   * Une COUVERTURE par sous-pixel, dans [0, 1], et non une valeur d'encre.
+   *
+   * ⚠️ C'EST LA SECONDE MOITIÉ DE LA CORRECTION, et elle a été trouvée par le test voisin plutôt
+   * que par l'œil. Le suréchantillonnage seul ne suffisait pas : le tampon restait BINAIRE à
+   * l'échelle du sous-pixel, si bien que toute épaisseur inférieure à un sous-pixel donnait le même
+   * gris — 0,15 px et 0,30 px sortaient identiques, ce qui rend l'outil inutilisable pour comparer
+   * deux finesses, son seul emploi. Une couverture fractionnaire règle les deux échelles d'un coup.
+   *
+   * Le cumul se fait par MAXIMUM et non par addition : un segment est estampé en de nombreux points
+   * rapprochés, et additionner les passages successifs sur un même sous-pixel le noircirait à
+   * proportion de la finesse de l'échantillonnage — un paramètre interne qui n'a rien à dire sur la
+   * couleur du trait.
+   */
+  const couv = new Float64Array(W * H);
+  const pose = (x, y, c) => {
     x = Math.round(x); y = Math.round(y);
     if (x < 0 || y < 0 || x >= W || y >= H) return;
-    px[y * W + x] = ENCRE;
+    const i = y * W + x;
+    if (c > couv[i]) couv[i] = c;
   };
   /** Un segment d'épaisseur `ep` exprimée dans les unités de l'APPELANT, pas en sous-pixels. */
   const ligne = (x0, y0, x1, y1, ep) => {
     const [X0, Y0, X1, Y1] = [x0 * s, y0 * s, x1 * s, y1 * s];
-    const r = Math.max(0.5, (ep * s) / 2);
+    const large = ep * s;                     // l'épaisseur, en sous-pixels
     const n = Math.max(2, Math.ceil(Math.hypot(X1 - X0, Y1 - Y0) * 2));
     for (let i = 0; i <= n; i++) {
       const t = i / n, cx = X0 + (X1 - X0) * t, cy = Y0 + (Y1 - Y0) * t;
-      const b = Math.ceil(r);
+      if (large <= 1) { pose(cx, cy, large); continue; }   // plus fin qu'un sous-pixel : en partie
+      const r = large / 2, b = Math.ceil(r);
       for (let dy = -b; dy <= b; dy++) {
-        for (let dx = -b; dx <= b; dx++) if (dx * dx + dy * dy <= r * r) pose(cx + dx, cy + dy);
+        for (let dx = -b; dx <= b; dx++) {
+          const d = Math.hypot(dx, dy);
+          // Le bord du disque reçoit lui aussi une couverture partielle, sur un sous-pixel.
+          if (d <= r - 0.5) pose(cx + dx, cy + dy, 1);
+          else if (d < r + 0.5) pose(cx + dx, cy + dy, r + 0.5 - d);
+        }
       }
     }
   };
@@ -52,7 +73,12 @@ export function toile(w, h, s = SURECHANTILLONNAGE) {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         let somme = 0;
-        for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) somme += px[(y * s + j) * W + (x * s + i)];
+        for (let j = 0; j < s; j++) {
+          for (let i = 0; i < s; i++) {
+            const c = couv[(y * s + j) * W + (x * s + i)];
+            somme += 255 - (255 - ENCRE) * c;
+          }
+        }
         const v = Math.round(somme / (s * s));
         const k = (y * w + x) * 3; out[k] = out[k + 1] = out[k + 2] = v;
       }
