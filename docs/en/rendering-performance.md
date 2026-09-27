@@ -903,13 +903,13 @@ Measured with the instrument above, first round discarded:
 |---|---|---|
 | solid stroke | 2.9 | 0.12 ms |
 | "thorns" stroke (first density, 205 spikes) | 97.2 | 3.89 ms |
-| **"thorns" stroke (settled density, 2,992 spikes)** | **222** | **8.9 ms** |
+| **"thorns" stroke (settled density, 4,226 spikes)** | **290** | **11.6 ms** |
 
-**Seventy-six times a plain Bubble**, and by far the most expensive configuration ever measured here
-— seven times #425d's ink blot.
+**A hundred times a plain Bubble**, and by far the most expensive configuration ever measured here
+— ten times #425d's ink blot.
 
 ⚠️ **THE FIGURE MORE THAN DOUBLED AFTER THE FIRST MEASUREMENT, AND THE ORIGINAL ROW IS KEPT SO THAT
-IT SHOWS.** The fringe density was settled from use over four passes, each one tightening it: two
+IT SHOWS.** The fringe density was settled from use over five passes, each one tightening it: two
 hundred and five spikes at the start, two thousand nine hundred and ninety-two at the end. A
 performance measurement taken in the middle of an aesthetic adjustment only holds for that
 adjustment's value — keeping it current is part of the adjustment, or the note describes code that
@@ -917,9 +917,9 @@ no longer exists. The cost stays strictly proportional to the spike count.
 
 ⚠️ **AND THAT IS NOT A PROBLEM, BECAUSE IT IS NOT A PATTERN ONE USES FORTY TIMES.** Thorns say a
 shout or an inner voice: a Page carries one or two, not forty. At two Bubbles the fringe costs
-0.44 ms, less than a single Panel image. The 8.9 ms figure describes a Page nobody will draw.
+0.58 ms, less than a single Panel image. The 11.6 ms figure describes a Page nobody will draw.
 
 ⚠️ **WHAT WOULD CHANGE THIS VERDICT**, and it must be named so the next person knows what to
 re-measure: a Page where half the Bubbles carried the fringe. The cost is strictly linear, so twenty
-thorny Bubbles would cost 4.4 ms per frame — at that point, recomputing the fringe only when the
+thorny Bubbles would cost 5.8 ms per frame — at that point, recomputing the fringe only when the
 Bubble changes would be worth considering, as the tile cache already does for textures.

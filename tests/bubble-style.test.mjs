@@ -29,7 +29,7 @@ import {
   tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
   graineTrembleBulle,
   pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, EPINE_VARIATION, EPINE_DEDANS, TRAIT_EPINE,
-  noeudsDuBruitEpine3D, EPINE_NOEUDS_MINIMUM,
+  noeudsDuBruitEpine3D, EPINE_NOEUDS_MINIMUM, EPINE_FINESSE,
 } from '../src/bubble-style.js';
 
 /**
@@ -597,6 +597,19 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     const part = ouvert.length / ferme.length;
     assert.ok(part > 0.6 && part < 0.85,
       `l’ouvert porte ${(part * 100).toFixed(0)} % des épines du fermé, attendu environ 75 %`);
+  });
+
+  /**
+   * ⚠️ LES BASES DES ÉPINES SE CHEVAUCHENT, ET C'EST LE RÉGLAGE VOULU. La source montre un pied de
+   * frange noir et continu, dont seules les pointes se détachent : l'écart entre deux épines est
+   * donc plus petit que l'épaisseur du trait qui les dessine. Ce test fige cette relation parce
+   * qu'elle est la BORNE de l'axe densité — le commentaire du module explique que resserrer
+   * davantage n'ajoute plus que du noir au socle. Une future « frange plus dense » qui inverserait
+   * ce rapport laisserait des trous entre les épines et changerait la nature du motif.
+   */
+  test('⚠️ L’ÉCART ENTRE DEUX ÉPINES EST PLUS PETIT QUE LEUR ÉPAISSEUR', () => {
+    assert.ok(EPINE_PAS < EPINE_FINESSE,
+      `écart ${EPINE_PAS} et épaisseur ${EPINE_FINESSE} : le pied de la frange n’est plus continu`);
   });
 
   test('un contour vide ou absent ne produit rien, sans lever', () => {

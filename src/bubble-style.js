@@ -244,7 +244,16 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.075;
+export const EPINE_PAS = 0.0536;
+/*
+ * ⚠️ LA DENSITÉ EST SATURÉE À CETTE VALEUR, et c'est la borne à connaître avant de la resserrer une
+ * sixième fois. L'écart entre deux épines (EPINE_PAS) est désormais INFÉRIEUR à l'épaisseur du
+ * trait d'une épine (EPINE_FINESSE) : leurs bases se chevauchent, et le pied de la frange est un
+ * aplati noir continu — ce que montre la source, où seules les pointes sont détachées. En ajouter
+ * n'épaissira donc plus que ce socle, sans rien changer à la texture, tout en coûtant strictement
+ * proportionnellement. Le prochain levier d'aspect n'est plus le nombre mais la LONGUEUR et sa
+ * variation, qui décident, elles, de ce qui se voit.
+ */
 export const EPINE_LONGUEUR = 4;
 
 /**
