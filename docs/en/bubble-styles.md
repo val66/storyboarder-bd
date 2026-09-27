@@ -321,6 +321,11 @@ of spikes laid along the outline. Two decisions govern it:
   it became a long wave: whole arcs of short spikes alternating with arcs of long ones — regular
   scallops, regularity coming back in through the side door. A hundred and fifty-one nodes give the
   irregular tufts of the reference;
+- **spike fineness is settled on a 2:1 render, never a 1:1 one.** The contact-sheet rasteriser lays
+  down at least one full pixel where a canvas antialiases a 0.4 px width into pale grey: at actual
+  size the sheet darkens what the application will lighten, and the finest fringe looks like a blot
+  there when it will be a veil. Checking that the instrument can see what it is asked to see counts
+  here as it does for the measurement campaigns;
 - **the outline thickens under the fringe**. What looks in the source like a fringe of separate
   spikes is a heavy stroke edged with hairs: without that base, fine spikes on a fine outline give a
   uniform grey ribbon. Suggested from use and checked on a contact sheet.

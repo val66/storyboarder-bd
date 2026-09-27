@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.6;
+export const EPINE_PAS = 0.42;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -276,7 +276,7 @@ export const EPINE_DEDANS = 0.3;
  * des pointes serrées se rejoignent et forment un bourrelet noir au lieu d'aiguilles distinctes.
  * Relevé à l'usage sur la source.
  */
-export const EPINE_FINESSE = 0.25;
+export const EPINE_FINESSE = 0.17;
 /**
  * ⚠️ LE CONTOUR S'ÉPAISSIT SOUS LA FRANGE. Proposé à l'usage — « épaissir le contour de la Bulle
  * puis ajouter les traits de taille variable au-dessus et au-dessous » — et c'est la bonne lecture
@@ -285,6 +285,17 @@ export const EPINE_FINESSE = 0.25;
  * relevé sur planche de contact ; avec lui, le noir du trait sert de socle et les pointes se lisent.
  */
 export const EPINE_SOCLE = 1.8;
+
+/*
+ * ⚠️ LA PLANCHE DE CONTACT NE SAIT PAS JUGER LES TRAITS SOUS-PIXEL, et il faut le savoir avant de
+ * relire les chiffres ci-dessus. Le rasteriseur d'aperçu pose un trait d'au moins un pixel plein
+ * là où le canevas d'un navigateur antialiase une largeur de 0,4 px en un gris pâle : à 1 :1, la
+ * planche NOIRCIT donc ce que l'application ÉCLAIRCIT, et la frange la plus fine y paraît un pâté
+ * alors qu'elle sera un voile. Les valeurs de finesse ont été arrêtées sur des rendus à 2 :1, où
+ * les épaisseurs restent au-dessus du pixel et où l'instrument dit la vérité. C'est la même
+ * précaution que pour les campagnes de mesure : vérifier que l'instrument voit ce qu'on lui demande
+ * de voir avant de croire ce qu'il montre.
+ */
 
 /** Combien de points de bruit font le tour du contour avant de se répéter. */
 // ⚠️ LE BRUIT EST À GRAIN FIN, ET LE CHIFFRE COMPTE AUTANT QUE L'AMPLITUDE. À 23 nœuds répartis
