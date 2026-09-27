@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.6.35**
+**Version 1.6.36**
 
 **Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -16,7 +16,7 @@
 - 📖 Organisation **Tomes → Planches → Cases** avec numérotation automatique
 - 📄 Duplication de planches, réorganisation par glisser-déposer
 - 📝 Résumés et descriptions par Case
-- 💬 Bulles de dialogue avec pointe orientable
+- 💬 **Bulles de dialogue** : neuf formes, cinq pointes, textures photographiées (papier, glace, lave, nuit étoilée), contour de texte, et **fusion** de deux Bulles en une seule — un texte par lobe, séparables à tout moment
 - 🎨 **Mise en forme** : couleur d'arrière-plan par Planche, bordure de Case et de Bulle réglables (affichage, épaisseur, couleur), dimensions d'une Case affichées en millimètres
 
 ### Scènes 3D

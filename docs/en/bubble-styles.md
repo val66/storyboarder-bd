@@ -237,11 +237,31 @@ is not an outline axis but a text orientation.
 photographed two forms of them — black outlined in white in Eleceed, brush-drawn red with a thick
 white halo in Omniscient Reader — which confirms this is a lettering project.
 
-**Merged Bubbles** (project #426). One speaker, two lobes welded by a concave waist, **a single tail**
-for both. This is not an attribute but a **relation between two Bubbles**, and it changes the model:
-it must be decided what becomes of the link when one of the two is deleted, moved, or changes shape.
-Not to be confused with the double bubble, where two characters speak at once and each outline keeps
-its own tail.
+**Merged Bubbles** — ~~to be decided~~, **done** (project #426). One speaker, two lobes welded by a
+concave waist, **a single tail** for both. This is not an attribute but a **relation between two
+Bubbles**. Not to be confused with the double bubble, where two characters speak at once and each
+outline keeps its own tail.
+
+The note asked what becomes of the link when one of the two is deleted, moved, or changes shape. All
+three are settled, and a fourth came up in use:
+
+| what happens to a lobe | what becomes of the group |
+|---|---|
+| it is **moved** or **resized** | the group holds: a stop halts the gesture at the last position that keeps the weld |
+| it **changes shape** | the group holds: the lobe is nudged by the smallest step that restores the weld |
+| it is **deleted** | the group dissolves **entirely**, each survivor recovering the appearance it had before the merge — announced by a question |
+| the **Panel** it overlaps is emptied or deleted | nothing: a Bubble is a top-level object of the Page, it belongs to no Panel |
+
+⚠️ **"WELDED" IS NOT "TOUCHING", AND THE DIFFERENCE COST FOUR ATTEMPTS.** Two tangent ovals touch at
+ONE point and read as two outlines placed side by side. A merge is OFFERED as soon as they graze —
+that is the right moment to ask — but it HOLDS at a waist width: the distance between the two points
+where the outlines cross, required to be 30% of the smallest dimension of the smaller lobe. Two
+thresholds for two questions; conflating them makes one of the two useless.
+
+⚠️ **AND IT IS THE SELECTED BUBBLE THAT IMPOSES ITS STYLE, NOT THE FRONT ONE.** Asked for in use.
+The Bubble you hold is the one you are looking at, so the one whose appearance you expect; stacking
+order still decides which one carries the group, and those are two distinct questions. The ABSENCE
+of a setting on the source carries over like the rest — it is what says "white by default".
 
 ## What the revision corrected, including in my own work
 
@@ -424,13 +444,21 @@ another**. Texture belongs to fill, speckle to the added layer. Folding them int
 one shape looks right sooner, would unpick the axis that holds everything else together — and would
 forbid, say, a speckled crown of thorns.
 
-Three questions of placement remain **open**, and are recorded here without being settled:
+The three questions of placement left open here are **all settled**:
 
-| what is missing | where it will probably go | what is undecided |
+| what was missing | where it went | who settled it |
 |---|---|---|
-| ~~fill textures~~ | **done**: "Fill texture" dropdown, Appearance section | — |
-| the speckle | **Border** section? | is it a stroke pattern, like the dashes, or an attribute of its own? |
-| translucent edges | **Border** section | which attribute to attach it to |
+| ~~fill textures~~ | "Fill texture" dropdown, Appearance section | #425m |
+| ~~the speckle~~ | an axis of its own, "Particle", not a stroke pattern | #425n |
+| ~~translucent edges~~ | **fill**, not border | #425n |
+
+⚠️ **THE TABLE IS KEPT RATHER THAN DELETED.** It shows that a question written down without being
+settled does get settled in the end, provided it is written down somewhere — the same demonstration
+as the `EN_ATTENTE` list of the dead-code detector, and it is worth leaving in plain sight.
+
+One thing found in the corpus is still **not** in the registry: Imperium's **sharp-cornered
+rectangle** (cf. the table of pages). The "rectangle" in the panel is the rounded one, and the
+sharp-cornered variant remains to be added.
 
 ## The tail did not follow the cursor
 

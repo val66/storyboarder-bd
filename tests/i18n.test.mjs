@@ -1185,3 +1185,56 @@ describe('tr() : les deux langues calculent la même chose', () => {
       'les deux langues ne calculent pas la même chose :\n' + divergentes.join('\n'));
   });
 });
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * #425z — CE QUE LA FICHE PROPOSE, LE MANUEL LE NOMME
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LE MANUEL A ANNONCÉ « CINQ FORMES » PENDANT QUE LE REGISTRE EN COMPTAIT NEUF. Quatre formes
+ * ont été ajoutées en #425e, #425f et #425g, et la phrase du manuel n'a pas bougé : la suite est
+ * restée verte, et le seul endroit où l'utilisateur peut DÉCOUVRIR ces formes lui en cachait
+ * quatre. Le garde-fou de #414g ne pouvait pas le voir — il vérifie que le TITRE d'une section
+ * apparaît, pas ce qu'elle dit.
+ *
+ * Celui-ci compare le manuel aux LISTES DÉROULANTES de la fiche, qui sont l'offre réelle. Ajouter
+ * une option sans l'écrire dans les deux manuels rougit désormais.
+ *
+ * ⚠️ IL NE JUGE PAS LA QUALITÉ DU PARAGRAPHE, et il faut le dire : nommer une forme n'est pas
+ * l'expliquer. C'est un fil de détente contre l'oubli, comme celui de #414g, pas une relecture.
+ */
+describe('#425z : les formes et les pointes offertes sont toutes nommées dans le manuel', () => {
+  const HTML_FICHE = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+  const optionsDe = (id) => {
+    const i = HTML_FICHE.indexOf(`<select id="${id}"`);
+    if (i < 0) return [];
+    const bloc = HTML_FICHE.slice(i, HTML_FICHE.indexOf('</select>', i));
+    return [...bloc.matchAll(/<option[^>]*>([^<]+)<\/option>/g)].map(m => m[1].trim());
+  };
+
+  const MANUEL = HELP_MANUAL_FR.map(g => `${g.title} ${g.paragraphs.join(' ')}`).join(' ');
+
+  test('le garde-fou : les listes sont bien lues dans le HTML', () => {
+    // Sur une liste vide, le test suivant parcourrait le néant et passerait pour toujours.
+    assert.ok(optionsDe('sideBubbleShapeSelect').length >= 9,
+      `${optionsDe('sideBubbleShapeSelect').length} formes lues, le motif ne trouve plus rien`);
+    assert.ok(optionsDe('sideBubbleTailShapeSelect').length >= 5, 'les pointes ne sont plus lues');
+  });
+
+  test('⚠️ CHAQUE FORME ET CHAQUE POINTE DE LA FICHE EST NOMMÉE DANS LE MANUEL', () => {
+    const absents = [];
+    for (const [id, quoi] of [['sideBubbleShapeSelect', 'forme'], ['sideBubbleTailShapeSelect', 'pointe']]) {
+      for (const libelle of optionsDe(id)) {
+        // « Aucune » est une absence de pointe, pas une pointe : le manuel la dit autrement.
+        if (libelle === 'Aucune') continue;
+        // Le libellé du menu peut être plus long que le mot du manuel — « Écu à côtés concaves »
+        // contre « Écu ». On cherche donc son premier mot, qui est ce qui le nomme.
+        const mot = libelle.split(/[\s(/]/)[0];
+        if (!MANUEL.includes(mot)) absents.push(`${quoi} « ${libelle} »`);
+      }
+    }
+    assert.deepEqual(absents, [],
+      'offertes dans la fiche, absentes du manuel : le seul endroit où on peut les découvrir');
+  });
+});

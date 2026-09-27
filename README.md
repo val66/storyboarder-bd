@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.6.35**
+**Version 1.6.36**
 
 **Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -16,7 +16,7 @@
 - 📖 **Volume → Page → Panel** organization with automatic numbering
 - 📄 Page duplication, drag-and-drop reordering
 - 📝 Per-panel summaries and descriptions
-- 💬 Speech bubbles with adjustable tails
+- 💬 **Speech bubbles**: nine shapes, five tails, photographed textures (paper, ice, lava, starry night), text outline, and **merging** two bubbles into one — one text box per lobe, separable at any time
 - 🎨 **Layout styling**: background colour per page, adjustable panel and bubble borders (display, thickness, colour), panel side lengths shown in millimetres
 
 ### 3D Scenes

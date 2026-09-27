@@ -246,11 +246,33 @@ que large. Ce n'est pas un axe de contour mais une orientation du texte.
 relevé en a photographié deux formes — noir cerné de blanc chez Eleceed, rouge au pinceau cerné d'un
 halo blanc chez Lecteur omniscient — qui confirment que c'est un chantier de lettrage.
 
-**Les Bulles fusionnées** (chantier #426). Un locuteur, deux lobes soudés par un étranglement
-concave, **une seule queue** pour les deux. Ce n'est pas un attribut mais une **relation entre deux
-Bulles**, et elle change le modèle : il faut décider ce que devient le lien quand l'une des deux est
-supprimée, déplacée ou change de forme. À ne pas confondre avec la bulle double, où deux personnages
-parlent en même temps et où chaque contour garde sa queue.
+**Les Bulles fusionnées** — ~~à décider~~, **fait** (chantier #426). Un locuteur, deux lobes soudés
+par un étranglement concave, **une seule queue** pour les deux. Ce n'est pas un attribut mais une
+**relation entre deux Bulles**. À ne pas confondre avec la bulle double, où deux personnages parlent
+en même temps et où chaque contour garde sa queue.
+
+La note demandait ce que devient le lien quand l'une des deux est supprimée, déplacée ou change de
+forme. Les trois sont tranchées, et une quatrième s'est ajoutée à l'usage :
+
+| ce qui arrive au lobe | ce que devient le groupe |
+|---|---|
+| il est **déplacé** ou **redimensionné** | le groupe tient : une butée arrête le geste sur la dernière position qui garde la soudure |
+| il **change de forme** | le groupe tient : le lobe est rapproché du plus petit déplacement qui rétablit la soudure |
+| il est **supprimé** | le groupe se dissout **entièrement**, chaque survivant retrouvant son apparence d'avant la fusion — annoncé par une question |
+| la **Case** qu'il recouvre est vidée ou supprimée | rien : une Bulle est un objet de premier niveau de la Planche, elle n'appartient à aucune Case |
+
+⚠️ **« SOUDÉES » N'EST PAS « QUI SE TOUCHENT », ET LA DIFFÉRENCE A COÛTÉ QUATRE REPRISES.** Deux
+ovales tangents se touchent en UN point et se lisent comme deux contours accolés. La fusion se
+PROPOSE dès le frôlement — c'est le bon moment pour poser la question — mais elle se TIENT à une
+largeur d'étranglement : la distance entre les deux points où les contours se croisent, exigée à
+30 % de la plus petite dimension du plus petit lobe. Deux seuils pour deux questions ; les confondre
+rend l'un des deux inutile.
+
+⚠️ **ET C'EST LA BULLE SÉLECTIONNÉE QUI IMPOSE SON STYLE, PAS CELLE DE DEVANT.** Demandé à l'usage.
+La Bulle qu'on tient en main est celle qu'on regarde, donc celle dont on attend l'apparence ;
+l'ordre d'affichage continue de décider qui sert de support, ce sont deux questions distinctes.
+L'ABSENCE d'un réglage chez la source se transporte comme le reste — c'est elle qui dit « blanc par
+défaut ».
 
 ## Ce que la révision a corrigé, y compris chez moi
 
@@ -439,13 +461,21 @@ implique un autre**. La texture relève du remplissage, le mouchetis de la couch
 entrer dans la forme, pour qu'une seule forme soit belle plus tôt, reviendrait à dénouer l'axe qui
 tient tout le reste — et interdirait, par exemple, une couronne d'épines mouchetée.
 
-Trois questions de rattachement restent **ouvertes**, et sont notées ici sans être tranchées :
+Les trois questions de rattachement laissées ouvertes ici sont **toutes tranchées** :
 
-| ce qui manque | où cela ira, probablement | ce qui n'est pas décidé |
+| ce qui manquait | où c'est allé | qui a tranché |
 |---|---|---|
-| ~~les textures de remplissage~~ | **fait** : menu « Texture du fond », section Apparence | — |
-| le mouchetis | section **Bordure** ? | est-ce un motif du trait, au même titre que les pointillés, ou un attribut à part entière ? |
-| les bords translucides | section **Bordure** | à quel attribut le raccorder |
+| ~~les textures de remplissage~~ | menu « Texture du fond », section Apparence | #425m |
+| ~~le mouchetis~~ | un axe à part entière, « Particule », et non un motif du trait | #425n |
+| ~~les bords translucides~~ | du **remplissage**, et non de la bordure | #425n |
+
+⚠️ **LA TABLE EST GARDÉE PLUTÔT QUE SUPPRIMÉE.** Elle montre qu'une question notée sans être
+tranchée finit par l'être, à condition d'être écrite quelque part — c'est la même démonstration que
+la liste `EN_ATTENTE` du détecteur de code mort, et elle vaut d'être laissée sous les yeux.
+
+Une seule chose relevée dans le corpus n'est toujours **pas** au registre : le **rectangle à angles
+vifs** d'Imperium (cf. la table des planches). Le « rectangle » de la fiche est l'arrondi, et la
+variante à angles vifs reste à ajouter.
 
 ## La queue ne suivait pas le curseur
 
