@@ -894,3 +894,26 @@ time.
 ⚠️ **WHAT WOULD CHANGE THIS VERDICT.** If a Page used more than fifteen pairs AND memory became a
 concern — fifteen tiles weigh 15 MB, one more per pair beyond that — the trade-off between memory
 and recomposition would have to be settled. Nothing comes close today.
+
+## Addendum — what the thorn fringe costs (#425y)
+
+Measured with the instrument above, first round discarded:
+
+| configuration | µs / Bubble | 40 Bubbles |
+|---|---|---|
+| solid stroke | 2.9 | 0.12 ms |
+| **"thorns" stroke** | **171.6** | **6.86 ms** |
+
+**Fifty-nine times a plain Bubble**, and by far the most expensive configuration ever measured here
+— five times #425d's ink blot. The reason is owned: density was raised twice on the user's
+observation, and a reference Bubble now carries more than four hundred spikes, close to a thousand
+drawn points.
+
+⚠️ **AND THAT IS NOT A PROBLEM, BECAUSE IT IS NOT A PATTERN ONE USES FORTY TIMES.** Thorns say a
+shout or an inner voice: a Page carries one or two, not forty. At two Bubbles the fringe costs
+0.34 ms, less than a single Panel image. The 6.86 ms figure describes a Page nobody will draw.
+
+⚠️ **WHAT WOULD CHANGE THIS VERDICT**, and it must be named so the next person knows what to
+re-measure: a Page where half the Bubbles carried the fringe. The cost is strictly linear, so twenty
+thorny Bubbles would cost 3.4 ms per frame — at that point, recomputing the fringe only when the
+Bubble changes would be worth considering, as the tile cache already does for textures.

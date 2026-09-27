@@ -3382,10 +3382,12 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    * ne change pas. Relevé à l'usage sur la source : « beaucoup plus nombreuses ». Sur la Bulle de
    * référence, le périmètre avoisine 480 px ; à moins de cent pointes, la frange se clairseme.
    */
-  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS CENT POINTES', () => {
+  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS DEUX CENT CINQUANTE POINTES', () => {
+    // Le seuil a été relevé de cent à deux cent cinquante après un second relevé à l'usage : la
+    // frange précédente restait deux à trois fois trop claire par rapport à la source.
     const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
     // Deux points tracés par pointe, plus le contour lui-même.
-    assert.ok(p.length / 2 > 100,
+    assert.ok(p.length / 2 > 250,
       `${Math.round(p.length / 2)} pointes sur un périmètre de ~480 px : la frange est clairsemée`);
   });
 
@@ -3403,32 +3405,32 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
   });
 
   /**
-   * ⚠️ LES POINTES PARTENT DU CONTOUR, MÊME SUR UNE GRANDE BULLE. Le contour est échantillonné selon
-   * la taille : à nombre de points fixe, une grande Bulle aurait des segments plus longs que le pas
-   * des épines, et les bases tomberaient sur des CORDES, en deçà de la courbe. La frange se lirait
-   * facettée — un défaut que ni le nombre de pointes ni leur longueur ne révèlent.
+   * ⚠️ LES ÉPINES TRAVERSENT LE CONTOUR, MÊME SUR UNE GRANDE BULLE. Chacune commence en deçà de la
+   * courbe et finit au-delà : c'est ce qui fond le contour et la frange en une seule matière au
+   * lieu de deux traits distincts. Sur une grande Bulle, la question se double d'une autre — les
+   * bases doivent rester à la MÊME profondeur, sans quoi la frange se lirait facettée.
    */
-  test('⚠️ SUR UNE GRANDE BULLE, LES BASES RESTENT SUR LA COURBE', () => {
+  test('⚠️ SUR UNE GRANDE BULLE, CHAQUE ÉPINE ENJAMBE ENCORE LE CONTOUR', () => {
     const grande = nue({ bulleBorderDash: 'epine', w: 800, h: 400 });
     const p = pts(dessiner(grande));
     const cx = 400, cy = 200;
-    // ⚠️ LES BASES SONT RECONNUES PAR CE QUI LES SUIT, ET NON PAR LEUR PARITÉ. Le tracé contient
-    // d'abord le contour, puis la frange : compter une entrée sur deux depuis le début tombe sur la
-    // mauvaise parité dès que le contour a un nombre impair de points, et le test mesurait alors
-    // des sommets de contour en les prenant pour des bases. Une base est suivie d'un point
-    // NETTEMENT plus loin du centre — sa pointe.
     const rayon = ([x, y]) => Math.hypot(x - cx, y - cy);
-    const ecarts = [];
+    const contourEn = ([x, y]) => {
+      const a = Math.atan2((y - cy) / 200, (x - cx) / 400);
+      const b = bubbleEdgePoint(grande, a);
+      return Math.hypot(b.x - cx, b.y - cy);
+    };
+    // Une épine se reconnaît à son second point, nettement plus loin du centre que le premier.
+    let vues = 0;
     for (let i = 0; i < p.length - 1; i++) {
       if (rayon(p[i + 1]) - rayon(p[i]) < 4) continue;
-      const [x, y] = p[i];
-      const a = Math.atan2((y - cy) / 200, (x - cx) / 400);
-      const bord = bubbleEdgePoint(grande, a);
-      ecarts.push(Math.abs(Math.hypot(x - cx, y - cy) - Math.hypot(bord.x - cx, bord.y - cy)));
+      vues++;
+      assert.ok(rayon(p[i]) < contourEn(p[i]),
+        `une épine commence HORS du contour, à ${rayon(p[i]).toFixed(1)} pour un bord à ${contourEn(p[i]).toFixed(1)}`);
+      assert.ok(rayon(p[i + 1]) > contourEn(p[i + 1]),
+        'une épine finit en deçà du contour : elle ne le traverse pas');
     }
-    assert.ok(ecarts.length > 100, `${ecarts.length} bases reconnues : le repère ne voit plus rien`);
-    const pire = Math.max(...ecarts);
-    assert.ok(pire < 2, `une base s’écarte de ${pire.toFixed(1)} px du contour : la frange est facettée`);
+    assert.ok(vues > 300, `${vues} épines reconnues sur une Bulle de 800 × 400 : la frange est clairsemée`);
   });
 
   test('les trois autres motifs ne tracent aucune frange', () => {

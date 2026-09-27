@@ -28,7 +28,7 @@ import {
   champsApparenceBulle, opaciteRemplissageBulle, motifTraitBulle, regulariteTraitBulle,
   tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
   graineTrembleBulle,
-  pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, EPINE_VARIATION, TRAIT_EPINE,
+  pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, EPINE_VARIATION, EPINE_DEDANS, TRAIT_EPINE,
 } from '../src/bubble-style.js';
 
 /**
@@ -322,16 +322,28 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     return out;
   };
 
-  test('les pointes sortent VERS L’EXTÉRIEUR, et restent dans la plage annoncée', () => {
+  /**
+   * ⚠️ CHAQUE ÉPINE TRAVERSE LE CONTOUR : elle commence EN DEÇÀ et finit AU-DELÀ. Relevé à l'usage
+   * sur la source. Des pointes qui partiraient du bord laisseraient une frontière nette entre le
+   * contour et la frange — deux traits distincts ; en le traversant, elles fondent les deux en une
+   * seule matière hérissée.
+   */
+  test('⚠️ CHAQUE ÉPINE TRAVERSE LE CONTOUR, ET SA LONGUEUR RESTE DANS LA PLAGE', () => {
     const pts = pointesDeLEpine3D(CENTRE, carre(), 4, 7);
     assert.ok(pts.length >= 4, 'aucune pointe produite');
     const nominal = 4 * EPINE_LONGUEUR;
     for (let i = 0; i < pts.length; i += 2) {
-      const base = Math.hypot(pts[i].x, pts[i].y);
-      assert.ok(Math.abs(base - 50) < 0.5, `base à ${base.toFixed(1)} du centre, contour à 50`);
+      const dedans = Math.hypot(pts[i].x, pts[i].y);
+      const dehors = Math.hypot(pts[i + 1].x, pts[i + 1].y);
+      assert.ok(dedans < 50, `l’épine commence à ${dedans.toFixed(1)} du centre, hors du contour (50)`);
+      assert.ok(dehors > 50, `l’épine finit à ${dehors.toFixed(1)} du centre, sans dépasser le contour`);
+      // Et elle mord de la profondeur annoncée, à la variation de longueur près.
+      const part = (50 - dedans) / (dehors - dedans);
+      assert.ok(Math.abs(part - EPINE_DEDANS) < 0.02,
+        `${(part * 100).toFixed(0)} % de l’épine est dedans, attendu ${EPINE_DEDANS * 100} %`);
     }
     for (const l of longueurs(pts)) {
-      assert.ok(l > 0, `une pointe rentre vers l’intérieur (${l.toFixed(1)} px)`);
+      assert.ok(l > 0, `une pointe est retournée (${l.toFixed(1)} px)`);
       assert.ok(Math.abs(l - nominal) <= nominal * EPINE_VARIATION + 0.01,
         `pointe de ${l.toFixed(1)} px, hors de la plage ${nominal} ± ${(nominal * EPINE_VARIATION).toFixed(1)}`);
     }

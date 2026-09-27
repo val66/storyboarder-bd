@@ -233,7 +233,7 @@ export function apparenceBulle(o, largeurTrait){
  * 4 px sur un filet fin deviennent une frange imperceptible sous un trait de 6 px — le motif
  * disparaîtrait précisément là où l'utilisateur a demandé un contour plus visible.
  */
-export const EPINE_PAS = 0.9;
+export const EPINE_PAS = 0.35;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -244,6 +244,17 @@ export const EPINE_LONGUEUR = 4;
  * se lit comme un engrenage ; c'est l'inégalité qui lui donne l'aspect d'un tracé à la plume.
  */
 export const EPINE_VARIATION = 0.45;
+
+/**
+ * La part de chaque pointe qui passe À L'INTÉRIEUR du contour.
+ *
+ * ⚠️ UNE ÉPINE TRAVERSE LE CONTOUR, ELLE N'EN PART PAS. Relevé à l'usage sur la source : les
+ * aiguilles mordent dans la masse d'encre au lieu de s'y poser. La différence se voit tout de
+ * suite — des pointes qui partent du bord laissent une frontière nette entre le contour et la
+ * frange, deux traits distincts ; des pointes qui la traversent fondent les deux en une seule
+ * matière hérissée. C'est la même idée que les particules de #425p, posées À CHEVAL sur le bord.
+ */
+export const EPINE_DEDANS = 0.35;
 
 /**
  * L'épaisseur de la frange, en fraction de celle du contour.
@@ -315,7 +326,11 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
       const r = Math.hypot(vx, vy) || 1;
       const t = ((parcouru + pos) / perimetre) % 1;
       const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, EPINE_POINTS_BRUIT));
-      out.push(p, { x: p.x + (vx / r) * l, y: p.y + (vy / r) * l });
+      // L'épine est un SEGMENT QUI TRAVERSE le contour : elle commence en deçà et finit au-delà.
+      const ux = vx / r, uy = vy / r;
+      const dedans = l * EPINE_DEDANS, dehors = l - dedans;
+      out.push({ x: p.x - ux * dedans, y: p.y - uy * dedans },
+               { x: p.x + ux * dehors, y: p.y + uy * dehors });
       restant = pas;
     }
     restant -= len - pos;
