@@ -331,6 +331,15 @@ of spikes laid along the outline. Two decisions govern it:
 - **the outline thickens under the fringe**. What looks in the source like a fringe of separate
   spikes is a heavy stroke edged with hairs: without that base, fine spikes on a fine outline give a
   uniform grey ribbon. Suggested from use and checked on a contact sheet.
+- **each spike is its own segment**, not a link in a continuous zigzag. The path chained `lineTo`
+  calls end to end, so the RETURN from one tip to the next base was inked like the rest: twice the
+  ink needed, and a fringe welded into a band. The source shows separate strokes. One `moveTo` per
+  spike freed the room for twice as many spikes, at the same fineness and for less ink;
+- **the tail's opening is not fringed.** A Bubble with a continuous tail does not draw its whole
+  perimeter: the arc under the tail is replaced by the tail's own path, so there is no stroke to
+  edge there. The fringe was laid across the opening all the same;
+- **fineness can only be judged on an antialiased render.** A 0.3 px stroke comes out GREY from a
+  canvas and BLACK from a naive rasteriser.
 
 And it **adds to** the outline rather than replacing it: the clean outline bounds the fill, the
 spikes stick out. Drawing them instead of it would leave a jagged edge, that is, the shout star.

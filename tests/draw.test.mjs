@@ -53,6 +53,10 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
+import { QUEUE_ECARTEMENT } from '../src/bubble-tail.js';
+import { pointesDeLEpine3D, graineTrembleBulle } from '../src/bubble-style.js';
+// Le nombre de points dont draw.js échantillonne le contour pour la frange (POINTS_EPINE).
+const POINTS_EPINE_ATTENDUS = 240;
 export { sourceSansCommentaires };
 
 function assertClose(actual, expected, msg, eps = 1e-6) {
@@ -3303,6 +3307,24 @@ describe('#425p — les particules atteignent le canevas', () => {
 
 describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
   const pts = (j) => appels(j, 'lineTo').map(e => e.args);
+  /**
+   * Les épines telles que le canevas les reçoit : un `moveTo` puis un `lineTo`, par paire.
+   *
+   * ⚠️ CE LECTEUR REMPLACE UN COMPTAGE QUI LISAIT LE ZIGZAG. La frange était un chemin continu, si
+   * bien qu'apparier deux `lineTo` consécutifs donnait une épine ; depuis qu'elle est faite de
+   * segments séparés, ce même appariement joint la POINTE d'une épine à la pointe de la suivante et
+   * mesure n'importe quoi. Deux tests sont devenus faux en restant verts, un troisième est devenu
+   * rouge sur un code juste. Le relevé passe donc par la STRUCTURE du chemin, pas par sa forme.
+   */
+  const epines = (j) => {
+    const out = [];
+    for (let i = 0; i + 1 < j.length; i++) {
+      if (j[i].nom === 'moveTo' && j[i + 1].nom === 'lineTo') {
+        out.push({ base: j[i].args, pointe: j[i + 1].args });
+      }
+    }
+    return out;
+  };
   const nue = (extra) => Object.assign({
     id: 'e1', type: 'bulle', x: 0, y: 0, w: 200, h: 100, description: '',
     bulleShape: 'ovale', tailVisible: false, bulleBorderWidth: 3,
@@ -3420,10 +3442,24 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    * personne ne le relise comme un relâchement de l'exigence.
    */
   test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS CENT CINQUANTE POINTES', () => {
-    const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
-    // Deux points tracés par pointe, plus le contour lui-même.
-    assert.ok(p.length / 2 > 150,
-      `${Math.round(p.length / 2)} pointes sur un périmètre de 431 px : la frange est clairsemée`);
+    const o = nue({ bulleBorderDash: 'epine' });
+    const n = epines(dessiner(o)).length;
+    assert.ok(n > 150, `${n} pointes sur un périmètre de 431 px : la frange est clairsemée`);
+
+    /*
+     * ⚠️ ET LE CANEVAS EN REÇOIT AUTANT QUE LA COUCHE PURE EN PRODUIT, exactement. Le seuil
+     * ci-dessus dit « au moins », ce qui laisse passer une frange DÉCIMÉE : sur une Bulle qui porte
+     * deux mille épines, n'en tracer qu'une sur deux reste très au-dessus de cent cinquante, et la
+     * mutation correspondante a échappé. Un seuil absolu et une égalité ne disent pas la même
+     * chose : le premier tient la densité voulue, la seconde tient le BRANCHEMENT.
+     */
+    const contour = [];
+    for (let i = 0; i < POINTS_EPINE_ATTENDUS; i++) {
+      contour.push(bubbleEdgePoint(o, (Math.PI * 2 * i) / POINTS_EPINE_ATTENDUS));
+    }
+    const attendues = pointesDeLEpine3D({ x: o.x + o.w / 2, y: o.y + o.h / 2 }, contour,
+                                        o.bulleBorderWidth, graineTrembleBulle(o)).length / 2;
+    assert.equal(n, attendues, 'le canevas ne reçoit pas toutes les épines calculées');
   });
 
   /**
@@ -3436,12 +3472,8 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    * franchement. Un pas constant donnerait un écart-type quasi nul.
    */
   test('⚠️ L’ÉCART ENTRE DEUX POINTES VARIE', () => {
-    const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
-    // Les points de la frange viennent après ceux du contour ; on ne garde que les paires finales.
-    const bases = [];
-    for (let i = 0; i + 1 < p.length; i += 2) {
-      bases.push({ x: (p[i][0] + p[i + 1][0]) / 2, y: (p[i][1] + p[i + 1][1]) / 2 });
-    }
+    const bases = epines(dessiner(nue({ bulleBorderDash: 'epine' })))
+      .map(({ base, pointe }) => ({ x: (base[0] + pointe[0]) / 2, y: (base[1] + pointe[1]) / 2 }));
     const ecarts = [];
     for (let i = 1; i < bases.length; i++) {
       const d = Math.hypot(bases[i].x - bases[i - 1].x, bases[i].y - bases[i - 1].y);
@@ -3480,7 +3512,6 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    */
   test('⚠️ SUR UNE GRANDE BULLE, CHAQUE ÉPINE ENJAMBE ENCORE LE CONTOUR', () => {
     const grande = nue({ bulleBorderDash: 'epine', w: 800, h: 400 });
-    const p = pts(dessiner(grande));
     const cx = 400, cy = 200;
     const rayon = ([x, y]) => Math.hypot(x - cx, y - cy);
     const contourEn = ([x, y]) => {
@@ -3488,17 +3519,40 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
       const b = bubbleEdgePoint(grande, a);
       return Math.hypot(b.x - cx, b.y - cy);
     };
-    // Une épine se reconnaît à son second point, nettement plus loin du centre que le premier.
-    let vues = 0;
-    for (let i = 0; i < p.length - 1; i++) {
-      if (rayon(p[i + 1]) - rayon(p[i]) < 4) continue;
-      vues++;
-      assert.ok(rayon(p[i]) < contourEn(p[i]),
-        `une épine commence HORS du contour, à ${rayon(p[i]).toFixed(1)} pour un bord à ${contourEn(p[i]).toFixed(1)}`);
-      assert.ok(rayon(p[i + 1]) > contourEn(p[i + 1]),
+    const vues = epines(dessiner(grande));
+    for (const { base, pointe } of vues) {
+      assert.ok(rayon(base) < contourEn(base),
+        `une épine commence HORS du contour, à ${rayon(base).toFixed(1)} pour un bord à ${contourEn(base).toFixed(1)}`);
+      assert.ok(rayon(pointe) > contourEn(pointe),
         'une épine finit en deçà du contour : elle ne le traverse pas');
     }
-    assert.ok(vues > 300, `${vues} épines reconnues sur une Bulle de 800 × 400 : la frange est clairsemée`);
+    assert.ok(vues.length > 300,
+      `${vues.length} épines reconnues sur une Bulle de 800 × 400 : la frange est clairsemée`);
+  });
+
+  /**
+   * ⚠️ L'OUVERTURE DE LA QUEUE N'EST PAS HÉRISSÉE. Une Bulle à queue continue ne trace pas son
+   * périmètre entier : l'arc sous la queue est REMPLACÉ par le tracé de la queue, et il n'y a donc
+   * aucun trait à border à cet endroit. La frange y était posée quand même, en travers de
+   * l'ouverture — « au niveau de la pointe n'en mets pas, la base de la pointe est censée être
+   * vide », relevé à l'usage sur capture.
+   *
+   * Le relevé compte les épines par secteur angulaire : le secteur de la queue doit être vide, et
+   * les autres non — sans quoi le test serait vrai d'une Bulle sans aucune frange.
+   */
+  test('⚠️ AUCUNE ÉPINE DANS L’OUVERTURE DE LA QUEUE', () => {
+    const o = nue({ bulleBorderDash: 'epine', tailVisible: true, tailAngle: Math.PI / 2 });
+    const cx = 100, cy = 50;
+    const f = epines(dessiner(o));
+    assert.ok(f.length > 100, `${f.length} épines : la fixture ne porte pas de frange`);
+    const secteur = ({ base }) => Math.atan2((base[1] - cy) / 50, (base[0] - cx) / 100);
+    const ecart = (a) => Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2)));
+    const dansLOuverture = f.filter(e => ecart(secteur(e)) < QUEUE_ECARTEMENT * 0.8);
+    assert.equal(dansLOuverture.length, 0,
+      `${dansLOuverture.length} épines dans l’ouverture de la queue`);
+    // Le témoin : le secteur DIAMÉTRALEMENT opposé, lui, est bien hérissé.
+    const enFace = f.filter(e => ecart(secteur(e) + Math.PI) < QUEUE_ECARTEMENT * 0.8);
+    assert.ok(enFace.length > 5, 'le relevé ne voit aucune épine hors de l’ouverture : il ne mesure rien');
   });
 
   test('les trois autres motifs ne tracent aucune frange', () => {

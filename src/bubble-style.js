@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.21;
+export const EPINE_PAS = 0.105;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -355,7 +355,15 @@ export function noeudsDuBruitEpine3D(perimetre, pas){
  * `Math.random()` ici ferait frémir la frange à chaque image — la Planche se redessine des
  * dizaines de fois par seconde pendant un glissement.
  */
-export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
+/**
+ * ⚠️ `ferme` DIT SI LE CONTOUR SE REFERME, et ce n'est pas un détail d'API. Une Bulle à queue n'est
+ * hérissée que sur son CORPS : l'arc que la queue remplace n'existe pas comme trait, et y poser des
+ * épines dessinait une frange en travers de l'ouverture — « au niveau de la pointe n'en mets pas,
+ * la base de la pointe est censée être vide », relevé à l'usage sur capture. L'appelant passe donc
+ * l'arc du corps seul, et ce drapeau empêche le parcours de refermer la boucle sur un segment
+ * imaginaire allant d'un bord de l'ouverture à l'autre.
+ */
+export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0, ferme = true){
   const pts = Array.isArray(contour) ? contour : [];
   if (pts.length < 2 || !centre) return [];
   const w = Number(largeurTrait) > 0 ? Number(largeurTrait) : 1;
@@ -364,10 +372,14 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
 
   // La longueur totale sert à donner au bruit une abscisse dans [0, 1[ qui BOUCLE : sans elle, la
   // dernière épine et la première seraient voisines sur le contour et étrangères dans le bruit.
+  // Le dernier segment n'existe que si le contour se referme ; l'aire, elle, se calcule TOUJOURS
+  // sur le polygone fermé, parce que c'est d'elle qu'on tire le sens de parcours — un arc ouvert
+  // n'a pas de sens propre, mais la corde qui le refermerait en donne un, et c'est le bon.
+  const dernier = ferme ? pts.length : pts.length - 1;
   let perimetre = 0, aire = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
-    perimetre += Math.hypot(b.x - a.x, b.y - a.y);
+    if (i < dernier) perimetre += Math.hypot(b.x - a.x, b.y - a.y);
     aire += a.x * b.y - b.x * a.y;   // deux fois l'aire signée : son SIGNE est le sens de parcours
   }
   if (perimetre === 0) return [];
@@ -381,7 +393,7 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
   // qu'il divergeait et qu'une seule épine sortait de tout le contour. Un contour échantillonné
   // finement a des segments BIEN PLUS COURTS que le pas — c'est le cas normal, pas le cas limite.
   let restant = 0, parcouru = 0;
-  for (let i = 0; i < pts.length; i++) {
+  for (let i = 0; i < dernier; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);

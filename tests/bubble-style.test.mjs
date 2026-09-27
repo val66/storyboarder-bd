@@ -581,6 +581,24 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     assert.equal(noeudsDuBruitEpine3D(1000, 0), EPINE_NOEUDS_MINIMUM);
   });
 
+  /**
+   * ⚠️ PAR DÉFAUT LE CONTOUR SE REFERME, ET LE DERNIER SEGMENT EST HÉRISSÉ COMME LES AUTRES. Le
+   * drapeau `ferme` existe pour l'ouverture de la queue ; son DÉFAUT engage tous les autres
+   * appelants. Basculer ce défaut ne retirait qu'une épine sur deux mille sur un contour finement
+   * échantillonné — invisible à tout seuil de densité, et mutation échappée. Sur un carré, le
+   * segment de fermeture vaut un quart du périmètre : la différence devient franche.
+   */
+  test('⚠️ LE DERNIER SEGMENT D’UN CONTOUR FERMÉ PORTE DES ÉPINES', () => {
+    const carre4 = [{ x: -50, y: -50 }, { x: 50, y: -50 }, { x: 50, y: 50 }, { x: -50, y: 50 }];
+    const ferme = pointesDeLEpine3D(CENTRE, carre4, 3, 7);
+    const ouvert = pointesDeLEpine3D(CENTRE, carre4, 3, 7, false);
+    assert.ok(ferme.length > 0 && ouvert.length > 0, 'aucune pointe produite');
+    // Trois côtés sur quatre : l'ouvert doit porter environ trois quarts des épines du fermé.
+    const part = ouvert.length / ferme.length;
+    assert.ok(part > 0.6 && part < 0.85,
+      `l’ouvert porte ${(part * 100).toFixed(0)} % des épines du fermé, attendu environ 75 %`);
+  });
+
   test('un contour vide ou absent ne produit rien, sans lever', () => {
     assert.deepEqual(pointesDeLEpine3D(CENTRE, [], 3), []);
     assert.deepEqual(pointesDeLEpine3D(CENTRE, null, 3), []);

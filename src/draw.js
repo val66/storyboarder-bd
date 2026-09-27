@@ -1613,7 +1613,8 @@ export const PHASE_TEXTE = 'texte';
  */
 const EPAISSEUR_TRAIT_GROUPE = 2;
 
-function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre, phase = PHASE_TOUT){
+function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre, phase = PHASE_TOUT,
+                                arcDuCorps = null){
   // ⚠️ LE REMPLISSAGE EST UNE PILE DE COUCHES DEPUIS L'AXE TEXTURE. Sans texture, la pile n'en
   // compte qu'UNE — le chemin tel quel, la couleur choisie, l'opacité choisie — et le résultat est
   // exactement celui d'avant, au pixel près. C'est ce qui protège les Bulles enregistrées.
@@ -1665,20 +1666,31 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
     // INTUABLE, et le calcul dit pourquoi : sur une Bulle de 800 × 400, ces points laissent des
     // cordes de 8 px sur un rayon de 400, dont la flèche vaut 0,02 px. La complexité corrigeait un
     // défaut qui n'existe pas. Le test de la grande Bulle reste, lui, et tient la propriété.
+    // ⚠️ SEUL LE CORPS EST HÉRISSÉ. `arcDuCorps` porte l'arc qui reste quand la queue a pris sa
+    // place ; sans lui, la frange traversait l'ouverture de la queue, où il n'y a aucun trait.
+    const depuis = arcDuCorps ? arcDuCorps.depuis : 0;
+    const jusqu = arcDuCorps ? arcDuCorps.jusqu : Math.PI * 2;
     const contour = [];
     for (let i = 0; i < POINTS_EPINE; i++) {
-      contour.push(bubbleEdgePoint(o, (Math.PI * 2 * i) / POINTS_EPINE));
+      contour.push(bubbleEdgePoint(o, depuis + ((jusqu - depuis) * i) / POINTS_EPINE));
     }
     const centre = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
-    const pointes = pointesDeLEpine3D(centre, contour, largeurTrait, graineTrembleBulle(o));
+    const pointes = pointesDeLEpine3D(centre, contour, largeurTrait, graineTrembleBulle(o),
+                                      !arcDuCorps);
     if (pointes.length) {
       // ⚠️ LA FRANGE EST TRACÉE PLUS FIN QUE LE CONTOUR, et c'est ce qui la fait lire comme une
       // frange. À la même épaisseur, des pointes serrées se rejoignent et forment un bourrelet noir
       // au lieu d'aiguilles distinctes — relevé à l'usage : « plus fines ».
       c.lineWidth = largeurTrait * EPINE_FINESSE * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
+      // ⚠️ CHAQUE ÉPINE EST UN SEGMENT À ELLE, ET NON UN ZIGZAG CONTINU. Le chemin enchaînait des
+      // `lineTo` de bout en bout : le RETOUR d'une pointe vers la base suivante était encré comme
+      // le reste, ce qui doublait l'encre et soudait la frange en bande. La source montre des
+      // traits séparés. Un `moveTo` par paire, donc — et la moitié de l'encre en moins.
       c.beginPath();
-      pointes.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
-      c.closePath();
+      for (let i = 0; i + 1 < pointes.length; i += 2) {
+        c.moveTo(pointes[i].x, pointes[i].y);
+        c.lineTo(pointes[i + 1].x, pointes[i + 1].y);
+      }
       c.stroke();
     }
   }
@@ -1892,7 +1904,12 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   c.beginPath();
   construireChemin(null);
   c.closePath();
-  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy }, phase);
+  // L'arc du CORPS : le périmètre entier, sauf quand une queue continue en remplace un morceau.
+  // C'est exactement l'arc que `construireChemin` fait suivre à `emettreContour` juste au-dessus.
+  const arcDuCorps = (queueVisible && traceQueue)
+    ? { depuis: angleBase2, jusqu: angleBase1 + Math.PI * 2 } : null;
+  remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy }, phase,
+                         arcDuCorps);
   // ⚠️ APRÈS LA BULLE ET SES TACHES, MAIS AVANT LE TEXTE. Des particules peintes par-dessus le
   // lettrage le mangeraient ; peintes avant le remplissage, elles disparaîtraient dessous.
   // ⚠️ LE DÉCOR ATTEND QUE TOUS LES FONDS SOIENT POSÉS, ET C'EST UNE PASSE À PART. Peintes avec le

@@ -346,6 +346,19 @@ la géométrie, une frange de pointes posée le long du contour. Deux décisions
   isolées est un trait gras bordé de poils : sans ce socle, des pointes fines sur un contour fin
   donnent un ruban gris uniforme. Proposé à l'usage et vérifié sur planche de contact.
 
+Trois choses de plus, toutes trouvées en comparant un rendu de l'application à la source :
+
+- **chaque épine est un segment à elle**, et non un maillon d'un zigzag continu. Le chemin
+  enchaînait des `lineTo` de bout en bout, si bien que le RETOUR d'une pointe vers la base suivante
+  était encré comme le reste : deux fois l'encre nécessaire, et une frange soudée en bande. La
+  source montre des traits séparés. Un `moveTo` par épine a libéré la place pour deux fois plus
+  d'épines, à finesse égale et pour moins d'encre ;
+- **l'ouverture de la queue n'est pas hérissée.** Une Bulle à queue continue ne trace pas son
+  périmètre entier : l'arc sous la queue est remplacé par le tracé de celle-ci, et il n'y a donc
+  aucun trait à border à cet endroit. La frange y était posée quand même, en travers de l'ouverture ;
+- **la finesse ne se juge que sur un rendu antialiasé.** Un trait de 0,3 px sort GRIS d'un canevas et
+  NOIR d'un rasteriseur naïf : c'est l'écart que la note ci-dessous documente.
+
 Et elle **s'ajoute** au contour au lieu de le remplacer : le contour net borne le fond, les pointes
 débordent au-dehors. Les tracer à sa place laisserait un bord en dents de scie, c'est-à-dire
 l'étoile du cri.
