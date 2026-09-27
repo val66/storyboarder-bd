@@ -87,6 +87,7 @@ export const I18N_TEXT = [
   ['#sideBubbleAppearanceTitle', 'Bubble appearance', 'Apparence de la bulle'],
   ['label[for="sideBubbleShapeSelect"]', 'Bubble shape', 'Forme de la bulle'],
   ['#sideBubbleShapeSelect option[value="ovale"]', 'Oval', 'Ovale'],
+  ['#sideBubbleShapeSelect option[value="facette"]', 'Straight-sided oval', 'Ovale à côtés droits'],
   ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
   // #425e — les formes du registre. Les libellés traduisent ce qu'on VOIT ; la valeur persistée,
   // elle, ne change pas de langue.

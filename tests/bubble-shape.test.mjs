@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 
 import {
   FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU,
-  FORME_TACHE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
+  FORME_TACHE, FORME_FACETTE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
   pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
 } from '../src/bubble-shape.js';
 
@@ -121,13 +121,13 @@ describe('⚠️ UNE FORME INCONNUE LÈVE, elle ne retombe pas sur l’ovale', (
 });
 
 describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
-  test('six formes sont enregistrées, et les constantes les nomment toutes', () => {
+  test('sept formes sont enregistrées, et les constantes les nomment toutes', () => {
     // Si une constante exportée cessait de correspondre à une entrée du registre, la fiche
     // proposerait une valeur que le dessin refuserait.
     const connues = formesConnues();
-    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU, FORME_TACHE]
+    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU, FORME_TACHE, FORME_FACETTE]
       .forEach(f => assert.ok(connues.includes(f), `« ${f} » absente du registre`));
-    assert.equal(connues.length, 6);
+    assert.equal(connues.length, 7);
   });
 
   /**
@@ -472,6 +472,67 @@ describe('Les formes ne supposent pas un carré', () => {
             `${forme}/${g.nom} : y=${p.y.toFixed(1)} hors de [${o.y}, ${o.y + o.h}]`);
         }
       }
+    }
+  });
+});
+
+describe('⚠️ L’OVALE À CÔTÉS DROITS : anguleux, inégal, et déterminant (#425y)', () => {
+  const gabarit = { id: 'f1', type: 'bulle', x: 0, y: 0, w: 200, h: 100, bulleShape: FORME_FACETTE };
+  const sommets = (o) => pointsDuContourBulle(o || gabarit);
+
+  test('il a des sommets, là où l’ovale n’en a aucun', () => {
+    // C'est la seule chose qui le distingue de l'ovale dans le contrat : le tracé de draw.js lit
+    // `pointsDuContour` et choisit entre `c.ellipse` et une suite de segments selon qu'il est nul.
+    assert.equal(pointsDuContourBulle({ bulleShape: FORME_OVALE, x: 0, y: 0, w: 200, h: 100 }), null);
+    assert.ok(Array.isArray(sommets()) && sommets().length >= 7,
+      'sans sommets, il se dessinerait comme un ovale lisse');
+  });
+
+  /**
+   * ⚠️ LES CÔTÉS SONT INÉGAUX SANS AUCUN BRUIT ALÉATOIRE, et c'est l'idée de la forme. Un pas de
+   * paramètre constant sur une ELLIPSE parcourt beaucoup de longueur près des bouts du grand axe et
+   * peu sur les flancs. Sur un CERCLE, le même calcul donnerait un polygone régulier — le test le
+   * vérifie dans les deux sens, sans quoi « inégal » pourrait venir d'ailleurs.
+   */
+  test('⚠️ SES CÔTÉS SONT INÉGAUX SUR UNE BULLE OVALE, ÉGAUX SUR UNE BULLE CARRÉE', () => {
+    const longueurs = (o) => {
+      const p = sommets(o);
+      return p.map((v, i) => {
+        const w = p[(i + 1) % p.length];
+        return Math.hypot(w.x - v.x, w.y - v.y);
+      });
+    };
+    const allonge = longueurs(gabarit);
+    assert.ok(Math.max(...allonge) / Math.min(...allonge) > 1.5,
+      `côtés dans un rapport de ${(Math.max(...allonge) / Math.min(...allonge)).toFixed(2)} : ` +
+      'le contour s’est régularisé, il se lit comme un polygone mécanique');
+
+    const carre = longueurs(Object.assign({}, gabarit, { w: 120, h: 120 }));
+    assert.ok(Math.max(...carre) / Math.min(...carre) < 1.01,
+      'sur une boîte carrée les côtés doivent être égaux : l’inégalité vient de l’ellipse, ' +
+      'pas d’un bruit caché');
+  });
+
+  /**
+   * ⚠️ IL EST DÉTERMINISTE, CONTRAIREMENT À LA TACHE D'ENCRE. La tache tire sa graine de
+   * l'identifiant de la Bulle ; celui-ci ne tire rien. Deux Bulles de même boîte doivent se
+   * dessiner à l'identique, sans quoi copier une Bulle en changerait la silhouette.
+   */
+  test('⚠️ DEUX BULLES DE MÊME BOÎTE ONT LE MÊME CONTOUR', () => {
+    const a = sommets(Object.assign({}, gabarit, { id: 'aa' }));
+    const b = sommets(Object.assign({}, gabarit, { id: 'zz' }));
+    assert.deepEqual(a, b, 'le contour dépend de l’identifiant : copier une Bulle la déformerait');
+  });
+
+  test('l’encart tient DANS le contour, pas dans la boîte', () => {
+    // Un polygone inscrit passe en deçà de l'ellipse entre deux sommets : reprendre l'encart de
+    // l'ovale ferait sortir le texte près des cordes les plus creuses.
+    const e = encartInterieurBulle(gabarit);
+    for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const x = 100 + sx * e.w / 2, y = 50 + sy * e.h / 2;
+      const bord = pointDuContourBulle(gabarit, Math.atan2(y - 50, x - 100));
+      assert.ok(Math.hypot(x - 100, y - 50) <= Math.hypot(bord.x - 100, bord.y - 50) + 1e-9,
+        `le coin (${x.toFixed(0)}, ${y.toFixed(0)}) de l’encart sort du contour`);
     }
   });
 });

@@ -73,6 +73,7 @@ export const FORME_ETOILE = 'etoile';
 export const FORME_ECU = 'ecu';
 
 export const FORME_TACHE = 'tache';
+export const FORME_FACETTE = 'facette';
 
 
 /**
@@ -267,6 +268,33 @@ function sommetsOctogone(o){
 }
 
 /**
+ * L'ovale à côtés droits : la bulle de bande dessinée tracée à la règle.
+ *
+ * ⚠️ LES SOMMETS SONT SUR L'ELLIPSE, À PAS DE PARAMÈTRE CONSTANT — et c'est ce qui donne des côtés
+ * INÉGAUX sans le moindre bruit aléatoire. Sur un cercle, un pas constant donnerait des cordes
+ * toutes identiques et un polygone régulier, mécanique ; sur une ellipse, le même pas parcourt
+ * beaucoup de longueur près des bouts du grand axe et peu sur les flancs, si bien que les côtés
+ * varient d'eux-mêmes. La forme reste donc DÉTERMINISTE : deux Bulles de même boîte se dessinent
+ * à l'identique, contrairement à la tache d'encre qui tire sa graine de son identifiant.
+ *
+ * ⚠️ ONZE CÔTÉS, ET LE NOMBRE EST IMPAIR EXPRÈS. Avec un nombre pair, les sommets se font face deux
+ * à deux et l'œil lit une symétrie ; impair, aucun sommet n'a de vis-à-vis et le contour garde
+ * l'irrégularité d'un tracé à main levée. Onze est aussi le seuil où le polygone cesse de se lire
+ * comme un polygone et commence à se lire comme un ovale anguleux.
+ */
+const FACETTE_COTES = 11;
+
+function sommetsFacette(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  const out = [];
+  for (let i = 0; i < FACETTE_COTES; i++) {
+    const a = (Math.PI * 2 * i) / FACETTE_COTES;
+    out.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
+  }
+  return out;
+}
+
+/**
  * L'étoile du cri, et les dents de scie : même construction, deux réglages.
  *
  * Une alternance de rayons long/court sur l'ellipse de base. L'étoile a peu de pointes et un creux
@@ -431,6 +459,16 @@ const REGISTRE = {
     // avant #425e. C'est le comportement d'origine, il n'a jamais gêné, et le corriger aurait
     // déplacé le texte de chaque Bulle déjà écrite pour satisfaire une règle décidée après coup.
     encartInterieur: (o) => encartDepuisFraction(o, 1, 1),
+  },
+  [FORME_FACETTE]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsFacette(o)),
+    pointsDuContour: sommetsFacette,
+    angleVersLePoint: anglePolaire,
+    queueParDefaut: () => true,
+    // ⚠️ L'ENCART EST AJUSTÉ AU CONTOUR, PAS À LA BOÎTE. Un polygone inscrit dans l'ellipse passe
+    // EN DEÇÀ d'elle entre deux sommets : réutiliser l'encart de l'ovale ferait sortir le texte du
+    // contour près des cordes les plus creuses. `encartAjusteAuContour` mesure le contour réel.
+    encartInterieur: (o) => encartAjusteAuContour(o, 0.72, 0.72, sommetsFacette(o)),
   },
   [FORME_RECT]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsRect(o)),
