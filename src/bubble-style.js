@@ -233,7 +233,18 @@ export function apparenceBulle(o, largeurTrait){
  * 4 px sur un filet fin deviennent une frange imperceptible sous un trait de 6 px — le motif
  * disparaîtrait précisément là où l'utilisateur a demandé un contour plus visible.
  */
-export const EPINE_PAS = 0.35;
+/**
+ * L'espacement des pointes et leur longueur, en ÉPAISSEURS DE TRAIT.
+ *
+ * ⚠️ 0,7 EST UNE VALEUR VUE, PAS ESTIMÉE — et les deux essais précédents ne l'étaient pas. 0,9
+ * laissait la frange trop claire, 0,35 la faisait fusionner en une bande noire : dans les deux cas
+ * j'avais déduit le chiffre d'une consigne (« deux à trois fois plus dense ») au lieu de regarder
+ * le résultat. Une planche de contact rendue en PNG — le contour et la frange tracés par le VRAI
+ * code, à quatre espacements — a tranché en une fois : à 0,6 les aiguilles fusionnent encore sur
+ * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
+ * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
+ */
+export const EPINE_PAS = 0.7;
 export const EPINE_LONGUEUR = 4;
 
 /**

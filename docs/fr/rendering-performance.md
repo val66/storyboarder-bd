@@ -943,20 +943,19 @@ Mesurée avec l'instrument ci-dessus, premier tour écarté :
 | configuration | µs / Bulle | 40 Bulles |
 |---|---|---|
 | trait plein | 2,9 | 0,12 ms |
-| **trait « épines »** | **171,6** | **6,86 ms** |
+| **trait « épines »** | **97,2** | **3,89 ms** |
 
-**Cinquante-neuf fois une Bulle nette**, et de loin la configuration la plus chère jamais mesurée
-ici — cinq fois la tache d'encre de #425d. La raison est assumée : la densité a été relevée deux
-fois sur relevé de l'utilisateur, et une Bulle de référence porte désormais plus de quatre cents
-pointes, soit près de mille points tracés.
+**Trente-quatre fois une Bulle nette**, et de loin la configuration la plus chère jamais mesurée
+ici — trois fois la tache d'encre de #425d. La raison est assumée : une Bulle de référence porte
+environ deux cent cinq pointes, soit plus de quatre cents points tracés.
 
 ⚠️ **ET CE N'EST PAS UN PROBLÈME, PARCE QUE CE N'EST PAS UN MOTIF QU'ON EMPLOIE QUARANTE FOIS.** Les
 épines disent un cri ou une voix intérieure : une Planche en porte une ou deux, pas quarante. À deux
-Bulles, la frange coûte 0,34 ms, soit moins qu'une seule Case à image. Le chiffre de 6,86 ms décrit
+Bulles, la frange coûte 0,19 ms, soit moins qu'une seule Case à image. Le chiffre de 3,89 ms décrit
 une Planche que personne ne dessinera.
 
 ⚠️ **CE QUI FERAIT CHANGER CE VERDICT**, et il faut le nommer pour que la prochaine personne sache
 quoi remesurer : une Planche où la moitié des Bulles porteraient la frange. Le coût est strictement
-linéaire, donc vingt Bulles épineuses coûteraient 3,4 ms par image — à ce niveau, il faudrait
+linéaire, donc vingt Bulles épineuses coûteraient 1,9 ms par image — à ce niveau, il faudrait
 envisager de ne recalculer la frange que lorsque la Bulle change, comme le cache de tuiles le fait
 pour les textures.

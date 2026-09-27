@@ -3382,13 +3382,20 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    * ne change pas. Relevé à l'usage sur la source : « beaucoup plus nombreuses ». Sur la Bulle de
    * référence, le périmètre avoisine 480 px ; à moins de cent pointes, la frange se clairseme.
    */
-  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS DEUX CENT CINQUANTE POINTES', () => {
-    // Le seuil a été relevé de cent à deux cent cinquante après un second relevé à l'usage : la
-    // frange précédente restait deux à trois fois trop claire par rapport à la source.
+  /**
+   * ⚠️ LE SEUIL A ÉTÉ CHERCHÉ TROIS FOIS, ET LES DEUX PREMIÈRES ÉTAIENT DES ESTIMATIONS. Cent
+   * pointes laissaient la frange trop claire, quatre cents la faisaient fusionner en bande noire.
+   * La troisième valeur vient d'une planche de contact rendue en PNG et REGARDÉE, à quatre
+   * espacements : 205 pointes sur les 431 px de périmètre de la Bulle de référence.
+   *
+   * La borne est posée sous cette valeur, avec la marge qu'exige un test de densité : elle garde
+   * la frange dense sans figer un chiffre que le prochain réglage d'aspect ferait rougir pour rien.
+   */
+  test('⚠️ UNE BULLE DE RÉFÉRENCE PORTE AU MOINS DEUX CENTS POINTES', () => {
     const p = pts(dessiner(nue({ bulleBorderDash: 'epine' })));
     // Deux points tracés par pointe, plus le contour lui-même.
-    assert.ok(p.length / 2 > 250,
-      `${Math.round(p.length / 2)} pointes sur un périmètre de ~480 px : la frange est clairsemée`);
+    assert.ok(p.length / 2 > 200,
+      `${Math.round(p.length / 2)} pointes sur un périmètre de 431 px : la frange est clairsemée`);
   });
 
   /**
