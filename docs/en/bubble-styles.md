@@ -263,6 +263,27 @@ The Bubble you hold is the one you are looking at, so the one whose appearance y
 order still decides which one carries the group, and those are two distinct questions. The ABSENCE
 of a setting on the source carries over like the rest — it is what says "white by default".
 
+## Three shapes removed, and their key that survives (#425y)
+
+Use has settled it, as this note expected: **sawtooth**, **crown of thorns** and **strip / ribbon**
+leave the registry. The first two overlapped with the shout star — three jagged outlines separated
+by constants — and the strip was only a slanted rounded rectangle.
+
+⚠️ **A PERSISTED KEY DOES NOT DISAPPEAR, IT MIGRATES.** `formeDeLaBulle` THROWS on an unknown shape:
+removing the three keys and nothing else would crash at draw time for every Bubble already saved
+with one, that is, open a Project on an error. An alias table migrates them — the mechanism is the
+one from #430, where "Dark ink" gave way to the starry night.
+
+| removed key | becomes | why |
+|---|---|---|
+| `dents` | `etoile` | same jagged outline, different density |
+| `epines` | `etoile` | likewise, and the bristling returns as a STROKE PATTERN |
+| `bande` | `rect` | the strip was a slanted rounded rectangle |
+
+The Bubbles concerned change appearance, and that is what a removal means. The "no setting means
+what exists" rule protects those that asked for nothing; it can do nothing for those whose requested
+setting no longer exists.
+
 ## What the revision corrected, including in my own work
 
 After this note, every entry in the survey was set **against the fragment of the page** it claimed to

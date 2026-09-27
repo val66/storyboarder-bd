@@ -54,7 +54,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble". Right-click a bubble to bring it forward, send it backward or delete it.',
-    'Nine shapes: Oval, Rectangle, Chamfered octagon, Star (shout), Sawtooth, Shield, Crown of thorns, Ink blot and Strip. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
+    'Six shapes: Oval, Rectangle, Chamfered octagon, Star (shout), Shield and Ink blot. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
     'The tail comes in five kinds — Triangle, Lightning, Curved hair, Chain of circles, or None — and can be dragged anywhere around the outline.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
     'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
@@ -257,7 +257,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ». Clic droit sur une Bulle pour l\'avancer, la reculer ou la supprimer.',
-    'Neuf formes : Ovale, Rectangle, Octogone à coins coupés, Étoile (cri), Dents de scie, Écu, Couronne d\'épines, Tache d\'encre et Bande. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
+    'Six formes : Ovale, Rectangle, Octogone à coins coupés, Étoile (cri), Écu et Tache d\'encre. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
     "La pointe existe en cinq formes — Triangle, Éclair, Cheveu courbe, Chaîne de ronds, ou Aucune — et se déplace tout autour du contour.",
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
     "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",

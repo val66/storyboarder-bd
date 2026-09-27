@@ -1217,7 +1217,7 @@ describe('#425z : les formes et les pointes offertes sont toutes nommées dans l
 
   test('le garde-fou : les listes sont bien lues dans le HTML', () => {
     // Sur une liste vide, le test suivant parcourrait le néant et passerait pour toujours.
-    assert.ok(optionsDe('sideBubbleShapeSelect').length >= 9,
+    assert.ok(optionsDe('sideBubbleShapeSelect').length >= 6,
       `${optionsDe('sideBubbleShapeSelect').length} formes lues, le motif ne trouve plus rien`);
     assert.ok(optionsDe('sideBubbleTailShapeSelect').length >= 5, 'les pointes ne sont plus lues');
   });

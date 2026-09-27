@@ -123,7 +123,7 @@ describe('⚠️ RÈGLE 1 : une Bulle n’est JAMAIS découpée par une Case', (
     assert.equal(c.journal[2].decoupe, false, 'une découpe relâchée ne doit plus compter');
   });
 
-  test('les neuf formes et les cinq queues débordent toutes, sans découpe', () => {
+  test('les six formes et les cinq queues débordent toutes, sans découpe', () => {
     // Le débordement ne doit pas dépendre de la forme choisie : la tache d'encre du relevé est un
     // cas, pas une exception.
     for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'dents', 'ecu', 'epines', 'bande', 'tache']) {

@@ -22,8 +22,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES,
-  FORME_BANDE, FORME_TACHE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
+  FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU,
+  FORME_TACHE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
   pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
 } from '../src/bubble-shape.js';
 
@@ -121,14 +121,27 @@ describe('⚠️ UNE FORME INCONNUE LÈVE, elle ne retombe pas sur l’ovale', (
 });
 
 describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
-  test('neuf formes sont enregistrées, et les constantes les nomment toutes', () => {
+  test('six formes sont enregistrées, et les constantes les nomment toutes', () => {
     // Si une constante exportée cessait de correspondre à une entrée du registre, la fiche
     // proposerait une valeur que le dessin refuserait.
     const connues = formesConnues();
-    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS, FORME_ECU, FORME_EPINES,
-      FORME_BANDE, FORME_TACHE]
+    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU, FORME_TACHE]
       .forEach(f => assert.ok(connues.includes(f), `« ${f} » absente du registre`));
-    assert.equal(connues.length, 9);
+    assert.equal(connues.length, 6);
+  });
+
+  /**
+   * ⚠️ TROIS FORMES ONT ÉTÉ RETIRÉES, ET LEUR CLÉ PERSISTÉE DOIT SURVIVRE (#425y). `formeDeLaBulle`
+   * LÈVE sur une forme inconnue : sans table d'alias, ouvrir un Projet portant l'une d'elles
+   * planterait au dessin. Ce test ne vérifie pas seulement que ça ne lève pas — il vérifie VERS QUOI
+   * chaque clé migre, sans quoi les trois pourraient retomber sur l'ovale par accident.
+   */
+  test('⚠️ LES TROIS FORMES RETIRÉES MIGRENT, ELLES NE LÈVENT PAS', () => {
+    assert.equal(formeDeLaBulle({ bulleShape: 'dents' }), FORME_ETOILE);
+    assert.equal(formeDeLaBulle({ bulleShape: 'epines' }), FORME_ETOILE);
+    assert.equal(formeDeLaBulle({ bulleShape: 'bande' }), FORME_RECT);
+    // Et une clé vraiment inconnue lève toujours : l'alias est une table, pas un filet universel.
+    assert.throws(() => formeDeLaBulle({ bulleShape: 'nuage' }), /Forme de Bulle inconnue/);
   });
 
   // ⚠️ LA BOUCLE LIT LE REGISTRE, ELLE NE RECOPIE PLUS UNE LISTE. Elle recopiait `['ovale', 'rect',
@@ -260,7 +273,7 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
         // étant large et bas, l'élargir en le rabaissant respecte la même contrainte et rend un
         // tiers de place en plus. Sans ce test, quelqu'un « simplifierait » un jour en remettant
         // fx = fy, et le texte se recouperait sans que rien n'échoue.
-        if (forme !== FORME_ETOILE && forme !== FORME_DENTS) return;
+        if (forme !== FORME_ETOILE) return;
         for (const g of GABARITS) {
           const o = avecForme(g, forme);
           const e = encartInterieurBulle(o);
@@ -314,17 +327,16 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
 });
 
 describe('⚠️ LA QUEUE PAR DÉFAUT EST UNE PROPRIÉTÉ DE LA FORME, depuis #425f', () => {
-  test('cinq formes naissent avec une queue, deux sans — et lesquelles n’est pas arbitraire', () => {
+  test('quatre formes naissent avec une queue, une sans — et laquelle n’est pas arbitraire', () => {
     // ⚠️ CE TEST NOMME LES DEUX EXCEPTIONS AU LIEU DE COMPTER. Un test qui dirait « exactement deux
     // formes rendent faux » resterait vert si on échangeait l'écu et l'octogone, ce qui est
     // précisément la faute qu'il doit attraper.
-    for (const f of [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_DENTS]) {
+    for (const f of [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE]) {
       assert.equal(queueParDefautBulle({ bulleShape: f }), true, `« ${f} » devrait naître avec sa queue`);
     }
-    // L'écu porte déjà sa pointe basse ; la couronne d'épines dit une voix qui ne sort d'aucune
-    // bouche. Deux raisons opposées, un même résultat.
+    // L'écu porte déjà sa pointe basse : c'est la seule exception depuis que la couronne d'épines
+    // a été retirée (#425y).
     assert.equal(queueParDefautBulle({ bulleShape: FORME_ECU }), false);
-    assert.equal(queueParDefautBulle({ bulleShape: FORME_EPINES }), false);
   });
 
   test('RÉGRESSION : une Bulle d’avant #425f, sans forme ni champ, garde sa queue', () => {
@@ -440,9 +452,8 @@ describe('⚠️ L’AUDIT : la suite a-t-elle VRAIMENT éprouvé chaque forme ?
     }
     assert.ok((TEMOIN.get(FORME_ECU) || new Set()).has('encart-remonte'),
       'l’écu est exempté du centrage : la vérification de remplacement doit avoir tourné');
-    for (const f of [FORME_ETOILE, FORME_DENTS]) {
-      assert.ok(TEMOIN.get(f).has('encart-large'), `« ${f} » : l’encart large et bas n’a pas été vérifié`);
-    }
+    assert.ok(TEMOIN.get(FORME_ETOILE).has('encart-large'),
+      'l’étoile : l’encart large et bas n’a pas été vérifié');
   });
 });
 

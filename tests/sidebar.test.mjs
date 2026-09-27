@@ -921,7 +921,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     // quand l'une des deux a évolué. Le correctif n'est pas de recopier la bonne liste, c'est
     // d'interroger `formeDeLaBulle` — la même fonction que le dessin.
     const b = nouvelleBulle();
-    for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'dents', 'ecu', 'epines']) {
+    for (const forme of ['ovale', 'rect', 'octogone', 'etoile', 'ecu', 'tache']) {
       b.bulleShape = forme;
       S.selectedId = b.id;
       updateSidePanel();
@@ -945,7 +945,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     // Le test déclenche donc l'écouteur RÉEL, pour CHAQUE forme du registre lue dans le module.
     const FORMES = sourceSansCommentaires(readFileSync(new URL('../src/bubble-shape.js', import.meta.url), 'utf8'));
     const connues = [...FORMES.matchAll(/export const FORME_\w+ = '([^']+)';/g)].map(m => m[1]);
-    assert.ok(connues.length >= 7, `${connues.length} formes lues dans le registre`);
+    assert.ok(connues.length >= 6, `${connues.length} formes lues dans le registre`);
 
     const b = nouvelleBulle();
     S.selectedId = b.id;
@@ -1549,8 +1549,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     };
     assert.equal(vu('etoile'), 'triangle', 'une étoile naît avec sa pointe triangulaire');
     assert.equal(vu('ecu'), 'aucune', 'un écu porte déjà sa pointe basse');
-    assert.equal(vu('epines'), 'aucune', 'une couronne d’épines ne désigne personne');
-    assert.equal(vu('bande'), 'aucune', 'une bande est un récitatif');
+    assert.equal(vu('tache'), 'aucune', 'une tache d’encre est une pensée, elle ne désigne personne');
     // Un choix explicite reprend la main, et la fiche le montre.
     b.tailShape = 'eclair';
     assert.equal(vu('ecu'), 'eclair', 'un éclair demandé sur un écu doit s’afficher');
@@ -1589,7 +1588,7 @@ describe('#425h — le GESTE de glisser la queue, exécuté pour de bon', () => 
     S.dragMode = null;
   };
 
-  test('⚠️ ON TIRE LA QUEUE QUELQUE PART, ELLE Y VA — pour les neuf formes', () => {
+  test('⚠️ ON TIRE LA QUEUE QUELQUE PART, ELLE Y VA — pour les six formes', () => {
     const page = currentPage();
     for (const forme of formesConnues()) {
       S.pendingCreatePos = { x: 300, y: 300 };

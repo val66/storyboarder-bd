@@ -274,6 +274,28 @@ l'ordre d'affichage continue de décider qui sert de support, ce sont deux quest
 L'ABSENCE d'un réglage chez la source se transporte comme le reste — c'est elle qui dit « blanc par
 défaut ».
 
+## Trois formes retirées, et leur clé qui survit (#425y)
+
+L'usage a tranché, comme cette note l'avait prévu : **dents de scie**, **couronne d'épines** et
+**bande / ruban** quittent le registre. Les deux premières faisaient double emploi avec l'étoile du
+cri — trois contours dentelés séparés par des constantes —, et la bande n'était qu'un rectangle
+arrondi penché.
+
+⚠️ **UNE CLÉ PERSISTÉE NE DISPARAÎT PAS, ELLE MIGRE.** `formeDeLaBulle` LÈVE sur une forme inconnue :
+retirer les trois clés sans rien d'autre ferait planter au dessin toute Bulle déjà enregistrée avec,
+c'est-à-dire ouvrirait un Projet sur une erreur. Une table d'alias les fait migrer — le mécanisme est
+celui de #430, où « Encre sombre » a cédé la place à la nuit étoilée.
+
+| clé retirée | devient | pourquoi |
+|---|---|---|
+| `dents` | `etoile` | même contour dentelé, densité différente |
+| `epines` | `etoile` | idem, et le hérissement revient comme MOTIF DE TRAIT |
+| `bande` | `rect` | la bande était un rectangle arrondi penché |
+
+Les Bulles concernées changent d'aspect, et c'est le sens même d'un retrait. La règle « pas de
+réglage vaut l'existant » protège celles qui n'ont rien demandé ; elle ne peut rien pour celles dont
+le réglage demandé n'existe plus.
+
 ## Ce que la révision a corrigé, y compris chez moi
 
 Après cette note, chaque fiche du relevé a été mise **en regard du fragment de planche** dont elle

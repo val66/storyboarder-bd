@@ -387,7 +387,7 @@ describe('bubbleTailVisible : propriété simple d\'une Bulle', () => {
     // rester cochée sans que rien n'apparaisse. Un réglage inopérant indiscernable d'un réglage
     // appliqué — exactement ce que le registre refuse par ailleurs.
     assert.equal(bubbleTailVisible({ bulleShape: 'ecu' }), false, 'l’écu naît sans queue');
-    assert.equal(bubbleTailVisible({ bulleShape: 'epines' }), false, 'la couronne naît sans queue');
+    assert.equal(bubbleTailVisible({ bulleShape: 'tache' }), false, 'la tache naît sans queue');
     assert.equal(bubbleTailVisible({ bulleShape: 'etoile' }), true);
     assert.equal(bubbleTailVisible({ bulleShape: 'ecu', tailVisible: true }), true,
       'un « oui » explicite doit l’emporter sur le défaut de la forme');
@@ -2463,15 +2463,7 @@ describe('#425f — l’écu dissymétrique et la couronne d’épines', () => {
       'une forme symétrique doit continuer d’écrire au centre');
   });
 
-  test('la couronne d’épines se hérisse plus dru que l’étoile du cri', () => {
-    // Les deux formes partagent leur construction ; ce qui les sépare est un réglage. Sans ce test,
-    // aligner les deux jeux de constantes « pour simplifier » ne casserait rien.
-    const n = (forme) => pts(dessiner(bulle({ bulleShape: forme, description: '', tailVisible: false }))).length;
-    assert.ok(n('epines') > n('etoile') * 1.3,
-      `couronne ${n('epines')} segments, étoile ${n('etoile')} : la couronne s’est éclaircie`);
-  });
-
-  test('⚠️ LES DEUX FORMES ARRIVENT SANS QUEUE AU CANEVAS, pas seulement dans la décision', () => {
+  test('⚠️ L’ÉCU ARRIVE SANS QUEUE AU CANEVAS, pas seulement dans la décision', () => {
     // ⚠️ SINON `queueParDefautBulle` SERAIT UNE OPINION SANS EFFET — la faute exacte de la mutation
     // M19 de #420c : une couche pure parfaite pendant que le réglage reste inerte.
     //
@@ -2488,8 +2480,7 @@ describe('#425f — l’écu dissymétrique et la couronne d’épines', () => {
       return queueDepasseLeContour(b, dessiner(b));
     };
     assert.equal(sort({ bulleShape: 'ecu' }), false, 'l’écu ne doit pas naître avec une queue');
-    assert.equal(sort({ bulleShape: 'epines' }), false, 'la couronne non plus');
-    // Le repère : l'étoile, de même construction, la dessine. Si le branchement sautait, les trois
+    // Le repère : l'étoile, de même construction, la dessine. Si le branchement sautait, les deux
     // se comporteraient pareil et le test resterait vert sans rien prouver.
     assert.equal(sort({ bulleShape: 'etoile' }), true, 'l’étoile, elle, naît avec sa queue');
     // Et le champ garde le dernier mot, dans les deux sens.
@@ -2628,58 +2619,22 @@ describe('#425g — les deux contours GÉNÉRÉS atteignent le canevas', () => {
     }
   });
 
-  test('⚠️ LA BANDE EST PENCHÉE, et c’est ce qui la distingue du rectangle arrondi', () => {
-    // ⚠️ SANS CE TEST, LES DEUX FORMES CONVERGERAIENT SANS BRUIT. La bande EST un rectangle à coins
-    // arrondis ; seule l'inclinaison la rend reconnaissable. Quelqu'un qui « simplifierait » en
-    // retirant le cisaillement obtiendrait deux entrées du registre dessinant presque la même
-    // chose, et rien n'échouerait.
-    //
-    // Mesure : le bord haut de la bande descend d'un bout à l'autre. On compare l'ordonnée minimale
-    // du tiers gauche du tracé à celle du tiers droit.
-    const p = contour({ bulleShape: 'bande' });
-    const hautGauche = Math.min(...p.filter(([x]) => x < 70).map(([, y]) => y));
-    const hautDroit = Math.min(...p.filter(([x]) => x > 130).map(([, y]) => y));
-    assert.ok(hautDroit - hautGauche > 100 * 0.15,
-      `dénivelé de ${(hautDroit - hautGauche).toFixed(1)} px : la bande est plate`);
-    // Le repère : le rectangle arrondi, lui, est horizontal.
-    const r = contour({ bulleShape: 'rect' });
-    const rg = Math.min(...r.filter(([x]) => x < 70).map(([, y]) => y));
-    const rd = Math.min(...r.filter(([x]) => x > 130).map(([, y]) => y));
-    assert.ok(Math.abs(rd - rg) < 1e-6, 'le rectangle ne doit pas s’être mis à pencher');
-  });
-
-  test('la bande occupe toute la largeur, et reste dans la boîte malgré le penché', () => {
-    // Le cisaillement a été choisi CONTRE la rotation précisément pour cela : une bande tournée
-    // devrait rétrécir pour rentrer dans sa boîte, et d'autant plus qu'elle est allongée.
-    for (const [w, h] of [[200, 100], [300, 40], [60, 220]]) {
-      const p = pts(dessiner({ id: 'b1', type: 'bulle', x: 0, y: 0, w, h,
-        bulleShape: 'bande', description: '', tailVisible: false }));
-      const xs = p.map(([x]) => x), ys = p.map(([, y]) => y);
-      assert.ok(Math.min(...xs) < w * 0.02 && Math.max(...xs) > w * 0.98,
-        `${w}×${h} : la bande n’occupe pas toute la largeur`);
-      assert.ok(Math.min(...ys) >= -1e-6 && Math.max(...ys) <= h + 1e-6,
-        `${w}×${h} : la bande sort de sa boîte`);
-    }
-  });
-
-  test('les deux naissent SANS QUEUE, et le champ garde le dernier mot', () => {
+  test('la tache naît SANS QUEUE, et le champ garde le dernier mot', () => {
     const avecQueue = (champs) => {
       const o = bulle(Object.assign({ description: '' }, champs));
       return queueDepasseLeContour(o, dessiner(o));
     };
-    assert.equal(avecQueue({ bulleShape: 'bande' }), false, 'la bande est un récitatif, sans queue');
     assert.equal(avecQueue({ bulleShape: 'tache' }), false, 'la tache est une pensée, sans queue');
     // Le repère, sans quoi le test resterait vert même si plus AUCUNE forme n'avait de queue.
     assert.equal(avecQueue({ bulleShape: 'rect' }), true, 'le rectangle, lui, naît avec sa queue');
     // Et le champ l'emporte, dans les deux sens.
-    assert.equal(avecQueue({ bulleShape: 'bande', tailVisible: true }), true);
     assert.equal(avecQueue({ bulleShape: 'tache', tailVisible: true }), true);
     assert.equal(avecQueue({ bulleShape: 'rect', tailVisible: false }), false);
   });
 });
 
 describe('#425h — poser la queue et la calculer sont deux faces d’une même décision', () => {
-  test('⚠️ ALLER-RETOUR : la pointe retombe EXACTEMENT sous le curseur, pour les neuf formes', () => {
+  test('⚠️ ALLER-RETOUR : la pointe retombe EXACTEMENT sous le curseur, pour les six formes', () => {
     // ⚠️ LE DÉFAUT QUE CE TEST AURAIT ATTRAPÉ, ET QU'AUCUN N'ATTRAPAIT. `events.js` calculait
     // `tailAngle` et `tailLen` à sa façon — atan2 sur des coordonnées NORMALISÉES par rx/ry, et une
     // longueur comptée en rayons de l'ELLIPSE — pendant que `getBubbleTailTip` interrogeait le

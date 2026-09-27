@@ -92,14 +92,11 @@ export const I18N_TEXT = [
   // elle, ne change pas de langue.
   ['#sideBubbleShapeSelect option[value="octogone"]', 'Chamfered octagon', 'Octogone à coins coupés'],
   ['#sideBubbleShapeSelect option[value="etoile"]', 'Star (shout)', 'Étoile (cri)'],
-  ['#sideBubbleShapeSelect option[value="dents"]', 'Sawtooth', 'Dents de scie'],
   // #425f — les deux formes qui naissent SANS queue. Le libellé ne le dit pas, et c'est voulu : la
   // case « Afficher la pointe » se décoche toute seule à la création, ce qui se voit à l'écran.
   ['#sideBubbleShapeSelect option[value="ecu"]', 'Concave-sided escutcheon', 'Écu à côtés concaves'],
-  ['#sideBubbleShapeSelect option[value="epines"]', 'Crown of thorns', "Couronne d'épines"],
   // #425g — les deux contours GÉNÉRÉS. La tache est volontairement offerte alors que sa texture
   // n'existe pas encore : sa silhouette est juste, son remplissage ne l'est pas.
-  ['#sideBubbleShapeSelect option[value="bande"]', 'Strip / tape', 'Bande / ruban'],
   ['#sideBubbleShapeSelect option[value="tache"]', 'Ink splat', "Tache d'encre"],
   // #425h — l'axe QUEUE. Indépendant de la forme : les quatre tracés sont offerts quelle que soit
   // la silhouette choisie, et un test croise les neuf formes avec les quatre queues.

@@ -69,11 +69,11 @@ export const FORME_OVALE = 'ovale';
 export const FORME_RECT = 'rect';
 export const FORME_OCTOGONE = 'octogone';
 export const FORME_ETOILE = 'etoile';
-export const FORME_DENTS = 'dents';
+
 export const FORME_ECU = 'ecu';
-export const FORME_EPINES = 'epines';
+
 export const FORME_TACHE = 'tache';
-export const FORME_BANDE = 'bande';
+
 
 /**
  * ⚠️ LA FORME PAR DÉFAUT EST L'OVALE, ET C'EST CE QUI PROTÈGE L'EXISTANT. Aucune Bulle enregistrée
@@ -81,6 +81,25 @@ export const FORME_BANDE = 'bande';
  * exactement comme avant.
  */
 export const FORME_DEFAUT = FORME_OVALE;
+
+/**
+ * Les formes RETIRÉES, et ce qu'elles deviennent (#425y).
+ *
+ * ⚠️ UNE CLÉ PERSISTÉE NE DISPARAÎT PAS, ELLE MIGRE. `formeDeLaBulle` LÈVE sur une forme inconnue :
+ * retirer les trois clés sans cette table ferait planter au dessin toute Bulle déjà enregistrée
+ * avec, c'est-à-dire ouvrirait un Projet sur une erreur. Le précédent est celui de #430, où
+ * « Encre sombre » a cédé la place à la nuit étoilée par le même mécanisme.
+ *
+ * ⚠️ ET LES BULLES CONCERNÉES CHANGENT D'ASPECT, CE QUI EST LE SENS MÊME D'UN RETRAIT. La règle
+ * « pas de réglage vaut l'existant » protège les Bulles qui n'ont rien demandé ; elle ne peut rien
+ * pour celles dont le réglage demandé n'existe plus. On choisit donc le plus proche : les deux
+ * contours dentelés deviennent le cri, la bande devient le rectangle dont elle était la variante.
+ */
+const ALIAS_FORME = {
+  dents: 'etoile',
+  epines: 'etoile',
+  bande: 'rect',
+};
 
 import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
 
@@ -186,38 +205,6 @@ function sommetsRect(o){
   return coinsArrondis(cx, cy, rx, ry, Math.min(rx, ry) * RECT_ARRONDI, RECT_PAR_COIN);
 }
 
-/**
- * La bande de Croquemitaine : un ruban adhésif posé de travers.
- *
- * ⚠️ « RUBAN ADHÉSIF », PAS « BORDS DÉCHIRÉS ». La légende interne du document d'origine le disait,
- * et le relevé lui a donné raison : les coins sont DOUX ET ARRONDIS. Un bord déchiré aurait fait de
- * cette bande une variante du parchemin, alors qu'elle en est l'opposé — l'un est un fragment
- * arraché, l'autre un objet manufacturé qu'on a collé sur l'image.
- *
- * ⚠️ ET CE QUI LA DISTINGUE DU RECTANGLE ARRONDI EST L'INCLINAISON, pas le rayon des coins. Sans
- * elle, deux entrées du registre dessineraient presque la même chose — et c'est précisément le
- * genre de doublon que #425y devra trancher. Le penché la rend reconnaissable en un coup d'œil.
- *
- * ⚠️ L'INCLINAISON EST UN CISAILLEMENT, PAS UNE ROTATION, et la raison est géométrique. Une
- * rotation fait sortir les coins de la boîte de la Bulle : il faudrait rétrécir la bande pour l'y
- * faire rentrer, et le rétrécissement dépendrait de l'allongement — une bande très large et très
- * plate perdrait un tiers de sa taille. Le cisaillement, lui, ne déplace que `y`, d'une quantité
- * bornée par construction : la bande occupe toujours toute la largeur, et la pente se lit d'autant
- * plus douce que la Bulle est longue, ce qui est exactement le comportement d'un vrai ruban.
- */
-const BANDE_HAUTEUR = 0.62;   // demi-hauteur de la bande, en fraction de celle de la Bulle
-const BANDE_ARRONDI = 0.45;   // rayon des coins, en fraction du plus petit demi-axe de la bande
-const BANDE_PENTE = 0.30;     // dénivelé d'un bout à l'autre, en fraction de la demi-hauteur
-const BANDE_PAR_COIN = 5;
-
-function sommetsBande(o){
-  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
-  const hy = ry * BANDE_HAUTEUR;
-  const pts = coinsArrondis(cx, cy, rx, hy, Math.min(rx, hy) * BANDE_ARRONDI, BANDE_PAR_COIN);
-  // Le cisaillement. `hy + BANDE_PENTE * ry ≤ ry` garantit que la bande reste dans la boîte, ce
-  // que le contrat vérifie sur les trois gabarits.
-  return pts.map(p => ({ x: p.x, y: p.y + BANDE_PENTE * ry * (p.x - cx) / rx }));
-}
 
 /**
  * La tache d'encre du Lecteur omniscient : une masse amorphe, stable d'un rendu à l'autre.
@@ -308,7 +295,6 @@ function sommetsAlternes(o, pointes, creux){
 // seconde ne portait que le point d'exclamation. La forme reste franchement une étoile — les
 // pointes dépassent encore de 40 % le fond des creux — et le texte tient.
 const ETOILE_POINTES = 11, ETOILE_CREUX = 0.72;
-const DENTS_POINTES = 26, DENTS_CREUX = 0.88;
 
 /**
  * L'écu d'Okko : des pointes larges et INÉGALES, reliées par des côtés qui se CREUSENT.
@@ -367,14 +353,6 @@ function pointsEcu(o){
   return out;
 }
 
-/**
- * La couronne d'épines de Croquemitaine : des pointes rayonnantes tout autour, SANS AUCUNE QUEUE.
- *
- * Elle se distingue de l'étoile du cri par la densité et par le creux, mais surtout par l'usage : le
- * relevé la montre pour une voix intérieure, qui ne sort de la bouche de personne. C'est
- * exactement pour cela qu'elle naît sans queue — il n'y a pas de locuteur à désigner.
- */
-const EPINES_POINTES = 17, EPINES_CREUX = 0.70;
 
 /**
  * L'encart inscriptible, en fraction des demi-axes.
@@ -484,14 +462,6 @@ const REGISTRE = {
     // c'est la façon d'y loger du texte qui était mauvaise.
     encartInterieur: (o) => encartDepuisFraction(o, 0.60, 0.32),
   },
-  [FORME_DENTS]: {
-    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX)),
-    pointsDuContour: (o) => sommetsAlternes(o, DENTS_POINTES, DENTS_CREUX),
-    angleVersLePoint: anglePolaire,
-    queueParDefaut: () => true,
-    // Même raisonnement que pour l'étoile, avec le creux plus doux des dents de scie.
-    encartInterieur: (o) => encartDepuisFraction(o, 0.78, 0.36),
-  },
   [FORME_ECU]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, pointsEcu(o)),
     pointsDuContour: pointsEcu,
@@ -505,31 +475,6 @@ const REGISTRE = {
     // haut : les deux longs côtés se rejoignent en pointe sous le centre. Avec l'encart centré des
     // autres formes, « vivant de cette ville » sortait par le bas de la pointe.
     encartInterieur: (o) => encartDepuisFraction(o, 0.74, 0.40, -0.28),
-  },
-  [FORME_EPINES]: {
-    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX)),
-    pointsDuContour: (o) => sommetsAlternes(o, EPINES_POINTES, EPINES_CREUX),
-    angleVersLePoint: anglePolaire,
-    // ⚠️ FAUX POUR LA RAISON INVERSE DE L'ÉCU : il n'y a personne à désigner.
-    queueParDefaut: () => false,
-    // Même raisonnement que l'étoile : large et bas plutôt que carré. À 0,58 de large, « Bonjour ! »
-    // se coupait encore en deux lignes, le défaut exact qui avait fait remonter le creux de
-    // l'étoile en #425e.
-    encartInterieur: (o) => encartDepuisFraction(o, 0.66, 0.30),
-  },
-  [FORME_BANDE]: {
-    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsBande(o)),
-    pointsDuContour: sommetsBande,
-    angleVersLePoint: anglePolaire,
-    // ⚠️ SANS QUEUE, ET C'EST CE QUI EN FAIT UN RÉCITATIF. Le relevé la montre pour une voix qui
-    // commente, entre guillemets, et non pour quelqu'un qui parle dans la Case.
-    queueParDefaut: () => false,
-    // ⚠️ AJUSTÉ, COMME LA TACHE, ET POUR UNE RAISON VOISINE : la place utile d'une bande dépend de
-    // l'ALLONGEMENT de la Bulle. Le cisaillement déplace `y` proportionnellement à `ry`, donc sur
-    // une Bulle étroite et haute il emporte la bande bien plus loin, en pixels, que sur une Bulle
-    // large et plate. Une fraction fixe réglée sur l'une sort de l'autre — c'est arrivé, sur le
-    // gabarit très haut du contrat.
-    encartInterieur: (o) => encartAjusteAuContour(o, 0.86, 0.34, sommetsBande(o)),
   },
   [FORME_TACHE]: {
     pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsTache(o)),
@@ -561,6 +506,7 @@ export function formesConnues(){
 export function formeDeLaBulle(o){
   const v = o && o.bulleShape;
   if (v == null || v === '') return FORME_DEFAUT;
+  if (Object.prototype.hasOwnProperty.call(ALIAS_FORME, v)) return ALIAS_FORME[v];
   if (!Object.prototype.hasOwnProperty.call(REGISTRE, v)) {
     throw new Error(`Forme de Bulle inconnue : « ${v} ». Formes enregistrées : ${formesConnues().join(', ')}.`);
   }

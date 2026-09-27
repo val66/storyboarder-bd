@@ -6,7 +6,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * Tenu : l'INDÉPENDANCE des axes forme et queue, éprouvée sur le produit complet des deux
- * registres — neuf formes × quatre queues, lues dans les modules et non recopiées ici. C'est la
+ * registres — six formes × quatre queues, lues dans les modules et non recopiées ici. C'est la
  * seule propriété que le relevé impose directement : Imperium pose un éclair sur une ellipse, Okko
  * sur un écu, la Geste montre un octogone sans queue. Une seule combinaison qui refuserait de se
  * dessiner rendrait une de ces planches impossible.
@@ -91,12 +91,12 @@ describe('⚠️ UNE QUEUE INCONNUE LÈVE, elle ne retombe pas sur le triangle',
 });
 
 describe('⚠️ L’INDÉPENDANCE DES AXES, éprouvée sur le PRODUIT des deux registres', () => {
-  test('les quatre queues se dessinent sur les neuf formes, sans exception', () => {
+  test('les quatre queues se dessinent sur les six formes, sans exception', () => {
     // ⚠️ LES DEUX LISTES SONT LUES DANS LES MODULES, jamais recopiées : une forme ou une queue
     // ajoutée demain entre dans ce test sans que personne y pense. C'est la leçon de #425f, où une
     // liste écrite à la main avait laissé deux formes traverser tout le contrat sans être éprouvées.
     const formes = formesConnues(), queues = queuesConnues();
-    assert.ok(formes.length >= 9 && queues.length >= 5, `${formes.length} × ${queues.length}`);
+    assert.ok(formes.length >= 6 && queues.length >= 5, `${formes.length} × ${queues.length}`);
     for (const forme of formes) {
       for (const queue of queues) {
         const o = Object.assign({}, BULLE, { bulleShape: forme, tailShape: queue });
