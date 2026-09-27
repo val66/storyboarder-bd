@@ -317,10 +317,12 @@ of spikes laid along the outline. Two decisions govern it:
 - **the gap between two spikes is irregular**, drawn from a different sample of the noise than the
   lengths are. Varied lengths set at a constant interval read as a comb: it is the regularity of the
   step, not that of the size, that gives the machine away;
-- the variation is **fine-grained**. With twenty-three noise nodes spread over the whole perimeter
-  it became a long wave: whole arcs of short spikes alternating with arcs of long ones — regular
-  scallops, regularity coming back in through the side door. A hundred and fifty-one nodes give the
-  irregular tufts of the reference;
+- the variation is **fine-grained, and the grain is counted in spikes**. With twenty-three noise
+  nodes spread over the whole perimeter it became a long wave: whole arcs of short spikes
+  alternating with arcs of long ones — regular scallops, regularity coming back in through the side
+  door. First fixed by raising the node count, which was only ever a setting right for one spacing:
+  halve the spacing and the wave came back untouched. The node count now follows the number of
+  spikes, one for every two;
 - **spike fineness is settled on a 2:1 render, never a 1:1 one.** The contact-sheet rasteriser lays
   down at least one full pixel where a canvas antialiases a 0.4 px width into pale grey: at actual
   size the sheet darkens what the application will lighten, and the finest fringe looks like a blot

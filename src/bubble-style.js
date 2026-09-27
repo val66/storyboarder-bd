@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.42;
+export const EPINE_PAS = 0.21;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -276,7 +276,7 @@ export const EPINE_DEDANS = 0.3;
  * des pointes serrées se rejoignent et forment un bourrelet noir au lieu d'aiguilles distinctes.
  * Relevé à l'usage sur la source.
  */
-export const EPINE_FINESSE = 0.17;
+export const EPINE_FINESSE = 0.09;
 /**
  * ⚠️ LE CONTOUR S'ÉPAISSIT SOUS LA FRANGE. Proposé à l'usage — « épaissir le contour de la Bulle
  * puis ajouter les traits de taille variable au-dessus et au-dessous » — et c'est la bonne lecture
@@ -298,13 +298,26 @@ export const EPINE_SOCLE = 1.8;
  */
 
 /** Combien de points de bruit font le tour du contour avant de se répéter. */
-// ⚠️ LE BRUIT EST À GRAIN FIN, ET LE CHIFFRE COMPTE AUTANT QUE L'AMPLITUDE. À 23 nœuds répartis
-// sur tout le périmètre, la variation devenait une ONDE LONGUE : des arcs entiers d'épines courtes
-// alternant avec des arcs d'épines longues, c'est-à-dire des festons réguliers, exactement ce que
-// la variation devait éviter. Vu sur planche de contact à 23, 71 et 151 nœuds : 71 fait des
-// festons nets, 151 donne les touffes irrégulières de la source. Un nombre premier, pour que le
-// motif ne se referme pas sur un diviseur du nombre d'épines.
-const EPINE_POINTS_BRUIT = 151;
+// ⚠️ LE GRAIN DU BRUIT SE COMPTE EN ÉPINES, PAS EN NŒUDS FIXES, et il a fallu deux erreurs pour
+// l'écrire. Première version : vingt-trois nœuds répartis sur tout le périmètre. La variation
+// devenait une ONDE LONGUE — des arcs entiers d'épines courtes alternant avec des arcs d'épines
+// longues, soit des festons réguliers, précisément la régularité que la variation existe pour
+// casser. Corrigé à cent cinquante et un nœuds, jugé sur planche de contact.
+//
+// Deuxième version, et même faute d'un cran plus loin : cent cinquante et un est un nombre ABSOLU.
+// Le jour où l'espacement a été divisé par deux, chaque nœud a couvert deux fois plus d'épines et
+// l'onde est revenue, intacte. C'est la famille « un réglage qui n'est juste que pour la valeur
+// d'un autre réglage » : le grain doit se définir PAR RAPPORT à la frange qu'il module.
+//
+// Un nœud pour deux épines, donc — assez pour que deux voisines diffèrent, assez peu pour qu'elles
+// ne soient pas indépendantes au point de faire du bruit blanc. Le plancher protège les très
+// petites Bulles, où le calcul donnerait une poignée de nœuds.
+export const EPINE_NOEUDS_MINIMUM = 23;
+export function noeudsDuBruitEpine3D(perimetre, pas){
+  const epines = Number(pas) > 0 ? Number(perimetre) / Number(pas) : 0;
+  const n = Math.round(epines / 2);
+  return Math.max(EPINE_NOEUDS_MINIMUM, Number.isFinite(n) ? n : EPINE_NOEUDS_MINIMUM);
+}
 
 /**
  * Les points d'une frange d'épines posée le long d'un contour. Fonction PURE.
@@ -360,6 +373,7 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
   if (perimetre === 0) return [];
   // Une aire nulle décrit un contour aplati, sans dedans ni dehors : on prend le sens direct.
   const sens = aire < 0 ? -1 : 1;
+  const noeuds = noeudsDuBruitEpine3D(perimetre, pas);
 
   const out = [];
   // ⚠️ LA DISTANCE RESTANT À PARCOURIR SE REPORTE D'UN SEGMENT À L'AUTRE, et une première écriture
@@ -379,7 +393,7 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
       // La normale au segment, orientée vers le dehors par le sens de parcours du contour entier.
       const nx = (dy / len) * sens, ny = (-dx / len) * sens;
       const t = ((parcouru + pos) / perimetre) % 1;
-      const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, EPINE_POINTS_BRUIT));
+      const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, noeuds));
       // L'épine est un SEGMENT QUI TRAVERSE le contour : elle commence en deçà et finit au-delà.
       const dedans = l * EPINE_DEDANS, dehors = l - dedans;
       out.push({ x: p.x - nx * dedans, y: p.y - ny * dedans },
@@ -389,7 +403,7 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
       // la régularité du PAS, pas celle de la taille, qui trahit la machine. Le facteur reste
       // strictement positif par construction (EPINE_ESPACEMENT < 1), sans quoi la boucle ne
       // progresserait plus.
-      restant = pas * (1 + EPINE_ESPACEMENT * bruitCyclique(g, t, 1, EPINE_POINTS_BRUIT));
+      restant = pas * (1 + EPINE_ESPACEMENT * bruitCyclique(g, t, 1, noeuds));
     }
     restant -= len - pos;
     parcouru += len;

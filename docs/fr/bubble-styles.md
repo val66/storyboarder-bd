@@ -331,10 +331,12 @@ la géométrie, une frange de pointes posée le long du contour. Deux décisions
 - **l'écart entre deux épines est irrégulier**, sur un tirage du bruit distinct de celui des
   longueurs. Des longueurs variées posées à intervalle constant se lisent comme un peigne : c'est
   la régularité du pas, et non celle de la taille, qui trahit la machine ;
-- la variation est **à grain fin**. À vingt-trois nœuds de bruit répartis sur tout le périmètre,
-  elle devenait une onde longue : des arcs entiers d'épines courtes alternant avec des arcs
-  d'épines longues, soit des festons réguliers — la régularité revenue par la porte de derrière.
-  Cent cinquante et un nœuds donnent les touffes irrégulières du relevé ;
+- la variation est **à grain fin, et le grain se compte en épines**. À vingt-trois nœuds de bruit
+  répartis sur tout le périmètre, elle devenait une onde longue : des arcs entiers d'épines courtes
+  alternant avec des arcs d'épines longues, soit des festons réguliers — la régularité revenue par
+  la porte de derrière. Corrigé une première fois par un nombre de nœuds plus grand, ce qui n'était
+  qu'un réglage juste pour un espacement et un seul : l'espacement divisé par deux, l'onde est
+  revenue intacte. Le nombre de nœuds suit désormais le nombre d'épines, un pour deux ;
 - **la finesse des pointes s'arrête sur un rendu à 2 :1, jamais à 1 :1.** Le rasteriseur des
   planches de contact pose un trait d'au moins un pixel plein là où un canevas antialiase une
   largeur de 0,4 px en gris pâle : à taille réelle, la planche noircit ce que l'application

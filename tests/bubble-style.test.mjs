@@ -29,6 +29,7 @@ import {
   tiretsTraitBulle, amplitudeTrembleBulle, apparenceBulle, decalagesTrembleBulle,
   graineTrembleBulle,
   pointesDeLEpine3D, EPINE_PAS, EPINE_LONGUEUR, EPINE_VARIATION, EPINE_DEDANS, TRAIT_EPINE,
+  noeudsDuBruitEpine3D, EPINE_NOEUDS_MINIMUM,
 } from '../src/bubble-style.js';
 
 /**
@@ -412,7 +413,18 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
       allonge.push({ x: 200 * Math.cos(a), y: 40 * Math.sin(a) });
     }
     const pts = pointesDeLEpine3D(CENTRE, allonge, 3);
-    const bases = pts.filter((_, i) => i % 2 === 0);
+    // ⚠️ L'ÉCART SE MESURE SUR LE POINT DU CONTOUR, PAS SUR LA BASE DE L'ÉPINE. Ce relevé prenait
+    // la base interne, ce qui ne vaut qu'à longueurs presque égales : la base recule le long de la
+    // normale à proportion de la longueur, si bien qu'une longue et une courte voisines s'écartent
+    // RADIALEMENT sans que l'espacement ait bougé. Le jour où la variation est passée de 0,45 à 1,
+    // le test est devenu rouge sur un code juste — un instrument qui mesurait deux choses à la
+    // fois. Le point du contour se reconstruit exactement : la base est à EPINE_DEDANS du départ.
+    const surLeContour = [];
+    for (let i = 0; i < pts.length; i += 2) {
+      const a = pts[i], b = pts[i + 1];
+      surLeContour.push({ x: a.x + (b.x - a.x) * EPINE_DEDANS, y: a.y + (b.y - a.y) * EPINE_DEDANS });
+    }
+    const bases = surLeContour;
     const ecarts = bases.slice(1).map((p, i) =>
       Math.hypot(p.x - bases[i].x, p.y - bases[i].y));
     const dedans = ecarts.filter(e => e < 3 * EPINE_PAS * 2.5);
@@ -548,6 +560,25 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     const [base, pointe] = pts;
     assert.ok(pointe.y < base.y,
       'le contour aplati ne prend pas le sens direct : la borne de l’aire a changé de camp');
+  });
+
+  /**
+   * ⚠️ LE GRAIN DU BRUIT SUIT LE NOMBRE D'ÉPINES. Le test voisin exige que les longueurs alternent
+   * vite ; il ne dit pas d'où vient cette vitesse. Elle venait d'un nombre de nœuds FIXE, juste
+   * pour un espacement et un seul : le jour où l'espacement a été divisé par deux, chaque nœud a
+   * couvert deux fois plus d'épines et l'onde longue est revenue — sur un code par ailleurs
+   * inchangé. C'est la famille « un réglage qui n'est juste que pour la valeur d'un autre ».
+   *
+   * On fige donc le RAPPORT, seul invariant qui survive à un changement de densité.
+   */
+  test('⚠️ LE NOMBRE DE NŒUDS DU BRUIT SUIT LA DENSITÉ, IL N’EST PAS FIXE', () => {
+    assert.equal(noeudsDuBruitEpine3D(1000, 1), 500, 'un nœud pour deux épines');
+    assert.equal(noeudsDuBruitEpine3D(1000, 0.5), 1000,
+      'l’espacement divisé par deux ne double pas les nœuds : l’onde longue reviendra');
+    // Le plancher protège les très petites Bulles, où le calcul donnerait une poignée de nœuds.
+    assert.equal(noeudsDuBruitEpine3D(10, 1), EPINE_NOEUDS_MINIMUM);
+    // Et un pas absurde ne fait pas tomber le calcul.
+    assert.equal(noeudsDuBruitEpine3D(1000, 0), EPINE_NOEUDS_MINIMUM);
   });
 
   test('un contour vide ou absent ne produit rien, sans lever', () => {
