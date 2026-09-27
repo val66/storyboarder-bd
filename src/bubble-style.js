@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 0.105;
+export const EPINE_PAS = 0.075;
 export const EPINE_LONGUEUR = 4;
 
 /**
