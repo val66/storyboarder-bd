@@ -254,6 +254,12 @@ describe('#426j — supprimer un lobe dissout son groupe, après confirmation', 
     S.selectedId = a.id;
     S.undoStack.length = 0;
     frapperSuppr();
+    // ⚠️ LA QUESTION COMPTE LE GROUPE ENTIER, LA BULLE SUPPRIMÉE COMPRISE. Annoncer « 1 Bulle sera
+    // séparée » pour un groupe de deux décrit un geste que personne ne reconnaîtrait : on n'en
+    // sépare pas une, on en sépare deux, dont celle qui disparaît.
+    const texte = String(document.getElementById('confirmActionMessage').textContent);
+    assert.match(texte, /\b2 (merged|Bulles fusionn)/,
+      `la question annonce le mauvais nombre de Bulles : « ${texte} »`);
     await repondre(true);
 
     const page = currentPageData();
@@ -287,60 +293,36 @@ describe('#426j — supprimer un lobe dissout son groupe, après confirmation', 
   });
 
   /**
-   * ⚠️ « VIDER CETTE CASE » EST LE SECOND CHEMIN DE SUPPRESSION, et il emporte les Bulles de la
-   * Case. Sans ce test, la mutation qui retire la dissolution de ce chemin-là survivait : les
-   * quatre tests précédents ne parlent que de la touche Suppr. Une règle tenue sur un seul de ses
-   * deux chemins est la faute que ce chantier a déjà payée trois fois.
+   * ⚠️ UNE BULLE N'APPARTIENT À AUCUNE CASE, ET CE TEST EXISTE PARCE QUE J'AI CRU LE CONTRAIRE.
+   * J'avais ajouté la dissolution des groupes à « Vider cette Case », persuadé de tenir un second
+   * chemin de suppression. Le code était inatteignable, et le test qui l'accompagnait ne passait
+   * qu'en posant À LA MAIN un `homePanelId` sur une Bulle — un champ que l'application ne lui donne
+   * jamais, ni à la création ni au chargement. C'est la faute de #370, « les fixtures mesuraient
+   * des noms que l'application ne voit jamais », et elle avait produit un test VERT qui ressemblait
+   * à un garde-fou. Signalé par l'utilisateur : « les Bulles et les Cases ne sont pas liées ».
    *
-   * ⚠️ ET IL NE POSE QU'UNE SEULE QUESTION. Il en avait déjà une ; lui en ajouter une SECONDE
-   * ferait cliquer deux fois pour un seul geste. On vérifie donc aussi que l'avertissement est
-   * DANS le message de la première, et non dans une modale de plus.
+   * Ce qui reste ici est l'invariant lui-même : si quelqu'un lie un jour une Bulle à une Case, ce
+   * test rougira, et la question « que devient un groupe quand on vide la Case » devra être
+   * tranchée pour de bon plutôt que devinée.
    */
-  test('⚠️ VIDER LA CASE DISSOUT AUSSI LE GROUPE, EN UNE SEULE QUESTION', async () => {
+  test('⚠️ UNE BULLE NEUVE N’APPARTIENT À AUCUNE CASE', () => {
     const page = currentPageData();
-    // ⚠️ UNE CASE EST UN POLYGONE, ET SES `pts` NE SONT PAS DÉCORATIFS : le dessin de la sélection
-    // les parcourt. Une Case de fixture sans eux fait tomber `drawCurrentPage` bien plus loin, dans
-    // un rejet asynchrone que node attribue au test SUIVANT.
     const caseHote = {
       id: `case${a.id}`, type: 'panel', x: 0, y: 0, w: 900, h: 900,
       pts: [{ x: 0, y: 0 }, { x: 900, y: 0 }, { x: 900, y: 900 }, { x: 0, y: 900 }],
     };
     page.objects.push(caseHote);
-    // ⚠️ UN SEUL DES DEUX LOBES EST DANS LA CASE. Les mettre tous les deux ne laisserait AUCUN
-    // survivant à séparer — et le test, vert, aurait prouvé le contraire de ce qu'il annonce.
-    a.homePanelId = caseHote.id;
-    S.selectedId = caseHote.id;
-    S.confirmActionResolve = null;
+    // Créée PAR LE VRAI CHEMIN, et posée en plein milieu de la Case : si l'appartenance devait
+    // naître d'un recouvrement géométrique, c'est ici qu'elle naîtrait.
+    S.pendingCreatePos = { x: 450, y: 450 };
+    document.getElementById('ctxCreateBubble').onclick();
+    const dedans = page.objects[page.objects.length - 1];
 
-    document.getElementById('ctxClearPanel').onclick();
-    await new Promise((r) => setTimeout(r, 0));
-    assert.equal(typeof S.confirmActionResolve, 'function', 'aucune question n’a été posée');
-    const texte = String(document.getElementById('confirmActionMessage').textContent);
-    assert.match(texte, /merged|fusionn/i, `la question ne dit pas que le groupe sera rompu : « ${texte} »`);
-    // ⚠️ ET ELLE COMPTE LE GROUPE ENTIER, LA BULLE SUPPRIMÉE COMPRISE. Annoncer « 1 Bulle sera
-    // séparée » pour un groupe de deux décrit un geste que personne ne reconnaîtrait : on n'en
-    // sépare pas une, on en sépare deux, dont celle qui disparaît.
-    assert.match(texte, /\b2 (merged|Bulles fusionn)/,
-      `la question annonce le mauvais nombre de Bulles : « ${texte} »`);
-
-    // ⚠️ ON VIDE LE RÉSOLVEUR AVANT DE RÉPONDRE. `confirmAction` le pose et ne l'efface jamais :
-    // vérifier qu'il est nul APRÈS coup mesurerait une absence avec un appareil incapable de voir
-    // une présence — la famille de piège que ce dépôt a rencontrée le plus souvent. Vidé d'abord,
-    // il ne peut se remplir à nouveau que si une SECONDE question est posée.
-    const repondreOui = S.confirmActionResolve;
-    S.confirmActionResolve = null;
-    repondreOui(true);
-    await new Promise((r) => setTimeout(r, 0));
-    assert.equal(S.confirmActionResolve, null,
-      'une SECONDE question a été posée : deux clics pour un seul geste');
-
-    assert.equal(page.objects.some(o => o.id === a.id), false, 'la Case n’a pas été vidée');
-    const survivant = page.objects.find(o => o.id === b.id);
-    assert.equal(survivant.bulleGroupe, undefined,
-      'le groupe a survécu : « Vider la Case » ne passe pas par la même décision que Suppr');
-    assert.equal(survivant.bulleColor, '#eeeeee', 'le style d’avant la fusion n’a pas été rendu');
-
-    page.objects = page.objects.filter(o => o.id !== caseHote.id);
+    assert.equal(dedans.type, 'bulle');
+    assert.equal(dedans.homePanelId, undefined,
+      'une Bulle a reçu une Case d’attache : vider ou supprimer cette Case l’emporterait, ' +
+      'et la dissolution des groupes devrait alors couvrir ce chemin aussi');
+    page.objects = page.objects.filter(o => o.id !== caseHote.id && o.id !== dedans.id);
   });
 
   test('⚠️ SUPPRIMER UNE BULLE SANS GROUPE NE POSE AUCUNE QUESTION', async () => {

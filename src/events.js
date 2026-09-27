@@ -1959,10 +1959,19 @@ async function supprimerLaSelection3D(){
     // ⚠️ LA QUESTION VIENT AVANT L'INSTANTANÉ, ET AVANT TOUTE ÉCRITURE. Un refus doit laisser la
     // Planche exactement comme elle était, y compris la pile d'annulation : empiler un état pour
     // un geste abandonné obligerait à appuyer sur Ctrl+Z pour défaire ce qu'on vient de refuser.
+    // ⚠️ LA TOUCHE SUPPR EST LE SEUL CHEMIN QUI SUPPRIME UNE BULLE, et j'ai cru un moment qu'il y
+    // en avait deux. « Vider cette Case » n'en supprime aucune : une Bulle est un objet de premier
+    // niveau de la Planche, elle n'appartient à aucune Case. La phrase ci-dessous vivait dans une
+    // fonction partagée par les deux ; elle est revenue chez son unique appelant, parce qu'une
+    // fonction commune à un seul usage annonce un partage qui n'existe pas.
+    //
+    // ⚠️ ET ELLE COMPTE LE GROUPE ENTIER, LA BULLE SUPPRIMÉE COMPRISE. Annoncer « 1 Bulle sera
+    // séparée » pour un groupe de deux décrit un geste que personne ne reconnaîtrait.
     const survivants = lobesADissoudre3D(pageData.objects, toRemove);
-    const _avertissement = phraseDeDissolution3D(survivants);
-    if (_avertissement && !await confirmAction(
-      _avertissement, tr('Delete a merged Bubble', 'Supprimer une Bulle fusionnée'))) return;
+    if (survivants.length && !await confirmAction(
+      tr(`${survivants.length + 1} merged Bubbles will be separated, each recovering the appearance it had before the merge.`,
+         `${survivants.length + 1} Bulles fusionnées seront séparées, chacune retrouvant l'apparence qu'elle avait avant la fusion.`),
+      tr('Delete a merged Bubble', 'Supprimer une Bulle fusionnée'))) return;
 
     snapshot();
     pageData.objects = pageData.objects.filter(o => !toRemove.has(o.id));
@@ -5708,14 +5717,18 @@ document.getElementById('ctxClearPanel').onclick = async () => {
   //
   // Ce qui rend ce silence légitime, et sans quoi il serait de la négligence : le `snapshot()` juste
   // en dessous. Détacher par mégarde se répare d'un Ctrl+Z, et l'image revient avec son cadrage.
-  // ⚠️ VIDER UNE CASE SUPPRIME AUSSI SES BULLES, DONC PEUT ROMPRE UN GROUPE. C'est le second
-  // chemin de suppression. Il ne pose pas une seconde question : il COMPLÈTE la sienne.
-  const survivants = lobesADissoudre3D(pageData.objects, contenuDeLaCase3D(pageData, panel));
-  const _dissolution = phraseDeDissolution3D(survivants);
+  // ⚠️ UNE BULLE N'EST PAS DANS UNE CASE, DONC VIDER UNE CASE N'EN SUPPRIME AUCUNE. J'avais ajouté
+  // ici la dissolution des groupes de #426j, en croyant tenir un second chemin de suppression. Il
+  // n'en est rien : une Bulle est un objet de PREMIER NIVEAU de la Planche, au même rang qu'une
+  // Case (cf. `getPageTopLevelObjects`), elle ne reçoit jamais de `homePanelId` — ni à la création,
+  // ni au chargement, où la passe 2 d'io.js n'en attribue qu'aux Personnages et aux Objets. Le
+  // filtre ci-dessous ne peut donc pas l'atteindre. Signalé par l'utilisateur : « les Bulles et les
+  // Cases ne sont pas liées ». Le code que j'avais écrit était inatteignable, et son test ne
+  // passait qu'en posant à la main un `homePanelId` que l'application ne pose jamais — la faute
+  // de #370, « les fixtures mesuraient des noms que l'application ne voit jamais ».
   if (count > 0 && !await confirmAction(
     tr(`Empty this panel? Its ${count} element(s) will be permanently removed.`,
-      `Vider cette Case ? Ses ${count} élément(s) seront définitivement supprimés.`)
-    + (_dissolution ? ' ' + _dissolution : ''))) return;
+      `Vider cette Case ? Ses ${count} élément(s) seront définitivement supprimés.`))) return;
   snapshot();
   // DÉTACHER, PAS EFFACER : deux Cases peuvent porter la même image, et l'une n'a pas à décider pour
   // l'autre (cf. docs/en/panel-images.md, décision 4). Le fichier reste dans le dossier partagé.
@@ -5725,7 +5738,6 @@ document.getElementById('ctxClearPanel').onclick = async () => {
     o.type === 'panel' ||
     (o.homePanelId !== panel.id && !(o.type === 'tracé' && o.panelId === panel.id))
   );
-  if (survivants.length) remplacerLesLobes3D(pageData, separer3D(survivants));
   S.selectedId = null; S.selectedRoomId = null;
   drawCurrentPage();
 };
@@ -6850,31 +6862,6 @@ function etatDuLobeRetenu3D(page, obj, vise){
     obj,
     page.objects.filter(o => o.type === 'bulle' && groupeDeLaBulle3D(o) === groupe),
     S.dragOrig, vise);
-}
-
-/**
- * La phrase qui annonce qu'une suppression va rompre des groupes de Bulles, ou `''` si elle n'en
- * rompt aucun.
- *
- * ⚠️ UNE SEULE PHRASE, DEUX QUESTIONS D'ACCUEIL. Deux chemins suppriment une Bulle : la touche
- * Suppr, et « Vider cette Case ». Le premier n'a pas d'autre question à poser ; le second en a déjà
- * une, et lui en ajouter une SECONDE ferait cliquer deux fois pour un seul geste — la meilleure
- * façon de rendre les deux illisibles. Chaque chemin pose donc UNE question, et celle-ci lui
- * fournit le complément à y glisser. Écrire la règle deux fois serait la faute que ce chantier a
- * déjà payée entre la fusion et la séparation, puis entre le déplacement et le redimensionnement.
- */
-function phraseDeDissolution3D(survivants){
-  if (!survivants.length) return '';
-  const n = survivants.length + 1;
-  return tr(`${n} merged Bubbles will be separated, each recovering the appearance it had before the merge.`,
-            `${n} Bulles fusionnées seront séparées, chacune retrouvant l'apparence qu'elle avait avant la fusion.`);
-}
-
-/** Les Éléments qu'un « Vider la Case » emporterait. */
-function contenuDeLaCase3D(page, panel){
-  return page.objects.filter(o =>
-    o.type !== 'panel' &&
-    (o.homePanelId === panel.id || (o.type === 'tracé' && o.panelId === panel.id))).map(o => o.id);
 }
 
 /**

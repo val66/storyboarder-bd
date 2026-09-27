@@ -1110,3 +1110,78 @@ describe('#414g : une section du menu de droite se retrouve dans le manuel', () 
       'une section de plus a été laissée hors du manuel au lieu d\'y être décrite');
   });
 });
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LES DEUX BRANCHES D'UN `tr()` PORTENT LES MÊMES VALEURS INTERPOLÉES
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LA SUITE TOURNE EN ANGLAIS, DONC AUCUN TEXTE FRANÇAIS N'EST JAMAIS EXÉCUTÉ. Découvert en
+ * #426j : une mutation qui changeait le COMPTE annoncé dans la phrase française — « 1 Bulle sera
+ * séparée » au lieu de 2 — survivait à toute la suite, pendant que la même faute côté anglais
+ * rougissait aussitôt. La moitié francophone de l'application n'est tenue par rien.
+ *
+ * Ce garde-fou ne lit pas le SENS des phrases, ce qu'aucun test ne saurait faire : il compare ce
+ * qu'elles CALCULENT. Deux branches qui n'interpolent pas les mêmes expressions ne peuvent pas dire
+ * la même chose, et c'est exactement la faute qui se glisse en modifiant une phrase sans l'autre.
+ *
+ * ⚠️ L'INSTRUMENT DOIT VOIR DES PRÉSENCES. Une expression régulière qui ne reconnaîtrait plus la
+ * forme d'un appel rendrait zéro paire et déclarerait la victoire. Le nombre de paires trouvées est
+ * donc vérifié, et volontairement exigeant.
+ */
+describe('tr() : les deux langues calculent la même chose', () => {
+  const FICHIERS = ['events', 'sidebar', 'draw', 'io', 'modals', 'i18n', 'project-tree'];
+
+  const paires = () => {
+    const out = [];
+    for (const nom of FICHIERS) {
+      const src = readFileSync(new URL(`../src/${nom}.js`, import.meta.url), 'utf8');
+      // `tr(`…`, `…`)` : deux gabarits, sans backtick imbriqué. Les appels à deux chaînes simples
+      // n'interpolent rien et ne peuvent donc pas diverger.
+      for (const m of src.matchAll(/\btr\(\s*`([^`]*)`\s*,\s*`([^`]*)`\s*\)/g)) {
+        out.push({ fichier: `src/${nom}.js`, en: m[1], fr: m[2] });
+      }
+    }
+    return out;
+  };
+
+  /**
+   * ⚠️ UNE EXPRESSION INTERPOLÉE PEUT LÉGITIMEMENT DIFFÉRER D'UNE LANGUE À L'AUTRE, et le premier
+   * jet de ce test l'ignorait : il a signalé sept paires parfaitement correctes. Deux formes le
+   * justifient, toutes deux présentes dans le dépôt :
+   *
+   *     ${(r && r.error) || 'unknown error'}   /   ${(r && r.error) || 'erreur inconnue'}
+   *     Side ${i + 1}                          /   ${tr('Side', 'Côté')} ${i + 1}
+   *
+   * Un test qui rougit sur du code juste est pire qu'un test absent : il apprend à ignorer la
+   * couleur rouge. On compare donc ce que les expressions CALCULENT, une fois retirés les mots —
+   * chaînes littérales et `tr()` imbriqués —, et ce qui ne calcule plus rien sort du compte.
+   */
+  const interpolations = (texte) =>
+    [...texte.matchAll(/\$\{([^}]*)\}/g)]
+      .map(m => m[1]
+        // ⚠️ LES LITTÉRAUX D'ABORD, LE `tr()` IMBRIQUÉ ENSUITE. Dans l'autre ordre, un texte
+        // contenant une parenthèse — `tr('Element(s)', 'Élément(s)')`, bien réel ici — arrête le
+        // découpage au milieu de la chaîne et laisse un débris qui passe pour un calcul.
+        .replace(/'[^']*'|"[^"]*"/g, "''")       // un littéral traduit n'est pas un calcul
+        .replace(/\btr\([^)]*\)/g, '')          // un `tr()` imbriqué EST la traduction
+        .replace(/\s+/g, ''))
+      .filter(e => e && !/^(\|\||''|\(\))+$/.test(e))
+      .sort();
+
+  test('⚠️ CHAQUE PAIRE INTERPOLE LES MÊMES EXPRESSIONS, DANS LES DEUX LANGUES', () => {
+    const trouvees = paires();
+    assert.ok(trouvees.length >= 10,
+      `seulement ${trouvees.length} paires reconnues : l'expression régulière ne voit plus les appels`);
+    // L'instrument doit aussi savoir voir une interpolation, sans quoi comparer deux listes vides
+    // serait vrai partout.
+    assert.ok(trouvees.some(p => interpolations(p.en).length > 0),
+      'aucune interpolation détectée : le détecteur est aveugle à ce qu’il cherche');
+
+    const divergentes = trouvees
+      .filter(p => JSON.stringify(interpolations(p.en)) !== JSON.stringify(interpolations(p.fr)))
+      .map(p => `${p.fichier} : « ${p.en} » / « ${p.fr} »`);
+    assert.deepEqual(divergentes, [],
+      'les deux langues ne calculent pas la même chose :\n' + divergentes.join('\n'));
+  });
+});
