@@ -17,11 +17,16 @@
  * vieux papier procédural. Voir docs/en/testing-method.md, § « Ce qui est hors de portée ».
  */
 import './helpers/dom-stub.mjs';
+// ⚠️ IMPORTÉ POUR SON EFFET DE BORD, comme dans sidebar.test.mjs : events.js branche les fonctions
+// de dessin dont `drawCurrentPage` a besoin. Sans lui, elle lève avant d'atteindre quoi que ce soit.
+import '../src/events.js';
+import { drawCurrentPage } from '../src/draw.js';
+import { S } from '../src/state.js';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  motifDuGrain3D, prechargerGrains3D, _viderGrains3D, _setGrain3D,
+  motifDuGrain3D, prechargerGrains3D, _viderGrains3D, _setGrain3D, nouvelleImage3D,
 } from '../src/bubble-grain.js';
 
 /**
@@ -123,40 +128,105 @@ describe('le cache de motifs', () => {
    * ⚠️ CHAQUE ENTRÉE PÈSE UNE TUILE EN MÉMOIRE VIVE, 1 Mo. Promener le sélecteur de couleur en
    * fabrique une par nuance traversée : sans plafond, le cache suivrait le curseur sans jamais
    * rendre la mémoire.
+   *
+   * ⚠️ MAIS LE PLAFOND NE S'APPLIQUE QU'ENTRE DEUX IMAGES (#427). Une tuile employée par l'image
+   * en cours n'est jamais évincée ; c'est le passage à l'image suivante qui la rend évinçable. Les
+   * nuances traversées par le sélecteur appartiennent donc aux images passées, et sortent.
    */
-  test('le cache plafonne', () => {
+  test('le cache plafonne, d’une image à l’autre', () => {
     const c = ctxTemoin();
     const premiere = tuilePour(c, 'papier-froisse', '#000001');
-    for (let i = 2; i <= 12; i++) {
+    for (let i = 2; i <= 20; i++) {
+      nouvelleImage3D();                       // chaque nuance appartient à une image révolue
       tuilePour(c, 'papier-froisse', '#0000' + String(i).padStart(2, '0'));
     }
+    nouvelleImage3D();
     assert.notEqual(tuilePour(c, 'papier-froisse', '#000001'), premiere,
-      'douze teintes tiennent dans le cache : il grandit sans fin');
+      'vingt teintes tiennent dans le cache : il grandit sans fin');
+  });
+
+  /**
+   * ⚠️ LE COEUR DE #427 : CE QUE L'IMAGE EN COURS EMPLOIE N'EST JAMAIS ÉVINCÉ. Mesuré avant
+   * correction : une Planche demandant une teinte de plus que le cache n'a de places passait de
+   * 0,03 ms à 63 ms par image, parce que la politique « la plus ancienne sort » jetait à chaque
+   * tour exactement la tuile du tour suivant. Ici le cache déborde plutôt que de se saboter.
+   *
+   * Les deux moitiés comptent : il doit garder la PREMIÈRE — sans quoi rien n'a changé — et il ne
+   * doit pas non plus garder tout le monde pour toujours, ce que le test précédent tient.
+   */
+  test('⚠️ UNE PLANCHE PLUS LARGE QUE LE CACHE NE LE FAIT PAS S’EFFONDRER', () => {
+    const c = ctxTemoin();
+    const teinte = (i) => '#0000' + String(i).padStart(2, '0');
+    nouvelleImage3D();
+    // Une seule image demande vingt teintes : plus que le plafond.
+    const premiere = tuilePour(c, 'papier-froisse', teinte(1));
+    for (let i = 2; i <= 20; i++) tuilePour(c, 'papier-froisse', teinte(i));
+
+    assert.equal(tuilePour(c, 'papier-froisse', teinte(1)), premiere,
+      'la tuile du DÉBUT de l’image a été évincée avant la fin de cette même image : ' +
+      'le dessin la recomposera au tour suivant, et à tous les suivants');
+    for (let i = 2; i <= 20; i++) {
+      assert.ok(tuilePour(c, 'papier-froisse', teinte(i)), `teinte ${i} perdue en cours d’image`);
+    }
+  });
+
+  /**
+   * ⚠️ UNE TUILE RÉEMPLOYÉE EST PROTÉGÉE COMME UNE TUILE NEUVE. Le cas se distingue du précédent, et
+   * c'est là que la première écriture était fausse : l'estampille n'était posée qu'à la COMPOSITION.
+   * Une tuile née à l'image d'avant, réemployée par celle-ci, gardait donc le numéro de sa
+   * naissance, passait pour dormante et se faisait évincer alors qu'elle était à l'écran.
+   *
+   * La protection n'aurait alors valu que pour les tuiles neuves — c'est-à-dire presque jamais,
+   * puisqu'une Planche stable n'en compose aucune. Le test mélange donc SUCCÈS et COMPOSITIONS dans
+   * une même image, ce que ni le plafond ni le débordement ne font.
+   */
+  test('⚠️ UNE TUILE VENUE DE L’IMAGE PRÉCÉDENTE MAIS RÉEMPLOYÉE N’EST PAS ÉVINCÉE', () => {
+    const c = ctxTemoin();
+    const teinte = (i) => '#0000' + String(i).padStart(2, '0');
+    // Image 1 : quatorze teintes composées, le cache n'est pas plein.
+    nouvelleImage3D();
+    const anciennes = [];
+    for (let i = 1; i <= 14; i++) anciennes.push(tuilePour(c, 'papier-froisse', teinte(i)));
+
+    // Image 2 : la Planche réemploie les quatorze ET en demande quatre nouvelles. Les insertions
+    // dépassent le plafond, donc l'éviction se déclenche — sur des entrées qui SERVENT.
+    nouvelleImage3D();
+    for (let i = 1; i <= 14; i++) tuilePour(c, 'papier-froisse', teinte(i));
+    for (let i = 15; i <= 18; i++) tuilePour(c, 'papier-froisse', teinte(i));
+
+    for (let i = 1; i <= 14; i++) {
+      assert.equal(tuilePour(c, 'papier-froisse', teinte(i)), anciennes[i - 1],
+        `la teinte ${i} servait à cette image et a été recomposée : la protection ne couvre que ` +
+        'les tuiles neuves, donc presque jamais');
+    }
   });
 
   /**
    * ⚠️ MON PREMIER TEST D'ÉVICTION NE DISTINGUAIT PAS LA DORMANTE DE LA PLUS ANCIENNE, et la
    * mutation l'a montré : retirer la remise en fin de file — donc passer d'un vrai « moins
    * récemment utilisé » à un simple « premier entré, premier sorti » — le laissait vert. Il
-   * saturait le cache de onze teintes neuves, ce qui évince la première dans les deux cas.
+   * saturait le cache de teintes neuves, ce qui évince la première dans les deux cas.
    *
    * La différence ne se voit qu'en RETOUCHANT une entrée ancienne, puis en n'en ajoutant QU'UNE.
    * L'enjeu est réel : la teinte qu'on retouche est celle qu'on est en train d'employer, et c'est
-   * exactement celle qu'un cache ne doit pas recomposer à chaque frame.
+   * exactement celle qu'un cache ne doit pas recomposer à chaque image.
    */
   test('et il évince la plus DORMANTE, pas la plus ancienne', () => {
     const c = ctxTemoin();
     const teinte = (i) => '#0000' + String(i).padStart(2, '0');
-    // Huit teintes : le cache est plein, sans rien avoir évincé.
+    // Quinze teintes, une par image : le cache est plein, sans rien avoir évincé.
+    nouvelleImage3D();
     const doyenne = tuilePour(c, 'papier-froisse', teinte(1));
-    for (let i = 2; i <= 8; i++) tuilePour(c, 'papier-froisse', teinte(i));
+    for (let i = 2; i <= 15; i++) { nouvelleImage3D(); tuilePour(c, 'papier-froisse', teinte(i)); }
 
     // On se ressert de la plus ancienne : elle redevient la plus fraîchement utilisée.
+    nouvelleImage3D();
     assert.equal(tuilePour(c, 'papier-froisse', teinte(1)), doyenne,
-      'la fixture suppose que les huit tiennent : sinon ce test ne prouve rien');
+      'la fixture suppose que les quinze tiennent : sinon ce test ne prouve rien');
 
-    // Une neuvième entre, donc une seule place doit se libérer.
-    tuilePour(c, 'papier-froisse', teinte(9));
+    // Une seizième entre, à l'image SUIVANTE : une seule place doit se libérer.
+    nouvelleImage3D();
+    tuilePour(c, 'papier-froisse', teinte(16));
 
     assert.equal(tuilePour(c, 'papier-froisse', teinte(1)), doyenne,
       'la teinte qu’on vient d’employer a été évincée : le cache sort le PREMIER ENTRÉ');
@@ -205,5 +275,41 @@ describe('le préchargement', () => {
     // ⚠️ ET ON NE REDESSINE PAS POUR RIEN : un second rendu complet de la planche sans qu'aucun
     // grain ne soit arrivé donnerait au surplus l'apparence d'un cycle normal.
     assert.equal(redessine, 0, 'redessiner sans nouveau grain masque l’échec du préchargement');
+  });
+});
+
+/**
+ * ⚠️ LA DÉCISION PEUT ÊTRE PARFAITE ET N'ÊTRE JAMAIS APPELÉE. `nouvelleImage3D` ne protège le cache
+ * que si le dessin l'avertit qu'une image commence. Retirer cet appel de `drawCurrentPage` laissait
+ * toute la suite verte, alors que le cache cessait pour toujours d'évincer quoi que ce soit : il
+ * grandirait sans fin, 1 Mo par teinte traversée, ce qui est le défaut que le plafond existe pour
+ * empêcher. C'est la faute de #420c, mutation M19 — une couche pure juste, et inerte.
+ *
+ * Ce test ne lit aucune ligne de source : il dessine pour de vrai, puis regarde si le cache a pu
+ * rendre de la mémoire.
+ */
+describe('#427 — le dessin avertit le cache qu’une image commence', () => {
+  test('⚠️ APRÈS UN REDESSIN, LE CACHE REDEVIENT CAPABLE D’ÉVINCER', () => {
+    // Une Planche minimale : `drawCurrentPage` lit le Projet avant toute chose et lève sans lui.
+    S.tomes = [{ id: 't1', pages: [{ id: 'p1', w: 1000, h: 1400, objects: [] }] }];
+    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
+    _viderGrains3D();
+    _setGrain3D('papier-froisse', GRAIN);
+    const c = ctxTemoin();
+    const teinte = (i) => '#0000' + String(i).padStart(2, '0');
+
+    // ⚠️ ON NE REDEMANDE AUCUNE TEINTE AVANT LA FIN, et la première version du test s'y est prise.
+    // Interroger la teinte 1 pour vérifier la fixture la remettait en tête de file : l'éviction
+    // portait alors sur la teinte 2, et le test déclarait en panne un code parfaitement juste.
+    // Le débordement lui-même est tenu par le test précédent ; celui-ci ne dit qu'une chose.
+    const premiere = tuilePour(c, 'papier-froisse', teinte(1));
+    for (let i = 2; i <= 16; i++) tuilePour(c, 'papier-froisse', teinte(i));
+
+    // Le dessin annonce l'image suivante. Les seize tuiles deviennent dormantes.
+    drawCurrentPage();
+    tuilePour(c, 'papier-froisse', teinte(17));
+
+    assert.notEqual(tuilePour(c, 'papier-froisse', teinte(1)), premiere,
+      'le redessin n’a pas averti le cache : il ne rendra plus jamais de mémoire');
   });
 });

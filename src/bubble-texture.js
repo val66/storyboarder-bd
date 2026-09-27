@@ -618,3 +618,38 @@ export function couchesDeTextureBulle(o, ctx){
   };
   return REGISTRE[cle].rendu(o, contexte);
 }
+
+/**
+ * Quelle tuile composée évincer du cache, ou `null` s'il n'y a rien à évincer. Fonction PURE.
+ *
+ * `entrees` est le cache dans son ordre d'insertion — la plus anciennement servie d'abord —, chaque
+ * entrée portant le numéro de l'image où elle a servi pour la dernière fois.
+ *
+ * ⚠️ ON N'ÉVINCE JAMAIS UNE TUILE QUE L'IMAGE EN COURS EMPLOIE, ET C'EST TOUT LE SUJET DE #427.
+ * Mesuré : tant que la Planche affichée tient dans le cache, aucune composition n'a lieu et une
+ * image coûte 0,03 ms. Dès qu'il lui manque UNE place, la politique « la plus ancienne sort »
+ * évince à chaque fois exactement la tuile qu'on redemandera au tour suivant — un balayage
+ * séquentiel est le pire cas de cette politique. Relevé sur 20 Bulles :
+ *
+ *   | couples (grain, teinte) | compositions par image | ms par image |
+ *   |---|---|---|
+ *   | 1 à 8                   |  0                     |  0,03        |
+ *   | 9                       | 18                     | 63,5         |
+ *   | 12                      | 12                     | 38,9         |
+ *
+ * Une teinte de plus faisait passer de 0,03 ms à 63 ms par image, soit seize images par seconde.
+ * L'éviction AU HASARD a été éprouvée avant d'être écartée : elle ramène 18 compositions à 3 pour
+ * neuf couples, mais 12 à 10 pour douze — elle déplace la falaise au lieu de la supprimer, parce
+ * que ce n'est pas la politique qui est en cause mais la capacité sous le besoin réel.
+ *
+ * ⚠️ RENDRE `null` LAISSE LE CACHE DÉBORDER, ET C'EST VOULU. Quand tout ce qu'il contient sert à
+ * l'image en cours, il n'y a pas de bon candidat : jeter quand même reviendrait à recomposer dans
+ * l'instant. Le cache dépasse donc son plafond le temps d'afficher cette Planche-là, puis redescend
+ * dès l'image suivante, où les tuiles de la Planche quittée cessent d'être protégées.
+ */
+export function tuileAEvincer3D(entrees, imageCourante){
+  for (const [cle, entree] of entrees || []) {
+    if (!entree || entree.image !== imageCourante) return cle;
+  }
+  return null;
+}

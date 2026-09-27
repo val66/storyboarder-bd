@@ -784,3 +784,113 @@ A fourth instrument to validate before believing a figure, after `gl.finish()` w
 nothing, `readPixels` on the display buffer which measures the monitor, and the ground-stretched box
 which cost full price for 0.00% of effect. The rule holds: **first check that the instrument can see
 a presence, only then read what it says.**
+
+---
+
+# Ninth campaign — the texture cache had a cliff, September 2026
+
+Project #427. Since the sixth campaign, a Bubble has gained photographed textures, particles, a text
+outline and merging. The question asked was: does loading need a cache? The answer is that the cache
+already existed, and that it was collapsing.
+
+## The instrument, checked before being believed
+
+Same method as #425d — `drawBubble` on a context that counts without rasterising — with one
+precaution that was missing: **the same configuration was measured four times**. The first value is
+systematically wrong.
+
+| control "plain Bubble", four successive measurements |
+|---|
+| 6.9 → 3.6 → 3.3 → 3.3 µs |
+
+The first round is **twice** the others: three thousand warm-up calls are not enough to settle the
+JavaScript engine. A first table, measured without this precaution, reported a text outline as
+CHEAPER than a bare Bubble — which is impossible, and which was enough to throw it away. The first
+round is therefore discarded, and the instrument is reliable to about 9%.
+
+## What a Bubble costs today
+
+40 Bubbles per Page, the JavaScript half only (rasterising is not measured, cf. #425d).
+
+| configuration | µs / Bubble | 40 Bubbles |
+|---|---|---|
+| plain, #425d's baseline | 4.2 | 0.17 ms |
+| text outline (#432) | 4.5 | 0.18 ms |
+| merged group, per lobe (#426c) | 9.2 | 0.37 ms |
+| wobbly outline | 19.1 | 0.76 ms |
+| background texture (#425m) | 20.6 | 0.82 ms |
+| "blot" particle (#425p) | 25.7 | 1.03 ms |
+| ink-blot shape (#425g) | 31.9 | 1.28 ms |
+
+**None of this is a problem**: the most expensive configuration stays under 1.3 ms for a generous
+Page. Merging costs 2.2 times a plain Bubble, which is the price of its three passes, and that is
+cheap.
+
+## The cliff
+
+Composing a 512 × 512 texture tile costs **2.6 ms** — fifteen times the drawing of a whole Page. The
+cache kept eight of them, with a "least recently used goes" policy. Compositions per frame,
+**counted and not inferred**, on a Page of 20 Bubbles:
+
+| (grain, tint) pairs in use | compositions / frame | ms / frame |
+|---|---|---|
+| 1 to 8 | 0 | 0.03 |
+| **9** | **18** | **63.5** |
+| 12 | 12 | 38.9 |
+| 20 | 20 | 59.6 |
+
+One tint more took it from 0.03 ms to 63 ms per frame, that is sixteen frames per second. The cause
+is not the cache's size but the interaction between its policy and a sequential scan: drawing walks
+the Bubbles in order, so the oldest entry is always **exactly the one that will be asked for next**.
+That is the known worst case of this policy, and a Page is a sequential scan by construction.
+
+## What was ruled out, and why
+
+**Random eviction** was tried before being rejected, rather than argued about:
+
+| pairs | least recently used | random |
+|---|---|---|
+| 9 | 18 compositions | 3 |
+| 12 | 12 | 10 |
+| 20 | 20 | 18 |
+
+It moves the cliff instead of removing it. The policy is not at fault; **capacity below the real
+working set** is.
+
+## What was done
+
+Two changes, decided with the user:
+
+1. the ceiling goes from 8 to **15 tiles**;
+2. **a tile used by the current frame is never evicted.** When everything the cache holds serves the
+   displayed frame, there is no good candidate: throwing one away would mean recomposing it at once.
+   The cache therefore overflows for as long as that Page is displayed, then comes back down.
+
+The floor of 15 is not cosmetic: it preserves what the cache already did well, namely keeping tiles
+**from one Page to another**. Without it, going back to the previous Page would have recomposed
+everything — the objection is the user's, and it corrected the first wording.
+
+Measured again after the fix: **0 compositions per frame, 0.02 to 0.03 ms, from 1 to 20 pairs.** The
+cliff is gone.
+
+## Two traps met along the way
+
+**The stamp was only set on composition.** A tile born in the previous frame and reused by this one
+kept the number of its birth: it passed for dormant and was evicted while on screen. The protection
+would then have applied to new tiles only — that is, almost never, since a stable Page composes
+none. No measurement would have shown it: on a stable Page every request is a hit and eviction never
+fires. It took a test mixing hits and compositions **within the same frame**.
+
+**A test trapped itself.** To check its fixture, it asked for the first tint again before moving to
+the next frame — which put it back at the head of the queue. Eviction then fell on the second, and
+the test declared perfectly correct code broken. Observing a cache changes it.
+
+## Redoing the measurement
+
+The probes are disposable and were not kept, like those of #425d. Two of them count compositions by
+intercepting `getImageData`, which is the only way to count a cache miss without inferring it from a
+time.
+
+⚠️ **WHAT WOULD CHANGE THIS VERDICT.** If a Page used more than fifteen pairs AND memory became a
+concern — fifteen tiles weigh 15 MB, one more per pair beyond that — the trade-off between memory
+and recomposition would have to be settled. Nothing comes close today.

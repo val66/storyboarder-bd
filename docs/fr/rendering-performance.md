@@ -823,3 +823,115 @@ Quatrième instrument à valider avant de croire un chiffre, après `gl.finish()
 rien, `readPixels` sur le tampon d'affichage qui mesure le moniteur, et la boîte étirée au Sol qui
 coûtait plein tarif pour 0,00 % d'effet. La règle tient : **on vérifie d'abord que l'instrument sait
 voir une présence, ensuite seulement on lit ce qu'il dit.**
+
+---
+
+# Neuvième campagne — le cache de textures avait une falaise, septembre 2026
+
+Chantier #427. Depuis la sixième campagne, une Bulle a gagné des textures photographiées, des
+particules, un contour de texte et la fusion. La question posée était : faut-il un cache au
+chargement ? La réponse est que le cache existait déjà, et qu'il s'effondrait.
+
+## L'instrument, vérifié avant d'être cru
+
+Même méthode qu'en #425d — `drawBubble` sur un contexte qui compte sans rastériser — avec une
+précaution qui manquait : **la même configuration a été mesurée quatre fois**. La première valeur est
+systématiquement fausse.
+
+| témoin « Bulle nette », quatre mesures successives |
+|---|
+| 6,9 → 3,6 → 3,3 → 3,3 µs |
+
+Le premier tour vaut **le double** des suivants : trois mille appels de chauffe ne suffisent pas à
+stabiliser le moteur JavaScript. Une première table, mesurée sans cette précaution, annonçait un
+contour de texte MOINS cher qu'une Bulle nue — ce qui est impossible, et ce qui a suffi à la jeter.
+Le premier tour est donc écarté, et l'instrument est fiable à environ 9 %.
+
+## Ce que coûte une Bulle aujourd'hui
+
+40 Bulles par Planche, la moitié JavaScript seulement (la rastérisation n'est pas mesurée, cf. #425d).
+
+| configuration | µs / Bulle | 40 Bulles |
+|---|---|---|
+| nette, repère de #425d | 4,2 | 0,17 ms |
+| contour de texte (#432) | 4,5 | 0,18 ms |
+| groupe fusionné, par lobe (#426c) | 9,2 | 0,37 ms |
+| contour tremblé | 19,1 | 0,76 ms |
+| texture de fond (#425m) | 20,6 | 0,82 ms |
+| particule « tache » (#425p) | 25,7 | 1,03 ms |
+| forme tache d'encre (#425g) | 31,9 | 1,28 ms |
+
+**Rien de tout cela n'est un problème** : la configuration la plus chère reste sous 1,3 ms pour une
+Planche généreuse. La fusion coûte 2,2 fois une Bulle nette, ce qui est le prix de ses trois passes,
+et c'est peu payé.
+
+## La falaise
+
+Composer une tuile de texture 512 × 512 coûte **2,6 ms** — quinze fois le dessin de toute une
+Planche. Le cache en gardait huit, avec la politique « la plus ancienne sort ». Compositions par
+image, **comptées et non déduites**, sur une Planche de 20 Bulles :
+
+| couples (grain, teinte) employés | compositions / image | ms / image |
+|---|---|---|
+| 1 à 8 | 0 | 0,03 |
+| **9** | **18** | **63,5** |
+| 12 | 12 | 38,9 |
+| 20 | 20 | 59,6 |
+
+Une teinte de plus faisait passer de 0,03 ms à 63 ms par image, soit seize images par seconde. La
+cause n'est pas la taille du cache mais l'interaction entre sa politique et un balayage séquentiel :
+le dessin parcourt les Bulles dans l'ordre, donc la plus ancienne entrée est toujours **exactement
+celle qu'on redemandera au tour suivant**. C'est le pire cas connu de cette politique, et une
+Planche est un balayage séquentiel par construction.
+
+## Ce qui a été écarté, et pourquoi
+
+L'**éviction au hasard** a été éprouvée avant d'être rejetée, plutôt que discutée :
+
+| couples | plus ancienne sort | au hasard |
+|---|---|---|
+| 9 | 18 compositions | 3 |
+| 12 | 12 | 10 |
+| 20 | 20 | 18 |
+
+Elle déplace la falaise au lieu de la supprimer. Ce n'est pas la politique qui est en cause, c'est la
+**capacité sous le besoin réel**.
+
+## Ce qui a été fait
+
+Deux changements, décidés avec l'utilisateur :
+
+1. le plafond passe de 8 à **15 tuiles** ;
+2. **une tuile employée par l'image en cours n'est jamais évincée.** Quand tout ce que contient le
+   cache sert à l'image affichée, il n'y a pas de bon candidat : jeter reviendrait à recomposer dans
+   l'instant. Le cache déborde donc le temps d'afficher cette Planche-là, puis redescend.
+
+Le plancher de 15 n'est pas cosmétique : il préserve ce que le cache faisait déjà bien, c'est-à-dire
+garder les tuiles **d'une Planche à l'autre**. Sans lui, revenir sur la Planche précédente aurait
+tout recomposé — l'objection est de l'utilisateur, et elle a corrigé la première formulation.
+
+Après correction, mesuré à nouveau : **0 composition par image, 0,02 à 0,03 ms, de 1 à 20 couples.**
+La falaise n'existe plus.
+
+## Deux pièges rencontrés en chemin
+
+**L'estampille ne se posait qu'à la composition.** Une tuile née à l'image précédente et réemployée
+par celle-ci gardait le numéro de sa naissance : elle passait pour dormante et se faisait évincer
+alors qu'elle était à l'écran. La protection n'aurait valu que pour les tuiles neuves —
+c'est-à-dire presque jamais, puisqu'une Planche stable n'en compose aucune. Aucune des mesures ne
+l'aurait montré : dans une Planche stable, toutes les demandes sont des succès et l'éviction ne se
+déclenche jamais. Il a fallu un test mêlant succès et compositions **dans la même image**.
+
+**Un test se piégeait lui-même.** Pour vérifier sa fixture, il redemandait la première teinte avant
+de passer à l'image suivante — ce qui la remettait en tête de file. L'éviction portait alors sur la
+deuxième, et le test déclarait en panne un code parfaitement juste. Observer un cache le modifie.
+
+## Refaire la mesure
+
+Les sondes sont jetables et n'ont pas été conservées, comme celles de #425d. Deux d'entre elles
+comptent les compositions en interceptant `getImageData`, ce qui est la seule façon de compter un
+raté de cache sans le déduire d'un temps.
+
+⚠️ **CE QUI FERAIT CHANGER CE VERDICT.** Si une Planche employait plus de quinze couples ET que la
+mémoire devenait un souci — quinze tuiles pèsent 15 Mo, une par couple au-delà — il faudrait alors
+arbitrer entre la mémoire et la recomposition. Rien ne s'en approche aujourd'hui.

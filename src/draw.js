@@ -86,7 +86,7 @@ import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
  */
 const EPAISSEUR_CONTOUR_TEXTE = 0.16;
 import { particulesDeLaBulle } from './bubble-particle.js';
-import { motifDuGrain3D } from './bubble-grain.js';
+import { motifDuGrain3D, nouvelleImage3D } from './bubble-grain.js';
 import { groupeDeLaBulle3D } from './bubble-merge.js';
 
 // ── Callbacks injected by app.js (avoids circular imports draw→app) ───────────────────────
@@ -2951,6 +2951,11 @@ export function wrapTextLines(c, text, maxWidth){
 // 2D CANVAS DRAWING
 // ════════════════════════════════════════════════════════════
 export function drawCurrentPage(){
+  // ⚠️ LE CACHE DE TUILES A BESOIN DE SAVOIR QU'UNE IMAGE COMMENCE (#427). C'est ce qui lui permet
+  // de ne jamais évincer une texture que la Planche affichée emploie — sans cela, une Planche qui
+  // demande plus de teintes que le cache n'a de places jette à chaque tour ce qu'elle redemande au
+  // suivant, et passe de 0,03 ms à 63 ms par image.
+  nouvelleImage3D();
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])

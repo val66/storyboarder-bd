@@ -31,7 +31,8 @@
  * grain, et il retombe sur la teinte, pas sur du blanc. Une Bulle privée de grain reste du
  * parchemin : elle perd son relief, pas son identité.
  */
-import { rvbDeCouleur3D, natureDuNom3D, appliquerTeinteAuMotif3D } from './bubble-texture.js';
+import { rvbDeCouleur3D, natureDuNom3D, appliquerTeinteAuMotif3D,
+         tuileAEvincer3D } from './bubble-texture.js';
 
 /** Où vivent les grains cuits par `tools/bake-textures.mjs`. */
 const DOSSIER_GRAINS = 'assets/textures/';
@@ -44,7 +45,19 @@ const DOSSIER_GRAINS = 'assets/textures/';
  * qui promène le sélecteur de couleur en fabriquerait une par nuance traversée. Huit couvre
  * largement l'usage réel — une planche emploie deux ou trois teintes — et plafonne à 8 Mo.
  */
-const TUILES_MAX = 8;
+const TUILES_MAX = 15;
+
+/**
+ * Le numéro de l'image en cours de peinture, avancé par `nouvelleImage3D`.
+ *
+ * ⚠️ IL NE SERT QU'À PROTÉGER CE QUI EST À L'ÉCRAN. Une tuile employée pendant cette image ne peut
+ * pas être évincée : c'est ce qui supprime l'effondrement mesuré en #427, où le cache jetait à
+ * chaque tour la tuile qu'il redemandait au suivant.
+ */
+let _imageCourante = 0;
+
+/** Le dessin annonce qu'une nouvelle image commence. Appelée par `drawCurrentPage`. */
+export function nouvelleImage3D(){ _imageCourante++; }
 
 /** Les grains chargés, par clé. Rempli par `prechargerGrains3D`, lu par le dessin. */
 const _grains = new Map();
@@ -151,8 +164,14 @@ function tuileTeintee(cle, couleur){
   if (garde) {
     // Remise en fin de file : ce sont les teintes DORMANTES qu'on veut évincer, pas les vivantes.
     _tuiles.delete(index);
+    // ⚠️ ET L'ESTAMPILLE SE RAFRAÎCHIT SUR UN SUCCÈS, PAS SEULEMENT À LA COMPOSITION. Sans cette
+    // ligne, une tuile née à l'image précédente et RÉEMPLOYÉE par celle-ci garderait le numéro de
+    // sa naissance : elle passerait pour dormante et serait évincée alors qu'elle est à l'écran. La
+    // protection ne vaudrait que pour les tuiles neuves — c'est-à-dire presque jamais, puisqu'une
+    // Planche stable n'en compose aucune.
+    garde.image = _imageCourante;
     _tuiles.set(index, garde);
-    return garde;
+    return garde.tuile;
   }
 
   const tuile = document.createElement('canvas');
@@ -167,8 +186,12 @@ function tuileTeintee(cle, couleur){
   appliquerTeinteAuMotif3D(px, rvb, natureDuNom3D(cle));
   tc.putImageData(données, 0, 0);
 
-  _tuiles.set(index, tuile);
-  if (_tuiles.size > TUILES_MAX) _tuiles.delete(_tuiles.keys().next().value);
+  _tuiles.set(index, { tuile, image: _imageCourante });
+  if (_tuiles.size > TUILES_MAX) {
+    const victime = tuileAEvincer3D(_tuiles, _imageCourante);
+    // `null` : tout sert à l'image en cours, on laisse déborder plutôt que de recomposer aussitôt.
+    if (victime !== null) _tuiles.delete(victime);
+  }
   return tuile;
 }
 
