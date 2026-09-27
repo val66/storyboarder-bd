@@ -608,3 +608,31 @@ export function rapprocherDuGroupe3D(lobe, voisins){
   }
   return { x: depart.x + (cible.x - depart.x) * haut, y: depart.y + (cible.y - depart.y) * haut };
 }
+
+/**
+ * Les lobes SURVIVANTS dont le groupe est rompu par une suppression. Fonction PURE.
+ *
+ * ⚠️ SUPPRIMER N'IMPORTE QUEL LOBE DISSOUT TOUT SON GROUPE, quel qu'en soit le nombre de membres.
+ * Tranché par l'utilisateur, contre deux règles plus fines qui lui ont été présentées : ne dissoudre
+ * qu'un groupe réduit à un seul survivant, ou dissoudre seulement quand le groupe se coupe en deux.
+ * Les deux font dépendre le résultat d'un calcul que personne ne voit avant de confirmer ; celle-ci
+ * s'annonce en une phrase et se vérifie d'un coup d'œil.
+ *
+ * ⚠️ ELLE SE CALCULE AVANT LA SUPPRESSION, JAMAIS APRÈS. Une fois les objets retirés de la Planche,
+ * plus rien ne dit quels groupes ont perdu un membre : l'information part avec eux. C'est la raison
+ * pour laquelle cette fonction prend la liste des identifiants à retirer plutôt que de comparer un
+ * avant et un après.
+ */
+export function lobesADissoudre3D(objets, idsSupprimes){
+  const ids = new Set(idsSupprimes || []);
+  const groupesRompus = new Set();
+  for (const o of objets || []) {
+    const g = o && o.type === 'bulle' && ids.has(o.id) ? groupeDeLaBulle3D(o) : null;
+    if (g) groupesRompus.add(g);
+  }
+  // Pas de sortie anticipée sur un ensemble vide : la campagne l'a déclarée intuable, puisque
+  // `groupesRompus.has(...)` est faux pour tout le monde quand il est vide. Une garde qu'aucun test
+  // ne peut atteindre est une garde que personne ne maintient.
+  return (objets || []).filter(o =>
+    o && o.type === 'bulle' && !ids.has(o.id) && groupesRompus.has(groupeDeLaBulle3D(o)));
+}

@@ -21,7 +21,7 @@ import {
   fusionPossible3D, champsTransportesParLaFusion3D, instantaneDeFusion3D,
   CHAMPS_PROPRES_AU_LOBE, fusionner3D, separer3D, clePaire3D, candidateDeFusion3D, refusPerimes3D,
   lobeAuContactDuGroupe3D, etatAuContactDuGroupe3D, PAS_DE_DICHOTOMIE_CONTACT,
-  rapprocherDuGroupe3D, ecartAuGroupe3D, largeurDeSoudure3D, soudureExigee3D,
+  rapprocherDuGroupe3D, ecartAuGroupe3D, largeurDeSoudure3D, soudureExigee3D, lobesADissoudre3D,
   bullesSoudees3D, PART_SOUDURE_MINIMALE,
 } from '../src/bubble-merge.js';
 import { formesConnues, pointsDuContourBulle } from '../src/bubble-shape.js';
@@ -909,5 +909,65 @@ describe('largeurDeSoudure3D — la largeur de l’étranglement, là où les co
       const b = Object.assign(ovale('b', 0), { bulleShape: forme });
       assert.equal(bullesSoudees3D(a, b), true, `${forme} : centres confondus, pas soudées`);
     }
+  });
+});
+
+describe('lobesADissoudre3D — supprimer un lobe dissout son groupe', () => {
+  const lobe = (id, groupe) => bulle({ id, bulleGroupe: groupe });
+
+  /**
+   * ⚠️ TOUT LE GROUPE, QUEL QU'EN SOIT LE NOMBRE DE MEMBRES. Tranché par l'utilisateur, contre deux
+   * règles plus fines qui lui ont été présentées : ne dissoudre qu'un groupe réduit à un seul
+   * survivant, ou dissoudre seulement quand le groupe se coupe en deux. Les deux font dépendre le
+   * résultat d'un calcul que personne ne voit avant de confirmer.
+   */
+  test('⚠️ TROIS LOBES, ON EN SUPPRIME UN : LES DEUX AUTRES SONT RENDUS', () => {
+    const objets = [lobe('a', 'g'), lobe('b', 'g'), lobe('c', 'g')];
+    assert.deepEqual(lobesADissoudre3D(objets, ['a']).map(o => o.id), ['b', 'c']);
+  });
+
+  test('le lobe supprimé ne figure pas parmi les survivants', () => {
+    const objets = [lobe('a', 'g'), lobe('b', 'g')];
+    assert.deepEqual(lobesADissoudre3D(objets, ['a']).map(o => o.id), ['b']);
+  });
+
+  /**
+   * ⚠️ LES AUTRES GROUPES NE SONT PAS TOUCHÉS. Une Planche porte plusieurs groupes ; dissoudre
+   * celui qu'on entame ne doit pas défaire les voisins. La faute serait invisible sur une Planche
+   * d'essai à un seul groupe — c'est-à-dire sur presque tous les tests.
+   */
+  test('⚠️ UN AUTRE GROUPE DE LA MÊME PLANCHE RESTE INTACT', () => {
+    const objets = [lobe('a', 'g1'), lobe('b', 'g1'), lobe('c', 'g2'), lobe('d', 'g2')];
+    assert.deepEqual(lobesADissoudre3D(objets, ['a']).map(o => o.id), ['b']);
+  });
+
+  test('supprimer plusieurs lobes de groupes différents les dissout tous', () => {
+    const objets = [lobe('a', 'g1'), lobe('b', 'g1'), lobe('c', 'g2'), lobe('d', 'g2')];
+    assert.deepEqual(lobesADissoudre3D(objets, ['a', 'c']).map(o => o.id), ['b', 'd']);
+  });
+
+  test('supprimer une Bulle SANS groupe ne dissout rien', () => {
+    const objets = [bulle({ id: 'seule' }), lobe('a', 'g'), lobe('b', 'g')];
+    assert.deepEqual(lobesADissoudre3D(objets, ['seule']), []);
+    assert.deepEqual(lobesADissoudre3D(objets, []), []);
+    assert.deepEqual(lobesADissoudre3D(null, ['a']), []);
+  });
+
+  /**
+   * ⚠️ UNE CASE SUPPRIMÉE N'EST PAS UNE BULLE. Le second chemin de suppression — « Vider cette
+   * Case » — passe une liste qui mêle Cases, Personnages et Bulles. Ne pas filtrer sur le type
+   * ferait chercher un `bulleGroupe` sur un mur, et un objet qui en porterait un par accident
+   * dissoudrait un groupe sans raison.
+   */
+  test('⚠️ SEULES LES BULLES COMPTENT, À L’ENTRÉE COMME À LA SORTIE', () => {
+    const objets = [
+      { id: 'case', type: 'panel', bulleGroupe: 'g' },
+      lobe('a', 'g'), lobe('b', 'g'),
+      { id: 'perso', type: 'perso', bulleGroupe: 'g' },
+    ];
+    assert.deepEqual(lobesADissoudre3D(objets, ['case']).map(o => o.id), [],
+      'une Case portant par accident un identifiant de groupe a dissous le groupe');
+    assert.deepEqual(lobesADissoudre3D(objets, ['a']).map(o => o.id), ['b'],
+      'un objet qui n’est pas une Bulle a été rendu comme survivant à séparer');
   });
 });

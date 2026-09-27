@@ -21,8 +21,9 @@ import '../src/events.js';
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { S, currentPage } from '../src/state.js';
-import { lobeAuContactDuGroupe3D, largeurDeSoudure3D, soudureExigee3D } from '../src/bubble-merge.js';
+import { S, currentPage, currentPageData } from '../src/state.js';
+import { lobeAuContactDuGroupe3D, largeurDeSoudure3D, soudureExigee3D,
+  fusionner3D } from '../src/bubble-merge.js';
 
 const nouvelleBulle = () => {
   S.pendingCreatePos = { x: 200, y: 200 };
@@ -204,5 +205,153 @@ describe('#426f — un lobe fusionné ne sort pas du contour de son groupe', () 
     const page = currentPage();
     assert.equal(mobile.x, page.w - mobile.w,
       'une Bulle seule a été bridée par une contrainte de groupe');
+  });
+});
+
+/**
+ * ⚠️ LA SUPPRESSION EST LE TROISIÈME GESTE QUI TOUCHE À UN GROUPE, et le seul qui le détruit. Elle
+ * passe par la touche Suppr, un écouteur de clavier que la confirmation oblige à devenir
+ * asynchrone : son corps a donc été sorti dans `supprimerLaSelection3D`, et ces tests le
+ * déclenchent par le VRAI écouteur, puis répondent à la modale par son résolveur.
+ */
+describe('#426j — supprimer un lobe dissout son groupe, après confirmation', () => {
+  let a, b;
+
+  const frapperSuppr = () => {
+    for (const fn of window._ecouteurs.keydown || []) {
+      fn({ key: 'Delete', preventDefault(){}, stopImmediatePropagation(){} });
+    }
+  };
+  const repondre = async (reponse) => {
+    assert.equal(typeof S.confirmActionResolve, 'function', 'aucune confirmation n’a été demandée');
+    // Vidé AVANT de répondre : cf. la note du test « Vider la Case » plus bas.
+    const resoudre = S.confirmActionResolve;
+    S.confirmActionResolve = null;
+    resoudre(reponse);
+    await new Promise((r) => setTimeout(r, 0));
+  };
+
+  beforeEach(() => {
+    S.zoomLevel = 1; S.isPanning = false; S.dragMode = null;
+    S.confirmActionResolve = null;
+    document.activeElement = { tagName: 'BODY' };
+    a = nouvelleBulle(); b = nouvelleBulle();
+    a.x = 100; a.y = 300; b.x = 240; b.y = 300;
+    a.bulleColor = '#111111'; b.bulleColor = '#eeeeee';
+    for (const fusionne of fusionner3D([a, b], a, `gSuppr${a.id}`)) {
+      const cible = currentPageData().objects.find(o => o.id === fusionne.id);
+      for (const cle of Object.keys(cible)) delete cible[cle];
+      Object.assign(cible, fusionne);
+    }
+    // On relit les deux lobes DEPUIS la Planche : `remplacerLesLobes3D` réécrit le contenu des
+    // objets, et garder les références d'avant marcherait par hasard tant que l'identité ne change
+    // pas — un hasard qu'aucune ligne ne garantit.
+    a = currentPageData().objects.find(o => o.id === a.id);
+    b = currentPageData().objects.find(o => o.id === b.id);
+  });
+
+  test('⚠️ ACCEPTER SUPPRIME LA BULLE ET SÉPARE LES SURVIVANTS', async () => {
+    S.selectedId = a.id;
+    S.undoStack.length = 0;
+    frapperSuppr();
+    await repondre(true);
+
+    const page = currentPageData();
+    assert.equal(page.objects.some(o => o.id === a.id), false, 'la Bulle n’a pas été supprimée');
+    const survivant = page.objects.find(o => o.id === b.id);
+    assert.equal(survivant.bulleGroupe, undefined, 'le groupe a survécu à la perte d’un membre');
+    assert.equal(survivant.bulleColor, '#eeeeee', 'le style d’avant la fusion n’a pas été rendu');
+    assert.equal(survivant.bulleAvantFusion, undefined, 'la mémoire de fusion est restée collée');
+    // ⚠️ UN SEUL POINT D'ANNULATION POUR LES DEUX MOITIÉS. Un Ctrl+Z qui rendrait la Bulle sans
+    // refusionner le groupe laisserait la Planche dans un état que personne n'a demandé.
+    assert.equal(S.undoStack.length, 1,
+      `${S.undoStack.length} points d’annulation pour un seul geste`);
+  });
+
+  /**
+   * ⚠️ UN REFUS NE LAISSE AUCUNE TRACE, PAS MÊME DANS LA PILE D'ANNULATION. Empiler un état pour un
+   * geste abandonné obligerait à appuyer sur Ctrl+Z pour défaire ce qu'on vient de refuser — et
+   * cette faute-là ne se voit sur AUCUNE donnée de la Planche.
+   */
+  test('⚠️ REFUSER NE SUPPRIME RIEN ET N’EMPILE RIEN', async () => {
+    S.selectedId = a.id;
+    S.undoStack.length = 0;
+    frapperSuppr();
+    await repondre(false);
+
+    const page = currentPageData();
+    assert.ok(page.objects.some(o => o.id === a.id), 'la Bulle a été supprimée malgré le refus');
+    assert.equal(page.objects.find(o => o.id === b.id).bulleGroupe, a.bulleGroupe,
+      'le groupe a été dissous malgré le refus');
+    assert.equal(S.undoStack.length, 0, 'un geste refusé a empilé un point d’annulation');
+  });
+
+  /**
+   * ⚠️ « VIDER CETTE CASE » EST LE SECOND CHEMIN DE SUPPRESSION, et il emporte les Bulles de la
+   * Case. Sans ce test, la mutation qui retire la dissolution de ce chemin-là survivait : les
+   * quatre tests précédents ne parlent que de la touche Suppr. Une règle tenue sur un seul de ses
+   * deux chemins est la faute que ce chantier a déjà payée trois fois.
+   *
+   * ⚠️ ET IL NE POSE QU'UNE SEULE QUESTION. Il en avait déjà une ; lui en ajouter une SECONDE
+   * ferait cliquer deux fois pour un seul geste. On vérifie donc aussi que l'avertissement est
+   * DANS le message de la première, et non dans une modale de plus.
+   */
+  test('⚠️ VIDER LA CASE DISSOUT AUSSI LE GROUPE, EN UNE SEULE QUESTION', async () => {
+    const page = currentPageData();
+    // ⚠️ UNE CASE EST UN POLYGONE, ET SES `pts` NE SONT PAS DÉCORATIFS : le dessin de la sélection
+    // les parcourt. Une Case de fixture sans eux fait tomber `drawCurrentPage` bien plus loin, dans
+    // un rejet asynchrone que node attribue au test SUIVANT.
+    const caseHote = {
+      id: `case${a.id}`, type: 'panel', x: 0, y: 0, w: 900, h: 900,
+      pts: [{ x: 0, y: 0 }, { x: 900, y: 0 }, { x: 900, y: 900 }, { x: 0, y: 900 }],
+    };
+    page.objects.push(caseHote);
+    // ⚠️ UN SEUL DES DEUX LOBES EST DANS LA CASE. Les mettre tous les deux ne laisserait AUCUN
+    // survivant à séparer — et le test, vert, aurait prouvé le contraire de ce qu'il annonce.
+    a.homePanelId = caseHote.id;
+    S.selectedId = caseHote.id;
+    S.confirmActionResolve = null;
+
+    document.getElementById('ctxClearPanel').onclick();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(typeof S.confirmActionResolve, 'function', 'aucune question n’a été posée');
+    const texte = String(document.getElementById('confirmActionMessage').textContent);
+    assert.match(texte, /merged|fusionn/i, `la question ne dit pas que le groupe sera rompu : « ${texte} »`);
+    // ⚠️ ET ELLE COMPTE LE GROUPE ENTIER, LA BULLE SUPPRIMÉE COMPRISE. Annoncer « 1 Bulle sera
+    // séparée » pour un groupe de deux décrit un geste que personne ne reconnaîtrait : on n'en
+    // sépare pas une, on en sépare deux, dont celle qui disparaît.
+    assert.match(texte, /\b2 (merged|Bulles fusionn)/,
+      `la question annonce le mauvais nombre de Bulles : « ${texte} »`);
+
+    // ⚠️ ON VIDE LE RÉSOLVEUR AVANT DE RÉPONDRE. `confirmAction` le pose et ne l'efface jamais :
+    // vérifier qu'il est nul APRÈS coup mesurerait une absence avec un appareil incapable de voir
+    // une présence — la famille de piège que ce dépôt a rencontrée le plus souvent. Vidé d'abord,
+    // il ne peut se remplir à nouveau que si une SECONDE question est posée.
+    const repondreOui = S.confirmActionResolve;
+    S.confirmActionResolve = null;
+    repondreOui(true);
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(S.confirmActionResolve, null,
+      'une SECONDE question a été posée : deux clics pour un seul geste');
+
+    assert.equal(page.objects.some(o => o.id === a.id), false, 'la Case n’a pas été vidée');
+    const survivant = page.objects.find(o => o.id === b.id);
+    assert.equal(survivant.bulleGroupe, undefined,
+      'le groupe a survécu : « Vider la Case » ne passe pas par la même décision que Suppr');
+    assert.equal(survivant.bulleColor, '#eeeeee', 'le style d’avant la fusion n’a pas été rendu');
+
+    page.objects = page.objects.filter(o => o.id !== caseHote.id);
+  });
+
+  test('⚠️ SUPPRIMER UNE BULLE SANS GROUPE NE POSE AUCUNE QUESTION', async () => {
+    const seule = nouvelleBulle();
+    S.selectedId = seule.id;
+    S.confirmActionResolve = null;
+    frapperSuppr();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(S.confirmActionResolve, null,
+      'une question a été posée pour une Bulle qui n’est fusionnée avec personne');
+    assert.equal(currentPageData().objects.some(o => o.id === seule.id), false,
+      'la Bulle n’a pas été supprimée');
   });
 });
