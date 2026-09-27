@@ -109,6 +109,7 @@ export const I18N_TEXT = [
   // « Aucune » est une valeur de l'axe, pas une absence de réglage — elle a remplacé la case à
   // cocher « Afficher la pointe », qui disait la même chose une seconde fois.
   ['#sideBubbleTailShapeSelect option[value="aucune"]', 'None', 'Aucune'],
+  ['#sideBubbleTailMirrorWrap', 'Flip the tail', 'Inverser la pointe'],
   // #425m — l'axe TEXTURE. Indépendant de la forme : une couronne d'épines peut être marbrée, et
   // la tache d'encre rester en aplat.
   ['label[for="sideBubbleTextureSelect"]', 'Fill texture', 'Texture du fond'],

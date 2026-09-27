@@ -147,8 +147,32 @@ function traceEclair(o, base1, pointe, base2){
 const CHEVEU_COURBURE = 0.45;
 const CHEVEU_PAR_COTE = 7;
 
+/**
+ * Le cheveu penche-t-il de l'autre côté ? Lecture d'un champ persisté. Fonction PURE.
+ *
+ * ⚠️ « PAS DE RÉGLAGE » VAUT L'EXISTANT : un champ absent donne le cheveu d'avant, penché du même
+ * côté qu'il l'a toujours été. Aucune Bulle déjà dessinée ne change d'apparence.
+ *
+ * ⚠️ ET LE MIROIR EST UN RÉGLAGE DU CHEVEU SEUL, pas de l'axe queue. Un triangle est symétrique et
+ * un éclair alterne déjà de part et d'autre de son axe : les inverser ne produirait rien de
+ * visible, et offrir une case inopérante pour trois queues sur cinq serait un « contrôle visible
+ * mais inopérant » — le défaut que ce dépôt nomme et refuse. `queuePeutSInverser3D` porte cette
+ * décision, et c'est elle que la fiche interroge pour montrer ou cacher la case.
+ */
+export function queueInverseeDeLaBulle3D(o){
+  return !!(o && o.tailMirror);
+}
+
+/** Cette queue a-t-elle un envers ? Décision PURE, unique source de la case de la fiche. */
+export function queuePeutSInverser3D(queue){
+  return queue === QUEUE_CHEVEU;
+}
+
 function traceCheveu(o, base1, pointe, base2){
   const r = repere(base1, pointe, base2);
+  // Le miroir renverse la courbure : les deux arcs bombent de l'autre côté du MÊME axe, donc la
+  // queue penche dans l'autre sens sans qu'aucune autre grandeur ne change.
+  const sens = queueInverseeDeLaBulle3D(o) ? -1 : 1;
   const pts = [];
   const arc = (a, b, courbure) => {
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -159,10 +183,10 @@ function traceCheveu(o, base1, pointe, base2){
                  y: u * u * a.y + 2 * u * t * cy + t * t * b.y });
     }
   };
-  arc(base1, pointe, CHEVEU_COURBURE);
+  arc(base1, pointe, CHEVEU_COURBURE * sens);
   pts.push(pointe);
   // Même signe de courbure : le retour longe l'aller, et la queue penche au lieu de s'évaser.
-  arc(pointe, base2, CHEVEU_COURBURE * 0.55);
+  arc(pointe, base2, CHEVEU_COURBURE * 0.55 * sens);
   return pts;
 }
 
@@ -173,34 +197,107 @@ function traceCheveu(o, base1, pointe, base2){
  * referme entièrement, et ils se posent par-dessus le fond de la Case, entre la Bulle et celui qui
  * pense. C'est pourquoi `traceContinue` rend `null` pour elle.
  *
- * ⚠️ LE PREMIER ROND NE TOUCHE PAS LA BULLE. Collé au contour, il se lit comme une bosse de la Bulle
- * et non comme le premier maillon d'une chaîne ; c'est l'intervalle qui fait la chaîne.
+ * ⚠️ LE PREMIER ROND EST AUX DEUX TIERS DANS LA BULLE, et le commentaire qui tenait cette place
+ * disait l'inverse de ce que le code faisait : il affirmait que le premier rond « ne touche pas la
+ * Bulle » alors que la disposition le posait exactement TANGENT au contour, centre à une distance
+ * d'un rayon. Le test voisin le vérifiait par un `>` strict que seule l'arithmétique flottante
+ * rendait vrai. Rapporté à l'usage — « au contact direct du bord » — et corrigé dans les deux sens :
+ * le premier rond chevauche désormais le contour, la part annoncée passant DEDANS.
+ *
+ * Un rond qui affleure le bord est ambigu : il se lit comme une bosse de la Bulle. Un rond
+ * franchement engagé, lui, se lit comme un maillon qui SORT de la Bulle, ce qui est le sens du
+ * motif — la pensée qui s'échappe.
+ *
+ * ⚠️ ET LES RAYONS NE DÉPENDENT PLUS DE LA LONGUEUR DE LA QUEUE, SEULS LES ÉCARTS. Toute la chaîne
+ * était mise à l'échelle pour tenir entre le bord et la pointe, si bien qu'étirer la queue
+ * GROSSISSAIT les ronds. Relevé à l'usage : « quand je tire la pointe je ne veux pas que les ronds
+ * grossissent mais plutôt qu'ils s'éloignent les uns des autres ». Les rayons se lisent maintenant
+ * sur la BULLE, dont ils sont une fraction — c'est elle qui donne l'échelle du lettrage — et
+ * l'allongement est absorbé par les intervalles.
  */
 const RONDS_NOMBRE = 3;
 const RONDS_DECROISSANCE = 0.62;    // chaque rond vaut tant de fois le précédent
-const RONDS_INTERVALLE = 0.55;      // espace entre deux ronds, en fraction du plus petit des deux
+const RONDS_INTERVALLE = 0.55;      // écart MINIMAL entre deux ronds, en fraction du plus petit
+export const RONDS_PART_DEDANS = 2 / 3;   // part du premier rond située à l'intérieur du contour
+/**
+ * Rayon du premier rond, en fraction du PETIT demi-axe de la Bulle.
+ *
+ * ⚠️ CETTE VALEUR EST BORNÉE PAR LA LONGUEUR DE QUEUE PAR DÉFAUT, ET LE CALCUL VAUT D'ÊTRE ÉCRIT.
+ * La chaîne la plus serrée que cette disposition permet occupe environ 3,84 fois le rayon du
+ * premier rond. La queue par défaut mesure `BUBBLE_TAIL_LEN_DEFAULT` = 0,45 fois le rayon du
+ * contour, lequel vaut le petit demi-axe quand la queue pointe le long du petit axe — le cas le
+ * plus serré. Il faut donc 3,84 × part ≤ 0,45, soit part ≤ 0,117.
+ *
+ * Au-delà, une Bulle NEUVE tomberait d'emblée dans le repli « queue trop courte » ci-dessous, qui
+ * rétrécit les rayons pour faire tenir la chaîne — c'est-à-dire exactement le comportement que ce
+ * chantier retire. Le premier essai était à 0,17 et le faisait : la correction aurait été invisible
+ * jusqu'à ce que l'utilisateur étire beaucoup. Un test fige la relation, parce qu'un réglage qui
+ * n'est juste que pour la valeur d'un AUTRE réglage doit être tenu et non deviné.
+ */
+export const RONDS_RAYON_PART = 0.10;
+/** La longueur de la chaîne la plus serrée, en rayons du premier rond. Sert à la borne ci-dessus. */
+export const RONDS_CHAINE_MINIMALE = (() => {
+  let total = -RONDS_PART_DEDANS * 2 + 1 + 1;   // (1 − 2p) puis le premier rayon
+  let r = 1;
+  for (let i = 1; i < RONDS_NOMBRE; i++) {
+    const suivant = r * RONDS_DECROISSANCE;
+    total += r + RONDS_INTERVALLE * suivant + suivant;
+    r = suivant;
+  }
+  return total;
+})();
+
+/**
+ * Le rayon du premier rond : une fraction du PETIT demi-axe de la Bulle.
+ *
+ * ⚠️ LE PETIT, ET NON LA MOYENNE NI LE GRAND. Une Bulle très large et plate a un grand demi-axe qui
+ * ne dit rien de l'échelle à laquelle elle est lue ; des ronds dimensionnés dessus déborderaient sa
+ * hauteur. Le petit demi-axe est la seule des trois mesures qui reste bornée par la Bulle.
+ */
+export function rayonDuPremierRond3D(o){
+  const demi = Math.min(Math.abs((o && o.w) || 0), Math.abs((o && o.h) || 0)) / 2;
+  return demi * RONDS_RAYON_PART;
+}
 
 function rondsDetaches(o, bord, pointe){
   const dx = pointe.x - bord.x, dy = pointe.y - bord.y;
   const longueur = norme(dx, dy);
   const ux = dx / longueur, uy = dy / longueur;
-  // ⚠️ LA CHAÎNE EST D'ABORD DISPOSÉE EN UNITÉS ARBITRAIRES, PUIS MISE À L'ÉCHELLE POUR TENIR
-  // EXACTEMENT ENTRE LE BORD ET LA POINTE. La première version avançait en fractions de la
-  // longueur, cumulées : la chaîne débordait la pointe, donc la longueur réglée par l'utilisateur
-  // ne commandait plus rien. Le test « la chaîne dépasse la pointe » l'a attrapée.
-  const brut = [];
-  let rayon = 1, avance = 0;
+  const r1 = rayonDuPremierRond3D(o);
+  if (!(r1 > 0)) return [];   // une Bulle sans dimensions ne porte pas de chaîne
+  const rayons = [];
+  for (let i = 0; i < RONDS_NOMBRE; i++) rayons.push(r1 * RONDS_DECROISSANCE ** i);
+
+  // Le centre du premier rond est EN DEÇÀ du bord : pour qu'une part `p` de son diamètre soit
+  // dedans, il faut le reculer de (2p − 1) rayons. À p = 1/2 il serait centré sur le contour, à
+  // p = 2/3 il recule d'un tiers de rayon.
+  const depart = -rayons[0] * (2 * RONDS_PART_DEDANS - 1);
+  // La longueur qu'occupe la chaîne quand les intervalles sont à leur minimum.
+  //
+  // ⚠️ ON RÉUTILISE LA CONSTANTE, ON NE REFAIT PAS LA SOMME. Elle était calculée deux fois : ici en
+  // pixels, et là-haut en rayons pour documenter la borne de `RONDS_RAYON_PART`. Deux copies d'une
+  // même décision qui ne s'accordent qu'aujourd'hui — le détecteur de code mort a d'ailleurs
+  // signalé la seconde comme inutilisée, ce qui était le symptôme et non le problème.
+  const minimal = r1 * RONDS_CHAINE_MINIMALE;
+
+  // ⚠️ UNE QUEUE PLUS COURTE QUE LA CHAÎNE MINIMALE RAMÈNE À L'ANCIEN COMPORTEMENT, et c'est
+  // délibéré : plutôt que de laisser la chaîne dépasser la pointe — ce qui rendrait la longueur
+  // réglée par l'utilisateur inopérante, le défaut qu'un test attrape déjà — on rétrécit tout,
+  // rayons compris. L'utilisateur qui RACCOURCIT sous ce seuil voit donc les ronds diminuer ; celui
+  // qui ÉTIRE, ce dont il était question, ne les voit plus grossir.
+  const serre = longueur < minimal;
+  const echelle = serre ? longueur / minimal : 1;
+  // Le rab de longueur se répartit également sur les intervalles, qui sont au nombre de N − 1.
+  const rab = serre || RONDS_NOMBRE < 2 ? 0 : (longueur - minimal) / (RONDS_NOMBRE - 1);
+
+  const out = [];
+  let d = depart * echelle;
   for (let i = 0; i < RONDS_NOMBRE; i++) {
-    avance += rayon;                       // on arrive au centre du rond courant
-    brut.push({ d: avance, r: rayon });
-    const suivant = rayon * RONDS_DECROISSANCE;
-    avance += rayon * RONDS_INTERVALLE + suivant;   // intervalle, puis rayon du suivant
-    rayon = suivant;
+    const r = rayons[i] * echelle;
+    if (i > 0) d += rayons[i - 1] * echelle + RONDS_INTERVALLE * r + rab + r;
+    out.push({ x: bord.x + ux * d, y: bord.y + uy * d, r });
   }
-  const dernier = brut[brut.length - 1];
-  const echelle = longueur / (dernier.d + dernier.r);
-  return brut.map(b => ({ x: bord.x + ux * b.d * echelle, y: bord.y + uy * b.d * echelle,
-                          r: b.r * echelle }));
+  return out;
 }
 
 const REGISTRE = {

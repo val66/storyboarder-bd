@@ -1830,7 +1830,12 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   // au lieu de la dessiner à part.
   const queue = queueEffectiveDeLaBulle(o);
   const queueVisible = queue !== QUEUE_AUCUNE;
-  const oQueue = { tailShape: queue };   // la clé déjà arbitrée, pour ne pas la résoudre deux fois
+  // ⚠️ LA BULLE ENTIÈRE, AVEC SA CLÉ DÉJÀ ARBITRÉE PAR-DESSUS. C'était `{ tailShape: queue }` seul,
+  // au motif de ne pas résoudre la clé deux fois — et ce motif est intact, la clé arbitrée est bien
+  // posée en dernier. Mais un objet MINIMAL oblige à le compléter chaque fois qu'une queue a besoin
+  // d'un champ de plus : la chaîne de ronds dimensionne ses disques sur la Bulle, et ne lisait que
+  // des `undefined`. C'est une énumération tenue à la main, qui se périme en silence.
+  const oQueue = { ...o, tailShape: queue };
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
   const angleBase1 = theta - QUEUE_ECARTEMENT, angleBase2 = theta + QUEUE_ECARTEMENT;
   const pointeQueue = queueVisible ? getBubbleTailTip(o) : null;

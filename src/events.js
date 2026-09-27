@@ -6981,6 +6981,7 @@ const sideBubbleTextOutlineWidthValue = document.getElementById('sideBubbleTextO
 const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue');
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
+const sideBubbleTailMirrorToggle = document.getElementById('sideBubbleTailMirrorToggle');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
 const sideBubbleParticuleSelect = document.getElementById('sideBubbleParticuleSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
@@ -7480,6 +7481,23 @@ sideBubbleTailShapeSelect.addEventListener('change', () => {
   // ce changement supprime dans la fiche. La LECTURE continue de l'honorer, pour les Projets
   // d'avant : voir `queueEffectiveDeLaBulle`.
   delete S.sideDescTarget.tailVisible;
+  // ⚠️ RIEN À FAIRE ICI POUR LA CASE « INVERSER LA POINTE ». J'y avais ajouté un appel à
+  // `majAffichageMiroirQueue3D`, par crainte qu'un passage par la fiche ne reconstruise les zones
+  // de texte sous le curseur — le défaut de #426e. La campagne de mutation a montré que cet appel
+  // était INTUABLE, et la raison est simple : `drawCurrentPage` termine par `updateSidePanel`, qui
+  // fait déjà l'affichage. Deux copies d'une même décision, dont l'une servait de filet à une peur
+  // non vérifiée. Supprimée plutôt que consignée, comme la règle du dépôt le demande.
+  drawCurrentPage();
+});
+
+sideBubbleTailMirrorToggle.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  snapshot();
+  // ⚠️ LE CHAMP EST RETIRÉ QUAND LA CASE EST DÉCOCHÉE, et non posé à `false`. « Pas de réglage »
+  // vaut l'existant : un fichier enregistré ne porte donc la clé que si l'utilisateur a demandé
+  // l'envers, et une relecture par un Storyboarder d'avant ce chantier dessine le cheveu d'origine.
+  if (sideBubbleTailMirrorToggle.checked) S.sideDescTarget.tailMirror = true;
+  else delete S.sideDescTarget.tailMirror;
   drawCurrentPage();
 });
 

@@ -403,6 +403,14 @@
             <option value="aucune">Aucune</option>
           </select>
         </div>
+        <!-- ⚠️ SOUS LE MENU DE LA POINTE, ET VISIBLE POUR LE SEUL CHEVEU. Un triangle est symétrique
+             et un éclair alterne déjà de part et d'autre de son axe : leur offrir cette case
+             donnerait un contrôle visible et inopérant. C'est `queuePeutSInverser3D` qui tranche,
+             et la fiche l'interroge — recoder la liste ici en ferait une seconde copie.
+             La forme visuelle est celle de « Bulle fusionnable », pour la même raison qu'elle. -->
+        <label id="sideBubbleTailMirrorWrap" class="side-bulle-tail">
+          <input type="checkbox" id="sideBubbleTailMirrorToggle"> Inverser la pointe
+        </label>
         <div id="sideBubbleTextureWrap" class="tome-format">
           <label for="sideBubbleTextureSelect">Texture du fond</label>
           <select id="sideBubbleTextureSelect">
@@ -611,6 +619,9 @@
         </button>
         <button type="button" class="help-group" data-help="bulles">
           <span class="help-group-title">Bulles de dialogue</span>
+        </button>
+        <button type="button" class="help-group" data-help="pointe">
+          <span class="help-group-title">Pointe de la bulle</span>
         </button>
         <button type="button" class="help-group" data-help="fusion">
           <span class="help-group-title">Bulles fusionnées</span>

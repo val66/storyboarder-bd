@@ -55,13 +55,17 @@ export const HELP_MANUAL_EN = [
   { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble". Right-click a bubble to bring it forward, send it backward or delete it.',
     'Seven shapes: Oval, Straight-sided oval, Rectangle, Chamfered octagon, Star (shout), Shield and Ink blot. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
-    'The tail comes in five kinds — Triangle, Lightning, Curved hair, Chain of circles, or None — and can be dragged anywhere around the outline.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
     'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
     'The stroke also has a pattern — Solid, Dotted, Dashed, Thorns (a fringe of spikes all around, usable on any shape) — and a regularity: Clean or Wobbly, for a hand-drawn outline. Hiding the border hides all four settings.',
     'Fill opacity, under "Bubble appearance", affects the fill only: the stroke and the text keep their density. At 0%, only the outline and the text remain.',
     '"Background texture" fills the bubble with a photographed material — old paper, ice, lava or starry night — and "Background colour" tints it. A texture suggests its own tint as long as no colour has been chosen.',
     'The text takes a colour, and an outline: "Outline colour" and "Outline size", under the Text section, draw a halo behind the letters so they stay readable on a dark or busy background.',
+  ]},
+  { id: 'pointe', title: 'Bubble tail', paragraphs: [
+    'The tail comes in five kinds — Triangle, Lightning, Curved hair, Chain of circles, or None — and can be dragged anywhere around the outline.',
+    '"Flip the tail", below the list, leans the Curved hair the other way. The box only shows for that one: the other tails have no other side, a Triangle being symmetrical and a Lightning already alternating on either side of its axis.',
+    'The Chain of circles puts its first circle two thirds INSIDE the Bubble, so that it reads as a link coming out of it rather than as a bump on the outline. Stretching the tail spreads the circles apart without growing them: their size is read off the Bubble, not off the tail length.',
   ]},
   { id: 'fusion', title: 'Merged bubbles', paragraphs: [
     'Two bubbles can be MERGED into one. Tick "Mergeable bubble" on BOTH — it is unticked by default, so that overlapping bubbles in existing projects are never welded on their own — then drag one against the other: a dashed outline announces the pair, and a question is asked when you release.',
@@ -258,13 +262,17 @@ export const HELP_MANUAL_FR = [
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ». Clic droit sur une Bulle pour l\'avancer, la reculer ou la supprimer.',
     'Sept formes : Ovale, Ovale à côtés droits, Rectangle, Octogone à coins coupés, Étoile (cri), Écu et Tache d\'encre. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
-    "La pointe existe en cinq formes — Triangle, Éclair, Cheveu courbe, Chaîne de ronds, ou Aucune — et se déplace tout autour du contour.",
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
     "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",
     "Le trait se règle aussi en motif — Plein, Pointillé, Tirets, Épines (une frange de pointes tout autour, applicable à n'importe quelle forme) — et en régularité : Net ou Tremblé, pour un contour tracé à la main. Masquer la bordure masque les quatre réglages.",
     "L'opacité du fond, sous « Apparence de la bulle », ne touche que le remplissage : le trait et le texte gardent leur densité. À 0 %, seuls le contour et le texte subsistent.",
     "« Texture du fond » remplit la Bulle d'une matière photographiée — vieux papier, glace, lave ou nuit étoilée — et « Couleur du fond » la teinte. Une texture propose sa propre teinte tant qu'aucune couleur n'a été choisie.",
     "Le texte prend une couleur, et un contour : « Couleur de contour » et « Taille du contour », dans la section Texte, dessinent un halo derrière les lettres pour qu'elles restent lisibles sur un fond sombre ou chargé.",
+  ]},
+  { id: 'pointe', title: 'Pointe de la bulle', paragraphs: [
+    "La pointe existe en cinq formes — Triangle, Éclair, Cheveu courbe, Chaîne de ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",
+    "« Inverser la pointe », sous la liste, renverse le Cheveu courbe du côté opposé. La case ne s'affiche que pour lui : les autres pointes n'ont pas d'envers, un Triangle étant symétrique et un Éclair alternant déjà de part et d'autre de son axe.",
+    "La Chaîne de ronds pose son premier rond aux deux tiers DANS la Bulle, pour qu'il se lise comme un maillon qui en sort plutôt que comme une bosse du contour. Étirer la pointe écarte les ronds les uns des autres sans les grossir : leur taille se lit sur la Bulle, pas sur la longueur de la pointe.",
   ]},
   { id: 'fusion', title: 'Bulles fusionnées', paragraphs: [
     "Deux Bulles peuvent être FUSIONNÉES en une seule. Cochez « Bulle fusionnable » sur les DEUX — elle est décochée par défaut, pour qu'aucune Bulle d'un Projet existant ne se soude d'elle-même — puis amenez l'une contre l'autre : un contour discontinu annonce la paire, et une question est posée au relâchement.",

@@ -164,6 +164,33 @@ stroke from crossing the inside of the Bubble. The chain of circles is made of *
 the outline closes fully, and the circles are drawn afterwards, each in its own path — putting them
 in the Bubble's path would punch a hole in its fill wherever a circle overlaps the outline.
 
+⚠️ **THE CURVED HAIR HAS A REVERSE SIDE, AND IT ALONE.** A "Flip the tail" box reverses its
+curvature: both arcs bulge on the other side of the same axis, and the tail leans the other way with
+no other quantity changing. It only shows for that tail — a triangle is symmetrical, a lightning
+already alternates on either side of its axis, and offering the box for all five would give a
+**visible but inoperative control** for four of them. `queuePeutSInverser3D` settles it, and the
+panel asks that function rather than recoding the list: two copies of one decision always diverge,
+as this project has found four times.
+
+⚠️ **THE CHAIN'S FIRST CIRCLE SITS TWO THIRDS INSIDE THE BUBBLE.** It was exactly TANGENT to the
+outline, and three pieces of writing agreed on the opposite: the module comment said it "does not
+touch the Bubble", the test checked it with a strict `>` that only floating-point arithmetic made
+true, and the note said nothing. Reported from use — "in direct contact with the edge". A circle
+that grazes the edge reads as a bump on the Bubble; a circle clearly engaged reads as a link coming
+OUT of it, which is what the motif means.
+
+⚠️ **AND STRETCHING THE TAIL SPREADS THE CIRCLES, IT DOES NOT GROW THEM.** The whole chain was
+scaled to fit between the edge and the tip, so the radii followed the length. They are now read off
+the **Bubble**, as a fraction of its small half-axis — that is what sets the lettering's scale — and
+the stretch goes into the gaps.
+
+That fraction is bounded by the default tail length, and the arithmetic is worth following: the
+tightest chain takes 3.84 radii, the default tail is 0.45 of the outline radius, so the fraction must
+stay under 0.117. The first attempt was 0.17: a BRAND-NEW Bubble fell straight into the "tail too
+short" fallback, which shrinks the radii to make the chain fit — that is, exactly the behaviour just
+removed. A setting that is only right for another setting's value must be **held by a test**, not
+guessed.
+
 ⚠️ **"NONE" IS A VALUE OF THE AXIS, NOT A MISSING SETTING.** The survey counts it like the others:
 the Geste des Chevaliers Dragons, La Licorne, an ellipse placed in the white gutter between two
 Panels — having no tail is a lettering choice. The panel therefore has **one list**, not a list plus

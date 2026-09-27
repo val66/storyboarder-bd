@@ -21,10 +21,13 @@ import assert from 'node:assert/strict';
 
 import {
   QUEUE_TRIANGLE, QUEUE_ECLAIR, QUEUE_CHEVEU, QUEUE_RONDS, QUEUE_AUCUNE, QUEUE_DEFAUT,
+  RONDS_PART_DEDANS, RONDS_RAYON_PART, RONDS_CHAINE_MINIMALE, rayonDuPremierRond3D,
+  queueInverseeDeLaBulle3D, queuePeutSInverser3D,
   QUEUE_ECARTEMENT,
   queuesConnues, queueDeLaBulle, traceContinuDeLaQueue, elementsDetachesDeLaQueue,
 } from '../src/bubble-tail.js';
 import { formesConnues, pointDuContourBulle } from '../src/bubble-shape.js';
+import { BUBBLE_TAIL_LEN_DEFAULT } from '../src/constants.js';
 
 const BULLE = { id: 'b1', type: 'bulle', x: 10, y: 20, w: 180, h: 74 };
 const centre = (o) => ({ x: o.x + o.w / 2, y: o.y + o.h / 2 });
@@ -277,14 +280,184 @@ describe('Chaque queue fait ce qui la distingue', () => {
       assert.ok(d > ronds[i].r + ronds[i - 1].r,
         `les ronds ${i - 1} et ${i} se touchent : ${d.toFixed(1)} pour ${(ronds[i].r + ronds[i - 1].r).toFixed(1)}`);
     }
-    // Le premier ne touche pas la Bulle non plus.
-    assert.ok(Math.hypot(ronds[0].x - bord.x, ronds[0].y - bord.y) > ronds[0].r,
-      'le premier rond est collé au contour : il se lira comme une bosse de la Bulle');
+    /*
+     * ⚠️ ET LE PREMIER ROND EST AUX DEUX TIERS DANS LA BULLE. Cette assertion exigeait le contraire
+     * — que le premier rond soit entièrement DEHORS — et elle ne passait que par chance : la
+     * disposition le posait exactement tangent, centre à un rayon du bord, et seule l'arithmétique
+     * flottante rendait le `>` strict vrai. Le commentaire du module affirmait de son côté que le
+     * rond « ne touche pas la Bulle ». Trois écrits d'accord entre eux et faux tous les trois, que
+     * seul l'usage a démentis : « au contact direct du bord ».
+     *
+     * La part est mesurée le long de l'AXE DE LA QUEUE, et non par une distance au centre : c'est
+     * le long de cet axe que le rond entre, et la mesure doit être celle de la chose réglée.
+     */
+    const ux = (pointe.x - bord.x) / Math.hypot(pointe.x - bord.x, pointe.y - bord.y);
+    const uy = (pointe.y - bord.y) / Math.hypot(pointe.x - bord.x, pointe.y - bord.y);
+    const signee = (ronds[0].x - bord.x) * ux + (ronds[0].y - bord.y) * uy;
+    const dedans = (ronds[0].r - signee) / (2 * ronds[0].r);
+    /*
+     * ⚠️ LA VALEUR EST ÉCRITE EN CLAIR, ET NON RELUE DANS LE MODULE. La première écriture comparait
+     * à `RONDS_PART_DEDANS` : le test suivait donc la constante, et la mutation qui la ramène à 1/2
+     * — le rond centré sur le bord, ce que l'usage a précisément rejeté — passait sans rien casser.
+     * Un test qui relit le réglage qu'il prétend tenir ne tient rien. Deux tiers est un chiffre
+     * DEMANDÉ, il appartient donc au test autant qu'au code.
+     */
+    assert.ok(Math.abs(dedans - 2 / 3) < 0.01,
+      `${(dedans * 100).toFixed(0)} % du premier rond est dans la Bulle, attendu 67 %`);
+    // Et la constante du module dit bien la même chose : sinon l'une des deux mentirait.
+    assert.ok(Math.abs(RONDS_PART_DEDANS - 2 / 3) < 1e-9, 'RONDS_PART_DEDANS ne vaut plus deux tiers');
     // Et la chaîne va bien VERS la pointe, pas ailleurs.
     const dernier = ronds[ronds.length - 1];
     assert.ok(Math.hypot(dernier.x - bord.x, dernier.y - bord.y)
             < Math.hypot(pointe.x - bord.x, pointe.y - bord.y) + 1e-6,
       'la chaîne dépasse la pointe');
+  });
+
+  /**
+   * ⚠️ ÉTIRER LA QUEUE ÉCARTE LES RONDS, IL NE LES GROSSIT PAS. Toute la chaîne était mise à
+   * l'échelle pour tenir exactement entre le bord et la pointe : les rayons suivaient donc la
+   * longueur, et allonger la queue gonflait les ronds. Relevé à l'usage. Les rayons se lisent
+   * désormais sur la BULLE, dont ils sont une fraction, et l'allongement passe dans les écarts.
+   *
+   * Le test mesure les deux grandeurs sur la même Bulle à deux longueurs de queue : les rayons
+   * doivent être IDENTIQUES, les écarts strictement croissants. Une seule des deux assertions
+   * laisserait passer la moitié du défaut.
+   */
+  test('⚠️ ÉTIRER LA CHAÎNE ÉCARTE LES RONDS SANS CHANGER LEUR TAILLE', () => {
+    const o = avec(QUEUE_RONDS);
+    const loin = { x: bord.x + (pointe.x - bord.x) * 3, y: bord.y + (pointe.y - bord.y) * 3 };
+    const courte = elementsDetachesDeLaQueue(o, bord, pointe);
+    const longue = elementsDetachesDeLaQueue(o, bord, loin);
+    assert.equal(courte.length, longue.length, 'le nombre de ronds a changé avec la longueur');
+    for (let i = 0; i < courte.length; i++) {
+      assert.ok(Math.abs(courte[i].r - longue[i].r) < 1e-9,
+        `le rond ${i} a grossi : ${courte[i].r.toFixed(2)} → ${longue[i].r.toFixed(2)}`);
+    }
+    const ecart = (r, i) => Math.hypot(r[i].x - r[i - 1].x, r[i].y - r[i - 1].y)
+                            - r[i].r - r[i - 1].r;
+    for (let i = 1; i < courte.length; i++) {
+      assert.ok(ecart(longue, i) > ecart(courte, i) + 1,
+        `l’écart ${i} ne s’est pas creusé : ${ecart(courte, i).toFixed(1)} → ${ecart(longue, i).toFixed(1)}`);
+    }
+  });
+
+  /**
+   * ⚠️ LES RAYONS SUIVENT LA BULLE, PUISQU'ILS NE SUIVENT PLUS LA QUEUE. Sans cette assertion, la
+   * précédente serait satisfaite par des rayons CONSTANTS en pixels — un lettrage qui garderait la
+   * même chaîne sur une Bulle minuscule et sur une Bulle pleine page.
+   */
+  test('⚠️ MAIS LES RONDS SUIVENT LA TAILLE DE LA BULLE', () => {
+    /*
+     * ⚠️ LA QUEUE DE LA FIXTURE S'ÉTIRE AVEC LA BULLE, et l'oublier a fait échouer ce test sur du
+     * code juste : une pointe fixe sur une Bulle quatre fois plus grande donne une queue RELATIVE
+     * quatre fois plus courte, donc la chaîne tombait dans le repli qui la rétrécit, et les deux
+     * rayons devenaient égaux. On mesurait le repli en croyant mesurer l'échelle.
+     */
+    const premier = (w, h) => {
+      const o = Object.assign({}, BULLE, { tailShape: QUEUE_RONDS, w, h });
+      const b = pointDuContourBulle(o, THETA);
+      const c = { x: o.x + w / 2, y: o.y + h / 2 };
+      const bout = { x: c.x + (b.x - c.x) * 1.45, y: c.y + (b.y - c.y) * 1.45 };
+      return elementsDetachesDeLaQueue(o, b, bout)[0].r;
+    };
+    const rp = premier(100, 60), rg = premier(400, 240);
+    assert.ok(Math.abs(rg / rp - 4) < 0.01,
+      `rayons ${rp.toFixed(2)} et ${rg.toFixed(2)} : ils ne suivent pas la Bulle`);
+    // Et c'est le PETIT demi-axe qui commande : une Bulle très large et plate ne gonfle pas.
+    assert.ok(Math.abs(premier(400, 60) - premier(100, 60)) < 1e-9,
+      'une Bulle plate mais large gonfle ses ronds : le grand demi-axe est consulté');
+  });
+
+  /**
+   * ⚠️ LE MIROIR RENVERSE LE CHEVEU, ET LUI SEUL. Un triangle est symétrique, un éclair alterne
+   * déjà de part et d'autre de son axe : leur offrir la case produirait un contrôle visible et
+   * inopérant, défaut que ce dépôt nomme. `queuePeutSInverser3D` porte la décision, et la fiche
+   * l'interroge au lieu de recoder la liste — deux copies d'une même décision divergeraient.
+   */
+  test('⚠️ LE MIROIR RENVERSE LE CHEVEU, ET SEUL LE CHEVEU S’INVERSE', () => {
+    for (const queue of queuesConnues()) {
+      assert.equal(queuePeutSInverser3D(queue), queue === QUEUE_CHEVEU,
+        `« ${queue} » : l’offre de miroir ne correspond pas à son effet`);
+    }
+    const droit = Object.assign({}, BULLE, { tailShape: QUEUE_CHEVEU });
+    const envers = Object.assign({}, droit, { tailMirror: true });
+    assert.equal(queueInverseeDeLaBulle3D(droit), false, '« pas de réglage » doit valoir l’existant');
+    assert.equal(queueInverseeDeLaBulle3D(envers), true);
+
+    const a = traceContinuDeLaQueue(droit, base1, pointe, base2);
+    const b = traceContinuDeLaQueue(envers, base1, pointe, base2);
+    assert.equal(a.length, b.length, 'le miroir change le nombre de points : il fait autre chose');
+    /*
+     * Le renversement se mesure sur la NORMALE de l'axe de la queue : les deux tracés doivent y
+     * avoir des projections opposées, point par point. Comparer les points bruts dirait seulement
+     * qu'ils diffèrent, ce qu'un décalage quelconque satisferait aussi.
+     */
+    const mx = (base1.x + base2.x) / 2, my = (base1.y + base2.y) / 2;
+    const l = Math.hypot(pointe.x - mx, pointe.y - my);
+    const nx = -(pointe.y - my) / l, ny = (pointe.x - mx) / l;
+    const proj = (p) => (p.x - mx) * nx + (p.y - my) * ny;
+    /*
+     * ⚠️ ON MESURE LE BOMBEMENT, PAS LA PROJECTION BRUTE — et la première écriture de ce test
+     * exigeait des projections exactement opposées, ce qui est FAUX sur du code juste. Le miroir
+     * renverse la COURBURE ; il ne bouge ni les bases ni la pointe, qui sont imposées par le
+     * contour et par le réglage de l'utilisateur. La projection d'un point d'arc contient donc la
+     * part de sa corde, qui ne se renverse pas. Le bombement, lui, est l'écart à la corde, et c'est
+     * la seule grandeur que le réglage commande.
+     */
+    /*
+     * Le cheveu est fait de DEUX arcs, base1 → pointe puis pointe → base2, et chacun bombe par
+     * rapport à SA corde. Une première écriture mesurait l'écart à la corde base1 → base2, unique :
+     * les signes s'inversaient bien mais les amplitudes ne coïncidaient pas, et le test accusait du
+     * code juste. La corde d'un arc quadratique est la seule référence par rapport à laquelle son
+     * point de contrôle, et donc le renversement, est exactement symétrique.
+     */
+    const milieu = a.indexOf(a.find(p => Math.abs(p.x - pointe.x) < 1e-9
+                                      && Math.abs(p.y - pointe.y) < 1e-9));
+    assert.ok(milieu > 0, 'la pointe n’est pas dans le tracé : la fixture ne sait pas le découper');
+    const arcs = [[0, milieu, base1, pointe], [milieu + 1, a.length, pointe, base2]];
+    let vues = 0;
+    for (const [debut, fin, de, vers] of arcs) {
+      for (let i = debut; i < fin; i++) {
+        const t = (i - debut + 1) / (fin - debut + 1);
+        const corde = proj(de) + (proj(vers) - proj(de)) * t;
+        const ba = proj(a[i]) - corde, bb = proj(b[i]) - corde;
+        if (Math.abs(ba) < 1e-6) continue;
+        vues++;
+        assert.ok(Math.sign(ba) !== Math.sign(bb),
+          `le point ${i} bombe du même côté dans les deux sens : ${ba.toFixed(3)} et ${bb.toFixed(3)}`);
+        assert.ok(Math.abs(Math.abs(ba) - Math.abs(bb)) < 1e-6,
+          `le miroir change l’AMPLITUDE du bombement : ${ba.toFixed(3)} contre ${bb.toFixed(3)}`);
+      }
+    }
+    assert.ok(vues > 5, `${vues} points bombés : le relevé ne mesure presque rien`);
+  });
+
+  /**
+   * ⚠️ UNE BULLE NEUVE NE TOMBE PAS DANS LE REPLI « QUEUE TROP COURTE ». Ce repli rétrécit les
+   * rayons pour faire tenir la chaîne : c'est précisément l'ancien comportement, gardé pour les
+   * queues raccourcies à la main. S'il se déclenchait au réglage PAR DÉFAUT, la correction demandée
+   * — étirer écarte au lieu de grossir — serait invisible jusqu'à ce qu'on étire beaucoup, et le
+   * premier essai de ce chantier était dans ce cas sans que rien ne le dise.
+   *
+   * La relation est arithmétique et on la vérifie comme telle, plutôt que de la constater sur une
+   * fixture : chaîne minimale × part ≤ longueur de queue par défaut.
+   */
+  test('⚠️ AU RÉGLAGE PAR DÉFAUT, LA CHAÎNE TIENT SANS ÊTRE RÉTRÉCIE', () => {
+    assert.ok(RONDS_CHAINE_MINIMALE * RONDS_RAYON_PART < BUBBLE_TAIL_LEN_DEFAULT,
+      `chaîne minimale ${(RONDS_CHAINE_MINIMALE * RONDS_RAYON_PART).toFixed(3)} demi-axe contre une `
+      + `queue de ${BUBBLE_TAIL_LEN_DEFAULT} : une Bulle neuve verrait ses ronds rétrécis`);
+
+    // Et on le vérifie aussi en vrai, sur une Bulle dont la queue pointe le long du PETIT axe —
+    // le cas le plus serré, puisque le rayon du contour y est le plus court.
+    const o = Object.assign({}, BULLE, { tailShape: QUEUE_RONDS });
+    const versLeBas = pointDuContourBulle(o, Math.PI / 2);
+    const c = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    const bout = { x: c.x + (versLeBas.x - c.x) * (1 + BUBBLE_TAIL_LEN_DEFAULT),
+                   y: c.y + (versLeBas.y - c.y) * (1 + BUBBLE_TAIL_LEN_DEFAULT) };
+    const ronds = elementsDetachesDeLaQueue(o, versLeBas, bout);
+    assert.ok(Math.abs(ronds[0].r - rayonDuPremierRond3D(o)) < 1e-9,
+      `le premier rond mesure ${ronds[0].r.toFixed(2)} au lieu de ${rayonDuPremierRond3D(o).toFixed(2)} : `
+      + 'il a été rétréci pour tenir');
   });
 
   test('toutes les queues suivent l’angle demandé, et grandissent avec la longueur', () => {

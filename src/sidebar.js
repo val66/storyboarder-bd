@@ -23,6 +23,7 @@ import { textureDeLaBulle, teinteParDefautDeLaTexture,
          couleurTexteParDefautDeLaTexture,
          couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { particuleDeLaBulle } from './bubble-particle.js';
+import { queuePeutSInverser3D, queueInverseeDeLaBulle3D } from './bubble-tail.js';
 import { bulleEstFusionnable3D, groupeDeLaBulle3D } from './bubble-merge.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
@@ -254,6 +255,18 @@ const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue')
  * ⚠️ L'OPACITÉ DU FOND N'EST PAS DANS LA LISTE, et c'est le point. Elle porte sur le remplissage,
  * pas sur le trait : une Bulle sans bordure reste une Bulle dont le fond se règle.
  */
+/**
+ * Montre ou cache la case « Inverser la pointe », selon que la pointe choisie a un envers.
+ *
+ * ⚠️ EXPORTÉE POUR QUE LE GESTE PUISSE L'APPELER SANS REDESSINER TOUTE LA FICHE. Changer de pointe
+ * doit faire apparaître ou disparaître la case immédiatement ; passer par `updateSidePanel`
+ * reconstruirait les zones de texte sous le curseur, défaut déjà rencontré en #426e.
+ */
+export function majAffichageMiroirQueue3D(queue){
+  const bloc = document.getElementById('sideBubbleTailMirrorWrap');
+  if (bloc) bloc.style.display = queuePeutSInverser3D(queue) ? '' : 'none';
+}
+
 export function majAffichageReglagesTraitBulle3D(bordureVisible){
   const v = bordureVisible ? 'block' : 'none';
   for (const bloc of [sideBubbleBorderWidthWrap, sideBubbleBorderColorWrap,
@@ -1200,6 +1213,12 @@ function updateSidePanelImpl(){
     // brut. `queueEffectiveDeLaBulle` arbitre le choix explicite, l'ancien `tailVisible` et le
     // défaut de la forme — la fiche montre donc « Aucune » sur un écu neuf, comme le dessin.
     sideBubbleTailShapeSelect.value = queueEffectiveDeLaBulle(sel);
+    // ⚠️ MÊME RÈGLE QUE PARTOUT DANS CETTE FONCTION : on interroge la décision, on ne la refait pas.
+    // `queuePeutSInverser3D` dit quelles pointes ont un envers, `queueInverseeDeLaBulle3D` dit où en
+    // est celle-ci. Écrire ici « si cheveu » recopierait la première et divergerait le jour où une
+    // autre queue deviendra inversible.
+    majAffichageMiroirQueue3D(queueEffectiveDeLaBulle(sel));
+    document.getElementById('sideBubbleTailMirrorToggle').checked = queueInverseeDeLaBulle3D(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
     sideBubbleParticuleSelect.value = particuleDeLaBulle(sel);
     // ⚠️ ON RELIT PAR L'ACCESSEUR, PAS PAR LE CHAMP. Une Bulle enregistrée avant #426b n'a pas de

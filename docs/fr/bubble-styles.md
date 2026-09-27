@@ -53,7 +53,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 | **forme** | ellipse, rectangle arrondi, rectangle net, octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
 | **trait** | épaisseur, motif de pointillés, régularité (net ou tremblé), couleur |
 | **remplissage** | couleur, opacité, **texture** (aucune, encre sombre, vieux papier) |
-| **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe, **aucune** |
+| **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe (inversible), **aucune** |
 | **texte** | police, casse, graisse, italique, couleur, manuscrit |
 | **ornement** | note de musique, guillemets, crochets |
 | **couche ajoutée** | couronne rayonnante, **particules** (tache, flamme, aucune), débordement du cadre de Case |
@@ -168,6 +168,33 @@ qu'un trait traverse l'intérieur de la Bulle. La chaîne de ronds, elle, est fa
 **séparés** : le contour se referme entièrement, et les ronds se dessinent ensuite, chacun dans son
 propre chemin — les mettre dans celui de la Bulle percerait son remplissage là où un rond chevauche
 le contour.
+
+⚠️ **LE CHEVEU A UN ENVERS, ET LUI SEUL.** Une case « Inverser la pointe » renverse sa courbure :
+les deux arcs bombent de l'autre côté du même axe, et la queue penche dans l'autre sens sans qu'aucune
+autre grandeur ne change. Elle ne s'affiche que pour lui — un triangle est symétrique, un éclair
+alterne déjà de part et d'autre de son axe, et offrir la case aux cinq queues donnerait un **contrôle
+visible mais inopérant** pour quatre d'entre elles. C'est `queuePeutSInverser3D` qui tranche, et la
+fiche l'interroge plutôt que de recoder la liste : deux copies d'une même décision divergent
+toujours, ce chantier l'a constaté quatre fois.
+
+⚠️ **LE PREMIER ROND DE LA CHAÎNE EST AUX DEUX TIERS DANS LA BULLE.** Il était exactement TANGENT au
+contour, et trois écrits l'affirmaient faux de concert : le commentaire du module disait « ne touche
+pas la Bulle », le test le vérifiait par un `>` strict que seule l'arithmétique flottante rendait
+vrai, et la note ne s'en préoccupait pas. Signalé à l'usage — « au contact direct du bord ». Un rond
+qui affleure se lit comme une bosse de la Bulle ; un rond franchement engagé se lit comme un maillon
+qui en SORT, ce qui est le sens du motif.
+
+⚠️ **ET ÉTIRER LA QUEUE ÉCARTE LES RONDS, IL NE LES GROSSIT PAS.** Toute la chaîne était mise à
+l'échelle pour tenir entre le bord et la pointe : les rayons suivaient donc la longueur. Ils se
+lisent désormais sur la **Bulle**, dont ils sont une fraction du petit demi-axe — c'est elle qui donne
+l'échelle du lettrage —, et l'allongement passe dans les intervalles.
+
+Cette fraction est bornée par la longueur de queue par défaut, et le calcul mérite d'être suivi : la
+chaîne la plus serrée occupe 3,84 rayons, la queue par défaut vaut 0,45 rayon de contour, donc la
+fraction doit rester sous 0,117. Le premier essai valait 0,17 : une Bulle NEUVE tombait d'emblée dans
+le repli « queue trop courte », qui rétrécit les rayons pour faire tenir la chaîne — c'est-à-dire
+exactement le comportement qu'on venait de retirer. Un réglage qui n'est juste que pour la valeur
+d'un autre réglage doit être **tenu par un test**, pas deviné.
 
 ⚠️ **« AUCUNE » EST UNE VALEUR DE L'AXE, PAS UNE ABSENCE DE RÉGLAGE.** Le relevé la compte comme les
 autres : la Geste des Chevaliers Dragons, La Licorne, une ellipse posée sur l'intervalle blanc entre

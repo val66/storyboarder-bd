@@ -976,6 +976,70 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
+  /**
+   * ⚠️ LA CASE « INVERSER LA POINTE » ÉCRIT, RELIT, ET DISPARAÎT QUAND ELLE N'A RIEN À FAIRE. Trois
+   * propriétés, trois défauts distincts qu'elles interdisent — et ce chantier a déjà perdu chacune
+   * d'elles séparément : un menu qui n'écrit rien (#425g), une fiche qui affiche un état périmé
+   * (#425f), un contrôle visible mais inopérant (#426e). Un test qui n'en couvrirait qu'une
+   * laisserait les deux autres passer.
+   */
+  test('⚠️ LA CASE « INVERSER LA POINTE » ÉCRIT, RELIT, ET NE S’OFFRE QU’AU CHEVEU', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const menu = document.getElementById('sideBubbleTailShapeSelect');
+    const coche = document.getElementById('sideBubbleTailMirrorToggle');
+    const bloc = document.getElementById('sideBubbleTailMirrorWrap');
+    const choisir = (queue) => {
+      menu.value = queue;
+      (menu._ecouteurs.change || []).forEach(fn => fn({ target: menu }));
+    };
+    const basculer = (etat) => {
+      coche.checked = etat;
+      (coche._ecouteurs.change || []).forEach(fn => fn({ target: coche }));
+    };
+
+    choisir('cheveu');
+    assert.notEqual(bloc.style.display, 'none', 'la case est cachée pour le cheveu, qui s’inverse');
+    basculer(true);
+    assert.equal(b.tailMirror, true, 'cocher n’a rien posé sur la Bulle');
+    // ⚠️ DÉCOCHER RETIRE LA CLÉ, il ne la pose pas à `false` : « pas de réglage » vaut l'existant,
+    // et un fichier enregistré ne doit porter la clé que si l'envers a été demandé.
+    basculer(false);
+    assert.ok(!('tailMirror' in b), 'décocher a laissé une clé dans l’objet enregistré');
+
+    // La fiche relit l'objet, et non elle-même : on brouille la case avant de la faire reconstruire.
+    b.tailMirror = true;
+    coche.checked = false;
+    updateSidePanel();
+    assert.equal(coche.checked, true, 'la fiche affiche « droit » pour un cheveu inversé');
+
+    // ⚠️ ET LA CASE DISPARAÎT POUR LES QUATRE AUTRES POINTES, qu'elle ne saurait pas inverser.
+    for (const queue of queuesConnues()) {
+      if (queue === 'cheveu') continue;
+      choisir(queue);
+      assert.equal(bloc.style.display, 'none',
+        `la case « inverser » reste offerte pour « ${queue} », qui ne s’inverse pas`);
+    }
+    // Le témoin, sans quoi les quatre assertions ci-dessus seraient vraies d'un bloc jamais montré.
+    choisir('cheveu');
+    assert.notEqual(bloc.style.display, 'none', 'le bloc ne revient jamais : le relevé ne mesure rien');
+
+    /*
+     * ⚠️ ET LA FICHE SEULE SUFFIT, SANS PASSER PAR LE MENU. Tout ce qui précède actionne l'écouteur
+     * du menu ; retirer l'affichage de `updateSidePanel` laissait donc la suite verte, mutation
+     * échappée. Or la fiche est reconstruite à chaque dessin : c'est elle, et non le geste, qui doit
+     * porter la décision. On change la pointe SUR L'OBJET, comme le ferait une annulation ou un
+     * changement de sélection, et on demande à la fiche de se relire.
+     */
+    b.tailShape = 'triangle';
+    updateSidePanel();
+    assert.equal(bloc.style.display, 'none',
+      'la fiche seule ne cache pas la case : elle ne porte pas la décision');
+    b.tailShape = 'cheveu';
+    updateSidePanel();
+    assert.notEqual(bloc.style.display, 'none', 'la fiche seule ne montre pas la case');
+  });
+
   test('⚠️ #425m : CHOISIR UNE TEXTURE LA POSE VRAIMENT, et la fiche la relit', () => {
     // Les deux sens, comme pour la forme et la queue. Ce chantier a perdu l'un ou l'autre trois
     // fois : une fiche qui affiche correctement et un menu qui n'écrit rien sont compatibles.

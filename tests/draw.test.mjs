@@ -2749,6 +2749,70 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
       'et cerné comme elle');
   });
 
+  /**
+   * ⚠️ LES RONDS DESSINÉS SUIVENT LA TAILLE DE LA BULLE, ET C'EST ICI QUE ÇA SE VÉRIFIE. Le registre
+   * des queues dimensionne les disques sur la Bulle — décision tenue dans tests/bubble-tail.test.mjs
+   * — mais `drawBubble` ne lui passait qu'un objet MINIMAL, `{ tailShape }`, construit pour éviter
+   * de résoudre la clé deux fois. Le registre n'y lisait que des `undefined` : la décision était
+   * juste et parfaitement inerte, la faute M19 de #420c rencontrée une fois de plus.
+   *
+   * Un objet minimal est une énumération tenue à la main de ce dont l'autre module a besoin, et
+   * elle se périme en silence. Le test passe donc par le CANEVAS, seul endroit où l'inertie se voit.
+   */
+  test('⚠️ AU CANEVAS, LES RONDS D’UNE GRANDE BULLE SONT PLUS GROS QUE CEUX D’UNE PETITE', () => {
+    // La queue est donnée en fraction du rayon : les deux Bulles ont donc des queues homothétiques,
+    // et rien dans le réglage ne distingue les deux cas hormis la taille.
+    // ⚠️ SUR UN RECTANGLE, comme les tests voisins de la chaîne : un ovale trace son contour par
+    // `c.ellipse` lui aussi, et son appel se mêlerait à ceux des disques.
+    const rayons = (w, h) => appels(dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', w, h })),
+                                    'ellipse').map(e => e.args[2]);
+    const petite = rayons(100, 50), grande = rayons(400, 200);
+    assert.equal(petite.length, 3, `${petite.length} disques sur la petite Bulle`);
+    assert.equal(grande.length, 3, `${grande.length} disques sur la grande Bulle`);
+    for (let i = 0; i < 3; i++) {
+      assert.ok(Math.abs(grande[i] / petite[i] - 4) < 0.05,
+        `rond ${i} : ${petite[i].toFixed(2)} contre ${grande[i].toFixed(2)}, rapport `
+        + `${(grande[i] / petite[i]).toFixed(2)} au lieu de 4`);
+    }
+  });
+
+  /**
+   * ⚠️ ET ÉTIRER LA QUEUE NE LES GROSSIT PAS. C'est la demande telle qu'elle a été formulée —
+   * « quand je tire la pointe je ne veux pas que les ronds grossissent mais plutôt qu'ils
+   * s'éloignent les uns des autres » — et elle se vérifie au canevas parce que c'est là qu'elle
+   * était fausse : toute la chaîne y était mise à l'échelle de la longueur de la queue.
+   */
+  test('⚠️ AU CANEVAS, ÉTIRER LA QUEUE ÉCARTE LES RONDS SANS LES GROSSIR', () => {
+    const chaine = (tailLen) => appels(
+      dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailLen })), 'ellipse')
+      .map(e => ({ x: e.args[0], y: e.args[1], r: e.args[2] }));
+    const courte = chaine(0.5), longue = chaine(1.6);
+    assert.equal(courte.length, 3);
+    for (let i = 0; i < 3; i++) {
+      assert.ok(Math.abs(courte[i].r - longue[i].r) < 1e-9,
+        `le rond ${i} a grossi en étirant : ${courte[i].r.toFixed(2)} → ${longue[i].r.toFixed(2)}`);
+    }
+    const etendue = (c) => Math.hypot(c[2].x - c[0].x, c[2].y - c[0].y);
+    assert.ok(etendue(longue) > etendue(courte) * 1.5,
+      `la chaîne ne s’étend pas : ${etendue(courte).toFixed(1)} → ${etendue(longue).toFixed(1)}`);
+  });
+
+  /**
+   * ⚠️ ET LE MIROIR DU CHEVEU ARRIVE JUSQU'AU CANEVAS. Même raison que ci-dessus : le champ pouvait
+   * être écrit par la fiche, lu par le registre, et perdu en route par l'objet minimal.
+   */
+  test('⚠️ AU CANEVAS, LE CHEVEU INVERSÉ NE TRACE PAS LE MÊME CHEMIN', () => {
+    const chemin = (extra) => appels(dessiner(bulle({ bulleShape: 'ovale', tailShape: 'cheveu', ...extra })),
+                                     'lineTo').map(e => e.args);
+    const droit = chemin({}), envers = chemin({ tailMirror: true });
+    assert.equal(droit.length, envers.length, 'le miroir change la structure du chemin');
+    assert.notDeepEqual(droit, envers, 'le miroir n’arrive pas au canevas : le champ est perdu en route');
+    // Le témoin : un champ inconnu, lui, ne doit RIEN changer — sans quoi l'assertion ci-dessus
+    // serait vraie de n'importe quelle clé posée sur l'objet.
+    assert.deepEqual(chemin({ tailBidon: true }), droit,
+      'un champ inventé change le tracé : le relevé ne prouve rien sur `tailMirror`');
+  });
+
   test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {
     // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU. Il vérifiait qu'un `tailVisible: false` effaçait
     // une chaîne de ronds ; « Aucune » est désormais une valeur de la liste, et c'est elle qui
