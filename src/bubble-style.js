@@ -244,7 +244,7 @@ export function apparenceBulle(o, largeurTrait){
  * les flancs, à 0,8 elles s'espacent, à 0,7 elles restent lisibles une à une tout en étant denses.
  * Sur la Bulle de référence, cela fait environ 205 pointes pour 431 px de périmètre.
  */
-export const EPINE_PAS = 1;
+export const EPINE_PAS = 0.6;
 export const EPINE_LONGUEUR = 4;
 
 /**
@@ -254,7 +254,7 @@ export const EPINE_LONGUEUR = 4;
  * épines sont beaucoup plus nombreuses, plus fines et de taille variable ». Une frange régulière
  * se lit comme un engrenage ; c'est l'inégalité qui lui donne l'aspect d'un tracé à la plume.
  */
-export const EPINE_VARIATION = 0.8;
+export const EPINE_VARIATION = 1;
 // Part dont l'écart entre deux épines s'écarte du pas. Doit rester < 1 : voir pointesDeLEpine3D.
 export const EPINE_ESPACEMENT = 0.5;
 
@@ -267,7 +267,7 @@ export const EPINE_ESPACEMENT = 0.5;
  * frange, deux traits distincts ; des pointes qui la traversent fondent les deux en une seule
  * matière hérissée. C'est la même idée que les particules de #425p, posées À CHEVAL sur le bord.
  */
-export const EPINE_DEDANS = 0.35;
+export const EPINE_DEDANS = 0.3;
 
 /**
  * L'épaisseur de la frange, en fraction de celle du contour.
@@ -276,10 +276,24 @@ export const EPINE_DEDANS = 0.35;
  * des pointes serrées se rejoignent et forment un bourrelet noir au lieu d'aiguilles distinctes.
  * Relevé à l'usage sur la source.
  */
-export const EPINE_FINESSE = 0.3;
+export const EPINE_FINESSE = 0.25;
+/**
+ * ⚠️ LE CONTOUR S'ÉPAISSIT SOUS LA FRANGE. Proposé à l'usage — « épaissir le contour de la Bulle
+ * puis ajouter les traits de taille variable au-dessus et au-dessous » — et c'est la bonne lecture
+ * de la source : ce qu'on y prend pour une frange de pointes isolées est un trait GRAS bordé de
+ * poils. Sans lui, des pointes fines posées sur un contour fin donnent un ruban gris uniforme,
+ * relevé sur planche de contact ; avec lui, le noir du trait sert de socle et les pointes se lisent.
+ */
+export const EPINE_SOCLE = 1.8;
 
 /** Combien de points de bruit font le tour du contour avant de se répéter. */
-const EPINE_POINTS_BRUIT = 23;
+// ⚠️ LE BRUIT EST À GRAIN FIN, ET LE CHIFFRE COMPTE AUTANT QUE L'AMPLITUDE. À 23 nœuds répartis
+// sur tout le périmètre, la variation devenait une ONDE LONGUE : des arcs entiers d'épines courtes
+// alternant avec des arcs d'épines longues, c'est-à-dire des festons réguliers, exactement ce que
+// la variation devait éviter. Vu sur planche de contact à 23, 71 et 151 nœuds : 71 fait des
+// festons nets, 151 donne les touffes irrégulières de la source. Un nombre premier, pour que le
+// motif ne se referme pas sur un diviseur du nombre d'épines.
+const EPINE_POINTS_BRUIT = 151;
 
 /**
  * Les points d'une frange d'épines posée le long d'un contour. Fonction PURE.
@@ -301,14 +315,15 @@ const EPINE_POINTS_BRUIT = 23;
  * contour au lieu d'en sortir, et la frange semblait disparaître sur les flancs. Rapporté à l'usage
  * — « quand j'élargis la bulle, les épines se déforment » — et reproduit en une image.
  *
- * Le centre garde un rôle, et c'est celui qu'il pouvait tenir : donner le SIGNE. Des deux normales
- * d'un segment, on retient celle qui s'éloigne du centre. Le contour étoilé garanti par le registre
- * (#425e) rend ce choix toujours possible, y compris sur les formes dentelées.
+ * ⚠️ ET LE SIGNE VIENT DU SENS DE PARCOURS, PAS DU CENTRE. Première correction, insuffisante : on
+ * retenait des deux normales celle qui s'éloignait du centre. Sur le corps d'une Bulle ce choix est
+ * franc, mais LA QUEUE s'éloigne du centre bien plus que le contour ne s'en écarte, et le produit
+ * scalaire y passe près de zéro : il changeait de signe d'un segment au suivant et la frange y
+ * partait en zigzag serré — vu sur capture, tout en bas de la Bulle.
  *
- * MUTANT ÉQUIVALENT CONSIGNÉ — écrire `nx = -dy/len, ny = dx/len` laisse la suite verte, et c'est
- * démontrable plutôt que constaté : la ligne suivante retient, des deux normales, celle dont le
- * produit scalaire avec le rayon est positif. Partir de l'une ou de l'autre mène donc au même
- * vecteur. Aucun test ne peut le tuer, et aucun ne doit être inventé pour le prétendre.
+ * Le sens de parcours, lui, ne peut pas osciller : c'est une propriété du contour ENTIER, lue une
+ * fois dans son aire signée. Le registre les produit tous dans le même sens (#425e), mais rien
+ * dans ce module ne peut le supposer sans devenir une garde muette — d'où la lecture explicite.
  *
  * ⚠️ LA LONGUEUR VARIE, ET ELLE VARIE DE FAÇON DÉTERMINISTE. C'est le même bruit cyclique que le
  * contour tremblé et la tache d'encre, avec la même graine tirée de l'identifiant : deux Bulles
@@ -325,12 +340,15 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
 
   // La longueur totale sert à donner au bruit une abscisse dans [0, 1[ qui BOUCLE : sans elle, la
   // dernière épine et la première seraient voisines sur le contour et étrangères dans le bruit.
-  let perimetre = 0;
+  let perimetre = 0, aire = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i], b = pts[(i + 1) % pts.length];
     perimetre += Math.hypot(b.x - a.x, b.y - a.y);
+    aire += a.x * b.y - b.x * a.y;   // deux fois l'aire signée : son SIGNE est le sens de parcours
   }
   if (perimetre === 0) return [];
+  // Une aire nulle décrit un contour aplati, sans dedans ni dehors : on prend le sens direct.
+  const sens = aire < 0 ? -1 : 1;
 
   const out = [];
   // ⚠️ LA DISTANCE RESTANT À PARCOURIR SE REPORTE D'UN SEGMENT À L'AUTRE, et une première écriture
@@ -347,9 +365,8 @@ export function pointesDeLEpine3D(centre, contour, largeurTrait, graine = 0){
     while (restant <= len - pos) {
       pos += restant;
       const p = { x: a.x + dx * (pos / len), y: a.y + dy * (pos / len) };
-      // La normale au segment, orientée vers le dehors par comparaison avec la direction du centre.
-      let nx = dy / len, ny = -dx / len;
-      if (nx * (p.x - centre.x) + ny * (p.y - centre.y) < 0) { nx = -nx; ny = -ny; }
+      // La normale au segment, orientée vers le dehors par le sens de parcours du contour entier.
+      const nx = (dy / len) * sens, ny = (-dx / len) * sens;
       const t = ((parcouru + pos) / perimetre) % 1;
       const l = longueur * (1 + EPINE_VARIATION * bruitCyclique(g, t, 0, EPINE_POINTS_BRUIT));
       // L'épine est un SEGMENT QUI TRAVERSE le contour : elle commence en deçà et finit au-delà.

@@ -316,7 +316,14 @@ of spikes laid along the outline. Two decisions govern it:
   then reproduced as an image before being fixed;
 - **the gap between two spikes is irregular**, drawn from a different sample of the noise than the
   lengths are. Varied lengths set at a constant interval read as a comb: it is the regularity of the
-  step, not that of the size, that gives the machine away.
+  step, not that of the size, that gives the machine away;
+- the variation is **fine-grained**. With twenty-three noise nodes spread over the whole perimeter
+  it became a long wave: whole arcs of short spikes alternating with arcs of long ones — regular
+  scallops, regularity coming back in through the side door. A hundred and fifty-one nodes give the
+  irregular tufts of the reference;
+- **the outline thickens under the fringe**. What looks in the source like a fringe of separate
+  spikes is a heavy stroke edged with hairs: without that base, fine spikes on a fine outline give a
+  uniform grey ribbon. Suggested from use and checked on a contact sheet.
 
 And it **adds to** the outline rather than replacing it: the clean outline bounds the fill, the
 spikes stick out. Drawing them instead of it would leave a jagged edge, that is, the shout star.

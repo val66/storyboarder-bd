@@ -386,9 +386,16 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     assert.ok(fin.length > gras.length * 1.8,
       `${fin.length / 2} pointes à 2 px contre ${gras.length / 2} à 4 px : l’espacement ne suit pas`);
     // La longueur MOYENNE suit l'épaisseur : chaque pointe varie, leur moyenne non.
+    //
+    // ⚠️ LA TOLÉRANCE EST RELATIVE, ET ELLE L'EST DEVENUE PAR NÉCESSITÉ. Elle valait 0,5 px absolu,
+    // ce qui ne tenait que tant que le bruit était à grain grossier : les deux relevés ne comptent
+    // pas le même nombre de pointes et n'échantillonnent donc pas le bruit aux mêmes abscisses,
+    // si bien que leurs moyennes s'écartent d'autant plus que le grain est fin. Un seuil en pixels
+    // mesurait le pas d'échantillonnage du bruit autant que le rapport qu'il prétend figer.
     const moyenne = (pts) => longueurs(pts).reduce((a, b) => a + b, 0) / (pts.length / 2);
-    assert.ok(Math.abs(moyenne(gras) - 2 * moyenne(fin)) < 0.5,
-      'la longueur des pointes ne suit pas l’épaisseur');
+    const rapport = moyenne(gras) / moyenne(fin);
+    assert.ok(Math.abs(rapport - 2) < 0.25,
+      `longueur moyenne dans un rapport de ${rapport.toFixed(2)} au lieu de 2 : elle ne suit pas l’épaisseur`);
   });
 
   /**
@@ -500,6 +507,47 @@ describe('⚠️ LE MOTIF « ÉPINE » : de la géométrie, pas un pointillé (#
     const r = cov / (Math.sqrt(vl * ve) || 1);
     assert.ok(Math.abs(r) < 0.6,
       `corrélation de ${r.toFixed(2)} entre longueur et écart : la frange se fera par touffes`);
+  });
+
+  /**
+   * ⚠️ LA VARIATION EST À GRAIN FIN, ET NON UNE ONDE LONGUE. Le test voisin exige seulement que les
+   * longueurs varient : un bruit à vingt-trois nœuds répartis sur tout le périmètre le satisfait,
+   * et pourtant il produit des ARCS ENTIERS d'épines courtes alternant avec des arcs d'épines
+   * longues — des festons réguliers, c'est-à-dire précisément la régularité que la variation devait
+   * casser. Vu sur planche de contact avant d'être corrigé.
+   *
+   * On le mesure par le nombre d'ALTERNANCES autour de la longueur moyenne : une onde longue en
+   * donne une poignée, un grain fin en donne une fraction notable du nombre d'épines.
+   */
+  test('⚠️ LES LONGUEURS ALTERNENT VITE : LA VARIATION N’EST PAS UNE ONDE LONGUE', () => {
+    const l = longueurs(pointesDeLEpine3D(CENTRE, carre(), 3, 7));
+    assert.ok(l.length > 50, 'relevé trop court pour conclure');
+    const moy = l.reduce((a, b) => a + b, 0) / l.length;
+    let alternances = 0;
+    for (let i = 1; i < l.length; i++) {
+      if ((l[i] > moy) !== (l[i - 1] > moy)) alternances++;
+    }
+    assert.ok(alternances > l.length * 0.2,
+      `${alternances} alternances sur ${l.length} pointes : la frange ondule au lieu de varier`);
+  });
+
+  /**
+   * ⚠️ UN CONTOUR D'AIRE NULLE N'A NI DEDANS NI DEHORS, ET LE CODE TRANCHE QUAND MÊME. Un aller-
+   * retour sur un segment décrit une aire nulle : le sens de parcours n'y veut rien dire. Le
+   * commentaire du module annonce qu'on prend alors le sens direct ; sans ce test, l'annonce serait
+   * invérifiable et la borne `aire < 0` interchangeable avec `aire <= 0` — mutation échappée.
+   */
+  test('⚠️ UN CONTOUR APLATI PREND LE SENS DIRECT, ET NE LÈVE PAS', () => {
+    // Aller-retour le long de l'axe des x : périmètre non nul, aire rigoureusement nulle.
+    const aplati = [];
+    for (let i = 0; i <= 40; i++) aplati.push({ x: -50 + (i * 100) / 40, y: 0 });
+    for (let i = 39; i > 0; i--) aplati.push({ x: -50 + (i * 100) / 40, y: 0 });
+    const pts = pointesDeLEpine3D(CENTRE, aplati, 3, 7);
+    assert.ok(pts.length >= 4, 'aucune pointe sur un contour aplati');
+    // Sens direct : la normale du brin ALLER (dx > 0) est (dy, -dx) / len, soit (0, -1).
+    const [base, pointe] = pts;
+    assert.ok(pointe.y < base.y,
+      'le contour aplati ne prend pas le sens direct : la borne de l’aire a changé de camp');
   });
 
   test('un contour vide ou absent ne produit rien, sans lever', () => {

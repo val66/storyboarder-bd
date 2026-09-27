@@ -3351,6 +3351,26 @@ describe('⚠️ LE MOTIF « ÉPINE » ARRIVE AU CANEVAS (#425y)', () => {
    * d'aiguilles distinctes — relevé à l'usage. Le test lit la DERNIÈRE épaisseur posée sur le
    * contexte, celle de la frange, et la compare à celle d'une Bulle à trait plein.
    */
+  /**
+   * ⚠️ ET LE CONTOUR, LUI, EST PLUS GRAS QUE CELUI D'UNE BULLE ORDINAIRE. Proposé à l'usage :
+   * « épaissir le contour de la Bulle puis ajouter les traits de taille variable au-dessus et au-
+   * dessous ». C'est la bonne lecture de la source — le noir du trait sert de socle, sans quoi des
+   * pointes fines sur un contour fin donnent un ruban gris uniforme, relevé sur planche de contact.
+   *
+   * Le test lit la PREMIÈRE épaisseur posée après le remplissage, celle du contour, là où le test
+   * voisin lit la dernière, celle de la frange.
+   */
+  test('⚠️ LE CONTOUR SE FAIT SOCLE : IL EST PLUS GRAS QUE CELUI D’UNE BULLE PLEINE', () => {
+    const epaisseurs = (o) => dessiner(o).filter(e => e.nom === 'set:lineWidth').map(e => e.args[0]);
+    const plein = epaisseurs(nue({ bulleBorderDash: 'plein' }));
+    const epine = epaisseurs(nue({ bulleBorderDash: 'epine' }));
+    assert.ok(plein.length && epine.length > plein.length, 'épaisseurs non observables');
+    // Le contour de l'épineuse est posé au même rang que celui de la pleine ; la frange vient après.
+    const rang = plein.length - 1;
+    assert.ok(epine[rang] > plein[rang] * 1.2,
+      `contour épineux à ${epine[rang]}, contour plein à ${plein[rang]} : le socle n’est pas posé`);
+  });
+
   test('⚠️ LA FRANGE EST PLUS FINE QUE LE CONTOUR', () => {
     const derniereEpaisseur = (o) => {
       const j = dessiner(o);

@@ -330,7 +330,14 @@ la géométrie, une frange de pointes posée le long du contour. Deux décisions
   déforment » — puis reproduit en image avant d'être corrigé ;
 - **l'écart entre deux épines est irrégulier**, sur un tirage du bruit distinct de celui des
   longueurs. Des longueurs variées posées à intervalle constant se lisent comme un peigne : c'est
-  la régularité du pas, et non celle de la taille, qui trahit la machine.
+  la régularité du pas, et non celle de la taille, qui trahit la machine ;
+- la variation est **à grain fin**. À vingt-trois nœuds de bruit répartis sur tout le périmètre,
+  elle devenait une onde longue : des arcs entiers d'épines courtes alternant avec des arcs
+  d'épines longues, soit des festons réguliers — la régularité revenue par la porte de derrière.
+  Cent cinquante et un nœuds donnent les touffes irrégulières du relevé ;
+- **le contour s'épaissit sous la frange**. Ce qu'on prend dans la source pour une frange de pointes
+  isolées est un trait gras bordé de poils : sans ce socle, des pointes fines sur un contour fin
+  donnent un ruban gris uniforme. Proposé à l'usage et vérifié sur planche de contact.
 
 Et elle **s'ajoute** au contour au lieu de le remplacer : le contour net borne le fond, les pointes
 débordent au-dehors. Les tracer à sa place laisserait un bord en dents de scie, c'est-à-dire

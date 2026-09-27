@@ -67,7 +67,7 @@ import { getLoadedImage, imageState } from './image-cache.js';
 // pur (#425a), appliquée ici. Les décalages du tremblé s'ajoutent au TRACÉ, jamais au contour rendu
 // par `bubbleEdgePoint` — d'où la queue et le hit-test qui restent d'aplomb.
 import { apparenceBulle, decalagesTrembleBulle,
-         motifTraitBulle, TRAIT_EPINE, pointesDeLEpine3D, EPINE_FINESSE,
+         motifTraitBulle, TRAIT_EPINE, pointesDeLEpine3D, EPINE_FINESSE, EPINE_SOCLE,
          graineTrembleBulle } from './bubble-style.js';
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
@@ -1649,7 +1649,9 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   if (o.bulleBorderVisible === false) return;
   c.lineJoin = 'round';
   c.setLineDash(app.tirets);
-  c.lineWidth = largeurTrait * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
+  // Le motif « épine » pose son contour plus gras : c'est le socle sur lequel la frange se lit.
+  const socle = motifTraitBulle(o) === TRAIT_EPINE ? EPINE_SOCLE : 1;
+  c.lineWidth = largeurTrait * socle * (phase === PHASE_TRAIT ? EPAISSEUR_TRAIT_GROUPE : 1);
   c.strokeStyle = o.bulleBorderColor || '#23242A';
   c.stroke();
   // ⚠️ L'ÉPINE S'AJOUTE AU CONTOUR, ELLE NE LE REMPLACE PAS. Le relevé montre une frange de pointes
