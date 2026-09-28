@@ -313,7 +313,19 @@ export function majSectionStyleBulle3D(sel){
     });
     menu.value = courant ? String(biblio.indexOf(courant)) : '';
   }
-  bouton.disabled = !peutEnregistrerLeStyle3D(sel, biblio);
+  /*
+   * ⚠️ UN JEU DE BOUTONS OU L'AUTRE, JAMAIS UN BOUTON ÉTEINT. La première livraison grisait
+   * « Enregistrer » quand la Bulle portait déjà un style : un contrôle visible et inopérant, le
+   * défaut que ce dépôt nomme et refuse, et qui n'apprenait rien à qui le regardait. On montre
+   * désormais ce qu'il y a à FAIRE — enregistrer un style qui n'existe pas, ou agir sur celui qu'on
+   * porte. La décision n'a pas changé, seulement ce qu'on en fait.
+   */
+  const nouveau = peutEnregistrerLeStyle3D(sel, biblio);
+  bouton.style.display = nouveau ? '' : 'none';
+  for (const id of ['sideBubbleStyleRenameBtn', 'sideBubbleStyleDeleteBtn']) {
+    const b = document.getElementById(id);
+    if (b) b.style.display = nouveau ? 'none' : '';
+  }
 }
 
 /**

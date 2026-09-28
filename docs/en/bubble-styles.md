@@ -937,3 +937,20 @@ travelled with the Project and been undone by Ctrl+Z.
 value; `Number('')` is **zero**, not `NaN`. The non-choice therefore picked the FIRST style in the
 library and applied it, pushing an undo step for a gesture the user had just cancelled. The code
 read correctly; the wiring test is what said otherwise.
+
+⚠️ **AND THE DIMMED BUTTON IS GONE, WHICH IS BETTER THAN WHAT WAS SHIPPED.** The first version
+dimmed "Save" when the Bubble already matched a style: a visible but inoperative control, the defect
+this repository names and refuses, teaching nothing to whoever looked at it. The section now shows
+what there is to DO — save a style that does not exist, or **rename** and **delete** the one being
+worn. The decision did not change a word: `peutEnregistrerLeStyle3D` settled the dimmed state, it
+now settles which of the two sets is shown.
+
+Two points only use would have revealed, both held by tests:
+
+- **renaming a style to itself is not a duplicate.** Opening the dialog on "Shout", fixing a comma
+  and confirming would land back on "Shout": the style would be declared a duplicate of ITSELF. The
+  check therefore receives the index of the entry being renamed and skips it. The refusal is right
+  for adding and absurd for renaming, and no review of the check alone sees it;
+- **deleting a style touches no Bubble.** What goes is the library entry, not the look of the
+  Bubbles wearing it. The confirmation message says so, or nobody could guess which of the two they
+  are being asked to confirm.

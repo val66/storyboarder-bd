@@ -96,12 +96,16 @@ export function bulleSuitLeStyle3D(o, style){
   return true;
 }
 
-/** Le style de la bibliothèque que cette Bulle porte déjà, ou `null`. Fonction PURE. */
+/**
+ * Le style de la bibliothèque que cette Bulle porte déjà, ou `null`. Fonction PURE.
+ *
+ * ⚠️ ELLE SE DÉDUIT DE L'INDEX, ELLE NE REFAIT PAS LA RECHERCHE. Les deux lectures — « lequel » et
+ * « à quelle place » — sont la même question ; les écrire deux fois, c'est se préparer à ce
+ * qu'elles répondent différemment le jour où deux styles deviennent identiques.
+ */
 export function styleCorrespondant3D(o, bibliotheque){
-  for (const entree of bibliotheque || []) {
-    if (entree && bulleSuitLeStyle3D(o, entree.style)) return entree;
-  }
-  return null;
+  const i = indexDuStyleDeLaBulle3D(o, bibliotheque);
+  return i < 0 ? null : bibliotheque[i];
 }
 
 /**
@@ -129,13 +133,17 @@ export const NOM_STYLE_MAX = 40;
  * même style pour qui lit la liste ; les laisser coexister donnerait deux entrées indiscernables,
  * et le menu deviendrait un piège plutôt qu'un raccourci.
  */
-export function refusDuNomDeStyle3D(nom, bibliotheque){
+export function refusDuNomDeStyle3D(nom, bibliotheque, sauf = -1){
   const propre = String(nom == null ? '' : nom).trim();
   if (!propre) return 'vide';
   if (propre.length > NOM_STYLE_MAX) return 'trop-long';
   const norme = (s) => String(s).trim().toLowerCase();
-  if ((bibliotheque || []).some(e => e && norme(e.nom) === norme(propre))) return 'doublon';
-  return null;
+  // ⚠️ `sauf` EXCLUT L'ENTRÉE QU'ON RENOMME, ET SANS LUI RENOMMER SERAIT IMPOSSIBLE. Ouvrir la
+  // modale de renommage sur « Cri », corriger une virgule et valider referait tomber sur « Cri » :
+  // le style serait déclaré doublon de LUI-MÊME. C'est le genre de refus qui paraît absurde à
+  // l'usage et qu'aucune relecture du contrôle seul ne voit, parce qu'il est juste pour l'ajout.
+  return (bibliotheque || []).some((e, i) => i !== sauf && e && norme(e.nom) === norme(propre))
+    ? 'doublon' : null;
 }
 
 /**
@@ -166,4 +174,40 @@ export function bibliothequeLue3D(brut){
     .filter(e => e && typeof e === 'object' && typeof e.nom === 'string' && e.nom.trim()
                  && e.style && typeof e.style === 'object' && !Array.isArray(e.style))
     .map(e => ({ nom: e.nom.trim(), style: styleDeLaBulle3D(e.style) }));
+}
+
+/**
+ * La bibliothèque où une entrée a changé de nom. Fonction PURE : rend un NOUVEAU tableau.
+ *
+ * ⚠️ UN INDEX HORS LISTE NE FAIT RIEN, IL NE LÈVE PAS. La fiche appelle ceci avec l'index lu dans
+ * son menu, et ce menu peut avoir été reconstruit entre-temps — un autre Projet ouvert, une
+ * bibliothèque relue. Rendre la liste inchangée est la seule réponse qui ne casse rien.
+ */
+export function renommerStyle3D(bibliotheque, index, nom){
+  const liste = bibliotheque || [];
+  if (!liste[index]) return [...liste];
+  return liste.map((e, i) => (i === index ? { ...e, nom: String(nom).trim() } : e));
+}
+
+/** La bibliothèque privée d'une entrée. Fonction PURE. Un index hors liste ne fait rien. */
+export function supprimerStyle3D(bibliotheque, index){
+  const liste = bibliotheque || [];
+  if (!liste[index]) return [...liste];
+  return liste.filter((_, i) => i !== index);
+}
+
+/**
+ * L'index du style que cette Bulle porte, ou `-1`. Fonction PURE.
+ *
+ * ⚠️ UN INDEX, ET NON L'ENTRÉE ELLE-MÊME. Renommer et supprimer désignent une PLACE dans la liste ;
+ * rendre l'objet obligerait chaque appelant à refaire un `indexOf`, c'est-à-dire à réécrire la
+ * recherche une seconde fois — et deux copies d'une recherche finissent par ne plus désigner la
+ * même chose le jour où deux styles deviennent identiques.
+ */
+export function indexDuStyleDeLaBulle3D(o, bibliotheque){
+  const liste = bibliotheque || [];
+  for (let i = 0; i < liste.length; i++) {
+    if (liste[i] && bulleSuitLeStyle3D(o, liste[i].style)) return i;
+  }
+  return -1;
 }

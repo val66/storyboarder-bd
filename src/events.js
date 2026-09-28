@@ -83,7 +83,8 @@ import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle, longueurMinimaleDeLaQueue3D } from './bubble-tail.js';
 import { styleDeLaBulle3D, appliquerStyle3D, refusDuNomDeStyle3D, ajouterStyle3D,
-         peutEnregistrerLeStyle3D, NOM_STYLE_MAX } from './bubble-library.js';
+         peutEnregistrerLeStyle3D, NOM_STYLE_MAX, renommerStyle3D, supprimerStyle3D,
+         indexDuStyleDeLaBulle3D } from './bubble-library.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
@@ -6986,6 +6987,13 @@ const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSe
 const sideBubbleTailMirrorToggle = document.getElementById('sideBubbleTailMirrorToggle');
 const sideBubbleStyleSelect = document.getElementById('sideBubbleStyleSelect');
 const sideBubbleStyleSaveBtn = document.getElementById('sideBubbleStyleSaveBtn');
+const sideBubbleStyleRenameBtn = document.getElementById('sideBubbleStyleRenameBtn');
+const sideBubbleStyleDeleteBtn = document.getElementById('sideBubbleStyleDeleteBtn');
+const bubbleStyleRenameModal = document.getElementById('bubbleStyleRenameModal');
+const bubbleStyleRenameInput = document.getElementById('bubbleStyleRenameInput');
+const bubbleStyleRenameError = document.getElementById('bubbleStyleRenameError');
+const bubbleStyleRenameCancel = document.getElementById('bubbleStyleRenameCancel');
+const bubbleStyleRenameConfirm = document.getElementById('bubbleStyleRenameConfirm');
 const bubbleStyleModal = document.getElementById('bubbleStyleModal');
 const bubbleStyleInput = document.getElementById('bubbleStyleInput');
 const bubbleStyleError = document.getElementById('bubbleStyleError');
@@ -7552,6 +7560,78 @@ sideBubbleStyleSaveBtn.addEventListener('click', () => {
   bubbleStyleError.textContent = '';
   bubbleStyleModal.classList.remove('hidden');
   bubbleStyleInput.focus();
+});
+
+const fermerModaleRenommageStyle = () => bubbleStyleRenameModal.classList.add('hidden');
+
+/**
+ * L'index, dans la bibliothèque, du style que porte la Bulle sélectionnée — ou `-1`.
+ *
+ * ⚠️ ON LE REDEMANDE AU MODULE PLUTÔT QUE DE LIRE LE MENU. La valeur du `<select>` dit ce que
+ * l'affichage croit ; `indexDuStyleDeLaBulle3D` dit ce que la Bulle EST. Les deux coïncident tant
+ * que la fiche est à jour, et divergent exactement le jour où elle ne l'est pas — c'est-à-dire le
+ * jour où renommer ou supprimer toucherait le mauvais style.
+ */
+function indexDuStyleCourant3D(){
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'bulle') return -1;
+  return indexDuStyleDeLaBulle3D(cible, bibliothequeStyles3D());
+}
+
+/** Écrit la bibliothèque, la relit dans la fiche, et met la section en accord. */
+async function poserBibliothequeStyles3D(biblio){
+  definirBibliothequeStyles3D(biblio);
+  if (hasElectronAPI()) await window.storyboarderAPI.setSetting('bulleStyles', biblio);
+  majSectionStyleBulle3D(S.sideDescTarget);
+}
+
+sideBubbleStyleRenameBtn.addEventListener('click', () => {
+  const i = indexDuStyleCourant3D();
+  if (i < 0) return;
+  bubbleStyleRenameInput.value = bibliothequeStyles3D()[i].nom;
+  bubbleStyleRenameError.textContent = '';
+  bubbleStyleRenameModal.classList.remove('hidden');
+  bubbleStyleRenameInput.focus();
+});
+
+bubbleStyleRenameCancel.addEventListener('click', fermerModaleRenommageStyle);
+
+bubbleStyleRenameConfirm.addEventListener('click', async () => {
+  const i = indexDuStyleCourant3D();
+  if (i < 0) { fermerModaleRenommageStyle(); return; }
+  // ⚠️ LE CONTRÔLE IGNORE L'ENTRÉE QU'ON RENOMME. Sans cela, rouvrir la modale sur « Cri » et
+  // valider sans rien changer déclarerait le style doublon de LUI-MÊME.
+  const refus = refusDuNomDeStyle3D(bubbleStyleRenameInput.value, bibliothequeStyles3D(), i);
+  if (refus) {
+    bubbleStyleRenameError.textContent = (MESSAGE_REFUS_STYLE[refus] || (() => refus))();
+    bubbleStyleRenameInput.focus();
+    return;
+  }
+  await poserBibliothequeStyles3D(
+    renommerStyle3D(bibliothequeStyles3D(), i, bubbleStyleRenameInput.value));
+  fermerModaleRenommageStyle();
+});
+
+sideBubbleStyleDeleteBtn.addEventListener('click', async () => {
+  const i = indexDuStyleCourant3D();
+  if (i < 0) return;
+  const nom = bibliothequeStyles3D()[i].nom;
+  /*
+   * ⚠️ LA CONFIRMATION GÉNÉRIQUE, PAS UNE MODALE DE PLUS. `confirmAction` existe et sert déjà à la
+   * suppression d'une Bulle et d'un modèle ; en écrire une quatrième aurait fait une quatrième
+   * fermeture à déclarer, une quatrième paire d'entrées i18n, et une quatrième occasion d'oublier
+   * l'une des deux.
+   *
+   * ⚠️ ET LE MESSAGE DIT CE QUI N'EST PAS SUPPRIMÉ. Supprimer un style ne touche aucune Bulle : ce
+   * qui disparaît est l'entrée de la bibliothèque, pas l'apparence des Bulles qui la portent. Sans
+   * cette phrase, personne ne peut deviner lequel des deux on lui demande de confirmer.
+   */
+  const ok = await confirmAction(
+    tr(`Delete the style "${nom}"? The Bubbles that use it keep their look.`,
+       `Supprimer le style « ${nom} » ? Les Bulles qui le portent gardent leur apparence.`),
+    tr('Delete the style', 'Supprimer le style'));
+  if (!ok) return;
+  await poserBibliothequeStyles3D(supprimerStyle3D(bibliothequeStyles3D(), i));
 });
 
 const fermerModaleStyle = () => bubbleStyleModal.classList.add('hidden');
@@ -8468,6 +8548,7 @@ enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('h
 // test de complétude des modales l'a signalé dès l'ajout : c'est la garde qui tient cette
 // propriété pour toutes, et elle a fait son travail sans que j'y pense.
 enregistrerFermeture('bubbleStyleModal', () => fermerModaleStyle());
+enregistrerFermeture('bubbleStyleRenameModal', () => fermerModaleRenommageStyle());
 // Pour ces deux-là, Échap doit faire ce que fait « Annuler », et « Annuler » sur un Élément qu'on
 // vient d'ajouter le SUPPRIME (cf. dismissModal). Un masquage générique le laisserait derrière.
 enregistrerFermeture('descModal', () => dismissModal(closeDescModal));

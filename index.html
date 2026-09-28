@@ -521,7 +521,17 @@
         <label for="sideBubbleStyleSelect">Styles enregistrés</label>
         <select id="sideBubbleStyleSelect"></select>
       </div>
+      <!-- ⚠️ UN BOUTON OU DEUX, JAMAIS UN BOUTON ÉTEINT. La première livraison grisait
+           « Enregistrer » quand la Bulle portait déjà un style : un contrôle visible et inopérant,
+           le défaut que ce dépôt nomme et refuse, et qui n'apprenait rien à qui le regardait.
+           Ce sont maintenant deux jeux exclusifs — enregistrer un style qui n'existe pas, ou agir
+           sur celui qu'on porte. `peutEnregistrerLeStyle3D` tranche, comme elle tranchait l'état
+           grisé : la décision n'a pas changé, seulement ce qu'on en fait. -->
       <button id="sideBubbleStyleSaveBtn" class="full-btn" type="button">Enregistrer</button>
+      <button id="sideBubbleStyleRenameBtn" class="full-btn" type="button">Renommer</button>
+      <!-- ⚠️ ROUGE, PARCE QUE LE ROUGE VEUT DIRE SUPPRIMER (#398). Le bouton « Séparer » avait été
+           mis en orange pour cette raison exacte : il ne supprimait rien. Ici, si. -->
+      <button id="sideBubbleStyleDeleteBtn" class="full-btn delete-btn" type="button">Supprimer</button>
     </div>
     <div id="sideCameraSection" style="display:none;">
       <div class="menu-header">
@@ -977,6 +987,22 @@
 <!-- ⚠️ NOMMER UN STYLE : MÊME FORME QUE « RENOMMER », ET POUR LA MÊME RAISON. Une modale à un
      champ avec sa ligne d'erreur sous lui : le motif du refus s'affiche SOUS le champ plutôt que
      dans une alerte, parce qu'on corrige un nom en le regardant. -->
+<!-- Renommer un style : même forme que la modale d'enregistrement, et une modale à part plutôt
+     qu'un titre réécrit à l'ouverture. Réécrire le titre d'une modale partagée le ferait remettre
+     en français au prochain changement de langue, `applyI18n` repassant par-dessus — c'est
+     exactement ce qui était arrivé au bouton de `confirmAction`. -->
+<div class="modal-overlay hidden" id="bubbleStyleRenameModal">
+  <div class="modal-box">
+    <h3 id="bubbleStyleRenameTitle">Renommer le style</h3>
+    <input type="text" id="bubbleStyleRenameInput" style="width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); margin-bottom:6px;">
+    <p id="bubbleStyleRenameError" style="margin:0 0 10px; font-size:12px; color:var(--danger, #c0392b); min-height:1.4em;"></p>
+    <div class="modal-actions">
+      <button class="nav-btn" id="bubbleStyleRenameCancel" type="button">Annuler</button>
+      <button class="full-btn" id="bubbleStyleRenameConfirm" type="button">Renommer</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="bubbleStyleModal">
   <div class="modal-box">
     <h3 id="bubbleStyleTitle">Enregistrer le style</h3>

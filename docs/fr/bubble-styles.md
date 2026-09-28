@@ -998,3 +998,29 @@ d'annuler. Le code se lisait juste ; c'est le test du branchement qui l'a dit.
 
 Renommer et supprimer un style restent à faire : l'interface n'est pas tranchée, et livrer un
 demi-mécanisme aurait été pire que de l'annoncer.
+
+⚠️ **ET LE BOUTON ÉTEINT A DISPARU, CE QUI VAUT MIEUX QUE CE QUI AVAIT ÉTÉ LIVRÉ.** La première
+version grisait « Enregistrer » quand la Bulle portait déjà un style : un contrôle visible et
+inopérant, le défaut que ce dépôt nomme et refuse, et qui n'apprenait rien à qui le regardait. La
+section montre désormais ce qu'il y a à FAIRE — enregistrer un style qui n'existe pas, ou
+**renommer** et **supprimer** celui qu'on porte. La décision n'a pas changé d'un mot :
+`peutEnregistrerLeStyle3D` tranchait l'état grisé, elle tranche maintenant lequel des deux jeux
+s'affiche.
+
+Deux points que seul l'usage aurait révélés, et que les tests tiennent :
+
+- **renommer un style en lui-même n'est pas un doublon.** Ouvrir la modale sur « Cri », corriger une
+  virgule et valider referait tomber sur « Cri » : le style serait déclaré doublon de LUI-MÊME. Le
+  contrôle reçoit donc l'index de l'entrée qu'on renomme et l'ignore. Le refus est juste pour
+  l'ajout, absurde au renommage, et aucune relecture du contrôle seul ne le voit ;
+- **supprimer un style ne touche aucune Bulle.** Ce qui disparaît est l'entrée de la bibliothèque,
+  pas l'apparence des Bulles qui la portent. Le message de confirmation le dit, faute de quoi
+  personne ne peut deviner lequel des deux on lui demande de confirmer.
+
+La suppression passe par `confirmAction`, la confirmation générique déjà employée pour supprimer une
+Bulle ou un modèle. En écrire une quatrième aurait fait une quatrième fermeture à déclarer, une
+quatrième paire d'entrées i18n, et une quatrième occasion d'en oublier une.
+
+Le renommage, lui, a sa propre modale plutôt qu'un titre réécrit à l'ouverture : réécrire le titre
+d'une modale partagée le ferait remettre en français au prochain changement de langue, `applyI18n`
+repassant par-dessus — c'est exactement ce qui était arrivé au bouton de `confirmAction`.

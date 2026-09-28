@@ -67,6 +67,7 @@ export const HELP_MANUAL_EN = [
     'The "Style" section, between Border and Text, keeps a Bubble\'s look under a name so you can reapply it elsewhere. "Save" asks for that name; the button goes dim when the Bubble already matches a style in the library, since there would be nothing to save but a duplicate.',
     'A style keeps EVERYTHING that makes the look — shape, tail, stroke, texture, colours, opacity, inner padding — and the text settings: font, size, colour, outline. It keeps neither the text itself, nor the position, size, stacking order, nor the tail\'s angle and length: a tail points at whoever is speaking, and that depends on the Panel, not on the style.',
     'The "Saved styles" menu only appears once a first style exists. Picking an entry applies it to the selected Bubble, and Ctrl+Z steps back. Styles are stored with the Application settings: they follow you from one Project to the next, but do not travel with a file you send.',
+    'When the Bubble already matches a saved style, "Save" gives way to "Rename" and "Delete", which act on that style. Deleting a style touches NO Bubble: the Bubbles that used it keep their look, only the library entry goes.',
   ]},
   { id: 'pointe', title: 'Bubble tail', paragraphs: [
     'The tail comes in five kinds — Triangle, Lightning, Curved, Circles, or None — and can be dragged anywhere around the outline.',
@@ -281,6 +282,7 @@ export const HELP_MANUAL_FR = [
     "La section « Style », entre Bordure et Texte, garde une apparence de Bulle sous un nom pour la réappliquer ailleurs. « Enregistrer » demande ce nom ; le bouton s'éteint quand la Bulle porte déjà un style de la bibliothèque, puisqu'il n'y aurait que le doublon de ce qui existe à enregistrer.",
     "Un style retient TOUT ce qui fait l'apparence — forme, pointe, trait, texture, couleurs, opacité, écart intérieur — et les réglages du texte : police, taille, couleur, contour. Il ne retient ni le texte lui-même, ni la position, ni la taille, ni le niveau d'avancement, ni l'angle et la longueur de la pointe : une pointe désigne qui parle, et cela dépend de la Case, pas du style.",
     "Le menu « Styles enregistrés » n'apparaît qu'une fois un premier style créé. Y choisir une entrée l'applique à la Bulle sélectionnée, et Ctrl+Z revient en arrière. Les styles sont rangés avec les réglages de l'Application : ils vous suivent d'un Projet à l'autre, mais ne voyagent pas avec un fichier que vous envoyez.",
+    "Quand la Bulle porte déjà un style enregistré, « Enregistrer » cède la place à « Renommer » et « Supprimer », qui agissent sur ce style-là. Supprimer un style ne touche AUCUNE Bulle : les Bulles qui le portaient gardent leur apparence, seule l'entrée de la bibliothèque disparaît.",
   ]},
   { id: 'pointe', title: 'Pointe de la bulle', paragraphs: [
     "La pointe existe en cinq formes — Triangle, Éclair, Courbe, Ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",

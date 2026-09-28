@@ -130,6 +130,11 @@ export const I18N_TEXT = [
   ['#bubbleStyleTitle', 'Save the style', 'Enregistrer le style'],
   ['#bubbleStyleCancel', 'Cancel', 'Annuler'],
   ['#bubbleStyleConfirm', 'Save', 'Enregistrer'],
+  ['#sideBubbleStyleRenameBtn', 'Rename', 'Renommer'],
+  ['#sideBubbleStyleDeleteBtn', 'Delete', 'Supprimer'],
+  ['#bubbleStyleRenameTitle', 'Rename the style', 'Renommer le style'],
+  ['#bubbleStyleRenameCancel', 'Cancel', 'Annuler'],
+  ['#bubbleStyleRenameConfirm', 'Rename', 'Renommer'],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.
   ['label[for="sideBubbleBorderDashSelect"]', 'Stroke pattern', 'Motif du trait'],

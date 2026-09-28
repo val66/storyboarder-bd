@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import {
   CHAMPS_HORS_STYLE, styleDeLaBulle3D, appliquerStyle3D, bulleSuitLeStyle3D,
   styleCorrespondant3D, peutEnregistrerLeStyle3D, refusDuNomDeStyle3D, ajouterStyle3D,
-  bibliothequeLue3D, NOM_STYLE_MAX,
+  bibliothequeLue3D, NOM_STYLE_MAX, renommerStyle3D, supprimerStyle3D, indexDuStyleDeLaBulle3D,
 } from '../src/bubble-library.js';
 import { CHAMPS_PROPRES_AU_LOBE } from '../src/bubble-merge.js';
 
@@ -234,5 +234,80 @@ describe('#425j — relire une bibliothèque écrite sur disque', () => {
       assert.ok(!(cle in lu[0].style), `« ${cle} » a survécu à la relecture`);
     }
     assert.equal(lu[0].style.bulleShape, 'etoile', 'le témoin : l’apparence, elle, est bien relue');
+  });
+});
+
+describe('#425j bis — renommer et supprimer un style', () => {
+  const biblio = () => [
+    { nom: 'Cri', style: { bulleShape: 'etoile' } },
+    { nom: 'Pensée', style: { bulleShape: 'ovale', tailShape: 'ronds' } },
+  ];
+
+  /**
+   * ⚠️ RENOMMER UN STYLE EN LUI-MÊME N'EST PAS UN DOUBLON, ET SANS CE `sauf` RENOMMER SERAIT
+   * IMPOSSIBLE. Ouvrir la modale sur « Cri », corriger une virgule et valider referait tomber sur
+   * « Cri » : le style serait déclaré doublon de LUI-MÊME. Le refus paraît absurde à l'usage et
+   * aucune relecture du contrôle seul ne le voit, puisqu'il est juste pour l'ajout.
+   */
+  test('⚠️ LE CONTRÔLE DU NOM IGNORE L’ENTRÉE QU’ON RENOMME', () => {
+    const b = biblio();
+    assert.equal(refusDuNomDeStyle3D('Cri', b), 'doublon', 'le repère : à l’ajout, c’est un doublon');
+    assert.equal(refusDuNomDeStyle3D('Cri', b, 0), null, 'renommer « Cri » en « Cri » est refusé');
+    assert.equal(refusDuNomDeStyle3D('  cri  ', b, 0), null, 'la casse et les espaces aussi');
+    // Mais prendre le nom d'un AUTRE style reste un doublon, `sauf` ne désarme pas le contrôle.
+    assert.equal(refusDuNomDeStyle3D('Pensée', b, 0), 'doublon');
+  });
+
+  test('⚠️ RENOMMER NE TOUCHE QUE LE NOM, ET NETTOIE COMME L’AJOUT', () => {
+    const apres = renommerStyle3D(biblio(), 0, '  Hurlement ');
+    assert.equal(apres[0].nom, 'Hurlement');
+    assert.deepEqual(apres[0].style, { bulleShape: 'etoile' }, 'le style a été touché');
+    assert.equal(apres[1].nom, 'Pensée', 'une autre entrée a été touchée');
+  });
+
+  test('⚠️ SUPPRIMER RETIRE LA BONNE ENTRÉE, ET UNE SEULE', () => {
+    const apres = supprimerStyle3D(biblio(), 0);
+    assert.deepEqual(apres.map(e => e.nom), ['Pensée']);
+  });
+
+  /**
+   * ⚠️ UN INDEX HORS LISTE NE FAIT RIEN ET NE LÈVE PAS. La fiche appelle ces fonctions avec l'index
+   * lu dans son menu, et ce menu peut avoir été reconstruit entre-temps — bibliothèque relue, autre
+   * Projet ouvert. Lever mettrait l'Application à genoux pour un décalage d'affichage.
+   */
+  test('⚠️ UN INDEX HORS LISTE LAISSE LA BIBLIOTHÈQUE INTACTE', () => {
+    for (const i of [-1, 2, 99, undefined, null]) {
+      assert.deepEqual(renommerStyle3D(biblio(), i, 'X').map(e => e.nom), ['Cri', 'Pensée']);
+      assert.deepEqual(supprimerStyle3D(biblio(), i).map(e => e.nom), ['Cri', 'Pensée']);
+    }
+    assert.deepEqual(renommerStyle3D(null, 0, 'X'), []);
+    assert.deepEqual(supprimerStyle3D(null, 0), []);
+  });
+
+  test('les deux rendent un NOUVEAU tableau', () => {
+    const avant = biblio();
+    renommerStyle3D(avant, 0, 'X');
+    supprimerStyle3D(avant, 0);
+    assert.deepEqual(avant.map(e => e.nom), ['Cri', 'Pensée'], 'la bibliothèque a été modifiée');
+  });
+
+  /**
+   * ⚠️ « LEQUEL » ET « À QUELLE PLACE » SONT LA MÊME QUESTION, ET NE SE POSENT QU'UNE FOIS. La
+   * fiche a besoin de l'index pour renommer et supprimer ; refaire un `indexOf` sur l'entrée
+   * rendue serait une seconde recherche, qui répondrait différemment le jour où deux styles
+   * deviennent identiques.
+   */
+  test('⚠️ L’INDEX ET L’ENTRÉE DÉSIGNENT TOUJOURS LE MÊME STYLE', () => {
+    const b = biblio();
+    const o = { id: 'x', type: 'bulle', bulleShape: 'ovale', tailShape: 'ronds' };
+    assert.equal(indexDuStyleDeLaBulle3D(o, b), 1);
+    assert.equal(styleCorrespondant3D(o, b), b[1]);
+    assert.equal(indexDuStyleDeLaBulle3D({ bulleShape: 'rect' }, b), -1);
+    assert.equal(styleCorrespondant3D({ bulleShape: 'rect' }, b), null);
+    // Deux styles identiques : les deux lectures doivent désigner le PREMIER, pas chacun le sien.
+    const jumeaux = [...b, { nom: 'Copie', style: { bulleShape: 'etoile' } }];
+    const cri = { bulleShape: 'etoile' };
+    assert.equal(indexDuStyleDeLaBulle3D(cri, jumeaux), 0);
+    assert.equal(styleCorrespondant3D(cri, jumeaux), jumeaux[0]);
   });
 });

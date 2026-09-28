@@ -1090,6 +1090,8 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
   describe('#425j — la section Style', () => {
     const menu = () => document.getElementById('sideBubbleStyleSelect');
     const bouton = () => document.getElementById('sideBubbleStyleSaveBtn');
+    const renommer = () => document.getElementById('sideBubbleStyleRenameBtn');
+    const supprimer = () => document.getElementById('sideBubbleStyleDeleteBtn');
     const liste = () => document.getElementById('sideBubbleStyleListWrap');
     const modale = () => document.getElementById('bubbleStyleModal');
     const champ = () => document.getElementById('bubbleStyleInput');
@@ -1111,7 +1113,9 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       updateSidePanel();
       assert.equal(liste().style.display, 'none',
         'un menu vide s’affiche : c’est un contrôle visible et inopérant');
-      assert.equal(bouton().disabled, false, 'rien n’est enregistré, on doit pouvoir enregistrer');
+      assert.notEqual(bouton().style.display, 'none',
+        'rien n’est enregistré : le bouton « Enregistrer » doit être là');
+      assert.equal(renommer().style.display, 'none', '« Renommer » n’a rien à renommer');
     });
 
     test('⚠️ ENREGISTRER POSE LE STYLE, FAIT APPARAÎTRE LE MENU, ET ÉTEINT LE BOUTON', async () => {
@@ -1130,8 +1134,16 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       // ⚠️ ET LA SECTION SE RELIT AUSSITÔT : sans cela, il faudrait cliquer ailleurs puis revenir
       // pour voir apparaître le menu qu'on vient de créer.
       assert.notEqual(liste().style.display, 'none', 'le menu n’est pas apparu');
-      assert.equal(bouton().disabled, true,
-        'le bouton reste actif alors que la Bulle porte exactement le style enregistré');
+      /*
+       * ⚠️ UN JEU DE BOUTONS OU L'AUTRE, ET CE TEST A CHANGÉ AVEC LA FICHE. Il exigeait d'abord que
+       * « Enregistrer » soit GRISÉ ; un bouton éteint est un contrôle visible et inopérant, que ce
+       * dépôt refuse et qui n'apprend rien. La Bulle portant déjà son style, ce qu'il y a à faire
+       * est de le renommer ou de le supprimer, et c'est cela que la fiche montre.
+       */
+      assert.equal(bouton().style.display, 'none',
+        '« Enregistrer » reste offert alors qu’il n’y aurait qu’un doublon à enregistrer');
+      assert.notEqual(renommer().style.display, 'none', '« Renommer » devrait apparaître');
+      assert.notEqual(supprimer().style.display, 'none', '« Supprimer » devrait apparaître');
     });
 
     test('⚠️ ET LE BOUTON SE RALLUME DÈS QUE LA BULLE S’ÉCARTE DU STYLE', async () => {
@@ -1140,11 +1152,13 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       S.selectedId = b.id;
       updateSidePanel();
       await enregistrer('Ordinaire');
-      assert.equal(bouton().disabled, true, 'le repère');
+      assert.equal(bouton().style.display, 'none', 'le repère');
       b.bulleColor = '#123456';
       updateSidePanel();
-      assert.equal(bouton().disabled, false,
+      assert.notEqual(bouton().style.display, 'none',
         'la Bulle a changé de couleur : son apparence n’est plus celle du style enregistré');
+      assert.equal(renommer().style.display, 'none',
+        '« Renommer » reste offert alors que la Bulle ne porte plus aucun style');
     });
 
     test('⚠️ CHOISIR UN STYLE DANS LE MENU L’APPLIQUE VRAIMENT À LA BULLE', async () => {
@@ -1237,6 +1251,110 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       menu().value = '0';
       changer(menu());
       assert.equal(c.tailLen, 1.5, 'une pointe longue a été raccourcie par un style');
+    });
+
+    const modaleRenommer = () => document.getElementById('bubbleStyleRenameModal');
+    const champRenommer = () => document.getElementById('bubbleStyleRenameInput');
+    const erreurRenommer = () => document.getElementById('bubbleStyleRenameError');
+    /** Valide la modale de renommage, par le vrai écouteur. */
+    const validerRenommage = async () => {
+      const b = document.getElementById('bubbleStyleRenameConfirm');
+      for (const fn of (b._ecouteurs.click || [])) await fn({ target: b });
+    };
+
+    test('⚠️ RENOMMER OUVRE LA MODALE SUR LE NOM ACTUEL, ET L’ÉCRIT VRAIMENT', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      cliquer(renommer());
+      assert.equal(modaleRenommer().classList.contains('hidden'), false, 'la modale ne s’ouvre pas');
+      // ⚠️ LE CHAMP PART DU NOM ACTUEL : on renomme en corrigeant, pas en retapant.
+      assert.equal(champRenommer().value, 'Cri', 'le champ ne porte pas le nom actuel');
+      champRenommer().value = '  Hurlement ';
+      await validerRenommage();
+
+      assert.equal(modaleRenommer().classList.contains('hidden'), true, 'la modale est restée ouverte');
+      assert.equal(bibliothequeStyles3D()[0].nom, 'Hurlement', 'le nom n’a pas été écrit');
+      assert.equal(bibliothequeStyles3D()[0].style.bulleShape, 'etoile', 'le style a été touché');
+      assert.equal(bibliothequeStyles3D().length, 1, 'renommer a créé une seconde entrée');
+    });
+
+    /**
+     * ⚠️ VALIDER SANS RIEN CHANGER NE DOIT PAS ÊTRE REFUSÉ. Le contrôle des doublons doit ignorer
+     * l'entrée qu'on renomme, sans quoi le style serait déclaré doublon de LUI-MÊME : un refus qui
+     * paraît absurde à l'usage, et qu'aucune relecture du contrôle seul ne voit puisqu'il est juste
+     * pour l'ajout.
+     */
+    test('⚠️ RENOMMER UN STYLE EN LUI-MÊME EST ACCEPTÉ, EN UN AUTRE DÉJÀ PRIS NON', async () => {
+      definirBibliothequeStyles3D([]);
+      const a = nouvelleBulle();
+      S.selectedId = a.id;
+      a.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'rect';
+      updateSidePanel();
+      await enregistrer('Bloc');
+
+      // La Bulle sélectionnée porte « Bloc » : on le renomme en lui-même.
+      cliquer(renommer());
+      await validerRenommage();
+      assert.equal(modaleRenommer().classList.contains('hidden'), true,
+        'renommer un style en lui-même a été refusé');
+      assert.equal(bibliothequeStyles3D()[1].nom, 'Bloc');
+
+      // Mais prendre le nom de l'autre reste un doublon.
+      cliquer(renommer());
+      champRenommer().value = 'cri';
+      await validerRenommage();
+      assert.equal(modaleRenommer().classList.contains('hidden'), false,
+        'un doublon a été accepté au renommage');
+      assert.ok(erreurRenommer().textContent.length > 0, 'aucun motif affiché');
+      assert.deepEqual(bibliothequeStyles3D().map(e => e.nom), ['Cri', 'Bloc']);
+    });
+
+    /**
+     * ⚠️ LA SUPPRESSION PASSE PAR LA CONFIRMATION GÉNÉRIQUE, ET CE TEST LA TRAVERSE. `confirmAction`
+     * rend une promesse dont le résolveur vit dans `S.confirmActionResolve` : on répond comme
+     * l'utilisateur, au lieu de contourner le seul endroit où le geste peut être annulé.
+     *
+     * ⚠️ ET LE RÉSOLVEUR N'EST JAMAIS EFFACÉ par `confirmAction` : sans le remettre à `null` avant
+     * chaque ouverture, le test croirait qu'une confirmation a été demandée alors qu'il relit celle
+     * du geste précédent. Le piège est connu de ce dépôt (#426j).
+     */
+    test('⚠️ SUPPRIMER DEMANDE CONFIRMATION, ET « NON » NE SUPPRIME RIEN', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      S.confirmActionResolve = null;
+      cliquer(supprimer());
+      assert.equal(typeof S.confirmActionResolve, 'function',
+        'aucune confirmation n’a été demandée : un style partirait sur un clic');
+      S.confirmActionResolve(false);
+      await new Promise((r) => setTimeout(r, 0));
+      assert.equal(bibliothequeStyles3D().length, 1, '« Non » a quand même supprimé le style');
+
+      S.confirmActionResolve = null;
+      cliquer(supprimer());
+      S.confirmActionResolve(true);
+      await new Promise((r) => setTimeout(r, 0));
+      assert.equal(bibliothequeStyles3D().length, 0, 'le style n’a pas été supprimé');
+      // ⚠️ ET LA BULLE GARDE SON APPARENCE : supprimer un style ne touche aucune Bulle. C'est ce
+      // que le message de confirmation promet, et ce qu'il faut donc tenir.
+      assert.equal(b.bulleShape, 'etoile', 'supprimer un style a modifié la Bulle qui le portait');
+      // La section se relit : le menu disparaît, « Enregistrer » revient.
+      assert.equal(liste().style.display, 'none', 'le menu vide est resté affiché');
+      assert.notEqual(bouton().style.display, 'none', '« Enregistrer » n’est pas revenu');
     });
 
     test('⚠️ UN NOM REFUSÉ LAISSE LA MODALE OUVERTE, AVEC SON MOTIF SOUS LE CHAMP', async () => {
