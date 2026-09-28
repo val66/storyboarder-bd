@@ -197,6 +197,63 @@ describe('COMPLÉTUDE : aucune modale ne peut être oubliée', () => {
       `ces modales n'ont pas de fermeture déclarée : Échap ouvrirait le menu Projet derrière elles`);
   });
 
+  /**
+   * ⚠️ ÉCHAP NE SUFFIT PAS : UN CLIC EN DEHORS DOIT AUSSI REFERMER. La garde voisine n'exige qu'une
+   * fermeture déclarée pour Échap, et c'est ce trou qui a laissé passer deux modales ajoutées sans
+   * clic extérieur — signalé à l'usage : « cliquer en dehors de la modale n'annule pas l'action
+   * alors que pour supprimer si ». Copier le MARKUP d'une modale voisine ne copie pas ses
+   * comportements, et rien ne le rappelait.
+   *
+   * Le relevé a d'ailleurs trouvé DEUX modales antérieures dans le même cas, « Renommer le projet »
+   * et « Supprimer le projet » : le défaut n'était pas neuf, il n'avait simplement jamais été
+   * cherché ailleurs que là où il venait d'être signalé.
+   *
+   * ⚠️ ON LIT LES SOURCES, ET DEUX ÉCRITURES SONT ACCEPTÉES. Certaines modales comparent
+   * `e.target === laModale`, d'autres `e.target === this` depuis un écouteur posé sur elles : les
+   * deux disent la même chose, et n'en reconnaître qu'une ferait échouer des modales correctes.
+   */
+  test('⚠️ CHAQUE `.modal-overlay` SE FERME AUSSI AU CLIC EN DEHORS', () => {
+    /*
+     * ⚠️ LE RELEVÉ SUIT LES ALIAS, ET DEUX ÉCRITURES L'ONT OBLIGÉ. Une modale n'est pas toujours
+     * désignée par une variable portant son identifiant : `helpModal` passe par `helpModalOverlay`,
+     * et les deux modales de style par un helper qui reçoit l'élément en paramètre. Un relevé qui
+     * ne cherchait que `monModal.addEventListener` déclarait donc fautives trois modales correctes.
+     *
+     * On reconstruit d'abord la table alias → identifiant depuis les `const X =
+     * document.getElementById('Y')`, puis on cherche l'alias plutôt que l'identifiant.
+     */
+    const alias = {};
+    for (const m of SRC.matchAll(/const\s+(\w+)\s*=\s*document\.getElementById\('([^']+)'\)/g)) {
+      (alias[m[2]] = alias[m[2]] || []).push(m[1]);
+    }
+    /*
+     * ⚠️ UN SEUL HELPER EST RECONNU, ET IL EST NOMMÉ ICI. `conventionsModaleSaisie3D` pose les trois
+     * conventions d'une modale à saisie — clic dehors, Entrée, Échap — et le relevé l'accepte comme
+     * preuve. En écrire un second obligerait à revenir ici : c'est le prix, et il est voulu, sans
+     * quoi n'importe quelle indirection rendrait cette garde aveugle.
+     */
+    const preuve = (nom) => new RegExp(
+      `${nom}\\.addEventListener\\(\\s*'(?:mousedown|click)'`
+      + `|e\\.target === ${nom}\\b`
+      + `|conventionsModaleSaisie3D\\(\\s*${nom}\\b`
+    ).test(SRC);
+    /*
+     * ⚠️ ET LA TROISIÈME ÉCRITURE : L'ÉCOUTEUR POSÉ SANS PASSER PAR UNE VARIABLE. « Tracé » et
+     * « Terrain » font `getElementById('x').addEventListener('click', function(e){ if (e.target ===
+     * this) … })` — aucune variable à suivre, et `this` à la place de l'identifiant. C'est correct,
+     * et le relevé le reconnaît plutôt que d'exiger qu'on réécrive du code qui marche pour plaire à
+     * un test.
+     */
+    const posePlaceDirecte = (id) => new RegExp(
+      `getElementById\\('${id}'\\)\\.addEventListener\\(\\s*'(?:mousedown|click)'`
+    ).test(SRC);
+    const ferme = (id) => posePlaceDirecte(id) || [id, ...(alias[id] || [])].some(preuve);
+    const manquantes = modalesDuDocument().filter(id => !ferme(id));
+    assert.deepEqual(manquantes, [],
+      'ces modales ne se referment pas au clic en dehors, alors que leurs voisines le font : '
+      + manquantes.join(', '));
+  });
+
   test('aucune fermeture déclarée pour une modale qui n\'existe plus', () => {
     // L'inverse du précédent : une entrée orpheline signale un identifiant mal orthographié, ou une
     // modale supprimée. Les deux se lisent comme du câblage valide alors qu'ils ne servent à rien.

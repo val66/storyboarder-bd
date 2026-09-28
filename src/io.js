@@ -1232,6 +1232,22 @@ renameEntityInput.addEventListener('keydown', (e) => {
 renameEntityModal.addEventListener('mousedown', (e) => {
   if (e.target === renameEntityModal) closeRenameEntityModal();
 });
+/*
+ * ⚠️ LES DEUX MODALES DE PROJET N'AVAIENT PAS LE CLIC EXTÉRIEUR, et le manque est antérieur à ce
+ * chantier. Il a été trouvé en relevant, modale par modale, laquelle respecte la convention — ce
+ * qu'on n'avait fait qu'après un signalement sur une modale AJOUTÉE : « cliquer en dehors de la
+ * modale n'annule pas l'action alors que pour supprimer si ». Quatre modales sur dix-huit étaient
+ * dans ce cas ; deux venaient d'être écrites, deux étaient là depuis longtemps.
+ *
+ * Pour « Supprimer un projet », fermer au clic extérieur vaut ANNULER, ce qui est toujours le côté
+ * sûr d'une confirmation destructrice.
+ */
+renameProjectModal.addEventListener('mousedown', (e) => {
+  if (e.target === renameProjectModal) closeRenameProjectModal();
+});
+deleteProjectModal.addEventListener('mousedown', (e) => {
+  if (e.target === deleteProjectModal) closeDeleteProjectModal();
+});
 
 // ---------- Generic confirmation modal (replaces window.confirm()) ----------
 // window.confirm() opens a blocking NATIVE dialog under Electron: beyond the visual

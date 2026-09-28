@@ -7564,6 +7564,24 @@ sideBubbleStyleSaveBtn.addEventListener('click', () => {
 
 const fermerModaleRenommageStyle = () => bubbleStyleRenameModal.classList.add('hidden');
 
+/*
+ * ⚠️ LES TROIS CONVENTIONS D'UNE MODALE À SAISIE, QUE J'AVAIS OUBLIÉES. Signalé à l'usage : « dans
+ * la modale de renommage, cliquer en dehors n'annule pas l'action alors que pour supprimer si ».
+ * C'était exact, et il en manquait deux autres — Entrée pour valider, Échap pour renoncer. Copier
+ * le MARKUP d'une modale voisine ne copie pas ses comportements, et rien ne le rappelait : la garde
+ * des modales n'exigeait qu'une fermeture par Échap global.
+ *
+ * Entrée respecte le bouton ÉTEINT : valider au clavier ce qu'un clic refuse serait deux réponses à
+ * la même question.
+ */
+const conventionsModaleSaisie3D = (modale, champ, fermer, valider, bouton) => {
+  modale.addEventListener('mousedown', (e) => { if (e.target === modale) fermer(); });
+  champ.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !(bouton && bouton.disabled)) { e.preventDefault(); valider(); }
+    else if (e.key === 'Escape') { e.preventDefault(); fermer(); }
+  });
+};
+
 /**
  * L'index, dans la bibliothèque, du style que porte la Bulle sélectionnée — ou `-1`.
  *
@@ -7617,6 +7635,8 @@ sideBubbleStyleRenameBtn.addEventListener('click', () => {
 bubbleStyleRenameInput.addEventListener('input', majBoutonRenommageStyle3D);
 
 bubbleStyleRenameCancel.addEventListener('click', fermerModaleRenommageStyle);
+conventionsModaleSaisie3D(bubbleStyleRenameModal, bubbleStyleRenameInput, fermerModaleRenommageStyle,
+  () => bubbleStyleRenameConfirm.click(), bubbleStyleRenameConfirm);
 
 bubbleStyleRenameConfirm.addEventListener('click', async () => {
   const i = indexDuStyleCourant3D();
@@ -7658,6 +7678,8 @@ sideBubbleStyleDeleteBtn.addEventListener('click', async () => {
 
 const fermerModaleStyle = () => bubbleStyleModal.classList.add('hidden');
 bubbleStyleCancel.addEventListener('click', fermerModaleStyle);
+conventionsModaleSaisie3D(bubbleStyleModal, bubbleStyleInput, fermerModaleStyle,
+  () => bubbleStyleConfirm.click(), bubbleStyleConfirm);
 
 /** Les motifs de refus, traduits ICI. Le module pur rend une CLÉ, jamais une phrase. */
 const MESSAGE_REFUS_STYLE = {
