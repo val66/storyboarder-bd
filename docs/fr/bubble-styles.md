@@ -865,3 +865,14 @@ Bulle et ne peut donc rien dire d'une largeur. Il a fallu faire entrer la TAILLE
 test compare maintenant une Bulle de 120 px et une de 900 — et mesurer au CANEVAS le chemin
 réellement construit, points de la queue compris. Trois mutations de la conversion passaient jusque-là
 sans rien casser, dont celle qui fait sortir la couche au lieu de la rentrer : le symptôme d'origine.
+
+⚠️ **ET LA MIGRATION AVAIT OUBLIÉ UNE COPIE.** Le corps d'une Bulle et les disques détachés d'une
+chaîne de ronds ne se tracent pas de la même façon — un disque n'a pas de contour de forme — et ils
+appliquent donc le retrait d'une couche chacun de leur côté. Le passage du facteur au retrait n'a été
+fait que dans le constructeur du corps : celui des disques MULTIPLIAIT encore, et un retrait de 3 y
+triplait le rayon. Sur une chaîne de ronds en vieux papier, le papier débordait largement autour de
+chaque disque, pendant que la suite de tests restait verte.
+
+Une même décision appliquée à deux endroits finit toujours par n'être corrigée qu'à un seul. Les deux
+constructeurs restent séparés, parce qu'ils décrivent deux géométries ; c'est le TEST qui les
+parcourt tous les deux et exige d'eux le même retrait.

@@ -825,3 +825,13 @@ and so can say nothing about a width. SIZE had to enter the measurement — a te
 120 px Bubble with a 900 px one — and the path actually built had to be measured at the CANVAS, tail
 points included. Three mutations of the conversion had been passing unnoticed until then, including
 the one that pushes the layer OUT instead of in: the original symptom.
+
+⚠️ **AND THE MIGRATION HAD MISSED ONE COPY.** A Bubble's body and a circle chain's detached discs are
+not drawn the same way — a disc has no shape outline — so each applies a layer's inset on its own
+side. The move from factor to inset was only made in the body's builder: the discs' one was still
+MULTIPLYING, and an inset of 3 tripled the radius there. On an old-paper circle chain, the paper
+spilled well beyond each disc while the whole test suite stayed green.
+
+One decision applied in two places always ends up fixed in only one. The two builders stay separate,
+because they describe two geometries; it is the TEST that walks both and demands the same inset of
+them.

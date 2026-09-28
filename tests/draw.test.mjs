@@ -3089,6 +3089,47 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
       + `déclarée de ${bas.toFixed(1)} à ${haut.toFixed(1)} : la couche ne suit pas le retrait`);
   });
 
+  /**
+   * ⚠️ ET LES DISQUES DÉTACHÉS SUIVENT LE MÊME RETRAIT, PARCE QU'ILS ONT LEUR PROPRE CONSTRUCTEUR DE
+   * CHEMIN. Le corps d'une Bulle et les ronds d'une chaîne ne se tracent pas de la même façon — un
+   * disque n'a pas de contour de forme — et ils appliquent donc le retrait d'une couche chacun de
+   * son côté. Au passage du facteur multiplicatif au retrait en pixels, seule la première copie a
+   * été migrée : la seconde multipliait encore, et un retrait de 3 y TRIPLAIT le rayon. Sur une
+   * chaîne de ronds en vieux papier, la texture débordait largement autour de chaque disque —
+   * rapporté à l'usage, capture à l'appui, alors que la suite entière était verte.
+   *
+   * Une même décision appliquée à deux endroits finit toujours par n'être corrigée qu'à un seul.
+   * Ce test interroge donc les DEUX chemins, et exige d'eux la même géométrie.
+   */
+  test('⚠️ LE RETRAIT D’UNE COUCHE RENTRE AUSSI LES DISQUES DÉTACHÉS DE LA CHAÎNE', () => {
+    const o = bulle({ bulleShape: 'rect', tailShape: 'ronds', bulleTexture: 'papier' });
+    const { couches } = couchesDeTextureBulle(o, { couleur: '#E8D9B0', opacite: 1 });
+    const largeur = couches[1].retrait(0);
+    assert.ok(largeur > 0, 'la fixture suppose une couche rentrée');
+
+    /*
+     * Chaque disque est tracé une fois par COUCHE, puis une dernière fois pour son trait — le
+     * contour vrai, que la peinture ne doit pas avoir déplacé. Le relevé déduit la taille du groupe
+     * plutôt que de l'écrire : une couche de plus dans une texture ne doit pas rendre ce test faux.
+     */
+    const rayons = dessiner(o).filter(e => e.nom === 'ellipse').map(e => e.args[2]);
+    const parRond = rayons.length / (RONDS_NOMBRE - 1);
+    assert.ok(Number.isInteger(parRond) && parRond >= couches.length,
+      `${rayons.length} disques tracés pour ${RONDS_NOMBRE - 1} ronds : le relevé ne les voit pas tous`);
+    for (let i = 0; i < rayons.length; i += parRond) {
+      const dehors = rayons[i], dedans = rayons[i + 1];
+      assert.ok(dedans < dehors,
+        `la couche intérieure d’un rond mesure ${dedans.toFixed(1)} contre ${dehors.toFixed(1)} `
+        + 'pour le contour : elle SORT du disque et la texture débordera autour');
+      assert.ok(Math.abs((dehors - dedans) - largeur) < 0.01,
+        `le rond est rentré de ${(dehors - dedans).toFixed(2)} px au lieu de ${largeur.toFixed(2)} : `
+        + 'le disque n’applique pas le même retrait que le corps');
+      // Et le trait revient sur le contour vrai : il ne suit pas la dernière couche peinte.
+      assert.equal(rayons[i + parRond - 1], dehors,
+        'le trait d’un rond est posé sur une couche rentrée, et non sur son contour');
+    }
+  });
+
   test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {
     // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU. Il vérifiait qu'un `tailVisible: false` effaçait
     // une chaîne de ronds ; « Aucune » est désormais une valeur de la liste, et c'est elle qui

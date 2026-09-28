@@ -1951,8 +1951,22 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     // d'avant, qui écartait toute queue à tracé continu, les aurait tous fait disparaître.
     if (!queueVisible) return;
     for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
-      const cheminRond = (f) => {
-        const r = f ? rond.r * f(0) : rond.r;   // un disque n'a pas d'angle propre : facteur au repos
+      /*
+       * ⚠️ LE RETRAIT SE SOUSTRAIT, IL NE MULTIPLIE PAS — ET CETTE LIGNE EST LA COPIE QU'ON A
+       * OUBLIÉ DE MIGRER. Quand le rapprochement d'une couche était un FACTEUR, elle écrivait
+       * `rond.r * f(0)` ; le passage au retrait en pixels a été fait dans `versCouche`, qui
+       * construit le chemin du CORPS, et pas ici, qui construit celui des disques détachés. Un
+       * retrait de 3 y devenait un rayon TRIPLÉ : sur une chaîne de ronds texturée, le papier
+       * débordait largement autour de chaque disque. Rapporté à l'usage, capture à l'appui.
+       *
+       * Une même décision appliquée à deux endroits finit toujours par n'être corrigée qu'à un
+       * seul. Les deux constructeurs de chemin restent séparés — un disque n'a pas de contour de
+       * forme —, mais un test parcourt désormais les DEUX et exige d'eux la même géométrie.
+       *
+       * Le retrait est lu au repos : un disque n'a pas d'angle propre.
+       */
+      const cheminRond = (retrait) => {
+        const r = retrait ? Math.max(0, rond.r - retrait(0)) : rond.r;
         c.ellipse(rond.x, rond.y, r, r, 0, 0, Math.PI * 2);
       };
       c.beginPath();
