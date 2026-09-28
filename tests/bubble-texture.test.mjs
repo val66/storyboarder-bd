@@ -49,7 +49,7 @@ const rendu = (texture, ctx) => couchesDeTextureBulle(
 describe('LA GARANTIE : une Bulle sans texture se remplit comme avant', () => {
   test('RÉGRESSION : sans champ, UNE seule couche, le chemin tel quel, la couleur et l’opacité', () => {
     // Avant cette étape, `remplirEtCernerBulle3D` faisait : globalAlpha = opacité ; fillStyle =
-    // bulleColor ; fill(). Une seule couche sans facteur reproduit cela au pixel près — c'est ce
+    // bulleColor ; fill(). Une seule couche sans retrait reproduit cela au pixel près — c'est ce
     // qui protège toutes les Bulles enregistrées.
     assert.equal(textureDeLaBulle({}), TEXTURE_AUCUNE);
     assert.equal(textureDeLaBulle({ bulleTexture: null }), TEXTURE_AUCUNE);
@@ -58,7 +58,7 @@ describe('LA GARANTIE : une Bulle sans texture se remplit comme avant', () => {
 
     const r = rendu(undefined, { couleur: '#abcdef', opacite: 0.4 });
     assert.equal(r.couches.length, 1);
-    assert.equal(r.couches[0].facteur, null, 'le chemin doit être pris tel quel');
+    assert.equal(r.couches[0].retrait, null, 'le chemin doit être pris tel quel');
     assert.equal(r.couches[0].couleur, '#abcdef');
     assert.equal(r.couches[0].alpha, 0.4);
   });
@@ -445,7 +445,7 @@ describe('⚠️ LE GRAIN SE NOMME, IL NE SE CHARGE PAS', () => {
   test('aucune couche ne répète exactement une autre', () => {
     for (const cle of texturesConnues()) {
       const empreintes = rendu(cle).couches.map(c =>
-        JSON.stringify([c.motif || null, c.couleur, c.alpha, c.facteur ? c.facteur(0.31) : null]));
+        JSON.stringify([c.motif || null, c.couleur, c.alpha, c.retrait ? c.retrait(0.31) : null]));
       assert.equal(new Set(empreintes).size, empreintes.length,
         `« ${cle} » peint deux fois la même couche`);
     }
@@ -646,7 +646,7 @@ describe('⚠️ UNE TEXTURE NE CONNAÎT RIEN DE LA FORME', () => {
     // texture ne reçoit d'ailleurs aucune géométrie : ce test vérifie qu'elle n'en cherche pas.
     const decrire = (r) => JSON.stringify({
       couches: r.couches.map(c => [c.couleur, c.alpha, c.motif || null,
-        c.facteur ? c.facteur(0.3).toFixed(6) : null]),
+        c.retrait ? c.retrait(0.3).toFixed(6) : null]),
     });
     for (const texture of texturesConnues()) {
       const reference = decrire(couchesDeTextureBulle(
@@ -670,8 +670,8 @@ describe('⚠️ UNE TEXTURE NE CONNAÎT RIEN DE LA FORME', () => {
     const ondulation = (id) => {
       const { couches } = couchesDeTextureBulle(
         { id, bulleTexture: TEXTURE_PAPIER }, { couleur: '#E8D9B0', opacite: 1 });
-      const coeur = couches.find(c => c.facteur);
-      return JSON.stringify([0, 0.17, 0.41, 0.83].map(t => coeur.facteur(t).toFixed(9)));
+      const coeur = couches.find(c => c.retrait);
+      return JSON.stringify([0, 0.17, 0.41, 0.83].map(t => coeur.retrait(t).toFixed(9)));
     };
     assert.equal(ondulation('b13'), ondulation('b13'), 'la même Bulle doit se redessiner à l’identique');
     assert.notEqual(ondulation('b13'), ondulation('zz9'), 'deux Bulles doivent différer');
@@ -687,11 +687,20 @@ describe('Chaque texture fait ce qui la distingue', () => {
     const r = rendu(TEXTURE_PAPIER, { couleur: '#E8D9B0' });
     assert.ok(r.couches.length >= 2, 'il faut au moins le liseré et le cœur');
     const [liseré, coeur] = r.couches;
-    assert.equal(liseré.facteur, null, 'le liseré occupe le contour entier');
+    assert.equal(liseré.retrait, null, 'le liseré occupe le contour entier');
     assert.notEqual(liseré.couleur.toLowerCase(), '#e8d9b0', 'le liseré doit être teinté');
     assert.equal(coeur.couleur.toLowerCase(), '#e8d9b0', 'le cœur garde la couleur choisie');
-    assert.ok(coeur.facteur(0.2) < 1 && coeur.facteur(0.2) > 0.7,
-      'le cœur laisse voir un liseré, sans avaler la Bulle');
+    /*
+     * ⚠️ LE RETRAIT EST UNE LARGEUR EN PIXELS, ET CETTE ASSERTION MESURAIT UN FACTEUR. Elle exigeait
+     * « entre 0,7 et 1 », c'est-à-dire un rapprochement PROPORTIONNEL : douze pour cent du rayon
+     * passaient donc pour un liseré, alors que cela fait douze pixels sur une Bulle de 200 et
+     * davantage sur une grande — un contour intérieur foncé, relevé à l'usage. Une fourchette sur
+     * un facteur ne pouvait pas attraper cela : elle ne connaît pas la taille de la Bulle.
+     *
+     * En pixels, la borne est absolue et dit ce qu'on veut : quelques pixels, jamais un bandeau.
+     */
+    assert.ok(coeur.retrait(0.2) > 1 && coeur.retrait(0.2) < 6,
+      `le liseré fait ${coeur.retrait(0.2).toFixed(1)} px : ce n’est plus un liseré`);
     // Le liseré est plus SOMBRE et plus CHAUD : une auréole d'humidité ne grise pas le papier.
     const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
     const [lr, lg, lb] = rvb(liseré.couleur), [cr, , cb] = rvb('#E8D9B0');
@@ -703,7 +712,31 @@ describe('Chaque texture fait ce qui la distingue', () => {
   test('et le cœur du papier ondule, pour que le liseré ne soit pas un trait régulier', () => {
     const coeur = rendu(TEXTURE_PAPIER).couches[1];
     const vus = new Set();
-    for (let i = 0; i < 16; i++) vus.add(coeur.facteur(i / 16).toFixed(4));
+    for (let i = 0; i < 16; i++) vus.add(coeur.retrait(i / 16).toFixed(4));
     assert.ok(vus.size > 8, `${vus.size} valeurs distinctes sur 16 : le liseré est d’épaisseur constante`);
+  });
+
+  /**
+   * ⚠️ LE LISERÉ NE GROSSIT PAS AVEC LA BULLE, ET C'EST LA PROPRIÉTÉ QUI MANQUAIT À TOUS LES AUTRES.
+   * Tant que le retrait était un FACTEUR, il retirait une part du rayon : quelques pixels sur une
+   * petite Bulle, un bandeau sur une grande, et trois fois plus sur la queue que sur le corps
+   * puisque ses points sont trois fois plus loin du centre. Les deux défauts rapportés à l'usage —
+   * « des contours intérieurs foncés » et « la texture bave au niveau de la pointe » — étaient la
+   * même faute vue de deux endroits.
+   *
+   * Aucun test ne pouvait l'attraper, parce qu'aucun ne faisait entrer la TAILLE de la Bulle dans la
+   * mesure : le contrat ne parlait que de proportions. Celui-ci compare deux Bulles.
+   */
+  test('⚠️ LE LISERÉ FAIT LA MÊME LARGEUR SUR UNE PETITE ET SUR UNE GRANDE BULLE', () => {
+    const petite = couchesDeTextureBulle(
+      { id: 'b', type: 'bulle', x: 0, y: 0, w: 120, h: 60, bulleTexture: TEXTURE_PAPIER },
+      { couleur: '#E8D9B0', opacite: 1 });
+    const grande = couchesDeTextureBulle(
+      { id: 'b', type: 'bulle', x: 0, y: 0, w: 900, h: 450, bulleTexture: TEXTURE_PAPIER },
+      { couleur: '#E8D9B0', opacite: 1 });
+    for (const t of [0, 0.2, 0.55, 0.9]) {
+      assert.equal(petite.couches[1].retrait(t), grande.couches[1].retrait(t),
+        `à t=${t}, le liseré diffère entre une Bulle de 120 px et une de 900 : il suit le rayon`);
+    }
   });
 });

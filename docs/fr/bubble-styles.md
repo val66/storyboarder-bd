@@ -835,3 +835,33 @@ d'attention : rien dans la forme du document n'obligeait à regarder les deux en
 ⚠️ **ET « VU » N'EST PAS « PROUVÉ ».** Deux corrections portant l'étiquette `vu` — l'encart système du
 Lecteur omniscient, la bulle sans contour de Jungle Juice — n'ont plus de fragment à montrer.
 L'étiquette dit d'où vient l'affirmation, pas si le lecteur peut la contrôler.
+
+## Le liseré du vieux papier était un facteur, et il fallait une largeur
+
+⚠️ **DEUX DÉFAUTS RAPPORTÉS À L'USAGE, UNE SEULE CAUSE.** « Certaines textures bavent un peu en
+dehors des contours de la bulle, au niveau de la pointe » et « avec Vieux papier on a des contours
+intérieurs foncés qui n'ont rien à faire ici ». Les deux viennent du même endroit.
+
+Une couche de texture est le contour de la Bulle ramené vers son centre. Ce rapprochement était un
+**facteur multiplicatif** : le cœur du vieux papier valait 0,88 du rayon, le liseré sale étant ce qui
+dépasse. Or le commentaire du module décrivait ce liseré comme faisant « deux à trois pixels de
+large ». Douze pour cent du rayon font douze pixels sur les flancs d'une Bulle de 200 px, et
+davantage sur une grande : ce n'était plus un liseré mais un contour intérieur foncé. Le commentaire
+disait vrai de l'intention, faux du code, et personne ne les a confrontés.
+
+**Et sur une QUEUE, un facteur ne veut rien dire.** Ses points sont trois fois plus loin du centre
+que ceux du corps : la même proportion y retire trois fois plus de pixels. Le cœur clair rentrait
+donc massivement dans la pointe, et la couche sombre restait exposée tout autour — ce qui se lit
+comme une texture qui déborde.
+
+Une couche déclare désormais un **retrait en pixels**, converti en rapprochement au moment du tracé,
+où le rayon de chaque point est connu. La texture n'a pas à connaître la géométrie ; le dessin n'a
+pas à connaître l'intention. Le liseré fait la même épaisseur sur le corps, sur la queue, et quelle
+que soit la taille de la Bulle.
+
+⚠️ **AUCUN TEST NE POUVAIT ATTRAPER CELA, ET LA RAISON MÉRITE D'ÊTRE RETENUE.** Le contrat ne parlait
+que de proportions : une assertion « le facteur est entre 0,7 et 1 » ne connaît pas la taille de la
+Bulle et ne peut donc rien dire d'une largeur. Il a fallu faire entrer la TAILLE dans la mesure — un
+test compare maintenant une Bulle de 120 px et une de 900 — et mesurer au CANEVAS le chemin
+réellement construit, points de la queue compris. Trois mutations de la conversion passaient jusque-là
+sans rien casser, dont celle qui fait sortir la couche au lieu de la rentrer : le symptôme d'origine.

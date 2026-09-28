@@ -1634,7 +1634,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   // vieux papier a besoin.
   const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
   if (phase === PHASE_TOUT || phase === PHASE_FOND) couches.forEach((couche, i) => {
-    if (i > 0 || couche.facteur) { c.beginPath(); construireChemin(couche.facteur); c.closePath(); }
+    if (i > 0 || couche.retrait) { c.beginPath(); construireChemin(couche.retrait); c.closePath(); }
     c.globalAlpha = couche.alpha;
     // ⚠️ LE REPLI SUR L'APLAT N'EST PAS SILENCIEUX, ET CE N'EST PAS LA MÊME CHOSE QUE DE SE TAIRE.
     // Un grain absent — non encore chargé, ou jamais cuit — ne peut pas faire échouer la peinture
@@ -1653,7 +1653,7 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   c.globalAlpha = 1;
   if (phase === PHASE_FOND || phase === PHASE_TEXTE) return;
   // Le trait se pose sur le CONTOUR VRAI, pas sur la dernière couche peinte.
-  if (couches.length > 1 || couches[0].facteur || phase === PHASE_TRAIT) {
+  if (couches.length > 1 || couches[0].retrait || phase === PHASE_TRAIT) {
     c.beginPath(); construireChemin(null); c.closePath();
   }
   if (o.bulleBorderVisible === false) return;
@@ -1865,14 +1865,21 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
    * n'ont pas de rang dedans. Indexer sur le contour aurait laissé la queue pleinement opaque
    * pendant que le corps s'estompe.
    */
-  const versCouche = (facteur, x, y) => {
-    if (!facteur) return { x, y };
+  const versCouche = (retrait, x, y) => {
+    if (!retrait) return { x, y };
     const t = ((Math.atan2(y - cy, x - cx) / (Math.PI * 2)) % 1 + 1) % 1;
-    const f = facteur(t);
+    // ⚠️ LE RETRAIT EST UNE LARGEUR EN PIXELS, CONVERTIE ICI SEULEMENT. C'était une FRACTION du
+    // rayon, ce qui donnait un liseré large de douze pour cent du rayon sur le corps et trois fois
+    // plus de pixels sur la queue, dont les points sont trois fois plus loin du centre. Une largeur
+    // se comporte bien partout ; la conversion doit donc se faire ici, où le rayon du point est
+    // connu, et non dans la texture, qui ne sait rien de la géométrie.
+    const r = Math.hypot(x - cx, y - cy);
+    if (r < 1e-6) return { x, y };
+    const f = Math.max(0, 1 - retrait(t) / r);
     return { x: cx + (x - cx) * f, y: cy + (y - cy) * f };
   };
 
-  /** Construit le chemin de la Bulle, éventuellement rapproché du centre. `facteur` peut être nul. */
+  /** Construit le chemin de la Bulle, éventuellement rentré d'un retrait. `retrait` peut être nul. */
   const construireChemin = (facteur) => {
   const dep = (x, y) => { const p = versCouche(facteur, x, y); c.moveTo(p.x, p.y); };
   const vers = (x, y) => { const p = versCouche(facteur, x, y); c.lineTo(p.x, p.y); };

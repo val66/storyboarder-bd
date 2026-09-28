@@ -83,6 +83,40 @@ export function toile(w, h, s = SURECHANTILLONNAGE) {
       }
     }
   };
+  /**
+   * Remplit un polygone d'une couverture donnée, par la règle pair-impair.
+   *
+   * ⚠️ AVEC UN NIVEAU, PARCE QU'UNE PLANCHE QUI MONTRE DES COUCHES DOIT LES DISTINGUER. Un
+   * remplissage de Bulle est une PILE : sans pouvoir peindre deux gris différents, la planche ne
+   * peut rien dire d'un défaut qui tient au rapport entre deux couches — et c'est exactement le
+   * genre de défaut qu'on lui demande de montrer.
+   */
+  const remplirPolygone = (pts, niveau = 1) => {
+    if (!pts || pts.length < 3) return;
+    let minY = Infinity, maxY = -Infinity;
+    for (const p of pts) { minY = Math.min(minY, p.y * s); maxY = Math.max(maxY, p.y * s); }
+    for (let y = Math.max(0, Math.floor(minY)); y <= Math.min(H - 1, Math.ceil(maxY)); y++) {
+      const croisements = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        const ay = a.y * s, by = b.y * s;
+        if ((ay <= y && by > y) || (by <= y && ay > y)) {
+          croisements.push(a.x * s + ((y - ay) / (by - ay)) * (b.x * s - a.x * s));
+        }
+      }
+      croisements.sort((u, v) => u - v);
+      for (let k = 0; k + 1 < croisements.length; k += 2) {
+        for (let x = Math.max(0, Math.ceil(croisements[k]));
+             x <= Math.min(W - 1, Math.floor(croisements[k + 1])); x++) {
+          // ⚠️ ON POSE, ON NE MAXIMISE PAS : une couche RECOUVRE celle d'en dessous. Prendre le
+          // maximum — ce que fait `ligne`, à juste titre, pour qu'un trait repassé ne noircisse
+          // pas — rendait toute couche claire invisible sous une couche sombre, et la planche
+          // montrait un aplat noir là où le rendu réel a deux teintes.
+          couv[y * W + x] = niveau;
+        }
+      }
+    }
+  };
   const reduire = () => {
     const out = Buffer.alloc(w * h * 3);
     for (let y = 0; y < h; y++) {
@@ -120,7 +154,7 @@ export function toile(w, h, s = SURECHANTILLONNAGE) {
     return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
       bloc('IHDR', ihdr), bloc('IDAT', zlib.deflateSync(brut)), bloc('IEND', Buffer.alloc(0))]);
   };
-  return { ligne, effacerEllipse, png };
+  return { ligne, effacerEllipse, remplirPolygone, png };
 }
 
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');

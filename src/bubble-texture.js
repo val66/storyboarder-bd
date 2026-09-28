@@ -11,8 +11,8 @@
  * SUGGÉRER depuis #431b : son grain est photographié, donc monochrome, donc la couleur redevient
  * libre sans que le papier cesse d'être du papier.
  *
- * Une texture rend une chose : `couches` — le chemin de la Bulle ramené vers son centre par un
- * facteur, éventuellement variable selon l'ANGLE, peint d'une couleur, d'une opacité, et
+ * Une texture rend une chose : `couches` — le chemin de la Bulle rentré vers son centre d'un
+ * RETRAIT EN PIXELS, éventuellement variable selon l'ANGLE, peint d'une couleur, d'une opacité, et
  * éventuellement habillé d'un GRAIN que la couche se contente de NOMMER.
  *
  * ⚠️ IL A EXISTÉ UN SECOND AXE, `taches`, ET IL EST PARTI EN #431b3. Des disques libres posés en
@@ -26,12 +26,16 @@
  * — où l'utilisateur les demande explicitement. Garder des auréoles cachées dans le remplissage,
  * c'était une seconde source de taches que personne ne commandait.
  *
- * ⚠️ LE FACTEUR DÉPEND DE L'ANGLE, PAS DU RANG DU POINT, et la première écriture faisait l'inverse.
- * Un facteur indexé sur les points du CONTOUR ne sait rien dire de la QUEUE, dont les points ne
+ * ⚠️ LE RETRAIT DÉPEND DE L'ANGLE, PAS DU RANG DU POINT, et la première écriture faisait l'inverse.
+ * Un retrait indexé sur les points du CONTOUR ne sait rien dire de la QUEUE, dont les points ne
  * viennent pas du contour : la queue serait restée pleinement opaque pendant que le corps
- * s'estompe. Un facteur fonction de l'angle s'applique à n'importe quel point du chemin, d'où qu'il
- * vienne — et il rend au passage la texture encore plus étrangère à la forme, puisqu'elle ne reçoit
- * même plus le nombre de points.
+ * s'estompe. Une fonction de l'angle s'applique à n'importe quel point du chemin, d'où qu'il
+ * vienne — et elle rend au passage la texture encore plus étrangère à la forme, puisqu'elle ne
+ * reçoit même plus le nombre de points.
+ *
+ * ⚠️ ET IL EST EN PIXELS, CE QU'IL N'A PAS TOUJOURS ÉTÉ. Un facteur MULTIPLICATIF retire une part du
+ * rayon : beaucoup sur une grande Bulle, trois fois plus sur la queue que sur le corps. Les deux
+ * défauts que cela a produits sont décrits au-dessus de `couchesDeTextureBulle`.
  *
  * ⚠️ POURQUOI DES COUCHES PLUTÔT QU'UN DÉGRADÉ DE CANEVAS. Un dégradé est radial ou linéaire ; une
  * forme est quelconque. Calé sur la boîte englobante — la seule chose qu'un dégradé sache viser —
@@ -351,7 +355,7 @@ export function rvbDeCouleur3D(couleur){
  * sombres au pourtour. Ajouter le liseré « pour faire pareil » aurait été décorer sans motif.
  */
 const couchesDUneMatiere = (grain) => (o, ctx) => ({
-  couches: [{ facteur: null, motif: grain, couleur: ctx.couleur, alpha: ctx.opacite }],
+  couches: [{ retrait: null, motif: grain, couleur: ctx.couleur, alpha: ctx.opacite }],
 });
 
 /**
@@ -376,11 +380,23 @@ const couchesDUneMatiere = (grain) => (o, ctx) => ({
  *
  * Avec elles part tout l'axe `taches` du contrat, qu'aucune texture ne peuplait plus.
  */
+/**
+ * La largeur du liseré sale du vieux papier, EN PIXELS, et son irrégularité.
+ *
+ * ⚠️ TROIS PIXELS, COMME LE RELEVÉ LE DIT ET COMME LE COMMENTAIRE L'ANNONÇAIT DÉJÀ. Il était écrit
+ * juste en dessous que « le liseré sale fait deux à trois pixels de large », au-dessus d'un code qui
+ * en retirait douze pour cent du RAYON — soit douze pixels sur les flancs d'une Bulle de 200, et
+ * davantage sur une grande. Le commentaire disait vrai de l'intention et faux du code, et personne
+ * ne les a confrontés jusqu'à ce que l'usage signale un contour intérieur foncé.
+ */
+const LISERE_PAPIER = 3;
+const LISERE_VARIATION = 0.35;
+
 function couchesPapier(o, ctx){
   const graine = graineDeLObjet(o);
   // ⚠️ LE BORD EST PLUS SALE QUE LE CŒUR, et c'est ce qui reste du relevé de La Licorne : le
   // pourtour d'un cartouche y est nettement plus brun que son milieu. Deux couches suffisent — le
-  // contour entier dans une teinte terre, puis la couleur choisie ramenée un peu vers le centre.
+  // contour entier dans une teinte terre, puis la couleur choisie rentrée d'un liseré.
   // Il en reste un liseré sale tout autour.
   //
   // ⚠️ LES DEUX COUCHES PORTENT LE GRAIN, PAS SEULEMENT CELLE DU CŒUR. Le liseré sale fait deux à
@@ -388,8 +404,8 @@ function couchesPapier(o, ctx){
   // plastique posé autour du papier. Le motif étant carrelé dans le repère de la page, il traverse
   // la frontière des deux couches sans raccord visible.
   const couches = [
-    { facteur: null, motif: GRAIN_PAPIER, couleur: teinte(ctx.couleur, -0.42), alpha: ctx.opacite },
-    { facteur: (t) => 0.88 + bruitCyclique(graine, t, 4242, 5) * 0.06,
+    { retrait: null, motif: GRAIN_PAPIER, couleur: teinte(ctx.couleur, -0.42), alpha: ctx.opacite },
+    { retrait: (t) => LISERE_PAPIER * (1 + bruitCyclique(graine, t, 4242, 5) * LISERE_VARIATION),
       motif: GRAIN_PAPIER, couleur: ctx.couleur, alpha: ctx.opacite },
   ];
   return { couches };
@@ -398,7 +414,7 @@ function couchesPapier(o, ctx){
 const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
-    rendu: (o, ctx) => ({ couches: [{ facteur: null, couleur: ctx.couleur, alpha: ctx.opacite }] }),
+    rendu: (o, ctx) => ({ couches: [{ retrait: null, couleur: ctx.couleur, alpha: ctx.opacite }] }),
     // Aucune suggestion : le sélecteur commande seul, sur un blanc par défaut.
     teinteParDefaut: null,
     couleurTexteParDefaut: null,
@@ -601,8 +617,23 @@ export function grainsAPrecharger3D(cles = texturesConnues()){
 /**
  * Ce qu'il y a à peindre : `{ couches, taches }`. Fonction PURE.
  *
- * Une couche : `facteur` vaut `null` pour « le chemin tel quel », ou une fonction de l'angle
- * normalisé `t` dans [0, 1[ rendant le facteur de rapprochement vers le centre en ce point.
+ * Une couche : `retrait` vaut `null` pour « le chemin tel quel », ou une fonction de l'angle
+ * normalisé `t` dans [0, 1[ rendant, EN PIXELS, de combien le contour rentre vers le centre.
+ *
+ * ⚠️ EN PIXELS, ET NON EN FRACTION DU RAYON — DEUX DÉFAUTS SONT SORTIS DE CETTE CONFUSION. C'était
+ * un facteur multiplicatif : le liseré sale du vieux papier valait 0,88 du rayon, que le commentaire
+ * de ce module décrivait pourtant comme « deux à trois pixels ». Douze pour cent du rayon font 12 px
+ * sur les flancs d'une Bulle de 200 px, et davantage encore sur une grande : ce n'était plus un
+ * liseré mais un CONTOUR INTÉRIEUR FONCÉ, relevé à l'usage.
+ *
+ * Et surtout, un rapprochement radial ne veut rien dire pour une QUEUE, dont les points sont trois
+ * fois plus loin du centre que ceux du corps : la même proportion y retirait trois fois plus de
+ * pixels, la couche claire y rentrait massivement, et la couche sombre restait exposée tout autour
+ * de la pointe — ce que l'usage a décrit comme une texture qui « bave en dehors des contours au
+ * niveau de la pointe ».
+ *
+ * Une largeur en pixels se comporte bien aux deux endroits : le liseré fait la même épaisseur sur le
+ * corps et sur la queue, quelle que soit la taille de la Bulle.
  * Une tache : `x`, `y` dans [-1, 1] et `r` en fraction de la demi-zone inscriptible.
  *
  * ⚠️ L'OPACITÉ DE LA BULLE MULTIPLIE CELLE DE CHAQUE COUCHE, elle ne la remplace pas. Les deux

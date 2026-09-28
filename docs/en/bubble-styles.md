@@ -796,3 +796,32 @@ the shape of the document forced anyone to look at the two together.
 ⚠️ **AND "SEEN" IS NOT "PROVEN".** Two corrections carrying the `seen` label — Omniscient Reader's
 system window, Jungle Juice's outline-less bubble — no longer have a fragment to show. The label says
 where a claim comes from, not whether the reader can check it.
+
+## The old-paper rim was a factor, and it needed a width
+
+⚠️ **TWO DEFECTS REPORTED FROM USE, ONE SINGLE CAUSE.** "Some textures bleed a little outside the
+bubble's outline, at the tail" and "with Old paper there are dark inner outlines that have no
+business being there". Both come from the same place.
+
+A texture layer is the Bubble's outline drawn in towards its centre. That inset was a **multiplying
+factor**: the old paper's core sat at 0.88 of the radius, the dirty rim being whatever showed past
+it. Yet the module's comment described that rim as "two to three pixels wide". Twelve percent of the
+radius is twelve pixels on the flanks of a 200 px Bubble, and more on a large one: it was no longer
+a rim but a dark inner outline. The comment was true of the intent and false of the code, and nobody
+had confronted the two.
+
+**And on a TAIL a factor means nothing.** Its points are three times further from the centre than
+the body's: the same proportion removes three times as many pixels there. The pale core therefore
+pulled far back into the tail, leaving the dark layer exposed all around it — which reads as a
+texture spilling out.
+
+A layer now declares an **inset in pixels**, converted into an inward move at drawing time, where
+each point's radius is known. The texture need not know the geometry; the drawing need not know the
+intent. The rim is the same thickness on the body, on the tail, and at any Bubble size.
+
+⚠️ **NO TEST COULD CATCH THIS, AND THE REASON IS WORTH KEEPING.** The contract only spoke of
+proportions: an assertion that "the factor is between 0.7 and 1" knows nothing of the Bubble's size
+and so can say nothing about a width. SIZE had to enter the measurement — a test now compares a
+120 px Bubble with a 900 px one — and the path actually built had to be measured at the CANVAS, tail
+points included. Three mutations of the conversion had been passing unnoticed until then, including
+the one that pushes the layer OUT instead of in: the original symptom.
