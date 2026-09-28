@@ -566,6 +566,47 @@ export function pointDuContourBulle(o, theta){
   return formeOuLever(o).pointDuContour(o, theta);
 }
 
+/**
+ * Le demi-écart ANGULAIRE dont il faut s'éloigner de `theta`, de part et d'autre, pour que la corde
+ * joignant les deux points du contour mesure `2 × demiCorde`. Fonction PURE.
+ *
+ * ⚠️ POURQUOI UNE OUVERTURE SE DEMANDE EN PIXELS ET NON EN ANGLE. Les queues ouvrent le contour d'un
+ * écart angulaire fixe, ce qui leur suffit : leur largeur de base n'a pas d'autre maître. La chaîne
+ * de ronds, elle, doit ouvrir EXACTEMENT ce que son premier rond recouvre — un nombre de pixels que
+ * le rond décide, et qui devient un angle différent selon la forme et les proportions de la Bulle.
+ * La queue dit donc une longueur, et c'est la FORME qui la convertit en angle, chacune sur son
+ * propre contour. Le partage est celui de tout ce module : la queue ne connaît pas les contours, la
+ * forme ne connaît pas les queues.
+ *
+ * La recherche est une dichotomie : la corde croît avec l'écart tant qu'on reste sous un demi-tour,
+ * ce que le contrat de forme étoilée (#425e) garantit pour toute forme du registre.
+ */
+export const PAS_DE_DICHOTOMIE_CORDE = 24;
+export function demiAngleDUneCorde3D(o, theta, demiCorde){
+  const cible = Math.abs(Number(demiCorde)) || 0;
+  if (!(cible > 0)) return 0;
+  const ecart = (a) => {
+    const p1 = pointDuContourBulle(o, theta - a), p2 = pointDuContourBulle(o, theta + a);
+    return Math.hypot(p2.x - p1.x, p2.y - p1.y) / 2;
+  };
+  // ⚠️ LA BORNE HAUTE EST UN QUART DE TOUR, ET NON UN DEMI : LA CORDE N'EST PAS MONOTONE JUSQU'À π.
+  // Elle croît, culmine au diamètre, puis REDESCEND vers zéro quand les deux points se rejoignent
+  // de l'autre côté. Ma première écriture bornait à π, où la corde vaut 0 : le test « la corde
+  // obtenue vaut la corde visée » a donc rendu un demi-tour pour toute valeur demandée. Une
+  // dichotomie suppose la monotonie, et l'intervalle fait partie de cette hypothèse.
+  //
+  // Au quart de tour, la corde est maximale. L'y trouver trop courte signifie qu'on demande une
+  // ouverture plus large que la Bulle : on ouvre alors au maximum plutôt que de lever — le rendu
+  // montre un rond qui mange la Bulle, ce qui est bien ce qu'on a demandé en l'agrandissant tant.
+  let bas = 0, haut = Math.PI / 2;
+  if (ecart(haut) <= cible) return haut;
+  for (let i = 0; i < PAS_DE_DICHOTOMIE_CORDE; i++) {
+    const milieu = (bas + haut) / 2;
+    if (ecart(milieu) < cible) bas = milieu; else haut = milieu;
+  }
+  return (bas + haut) / 2;
+}
+
 /** Les sommets du contour, ou `null` si la forme est lisse. Fonction PURE. */
 export function pointsDuContourBulle(o){
   return formeOuLever(o).pointsDuContour(o);

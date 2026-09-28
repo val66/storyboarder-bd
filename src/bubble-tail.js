@@ -215,8 +215,15 @@ function traceCheveu(o, base1, pointe, base2){
  * sur la BULLE, dont ils sont une fraction — c'est elle qui donne l'échelle du lettrage — et
  * l'allongement est absorbé par les intervalles.
  */
-const RONDS_NOMBRE = 3;
-const RONDS_DECROISSANCE = 0.62;    // chaque rond vaut tant de fois le précédent
+/**
+ * Le nombre de ronds de la chaîne, CALOTTE COMPRISE.
+ *
+ * ⚠️ EXPORTÉ POUR QUE LES TESTS NE LE RECOPIENT PAS. Depuis que le premier rond ouvre le contour au
+ * lieu d'être détaché, il existe deux comptes — trois ronds à l'écran, deux éléments détachés — et
+ * un test qui écrirait « 2 » en dur prendrait la différence pour une constante.
+ */
+export const RONDS_NOMBRE = 3;
+export const RONDS_DECROISSANCE = 0.62;    // chaque rond vaut tant de fois le précédent
 const RONDS_INTERVALLE = 0.55;      // écart MINIMAL entre deux ronds, en fraction du plus petit
 /**
  * Part du premier rond située à l'intérieur du contour.
@@ -327,6 +334,85 @@ function rondsDetaches(o, bord, pointe){
   return out;
 }
 
+/**
+ * La demi-corde que cette queue demande au contour de lui ouvrir, en pixels — ou `null` si elle se
+ * contente de l'écartement angulaire commun. Fonction PURE.
+ *
+ * ⚠️ LE PREMIER ROND EST UNE OUVERTURE DU CONTOUR, PAS UN DISQUE POSÉ DESSUS. Il chevauchait le
+ * contour, qui continuait de passer devant lui : on voyait le trait de la Bulle barrer la base du
+ * rond, d'un point de contact à l'autre. Relevé à l'usage — « l'espace entre les deux points de
+ * contact ne devrait pas être visible, comme pour les autres pointes ». Et c'est bien ce que font
+ * les autres : le triangle, l'éclair et le cheveu REMPLACENT l'arc du contour situé sous eux.
+ *
+ * La chaîne fait donc désormais les deux, ce que la structure de ce registre prévoyait sans que
+ * personne s'en serve : un tracé continu — la calotte du premier rond — ET des éléments détachés,
+ * les suivants. L'avertissement en tête de module porte sur la FUSION des deux notions en une
+ * liste de sous-chemins, pas sur le fait qu'une queue emploie les deux ; elles restent déclarées
+ * séparément et se remplissent différemment, ce qui est tout l'objet de la distinction.
+ *
+ * La demi-corde est celle du rond à la profondeur où il coupe le contour : à `RONDS_PART_DEDANS` de
+ * 0,5 elle vaudrait exactement le rayon, et elle s'en écarte à mesure que le rond s'enfonce.
+ */
+export function demiCordeDeLOuverture3D(o){
+  if (queueDeLaBulle(o) !== QUEUE_RONDS) return null;
+  const r = rayonDuPremierRond3D(o);
+  if (!(r > 0)) return null;
+  const recul = r * (2 * RONDS_PART_DEDANS - 1);   // de combien le centre passe sous le contour
+  return Math.sqrt(Math.max(0, r * r - recul * recul));
+}
+
+const RONDS_POINTS_CALOTTE = 24;
+
+/**
+ * La calotte du premier rond, émise entre les deux bases : l'arc de cercle de rayon `r1` qui les
+ * joint en bombant vers le dehors.
+ *
+ * ⚠️ LE CENTRE EST RECALCULÉ DEPUIS LES BASES, ET NON REPRIS DE LA DISPOSITION DE LA CHAÎNE. Les
+ * bases sont posées sur le contour par la forme, qui a converti la demi-corde en angle sur SON
+ * contour ; un centre calculé ailleurs s'en écarterait d'un arrondi, et l'arc ne rejoindrait pas
+ * exactement le trait de la Bulle. Le seul point de vérité est donc la paire de bases.
+ */
+function calotteDuPremierRond(o, base1, pointe, base2){
+  const r = rayonDuPremierRond3D(o);
+  const mx = (base1.x + base2.x) / 2, my = (base1.y + base2.y) / 2;
+  const demi = norme(base2.x - base1.x, base2.y - base1.y) / 2;
+  if (!(r > demi)) {
+    // Le rond ne peut pas couvrir cette corde : on rend un demi-cercle sur la corde elle-même,
+    // seule réponse qui reste un arc. Ne rien rendre laisserait le contour ouvert.
+    return arcEntre(base1, base2, demi, mx, my, pointe, o);
+  }
+  const fleche = Math.sqrt(r * r - demi * demi);
+  // Le centre est sur la normale à la corde, du côté OPPOSÉ à la pointe : c'est ce qui fait bomber
+  // l'arc vers le dehors et non vers l'intérieur de la Bulle.
+  const nx = -(base2.y - base1.y) / (demi * 2 || 1), ny = (base2.x - base1.x) / (demi * 2 || 1);
+  const vers = (pointe.x - mx) * nx + (pointe.y - my) * ny;
+  const signe = vers >= 0 ? -1 : 1;
+  return arcEntre(base1, base2, r, mx + nx * fleche * signe, my + ny * fleche * signe, pointe, o);
+}
+
+/** Les points de l'arc de centre (cx, cy) et rayon `r` allant de `a` à `b` par le plus LONG chemin. */
+function arcEntre(a, b, r, cx, cy, pointe){
+  const a0 = Math.atan2(a.y - cy, a.x - cx);
+  const a1 = Math.atan2(b.y - cy, b.x - cx);
+  // Des deux arcs possibles, on retient celui qui passe du côté de la pointe : c'est la calotte
+  // qui SORT de la Bulle, l'autre serait celle qui y rentre.
+  const milieu = (t) => ({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) });
+  let delta = a1 - a0;
+  while (delta <= -Math.PI) delta += Math.PI * 2;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  const versPointe = (d) => {
+    const m = milieu(a0 + d / 2);
+    return (m.x - cx) * (pointe.x - cx) + (m.y - cy) * (pointe.y - cy);
+  };
+  const autre = delta > 0 ? delta - Math.PI * 2 : delta + Math.PI * 2;
+  if (versPointe(autre) > versPointe(delta)) delta = autre;
+  const pts = [];
+  for (let k = 1; k < RONDS_POINTS_CALOTTE; k++) {
+    pts.push(milieu(a0 + (delta * k) / RONDS_POINTS_CALOTTE));
+  }
+  return pts;
+}
+
 const REGISTRE = {
   [QUEUE_TRIANGLE]: {
     // ⚠️ UN SEUL POINT, ET LE TRACÉ EST EXACTEMENT CELUI D'AVANT #425h : `base1 → pointe → base2`.
@@ -343,8 +429,9 @@ const REGISTRE = {
     elementsDetaches: () => [],
   },
   [QUEUE_RONDS]: {
-    traceContinue: () => null,
-    elementsDetaches: rondsDetaches,
+    // Les deux à la fois : la calotte du premier rond ouvre le contour, les suivants sont détachés.
+    traceContinue: calotteDuPremierRond,
+    elementsDetaches: (o, bord, pointe) => rondsDetaches(o, bord, pointe).slice(1),
   },
   [QUEUE_AUCUNE]: {
     // Ni tracé continu ni élément détaché : le contour se referme et rien ne s'ajoute. C'est la

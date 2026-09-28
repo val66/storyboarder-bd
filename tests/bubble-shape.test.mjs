@@ -25,6 +25,7 @@ import {
   FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU,
   FORME_TACHE, FORME_FACETTE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
   pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
+  demiAngleDUneCorde3D,
 } from '../src/bubble-shape.js';
 
 /** Trois gabarits, dont un très plat et un très haut : les formes ne doivent pas supposer un carré. */
@@ -60,6 +61,58 @@ const atteste = (forme, quoi) => {
   if (!TEMOIN.has(forme)) TEMOIN.set(forme, new Set());
   TEMOIN.get(forme).add(quoi);
 };
+
+/**
+ * ⚠️ LA CONVERSION D'UNE CORDE EN ANGLE, la seule chose que la FORME sait faire pour une QUEUE.
+ *
+ * Les quatre premières queues ouvrent le contour d'un écart angulaire fixe ; la chaîne de ronds, qui
+ * doit l'ouvrir exactement de ce que son premier rond recouvre, dit une LONGUEUR. Traduire cette
+ * longueur en angle dépend de la forme et de ses proportions : c'est donc au registre des formes de
+ * le faire, et non à la queue — qui ne connaît aucun contour.
+ */
+describe('demiAngleDUneCorde3D — une ouverture demandée en pixels (#425h)', () => {
+  const bulle = (extra) => Object.assign({ id: 'b', type: 'bulle', x: 0, y: 0, w: 200, h: 100 }, extra);
+
+  test('⚠️ LA CORDE OBTENUE EST CELLE QU’ON A DEMANDÉE, SUR TOUTES LES FORMES', () => {
+    // ⚠️ LE RELEVÉ MESURE LA CORDE, IL NE RELIT PAS L'ANGLE RENDU. Comparer l'angle à une valeur
+    // attendue reviendrait à recopier le calcul ; c'est la corde qui est le contrat.
+    let cas = 0;
+    for (const forme of formesConnues()) {
+      const o = bulle({ bulleShape: forme });
+      for (const theta of [0, Math.PI / 2, 1.85, -2.3]) {
+        for (const demi of [4, 13, 31]) {
+          cas++;
+          const a = demiAngleDUneCorde3D(o, theta, demi);
+          const p1 = pointDuContourBulle(o, theta - a), p2 = pointDuContourBulle(o, theta + a);
+          const obtenue = Math.hypot(p2.x - p1.x, p2.y - p1.y) / 2;
+          assert.ok(Math.abs(obtenue - demi) < 0.05,
+            `« ${forme} » à θ=${theta} : demi-corde ${obtenue.toFixed(2)} pour ${demi} demandée`);
+        }
+      }
+    }
+    assert.ok(cas >= 40, `${cas} cas éprouvés : le relevé n’en voit presque aucun`);
+  });
+
+  test('⚠️ UNE CORDE PLUS LARGE QUE LA BULLE BUTE, ELLE NE LÈVE PAS ET NE BOUCLE PAS', () => {
+    // ⚠️ ET SURTOUT ELLE NE REND PAS UN DEMI-TOUR. La borne haute de la dichotomie valait π dans ma
+    // première écriture ; or la corde y vaut ZÉRO, les deux points s'étant rejoints de l'autre côté.
+    // La recherche rendait donc π pour toute valeur demandée, y compris minuscule — une dichotomie
+    // suppose la monotonie, et l'intervalle fait partie de cette hypothèse.
+    const o = bulle({ bulleShape: 'ovale' });
+    const a = demiAngleDUneCorde3D(o, Math.PI / 2, 10000);
+    assert.ok(a > 0 && a <= Math.PI / 2 + 1e-9, `angle ${a} hors du quart de tour`);
+    const p1 = pointDuContourBulle(o, Math.PI / 2 - a), p2 = pointDuContourBulle(o, Math.PI / 2 + a);
+    assert.ok(Math.hypot(p2.x - p1.x, p2.y - p1.y) > o.w * 0.9,
+      'la butée ne rend pas la corde la plus large possible');
+  });
+
+  test('une corde nulle ou absurde ne demande aucune ouverture', () => {
+    const o = bulle({ bulleShape: 'ovale' });
+    assert.equal(demiAngleDUneCorde3D(o, 0, 0), 0);
+    assert.equal(demiAngleDUneCorde3D(o, 0, null), 0);
+    assert.equal(demiAngleDUneCorde3D(o, 0, NaN), 0);
+  });
+});
 
 describe('LA GARANTIE : les Bulles existantes ne changent pas de forme', () => {
   test('RÉGRESSION : sans champ, ou avec « ovale »/« rect », le contour est celui d’avant', () => {

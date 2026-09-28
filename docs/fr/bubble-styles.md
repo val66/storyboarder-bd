@@ -177,7 +177,26 @@ visible mais inopérant** pour quatre d'entre elles. C'est `queuePeutSInverser3D
 fiche l'interroge plutôt que de recoder la liste : deux copies d'une même décision divergent
 toujours, ce chantier l'a constaté quatre fois.
 
-⚠️ **ET SA PORTION INTÉRIEURE NE SE VOIT PAS : LES RONDS SONT PEINTS AVANT LA BULLE.** Ils passaient
+⚠️ **ET LE CONTOUR S'OUVRE SOUS LE PREMIER ROND, COMME SOUS LES AUTRES POINTES.** Le contour se
+refermait entièrement sous la chaîne et passait donc DEVANT le rond : on voyait le trait de la Bulle
+barrer sa base, d'un point de contact à l'autre. Relevé à l'usage — « l'espace entre les deux points
+de contact ne devrait pas être visible, comme pour les autres pointes ». C'est exactement ce que
+font le triangle, l'éclair et le cheveu : ils remplacent l'arc situé sous eux.
+
+La chaîne emploie donc désormais **les deux mécanismes** du registre : un tracé continu — la calotte
+du premier rond — et des éléments détachés, les suivants. L'avertissement en tête de `bubble-tail.js`
+porte sur la FUSION des deux notions en une liste de sous-chemins, pas sur le fait qu'une queue les
+emploie toutes les deux : elles restent déclarées séparément et se remplissent différemment, ce qui
+est tout l'objet de la distinction.
+
+⚠️ **ET L'OUVERTURE SE DEMANDE EN PIXELS, PAS EN ANGLE.** Les quatre autres queues ouvrent le contour
+d'un écart angulaire fixe, ce qui leur suffit. La calotte, elle, doit rejoindre le trait EXACTEMENT
+là où son rond coupe le contour — un nombre de pixels que le rond décide, et qui devient un angle
+différent selon la forme et les proportions de la Bulle. La queue dit donc une longueur et la
+**forme** la convertit, chacune sur son propre contour : la queue ne connaît pas les contours, la
+forme ne connaît pas les queues.
+
+⚠️ **LA PORTION INTÉRIEURE ÉTAIT DÉJÀ MASQUÉE PAR L'ORDRE DE PEINTURE, ET CE MASQUAGE RESTE.** Ils passaient
 par-dessus, du temps où le premier rond était tangent et ne chevauchait donc rien. Dès qu'il entre
 dans la Bulle, un disque cerné se voyait en travers du fond. L'ordre de peinture suffit à le
 masquer — pas de découpe, pas de masque. Ce que cet ordre ne peut pas faire : sur un fond

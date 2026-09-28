@@ -52,8 +52,8 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // test croyait vérifier un appel, il vérifiait une phrase. C'est le pire état pour un test : vert,
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
-import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
-import { queuesConnues } from '../src/bubble-tail.js';
+import { pointDuContourBulle, formesConnues, angleDuContourBulle } from '../src/bubble-shape.js';
+import { queuesConnues, RONDS_NOMBRE, demiCordeDeLOuverture3D } from '../src/bubble-tail.js';
 import { QUEUE_ECARTEMENT, longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
 import { pointesDeLEpine3D, graineTrembleBulle } from '../src/bubble-style.js';
 // Le nombre de points dont draw.js échantillonne le contour pour la frange (POINTS_EPINE).
@@ -2721,16 +2721,22 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
                      appels(triangle, 'moveTo').map(e => e.args));
   });
 
-  test('⚠️ LES TROIS QUEUES CONTINUES ALLONGENT LE CHEMIN, la chaîne de ronds ne le touche pas', () => {
-    // ⚠️ MUTATION VISÉE : traiter `traceContinu === null` comme « pas de queue ». La chaîne
-    // disparaîtrait au lieu de se dessiner à côté, et le contour — qui doit alors se refermer —
-    // serait par ailleurs correct : rien d'autre ne le verrait.
+  test('⚠️ LES QUATRE QUEUES OUVRENT LE CHEMIN, Y COMPRIS LA CHAÎNE DE RONDS', () => {
+    // ⚠️ MUTATION VISÉE : traiter `traceContinu === null` comme « pas de queue ». La queue
+    // disparaîtrait au lieu de se dessiner, et le contour — qui se refermerait — serait par
+    // ailleurs correct : rien d'autre ne le verrait.
+    //
+    // ⚠️ CE TEST DISAIT L'INVERSE POUR LA CHAÎNE, et il avait raison en son temps : elle laissait
+    // le contour intact et posait ses trois disques par-dessus. Le trait de la Bulle barrait alors
+    // la base du premier rond, ce qu'aucune autre pointe ne fait — relevé à l'usage. Son premier
+    // rond ouvre désormais le contour comme le ferait un triangle, et ses deux suivants restent
+    // détachés. La propriété tenue ici devient donc commune aux quatre.
     const n = (q) => pts(dessiner(bulle({ tailShape: q }))).length;
     const sansQueue = pts(dessiner(bulle({ tailVisible: false }))).length;
     assert.ok(n('eclair') > n('triangle'), 'l’éclair doit ajouter des segments');
     assert.ok(n('cheveu') > n('triangle'), 'le cheveu aussi');
-    // La chaîne laisse le contour intact : autant de segments que sans queue du tout.
-    assert.equal(n('ronds'), sansQueue, 'le contour doit se refermer entièrement sous une chaîne');
+    assert.ok(n('ronds') > sansQueue,
+      'le contour se referme sous la chaîne : son trait barrera la base du premier rond');
   });
 
   test('⚠️ ET LA CHAÎNE EST BIEN DESSINÉE, dans des chemins SÉPARÉS et remplis comme la Bulle', () => {
@@ -2738,15 +2744,19 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     // exige les disques : trois ellipses de plus qu'une Bulle sans queue, chacune dans son propre
     // `beginPath` — les mettre dans le chemin de la Bulle percerait son remplissage là où un rond
     // chevauche le contour.
+    // ⚠️ DEUX DISQUES DÉTACHÉS, ET NON TROIS : le premier rond est passé DANS le contour, sous la
+    // forme de la calotte qui l'ouvre. La chaîne en montre toujours trois à l'écran ; ce test
+    // compte ceux qui ont leur propre chemin, et ils sont désormais deux.
     const avec = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds' }));
     const sans = dessiner(bulle({ bulleShape: 'rect', tailVisible: false }));
+    const detaches = RONDS_NOMBRE - 1;
     const ellipses = appels(avec, 'ellipse').length - appels(sans, 'ellipse').length;
-    assert.equal(ellipses, 3, `${ellipses} disques dessinés au lieu de 3`);
-    assert.equal(appels(avec, 'beginPath').length - appels(sans, 'beginPath').length, 3,
+    assert.equal(ellipses, detaches, `${ellipses} disques dessinés au lieu de ${detaches}`);
+    assert.equal(appels(avec, 'beginPath').length - appels(sans, 'beginPath').length, detaches,
       'chaque rond doit ouvrir son propre chemin');
-    assert.equal(appels(avec, 'fill').length - appels(sans, 'fill').length, 3,
+    assert.equal(appels(avec, 'fill').length - appels(sans, 'fill').length, detaches,
       'chaque rond doit être rempli comme la Bulle');
-    assert.equal(appels(avec, 'stroke').length - appels(sans, 'stroke').length, 3,
+    assert.equal(appels(avec, 'stroke').length - appels(sans, 'stroke').length, detaches,
       'et cerné comme elle');
   });
 
@@ -2768,9 +2778,9 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     const rayons = (w, h) => appels(dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', w, h })),
                                     'ellipse').map(e => e.args[2]);
     const petite = rayons(100, 50), grande = rayons(400, 200);
-    assert.equal(petite.length, 3, `${petite.length} disques sur la petite Bulle`);
-    assert.equal(grande.length, 3, `${grande.length} disques sur la grande Bulle`);
-    for (let i = 0; i < 3; i++) {
+    assert.equal(petite.length, RONDS_NOMBRE - 1, `${petite.length} disques sur la petite Bulle`);
+    assert.equal(grande.length, RONDS_NOMBRE - 1, `${grande.length} disques sur la grande Bulle`);
+    for (let i = 0; i < petite.length; i++) {
       assert.ok(Math.abs(grande[i] / petite[i] - 4) < 0.05,
         `rond ${i} : ${petite[i].toFixed(2)} contre ${grande[i].toFixed(2)}, rapport `
         + `${(grande[i] / petite[i]).toFixed(2)} au lieu de 4`);
@@ -2790,12 +2800,12 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     // ⚠️ LA COURTE EST AU MINIMUM DU MOTIF : en deçà, la chaîne est rétrécie pour tenir, et le
     // relevé mesurerait ce repli au lieu de l'étirement.
     const courte = chaine(longueurMinimaleDeLaQueue3D('ronds')), longue = chaine(1.6);
-    assert.equal(courte.length, 3);
-    for (let i = 0; i < 3; i++) {
+    assert.equal(courte.length, RONDS_NOMBRE - 1);
+    for (let i = 0; i < courte.length; i++) {
       assert.ok(Math.abs(courte[i].r - longue[i].r) < 1e-9,
         `le rond ${i} a grossi en étirant : ${courte[i].r.toFixed(2)} → ${longue[i].r.toFixed(2)}`);
     }
-    const etendue = (c) => Math.hypot(c[2].x - c[0].x, c[2].y - c[0].y);
+    const etendue = (c) => Math.hypot(c[c.length - 1].x - c[0].x, c[c.length - 1].y - c[0].y);
     assert.ok(etendue(longue) > etendue(courte) * 1.5,
       `la chaîne ne s’étend pas : ${etendue(courte).toFixed(1)} → ${etendue(longue).toFixed(1)}`);
   });
@@ -2845,7 +2855,8 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     const fills = j.filter(e => e.nom === 'fill').length;
     const sans = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }))
       .filter(e => e.nom === 'fill').length;
-    assert.equal(fills - sans, 3, `${fills - sans} remplissages de plus : les trois ronds n’en ont pas un chacun`);
+    assert.equal(fills - sans, RONDS_NOMBRE - 1,
+      `${fills - sans} remplissages de plus : les disques détachés n’en ont pas un chacun`);
   });
 
   /**
@@ -2907,6 +2918,102 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
       `${couples} couples parcourus : le relevé n’en voit pas tous`);
   });
 
+  /**
+   * ⚠️ AUCUN TRAIT NE BARRE LA BASE DU PREMIER ROND, ET C'EST LA PROPRIÉTÉ DEMANDÉE À L'USAGE :
+   * « l'espace entre les deux points de contact ne devrait pas être visible, comme pour les autres
+   * pointes ». Le contour se refermait sous la chaîne et passait devant le rond ; les trois autres
+   * queues, elles, REMPLACENT l'arc situé sous elles.
+   *
+   * ⚠️ LA MESURE EST UNE DISTANCE, ET DEUX CRITÈRES ANGULAIRES ONT ÉCHOUÉ AVANT ELLE. Le premier
+   * cherchait un segment dont les extrémités encadrent la direction de la queue : sur un rectangle,
+   * le côté OPPOSÉ le fait sans jamais approcher l'ouverture, et le test accusait du code juste. Un
+   * angle dit d'où l'on voit un point, pas à quelle distance il passe.
+   *
+   * Ce qu'il faut mesurer est exactement ce que l'œil voit : le trait passe-t-il là où l'ouverture
+   * est censée être vide ? Donc la distance du point du contour situé SOUS la pointe au segment
+   * tracé le plus proche. Fermée, elle est nulle ; ouverte, la calotte bombe au-delà et le contour
+   * s'arrête de part et d'autre.
+   */
+  test('⚠️ AUCUN TRAIT NE PASSE SOUS LE PREMIER ROND : L’OUVERTURE EST VRAIMENT VIDE', () => {
+    // Sur un rectangle : un ovale sans tremblement émet son contour par `c.ellipse`, un arc que ce
+    // relevé ne sait pas suivre — et il n'aurait alors rien à mesurer ni d'un côté ni de l'autre.
+    const faire = (queue) => bulle({ bulleShape: 'rect', tailShape: queue, tailAngle: Math.PI / 2 });
+    /** La distance du point `p` au segment [a, b]. */
+    const distanceAuSegment = (p, a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / l2)) : 0;
+      return Math.hypot(p.x - (a[0] + dx * t), p.y - (a[1] + dy * t));
+    };
+    const distanceAuTrait = (o) => {
+      const sous = bubbleEdgePoint(o, Math.PI / 2);
+      const chemin = dessiner(o).filter(e => e.nom === 'moveTo' || e.nom === 'lineTo');
+      let min = Infinity;
+      for (let i = 1; i < chemin.length; i++) {
+        if (chemin[i].nom !== 'lineTo') continue;
+        min = Math.min(min, distanceAuSegment(sous, chemin[i - 1].args, chemin[i].args));
+      }
+      return min;
+    };
+
+    // ⚠️ LE TÉMOIN D'ABORD : une Bulle fermée a bien son trait à cet endroit. Sans lui, un relevé
+    // qui ne trouverait jamais aucun segment vaudrait approbation.
+    const fermee = distanceAuTrait(faire('aucune'));
+    assert.ok(fermee < 1,
+      `le trait d’une Bulle fermée passe à ${fermee.toFixed(1)} px sous la pointe : le relevé ne `
+      + 'sait pas suivre le contour');
+
+    // Et les autres pointes continues, qui ouvrent le contour depuis toujours : même propriété.
+    for (const queue of ['triangle', 'eclair', 'cheveu']) {
+      assert.ok(distanceAuTrait(faire(queue)) > 1,
+        `« ${queue} » laisse un trait sous sa base : le repère lui-même est faux`);
+    }
+
+    const chaine = distanceAuTrait(faire('ronds'));
+    assert.ok(chaine > 1,
+      `le trait passe à ${chaine.toFixed(1)} px sous le premier rond : il barre sa base, ce que les `
+      + 'autres pointes ne font pas');
+  });
+
+  /**
+   * ⚠️ ET L'OUVERTURE FAIT EXACTEMENT LA LARGEUR QUE LA QUEUE DEMANDE. Le test voisin exige qu'AUCUN
+   * trait ne passe sous le premier rond ; il serait satisfait par une ouverture de n'importe quelle
+   * taille, y compris l'écart angulaire fixe des autres queues — mutation échappée. Or c'est
+   * justement ce que ce chantier remplace : la calotte doit rejoindre le trait là où le rond coupe
+   * le contour, et nulle part ailleurs, sans quoi elle se raccorde en biais.
+   *
+   * On relève les points du chemin POSÉS SUR LE CONTOUR de part et d'autre de la pointe : les deux
+   * plus proches d'elle sont les bases de l'ouverture, et leur écart doit valoir la corde demandée.
+   */
+  test('⚠️ L’OUVERTURE DU CONTOUR FAIT LA LARGEUR DEMANDÉE PAR LA CHAÎNE, NI PLUS NI MOINS', () => {
+    const o = bulle({ bulleShape: 'rect', tailShape: 'ronds', tailAngle: Math.PI / 2 });
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const attendue = demiCordeDeLOuverture3D(o) * 2;
+    assert.ok(attendue > 0, 'la chaîne ne demande aucune ouverture : le relevé ne mesure rien');
+    const sur = (x, y) => {
+      const p = bubbleEdgePoint(o, angleDuContourBulle(o, x - cx, y - cy));
+      return Math.hypot(p.x - x, p.y - y) < 0.5;
+    };
+    const decale = (x, y) => {
+      const a = angleDuContourBulle(o, x - cx, y - cy);
+      return Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2));
+    };
+    let gauche = null, droite = null;
+    for (const e of dessiner(o)) {
+      if (e.nom !== 'moveTo' && e.nom !== 'lineTo') continue;
+      const [x, y] = e.args;
+      if (!sur(x, y)) continue;
+      const d = decale(x, y);
+      if (d < 0 && (!gauche || d > gauche.d)) gauche = { x, y, d };
+      if (d > 0 && (!droite || d < droite.d)) droite = { x, y, d };
+    }
+    assert.ok(gauche && droite, 'le relevé ne trouve pas les deux bases de l’ouverture');
+    const mesuree = Math.hypot(droite.x - gauche.x, droite.y - gauche.y);
+    assert.ok(Math.abs(mesuree - attendue) < 0.5,
+      `l’ouverture mesure ${mesuree.toFixed(1)} px au lieu de ${attendue.toFixed(1)} : la calotte `
+      + 'ne rejoint pas le trait là où le rond coupe le contour');
+  });
+
   test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {
     // ⚠️ RÉÉCRIT QUAND LA CASE À COCHER A DISPARU. Il vérifiait qu'un `tailVisible: false` effaçait
     // une chaîne de ronds ; « Aucune » est désormais une valeur de la liste, et c'est elle qui
@@ -2914,7 +3021,8 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     const aucune = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }));
     const ronds = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds' }));
     assert.equal(appels(aucune, 'ellipse').length, 0, '« aucune » ne doit dessiner aucun disque');
-    assert.equal(appels(ronds, 'ellipse').length, 3, 'le repère : la chaîne, elle, en dessine trois');
+    assert.equal(appels(ronds, 'ellipse').length, RONDS_NOMBRE - 1,
+      'le repère : la chaîne, elle, dessine ses disques détachés');
     // Et le contour se referme bien, comme pour toute queue détachée.
     assert.ok(appels(aucune, 'fill').length === 1, 'une seule Bulle remplie, sans rien autour');
   });
@@ -2938,7 +3046,7 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     // L'ordre compte : `tailShape` est plus récent et plus précis. Un fichier qui porterait les deux
     // — écrit pendant la brève fenêtre où les deux réglages coexistaient — doit suivre la liste.
     const j = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailVisible: false }));
-    assert.equal(appels(j, 'ellipse').length, 3, 'la chaîne demandée doit être dessinée');
+    assert.equal(appels(j, 'ellipse').length, RONDS_NOMBRE - 1, 'la chaîne demandée doit être dessinée');
   });
 
   test('l’INDÉPENDANCE, vue du canevas : les 36 couples se dessinent', () => {
@@ -3453,8 +3561,9 @@ describe('#425p — les particules atteignent le canevas', () => {
     const sans = dessiner(bulle({ bulleShape: 'rect', bulleParticule: 'tache' }));
     const avec = dessiner(bulle({ bulleShape: 'rect', bulleParticule: 'tache',
       tailShape: 'ronds', tailVisible: true }));
-    assert.equal(appels(avec, 'ellipse').length - appels(sans, 'ellipse').length, 3,
-      'seuls les trois ronds de la chaîne doivent s’ajouter');
+    // Les disques détachés seuls : le premier rond de la chaîne est passé dans le contour.
+    assert.equal(appels(avec, 'ellipse').length - appels(sans, 'ellipse').length, RONDS_NOMBRE - 1,
+      'seuls les disques détachés de la chaîne doivent s’ajouter');
   });
 
   test('l’opacité de la Bulle éteint le semis entier', () => {

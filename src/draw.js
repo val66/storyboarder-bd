@@ -72,9 +72,10 @@ import { apparenceBulle, decalagesTrembleBulle,
 // Les formes d'une Bulle vivent dans leur propre registre (#425e) : chacune déclare son contour
 // exact, ses sommets et sa zone inscriptible. Le TRACÉ, lui, reste ici et reste unique.
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
-         queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
+         queueParDefautBulle, angleDuContourBulle,
+         demiAngleDUneCorde3D } from './bubble-shape.js';
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
-         longueurMinimaleDeLaQueue3D,
+         longueurMinimaleDeLaQueue3D, demiCordeDeLOuverture3D,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
 import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
          couleurTexteParDefautDeLaTexture,
@@ -1845,7 +1846,14 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   // des `undefined`. C'est une énumération tenue à la main, qui se périme en silence.
   const oQueue = { ...o, tailShape: queue };
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
-  const angleBase1 = theta - QUEUE_ECARTEMENT, angleBase2 = theta + QUEUE_ECARTEMENT;
+  // ⚠️ L'ÉCARTEMENT DES BASES PEUT ÊTRE DEMANDÉ EN PIXELS PAR LA QUEUE. Les quatre premières se
+  // contentent d'un écart angulaire fixe ; la chaîne de ronds, dont la calotte doit rejoindre le
+  // trait exactement là où son premier rond coupe le contour, dit une LONGUEUR, et c'est la forme
+  // qui la convertit en angle sur son propre contour. Voir `demiAngleDUneCorde3D`.
+  const demiCorde = queueVisible ? demiCordeDeLOuverture3D(oQueue) : null;
+  const ecartement = demiCorde != null
+    ? demiAngleDUneCorde3D(o, theta, demiCorde) : QUEUE_ECARTEMENT;
+  const angleBase1 = theta - ecartement, angleBase2 = theta + ecartement;
   const pointeQueue = queueVisible ? getBubbleTailTip(o) : null;
   const traceQueue = queueVisible
     ? traceContinuDeLaQueue(oQueue, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
@@ -1931,7 +1939,10 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   // demanderait un découpage du disque par le contour, c'est-à-dire de refaire en géométrie ce que
   // la peinture fait déjà bien dans le cas courant.
   const peindreLesRonds = () => {
-    if (!queueVisible || traceQueue) return;
+    // ⚠️ PLUS DE « SEULEMENT SI LA QUEUE EST DÉTACHÉE ». La chaîne déclare désormais les DEUX : une
+    // calotte continue pour son premier rond, des disques détachés pour les suivants. La condition
+    // d'avant, qui écartait toute queue à tracé continu, les aurait tous fait disparaître.
+    if (!queueVisible) return;
     for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
       const cheminRond = (f) => {
         const r = f ? rond.r * f(0) : rond.r;   // un disque n'a pas d'angle propre : facteur au repos

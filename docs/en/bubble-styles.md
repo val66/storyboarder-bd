@@ -172,7 +172,25 @@ already alternates on either side of its axis, and offering the box for all five
 panel asks that function rather than recoding the list: two copies of one decision always diverge,
 as this project has found four times.
 
-⚠️ **AND ITS INNER PART DOES NOT SHOW: THE CIRCLES ARE PAINTED BEFORE THE BUBBLE.** They went on
+⚠️ **AND THE OUTLINE OPENS UNDER THE FIRST CIRCLE, AS IT DOES UNDER THE OTHER TAILS.** The outline
+closed fully under the chain and so passed IN FRONT of the circle: the Bubble's stroke was seen
+crossing its base, from one contact point to the other. Reported from use — "the space between the
+two contact points should not be visible, as with the other tails". That is exactly what the
+triangle, the lightning and the hair do: they replace the arc beneath them.
+
+The chain therefore now uses **both** of the registry's mechanisms: a continuous path — the first
+circle's cap — and detached elements, the following ones. The warning at the head of
+`bubble-tail.js` is about FUSING the two notions into a list of subpaths, not about one tail using
+both: they stay declared separately and fill differently, which is the whole point of the
+distinction.
+
+⚠️ **AND THE OPENING IS ASKED FOR IN PIXELS, NOT IN ANGLE.** The four other tails open the outline
+by a fixed angular gap, which is enough for them. The cap must meet the stroke EXACTLY where its
+circle crosses the outline — a number of pixels the circle decides, which becomes a different angle
+depending on the Bubble's shape and proportions. So the tail states a length and the **shape**
+converts it, each on its own outline: the tail knows no outlines, the shape knows no tails.
+
+⚠️ **THE INNER PART WAS ALREADY HIDDEN BY PAINT ORDER, AND THAT MASKING REMAINS.** They went on
 top, back when the first circle was tangent and overlapped nothing. As soon as it enters the Bubble,
 an outlined disc showed across the fill. Paint order alone hides it — no clipping, no mask. What
 that order cannot do: on a translucent fill the inner part will show through; fixing it would mean

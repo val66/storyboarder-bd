@@ -65,7 +65,7 @@ export const HELP_MANUAL_EN = [
   { id: 'pointe', title: 'Bubble tail', paragraphs: [
     'The tail comes in five kinds — Triangle, Lightning, Curved hair, Chain of circles, or None — and can be dragged anywhere around the outline.',
     '"Flip the tail", below the list, leans the Curved hair the other way. The box only shows for that one: the other tails have no other side, a Triangle being symmetrical and a Lightning already alternating on either side of its axis.',
-    'The Chain of circles sets its first circle astride the outline: its inner half passes UNDER the Bubble and stays hidden, only the outer cap shows, so that it reads as a link coming out of the Bubble rather than as a bump on the outline.',
+    'The Chain of circles sets its first circle astride the outline, which OPENS underneath it: no stroke crosses its base, as with the other tails. The next two circles are detached.',
     'Stretching the tail spreads the circles apart without growing them: their size is read off the Bubble, not off the tail length. Choosing this shape lengthens the tail if it is too short to hold the chain — never the other way round, a tail you set yourself is not shortened.',
   ]},
   { id: 'fusion', title: 'Merged bubbles', paragraphs: [
@@ -273,7 +273,7 @@ export const HELP_MANUAL_FR = [
   { id: 'pointe', title: 'Pointe de la bulle', paragraphs: [
     "La pointe existe en cinq formes — Triangle, Éclair, Cheveu courbe, Chaîne de ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",
     "« Inverser la pointe », sous la liste, renverse le Cheveu courbe du côté opposé. La case ne s'affiche que pour lui : les autres pointes n'ont pas d'envers, un Triangle étant symétrique et un Éclair alternant déjà de part et d'autre de son axe.",
-    "La Chaîne de ronds pose son premier rond à cheval sur le contour : sa moitié intérieure passe SOUS la Bulle et reste invisible, seule la calotte extérieure se voit, pour qu'il se lise comme un maillon qui sort de la Bulle plutôt que comme une bosse du contour.",
+    "La Chaîne de ronds pose son premier rond à cheval sur le contour, qui s'OUVRE dessous : aucun trait ne barre sa base, comme pour les autres pointes. Les deux ronds suivants sont détachés.",
     "Étirer la pointe écarte les ronds les uns des autres sans les grossir : leur taille se lit sur la Bulle, pas sur la longueur de la pointe. Choisir ce motif allonge la pointe si elle est trop courte pour contenir la chaîne — jamais l'inverse, une pointe que vous avez réglée vous-même n'est pas raccourcie.",
   ]},
   { id: 'fusion', title: 'Bulles fusionnées', paragraphs: [

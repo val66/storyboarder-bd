@@ -21,7 +21,8 @@ import assert from 'node:assert/strict';
 
 import {
   QUEUE_TRIANGLE, QUEUE_ECLAIR, QUEUE_CHEVEU, QUEUE_RONDS, QUEUE_AUCUNE, QUEUE_DEFAUT,
-  RONDS_PART_DEDANS, rayonDuPremierRond3D,
+  RONDS_PART_DEDANS, RONDS_NOMBRE, RONDS_DECROISSANCE, rayonDuPremierRond3D,
+  demiCordeDeLOuverture3D,
   longueurMinimaleDeLaQueue3D,
   queueInverseeDeLaBulle3D, queuePeutSInverser3D,
   QUEUE_ECARTEMENT,
@@ -112,14 +113,26 @@ describe('⚠️ L’INDÉPENDANCE DES AXES, éprouvée sur le PRODUIT des deux 
         // une queue silencieusement absente, ce qui est précisément le défaut à attraper. La seule
         // entrée légitimement vide est « aucune », et l'écrire ici garde la règle entière pour les
         // autres au lieu de la remplacer par « au plus un ».
+        /*
+         * ⚠️ LA RÈGLE ÉTAIT « EXACTEMENT L'UN DES DEUX », ELLE EST DEVENUE « AU MOINS L'UN DES
+         * DEUX ». L'exclusivité n'était pas une propriété du registre mais un constat : aucune
+         * queue n'employait alors les deux mécanismes. La chaîne de ronds le fait désormais — une
+         * calotte continue qui OUVRE le contour sous son premier rond, des disques détachés pour
+         * les suivants —, parce que le trait de la Bulle barrait la base du premier rond, ce que
+         * les autres pointes ne font pas. Relevé à l'usage.
+         *
+         * Ce que ce test doit tenir n'a pas changé : aucune queue ne doit être SILENCIEUSEMENT
+         * ABSENTE. C'est ce que dit « au moins l'un des deux », et « aucune » reste nommée plutôt
+         * que la règle assouplie pour tout le monde.
+         */
         const dansLeContour = trace !== null, aCote = detaches.length > 0;
         if (queue === QUEUE_AUCUNE) {
           assert.ok(!dansLeContour && !aCote, `${forme} + aucune : quelque chose a été tracé`);
           continue;
         }
-        assert.ok(dansLeContour !== aCote,
-          `${forme} + ${queue} : trace=${dansLeContour}, détachés=${aCote}`);
-        const tous = dansLeContour ? trace : detaches;
+        assert.ok(dansLeContour || aCote,
+          `${forme} + ${queue} : ni tracé continu ni élément détaché — la queue est muette`);
+        const tous = [...(trace || []), ...detaches];
         tous.forEach((p, i) => assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y),
           `${forme} + ${queue} : point ${i} non fini — ${JSON.stringify(p)}`));
       }
@@ -270,10 +283,13 @@ describe('Chaque queue fait ce qui la distingue', () => {
     // se lit comme une bosse de la Bulle ; des ronds égaux se lisent comme un pointillé ; des ronds
     // jointifs se lisent comme une queue pleine et non comme une pensée.
     const o = avec(QUEUE_RONDS);
-    assert.equal(traceContinuDeLaQueue(o, base1, pointe, base2), null,
-      'la chaîne ne doit pas interrompre le contour');
+    // ⚠️ DEUX DISQUES DÉTACHÉS ET NON TROIS : le premier rond est devenu la CALOTTE qui ouvre le
+    // contour, et il n'est donc plus un élément détaché. La chaîne en compte toujours trois à
+    // l'écran ; c'est leur nature qui diffère, pas leur nombre.
     const ronds = elementsDetachesDeLaQueue(o, bord, pointe);
-    assert.ok(ronds.length >= 3, `${ronds.length} ronds`);
+    assert.equal(ronds.length, RONDS_NOMBRE - 1, `${ronds.length} disques détachés`);
+    assert.ok(traceContinuDeLaQueue(o, base1, pointe, base2).length > 0,
+      'le premier rond n’ouvre pas le contour : le trait de la Bulle barrera sa base');
     for (let i = 1; i < ronds.length; i++) {
       assert.ok(ronds[i].r < ronds[i - 1].r,
         `le rond ${i} (${ronds[i].r.toFixed(1)}) n’est pas plus petit que le précédent`);
@@ -282,31 +298,29 @@ describe('Chaque queue fait ce qui la distingue', () => {
         `les ronds ${i - 1} et ${i} se touchent : ${d.toFixed(1)} pour ${(ronds[i].r + ronds[i - 1].r).toFixed(1)}`);
     }
     /*
-     * ⚠️ ET LE PREMIER ROND EST AUX DEUX TIERS DANS LA BULLE. Cette assertion exigeait le contraire
-     * — que le premier rond soit entièrement DEHORS — et elle ne passait que par chance : la
-     * disposition le posait exactement tangent, centre à un rayon du bord, et seule l'arithmétique
-     * flottante rendait le `>` strict vrai. Le commentaire du module affirmait de son côté que le
-     * rond « ne touche pas la Bulle ». Trois écrits d'accord entre eux et faux tous les trois, que
-     * seul l'usage a démentis : « au contact direct du bord ».
+     * ⚠️ ET LA PART ENFONCÉE SE LIT MAINTENANT SUR L'OUVERTURE, PAS SUR UN DISQUE DÉTACHÉ. Elle se
+     * mesurait sur le premier élément détaché ; celui-ci est devenu la CALOTTE du contour, et le
+     * relevé lisait donc le DEUXIÈME rond, entièrement dehors — il annonçait « −100 % dedans ».
      *
-     * La part est mesurée le long de l'AXE DE LA QUEUE, et non par une distance au centre : c'est
-     * le long de cet axe que le rond entre, et la mesure doit être celle de la chose réglée.
+     * Ce que le réglage commande est l'ouverture : plus le rond s'enfonce, plus la corde qu'il
+     * découpe dans le contour est courte que son diamètre. C'est cette relation qu'on fige, et elle
+     * dit la même chose que l'ancienne assertion, du bon côté du changement.
      */
-    const ux = (pointe.x - bord.x) / Math.hypot(pointe.x - bord.x, pointe.y - bord.y);
-    const uy = (pointe.y - bord.y) / Math.hypot(pointe.x - bord.x, pointe.y - bord.y);
-    const signee = (ronds[0].x - bord.x) * ux + (ronds[0].y - bord.y) * uy;
-    const dedans = (ronds[0].r - signee) / (2 * ronds[0].r);
-    /*
-     * ⚠️ LA VALEUR EST ÉCRITE EN CLAIR, ET NON RELUE DANS LE MODULE. La première écriture comparait
-     * à `RONDS_PART_DEDANS` : le test suivait donc la constante, et la mutation qui la ramène à 1/2
-     * — le rond centré sur le bord, ce que l'usage a précisément rejeté — passait sans rien casser.
-     * Un test qui relit le réglage qu'il prétend tenir ne tient rien. Deux tiers est un chiffre
-     * DEMANDÉ, il appartient donc au test autant qu'au code.
-     */
-    assert.ok(Math.abs(dedans - 0.55) < 0.01,
-      `${(dedans * 100).toFixed(0)} % du premier rond est dans la Bulle, attendu 55 %`);
-    // Et la constante du module dit bien la même chose : sinon l'une des deux mentirait.
-    assert.ok(Math.abs(RONDS_PART_DEDANS - 0.55) < 1e-9, 'RONDS_PART_DEDANS ne vaut plus 0,55');
+    const r1 = rayonDuPremierRond3D(o);
+    const attendue = r1 * Math.sqrt(1 - (2 * RONDS_PART_DEDANS - 1) ** 2);
+    assert.ok(Math.abs(demiCordeDeLOuverture3D(o) - attendue) < 1e-9,
+      `l’ouverture vaut ${demiCordeDeLOuverture3D(o).toFixed(2)} au lieu de ${attendue.toFixed(2)}`);
+    // Et elle est plus COURTE que le rayon : c'est ce qui dit que le rond est enfoncé au-delà de sa
+    // moitié. À part égale à 0,5 elle vaudrait exactement le rayon, et le rond serait à cheval pile.
+    assert.ok(demiCordeDeLOuverture3D(o) < r1,
+      'l’ouverture vaut le rayon entier : le rond n’est pas enfoncé');
+    // Les autres queues ne demandent aucune ouverture en pixels : elles gardent l'écart angulaire.
+    for (const queue of queuesConnues()) {
+      if (queue === QUEUE_RONDS) continue;
+      assert.equal(demiCordeDeLOuverture3D(avec(queue)), null,
+        `« ${queue} » demande une ouverture en pixels : elle n’en a pas besoin`);
+    }
+
     // Et la chaîne va bien VERS la pointe, pas ailleurs.
     const dernier = ronds[ronds.length - 1];
     assert.ok(Math.hypot(dernier.x - bord.x, dernier.y - bord.y)
@@ -472,9 +486,11 @@ describe('Chaque queue fait ce qui la distingue', () => {
     const b = pointDuContourBulle(o, Math.PI / 2);
     const bout = { x: c.x + (b.x - c.x) * (1 + mini), y: c.y + (b.y - c.y) * (1 + mini) };
     const ronds = elementsDetachesDeLaQueue(o, b, bout);
-    assert.ok(Math.abs(ronds[0].r - rayonDuPremierRond3D(o)) < 1e-9,
-      `à la longueur annoncée, le premier rond mesure ${ronds[0].r.toFixed(2)} au lieu de `
-      + `${rayonDuPremierRond3D(o).toFixed(2)} : le minimum est sous-évalué`);
+    // Le premier DÉTACHÉ est le deuxième rond de la chaîne — le premier est passé dans le contour.
+    const attendu = rayonDuPremierRond3D(o) * RONDS_DECROISSANCE;
+    assert.ok(Math.abs(ronds[0].r - attendu) < 1e-9,
+      `à la longueur annoncée, le deuxième rond mesure ${ronds[0].r.toFixed(2)} au lieu de `
+      + `${attendu.toFixed(2)} : le minimum est sous-évalué`);
   });
 
   test('toutes les queues suivent l’angle demandé, et grandissent avec la longueur', () => {
@@ -484,10 +500,13 @@ describe('Chaque queue fait ce qui la distingue', () => {
       if (queue === QUEUE_AUCUNE) continue;   // rien à allonger : elle ne trace rien, par définition
       const o = avec(queue);
       const loin = { x: pointe.x + (pointe.x - bord.x) * 2, y: pointe.y + (pointe.y - bord.y) * 2 };
-      const proche = traceContinuDeLaQueue(o, base1, pointe, base2)
-        || elementsDetachesDeLaQueue(o, bord, pointe);
-      const allonge = traceContinuDeLaQueue(o, base1, loin, base2)
-        || elementsDetachesDeLaQueue(o, bord, loin);
+      // ⚠️ LES DEUX NATURES, ET NON « L'UNE OU L'AUTRE ». Ce relevé prenait le tracé continu s'il
+      // existait, les éléments détachés sinon. Depuis que la chaîne déclare les deux, il ne voyait
+      // plus que sa CALOTTE — qui est accrochée au contour et ne bouge donc pas avec la longueur —
+      // et concluait que la chaîne ne s'allonge pas, sur du code juste.
+      const tout = (p) => [...(traceContinuDeLaQueue(o, base1, p, base2) || []),
+                           ...elementsDetachesDeLaQueue(o, bord, p)];
+      const proche = tout(pointe), allonge = tout(loin);
       const etendue = (pts) => Math.max(...pts.map(p => Math.hypot(p.x - bord.x, p.y - bord.y)));
       assert.ok(etendue(allonge) > etendue(proche) * 1.5,
         `« ${queue} » ne s’allonge pas avec la queue : ${etendue(proche).toFixed(1)} → ${etendue(allonge).toFixed(1)}`);
