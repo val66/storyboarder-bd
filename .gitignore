@@ -55,3 +55,11 @@ assets/textures/sources/
 atlas-des-bulles-v2.html
 atlas-des-bulles-methode.html
 atlas-des-bulles-corrections.md
+
+# Suivi de tâches partagé entre l'utilisateur et l'assistant, tenu hors du dépôt à la demande :
+# c'est un pense-bête de travail, pas un document du projet, et son contenu change à chaque séance.
+#
+# ⚠️ IL N'EST PAS LA SOURCE DE VÉRITÉ DES TÂCHES, et TACHES.md le redit en tête. Une échéance vit
+# à l'endroit où le manque se lit, sous un numéro (cf. tests/code-mort.test.mjs). Un fichier non
+# versionné qui serait le seul à connaître une tâche la perdrait au premier clone.
+TACHES.md
