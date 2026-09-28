@@ -13,6 +13,109 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.7.0
+
+**Une Bulle cesse d'être un ovale avec un triangle.** Elle a maintenant une forme, une pointe, une
+matière, un trait, et tout cela se règle. Deux Bulles peuvent se souder en une seule. Et l'aspect
+d'une Bulle, une fois trouvé, se range sous un nom et se repose ailleurs en un clic.
+
+Le chantier est parti d'un relevé de planches publiées, mis en regard de chaque fiche de réglage.
+Les proportions, les densités et les arrondis viennent de là, pas d'un goût : quand un réglage a
+changé, c'est qu'un rendu avait été REGARDÉ à côté de sa source.
+
+### Ce qui change pour vous
+
+**Huit formes** : Ovale, Ovale à côtés droits, Rectangle arrondi, Rectangle net, Octogone, Étoile,
+Écu et Tache. Le texte se replie sur la zone utile de la forme et non sur son encombrement, donc une
+Étoile tient moins de mots qu'un rectangle de même taille. Le Rectangle net est le récitatif, la
+boîte de narration, et naît sans pointe.
+
+**Cinq pointes** : Triangle, Éclair, Courbe, Ronds ou Aucune. On attrape la pointe et on la fait
+glisser pour la déplacer autour du contour et l'allonger. La pointe Courbe a un envers, par la case
+« Inverser la pointe ». La chaîne de ronds espace ses ronds quand on l'étire, au lieu de les
+grossir.
+
+**Le trait a un motif et une régularité** : Plein, Pointillé, Tirets ou Épines, en Net ou en
+Tremblé. Le tremblé donne un contour tracé à la main. Les épines donnent la Bulle de cri, une frange
+de traits courts serrés le long du contour, dont la densité a été réglée sur la source en cinq
+passes.
+
+**Quatre matières photographiées** remplacent l'ancienne « Encre sombre » : vieux papier, glace,
+lave et nuit étoilée. Une matière propose sa propre teinte tant qu'aucune couleur n'a été choisie,
+parce qu'un vieux papier bleu ou une tache d'encre rose n'existent sur aucune planche. Le fond a
+aussi une opacité : à 0 %, seuls le contour et le texte subsistent.
+
+**Le texte des Bulles a un contour**, avec sa couleur et son épaisseur. Sur une glace craquelée ou
+une coulée de lave, un lettrage sans contour se perd par endroits, et aucune couleur ne le sauve.
+
+**Deux Bulles se fusionnent en une seule.** Cochez « Bulle fusionnable » sur les deux, décochée par
+défaut pour que rien ne se soude tout seul dans un Projet existant, puis amenez l'une contre
+l'autre : le contour de la paire s'affiche pendant le glissement et la question est posée au
+relâchement. La Bulle fusionnée garde une zone de texte par lobe, chacune avec sa fiche. Ses lobes
+se déplacent et se redimensionnent encore, mais jamais assez loin pour se décoller. « Séparer les
+bulles » les détache, et supprimer un lobe dissout le groupe après confirmation, chaque Bulle
+retrouvant l'aspect qu'elle avait avant.
+
+**Les styles de Bulle.** Une nouvelle section « Style » garde l'aspect d'une Bulle sous un nom :
+forme, pointe, matière, trait, réglages du texte. Le menu des styles enregistrés les repose sur
+n'importe quelle autre Bulle, et Ctrl+Z revient en arrière. Un style se renomme et se supprime, et
+le supprimer ne touche aucune Bulle. Les styles sont rangés avec les réglages de l'Application et
+vous suivent d'un Projet à l'autre.
+
+**Le ciel d'une Case suit son éclairage** : bleu clair de jour, bleu de nuit la nuit, au lieu d'un
+fond unique quel que soit le mode.
+
+**« Supprimer la bulle »** est entré dans le menu contextuel d'une Bulle. Et « Vider une Case » ne
+supprime plus aucune Bulle : le chemin qui aurait dû le faire n'existait pas.
+
+Le manuel intégré a été refondu sur ce chantier : quatre sections de Bulle pour trois, la prose
+allégée de tout ce qui expliquait POURQUOI un réglage existe, qui vit dans les notes.
+
+### Sous le capot
+
+**Les quatre axes d'une Bulle sont des REGISTRES**, un par fichier, où chaque entrée DÉCLARE son
+contour, ses appuis et ses défauts. Avant, deux formes vivaient dans un `if`. Un registre applique
+partout la même politique : échec bruyant sur une clé inconnue, valeur par défaut explicite, et rien
+ne bouge pour ce qui est déjà enregistré. Les clés persistées ne se reprennent jamais : les trois
+formes retirées et l'ancienne « Encre sombre » survivent dans des tables d'alias.
+
+**Un cuiseur de textures** transforme une photographie en grain carrelable, mesuré plutôt que
+jugé. Il a démenti trois de mes chiffres à sa première vraie cuisson, dont un « 54 Ko » répété dans
+cinq écrits sans être revérifié : le fichier en pèse 255. Le JPEG, qu'il visait, dégrade exactement
+les deux grandeurs que l'outil existe pour tenir, parce qu'un encodeur JPEG ignore que l'image se
+carrelle et trahit ses coutures. Sans perte, donc.
+
+⚠️ **Le cache de textures avait une falaise.** La question posée était « faut-il un cache » ; la
+réponse est qu'il existait et qu'il s'effondrait. Huit entrées, politique « la plus ancienne sort »,
+et un dessin qui parcourt les Bulles dans l'ordre : l'entrée évincée est toujours exactement celle
+qu'on redemande au tour suivant. Compté en interceptant `getImageData`, une teinte de plus faisait
+passer une image de 0,03 ms à 63,5 ms. Une Planche est un balayage séquentiel par construction.
+
+**Le dessin lui-même n'a jamais été le sujet** : la configuration la plus chère reste sous 1,3 ms
+pour quarante Bulles, et une Bulle fusionnée ne coûte que 2,2 fois une Bulle nette malgré ses trois
+passes de peinture.
+
+⚠️ **Mon instrument de comparaison était faux, et il a fait écarter à tort deux réglages.**
+L'utilisateur l'a repéré en demandant pourquoi le rendu de l'application ne ressemblait pas à mes
+images. Le rasteriseur des planches de contact posait une encre pleine, sans couverture partielle :
+un trait de 0,4 px en sortait noir sur un pixel entier là où un canevas en fait un gris. Il a
+maintenant ses propres tests, et le premier qu'ils ont trouvé est que le suréchantillonnage seul ne
+suffisait pas. Un instrument faux ne produit pas des mesures bruitées, il produit des décisions
+fausses, et avec assurance.
+
+**Une faute expédiée deux fois par deux tests successifs** : une Bulle était remplie avec le chemin
+d'un rond de sa pointe, parce que les ronds se peignaient entre la construction du chemin du corps
+et son remplissage. Compter les appels ne l'a pas vue ; exiger un chemin non vide non plus.
+L'invariant qui la tient est l'ÉTENDUE du dernier chemin rempli.
+
+Et une passe de relecture du manuel a trouvé ce qu'aucune garde ne pouvait trouver : une phrase
+exacte le jour où elle a été écrite, devenue fausse deux commits plus tard, qui contredisait un
+autre paragraphe de sa propre section.
+
+La suite compte 3 705 tests, contre 3 146 à la v1.6.0.
+
+---
+
 ## v1.6.0
 
 **La lumière devient une chose qu'on règle, et les corps se mettent à porter une ombre.** Jusqu'ici
