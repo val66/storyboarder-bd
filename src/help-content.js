@@ -54,7 +54,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'bulles', title: 'Speech bubbles', paragraphs: [
     'Right-click an empty area of the page, then "Create a speech bubble". Right-click a bubble to bring it forward, send it backward or delete it.',
-    'Eight shapes: Oval, Straight-sided oval, Rounded rectangle, Sharp rectangle, Chamfered octagon, Star (shout), Shield and Ink blot. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
+    'Eight shapes: Oval, Straight-sided oval, Rounded rectangle, Sharp rectangle, Octagon, Star, Shield and Blot. Text wraps on the shape\'s usable area, not its bounding box — a star therefore holds fewer words.',
     'The Sharp rectangle is the CAPTION box, for narration: it is therefore born without a tail, where the Rounded rectangle is born with one and reads as a line of dialogue. Nothing stops you giving it a tail, as with every shape.',
     'Inside padding and font are adjustable in "Bubble appearance" and "Text" on the right.',
     'The bubble has its own "Border" section, separate from the panels one: the tick, the thickness (from Thin to Very thick) and the colour are set for it alone.',
@@ -64,9 +64,9 @@ export const HELP_MANUAL_EN = [
     'The text takes a colour, and an outline: "Outline colour" and "Outline size", under the Text section, draw a halo behind the letters so they stay readable on a dark or busy background.',
   ]},
   { id: 'pointe', title: 'Bubble tail', paragraphs: [
-    'The tail comes in five kinds — Triangle, Lightning, Curved hair, Chain of circles, or None — and can be dragged anywhere around the outline.',
-    '"Flip the tail", below the list, leans the Curved hair the other way. The box only shows for that one: the other tails have no other side, a Triangle being symmetrical and a Lightning already alternating on either side of its axis.',
-    'The Chain of circles sets its first circle astride the outline, which OPENS underneath it: no stroke crosses its base, as with the other tails. The next two circles are detached.',
+    'The tail comes in five kinds — Triangle, Lightning, Curved, Circles, or None — and can be dragged anywhere around the outline.',
+    '"Flip the tail", below the list, leans the Curved tail the other way. The box only shows for that one: the other tails have no other side, a Triangle being symmetrical and a Lightning already alternating on either side of its axis.',
+    'The Circles tail sets its first circle astride the outline, which OPENS underneath it: no stroke crosses its base, as with the other tails. The next two circles are detached.',
     'Stretching the tail spreads the circles apart without growing them: their size is read off the Bubble, not off the tail length. Choosing this shape lengthens the tail if it is too short to hold the chain — never the other way round, a tail you set yourself is not shortened.',
   ]},
   { id: 'fusion', title: 'Merged bubbles', paragraphs: [
@@ -263,7 +263,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'bulles', title: 'Bulles de dialogue', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une bulle de dialogue ». Clic droit sur une Bulle pour l\'avancer, la reculer ou la supprimer.',
-    'Huit formes : Ovale, Ovale à côtés droits, Rectangle arrondi, Rectangle net, Octogone à coins coupés, Étoile (cri), Écu et Tache d\'encre. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
+    'Huit formes : Ovale, Ovale à côtés droits, Rectangle arrondi, Rectangle net, Octogone, Étoile, Écu et Tache. Le texte se replie sur la zone utile de la forme, pas sur son encombrement — une étoile tient donc moins de mots.',
     "Le Rectangle net est le RÉCITATIF, la boîte de narration : il naît donc sans pointe, là où le Rectangle arrondi naît avec la sienne et se lit comme une réplique. Rien ne vous empêche de lui en donner une, comme pour toutes les formes.",
     'Padding intérieur et police d\'écriture réglables dans « Apparence de la bulle » et « Texte » à droite.',
     "La Bulle a sa propre section « Bordure », distincte de celle des Cases : la coche, l'épaisseur (de Fine à Très épaisse) et la couleur s'y règlent pour elle seule.",
@@ -273,9 +273,9 @@ export const HELP_MANUAL_FR = [
     "Le texte prend une couleur, et un contour : « Couleur de contour » et « Taille du contour », dans la section Texte, dessinent un halo derrière les lettres pour qu'elles restent lisibles sur un fond sombre ou chargé.",
   ]},
   { id: 'pointe', title: 'Pointe de la bulle', paragraphs: [
-    "La pointe existe en cinq formes — Triangle, Éclair, Cheveu courbe, Chaîne de ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",
-    "« Inverser la pointe », sous la liste, renverse le Cheveu courbe du côté opposé. La case ne s'affiche que pour lui : les autres pointes n'ont pas d'envers, un Triangle étant symétrique et un Éclair alternant déjà de part et d'autre de son axe.",
-    "La Chaîne de ronds pose son premier rond à cheval sur le contour, qui s'OUVRE dessous : aucun trait ne barre sa base, comme pour les autres pointes. Les deux ronds suivants sont détachés.",
+    "La pointe existe en cinq formes — Triangle, Éclair, Courbe, Ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",
+    "« Inverser la pointe », sous la liste, renverse la pointe Courbe du côté opposé. La case ne s'affiche que pour lui : les autres pointes n'ont pas d'envers, un Triangle étant symétrique et un Éclair alternant déjà de part et d'autre de son axe.",
+    "La pointe Ronds pose son premier rond à cheval sur le contour, qui s'OUVRE dessous : aucun trait ne barre sa base, comme pour les autres pointes. Les deux ronds suivants sont détachés.",
     "Étirer la pointe écarte les ronds les uns des autres sans les grossir : leur taille se lit sur la Bulle, pas sur la longueur de la pointe. Choisir ce motif allonge la pointe si elle est trop courte pour contenir la chaîne — jamais l'inverse, une pointe que vous avez réglée vous-même n'est pas raccourcie.",
   ]},
   { id: 'fusion', title: 'Bulles fusionnées', paragraphs: [

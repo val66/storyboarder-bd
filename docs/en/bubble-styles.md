@@ -855,3 +855,22 @@ concave arcs, and the star now returns 88% — the witness has become a second e
 therefore proves LESS than before, and says so: what it still holds is that the shield has not gone
 round, with three convex shapes at zero as witnesses. Quietly re-tuning its threshold would have left
 the impression that it still proved the same thing.
+
+## The panel's names have been shortened
+
+⚠️ **A MENU LABEL IS NOT A DESCRIPTION.** "Star (shout)", "Concave-sided escutcheon", "Ink blot",
+"Curved hair", "Chamfered octagon", "Chain of circles": each carried, on top of its name, a piece of
+what the specification note already says better. In a dropdown that surplus distinguishes nothing —
+no other entry is a shield, a blot or an octagon — and it slows the reading down at the very moment
+one is choosing.
+
+They are now Star, Shield, Blot, Curved, Octagon, Circles. The tail list is a single word
+throughout: Triangle, Lightning, Curved, Circles, None. The two rectangles keep their qualifier,
+because those two do distinguish each other.
+
+⚠️ **AND THE MANUAL'S GUARD COULD BE TIGHTENED, WHICH IS THE REAL REASON FOR THE TIDY-UP.** The test
+requiring every shape and tail on offer to be named in the manual only looked for each label's FIRST
+WORD — a crutch made necessary by their length, since the manual cited them in short form. It cost
+dearly: "Rounded rectangle" and "Sharp rectangle" both reduced to "Rectangle", so one of them
+vanishing from the manual went unnoticed. Short labels can be cited verbatim, and the guard now
+demands the whole label.

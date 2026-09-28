@@ -1308,10 +1308,18 @@ describe('#425z : les formes et les pointes offertes sont toutes nommées dans l
       for (const libelle of optionsDe(id)) {
         // « Aucune » est une absence de pointe, pas une pointe : le manuel la dit autrement.
         if (libelle === 'Aucune') continue;
-        // Le libellé du menu peut être plus long que le mot du manuel — « Écu à côtés concaves »
-        // contre « Écu ». On cherche donc son premier mot, qui est ce qui le nomme.
-        const mot = libelle.split(/[\s(/]/)[0];
-        if (!MANUEL.includes(mot)) absents.push(`${quoi} « ${libelle} »`);
+        /*
+         * ⚠️ LE LIBELLÉ ENTIER, ET NON PLUS SON PREMIER MOT. Cette recherche ne portait que sur le
+         * premier mot, parce que les libellés étaient plus longs que ce que le manuel en reprenait
+         * — « Écu à côtés concaves » contre « Écu ». C'était une béquille, et elle coûtait cher :
+         * « Rectangle arrondi » et « Rectangle net » se réduisaient tous deux à « Rectangle », si
+         * bien que la disparition de l'un du manuel passait inaperçue.
+         *
+         * Le renommage de #425v a raccourci les libellés jusqu'à ce que le manuel puisse les citer
+         * tels quels. La garde en profite pour dire exactement ce qu'elle veut dire. Ce n'est pas un
+         * effet secondaire du renommage : c'est la raison de plus qui le justifiait.
+         */
+        if (!MANUEL.includes(libelle)) absents.push(`${quoi} « ${libelle} »`);
       }
     }
     assert.deepEqual(absents, [],

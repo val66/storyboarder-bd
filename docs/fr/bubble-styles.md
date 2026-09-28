@@ -896,3 +896,25 @@ des arcs concaves, et l'étoile rend maintenant 88 % — le témoin est devenu u
 prouve donc MOINS qu'avant, et il le dit : ce qu'il tient encore est que l'écu ne s'est pas arrondi,
 avec trois formes convexes à zéro pour témoins. Rajuster son seuil en silence aurait laissé croire
 qu'il prouvait toujours la même chose.
+
+## Les noms de la fiche ont été raccourcis
+
+⚠️ **UN LIBELLÉ DE MENU N'EST PAS UNE DESCRIPTION.** « Étoile (cri) », « Écu à côtés concaves »,
+« Tache d'encre », « Cheveu courbe », « Octogone à coins coupés », « Chaîne de ronds » : chacun
+portait, en plus de son nom, un morceau de ce que la note de spécification dit déjà mieux. Dans une
+liste déroulante, ce supplément ne distingue de rien — aucune autre entrée n'est un écu, une tache
+ou un octogone — et il allonge la lecture au moment où l'on choisit.
+
+Ils sont devenus Étoile, Écu, Tache, Courbe, Octogone, Ronds. La liste des pointes est désormais
+entièrement en un mot : Triangle, Éclair, Courbe, Ronds, Aucune. Les deux rectangles gardent leur
+qualificatif, parce qu'eux se distinguent l'un de l'autre.
+
+L'anglais suit : « Concave-sided escutcheon » devient **Shield**, un mot que les anglophones
+connaissent, et « Ink blot » devient **Blot**.
+
+⚠️ **ET LA GARDE DU MANUEL A PU SE RESSERRER, CE QUI EST LA VRAIE RAISON DE CE RANGEMENT.** Le test
+qui exige que chaque forme et chaque pointe offertes soient nommées dans le manuel ne cherchait que
+le PREMIER MOT de chaque libellé — une béquille rendue nécessaire par leur longueur, puisque le
+manuel les citait en abrégé. Elle coûtait cher : « Rectangle arrondi » et « Rectangle net » se
+réduisaient tous deux à « Rectangle », si bien que la disparition de l'un du manuel passait
+inaperçue. Les libellés courts se citent tels quels, et la garde exige maintenant le libellé entier.

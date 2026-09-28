@@ -94,21 +94,21 @@ export const I18N_TEXT = [
   ['#sideBubbleShapeSelect option[value="rectnet"]', 'Sharp rectangle', 'Rectangle net'],
   // #425e — les formes du registre. Les libellés traduisent ce qu'on VOIT ; la valeur persistée,
   // elle, ne change pas de langue.
-  ['#sideBubbleShapeSelect option[value="octogone"]', 'Chamfered octagon', 'Octogone à coins coupés'],
-  ['#sideBubbleShapeSelect option[value="etoile"]', 'Star (shout)', 'Étoile (cri)'],
+  ['#sideBubbleShapeSelect option[value="octogone"]', 'Octagon', 'Octogone'],
+  ['#sideBubbleShapeSelect option[value="etoile"]', 'Star', 'Étoile'],
   // #425f — les deux formes qui naissent SANS queue. Le libellé ne le dit pas, et c'est voulu : la
   // case « Afficher la pointe » se décoche toute seule à la création, ce qui se voit à l'écran.
-  ['#sideBubbleShapeSelect option[value="ecu"]', 'Concave-sided escutcheon', 'Écu à côtés concaves'],
+  ['#sideBubbleShapeSelect option[value="ecu"]', 'Shield', 'Écu'],
   // #425g — les deux contours GÉNÉRÉS. La tache est volontairement offerte alors que sa texture
   // n'existe pas encore : sa silhouette est juste, son remplissage ne l'est pas.
-  ['#sideBubbleShapeSelect option[value="tache"]', 'Ink splat', "Tache d'encre"],
+  ['#sideBubbleShapeSelect option[value="tache"]', 'Blot', 'Tache'],
   // #425h — l'axe QUEUE. Indépendant de la forme : les quatre tracés sont offerts quelle que soit
   // la silhouette choisie, et un test croise les neuf formes avec les quatre queues.
   ['label[for="sideBubbleTailShapeSelect"]', 'Bubble tail', 'Pointe de la bulle'],
   ['#sideBubbleTailShapeSelect option[value="triangle"]', 'Triangle', 'Triangle'],
   ['#sideBubbleTailShapeSelect option[value="eclair"]', 'Lightning', 'Éclair'],
-  ['#sideBubbleTailShapeSelect option[value="cheveu"]', 'Curved wisp', 'Cheveu courbe'],
-  ['#sideBubbleTailShapeSelect option[value="ronds"]', 'Chain of circles', 'Chaîne de ronds'],
+  ['#sideBubbleTailShapeSelect option[value="cheveu"]', 'Curved', 'Courbe'],
+  ['#sideBubbleTailShapeSelect option[value="ronds"]', 'Circles', 'Ronds'],
   // « Aucune » est une valeur de l'axe, pas une absence de réglage — elle a remplacé la case à
   // cocher « Afficher la pointe », qui disait la même chose une seconde fois.
   ['#sideBubbleTailShapeSelect option[value="aucune"]', 'None', 'Aucune'],
