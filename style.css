@@ -513,7 +513,16 @@ select, input[type=number]{
   color:var(--ink-soft); border-radius:6px; font-size:11.5px; cursor:pointer; text-align:left; font-weight:600;
 }
 .add-page-btn:hover{ color:var(--accent); border-color:var(--accent); }
-.tome-format label, .tome-pages > label{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:5px; font-weight:700; }
+/* ⚠️ « TOUTES LES LABEL D'UN ENCART » ÉTAIT UN RACCOURCI, ET IL A FINI PAR ATTRAPER AUTRE CHOSE.
+   Cette règle habille les TITRES des encarts ; elle visait toute `<label>` parce qu'il n'y en avait
+   pas d'autre sorte. Le jour où une case à cocher est entrée dans un encart, elle a hérité du
+   costume d'un titre — majuscules, gras, `display:block` qui annule le centrage vertical — et il a
+   fallu une seconde règle, plus spécifique, pour le lui reprendre. Deux règles décrivaient alors
+   une même apparence de case à cocher, à deux endroits : elles ont aussitôt divergé, et l'écart
+   s'est vu à l'écran entre « Inverser la pointe » et « Afficher la bordure ».
+   La règle dit donc maintenant ce qu'elle veut dire : les libellés QUI NE SONT PAS des cases à
+   cocher. `.side-bulle-tail` redevient la source unique de leur apparence. */
+.tome-format label:not(.side-bulle-tail), .tome-pages > label{ font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:5px; font-weight:700; }
 .tome-format select{ width:100%; }
 /* ⚠️ LA CONTREPARTIE DES SELECTS, ET ELLE N'AVAIT JAMAIS ÉTÉ ÉCRITE. Un `input[type=range]` a une
    largeur INTRINSÈQUE d'environ 129 px : dans un bloc qui en fait 250, il s'arrêtait à mi-chemin,
@@ -808,8 +817,16 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
    qu'on vient de lire. La hauteur reste tirable, comme celle de la zone unique. */
 .side-lobe .side-desc-input{ min-height:96px; }
 .side-lobe{ margin-bottom:8px; }
+/* ⚠️ L'APPARENCE DES CASES À COCHER DU PANNEAU, ÉCRITE UNE SEULE FOIS. Les trois — « Afficher la
+   bordure », « Bulle fusionnable », « Inverser la pointe » — doivent se ressembler, et le seul
+   moyen d'en être sûr est qu'une seule règle les décrive. Les valeurs sont celles jugées les plus
+   lisibles à l'usage : celles qu'« Inverser la pointe » avait prises. Le poids et l'interlettrage
+   sont posés EXPLICITEMENT plutôt que laissés à l'héritage, parce que c'est par l'héritage que les
+   deux libellés s'étaient mis à différer. */
 .side-bulle-tail{
-  display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
+  display:flex; align-items:center; gap:6px;
+  font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:normal;
+  color:var(--ink-soft);
   margin-bottom:8px; cursor:pointer; user-select:none;
 }
 .side-bulle-tail input{ cursor:pointer; }
@@ -817,28 +834,15 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .side-bulle-font select{ font-size:13px; }
 .side-bulle-appearance{ margin-bottom:8px; }
 .side-bulle-appearance .side-bulle-tail{ margin-left:0; }
-/* ⚠️ VISÉ PAR SON IDENTIFIANT, ET NON PAR `.side-bulle-tail`. Cette classe habille aussi « Afficher
-   la bordure » et « Bulle fusionnable », qui suivent un titre de section et n'ont besoin d'aucune
-   marge ; la régler sur la classe les décalerait tous les trois. Celle-ci est la seule à venir
-   DIRECTEMENT sous un menu déroulant, dans le même encart que lui, et c'est de cet appui qu'elle
-   doit se détacher — demandé à l'usage, capture à l'appui.
-   L'identifiant est sans risque ici : l'élément est écrit dans index.html et non engendré, à la
-   différence des zones de texte des lobes, dont une règle par identifiant n'atteignait aucune
-   copie (#426e). */
-/* ⚠️ ET IL FAUT REPRENDRE CE QUE `.tome-format label` LUI IMPOSE. Cette règle-là habille les TITRES
-   des encarts — 10 px, majuscules, gras, `display:block` — et sa spécificité (0,1,1) l'emporte sur
-   celle de `.side-bulle-tail` (0,1,0). Une case à cocher posée dans un encart héritait donc du
-   costume d'un titre de section : le `display:block` annulait le centrage vertical que le flex
-   apportait, et le libellé retombait sur la ligne de base de la case, à côté de son bas — relevé à
-   l'usage. L'aspect majuscules venait de la même règle.
-   On rend donc à ce libellé l'apparence des deux autres cases du panneau, « Afficher la bordure »
-   et « Bulle fusionnable », en montant d'un cran de spécificité plutôt qu'en ajoutant `!important`,
-   qui aurait caché le conflit au lieu de le résoudre. */
-.tome-format label.side-bulle-tail{
-  display:flex; align-items:center; gap:6px;
-  font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:normal;
-  margin-top:8px; margin-bottom:0;
-}
+/* ⚠️ ET CETTE RÈGLE-CI NE GARDE QUE CE QUI LUI EST PROPRE : la marge haute. Elle portait aussi
+   l'apparence complète de la case, pour reprendre ce que la règle des titres lui imposait ; depuis
+   que celle-ci exclut les cases à cocher, il n'y a plus rien à reprendre.
+   Seule cette case vient DIRECTEMENT sous un menu déroulant, dans le même encart que lui, et c'est
+   de cet appui qu'elle doit se détacher — demandé à l'usage. Les deux autres suivent un titre de
+   section et n'ont besoin d'aucune marge : la régler sur la classe les décalerait toutes les trois.
+   L'identifiant est sans risque ici, l'élément étant écrit dans index.html et non engendré — à la
+   différence des zones de texte des lobes, qu'une règle par identifiant n'atteignait pas (#426e). */
+#sideBubbleTailMirrorWrap{ margin-top:8px; margin-bottom:0; }
 /* Sélecteur de couleur (cf. sideBorderColorInput/sidePlancheBgColorInput) — section "Bordure" du menu
    Case et "Arrière-plan" du menu Planche — sur demande utilisateur. */
 /* Section "Sol" du menu Case/Scène : grille de boutons à swatches de texture — sur demande utilisateur. */

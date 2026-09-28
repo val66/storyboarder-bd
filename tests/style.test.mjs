@@ -181,6 +181,56 @@ describe('#426e bis — le champ de texte d\'une Bulle est habillé par une CLAS
   });
 });
 
+/**
+ * ⚠️ LES TROIS CASES À COCHER DU PANNEAU SONT HABILLÉES PAR UNE SEULE RÈGLE, ET RIEN NE DOIT LA
+ * DOUBLER. « Afficher la bordure », « Bulle fusionnable » et « Inverser la pointe » portent la même
+ * classe et doivent se ressembler.
+ *
+ * Elles ont pourtant divergé, et la cause tenait à un raccourci : la règle des TITRES d'encart
+ * visait `.tome-format label`, c'est-à-dire toute `<label>` d'un encart, parce qu'il n'y en avait
+ * pas d'autre sorte. Le jour où une case à cocher est entrée dans un encart, elle a hérité du
+ * costume d'un titre — majuscules, gras, `display:block` qui annule le centrage vertical — et il a
+ * fallu une seconde règle, plus spécifique, pour le lui reprendre. Deux règles décrivaient alors
+ * une même apparence : elles se sont aussitôt écartées, et l'écart s'est vu à l'écran.
+ */
+describe('#425h — une seule règle habille les cases à cocher du panneau', () => {
+  test('⚠️ LA RÈGLE DES TITRES D’ENCART EXCLUT LES CASES À COCHER', () => {
+    // On lit le SÉLECTEUR, pas les déclarations : c'est lui qui décide qui est habillé.
+    assert.match(css, /\.tome-format label:not\(\.side-bulle-tail\)/,
+      'la règle des titres vise de nouveau toute <label> : une case à cocher posée dans un encart '
+      + 'reprendra le costume d’un titre, majuscules et display:block compris');
+  });
+
+  test('⚠️ ET AUCUNE AUTRE RÈGLE NE REDÉCLARE LEUR TYPOGRAPHIE', () => {
+    // ⚠️ LA MESURE PORTE SUR LES SÉLECTEURS QUI CIBLENT LA CLASSE, et la typographie seule : les
+    // marges, elles, ont le droit de varier d'un emplacement à l'autre, et c'est même leur raison
+    // d'être ici.
+    const TYPO = ['font-size', 'font-weight', 'text-transform', 'letter-spacing', 'color', 'display'];
+    const fautifs = [];
+    for (const m of css.matchAll(/^([^{}\n][^{}]*)\{([^}]*)\}/gm)) {
+      const selecteur = m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
+      if (!selecteur.includes('.side-bulle-tail')) continue;
+      if (selecteur === '.side-bulle-tail') continue;            // la source unique
+      if (selecteur.includes(':not(')) continue;                 // l'exclusion ci-dessus
+      const corps = m[2].replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const prop of TYPO) {
+        if (new RegExp(`(^|;)\\s*${prop}\\s*:`).test(corps)) fautifs.push(`${selecteur} → ${prop}`);
+      }
+    }
+    assert.deepEqual(fautifs, [],
+      'ces règles redéclarent la typographie des cases à cocher, qui finira par diverger : '
+      + fautifs.join(', '));
+  });
+
+  test('le garde-fou : la règle unique existe et décrit bien une case à cocher', () => {
+    // Sans lui, les deux assertions ci-dessus seraient vraies d'une classe qui n'existe plus.
+    const corps = declarations('.side-bulle-tail');
+    for (const prop of ['display', 'align-items', 'font-size', 'font-weight']) {
+      assert.match(corps, new RegExp(`${prop}\\s*:`), `.side-bulle-tail ne pose plus ${prop}`);
+    }
+  });
+});
+
 describe('Fix 72 (ESSAI) : le champ piloté se distingue des autres champs de l\'articulation', () => {
   const active = declarations('.joint-slider-row.active');
   const driven = declarationsOuNull('.joint-slider-row.active.driven');
