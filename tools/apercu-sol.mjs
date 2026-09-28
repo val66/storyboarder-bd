@@ -37,7 +37,7 @@
  * Usage :  npm run apercu-sol            (toutes les matières)
  *          npm run apercu-sol -- herbe terre    (une sélection)
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -113,13 +113,28 @@ function scriptDeLaPage(ids, disposition){
     const g = planche.getContext('2d');
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, d.largeur, d.hauteur);
 
+    /** Une image de fichier, attendue chargée : le dessin ne doit pas courir après elle. */
+    const chargerImage = (src) => new Promise((ok, ko) => {
+      const im = new Image();
+      im.onload = () => ok(im); im.onerror = () => ko(new Error('illisible : ' + src));
+      im.src = src;
+    });
+
     for (let i = 0; i < ids.length; i++) {
       const id = ids[i], cell = d.cellules[i];
-      const def = GROUND_TYPE_DEFS.find(t => t.id === id);
-      const tuile = buildGroundTexture(id).map.image;
+      // Deux sources possibles, et une seule planche : une matière procédurale du Sol, ou un grain
+      // déjà cuit depuis une photographie. Les montrer dans la MÊME mise en page est tout l'objet
+      // du mode grains, puisque la question posée est « une photo s'en sortirait-elle mieux ».
+      const estUnGrain = id.startsWith('grain:');
+      const tuile = estUnGrain
+        ? await chargerImage('../assets/textures/' + id.slice(6))
+        : buildGroundTexture(id).map.image;
+      const def = estUnGrain ? null : GROUND_TYPE_DEFS.find(t => t.id === id);
 
       g.fillStyle = '#111'; g.font = '13px sans-serif'; g.textBaseline = 'middle';
-      g.fillText(def.label + '   repeat ' + def.repeat + '   disp ' + def.dispScale,
+      g.fillText(estUnGrain
+                   ? id.slice(6) + '   photographié, cuit en 512²'
+                   : def.label + '   repeat ' + def.repeat + '   disp ' + def.dispScale,
                  cell.titre.x + 2, cell.titre.y + cell.titre.hauteur / 2);
 
       g.drawImage(tuile, cell.tuile.x, cell.tuile.y, cell.tuile.taille, cell.tuile.taille);
@@ -145,15 +160,29 @@ async function main(){
   const { app, BrowserWindow } = await import('electron');
   const { GROUND_TYPE_DEFS } = await import(pathToFileURL(join(RACINE, 'src/constants.js')).href);
 
+  const options = process.argv.slice(2).filter(a => a.startsWith('-'));
   const demandés = process.argv.slice(2).filter(a => !a.startsWith('-'));
   const connus = GROUND_TYPE_DEFS.map(d => d.id);
+
+  /**
+   * ⚠️ LE MODE QUI RÉPOND À « UNE PHOTO S'EN SORTIRAIT-ELLE MIEUX ». Les grains déjà cuits sont des
+   * photographies réelles, ramenées à 512² comme le seraient celles du Sol. Les passer dans la même
+   * mise en page, donc sous la même répétition, montre ce que la minification leur fait. C'est une
+   * démonstration, pas un argument : la question a été posée, et ce dépôt y répond en regardant.
+   */
+  const grains = options.includes('--grains')
+    ? readdirSync(join(RACINE, 'assets', 'textures'))
+        .filter(f => f.endsWith('.png')).map(f => 'grain:' + f)
+    : [];
+
   const inconnus = demandés.filter(id => !connus.includes(id));
   if (inconnus.length) {
     // Échec bruyant, la politique des registres de ce dépôt : une faute de frappe qui rendrait une
     // planche silencieusement incomplète coûte plus qu'un message.
     throw new Error(`matière inconnue : ${inconnus.join(', ')}\nconnues : ${connus.join(', ')}`);
   }
-  const ids = demandés.length ? demandés : connus;
+  const ids = grains.length ? grains : (demandés.length ? demandés : connus);
+  if (!ids.length) throw new Error('rien à montrer : aucun grain cuit dans assets/textures/');
 
   await app.whenReady();
   const fenetre = new BrowserWindow({ show: false, width: 100, height: 100 });
@@ -162,7 +191,7 @@ async function main(){
   const disposition = dispositionDeLaPlanche3D(ids.length, 2);
   const url = await fenetre.webContents.executeJavaScript(scriptDeLaPage(ids, disposition));
 
-  const sortie = join(RACINE, 'apercus', 'sol.png');
+  const sortie = join(RACINE, 'apercus', grains.length ? 'grains.png' : 'sol.png');
   mkdirSync(dirname(sortie), { recursive: true });
   const png = Buffer.from(url.split(',')[1], 'base64');
   writeFileSync(sortie, png);
