@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "engines": {
     "node": ">=20"
   },
@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "bump": "node tools/bump-version.mjs",
     "bake-textures": "electron tools/bake-textures.mjs",
+    "apercu-sol": "electron tools/apercu-sol.mjs",
     "setup-hooks": "node tools/setup-hooks.mjs",
     "typecheck": "tsc -p jsconfig.json --noEmit",
     "typecheck:report": "node tools/typecheck-report.mjs",

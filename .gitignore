@@ -63,3 +63,8 @@ atlas-des-bulles-corrections.md
 # à l'endroit où le manque se lit, sous un numéro (cf. tests/code-mort.test.mjs). Un fichier non
 # versionné qui serait le seul à connaître une tâche la perdrait au premier clone.
 TACHES.md
+
+# Planches de contact produites par tools/apercu-sol.mjs et regardées pendant un chantier. Ce sont
+# des images de TRAVAIL, refaites à chaque réglage : les versionner ferait grossir le dépôt d une
+# planche par essai, pour des fichiers dont aucun ne fait foi.
+apercus/

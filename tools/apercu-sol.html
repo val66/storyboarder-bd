@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<!--
+  Le banc de tools/apercu-sol.mjs. Une page vide, dont le seul rôle est de fournir à `src/rig3d.js`
+  ce qu'il attend : un `document`, et THREE en variable globale (cf. l'en-tête de rig3d.js, « THREE
+  is available as a global »). Le dessin de la planche est injecté par `executeJavaScript`.
+
+  On charge le MÊME three.min.js que l'application, par le chemin déclaré dans build.files, et non
+  une copie ni un CDN : une planche rendue avec une autre version de THREE ne prouverait rien sur
+  ce que l'application montre.
+-->
+<meta charset="utf-8">
+<title>Aperçu des matières du Sol</title>
+<script src="../node_modules/three/build/three.min.js"></script>
