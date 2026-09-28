@@ -53,6 +53,7 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
+import { queuesConnues } from '../src/bubble-tail.js';
 import { QUEUE_ECARTEMENT, longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
 import { pointesDeLEpine3D, graineTrembleBulle } from '../src/bubble-style.js';
 // Le nombre de points dont draw.js échantillonne le contour pour la frange (POINTS_EPINE).
@@ -2845,6 +2846,65 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     const sans = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }))
       .filter(e => e.nom === 'fill').length;
     assert.equal(fills - sans, 3, `${fills - sans} remplissages de plus : les trois ronds n’en ont pas un chacun`);
+  });
+
+  /**
+   * ⚠️ LE CORPS DE LA BULLE EST REMPLI AVEC SA PROPRE GÉOMÉTRIE, ET CE TEST NAÎT D'UN BUG LIVRÉ.
+   *
+   * En glissant la peinture des ronds entre la construction du chemin du corps et son remplissage,
+   * leur propre `beginPath` a effacé ce chemin. La Bulle a été remplie et cernée avec le chemin du
+   * DERNIER ROND : à l'écran, plus de fond, plus de bordure, seuls les ronds. Rapporté à l'usage.
+   *
+   * ⚠️ DEUX TESTS SUCCESSIFS SONT PASSÉS À CÔTÉ, ET LEUR FAUTE EST LA MÊME. Le premier comptait les
+   * APPELS et leur ordre : le journal enregistre `fill` qu'il peigne quelque chose ou rien. Le
+   * second, écrit en réaction, exigeait un chemin NON VIDE : il l'était, du petit disque. Les deux
+   * mesuraient la forme du journal et non ce que le canevas allait peindre — variante, appliquée au
+   * dessin, de « un test qui vérifie qu'un identifiant apparaît plutôt qu'il gouverne ».
+   *
+   * Ce qui distingue un corps d'un rond n'est pas le NOMBRE de commandes mais leur ÉTENDUE. Le
+   * relevé mesure donc la boîte du chemin sur lequel porte le dernier remplissage, et exige qu'elle
+   * couvre l'essentiel de la Bulle. Aucune queue n'est nommée : l'invariant vaut pour les couples à
+   * venir.
+   */
+  test('⚠️ LE DERNIER REMPLISSAGE COUVRE LA BULLE, ET NON UN ÉLÉMENT DE SA POINTE', () => {
+    // L'étendue en x du chemin décrit par une commande de tracé, ou `null` si elle n'en est pas une.
+    const bornes = (e) => {
+      const a = e.args;
+      if (e.nom === 'moveTo' || e.nom === 'lineTo') return [a[0], a[0]];
+      if (e.nom === 'rect') return [a[0], a[0] + a[2]];
+      if (e.nom === 'ellipse' || e.nom === 'arc') {
+        const r = e.nom === 'arc' ? a[2] : a[2];
+        return [a[0] - r, a[0] + r];
+      }
+      return null;
+    };
+    let couples = 0;
+    for (const forme of formesConnues()) {
+      for (const queue of queuesConnues()) {
+        if (queue === 'aucune') continue;   // rien à confondre avec le corps : pas de second chemin
+        couples++;
+        const o = bulle({ bulleShape: forme, tailShape: queue });
+        const j = dessiner(o);
+        const dernierFill = j.map(e => e.nom).lastIndexOf('fill');
+        assert.ok(dernierFill > 0, `« ${forme} » + « ${queue} » : aucun remplissage`);
+        const ouverture = j.slice(0, dernierFill).map(e => e.nom).lastIndexOf('beginPath');
+        assert.ok(ouverture >= 0, `« ${forme} » + « ${queue} » : remplissage sans chemin ouvert`);
+        let min = Infinity, max = -Infinity;
+        for (const e of j.slice(ouverture + 1, dernierFill)) {
+          const b = bornes(e);
+          if (!b) continue;
+          min = Math.min(min, b[0]); max = Math.max(max, b[1]);
+        }
+        const etendue = max - min;
+        assert.ok(etendue > o.w * 0.5,
+          `« ${forme} » + « ${queue} » : le dernier remplissage porte sur un chemin large de `
+          + `${Number.isFinite(etendue) ? etendue.toFixed(1) : '0'} px pour une Bulle de ${o.w} — `
+          + 'ce n’est pas le corps, et la Bulle n’aura ni fond ni bordure');
+      }
+    }
+    // Sept formes × quatre pointes, « aucune » écartée : le témoin dit le compte attendu.
+    assert.equal(couples, formesConnues().length * (queuesConnues().length - 1),
+      `${couples} couples parcourus : le relevé n’en voit pas tous`);
   });
 
   test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {

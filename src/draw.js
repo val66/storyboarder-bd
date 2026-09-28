@@ -1914,9 +1914,6 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   }
   };
   c.save();
-  c.beginPath();
-  construireChemin(null);
-  c.closePath();
   // ⚠️ LES RONDS SE DESSINENT AVANT LA BULLE, ET CHACUN DANS SON PROPRE CHEMIN.
   //
   // CHACUN DANS SON CHEMIN : les mettre dans celui de la Bulle les ferait remplir par la règle de
@@ -1947,6 +1944,19 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     }
   };
   peindreLesRonds();
+  // ⚠️ LE CHEMIN DU CORPS EST CONSTRUIT APRÈS LES RONDS, ET L'ORDRE DE CES DEUX LIGNES EST UN BUG
+  // QUI A ÉTÉ LIVRÉ. Il était bâti avant, là où il l'avait toujours été ; en glissant les ronds
+  // entre sa construction et son remplissage, leur propre `beginPath` l'a EFFACÉ, et la Bulle s'est
+  // retrouvée remplie et cernée sur un chemin vide — plus de fond, plus de bordure, seuls les ronds
+  // visibles. Rapporté à l'usage.
+  //
+  // La suite était verte : le journal du canevas enregistre l'APPEL `fill`, pas son effet, et le
+  // test d'ordre que je venais d'écrire comptait les appels. Une assertion sur l'ordre des appels
+  // ne dit rien de l'état du chemin sur lequel ils portent. C'est ce trou que comble désormais
+  // « le chemin du corps est encore là quand on le remplit ».
+  c.beginPath();
+  construireChemin(null);
+  c.closePath();
   // L'arc du CORPS : le périmètre entier, sauf quand une queue continue en remplace un morceau.
   // C'est exactement l'arc que `construireChemin` fait suivre à `emettreContour` juste au-dessus.
   const arcDuCorps = (queueVisible && traceQueue)
