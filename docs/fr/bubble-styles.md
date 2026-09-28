@@ -172,19 +172,33 @@ le contour.
 ⚠️ **LE CHEVEU A UN ENVERS, ET LUI SEUL.** Une case « Inverser la pointe » renverse sa courbure :
 les deux arcs bombent de l'autre côté du même axe, et la queue penche dans l'autre sens.
 
-⚠️ **MAIS RENVERSER LE SIGNE NE SUFFIT PAS : IL FAUT AUSSI ÉCHANGER LES DEUX COURBURES.** C'est une
-soustraction qui fait la finesse du cheveu. Les bases sont à ∓w de l'axe ; le bord qui part de la
-première bombe de K, celui qui rejoint la seconde de 0,55 K, tous deux du même côté. À mi-portée,
-l'écart entre les deux bords vaut donc **w − 0,45 K** : les deux flèches se retranchent, et la queue
-est un croissant mince. En ne changeant que le signe, ce même écart devient **w + 0,45 K** — elles
-s'ajoutent, et la queue enfle. Rapporté à l'usage, capture à l'appui : « quand je coche inverser la
-pointe, la pointe est plus épaisse et ne ressemble pas à celle d'avant l'inversion ».
+⚠️ **ET LE CHEVEU EST DEVENU UNE MÉDIANE COURBE ET UNE LARGEUR QUI SE REFERME.** Sa première
+construction faisait bomber ses deux bords du même côté avec des courbures INÉGALES : à mi-portée
+l'écart entre eux valait **w − 0,45 K**, et c'est cette soustraction qui donnait la finesse. Deux
+défauts en sont sortis, à deux semaines d'intervalle, et ils avaient la même racine.
 
-Un miroir échange aussi les deux côtés d'une forme. Rendre la grande courbure au bord qui rejoint la
-seconde base retrouve la soustraction, et donc la même silhouette, retournée. Le test qui tenait ce
-réglage exigeait au contraire que chaque point garde la même AMPLITUDE en changeant de signe : il
-décrivait un miroir où chaque bord resterait à sa place, ce qui n'existe pas, et il interdisait du
-même coup l'inégalité des deux courbures dont dépend tout l'aspect. Elle ne s'affiche que pour lui — un triangle est symétrique, un éclair
+Le premier : inverser la pointe en ne changeant que le SIGNE faisait passer cet écart à **w + 0,45
+K**. Les flèches s'ajoutaient au lieu de se retrancher, la queue enflait. Un miroir échange aussi
+les deux côtés d'une forme, et rendre la grande courbure à l'autre bord suffisait alors.
+
+Le second, sur une queue LONGUE : K croît avec la longueur, et 0,45 K finit par DÉPASSER w. L'écart
+change de signe, les deux bords se croisent, la queue se noue en S. Aucun réglage ne rattrape cela,
+parce que la faute est dans le modèle — une soustraction qui produit la finesse produit aussi le
+croisement dès qu'elle passe sous zéro.
+
+Le modèle actuel ne peut pas croiser, par construction : une médiane va du milieu des bases à la
+pointe en s'incurvant, et chaque bord est cette médiane décalée du vecteur qui mène à SA base,
+multiplié par (1 − t). Les deux décalages restent de part et d'autre, d'un facteur qui décroît
+jusqu'à zéro. Les bords partent exactement des bases, se rejoignent exactement à la pointe, et ne se
+rencontrent nulle part entre les deux, quelle que soit la longueur. Le miroir se réduit alors au
+signe d'une seule grandeur.
+
+⚠️ **ET LES TESTS ÉCRITS SUR LA MÉCANIQUE D'UN MODÈLE MEURENT AVEC LUI.** Celui qui tenait le miroir
+a exigé successivement deux choses fausses : que chaque point garde la même amplitude en changeant
+de signe — un miroir où chaque bord resterait à sa place, qui n'existe pas —, puis l'inégalité des
+deux courbures, c'est-à-dire précisément la cause du croisement. Il porte désormais sur ce que le
+réglage VEUT DIRE : la médiane inversée est le réfléchi exact de la médiane droite, et la largeur ne
+bouge pas. Elle ne s'affiche que pour lui — un triangle est symétrique, un éclair
 alterne déjà de part et d'autre de son axe, et offrir la case aux cinq queues donnerait un **contrôle
 visible mais inopérant** pour quatre d'entre elles. C'est `queuePeutSInverser3D` qui tranche, et la
 fiche l'interroge plutôt que de recoder la liste : deux copies d'une même décision divergent

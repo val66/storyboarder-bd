@@ -167,19 +167,30 @@ in the Bubble's path would punch a hole in its fill wherever a circle overlaps t
 ⚠️ **THE CURVED HAIR HAS A REVERSE SIDE, AND IT ALONE.** A "Flip the tail" box reverses its
 curvature: both arcs bulge on the other side of the same axis, and the tail leans the other way.
 
-⚠️ **BUT REVERSING THE SIGN IS NOT ENOUGH: THE TWO CURVATURES MUST ALSO SWAP.** A subtraction is
-what makes the hair thin. The bases sit at ∓w from the axis; the edge leaving the first bulges by K,
-the one reaching the second by 0.55 K, both on the same side. At mid-span the gap between the edges
-is therefore **w − 0.45 K**: the two sagittae subtract, and the tail is a thin crescent. Change only
-the sign and that gap becomes **w + 0.45 K** — they add up, and the tail swells. Reported from use,
-with a screenshot: "when I tick flip the tail, the tail is thicker and does not look like the one
-before flipping".
+⚠️ **AND THE HAIR IS NOW A CURVED MEDIAN WITH A WIDTH THAT CLOSES.** Its first construction bulged
+both edges on the same side with UNEQUAL curvatures: at mid-span the gap between them was
+**w − 0.45 K**, and that subtraction gave the thinness. Two defects came out of it, two weeks apart,
+with the same root.
 
-A mirror also swaps a shape's two sides. Giving the large curvature back to the edge that reaches
-the second base restores the subtraction, and so the same silhouette, flipped. The test holding this
-setting demanded instead that every point keep the same MAGNITUDE while changing sign: it described
-a mirror in which each edge stays put, which does not exist, and in doing so forbade the very
-inequality of the two curvatures the whole look depends on. It only shows for that tail — a triangle is symmetrical, a lightning
+The first: flipping the tail by changing only the SIGN turned that gap into **w + 0.45 K**. The
+sagittae added instead of subtracting, and the tail swelled. A mirror also swaps a shape's two
+sides, and giving the large curvature to the other edge was enough then.
+
+The second, on a LONG tail: K grows with length, and 0.45 K eventually EXCEEDS w. The gap changes
+sign, the two edges cross, the tail knots into an S. No setting fixes that, because the fault is in
+the model — a subtraction that produces thinness also produces crossing once it drops below zero.
+
+The current model cannot cross, by construction: a median runs from the midpoint of the bases to the
+tip, curving, and each edge is that median offset by the vector to ITS base, times (1 − t). The two
+offsets stay on either side, by a factor that decreases to zero. The edges leave exactly from the
+bases, meet exactly at the tip, and meet nowhere in between, at any length. The mirror then reduces
+to the sign of a single quantity.
+
+⚠️ **AND TESTS WRITTEN ON A MODEL'S MACHINERY DIE WITH IT.** The one holding the mirror demanded two
+false things in turn: that every point keep the same magnitude while changing sign — a mirror in
+which each edge stays put, which does not exist — and then the inequality of the two curvatures,
+that is, precisely the cause of the crossing. It now bears on what the setting MEANS: the flipped
+median is the exact reflection of the straight one, and the width does not move. It only shows for that tail — a triangle is symmetrical, a lightning
 already alternates on either side of its axis, and offering the box for all five would give a
 **visible but inoperative control** for four of them. `queuePeutSInverser3D` settles it, and the
 panel asks that function rather than recoding the list: two copies of one decision always diverge,

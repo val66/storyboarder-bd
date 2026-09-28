@@ -144,72 +144,86 @@ function traceEclair(o, base1, pointe, base2){
  * apparaissent de signes contraires. C'est pourquoi les points de contrôle ci-dessous sont tous
  * décalés le long de `r.n`, la normale de l'axe, qui est commune aux deux.
  */
-const CHEVEU_COURBURE = 0.45;
 /**
- * ⚠️ LES DEUX BORDS N'ONT PAS LA MÊME COURBURE, ET C'EST CE RAPPORT QUI FAIT LA FINESSE DU CHEVEU.
- * Ils bombent du même côté, le second moins que le premier : l'écart entre eux vaut donc, à
- * mi-portée, la largeur de l'ouverture MOINS la différence des deux flèches. C'est cette
- * soustraction qui amincit la queue en croissant au lieu de la laisser s'évaser.
+ * La courbure de la MÉDIANE du cheveu, en fraction de sa longueur.
+ *
+ * ⚠️ LE CHEVEU EST UNE MÉDIANE COURBE ET UNE LARGEUR QUI SE REFERME, ET NON PLUS DEUX ARCS DE
+ * COURBURES INÉGALES. La construction d'origine faisait bomber les deux bords du même côté, le
+ * second moins que le premier, et c'est leur DIFFÉRENCE qui donnait la finesse : à mi-portée
+ * l'écart valait w − 0,45 K. Elle a tenu tant que les queues restaient courtes.
+ *
+ * Sur une queue longue, K croît avec la longueur et 0,45 K finit par DÉPASSER w : l'écart change de
+ * signe, les deux bords se croisent, et la queue se noue en S. Rapporté à l'usage, capture à
+ * l'appui — « dans certains cas le rendu devient tordu ». Aucun réglage ne rattrape cela, parce que
+ * la faute est dans le modèle : une soustraction qui produit la finesse produit aussi le
+ * croisement dès qu'elle passe sous zéro.
+ *
+ * Le modèle actuel ne peut pas croiser, par construction. Une médiane va du milieu des bases à la
+ * pointe en s'incurvant ; chaque bord est cette médiane décalée du vecteur qui mène à SA base,
+ * multiplié par (1 − t). Les deux décalages restent donc de part et d'autre, d'un facteur qui
+ * décroît jusqu'à zéro : les bords partent exactement des bases, se rejoignent exactement à la
+ * pointe, et ne se rencontrent nulle part entre les deux, quelle que soit la longueur.
  */
-const CHEVEU_RETOUR = 0.55;
-const CHEVEU_PAR_COTE = 7;
+const CHEVEU_COURBURE = 0.35;
+const CHEVEU_PAR_COTE = 14;
 
 /**
  * Le cheveu penche-t-il de l'autre côté ? Lecture d'un champ persisté. Fonction PURE.
  *
  * ⚠️ « PAS DE RÉGLAGE » VAUT L'EXISTANT : un champ absent donne le cheveu d'avant, penché du même
  * côté qu'il l'a toujours été. Aucune Bulle déjà dessinée ne change d'apparence.
- *
- * ⚠️ ET LE MIROIR EST UN RÉGLAGE DU CHEVEU SEUL, pas de l'axe queue. Un triangle est symétrique et
- * un éclair alterne déjà de part et d'autre de son axe : les inverser ne produirait rien de
- * visible, et offrir une case inopérante pour trois queues sur cinq serait un « contrôle visible
- * mais inopérant » — le défaut que ce dépôt nomme et refuse. `queuePeutSInverser3D` porte cette
- * décision, et c'est elle que la fiche interroge pour montrer ou cacher la case.
  */
 export function queueInverseeDeLaBulle3D(o){
   return !!(o && o.tailMirror);
 }
 
-/** Cette queue a-t-elle un envers ? Décision PURE, unique source de la case de la fiche. */
+/**
+ * Cette queue a-t-elle un envers ? Décision PURE, unique source de la case de la fiche.
+ *
+ * ⚠️ LE MIROIR EST UN RÉGLAGE DU CHEVEU SEUL, pas de l'axe queue. Un triangle est symétrique et un
+ * éclair alterne déjà de part et d'autre de son axe : les inverser ne produirait rien de visible,
+ * et offrir une case inopérante pour trois queues sur cinq serait un « contrôle visible mais
+ * inopérant » — le défaut que ce dépôt nomme et refuse. La fiche interroge cette fonction plutôt
+ * que de recoder la liste.
+ */
 export function queuePeutSInverser3D(queue){
   return queue === QUEUE_CHEVEU;
 }
 
+/**
+ * Le cheveu courbe : une queue fine qui s'incurve, pour un murmure ou une voix qui s'éloigne.
+ *
+ * ⚠️ LA COURBURE EST CELLE DE LA MÉDIANE, ET C'EST TOUT CE QUE LE MIROIR RENVERSE. Les deux bords
+ * la suivent également ; leur écart ne vient plus d'une différence de courbure mais de la largeur
+ * de l'ouverture, qui se referme linéairement. Inverser revient donc à changer le signe d'une
+ * seule grandeur, et le tracé obtenu est le miroir exact du premier à la position des bases près —
+ * lesquelles appartiennent au contour, pas à la queue.
+ */
 function traceCheveu(o, base1, pointe, base2){
-  const r = repere(base1, pointe, base2);
-  /*
-   * ⚠️ LE MIROIR RENVERSE LE SIGNE **ET** ÉCHANGE LES DEUX COURBURES, et n'en faire que la moitié a
-   * produit une queue GROSSE au lieu d'une queue retournée — rapporté à l'usage, capture à l'appui.
-   *
-   * La démonstration tient en une soustraction. Les bases sont à ∓w de l'axe ; le bord qui part de
-   * `base1` bombe de K, celui qui rejoint `base2` de 0,55 K, tous deux du même côté. À mi-portée,
-   * l'écart entre les deux bords vaut donc (w/2 + 0,55 K) − (−w/2 + K) = w − 0,45 K : la queue est
-   * FINE parce que les deux flèches se retranchent.
-   *
-   * En ne changeant que le signe, ce même écart devient (w/2 − 0,55 K) − (−w/2 − K) = w + 0,45 K.
-   * Les flèches s'ajoutent, et la queue enfle d'autant. Le miroir d'une forme échange aussi ses
-   * deux côtés : c'est en rendant la grande courbure au bord qui rejoint `base2` qu'on retrouve la
-   * soustraction, et donc la même silhouette, retournée.
-   */
-  const inverse = queueInverseeDeLaBulle3D(o);
-  const sens = inverse ? -1 : 1;
-  const aller = inverse ? CHEVEU_RETOUR : 1;
-  const retour = inverse ? 1 : CHEVEU_RETOUR;
-  const pts = [];
-  const arc = (a, b, courbure) => {
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const cx = mx + r.nx * courbure * r.longueur, cy = my + r.ny * courbure * r.longueur;
-    for (let k = 1; k < CHEVEU_PAR_COTE; k++) {
-      const t = k / CHEVEU_PAR_COTE, u = 1 - t;
-      pts.push({ x: u * u * a.x + 2 * u * t * cx + t * t * b.x,
-                 y: u * u * a.y + 2 * u * t * cy + t * t * b.y });
-    }
+  const mx = (base1.x + base2.x) / 2, my = (base1.y + base2.y) / 2;
+  const ax = pointe.x - mx, ay = pointe.y - my;
+  const longueur = norme(ax, ay);
+  const nx = -ay / longueur, ny = ax / longueur;
+  const sens = queueInverseeDeLaBulle3D(o) ? -1 : 1;
+  // Le point de contrôle de la médiane : au milieu de l'axe, décalé latéralement.
+  const cx = mx + ax / 2 + nx * CHEVEU_COURBURE * longueur * sens;
+  const cy = my + ay / 2 + ny * CHEVEU_COURBURE * longueur * sens;
+  const mediane = (t) => {
+    const u = 1 - t;
+    return { x: u * u * mx + 2 * u * t * cx + t * t * pointe.x,
+             y: u * u * my + 2 * u * t * cy + t * t * pointe.y };
   };
-  arc(base1, pointe, CHEVEU_COURBURE * aller * sens);
-  pts.push(pointe);
-  // Même signe de courbure : le retour longe l'aller, et la queue penche au lieu de s'évaser.
-  arc(pointe, base2, CHEVEU_COURBURE * retour * sens);
-  return pts;
+  const bord = (base) => {
+    const pts = [];
+    for (let k = 1; k < CHEVEU_PAR_COTE; k++) {
+      const t = k / CHEVEU_PAR_COTE, m = mediane(t);
+      pts.push({ x: m.x + (base.x - mx) * (1 - t), y: m.y + (base.y - my) * (1 - t) });
+    }
+    return pts;
+  };
+  // Aller par le bord de `base1`, pointe, retour par celui de `base2` — parcouru à l'envers, pour
+  // que le chemin reste d'un seul tenant de `base1` à `base2`.
+  return [...bord(base1), pointe, ...bord(base2).reverse()];
 }
 
 /**

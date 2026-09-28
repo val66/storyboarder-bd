@@ -399,6 +399,68 @@ describe('Chaque queue fait ce qui la distingue', () => {
    * inopérant, défaut que ce dépôt nomme. `queuePeutSInverser3D` porte la décision, et la fiche
    * l'interroge au lieu de recoder la liste — deux copies d'une même décision divergeraient.
    */
+  /**
+   * La MÉDIANE d'un tracé de cheveu : le milieu des deux bords, point à point.
+   *
+   * ⚠️ C'EST EXACTEMENT LA MÉDIANE DU MODÈLE, PAS UNE APPROXIMATION. Chaque bord vaut la médiane
+   * décalée du vecteur qui mène à SA base, multiplié par (1 − t) ; les deux bases étant à égale
+   * distance de leur milieu, les deux décalages s'annulent dans la demi-somme. Le relevé lit donc
+   * la grandeur même que le code pose, et non une reconstruction.
+   */
+  const medianeDuCheveu = (pts) => {
+    const out = [];
+    for (let i = 0; i < (pts.length - 1) / 2; i++) {
+      const a = pts[i], b = pts[pts.length - 1 - i];
+      out.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, largeur: Math.hypot(b.x - a.x, b.y - a.y) });
+    }
+    return out;
+  };
+
+  /**
+   * ⚠️ LES DEUX BORDS NE SE CROISENT JAMAIS, SI LONGUE QUE SOIT LA QUEUE. C'est le défaut qui a fait
+   * abandonner le modèle précédent : il faisait bomber les deux bords du même côté avec des
+   * courbures inégales, et c'est leur DIFFÉRENCE qui donnait la finesse — écart valant w − 0,45 K à
+   * mi-portée. Dès que la queue s'allonge, K croît, 0,45 K dépasse w, l'écart change de SIGNE et
+   * les bords se croisent : la queue se noue en S. Rapporté à l'usage, capture à l'appui.
+   *
+   * Aucun réglage ne rattrapait cela, la faute étant dans le modèle : une soustraction qui produit
+   * la finesse produit aussi le croisement dès qu'elle passe sous zéro. La largeur se referme
+   * désormais linéairement, ce qui ne peut pas changer de signe.
+   */
+  test('⚠️ LES DEUX BORDS DU CHEVEU NE SE CROISENT À AUCUNE LONGUEUR', () => {
+    let cas = 0;
+    for (const facteur of [0.4, 1, 2.5, 6]) {
+      for (const miroir of [false, true]) {
+        cas++;
+        const o = Object.assign({}, BULLE, { tailShape: QUEUE_CHEVEU, tailMirror: miroir });
+        const loin = { x: bord.x + (pointe.x - bord.x) * facteur,
+                       y: bord.y + (pointe.y - bord.y) * facteur };
+        const med = medianeDuCheveu(traceContinuDeLaQueue(o, base1, loin, base2));
+        for (let i = 1; i < med.length; i++) {
+          assert.ok(med[i].largeur < med[i - 1].largeur + 1e-9,
+            `longueur ×${facteur}${miroir ? ' inversée' : ''} : la queue s’élargit au rang ${i} `
+            + `(${med[i - 1].largeur.toFixed(2)} → ${med[i].largeur.toFixed(2)})`);
+        }
+        // Et elle se referme vraiment : la dernière largeur est une fraction de la première.
+        assert.ok(med[med.length - 1].largeur < med[0].largeur * 0.3,
+          `longueur ×${facteur} : la queue ne s’effile pas`);
+      }
+    }
+    assert.ok(cas >= 8, `${cas} cas éprouvés : le relevé n’en voit presque aucun`);
+  });
+
+  /**
+   * ⚠️ LE MIROIR RENVERSE LA MÉDIANE, ET RIEN D'AUTRE. C'est la seule grandeur qu'il touche : les
+   * bases appartiennent au contour, la largeur ne dépend que d'elles. Le relevé vérifie donc que la
+   * médiane inversée est le RÉFLÉCHI exact de la médiane droite par rapport à l'axe de la queue.
+   *
+   * ⚠️ LA FORMULATION PRÉCÉDENTE DE CE TEST A LAISSÉ PASSER UN DÉFAUT PUIS EN A FIGÉ UN AUTRE. Elle
+   * exigeait d'abord que chaque point garde la même amplitude de bombement en changeant de signe —
+   * un miroir où chaque bord resterait à sa place, ce qui n'existe pas. Corrigée, elle figeait
+   * l'inégalité des deux courbures du modèle d'alors, c'est-à-dire précisément la cause du
+   * croisement. Un test écrit sur la mécanique d'un modèle meurt avec lui ; celui-ci porte sur ce
+   * que le réglage veut dire.
+   */
   test('⚠️ LE MIROIR RENVERSE LE CHEVEU, ET SEUL LE CHEVEU S’INVERSE', () => {
     for (const queue of queuesConnues()) {
       assert.equal(queuePeutSInverser3D(queue), queue === QUEUE_CHEVEU,
@@ -409,95 +471,36 @@ describe('Chaque queue fait ce qui la distingue', () => {
     assert.equal(queueInverseeDeLaBulle3D(droit), false, '« pas de réglage » doit valoir l’existant');
     assert.equal(queueInverseeDeLaBulle3D(envers), true);
 
-    const a = traceContinuDeLaQueue(droit, base1, pointe, base2);
-    const b = traceContinuDeLaQueue(envers, base1, pointe, base2);
-    assert.equal(a.length, b.length, 'le miroir change le nombre de points : il fait autre chose');
-    /*
-     * Le renversement se mesure sur la NORMALE de l'axe de la queue : les deux tracés doivent y
-     * avoir des projections opposées, point par point. Comparer les points bruts dirait seulement
-     * qu'ils diffèrent, ce qu'un décalage quelconque satisferait aussi.
-     */
+    const A = medianeDuCheveu(traceContinuDeLaQueue(droit, base1, pointe, base2));
+    const B = medianeDuCheveu(traceContinuDeLaQueue(envers, base1, pointe, base2));
+    assert.equal(A.length, B.length, 'le miroir change la structure du tracé : il fait autre chose');
+
+    // L'axe de la queue, et la réflexion par rapport à lui.
     const mx = (base1.x + base2.x) / 2, my = (base1.y + base2.y) / 2;
     const l = Math.hypot(pointe.x - mx, pointe.y - my);
     const nx = -(pointe.y - my) / l, ny = (pointe.x - mx) / l;
-    const proj = (p) => (p.x - mx) * nx + (p.y - my) * ny;
-    /*
-     * ⚠️ ON MESURE LE BOMBEMENT, PAS LA PROJECTION BRUTE — et la première écriture de ce test
-     * exigeait des projections exactement opposées, ce qui est FAUX sur du code juste. Le miroir
-     * renverse la COURBURE ; il ne bouge ni les bases ni la pointe, qui sont imposées par le
-     * contour et par le réglage de l'utilisateur. La projection d'un point d'arc contient donc la
-     * part de sa corde, qui ne se renverse pas. Le bombement, lui, est l'écart à la corde, et c'est
-     * la seule grandeur que le réglage commande.
-     */
-    /*
-     * Le cheveu est fait de DEUX arcs, base1 → pointe puis pointe → base2, et chacun bombe par
-     * rapport à SA corde. Une première écriture mesurait l'écart à la corde base1 → base2, unique :
-     * les signes s'inversaient bien mais les amplitudes ne coïncidaient pas, et le test accusait du
-     * code juste. La corde d'un arc quadratique est la seule référence par rapport à laquelle son
-     * point de contrôle, et donc le renversement, est exactement symétrique.
-     *
-     * ⚠️ ET CE TEST A ENSUITE LAISSÉ PASSER UN VRAI DÉFAUT, PARCE QU'IL ENCODAIT LE MAUVAIS MODÈLE.
-     * Il exigeait que chaque point garde la même AMPLITUDE de bombement en changeant de signe, ce
-     * qui décrit un miroir où chaque bord resterait à sa place. C'est faux : un miroir ÉCHANGE les
-     * deux bords. Or les deux courbures du cheveu sont INÉGALES — c'est leur différence qui fait sa
-     * finesse — et ne renverser que le signe faisait s'ADDITIONNER les deux flèches au lieu de se
-     * retrancher. La queue inversée enflait, ce que l'usage a rapporté en image.
-     *
-     * Le contrat exact est donc : le bombement du premier arc, renversé, est celui du SECOND arc de
-     * l'autre sens, parcouru à l'envers. C'est ce que ce relevé compare, et il tient du même coup
-     * l'inégalité des deux courbures — que l'ancienne formulation interdisait.
-     */
-    const bosses = (pts) => {
-      const m = pts.findIndex(q => Math.abs(q.x - pointe.x) < 1e-9 && Math.abs(q.y - pointe.y) < 1e-9);
-      assert.ok(m > 0, 'la pointe n’est pas dans le tracé : la fixture ne sait pas le découper');
-      const out = [];
-      for (const [debut, fin, de, vers] of [[0, m, base1, pointe], [m + 1, pts.length, pointe, base2]]) {
-        const arc = [];
-        for (let i = debut; i < fin; i++) {
-          const t = (i - debut + 1) / (fin - debut + 1);
-          arc.push(proj(pts[i]) - (proj(de) + (proj(vers) - proj(de)) * t));
-        }
-        out.push(arc);
-      }
-      return out;
+    const reflechi = (q) => {
+      const d = (q.x - mx) * nx + (q.y - my) * ny;
+      return { x: q.x - 2 * d * nx, y: q.y - 2 * d * ny };
     };
-    const A = bosses(a), B = bosses(b);
-    assert.equal(A[0].length, B[1].length, 'les deux tracés n’ont pas la même structure');
-    let vues = 0;
-    for (let k = 0; k < A[0].length; k++) {
-      if (Math.abs(A[0][k]) < 1e-6) continue;
-      vues++;
-      assert.ok(Math.abs(A[0][k] + B[1][A[1].length - 1 - k]) < 1e-6,
-        `le bord ${k} n’est pas le miroir du bord opposé : ${A[0][k].toFixed(3)} contre `
-        + `${B[1][A[1].length - 1 - k].toFixed(3)}`);
+    let ecarte = 0;
+    for (let i = 0; i < A.length; i++) {
+      const r = reflechi(A[i]);
+      assert.ok(Math.hypot(r.x - B[i].x, r.y - B[i].y) < 1e-9,
+        `la médiane inversée n’est pas le miroir de la droite au rang ${i}`);
+      ecarte = Math.max(ecarte, Math.abs((A[i].x - mx) * nx + (A[i].y - my) * ny));
     }
-    /*
-     * ⚠️ ET LES DEUX COURBURES SONT BIEN INÉGALES : c'est la propriété que l'ancienne formulation
-     * rendait impossible à tenir, et sans elle le cheveu s'évase au lieu de s'amincir.
-     */
-    const ampleur = (arc) => Math.max(...arc.map(Math.abs));
-    assert.ok(ampleur(A[0]) > ampleur(A[1]) * 1.3,
-      `les deux bords bombent presque pareil (${ampleur(A[0]).toFixed(2)} et `
-      + `${ampleur(A[1]).toFixed(2)}) : le cheveu s’évase au lieu de s’amincir`);
-    // Et l'inversion échange les deux ampleurs, elle n'en change aucune.
-    assert.ok(Math.abs(ampleur(A[0]) - ampleur(B[1])) < 1e-6
-           && Math.abs(ampleur(A[1]) - ampleur(B[0])) < 1e-6,
-      `l’inversion change l’épaisseur : ${ampleur(A[0]).toFixed(2)}/${ampleur(A[1]).toFixed(2)} `
-      + `devient ${ampleur(B[0]).toFixed(2)}/${ampleur(B[1]).toFixed(2)}`);
-    assert.ok(vues > 5, `${vues} points bombés : le relevé ne mesure presque rien`);
+    // ⚠️ LE TÉMOIN : une médiane DROITE serait son propre miroir, et les assertions ci-dessus
+    // seraient vraies d'un cheveu qui ne s'incurve pas du tout.
+    assert.ok(ecarte > l * 0.1,
+      `la médiane ne s’écarte de l’axe que de ${ecarte.toFixed(2)} px : le cheveu ne penche pas`);
+    // Et la largeur, elle, ne bouge pas : le miroir ne touche que la courbure.
+    for (let i = 0; i < A.length; i++) {
+      assert.ok(Math.abs(A[i].largeur - B[i].largeur) < 1e-9,
+        `l’inversion change la largeur au rang ${i} : ${A[i].largeur} contre ${B[i].largeur}`);
+    }
   });
 
-  /**
-   * ⚠️ LA CHAÎNE DE RONDS EXIGE UNE POINTE PLUS LONGUE QUE LE DÉFAUT, ET C'EST ELLE QUI LE DIT.
-   *
-   * Ce test tenait d'abord la propriété inverse : que la chaîne TIENNE dans la longueur par défaut,
-   * ce qui bornait la taille des ronds à 0,110 du demi-axe. L'usage a demandé des ronds 70 % plus
-   * gros, valeur incompatible avec cette borne — trois sorties existaient, et rallonger la pointe
-   * de ce motif a été choisi explicitement plutôt que déduit.
-   *
-   * Ce qui reste à tenir n'est donc plus une inégalité mais une COHÉRENCE : le minimum annoncé par
-   * le motif doit être exactement celui que la disposition exige, sans quoi l'un des deux ment.
-   */
   test('⚠️ LA CHAÎNE ANNONCE LA LONGUEUR DE POINTE QU’ELLE EXIGE, ET LA DISPOSITION S’Y TIENT', () => {
     const mini = longueurMinimaleDeLaQueue3D(QUEUE_RONDS);
     assert.ok(mini > BUBBLE_TAIL_LEN_DEFAULT,
