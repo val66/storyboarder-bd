@@ -272,6 +272,17 @@ const EN_ATTENTE = {
    * exemptions qui ne surveilleraient rien.
    */
   particulesDeLaBulle: '#425p — axe retiré de la fiche, code conservé sur demande',
+
+  // #435b — LE CRITÈRE QUI RESTE APRÈS LE DÉFAUT QU'IL AURAIT ÉVITÉ. Le Sol portait un déplacement
+  // qui n'a jamais produit de relief : sa carte se répétait des dizaines de fois entre deux sommets
+  // voisins, donc tous lisaient le même texel. Quatre versions livrées sans que rien ne le dise.
+  // Le déplacement est retiré ; ce prédicat écrit la condition à laquelle on pourrait le rebrancher,
+  // et tests/ground-3d.test.mjs l'exige de chaque matière du registre.
+  //
+  // Il n'a donc pas d'appelant dans src/ et c'est VOULU : son rôle est d'empêcher, pas de calculer.
+  // L'inscrire ici plutôt que de le faire appeler quelque part pour la forme, ce qui donnerait un
+  // appel décoratif et un détecteur satisfait par du théâtre.
+  reliefRepresentable3D: '#435b — critère de Nyquist, tenu par la garde, appelé par aucun rendu',
 };
 
 function exportsSansAppelant(){
@@ -364,7 +375,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 1,
+    assert.equal(Object.keys(EN_ATTENTE).length, 2,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

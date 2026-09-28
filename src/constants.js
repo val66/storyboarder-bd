@@ -711,25 +711,54 @@ export const GROUND_PLANE_SIZE_3D = 12000; // very large compared to the camera 
 // ─── Ground types ─────────────────────────────────────────────────────────────
 // Each type defines: id (data key), label (UI), icon (emoji swatch), UI preview color,
 // and Three.js rendering parameters (roughness, metalness, texture repeat).
+/** Segments du maillage du Sol, par côté. Nommé parce que reliefRepresentable3D en dépend. */
+export const GROUND_PLANE_SEGMENTS_3D = 100;
+
+/**
+ * Une carte répétée `repeat` fois sur un maillage de `segments` segments peut-elle porter du
+ * RELIEF ? Fonction pure, et c'est le critère d'échantillonnage de Nyquist, rien de plus.
+ *
+ * ⚠️ ELLE EXISTE PARCE QU'ON A LIVRÉ QUATRE VERSIONS SANS. Le Sol portait un dispScale par matière,
+ * de 0,08 à 4,5, et il ne produisait AUCUN relief : avec 100 segments et des repeat de 1200 à 9600,
+ * la carte se répétait de 12 à 96 fois entre deux sommets voisins. Tous tombaient sur le même
+ * texel. Mesuré aux sommets, l'écart-type du relief valait 0,0000 pour les treize matières.
+ *
+ * Une période doit couvrir au moins DEUX sommets pour qu'une bosse existe, d'où `2 * repeat <=
+ * segments`. Le dire ainsi plutôt qu'épingler les treize valeurs fautives : le jour où quelqu'un
+ * rebranche un déplacement, avec d'autres chiffres, la question qui se pose est celle-ci.
+ *
+ * ⚠️ ET LE CRITÈRE DIT AUSSI QUE C'EST STRUCTURELLEMENT HORS DE PORTÉE pour une matière. Un relief
+ * à l'échelle d'une touffe d'herbe demande une tuile d'environ un mètre sur un plan de 12 000 :
+ * soit repeat ≈ 9600, donc 19 200 segments par côté, soit 369 millions de sommets. Un relief de
+ * Sol ne peut être qu'une ondulation de TERRAIN, à grande échelle, et c'est une autre décision.
+ */
+export function reliefRepresentable3D(repeat, segments){
+  const r = Number(repeat), s = Number(segments);
+  if (!Number.isFinite(r) || !Number.isFinite(s) || r <= 0 || s <= 0) return false;
+  return 2 * r <= s;
+}
+
 export const GROUND_TYPE_DEFS = [
-  // dispScale in world units (scene: PANEL_CAM_DEFAULT_DIST_3D=30, characters ~1.75u tall)
-  // dispBias = -dispScale*0.5 centers the displacement around GROUND_Y_DEFAULT_3D (applied in applyGroundType)
   // repeat: GROUND_PLANE_SIZE_3D=12000u → repeat=9600 gives a tile≈1.25u, repeat=1200 gives a tile≈10u.
   // The previous values (20-160) gave 75-600u tiles, hence the blurry look that was observed.
-  { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1,    dispScale: 0    },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600, dispScale: 2.5  },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200, dispScale: 0.5  },
-  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000, dispScale: 4.5  },
-  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600, dispScale: 3.0  },
-  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800, dispScale: 2.0  },
-  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600, dispScale: 0.35 },
-  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800, dispScale: 0.30 },
-  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000, dispScale: 2.0  },
-  { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000, dispScale: 0.9  },
-  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400, dispScale: 0.12 },
-  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800, dispScale: 0.18 },
-  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200, dispScale: 0.08 },
-  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800, dispScale: 0.15 },
+  //
+  // ⚠️ PLUS DE dispScale ICI, cf. reliefRepresentable3D ci-dessus : il ne gouvernait rien de ce
+  // qu'il annonçait, et ce qu'il faisait à la place était de décaler le Sol entier jusqu'à 0,84
+  // unité sous les pieds des personnages.
+  { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 },
+  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 },
+  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 },
+  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 },
+  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600 },
+  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800 },
+  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000 },
+  { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000 },
+  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400 },
+  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800 },
+  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200 },
+  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800 },
 ];
 
 

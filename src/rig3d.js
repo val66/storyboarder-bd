@@ -10,7 +10,7 @@
  */
 
 import {
-  ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
+  ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
 import {
@@ -553,39 +553,14 @@ export function buildGroundTexture(type) {
   let _seed = 42;
   const rand = () => { _seed = (_seed * 1664525 + 1013904223) & 0xffffffff; return (_seed >>> 0) / 0xffffffff; };
   const rr = (a, b) => a + rand() * (b - a);
-  const cl = v => Math.max(0, Math.min(1, v));
-
   // ── 512×512 diffuse texture ───────────────────────────────────────────────
   const S = 512;
   const c = document.createElement('canvas'); c.width = c.height = S;
   const ctx = c.getContext('2d');
-  // ── 256×256 displacement map : DataTexture (not CanvasTexture: more reliable) ──
-  const DS = 256;
-  const dispData = new Uint8Array(DS * DS * 4); // RGBA, initialized to 0
-  const setH = (x, y, h) => {
-    const i = (y * DS + x) * 4, v = Math.round(cl(h) * 255);
-    dispData[i] = dispData[i+1] = dispData[i+2] = v; dispData[i+3] = 255;
-  };
-
-  // ── Smoothed value noise (pre-generated grids for FBM) ────────────────
-  const mkGrid = n => { const g = new Float32Array(n*n); for (let i=0;i<g.length;i++) g[i]=rand(); return g; };
-  const vn = (px, py, g, cw, nc) => {
-    const gx=px/cw, gy=py/cw, ix=Math.floor(gx)|0, iy=Math.floor(gy)|0;
-    const fx=gx-ix, fy=gy-iy, sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy);
-    const at=(r,cc)=>g[((r%nc+nc)%nc)*nc+((cc%nc+nc)%nc)];
-    return at(iy,ix)*(1-sx)*(1-sy)+at(iy,ix+1)*sx*(1-sy)+at(iy+1,ix)*(1-sx)*sy+at(iy+1,ix+1)*sx*sy;
-  };
-  const mkFBM = (oct, bc) => {
-    const layers=[];
-    for(let o=0;o<oct;o++){const f=1<<o,nc=Math.ceil(DS*f/bc)+3,g=mkGrid(nc);layers.push({f,cw:bc/f,g,nc});}
-    return (px,py)=>{let v=0,a=1,t=0;for(const l of layers){v+=a*vn(px*l.f,py*l.f,l.g,l.cw,l.nc);t+=a;a*=.5;}return v/t;};
-  };
 
   if (type === 'neutre') {
     // Neutral ground: solid color identical to the one used for Room Slabs (#B8A890).
-    // No pattern, no displacement, ideal for indoor scenes.
     ctx.fillStyle = '#B8A890'; ctx.fillRect(0,0,S,S);
-    // dispData stays at zero (initialized above): perfectly flat ground.
 
   } else if (type === 'herbe') {
     // Diffuse: green background + tufts + light variation
@@ -605,8 +580,6 @@ export function buildGroundTexture(type) {
       ctx.quadraticCurveTo(bx+Math.cos(a+.5)*l*.4,by+Math.sin(a+.5)*l*.4,bx+Math.cos(a)*l,by+Math.sin(a)*l);
       ctx.stroke();
     }
-    // Disp: organic FBM (tufts)
-    { const fbm=mkFBM(4,48); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,fbm(x,y)); }
 
   } else if (type === 'gazon') {
     // Diffuse: mower stripes
@@ -616,8 +589,6 @@ export function buildGroundTexture(type) {
       ctx.strokeStyle=rand()>.5?'rgba(15,70,15,.4)':'rgba(65,150,65,.3)'; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx,by-l); ctx.stroke();
     }
-    // Disp: very slight undulations (mowed lawn)
-    { const fbm=mkFBM(2,64); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,.2+fbm(x,y)*.6); }
 
   } else if (type === 'terre') {
     // Diffuse: loose soil, clumps, pebbles
@@ -633,8 +604,6 @@ export function buildGroundTexture(type) {
       ctx.fillStyle=`rgb(${v},${v-10},${v-20})`;
       ctx.beginPath(); ctx.ellipse(px,py,r,r*rr(.55,.9),rr(0,Math.PI),0,Math.PI*2); ctx.fill();
     }
-    // Disp: uneven terrain (4 octaves)
-    { const fbm=mkFBM(5,38); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,fbm(x,y)); }
 
   } else if (type === 'sable') {
     // Diffuse: sand + wind ripples
@@ -650,9 +619,6 @@ export function buildGroundTexture(type) {
       const px=rr(0,S),py=rr(0,S),br=Math.floor(rr(155,225)),gv=Math.floor(rr(125,185));
       ctx.fillStyle=`rgba(${br},${gv},75,${rr(.08,.3)})`; ctx.fillRect(px,py,1,1);
     }
-    // Disp: dunes (low freq) + ripples (high freq)
-    { const dunes=mkFBM(3,80),ripples=mkFBM(2,14);
-      for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,dunes(x,y)*.78+ripples(x,y)*.22); }
 
   } else if (type === 'gravier') {
     // Diffuse: varied pebbles with highlight
@@ -664,15 +630,6 @@ export function buildGroundTexture(type) {
       grd.addColorStop(1,`rgb(${Math.max(0,v-45)},${Math.max(0,v-45)},${Math.max(0,v-45)})`);
       ctx.fillStyle=grd; ctx.beginPath(); ctx.ellipse(px,py,rx,ry,a,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle='rgba(0,0,0,.2)'; ctx.lineWidth=.5; ctx.stroke();
-    }
-    // Disp: circular bumps (individual pebbles)
-    { const pebbles=[];
-      for(let i=0;i<220;i++) pebbles.push({x:rr(0,DS),y:rr(0,DS),r:rr(2,9),h:rr(.5,1)});
-      for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
-        let maxH=.08;
-        for(const p of pebbles){ const d=Math.sqrt((x-p.x)**2+(y-p.y)**2); if(d<p.r) maxH=Math.max(maxH,p.h*Math.cos(d/p.r*Math.PI*.5)); }
-        setH(x,y,maxH);
-      }
     }
 
   } else if (type === 'bitume') {
@@ -692,8 +649,6 @@ export function buildGroundTexture(type) {
       for(let j=0;j<7;j++) ctx.lineTo(rr(0,S),rr(0,S));
       ctx.stroke();
     }
-    // Disp: near-flat
-    { const fbm=mkFBM(3,55); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,.82+fbm(x,y)*.18); }
 
   } else if (type === 'béton') {
     // Diffuse: concrete with joints and microtexture
@@ -713,13 +668,6 @@ export function buildGroundTexture(type) {
       ctx.beginPath(); ctx.moveTo(v,0); ctx.lineTo(v,S); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,v); ctx.lineTo(S,v); ctx.stroke();
     });
-    // Disp: flat slabs, recessed joints
-    { const tdim=DS/4;
-      for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
-        const jx=x%tdim,jy=y%tdim,near=Math.min(jx,tdim-jx,jy,tdim-jy);
-        setH(x,y,near<2?.25:.88);
-      }
-    }
 
   } else if (type === 'neige') {
     // Diffuse: snow with bluish highlights and sparkles
@@ -742,8 +690,6 @@ export function buildGroundTexture(type) {
         ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px+Math.cos(ang)*l,py+Math.sin(ang)*l); ctx.stroke();
       }
     }
-    // Disp: snow mounds (low-freq FBM)
-    { const fbm=mkFBM(3,66); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,fbm(x,y)); }
 
   } else if (type === 'eau') {
     // Diffuse: deep water with waves and reflections
@@ -761,11 +707,6 @@ export function buildGroundTexture(type) {
       ctx.fillStyle=`rgba(170,225,255,${rr(.04,.18)})`;
       ctx.beginPath(); ctx.ellipse(px,py,rr(4,20),rr(1,4),rr(0,Math.PI),0,Math.PI*2); ctx.fill();
     }
-    // Disp: sinusoidal ripples (2 crossed directions)
-    for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
-      const w=.5+.32*Math.sin(x*.17+y*.04)+.18*Math.sin(x*.07-y*.14+1.3);
-      setH(x,y,cl(w));
-    }
 
   } else if (type === 'carrelage') {
     // Diffuse: tile flooring, 64×64 px tiles = 8 tiles/side in the texture.
@@ -780,13 +721,6 @@ export function buildGroundTexture(type) {
     }
     ctx.fillStyle='#888';
     for(let i=0;i<=S;i+=TW){ ctx.fillRect(i-1,0,GAP,S); ctx.fillRect(0,i-1,S,GAP); }
-    // Disp: 8 tiles/side → tdim=DS/8 px per tile
-    { const tdim=Math.round(DS/8);
-      for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
-        const jx=x%tdim,jy=y%tdim,near=Math.min(jx,tdim-jx,jy,tdim-jy);
-        setH(x,y,near<1?.15:.92);
-      }
-    }
 
   } else if (type === 'plancher') {
     // Diffuse: 40 px tall planks, with repeat=4800 → plank ≈ 20cm wide, ≈ 98cm long
@@ -811,13 +745,6 @@ export function buildGroundTexture(type) {
         }
       }
       ctx.fillStyle='rgba(35,15,3,.55)'; ctx.fillRect(0,y,S,1);
-    }
-    // Disp: rounded profile per plank. PDIM proportional to PH
-    { const PDIM=Math.round(DS*PH/S); // ≈ 6 px per plank in the displacement map
-      for(let y=0;y<DS;y++) for(let x=0;x<DS;x++){
-        const jy=y%PDIM,edge=Math.min(jy,PDIM-jy);
-        setH(x,y,edge<1?.2:.6+.35*Math.sin(jy/PDIM*Math.PI));
-      }
     }
 
   } else if (type === 'marbre') {
@@ -844,8 +771,6 @@ export function buildGroundTexture(type) {
       for(let j=0;j<20;j++){ x+=rr(-12,12); y+=rr(-12,12); ctx.lineTo(x,y); }
       ctx.stroke();
     }
-    // Disp: near-flat (polished)
-    { const fbm=mkFBM(2,120); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,.9+fbm(x,y)*.1); }
 
   } else if (type === 'moquette') {
     // Diffuse: short-pile carpet, beige-gray tones, slightly oriented fibers
@@ -865,12 +790,9 @@ export function buildGroundTexture(type) {
       grd.addColorStop(0,`rgba(${130+v},${116+v},${100+v},.2)`); grd.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill();
     }
-    // Disp: fine fiber roughness (low amplitude)
-    { const fbm=mkFBM(3,16); for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,.45+fbm(x,y)*.4); }
 
   } else {
     ctx.fillStyle='#4a9c52'; ctx.fillRect(0,0,S,S);
-    for(let y=0;y<DS;y++) for(let x=0;x<DS;x++) setH(x,y,.5);
   }
 
   // ── Finalizing THREE.js textures ────────────────────────────────────
@@ -880,50 +802,40 @@ export function buildGroundTexture(type) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(rep, rep); map.needsUpdate = true;
 
-  // DataTexture: passes the Uint8Array directly to the GPU, more reliable than an offscreen CanvasTexture
-  const dispMap = new THREE.DataTexture(dispData, DS, DS, THREE.RGBAFormat, THREE.UnsignedByteType);
-  dispMap.wrapS = dispMap.wrapT = THREE.RepeatWrapping;
-  dispMap.repeat.set(rep, rep); dispMap.needsUpdate = true;
-
-  const entry = { map, dispMap, dispData };
+  const entry = { map };
   _groundTexCache[type] = entry;
   return entry;
 }
 
-// Applies the panel's ground type onto groundMesh3D before rendering the Panel.
-// If the Panel contains a Building (floor/slab), terrain displacement is disabled
-// so the floor always remains visible above the Ground (which could otherwise hide it
-// via its vertices displaced upward).
-export function applyGroundType(panel, page) {
+/**
+ * Pose la matière du Sol sur groundMesh3D avant le rendu d'une Case.
+ *
+ * ⚠️ IL N'Y A PLUS DE DÉPLACEMENT, ET CE N'EST PAS UN RENONCEMENT : #435b a mesuré qu'il n'en
+ * produisait aucun. Le Sol est un plan à GROUND_PLANE_SEGMENTS_3D segments, et les repeat du
+ * registre valent de 1200 à 9600 : la carte de relief se répétait donc des dizaines de fois ENTRE
+ * DEUX SOMMETS, si bien que tous échantillonnaient le même texel. Relevé aux sommets, l'écart-type
+ * du relief valait 0,0000 pour les treize matières. Voir reliefRepresentable3D, qui écrit le
+ * critère, et la garde de tests/ground-3d.test.mjs, qui l'exige.
+ *
+ * ⚠️ ET CE QU'IL PRODUISAIT À LA PLACE ÉTAIT UN DÉFAUT VISIBLE. Un texel unique, ce n'est pas la
+ * moyenne de la carte : displacementBias = -dispScale/2 supposait un relief centré, il décalait en
+ * fait le plan ENTIER d'une quantité arbitraire, jusqu'à -0,843 unité sur le Gravier pour des
+ * personnages de 1,75. Ils flottaient, et c'est ce que l'utilisateur a vu à l'écran.
+ *
+ * ⚠️ VINGT LIGNES DISPARAISSENT AVEC, et elles méritent d'être nommées : hasBuilding, hasPiscine et
+ * hasTracé ne servaient qu'à remettre ce déplacement à zéro quand quelque chose reposait au sol.
+ * C'étaient des contournements d'un défaut, pas des règles. Ils expliquent aussi pourquoi personne
+ * n'avait rien signalé en quatre versions : dès qu'une Case contenait un bâtiment, une piscine ou
+ * une route, le décalage disparaissait.
+ */
+export function applyGroundType(panel) {
   if (!groundMesh3D) return;
   const type = panel.groundType || 'herbe';
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
   const mat = groundMesh3D.material;
-  const { map, dispMap } = buildGroundTexture(type);
+  const { map } = buildGroundTexture(type);
   let dirty = false;
-  if (mat.map !== map)                           { mat.map = map; dirty = true; }
-  if (mat.displacementMap !== dispMap)           { mat.displacementMap = dispMap; dirty = true; }
-  // Detect whether the Panel has at least one Building floor (low slab, not the ceiling).
-  const hasBuilding = !!(page && page.objects.some(o =>
-    o.objType === 'dalle' && o.pieceId && o.homePanelId === panel.id &&
-    (o.worldY == null || o.worldY <= GROUND_Y_DEFAULT_3D + BUILD_WALL_DEFAULT_HEIGHT / 2)
-  ));
-  // Same for a Pool: its basin sits on the ground and would be hidden by the displaced terrain.
-  const hasPiscine = !!(page && page.objects.some(o =>
-    o.objType === 'piscine' && o.homePanelId === panel.id
-  ));
-  // Same for Traces (Roads, Paths, Terrain Zones): they sit at Ground level
-  // and would be hidden by the upward-displaced vertices, same treatment as Buildings.
-  const hasTracé = !!(page && page.objects.some(o =>
-    o.type === 'tracé' && o.panelId === panel.id
-  ));
-  // Building, Pool, or Trace present: flat Ground (displacement = 0) so the background stays visible.
-  // Without this, the Ground's upward-displaced vertices hide the floor (worldY ≈ GROUND_Y_DEFAULT_3D).
-  const flattenGround = hasBuilding || hasPiscine || hasTracé;
-  const effectiveScale = flattenGround ? 0 : def.dispScale;
-  const effectiveBias  = flattenGround ? 0 : -def.dispScale * 0.5;
-  if (mat.displacementScale !== effectiveScale)        { mat.displacementScale = effectiveScale; dirty = true; }
-  if (mat.displacementBias  !== effectiveBias)         { mat.displacementBias  = effectiveBias;  dirty = true; }
+  if (mat.map !== map)                                 { mat.map = map; dirty = true; }
   if (mat.roughness !== def.roughness)                 { mat.roughness = def.roughness;          dirty = true; }
   if (mat.metalness !== def.metalness)                 { mat.metalness = def.metalness;          dirty = true; }
   mat.color.set(0xffffff);
@@ -1399,7 +1311,7 @@ export function ensurePersonaScene3D(){
   // Default ground (see the groundMesh3D declaration above): a single shared mesh, hidden by
   // default (visible=true only during a Panel's combined render, see renderPanelScene3D).
   groundMesh3D = new THREE.Mesh(
-    new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, 100, 100),
+    new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SEGMENTS_3D),
     new THREE.MeshStandardMaterial({ color: GROUND_COLOR_DEFAULT_3D, roughness: 0.95, metalness: 0, side: THREE.DoubleSide })
   );
   // ⚠️ LE SOL REÇOIT, ET IL NE PROJETTE PAS (#422c). Il reçoit parce que c'est lui qui rend une
