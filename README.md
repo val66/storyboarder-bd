@@ -2,9 +2,9 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.6.72**
+**Version 1.6.73**
 
-**Comic book storyboarding application** — a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
+**Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
 > Standalone Windows desktop app built with Electron + Three.js.
 
@@ -16,7 +16,7 @@
 - 📖 **Volume → Page → Panel** organization with automatic numbering
 - 📄 Page duplication, drag-and-drop reordering
 - 📝 Per-panel summaries and descriptions
-- 💬 **Speech bubbles**: nine shapes, five tails, photographed textures (paper, ice, lava, starry night), text outline, and **merging** two bubbles into one — one text box per lobe, separable at any time
+- 💬 **Speech bubbles**: eight shapes, five tails, photographed textures (paper, ice, lava, starry night), text outline, **saved styles** reapplied in one click, and **merging** two bubbles into one, one text box per lobe, separable at any time
 - 🎨 **Layout styling**: background colour per page, adjustable panel and bubble borders (display, thickness, colour), panel side lengths shown in millimetres
 
 ### 3D Scenes
@@ -59,8 +59,8 @@
   model is used
 - ✏️ **Rename or delete** an imported file, projects that use it kept in step
 - 🦴 **Articulated models** are posed in the [Model editor](#model-editor), like characters
-- 🐉 **Morphology** proposed on import — humanoid, quadruped, winged biped, centaur, arachnid, radial
-  or serpentine — and correctable
+- 🐉 **Morphology** proposed on import (humanoid, quadruped, winged biped, centaur, arachnid, radial
+  or serpentine) and correctable
 - 🔗 **Mapping screen**: which bone plays which role, correctable limb by limb
 - 📋 **Reuse a mapping** already made for the same skeleton
 - 🧩 **Change figure**: an articulated Element can wear another imported file and keep its pose
@@ -85,7 +85,7 @@
 - 🪟 The window **reopens where you left it**, size, position and maximised state
 - 🔌 **Works offline**, fonts included: pages look the same with or without a connection
 - 🌗 **Dark and light themes**, plus an **increased-contrast** option that combines with either
-- 🔎 **Interface size** in four steps, from Compact to Extra large — the Page keeps its own zoom
+- 🔎 **Interface size** in four steps, from Compact to Extra large. The Page keeps its own zoom
 - 🧠 **Pages kept in memory**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
 
 ---
@@ -221,4 +221,4 @@ You are free to use, modify and redistribute this project, provided you:
 
 ## 👤 Author
 
-**Valentin** — [@val66](https://github.com/val66)
+**Valentin**, [@val66](https://github.com/val66)

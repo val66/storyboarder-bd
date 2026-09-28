@@ -2,9 +2,9 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.6.72**
+**Version 1.6.73**
 
-**Application de découpage de Bandes Dessinées** — outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
+**Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
 > Application de bureau Windows, construite avec Electron + Three.js.
 
@@ -16,7 +16,7 @@
 - 📖 Organisation **Tomes → Planches → Cases** avec numérotation automatique
 - 📄 Duplication de planches, réorganisation par glisser-déposer
 - 📝 Résumés et descriptions par Case
-- 💬 **Bulles de dialogue** : neuf formes, cinq pointes, textures photographiées (papier, glace, lave, nuit étoilée), contour de texte, et **fusion** de deux Bulles en une seule — un texte par lobe, séparables à tout moment
+- 💬 **Bulles de dialogue** : huit formes, cinq pointes, textures photographiées (papier, glace, lave, nuit étoilée), contour de texte, **styles enregistrés** réappliqués en un clic, et **fusion** de deux Bulles en une seule, un texte par lobe, séparables à tout moment
 - 🎨 **Mise en forme** : couleur d'arrière-plan par Planche, bordure de Case et de Bulle réglables (affichage, épaisseur, couleur), dimensions d'une Case affichées en millimètres
 
 ### Scènes 3D
@@ -63,8 +63,8 @@
 - ✏️ **Renommer ou supprimer** un fichier importé, les Projets qui s'en servent suivent
 - 🦴 **Les modèles articulés se posent dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme les
   Personnages
-- 🐉 **Morphologie** proposée à l'import — humanoïde, quadrupède, bipède ailé, centaure, arachnide,
-  radial ou serpentin — et corrigible
+- 🐉 **Morphologie** proposée à l'import (humanoïde, quadrupède, bipède ailé, centaure, arachnide,
+  radial ou serpentin) et corrigible
 - 🔗 **Écran de correspondance** : quel os joue quel rôle, corrigible membre par membre
 - 📋 **Reprendre une correspondance** déjà faite pour le même squelette
 - 🧩 **Changer de figure** : un Élément articulé peut porter un autre fichier en gardant sa pose
@@ -91,7 +91,7 @@
 - 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
 - 🔌 **Fonctionne hors ligne**, polices comprises : vos Planches ont le même aspect avec ou sans connexion
 - 🌗 **Thèmes sombre et clair**, plus une option **contraste renforcé** qui se combine aux deux
-- 🔎 **Taille de l'interface** en quatre crans, de Compacte à Très grande — la Planche garde son propre zoom
+- 🔎 **Taille de l'interface** en quatre crans, de Compacte à Très grande. La Planche garde son propre zoom
 - 🧠 **Planches en mémoire**, réglable de 0 à 900 Mo : celles que vous venez de consulter reviennent instantanément au lieu d'être redessinées
 
 ---
@@ -229,4 +229,4 @@ Vous pouvez librement utiliser, modifier et redistribuer ce projet, **à conditi
 
 ## 👤 Auteur
 
-**Valentin** — [@val66](https://github.com/val66)
+**Valentin**, [@val66](https://github.com/val66)
