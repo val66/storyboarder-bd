@@ -825,7 +825,20 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
    L'identifiant est sans risque ici : l'élément est écrit dans index.html et non engendré, à la
    différence des zones de texte des lobes, dont une règle par identifiant n'atteignait aucune
    copie (#426e). */
-#sideBubbleTailMirrorWrap{ margin-top:8px; }
+/* ⚠️ ET IL FAUT REPRENDRE CE QUE `.tome-format label` LUI IMPOSE. Cette règle-là habille les TITRES
+   des encarts — 10 px, majuscules, gras, `display:block` — et sa spécificité (0,1,1) l'emporte sur
+   celle de `.side-bulle-tail` (0,1,0). Une case à cocher posée dans un encart héritait donc du
+   costume d'un titre de section : le `display:block` annulait le centrage vertical que le flex
+   apportait, et le libellé retombait sur la ligne de base de la case, à côté de son bas — relevé à
+   l'usage. L'aspect majuscules venait de la même règle.
+   On rend donc à ce libellé l'apparence des deux autres cases du panneau, « Afficher la bordure »
+   et « Bulle fusionnable », en montant d'un cran de spécificité plutôt qu'en ajoutant `!important`,
+   qui aurait caché le conflit au lieu de le résoudre. */
+.tome-format label.side-bulle-tail{
+  display:flex; align-items:center; gap:6px;
+  font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:normal;
+  margin-top:8px; margin-bottom:0;
+}
 /* Sélecteur de couleur (cf. sideBorderColorInput/sidePlancheBgColorInput) — section "Bordure" du menu
    Case et "Arrière-plan" du menu Planche — sur demande utilisateur. */
 /* Section "Sol" du menu Case/Scène : grille de boutons à swatches de texture — sur demande utilisateur. */
