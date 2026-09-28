@@ -996,8 +996,13 @@ valeur vide ; `Number('')` vaut **zéro**, pas `NaN`. Le non-choix sélectionnai
 de la bibliothèque et l'appliquait, en empilant une annulation pour un geste que l'utilisateur venait
 d'annuler. Le code se lisait juste ; c'est le test du branchement qui l'a dit.
 
-Renommer et supprimer un style restent à faire : l'interface n'est pas tranchée, et livrer un
-demi-mécanisme aurait été pire que de l'annoncer.
+⚠️ **CE PARAGRAPHE ANNONÇAIT QUE RENOMMER ET SUPPRIMER RESTAIENT À FAIRE, ET IL A SURVÉCU À SA
+VÉRITÉ.** Ils ont été construits la séance suivante — voir plus bas —, et cette phrase est restée
+telle quelle jusqu'à ce qu'on relise la note en cherchant les tâches ouvertes. Une note qui décrit
+un dépôt qui n'existe plus est le défaut que ce fichier passe son temps à nommer chez les autres ;
+la trace est gardée ici plutôt qu'effacée, parce qu'elle montre par où la chose arrive : on écrit
+« reste à faire » au moment où c'est vrai, et rien ne relit cette ligne le jour où ça cesse de
+l'être.
 
 ⚠️ **ET LE BOUTON ÉTEINT A DISPARU, CE QUI VAUT MIEUX QUE CE QUI AVAIT ÉTÉ LIVRÉ.** La première
 version grisait « Enregistrer » quand la Bulle portait déjà un style : un contrôle visible et
