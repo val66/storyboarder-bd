@@ -1022,14 +1022,31 @@ canvas{ background:var(--fond-3d); }
    appliqué les consignes des autres modales », et c'était exact.
    Le modificateur `-seul` sert aux deux modales qui n'ont PAS de ligne d'erreur sous leur champ :
    la marge y remplace la place que cette ligne aurait prise. */
+/*
+ * ⚠️ LE RYTHME VERTICAL EST CALÉ SUR LA MODALE DE CONFIRMATION, qui sert de référence parce que
+ * c'est elle qu'on voit le plus souvent. Elle pose un titre, un paragraphe à `margin:0 0 14px`,
+ * puis les boutons à `margin-top:14px` — soit ZÉRO au-dessus du texte et vingt-huit en dessous.
+ *
+ * ⚠️ ZÉRO AU-DESSUS CONVIENT À UN PARAGRAPHE, PAS À UN CHAMP. `.modal-box h3` ne pose aucune marge
+ * basse : un texte qui commence juste sous un titre se lit bien, un champ ENCADRÉ collé au titre
+ * se lit comme une erreur de mise en page — sa bordure rend la collision visible. Relevé à
+ * l'usage : « le margin top entre le titre et le champ est trop petit ».
+ *
+ * ⚠️ ET EN BAS, LA LIGNE D'ERREUR RÉSERVAIT SA PLACE EN PLUS DES DEUX MARGES. Six pixels sous le
+ * champ, puis une ligne vide d'une hauteur réservée, puis sa propre marge de dix, puis les quatorze
+ * des boutons : quarante-sept pixels là où la modale de confirmation en met vingt-huit. La hauteur
+ * réservée reste — sans elle la modale sauterait à l'apparition du message —, mais elle n'est plus
+ * doublée de marges.
+ */
 .modal-input{
   width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700;
   padding:7px 8px; border:1px solid var(--line); border-radius:6px;
-  background:var(--white); color:var(--ink); margin-bottom:6px;
+  background:var(--white); color:var(--ink); margin-top:10px; margin-bottom:2px;
 }
+/* Les modales sans ligne d'erreur sous leur champ : la marge y remplace la place réservée. */
 .modal-input.modal-input-seul{ margin-bottom:14px; }
 .modal-error{
-  margin:0 0 10px; font-size:12px; color:var(--danger, #c0392b); min-height:1.4em;
+  margin:0; font-size:12px; color:var(--danger, #c0392b); min-height:1.2em;
 }
 
 .modal-box{
