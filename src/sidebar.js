@@ -23,6 +23,7 @@ import { textureDeLaBulle, teinteParDefautDeLaTexture,
          couleurTexteParDefautDeLaTexture,
          couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
 import { queuePeutSInverser3D, queueInverseeDeLaBulle3D } from './bubble-tail.js';
+import { bibliothequeLue3D, styleCorrespondant3D, peutEnregistrerLeStyle3D } from './bubble-library.js';
 import { bulleEstFusionnable3D, groupeDeLaBulle3D } from './bubble-merge.js';
 import {
   TRACÉ_EMOJI, OBJECT_TYPE_LABELS, OBJECT_TYPE_EMOJI,
@@ -102,6 +103,7 @@ const sideCadrageSection = document.getElementById('sideCadrageSection');
 const sideImageName = document.getElementById('sideImageName');
 const sideBubbleAppearanceSection = document.getElementById('sideBubbleAppearanceSection');
 const sideBubbleBorderSection   = document.getElementById('sideBubbleBorderSection');
+const sideBubbleStyleSection    = document.getElementById('sideBubbleStyleSection');
 const sideDescSection = document.getElementById('sideDescSection');
 const sideHelpSection = document.getElementById('sideHelpSection');
 const sideCameraSection = document.getElementById('sideCameraSection');
@@ -253,6 +255,67 @@ const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue')
  * ⚠️ L'OPACITÉ DU FOND N'EST PAS DANS LA LISTE, et c'est le point. Elle porte sur le remplissage,
  * pas sur le trait : une Bulle sans bordure reste une Bulle dont le fond se règle.
  */
+/**
+ * La bibliothèque de styles de Bulle, telle que la fiche la connaît.
+ *
+ * ⚠️ ELLE VIT ICI, ET NON DANS `S`. `S` est l'état du PROJET — ce qu'on enregistre dans le fichier
+ * et ce que Ctrl+Z défait. Une bibliothèque de styles est un réglage de l'APPLICATION, partagé
+ * entre tous les Projets et rangé dans `settings.json` : la mettre dans `S` l'aurait fait voyager
+ * avec le Projet et annuler avec un Ctrl+Z, deux comportements que personne n'attend d'elle.
+ */
+let _bibliothequeStyles = [];
+
+/** Remplace la bibliothèque connue de la fiche. Appelée au démarrage et après chaque ajout. */
+export function definirBibliothequeStyles3D(brut){
+  _bibliothequeStyles = bibliothequeLue3D(brut);
+  return _bibliothequeStyles;
+}
+
+/** La bibliothèque courante. Lecture seule : le tableau rendu ne doit pas être modifié en place. */
+export function bibliothequeStyles3D(){
+  return _bibliothequeStyles;
+}
+
+/**
+ * Met la section « Style » en accord avec la Bulle sélectionnée.
+ *
+ * ⚠️ TROIS DÉCISIONS, TOUTES INTERROGÉES ET AUCUNE REFAITE ICI. Le menu n'existe que si la
+ * bibliothèque n'est pas vide ; le bouton s'éteint quand la Bulle porte déjà un style enregistré ;
+ * l'entrée sélectionnée est celle qu'elle porte. Les trois viennent de `src/bubble-library.js` —
+ * écrire « si un style correspond, je grise » serait une seconde copie de la règle qui choisit
+ * l'entrée du menu, et ce chantier a vu quatre fois deux copies se contredire.
+ */
+export function majSectionStyleBulle3D(sel){
+  const biblio = bibliothequeStyles3D();
+  const liste = document.getElementById('sideBubbleStyleListWrap');
+  const menu = document.getElementById('sideBubbleStyleSelect');
+  const bouton = document.getElementById('sideBubbleStyleSaveBtn');
+  if (!liste || !menu || !bouton) return;
+  // ⚠️ UNE LISTE VIDE NE S'AFFICHE PAS. Un menu déroulant sans contenu est un contrôle visible et
+  // inopérant — le défaut que ce dépôt nomme —, et il donnerait à croire que des styles existent.
+  liste.style.display = biblio.length ? '' : 'none';
+  const courant = styleCorrespondant3D(sel, biblio);
+  if (biblio.length) {
+    // ⚠️ LE MENU EST RECONSTRUIT À CHAQUE FOIS, ET C'EST SANS DANGER ICI. Un `<select>` n'a pas de
+    // curseur à préserver, à la différence des zones de texte des lobes, qu'une reconstruction
+    // arrachait sous les doigts (#426i). La première entrée est un NON-CHOIX, sans quoi une Bulle
+    // qui ne porte aucun style afficherait le nom d'un style qu'elle n'a pas.
+    menu.innerHTML = '';
+    const vide = document.createElement('option');
+    vide.value = '';
+    vide.textContent = tr('No style', 'Aucun style');
+    menu.appendChild(vide);
+    biblio.forEach((entree, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = entree.nom;
+      menu.appendChild(opt);
+    });
+    menu.value = courant ? String(biblio.indexOf(courant)) : '';
+  }
+  bouton.disabled = !peutEnregistrerLeStyle3D(sel, biblio);
+}
+
 /**
  * Montre ou cache la case « Inverser la pointe », selon que la pointe choisie a un envers.
  *
@@ -972,6 +1035,7 @@ function updateSidePanelImpl(){
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';
+    sideBubbleStyleSection.style.display = 'none';
     sideDescSection.style.display = 'none';
     sideHelpSection.style.display = 'none';
     sideCameraSection.style.display = 'block';
@@ -1088,6 +1152,8 @@ function updateSidePanelImpl(){
       sidePersonasSection.style.display = 'none';
       sideBubbleAppearanceSection.style.display = 'none';
       sideBubbleBorderSection.style.display = 'none';
+      sideBubbleStyleSection.style.display = 'none';
+    sideBubbleStyleSection.style.display = 'none';
       return;
     }
     sideImageSection.style.display = 'none';
@@ -1123,6 +1189,7 @@ function updateSidePanelImpl(){
     sidePersonasSection.style.display = 'block';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';
+    sideBubbleStyleSection.style.display = 'none';
   } else if (sel && sel.type === 'bulle') {
     // A speech Bubble has neither border dimensions nor contained Elements: only its text
     // (description) is edited here, like for a Panel, plus the option to show/hide its
@@ -1189,6 +1256,8 @@ function updateSidePanelImpl(){
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'block';
     sideBubbleBorderSection.style.display = 'block';
+    sideBubbleStyleSection.style.display = 'block';
+    majSectionStyleBulle3D(sel);
     sideBubbleBorderToggle.checked = sel.bulleBorderVisible !== false;
     sideBubbleBorderWidthSelect.value = sel.bulleBorderWidth || 2.25;
     sideBubbleBorderColorInput.value  = sel.bulleBorderColor  || '#23242a';
@@ -1263,6 +1332,7 @@ function updateSidePanelImpl(){
     sidePersonasSection.style.display = 'none';
     sideBubbleAppearanceSection.style.display = 'none';
     sideBubbleBorderSection.style.display = 'none';
+    sideBubbleStyleSection.style.display = 'none';
     sideDescSection.style.display = 'none';
     panelMenuHeader.style.display = 'none';
     bubbleMenuHeader.style.display = 'none';

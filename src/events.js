@@ -82,6 +82,8 @@ import {
 import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle, longueurMinimaleDeLaQueue3D } from './bubble-tail.js';
+import { styleDeLaBulle3D, appliquerStyle3D, refusDuNomDeStyle3D, ajouterStyle3D,
+         peutEnregistrerLeStyle3D, NOM_STYLE_MAX } from './bubble-library.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
@@ -148,6 +150,7 @@ import {
 
   manuelEstAffiche, rafraichirSectionLumiere,
   majAffichageReglagesTraitBulle3D,
+  definirBibliothequeStyles3D, bibliothequeStyles3D, majSectionStyleBulle3D,
 } from './sidebar.js';
 import {
   toggleModalSection, legendeDoitSeReplier3D, updatePersonaSizeDisplay, updateObjectSizeDisplay, recomputeModalDirty,
@@ -6981,6 +6984,13 @@ const sideBubbleFontSizeValue = document.getElementById('sideBubbleFontSizeValue
 const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleTailMirrorToggle = document.getElementById('sideBubbleTailMirrorToggle');
+const sideBubbleStyleSelect = document.getElementById('sideBubbleStyleSelect');
+const sideBubbleStyleSaveBtn = document.getElementById('sideBubbleStyleSaveBtn');
+const bubbleStyleModal = document.getElementById('bubbleStyleModal');
+const bubbleStyleInput = document.getElementById('bubbleStyleInput');
+const bubbleStyleError = document.getElementById('bubbleStyleError');
+const bubbleStyleCancel = document.getElementById('bubbleStyleCancel');
+const bubbleStyleConfirm = document.getElementById('bubbleStyleConfirm');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
@@ -7488,6 +7498,91 @@ sideBubbleTailShapeSelect.addEventListener('change', () => {
   // fait déjà l'affichage. Deux copies d'une même décision, dont l'une servait de filet à une peur
   // non vérifiée. Supprimée plutôt que consignée, comme la règle du dépôt le demande.
   drawCurrentPage();
+});
+
+/**
+ * Applique un style de la bibliothèque à la Bulle sélectionnée.
+ *
+ * ⚠️ LES CLÉS SONT EFFACÉES AVANT D'ÊTRE RÉÉCRITES, ET C'EST LA FAUTE M14 DE #426a. `Object.assign`
+ * écrit ce qu'on lui donne et laisse le reste : appliquer un style SANS texture à une Bulle
+ * texturée lui laisserait sa texture, et le même style rendrait deux résultats différents selon la
+ * Bulle de départ. `appliquerStyle3D` décide ce que devient la Bulle ; ici on ne fait que remplacer
+ * son contenu par ce qu'elle a décidé.
+ */
+function appliquerStyleALaBulle3D(cible, style){
+  const apres = appliquerStyle3D(cible, style);
+  for (const cle of Object.keys(cible)) delete cible[cle];
+  Object.assign(cible, apres);
+  // ⚠️ ET LA POINTE S'ALLONGE SI LE STYLE L'EXIGE. La longueur n'appartient pas au style — c'est un
+  // placement — mais la chaîne de ronds en réclame un minimum, faute de quoi ses ronds naissent
+  // rétrécis : exactement le défaut corrigé en #425h, qui reviendrait par la porte du style.
+  const minimum = longueurMinimaleDeLaQueue3D(cible.tailShape);
+  const actuelle = cible.tailLen != null ? cible.tailLen : BUBBLE_TAIL_LEN_DEFAULT;
+  if (actuelle < minimum) cible.tailLen = minimum;
+}
+
+sideBubbleStyleSelect.addEventListener('change', () => {
+  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
+  /*
+   * ⚠️ LA VALEUR VIDE SE TESTE AVANT LA CONVERSION, ET C'EST UN DÉFAUT QU'UN TEST A ATTRAPÉ.
+   * `Number('')` vaut ZÉRO, pas `NaN` : le non-choix sélectionnait donc le PREMIER style de la
+   * bibliothèque et l'appliquait, en empilant une annulation pour un geste que l'utilisateur venait
+   * d'annuler. Une conversion silencieuse de la chaîne vide en zéro est le genre de piège qu'aucune
+   * relecture n'attrape, parce que le code se lit juste.
+   */
+  if (!sideBubbleStyleSelect.value) return;
+  const entree = bibliothequeStyles3D()[Number(sideBubbleStyleSelect.value)];
+  if (!entree) return;
+  snapshot();
+  appliquerStyleALaBulle3D(S.sideDescTarget, entree.style);
+  drawCurrentPage();
+});
+
+/**
+ * ⚠️ LA MODALE EST OUVERTE PAR LE BOUTON, ET LE BOUTON PEUT ÊTRE ÉTEINT. Un `<button disabled>` ne
+ * reçoit pas de clic, mais s'en remettre à cela seul reviendrait à faire tenir une règle par un
+ * attribut du DOM. On redemande donc la décision à `peutEnregistrerLeStyle3D` — la même source que
+ * celle qui éteint le bouton, pas une copie.
+ */
+sideBubbleStyleSaveBtn.addEventListener('click', () => {
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'bulle') return;
+  if (!peutEnregistrerLeStyle3D(cible, bibliothequeStyles3D())) return;
+  bubbleStyleInput.value = '';
+  bubbleStyleError.textContent = '';
+  bubbleStyleModal.classList.remove('hidden');
+  bubbleStyleInput.focus();
+});
+
+const fermerModaleStyle = () => bubbleStyleModal.classList.add('hidden');
+bubbleStyleCancel.addEventListener('click', fermerModaleStyle);
+
+/** Les motifs de refus, traduits ICI. Le module pur rend une CLÉ, jamais une phrase. */
+const MESSAGE_REFUS_STYLE = {
+  vide: () => tr('Give this style a name.', 'Donnez un nom à ce style.'),
+  'trop-long': () => tr(`Keep the name under ${NOM_STYLE_MAX} characters.`,
+    `Le nom doit tenir en ${NOM_STYLE_MAX} caractères.`),
+  doublon: () => tr('A style already goes by that name.', 'Un style porte déjà ce nom.'),
+};
+
+bubbleStyleConfirm.addEventListener('click', async () => {
+  const cible = S.sideDescTarget;
+  if (!cible || cible.type !== 'bulle') return;
+  const refus = refusDuNomDeStyle3D(bubbleStyleInput.value, bibliothequeStyles3D());
+  if (refus) {
+    // ⚠️ LE MOTIF S'AFFICHE SOUS LE CHAMP, ET LA MODALE RESTE OUVERTE. On corrige un nom en le
+    // regardant ; une alerte qui ferme la modale obligerait à tout recommencer.
+    bubbleStyleError.textContent = (MESSAGE_REFUS_STYLE[refus] || (() => refus))();
+    bubbleStyleInput.focus();
+    return;
+  }
+  const biblio = ajouterStyle3D(bibliothequeStyles3D(), bubbleStyleInput.value,
+    styleDeLaBulle3D(cible));
+  definirBibliothequeStyles3D(biblio);
+  if (hasElectronAPI()) await window.storyboarderAPI.setSetting('bulleStyles', biblio);
+  fermerModaleStyle();
+  // La section se relit : le menu apparaît s'il n'existait pas, et le bouton s'éteint.
+  majSectionStyleBulle3D(cible);
 });
 
 sideBubbleTailMirrorToggle.addEventListener('change', () => {
@@ -8151,6 +8246,16 @@ async function loadAppSettings(){
     if (settings && typeof settings.cacheMo === 'number' && settings.cacheMo >= 0) {
       S.appCacheMo = settings.cacheMo;
     }
+    // ⚠️ LA BIBLIOTHÈQUE DE STYLES EST UN RÉGLAGE DE L'APPLICATION, PAS DU PROJET. Arbitré avec
+    // l'utilisateur : un style créé dans un Projet doit être disponible dans tous les autres, ce
+    // que le mot « bibliothèque » suppose. La contrepartie est écrite dans la note : les styles ne
+    // suivent pas le fichier quand on l'envoie à quelqu'un.
+    //
+    // ⚠️ ET ELLE EST RELUE PAR `bibliothequeLue3D`, QUI NE LÈVE JAMAIS. `settings.json` est un
+    // fichier que l'utilisateur peut éditer et qu'un disque plein a pu tronquer : refuser de
+    // démarrer pour un réglage d'agrément mettrait l'Application à genoux — même politique que la
+    // géométrie de fenêtre de #407b.
+    definirBibliothequeStyles3D(settings && settings.bulleStyles);
     if (settings && settings.uiScale) {
       S.appUiScale = settings.uiScale;
       appliquerEchelleUI(S.appUiScale);
@@ -8359,6 +8464,10 @@ enregistrerFermeture('helpModal', () => closeHelpModal());
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));
+// ⚠️ ÉCHAP FERME LA MODALE DE NOMMAGE, ET SANS CELA IL OUVRIRAIT LE MENU PROJET DERRIÈRE ELLE. Le
+// test de complétude des modales l'a signalé dès l'ajout : c'est la garde qui tient cette
+// propriété pour toutes, et elle a fait son travail sans que j'y pense.
+enregistrerFermeture('bubbleStyleModal', () => fermerModaleStyle());
 // Pour ces deux-là, Échap doit faire ce que fait « Annuler », et « Annuler » sur un Élément qu'on
 // vient d'ajouter le SUPPRIME (cf. dismissModal). Un masquage générique le laisserait derrière.
 enregistrerFermeture('descModal', () => dismissModal(closeDescModal));

@@ -952,3 +952,49 @@ faire taire.
 Ce chiffre ne redescendra pas tout seul. Les six dettes précédentes se soldaient en branchant ce qui
 attendait ; celle-ci se soldera de deux manières seulement — l'axe revient dans la fiche, ou l'on
 décide de supprimer le module pour de bon.
+
+## La bibliothèque de styles (#425j)
+
+Un style retient l'apparence d'une Bulle sous un nom, pour la réappliquer ailleurs. La section vit
+entre « Bordure » et « Texte » : elle résume ce qui la précède ET les réglages de texte qui la
+suivent, elle se lit donc naturellement au milieu.
+
+⚠️ **CE QU'UN STYLE CONTIENT SE DÉCIDE PAR EXCLUSION, ET CETTE DÉCISION ÉTAIT DÉJÀ PRISE.** Énumérer
+ce qu'un style retient — forme, pointe, trait, texture, couleurs, police… — est exactement le piège
+que `src/bubble-merge.js` avait nommé pour la fusion : la liste s'allonge à chaque axe ajouté et se
+périme en SILENCE. La fusion l'avait résolu en nommant ce qui NE se transporte pas, une liste stable
+et petite. Un style pose la même question et **réutilise la même réponse**, augmentée de l'angle et
+de la longueur de la pointe. Deux listes décrivant « ce qui est de l'apparence » auraient divergé au
+premier axe ajouté.
+
+⚠️ **L'ANGLE ET LA LONGUEUR DE LA POINTE SONT DES PLACEMENTS, PAS DES RÉGLAGES D'ASPECT.** Une pointe
+désigne qui parle, et cela dépend de la Case. Appliquer un style à une Bulle déjà posée ne doit pas
+faire tourner sa pointe vers un locuteur qui n'est pas le sien. Arbitré avec l'utilisateur.
+
+La longueur fait pourtant une exception, et le test la tient : un style à **chaîne de ronds** relève
+la pointe au minimum que ce motif exige, sans quoi ses ronds naîtraient rétrécis — le défaut corrigé
+en #425h, qui serait revenu par la porte du style.
+
+⚠️ **L'ABSENCE EST UN RÉGLAGE, DANS LES DEUX SENS.** Un style ne retient pas les clés que la Bulle
+ne porte pas : enregistrer `bulleShape: undefined` imposerait l'ovale à une Bulle rectangulaire.
+Et appliquer un style RETIRE les champs d'apparence qu'il ne nomme pas — sans quoi une Bulle
+texturée garderait sa texture, et le même style rendrait deux résultats différents selon la Bulle de
+départ. C'est la faute M14 de #426a, rencontrée une troisième fois.
+
+⚠️ **LA BIBLIOTHÈQUE EST UN RÉGLAGE DE L'APPLICATION, PAS DU PROJET.** Elle vit dans `settings.json`,
+à côté du thème : un style créé dans un Projet est disponible dans tous les autres, ce que le mot
+« bibliothèque » suppose. La contrepartie, assumée : les styles ne suivent pas le fichier qu'on
+envoie à quelqu'un. Elle ne vit donc PAS dans `S` — elle y aurait voyagé avec le Projet et se serait
+annulée au Ctrl+Z, deux comportements que personne n'attend d'elle.
+
+Une bibliothèque illisible vaut une bibliothèque vide, et les entrées abîmées sont écartées UNE PAR
+UNE : `settings.json` est un fichier que l'utilisateur peut éditer et qu'un disque plein a pu
+tronquer. Même politique que la géométrie de fenêtre de #407b.
+
+⚠️ **ET UN DÉFAUT QU'AUCUNE RELECTURE N'AURAIT ATTRAPÉ.** L'entrée « Aucun style » du menu porte une
+valeur vide ; `Number('')` vaut **zéro**, pas `NaN`. Le non-choix sélectionnait donc le PREMIER style
+de la bibliothèque et l'appliquait, en empilant une annulation pour un geste que l'utilisateur venait
+d'annuler. Le code se lisait juste ; c'est le test du branchement qui l'a dit.
+
+Renommer et supprimer un style restent à faire : l'interface n'est pas tranchée, et livrer un
+demi-mécanisme aurait été pire que de l'annoncer.

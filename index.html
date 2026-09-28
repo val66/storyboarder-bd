@@ -508,6 +508,21 @@
         </select>
       </div>
     </div>
+    <!-- ⚠️ ENTRE « BORDURE » ET « TEXTE », À LA DEMANDE. Un style retient tout ce qui précède —
+         forme, pointe, trait, texture, couleurs — ET les réglages de texte qui suivent : la section
+         se lit donc naturellement au milieu de ce qu'elle résume.
+         ⚠️ LE MENU N'EXISTE QUE S'IL Y A QUELQUE CHOSE DEDANS. Une liste vide serait un contrôle
+         visible et inopérant, défaut que ce dépôt nomme et refuse ; il apparaît au premier style
+         enregistré. Le bouton, lui, s'ÉTEINT quand la Bulle porte déjà un style de la
+         bibliothèque — il n'y aurait rien à enregistrer que le doublon de ce qui existe. -->
+    <div id="sideBubbleStyleSection" class="side-section" style="display:none;">
+      <h2>Style</h2>
+      <div id="sideBubbleStyleListWrap" class="tome-format" style="display:none;">
+        <label for="sideBubbleStyleSelect">Styles enregistrés</label>
+        <select id="sideBubbleStyleSelect"></select>
+      </div>
+      <button id="sideBubbleStyleSaveBtn" class="full-btn" type="button">Enregistrer</button>
+    </div>
     <div id="sideCameraSection" style="display:none;">
       <div class="menu-header">
         <span></span>
@@ -627,6 +642,9 @@
         </button>
         <button type="button" class="help-group" data-help="bulles">
           <span class="help-group-title">Bulles de dialogue</span>
+        </button>
+        <button type="button" class="help-group" data-help="style">
+          <span class="help-group-title">Style</span>
         </button>
         <button type="button" class="help-group" data-help="pointe">
           <span class="help-group-title">Pointe de la bulle</span>
@@ -952,6 +970,21 @@
     <div class="modal-actions">
       <button class="nav-btn" id="renameEntityCancel" type="button">Annuler</button>
       <button class="full-btn" id="renameEntityConfirm" type="button">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ⚠️ NOMMER UN STYLE : MÊME FORME QUE « RENOMMER », ET POUR LA MÊME RAISON. Une modale à un
+     champ avec sa ligne d'erreur sous lui : le motif du refus s'affiche SOUS le champ plutôt que
+     dans une alerte, parce qu'on corrige un nom en le regardant. -->
+<div class="modal-overlay hidden" id="bubbleStyleModal">
+  <div class="modal-box">
+    <h3 id="bubbleStyleTitle">Enregistrer le style</h3>
+    <input type="text" id="bubbleStyleInput" style="width:100%; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); margin-bottom:6px;">
+    <p id="bubbleStyleError" style="margin:0 0 10px; font-size:12px; color:var(--danger, #c0392b); min-height:1.4em;"></p>
+    <div class="modal-actions">
+      <button class="nav-btn" id="bubbleStyleCancel" type="button">Annuler</button>
+      <button class="full-btn" id="bubbleStyleConfirm" type="button">Enregistrer</button>
     </div>
   </div>
 </div>

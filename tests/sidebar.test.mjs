@@ -20,6 +20,7 @@ import {
   majAffichageReglagesTraitBulle3D, updateSidePanel, _oublierZonesDeLobes3D,
 } from '../src/sidebar.js';
 import { longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
+import { definirBibliothequeStyles3D, bibliothequeStyles3D } from '../src/sidebar.js';
 import { BUBBLE_TAIL_LEN_DEFAULT } from '../src/constants.js';
 import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
@@ -1078,6 +1079,191 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     assert.equal(b.tailLen, 1.5, 'changer de motif a raccourci la pointe');
   });
 
+
+  /**
+   * ⚠️ #425j — LA BIBLIOTHÈQUE DE STYLES, ÉPROUVÉE PAR LES VRAIS ÉCOUTEURS. La décision pure vit
+   * dans tests/bubble-library.test.mjs ; ce qui se joue ici est le BRANCHEMENT, où ce chantier a
+   * perdu quelque chose à peu près une fois sur deux — un menu qui n'écrit rien (#425g), une fiche
+   * qui affiche un état périmé (#425f), un contrôle visible mais inopérant (#426e), une décision
+   * juste et jamais appelée (#420c M19).
+   */
+  describe('#425j — la section Style', () => {
+    const menu = () => document.getElementById('sideBubbleStyleSelect');
+    const bouton = () => document.getElementById('sideBubbleStyleSaveBtn');
+    const liste = () => document.getElementById('sideBubbleStyleListWrap');
+    const modale = () => document.getElementById('bubbleStyleModal');
+    const champ = () => document.getElementById('bubbleStyleInput');
+    const erreur = () => document.getElementById('bubbleStyleError');
+    const cliquer = (el) => (el._ecouteurs.click || []).forEach(fn => fn({ target: el }));
+    const changer = (el) => (el._ecouteurs.change || []).forEach(fn => fn({ target: el }));
+    /** Enregistre le style de la Bulle sélectionnée sous ce nom, par le vrai chemin. */
+    const enregistrer = async (nom) => {
+      cliquer(bouton());
+      champ().value = nom;
+      const confirmer = document.getElementById('bubbleStyleConfirm');
+      for (const fn of (confirmer._ecouteurs.click || [])) await fn({ target: confirmer });
+    };
+
+    test('⚠️ SANS AUCUN STYLE, LE MENU N’EXISTE PAS ET LE BOUTON EST ACTIF', () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      updateSidePanel();
+      assert.equal(liste().style.display, 'none',
+        'un menu vide s’affiche : c’est un contrôle visible et inopérant');
+      assert.equal(bouton().disabled, false, 'rien n’est enregistré, on doit pouvoir enregistrer');
+    });
+
+    test('⚠️ ENREGISTRER POSE LE STYLE, FAIT APPARAÎTRE LE MENU, ET ÉTEINT LE BOUTON', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      assert.equal(modale().classList.contains('hidden'), true, 'la modale est restée ouverte');
+      assert.equal(bibliothequeStyles3D().length, 1, 'le style n’a pas été ajouté');
+      assert.equal(bibliothequeStyles3D()[0].nom, 'Cri');
+      assert.equal(bibliothequeStyles3D()[0].style.bulleShape, 'etoile',
+        'le style enregistré ne porte pas l’apparence de la Bulle');
+      // ⚠️ ET LA SECTION SE RELIT AUSSITÔT : sans cela, il faudrait cliquer ailleurs puis revenir
+      // pour voir apparaître le menu qu'on vient de créer.
+      assert.notEqual(liste().style.display, 'none', 'le menu n’est pas apparu');
+      assert.equal(bouton().disabled, true,
+        'le bouton reste actif alors que la Bulle porte exactement le style enregistré');
+    });
+
+    test('⚠️ ET LE BOUTON SE RALLUME DÈS QUE LA BULLE S’ÉCARTE DU STYLE', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      updateSidePanel();
+      await enregistrer('Ordinaire');
+      assert.equal(bouton().disabled, true, 'le repère');
+      b.bulleColor = '#123456';
+      updateSidePanel();
+      assert.equal(bouton().disabled, false,
+        'la Bulle a changé de couleur : son apparence n’est plus celle du style enregistré');
+    });
+
+    test('⚠️ CHOISIR UN STYLE DANS LE MENU L’APPLIQUE VRAIMENT À LA BULLE', async () => {
+      definirBibliothequeStyles3D([]);
+      const a = nouvelleBulle();
+      S.selectedId = a.id;
+      a.bulleShape = 'etoile';
+      a.bulleColor = '#aabbcc';
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'rect';
+      b.bulleTexture = 'lave';
+      const avant = { x: b.x, y: b.y, w: b.w, h: b.h };
+      b.description = 'NE BOUGE PAS';
+      updateSidePanel();
+      menu().value = '0';
+      changer(menu());
+
+      assert.equal(b.bulleShape, 'etoile', 'la forme du style n’a pas été appliquée');
+      assert.equal(b.bulleColor, '#aabbcc', 'la couleur du style n’a pas été appliquée');
+      // ⚠️ LA FAUTE M14 DE #426a, VUE DEPUIS LE CANEVAS DE L'UTILISATEUR : un champ d'apparence que
+      // le style ne nomme pas doit être RETIRÉ. Sans cela, le même style rendrait deux résultats
+      // différents selon la Bulle de départ.
+      assert.ok(!('bulleTexture' in b),
+        'la texture a survécu à un style qui n’en déclare pas');
+      assert.deepEqual({ x: b.x, y: b.y, w: b.w, h: b.h }, avant, 'la géométrie a bougé');
+      assert.equal(b.description, 'NE BOUGE PAS', 'le texte a été emporté par le style');
+    });
+
+    test('⚠️ APPLIQUER UN STYLE EST ANNULABLE, ET « AUCUN STYLE » NE FAIT RIEN', async () => {
+      definirBibliothequeStyles3D([]);
+      const a = nouvelleBulle();
+      S.selectedId = a.id;
+      a.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      updateSidePanel();
+
+      // ⚠️ LA PILE EST VIDÉE D'ABORD : elle a un plafond, et un compte absolu près de MAX_UNDO ne
+      // mesure pas ce qu'il croit. Le précédent est celui de #426e.
+      S.undoStack.length = 0;
+      menu().value = '';
+      changer(menu());
+      assert.equal(S.undoStack.length, 0,
+        '« Aucun style » a empilé une annulation pour un geste sans effet');
+      menu().value = '0';
+      changer(menu());
+      assert.equal(S.undoStack.length, 1, 'appliquer un style n’est pas annulable');
+    });
+
+    /**
+     * ⚠️ APPLIQUER UN STYLE À CHAÎNE DE RONDS ALLONGE LA POINTE SI ELLE EST TROP COURTE. La longueur
+     * n'appartient PAS au style — c'est un placement, arbitré ainsi avec l'utilisateur — mais la
+     * chaîne en réclame un minimum, faute de quoi ses ronds naissent rétrécis puis grossissent
+     * quand on étire : exactement le défaut corrigé en #425h, qui reviendrait ici par la porte du
+     * style. Le geste du menu des pointes fait déjà ce relèvement ; sans ce test, la seconde porte
+     * serait restée ouverte.
+     */
+    test('⚠️ UN STYLE À CHAÎNE DE RONDS ALLONGE LA POINTE TROP COURTE', async () => {
+      definirBibliothequeStyles3D([]);
+      const a = nouvelleBulle();
+      S.selectedId = a.id;
+      a.tailShape = 'ronds';
+      updateSidePanel();
+      await enregistrer('Pensée');
+
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.tailLen = BUBBLE_TAIL_LEN_DEFAULT;
+      const minimum = longueurMinimaleDeLaQueue3D('ronds');
+      assert.ok(b.tailLen < minimum, 'la fixture part d’une pointe déjà assez longue');
+      updateSidePanel();
+      menu().value = '0';
+      changer(menu());
+      assert.equal(b.tailShape, 'ronds', 'le style n’a pas été appliqué');
+      assert.ok(Math.abs(b.tailLen - minimum) < 1e-9,
+        `la pointe vaut ${b.tailLen} au lieu du minimum ${minimum.toFixed(3)} : les ronds naîtront rétrécis`);
+
+      // ⚠️ ET UNE POINTE DÉJÀ PLUS LONGUE N'EST PAS RAMENÉE AU MINIMUM : le style ne reprend pas un
+      // geste à l'utilisateur, il ne fait que garantir ce que le motif exige.
+      const c = nouvelleBulle();
+      S.selectedId = c.id;
+      c.tailLen = 1.5;
+      updateSidePanel();
+      menu().value = '0';
+      changer(menu());
+      assert.equal(c.tailLen, 1.5, 'une pointe longue a été raccourcie par un style');
+    });
+
+    test('⚠️ UN NOM REFUSÉ LAISSE LA MODALE OUVERTE, AVEC SON MOTIF SOUS LE CHAMP', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      const c = nouvelleBulle();
+      S.selectedId = c.id;
+      c.bulleColor = '#010203';
+      updateSidePanel();
+      await enregistrer('   ');
+      assert.equal(modale().classList.contains('hidden'), false,
+        'la modale s’est fermée sur un nom vide : tout serait à recommencer');
+      assert.ok(erreur().textContent.length > 0, 'aucun motif affiché sous le champ');
+      assert.equal(bibliothequeStyles3D().length, 1, 'un style sans nom a été enregistré');
+
+      // Et le doublon, qui est le refus que l'utilisateur rencontrera le plus souvent.
+      champ().value = 'cri';
+      const confirmer = document.getElementById('bubbleStyleConfirm');
+      for (const fn of (confirmer._ecouteurs.click || [])) await fn({ target: confirmer });
+      assert.equal(bibliothequeStyles3D().length, 1, 'un doublon a été enregistré');
+      assert.ok(erreur().textContent.length > 0, 'le doublon n’affiche aucun motif');
+    });
+  });
 
   test('⚠️ #425m : CHOISIR UNE TEXTURE LA POSE VRAIMENT, et la fiche la relit', () => {
     // Les deux sens, comme pour la forme et la queue. Ce chantier a perdu l'un ou l'autre trois

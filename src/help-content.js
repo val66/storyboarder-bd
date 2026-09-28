@@ -63,6 +63,11 @@ export const HELP_MANUAL_EN = [
     '"Background texture" fills the bubble with a photographed material — old paper, ice, lava or starry night — and "Background colour" tints it. A texture suggests its own tint as long as no colour has been chosen.',
     'The text takes a colour, and an outline: "Outline colour" and "Outline size", under the Text section, draw a halo behind the letters so they stay readable on a dark or busy background.',
   ]},
+  { id: 'style', title: 'Style', paragraphs: [
+    'The "Style" section, between Border and Text, keeps a Bubble\'s look under a name so you can reapply it elsewhere. "Save" asks for that name; the button goes dim when the Bubble already matches a style in the library, since there would be nothing to save but a duplicate.',
+    'A style keeps EVERYTHING that makes the look — shape, tail, stroke, texture, colours, opacity, inner padding — and the text settings: font, size, colour, outline. It keeps neither the text itself, nor the position, size, stacking order, nor the tail\'s angle and length: a tail points at whoever is speaking, and that depends on the Panel, not on the style.',
+    'The "Saved styles" menu only appears once a first style exists. Picking an entry applies it to the selected Bubble, and Ctrl+Z steps back. Styles are stored with the Application settings: they follow you from one Project to the next, but do not travel with a file you send.',
+  ]},
   { id: 'pointe', title: 'Bubble tail', paragraphs: [
     'The tail comes in five kinds — Triangle, Lightning, Curved, Circles, or None — and can be dragged anywhere around the outline.',
     '"Flip the tail", below the list, leans the Curved tail the other way. The box only shows for that one: the other tails have no other side, a Triangle being symmetrical and a Lightning already alternating on either side of its axis.',
@@ -271,6 +276,11 @@ export const HELP_MANUAL_FR = [
     "L'opacité du fond, sous « Apparence de la bulle », ne touche que le remplissage : le trait et le texte gardent leur densité. À 0 %, seuls le contour et le texte subsistent.",
     "« Texture du fond » remplit la Bulle d'une matière photographiée — vieux papier, glace, lave ou nuit étoilée — et « Couleur du fond » la teinte. Une texture propose sa propre teinte tant qu'aucune couleur n'a été choisie.",
     "Le texte prend une couleur, et un contour : « Couleur de contour » et « Taille du contour », dans la section Texte, dessinent un halo derrière les lettres pour qu'elles restent lisibles sur un fond sombre ou chargé.",
+  ]},
+  { id: 'style', title: 'Style', paragraphs: [
+    "La section « Style », entre Bordure et Texte, garde une apparence de Bulle sous un nom pour la réappliquer ailleurs. « Enregistrer » demande ce nom ; le bouton s'éteint quand la Bulle porte déjà un style de la bibliothèque, puisqu'il n'y aurait que le doublon de ce qui existe à enregistrer.",
+    "Un style retient TOUT ce qui fait l'apparence — forme, pointe, trait, texture, couleurs, opacité, écart intérieur — et les réglages du texte : police, taille, couleur, contour. Il ne retient ni le texte lui-même, ni la position, ni la taille, ni le niveau d'avancement, ni l'angle et la longueur de la pointe : une pointe désigne qui parle, et cela dépend de la Case, pas du style.",
+    "Le menu « Styles enregistrés » n'apparaît qu'une fois un premier style créé. Y choisir une entrée l'applique à la Bulle sélectionnée, et Ctrl+Z revient en arrière. Les styles sont rangés avec les réglages de l'Application : ils vous suivent d'un Projet à l'autre, mais ne voyagent pas avec un fichier que vous envoyez.",
   ]},
   { id: 'pointe', title: 'Pointe de la bulle', paragraphs: [
     "La pointe existe en cinq formes — Triangle, Éclair, Courbe, Ronds, ou Aucune — et se déplace tout autour du contour en la faisant glisser.",

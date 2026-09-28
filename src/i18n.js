@@ -123,6 +123,13 @@ export const I18N_TEXT = [
   // #425p — l'axe PARTICULE, semé AUTOUR du bord. Distinct du motif de trait : un motif est une
   // propriété d'une ligne, une particule une nuée en deux dimensions.
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
+  // #425j — la bibliothèque de styles de Bulle.
+  ['#sideBubbleStyleSection > h2', 'Style', 'Style'],
+  ['label[for="sideBubbleStyleSelect"]', 'Saved styles', 'Styles enregistrés'],
+  ['#sideBubbleStyleSaveBtn', 'Save', 'Enregistrer'],
+  ['#bubbleStyleTitle', 'Save the style', 'Enregistrer le style'],
+  ['#bubbleStyleCancel', 'Cancel', 'Annuler'],
+  ['#bubbleStyleConfirm', 'Save', 'Enregistrer'],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.
   ['label[for="sideBubbleBorderDashSelect"]', 'Stroke pattern', 'Motif du trait'],

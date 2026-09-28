@@ -901,3 +901,39 @@ decision therefore cannot rot in silence. Its wired export is listed in the dead
 `EN_ATTENTE` — the mechanism this repository uses for what is written without being wired, serving
 here for what was unwired without being abandoned. It is the only place where "kept but not wired"
 can be said without lying.
+
+## The style library (#425j)
+
+A style keeps a Bubble's look under a name so it can be reapplied elsewhere. The section sits
+between "Border" and "Text": it summarises what comes before it AND the text settings that follow,
+so it reads naturally in the middle.
+
+⚠️ **WHAT A STYLE CONTAINS IS DECIDED BY EXCLUSION, AND THAT DECISION WAS ALREADY MADE.** Listing
+what a style keeps — shape, tail, stroke, texture, colours, font… — is exactly the trap
+`src/bubble-merge.js` named for merging: the list grows with every axis added and goes stale in
+SILENCE. Merging solved it by naming what does NOT travel, a small stable list. A style asks the
+same question and **reuses the same answer**, plus the tail's angle and length. Two lists describing
+"what counts as appearance" would have diverged at the first axis added.
+
+⚠️ **THE TAIL'S ANGLE AND LENGTH ARE PLACEMENTS, NOT LOOK SETTINGS.** A tail points at whoever is
+speaking, and that depends on the Panel. Applying a style to an already-placed Bubble must not swing
+its tail towards someone else's mouth. Settled with the user.
+
+Length makes one exception, held by a test: a **chain of circles** style raises the tail to the
+minimum that motif requires, or its circles would be born shrunk — the defect fixed in #425h, which
+would have come back through the style's door.
+
+⚠️ **ABSENCE IS A SETTING, BOTH WAYS.** A style does not keep keys the Bubble does not carry, and
+applying a style REMOVES the appearance fields it does not name — otherwise a textured Bubble would
+keep its texture and the same style would give two different results depending on the starting
+Bubble. That is #426a's M14 fault, met a third time.
+
+⚠️ **THE LIBRARY IS AN APPLICATION SETTING, NOT A PROJECT ONE.** It lives in `settings.json`, beside
+the theme: a style created in one Project is available in all the others. The owned trade-off:
+styles do not travel with a file you send. It therefore does NOT live in `S`, where it would have
+travelled with the Project and been undone by Ctrl+Z.
+
+⚠️ **AND ONE DEFECT NO REVIEW WOULD HAVE CAUGHT.** The menu's "No style" entry carries an empty
+value; `Number('')` is **zero**, not `NaN`. The non-choice therefore picked the FIRST style in the
+library and applied it, pushing an undo step for a gesture the user had just cancelled. The code
+read correctly; the wiring test is what said otherwise.
