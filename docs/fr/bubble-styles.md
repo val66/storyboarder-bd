@@ -876,3 +876,23 @@ chaque disque, pendant que la suite de tests restait verte.
 Une même décision appliquée à deux endroits finit toujours par n'être corrigée qu'à un seul. Les deux
 constructeurs restent séparés, parce qu'ils décrivent deux géométries ; c'est le TEST qui les
 parcourt tous les deux et exige d'eux le même retrait.
+
+## L'étoile du cri avait des creux aussi aigus que ses pointes
+
+⚠️ **SIGNALÉ À L'USAGE, IMAGE DE RÉFÉRENCE À L'APPUI : « rendre la base des pointes moins pointue ».**
+La construction reliait deux rayons alternés par des segments DROITS : le fond d'un creux était donc
+aussi aigu que le sommet d'une pointe, et la forme se lisait comme une scie. Sur une bulle de cri, le
+relevé montre l'inverse — pointes franches, fond large et doux. C'est ce **contraste** qui fait le
+cri ; adoucir les deux donnerait une fleur, adoucir les pointes seules un galet bosselé.
+
+Le fond des creux est désormais un raccord de coin : on quitte l'arête avant le creux, on y revient
+après, et le sommet du creux devient le point de CONTRÔLE d'une quadratique — donc un point par où
+la courbe ne passe plus. Le creux effectif remonte légèrement, ce qui est exactement l'effet voulu.
+
+⚠️ **ET UN TEST VOISIN A PERDU SON TÉMOIN.** Celui qui tient la concavité des côtés de l'écu opposait
+ses 86 % de points rentrants aux 50 % de l'étoile, dont les creux étaient reliés par des segments
+droits : la mesure séparait ainsi « côtés creux » de « pointes alternées ». Des creux arrondis sont
+des arcs concaves, et l'étoile rend maintenant 88 % — le témoin est devenu un second exemple. Le test
+prouve donc MOINS qu'avant, et il le dit : ce qu'il tient encore est que l'écu ne s'est pas arrondi,
+avec trois formes convexes à zéro pour témoins. Rajuster son seuil en silence aurait laissé croire
+qu'il prouvait toujours la même chose.

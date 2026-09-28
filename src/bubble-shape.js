@@ -338,14 +338,44 @@ function sommetsFacette(o){
  * INÉGALES chez Eleceed comme chez Mutafukaz. L'imparité suffit à casser la symétrie sans tirer au
  * hasard, donc sans rien qui bouge d'un rendu à l'autre.
  */
-function sommetsAlternes(o, pointes, creux){
+function sommetsAlternes(o, pointes, creux, arrondi = 0, parCreux = 1){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
   const n = pointes * 2;
-  const out = [];
-  for (let k = 0; k < n; k++) {
+  const sommet = (k) => {
     const a = 2 * Math.PI * k / n;
     const f = k % 2 === 0 ? 1 : creux;
-    out.push({ x: cx + rx * f * Math.cos(a), y: cy + ry * f * Math.sin(a) });
+    return { x: cx + rx * f * Math.cos(a), y: cy + ry * f * Math.sin(a) };
+  };
+  if (!(arrondi > 0)) {
+    const out = [];
+    for (let k = 0; k < n; k++) out.push(sommet(k));
+    return out;
+  }
+  /*
+   * ⚠️ SEULS LES CREUX S'ARRONDISSENT, JAMAIS LES POINTES. Le relevé montre des pointes FRANCHES
+   * reliées par un fond de creux large et doux ; adoucir les deux donnerait une fleur, adoucir les
+   * pointes seules donnerait un galet bosselé. C'est l'inégalité des deux traitements qui fait le
+   * cri.
+   *
+   * L'arrondi est un raccord de coin classique : on quitte l'arête montante avant le creux, on y
+   * revient après, et le sommet du creux devient le point de CONTRÔLE d'une quadratique — donc un
+   * point par où la courbe ne passe plus. Le creux effectif remonte ainsi légèrement, ce qui est
+   * exactement l'effet voulu : une base de pointe moins piquante.
+   */
+  const entre = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  const out = [];
+  for (let k = 0; k < n; k += 2) {
+    const pointe = sommet(k), creuxPt = sommet(k + 1), suivante = sommet(k + 2);
+    out.push(pointe);
+    const depart = entre(pointe, creuxPt, 1 - arrondi);
+    const arrivee = entre(creuxPt, suivante, arrondi);
+    out.push(depart);
+    for (let i = 1; i < parCreux; i++) {
+      const t = i / parCreux, u = 1 - t;
+      out.push({ x: u * u * depart.x + 2 * u * t * creuxPt.x + t * t * arrivee.x,
+                 y: u * u * depart.y + 2 * u * t * creuxPt.y + t * t * arrivee.y });
+    }
+    out.push(arrivee);
   }
   return out;
 }
@@ -355,6 +385,19 @@ function sommetsAlternes(o, pointes, creux){
 // seconde ne portait que le point d'exclamation. La forme reste franchement une étoile — les
 // pointes dépassent encore de 40 % le fond des creux — et le texte tient.
 const ETOILE_POINTES = 11, ETOILE_CREUX = 0.72;
+/**
+ * L'arrondi du fond des creux, et son échantillonnage.
+ *
+ * ⚠️ LA BASE DES POINTES ÉTAIT AUSSI AIGUË QUE LEUR SOMMET, et le relevé dit le contraire. Sur une
+ * bulle de cri, les pointes sont franches mais le fond qui les sépare est LARGE et doux : c'est ce
+ * contraste qui se lit comme un cri plutôt que comme une scie. La construction d'origine reliait
+ * deux rayons alternés par des segments droits, ce qui donne un V aussi pointu en bas qu'en haut.
+ * Signalé à l'usage, image de référence à l'appui.
+ *
+ * `ETOILE_ARRONDI` est la part de l'arête absorbée par le raccord, de part et d'autre du creux : à
+ * 0,5 le creux disparaîtrait entièrement dans la courbe, et la forme deviendrait une fleur.
+ */
+const ETOILE_ARRONDI = 0.4, ETOILE_PAR_CREUX = 6;
 
 /**
  * L'écu d'Okko : des pointes larges et INÉGALES, reliées par des côtés qui se CREUSENT.
@@ -535,8 +578,10 @@ const REGISTRE = {
     encartInterieur: (o) => encartDepuisFraction(o, 1 - CHANFREIN / 2, 1 - CHANFREIN / 2),
   },
   [FORME_ETOILE]: {
-    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX)),
-    pointsDuContour: (o) => sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX),
+    pointDuContour: (o, theta) => pointSurSommets(o, theta,
+      sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX, ETOILE_ARRONDI, ETOILE_PAR_CREUX)),
+    pointsDuContour: (o) =>
+      sommetsAlternes(o, ETOILE_POINTES, ETOILE_CREUX, ETOILE_ARRONDI, ETOILE_PAR_CREUX),
     angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
     // ⚠️ L'ENCART EST LARGE ET BAS, PAS CARRÉ, ET C'EST LE RENDU QUI L'A IMPOSÉ. Avec un encart

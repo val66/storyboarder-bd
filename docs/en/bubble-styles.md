@@ -835,3 +835,23 @@ spilled well beyond each disc while the whole test suite stayed green.
 One decision applied in two places always ends up fixed in only one. The two builders stay separate,
 because they describe two geometries; it is the TEST that walks both and demands the same inset of
 them.
+
+## The shout star's valleys were as sharp as its spikes
+
+⚠️ **REPORTED FROM USE, WITH A REFERENCE IMAGE: "make the base of the spikes less pointed".** The
+construction joined alternating radii with STRAIGHT segments, so the bottom of a valley was as sharp
+as the top of a spike and the shape read as a saw. On a shout balloon the survey shows the opposite —
+sharp spikes, a wide soft bottom. That **contrast** is what makes the shout; softening both would
+give a flower, softening only the spikes a lumpy pebble.
+
+The valley bottoms are now a corner fillet: the edge is left before the valley and rejoined after it,
+and the valley's own vertex becomes the CONTROL point of a quadratic — a point the curve no longer
+passes through. The effective valley rises slightly, which is exactly the intended effect.
+
+⚠️ **AND A NEIGHBOURING TEST LOST ITS WITNESS.** The one holding the concavity of the shield's sides
+contrasted its 86% of re-entrant points with the star's 50%, whose valleys were joined by straight
+segments: the measure thereby separated "hollow sides" from "alternating spikes". Rounded valleys are
+concave arcs, and the star now returns 88% — the witness has become a second example. The test
+therefore proves LESS than before, and says so: what it still holds is that the shield has not gone
+round, with three convex shapes at zero as witnesses. Quietly re-tuning its threshold would have left
+the impression that it still proved the same thing.

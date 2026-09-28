@@ -192,6 +192,56 @@ describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
    * vivantes. Ce test fige le sens de `rect` contre la tentation de « remettre les choses en
    * ordre » un jour où plus personne ne se souviendra de #425f.
    */
+  /**
+   * ⚠️ L'ÉTOILE A DES POINTES FRANCHES ET DES CREUX DOUX, ET C'EST L'INÉGALITÉ QUI FAIT LE CRI. La
+   * construction d'origine reliait deux rayons alternés par des segments droits : le fond d'un creux
+   * était donc aussi aigu que le sommet d'une pointe, et la forme se lisait comme une scie.
+   * Signalé à l'usage, image de référence à l'appui — « rendre la base des pointes moins pointue ».
+   *
+   * Le relevé mesure l'angle de braquage à chaque sommet du contour. Une pointe braque d'un coup ;
+   * un creux arrondi répartit son braquage sur plusieurs points, dont aucun ne braque beaucoup.
+   * Adoucir les DEUX donnerait une fleur, adoucir les pointes seules un galet bosselé : le test
+   * exige donc les deux moitiés, pas seulement la douceur.
+   */
+  test('⚠️ L’ÉTOILE : DES POINTES FRANCHES, DES CREUX ARRONDIS', () => {
+    const o = { id: 'b', type: 'bulle', x: 0, y: 0, w: 200, h: 130, bulleShape: FORME_ETOILE };
+    const pts = pointsDuContourBulle(o);
+    assert.ok(pts.length > 20, `${pts.length} points : le contour n’est pas échantillonné`);
+    // L'angle dont le tracé tourne à chaque sommet, en degrés.
+    const braquages = pts.map((p, i) => {
+      const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length];
+      const u = Math.atan2(p.y - a.y, p.x - a.x), v = Math.atan2(b.y - p.y, b.x - p.x);
+      return Math.abs(Math.atan2(Math.sin(v - u), Math.cos(v - u))) * 180 / Math.PI;
+    });
+    /*
+     * ⚠️ LE NOMBRE DE POINTES SE COMPTE DANS LA GÉOMÉTRIE, il n'est pas relu dans le module. La
+     * constante n'est pas exportée, et l'exporter pour ce seul test créerait un export sans
+     * appelant dans le code — ce que le détecteur de code mort refuse à juste titre. Compter les
+     * MAXIMA LOCAUX du rayon dit la même chose et dit davantage : que chaque sommet franc est bien
+     * une pointe, et non un creux resté aigu.
+     */
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const rayon = pts.map(p => Math.hypot(p.x - cx, p.y - cy));
+    const estPointe = pts.map((_, i) =>
+      rayon[i] >= rayon[(i - 1 + pts.length) % pts.length]
+      && rayon[i] >= rayon[(i + 1) % pts.length]);
+    const nbPointes = estPointe.filter(Boolean).length;
+    assert.ok(nbPointes >= 7 && nbPointes <= 15,
+      `${nbPointes} pointes comptées : ce n’est plus une étoile de cri`);
+
+    const francs = braquages.filter((b, i) => estPointe[i]);
+    const doux = braquages.filter((b, i) => !estPointe[i]);
+    assert.ok(Math.min(...francs) > 45,
+      `la pointe la plus molle braque de ${Math.min(...francs).toFixed(0)}° : ce n’est plus un cri`);
+    assert.ok(Math.max(...doux) < Math.min(...francs) / 2,
+      `le creux le plus vif braque de ${Math.max(...doux).toFixed(0)}° contre `
+      + `${Math.min(...francs).toFixed(0)}° pour la pointe la plus molle : les creux sont aussi `
+      + 'aigus que les pointes');
+    // Et aucun sommet franc n'est ailleurs qu'à une pointe.
+    assert.equal(braquages.filter(b => b > 45).length, nbPointes,
+      'un sommet franc se trouve ailleurs qu’à une pointe : un creux est resté aigu');
+  });
+
   test('⚠️ `rect` DÉSIGNE L’ARRONDI, ET LE RECTANGLE NET A SA PROPRE CLÉ', () => {
     assert.notEqual(FORME_RECT, FORME_RECT_NET, 'les deux rectangles partagent une clé');
     const o = { id: 'b', type: 'bulle', x: 0, y: 0, w: 200, h: 100 };

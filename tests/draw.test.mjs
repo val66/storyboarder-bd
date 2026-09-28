@@ -54,7 +54,7 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 import { sourceSansCommentaires } from './helpers/source.mjs';
 import { pointDuContourBulle, formesConnues, angleDuContourBulle } from '../src/bubble-shape.js';
 import { queuesConnues, RONDS_NOMBRE, demiCordeDeLOuverture3D } from '../src/bubble-tail.js';
-import { couchesDeTextureBulle } from '../src/bubble-texture.js';
+import { couchesDeTextureBulle, texturesConnues } from '../src/bubble-texture.js';
 import { QUEUE_ECARTEMENT, longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
 import { pointesDeLEpine3D, graineTrembleBulle } from '../src/bubble-style.js';
 // Le nombre de points dont draw.js échantillonne le contour pour la frange (POINTS_EPINE).
@@ -2416,16 +2416,21 @@ describe('#425f — l’écu dissymétrique et la couronne d’épines', () => {
     };
     assert.ok(rentrants('ecu') > 0.75,
       `écu : ${(rentrants('ecu') * 100).toFixed(0)} % de points rentrants, la forme s’est arrondie`);
-    // ⚠️ ET LES DEUX REPÈRES, SANS QUOI LE SEUIL NE VOUDRAIT RIEN DIRE. L'octogone est convexe :
-    // aucun point rentrant. L'étoile alterne pointes et creux : exactement la moitié. La mesure
-    // sépare donc bien « côtés creux » de « pointes alternées », qui est la confusion à éviter.
-    assert.equal(rentrants('octogone'), 0, 'l’octogone est convexe');
-    // ⚠️ « ENVIRON LA MOITIÉ » ET NON « EXACTEMENT », PARCE QUE LA SÉQUENCE ÉMISE EST TOURNÉE. Le
-    // tracé commence là où l'arc commence, pas sur une pointe : le couple qui referme la boucle
-    // n'est donc pas un vrai voisinage, et fait varier le compte d'un point. C'est mesuré, pas
-    // supposé — l'étoile rend 52 %. L'écart avec les 86 % de l'écu reste sans ambiguïté.
-    assert.ok(Math.abs(rentrants('etoile') - 0.5) < 0.06,
-      `étoile : ${(rentrants('etoile') * 100).toFixed(0)} % au lieu d’un creux sur deux`);
+    /*
+     * ⚠️ LES TÉMOINS SONT LES FORMES CONVEXES, ET L'ÉTOILE A CESSÉ D'EN ÊTRE UN. Ce test opposait
+     * l'écu — côtés creusés, 86 % de points rentrants — à l'étoile, qui alternait pointes et creux
+     * par des segments DROITS et rendait donc exactement la moitié. La mesure séparait ainsi
+     * « côtés creux » de « pointes alternées », et c'était sa finesse.
+     *
+     * Depuis que le fond des creux de l'étoile est arrondi, ces creux sont des arcs CONCAVES : elle
+     * rend 88 %, comme l'écu. Le témoin est devenu un second exemple, et il faut le dire plutôt que
+     * de rajuster son seuil — ce test prouve désormais moins qu'avant. Ce qu'il tient encore, et qui
+     * est ce pour quoi il a été écrit, c'est que l'écu ne s'est pas ARRONDI : une forme convexe
+     * rend zéro, et trois formes du registre en témoignent.
+     */
+    for (const convexe of ['octogone', 'rect', 'rectnet', 'facette']) {
+      assert.equal(rentrants(convexe), 0, `« ${convexe} » est convexe : aucun point rentrant`);
+    }
   });
 
   test('⚠️ SA POINTE BASSE DESCEND SEULE, toutes les autres restant à mi-hauteur', () => {
@@ -3022,71 +3027,144 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
    * construit, trois mutations de cette conversion passaient sans rien casser — dont celle qui la
    * ramène à un facteur multiplicatif, c'est-à-dire au défaut d'origine.
    *
-   * Ce défaut a été rapporté deux fois sous deux apparences : « des contours intérieurs foncés » et
-   * « la texture bave en dehors des contours au niveau de la pointe ». Un facteur retire une part du
-   * RAYON : beaucoup sur une grande Bulle, et trois fois plus sur la queue, dont les points sont
-   * trois fois plus loin du centre. Une largeur se comporte bien partout, et c'est ce que ce test
-   * exige — en incluant explicitement les points de la QUEUE, où l'ancienne faute était la pire.
+   * Ce défaut a été rapporté trois fois sous trois apparences : « des contours intérieurs foncés »,
+   * « la texture bave en dehors des contours au niveau de la pointe », puis « la texture dépasse
+   * au niveau de la pointe, uniquement avec le vieux papier et une chaîne de ronds ». Un facteur
+   * retire une part du RAYON : beaucoup sur une grande Bulle, et trois fois plus sur la queue, dont
+   * les points sont trois fois plus loin du centre.
+   *
+   * ⚠️ ET LE RELEVÉ PARCOURT TOUS LES COUPLES TEXTURE × POINTE, non pas un choisi à la main. Une
+   * seule texture porte aujourd'hui une couche rentrée ; écrire son nom ici ferait que la suivante
+   * naîtrait sans garde. Demandé à l'usage après le troisième signalement : « ajoute des tests pour
+   * couvrir plus de cas ».
    */
-  test('⚠️ LA COUCHE INTÉRIEURE EST RENTRÉE DE LA MÊME LARGEUR PARTOUT, QUEUE COMPRISE', () => {
-    // Sur un rectangle : un ovale émet son contour exact par `c.ellipse` quand rien ne le rentre,
-    // et les deux chemins ne seraient plus comparables point à point.
-    const o = bulle({ bulleShape: 'rect', tailShape: 'triangle', bulleTexture: 'papier' });
-    const { couches } = couchesDeTextureBulle(o, { couleur: '#E8D9B0', opacite: 1 });
-    assert.equal(couches.length, 2, 'la fixture suppose deux couches');
-    assert.equal(couches[0].retrait, null, 'la première couche doit prendre le chemin tel quel');
+  describe('⚠️ LE RETRAIT D’UNE COUCHE, SUR TOUS LES COUPLES TEXTURE × POINTE', () => {
+    /** Les chemins successifs du journal, séparés par les `beginPath`, points de tracé seuls. */
+    const cheminsDu = (journal) => {
+      const groupes = [];
+      for (const e of journal) {
+        if (e.nom === 'beginPath') { groupes.push([]); continue; }
+        if ((e.nom === 'moveTo' || e.nom === 'lineTo') && groupes.length) {
+          groupes[groupes.length - 1].push(e.args);
+        }
+      }
+      return groupes.filter(g => g.length > 4);
+    };
 
-    // Les chemins successifs du journal, séparés par les `beginPath`.
-    const groupes = [];
-    for (const e of dessiner(o)) {
-      if (e.nom === 'beginPath') { groupes.push([]); continue; }
-      if ((e.nom === 'moveTo' || e.nom === 'lineTo') && groupes.length) {
-        groupes[groupes.length - 1].push(e.args);
+    /*
+     * ⚠️ SUR UN RECTANGLE, ET LA RAISON VAUT POUR TOUT CE BLOC. Un ovale émet son contour exact par
+     * `c.ellipse` quand rien ne le rentre, et par des segments quand une couche le rentre : les
+     * deux chemins n'auraient alors ni le même nombre de points ni la même nature, et ne seraient
+     * plus comparables point à point. Ce qu'on éprouve ici est la géométrie d'une COUCHE, qui ne
+     * dépend pas de la forme ; le balayage des formes est fait plus bas, séparément.
+     */
+    for (const texture of texturesConnues()) {
+      for (const queue of queuesConnues()) {
+        test(`« ${texture} » + « ${queue} » : aucune couche ne sort du contour`, () => {
+          const o = bulle({ bulleShape: 'rect', tailShape: queue, bulleTexture: texture });
+          const { couches } = couchesDeTextureBulle(o, { couleur: '#E8D9B0', opacite: 1 });
+          const rentrees = couches.filter(c => c.retrait);
+          const chemins = cheminsDu(dessiner(o));
+          assert.ok(chemins.length >= 1, 'aucun chemin relevé : le test ne mesure rien');
+          if (!rentrees.length) {
+            // Le repère : sans couche rentrée, tous les chemins du corps sont le contour vrai.
+            for (const ch of chemins) {
+              assert.deepEqual(ch, chemins[0],
+                'une couche sans retrait a déplacé le contour');
+            }
+            return;
+          }
+          const [vrai, rentre] = chemins;
+          assert.equal(vrai.length, rentre.length,
+            'les deux chemins n’ont pas le même nombre de points : ils ne sont plus comparables');
+          const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+          const declares = [];
+          for (let k = 0; k < 64; k++) declares.push(rentrees[0].retrait(k / 64));
+          const bas = Math.min(...declares), haut = Math.max(...declares);
+          let surLaQueue = 0, minEcart = Infinity, maxEcart = 0;
+          const dehors = ([x, y]) => {
+            const bord = bubbleEdgePoint(o, angleDuContourBulle(o, x - cx, y - cy));
+            return Math.hypot(x - cx, y - cy) > Math.hypot(bord.x - cx, bord.y - cy) + 1;
+          };
+          for (let i = 0; i < vrai.length; i++) {
+            const rVrai = Math.hypot(vrai[i][0] - cx, vrai[i][1] - cy);
+            const rDedans = Math.hypot(rentre[i][0] - cx, rentre[i][1] - cy);
+            // ⚠️ L'ÉCART EST SIGNÉ. Une distance absolue vaut autant pour une couche qui RENTRE que
+            // pour une qui SORT : la mutation `1 + retrait/r` passait sans rien casser, alors
+            // qu'elle fait déborder la texture hors du contour — le symptôme même qu'on corrige.
+            assert.ok(rVrai - rDedans > 0,
+              `le point ${i} de la couche intérieure est à ${rDedans.toFixed(1)} du centre contre `
+              + `${rVrai.toFixed(1)} pour le contour : la couche SORT de la Bulle`);
+            minEcart = Math.min(minEcart, rVrai - rDedans);
+            maxEcart = Math.max(maxEcart, rVrai - rDedans);
+            if (dehors(vrai[i])) surLaQueue++;
+          }
+          if (queue !== 'aucune') {
+            assert.ok(surLaQueue > 0,
+              'aucun point de queue relevé : le test ne mesure pas ce qu’il annonce');
+          }
+          assert.ok(minEcart > bas - 0.5 && maxEcart < haut + 0.5,
+            `écarts de ${minEcart.toFixed(1)} à ${maxEcart.toFixed(1)} px pour une largeur déclarée `
+            + `de ${bas.toFixed(1)} à ${haut.toFixed(1)} : la couche ne suit pas le retrait`);
+        });
       }
     }
-    const [vrai, rentre] = groupes.filter(g => g.length > 4);
-    assert.ok(vrai && rentre, 'le relevé ne trouve pas les deux chemins');
-    assert.equal(vrai.length, rentre.length,
-      'les deux chemins n’ont pas le même nombre de points : ils ne sont plus comparables');
 
-    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-    let surLaQueue = 0, minEcart = Infinity, maxEcart = 0;
-    /*
-     * ⚠️ UN POINT DE QUEUE SE RECONNAÎT À CE QU'IL DÉPASSE LE CONTOUR À SON PROPRE ANGLE, et non à
-     * un rayon supérieur au plus grand rayon du corps. Ce dernier critère — le coin du rectangle —
-     * ne voyait aucun point de queue : une pointe posée sous la Bulle est plus loin du centre que
-     * le bord qu'elle traverse, mais bien plus près que le coin opposé. Le témoin l'a dit tout de
-     * suite, ce pour quoi il est là.
+    /**
+     * ⚠️ ET LE MÊME RETRAIT SUR TOUTES LES FORMES. Le balayage ci-dessus tient la géométrie d'une
+     * couche sur un rectangle ; celui-ci vérifie qu'aucune forme ne s'y dérobe — une forme à
+     * sommets, une forme lisse et une forme engendrée ne construisent pas leur chemin de la même
+     * façon, et c'est dans ces trois branches que le retrait s'applique.
      */
-    const dehors = ([x, y]) => {
-      const bord = bubbleEdgePoint(o, angleDuContourBulle(o, x - cx, y - cy));
-      return Math.hypot(x - cx, y - cy) > Math.hypot(bord.x - cx, bord.y - cy) + 1;
-    };
-    /*
-     * ⚠️ L'ÉCART EST MESURÉ AVEC SON SIGNE, ET NON EN DISTANCE. Une distance absolue vaut autant
-     * pour une couche qui RENTRE que pour une qui SORT : la mutation changeant `1 − retrait/r` en
-     * `1 + retrait/r` passait sans rien casser, alors qu'elle fait déborder la texture hors du
-     * contour — c'est-à-dire le symptôme même que ce chantier corrige, « la texture bave en dehors
-     * des contours ». Ce qu'on veut dire est « rentrée », et il faut donc l'écrire.
-     */
-    for (let i = 0; i < vrai.length; i++) {
-      const rVrai = Math.hypot(vrai[i][0] - cx, vrai[i][1] - cy);
-      const rDedans = Math.hypot(rentre[i][0] - cx, rentre[i][1] - cy);
-      const ecart = rVrai - rDedans;
-      assert.ok(ecart > 0,
-        `le point ${i} de la couche intérieure est à ${rDedans.toFixed(1)} du centre contre `
-        + `${rVrai.toFixed(1)} pour le contour : la couche SORT de la Bulle`);
-      minEcart = Math.min(minEcart, ecart); maxEcart = Math.max(maxEcart, ecart);
-      if (dehors(vrai[i])) surLaQueue++;
+    for (const forme of formesConnues()) {
+      test(`« ${forme} » : la couche rentrée suit le retrait déclaré`, () => {
+        const o = bulle({ bulleShape: forme, tailShape: 'triangle', bulleTexture: 'papier' });
+        const { couches } = couchesDeTextureBulle(o, { couleur: '#E8D9B0', opacite: 1 });
+        const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+        const declares = [];
+        for (let k = 0; k < 64; k++) declares.push(couches[1].retrait(k / 64));
+        const haut = Math.max(...declares);
+        /*
+         * ⚠️ ON N'IDENTIFIE PAS LES CHEMINS, ON EXIGE DE CHACUN LA MÊME CHOSE. Deux essais ont
+         * échoué avant celui-ci, tous deux sur du code juste : apparier le chemin vrai et le chemin
+         * rentré point à point suppose qu'ils aient la même nature, or un ovale émet son contour
+         * par `c.ellipse` — un arc exact — quand rien ne le rentre, et par des segments dès qu'une
+         * couche le rentre. Le chemin vrai n'apparaissait alors même plus dans le relevé.
+         *
+         * La propriété à tenir ne demande pourtant aucune identification : TOUT chemin du corps est
+         * soit sur le contour, soit rentré d'au plus la largeur déclarée, et JAMAIS dehors. On
+         * l'exige de tous, et on vérifie séparément qu'il existe bien un chemin rentré — sans quoi
+         * la règle serait satisfaite par une Bulle dont aucune couche ne rentre.
+         *
+         * Les points de la QUEUE sont écartés : ils ne sont pas sur le contour, et rien ne dit quel
+         * bord leur correspond. Le balayage texture × pointe ci-dessus les couvre par appariement,
+         * sur un rectangle où les deux chemins sont comparables.
+         */
+        const chemins = cheminsDu(dessiner(o));
+        assert.ok(chemins.length >= 1, `« ${forme} » : aucun chemin relevé`);
+        let rentres = 0, vus = 0;
+        for (const chemin of chemins) {
+          let dedans = 0, surLeBord = 0;
+          for (const [x, y] of chemin) {
+            const bord = bubbleEdgePoint(o, angleDuContourBulle(o, x - cx, y - cy));
+            const d = Math.hypot(bord.x - cx, bord.y - cy) - Math.hypot(x - cx, y - cy);
+            if (d < -0.01) {
+              // Hors du contour : c'est la queue, ou un débordement. On distingue par l'angle.
+              continue;
+            }
+            vus++;
+            assert.ok(d < haut + 0.5,
+              `« ${forme} » : un point est rentré de ${d.toFixed(2)} px, au-delà de la largeur `
+              + `déclarée (max ${haut.toFixed(2)})`);
+            if (d > 0.01) dedans++; else surLeBord++;
+          }
+          if (dedans > surLeBord) rentres++;
+        }
+        assert.ok(vus >= 3, `« ${forme} » : ${vus} points mesurés, le relevé ne voit presque rien`);
+        assert.ok(rentres >= 1,
+          `« ${forme} » : aucun chemin rentré relevé alors que la texture en déclare un`);
+      });
     }
-    assert.ok(surLaQueue > 0, 'aucun point de queue relevé : le test ne mesure pas ce qu’il annonce');
-    // La largeur déclarée varie avec l'angle ; on encadre par ses deux extrêmes.
-    const declares = [];
-    for (let k = 0; k < 64; k++) declares.push(couches[1].retrait(k / 64));
-    const bas = Math.min(...declares), haut = Math.max(...declares);
-    assert.ok(minEcart > bas - 0.5 && maxEcart < haut + 0.5,
-      `écarts mesurés de ${minEcart.toFixed(1)} à ${maxEcart.toFixed(1)} px pour une largeur `
-      + `déclarée de ${bas.toFixed(1)} à ${haut.toFixed(1)} : la couche ne suit pas le retrait`);
   });
 
   /**
@@ -3098,8 +3176,9 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
    * chaîne de ronds en vieux papier, la texture débordait largement autour de chaque disque —
    * rapporté à l'usage, capture à l'appui, alors que la suite entière était verte.
    *
-   * Une même décision appliquée à deux endroits finit toujours par n'être corrigée qu'à un seul.
-   * Ce test interroge donc les DEUX chemins, et exige d'eux la même géométrie.
+   * ⚠️ ET CE TEST A ÉTÉ PERDU UNE FOIS, EN RÉÉCRIVANT LE BLOC VOISIN. La campagne l'a dit tout de
+   * suite : le mutant qui remet la multiplication a cessé d'être tué. C'est la raison pour laquelle
+   * on relance la campagne après une réécriture de tests, et pas seulement après une de code.
    */
   test('⚠️ LE RETRAIT D’UNE COUCHE RENTRE AUSSI LES DISQUES DÉTACHÉS DE LA CHAÎNE', () => {
     const o = bulle({ bulleShape: 'rect', tailShape: 'ronds', bulleTexture: 'papier' });
@@ -3124,7 +3203,6 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
       assert.ok(Math.abs((dehors - dedans) - largeur) < 0.01,
         `le rond est rentré de ${(dehors - dedans).toFixed(2)} px au lieu de ${largeur.toFixed(2)} : `
         + 'le disque n’applique pas le même retrait que le corps');
-      // Et le trait revient sur le contour vrai : il ne suit pas la dernière couche peinte.
       assert.equal(rayons[i + parRond - 1], dehors,
         'le trait d’un rond est posé sur une couche rentrée, et non sur son contour');
     }
