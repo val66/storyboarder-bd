@@ -88,7 +88,10 @@ export const I18N_TEXT = [
   ['label[for="sideBubbleShapeSelect"]', 'Bubble shape', 'Forme de la bulle'],
   ['#sideBubbleShapeSelect option[value="ovale"]', 'Oval', 'Ovale'],
   ['#sideBubbleShapeSelect option[value="facette"]', 'Straight-sided oval', 'Ovale à côtés droits'],
-  ['#sideBubbleShapeSelect option[value="rect"]', 'Rectangle', 'Rectangle'],
+  ['#sideBubbleShapeSelect option[value="rect"]', 'Rounded rectangle', 'Rectangle arrondi'],
+  // ⚠️ LE RÉCITATIF. Clé `rectnet`, et non `rect` qui désigne l'arrondi — voir le registre des
+  // formes. Les deux libellés sont qualifiés pour qu'aucun ne contredise sa clé.
+  ['#sideBubbleShapeSelect option[value="rectnet"]', 'Sharp rectangle', 'Rectangle net'],
   // #425e — les formes du registre. Les libellés traduisent ce qu'on VOIT ; la valeur persistée,
   // elle, ne change pas de langue.
   ['#sideBubbleShapeSelect option[value="octogone"]', 'Chamfered octagon', 'Octogone à coins coupés'],
@@ -331,6 +334,15 @@ export const I18N_TRAILING = [
   ['#objectWindowStateSelect option[value="gauche"]', '⬅️ Open to the left', '⬅️ Ouverte vers la gauche'],
   ['#objectWindowStateSelect option[value="droite"]', '➡️ Open to the right', '➡️ Ouverte vers la droite'],
   ['#objectWindowStateSelect option[value="fermee"]', '🪟 Closed', '🪟 Fermée'],
+  // ⚠️ SEULE « TRÈS ÉPAISSE » ÉTAIT DÉCLARÉE, ET LES TROIS AUTRES RESTAIENT EN FRANÇAIS DANS
+  // L'INTERFACE ANGLAISE — au milieu de leurs voisines traduites, dans le même menu. Manque
+  // antérieur, trouvé par la garde « un menu partiellement traduit n'existe pas », écrite après
+  // qu'une mutation eut montré qu'on pouvait ajouter une option à une liste traduite sans la
+  // traduire. Une garde trouve ce qu'un relecteur ne voit pas : personne ne déroule un menu dans
+  // l'autre langue pour vérifier qu'aucune ligne n'a été oubliée.
+  ['#sideBubbleBorderWidthSelect option[value="1"]', 'Thin (1px)', 'Fine (1px)'],
+  ['#sideBubbleBorderWidthSelect option[value="2.25"]', 'Medium (2.25px)', 'Moyenne (2.25px)'],
+  ['#sideBubbleBorderWidthSelect option[value="3.5"]', 'Thick (3.5px)', 'Épaisse (3.5px)'],
   ['#sideBubbleBorderWidthSelect option[value="6"]', 'Very thick (6px)', 'Très épaisse (6px)'],
   // Types d'Objet de la fiche. Les libellés ANGLAIS reprennent mot pour mot ceux du menu contextuel
   // (#ctxAdd…) : c'est le même objet, désigné deux fois dans l'interface, et deux traductions

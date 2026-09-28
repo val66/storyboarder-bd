@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 
 import {
   FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU,
-  FORME_TACHE, FORME_FACETTE, FORME_DEFAUT, formesConnues, formeDeLaBulle,
+  FORME_TACHE, FORME_FACETTE, FORME_RECT_NET, FORME_DEFAUT, formesConnues, formeDeLaBulle,
   pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle, queueParDefautBulle,
   demiAngleDUneCorde3D,
 } from '../src/bubble-shape.js';
@@ -174,13 +174,45 @@ describe('⚠️ UNE FORME INCONNUE LÈVE, elle ne retombe pas sur l’ovale', (
 });
 
 describe('LE CONTRAT, éprouvé sur CHAQUE forme du registre', () => {
-  test('sept formes sont enregistrées, et les constantes les nomment toutes', () => {
+  test('huit formes sont enregistrées, et les constantes les nomment toutes', () => {
     // Si une constante exportée cessait de correspondre à une entrée du registre, la fiche
     // proposerait une valeur que le dessin refuserait.
     const connues = formesConnues();
-    [FORME_OVALE, FORME_RECT, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU, FORME_TACHE, FORME_FACETTE]
+    [FORME_OVALE, FORME_RECT, FORME_RECT_NET, FORME_OCTOGONE, FORME_ETOILE, FORME_ECU,
+     FORME_TACHE, FORME_FACETTE]
       .forEach(f => assert.ok(connues.includes(f), `« ${f} » absente du registre`));
-    assert.equal(connues.length, 7);
+    assert.equal(connues.length, 8);
+  });
+
+  /**
+   * ⚠️ LES DEUX RECTANGLES SONT DEUX FORMES DISTINCTES, ET `rect` RESTE L'ARRONDI. La clé `rect` a
+   * porté les angles vifs jusqu'à #425f, où l'arrondi a pris sa place sans changer de clé. La
+   * rendre au rectangle net ferait basculer toutes les Bulles rectangulaires déjà dessinées, ce
+   * qu'aucun alias ne rattrape : un alias migre une clé DISPARUE, il ne départage pas deux clés
+   * vivantes. Ce test fige le sens de `rect` contre la tentation de « remettre les choses en
+   * ordre » un jour où plus personne ne se souviendra de #425f.
+   */
+  test('⚠️ `rect` DÉSIGNE L’ARRONDI, ET LE RECTANGLE NET A SA PROPRE CLÉ', () => {
+    assert.notEqual(FORME_RECT, FORME_RECT_NET, 'les deux rectangles partagent une clé');
+    const o = { id: 'b', type: 'bulle', x: 0, y: 0, w: 200, h: 100 };
+    // L'arrondi n'a pas de sommet À l'angle de sa boîte ; le net en a exactement quatre.
+    const coin = (forme) => pointsDuContourBulle({ ...o, bulleShape: forme })
+      .filter(p => (Math.abs(p.x - o.x) < 0.01 || Math.abs(p.x - o.x - o.w) < 0.01)
+                && (Math.abs(p.y - o.y) < 0.01 || Math.abs(p.y - o.y - o.h) < 0.01)).length;
+    assert.equal(coin(FORME_RECT_NET), 4, 'le rectangle net n’a pas ses quatre angles vifs');
+    assert.equal(coin(FORME_RECT), 0, '`rect` a repris des angles vifs : l’arrondi a changé de sens');
+  });
+
+  /**
+   * ⚠️ ET IL NAÎT SANS QUEUE : c'est ce qui en fait un RÉCITATIF, et c'est la seule raison de son
+   * ajout. Avec une queue triangulaire, il ne serait qu'un rectangle arrondi durci — une nuance
+   * graphique, pas un mot de plus dans le vocabulaire. Sans queue, il dit la narration, que rien
+   * d'autre ne sait dire.
+   */
+  test('⚠️ LE RECTANGLE NET NAÎT SANS QUEUE, L’ARRONDI EN GARDE UNE', () => {
+    assert.equal(queueParDefautBulle({ bulleShape: FORME_RECT_NET }), false);
+    assert.equal(queueParDefautBulle({ bulleShape: FORME_RECT }), true,
+      'le repère : l’arrondi reste une réplique, et naît donc avec sa pointe');
   });
 
   /**

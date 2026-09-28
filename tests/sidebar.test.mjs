@@ -1232,6 +1232,15 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
      * l'espionner ; regarder `S.undoStack` grandir dit la seule chose qui compte — qu'un retour en
      * arrière est possible.
      */
+    /*
+     * ⚠️ LA PILE EST VIDÉE D'ABORD, PARCE QU'ELLE A UN PLAFOND. `snapshot()` écarte la plus ancienne
+     * entrée au-delà de MAX_UNDO : une fois la pile pleine, sa longueur ne bouge plus et
+     * `avant + 1` devient faux sur du code juste. Ce test a rougi le jour où une FORME de plus a
+     * été ajoutée au registre — un test voisin, qui parcourt les formes, a empilé une annulation de
+     * plus et fait déborder la pile. Un compte absolu près d'un plafond ne mesure pas ce qu'il
+     * croit ; le précédent est le même qu'en #426e.
+     */
+    S.undoStack.length = 0;
     const avant = S.undoStack.length;
     coche.checked = true;
     (coche._ecouteurs.change || []).forEach(fn => fn({ target: coche }));

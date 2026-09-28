@@ -386,7 +386,13 @@
           <select id="sideBubbleShapeSelect">
             <option value="ovale">Ovale</option>
             <option value="facette">Ovale à côtés droits</option>
-            <option value="rect">Rectangle</option>
+            <option value="rect">Rectangle arrondi</option>
+            <!-- ⚠️ SA CLÉ EST `rectnet` ET NON `rect`, QUI DÉSIGNE L'ARRONDI. `rect` a porté les
+                 angles vifs jusqu'à #425f ; la clé est persistée, la lui rendre ferait basculer
+                 toutes les Bulles rectangulaires déjà dessinées. Les deux libellés portent donc
+                 chacun leur qualificatif, plutôt que d'en laisser un revendiquer le nom nu et
+                 contredire sa clé. -->
+            <option value="rectnet">Rectangle net</option>
             <option value="octogone">Octogone à coins coupés</option>
             <option value="etoile">Étoile (cri)</option>
             <option value="ecu">Écu à côtés concaves</option>

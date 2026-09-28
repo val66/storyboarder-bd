@@ -467,7 +467,7 @@ wrong at least once.
 | shape | work | geometry | trap |
 |---|---|---|---|
 | ellipse | Eleceed, Jungle Juice | strictly geometric ellipse, stroke of constant width, **often with no tail** — set on the white gap between two panels, position replaces the tail | describing it as "freehand-drawn"; that is the atlas's original error |
-| plain rectangle | Imperium | **no stroke at all**, sharp corners, squared lettering in tight capitals | giving it a border |
+| plain rectangle | Imperium | **no stroke at all**, sharp corners, squared lettering in tight capitals | giving it a border; in the registry since #425x, labelled "Sharp rectangle" |
 | chamfered octagon | Geste des Chevaliers Dragons | very **flat and wide**, ochre, asymmetric chamfers, no tail, brown handwritten capitals | drawing it as a regular octagon |
 | rounded rectangle | Blacksad | very round corners, **off-white with no visible outline**, short triangular tail; the caption box is a sharp-cornered **pale grey-green** rectangle with a thin stroke | calling it "cream" or "sepia": it leans towards lichen green |
 | star / shout | Eleceed, Mutafukaz | unequal points, text in bold capitals; the writable area is **far smaller** than the bounding box | centring the text in the bounding box pushes it out through the points |
@@ -623,9 +623,28 @@ The three questions of placement left open here are **all settled**:
 settled does get settled in the end, provided it is written down somewhere — the same demonstration
 as the `EN_ATTENTE` list of the dead-code detector, and it is worth leaving in plain sight.
 
-One thing found in the corpus is still **not** in the registry: Imperium's **sharp-cornered
-rectangle** (cf. the table of pages). The "rectangle" in the panel is the rounded one, and the
-sharp-cornered variant remains to be added.
+⚠️ **THE CORPUS'S LAST SHAPE HAS ENTERED THE REGISTRY, AND ITS LOOK IS NOT WHAT DECIDED IT.** The
+sharp-cornered rectangle was still missing. Set beside the rounded one, with a triangular tail, the
+difference is a graphic nuance and nothing more: nobody would pick one over the other to say
+something different, and adding it for that would not have been worth the trouble.
+
+**WITHOUT A TAIL it stops being a speech balloon and becomes a CAPTION box** — the narration box,
+which the vocabulary could not say at all: the rounded one still reads as a line of dialogue. That
+function is what decided the addition, and it is why the caption box is born **without a tail**
+where the rounded rectangle is born with one. The survey confirms it twice: Blacksad's caption box
+is a sharp-cornered grey-green rectangle with a thin stroke, and Imperium makes it a machine voice.
+
+⚠️ **"NO STROKE, SOLID FILL" ASKED NOTHING OF THE SHAPE, HOWEVER.** Unticking the border and
+darkening the fill already give it, on any shape. It was therefore a false argument for the
+addition, and noting it keeps anyone from taking it up as a real one.
+
+⚠️ **AND THE KEY `rect` REMAINS THE ROUNDED ONE, DESPITE ITS NAME.** It carried sharp corners until
+#425f, where the rounded one took its place without changing key. Giving it back to the sharp
+rectangle would flip every rectangular Bubble already drawn, which no alias catches: an alias
+migrates a key that has DISAPPEARED, it cannot arbitrate between two living keys. Both labels
+therefore carry their qualifier — "Rounded rectangle" and "Sharp rectangle" — rather than letting
+one claim the bare name and contradict its key. A test freezes that split against the temptation to
+"tidy things up" some day when no one remembers #425f.
 
 ## The tail did not follow the cursor
 

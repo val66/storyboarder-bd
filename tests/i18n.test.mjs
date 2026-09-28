@@ -190,6 +190,41 @@ describe('I18N_TEXT : forme des entrées', () => {
       `ces libellés de case ne sont traduits nulle part et resteront en français : ${muets.join(', ')}`);
   });
 
+  /**
+   * ⚠️ UN MENU DONT UNE OPTION EST TRADUITE DOIT L'ÊTRE EN ENTIER. Ajouter une option à une liste
+   * déjà traduite est le geste le plus banal de ce dépôt — une forme de Bulle, une pointe, une
+   * texture — et rien n'obligeait à la traduire : elle serait restée en français dans l'interface
+   * anglaise, au milieu de ses voisines traduites. Mutation échappée lors de l'ajout du rectangle
+   * net.
+   *
+   * C'est le pendant du test voisin sur les cases à cocher, et la même leçon : un manque repéré une
+   * fois mérite une garde, pas un souvenir. La règle se déduit du HTML — si UNE option d'un menu est
+   * déclarée, toutes doivent l'être — de sorte qu'aucune liste n'a besoin d'être tenue à la main.
+   */
+  test('⚠️ UN MENU PARTIELLEMENT TRADUIT N’EXISTE PAS : TOUTES SES OPTIONS OU AUCUNE', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const toutes = [...I18N_TEXT, ...I18N_TRAILING, ...I18N_LEADING].map(e => e[0]);
+    const manquantes = [];
+    let menusVus = 0;
+    for (const m of html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/g)) {
+      const id = (/id=["']([^"']+)["']/.exec(m[1]) || [])[1];
+      if (!id) continue;
+      const valeurs = [...m[2].matchAll(/<option[^>]*value=["']([^"']*)["']/g)].map(v => v[1]);
+      if (!valeurs.length) continue;
+      const declaree = (v) => toutes.includes(`#${id} option[value="${v}"]`);
+      if (!valeurs.some(declaree)) continue;      // menu entièrement non traduit : hors sujet ici
+      menusVus++;
+      for (const v of valeurs) {
+        if (!declaree(v)) manquantes.push(`#${id} → « ${v} »`);
+      }
+    }
+    assert.ok(menusVus >= 3,
+      `${menusVus} menus traduits relevés : le relevé ne lit pas le HTML`);
+    assert.deepEqual(manquantes, [],
+      'ces options d’un menu traduit ne le sont pas et resteront en français : '
+      + manquantes.join(', '));
+  });
+
   test('toute entrée à attribut fournit ses deux traductions', () => {
     // Une entrée mal formée n'échoue nulle part : applyI18n écrirait `undefined` dans l'attribut,
     // et l'infobulle afficherait littéralement « undefined ».

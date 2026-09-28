@@ -50,7 +50,7 @@ Une Bulle est une combinaison libre de sept axes. Aucun n'implique les autres.
 
 | axe | valeurs relevées dans le corpus |
 |---|---|
-| **forme** | ellipse, rectangle arrondi, rectangle net, octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
+| **forme** | ellipse, rectangle arrondi, rectangle net (récitatif), octogone à coins coupés, écu à côtés concaves, bosselé, polygone à facettes, étoile, couronne d'épines, bande à coins arrondis, parchemin à bords irréguliers, tache d'encre, aucune |
 | **trait** | épaisseur, motif de pointillés, régularité (net ou tremblé), couleur |
 | **remplissage** | couleur, opacité, **texture** (aucune, encre sombre, vieux papier) |
 | **queue** | triangle, éclair, chaîne de ronds décroissants, cheveu courbe (inversible), **aucune** |
@@ -494,7 +494,7 @@ au moins une fois.
 |---|---|---|---|
 | ellipse | Eleceed, Jungle Juice | ellipse rigoureusement géométrique, trait d'épaisseur constante, **souvent sans queue** — posée sur l'intervalle blanc entre deux cases, la position remplace la queue | la décrire comme « tracée à main levée » ; c'est l'erreur d'origine de l'atlas |
 | rectangle arrondi | Blacksad, corpus courant | coins **arrondis**, rayon proportionnel au plus petit demi-axe ; c'est le rectangle que la fiche propose, celui du dialogue ordinaire | lui laisser des angles vifs, ce qu'il avait jusqu'à #425f |
-| rectangle net | Imperium | **aucun filet**, angles vifs, lettrage carré en capitales serrées | lui dessiner une bordure ; **il n'est pas encore au registre** — le « rectangle » de la fiche est désormais l'arrondi, et la variante à angles vifs reste à ajouter |
+| rectangle net | Imperium | **aucun filet**, angles vifs, lettrage carré en capitales serrées | lui dessiner une bordure ; au registre depuis #425x, sous le libellé « Rectangle net » |
 | octogone à coins coupés | Geste des Chevaliers Dragons | très **plat et large**, ocre, coins chanfreinés asymétriques, sans queue, capitales manuscrites brunes | le dessiner comme un octogone régulier |
 | rectangle arrondi | Blacksad | coins très arrondis, **blanc cassé sans contour visible**, queue triangulaire courte ; le récitatif est un rectangle à angles vifs **gris-vert pâle**, cerné d'un filet fin | l'appeler « crème » ou « sépia » : il tire vers le vert de lichen |
 | étoile / cri | Eleceed, Mutafukaz | pointes inégales, texte en capitales grasses ; la surface inscriptible est **très inférieure** à la boîte englobante | centrer le texte dans la boîte englobante le fait sortir par les pointes |
@@ -654,9 +654,29 @@ Les trois questions de rattachement laissées ouvertes ici sont **toutes tranch�
 tranchée finit par l'être, à condition d'être écrite quelque part — c'est la même démonstration que
 la liste `EN_ATTENTE` du détecteur de code mort, et elle vaut d'être laissée sous les yeux.
 
-Une seule chose relevée dans le corpus n'est toujours **pas** au registre : le **rectangle à angles
-vifs** d'Imperium (cf. la table des planches). Le « rectangle » de la fiche est l'arrondi, et la
-variante à angles vifs reste à ajouter.
+⚠️ **LA DERNIÈRE FORME DU CORPUS EST ENTRÉE AU REGISTRE, ET CE N'EST PAS SON ASPECT QUI L'A DÉCIDÉ.**
+Le rectangle à angles vifs manquait encore. Mis côte à côte avec l'arrondi, à queue triangulaire,
+l'écart est une nuance graphique et rien d'autre : personne ne choisirait l'un plutôt que l'autre
+pour dire quelque chose de différent, et l'ajouter pour cela n'aurait pas valu la peine.
+
+**SANS QUEUE, il cesse d'être une bulle de dialogue et devient un RÉCITATIF** — la boîte de
+narration, que le vocabulaire ne savait pas dire du tout : l'arrondi, lui, reste lu comme une
+réplique. C'est cette fonction qui a décidé de l'ajout, et c'est pourquoi le récitatif naît **sans
+pointe** là où l'arrondi naît avec la sienne. Le relevé le confirme deux fois : le récitatif de
+Blacksad est un rectangle à angles vifs gris-vert cerné d'un filet fin, et Imperium en fait une voix
+de machine.
+
+⚠️ **« SANS FILET, FOND PLEIN » N'A EN REVANCHE RIEN DEMANDÉ À LA FORME.** Décocher la bordure et
+noircir le fond le donnent déjà, sur n'importe quelle forme. C'était donc un faux argument pour
+l'ajout, et le noter évite qu'on le reprenne comme un vrai.
+
+⚠️ **ET LA CLÉ `rect` RESTE L'ARRONDI, MALGRÉ SON NOM.** Elle a porté les angles vifs jusqu'à #425f,
+où l'arrondi a pris sa place sans changer de clé. La rendre au rectangle net ferait basculer toutes
+les Bulles rectangulaires déjà dessinées, ce qu'aucun alias ne rattrape : un alias migre une clé
+DISPARUE, il ne départage pas deux clés vivantes. Les deux libellés portent donc chacun leur
+qualificatif — « Rectangle arrondi » et « Rectangle net » — plutôt que d'en laisser un revendiquer le
+nom nu et contredire sa clé. Un test fige ce partage contre la tentation de « remettre les choses en
+ordre » un jour où plus personne ne se souviendra de #425f.
 
 ## La queue ne suivait pas le curseur
 

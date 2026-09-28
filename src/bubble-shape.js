@@ -74,6 +74,20 @@ export const FORME_ECU = 'ecu';
 
 export const FORME_TACHE = 'tache';
 export const FORME_FACETTE = 'facette';
+/**
+ * Le rectangle à ANGLES VIFS.
+ *
+ * ⚠️ SA CLÉ N'EST PAS `rect`, ET LE NOM DE `rect` EST TROMPEUR — C'EST ASSUMÉ ET DÉFINITIF. `rect`
+ * désigne le rectangle ARRONDI : il a porté les angles vifs jusqu'à #425f, où l'arrondi a pris sa
+ * place sans changer de clé. La clé est persistée, donc la rendre à cette forme-ci ferait basculer
+ * aux angles vifs TOUTES les Bulles rectangulaires déjà dessinées, ce qu'aucun alias ne rattrape :
+ * un alias migre une clé disparue, il ne peut pas départager deux clés vivantes.
+ *
+ * Les deux libellés portent donc chacun leur qualificatif — « Rectangle arrondi » et « Rectangle
+ * net » — plutôt que d'en laisser un revendiquer le nom nu et contredire sa clé. Arbitré avec
+ * l'utilisateur au moment de l'ajout.
+ */
+export const FORME_RECT_NET = 'rectnet';
 
 
 /**
@@ -204,6 +218,24 @@ function coinsArrondis(cx, cy, hx, hy, r, parCoin){
 function sommetsRect(o){
   const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
   return coinsArrondis(cx, cy, rx, ry, Math.min(rx, ry) * RECT_ARRONDI, RECT_PAR_COIN);
+}
+
+/**
+ * Les quatre coins du rectangle net — et rien d'autre.
+ *
+ * ⚠️ QUATRE SOMMETS, PAS UN ÉCHANTILLONNAGE. Un contour rendu par rayons régulièrement espacés en
+ * angle RATE les coins et les rabote : la planche de contact qui a servi à décider de cette forme
+ * montrait d'abord un rectangle « net » aux angles arrondis, ce qui aurait faussé le jugement
+ * qu'on lui demandait. Le registre émet les sommets, le tracé les relie : les angles sont vifs
+ * parce qu'ils sont DÉCLARÉS, jamais approchés.
+ *
+ * L'ordre suit celui de `coinsArrondis` — bas droit, bas gauche, haut gauche, haut droit — pour que
+ * les deux rectangles se parcourent dans le même sens, dont dépend l'orientation des épines (#425y).
+ */
+function sommetsRectNet(o){
+  const cx = cx3D(o), cy = cy3D(o), rx = rx3D(o), ry = ry3D(o);
+  return [{ x: cx + rx, y: cy + ry }, { x: cx - rx, y: cy + ry },
+          { x: cx - rx, y: cy - ry }, { x: cx + rx, y: cy - ry }];
 }
 
 
@@ -475,6 +507,24 @@ const REGISTRE = {
     pointsDuContour: sommetsRect,
     angleVersLePoint: anglePolaire,
     queueParDefaut: () => true,
+    encartInterieur: (o) => encartDepuisFraction(o, 1, 1),
+  },
+  /**
+   * ⚠️ IL NAÎT SANS QUEUE, ET C'EST TOUT CE QUI EN FAIT UN RÉCITATIF. Un rectangle net à queue
+   * triangulaire n'est qu'un rectangle arrondi aux angles durcis — une nuance graphique, pas un
+   * mot de plus dans le vocabulaire. SANS queue, il devient la boîte de NARRATION, que rien
+   * d'autre ne sait dire : l'arrondi reste lu comme une réplique. C'est cette fonction qui a
+   * décidé de l'ajout, l'aspect seul ne le justifiait pas.
+   *
+   * Le défaut n'est pas une contrainte : le champ de l'utilisateur l'emporte toujours, et une
+   * queue demandée sur un récitatif se dessine (cf. l'indépendance des axes, en tête de
+   * src/bubble-tail.js). Le relevé montre d'ailleurs des deux.
+   */
+  [FORME_RECT_NET]: {
+    pointDuContour: (o, theta) => pointSurSommets(o, theta, sommetsRectNet(o)),
+    pointsDuContour: sommetsRectNet,
+    angleVersLePoint: anglePolaire,
+    queueParDefaut: () => false,
     encartInterieur: (o) => encartDepuisFraction(o, 1, 1),
   },
   [FORME_OCTOGONE]: {
