@@ -174,10 +174,35 @@ function scriptDeLaPage(ids, disposition){
       for (let i = 0; i < dispData.length; i += 4) { const d = dispData[i] - moy; carres += d * d; }
       const ecart = Math.sqrt(carres / n);
       const versMonde = (v) => (v / 255) * def.dispScale - def.dispScale * 0.5;
+
+      // ⚠️ CE QUE LES SOMMETS ÉCHANTILLONNENT VRAIMENT, ce qui n'est pas ce que la carte CONTIENT.
+      // Le Sol est un PlaneGeometry de SEGMENTS segments : son sommet de rang ix porte l'abscisse
+      // de texture ix/SEGMENTS, que le repeat multiplie. Le relief visible ne dépend donc pas de
+      // toute la carte, mais des quelques texels où ces sommets tombent. On refait ici le calcul
+      // du shader de sommets de three.js, filtrage linéaire et bouclage compris.
+      const SEGMENTS = 100, COTE = 256;
+      const lu = (tx, ty) => dispData[(((ty % COTE) + COTE) % COTE * COTE + ((tx % COTE) + COTE) % COTE) * 4];
+      const echantillon = (u, v) => {
+        const x = ((u * def.repeat) % 1 + 1) % 1 * COTE - 0.5;
+        const y = ((v * def.repeat) % 1 + 1) % 1 * COTE - 0.5;
+        const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+        return lu(x0, y0) * (1 - fx) * (1 - fy) + lu(x0 + 1, y0) * fx * (1 - fy)
+             + lu(x0, y0 + 1) * (1 - fx) * fy + lu(x0 + 1, y0 + 1) * fx * fy;
+      };
+      const auxSommets = [];
+      for (let iy = 0; iy <= SEGMENTS; iy++) {
+        for (let ix = 0; ix <= SEGMENTS; ix++) auxSommets.push(versMonde(echantillon(ix / SEGMENTS, iy / SEGMENTS)));
+      }
+      const sMin = Math.min(...auxSommets), sMax = Math.max(...auxSommets);
+      const sMoy = auxSommets.reduce((a, b) => a + b, 0) / auxSommets.length;
+      const sEcart = Math.sqrt(auxSommets.reduce((a, b) => a + (b - sMoy) * (b - sMoy), 0) / auxSommets.length);
+
       releve.push({
-        id, dispScale: def.dispScale,
+        id, dispScale: def.dispScale, repeat: def.repeat,
         bas: versMonde(min), haut: versMonde(max),
         centre: versMonde(moy), ecartMonde: (ecart / 255) * def.dispScale,
+        solBas: sMin, solHaut: sMax, solMoy: sMoy, solEcart: sEcart,
+        multiple: def.repeat % SEGMENTS === 0,
       });
     }
     return { image: planche.toDataURL('image/png'), releve };
@@ -220,16 +245,19 @@ async function main(){
   const { image, releve } = await fenetre.webContents.executeJavaScript(scriptDeLaPage(ids, disposition));
 
   if (releve.length) {
-    console.log('\nRELIEF RÉELLEMENT ENVOYÉ AU GPU, en unités monde (un personnage fait 1,75) :');
-    console.log('matière         dispScale    plus bas   plus haut     centre   écart-type');
+    console.log('\nCE QUE LA CARTE CONTIENT, contre CE QUE LA SURFACE FAIT, en unités monde.');
+    console.log('Un personnage fait 1,75. La colonne qui compte est la dernière : si elle est nulle,');
+    console.log('le Sol est PLAT, et dispScale ne fait que le décaler en bloc.\n');
+    console.log('matière        repeat  ×100  carte:écart   sol:bas   sol:haut   sol:écart');
     for (const r of releve) {
-      console.log(r.id.padEnd(14)
-        + String(r.dispScale).padStart(10)
-        + r.bas.toFixed(3).padStart(12) + r.haut.toFixed(3).padStart(12)
-        + r.centre.toFixed(3).padStart(11) + r.ecartMonde.toFixed(3).padStart(13));
+      console.log(r.id.padEnd(13)
+        + String(r.repeat).padStart(8)
+        + (r.multiple ? '   oui' : '   non')
+        + r.ecartMonde.toFixed(3).padStart(13)
+        + r.solBas.toFixed(3).padStart(10) + r.solHaut.toFixed(3).padStart(11)
+        + r.solEcart.toFixed(4).padStart(12));
     }
-    console.log('\nLe maillage du Sol a une cellule tous les 120 u : c\'est l\'écart-type, et non');
-    console.log('l\'amplitude crête, qui dit de combien la surface s\'écarte du plan sous vos pieds.\n');
+    console.log('');
   }
 
   const sortie = join(RACINE, 'apercus', grains.length ? 'grains.png' : 'sol.png');
