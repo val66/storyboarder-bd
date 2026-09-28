@@ -170,8 +170,21 @@ propre chemin — les mettre dans celui de la Bulle percerait son remplissage l�
 le contour.
 
 ⚠️ **LE CHEVEU A UN ENVERS, ET LUI SEUL.** Une case « Inverser la pointe » renverse sa courbure :
-les deux arcs bombent de l'autre côté du même axe, et la queue penche dans l'autre sens sans qu'aucune
-autre grandeur ne change. Elle ne s'affiche que pour lui — un triangle est symétrique, un éclair
+les deux arcs bombent de l'autre côté du même axe, et la queue penche dans l'autre sens.
+
+⚠️ **MAIS RENVERSER LE SIGNE NE SUFFIT PAS : IL FAUT AUSSI ÉCHANGER LES DEUX COURBURES.** C'est une
+soustraction qui fait la finesse du cheveu. Les bases sont à ∓w de l'axe ; le bord qui part de la
+première bombe de K, celui qui rejoint la seconde de 0,55 K, tous deux du même côté. À mi-portée,
+l'écart entre les deux bords vaut donc **w − 0,45 K** : les deux flèches se retranchent, et la queue
+est un croissant mince. En ne changeant que le signe, ce même écart devient **w + 0,45 K** — elles
+s'ajoutent, et la queue enfle. Rapporté à l'usage, capture à l'appui : « quand je coche inverser la
+pointe, la pointe est plus épaisse et ne ressemble pas à celle d'avant l'inversion ».
+
+Un miroir échange aussi les deux côtés d'une forme. Rendre la grande courbure au bord qui rejoint la
+seconde base retrouve la soustraction, et donc la même silhouette, retournée. Le test qui tenait ce
+réglage exigeait au contraire que chaque point garde la même AMPLITUDE en changeant de signe : il
+décrivait un miroir où chaque bord resterait à sa place, ce qui n'existe pas, et il interdisait du
+même coup l'inégalité des deux courbures dont dépend tout l'aspect. Elle ne s'affiche que pour lui — un triangle est symétrique, un éclair
 alterne déjà de part et d'autre de son axe, et offrir la case aux cinq queues donnerait un **contrôle
 visible mais inopérant** pour quatre d'entre elles. C'est `queuePeutSInverser3D` qui tranche, et la
 fiche l'interroge plutôt que de recoder la liste : deux copies d'une même décision divergent

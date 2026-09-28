@@ -165,8 +165,21 @@ the outline closes fully, and the circles are drawn afterwards, each in its own 
 in the Bubble's path would punch a hole in its fill wherever a circle overlaps the outline.
 
 ⚠️ **THE CURVED HAIR HAS A REVERSE SIDE, AND IT ALONE.** A "Flip the tail" box reverses its
-curvature: both arcs bulge on the other side of the same axis, and the tail leans the other way with
-no other quantity changing. It only shows for that tail — a triangle is symmetrical, a lightning
+curvature: both arcs bulge on the other side of the same axis, and the tail leans the other way.
+
+⚠️ **BUT REVERSING THE SIGN IS NOT ENOUGH: THE TWO CURVATURES MUST ALSO SWAP.** A subtraction is
+what makes the hair thin. The bases sit at ∓w from the axis; the edge leaving the first bulges by K,
+the one reaching the second by 0.55 K, both on the same side. At mid-span the gap between the edges
+is therefore **w − 0.45 K**: the two sagittae subtract, and the tail is a thin crescent. Change only
+the sign and that gap becomes **w + 0.45 K** — they add up, and the tail swells. Reported from use,
+with a screenshot: "when I tick flip the tail, the tail is thicker and does not look like the one
+before flipping".
+
+A mirror also swaps a shape's two sides. Giving the large curvature back to the edge that reaches
+the second base restores the subtraction, and so the same silhouette, flipped. The test holding this
+setting demanded instead that every point keep the same MAGNITUDE while changing sign: it described
+a mirror in which each edge stays put, which does not exist, and in doing so forbade the very
+inequality of the two curvatures the whole look depends on. It only shows for that tail — a triangle is symmetrical, a lightning
 already alternates on either side of its axis, and offering the box for all five would give a
 **visible but inoperative control** for four of them. `queuePeutSInverser3D` settles it, and the
 panel asks that function rather than recoding the list: two copies of one decision always diverge,

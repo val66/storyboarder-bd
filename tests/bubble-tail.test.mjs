@@ -435,25 +435,55 @@ describe('Chaque queue fait ce qui la distingue', () => {
      * les signes s'inversaient bien mais les amplitudes ne coïncidaient pas, et le test accusait du
      * code juste. La corde d'un arc quadratique est la seule référence par rapport à laquelle son
      * point de contrôle, et donc le renversement, est exactement symétrique.
+     *
+     * ⚠️ ET CE TEST A ENSUITE LAISSÉ PASSER UN VRAI DÉFAUT, PARCE QU'IL ENCODAIT LE MAUVAIS MODÈLE.
+     * Il exigeait que chaque point garde la même AMPLITUDE de bombement en changeant de signe, ce
+     * qui décrit un miroir où chaque bord resterait à sa place. C'est faux : un miroir ÉCHANGE les
+     * deux bords. Or les deux courbures du cheveu sont INÉGALES — c'est leur différence qui fait sa
+     * finesse — et ne renverser que le signe faisait s'ADDITIONNER les deux flèches au lieu de se
+     * retrancher. La queue inversée enflait, ce que l'usage a rapporté en image.
+     *
+     * Le contrat exact est donc : le bombement du premier arc, renversé, est celui du SECOND arc de
+     * l'autre sens, parcouru à l'envers. C'est ce que ce relevé compare, et il tient du même coup
+     * l'inégalité des deux courbures — que l'ancienne formulation interdisait.
      */
-    const milieu = a.indexOf(a.find(p => Math.abs(p.x - pointe.x) < 1e-9
-                                      && Math.abs(p.y - pointe.y) < 1e-9));
-    assert.ok(milieu > 0, 'la pointe n’est pas dans le tracé : la fixture ne sait pas le découper');
-    const arcs = [[0, milieu, base1, pointe], [milieu + 1, a.length, pointe, base2]];
-    let vues = 0;
-    for (const [debut, fin, de, vers] of arcs) {
-      for (let i = debut; i < fin; i++) {
-        const t = (i - debut + 1) / (fin - debut + 1);
-        const corde = proj(de) + (proj(vers) - proj(de)) * t;
-        const ba = proj(a[i]) - corde, bb = proj(b[i]) - corde;
-        if (Math.abs(ba) < 1e-6) continue;
-        vues++;
-        assert.ok(Math.sign(ba) !== Math.sign(bb),
-          `le point ${i} bombe du même côté dans les deux sens : ${ba.toFixed(3)} et ${bb.toFixed(3)}`);
-        assert.ok(Math.abs(Math.abs(ba) - Math.abs(bb)) < 1e-6,
-          `le miroir change l’AMPLITUDE du bombement : ${ba.toFixed(3)} contre ${bb.toFixed(3)}`);
+    const bosses = (pts) => {
+      const m = pts.findIndex(q => Math.abs(q.x - pointe.x) < 1e-9 && Math.abs(q.y - pointe.y) < 1e-9);
+      assert.ok(m > 0, 'la pointe n’est pas dans le tracé : la fixture ne sait pas le découper');
+      const out = [];
+      for (const [debut, fin, de, vers] of [[0, m, base1, pointe], [m + 1, pts.length, pointe, base2]]) {
+        const arc = [];
+        for (let i = debut; i < fin; i++) {
+          const t = (i - debut + 1) / (fin - debut + 1);
+          arc.push(proj(pts[i]) - (proj(de) + (proj(vers) - proj(de)) * t));
+        }
+        out.push(arc);
       }
+      return out;
+    };
+    const A = bosses(a), B = bosses(b);
+    assert.equal(A[0].length, B[1].length, 'les deux tracés n’ont pas la même structure');
+    let vues = 0;
+    for (let k = 0; k < A[0].length; k++) {
+      if (Math.abs(A[0][k]) < 1e-6) continue;
+      vues++;
+      assert.ok(Math.abs(A[0][k] + B[1][A[1].length - 1 - k]) < 1e-6,
+        `le bord ${k} n’est pas le miroir du bord opposé : ${A[0][k].toFixed(3)} contre `
+        + `${B[1][A[1].length - 1 - k].toFixed(3)}`);
     }
+    /*
+     * ⚠️ ET LES DEUX COURBURES SONT BIEN INÉGALES : c'est la propriété que l'ancienne formulation
+     * rendait impossible à tenir, et sans elle le cheveu s'évase au lieu de s'amincir.
+     */
+    const ampleur = (arc) => Math.max(...arc.map(Math.abs));
+    assert.ok(ampleur(A[0]) > ampleur(A[1]) * 1.3,
+      `les deux bords bombent presque pareil (${ampleur(A[0]).toFixed(2)} et `
+      + `${ampleur(A[1]).toFixed(2)}) : le cheveu s’évase au lieu de s’amincir`);
+    // Et l'inversion échange les deux ampleurs, elle n'en change aucune.
+    assert.ok(Math.abs(ampleur(A[0]) - ampleur(B[1])) < 1e-6
+           && Math.abs(ampleur(A[1]) - ampleur(B[0])) < 1e-6,
+      `l’inversion change l’épaisseur : ${ampleur(A[0]).toFixed(2)}/${ampleur(A[1]).toFixed(2)} `
+      + `devient ${ampleur(B[0]).toFixed(2)}/${ampleur(B[1]).toFixed(2)}`);
     assert.ok(vues > 5, `${vues} points bombés : le relevé ne mesure presque rien`);
   });
 

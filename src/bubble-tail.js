@@ -145,6 +145,13 @@ function traceEclair(o, base1, pointe, base2){
  * décalés le long de `r.n`, la normale de l'axe, qui est commune aux deux.
  */
 const CHEVEU_COURBURE = 0.45;
+/**
+ * ⚠️ LES DEUX BORDS N'ONT PAS LA MÊME COURBURE, ET C'EST CE RAPPORT QUI FAIT LA FINESSE DU CHEVEU.
+ * Ils bombent du même côté, le second moins que le premier : l'écart entre eux vaut donc, à
+ * mi-portée, la largeur de l'ouverture MOINS la différence des deux flèches. C'est cette
+ * soustraction qui amincit la queue en croissant au lieu de la laisser s'évaser.
+ */
+const CHEVEU_RETOUR = 0.55;
 const CHEVEU_PAR_COTE = 7;
 
 /**
@@ -170,9 +177,24 @@ export function queuePeutSInverser3D(queue){
 
 function traceCheveu(o, base1, pointe, base2){
   const r = repere(base1, pointe, base2);
-  // Le miroir renverse la courbure : les deux arcs bombent de l'autre côté du MÊME axe, donc la
-  // queue penche dans l'autre sens sans qu'aucune autre grandeur ne change.
-  const sens = queueInverseeDeLaBulle3D(o) ? -1 : 1;
+  /*
+   * ⚠️ LE MIROIR RENVERSE LE SIGNE **ET** ÉCHANGE LES DEUX COURBURES, et n'en faire que la moitié a
+   * produit une queue GROSSE au lieu d'une queue retournée — rapporté à l'usage, capture à l'appui.
+   *
+   * La démonstration tient en une soustraction. Les bases sont à ∓w de l'axe ; le bord qui part de
+   * `base1` bombe de K, celui qui rejoint `base2` de 0,55 K, tous deux du même côté. À mi-portée,
+   * l'écart entre les deux bords vaut donc (w/2 + 0,55 K) − (−w/2 + K) = w − 0,45 K : la queue est
+   * FINE parce que les deux flèches se retranchent.
+   *
+   * En ne changeant que le signe, ce même écart devient (w/2 − 0,55 K) − (−w/2 − K) = w + 0,45 K.
+   * Les flèches s'ajoutent, et la queue enfle d'autant. Le miroir d'une forme échange aussi ses
+   * deux côtés : c'est en rendant la grande courbure au bord qui rejoint `base2` qu'on retrouve la
+   * soustraction, et donc la même silhouette, retournée.
+   */
+  const inverse = queueInverseeDeLaBulle3D(o);
+  const sens = inverse ? -1 : 1;
+  const aller = inverse ? CHEVEU_RETOUR : 1;
+  const retour = inverse ? 1 : CHEVEU_RETOUR;
   const pts = [];
   const arc = (a, b, courbure) => {
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -183,10 +205,10 @@ function traceCheveu(o, base1, pointe, base2){
                  y: u * u * a.y + 2 * u * t * cy + t * t * b.y });
     }
   };
-  arc(base1, pointe, CHEVEU_COURBURE * sens);
+  arc(base1, pointe, CHEVEU_COURBURE * aller * sens);
   pts.push(pointe);
   // Même signe de courbure : le retour longe l'aller, et la queue penche au lieu de s'évaser.
-  arc(pointe, base2, CHEVEU_COURBURE * 0.55 * sens);
+  arc(pointe, base2, CHEVEU_COURBURE * retour * sens);
   return pts;
 }
 
