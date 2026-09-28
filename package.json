@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "engines": {
     "node": ">=20"
   },
@@ -40,6 +40,7 @@
       "index.html",
       "style.css",
       "assets/**/*",
+    "!assets/textures/sources/**",
       "package.json",
       "src/**/*",
       "node_modules/three/build/three.min.js"

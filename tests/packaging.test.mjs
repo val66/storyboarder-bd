@@ -21,7 +21,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirnameFs, join } from 'node:path';
 
@@ -35,6 +35,8 @@ const lire = (f) => readFileSync(join(RACINE, f), 'utf8');
 
 const PKG = JSON.parse(lire('package.json'));
 const MOTIFS = PKG.build.files;
+const MOTIFS_POSITIFS = MOTIFS.filter(m => !m.startsWith('!'));
+const MOTIFS_NEGATIFS = MOTIFS.filter(m => m.startsWith('!')).map(m => m.slice(1));
 const INDEX = lire('index.html');
 
 /**
@@ -64,6 +66,18 @@ function couvert(chemin, motif){
     .replace(/(?<!\.)\*/g, '[^/]*') + '$');
   return regex.test(chemin);
 }
+
+/**
+ * Ce chemin part-il dans l'installeur ? Un motif positif le prend, un motif d'exclusion le reprend,
+ * et c'est electron-builder qui tranche dans cet ordre.
+ *
+ * ⚠️ CETTE FONCTION A ÉTÉ ÉCRITE APRÈS COUP, et c'est ce qu'elle corrige qui vaut d'être noté : les
+ * six tests de ce fichier demandaient chacun `MOTIFS.some(...)`, six lectures d'une même
+ * déclaration, toutes aveugles aux exclusions le jour où la première a été écrite. Exclure par
+ * erreur un fichier que l'application charge les aurait tous laissés au vert.
+ */
+const empaqueté = (chemin) => MOTIFS_POSITIFS.some(m => couvert(chemin, m))
+  && !MOTIFS_NEGATIFS.some(m => couvert(chemin, m));
 
 /**
  * Les fichiers qu'une feuille de style réclame, en SUIVANT ses `@import`.
@@ -122,7 +136,7 @@ describe('Installeur : ce que les feuilles de style réclament', () => {
   });
 
   test('RÉGRESSION : chaque fichier réclamé par une CSS figure dans build.files', () => {
-    const manquants = ASSETS_CSS.filter(a => !MOTIFS.some(m => couvert(a, m)));
+    const manquants = ASSETS_CSS.filter(a => !empaqueté(a));
     assert.deepEqual(manquants, [], `réclamé par une feuille de style mais absent de build.files : `
       + `${manquants.join(', ')} — l'application installée retomberait en sans-serif`);
   });
@@ -154,9 +168,9 @@ describe('Installeur : ce que les feuilles de style réclament', () => {
     // rattraperait si elles sortaient de la liste de packaging.
     assert.ok(existsSync(join(RACINE, 'assets', 'fonts', 'LICENSES.md')),
       'le récapitulatif de licences est absent');
-    assert.ok(MOTIFS.some(m => couvert('assets/fonts/LICENSES.md', m)),
+    assert.ok(empaqueté('assets/fonts/LICENSES.md'),
       'le récapitulatif de licences n\'est pas embarqué');
-    assert.ok(MOTIFS.some(m => couvert('assets/fonts/inter/LICENSE.txt', m)),
+    assert.ok(empaqueté('assets/fonts/inter/LICENSE.txt'),
       'les textes de licence ne sont pas embarqués');
   });
 });
@@ -165,7 +179,7 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
   test('RÉGRESSION : chaque asset local d\'index.html figure dans build.files', () => {
     // Le défaut du 28 juillet, épinglé sous sa forme générale. C'est ce test qui aurait dû exister
     // le jour où index.html a été scindé.
-    const manquants = assetsLocaux(INDEX).filter(a => !MOTIFS.some(m => couvert(a, m)));
+    const manquants = assetsLocaux(INDEX).filter(a => !empaqueté(a));
     assert.deepEqual(manquants, [],
       `chargé par index.html mais absent de build.files : ${manquants.join(', ')} — `
       + 'l\'application installée ne les aura pas');
@@ -181,7 +195,9 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
     // Symétrique du précédent. Un motif qui ne correspond plus à rien est une décision périmée : il
     // laisse croire qu'un fichier est embarqué alors qu'il a été déplacé ou supprimé.
     const vides = MOTIFS.filter(m => {
-      const racineMotif = m.split('*')[0].replace(/\/$/, '');
+      // Le `!` d'une exclusion ne fait pas partie du chemin. Sans ce retrait, la première
+      // exclusion écrite fait échouer ce test : il cherchait un dossier nommé « !assets ».
+      const racineMotif = m.replace(/^!/, '').split('*')[0].replace(/\/$/, '');
       return racineMotif && !existsSync(join(RACINE, racineMotif));
     });
     assert.deepEqual(vides, [], `motifs de packaging sans cible : ${vides.join(', ')}`);
@@ -196,7 +212,7 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
       [...lire(f).matchAll(/require\(['"]\.\/([^'"]+)['"]\)/g)]
         .map(m => (m[1].endsWith('.js') ? m[1] : m[1] + '.js')));
     assert.ok(locaux.length >= 1, 'aucun require local trouvé : le test ne regarde plus rien');
-    const manquants = locaux.filter(f => !MOTIFS.some(m => couvert(f, m)));
+    const manquants = locaux.filter(f => !empaqueté(f));
     assert.deepEqual(manquants, [], `require par le processus principal mais absent de build.files : ${manquants}`);
     const introuvables = locaux.filter(f => !existsSync(join(RACINE, f)));
     assert.deepEqual(introuvables, [], `require mais absent du dépôt : ${introuvables}`);
@@ -205,8 +221,82 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
   test('le point d\'entrée déclaré par npm est packagé', () => {
     // `main` est ce qu'Electron lance. S'il sortait de la liste, l'application ne démarrerait pas
     // du tout, panne plus visible que le CSS manquant, mais de la même famille.
-    assert.ok(MOTIFS.some(m => couvert(PKG.main, m)), `${PKG.main} (champ "main") n'est pas packagé`);
+    assert.ok(empaqueté(PKG.main), `${PKG.main} (champ "main") n'est pas packagé`);
     assert.ok(existsSync(join(RACINE, PKG.main)));
+  });
+});
+
+/**
+ * ⚠️ L'AUTRE SENS, ET IL A COÛTÉ UN INSTALLEUR DE 255 Mo. Tout ce qui précède vérifie qu'aucun
+ * fichier NÉCESSAIRE ne manque. Rien ne vérifiait que rien d'INUTILE ne monte à bord, et le motif
+ * `assets/**` emportait `assets/textures/sources/`, les 145 Mo de cartes 4K qui servent d'entrée au
+ * cuiseur. Le `.exe` de la v1.7.0 pesait donc 255 Mo au lieu d'environ 110, pour des fichiers que
+ * l'application n'ouvre jamais.
+ *
+ * Et le poids n'est pas le pire. `.gitignore` écarte ce dossier en disant pourquoi, mot pour mot :
+ * « ce sont de la MATIÈRE PREMIÈRE, pas un produit ». La même phrase vaut pour un installeur qu'on
+ * distribue. Un fichier tenu hors du dépôt pour ne pas être redistribué ne doit pas partir dans le
+ * binaire par la porte de derrière.
+ *
+ * LA RÈGLE GARDÉE, plutôt que le dossier épinglé : ce que `.gitignore` écarte ne s'empaquette pas.
+ * Une seule exception, `node_modules/`, dont la raison est écrite là où elle s'applique.
+ */
+describe('Installeur : rien d’inutile ne monte à bord', () => {
+  /** Les règles de dossier de `.gitignore` (`foo/`), les seules qui portent ici. */
+  const dossiersIgnorés = lire('.gitignore').split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#') && !l.startsWith('!') && l.endsWith('/'))
+    .map(l => l.replace(/\/$/, ''));
+
+  /** Les fichiers du dépôt qu'electron-builder emporterait sous une liste de motifs donnée. */
+  const empaquetés = (positifs, négatifs) => {
+    const vus = [];
+    const marche = (rel) => {
+      for (const e of readdirSync(join(RACINE, rel || '.'), { withFileTypes: true })) {
+        // Les deux dossiers que ce parcours ne visite pas, pour deux raisons différentes.
+        // `.git` n'est packagé par aucun motif et pèse le prix d'une descente inutile.
+        // `node_modules` EST écarté par .gitignore, et c'est la seule exception à la règle de ce
+        // bloc : il l'est parce qu'il se réinstalle depuis package-lock.json, pas parce qu'il ne
+        // doit pas être redistribué. Une dépendance déclarée doit voyager, et `three.min.js` en
+        // est une. Le retirer d'ici rend d'ailleurs le test rouge, ce qui est la preuve que
+        // l'exception vit à cet endroit et à un seul.
+        if (e.name === '.git' || e.name === 'node_modules') continue;
+        const chemin = rel ? `${rel}/${e.name}` : e.name;
+        if (e.isDirectory()) marche(chemin);
+        else if (positifs.some(m => couvert(chemin, m)) && !négatifs.some(m => couvert(chemin, m))) {
+          vus.push(chemin);
+        }
+      }
+    };
+    marche('');
+    return vus;
+  };
+
+  test('⚠️ RÉGRESSION : aucun fichier écarté par .gitignore n’entre dans l’installeur', () => {
+    const intrus = empaquetés(MOTIFS_POSITIFS, MOTIFS_NEGATIFS)
+      .filter(f => dossiersIgnorés.some(d => f === d || f.startsWith(d + '/')));
+    assert.deepEqual(intrus.slice(0, 5), [],
+      `${intrus.length} fichier(s) tenus hors du dépôt partent pourtant dans le .exe, `
+      + `à commencer par ${intrus.slice(0, 3).join(', ')}`);
+  });
+
+  test('le garde-fou : sans les exclusions, le détecteur VOIT bien les intrus', () => {
+    // Le test précédent est un `[].filter(...)` de plus. Mesurer une absence sans vérifier que
+    // l'instrument sait voir une présence est la faute la plus répétée de ce dépôt : on lui donne
+    // donc la liste d'AVANT le correctif, où l'on sait que 19 fichiers passaient.
+    assert.ok(MOTIFS_NEGATIFS.length >= 1, 'plus aucune exclusion : ce garde-fou ne prouve plus rien');
+    const sansExclusion = empaquetés(MOTIFS_POSITIFS, [])
+      .filter(f => dossiersIgnorés.some(d => f === d || f.startsWith(d + '/')));
+    assert.ok(sansExclusion.length > 0,
+      'le détecteur ne trouve rien même sans les exclusions : il ne regarde pas au bon endroit');
+  });
+
+  test('… et chaque exclusion vise encore quelque chose', () => {
+    // Symétrique de « aucun motif ne vise le vide », côté négatif. Une exclusion périmée laisse
+    // croire qu'un dossier est écarté alors qu'il a été renommé, et il repart en silence.
+    const inutiles = MOTIFS_NEGATIFS.filter(m =>
+      empaquetés([m], []).length === 0 && !existsSync(join(RACINE, m.split('*')[0].replace(/\/$/, ''))));
+    assert.deepEqual(inutiles, [], `exclusions de packaging sans cible : ${inutiles.join(', ')}`);
   });
 });
 
