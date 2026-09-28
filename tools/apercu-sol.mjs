@@ -152,7 +152,35 @@ function scriptDeLaPage(ids, disposition){
       g.strokeRect(cell.tuile.x + .5, cell.tuile.y + .5, cell.tuile.taille, cell.tuile.taille);
       g.strokeRect(cell.repetee.x + .5, cell.repetee.y + .5, cell.repetee.taille, cell.repetee.taille);
     }
-    return planche.toDataURL('image/png');
+    // ⚠️ LE RELIEF SE MESURE ICI, ET PAS DANS MA TÊTE. dispData est le tableau que le Sol envoie au
+    // GPU ; displacementScale et displacementBias (cf. applyGroundType) le transforment en unités
+    // monde. Le déduire des constantes m'a fait annoncer un défaut que l'utilisateur n'a pas vu :
+    // on lit donc la donnée réelle.
+    //
+    // ⚠️ ET PAS D'ACCENT GRAVE DANS CE COMMENTAIRE : il vit à l'intérieur d'un gabarit de chaîne,
+    // où un accent grave FERME la chaîne. Le linter l'a dit tout de suite, en désignant un jeton
+    // qui n'avait rien à voir.
+    const releve = [];
+    for (const id of ids) {
+      if (id.startsWith('grain:')) continue;
+      const def = GROUND_TYPE_DEFS.find(t => t.id === id);
+      const { dispData } = buildGroundTexture(id);
+      let min = 255, max = 0, somme = 0, n = 0;
+      for (let i = 0; i < dispData.length; i += 4) { const v = dispData[i]; if (v < min) min = v; if (v > max) max = v; somme += v; n++; }
+      const moy = somme / n;
+      // Un écart-type, parce que l'amplitude crête ne dit pas ce qu'on voit : une carte à 0-255
+      // dont presque tout vaut 128 est plate en pratique.
+      let carres = 0;
+      for (let i = 0; i < dispData.length; i += 4) { const d = dispData[i] - moy; carres += d * d; }
+      const ecart = Math.sqrt(carres / n);
+      const versMonde = (v) => (v / 255) * def.dispScale - def.dispScale * 0.5;
+      releve.push({
+        id, dispScale: def.dispScale,
+        bas: versMonde(min), haut: versMonde(max),
+        centre: versMonde(moy), ecartMonde: (ecart / 255) * def.dispScale,
+      });
+    }
+    return { image: planche.toDataURL('image/png'), releve };
   })()`;
 }
 
@@ -189,11 +217,24 @@ async function main(){
   await fenetre.loadFile(join(ICI, 'apercu-sol.html'));
 
   const disposition = dispositionDeLaPlanche3D(ids.length, 2);
-  const url = await fenetre.webContents.executeJavaScript(scriptDeLaPage(ids, disposition));
+  const { image, releve } = await fenetre.webContents.executeJavaScript(scriptDeLaPage(ids, disposition));
+
+  if (releve.length) {
+    console.log('\nRELIEF RÉELLEMENT ENVOYÉ AU GPU, en unités monde (un personnage fait 1,75) :');
+    console.log('matière         dispScale    plus bas   plus haut     centre   écart-type');
+    for (const r of releve) {
+      console.log(r.id.padEnd(14)
+        + String(r.dispScale).padStart(10)
+        + r.bas.toFixed(3).padStart(12) + r.haut.toFixed(3).padStart(12)
+        + r.centre.toFixed(3).padStart(11) + r.ecartMonde.toFixed(3).padStart(13));
+    }
+    console.log('\nLe maillage du Sol a une cellule tous les 120 u : c\'est l\'écart-type, et non');
+    console.log('l\'amplitude crête, qui dit de combien la surface s\'écarte du plan sous vos pieds.\n');
+  }
 
   const sortie = join(RACINE, 'apercus', grains.length ? 'grains.png' : 'sol.png');
   mkdirSync(dirname(sortie), { recursive: true });
-  const png = Buffer.from(url.split(',')[1], 'base64');
+  const png = Buffer.from(image.split(',')[1], 'base64');
   writeFileSync(sortie, png);
   console.log(`${ids.length} matière(s), ${disposition.largeur}×${disposition.hauteur} px`);
   console.log(`écrit : ${sortie}  (${(png.length / 1024).toFixed(0)} Ko)`);
