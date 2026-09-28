@@ -1289,6 +1289,42 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
      * paraît absurde à l'usage, et qu'aucune relecture du contrôle seul ne voit puisqu'il est juste
      * pour l'ajout.
      */
+    /**
+     * ⚠️ « RENOMMER » EST ÉTEINT TANT QUE LE NOM N'A PAS CHANGÉ, et ici un bouton éteint est juste.
+     * La règle du dépôt vise un contrôle qui ne PEUT rien faire et le laisse croire ; celui-ci dit
+     * qu'il n'y a rien à faire pour l'instant, et il se rallume au premier caractère tapé — c'est
+     * un état, pas une impasse.
+     */
+    test('⚠️ « RENOMMER » EST ÉTEINT À L’OUVERTURE, ET SE RALLUME DÈS QU’ON TAPE', async () => {
+      definirBibliothequeStyles3D([]);
+      const b = nouvelleBulle();
+      S.selectedId = b.id;
+      b.bulleShape = 'etoile';
+      updateSidePanel();
+      await enregistrer('Cri');
+
+      const confirmer = () => document.getElementById('bubbleStyleRenameConfirm');
+      const taper = (v) => {
+        champRenommer().value = v;
+        (champRenommer()._ecouteurs.input || []).forEach(fn => fn({ target: champRenommer() }));
+      };
+      cliquer(renommer());
+      assert.equal(confirmer().disabled, true,
+        'le champ porte le nom actuel : il n’y a rien à renommer');
+      taper('Hurlement');
+      assert.equal(confirmer().disabled, false, 'le bouton ne se rallume pas quand on tape');
+      // Les espaces de bord sont retirés à l'écriture : les ajouter ne renomme rien.
+      taper('  Cri  ');
+      assert.equal(confirmer().disabled, true, 'ajouter des espaces passe pour un renommage');
+      // ⚠️ MAIS CORRIGER LA CASSE EN EST UN : « cri » vers « Cri » se voit dans la liste.
+      taper('cri');
+      assert.equal(confirmer().disabled, false, 'corriger la casse d’un style serait refusé');
+      // ⚠️ ET UN NOM VIDE RESTE CLIQUABLE, pour que son motif puisse s'afficher sous le champ. Un
+      // bouton qui s'éteint sans rien dire laisserait chercher ce qui ne va pas.
+      taper('');
+      assert.equal(confirmer().disabled, false, 'un nom vide doit pouvoir afficher son refus');
+    });
+
     test('⚠️ RENOMMER UN STYLE EN LUI-MÊME EST ACCEPTÉ, EN UN AUTRE DÉJÀ PRIS NON', async () => {
       definirBibliothequeStyles3D([]);
       const a = nouvelleBulle();
@@ -1302,12 +1338,23 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       updateSidePanel();
       await enregistrer('Bloc');
 
-      // La Bulle sélectionnée porte « Bloc » : on le renomme en lui-même.
+      /*
+       * ⚠️ LE CAS « EN LUI-MÊME » PASSE PAR LA CASSE, ET C'EST UN AJUSTEMENT DÛ AU BOUTON ÉTEINT.
+       * Ce test validait d'abord la modale SANS rien changer ; depuis que « Renommer » s'éteint
+       * tant que le nom est identique, ce chemin n'existe plus dans l'interface, et le tester
+       * reviendrait à garantir quelque chose que personne ne peut faire.
+       *
+       * Ce que l'exception au contrôle des doublons protège reste pourtant atteignable, et c'est
+       * même son seul emploi réel : corriger la CASSE d'un style. « Bloc » vers « bloc » est un
+       * renommage que l'utilisateur peut demander, et que le contrôle déclarerait doublon de
+       * lui-même sans le `sauf`.
+       */
       cliquer(renommer());
+      champRenommer().value = 'bloc';
       await validerRenommage();
       assert.equal(modaleRenommer().classList.contains('hidden'), true,
-        'renommer un style en lui-même a été refusé');
-      assert.equal(bibliothequeStyles3D()[1].nom, 'Bloc');
+        'corriger la casse d’un style a été refusé comme un doublon de lui-même');
+      assert.equal(bibliothequeStyles3D()[1].nom, 'bloc');
 
       // Mais prendre le nom de l'autre reste un doublon.
       cliquer(renommer());
@@ -1316,7 +1363,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
       assert.equal(modaleRenommer().classList.contains('hidden'), false,
         'un doublon a été accepté au renommage');
       assert.ok(erreurRenommer().textContent.length > 0, 'aucun motif affiché');
-      assert.deepEqual(bibliothequeStyles3D().map(e => e.nom), ['Cri', 'Bloc']);
+      assert.deepEqual(bibliothequeStyles3D().map(e => e.nom), ['Cri', 'bloc']);
     });
 
     /**

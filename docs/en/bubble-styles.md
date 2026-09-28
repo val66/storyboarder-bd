@@ -954,3 +954,17 @@ Two points only use would have revealed, both held by tests:
 - **deleting a style touches no Bubble.** What goes is the library entry, not the look of the
   Bubbles wearing it. The confirmation message says so, or nobody could guess which of the two they
   are being asked to confirm.
+
+⚠️ **AND "RENAME" GOES DIM WHILE THE NAME IS UNCHANGED — a dimmed button that, this time, is right.**
+The repository's rule targets a control that CANNOT do anything and lets you believe otherwise; this
+one says there is nothing to do yet, and it lights up at the first keystroke. It is a state, not a
+dead end.
+
+Two nuances, each a test: **edge spaces do not count, case does** — writing trims the edges, so
+padding "Shout" with spaces would write nothing, while "shout" to "Shout" shows in the list; and **an
+empty name stays clickable**, so its refusal can appear under the field.
+
+⚠️ **"NO EFFECT" AND "DUPLICATE" ARE TWO DISTINCT QUESTIONS.** The duplicate check skips the entry
+being renamed, so it ACCEPTS the unchanged name; it is the other question that says there is nothing
+to do. Merging them would make it impossible to fix a style's case — the only real use left for that
+exception, now that confirming without a change is unreachable.

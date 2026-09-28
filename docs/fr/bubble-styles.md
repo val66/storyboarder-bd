@@ -1024,3 +1024,26 @@ quatrième paire d'entrées i18n, et une quatrième occasion d'en oublier une.
 Le renommage, lui, a sa propre modale plutôt qu'un titre réécrit à l'ouverture : réécrire le titre
 d'une modale partagée le ferait remettre en français au prochain changement de langue, `applyI18n`
 repassant par-dessus — c'est exactement ce qui était arrivé au bouton de `confirmAction`.
+
+⚠️ **ET « RENOMMER » S'ÉTEINT TANT QUE LE NOM N'A PAS CHANGÉ — un bouton éteint qui, lui, est juste.**
+La règle du dépôt vise un contrôle qui ne PEUT rien faire et le laisse croire ; celui-ci dit qu'il
+n'y a rien à faire pour l'instant, et il se rallume au premier caractère tapé. C'est un état, pas
+une impasse : on peut agir sur lui depuis l'endroit même où on le voit.
+
+Deux nuances, et chacune est un test :
+
+- **les espaces de bord ne comptent pas, la casse si.** L'écriture retire les espaces de bord :
+  ajouter «  » autour de « Cri » n'écrirait rien. Mais « cri » vers « Cri » se voit dans la liste,
+  et refuser ce geste ferait du contrôle une gêne ;
+- **un nom vide reste cliquable.** Il sera refusé, avec son motif sous le champ — un bouton qui
+  s'éteint sans rien dire laisserait chercher ce qui ne va pas.
+
+⚠️ **« SANS EFFET » ET « DOUBLON » SONT DEUX QUESTIONS DISTINCTES, ET LES CONFONDRE CASSERAIT LE
+RENOMMAGE.** Le contrôle des doublons ignore l'entrée qu'on renomme, donc il ACCEPTE le nom
+inchangé ; c'est l'autre question qui dit qu'il n'y a rien à faire. Les fusionner rendrait
+impossible de corriger la casse d'un style — le seul emploi réel de cette exception, maintenant que
+valider sans rien changer n'est plus atteignable.
+
+Un test l'a d'ailleurs montré tout seul : celui qui vérifiait qu'on peut « renommer un style en
+lui-même » décrivait désormais un chemin que l'interface ne permet plus. Il porte maintenant sur la
+correction de casse, qui est ce qui reste de ce cas.

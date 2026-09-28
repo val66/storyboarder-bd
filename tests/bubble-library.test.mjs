@@ -20,6 +20,7 @@ import {
   CHAMPS_HORS_STYLE, styleDeLaBulle3D, appliquerStyle3D, bulleSuitLeStyle3D,
   styleCorrespondant3D, peutEnregistrerLeStyle3D, refusDuNomDeStyle3D, ajouterStyle3D,
   bibliothequeLue3D, NOM_STYLE_MAX, renommerStyle3D, supprimerStyle3D, indexDuStyleDeLaBulle3D,
+  renommageSansEffet3D,
 } from '../src/bubble-library.js';
 import { CHAMPS_PROPRES_AU_LOBE } from '../src/bubble-merge.js';
 
@@ -309,5 +310,44 @@ describe('#425j bis — renommer et supprimer un style', () => {
     const cri = { bulleShape: 'etoile' };
     assert.equal(indexDuStyleDeLaBulle3D(cri, jumeaux), 0);
     assert.equal(styleCorrespondant3D(cri, jumeaux), jumeaux[0]);
+  });
+});
+
+describe('#425j ter — un renommage qui ne change rien', () => {
+  /**
+   * ⚠️ LA COMPARAISON NETTOIE LES BORDS MAIS RESPECTE LA CASSE, ET LES DEUX MOITIÉS COMPTENT.
+   * `renommerStyle3D` retire les espaces de bord : «  Cri  » n'écrirait donc rien, et le bouton
+   * doit le dire. Changer la CASSE, en revanche, est un vrai renommage — « cri » vers « Cri » se
+   * voit dans la liste, et refuser ce geste ferait du contrôle une gêne plutôt qu'une aide.
+   */
+  test('⚠️ LES ESPACES DE BORD NE COMPTENT PAS, LA CASSE SI', () => {
+    assert.equal(renommageSansEffet3D('Cri', 'Cri'), true);
+    assert.equal(renommageSansEffet3D('  Cri  ', 'Cri'), true, 'les espaces de bord sont retirés');
+    assert.equal(renommageSansEffet3D('cri', 'Cri'), false,
+      'corriger la casse d’un style serait refusé');
+    assert.equal(renommageSansEffet3D('Hurlement', 'Cri'), false);
+  });
+
+  test('un nom vide face à un ancien nom EST un changement', () => {
+    // Il sera refusé par le contrôle du nom, avec son motif sous le champ — mais le bouton doit
+    // rester cliquable pour que ce motif puisse s'afficher.
+    assert.equal(renommageSansEffet3D('', 'Cri'), false);
+    assert.equal(renommageSansEffet3D('   ', 'Cri'), false);
+    // Et deux absences ne sont pas un changement.
+    assert.equal(renommageSansEffet3D('', ''), true);
+    assert.equal(renommageSansEffet3D(null, undefined), true);
+  });
+
+  /**
+   * ⚠️ CE N'EST PAS LE CONTRÔLE DES DOUBLONS, ET LES CONFONDRE CASSERAIT LE RENOMMAGE. Celui-ci
+   * ignore l'entrée qu'on renomme, donc il ACCEPTE le nom inchangé ; c'est ce test-ci qui dit qu'il
+   * n'y a rien à faire. Les fusionner rendrait impossible de corriger la casse d'un style.
+   */
+  test('⚠️ « SANS EFFET » ET « DOUBLON » SONT DEUX QUESTIONS DISTINCTES', () => {
+    const biblio = [{ nom: 'Cri', style: {} }];
+    assert.equal(refusDuNomDeStyle3D('Cri', biblio, 0), null, 'le doublon accepte le nom inchangé');
+    assert.equal(renommageSansEffet3D('Cri', 'Cri'), true, 'mais il n’y a rien à renommer');
+    assert.equal(refusDuNomDeStyle3D('cri', biblio, 0), null, 'changer la casse reste accepté');
+    assert.equal(renommageSansEffet3D('cri', 'Cri'), false, 'et c’est un vrai renommage');
   });
 });

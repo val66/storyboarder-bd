@@ -84,7 +84,7 @@ import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
 import { queueDeLaBulle, longueurMinimaleDeLaQueue3D } from './bubble-tail.js';
 import { styleDeLaBulle3D, appliquerStyle3D, refusDuNomDeStyle3D, ajouterStyle3D,
          peutEnregistrerLeStyle3D, NOM_STYLE_MAX, renommerStyle3D, supprimerStyle3D,
-         indexDuStyleDeLaBulle3D } from './bubble-library.js';
+         indexDuStyleDeLaBulle3D, renommageSansEffet3D } from './bubble-library.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
@@ -7585,14 +7585,36 @@ async function poserBibliothequeStyles3D(biblio){
   majSectionStyleBulle3D(S.sideDescTarget);
 }
 
+/**
+ * Éteint « Renommer » tant que le nom n'a pas changé.
+ *
+ * ⚠️ ICI UN BOUTON ÉTEINT EST JUSTE, LÀ OÙ IL NE L'ÉTAIT PAS DANS LA FICHE. La règle du dépôt vise
+ * un contrôle qui ne PEUT rien faire et le laisse croire ; celui-ci dit qu'il n'y a rien à faire
+ * POUR L'INSTANT, et il se rallume au premier caractère tapé. La différence est qu'on peut agir sur
+ * lui depuis l'endroit où on le voit — c'est un état, pas une impasse.
+ *
+ * ⚠️ ET SEULEMENT SUR L'IDENTITÉ DU NOM, PAS SUR SA VALIDITÉ. Un nom vide ou déjà pris reste
+ * cliquable et affiche son motif sous le champ, comme à l'enregistrement : un bouton qui s'éteint
+ * sans rien dire laisserait chercher ce qui ne va pas.
+ */
+function majBoutonRenommageStyle3D(){
+  const i = indexDuStyleCourant3D();
+  const ancien = i < 0 ? '' : bibliothequeStyles3D()[i].nom;
+  bubbleStyleRenameConfirm.disabled = renommageSansEffet3D(bubbleStyleRenameInput.value, ancien);
+}
+
 sideBubbleStyleRenameBtn.addEventListener('click', () => {
   const i = indexDuStyleCourant3D();
   if (i < 0) return;
   bubbleStyleRenameInput.value = bibliothequeStyles3D()[i].nom;
   bubbleStyleRenameError.textContent = '';
+  // À l'ouverture, le champ porte le nom actuel : il n'y a donc rien à renommer.
+  majBoutonRenommageStyle3D();
   bubbleStyleRenameModal.classList.remove('hidden');
   bubbleStyleRenameInput.focus();
 });
+
+bubbleStyleRenameInput.addEventListener('input', majBoutonRenommageStyle3D);
 
 bubbleStyleRenameCancel.addEventListener('click', fermerModaleRenommageStyle);
 

@@ -211,3 +211,19 @@ export function indexDuStyleDeLaBulle3D(o, bibliotheque){
   }
   return -1;
 }
+
+/**
+ * Ce renommage ne changerait-il rien ? Fonction PURE.
+ *
+ * ⚠️ LA COMPARAISON SE FAIT APRÈS NETTOYAGE, MAIS RESPECTE LA CASSE. `ajouterStyle3D` et
+ * `renommerStyle3D` retirent les espaces de bord : taper « Cri » puis «  Cri  » n'écrirait donc
+ * rien, et le bouton doit le dire. Changer la CASSE, en revanche, est un vrai renommage — « cri »
+ * vers « Cri » se voit dans la liste, et refuser ce geste-là ferait du contrôle une gêne.
+ *
+ * ⚠️ ET CE N'EST PAS LE CONTRÔLE DES DOUBLONS. Celui-ci ignore déjà l'entrée qu'on renomme, donc il
+ * ACCEPTE le nom inchangé : les deux questions sont distinctes, et les confondre rendrait
+ * impossible de corriger la casse d'un style.
+ */
+export function renommageSansEffet3D(nom, ancien){
+  return String(nom == null ? '' : nom).trim() === String(ancien == null ? '' : ancien).trim();
+}
