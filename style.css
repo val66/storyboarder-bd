@@ -817,6 +817,15 @@ main{ flex:1; display:flex; flex-direction:column; min-width:0; }
 .side-bulle-font select{ font-size:13px; }
 .side-bulle-appearance{ margin-bottom:8px; }
 .side-bulle-appearance .side-bulle-tail{ margin-left:0; }
+/* ⚠️ VISÉ PAR SON IDENTIFIANT, ET NON PAR `.side-bulle-tail`. Cette classe habille aussi « Afficher
+   la bordure » et « Bulle fusionnable », qui suivent un titre de section et n'ont besoin d'aucune
+   marge ; la régler sur la classe les décalerait tous les trois. Celle-ci est la seule à venir
+   DIRECTEMENT sous un menu déroulant, dans le même encart que lui, et c'est de cet appui qu'elle
+   doit se détacher — demandé à l'usage, capture à l'appui.
+   L'identifiant est sans risque ici : l'élément est écrit dans index.html et non engendré, à la
+   différence des zones de texte des lobes, dont une règle par identifiant n'atteignait aucune
+   copie (#426e). */
+#sideBubbleTailMirrorWrap{ margin-top:8px; }
 /* Sélecteur de couleur (cf. sideBorderColorInput/sidePlancheBgColorInput) — section "Bordure" du menu
    Case et "Arrière-plan" du menu Planche — sur demande utilisateur. */
 /* Section "Sol" du menu Case/Scène : grille de boutons à swatches de texture — sur demande utilisateur. */
