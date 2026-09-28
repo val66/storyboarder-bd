@@ -27,7 +27,6 @@ import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
 import { queuesConnues } from '../src/bubble-tail.js';
 import { texturesConnues, teinteParDefautDeLaTexture,
          couleurDeFondDeLaBulle3D } from '../src/bubble-texture.js';
-import { particulesConnues } from '../src/bubble-particle.js';
 import { fusionner3D } from '../src/bubble-merge.js';
 import { readFileSync } from 'node:fs';
 import { sourceSansCommentaires } from './helpers/source.mjs';
@@ -1079,6 +1078,7 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     assert.equal(b.tailLen, 1.5, 'changer de motif a raccourci la pointe');
   });
 
+
   test('⚠️ #425m : CHOISIR UNE TEXTURE LA POSE VRAIMENT, et la fiche la relit', () => {
     // Les deux sens, comme pour la forme et la queue. Ce chantier a perdu l'un ou l'autre trois
     // fois : une fiche qui affiche correctement et un menu qui n'écrit rien sont compatibles.
@@ -1095,21 +1095,13 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     }
   });
 
-  test('⚠️ #425p : CHOISIR UNE PARTICULE LA POSE VRAIMENT, et la fiche la relit', () => {
-    // Les deux sens, comme pour la forme, la queue et la texture. Ce chantier a perdu l'un ou
-    // l'autre trois fois : une fiche qui affiche juste et un menu qui n'écrit rien sont compatibles.
-    const b = nouvelleBulle();
-    S.selectedId = b.id;
-    const select = document.getElementById('sideBubbleParticuleSelect');
-    for (const p of particulesConnues()) {
-      select.value = p;
-      (select._ecouteurs.change || []).forEach(fn => fn({ target: select }));
-      assert.equal(b.bulleParticule, p, `choisir « ${p} » a posé « ${b.bulleParticule} »`);
-      select.value = 'flamme';            // on brouille la fiche…
-      updateSidePanel();                  // …et on vérifie qu'elle relit l'objet
-      assert.equal(select.value, p, `la fiche affiche « ${select.value} » pour « ${p} »`);
-    }
-  });
+  /*
+   * ⚠️ IL Y AVAIT ICI « CHOISIR UNE PARTICULE LA POSE VRAIMENT, ET LA FICHE LA RELIT ». Le menu a
+   * été retiré de la fiche avec tout l'axe « Particule » : il n'y a plus ni écouteur à actionner ni
+   * valeur à relire. Le module et ses tests de décision restent au dépôt — voir la liste EN_ATTENTE
+   * de tests/code-mort.test.mjs, qui dit pourquoi, et l'endroit d'où l'appel du dessin a été retiré,
+   * qui dit comment le rebrancher.
+   */
 
   /**
    * ⚠️ CE TEST TENAIT L'INVERSE, ET SA DISPARITION EST LE POINT. Il vérifiait que le champ

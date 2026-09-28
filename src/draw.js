@@ -98,7 +98,6 @@ const EPAISSEUR_CONTOUR_TEXTE = 0.16;
  * polyligne suive d'assez près une courbe, y compris sur une grande Bulle.
  */
 const POINTS_EPINE = 240;
-import { particulesDeLaBulle } from './bubble-particle.js';
 import { motifDuGrain3D, nouvelleImage3D } from './bubble-grain.js';
 import { groupeDeLaBulle3D } from './bubble-merge.js';
 
@@ -1634,7 +1633,11 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   // vieux papier a besoin.
   const { couches } = couchesDeTextureBulle(o, { couleur: couleurDeFondDeLaBulle3D(o), opacite: app.opacite });
   if (phase === PHASE_TOUT || phase === PHASE_FOND) couches.forEach((couche, i) => {
-    if (i > 0 || couche.retrait) { c.beginPath(); construireChemin(couche.retrait); c.closePath(); }
+    // ⚠️ LA PREMIÈRE COUCHE RÉUTILISE LE CHEMIN DÉJÀ CONSTRUIT PAR L'APPELANT ; les suivantes le
+    // reconstruisent, leur propre `fill` ne consommant pas le chemin mais chaque couche ayant
+    // besoin d'un chemin PROPRE si un jour elle diffère. Aucune texture n'en déclare plus d'une
+    // aujourd'hui — c'était le cas du vieux papier et de son liseré, retiré.
+    if (i > 0) { c.beginPath(); construireChemin(); c.closePath(); }
     c.globalAlpha = couche.alpha;
     // ⚠️ LE REPLI SUR L'APLAT N'EST PAS SILENCIEUX, ET CE N'EST PAS LA MÊME CHOSE QUE DE SE TAIRE.
     // Un grain absent — non encore chargé, ou jamais cuit — ne peut pas faire échouer la peinture
@@ -1653,8 +1656,8 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   c.globalAlpha = 1;
   if (phase === PHASE_FOND || phase === PHASE_TEXTE) return;
   // Le trait se pose sur le CONTOUR VRAI, pas sur la dernière couche peinte.
-  if (couches.length > 1 || couches[0].retrait || phase === PHASE_TRAIT) {
-    c.beginPath(); construireChemin(null); c.closePath();
+  if (couches.length > 1 || phase === PHASE_TRAIT) {
+    c.beginPath(); construireChemin(); c.closePath();
   }
   if (o.bulleBorderVisible === false) return;
   c.lineJoin = 'round';
@@ -1705,54 +1708,24 @@ function remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, ancre
   }
 }
 
-/**
- * Les particules semées autour d'une Bulle — le mouchetis d'encre, les langues de flamme.
+/*
+ * ⚠️ IL Y AVAIT ICI `peindreLesParticules3D`, ET L'AXE « PARTICULE » A ÉTÉ RETIRÉ DE LA FICHE.
  *
- * ⚠️ ELLES SE POSENT À CHEVAL SUR LE BORD, dedans ET dehors, et c'est ce qui les distingue des
- * taches d'une texture, confinées à l'intérieur. Le relevé est clair : le mouchetis ENTOURE la masse
- * d'encre au lieu de la remplir. Rien ne s'y oppose — #425k a figé qu'une Bulle n'est jamais
- * découpée par sa Case, donc une particule qui déborde est cohérente avec une tache d'encre posée à
- * cheval sur le blanc inter-cases.
+ * Il semait un mouchetis d'encre ou des langues de flamme à cheval sur le bord d'une Bulle. L'idée
+ * tient — le relevé la montre chez plusieurs auteurs — mais la rendre convaincante demande bien
+ * plus que ce qui avait été fait : taille et opacité décroissantes, filaments, densité qui suit la
+ * matière. Décidé avec l'utilisateur : l'idée est bonne, ce n'est pas prioritaire.
  *
- * ⚠️ LEUR RAYON EST RELATIF AU CONTOUR, PAS À LA BOÎTE. C'est ce qui les fait suivre une étoile ou un
- * écu comme un ovale : à angle donné, on part du point du contour et on s'en éloigne. Calées sur la
- * boîte, elles se seraient massées dans les creux d'une étoile et auraient décollé de ses pointes —
- * le défaut exact que le rendu comparatif des textures avait montré pour les dégradés.
+ * ⚠️ ET LE CODE EST CONSERVÉ PLUTÔT QUE JETÉ, À LA DEMANDE. `src/bubble-particle.js` reste au
+ * dépôt avec ses tests, qui continuent de tourner : la décision pure ne peut donc pas pourrir en
+ * silence. Ses exports sont inscrits dans la liste EN_ATTENTE du détecteur de code mort, avec cette
+ * raison — c'est le mécanisme que ce dépôt emploie pour ce qui est écrit sans être branché, et il
+ * sert ici pour ce qui a été débranché sans être abandonné.
  *
- * ⚠️ ET ELLES PRENNENT LA COULEUR DU TRAIT, SINON CELLE DU FOND. De l'encre projetée est l'encre qui
- * a tracé la Bulle. La retombée sur le fond couvre le cas du relevé : la tache d'encre du Lecteur
- * omniscient n'a PAS de contour distinct, et son mouchetis est noir comme elle. Prendre le fond
- * d'abord aurait rendu invisibles les particules d'une Bulle blanche, ce qui se lit comme un réglage
- * en panne.
+ * Pour le remettre : le menu dans index.html, ses quatre entrées i18n, la lecture dans la fiche,
+ * l'écouteur dans events.js, et un appel ici entre le remplissage et le texte — l'ordre comptait,
+ * des particules peintes après le lettrage le mangent, peintes avant le fond elles disparaissent.
  */
-function peindreLesParticules3D(c, o, app, cx, cy, rx, ry){
-  const encre = o.bulleBorderVisible === false
-    ? couleurDeFondDeLaBulle3D(o)
-    : (o.bulleBorderColor || '#23242A');
-  const particules = particulesDeLaBulle(o, { couleur: encre, opacite: app.opacite });
-  if (!particules.length) return;
-  const demiAxe = Math.min(rx, ry);
-  c.save();
-  for (const p of particules) {
-    const bord = bubbleEdgePoint(o, p.angle * Math.PI * 2);
-    const x = cx + (bord.x - cx) * p.rayonRelatif;
-    const y = cy + (bord.y - cy) * p.rayonRelatif + (p.decalageVertical || 0) * demiAxe;
-    const r = Math.max(0.4, p.taille * demiAxe);
-    // ⚠️ L'ORIENTATION SUIT LE RAYON PAR DÉFAUT, mais une particule peut la fixer en absolu — et la
-    // flamme le fait. Allongée le long du rayon, une langue posée près du sommet d'une Bulle LARGE
-    // part à l'horizontale, la direction radiale y étant loin d'être verticale sur une ellipse
-    // aplatie : le feu s'étalait en flaques au lieu de monter.
-    const orientation = p.orientation != null ? p.orientation : Math.atan2(y - cy, x - cx);
-    c.beginPath();
-    c.ellipse(x, y, r * (p.allongement || 1), r, orientation, 0, Math.PI * 2);
-    c.closePath();
-    c.globalAlpha = p.alpha;
-    c.fillStyle = p.couleur;
-    c.fill();
-  }
-  c.globalAlpha = 1;
-  c.restore();
-}
 
 // Draws a speech Bubble: Oval or Rectangle shape (as chosen, via the right-hand panel) +
 // small triangular tail (whose position around the bubble is adjustable by the user via
@@ -1820,17 +1793,11 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   // ici jusqu'à #425e disaient déjà cela, mais en le codant en dur pour deux formes.
   const sommets = pointsDuContourBulle(o);
   /** Émet le contour entre deux angles, en respectant tremblement et sommets. */
-  const emettreContour = (depuis, jusqu, facteur) => {
-    const pose = (p) => { const q = versCouche(facteur, p.x, p.y); c.lineTo(q.x, q.y); };
+  const emettreContour = (depuis, jusqu) => {
+    const pose = (p) => c.lineTo(p.x, p.y);
     if (tremble) { for (const p of pointsTrembles(depuis, jusqu)) pose(p); return; }
     if (sommets) { for (const p of sommetsEntreAngles3D(o, sommets, depuis, jusqu)) pose(p); return; }
-    // ⚠️ MÊME RAISON QUE PLUS BAS : un arc d'ellipse ne survit pas à un facteur qui varie.
-    if (!facteur) { c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false); return; }
-    const N = 64;
-    for (let i = 0; i <= N; i++) {
-      const a = depuis + (jusqu - depuis) * i / N;
-      pose({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
-    }
+    c.ellipse(cx, cy, rx, ry, 0, depuis, jusqu, false);
   };
   // La queue : son tracé vient du registre de src/bubble-tail.js, et il est de deux natures.
   //
@@ -1858,31 +1825,23 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   const traceQueue = queueVisible
     ? traceContinuDeLaQueue(oQueue, bubbleEdgePoint(o, angleBase1), pointeQueue, bubbleEdgePoint(o, angleBase2))
     : null;
-  /**
-   * Rapproche un point du centre selon le facteur de la couche, lu à l'ANGLE de ce point.
+  /*
+   * ⚠️ IL Y AVAIT ICI `versCouche`, QUI RAPPROCHAIT UN POINT DU CENTRE. Une couche de texture
+   * pouvait déclarer un RETRAIT, et le vieux papier s'en servait pour son liseré sale. Ce liseré a
+   * été retiré à la demande de l'usage — dernier reste d'une époque où le remplissage ajoutait des
+   * effets de son cru —, et plus aucune texture n'en déclare. On enlève donc le mécanisme avec son
+   * seul client, plutôt que de laisser une branche que rien n'exerce : c'est la même règle qui a
+   * fait supprimer l'axe `taches` en #431b3.
    *
-   * ⚠️ À L'ANGLE, ET NON AU RANG DU POINT : les points de la QUEUE ne viennent pas du contour et
-   * n'ont pas de rang dedans. Indexer sur le contour aurait laissé la queue pleinement opaque
-   * pendant que le corps s'estompe.
+   * `construireChemin` et `cheminRond` ne prennent plus de paramètre. Le code du retrait est dans
+   * l'historique si une texture en redemande un jour — avec, à côté, les deux défauts qu'il avait
+   * produits et les tests qui les tenaient.
    */
-  const versCouche = (retrait, x, y) => {
-    if (!retrait) return { x, y };
-    const t = ((Math.atan2(y - cy, x - cx) / (Math.PI * 2)) % 1 + 1) % 1;
-    // ⚠️ LE RETRAIT EST UNE LARGEUR EN PIXELS, CONVERTIE ICI SEULEMENT. C'était une FRACTION du
-    // rayon, ce qui donnait un liseré large de douze pour cent du rayon sur le corps et trois fois
-    // plus de pixels sur la queue, dont les points sont trois fois plus loin du centre. Une largeur
-    // se comporte bien partout ; la conversion doit donc se faire ici, où le rayon du point est
-    // connu, et non dans la texture, qui ne sait rien de la géométrie.
-    const r = Math.hypot(x - cx, y - cy);
-    if (r < 1e-6) return { x, y };
-    const f = Math.max(0, 1 - retrait(t) / r);
-    return { x: cx + (x - cx) * f, y: cy + (y - cy) * f };
-  };
 
-  /** Construit le chemin de la Bulle, éventuellement rentré d'un retrait. `retrait` peut être nul. */
-  const construireChemin = (facteur) => {
-  const dep = (x, y) => { const p = versCouche(facteur, x, y); c.moveTo(p.x, p.y); };
-  const vers = (x, y) => { const p = versCouche(facteur, x, y); c.lineTo(p.x, p.y); };
+  /** Construit le chemin de la Bulle. */
+  const construireChemin = () => {
+  const dep = (x, y) => c.moveTo(x, y);
+  const vers = (x, y) => c.lineTo(x, y);
   if (queueVisible && traceQueue) {
     const base1 = bubbleEdgePoint(o, angleBase1);
     const base2 = bubbleEdgePoint(o, angleBase2);
@@ -1892,7 +1851,7 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     dep(base1.x, base1.y);
     for (const p of traceQueue) vers(p.x, p.y);
     vers(base2.x, base2.y);
-    emettreContour(angleBase2, angleBase1 + Math.PI * 2, facteur);
+    emettreContour(angleBase2, angleBase1 + Math.PI * 2);
   } else if (tremble || sommets) {
     // Sans queue : le périmètre entier, d'un tour complet. Le premier point est posé à la main,
     // `emettreContour` n'émettant que des `lineTo`.
@@ -1910,22 +1869,15 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     const parcours = tremble ? pointsTrembles(0, Math.PI * 2)
                              : sommetsEntreAngles3D(o, sommets, 0, Math.PI * 2);
     dep(parcours[0].x, parcours[0].y);
-    emettreContour(0, Math.PI * 2, facteur);
+    emettreContour(0, Math.PI * 2);
   } else {
     // Ovale sans queue ni tremblement : l'ellipse exacte, en un appel, comme avant #425.
     //
-    // ⚠️ UNE COUCHE DE TEXTURE, ELLE, DOIT ÊTRE ÉCHANTILLONNÉE. `c.ellipse` ne sait tracer qu'une
-    // ellipse ; un facteur qui varie avec l'angle n'en est plus une. L'ovale SANS texture continue
-    // de passer par l'appel exact — c'est la garantie de non-régression — et seules ses couches
-    // supplémentaires sont approchées par des segments.
-    if (!facteur) { c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); }
-    else {
-      const N = 96;
-      for (let i = 0; i <= N; i++) {
-        const a = Math.PI * 2 * i / N;
-        (i ? vers : dep)(cx + rx * Math.cos(a), cy + ry * Math.sin(a));
-      }
-    }
+    // ⚠️ IL Y AVAIT ICI UNE SECONDE BRANCHE, ÉCHANTILLONNÉE, POUR LES COUCHES DE TEXTURE. Une couche
+    // pouvait être rentrée d'un retrait variant avec l'angle, et `c.ellipse` ne sait tracer qu'une
+    // ellipse : il fallait alors des segments. Le retrait a disparu avec le liseré du vieux papier,
+    // son dernier client, et l'ovale repasse donc TOUJOURS par l'appel exact.
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   }
   };
   c.save();
@@ -1965,10 +1917,7 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
        *
        * Le retrait est lu au repos : un disque n'a pas d'angle propre.
        */
-      const cheminRond = (retrait) => {
-        const r = retrait ? Math.max(0, rond.r - retrait(0)) : rond.r;
-        c.ellipse(rond.x, rond.y, r, r, 0, 0, Math.PI * 2);
-      };
+      const cheminRond = () => c.ellipse(rond.x, rond.y, rond.r, rond.r, 0, 0, Math.PI * 2);
       c.beginPath();
       cheminRond(null);
       c.closePath();
@@ -1987,7 +1936,7 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   // ne dit rien de l'état du chemin sur lequel ils portent. C'est ce trou que comble désormais
   // « le chemin du corps est encore là quand on le remplit ».
   c.beginPath();
-  construireChemin(null);
+  construireChemin();
   c.closePath();
   // L'arc du CORPS : le périmètre entier, sauf quand une queue continue en remplace un morceau.
   // C'est exactement l'arc que `construireChemin` fait suivre à `emettreContour` juste au-dessus.
@@ -1995,14 +1944,6 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     ? { depuis: angleBase2, jusqu: angleBase1 + Math.PI * 2 } : null;
   remplirEtCernerBulle3D(c, o, app, largeurTrait, construireChemin, { x: cx, y: cy }, phase,
                          arcDuCorps);
-  // ⚠️ APRÈS LA BULLE ET SES TACHES, MAIS AVANT LE TEXTE. Des particules peintes par-dessus le
-  // lettrage le mangeraient ; peintes avant le remplissage, elles disparaîtraient dessous.
-  // ⚠️ LE DÉCOR ATTEND QUE TOUS LES FONDS SOIENT POSÉS, ET C'EST UNE PASSE À PART. Peintes avec le
-  // fond de leur propre lobe, les particules du premier disparaîtraient sous le remplissage du
-  // second. Un test l'a montré pour le lettrage, et la raison vaut mot pour mot ici.
-  if (phase === PHASE_TOUT || phase === PHASE_TEXTE) {
-    peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
-  }
 
   c.restore();
 

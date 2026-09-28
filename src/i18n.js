@@ -122,10 +122,6 @@ export const I18N_TEXT = [
   ['#sideBubbleTextureSelect option[value="nuit-etoile"]', 'Starry night', 'Nuit étoilée'],
   // #425p — l'axe PARTICULE, semé AUTOUR du bord. Distinct du motif de trait : un motif est une
   // propriété d'une ligne, une particule une nuée en deux dimensions.
-  ['label[for="sideBubbleParticuleSelect"]', 'Particles', 'Particule'],
-  ['#sideBubbleParticuleSelect option[value="aucune"]', 'None', 'Aucune'],
-  ['#sideBubbleParticuleSelect option[value="tache"]', 'Ink spatter', 'Tache'],
-  ['#sideBubbleParticuleSelect option[value="flamme"]', 'Flame', 'Flamme'],
   ['#sideBubbleStackSection > h2', 'Stacking order', "Niveau d'avancement"],
   // #425c — motif et régularité du trait. Les libellés traduisent ce qu'on VOIT, pas la valeur
   // persistée : `pointille` reste `pointille` dans le fichier quelle que soit la langue affichée.

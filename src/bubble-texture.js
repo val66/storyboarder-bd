@@ -56,7 +56,6 @@
  * doit pouvoir être marbrée, et la tache d'encre rester utilisable en aplat. Aucune texture ne lit
  * `o.bulleShape` : elle ne reçoit que la couleur et l’opacité, jamais la moindre géométrie.
  */
-import { bruitCyclique, graineDeLObjet } from './cyclic-noise.js';
 
 /** Les valeurs de l'axe texture. « Aucune » est un choix, pas une absence de réglage. */
 export const TEXTURE_AUCUNE = 'aucune';
@@ -104,8 +103,6 @@ function versRVB(couleur){
   return [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16));
 }
 
-const versHex = (rvb) => '#' + rvb.map(v => Math.max(0, Math.min(255, Math.round(v)))
-  .toString(16).padStart(2, '0')).join('');
 
 /**
  * ⚠️ UNE TACHE DE VIEUX PAPIER TIRE VERS LE BRUN, PAS VERS LE NOIR — et la première version faisait
@@ -114,8 +111,6 @@ const versHex = (rvb) => '#' + rvb.map(v => Math.max(0, Math.min(255, Math.round
  * est plus SOMBRE ET PLUS CHAUDE que le fond ; la cible du mélange est donc une terre d'ombre, et
  * pour l'éclaircissement une crème, jamais le blanc pur.
  */
-const TERRE = [0x6B, 0x4E, 0x2E];
-const CREME = [0xFA, 0xF2, 0xDE];
 
 /**
  * Le cerne des lettres sur les matières chargées.
@@ -126,22 +121,6 @@ const CREME = [0xFA, 0xF2, 0xDE];
  */
 const CONTOUR_SOMBRE = '#1B1B1F';
 
-/**
- * Éclaircit (`t > 0`) ou fonce (`t < 0`) une couleur, et rend la couleur d'origine si on ne sait
- * pas la lire.
- *
- * ⚠️ LE REPLI N'EST PAS UN OUBLI, ET IL NE MASQUE RIEN. `bulleColor` est un champ persisté, écrit
- * par un sélecteur de couleur mais lisible dans un fichier de Projet édité à la main. Une valeur
- * inconnue — un nom CSS, un `rgba()` — n'est pas une faute de programmation à signaler bruyamment
- * comme une clé de registre inconnue : c'est une couleur que le canevas saura peut-être peindre
- * lui-même. On la laisse donc passer telle quelle, sans marbrure, plutôt que de refuser de dessiner.
- */
-function teinte(couleur, t){
-  const rvb = versRVB(couleur);
-  if (!rvb) return couleur;
-  const cible = t >= 0 ? CREME : TERRE;
-  return versHex(rvb.map((v, i) => v + (cible[i] - v) * Math.abs(t)));
-}
 
 // ── Les grains, et la façon dont une teinte les habille ─────────────────────────────────────────
 
@@ -355,66 +334,32 @@ export function rvbDeCouleur3D(couleur){
  * sombres au pourtour. Ajouter le liseré « pour faire pareil » aurait été décorer sans motif.
  */
 const couchesDUneMatiere = (grain) => (o, ctx) => ({
-  couches: [{ retrait: null, motif: grain, couleur: ctx.couleur, alpha: ctx.opacite }],
+  couches: [{ motif: grain, couleur: ctx.couleur, alpha: ctx.opacite }],
 });
 
 /**
- * Le vieux papier : un grain photographié, teinté, avec un pourtour plus sale que son cœur.
+ * ⚠️ LE VIEUX PAPIER A PERDU SON LISERÉ, ET IL NE RESTE RIEN DES COUCHES SUPPLÉMENTAIRES.
  *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * ⚠️ LES AURÉOLES PROCÉDURALES ONT ÉTÉ RETIRÉES EN #431b3, ET POUR DEUX RAISONS CUMULÉES
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * Il en portait un : le contour entier dans une teinte terre, puis la couleur choisie rentrée de
+ * quelques pixels, d'où un pourtour plus sale que le cœur. Le relevé de La Licorne le montrait, et
+ * c'était donc fondé. Mais cette texture a aussi porté des TACHES, parties en #431b3, et le liseré
+ * était le dernier reste de cette époque où le remplissage ajoutait des effets de son cru.
  *
- * Cette texture posait 22 auréoles, chacune faite de 4 disques concentriques pour lui donner un
- * bord doux. Elles avaient un sens tant que le remplissage était entièrement dessiné : sans elles,
- * un cartouche n'était qu'un aplat un peu marbré.
+ * Retiré à la demande de l'usage : « normalement il ne doit rien rester de tout ça, mais il reste
+ * encore un fin liseré marron sur les bords ». Un grain photographié porte déjà la matière ; ce que
+ * le remplissage ajoute par-dessus, personne ne l'a commandé et personne ne peut l'enlever.
  *
- * Un grain PHOTOGRAPHIÉ rend ce travail inutile — la matière est dans l'image — et signalé à
- * l'usage, l'empilement des deux chargeait le rendu.
- *
- * ⚠️ ET SURTOUT ELLES FAISAIENT DOUBLON AVEC UN AXE DÉJÀ TRANCHÉ. #425n a décidé que les taches
- * relevaient de l'axe PARTICULE, que #425p a construit : l'utilisateur y choisit « tache »,
- * « flamme » ou « aucune ». Garder des auréoles cachées dans le remplissage, c'était une seconde
- * source de taches que personne ne commandait — deux commandes pour un même effet, qui finissent
- * toujours par se contredire. Qui veut des auréoles les demande maintenant par la fiche.
- *
- * Avec elles part tout l'axe `taches` du contrat, qu'aucune texture ne peuplait plus.
+ * Avec lui part le RETRAIT, le seul mécanisme du contrat qui rapprochait une couche du centre — plus
+ * aucune texture n'en déclarait. C'est lui qui avait produit les deux défauts signalés juste avant :
+ * un contour intérieur foncé, et une texture qui débordait autour de la pointe. Le code est dans
+ * l'historique si une texture en redemande un jour.
  */
-/**
- * La largeur du liseré sale du vieux papier, EN PIXELS, et son irrégularité.
- *
- * ⚠️ TROIS PIXELS, COMME LE RELEVÉ LE DIT ET COMME LE COMMENTAIRE L'ANNONÇAIT DÉJÀ. Il était écrit
- * juste en dessous que « le liseré sale fait deux à trois pixels de large », au-dessus d'un code qui
- * en retirait douze pour cent du RAYON — soit douze pixels sur les flancs d'une Bulle de 200, et
- * davantage sur une grande. Le commentaire disait vrai de l'intention et faux du code, et personne
- * ne les a confrontés jusqu'à ce que l'usage signale un contour intérieur foncé.
- */
-const LISERE_PAPIER = 3;
-const LISERE_VARIATION = 0.35;
 
-function couchesPapier(o, ctx){
-  const graine = graineDeLObjet(o);
-  // ⚠️ LE BORD EST PLUS SALE QUE LE CŒUR, et c'est ce qui reste du relevé de La Licorne : le
-  // pourtour d'un cartouche y est nettement plus brun que son milieu. Deux couches suffisent — le
-  // contour entier dans une teinte terre, puis la couleur choisie rentrée d'un liseré.
-  // Il en reste un liseré sale tout autour.
-  //
-  // ⚠️ LES DEUX COUCHES PORTENT LE GRAIN, PAS SEULEMENT CELLE DU CŒUR. Le liseré sale fait deux à
-  // trois pixels de large : laissé en aplat sous un cœur grainé, il se lit comme un jonc de
-  // plastique posé autour du papier. Le motif étant carrelé dans le repère de la page, il traverse
-  // la frontière des deux couches sans raccord visible.
-  const couches = [
-    { retrait: null, motif: GRAIN_PAPIER, couleur: teinte(ctx.couleur, -0.42), alpha: ctx.opacite },
-    { retrait: (t) => LISERE_PAPIER * (1 + bruitCyclique(graine, t, 4242, 5) * LISERE_VARIATION),
-      motif: GRAIN_PAPIER, couleur: ctx.couleur, alpha: ctx.opacite },
-  ];
-  return { couches };
-}
 
 const REGISTRE = {
   [TEXTURE_AUCUNE]: {
     // Une seule couche, le contour tel quel : exactement le remplissage d'avant cette étape.
-    rendu: (o, ctx) => ({ couches: [{ retrait: null, couleur: ctx.couleur, alpha: ctx.opacite }] }),
+    rendu: (o, ctx) => ({ couches: [{ couleur: ctx.couleur, alpha: ctx.opacite }] }),
     // Aucune suggestion : le sélecteur commande seul, sur un blanc par défaut.
     teinteParDefaut: null,
     couleurTexteParDefaut: null,
@@ -452,7 +397,7 @@ const REGISTRE = {
     couleurContourTexteParDefaut: CONTOUR_SOMBRE,
   },
   [TEXTURE_PAPIER]: {
-    rendu: couchesPapier,
+    rendu: couchesDUneMatiere(GRAIN_PAPIER),
     /**
      * ⚠️ IMPOSÉE → SUGGÉRÉE, ET C'EST UN CHANGEMENT DÉLIBÉRÉ DE COMPORTEMENT. Cette entrée imposait
      * `#E3D2A8` et masquait le sélecteur, parce qu'un parchemin dessiné à la main n'est pas « une

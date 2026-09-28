@@ -874,3 +874,30 @@ WORD — a crutch made necessary by their length, since the manual cited them in
 dearly: "Rounded rectangle" and "Sharp rectangle" both reduced to "Rectangle", so one of them
 vanishing from the manual went unnoticed. Short labels can be cited verbatim, and the guard now
 demands the whole label.
+
+## What was removed, and what was kept
+
+⚠️ **THE OLD PAPER'S RIM IS GONE, AND WITH IT THE LAST TRACE OF A HABIT.** That texture laid the whole
+outline in an earth tint, then the chosen colour inset by a few pixels: a rim dirtier than the core,
+which La Licorne's survey did show. It had also carried BLOTS, removed in #431b3. Reported from use
+— "nothing should be left of all that, but there is still a thin brown rim along the edges". A
+photographed grain already carries the material; what the fill adds on top, nobody asked for and
+nobody can take away.
+
+The **inset** goes with it — the contract's only mechanism for pulling a layer towards the centre,
+and no texture declared one any more. It had produced the three defects reported just before: a dark
+inner outline, a texture spilling around the tail, and tripled chain discs. Every texture is now a
+**single grained layer**, and the oval always goes back through the exact `c.ellipse` call, the
+sampled second branch having lost its purpose.
+
+⚠️ **AND THE "PARTICLE" AXIS WAS UNPLUGGED WITHOUT BEING THROWN AWAY.** It scattered an ink spatter
+or flame tongues astride the edge. The idea holds — the survey shows it in several authors — but
+making it convincing takes far more than was done: decreasing size and opacity, filaments, density
+following the material. Decided with the user: good idea, not a priority, **and do not throw the
+code away**.
+
+`src/bubble-particle.js` stays in the repository with its tests, which keep running: the pure
+decision therefore cannot rot in silence. Its wired export is listed in the dead-code detector's
+`EN_ATTENTE` — the mechanism this repository uses for what is written without being wired, serving
+here for what was unwired without being abandoned. It is the only place where "kept but not wired"
+can be said without lying.

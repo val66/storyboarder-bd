@@ -244,6 +244,34 @@ const EN_ATTENTE = {
   // Une exemption l'aurait gardé en vie sous couvert de surveillance. C'est la cinquième fois que
   // ce garde-fou fait mieux que signaler du code mort : il a posé la question « à quoi sert cet
   // export ? », et la réponse honnête était « à rien que le test ne fasse mieux lui-même ».
+
+  /*
+   * ⚠️ #425p — L'AXE « PARTICULE » A ÉTÉ DÉBRANCHÉ, ET C'EST LE PREMIER NOM QUI ENTRE ICI SANS
+   * ÊTRE « EN AVANCE ». Toutes les entrées ci-dessus sont des décisions écrites avant leur
+   * application, chacune avec son numéro de tâche pour échéance. Celle-ci est l'inverse : du code
+   * qui a été branché, qui marchait, et qu'on a retiré de la fiche.
+   *
+   * L'axe semait un mouchetis d'encre ou des langues de flamme à cheval sur le bord d'une Bulle.
+   * L'idée est bonne — le relevé la montre chez plusieurs auteurs — mais la rendre convaincante
+   * demande bien plus que ce qui avait été fait : taille et opacité décroissantes, filaments,
+   * densité qui suit la matière. Décidé avec l'utilisateur, qui a demandé expressément de NE PAS
+   * jeter le code.
+   *
+   * ⚠️ ET CETTE LISTE EST LE SEUL ENDROIT OÙ « CONSERVER SANS BRANCHER » PEUT SE DIRE SANS MENTIR.
+   * Supprimer le module aurait perdu le travail ; le laisser sans exemption aurait fait rougir la
+   * suite à chaque exécution, et l'habitude aurait été prise de la faire taire. Inscrit ici, le
+   * module garde ses tests — la décision pure ne peut donc pas pourrir en silence — et personne ne
+   * peut croire par erreur qu'il est encore utilisé.
+   *
+   * Pour le rebrancher : le menu dans index.html, ses quatre entrées i18n, la lecture dans la
+   * fiche, l'écouteur dans events.js, et l'appel dans `drawBubble` entre le remplissage et le
+   * texte. Le détail de cet ordre est écrit à l'endroit exact d'où l'appel a été retiré.
+   *
+   * `particuleDeLaBulle`, `particulesConnues` et les quatre constantes ne sont PAS ici : le
+   * détecteur les voit appelées à l'intérieur du module. Sixième fois que ce garde-fou évite des
+   * exemptions qui ne surveilleraient rien.
+   */
+  particulesDeLaBulle: '#425p — axe retiré de la fiche, code conservé sur demande',
 };
 
 function exportsSansAppelant(){
@@ -319,7 +347,24 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // décision. Ce chiffre se modifie À LA
     // MAIN, et c'est tout l'intérêt : la ligne qu'on écrit en haut coûte une seconde ligne ici,
     // qu'on ne peut pas écrire sans avoir lu ce paragraphe.
-    assert.equal(Object.keys(EN_ATTENTE).length, 0,
+    //
+    // ⚠️ REMONTÉ À 1 EN #425p, ET CETTE ENTRÉE-LÀ N'EST PAS UN REPORT. Toutes les précédentes
+    // étaient des décisions écrites AVANT leur application, avec un numéro de tâche pour échéance.
+    // Celle-ci est l'inverse : l'axe « Particule » a été branché, il marchait, et il a été retiré
+    // de la fiche parce que le rendre convaincant demande bien plus de travail — décidé avec
+    // l'utilisateur, qui a demandé expressément de ne pas jeter le code.
+    //
+    // La décision A donc été prise ; ce qui reste en liste est le code conservé. Le message
+    // d'échec ci-dessous parle de report, et il serait trompeur ici : on le laisse tel quel parce
+    // qu'il sert les six cas précédents et servira les suivants, mais quiconque arrive par lui doit
+    // lire le paragraphe de `particulesDeLaBulle` plus haut avant de conclure.
+    //
+    // ⚠️ ET CE CHIFFRE NE REDESCENDRA PAS TOUT SEUL. Les six dettes passées se soldaient en
+    // branchant ce qui attendait ; celle-ci se soldera de l'une des deux manières suivantes
+    // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
+    // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
+    // demande.
+    assert.equal(Object.keys(EN_ATTENTE).length, 1,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

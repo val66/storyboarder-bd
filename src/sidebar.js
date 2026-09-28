@@ -22,7 +22,6 @@ import { formeDeLaBulle } from './bubble-shape.js';
 import { textureDeLaBulle, teinteParDefautDeLaTexture,
          couleurTexteParDefautDeLaTexture,
          couleurContourTexteParDefautDeLaTexture } from './bubble-texture.js';
-import { particuleDeLaBulle } from './bubble-particle.js';
 import { queuePeutSInverser3D, queueInverseeDeLaBulle3D } from './bubble-tail.js';
 import { bulleEstFusionnable3D, groupeDeLaBulle3D } from './bubble-merge.js';
 import {
@@ -239,7 +238,6 @@ const sideBubbleFillOpacityInput = document.getElementById('sideBubbleFillOpacit
 const sideBubbleFillOpacityValue = document.getElementById('sideBubbleFillOpacityValue');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
-const sideBubbleParticuleSelect = document.getElementById('sideBubbleParticuleSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -1220,7 +1218,6 @@ function updateSidePanelImpl(){
     majAffichageMiroirQueue3D(queueEffectiveDeLaBulle(sel));
     document.getElementById('sideBubbleTailMirrorToggle').checked = queueInverseeDeLaBulle3D(sel);
     sideBubbleTextureSelect.value = textureDeLaBulle(sel);
-    sideBubbleParticuleSelect.value = particuleDeLaBulle(sel);
     // ⚠️ ON RELIT PAR L'ACCESSEUR, PAS PAR LE CHAMP. Une Bulle enregistrée avant #426b n'a pas de
     // champ du tout : `sel.bulleFusionnable` vaudrait `undefined`, que la case afficherait comme
     // décochée — juste par accident. `bulleEstFusionnable3D` le dit, lui, et continuera de le dire

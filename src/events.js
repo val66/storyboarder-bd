@@ -87,7 +87,6 @@ import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
   etatAuContactDuGroupe3D, rapprocherDuGroupe3D, lobesADissoudre3D,
 } from './bubble-merge.js';
-import { particuleDeLaBulle } from './bubble-particle.js';
 import {
   buildPersonaEditorPosesUI, isPersonaEditorOpen, setPersonaEditorCallbacks, showPersonaEditor,
   syncPersonaEditorPoseLabel, wirePersonaEditor,
@@ -6983,7 +6982,6 @@ const sideDescInput = document.getElementById('sideDescInput');
 const sideBubbleTailShapeSelect = document.getElementById('sideBubbleTailShapeSelect');
 const sideBubbleTailMirrorToggle = document.getElementById('sideBubbleTailMirrorToggle');
 const sideBubbleTextureSelect = document.getElementById('sideBubbleTextureSelect');
-const sideBubbleParticuleSelect = document.getElementById('sideBubbleParticuleSelect');
 const sideBubbleShapeSelect = document.getElementById('sideBubbleShapeSelect');
 const sideBubblePaddingInput = document.getElementById('sideBubblePaddingInput');
 const sideBubblePaddingValue = document.getElementById('sideBubblePaddingValue');
@@ -7430,13 +7428,6 @@ sideDescInput.addEventListener('keydown', (e) => {
   }
 });
 
-sideBubbleParticuleSelect.addEventListener('change', () => {
-  if (!S.sideDescTarget || S.sideDescTarget.type !== 'bulle') return;
-  snapshot();
-  // Validé par le registre, comme la forme, la queue et la texture.
-  S.sideDescTarget.bulleParticule = particuleDeLaBulle({ bulleParticule: sideBubbleParticuleSelect.value });
-  drawCurrentPage();
-});
 
 /**
  * ⚠️ LA CASE S'ÉCRIT TELLE QUELLE, SANS PASSER PAR UN REGISTRE. Ses voisines — forme, queue,

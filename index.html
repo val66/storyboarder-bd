@@ -430,14 +430,13 @@
             <option value="nuit-etoile">Nuit étoilée</option>
           </select>
         </div>
-        <div id="sideBubbleParticuleWrap" class="tome-format">
-          <label for="sideBubbleParticuleSelect">Particule</label>
-          <select id="sideBubbleParticuleSelect">
-            <option value="aucune">Aucune</option>
-            <option value="tache">Tache</option>
-            <option value="flamme">Flamme</option>
-          </select>
-        </div>
+        <!-- ⚠️ LA SECTION « PARTICULE » A ÉTÉ RETIRÉE D'ICI, ET SON CODE EST CONSERVÉ. L'axe
+             semait un mouchetis d'encre ou des langues de flamme autour d'une Bulle. L'idée tient,
+             mais le rendre convaincant demande bien plus de travail que ce qui a été fait, et ce
+             n'est pas prioritaire — décidé avec l'utilisateur.
+             `src/bubble-particle.js` reste au dépôt, avec ses tests, et ses exports sont inscrits
+             dans la liste EN_ATTENTE du détecteur de code mort : rien ne pourrit, et le jour où
+             l'axe revient, il suffit de remettre ce menu et l'appel du dessin. -->
         <div id="sideBubblePaddingWrap" class="tome-format">
           <label for="sideBubblePaddingInput">Padding intérieur (<span id="sideBubblePaddingValue">20</span>%)</label>
           <input type="range" id="sideBubblePaddingInput" min="0" max="40" step="1" value="20">

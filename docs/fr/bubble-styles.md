@@ -918,3 +918,37 @@ le PREMIER MOT de chaque libellé — une béquille rendue nécessaire par leur 
 manuel les citait en abrégé. Elle coûtait cher : « Rectangle arrondi » et « Rectangle net » se
 réduisaient tous deux à « Rectangle », si bien que la disparition de l'un du manuel passait
 inaperçue. Les libellés courts se citent tels quels, et la garde exige maintenant le libellé entier.
+
+## Ce qui a été retiré, et ce qui a été gardé
+
+⚠️ **LE LISERÉ DU VIEUX PAPIER A DISPARU, ET AVEC LUI LE DERNIER RESTE D'UNE HABITUDE.** Cette texture
+posait le contour entier dans une teinte terre puis la couleur choisie rentrée de quelques pixels :
+un pourtour plus sale que le cœur, que le relevé de La Licorne montrait bien. Elle avait aussi porté
+des TACHES, parties en #431b3. Signalé à l'usage — « normalement il ne doit rien rester de tout ça,
+mais il reste encore un fin liseré marron sur les bords ». Un grain photographié porte déjà la
+matière ; ce que le remplissage ajoute par-dessus, personne ne l'a commandé et personne ne peut
+l'enlever.
+
+Avec lui part le **retrait**, seul mécanisme du contrat qui rapprochait une couche du centre — plus
+aucune texture n'en déclarait. C'est lui qui avait produit les trois défauts signalés juste avant :
+un contour intérieur foncé, une texture qui débordait autour de la pointe, et des disques de chaîne
+triplés. Toutes les textures sont désormais **une seule couche grainée**, et l'ovale repasse toujours
+par l'appel `c.ellipse` exact, la seconde branche échantillonnée n'ayant plus d'objet.
+
+⚠️ **ET L'AXE « PARTICULE » A ÉTÉ DÉBRANCHÉ SANS ÊTRE JETÉ.** Il semait un mouchetis d'encre ou des
+langues de flamme à cheval sur le bord. L'idée tient — le relevé la montre chez plusieurs auteurs —
+mais la rendre convaincante demande bien plus que ce qui avait été fait : taille et opacité
+décroissantes, filaments, densité qui suit la matière. Décidé avec l'utilisateur : bonne idée, pas
+prioritaire, **et ne pas jeter le code**.
+
+`src/bubble-particle.js` reste au dépôt avec ses tests, qui continuent de tourner : la décision pure
+ne peut donc pas pourrir en silence. Son export branché est inscrit dans la liste `EN_ATTENTE` du
+détecteur de code mort — c'est le mécanisme que ce dépôt emploie pour ce qui est écrit sans être
+branché, et il sert ici pour ce qui a été débranché sans être abandonné. C'est le seul endroit où
+« conserver sans brancher » peut se dire sans mentir : supprimer aurait perdu le travail, laisser
+sans exemption aurait fait rougir la suite à chaque exécution, et l'habitude aurait été prise de la
+faire taire.
+
+Ce chiffre ne redescendra pas tout seul. Les six dettes précédentes se soldaient en branchant ce qui
+attendait ; celle-ci se soldera de deux manières seulement — l'axe revient dans la fiche, ou l'on
+décide de supprimer le module pour de bon.
